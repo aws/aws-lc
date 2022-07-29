@@ -69,7 +69,7 @@ const (
 	ruleARMPostincrement
 	ruleBaseIndexScale
 	ruleOperator
-	ruleOperatorOffset
+	ruleOffsetOperator
 	ruleOffset
 	ruleSection
 	ruleSegmentRegister
@@ -128,7 +128,7 @@ var rul3s = [...]string{
 	"ARMPostincrement",
 	"BaseIndexScale",
 	"Operator",
-	"OperatorOffset",
+	"OffsetOperator",
 	"Offset",
 	"Section",
 	"SegmentRegister",
@@ -6356,7 +6356,7 @@ func (p *Asm) Init(options ...func(*Asm) error) error {
 			position, tokenIndex = position823, tokenIndex823
 			return false
 		},
-		/* 51 OperatorOffset <- <('+' / '-' / '*')> */
+		/* 51 OffsetOperator <- <('+' / '-' / '*')> */
 		func() bool {
 			position827, tokenIndex827 := position, tokenIndex
 			{
@@ -6383,14 +6383,14 @@ func (p *Asm) Init(options ...func(*Asm) error) error {
 					position++
 				}
 			l829:
-				add(ruleOperatorOffset, position828)
+				add(ruleOffsetOperator, position828)
 			}
 			return true
 		l827:
 			position, tokenIndex = position827, tokenIndex827
 			return false
 		},
-		/* 52 Offset <- <('+'? '-'? (('0' ('b' / 'B') ('0' / '1')+) / ('0' ('x' / 'X') ([0-9] / [0-9] / ([a-f] / [A-F]))+) / ([0-9]+ (OperatorOffset '(' [0-9]+ OperatorOffset [0-9]+ ')')?) / ([0-9]+ (OperatorOffset [0-9]+ OperatorOffset [0-9]+)?) / ([0-9]+ (OperatorOffset [0-9]+)?)))> */
+		/* 52 Offset <- <('+'? '-'? (('0' ('b' / 'B') ('0' / '1')+) / ('0' ('x' / 'X') ([0-9] / [0-9] / ([a-f] / [A-F]))+) / ([0-9]+ (OffsetOperator '(' [0-9]+ OffsetOperator [0-9]+ ')')?) / ([0-9]+ (OffsetOperator [0-9]+ OffsetOperator [0-9]+)?) / ([0-9]+ (OffsetOperator [0-9]+)?)))> */
 		func() bool {
 			position832, tokenIndex832 := position, tokenIndex
 			{
@@ -6590,7 +6590,7 @@ func (p *Asm) Init(options ...func(*Asm) error) error {
 					}
 					{
 						position866, tokenIndex866 := position, tokenIndex
-						if !_rules[ruleOperatorOffset]() {
+						if !_rules[ruleOffsetOperator]() {
 							goto l866
 						}
 						if buffer[position] != rune('(') {
@@ -6612,7 +6612,7 @@ func (p *Asm) Init(options ...func(*Asm) error) error {
 						l869:
 							position, tokenIndex = position869, tokenIndex869
 						}
-						if !_rules[ruleOperatorOffset]() {
+						if !_rules[ruleOffsetOperator]() {
 							goto l866
 						}
 						if c := buffer[position]; c < rune('0') || c > rune('9') {
@@ -6659,7 +6659,7 @@ func (p *Asm) Init(options ...func(*Asm) error) error {
 					}
 					{
 						position875, tokenIndex875 := position, tokenIndex
-						if !_rules[ruleOperatorOffset]() {
+						if !_rules[ruleOffsetOperator]() {
 							goto l875
 						}
 						if c := buffer[position]; c < rune('0') || c > rune('9') {
@@ -6677,7 +6677,7 @@ func (p *Asm) Init(options ...func(*Asm) error) error {
 						l878:
 							position, tokenIndex = position878, tokenIndex878
 						}
-						if !_rules[ruleOperatorOffset]() {
+						if !_rules[ruleOffsetOperator]() {
 							goto l875
 						}
 						if c := buffer[position]; c < rune('0') || c > rune('9') {
@@ -6720,7 +6720,7 @@ func (p *Asm) Init(options ...func(*Asm) error) error {
 					}
 					{
 						position883, tokenIndex883 := position, tokenIndex
-						if !_rules[ruleOperatorOffset]() {
+						if !_rules[ruleOffsetOperator]() {
 							goto l883
 						}
 						if c := buffer[position]; c < rune('0') || c > rune('9') {
