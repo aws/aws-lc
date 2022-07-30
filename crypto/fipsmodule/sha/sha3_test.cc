@@ -113,6 +113,8 @@ class SHA3TestVector {
     #if !defined(OPENSSL_ANDROID)
     ASSERT_DEATH_IF_SUPPORTED(SHAKE128(msg_.data(), msg_.size() , digest, out_len_), "");
     #endif  // OPENSSL_ANDROID
+
+    delete [] digest;
   }
 
   void NISTTestVectors_SHAKE256() const {
@@ -137,6 +139,8 @@ class SHA3TestVector {
     #if !defined(OPENSSL_ANDROID)
     ASSERT_DEATH_IF_SUPPORTED(SHAKE256(msg_.data(), msg_.size() , digest, out_len_), "");
     #endif  // OPENSSL_ANDROID
+
+    delete [] digest;
   }
 
  private:
