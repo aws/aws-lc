@@ -54,7 +54,7 @@ class AwsLcGitHubAnalyticsStack(core.Stack):
             project_name=id,
             source=git_hub_source,
             role=role,
-            timeout=core.Duration.minutes(120),
+            timeout=core.Duration.minutes(180),
             environment=codebuild.BuildEnvironment(compute_type=codebuild.ComputeType.LARGE,
                                                    privileged=True,
                                                    build_image=codebuild.LinuxBuildImage.STANDARD_4_0),
