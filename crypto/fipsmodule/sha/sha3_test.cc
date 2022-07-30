@@ -91,8 +91,57 @@ class SHA3TestVector {
 
   }
 
+  void NISTTestVectors_SHAKE128() const {
+    uint32_t digest_length = out_len_ / 8;
+    uint8_t *digest = new uint8_t[digest_length];
+
+    #if !defined(OPENSSL_ANDROID)
+    ASSERT_DEATH_IF_SUPPORTED(SHAKE128(msg_.data(), msg_.size() , digest, out_len_), "");
+    #endif  // OPENSSL_ANDROID
+
+    // Enable SHA3
+    EVP_MD_unstable_sha3_enable(true);
+    
+    ASSERT_TRUE(SHAKE128(msg_.data(), msg_.size() , digest, out_len_));
+    
+    ASSERT_EQ(Bytes(digest, out_len_ / 8),
+            Bytes(digest_.data(), out_len_ / 8));
+
+    // Disable SHA3
+    EVP_MD_unstable_sha3_enable(false);
+
+    #if !defined(OPENSSL_ANDROID)
+    ASSERT_DEATH_IF_SUPPORTED(SHAKE128(msg_.data(), msg_.size() , digest, out_len_), "");
+    #endif  // OPENSSL_ANDROID
+  }
+
+  void NISTTestVectors_SHAKE256() const {
+    uint32_t digest_length = out_len_ / 8;
+    uint8_t *digest = new uint8_t[digest_length];
+
+    #if !defined(OPENSSL_ANDROID)
+    ASSERT_DEATH_IF_SUPPORTED(SHAKE256(msg_.data(), msg_.size() , digest, out_len_), "");
+    #endif  // OPENSSL_ANDROID
+
+    // Enable SHA3
+    EVP_MD_unstable_sha3_enable(true);
+    
+    ASSERT_TRUE(SHAKE256(msg_.data(), msg_.size() , digest, out_len_));
+    
+    ASSERT_EQ(Bytes(digest, out_len_ / 8),
+            Bytes(digest_.data(), out_len_ / 8));
+
+    // Disable SHA3
+    EVP_MD_unstable_sha3_enable(false);
+
+    #if !defined(OPENSSL_ANDROID)
+    ASSERT_DEATH_IF_SUPPORTED(SHAKE256(msg_.data(), msg_.size() , digest, out_len_), "");
+    #endif  // OPENSSL_ANDROID
+  }
+
  private:
   uint16_t len_;
+  uint16_t out_len_;
   std::vector<uint8_t> msg_;
   std::vector<uint8_t> digest_;
 };
@@ -124,11 +173,23 @@ bool FileTestReadInt(FileTest *file_test, T *out, const std::string &key) {
 }
 
 bool SHA3TestVector::ReadFromFileTest(FileTest *t) {
-  if (!FileTestReadInt(t, &len_, "Len") ||
-      !t->GetBytes(&msg_, "Msg") ||
+  if (!t->GetBytes(&msg_, "Msg") ||
       !t->GetBytes(&digest_, "MD")) {
     return false;
   }
+
+  if (t->HasAttribute("Outputlen")) {
+    if (!FileTestReadInt(t, &out_len_, "Outputlen")) {
+      return false;
+    }
+  }
+
+  if (t->HasAttribute("Len")) {
+    if (!FileTestReadInt(t, &len_, "Len")) {
+      return false;
+    }
+  }
+
   return true;
 }
 
@@ -145,5 +206,21 @@ TEST(SHA3Test, NISTTestVectors_SingleShot) {
     SHA3TestVector test_vec;
     EXPECT_TRUE(test_vec.ReadFromFileTest(t));
     test_vec.NISTTestVectors_SingleShot();
+  });
+}
+
+TEST(SHAKE128Test, NISTTestVectors) {
+  FileTestGTest("crypto/fipsmodule/sha/SHAKE128VariableOut.txt", [](FileTest *t) {
+    SHA3TestVector test_vec;
+    EXPECT_TRUE(test_vec.ReadFromFileTest(t));
+    test_vec.NISTTestVectors_SHAKE128();
+  });
+}
+
+TEST(SHAKE256Test, NISTTestVectors) {
+  FileTestGTest("crypto/fipsmodule/sha/SHAKE256VariableOut.txt", [](FileTest *t) {
+    SHA3TestVector test_vec;
+    EXPECT_TRUE(test_vec.ReadFromFileTest(t));
+    test_vec.NISTTestVectors_SHAKE256();
   });
 }

@@ -66,6 +66,8 @@ set(
   crypto/fipsmodule/modes/gcm_tests.txt
   crypto/fipsmodule/rand/ctrdrbg_vectors.txt
   crypto/fipsmodule/sha/SHA3_256ShortMsg.txt
+  crypto/fipsmodule/sha/SHAKE128VariableOut.txt
+  crypto/fipsmodule/sha/SHAKE256VariableOut.txt
   crypto/hmac_extra/hmac_tests.txt
   crypto/hpke/hpke_test_vectors.txt
   crypto/ocsp/test/aws/ocsp_response.der
