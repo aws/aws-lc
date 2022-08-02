@@ -4361,7 +4361,7 @@ TEST(X509Test, Print) {
   size_t data_len;
   ASSERT_TRUE(BIO_mem_contents(bio.get(), &data, &data_len));
   std::string print(reinterpret_cast<const char*>(data), data_len);
-  EXPECT_EQ(print, R"(Certificate:
+  static const char expected_certificate_string[] = R"(Certificate:
     Data:
         Version: 3 (0x2)
         Serial Number:
@@ -4407,5 +4407,6 @@ TEST(X509Test, Print) {
          f5:0a:db:54:c4:d0:b0:c8:c5:fd:9a:d7:57:75:08:9c:39:f3:
          63:20:65:02:0f:93:8b:57:93:e0:1c:53:d1:2a:21:c7:8a:80:
          40:86
-)");
+)";
+  EXPECT_EQ(print, expected_certificate_string);
 }
