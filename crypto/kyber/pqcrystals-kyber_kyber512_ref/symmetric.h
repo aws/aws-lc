@@ -5,6 +5,9 @@
 #include <stdint.h>
 #include "params.h"
 
+#define AWS_LC_SHA3_API_TEST 
+
+
 #ifdef KYBER_90S
 
 #include "aes256ctr.h"
@@ -36,8 +39,9 @@ void kyber_aes256ctr_prf(uint8_t *out, size_t outlen, const uint8_t key[32], uin
 #else
 
 #include "fips202.h"
-
 typedef keccak_state xof_state;
+
+#ifndef AWS_LC_SHA3_API_TEST
 
 #define kyber_shake128_absorb KYBER_NAMESPACE(kyber_shake128_absorb)
 void kyber_shake128_absorb(keccak_state *s,
@@ -58,6 +62,31 @@ void kyber_shake256_prf(uint8_t *out, size_t outlen, const uint8_t key[KYBER_SYM
 #define xof_release(STATE) shake128_inc_ctx_release(STATE)
 #define prf(OUT, OUTBYTES, KEY, NONCE) kyber_shake256_prf(OUT, OUTBYTES, KEY, NONCE)
 #define kdf(OUT, IN, INBYTES) shake256(OUT, KYBER_SSBYTES, IN, INBYTES)
+
+#else
+
+#include "../../fipsmodule/sha/internal.h"
+#define kyber_shake128_absorb KYBER_NAMESPACE(kyber_shake128_absorb)
+void kyber_shake128_absorb(keccak_state *s,
+                           const uint8_t seed[KYBER_SYMBYTES],
+                           uint8_t x,
+                           uint8_t y);
+
+#define kyber_shake256_prf KYBER_NAMESPACE(kyber_shake256_prf)
+void kyber_shake256_prf(uint8_t *out, size_t outlen, const uint8_t key[KYBER_SYMBYTES], uint8_t nonce);
+
+#define XOF_BLOCKBYTES SHAKE128_RATE
+
+#define hash_h(OUT, IN, INBYTES) SHA3_256(IN, INBYTES, OUT)
+#define hash_g(OUT, IN, INBYTES) sha3_512(OUT, IN, INBYTES)
+#define xof_init(STATE) shake128_inc_init(STATE)
+#define xof_absorb(STATE, SEED, X, Y) kyber_shake128_absorb(STATE, SEED, X, Y)
+#define xof_squeezeblocks(OUT, OUTBLOCKS, STATE) shake128_squeezeblocks(OUT, OUTBLOCKS, STATE)
+#define xof_release(STATE) shake128_inc_ctx_release(STATE)
+#define prf(OUT, OUTBYTES, KEY, NONCE) kyber_shake256_prf(OUT, OUTBYTES, KEY, NONCE)
+#define kdf(OUT, IN, INBYTES) shake256(OUT, KYBER_SSBYTES, IN, INBYTES)
+
+#endif /* AWS_LC_SHA3_API_TEST */
 
 #endif /* KYBER_90S */
 

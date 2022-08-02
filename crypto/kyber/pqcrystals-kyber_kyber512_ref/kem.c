@@ -6,6 +6,9 @@
 #include "params.h"
 #include "symmetric.h"
 #include "verify.h"
+#include <openssl/digest.h>
+
+#include <stdbool.h>
 
 /*************************************************
 * Name:        crypto_kem_keypair
@@ -23,6 +26,7 @@
 int crypto_kem_keypair(uint8_t *pk,
                        uint8_t *sk)
 {
+  EVP_MD_unstable_sha3_enable(true);
   size_t i;
   indcpa_keypair(pk, sk);
   for(i=0;i<KYBER_INDCPA_PUBLICKEYBYTES;i++)
@@ -30,6 +34,7 @@ int crypto_kem_keypair(uint8_t *pk,
   hash_h(sk+KYBER_SECRETKEYBYTES-2*KYBER_SYMBYTES, pk, KYBER_PUBLICKEYBYTES);
   /* Value z for pseudo-random output on reject */
   randombytes(sk+KYBER_SECRETKEYBYTES-KYBER_SYMBYTES, KYBER_SYMBYTES);
+  EVP_MD_unstable_sha3_enable(false);
   return 0;
 }
 
@@ -52,6 +57,7 @@ int crypto_kem_enc(uint8_t *ct,
                    uint8_t *ss,
                    const uint8_t *pk)
 {
+  EVP_MD_unstable_sha3_enable(true);
   uint8_t buf[2*KYBER_SYMBYTES];
   /* Will contain key, coins */
   uint8_t kr[2*KYBER_SYMBYTES];
@@ -71,6 +77,7 @@ int crypto_kem_enc(uint8_t *ct,
   hash_h(kr+KYBER_SYMBYTES, ct, KYBER_CIPHERTEXTBYTES);
   /* hash concatenation of pre-k and H(c) to k */
   kdf(ss, kr, 2*KYBER_SYMBYTES);
+  EVP_MD_unstable_sha3_enable(false);
   return 0;
 }
 
@@ -95,6 +102,7 @@ int crypto_kem_dec(uint8_t *ss,
                    const uint8_t *ct,
                    const uint8_t *sk)
 {
+  EVP_MD_unstable_sha3_enable(true);
   size_t i;
   int fail;
   uint8_t buf[2*KYBER_SYMBYTES];
@@ -123,5 +131,6 @@ int crypto_kem_dec(uint8_t *ss,
 
   /* hash concatenation of pre-k and H(c) to k */
   kdf(ss, kr, 2*KYBER_SYMBYTES);
+  EVP_MD_unstable_sha3_enable(false);
   return 0;
 }
