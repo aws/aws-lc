@@ -11,10 +11,52 @@
 #include <string.h>
 
 
+uint8_t *SHA3_224(const uint8_t *data, size_t len,
+                  uint8_t out[SHA3_224_DIGEST_LENGTH]) {
+  KECCAK1600_CTX ctx;
+  int ok = (SHA3_Init(&ctx, SHA3_PAD_CHAR, SHA3_224_DIGEST_BITLENGTH) && 
+            SHA3_Update(&ctx, data, len) &&
+            SHA3_Final(out, &ctx));
+
+  OPENSSL_cleanse(&ctx, sizeof(ctx));
+  if (ok == 0) {
+    return NULL;
+  }
+  return out;
+}
+
 uint8_t *SHA3_256(const uint8_t *data, size_t len,
                   uint8_t out[SHA3_256_DIGEST_LENGTH]) {
   KECCAK1600_CTX ctx;
   int ok = (SHA3_Init(&ctx, SHA3_PAD_CHAR, SHA3_256_DIGEST_BITLENGTH) && 
+            SHA3_Update(&ctx, data, len) &&
+            SHA3_Final(out, &ctx));
+
+  OPENSSL_cleanse(&ctx, sizeof(ctx));
+  if (ok == 0) {
+    return NULL;
+  }
+  return out;
+}
+
+uint8_t *SHA3_384(const uint8_t *data, size_t len,
+                  uint8_t out[SHA3_384_DIGEST_LENGTH]) {
+  KECCAK1600_CTX ctx;
+  int ok = (SHA3_Init(&ctx, SHA3_PAD_CHAR, SHA3_384_DIGEST_BITLENGTH) && 
+            SHA3_Update(&ctx, data, len) &&
+            SHA3_Final(out, &ctx));
+
+  OPENSSL_cleanse(&ctx, sizeof(ctx));
+  if (ok == 0) {
+    return NULL;
+  }
+  return out;
+}
+
+uint8_t *SHA3_512(const uint8_t *data, size_t len,
+                  uint8_t out[SHA3_512_DIGEST_LENGTH]) {
+  KECCAK1600_CTX ctx;
+  int ok = (SHA3_Init(&ctx, SHA3_PAD_CHAR, SHA3_512_DIGEST_BITLENGTH) && 
             SHA3_Update(&ctx, data, len) &&
             SHA3_Final(out, &ctx));
 
