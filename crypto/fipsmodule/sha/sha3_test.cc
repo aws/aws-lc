@@ -97,30 +97,13 @@ class SHA3TestVector {
   std::vector<uint8_t> digest_;
 };
 
-// Parses |s| as an unsigned integer of type T and writes the value to |out|.
-// Returns true on success. If the integer value exceeds the maximum T value,
-// returns false.
-template <typename T>
-bool ParseIntSafe(T *out, const std::string &s) {
-  T value = 0;
-  for (char c : s) {
-    if (c < '0' || c > '9') {
-      return false;
-    }
-    if (value > (std::numeric_limits<T>::max() - (c - '0')) / 10) {
-      return false;
-    }
-    value = 10 * value + (c - '0');
-  }
-  *out = value;
-  return true;
-}
-
 // Read the |key| attribute from |file_test| and convert it to an integer.
 template <typename T>
 bool FileTestReadInt(FileTest *file_test, T *out, const std::string &key) {
   std::string s;
-  return file_test->GetAttribute(&s, key) && ParseIntSafe(out, s);
+  return file_test->GetAttribute(&s, key) && 
+  testing::internal::ParseInt32(testing::Message() << "The value " << s.data() << \
+  " is not convertable to an integer.", s.data(), (int *) out);
 }
 
 bool SHA3TestVector::ReadFromFileTest(FileTest *t) {
