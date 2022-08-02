@@ -15,6 +15,7 @@ ENV LLVM_PROJECT_HOME=${DEPENDENCIES_DIR}/llvm-project
 RUN set -ex && \
     yum -y update && yum install -y \
     cmake \
+    cmake3 \
     ninja-build \
     perl \
     golang \

@@ -32,47 +32,59 @@
 // Since x86 is little-endian, this is just copying.
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
+// Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_littleendian_6
-        .globl  _bignum_littleendian_6
-        .globl  bignum_fromlebytes_6
-        .globl  _bignum_fromlebytes_6
-        .globl  bignum_tolebytes_6
-        .globl  _bignum_tolebytes_6
+
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_littleendian_6)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_littleendian_6)
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_fromlebytes_6)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_fromlebytes_6)
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_tolebytes_6)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_tolebytes_6)
+
         .text
 
 #define z %rdi
 #define x %rsi
 #define a %rax
 
-bignum_littleendian_6:
-_bignum_littleendian_6:
-bignum_fromlebytes_6:
-_bignum_fromlebytes_6:
-bignum_tolebytes_6:
-_bignum_tolebytes_6:
+S2N_BN_SYMBOL(bignum_littleendian_6):
+S2N_BN_SYMBOL(bignum_fromlebytes_6):
+S2N_BN_SYMBOL(bignum_tolebytes_6):
 
-                movq    (x), a
-                movq    a, (z)
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+#endif
 
-                movq    8(x), a
-                movq    a, 8(z)
+        movq    (x), a
+        movq    a, (z)
 
-                movq    16(x), a
-                movq    a, 16(z)
+        movq    8(x), a
+        movq    a, 8(z)
 
-                movq    24(x), a
-                movq    a, 24(z)
+        movq    16(x), a
+        movq    a, 16(z)
 
-                movq    32(x), a
-                movq    a, 32(z)
+        movq    24(x), a
+        movq    a, 24(z)
 
-                movq    40(x), a
-                movq    a, 40(z)
+        movq    32(x), a
+        movq    a, 32(z)
 
-                ret
+        movq    40(x), a
+        movq    a, 40(z)
+
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

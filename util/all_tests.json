@@ -96,14 +96,13 @@
     "skip_valgrind": true
   },
   {
-    "cmd": ["decrepit/decrepit_test"],
-    "skip_valgrind": true
-  },
-  {
     "cmd": ["ssl/ssl_test"],
     "skip_valgrind": true
   },
   {
     "cmd": ["crypto/mem_test"]
+  },
+  {
+    "cmd": ["crypto/mem_set_test"]
   }
 ]

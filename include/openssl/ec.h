@@ -104,11 +104,12 @@ typedef enum {
 // EC_GROUP_new_by_curve_name returns a fresh EC_GROUP object for the elliptic
 // curve specified by |nid|, or NULL on unsupported NID or allocation failure.
 //
-// The supported NIDs are:
-//   NID_secp224r1 (P-224),
-//   NID_X9_62_prime256v1 (P-256),
-//   NID_secp384r1 (P-384),
-//   NID_secp521r1 (P-521)
+// The supported NIDs are (see crypto/fipsmodule/ec/ec.c):
+//   NID_secp224r1 (NIST P-224),
+//   NID_X9_62_prime256v1 (NIST P-256),
+//   NID_secp384r1 (NIST P-384),
+//   NID_secp521r1 (NIST P-521),
+//   NID_secp256k1 (SEC/ANSI P-256 K1)
 //
 // If in doubt, use |NID_X9_62_prime256v1|, or see the curve25519.h header for
 // more modern primitives.

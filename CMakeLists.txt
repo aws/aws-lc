@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.12)
+cmake_minimum_required(VERSION 3.0)
 
 # Defer enabling C and CXX languages.
 project(AWSLC NONE)
@@ -123,22 +123,33 @@ foreach(VAR CMAKE_C_FLAGS CMAKE_CXX_FLAGS CMAKE_ASM_FLAGS)
          "${${VAR}_RELEASE}")
 endforeach()
 
-if(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS AND GO_EXECUTABLE)
+if(BORINGSSL_PREFIX)
   add_definitions(-DBORINGSSL_PREFIX=${BORINGSSL_PREFIX})
   # CMake automatically connects include_directories to the NASM command-line,
   # but not add_definitions.
   set(CMAKE_ASM_NASM_FLAGS "${CMAKE_ASM_NASM_FLAGS} -DBORINGSSL_PREFIX=${BORINGSSL_PREFIX}")
+  set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -DBORINGSSL_PREFIX=${BORINGSSL_PREFIX}")
+endif()
+
+if(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS AND GO_EXECUTABLE)
 
   # Use "symbol_prefix_include" to store generated header files
   include_directories(${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include)
+
+  if(IS_ABSOLUTE ${BORINGSSL_PREFIX_SYMBOLS})
+    set(BORINGSSL_PREFIX_SYMBOLS_PATH ${BORINGSSL_PREFIX_SYMBOLS})
+  else()
+    set(BORINGSSL_PREFIX_SYMBOLS_PATH ${CMAKE_BINARY_DIR}/${BORINGSSL_PREFIX_SYMBOLS})
+  endif()
+
   add_custom_command(
     OUTPUT symbol_prefix_include/boringssl_prefix_symbols.h
            symbol_prefix_include/boringssl_prefix_symbols_asm.h
            symbol_prefix_include/boringssl_prefix_symbols_nasm.inc
     COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include
-    COMMAND ${GO_EXECUTABLE} run ${CMAKE_CURRENT_SOURCE_DIR}/util/make_prefix_headers.go -out ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include ${BORINGSSL_PREFIX_SYMBOLS}
+    COMMAND ${GO_EXECUTABLE} run ${CMAKE_CURRENT_SOURCE_DIR}/util/make_prefix_headers.go -out ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include ${BORINGSSL_PREFIX_SYMBOLS_PATH}
     DEPENDS util/make_prefix_headers.go
-            ${CMAKE_BINARY_DIR}/${BORINGSSL_PREFIX_SYMBOLS})
+            ${BORINGSSL_PREFIX_SYMBOLS_PATH})
 
   # add_dependencies needs a target, not a file, so we add an intermediate
   # target.
@@ -148,6 +159,15 @@ if(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS AND GO_EXECUTABLE)
             symbol_prefix_include/boringssl_prefix_symbols_asm.h
             symbol_prefix_include/boringssl_prefix_symbols_nasm.inc)
   add_dependencies(global_target boringssl_prefix_symbols)
+elseif(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_HEADERS)
+
+  if(IS_ABSOLUTE ${BORINGSSL_PREFIX_HEADERS})
+    set(BORINGSSL_PREFIX_HEADERS_PATH ${BORINGSSL_PREFIX_HEADERS})
+  else()
+    set(BORINGSSL_PREFIX_HEADERS_PATH ${CMAKE_BINARY_DIR}/${BORINGSSL_PREFIX_HEADERS})
+  endif()
+
+  include_directories(${BORINGSSL_PREFIX_HEADERS_PATH})
 elseif(BORINGSSL_PREFIX OR BORINGSSL_PREFIX_SYMBOLS)
   message(FATAL_ERROR "Must specify both or neither of BORINGSSL_PREFIX and BORINGSSL_PREFIX_SYMBOLS")
 elseif((BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS) AND NOT GO_EXECUTABLE)
@@ -512,18 +532,17 @@ if(GCOV)
 endif()
 
 if(FIPS)
+
+  if(NOT GO_EXECUTABLE OR NOT PERL_EXECUTABLE)
+    message(FATAL_ERROR "Building AWS-LC for FIPS requires Go and Perl")
+  endif()
+
+  if(NOT BUILD_SHARED_LIBS AND NOT (UNIX AND NOT APPLE))
+    message(FATAL_ERROR "Static FIPS build of AWS-LC is suported only on Linux")
+  endif()
+
   add_subdirectory(third_party/jitterentropy)
-endif()
 
-if(FIPS AND (NOT GO_EXECUTABLE OR NOT PERL_EXECUTABLE))
-  message(FATAL_ERROR "Building AWS-LC for FIPS requires Go and Perl")
-endif()
-
-if(FIPS AND NOT BUILD_SHARED_LIBS)
-  message(FATAL_ERROR "Building AWS-LC for FIPS only supports the shared build, you must pass in '-DBUILD_SHARED_LIBS=TRUE'")
-endif()
-
-if(FIPS)
   add_definitions(-DBORINGSSL_FIPS)
   if(FIPS_BREAK_TEST)
     add_definitions("-DBORINGSSL_FIPS_BREAK_${FIPS_BREAK_TEST}=1")
@@ -632,7 +651,7 @@ elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^arm*")
 elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "mips")
   # Just to avoid the “unknown processor” error.
   set(ARCH "generic")
-elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "ppc64le")
+elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "powerpc64le|ppc64le")
   set(ARCH "ppc64le")
 else()
   message(FATAL_ERROR "Unknown processor:" ${CMAKE_SYSTEM_PROCESSOR})
@@ -758,14 +777,14 @@ if(BUILD_TESTING)
     set(CRYPTO_TEST_EXEC crypto_test.so)
     set(RANDOM_TEST_EXEC urandom_test.so)
     set(SSL_TEST_EXEC ssl_test.so)
-    set(DECREPIT_TEST_EXEC decrepit_test.so)
     set(MEM_TEST_EXEC mem_test.so)
+    set(MEM_SET_TEST_EXEC mem_set_test.so)
   else()
     set(CRYPTO_TEST_EXEC crypto_test)
     set(RANDOM_TEST_EXEC urandom_test)
     set(SSL_TEST_EXEC ssl_test)
-    set(DECREPIT_TEST_EXEC decrepit_test)
     set(MEM_TEST_EXEC mem_test)
+    set(MEM_SET_TEST_EXEC mem_set_test)
   endif()
 endif()
 
@@ -773,7 +792,6 @@ add_subdirectory(crypto)
 if(BUILD_LIBSSL)
   add_subdirectory(ssl)
   add_subdirectory(tool)
-  add_subdirectory(decrepit)
 endif()
 add_subdirectory(util/fipstools)
 add_subdirectory(util/fipstools/acvp/modulewrapper)
@@ -790,14 +808,6 @@ if(FUZZ)
   add_subdirectory(fuzz)
 endif()
 
-if(RUST_BINDINGS)
-  find_program(BINDGEN_EXECUTABLE bindgen)
-  if(NOT BINDGEN_EXECUTABLE)
-    message(FATAL_ERROR "Could not find bindgen but was asked to generate Rust bindings.")
-  else()
-    add_subdirectory(rust)
-  endif()
-endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   set(HANDSHAKER_ARGS "-handshaker-path" $<TARGET_FILE:handshaker>)
@@ -907,7 +917,6 @@ if(BUILD_TESTING)
           COMMAND crypto_test
           COMMAND urandom_test
           COMMAND ssl_test
-          COMMAND decrepit_test
           WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
           DEPENDS all_tests
           ${MAYBE_USES_TERMINAL})
@@ -926,4 +935,19 @@ endif()
 
 if(NOT MSVC AND NOT CLANG AND NOT GCC)
   message(STATUS "Alternative compiler '${CMAKE_C_COMPILER_ID}' detected. Not all flags may be set, check final options with 'cmake --build . -- VERBOSE=1'")
+endif()
+
+# Parse |OPENSSL_VERSION_NUMBER| in both files and make sure they match.
+# |OPENSSL_VERSION_NUMBER| exists in `opensslv.h` only to support
+# MySQL's CMake build.
+FILE(STRINGS "include/openssl/base.h"
+      BASE_VERSION_NUMBER
+      REGEX "^#[ ]*define[\t ]+OPENSSL_VERSION_NUMBER[\t ]+0x[0-9].*"
+      )
+FILE(STRINGS "include/openssl/opensslv.h"
+      OPENSSLV_VERSION_NUMBER
+      REGEX "^#[ ]*define[\t ]+OPENSSL_VERSION_NUMBER[\t ]+0x[0-9].*"
+      )
+if(NOT ${BASE_VERSION_NUMBER} MATCHES ${OPENSSLV_VERSION_NUMBER})
+  message( FATAL_ERROR "OPENSSL_VERSION_NUMBER in base.h and opensslv.h should match.")
 endif()

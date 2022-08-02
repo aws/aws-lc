@@ -1258,6 +1258,9 @@ type shimProcess struct {
 	waitChan       chan error
 	listener       *net.TCPListener
 	stdout, stderr bytes.Buffer
+	// default value is false.
+	// This is marked as true in |(s *shimProcess) wait()|.
+	idled          bool
 }
 
 // newShimProcess starts a new shim with the specified executable, flags, and
@@ -1295,7 +1298,7 @@ func newShimProcess(shimPath string, flags []string, env []string) (*shimProcess
 		shim.listener.Close()
 		return nil, err
 	}
-
+	shim.idled = false
 	shim.waitChan = make(chan error, 1)
 	go func() { shim.waitChan <- shim.cmd.Wait() }()
 	return shim, nil
@@ -1337,6 +1340,13 @@ func (s *shimProcess) wait() error {
 
 	if !useDebugger() {
 		waitTimeout := time.AfterFunc(*idleTimeout, func() {
+			// Enable below code to debug why the shimProcess is idle.
+			// time.Sleep(20 * time.Minute)
+			// stderr := strings.Replace(s.stderr.String(), "\r\n", "\n", -1)
+			// fmt.Fprintf(os.Stderr, "idleTimeout reached. Process %d is idled with output %s", s.cmd.Process.Pid, stderr)
+			// Mark the bssl_shim process as idled.
+			// The further action is to retry the test case.
+			s.idled = true
 			s.cmd.Process.Kill()
 		})
 		defer waitTimeout.Stop()
@@ -1651,6 +1661,18 @@ func runTest(statusChan chan statusMsg, test *testCase, shimPath string, mallocN
 
 	localErr := doExchanges(test, shim, resumeCount, &transcripts)
 	childErr := shim.wait()
+
+	// shim is marked as idled only when |idleTimeout| is reached.
+	// This retry fix is scoped with "InvalidChannelIDSignature-TLS13-TLS-Sync-SplitHandshakeRecords".
+	if shim.idled && test.name == "InvalidChannelIDSignature-TLS13-TLS-Sync-SplitHandshakeRecords" {
+		shim, err = newShimProcess(shimPath, flags, env)
+		if err != nil {
+			return err
+		}
+		defer shim.close()
+		localErr = doExchanges(test, shim, resumeCount, &transcripts)
+		childErr = shim.wait()
+	}
 
 	// Now that the shim has exited, all the settings files have been
 	// written. Append the saved transcripts.
@@ -15146,6 +15168,86 @@ func addTLS13CipherPreferenceTests() {
 			"-expect-cipher-aes", strconv.Itoa(int(TLS_AES_128_GCM_SHA256)),
 			"-expect-cipher-no-aes", strconv.Itoa(int(TLS_CHACHA20_POLY1305_SHA256)),
 		},
+	})
+
+	tls13CipherSuites := map[string]uint16{
+		"TLS_AES_256_GCM_SHA384": TLS_AES_256_GCM_SHA384,
+		"TLS_CHACHA20_POLY1305_SHA256": TLS_CHACHA20_POLY1305_SHA256,
+		"TLS_AES_128_GCM_SHA256": TLS_AES_128_GCM_SHA256,
+	}
+	for cipherSuite, cipherSuiteId := range tls13CipherSuites {
+		// Test that the client sends the configured TLSv1.3 ciphersuites instead of the built in ciphersuites.
+		testCases = append(testCases, testCase{
+			name: "TLS13-Configured-Ciphersuites-Client-" + cipherSuite,
+			config: Config{
+				MaxVersion: VersionTLS13,
+				// Use the client cipher order. (This is the default but
+				// is listed to be explicit.)
+				PreferServerCipherSuites: false,
+			},
+			flags: []string{
+				"-tls13-ciphersuites", cipherSuite,
+				"-expect-cipher", strconv.Itoa(int(cipherSuiteId)),
+			},
+		})
+		// Test that the server uses the configured TLSv1.3 ciphersuites instead of the built in ciphersuites.
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			name: "TLS13-Configured-Ciphersuites-Server-" + cipherSuite,
+			config: Config{
+				MaxVersion: VersionTLS13,
+				CipherSuites: []uint16{
+					TLS_AES_128_GCM_SHA256,
+					TLS_CHACHA20_POLY1305_SHA256,
+					TLS_AES_256_GCM_SHA384,
+				},
+				CurvePreferences: []CurveID{CurveX25519},
+			},
+			flags: []string{
+				"-tls13-ciphersuites", cipherSuite,
+				"-expect-cipher", strconv.Itoa(int(cipherSuiteId)),
+			},
+		})
+	}
+
+	// Test that the server and client does not have shared cipher.
+	testCases = append(testCases, testCase{
+		name: "TLS13-Configured-Ciphersuites-Client-No-Shared-Cipher",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			// Use the client cipher order. (This is the default but
+			// is listed to be explicit.)
+			PreferServerCipherSuites: false,
+			CipherSuites: []uint16{
+				TLS_AES_128_GCM_SHA256,
+				TLS_AES_256_GCM_SHA384,
+			},
+		},
+		flags: []string{
+			"-tls13-ciphersuites", "TLS_CHACHA20_POLY1305_SHA256",
+		},
+		shouldFail:    true,
+		expectedError: ":HANDSHAKE_FAILURE_ON_CLIENT_HELLO:",
+		expectedLocalError: "tls: no cipher suite supported by both client and server",
+	})
+
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name: "TLS13-Configured-Ciphersuites-Server-No-Shared-Cipher",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			CipherSuites: []uint16{
+				TLS_AES_128_GCM_SHA256,
+				TLS_AES_256_GCM_SHA384,
+			},
+			CurvePreferences: []CurveID{CurveX25519},
+		},
+		flags: []string{
+			"-tls13-ciphersuites", "TLS_CHACHA20_POLY1305_SHA256",
+		},
+		shouldFail:    true,
+		expectedError:      ":NO_SHARED_CIPHER:",
+		expectedLocalError: "remote error: handshake failure",
 	})
 
 	// CECPQ2 prefers 256-bit ciphers but will use AES-128 if there's nothing else.

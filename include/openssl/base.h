@@ -188,6 +188,7 @@ extern "C" {
 
 #define AWSLC_VERSION_NAME "AWS-LC"
 #define OPENSSL_IS_AWSLC
+// |OPENSSL_VERSION_NUMBER| should match the version number in opensslv.h.
 #define OPENSSL_VERSION_NUMBER 0x1010107f
 #define SSLEAY_VERSION_NUMBER OPENSSL_VERSION_NUMBER
 
@@ -202,7 +203,9 @@ extern "C" {
 // against multiple revisions of BoringSSL at the same time. It is not
 // recommended to do so for longer than is necessary.
 
-#define AWSLC_API_VERSION 17
+// Bump version from 17 to 18.
+//   - Import new APIs |EVP_aes_128/256_cbc_hmac_sha1/256| from OpenSSL.
+#define AWSLC_API_VERSION 18
 
 // This string tracks the most current production release version on Github
 // https://github.com/awslabs/aws-lc/releases.
@@ -326,24 +329,6 @@ extern "C" {
 #endif
 #endif  // OPENSSL_ASM_INCOMPATIBLE
 
-#if defined(__cplusplus)
-// enums can be predeclared, but only in C++ and only if given an explicit type.
-// C doesn't support setting an explicit type for enums thus a #define is used
-// to do this only for C++. However, the ABI type between C and C++ need to have
-// equal sizes, which is confirmed in a unittest.
-#define BORINGSSL_ENUM_INT : int
-enum ssl_early_data_reason_t BORINGSSL_ENUM_INT;
-enum ssl_encryption_level_t BORINGSSL_ENUM_INT;
-enum ssl_private_key_result_t BORINGSSL_ENUM_INT;
-enum ssl_renegotiate_mode_t BORINGSSL_ENUM_INT;
-enum ssl_select_cert_result_t BORINGSSL_ENUM_INT;
-enum ssl_select_cert_result_t BORINGSSL_ENUM_INT;
-enum ssl_ticket_aead_result_t BORINGSSL_ENUM_INT;
-enum ssl_verify_result_t BORINGSSL_ENUM_INT;
-#else
-#define BORINGSSL_ENUM_INT
-#endif
-
 // CRYPTO_THREADID is a dummy value.
 typedef int CRYPTO_THREADID;
 
@@ -421,6 +406,7 @@ typedef struct engine_st ENGINE;
 typedef struct env_md_ctx_st EVP_MD_CTX;
 typedef struct env_md_st EVP_MD;
 typedef struct evp_aead_st EVP_AEAD;
+typedef struct evp_aead_ctx_st EVP_AEAD_CTX;
 typedef struct evp_cipher_ctx_st EVP_CIPHER_CTX;
 typedef struct evp_cipher_st EVP_CIPHER;
 typedef struct evp_encode_ctx_st EVP_ENCODE_CTX;
@@ -470,8 +456,6 @@ typedef struct trust_token_issuer_st TRUST_TOKEN_ISSUER;
 typedef struct trust_token_method_st TRUST_TOKEN_METHOD;
 typedef struct v3_ext_ctx X509V3_CTX;
 typedef struct x509_attributes_st X509_ATTRIBUTE;
-typedef struct x509_cert_aux_st X509_CERT_AUX;
-typedef struct x509_crl_method_st X509_CRL_METHOD;
 typedef struct x509_lookup_st X509_LOOKUP;
 typedef struct x509_lookup_method_st X509_LOOKUP_METHOD;
 typedef struct x509_object_st X509_OBJECT;

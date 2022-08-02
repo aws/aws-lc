@@ -388,6 +388,7 @@ std::vector<Flag> SortedFlags() {
       BoolFlag("-check-ssl-transfer", &TestConfig::check_ssl_transfer),
       BoolFlag("-do-ssl-transfer", &TestConfig::do_ssl_transfer),
       StringFlag("-ssl-fuzz-seed-path-prefix", &TestConfig::ssl_fuzz_seed_path_prefix),
+      StringFlag("-tls13-ciphersuites", &TestConfig::tls13_ciphersuites),
   };
   std::sort(flags.begin(), flags.end(), [](const Flag &a, const Flag &b) {
     return strcmp(a.name, b.name) < 0;
@@ -1399,6 +1400,10 @@ bssl::UniquePtr<SSL_CTX> TestConfig::SetupCtx(SSL_CTX *old_ctx) const {
     SSL_CTX_set_options(ssl_ctx.get(), SSL_OP_CIPHER_SERVER_PREFERENCE);
   }
   if (!SSL_CTX_set_strict_cipher_list(ssl_ctx.get(), cipher_list.c_str())) {
+    return nullptr;
+  }
+  if (!tls13_ciphersuites.empty()
+     && !SSL_CTX_set_ciphersuites(ssl_ctx.get(), tls13_ciphersuites.c_str())) {
     return nullptr;
   }
 

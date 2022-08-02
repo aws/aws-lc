@@ -47,6 +47,15 @@ static void hexdump(const void *a, size_t len) {
 int main(int argc, char **argv) {
   CRYPTO_library_init();
 
+#if defined(BORINGSSL_FIPS_140_3)
+  const uint32_t module_version = FIPS_version();
+  if (module_version == 0) {
+    printf("No module version set\n");
+    goto err;
+  }
+  printf("Module version: %" PRIu32 "\n", module_version);
+#endif //BORINGSSL_FIPS_140_3
+
   static const uint8_t kAESKey[16] = "BoringCrypto Key";
   static const uint8_t kPlaintext[64] =
       "BoringCryptoModule FIPS KAT Encryption and Decryption Plaintext!";

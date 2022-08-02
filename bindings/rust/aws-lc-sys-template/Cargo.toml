@@ -1,0 +1,35 @@
+[package]
+name = "aws-lc-sys"
+description = "AWS-LC is a general-purpose cryptographic library maintained by the AWS Cryptography team for AWS and their customers. It іs based on code from the Google BoringSSL project and the OpenSSL project."
+version = "__AWS_LC_SYS_VERSION__"
+authors = ["AWS-LC"]
+edition = "2021"
+repository = "https://github.com/awslabs/aws-lc"
+license = "Apache-2.0"
+include = [
+    "build.rs",
+    "Cargo.toml",
+    "deps/aws-lc/**/*.c",
+    "deps/aws-lc/**/*.cc",
+    "deps/aws-lc/**/*.pl",
+    "deps/aws-lc/**/*.h",
+    "deps/aws-lc/**/*.S",
+    "deps/aws-lc/**/CMakeLists.txt",
+    "deps/aws-lc/**/*.cmake",
+    "deps/aws-lc/**/*.errordata",
+    "deps/aws-lc/**/*.go",
+    "src/**/*.rs",
+    "tests/**/*.rs",
+]
+
+[build-dependencies]
+cmake = "0.1.48"
+bindgen = "0.60.1"
+regex = "1"
+dunce = "1.0"
+
+[dependencies]
+libc = "0.2"
+
+[dev-dependencies]
+openssl = { version = "0.10", features = ["vendored"] }

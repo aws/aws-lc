@@ -9,6 +9,14 @@ set(
   crypto/blake2/blake2b256_tests.txt
   crypto/cipher_extra/test/aes_128_cbc_sha1_tls_implicit_iv_tests.txt
   crypto/cipher_extra/test/aes_128_cbc_sha1_tls_tests.txt
+  crypto/cipher_extra/test/aes_128_cbc_sha1_tls_stitch_tests.txt
+  crypto/cipher_extra/test/aes_128_cbc_sha1_tls_stitch_implicit_iv_tests.txt
+  crypto/cipher_extra/test/aes_128_cbc_sha256_tls_stitch_tests.txt
+  crypto/cipher_extra/test/aes_128_cbc_sha256_tls_stitch_implicit_iv_tests.txt
+  crypto/cipher_extra/test/aes_256_cbc_sha1_tls_stitch_tests.txt
+  crypto/cipher_extra/test/aes_256_cbc_sha1_tls_stitch_implicit_iv_tests.txt
+  crypto/cipher_extra/test/aes_256_cbc_sha256_tls_stitch_tests.txt
+  crypto/cipher_extra/test/aes_256_cbc_sha256_tls_stitch_implicit_iv_tests.txt
   crypto/cipher_extra/test/aes_128_cbc_sha256_tls_implicit_iv_tests.txt
   crypto/cipher_extra/test/aes_128_cbc_sha256_tls_tests.txt
   crypto/cipher_extra/test/aes_128_ccm_bluetooth_tests.txt
@@ -58,6 +66,7 @@ set(
   crypto/fipsmodule/ecdsa/ecdsa_verify_tests.txt
   crypto/fipsmodule/modes/gcm_tests.txt
   crypto/fipsmodule/rand/ctrdrbg_vectors.txt
+  crypto/fipsmodule/sha/SHA3_256ShortMsg.txt
   crypto/hmac_extra/hmac_tests.txt
   crypto/hpke/hpke_test_vectors.txt
   crypto/ocsp/test/aws/ocsp_response.der

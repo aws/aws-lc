@@ -21,11 +21,14 @@
 //     (uint64_t z[static 6], uint64_t x[static 6]);
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
+// Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_mod_p384_6
-        .globl  _bignum_mod_p384_6
+
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_mod_p384_6)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_mod_p384_6)
         .text
 
 #define z %rdi
@@ -47,8 +50,14 @@
 
 
 
-bignum_mod_p384_6:
-_bignum_mod_p384_6:
+S2N_BN_SYMBOL(bignum_mod_p384_6):
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+#endif
 
 // Load the input and subtract p_384 from it
 
@@ -104,6 +113,10 @@ _bignum_mod_p384_6:
         sbbq    $0, d5
         movq    d5, 40(z)
 
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

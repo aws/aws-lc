@@ -227,21 +227,6 @@ typedef struct obj_name_st {
 #define OBJ_NAME_TYPE_MD_METH 1
 #define OBJ_NAME_TYPE_CIPHER_METH 2
 
-// OBJ_NAME_do_all_sorted calls |callback| zero or more times, each time with
-// the name of a different primitive. If |type| is |OBJ_NAME_TYPE_MD_METH| then
-// the primitives will be hash functions, alternatively if |type| is
-// |OBJ_NAME_TYPE_CIPHER_METH| then the primitives will be ciphers or cipher
-// modes.
-//
-// This function is ill-specified and should never be used.
-OPENSSL_EXPORT void OBJ_NAME_do_all_sorted(
-    int type, void (*callback)(const OBJ_NAME *, void *arg), void *arg);
-
-// OBJ_NAME_do_all calls |OBJ_NAME_do_all_sorted|.
-OPENSSL_EXPORT void OBJ_NAME_do_all(int type, void (*callback)(const OBJ_NAME *,
-                                                               void *arg),
-                                    void *arg);
-
 // OBJ_cleanup does nothing.
 OPENSSL_EXPORT void OBJ_cleanup(void);
 

@@ -118,9 +118,16 @@ bool ParseKeyValueArguments(args_map_t *out_args, const args_list_t &args, const
 // PrintUsage prints the description from the list of templates in |templates| to stderr.
 void PrintUsage(const argument_t *templates);
 
-// GetUnsigned assigns |out| the value of |arg_name| from the map |args| if it is present. If |arg_name| is not found
-// in |args| it assigns |out| to the |default_value|.
+// Get{Unsigned, String} assign |out| the value of |arg_name| from the map
+// |args| if it is present. If |arg_name| is not found in |args| it assigns
+// |out| to the |default_value|.
 bool GetUnsigned(unsigned *out, const std::string &arg_name, unsigned default_value, const args_map_t &args);
+bool GetString(std::string *out, const std::string &arg_name, std::string default_value, const args_map_t &args);
+
+// GetBoolArgument assigns |out| the value |true| if |arg_name|, of
+// type |kBooleanArgument|, from the map |args| is present. If |arg_name| is not
+// found in |args| it assigns |out| to the value |false|.
+bool GetBoolArgument(bool *out, const std::string &arg_name, const args_map_t &args);
 
 bool ReadAll(std::vector<uint8_t> *out, FILE *in);
 bool WriteToFile(const std::string &path, const uint8_t *in, size_t in_len);
