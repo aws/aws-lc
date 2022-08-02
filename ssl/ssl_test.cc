@@ -399,6 +399,105 @@ static const CipherTest kCipherTests[] = {
     },
 };
 
+// In kTLSv13RuleOnly, |rule| of each CipherTest can only match TLSv1.3 ciphers.
+// e.g. kTLSv13RuleOnly does not have rule "AESGCM+AES128", which can match
+// some TLSv1.2 ciphers.
+static const CipherTest kTLSv13RuleOnly[] = {
+    // Selecting individual ciphers should work.
+    {
+        "TLS_AES_256_GCM_SHA384:"
+        "TLS_CHACHA20_POLY1305_SHA256:"
+        "TLS_AES_128_GCM_SHA256",
+        {
+            {TLS1_CK_AES_256_GCM_SHA384, 0},
+            {TLS1_CK_CHACHA20_POLY1305_SHA256, 0},
+            {TLS1_CK_AES_128_GCM_SHA256, 0},
+        },
+        false,
+    },
+    // + reorders selected ciphers to the end, keeping their relative order.
+    {
+        "TLS_AES_256_GCM_SHA384:"
+        "TLS_CHACHA20_POLY1305_SHA256:"
+        "TLS_AES_128_GCM_SHA256:"
+        "+AES",
+        {
+            {TLS1_CK_CHACHA20_POLY1305_SHA256, 0},
+            {TLS1_CK_AES_256_GCM_SHA384, 0},
+            {TLS1_CK_AES_128_GCM_SHA256, 0},
+        },
+        false,
+    },
+    // ! banishes ciphers from future selections.
+    {
+        "!CHACHA20:"
+        "TLS_AES_256_GCM_SHA384:"
+        "TLS_CHACHA20_POLY1305_SHA256:"
+        "TLS_AES_128_GCM_SHA256:"
+        "TLS_CHACHA20_POLY1305_SHA256",
+        {
+            {TLS1_CK_AES_256_GCM_SHA384, 0},
+            {TLS1_CK_AES_128_GCM_SHA256, 0},
+        },
+        false,
+    },
+    // Square brackets specify equi-preference groups.
+    {
+        "[TLS_AES_128_GCM_SHA256|TLS_AES_256_GCM_SHA384]:"
+        "TLS_CHACHA20_POLY1305_SHA256",
+        {
+            {TLS1_CK_AES_128_GCM_SHA256, 1},
+            {TLS1_CK_AES_256_GCM_SHA384, 0},
+            {TLS1_CK_CHACHA20_POLY1305_SHA256, 0},
+        },
+        false,
+    },
+    // Spaces, semi-colons and commas are separators.
+    {
+        "TLS_AES_256_GCM_SHA384 ; "
+        "TLS_CHACHA20_POLY1305_SHA256 , "
+        "TLS_AES_128_GCM_SHA256",
+        {
+            {TLS1_CK_AES_256_GCM_SHA384, 0},
+            {TLS1_CK_CHACHA20_POLY1305_SHA256, 0},
+            {TLS1_CK_AES_128_GCM_SHA256, 0},
+        },
+        false,
+    },
+};
+
+// Besides kTLSv13RuleOnly, additional rules can match TLSv1.3 ciphers.
+static const CipherTest kTLSv13CipherTests[] = {
+    // Multiple masks can be ANDed in a single rule.
+    {
+        "AESGCM+AES128",
+        {
+            {TLS1_CK_AES_128_GCM_SHA256, 0},
+        },
+        false,
+    },
+    // - removes selected ciphers, but preserves their order for future
+    // selections. Select AES_128_GCM, but order the key exchanges RSA,
+    // ECDHE_RSA.
+    {
+        "ALL:-AES",
+        {
+            {TLS1_CK_CHACHA20_POLY1305_SHA256, 0},
+        },
+        false,
+    },
+    // Unknown selectors or TLSv1.2 ciphers are no-ops.
+    {
+        "TLS_CHACHA20_POLY1305_SHA256:"
+        "ECDHE-RSA-CHACHA20-POLY1305:"
+        "BOGUS1",
+        {
+            {TLS1_CK_CHACHA20_POLY1305_SHA256, 0},
+        },
+        true,
+    },
+};
+
 static const char *kBadRules[] = {
   // Invalid brackets.
   "[ECDHE-RSA-CHACHA20-POLY1305|ECDHE-RSA-AES128-GCM-SHA256",
@@ -437,6 +536,13 @@ static const char *kMustNotIncludeNull[] = {
   "SSLv3",
   "TLSv1",
   "TLSv1.2",
+};
+
+static const char *kTLSv13MustNotIncludeNull[] = {
+  "ALL",
+  "DEFAULT",
+  "HIGH",
+  "FIPS",
 };
 
 static const CurveTest kCurveTests[] = {
@@ -480,13 +586,30 @@ static const char *kBadCurvesLists[] = {
   ":X25519:P-256",
 };
 
-static std::string CipherListToString(SSL_CTX *ctx) {
+static STACK_OF(SSL_CIPHER) *tls13_ciphers(const SSL_CTX *ctx) {
+  return ctx->tls13_cipher_list->ciphers.get();
+}
+
+// TODO: replace this helper function with |SSL_CTX_cipher_in_group|
+// after moving |tls13_cipher_list| to |cipher_list|.
+static int cipher_in_group(const SSL_CTX *ctx, size_t i, bool tlsv13_ciphers) {
+  if (!tlsv13_ciphers) {
+    return SSL_CTX_cipher_in_group(ctx, i);
+  }
+  if (i >= sk_SSL_CIPHER_num(tls13_ciphers(ctx))) {
+    return 0;
+  }
+  return ctx->tls13_cipher_list->in_group_flags[i];
+}
+
+static std::string CipherListToString(SSL_CTX *ctx, bool tlsv13_ciphers) {
   bool in_group = false;
   std::string ret;
-  const STACK_OF(SSL_CIPHER) *ciphers = SSL_CTX_get_ciphers(ctx);
+  const STACK_OF(SSL_CIPHER) *ciphers = tlsv13_ciphers ? 
+    tls13_ciphers(ctx) : SSL_CTX_get_ciphers(ctx);
   for (size_t i = 0; i < sk_SSL_CIPHER_num(ciphers); i++) {
     const SSL_CIPHER *cipher = sk_SSL_CIPHER_value(ciphers, i);
-    if (!in_group && SSL_CTX_cipher_in_group(ctx, i)) {
+    if (!in_group && cipher_in_group(ctx, i, tlsv13_ciphers)) {
       ret += "\t[\n";
       in_group = true;
     }
@@ -496,7 +619,7 @@ static std::string CipherListToString(SSL_CTX *ctx) {
     }
     ret += SSL_CIPHER_get_name(cipher);
     ret += "\n";
-    if (in_group && !SSL_CTX_cipher_in_group(ctx, i)) {
+    if (in_group && !cipher_in_group(ctx, i, tlsv13_ciphers)) {
       ret += "\t]\n";
       in_group = false;
     }
@@ -505,8 +628,10 @@ static std::string CipherListToString(SSL_CTX *ctx) {
 }
 
 static bool CipherListsEqual(SSL_CTX *ctx,
-                             const std::vector<ExpectedCipher> &expected) {
-  const STACK_OF(SSL_CIPHER) *ciphers = SSL_CTX_get_ciphers(ctx);
+                             const std::vector<ExpectedCipher> &expected,
+                             bool tlsv13_ciphers) {
+  STACK_OF(SSL_CIPHER) *ciphers = tlsv13_ciphers ? 
+    tls13_ciphers(ctx) : SSL_CTX_get_ciphers(ctx);
   if (sk_SSL_CIPHER_num(ciphers) != expected.size()) {
     return false;
   }
@@ -514,7 +639,7 @@ static bool CipherListsEqual(SSL_CTX *ctx,
   for (size_t i = 0; i < expected.size(); i++) {
     const SSL_CIPHER *cipher = sk_SSL_CIPHER_value(ciphers, i);
     if (expected[i].id != SSL_CIPHER_get_id(cipher) ||
-        expected[i].in_group_flag != !!SSL_CTX_cipher_in_group(ctx, i)) {
+        expected[i].in_group_flag != !!cipher_in_group(ctx, i, tlsv13_ciphers)) {
       return false;
     }
   }
@@ -663,18 +788,18 @@ TEST(SSLTest, CipherRules) {
 
     // Test lax mode.
     ASSERT_TRUE(SSL_CTX_set_cipher_list(ctx.get(), t.rule));
-    EXPECT_TRUE(CipherListsEqual(ctx.get(), t.expected))
+    EXPECT_TRUE(CipherListsEqual(ctx.get(), t.expected, false /* not TLSv1.3 only */))
         << "Cipher rule evaluated to:\n"
-        << CipherListToString(ctx.get());
+        << CipherListToString(ctx.get(), false /* not TLSv1.3 only */);
 
     // Test strict mode.
     if (t.strict_fail) {
       EXPECT_FALSE(SSL_CTX_set_strict_cipher_list(ctx.get(), t.rule));
     } else {
       ASSERT_TRUE(SSL_CTX_set_strict_cipher_list(ctx.get(), t.rule));
-      EXPECT_TRUE(CipherListsEqual(ctx.get(), t.expected))
+      EXPECT_TRUE(CipherListsEqual(ctx.get(), t.expected, false /* not TLSv1.3 only */))
           << "Cipher rule evaluated to:\n"
-          << CipherListToString(ctx.get());
+          << CipherListToString(ctx.get(), false /* not TLSv1.3 only */);
     }
   }
 
@@ -687,6 +812,20 @@ TEST(SSLTest, CipherRules) {
     ERR_clear_error();
   }
 
+  // kTLSv13RuleOnly are valid test cases for |SSL_CTX_set_ciphersuites|,
+  // which configures only TLSv1.3 ciphers.
+  // |SSL_CTX_set_cipher_list| only supports TLSv1.2 and below ciphers configuration.
+  // Accordingly, kTLSv13RuleOnly result in |SSL_R_NO_CIPHER_MATCH|.
+  for (const CipherTest &t : kTLSv13RuleOnly) {
+    SCOPED_TRACE(t.rule);
+    bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+    ASSERT_TRUE(ctx);
+
+    EXPECT_FALSE(SSL_CTX_set_cipher_list(ctx.get(), t.rule));
+    ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), SSL_R_NO_CIPHER_MATCH);
+    ERR_clear_error();
+  }
+
   for (const char *rule : kMustNotIncludeNull) {
     SCOPED_TRACE(rule);
     bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
@@ -696,6 +835,75 @@ TEST(SSLTest, CipherRules) {
     for (const SSL_CIPHER *cipher : SSL_CTX_get_ciphers(ctx.get())) {
       EXPECT_NE(NID_undef, SSL_CIPHER_get_cipher_nid(cipher));
     }
+  }
+}
+
+static std::vector<CipherTest> combine_tests(const CipherTest *c1, size_t size_1,
+  const CipherTest *c2, size_t size_2) {
+  std::vector<CipherTest> ret(size_1 + size_2);
+  size_t j = 0;
+  for (size_t i = 0; i < size_1; i++) {
+    ret[j++] = c1[i];
+  }
+  for (size_t i = 0; i < size_2; i++) {
+    ret[j++] = c2[i];
+  }
+  return ret;
+}
+
+TEST(SSLTest, TLSv13CipherRules) {
+  std::vector<CipherTest> cipherRules = combine_tests(kTLSv13RuleOnly,
+    OPENSSL_ARRAY_SIZE(kTLSv13RuleOnly), kTLSv13CipherTests, OPENSSL_ARRAY_SIZE(kTLSv13CipherTests));
+  for (const CipherTest &t : cipherRules) {
+    SCOPED_TRACE(t.rule);
+    bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+    ASSERT_TRUE(ctx);
+
+    // Test lax mode.
+    ASSERT_TRUE(SSL_CTX_set_ciphersuites(ctx.get(), t.rule));
+    EXPECT_TRUE(CipherListsEqual(ctx.get(), t.expected, true /* TLSv1.3 only */))
+        << "Cipher rule evaluated to:\n"
+        << CipherListToString(ctx.get(), true /* TLSv1.3 only */);
+
+    // TODO: add |SSL_CTX_set_strict_ciphersuites| and test strict mode.
+  }
+
+  for (const char *rule : kBadRules) {
+    SCOPED_TRACE(rule);
+    bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+    ASSERT_TRUE(ctx);
+
+    EXPECT_FALSE(SSL_CTX_set_ciphersuites(ctx.get(), rule));
+    ERR_clear_error();
+  }
+
+  for (const char *rule : kTLSv13MustNotIncludeNull) {
+    SCOPED_TRACE(rule);
+    bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+    ASSERT_TRUE(ctx);
+
+    ASSERT_TRUE(SSL_CTX_set_ciphersuites(ctx.get(), rule));
+    // Currenly, only three TLSv1.3 ciphers are supported.
+    EXPECT_EQ(3u, sk_SSL_CIPHER_num(tls13_ciphers(ctx.get())));
+    for (const SSL_CIPHER *cipher : tls13_ciphers(ctx.get())) {
+      EXPECT_NE(NID_undef, SSL_CIPHER_get_cipher_nid(cipher));
+    }
+  }
+
+  // kCipherTests are valid test cases for |SSL_CTX_set_cipher_list|,
+  // which configures only TLSv1.2 and below ciphers.
+  // |SSL_CTX_set_ciphersuites| only supports TLSv1.3 ciphers configuration.
+  // Accordingly, kCipherTests result in |SSL_R_NO_CIPHER_MATCH|.
+  // If kCipherTests starts to include rules that can match TLSv1.3 ciphers,
+  // kCipherTests should get splitted.
+  for (const CipherTest &t : kCipherTests) {
+    SCOPED_TRACE(t.rule);
+    bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+    ASSERT_TRUE(ctx);
+
+    EXPECT_FALSE(SSL_CTX_set_ciphersuites(ctx.get(), t.rule));
+    ASSERT_EQ(ERR_GET_REASON(ERR_get_error()), SSL_R_NO_CIPHER_MATCH);
+    ERR_clear_error();
   }
 }
 
@@ -4597,6 +4805,10 @@ TEST(SSLTest, EmptyCipherList) {
   EXPECT_FALSE(SSL_CTX_set_cipher_list(ctx.get(), ""));
   ERR_clear_error();
 
+  // Configuring the empty cipher list fails.
+  EXPECT_FALSE(SSL_CTX_set_ciphersuites(ctx.get(), ""));
+  ERR_clear_error();
+
   // But the cipher list is still updated to empty.
   EXPECT_EQ(0u, sk_SSL_CIPHER_num(SSL_CTX_get_ciphers(ctx.get())));
 }
@@ -8308,6 +8520,52 @@ RVHWbCvFvNZAoWiIJ2z34RLGInyZvCZ8xLAvsuaWULDDaoeDl1M0t4Hm
               ConnectClientAndServer(&client, &server, client_ctx.get(),
                                      server_ctx.get(), config));
   }
+}
+
+TEST(SSLTest, NumTickets) {
+  bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(server_ctx);
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(client_ctx);
+  bssl::UniquePtr<X509> cert = GetTestCertificate();
+  ASSERT_TRUE(cert);
+  bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
+  ASSERT_TRUE(key);
+  ASSERT_TRUE(SSL_CTX_use_certificate(server_ctx.get(), cert.get()));
+  ASSERT_TRUE(SSL_CTX_use_PrivateKey(server_ctx.get(), key.get()));
+  SSL_CTX_set_session_cache_mode(server_ctx.get(), SSL_SESS_CACHE_BOTH);
+
+  SSL_CTX_set_session_cache_mode(client_ctx.get(), SSL_SESS_CACHE_BOTH);
+  static size_t ticket_count;
+  SSL_CTX_sess_set_new_cb(client_ctx.get(), [](SSL *, SSL_SESSION *) -> int {
+    ticket_count++;
+    return 0;
+  });
+
+  auto count_tickets = [&]() -> size_t {
+    ticket_count = 0;
+    bssl::UniquePtr<SSL> client, server;
+    if (!ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                server_ctx.get()) ||
+        !FlushNewSessionTickets(client.get(), server.get())) {
+      ADD_FAILURE() << "Could not run handshake";
+      return 0;
+    }
+    return ticket_count;
+  };
+
+  // By default, we should send two tickets.
+  EXPECT_EQ(count_tickets(), 2u);
+
+  for (size_t num_tickets : {0, 1, 2, 3, 4, 5}) {
+    SCOPED_TRACE(num_tickets);
+    ASSERT_TRUE(SSL_CTX_set_num_tickets(server_ctx.get(), num_tickets));
+    EXPECT_EQ(count_tickets(), num_tickets);
+  }
+
+  // Configuring too many tickets causes us to stop at some point.
+  ASSERT_TRUE(SSL_CTX_set_num_tickets(server_ctx.get(), 100000));
+  EXPECT_EQ(count_tickets(), 16u);
 }
 
 }  // namespace

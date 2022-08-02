@@ -32,6 +32,7 @@
 #include <openssl/obj.h>
 #include <openssl/sha.h>
 
+#include "../fipsmodule/sha/internal.h"
 #include "../internal.h"
 #include "../test/test_util.h"
 
@@ -54,6 +55,7 @@ static const MD sha256 = { "SHA256", &EVP_sha256, &SHA256 };
 static const MD sha384 = { "SHA384", &EVP_sha384, &SHA384 };
 static const MD sha512 = { "SHA512", &EVP_sha512, &SHA512 };
 static const MD sha512_256 = { "SHA512-256", &EVP_sha512_256, &SHA512_256 };
+static const MD sha3_256 = { "SHA3-256", &EVP_sha3_256, &SHA3_256 };
 static const MD md5_sha1 = { "MD5-SHA1", &EVP_md5_sha1, nullptr };
 static const MD blake2b256 = { "BLAKE2b-256", &EVP_blake2b256, nullptr };
 
@@ -143,6 +145,20 @@ static const DigestTestVector kTestVectors[] = {
      "klmnopqklmnopqrlmnopqrsmnopqrstnopqrstu",
      1, "3928e184fb8690f840da3988121d31be65cb9d3ef83ee6146feac861e19b563a"},
 
+    // SHA3-256 tests, from NIST.
+    // http://csrc.nist.gov/groups/STM/cavp/secure-hashing.html
+    {sha3_256, "", 1, "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a"},
+    {sha3_256, "\xe9", 1, "f0d04dd1e6cfc29a4460d521796852f25d9ef8d28b44ee91ff5b759d72c1e6d6"},
+    {sha3_256, "\xd4\x77", 1, "94279e8f5ccdf6e17f292b59698ab4e614dfe696a46c46da78305fc6a3146ab7"},
+    {sha3_256, "\xb0\x53\xfa", 1, "9d0ff086cd0ec06a682c51c094dc73abdc492004292344bd41b82a60498ccfdb"},
+    {sha3_256, "\xe7\x37\x21\x05", 1, "3a42b68ab079f28c4ca3c752296f279006c4fe78b1eb79d989777f051e4046ae"},
+    {sha3_256, "\xe6\xfd\x42\x03\x7f\x80", 1, "2294f8d3834f24aa9037c431f8c233a66a57b23fa3de10530bbb6911f6e1850f"},
+    {sha3_256, "\x37\xb4\x42\x38\x5e\x05\x38", 1, "cfa55031e716bbd7a83f2157513099e229a88891bb899d9ccd317191819998f8"},
+    {sha3_256, "\x8b\xca\x93\x1c\x8a\x13\x2d\x2f", 1, "dbb8be5dec1d715bd117b24566dc3f24f2cc0c799795d0638d9537481ef1e03e"},
+    {sha3_256, "\xfb\x8d\xfa\x3a\x13\x2f\x98\x13\xac", 1, "fd09b3501888445ffc8c3bb95d106440ceee469415fce1474743273094306e2e"},
+    {sha3_256, "\x56\xea\x14\xd7\xfc\xb0\xdb\x74\x8f\xf6\x49\xaa\xa5\xd0\xaf\xdc\x23\x57\x52\x8a\x9a\xad\x60\x76\xd7\x3b\x28\x05\xb5\x3d\x89\xe7\x36\x81\xab\xfa\xd2\x6b\xee\x6c\x0f\x3d\x20\x21\x52\x95\xf3\x54\xf5\x38\xae\x80\x99\x0d\x22\x81\xbe\x6d\xe0\xf6\x91\x9a\xa9\xeb\x04\x8c\x26\xb5\x24\xf4\xd9\x1c\xa8\x7b\x54\xc0\xc5\x4a\xa9\xb5\x4a\xd0\x21\x71\xe8\xbf\x31\xe8\xd1\x58\xa9\xf5\x86\xe9\x2f\xfc\xe9\x94\xec\xce\x9a\x51\x85\xcc\x80\x36\x4d\x50\xa6\xf7\xb9\x48\x49\xa9\x14\x24\x2f\xcb\x73\xf3\x3a\x86\xec\xc8\x3c\x34\x03\x63\x0d\x20\x65\x0d\xdb\x8c\xd9\xc4", 
+    1, "4beae3515ba35ec8cbd1d94567e22b0d7809c466abfbafe9610349597ba15b45"},
+
     // MD5-SHA1 tests.
     {md5_sha1, "abc", 1,
      "900150983cd24fb0d6963f7d28e17f72a9993e364706816aba3e25717850c26c9cd0d89d"},
@@ -160,94 +176,102 @@ static void CompareDigest(const DigestTestVector *test,
 }
 
 static void TestDigest(const DigestTestVector *test) {
-  bssl::ScopedEVP_MD_CTX ctx;
-
-  // Test the input provided.
-  ASSERT_TRUE(EVP_DigestInit_ex(ctx.get(), test->md.func(), nullptr));
-  for (size_t i = 0; i < test->repeat; i++) {
-    ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), test->input, strlen(test->input)));
-  }
-  std::unique_ptr<uint8_t[]> digest(new uint8_t[EVP_MD_size(test->md.func())]);
-  unsigned digest_len;
-  ASSERT_TRUE(EVP_DigestFinal_ex(ctx.get(), digest.get(), &digest_len));
-  CompareDigest(test, digest.get(), digest_len);
-
-  // Test the input one character at a time.
-  ASSERT_TRUE(EVP_DigestInit_ex(ctx.get(), test->md.func(), nullptr));
-  ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), nullptr, 0));
-  for (size_t i = 0; i < test->repeat; i++) {
-    for (const char *p = test->input; *p; p++) {
-      ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), p, 1));
+    // Test SHA3 by enabling |unstable_sha3_enabled_flag|, then disable it
+    // |unstable_sha3_enabled_flag| is desabled by default
+    // SHA3 negative tests are implemented in /fipsmodule/sha/sha3_test.cc
+    if ((strcmp(test->md.name, "SHA3-256") == 0)) {
+      EVP_MD_unstable_sha3_enable(true);
     }
-  }
-  ASSERT_TRUE(EVP_DigestFinal_ex(ctx.get(), digest.get(), &digest_len));
-  EXPECT_EQ(EVP_MD_size(test->md.func()), digest_len);
-  CompareDigest(test, digest.get(), digest_len);
 
-  // Test with unaligned input.
-  ASSERT_TRUE(EVP_DigestInit_ex(ctx.get(), test->md.func(), nullptr));
-  std::vector<char> unaligned(strlen(test->input) + 1);
-  char *ptr = unaligned.data();
-  if ((reinterpret_cast<uintptr_t>(ptr) & 1) == 0) {
-    ptr++;
-  }
-  OPENSSL_memcpy(ptr, test->input, strlen(test->input));
-  for (size_t i = 0; i < test->repeat; i++) {
-    ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), ptr, strlen(test->input)));
-  }
-  ASSERT_TRUE(EVP_DigestFinal_ex(ctx.get(), digest.get(), &digest_len));
-  CompareDigest(test, digest.get(), digest_len);
+    bssl::ScopedEVP_MD_CTX ctx;
+    // Test the input provided.
+    ASSERT_TRUE(EVP_DigestInit_ex(ctx.get(), test->md.func(), nullptr));
+    for (size_t i = 0; i < test->repeat; i++) {
+      ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), test->input, strlen(test->input)));
+    }
+    std::unique_ptr<uint8_t[]> digest(new uint8_t[EVP_MD_size(test->md.func())]);
+    unsigned digest_len;
+    ASSERT_TRUE(EVP_DigestFinal_ex(ctx.get(), digest.get(), &digest_len));
+    CompareDigest(test, digest.get(), digest_len);
 
-  // Make a copy of the digest in the initial state.
-  ASSERT_TRUE(EVP_DigestInit_ex(ctx.get(), test->md.func(), nullptr));
-  bssl::ScopedEVP_MD_CTX copy;
-  ASSERT_TRUE(EVP_MD_CTX_copy_ex(copy.get(), ctx.get()));
-  for (size_t i = 0; i < test->repeat; i++) {
-    ASSERT_TRUE(EVP_DigestUpdate(copy.get(), test->input, strlen(test->input)));
-  }
-  ASSERT_TRUE(EVP_DigestFinal_ex(copy.get(), digest.get(), &digest_len));
-  CompareDigest(test, digest.get(), digest_len);
+    // Test the input one character at a time.
+    ASSERT_TRUE(EVP_DigestInit_ex(ctx.get(), test->md.func(), nullptr));
+    ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), nullptr, 0));
+    for (size_t i = 0; i < test->repeat; i++) {
+      for (const char *p = test->input; *p; p++) {
+        ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), p, 1));
+      }
+    }
+    ASSERT_TRUE(EVP_DigestFinal_ex(ctx.get(), digest.get(), &digest_len));
+    EXPECT_EQ(EVP_MD_size(test->md.func()), digest_len);
+    CompareDigest(test, digest.get(), digest_len);
 
-  // Make a copy of the digest with half the input provided.
-  size_t half = strlen(test->input) / 2;
-  ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), test->input, half));
-  ASSERT_TRUE(EVP_MD_CTX_copy_ex(copy.get(), ctx.get()));
-  ASSERT_TRUE(EVP_DigestUpdate(copy.get(), test->input + half,
-                               strlen(test->input) - half));
-  for (size_t i = 1; i < test->repeat; i++) {
-    ASSERT_TRUE(EVP_DigestUpdate(copy.get(), test->input, strlen(test->input)));
-  }
-  ASSERT_TRUE(EVP_DigestFinal_ex(copy.get(), digest.get(), &digest_len));
-  CompareDigest(test, digest.get(), digest_len);
+    // Test with unaligned input.
+    ASSERT_TRUE(EVP_DigestInit_ex(ctx.get(), test->md.func(), nullptr));
+    std::vector<char> unaligned(strlen(test->input) + 1);
+    char *ptr = unaligned.data();
+    if ((reinterpret_cast<uintptr_t>(ptr) & 1) == 0) {
+      ptr++;
+    }
+    OPENSSL_memcpy(ptr, test->input, strlen(test->input));
+    for (size_t i = 0; i < test->repeat; i++) {
+      ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), ptr, strlen(test->input)));
+    }
+    ASSERT_TRUE(EVP_DigestFinal_ex(ctx.get(), digest.get(), &digest_len));
+    CompareDigest(test, digest.get(), digest_len);
 
-  // Move the digest from the initial state.
-  ASSERT_TRUE(EVP_DigestInit_ex(ctx.get(), test->md.func(), nullptr));
-  copy = std::move(ctx);
-  for (size_t i = 0; i < test->repeat; i++) {
-    ASSERT_TRUE(EVP_DigestUpdate(copy.get(), test->input, strlen(test->input)));
-  }
-  ASSERT_TRUE(EVP_DigestFinal_ex(copy.get(), digest.get(), &digest_len));
-  CompareDigest(test, digest.get(), digest_len);
+    // Make a copy of the digest in the initial state.
+    ASSERT_TRUE(EVP_DigestInit_ex(ctx.get(), test->md.func(), nullptr));
+    bssl::ScopedEVP_MD_CTX copy;
+    ASSERT_TRUE(EVP_MD_CTX_copy_ex(copy.get(), ctx.get()));
+    for (size_t i = 0; i < test->repeat; i++) {
+      ASSERT_TRUE(EVP_DigestUpdate(copy.get(), test->input, strlen(test->input)));
+    }
+    ASSERT_TRUE(EVP_DigestFinal_ex(copy.get(), digest.get(), &digest_len));
+    CompareDigest(test, digest.get(), digest_len);
 
-  // Move the digest with half the input provided.
-  ASSERT_TRUE(EVP_DigestInit_ex(ctx.get(), test->md.func(), nullptr));
-  ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), test->input, half));
-  copy = std::move(ctx);
-  ASSERT_TRUE(EVP_DigestUpdate(copy.get(), test->input + half,
-                               strlen(test->input) - half));
-  for (size_t i = 1; i < test->repeat; i++) {
-    ASSERT_TRUE(EVP_DigestUpdate(copy.get(), test->input, strlen(test->input)));
-  }
-  ASSERT_TRUE(EVP_DigestFinal_ex(copy.get(), digest.get(), &digest_len));
-  CompareDigest(test, digest.get(), digest_len);
+    // Make a copy of the digest with half the input provided.
+    size_t half = strlen(test->input) / 2;
+    ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), test->input, half));
+    ASSERT_TRUE(EVP_MD_CTX_copy_ex(copy.get(), ctx.get()));
+    ASSERT_TRUE(EVP_DigestUpdate(copy.get(), test->input + half,
+                                strlen(test->input) - half));
+    for (size_t i = 1; i < test->repeat; i++) {
+      ASSERT_TRUE(EVP_DigestUpdate(copy.get(), test->input, strlen(test->input)));
+    }
+    ASSERT_TRUE(EVP_DigestFinal_ex(copy.get(), digest.get(), &digest_len));
+    CompareDigest(test, digest.get(), digest_len);
 
-  // Test the one-shot function.
-  if (test->md.one_shot_func && test->repeat == 1) {
-    uint8_t *out = test->md.one_shot_func((const uint8_t *)test->input,
-                                          strlen(test->input), digest.get());
-    // One-shot functions return their supplied buffers.
+    // Move the digest from the initial state.
+    ASSERT_TRUE(EVP_DigestInit_ex(ctx.get(), test->md.func(), nullptr));
+    copy = std::move(ctx);
+    for (size_t i = 0; i < test->repeat; i++) {
+      ASSERT_TRUE(EVP_DigestUpdate(copy.get(), test->input, strlen(test->input)));
+    }
+    ASSERT_TRUE(EVP_DigestFinal_ex(copy.get(), digest.get(), &digest_len));
+    CompareDigest(test, digest.get(), digest_len);
+
+    // Move the digest with half the input provided.
+    ASSERT_TRUE(EVP_DigestInit_ex(ctx.get(), test->md.func(), nullptr));
+    ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), test->input, half));
+    copy = std::move(ctx);
+    ASSERT_TRUE(EVP_DigestUpdate(copy.get(), test->input + half,
+                                strlen(test->input) - half));
+    for (size_t i = 1; i < test->repeat; i++) {
+      ASSERT_TRUE(EVP_DigestUpdate(copy.get(), test->input, strlen(test->input)));
+    }
+    ASSERT_TRUE(EVP_DigestFinal_ex(copy.get(), digest.get(), &digest_len));
+    CompareDigest(test, digest.get(), digest_len);
+
+    // Test the one-shot function.
+    if (test->md.one_shot_func && test->repeat == 1) {
+      uint8_t *out = test->md.one_shot_func((const uint8_t *)test->input,
+                                            strlen(test->input), digest.get());
+      // One-shot functions return their supplied buffers.
     EXPECT_EQ(digest.get(), out);
     CompareDigest(test, digest.get(), EVP_MD_size(test->md.func()));
+
+    EVP_MD_unstable_sha3_enable(false);
   }
 }
 
