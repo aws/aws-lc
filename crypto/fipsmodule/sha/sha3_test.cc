@@ -115,7 +115,7 @@ bool SHA3TestVector::ReadFromFileTest(FileTest *t) {
   return true;
 }
 
-TEST(SHA3Test, NISTTestVectors) {
+TEST(SHA3Test, DISABLED_NISTTestVectors) {
   FileTestGTest("crypto/fipsmodule/sha/SHA3_224ShortMsg.txt", [](FileTest *t) {
     SHA3TestVector test_vec;
     EXPECT_TRUE(test_vec.ReadFromFileTest(t));
@@ -142,7 +142,7 @@ TEST(SHA3Test, NISTTestVectors) {
   });
 }
 
-TEST(SHA3Test, NISTTestVectors_SingleShot) {
+TEST(SHA3Test, DISABLED_NISTTestVectors_SingleShot) {
   FileTestGTest("crypto/fipsmodule/sha/SHA3_224ShortMsg.txt", [](FileTest *t) {
     SHA3TestVector test_vec;
     EXPECT_TRUE(test_vec.ReadFromFileTest(t));
