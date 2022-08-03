@@ -168,7 +168,7 @@ static int is_ec_fips_approved(int curve_nid) {
 
 // is_md_fips_approved_for_signing returns one if the given message digest type
 // is FIPS approved for signing, and zero otherwise.
-// TODO: FIPS validate SHA512/256 for signing.
+// TODO (CryptoAlg-1212): FIPS validate SHA512/256 for signing.
 static int is_md_fips_approved_for_signing(int md_type) {
   switch (md_type) {
     case NID_sha224:
@@ -183,7 +183,7 @@ static int is_md_fips_approved_for_signing(int md_type) {
 
 // is_md_fips_approved_for_verifying returns one if the given message digest
 // type is FIPS approved for verifying, and zero otherwise.
-// TODO: FIPS validate SHA512/256 for verifying.
+// TODO (CryptoAlg-1212): FIPS validate SHA512/256 for verifying.
 static int is_md_fips_approved_for_verifying(int md_type) {
   switch (md_type) {
     case NID_sha1:
@@ -252,8 +252,8 @@ static void evp_md_ctx_verify_service_indicator(const EVP_MD_CTX *ctx,
     }
   } else if (pkey_type == EVP_PKEY_EC) {
     // Check if the MD type and the elliptic curve are approved.
-    if (md_ok(md_type) && is_ec_fips_approved(EC_GROUP_get_curve_name(
-                              ctx->pctx->pkey->pkey.ec->group))) {
+    int curve_nid = EC_GROUP_get_curve_name(pkey->pkey.ec->group);
+    if (md_ok(md_type) && is_ec_fips_approved(curve_nid)) {
       FIPS_service_indicator_update_state();
     }
   }
@@ -329,7 +329,7 @@ void EVP_DigestSign_verify_service_indicator(const EVP_MD_CTX *ctx) {
                                       is_md_fips_approved_for_signing);
 }
 
-// TODO: FIPS validate SHA512/256 for HMAC.
+// TODO (CryptoAlg-1212): FIPS validate SHA512/256 for HMAC.
 void HMAC_verify_service_indicator(const EVP_MD *evp_md) {
   // HMAC with SHA1, SHA224, SHA256, SHA384, and SHA512 are approved.
   switch (evp_md->type){
