@@ -26,7 +26,18 @@ void kyber_shake128_absorb(keccak_state *state,
   extseed[KYBER_SYMBYTES+0] = x;
   extseed[KYBER_SYMBYTES+1] = y;
 
-  shake128_absorb_once(state, extseed, sizeof(extseed));
+  uint8_t p = 0x1f;
+  int i = 0; 
+
+  int rem = SHA3_Absorb((uint64_t (*)[5])state->s, extseed, sizeof(extseed), SHAKE128_RATE);
+
+  for(i=0;i<rem;i++){
+    state->s[i/8] ^= (uint64_t)extseed[i] << 8*(i%8);
+  }
+
+  state->s[i/8] ^= (uint64_t)p << 8*(i%8);
+  state->s[(SHAKE128_RATE-1)/8] ^= 1ULL << 63;
+
 }
 
 /*************************************************

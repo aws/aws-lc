@@ -44,7 +44,7 @@ uint8_t *SHA3_384(const uint8_t *data, size_t len,
   KECCAK1600_CTX ctx;
   int ok = (SHA3_Init(&ctx, SHA3_PAD_CHAR, SHA3_384_DIGEST_BITLENGTH) && 
             SHA3_Update(&ctx, data, len) &&
-            SHA3_Final(out, &ctx));
+                        SHA3_Final(out, &ctx));
 
   OPENSSL_cleanse(&ctx, sizeof(ctx));
   if (ok == 0) {
@@ -58,6 +58,40 @@ uint8_t *SHA3_512(const uint8_t *data, size_t len,
   KECCAK1600_CTX ctx;
   int ok = (SHA3_Init(&ctx, SHA3_PAD_CHAR, SHA3_512_DIGEST_BITLENGTH) && 
             SHA3_Update(&ctx, data, len) &&
+                        SHA3_Final(out, &ctx));
+
+  OPENSSL_cleanse(&ctx, sizeof(ctx));
+  if (ok == 0) {
+    return NULL;
+  }
+  return out;
+}
+
+uint8_t *SHAKE128(const uint8_t *data, const size_t in_len, uint8_t *out, size_t out_len) {
+  KECCAK1600_CTX ctx;
+  //The SHAKE block size depends on the security level of the algorithm only
+  // It is independent of the digest size
+  ctx.block_size = SHAKE128_BLOCKSIZE;
+
+  int ok = (SHA3_Init(&ctx, SHAKE_PAD_CHAR, out_len) && 
+            SHA3_Update(&ctx, data, in_len) &&
+            SHA3_Final(out, &ctx));
+
+  OPENSSL_cleanse(&ctx, sizeof(ctx));
+  if (ok == 0) {
+    return NULL;
+  }
+  return out;
+}
+
+uint8_t *SHAKE256(const uint8_t *data, const size_t in_len, uint8_t *out, size_t out_len) {
+  KECCAK1600_CTX ctx;
+  //The SHAKE block size depends on the security level of the algorithm only
+  // It is independent of the digest size
+  ctx.block_size = SHAKE256_BLOCKSIZE;
+
+  int ok = (SHA3_Init(&ctx, SHAKE_PAD_CHAR, out_len) && 
+            SHA3_Update(&ctx, data, in_len) &&
             SHA3_Final(out, &ctx));
 
   OPENSSL_cleanse(&ctx, sizeof(ctx));
@@ -77,7 +111,17 @@ int SHA3_Init(KECCAK1600_CTX *ctx, uint8_t pad, size_t bit_len) {
         exit(1);
   }
 
-  size_t block_size = SHA3_BLOCKSIZE(bit_len);
+  size_t block_size;
+
+  // The block size in SHA3 depends on the digest |bit_len|
+  // The block size in SHAKE depends only on the security level
+  // SHAKE produces arbitrary length digest
+  if (pad == SHA3_PAD_CHAR) {
+    block_size = SHA3_BLOCKSIZE(bit_len);
+  } else {
+    block_size = ctx->block_size;
+  }
+  
   if (block_size <= sizeof(ctx->buf)) {
     SHA3_Reset(ctx);
     ctx->block_size = block_size;

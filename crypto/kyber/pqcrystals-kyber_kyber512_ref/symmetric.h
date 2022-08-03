@@ -82,9 +82,9 @@ void kyber_shake256_prf(uint8_t *out, size_t outlen, const uint8_t key[KYBER_SYM
 //#define xof_init(STATE) shake128_inc_init(STATE)
 #define xof_absorb(STATE, SEED, X, Y) kyber_shake128_absorb(STATE, SEED, X, Y)
 #define xof_squeezeblocks(OUT, OUTBLOCKS, STATE) shake128_squeezeblocks(OUT, OUTBLOCKS, STATE)
-#define xof_release(STATE) shake128_inc_ctx_release(STATE)
+//#define xof_release(STATE) shake128_inc_ctx_release(STATE)
 #define prf(OUT, OUTBYTES, KEY, NONCE) kyber_shake256_prf(OUT, OUTBYTES, KEY, NONCE)
-#define kdf(OUT, IN, INBYTES) shake256(OUT, KYBER_SSBYTES, IN, INBYTES)
+#define kdf(OUT, IN, INBYTES) SHAKE256(OUT, KYBER_SSBYTES, IN, INBYTES)
 
 #endif /* AWS_LC_SHA3_API_TEST */
 

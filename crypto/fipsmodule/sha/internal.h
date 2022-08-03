@@ -51,6 +51,19 @@ extern "C" {
 #define SHA3_PAD_CHAR 0x06
 #define SHA3_ROWS 5
 
+// SHAKE constants, from NIST FIPS202.
+// https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf
+#define SHAKE_PAD_CHAR 0x1F
+#define SHAKE128_BLOCKSIZE (KECCAK1600_WIDTH - 128 * 2) / 8
+#define SHAKE256_BLOCKSIZE (KECCAK1600_WIDTH - 256 * 2) / 8
+
+// The |SHA3_MIN_CAPACITY_BYTES| corresponds to the 
+// lowest security level capacity.
+// The data block size increases when the capacity decreases.
+// The data buffer should have at least the maximum 
+// block size bytes to fit any digest length.
+#define SHA3_MIN_CAPACITY_BYTES (KECCAK1600_WIDTH / 8 - SHAKE128_BLOCKSIZE)
+
 typedef struct keccak_st KECCAK1600_CTX;
 
 struct keccak_st {
@@ -107,7 +120,15 @@ OPENSSL_EXPORT uint8_t *SHA3_384(const uint8_t *data, size_t len,
 // There must be at least |SHA3_512_DIGEST_LENGTH| bytes of space in |out|.
 // On failure |SHA3_512| returns NULL.
 OPENSSL_EXPORT uint8_t *SHA3_512(const uint8_t *data, size_t len,
-                  uint8_t out[SHA3_512_DIGEST_LENGTH]);
+                  uint8_t out[SHA3_512_DIGEST_LENGTH]); 
+
+// SHAKE128 writes the |out_len| bytes digest from |in_len| bytes |data| to |out| and returns |out|. 
+OPENSSL_EXPORT uint8_t *SHAKE128(const uint8_t *data, const size_t in_len, 
+                  uint8_t *out, size_t out_len);
+
+// SHAKE256 writes the |out_len| bytes digest from |in_len| bytes |data| to |out| and returns |out|. 
+OPENSSL_EXPORT uint8_t *SHAKE256(const uint8_t *data, const size_t in_len, 
+                  uint8_t *out, size_t out_len);
 
 // SHA3_Reset zeros the bitstate and the amount of processed input.
 OPENSSL_EXPORT void SHA3_Reset(KECCAK1600_CTX *ctx);
@@ -132,7 +153,6 @@ OPENSSL_EXPORT size_t SHA3_Absorb(uint64_t A[SHA3_ROWS][SHA3_ROWS], const uint8_
 // SHA3_Squeeze generate |out| hash value of |len| bytes.
 OPENSSL_EXPORT void SHA3_Squeeze(uint64_t A[SHA3_ROWS][SHA3_ROWS], uint8_t *out,
                                  size_t len, size_t r);
-
 
 #if defined(__cplusplus)
 }  // extern "C"

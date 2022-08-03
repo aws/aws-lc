@@ -170,11 +170,12 @@ void gen_matrix(polyvec *a, const uint8_t seed[KYBER_SYMBYTES], int transposed)
 
   for(i=0;i<KYBER_K;i++) {
     for(j=0;j<KYBER_K;j++) {
-      if(transposed)
+      if(transposed){
         xof_absorb(&state, seed, i, j);
-      else
+      }
+      else{
         xof_absorb(&state, seed, j, i);
-
+      }
       xof_squeezeblocks(buf, GEN_MATRIX_NBLOCKS, &state);
       buflen = GEN_MATRIX_NBLOCKS*XOF_BLOCKBYTES;
       ctr = rej_uniform(a[i].vec[j].coeffs, KYBER_N, buf, buflen);
