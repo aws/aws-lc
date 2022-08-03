@@ -673,7 +673,7 @@ static bool SpeedHashChunk(const EVP_MD *md, std::string name,
 static bool SpeedHash(const EVP_MD *md, const std::string &name,
                       const std::string &selected) {
   // This SHA3 API is AWS-LC specific.
-#if defined(AWSLC_BENCHMARK)
+#if defined(OPENSSL_IS_AWSLC)
   if (name.find("SHA3") != std::string::npos) {
     EVP_MD_unstable_sha3_enable(true);
   }
@@ -690,7 +690,7 @@ static bool SpeedHash(const EVP_MD *md, const std::string &name,
   }
 
   // This SHA3 API is AWS-LC specific.
-#if defined(AWSLC_BENCHMARK)
+#if defined(OPENSSL_IS_AWSLC)
   EVP_MD_unstable_sha3_enable(false);
 #endif
   return true;
