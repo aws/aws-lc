@@ -197,34 +197,51 @@ bool SHA3TestVector::ReadFromFileTest(FileTest *t) {
   return true;
 }
 
-TEST(SHA3Test, NISTTestVectors) {
-  FileTestGTest("crypto/fipsmodule/sha/SHA3_256ShortMsg.txt", [](FileTest *t) {
+TEST(SHA3Test, DISABLED_NISTTestVectors) {
+  FileTestGTest("crypto/fipsmodule/sha/testvectors/SHA3_256ShortMsg.txt", [](FileTest *t) {
     SHA3TestVector test_vec;
     EXPECT_TRUE(test_vec.ReadFromFileTest(t));
     test_vec.NISTTestVectors();
   });
 }
 
-TEST(SHA3Test, NISTTestVectors_SingleShot) {
-  FileTestGTest("crypto/fipsmodule/sha/SHA3_256ShortMsg.txt", [](FileTest *t) {
+TEST(SHA3Test, DISABLED_NISTTestVectors_SingleShot) {
+  FileTestGTest("crypto/fipsmodule/sha/testvectors/SHA3_256ShortMsg.txt", [](FileTest *t) {
     SHA3TestVector test_vec;
     EXPECT_TRUE(test_vec.ReadFromFileTest(t));
     test_vec.NISTTestVectors_SingleShot();
   });
 }
 
-TEST(SHAKE128Test, NISTTestVectors) {
-  FileTestGTest("crypto/fipsmodule/sha/SHAKE128VariableOut.txt", [](FileTest *t) {
+TEST(SHAKE128Test, DISABLED_NISTTestVectors) {
+  FileTestGTest("crypto/fipsmodule/sha/testvectors/SHAKE128VariableOut.txt", [](FileTest *t) {
     SHA3TestVector test_vec;
     EXPECT_TRUE(test_vec.ReadFromFileTest(t));
     test_vec.NISTTestVectors_SHAKE128();
   });
 }
 
-TEST(SHAKE256Test, NISTTestVectors) {
-  FileTestGTest("crypto/fipsmodule/sha/SHAKE256VariableOut.txt", [](FileTest *t) {
+TEST(SHAKE256Test, DISABLED_NISTTestVectors) {
+  FileTestGTest("crypto/fipsmodule/sha/testvectors/SHAKE256VariableOut.txt", [](FileTest *t) {
     SHA3TestVector test_vec;
     EXPECT_TRUE(test_vec.ReadFromFileTest(t));
     test_vec.NISTTestVectors_SHAKE256();
   });
 }
+
+TEST(SHAKE128Test, NISTTestVectors_Reduced) {
+  FileTestGTest("crypto/fipsmodule/sha/testvectors/SHAKE128_Reduced.txt", [](FileTest *t) {
+    SHA3TestVector test_vec;
+    EXPECT_TRUE(test_vec.ReadFromFileTest(t));
+    test_vec.NISTTestVectors_SHAKE128();
+  });
+}
+
+TEST(SHAKE256Test, NISTTestVectors_Reduced) {
+  FileTestGTest("crypto/fipsmodule/sha/testvectors/SHAKE256_Reduced.txt", [](FileTest *t) {
+    SHA3TestVector test_vec;
+    EXPECT_TRUE(test_vec.ReadFromFileTest(t));
+    test_vec.NISTTestVectors_SHAKE256();
+  });
+}
+
