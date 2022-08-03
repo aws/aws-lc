@@ -8,11 +8,10 @@ install_dir="$(pwd)/../libcrypto_install_dir"
 openssl_url='https://github.com/openssl/openssl.git'
 openssl_1_1_branch='OpenSSL_1_1_1-stable'
 openssl_1_0_branch='OpenSSL_1_0_2-stable'
-openssl_3_0_branch='openssl-3.0'
 # OpenSSL 3.0 branch still isn't stable yet, so we lock down
-# a commit to prevent build failures that they introduced from
+# a tag to prevent build failures that they introduced from
 # failing our CI.
-openssl_3_0_commit='2db226ce01be804fbd2d60b019c897305a8f091e'
+openssl_3_0_branch='openssl-3.0.5'
 
 function build_openssl_1_0 {
     echo "building OpenSSL 1.0"
@@ -42,7 +41,6 @@ function build_openssl_3_0 {
     echo "building OpenSSL 3.0"
     git clone --branch "${openssl_3_0_branch}" "${openssl_url}" "../openssl-3.0"
     pushd "../openssl-3.0"
-    git checkout "${openssl_3_0_commit}"
     mkdir -p "${install_dir}/openssl-3.0"
     ./Configure --prefix="${install_dir}/openssl-3.0" --openssldir="${install_dir}/openssl-3.0"
     make "-j${NUM_CPU_THREADS}"
