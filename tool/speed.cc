@@ -672,9 +672,12 @@ static bool SpeedHashChunk(const EVP_MD *md, std::string name,
 
 static bool SpeedHash(const EVP_MD *md, const std::string &name,
                       const std::string &selected) {
+  // This SHA3 API is AWS-LC specific.
+#if defined(AWSLC_BENCHMARK)
   if (name.find("SHA3") != std::string::npos) {
     EVP_MD_unstable_sha3_enable(true);
   }
+#endif
 
   if (!selected.empty() && name.find(selected) == std::string::npos) {
     return true;
@@ -686,7 +689,10 @@ static bool SpeedHash(const EVP_MD *md, const std::string &name,
     }
   }
 
+  // This SHA3 API is AWS-LC specific.
+#if defined(AWSLC_BENCHMARK)
   EVP_MD_unstable_sha3_enable(false);
+#endif
   return true;
 }
 
@@ -1627,7 +1633,10 @@ bool Speed(const std::vector<std::string> &args) {
      !SpeedHash(EVP_sha256(), "SHA-256", selected) ||
      !SpeedHash(EVP_sha384(), "SHA-384", selected) ||
      !SpeedHash(EVP_sha512(), "SHA-512", selected) ||
+     // OpenSSL 1.0 doesn't support SHA3.
+#if !defined(OPENSSL_1_0_BENCHMARK)
      !SpeedHash(EVP_sha3_256(), "SHA3-256", selected) ||
+#endif
      !SpeedHmac(EVP_md5(), "HMAC-MD5", selected) ||
      !SpeedHmac(EVP_sha1(), "HMAC-SHA1", selected) ||
      !SpeedHmac(EVP_sha256(), "HMAC-SHA256", selected) ||
