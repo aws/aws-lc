@@ -32,16 +32,16 @@ $ ./tests/ci/run_posix_tests.sh
 ```
 
 ## Test locations
-### Unit tests
-Runs all tests for:
-* Debug
-* Release
-* Small
-* No assembly
-* Shared libs
 
-CI Tool|Compiler|CPU platform|OS
+### Unit tests
+
+General test suite with a varying set of build options (FIPS, non-FIPS, debug,
+shared, static, etc.) is executed on the following combinations:
+
+CI Tool|Compiler|CPU|OS
 ------------ | -------------| -------------|-------------
+CodeBuild|gcc 4.1.3|x86|Ubuntu 10.04
+CodeBuild|gcc 4.8.5|x86|Centos 7
 CodeBuild|gcc 4.8.5|x86|Centos 7
 CodeBuild|gcc 4.8.5|x86-64|Centos 7
 CodeBuild|gcc 5.4.0|x86|Ubuntu 16.04
@@ -52,6 +52,10 @@ CodeBuild|gcc 7.5.0|x86-64|Ubuntu 20.04
 CodeBuild|gcc 7.5.0|aarch64|Ubuntu 20.04
 CodeBuild|gcc 8.4.0|x86-64|Ubuntu 20.04
 CodeBuild|gcc 8.4.0|aarch64|Ubuntu 20.04
+CodeBuild|gcc 11|x86-64|Ubuntu 22.04
+CodeBuild|gcc 11|aarch64|Ubuntu 22.04
+CodeBuild|gcc 12|x86-64|Ubuntu 22.04
+CodeBuild|gcc 12|aarch64|Ubuntu 22.04
 CodeBuild|clang 7.0.1|x86-64|AL2
 CodeBuild|clang 7.0.1|aarch64|AL2
 CodeBuild|clang 6.0.0|x86-64|Ubuntu 18.04
@@ -64,10 +68,15 @@ CodeBuild|clang 9.0.1|x86-64|Ubuntu 20.04
 CodeBuild|clang 9.0.1|aarch64|Ubuntu 20.04
 CodeBuild|clang 10.0.0|x86-64|Ubuntu 20.04
 CodeBuild|clang 10.0.0|aarch64|Ubuntu 20.04
-CodeBuild|Visual Studio 2015|x86-64|Windows Server 10
+CodeBuild|Visual Studio 2015|x86-64|Windows Server 19
+CodeBuild|Visual Studio 2017|x86-64|Windows Server 19
 GitHub Workflow|AppleClang 13.0.0|x86-64|macOS 11
+AWS Device Farm|Android ndkVersion "21.0.6113669"|aarch64|Android 10
+AWS Device Farm|Android ndkVersion "21.0.6113669"|aarch64|Android 11
+AWS Device Farm|Android ndkVersion "21.0.6113669"|aarch64|Android 12
 
 ### Sanitizer tests
+
 Runs all tests with:
 * Address sanitizer
 * Memory sanitizer
@@ -89,6 +98,7 @@ CI Tool|Compiler|CPU platform|OS| memcheck
 CodeBuild|gcc 7.3.1|x86-64|AL2 | X
 
 ### Fuzz tests
+
 All Fuzz tests under /fuzz are run in CodeBuild for an hour total.
 
 CI Tool|Compiler|CPU platform|OS|Flags
@@ -102,6 +112,7 @@ pull in any files from the seed folder and merge it into the growing corpus in E
 
 
 ### Cryptofuzz
+
 Each change is built and tested with [Cryptofuzz](https://github.com/guidovranken/cryptofuzz) for an hour. A seed corpus
 is included in tests/docker_images/cryptofuzz_data.zip. As new inputs are found they are saved in a shared corpus across
 runs in AWS EFS. Cryptofuzz is built with 3 modules:
