@@ -70,7 +70,7 @@ use [AWS Graviton processors](https://aws.amazon.com/ec2/graviton/) to test
 ARMv8 optimizations and Intel CPUs to test x86 and x86-64 optimizations.
 
 The [Intel Software Development Emulator](https://software.intel.com/content/www/us/en/develop/articles/intel-software-development-emulator.html)
-is used to run tests all modern x86 processors.
+is used to run tests on many different x86 processors.
 
 If you use another CPU and would like to make sure we test it or discuss adding
 an assembly optimized algorithm implementation, please open an issue to discuss
