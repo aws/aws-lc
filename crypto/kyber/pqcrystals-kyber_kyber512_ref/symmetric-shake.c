@@ -5,6 +5,10 @@
 #include "symmetric.h"
 #include "fips202.h"
 
+#include <stdio.h>
+#include <stdlib.h>
+
+
 /*************************************************
 * Name:        kyber_shake128_absorb
 *
@@ -26,19 +30,45 @@ void kyber_shake128_absorb(keccak_state *state,
   extseed[KYBER_SYMBYTES+0] = x;
   extseed[KYBER_SYMBYTES+1] = y;
 
-  uint8_t p = 0x1f;
+  #ifndef AWS_LC_SHA3_API_TEST
+
+  shake128_absorb_once(state, extseed, sizeof(extseed));
+  // for (int j = 0; j < (1600/64); j++)
+  // {
+  //     printf("%llx\n", state->s[j]);
+  // }
+
+  #else
+
+  int p = 0x1F; 
+
+  for (int i = 0; i < 25; i++)
+  {
+    state->s[i] = 0;
+  }
+  
   int i = 0; 
-
   int rem = SHA3_Absorb((uint64_t (*)[5])state->s, extseed, sizeof(extseed), SHAKE128_RATE);
-
+  
   for(i=0;i<rem;i++){
-    state->s[i/8] ^= (uint64_t)extseed[i] << 8*(i%8);
+    state->s[i/8] ^= (uint64_t)extseed[i + sizeof(extseed) - rem] << 8*(i%8);
   }
 
   state->s[i/8] ^= (uint64_t)p << 8*(i%8);
   state->s[(SHAKE128_RATE-1)/8] ^= 1ULL << 63;
-
+  #endif
 }
+
+void kyber_shake128_squeeze(uint8_t *out, int nblocks, keccak_state *state)
+{
+  #ifndef AWS_LC_SHA3_API_TEST
+  shake128_squeezeblocks(out, nblocks, state);
+  #else
+  KeccakF1600((uint64_t (*)[5])state->s);
+  SHA3_Squeeze((uint64_t (*)[5])state->s, out, (nblocks) * SHAKE128_RATE, SHAKE128_RATE);
+  #endif
+}
+
 
 /*************************************************
 * Name:        kyber_shake256_prf
@@ -57,6 +87,11 @@ void kyber_shake256_prf(uint8_t *out, size_t outlen, const uint8_t key[KYBER_SYM
 
   memcpy(extkey, key, KYBER_SYMBYTES);
   extkey[KYBER_SYMBYTES] = nonce;
+  #ifndef AWS_LC_SHA3_API_TEST
+  shake256(out, outlen, extkey, sizeof(extkey));  
+  #else
+  SHAKE256(extkey, sizeof(extkey), out, outlen*8);
+  #endif
 
-  shake256(out, outlen, extkey, sizeof(extkey));
+  //exit(0);
 }

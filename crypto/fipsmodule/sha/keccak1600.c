@@ -222,7 +222,7 @@ static void Round(uint64_t R[SHA3_ROWS][SHA3_ROWS], uint64_t A[SHA3_ROWS][SHA3_R
 #endif
 }
 
-static void KeccakF1600(uint64_t A[SHA3_ROWS][SHA3_ROWS])
+ void KeccakF1600(uint64_t A[SHA3_ROWS][SHA3_ROWS])
 {
     uint64_t T[SHA3_ROWS][SHA3_ROWS];
     size_t i;

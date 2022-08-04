@@ -5,8 +5,7 @@
 #include <stdint.h>
 #include "params.h"
 
-#define AWS_LC_SHA3_API_TEST 
-
+//#define AWS_LC_SHA3_API_TEST
 
 #ifdef KYBER_90S
 
@@ -49,6 +48,8 @@ void kyber_shake128_absorb(keccak_state *s,
                            uint8_t x,
                            uint8_t y);
 
+void kyber_shake128_squeeze(uint8_t *out, int nblocks, keccak_state *state);
+
 #define kyber_shake256_prf KYBER_NAMESPACE(kyber_shake256_prf)
 void kyber_shake256_prf(uint8_t *out, size_t outlen, const uint8_t key[KYBER_SYMBYTES], uint8_t nonce);
 
@@ -72,6 +73,8 @@ void kyber_shake128_absorb(keccak_state *s,
                            uint8_t x,
                            uint8_t y);
 
+void kyber_shake128_squeeze(uint8_t *out, int nblocks, keccak_state *state);
+
 #define kyber_shake256_prf KYBER_NAMESPACE(kyber_shake256_prf)
 void kyber_shake256_prf(uint8_t *out, size_t outlen, const uint8_t key[KYBER_SYMBYTES], uint8_t nonce);
 
@@ -81,10 +84,11 @@ void kyber_shake256_prf(uint8_t *out, size_t outlen, const uint8_t key[KYBER_SYM
 #define hash_g(OUT, IN, INBYTES) SHA3_512(IN, INBYTES, OUT)
 //#define xof_init(STATE) shake128_inc_init(STATE)
 #define xof_absorb(STATE, SEED, X, Y) kyber_shake128_absorb(STATE, SEED, X, Y)
-#define xof_squeezeblocks(OUT, OUTBLOCKS, STATE) shake128_squeezeblocks(OUT, OUTBLOCKS, STATE)
+#define xof_squeezeblocks(OUT, OUTBLOCKS, STATE) kyber_shake128_squeeze(OUT, OUTBLOCKS, STATE)
 //#define xof_release(STATE) shake128_inc_ctx_release(STATE)
 #define prf(OUT, OUTBYTES, KEY, NONCE) kyber_shake256_prf(OUT, OUTBYTES, KEY, NONCE)
-#define kdf(OUT, IN, INBYTES) SHAKE256(OUT, KYBER_SSBYTES, IN, INBYTES)
+//#define kdf(OUT, IN, INBYTES) shake256(OUT, KYBER_SSBYTES, IN, INBYTES)
+#define kdf(OUT, IN, INBYTES) SHAKE256(IN, INBYTES, OUT, KYBER_SSBYTES * 8)
 
 #endif /* AWS_LC_SHA3_API_TEST */
 

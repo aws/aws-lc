@@ -41,13 +41,7 @@ extern "C" {
 #define SHA3_512_DIGEST_BITLENGTH 512
 #define SHA3_512_DIGEST_LENGTH 64
 
-// The |SHA3_MIN_CAPACITY_BYTES| corresponds to the 
-// lowest security level capacity.
-// The data block size increases when the capacity decreases.
-// The data buffer should have at least the maximum 
-// block size bytes to fit any digest length.
 #define SHA3_BLOCKSIZE(bitlen) (KECCAK1600_WIDTH - bitlen * 2) / 8
-#define SHA3_MIN_CAPACITY_BYTES SHA3_224_CAPACITY_BYTES
 #define SHA3_PAD_CHAR 0x06
 #define SHA3_ROWS 5
 
@@ -153,6 +147,8 @@ OPENSSL_EXPORT size_t SHA3_Absorb(uint64_t A[SHA3_ROWS][SHA3_ROWS], const uint8_
 // SHA3_Squeeze generate |out| hash value of |len| bytes.
 OPENSSL_EXPORT void SHA3_Squeeze(uint64_t A[SHA3_ROWS][SHA3_ROWS], uint8_t *out,
                                  size_t len, size_t r);
+
+OPENSSL_EXPORT  void KeccakF1600(uint64_t A[SHA3_ROWS][SHA3_ROWS]);
 
 #if defined(__cplusplus)
 }  // extern "C"
