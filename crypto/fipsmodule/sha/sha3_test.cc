@@ -11,6 +11,15 @@
 #include "internal.h"
 #include <openssl/digest.h>
 
+#if defined(OPENSSL_WINDOWS)
+OPENSSL_MSVC_PRAGMA(warning(push, 3))
+#include <windows.h>
+OPENSSL_MSVC_PRAGMA(warning(pop))
+#elif defined(OPENSSL_APPLE)
+#include <sys/time.h>
+#else
+#include <time.h>
+#endif
 
 // SHA3TestVector corresponds to one test case of the NIST published file
 // SHA3_256ShortMsg.txt.
@@ -27,12 +36,10 @@ class SHA3TestVector {
     uint8_t *digest  = new uint8_t[EVP_MD_size(algorithm)];
     EVP_MD_CTX* ctx = EVP_MD_CTX_new();
 
-    #if !defined(OPENSSL_ANDROID)
     // SHA3 is disabled by default. First test this assumption and then enable SHA3 and test it.
     ASSERT_FALSE(EVP_DigestInit(ctx, algorithm));
     ASSERT_FALSE(EVP_DigestUpdate(ctx, msg_.data(), len_ / 8));
     ASSERT_FALSE(EVP_DigestFinal(ctx, digest, &digest_length));
-    #endif  // OPENSSL_ANDROID
 
     // Enable SHA3
     EVP_MD_unstable_sha3_enable(true);
@@ -48,12 +55,10 @@ class SHA3TestVector {
     // Disable SHA3
     EVP_MD_unstable_sha3_enable(false);
 
-    #if !defined(OPENSSL_ANDROID)
     // Test again SHA3 when |unstable_sha3_enabled_flag| is disabled.
     ASSERT_FALSE(EVP_DigestInit(ctx, algorithm));
     ASSERT_FALSE(EVP_DigestUpdate(ctx, msg_.data(), len_ / 8));
     ASSERT_FALSE(EVP_DigestFinal(ctx, digest, &digest_length));
-    #endif  // OPENSSL_ANDROID
 
     delete [] digest;
     OPENSSL_free(ctx);
@@ -64,10 +69,8 @@ class SHA3TestVector {
     uint8_t *digest  = new uint8_t[EVP_MD_size(algorithm)];
     EVP_MD_CTX* ctx = EVP_MD_CTX_new();
     
-    #if !defined(OPENSSL_ANDROID)
     // SHA3 is disabled by default. First test this assumption and then enable SHA3 and test it.
     ASSERT_FALSE(EVP_Digest(msg_.data(), len_ / 8, digest, &digest_length, algorithm, NULL));
-    #endif  // OPENSSL_ANDROID
 
     // Enable SHA3
     EVP_MD_unstable_sha3_enable(true);
@@ -81,10 +84,8 @@ class SHA3TestVector {
     // Disable SHA3
     EVP_MD_unstable_sha3_enable(false);
 
-    #if !defined(OPENSSL_ANDROID)
     // Test again SHA3 when |unstable_sha3_enabled_flag| is disabled.
     ASSERT_FALSE(EVP_Digest(msg_.data(), len_ / 8, digest, &digest_length, algorithm, NULL));
-    #endif  // OPENSSL_ANDROID
 
     delete [] digest;
     OPENSSL_free(ctx);
@@ -95,9 +96,7 @@ class SHA3TestVector {
     uint32_t digest_length = out_len_ / 8;
     uint8_t *digest = new uint8_t[digest_length];
 
-    #if !defined(OPENSSL_ANDROID)
-    ASSERT_DEATH_IF_SUPPORTED(SHAKE128(msg_.data(), msg_.size() , digest, out_len_), "");
-    #endif  // OPENSSL_ANDROID
+    ASSERT_FALSE(SHAKE128(msg_.data(), msg_.size() , digest, out_len_));
 
     // Enable SHA3
     EVP_MD_unstable_sha3_enable(true);
@@ -110,9 +109,7 @@ class SHA3TestVector {
     // Disable SHA3
     EVP_MD_unstable_sha3_enable(false);
 
-    #if !defined(OPENSSL_ANDROID)
-    ASSERT_DEATH_IF_SUPPORTED(SHAKE128(msg_.data(), msg_.size() , digest, out_len_), "");
-    #endif  // OPENSSL_ANDROID
+    ASSERT_FALSE(SHAKE128(msg_.data(), msg_.size() , digest, out_len_));
 
     delete [] digest;
   }
@@ -121,9 +118,7 @@ class SHA3TestVector {
     uint32_t digest_length = out_len_ / 8;
     uint8_t *digest = new uint8_t[digest_length];
 
-    #if !defined(OPENSSL_ANDROID)
-    ASSERT_DEATH_IF_SUPPORTED(SHAKE256(msg_.data(), msg_.size() , digest, out_len_), "");
-    #endif  // OPENSSL_ANDROID
+    ASSERT_FALSE(SHAKE256(msg_.data(), msg_.size() , digest, out_len_));
 
     // Enable SHA3
     EVP_MD_unstable_sha3_enable(true);
@@ -136,9 +131,7 @@ class SHA3TestVector {
     // Disable SHA3
     EVP_MD_unstable_sha3_enable(false);
 
-    #if !defined(OPENSSL_ANDROID)
-    ASSERT_DEATH_IF_SUPPORTED(SHAKE256(msg_.data(), msg_.size() , digest, out_len_), "");
-    #endif  // OPENSSL_ANDROID
+    ASSERT_FALSE(SHAKE256(msg_.data(), msg_.size() , digest, out_len_));
 
     delete [] digest;
   }
@@ -180,7 +173,7 @@ bool SHA3TestVector::ReadFromFileTest(FileTest *t) {
   return true;
 }
 
-TEST(SHA3Test, DISABLED_NISTTestVectors) {
+TEST(SHA3Test, NISTTestVectors) {
   FileTestGTest("crypto/fipsmodule/sha/testvectors/SHA3_224ShortMsg.txt", [](FileTest *t) {
     SHA3TestVector test_vec;
     EXPECT_TRUE(test_vec.ReadFromFileTest(t));
@@ -207,7 +200,7 @@ TEST(SHA3Test, DISABLED_NISTTestVectors) {
   });
 }
 
-TEST(SHA3Test, DISABLED_NISTTestVectors_SingleShot) {
+TEST(SHA3Test, NISTTestVectors_SingleShot) {
   FileTestGTest("crypto/fipsmodule/sha/testvectors/SHA3_224ShortMsg.txt", [](FileTest *t) {
     SHA3TestVector test_vec;
     EXPECT_TRUE(test_vec.ReadFromFileTest(t));
@@ -234,7 +227,7 @@ TEST(SHA3Test, DISABLED_NISTTestVectors_SingleShot) {
   });
 }
 
-TEST(SHAKE128Test, DISABLED_NISTTestVectors) {
+TEST(SHAKE128Test, NISTTestVectors) {
   FileTestGTest("crypto/fipsmodule/sha/testvectors/SHAKE128VariableOut.txt", [](FileTest *t) {
     SHA3TestVector test_vec;
     EXPECT_TRUE(test_vec.ReadFromFileTest(t));
@@ -242,27 +235,10 @@ TEST(SHAKE128Test, DISABLED_NISTTestVectors) {
   });
 }
 
-TEST(SHAKE256Test, DISABLED_NISTTestVectors) {
+TEST(SHAKE256Test, NISTTestVectors) {
   FileTestGTest("crypto/fipsmodule/sha/testvectors/SHAKE256VariableOut.txt", [](FileTest *t) {
     SHA3TestVector test_vec;
     EXPECT_TRUE(test_vec.ReadFromFileTest(t));
     test_vec.NISTTestVectors_SHAKE256();
   });
 }
-
-TEST(SHAKE128Test, NISTTestVectors_Reduced) {
-  FileTestGTest("crypto/fipsmodule/sha/testvectors/SHAKE128_Reduced.txt", [](FileTest *t) {
-    SHA3TestVector test_vec;
-    EXPECT_TRUE(test_vec.ReadFromFileTest(t));
-    test_vec.NISTTestVectors_SHAKE128();
-  });
-}
-
-TEST(SHAKE256Test, NISTTestVectors_Reduced) {
-  FileTestGTest("crypto/fipsmodule/sha/testvectors/SHAKE256_Reduced.txt", [](FileTest *t) {
-    SHA3TestVector test_vec;
-    EXPECT_TRUE(test_vec.ReadFromFileTest(t));
-    test_vec.NISTTestVectors_SHAKE256();
-  });
-}
-

@@ -96,6 +96,9 @@ void sha512_block_data_order(uint64_t *state, const uint8_t *in,
                              size_t num_blocks);
 #endif
 
+// |get_cpu_cycles| returns the current value of cycles
+uint64_t get_cpu_cycles(void);
+
 // SHA3_224 writes the digest of |len| bytes from |data| to |out| and returns |out|. 
 // There must be at least |SHA3_224_DIGEST_LENGTH| bytes of space in |out|.
 // On failure |SHA3_224| returns NULL.

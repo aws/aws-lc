@@ -72,8 +72,6 @@ set(
   crypto/fipsmodule/sha/testvectors/SHA3_512ShortMsg.txt
   crypto/fipsmodule/sha/testvectors/SHAKE128VariableOut.txt
   crypto/fipsmodule/sha/testvectors/SHAKE256VariableOut.txt
-  crypto/fipsmodule/sha/testvectors/SHAKE128_Reduced.txt
-  crypto/fipsmodule/sha/testvectors/SHAKE256_Reduced.txt
   crypto/hmac_extra/hmac_tests.txt
   crypto/hpke/hpke_test_vectors.txt
   crypto/ocsp/test/aws/ocsp_response.der
