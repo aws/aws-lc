@@ -4,11 +4,14 @@
 
 source tests/ci/common_posix_setup.sh
 
-install_dir="$(pwd)/../librypto_install_dir"
+install_dir="$(pwd)/../libcrypto_install_dir"
 openssl_url='https://github.com/openssl/openssl.git'
 openssl_1_1_branch='OpenSSL_1_1_1-stable'
 openssl_1_0_branch='OpenSSL_1_0_2-stable'
-openssl_3_0_branch='openssl-3.0'
+# OpenSSL 3.0 branch still isn't stable yet, so we lock down
+# a tag to prevent build failures that they introduced from
+# failing our CI.
+openssl_3_0_branch='openssl-3.0.5'
 
 function build_openssl_1_0 {
     echo "building OpenSSL 1.0"
@@ -43,13 +46,13 @@ function build_openssl_3_0 {
     make "-j${NUM_CPU_THREADS}"
     make install
     popd
-    rm -rf "../openssl-1.1"
+    rm -rf "../openssl-3.0"
 }
 
 # We build each tool individually so we can have more insight into what is failing
 mkdir -p "${install_dir}"
 echo "Testing awslc_bm"
-mkdir "${install_dir}/aws_lc"
+mkdir -p "${install_dir}/aws_lc"
 run_build -DAWSLC_INSTALL_DIR="${install_dir}/aws_lc"
 "${BUILD_ROOT}/tool/awslc_bm"
 
