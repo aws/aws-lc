@@ -21,6 +21,10 @@
 extern "C" {
 #endif
 
+#if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_AARCH64)
+#define KECCAK1600_ASM
+#endif
+
 // SHA3 constants, from NIST FIPS202.
 // https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf
 #define KECCAK1600_WIDTH 1600
@@ -97,7 +101,7 @@ void sha512_block_data_order(uint64_t *state, const uint8_t *in,
 // On failure |SHA3_224| returns NULL.
 OPENSSL_EXPORT uint8_t *SHA3_224(const uint8_t *data, size_t len,
                                  uint8_t out[SHA3_224_DIGEST_LENGTH]);  
-                                 
+
 // SHA3_256 writes the digest of |len| bytes from |data| to |out| and returns |out|. 
 // There must be at least |SHA3_256_DIGEST_LENGTH| bytes of space in |out|.
 // On failure |SHA3_256| returns NULL.
