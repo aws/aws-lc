@@ -210,8 +210,7 @@ static void evp_md_ctx_verify_service_indicator(const EVP_MD_CTX *ctx,
   const int pkey_type = EVP_PKEY_id(pkey);
   const int md_type = EVP_MD_CTX_type(ctx);
 
-  // EVP_PKEY_RSA_PSS SPKIs aren't supported.
-  if (pkey_type == EVP_PKEY_RSA) {
+  if (pkey_type == EVP_PKEY_RSA || pkey_type == EVP_PKEY_RSA_PSS) {
     // Message digest used in the private key should be of the same type
     // as the given one, so we extract the MD type from the |EVP_PKEY|
     // and compare it with the type in |ctx|.

@@ -29,9 +29,6 @@
 #include "../rand/internal.h"
 #include "../tls/internal.h"
 
-
-using bssl::FIPSStatus;
-
 static const uint8_t kAESKey[16] = {
     'A','W','S','-','L','C','C','r','y','p','t','o',' ','K', 'e','y'};
 static const uint8_t kPlaintext[64] = {
@@ -106,7 +103,7 @@ static bssl::UniquePtr<DH> GetDH() {
 
 static void DoCipherFinal(EVP_CIPHER_CTX *ctx, std::vector<uint8_t> *out,
                      bssl::Span<const uint8_t> in, FIPSStatus expect_approved) {
-  FIPSStatus approved = FIPSStatus::NOT_APPROVED;
+  FIPSStatus approved = AWSLC_NOT_APPROVED;
   size_t max_out = in.size();
   if (EVP_CIPHER_CTX_encrypting(ctx)) {
     unsigned block_size = EVP_CIPHER_CTX_block_size(ctx);
@@ -501,7 +498,7 @@ static const struct AEADTestVector {
         sizeof(kAESKey),
         nullptr,
         0,
-        FIPSStatus::APPROVED,
+        AWSLC_APPROVED,
         false,
     },
     {
@@ -511,7 +508,7 @@ static const struct AEADTestVector {
         sizeof(kAESKey_256),
         nullptr,
         0,
-        FIPSStatus::APPROVED,
+        AWSLC_APPROVED,
         false,
     },
     // External IV usage of AES-GCM is not approved unless used within a TLS
@@ -523,7 +520,7 @@ static const struct AEADTestVector {
         sizeof(kAESKey),
         kAESGCMCiphertext_128,
         sizeof(kAESGCMCiphertext_128),
-        FIPSStatus::NOT_APPROVED,
+        AWSLC_NOT_APPROVED,
         false,
     },
     {
@@ -533,7 +530,7 @@ static const struct AEADTestVector {
         24,
         kAESGCMCiphertext_192,
         sizeof(kAESGCMCiphertext_192),
-        FIPSStatus::NOT_APPROVED,
+        AWSLC_NOT_APPROVED,
         false,
     },
     {
@@ -543,7 +540,7 @@ static const struct AEADTestVector {
         sizeof(kAESKey_256),
         kAESGCMCiphertext_256,
         sizeof(kAESGCMCiphertext_256),
-        FIPSStatus::NOT_APPROVED,
+        AWSLC_NOT_APPROVED,
         false,
     },
     // External IV usage of AEAD AES-GCM APIs specific for TLS is approved.
@@ -554,7 +551,7 @@ static const struct AEADTestVector {
         sizeof(kAESKey),
         kAESGCMCiphertext_128,
         sizeof(kAESGCMCiphertext_128),
-        FIPSStatus::APPROVED,
+        AWSLC_APPROVED,
         true,
     },
     {
@@ -564,7 +561,7 @@ static const struct AEADTestVector {
         sizeof(kAESKey_256),
         kAESGCMCiphertext_256,
         sizeof(kAESGCMCiphertext_256),
-        FIPSStatus::APPROVED,
+        AWSLC_APPROVED,
         true,
     },
     {
@@ -574,7 +571,7 @@ static const struct AEADTestVector {
         sizeof(kAESKey),
         kAESGCMCiphertext_128,
         sizeof(kAESGCMCiphertext_128),
-        FIPSStatus::APPROVED,
+        AWSLC_APPROVED,
         true,
     },
     {
@@ -584,7 +581,7 @@ static const struct AEADTestVector {
         sizeof(kAESKey_256),
         kAESGCMCiphertext_256,
         sizeof(kAESGCMCiphertext_256),
-        FIPSStatus::APPROVED,
+        AWSLC_APPROVED,
         true,
     },
     // 128 bit keys with 32 bit tag lengths are approved for AES-CCM.
@@ -595,7 +592,7 @@ static const struct AEADTestVector {
         sizeof(kAESKey),
         kAESCCMCiphertext,
         sizeof(kAESCCMCiphertext),
-        FIPSStatus::APPROVED,
+        AWSLC_APPROVED,
         false,
     },
 };
@@ -609,7 +606,7 @@ TEST_P(AEADServiceIndicatorTest, EVP_AEAD) {
   const AEADTestVector &test = GetParam();
   SCOPED_TRACE(test.name);
 
-  FIPSStatus approved = FIPSStatus::NOT_APPROVED;
+  FIPSStatus approved = AWSLC_NOT_APPROVED;
 
   bssl::ScopedEVP_AEAD_CTX aead_ctx;
   std::vector<uint8_t> nonce(EVP_AEAD_nonce_length(test.aead), 0);
@@ -621,12 +618,12 @@ TEST_P(AEADServiceIndicatorTest, EVP_AEAD) {
   // |EVP_AEAD_CTX_seal| and |EVP_AEAD_CTX_open| for approval at the end.
   // |EVP_AEAD_CTX_init| should not be approved because the function does not
   // indicate that a service has been fully completed yet.
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, EVP_AEAD_CTX_init(aead_ctx.get(), test.aead, test.key,
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(EVP_AEAD_CTX_init(aead_ctx.get(), test.aead, test.key,
                                   test.key_length, 0, nullptr)));
-  EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, EVP_AEAD_CTX_seal(aead_ctx.get(), encrypt_output.data(),
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(EVP_AEAD_CTX_seal(aead_ctx.get(), encrypt_output.data(),
                                   &out_len, encrypt_output.size(), nonce.data(),
                                   EVP_AEAD_nonce_length(test.aead), kPlaintext,
                                   sizeof(kPlaintext), nullptr, 0)));
@@ -637,27 +634,26 @@ TEST_P(AEADServiceIndicatorTest, EVP_AEAD) {
               Bytes(encrypt_output));
   }
 
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved,
-      EVP_AEAD_CTX_open(aead_ctx.get(), decrypt_output.data(), &out_len,
-                        decrypt_output.size(), nonce.data(), nonce.size(),
-                        encrypt_output.data(), out_len, nullptr, 0)));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(
+      EVP_AEAD_CTX_open(aead_ctx.get(), decrypt_output.data(),&out_len,
+            decrypt_output.size(), nonce.data(), nonce.size(),
+            encrypt_output.data(), out_len, nullptr, 0)));
   // Decryption doesn't have nonce uniqueness requirements and so is always
   // approved for approved key lengths.
-  EXPECT_EQ(approved, test.key_length != 24 ? FIPSStatus::APPROVED
-                                            : FIPSStatus::NOT_APPROVED);
+  EXPECT_EQ(approved, test.key_length != 24 ? AWSLC_APPROVED
+                                            : AWSLC_NOT_APPROVED);
   decrypt_output.resize(out_len);
   EXPECT_EQ(Bytes(kPlaintext), Bytes(decrypt_output));
 
   // Second call when encrypting using the same nonce for AES-GCM TLS specific
-  // functions should fail and return |FIPSStatus::NOT_APPROVED|.
+  // functions should fail and return |AWSLC_NOT_APPROVED|.
   if (test.test_repeat_nonce) {
-    ASSERT_FALSE(CALL_SERVICE_AND_CHECK_APPROVED(
-        approved,
+    CALL_SERVICE_AND_CHECK_APPROVED(
+        approved, ASSERT_FALSE(
         EVP_AEAD_CTX_seal(aead_ctx.get(), encrypt_output.data(), &out_len,
                           encrypt_output.size(), nonce.data(), nonce.size(),
                           kPlaintext, sizeof(kPlaintext), nullptr, 0)));
-    EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
+    EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
     EXPECT_EQ(ERR_GET_REASON(ERR_get_error()), CIPHER_R_INVALID_NONCE);
   }
 }
@@ -678,7 +674,7 @@ static const struct CipherTestVector {
         kAESECBCiphertext,
         sizeof(kAESECBCiphertext),
         false,
-        FIPSStatus::APPROVED,
+        AWSLC_APPROVED,
     },
     {
         EVP_aes_192_ecb(),
@@ -687,7 +683,7 @@ static const struct CipherTestVector {
         kAESECBCiphertext_192,
         sizeof(kAESECBCiphertext_192),
         false,
-        FIPSStatus::APPROVED,
+        AWSLC_APPROVED,
     },
     {
         EVP_aes_256_ecb(),
@@ -696,7 +692,7 @@ static const struct CipherTestVector {
         kAESECBCiphertext_256,
         sizeof(kAESECBCiphertext_256),
         false,
-        FIPSStatus::APPROVED,
+        AWSLC_APPROVED,
     },
     {
         EVP_aes_128_cbc(),
@@ -705,7 +701,7 @@ static const struct CipherTestVector {
         kAESCBCCiphertext,
         sizeof(kAESCBCCiphertext),
         true,
-        FIPSStatus::APPROVED,
+        AWSLC_APPROVED,
     },
     {
         EVP_aes_192_cbc(),
@@ -714,7 +710,7 @@ static const struct CipherTestVector {
         kAESCBCCiphertext_192,
         sizeof(kAESCBCCiphertext_192),
         true,
-        FIPSStatus::APPROVED,
+        AWSLC_APPROVED,
     },
     {
         EVP_aes_256_cbc(),
@@ -723,7 +719,7 @@ static const struct CipherTestVector {
         kAESCBCCiphertext_256,
         sizeof(kAESCBCCiphertext_256),
         true,
-        FIPSStatus::APPROVED,
+        AWSLC_APPROVED,
     },
     {
         EVP_aes_128_ctr(),
@@ -732,7 +728,7 @@ static const struct CipherTestVector {
         kAESCTRCiphertext,
         sizeof(kAESCTRCiphertext),
         true,
-        FIPSStatus::APPROVED,
+        AWSLC_APPROVED,
     },
     {
         EVP_aes_192_ctr(),
@@ -741,7 +737,7 @@ static const struct CipherTestVector {
         kAESCTRCiphertext_192,
         sizeof(kAESCTRCiphertext_192),
         true,
-        FIPSStatus::APPROVED,
+        AWSLC_APPROVED,
     },
     {
         EVP_aes_256_ctr(),
@@ -750,7 +746,7 @@ static const struct CipherTestVector {
         kAESCTRCiphertext_256,
         sizeof(kAESCTRCiphertext_256),
         true,
-        FIPSStatus::APPROVED,
+        AWSLC_APPROVED,
     },
     {
         EVP_aes_128_ofb(),
@@ -759,7 +755,7 @@ static const struct CipherTestVector {
         kAESOFBCiphertext,
         sizeof(kAESOFBCiphertext),
         true,
-        FIPSStatus::NOT_APPROVED,
+        AWSLC_NOT_APPROVED,
     },
     {
         EVP_des_ede3(),
@@ -768,7 +764,7 @@ static const struct CipherTestVector {
         kTDES_EDE3_CipherText,
         sizeof(kTDES_EDE3_CipherText),
         false,
-        FIPSStatus::NOT_APPROVED,
+        AWSLC_NOT_APPROVED,
     },
     {
         EVP_des_ede3_cbc(),
@@ -777,7 +773,7 @@ static const struct CipherTestVector {
         kTDES_EDE3_CBCCipherText,
         sizeof(kTDES_EDE3_CBCCipherText),
         false,
-        FIPSStatus::NOT_APPROVED,
+        AWSLC_NOT_APPROVED,
     },
 };
 
@@ -788,7 +784,7 @@ static void TestOperation(const EVP_CIPHER *cipher, bool encrypt,
                           const std::vector<uint8_t> plaintext,
                           const std::vector<uint8_t> ciphertext,
                           FIPSStatus expect_approved) {
-  FIPSStatus approved = FIPSStatus::NOT_APPROVED;
+  FIPSStatus approved = AWSLC_NOT_APPROVED;
   std::vector<uint8_t> in, out;
   if (encrypt) {
     in = plaintext;
@@ -863,7 +859,7 @@ static const struct DigestTestVector {
         &EVP_md4,
         &MD4,
         kOutput_md4,
-        FIPSStatus::NOT_APPROVED,
+        AWSLC_NOT_APPROVED,
     },
     {
         "MD5",
@@ -871,7 +867,7 @@ static const struct DigestTestVector {
         &EVP_md5,
         &MD5,
         kOutput_md5,
-        FIPSStatus::NOT_APPROVED,
+        AWSLC_NOT_APPROVED,
     },
     {
         "SHA-1",
@@ -879,7 +875,7 @@ static const struct DigestTestVector {
         &EVP_sha1,
         &SHA1,
         kOutput_sha1,
-        FIPSStatus::APPROVED,
+        AWSLC_APPROVED,
     },
     {
         "SHA-224",
@@ -887,7 +883,7 @@ static const struct DigestTestVector {
         &EVP_sha224,
         &SHA224,
         kOutput_sha224,
-        FIPSStatus::APPROVED,
+        AWSLC_APPROVED,
     },
     {
         "SHA-256",
@@ -895,7 +891,7 @@ static const struct DigestTestVector {
         &EVP_sha256,
         &SHA256,
         kOutput_sha256,
-        FIPSStatus::APPROVED,
+        AWSLC_APPROVED,
     },
     {
         "SHA-384",
@@ -903,7 +899,7 @@ static const struct DigestTestVector {
         &EVP_sha384,
         &SHA384,
         kOutput_sha384,
-        FIPSStatus::APPROVED,
+        AWSLC_APPROVED,
     },
     {
         "SHA-512",
@@ -911,7 +907,7 @@ static const struct DigestTestVector {
         &EVP_sha512,
         &SHA512,
         kOutput_sha512,
-        FIPSStatus::APPROVED,
+        AWSLC_APPROVED,
     },
     {
         "SHA-512/256",
@@ -919,7 +915,7 @@ static const struct DigestTestVector {
         &EVP_sha512_256,
         &SHA512_256,
         kOutput_sha512_256,
-        FIPSStatus::APPROVED,
+        AWSLC_APPROVED,
     },
 };
 
@@ -932,7 +928,7 @@ TEST_P(EVPMDServiceIndicatorTest, EVP_Digests) {
   const DigestTestVector &test = GetParam();
   SCOPED_TRACE(test.name);
 
-  FIPSStatus approved = FIPSStatus::NOT_APPROVED;
+  FIPSStatus approved = AWSLC_NOT_APPROVED;
   bssl::ScopedEVP_MD_CTX ctx;
   std::vector<uint8_t> digest(test.length);
   unsigned digest_len;
@@ -941,20 +937,20 @@ TEST_P(EVPMDServiceIndicatorTest, EVP_Digests) {
   // |EVP_DigestFinal_ex| for approval at the end. |EVP_DigestInit_ex| and
   // |EVP_DigestUpdate| should not be approved, because the functions do not
   // indicate that a service has been fully completed yet.
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, EVP_DigestInit_ex(ctx.get(), test.func(), nullptr)));
-  EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, EVP_DigestUpdate(ctx.get(), kPlaintext, sizeof(kPlaintext))));
-  EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, EVP_DigestFinal_ex(ctx.get(), digest.data(), &digest_len)));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(EVP_DigestInit_ex(ctx.get(), test.func(), nullptr)));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), kPlaintext, sizeof(kPlaintext))));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(EVP_DigestFinal_ex(ctx.get(), digest.data(), &digest_len)));
   EXPECT_EQ(approved, test.expect_approved);
   EXPECT_EQ(Bytes(test.expected_digest, digest_len), Bytes(digest));
 
   // Test using the one-shot |EVP_Digest| function for approval.
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, EVP_Digest(kPlaintext, sizeof(kPlaintext), digest.data(),
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(EVP_Digest(kPlaintext, sizeof(kPlaintext), digest.data(),
                            &digest_len, test.func(), nullptr)));
   EXPECT_EQ(approved, test.expect_approved);
   EXPECT_EQ(Bytes(test.expected_digest, test.length), Bytes(digest));
@@ -975,12 +971,12 @@ static const struct HMACTestVector {
   // expected to be approved or not.
   const FIPSStatus expect_approved;
 } kHMACTestVectors[] = {
-    { EVP_sha1, kHMACOutput_sha1, FIPSStatus::APPROVED },
-    { EVP_sha224, kHMACOutput_sha224, FIPSStatus::APPROVED },
-    { EVP_sha256, kHMACOutput_sha256, FIPSStatus::APPROVED },
-    { EVP_sha384, kHMACOutput_sha384, FIPSStatus::APPROVED },
-    { EVP_sha512, kHMACOutput_sha512, FIPSStatus::APPROVED },
-    { EVP_sha512_256, kHMACOutput_sha512_256, FIPSStatus::NOT_APPROVED }
+    { EVP_sha1, kHMACOutput_sha1, AWSLC_APPROVED },
+    { EVP_sha224, kHMACOutput_sha224, AWSLC_APPROVED },
+    { EVP_sha256, kHMACOutput_sha256, AWSLC_APPROVED },
+    { EVP_sha384, kHMACOutput_sha384, AWSLC_APPROVED },
+    { EVP_sha512, kHMACOutput_sha512, AWSLC_APPROVED },
+    { EVP_sha512_256, kHMACOutput_sha512_256, AWSLC_NOT_APPROVED }
 };
 
 class HMACServiceIndicatorTest : public TestWithNoErrors<HMACTestVector> {};
@@ -991,7 +987,7 @@ INSTANTIATE_TEST_SUITE_P(All, HMACServiceIndicatorTest,
 TEST_P(HMACServiceIndicatorTest, HMACTest) {
   const HMACTestVector &test = GetParam();
 
-  FIPSStatus approved = FIPSStatus::NOT_APPROVED;
+  FIPSStatus approved = AWSLC_NOT_APPROVED;
   // The key is deliberately long in order to trigger digesting it down to a
   // block size. This tests that doing so does not cause the indicator to be
   // mistakenly set in |HMAC_Init_ex|.
@@ -1006,23 +1002,23 @@ TEST_P(HMACServiceIndicatorTest, HMACTest) {
   // service has been fully completed yet.
   unsigned mac_len;
   bssl::ScopedHMAC_CTX ctx;
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved,
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved, ASSERT_TRUE(
       HMAC_Init_ex(ctx.get(), kHMACKey, sizeof(kHMACKey), digest, nullptr)));
-  EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, HMAC_Update(ctx.get(), kPlaintext, sizeof(kPlaintext))));
-  EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, HMAC_Final(ctx.get(), mac.data(), &mac_len)));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(HMAC_Update(ctx.get(), kPlaintext, sizeof(kPlaintext))));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(HMAC_Final(ctx.get(), mac.data(), &mac_len)));
   EXPECT_EQ(approved, test.expect_approved);
   EXPECT_EQ(Bytes(test.expected_digest, expected_mac_len),
             Bytes(mac.data(), mac_len));
 
   // Test using the one-shot API for approval.
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, HMAC(digest, kHMACKey, sizeof(kHMACKey), kPlaintext,
-                     sizeof(kPlaintext), mac.data(), &mac_len)));
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved, ASSERT_TRUE(HMAC(digest, kHMACKey, sizeof(kHMACKey), kPlaintext,
+                            sizeof(kPlaintext), mac.data(), &mac_len)));
   EXPECT_EQ(approved, test.expect_approved);
   EXPECT_EQ(Bytes(test.expected_digest, expected_mac_len),
             Bytes(mac.data(), mac_len));
@@ -1031,7 +1027,7 @@ TEST_P(HMACServiceIndicatorTest, HMACTest) {
 // RSA tests are not parameterized with the |kRSATestVectors| as key
 // generation for RSA is time consuming.
 TEST(ServiceIndicatorTest, RSAKeyGen) {
-  FIPSStatus approved = FIPSStatus::NOT_APPROVED;
+  FIPSStatus approved = AWSLC_NOT_APPROVED;
   bssl::UniquePtr<RSA> rsa(RSA_new());
   ASSERT_TRUE(rsa);
 
@@ -1041,9 +1037,9 @@ TEST(ServiceIndicatorTest, RSAKeyGen) {
     SCOPED_TRACE(bits);
 
     rsa.reset(RSA_new());
-    EXPECT_FALSE(CALL_SERVICE_AND_CHECK_APPROVED(
-        approved, RSA_generate_key_fips(rsa.get(), bits, nullptr)));
-    EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
+    CALL_SERVICE_AND_CHECK_APPROVED(approved,
+        EXPECT_FALSE(RSA_generate_key_fips(rsa.get(), bits, nullptr)));
+    EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
   }
 
   // Test that we can generate keys of the supported lengths:
@@ -1051,9 +1047,9 @@ TEST(ServiceIndicatorTest, RSAKeyGen) {
     SCOPED_TRACE(bits);
 
     rsa.reset(RSA_new());
-    EXPECT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-        approved, RSA_generate_key_fips(rsa.get(), bits, nullptr)));
-    EXPECT_EQ(approved, FIPSStatus::APPROVED);
+    CALL_SERVICE_AND_CHECK_APPROVED(approved,
+        EXPECT_TRUE( RSA_generate_key_fips(rsa.get(), bits, nullptr)));
+    EXPECT_EQ(approved, AWSLC_APPROVED);
     EXPECT_EQ(bits, BN_num_bits(rsa->n));
   }
 
@@ -1070,13 +1066,13 @@ TEST(ServiceIndicatorTest, RSAKeyGen) {
     // Test unapproved key sizes of RSA.
     for (const size_t bits : {512, 1024, 3071, 4095}) {
       SCOPED_TRACE(bits);
-      ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-          approved, EVP_PKEY_keygen_init(ctx.get())));
-      EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
+      CALL_SERVICE_AND_CHECK_APPROVED(
+          approved, ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get())));
+      EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
       ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_keygen_bits(ctx.get(), bits));
-      ASSERT_FALSE(CALL_SERVICE_AND_CHECK_APPROVED(
-          approved, EVP_PKEY_keygen(ctx.get(), &raw)));
-      EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
+      CALL_SERVICE_AND_CHECK_APPROVED(
+          approved, ASSERT_FALSE(EVP_PKEY_keygen(ctx.get(), &raw)));
+      EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
       pkey.reset(raw);
       raw = nullptr;
     }
@@ -1084,13 +1080,13 @@ TEST(ServiceIndicatorTest, RSAKeyGen) {
     // Test approved key sizes of RSA.
     for (const size_t bits : {2048, 3072, 4096}) {
       SCOPED_TRACE(bits);
-      ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-          approved, EVP_PKEY_keygen_init(ctx.get())));
-      EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
+      CALL_SERVICE_AND_CHECK_APPROVED(
+          approved, ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get())));
+      EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
       ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_keygen_bits(ctx.get(), bits));
-      ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-          approved, EVP_PKEY_keygen(ctx.get(), &raw)));
-      EXPECT_EQ(approved, FIPSStatus::APPROVED);
+      CALL_SERVICE_AND_CHECK_APPROVED(
+          approved, ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw)));
+      EXPECT_EQ(approved, AWSLC_APPROVED);
       pkey.reset(raw);
       raw = nullptr;
     }
@@ -1111,58 +1107,58 @@ struct RSATestVector {
 };
 struct RSATestVector kRSATestVectors[] = {
     // RSA test cases that are not approved in any case.
-    { 512, &EVP_sha1, false, FIPSStatus::NOT_APPROVED, FIPSStatus::NOT_APPROVED },
+    { 512, &EVP_sha1, false, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
     // PSS with hashLen == saltLen is not possible for 512-bit modulus.
-    { 1024, &EVP_md5, false, FIPSStatus::NOT_APPROVED, FIPSStatus::NOT_APPROVED },
-    { 1536, &EVP_sha256, false, FIPSStatus::NOT_APPROVED, FIPSStatus::NOT_APPROVED },
-    { 1536, &EVP_sha512, true, FIPSStatus::NOT_APPROVED, FIPSStatus::NOT_APPROVED },
-    { 2048, &EVP_md5, false, FIPSStatus::NOT_APPROVED, FIPSStatus::NOT_APPROVED },
-    { 3071, &EVP_md5, true, FIPSStatus::NOT_APPROVED, FIPSStatus::NOT_APPROVED },
-    { 3071, &EVP_sha256, false, FIPSStatus::NOT_APPROVED, FIPSStatus::NOT_APPROVED },
-    { 3071, &EVP_sha512, true, FIPSStatus::NOT_APPROVED, FIPSStatus::NOT_APPROVED },
-    { 4096, &EVP_md5, false, FIPSStatus::NOT_APPROVED, FIPSStatus::NOT_APPROVED },
+    { 1024, &EVP_md5, false, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
+    { 1536, &EVP_sha256, false, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
+    { 1536, &EVP_sha512, true, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
+    { 2048, &EVP_md5, false, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
+    { 3071, &EVP_md5, true, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
+    { 3071, &EVP_sha256, false, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
+    { 3071, &EVP_sha512, true, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
+    { 4096, &EVP_md5, false, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
 
     // RSA test cases that are approved.
-    { 1024, &EVP_sha1, false, FIPSStatus::NOT_APPROVED, FIPSStatus::APPROVED },
-    { 1024, &EVP_sha256, false, FIPSStatus::NOT_APPROVED, FIPSStatus::APPROVED },
-    { 1024, &EVP_sha512, false, FIPSStatus::NOT_APPROVED, FIPSStatus::APPROVED },
-    { 1024, &EVP_sha1, true, FIPSStatus::NOT_APPROVED, FIPSStatus::APPROVED },
-    { 1024, &EVP_sha256, true, FIPSStatus::NOT_APPROVED, FIPSStatus::APPROVED },
+    { 1024, &EVP_sha1, false, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { 1024, &EVP_sha256, false, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { 1024, &EVP_sha512, false, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { 1024, &EVP_sha1, true, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { 1024, &EVP_sha256, true, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
     // PSS with hashLen == saltLen is not possible for 1024-bit modulus and
     // SHA-512.
 
-    { 2048, &EVP_sha1, false, FIPSStatus::NOT_APPROVED, FIPSStatus::APPROVED },
-    { 2048, &EVP_sha224, false, FIPSStatus::APPROVED, FIPSStatus::APPROVED },
-    { 2048, &EVP_sha256, false, FIPSStatus::APPROVED, FIPSStatus::APPROVED },
-    { 2048, &EVP_sha384, false, FIPSStatus::APPROVED, FIPSStatus::APPROVED },
-    { 2048, &EVP_sha512, false, FIPSStatus::APPROVED, FIPSStatus::APPROVED },
-    { 2048, &EVP_sha1, true, FIPSStatus::NOT_APPROVED, FIPSStatus::APPROVED },
-    { 2048, &EVP_sha224, true, FIPSStatus::APPROVED, FIPSStatus::APPROVED },
-    { 2048, &EVP_sha256, true, FIPSStatus::APPROVED, FIPSStatus::APPROVED },
-    { 2048, &EVP_sha384, true, FIPSStatus::APPROVED, FIPSStatus::APPROVED },
-    { 2048, &EVP_sha512, true, FIPSStatus::APPROVED, FIPSStatus::APPROVED },
+    { 2048, &EVP_sha1, false, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { 2048, &EVP_sha224, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 2048, &EVP_sha256, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 2048, &EVP_sha384, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 2048, &EVP_sha512, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 2048, &EVP_sha1, true, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { 2048, &EVP_sha224, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 2048, &EVP_sha256, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 2048, &EVP_sha384, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 2048, &EVP_sha512, true, AWSLC_APPROVED, AWSLC_APPROVED },
 
-    { 3072, &EVP_sha1, false, FIPSStatus::NOT_APPROVED, FIPSStatus::APPROVED },
-    { 3072, &EVP_sha224, false, FIPSStatus::APPROVED, FIPSStatus::APPROVED },
-    { 3072, &EVP_sha256, false, FIPSStatus::APPROVED, FIPSStatus::APPROVED },
-    { 3072, &EVP_sha384, false, FIPSStatus::APPROVED, FIPSStatus::APPROVED },
-    { 3072, &EVP_sha512, false, FIPSStatus::APPROVED, FIPSStatus::APPROVED },
-    { 3072, &EVP_sha1, true, FIPSStatus::NOT_APPROVED, FIPSStatus::APPROVED },
-    { 3072, &EVP_sha224, true, FIPSStatus::APPROVED, FIPSStatus::APPROVED },
-    { 3072, &EVP_sha256, true, FIPSStatus::APPROVED, FIPSStatus::APPROVED },
-    { 3072, &EVP_sha384, true, FIPSStatus::APPROVED, FIPSStatus::APPROVED },
-    { 3072, &EVP_sha512, true, FIPSStatus::APPROVED, FIPSStatus::APPROVED },
+    { 3072, &EVP_sha1, false, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { 3072, &EVP_sha224, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 3072, &EVP_sha256, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 3072, &EVP_sha384, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 3072, &EVP_sha512, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 3072, &EVP_sha1, true, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { 3072, &EVP_sha224, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 3072, &EVP_sha256, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 3072, &EVP_sha384, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 3072, &EVP_sha512, true, AWSLC_APPROVED, AWSLC_APPROVED },
 
-    { 4096, &EVP_sha1, false, FIPSStatus::NOT_APPROVED, FIPSStatus::APPROVED },
-    { 4096, &EVP_sha224, false, FIPSStatus::APPROVED, FIPSStatus::APPROVED },
-    { 4096, &EVP_sha256, false, FIPSStatus::APPROVED, FIPSStatus::APPROVED },
-    { 4096, &EVP_sha384, false, FIPSStatus::APPROVED, FIPSStatus::APPROVED },
-    { 4096, &EVP_sha512, false, FIPSStatus::APPROVED, FIPSStatus::APPROVED },
-    { 4096, &EVP_sha1, true, FIPSStatus::NOT_APPROVED, FIPSStatus::APPROVED },
-    { 4096, &EVP_sha224, true, FIPSStatus::APPROVED, FIPSStatus::APPROVED },
-    { 4096, &EVP_sha256, true, FIPSStatus::APPROVED, FIPSStatus::APPROVED },
-    { 4096, &EVP_sha384, true, FIPSStatus::APPROVED, FIPSStatus::APPROVED },
-    { 4096, &EVP_sha512, true, FIPSStatus::APPROVED, FIPSStatus::APPROVED },
+    { 4096, &EVP_sha1, false, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { 4096, &EVP_sha224, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 4096, &EVP_sha256, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 4096, &EVP_sha384, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 4096, &EVP_sha512, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 4096, &EVP_sha1, true, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { 4096, &EVP_sha224, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 4096, &EVP_sha256, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 4096, &EVP_sha384, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 4096, &EVP_sha512, true, AWSLC_APPROVED, AWSLC_APPROVED },
 };
 
 class RSAServiceIndicatorTest : public TestWithNoErrors<RSATestVector> {};
@@ -1174,6 +1170,7 @@ static std::map<unsigned, bssl::UniquePtr<RSA>> &CachedRSAKeys() {
   static std::map<unsigned, bssl::UniquePtr<RSA>> keys;
   return keys;
 }
+
 
 static RSA *GetRSAKey(unsigned bits) {
   auto it = CachedRSAKeys().find(bits);
@@ -1193,8 +1190,23 @@ static RSA *GetRSAKey(unsigned bits) {
 
   RSA *const ret = key.get();
   CachedRSAKeys().emplace(static_cast<unsigned>(bits), std::move(key));
-
   return ret;
+}
+
+// When using |EVP_PKEY_assign| to assign |RSA| to |EVP_PKEY|, the pointer will
+// get assigned to |EVP_PKEY| and get freed along with it.
+static RSA *GetRSAPSSKey(unsigned bits) {
+  bssl::UniquePtr<BIGNUM> e(BN_new());
+  if (!e || !BN_set_word(e.get(), RSA_F4)) {
+    abort();
+  }
+
+  RSA *key = RSA_new();
+  if (!key || !RSA_generate_key_ex(key, bits, e.get(), nullptr)) {
+    abort();
+  }
+
+  return key;
 }
 
 TEST_P(RSAServiceIndicatorTest, RSASigGen) {
@@ -1203,64 +1215,71 @@ TEST_P(RSAServiceIndicatorTest, RSASigGen) {
 
   bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
   ASSERT_TRUE(pkey);
-
-  RSA *const rsa = GetRSAKey(test.key_size);
-  ASSERT_TRUE(EVP_PKEY_set1_RSA(pkey.get(), rsa));
+  RSA *rsa = nullptr;
+  if(test.use_pss) {
+    rsa = GetRSAPSSKey(test.key_size);
+    ASSERT_TRUE(EVP_PKEY_assign(pkey.get(), EVP_PKEY_RSA_PSS, rsa));
+  } else {
+    rsa = GetRSAKey(test.key_size);
+    ASSERT_TRUE(EVP_PKEY_set1_RSA(pkey.get(), rsa));
+ }
 
   // Test running the EVP_DigestSign interfaces one by one directly, and check
   // |EVP_DigestSignFinal| for approval at the end. |EVP_DigestSignInit|, and
   // |EVP_DigestSignUpdate| should not be approved because they do not indicate
   // an entire service has been completed.
-  FIPSStatus approved = FIPSStatus::NOT_APPROVED;
+  FIPSStatus approved = AWSLC_NOT_APPROVED;
   bssl::ScopedEVP_MD_CTX md_ctx;
   EVP_PKEY_CTX *pctx = nullptr;
   size_t sig_len;
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, EVP_DigestSignInit(md_ctx.get(), &pctx, test.func(), nullptr,
-                                   pkey.get())));
-  EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+        ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), &pctx, test.func(),
+                                       nullptr, pkey.get())));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
   if (test.use_pss) {
-    ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-        approved, EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_PKCS1_PSS_PADDING)));
-    EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
-    ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-        approved, EVP_PKEY_CTX_set_rsa_pss_saltlen(pctx, -1)));
-    EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
+    CALL_SERVICE_AND_CHECK_APPROVED(approved,
+        ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_PKCS1_PSS_PADDING)));
+    EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+    CALL_SERVICE_AND_CHECK_APPROVED(
+        approved, ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_pss_saltlen(pctx, -1)));
+    EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
   }
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved,
-      EVP_DigestSignUpdate(md_ctx.get(), kPlaintext, sizeof(kPlaintext))));
-  EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved, ASSERT_TRUE(EVP_DigestSignUpdate(md_ctx.get(), kPlaintext,
+                                                 sizeof(kPlaintext))));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
   // Determine the size of the signature. The first call of
   // |EVP_DigestSignFinal| should not return an approval check because no crypto
   // is being done when |nullptr| is inputted in the |*out_sig| field.
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, EVP_DigestSignFinal(md_ctx.get(), nullptr, &sig_len)));
-  EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved, ASSERT_TRUE(EVP_DigestSignFinal(md_ctx.get(), nullptr,
+                                                &sig_len)));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
   std::vector<uint8_t> signature(sig_len);
   // The second call performs the actual operation.
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, EVP_DigestSignFinal(md_ctx.get(), signature.data(), &sig_len)));
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved, ASSERT_TRUE(EVP_DigestSignFinal(md_ctx.get(), signature.data(),
+                                                &sig_len)));
   EXPECT_EQ(approved, test.sig_gen_expect_approved);
 
   // Test using the one-shot |EVP_DigestSign| function for approval.
   md_ctx.Reset();
   std::vector<uint8_t> oneshot_output(sig_len);
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, EVP_DigestSignInit(md_ctx.get(), &pctx, test.func(), nullptr,
-                                   pkey.get())));
-  EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved, ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), &pctx, test.func(),
+                                               nullptr, pkey.get())));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
   if (test.use_pss) {
-    ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-        approved, EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_PKCS1_PSS_PADDING)));
-    EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
-    ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-        approved, EVP_PKEY_CTX_set_rsa_pss_saltlen(pctx, -1)));
-    EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
+   CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_PKCS1_PSS_PADDING)));
+    EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+    CALL_SERVICE_AND_CHECK_APPROVED(
+        approved, ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_pss_saltlen(pctx, -1)));
+    EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
   }
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, EVP_DigestSign(md_ctx.get(), oneshot_output.data(), &sig_len,
-                               kPlaintext, sizeof(kPlaintext))));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(EVP_DigestSign(md_ctx.get(), oneshot_output.data(), &sig_len,
+                                 kPlaintext, sizeof(kPlaintext))));
   EXPECT_EQ(approved, test.sig_gen_expect_approved);
 
   if (test.use_pss) {
@@ -1271,10 +1290,10 @@ TEST_P(RSAServiceIndicatorTest, RSASigGen) {
                                    pkey.get()));
     ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_PKCS1_PSS_PADDING));
     ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_pss_saltlen(pctx, 10));
-    ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-        approved, EVP_DigestSign(md_ctx.get(), oneshot_output.data(), &sig_len,
-                                 kPlaintext, sizeof(kPlaintext))));
-    EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
+    CALL_SERVICE_AND_CHECK_APPROVED(approved,
+        ASSERT_TRUE(EVP_DigestSign(md_ctx.get(), oneshot_output.data(),
+                                   &sig_len, kPlaintext, sizeof(kPlaintext))));
+    EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
   }
 }
 
@@ -1282,10 +1301,16 @@ TEST_P(RSAServiceIndicatorTest, RSASigVer) {
   const RSATestVector &test = GetParam();
 
   bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
-  RSA *const rsa = GetRSAKey(test.key_size);
-
   ASSERT_TRUE(pkey);
-  ASSERT_TRUE(EVP_PKEY_set1_RSA(pkey.get(), rsa));
+
+  RSA *rsa = nullptr;
+  if(test.use_pss) {
+    rsa = GetRSAPSSKey(test.key_size);
+    ASSERT_TRUE(EVP_PKEY_assign(pkey.get(), EVP_PKEY_RSA_PSS, rsa));
+  } else {
+    rsa = GetRSAKey(test.key_size);
+    ASSERT_TRUE(EVP_PKEY_set1_RSA(pkey.get(), rsa));
+ }
 
   std::vector<uint8_t> signature;
   size_t sig_len;
@@ -1309,43 +1334,43 @@ TEST_P(RSAServiceIndicatorTest, RSASigVer) {
   // |EVP_DigestVerifyFinal| for approval at the end. |EVP_DigestVerifyInit|,
   // |EVP_DigestVerifyUpdate| should not be approved because they do not
   // indicate an entire service has been done.
-  FIPSStatus approved = FIPSStatus::NOT_APPROVED;
+  FIPSStatus approved = AWSLC_NOT_APPROVED;
   md_ctx.Reset();
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, EVP_DigestVerifyInit(md_ctx.get(), &pctx, test.func(), nullptr,
-                                     pkey.get())));
-  EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx.get(), &pctx, test.func(),
+                                       nullptr, pkey.get())));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
   if (test.use_pss) {
-    ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-        approved, EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_PKCS1_PSS_PADDING)));
-    EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
+    CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_PKCS1_PSS_PADDING)));
+    EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
     ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_pss_saltlen(pctx, -1));
   }
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved,
-      EVP_DigestVerifyUpdate(md_ctx.get(), kPlaintext, sizeof(kPlaintext))));
-  EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved,
-      EVP_DigestVerifyFinal(md_ctx.get(), signature.data(), signature.size())));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(EVP_DigestVerifyUpdate(md_ctx.get(), kPlaintext,
+                                         sizeof(kPlaintext))));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(EVP_DigestVerifyFinal(md_ctx.get(), signature.data(),
+                                        signature.size())));
   EXPECT_EQ(approved, test.sig_ver_expect_approved);
 
   // Test using the one-shot |EVP_DigestVerify| function for approval.
   md_ctx.Reset();
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, EVP_DigestVerifyInit(md_ctx.get(), &pctx, test.func(), nullptr,
-                                     pkey.get())));
-  EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx.get(), &pctx, test.func(),
+                                       nullptr, pkey.get())));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
   if (test.use_pss) {
-    ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-        approved, EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_PKCS1_PSS_PADDING)));
-    EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
+    CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_PKCS1_PSS_PADDING)));
+    EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
     ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_pss_saltlen(pctx, -1));
   }
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved,
-      EVP_DigestVerify(md_ctx.get(), signature.data(), signature.size(),
-                       kPlaintext, sizeof(kPlaintext))));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(EVP_DigestVerify(md_ctx.get(), signature.data(),
+                                   signature.size(), kPlaintext,
+                                   sizeof(kPlaintext))));
   EXPECT_EQ(approved, test.sig_ver_expect_approved);
 }
 
@@ -1353,50 +1378,57 @@ TEST_P(RSAServiceIndicatorTest, RSASigVer) {
 // manually constructing using the context setting functions.
 // AWS-LC uses this to test support of the function |EVP_MD_CTX_set_pkey_ctx|.
 TEST_P(RSAServiceIndicatorTest, ManualRSASignVerify) {
-  const RSATestVector &rsaTestVector = GetParam();
+  const RSATestVector &test = GetParam();
 
-  FIPSStatus approved = FIPSStatus::NOT_APPROVED;
+  FIPSStatus approved = AWSLC_NOT_APPROVED;
 
   bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
-  RSA *const rsa = GetRSAKey(rsaTestVector.key_size);
-
   ASSERT_TRUE(pkey);
-  ASSERT_TRUE(EVP_PKEY_set1_RSA(pkey.get(), rsa));
+
+  RSA *rsa = nullptr;
+  if(test.use_pss) {
+    rsa = GetRSAPSSKey(test.key_size);
+    ASSERT_TRUE(EVP_PKEY_assign(pkey.get(), EVP_PKEY_RSA_PSS, rsa));
+  } else {
+    rsa = GetRSAKey(test.key_size);
+    ASSERT_TRUE(EVP_PKEY_set1_RSA(pkey.get(), rsa));
+ }
 
   bssl::ScopedEVP_MD_CTX ctx;
-  ASSERT_TRUE(EVP_DigestInit(ctx.get(), rsaTestVector.func()));
+  ASSERT_TRUE(EVP_DigestInit(ctx.get(), test.func()));
   ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), kPlaintext, sizeof(kPlaintext)));
 
   // Manual construction for signing.
   bssl::UniquePtr<EVP_PKEY_CTX> pctx(EVP_PKEY_CTX_new(pkey.get(), nullptr));
   ASSERT_TRUE(EVP_PKEY_sign_init(pctx.get()));
-  ASSERT_TRUE(EVP_PKEY_CTX_set_signature_md(pctx.get(), rsaTestVector.func()));
-  if (rsaTestVector.use_pss) {
-    ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_padding(pctx.get(), RSA_PKCS1_PSS_PADDING));
+  ASSERT_TRUE(EVP_PKEY_CTX_set_signature_md(pctx.get(), test.func()));
+  if (test.use_pss) {
+    ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_padding(pctx.get(),
+                                             RSA_PKCS1_PSS_PADDING));
     ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_pss_saltlen(pctx.get(), -1));
   }
   EVP_MD_CTX_set_pkey_ctx(ctx.get(), pctx.get());
   // Determine the size of the signature.
   size_t sig_len = 0;
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(approved,
-                EVP_DigestSignFinal(ctx.get(), nullptr, &sig_len)));
-  ASSERT_EQ(approved, FIPSStatus::NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+    ASSERT_TRUE(EVP_DigestSignFinal(ctx.get(), nullptr, &sig_len)));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
 
   std::vector<uint8_t> sig;
   sig.resize(sig_len);
   CALL_SERVICE_AND_CHECK_APPROVED(approved,
-            EVP_DigestSignFinal(ctx.get(), sig.data(), &sig_len));
-  ASSERT_EQ(approved, rsaTestVector.sig_gen_expect_approved);
+    EVP_DigestSignFinal(ctx.get(), sig.data(), &sig_len));
+  ASSERT_EQ(approved, test.sig_gen_expect_approved);
   sig.resize(sig_len);
 
   // Manual construction for verification.
   ASSERT_TRUE(EVP_PKEY_verify_init(pctx.get()));
-  ASSERT_TRUE(EVP_PKEY_CTX_set_signature_md(pctx.get(), rsaTestVector.func()));
+  ASSERT_TRUE(EVP_PKEY_CTX_set_signature_md(pctx.get(), test.func()));
   EVP_MD_CTX_set_pkey_ctx(ctx.get(), pctx.get());
 
   CALL_SERVICE_AND_CHECK_APPROVED(approved,
             EVP_DigestVerifyFinal(ctx.get(), sig.data(), sig_len));
-  ASSERT_EQ(approved, rsaTestVector.sig_ver_expect_approved);
+  ASSERT_EQ(approved, test.sig_ver_expect_approved);
 }
 
 struct ECDSATestVector {
@@ -1416,60 +1448,60 @@ static const struct ECDSATestVector kECDSATestVectors[] = {
     // Only the following NIDs for |EC_GROUP| are creatable with
     // |EC_GROUP_new_by_curve_name|, and |NID_secp256k1| will only work if
     // |kCurveSecp256k1Supported| is true.
-    {NID_secp224r1, &EVP_sha1, FIPSStatus::APPROVED, FIPSStatus::NOT_APPROVED,
-     FIPSStatus::APPROVED},
-    {NID_secp224r1, &EVP_sha224, FIPSStatus::APPROVED, FIPSStatus::APPROVED,
-     FIPSStatus::APPROVED},
-    {NID_secp224r1, &EVP_sha256, FIPSStatus::APPROVED, FIPSStatus::APPROVED,
-     FIPSStatus::APPROVED},
-    {NID_secp224r1, &EVP_sha384, FIPSStatus::APPROVED, FIPSStatus::APPROVED,
-     FIPSStatus::APPROVED},
-    {NID_secp224r1, &EVP_sha512, FIPSStatus::APPROVED, FIPSStatus::APPROVED,
-     FIPSStatus::APPROVED},
+    {NID_secp224r1, &EVP_sha1, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
+     AWSLC_APPROVED},
+    {NID_secp224r1, &EVP_sha224, AWSLC_APPROVED, AWSLC_APPROVED,
+     AWSLC_APPROVED},
+    {NID_secp224r1, &EVP_sha256, AWSLC_APPROVED, AWSLC_APPROVED,
+     AWSLC_APPROVED},
+    {NID_secp224r1, &EVP_sha384, AWSLC_APPROVED, AWSLC_APPROVED,
+     AWSLC_APPROVED},
+    {NID_secp224r1, &EVP_sha512, AWSLC_APPROVED, AWSLC_APPROVED,
+     AWSLC_APPROVED},
 
-    {NID_X9_62_prime256v1, &EVP_sha1, FIPSStatus::APPROVED,
-     FIPSStatus::NOT_APPROVED, FIPSStatus::APPROVED},
-    {NID_X9_62_prime256v1, &EVP_sha224, FIPSStatus::APPROVED,
-     FIPSStatus::APPROVED, FIPSStatus::APPROVED},
-    {NID_X9_62_prime256v1, &EVP_sha256, FIPSStatus::APPROVED,
-     FIPSStatus::APPROVED, FIPSStatus::APPROVED},
-    {NID_X9_62_prime256v1, &EVP_sha384, FIPSStatus::APPROVED,
-     FIPSStatus::APPROVED, FIPSStatus::APPROVED},
-    {NID_X9_62_prime256v1, &EVP_sha512, FIPSStatus::APPROVED,
-     FIPSStatus::APPROVED, FIPSStatus::APPROVED},
+    {NID_X9_62_prime256v1, &EVP_sha1, AWSLC_APPROVED,
+     AWSLC_NOT_APPROVED, AWSLC_APPROVED},
+    {NID_X9_62_prime256v1, &EVP_sha224, AWSLC_APPROVED,
+     AWSLC_APPROVED, AWSLC_APPROVED},
+    {NID_X9_62_prime256v1, &EVP_sha256, AWSLC_APPROVED,
+     AWSLC_APPROVED, AWSLC_APPROVED},
+    {NID_X9_62_prime256v1, &EVP_sha384, AWSLC_APPROVED,
+     AWSLC_APPROVED, AWSLC_APPROVED},
+    {NID_X9_62_prime256v1, &EVP_sha512, AWSLC_APPROVED,
+     AWSLC_APPROVED, AWSLC_APPROVED},
 
-    {NID_secp384r1, &EVP_sha1, FIPSStatus::APPROVED, FIPSStatus::NOT_APPROVED,
-     FIPSStatus::APPROVED},
-    {NID_secp384r1, &EVP_sha224, FIPSStatus::APPROVED, FIPSStatus::APPROVED,
-     FIPSStatus::APPROVED},
-    {NID_secp384r1, &EVP_sha256, FIPSStatus::APPROVED, FIPSStatus::APPROVED,
-     FIPSStatus::APPROVED},
-    {NID_secp384r1, &EVP_sha384, FIPSStatus::APPROVED, FIPSStatus::APPROVED,
-     FIPSStatus::APPROVED},
-    {NID_secp384r1, &EVP_sha512, FIPSStatus::APPROVED, FIPSStatus::APPROVED,
-     FIPSStatus::APPROVED},
+    {NID_secp384r1, &EVP_sha1, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
+     AWSLC_APPROVED},
+    {NID_secp384r1, &EVP_sha224, AWSLC_APPROVED, AWSLC_APPROVED,
+     AWSLC_APPROVED},
+    {NID_secp384r1, &EVP_sha256, AWSLC_APPROVED, AWSLC_APPROVED,
+     AWSLC_APPROVED},
+    {NID_secp384r1, &EVP_sha384, AWSLC_APPROVED, AWSLC_APPROVED,
+     AWSLC_APPROVED},
+    {NID_secp384r1, &EVP_sha512, AWSLC_APPROVED, AWSLC_APPROVED,
+     AWSLC_APPROVED},
 
-    {NID_secp521r1, &EVP_sha1, FIPSStatus::APPROVED, FIPSStatus::NOT_APPROVED,
-     FIPSStatus::APPROVED},
-    {NID_secp521r1, &EVP_sha224, FIPSStatus::APPROVED, FIPSStatus::APPROVED,
-     FIPSStatus::APPROVED},
-    {NID_secp521r1, &EVP_sha256, FIPSStatus::APPROVED, FIPSStatus::APPROVED,
-     FIPSStatus::APPROVED},
-    {NID_secp521r1, &EVP_sha384, FIPSStatus::APPROVED, FIPSStatus::APPROVED,
-     FIPSStatus::APPROVED},
-    {NID_secp521r1, &EVP_sha512, FIPSStatus::APPROVED, FIPSStatus::APPROVED,
-     FIPSStatus::APPROVED},
+    {NID_secp521r1, &EVP_sha1, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
+     AWSLC_APPROVED},
+    {NID_secp521r1, &EVP_sha224, AWSLC_APPROVED, AWSLC_APPROVED,
+     AWSLC_APPROVED},
+    {NID_secp521r1, &EVP_sha256, AWSLC_APPROVED, AWSLC_APPROVED,
+     AWSLC_APPROVED},
+    {NID_secp521r1, &EVP_sha384, AWSLC_APPROVED, AWSLC_APPROVED,
+     AWSLC_APPROVED},
+    {NID_secp521r1, &EVP_sha512, AWSLC_APPROVED, AWSLC_APPROVED,
+     AWSLC_APPROVED},
 
-    {NID_secp256k1, &EVP_sha1, FIPSStatus::NOT_APPROVED,
-     FIPSStatus::NOT_APPROVED, FIPSStatus::NOT_APPROVED},
-    {NID_secp256k1, &EVP_sha224, FIPSStatus::NOT_APPROVED,
-     FIPSStatus::NOT_APPROVED, FIPSStatus::NOT_APPROVED},
-    {NID_secp256k1, &EVP_sha256, FIPSStatus::NOT_APPROVED,
-     FIPSStatus::NOT_APPROVED, FIPSStatus::NOT_APPROVED},
-    {NID_secp256k1, &EVP_sha384, FIPSStatus::NOT_APPROVED,
-     FIPSStatus::NOT_APPROVED, FIPSStatus::NOT_APPROVED},
-    {NID_secp256k1, &EVP_sha512, FIPSStatus::NOT_APPROVED,
-     FIPSStatus::NOT_APPROVED, FIPSStatus::NOT_APPROVED},
+    {NID_secp256k1, &EVP_sha1, AWSLC_NOT_APPROVED,
+     AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED},
+    {NID_secp256k1, &EVP_sha224, AWSLC_NOT_APPROVED,
+     AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED},
+    {NID_secp256k1, &EVP_sha256, AWSLC_NOT_APPROVED,
+     AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED},
+    {NID_secp256k1, &EVP_sha384, AWSLC_NOT_APPROVED,
+     AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED},
+    {NID_secp256k1, &EVP_sha512, AWSLC_NOT_APPROVED,
+     AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED},
 };
 
 class ECDSAServiceIndicatorTest : public TestWithNoErrors<ECDSATestVector> {};
@@ -1483,16 +1515,16 @@ TEST_P(ECDSAServiceIndicatorTest, ECDSAKeyCheck) {
     GTEST_SKIP();
   }
 
-  FIPSStatus approved = FIPSStatus::NOT_APPROVED;
+  FIPSStatus approved = AWSLC_NOT_APPROVED;
 
   // Test service indicator approval for |EC_KEY_generate_key_fips| and
   // |EC_KEY_check_fips|.
   bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(test.nid));
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, EC_KEY_generate_key_fips(key.get())));
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved, ASSERT_TRUE(EC_KEY_generate_key_fips(key.get())));
   EXPECT_EQ(approved, test.key_check_expect_approved);
-  ASSERT_TRUE(
-      CALL_SERVICE_AND_CHECK_APPROVED(approved, EC_KEY_check_fips(key.get())));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+                                  ASSERT_TRUE(EC_KEY_check_fips(key.get())));
   EXPECT_EQ(approved, test.key_check_expect_approved);
 
   // See if |EC_KEY_check_fips| still returns approval with only the public
@@ -1500,8 +1532,8 @@ TEST_P(ECDSAServiceIndicatorTest, ECDSAKeyCheck) {
   bssl::UniquePtr<EC_KEY> key_only_public(EC_KEY_new_by_curve_name(test.nid));
   ASSERT_TRUE(EC_KEY_set_public_key(key_only_public.get(),
                                     EC_KEY_get0_public_key(key.get())));
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, EC_KEY_check_fips(key_only_public.get())));
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved, ASSERT_TRUE(EC_KEY_check_fips(key_only_public.get())));
   EXPECT_EQ(approved, test.key_check_expect_approved);
 
   if (kEVPKeyGenShouldCallFIPSFunctions) {
@@ -1515,8 +1547,8 @@ TEST_P(ECDSAServiceIndicatorTest, ECDSAKeyCheck) {
     ASSERT_TRUE(ctx);
     ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
     ASSERT_TRUE(EVP_PKEY_CTX_set_ec_paramgen_curve_nid(ctx.get(), test.nid));
-    ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-        approved, EVP_PKEY_keygen(ctx.get(), &raw)));
+    CALL_SERVICE_AND_CHECK_APPROVED(approved,
+        ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw)));
     EXPECT_EQ(approved, test.key_check_expect_approved);
 
     EVP_PKEY_free(raw);
@@ -1529,7 +1561,7 @@ TEST_P(ECDSAServiceIndicatorTest, ECDSASigGen) {
     GTEST_SKIP();
   }
 
-  FIPSStatus approved = FIPSStatus::NOT_APPROVED;
+  FIPSStatus approved = AWSLC_NOT_APPROVED;
 
   bssl::UniquePtr<EC_GROUP> group(EC_GROUP_new_by_curve_name(test.nid));
   bssl::UniquePtr<EC_KEY> eckey(EC_KEY_new());
@@ -1546,39 +1578,41 @@ TEST_P(ECDSAServiceIndicatorTest, ECDSASigGen) {
   // |EVP_DigestSignFinal| for approval at the end. |EVP_DigestSignInit|,
   // |EVP_DigestSignUpdate| should not be approved because they do not indicate
   // an entire service has been done.
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, EVP_DigestSignInit(md_ctx.get(), nullptr, test.func(), nullptr,
-                                   pkey.get())));
-  EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved,
-      EVP_DigestSignUpdate(md_ctx.get(), kPlaintext, sizeof(kPlaintext))));
-  EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved, ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), nullptr,
+                                               test.func(), nullptr,
+                                               pkey.get())));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(EVP_DigestSignUpdate(md_ctx.get(), kPlaintext,
+                                       sizeof(kPlaintext))));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
   // Determine the size of the signature. The first call of
   // |EVP_DigestSignFinal| should not return an approval check because no crypto
   // is being done when |nullptr| is given as the |out_sig| field.
   size_t max_sig_len;
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, EVP_DigestSignFinal(md_ctx.get(), nullptr, &max_sig_len)));
-  EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(EVP_DigestSignFinal(md_ctx.get(), nullptr, &max_sig_len)));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
   std::vector<uint8_t> signature(max_sig_len);
   // The second call performs the actual operation.
   size_t sig_len = max_sig_len;
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, EVP_DigestSignFinal(md_ctx.get(), signature.data(), &sig_len)));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(EVP_DigestSignFinal(md_ctx.get(), signature.data(),
+                                      &sig_len)));
   ASSERT_LE(sig_len, signature.size());
   EXPECT_EQ(approved, test.sig_gen_expect_approved);
 
   // Test using the one-shot |EVP_DigestSign| function for approval.
   md_ctx.Reset();
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, EVP_DigestSignInit(md_ctx.get(), nullptr, test.func(), nullptr,
-                                   pkey.get())));
-  EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), nullptr, test.func(),
+                                     nullptr, pkey.get())));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
   sig_len = max_sig_len;
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, EVP_DigestSign(md_ctx.get(), signature.data(), &sig_len,
-                               kPlaintext, sizeof(kPlaintext))));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(EVP_DigestSign(md_ctx.get(), signature.data(), &sig_len,
+                                 kPlaintext, sizeof(kPlaintext))));
   ASSERT_LE(sig_len, signature.size());
   EXPECT_EQ(approved, test.sig_gen_expect_approved);
 }
@@ -1589,7 +1623,7 @@ TEST_P(ECDSAServiceIndicatorTest, ECDSASigVer) {
     GTEST_SKIP();
   }
 
-  FIPSStatus approved = FIPSStatus::NOT_APPROVED;
+  FIPSStatus approved = AWSLC_NOT_APPROVED;
 
   bssl::UniquePtr<EC_GROUP> group(EC_GROUP_new_by_curve_name(test.nid));
   bssl::UniquePtr<EC_KEY> eckey(EC_KEY_new());
@@ -1618,29 +1652,29 @@ TEST_P(ECDSAServiceIndicatorTest, ECDSASigVer) {
   // |EVP_DigestVerifyUpdate| should not be approved because they do not
   // indicate an entire service has been done.
   md_ctx.Reset();
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, EVP_DigestVerifyInit(md_ctx.get(), nullptr, test.func(),
-                                     nullptr, pkey.get())));
-  EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved,
-      EVP_DigestVerifyUpdate(md_ctx.get(), kPlaintext, sizeof(kPlaintext))));
-  EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved,
-      EVP_DigestVerifyFinal(md_ctx.get(), signature.data(), signature.size())));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx.get(), nullptr, test.func(),
+                                       nullptr, pkey.get())));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(EVP_DigestVerifyUpdate(md_ctx.get(), kPlaintext,
+                                         sizeof(kPlaintext))));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(EVP_DigestVerifyFinal(md_ctx.get(), signature.data(),
+                                        signature.size())));
   EXPECT_EQ(approved, test.sig_ver_expect_approved);
 
   // Test using the one-shot |EVP_DigestVerify| function for approval.
   md_ctx.Reset();
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, EVP_DigestVerifyInit(md_ctx.get(), nullptr, test.func(),
-                                     nullptr, pkey.get())));
-  EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved,
-      EVP_DigestVerify(md_ctx.get(), signature.data(), signature.size(),
-                       kPlaintext, sizeof(kPlaintext))));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(EVP_DigestVerifyInit(md_ctx.get(), nullptr, test.func(),
+                                       nullptr, pkey.get())));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(EVP_DigestVerify(md_ctx.get(), signature.data(),
+                                   signature.size(), kPlaintext,
+                                   sizeof(kPlaintext))));
   EXPECT_EQ(approved, test.sig_ver_expect_approved);
 }
 
@@ -1649,7 +1683,7 @@ TEST_P(ECDSAServiceIndicatorTest, ECDSASigVer) {
 TEST_P(ECDSAServiceIndicatorTest, ManualECDSASignVerify) {
   const ECDSATestVector &test = GetParam();
 
-  FIPSStatus approved = FIPSStatus::NOT_APPROVED;
+  FIPSStatus approved = AWSLC_NOT_APPROVED;
 
   bssl::ScopedEVP_MD_CTX ctx;
   ASSERT_TRUE(EVP_DigestInit(ctx.get(), test.func()));
@@ -1673,14 +1707,14 @@ TEST_P(ECDSAServiceIndicatorTest, ManualECDSASignVerify) {
   EVP_MD_CTX_set_pkey_ctx(ctx.get(), pctx.get());
   // Determine the size of the signature.
   size_t sig_len = 0;
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, EVP_DigestSignFinal(ctx.get(), nullptr, &sig_len)));
-  EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(EVP_DigestSignFinal(ctx.get(), nullptr, &sig_len)));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
 
   std::vector<uint8_t> sig;
   sig.resize(sig_len);
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, EVP_DigestSignFinal(ctx.get(), sig.data(), &sig_len)));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(EVP_DigestSignFinal(ctx.get(), sig.data(), &sig_len)));
   EXPECT_EQ(approved, test.sig_gen_expect_approved);
   sig.resize(sig_len);
 
@@ -1689,8 +1723,8 @@ TEST_P(ECDSAServiceIndicatorTest, ManualECDSASignVerify) {
   ASSERT_TRUE(EVP_PKEY_CTX_set_signature_md(pctx.get(), test.func()));
   EVP_MD_CTX_set_pkey_ctx(ctx.get(), pctx.get());
 
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, EVP_DigestVerifyFinal(ctx.get(), sig.data(), sig_len)));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(EVP_DigestVerifyFinal(ctx.get(), sig.data(), sig_len)));
   EXPECT_EQ(approved, test.sig_ver_expect_approved);
 }
 
@@ -1707,30 +1741,30 @@ static const struct ECDHTestVector kECDHTestVectors[] = {
     // |EC_GROUP_new_by_curve_name|.
     // |ECDH_compute_key_fips| fails directly when an invalid hash length is
     // inputted.
-    { NID_secp224r1, SHA224_DIGEST_LENGTH, FIPSStatus::APPROVED },
-    { NID_secp224r1, SHA256_DIGEST_LENGTH, FIPSStatus::APPROVED },
-    { NID_secp224r1, SHA384_DIGEST_LENGTH, FIPSStatus::APPROVED },
-    { NID_secp224r1, SHA512_DIGEST_LENGTH, FIPSStatus::APPROVED },
+    { NID_secp224r1, SHA224_DIGEST_LENGTH, AWSLC_APPROVED },
+    { NID_secp224r1, SHA256_DIGEST_LENGTH, AWSLC_APPROVED },
+    { NID_secp224r1, SHA384_DIGEST_LENGTH, AWSLC_APPROVED },
+    { NID_secp224r1, SHA512_DIGEST_LENGTH, AWSLC_APPROVED },
 
-    { NID_X9_62_prime256v1, SHA224_DIGEST_LENGTH, FIPSStatus::APPROVED },
-    { NID_X9_62_prime256v1, SHA256_DIGEST_LENGTH, FIPSStatus::APPROVED },
-    { NID_X9_62_prime256v1, SHA384_DIGEST_LENGTH, FIPSStatus::APPROVED },
-    { NID_X9_62_prime256v1, SHA512_DIGEST_LENGTH, FIPSStatus::APPROVED },
+    { NID_X9_62_prime256v1, SHA224_DIGEST_LENGTH, AWSLC_APPROVED },
+    { NID_X9_62_prime256v1, SHA256_DIGEST_LENGTH, AWSLC_APPROVED },
+    { NID_X9_62_prime256v1, SHA384_DIGEST_LENGTH, AWSLC_APPROVED },
+    { NID_X9_62_prime256v1, SHA512_DIGEST_LENGTH, AWSLC_APPROVED },
 
-    { NID_secp384r1, SHA224_DIGEST_LENGTH, FIPSStatus::APPROVED },
-    { NID_secp384r1, SHA256_DIGEST_LENGTH, FIPSStatus::APPROVED },
-    { NID_secp384r1, SHA384_DIGEST_LENGTH, FIPSStatus::APPROVED },
-    { NID_secp384r1, SHA512_DIGEST_LENGTH, FIPSStatus::APPROVED },
+    { NID_secp384r1, SHA224_DIGEST_LENGTH, AWSLC_APPROVED },
+    { NID_secp384r1, SHA256_DIGEST_LENGTH, AWSLC_APPROVED },
+    { NID_secp384r1, SHA384_DIGEST_LENGTH, AWSLC_APPROVED },
+    { NID_secp384r1, SHA512_DIGEST_LENGTH, AWSLC_APPROVED },
 
-    { NID_secp521r1, SHA224_DIGEST_LENGTH, FIPSStatus::APPROVED },
-    { NID_secp521r1, SHA256_DIGEST_LENGTH, FIPSStatus::APPROVED },
-    { NID_secp521r1, SHA384_DIGEST_LENGTH, FIPSStatus::APPROVED },
-    { NID_secp521r1, SHA512_DIGEST_LENGTH, FIPSStatus::APPROVED },
+    { NID_secp521r1, SHA224_DIGEST_LENGTH, AWSLC_APPROVED },
+    { NID_secp521r1, SHA256_DIGEST_LENGTH, AWSLC_APPROVED },
+    { NID_secp521r1, SHA384_DIGEST_LENGTH, AWSLC_APPROVED },
+    { NID_secp521r1, SHA512_DIGEST_LENGTH, AWSLC_APPROVED },
 
-    { NID_secp256k1, SHA224_DIGEST_LENGTH, FIPSStatus::NOT_APPROVED },
-    { NID_secp256k1, SHA256_DIGEST_LENGTH, FIPSStatus::NOT_APPROVED },
-    { NID_secp256k1, SHA384_DIGEST_LENGTH, FIPSStatus::NOT_APPROVED },
-    { NID_secp256k1, SHA512_DIGEST_LENGTH, FIPSStatus::NOT_APPROVED },
+    { NID_secp256k1, SHA224_DIGEST_LENGTH, AWSLC_NOT_APPROVED },
+    { NID_secp256k1, SHA256_DIGEST_LENGTH, AWSLC_NOT_APPROVED },
+    { NID_secp256k1, SHA384_DIGEST_LENGTH, AWSLC_NOT_APPROVED },
+    { NID_secp256k1, SHA512_DIGEST_LENGTH, AWSLC_NOT_APPROVED },
 };
 
 class ECDH_ServiceIndicatorTest : public TestWithNoErrors<ECDHTestVector> {};
@@ -1744,7 +1778,7 @@ TEST_P(ECDH_ServiceIndicatorTest, ECDH) {
     GTEST_SKIP();
   }
 
-  FIPSStatus approved = FIPSStatus::NOT_APPROVED;
+  FIPSStatus approved = AWSLC_NOT_APPROVED;
 
   bssl::UniquePtr<EC_GROUP> group(EC_GROUP_new_by_curve_name(test.nid));
   bssl::UniquePtr<EC_KEY> our_key(EC_KEY_new());
@@ -1765,10 +1799,10 @@ TEST_P(ECDH_ServiceIndicatorTest, ECDH) {
   // Test that |ECDH_compute_key_fips| has service indicator approval as
   // expected.
   std::vector<uint8_t> digest(test.digest_length);
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, ECDH_compute_key_fips(digest.data(), digest.size(),
-                                      EC_KEY_get0_public_key(peer_key.get()),
-                                      our_key.get())));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(ECDH_compute_key_fips(digest.data(), digest.size(),
+                                        EC_KEY_get0_public_key(peer_key.get()),
+                                        our_key.get())));
   EXPECT_EQ(approved, test.expect_approved);
 
   // Test running the EVP_PKEY_derive interfaces one by one directly, and check
@@ -1782,26 +1816,26 @@ TEST_P(ECDH_ServiceIndicatorTest, ECDH) {
   bssl::UniquePtr<EVP_PKEY> peer_pkey(EVP_PKEY_new());
   ASSERT_TRUE(EVP_PKEY_set1_EC_KEY(peer_pkey.get(), peer_key.get()));
 
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, EVP_PKEY_derive_init(our_ctx.get())));
-  EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, EVP_PKEY_derive_set_peer(our_ctx.get(), peer_pkey.get())));
-  EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(EVP_PKEY_derive_init(our_ctx.get())));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(EVP_PKEY_derive_set_peer(our_ctx.get(), peer_pkey.get())));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
   // Determine the size of the output key. The first call of |EVP_PKEY_derive|
   // should not return an approval check because no crypto is being done when
   // |nullptr| is inputted in the |*key| field
   size_t out_len = 0;
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, EVP_PKEY_derive(our_ctx.get(), nullptr, &out_len)));
-  EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved, ASSERT_TRUE(EVP_PKEY_derive(our_ctx.get(), nullptr, &out_len)));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
   std::vector<uint8_t> derive_output(out_len);
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved,
-      EVP_PKEY_derive(our_ctx.get(), derive_output.data(), &out_len)));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(EVP_PKEY_derive(our_ctx.get(), derive_output.data(),
+                                  &out_len)));
   EXPECT_EQ(approved, kEVPDeriveSetsServiceIndicator
                           ? test.expect_approved
-                          : FIPSStatus::NOT_APPROVED);
+                          : AWSLC_NOT_APPROVED);
 }
 
 static const struct KDFTestVector {
@@ -1810,13 +1844,13 @@ static const struct KDFTestVector {
   const uint8_t *expected_output;
   const FIPSStatus expect_approved;
 } kKDFTestVectors[] = {
-    {EVP_md5, kTLSOutput_md, FIPSStatus::APPROVED},
-    {EVP_sha1, kTLSOutput_sha1, FIPSStatus::APPROVED},
-    {EVP_md5_sha1, kTLSOutput_mdsha1, FIPSStatus::APPROVED},
-    {EVP_sha224, kTLSOutput_sha224, FIPSStatus::NOT_APPROVED},
-    {EVP_sha256, kTLSOutput_sha256, FIPSStatus::APPROVED},
-    {EVP_sha384, kTLSOutput_sha384, FIPSStatus::APPROVED},
-    {EVP_sha512, kTLSOutput_sha512, FIPSStatus::APPROVED},
+    {EVP_md5, kTLSOutput_md, AWSLC_APPROVED},
+    {EVP_sha1, kTLSOutput_sha1, AWSLC_APPROVED},
+    {EVP_md5_sha1, kTLSOutput_mdsha1, AWSLC_APPROVED},
+    {EVP_sha224, kTLSOutput_sha224, AWSLC_NOT_APPROVED},
+    {EVP_sha256, kTLSOutput_sha256, AWSLC_APPROVED},
+    {EVP_sha384, kTLSOutput_sha384, AWSLC_APPROVED},
+    {EVP_sha512, kTLSOutput_sha512, AWSLC_APPROVED},
 };
 
 class KDF_ServiceIndicatorTest : public TestWithNoErrors<KDFTestVector> {};
@@ -1827,12 +1861,12 @@ INSTANTIATE_TEST_SUITE_P(All, KDF_ServiceIndicatorTest,
 TEST_P(KDF_ServiceIndicatorTest, TLSKDF) {
   const KDFTestVector &test = GetParam();
 
-  FIPSStatus approved = FIPSStatus::NOT_APPROVED;
+  FIPSStatus approved = AWSLC_NOT_APPROVED;
 
   uint8_t output[32];
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, CRYPTO_tls1_prf(test.func(), output, sizeof(output), kTLSSecret,
-                                sizeof(kTLSSecret), kTLSLabel,
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved, ASSERT_TRUE(CRYPTO_tls1_prf(test.func(), output, sizeof(output),
+                                kTLSSecret, sizeof(kTLSSecret), kTLSLabel,
                                 sizeof(kTLSLabel), kTLSSeed1, sizeof(kTLSSeed1),
                                 kTLSSeed2, sizeof(kTLSSeed2))));
   EXPECT_EQ(Bytes(test.expected_output, sizeof(output)),
@@ -1841,7 +1875,7 @@ TEST_P(KDF_ServiceIndicatorTest, TLSKDF) {
 }
 
 TEST(ServiceIndicatorTest, CMAC) {
-  FIPSStatus approved = FIPSStatus::NOT_APPROVED;
+  FIPSStatus approved = AWSLC_NOT_APPROVED;
 
   bssl::UniquePtr<CMAC_CTX> ctx(CMAC_CTX_new());
   ASSERT_TRUE(ctx);
@@ -1850,184 +1884,235 @@ TEST(ServiceIndicatorTest, CMAC) {
   // |CMAC_Final| for approval at the end. |CMAC_Init| and |CMAC_Update|
   // should not be approved, because the functions do not indicate that a
   // service has been fully completed yet.
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, CMAC_Init(ctx.get(), kAESKey, sizeof(kAESKey),
-                          EVP_aes_128_cbc(), nullptr)));
-  EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, CMAC_Update(ctx.get(), kPlaintext, sizeof(kPlaintext))));
-  EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(CMAC_Init(ctx.get(), kAESKey, sizeof(kAESKey),
+                            EVP_aes_128_cbc(), nullptr)));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(CMAC_Update(ctx.get(), kPlaintext, sizeof(kPlaintext))));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
 
   uint8_t mac[16];
   size_t out_len;
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, CMAC_Final(ctx.get(), mac, &out_len)));
-  EXPECT_EQ(approved, FIPSStatus::APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(CMAC_Final(ctx.get(), mac, &out_len)));
+  EXPECT_EQ(approved, AWSLC_APPROVED);
   EXPECT_EQ(Bytes(kAESCMACOutput), Bytes(mac));
 
   // Test using the one-shot API for approval.
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved,
-      AES_CMAC(mac, kAESKey, sizeof(kAESKey), kPlaintext, sizeof(kPlaintext))));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(AES_CMAC(mac, kAESKey, sizeof(kAESKey), kPlaintext,
+                           sizeof(kPlaintext))));
   EXPECT_EQ(Bytes(kAESCMACOutput), Bytes(mac));
-  EXPECT_EQ(approved, FIPSStatus::APPROVED);
+  EXPECT_EQ(approved, AWSLC_APPROVED);
 }
 
 TEST(ServiceIndicatorTest, BasicTest) {
-  FIPSStatus approved = FIPSStatus::NOT_APPROVED;
+  FIPSStatus approved = AWSLC_NOT_APPROVED;
 
   bssl::ScopedEVP_AEAD_CTX aead_ctx;
-  ASSERT_TRUE(EVP_AEAD_CTX_init(aead_ctx.get(),
-                                EVP_aead_aes_128_gcm_randnonce(), kAESKey,
-                                sizeof(kAESKey), 0, nullptr));
-  // This test ensures that the counter gets incremented once, i.e. it was
-  // locked through the internal calls.
-  const int counter_before = FIPS_service_indicator_after_call();
-  size_t out_len;
+  AES_KEY aes_key;
+  uint8_t aes_iv[sizeof(kAESIV)];
   uint8_t output[256];
+  uint8_t ofb_output[sizeof(kPlaintext)];
+  size_t out_len;
+  int num = 0;
+  uint64_t counter_before, counter_after;
+
+  ASSERT_TRUE(EVP_AEAD_CTX_init(aead_ctx.get(), EVP_aead_aes_128_gcm_randnonce(),
+                                kAESKey, sizeof(kAESKey), 0, nullptr));
+  // Because the service indicator gets initialised in
+  // |FIPS_service_indicator_update_state|, which is called by all approved
+  // services, the self_test run at the beginning would have updated it more
+  // than once. The following test ensures that it's not zero and that it gets
+  // updated by calling an approved service without calling
+  // |FIPS_service_indicator_before_call| first, which can init the counter, but
+  // instead calling |FIPS_service_indicator_after_call|
+  // This test also ensures that the counter gets incremented once, i.e. it was
+  // locked through the internal calls.
+  counter_before = FIPS_service_indicator_after_call();
+  ASSERT_NE(counter_before, (uint64_t)0);
   EVP_AEAD_CTX_seal(aead_ctx.get(), output, &out_len, sizeof(output), nullptr,
                     0, kPlaintext, sizeof(kPlaintext), nullptr, 0);
-  const int counter_after = FIPS_service_indicator_after_call();
-  EXPECT_EQ(counter_after, counter_before + 1);
+  counter_after = FIPS_service_indicator_after_call();
+  ASSERT_EQ(counter_after, counter_before+1);
 
   // Call an approved service.
-  CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, EVP_AEAD_CTX_seal(aead_ctx.get(), output, &out_len,
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      EVP_AEAD_CTX_seal(aead_ctx.get(), output, &out_len, sizeof(output),
+                      nullptr, 0, kPlaintext, sizeof(kPlaintext), nullptr, 0));
+  ASSERT_EQ(approved, AWSLC_APPROVED);
+
+  // Call an approved service in a macro.
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_EQ(EVP_AEAD_CTX_seal(aead_ctx.get(), output, &out_len,
                                   sizeof(output), nullptr, 0, kPlaintext,
-                                  sizeof(kPlaintext), nullptr, 0));
-  EXPECT_EQ(approved, FIPSStatus::APPROVED);
+                                  sizeof(kPlaintext), nullptr, 0), 1));
+  ASSERT_EQ(approved, AWSLC_APPROVED);
+
+  // Call an approved service and compare expected return value.
+  int return_val = 0;
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      return_val = EVP_AEAD_CTX_seal(aead_ctx.get(),  output, &out_len,
+                                     sizeof(output), nullptr, 0, kPlaintext,
+                                     sizeof(kPlaintext), nullptr, 0));
+  ASSERT_EQ(return_val, 1);
+  ASSERT_EQ(approved, AWSLC_APPROVED);
+
+  // Call an approved service wrapped in an if statement.
+  return_val = 0;
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+    if(EVP_AEAD_CTX_seal(aead_ctx.get(), output, &out_len, sizeof(output),
+         nullptr, 0, kPlaintext, sizeof(kPlaintext), nullptr, 0) == 1)
+    {
+      return_val = 1;
+    }
+  );
+  ASSERT_EQ(return_val, 1);
+  ASSERT_EQ(approved, AWSLC_APPROVED);
 
   // Fail an approved service on purpose.
-  ASSERT_FALSE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved,
-      EVP_AEAD_CTX_seal(aead_ctx.get(), output, &out_len, 0, nullptr, 0,
-                        kPlaintext, sizeof(kPlaintext), nullptr, 0)));
-  EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
+  return_val = 0;
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      return_val = EVP_AEAD_CTX_seal(aead_ctx.get(), output, &out_len, 0,
+                                     nullptr, 0, kPlaintext, sizeof(kPlaintext),
+                                     nullptr, 0));
+  ASSERT_EQ(return_val, 0);
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+
+  // Fail an approved service on purpose while wrapped in an if statement.
+  return_val = 0;
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+    if(EVP_AEAD_CTX_seal(aead_ctx.get(), output, &out_len, 0,
+        nullptr, 0, kPlaintext, sizeof(kPlaintext), nullptr, 0) == 1)
+    {
+      return_val = 1;
+    }
+  );
+  ASSERT_EQ(return_val, 0);
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
 
   // Call a non-approved service.
-  uint8_t aes_iv[sizeof(kAESIV)];
-  memcpy(aes_iv, kAESIV, sizeof(aes_iv));
-  AES_KEY aes_key;
+  memcpy(aes_iv, kAESIV, sizeof(kAESIV));
   ASSERT_TRUE(AES_set_encrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key) == 0);
-  int num = 0;
-  CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, AES_ofb128_encrypt(kPlaintext, output, sizeof(kPlaintext),
-                                   &aes_key, aes_iv, &num));
-  EXPECT_EQ(Bytes(kAESOFBCiphertext), Bytes(output, sizeof(kAESOFBCiphertext)));
-  EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      AES_ofb128_encrypt(kPlaintext, ofb_output, sizeof(kPlaintext), &aes_key,
+                         aes_iv, &num));
+  EXPECT_EQ(Bytes(kAESOFBCiphertext), Bytes(ofb_output));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
 }
 
 // Test the SHA interfaces one by one and check that only |*_Final| does the
 // approval at the end.
 TEST(ServiceIndicatorTest, SHA) {
-  FIPSStatus approved = FIPSStatus::NOT_APPROVED;
+  FIPSStatus approved = AWSLC_NOT_APPROVED;
   std::vector<uint8_t> digest;
 
   digest.resize(MD4_DIGEST_LENGTH);
   MD4_CTX md4_ctx;
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(approved, MD4_Init(&md4_ctx)));
-  EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, MD4_Update(&md4_ctx, kPlaintext, sizeof(kPlaintext))));
-  EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, MD4_Final(digest.data(), &md4_ctx)));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(MD4_Init(&md4_ctx)));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(MD4_Update(&md4_ctx, kPlaintext, sizeof(kPlaintext))));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(MD4_Final(digest.data(), &md4_ctx)));
   EXPECT_EQ(Bytes(kOutput_md4), Bytes(digest));
-  EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
 
   digest.resize(MD5_DIGEST_LENGTH);
   MD5_CTX md5_ctx;
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(approved, MD5_Init(&md5_ctx)));
-  EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, MD5_Update(&md5_ctx, kPlaintext, sizeof(kPlaintext))));
-  EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, MD5_Final(digest.data(), &md5_ctx)));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(MD5_Init(&md5_ctx)));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(MD5_Update(&md5_ctx, kPlaintext, sizeof(kPlaintext))));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(MD5_Final(digest.data(), &md5_ctx)));
   EXPECT_EQ(Bytes(kOutput_md5), Bytes(digest));
-  EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
 
   digest.resize(SHA_DIGEST_LENGTH);
   SHA_CTX sha_ctx;
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(approved, SHA1_Init(&sha_ctx)));
-  EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, SHA1_Update(&sha_ctx, kPlaintext, sizeof(kPlaintext))));
-  EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, SHA1_Final(digest.data(), &sha_ctx)));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_TRUE(SHA1_Init(&sha_ctx)));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(SHA1_Update(&sha_ctx, kPlaintext, sizeof(kPlaintext))));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(SHA1_Final(digest.data(), &sha_ctx)));
   EXPECT_EQ(Bytes(kOutput_sha1), Bytes(digest));
-  EXPECT_EQ(approved, FIPSStatus::APPROVED);
+  EXPECT_EQ(approved, AWSLC_APPROVED);
 
   digest.resize(SHA224_DIGEST_LENGTH);
   SHA256_CTX sha224_ctx;
-  ASSERT_TRUE(
-      CALL_SERVICE_AND_CHECK_APPROVED(approved, SHA224_Init(&sha224_ctx)));
-  EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, SHA224_Update(&sha224_ctx, kPlaintext, sizeof(kPlaintext))));
-  EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, SHA224_Final(digest.data(), &sha224_ctx)));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(SHA224_Init(&sha224_ctx)));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(SHA224_Update(&sha224_ctx, kPlaintext, sizeof(kPlaintext))));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(SHA224_Final(digest.data(), &sha224_ctx)));
   EXPECT_EQ(Bytes(kOutput_sha224), Bytes(digest));
-  EXPECT_EQ(approved, FIPSStatus::APPROVED);
+  EXPECT_EQ(approved, AWSLC_APPROVED);
 
   digest.resize(SHA256_DIGEST_LENGTH);
   SHA256_CTX sha256_ctx;
-  ASSERT_TRUE(
-      CALL_SERVICE_AND_CHECK_APPROVED(approved, SHA256_Init(&sha256_ctx)));
-  EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, SHA256_Update(&sha256_ctx, kPlaintext, sizeof(kPlaintext))));
-  EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, SHA256_Final(digest.data(), &sha256_ctx)));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(SHA256_Init(&sha256_ctx)));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(SHA256_Update(&sha256_ctx, kPlaintext, sizeof(kPlaintext))));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(SHA256_Final(digest.data(), &sha256_ctx)));
   EXPECT_EQ(Bytes(kOutput_sha256), Bytes(digest));
-  EXPECT_EQ(approved, FIPSStatus::APPROVED);
+  EXPECT_EQ(approved, AWSLC_APPROVED);
 
   digest.resize(SHA384_DIGEST_LENGTH);
   SHA512_CTX sha384_ctx;
-  ASSERT_TRUE(
-      CALL_SERVICE_AND_CHECK_APPROVED(approved, SHA384_Init(&sha384_ctx)));
-  EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, SHA384_Update(&sha384_ctx, kPlaintext, sizeof(kPlaintext))));
-  EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, SHA384_Final(digest.data(), &sha384_ctx)));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(SHA384_Init(&sha384_ctx)));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(SHA384_Update(&sha384_ctx, kPlaintext, sizeof(kPlaintext))));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(SHA384_Final(digest.data(), &sha384_ctx)));
   EXPECT_EQ(Bytes(kOutput_sha384), Bytes(digest));
-  EXPECT_EQ(approved, FIPSStatus::APPROVED);
+  EXPECT_EQ(approved, AWSLC_APPROVED);
 
   digest.resize(SHA512_DIGEST_LENGTH);
   SHA512_CTX sha512_ctx;
-  ASSERT_TRUE(
-      CALL_SERVICE_AND_CHECK_APPROVED(approved, SHA512_Init(&sha512_ctx)));
-  EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, SHA512_Update(&sha512_ctx, kPlaintext, sizeof(kPlaintext))));
-  EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, SHA512_Final(digest.data(), &sha512_ctx)));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(SHA512_Init(&sha512_ctx)));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(SHA512_Update(&sha512_ctx, kPlaintext, sizeof(kPlaintext))));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(SHA512_Final(digest.data(), &sha512_ctx)));
   EXPECT_EQ(Bytes(kOutput_sha512), Bytes(digest));
-  EXPECT_EQ(approved, FIPSStatus::APPROVED);
+  EXPECT_EQ(approved, AWSLC_APPROVED);
 
   digest.resize(SHA512_256_DIGEST_LENGTH);
   SHA512_CTX sha512_256_ctx;
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, SHA512_256_Init(&sha512_256_ctx)));
-  EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved,
-      SHA512_256_Update(&sha512_256_ctx, kPlaintext, sizeof(kPlaintext))));
-  EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, SHA512_256_Final(digest.data(), &sha512_256_ctx)));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(SHA512_256_Init(&sha512_256_ctx)));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(SHA512_256_Update(&sha512_256_ctx, kPlaintext,
+                                    sizeof(kPlaintext))));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(SHA512_256_Final(digest.data(), &sha512_256_ctx)));
   EXPECT_EQ(Bytes(kOutput_sha512_256), Bytes(digest));
-  EXPECT_EQ(approved, FIPSStatus::APPROVED);
+  EXPECT_EQ(approved, AWSLC_APPROVED);
 }
 
 TEST(ServiceIndicatorTest, AESECB) {
-  FIPSStatus approved = FIPSStatus::NOT_APPROVED;
+  FIPSStatus approved = AWSLC_NOT_APPROVED;
 
   AES_KEY aes_key;
   uint8_t output[256];
@@ -2041,7 +2126,7 @@ TEST(ServiceIndicatorTest, AESECB) {
         approved,
         AES_ecb_encrypt(&kPlaintext[i * AES_BLOCK_SIZE],
                         &output[i * AES_BLOCK_SIZE], &aes_key, AES_ENCRYPT));
-    EXPECT_EQ(approved, FIPSStatus::APPROVED);
+    EXPECT_EQ(approved, AWSLC_APPROVED);
   }
   EXPECT_EQ(Bytes(kAESECBCiphertext), Bytes(output, sizeof(kAESECBCiphertext)));
 
@@ -2052,7 +2137,7 @@ TEST(ServiceIndicatorTest, AESECB) {
         approved,
         AES_ecb_encrypt(&kAESECBCiphertext[i * AES_BLOCK_SIZE],
                         &output[i * AES_BLOCK_SIZE], &aes_key, AES_DECRYPT));
-    EXPECT_EQ(approved, FIPSStatus::APPROVED);
+    EXPECT_EQ(approved, AWSLC_APPROVED);
   }
   EXPECT_EQ(Bytes(kPlaintext), Bytes(output, sizeof(kPlaintext)));
 
@@ -2064,7 +2149,7 @@ TEST(ServiceIndicatorTest, AESECB) {
         approved,
         AES_ecb_encrypt(&kPlaintext[i * AES_BLOCK_SIZE],
                         &output[i * AES_BLOCK_SIZE], &aes_key, AES_ENCRYPT));
-    EXPECT_EQ(approved, FIPSStatus::APPROVED);
+    EXPECT_EQ(approved, AWSLC_APPROVED);
   }
   EXPECT_EQ(Bytes(kAESECBCiphertext_192),
             Bytes(output, sizeof(kAESECBCiphertext_192)));
@@ -2077,7 +2162,7 @@ TEST(ServiceIndicatorTest, AESECB) {
         approved,
         AES_ecb_encrypt(&kAESECBCiphertext_192[i * AES_BLOCK_SIZE],
                         &output[i * AES_BLOCK_SIZE], &aes_key, AES_DECRYPT));
-    EXPECT_EQ(approved, FIPSStatus::APPROVED);
+    EXPECT_EQ(approved, AWSLC_APPROVED);
   }
   EXPECT_EQ(Bytes(kPlaintext), Bytes(output, sizeof(kPlaintext)));
 
@@ -2089,7 +2174,7 @@ TEST(ServiceIndicatorTest, AESECB) {
         approved,
         AES_ecb_encrypt(&kPlaintext[i * AES_BLOCK_SIZE],
                         &output[i * AES_BLOCK_SIZE], &aes_key, AES_ENCRYPT));
-    EXPECT_EQ(approved, FIPSStatus::APPROVED);
+    EXPECT_EQ(approved, AWSLC_APPROVED);
   }
   EXPECT_EQ(Bytes(kAESECBCiphertext_256),
             Bytes(output, sizeof(kAESECBCiphertext_256)));
@@ -2102,13 +2187,13 @@ TEST(ServiceIndicatorTest, AESECB) {
         approved,
         AES_ecb_encrypt(&kAESECBCiphertext_256[i * AES_BLOCK_SIZE],
                         &output[i * AES_BLOCK_SIZE], &aes_key, AES_DECRYPT));
-    EXPECT_EQ(approved, FIPSStatus::APPROVED);
+    EXPECT_EQ(approved, AWSLC_APPROVED);
   }
   EXPECT_EQ(Bytes(kPlaintext), Bytes(output, sizeof(kPlaintext)));
 }
 
 TEST(ServiceIndicatorTest, AESCBC) {
-  FIPSStatus approved = FIPSStatus::NOT_APPROVED;
+  FIPSStatus approved = AWSLC_NOT_APPROVED;
 
   AES_KEY aes_key;
   uint8_t aes_iv[sizeof(kAESIV)];
@@ -2121,7 +2206,7 @@ TEST(ServiceIndicatorTest, AESCBC) {
       approved, AES_cbc_encrypt(kPlaintext, output, sizeof(kPlaintext),
                                 &aes_key, aes_iv, AES_ENCRYPT));
   EXPECT_EQ(Bytes(kAESCBCCiphertext), Bytes(output));
-  EXPECT_EQ(approved, FIPSStatus::APPROVED);
+  EXPECT_EQ(approved, AWSLC_APPROVED);
 
   // AES-CBC Decryption KAT for 128 bit key.
   memcpy(aes_iv, kAESIV, sizeof(aes_iv));
@@ -2131,7 +2216,7 @@ TEST(ServiceIndicatorTest, AESCBC) {
       AES_cbc_encrypt(kAESCBCCiphertext, output, sizeof(kAESCBCCiphertext),
                       &aes_key, aes_iv, AES_DECRYPT));
   EXPECT_EQ(Bytes(kPlaintext), Bytes(output));
-  EXPECT_EQ(approved, FIPSStatus::APPROVED);
+  EXPECT_EQ(approved, AWSLC_APPROVED);
 
   // AES-CBC Encryption KAT for 192 bit key.
   memcpy(aes_iv, kAESIV, sizeof(aes_iv));
@@ -2141,7 +2226,7 @@ TEST(ServiceIndicatorTest, AESCBC) {
       approved, AES_cbc_encrypt(kPlaintext, output, sizeof(kPlaintext),
                                 &aes_key, aes_iv, AES_ENCRYPT));
   EXPECT_EQ(Bytes(kAESCBCCiphertext_192), Bytes(output));
-  EXPECT_EQ(approved, FIPSStatus::APPROVED);
+  EXPECT_EQ(approved, AWSLC_APPROVED);
 
   // AES-CBC Decryption KAT for 192 bit key.
   memcpy(aes_iv, kAESIV, sizeof(aes_iv));
@@ -2152,7 +2237,7 @@ TEST(ServiceIndicatorTest, AESCBC) {
                                 sizeof(kAESCBCCiphertext_192), &aes_key, aes_iv,
                                 AES_DECRYPT));
   EXPECT_EQ(Bytes(kPlaintext), Bytes(output));
-  EXPECT_EQ(approved, FIPSStatus::APPROVED);
+  EXPECT_EQ(approved, AWSLC_APPROVED);
 
   // AES-CBC Encryption KAT for 256 bit key.
   memcpy(aes_iv, kAESIV, sizeof(aes_iv));
@@ -2162,7 +2247,7 @@ TEST(ServiceIndicatorTest, AESCBC) {
       approved, AES_cbc_encrypt(kPlaintext, output, sizeof(kPlaintext),
                                 &aes_key, aes_iv, AES_ENCRYPT));
   EXPECT_EQ(Bytes(kAESCBCCiphertext_256), Bytes(output));
-  EXPECT_EQ(approved, FIPSStatus::APPROVED);
+  EXPECT_EQ(approved, AWSLC_APPROVED);
 
   // AES-CBC Decryption KAT for 256 bit key.
   memcpy(aes_iv, kAESIV, sizeof(aes_iv));
@@ -2173,11 +2258,11 @@ TEST(ServiceIndicatorTest, AESCBC) {
                                 sizeof(kAESCBCCiphertext_256), &aes_key, aes_iv,
                                 AES_DECRYPT));
   EXPECT_EQ(Bytes(kPlaintext), Bytes(output));
-  EXPECT_EQ(approved, FIPSStatus::APPROVED);
+  EXPECT_EQ(approved, AWSLC_APPROVED);
 }
 
 TEST(ServiceIndicatorTest, AESCTR) {
-  FIPSStatus approved = FIPSStatus::NOT_APPROVED;
+  FIPSStatus approved = AWSLC_NOT_APPROVED;
 
   AES_KEY aes_key;
   uint8_t aes_iv[sizeof(kAESIV)];
@@ -2192,7 +2277,7 @@ TEST(ServiceIndicatorTest, AESCTR) {
       approved, AES_ctr128_encrypt(kPlaintext, output, sizeof(kPlaintext),
                                    &aes_key, aes_iv, ecount_buf, &num));
   EXPECT_EQ(Bytes(kAESCTRCiphertext), Bytes(output));
-  EXPECT_EQ(approved, FIPSStatus::APPROVED);
+  EXPECT_EQ(approved, AWSLC_APPROVED);
 
   // AES-CTR Decryption KAT
   memcpy(aes_iv, kAESIV, sizeof(aes_iv));
@@ -2201,7 +2286,7 @@ TEST(ServiceIndicatorTest, AESCTR) {
       AES_ctr128_encrypt(kAESCTRCiphertext, output, sizeof(kAESCTRCiphertext),
                          &aes_key, aes_iv, ecount_buf, &num));
   EXPECT_EQ(Bytes(kPlaintext), Bytes(output));
-  EXPECT_EQ(approved, FIPSStatus::APPROVED);
+  EXPECT_EQ(approved, AWSLC_APPROVED);
 
   // AES-CTR Encryption KAT for 192 bit key.
   memcpy(aes_iv, kAESIV, sizeof(aes_iv));
@@ -2211,7 +2296,7 @@ TEST(ServiceIndicatorTest, AESCTR) {
       approved, AES_ctr128_encrypt(kPlaintext, output, sizeof(kPlaintext),
                                    &aes_key, aes_iv, ecount_buf, &num));
   EXPECT_EQ(Bytes(kAESCTRCiphertext_192), Bytes(output));
-  EXPECT_EQ(approved, FIPSStatus::APPROVED);
+  EXPECT_EQ(approved, AWSLC_APPROVED);
 
   // AES-CTR Decryption KAT for 192 bit key.
   memcpy(aes_iv, kAESIV, sizeof(aes_iv));
@@ -2220,7 +2305,7 @@ TEST(ServiceIndicatorTest, AESCTR) {
                                    sizeof(kAESCTRCiphertext_192), &aes_key,
                                    aes_iv, ecount_buf, &num));
   EXPECT_EQ(Bytes(kPlaintext), Bytes(output));
-  EXPECT_EQ(approved, FIPSStatus::APPROVED);
+  EXPECT_EQ(approved, AWSLC_APPROVED);
 
   // AES-CTR Encryption KAT for 256 bit key.
   memcpy(aes_iv, kAESIV, sizeof(aes_iv));
@@ -2230,7 +2315,7 @@ TEST(ServiceIndicatorTest, AESCTR) {
       approved, AES_ctr128_encrypt(kPlaintext, output, sizeof(kPlaintext),
                                    &aes_key, aes_iv, ecount_buf, &num));
   EXPECT_EQ(Bytes(kAESCTRCiphertext_256), Bytes(output));
-  EXPECT_EQ(approved, FIPSStatus::APPROVED);
+  EXPECT_EQ(approved, AWSLC_APPROVED);
 
   // AES-CTR Decryption KAT for 256 bit key.
   memcpy(aes_iv, kAESIV, sizeof(aes_iv));
@@ -2239,11 +2324,11 @@ TEST(ServiceIndicatorTest, AESCTR) {
                                    sizeof(kAESCTRCiphertext_256), &aes_key,
                                    aes_iv, ecount_buf, &num));
   EXPECT_EQ(Bytes(kPlaintext), Bytes(output));
-  EXPECT_EQ(approved, FIPSStatus::APPROVED);
+  EXPECT_EQ(approved, AWSLC_APPROVED);
 }
 
 TEST(ServiceIndicatorTest, AESOFB) {
-  FIPSStatus approved = FIPSStatus::NOT_APPROVED;
+  FIPSStatus approved = AWSLC_NOT_APPROVED;
 
   AES_KEY aes_key;
   uint8_t aes_iv[sizeof(kAESIV)];
@@ -2257,7 +2342,7 @@ TEST(ServiceIndicatorTest, AESOFB) {
       approved, AES_ofb128_encrypt(kPlaintext, output, sizeof(kPlaintext),
                                    &aes_key, aes_iv, &num));
   EXPECT_EQ(Bytes(kAESOFBCiphertext), Bytes(output));
-  EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
 
   // AES-OFB Decryption KAT
   memcpy(aes_iv, kAESIV, sizeof(aes_iv));
@@ -2266,11 +2351,11 @@ TEST(ServiceIndicatorTest, AESOFB) {
       AES_ofb128_encrypt(kAESOFBCiphertext, output, sizeof(kAESOFBCiphertext),
                          &aes_key, aes_iv, &num));
   EXPECT_EQ(Bytes(kPlaintext), Bytes(output));
-  EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
 }
 
 TEST(ServiceIndicatorTest, AESCFB) {
-  FIPSStatus approved = FIPSStatus::NOT_APPROVED;
+  FIPSStatus approved = AWSLC_NOT_APPROVED;
 
   AES_KEY aes_key;
   uint8_t aes_iv[sizeof(kAESIV)];
@@ -2284,7 +2369,7 @@ TEST(ServiceIndicatorTest, AESCFB) {
       approved, AES_cfb128_encrypt(kPlaintext, output, sizeof(kPlaintext),
                                    &aes_key, aes_iv, &num, AES_ENCRYPT));
   EXPECT_EQ(Bytes(kAESCFBCiphertext), Bytes(output));
-  EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
 
   // AES-CFB Decryption KAT
   memcpy(aes_iv, kAESIV, sizeof(aes_iv));
@@ -2293,11 +2378,11 @@ TEST(ServiceIndicatorTest, AESCFB) {
       AES_cfb128_encrypt(kAESCFBCiphertext, output, sizeof(kAESCFBCiphertext),
                          &aes_key, aes_iv, &num, AES_DECRYPT));
   EXPECT_EQ(Bytes(kPlaintext), Bytes(output));
-  EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
 }
 
 TEST(ServiceIndicatorTest, AESKW) {
-  FIPSStatus approved = FIPSStatus::NOT_APPROVED;
+  FIPSStatus approved = AWSLC_NOT_APPROVED;
 
   AES_KEY aes_key;
   uint8_t output[sizeof(kPlaintext) + 8];
@@ -2305,25 +2390,26 @@ TEST(ServiceIndicatorTest, AESKW) {
 
   // AES-KW Encryption KAT
   ASSERT_TRUE(AES_set_encrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key) == 0);
-  outlen = CALL_SERVICE_AND_CHECK_APPROVED(
-      approved,
-      AES_wrap_key(&aes_key, nullptr, output, kPlaintext, sizeof(kPlaintext)));
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved, outlen = AES_wrap_key(&aes_key, nullptr, output, kPlaintext,
+                                      sizeof(kPlaintext)));
   ASSERT_EQ(outlen, sizeof(kAESKWCiphertext));
   EXPECT_EQ(Bytes(kAESKWCiphertext), Bytes(output));
-  EXPECT_EQ(approved, FIPSStatus::APPROVED);
+  EXPECT_EQ(approved, AWSLC_APPROVED);
 
   // AES-KW Decryption KAT
   ASSERT_TRUE(AES_set_decrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key) == 0);
-  outlen = CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, AES_unwrap_key(&aes_key, nullptr, output, kAESKWCiphertext,
-                               sizeof(kAESKWCiphertext)));
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved, outlen = AES_unwrap_key(&aes_key, nullptr, output,
+                                        kAESKWCiphertext,
+                                        sizeof(kAESKWCiphertext)));
   ASSERT_EQ(outlen, sizeof(kPlaintext));
   EXPECT_EQ(Bytes(kPlaintext), Bytes(output, sizeof(kPlaintext)));
-  EXPECT_EQ(approved, FIPSStatus::APPROVED);
+  EXPECT_EQ(approved, AWSLC_APPROVED);
 }
 
 TEST(ServiceIndicatorTest, AESKWP) {
-  FIPSStatus approved = FIPSStatus::NOT_APPROVED;
+  FIPSStatus approved = AWSLC_NOT_APPROVED;
 
   AES_KEY aes_key;
   uint8_t output[sizeof(kPlaintext) + 15];
@@ -2331,40 +2417,38 @@ TEST(ServiceIndicatorTest, AESKWP) {
 
   // AES-KWP Encryption KAT
   ASSERT_TRUE(AES_set_encrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key) == 0);
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, AES_wrap_key_padded(&aes_key, output, &outlen, sizeof(output),
-                                    kPlaintext, sizeof(kPlaintext))));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(AES_wrap_key_padded(&aes_key, output, &outlen, sizeof(output),
+                                      kPlaintext, sizeof(kPlaintext))));
   EXPECT_EQ(Bytes(kAESKWPCiphertext), Bytes(output, outlen));
-  EXPECT_EQ(approved, FIPSStatus::APPROVED);
+  EXPECT_EQ(approved, AWSLC_APPROVED);
 
   // AES-KWP Decryption KAT
   ASSERT_TRUE(AES_set_decrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key) == 0);
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved,
-      AES_unwrap_key_padded(&aes_key, output, &outlen, sizeof(output),
-                            kAESKWPCiphertext, sizeof(kAESKWPCiphertext))));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(AES_unwrap_key_padded(&aes_key, output, &outlen,
+                                        sizeof(output), kAESKWPCiphertext,
+                                        sizeof(kAESKWPCiphertext))));
   EXPECT_EQ(Bytes(kPlaintext), Bytes(output, outlen));
-  EXPECT_EQ(approved, FIPSStatus::APPROVED);
+  EXPECT_EQ(approved, AWSLC_APPROVED);
 }
 
 TEST(ServiceIndicatorTest, FFDH) {
-  FIPSStatus approved = FIPSStatus::NOT_APPROVED;
+  FIPSStatus approved = AWSLC_NOT_APPROVED;
 
   // |DH_compute_key_padded| should be a non-approved service.
   bssl::UniquePtr<DH> dh(GetDH());
   uint8_t dh_out[sizeof(kDHOutput)];
   ASSERT_EQ(DH_size(dh.get()), static_cast<int>(sizeof(dh_out)));
-  ASSERT_EQ(CALL_SERVICE_AND_CHECK_APPROVED(
-                approved, DH_compute_key_padded(
-                              dh_out, DH_get0_priv_key(dh.get()), dh.get())),
-            static_cast<int>(sizeof(dh_out)));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved, ASSERT_EQ(DH_compute_key_padded(
+                          dh_out, DH_get0_priv_key(dh.get()), dh.get()),
+                          static_cast<int>(sizeof(dh_out))));
   EXPECT_EQ(Bytes(kDHOutput), Bytes(dh_out));
-  EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
 }
 
 TEST(ServiceIndicatorTest, DRBG) {
-  // FIPSStatus approved = FIPSStatus::NOT_APPROVED;
-  FIPSStatus approved = FIPSStatus::NOT_APPROVED;
+  FIPSStatus approved = AWSLC_NOT_APPROVED;
   CTR_DRBG_STATE drbg;
   uint8_t output[sizeof(kDRBGOutput)];
 
@@ -2372,29 +2456,29 @@ TEST(ServiceIndicatorTest, DRBG) {
   // at the end since it indicates a service is being done. |CTR_DRBG_init| and
   // |CTR_DRBG_reseed| should not be approved, because the functions do not
   // indicate that a service has been fully completed yet.
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, CTR_DRBG_init(&drbg, kDRBGEntropy, kDRBGPersonalization,
-                              sizeof(kDRBGPersonalization))));
-  EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, CTR_DRBG_generate(&drbg, output, sizeof(kDRBGOutput), kDRBGAD,
-                                  sizeof(kDRBGAD))));
-  EXPECT_EQ(approved, FIPSStatus::APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(CTR_DRBG_init(&drbg, kDRBGEntropy, kDRBGPersonalization,
+                                sizeof(kDRBGPersonalization))));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(CTR_DRBG_generate(&drbg, output, sizeof(kDRBGOutput), kDRBGAD,
+                                    sizeof(kDRBGAD))));
+  EXPECT_EQ(approved, AWSLC_APPROVED);
   EXPECT_EQ(Bytes(kDRBGOutput), Bytes(output));
 
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved,
-      CTR_DRBG_reseed(&drbg, kDRBGEntropy2, kDRBGAD, sizeof(kDRBGAD))));
-  EXPECT_EQ(approved, FIPSStatus::NOT_APPROVED);
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, CTR_DRBG_generate(&drbg, output, sizeof(kDRBGReseedOutput),
-                                  kDRBGAD, sizeof(kDRBGAD))));
-  EXPECT_EQ(approved, FIPSStatus::APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(CTR_DRBG_reseed(&drbg, kDRBGEntropy2, kDRBGAD,
+                                  sizeof(kDRBGAD))));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(CTR_DRBG_generate(&drbg, output, sizeof(kDRBGReseedOutput),
+                                    kDRBGAD, sizeof(kDRBGAD))));
+  EXPECT_EQ(approved, AWSLC_APPROVED);
   EXPECT_EQ(Bytes(kDRBGReseedOutput), Bytes(output));
 
-  ASSERT_TRUE(CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, RAND_bytes(output, sizeof(output))));
-  EXPECT_EQ(approved, FIPSStatus::APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved, ASSERT_TRUE(RAND_bytes(output, sizeof(output))));
+  EXPECT_EQ(approved, AWSLC_APPROVED);
 }
 
 // Verifies that the awslc_version_string is as expected.
@@ -2407,11 +2491,11 @@ TEST(ServiceIndicatorTest, AWSLCVersionString) {
 #else
 // Service indicator calls should not be used in non-FIPS builds. However, if
 // used, the macro |CALL_SERVICE_AND_CHECK_APPROVED| will return
-// |FIPSStatus::APPROVED|, but the direct calls to |FIPS_service_indicator_xxx|
+// |AWSLC_APPROVED|, but the direct calls to |FIPS_service_indicator_xxx|
 // will not indicate an approved state.
 TEST(ServiceIndicatorTest, BasicTest) {
    // Reset and check the initial state and counter.
-  FIPSStatus approved = FIPSStatus::NOT_APPROVED;
+  FIPSStatus approved = AWSLC_NOT_APPROVED;
   uint64_t before = FIPS_service_indicator_before_call();
   ASSERT_EQ(before, (uint64_t)0);
 
@@ -2420,22 +2504,25 @@ TEST(ServiceIndicatorTest, BasicTest) {
   uint8_t nonce[EVP_AEAD_MAX_NONCE_LENGTH] = {0};
   uint8_t output[256];
   size_t out_len;
-  ASSERT_TRUE(EVP_AEAD_CTX_init(aead_ctx.get(), EVP_aead_aes_128_gcm_randnonce(),
-                                kAESKey, sizeof(kAESKey), 0, nullptr));
-  CALL_SERVICE_AND_CHECK_APPROVED(approved, EVP_AEAD_CTX_seal(aead_ctx.get(),
-          output, &out_len, sizeof(output), nullptr, 0, kPlaintext, sizeof(kPlaintext), nullptr, 0));
+  ASSERT_TRUE(EVP_AEAD_CTX_init(aead_ctx.get(),
+                                EVP_aead_aes_128_gcm_randnonce(), kAESKey,
+                                sizeof(kAESKey), 0, nullptr));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      EVP_AEAD_CTX_seal(aead_ctx.get(), output, &out_len, sizeof(output),
+                      nullptr, 0, kPlaintext, sizeof(kPlaintext), nullptr, 0));
   // Macro should return true, to ensure FIPS/Non-FIPS compatibility.
-  ASSERT_EQ(approved, FIPSStatus::APPROVED);
-
+  ASSERT_EQ(approved, AWSLC_APPROVED);
 
   // Call a non-approved service.
   ASSERT_TRUE(EVP_AEAD_CTX_init(aead_ctx.get(), EVP_aead_aes_128_gcm(),
                                 kAESKey, sizeof(kAESKey), 0, nullptr));
-  CALL_SERVICE_AND_CHECK_APPROVED(approved, EVP_AEAD_CTX_seal(aead_ctx.get(),
-          output, &out_len, sizeof(output), nonce, EVP_AEAD_nonce_length(EVP_aead_aes_128_gcm()),
-          kPlaintext, sizeof(kPlaintext), nullptr, 0));
-  ASSERT_EQ(approved, FIPSStatus::APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      EVP_AEAD_CTX_seal(aead_ctx.get(), output, &out_len, sizeof(output), nonce,
+          EVP_AEAD_nonce_length(EVP_aead_aes_128_gcm()), kPlaintext,
+          sizeof(kPlaintext), nullptr, 0));
+  ASSERT_EQ(approved, AWSLC_APPROVED);
 }
+
 
 // Verifies that the awslc_version_string is as expected.
 // Since this is not running in FIPS mode it shouldn't end in FIPS
