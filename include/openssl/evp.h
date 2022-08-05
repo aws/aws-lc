@@ -243,15 +243,13 @@ OPENSSL_EXPORT int EVP_marshal_private_key(CBB *cbb, const EVP_PKEY *key);
 // prefix of |ED25519_sign|'s 64-byte private key.
 
 // EVP_PKEY_new_raw_private_key returns a newly allocated |EVP_PKEY| wrapping a
-// private key of the specified type. It returns one on success and zero on
-// error.
+// private key of the specified type. It returns NULL on error.
 OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_new_raw_private_key(int type, ENGINE *unused,
                                                       const uint8_t *in,
                                                       size_t len);
 
 // EVP_PKEY_new_raw_public_key returns a newly allocated |EVP_PKEY| wrapping a
-// public key of the specified type. It returns one on success and zero on
-// error.
+// public key of the specified type. It returns NULL on error.
 OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_new_raw_public_key(int type, ENGINE *unused,
                                                      const uint8_t *in,
                                                      size_t len);
