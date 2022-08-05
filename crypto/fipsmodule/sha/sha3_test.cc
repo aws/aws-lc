@@ -11,14 +11,32 @@
 #include "internal.h"
 #include <openssl/digest.h>
 
-#if defined(OPENSSL_WINDOWS)
-OPENSSL_MSVC_PRAGMA(warning(push, 3))
-#include <windows.h>
-OPENSSL_MSVC_PRAGMA(warning(pop))
-#elif defined(OPENSSL_APPLE)
-#include <sys/time.h>
-#else
-#include <time.h>
+// Add perf linux for benchmarking SHA3/SHAKE
+#ifdef __linux__
+#define _GNU_SOURCE //Needed for the perf benchmark measurements
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <stdint.h>
+#include <string.h>
+#include <linux/perf_event.h>
+#include <asm/unistd.h>
+#include <sys/syscall.h>
+
+static long perf_event_open(struct perf_event_attr *hw_event, pid_t pid, int cpu, int group_fd, unsigned long flags)
+{
+    int ret;
+    ret = syscall(__NR_perf_event_open, hw_event, pid, cpu, group_fd, flags);
+    return ret;
+}
+
+static void append_to_file(uint64_t val)
+{
+    FILE *fp;
+    fp = fopen("../../../benckmark/sha3_shake.txt", "a");
+    fprintf(fp, "%lu,\n", val);
+    fclose(fp);
+}
 #endif
 
 // SHA3TestVector corresponds to one test case of the NIST published file
@@ -36,10 +54,43 @@ class SHA3TestVector {
     uint8_t *digest  = new uint8_t[EVP_MD_size(algorithm)];
     EVP_MD_CTX* ctx = EVP_MD_CTX_new();
 
+    #ifdef __linux__
+    //Setup perf to measure time using the high resolution task counter
+    struct perf_event_attr pe;
+    uint64_t duration_ns;
+    int perf_fd;
+    memset(&pe, 0, sizeof(pe));
+    pe.type = PERF_TYPE_SOFTWARE;
+    pe.size = sizeof(pe);
+    pe.config = PERF_COUNT_SW_TASK_CLOCK;
+    pe.disabled = 1;
+    pe.exclude_kernel = 1;
+    pe.exclude_hv = 1;
+    perf_fd = perf_event_open(&pe, 0, -1, -1, 0);
+    if (perf_fd == -1) {
+        fprintf(stderr, "Error opening leader %llx\n", pe.config);
+        S2N_ERROR_PRESERVE_ERRNO();
+    }
+
+    fprintf(stderr, "Pre negotiate wire byte counts: IN=[%lu], OUT=[%lu]\n", conn->wire_bytes_in, conn->wire_bytes_out);
+    ioctl(perf_fd, PERF_EVENT_IOC_RESET, 0);
+    ioctl(perf_fd, PERF_EVENT_IOC_ENABLE, 0);
+    //// Start of section being measured
+    #endif
+
     // SHA3 is disabled by default. First test this assumption and then enable SHA3 and test it.
     ASSERT_FALSE(EVP_DigestInit(ctx, algorithm));
     ASSERT_FALSE(EVP_DigestUpdate(ctx, msg_.data(), len_ / 8));
     ASSERT_FALSE(EVP_DigestFinal(ctx, digest, &digest_length));
+
+    #ifdef __linux__
+    //// End of section being measured
+    ioctl(perf_fd, PERF_EVENT_IOC_DISABLE, 0);
+    read(perf_fd, &duration_ns, sizeof(duration_ns));
+    close(perf_fd);
+    fprintf(stderr, "Post negotiate wire byte counts: IN=[%lu], OUT=[%lu]\n", conn->wire_bytes_in, conn->wire_bytes_out);
+    append_to_file(duration_ns);
+    #endif
 
     // Enable SHA3
     EVP_MD_unstable_sha3_enable(true);
