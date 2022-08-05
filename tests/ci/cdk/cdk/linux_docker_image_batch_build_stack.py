@@ -61,7 +61,7 @@ class LinuxDockerImageBatchBuildStack(core.Stack):
                 build_image=codebuild.LinuxBuildImage.STANDARD_4_0),
             environment_variables=environment_variables,
             role=role,
-            timeout=core.Duration.minutes(180),
+            timeout=core.Duration.minutes(120),
             build_spec=codebuild.BuildSpec.from_object(build_spec_content))
 
         # Add 'BuildBatchConfig' property, which is not supported in CDK.
@@ -70,5 +70,5 @@ class LinuxDockerImageBatchBuildStack(core.Stack):
         cfn_build = project.node.default_child
         cfn_build.add_override("Properties.BuildBatchConfig", {
             "ServiceRole": role.role_arn,
-            "TimeoutInMins": 180
+            "TimeoutInMins": 120
         })
