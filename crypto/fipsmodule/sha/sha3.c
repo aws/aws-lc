@@ -73,7 +73,9 @@ int SHA3_Init(KECCAK1600_CTX *ctx, uint8_t pad, size_t bit_len) {
 
   // The block size in SHA3 depends on the digest |bit_len|
   // The block size in SHAKE depends only on the security level
-  // SHAKE produces arbitrary length digest
+  // The |SHA3_PAD_CHAR| differs for SHA3 and SHAKE
+  // It is used to assign the block size based on the 
+  // digest length (for SHA3) or the security level for (SHAKE)
   if (pad == SHA3_PAD_CHAR) {
     block_size = SHA3_BLOCKSIZE(bit_len);
   } else {

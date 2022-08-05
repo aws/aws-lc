@@ -35,10 +35,10 @@ extern "C" {
 #define SHAKE256_BLOCKSIZE (KECCAK1600_WIDTH - 256 * 2) / 8
 
 // The |SHA3_MIN_CAPACITY_BYTES| corresponds to the 
-// lowest security level capacity.
-// The data block size increases when the capacity decreases.
-// The data buffer should have at least the maximum 
-// block size bytes to fit any digest length.
+// lowest security level capacity for SHA3/SHAKE.
+// The data blocks increase when the capacity decreases.
+// The data buffer should have at least the maximum number of
+// block size bytes to fit any SHA3/SHAKE block length.
 #define SHA3_MIN_CAPACITY_BYTES (KECCAK1600_WIDTH / 8 - SHAKE128_BLOCKSIZE)
 
 typedef struct keccak_st KECCAK1600_CTX;
@@ -75,15 +75,21 @@ void sha512_block_data_order(uint64_t *state, const uint8_t *in,
                              size_t num_blocks);
 #endif
 
-// SHA3_256 writes the digest of |len| bytes from |data| to |out| and returns |out|. 
+// SHA3_256 writes the digest of |len| bytes from |data| to |out| 
+// and returns |out| on success and NULL on failure. 
 // There must be at least |SHA3_256_DIGEST_LENGTH| bytes of space in |out|.
-OPENSSL_EXPORT uint8_t *SHA3_256(const uint8_t *data, size_t len, uint8_t out[SHA3_256_DIGEST_LENGTH]);  
+OPENSSL_EXPORT uint8_t *SHA3_256(const uint8_t *data, size_t len, 
+                                 uint8_t out[SHA3_256_DIGEST_LENGTH]);  
 
-// SHAKE128 writes the |out_len| bytes digest from |in_len| bytes |data| to |out| and returns |out|. 
-OPENSSL_EXPORT uint8_t *SHAKE128(const uint8_t *data, const size_t in_len, uint8_t *out, size_t out_len);
+// SHAKE128 writes the |out_len| bytes digest from |in_len| bytes |data| 
+// to |out| and returns |out| on success and NULL on failure. 
+OPENSSL_EXPORT uint8_t *SHAKE128(const uint8_t *data, const size_t in_len, 
+                                 uint8_t *out, size_t out_len);
 
-// SHAKE256 writes the |out_len| bytes digest from |in_len| bytes |data| to |out| and returns |out|. 
-OPENSSL_EXPORT uint8_t *SHAKE256(const uint8_t *data, const size_t in_len, uint8_t *out, size_t out_len);
+// SHAKE256 writes |out_len| bytes digest from |in_len| bytes |data| 
+// to |out| and returns |out| on success and NULL on failure. 
+OPENSSL_EXPORT uint8_t *SHAKE256(const uint8_t *data, const size_t in_len, 
+                                 uint8_t *out, size_t out_len);
 
 // SHA3_Reset zeros the bitstate and the amount of processed input.
 OPENSSL_EXPORT void SHA3_Reset(KECCAK1600_CTX *ctx);
@@ -92,22 +98,23 @@ OPENSSL_EXPORT void SHA3_Reset(KECCAK1600_CTX *ctx);
 OPENSSL_EXPORT int SHA3_Init(KECCAK1600_CTX *ctx, uint8_t pad,
                              size_t bitlen);
 
-// SHA3_Update processes all data blocks that don't need pad through |SHA3_Absorb| and returns 1 and 0 on failure.
+// SHA3_Update processes all data blocks that don't need pad through 
+//|SHA3_Absorb| and returns 1 and 0 on failure.
 OPENSSL_EXPORT int SHA3_Update(KECCAK1600_CTX *ctx, const void *data,
                                size_t len);
 
-// SHA3_Final pads the last block of data and proccesses it through |SHA3_Absorb|. 
+// SHA3_Final pads the last data block and processes it through |SHA3_Absorb|. 
 // It processes the data through |SHA3_Squeeze| and returns 1 and 0 on failure.
 OPENSSL_EXPORT int SHA3_Final(uint8_t *md, KECCAK1600_CTX *ctx);
 
 // SHA3_Absorb processes the largest multiple of |r| out of |len| bytes and 
 // returns the remaining number of bytes. 
-OPENSSL_EXPORT size_t SHA3_Absorb(uint64_t A[SHA3_ROWS][SHA3_ROWS], const uint8_t *data,
-                                  size_t len, size_t r);
+OPENSSL_EXPORT size_t SHA3_Absorb(uint64_t A[SHA3_ROWS][SHA3_ROWS], 
+                                  const uint8_t *data, size_t len, size_t r);
 
 // SHA3_Squeeze generate |out| hash value of |len| bytes.
-OPENSSL_EXPORT void SHA3_Squeeze(uint64_t A[SHA3_ROWS][SHA3_ROWS], uint8_t *out,
-                                 size_t len, size_t r);
+OPENSSL_EXPORT void SHA3_Squeeze(uint64_t A[SHA3_ROWS][SHA3_ROWS], 
+                                 uint8_t *out, size_t len, size_t r);
 
 #if defined(__cplusplus)
 }  // extern "C"
