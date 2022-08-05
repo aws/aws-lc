@@ -22,6 +22,7 @@
 
 #if !defined(OPENSSL_TRUSTY)
 
+#include <time.h>
 #include <fcntl.h>
 #include <string.h>
 #include <sys/types.h>
