@@ -123,3 +123,4 @@ runs in AWS EFS. Cryptofuzz is built with 3 modules:
 CI Tool|Compiler|CPU platform|OS|Flags
 ------------|-------------|-------------|-------------|-------------
 CodeBuild|clang 10.0.0|x86-64|Ubuntu 20.04|ASAN=1
+CodeBuild|clang 10.0.0|aarch64|Ubuntu 20.04|ASAN=1
