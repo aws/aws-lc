@@ -61,6 +61,6 @@ class LinuxDockerImageBatchBuildStack(core.Stack):
                 build_image=codebuild.LinuxBuildImage.STANDARD_4_0),
             environment_variables=environment_variables,
             role=role,
-            timeout=core.Duration.minutes(120),
+            timeout=core.Duration.minutes(180),
             build_spec=codebuild.BuildSpec.from_object(build_spec_content))
         project.enable_batch_builds()

@@ -79,7 +79,7 @@ class BmFrameworkStack(core.Stack):
             project_name=id,
             source=git_hub_source,
             role=codebuild_role,
-            timeout=core.Duration.minutes(180),
+            timeout=core.Duration.minutes(120),
             environment=codebuild.BuildEnvironment(compute_type=codebuild.ComputeType.SMALL,
                                                    privileged=False,
                                                    build_image=codebuild.LinuxBuildImage.STANDARD_4_0),
