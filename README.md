@@ -21,7 +21,7 @@ cmake3 -GNinja \
     -DCMAKE_BUILD_TYPE=RelWithDebInfo \
     -DCMAKE_INSTALL_PREFIX=../aws-lc-install \
     ../aws-lc
-ninja-build run_tests && ninja-build install
+ninja-build all_tests && ninja-build install
 cd ../aws-lc-install/
 ls *
 ```
