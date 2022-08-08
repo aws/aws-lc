@@ -10,9 +10,6 @@
 extern "C" {
 #endif
 
-#define AWSLC_APPROVED                             1
-#define AWSLC_NOT_APPROVED                         0
-
 // |FIPS_service_indicator_before_call| and |FIPS_service_indicator_after_call|
 // both currently return the same local thread counter which is slowly
 // incremented whenever approved services are called.
@@ -28,18 +25,13 @@ OPENSSL_EXPORT uint64_t FIPS_service_indicator_after_call(void);
 
 OPENSSL_EXPORT const char* awslc_version_string(void);
 
-// |FIPS_service_indicator_check_approved| is intended to take in the before and
-// after counter values. It will return |AWSLC_APPROVED| if the approval check
-// was successful, and |AWSLC_NOT_APPROVED| if otherwise.
-//
-// Service indicator calls should not be used in non-FIPS builds. However, if
-// used, the direct check to |FIPS_service_indicator_check_approved|
-// will always indicate |AWSLC_APPROVED| in non-FIPS builds.
-// It is recommended to use the macro |CALL_SERVICE_AND_CHECK_APPROVED| though,
-// which will also always return |AWSLC_APPROVED| in non-FIPS builds.
-OPENSSL_EXPORT int FIPS_service_indicator_check_approved(uint64_t before, uint64_t after);
+enum FIPSStatus {
+  AWSLC_NOT_APPROVED = 0,
+  AWSLC_APPROVED = 1,
+};
 
 #if defined(AWSLC_FIPS)
+
 #define AWSLC_MODE_STRING "AWS-LC FIPS "
 
 // This macro provides a bundled way to do an approval check and run the service.
@@ -53,7 +45,7 @@ OPENSSL_EXPORT int FIPS_service_indicator_check_approved(uint64_t before, uint64
     int before = FIPS_service_indicator_before_call();              \
     func;                                                           \
     int after = FIPS_service_indicator_after_call();                \
-    if (FIPS_service_indicator_check_approved(before, after)) {     \
+    if (before != after) {                                          \
         (approved) = AWSLC_APPROVED;                                \
     }                                                               \
  }                                                                  \

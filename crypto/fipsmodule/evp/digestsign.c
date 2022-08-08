@@ -170,7 +170,7 @@ int EVP_DigestSignFinal(EVP_MD_CTX *ctx, uint8_t *out_sig,
 
     FIPS_service_indicator_unlock_state();
     if(ret > 0) {
-      DigestSign_verify_service_indicator(ctx);
+      EVP_DigestSign_verify_service_indicator(ctx);
     }
     return ret;
   } else {
@@ -205,7 +205,7 @@ int EVP_DigestVerifyFinal(EVP_MD_CTX *ctx, const uint8_t *sig,
 
   FIPS_service_indicator_unlock_state();
   if(ret > 0) {
-    DigestVerify_verify_service_indicator(ctx);
+    EVP_DigestVerify_verify_service_indicator(ctx);
   }
   return ret;
 }
@@ -241,7 +241,7 @@ int EVP_DigestSign(EVP_MD_CTX *ctx, uint8_t *out_sig, size_t *out_sig_len,
 end:
   FIPS_service_indicator_unlock_state();
   if(ret > 0) {
-    DigestSign_verify_service_indicator(ctx);
+    EVP_DigestSign_verify_service_indicator(ctx);
   }
   return ret;
 }
@@ -271,7 +271,7 @@ int EVP_DigestVerify(EVP_MD_CTX *ctx, const uint8_t *sig, size_t sig_len,
 end:
   FIPS_service_indicator_unlock_state();
   if(ret > 0) {
-    DigestVerify_verify_service_indicator(ctx);
+    EVP_DigestVerify_verify_service_indicator(ctx);
   }
   return ret;
 }

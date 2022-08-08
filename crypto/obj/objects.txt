@@ -1358,3 +1358,12 @@ secg-scheme 14 3 : dhSinglePass-cofactorDH-sha512kdf-scheme
 # TLS 1.3 cipher suites do not specify key exchange or authentication.
  : KxANY : kx-any
  : AuthANY : auth-any
+
+# OIDs for SHA3-224, SHA3-256, SHA3-384 and SHA3-512, according to
+# https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf
+# https://csrc.nist.gov/projects/computer-security-objects-register/algorithm-registration
+!Alias nist_sha3hashalgs nistAlgorithms 2
+nist_sha3hashalgs 7		: SHA3-224		: sha3-224
+nist_sha3hashalgs 8		: SHA3-256		: sha3-256
+nist_sha3hashalgs 9		: SHA3-384		: sha3-384
+nist_sha3hashalgs 10		: SHA3-512		: sha3-512
