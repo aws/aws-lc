@@ -1635,7 +1635,10 @@ bool Speed(const std::vector<std::string> &args) {
      !SpeedHash(EVP_sha512(), "SHA-512", selected) ||
      // OpenSSL 1.0 doesn't support SHA3.
 #if !defined(OPENSSL_1_0_BENCHMARK)
+     !SpeedHash(EVP_sha3_224(), "SHA3-224", selected) ||
      !SpeedHash(EVP_sha3_256(), "SHA3-256", selected) ||
+     !SpeedHash(EVP_sha3_384(), "SHA3-384", selected) ||
+     !SpeedHash(EVP_sha3_512(), "SHA3-512", selected) ||
 #endif
      !SpeedHmac(EVP_md5(), "HMAC-MD5", selected) ||
      !SpeedHmac(EVP_sha1(), "HMAC-SHA1", selected) ||
