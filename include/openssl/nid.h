@@ -4262,22 +4262,22 @@ extern "C" {
 #define SN_sha3_224 "SHA3-224"
 #define LN_sha3_224 "sha3-224"
 #define NID_sha3_224 965
-#define OBJ_sha3_224 2L, 16L, 840L, 1L, 101L, 3L, 4L, 2L, 1L
+#define OBJ_sha3_224 2L, 16L, 840L, 1L, 101L, 3L, 4L, 2L, 7L
 
 #define SN_sha3_256 "SHA3-256"
 #define LN_sha3_256 "sha3-256"
 #define NID_sha3_256 966
-#define OBJ_sha3_256 2L, 16L, 840L, 1L, 101L, 3L, 4L, 2L, 1L
+#define OBJ_sha3_256 2L, 16L, 840L, 1L, 101L, 3L, 4L, 2L, 8L
 
 #define SN_sha3_384 "SHA3-384"
 #define LN_sha3_384 "sha3-384"
 #define NID_sha3_384 967
-#define OBJ_sha3_384 2L, 16L, 840L, 1L, 101L, 3L, 4L, 2L, 1L
+#define OBJ_sha3_384 2L, 16L, 840L, 1L, 101L, 3L, 4L, 2L, 9L
 
 #define SN_sha3_512 "SHA3-512"
 #define LN_sha3_512 "sha3-512"
 #define NID_sha3_512 968
-#define OBJ_sha3_512 2L, 16L, 840L, 1L, 101L, 3L, 4L, 2L, 1L
+#define OBJ_sha3_512 2L, 16L, 840L, 1L, 101L, 3L, 4L, 2L, 10L
 
 
 #if defined(__cplusplus)
