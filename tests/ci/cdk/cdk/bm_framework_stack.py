@@ -43,7 +43,7 @@ class BmFrameworkStack(core.Stack):
                     codebuild.EventAction.PULL_REQUEST_UPDATED,
                     codebuild.EventAction.PULL_REQUEST_REOPENED)
             ],
-            clone_depth=1)
+            webhook_triggers_batch_build=True)
 
         # Define a IAM role for this stack.
         code_build_batch_policy = iam.PolicyDocument.from_json(code_build_batch_policy_in_json([id]))
@@ -79,20 +79,12 @@ class BmFrameworkStack(core.Stack):
             project_name=id,
             source=git_hub_source,
             role=codebuild_role,
-            timeout=core.Duration.minutes(180),
+            timeout=core.Duration.minutes(120),
             environment=codebuild.BuildEnvironment(compute_type=codebuild.ComputeType.SMALL,
                                                    privileged=False,
                                                    build_image=codebuild.LinuxBuildImage.STANDARD_4_0),
             build_spec=codebuild.BuildSpec.from_object(build_spec_content))
-
-        # Add 'BuildBatchConfig' property, which is not supported in CDK.
-        # CDK raw overrides: https://docs.aws.amazon.com/cdk/latest/guide/cfn_layer.html#cfn_layer_raw
-        # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-codebuild-project.html#aws-resource-codebuild-project-properties
-        cfn_build = project.node.default_child
-        cfn_build.add_override("Properties.BuildBatchConfig", {
-            "ServiceRole": codebuild_role.role_arn,
-            "TimeoutInMins": 180
-        })
+        project.enable_batch_builds()
 
         # use boto3 to determine if a bucket with the name that we want exists, and if it doesn't, create it
         s3_res = boto3.resource('s3')
