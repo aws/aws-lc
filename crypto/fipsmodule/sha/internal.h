@@ -34,6 +34,8 @@ extern "C" {
 #define SHAKE128_BLOCKSIZE (KECCAK1600_WIDTH - 128 * 2) / 8
 #define SHAKE256_BLOCKSIZE (KECCAK1600_WIDTH - 256 * 2) / 8
 
+// In the sponge construction, the width of the underlying 
+// function minus the rate (the block size in bits).
 // The |SHA3_MIN_CAPACITY_BYTES| corresponds to the 
 // lowest security level capacity for SHA3/SHAKE.
 // The data blocks increase when the capacity decreases.
@@ -81,12 +83,12 @@ void sha512_block_data_order(uint64_t *state, const uint8_t *in,
 OPENSSL_EXPORT uint8_t *SHA3_256(const uint8_t *data, size_t len, 
                                  uint8_t out[SHA3_256_DIGEST_LENGTH]);  
 
-// SHAKE128 writes the |out_len| bytes digest from |in_len| bytes |data| 
+// SHAKE128 writes the |out_len| bytes output from |in_len| bytes |data| 
 // to |out| and returns |out| on success and NULL on failure. 
 OPENSSL_EXPORT uint8_t *SHAKE128(const uint8_t *data, const size_t in_len, 
                                  uint8_t *out, size_t out_len);
 
-// SHAKE256 writes |out_len| bytes digest from |in_len| bytes |data| 
+// SHAKE256 writes |out_len| bytes output from |in_len| bytes |data| 
 // to |out| and returns |out| on success and NULL on failure. 
 OPENSSL_EXPORT uint8_t *SHAKE256(const uint8_t *data, const size_t in_len, 
                                  uint8_t *out, size_t out_len);
