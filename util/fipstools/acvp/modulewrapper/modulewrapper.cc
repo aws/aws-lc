@@ -961,6 +961,7 @@ static bool AES_XTS(const Span<const uint8_t> args[], ReplyCallback write_reply)
 
   bssl::ScopedEVP_CIPHER_CTX ctx;
   int len;
+  
   ctx.Reset();
   if (Encrypt) {
     if(!EVP_EncryptInit_ex(ctx.get(), cipher, nullptr, key.data(), iv.data())) {
