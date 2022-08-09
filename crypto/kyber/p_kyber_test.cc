@@ -9,6 +9,59 @@
 #include "../internal.h"
 #include "kem_kyber.h"
 
+// Add perf linux for benchmarking SHA3/SHAKE
+#ifdef __linux__
+//#define _GNU_SOURC//E //Needed for the perf benchmark measurements
+#include <stdlib.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <string.h>
+#include <sys/ioctl.h>
+#include <linux/perf_event.h>
+#include <asm/unistd.h>
+#endif
+
+//#define BENCHMARK_TEST
+
+#ifdef BENCHMARK_TEST
+#define NTESTS 1
+#ifdef __linux__
+static long perf_event_open(struct perf_event_attr *hw_event, pid_t pid,
+                       int cpu, int group_fd, unsigned long flags)
+{
+    int ret;
+
+    ret = syscall(__NR_perf_event_open, hw_event, pid, cpu,
+                  group_fd, flags);
+    return ret;
+}
+
+static void append_to_file(uint64_t val)
+{
+    FILE *fp;
+    fp = fopen("sha3_shake.txt", "a");
+    if (fp == NULL){  
+      printf("cannot open file");
+      return;
+    }
+    fprintf(fp, "%lu,\n", val);
+    fclose(fp);
+}
+#endif
+
+static uint64_t gettime() {
+#ifdef __aarch64__
+  uint64_t ret = 0;
+  //uint64_t hz = 0;
+  __asm__ __volatile__ ("isb; mrs %0,cntvct_el0":"=r"(ret));
+ // __asm__ __volatile__ ("mrs %0,cntfrq_el0; clz %w0, %w0":"=&r"(hz));
+  return ret ;
+#endif
+  return 0;
+}
+#endif
+
+
 TEST(Kyber512Test, KeyGeneration) {
   EVP_PKEY_CTX *kyber_pkey_ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_KYBER512, nullptr);
   ASSERT_NE(kyber_pkey_ctx, nullptr);
@@ -148,6 +201,7 @@ TEST(Kyber512Test, KeySize) {
 }
 
 TEST(Kyber512Test, KEMOperations) {
+  for (int FlameGraph = 0; FlameGraph < 1000; FlameGraph++) {
   // Basic functional test for KYBER512
   // Simulate two sides of the key exchange mechanism.
   size_t shared_secret_len = KYBER512_KEM_SHARED_SECRET_BYTES;
@@ -156,12 +210,60 @@ TEST(Kyber512Test, KEMOperations) {
   uint8_t shared_secret_bob[KYBER512_KEM_SHARED_SECRET_BYTES];
   uint8_t ciphertext_alice[KYBER512_KEM_CIPHERTEXT_BYTES];
   uint8_t ciphertext_bob[KYBER512_KEM_CIPHERTEXT_BYTES];
-
-  // Alice generates the key pair.
   EVP_PKEY_CTX *kyber_pkey_ctx_alice = EVP_PKEY_CTX_new_id(EVP_PKEY_KYBER512, nullptr);
   EVP_PKEY *kyber_pkey_alice = EVP_PKEY_new();
+  
+  #ifdef BENCHMARK_TEST
+  #ifdef __linux__
+    //Setup perf to measure time using the high-resolution task counter
+    struct perf_event_attr pe;
+    uint64_t duration_ns;
+    int perf_fd;
+    memset(&pe, 0, sizeof(pe));
+    pe.type = PERF_TYPE_SOFTWARE;
+    pe.size = sizeof(pe);
+    pe.config = PERF_COUNT_SW_TASK_CLOCK;
+    pe.disabled = 1;
+    pe.exclude_kernel = 1;
+    pe.exclude_hv = 1;
+    perf_fd = perf_event_open(&pe, 0, -1, -1, 0);
+    if (perf_fd == -1) {
+    fprintf(stderr, "Error opening leader %llx\n", pe.config);
+    return;
+    }
+    
+    //fprintf(stderr, "Pre negotiate wire byte counts: IN=[%lu], OUT=[%lu]\n", conn->wire_bytes_in, conn->wire_bytes_out);
+    ioctl(perf_fd, PERF_EVENT_IOC_RESET, 0);
+    ioctl(perf_fd, PERF_EVENT_IOC_ENABLE, 0);
+    // Start of section being measured
+    #endif
+    uint32_t start, end; 
+    start = gettime();
+   
+    for(int iter = 0 ; iter < NTESTS; iter++ ) {
+    #endif
+
+  // Alice generates the key pair.
+  
   EXPECT_TRUE(EVP_PKEY_keygen_init(kyber_pkey_ctx_alice));
   EXPECT_TRUE(EVP_PKEY_keygen(kyber_pkey_ctx_alice, &kyber_pkey_alice));
+  
+
+  #ifdef BENCHMARK_TEST
+  }
+  end = gettime();
+
+  #ifdef __linux__
+  //// End of section being measured
+    ioctl(perf_fd, PERF_EVENT_IOC_DISABLE, 0);
+    if (!read(perf_fd, &duration_ns, sizeof(duration_ns))){
+      return;
+    }
+    close(perf_fd);
+    fprintf(stderr, "gettime() %u vs. perf_event %lu\n", (end - start)/NTESTS , duration_ns/NTESTS );
+    append_to_file(duration_ns);
+  #endif
+  #endif
 
   // Alice passes the public key to Bob.
   const KYBER512_KEY *kyber_key_alice = (KYBER512_KEY *)(kyber_pkey_alice->pkey.ptr);
@@ -183,6 +285,7 @@ TEST(Kyber512Test, KEMOperations) {
   // Alice decapsulates the ciphertext to obtain the shared secret.
   ASSERT_TRUE(EVP_PKEY_decapsulate_init(kyber_pkey_ctx_alice, NULL));
   ASSERT_TRUE(EVP_PKEY_decapsulate(kyber_pkey_ctx_alice, shared_secret_alice, &shared_secret_len, ciphertext_alice, ciphertext_len));
+   
 
   // Verify that Alice and Bob have the same shared secret.
   for (size_t i = 0; i < shared_secret_len; i++) {
@@ -201,9 +304,11 @@ TEST(Kyber512Test, KEMOperations) {
     tmp |= (shared_secret_alice[i] ^ shared_secret_bob[i]);
   }
   EXPECT_NE(tmp, 0);
+  
 
   EVP_PKEY_CTX_free(kyber_pkey_ctx_alice);
   EVP_PKEY_CTX_free(kyber_pkey_ctx_bob);
+}
 }
 
 TEST(Kyber512Test, KEMSizeChecks) {

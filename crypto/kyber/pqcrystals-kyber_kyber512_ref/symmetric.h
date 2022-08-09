@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include "params.h"
 
-//#define AWS_LC_SHA3_API_TEST
+#define AWS_LC_SHA3_API_TEST
 
 #ifdef KYBER_90S
 
@@ -67,6 +67,7 @@ void kyber_shake256_prf(uint8_t *out, size_t outlen, const uint8_t key[KYBER_SYM
 #else
 
 #include "../../fipsmodule/sha/internal.h"
+
 #define kyber_shake128_absorb KYBER_NAMESPACE(kyber_shake128_absorb)
 void kyber_shake128_absorb(keccak_state *s,
                            const uint8_t seed[KYBER_SYMBYTES],

@@ -8,7 +8,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-
 /*************************************************
 * Name:        kyber_shake128_absorb
 *
@@ -31,13 +30,7 @@ void kyber_shake128_absorb(keccak_state *state,
   extseed[KYBER_SYMBYTES+1] = y;
 
   #ifndef AWS_LC_SHA3_API_TEST
-
   shake128_absorb_once(state, extseed, sizeof(extseed));
-  // for (int j = 0; j < (1600/64); j++)
-  // {
-  //     printf("%llx\n", state->s[j]);
-  // }
-
   #else
 
   int p = 0x1F; 

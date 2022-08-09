@@ -10,34 +10,62 @@
 #include "../../test/test_util.h"
 #include "internal.h"
 #include <openssl/digest.h>
+#include <sys/ioctl.h>
+
+
+ #include <stdlib.h>
+ #include <stdio.h>
+ #include <stdint.h>
+ #include <string.h>
+ #include <linux/perf_event.h>
+ #include <asm/unistd.h>
+ #include <sys/syscall.h>
+
 
 // Add perf linux for benchmarking SHA3/SHAKE
 #ifdef __linux__
-#define _GNU_SOURCE //Needed for the perf benchmark measurements
-
+//#define _GNU_SOURCE //Needed for the perf benchmark measurements
 #include <stdlib.h>
 #include <stdio.h>
-#include <stdint.h>
+#include <unistd.h>
 #include <string.h>
+#include <sys/ioctl.h>
 #include <linux/perf_event.h>
 #include <asm/unistd.h>
-#include <sys/syscall.h>
 
-static long perf_event_open(struct perf_event_attr *hw_event, pid_t pid, int cpu, int group_fd, unsigned long flags)
+static long perf_event_open(struct perf_event_attr *hw_event, pid_t pid,
+                       int cpu, int group_fd, unsigned long flags)
 {
     int ret;
-    ret = syscall(__NR_perf_event_open, hw_event, pid, cpu, group_fd, flags);
+
+    ret = syscall(__NR_perf_event_open, hw_event, pid, cpu,
+                  group_fd, flags);
     return ret;
 }
 
 static void append_to_file(uint64_t val)
 {
     FILE *fp;
-    fp = fopen("../../../benckmark/sha3_shake.txt", "a");
+    fp = fopen("sha3_shake.txt", "a");
+    if (fp == NULL){  
+      printf("cannot open file");
+      return;
+    }
     fprintf(fp, "%lu,\n", val);
     fclose(fp);
 }
 #endif
+
+static uint64_t gettime() {
+#ifdef __aarch64__
+  uint64_t ret = 0;
+  //uint64_t hz = 0;
+  __asm__ __volatile__ ("isb; mrs %0,cntvct_el0":"=r"(ret));
+  //__asm__ __volatile__ ("mrs %0,cntfrq_el0; clz %w0, %w0":"=&r"(hz));
+  return ret ;
+#endif
+  return 0;
+}
 
 // SHA3TestVector corresponds to one test case of the NIST published file
 // SHA3_256ShortMsg.txt.
@@ -54,8 +82,16 @@ class SHA3TestVector {
     uint8_t *digest  = new uint8_t[EVP_MD_size(algorithm)];
     EVP_MD_CTX* ctx = EVP_MD_CTX_new();
 
+    // SHA3 is disabled by default. First test this assumption and then enable SHA3 and test it.
+    ASSERT_FALSE(EVP_DigestInit(ctx, algorithm));
+    ASSERT_FALSE(EVP_DigestUpdate(ctx, msg_.data(), len_ / 8));
+    ASSERT_FALSE(EVP_DigestFinal(ctx, digest, &digest_length));
+
+    // Enable SHA3
+    EVP_MD_unstable_sha3_enable(true);
+
     #ifdef __linux__
-    //Setup perf to measure time using the high resolution task counter
+    //Setup perf to measure time using the high-resolution task counter
     struct perf_event_attr pe;
     uint64_t duration_ns;
     int perf_fd;
@@ -68,37 +104,36 @@ class SHA3TestVector {
     pe.exclude_hv = 1;
     perf_fd = perf_event_open(&pe, 0, -1, -1, 0);
     if (perf_fd == -1) {
-        fprintf(stderr, "Error opening leader %llx\n", pe.config);
-        S2N_ERROR_PRESERVE_ERRNO();
+    fprintf(stderr, "Error opening leader %llx\n", pe.config);
+    return;
     }
+    
 
-    fprintf(stderr, "Pre negotiate wire byte counts: IN=[%lu], OUT=[%lu]\n", conn->wire_bytes_in, conn->wire_bytes_out);
+    //fprintf(stderr, "Pre negotiate wire byte counts: IN=[%lu], OUT=[%lu]\n", conn->wire_bytes_in, conn->wire_bytes_out);
     ioctl(perf_fd, PERF_EVENT_IOC_RESET, 0);
     ioctl(perf_fd, PERF_EVENT_IOC_ENABLE, 0);
-    //// Start of section being measured
+    // Start of section being measured
     #endif
-
-    // SHA3 is disabled by default. First test this assumption and then enable SHA3 and test it.
-    ASSERT_FALSE(EVP_DigestInit(ctx, algorithm));
-    ASSERT_FALSE(EVP_DigestUpdate(ctx, msg_.data(), len_ / 8));
-    ASSERT_FALSE(EVP_DigestFinal(ctx, digest, &digest_length));
-
-    #ifdef __linux__
-    //// End of section being measured
-    ioctl(perf_fd, PERF_EVENT_IOC_DISABLE, 0);
-    read(perf_fd, &duration_ns, sizeof(duration_ns));
-    close(perf_fd);
-    fprintf(stderr, "Post negotiate wire byte counts: IN=[%lu], OUT=[%lu]\n", conn->wire_bytes_in, conn->wire_bytes_out);
-    append_to_file(duration_ns);
-    #endif
-
-    // Enable SHA3
-    EVP_MD_unstable_sha3_enable(true);
-
+    uint32_t start, end; 
+    start = gettime();
+    for (int i = 0; i < 1000; i++) {
     // Test the correctness via the Init, Update and Final Digest APIs.
     ASSERT_TRUE(EVP_DigestInit(ctx, algorithm));
     ASSERT_TRUE(EVP_DigestUpdate(ctx, msg_.data(), len_ / 8));
     ASSERT_TRUE(EVP_DigestFinal(ctx, digest, &digest_length));
+    }
+    end = gettime();
+
+    #ifdef __linux__
+    //// End of section being measured
+     ioctl(perf_fd, PERF_EVENT_IOC_DISABLE, 0);
+     if (!read(perf_fd, &duration_ns, sizeof(duration_ns))){
+       return;
+     }
+     close(perf_fd);
+     fprintf(stderr, "gettime() %u vs. perf_event %lu\n", (end - start) / 1000, duration_ns / 1000);
+     append_to_file((duration_ns)/1000);
+    #endif
     
     ASSERT_EQ(Bytes(digest, EVP_MD_size(algorithm)),
               Bytes(digest_.data(), EVP_MD_size(algorithm)));
@@ -231,7 +266,7 @@ TEST(SHA3Test, NISTTestVectors) {
     const EVP_MD* algorithm = EVP_sha3_224();
     test_vec.NISTTestVectors(algorithm);
   });
-  FileTestGTest("crypto/fipsmodule/sha/testvectors/SHA3_256ShortMsg.txt", [](FileTest *t) {
+    FileTestGTest("crypto/fipsmodule/sha/testvectors/SHA3_256ShortMsg.txt", [](FileTest *t) {
     SHA3TestVector test_vec;
     EXPECT_TRUE(test_vec.ReadFromFileTest(t));
     const EVP_MD* algorithm = EVP_sha3_256();
