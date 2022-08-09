@@ -953,3 +953,7 @@ X448		961
 sha512_256		962
 aes_128_cbc_hmac_sha256		963
 aes_256_cbc_hmac_sha256		964
+sha3_224		965
+sha3_256		966
+sha3_384		967
+sha3_512		968
