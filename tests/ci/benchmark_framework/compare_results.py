@@ -5,6 +5,49 @@ import sys
 import pandas as pd
 import numpy as np
 
+# Array containing ignored fields
+ignored_fields = np.array(['TrustToken-Exp1-Batch1 generate_key',
+    'TrustToken-Exp1-Batch1 begin_issuance',
+    'TrustToken-Exp1-Batch1 issue',
+    'TrustToken-Exp1-Batch1 finish_issuance',
+    'TrustToken-Exp1-Batch1 begin_redemption',
+    'TrustToken-Exp1-Batch1 redeem',
+    'TrustToken-Exp1-Batch1 finish_redemption',
+    'TrustToken-Exp1-Batch10 generate_key',
+    'TrustToken-Exp1-Batch10 begin_issuance',
+    'TrustToken-Exp1-Batch10 issue',
+    'TrustToken-Exp1-Batch10 finish_issuance',
+    'TrustToken-Exp1-Batch10 begin_redemption',
+    'TrustToken-Exp1-Batch10 redeem',
+    'TrustToken-Exp1-Batch10 finish_redemption',
+    'TrustToken-Exp2VOfPRF-Batch1 generate_key',
+    'TrustToken-Exp2VOfPRF-Batch1 begin_issuance',
+    'TrustToken-Exp2VOfPRF-Batch1 issue',
+    'TrustToken-Exp2VOfPRF-Batch1 finish_issuance',
+    'TrustToken-Exp2VOfPRF-Batch1 begin_redemption',
+    'TrustToken-Exp2VOfPRF-Batch1 redeem',
+    'TrustToken-Exp2VOfPRF-Batch1 finish_redemption',
+    'TrustToken-Exp2VOPRF-Batch10 generate_key',
+    'TrustToken-Exp2VOPRF-Batch10 begin_issuance',
+    'TrustToken-Exp2VOPRF-Batch10 issue',
+    'TrustToken-Exp2VOPRF-Batch10 finish_issuance',
+    'TrustToken-Exp2VOPRF-Batch10 begin_redemption',
+    'TrustToken-Exp2VOPRF-Batch10 redeem',
+    'TrustToken-Exp2VOPRF-Batch10 finish_redemption',
+    'TrustToken-Exp2PMB-Batch1 generate_key',
+    'TrustToken-Exp2PMB-Batch1 begin_issuance',
+    'TrustToken-Exp2PMB-Batch1 issue',
+    'TrustToken-Exp2PMB-Batch1 finish_issuance',
+    'TrustToken-Exp2PMB-Batch1 begin_redemption',
+    'TrustToken-Exp2PMB-Batch1 redeem',
+    'TrustToken-Exp2PMB-Batch1 finish_redemption',
+    'TrustToken-Exp2PMB-Batch10 generate_key',
+    'TrustToken-Exp2PMB-Batch10 begin_issuance',
+    'TrustToken-Exp2PMB-Batch10 issue',
+    'TrustToken-Exp2PMB-Batch10 finish_issuance',
+    'TrustToken-Exp2PMB-Batch10 begin_redemption',
+    'TrustToken-Exp2PMB-Batch10 redeem',
+    'TrustToken-Exp2PMB-Batch10 finish_redemption'])
 
 # Helper function to read json or csv file data obtained from the speed tool into a pandas dataframe
 def read_data(file):
@@ -15,6 +58,12 @@ def read_data(file):
         df = pd.read_csv(file, skiprows=1, index_col=0)
     return df
 
+def significant_regressions(compared_df):
+    if compared_df.empty:
+        return False
+    descriptions = compared_df['description.1']
+    evaluation = np.isin(descriptions, ignored_fields)
+    return not np.all(evaluation)
 
 def main():
     if len(sys.argv) != 4:
@@ -82,7 +131,7 @@ def main():
     compared_df.loc[:, "Percentage Difference"] = 100 * ((compared_df2_avg_time / compared_df1_avg_time) - 1)
 
     # If the compared dataframe isn't empty, there are significant regressions present
-    if not compared_df.empty:
+    if significant_regressions(compared_df):
         output_file = sys.argv[3]
         if not output_file.endswith(".csv"):
             output_file += ".csv"
