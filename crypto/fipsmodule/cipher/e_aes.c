@@ -1085,24 +1085,14 @@ static int aead_aes_gcm_open_gather(const EVP_AEAD_CTX *ctx, uint8_t *out,
                                     const uint8_t *in_tag, size_t in_tag_len,
                                     const uint8_t *ad, size_t ad_len) {
   struct aead_aes_gcm_ctx *gcm_ctx = (struct aead_aes_gcm_ctx *)&ctx->state;
-  return aead_aes_gcm_open_gather_impl(gcm_ctx, out, nonce, nonce_len, in,
-                                       in_len, in_tag, in_tag_len, ad, ad_len,
-                                       ctx->tag_len);
-}
-
-static int aead_aes_gcm_tls_open_gather(const EVP_AEAD_CTX *ctx, uint8_t *out,
-                                    const uint8_t *nonce, size_t nonce_len,
-                                    const uint8_t *in, size_t in_len,
-                                    const uint8_t *in_tag, size_t in_tag_len,
-                                    const uint8_t *ad, size_t ad_len) {
-  // We wrap the original generic |aead_aes_gcm_open_gather| in a tls specific
-  // function, so we can do service indicator checks in tls specific APIs.
-  if(aead_aes_gcm_open_gather(ctx, out, nonce, nonce_len, in, in_len, in_tag,
-                               in_tag_len, ad, ad_len)) {
-    AEAD_GCM_verify_service_indicator(ctx);
-    return 1;
+  if (!aead_aes_gcm_open_gather_impl(gcm_ctx, out, nonce, nonce_len, in, in_len,
+                                     in_tag, in_tag_len, ad, ad_len,
+                                     ctx->tag_len)) {
+    return 0;
   }
-  return 0;
+
+  AEAD_GCM_verify_service_indicator(ctx);
+  return 1;
 }
 
 DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_aes_128_gcm) {
@@ -1348,7 +1338,7 @@ DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_aes_128_gcm_tls12) {
   out->init = aead_aes_gcm_tls12_init;
   out->cleanup = aead_aes_gcm_cleanup;
   out->seal_scatter = aead_aes_gcm_tls12_seal_scatter;
-  out->open_gather = aead_aes_gcm_tls_open_gather;
+  out->open_gather = aead_aes_gcm_open_gather;
 }
 
 DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_aes_256_gcm_tls12) {
@@ -1363,7 +1353,7 @@ DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_aes_256_gcm_tls12) {
   out->init = aead_aes_gcm_tls12_init;
   out->cleanup = aead_aes_gcm_cleanup;
   out->seal_scatter = aead_aes_gcm_tls12_seal_scatter;
-  out->open_gather = aead_aes_gcm_tls_open_gather;
+  out->open_gather = aead_aes_gcm_open_gather;
 }
 
 struct aead_aes_gcm_tls13_ctx {
@@ -1458,7 +1448,7 @@ DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_aes_128_gcm_tls13) {
   out->init = aead_aes_gcm_tls13_init;
   out->cleanup = aead_aes_gcm_cleanup;
   out->seal_scatter = aead_aes_gcm_tls13_seal_scatter;
-  out->open_gather = aead_aes_gcm_tls_open_gather;
+  out->open_gather = aead_aes_gcm_open_gather;
 }
 
 DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_aes_256_gcm_tls13) {
@@ -1473,7 +1463,7 @@ DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_aes_256_gcm_tls13) {
   out->init = aead_aes_gcm_tls13_init;
   out->cleanup = aead_aes_gcm_cleanup;
   out->seal_scatter = aead_aes_gcm_tls13_seal_scatter;
-  out->open_gather = aead_aes_gcm_tls_open_gather;
+  out->open_gather = aead_aes_gcm_open_gather;
 }
 
 int EVP_has_aes_hardware(void) {

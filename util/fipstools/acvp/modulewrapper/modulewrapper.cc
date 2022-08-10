@@ -224,6 +224,15 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
         }]
       },
       {
+        "algorithm": "ACVP-AES-XTS",
+        "revision": "2.0",
+        "direction": ["encrypt", "decrypt"],
+        "keyLen": [256],
+        "payloadLen": [1024],
+        "tweakMode": ["number"],
+        "dataUnitLenMatchesPayload": true
+      },
+      {
         "algorithm": "ACVP-AES-ECB",
         "revision": "1.0",
         "direction": ["encrypt", "decrypt"],
@@ -937,6 +946,45 @@ static bool AES(const Span<const uint8_t> args[], ReplyCallback write_reply) {
 
   return write_reply(
       {Span<const uint8_t>(result), Span<const uint8_t>(prev_result)});
+}
+
+template <bool Encrypt>
+static bool AES_XTS(const Span<const uint8_t> args[], ReplyCallback write_reply) {
+  const EVP_CIPHER *cipher = EVP_aes_256_xts();
+
+  std::vector<uint8_t> key(args[0].begin(), args[0].end());
+  std::vector<uint8_t> plaintext(args[1].begin(), args[1].end());
+  std::vector<uint8_t> iv(args[2].begin(), args[2].end());
+
+  bssl::Span<const uint8_t> in = plaintext;
+  std::vector<uint8_t> out(plaintext.size());
+
+  bssl::ScopedEVP_CIPHER_CTX ctx;
+  int len;
+  
+  ctx.Reset();
+  if (Encrypt) {
+    if(!EVP_EncryptInit_ex(ctx.get(), cipher, nullptr, key.data(), iv.data())) {
+      LOG_ERROR("Failed XTS encrypt setup");
+      return false;
+    }
+    if(!EVP_EncryptUpdate(ctx.get(), out.data(), &len, in.data(), in.size())) {
+      LOG_ERROR("Failed XTS encrypt");
+      return false;
+    }
+  }
+  else {
+    if(!EVP_DecryptInit_ex(ctx.get(), cipher, nullptr, key.data(), iv.data())) {
+      LOG_ERROR("Failed XTS decrypt setup");
+      return false;
+    }
+    if(!EVP_DecryptUpdate(ctx.get(), out.data(), &len, in.data(), in.size())) {
+      LOG_ERROR("Failed XTS decrypt");
+      return false;
+    }
+  }
+  out.resize(len);
+  return write_reply({Span<const uint8_t>(out)});
 }
 
 template <int (*SetKey)(const uint8_t *key, unsigned bits, AES_KEY *out),
@@ -1997,6 +2045,8 @@ static struct {
     {"SHA2-512/256/MCT", 1, HashMCT<SHA512_256, SHA512_256_DIGEST_LENGTH>},
     {"AES/encrypt", 3, AES<AES_set_encrypt_key, AES_encrypt>},
     {"AES/decrypt", 3, AES<AES_set_decrypt_key, AES_decrypt>},
+    {"AES-XTS/encrypt", 3, AES_XTS<true>},
+    {"AES-XTS/decrypt", 3, AES_XTS<false>},
     {"AES-CBC/encrypt", 4, AES_CBC<AES_set_encrypt_key, AES_ENCRYPT>},
     {"AES-CBC/decrypt", 4, AES_CBC<AES_set_decrypt_key, AES_DECRYPT>},
     {"AES-CTR/encrypt", 4, AES_CTR},

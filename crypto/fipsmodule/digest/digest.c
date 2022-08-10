@@ -96,6 +96,16 @@ bool EVP_MD_unstable_sha3_is_enabled(void) {
       return *unstable_enabled_sha3;
 }
 
+static bool SHA3_requested_and_enabled(const EVP_MD *digest) {
+  if ((digest->type == NID_sha3_224 || digest->type == NID_sha3_256 || 
+       digest->type == NID_sha3_384 ||  digest->type == NID_sha3_512) && 
+      !EVP_MD_unstable_sha3_is_enabled()) {
+    return false;
+  }
+
+  return true;
+}
+
 int EVP_MD_type(const EVP_MD *md) { return md->type; }
 
 int EVP_MD_nid(const EVP_MD *md) { return EVP_MD_type(md); }
@@ -236,6 +246,10 @@ int EVP_MD_CTX_reset(EVP_MD_CTX *ctx) {
 }
 
 int EVP_DigestInit_ex(EVP_MD_CTX *ctx, const EVP_MD *type, ENGINE *engine) {
+  if (!SHA3_requested_and_enabled(type)) {
+    return 0;
+  }
+
   if (ctx->digest != type) {
     assert(type->ctx_size != 0);
     uint8_t *md_data = OPENSSL_malloc(type->ctx_size);
@@ -261,11 +275,27 @@ int EVP_DigestInit(EVP_MD_CTX *ctx, const EVP_MD *type) {
 }
 
 int EVP_DigestUpdate(EVP_MD_CTX *ctx, const void *data, size_t len) {
+  if (ctx->digest == NULL) {
+    return 0;
+  }
+
+  if (!SHA3_requested_and_enabled(ctx->digest)) {
+    return 0;
+  }
+
   ctx->digest->update(ctx, data, len);
   return 1;
 }
 
 int EVP_DigestFinal_ex(EVP_MD_CTX *ctx, uint8_t *md_out, unsigned int *size) {
+  if (ctx->digest == NULL) {
+    return 0;
+  }
+
+  if (!SHA3_requested_and_enabled(ctx->digest)) {
+    return 0;
+  }
+  
   assert(ctx->digest->md_size <= EVP_MAX_MD_SIZE);
   ctx->digest->final(ctx, md_out);
   if (size != NULL) {
@@ -276,9 +306,10 @@ int EVP_DigestFinal_ex(EVP_MD_CTX *ctx, uint8_t *md_out, unsigned int *size) {
 }
 
 int EVP_DigestFinal(EVP_MD_CTX *ctx, uint8_t *md, unsigned int *size) {
-  (void)EVP_DigestFinal_ex(ctx, md, size);
+  
+  int ok = EVP_DigestFinal_ex(ctx, md, size);
   EVP_MD_CTX_cleanup(ctx);
-  return 1;
+  return ok;
 }
 
 int EVP_Digest(const void *data, size_t count, uint8_t *out_md,
