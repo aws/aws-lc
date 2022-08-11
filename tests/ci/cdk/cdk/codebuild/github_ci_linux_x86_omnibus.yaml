@@ -12,7 +12,7 @@ batch:
         type: LINUX_CONTAINER
         privileged-mode: false
         compute-type: BUILD_GENERAL1_SMALL
-        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_gcc-8x_latest
+        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-8x_latest
 
     - identifier: ubuntu1604_gcc5x_x86
       buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
