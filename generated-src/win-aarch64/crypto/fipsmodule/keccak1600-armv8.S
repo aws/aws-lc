@@ -223,6 +223,8 @@ Loop:
 	ret
 
 
+.globl	KeccakF1600
+
 .def KeccakF1600
    .type 32
 .endef

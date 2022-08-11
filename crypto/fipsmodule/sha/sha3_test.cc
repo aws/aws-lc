@@ -13,15 +13,6 @@
 #include <sys/ioctl.h>
 
 
- #include <stdlib.h>
- #include <stdio.h>
- #include <stdint.h>
- #include <string.h>
- #include <linux/perf_event.h>
- #include <asm/unistd.h>
- #include <sys/syscall.h>
-
-
 // Add perf linux for benchmarking SHA3/SHAKE
 #ifdef __linux__
 //#define _GNU_SOURCE //Needed for the perf benchmark measurements
@@ -123,6 +114,7 @@ class SHA3TestVector {
     ASSERT_TRUE(EVP_DigestFinal(ctx, digest, &digest_length));
     }
     end = gettime();
+    printf("Gettime() SHA3_256() %u", end - start / 1000);
 
     #ifdef __linux__
     //// End of section being measured
@@ -266,24 +258,24 @@ TEST(SHA3Test, NISTTestVectors) {
     const EVP_MD* algorithm = EVP_sha3_224();
     test_vec.NISTTestVectors(algorithm);
   });
-    FileTestGTest("crypto/fipsmodule/sha/testvectors/SHA3_256ShortMsg.txt", [](FileTest *t) {
-    SHA3TestVector test_vec;
-    EXPECT_TRUE(test_vec.ReadFromFileTest(t));
-    const EVP_MD* algorithm = EVP_sha3_256();
-    test_vec.NISTTestVectors(algorithm);
-  });
-  FileTestGTest("crypto/fipsmodule/sha/testvectors/SHA3_384ShortMsg.txt", [](FileTest *t) {
-    SHA3TestVector test_vec;
-    EXPECT_TRUE(test_vec.ReadFromFileTest(t));
-    const EVP_MD* algorithm = EVP_sha3_384();
-    test_vec.NISTTestVectors(algorithm);
-  });
-  FileTestGTest("crypto/fipsmodule/sha/testvectors/SHA3_512ShortMsg.txt", [](FileTest *t) {
-    SHA3TestVector test_vec;
-    EXPECT_TRUE(test_vec.ReadFromFileTest(t));
-    const EVP_MD* algorithm = EVP_sha3_512();
-    test_vec.NISTTestVectors(algorithm);
-  });
+  //   FileTestGTest("crypto/fipsmodule/sha/testvectors/SHA3_256ShortMsg.txt", [](FileTest *t) {
+  //   SHA3TestVector test_vec;
+  //   EXPECT_TRUE(test_vec.ReadFromFileTest(t));
+  //   const EVP_MD* algorithm = EVP_sha3_256();
+  //   test_vec.NISTTestVectors(algorithm);
+  // });
+  // FileTestGTest("crypto/fipsmodule/sha/testvectors/SHA3_384ShortMsg.txt", [](FileTest *t) {
+  //   SHA3TestVector test_vec;
+  //   EXPECT_TRUE(test_vec.ReadFromFileTest(t));
+  //   const EVP_MD* algorithm = EVP_sha3_384();
+  //   test_vec.NISTTestVectors(algorithm);
+  // });
+  // FileTestGTest("crypto/fipsmodule/sha/testvectors/SHA3_512ShortMsg.txt", [](FileTest *t) {
+  //   SHA3TestVector test_vec;
+  //   EXPECT_TRUE(test_vec.ReadFromFileTest(t));
+  //   const EVP_MD* algorithm = EVP_sha3_512();
+  //   test_vec.NISTTestVectors(algorithm);
+  // });
 }
 
 TEST(SHA3Test, NISTTestVectors_SingleShot) {

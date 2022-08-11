@@ -221,6 +221,8 @@ KeccakF1600_int:
 	ret
 .size	KeccakF1600_int,.-KeccakF1600_int
 
+.globl	KeccakF1600
+.hidden	KeccakF1600
 .type	KeccakF1600,%function
 .align	5
 KeccakF1600:
