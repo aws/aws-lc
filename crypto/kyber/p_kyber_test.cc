@@ -237,7 +237,7 @@ TEST(Kyber512Test, KEMOperations) {
     ioctl(perf_fd, PERF_EVENT_IOC_ENABLE, 0);
     // Start of section being measured
     #endif
-    uint32_t start, end; 
+    uint64_t start, end; 
     start = gettime();
    
     for(int iter = 0 ; iter < NTESTS; iter++ ) {
@@ -252,6 +252,7 @@ TEST(Kyber512Test, KEMOperations) {
   #ifdef BENCHMARK_TEST
   }
   end = gettime();
+  fprintf(stderr, "Cycles Kyber %llu\n" , (end - start)/NTESTS );
 
   #ifdef __linux__
   //// End of section being measured

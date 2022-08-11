@@ -16,6 +16,72 @@
 #include <openssl/arm_arch.h>
 
 
+.text
+.globl	SHA3_Absorb
+
+.def SHA3_Absorb
+   .type 32
+.endef
+.align	4
+SHA3_Absorb:
+	AARCH64_VALID_CALL_TARGET
+#ifndef	__KERNEL__
+#if __has_feature(hwaddress_sanitizer) && __clang_major__ >= 7
+	adrp	x16,:pg_hi21_nc:OPENSSL_armcap_P
+#else
+	adrp	x16,OPENSSL_armcap_P
+#endif
+	ldr	w16,[x16,:lo12:OPENSSL_armcap_P]
+	tst	w16,#ARMV8_SHA3
+	b.ne	.SHA3_Absorb_armv8_ext
+	b	.SHA3_Absorb_armv8_org
+#endif
+	ret
+
+.globl	SHA3_Squeeze
+
+.def SHA3_Squeeze
+   .type 32
+.endef
+.align	4
+SHA3_Squeeze:
+	AARCH64_VALID_CALL_TARGET
+#ifndef	__KERNEL__
+#if __has_feature(hwaddress_sanitizer) && __clang_major__ >= 7
+	adrp	x16,:pg_hi21_nc:OPENSSL_armcap_P
+#else
+	adrp	x16,OPENSSL_armcap_P
+#endif
+	ldr	w16,[x16,:lo12:OPENSSL_armcap_P]
+	tst	w16,#ARMV8_SHA3
+	b.ne	.SHA3_Squeeze_armv8_ext
+	b	.SHA3_Squeeze_armv8_org
+#endif
+	ret
+
+
+.globl	KeccakF1600
+
+.def KeccakF1600
+   .type 32
+.endef
+.align	4
+KeccakF1600:
+	AARCH64_VALID_CALL_TARGET
+#ifndef	__KERNEL__
+#if __has_feature(hwaddress_sanitizer) && __clang_major__ >= 7
+	adrp	x16,:pg_hi21_nc:OPENSSL_armcap_P
+#else
+	adrp	x16,OPENSSL_armcap_P
+#endif
+	ldr	w16,[x16,:lo12:OPENSSL_armcap_P]
+	tst	w16,#ARMV8_SHA3
+	b.ne	.KeccakF1600_ext
+	b	.KeccakF1600_org
+#endif
+	ret
+
+
 
 
 .text
@@ -82,26 +148,21 @@ Loop:
 	eor	x27,x27,x21
 	eor	x30,x30,x23
 	eor	x4,x4,x24
-
 	eor	x9,x26,x28,ror#63
-
 	eor	x1,x1,x9
 	eor	x6,x6,x9
 	eor	x11,x11,x9
 	eor	x16,x16,x9
 	eor	x21,x21,x9
-
 	eor	x9,x27,x30,ror#63
 	eor	x28,x28,x4,ror#63
 	eor	x30,x30,x26,ror#63
 	eor	x4,x4,x27,ror#63
-
 	eor	x27,   x2,x9		// mov	x27,x2
 	eor	x7,x7,x9
 	eor	x12,x12,x9
 	eor	x17,x17,x9
 	eor	x22,x22,x9
-
 	eor	x0,x0,x4
 	eor	x5,x5,x4
 	eor	x10,x10,x4
@@ -113,48 +174,40 @@ Loop:
 	eor	x13,x13,x28
 	eor	x25,x25,x28
 	eor	x23,x23,x28
-
 	eor	x28,   x4,x30		// mov	x28,x4
 	eor	x9,x9,x30
 	eor	x14,x14,x30
 	eor	x19,x19,x30
 	eor	x24,x24,x30
-
 	////////////////////////////////////////// Rho+Pi
 	mov	x30,x1
-	ror	x1,x6,#20
+	ror	x1,x6,#64-44
 	//mov	x27,x2
-	ror	x2,x12,#21
+	ror	x2,x12,#64-43
 	//mov	x26,x3
-	ror	x3,x25,#43
+	ror	x3,x25,#64-21
 	//mov	x28,x4
-	ror	x4,x24,#50
-
-	ror	x6,x9,#44
-	ror	x12,x13,#39
-	ror	x25,x17,#49
-	ror	x24,x21,#62
-
-	ror	x9,x22,#3
-	ror	x13,x19,#56
-	ror	x17,x11,#54
-	ror	x21,x8,#9
-
-	ror	x22,x14,#25
-	ror	x19,x23,#8
-	ror	x11,x7,#58
-	ror	x8,x16,#19
-
-	ror	x14,x20,#46
-	ror	x23,x15,#23
-	ror	x7,x10,#61
-	ror	x16,x5,#28
-
-	ror	x5,x26,#36
-	ror	x10,x30,#63
-	ror	x15,x28,#37
-	ror	x20,x27,#2
-
+	ror	x4,x24,#64-14
+	ror	x6,x9,#64-20
+	ror	x12,x13,#64-25
+	ror	x25,x17,#64-15
+	ror	x24,x21,#64-2
+	ror	x9,x22,#64-61
+	ror	x13,x19,#64-8
+	ror	x17,x11,#64-10
+	ror	x21,x8,#64-55
+	ror	x22,x14,#64-39
+	ror	x19,x23,#64-56
+	ror	x11,x7,#64-6
+	ror	x8,x16,#64-45
+	ror	x14,x20,#64-18
+	ror	x23,x15,#64-41
+	ror	x7,x10,#64-3
+	ror	x16,x5,#64-36
+	ror	x5,x26,#64-28
+	ror	x10,x30,#64-1
+	ror	x15,x28,#64-27
+	ror	x20,x27,#64-62
 	////////////////////////////////////////// Chi+Iota
 	bic	x26,x2,x1
 	bic	x27,x3,x2
@@ -168,7 +221,6 @@ Loop:
 	eor	x4,x4,x30
 	eor	x2,x2,x26
 	ldr	x30,[x27],#8		// Iota[i++]
-
 	bic	x26,x7,x6
 	tst	x27,#255			// are we done?
 	str	x27,[sp,#16]
@@ -182,7 +234,6 @@ Loop:
 	eor	x8,x8,x28
 	eor	x9,x9,x30
 	eor	x7,x7,x26
-
 	bic	x26,x12,x11
 	bic	x27,x13,x12
 	bic	x28,x10,x14
@@ -193,7 +244,6 @@ Loop:
 	eor	x13,x13,x28
 	eor	x14,x14,x30
 	eor	x12,x12,x26
-
 	bic	x26,x17,x16
 	bic	x27,x25,x17
 	bic	x28,x15,x19
@@ -204,7 +254,6 @@ Loop:
 	eor	x25,x25,x28
 	eor	x19,x19,x30
 	eor	x17,x17,x26
-
 	bic	x26,x22,x21
 	bic	x27,x23,x22
 	bic	x28,x20,x24
@@ -215,21 +264,20 @@ Loop:
 	eor	x23,x23,x28
 	eor	x24,x24,x30
 	eor	x22,x22,x26
-
 	bne	Loop
-
 	ldr	x30,[sp,#24]
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 
+.globl	KeccakF1600_org
 
-.globl	KeccakF1600
 
-.def KeccakF1600
+.def KeccakF1600_org
    .type 32
 .endef
 .align	5
-KeccakF1600:
+KeccakF1600_org:
+.KeccakF1600_org:
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-128]!
 	add	x29,sp,#0
@@ -239,7 +287,6 @@ KeccakF1600:
 	stp	x25,x26,[sp,#64]
 	stp	x27,x28,[sp,#80]
 	sub	sp,sp,#48
-
 	str	x0,[sp,#32]			// offload argument
 	mov	x26,x0
 	ldp	x0,x1,[x0,#16*0]
@@ -255,9 +302,7 @@ KeccakF1600:
 	ldp	x20,x21,[x26,#16*10]
 	ldp	x22,x23,[x26,#16*11]
 	ldr	x24,[x26,#16*12]
-
 	bl	KeccakF1600_int
-
 	ldr	x26,[sp,#32]
 	stp	x0,x1,[x26,#16*0]
 	stp	x2,x3,[x26,#16*1]
@@ -272,7 +317,6 @@ KeccakF1600:
 	stp	x20,x21,[x26,#16*10]
 	stp	x22,x23,[x26,#16*11]
 	str	x24,[x26,#16*12]
-
 	ldp	x19,x20,[x29,#16]
 	add	sp,sp,#48
 	ldp	x21,x22,[x29,#32]
@@ -284,25 +328,14 @@ KeccakF1600:
 	ret
 
 
-.globl	SHA3_Absorb
+.globl	SHA3_Absorb_armv8
 
-.def SHA3_Absorb
+.def SHA3_Absorb_armv8
    .type 32
 .endef
 .align	5
-SHA3_Absorb:
-	AARCH64_VALID_CALL_TARGET
-#ifndef	__KERNEL__
-#if __has_feature(hwaddress_sanitizer) && __clang_major__ >= 10
-	adrp	x16,:pg_hi21_nc:OPENSSL_armcap_P
-#else
-	adrp	x16,OPENSSL_armcap_P
-#endif
-	ldr	w16,[x16,:lo12:OPENSSL_armcap_P]
-	tst	w16,#ARMV8_SHA3
-	b.ne	.SHA3_Absorb_armv8_ext
-#endif
-
+SHA3_Absorb_armv8:
+.SHA3_Absorb_armv8_org:
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-128]!
 	add	x29,sp,#0
@@ -312,10 +345,8 @@ SHA3_Absorb:
 	stp	x25,x26,[sp,#64]
 	stp	x27,x28,[sp,#80]
 	sub	sp,sp,#64
-
 	stp	x0,x1,[sp,#32]			// offload arguments
 	stp	x2,x3,[sp,#48]
-
 	mov	x26,x0			// uint64_t A[5][5]
 	mov	x27,x1			// const void *inp
 	mov	x28,x2			// size_t len
@@ -334,12 +365,10 @@ SHA3_Absorb:
 	ldp	x22,x23,[x26,#16*11]
 	ldr	x24,[x26,#16*12]
 	b	Loop_absorb
-
 .align	4
 Loop_absorb:
 	subs	x26,x28,x30		// len - bsz
 	blo	Labsorbed
-
 	str	x26,[sp,#48]			// save len - bsz
 	ldr	x26,[x27],#8		// *inp++
 #ifdef	__AARCH64EB__
@@ -502,16 +531,12 @@ Loop_absorb:
 	rev	x26,x26
 #endif
 	eor	x24,x24,x26
-
 Lprocess_block:
 	str	x27,[sp,#40]			// save inp
-
 	bl	KeccakF1600_int
-
 	ldr	x27,[sp,#40]			// restore arguments
 	ldp	x28,x30,[sp,#48]
 	b	Loop_absorb
-
 .align	4
 Labsorbed:
 	ldr	x27,[sp,#32]
@@ -528,7 +553,6 @@ Labsorbed:
 	stp	x20,x21,[x27,#16*10]
 	stp	x22,x23,[x27,#16*11]
 	str	x24,[x27,#16*12]
-
 	mov	x0,x28			// return value
 	ldp	x19,x20,[x29,#16]
 	add	sp,sp,#64
@@ -540,37 +564,23 @@ Labsorbed:
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 
+.globl	SHA3_Squeeze_armv8
 
-.globl	SHA3_Squeeze
-
-.def SHA3_Squeeze
+.def SHA3_Squeeze_armv8
    .type 32
 .endef
 .align	5
-SHA3_Squeeze:
-	AARCH64_VALID_CALL_TARGET
-#ifndef	__KERNEL__
-#if __has_feature(hwaddress_sanitizer) && __clang_major__ >= 10
-	adrp	x16,:pg_hi21_nc:OPENSSL_armcap_P
-#else
-	adrp	x16,OPENSSL_armcap_P
-#endif
-	ldr	w16,[x16,:lo12:OPENSSL_armcap_P]
-	tst	w16,#ARMV8_SHA3
-	b.ne	.SHA3_Squeeze_armv8_ext
-#endif
-
+SHA3_Squeeze_armv8:
+.SHA3_Squeeze_armv8_org:
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-48]!
 	add	x29,sp,#0
 	stp	x19,x20,[sp,#16]
 	stp	x21,x22,[sp,#32]
-
 	mov	x19,x0			// put aside arguments
 	mov	x20,x1
 	mov	x21,x2
 	mov	x22,x3
-
 Loop_squeeze:
 	ldr	x4,[x0],#8
 	cmp	x21,#8
@@ -581,16 +591,13 @@ Loop_squeeze:
 	str	x4,[x20],#8
 	subs	x21,x21,#8
 	beq	Lsqueeze_done
-
 	subs	x3,x3,#8
 	bhi	Loop_squeeze
-
 	mov	x0,x19
-	bl	KeccakF1600
+	bl	KeccakF1600_org
 	mov	x0,x19
 	mov	x3,x22
 	b	Loop_squeeze
-
 .align	4
 Lsqueeze_tail:
 	strb	w4,[x20],#1
@@ -618,7 +625,6 @@ Lsqueeze_tail:
 	subs	x21,x21,#1
 	beq	Lsqueeze_done
 	strb	w4,[x20],#1
-
 Lsqueeze_done:
 	ldp	x19,x20,[sp,#16]
 	ldp	x21,x22,[sp,#32]
@@ -631,6 +637,7 @@ Lsqueeze_done:
 .endef
 .align	5
 KeccakF1600_ce:
+.KeccakF1600_ext:
 	mov	x9,#24
 	adr	x10,iotas
 	b	Loop_ce
@@ -647,88 +654,68 @@ Loop_ce:
 .long	0xce070b7b	//eor3 v27.16b,v27.16b,   v7.16b,v2.16b
 .long	0xce080f9c	//eor3 v28.16b,v28.16b,   v8.16b,v3.16b
 .long	0xce0913bd	//eor3 v29.16b,v29.16b,   v9.16b,v4.16b
-
 .long	0xce7b8f3e	//rax1 v30.16b,v25.16b,v27.16b			// D[1]
 .long	0xce7c8f5f	//rax1 v31.16b,v26.16b,v28.16b			// D[2]
 .long	0xce7d8f7b	//rax1 v27.16b,v27.16b,v29.16b			// D[3]
 .long	0xce798f9c	//rax1 v28.16b,v28.16b,v25.16b			// D[4]
 .long	0xce7a8fbd	//rax1 v29.16b,v29.16b,v26.16b			// D[0]
-
 	////////////////////////////////////////////////// Theta+Rho+Pi
-.long	0xce9efc39	//xar v25.16b,   v1.16b,v30.16b,#63 // C[0]=A[2][0]
-
-.long	0xce9e50c1	//xar v1.16b,v6.16b,v30.16b,#20
-.long	0xce9cb126	//xar v6.16b,v9.16b,v28.16b,#44
-.long	0xce9f0ec9	//xar v9.16b,v22.16b,v31.16b,#3
-.long	0xce9c65d6	//xar v22.16b,v14.16b,v28.16b,#25
-.long	0xce9dba8e	//xar v14.16b,v20.16b,v29.16b,#46
-
-.long	0xce9f085a	//xar v26.16b,   v2.16b,v31.16b,#2 // C[1]=A[4][0]
-
-.long	0xce9f5582	//xar v2.16b,v12.16b,v31.16b,#21
-.long	0xce9b9dac	//xar v12.16b,v13.16b,v27.16b,#39
-.long	0xce9ce26d	//xar v13.16b,v19.16b,v28.16b,#56
-.long	0xce9b22f3	//xar v19.16b,v23.16b,v27.16b,#8
-.long	0xce9d5df7	//xar v23.16b,v15.16b,v29.16b,#23
-
-.long	0xce9c948f	//xar v15.16b,v4.16b,v28.16b,#37
-
-.long	0xce9ccb1c	//xar v28.16b,   v24.16b,v28.16b,#50 // D[4]=A[0][4]
-.long	0xce9efab8	//xar v24.16b,v21.16b,v30.16b,#62
-.long	0xce9b2508	//xar v8.16b,v8.16b,v27.16b,#9 // A[1][3]=A[4][1]
-.long	0xce9e4e04	//xar v4.16b,v16.16b,v30.16b,#19 // A[0][4]=A[1][3]
-.long	0xce9d70b0	//xar v16.16b,v5.16b,v29.16b,#28
-
-.long	0xce9b9065	//xar v5.16b,v3.16b,v27.16b,#36
-
+.long	0xce9efc39	//xar v25.16b,   v1.16b,v30.16b,#64-1 // C[0]=A[2][0]
+.long	0xce9e50c1	//xar v1.16b,v6.16b,v30.16b,#64-44
+.long	0xce9cb126	//xar v6.16b,v9.16b,v28.16b,#64-20
+.long	0xce9f0ec9	//xar v9.16b,v22.16b,v31.16b,#64-61
+.long	0xce9c65d6	//xar v22.16b,v14.16b,v28.16b,#64-39
+.long	0xce9dba8e	//xar v14.16b,v20.16b,v29.16b,#64-18
+.long	0xce9f085a	//xar v26.16b,   v2.16b,v31.16b,#64-62 // C[1]=A[4][0]
+.long	0xce9f5582	//xar v2.16b,v12.16b,v31.16b,#64-43
+.long	0xce9b9dac	//xar v12.16b,v13.16b,v27.16b,#64-25
+.long	0xce9ce26d	//xar v13.16b,v19.16b,v28.16b,#64-8
+.long	0xce9b22f3	//xar v19.16b,v23.16b,v27.16b,#64-56
+.long	0xce9d5df7	//xar v23.16b,v15.16b,v29.16b,#64-41
+.long	0xce9c948f	//xar v15.16b,v4.16b,v28.16b,#64-27
+.long	0xce9ccb1c	//xar v28.16b,   v24.16b,v28.16b,#64-14 // D[4]=A[0][4]
+.long	0xce9efab8	//xar v24.16b,v21.16b,v30.16b,#64-2
+.long	0xce9b2508	//xar v8.16b,v8.16b,v27.16b,#64-55 // A[1][3]=A[4][1]
+.long	0xce9e4e04	//xar v4.16b,v16.16b,v30.16b,#64-45 // A[0][4]=A[1][3]
+.long	0xce9d70b0	//xar v16.16b,v5.16b,v29.16b,#64-36
+.long	0xce9b9065	//xar v5.16b,v3.16b,v27.16b,#64-28
 	eor	v0.16b,v0.16b,v29.16b
-
-.long	0xce9bae5b	//xar v27.16b,   v18.16b,v27.16b,#43 // D[3]=A[0][3]
-.long	0xce9fc623	//xar v3.16b,v17.16b,v31.16b,#49 // A[0][3]=A[3][3]
-.long	0xce9ed97e	//xar v30.16b,   v11.16b,v30.16b,#54 // D[1]=A[3][2]
-.long	0xce9fe8ff	//xar v31.16b,   v7.16b,v31.16b,#58 // D[2]=A[2][1]
-.long	0xce9df55d	//xar v29.16b,   v10.16b,v29.16b,#61 // D[0]=A[1][2]
-
+.long	0xce9bae5b	//xar v27.16b,   v18.16b,v27.16b,#64-21 // D[3]=A[0][3]
+.long	0xce9fc623	//xar v3.16b,v17.16b,v31.16b,#64-15 // A[0][3]=A[3][3]
+.long	0xce9ed97e	//xar v30.16b,   v11.16b,v30.16b,#64-10 // D[1]=A[3][2]
+.long	0xce9fe8ff	//xar v31.16b,   v7.16b,v31.16b,#64-6 // D[2]=A[2][1]
+.long	0xce9df55d	//xar v29.16b,   v10.16b,v29.16b,#64-3 // D[0]=A[1][2]
 	////////////////////////////////////////////////// Chi+Iota
 .long	0xce362354	//bcax v20.16b,v26.16b,   v22.16b,v8.16b	// A[1][3]=A[4][1]
 .long	0xce375915	//bcax v21.16b,v8.16b,v23.16b,v22.16b	// A[1][3]=A[4][1]
 .long	0xce385ed6	//bcax v22.16b,v22.16b,v24.16b,v23.16b
 .long	0xce3a62f7	//bcax v23.16b,v23.16b,v26.16b,   v24.16b
 .long	0xce286b18	//bcax v24.16b,v24.16b,v8.16b,v26.16b	// A[1][3]=A[4][1]
-
 	ld1r	{v26.2d},[x10],#8
-
 .long	0xce330fd1	//bcax v17.16b,v30.16b,   v19.16b,v3.16b	// A[0][3]=A[3][3]
 .long	0xce2f4c72	//bcax v18.16b,v3.16b,v15.16b,v19.16b	// A[0][3]=A[3][3]
 .long	0xce303e73	//bcax v19.16b,v19.16b,v16.16b,v15.16b
 .long	0xce3e41ef	//bcax v15.16b,v15.16b,v30.16b,   v16.16b
 .long	0xce237a10	//bcax v16.16b,v16.16b,v3.16b,v30.16b	// A[0][3]=A[3][3]
-
 .long	0xce2c7f2a	//bcax v10.16b,v25.16b,   v12.16b,v31.16b
 .long	0xce2d33eb	//bcax v11.16b,v31.16b,   v13.16b,v12.16b
 .long	0xce2e358c	//bcax v12.16b,v12.16b,v14.16b,v13.16b
 .long	0xce3939ad	//bcax v13.16b,v13.16b,v25.16b,   v14.16b
 .long	0xce3f65ce	//bcax v14.16b,v14.16b,v31.16b,   v25.16b
-
 .long	0xce2913a7	//bcax v7.16b,v29.16b,   v9.16b,v4.16b	// A[0][4]=A[1][3]
 .long	0xce252488	//bcax v8.16b,v4.16b,v5.16b,v9.16b	// A[0][4]=A[1][3]
 .long	0xce261529	//bcax v9.16b,v9.16b,v6.16b,v5.16b
 .long	0xce3d18a5	//bcax v5.16b,v5.16b,v29.16b,   v6.16b
 .long	0xce2474c6	//bcax v6.16b,v6.16b,v4.16b,v29.16b	// A[0][4]=A[1][3]
-
 .long	0xce207363	//bcax v3.16b,v27.16b,   v0.16b,v28.16b
 .long	0xce210384	//bcax v4.16b,v28.16b,   v1.16b,v0.16b
 .long	0xce220400	//bcax v0.16b,v0.16b,v2.16b,v1.16b
 .long	0xce3b0821	//bcax v1.16b,v1.16b,v27.16b,   v2.16b
 .long	0xce3c6c42	//bcax v2.16b,v2.16b,v28.16b,   v27.16b
-
 	eor	v0.16b,v0.16b,v26.16b
-
 	subs	x9,x9,#1
 	bne	Loop_ce
-
 	ret
-
 
 .def KeccakF1600_cext
    .type 32
@@ -770,7 +757,6 @@ KeccakF1600_cext:
 	stp	d20,d21,[x0,#8*20]
 	stp	d22,d23,[x0,#8*22]
 	str	d24,[x0,#8*24]
-
 	ldp	d8,d9,[sp,#16]
 	ldp	d10,d11,[sp,#32]
 	ldp	d12,d13,[sp,#48]
@@ -808,7 +794,6 @@ SHA3_Absorb_cext:
 	ldp	d22,d23,[x0,#8*22]
 	ldr	d24,[x0,#8*24]
 	b	Loop_absorb_ce
-
 .align	4
 Loop_absorb_ce:
 	subs	x2,x2,x3		// len - bsz
@@ -974,13 +959,9 @@ Loop_absorb_ce:
 	rev64	v31.16b,v31.16b
 #endif
 	eor	v24.16b,v24.16b,v31.16b
-
 Lprocess_block_ce:
-
 	bl	KeccakF1600_ce
-
 	b	Loop_absorb_ce
-
 .align	4
 Labsorbed_ce:
 	stp	d0,d1,[x0,#8*0]
@@ -997,7 +978,6 @@ Labsorbed_ce:
 	stp	d22,d23,[x0,#8*22]
 	str	d24,[x0,#8*24]
 	add	x0,x2,x3		// return value
-
 	ldp	d8,d9,[sp,#16]
 	ldp	d10,d11,[sp,#32]
 	ldp	d12,d13,[sp,#48]
@@ -1019,7 +999,6 @@ SHA3_Squeeze_cext:
 	add	x29,sp,#0
 	mov	x9,x0
 	mov	x10,x3
-
 Loop_squeeze_ce:
 	ldr	x4,[x9],#8
 	cmp	x2,#8
@@ -1029,17 +1008,14 @@ Loop_squeeze_ce:
 #endif
 	str	x4,[x1],#8
 	beq	Lsqueeze_done_ce
-
 	sub	x2,x2,#8
 	subs	x10,x10,#8
 	bhi	Loop_squeeze_ce
-
 	bl	KeccakF1600_cext
 	ldr	x30,[sp,#8]
 	mov	x9,x0
 	mov	x10,x3
 	b	Loop_squeeze_ce
-
 .align	4
 Lsqueeze_tail_ce:
 	strb	w4,[x1],#1
@@ -1067,7 +1043,6 @@ Lsqueeze_tail_ce:
 	subs	x2,x2,#1
 	beq	Lsqueeze_done_ce
 	strb	w4,[x1],#1
-
 Lsqueeze_done_ce:
 	ldr	x29,[sp],#16
 	AARCH64_VALIDATE_LINK_REGISTER

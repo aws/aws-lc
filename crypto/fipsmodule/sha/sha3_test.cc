@@ -12,6 +12,8 @@
 #include <openssl/digest.h>
 #include <sys/ioctl.h>
 
+#define NTEST 1000
+static uint32_t NTESTS = 1;
 
 // Add perf linux for benchmarking SHA3/SHAKE
 #ifdef __linux__
@@ -47,15 +49,72 @@ static void append_to_file(uint64_t val)
 }
 #endif
 
+#ifdef __aarch64__
 static uint64_t gettime() {
 #ifdef __aarch64__
   uint64_t ret = 0;
   //uint64_t hz = 0;
   __asm__ __volatile__ ("isb; mrs %0,cntvct_el0":"=r"(ret));
   //__asm__ __volatile__ ("mrs %0,cntfrq_el0; clz %w0, %w0":"=&r"(hz));
-  return ret ;
+  return ret;
 #endif
+ 
   return 0;
+}
+#endif
+
+static uint64_t start_benchmark(){
+    #ifdef __linux__
+    NTESTS = NTEST;
+    //Setup perf to measure time using the high-resolution task counter
+    struct perf_event_attr pe;
+    
+    int perf_fd;
+    memset(&pe, 0, sizeof(pe));
+    pe.type = PERF_TYPE_SOFTWARE;
+    pe.size = sizeof(pe);
+    pe.config = PERF_COUNT_SW_TASK_CLOCK;
+    pe.disabled = 1;
+    pe.exclude_kernel = 1;
+    pe.exclude_hv = 1;
+    perf_fd = perf_event_open(&pe, 0, -1, -1, 0);
+    if (perf_fd == -1) {
+    fprintf(stderr, "Error opening leader %llx\n", pe.config);
+    return;
+    }
+    //fprintf(stderr, "Pre negotiate wire byte counts: IN=[%lu], OUT=[%lu]\n", conn->wire_bytes_in, conn->wire_bytes_out);
+    ioctl(perf_fd, PERF_EVENT_IOC_RESET, 0);
+    ioctl(perf_fd, PERF_EVENT_IOC_ENABLE, 0);
+    // Start of section being measured
+    return 0;
+    #endif
+    
+    #ifdef __aarch64__
+    NTESTS = NTEST;
+    return gettime();
+    #endif
+}
+
+static uint64_t end_benchmark(){
+    #ifdef __linux__
+    NTESTS = NTEST;
+    //// End of section being measured
+    uint64_t duration_ns;
+     ioctl(perf_fd, PERF_EVENT_IOC_DISABLE, 0);
+     if (!read(perf_fd, &duration_ns, sizeof(duration_ns))){
+       return;
+     }
+     close(perf_fd);
+     return (duration_ns);
+    #endif
+
+    #ifdef __aarch64__
+    NTESTS = NTEST;
+    return gettime();
+    #endif
+
+
+    
 }
 
 // SHA3TestVector corresponds to one test case of the NIST published file
@@ -81,51 +140,10 @@ class SHA3TestVector {
     // Enable SHA3
     EVP_MD_unstable_sha3_enable(true);
 
-    #ifdef __linux__
-    //Setup perf to measure time using the high-resolution task counter
-    struct perf_event_attr pe;
-    uint64_t duration_ns;
-    int perf_fd;
-    memset(&pe, 0, sizeof(pe));
-    pe.type = PERF_TYPE_SOFTWARE;
-    pe.size = sizeof(pe);
-    pe.config = PERF_COUNT_SW_TASK_CLOCK;
-    pe.disabled = 1;
-    pe.exclude_kernel = 1;
-    pe.exclude_hv = 1;
-    perf_fd = perf_event_open(&pe, 0, -1, -1, 0);
-    if (perf_fd == -1) {
-    fprintf(stderr, "Error opening leader %llx\n", pe.config);
-    return;
-    }
-    
-
-    //fprintf(stderr, "Pre negotiate wire byte counts: IN=[%lu], OUT=[%lu]\n", conn->wire_bytes_in, conn->wire_bytes_out);
-    ioctl(perf_fd, PERF_EVENT_IOC_RESET, 0);
-    ioctl(perf_fd, PERF_EVENT_IOC_ENABLE, 0);
-    // Start of section being measured
-    #endif
-    uint32_t start, end; 
-    start = gettime();
-    for (int i = 0; i < 1000; i++) {
     // Test the correctness via the Init, Update and Final Digest APIs.
     ASSERT_TRUE(EVP_DigestInit(ctx, algorithm));
     ASSERT_TRUE(EVP_DigestUpdate(ctx, msg_.data(), len_ / 8));
     ASSERT_TRUE(EVP_DigestFinal(ctx, digest, &digest_length));
-    }
-    end = gettime();
-    printf("Gettime() SHA3_256() %u", end - start / 1000);
-
-    #ifdef __linux__
-    //// End of section being measured
-     ioctl(perf_fd, PERF_EVENT_IOC_DISABLE, 0);
-     if (!read(perf_fd, &duration_ns, sizeof(duration_ns))){
-       return;
-     }
-     close(perf_fd);
-     fprintf(stderr, "gettime() %u vs. perf_event %lu\n", (end - start) / 1000, duration_ns / 1000);
-     append_to_file((duration_ns)/1000);
-    #endif
     
     ASSERT_EQ(Bytes(digest, EVP_MD_size(algorithm)),
               Bytes(digest_.data(), EVP_MD_size(algorithm)));
@@ -214,6 +232,57 @@ class SHA3TestVector {
     delete [] digest;
   }
 
+
+
+  void Benchmark_SHAKE128() const {
+    uint64_t start_bench = 0, end_bench = 0;
+    uint32_t digest_length = out_len_ / 8;
+    uint8_t *digest = new uint8_t[digest_length];
+   
+    // Enable SHA3
+    EVP_MD_unstable_sha3_enable(true);
+    
+    start_bench = start_benchmark();
+    for (int i = 0; i < (int) NTESTS; i++) {
+      ASSERT_TRUE(SHAKE128(msg_.data(), msg_.size() , digest, out_len_));
+    }
+    end_bench = end_benchmark();
+
+    if (end_bench != 0) {
+      printf("SHAKE128 %llu\n", (end_bench - start_bench) / NTESTS);
+    }
+    else {
+      printf("Not supported platform and OS. Could not benchmark SHAKE128\n");
+    }
+
+    // Disable SHA3
+    EVP_MD_unstable_sha3_enable(false);
+
+    delete [] digest;
+  }
+
+  void Benchmark_SHAKE256() const {
+    uint32_t digest_length = out_len_ / 8;
+    uint8_t *digest = new uint8_t[digest_length];
+
+    ASSERT_FALSE(SHAKE256(msg_.data(), msg_.size() , digest, out_len_));
+
+    // Enable SHA3
+    EVP_MD_unstable_sha3_enable(true);
+    
+    ASSERT_TRUE(SHAKE256(msg_.data(), msg_.size() , digest, out_len_));
+    
+    ASSERT_EQ(Bytes(digest, out_len_ / 8),
+            Bytes(digest_.data(), out_len_ / 8));
+
+    // Disable SHA3
+    EVP_MD_unstable_sha3_enable(false);
+
+    ASSERT_FALSE(SHAKE256(msg_.data(), msg_.size() , digest, out_len_));
+
+    delete [] digest;
+  }
+
  private:
   uint16_t len_;
   uint16_t out_len_;
@@ -258,24 +327,24 @@ TEST(SHA3Test, NISTTestVectors) {
     const EVP_MD* algorithm = EVP_sha3_224();
     test_vec.NISTTestVectors(algorithm);
   });
-  //   FileTestGTest("crypto/fipsmodule/sha/testvectors/SHA3_256ShortMsg.txt", [](FileTest *t) {
-  //   SHA3TestVector test_vec;
-  //   EXPECT_TRUE(test_vec.ReadFromFileTest(t));
-  //   const EVP_MD* algorithm = EVP_sha3_256();
-  //   test_vec.NISTTestVectors(algorithm);
-  // });
-  // FileTestGTest("crypto/fipsmodule/sha/testvectors/SHA3_384ShortMsg.txt", [](FileTest *t) {
-  //   SHA3TestVector test_vec;
-  //   EXPECT_TRUE(test_vec.ReadFromFileTest(t));
-  //   const EVP_MD* algorithm = EVP_sha3_384();
-  //   test_vec.NISTTestVectors(algorithm);
-  // });
-  // FileTestGTest("crypto/fipsmodule/sha/testvectors/SHA3_512ShortMsg.txt", [](FileTest *t) {
-  //   SHA3TestVector test_vec;
-  //   EXPECT_TRUE(test_vec.ReadFromFileTest(t));
-  //   const EVP_MD* algorithm = EVP_sha3_512();
-  //   test_vec.NISTTestVectors(algorithm);
-  // });
+    FileTestGTest("crypto/fipsmodule/sha/testvectors/SHA3_256ShortMsg.txt", [](FileTest *t) {
+    SHA3TestVector test_vec;
+    EXPECT_TRUE(test_vec.ReadFromFileTest(t));
+    const EVP_MD* algorithm = EVP_sha3_256();
+    test_vec.NISTTestVectors(algorithm);
+  });
+  FileTestGTest("crypto/fipsmodule/sha/testvectors/SHA3_384ShortMsg.txt", [](FileTest *t) {
+    SHA3TestVector test_vec;
+    EXPECT_TRUE(test_vec.ReadFromFileTest(t));
+    const EVP_MD* algorithm = EVP_sha3_384();
+    test_vec.NISTTestVectors(algorithm);
+  });
+  FileTestGTest("crypto/fipsmodule/sha/testvectors/SHA3_512ShortMsg.txt", [](FileTest *t) {
+    SHA3TestVector test_vec;
+    EXPECT_TRUE(test_vec.ReadFromFileTest(t));
+    const EVP_MD* algorithm = EVP_sha3_512();
+    test_vec.NISTTestVectors(algorithm);
+  });
 }
 
 TEST(SHA3Test, NISTTestVectors_SingleShot) {
@@ -318,5 +387,55 @@ TEST(SHAKE256Test, NISTTestVectors) {
     SHA3TestVector test_vec;
     EXPECT_TRUE(test_vec.ReadFromFileTest(t));
     test_vec.NISTTestVectors_SHAKE256();
+  });
+}
+
+// Benchmarking functions for SHA3 and SHAKE
+TEST(SHA3Test, Benchmark_SHA3_224) {
+  FileTestGTest("crypto/fipsmodule/sha/testvectors/SHA3Bench.txt", [](FileTest *t) {
+    SHA3TestVector test_vec;
+    EXPECT_TRUE(test_vec.ReadFromFileTest(t));
+    const EVP_MD* algorithm = EVP_sha3_224();
+    test_vec.NISTTestVectors(algorithm);
+  });
+}
+TEST(SHA3Test, Benchmark_SHA3_256) {
+    FileTestGTest("crypto/fipsmodule/sha/testvectors/SHA3Bench.txt", [](FileTest *t) {
+    SHA3TestVector test_vec;
+    EXPECT_TRUE(test_vec.ReadFromFileTest(t));
+    const EVP_MD* algorithm = EVP_sha3_256();
+    test_vec.NISTTestVectors(algorithm);
+  });
+}
+TEST(SHA3Test, Benchmark_SHA3_384) {
+  FileTestGTest("crypto/fipsmodule/sha/testvectors/SHA3Bench.txt", [](FileTest *t) {
+    SHA3TestVector test_vec;
+    EXPECT_TRUE(test_vec.ReadFromFileTest(t));
+    const EVP_MD* algorithm = EVP_sha3_384();
+    test_vec.NISTTestVectors(algorithm);
+  });
+  }
+  TEST(SHA3Test, Benchmark_SHA3_512) {
+  FileTestGTest("crypto/fipsmodule/sha/testvectors/SHA3Bench.txt", [](FileTest *t) {
+    SHA3TestVector test_vec;
+    EXPECT_TRUE(test_vec.ReadFromFileTest(t));
+    const EVP_MD* algorithm = EVP_sha3_512();
+    test_vec.NISTTestVectors(algorithm);
+  });
+}
+
+TEST(SHAKE128Test, Benchmark_SHAKE128) {
+  FileTestGTest("crypto/fipsmodule/sha/testvectors/SHA3Bench.txt", [](FileTest *t) {
+    SHA3TestVector test_vec;
+    EXPECT_TRUE(test_vec.ReadFromFileTest(t));
+    test_vec.Benchmark_SHAKE128();
+  });
+}
+
+TEST(SHAKE128Test, Benchmark_SHAKE256) {
+  FileTestGTest("crypto/fipsmodule/sha/testvectors/SHA3Bench.txt", [](FileTest *t) {
+    SHA3TestVector test_vec;
+    EXPECT_TRUE(test_vec.ReadFromFileTest(t));
+    test_vec.NISTTestVectors_SHAKE128();
   });
 }

@@ -66,6 +66,7 @@ set(
   crypto/fipsmodule/ecdsa/ecdsa_verify_tests.txt
   crypto/fipsmodule/modes/gcm_tests.txt
   crypto/fipsmodule/rand/ctrdrbg_vectors.txt
+  crypto/fipsmodule/sha/testvectors/SHA3Bench.txt
   crypto/fipsmodule/sha/testvectors/SHA3_224ShortMsg.txt
   crypto/fipsmodule/sha/testvectors/SHA3_256ShortMsg.txt
   crypto/fipsmodule/sha/testvectors/SHA3_384ShortMsg.txt
