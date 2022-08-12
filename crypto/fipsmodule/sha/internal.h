@@ -21,6 +21,7 @@ extern "C" {
 
 // SHA3 constants, from NIST FIPS202.
 // https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf
+#define SHA3_ROWS 5
 #define KECCAK1600_WIDTH 1600
 
 #define SHA3_224_CAPACITY_BYTES 56
@@ -39,15 +40,8 @@ extern "C" {
 #define SHA3_512_DIGEST_BITLENGTH 512
 #define SHA3_512_DIGEST_LENGTH 64
 
-// The |SHA3_MIN_CAPACITY_BYTES| corresponds to the 
-// lowest security level capacity.
-// The data block size increases when the capacity decreases.
-// The data buffer should have at least the maximum 
-// block size bytes to fit any digest length.
 #define SHA3_BLOCKSIZE(bitlen) (KECCAK1600_WIDTH - bitlen * 2) / 8
-#define SHA3_MIN_CAPACITY_BYTES SHA3_224_CAPACITY_BYTES
 #define SHA3_PAD_CHAR 0x06
-#define SHA3_ROWS 5
 
 // SHAKE constants, from NIST FIPS202.
 // https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf
@@ -55,8 +49,9 @@ extern "C" {
 #define SHAKE128_BLOCKSIZE (KECCAK1600_WIDTH - 128 * 2) / 8
 #define SHAKE256_BLOCKSIZE (KECCAK1600_WIDTH - 256 * 2) / 8
 
-// In the sponge construction, the width of the underlying 
-// function minus the rate (the block size in bits).
+// [NIST FIPS202] Capacity: In the sponge construction, 
+// the width of the underlying function |KECCAK1600_WIDTH| 
+// minus the rate (the block size in bits).
 // The |SHA3_MIN_CAPACITY_BYTES| corresponds to the 
 // lowest security level capacity for SHA3/SHAKE.
 // The data blocks increase when the capacity decreases.
