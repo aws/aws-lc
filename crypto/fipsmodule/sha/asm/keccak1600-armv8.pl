@@ -61,41 +61,28 @@
 
 # $output is the last argument if it looks like a file (it has an extension)
 # $flavour is the first argument if it doesn't look like a file
+$output = $#ARGV >= 0 && $ARGV[$#ARGV] =~ m|\.\w+$| ? pop : undef;
+$flavour = $#ARGV >= 0 && $ARGV[0] !~ m|\.| ? shift : undef;
 
+$0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
+( $xlate="${dir}arm-xlate.pl" and -f $xlate ) or
+( $xlate="${dir}../../../perlasm/arm-xlate.pl" and -f $xlate) or
+die "can't locate arm-xlate.pl";
 
-#File keccak1600-armv8.pl is imported from OpenSSL.
-#https://github.com/openssl/openssl/blob/479b9adb88b9050186c1e9fc94879906f378b14b/crypto/sha/asm/keccak1600-armv8.pl
+open OUT,"| \"$^X\" $xlate $flavour \"$output\""
+    or die "can't call $xlate: $!";
+*STDOUT=*OUT;
 
-if ($#ARGV < 1) { die "Not enough arguments provided.
-  Two arguments are necessary: the flavour and the output file path."; }
-
-$flavour = shift;
-$output = shift;
-
-if ($flavour && $flavour ne "void") {
-    $0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
-    ( $xlate="${dir}arm-xlate.pl" and -f $xlate ) or
-    ( $xlate="${dir}../../../perlasm/arm-xlate.pl" and -f $xlate) or
-    die "can't locate arm-xlate.pl";
-
-    open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
-    *STDOUT=*OUT;
-} else {
-    open OUT,">$output";
-    *STDOUT=*OUT;
-}
-
-my @subrhotates = ([  64,  63, 2, 36, 37 ],
-                [ 28, 20,  58, 9, 44 ],
-                [  61, 54, 21, 39, 25 ],
-                [ 23, 19, 49, 43,  56 ],
-                [ 46,  62, 3, 8, 50 ]);
+my @rhotates = ([  0,  1, 62, 28, 27 ],
+                [ 36, 44,  6, 55, 20 ],
+                [  3, 10, 43, 25, 39 ],
+                [ 41, 45, 15, 21,  8 ],
+                [ 18,  2, 61, 56, 14 ]);
 
 $code.=<<___;
 #include <openssl/arm_arch.h>
-
 .text
-.align	8	// strategic alignment and padding that allows to use
+.align 8	// strategic alignment and padding that allows to use
 		// address value as loop termination condition...
 	.quad	0,0,0,0,0,0,0,0
 .type	iotas,%object
@@ -169,26 +156,21 @@ $code.=<<___;
 	eor	$C[1],$C[1],$A[4][1]
 	eor	$C[3],$C[3],$A[4][3]
 	eor	$C[4],$C[4],$A[4][4]
-
 	eor	$C[5],$C[0],$C[2],ror#63
-
 	eor	$A[0][1],$A[0][1],$C[5]
 	eor	$A[1][1],$A[1][1],$C[5]
 	eor	$A[2][1],$A[2][1],$C[5]
 	eor	$A[3][1],$A[3][1],$C[5]
 	eor	$A[4][1],$A[4][1],$C[5]
-
 	eor	$C[5],$C[1],$C[3],ror#63
 	eor	$C[2],$C[2],$C[4],ror#63
 	eor	$C[3],$C[3],$C[0],ror#63
 	eor	$C[4],$C[4],$C[1],ror#63
-
 	eor	$C[1],   $A[0][2],$C[5]		// mov	$C[1],$A[0][2]
 	eor	$A[1][2],$A[1][2],$C[5]
 	eor	$A[2][2],$A[2][2],$C[5]
 	eor	$A[3][2],$A[3][2],$C[5]
 	eor	$A[4][2],$A[4][2],$C[5]
-
 	eor	$A[0][0],$A[0][0],$C[4]
 	eor	$A[1][0],$A[1][0],$C[4]
 	eor	$A[2][0],$A[2][0],$C[4]
@@ -204,48 +186,40 @@ $code.=<<___;
 	eor	$A[2][3],$A[2][3],$C[2]
 	eor	$A[3][3],$A[3][3],$C[2]
 	eor	$A[4][3],$A[4][3],$C[2]
-
 	eor	$C[2],   $A[0][4],$C[3]		// mov	$C[2],$A[0][4]
 	eor	$A[1][4],$A[1][4],$C[3]
 	eor	$A[2][4],$A[2][4],$C[3]
 	eor	$A[3][4],$A[3][4],$C[3]
 	eor	$A[4][4],$A[4][4],$C[3]
-
 	////////////////////////////////////////// Rho+Pi
 	mov	$C[3],$A[0][1]
-	ror	$A[0][1],$A[1][1],#$subrhotates[1][1]
+	ror	$A[0][1],$A[1][1],#64-$rhotates[1][1]
 	//mov	$C[1],$A[0][2]
-	ror	$A[0][2],$A[2][2],#$subrhotates[2][2]
+	ror	$A[0][2],$A[2][2],#64-$rhotates[2][2]
 	//mov	$C[0],$A[0][3]
-	ror	$A[0][3],$A[3][3],#$subrhotates[3][3]
+	ror	$A[0][3],$A[3][3],#64-$rhotates[3][3]
 	//mov	$C[2],$A[0][4]
-	ror	$A[0][4],$A[4][4],#$subrhotates[4][4]
-
-	ror	$A[1][1],$A[1][4],#$subrhotates[1][4]
-	ror	$A[2][2],$A[2][3],#$subrhotates[2][3]
-	ror	$A[3][3],$A[3][2],#$subrhotates[3][2]
-	ror	$A[4][4],$A[4][1],#$subrhotates[4][1]
-
-	ror	$A[1][4],$A[4][2],#$subrhotates[4][2]
-	ror	$A[2][3],$A[3][4],#$subrhotates[3][4]
-	ror	$A[3][2],$A[2][1],#$subrhotates[2][1]
-	ror	$A[4][1],$A[1][3],#$subrhotates[1][3]
-
-	ror	$A[4][2],$A[2][4],#$subrhotates[2][4]
-	ror	$A[3][4],$A[4][3],#$subrhotates[4][3]
-	ror	$A[2][1],$A[1][2],#$subrhotates[1][2]
-	ror	$A[1][3],$A[3][1],#$subrhotates[3][1]
-
-	ror	$A[2][4],$A[4][0],#$subrhotates[4][0]
-	ror	$A[4][3],$A[3][0],#$subrhotates[3][0]
-	ror	$A[1][2],$A[2][0],#$subrhotates[2][0]
-	ror	$A[3][1],$A[1][0],#$subrhotates[1][0]
-
-	ror	$A[1][0],$C[0],#$subrhotates[0][3]
-	ror	$A[2][0],$C[3],#$subrhotates[0][1]
-	ror	$A[3][0],$C[2],#$subrhotates[0][4]
-	ror	$A[4][0],$C[1],#$subrhotates[0][2]
-
+	ror	$A[0][4],$A[4][4],#64-$rhotates[4][4]
+	ror	$A[1][1],$A[1][4],#64-$rhotates[1][4]
+	ror	$A[2][2],$A[2][3],#64-$rhotates[2][3]
+	ror	$A[3][3],$A[3][2],#64-$rhotates[3][2]
+	ror	$A[4][4],$A[4][1],#64-$rhotates[4][1]
+	ror	$A[1][4],$A[4][2],#64-$rhotates[4][2]
+	ror	$A[2][3],$A[3][4],#64-$rhotates[3][4]
+	ror	$A[3][2],$A[2][1],#64-$rhotates[2][1]
+	ror	$A[4][1],$A[1][3],#64-$rhotates[1][3]
+	ror	$A[4][2],$A[2][4],#64-$rhotates[2][4]
+	ror	$A[3][4],$A[4][3],#64-$rhotates[4][3]
+	ror	$A[2][1],$A[1][2],#64-$rhotates[1][2]
+	ror	$A[1][3],$A[3][1],#64-$rhotates[3][1]
+	ror	$A[2][4],$A[4][0],#64-$rhotates[4][0]
+	ror	$A[4][3],$A[3][0],#64-$rhotates[3][0]
+	ror	$A[1][2],$A[2][0],#64-$rhotates[2][0]
+	ror	$A[3][1],$A[1][0],#64-$rhotates[1][0]
+	ror	$A[1][0],$C[0],#64-$rhotates[0][3]
+	ror	$A[2][0],$C[3],#64-$rhotates[0][1]
+	ror	$A[3][0],$C[2],#64-$rhotates[0][4]
+	ror	$A[4][0],$C[1],#64-$rhotates[0][2]
 	////////////////////////////////////////// Chi+Iota
 	bic	$C[0],$A[0][2],$A[0][1]
 	bic	$C[1],$A[0][3],$A[0][2]
@@ -259,7 +233,6 @@ $code.=<<___;
 	eor	$A[0][4],$A[0][4],$C[3]
 	eor	$A[0][2],$A[0][2],$C[0]
 	 ldr	$C[3],[$C[1]],#8		// Iota[i++]
-
 	bic	$C[0],$A[1][2],$A[1][1]
 	 tst	$C[1],#255			// are we done?
 	 str	$C[1],[sp,#16]
@@ -273,7 +246,6 @@ $code.=<<___;
 	eor	$A[1][3],$A[1][3],$C[2]
 	eor	$A[1][4],$A[1][4],$C[3]
 	eor	$A[1][2],$A[1][2],$C[0]
-
 	bic	$C[0],$A[2][2],$A[2][1]
 	bic	$C[1],$A[2][3],$A[2][2]
 	bic	$C[2],$A[2][0],$A[2][4]
@@ -284,7 +256,6 @@ $code.=<<___;
 	eor	$A[2][3],$A[2][3],$C[2]
 	eor	$A[2][4],$A[2][4],$C[3]
 	eor	$A[2][2],$A[2][2],$C[0]
-
 	bic	$C[0],$A[3][2],$A[3][1]
 	bic	$C[1],$A[3][3],$A[3][2]
 	bic	$C[2],$A[3][0],$A[3][4]
@@ -295,7 +266,6 @@ $code.=<<___;
 	eor	$A[3][3],$A[3][3],$C[2]
 	eor	$A[3][4],$A[3][4],$C[3]
 	eor	$A[3][2],$A[3][2],$C[0]
-
 	bic	$C[0],$A[4][2],$A[4][1]
 	bic	$C[1],$A[4][3],$A[4][2]
 	bic	$C[2],$A[4][0],$A[4][4]
@@ -306,14 +276,11 @@ $code.=<<___;
 	eor	$A[4][3],$A[4][3],$C[2]
 	eor	$A[4][4],$A[4][4],$C[3]
 	eor	$A[4][2],$A[4][2],$C[0]
-
 	bne	.Loop
-
 	ldr	x30,[sp,#24]
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 .size	KeccakF1600_int,.-KeccakF1600_int
-
 .type	KeccakF1600,%function
 .align	5
 KeccakF1600:
@@ -326,7 +293,6 @@ KeccakF1600:
 	stp	x25,x26,[sp,#64]
 	stp	x27,x28,[sp,#80]
 	sub	sp,sp,#48
-
 	str	x0,[sp,#32]			// offload argument
 	mov	$C[0],x0
 	ldp	$A[0][0],$A[0][1],[x0,#16*0]
@@ -342,9 +308,7 @@ KeccakF1600:
 	ldp	$A[4][0],$A[4][1],[$C[0],#16*10]
 	ldp	$A[4][2],$A[4][3],[$C[0],#16*11]
 	ldr	$A[4][4],[$C[0],#16*12]
-
 	bl	KeccakF1600_int
-
 	ldr	$C[0],[sp,#32]
 	stp	$A[0][0],$A[0][1],[$C[0],#16*0]
 	stp	$A[0][2],$A[0][3],[$C[0],#16*1]
@@ -359,7 +323,6 @@ KeccakF1600:
 	stp	$A[4][0],$A[4][1],[$C[0],#16*10]
 	stp	$A[4][2],$A[4][3],[$C[0],#16*11]
 	str	$A[4][4],[$C[0],#16*12]
-
 	ldp	x19,x20,[x29,#16]
 	add	sp,sp,#48
 	ldp	x21,x22,[x29,#32]
@@ -370,13 +333,10 @@ KeccakF1600:
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 .size	KeccakF1600,.-KeccakF1600
-
 .globl	SHA3_Absorb
 .type	SHA3_Absorb,%function
 .align	5
 SHA3_Absorb:
-	AARCH64_VALID_CALL_TARGET
-
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-128]!
 	add	x29,sp,#0
@@ -386,10 +346,8 @@ SHA3_Absorb:
 	stp	x25,x26,[sp,#64]
 	stp	x27,x28,[sp,#80]
 	sub	sp,sp,#64
-
 	stp	x0,x1,[sp,#32]			// offload arguments
 	stp	x2,x3,[sp,#48]
-
 	mov	$C[0],x0			// uint64_t A[5][5]
 	mov	$C[1],x1			// const void *inp
 	mov	$C[2],x2			// size_t len
@@ -408,12 +366,10 @@ SHA3_Absorb:
 	ldp	$A[4][2],$A[4][3],[$C[0],#16*11]
 	ldr	$A[4][4],[$C[0],#16*12]
 	b	.Loop_absorb
-
 .align	4
 .Loop_absorb:
 	subs	$C[0],$C[2],$C[3]		// len - bsz
 	blo	.Labsorbed
-
 	str	$C[0],[sp,#48]			// save len - bsz
 ___
 for (my $i=0; $i<24; $i+=2) {
@@ -440,16 +396,12 @@ $code.=<<___;
 	rev	$C[0],$C[0]
 #endif
 	eor	$A[4][4],$A[4][4],$C[0]
-
 .Lprocess_block:
 	str	$C[1],[sp,#40]			// save inp
-
 	bl	KeccakF1600_int
-
 	ldr	$C[1],[sp,#40]			// restore arguments
 	ldp	$C[2],$C[3],[sp,#48]
 	b	.Loop_absorb
-
 .align	4
 .Labsorbed:
 	ldr	$C[1],[sp,#32]
@@ -466,7 +418,6 @@ $code.=<<___;
 	stp	$A[4][0],$A[4][1],[$C[1],#16*10]
 	stp	$A[4][2],$A[4][3],[$C[1],#16*11]
 	str	$A[4][4],[$C[1],#16*12]
-
 	mov	x0,$C[2]			// return value
 	ldp	x19,x20,[x29,#16]
 	add	sp,sp,#64
@@ -482,24 +433,19 @@ ___
 {
 my ($A_flat,$out,$len,$bsz) = map("x$_",(19..22));
 $code.=<<___;
-
 .globl	SHA3_Squeeze
 .type	SHA3_Squeeze,%function
 .align	5
 SHA3_Squeeze:
-	AARCH64_VALID_CALL_TARGET
-
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-48]!
 	add	x29,sp,#0
 	stp	x19,x20,[sp,#16]
 	stp	x21,x22,[sp,#32]
-
 	mov	$A_flat,x0			// put aside arguments
 	mov	$out,x1
 	mov	$len,x2
 	mov	$bsz,x3
-
 .Loop_squeeze:
 	ldr	x4,[x0],#8
 	cmp	$len,#8
@@ -510,16 +456,13 @@ SHA3_Squeeze:
 	str	x4,[$out],#8
 	subs	$len,$len,#8
 	beq	.Lsqueeze_done
-
 	subs	x3,x3,#8
 	bhi	.Loop_squeeze
-
 	mov	x0,$A_flat
 	bl	KeccakF1600
 	mov	x0,$A_flat
 	mov	x3,$bsz
 	b	.Loop_squeeze
-
 .align	4
 .Lsqueeze_tail:
 	strb	w4,[$out],#1
@@ -547,7 +490,6 @@ SHA3_Squeeze:
 	subs	$len,$len,#1
 	beq	.Lsqueeze_done
 	strb	w4,[$out],#1
-
 .Lsqueeze_done:
 	ldp	x19,x20,[sp,#16]
 	ldp	x21,x22,[sp,#32]
@@ -557,7 +499,279 @@ SHA3_Squeeze:
 .size	SHA3_Squeeze,.-SHA3_Squeeze
 ___
 }								}}}
+								{{{
+my @A = map([ "v".$_.".16b", "v".($_+1).".16b", "v".($_+2).".16b",
+                             "v".($_+3).".16b", "v".($_+4).".16b" ],
+            (0, 5, 10, 15, 20));
 
+my @C = map("v$_.16b", (25..31));
+my @D = @C[4,5,6,2,3];
+
+$code.=<<___;
+.type	KeccakF1600_ce,%function
+.align	5
+KeccakF1600_ce:
+	mov	x9,#24
+	adr	x10,iotas
+	b	.Loop_ce
+.align	4
+.Loop_ce:
+	////////////////////////////////////////////////// Theta
+	eor3	$C[0],$A[4][0],$A[3][0],$A[2][0]
+	eor3	$C[1],$A[4][1],$A[3][1],$A[2][1]
+	eor3	$C[2],$A[4][2],$A[3][2],$A[2][2]
+	eor3	$C[3],$A[4][3],$A[3][3],$A[2][3]
+	eor3	$C[4],$A[4][4],$A[3][4],$A[2][4]
+	eor3	$C[0],$C[0],   $A[1][0],$A[0][0]
+	eor3	$C[1],$C[1],   $A[1][1],$A[0][1]
+	eor3	$C[2],$C[2],   $A[1][2],$A[0][2]
+	eor3	$C[3],$C[3],   $A[1][3],$A[0][3]
+	eor3	$C[4],$C[4],   $A[1][4],$A[0][4]
+	rax1	$C[5],$C[0],$C[2]			// D[1]
+	rax1	$C[6],$C[1],$C[3]			// D[2]
+	rax1	$C[2],$C[2],$C[4]			// D[3]
+	rax1	$C[3],$C[3],$C[0]			// D[4]
+	rax1	$C[4],$C[4],$C[1]			// D[0]
+	////////////////////////////////////////////////// Theta+Rho+Pi
+	xar	$C[0],   $A[0][1],$D[1],#64-$rhotates[0][1] // C[0]=A[2][0]
+	xar	$A[0][1],$A[1][1],$D[1],#64-$rhotates[1][1]
+	xar	$A[1][1],$A[1][4],$D[4],#64-$rhotates[1][4]
+	xar	$A[1][4],$A[4][2],$D[2],#64-$rhotates[4][2]
+	xar	$A[4][2],$A[2][4],$D[4],#64-$rhotates[2][4]
+	xar	$A[2][4],$A[4][0],$D[0],#64-$rhotates[4][0]
+	xar	$C[1],   $A[0][2],$D[2],#64-$rhotates[0][2] // C[1]=A[4][0]
+	xar	$A[0][2],$A[2][2],$D[2],#64-$rhotates[2][2]
+	xar	$A[2][2],$A[2][3],$D[3],#64-$rhotates[2][3]
+	xar	$A[2][3],$A[3][4],$D[4],#64-$rhotates[3][4]
+	xar	$A[3][4],$A[4][3],$D[3],#64-$rhotates[4][3]
+	xar	$A[4][3],$A[3][0],$D[0],#64-$rhotates[3][0]
+	xar	$A[3][0],$A[0][4],$D[4],#64-$rhotates[0][4]
+	xar	$D[4],   $A[4][4],$D[4],#64-$rhotates[4][4] // D[4]=A[0][4]
+	xar	$A[4][4],$A[4][1],$D[1],#64-$rhotates[4][1]
+	xar	$A[1][3],$A[1][3],$D[3],#64-$rhotates[1][3] // A[1][3]=A[4][1]
+	xar	$A[0][4],$A[3][1],$D[1],#64-$rhotates[3][1] // A[0][4]=A[1][3]
+	xar	$A[3][1],$A[1][0],$D[0],#64-$rhotates[1][0]
+	xar	$A[1][0],$A[0][3],$D[3],#64-$rhotates[0][3]
+	eor	$A[0][0],$A[0][0],$D[0]
+	xar	$D[3],   $A[3][3],$D[3],#64-$rhotates[3][3] // D[3]=A[0][3]
+	xar	$A[0][3],$A[3][2],$D[2],#64-$rhotates[3][2] // A[0][3]=A[3][3]
+	xar	$D[1],   $A[2][1],$D[1],#64-$rhotates[2][1] // D[1]=A[3][2]
+	xar	$D[2],   $A[1][2],$D[2],#64-$rhotates[1][2] // D[2]=A[2][1]
+	xar	$D[0],   $A[2][0],$D[0],#64-$rhotates[2][0] // D[0]=A[1][2]
+	////////////////////////////////////////////////// Chi+Iota
+	bcax	$A[4][0],$C[1],   $A[4][2],$A[1][3]	// A[1][3]=A[4][1]
+	bcax	$A[4][1],$A[1][3],$A[4][3],$A[4][2]	// A[1][3]=A[4][1]
+	bcax	$A[4][2],$A[4][2],$A[4][4],$A[4][3]
+	bcax	$A[4][3],$A[4][3],$C[1],   $A[4][4]
+	bcax	$A[4][4],$A[4][4],$A[1][3],$C[1]	// A[1][3]=A[4][1]
+	ld1r	{$C[1]},[x10],#8
+	bcax	$A[3][2],$D[1],   $A[3][4],$A[0][3]	// A[0][3]=A[3][3]
+	bcax	$A[3][3],$A[0][3],$A[3][0],$A[3][4]	// A[0][3]=A[3][3]
+	bcax	$A[3][4],$A[3][4],$A[3][1],$A[3][0]
+	bcax	$A[3][0],$A[3][0],$D[1],   $A[3][1]
+	bcax	$A[3][1],$A[3][1],$A[0][3],$D[1]	// A[0][3]=A[3][3]
+	bcax	$A[2][0],$C[0],   $A[2][2],$D[2]
+	bcax	$A[2][1],$D[2],   $A[2][3],$A[2][2]
+	bcax	$A[2][2],$A[2][2],$A[2][4],$A[2][3]
+	bcax	$A[2][3],$A[2][3],$C[0],   $A[2][4]
+	bcax	$A[2][4],$A[2][4],$D[2],   $C[0]
+	bcax	$A[1][2],$D[0],   $A[1][4],$A[0][4]	// A[0][4]=A[1][3]
+	bcax	$A[1][3],$A[0][4],$A[1][0],$A[1][4]	// A[0][4]=A[1][3]
+	bcax	$A[1][4],$A[1][4],$A[1][1],$A[1][0]
+	bcax	$A[1][0],$A[1][0],$D[0],   $A[1][1]
+	bcax	$A[1][1],$A[1][1],$A[0][4],$D[0]	// A[0][4]=A[1][3]
+	bcax	$A[0][3],$D[3],   $A[0][0],$D[4]
+	bcax	$A[0][4],$D[4],   $A[0][1],$A[0][0]
+	bcax	$A[0][0],$A[0][0],$A[0][2],$A[0][1]
+	bcax	$A[0][1],$A[0][1],$D[3],   $A[0][2]
+	bcax	$A[0][2],$A[0][2],$D[4],   $D[3]
+	eor	$A[0][0],$A[0][0],$C[1]
+	subs	x9,x9,#1
+	bne	.Loop_ce
+	ret
+.size	KeccakF1600_ce,.-KeccakF1600_ce
+.type	KeccakF1600_cext,%function
+.align	5
+KeccakF1600_cext:
+	AARCH64_SIGN_LINK_REGISTER
+	stp	x29,x30,[sp,#-80]!
+	add	x29,sp,#0
+	stp	d8,d9,[sp,#16]		// per ABI requirement
+	stp	d10,d11,[sp,#32]
+	stp	d12,d13,[sp,#48]
+	stp	d14,d15,[sp,#64]
+___
+for($i=0; $i<24; $i+=2) {		# load A[5][5]
+my $j=$i+1;
+$code.=<<___;
+	ldp	d$i,d$j,[x0,#8*$i]
+___
+}
+$code.=<<___;
+	ldr	d24,[x0,#8*$i]
+	bl	KeccakF1600_ce
+	ldr	x30,[sp,#8]
+___
+for($i=0; $i<24; $i+=2) {		# store A[5][5]
+my $j=$i+1;
+$code.=<<___;
+	stp	d$i,d$j,[x0,#8*$i]
+___
+}
+$code.=<<___;
+	str	d24,[x0,#8*$i]
+	ldp	d8,d9,[sp,#16]
+	ldp	d10,d11,[sp,#32]
+	ldp	d12,d13,[sp,#48]
+	ldp	d14,d15,[sp,#64]
+	ldr	x29,[sp],#80
+	AARCH64_VALIDATE_LINK_REGISTER
+	ret
+.size	KeccakF1600_cext,.-KeccakF1600_cext
+___
+
+{
+my ($ctx,$inp,$len,$bsz) = map("x$_",(0..3));
+
+$code.=<<___;
+.globl	SHA3_Absorb_cext
+.type	SHA3_Absorb_cext,%function
+.align	5
+SHA3_Absorb_cext:
+	AARCH64_SIGN_LINK_REGISTER
+	stp	x29,x30,[sp,#-80]!
+	add	x29,sp,#0
+	stp	d8,d9,[sp,#16]		// per ABI requirement
+	stp	d10,d11,[sp,#32]
+	stp	d12,d13,[sp,#48]
+	stp	d14,d15,[sp,#64]
+___
+for($i=0; $i<24; $i+=2) {		# load A[5][5]
+my $j=$i+1;
+$code.=<<___;
+	ldp	d$i,d$j,[x0,#8*$i]
+___
+}
+$code.=<<___;
+	ldr	d24,[x0,#8*$i]
+	b	.Loop_absorb_ce
+.align	4
+.Loop_absorb_ce:
+	subs	$len,$len,$bsz		// len - bsz
+	blo	.Labsorbed_ce
+___
+for (my $i=0; $i<24; $i+=2) {
+my $j = $i+1;
+$code.=<<___;
+	ldr	d31,[$inp],#8		// *inp++
+#ifdef	__AARCH64EB__
+	rev64	v31.16b,v31.16b
+#endif
+	eor	$A[$i/5][$i%5],$A[$i/5][$i%5],v31.16b
+	cmp	$bsz,#8*($i+2)
+	blo	.Lprocess_block_ce
+	ldr	d31,[$inp],#8		// *inp++
+#ifdef	__AARCH64EB__
+	rev64	v31.16b,v31.16b
+#endif
+	eor	$A[$j/5][$j%5],$A[$j/5][$j%5],v31.16b
+	beq	.Lprocess_block_ce
+___
+}
+$code.=<<___;
+	ldr	d31,[$inp],#8		// *inp++
+#ifdef	__AARCH64EB__
+	rev64	v31.16b,v31.16b
+#endif
+	eor	$A[4][4],$A[4][4],v31.16b
+.Lprocess_block_ce:
+	bl	KeccakF1600_ce
+	b	.Loop_absorb_ce
+.align	4
+.Labsorbed_ce:
+___
+for($i=0; $i<24; $i+=2) {		# store A[5][5]
+my $j=$i+1;
+$code.=<<___;
+	stp	d$i,d$j,[x0,#8*$i]
+___
+}
+$code.=<<___;
+	str	d24,[x0,#8*$i]
+	add	x0,$len,$bsz		// return value
+	ldp	d8,d9,[sp,#16]
+	ldp	d10,d11,[sp,#32]
+	ldp	d12,d13,[sp,#48]
+	ldp	d14,d15,[sp,#64]
+	ldp	x29,x30,[sp],#80
+	AARCH64_VALIDATE_LINK_REGISTER
+	ret
+.size	SHA3_Absorb_cext,.-SHA3_Absorb_cext
+___
+}
+{
+my ($ctx,$out,$len,$bsz) = map("x$_",(0..3));
+$code.=<<___;
+.globl	SHA3_Squeeze_cext
+.type	SHA3_Squeeze_cext,%function
+.align	5
+SHA3_Squeeze_cext:
+	AARCH64_SIGN_LINK_REGISTER
+	stp	x29,x30,[sp,#-16]!
+	add	x29,sp,#0
+	mov	x9,$ctx
+	mov	x10,$bsz
+.Loop_squeeze_ce:
+	ldr	x4,[x9],#8
+	cmp	$len,#8
+	blo	.Lsqueeze_tail_ce
+#ifdef	__AARCH64EB__
+	rev	x4,x4
+#endif
+	str	x4,[$out],#8
+	beq	.Lsqueeze_done_ce
+	sub	$len,$len,#8
+	subs	x10,x10,#8
+	bhi	.Loop_squeeze_ce
+	bl	KeccakF1600_cext
+	ldr	x30,[sp,#8]
+	mov	x9,$ctx
+	mov	x10,$bsz
+	b	.Loop_squeeze_ce
+.align	4
+.Lsqueeze_tail_ce:
+	strb	w4,[$out],#1
+	lsr	x4,x4,#8
+	subs	$len,$len,#1
+	beq	.Lsqueeze_done_ce
+	strb	w4,[$out],#1
+	lsr	x4,x4,#8
+	subs	$len,$len,#1
+	beq	.Lsqueeze_done_ce
+	strb	w4,[$out],#1
+	lsr	x4,x4,#8
+	subs	$len,$len,#1
+	beq	.Lsqueeze_done_ce
+	strb	w4,[$out],#1
+	lsr	x4,x4,#8
+	subs	$len,$len,#1
+	beq	.Lsqueeze_done_ce
+	strb	w4,[$out],#1
+	lsr	x4,x4,#8
+	subs	$len,$len,#1
+	beq	.Lsqueeze_done_ce
+	strb	w4,[$out],#1
+	lsr	x4,x4,#8
+	subs	$len,$len,#1
+	beq	.Lsqueeze_done_ce
+	strb	w4,[$out],#1
+.Lsqueeze_done_ce:
+	ldr	x29,[sp],#16
+	AARCH64_VALIDATE_LINK_REGISTER
+	ret
+.size	SHA3_Squeeze_cext,.-SHA3_Squeeze_cext
+___
+}								}}}
 $code.=<<___;
 .asciz	"Keccak-1600 absorb and squeeze for ARMv8, CRYPTOGAMS by <appro\@openssl.org>"
 ___
