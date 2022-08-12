@@ -19,7 +19,7 @@ function delete_s3_buckets() {
       aws s3 rm "s3://${bucket_name}" --recursive
       aws s3api delete-bucket --bucket "${bucket_name}"
     # Delete bm-framework buckets if we're not on the team account
-    elif [[ "${CDK_DEPLOY_ACCOUNT}" != "620771051181" ]] && [[ "${bucket_name}" == *"${aws-lc-ci-bm-framework}"* ]]; then
+    elif [[ "${CDK_DEPLOY_ACCOUNT}" != "654358955777" ]] && [[ "${bucket_name}" == *"${aws-lc-ci-bm-framework}"* ]]; then
       aws s3 rm "s3://${bucket_name}" --recursive
       aws s3api delete-bucket --bucket "${bucket_name}"
     fi
@@ -40,7 +40,7 @@ function delete_container_repositories() {
 }
 
 function destroy_ci() {
-  if [[ "${CDK_DEPLOY_ACCOUNT}" == "620771051181" ]]; then
+  if [[ "${CDK_DEPLOY_ACCOUNT}" == "654358955777" ]]; then
     echo "destroy_ci should not be executed on team account."
     exit 1
   fi
@@ -261,7 +261,7 @@ For aws-lc continuous integration setup, this script uses aws cli to build some 
 
 Options:
     --help                       Displays this help
-    --aws-account                AWS account for CDK deploy/destroy. Default to '620771051181'.
+    --aws-account                AWS account for CDK deploy/destroy. Default to '654358955777'.
     --aws-region                 AWS region for AWS resources creation. Default to 'us-west-2'.
     --github-repo-owner          GitHub repository owner. Default to 'awslabs'.
     --github-source-version      GitHub source version. Default to 'main'.
@@ -282,7 +282,7 @@ EOF
 function export_global_variables() {
   # If these variables are not set or empty, defaults are export.
   if [[ -z "${CDK_DEPLOY_ACCOUNT+x}" || -z "${CDK_DEPLOY_ACCOUNT}" ]]; then
-    export CDK_DEPLOY_ACCOUNT='620771051181'
+    export CDK_DEPLOY_ACCOUNT='654358955777'
   fi
   if [[ -z "${CDK_DEPLOY_REGION+x}" || -z "${CDK_DEPLOY_REGION}" ]]; then
     export CDK_DEPLOY_REGION='us-west-2'
@@ -306,8 +306,8 @@ function export_global_variables() {
   export WIN_EC2_TAG_VALUE="aws-lc-windows-docker-image-build-${DATE_NOW}"
   export WIN_DOCKER_BUILD_SSM_DOCUMENT="windows-ssm-document-${DATE_NOW}"
   export IMG_BUILD_STATUS='unknown'
-  # 620771051181 is AWS-LC team AWS account.
-  if [[ "${CDK_DEPLOY_ACCOUNT}" != "620771051181" ]] && [[ "${GITHUB_REPO_OWNER}" == 'awslabs' ]]; then
+  # 654358955777 is AWS-LC team AWS account.
+  if [[ "${CDK_DEPLOY_ACCOUNT}" != "654358955777" ]] && [[ "${GITHUB_REPO_OWNER}" == 'awslabs' ]]; then
     echo "Only team account is allowed to create CI stacks on awslabs repo."
     exit 1
   fi

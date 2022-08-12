@@ -12,11 +12,11 @@ set -exuo pipefail
 #              non-zero error code.
 
 # Device Farm project to designate Device Farm runs. The two device pools defined below should also belong to this project.
-AWSLC_DEVICEFARM_PROJECT='arn:aws:devicefarm:us-west-2:620771051181:project:d1e78543-a776-49c5-9452-9a2b3448b728'
+AWSLC_DEVICEFARM_PROJECT='arn:aws:devicefarm:us-west-2:654358955777:project:d1e78543-a776-49c5-9452-9a2b3448b728'
 # Device pool arn for FIPS.
-AWSLC_FIPS_DEVICEFARM_DEVICE_POOL='arn:aws:devicefarm:us-west-2:620771051181:devicepool:d1e78543-a776-49c5-9452-9a2b3448b728/4726586b-cdbc-4dc0-98a5-38e7448e3691'
+AWSLC_FIPS_DEVICEFARM_DEVICE_POOL='arn:aws:devicefarm:us-west-2:654358955777:devicepool:d1e78543-a776-49c5-9452-9a2b3448b728/4726586b-cdbc-4dc0-98a5-38e7448e3691'
 # Device pool arn for non-FIPS.
-AWSLC_NON_FIPS_DEVICEFARM_DEVICE_POOL='arn:aws:devicefarm:us-west-2:620771051181:devicepool:d1e78543-a776-49c5-9452-9a2b3448b728/4e72604c-86eb-41b6-9383-7797c04328b4'
+AWSLC_NON_FIPS_DEVICEFARM_DEVICE_POOL='arn:aws:devicefarm:us-west-2:654358955777:devicepool:d1e78543-a776-49c5-9452-9a2b3448b728/4e72604c-86eb-41b6-9383-7797c04328b4'
 
 ###########################
 # Main and related helper #

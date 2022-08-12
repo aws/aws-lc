@@ -6,7 +6,7 @@
 from util.env_util import EnvUtil
 
 # Used when AWS CDK defines AWS resources.
-AWS_ACCOUNT = EnvUtil.get("CDK_DEPLOY_ACCOUNT", "620771051181")
+AWS_ACCOUNT = EnvUtil.get("CDK_DEPLOY_ACCOUNT", "654358955777")
 AWS_REGION = EnvUtil.get("CDK_DEPLOY_REGION", "us-west-2")
 
 # Used when AWS CDK defines ECR repos.
