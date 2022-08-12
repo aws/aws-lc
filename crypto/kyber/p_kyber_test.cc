@@ -358,7 +358,7 @@ TEST(Kyber512Test, Kyber512_Benchmark) {
   end_bench = end_benchmark(&perf_fd);
 
   if (start_bench != (uint64_t) -1 && end_bench != 0) {
-    printf("Kyber512 KyyGen %lu\n", (end_bench - start_bench) / NTESTS );
+    printf("Kyber512 KyyGen %lu\n", (unsigned long)(end_bench - start_bench) / NTESTS );
   }
   else {
     printf("Not supported platform and OS. Could not benchmark Kyber512\n");

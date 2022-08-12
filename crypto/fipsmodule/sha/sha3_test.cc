@@ -12,6 +12,12 @@
 #include <openssl/digest.h>
 #include <sys/ioctl.h>
 
+#if defined(OPENSSL_APPLE)
+#include <sys/time.h>
+#else
+#include <time.h>
+#endif
+
 #define NTEST 100000
 static uint32_t NTESTS = 1;
 
@@ -51,15 +57,19 @@ static long perf_event_open(struct perf_event_attr *hw_event, pid_t pid,
 
 #ifdef __aarch64__
 static uint64_t gettime() {
-#ifdef __aarch64__
-  uint64_t ret = 0;
-  //uint64_t hz = 0;
-  __asm__ __volatile__ ("isb; mrs %0,cntvct_el0":"=r"(ret));
-  //__asm__ __volatile__ ("mrs %0,cntfrq_el0; clz %w0, %w0":"=&r"(hz));
-  return ret;
-#endif
- 
-  return 0;
+// uint64_t ret = 0;
+  // //uint64_t hz = 0;
+  // __asm__ __volatile__ ("isb; mrs %0,cntvct_el0":"=r"(ret));
+  // //__asm__ __volatile__ ("mrs %0,cntfrq_el0; clz %w0, %w0":"=&r"(hz));
+  // return ret;
+  struct timeval tv;
+  uint64_t ret;
+
+  gettimeofday(&tv, NULL);
+  ret = tv.tv_sec;
+  ret *= 1000000;
+  ret += tv.tv_usec;
+  return ret ;
 }
 #endif
 
@@ -251,7 +261,7 @@ void Benchmark_SHA3_224() const {
     end_bench = end_benchmark(&perf_fd);
 
     if (start_bench != (uint64_t) -1 && end_bench != 0) {
-      printf("SHA3_224 %lu\n", (end_bench - start_bench) );
+      printf("SHA3_224 %lu\n", (unsigned long)(end_bench - start_bench) );
     }
     else {
       printf("Not supported platform and OS. Could not benchmark SHAKE128\n");
@@ -283,7 +293,7 @@ void Benchmark_SHA3_224() const {
     end_bench = end_benchmark(&perf_fd);
 
     if (start_bench != (uint64_t) -1 && end_bench != 0) {
-      printf("SHA3_256 %lu\n", (end_bench - start_bench) );
+      printf("SHA3_256 %lu\n", (unsigned long)(end_bench - start_bench) );
     }
     else {
       printf("Not supported platform and OS. Could not benchmark SHAKE128\n");
@@ -315,7 +325,7 @@ void Benchmark_SHA3_224() const {
     end_bench = end_benchmark(&perf_fd);
 
     if (start_bench != (uint64_t) -1 && end_bench != 0) {
-      printf("SHA3_384 %lu\n", (end_bench - start_bench) );
+      printf("SHA3_384 %lu\n", (unsigned long)(end_bench - start_bench) );
     }
     else {
       printf("Not supported platform and OS. Could not benchmark SHAKE128\n");
@@ -347,7 +357,7 @@ void Benchmark_SHA3_224() const {
     end_bench = end_benchmark(&perf_fd);
 
     if (start_bench != (uint64_t) -1 && end_bench != 0) {
-      printf("SHA3_512 %lu\n", (end_bench - start_bench) );
+      printf("SHA3_512 %lu\n", (unsigned long)(end_bench - start_bench) );
     }
     else {
       printf("Not supported platform and OS. Could not benchmark SHAKE128\n");
@@ -375,7 +385,7 @@ void Benchmark_SHA3_224() const {
     end_bench = end_benchmark(&perf_fd);
 
     if (start_bench != (uint64_t) -1 && end_bench != 0) {
-      printf("SHAKE128 %lu\n", (end_bench - start_bench) );
+      printf("SHAKE128 %lu\n", (unsigned long)(end_bench - start_bench) );
     }
     else {
       printf("Not supported platform and OS. Could not benchmark SHAKE128\n");
@@ -403,7 +413,7 @@ void Benchmark_SHA3_224() const {
     end_bench = end_benchmark(&perf_fd);
 
     if (start_bench != (uint64_t) -1 && end_bench != 0) {
-      printf("SHAKE256 %lu\n", (end_bench - start_bench) );
+      printf("SHAKE256 %lu\n", (unsigned long)(end_bench - start_bench) );
     }
     else {
       printf("Not supported platform and OS. Could not benchmark SHAKE256\n");
