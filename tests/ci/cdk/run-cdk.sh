@@ -306,6 +306,11 @@ function export_global_variables() {
   export WIN_EC2_TAG_VALUE="aws-lc-windows-docker-image-build-${DATE_NOW}"
   export WIN_DOCKER_BUILD_SSM_DOCUMENT="windows-ssm-document-${DATE_NOW}"
   export IMG_BUILD_STATUS='unknown'
+  # 620771051181 is AWS-LC team AWS account.
+  if [[ "${CDK_DEPLOY_ACCOUNT}" != "620771051181" ]] && [[ "${GITHUB_REPO_OWNER}" == 'awslabs' ]]; then
+    echo "Only team account is allowed to create CI stacks on awslabs repo."
+    exit 1
+  fi
 }
 
 function main() {
