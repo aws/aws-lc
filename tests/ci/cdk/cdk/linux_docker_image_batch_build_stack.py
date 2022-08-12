@@ -61,14 +61,6 @@ class LinuxDockerImageBatchBuildStack(core.Stack):
                 build_image=codebuild.LinuxBuildImage.STANDARD_4_0),
             environment_variables=environment_variables,
             role=role,
-            timeout=core.Duration.minutes(120),
+            timeout=core.Duration.minutes(180),
             build_spec=codebuild.BuildSpec.from_object(build_spec_content))
-
-        # Add 'BuildBatchConfig' property, which is not supported in CDK.
-        # CDK raw overrides: https://docs.aws.amazon.com/cdk/latest/guide/cfn_layer.html#cfn_layer_raw
-        # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-codebuild-project.html#aws-resource-codebuild-project-properties
-        cfn_build = project.node.default_child
-        cfn_build.add_override("Properties.BuildBatchConfig", {
-            "ServiceRole": role.role_arn,
-            "TimeoutInMins": 120
-        })
+        project.enable_batch_builds()

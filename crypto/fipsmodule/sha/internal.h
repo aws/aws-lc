@@ -19,12 +19,33 @@
 extern "C" {
 #endif
 
-// SHA3_256 constants
+// SHA3 constants, from NIST FIPS202.
+// https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf
 #define KECCAK1600_WIDTH 1600
+
+#define SHA3_224_CAPACITY_BYTES 56
+#define SHA3_224_DIGEST_BITLENGTH 224
+#define SHA3_224_DIGEST_LENGTH 28
+
 #define SHA3_256_CAPACITY_BYTES 64
 #define SHA3_256_DIGEST_BITLENGTH 256
 #define SHA3_256_DIGEST_LENGTH 32
+
+#define SHA3_384_CAPACITY_BYTES 96
+#define SHA3_384_DIGEST_BITLENGTH 384
+#define SHA3_384_DIGEST_LENGTH 48
+
+#define SHA3_512_CAPACITY_BYTES 128
+#define SHA3_512_DIGEST_BITLENGTH 512
+#define SHA3_512_DIGEST_LENGTH 64
+
+// The |SHA3_MIN_CAPACITY_BYTES| corresponds to the 
+// lowest security level capacity.
+// The data block size increases when the capacity decreases.
+// The data buffer should have at least the maximum 
+// block size bytes to fit any digest length.
 #define SHA3_BLOCKSIZE(bitlen) (KECCAK1600_WIDTH - bitlen * 2) / 8
+#define SHA3_MIN_CAPACITY_BYTES SHA3_224_CAPACITY_BYTES
 #define SHA3_PAD_CHAR 0x06
 #define SHA3_ROWS 5
 
@@ -47,10 +68,10 @@ typedef struct keccak_st KECCAK1600_CTX;
 
 struct keccak_st {
   uint64_t A[SHA3_ROWS][SHA3_ROWS];
-  size_t block_size;   // cached ctx->digest->block_size
-  size_t md_size;      // output length, variable in XOF (SHAKE)
-  size_t buf_load;     // used bytes in below buffer
-  uint8_t buf[KECCAK1600_WIDTH / 8 - SHA3_MIN_CAPACITY_BYTES];
+  size_t block_size;                                             // cached ctx->digest->block_size
+  size_t md_size;                                                // output length, variable in XOF (SHAKE)
+  size_t buf_load;                                               // used bytes in below buffer
+  uint8_t buf[KECCAK1600_WIDTH / 8 - SHA3_MIN_CAPACITY_BYTES];   // should have at least the max data block size bytes
   uint8_t pad;
 };
 
@@ -77,11 +98,29 @@ void sha512_block_data_order(uint64_t *state, const uint8_t *in,
                              size_t num_blocks);
 #endif
 
-// SHA3_256 writes the digest of |len| bytes from |data| to |out| 
-// and returns |out| on success and NULL on failure. 
+// SHA3_224 writes the digest of |len| bytes from |data| to |out| and returns |out|. 
+// There must be at least |SHA3_224_DIGEST_LENGTH| bytes of space in |out|.
+// On failure |SHA3_224| returns NULL.
+OPENSSL_EXPORT uint8_t *SHA3_224(const uint8_t *data, size_t len,
+                                 uint8_t out[SHA3_224_DIGEST_LENGTH]);  
+                                 
+// SHA3_256 writes the digest of |len| bytes from |data| to |out| and returns |out|. 
 // There must be at least |SHA3_256_DIGEST_LENGTH| bytes of space in |out|.
+// On failure |SHA3_256| returns NULL.
 OPENSSL_EXPORT uint8_t *SHA3_256(const uint8_t *data, size_t len,
-                                 uint8_t out[SHA3_256_DIGEST_LENGTH]);  
+                                 uint8_t out[SHA3_256_DIGEST_LENGTH]); 
+
+// SHA3_384 writes the digest of |len| bytes from |data| to |out| and returns |out|. 
+// There must be at least |SHA3_384_DIGEST_LENGTH| bytes of space in |out|.
+// On failure |SHA3_384| returns NULL.
+OPENSSL_EXPORT uint8_t *SHA3_384(const uint8_t *data, size_t len,
+                                 uint8_t out[SHA3_384_DIGEST_LENGTH]); 
+
+// SHA3_512 writes the digest of |len| bytes from |data| to |out| and returns |out|. 
+// There must be at least |SHA3_512_DIGEST_LENGTH| bytes of space in |out|.
+// On failure |SHA3_512| returns NULL.
+OPENSSL_EXPORT uint8_t *SHA3_512(const uint8_t *data, size_t len,
+                  uint8_t out[SHA3_512_DIGEST_LENGTH]);
 
 // SHAKE128 writes the |out_len| bytes output from |in_len| bytes |data| 
 // to |out| and returns |out| on success and NULL on failure. 

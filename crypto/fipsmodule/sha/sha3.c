@@ -11,10 +11,52 @@
 #include <string.h>
 
 
+uint8_t *SHA3_224(const uint8_t *data, size_t len,
+                  uint8_t out[SHA3_224_DIGEST_LENGTH]) {
+  KECCAK1600_CTX ctx;
+  int ok = (SHA3_Init(&ctx, SHA3_PAD_CHAR, SHA3_224_DIGEST_BITLENGTH) && 
+            SHA3_Update(&ctx, data, len) &&
+            SHA3_Final(out, &ctx));
+
+  OPENSSL_cleanse(&ctx, sizeof(ctx));
+  if (ok == 0) {
+    return NULL;
+  }
+  return out;
+}
+
 uint8_t *SHA3_256(const uint8_t *data, size_t len,
                   uint8_t out[SHA3_256_DIGEST_LENGTH]) {
   KECCAK1600_CTX ctx;
   int ok = (SHA3_Init(&ctx, SHA3_PAD_CHAR, SHA3_256_DIGEST_BITLENGTH) && 
+            SHA3_Update(&ctx, data, len) &&
+            SHA3_Final(out, &ctx));
+
+  OPENSSL_cleanse(&ctx, sizeof(ctx));
+  if (ok == 0) {
+    return NULL;
+  }
+  return out;
+}
+
+uint8_t *SHA3_384(const uint8_t *data, size_t len,
+                  uint8_t out[SHA3_384_DIGEST_LENGTH]) {
+  KECCAK1600_CTX ctx;
+  int ok = (SHA3_Init(&ctx, SHA3_PAD_CHAR, SHA3_384_DIGEST_BITLENGTH) && 
+            SHA3_Update(&ctx, data, len) &&
+            SHA3_Final(out, &ctx));
+
+  OPENSSL_cleanse(&ctx, sizeof(ctx));
+  if (ok == 0) {
+    return NULL;
+  }
+  return out;
+}
+
+uint8_t *SHA3_512(const uint8_t *data, size_t len,
+                  uint8_t out[SHA3_512_DIGEST_LENGTH]) {
+  KECCAK1600_CTX ctx;
+  int ok = (SHA3_Init(&ctx, SHA3_PAD_CHAR, SHA3_512_DIGEST_BITLENGTH) && 
             SHA3_Update(&ctx, data, len) &&
             SHA3_Final(out, &ctx));
 
@@ -68,7 +110,7 @@ void SHA3_Reset(KECCAK1600_CTX *ctx) {
 
 int SHA3_Init(KECCAK1600_CTX *ctx, uint8_t pad, size_t bit_len) {
   if (EVP_MD_unstable_sha3_is_enabled() == false) {
-        exit(1);
+    return 0;
   }
 
   size_t block_size;
@@ -99,7 +141,7 @@ int SHA3_Init(KECCAK1600_CTX *ctx, uint8_t pad, size_t bit_len) {
 
 int SHA3_Update(KECCAK1600_CTX *ctx, const void *data, size_t len) {
   if (EVP_MD_unstable_sha3_is_enabled() == false) {
-         exit(1);
+    return 0;
   }
 
   uint8_t *data_ptr_copy = (uint8_t *) data;
@@ -149,7 +191,7 @@ int SHA3_Update(KECCAK1600_CTX *ctx, const void *data, size_t len) {
 
 int SHA3_Final(uint8_t *md, KECCAK1600_CTX *ctx) {
   if (EVP_MD_unstable_sha3_is_enabled() == false) {
-         exit(1);
+    return 0;
   }
 
   size_t block_size = ctx->block_size;

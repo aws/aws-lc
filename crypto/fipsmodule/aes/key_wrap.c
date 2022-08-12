@@ -96,8 +96,8 @@ int AES_wrap_key(const AES_KEY *key, const uint8_t *iv, uint8_t *out,
       OPENSSL_memcpy(out + 8 * i, A + 8, 8);
     }
   }
-  AES_verify_service_indicator(NULL, key->rounds);
   OPENSSL_memcpy(out, A, 8);
+  FIPS_service_indicator_update_state();
   return (int)in_len + 8;
 }
 
@@ -151,7 +151,7 @@ int AES_unwrap_key(const AES_KEY *key, const uint8_t *iv, uint8_t *out,
     return -1;
   }
 
-  AES_verify_service_indicator(NULL, key->rounds);
+  FIPS_service_indicator_update_state();
   return (int)in_len - 8;
 }
 
@@ -208,7 +208,7 @@ int AES_wrap_key_padded(const AES_KEY *key, uint8_t *out, size_t *out_len,
 end:
   FIPS_service_indicator_unlock_state();
   if(ret) {
-    AES_verify_service_indicator(NULL, key->rounds);
+    FIPS_service_indicator_update_state();
   }
   return ret;
 }
@@ -246,9 +246,9 @@ int AES_unwrap_key_padded(const AES_KEY *key, uint8_t *out, size_t *out_len,
   }
 
   *out_len = constant_time_select_w(ok, claimed_len, 0);
-  int ret = ok & 1;
+  const int ret = ok & 1;
   if(ret) {
-    AES_verify_service_indicator(NULL, key->rounds);
+    FIPS_service_indicator_update_state();
   }
   return ret;
 }

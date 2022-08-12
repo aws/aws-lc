@@ -16,6 +16,7 @@ docker build -t ubuntu-20.04-aarch:clang-7x ubuntu-20.04_clang-7x
 docker build -t ubuntu-20.04-aarch:clang-8x ubuntu-20.04_clang-8x
 docker build -t ubuntu-20.04-aarch:clang-9x ubuntu-20.04_clang-9x
 docker build -t ubuntu-20.04-aarch:clang-10x ubuntu-20.04_clang-10x
+docker build -t ubuntu-20.04-aarch:clang-9x-sanitizer ubuntu-20.04_clang-9x_sanitizer
 docker build -t ubuntu-20.04-aarch:clang-7x-bm-framework ubuntu-20.04_clang-7x-bm-framework
 docker build -t ubuntu-22.04-aarch:base ubuntu-22.04_base
 docker build -t ubuntu-22.04-aarch:gcc-11x ubuntu-22.04_gcc-11x

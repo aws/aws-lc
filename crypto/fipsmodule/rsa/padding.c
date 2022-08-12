@@ -145,26 +145,19 @@ int RSA_padding_check_PKCS1_type_1(uint8_t *out, size_t *out_len,
   return 1;
 }
 
-static int rand_nonzero(uint8_t *out, size_t len) {
+static void rand_nonzero(uint8_t *out, size_t len) {
   // |RAND_bytes| calls within the fipsmodule should be wrapped with state lock
   // functions to avoid updating the service indicator with the DRBG functions.
   FIPS_service_indicator_lock_state();
-  int ret = 0;
-  if (!RAND_bytes(out, len)) {
-    goto end;
-  }
+  RAND_bytes(out, len);
 
   for (size_t i = 0; i < len; i++) {
     while (out[i] == 0) {
-      if (!RAND_bytes(out + i, 1)) {
-        goto end;
-      }
+      RAND_bytes(out + i, 1);
     }
   }
-  ret = 1;
-end:
+
   FIPS_service_indicator_unlock_state();
-  return ret;
 }
 
 int RSA_padding_add_PKCS1_type_2(uint8_t *to, size_t to_len,
@@ -184,9 +177,7 @@ int RSA_padding_add_PKCS1_type_2(uint8_t *to, size_t to_len,
   to[1] = 2;
 
   size_t padding_len = to_len - 3 - from_len;
-  if (!rand_nonzero(to + 2, padding_len)) {
-    return 0;
-  }
+  rand_nonzero(to + 2, padding_len);
 
   to[2 + padding_len] = 0;
   OPENSSL_memcpy(to + to_len - from_len, from, from_len);
@@ -318,8 +309,8 @@ static int PKCS1_MGF1(uint8_t *out, size_t len, const uint8_t *seed,
   ret = 1;
 
 err:
-  FIPS_service_indicator_unlock_state();
   EVP_MD_CTX_cleanup(&ctx);
+  FIPS_service_indicator_unlock_state();
   return ret;
 }
 
@@ -393,8 +384,8 @@ int RSA_padding_add_PKCS1_OAEP_mgf1(uint8_t *to, size_t to_len,
   ret = 1;
 
 out:
-  FIPS_service_indicator_unlock_state();
   OPENSSL_free(dbmask);
+  FIPS_service_indicator_unlock_state();
   return ret;
 }
 
@@ -484,10 +475,10 @@ int RSA_padding_check_PKCS1_OAEP_mgf1(uint8_t *out, size_t *out_len,
     goto err;
   }
 
-  FIPS_service_indicator_unlock_state();
   OPENSSL_memcpy(out, db + one_index, mlen);
   *out_len = mlen;
   OPENSSL_free(db);
+  FIPS_service_indicator_unlock_state();
   return 1;
 
 decoding_err:
@@ -495,8 +486,8 @@ decoding_err:
   // which kind of decoding error happened
   OPENSSL_PUT_ERROR(RSA, RSA_R_OAEP_DECODING_ERROR);
  err:
-  FIPS_service_indicator_unlock_state();
   OPENSSL_free(db);
+  FIPS_service_indicator_unlock_state();
   return 0;
 }
 
@@ -598,9 +589,9 @@ int RSA_verify_PKCS1_PSS_mgf1(const RSA *rsa, const uint8_t *mHash,
   }
 
 err:
-  FIPS_service_indicator_unlock_state();
   OPENSSL_free(DB);
   EVP_MD_CTX_cleanup(&ctx);
+  FIPS_service_indicator_unlock_state();
 
   return ret;
 }
@@ -715,8 +706,8 @@ int RSA_padding_add_PKCS1_PSS_mgf1(const RSA *rsa, unsigned char *EM,
   ret = 1;
 
 err:
-  FIPS_service_indicator_unlock_state();
   OPENSSL_free(salt);
+  FIPS_service_indicator_unlock_state();
 
   return ret;
 }
