@@ -144,12 +144,7 @@ bool FileTestReadInt(FileTest *file_test, T *out, const std::string &key) {
 }
 
 bool SHA3TestVector::ReadFromFileTest(FileTest *t) {
-  if (!t->GetBytes(&msg_, "Msg") ||
-      !t->GetBytes(&digest_, "MD")) {
-    return false;
-  }
-
-  if (t->HasAttribute("Outputlen")) {
+   if (t->HasAttribute("Outputlen")) {
     if (!FileTestReadInt(t, &out_len_, "Outputlen")) {
       return false;
     }
@@ -159,6 +154,11 @@ bool SHA3TestVector::ReadFromFileTest(FileTest *t) {
     if (!FileTestReadInt(t, &len_, "Len")) {
       return false;
     }
+  }
+  
+  if (!t->GetBytes(&msg_, "Msg") ||
+      !t->GetBytes(&digest_, "MD")) {
+    return false;
   }
 
   return true;
