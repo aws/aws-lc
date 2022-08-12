@@ -80,7 +80,7 @@ void sha512_block_data_order(uint64_t *state, const uint8_t *in,
 // SHA3_256 writes the digest of |len| bytes from |data| to |out| 
 // and returns |out| on success and NULL on failure. 
 // There must be at least |SHA3_256_DIGEST_LENGTH| bytes of space in |out|.
-OPENSSL_EXPORT uint8_t *SHA3_256(const uint8_t *data, size_t len, 
+OPENSSL_EXPORT uint8_t *SHA3_256(const uint8_t *data, size_t len,
                                  uint8_t out[SHA3_256_DIGEST_LENGTH]);  
 
 // SHAKE128 writes the |out_len| bytes output from |in_len| bytes |data| 
@@ -101,7 +101,7 @@ OPENSSL_EXPORT int SHA3_Init(KECCAK1600_CTX *ctx, uint8_t pad,
                              size_t bitlen);
 
 // SHA3_Update processes all data blocks that don't need pad through 
-//|SHA3_Absorb| and returns 1 and 0 on failure.
+// |SHA3_Absorb| and returns 1 and 0 on failure.
 OPENSSL_EXPORT int SHA3_Update(KECCAK1600_CTX *ctx, const void *data,
                                size_t len);
 
