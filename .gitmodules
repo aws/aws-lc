@@ -1,6 +1,6 @@
 [submodule "src"]
 	path = src
-	branch = main
+	branch = fix-fv-upstream-merge-2022-08-02-nebeid
 	url = https://github.com/awslabs/aws-lc.git
 [submodule "cryptol-specs"]
 	path = cryptol-specs

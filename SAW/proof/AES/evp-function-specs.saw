@@ -4,12 +4,12 @@
 */
 
 
-// Specification of aes_256_gcm_generic_init, the initialization function
-// for aes_256_gcm_generic_storage.
-let aes_256_gcm_generic_init_spec = do {
-  crucible_alloc_global "aes_256_gcm_generic_storage";
+// Specification of EVP_aes_256_gcm_init, the initialization function
+// for EVP_aes_256_gcm_storage.
+let EVP_aes_256_gcm_init_spec = do {
+  crucible_alloc_global "EVP_aes_256_gcm_storage";
   crucible_execute_func [];
-  points_to_evp_cipher_st (crucible_global "aes_256_gcm_generic_storage");
+  points_to_evp_cipher_st (crucible_global "EVP_aes_256_gcm_storage");
 };
 
 
@@ -133,4 +133,3 @@ let EVP_DecryptFinal_ex_spec gcm_len = do {
 
   crucible_return (crucible_term {{ (if ret then 1 else 0) : [32] }});
 };
-

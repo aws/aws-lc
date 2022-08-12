@@ -247,7 +247,7 @@ aes_gcm_from_cipher_ctx_ov <- crucible_llvm_unsafe_assume_spec
   aes_gcm_from_cipher_ctx_spec;
 
 
-llvm_verify m "aes_256_gcm_generic_init" [] true aes_256_gcm_generic_init_spec (w4_unint_yices []);
+llvm_verify m "EVP_aes_256_gcm_init" [] true EVP_aes_256_gcm_init_spec (w4_unint_yices []);
 
 
 let evp_cipher_ovs =
@@ -308,4 +308,3 @@ llvm_verify m "EVP_DecryptFinal_ex"
   true
   (EVP_DecryptFinal_ex_spec evp_cipher_final_gcm_len)
   evp_cipher_tactic;
-
