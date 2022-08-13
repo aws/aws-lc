@@ -20,6 +20,7 @@
 #include <openssl/obj.h>
 
 #include "../../internal.h"
+#include "../../fipsmodule/cipher/internal.h"
 
 typedef struct {
   AES_KEY ks;
