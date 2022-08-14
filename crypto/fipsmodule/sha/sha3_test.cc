@@ -128,8 +128,8 @@ class SHA3TestVector {
   }
 
  private:
-  uint16_t len_;
-  uint16_t out_len_;
+  uint32_t len_;
+  uint32_t out_len_;
   std::vector<uint8_t> msg_;
   std::vector<uint8_t> digest_;
 };
