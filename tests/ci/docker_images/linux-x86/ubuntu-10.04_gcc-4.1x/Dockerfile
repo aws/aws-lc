@@ -1,9 +1,7 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-FROM ubuntu-7.10_gcc-4.1x:latest
-
-COPY sources.list /etc/apt/sources.list
+FROM ubuntu:10.04
 
 CMD ["/bin/bash"]
 
@@ -13,12 +11,13 @@ RUN mv /bin/uname /bin/uname.orig
 RUN printf '#!/bin/bash\n\nif [[ "$1" == "-r" ]] ;then\n echo '4.9.250'\n exit\nelse\n uname.orig "$@"\nfi' > /bin/uname
 RUN chmod 755 /bin/uname
 
-RUN apt-get update && \
+RUN sed -i -re 's/([a-z]{2}\.)?archive.ubuntu.com|security.ubuntu.com/old-releases.ubuntu.com/g' /etc/apt/sources.list && \
+    apt-get update && \
     apt-get -y --no-install-recommends install \
     gcc-4.1 \
     g++-4.1 \
-    perl && \
-    rm -rf /var/lib/apt/lists/*
+    make && \
+    perl
 
 ENV CC=gcc-4.1
 ENV CXX=g++-4.1

@@ -11,6 +11,10 @@ applications. For performance critical algorithms, optimized assembly versions a
 included for x86 and ARM.
 
 ## Quickstart for Amazon Linux 2
+
+AWS-LC’s libcrypto is a C library and needs a C compiler. AWS-LC's libssl is a
+C++ library and needs a C++ compiler.
+
 Fork AWS-LC on GitHub and run the following commands to build AWS-LC with optimizations
 and debug info, run all tests, and install it:
 ```bash
@@ -43,48 +47,34 @@ team to publish open source contributions and enhancements that are submitted to
 other libcrypto projects.
 
 ## AWS-LC features
+
 ### API Compatibility
+
 AWS-LC is compatible with the majority of OpenSSL’s APIs to make it easy to use with
 existing applications. We’re open to discussing adding missing functionality and
 understanding your use case in an Issue or on Gitter.
 
-### Compiler Compatibility
-AWS-LC’s libcrypto is a C library and is tested with a variety of C compilers. To
-build libssl and AWS-LC’s tests you will need a C++ compiler. AWS-LC is tested with:
+### Compiler, OS, and CPU support
 
-* GCC 4.8.5 to 8.4
-* Clang 7 to 10
-* Visual Studio 2015
-
-For a complete list of tested compilers see
+AWS-LC correctness is tested on a variety of C/C++ compiler, OS, and CPU
+combinations. For a complete list of tested combinations see
 [tests/ci/Readme.md](https://github.com/awslabs/aws-lc/blob/main/tests/ci/README.md).
-If you use another compiler and would like to make sure we maintain support, please
-open an issue to discuss adding it to our CI.
+If you use a different combination and would like to make sure we test it,
+please open an issue to discuss adding it to our CI.
 
-### OS Compatibility
+### Algorithm optimization support
 
-AWS-LC should work on any system with a supported compiler. AWS-LC has been written to
-support Unix and Windows operating systems. AWS-LC is tested on:
-* Amazon Linux 2
-* Centos 7
-* Ubuntu 18.04 and 20.04
-* Fedora 31
-* Windows Server 2019
+A portable C implementation of all algorithms is included and optimized assembly
+implementations of select algorithms is included for some x86 and Arm CPUs. We
+use [AWS Graviton processors](https://aws.amazon.com/ec2/graviton/) to test
+ARMv8 optimizations and Intel CPUs to test x86 and x86-64 optimizations.
 
-If you use another OS and would like to make sure we maintain support, please open an
-issue to discuss adding it to our CI.
+The [Intel Software Development Emulator](https://software.intel.com/content/www/us/en/develop/articles/intel-software-development-emulator.html)
+is used to run tests on many different x86 processors.
 
-### CPU Compatibility
-
-A portable C implementation of all algorithms is included and optimized assembly is
-included for some platforms. We test all changes on ARM and x86 platforms. We use
-[AWS Graviton processors](https://aws.amazon.com/ec2/graviton/) to test ARMv8 and
-Intel CPUs to test x86 and x86-64 compatibility. The
-[Intel Software Development Emulator](https://software.intel.com/content/www/us/en/develop/articles/intel-software-development-emulator.html)
-is used to test all modern x86 processors.
-
-If you use another CPU and would like to make sure we maintain support, please open an
-issue to discuss adding it to our CI.
+If you use another CPU and would like to make sure we test it or discuss adding
+an assembly optimized algorithm implementation, please open an issue to discuss
+adding it to our CI.
 
 ## AWS-LC safety mechanisms
 

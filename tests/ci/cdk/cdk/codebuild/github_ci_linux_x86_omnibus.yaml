@@ -12,7 +12,7 @@ batch:
         type: LINUX_CONTAINER
         privileged-mode: false
         compute-type: BUILD_GENERAL1_SMALL
-        image: ECR_REPO_PLACEHOLDER:ubuntu-18.04_gcc-7x_latest
+        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-8x_latest
 
     - identifier: ubuntu1604_gcc5x_x86
       buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
@@ -128,7 +128,7 @@ batch:
         type: LINUX_CONTAINER
         privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
-        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-9x_latest
+        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-9x_sanitizer_latest
 
     - identifier: ubuntu2004_clang10x_x86_64
       buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
@@ -388,10 +388,10 @@ batch:
         compute-type: BUILD_GENERAL1_SMALL
         image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-7x-bm-framework_latest
 
-    - identifier: ubuntu710_gcc4_1x_x86_64_build
+    - identifier: ubuntu1004_gcc4_1x_x86_64_build
       buildspec: ./tests/ci/codebuild/linux-x86/run_legacy_build.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
         compute-type: BUILD_GENERAL1_SMALL
-        image: ECR_REPO_PLACEHOLDER:ubuntu-7.10_gcc-4.1x_latest
+        image: ECR_REPO_PLACEHOLDER:ubuntu-10.04_gcc-4.1x_latest

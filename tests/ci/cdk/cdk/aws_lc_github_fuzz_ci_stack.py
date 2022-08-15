@@ -33,7 +33,7 @@ class AwsLcGitHubFuzzCIStack(core.Stack):
                     codebuild.EventAction.PULL_REQUEST_UPDATED,
                     codebuild.EventAction.PULL_REQUEST_REOPENED)
             ],
-            clone_depth=1)
+            webhook_triggers_batch_build=True)
 
         # Define a IAM role for this stack.
         code_build_batch_policy = iam.PolicyDocument.from_json(
@@ -114,23 +114,16 @@ class AwsLcGitHubFuzzCIStack(core.Stack):
             build_spec=codebuild.BuildSpec.from_object(build_spec_content),
             vpc=fuzz_vpc,
             security_groups=[build_security_group])
+        fuzz_codebuild.enable_batch_builds()
 
-        # TODO: add build type BUILD_BATCH when CFN finishes the feature release. See CryptoAlg-575.
-
-        # Add 'BuildBatchConfig' property, which is not supported in CDK.
         # CDK raw overrides: https://docs.aws.amazon.com/cdk/latest/guide/cfn_layer.html#cfn_layer_raw
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-codebuild-project.html#aws-resource-codebuild-project-properties
-        cfn_codebuild = fuzz_codebuild.node.default_child
-        cfn_codebuild.add_override("Properties.BuildBatchConfig", {
-            "ServiceRole": role.role_arn,
-            "TimeoutInMins": 120
-        })
-
         # The EFS identifier needs to match tests/ci/common_fuzz.sh, CodeBuild defines an environment variable named
         # codebuild_$identifier.
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-codebuild-project-projectfilesystemlocation.html
         #
         # TODO: add this to the CDK project above when it supports EfsFileSystemLocation
+        cfn_codebuild = fuzz_codebuild.node.default_child
         cfn_codebuild.add_override("Properties.FileSystemLocations", [{
           "Identifier": "fuzzing_root",
           "Location": "%s.efs.%s.amazonaws.com:/" % (fuzz_filesystem.file_system_id, AWS_REGION),
