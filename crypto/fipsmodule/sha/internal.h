@@ -49,24 +49,19 @@ extern "C" {
 #define SHAKE128_BLOCKSIZE (KECCAK1600_WIDTH - 128 * 2) / 8
 #define SHAKE256_BLOCKSIZE (KECCAK1600_WIDTH - 256 * 2) / 8
 
-// [NIST FIPS202] Capacity: In the sponge construction, 
-// the width of the underlying function |KECCAK1600_WIDTH| 
-// minus the rate (the block size in bits).
-// The |SHA3_MIN_CAPACITY_BYTES| corresponds to the 
-// lowest security level capacity for SHA3/SHAKE.
-#define SHA3_MIN_CAPACITY_BYTES (KECCAK1600_WIDTH / 8 - SHAKE128_BLOCKSIZE)
+// SHAKE128 has the maximum block size among the SHA3/SHAKE algorithms.
+#define SHA3_MAX_BLOCKSIZE SHAKE128_BLOCKSIZE
 
 typedef struct keccak_st KECCAK1600_CTX;
 
-// The data blocks increase when the capacity decreases.
 // The data buffer should have at least the maximum number of
 // block size bytes to fit any SHA3/SHAKE block length.
 struct keccak_st {
   uint64_t A[SHA3_ROWS][SHA3_ROWS];
-  size_t block_size;                                             // cached ctx->digest->block_size
-  size_t md_size;                                                // output length, variable in XOF (SHAKE)
-  size_t buf_load;                                               // used bytes in below buffer
-  uint8_t buf[KECCAK1600_WIDTH / 8 - SHA3_MIN_CAPACITY_BYTES];   // should have at least the max data block size bytes
+  size_t block_size;                               // cached ctx->digest->block_size
+  size_t md_size;                                  // output length, variable in XOF (SHAKE)
+  size_t buf_load;                                 // used bytes in below buffer
+  uint8_t buf[SHA3_MAX_BLOCKSIZE];                 // should have at least the max data block size bytes
   uint8_t pad;
 };
 
