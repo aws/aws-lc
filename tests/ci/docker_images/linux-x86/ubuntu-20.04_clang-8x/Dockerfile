@@ -9,7 +9,8 @@ RUN set -ex && \
     apt-get update && \
     apt-get -y --no-install-recommends upgrade && \
     apt-get -y --no-install-recommends install \
-    clang-8 && \
+    clang-8 \
+    clang-format && \
     apt-get autoremove --purge -y && \
     apt-get clean && \
     apt-get autoclean && \
