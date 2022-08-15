@@ -54,9 +54,8 @@
 #include <openssl/cipher.h>
 #include <openssl/err.h>
 
-#include "../fipsmodule/modes/internal.h"
-#include "../fipsmodule/aes/internal.h"
-#include "../fipsmodule/cipher/internal.h"
+#include "internal.h"
+#include "../../internal.h"
 
 typedef struct xts128_context {
   AES_KEY *key1, *key2;
