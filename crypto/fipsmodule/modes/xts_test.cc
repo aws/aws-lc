@@ -19,9 +19,9 @@
 
 #include <gtest/gtest.h>
 
-#include "../internal.h"
-#include "../fipsmodule/modes/internal.h"
-#include "../test/test_util.h"
+#include "../../internal.h"
+#include "internal.h"
+#include "../../test/test_util.h"
 
 
 struct XTSTestCase {

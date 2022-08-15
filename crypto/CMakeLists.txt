@@ -478,7 +478,6 @@ add_library(
   x509v3/v3_purp.c
   x509v3/v3_skey.c
   x509v3/v3_utl.c
-  xts/xts.c
   decrepit/bio/base64_bio.c
   decrepit/blowfish/blowfish.c
   decrepit/cast/cast_tables.c
@@ -656,6 +655,7 @@ if(BUILD_TESTING)
     fipsmodule/ecdsa/ecdsa_test.cc
     fipsmodule/md5/md5_test.cc
     fipsmodule/modes/gcm_test.cc
+    fipsmodule/modes/xts_test.cc
     fipsmodule/rand/ctrdrbg_test.cc
     fipsmodule/rand/cpu_jitter_test.cc
     fipsmodule/rand/fork_detect_test.cc
@@ -690,7 +690,6 @@ if(BUILD_TESTING)
     x509/x509_test.cc
     x509/x509_time_test.cc
     x509v3/tab_test.cc
-    xts/xts_test.cc
     decrepit/blowfish/blowfish_test.cc
     decrepit/cfb/cfb_test.cc
     decrepit/evp/evp_test.cc
