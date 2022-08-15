@@ -566,6 +566,7 @@ BSSL_NAMESPACE_BEGIN
 #define SSL_SHA1 0x00000001u
 // SSL_AEAD is set for all AEADs.
 #define SSL_AEAD 0x00000002u
+#define SSL_SHA256 0x00000003u
 
 // Bits for |algorithm_prf| (handshake digest).
 #define SSL_HANDSHAKE_MAC_DEFAULT 0x1
