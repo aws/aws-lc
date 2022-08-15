@@ -54,13 +54,13 @@ extern "C" {
 // minus the rate (the block size in bits).
 // The |SHA3_MIN_CAPACITY_BYTES| corresponds to the 
 // lowest security level capacity for SHA3/SHAKE.
-// The data blocks increase when the capacity decreases.
-// The data buffer should have at least the maximum number of
-// block size bytes to fit any SHA3/SHAKE block length.
 #define SHA3_MIN_CAPACITY_BYTES (KECCAK1600_WIDTH / 8 - SHAKE128_BLOCKSIZE)
 
 typedef struct keccak_st KECCAK1600_CTX;
 
+// The data blocks increase when the capacity decreases.
+// The data buffer should have at least the maximum number of
+// block size bytes to fit any SHA3/SHAKE block length.
 struct keccak_st {
   uint64_t A[SHA3_ROWS][SHA3_ROWS];
   size_t block_size;                                             // cached ctx->digest->block_size
