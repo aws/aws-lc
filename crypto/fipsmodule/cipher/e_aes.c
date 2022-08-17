@@ -807,6 +807,22 @@ DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_aes_256_gcm) {
   out->ctrl = aes_gcm_ctrl;
 }
 
+DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_aes_256_xts) {
+  memset(out, 0, sizeof(EVP_CIPHER));
+
+  out->nid = NID_aes_256_xts;
+  out->block_size = 1;
+  out->key_len = 64;
+  out->iv_len = 16;
+  out->ctx_size = sizeof(EVP_AES_XTS_CTX);
+  out->flags = EVP_CIPH_XTS_MODE | EVP_CIPH_CUSTOM_IV |
+               EVP_CIPH_ALWAYS_CALL_INIT | EVP_CIPH_CTRL_INIT |
+               EVP_CIPH_CUSTOM_COPY;
+  out->init = aes_xts_init_key;
+  out->cipher = aes_xts_cipher;
+  out->ctrl = aes_xts_ctrl;
+}
+
 #if defined(HWAES_ECB)
 
 static int aes_hw_ecb_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
