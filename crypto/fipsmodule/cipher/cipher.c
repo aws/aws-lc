@@ -264,7 +264,7 @@ int EVP_EncryptUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len,
     } else {
       *out_len = ret;
     }
-    goto out;
+    return 1;
   }
 
   if (in_len <= 0) {
@@ -275,7 +275,7 @@ int EVP_EncryptUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len,
   if (ctx->buf_len == 0 && block_remainder(ctx, in_len) == 0) {
     if (ctx->cipher->cipher(ctx, out, in, in_len)) {
       *out_len = in_len;
-      goto out;
+      return 1;
     } else {
       *out_len = 0;
       return 0;
@@ -289,7 +289,7 @@ int EVP_EncryptUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len,
       OPENSSL_memcpy(&ctx->buf[i], in, in_len);
       ctx->buf_len += in_len;
       *out_len = 0;
-      goto out;
+      return 1;
     } else {
       int j = bl - i;
       OPENSSL_memcpy(&ctx->buf[i], in, j);
@@ -318,9 +318,6 @@ int EVP_EncryptUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len,
     OPENSSL_memcpy(ctx->buf, &in[in_len], i);
   }
   ctx->buf_len = i;
-
-out:
-  EVP_Cipher_verify_service_indicator(ctx);
   return 1;
 }
 
@@ -389,7 +386,7 @@ int EVP_DecryptUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len,
     } else {
       *out_len = r;
     }
-    goto out;
+    return 1;
   }
 
   if (in_len <= 0) {
@@ -427,8 +424,6 @@ int EVP_DecryptUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len,
     *out_len += b;
   }
 
-out:
-  EVP_Cipher_verify_service_indicator(ctx);
   return 1;
 }
 

@@ -113,7 +113,9 @@ static void DoCipherFinal(EVP_CIPHER_CTX *ctx, std::vector<uint8_t> *out,
 
   size_t total = 0;
   int len = 0;
-  ASSERT_TRUE(EVP_CipherUpdate(ctx, out->data(), &len, in.data(), in.size()));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+    EVP_CipherUpdate(ctx, out->data(), &len, in.data(), in.size()));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
   total += static_cast<size_t>(len);
   // Check if the overall service is approved by checking |EVP_CipherFinal_ex|,
   // which should be the last part of the service.
