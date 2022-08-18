@@ -6,6 +6,7 @@ version: 0.2
 phases:
   build:
     commands:
+      - ./tests/check_objects_and_errors.sh
       - go run ./tests/check_licenses.go
       - ./tests/check_generated_src.sh
       - ./tests/coding_guidelines/coding_guidelines_test.sh
