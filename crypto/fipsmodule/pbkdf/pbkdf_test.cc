@@ -17,8 +17,8 @@
 #include <openssl/digest.h>
 #include <openssl/evp.h>
 
-#include "../internal.h"
-#include "../test/test_util.h"
+#include "../../internal.h"
+#include "../../test/test_util.h"
 
 
 // Tests deriving a key using an empty password (specified both as NULL and as

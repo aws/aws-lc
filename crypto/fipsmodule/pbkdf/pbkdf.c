@@ -59,7 +59,7 @@
 
 #include <openssl/hmac.h>
 
-#include "../internal.h"
+#include "../../internal.h"
 
 
 int PKCS5_PBKDF2_HMAC(const char *password, size_t password_len,
