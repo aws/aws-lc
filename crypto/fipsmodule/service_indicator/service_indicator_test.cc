@@ -880,7 +880,15 @@ static void TestOperation(const EVP_CIPHER *cipher, bool encrypt,
   // |EVP_EncryptFinal_ex| and |EVP_DecryptFinal_ex| for approval at the end.
   ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), cipher, nullptr, nullptr, nullptr,
                                 encrypt ? 1 : 0));
-  ASSERT_LE(EVP_CIPHER_CTX_iv_length(ctx.get()), iv.size());
+  if (iv.size() > 0) {
+    // IV specified for the test, so the context's IV length should match.
+    ASSERT_LE(EVP_CIPHER_CTX_iv_length(ctx.get()), iv.size());
+  } else {
+    // IV not specified, and the context defaults to the standard AES IV length
+    // even if we're not going to use it.
+    ASSERT_LE(EVP_CIPHER_CTX_iv_length(ctx.get()), sizeof(kAESIV));
+  }
+
 
   ASSERT_TRUE(EVP_CIPHER_CTX_set_key_length(ctx.get(), key.size()));
   ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), cipher, nullptr, key.data(),
