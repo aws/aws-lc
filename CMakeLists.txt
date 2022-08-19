@@ -657,6 +657,7 @@ elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^arm*")
 elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "powerpc64le|ppc64le")
   set(ARCH "ppc64le")
 else()
+  message(STATUS "Unknown processor found. Using generic implementations. Processor:" ${CMAKE_SYSTEM_PROCESSOR})
   set(ARCH "generic")
 endif()
 
