@@ -74,8 +74,9 @@
 #include <openssl/mem.h>
 #include <openssl/sha.h>
 
-#include "../ec/internal.h"
 #include "../../internal.h"
+#include "../ec/internal.h"
+#include "../service_indicator/internal.h"
 
 
 int ECDH_compute_shared_secret(uint8_t *buf, size_t *buflen, const EC_POINT *pub_key,
