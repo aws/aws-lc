@@ -63,6 +63,7 @@
 #include <openssl/mem.h>
 
 #include "../../internal.h"
+#include "../service_indicator/internal.h"
 
 typedef int (*HashInit)(void *);
 typedef int (*HashUpdate)(void *, const void*, size_t);
