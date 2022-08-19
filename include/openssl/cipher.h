@@ -475,17 +475,35 @@ OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_cfb128(void);
 // EVP_aes_128_cfb is an alias for |EVP_aes_128_cfb128| and is deprecated.
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_cfb(void);
 
+// EVP_aes_128_cfb1 is deprecated.
+OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_cfb1(void);
+
+// EVP_aes_128_cfb8 is deprecated.
+OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_cfb8(void);
+
 // EVP_aes_192_cfb128 is deprecated.
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_192_cfb128(void);
 
 // EVP_aes_192_cfb is an alias for |EVP_aes_192_cfb128| and is deprecated.
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_192_cfb(void);
 
+// EVP_aes_192_cfb1 is deprecated.
+OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_192_cfb1(void);
+
+// EVP_aes_192_cfb8 is deprecated.
+OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_192_cfb8(void);
+
 // EVP_aes_256_cfb128 is deprecated.
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_cfb128(void);
 
 // EVP_aes_256_cfb is an alias for |EVP_aes_256_cfb128| and is deprecated.
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_cfb(void);
+
+// EVP_aes_256_cfb1 is deprecated.
+OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_cfb1(void);
+
+// EVP_aes_256_cfb8 is deprecated.
+OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_cfb8(void);
 
 // EVP_bf_ecb is Blowfish in ECB mode and is deprecated.
 OPENSSL_EXPORT const EVP_CIPHER *EVP_bf_ecb(void);
