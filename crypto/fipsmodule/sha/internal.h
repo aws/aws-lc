@@ -88,6 +88,10 @@ void sha512_block_data_order(uint64_t *state, const uint8_t *in,
                              size_t num_blocks);
 #endif
 
+#if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_AARCH64)
+#define KECCAK1600_ASM
+#endif
+
 // SHA3_224 writes the digest of |len| bytes from |data| to |out| and returns |out|. 
 // There must be at least |SHA3_224_DIGEST_LENGTH| bytes of space in |out|.
 // On failure |SHA3_224| returns NULL.
