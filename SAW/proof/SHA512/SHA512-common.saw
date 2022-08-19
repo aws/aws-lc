@@ -269,14 +269,22 @@ let pointer_to_fresh_sha512_state_st_array name = do {
 
 // Specify the env_md_st struct
 let points_to_env_md_st ptr = do {
-  crucible_points_to (crucible_field ptr "type") (crucible_term {{ `NID : [32] }});
-  crucible_points_to (crucible_field ptr "md_size") (crucible_term {{ `SHA_DIGEST_LENGTH : [32] }});
-  crucible_points_to (crucible_field ptr "flags") (crucible_term {{ 0 : [32] }});
-  crucible_points_to (crucible_field ptr "init") (crucible_global SHA_INIT);
-  crucible_points_to (crucible_field ptr "update") (crucible_global SHA_UPDATE);
-  crucible_points_to (crucible_field ptr "final") (crucible_global SHA_FINAL);
-  crucible_points_to (crucible_field ptr "block_size") (crucible_term {{ `SHA512_CBLOCK : [32] }});
-  crucible_points_to (crucible_field ptr "ctx_size") (crucible_term {{ `SHA512_CTX_SIZE : [32] }});
+  //type
+  crucible_points_to (crucible_elem ptr 0) (crucible_term {{ `NID : [32] }});
+  //md_size
+  crucible_points_to (crucible_elem ptr 1) (crucible_term {{ `SHA_DIGEST_LENGTH : [32] }});
+  //flags
+  crucible_points_to (crucible_elem ptr 2) (crucible_term {{ 0 : [32] }});
+  //init
+  crucible_points_to (crucible_elem ptr 3) (crucible_global SHA_INIT);
+  //update
+  crucible_points_to (crucible_elem ptr 4) (crucible_global SHA_UPDATE);
+  //final
+  crucible_points_to (crucible_elem ptr 5) (crucible_global SHA_FINAL);
+  //block_size
+  crucible_points_to (crucible_elem ptr 6) (crucible_term {{ `SHA512_CBLOCK : [32] }});
+  //ctx_size
+  crucible_points_to (crucible_elem ptr 7) (crucible_term {{ `SHA512_CTX_SIZE : [32] }});
 };
 
 // Specify the env_md_ctx_st struct
@@ -290,8 +298,10 @@ let points_to_env_md_ctx_st ptr digest_ptr md_data_ptr = do {
 };
 
 let points_to_evp_md_pctx_ops ptr = do {
-  crucible_points_to (crucible_field ptr "free") (crucible_global "EVP_PKEY_CTX_free");
-  crucible_points_to (crucible_field ptr "dup") (crucible_global "EVP_PKEY_CTX_dup");
+  //free
+  crucible_points_to (crucible_elem ptr 0) (crucible_global "EVP_PKEY_CTX_free");
+  //dup
+  crucible_points_to (crucible_elem ptr 1) (crucible_global "EVP_PKEY_CTX_dup");
 };
 
 let pointer_to_evp_md_pctx_ops = do {

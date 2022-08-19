@@ -31,23 +31,40 @@ let points_to_evp_pkey_method_st
       derive
       paramgen
       ctrl = do {
-  crucible_points_to (crucible_field ptr "pkey_id") (crucible_term {{ `pkey_id : [32] }});
-  crucible_points_to (crucible_field ptr "init") init;
-  crucible_points_to (crucible_field ptr "copy") copy;
-  crucible_points_to (crucible_field ptr "cleanup") cleanup;
-  crucible_points_to (crucible_field ptr "keygen") keygen;
-  crucible_points_to (crucible_field ptr "sign_init") sign_init;
-  crucible_points_to (crucible_field ptr "sign") sign;
-  crucible_points_to (crucible_field ptr "sign_message") sign_message;
-  crucible_points_to (crucible_field ptr "verify_init") verify_init;
-  crucible_points_to (crucible_field ptr "verify") verify;
-  crucible_points_to (crucible_field ptr "verify_message") verify_message;
-  crucible_points_to (crucible_field ptr "verify_recover") verify_recover;
-  crucible_points_to (crucible_field ptr "encrypt") encrypt;
-  crucible_points_to (crucible_field ptr "decrypt") decrypt;
-  crucible_points_to (crucible_field ptr "derive") derive;
-  crucible_points_to (crucible_field ptr "paramgen") paramgen;
-  crucible_points_to (crucible_field ptr "ctrl") ctrl;
+  //pkey_id
+  crucible_points_to (crucible_elem ptr 0) (crucible_term {{ `pkey_id : [32] }});
+  //init
+  crucible_points_to (crucible_elem ptr 1) init;
+  //copy
+  crucible_points_to (crucible_elem ptr 2) copy;
+  //cleanup
+  crucible_points_to (crucible_elem ptr 3) cleanup;
+  //keygen
+  crucible_points_to (crucible_elem ptr 4) keygen;
+  //sign_init
+  crucible_points_to (crucible_elem ptr 5) sign_init;
+  //sign
+  crucible_points_to (crucible_elem ptr 6) sign;
+  //sign_message
+  crucible_points_to (crucible_elem ptr 7) sign_message;
+  //verify_init
+  crucible_points_to (crucible_elem ptr 8) verify_init;
+  //verify
+  crucible_points_to (crucible_elem ptr 9) verify;
+  //verify_message
+  crucible_points_to (crucible_elem ptr 10) verify_message;
+  //verify_recover
+  crucible_points_to (crucible_elem ptr 11) verify_recover;
+  //encrypt
+  crucible_points_to (crucible_elem ptr 12) encrypt;
+  //decrypt
+  crucible_points_to (crucible_elem ptr 13) decrypt;
+  //derive
+  crucible_points_to (crucible_elem ptr 14) derive;
+  //paramgen
+  crucible_points_to (crucible_elem ptr 15) paramgen;
+  //ctrl
+  crucible_points_to (crucible_elem ptr 16) ctrl;
 };
 
 let points_to_EVP_PKEY_rsa_pkey_meth ptr = points_to_evp_pkey_method_st
