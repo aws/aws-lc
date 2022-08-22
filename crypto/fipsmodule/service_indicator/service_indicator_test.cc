@@ -113,7 +113,9 @@ static void DoCipherFinal(EVP_CIPHER_CTX *ctx, std::vector<uint8_t> *out,
 
   size_t total = 0;
   int len = 0;
-  ASSERT_TRUE(EVP_CipherUpdate(ctx, out->data(), &len, in.data(), in.size()));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+    EVP_CipherUpdate(ctx, out->data(), &len, in.data(), in.size()));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
   total += static_cast<size_t>(len);
   // Check if the overall service is approved by checking |EVP_CipherFinal_ex|,
   // which should be the last part of the service.
@@ -258,6 +260,35 @@ static const uint8_t kAESKWPCiphertext[72] = {
 static const uint8_t kAESCMACOutput[16] = {0xe7, 0x32, 0x43, 0xb4, 0xae, 0x79,
                                            0x08, 0x86, 0xe7, 0x9f, 0x0d, 0x3f,
                                            0x88, 0x3f, 0x1a, 0xfd};
+
+// AES-XTS test vector from
+// https://csrc.nist.gov/projects/cryptographic-algorithm-validation-program
+
+static const uint8_t kAESXTSKey_256[64] = {
+    0x1e, 0xa6, 0x61, 0xc5, 0x8d, 0x94, 0x3a, 0x0e, 0x48, 0x01, 0xe4, 0x2f,
+    0x4b, 0x09, 0x47, 0x14, 0x9e, 0x7f, 0x9f, 0x8e, 0x3e, 0x68, 0xd0, 0xc7,
+    0x50, 0x52, 0x10, 0xbd, 0x31, 0x1a, 0x0e, 0x7c, 0xd6, 0xe1, 0x3f, 0xfd,
+    0xf2, 0x41, 0x8d, 0x8d, 0x19, 0x11, 0xc0, 0x04, 0xcd, 0xa5, 0x8d, 0xa3,
+    0xd6, 0x19, 0xb7, 0xe2, 0xb9, 0x14, 0x1e, 0x58, 0x31, 0x8e, 0xea, 0x39,
+    0x2c, 0xf4, 0x1b, 0x08
+};
+
+static const uint8_t kAESXTSIV_256[16] = {
+    0xad, 0xf8, 0xd9, 0x26, 0x27, 0x46, 0x4a, 0xd2, 0xf0, 0x42, 0x8e, 0x84,
+    0xa9, 0xf8, 0x75, 0x64
+};
+
+static const uint8_t kAESXTSPlaintext_256[32] = {
+    0x2e, 0xed, 0xea, 0x52, 0xcd, 0x82, 0x15, 0xe1, 0xac, 0xc6, 0x47, 0xe8,
+    0x10, 0xbb, 0xc3, 0x64, 0x2e, 0x87, 0x28, 0x7f, 0x8d, 0x2e, 0x57, 0xe3,
+    0x6c, 0x0a, 0x24, 0xfb, 0xc1, 0x2a, 0x20, 0x2e
+};
+
+static const uint8_t kAESXTSCiphertext_256[32] = {
+    0xcb, 0xaa, 0xd0, 0xe2, 0xf6, 0xce, 0xa3, 0xf5, 0x0b, 0x37, 0xf9, 0x34,
+    0xd4, 0x6a, 0x9b, 0x13, 0x0b, 0x9d, 0x54, 0xf0, 0x7e, 0x34, 0xf3, 0x6a,
+    0xf7, 0x93, 0xe8, 0x6f, 0x73, 0xc6, 0xd7, 0xdb
+};
 
 const uint8_t kDHOutput[2048 / 8] = {
     0x83, 0xf0, 0xd8, 0x4f, 0xdb, 0xe7, 0x65, 0xb6, 0x80, 0x6f, 0xa3, 0x22,
@@ -662,117 +693,168 @@ static const struct CipherTestVector {
   const EVP_CIPHER *cipher;
   const uint8_t *key;
   const int key_length;
+  const uint8_t *iv;
+  const int iv_length;
+  const uint8_t *plaintext;
+  const int plaintext_length;
   const uint8_t *expected_ciphertext;
   const int cipher_text_length;
-  const bool has_iv;
   const FIPSStatus expect_approved;
 } kTestVectors[] = {
     {
         EVP_aes_128_ecb(),
         kAESKey,
         sizeof(kAESKey),
+        nullptr,
+        0,
+        kPlaintext,
+        sizeof(kPlaintext),
         kAESECBCiphertext,
         sizeof(kAESECBCiphertext),
-        false,
         AWSLC_APPROVED,
     },
     {
         EVP_aes_192_ecb(),
         kAESKey_192,
         sizeof(kAESKey_192),
+        nullptr,
+        0,
+        kPlaintext,
+        sizeof(kPlaintext),
         kAESECBCiphertext_192,
         sizeof(kAESECBCiphertext_192),
-        false,
         AWSLC_APPROVED,
     },
     {
         EVP_aes_256_ecb(),
         kAESKey_256,
         sizeof(kAESKey_256),
+        nullptr,
+        0,
+        kPlaintext,
+        sizeof(kPlaintext),
         kAESECBCiphertext_256,
         sizeof(kAESECBCiphertext_256),
-        false,
         AWSLC_APPROVED,
     },
     {
         EVP_aes_128_cbc(),
         kAESKey,
         sizeof(kAESKey),
+        kAESIV,
+        sizeof(kAESIV),
+        kPlaintext,
+        sizeof(kPlaintext),
         kAESCBCCiphertext,
         sizeof(kAESCBCCiphertext),
-        true,
         AWSLC_APPROVED,
     },
     {
         EVP_aes_192_cbc(),
         kAESKey_192,
         sizeof(kAESKey_192),
+        kAESIV,
+        sizeof(kAESIV),
+        kPlaintext,
+        sizeof(kPlaintext),
         kAESCBCCiphertext_192,
         sizeof(kAESCBCCiphertext_192),
-        true,
         AWSLC_APPROVED,
     },
     {
         EVP_aes_256_cbc(),
         kAESKey_256,
         sizeof(kAESKey_256),
+        kAESIV,
+        sizeof(kAESIV),
+        kPlaintext,
+        sizeof(kPlaintext),
         kAESCBCCiphertext_256,
         sizeof(kAESCBCCiphertext_256),
-        true,
         AWSLC_APPROVED,
     },
     {
         EVP_aes_128_ctr(),
         kAESKey,
         sizeof(kAESKey),
+        kAESIV,
+        sizeof(kAESIV),
+        kPlaintext,
+        sizeof(kPlaintext),
         kAESCTRCiphertext,
         sizeof(kAESCTRCiphertext),
-        true,
         AWSLC_APPROVED,
     },
     {
         EVP_aes_192_ctr(),
         kAESKey_192,
         sizeof(kAESKey_192),
+        kAESIV,
+        sizeof(kAESIV),
+        kPlaintext,
+        sizeof(kPlaintext),
         kAESCTRCiphertext_192,
         sizeof(kAESCTRCiphertext_192),
-        true,
         AWSLC_APPROVED,
     },
     {
         EVP_aes_256_ctr(),
         kAESKey_256,
         sizeof(kAESKey_256),
+        kAESIV,
+        sizeof(kAESIV),
+        kPlaintext,
+        sizeof(kPlaintext),
         kAESCTRCiphertext_256,
         sizeof(kAESCTRCiphertext_256),
-        true,
         AWSLC_APPROVED,
     },
     {
         EVP_aes_128_ofb(),
         kAESKey,
         sizeof(kAESKey),
+        kAESIV,
+        sizeof(kAESIV),
+        kPlaintext,
+        sizeof(kPlaintext),
         kAESOFBCiphertext,
         sizeof(kAESOFBCiphertext),
-        true,
         AWSLC_NOT_APPROVED,
+    },
+    {
+        EVP_aes_256_xts(),
+        kAESXTSKey_256,
+        sizeof(kAESXTSKey_256),
+        kAESXTSIV_256,
+        sizeof(kAESXTSIV_256),
+        kAESXTSPlaintext_256,
+        sizeof(kAESXTSPlaintext_256),
+        kAESXTSCiphertext_256,
+        sizeof(kAESXTSCiphertext_256),
+        AWSLC_APPROVED,
     },
     {
         EVP_des_ede3(),
         kAESKey_192,
         sizeof(kAESKey_192),
+        nullptr,
+        0,
+        kPlaintext,
+        sizeof(kPlaintext),
         kTDES_EDE3_CipherText,
         sizeof(kTDES_EDE3_CipherText),
-        false,
         AWSLC_NOT_APPROVED,
     },
     {
         EVP_des_ede3_cbc(),
         kAESKey_192,
         sizeof(kAESKey_192),
+        nullptr,
+        0,
+        kPlaintext,
+        sizeof(kPlaintext),
         kTDES_EDE3_CBCCipherText,
         sizeof(kTDES_EDE3_CBCCipherText),
-        false,
         AWSLC_NOT_APPROVED,
     },
 };
@@ -781,6 +863,7 @@ class EVPServiceIndicatorTest : public TestWithNoErrors<CipherTestVector> {};
 
 static void TestOperation(const EVP_CIPHER *cipher, bool encrypt,
                           const std::vector<uint8_t> key,
+                          const std::vector<uint8_t> iv,
                           const std::vector<uint8_t> plaintext,
                           const std::vector<uint8_t> ciphertext,
                           FIPSStatus expect_approved) {
@@ -799,11 +882,19 @@ static void TestOperation(const EVP_CIPHER *cipher, bool encrypt,
   // |EVP_EncryptFinal_ex| and |EVP_DecryptFinal_ex| for approval at the end.
   ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), cipher, nullptr, nullptr, nullptr,
                                 encrypt ? 1 : 0));
-  ASSERT_LE(EVP_CIPHER_CTX_iv_length(ctx.get()), sizeof(kAESIV));
+  if (iv.size() > 0) {
+    // IV specified for the test, so the context's IV length should match.
+    ASSERT_LE(EVP_CIPHER_CTX_iv_length(ctx.get()), iv.size());
+  } else {
+    // IV not specified, and the context defaults to the standard AES IV length
+    // even if we're not going to use it.
+    ASSERT_LE(EVP_CIPHER_CTX_iv_length(ctx.get()), sizeof(kAESIV));
+  }
+
 
   ASSERT_TRUE(EVP_CIPHER_CTX_set_key_length(ctx.get(), key.size()));
-  ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), cipher, nullptr, key.data(), kAESIV,
-                                encrypt ? 1 : 0));
+  ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), cipher, nullptr, key.data(),
+                                iv.data(), encrypt ? 1 : 0));
   ASSERT_TRUE(EVP_CIPHER_CTX_set_padding(ctx.get(), 0));
   std::vector<uint8_t> encrypt_result;
   DoCipherFinal(ctx.get(), &encrypt_result, in, expect_approved);
@@ -812,8 +903,8 @@ static void TestOperation(const EVP_CIPHER *cipher, bool encrypt,
   // Test using the one-shot |EVP_Cipher| function for approval.
   bssl::ScopedEVP_CIPHER_CTX ctx2;
   uint8_t output[256];
-  ASSERT_TRUE(EVP_CipherInit_ex(ctx2.get(), cipher, nullptr, key.data(), kAESIV,
-                                encrypt ? 1 : 0));
+  ASSERT_TRUE(EVP_CipherInit_ex(ctx2.get(), cipher, nullptr, key.data(),
+                                iv.data(), encrypt ? 1 : 0));
   CALL_SERVICE_AND_CHECK_APPROVED(
       approved, EVP_Cipher(ctx2.get(), output, in.data(), in.size()));
   EXPECT_EQ(approved, expect_approved);
@@ -828,14 +919,16 @@ TEST_P(EVPServiceIndicatorTest, EVP_Ciphers) {
 
   const EVP_CIPHER *cipher = test.cipher;
   std::vector<uint8_t> key(test.key, test.key + test.key_length);
-  std::vector<uint8_t> plaintext(kPlaintext, kPlaintext + sizeof(kPlaintext));
+  std::vector<uint8_t> iv(test.iv, test.iv + test.iv_length);
+  std::vector<uint8_t> plaintext(test.plaintext,
+                                 test.plaintext + test.plaintext_length);
   std::vector<uint8_t> ciphertext(
       test.expected_ciphertext,
       test.expected_ciphertext + test.cipher_text_length);
 
-  TestOperation(cipher, true /* encrypt */, key, plaintext, ciphertext,
+  TestOperation(cipher, true /* encrypt */, key, iv, plaintext, ciphertext,
                 test.expect_approved);
-  TestOperation(cipher, false /* decrypt */, key, plaintext, ciphertext,
+  TestOperation(cipher, false /* decrypt */, key, iv, plaintext, ciphertext,
                 test.expect_approved);
 }
 

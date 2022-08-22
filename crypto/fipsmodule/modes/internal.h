@@ -165,6 +165,19 @@ typedef struct {
   unsigned mres, ares;
 } GCM128_CONTEXT;
 
+typedef struct xts128_context {
+  AES_KEY *key1, *key2;
+  block128_f block1, block2;
+} XTS128_CONTEXT;
+
+typedef struct {
+  union {
+    double align;
+    AES_KEY ks;
+  } ks1, ks2;  // AES key schedules to use
+  XTS128_CONTEXT xts;
+} EVP_AES_XTS_CTX;
+
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
 // crypto_gcm_clmul_enabled returns one if the CLMUL implementation of GCM is
 // used.
@@ -376,6 +389,14 @@ size_t CRYPTO_cts128_encrypt_block(const uint8_t *in, uint8_t *out, size_t len,
                                    const AES_KEY *key, uint8_t ivec[16],
                                    block128_f block);
 
+// XTS.
+
+// CRYPTO_xts128_encrypt encrypts (or decrypts, if |enc| is zero) |len| bytes
+// from |in| to |out| using the given IV in XTS mode. There's no requirement
+// that |len| be a multiple of any value.
+size_t CRYPTO_xts128_encrypt(const XTS128_CONTEXT *ctx,
+                             const uint8_t iv[16], const uint8_t *inp,
+                             uint8_t *out, size_t len, int enc);
 
 // POLYVAL.
 //
