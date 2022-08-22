@@ -314,6 +314,8 @@ void EVP_Cipher_verify_service_indicator(const EVP_CIPHER_CTX *ctx) {
     case NID_aes_128_ctr:
     case NID_aes_192_ctr:
     case NID_aes_256_ctr:
+
+    case NID_aes_256_xts:
       FIPS_service_indicator_update_state();
   }
 }

@@ -19,9 +19,9 @@
 
 #include <gtest/gtest.h>
 
-#include "../internal.h"
-#include "../fipsmodule/modes/internal.h"
-#include "../test/test_util.h"
+#include "../../internal.h"
+#include "internal.h"
+#include "../../test/test_util.h"
 
 
 struct XTSTestCase {
@@ -447,6 +447,36 @@ static const XTSTestCase kXTSTestCases[] = {
         "769d1b0e0c0b99ea11de58fcd3b72e1bce3d9a8750b87e945d77f4dc39d73b04"
         "e11b6adce343e1f38c6a879463c080d7254c4d65cf40e04934108bcde6bda824"
         "4a72a90b1e",
+    },
+    // Test vectors from NIST
+    // https://csrc.nist.gov/projects/cryptographic-algorithm-validation-program
+    // 256-bit key, 256-bit data
+    {
+        "1ea661c58d943a0e4801e42f4b0947149e7f9f8e3e68d0c7505210bd311a0e7c"
+        "d6e13ffdf2418d8d1911c004cda58da3d619b7e2b9141e58318eea392cf41b08",
+        "adf8d92627464ad2f0428e84a9f87564",
+        "2eedea52cd8215e1acc647e810bbc3642e87287f8d2e57e36c0a24fbc12a202e",
+        "cbaad0e2f6cea3f50b37f934d46a9b130b9d54f07e34f36af793e86f73c6d7db",
+    },
+    // 256-bit key, 384-bit data
+    {
+        "266c336b3b01489f3267f52835fd92f674374b88b4e1ebd2d36a5f457581d9d0"
+        "42c3eef7b0b7e5137b086496b4d9e6ac658d7196a23f23f036172fdb8faee527",
+        "06b209a7a22f486ecbfadb0f3137ba42",
+        "ca7d65ef8d3dfad345b61ccddca1ad81de830b9e86c7b426d76cb7db766852d9"
+        "81c6b21409399d78f42cc0b33a7bbb06",
+        "c73256870cc2f4dd57acc74b5456dbd776912a128bc1f77d72cdebbf270044b7"
+        "a43ceed29025e1e8be211fa3c3ed002d",
+    },
+    // 256-bit key, 384-bit data
+    {
+        "33e89e817ff8d037d6ac5a2296657503f20885d94c483e26449066bd9284d130"
+        "2dbdbb4b66b6b9f4687f13dd028eb6aa528ca91deb9c5f40db93218806033801",
+        "a78c04335ab7498a52b81ed74b48e6cf",
+        "14c3ac31291b075f40788247c3019e88c7b40bac3832da45bbc6c4fe7461371b"
+        "4dfffb63f71c9f8edb98f28ff4f33121",
+        "dead7e587519bc78c70d99279fbe3d9b1ad13cdaae69824e0ab8135413230bfd"
+        "b13babe8f986fbb30d46ab5ec56b916e",
     },
 };
 
