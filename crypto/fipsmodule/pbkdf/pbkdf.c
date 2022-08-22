@@ -73,19 +73,24 @@ int PKCS5_PBKDF2_HMAC(const char *password, size_t password_len,
   HMAC_CTX hctx;
   HMAC_CTX_init(&hctx);
 
+  // We have to avoid the underlying SHA services updating the indicator
+  // state, so we lock the state here.
+  FIPS_service_indicator_lock_state();
+
+#if defined(BORINGSSL_FIPS)
   // FIPS 140 requirements, per NIST SP800-132:
   //
   // * key_len >= 14 (112 bits)
   // * salt_len >= 16 (128 bits, assuming its randomly generated)
   // * iterations "as large as possible, as long as the time required to
   //   generate the key using the entered password is acceptable for the users."
-
-  // We have to avoid the underlying SHA services updating the indicator
-  // state, so we lock the state here.
-  FIPS_service_indicator_lock_state();
+  //   (clearly we can't test for that)
+  if (key_len < 14 || salt_len < 16) {
+    goto err;
+  }
+#endif
 
   if (!HMAC_Init_ex(&hctx, password, password_len, digest, NULL)) {
-    FIPS_service_indicator_unlock_state();
     goto err;
   }
 
