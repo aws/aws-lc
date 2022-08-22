@@ -191,5 +191,7 @@ TEST(PBKDFTest, ZeroIterations) {
 
   // For backwards compatibility, the iterations == 0 case still fills in
   // the out key.
-  EXPECT_EQ(expected_first_byte, key[0]);
+  if (!FIPS_mode()) {
+    EXPECT_EQ(expected_first_byte, key[0]);
+  }
 }
