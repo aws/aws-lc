@@ -114,6 +114,12 @@ TEST(ScryptTest, InvalidParameters) {
   // N must be below 2^(128 * r / 8).
   EXPECT_FALSE(EVP_PBE_scrypt(nullptr, 0, nullptr, 0, 65536 /* N */, 1 /* r */,
                               1 /* p */, 0 /* max_mem */, key, sizeof(key)));
-  EXPECT_TRUE(EVP_PBE_scrypt(nullptr, 0, nullptr, 0, 32768 /* N */, 1 /* r */,
-                             1 /* p */, 0 /* max_mem */, key, sizeof(key)));
+  if (FIPS_mode()) {
+    // In FIPS mode, PBKDF2 fails with empty password/salt.
+    EXPECT_FALSE(EVP_PBE_scrypt(nullptr, 0, nullptr, 0, 32768 /* N */, 1 /* r */,
+                                1 /* p */, 0 /* max_mem */, key, sizeof(key)));
+  } else {
+    EXPECT_TRUE(EVP_PBE_scrypt(nullptr, 0, nullptr, 0, 32768 /* N */, 1 /* r */,
+                               1 /* p */, 0 /* max_mem */, key, sizeof(key)));
+  }
 }

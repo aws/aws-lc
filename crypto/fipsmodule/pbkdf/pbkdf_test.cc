@@ -172,8 +172,14 @@ TEST(PBKDFTest, ZeroIterations) {
   const size_t key_len = sizeof(key);
 
   // Verify that calling with iterations=1 works.
-  ASSERT_TRUE(PKCS5_PBKDF2_HMAC(kPassword, password_len, kSalt, salt_len,
-                                1 /* iterations */, digest, key_len, key));
+  if (FIPS_mode()) {
+    // Both password and salt are too short for FIPS mode.
+    ASSERT_FALSE(PKCS5_PBKDF2_HMAC(kPassword, password_len, kSalt, salt_len,
+                                   1 /* iterations */, digest, key_len, key));
+  } else {
+    ASSERT_TRUE(PKCS5_PBKDF2_HMAC(kPassword, password_len, kSalt, salt_len,
+                                  1 /* iterations */, digest, key_len, key));
+  }
 
   // Flip the first key byte (so can later test if it got set).
   const uint8_t expected_first_byte = key[0];
