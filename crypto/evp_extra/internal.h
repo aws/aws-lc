@@ -31,6 +31,7 @@ extern const EVP_PKEY_ASN1_METHOD x25519_asn1_meth;
 
 extern const EVP_PKEY_METHOD ed25519_pkey_meth;
 extern const EVP_PKEY_METHOD x25519_pkey_meth;
+extern const EVP_PKEY_METHOD hkdf_pkey_meth;
 
 // Returns a reference to the list |non_fips_pkey_evp_methods|. The list has
 // size |NON_FIPS_EVP_PKEY_METHODS|.

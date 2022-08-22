@@ -217,6 +217,15 @@ fn prepare_cmake_build(build_prefix: Option<&str>) -> cmake::Config {
 
     let mut cmake_cfg = get_cmake_config();
 
+    let opt_level = env::var("OPT_LEVEL").unwrap_or_else(|_| "0".to_string());
+    if opt_level.ne("0") {
+        if opt_level.eq("1") || opt_level.eq("2") {
+            cmake_cfg.define("CMAKE_BUILD_TYPE", "relwithdebinfo");
+        } else {
+            cmake_cfg.define("CMAKE_BUILD_TYPE", "release");
+        }
+    }
+
     if let Some(symbol_prefix) = build_prefix {
         cmake_cfg.define("BORINGSSL_PREFIX", symbol_prefix);
         let pwd = env::current_dir().unwrap();

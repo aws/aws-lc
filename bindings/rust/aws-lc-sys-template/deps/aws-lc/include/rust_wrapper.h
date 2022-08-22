@@ -51,7 +51,6 @@ int ERR_GET_FUNC_RUST(uint32_t packed_error);
 #include "openssl/buf.h"
 #include "openssl/buffer.h"
 #include "openssl/bytestring.h"
-#include "openssl/cast.h"
 #include "openssl/chacha.h"
 #include "openssl/cipher.h"
 #include "openssl/cmac.h"
