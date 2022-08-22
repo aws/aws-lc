@@ -59,7 +59,8 @@
 
 #include <openssl/hmac.h>
 
-#include "../internal.h"
+#include "../../internal.h"
+#include "../service_indicator/internal.h"
 
 
 int PKCS5_PBKDF2_HMAC(const char *password, size_t password_len,
@@ -71,6 +72,21 @@ int PKCS5_PBKDF2_HMAC(const char *password, size_t password_len,
   uint32_t i = 1;
   HMAC_CTX hctx;
   HMAC_CTX_init(&hctx);
+
+  // We have to avoid the underlying SHA services updating the indicator
+  // state, so we lock the state here.
+  FIPS_service_indicator_lock_state();
+
+  // FIPS 140 parameter requirements, per NIST SP800-132:
+  //
+  // * key_len >= 14 bytes (112 bits)
+  // * salt_len >= 16 bytes (128 bits), assuming its randomly generated
+  // * iterations "as large as possible, as long as the time required to
+  //   generate the key using the entered password is acceptable for the users."
+  //   (clearly we can't test for "as large as possible")
+  if (FIPS_mode() && (key_len < 14 || salt_len < 16)) {
+    goto err;
+  }
 
   if (!HMAC_Init_ex(&hctx, password, password_len, digest, NULL)) {
     goto err;
@@ -133,7 +149,11 @@ int PKCS5_PBKDF2_HMAC(const char *password, size_t password_len,
   ret = 1;
 
 err:
+  FIPS_service_indicator_unlock_state();
   HMAC_CTX_cleanup(&hctx);
+  if (ret) {
+    PBKDF_verify_service_indicator(digest);
+  }
   return ret;
 }
 

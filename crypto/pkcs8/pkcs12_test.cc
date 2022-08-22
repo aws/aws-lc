@@ -115,20 +115,24 @@ TEST(PKCS12Test, TestWindows) {
 }
 
 TEST(PKCS12Test, TestPBES2) {
-  // pbes2_sha1.p12 is a PKCS#12 file using PBES2 and HMAC-SHA-1 created with:
-  // openssl pkcs12 -export -inkey key.pem -in cert.pem -keypbe AES-128-CBC
-  // -certpbe AES-128-CBC
-  //
-  // This was generated with an older OpenSSL, which used hmacWithSHA1 as the
-  // PRF. (There is currently no way to specify the PRF in the pkcs12 command.)
-  std::string data = GetTestData("crypto/pkcs8/test/pbes2_sha1.p12");
-  TestImpl("kPBES2WithSHA1", StringToBytes(data), kPassword, nullptr);
+  if (!FIPS_mode()) {
+    // kPassword is too short to be allowed in FIPS mode (must be >= 14 bytes).
 
-  // pbes2_sha256.p12 is a PKCS#12 file using PBES2 and HMAC-SHA-256. It was
-  // generated in the same way as pbes2_sha1.p12, but using OpenSSL 1.1.1b,
-  // which uses hmacWithSHA256 as the PRF.
-  data = GetTestData("crypto/pkcs8/test/pbes2_sha256.p12");
-  TestImpl("kPBES2WithSHA256", StringToBytes(data), kPassword, nullptr);
+    // pbes2_sha1.p12 is a PKCS#12 file using PBES2 and HMAC-SHA-1 created with:
+    // openssl pkcs12 -export -inkey key.pem -in cert.pem -keypbe AES-128-CBC
+    // -certpbe AES-128-CBC
+    //
+    // This was generated with an older OpenSSL, which used hmacWithSHA1 as the
+    // PRF. (There is currently no way to specify the PRF in the pkcs12 command.)
+    std::string data = GetTestData("crypto/pkcs8/test/pbes2_sha1.p12");
+    TestImpl("kPBES2WithSHA1", StringToBytes(data), kPassword, nullptr);
+
+    // pbes2_sha256.p12 is a PKCS#12 file using PBES2 and HMAC-SHA-256. It was
+    // generated in the same way as pbes2_sha1.p12, but using OpenSSL 1.1.1b,
+    // which uses hmacWithSHA256 as the PRF.
+    data = GetTestData("crypto/pkcs8/test/pbes2_sha256.p12");
+    TestImpl("kPBES2WithSHA256", StringToBytes(data), kPassword, nullptr);
+  }
 }
 
 TEST(PKCS12Test, TestNoEncryption) {

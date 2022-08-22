@@ -346,6 +346,21 @@ void HMAC_verify_service_indicator(const EVP_MD *evp_md) {
   }
 }
 
+void PBKDF_verify_service_indicator(const EVP_MD *evp_md) {
+  // PBKDF with SHA1, SHA224, SHA256, SHA384, and SHA512 are approved.
+  switch (evp_md->type) {
+    case NID_sha1:
+    case NID_sha224:
+    case NID_sha256:
+    case NID_sha384:
+    case NID_sha512:
+      FIPS_service_indicator_update_state();
+      break;
+    default:
+      break;
+  }
+}
+
 void TLSKDF_verify_service_indicator(const EVP_MD *dgst) {
   // HMAC-MD5, HMAC-SHA1, and HMAC-MD5/HMAC-SHA1 (both used concurrently) are
   // approved for use in the KDF in TLS 1.0/1.1.
