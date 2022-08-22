@@ -77,16 +77,13 @@ int PKCS5_PBKDF2_HMAC(const char *password, size_t password_len,
   // state, so we lock the state here.
   FIPS_service_indicator_lock_state();
 
-  // FIPS 140 requirements, per NIST SP800-132:
+  // FIPS 140 parameter requirements, per NIST SP800-132:
   //
-  // * key_len >= 14 (112 bits)
-  // * salt_len >= 16 (128 bits, assuming its randomly generated)
+  // * key_len >= 14 bytes (112 bits)
+  // * salt_len >= 16 bytes (128 bits), assuming its randomly generated
   // * iterations "as large as possible, as long as the time required to
   //   generate the key using the entered password is acceptable for the users."
   //   (clearly we can't test for that)
-  if (FIPS_mode() && (key_len < 14 || salt_len < 16)) {
-    goto err;
-  }
 
   if (!HMAC_Init_ex(&hctx, password, password_len, digest, NULL)) {
     goto err;
