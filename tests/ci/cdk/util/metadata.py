@@ -10,6 +10,8 @@ TEAM_ACCOUNT = "620771051181"
 DEFAULT_REGION = "us-west-2"
 AWS_ACCOUNT = EnvUtil.get("CDK_DEPLOY_ACCOUNT", TEAM_ACCOUNT)
 AWS_REGION = EnvUtil.get("CDK_DEPLOY_REGION", DEFAULT_REGION)
+# Indicate if the BuildSpec files can be automatically loaded without manualy deployment.
+CAN_AUTOLOAD = (AWS_ACCOUNT == TEAM_ACCOUNT) and (AWS_REGION == DEFAULT_REGION)
 
 # Used when AWS CDK defines ECR repos.
 LINUX_AARCH_ECR_REPO = EnvUtil.get("ECR_LINUX_AARCH_REPO_NAME", "aws-lc-docker-images-linux-aarch")

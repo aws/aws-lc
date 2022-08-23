@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from aws_cdk import aws_codebuild as codebuild
-from util.metadata import TEAM_ACCOUNT, AWS_ACCOUNT, DEFAULT_REGION, AWS_REGION
+from util.metadata import CAN_AUTOLOAD, AWS_ACCOUNT, DEFAULT_REGION, AWS_REGION
 import yaml
 
 
@@ -20,8 +20,8 @@ class BuildSpecLoader(object):
         """
         # If the deployment uses team account, the change of batch BuildSpec file is loaded automatically without deployment.
         # else, the change will require manual deployment via CDK command.
-        if AWS_ACCOUNT == TEAM_ACCOUNT:
-            return codebuild.BuildSpec.from_source_filename(file_path)
+        if CAN_AUTOLOAD:
+            return codebuild.BuildSpec.from_source_filename("tests/ci/cdk/{}".format(file_path))
         # TODO(CryptoAlg-1276): remove below when the batch BuildSpec supports the env variable of account and region.
         placeholder_map = {
             TEAM_ACCOUNT: AWS_ACCOUNT,
