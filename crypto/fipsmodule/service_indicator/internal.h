@@ -89,7 +89,7 @@ OPENSSL_INLINE void EVP_PKEY_keygen_verify_service_indicator(
 OPENSSL_INLINE void HMAC_verify_service_indicator(
     OPENSSL_UNUSED const EVP_MD *evp_md) {}
 
-OPENSSL_INLIINE void PBKDF_verify_service_indicator(
+OPENSSL_INLINE void PBKDF_verify_service_indicator(
     OPENSSL_UNUSED const EVP_MD *evp_md) {}
 
 OPENSSL_INLINE void TLSKDF_verify_service_indicator(
