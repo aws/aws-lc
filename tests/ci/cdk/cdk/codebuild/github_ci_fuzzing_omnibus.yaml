@@ -13,7 +13,7 @@ batch:
         type: LINUX_CONTAINER
         privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
-        image: 654358955777.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_clang-10x_latest
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_clang-10x_latest
 
     - identifier: ubuntu2004_clang10_arm_fuzz
       buildspec: ./tests/ci/codebuild/linux-x86/run_fuzz_tests.yml
@@ -21,7 +21,7 @@ batch:
         type: ARM_CONTAINER
         privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
-        image: 654358955777.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-aarch:ubuntu-20.04_clang-10x_latest
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-aarch:ubuntu-20.04_clang-10x_latest
 
     - identifier: ubuntu2004_clang10_x86_64_cryptofuzz
       buildspec: ./tests/ci/codebuild/linux-x86/run_cryptofuzz.yml
@@ -29,7 +29,7 @@ batch:
         type: LINUX_CONTAINER
         privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
-        image: 654358955777.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_cryptofuzz_latest
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_cryptofuzz_latest
 
     - identifier: ubuntu2004_clang10_arm_cryptofuzz
       buildspec: ./tests/ci/codebuild/linux-x86/run_cryptofuzz.yml
@@ -37,4 +37,4 @@ batch:
         type: ARM_CONTAINER
         privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
-        image: 654358955777.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-aarch:ubuntu-20.04_cryptofuzz_latest
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-aarch:ubuntu-20.04_cryptofuzz_latest

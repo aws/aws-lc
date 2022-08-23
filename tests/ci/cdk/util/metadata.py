@@ -6,7 +6,7 @@
 from util.env_util import EnvUtil
 
 # Used when AWS CDK defines AWS resources.
-TEAM_ACCOUNT = "654358955777"
+TEAM_ACCOUNT = "620771051181"
 DEFAULT_REGION = "us-west-2"
 AWS_ACCOUNT = EnvUtil.get("CDK_DEPLOY_ACCOUNT", TEAM_ACCOUNT)
 AWS_REGION = EnvUtil.get("CDK_DEPLOY_REGION", DEFAULT_REGION)
