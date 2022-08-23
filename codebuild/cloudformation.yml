@@ -78,9 +78,6 @@ Resources:
             - Type: FILE_PATH # Don't allow arbitrary users to change build configuration
               Pattern: codebuild
               ExcludeMatchedPattern: false
-            - Type: ACTOR_ACCOUNT_ID
-              Pattern: 829871 # SalusaSecondus / rubin@amazon.com
-              ExcludeMatchedPattern: false
       LogsConfig:
         CloudWatchLogs:
           Status: "ENABLED"
@@ -140,9 +137,6 @@ Resources:
               ExcludeMatchedPattern: false
             - Type: FILE_PATH # Don't allow arbitrary users to change build configuration
               Pattern: codebuild
-              ExcludeMatchedPattern: false
-            - Type: ACTOR_ACCOUNT_ID
-              Pattern: 829871 # SalusaSecondus / rubin@amazon.com
               ExcludeMatchedPattern: false
       LogsConfig:
         CloudWatchLogs:
@@ -210,9 +204,6 @@ Resources:
             - Type: FILE_PATH # Don't allow arbitrary users to change build configuration
               Pattern: codebuild
               ExcludeMatchedPattern: false
-            - Type: ACTOR_ACCOUNT_ID
-              Pattern: 829871 # SalusaSecondus / rubin@amazon.com
-              ExcludeMatchedPattern: false
       LogsConfig:
         CloudWatchLogs:
           Status: "ENABLED"
@@ -278,9 +269,6 @@ Resources:
               ExcludeMatchedPattern: false
             - Type: FILE_PATH # Don't allow arbitrary users to change build configuration
               Pattern: codebuild
-              ExcludeMatchedPattern: false
-            - Type: ACTOR_ACCOUNT_ID
-              Pattern: 829871 # SalusaSecondus / rubin@amazon.com
               ExcludeMatchedPattern: false
       LogsConfig:
         CloudWatchLogs:
