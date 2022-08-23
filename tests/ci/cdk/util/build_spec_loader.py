@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from aws_cdk import aws_codebuild as codebuild
-from util.metadata import CAN_AUTOLOAD, AWS_ACCOUNT, DEFAULT_REGION, AWS_REGION
+from util.metadata import CAN_AUTOLOAD, TEAM_ACCOUNT, AWS_ACCOUNT, DEFAULT_REGION, AWS_REGION
 import yaml
 
 
