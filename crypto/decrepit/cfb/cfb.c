@@ -47,6 +47,13 @@ static int aes_cfb1_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
   }
 
   EVP_CFB_CTX *cfb_ctx = ctx->cipher_data;
+  if (ctx->flags & EVP_CIPH_FLAG_LENGTH_BITS) {
+    int num = ctx->num;
+    AES_cfb1_encrypt(in, out, len, &cfb_ctx->ks, ctx->iv, &num,
+                      ctx->encrypt ? AES_ENCRYPT : AES_DECRYPT);
+    ctx->num = num;
+    return 1;
+  }
 
   while (len >= MAXBITCHUNK) {
     int num = ctx->num;

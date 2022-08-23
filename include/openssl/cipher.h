@@ -361,6 +361,9 @@ OPENSSL_EXPORT int EVP_BytesToKey(const EVP_CIPHER *type, const EVP_MD *md,
 #define EVP_CIPH_GCM_MODE 0x6
 #define EVP_CIPH_XTS_MODE 0x7
 
+// Buffer length in bits not bytes: CFB1 mode only.
+# define EVP_CIPH_FLAG_LENGTH_BITS 0x2000
+
 
 // Cipher flags (for |EVP_CIPHER_flags|).
 
