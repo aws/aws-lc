@@ -39,16 +39,6 @@
 
 #include "../internal.h"
 
-#include "cpucap/cpucap.c"
-#include "cpucap/cpu_aarch64_apple.c"
-#include "cpucap/cpu_aarch64_fuchsia.c"
-#include "cpucap/cpu_aarch64_linux.c"
-#include "cpucap/cpu_aarch64_win.c"
-#include "cpucap/cpu_arm_linux.c"
-#include "cpucap/cpu_arm.c"
-#include "cpucap/cpu_intel.c"
-#include "cpucap/cpu_ppc64le.c"
-
 #include "aes/aes.c"
 #include "aes/aes_nohw.c"
 #include "aes/key_wrap.c"
@@ -78,6 +68,15 @@
 #include "cipher/cipher.c"
 #include "cipher/e_aes.c"
 #include "cipher/e_aesccm.c"
+
+#include "cpucap/cpu_aarch64_apple.c"
+#include "cpucap/cpu_aarch64_fuchsia.c"
+#include "cpucap/cpu_aarch64_linux.c"
+#include "cpucap/cpu_aarch64_win.c"
+#include "cpucap/cpu_arm_linux.c"
+#include "cpucap/cpu_intel.c"
+#include "cpucap/cpu_ppc64le.c"
+
 #include "cmac/cmac.c"
 #include "dh/check.c"
 #include "dh/dh.c"
@@ -106,6 +105,7 @@
 #include "evp/kem.c"
 #include "evp/p_ec.c"
 #include "evp/p_rsa.c"
+#include "hkdf/hkdf.c"
 #include "hmac/hmac.c"
 #include "md4/md4.c"
 #include "md5/md5.c"
@@ -115,6 +115,7 @@
 #include "modes/gcm.c"
 #include "modes/gcm_nohw.c"
 #include "modes/ofb.c"
+#include "modes/xts.c"
 #include "modes/polyval.c"
 #include "rand/ctrdrbg.c"
 #include "rand/fork_detect.c"
@@ -127,9 +128,11 @@
 #include "self_check/fips.c"
 #include "self_check/self_check.c"
 #include "service_indicator/service_indicator.c"
+#include "sha/keccak1600.c"
 #include "sha/sha1-altivec.c"
 #include "sha/sha1.c"
 #include "sha/sha256.c"
+#include "sha/sha3.c"
 #include "sha/sha512.c"
 #include "tls/kdf.c"
 
@@ -229,6 +232,23 @@ static void BORINGSSL_bcm_power_on_self_test(void) {
 #if !defined(OPENSSL_ASAN)
   // Integrity tests cannot run under ASAN because it involves reading the full
   // .text section, which triggers the global-buffer overflow detection.
+  if (!BORINGSSL_integrity_test()) {
+    goto err;
+  }
+#endif  // OPENSSL_ASAN
+
+  if (!boringssl_self_test_startup()) {
+    goto err;
+  }
+
+  return;
+
+err:
+  BORINGSSL_FIPS_abort();
+}
+
+#if !defined(OPENSSL_ASAN)
+int BORINGSSL_integrity_test(void) {
   const uint8_t *const start = BORINGSSL_bcm_text_start;
   const uint8_t *const end = BORINGSSL_bcm_text_end;
 
@@ -264,7 +284,7 @@ static void BORINGSSL_bcm_power_on_self_test(void) {
   const EVP_MD *const kHashFunction = EVP_sha256();
   if (!boringssl_self_test_sha256() ||
       !boringssl_self_test_hmac_sha256()) {
-    goto err;
+    return 0;
   }
 
   static const uint8_t kHMACKey[64] = {0};
@@ -274,7 +294,7 @@ static void BORINGSSL_bcm_power_on_self_test(void) {
   if (!HMAC_Init_ex(&hmac_ctx, kHMACKey, sizeof(kHMACKey), kHashFunction,
                     NULL /* no ENGINE */)) {
     fprintf(stderr, "HMAC_Init_ex failed.\n");
-    goto err;
+    return 0;
   }
 
 #if defined(OPENSSL_ANDROID) && defined(OPENSSL_AARCH64)
@@ -297,7 +317,7 @@ static void BORINGSSL_bcm_power_on_self_test(void) {
   if (!HMAC_Final(&hmac_ctx, result, &result_len) ||
       result_len != sizeof(result)) {
     fprintf(stderr, "HMAC failed.\n");
-    goto err;
+    return 0;
   }
   HMAC_CTX_cleanse(&hmac_ctx); // FIPS 140-3, AS05.10.
 
@@ -305,22 +325,14 @@ static void BORINGSSL_bcm_power_on_self_test(void) {
 
   if (!check_test(expected, result, sizeof(result), "FIPS integrity test")) {
 #if !defined(BORINGSSL_FIPS_BREAK_TESTS)
-    goto err;
+    return 0;
 #endif
   }
 
   OPENSSL_cleanse(result, sizeof(result)); // FIPS 140-3, AS05.10.
-#endif  // OPENSSL_ASAN
-
-  if (!boringssl_self_test_startup()) {
-    goto err;
-  }
-
-  return;
-
-err:
-  BORINGSSL_FIPS_abort();
+  return 1;
 }
+#endif  // OPENSSL_ASAN
 
 void BORINGSSL_FIPS_abort(void) {
   for (;;) {

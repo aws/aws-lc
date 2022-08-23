@@ -24,9 +24,10 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_mod_n384_6
-        .globl  _bignum_mod_n384_6
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_mod_n384_6)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_mod_n384_6)
         .text
         .balign 4
 
@@ -48,53 +49,52 @@
 #define d5 x13
 
 #define movbig(nn,n3,n2,n1,n0)                                              \
-                movz    nn, n0;                                             \
-                movk    nn, n1, lsl #16;                                    \
-                movk    nn, n2, lsl #32;                                    \
-                movk    nn, n3, lsl #48
+        movz    nn, n0;                                             \
+        movk    nn, n1, lsl #16;                                    \
+        movk    nn, n2, lsl #32;                                    \
+        movk    nn, n3, lsl #48
 
-bignum_mod_n384_6:
-_bignum_mod_n384_6:
+S2N_BN_SYMBOL(bignum_mod_n384_6):
 
 // Load the complicated lower three words of n_384
 
-                movbig( n0, #0xecec, #0x196a, #0xccc5, #0x2973)
-                movbig( n1, #0x581a, #0x0db2, #0x48b0, #0xa77a)
-                movbig( n2, #0xc763, #0x4d81, #0xf437, #0x2ddf)
+        movbig( n0, #0xecec, #0x196a, #0xccc5, #0x2973)
+        movbig( n1, #0x581a, #0x0db2, #0x48b0, #0xa77a)
+        movbig( n2, #0xc763, #0x4d81, #0xf437, #0x2ddf)
 
 // Load the input number
 
-                ldp     d0, d1, [x]
-                ldp     d2, d3, [x, #16]
-                ldp     d4, d5, [x, #32]
+        ldp     d0, d1, [x]
+        ldp     d2, d3, [x, #16]
+        ldp     d4, d5, [x, #32]
 
 // Do the subtraction. Since the top three words of n_384 are all 1s
 // we can devolve the top to adding 0, thanks to the inverted carry.
 
-                subs    n0, d0, n0
-                sbcs    n1, d1, n1
-                sbcs    n2, d2, n2
-                adcs    n3, d3, xzr
-                adcs    n4, d4, xzr
-                adcs    n5, d5, xzr
+        subs    n0, d0, n0
+        sbcs    n1, d1, n1
+        sbcs    n2, d2, n2
+        adcs    n3, d3, xzr
+        adcs    n4, d4, xzr
+        adcs    n5, d5, xzr
 
 // Now if the carry is *clear* (inversion at work) the subtraction carried
 // and hence we should have done nothing, so we reset each n_i = d_i
 
-                csel    n0, d0, n0, cc
-                csel    n1, d1, n1, cc
-                csel    n2, d2, n2, cc
-                csel    n3, d3, n3, cc
-                csel    n4, d4, n4, cc
-                csel    n5, d5, n5, cc
+        csel    n0, d0, n0, cc
+        csel    n1, d1, n1, cc
+        csel    n2, d2, n2, cc
+        csel    n3, d3, n3, cc
+        csel    n4, d4, n4, cc
+        csel    n5, d5, n5, cc
 
 // Store the end result
 
-                stp     n0, n1, [z]
-                stp     n2, n3, [z, #16]
-                stp     n4, n5, [z, #32]
+        stp     n0, n1, [z]
+        stp     n2, n3, [z, #16]
+        stp     n4, n5, [z, #32]
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

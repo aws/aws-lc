@@ -169,7 +169,8 @@ OPENSSL_EXPORT void EC_KEY_set_conv_form(EC_KEY *key,
 OPENSSL_EXPORT int EC_KEY_check_key(const EC_KEY *key);
 
 // EC_KEY_check_fips performs a signing pairwise consistency test (FIPS 140-2
-// 4.9.2). If the public key contains an affine point, it also checks that its
+// 4.9.2) and the consistency test from SP 800-56Ar3 section 5.6.2.1.4.
+// If the public key contains an affine point, it also checks that its
 // coordinates are in the range [0, p-1]. That is in addition to the checks
 // performed by EC_KEY_check_key.
 // It returns one if it passes and zero otherwise.
@@ -198,7 +199,9 @@ OPENSSL_EXPORT size_t EC_KEY_key2buf(const EC_KEY *key,
 OPENSSL_EXPORT int EC_KEY_generate_key(EC_KEY *key);
 
 // EC_KEY_generate_key_fips behaves like |EC_KEY_generate_key| but performs
-// additional checks for FIPS compliance.
+// additional checks for FIPS compliance. This function is applicable when
+// generating keys for either signing/verification or key agreement because
+// both types of consistency check (PCT) are performed.
 OPENSSL_EXPORT int EC_KEY_generate_key_fips(EC_KEY *key);
 
 // EC_KEY_derive_from_secret deterministically derives a private key for |group|

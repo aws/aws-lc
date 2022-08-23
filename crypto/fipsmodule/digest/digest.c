@@ -54,18 +54,57 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
-#include <openssl/digest.h>
-
 #include <assert.h>
 #include <string.h>
 
+#include <openssl/digest.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
+#include <openssl/nid.h>
 
 #include "internal.h"
 #include "../../internal.h"
 #include "../evp/internal.h"
 
+
+// Create and initialize a static variable |unstable_sha3_enabled_flag| to enable/disable the use of SHA3.
+// |unstable_sha3_enabled_flag| is configured globally.
+DEFINE_BSS_GET(bool, unstable_sha3_enabled_flag)
+
+// Create and initialize a static mutex to lock/unlock the update of the |unstable_sha3_enabled_flag|.
+DEFINE_STATIC_MUTEX(unstable_sha3_flag_lock)
+
+
+void EVP_MD_unstable_sha3_enable(bool enable) {
+      // Lock |unstable_sha3_enabled_flag| for rest of threads
+      CRYPTO_STATIC_MUTEX_lock_write( unstable_sha3_flag_lock_bss_get());
+
+      bool *unstable_enabled_sha3 = unstable_sha3_enabled_flag_bss_get(); 
+      *unstable_enabled_sha3 = enable;
+
+      CRYPTO_STATIC_MUTEX_unlock_write( unstable_sha3_flag_lock_bss_get());
+}
+
+bool EVP_MD_unstable_sha3_is_enabled(void) {
+      // Lock the |unstable_sha3_enabled_flag| while reading so that it is not overwritten meanwhile.
+      // Allow concurrent reads, do not allow write access to the |unstable_sha3_enabled_flag|.
+      CRYPTO_STATIC_MUTEX_lock_read( unstable_sha3_flag_lock_bss_get());
+
+      bool *unstable_enabled_sha3 = unstable_sha3_enabled_flag_bss_get(); 
+
+      CRYPTO_STATIC_MUTEX_unlock_read( unstable_sha3_flag_lock_bss_get());
+      return *unstable_enabled_sha3;
+}
+
+static bool SHA3_requested_and_enabled(const EVP_MD *digest) {
+  if ((digest->type == NID_sha3_224 || digest->type == NID_sha3_256 || 
+       digest->type == NID_sha3_384 ||  digest->type == NID_sha3_512) && 
+      !EVP_MD_unstable_sha3_is_enabled()) {
+    return false;
+  }
+
+  return true;
+}
 
 int EVP_MD_type(const EVP_MD *md) { return md->type; }
 
@@ -207,6 +246,10 @@ int EVP_MD_CTX_reset(EVP_MD_CTX *ctx) {
 }
 
 int EVP_DigestInit_ex(EVP_MD_CTX *ctx, const EVP_MD *type, ENGINE *engine) {
+  if (!SHA3_requested_and_enabled(type)) {
+    return 0;
+  }
+
   if (ctx->digest != type) {
     assert(type->ctx_size != 0);
     uint8_t *md_data = OPENSSL_malloc(type->ctx_size);
@@ -232,11 +275,27 @@ int EVP_DigestInit(EVP_MD_CTX *ctx, const EVP_MD *type) {
 }
 
 int EVP_DigestUpdate(EVP_MD_CTX *ctx, const void *data, size_t len) {
+  if (ctx->digest == NULL) {
+    return 0;
+  }
+
+  if (!SHA3_requested_and_enabled(ctx->digest)) {
+    return 0;
+  }
+
   ctx->digest->update(ctx, data, len);
   return 1;
 }
 
 int EVP_DigestFinal_ex(EVP_MD_CTX *ctx, uint8_t *md_out, unsigned int *size) {
+  if (ctx->digest == NULL) {
+    return 0;
+  }
+
+  if (!SHA3_requested_and_enabled(ctx->digest)) {
+    return 0;
+  }
+  
   assert(ctx->digest->md_size <= EVP_MAX_MD_SIZE);
   ctx->digest->final(ctx, md_out);
   if (size != NULL) {
@@ -247,9 +306,10 @@ int EVP_DigestFinal_ex(EVP_MD_CTX *ctx, uint8_t *md_out, unsigned int *size) {
 }
 
 int EVP_DigestFinal(EVP_MD_CTX *ctx, uint8_t *md, unsigned int *size) {
-  (void)EVP_DigestFinal_ex(ctx, md, size);
+  
+  int ok = EVP_DigestFinal_ex(ctx, md, size);
   EVP_MD_CTX_cleanup(ctx);
-  return 1;
+  return ok;
 }
 
 int EVP_Digest(const void *data, size_t count, uint8_t *out_md,

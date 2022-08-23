@@ -250,11 +250,18 @@ static bool SpeedRSA(const std::string &selected) {
           if (!verify_key) {
             return false;
           }
+#if defined(OPENSSL_1_0_BENCHMARK)
+          const BIGNUM *temp_n = key.get()->n;
+          const BIGNUM *temp_e = key.get()->e;
+          verify_key.get()->n = BN_dup(temp_n);
+          verify_key.get()->e = BN_dup(temp_e);
+#else
           const BIGNUM *temp_n = NULL;
           const BIGNUM *temp_e = NULL;
 
           RSA_get0_key(key.get(), &temp_n, &temp_e, NULL);
           RSA_set0_key(verify_key.get(), BN_dup(temp_n), BN_dup(temp_e), NULL);
+#endif
 
           return RSA_verify(NID_sha256, fake_sha256_hash,
                             sizeof(fake_sha256_hash), sig.get(), sig_len,
@@ -558,6 +565,7 @@ static bool SpeedAESBlock(const std::string &name, unsigned bits,
   return true;
 }
 
+#if !defined(OPENSSL_1_0_BENCHMARK)
 static bool SpeedAES256XTS(const std::string &name, //const size_t in_len,
                            const std::string &selected) {
   if (!selected.empty() && name.find(selected) == std::string::npos) {
@@ -627,10 +635,16 @@ static bool SpeedAES256XTS(const std::string &name, //const size_t in_len,
 
   return true;
 }
+#endif
 
 static bool SpeedHashChunk(const EVP_MD *md, std::string name,
                            size_t chunk_len) {
+  // OpenSSL 1.0.x has a different API to create an EVP_MD_CTX
+#if defined(OPENSSL_1_0_BENCHMARK)
+  BM_NAMESPACE::UniquePtr<EVP_MD_CTX> ctx(EVP_MD_CTX_create());
+#else
   BM_NAMESPACE::UniquePtr<EVP_MD_CTX> ctx(EVP_MD_CTX_new());
+#endif
   uint8_t input[16384] = {0};
 
   if (chunk_len > sizeof(input)) {
@@ -658,6 +672,13 @@ static bool SpeedHashChunk(const EVP_MD *md, std::string name,
 
 static bool SpeedHash(const EVP_MD *md, const std::string &name,
                       const std::string &selected) {
+  // This SHA3 API is AWS-LC specific.
+#if defined(OPENSSL_IS_AWSLC)
+  if (name.find("SHA3") != std::string::npos) {
+    EVP_MD_unstable_sha3_enable(true);
+  }
+#endif
+
   if (!selected.empty() && name.find(selected) == std::string::npos) {
     return true;
   }
@@ -668,12 +689,24 @@ static bool SpeedHash(const EVP_MD *md, const std::string &name,
     }
   }
 
+  // This SHA3 API is AWS-LC specific.
+#if defined(OPENSSL_IS_AWSLC)
+  EVP_MD_unstable_sha3_enable(false);
+#endif
   return true;
 }
 
 static bool SpeedHmacChunk(const EVP_MD *md, std::string name,
                            size_t chunk_len) {
+  // OpenSSL 1.0.x doesn't have a function that creates a new,
+  // properly initialized HMAC pointer so we need to create 
+  // the pointer and then do the initialization logic ourselves
+#if defined(OPENSSL_1_0_BENCHMARK)
+  BM_NAMESPACE::UniquePtr<HMAC_CTX> ctx(new HMAC_CTX);
+  HMAC_CTX_init(ctx.get());
+#else
   BM_NAMESPACE::UniquePtr<HMAC_CTX> ctx(HMAC_CTX_new());
+#endif
   uint8_t scratch[16384];
   const size_t key_len = EVP_MD_size(md);
   std::unique_ptr<uint8_t[]> key(new uint8_t[key_len]);
@@ -1031,6 +1064,7 @@ static bool SpeedSPAKE2(const std::string &selected) {
 }
 #endif
 
+#if !defined(OPENSSL_1_0_BENCHMARK)
 static bool SpeedScrypt(const std::string &selected) {
   if (!selected.empty() && selected.find("scrypt") == std::string::npos) {
     return true;
@@ -1065,6 +1099,7 @@ static bool SpeedScrypt(const std::string &selected) {
 
   return true;
 }
+#endif
 
 #if !defined(OPENSSL_BENCHMARK)
 static bool SpeedHRSS(const std::string &selected) {
@@ -1584,14 +1619,27 @@ bool Speed(const std::vector<std::string> &args) {
   if(!SpeedAESBlock("AES-128", 128, selected) ||
      !SpeedAESBlock("AES-192", 192, selected) ||
      !SpeedAESBlock("AES-256", 256, selected) ||
+     // OpenSSL 1.0 doesn't support AES-XTS
+#if !defined(OPENSSL_1_0_BENCHMARK)
      !SpeedAES256XTS("AES-256-XTS", selected) ||
+#endif
+     // OpenSSL 3.0 doesn't allow MD4 calls
+#if !defined(OPENSSL_3_0_BENCHMARK)
      !SpeedHash(EVP_md4(), "MD4", selected) ||
+#endif
      !SpeedHash(EVP_md5(), "MD5", selected) ||
      !SpeedHash(EVP_sha1(), "SHA-1", selected) ||
      !SpeedHash(EVP_sha224(), "sha-224", selected) ||
      !SpeedHash(EVP_sha256(), "SHA-256", selected) ||
      !SpeedHash(EVP_sha384(), "SHA-384", selected) ||
      !SpeedHash(EVP_sha512(), "SHA-512", selected) ||
+     // OpenSSL 1.0 doesn't support SHA3.
+#if !defined(OPENSSL_1_0_BENCHMARK)
+     !SpeedHash(EVP_sha3_224(), "SHA3-224", selected) ||
+     !SpeedHash(EVP_sha3_256(), "SHA3-256", selected) ||
+     !SpeedHash(EVP_sha3_384(), "SHA3-384", selected) ||
+     !SpeedHash(EVP_sha3_512(), "SHA3-512", selected) ||
+#endif
      !SpeedHmac(EVP_md5(), "HMAC-MD5", selected) ||
      !SpeedHmac(EVP_sha1(), "HMAC-SHA1", selected) ||
      !SpeedHmac(EVP_sha256(), "HMAC-SHA256", selected) ||
@@ -1605,7 +1653,10 @@ bool Speed(const std::vector<std::string> &args) {
      !SpeedRandom(selected) ||
      !SpeedECDH(selected) ||
      !SpeedECDSA(selected) ||
+     // OpenSSL 1.0 doesn't support Scrypt
+#if !defined(OPENSSL_1_0_BENCHMARK)
      !SpeedScrypt(selected) ||
+#endif
      !SpeedRSA(selected) ||
      !SpeedRSAKeyGen(selected)
 #if !defined(OPENSSL_BENCHMARK)

@@ -12,14 +12,17 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+#if defined(__linux__)
 #undef _POSIX_C_SOURCE
 #define _POSIX_C_SOURCE 200112L
+#endif
 
 #include <openssl/bio.h>
 #include <openssl/err.h>
 
 #if !defined(OPENSSL_TRUSTY)
 
+#include <time.h>
 #include <fcntl.h>
 #include <string.h>
 #include <sys/types.h>

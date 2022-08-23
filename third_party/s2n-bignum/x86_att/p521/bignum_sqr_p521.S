@@ -20,11 +20,14 @@
 //    extern void bignum_sqr_p521 (uint64_t z[static 9], uint64_t x[static 9]);
 //
 // Standard x86-64 ABI: RDI = z, RSI = x
+// Microsoft x64 ABI:   RCX = z, RDX = x
 // ----------------------------------------------------------------------------
 
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_sqr_p521
-        .globl  _bignum_sqr_p521
+
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_sqr_p521)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_sqr_p521)
         .text
 
 #define z %rdi
@@ -54,8 +57,14 @@
         adcxq   %rax, low ;               \
         adoxq   zero, high
 
-bignum_sqr_p521:
-_bignum_sqr_p521:
+S2N_BN_SYMBOL(bignum_sqr_p521):
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+#endif
 
 // Save more registers to play with and make temporary space on stack
 
@@ -289,6 +298,10 @@ _bignum_sqr_p521:
         popq    %r12
         popq    %rbp
 
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
         ret
 
 #if defined(__linux__) && defined(__ELF__)

@@ -206,6 +206,11 @@ OPENSSL_EXPORT int DH_compute_key_hashed(DH *dh, uint8_t *out, size_t *out_len,
 // DH_size returns the number of bytes in the DH group's prime.
 OPENSSL_EXPORT int DH_size(const DH *dh);
 
+// DH_bits returns the same value as |DH_num_bits|, but recasts the unsigned
+// value as an int. This is only provided for better compatibility with
+// OpenSSL.
+OPENSSL_EXPORT int DH_bits(const DH *dh);
+
 // DH_num_bits returns the minimum number of bits needed to represent the
 // absolute value of the DH group's prime.
 OPENSSL_EXPORT unsigned DH_num_bits(const DH *dh);
@@ -301,6 +306,14 @@ OPENSSL_EXPORT int i2d_DHparams(const DH *in, unsigned char **outp);
 OPENSSL_EXPORT int DH_compute_key(uint8_t *out, const BIGNUM *peers_key,
                                   DH *dh);
 
+// Standard parameters. These parameters are taken from RFC 5114.
+// This function returns a new DH object with standard parameters. It returns
+// NULL on allocation failure.
+//
+// Warning: 2048-256 is no longer an optimal parameter for Diffie-Hellman. No
+// one should use finite field Diffie-Hellman anymore.
+// This function has been deprecated with no replacement.
+OPENSSL_EXPORT DH *DH_get_2048_256(void);
 
 struct dh_st {
   BIGNUM *p;

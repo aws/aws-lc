@@ -65,23 +65,23 @@ Note: `GITHUB_REPO_OWNER` specifies the GitHub repo targeted by this CI setup.
 
 To set up AWS-LC CI, run command:
 ```
-./run-cdk.sh --github-repo-owner=${GITHUB_REPO_OWNER} --action deploy-ci
+./run-cdk.sh --github-repo-owner ${GITHUB_REPO_OWNER} --action deploy-ci --aws-account ${AWS_ACCOUNT_ID}
 ```
 
 To update AWS-LC CI, run command:
 ```
-./run-cdk.sh --github-repo-owner=${GITHUB_REPO_OWNER} --action update-ci
+./run-cdk.sh --github-repo-owner ${GITHUB_REPO_OWNER} --action update-ci --aws-account ${AWS_ACCOUNT_ID}
 ```
 
 To create/update Linux Docker images, run command:
 ```
-./run-cdk.sh --github-repo-owner=${GITHUB_REPO_OWNER} --action build-linux-img
+./run-cdk.sh --github-repo-owner ${GITHUB_REPO_OWNER} --action build-linux-img --aws-account ${AWS_ACCOUNT_ID}
 ```
 
 To destroy AWS-LC CI resources created above, run command:
 ```
 # NOTE: this command will destroy all resources (AWS CodeBuild and ECR).
-./run-cdk.sh --github-repo-owner=${GITHUB_REPO_OWNER} --action destroy-ci
+./run-cdk.sh --github-repo-owner ${GITHUB_REPO_OWNER} --action destroy-ci --aws-account ${AWS_ACCOUNT_ID}
 ```
 
 For help, run command:

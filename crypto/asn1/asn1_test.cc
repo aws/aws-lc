@@ -871,6 +871,8 @@ TEST(ASN1Test, StringToUTF8) {
       {{0, 0, 0xfd, 0xd5}, V_ASN1_UNIVERSALSTRING, nullptr},
       // BMPString is UCS-2, not UTF-16, so surrogate pairs are invalid.
       {{0xd8, 0, 0xdc, 1}, V_ASN1_BMPSTRING, nullptr},
+      // INTEGERs are stored as strings, but cannot be converted to UTF-8.
+      {{0x01}, V_ASN1_INTEGER, nullptr},
   };
 
   for (const auto &test : kTests) {
@@ -2073,6 +2075,47 @@ TEST(ASN1Test, GetObject) {
   ptr = kIndefinite;
   EXPECT_EQ(0x80, ASN1_get_object(&ptr, &length, &tag, &tag_class,
                                   sizeof(kIndefinite)));
+}
+
+template <typename T>
+void ExpectNoParse(T *(*d2i)(T **, const uint8_t **, long),
+                   const std::vector<uint8_t> &in) {
+  SCOPED_TRACE(Bytes(in));
+  const uint8_t *ptr = in.data();
+  bssl::UniquePtr<T> obj(d2i(nullptr, &ptr, in.size()));
+  EXPECT_FALSE(obj);
+}
+
+// The zero tag, constructed or primitive, is reserved and should rejected by
+// the parser.
+TEST(ASN1Test, ZeroTag) {
+  ExpectNoParse(d2i_ASN1_TYPE, {0x00, 0x00});
+  ExpectNoParse(d2i_ASN1_TYPE, {0x00, 0x10, 0x00});
+  ExpectNoParse(d2i_ASN1_TYPE, {0x20, 0x00});
+  ExpectNoParse(d2i_ASN1_TYPE, {0x20, 0x00});
+  ExpectNoParse(d2i_ASN1_SEQUENCE_ANY, {0x30, 0x02, 0x00, 0x00});
+  ExpectNoParse(d2i_ASN1_SET_ANY, {0x31, 0x02, 0x00, 0x00});
+  // SEQUENCE {
+  //   OBJECT_IDENTIFIER { 1.2.840.113554.4.1.72585.1 }
+  //   [UNIVERSAL 0 PRIMITIVE] {}
+  // }
+  ExpectNoParse(d2i_X509_ALGOR,
+                {0x30, 0x10, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12,
+                 0x04, 0x01, 0x84, 0xb7, 0x09, 0x01, 0x00, 0x00});
+  // SEQUENCE {
+  //   OBJECT_IDENTIFIER { 1.2.840.113554.4.1.72585.1 }
+  //   [UNIVERSAL 0 CONSTRUCTED] {}
+  // }
+  ExpectNoParse(d2i_X509_ALGOR,
+                {0x30, 0x10, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12,
+                 0x04, 0x01, 0x84, 0xb7, 0x09, 0x01, 0x20, 0x00});
+  // SEQUENCE {
+  //   OBJECT_IDENTIFIER { 1.2.840.113554.4.1.72585.1 }
+  //   [UNIVERSAL 0 PRIMITIVE] { "a" }
+  // }
+  ExpectNoParse(d2i_X509_ALGOR,
+                {0x30, 0x11, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12,
+                 0x04, 0x01, 0x84, 0xb7, 0x09, 0x01, 0x00, 0x01, 0x61});
 }
 
 // The ASN.1 macros do not work on Windows shared library builds, where usage of
