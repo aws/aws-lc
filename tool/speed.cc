@@ -1072,14 +1072,25 @@ static bool SpeedScrypt(const std::string &selected) {
 
   TimeResults results;
 
+  // In FIPS mode, password must be >= 14 bytes, and salt must be >= 16.
   static const char kPassword[] = "password";
   static const uint8_t kSalt[] = "NaCl";
+  static const char kPasswordFIPS[] = "passwordPASSWORD";
+  static const uint8_t kSaltFIPS[] = "saltSALTsaltSALT";
 
   if (!TimeFunction(&results, [&]() -> bool {
         uint8_t out[64];
-        return !!EVP_PBE_scrypt(kPassword, sizeof(kPassword) - 1, kSalt,
-                                sizeof(kSalt) - 1, 1024, 8, 16, 0 /* max_mem */,
-                                out, sizeof(out));
+        if (FIPS_mode()) {
+          return !!EVP_PBE_scrypt(kPasswordFIPS, sizeof(kPasswordFIPS) - 1,
+                                  kSaltFIPS, sizeof(kSaltFIPS) - 1,
+                                  1024, 8, 16, 0 /* max_mem */,
+                                  out, sizeof(out));
+        } else {
+          return !!EVP_PBE_scrypt(kPassword, sizeof(kPassword) - 1,
+                                  kSalt, sizeof(kSalt) - 1,
+                                  1024, 8, 16, 0 /* max_mem */,
+                                  out, sizeof(out));
+        }
       })) {
     fprintf(stderr, "scrypt failed.\n");
     return false;
@@ -1088,9 +1099,17 @@ static bool SpeedScrypt(const std::string &selected) {
 
   if (!TimeFunction(&results, [&]() -> bool {
         uint8_t out[64];
-        return !!EVP_PBE_scrypt(kPassword, sizeof(kPassword) - 1, kSalt,
-                                sizeof(kSalt) - 1, 16384, 8, 1, 0 /* max_mem */,
-                                out, sizeof(out));
+        if (FIPS_mode()) {
+          return !!EVP_PBE_scrypt(kPasswordFIPS, sizeof(kPasswordFIPS) - 1,
+                                  kSaltFIPS, sizeof(kSaltFIPS) - 1,
+                                  16384, 8, 1, 0 /* max_mem */,
+                                  out, sizeof(out));
+        } else {
+          return !!EVP_PBE_scrypt(kPassword, sizeof(kPassword) - 1,
+                                  kSalt, sizeof(kSalt) - 1,
+                                  16384, 8, 1, 0 /* max_mem */,
+                                  out, sizeof(out));
+        }
       })) {
     fprintf(stderr, "scrypt failed.\n");
     return false;
