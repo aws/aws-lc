@@ -4283,7 +4283,9 @@ extern "C" {
 #define LN_hkdf "hkdf"
 #define NID_hkdf 969
 
+#define SN_KYBER512 "KYBER512"
 #define NID_KYBER512 970
+
 
 #if defined(__cplusplus)
 } /* extern C */
