@@ -3,10 +3,9 @@
 
 from aws_cdk import core, aws_codebuild as codebuild, aws_iam as iam, aws_ec2 as ec2, aws_efs as efs
 
-from util.ecr_util import ecr_arn
 from util.iam_policies import code_build_publish_metrics_in_json
-from util.metadata import AWS_ACCOUNT, AWS_REGION, GITHUB_REPO_OWNER, GITHUB_REPO_NAME
-from util.yml_loader import YmlLoader
+from util.metadata import GITHUB_REPO_OWNER, GITHUB_REPO_NAME
+from util.build_spec_loader import BuildSpecLoader
 
 
 class AwsLcGitHubAnalyticsStack(core.Stack):
@@ -15,8 +14,6 @@ class AwsLcGitHubAnalyticsStack(core.Stack):
     def __init__(self,
                  scope: core.Construct,
                  id: str,
-                 x86_ecr_repo_name: str,
-                 arm_ecr_repo_name: str,
                  spec_file_path: str,
                  **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
@@ -42,11 +39,6 @@ class AwsLcGitHubAnalyticsStack(core.Stack):
                         assumed_by=iam.ServicePrincipal("codebuild.amazonaws.com"),
                         inline_policies=inline_policies)
 
-        # Create build spec.
-        placeholder_map = {"X86_ECR_REPO_PLACEHOLDER": ecr_arn(x86_ecr_repo_name),
-                           "ARM_ECR_REPO_PLACEHOLDER": ecr_arn(arm_ecr_repo_name)}
-        build_spec_content = YmlLoader.load(spec_file_path, placeholder_map)
-
         # Define CodeBuild.
         analytics = codebuild.Project(
             scope=self,
@@ -58,5 +50,5 @@ class AwsLcGitHubAnalyticsStack(core.Stack):
             environment=codebuild.BuildEnvironment(compute_type=codebuild.ComputeType.LARGE,
                                                    privileged=True,
                                                    build_image=codebuild.LinuxBuildImage.STANDARD_4_0),
-            build_spec=codebuild.BuildSpec.from_object(build_spec_content))
+            build_spec=BuildSpecLoader.load(spec_file_path))
         analytics.enable_batch_builds()
