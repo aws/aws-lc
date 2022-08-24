@@ -17,6 +17,7 @@
 
 #if !defined(OPENSSL_BENCHMARK)
 #include <openssl/base.h>
+#include <openssl/crypto.h>
 #include <openssl/span.h>
 #endif
 
