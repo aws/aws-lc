@@ -32,6 +32,10 @@
 #include "ossl_bm.h"
 #endif
 
+#if !defined(OPENSSL_1_0_BENCHMARK)
+#include <openssl/crypto.h>
+#endif
+
 #if defined(OPENSSL_WINDOWS)
 OPENSSL_MSVC_PRAGMA(warning(push, 3))
 #include <windows.h>
