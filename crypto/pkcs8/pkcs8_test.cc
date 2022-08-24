@@ -268,13 +268,10 @@ static void TestRoundTrip(int pbe_nid, const EVP_CIPHER *cipher,
 }
 
 TEST(PKCS8Test, DecryptString) {
-  if (!FIPS_mode()) {
-    // In FIPS mode, the password must be >= 14 bytes.
-    TestDecrypt(kEncryptedPBES2WithDESAndSHA1,
-                sizeof(kEncryptedPBES2WithDESAndSHA1), "testing");
-    TestDecrypt(kEncryptedPBES2WithAESAndSHA256,
-                sizeof(kEncryptedPBES2WithAESAndSHA256), "testing");
-  }
+  TestDecrypt(kEncryptedPBES2WithDESAndSHA1,
+              sizeof(kEncryptedPBES2WithDESAndSHA1), "testing");
+  TestDecrypt(kEncryptedPBES2WithAESAndSHA256,
+              sizeof(kEncryptedPBES2WithAESAndSHA256), "testing");
 }
 
 TEST(PKCS8Test, DecryptNull) {
@@ -290,10 +287,7 @@ TEST(PKCS8Test, DecryptEmptyStringOpenSSL) {
 }
 
 TEST(PKCS8Test, DecryptExplicitHMACWithSHA1) {
-  if (!FIPS_mode()) {
-    // In FIPS mode, the password must be >= 14 bytes.
-    TestDecrypt(kExplicitHMACWithSHA1, sizeof(kExplicitHMACWithSHA1), "foo");
-  }
+  TestDecrypt(kExplicitHMACWithSHA1, sizeof(kExplicitHMACWithSHA1), "foo");
 }
 
 TEST(PKCS8Test, RoundTripPBEWithrSHA1And3KeyTripleDES) {
@@ -329,16 +323,12 @@ TEST(PKCS8Test, RoundTripPBEWithSHA1And128BitRC4) {
 }
 
 TEST(PKCS8Test, RoundTripPBES2) {
-  if (!FIPS_mode()) {
-    // FIPS mode requires >= 14 bytes for password and >= 16 bytes for salt
-    // in PBKDF2, which means these will fail.
-    TestRoundTrip(-1, EVP_aes_128_cbc(), "password", nullptr, 0, 10);
-    TestRoundTrip(-1, EVP_aes_128_cbc(), "password", nullptr, 4, 10);
-    TestRoundTrip(-1, EVP_aes_128_cbc(), "password", (const uint8_t *)"salt",
-                  4, 10);
-    TestRoundTrip(-1, EVP_aes_128_cbc(), "password", nullptr, 0, 1);
-    TestRoundTrip(-1, EVP_rc2_cbc(), "password", nullptr, 0, 10);
-  }
+  TestRoundTrip(-1, EVP_aes_128_cbc(), "password", nullptr, 0, 10);
+  TestRoundTrip(-1, EVP_aes_128_cbc(), "password", nullptr, 4, 10);
+  TestRoundTrip(-1, EVP_aes_128_cbc(), "password", (const uint8_t *)"salt",
+                4, 10);
+  TestRoundTrip(-1, EVP_aes_128_cbc(), "password", nullptr, 0, 1);
+  TestRoundTrip(-1, EVP_rc2_cbc(), "password", nullptr, 0, 10);
 }
 
 TEST(PKCS8Test, InvalidPBES1NIDs) {

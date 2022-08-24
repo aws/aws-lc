@@ -30,20 +30,13 @@ TEST(PBKDFTest, EmptyPassword) {
                           0x5d, 0x36, 0xea, 0x43, 0x63, 0xa2};
   uint8_t key[sizeof(kKey)];
 
-  if (FIPS_mode()) {
-    ASSERT_FALSE(PKCS5_PBKDF2_HMAC(NULL, 0, (const uint8_t *)"salt", 4, 1,
-                                   EVP_sha1(), sizeof(kKey), key));
-    ASSERT_FALSE(PKCS5_PBKDF2_HMAC("", 0, (const uint8_t *)"salt", 4, 1,
-                                   EVP_sha1(), sizeof(kKey), key));
-  } else {
-    ASSERT_TRUE(PKCS5_PBKDF2_HMAC(NULL, 0, (const uint8_t *)"salt", 4, 1,
-                                  EVP_sha1(), sizeof(kKey), key));
-    EXPECT_EQ(Bytes(kKey), Bytes(key));
+  ASSERT_TRUE(PKCS5_PBKDF2_HMAC(NULL, 0, (const uint8_t *)"salt", 4, 1,
+                                EVP_sha1(), sizeof(kKey), key));
+  EXPECT_EQ(Bytes(kKey), Bytes(key));
 
-    ASSERT_TRUE(PKCS5_PBKDF2_HMAC("", 0, (const uint8_t *)"salt", 4, 1,
-                                  EVP_sha1(), sizeof(kKey), key));
-    EXPECT_EQ(Bytes(kKey), Bytes(key));
-  }
+  ASSERT_TRUE(PKCS5_PBKDF2_HMAC("", 0, (const uint8_t *)"salt", 4, 1,
+                                EVP_sha1(), sizeof(kKey), key));
+  EXPECT_EQ(Bytes(kKey), Bytes(key));
 }
 
 // Tests deriving a key using an empty salt. Note that the expectation was
@@ -55,20 +48,13 @@ TEST(PBKDFTest, EmptySalt) {
                           0x5e, 0x22, 0xdb, 0xea, 0xfa, 0x46, 0x34, 0xf6};
   uint8_t key[sizeof(kKey)];
 
-  if (FIPS_mode()) {
-    ASSERT_FALSE(PKCS5_PBKDF2_HMAC("password", 8, NULL, 0, 2, EVP_sha256(),
-                                   sizeof(kKey), key));
-    ASSERT_FALSE(PKCS5_PBKDF2_HMAC("password", 8, (const uint8_t *)"", 0, 2,
-                                   EVP_sha256(), sizeof(kKey), key));
-  } else {
-    ASSERT_TRUE(PKCS5_PBKDF2_HMAC("password", 8, NULL, 0, 2, EVP_sha256(),
-                                  sizeof(kKey), key));
-    EXPECT_EQ(Bytes(kKey), Bytes(key));
+  ASSERT_TRUE(PKCS5_PBKDF2_HMAC("password", 8, NULL, 0, 2, EVP_sha256(),
+                                sizeof(kKey), key));
+  EXPECT_EQ(Bytes(kKey), Bytes(key));
 
-    ASSERT_TRUE(PKCS5_PBKDF2_HMAC("password", 8, (const uint8_t *)"", 0, 2,
-                                  EVP_sha256(), sizeof(kKey), key));
-    EXPECT_EQ(Bytes(kKey), Bytes(key));
-  }
+  ASSERT_TRUE(PKCS5_PBKDF2_HMAC("password", 8, (const uint8_t *)"", 0, 2,
+                                EVP_sha256(), sizeof(kKey), key));
+  EXPECT_EQ(Bytes(kKey), Bytes(key));
 }
 
 // Exercises test vectors taken from https://tools.ietf.org/html/rfc6070.
@@ -91,26 +77,17 @@ TEST(PBKDFTest, RFC6070Vectors) {
   static_assert(sizeof(key) >= sizeof(kKey2), "output too small");
   static_assert(sizeof(key) >= sizeof(kKey3), "output too small");
 
-  if (FIPS_mode()) {
-    ASSERT_FALSE(PKCS5_PBKDF2_HMAC("password", 8, (const uint8_t *)"salt", 4, 1,
-                                   EVP_sha1(), sizeof(kKey1), key));
-    ASSERT_FALSE(PKCS5_PBKDF2_HMAC("password", 8, (const uint8_t *)"salt", 4, 2,
-                                   EVP_sha1(), sizeof(kKey2), key));
-    ASSERT_FALSE(PKCS5_PBKDF2_HMAC("pass\0word", 9, (const uint8_t *)"sa\0lt", 5,
-                                   4096, EVP_sha1(), sizeof(kKey3), key));
-  } else {
-    ASSERT_TRUE(PKCS5_PBKDF2_HMAC("password", 8, (const uint8_t *)"salt", 4, 1,
-                                  EVP_sha1(), sizeof(kKey1), key));
-    EXPECT_EQ(Bytes(kKey1), Bytes(key, sizeof(kKey1)));
+  ASSERT_TRUE(PKCS5_PBKDF2_HMAC("password", 8, (const uint8_t *)"salt", 4, 1,
+                                EVP_sha1(), sizeof(kKey1), key));
+  EXPECT_EQ(Bytes(kKey1), Bytes(key, sizeof(kKey1)));
 
-    ASSERT_TRUE(PKCS5_PBKDF2_HMAC("password", 8, (const uint8_t *)"salt", 4, 2,
-                                  EVP_sha1(), sizeof(kKey2), key));
-    EXPECT_EQ(Bytes(kKey2), Bytes(key, sizeof(kKey2)));
+  ASSERT_TRUE(PKCS5_PBKDF2_HMAC("password", 8, (const uint8_t *)"salt", 4, 2,
+                                EVP_sha1(), sizeof(kKey2), key));
+  EXPECT_EQ(Bytes(kKey2), Bytes(key, sizeof(kKey2)));
 
-    ASSERT_TRUE(PKCS5_PBKDF2_HMAC("pass\0word", 9, (const uint8_t *)"sa\0lt", 5,
-                                  4096, EVP_sha1(), sizeof(kKey3), key));
-    EXPECT_EQ(Bytes(kKey3), Bytes(key, sizeof(kKey3)));
-  }
+  ASSERT_TRUE(PKCS5_PBKDF2_HMAC("pass\0word", 9, (const uint8_t *)"sa\0lt", 5,
+                                4096, EVP_sha1(), sizeof(kKey3), key));
+  EXPECT_EQ(Bytes(kKey3), Bytes(key, sizeof(kKey3)));
 
   ASSERT_TRUE(PKCS5_PBKDF2_HMAC("passwordPASSWORDpassword", 24,
                     (const uint8_t *)"saltSALTsaltSALTsaltSALTsaltSALTsalt", 36,
@@ -140,14 +117,9 @@ TEST(PBKDFTest, SHA2) {
   uint8_t key[sizeof(kKey2)];
   static_assert(sizeof(key) >= sizeof(kKey1), "output too small");
 
-  if (FIPS_mode()) {
-    ASSERT_FALSE(PKCS5_PBKDF2_HMAC("password", 8, (const uint8_t *)"salt", 4, 2,
-                                   EVP_sha256(), sizeof(kKey1), key));
-  } else {
-    ASSERT_TRUE(PKCS5_PBKDF2_HMAC("password", 8, (const uint8_t *)"salt", 4, 2,
-                                  EVP_sha256(), sizeof(kKey1), key));
-    EXPECT_EQ(Bytes(kKey1), Bytes(key, sizeof(kKey1)));
-  }
+  ASSERT_TRUE(PKCS5_PBKDF2_HMAC("password", 8, (const uint8_t *)"salt", 4, 2,
+                                EVP_sha256(), sizeof(kKey1), key));
+  EXPECT_EQ(Bytes(kKey1), Bytes(key, sizeof(kKey1)));
 
   ASSERT_TRUE(
       PKCS5_PBKDF2_HMAC("passwordPASSWORDpassword", 24,
@@ -172,14 +144,8 @@ TEST(PBKDFTest, ZeroIterations) {
   const size_t key_len = sizeof(key);
 
   // Verify that calling with iterations=1 works.
-  if (FIPS_mode()) {
-    // Both password and salt are too short for FIPS mode.
-    ASSERT_FALSE(PKCS5_PBKDF2_HMAC(kPassword, password_len, kSalt, salt_len,
-                                   1 /* iterations */, digest, key_len, key));
-  } else {
-    ASSERT_TRUE(PKCS5_PBKDF2_HMAC(kPassword, password_len, kSalt, salt_len,
-                                  1 /* iterations */, digest, key_len, key));
-  }
+  ASSERT_TRUE(PKCS5_PBKDF2_HMAC(kPassword, password_len, kSalt, salt_len,
+                                1 /* iterations */, digest, key_len, key));
 
   // Flip the first key byte (so can later test if it got set).
   const uint8_t expected_first_byte = key[0];
@@ -191,7 +157,5 @@ TEST(PBKDFTest, ZeroIterations) {
 
   // For backwards compatibility, the iterations == 0 case still fills in
   // the out key.
-  if (!FIPS_mode()) {
-    EXPECT_EQ(expected_first_byte, key[0]);
-  }
+  EXPECT_EQ(expected_first_byte, key[0]);
 }

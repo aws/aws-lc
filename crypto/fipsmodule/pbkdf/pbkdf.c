@@ -84,9 +84,6 @@ int PKCS5_PBKDF2_HMAC(const char *password, size_t password_len,
   // * iterations "as large as possible, as long as the time required to
   //   generate the key using the entered password is acceptable for the users."
   //   (clearly we can't test for "as large as possible")
-  if (FIPS_mode() && (key_len < 14 || salt_len < 16)) {
-    goto err;
-  }
 
   if (!HMAC_Init_ex(&hctx, password, password_len, digest, NULL)) {
     goto err;
