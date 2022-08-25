@@ -349,7 +349,8 @@ void HMAC_verify_service_indicator(const EVP_MD *evp_md) {
 void PBKDF_verify_service_indicator(const EVP_MD *evp_md) {
   // PBKDF with SHA1, SHA224, SHA256, SHA384, and SHA512 are approved.
   //
-  // TODO: FIPS 140 parameter requirements, per NIST SP800-132:
+  // TODO (CryptoAlg-1270): FIPS 140 parameter requirements, per
+  // NIST SP800-132:
   //
   // * key_len >= 14 bytes (112 bits)
   // * salt_len >= 16 bytes (128 bits), assuming its randomly generated
