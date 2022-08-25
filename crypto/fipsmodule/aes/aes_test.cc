@@ -26,6 +26,7 @@
 #include <openssl/rand.h>
 
 #include "internal.h"
+#include "../cpucap/internal.h"
 #include "../../internal.h"
 #include "../../test/abi_test.h"
 #include "../../test/file_test.h"
@@ -559,6 +560,10 @@ static int aes_ref_set_decrypt_key(const uint8_t *key, int bits, AES_KEY *out) {
 
 
 TEST(AESTest, VPAESToBSAESConvert) {
+  if (!vpaes_capable()) {
+    GTEST_SKIP();
+  }
+
   const int kNumIterations = 1000;
   for (int i = 0; i < kNumIterations; i++) {
     uint8_t key[256 / 8];

@@ -78,6 +78,8 @@ if(ARCH STREQUAL "aarch64")
     armv8-mont.${ASM_EXT}
     ghash-neon-armv8.${ASM_EXT}
     ghashv8-armx.${ASM_EXT}
+    keccak1600-armv8.${ASM_EXT}
+    md5-armv8.${ASM_EXT}
     p256-armv8-asm.${ASM_EXT}
     p256_beeu-armv8-asm.${ASM_EXT}
     sha1-armv8.${ASM_EXT}
@@ -115,7 +117,9 @@ if(PERL_EXECUTABLE)
   perlasm(ghash-ssse3-x86.${ASM_EXT} modes/asm/ghash-ssse3-x86.pl)
   perlasm(ghash-x86_64.${ASM_EXT} modes/asm/ghash-x86_64.pl)
   perlasm(ghash-x86.${ASM_EXT} modes/asm/ghash-x86.pl)
+  perlasm(keccak1600-armv8.${ASM_EXT} sha/asm/keccak1600-armv8.pl)
   perlasm(md5-586.${ASM_EXT} md5/asm/md5-586.pl)
+  perlasm(md5-armv8.${ASM_EXT} md5/asm/md5-armv8.pl)
   perlasm(md5-x86_64.${ASM_EXT} md5/asm/md5-x86_64.pl)
   perlasm(p256-x86_64-asm.${ASM_EXT} ec/asm/p256-x86_64-asm.pl)
   perlasm(p256_beeu-x86_64-asm.${ASM_EXT} ec/asm/p256_beeu-x86_64-asm.pl)
@@ -155,6 +159,8 @@ if((ARCH STREQUAL "x86_64" OR ARCH STREQUAL "aarch64") AND
   else()
     set(S2N_BIGNUM_DIR ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/arm)
   endif()
+
+  set(S2N_BIGNUM_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/include)
 
   # We add s2n-bignum files to a separate list because they need
   # to go through C preprocessor in case of the static build.
@@ -228,7 +234,7 @@ function(s2n_asm_cpreprocess dest src)
   add_custom_command(
           OUTPUT ${dest}
           COMMAND ${CMAKE_COMMAND} -E make_directory ${dir}
-          COMMAND ${CMAKE_ASM_COMPILER} ${TARGET} ${CMAKE_ASM_FLAGS} -E ${S2N_BIGNUM_DIR}/${src} -I${PROJECT_SOURCE_DIR}/include| tr \"\;\" \"\\n\" > ${dest}
+          COMMAND ${CMAKE_ASM_COMPILER} ${TARGET} ${CMAKE_ASM_FLAGS} -E ${S2N_BIGNUM_DIR}/${src} -I${S2N_BIGNUM_INCLUDE_DIR} -DS2N_BN_HIDE_SYMBOLS| tr \"\;\" \"\\n\" > ${dest}
           DEPENDS
           ${S2N_BIGNUM_DIR}/${src}
           WORKING_DIRECTORY .
@@ -307,7 +313,7 @@ if(FIPS_DELOCATE)
                 boringssl.googlesource.com/boringssl/util/fipstools/inject_hash)
   add_custom_command(
     OUTPUT bcm.o
-    COMMAND ./inject_hash -o bcm.o -in-archive $<TARGET_FILE:bcm_hashunset> -sha256
+    COMMAND ./inject_hash -o bcm.o -in-archive $<TARGET_FILE:bcm_hashunset>
     DEPENDS bcm_hashunset inject_hash
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   )
@@ -316,6 +322,7 @@ if(FIPS_DELOCATE)
   # CMakeLists.txt that defines it. Thus we have to wrap bcm.o in a custom target
   # so that crypto can depend on it.
   add_custom_target(bcm_o_target DEPENDS bcm.o)
+  set(BCM_NAME bcm.o PARENT_SCOPE)
 
   add_library(
     fipsmodule
@@ -323,6 +330,7 @@ if(FIPS_DELOCATE)
     OBJECT
 
     fips_shared_support.c
+    cpucap/cpucap.c
   )
   target_compile_definitions(fipsmodule PRIVATE BORINGSSL_IMPLEMENTATION)
 
@@ -340,6 +348,7 @@ elseif(FIPS_SHARED)
     OBJECT
 
     fips_shared_support.c
+    cpucap/cpucap.c
   )
   target_compile_definitions(fipsmodule PRIVATE BORINGSSL_IMPLEMENTATION)
 
@@ -445,6 +454,7 @@ else()
 
     bcm.c
     fips_shared_support.c
+    cpucap/cpucap.c
 
     ${BCM_ASM_SOURCES}
   )
@@ -452,4 +462,3 @@ else()
 
   add_dependencies(fipsmodule global_target)
 endif()
-

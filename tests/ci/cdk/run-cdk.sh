@@ -84,14 +84,6 @@ function create_win_docker_img_build_stack() {
 
 function create_github_ci_stack() {
   cdk deploy aws-lc-ci-* --require-approval never
-
-  # Need to use aws cli to change webhook build type because CFN is not ready yet.
-  aws codebuild update-webhook --project-name aws-lc-ci-linux-x86 --build-type BUILD_BATCH
-  aws codebuild update-webhook --project-name aws-lc-ci-linux-arm --build-type BUILD_BATCH
-  # TODO: re-enable 'aws-lc-ci-windows-x86' when CryptoAlg-826 is fixed.
-#  aws codebuild update-webhook --project-name aws-lc-ci-windows-x86 --build-type BUILD_BATCH
-  aws codebuild update-webhook --project-name aws-lc-ci-fuzzing --build-type BUILD_BATCH
-  aws codebuild update-webhook --project-name aws-lc-ci-bm-framework --build-type BUILD_BATCH
 }
 
 function run_linux_img_build() {
@@ -200,23 +192,21 @@ function build_linux_docker_images() {
 }
 
 function build_win_docker_images() {
-  echo "Windows Docker image build is disabled due to some third-party issues(CryptoAlg-826)"
-  # TODO: re-enable below code when CryptoAlg-826 is fixed.
-#  # Always destroy docker build stacks (which include EC2 instance) on EXIT.
-#  trap destroy_docker_img_build_stack EXIT
-#
-#  # Create/update aws-ecr repo.
-#  cdk deploy aws-lc-ecr-windows-* --require-approval never
-#
-#  # Create aws windows build stack
-#  create_win_docker_img_build_stack
-#
-#  echo "Executing AWS SSM commands to build Windows docker images."
-#  run_windows_img_build
-#
-#  echo "Waiting for docker images creation. Building the docker images need to take 1 hour."
-#  # TODO(CryptoAlg-624): These image build may fail due to the Docker Hub pull limits made on 2020-11-01.
-#  win_docker_img_build_status_check
+ # Always destroy docker build stacks (which include EC2 instance) on EXIT.
+ trap destroy_docker_img_build_stack EXIT
+
+ # Create/update aws-ecr repo.
+ cdk deploy aws-lc-ecr-windows-* --require-approval never
+
+ # Create aws windows build stack
+ create_win_docker_img_build_stack
+
+ echo "Executing AWS SSM commands to build Windows docker images."
+ run_windows_img_build
+
+ echo "Waiting for docker images creation. Building the docker images need to take 1 hour."
+ # TODO(CryptoAlg-624): These image build may fail due to the Docker Hub pull limits made on 2020-11-01.
+ win_docker_img_build_status_check
 }
 
 function setup_ci() {
@@ -296,6 +286,7 @@ function export_global_variables() {
   fi
   if [[ -z "${CDK_DEPLOY_REGION+x}" || -z "${CDK_DEPLOY_REGION}" ]]; then
     export CDK_DEPLOY_REGION='us-west-2'
+    export AWS_DEFAULT_REGION="${CDK_DEPLOY_REGION}"
   fi
   if [[ -z "${GITHUB_REPO_OWNER+x}" || -z "${GITHUB_REPO_OWNER}" ]]; then
     export GITHUB_REPO_OWNER='awslabs'
@@ -315,6 +306,11 @@ function export_global_variables() {
   export WIN_EC2_TAG_VALUE="aws-lc-windows-docker-image-build-${DATE_NOW}"
   export WIN_DOCKER_BUILD_SSM_DOCUMENT="windows-ssm-document-${DATE_NOW}"
   export IMG_BUILD_STATUS='unknown'
+  # 620771051181 is AWS-LC team AWS account.
+  if [[ "${CDK_DEPLOY_ACCOUNT}" != "620771051181" ]] && [[ "${GITHUB_REPO_OWNER}" == 'awslabs' ]]; then
+    echo "Only team account is allowed to create CI stacks on awslabs repo."
+    exit 1
+  fi
 }
 
 function main() {
@@ -331,6 +327,7 @@ function main() {
       ;;
     --aws-region)
       export CDK_DEPLOY_REGION="${2}"
+      export AWS_DEFAULT_REGION="${CDK_DEPLOY_REGION}"
       shift
       ;;
     --github-repo-owner)

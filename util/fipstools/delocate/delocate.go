@@ -439,7 +439,7 @@ func (d *delocation) processAarch64Instruction(statement, instruction *node32) (
 	argNodes := instructionArgs(instruction.next)
 
 	switch instructionName {
-	case "cset", "csel", "csetm", "cneg", "csinv", "cinc", "csinc", "csneg":
+	case "cset", "csel", "csetm", "cneg", "csinv", "cinc", "csinc", "csneg", "cinv", "ccmp":
 		// These functions are special because they take a condition-code name as
 		// an argument and that looks like a symbol reference.
 		d.writeNode(statement)
@@ -1947,7 +1947,7 @@ func transform(w stringWriter, inputs []inputFile) error {
 	}
 
 	w.WriteString(".type BORINGSSL_bcm_text_hash, @object\n")
-	w.WriteString(".size BORINGSSL_bcm_text_hash, 64\n")
+	w.WriteString(".size BORINGSSL_bcm_text_hash, 32\n")
 	w.WriteString("BORINGSSL_bcm_text_hash:\n")
 	for _, b := range fipscommon.UninitHashValue {
 		w.WriteString(".byte 0x" + strconv.FormatUint(uint64(b), 16) + "\n")

@@ -1,0 +1,20 @@
+#!/bin/bash
+set -exo pipefail
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+source tests/ci/common_posix_setup.sh
+
+print_system_and_dependency_information
+
+echo "Testing a prefix build of AWS-LC in debug mode."
+build_prefix_and_test
+
+echo "Testing a prefix build of AWS-LC in release mode."
+build_prefix_and_test -DCMAKE_BUILD_TYPE=Release
+
+echo "Testing a prefix build of AWS-LC small compilation."
+build_prefix_and_test -DOPENSSL_SMALL=1 -DCMAKE_BUILD_TYPE=Release
+
+echo "Testing a prefix build of AWS-LC in no asm mode."
+build_prefix_and_test -DOPENSSL_NO_ASM=1 -DCMAKE_BUILD_TYPE=Release

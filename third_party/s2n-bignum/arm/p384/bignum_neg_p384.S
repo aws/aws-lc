@@ -21,9 +21,10 @@
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_neg_p384
-        .globl  _bignum_neg_p384
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_neg_p384)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_neg_p384)
         .text
         .balign 4
 
@@ -41,54 +42,53 @@
 #define d5 x9
 
 
-bignum_neg_p384:
-_bignum_neg_p384:
+S2N_BN_SYMBOL(bignum_neg_p384):
 
 // Load the 6 digits of x
 
-                ldp     d0, d1, [x]
-                ldp     d2, d3, [x, #16]
-                ldp     d4, d5, [x, #32]
+        ldp     d0, d1, [x]
+        ldp     d2, d3, [x, #16]
+        ldp     d4, d5, [x, #32]
 
 // Set a bitmask p for the input being nonzero, so that we avoid doing
 // -0 = p_384 and hence maintain strict modular reduction
 
-                orr     p, d0, d1
-                orr     t, d2, d3
-                orr     p, p, t
-                orr     t, d4, d5
-                orr     p, p, t
-                cmp     p, #0
-                csetm   p, ne
+        orr     p, d0, d1
+        orr     t, d2, d3
+        orr     p, p, t
+        orr     t, d4, d5
+        orr     p, p, t
+        cmp     p, #0
+        csetm   p, ne
 
 // Load and mask the complicated lower three words of
 // p_384 = [-1;-1;-1;n2;n1;n0] and subtract, using mask itself for upper digits
 
-                mov     t, #0x00000000ffffffff
-                and     t, t, p
-                subs    d0, t, d0
+        mov     t, #0x00000000ffffffff
+        and     t, t, p
+        subs    d0, t, d0
 
-                mov     t, #0xffffffff00000000
-                and     t, t, p
-                sbcs    d1, t, d1
+        mov     t, #0xffffffff00000000
+        and     t, t, p
+        sbcs    d1, t, d1
 
-                mov     t, #0xfffffffffffffffe
-                and     t, t, p
-                sbcs    d2, t, d2
+        mov     t, #0xfffffffffffffffe
+        and     t, t, p
+        sbcs    d2, t, d2
 
-                sbcs    d3, p, d3
-                sbcs    d4, p, d4
-                sbc     d5, p, d5
+        sbcs    d3, p, d3
+        sbcs    d4, p, d4
+        sbc     d5, p, d5
 
 // Write back the result
 
-                stp     d0, d1, [z]
-                stp     d2, d3, [z, #16]
-                stp     d4, d5, [z, #32]
+        stp     d0, d1, [z]
+        stp     d2, d3, [z, #16]
+        stp     d4, d5, [z, #32]
 
 // Return
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

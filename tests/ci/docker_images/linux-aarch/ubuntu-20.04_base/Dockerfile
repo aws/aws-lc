@@ -46,6 +46,7 @@ RUN set -ex && \
     wget https://dl.google.com/go/go1.15.2.linux-arm64.tar.gz && \
     tar -xvf go1.15.2.linux-arm64.tar.gz && \
     mv go /usr/local && \
+    apt-get --purge remove -y curl unzip && \
     apt-get autoremove --purge -y && \
     apt-get clean && \
     apt-get autoclean && \

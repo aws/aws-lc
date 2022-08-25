@@ -31,10 +31,15 @@
 
 #include "internal.h"
 #include "../internal.h"
+#include "../fipsmodule/cpucap/internal.h"
 
 
 // Various pre-computed constants.
 #include "./curve25519_tables.h"
+
+#if defined(OPENSSL_NO_ASM)
+#define FIAT_25519_NO_ASM
+#endif
 
 #if defined(BORINGSSL_CURVE25519_64BIT)
 #include "../../third_party/fiat/curve25519_64.h"
@@ -1932,11 +1937,8 @@ int ED25519_verify(const uint8_t *message, size_t message_len,
   OPENSSL_memcpy(pkcopy, public_key, 32);
   uint8_t rcopy[32];
   OPENSSL_memcpy(rcopy, signature, 32);
-  union {
-    uint64_t u64[4];
-    uint8_t u8[32];
-  } scopy;
-  OPENSSL_memcpy(&scopy.u8[0], signature + 32, 32);
+  uint8_t scopy[32];
+  OPENSSL_memcpy(scopy, signature + 32, 32);
 
   // https://tools.ietf.org/html/rfc8032#section-5.1.7 requires that s be in
   // the range [0, order) in order to prevent signature malleability.
@@ -1949,9 +1951,10 @@ int ED25519_verify(const uint8_t *message, size_t message_len,
     UINT64_C(0x1000000000000000),
   };
   for (size_t i = 3;; i--) {
-    if (scopy.u64[i] > kOrder[i]) {
+    uint64_t word = CRYPTO_load_u64_le(scopy + i * 8);
+    if (word > kOrder[i]) {
       return 0;
-    } else if (scopy.u64[i] < kOrder[i]) {
+    } else if (word < kOrder[i]) {
       break;
     } else if (i == 0) {
       return 0;
@@ -1969,7 +1972,7 @@ int ED25519_verify(const uint8_t *message, size_t message_len,
   x25519_sc_reduce(h);
 
   ge_p2 R;
-  ge_double_scalarmult_vartime(&R, h, &A, scopy.u8);
+  ge_double_scalarmult_vartime(&R, h, &A, scopy);
 
   uint8_t rcheck[32];
   x25519_ge_tobytes(rcheck, &R);

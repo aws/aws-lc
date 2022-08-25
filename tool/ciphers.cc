@@ -21,19 +21,69 @@
 #include <openssl/ssl.h>
 
 #include "internal.h"
+#include "../ssl/internal.h"
 
+static const argument_t kArguments[] = {
+    {
+        "-openssl-name", kBooleanArgument,
+        "Print OpenSSL-style cipher names instead of IETF cipher names.",
+    },
+    {
+        "-cipher-query", kOptionalArgument,
+        "An OpenSSL-style cipher suite string that is matched against "
+        "supported ciphers. Defaults to \"ALL\".",
+    },
+    {
+        "-print-all", kBooleanArgument,
+        "Prints all supported AWS-LC libssl ciphers for all TLS versions. "
+        "If this option is used, all other options are ignored, except for "
+        "-openssl-name.",
+    },
+    {
+        "", kOptionalArgument, "",
+    },
+};
 
 bool Ciphers(const std::vector<std::string> &args) {
-  bool openssl_name = false;
-  if (args.size() == 2 && args[0] == "-openssl-name") {
-    openssl_name = true;
-  } else if (args.size() != 1) {
-    fprintf(stderr,
-            "Usage: bssl ciphers [-openssl-name] <cipher suite string>\n");
+
+  args_map_t args_map;
+  if (!ParseKeyValueArguments(&args_map, args, kArguments)) {
+    PrintUsage(kArguments);
     return false;
   }
 
-  const std::string &ciphers_string = args.back();
+  bool print_all;
+  if (!GetBoolArgument(&print_all, "-print-all", args_map)) {
+    fprintf(stderr, "Error parsing -print-all\n");
+    return false;
+  }
+
+  bool openssl_name;
+  if (!GetBoolArgument(&openssl_name, "-openssl-name", args_map)) {
+    fprintf(stderr, "Error parsing -openssl-name\n");
+    return false;
+  }
+
+  if (print_all) {
+    return tls_print_all_supported_cipher_suites(openssl_name);
+  }
+
+  // Use a lambda to conditionally initialise const.
+  const std::string ciphers_string = [&] {
+    std::string non_const_ciphers_string;
+    if (!GetString(&non_const_ciphers_string, "-cipher-query", "ALL", args_map)) {
+      // Return an empty string from lambda as error. This also captures the
+      // case where the argument of |-cipher-query| is empty, which we can
+      // regard as an error.
+      return std::string();
+    }
+    return non_const_ciphers_string;
+  }();
+
+  if (ciphers_string.empty()) {
+    fprintf(stderr, "Error parsing -cipher-query: Query cipher string is empty\n");
+    return false;
+  }
 
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
   if (!SSL_CTX_set_strict_cipher_list(ctx.get(), ciphers_string.c_str())) {

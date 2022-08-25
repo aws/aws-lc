@@ -22,11 +22,14 @@
 //     (uint64_t z[static 6], uint64_t c, uint64_t x[static 6]);
 //
 // Standard x86-64 ABI: RDI = z, RSI = c, RDX = x
+// Microsoft x64 ABI:   RCX = z, RDX = c, R8 = x
 // ----------------------------------------------------------------------------
 
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_cmul_p384_alt
-        .globl  _bignum_cmul_p384_alt
+
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_cmul_p384_alt)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_cmul_p384_alt)
         .text
 
 #define z %rdi
@@ -57,16 +60,23 @@
 #define cshort %ecx
 #define qshort %ecx
 
-bignum_cmul_p384_alt:
-_bignum_cmul_p384_alt:
+S2N_BN_SYMBOL(bignum_cmul_p384_alt):
+
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+        movq    %r8, %rdx
+#endif
 
 // We seem to need (just!) one extra register, which we need to save and restore
 
-                pushq   %r12
+        pushq   %r12
 
 // Shuffle inputs (since we want %rdx for the high parts of products)
 
-                movq    %rdx, x
+        movq    %rdx, x
 
 // Multiply, accumulating the result as 2^384 * h + [d5;d4;d3;d2;d1;d0]
 // but actually immediately producing q = h + 1, our quotient approximation,
@@ -74,41 +84,41 @@ _bignum_cmul_p384_alt:
 // product is <= (2^64 - 1) * (p_384 - 1) and hence  h <= 2^64 - 2, meaning
 // there is no danger this addition of 1 could wrap.
 
-                movq    (x), a
-                mulq    m
-                movq    a, d0
-                movq    d, d1
+        movq    (x), a
+        mulq    m
+        movq    a, d0
+        movq    d, d1
 
-                movq    8(x), a
-                mulq    m
-                xorq    d2, d2
-                addq    a, d1
-                adcq    d, d2
+        movq    8(x), a
+        mulq    m
+        xorq    d2, d2
+        addq    a, d1
+        adcq    d, d2
 
-                movq    16(x), a
-                mulq    m
-                xorq    d3, d3
-                addq    a, d2
-                adcq    d, d3
+        movq    16(x), a
+        mulq    m
+        xorq    d3, d3
+        addq    a, d2
+        adcq    d, d3
 
-                movq    24(x), a
-                mulq    m
-                xorq    d4, d4
-                addq    a, d3
-                adcq    d, d4
+        movq    24(x), a
+        mulq    m
+        xorq    d4, d4
+        addq    a, d3
+        adcq    d, d4
 
-                movq    32(x), a
-                mulq    m
-                addq    a, d4
-                adcq    $0, d
+        movq    32(x), a
+        mulq    m
+        addq    a, d4
+        adcq    $0, d
 
-                movq    m, a
-                movq    d, d5
-                mulq     40(x)
-                movl    $1, qshort
+        movq    m, a
+        movq    d, d5
+        mulq     40(x)
+        movl    $1, qshort
 
-                addq    a, d5
-                adcq    d, q
+        addq    a, d5
+        adcq    d, q
 
 // It's easy to see -p_384 <= z - q * p_384 < p_384, so we just need to
 // subtract q * p_384 and then correct if that is negative by adding p_384.
@@ -120,23 +130,23 @@ _bignum_cmul_p384_alt:
 //       = 2^384 * (h - q) + (l + q * r)
 //       = 2^384 * (-1) + (l + q * r)
 
-                movq    $0xffffffff00000001, a
-                mulq    q
-                addq    a, d0
-                adcq    d, d1
-                adcq    q, d2
-                movq    q, a
-                sbbq    c, c
-                movl    $0x00000000ffffffff, dshort
-                negq    c
-                mulq    d
-                addq    a, d1
-                adcq    d, d2
-                adcq    c, d3
-                adcq    $0, d4
-                adcq    $0, d5
-                sbbq    c, c
-                notq    c
+        movq    $0xffffffff00000001, a
+        mulq    q
+        addq    a, d0
+        adcq    d, d1
+        adcq    q, d2
+        movq    q, a
+        sbbq    c, c
+        movl    $0x00000000ffffffff, dshort
+        negq    c
+        mulq    d
+        addq    a, d1
+        adcq    d, d2
+        adcq    c, d3
+        adcq    $0, d4
+        adcq    $0, d5
+        sbbq    c, c
+        notq    c
 
 // The net c value is now the top word of the 7-word answer, hence will
 // be -1 if we need a corrective addition, 0 otherwise, usable as a mask.
@@ -144,29 +154,33 @@ _bignum_cmul_p384_alt:
 // fact done by a masked subtraction of 2^384 - p_384, so that we only
 // have three nonzero digits and so can avoid using another register.
 
-                movl    $0x00000000ffffffff, dshort
-                xorq    a, a
-                andq    c, d
-                subq    d, a
-                andq    $1, c
+        movl    $0x00000000ffffffff, dshort
+        xorq    a, a
+        andq    c, d
+        subq    d, a
+        andq    $1, c
 
-                subq    a, d0
-                movq    d0, (z)
-                sbbq    d, d1
-                movq    d1, 8(z)
-                sbbq    c, d2
-                movq    d2, 16(z)
-                sbbq    $0, d3
-                movq    d3, 24(z)
-                sbbq    $0, d4
-                movq    d4, 32(z)
-                sbbq    $0, d5
-                movq    d5, 40(z)
+        subq    a, d0
+        movq    d0, (z)
+        sbbq    d, d1
+        movq    d1, 8(z)
+        sbbq    c, d2
+        movq    d2, 16(z)
+        sbbq    $0, d3
+        movq    d3, 24(z)
+        sbbq    $0, d4
+        movq    d4, 32(z)
+        sbbq    $0, d5
+        movq    d5, 40(z)
 
 // Return
 
-                popq    %r12
-                ret
+        popq    %r12
+#if WINDOWS_ABI
+        popq   %rsi
+        popq   %rdi
+#endif
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

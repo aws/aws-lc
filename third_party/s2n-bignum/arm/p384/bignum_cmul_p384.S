@@ -23,11 +23,12 @@
 //
 // Standard ARM ABI: X0 = z, X1 = c, X2 = x
 // ----------------------------------------------------------------------------
+#include "_internal_s2n_bignum.h"
 
-        .globl  bignum_cmul_p384
-        .globl  _bignum_cmul_p384
-        .globl  bignum_cmul_p384_alt
-        .globl  _bignum_cmul_p384_alt
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_cmul_p384)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_cmul_p384)
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_cmul_p384_alt)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_cmul_p384_alt)
         .text
         .balign 4
 
@@ -57,34 +58,33 @@
 #define l x9
 
 
-bignum_cmul_p384:
-_bignum_cmul_p384:
-bignum_cmul_p384_alt:
-_bignum_cmul_p384_alt:
+S2N_BN_SYMBOL(bignum_cmul_p384):
+
+S2N_BN_SYMBOL(bignum_cmul_p384_alt):
 
 // First do the multiply, straightforwardly, getting [h; d5; ...; d0]
 
-                ldp     a0, a1, [x]
-                ldp     a2, a3, [x, #16]
-                ldp     a4, a5, [x, #32]
-                mul     d0, c, a0
-                mul     d1, c, a1
-                mul     d2, c, a2
-                mul     d3, c, a3
-                mul     d4, c, a4
-                mul     d5, c, a5
-                umulh   a0, c, a0
-                umulh   a1, c, a1
-                umulh   a2, c, a2
-                umulh   a3, c, a3
-                umulh   a4, c, a4
-                umulh   h, c, a5
-                adds    d1, d1, a0
-                adcs    d2, d2, a1
-                adcs    d3, d3, a2
-                adcs    d4, d4, a3
-                adcs    d5, d5, a4
-                adc     h, h, xzr
+        ldp     a0, a1, [x]
+        ldp     a2, a3, [x, #16]
+        ldp     a4, a5, [x, #32]
+        mul     d0, c, a0
+        mul     d1, c, a1
+        mul     d2, c, a2
+        mul     d3, c, a3
+        mul     d4, c, a4
+        mul     d5, c, a5
+        umulh   a0, c, a0
+        umulh   a1, c, a1
+        umulh   a2, c, a2
+        umulh   a3, c, a3
+        umulh   a4, c, a4
+        umulh   h, c, a5
+        adds    d1, d1, a0
+        adcs    d2, d2, a1
+        adcs    d3, d3, a2
+        adcs    d4, d4, a3
+        adcs    d5, d5, a4
+        adc     h, h, xzr
 
 // Let h be the top word of this intermediate product and l the low 6 words.
 // By the range hypothesis on the input, we know h1 = h + 1 does not wrap
@@ -106,47 +106,47 @@ _bignum_cmul_p384_alt:
 //       = l + 2^128 * (h + 1) + 2^96 * (h + 1) - 2^32 * (h + 1) + (h + 1)
 //       = l + 2^128 * (h + 1) + 2^96 * h + 2^32 * ~h + (h + 1)
 
-                add     h1, h, #1
-                orn     hn, xzr, h
-                lsl     a0, hn, #32
-                extr    a1, h, hn, #32
-                lsr     a2, h, #32
+        add     h1, h, #1
+        orn     hn, xzr, h
+        lsl     a0, hn, #32
+        extr    a1, h, hn, #32
+        lsr     a2, h, #32
 
-                adds    a0, a0, h1
-                adcs    a1, a1, xzr
-                adcs    a2, a2, h1
-                adc     a3, xzr, xzr
+        adds    a0, a0, h1
+        adcs    a1, a1, xzr
+        adcs    a2, a2, h1
+        adc     a3, xzr, xzr
 
-                adds    d0, d0, a0
-                adcs    d1, d1, a1
-                adcs    d2, d2, a2
-                adcs    d3, d3, a3
-                adcs    d4, d4, xzr
-                adcs    d5, d5, xzr
+        adds    d0, d0, a0
+        adcs    d1, d1, a1
+        adcs    d2, d2, a2
+        adcs    d3, d3, a3
+        adcs    d4, d4, xzr
+        adcs    d5, d5, xzr
 
 // Catch the carry and do a masked addition of p_384
 
-                csetm   m, cc
+        csetm   m, cc
 
-                mov     l, #0x00000000ffffffff
-                and     l, l, m
-                adds    d0, d0, l
-                eor     l, l, m
-                adcs    d1, d1, l
-                mov     l, #0xfffffffffffffffe
-                and     l, l, m
-                adcs    d2, d2, l
-                adcs    d3, d3, m
-                adcs    d4, d4, m
-                adc     d5, d5, m
+        mov     l, #0x00000000ffffffff
+        and     l, l, m
+        adds    d0, d0, l
+        eor     l, l, m
+        adcs    d1, d1, l
+        mov     l, #0xfffffffffffffffe
+        and     l, l, m
+        adcs    d2, d2, l
+        adcs    d3, d3, m
+        adcs    d4, d4, m
+        adc     d5, d5, m
 
 // Store the result
 
-                stp     d0, d1, [z]
-                stp     d2, d3, [z, #16]
-                stp     d4, d5, [z, #32]
+        stp     d0, d1, [z]
+        stp     d2, d3, [z, #16]
+        stp     d4, d5, [z, #32]
 
-                ret
+        ret
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits

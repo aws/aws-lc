@@ -1,4 +1,3 @@
-
 add_executable(
   bssl
 
@@ -43,8 +42,11 @@ else()
   endif()
 endif()
 
+install(TARGETS bssl
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
 function(build_benchmark target_name additional_include_dir lib_crypto)
-  message(-- Building ${target_name} benchmark using header files from ${additional_include_dir} and libcrypto from ${lib_crypto}.)
+  message("-- Building ${target_name} benchmark using header files from ${additional_include_dir} and libcrypto from ${lib_crypto}.")
   add_executable(
           ${target_name}
           speed.cc
@@ -66,13 +68,41 @@ if(AWSLC_INSTALL_DIR)
   endif()
 endif()
 
-# This expects a directory which contains the includes in include/openssl/ and the OpenSSL artifacts in build/
-if(OPENSSL_INSTALL_DIR)
-  build_benchmark(ossl_bm ${OPENSSL_INSTALL_DIR}/include ${OPENSSL_INSTALL_DIR}/build/lib/libcrypto.a)
+# This expects a directory which contains the includes in include/openssl/ and the OpenSSL artifacts in lib/
+# Currently this is the default OpenSSL build we target so the "OPENSSL_1_1_BENCHMARK" flag isn't used, 
+# but we include this to maintain uniformity across OpenSSL versions
+if(OPENSSL_1_1_INSTALL_DIR)
+  build_benchmark(ossl_1_1_bm ${OPENSSL_1_1_INSTALL_DIR}/include ${OPENSSL_1_1_INSTALL_DIR}/lib/libcrypto.a)
 
-  target_compile_options(ossl_bm PUBLIC -DOPENSSL_BENCHMARK)
+  target_compile_options(ossl_1_1_bm PUBLIC -DOPENSSL_BENCHMARK -DOPENSSL_1_1_BENCHMARK)
   if(NOT MSVC AND NOT ANDROID)
-    target_link_libraries(ossl_bm pthread dl)
+    target_link_libraries(ossl_1_1_bm pthread dl)
+  endif()
+endif()
+
+# This expects a directory which contains the includes in include/openssl/ and the OpenSSL artifacts in lib/
+if(OPENSSL_1_0_INSTALL_DIR)
+  build_benchmark(ossl_1_0_bm ${OPENSSL_1_0_INSTALL_DIR}/include ${OPENSSL_1_0_INSTALL_DIR}/lib/libcrypto.a)
+
+  target_compile_options(ossl_1_0_bm PUBLIC -DOPENSSL_BENCHMARK -DOPENSSL_1_0_BENCHMARK)
+  if(NOT MSVC AND NOT ANDROID)
+    target_link_libraries(ossl_1_0_bm pthread dl)
+  endif()
+endif()
+
+# This expects a directory which contains the includes in include/openssl/ and the OpenSSL artifacts in lib/ or lib64/
+if(OPENSSL_3_0_INSTALL_DIR)
+  # The low-level function calls are deprecated for OpenSSL 3.0. We should revisit using these in the future, 
+  # but disabling the warnings works for now
+  find_library(OPENSSL_3_0_LIB_PATH libcrypto.a PATHS ${OPENSSL_3_0_INSTALL_DIR}/lib64/ ${OPENSSL_3_0_INSTALL_DIR}/lib/ NO_DEFAULT_PATH)
+
+  add_definitions("-Wno-deprecated-declarations")
+  build_benchmark(ossl_3_0_bm ${OPENSSL_3_0_INSTALL_DIR}/include ${OPENSSL_3_0_LIB_PATH})
+
+
+  target_compile_options(ossl_3_0_bm PUBLIC -DOPENSSL_BENCHMARK -DOPENSSL_3_0_BENCHMARK)
+  if(NOT MSVC AND NOT ANDROID)
+    target_link_libraries(ossl_3_0_bm pthread dl)
   endif()
 endif()
 

@@ -57,12 +57,24 @@
 #ifndef OPENSSL_HEADER_DIGEST_H
 #define OPENSSL_HEADER_DIGEST_H
 
+#include <stdbool.h>
+
 #include <openssl/base.h>
 
 #if defined(__cplusplus)
 extern "C" {
 #endif
 
+// If |enable| is true the SHA3 implementation will be enabled. If |enable| is
+// false, the SHA3 implementation will be disabled. If the SHA3 implementation
+// is disabled, using the implementation in any way will cause AWS-LC to exit
+// the process.
+// |unstable_sha3_enabled_flag| is configured globally.
+OPENSSL_EXPORT void EVP_MD_unstable_sha3_enable(bool enable);
+
+// EVP_MD_unstable_sha3_is_enabled returns wheather SHA3 is enabled.
+// |unstable_sha3_enabled_flag| is configured globally.
+OPENSSL_EXPORT bool EVP_MD_unstable_sha3_is_enabled(void);
 
 // Digest functions.
 //
@@ -84,6 +96,10 @@ OPENSSL_EXPORT const EVP_MD *EVP_sha256(void);
 OPENSSL_EXPORT const EVP_MD *EVP_sha384(void);
 OPENSSL_EXPORT const EVP_MD *EVP_sha512(void);
 OPENSSL_EXPORT const EVP_MD *EVP_sha512_256(void);
+OPENSSL_EXPORT const EVP_MD *EVP_sha3_224(void);
+OPENSSL_EXPORT const EVP_MD *EVP_sha3_256(void);
+OPENSSL_EXPORT const EVP_MD *EVP_sha3_384(void);
+OPENSSL_EXPORT const EVP_MD *EVP_sha3_512(void);
 OPENSSL_EXPORT const EVP_MD *EVP_blake2b256(void);
 
 // EVP_md5_sha1 is a TLS-specific |EVP_MD| which computes the concatenation of
@@ -208,11 +224,6 @@ OPENSSL_EXPORT size_t EVP_MD_size(const EVP_MD *md);
 // EVP_MD_block_size returns the native block-size of |md|, in bytes.
 OPENSSL_EXPORT size_t EVP_MD_block_size(const EVP_MD *md);
 
-// EVP_MD_FLAG_PKEY_DIGEST indicates that the digest function is used with a
-// specific public key in order to verify signatures. (For example,
-// EVP_dss1.)
-#define EVP_MD_FLAG_PKEY_DIGEST 1
-
 // EVP_MD_FLAG_DIGALGID_ABSENT indicates that the parameter type in an X.509
 // DigestAlgorithmIdentifier representing this digest function should be
 // undefined rather than NULL.
@@ -275,12 +286,6 @@ OPENSSL_EXPORT int EVP_add_digest(const EVP_MD *digest);
 // |name|, or NULL if the name is unknown.
 OPENSSL_EXPORT const EVP_MD *EVP_get_digestbyname(const char *);
 
-// EVP_dss1 returns the value of EVP_sha1(). This was provided by OpenSSL to
-// specifiy the original DSA signatures, which were fixed to use SHA-1. Note,
-// however, that attempting to sign or verify DSA signatures with the EVP
-// interface will always fail.
-OPENSSL_EXPORT const EVP_MD *EVP_dss1(void);
-
 // EVP_MD_CTX_create calls |EVP_MD_CTX_new|.
 OPENSSL_EXPORT EVP_MD_CTX *EVP_MD_CTX_create(void);
 
@@ -317,9 +322,10 @@ OPENSSL_EXPORT int EVP_MD_nid(const EVP_MD *md);
 // responsible for freeing |pctx|. Calling |EVP_MD_CTX_cleanup| will not free
 // |pctx|.
 //
-// The caller is responsible for the memory associated to |ctx|'s |EVP_PKEY_CTX|
-// reference (the passed in |pctx| parameter), until |EVP_MD_CTX_set_pkey_ctx|
-// is called again with |pctx| = NULL.
+// A NULL |pctx| pointer is also allowed to set the |EVP_PKEY_CTX| reference
+// inside |ctx| to NULL. However, even when doing so, the caller is still
+// responsible for freeing the |pctx| pointer that had originally been
+// associated.
 //
 // |EVP_MD_CTX_set_pkey_ctx| will overwrite any |EVP_PKEY_CTX| object associated
 // to |ctx|. If it was not associated through a previous |EVP_MD_CTX_set_pkey_ctx|

@@ -9,13 +9,6 @@
 
 #if defined(AWSLC_FIPS)
 
-#define STATE_UNLOCKED 0
-
-struct fips_service_indicator_state {
-  uint64_t lock_state;
-  uint64_t counter;
-};
-
 // Only to be used internally, it is not intended for the user to update the
 // state. This function is used to update the service indicator state, if the
 // service is deemed to be approved.
@@ -39,43 +32,69 @@ void FIPS_service_indicator_update_state(void);
 void FIPS_service_indicator_lock_state(void);
 void FIPS_service_indicator_unlock_state(void);
 
+// The following functions may call |FIPS_service_indicator_update_state| if
+// their parameter specifies an approved operation.
+
+void AEAD_GCM_verify_service_indicator(const EVP_AEAD_CTX *ctx);
+void AEAD_CCM_verify_service_indicator(const EVP_AEAD_CTX *ctx);
+void AES_CMAC_verify_service_indicator(const CMAC_CTX *ctx);
+void EC_KEY_keygen_verify_service_indicator(const EC_KEY *eckey);
+void ECDH_verify_service_indicator(const EC_KEY *ec_key);
+void EVP_Cipher_verify_service_indicator(const EVP_CIPHER_CTX *ctx);
+void EVP_DigestSign_verify_service_indicator(const EVP_MD_CTX *ctx);
+void EVP_DigestVerify_verify_service_indicator(const EVP_MD_CTX *ctx);
+void EVP_PKEY_keygen_verify_service_indicator(const EVP_PKEY *pkey);
+void HMAC_verify_service_indicator(const EVP_MD *evp_md);
+void TLSKDF_verify_service_indicator(const EVP_MD *dgst);
+
 #else
 
-// Service indicator functions are not intended for use during non-FIPS mode.
-// If these functions are run during non-FIPS mode, they will provide no
-// operations.
+// Service indicator functions are no-ops in non-FIPS builds.
+
 OPENSSL_INLINE void FIPS_service_indicator_update_state(void) { }
 OPENSSL_INLINE void FIPS_service_indicator_lock_state(void) { }
 OPENSSL_INLINE void FIPS_service_indicator_unlock_state(void) { }
+
+// Service indicator check functions listed below are optimized to not do extra
+// checks, when not in FIPS mode. Arguments are cast with |OPENSSL_UNUSED| in an
+// attempt to avoid unused warnings.
+OPENSSL_INLINE void AEAD_GCM_verify_service_indicator(
+    OPENSSL_UNUSED const EVP_AEAD_CTX *ctx) {}
+
+OPENSSL_INLINE void AEAD_CCM_verify_service_indicator(
+    OPENSSL_UNUSED const EVP_AEAD_CTX *ctx) {}
+
+OPENSSL_INLINE void AES_CMAC_verify_service_indicator(
+    OPENSSL_UNUSED const CMAC_CTX *ctx) {}
+
+OPENSSL_INLINE void EC_KEY_keygen_verify_service_indicator(
+    OPENSSL_UNUSED const EC_KEY *eckey) {}
+
+OPENSSL_INLINE void ECDH_verify_service_indicator(
+    OPENSSL_UNUSED const EC_KEY *ec_key) {}
+
+OPENSSL_INLINE void EVP_Cipher_verify_service_indicator(
+    OPENSSL_UNUSED const EVP_CIPHER_CTX *ctx) {}
+
+OPENSSL_INLINE void EVP_DigestSign_verify_service_indicator(
+    OPENSSL_UNUSED const EVP_MD_CTX *ctx) {}
+
+OPENSSL_INLINE void EVP_DigestVerify_verify_service_indicator(
+    OPENSSL_UNUSED const EVP_MD_CTX *ctx) {}
+
+OPENSSL_INLINE void EVP_PKEY_keygen_verify_service_indicator(
+    OPENSSL_UNUSED const EVP_PKEY *pkey) {}
+
+OPENSSL_INLINE void HMAC_verify_service_indicator(
+    OPENSSL_UNUSED const EVP_MD *evp_md) {}
+
+OPENSSL_INLINE void TLSKDF_verify_service_indicator(
+    OPENSSL_UNUSED const EVP_MD *dgst) {}
 
 #endif // AWSLC_FIPS
 
 // is_fips_build is similar to |FIPS_mode| but returns 1 including in the case
 // of #if defined(OPENSSL_ASAN)
 int is_fips_build(void);
-
-// Service indicator check functions parameters are assumed to be not NULL.
-
-void AES_verify_service_indicator(const EVP_CIPHER_CTX *ctx, const unsigned key_rounds);
-
-void AEAD_GCM_verify_service_indicator(const EVP_AEAD_CTX *ctx);
-
-void AEAD_CCM_verify_service_indicator(const EVP_AEAD_CTX *ctx);
-
-void AES_CMAC_verify_service_indicator(const CMAC_CTX *ctx);
-
-void HMAC_verify_service_indicator(const EVP_MD *evp_md);
-
-void EVP_PKEY_keygen_verify_service_indicator(const EVP_PKEY *pkey);
-
-void DigestSign_verify_service_indicator(const EVP_MD_CTX *ctx);
-
-void DigestVerify_verify_service_indicator(const EVP_MD_CTX *ctx);
-
-void ECDH_verify_service_indicator(const EC_KEY *ec_key);
-
-void TLSKDF_verify_service_indicator(const EVP_MD *dgst);
-
-void EC_KEY_keygen_verify_service_indicator(EC_KEY *eckey);
 
 #endif  // AWSLC_HEADER_SERVICE_INDICATOR_INTERNAL_H

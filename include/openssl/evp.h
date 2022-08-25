@@ -179,6 +179,7 @@ OPENSSL_EXPORT EC_KEY *EVP_PKEY_get1_EC_KEY(const EVP_PKEY *pkey);
 #define EVP_PKEY_ED25519 NID_ED25519
 #define EVP_PKEY_X25519 NID_X25519
 #define EVP_PKEY_KYBER512 NID_KYBER512
+#define EVP_PKEY_HKDF NID_hkdf
 
 // EVP_PKEY_assign sets the underlying key of |pkey| to |key|, which must be of
 // the given type. It returns one if successful or zero if the |type| argument
@@ -244,15 +245,13 @@ OPENSSL_EXPORT int EVP_marshal_private_key(CBB *cbb, const EVP_PKEY *key);
 // prefix of |ED25519_sign|'s 64-byte private key.
 
 // EVP_PKEY_new_raw_private_key returns a newly allocated |EVP_PKEY| wrapping a
-// private key of the specified type. It returns one on success and zero on
-// error.
+// private key of the specified type. It returns NULL on error.
 OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_new_raw_private_key(int type, ENGINE *unused,
                                                       const uint8_t *in,
                                                       size_t len);
 
 // EVP_PKEY_new_raw_public_key returns a newly allocated |EVP_PKEY| wrapping a
-// public key of the specified type. It returns one on success and zero on
-// error.
+// public key of the specified type. It returns NULL on error.
 OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_new_raw_public_key(int type, ENGINE *unused,
                                                      const uint8_t *in,
                                                      size_t len);
@@ -666,11 +665,11 @@ OPENSSL_EXPORT int EVP_PKEY_derive_init(EVP_PKEY_CTX *ctx);
 // success and zero on error.
 OPENSSL_EXPORT int EVP_PKEY_derive_set_peer(EVP_PKEY_CTX *ctx, EVP_PKEY *peer);
 
-// EVP_PKEY_derive derives a shared key between the two keys configured in
-// |ctx|. If |key| is non-NULL then, on entry, |out_key_len| must contain the
-// amount of space at |key|. If sufficient then the shared key will be written
-// to |key| and |*out_key_len| will be set to the length. If |key| is NULL then
-// |out_key_len| will be set to the maximum length.
+// EVP_PKEY_derive derives a shared key from |ctx|. If |key| is non-NULL then,
+// on entry, |out_key_len| must contain the amount of space at |key|. If
+// sufficient then the shared key will be written to |key| and |*out_key_len|
+// will be set to the length. If |key| is NULL then |out_key_len| will be set to
+// the maximum length.
 //
 // WARNING: Setting |out| to NULL only gives the maximum size of the key. The
 // actual key may be smaller.
@@ -882,12 +881,6 @@ OPENSSL_EXPORT void EVP_MD_do_all_sorted(void (*callback)(const EVP_MD *cipher,
                                                           const char *unused,
                                                           void *arg),
                                          void *arg);
-
-OPENSSL_EXPORT void EVP_MD_do_all(void (*callback)(const EVP_MD *cipher,
-                                                   const char *name,
-                                                   const char *unused,
-                                                   void *arg),
-                                  void *arg);
 
 // i2d_PrivateKey marshals a private key from |key| to type-specific format, as
 // described in |i2d_SAMPLE|.

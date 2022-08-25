@@ -7,7 +7,7 @@ from util.ecr_util import ecr_arn
 from util.iam_policies import code_build_batch_policy_in_json, \
     code_build_publish_metrics_in_json
 from util.metadata import AWS_ACCOUNT, AWS_REGION, GITHUB_REPO_OWNER, GITHUB_REPO_NAME
-from util.yml_loader import YmlLoader
+from util.build_spec_loader import BuildSpecLoader
 
 
 class AwsLcGitHubFuzzCIStack(core.Stack):
@@ -16,8 +16,6 @@ class AwsLcGitHubFuzzCIStack(core.Stack):
     def __init__(self,
                  scope: core.Construct,
                  id: str,
-                 x86_ecr_repo_name: str,
-                 arm_ecr_repo_name: str,
                  spec_file_path: str,
                  **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
@@ -33,7 +31,7 @@ class AwsLcGitHubFuzzCIStack(core.Stack):
                     codebuild.EventAction.PULL_REQUEST_UPDATED,
                     codebuild.EventAction.PULL_REQUEST_REOPENED)
             ],
-            clone_depth=1)
+            webhook_triggers_batch_build=True)
 
         # Define a IAM role for this stack.
         code_build_batch_policy = iam.PolicyDocument.from_json(
@@ -95,11 +93,6 @@ class AwsLcGitHubFuzzCIStack(core.Stack):
             provisioned_throughput_per_second=core.Size.mebibytes(100),
         )
 
-        # Create build spec.
-        placeholder_map = {"X86_ECR_REPO_PLACEHOLDER": ecr_arn(x86_ecr_repo_name),
-                           "ARM_ECR_REPO_PLACEHOLDER": ecr_arn(arm_ecr_repo_name)}
-        build_spec_content = YmlLoader.load(spec_file_path, placeholder_map)
-
         # Define CodeBuild.
         fuzz_codebuild = codebuild.Project(
             scope=self,
@@ -111,26 +104,19 @@ class AwsLcGitHubFuzzCIStack(core.Stack):
             environment=codebuild.BuildEnvironment(compute_type=codebuild.ComputeType.LARGE,
                                                    privileged=True,
                                                    build_image=codebuild.LinuxBuildImage.STANDARD_4_0),
-            build_spec=codebuild.BuildSpec.from_object(build_spec_content),
+            build_spec=BuildSpecLoader.load(spec_file_path),
             vpc=fuzz_vpc,
             security_groups=[build_security_group])
+        fuzz_codebuild.enable_batch_builds()
 
-        # TODO: add build type BUILD_BATCH when CFN finishes the feature release. See CryptoAlg-575.
-
-        # Add 'BuildBatchConfig' property, which is not supported in CDK.
         # CDK raw overrides: https://docs.aws.amazon.com/cdk/latest/guide/cfn_layer.html#cfn_layer_raw
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-codebuild-project.html#aws-resource-codebuild-project-properties
-        cfn_codebuild = fuzz_codebuild.node.default_child
-        cfn_codebuild.add_override("Properties.BuildBatchConfig", {
-            "ServiceRole": role.role_arn,
-            "TimeoutInMins": 120
-        })
-
         # The EFS identifier needs to match tests/ci/common_fuzz.sh, CodeBuild defines an environment variable named
         # codebuild_$identifier.
         # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-codebuild-project-projectfilesystemlocation.html
         #
         # TODO: add this to the CDK project above when it supports EfsFileSystemLocation
+        cfn_codebuild = fuzz_codebuild.node.default_child
         cfn_codebuild.add_override("Properties.FileSystemLocations", [{
           "Identifier": "fuzzing_root",
           "Location": "%s.efs.%s.amazonaws.com:/" % (fuzz_filesystem.file_system_id, AWS_REGION),
