@@ -353,7 +353,6 @@ add_library(
   evp_extra/p_x25519.c
   evp_extra/p_x25519_asn1.c
   evp_extra/p_methods.c
-  evp_extra/pbkdf.c
   evp_extra/print.c
   evp_extra/scrypt.c
   evp_extra/sign.c
@@ -652,7 +651,6 @@ if(BUILD_TESTING)
     err/err_test.cc
     evp_extra/evp_extra_test.cc
     evp_extra/evp_test.cc
-    evp_extra/pbkdf_test.cc
     evp_extra/scrypt_test.cc
     fipsmodule/aes/aes_test.cc
     fipsmodule/bn/bn_test.cc
@@ -663,6 +661,7 @@ if(BUILD_TESTING)
     fipsmodule/md5/md5_test.cc
     fipsmodule/modes/gcm_test.cc
     fipsmodule/modes/xts_test.cc
+    fipsmodule/pbkdf/pbkdf_test.cc
     fipsmodule/rand/ctrdrbg_test.cc
     fipsmodule/rand/cpu_jitter_test.cc
     fipsmodule/rand/fork_detect_test.cc

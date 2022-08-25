@@ -116,6 +116,7 @@
 #include "modes/ofb.c"
 #include "modes/xts.c"
 #include "modes/polyval.c"
+#include "pbkdf/pbkdf.c"
 #include "rand/ctrdrbg.c"
 #include "rand/fork_detect.c"
 #include "rand/rand.c"
