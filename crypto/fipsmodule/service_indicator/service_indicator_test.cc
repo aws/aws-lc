@@ -1967,12 +1967,23 @@ TEST_P(KDF_ServiceIndicatorTest, TLSKDF) {
   EXPECT_EQ(approved, test.expect_approved);
 }
 
-static const char kPBKDF2Password1[] = "password";
-static const uint8_t kPBKDF2Salt1[] = "salt";
-static const char kPBKDF2Password2[] = "passwordPASSWORDpassword";
-static const uint8_t kPBKDF2Salt2[] = "saltSALTsaltSALTsaltSALTsaltSALTsalt";
-static const char kPBKDF2Password3[] = "pass\0word";
-static const uint8_t kPBKDF2Salt3[] = "sa\0lt";
+static const uint8_t kPBKDF2Password1[] = {
+    'p', 'a', 's', 's', 'w', 'o', 'r', 'd'
+};
+static const uint8_t kPBKDF2Salt1[] = {'s', 'a', 'l', 't'};
+static const uint8_t kPBKDF2Password2[] = {
+    'p', 'a', 's', 's', 'w', 'o', 'r', 'd', 'P', 'A', 'S', 'S', 'W', 'O', 'R',
+    'D', 'p', 'a', 's', 's', 'w', 'o', 'r', 'd'
+};
+static const uint8_t kPBKDF2Salt2[] = {
+    's', 'a', 'l', 't', 'S', 'A', 'L', 'T', 's', 'a', 'l', 't', 'S', 'A', 'L',
+    'T', 's', 'a', 'l', 't', 'S', 'A', 'L', 'T', 's', 'a', 'l', 't', 'S', 'A',
+    'L', 'T', 's', 'a', 'l', 't'
+};
+static const uint8_t kPBKDF2Password3[] = {
+    'p', 'a', 's', 's', '\0', 'w', 'o', 'r', 'd'
+};
+static const uint8_t kPBKDF2Salt3[] = {'s', 'a', '\0', 'l', 't'};
 
 static const uint8_t kPBKDF2DerivedKey1SHA1[] = {
     0x0c, 0x60, 0xc8, 0x0f, 0x96, 0x1f, 0x0e, 0x71, 0xf3, 0xa9, 0xb5, 0x24,
@@ -2107,7 +2118,7 @@ static const uint8_t kPBKDF2DerivedKey6SHA512[] = {
 static const struct PBKDF2TestVector {
     // func is the hash function for PBKDF2 to test.
     const EVP_MD *(*func)();
-    const char *password;
+    const uint8_t *password;
     const size_t password_len;
     const uint8_t *salt;
     const size_t salt_len;
@@ -2389,7 +2400,8 @@ TEST_P(PBKDF2_ServiceIndicatorTest, PBKDF2) {
 
   uint8_t output[sizeof(kPBKDF2DerivedKey5SHA1)];   // largest test vector output size
   CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, ASSERT_TRUE(PKCS5_PBKDF2_HMAC(test.password, test.password_len,
+      approved, ASSERT_TRUE(PKCS5_PBKDF2_HMAC((const char *)test.password,
+                                              test.password_len,
                                               test.salt, test.salt_len,
                                               test.iterations,
                                               test.func(), test.output_len,
