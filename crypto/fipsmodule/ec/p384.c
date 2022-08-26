@@ -85,13 +85,13 @@ static inline uint8_t p384_use_s2n_bignum_alt(void) {
 // functions -- the default one and the alternative (suffixed _alt).
 // Depending on the architecture one version is faster than the other.
 // Generally, the "_alt" functions are faster on architectures with higher
-// multiplier throughput, for example, Graviton 3 and Apple's M1 chips.
+// multiplier throughput, for example, Graviton 3, Apple's M1 and iPhone chips.
 // Until we find a clear way to determine in runtime which architecture we
 // are running on we stick with the default s2n-bignum functions. Except in
-// the case of M1, because we know that if the OS is macOS and the CPU is
-// aarch64 then the CPU must be M1 so the "_alt" functions will be faster.
+// the case of Apple, because we know that on Apple's Arm chips the "_alt"
+// functions are faster.
 static inline uint8_t p384_use_s2n_bignum_alt(void) {
-#if defined(OPENSSL_MACOS)
+#if defined(OPENSSL_APPLE)
   return 1;
 #else
   return 0;
