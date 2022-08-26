@@ -83,7 +83,7 @@ ASN1_SEQUENCE_enc(X509_CINF, enc, 0) = {
         ASN1_SIMPLE(X509_CINF, key, X509_PUBKEY),
         ASN1_IMP_OPT(X509_CINF, issuerUID, ASN1_BIT_STRING, 1),
         ASN1_IMP_OPT(X509_CINF, subjectUID, ASN1_BIT_STRING, 2),
-        ASN1_EXP_SEQUENCE_OF_OPT(X509_CINF, extensions, X509_EXTENSION, 3)
+        ASN1_EXP_SEQUENCE_OF_OPT(X509_CINF, extensions, X509_EXTENSION, 3),
 } ASN1_SEQUENCE_END_enc(X509_CINF, X509_CINF)
 
 IMPLEMENT_ASN1_FUNCTIONS(X509_CINF)
@@ -167,7 +167,7 @@ static int x509_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
 ASN1_SEQUENCE_ref(X509, x509_cb) = {
         ASN1_SIMPLE(X509, cert_info, X509_CINF),
         ASN1_SIMPLE(X509, sig_alg, X509_ALGOR),
-        ASN1_SIMPLE(X509, signature, ASN1_BIT_STRING)
+        ASN1_SIMPLE(X509, signature, ASN1_BIT_STRING),
 } ASN1_SEQUENCE_END_ref(X509, X509)
 
 IMPLEMENT_ASN1_FUNCTIONS(X509)
@@ -351,8 +351,8 @@ int i2d_X509_tbs(X509 *x509, unsigned char **outp)
 
 int X509_set1_signature_algo(X509 *x509, const X509_ALGOR *algo)
 {
-    /* TODO(davidben): Const-correct generated ASN.1 dup functions.
-     * Alternatively, when the types are hidden and we can embed required fields
+    /* TODO(https://crbug.com/boringssl/407): Generated ASN.1 dup functions
+     * should be const. Alternatively, when we can embed required fields
      * directly in structs, import |X509_ALGOR_copy| from upstream. */
     X509_ALGOR *copy1 = X509_ALGOR_dup((X509_ALGOR *)algo);
     X509_ALGOR *copy2 = X509_ALGOR_dup((X509_ALGOR *)algo);

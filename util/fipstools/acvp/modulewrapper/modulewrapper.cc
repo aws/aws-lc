@@ -224,6 +224,15 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
         }]
       },
       {
+        "algorithm": "ACVP-AES-XTS",
+        "revision": "2.0",
+        "direction": ["encrypt", "decrypt"],
+        "keyLen": [256],
+        "payloadLen": [1024],
+        "tweakMode": ["number"],
+        "dataUnitLenMatchesPayload": true
+      },
+      {
         "algorithm": "ACVP-AES-ECB",
         "revision": "1.0",
         "direction": ["encrypt", "decrypt"],
@@ -253,10 +262,10 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
         "direction": ["encrypt", "decrypt"],
         "keyLen": [128, 192, 256],
         "payloadLen": [{
-          "min": 0, "max": 256, "increment": 8
+          "min": 0, "max": 65536, "increment": 8
         }],
         "aadLen": [{
-          "min": 0, "max": 320, "increment": 8
+          "min": 0, "max": 65536, "increment": 8
         }],
         "tagLen": [32, 64, 96, 104, 112, 120, 128],
         "ivLen": [96],
@@ -269,10 +278,10 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
         "direction": ["encrypt", "decrypt"],
         "keyLen": [128, 192, 256],
         "payloadLen": [{
-          "min": 0, "max": 256, "increment": 8
+          "min": 0, "max": 65536, "increment": 8
         }],
         "aadLen": [{
-          "min": 0, "max": 320, "increment": 8
+          "min": 0, "max": 65536, "increment": 8
         }],
         "tagLen": [32, 64, 96, 104, 112, 120, 128],
         "ivLen": [96],
@@ -291,7 +300,7 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
         "keyLen": [
             128, 192, 256
         ],
-        "payloadLen": [{"min": 128, "max": 1024, "increment": 64}]
+        "payloadLen": [{"min": 128, "max": 4096, "increment": 64}]
       },
       {
         "algorithm": "ACVP-AES-KWP",
@@ -320,14 +329,14 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
         ],
         "payloadLen": [{"min": 0, "max": 256, "increment": 8}],
         "ivLen": [104],
-        "tagLen": [32],
-        "aadLen": [{"min": 0, "max": 1024, "increment": 8}]
+        "tagLen": [32, 64],
+        "aadLen": [{"min": 0, "max": 524288, "increment": 8}]
       },
       {
         "algorithm": "HMAC-SHA-1",
         "revision": "1.0",
         "keyLen": [{
-          "min": 8, "max": 2048, "increment": 8
+          "min": 8, "max": 524288, "increment": 8
         }],
         "macLen": [{
           "min": 32, "max": 160, "increment": 8
@@ -337,7 +346,7 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
         "algorithm": "HMAC-SHA2-224",
         "revision": "1.0",
         "keyLen": [{
-          "min": 8, "max": 2048, "increment": 8
+          "min": 8, "max": 524288, "increment": 8
         }],
         "macLen": [{
           "min": 32, "max": 224, "increment": 8
@@ -347,7 +356,7 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
         "algorithm": "HMAC-SHA2-256",
         "revision": "1.0",
         "keyLen": [{
-          "min": 8, "max": 2048, "increment": 8
+          "min": 8, "max": 524288, "increment": 8
         }],
         "macLen": [{
           "min": 32, "max": 256, "increment": 8
@@ -357,7 +366,7 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
         "algorithm": "HMAC-SHA2-384",
         "revision": "1.0",
         "keyLen": [{
-          "min": 8, "max": 2048, "increment": 8
+          "min": 8, "max": 524288, "increment": 8
         }],
         "macLen": [{
           "min": 32, "max": 384, "increment": 8
@@ -367,7 +376,7 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
         "algorithm": "HMAC-SHA2-512",
         "revision": "1.0",
         "keyLen": [{
-          "min": 8, "max": 2048, "increment": 8
+          "min": 8, "max": 524288, "increment": 8
         }],
         "macLen": [{
           "min": 32, "max": 512, "increment": 8
@@ -377,7 +386,7 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
         "algorithm": "HMAC-SHA2-512/256",
         "revision": "1.0",
         "keyLen": [{
-          "min": 8, "max": 2048, "increment": 8
+          "min": 8, "max": 524288, "increment": 8
         }],
         "macLen": [{
           "min": 32, "max": 256, "increment": 8
@@ -778,12 +787,12 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
           "direction": ["gen", "ver"],
           "msgLen": [{
             "min": 0,
-            "max": 65536,
+            "max": 524288,
             "increment": 8
           }],
           "keyLen": [128, 256],
           "macLen": [{
-            "min": 32,
+            "min": 8,
             "max": 128,
             "increment": 8
           }]
@@ -939,6 +948,45 @@ static bool AES(const Span<const uint8_t> args[], ReplyCallback write_reply) {
       {Span<const uint8_t>(result), Span<const uint8_t>(prev_result)});
 }
 
+template <bool Encrypt>
+static bool AES_XTS(const Span<const uint8_t> args[], ReplyCallback write_reply) {
+  const EVP_CIPHER *cipher = EVP_aes_256_xts();
+
+  std::vector<uint8_t> key(args[0].begin(), args[0].end());
+  std::vector<uint8_t> plaintext(args[1].begin(), args[1].end());
+  std::vector<uint8_t> iv(args[2].begin(), args[2].end());
+
+  bssl::Span<const uint8_t> in = plaintext;
+  std::vector<uint8_t> out(plaintext.size());
+
+  bssl::ScopedEVP_CIPHER_CTX ctx;
+  int len;
+  
+  ctx.Reset();
+  if (Encrypt) {
+    if(!EVP_EncryptInit_ex(ctx.get(), cipher, nullptr, key.data(), iv.data())) {
+      LOG_ERROR("Failed XTS encrypt setup");
+      return false;
+    }
+    if(!EVP_EncryptUpdate(ctx.get(), out.data(), &len, in.data(), in.size())) {
+      LOG_ERROR("Failed XTS encrypt");
+      return false;
+    }
+  }
+  else {
+    if(!EVP_DecryptInit_ex(ctx.get(), cipher, nullptr, key.data(), iv.data())) {
+      LOG_ERROR("Failed XTS decrypt setup");
+      return false;
+    }
+    if(!EVP_DecryptUpdate(ctx.get(), out.data(), &len, in.data(), in.size())) {
+      LOG_ERROR("Failed XTS decrypt");
+      return false;
+    }
+  }
+  out.resize(len);
+  return write_reply({Span<const uint8_t>(out)});
+}
+
 template <int (*SetKey)(const uint8_t *key, unsigned bits, AES_KEY *out),
           int Direction>
 static bool AES_CBC(const Span<const uint8_t> args[], ReplyCallback write_reply) {
@@ -1092,10 +1140,21 @@ static bool AESCCMSetup(EVP_AEAD_CTX *ctx, Span<const uint8_t> tag_len_span,
     return false;
   }
   memcpy(&tag_len_32, tag_len_span.data(), sizeof(tag_len_32));
-  if (tag_len_32 != 4) {
-    LOG_ERROR("AES-CCM only supports 4-byte tags, but %u was requested\n",
-              static_cast<unsigned>(tag_len_32));
-    return false;
+  const EVP_AEAD *aead;
+  switch (tag_len_32) {
+    case 4:
+      aead = EVP_aead_aes_128_ccm_bluetooth();
+      break;
+
+    case 8:
+      aead = EVP_aead_aes_128_ccm_bluetooth_8();
+      break;
+
+    default:
+      LOG_ERROR(
+          "AES-CCM only supports 4- and 8-byte tags, but %u was requested\n",
+          static_cast<unsigned>(tag_len_32));
+      return false;
   }
 
   if (key.size() != 16) {
@@ -1104,8 +1163,8 @@ static bool AESCCMSetup(EVP_AEAD_CTX *ctx, Span<const uint8_t> tag_len_span,
     return false;
   }
 
-  if (!EVP_AEAD_CTX_init(ctx, EVP_aead_aes_128_ccm_bluetooth(), key.data(),
-                         key.size(), tag_len_32, nullptr)) {
+  if (!EVP_AEAD_CTX_init(ctx, aead, key.data(), key.size(), tag_len_32,
+                         nullptr)) {
     LOG_ERROR("Failed to setup AES-CCM with tag length %u\n",
               static_cast<unsigned>(tag_len_32));
     return false;
@@ -1986,6 +2045,8 @@ static struct {
     {"SHA2-512/256/MCT", 1, HashMCT<SHA512_256, SHA512_256_DIGEST_LENGTH>},
     {"AES/encrypt", 3, AES<AES_set_encrypt_key, AES_encrypt>},
     {"AES/decrypt", 3, AES<AES_set_decrypt_key, AES_decrypt>},
+    {"AES-XTS/encrypt", 3, AES_XTS<true>},
+    {"AES-XTS/decrypt", 3, AES_XTS<false>},
     {"AES-CBC/encrypt", 4, AES_CBC<AES_set_encrypt_key, AES_ENCRYPT>},
     {"AES-CBC/decrypt", 4, AES_CBC<AES_set_decrypt_key, AES_DECRYPT>},
     {"AES-CTR/encrypt", 4, AES_CTR},

@@ -254,6 +254,11 @@ else()
   file(COPY ${GENERATE_CODE_ROOT}/err_data.c DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
 endif()
 
+set(CRYPTO_RUST_SOURCES )
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/rust_wrapper.c)
+  list(APPEND CRYPTO_RUST_SOURCES rust_wrapper.c)
+endif()
+
 add_library(
   crypto_objects
   OBJECT
@@ -343,11 +348,11 @@ add_library(
   evp_extra/p_ec_asn1.c
   evp_extra/p_ed25519.c
   evp_extra/p_ed25519_asn1.c
+  evp_extra/p_hkdf.c
   evp_extra/p_rsa_asn1.c
   evp_extra/p_x25519.c
   evp_extra/p_x25519_asn1.c
   evp_extra/p_methods.c
-  evp_extra/pbkdf.c
   evp_extra/print.c
   evp_extra/scrypt.c
   evp_extra/sign.c
@@ -478,7 +483,6 @@ add_library(
   x509v3/v3_purp.c
   x509v3/v3_skey.c
   x509v3/v3_utl.c
-  xts/xts.c
   decrepit/bio/base64_bio.c
   decrepit/blowfish/blowfish.c
   decrepit/cast/cast_tables.c
@@ -488,6 +492,7 @@ add_library(
   decrepit/ripemd/ripemd.c
   decrepit/rsa/rsa_decrepit.c
   decrepit/x509/x509_decrepit.c
+  ${CRYPTO_RUST_SOURCES}
 
   ${CRYPTO_ARCH_SOURCES}
 )
@@ -648,7 +653,6 @@ if(BUILD_TESTING)
     err/err_test.cc
     evp_extra/evp_extra_test.cc
     evp_extra/evp_test.cc
-    evp_extra/pbkdf_test.cc
     evp_extra/scrypt_test.cc
     fipsmodule/aes/aes_test.cc
     fipsmodule/bn/bn_test.cc
@@ -658,6 +662,8 @@ if(BUILD_TESTING)
     fipsmodule/ecdsa/ecdsa_test.cc
     fipsmodule/md5/md5_test.cc
     fipsmodule/modes/gcm_test.cc
+    fipsmodule/modes/xts_test.cc
+    fipsmodule/pbkdf/pbkdf_test.cc
     fipsmodule/rand/ctrdrbg_test.cc
     fipsmodule/rand/cpu_jitter_test.cc
     fipsmodule/rand/fork_detect_test.cc
@@ -692,7 +698,6 @@ if(BUILD_TESTING)
     x509/x509_test.cc
     x509/x509_time_test.cc
     x509v3/tab_test.cc
-    xts/xts_test.cc
     decrepit/blowfish/blowfish_test.cc
     decrepit/cfb/cfb_test.cc
     decrepit/evp/evp_test.cc

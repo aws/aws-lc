@@ -84,13 +84,6 @@ function create_win_docker_img_build_stack() {
 
 function create_github_ci_stack() {
   cdk deploy aws-lc-ci-* --require-approval never
-
-  # Need to use aws cli to change webhook build type because CFN is not ready yet.
-  aws codebuild update-webhook --project-name aws-lc-ci-linux-x86 --build-type BUILD_BATCH
-  aws codebuild update-webhook --project-name aws-lc-ci-linux-arm --build-type BUILD_BATCH
-  aws codebuild update-webhook --project-name aws-lc-ci-windows-x86 --build-type BUILD_BATCH
-  aws codebuild update-webhook --project-name aws-lc-ci-fuzzing --build-type BUILD_BATCH
-  aws codebuild update-webhook --project-name aws-lc-ci-bm-framework --build-type BUILD_BATCH
 }
 
 function run_linux_img_build() {
@@ -313,6 +306,11 @@ function export_global_variables() {
   export WIN_EC2_TAG_VALUE="aws-lc-windows-docker-image-build-${DATE_NOW}"
   export WIN_DOCKER_BUILD_SSM_DOCUMENT="windows-ssm-document-${DATE_NOW}"
   export IMG_BUILD_STATUS='unknown'
+  # 620771051181 is AWS-LC team AWS account.
+  if [[ "${CDK_DEPLOY_ACCOUNT}" != "620771051181" ]] && [[ "${GITHUB_REPO_OWNER}" == 'awslabs' ]]; then
+    echo "Only team account is allowed to create CI stacks on awslabs repo."
+    exit 1
+  fi
 }
 
 function main() {

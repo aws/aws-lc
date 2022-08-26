@@ -11,11 +11,89 @@
 #include <string.h>
 
 
+uint8_t *SHA3_224(const uint8_t *data, size_t len,
+                  uint8_t out[SHA3_224_DIGEST_LENGTH]) {
+  KECCAK1600_CTX ctx;
+  int ok = (SHA3_Init(&ctx, SHA3_PAD_CHAR, SHA3_224_DIGEST_BITLENGTH) && 
+            SHA3_Update(&ctx, data, len) &&
+            SHA3_Final(out, &ctx));
+
+  OPENSSL_cleanse(&ctx, sizeof(ctx));
+  if (ok == 0) {
+    return NULL;
+  }
+  return out;
+}
+
 uint8_t *SHA3_256(const uint8_t *data, size_t len,
                   uint8_t out[SHA3_256_DIGEST_LENGTH]) {
   KECCAK1600_CTX ctx;
   int ok = (SHA3_Init(&ctx, SHA3_PAD_CHAR, SHA3_256_DIGEST_BITLENGTH) && 
             SHA3_Update(&ctx, data, len) &&
+            SHA3_Final(out, &ctx));
+
+  OPENSSL_cleanse(&ctx, sizeof(ctx));
+  if (ok == 0) {
+    return NULL;
+  }
+  return out;
+}
+
+uint8_t *SHA3_384(const uint8_t *data, size_t len,
+                  uint8_t out[SHA3_384_DIGEST_LENGTH]) {
+  KECCAK1600_CTX ctx;
+  int ok = (SHA3_Init(&ctx, SHA3_PAD_CHAR, SHA3_384_DIGEST_BITLENGTH) && 
+            SHA3_Update(&ctx, data, len) &&
+            SHA3_Final(out, &ctx));
+
+  OPENSSL_cleanse(&ctx, sizeof(ctx));
+  if (ok == 0) {
+    return NULL;
+  }
+  return out;
+}
+
+uint8_t *SHA3_512(const uint8_t *data, size_t len,
+                  uint8_t out[SHA3_512_DIGEST_LENGTH]) {
+  KECCAK1600_CTX ctx;
+  int ok = (SHA3_Init(&ctx, SHA3_PAD_CHAR, SHA3_512_DIGEST_BITLENGTH) && 
+            SHA3_Update(&ctx, data, len) &&
+            SHA3_Final(out, &ctx));
+
+  OPENSSL_cleanse(&ctx, sizeof(ctx));
+  if (ok == 0) {
+    return NULL;
+  }
+  return out;
+}
+
+uint8_t *SHAKE128(const uint8_t *data, const size_t in_len, uint8_t *out, size_t out_len) {
+  KECCAK1600_CTX ctx;
+  
+  // The SHAKE block size depends on the security level of the algorithm only
+  // It is independent of the output size
+  ctx.block_size = SHAKE128_BLOCKSIZE;
+
+  int ok = (SHA3_Init(&ctx, SHAKE_PAD_CHAR, out_len) && 
+            SHA3_Update(&ctx, data, in_len) &&
+            SHA3_Final(out, &ctx));
+
+  OPENSSL_cleanse(&ctx, sizeof(ctx));
+  if (ok == 0) {
+    return NULL;
+  }
+  return out;
+}
+
+uint8_t *SHAKE256(const uint8_t *data, const size_t in_len, uint8_t *out, size_t out_len) {
+  KECCAK1600_CTX ctx;
+  
+  // The SHAKE block size depends on the security level of the algorithm only
+  // It is independent of the output size
+  ctx.block_size = SHAKE256_BLOCKSIZE;
+
+  int ok = (SHA3_Init(&ctx, SHAKE_PAD_CHAR, out_len) && 
+            SHA3_Update(&ctx, data, in_len) &&
             SHA3_Final(out, &ctx));
 
   OPENSSL_cleanse(&ctx, sizeof(ctx));
@@ -32,10 +110,25 @@ void SHA3_Reset(KECCAK1600_CTX *ctx) {
 
 int SHA3_Init(KECCAK1600_CTX *ctx, uint8_t pad, size_t bit_len) {
   if (EVP_MD_unstable_sha3_is_enabled() == false) {
-        exit(1);
+    return 0;
   }
 
-  size_t block_size = SHA3_BLOCKSIZE(bit_len);
+  size_t block_size;
+
+  // The block size is computed differently depending on which algorithm
+  // is calling |SHA3_Init|:
+  //   - for SHA3 we compute it by calling SHA3_BLOCKSIZE(bit_len)
+  //     because the block size depends on the digest bit-length,
+  //   - for SHAKE we take the block size from the context.
+  // We use the given padding character to differentiate between SHA3 and SHAKE.
+  if (pad == SHA3_PAD_CHAR) {
+    block_size = SHA3_BLOCKSIZE(bit_len);
+  } else if (pad == SHAKE_PAD_CHAR) {
+    block_size = ctx->block_size;
+  } else {
+    return 0;
+  }
+  
   if (block_size <= sizeof(ctx->buf)) {
     SHA3_Reset(ctx);
     ctx->block_size = block_size;
@@ -48,7 +141,7 @@ int SHA3_Init(KECCAK1600_CTX *ctx, uint8_t pad, size_t bit_len) {
 
 int SHA3_Update(KECCAK1600_CTX *ctx, const void *data, size_t len) {
   if (EVP_MD_unstable_sha3_is_enabled() == false) {
-         exit(1);
+    return 0;
   }
 
   uint8_t *data_ptr_copy = (uint8_t *) data;
@@ -98,7 +191,7 @@ int SHA3_Update(KECCAK1600_CTX *ctx, const void *data, size_t len) {
 
 int SHA3_Final(uint8_t *md, KECCAK1600_CTX *ctx) {
   if (EVP_MD_unstable_sha3_is_enabled() == false) {
-         exit(1);
+    return 0;
   }
 
   size_t block_size = ctx->block_size;

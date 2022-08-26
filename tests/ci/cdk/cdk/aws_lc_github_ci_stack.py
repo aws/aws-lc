@@ -2,10 +2,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from aws_cdk import core, aws_codebuild as codebuild, aws_iam as iam
-from util.ecr_util import ecr_arn
 from util.iam_policies import code_build_batch_policy_in_json
-from util.metadata import AWS_ACCOUNT, AWS_REGION, GITHUB_REPO_OWNER, GITHUB_REPO_NAME
-from util.yml_loader import YmlLoader
+from util.metadata import GITHUB_REPO_OWNER, GITHUB_REPO_NAME
+from util.build_spec_loader import BuildSpecLoader
 
 
 class AwsLcGitHubCIStack(core.Stack):
@@ -14,7 +13,6 @@ class AwsLcGitHubCIStack(core.Stack):
     def __init__(self,
                  scope: core.Construct,
                  id: str,
-                 ecr_repo_name: str,
                  spec_file_path: str,
                  **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
@@ -30,7 +28,7 @@ class AwsLcGitHubCIStack(core.Stack):
                     codebuild.EventAction.PULL_REQUEST_UPDATED,
                     codebuild.EventAction.PULL_REQUEST_REOPENED)
             ],
-            clone_depth=1)
+            webhook_triggers_batch_build=True)
 
         # Define a IAM role for this stack.
         code_build_batch_policy = iam.PolicyDocument.from_json(
@@ -41,10 +39,6 @@ class AwsLcGitHubCIStack(core.Stack):
                         id="{}-role".format(id),
                         assumed_by=iam.ServicePrincipal("codebuild.amazonaws.com"),
                         inline_policies=inline_policies)
-
-        # Create build spec.
-        placeholder_map = {"ECR_REPO_PLACEHOLDER": ecr_arn(ecr_repo_name)}
-        build_spec_content = YmlLoader.load(spec_file_path, placeholder_map)
 
         # Define CodeBuild.
         project = codebuild.Project(
@@ -57,15 +51,5 @@ class AwsLcGitHubCIStack(core.Stack):
             environment=codebuild.BuildEnvironment(compute_type=codebuild.ComputeType.SMALL,
                                                    privileged=False,
                                                    build_image=codebuild.LinuxBuildImage.STANDARD_4_0),
-            build_spec=codebuild.BuildSpec.from_object(build_spec_content))
-
-        # TODO: add build type BUILD_BATCH when CFN finishes the feature release. See CryptoAlg-575.
-
-        # Add 'BuildBatchConfig' property, which is not supported in CDK.
-        # CDK raw overrides: https://docs.aws.amazon.com/cdk/latest/guide/cfn_layer.html#cfn_layer_raw
-        # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-codebuild-project.html#aws-resource-codebuild-project-properties
-        cfn_build = project.node.default_child
-        cfn_build.add_override("Properties.BuildBatchConfig", {
-            "ServiceRole": role.role_arn,
-            "TimeoutInMins": 180
-        })
+            build_spec=BuildSpecLoader.load(spec_file_path))
+        project.enable_batch_builds()
