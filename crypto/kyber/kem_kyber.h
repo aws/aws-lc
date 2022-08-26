@@ -6,6 +6,8 @@
 #include <openssl/base.h>
 #include <openssl/evp.h>
 
+// The values below are taken from the |api.h| file in the
+// pqcrystals-kyber directory.
 #define KYBER512_PUBLIC_KEY_BYTES 800
 #define KYBER512_SECRET_KEY_BYTES 1632
 #define KYBER512_CIPHERTEXT_BYTES 768

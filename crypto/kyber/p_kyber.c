@@ -36,20 +36,21 @@ static int pkey_kyber512_encapsulate(EVP_PKEY_CTX *ctx,
                                      size_t  *shared_secret_len) {
   *ciphertext_len    = KYBER512_CIPHERTEXT_BYTES;
   *shared_secret_len = KYBER512_SHARED_SECRET_BYTES;
-  if (ciphertext == NULL) { // Caller is performing a size check
+  if (ciphertext == NULL) { // Caller is getting parameter values.
     return 1;
   }
 
-  if (ctx != NULL &&
-      ctx->pkey != NULL &&
-      ctx->pkey->pkey.ptr != NULL &&
-      ctx->pkey->type == EVP_PKEY_KYBER512) {
-    KYBER512_KEY *key = ctx->pkey->pkey.ptr;
-    kyber512_encapsulate(ciphertext, shared_secret, key->pub);
-    return 1;
+  if (ctx == NULL ||
+      ctx->pkey == NULL ||
+      ctx->pkey->pkey.ptr == NULL ||
+      ctx->pkey->type != EVP_PKEY_KYBER512) {
+      return 0;
   }
 
-  return 0;
+  KYBER512_KEY *key = ctx->pkey->pkey.ptr;
+  kyber512_encapsulate(ciphertext, shared_secret, key->pub);
+
+  return 1;
 }
 
 static int pkey_kyber512_decapsulate(EVP_PKEY_CTX *ctx,
@@ -58,22 +59,24 @@ static int pkey_kyber512_decapsulate(EVP_PKEY_CTX *ctx,
                                      uint8_t *ciphertext,
                                      size_t   ciphertext_len) {
   *shared_secret_len = KYBER512_SHARED_SECRET_BYTES;
-  if (shared_secret == NULL) { // Caller is performing a size check
+  if (shared_secret == NULL) { // Caller is getting parameter values.
     return 1;
   }
 
-  if (ctx != NULL &&
-      ctx->pkey != NULL &&
-      ctx->pkey->pkey.ptr != NULL &&
-      ctx->pkey->type == EVP_PKEY_KYBER512) {
-    KYBER512_KEY *key = ctx->pkey->pkey.ptr;
-    if (key->has_private) {
-      kyber512_decapsulate(shared_secret, ciphertext, key->priv);
-      return 1;
-    }
+  if (ctx == NULL ||
+      ctx->pkey == NULL ||
+      ctx->pkey->pkey.ptr == NULL ||
+      ctx->pkey->type != EVP_PKEY_KYBER512) {
+      return 0;
   }
 
-  return 0;
+  KYBER512_KEY *key = ctx->pkey->pkey.ptr;
+  if (!key->has_private) {
+    return 0;
+  }
+
+  kyber512_decapsulate(shared_secret, ciphertext, key->priv);
+  return 1;
 }
 
 const EVP_PKEY_METHOD kyber512_pkey_meth = {

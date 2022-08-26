@@ -245,9 +245,8 @@ struct evp_pkey_method_st {
 
   int (*ctrl)(EVP_PKEY_CTX *ctx, int type, int p1, void *p2);
 
-  // Encapsulate and decapsulate are operations defined for a KEM
-  // (Key Encapsulation Mechanism). So far, they are used only for
-  // Kyber post-quantum KEM.
+  // Encapsulate and decapsulate are operations defined for a
+  // Key Encapsulation Mechanism (KEM).
   int (*encapsulate)(EVP_PKEY_CTX *ctx,
                      uint8_t *ciphertext, size_t *ciphertext_len,
                      uint8_t *shared_secret, size_t *shared_secret_len);
