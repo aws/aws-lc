@@ -14,25 +14,25 @@
  */
 
 // ----------------------------------------------------------------------------
-// Montgomery ladder step on pairs of (X,Z)-projective curve25519 points
+// Projective scalar multiplication, x coordinate only, for curve25519
+// Inputs point[4], scalar[4]; output res[8]
 //
-// extern void curve25519_ladderstep
-//   (uint64_t rr[16],uint64_t point[8],uint64_t pp[16],uint64_t b)
+// extern void curve25519_pxscalarmul
+//   (uint64_t res[static 8],uint64_t point[static 4],uint64_t scalar[static 4])
 //
-// If point = (X,1) and pp = (n * (X,1),[n+1] * (X,1)) then the output
-// rr = (n' * (X,1),[n'+1] * (X,1)) where n' = 2 * n + b, with input
-// b assumed to be 0 or 1; in this setting, each pair (X,Z) is assumed to
-// be a projective y-free representation of an affine curve25519 point
-// (X/Z,y), with the initial "differential" point having Z = 1 and X its
-// affine x coordinate. In other words, the ladderstep operation is a
-// combination of doubling, differential addition and optional swapping.
+// Given the X coordinate of an input point = (X,Y) on curve25519, which
+// could also be part of a projective representation (X,Y,1) of the same
+// point, returns a projective representation (X,Z) = scalar * point, where
+// scalar is a 256-bit number. The corresponding affine form is (X/Z,Y'),
+// X/Z meaning division modulo 2^255-19, and Y' not being computed by
+// this function (nor is any Y coordinate of the input point used).
 //
-// Standard ARM ABI: X0 = rr, X1 = point, X2 = pp, X3 = b
+// Standard ARM ABI: X0 = res, X1 = point, X2 = scalar
 // ----------------------------------------------------------------------------
 #include "_internal_s2n_bignum.h"
 
-        S2N_BN_SYM_VISIBILITY_DIRECTIVE(curve25519_ladderstep)
-        S2N_BN_SYM_PRIVACY_DIRECTIVE(curve25519_ladderstep)
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(curve25519_pxscalarmul)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(curve25519_pxscalarmul)
 
         .text
         .balign 4
@@ -42,51 +42,50 @@
 #define NUMSIZE 32
 
 // Stable homes for input arguments during main code sequence
+// and additional registers for loop counter and swap flag
 
-#define rr x17
+#define res x17
 #define point x19
-#define pp x20
-#define b x21
+#define scalar x20
+#define i x21
+#define swap x22
 
-// Pointer-offset pairs for inputs and outputs
+// Pointers to input x coord (we don't use y or z) and output coords.
 
 #define x point, #0
-#define z point, #NUMSIZE
-#define xn pp, #0
-#define zn pp, #NUMSIZE
-#define xm pp, #(2*NUMSIZE)
-#define zm pp, #(3*NUMSIZE)
-#define res0 rr, #0
-#define res1 rr, #NUMSIZE
-#define res2 rr, #(2*NUMSIZE)
-#define res3 rr, #(3*NUMSIZE)
+#define resx res, #0
+#define resz res, #NUMSIZE
 
-// Pointer-offset pairs for temporaries on stack
-// dmsn and dnsm need space for >= 5 digits, and we allocate 8
+// Pointer-offset pairs for temporaries on stack with some aliasing.
+// Both dmsn and dnsm need space for >= 5 digits, and we allocate 8
 
+#define zm sp, #(0*NUMSIZE)
 #define sm sp, #(0*NUMSIZE)
+#define dpro sp, #(0*NUMSIZE)
+
 #define sn sp, #(1*NUMSIZE)
+
 #define dm sp, #(2*NUMSIZE)
+
+#define zn sp, #(3*NUMSIZE)
 #define dn sp, #(3*NUMSIZE)
+#define e sp, #(3*NUMSIZE)
+
 #define dmsn sp, #(4*NUMSIZE)
+#define p sp, #(4*NUMSIZE)
+
+#define xm sp, #(6*NUMSIZE)
 #define dnsm sp, #(6*NUMSIZE)
+#define spro sp, #(6*NUMSIZE)
+
+#define xn sp, #(8*NUMSIZE)
 #define s sp, #(8*NUMSIZE)
+
 #define d sp, #(9*NUMSIZE)
-#define p sp, #(10*NUMSIZE)
-
-// More, but aliases to above
-
-#define sumx sm
-#define sumz sn
-#define dubx dm
-#define dubz dn
-#define e dubz
-#define spro dnsm
-#define dpro sumz
 
 // Total size to reserve on the stack
 
-#define NSPACE (12*NUMSIZE)
+#define NSPACE (10*NUMSIZE)
 
 // Macros wrapping up the basic field operation calls
 // bignum_mul_p25519 and bignum_sqr_p25519.
@@ -809,40 +808,41 @@
         csel    x1, x1, x3, ne;                 \
         stp     x0, x1, [p0+16]
 
-// Paired multiplex: (w,z) := if NZ then (y,x) else (x,y)
-
-#define muxpair_4(p0,p1,p2,p3)                  \
-        ldp     x0, x1, [p2];                   \
-        ldp     x2, x3, [p3];                   \
-        csel    x4, x0, x2, eq;                 \
-        csel    x6, x0, x2, ne;                 \
-        csel    x5, x1, x3, eq;                 \
-        csel    x7, x1, x3, ne;                 \
-        stp     x4, x5, [p0];                   \
-        stp     x6, x7, [p1];                   \
-        ldp     x0, x1, [p2+16];                \
-        ldp     x2, x3, [p3+16];                \
-        csel    x4, x0, x2, eq;                 \
-        csel    x6, x0, x2, ne;                 \
-        csel    x5, x1, x3, eq;                 \
-        csel    x7, x1, x3, ne;                 \
-        stp     x4, x5, [p0+16];                \
-        stp     x6, x7, [p1+16]
-
-S2N_BN_SYMBOL(curve25519_ladderstep):
+S2N_BN_SYMBOL(curve25519_pxscalarmul):
 
 // Save regs and make room for temporaries
 
-        stp     x19, x30, [sp, -16]!
+        stp     x19, x22, [sp, -16]!
         stp     x20, x21, [sp, -16]!
         sub     sp, sp, #NSPACE
 
 // Move the input arguments to stable places
 
-        mov     rr, x0
+        mov     res, x0
         mov     point, x1
-        mov     pp, x2
-        mov     b, x3
+        mov     scalar, x2
+
+// Initialize (xn,zn) = (1,0) and (xm,zm) = (x,1) with swap = 0
+
+        mov     x2, #1
+        stp     x2, xzr, [xn]
+        stp     xzr, xzr, [xn+16]
+        stp     xzr, xzr, [zn]
+        stp     xzr, xzr, [zn+16]
+        ldp     x0, x1, [x]
+        stp     x0, x1, [xm]
+        ldp     x0, x1, [x+16]
+        stp     x0, x1, [xm+16]
+        ldp     x0, x1, [x+32]
+        stp     x2, xzr, [zm]
+        stp     xzr, xzr, [zm+16]
+        mov     swap, xzr
+
+// The outer loop from i = 255, ..., i = 0 (inclusive)
+
+        mov     i, #255
+
+loop:
 
 // sm = xm + zm; sn = xn + zn; dm = xm - zm; dn = xn - zn
 // The adds don't need any normalization as they're fed to muls
@@ -856,9 +856,16 @@ S2N_BN_SYMBOL(curve25519_ladderstep):
 // ADDING: dmsn = dm * sn; dnsm = sm * dn
 // DOUBLING: mux d = xt - zt and s = xt + zt for appropriate choice of (xt,zt)
 
-        mul_5(dmsn,dm,sn)
+        mul_5(dmsn,sn,dm)
 
-        cmp     b, xzr
+        lsr     x0, i, #6
+        ldr     x2, [scalar, x0, lsl #3]
+        lsr     x2, x2, i
+        and     x2, x2, #1
+
+        cmp     swap, x2
+        mov     swap, x2
+
         mux_4(d,dm,dn)
         mux_4(s,sm,sn)
 
@@ -880,9 +887,9 @@ S2N_BN_SYMBOL(curve25519_ladderstep):
 
         sub_twice4(p,s,d)
 
-// ADDING: sumx = (dmsn + dnsm)^2
+// ADDING: xm' = (dmsn + dnsm)^2
 
-        sqr_p25519(sumx,spro)
+        sqr_p25519(xm,spro)
 
 // DOUBLING: e = 121666 * p + d
 
@@ -890,30 +897,56 @@ S2N_BN_SYMBOL(curve25519_ladderstep):
         orr     x1, x1, 0x10000
         cmadd_4(e,p,d)
 
-// DOUBLING: dubx = (xt + zt)^2 * (xt - zt)^2 = s * d
+// DOUBLING: xn' = (xt + zt)^2 * (xt - zt)^2 = s * d
 
-        mul_p25519(dubx,s,d)
+        mul_p25519(xn,s,d)
 
-// ADDING: sumz = x * (dmsn - dnsm)^2
+// ADDING: zm' = x * (dmsn - dnsm)^2
 
-        mul_p25519(sumz,dpro,x)
+        mul_p25519(zm,dpro,x)
 
-// DOUBLING: dubz = (4 * xt * zt) * ((xt - zt)^2 + 121666 * (4 * xt * zt))
-//                = p * (d + 121666 * p)
+// DOUBLING: zn' = (4 * xt * zt) * ((xt - zt)^2 + 121666 * (4 * xt * zt))
+//               = p * (d + 121666 * p)
 
-        mul_p25519(dubz,p,e)
+        mul_p25519(zn,p,e)
 
-// Multiplex the outputs
+// Loop down as far as 0 (inclusive)
 
-        cmp     b, xzr
-        muxpair_4(res0,res2,dubx,sumx)
-        muxpair_4(res1,res3,dubz,sumz)
+        subs    i, i, #1
+        bcs     loop
+
+// The main loop does not handle the special input of the 2-torsion
+// point = (0,0). In that case we may get a spurious (0,0) as output
+// when we want (0,1) [for odd scalar] or (1,0) [for even scalar].
+// Test if x = 0 (this is equivalent for curve25519 to y = 0) and if
+// so, patch zm = 1 [for odd multiple], xn = 1 [for even multiple].
+
+        ldp     x0, x1, [point]
+        orr     x0, x0, x1
+        ldp     x2, x3, [point, #16]
+        orr     x2, x2, x3
+        orr     x0, x0, x2
+        cmp     x0, xzr
+        cset    x0, eq
+        ldr     x1, [zm]
+        orr     x1, x1, x0
+        str     x1, [zm]
+        ldr     x2, [xn]
+        orr     x2, x2, x0
+        str     x2, [xn]
+
+// Multiplex into the final outputs
+
+        cmp     swap, xzr
+
+        mux_4(resx,xm,xn)
+        mux_4(resz,zm,zn)
 
 // Restore stack and registers
 
         add     sp, sp, #NSPACE
         ldp     x20, x21, [sp], 16
-        ldp     x19, x30, [sp], 16
+        ldp     x19, x22, [sp], 16
 
         ret
 

@@ -85,6 +85,8 @@ endif
 
 POINT_OBJ = curve25519/curve25519_ladderstep.o \
             curve25519/curve25519_ladderstep_alt.o \
+            curve25519/curve25519_pxscalarmul.o \
+            curve25519/curve25519_pxscalarmul_alt.o \
             p256/p256_montjadd.o \
             p256/p256_montjdouble.o \
             p256/p256_montjmixadd.o \

@@ -14,86 +14,81 @@
  */
 
 // ----------------------------------------------------------------------------
-// Montgomery ladder step on pairs of (X,Z)-projective curve25519 points
+// Projective scalar multiplication, x coordinate only, for curve25519
+// Inputs point[4], scalar[4]; output res[8]
 //
-// extern void curve25519_ladderstep
-//   (uint64_t rr[16],uint64_t point[8],uint64_t pp[16],uint64_t b)
+// extern void curve25519_pxscalarmul
+//   (uint64_t res[static 8],uint64_t point[static 4],uint64_t scalar[static 4])
 //
-// If point = (X,1) and pp = (n * (X,1),[n+1] * (X,1)) then the output
-// rr = (n' * (X,1),[n'+1] * (X,1)) where n' = 2 * n + b, with input
-// b assumed to be 0 or 1; in this setting, each pair (X,Z) is assumed to
-// be a projective y-free representation of an affine curve25519 point
-// (X/Z,y), with the initial "differential" point having Z = 1 and X its
-// affine x coordinate. In other words, the ladderstep operation is a
-// combination of doubling, differential addition and optional swapping.
+// Given the X coordinate of an input point = (X,Y) on curve25519, which
+// could also be part of a projective representation (X,Y,1) of the same
+// point, returns a projective representation (X,Z) = scalar * point, where
+// scalar is a 256-bit number. The corresponding affine form is (X/Z,Y'),
+// X/Z meaning division modulo 2^255-19, and Y' not being computed by
+// this function (nor is any Y coordinate of the input point used).
 //
-// Standard x86-64 ABI: RDI = rr, RSI = point, RDX = pp, RCX = b
-// Microsoft x64 ABI:   RCX = rr, RDX = point, R8 = pp, R9 = b
+// Standard x86-64 ABI: RDI = res, RSI = point, RDX = scalar
+// Microsoft x64 ABI:   RCX = res, RDX = point, R8 = scalar
 // ----------------------------------------------------------------------------
 #include "_internal_s2n_bignum.h"
 
 
-        S2N_BN_SYM_VISIBILITY_DIRECTIVE(curve25519_ladderstep)
-        S2N_BN_SYM_PRIVACY_DIRECTIVE(curve25519_ladderstep)
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(curve25519_pxscalarmul)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(curve25519_pxscalarmul)
         .text
 
 // Size of individual field elements
 
 #define NUMSIZE 32
 
-// The single field of the input point used (z assumed 1)
+// Stable homes for input arguments during main code sequence
+// and additional registers for loop counter and swap flag
 
-#define point_x 0(%rbp)
+#define res  10*NUMSIZE(%rsp)
+#define point  10*NUMSIZE+8(%rsp)
+#define scalar  10*NUMSIZE+16(%rsp)
+#define i  10*NUMSIZE+24(%rsp)
+#define swap  10*NUMSIZE+32(%rsp)
 
-// Pointer-offset pairs for pp fields
-// These use the initial register %rdx as the offset.
-// We then never need it again so it can be ephemeral
+// Pointers to input x coord (we don't use y or z) and output coords.
+// These all assume the base address (point and res respectively) is
+// currently in the %rbp register.
 
-#define xn 0(%rdx)
-#define zn NUMSIZE(%rdx)
-#define xm (2*NUMSIZE)(%rdx)
-#define zm (3*NUMSIZE)(%rdx)
+#define x 0(%rbp)
+#define resx 0(%rbp)
+#define resz NUMSIZE(%rbp)
 
-// Result fields
+// Pointer-offset pairs for temporaries on stack with some aliasing.
+// Both dmsn and dnsm need space for >= 5 digits, and we allocate 8
 
-#define res0 0(%rbp)
-#define res1 NUMSIZE(%rbp)
-#define res2 (2*NUMSIZE)(%rbp)
-#define res3 (3*NUMSIZE)(%rbp)
-
-// Pointer-offset pairs for temporaries on stack
-// dmsn and dnsm need space for >= 5 digits, and we allocate 8
-
+#define zm (0*NUMSIZE)(%rsp)
 #define sm (0*NUMSIZE)(%rsp)
+#define dpro (0*NUMSIZE)(%rsp)
+
 #define sn (1*NUMSIZE)(%rsp)
+
 #define dm (2*NUMSIZE)(%rsp)
+
+#define zn (3*NUMSIZE)(%rsp)
 #define dn (3*NUMSIZE)(%rsp)
+#define e (3*NUMSIZE)(%rsp)
+
 #define dmsn (4*NUMSIZE)(%rsp)
+#define p (4*NUMSIZE)(%rsp)
+
+#define xm (6*NUMSIZE)(%rsp)
 #define dnsm (6*NUMSIZE)(%rsp)
+#define spro (6*NUMSIZE)(%rsp)
+
+#define xn (8*NUMSIZE)(%rsp)
 #define s (8*NUMSIZE)(%rsp)
+
 #define d (9*NUMSIZE)(%rsp)
-#define p (10*NUMSIZE)(%rsp)
-
-// Preserved inputs
-
-#define rr (12*NUMSIZE)(%rsp)
-#define point (12*NUMSIZE)+8(%rsp)
-#define pp (12*NUMSIZE)+16(%rsp)
-#define bb  (12*NUMSIZE)+24(%rsp)
-
-// More, but aliases to above
-
-#define sumx sm
-#define sumz sn
-#define dubx dm
-#define dubz dn
-#define e dubz
-#define spro dnsm
-#define dpro sumz
 
 // Total size to reserve on the stack
+// This includes space for the 5 other variables above
 
-#define NSPACE (13*NUMSIZE)
+#define NSPACE (10*NUMSIZE+40)
 
 // Macros wrapping up the basic field operation calls
 // bignum_mul_p25519 and bignum_sqr_p25519.
@@ -608,39 +603,7 @@
         cmovzq  %rcx, %rax ;                       \
         movq    %rax, 24+P0
 
-// Paired multiplex: (w,z) := if NZ then (y,x) else (x,y)
-
-#define muxpair_4(P0,P1,P2,P3)                  \
-        movq    P2, %rax ;                      \
-        movq    P3, %rcx ;                      \
-        movq    %rax, %rdx ;                       \
-        cmovnzq %rcx, %rax ;                       \
-        cmovnzq %rdx, %rcx ;                       \
-        movq    %rax, P0 ;                      \
-        movq    %rcx, P1 ;                      \
-        movq    8+P2, %rax ;                    \
-        movq    8+P3, %rcx ;                    \
-        movq    %rax, %rdx ;                       \
-        cmovnzq %rcx, %rax ;                       \
-        cmovnzq %rdx, %rcx ;                       \
-        movq    %rax, 8+P0 ;                    \
-        movq    %rcx, 8+P1 ;                    \
-        movq    16+P2, %rax ;                   \
-        movq    16+P3, %rcx ;                   \
-        movq    %rax, %rdx ;                       \
-        cmovnzq %rcx, %rax ;                       \
-        cmovnzq %rdx, %rcx ;                       \
-        movq    %rax, 16+P0 ;                   \
-        movq    %rcx, 16+P1 ;                   \
-        movq    24+P2, %rax ;                   \
-        movq    24+P3, %rcx ;                   \
-        movq    %rax, %rdx ;                       \
-        cmovnzq %rcx, %rax ;                       \
-        cmovnzq %rdx, %rcx ;                       \
-        movq    %rax, 24+P0 ;                   \
-        movq    %rcx, 24+P1
-
-S2N_BN_SYMBOL(curve25519_ladderstep):
+S2N_BN_SYMBOL(curve25519_pxscalarmul):
 
 #if WINDOWS_ABI
         pushq   %rdi
@@ -648,7 +611,6 @@ S2N_BN_SYMBOL(curve25519_ladderstep):
         movq    %rcx, %rdi
         movq    %rdx, %rsi
         movq    %r8, %rdx
-        movq    %r9, %rcx
 #endif
 
 // Save registers, make room for temps, preserve input arguments.
@@ -659,17 +621,50 @@ S2N_BN_SYMBOL(curve25519_ladderstep):
         pushq   %r13
         pushq   %r14
         pushq   %r15
-
         subq    $NSPACE, %rsp
 
-        movq    %rdi, rr
+// Move the input arguments to stable places
+
+        movq    %rdi, res
         movq    %rsi, point
-        movq    %rcx, bb
+        movq    %rdx, scalar
+
+// Initialize (xn,zn) = (1,0) and (xm,zm) = (x,1) with swap = 0
+
+        movq    $1, %rax
+        movq    %rax, 256(%rsp)
+        movq    %rax, (%rsp)
+        xorl    %eax, %eax
+        movq    %rax, swap
+        movq    %rax, 96(%rsp)
+        movq    %rax, 264(%rsp)
+        movq    %rax, 8(%rsp)
+        movq    %rax, 104(%rsp)
+        movq    %rax, 272(%rsp)
+        movq    %rax, 16(%rsp)
+        movq    %rax, 112(%rsp)
+        movq    %rax, 280(%rsp)
+        movq    %rax, 24(%rsp)
+        movq    %rax, 120(%rsp)
+        movq    (%rsi), %rax
+        movq    %rax, 192(%rsp)
+        movq    8(%rsi), %rax
+        movq    %rax, 200(%rsp)
+        movq    16(%rsi), %rax
+        movq    %rax, 208(%rsp)
+        movq    24(%rsi), %rax
+        movq    %rax, 216(%rsp)
+
+// The outer loop from i = 255, ..., i = 0 (inclusive)
+
+        movl    $255, %eax
+        movq    %rax, i
+
+loop:
 
 // sm = xm + zm; sn = xn + zn; dm = xm - zm; dn = xn - zn
 // The adds don't need any normalization as they're fed to muls
-// Just make sure the subs fit in 4 digits. Keep pp in %rdx
-// here, after which we can forget about it.
+// Just make sure the subs fit in 4 digits.
 
         sub_4(dm,xm,zm)
         add_4(sn,xn,zn)
@@ -679,10 +674,18 @@ S2N_BN_SYMBOL(curve25519_ladderstep):
 // ADDING: dmsn = dm * sn; dnsm = sm * dn
 // DOUBLING: mux d = xt - zt and s = xt + zt for appropriate choice of (xt,zt)
 
-        mul_5(dmsn,dm,sn)
+        mul_5(dmsn,sn,dm)
 
-        movq    bb, %rax
-        testq   %rax, %rax
+        movq    scalar, %rax
+        movq    i, %rdx
+        movq    %rdx, %rcx
+        shrq    $6, %rdx
+        movq    (%rax,%rdx,8), %rdx
+        shrq    %cl, %rdx
+        andq    $1, %rdx
+        cmpq    swap, %rdx
+        movq    %rdx, swap
+
         mux_4(d,dm,dn)
         mux_4(s,sm,sn)
 
@@ -704,35 +707,60 @@ S2N_BN_SYMBOL(curve25519_ladderstep):
 
         sub_twice4(p,s,d)
 
-// ADDING: sumx = (dmsn + dnsm)^2
+// ADDING: xm' = (dmsn + dnsm)^2
 
-        sqr_p25519(sumx,spro)
+        sqr_p25519(xm,spro)
 
 // DOUBLING: e = 121666 * p + d
 
         cmadd_4(e,0x1db42,p,d)
 
-// DOUBLING: dubx = (xt + zt)^2 * (xt - zt)^2 = s * d
+// DOUBLING: xn' = (xt + zt)^2 * (xt - zt)^2 = s * d
 
-        mul_p25519(dubx,s,d)
+        mul_p25519(xn,s,d)
 
-// ADDING: sumz = x * (dmsn - dnsm)^2
+// ADDING: zm' = x * (dmsn - dnsm)^2
 
         movq    point, %rbp
-        mul_p25519(sumz,dpro,point_x)
+        mul_p25519(zm,dpro,x)
 
-// DOUBLING: dubz = (4 * xt * zt) * ((xt - zt)^2 + 121666 * (4 * xt * zt))
-//                = p * (d + 121666 * p)
+// DOUBLING: zn' = (4 * xt * zt) * ((xt - zt)^2 + 121666 * (4 * xt * zt))
+//               = p * (d + 121666 * p)
 
-        mul_p25519(dubz,p,e)
+        mul_p25519(zn,p,e)
 
-// Multiplex the outputs
+// Loop down as far as 0 (inclusive)
 
-        movq    bb, %rax
-        movq    rr, %rbp
+        movq    i, %rax
+        subq    $1, %rax
+        movq    %rax, i
+        jnc     loop
+
+// The main loop does not handle the special input of the 2-torsion
+// point = (0,0). In that case we may get a spurious (0,0) as output
+// when we want (0,1) [for odd scalar] or (1,0) [for even scalar].
+// Test if x = 0 (this is equivalent for curve25519 to y = 0) and if
+// so, patch zm = 1 [for odd multiple], xn = 1 [for even multiple].
+
+        movl    $1, %ecx
+        movq    point, %rbp
+        movq    (%rbp), %rax
+        orq     8(%rbp), %rax
+        orq     16(%rbp), %rax
+        orq     24(%rbp), %rax
+        cmovnzq %rcx, %rax
+        xorq    $1, %rax
+        orq     %rax, (%rsp)
+        orq     %rax, 256(%rsp)
+
+// Multiplex into the final outputs
+
+        movq    res, %rbp
+        movq    swap, %rax
         testq   %rax, %rax
-        muxpair_4(res0,res2,dubx,sumx)
-        muxpair_4(res1,res3,dubz,sumz)
+
+        mux_4(resx,xm,xn)
+        mux_4(resz,zm,zn)
 
 // Restore stack and registers
 
