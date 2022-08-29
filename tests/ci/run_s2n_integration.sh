@@ -9,6 +9,10 @@ cd ../
 ROOT=$(pwd)
 mkdir -p aws-lc-build aws-lc-install s2n-tls-build
 git clone https://github.com/aws/s2n-tls.git
+# TODO: for new FIPS branch, checkout another code commit of s2n-tls.
+# TODO: for new FIPS branch, replace this script content with main branch.
+# Checkout commit before https://github.com/aws/s2n-tls/commit/785596b9694d7e12274afea9f42b8216a07102da
+(cd s2n-tls && git checkout 36c3dc72ab1359cf721294e1258dfdc2962f3ffc)
 ls
 
 # s2n-tls's FindLibCrypto.cmake expects to find both the archieve (.a) and shared object (.so) libcrypto

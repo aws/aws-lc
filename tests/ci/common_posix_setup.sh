@@ -1,6 +1,8 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+# If having trouble reaching proxy.golang.org, uncomment the following:
+#go env -w GOPROXY=direct
 
 if [ -v CODEBUILD_SRC_DIR ]; then
   SRC_ROOT="$CODEBUILD_SRC_DIR"
@@ -12,7 +14,25 @@ echo "$SRC_ROOT"
 BUILD_ROOT="${SRC_ROOT}/test_build_dir"
 echo "$BUILD_ROOT"
 
-NUM_CPU_THREADS=$(grep -c ^processor /proc/cpuinfo)
+NUM_CPU_THREADS=''
+KERNEL_NAME=$(uname -s)
+if [[ "${KERNEL_NAME}" == "Darwin" ]]; then
+  # On MacOS, /proc/cpuinfo does not exist.
+  NUM_CPU_THREADS=$(sysctl -n hw.ncpu)
+else
+  # Assume KERNEL_NAME is Linux.
+  NUM_CPU_THREADS=$(grep -c ^processor /proc/cpuinfo)
+fi
+
+PLATFORM=$(uname -m)
+
+# Pick cmake3 if possible. We don't know of any OS that installs a cmake3
+# executable that is not at least version 3.0.
+if [[ -x "$(command -v cmake3)" ]] ; then
+  CMAKE_COMMAND="cmake3"
+else
+  CMAKE_COMMAND="cmake"
+fi
 
 function run_build {
   local cflags=("$@")
@@ -37,7 +57,7 @@ function run_build {
     BUILD_COMMAND="make -j${NUM_CPU_THREADS}"
   fi
 
-  cmake "${cflags[@]}" "$SRC_ROOT"
+  ${CMAKE_COMMAND} "${cflags[@]}" "$SRC_ROOT"
   $BUILD_COMMAND
   cd "$SRC_ROOT"
 }
@@ -69,7 +89,7 @@ function fips_build_and_test {
   [[ "${expect_fips_mode}" == "${module_status}" ]] || { echo >&2 "FIPS Mode validation failed."; exit 1; }
   # Run tests.
   run_cmake_custom_target 'run_tests'
-  "${BUILD_ROOT}/util/fipstools/cavp/test_fips"
+  # "${BUILD_ROOT}/util/fipstools/test_fips"
 }
 
 function build_and_test_valgrind {

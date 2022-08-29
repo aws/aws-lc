@@ -7,10 +7,21 @@ version: 0.2
 batch:
   build-list:
 
-    - identifier: ubuntu2004_bm_framework
-      buildspec: ./tests/ci/codebuild/linux-x86/run_bm_framework.yml
+    # TODO(CryptoAlg-1283): Remove below when benchmark CI supports FIPS branches.
+    # A dummy dimension is used here because the batch CodeBuild does not allow empty |build-list|.
+    - identifier: batch_does_not_allow_empty_list
+      buildspec: ./tests/ci/codebuild/batch_does_not_allow_empty.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
-        compute-type: BUILD_GENERAL1_LARGE
-        image: ECR_REPO_PLACEHOLDER:ubuntu-20.04_clang-7x-bm-framework_latest
+        compute-type: BUILD_GENERAL1_SMALL
+        image: aws/codebuild/standard:4.0
+
+    # TODO(CryptoAlg-1283): Enable below when benchmark CI supports FIPS branches.
+    # - identifier: ubuntu2004_bm_framework
+    #   buildspec: ./tests/ci/codebuild/dummy.yml
+    #   env:
+    #     type: LINUX_CONTAINER
+    #     privileged-mode: true
+    #     compute-type: BUILD_GENERAL1_LARGE
+    #     image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_clang-7x-bm-framework_latest

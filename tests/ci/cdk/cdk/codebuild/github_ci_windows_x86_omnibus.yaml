@@ -6,6 +6,7 @@ version: 0.2
 # Doc for batch https://docs.aws.amazon.com/codebuild/latest/userguide/batch-build-buildspec.html#build-spec.batch.build-list
 batch:
   build-list:
+    # # TODO(CryptoAlg-1286): Copy the latest BuildSpec and related scripts to FIPS branches.
     - identifier: windows_msvc2015_x64
       buildspec: ./tests/ci/codebuild/windows-x86/windows-msvc2015.yml
       env:
@@ -14,7 +15,7 @@ batch:
         privileged-mode: false
         compute-type: BUILD_GENERAL1_LARGE
         # Build failure on Docker image `vs2015_latest`, tracked in CryptoAlg-741.
-        image: ECR_REPO_PLACEHOLDER:vs2015-2020-12-08-01
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-windows-x86:vs2015-2020-12-08-01
 
     - identifier: windows_msvc2017_x64
       buildspec: ./tests/ci/codebuild/windows-x86/windows-msvc2017.yml
@@ -23,4 +24,4 @@ batch:
         type: WINDOWS_SERVER_2019_CONTAINER
         privileged-mode: false
         compute-type: BUILD_GENERAL1_LARGE
-        image: ECR_REPO_PLACEHOLDER:vs2017_latest
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-windows-x86:vs2017_latest

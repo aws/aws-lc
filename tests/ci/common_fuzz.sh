@@ -18,7 +18,6 @@ else
 fi
 echo "$BUILD_ID"
 
-PLATFORM=$(uname -m)
 DATE_NOW="$(date +%Y-%m-%d)"
 SHARED_FAILURE_ROOT="${CORPUS_ROOT}/runs/${DATE_NOW}/${BUILD_ID}"
 LOCAL_RUN_ROOT="${BUILD_ROOT}/fuzz_run_root"
@@ -70,7 +69,16 @@ function run_fuzz_test {
   # This could fail and we want to capture that so we can publish metrics and save logs (+e)
   set +e
   FUZZ_RUN_FAILURE=0
-  time "${FUZZ_TEST_PATH}" -print_final_stats=1 -timeout="$FUZZ_TEST_TIMEOUT" -max_total_time="$TIME_FOR_EACH_FUZZ" \
+  # 2048 is the default memory usage. https://llvm.org/docs/LibFuzzer.html
+  MEM_USAGE_LIMIT=2048
+  if [[ ("${FUZZ_NAME}" == *"cryptofuzz"*) && (("$(uname -p)" == 'aarch64')) ]]; then
+    # On arm, libFuzzer: out-of-memory (used: 2063Mb; limit: 2048Mb)
+    # Below is set based on ARM BUILD_GENERAL1_LARGE(8vCPU, 16 GB memory).
+    # 2500MB x 6 / 1024 = 14.6GB
+    MEM_USAGE_LIMIT=2500
+    NUM_CPU_THREADS=6
+  fi
+  time "${FUZZ_TEST_PATH}" -rss_limit_mb=${MEM_USAGE_LIMIT} -print_final_stats=1 -timeout="$FUZZ_TEST_TIMEOUT" -max_total_time="$TIME_FOR_EACH_FUZZ" \
     -jobs="$NUM_CPU_THREADS" -workers="$NUM_CPU_THREADS" \
     -artifact_prefix="$LOCAL_ARTIFACTS_FOLDER/" \
     "$LOCAL_RUN_CORPUS" "$LOCAL_SHARED_CORPUS" "$SRC_CORPUS" 2>&1 | tee "$SUMMARY_LOG"
@@ -88,6 +96,7 @@ function run_fuzz_test {
 
     if [[ "$FUZZ_NAME" == "cryptofuzz" ]]; then
       for ARTIFACT in "$LOCAL_ARTIFACTS_FOLDER"/*; do
+        base64 $ARTIFACT
         ARTIFACT_NAME=$(basename "$ARTIFACT")
         "${FUZZ_TEST_PATH}" --debug "$ARTIFACT" | tee "${LOCAL_FUZZ_RUN_LOGS}/${ARTIFACT_NAME}.log"
       done

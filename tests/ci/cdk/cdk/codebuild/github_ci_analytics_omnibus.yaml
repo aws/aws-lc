@@ -1,0 +1,35 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+version: 0.2
+
+# Doc for batch https://docs.aws.amazon.com/codebuild/latest/userguide/batch-build-buildspec.html#build-spec.batch.build-list
+batch:
+  build-list:
+
+    # TODO(CryptoAlg-1286): Remove below when analytic dimension supports FIPS branches.
+    # A dummy dimension is used here because the batch CodeBuild does not allow empty |build-list|.
+    - identifier: batch_does_not_allow_empty_list
+      buildspec: ./tests/ci/codebuild/batch_does_not_allow_empty.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_SMALL
+        image: aws/codebuild/standard:4.0
+
+    # TODO(CryptoAlg-1286): Enable below when analytic dimension supports FIPS branches.
+    # - identifier: amazonlinux2_gcc7x_x86_64_analytics
+    #   buildspec: ./tests/ci/codebuild/common/run_analytics.yml
+    #   env:
+    #     type: LINUX_CONTAINER
+    #     privileged-mode: true
+    #     compute-type: BUILD_GENERAL1_LARGE
+    #     image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:amazonlinux-2_gcc-7x_latest
+
+    # - identifier: amazonlinux2_gcc7x_arm_analytics
+    #   buildspec: ./tests/ci/codebuild/common/run_analytics.yml
+    #   env:
+    #     type: ARM_CONTAINER
+    #     privileged-mode: true
+    #     compute-type: BUILD_GENERAL1_LARGE
+    #     image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-aarch:amazonlinux-2_gcc-7x_latest
