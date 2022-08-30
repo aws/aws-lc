@@ -21,6 +21,7 @@
 #include <openssl/hmac.h>
 
 #include "../../internal.h"
+#include "../service_indicator/internal.h"
 
 
 int HKDF(uint8_t *out_key, size_t out_len, const EVP_MD *digest,
@@ -44,16 +45,26 @@ int HKDF_extract(uint8_t *out_key, size_t *out_len, const EVP_MD *digest,
                  size_t salt_len) {
   // https://tools.ietf.org/html/rfc5869#section-2.2
 
+  // We have to avoid the underlying SHA services updating the indicator
+  // state, so we lock the state here.
+  FIPS_service_indicator_lock_state();
+
   // If salt is not given, HashLength zeros are used. However, HMAC does that
   // internally already so we can ignore it.
+  int ret = 0;
   unsigned len;
   if (HMAC(digest, salt, salt_len, secret, secret_len, out_key, &len) == NULL) {
     OPENSSL_PUT_ERROR(HKDF, ERR_R_HMAC_LIB);
-    return 0;
+    goto out;
   }
   *out_len = len;
   assert(*out_len == EVP_MD_size(digest));
-  return 1;
+  ret = 1;
+
+out:
+  FIPS_service_indicator_unlock_state();
+  HKDF_extract_verify_service_indicator(digest);
+  return ret;
 }
 
 int HKDF_expand(uint8_t *out_key, size_t out_len, const EVP_MD *digest,
@@ -75,6 +86,11 @@ int HKDF_expand(uint8_t *out_key, size_t out_len, const EVP_MD *digest,
   }
 
   HMAC_CTX_init(&hmac);
+
+  // We have to avoid the underlying SHA services updating the indicator
+  // state, so we lock the state here.
+  FIPS_service_indicator_lock_state();
+
   if (!HMAC_Init_ex(&hmac, prk, prk_len, digest, NULL)) {
     goto out;
   }
@@ -104,9 +120,11 @@ int HKDF_expand(uint8_t *out_key, size_t out_len, const EVP_MD *digest,
   ret = 1;
 
 out:
+  FIPS_service_indicator_unlock_state();
   HMAC_CTX_cleanup(&hmac);
   if (ret != 1) {
     OPENSSL_PUT_ERROR(HKDF, ERR_R_HMAC_LIB);
   }
+  HKDF_expand_verify_service_indicator(digest);
   return ret;
 }

@@ -51,6 +51,7 @@ int FIPS_query_algorithm_status(const char *algorithm) {
     "ECDSA-sign",
     "ECDSA-verify",
     "FFC-SSC",
+    "HKDF",
     "HMAC",
     "RSA-sign",
     "RSA-verify",

@@ -26,6 +26,7 @@
 #include <openssl/ecdsa.h>
 #include <openssl/ec_key.h>
 #include <openssl/hmac.h>
+#include <openssl/kdf.h>
 #include <openssl/nid.h>
 #include <openssl/rsa.h>
 #include <openssl/sha.h>
@@ -835,7 +836,8 @@ void boringssl_ensure_ffdh_self_test(void) {
 
 // Startup self tests.
 //
-// These tests are run at process start when in FIPS mode.
+// These tests are run at process start when in FIPS mode. Note that the SHA256
+// and HMAC-SHA256 tests are also used from bcm.c, so they can't be static.
 
 int boringssl_self_test_sha256(void) {
   static const uint8_t kInput[16] = {
@@ -855,7 +857,7 @@ int boringssl_self_test_sha256(void) {
                     "SHA-256 KAT");
 }
 
-int boringssl_self_test_sha512(void) {
+static int boringssl_self_test_sha512(void) {
   static const uint8_t kInput[16] = {
       0x21, 0x25, 0x12, 0xf8, 0xd2, 0xad, 0x83, 0x22,
       0x78, 0x1c, 0x6c, 0x4d, 0x69, 0xa9, 0xda, 0xa1,
@@ -894,6 +896,34 @@ int boringssl_self_test_hmac_sha256(void) {
   return output_len == sizeof(kPlaintextHMACSHA256) &&
          check_test(kPlaintextHMACSHA256, output, sizeof(kPlaintextHMACSHA256),
                     "HMAC-SHA-256 KAT");
+}
+
+static int boringssl_self_test_hkdf_sha256(void) {
+  const uint8_t kHKDF_ikm_tc1[] = {   // RFC 5869 Test Case 1
+      0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b,
+      0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b
+  };
+  const uint8_t kHKDF_salt_tc1[] = {
+      0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b,
+      0x0c
+  };
+  const uint8_t kHKDF_info_tc1[] = {
+      0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7, 0xf8, 0xf9
+  };
+  const uint8_t kHKDF_okm_tc1_sha256[] = {
+      0x3c, 0xb2, 0x5f, 0x25, 0xfa, 0xac, 0xd5, 0x7a, 0x90, 0x43, 0x4f, 0x64,
+      0xd0, 0x36, 0x2f, 0x2a, 0x2d, 0x2d, 0x0a, 0x90, 0xcf, 0x1a, 0x5a, 0x4c,
+      0x5d, 0xb0, 0x2d, 0x56, 0xec, 0xc4, 0xc5, 0xbf, 0x34, 0x00, 0x72, 0x08,
+      0xd5, 0xb8, 0x87, 0x18, 0x58, 0x65
+  };
+
+  uint8_t output[sizeof(kHKDF_okm_tc1_sha256)];
+  HKDF(output, sizeof(output), EVP_sha256(),
+       kHKDF_ikm_tc1, sizeof(kHKDF_ikm_tc1),
+       kHKDF_salt_tc1, sizeof(kHKDF_salt_tc1),
+       kHKDF_info_tc1, sizeof(kHKDF_info_tc1));
+  return check_test(kHKDF_okm_tc1_sha256, output, sizeof(output),
+                    "HKDF-SHA-256 KAT");
 }
 
 static int boringssl_self_test_fast(void) {
@@ -1026,7 +1056,8 @@ static int boringssl_self_test_fast(void) {
 
   if (!boringssl_self_test_sha256() ||
       !boringssl_self_test_sha512() ||
-      !boringssl_self_test_hmac_sha256()) {
+      !boringssl_self_test_hmac_sha256() ||
+      !boringssl_self_test_hkdf_sha256()) {
     goto err;
   }
 
