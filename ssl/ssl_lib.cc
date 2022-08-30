@@ -1942,8 +1942,6 @@ int SSL_set1_curves_list(SSL *ssl, const char *curves) {
 }
 
 uint16_t SSL_get_curve_id(const SSL *ssl) {
-  // TODO(davidben): This checks the wrong session if there is a renegotiation
-  // in progress.
   SSL_SESSION *session = SSL_get_session(ssl);
   if (session == NULL) {
     return 0;
@@ -2836,8 +2834,6 @@ uint64_t SSL_get_write_sequence(const SSL *ssl) {
 }
 
 uint16_t SSL_get_peer_signature_algorithm(const SSL *ssl) {
-  // TODO(davidben): This checks the wrong session if there is a renegotiation
-  // in progress.
   SSL_SESSION *session = SSL_get_session(ssl);
   if (session == NULL) {
     return 0;
