@@ -1967,6 +1967,7 @@ TEST_P(KDF_ServiceIndicatorTest, TLSKDF) {
   EXPECT_EQ(approved, test.expect_approved);
 }
 
+// PBKDF2 test data from RFC 6070.
 static const uint8_t kPBKDF2Password1[] = {
     'p', 'a', 's', 's', 'w', 'o', 'r', 'd'
 };

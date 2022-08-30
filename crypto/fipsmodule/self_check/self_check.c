@@ -1114,7 +1114,7 @@ static int boringssl_self_test_fast(void) {
     goto err;
   }
 
-  // PBKDF2 KAT
+  // PBKDF2 KAT - data from RFC 6070
   static const uint8_t kPBKDF2Password[] = {
     'p', 'a', 's', 's', 'w', 'o', 'r', 'd', 'P', 'A', 'S', 'S', 'W', 'O', 'R',
     'D', 'p', 'a', 's', 's', 'w', 'o', 'r', 'd'
