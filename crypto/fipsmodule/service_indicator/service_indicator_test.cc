@@ -1236,8 +1236,8 @@ const uint8_t kHKDF_ikm_tc3[] = {   // RFC 5869 Test Case 3
     0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b,
     0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b
 };
-const uint8_t kHKDF_salt_tc3[] = {};    // No salt
-const uint8_t kHKDF_info_tc3[] = {};    // No info
+const uint8_t kHKDF_salt_tc3[] = {0};    // No salt
+const uint8_t kHKDF_info_tc3[] = {0};    // No info
 const uint8_t kHKDF_okm_tc3_sha1[] = {
     0x0a, 0xc1, 0xaf, 0x70, 0x02, 0xb3, 0xd7, 0x61, 0xd1, 0xe5, 0x52, 0x98,
     0xda, 0x9d, 0x05, 0x06, 0xb9, 0xae, 0x52, 0x05, 0x72, 0x20, 0xa3, 0x06,
@@ -1318,7 +1318,7 @@ const uint8_t kHKDF_ikm_tc7[] = {   // RFC 5869 Test Case 7
 };
 // Salt for Test Case 7 is not specified (NULL). HKDF will use HashLen 0x00
 // bytes instead.
-const uint8_t kHKDF_info_tc7[] = {};    // No info
+const uint8_t kHKDF_info_tc7[] = {0};    // No info
 const uint8_t kHKDF_okm_tc7_sha1[] = {
     0x2c, 0x91, 0x11, 0x72, 0x04, 0xd7, 0x45, 0xf3, 0x50, 0x0d, 0x63, 0x6a,
     0x62, 0xf6, 0x4f, 0x0a, 0xb3, 0xba, 0xe5, 0x48, 0xaa, 0x53, 0xd4, 0x23,
@@ -1448,43 +1448,46 @@ static const struct HKDFTestVector {
     },
 
     // RFC 5869 Test Case 3
+    //
+    // Salt and Info are zero-length arrays, which aren't allowed in standard
+    // C, thus the hard-coded sizes in this section.
     {
         EVP_sha1,
         kHKDF_ikm_tc3, sizeof(kHKDF_ikm_tc3),
-        kHKDF_salt_tc3, sizeof(kHKDF_salt_tc3),
-        kHKDF_info_tc3, sizeof(kHKDF_info_tc3),
+        kHKDF_salt_tc3, 0,
+        kHKDF_info_tc3, 0,
         kHKDF_okm_tc3_sha1, sizeof(kHKDF_okm_tc3_sha1),
         AWSLC_APPROVED,
     },
     {
         EVP_sha224,
         kHKDF_ikm_tc3, sizeof(kHKDF_ikm_tc3),
-        kHKDF_salt_tc3, sizeof(kHKDF_salt_tc3),
-        kHKDF_info_tc3, sizeof(kHKDF_info_tc3),
+        kHKDF_salt_tc3, 0,
+        kHKDF_info_tc3, 0,
         kHKDF_okm_tc3_sha224, sizeof(kHKDF_okm_tc3_sha224),
         AWSLC_APPROVED,
     },
     {
         EVP_sha256,
         kHKDF_ikm_tc3, sizeof(kHKDF_ikm_tc3),
-        kHKDF_salt_tc3, sizeof(kHKDF_salt_tc3),
-        kHKDF_info_tc3, sizeof(kHKDF_info_tc3),
+        kHKDF_salt_tc3, 0,
+        kHKDF_info_tc3, 0,
         kHKDF_okm_tc3_sha256, sizeof(kHKDF_okm_tc3_sha256),
         AWSLC_APPROVED,
     },
     {
         EVP_sha384,
         kHKDF_ikm_tc3, sizeof(kHKDF_ikm_tc3),
-        kHKDF_salt_tc3, sizeof(kHKDF_salt_tc3),
-        kHKDF_info_tc3, sizeof(kHKDF_info_tc3),
+        kHKDF_salt_tc3, 0,
+        kHKDF_info_tc3, 0,
         kHKDF_okm_tc3_sha384, sizeof(kHKDF_okm_tc3_sha384),
         AWSLC_APPROVED,
     },
     {
         EVP_sha512,
         kHKDF_ikm_tc3, sizeof(kHKDF_ikm_tc3),
-        kHKDF_salt_tc3, sizeof(kHKDF_salt_tc3),
-        kHKDF_info_tc3, sizeof(kHKDF_info_tc3),
+        kHKDF_salt_tc3, 0,
+        kHKDF_info_tc3, 0,
         kHKDF_okm_tc3_sha512, sizeof(kHKDF_okm_tc3_sha512),
         AWSLC_APPROVED,
     },
@@ -1535,11 +1538,13 @@ static const struct HKDFTestVector {
     // Case 6 repeats the inputs from RFC 5869 Test Case 3.
 
     // RFC 5869 Test Case 7
+    //
+    // Info is a zero-length array, thus the hard-coded length.
     {
         EVP_sha1,
         kHKDF_ikm_tc7, sizeof(kHKDF_ikm_tc7),
         NULL, 0,
-        kHKDF_info_tc7, sizeof(kHKDF_info_tc7),
+        kHKDF_info_tc7, 0,
         kHKDF_okm_tc7_sha1, sizeof(kHKDF_okm_tc7_sha1),
         AWSLC_APPROVED,
     },
@@ -1547,7 +1552,7 @@ static const struct HKDFTestVector {
         EVP_sha224,
         kHKDF_ikm_tc7, sizeof(kHKDF_ikm_tc7),
         NULL, 0,
-        kHKDF_info_tc7, sizeof(kHKDF_info_tc7),
+        kHKDF_info_tc7, 0,
         kHKDF_okm_tc7_sha224, sizeof(kHKDF_okm_tc7_sha224),
         AWSLC_APPROVED,
     },
@@ -1555,7 +1560,7 @@ static const struct HKDFTestVector {
         EVP_sha256,
         kHKDF_ikm_tc7, sizeof(kHKDF_ikm_tc7),
         NULL, 0,
-        kHKDF_info_tc7, sizeof(kHKDF_info_tc7),
+        kHKDF_info_tc7, 0,
         kHKDF_okm_tc7_sha256, sizeof(kHKDF_okm_tc7_sha256),
         AWSLC_APPROVED,
     },
@@ -1563,7 +1568,7 @@ static const struct HKDFTestVector {
         EVP_sha384,
         kHKDF_ikm_tc7, sizeof(kHKDF_ikm_tc7),
         NULL, 0,
-        kHKDF_info_tc7, sizeof(kHKDF_info_tc7),
+        kHKDF_info_tc7, 0,
         kHKDF_okm_tc7_sha384, sizeof(kHKDF_okm_tc7_sha384),
         AWSLC_APPROVED,
     },
@@ -1571,7 +1576,7 @@ static const struct HKDFTestVector {
         EVP_sha512,
         kHKDF_ikm_tc7, sizeof(kHKDF_ikm_tc7),
         NULL, 0,
-        kHKDF_info_tc7, sizeof(kHKDF_info_tc7),
+        kHKDF_info_tc7, 0,
         kHKDF_okm_tc7_sha512, sizeof(kHKDF_okm_tc7_sha512),
         AWSLC_APPROVED,
     },
