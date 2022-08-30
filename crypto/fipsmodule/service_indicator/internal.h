@@ -88,13 +88,13 @@ OPENSSL_INLINE void EVP_DigestVerify_verify_service_indicator(
 OPENSSL_INLINE void EVP_PKEY_keygen_verify_service_indicator(
     OPENSSL_UNUSED const EVP_PKEY *pkey) {}
 
-OPENSSL_INLINE void HMAC_expand_verify_service_indicator(
+OPENSSL_INLINE void HMAC_verify_service_indicator(
     OPENSSL_UNUSED const EVP_MD *evp_md) {}
 
-OPENSSL_INLINE void HMAC_extract_verify_service_indicator(
+OPENSSL_INLINE void HKDF_expand_verify_service_indicator(
     OPENSSL_UNUSED const EVP_MD *evp_md) {}
 
-OPENSSL_INLINE void HKDF_verify_service_indicator(
+OPENSSL_INLINE void HKDF_extract_verify_service_indicator(
     OPENSSL_UNUSED const EVP_MD *evp_md) {}
 
 OPENSSL_INLINE void PBKDF_verify_service_indicator(
