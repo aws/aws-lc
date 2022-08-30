@@ -40,16 +40,21 @@ for FOLDER_PATH in "$SRC_ROOT"/*/ ; do
 done
 
 function run_build_and_collect_metrics {
+  cmake_build_flags=("-DCMAKE_BUILD_TYPE=Release")
   if [[ "$small" == "ON" ]]; then
     build_size="Small"
+    cmake_build_flags+=("-DOPENSSL_SMALL=1")
   else
     build_size="Large"
   fi
   if [[ "$no_assembly" == "ON" ]]; then
     assembly="NoAsm"
+    cmake_build_flags+=("-DOPENSSL_NO_ASM=1")
   else
     assembly="Asm"
   fi
+
+  cmake_build_flags+=("-DBUILD_SHARED_LIBS=${shared_library}")
   if [[ "$shared_library" == "ON" ]]; then
     linking="Shared"
     lib_extension="so"
@@ -59,17 +64,14 @@ function run_build_and_collect_metrics {
   fi
   if [[ "$fips" == "ON" ]]; then
     fips_mode="FIPS"
+    cmake_build_flags+=("-DFIPS=1")
   else
     fips_mode="NotFIPS"
   fi
   size_common_dimensions="${common_dimensions},Optimization=Release,BuildSize=${build_size},Assembly=${assembly},CPU=${PLATFORM},Linking=${linking},FIPS=${fips_mode}"
 
   build_start=$(date +%s)
-  run_build -DCMAKE_BUILD_TYPE=Release \
-      -DBUILD_SHARED_LIBS="$shared_library" \
-      -DOPENSSL_SMALL="$small" \
-      -DOPENSSL_NO_ASM="$no_assembly" \
-      -DFIPS="$fips"
+  run_build "${cmake_build_flags[@]}"
   build_end=$(date +%s)
   build_time=$((build_end-build_start))
   put_metric --metric-name BuildTime --value "$build_time" --unit Seconds --dimensions "$size_common_dimensions"
