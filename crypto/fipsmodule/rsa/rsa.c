@@ -559,7 +559,7 @@ int rsa_sign_no_self_test(int hash_nid, const uint8_t *digest,
     }
     // All supported digest lengths fit in |unsigned|.
     assert(digest_len <= EVP_MAX_MD_SIZE);
-    static_assert(EVP_MAX_MD_SIZE <= UINT_MAX, "digest too long");
+    OPENSSL_STATIC_ASSERT(EVP_MAX_MD_SIZE <= UINT_MAX, digest_too_long);
     return rsa->meth->sign(hash_nid, digest, (unsigned)digest_len, out, out_len,
                            rsa);
   }
