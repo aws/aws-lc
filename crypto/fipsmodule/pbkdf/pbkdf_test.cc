@@ -14,11 +14,12 @@
 
 #include <gtest/gtest.h>
 
+#include <openssl/crypto.h>
 #include <openssl/digest.h>
 #include <openssl/evp.h>
 
-#include "../internal.h"
-#include "../test/test_util.h"
+#include "../../internal.h"
+#include "../../test/test_util.h"
 
 
 // Tests deriving a key using an empty password (specified both as NULL and as
@@ -67,7 +68,12 @@ TEST(PBKDFTest, RFC6070Vectors) {
                            0x41, 0xf0, 0xd8, 0xde, 0x89, 0x57};
   const uint8_t kKey3[] = {0x56, 0xfa, 0x6a, 0xa7, 0x55, 0x48, 0x09, 0x9d,
                            0xcc, 0x37, 0xd7, 0xf0, 0x34, 0x25, 0xe0, 0xc3};
-  uint8_t key[sizeof(kKey1)];
+  const uint8_t kKey4[] = {0x3d, 0x2e, 0xec, 0x4f, 0xe4, 0x1c, 0x84, 0x9b,
+                           0x80, 0xc8, 0xd8, 0x36, 0x62, 0xc0, 0xe4, 0x4a,
+                           0x8b, 0x29, 0x1a, 0x96, 0x4c, 0xf2, 0xf0, 0x70,
+                           0x38};
+  uint8_t key[sizeof(kKey4)];
+  static_assert(sizeof(key) >= sizeof(kKey1), "output too small");
   static_assert(sizeof(key) >= sizeof(kKey2), "output too small");
   static_assert(sizeof(key) >= sizeof(kKey3), "output too small");
 
@@ -82,6 +88,11 @@ TEST(PBKDFTest, RFC6070Vectors) {
   ASSERT_TRUE(PKCS5_PBKDF2_HMAC("pass\0word", 9, (const uint8_t *)"sa\0lt", 5,
                                 4096, EVP_sha1(), sizeof(kKey3), key));
   EXPECT_EQ(Bytes(kKey3), Bytes(key, sizeof(kKey3)));
+
+  ASSERT_TRUE(PKCS5_PBKDF2_HMAC("passwordPASSWORDpassword", 24,
+                    (const uint8_t *)"saltSALTsaltSALTsaltSALTsaltSALTsalt", 36,
+                    4096, EVP_sha1(), sizeof(kKey4), key));
+  EXPECT_EQ(Bytes(kKey4), Bytes(key, sizeof(kKey4)));
 }
 
 // Tests key derivation using SHA-2 digests.

@@ -361,6 +361,9 @@ OPENSSL_EXPORT int EVP_BytesToKey(const EVP_CIPHER *type, const EVP_MD *md,
 #define EVP_CIPH_GCM_MODE 0x6
 #define EVP_CIPH_XTS_MODE 0x7
 
+// Buffer length in bits not bytes: CFB1 mode only.
+# define EVP_CIPH_FLAG_LENGTH_BITS 0x2000
+
 
 // Cipher flags (for |EVP_CIPHER_flags|).
 
@@ -475,17 +478,35 @@ OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_cfb128(void);
 // EVP_aes_128_cfb is an alias for |EVP_aes_128_cfb128| and is deprecated.
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_cfb(void);
 
+// EVP_aes_128_cfb1 is deprecated.
+OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_cfb1(void);
+
+// EVP_aes_128_cfb8 is deprecated.
+OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_cfb8(void);
+
 // EVP_aes_192_cfb128 is deprecated.
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_192_cfb128(void);
 
 // EVP_aes_192_cfb is an alias for |EVP_aes_192_cfb128| and is deprecated.
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_192_cfb(void);
 
+// EVP_aes_192_cfb1 is deprecated.
+OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_192_cfb1(void);
+
+// EVP_aes_192_cfb8 is deprecated.
+OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_192_cfb8(void);
+
 // EVP_aes_256_cfb128 is deprecated.
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_cfb128(void);
 
 // EVP_aes_256_cfb is an alias for |EVP_aes_256_cfb128| and is deprecated.
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_cfb(void);
+
+// EVP_aes_256_cfb1 is deprecated.
+OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_cfb1(void);
+
+// EVP_aes_256_cfb8 is deprecated.
+OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_cfb8(void);
 
 // EVP_bf_ecb is Blowfish in ECB mode and is deprecated.
 OPENSSL_EXPORT const EVP_CIPHER *EVP_bf_ecb(void);
