@@ -333,6 +333,20 @@ add_library(
   dh_extra/params.c
   dh_extra/dh_asn1.c
   digest_extra/digest_extra.c
+  dilithium/p_dilithium3.c
+  dilithium/p_dilithium3_asn1.c
+  dilithium/sig_dilithium3.c
+  dilithium/pqcrystals-dilithium_dilithium3_ref/aes256ctr.c
+  dilithium/pqcrystals-dilithium_dilithium3_ref/fips202.c
+  dilithium/pqcrystals-dilithium_dilithium3_ref/ntt.c
+  dilithium/pqcrystals-dilithium_dilithium3_ref/packing.c
+  dilithium/pqcrystals-dilithium_dilithium3_ref/poly.c
+  dilithium/pqcrystals-dilithium_dilithium3_ref/polyvec.c
+  dilithium/pqcrystals-dilithium_dilithium3_ref/reduce.c
+  dilithium/pqcrystals-dilithium_dilithium3_ref/rounding.c
+  dilithium/pqcrystals-dilithium_dilithium3_ref/sign.c
+  dilithium/pqcrystals-dilithium_dilithium3_ref/symmetric-aes.c
+  dilithium/pqcrystals-dilithium_dilithium3_ref/symmetric-shake.c
   dsa/dsa.c
   dsa/dsa_asn1.c
   ecdh_extra/ecdh_extra.c
@@ -662,12 +676,14 @@ if(BUILD_TESTING)
     ecdh_extra/ecdh_test.cc
     dh_extra/dh_test.cc
     digest_extra/digest_test.cc
+    dilithium/p_dilithium_test.cc
     dsa/dsa_test.cc
     err/err_test.cc
     evp_extra/evp_extra_test.cc
     evp_extra/evp_test.cc
     evp_extra/pbkdf_test.cc
     evp_extra/pq_kem_kat_tests_kyber512.cc
+    evp_extra/pq_sig_kat_tests_dilithium3.cc
     evp_extra/scrypt_test.cc
     fipsmodule/aes/aes_test.cc
     fipsmodule/bn/bn_test.cc
