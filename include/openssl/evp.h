@@ -694,16 +694,16 @@ OPENSSL_EXPORT int EVP_PKEY_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY **out_pkey);
 // Mechanism). For the KEM specified in |ctx|, the function:
 //   1. determines the size of the shared secret and the ciphertext and
 //      writes them to |shared_secret_len| and |ciphertext_len|,
-//   1. generates a random value of size |shared_secret_len| and
+//   2. generates a random value of size |shared_secret_len| and
 //      writes it to |shared_secret|,
-//   2. encapsulates the shared secret, producing the ciphertext, by using
+//   3. encapsulates the shared secret, producing the ciphertext, by using
 //      the public key in |ctx| and writes the ciphertext to |ciphertext|.
 //
 // If the given |ciphertext| is NULL it is assumed that the caller is doing
 // a size check: the function will write the size of the ciphertext and the
-// shared secret in |ciphertext_len| and |shared_secret_len| and return success.
+// shared secret in |ciphertext_len| and |shared_secret_len| and return 1.
 //
-// NOTE: no allocation is done in the function, it is expected by the caller to
+// NOTE: no allocation is done in the function, the caller is expected to
 // provide large enough |ciphertext| and |shared_secret| buffers.
 //
 // It returns one on success or zero on error.
@@ -722,9 +722,9 @@ OPENSSL_EXPORT int EVP_PKEY_encapsulate(EVP_PKEY_CTX *ctx          /* IN  */,
 //
 // If the given |shared_secret| is NULL it is assumed that the caller is doing
 // a size check: the function will write the size of the shared secret in
-// |shared_secret_len| and return success.
+// |shared_secret_len| and return 1.
 //
-// NOTE: no allocation is done in the function, it is expected by the caller to
+// NOTE: no allocation is done in the function, the caller is expected to
 // provide large enough |shared_secret| buffer.
 //
 // It returns one on success or zero on error.

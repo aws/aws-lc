@@ -34,7 +34,7 @@ static int pkey_kyber512_encapsulate(EVP_PKEY_CTX *ctx,
                                      size_t  *ciphertext_len,
                                      uint8_t *shared_secret,
                                      size_t  *shared_secret_len) {
-  *ciphertext_len    = KYBER512_CIPHERTEXT_BYTES;
+  *ciphertext_len = KYBER512_CIPHERTEXT_BYTES;
   *shared_secret_len = KYBER512_SHARED_SECRET_BYTES;
   if (ciphertext == NULL) { // Caller is getting parameter values.
     return 1;
@@ -47,7 +47,7 @@ static int pkey_kyber512_encapsulate(EVP_PKEY_CTX *ctx,
       return 0;
   }
 
-  KYBER512_KEY *key = ctx->pkey->pkey.ptr;
+  KYBER512_KEY *key = (KYBER512_KEY*)ctx->pkey->pkey.ptr;
   kyber512_encapsulate(ciphertext, shared_secret, key->pub);
 
   return 1;
@@ -70,7 +70,7 @@ static int pkey_kyber512_decapsulate(EVP_PKEY_CTX *ctx,
       return 0;
   }
 
-  KYBER512_KEY *key = ctx->pkey->pkey.ptr;
+  KYBER512_KEY *key = (KYBER512_KEY*)ctx->pkey->pkey.ptr;
   if (!key->has_private) {
     return 0;
   }
