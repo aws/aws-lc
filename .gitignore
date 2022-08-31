@@ -2,6 +2,7 @@
 build/
 build32/
 build64/
+build-fips/
 ssl/test/runner/runner
 *.pyc
 *.swp

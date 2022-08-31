@@ -346,32 +346,8 @@ void HMAC_verify_service_indicator(const EVP_MD *evp_md) {
   }
 }
 
-void HKDF_expand_verify_service_indicator(const EVP_MD *evp_md) {
-  // HKDF_expand with SHA1, SHA224, SHA256, SHA384, and SHA512 are approved.
-  //
-  // FIPS 140 parameter requirements, per NIST SP 800-108 Rev. 1:
-  //
-  // It is recommended that the length of a KDK used by a KDF be at least as
-  // large as the targeted security strength (in bits) of any application that
-  // will be supported by the use of the derived keying material.
-  //
-  // We can't test for that, as we don't know what the HKDF output will be
-  // used for.
-  switch (evp_md->type) {
-    case NID_sha1:
-    case NID_sha224:
-    case NID_sha256:
-    case NID_sha384:
-    case NID_sha512:
-      FIPS_service_indicator_update_state();
-      break;
-    default:
-      break;
-  }
-}
-
-void HKDF_extract_verify_service_indicator(const EVP_MD *evp_md) {
-  // HKDF_extract with SHA1, SHA224, SHA256, SHA384, and SHA512 are approved.
+void HKDF_verify_service_indicator(const EVP_MD *evp_md) {
+  // HKDF with SHA1, SHA224, SHA256, SHA384, and SHA512 are approved.
   //
   // FIPS 140 parameter requirements, per NIST SP 800-108 Rev. 1:
   //
