@@ -1375,7 +1375,7 @@ static const struct HKDFTestVector {
         kHKDF_ikm_tc1, sizeof(kHKDF_ikm_tc1),
         kHKDF_salt_tc1, sizeof(kHKDF_salt_tc1),
         kHKDF_info_tc1, sizeof(kHKDF_info_tc1),
-        kHKDF_okm_tc1_md51, sizeof(kHKDF_okm_tc1_md51),
+        kHKDF_okm_tc1_md5, sizeof(kHKDF_okm_tc1_md5),
         AWSLC_NOT_APPROVED,
     },
     {
