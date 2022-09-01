@@ -275,7 +275,7 @@ BIGNUM_OBJ = curve25519/bignum_add_p25519.o \
              secp256k1/bignum_triple_p256k1.o
 
 OBJ = $(POINT_OBJ) $(BIGNUM_OBJ)
-      
+
 %.o : %.S ; cat $< | $(PREPROCESS) | $(SPLIT) | $(ASSEMBLE) -o $@ -
 
 libs2nbignum.a: $(OBJ) ; ar -rc libs2nbignum.a $(OBJ)

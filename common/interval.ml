@@ -351,16 +351,16 @@ let (PURE_BOUNDER_TAC:thm list -> tactic),(BOUNDER_TAC:thm list -> tactic) =
 
 let GEN_DECARRY_RULE =
   let simper1 = MATCH_MP (REAL_ARITH
-    `&2 pow 64 * hi + lo:real = z 
+    `&2 pow 64 * hi + lo:real = z
      ==> hi = (z - lo) / &18446744073709551616`)
   and simper0 = MATCH_MP (REAL_ARITH
-    `&2 pow 64 * hi:real = z 
+    `&2 pow 64 * hi:real = z
      ==> hi = z / &18446744073709551616`)
   and simper3 = MATCH_MP (REAL_ARITH
-    `--(&2 pow 64) * hi + lo:real = z 
+    `--(&2 pow 64) * hi + lo:real = z
      ==> hi = (lo - z) / &18446744073709551616`)
   and simper2 = MATCH_MP (REAL_ARITH
-    `--(&2 pow 64) * hi:real = z 
+    `--(&2 pow 64) * hi:real = z
      ==> hi = --z / &18446744073709551616`)
   and uncarry = (MATCH_MP o prove)
    (`&b:real = t /\ (l <= t /\ t <= u)
@@ -446,16 +446,16 @@ let DECARRY_RULE = GEN_DECARRY_RULE [];;
 
 let DESUM_RULE =
   let simper1 = MATCH_MP (REAL_ARITH
-    `&2 pow 64 * hi + lo:real = z 
+    `&2 pow 64 * hi + lo:real = z
      ==> lo = z - &18446744073709551616 * hi`)
   and simper0 = MATCH_MP (REAL_ARITH
-    `&2 pow 64 * hi:real = z 
+    `&2 pow 64 * hi:real = z
      ==> hi = z / &18446744073709551616`)
   and simper3 = MATCH_MP (REAL_ARITH
-    `--(&2 pow 64) * hi + lo:real = z 
+    `--(&2 pow 64) * hi + lo:real = z
      ==> lo = z + &18446744073709551616 * hi`)
   and simper2 = MATCH_MP (REAL_ARITH
-    `--(&2 pow 64) * hi:real = z 
+    `--(&2 pow 64) * hi:real = z
      ==> hi = --z / &18446744073709551616`) in
   let simper th =
     try simper1 th with Failure _ ->
