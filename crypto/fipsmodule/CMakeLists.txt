@@ -151,11 +151,11 @@ endif()
 # s2n-bignum files can be compiled on Unix platforms only (except Apple),
 # and on x86_64 and aarch64 systems only.
 if((ARCH STREQUAL "x86_64" OR ARCH STREQUAL "aarch64") AND
-    UNIX AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+    NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
 
   # Set the source directory for s2n-bignum assembly files
   if(ARCH STREQUAL "x86_64")
-    set(S2N_BIGNUM_DIR ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/x86_att)
+    set(S2N_BIGNUM_DIR ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/x86)
   else()
     set(S2N_BIGNUM_DIR ${PROJECT_SOURCE_DIR}/third_party/s2n-bignum/arm)
   endif()
@@ -178,15 +178,15 @@ if((ARCH STREQUAL "x86_64" OR ARCH STREQUAL "aarch64") AND
     p384/bignum_montsqr_p384_alt.S
     p384/bignum_nonzero_6.S
     p384/bignum_littleendian_6.S
-    p521/bignum_add_p521.S
-    p521/bignum_sub_p521.S
-    p521/bignum_neg_p521.S
-    p521/bignum_mul_p521.S
-    p521/bignum_mul_p521_alt.S
-    p521/bignum_sqr_p521.S
-    p521/bignum_sqr_p521_alt.S
-    p521/bignum_tolebytes_p521.S
-    p521/bignum_fromlebytes_p521.S
+    # p521/bignum_add_p521.S
+    # p521/bignum_sub_p521.S
+    # p521/bignum_neg_p521.S
+    # p521/bignum_mul_p521.S
+    # p521/bignum_mul_p521_alt.S
+    # p521/bignum_sqr_p521.S
+    # p521/bignum_sqr_p521_alt.S
+    # p521/bignum_tolebytes_p521.S
+    # p521/bignum_fromlebytes_p521.S
   )
   if(ARCH STREQUAL "x86_64")
     # The files below contain the alternative functions for x86_64.
@@ -234,7 +234,7 @@ function(s2n_asm_cpreprocess dest src)
   add_custom_command(
           OUTPUT ${dest}
           COMMAND ${CMAKE_COMMAND} -E make_directory ${dir}
-          COMMAND ${CMAKE_ASM_COMPILER} ${TARGET} ${CMAKE_ASM_FLAGS} -E ${S2N_BIGNUM_DIR}/${src} -I${S2N_BIGNUM_INCLUDE_DIR} -DS2N_BN_HIDE_SYMBOLS| tr \"\;\" \"\\n\" > ${dest}
+          COMMAND ${CMAKE_ASM_COMPILER} ${TARGET} ${CMAKE_ASM_FLAGS} -E ${S2N_BIGNUM_DIR}/${src} -I${S2N_BIGNUM_INCLUDE_DIR} -DS2N_BN_HIDE_SYMBOLS -DWINDOWS_ABI | tr \"\;\" \"\\n\" > ${dest}
           DEPENDS
           ${S2N_BIGNUM_DIR}/${src}
           WORKING_DIRECTORY .

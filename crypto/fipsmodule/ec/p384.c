@@ -30,7 +30,6 @@
 // when s2n-bignum is used.
 //
 #if !defined(OPENSSL_NO_ASM) && \
-    (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE)) && \
     (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64)) && \
     !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
 
