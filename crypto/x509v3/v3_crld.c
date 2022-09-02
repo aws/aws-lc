@@ -161,9 +161,7 @@ static int set_dist_point_name(DIST_POINT_NAME **pdp, X509V3_CTX *ctx,
     if (!ret || sk_X509_NAME_ENTRY_num(rnm) <= 0) {
       goto err;
     }
-    /*
-     * Since its a name fragment can't have more than one RDNSequence
-     */
+    // Since its a name fragment can't have more than one RDNSequence
     if (sk_X509_NAME_ENTRY_value(rnm, sk_X509_NAME_ENTRY_num(rnm) - 1)->set) {
       OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_MULTIPLE_RDNS);
       goto err;
@@ -192,12 +190,8 @@ static int set_dist_point_name(DIST_POINT_NAME **pdp, X509V3_CTX *ctx,
   return 1;
 
 err:
-  if (fnm) {
-    sk_GENERAL_NAME_pop_free(fnm, GENERAL_NAME_free);
-  }
-  if (rnm) {
-    sk_X509_NAME_ENTRY_pop_free(rnm, X509_NAME_ENTRY_free);
-  }
+  sk_GENERAL_NAME_pop_free(fnm, GENERAL_NAME_free);
+  sk_X509_NAME_ENTRY_pop_free(rnm, X509_NAME_ENTRY_free);
   return -1;
 }
 
@@ -310,9 +304,7 @@ static DIST_POINT *crldp_from_section(X509V3_CTX *ctx,
   return point;
 
 err:
-  if (point) {
-    DIST_POINT_free(point);
-  }
+  DIST_POINT_free(point);
   return NULL;
 }
 
@@ -391,9 +383,7 @@ static int dpn_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
       break;
 
     case ASN1_OP_FREE_POST:
-      if (dpn->dpname) {
-        X509_NAME_free(dpn->dpname);
-      }
+      X509_NAME_free(dpn->dpname);
       break;
   }
   return 1;
@@ -609,7 +599,7 @@ int DIST_POINT_set_dpname(DIST_POINT_NAME *dpn, X509_NAME *iname) {
       return 0;
     }
   }
-  /* generate cached encoding of name */
+  // generate cached encoding of name
   if (i2d_X509_NAME(dpn->dpname, NULL) < 0) {
     X509_NAME_free(dpn->dpname);
     dpn->dpname = NULL;

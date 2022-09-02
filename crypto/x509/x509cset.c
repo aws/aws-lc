@@ -72,7 +72,7 @@ int X509_CRL_set_version(X509_CRL *x, long version) {
     return 0;
   }
 
-  /* v1(0) is default and is represented by omitting the version. */
+  // v1(0) is default and is represented by omitting the version.
   if (version == X509_CRL_VERSION_1) {
     ASN1_INTEGER_free(x->crl->version);
     x->crl->version = NULL;
@@ -90,7 +90,7 @@ int X509_CRL_set_version(X509_CRL *x, long version) {
 
 int X509_CRL_set_issuer_name(X509_CRL *x, X509_NAME *name) {
   if ((x == NULL) || (x->crl == NULL)) {
-    return (0);
+    return 0;
   }
   return (X509_NAME_set(&x->crl->issuer, name));
 }
@@ -99,7 +99,7 @@ int X509_CRL_set1_lastUpdate(X509_CRL *x, const ASN1_TIME *tm) {
   ASN1_TIME *in;
 
   if (x == NULL) {
-    return (0);
+    return 0;
   }
   in = x->crl->lastUpdate;
   if (in != tm) {
@@ -109,14 +109,14 @@ int X509_CRL_set1_lastUpdate(X509_CRL *x, const ASN1_TIME *tm) {
       x->crl->lastUpdate = in;
     }
   }
-  return (in != NULL);
+  return in != NULL;
 }
 
 int X509_CRL_set1_nextUpdate(X509_CRL *x, const ASN1_TIME *tm) {
   ASN1_TIME *in;
 
   if (x == NULL) {
-    return (0);
+    return 0;
   }
   in = x->crl->nextUpdate;
   if (in != tm) {
@@ -126,11 +126,11 @@ int X509_CRL_set1_nextUpdate(X509_CRL *x, const ASN1_TIME *tm) {
       x->crl->nextUpdate = in;
     }
   }
-  return (in != NULL);
+  return in != NULL;
 }
 
 int X509_CRL_sort(X509_CRL *c) {
-  /* Sort the data so it will be written in serial number order. */
+  // Sort the data so it will be written in serial number order.
   sk_X509_REVOKED_sort(c->crl->revoked);
   c->crl->enc.modified = 1;
   return 1;
@@ -194,7 +194,7 @@ int X509_REVOKED_set_revocationDate(X509_REVOKED *revoked,
   ASN1_TIME *in;
 
   if (revoked == NULL) {
-    return (0);
+    return 0;
   }
   in = revoked->revocationDate;
   if (in != tm) {
@@ -204,7 +204,7 @@ int X509_REVOKED_set_revocationDate(X509_REVOKED *revoked,
       revoked->revocationDate = in;
     }
   }
-  return (in != NULL);
+  return in != NULL;
 }
 
 const ASN1_INTEGER *X509_REVOKED_get0_serialNumber(
@@ -217,7 +217,7 @@ int X509_REVOKED_set_serialNumber(X509_REVOKED *revoked,
   ASN1_INTEGER *in;
 
   if (revoked == NULL) {
-    return (0);
+    return 0;
   }
   in = revoked->serialNumber;
   if (in != serial) {
@@ -227,7 +227,7 @@ int X509_REVOKED_set_serialNumber(X509_REVOKED *revoked,
       revoked->serialNumber = in;
     }
   }
-  return (in != NULL);
+  return in != NULL;
 }
 
 const STACK_OF(X509_EXTENSION) *X509_REVOKED_get0_extensions(
@@ -245,9 +245,9 @@ int i2d_X509_CRL_tbs(X509_CRL *crl, unsigned char **outp) {
 }
 
 int X509_CRL_set1_signature_algo(X509_CRL *crl, const X509_ALGOR *algo) {
-  /* TODO(https://crbug.com/boringssl/407): Generated ASN.1 dup functions
-   * should be const. Alternatively, when we can embed required fields
-   * directly in structs, import |X509_ALGOR_copy| from upstream. */
+  // TODO(https://crbug.com/boringssl/407): Generated ASN.1 dup functions
+  // should be const. Alternatively, when we can embed required fields
+  // directly in structs, import |X509_ALGOR_copy| from upstream.
   X509_ALGOR *copy1 = X509_ALGOR_dup((X509_ALGOR *)algo);
   X509_ALGOR *copy2 = X509_ALGOR_dup((X509_ALGOR *)algo);
   if (copy1 == NULL || copy2 == NULL) {

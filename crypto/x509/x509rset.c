@@ -75,22 +75,22 @@ int X509_REQ_set_version(X509_REQ *x, long version) {
 
 int X509_REQ_set_subject_name(X509_REQ *x, X509_NAME *name) {
   if ((x == NULL) || (x->req_info == NULL)) {
-    return (0);
+    return 0;
   }
   return (X509_NAME_set(&x->req_info->subject, name));
 }
 
 int X509_REQ_set_pubkey(X509_REQ *x, EVP_PKEY *pkey) {
   if ((x == NULL) || (x->req_info == NULL)) {
-    return (0);
+    return 0;
   }
   return (X509_PUBKEY_set(&x->req_info->pubkey, pkey));
 }
 
 int X509_REQ_set1_signature_algo(X509_REQ *req, const X509_ALGOR *algo) {
-  /* TODO(https://crbug.com/boringssl/407): Generated ASN.1 dup functions
-   * should be const. Alternatively, when we can embed required fields
-   * directly in structs, import |X509_ALGOR_copy| from upstream. */
+  // TODO(https://crbug.com/boringssl/407): Generated ASN.1 dup functions
+  // should be const. Alternatively, when we can embed required fields
+  // directly in structs, import |X509_ALGOR_copy| from upstream.
   X509_ALGOR *copy = X509_ALGOR_dup((X509_ALGOR *)algo);
   if (copy == NULL) {
     return 0;
