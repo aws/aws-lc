@@ -1238,6 +1238,9 @@ const uint8_t kHKDF_okm_tc2_sha512[] = {
     0x4d, 0x57, 0x20, 0x97, 0xa8, 0x50, 0x5d, 0x9e, 0x7a, 0x93
 };
 
+/* TODO(CryptoAlg-1281): Another open question for our testing partner is
+ * whether 0-length salt is Approved. 1281 will either add this back-in as-is
+ * or convert them to NO_APPROVED tests.
 const uint8_t kHKDF_ikm_tc3[] = {   // RFC 5869 Test Case 3
     0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b,
     0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b
@@ -1274,6 +1277,7 @@ const uint8_t kHKDF_okm_tc3_sha512[] = {
     0x5c, 0x97, 0x0e, 0x3b, 0x16, 0x4b, 0xf9, 0x0f, 0xff, 0x22, 0xd0, 0x48,
     0x36, 0xd0, 0xe2, 0x34, 0x3b, 0xac
 };
+ */
 
 const uint8_t kHKDF_ikm_tc4[] = {   // RFC 5869 Test Case 4
     0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b
@@ -1465,6 +1469,7 @@ static const struct HKDFTestVector {
     //
     // Salt and Info are zero-length arrays, which aren't allowed in standard
     // C, thus the hard-coded sizes in this section.
+    /* TODO(CryptoAlg-1281): not sure if these are actually Approved
     {
         EVP_sha1,
         kHKDF_ikm_tc3, sizeof(kHKDF_ikm_tc3),
@@ -1505,6 +1510,7 @@ static const struct HKDFTestVector {
         kHKDF_okm_tc3_sha512, sizeof(kHKDF_okm_tc3_sha512),
         AWSLC_APPROVED,
     },
+     */
 
     // RFC 5869 Test Case 4
     {
@@ -1596,6 +1602,7 @@ static const struct HKDFTestVector {
     },
 };
 
+// TODO(CryptoAlg-1281): Do we need to test HKDF_Expand separately from this?
 class HKDF_ServiceIndicatorTest : public TestWithNoErrors<HKDFTestVector> {};
 
 INSTANTIATE_TEST_SUITE_P(All, HKDF_ServiceIndicatorTest,
