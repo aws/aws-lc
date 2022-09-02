@@ -1054,9 +1054,7 @@ static int boringssl_self_test_fast(void) {
     goto err;
   }
 
-  if (!boringssl_self_test_sha256() ||
-      !boringssl_self_test_sha512() ||
-      !boringssl_self_test_hmac_sha256() ||
+  if (!boringssl_self_test_sha512() ||
       !boringssl_self_test_hkdf_sha256()) {
     goto err;
   }
