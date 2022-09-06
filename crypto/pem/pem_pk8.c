@@ -71,12 +71,10 @@ static int do_pk8pkey_fp(FILE *bp, EVP_PKEY *x, int isder, int nid,
                          const EVP_CIPHER *enc, char *kstr, int klen,
                          pem_password_cb *cb, void *u);
 
-/*
- * These functions write a private key in PKCS#8 format: it is a "drop in"
- * replacement for PEM_write_bio_PrivateKey() and friends. As usual if 'enc'
- * is NULL then it uses the unencrypted private key form. The 'nid' versions
- * uses PKCS#5 v1.5 PBE algorithms whereas the others use PKCS#5 v2.0.
- */
+// These functions write a private key in PKCS#8 format: it is a "drop in"
+// replacement for PEM_write_bio_PrivateKey() and friends. As usual if 'enc'
+// is NULL then it uses the unencrypted private key form. The 'nid' versions
+// uses PKCS#5 v1.5 PBE algorithms whereas the others use PKCS#5 v2.0.
 
 int PEM_write_bio_PKCS8PrivateKey_nid(BIO *bp, EVP_PKEY *x, int nid, char *kstr,
                                       int klen, pem_password_cb *cb, void *u) {
@@ -220,7 +218,7 @@ static int do_pk8pkey_fp(FILE *fp, EVP_PKEY *x, int isder, int nid,
   int ret;
   if (!(bp = BIO_new_fp(fp, BIO_NOCLOSE))) {
     OPENSSL_PUT_ERROR(PEM, ERR_R_BUF_LIB);
-    return (0);
+    return 0;
   }
   ret = do_pk8pkey(bp, x, isder, nid, enc, kstr, klen, cb, u);
   BIO_free(bp);
