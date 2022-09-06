@@ -34,12 +34,20 @@ static int pkey_kyber512_encapsulate(EVP_PKEY_CTX *ctx,
                                      size_t  *ciphertext_len,
                                      uint8_t *shared_secret,
                                      size_t  *shared_secret_len) {
-  *ciphertext_len = KYBER512_CIPHERTEXT_BYTES;
-  *shared_secret_len = KYBER512_SHARED_SECRET_BYTES;
-  if (ciphertext == NULL) { // Caller is getting parameter values.
+  // Caller is getting parameter values.
+  if (ciphertext == NULL) {
+    *ciphertext_len = KYBER512_CIPHERTEXT_BYTES;
+    *shared_secret_len = KYBER512_SHARED_SECRET_BYTES;
     return 1;
   }
 
+  // The output buffers need to be large enough.
+  if (*ciphertext_len < KYBER512_CIPHERTEXT_BYTES ||
+      *shared_secret_len < KYBER512_SHARED_SECRET_BYTES) {
+      return 0;
+  }
+
+  // Check that the context is properly configured.
   if (ctx == NULL ||
       ctx->pkey == NULL ||
       ctx->pkey->pkey.ptr == NULL ||
@@ -50,6 +58,11 @@ static int pkey_kyber512_encapsulate(EVP_PKEY_CTX *ctx,
   KYBER512_KEY *key = (KYBER512_KEY*)ctx->pkey->pkey.ptr;
   kyber512_encapsulate(ciphertext, shared_secret, key->pub);
 
+  // The size of the ciphertext and the shared secret
+  // that has been writen to the output buffers.
+  *ciphertext_len = KYBER512_CIPHERTEXT_BYTES;
+  *shared_secret_len = KYBER512_SHARED_SECRET_BYTES;
+
   return 1;
 }
 
@@ -58,11 +71,18 @@ static int pkey_kyber512_decapsulate(EVP_PKEY_CTX *ctx,
                                      size_t  *shared_secret_len,
                                      uint8_t *ciphertext,
                                      size_t   ciphertext_len) {
-  *shared_secret_len = KYBER512_SHARED_SECRET_BYTES;
-  if (shared_secret == NULL) { // Caller is getting parameter values.
+  // Caller is getting parameter values.
+  if (shared_secret == NULL) {
+    *shared_secret_len = KYBER512_SHARED_SECRET_BYTES;
     return 1;
   }
 
+  // The output buffer needs to be large enough.
+  if (*shared_secret_len < KYBER512_SHARED_SECRET_BYTES) {
+      return 0;
+  }
+
+  // Check that the context is properly configured.
   if (ctx == NULL ||
       ctx->pkey == NULL ||
       ctx->pkey->pkey.ptr == NULL ||
@@ -76,6 +96,10 @@ static int pkey_kyber512_decapsulate(EVP_PKEY_CTX *ctx,
   }
 
   kyber512_decapsulate(shared_secret, ciphertext, key->priv);
+
+  // The size of the shared secret that has been writen to the output buffer.
+  *shared_secret_len = KYBER512_SHARED_SECRET_BYTES;
+
   return 1;
 }
 
