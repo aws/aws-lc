@@ -69,18 +69,18 @@ static int by_file_ctrl(X509_LOOKUP *ctx, int cmd, const char *argc, long argl,
                         char **ret);
 static X509_LOOKUP_METHOD x509_file_lookup = {
     "Load file into cache",
-    NULL,         /* new */
-    NULL,         /* free */
-    NULL,         /* init */
-    NULL,         /* shutdown */
-    by_file_ctrl, /* ctrl */
-    NULL,         /* get_by_subject */
-    NULL,         /* get_by_issuer_serial */
-    NULL,         /* get_by_fingerprint */
-    NULL,         /* get_by_alias */
+    NULL,          // new
+    NULL,          // free
+    NULL,          // init
+    NULL,          // shutdown
+    by_file_ctrl,  // ctrl
+    NULL,          // get_by_subject
+    NULL,          // get_by_issuer_serial
+    NULL,          // get_by_fingerprint
+    NULL,          // get_by_alias
 };
 
-X509_LOOKUP_METHOD *X509_LOOKUP_file(void) { return (&x509_file_lookup); }
+X509_LOOKUP_METHOD *X509_LOOKUP_file(void) { return &x509_file_lookup; }
 
 static int by_file_ctrl(X509_LOOKUP *ctx, int cmd, const char *argp, long argl,
                         char **ret) {
@@ -112,7 +112,7 @@ static int by_file_ctrl(X509_LOOKUP *ctx, int cmd, const char *argp, long argl,
       }
       break;
   }
-  return (ok);
+  return ok;
 }
 
 int X509_load_cert_file(X509_LOOKUP *ctx, const char *file, int type) {
@@ -171,13 +171,9 @@ int X509_load_cert_file(X509_LOOKUP *ctx, const char *file, int type) {
   }
 
 err:
-  if (x != NULL) {
-    X509_free(x);
-  }
-  if (in != NULL) {
-    BIO_free(in);
-  }
-  return (ret);
+  X509_free(x);
+  BIO_free(in);
+  return ret;
 }
 
 int X509_load_crl_file(X509_LOOKUP *ctx, const char *file, int type) {
@@ -236,13 +232,9 @@ int X509_load_crl_file(X509_LOOKUP *ctx, const char *file, int type) {
   }
 
 err:
-  if (x != NULL) {
-    X509_CRL_free(x);
-  }
-  if (in != NULL) {
-    BIO_free(in);
-  }
-  return (ret);
+  X509_CRL_free(x);
+  BIO_free(in);
+  return ret;
 }
 
 int X509_load_cert_crl_file(X509_LOOKUP *ctx, const char *file, int type) {
@@ -291,4 +283,4 @@ err:
   return count;
 }
 
-#endif /* OPENSSL_NO_STDIO */
+#endif  // OPENSSL_NO_STDIO
