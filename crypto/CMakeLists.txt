@@ -503,7 +503,12 @@ target_compile_definitions(crypto_objects PRIVATE BORINGSSL_IMPLEMENTATION)
 add_dependencies(crypto_objects global_target)
 
 function(build_libcrypto name module_source)
-  add_library(${name} $<TARGET_OBJECTS:crypto_objects> ${CRYPTO_FIPS_OBJECTS} ${module_source})
+  if(FIPS)
+    add_library(${name} $<TARGET_OBJECTS:crypto_objects> ${CRYPTO_FIPS_OBJECTS} ${module_source} $<TARGET_OBJECTS:jitterentropy>)
+  else()
+    add_library(${name} $<TARGET_OBJECTS:crypto_objects> ${CRYPTO_FIPS_OBJECTS} ${module_source})
+  endif()
+
   add_dependencies(${name}  global_target)
 
   if(FIPS_DELOCATE OR FIPS_SHARED)
@@ -517,9 +522,6 @@ function(build_libcrypto name module_source)
     target_link_libraries(${name} PUBLIC pthread)
   endif()
 
-  if(FIPS)
-    target_link_libraries(${name} PRIVATE jitterentropy)
-  endif()
   target_include_directories(${name} SYSTEM PUBLIC
           $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
           $<INSTALL_INTERFACE:include>)
@@ -708,10 +710,6 @@ if(BUILD_TESTING)
   add_dependencies(${CRYPTO_TEST_EXEC} global_target)
 
   target_link_libraries(${CRYPTO_TEST_EXEC} test_support_lib boringssl_gtest crypto)
-  if(FIPS)
-    target_link_libraries(${CRYPTO_TEST_EXEC} jitterentropy)
-    add_dependencies(${CRYPTO_TEST_EXEC} jitterentropy)
-  endif()
   if(WIN32)
     target_link_libraries(${CRYPTO_TEST_EXEC} ws2_32)
   endif()
