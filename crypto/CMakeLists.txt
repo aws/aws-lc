@@ -455,6 +455,36 @@ add_library(
   ${CRYPTO_FIPS_OBJECTS}
 )
 
+target_compile_definitions(crypto_objects PRIVATE BORINGSSL_IMPLEMENTATION)
+
+# For the prefix build, the object files need the prefix header files to build.
+add_dependencies(crypto_objects global_target)
+
+function(build_libcrypto name module_source)
+  if(FIPS)
+    add_library(${name} $<TARGET_OBJECTS:crypto_objects> ${CRYPTO_FIPS_OBJECTS} ${module_source} $<TARGET_OBJECTS:jitterentropy>)
+  else()
+    add_library(${name} $<TARGET_OBJECTS:crypto_objects> ${CRYPTO_FIPS_OBJECTS} ${module_source})
+  endif()
+
+  add_dependencies(${name}  global_target)
+
+  if(FIPS_DELOCATE OR FIPS_SHARED)
+    add_dependencies(${name} bcm_o_target)
+  endif()
+  SET_TARGET_PROPERTIES(${name} PROPERTIES LINKER_LANGUAGE C)
+  if(WIN32)
+    target_link_libraries(${name} PUBLIC ws2_32)
+  endif()
+  if(NOT WIN32 AND NOT ANDROID)
+    target_link_libraries(${name} PUBLIC pthread)
+  endif()
+
+  target_include_directories(${name} SYSTEM PUBLIC
+          $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
+          $<INSTALL_INTERFACE:include>)
+endfunction()
+
 if(FIPS_SHARED)
   # Rewrite libcrypto.so to inject the correct module hash value. This assumes
   # UNIX-style library naming, but we only support FIPS mode on Linux anyway.
@@ -607,11 +637,7 @@ if(BUILD_TESTING)
 
   add_dependencies(crypto_test global_target)
 
-  target_link_libraries(crypto_test test_support_lib boringssl_gtest crypto)
-  if(FIPS)
-    target_link_libraries(crypto_test jitterentropy)
-    add_dependencies(crypto_test jitterentropy)
-  endif()
+  target_link_libraries(${CRYPTO_TEST_EXEC} test_support_lib boringssl_gtest crypto)
   if(WIN32)
     target_link_libraries(crypto_test ws2_32)
   endif()
