@@ -85,7 +85,7 @@ int ASN1_item_sign_ctx(const ASN1_ITEM *it, X509_ALGOR *algor1,
 
   pkey = EVP_PKEY_CTX_get0_pkey(ctx->pctx);
 
-  /* Write out the requested copies of the AlgorithmIdentifier. */
+  // Write out the requested copies of the AlgorithmIdentifier.
   if (algor1 && !x509_digest_sign_algorithm(ctx, algor1)) {
     goto err;
   }
@@ -107,21 +107,13 @@ int ASN1_item_sign_ctx(const ASN1_ITEM *it, X509_ALGOR *algor1,
     OPENSSL_PUT_ERROR(X509, ERR_R_EVP_LIB);
     goto err;
   }
-  if (signature->data != NULL) {
-    OPENSSL_free(signature->data);
-  }
-  signature->data = buf_out;
+  ASN1_STRING_set0(signature, buf_out, outl);
   buf_out = NULL;
-  signature->length = outl;
-  /*
-   * In the interests of compatibility, I'll make sure that the bit string
-   * has a 'not-used bits' value of 0
-   */
   signature->flags &= ~(ASN1_STRING_FLAG_BITS_LEFT | 0x07);
   signature->flags |= ASN1_STRING_FLAG_BITS_LEFT;
 err:
   EVP_MD_CTX_cleanup(ctx);
   OPENSSL_free(buf_in);
   OPENSSL_free(buf_out);
-  return (outl);
+  return outl;
 }
