@@ -2427,6 +2427,21 @@ OPENSSL_EXPORT int SSL_to_bytes(const SSL *in, uint8_t **out_data, size_t *out_l
 // Initial implementation of this API is made by Evgeny Potemkin.
 OPENSSL_EXPORT SSL *SSL_from_bytes(const uint8_t *in, size_t in_len, SSL_CTX *ctx);
 
+// SSL_CTX_set1_groups calls |SSL_CTX_set1_curves|.
+OPENSSL_EXPORT int SSL_CTX_set1_groups(SSL_CTX *ctx, const int *groups,
+                                       size_t groups_len);
+
+// SSL_set1_groups calls |SSL_set1_curves|.
+OPENSSL_EXPORT int SSL_set1_groups(SSL *ssl, const int *groups,
+                                   size_t groups_len);
+
+// SSL_CTX_set1_groups_list calls |SSL_CTX_set1_curves_list|.
+OPENSSL_EXPORT int SSL_CTX_set1_groups_list(SSL_CTX *ctx, const char *groups);
+
+// SSL_set1_groups_list calls |SSL_set1_curves_list|.
+OPENSSL_EXPORT int SSL_set1_groups_list(SSL *ssl, const char *groups);
+
+
 // Certificate verification.
 //
 // SSL may authenticate either endpoint with an X.509 certificate. Typically
