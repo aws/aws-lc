@@ -222,6 +222,27 @@ TEST(Kyber512Test, KEMSizeChecks) {
   ASSERT_TRUE(EVP_PKEY_decapsulate(kyber_pkey_ctx, NULL, &shared_secret_len, NULL, ciphertext_len));
   EXPECT_EQ(shared_secret_len, (size_t)KYBER512_SHARED_SECRET_BYTES);
 
+  // Verify that encaps/decaps fail when given too small buffer lengths.
+  uint8_t shared_secret[KYBER512_SHARED_SECRET_BYTES];
+  uint8_t ciphertext[KYBER512_CIPHERTEXT_BYTES];
+
+  // encapsulate -- ciphertext_len too small, shared_secret_len ok.
+  ciphertext_len -= 1;
+  ASSERT_FALSE(EVP_PKEY_encapsulate(kyber_pkey_ctx, ciphertext, &ciphertext_len, shared_secret, &shared_secret_len));
+  
+  // encapsulate -- ciphertext_len ok, shared_secret_len too small.
+  ciphertext_len += 1;
+  shared_secret_len -= 1;
+  ASSERT_FALSE(EVP_PKEY_encapsulate(kyber_pkey_ctx, ciphertext, &ciphertext_len, shared_secret, &shared_secret_len));
+
+  // decapsulate -- shared_secret_len too small
+  ASSERT_FALSE(EVP_PKEY_decapsulate(kyber_pkey_ctx, shared_secret, &shared_secret_len, ciphertext, ciphertext_len));
+
+  // Final check that everything works with good ciphertext_len and share_secret_len.
+  shared_secret_len += 1;
+  ASSERT_TRUE(EVP_PKEY_encapsulate(kyber_pkey_ctx, ciphertext, &ciphertext_len, shared_secret, &shared_secret_len));
+  ASSERT_TRUE(EVP_PKEY_decapsulate(kyber_pkey_ctx, shared_secret, &shared_secret_len, ciphertext, ciphertext_len));
+
   EVP_PKEY_CTX_free(kyber_pkey_ctx);
 }
 
