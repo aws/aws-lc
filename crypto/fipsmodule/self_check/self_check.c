@@ -991,9 +991,3 @@ err:
 int BORINGSSL_self_test(void) {
   return boringssl_fips_self_test();
 }
-
-#if defined(BORINGSSL_FIPS)
-int boringssl_self_test_startup(void) {
-  return boringssl_self_test_fast();
-}
-#endif
