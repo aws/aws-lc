@@ -31,7 +31,7 @@ mkdir -p ${SCRATCH_DIR}
 rm -rf ${SCRATCH_DIR}/*
 
 function fail() {
-    echo "testf failure: $1"
+    echo "test failure: $1"
     exit 1
 }
 
@@ -45,13 +45,13 @@ function install_aws_lc() {
     ${CMAKE_COMMAND} --build ${BUILD_DIR} --target install
 }
 
-# create installation with libssl.so
+# create installation with shared libssl.so/libcrypto.so
 install_aws_lc install-shared BUILD_SHARED_LIBS=ON
 
-# create installation with libssl.a
+# create installation with static libssl.a/libcrypto.a
 install_aws_lc install-static BUILD_SHARED_LIBS=OFF
 
-# create installation with both libssl.so and libssl.a
+# create installation with both shared libssl.so/libcrypto.so and static libssl.a/libcrypto.a
 install_aws_lc install-both BUILD_SHARED_LIBS=OFF
 install_aws_lc install-both BUILD_SHARED_LIBS=ON
 
@@ -120,14 +120,14 @@ test_lib_use() {
     fi
 }
 
-# if only shared libssl.so is available, that's what should get used
+# if only shared libssl.so/libcrypto.so are available, that's what should get used
 build_myapp BUILD_SHARED_LIBS=ON install-shared .so
 build_myapp BUILD_SHARED_LIBS=OFF install-shared .so
 
-# # if only static libssl.a is available, that's what should get used
+# if only static libssl.a/libcrypto.a are available, that's what should get used
 build_myapp BUILD_SHARED_LIBS=ON install-static .a
 build_myapp BUILD_SHARED_LIBS=OFF install-static .a
 
-# # if both libssl.so and libssl.a are available...
-build_myapp BUILD_SHARED_LIBS=ON install-both .so # myapp should choose libssl.so
-build_myapp BUILD_SHARED_LIBS=OFF install-both .a # myapp should choose libssl.a
+# if both shared libssl.so/libcrypto.so and static libssl.a/libcrypto.a are available...
+build_myapp BUILD_SHARED_LIBS=ON install-both .so # myapp should use libssl.so/libcrypto.so
+build_myapp BUILD_SHARED_LIBS=OFF install-both .a # myapp should use libssl.a/libcrypto.a
