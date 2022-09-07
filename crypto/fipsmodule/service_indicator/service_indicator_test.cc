@@ -1968,6 +1968,12 @@ TEST_P(KDF_ServiceIndicatorTest, TLSKDF) {
 }
 
 // PBKDF2 test data from RFC 6070.
+//
+// Set 1 - short password/salt; these are too short for FIPS, so they'll
+//         return NOT_APPROVED
+// Set 2 - long password/salt; APPROVED for FIPS
+// Set 3 - Not included, it's another short password/salt test, to ensure the
+//         password/salt are being handled as byte buffers rather than strings.
 static const uint8_t kPBKDF2Password1[] = {
     'p', 'a', 's', 's', 'w', 'o', 'r', 'd'
 };
@@ -1981,10 +1987,6 @@ static const uint8_t kPBKDF2Salt2[] = {
     'T', 's', 'a', 'l', 't', 'S', 'A', 'L', 'T', 's', 'a', 'l', 't', 'S', 'A',
     'L', 'T', 's', 'a', 'l', 't'
 };
-static const uint8_t kPBKDF2Password3[] = {
-    'p', 'a', 's', 's', '\0', 'w', 'o', 'r', 'd'
-};
-static const uint8_t kPBKDF2Salt3[] = {'s', 'a', '\0', 'l', 't'};
 
 static const uint8_t kPBKDF2DerivedKey1SHA1[] = {
     0x0c, 0x60, 0xc8, 0x0f, 0x96, 0x1f, 0x0e, 0x71, 0xf3, 0xa9, 0xb5, 0x24,
@@ -2006,10 +2008,6 @@ static const uint8_t kPBKDF2DerivedKey5SHA1[] = {
     0x3d, 0x2e, 0xec, 0x4f, 0xe4, 0x1c, 0x84, 0x9b, 0x80, 0xc8, 0xd8, 0x36,
     0x62, 0xc0, 0xe4, 0x4a, 0x8b, 0x29, 0x1a, 0x96, 0x4c, 0xf2, 0xf0, 0x70,
     0x38    // 25 bytes
-};
-static const uint8_t kPBKDF2DerivedKey6SHA1[] = {
-    0x56, 0xfa, 0x6a, 0xa7, 0x55, 0x48, 0x09, 0x9d, 0xcc, 0x37, 0xd7, 0xf0,
-    0x34, 0x25, 0xe0, 0xc3 // 16 bytes
 };
 
 static const uint8_t kPBKDF2DerivedKey1SHA224[] = {
@@ -2033,10 +2031,6 @@ static const uint8_t kPBKDF2DerivedKey5SHA224[] = {
     0xe6, 0xf5, 0x2b, 0x87, 0xe1, 0xf3, 0x69, 0x0c, 0x0d, 0xc0, 0xfb, 0xc0,
     0x57    // 25 bytes
 };
-static const uint8_t kPBKDF2DerivedKey6SHA224[] = {
-    0x9b, 0x40, 0x11, 0xb6, 0x41, 0xf4, 0x0a, 0x2a, 0x50, 0x0a, 0x31, 0xd4,
-    0xa3, 0x92, 0xd1, 0x5c // 16 bytes
-};
 
 static const uint8_t kPBKDF2DerivedKey1SHA256[] = {
     0x12, 0x0f, 0xb6, 0xcf, 0xfc, 0xf8, 0xb3, 0x2c, 0x43, 0xe7, 0x22, 0x52,
@@ -2058,10 +2052,6 @@ static const uint8_t kPBKDF2DerivedKey5SHA256[] = {
     0x34, 0x8c, 0x89, 0xdb, 0xcb, 0xd3, 0x2b, 0x2f, 0x32, 0xd8, 0x14, 0xb8,
     0x11, 0x6e, 0x84, 0xcf, 0x2b, 0x17, 0x34, 0x7e, 0xbc, 0x18, 0x00, 0x18,
     0x1c    // 25 bytes
-};
-static const uint8_t kPBKDF2DerivedKey6SHA256[] = {
-    0x89, 0xb6, 0x9d, 0x05, 0x16, 0xf8, 0x29, 0x89, 0x3c, 0x69, 0x62, 0x26,
-    0x65, 0x0a, 0x86, 0x87 // 16 bytes
 };
 
 static const uint8_t kPBKDF2DerivedKey1SHA384[] = {
@@ -2085,10 +2075,6 @@ static const uint8_t kPBKDF2DerivedKey5SHA384[] = {
     0x31, 0xc5, 0x2a, 0xe6, 0xc5, 0xc1, 0xb0, 0xee, 0xd1, 0x8f, 0x4d, 0x28,
     0x3b    // 25 bytes
 };
-static const uint8_t kPBKDF2DerivedKey6SHA384[] = {
-    0xa3, 0xf0, 0x0a, 0xc8, 0x65, 0x7e, 0x09, 0x5f, 0x8e, 0x08, 0x23, 0xd2,
-    0x32, 0xfc, 0x60, 0xb3 // 16 bytes
-};
 
 static const uint8_t kPBKDF2DerivedKey1SHA512[] = {
     0x86, 0x7f, 0x70, 0xcf, 0x1a, 0xde, 0x02, 0xcf, 0xf3, 0x75, 0x25, 0x99,
@@ -2110,10 +2096,6 @@ static const uint8_t kPBKDF2DerivedKey5SHA512[] = {
     0x8c, 0x05, 0x11, 0xf4, 0xc6, 0xe5, 0x97, 0xc6, 0xac, 0x63, 0x15, 0xd8,
     0xf0, 0x36, 0x2e, 0x22, 0x5f, 0x3c, 0x50, 0x14, 0x95, 0xba, 0x23, 0xb8,
     0x68    // 25 bytes
-};
-static const uint8_t kPBKDF2DerivedKey6SHA512[] = {
-    0x9d, 0x9e, 0x9c, 0x4c, 0xd2, 0x1f, 0xe4, 0xbe, 0x24, 0xd5, 0xb8, 0x24,
-    0x4c, 0x75, 0x96, 0x65 // 16 bytes
 };
 
 static const struct PBKDF2TestVector {
@@ -2154,7 +2136,6 @@ static const struct PBKDF2TestVector {
         AWSLC_NOT_APPROVED
     },
     {
-        // This one might take too long during testing.
         EVP_sha1,
         kPBKDF2Password1, sizeof(kPBKDF2Password1),
         kPBKDF2Salt1, sizeof(kPBKDF2Salt1),
@@ -2169,14 +2150,6 @@ static const struct PBKDF2TestVector {
         4096,
         sizeof(kPBKDF2DerivedKey5SHA1), kPBKDF2DerivedKey5SHA1,
         AWSLC_APPROVED
-    },
-    {
-        EVP_sha1,
-        kPBKDF2Password3, sizeof(kPBKDF2Password3),
-        kPBKDF2Salt3, sizeof(kPBKDF2Salt3),
-        4096,
-        sizeof(kPBKDF2DerivedKey6SHA1), kPBKDF2DerivedKey6SHA1,
-        AWSLC_NOT_APPROVED
     },
 
     // SHA224 outputs from
@@ -2206,7 +2179,6 @@ static const struct PBKDF2TestVector {
         AWSLC_NOT_APPROVED
     },
     {
-        // This one might take too long during testing.
         EVP_sha224,
         kPBKDF2Password1, sizeof(kPBKDF2Password1),
         kPBKDF2Salt1, sizeof(kPBKDF2Salt1),
@@ -2221,14 +2193,6 @@ static const struct PBKDF2TestVector {
         4096,
         sizeof(kPBKDF2DerivedKey5SHA224), kPBKDF2DerivedKey5SHA224,
         AWSLC_APPROVED
-    },
-    {
-        EVP_sha224,
-        kPBKDF2Password3, sizeof(kPBKDF2Password3),
-        kPBKDF2Salt3, sizeof(kPBKDF2Salt3),
-        4096,
-        sizeof(kPBKDF2DerivedKey6SHA224), kPBKDF2DerivedKey6SHA224,
-        AWSLC_NOT_APPROVED
     },
 
     // SHA256 outputs from
@@ -2258,7 +2222,6 @@ static const struct PBKDF2TestVector {
         AWSLC_NOT_APPROVED
     },
     {
-        // This one might take too long during testing.
         EVP_sha256,
         kPBKDF2Password1, sizeof(kPBKDF2Password1),
         kPBKDF2Salt1, sizeof(kPBKDF2Salt1),
@@ -2273,14 +2236,6 @@ static const struct PBKDF2TestVector {
         4096,
         sizeof(kPBKDF2DerivedKey5SHA256), kPBKDF2DerivedKey5SHA256,
         AWSLC_APPROVED
-    },
-    {
-        EVP_sha256,
-        kPBKDF2Password3, sizeof(kPBKDF2Password3),
-        kPBKDF2Salt3, sizeof(kPBKDF2Salt3),
-        4096,
-        sizeof(kPBKDF2DerivedKey6SHA256), kPBKDF2DerivedKey6SHA256,
-        AWSLC_NOT_APPROVED
     },
 
     // SHA384 outputs from
@@ -2310,7 +2265,6 @@ static const struct PBKDF2TestVector {
         AWSLC_NOT_APPROVED
     },
     {
-        // This one might take too long during testing.
         EVP_sha384,
         kPBKDF2Password1, sizeof(kPBKDF2Password1),
         kPBKDF2Salt1, sizeof(kPBKDF2Salt1),
@@ -2325,14 +2279,6 @@ static const struct PBKDF2TestVector {
         4096,
         sizeof(kPBKDF2DerivedKey5SHA384), kPBKDF2DerivedKey5SHA384,
         AWSLC_APPROVED
-    },
-    {
-        EVP_sha384,
-        kPBKDF2Password3, sizeof(kPBKDF2Password3),
-        kPBKDF2Salt3, sizeof(kPBKDF2Salt3),
-        4096,
-        sizeof(kPBKDF2DerivedKey6SHA384), kPBKDF2DerivedKey6SHA384,
-        AWSLC_NOT_APPROVED
     },
 
     // SHA512 outputs from
@@ -2362,7 +2308,6 @@ static const struct PBKDF2TestVector {
         AWSLC_NOT_APPROVED
     },
     {
-        // This one might take too long during testing.
         EVP_sha512,
         kPBKDF2Password1, sizeof(kPBKDF2Password1),
         kPBKDF2Salt1, sizeof(kPBKDF2Salt1),
@@ -2377,14 +2322,6 @@ static const struct PBKDF2TestVector {
         4096,
         sizeof(kPBKDF2DerivedKey5SHA512), kPBKDF2DerivedKey5SHA512,
         AWSLC_APPROVED
-    },
-    {
-        EVP_sha512,
-        kPBKDF2Password3, sizeof(kPBKDF2Password3),
-        kPBKDF2Salt3, sizeof(kPBKDF2Salt3),
-        4096,
-        sizeof(kPBKDF2DerivedKey6SHA512), kPBKDF2DerivedKey6SHA512,
-        AWSLC_NOT_APPROVED
     },
 };
 
