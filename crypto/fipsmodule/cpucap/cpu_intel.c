@@ -159,6 +159,7 @@ static void handle_cpu_env(uint32_t *out, const char *in) {
 }
 
 extern uint32_t OPENSSL_ia32cap_P[4];
+extern uint8_t OPENSSL_cpucap_initialized;
 
 void OPENSSL_cpuid_setup(void) {
   // Determine the vendor and maximum input value.
@@ -295,6 +296,8 @@ void OPENSSL_cpuid_setup(void) {
   if (env2 != NULL) {
     handle_cpu_env(&OPENSSL_ia32cap_P[2], env2 + 1);
   }
+
+  OPENSSL_cpucap_initialized = 1;
 }
 
 #endif  // !OPENSSL_NO_ASM && (OPENSSL_X86 || OPENSSL_X86_64)

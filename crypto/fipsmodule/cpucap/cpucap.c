@@ -82,3 +82,4 @@ HIDDEN uint32_t OPENSSL_armcap_P = 0;
 HIDDEN uint8_t BORINGSSL_function_hit[7] = {0};
 #endif
 
+HIDDEN uint8_t OPENSSL_cpucap_initialized = 0;
