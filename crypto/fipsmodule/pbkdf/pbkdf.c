@@ -141,7 +141,7 @@ err:
   FIPS_service_indicator_unlock_state();
   HMAC_CTX_cleanup(&hctx);
   if (ret) {
-    PBKDF_verify_service_indicator(digest);
+    PBKDF2_verify_service_indicator(digest, password_len, salt_len, iterations);
   }
   return ret;
 }

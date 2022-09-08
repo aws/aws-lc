@@ -1072,8 +1072,8 @@ static bool SpeedScrypt(const std::string &selected) {
 
   TimeResults results;
 
-  static const char kPassword[] = "password";
-  static const uint8_t kSalt[] = "NaCl";
+  static const char kPassword[] = "passwordPASSWORD";
+  static const uint8_t kSalt[] = "NaClSodiumChloride";
 
   if (!TimeFunction(&results, [&]() -> bool {
         uint8_t out[64];
