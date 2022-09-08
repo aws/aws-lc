@@ -215,7 +215,7 @@ static void BORINGSSL_bcm_power_on_self_test(void) __attribute__ ((constructor))
 #endif
 
 static void BORINGSSL_bcm_power_on_self_test(void) {
-#if !defined(OPENSSL_NO_ASM)
+#if !defined(OPENSSL_NO_ASM) && !defined(OPENSSL_STATIC_ARMCAP)
   OPENSSL_cpuid_setup();
 #endif
 
