@@ -1114,6 +1114,33 @@ static int boringssl_self_test_fast(void) {
     goto err;
   }
 
+  // PBKDF2 KAT - data from RFC 6070
+  static const uint8_t kPBKDF2Password[] = {
+    'p', 'a', 's', 's', 'w', 'o', 'r', 'd', 'P', 'A', 'S', 'S', 'W', 'O', 'R',
+    'D', 'p', 'a', 's', 's', 'w', 'o', 'r', 'd'
+  };
+  static const uint8_t kPBKDF2Salt[] = {
+    's', 'a', 'l', 't', 'S', 'A', 'L', 'T', 's', 'a', 'l', 't', 'S', 'A', 'L',
+    'T', 's', 'a', 'l', 't', 'S', 'A', 'L', 'T', 's', 'a', 'l', 't', 'S', 'A',
+    'L', 'T', 's', 'a', 'l', 't'
+  };
+  const unsigned kPBKDF2Iterations = 4096;
+  static const uint8_t kPBKDF2DerivedKey[] = {
+    0x34, 0x8c, 0x89, 0xdb, 0xcb, 0xd3, 0x2b, 0x2f, 0x32, 0xd8, 0x14, 0xb8,
+    0x11, 0x6e, 0x84, 0xcf, 0x2b, 0x17, 0x34, 0x7e, 0xbc, 0x18, 0x00, 0x18,
+    0x1c    // 25 bytes
+  };
+  uint8_t pbkdf2_output[sizeof(kPBKDF2DerivedKey)];
+  if (!PKCS5_PBKDF2_HMAC((const char *)kPBKDF2Password, sizeof(kPBKDF2Password),
+                         kPBKDF2Salt, sizeof(kPBKDF2Salt), kPBKDF2Iterations,
+                         EVP_sha256(), sizeof(kPBKDF2DerivedKey),
+                         pbkdf2_output) ||
+      !check_test(kPBKDF2DerivedKey, pbkdf2_output, sizeof(kPBKDF2DerivedKey),
+                  "PBKDF2 KAT")) {
+    fprintf(stderr, "PBKDF2 failed.\n");
+    goto err;
+  }
+
   ret = 1;
 
 err:

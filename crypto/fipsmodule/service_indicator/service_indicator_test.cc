@@ -1967,6 +1967,388 @@ TEST_P(KDF_ServiceIndicatorTest, TLSKDF) {
   EXPECT_EQ(approved, test.expect_approved);
 }
 
+// PBKDF2 test data from RFC 6070.
+//
+// Set 1 - short password/salt; these are too short for FIPS, so they'll
+//         return NOT_APPROVED
+// Set 2 - long password/salt; APPROVED for FIPS
+// Set 3 - Not included, it's another short password/salt test, to ensure the
+//         password/salt are being handled as byte buffers rather than strings.
+static const uint8_t kPBKDF2Password1[] = {
+    'p', 'a', 's', 's', 'w', 'o', 'r', 'd'
+};
+static const uint8_t kPBKDF2Salt1[] = {'s', 'a', 'l', 't'};
+static const uint8_t kPBKDF2Password2[] = {
+    'p', 'a', 's', 's', 'w', 'o', 'r', 'd', 'P', 'A', 'S', 'S', 'W', 'O', 'R',
+    'D', 'p', 'a', 's', 's', 'w', 'o', 'r', 'd'
+};
+static const uint8_t kPBKDF2Salt2[] = {
+    's', 'a', 'l', 't', 'S', 'A', 'L', 'T', 's', 'a', 'l', 't', 'S', 'A', 'L',
+    'T', 's', 'a', 'l', 't', 'S', 'A', 'L', 'T', 's', 'a', 'l', 't', 'S', 'A',
+    'L', 'T', 's', 'a', 'l', 't'
+};
+
+static const uint8_t kPBKDF2DerivedKey1SHA1[] = {
+    0x0c, 0x60, 0xc8, 0x0f, 0x96, 0x1f, 0x0e, 0x71, 0xf3, 0xa9, 0xb5, 0x24,
+    0xaf, 0x60, 0x12, 0x06, 0x2f, 0xe0, 0x37, 0xa6  // 20 bytes
+};
+static const uint8_t kPBKDF2DerivedKey2SHA1[] = {
+    0xea, 0x6c, 0x01, 0x4d, 0xc7, 0x2d, 0x6f, 0x8c, 0xcd, 0x1e, 0xd9, 0x2a,
+    0xce, 0x1d, 0x41, 0xf0, 0xd8, 0xde, 0x89, 0x57  // 20 bytes
+};
+static const uint8_t kPBKDF2DerivedKey3SHA1[] = {
+    0x4b, 0x00, 0x79, 0x01, 0xb7, 0x65, 0x48, 0x9a, 0xbe, 0xad, 0x49, 0xd9,
+    0x26, 0xf7, 0x21, 0xd0, 0x65, 0xa4, 0x29, 0xc1  // 20 bytes
+};
+static const uint8_t kPBKDF2DerivedKey4SHA1[] = {
+    0xee, 0xfe, 0x3d, 0x61, 0xcd, 0x4d, 0xa4, 0xe4, 0xe9, 0x94, 0x5b, 0x3d,
+    0x6b, 0xa2, 0x15, 0x8c, 0x26, 0x34, 0xe9, 0x84  // 20 bytes
+};
+static const uint8_t kPBKDF2DerivedKey5SHA1[] = {
+    0x3d, 0x2e, 0xec, 0x4f, 0xe4, 0x1c, 0x84, 0x9b, 0x80, 0xc8, 0xd8, 0x36,
+    0x62, 0xc0, 0xe4, 0x4a, 0x8b, 0x29, 0x1a, 0x96, 0x4c, 0xf2, 0xf0, 0x70,
+    0x38    // 25 bytes
+};
+
+static const uint8_t kPBKDF2DerivedKey1SHA224[] = {
+    0x3c, 0x19, 0x8c, 0xbd, 0xb9, 0x46, 0x4b, 0x78, 0x57, 0x96, 0x6b, 0xd0,
+    0x5b, 0x7b, 0xc9, 0x2b, 0xc1, 0xcc, 0x4e, 0x6e  // 20 bytes
+};
+static const uint8_t kPBKDF2DerivedKey2SHA224[] = {
+    0x93, 0x20, 0x0f, 0xfa, 0x96, 0xc5, 0x77, 0x6d, 0x38, 0xfa, 0x10, 0xab,
+    0xdf, 0x8f, 0x5b, 0xfc, 0x00, 0x54, 0xb9, 0x71  // 20 bytes
+};
+static const uint8_t kPBKDF2DerivedKey3SHA224[] = {
+    0x21, 0x8c, 0x45, 0x3b, 0xf9, 0x06, 0x35, 0xbd, 0x0a, 0x21, 0xa7, 0x5d,
+    0x17, 0x27, 0x03, 0xff, 0x61, 0x08, 0xef, 0x60  // 20 bytes
+};
+static const uint8_t kPBKDF2DerivedKey4SHA224[] = {
+    0xb4, 0x99, 0x25, 0x18, 0x4c, 0xb4, 0xb5, 0x59, 0xf3, 0x65, 0xe9, 0x4f,
+    0xca, 0xfc, 0xd4, 0xcd, 0xb9, 0xf7, 0xae, 0xf4  // 20 bytes
+};
+static const uint8_t kPBKDF2DerivedKey5SHA224[] = {
+    0x05, 0x6c, 0x4b, 0xa4, 0x38, 0xde, 0xd9, 0x1f, 0xc1, 0x4e, 0x05, 0x94,
+    0xe6, 0xf5, 0x2b, 0x87, 0xe1, 0xf3, 0x69, 0x0c, 0x0d, 0xc0, 0xfb, 0xc0,
+    0x57    // 25 bytes
+};
+
+static const uint8_t kPBKDF2DerivedKey1SHA256[] = {
+    0x12, 0x0f, 0xb6, 0xcf, 0xfc, 0xf8, 0xb3, 0x2c, 0x43, 0xe7, 0x22, 0x52,
+    0x56, 0xc4, 0xf8, 0x37, 0xa8, 0x65, 0x48, 0xc9  // 20 bytes
+};
+static const uint8_t kPBKDF2DerivedKey2SHA256[] = {
+    0xae, 0x4d, 0x0c, 0x95, 0xaf, 0x6b, 0x46, 0xd3, 0x2d, 0x0a, 0xdf, 0xf9,
+    0x28, 0xf0, 0x6d, 0xd0, 0x2a, 0x30, 0x3f, 0x8e  // 20 bytes
+};
+static const uint8_t kPBKDF2DerivedKey3SHA256[] = {
+    0xc5, 0xe4, 0x78, 0xd5, 0x92, 0x88, 0xc8, 0x41, 0xaa, 0x53, 0x0d, 0xb6,
+    0x84, 0x5c, 0x4c, 0x8d, 0x96, 0x28, 0x93, 0xa0  // 20 bytes
+};
+static const uint8_t kPBKDF2DerivedKey4SHA256[] = {
+    0xcf, 0x81, 0xc6, 0x6f, 0xe8, 0xcf, 0xc0, 0x4d, 0x1f, 0x31, 0xec, 0xb6,
+    0x5d, 0xab, 0x40, 0x89, 0xf7, 0xf1, 0x79, 0xe8  // 20 bytes
+};
+static const uint8_t kPBKDF2DerivedKey5SHA256[] = {
+    0x34, 0x8c, 0x89, 0xdb, 0xcb, 0xd3, 0x2b, 0x2f, 0x32, 0xd8, 0x14, 0xb8,
+    0x11, 0x6e, 0x84, 0xcf, 0x2b, 0x17, 0x34, 0x7e, 0xbc, 0x18, 0x00, 0x18,
+    0x1c    // 25 bytes
+};
+
+static const uint8_t kPBKDF2DerivedKey1SHA384[] = {
+    0xc0, 0xe1, 0x4f, 0x06, 0xe4, 0x9e, 0x32, 0xd7, 0x3f, 0x9f, 0x52, 0xdd,
+    0xf1, 0xd0, 0xc5, 0xc7, 0x19, 0x16, 0x09, 0x23  // 20 bytes
+};
+static const uint8_t kPBKDF2DerivedKey2SHA384[] = {
+    0x54, 0xf7, 0x75, 0xc6, 0xd7, 0x90, 0xf2, 0x19, 0x30, 0x45, 0x91, 0x62,
+    0xfc, 0x53, 0x5d, 0xbf, 0x04, 0xa9, 0x39, 0x18  // 20 bytes
+};
+static const uint8_t kPBKDF2DerivedKey3SHA384[] = {
+    0x55, 0x97, 0x26, 0xbe, 0x38, 0xdb, 0x12, 0x5b, 0xc8, 0x5e, 0xd7, 0x89,
+    0x5f, 0x6e, 0x3c, 0xf5, 0x74, 0xc7, 0xa0, 0x1c  // 20 bytes
+};
+static const uint8_t kPBKDF2DerivedKey4SHA384[] = {
+    0xa7, 0xfd, 0xb3, 0x49, 0xba, 0x2b, 0xfa, 0x6b, 0xf6, 0x47, 0xbb, 0x01,
+    0x61, 0xba, 0xe1, 0x32, 0x0d, 0xf2, 0x7e, 0x64  // 20 bytes
+};
+static const uint8_t kPBKDF2DerivedKey5SHA384[] = {
+    0x81, 0x91, 0x43, 0xad, 0x66, 0xdf, 0x9a, 0x55, 0x25, 0x59, 0xb9, 0xe1,
+    0x31, 0xc5, 0x2a, 0xe6, 0xc5, 0xc1, 0xb0, 0xee, 0xd1, 0x8f, 0x4d, 0x28,
+    0x3b    // 25 bytes
+};
+
+static const uint8_t kPBKDF2DerivedKey1SHA512[] = {
+    0x86, 0x7f, 0x70, 0xcf, 0x1a, 0xde, 0x02, 0xcf, 0xf3, 0x75, 0x25, 0x99,
+    0xa3, 0xa5, 0x3d, 0xc4, 0xaf, 0x34, 0xc7, 0xa6  // 20 bytes
+};
+static const uint8_t kPBKDF2DerivedKey2SHA512[] = {
+    0xe1, 0xd9, 0xc1, 0x6a, 0xa6, 0x81, 0x70, 0x8a, 0x45, 0xf5, 0xc7, 0xc4,
+    0xe2, 0x15, 0xce, 0xb6, 0x6e, 0x01, 0x1a, 0x2e  // 20 bytes
+};
+static const uint8_t kPBKDF2DerivedKey3SHA512[] = {
+    0xd1, 0x97, 0xb1, 0xb3, 0x3d, 0xb0, 0x14, 0x3e, 0x01, 0x8b, 0x12, 0xf3,
+    0xd1, 0xd1, 0x47, 0x9e, 0x6c, 0xde, 0xbd, 0xcc  // 20 bytes
+};
+static const uint8_t kPBKDF2DerivedKey4SHA512[] = {
+    0x61, 0x80, 0xa3, 0xce, 0xab, 0xab, 0x45, 0xcc, 0x39, 0x64, 0x11, 0x2c,
+    0x81, 0x1e, 0x01, 0x31, 0xbc, 0xa9, 0x3a, 0x35  // 20 bytes
+};
+static const uint8_t kPBKDF2DerivedKey5SHA512[] = {
+    0x8c, 0x05, 0x11, 0xf4, 0xc6, 0xe5, 0x97, 0xc6, 0xac, 0x63, 0x15, 0xd8,
+    0xf0, 0x36, 0x2e, 0x22, 0x5f, 0x3c, 0x50, 0x14, 0x95, 0xba, 0x23, 0xb8,
+    0x68    // 25 bytes
+};
+
+static const struct PBKDF2TestVector {
+    // func is the hash function for PBKDF2 to test.
+    const EVP_MD *(*func)();
+    const uint8_t *password;
+    const size_t password_len;
+    const uint8_t *salt;
+    const size_t salt_len;
+    const unsigned iterations;
+    const size_t output_len;
+    const uint8_t *expected_output;
+    const FIPSStatus expect_approved;
+} kPBKDF2TestVectors[] = {
+    // SHA1 outputs
+    {
+        EVP_sha1,
+        kPBKDF2Password1, sizeof(kPBKDF2Password1),
+        kPBKDF2Salt1, sizeof(kPBKDF2Salt1),
+        1,
+        sizeof(kPBKDF2DerivedKey1SHA1), kPBKDF2DerivedKey1SHA1,
+        AWSLC_NOT_APPROVED
+    },
+    {
+        EVP_sha1,
+        kPBKDF2Password1, sizeof(kPBKDF2Password1),
+        kPBKDF2Salt1, sizeof(kPBKDF2Salt1),
+        2,
+        sizeof(kPBKDF2DerivedKey2SHA1), kPBKDF2DerivedKey2SHA1,
+        AWSLC_NOT_APPROVED
+    },
+    {
+        EVP_sha1,
+        kPBKDF2Password1, sizeof(kPBKDF2Password1),
+        kPBKDF2Salt1, sizeof(kPBKDF2Salt1),
+        4096,
+        sizeof(kPBKDF2DerivedKey3SHA1), kPBKDF2DerivedKey3SHA1,
+        AWSLC_NOT_APPROVED
+    },
+    {
+        EVP_sha1,
+        kPBKDF2Password1, sizeof(kPBKDF2Password1),
+        kPBKDF2Salt1, sizeof(kPBKDF2Salt1),
+        16777216,
+        sizeof(kPBKDF2DerivedKey4SHA1), kPBKDF2DerivedKey4SHA1,
+        AWSLC_NOT_APPROVED
+    },
+    {
+        EVP_sha1,
+        kPBKDF2Password2, sizeof(kPBKDF2Password2),
+        kPBKDF2Salt2, sizeof(kPBKDF2Salt2),
+        4096,
+        sizeof(kPBKDF2DerivedKey5SHA1), kPBKDF2DerivedKey5SHA1,
+        AWSLC_APPROVED
+    },
+
+    // SHA224 outputs from
+    // https://github.com/brycx/Test-Vector-Generation/pull/1
+    {
+        EVP_sha224,
+        kPBKDF2Password1, sizeof(kPBKDF2Password1),
+        kPBKDF2Salt1, sizeof(kPBKDF2Salt1),
+        1,
+        sizeof(kPBKDF2DerivedKey1SHA224), kPBKDF2DerivedKey1SHA224,
+        AWSLC_NOT_APPROVED
+    },
+    {
+        EVP_sha224,
+        kPBKDF2Password1, sizeof(kPBKDF2Password1),
+        kPBKDF2Salt1, sizeof(kPBKDF2Salt1),
+        2,
+        sizeof(kPBKDF2DerivedKey2SHA224), kPBKDF2DerivedKey2SHA224,
+        AWSLC_NOT_APPROVED
+    },
+    {
+        EVP_sha224,
+        kPBKDF2Password1, sizeof(kPBKDF2Password1),
+        kPBKDF2Salt1, sizeof(kPBKDF2Salt1),
+        4096,
+        sizeof(kPBKDF2DerivedKey3SHA224), kPBKDF2DerivedKey3SHA224,
+        AWSLC_NOT_APPROVED
+    },
+    {
+        EVP_sha224,
+        kPBKDF2Password1, sizeof(kPBKDF2Password1),
+        kPBKDF2Salt1, sizeof(kPBKDF2Salt1),
+        16777216,
+        sizeof(kPBKDF2DerivedKey4SHA224), kPBKDF2DerivedKey4SHA224,
+        AWSLC_NOT_APPROVED
+    },
+    {
+        EVP_sha224,
+        kPBKDF2Password2, sizeof(kPBKDF2Password2),
+        kPBKDF2Salt2, sizeof(kPBKDF2Salt2),
+        4096,
+        sizeof(kPBKDF2DerivedKey5SHA224), kPBKDF2DerivedKey5SHA224,
+        AWSLC_APPROVED
+    },
+
+    // SHA256 outputs from
+    // https://github.com/brycx/Test-Vector-Generation/blob/master/PBKDF2/pbkdf2-hmac-sha2-test-vectors.md
+    {
+        EVP_sha256,
+        kPBKDF2Password1, sizeof(kPBKDF2Password1),
+        kPBKDF2Salt1, sizeof(kPBKDF2Salt1),
+        1,
+        sizeof(kPBKDF2DerivedKey1SHA256), kPBKDF2DerivedKey1SHA256,
+        AWSLC_NOT_APPROVED
+    },
+    {
+        EVP_sha256,
+        kPBKDF2Password1, sizeof(kPBKDF2Password1),
+        kPBKDF2Salt1, sizeof(kPBKDF2Salt1),
+        2,
+        sizeof(kPBKDF2DerivedKey2SHA256), kPBKDF2DerivedKey2SHA256,
+        AWSLC_NOT_APPROVED
+    },
+    {
+        EVP_sha256,
+        kPBKDF2Password1, sizeof(kPBKDF2Password1),
+        kPBKDF2Salt1, sizeof(kPBKDF2Salt1),
+        4096,
+        sizeof(kPBKDF2DerivedKey3SHA256), kPBKDF2DerivedKey3SHA256,
+        AWSLC_NOT_APPROVED
+    },
+    {
+        EVP_sha256,
+        kPBKDF2Password1, sizeof(kPBKDF2Password1),
+        kPBKDF2Salt1, sizeof(kPBKDF2Salt1),
+        16777216,
+        sizeof(kPBKDF2DerivedKey4SHA256), kPBKDF2DerivedKey4SHA256,
+        AWSLC_NOT_APPROVED
+    },
+    {
+        EVP_sha256,
+        kPBKDF2Password2, sizeof(kPBKDF2Password2),
+        kPBKDF2Salt2, sizeof(kPBKDF2Salt2),
+        4096,
+        sizeof(kPBKDF2DerivedKey5SHA256), kPBKDF2DerivedKey5SHA256,
+        AWSLC_APPROVED
+    },
+
+    // SHA384 outputs from
+    // https://github.com/brycx/Test-Vector-Generation/blob/master/PBKDF2/pbkdf2-hmac-sha2-test-vectors.md
+    {
+        EVP_sha384,
+        kPBKDF2Password1, sizeof(kPBKDF2Password1),
+        kPBKDF2Salt1, sizeof(kPBKDF2Salt1),
+        1,
+        sizeof(kPBKDF2DerivedKey1SHA384), kPBKDF2DerivedKey1SHA384,
+        AWSLC_NOT_APPROVED
+    },
+    {
+        EVP_sha384,
+        kPBKDF2Password1, sizeof(kPBKDF2Password1),
+        kPBKDF2Salt1, sizeof(kPBKDF2Salt1),
+        2,
+        sizeof(kPBKDF2DerivedKey2SHA384), kPBKDF2DerivedKey2SHA384,
+        AWSLC_NOT_APPROVED
+    },
+    {
+        EVP_sha384,
+        kPBKDF2Password1, sizeof(kPBKDF2Password1),
+        kPBKDF2Salt1, sizeof(kPBKDF2Salt1),
+        4096,
+        sizeof(kPBKDF2DerivedKey3SHA384), kPBKDF2DerivedKey3SHA384,
+        AWSLC_NOT_APPROVED
+    },
+    {
+        EVP_sha384,
+        kPBKDF2Password1, sizeof(kPBKDF2Password1),
+        kPBKDF2Salt1, sizeof(kPBKDF2Salt1),
+        16777216,
+        sizeof(kPBKDF2DerivedKey4SHA384), kPBKDF2DerivedKey4SHA384,
+        AWSLC_NOT_APPROVED
+    },
+    {
+        EVP_sha384,
+        kPBKDF2Password2, sizeof(kPBKDF2Password2),
+        kPBKDF2Salt2, sizeof(kPBKDF2Salt2),
+        4096,
+        sizeof(kPBKDF2DerivedKey5SHA384), kPBKDF2DerivedKey5SHA384,
+        AWSLC_APPROVED
+    },
+
+    // SHA512 outputs from
+    // https://github.com/brycx/Test-Vector-Generation/blob/master/PBKDF2/pbkdf2-hmac-sha2-test-vectors.md
+    {
+        EVP_sha512,
+        kPBKDF2Password1, sizeof(kPBKDF2Password1),
+        kPBKDF2Salt1, sizeof(kPBKDF2Salt1),
+        1,
+        sizeof(kPBKDF2DerivedKey1SHA512), kPBKDF2DerivedKey1SHA512,
+        AWSLC_NOT_APPROVED
+    },
+    {
+        EVP_sha512,
+        kPBKDF2Password1, sizeof(kPBKDF2Password1),
+        kPBKDF2Salt1, sizeof(kPBKDF2Salt1),
+        2,
+        sizeof(kPBKDF2DerivedKey2SHA512), kPBKDF2DerivedKey2SHA512,
+        AWSLC_NOT_APPROVED
+    },
+    {
+        EVP_sha512,
+        kPBKDF2Password1, sizeof(kPBKDF2Password1),
+        kPBKDF2Salt1, sizeof(kPBKDF2Salt1),
+        4096,
+        sizeof(kPBKDF2DerivedKey3SHA512), kPBKDF2DerivedKey3SHA512,
+        AWSLC_NOT_APPROVED
+    },
+    {
+        EVP_sha512,
+        kPBKDF2Password1, sizeof(kPBKDF2Password1),
+        kPBKDF2Salt1, sizeof(kPBKDF2Salt1),
+        16777216,
+        sizeof(kPBKDF2DerivedKey4SHA512), kPBKDF2DerivedKey4SHA512,
+        AWSLC_NOT_APPROVED
+    },
+    {
+        EVP_sha512,
+        kPBKDF2Password2, sizeof(kPBKDF2Password2),
+        kPBKDF2Salt2, sizeof(kPBKDF2Salt2),
+        4096,
+        sizeof(kPBKDF2DerivedKey5SHA512), kPBKDF2DerivedKey5SHA512,
+        AWSLC_APPROVED
+    },
+};
+
+class PBKDF2_ServiceIndicatorTest : public TestWithNoErrors<PBKDF2TestVector> {
+};
+
+INSTANTIATE_TEST_SUITE_P(All, PBKDF2_ServiceIndicatorTest,
+                         testing::ValuesIn(kPBKDF2TestVectors));
+
+TEST_P(PBKDF2_ServiceIndicatorTest, PBKDF2) {
+  const PBKDF2TestVector &test = GetParam();
+
+  FIPSStatus approved = AWSLC_NOT_APPROVED;
+
+  uint8_t output[sizeof(kPBKDF2DerivedKey5SHA1)];   // largest test vector output size
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved, ASSERT_TRUE(PKCS5_PBKDF2_HMAC((const char *)test.password,
+                                              test.password_len,
+                                              test.salt, test.salt_len,
+                                              test.iterations,
+                                              test.func(), test.output_len,
+                                              output)));
+  EXPECT_EQ(Bytes(test.expected_output, test.output_len),
+            Bytes(output, test.output_len));
+  EXPECT_EQ(approved, test.expect_approved);
+}
+
 TEST(ServiceIndicatorTest, CMAC) {
   FIPSStatus approved = AWSLC_NOT_APPROVED;
 
