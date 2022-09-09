@@ -366,7 +366,7 @@ void BORINGSSL_FIPS_abort(void) {
 // don't expect to happen with significant probability. In case it happens, the
 // application would have to call the |CRYPTO_library_init| function itself to
 // ensure the initialization is done.
-void dummy_func_for_constructor() {
+void dummy_func_for_constructor(void) {
     CRYPTO_library_init();
 }
 #endif
