@@ -131,3 +131,28 @@ build_myapp BUILD_SHARED_LIBS=OFF install-static .a
 # if both shared libssl.so/libcrypto.so and static libssl.a/libcrypto.a are available...
 build_myapp BUILD_SHARED_LIBS=ON install-both .so # myapp should use libssl.so/libcrypto.so
 build_myapp BUILD_SHARED_LIBS=OFF install-both .a # myapp should use libssl.a/libcrypto.a
+
+# ------------------------------------------------------- #
+#           Test for the static library constructor       #
+# ------------------------------------------------------- #
+rm -rf ${MYAPP_SRC_DIR}
+mkdir -p ${MYAPP_SRC_DIR}
+
+cat <<EOF > ${MYAPP_SRC_DIR}/static_constructor_test.c
+#include <stdint.h>
+#include "openssl/bn.h"
+extern uint8_t OPENSSL_cpucap_initialized;
+int main() {
+  BIGNUM *a = BN_new();
+  return (OPENSSL_cpucap_initialized == 1 ? 0 : 1);
+}
+EOF
+
+# create installation with static libcrypto.a
+install_aws_lc install-static BUILD_SHARED_LIBS=OFF
+
+# compile the test app with libcrypto.a
+cc ${MYAPP_SRC_DIR}/static_constructor_test.c ${SCRATCH_DIR}/install-static/lib/libcrypto.a -I${SCRATCH_DIR}/install-static/include -o ${MYAPP_SRC_DIR}/static_constructor_test
+
+# verify that the test app returns success
+${MYAPP_SRC_DIR}/static_constructor_test || fail "static library constructor has not been executed"
