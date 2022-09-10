@@ -152,7 +152,7 @@ EOF
 install_aws_lc install-static BUILD_SHARED_LIBS=OFF
 
 # compile the test app with libcrypto.a
-clang ${MYAPP_SRC_DIR}/static_constructor_test.c ${SCRATCH_DIR}/install-static/lib/libcrypto.a -I${SCRATCH_DIR}/install-static/include -o ${MYAPP_SRC_DIR}/static_constructor_test
+${CC} ${MYAPP_SRC_DIR}/static_constructor_test.c ${SCRATCH_DIR}/install-static/lib/libcrypto.a -I${SCRATCH_DIR}/install-static/include -o ${MYAPP_SRC_DIR}/static_constructor_test
 
 # verify that the test app returns success
 ${MYAPP_SRC_DIR}/static_constructor_test || fail "static library constructor has not been executed"
