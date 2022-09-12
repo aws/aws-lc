@@ -271,6 +271,8 @@ void OPENSSL_cpuid_setup(void) {
   OPENSSL_ia32cap_P[2] = extended_features[0];
   OPENSSL_ia32cap_P[3] = extended_features[1];
 
+  OPENSSL_cpucap_initialized = 1;
+
   const char *env1, *env2;
   env1 = getenv("OPENSSL_ia32cap");
   if (env1 == NULL) {
@@ -296,8 +298,6 @@ void OPENSSL_cpuid_setup(void) {
   if (env2 != NULL) {
     handle_cpu_env(&OPENSSL_ia32cap_P[2], env2 + 1);
   }
-
-  OPENSSL_cpucap_initialized = 1;
 }
 
 #endif  // !OPENSSL_NO_ASM && (OPENSSL_X86 || OPENSSL_X86_64)
