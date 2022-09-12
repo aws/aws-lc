@@ -27,6 +27,9 @@ static int kyber512_set_priv_raw(EVP_PKEY *pkey, const uint8_t *in, size_t len) 
     return 0;
   }
 
+  OPENSSL_STATIC_ASSERT(sizeof(key->priv) >= KYBER512_SECRET_KEY_BYTES,
+                        not_enough_space_for_kyber512_secret_key);
+
   OPENSSL_memcpy(key->priv, in, len);
   key->has_private = 1;
 
@@ -46,6 +49,9 @@ static int kyber512_set_pub_raw(EVP_PKEY *pkey, const uint8_t *in, size_t len) {
     OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
     return 0;
   }
+
+  OPENSSL_STATIC_ASSERT(sizeof(key->pub) >= KYBER512_PUBLIC_KEY_BYTES,
+                        not_enough_space_for_kyber512_public_key);
 
   OPENSSL_memcpy(key->pub, in, len);
   key->has_private = 0;
@@ -107,7 +113,7 @@ static int kyber512_size(const EVP_PKEY *pkey) {
 }
 
 static int kyber512_bits(const EVP_PKEY *pkey) {
-  return 8 * (KYBER512_PUBLIC_KEY_BYTES + KYBER512_SECRET_KEY_BYTES);
+  return 8 * kyber512_size();
 }
 
 const EVP_PKEY_ASN1_METHOD kyber512_asn1_meth = {

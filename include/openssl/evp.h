@@ -124,7 +124,8 @@ OPENSSL_EXPORT int EVP_PKEY_missing_parameters(const EVP_PKEY *pkey);
 // EVP_PKEY_size returns the maximum size, in bytes, of a signature signed by
 // |pkey|. For an RSA key, this returns the number of bytes needed to represent
 // the modulus. For an EC key, this returns the maximum size of a DER-encoded
-// ECDSA signature.
+// ECDSA signature. For a KEM key, this returns the sum of the size of the
+// public key and the secret key.
 OPENSSL_EXPORT int EVP_PKEY_size(const EVP_PKEY *pkey);
 
 // EVP_PKEY_bits returns the "size", in bits, of |pkey|. For an RSA key, this
@@ -718,7 +719,7 @@ OPENSSL_EXPORT int EVP_PKEY_encapsulate(EVP_PKEY_CTX *ctx          /* IN  */,
 // EVP_PKEY_decapsulate is an operation defined for a KEM (Key Encapsulation
 // Mechanism). For the KEM specified in |ctx|, the function:
 //   1. decapsulates the shared secret from the given |ciphertext| using the
-//      secret key given within |ctx| and writes it to |shared_secret|,
+//      secret key configured in |ctx| and writes it to |shared_secret|,
 //   2. writes the length of |shared_secret| to |shared_secret_len|.
 //
 // If the given |shared_secret| is NULL it is assumed that the caller is doing
