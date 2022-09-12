@@ -988,9 +988,6 @@ OPENSSL_INLINE void boringssl_ensure_ffdh_self_test(void) {}
 // boringssl_self_test_sha256 performs a SHA-256 KAT.
 int boringssl_self_test_sha256(void);
 
-// boringssl_self_test_sha512 performs a SHA-512 KAT.
-int boringssl_self_test_sha512(void);
-
 // boringssl_self_test_hmac_sha256 performs an HMAC-SHA-256 KAT.
 int boringssl_self_test_hmac_sha256(void);
 
