@@ -113,7 +113,7 @@ static int kyber512_size(const EVP_PKEY *pkey) {
 }
 
 static int kyber512_bits(const EVP_PKEY *pkey) {
-  return 8 * kyber512_size();
+  return 8 * kyber512_size(pkey);
 }
 
 const EVP_PKEY_ASN1_METHOD kyber512_asn1_meth = {
