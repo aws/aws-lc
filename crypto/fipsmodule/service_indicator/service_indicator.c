@@ -346,7 +346,8 @@ void HMAC_verify_service_indicator(const EVP_MD *evp_md) {
   }
 }
 
-void HKDF_verify_service_indicator(const EVP_MD *evp_md, size_t salt_len) {
+void HKDF_verify_service_indicator(const EVP_MD *evp_md,
+  const uint8_t *salt, size_t salt_len) {
   // HKDF with SHA1, SHA224, SHA256, SHA384, and SHA512 are approved.
   //
   // FIPS 140 parameter requirements, per NIST SP 800-108 Rev. 1:
@@ -358,8 +359,10 @@ void HKDF_verify_service_indicator(const EVP_MD *evp_md, size_t salt_len) {
   // We can't test for that, as we don't know what the HKDF output will be
   // used for.
   //
-  // Per SP800-56Crev2, the salt cannot be empty in FIPS mode.
-  if (salt_len == 0) {
+  // Per SP800-56Crev2, the salt cannot be empty in FIPS mode; a NULL salt
+  // is replaced in the HMAC with a buffer filled with NUL bytes (0x00), so
+  // that's OK.
+  if (salt != NULL && salt_len == 0) {
     return;
   }
 
