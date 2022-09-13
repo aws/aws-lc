@@ -49,7 +49,7 @@ int HKDF(uint8_t *out_key, size_t out_len, const EVP_MD *digest,
 
 out:
   FIPS_service_indicator_unlock_state();
-  HKDF_verify_service_indicator(digest, salt_len);
+  HKDF_verify_service_indicator(digest, salt, salt_len);
 
   return ret;
 }
@@ -129,6 +129,6 @@ out:
   if (ret != 1) {
     OPENSSL_PUT_ERROR(HKDF, ERR_R_HMAC_LIB);
   }
-  HKDF_verify_service_indicator(digest, info_len);
+  HKDF_verify_service_indicator(digest, info, info_len);
   return ret;
 }
