@@ -4,7 +4,7 @@
 
 source tests/ci/common_posix_setup.sh
 
-AWS_LC_DIR=${PWD##*/}
+AWS_LC_DIR=$(pwd)
 cd ../
 ROOT=$(pwd)
 
@@ -60,15 +60,33 @@ git clone https://github.com/aws/s2n-tls.git
 (cd s2n-tls && git checkout 36c3dc72ab1359cf721294e1258dfdc2962f3ffc)
 ls
 
-# s2n-tls's FindLibCrypto.cmake expects to find both the archieve (.a) and shared object (.so) libcrypto
-cmake ${AWS_LC_DIR} -GNinja "-B${ROOT}/aws-lc-build" "-DCMAKE_INSTALL_PREFIX=${ROOT}/aws-lc-install"
-ninja -C aws-lc-build install
-rm -rf aws-lc-build/*
-cmake ${AWS_LC_DIR} -GNinja "-B${ROOT}/aws-lc-build" "-DCMAKE_INSTALL_PREFIX=${ROOT}/aws-lc-install" -DBUILD_SHARED_LIBS=1
-ninja -C aws-lc-build install
+# s2n-tls's FindLibCrypto.cmake expects to find both the static and shared
+# libcrypto objects. We can't use existing test helper functions
+# (e.g. run_build()) because they make implicit assumptions about e.g. build
+# folders.
 
-cmake s2n-tls -GNinja "-B${ROOT}/s2n-tls-build" "-DCMAKE_PREFIX_PATH=${ROOT}/aws-lc-install"
-ninja -C s2n-tls-build
+aws_lc_build -DBUILD_SHARED_LIBS=0
+aws_lc_build -DBUILD_SHARED_LIBS=1
 
-cd "${ROOT}/s2n-tls-build"
-ctest -j 8 --output-on-failure
+# Build s2n-tls+aws-lc and run s2n-tls tests. First using static aws-lc
+# libcrypto and then shared aws-lc libcrypto.
+
+s2n_tls_build
+s2n_tls_run_tests
+s2n_tls_prepare_new_build
+
+s2n_tls_build -DBUILD_SHARED_LIBS=1
+s2n_tls_run_tests
+s2n_tls_prepare_new_build
+
+# Test interned s2n-tls+aws-lc against both static and shared aws-lc libcrypto.
+
+s2n_tls_build -DS2N_INTERN_LIBCRYPTO=1
+s2n_tls_run_tests
+s2n_tls_prepare_new_build
+
+s2n_tls_build -DBUILD_SHARED_LIBS=1 -DS2N_INTERN_LIBCRYPTO=1
+# Sanity check that libcrypto does not appear in the .dynamic ELF section.
+ldd ${S2N_TLS_BUILD_FOLDER}/lib/libs2n.so | grep -q libcrypto && fail "libs2n.so declares a dynamic dependency on libcrypto which should not happen with interned s2n-tls+aws-lc"
+s2n_tls_run_tests
+s2n_tls_prepare_new_build
