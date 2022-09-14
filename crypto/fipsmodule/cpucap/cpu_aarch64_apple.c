@@ -17,11 +17,8 @@
 #if defined(OPENSSL_AARCH64) && defined(OPENSSL_APPLE) && \
     !defined(OPENSSL_STATIC_ARMCAP)
 
-#if !defined(_DARWIN_C_SOURCE)
-#define _DARWIN_C_SOURCE 1  // Needed for u_int and friends in sys/types.h
-#endif
-#include <sys/types.h>
 #include <sys/sysctl.h>
+#include <sys/types.h>
 
 #include <openssl/arm_arch.h>
 
