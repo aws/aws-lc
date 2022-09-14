@@ -70,7 +70,6 @@
 #include "cipher/e_des.c"
 #include "cipher/e_aesccm.c"
 
-#include "cpucap/cpucap.c"
 #include "cpucap/cpu_aarch64_apple.c"
 #include "cpucap/cpu_aarch64_fuchsia.c"
 #include "cpucap/cpu_aarch64_linux.c"
