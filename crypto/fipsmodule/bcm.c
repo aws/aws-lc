@@ -343,7 +343,7 @@ void BORINGSSL_FIPS_abort(void) {
 
 #endif  // BORINGSSL_FIPS
 
-#if !defined(BORINGSSL_FIPS) && !defined(BORINGSSL_SHARED_LIBRARY)
+#if !defined(AWSLC_FIPS) && !defined(BORINGSSL_SHARED_LIBRARY)
 // When linking with a static library, if no symbols in an object file are
 // referenced then the object file is discarded, even if it has constructor
 // function. For example, if an application is linking with libcrypto.a and
