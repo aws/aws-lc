@@ -355,7 +355,7 @@ void BORINGSSL_FIPS_abort(void) {
 // self-tests so the test function itself calls |OPENSSL_cpuid_setup|.
 //
 // So, the issue manifests only in the static non-FIPS build. The work around
-// it we add a dummy function |dummy_func_for_constructor| in |bcm.c| that
+// is we add a dummy function |dummy_func_for_constructor| in |bcm.c| that
 // calls |CRYPTO_library_init| function defined in |crypto.c|. This will ensure
 // that, when linking with libcrypto.a, crypto.o will not be discarded as long
 // as bcm.o is not discarded.
