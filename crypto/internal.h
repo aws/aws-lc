@@ -1026,7 +1026,7 @@ OPENSSL_INLINE int boringssl_fips_break_test(const char *test) {
 extern uint8_t BORINGSSL_function_hit[7];
 #endif  // BORINGSSL_DISPATCH_TEST
 
-#if !defined(BORINGSSL_FIPS) && !defined(BORINGSSL_SHARED_LIBRARY)
+#if !defined(AWSLC_FIPS) && !defined(BORINGSSL_SHARED_LIBRARY)
 // This function is defined in |bcm.c|, see the comment therein for explanation.
 void dummy_func_for_constructor(void);
 #endif
