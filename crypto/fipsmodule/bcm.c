@@ -345,7 +345,7 @@ void BORINGSSL_FIPS_abort(void) {
 
 #if !defined(AWSLC_FIPS) && !defined(BORINGSSL_SHARED_LIBRARY)
 // When linking with a static library, if no symbols in an object file are
-// referenced then the object file is discarded, even if it has constructor
+// referenced then the object file is discarded, even if it has a constructor
 // function. For example, if an application is linking with libcrypto.a and
 // not referencing any symbol from crypto.o file, then crypto.o will be
 // discarded. This is an issue because we define the library constructor
