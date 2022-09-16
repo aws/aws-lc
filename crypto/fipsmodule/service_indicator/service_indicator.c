@@ -360,9 +360,11 @@ void HKDF_verify_service_indicator(const EVP_MD *evp_md,
   // used for.
   //
   // Per SP800-56Crev2, the salt cannot be empty in FIPS mode; a NULL salt
-  // is replaced in the HMAC with a buffer filled with NUL bytes (0x00), so
-  // that's OK.
-  if ((salt != NULL && salt_len == 0) || (evp_md == NULL)) {
+  // is replaced in the HMAC with a buffer filled with NUL bytes (0x00),
+  // when |evp_md| is not NULL, so that's OK. Note that we reach this check
+  // if |HMAC| succeeds which cannot be the case if |evp_md| == NULL; it would
+  // have failed in |HMAC_Init_ex|.
+  if (salt != NULL && salt_len == 0) {
     return;
   }
 
