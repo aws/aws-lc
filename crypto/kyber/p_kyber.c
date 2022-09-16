@@ -79,8 +79,9 @@ static int pkey_kyber512_decapsulate(EVP_PKEY_CTX *ctx,
     return 1;
   }
 
-  // The output buffer needs to be large enough.
-  if (*shared_secret_len < KYBER512_SHARED_SECRET_BYTES) {
+  // The input and output buffers need to be large enough.
+  if (*shared_secret_len < KYBER512_SHARED_SECRET_BYTES ||
+      ciphertext_len < KYBER512_CIPHERTEXT_BYTES) {
       OPENSSL_PUT_ERROR(EVP, EVP_R_BUFFER_TOO_SMALL);
       return 0;
   }
