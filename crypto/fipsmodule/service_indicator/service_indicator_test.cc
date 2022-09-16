@@ -2960,7 +2960,7 @@ TEST(ServiceIndicatorTest, DRBG) {
 // Since this is running in FIPS mode it should end in FIPS
 // Update this when the AWS-LC version number is modified
 TEST(ServiceIndicatorTest, AWSLCVersionString) {
-  ASSERT_STREQ(awslc_version_string(), "AWS-LC FIPS 1.2.0");
+  ASSERT_STREQ(awslc_version_string(), "AWS-LC FIPS 1.3.0");
 }
 
 #else
@@ -3003,6 +3003,6 @@ TEST(ServiceIndicatorTest, BasicTest) {
 // Since this is not running in FIPS mode it shouldn't end in FIPS
 // Update this when the AWS-LC version number is modified
 TEST(ServiceIndicatorTest, AWSLCVersionString) {
-  ASSERT_STREQ(awslc_version_string(), "AWS-LC 1.2.0");
+  ASSERT_STREQ(awslc_version_string(), "AWS-LC 1.3.0");
 }
 #endif // AWSLC_FIPS
