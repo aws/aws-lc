@@ -63,14 +63,12 @@
 #include "internal.h"
 
 
-/*
- * X509_REQ_INFO is handled in an unusual way to get round invalid encodings.
- * Some broken certificate requests don't encode the attributes field if it
- * is empty. This is in violation of PKCS#10 but we need to tolerate it. We
- * do this by making the attributes field OPTIONAL then using the callback to
- * initialise it to an empty STACK. This means that the field will be
- * correctly encoded unless we NULL out the field.
- */
+// X509_REQ_INFO is handled in an unusual way to get round invalid encodings.
+// Some broken certificate requests don't encode the attributes field if it
+// is empty. This is in violation of PKCS#10 but we need to tolerate it. We
+// do this by making the attributes field OPTIONAL then using the callback to
+// initialise it to an empty STACK. This means that the field will be
+// correctly encoded unless we NULL out the field.
 
 static int rinf_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
                    void *exarg) {
@@ -84,7 +82,11 @@ static int rinf_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
   }
 
   if (operation == ASN1_OP_D2I_POST) {
-    if (ASN1_INTEGER_get(rinf->version) != X509_REQ_VERSION_1) {
+    // The only defined CSR version is v1(0). For compatibility, we also accept
+    // a hypothetical v3(2). Although not defined, older versions of certbot
+    // use it. See https://github.com/certbot/certbot/pull/9334.
+    long version = ASN1_INTEGER_get(rinf->version);
+    if (version != X509_REQ_VERSION_1 && version != 2) {
       OPENSSL_PUT_ERROR(X509, X509_R_INVALID_VERSION);
       return 0;
     }
@@ -97,7 +99,7 @@ ASN1_SEQUENCE_enc(X509_REQ_INFO, enc, rinf_cb) = {
     ASN1_SIMPLE(X509_REQ_INFO, version, ASN1_INTEGER),
     ASN1_SIMPLE(X509_REQ_INFO, subject, X509_NAME),
     ASN1_SIMPLE(X509_REQ_INFO, pubkey, X509_PUBKEY),
-    /* This isn't really OPTIONAL but it gets around invalid encodings. */
+    // This isn't really OPTIONAL but it gets around invalid encodings.
     ASN1_IMP_SET_OF_OPT(X509_REQ_INFO, attributes, X509_ATTRIBUTE, 0),
 } ASN1_SEQUENCE_END_enc(X509_REQ_INFO, X509_REQ_INFO)
 

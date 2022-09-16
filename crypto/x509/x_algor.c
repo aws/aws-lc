@@ -74,9 +74,10 @@ ASN1_ITEM_TEMPLATE(X509_ALGORS) = ASN1_EX_TEMPLATE_TYPE(ASN1_TFLG_SEQUENCE_OF,
                                                         X509_ALGOR)
 ASN1_ITEM_TEMPLATE_END(X509_ALGORS)
 
-IMPLEMENT_ASN1_FUNCTIONS(X509_ALGOR)
-IMPLEMENT_ASN1_ENCODE_FUNCTIONS_fname(X509_ALGORS, X509_ALGORS, X509_ALGORS)
-IMPLEMENT_ASN1_DUP_FUNCTION(X509_ALGOR)
+IMPLEMENT_ASN1_FUNCTIONS_const(X509_ALGOR)
+IMPLEMENT_ASN1_ENCODE_FUNCTIONS_const_fname(X509_ALGORS, X509_ALGORS,
+                                            X509_ALGORS)
+IMPLEMENT_ASN1_DUP_FUNCTION_const(X509_ALGOR)
 
 int X509_ALGOR_set0(X509_ALGOR *alg, ASN1_OBJECT *aobj, int ptype, void *pval) {
   if (!alg) {
@@ -127,7 +128,7 @@ void X509_ALGOR_get0(const ASN1_OBJECT **out_obj, int *out_param_type,
   }
 }
 
-/* Set up an X509_ALGOR DigestAlgorithmIdentifier from an EVP_MD */
+// Set up an X509_ALGOR DigestAlgorithmIdentifier from an EVP_MD
 
 void X509_ALGOR_set_md(X509_ALGOR *alg, const EVP_MD *md) {
   int param_type;
@@ -141,9 +142,7 @@ void X509_ALGOR_set_md(X509_ALGOR *alg, const EVP_MD *md) {
   X509_ALGOR_set0(alg, OBJ_nid2obj(EVP_MD_type(md)), param_type, NULL);
 }
 
-/*
- * X509_ALGOR_cmp returns 0 if |a| and |b| are equal and non-zero otherwise.
- */
+// X509_ALGOR_cmp returns 0 if |a| and |b| are equal and non-zero otherwise.
 int X509_ALGOR_cmp(const X509_ALGOR *a, const X509_ALGOR *b) {
   int rv;
   rv = OBJ_cmp(a->algorithm, b->algorithm);

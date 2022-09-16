@@ -45,7 +45,8 @@ void EVP_DigestSign_verify_service_indicator(const EVP_MD_CTX *ctx);
 void EVP_DigestVerify_verify_service_indicator(const EVP_MD_CTX *ctx);
 void EVP_PKEY_keygen_verify_service_indicator(const EVP_PKEY *pkey);
 void HMAC_verify_service_indicator(const EVP_MD *evp_md);
-void PBKDF_verify_service_indicator(const EVP_MD *evp_md);
+void PBKDF2_verify_service_indicator(const EVP_MD *evp_md, size_t password_len,
+                                     size_t salt_len, unsigned iterations);
 void TLSKDF_verify_service_indicator(const EVP_MD *dgst);
 
 #else
@@ -89,8 +90,9 @@ OPENSSL_INLINE void EVP_PKEY_keygen_verify_service_indicator(
 OPENSSL_INLINE void HMAC_verify_service_indicator(
     OPENSSL_UNUSED const EVP_MD *evp_md) {}
 
-OPENSSL_INLINE void PBKDF_verify_service_indicator(
-    OPENSSL_UNUSED const EVP_MD *evp_md) {}
+OPENSSL_INLINE void PBKDF2_verify_service_indicator(
+    OPENSSL_UNUSED const EVP_MD *evp_md, OPENSSL_UNUSED size_t password_len,
+    OPENSSL_UNUSED size_t salt_len, OPENSSL_UNUSED unsigned iterations) {}
 
 OPENSSL_INLINE void TLSKDF_verify_service_indicator(
     OPENSSL_UNUSED const EVP_MD *dgst) {}

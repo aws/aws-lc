@@ -346,24 +346,26 @@ void HMAC_verify_service_indicator(const EVP_MD *evp_md) {
   }
 }
 
-void PBKDF_verify_service_indicator(const EVP_MD *evp_md) {
-  // PBKDF with SHA1, SHA224, SHA256, SHA384, and SHA512 are approved.
+void PBKDF2_verify_service_indicator(const EVP_MD *evp_md, size_t password_len,
+                                    size_t salt_len, unsigned iterations) {
   //
-  // TODO (CryptoAlg-1270): FIPS 140 parameter requirements, per
-  // NIST SP800-132:
+  // FIPS 140 parameter requirements, per NIST SP800-132:
   //
-  // * key_len >= 14 bytes (112 bits)
+  // * password_len >= 14 bytes (112 bits)
   // * salt_len >= 16 bytes (128 bits), assuming its randomly generated
   // * iterations "as large as possible, as long as the time required to
   //   generate the key using the entered password is acceptable for the users."
-  //   (clearly we can't test for "as large as possible")
+  //   (clearly we can't test for "as large as possible"); NIST SP800-132
+  //   suggests >= 1000, but it's still not a requirement.
   switch (evp_md->type) {
     case NID_sha1:
     case NID_sha224:
     case NID_sha256:
     case NID_sha384:
     case NID_sha512:
-      FIPS_service_indicator_update_state();
+      if (password_len >= 14 && salt_len >= 16 && iterations > 0) {
+        FIPS_service_indicator_update_state();
+      }
       break;
     default:
       break;

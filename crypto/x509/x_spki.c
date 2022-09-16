@@ -55,10 +55,8 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
-/*
- * This module was send to me my Pat Richards <patr@x509.com> who wrote it.
- * It is under my Copyright with his permission.
- */
+// This module was send to me my Pat Richards <patr@x509.com> who wrote it.
+// It is under my Copyright with his permission.
 
 #include <openssl/asn1t.h>
 #include <openssl/x509.h>
@@ -69,7 +67,7 @@ ASN1_SEQUENCE(NETSCAPE_SPKAC) = {
     ASN1_SIMPLE(NETSCAPE_SPKAC, challenge, ASN1_IA5STRING),
 } ASN1_SEQUENCE_END(NETSCAPE_SPKAC)
 
-IMPLEMENT_ASN1_FUNCTIONS(NETSCAPE_SPKAC)
+IMPLEMENT_ASN1_FUNCTIONS_const(NETSCAPE_SPKAC)
 
 ASN1_SEQUENCE(NETSCAPE_SPKI) = {
     ASN1_SIMPLE(NETSCAPE_SPKI, spkac, NETSCAPE_SPKAC),
@@ -77,4 +75,4 @@ ASN1_SEQUENCE(NETSCAPE_SPKI) = {
     ASN1_SIMPLE(NETSCAPE_SPKI, signature, ASN1_BIT_STRING),
 } ASN1_SEQUENCE_END(NETSCAPE_SPKI)
 
-IMPLEMENT_ASN1_FUNCTIONS(NETSCAPE_SPKI)
+IMPLEMENT_ASN1_FUNCTIONS_const(NETSCAPE_SPKI)
