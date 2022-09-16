@@ -1759,7 +1759,7 @@ bool Speed(const std::vector<std::string> &args) {
      !SpeedAEAD(EVP_aead_chacha20_poly1305(), "AEAD-ChaCha20-Poly1305", kTLSADLen, selected) ||
      !SpeedAEAD(EVP_aead_des_ede3_cbc_sha1_tls(), "AEAD-DES-EDE3-CBC-SHA1", kLegacyADLen, selected) ||
      !SpeedAEAD(EVP_aead_aes_128_cbc_sha1_tls(), "AEAD-AES-128-CBC-SHA1", kLegacyADLen, selected) ||
-     !SpeedAEAD(EVP_aead_aes_256_cbc_sha1_tls(), "AEAD-AES-a256-CBC-SHA1", kLegacyADLen, selected) ||
+     !SpeedAEAD(EVP_aead_aes_256_cbc_sha1_tls(), "AEAD-AES-256-CBC-SHA1", kLegacyADLen, selected) ||
      !SpeedAEADOpen(EVP_aead_aes_128_cbc_sha1_tls(), "AEAD-AES-128-CBC-SHA1", kLegacyADLen, selected) ||
      !SpeedAEADOpen(EVP_aead_aes_256_cbc_sha1_tls(), "AEAD-AES-256-CBC-SHA1", kLegacyADLen, selected) ||
      !SpeedAEAD(EVP_aead_aes_128_gcm_siv(), "AEAD-AES-128-GCM-SIV", kTLSADLen, selected) ||
