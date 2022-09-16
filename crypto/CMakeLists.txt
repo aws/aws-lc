@@ -455,16 +455,16 @@ add_library(
   ${CRYPTO_FIPS_OBJECTS}
 )
 
-target_compile_definitions(crypto_objects PRIVATE BORINGSSL_IMPLEMENTATION)
+target_compile_definitions(crypto PRIVATE BORINGSSL_IMPLEMENTATION)
 
 # For the prefix build, the object files need the prefix header files to build.
-add_dependencies(crypto_objects global_target)
+add_dependencies(crypto global_target)
 
 function(build_libcrypto name module_source)
   if(FIPS)
-    add_library(${name} $<TARGET_OBJECTS:crypto_objects> ${CRYPTO_FIPS_OBJECTS} ${module_source} $<TARGET_OBJECTS:jitterentropy>)
+    add_library(${name} $<TARGET_OBJECTS:crypto> ${CRYPTO_FIPS_OBJECTS} ${module_source} $<TARGET_OBJECTS:jitterentropy>)
   else()
-    add_library(${name} $<TARGET_OBJECTS:crypto_objects> ${CRYPTO_FIPS_OBJECTS} ${module_source})
+    add_library(${name} $<TARGET_OBJECTS:crypto> ${CRYPTO_FIPS_OBJECTS} ${module_source})
   endif()
 
   add_dependencies(${name}  global_target)
@@ -637,7 +637,7 @@ if(BUILD_TESTING)
 
   add_dependencies(crypto_test global_target)
 
-  target_link_libraries(${CRYPTO_TEST_EXEC} test_support_lib boringssl_gtest crypto)
+  target_link_libraries(crypto_test test_support_lib boringssl_gtest crypto)
   if(WIN32)
     target_link_libraries(crypto_test ws2_32)
   endif()
