@@ -13,15 +13,15 @@ int kyber512_keypair(uint8_t *public_key /* OUT */,
   return pqcrystals_kyber512_ref_keypair(public_key, secret_key);
 }
 
-int kyber512_encapsulate(uint8_t *ciphertext    /* OUT */,
-                         uint8_t *shared_secret /* OUT */,
-                         uint8_t *public_key    /* IN  */) {
+int kyber512_encapsulate(uint8_t *ciphertext       /* OUT */,
+                         uint8_t *shared_secret    /* OUT */,
+                         const uint8_t *public_key /* IN  */) {
   return pqcrystals_kyber512_ref_enc(ciphertext, shared_secret, public_key);
 }
 
-int kyber512_decapsulate(uint8_t *shared_secret /* OUT */,
-                         uint8_t *ciphertext    /* IN  */,
-                         uint8_t *secret_key    /* IN  */) {
+int kyber512_decapsulate(uint8_t *shared_secret    /* OUT */,
+                         const uint8_t *ciphertext /* IN  */,
+                         const uint8_t *secret_key /* IN  */) {
   return pqcrystals_kyber512_ref_dec(shared_secret, ciphertext, secret_key);
 }
 

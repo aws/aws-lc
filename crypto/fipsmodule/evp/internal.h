@@ -253,7 +253,7 @@ struct evp_pkey_method_st {
 
   int (*decapsulate)(EVP_PKEY_CTX *ctx,
                      uint8_t *shared_secret, size_t *shared_secret_len,
-                     uint8_t *ciphertext, size_t ciphertext_len);
+                     const uint8_t *ciphertext, size_t ciphertext_len);
 }; // EVP_PKEY_METHOD
 
 #define FIPS_EVP_PKEY_METHODS 3

@@ -44,6 +44,7 @@ static int pkey_kyber512_encapsulate(EVP_PKEY_CTX *ctx,
   // The output buffers need to be large enough.
   if (*ciphertext_len < KYBER512_CIPHERTEXT_BYTES ||
       *shared_secret_len < KYBER512_SHARED_SECRET_BYTES) {
+      OPENSSL_PUT_ERROR(EVP, EVP_R_BUFFER_TOO_SMALL);
       return 0;
   }
 
@@ -52,6 +53,7 @@ static int pkey_kyber512_encapsulate(EVP_PKEY_CTX *ctx,
       ctx->pkey == NULL ||
       ctx->pkey->pkey.ptr == NULL ||
       ctx->pkey->type != EVP_PKEY_KYBER512) {
+      OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATON_NOT_INITIALIZED);
       return 0;
   }
 
@@ -69,7 +71,7 @@ static int pkey_kyber512_encapsulate(EVP_PKEY_CTX *ctx,
 static int pkey_kyber512_decapsulate(EVP_PKEY_CTX *ctx,
                                      uint8_t *shared_secret,
                                      size_t  *shared_secret_len,
-                                     uint8_t *ciphertext,
+                                     const uint8_t *ciphertext,
                                      size_t   ciphertext_len) {
   // Caller is getting parameter values.
   if (shared_secret == NULL) {
@@ -79,6 +81,7 @@ static int pkey_kyber512_decapsulate(EVP_PKEY_CTX *ctx,
 
   // The output buffer needs to be large enough.
   if (*shared_secret_len < KYBER512_SHARED_SECRET_BYTES) {
+      OPENSSL_PUT_ERROR(EVP, EVP_R_BUFFER_TOO_SMALL);
       return 0;
   }
 
@@ -87,11 +90,13 @@ static int pkey_kyber512_decapsulate(EVP_PKEY_CTX *ctx,
       ctx->pkey == NULL ||
       ctx->pkey->pkey.ptr == NULL ||
       ctx->pkey->type != EVP_PKEY_KYBER512) {
+      OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATON_NOT_INITIALIZED);
       return 0;
   }
 
   KYBER512_KEY *key = (KYBER512_KEY*)ctx->pkey->pkey.ptr;
   if (!key->has_private) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_KEY_SET);
     return 0;
   }
 
