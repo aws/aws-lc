@@ -72,6 +72,9 @@ extern "C" {
 
 // Internal structures.
 
+typedef struct X509_POLICY_CACHE_st X509_POLICY_CACHE;
+typedef struct X509_POLICY_TREE_st X509_POLICY_TREE;
+
 typedef struct X509_val_st {
   ASN1_TIME *notBefore;
   ASN1_TIME *notAfter;
@@ -181,7 +184,6 @@ struct X509_req_st {
   X509_REQ_INFO *req_info;
   X509_ALGOR *sig_alg;
   ASN1_BIT_STRING *signature;
-  CRYPTO_refcount_t references;
 } /* X509_REQ */;
 
 struct x509_revoked_st {
