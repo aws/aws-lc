@@ -20,8 +20,7 @@
 needs "x86/proofs/base.ml";;
 needs "common/ecencoding.ml";;
 
-needs "EC/curve25519.ml";;
-needs "EC/formulary_xzprojective.ml";;
+needs "EC/x25519.ml";;
 
 prioritize_int();;
 prioritize_real();;
@@ -1811,24 +1810,19 @@ let CURVE25519_PXSCALARMUL_EXEC =
 
 let p_25519 = define `p_25519 = 57896044618658097711785492504343953926634992332820282019728792003956564819949`;;
 
-let curve25519 = define
- `curve25519 = (integer_mod_ring p_25519,&A_25519:int,&1:int)`;;
+let curve25519x = define
+ `curve25519x (f:A ring) = (f,ring_of_num f A_25519,ring_of_num f 1)`;;
 
-let curve25519_encode = new_definition
-  `curve25519_encode = modular_encode(256,p_25519)`;;
+let curve25519x_canonically_represents = new_definition
+ `curve25519x_canonically_represents (f:A ring) P (X,Z) <=>
+        X < p_25519 /\ Z < p_25519 /\
+        montgomery_xz f P (ring_of_num f X,ring_of_num f Z)`;;
 
-let curve25519_decode = new_definition
-  `curve25519_decode = modular_decode(256,p_25519)`;;
-
-let curve25519_represents = new_definition
- `curve25519_represents P (X,Z) <=>
-        montgomery_xz (integer_mod_ring p_25519) P (&X,&Z)`;;
-
-let CURVE25519_REPRESENTS_BOUND = prove
- (`!P X Z. curve25519_represents P (X,Z) ==> X < p_25519 /\ Z < p_25519`,
-  REWRITE_TAC[FORALL_OPTION_THM; FORALL_PAIR_THM; curve25519_represents] THEN
-  REWRITE_TAC[montgomery_xz; IN_INTEGER_MOD_RING_CARRIER] THEN
-  REWRITE_TAC[INT_OF_NUM_CLAUSES; p_25519] THEN ARITH_TAC);;
+let CURVE25519X_CANONICALLY_REPRESENTS_BOUND = prove
+ (`!(f:A ring) P X Z.
+        curve25519x_canonically_represents (f:A ring) P (X,Z)
+        ==> X < p_25519 /\ Z < p_25519`,
+  SIMP_TAC[curve25519x_canonically_represents]);;
 
 (* ------------------------------------------------------------------------- *)
 (* Common lemmas and tactics for the component proofs.                       *)
@@ -3117,57 +3111,58 @@ let lemma = prove
   REWRITE_TAC[INT_OF_NUM_LT; p_25519] THEN CONV_TAC NUM_REDUCE_CONV);;
 
 let lemma_double = prove
- (`P IN group_carrier curve25519_group /\
-   montgomery_xz (integer_mod_ring p_25519)
-     (group_pow curve25519_group P n) (&x,&y)
-   ==> montgomery_xz (integer_mod_ring p_25519)
-        (group_pow curve25519_group P (2 * n))
-           (montgomery_xzdouble curve25519 (&x,&y))`,
-  REWRITE_TAC[curve25519; curve25519_group] THEN REPEAT STRIP_TAC THEN
+ (`P IN group_carrier (curve25519x_group(f:A ring)) /\
+   montgomery_xz f (group_pow (curve25519x_group f) P n) (x,y)
+   ==> field f /\ ring_char f = p_25519
+       ==> montgomery_xz f
+            (group_pow (curve25519x_group f) P (2 * n))
+               (montgomery_xzdouble (curve25519x f) (x,y))`,
+  REWRITE_TAC[curve25519x; curve25519x_group] THEN REPEAT STRIP_TAC THEN
   MATCH_MP_TAC MONTGOMERY_XZDOUBLE_GROUP THEN ASM_REWRITE_TAC[] THEN
-  REWRITE_TAC[GSYM curve25519; MONTGOMERY_NONSINGULAR_CURVE25519] THEN
-  REWRITE_TAC[A_25519; p_25519; IN_INTEGER_MOD_RING_CARRIER;
-              FIELD_INTEGER_MOD_RING; INTEGER_MOD_RING_CHAR] THEN
-  CONV_TAC(DEPTH_CONV(INTEGER_MOD_RING_RED_CONV ORELSEC INT_RED_CONV)) THEN
-  REWRITE_TAC[ARITH_EQ] THEN REWRITE_TAC[GSYM p_25519; PRIME_P25519]);;
+  ASM_SIMP_TAC[GSYM curve25519x; MONTGOMERY_NONSINGULAR_CURVE25519X] THEN
+  REWRITE_TAC[A_25519; p_25519; RING_OF_NUM] THEN
+  CONV_TAC NUM_REDUCE_CONV);;
 
 let lemma_diffadd1 = prove
- (`~(&x:int = &0) /\
-   P IN group_carrier curve25519_group /\
-   montgomery_xz (integer_mod_ring p_25519) P (&x,&1) /\
-   montgomery_xz (integer_mod_ring p_25519)
-     (group_pow curve25519_group P (n + 1)) (&xn,&zn) /\
-   montgomery_xz (integer_mod_ring p_25519)
-     (group_pow curve25519_group P n) (&xm,&zm)
-   ==> montgomery_xz (integer_mod_ring p_25519)
-        (group_pow curve25519_group P (2 * n + 1))
-        (montgomery_xzdiffadd curve25519 (&x,&1) (&xn,&zn) (&xm,&zm))`,
-  REWRITE_TAC[curve25519; curve25519_group] THEN REPEAT STRIP_TAC THEN
+ (`field f /\ ring_char f = p_25519 /\
+   ~(x:A = ring_0 f) /\
+   P IN group_carrier (curve25519x_group f) /\
+   montgomery_xz f P (x,ring_of_num f 1) /\
+   montgomery_xz f
+     (group_pow (curve25519x_group f) P (n + 1)) (xn,zn) /\
+   montgomery_xz f
+     (group_pow (curve25519x_group f) P n) (xm,zm)
+   ==> montgomery_xz f
+            (group_pow (curve25519x_group f) P (2 * n + 1))
+            (montgomery_xzdiffadd (curve25519x f) (x,ring_of_num f 1)
+                  (xn,zn) (xm,zm))`,
+  REWRITE_TAC[curve25519x; curve25519x_group] THEN REPEAT STRIP_TAC THEN
   MATCH_MP_TAC MONTGOMERY_XZDIFFADD_GROUP THEN ASM_REWRITE_TAC[] THEN
-  REWRITE_TAC[GSYM curve25519; MONTGOMERY_NONSINGULAR_CURVE25519] THEN
-  REWRITE_TAC[A_25519; p_25519; IN_INTEGER_MOD_RING_CARRIER;
-              FIELD_INTEGER_MOD_RING; INTEGER_MOD_RING_CHAR] THEN
-  CONV_TAC(DEPTH_CONV(INTEGER_MOD_RING_RED_CONV ORELSEC INT_RED_CONV)) THEN
-  REWRITE_TAC[ARITH_EQ] THEN ASM_REWRITE_TAC[GSYM p_25519; PRIME_P25519]);;
+  ASM_SIMP_TAC[GSYM curve25519x; MONTGOMERY_NONSINGULAR_CURVE25519X] THEN
+  REWRITE_TAC[A_25519; p_25519; RING_OF_NUM] THEN
+  ASM_SIMP_TAC[RING_OF_NUM_1; FIELD_NONTRIVIAL] THEN
+  CONV_TAC NUM_REDUCE_CONV);;
 
 let lemma_diffadd2 = prove
- (`~(&x:int = &0) /\
-   P IN group_carrier curve25519_group /\
-   montgomery_xz (integer_mod_ring p_25519) P (&x,&1) /\
-   montgomery_xz (integer_mod_ring p_25519)
-     (group_pow curve25519_group P (n + 1)) (&xm,&zm) /\
-   montgomery_xz (integer_mod_ring p_25519)
-     (group_pow curve25519_group P n) (&xn,&zn)
-   ==> montgomery_xz (integer_mod_ring p_25519)
-        (group_pow curve25519_group P (2 * n + 1))
-        (montgomery_xzdiffadd curve25519 (&x,&1) (&xn,&zn) (&xm,&zm))`,
+ (`field f /\ ring_char f = p_25519 /\
+   ~(x:A = ring_0 f) /\
+   P IN group_carrier (curve25519x_group f) /\
+   montgomery_xz f P (x,ring_of_num f 1) /\
+   montgomery_xz f
+     (group_pow (curve25519x_group f) P (n + 1)) (xm,zm) /\
+   montgomery_xz f
+     (group_pow (curve25519x_group f) P n) (xn,zn)
+   ==> montgomery_xz f
+            (group_pow (curve25519x_group f) P (2 * n + 1))
+            (montgomery_xzdiffadd (curve25519x f) (x,ring_of_num f 1)
+                  (xn,zn) (xm,zm))`,
   DISCH_TAC THEN
   FIRST_ASSUM(MP_TAC o MATCH_MP lemma_diffadd1) THEN
   MATCH_MP_TAC EQ_IMP THEN AP_TERM_TAC THEN
   POP_ASSUM STRIP_ASSUME_TAC THEN
   REPEAT(FIRST_X_ASSUM(MP_TAC o MATCH_MP MONTGOMERY_XZ_IN_CARRIER)) THEN
-  ASM_SIMP_TAC[montgomery_xzdiffadd; curve25519; RING_MUL_SYM; PAIR_EQ] THEN
-  SPEC_TAC(`integer_mod_ring p_25519`,`r:int ring`) THEN RING_TAC);;
+  ASM_SIMP_TAC[montgomery_xzdiffadd; curve25519x; RING_MUL_SYM; PAIR_EQ] THEN
+  RING_TAC);;
 
 let CURVE25519_PXSCALARMUL_CORRECT = time prove
  (`!res point X scalar n pc stackpointer.
@@ -3182,10 +3177,12 @@ let CURVE25519_PXSCALARMUL_CORRECT = time prove
               bignum_from_memory (point,4) s = X /\
               bignum_from_memory (scalar,4) s = n)
          (\s. read RIP s = word (pc + 0x1625) /\
-              !P. P IN group_carrier curve25519_group /\
-                  curve25519_represents P (X,1)
-                  ==> curve25519_represents
-                        (group_pow curve25519_group P n)
+              !(f:A ring) P.
+                  field f /\ ring_char f = p_25519 /\
+                  P IN group_carrier(curve25519x_group f) /\
+                  curve25519x_canonically_represents f P (X,1)
+                  ==> curve25519x_canonically_represents f
+                        (group_pow (curve25519x_group f) P n)
                         (bignum_pair_from_memory(res,4) s))
           (MAYCHANGE [RIP; RDI; RAX; RBX; RCX; RDX; RBP;
                       R8; R9; R10; R11; R12; R13; R14; R15] ,,
@@ -3211,8 +3208,10 @@ let CURVE25519_PXSCALARMUL_CORRECT = time prove
       bignum_from_memory (scalar,4) s = nn /\
       read (memory :> bytes64(word_add stackpointer (word 352))) s =
       word(bitval(ODD(nn DIV 2 EXP i))) /\
-      !P. P IN group_carrier curve25519_group /\
-          curve25519_represents P (X,1)
+      !(f:A ring) P.
+        field f /\ ring_char f = p_25519 /\
+        P IN group_carrier(curve25519x_group f) /\
+        curve25519x_canonically_represents f P (X,1)
       ==>
       if X = 0 then
         bignum_from_memory(stackpointer,4) s <= 1 /\
@@ -3220,14 +3219,14 @@ let CURVE25519_PXSCALARMUL_CORRECT = time prove
         bignum_from_memory(word_add stackpointer (word 192),4) s = 0 /\
         bignum_from_memory(word_add stackpointer (word 256),4) s <= 1
       else
-      curve25519_represents
-       (group_pow curve25519_group P
+      curve25519x_canonically_represents f
+       (group_pow (curve25519x_group f) P
            (if ODD(nn DIV 2 EXP i)
             then nn DIV 2 EXP i + 1 else nn DIV 2 EXP i))
        (bignum_from_memory(word_add stackpointer (word 256),4) s,
         bignum_from_memory(word_add stackpointer (word 96),4) s) /\
-      curve25519_represents
-       (group_pow curve25519_group P
+      curve25519x_canonically_represents f
+       (group_pow (curve25519x_group f) P
           (if ODD(nn DIV 2 EXP i)
            then nn DIV 2 EXP i else nn DIV 2 EXP i + 1))
        (bignum_from_memory(word_add stackpointer (word 192),4) s,
@@ -3247,10 +3246,12 @@ let CURVE25519_PXSCALARMUL_CORRECT = time prove
     REWRITE_TAC[bignum_of_wordlist] THEN
     CONV_TAC(DEPTH_CONV WORD_NUM_RED_CONV) THEN
     ASM_SIMP_TAC[GROUP_POW_1] THEN REWRITE_TAC[group_pow] THEN
-    REPEAT STRIP_TAC THEN REWRITE_TAC[CURVE25519_GROUP] THEN
-    REWRITE_TAC[curve25519_represents; montgomery_xz] THEN
-    SIMP_TAC[p_25519; INTEGER_MOD_RING_CLAUSES; ARITH_LT] THEN
-    REWRITE_TAC[IN_ELIM_THM] THEN INT_ARITH_TAC;
+    SIMP_TAC[CURVE25519X_GROUP] THEN
+    REWRITE_TAC[curve25519x_canonically_represents; montgomery_xz] THEN
+    REWRITE_TAC[RING_OF_NUM] THEN
+    REWRITE_TAC[RING_OF_NUM_1; RING_OF_NUM_0; p_25519] THEN
+    SIMP_TAC[FIELD_NONTRIVIAL] THEN CONV_TAC NUM_REDUCE_CONV THEN
+    REWRITE_TAC[COND_ID];
 
     ALL_TAC; (*** The interesting part is done below ***)
 
@@ -3297,45 +3298,37 @@ let CURVE25519_PXSCALARMUL_CORRECT = time prove
     LOCAL_MUX_4_TAC 3 ["resx"; "xm"; "xn"] THEN
     LOCAL_MUX_4_TAC 0 ["resz"; "zm"; "zn"] THEN
     ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
-    X_GEN_TAC `P:(int#int)option` THEN STRIP_TAC THEN
-    FIRST_X_ASSUM(MP_TAC o SPEC `P:(int#int)option`) THEN
+    MAP_EVERY X_GEN_TAC [`f:A ring`; `P:(A#A)option`] THEN STRIP_TAC THEN
+    FIRST_X_ASSUM(MP_TAC o SPECL [`f:A ring`; `P:(A#A)option`]) THEN
     ASM_REWRITE_TAC[WORD_RULE `word(8 * 4) = word 32`] THEN
     CONV_TAC(ONCE_DEPTH_CONV BIGNUM_LEXPAND_CONV) THEN
     ASM_REWRITE_TAC[] THEN
     ASM_CASES_TAC `X = 0` THEN
     ASM_REWRITE_TAC[BITVAL_CLAUSES; VAL_WORD_0; VAL_WORD_1] THENL
      [SUBGOAL_THEN
-       `group_pow curve25519_group P nn =
-        if EVEN nn then NONE else SOME(&0:int,&0)`
+       `group_pow (curve25519x_group (f:A ring)) P nn =
+        if EVEN nn then NONE else SOME(ring_0 f,ring_0 f)`
       SUBST1_TAC THENL
-       [UNDISCH_TAC `P IN group_carrier curve25519_group` THEN
-        FIRST_X_ASSUM(MP_TAC o GEN_REWRITE_RULE I [curve25519_represents]) THEN
-        SPEC_TAC(`P:(int#int)option`,`P:(int#int)option`) THEN
+       [UNDISCH_TAC `P IN group_carrier (curve25519x_group(f:A ring))` THEN
+        FIRST_X_ASSUM(MP_TAC o last o CONJUNCTS o GEN_REWRITE_RULE I
+         [curve25519x_canonically_represents]) THEN
+        SPEC_TAC(`P:(A#A)option`,`P:(A#A)option`) THEN
         ASM_REWRITE_TAC[montgomery_xz; FORALL_OPTION_THM; FORALL_PAIR_THM] THEN
-        REWRITE_TAC[p_25519; IN_INTEGER_MOD_RING_CARRIER] THEN
-        CONV_TAC(DEPTH_CONV
-         (INTEGER_MOD_RING_RED_CONV ORELSEC INT_RED_CONV)) THEN
-        REWRITE_TAC[CURVE25519_GROUP; IN] THEN
-        MAP_EVERY X_GEN_TAC [`x:int`; `z:int`] THEN
-        DISCH_THEN(SUBST1_TAC o SYM) THEN
-        MP_TAC MONTGOMERY_STRONGLY_NONSINGULAR_CURVE25519 THEN
-        REWRITE_TAC[curve25519] THEN
-        W(MP_TAC o PART_MATCH (lhand o rand) MONTGOMERY_STRONGLY_NONSINGULAR o
-          lhand o snd) THEN
-        REWRITE_TAC[A_25519; p_25519; IN_INTEGER_MOD_RING_CARRIER;
-                    FIELD_INTEGER_MOD_RING; INTEGER_MOD_RING_CHAR] THEN
-        CONV_TAC(DEPTH_CONV
-         (INTEGER_MOD_RING_RED_CONV ORELSEC INT_RED_CONV)) THEN
-        REWRITE_TAC[ARITH_EQ] THEN REWRITE_TAC[GSYM p_25519; PRIME_P25519] THEN
-        DISCH_THEN SUBST1_TAC THEN
-        DISCH_THEN(fun th -> DISCH_TAC THEN
-             MP_TAC(SPECL [`&0:int`; `z:int`] th) THEN ASM_REWRITE_TAC[]) THEN
-        DISCH_THEN SUBST1_TAC THEN SPEC_TAC(`nn:num`,`n:num`) THEN
-        POP_ASSUM_LIST(K ALL_TAC) THEN INDUCT_TAC THEN
+        ASM_SIMP_TAC[CURVE25519X_GROUP; RING_OF_NUM_0] THEN
+        REWRITE_TAC[SET_RULE `SOME p IN s <=> s(SOME p)`] THEN
+        SIMP_TAC[ring_div; RING_MUL_LZERO; RING_OF_NUM; RING_INV] THEN
+        ASM_SIMP_TAC[RING_0; RING_OF_NUM_1; FIELD_NONTRIVIAL] THEN
+        REWRITE_TAC[RIGHT_FORALL_IMP_THM; FORALL_UNWIND_THM1] THEN
+        X_GEN_TAC `y:A` THEN REWRITE_TAC[GSYM RING_OF_NUM_0] THEN
+        DISCH_TAC THEN
+        MP_TAC(ISPECL [`f:A ring`; `0:num`; `y:A`]
+         SPECIALLY_NONSINGULAR_CURVE25519X) THEN
+        ASM_REWRITE_TAC[RING_OF_NUM_0] THEN DISCH_THEN SUBST1_TAC THEN
+        SPEC_TAC(`nn:num`,`n:num`) THEN INDUCT_TAC THEN
         ASM_REWRITE_TAC[ARITH_EVEN; EVEN; COND_SWAP; group_pow] THEN
-        REWRITE_TAC[el 1 (CONJUNCTS CURVE25519_GROUP)] THEN
-        COND_CASES_TAC THEN ASM_REWRITE_TAC[] THEN
-        CONV_TAC(LAND_CONV ECGROUP_MUL_CONV) THEN REFL_TAC;
+        ASM_SIMP_TAC[CURVE25519X_GROUP] THEN
+        COND_CASES_TAC THEN
+        ASM_REWRITE_TAC[montgomery_add; curve25519x];
         ALL_TAC] THEN
       MAP_EVERY EXPAND_TAC ["zm"; "xn"] THEN
       REWRITE_TAC[ARITH_RULE `n <= 1 <=> n = 0 \/ n = 1`] THEN
@@ -3349,10 +3342,10 @@ let CURVE25519_PXSCALARMUL_CORRECT = time prove
       COND_CASES_TAC THEN ASM_REWRITE_TAC[] THEN
       STRIP_TAC THEN ASM_REWRITE_TAC[bignum_of_wordlist] THEN
       CONV_TAC(DEPTH_CONV WORD_NUM_RED_CONV) THEN
-      REWRITE_TAC[curve25519_represents; montgomery_xz] THEN
-      REWRITE_TAC[IN_INTEGER_MOD_RING_CARRIER; p_25519] THEN
-      CONV_TAC(DEPTH_CONV
-       (INTEGER_MOD_RING_RED_CONV ORELSEC INT_RED_CONV));
+      REWRITE_TAC[curve25519x_canonically_represents; montgomery_xz] THEN
+      ASM_SIMP_TAC[RING_OF_NUM_1; RING_OF_NUM_0; FIELD_NONTRIVIAL; ring_div;
+                   RING_0; RING_1; RING_MUL_LZERO; RING_INV; RING_1] THEN
+      REWRITE_TAC[p_25519] THEN CONV_TAC NUM_REDUCE_CONV;
       ASM_REWRITE_TAC[WORD_OR_0; VAL_WORD_BITVAL; BITVAL_EQ_0; COND_SWAP] THEN
       COND_CASES_TAC THEN ASM_REWRITE_TAC[] THEN SIMP_TAC[]]] THEN
 
@@ -3432,8 +3425,8 @@ let CURVE25519_PXSCALARMUL_CORRECT = time prove
 
   (*** Get started and handle the degenerate X = 0 case ***)
 
-  X_GEN_TAC `P:(int#int)option` THEN STRIP_TAC THEN
-  FIRST_X_ASSUM(MP_TAC o SPEC `P:(int#int)option`) THEN
+  MAP_EVERY X_GEN_TAC [`f:A ring`; `P:(A#A)option`] THEN STRIP_TAC THEN
+  FIRST_X_ASSUM(MP_TAC o SPECL [`f:A ring`; `P:(A#A)option`]) THEN
   ASM_REWRITE_TAC[] THEN COND_CASES_TAC THEN ASM_REWRITE_TAC[] THENL
    [FIRST_X_ASSUM SUBST_ALL_TAC THEN
     DISCH_THEN(REPEAT_TCL CONJUNCTS_THEN
@@ -3461,6 +3454,8 @@ let CURVE25519_PXSCALARMUL_CORRECT = time prove
     REWRITE_TAC[p_25519] THEN CONV_TAC INT_REDUCE_CONV;
     ALL_TAC] THEN
 
+  RULE_ASSUM_TAC(ONCE_REWRITE_RULE[TAUT
+   `(ODD n <=> b) <=> (b <=> ODD n)`]) THEN
   ABBREV_TAC `n = nn DIV 2 EXP (i + 1)` THEN
   ABBREV_TAC `b = ODD(nn DIV 2 EXP i)` THEN
   SUBGOAL_THEN `nn DIV 2 EXP i = 2 * n + bitval b` SUBST1_TAC THENL
@@ -3470,13 +3465,20 @@ let CURVE25519_PXSCALARMUL_CORRECT = time prove
 
   DISCH_TAC THEN
   SUBGOAL_THEN
-   `(&xm',&zm') = montgomery_xzdiffadd curve25519 (&X,&1) (&xn,&zn) (&xm,&zm) /\
-    (&xn',&zn') = montgomery_xzdouble curve25519
-                  (if b <=> ODD n then (&xn,&zn) else (&xm,&zm))`
+   `(ring_of_num f xm':A,ring_of_num f zm') =
+     montgomery_xzdiffadd (curve25519x f)
+         (ring_of_num f X,ring_of_num f 1)
+         (ring_of_num f xn,ring_of_num f zn)
+         (ring_of_num f xm,ring_of_num f zm) /\
+    (ring_of_num f xn',ring_of_num f zn') =
+     montgomery_xzdouble (curve25519x f)
+      (if b <=> ODD n then (ring_of_num f xn,ring_of_num f zn)
+       else (ring_of_num f xm,ring_of_num f zm))`
   MP_TAC THENL
-   [FIRST_X_ASSUM(CONJUNCTS_THEN
-     (STRIP_ASSUME_TAC o MATCH_MP CURVE25519_REPRESENTS_BOUND)) THEN
-    FIRST_X_ASSUM(STRIP_ASSUME_TAC o MATCH_MP CURVE25519_REPRESENTS_BOUND) THEN
+   [FIRST_X_ASSUM(CONJUNCTS_THEN (STRIP_ASSUME_TAC o
+      MATCH_MP CURVE25519X_CANONICALLY_REPRESENTS_BOUND)) THEN
+    FIRST_X_ASSUM(STRIP_ASSUME_TAC o
+      MATCH_MP CURVE25519X_CANONICALLY_REPRESENTS_BOUND) THEN
     REPEAT(FIRST_X_ASSUM(MP_TAC o check (is_imp o concl))) THEN
     REPEAT(ANTS_TAC THENL
      [ASM_REWRITE_TAC[] THEN SIMPLE_ARITH_TAC; STRIP_TAC]) THEN
@@ -3484,8 +3486,12 @@ let CURVE25519_PXSCALARMUL_CORRECT = time prove
     POP_ASSUM_LIST(MP_TAC o end_itlist CONJ o rev) THEN
     COND_CASES_TAC THEN
     ASM_REWRITE_TAC[montgomery_xzdiffadd; montgomery_xzdouble;
-                    curve25519; PAIR_EQ] THEN
-    STRIP_TAC THEN REWRITE_TAC[INTEGER_MOD_RING_CLAUSES; modular_encode] THEN
+                    curve25519x; PAIR_EQ] THEN
+    STRIP_TAC THEN
+    REWRITE_TAC[GSYM RING_OF_INT_OF_NUM; RING_OF_INT_CLAUSES] THEN
+    ASM_REWRITE_TAC[RING_OF_INT_EQ] THEN
+    REWRITE_TAC[GSYM INT_OF_NUM_REM; GSYM INT_REM_EQ;
+                GSYM INT_OF_NUM_CLAUSES] THEN
     CONV_TAC INT_REM_DOWN_CONV THEN
     REWRITE_TAC[PAIR_EQ; GSYM INT_OF_NUM_EQ; nintlemma] THEN
     REWRITE_TAC[GSYM INT_OF_NUM_REM; GSYM INT_OF_NUM_CLAUSES] THEN
@@ -3498,29 +3504,38 @@ let CURVE25519_PXSCALARMUL_CORRECT = time prove
     ASM_REWRITE_TAC[] THEN CONV_TAC INT_REM_DOWN_CONV THEN
     REPEAT CONJ_TAC THEN AP_THM_TAC THEN AP_TERM_TAC THEN
     REWRITE_TAC[A_25519] THEN INT_ARITH_TAC;
-    ASM_REWRITE_TAC[] THEN SIMP_TAC[curve25519_represents] THEN
-    DISCH_THEN(K ALL_TAC) THEN
-    FIRST_X_ASSUM(MP_TAC o GEN_REWRITE_RULE BINOP_CONV
-     [curve25519_represents]) THEN
-    FIRST_X_ASSUM(MP_TAC o GEN_REWRITE_RULE I [curve25519_represents]) THEN
-    UNDISCH_TAC `P IN group_carrier curve25519_group` THEN
-    UNDISCH_TAC `~(X = 0)` THEN POP_ASSUM_LIST(K ALL_TAC)] THEN
+    ASM_REWRITE_TAC[] THEN SIMP_TAC[curve25519x_canonically_represents] THEN
+    DISCH_THEN(K ALL_TAC) THEN REWRITE_TAC[MOD_LT_EQ; p_25519; ARITH_EQ] THEN
+    FIRST_X_ASSUM(CONJUNCTS_THEN(MP_TAC o last o CONJUNCTS o GEN_REWRITE_RULE I
+     [curve25519x_canonically_represents])) THEN
+    GEN_REWRITE_TAC I [GSYM IMP_CONJ_ALT] THEN
+    FIRST_X_ASSUM(MP_TAC o GEN_REWRITE_RULE I
+     [curve25519x_canonically_represents]) THEN
+    DISCH_THEN(CONJUNCTS_THEN2 ASSUME_TAC (MP_TAC o CONJUNCT2)) THEN
+    UNDISCH_TAC `P IN group_carrier(curve25519x_group(f:A ring))`] THEN
+
+  SUBGOAL_THEN `~(ring_of_num (f:A ring) X = ring_0 f)` MP_TAC THENL
+   [ASM_REWRITE_TAC[RING_OF_NUM_EQ_0] THEN
+    DISCH_THEN(MP_TAC o MATCH_MP DIVIDES_LE) THEN
+    ASM_REWRITE_TAC[NOT_LE];
+    MAP_EVERY UNDISCH_TAC
+     [`ring_char(f:A ring) = p_25519`; `field(f:A ring)`] THEN
+    POP_ASSUM_LIST(K ALL_TAC)] THEN
 
   REPEAT DISCH_TAC THEN CONJ_TAC THENL
    [DISJ_CASES_THEN SUBST_ALL_TAC (TAUT `(b <=> ODD n) \/ (b <=> ~ODD n)`) THEN
     REWRITE_TAC[TAUT `~(~p <=> p)`] THENL
      [FIRST_X_ASSUM(MP_TAC o CONJUNCT1);
       FIRST_X_ASSUM(MP_TAC o CONJUNCT2)] THEN
-    UNDISCH_TAC `P IN group_carrier curve25519_group` THEN
+    UNDISCH_TAC `P IN group_carrier(curve25519x_group(f:A ring))` THEN
     REWRITE_TAC[IMP_IMP] THEN DISCH_THEN(MP_TAC o MATCH_MP lemma_double) THEN
-    REWRITE_TAC[COND_SWAP] THEN COND_CASES_TAC THEN
+    ASM_REWRITE_TAC[COND_SWAP] THEN COND_CASES_TAC THEN
     REWRITE_TAC[ARITH_RULE `(2 * n + 1) + 1 = 2 * (n + 1)`];
 
     REPEAT(POP_ASSUM MP_TAC) THEN
     REWRITE_TAC[IMP_IMP; GSYM CONJ_ASSOC] THEN
-    COND_CASES_TAC THEN ASM_REWRITE_TAC[GSYM INT_OF_NUM_EQ] THEN
-    REWRITE_TAC[lemma_diffadd1] THEN
-    GEN_REWRITE_TAC (LAND_CONV o funpow 3 RAND_CONV) [CONJ_SYM] THEN
+    COND_CASES_TAC THEN REWRITE_TAC[lemma_diffadd1] THEN
+    GEN_REWRITE_TAC (LAND_CONV o funpow 5 RAND_CONV) [CONJ_SYM] THEN
     REWRITE_TAC[lemma_diffadd2]]);;
 
 let CURVE25519_PXSCALARMUL_SUBROUTINE_CORRECT = time prove
@@ -3539,10 +3554,12 @@ let CURVE25519_PXSCALARMUL_SUBROUTINE_CORRECT = time prove
               bignum_from_memory (scalar,4) s = n)
          (\s. read RIP s = returnaddress /\
               read RSP s = word_add stackpointer (word 8) /\
-              !P. P IN group_carrier curve25519_group /\
-                  curve25519_represents P (X,1)
-                  ==> curve25519_represents
-                        (group_pow curve25519_group P n)
+              !(f:A ring) P.
+                  field f /\ ring_char f = p_25519 /\
+                  P IN group_carrier(curve25519x_group f) /\
+                  curve25519x_canonically_represents f P (X,1)
+                  ==> curve25519x_canonically_represents f
+                        (group_pow (curve25519x_group f) P n)
                         (bignum_pair_from_memory(res,4) s))
           (MAYCHANGE [RIP; RSP; RDI; RAX; RCX; RDX; R8; R9; R10; R11] ,,
            MAYCHANGE SOME_FLAGS ,,
@@ -3576,10 +3593,12 @@ let WINDOWS_CURVE25519_PXSCALARMUL_SUBROUTINE_CORRECT = time prove
               bignum_from_memory (scalar,4) s = n)
          (\s. read RIP s = returnaddress /\
               read RSP s = word_add stackpointer (word 8) /\
-              !P. P IN group_carrier curve25519_group /\
-                  curve25519_represents P (X,1)
-                  ==> curve25519_represents
-                        (group_pow curve25519_group P n)
+              !(f:A ring) P.
+                  field f /\ ring_char f = p_25519 /\
+                  P IN group_carrier(curve25519x_group f) /\
+                  curve25519x_canonically_represents f P (X,1)
+                  ==> curve25519x_canonically_represents f
+                        (group_pow (curve25519x_group f) P n)
                         (bignum_pair_from_memory(res,4) s))
           (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
            MAYCHANGE SOME_FLAGS ,,
