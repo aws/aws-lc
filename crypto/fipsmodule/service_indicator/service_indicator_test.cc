@@ -1560,7 +1560,7 @@ static const struct HKDFTestVector {
         NULL, 0,
         kHKDF_info_tc7, 0,
         kHKDF_okm_tc7_sha1, sizeof(kHKDF_okm_tc7_sha1),
-        AWSLC_APPROVED,
+        AWSLC_NOT_APPROVED,
     },
     {
         EVP_sha224,
@@ -1568,7 +1568,7 @@ static const struct HKDFTestVector {
         NULL, 0,
         kHKDF_info_tc7, 0,
         kHKDF_okm_tc7_sha224, sizeof(kHKDF_okm_tc7_sha224),
-        AWSLC_APPROVED,
+        AWSLC_NOT_APPROVED,
     },
     {
         EVP_sha256,
@@ -1576,7 +1576,7 @@ static const struct HKDFTestVector {
         NULL, 0,
         kHKDF_info_tc7, 0,
         kHKDF_okm_tc7_sha256, sizeof(kHKDF_okm_tc7_sha256),
-        AWSLC_APPROVED,
+        AWSLC_NOT_APPROVED,
     },
     {
         EVP_sha384,
@@ -1584,7 +1584,7 @@ static const struct HKDFTestVector {
         NULL, 0,
         kHKDF_info_tc7, 0,
         kHKDF_okm_tc7_sha384, sizeof(kHKDF_okm_tc7_sha384),
-        AWSLC_APPROVED,
+        AWSLC_NOT_APPROVED,
     },
     {
         EVP_sha512,
@@ -1592,7 +1592,7 @@ static const struct HKDFTestVector {
         NULL, 0,
         kHKDF_info_tc7, 0,
         kHKDF_okm_tc7_sha512, sizeof(kHKDF_okm_tc7_sha512),
-        AWSLC_APPROVED,
+        AWSLC_NOT_APPROVED,
     },
 };
 
