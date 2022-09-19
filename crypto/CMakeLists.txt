@@ -360,7 +360,7 @@ add_library(
   ex_data.c
   hpke/hpke.c
   hrss/hrss.c
-  kyber/kem_kyber_512.c
+  kyber/kem_kyber512.c
   kyber/p_kyber.c
   kyber/p_kyber512_asn1.c
   kyber/pqcrystals-kyber_kyber512_ref/cbd.c
