@@ -119,9 +119,10 @@ TEST(Kyber512Test, NewKeyFromBytes) {
 
   // New raw private key
   EVP_PKEY *new_private = EVP_PKEY_new_raw_private_key(EVP_PKEY_KYBER512,
-                                                     NULL,
-                                                     kyber512Key->priv,
-                                                     KYBER512_SECRET_KEY_BYTES);
+
+                                                       NULL,
+                                                       kyber512Key->priv,
+                                                       KYBER512_SECRET_KEY_BYTES);
   ASSERT_NE(new_private, nullptr);
   const KYBER512_KEY *newKyber512Key = (KYBER512_KEY *)(new_private->pkey.ptr);
   EXPECT_EQ(0, OPENSSL_memcmp(kyber512Key->priv, newKyber512Key->priv, KYBER512_SECRET_KEY_BYTES));
@@ -148,14 +149,14 @@ TEST(Kyber512Test, KeySize) {
 }
 
 TEST(Kyber512Test, KEMOperations) {
-  // Basic functional test for KYBER512
+  // Basic functional test for KYBER512.
   // Simulate two sides of the key exchange mechanism.
-  size_t shared_secret_len = KYBER512_KEM_SHARED_SECRET_BYTES;
-  size_t ciphertext_len = KYBER512_KEM_CIPHERTEXT_BYTES;
-  uint8_t shared_secret_alice[KYBER512_KEM_SHARED_SECRET_BYTES];
-  uint8_t shared_secret_bob[KYBER512_KEM_SHARED_SECRET_BYTES];
-  uint8_t ciphertext_alice[KYBER512_KEM_CIPHERTEXT_BYTES];
-  uint8_t ciphertext_bob[KYBER512_KEM_CIPHERTEXT_BYTES];
+  size_t shared_secret_len = KYBER512_SHARED_SECRET_BYTES;
+  size_t ciphertext_len = KYBER512_CIPHERTEXT_BYTES;
+  uint8_t shared_secret_alice[KYBER512_SHARED_SECRET_BYTES];
+  uint8_t shared_secret_bob[KYBER512_SHARED_SECRET_BYTES];
+  uint8_t ciphertext_alice[KYBER512_CIPHERTEXT_BYTES];
+  uint8_t ciphertext_bob[KYBER512_CIPHERTEXT_BYTES];
 
   // Alice generates the key pair.
   EVP_PKEY_CTX *kyber_pkey_ctx_alice = EVP_PKEY_CTX_new_id(EVP_PKEY_KYBER512, nullptr);
@@ -174,14 +175,12 @@ TEST(Kyber512Test, KEMOperations) {
   kyber_pkey_ctx_bob->pkey = kyber_pkey_bob;
 
   // Bob generates a shared secret and encapsulates it.
-  ASSERT_TRUE(EVP_PKEY_encapsulate_init(kyber_pkey_ctx_bob, NULL));
   ASSERT_TRUE(EVP_PKEY_encapsulate(kyber_pkey_ctx_bob, ciphertext_bob, &ciphertext_len, shared_secret_bob, &shared_secret_len));
 
   // Bob sends the ciphertext to Alice.
   OPENSSL_memcpy(ciphertext_alice, ciphertext_bob, ciphertext_len);
 
   // Alice decapsulates the ciphertext to obtain the shared secret.
-  ASSERT_TRUE(EVP_PKEY_decapsulate_init(kyber_pkey_ctx_alice, NULL));
   ASSERT_TRUE(EVP_PKEY_decapsulate(kyber_pkey_ctx_alice, shared_secret_alice, &shared_secret_len, ciphertext_alice, ciphertext_len));
 
   // Verify that Alice and Bob have the same shared secret.
@@ -215,19 +214,40 @@ TEST(Kyber512Test, KEMSizeChecks) {
   EXPECT_TRUE(EVP_PKEY_keygen_init(kyber_pkey_ctx));
   EXPECT_TRUE(EVP_PKEY_keygen(kyber_pkey_ctx, &kyber_pkey));
 
-  ASSERT_TRUE(EVP_PKEY_encapsulate_init(kyber_pkey_ctx, NULL));
   ASSERT_TRUE(EVP_PKEY_encapsulate(kyber_pkey_ctx, NULL, &ciphertext_len, NULL, &shared_secret_len));
-  EXPECT_EQ(shared_secret_len, (size_t)KYBER512_KEM_SHARED_SECRET_BYTES);
-  EXPECT_EQ(ciphertext_len, (size_t)KYBER512_KEM_CIPHERTEXT_BYTES);
+  EXPECT_EQ(shared_secret_len, (size_t)KYBER512_SHARED_SECRET_BYTES);
+  EXPECT_EQ(ciphertext_len, (size_t)KYBER512_CIPHERTEXT_BYTES);
 
   shared_secret_len = 0;
 
   ASSERT_TRUE(EVP_PKEY_decapsulate(kyber_pkey_ctx, NULL, &shared_secret_len, NULL, ciphertext_len));
-  EXPECT_EQ(shared_secret_len, (size_t)KYBER512_KEM_SHARED_SECRET_BYTES);
+  EXPECT_EQ(shared_secret_len, (size_t)KYBER512_SHARED_SECRET_BYTES);
+
+  // Verify that encaps/decaps fail when given too small buffer lengths.
+  uint8_t shared_secret[KYBER512_SHARED_SECRET_BYTES];
+  uint8_t ciphertext[KYBER512_CIPHERTEXT_BYTES];
+
+  // encapsulate -- ciphertext_len too small, shared_secret_len ok.
+  ciphertext_len -= 1;
+  ASSERT_FALSE(EVP_PKEY_encapsulate(kyber_pkey_ctx, ciphertext, &ciphertext_len, shared_secret, &shared_secret_len));
+  
+  // encapsulate -- ciphertext_len ok, shared_secret_len too small.
+  ciphertext_len += 1;
+  shared_secret_len -= 1;
+  ASSERT_FALSE(EVP_PKEY_encapsulate(kyber_pkey_ctx, ciphertext, &ciphertext_len, shared_secret, &shared_secret_len));
+
+  // decapsulate -- shared_secret_len too small
+  ASSERT_FALSE(EVP_PKEY_decapsulate(kyber_pkey_ctx, shared_secret, &shared_secret_len, ciphertext, ciphertext_len));
+
+  // Final check that everything works with good ciphertext_len and share_secret_len.
+  shared_secret_len += 1;
+  ASSERT_TRUE(EVP_PKEY_encapsulate(kyber_pkey_ctx, ciphertext, &ciphertext_len, shared_secret, &shared_secret_len));
+  ASSERT_TRUE(EVP_PKEY_decapsulate(kyber_pkey_ctx, shared_secret, &shared_secret_len, ciphertext, ciphertext_len));
 
   EVP_PKEY_CTX_free(kyber_pkey_ctx);
 }
 
+<<<<<<< HEAD
 TEST(Kyber512Test, KEMOperations) {
   // Basic functional test for KYBER512.
   // Simulate two sides of the key exchange mechanism.
