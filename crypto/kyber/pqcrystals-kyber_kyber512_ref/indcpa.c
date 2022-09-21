@@ -2,11 +2,11 @@
 #include <stddef.h>
 #include <stdint.h>
 #include "ntt.h"
-#include "openssl/randombytes.h"
 #include "params.h"
 #include "poly.h"
 #include "polyvec.h"
 #include "symmetric.h"
+#include "../../rand_extra/pq_custom_randombytes.h"
 
 /*************************************************
 * Name:        pack_pk
@@ -212,7 +212,7 @@ void indcpa_keypair(uint8_t pk[KYBER_INDCPA_PUBLICKEYBYTES],
   uint8_t nonce = 0;
   polyvec a[KYBER_K], e, pkpv, skpv;
 
-  randombytes(buf, KYBER_SYMBYTES);
+  pq_custom_randombytes(buf, KYBER_SYMBYTES);
   hash_g(buf, buf, KYBER_SYMBYTES);
 
   gen_a(a, publicseed);
