@@ -232,6 +232,14 @@ batch:
         compute-type: BUILD_GENERAL1_LARGE
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_clang-9x_latest
 
+    - identifier: install_shared_and_static
+      buildspec: ./tests/ci/codebuild/linux-x86/install_shared_and_static.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_SMALL
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_clang-9x_latest
+
     - identifier: fedora31_clang9x_x86_64
       buildspec: ./tests/ci/codebuild/linux-x86/fedora-31_clang-9x.yml
       env:

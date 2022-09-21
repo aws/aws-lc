@@ -353,7 +353,6 @@ add_library(
   evp_extra/p_x25519.c
   evp_extra/p_x25519_asn1.c
   evp_extra/p_methods.c
-  evp_extra/pbkdf.c
   evp_extra/print.c
   evp_extra/scrypt.c
   evp_extra/sign.c
@@ -469,7 +468,6 @@ add_library(
   x509/x_x509a.c
   x509v3/pcy_cache.c
   x509v3/pcy_data.c
-  x509v3/pcy_lib.c
   x509v3/pcy_map.c
   x509v3/pcy_node.c
   x509v3/pcy_tree.c
@@ -518,7 +516,12 @@ target_compile_definitions(crypto_objects PRIVATE BORINGSSL_IMPLEMENTATION)
 add_dependencies(crypto_objects global_target)
 
 function(build_libcrypto name module_source)
-  add_library(${name} $<TARGET_OBJECTS:crypto_objects> ${CRYPTO_FIPS_OBJECTS} ${module_source})
+  if(FIPS)
+    add_library(${name} $<TARGET_OBJECTS:crypto_objects> ${CRYPTO_FIPS_OBJECTS} ${module_source} $<TARGET_OBJECTS:jitterentropy>)
+  else()
+    add_library(${name} $<TARGET_OBJECTS:crypto_objects> ${CRYPTO_FIPS_OBJECTS} ${module_source})
+  endif()
+
   add_dependencies(${name}  global_target)
 
   if(FIPS_DELOCATE OR FIPS_SHARED)
@@ -532,9 +535,6 @@ function(build_libcrypto name module_source)
     target_link_libraries(${name} PUBLIC pthread)
   endif()
 
-  if(FIPS)
-    target_link_libraries(${name} PRIVATE jitterentropy)
-  endif()
   target_include_directories(${name} SYSTEM PUBLIC
           $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
           $<INSTALL_INTERFACE:include>)
@@ -666,7 +666,6 @@ if(BUILD_TESTING)
     err/err_test.cc
     evp_extra/evp_extra_test.cc
     evp_extra/evp_test.cc
-    evp_extra/pbkdf_test.cc
     evp_extra/pq_kem_kat_tests_kyber512.cc
     evp_extra/scrypt_test.cc
     fipsmodule/aes/aes_test.cc
@@ -678,6 +677,7 @@ if(BUILD_TESTING)
     fipsmodule/md5/md5_test.cc
     fipsmodule/modes/gcm_test.cc
     fipsmodule/modes/xts_test.cc
+    fipsmodule/pbkdf/pbkdf_test.cc
     fipsmodule/rand/ctrdrbg_test.cc
     fipsmodule/rand/cpu_jitter_test.cc
     fipsmodule/rand/fork_detect_test.cc
@@ -726,10 +726,6 @@ if(BUILD_TESTING)
   add_dependencies(${CRYPTO_TEST_EXEC} global_target)
 
   target_link_libraries(${CRYPTO_TEST_EXEC} test_support_lib boringssl_gtest crypto)
-  if(FIPS)
-    target_link_libraries(${CRYPTO_TEST_EXEC} jitterentropy)
-    add_dependencies(${CRYPTO_TEST_EXEC} jitterentropy)
-  endif()
   if(WIN32)
     target_link_libraries(${CRYPTO_TEST_EXEC} ws2_32)
   endif()

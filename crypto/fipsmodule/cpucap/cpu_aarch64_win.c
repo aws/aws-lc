@@ -23,6 +23,8 @@
 #include <openssl/arm_arch.h>
 
 extern uint32_t OPENSSL_armcap_P;
+extern uint8_t OPENSSL_cpucap_initialized;
+
 void OPENSSL_cpuid_setup(void) {
   // We do not need to check for the presence of NEON, as Armv8-A always has it
   OPENSSL_armcap_P |= ARMV7_NEON;
@@ -36,6 +38,8 @@ void OPENSSL_cpuid_setup(void) {
   }
   // As of writing, Windows does not have a |PF_*| value for ARMv8.2 SHA-512
   // extensions. When it does, add it here.
+
+  OPENSSL_cpucap_initialized = 1;
 }
 
 #endif  // OPENSSL_AARCH64 && OPENSSL_WINDOWS && !OPENSSL_STATIC_ARMCAP

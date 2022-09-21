@@ -23,6 +23,7 @@
 
 #include <openssl/asn1.h>
 #include <openssl/asn1t.h>
+#include <openssl/bio.h>
 #include <openssl/bytestring.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
@@ -901,27 +902,71 @@ static std::string ASN1StringToStdString(const ASN1_STRING *str) {
                      ASN1_STRING_get0_data(str) + ASN1_STRING_length(str));
 }
 
+static bool ASN1Time_check_time_t(const ASN1_TIME *s, time_t t) {
+  struct tm stm, ttm;
+  int day, sec;
+
+  switch (ASN1_STRING_type(s)) {
+    case V_ASN1_GENERALIZEDTIME:
+      if (!asn1_generalizedtime_to_tm(&stm, s)) {
+        return false;
+      }
+      break;
+    case V_ASN1_UTCTIME:
+      if (!asn1_utctime_to_tm(&stm, s)) {
+        return false;
+      }
+      break;
+    default:
+      return 0;
+  }
+  if (!OPENSSL_gmtime(&t, &ttm) ||
+      !OPENSSL_gmtime_diff(&day, &sec, &ttm, &stm)) {
+    return false;
+  }
+  return day == 0 && sec ==0;
+}
+
+static std::string PrintStringToBIO(const ASN1_STRING *str,
+                                    int (*print_func)(BIO *,
+                                                      const ASN1_STRING *)) {
+  const uint8_t *data;
+  size_t len;
+  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+  if (!bio ||  //
+      !print_func(bio.get(), str) ||
+      !BIO_mem_contents(bio.get(), &data, &len)) {
+    ADD_FAILURE() << "Could not print to BIO";
+    return "";
+  }
+  return std::string(data, data + len);
+}
+
 TEST(ASN1Test, SetTime) {
   static const struct {
     time_t time;
     const char *generalized;
     const char *utc;
+    const char *printed;
   } kTests[] = {
-    {-631152001, "19491231235959Z", nullptr},
-    {-631152000, "19500101000000Z", "500101000000Z"},
-    {0, "19700101000000Z", "700101000000Z"},
-    {981173106, "20010203040506Z", "010203040506Z"},
+    {-631152001, "19491231235959Z", nullptr, "Dec 31 23:59:59 1949 GMT"},
+    {-631152000, "19500101000000Z", "500101000000Z",
+     "Jan  1 00:00:00 1950 GMT"},
+    {0, "19700101000000Z", "700101000000Z", "Jan  1 00:00:00 1970 GMT"},
+    {981173106, "20010203040506Z", "010203040506Z", "Feb  3 04:05:06 2001 GMT"},
+    {951804000, "20000229060000Z", "000229060000Z", "Feb 29 06:00:00 2000 GMT"},
 #if defined(OPENSSL_64_BIT)
     // TODO(https://crbug.com/boringssl/416): These cases overflow 32-bit
     // |time_t| and do not consistently work on 32-bit platforms. For now,
     // disable the tests on 32-bit. Re-enable them once the bug is fixed.
-    {2524607999, "20491231235959Z", "491231235959Z"},
-    {2524608000, "20500101000000Z", nullptr},
+    {2524607999, "20491231235959Z", "491231235959Z",
+     "Dec 31 23:59:59 2049 GMT"},
+    {2524608000, "20500101000000Z", nullptr, "Jan  1 00:00:00 2050 GMT"},
     // Test boundary conditions.
-    {-62167219200, "00000101000000Z", nullptr},
-    {-62167219201, nullptr, nullptr},
-    {253402300799, "99991231235959Z", nullptr},
-    {253402300800, nullptr, nullptr},
+    {-62167219200, "00000101000000Z", nullptr, "Jan  1 00:00:00 0 GMT"},
+    {-62167219201, nullptr, nullptr, nullptr},
+    {253402300799, "99991231235959Z", nullptr, "Dec 31 23:59:59 9999 GMT"},
+    {253402300800, nullptr, nullptr, nullptr},
 #endif
   };
   for (const auto &t : kTests) {
@@ -939,6 +984,9 @@ TEST(ASN1Test, SetTime) {
       ASSERT_TRUE(utc);
       EXPECT_EQ(V_ASN1_UTCTIME, ASN1_STRING_type(utc.get()));
       EXPECT_EQ(t.utc, ASN1StringToStdString(utc.get()));
+      EXPECT_TRUE(ASN1Time_check_time_t(utc.get(), t.time));
+      EXPECT_EQ(PrintStringToBIO(utc.get(), &ASN1_UTCTIME_print), t.printed);
+      EXPECT_EQ(PrintStringToBIO(utc.get(), &ASN1_TIME_print), t.printed);
     } else {
       EXPECT_FALSE(utc);
     }
@@ -949,6 +997,12 @@ TEST(ASN1Test, SetTime) {
       ASSERT_TRUE(generalized);
       EXPECT_EQ(V_ASN1_GENERALIZEDTIME, ASN1_STRING_type(generalized.get()));
       EXPECT_EQ(t.generalized, ASN1StringToStdString(generalized.get()));
+      EXPECT_TRUE(ASN1Time_check_time_t(generalized.get(), t.time));
+      EXPECT_EQ(
+          PrintStringToBIO(generalized.get(), &ASN1_GENERALIZEDTIME_print),
+          t.printed);
+      EXPECT_EQ(PrintStringToBIO(generalized.get(), &ASN1_TIME_print),
+                t.printed);
     } else {
       EXPECT_FALSE(generalized);
     }
@@ -963,6 +1017,7 @@ TEST(ASN1Test, SetTime) {
         EXPECT_EQ(V_ASN1_GENERALIZEDTIME, ASN1_STRING_type(choice.get()));
         EXPECT_EQ(t.generalized, ASN1StringToStdString(choice.get()));
       }
+      EXPECT_TRUE(ASN1Time_check_time_t(choice.get(), t.time));
     } else {
       EXPECT_FALSE(choice);
     }
@@ -1042,6 +1097,8 @@ TEST(ASN1Test, StringPrintEx) {
       // RFC 2253 only escapes spaces at the start and end of a string.
       {V_ASN1_T61STRING, StringToVector("   "), 0, ASN1_STRFLGS_ESC_2253,
        "\\  \\ "},
+      {V_ASN1_T61STRING, StringToVector("   "), 0,
+       ASN1_STRFLGS_ESC_2253 | ASN1_STRFLGS_UTF8_CONVERT, "\\  \\ "},
       {V_ASN1_T61STRING, StringToVector("   "), 0,
        ASN1_STRFLGS_ESC_2253 | ASN1_STRFLGS_ESC_QUOTE, "\"   \""},
 

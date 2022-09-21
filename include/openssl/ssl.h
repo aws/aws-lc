@@ -2319,6 +2319,10 @@ OPENSSL_EXPORT SSL_SESSION *SSL_process_tls13_new_session_ticket(
 // By default, BoringSSL sends two tickets.
 OPENSSL_EXPORT int SSL_CTX_set_num_tickets(SSL_CTX *ctx, size_t num_tickets);
 
+// SSL_CTX_get_num_tickets returns the number of tickets |ctx| will send
+// immediately after a successful TLS 1.3 handshake as a server.
+OPENSSL_EXPORT size_t SSL_CTX_get_num_tickets(const SSL_CTX *ctx);
+
 
 // Elliptic curve Diffie-Hellman.
 //
@@ -2792,7 +2796,7 @@ OPENSSL_EXPORT int SSL_CTX_add_client_CA(SSL_CTX *ctx, X509 *x509);
 
 // SSL_load_client_CA_file opens |file| and reads PEM-encoded certificates from
 // it. It returns a newly-allocated stack of the certificate subjects or NULL
-// on error.
+// on error. Duplicates in |file| are ignored.
 OPENSSL_EXPORT STACK_OF(X509_NAME) *SSL_load_client_CA_file(const char *file);
 
 // SSL_dup_CA_list makes a deep copy of |list|. It returns the new list on
@@ -2804,6 +2808,11 @@ OPENSSL_EXPORT STACK_OF(X509_NAME) *SSL_dup_CA_list(STACK_OF(X509_NAME) *list);
 // error.
 OPENSSL_EXPORT int SSL_add_file_cert_subjects_to_stack(STACK_OF(X509_NAME) *out,
                                                        const char *file);
+
+// SSL_add_bio_cert_subjects_to_stack behaves like
+// |SSL_add_file_cert_subjects_to_stack| but reads from |bio|.
+OPENSSL_EXPORT int SSL_add_bio_cert_subjects_to_stack(STACK_OF(X509_NAME) *out,
+                                                      BIO *bio);
 
 
 // Server name indication.

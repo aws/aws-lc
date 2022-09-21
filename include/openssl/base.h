@@ -205,9 +205,7 @@ extern "C" {
 // against multiple revisions of BoringSSL at the same time. It is not
 // recommended to do so for longer than is necessary.
 
-// Bump version from 17 to 18.
-//   - Import new APIs |EVP_aes_128/256_cbc_hmac_sha1/256| from OpenSSL.
-#define AWSLC_API_VERSION 18
+#define AWSLC_API_VERSION 19
 
 // This string tracks the most current production release version on Github
 // https://github.com/awslabs/aws-lc/releases.
@@ -215,7 +213,7 @@ extern "C" {
 // ServiceIndicatorTest.AWSLCVersionString
 // Note: there are two versions of this test. Only one test is compiled
 // depending on FIPS mode.
-#define AWSLC_VERSION_NUMBER_STRING "1.1.0"
+#define AWSLC_VERSION_NUMBER_STRING "1.3.0"
 
 #if defined(BORINGSSL_SHARED_LIBRARY)
 
@@ -368,10 +366,6 @@ typedef struct NAME_CONSTRAINTS_st NAME_CONSTRAINTS;
 typedef struct Netscape_spkac_st NETSCAPE_SPKAC;
 typedef struct Netscape_spki_st NETSCAPE_SPKI;
 typedef struct RIPEMD160state_st RIPEMD160_CTX;
-typedef struct X509_POLICY_CACHE_st X509_POLICY_CACHE;
-typedef struct X509_POLICY_LEVEL_st X509_POLICY_LEVEL;
-typedef struct X509_POLICY_NODE_st X509_POLICY_NODE;
-typedef struct X509_POLICY_TREE_st X509_POLICY_TREE;
 typedef struct X509_VERIFY_PARAM_st X509_VERIFY_PARAM;
 typedef struct X509_algor_st X509_ALGOR;
 typedef struct X509_crl_st X509_CRL;

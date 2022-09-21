@@ -279,11 +279,9 @@ struct aead_aes_ccm_ctx {
 OPENSSL_STATIC_ASSERT(sizeof(((EVP_AEAD_CTX *)NULL)->state) >=
                           sizeof(struct aead_aes_ccm_ctx),
                       AEAD_state_is_too_small)
-#if defined(__GNUC__) || defined(__clang__)
 OPENSSL_STATIC_ASSERT(alignof(union evp_aead_ctx_st_state) >=
                           alignof(struct aead_aes_ccm_ctx),
                       AEAD_state_has_insufficient_alignment)
-#endif
 
 static int aead_aes_ccm_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
                              size_t key_len, size_t tag_len, unsigned M,
@@ -415,7 +413,7 @@ DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_aes_128_ccm_bluetooth) {
   out->cleanup = aead_aes_ccm_cleanup;
   out->seal_scatter = aead_aes_ccm_seal_scatter;
   out->open_gather = aead_aes_ccm_open_gather;
-};
+}
 
 static int aead_aes_ccm_bluetooth_8_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
                                          size_t key_len, size_t tag_len) {
@@ -435,4 +433,23 @@ DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_aes_128_ccm_bluetooth_8) {
   out->cleanup = aead_aes_ccm_cleanup;
   out->seal_scatter = aead_aes_ccm_seal_scatter;
   out->open_gather = aead_aes_ccm_open_gather;
-};
+}
+
+static int aead_aes_ccm_matter_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
+                                    size_t key_len, size_t tag_len) {
+  return aead_aes_ccm_init(ctx, key, key_len, tag_len, 16, 2);
+}
+
+DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_aes_128_ccm_matter) {
+  memset(out, 0, sizeof(EVP_AEAD));
+
+  out->key_len = 16;
+  out->nonce_len = 13;
+  out->overhead = 16;
+  out->max_tag_len = 16;
+
+  out->init = aead_aes_ccm_matter_init;
+  out->cleanup = aead_aes_ccm_cleanup;
+  out->seal_scatter = aead_aes_ccm_seal_scatter;
+  out->open_gather = aead_aes_ccm_open_gather;
+}
