@@ -413,7 +413,7 @@ add_library(
   rand_extra/forkunsafe.c
   rand_extra/fuchsia.c
   rand_extra/rand_extra.c
-  rand_extra/randombytes.c
+  rand_extra/pq_custom_randombytes.c
   rand_extra/windows.c
   rc4/rc4.c
   refcount_c11.c

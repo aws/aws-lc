@@ -1,11 +1,11 @@
 #include <gtest/gtest.h>
 #include <openssl/evp.h>
-#include <openssl/randombytes.h>
 #include <vector>
 #include "../fipsmodule/evp/internal.h"
 #include "../kyber/kem_kyber.h"
 #include "../test/file_test.h"
 #include "../test/test_util.h"
+#include "../rand_extra/pq_custom_randombytes.h"
 #include "./internal.h"
 
 static void RunTest(FileTest *t)
@@ -25,8 +25,8 @@ static void RunTest(FileTest *t)
   ASSERT_TRUE(t->GetBytes(&ct, "ct"));
   ASSERT_TRUE(t->GetBytes(&ss, "ss"));
 
-  use_deterministic_randombytes_for_testing();
-  randombytes_init_for_testing(seed.data());
+  pq_custom_randombytes_use_deterministic_for_testing();
+  pq_custom_randombytes_init_for_testing(seed.data());
 
   EVP_PKEY_CTX *kyber_pkey_ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_KYBER512, nullptr);
   ASSERT_NE(kyber_pkey_ctx, nullptr);
