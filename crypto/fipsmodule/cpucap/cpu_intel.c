@@ -159,6 +159,7 @@ static void handle_cpu_env(uint32_t *out, const char *in) {
 }
 
 extern uint32_t OPENSSL_ia32cap_P[4];
+extern uint8_t OPENSSL_cpucap_initialized;
 
 void OPENSSL_cpuid_setup(void) {
   // Determine the vendor and maximum input value.
@@ -269,6 +270,8 @@ void OPENSSL_cpuid_setup(void) {
   OPENSSL_ia32cap_P[1] = ecx;
   OPENSSL_ia32cap_P[2] = extended_features[0];
   OPENSSL_ia32cap_P[3] = extended_features[1];
+
+  OPENSSL_cpucap_initialized = 1;
 
   const char *env1, *env2;
   env1 = getenv("OPENSSL_ia32cap");

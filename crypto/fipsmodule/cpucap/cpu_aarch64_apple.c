@@ -24,6 +24,7 @@
 
 
 extern uint32_t OPENSSL_armcap_P;
+extern uint8_t OPENSSL_cpucap_initialized;
 
 static int has_hw_feature(const char *name) {
   int value;
@@ -67,6 +68,8 @@ void OPENSSL_cpuid_setup(void) {
   if (has_hw_feature("hw.optional.armv8_2_sha512")) {
     OPENSSL_armcap_P |= ARMV8_SHA512;
   }
+
+  OPENSSL_cpucap_initialized = 1;
 }
 
 #endif  // OPENSSL_AARCH64 && OPENSSL_APPLE && !OPENSSL_STATIC_ARMCAP

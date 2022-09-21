@@ -988,9 +988,6 @@ OPENSSL_INLINE void boringssl_ensure_ffdh_self_test(void) {}
 // boringssl_self_test_sha256 performs a SHA-256 KAT.
 int boringssl_self_test_sha256(void);
 
-// boringssl_self_test_sha512 performs a SHA-512 KAT.
-int boringssl_self_test_sha512(void);
-
 // boringssl_self_test_hmac_sha256 performs an HMAC-SHA-256 KAT.
 int boringssl_self_test_hmac_sha256(void);
 
@@ -1026,6 +1023,10 @@ OPENSSL_INLINE int boringssl_fips_break_test(const char *test) {
 extern uint8_t BORINGSSL_function_hit[7];
 #endif  // BORINGSSL_DISPATCH_TEST
 
+#if !defined(AWSLC_FIPS) && !defined(BORINGSSL_SHARED_LIBRARY)
+// This function is defined in |bcm.c|, see the comment therein for explanation.
+void dummy_func_for_constructor(void);
+#endif
 
 #if defined(__cplusplus)
 }  // extern C
