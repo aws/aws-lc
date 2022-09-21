@@ -20,9 +20,8 @@
 #include <openssl/kdf.h>
 #include <openssl/mem.h>
 
-#include "../internal.h"
+#include "../../internal.h"
 #include "internal.h"
-#include "../fipsmodule/evp/internal.h"
 
 
 typedef struct {
