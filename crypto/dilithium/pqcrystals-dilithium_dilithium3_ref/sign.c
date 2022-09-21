@@ -4,7 +4,7 @@
 #include "packing.h"
 #include "polyvec.h"
 #include "poly.h"
-#include "openssl/randombytes.h"
+#include "../rand_extra/pq_custom_randombytes.h"
 #include "symmetric.h"
 #include "fips202.h"
 
@@ -29,7 +29,7 @@ int crypto_sign_keypair(uint8_t *pk, uint8_t *sk) {
   polyveck s2, t1, t0;
 
   /* Get randomness for rho, rhoprime and key */
-  randombytes(seedbuf, SEEDBYTES);
+  pq_custom_randombytes(seedbuf, SEEDBYTES);
   shake256(seedbuf, 2*SEEDBYTES + CRHBYTES, seedbuf, SEEDBYTES);
   rho = seedbuf;
   rhoprime = rho + SEEDBYTES;
@@ -107,7 +107,7 @@ int crypto_sign_signature(uint8_t *sig,
   shake256_squeeze(mu, CRHBYTES, &state);
 
 #ifdef DILITHIUM_RANDOMIZED_SIGNING
-  randombytes(rhoprime, CRHBYTES);
+  pq_custom_randombytes(rhoprime, CRHBYTES);
 #else
   shake256(rhoprime, CRHBYTES, key, SEEDBYTES + CRHBYTES);
 #endif
