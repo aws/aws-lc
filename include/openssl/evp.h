@@ -124,7 +124,8 @@ OPENSSL_EXPORT int EVP_PKEY_missing_parameters(const EVP_PKEY *pkey);
 // EVP_PKEY_size returns the maximum size, in bytes, of a signature signed by
 // |pkey|. For an RSA key, this returns the number of bytes needed to represent
 // the modulus. For an EC key, this returns the maximum size of a DER-encoded
-// ECDSA signature.
+// ECDSA signature. For a KEM key, this returns the sum of the size of the
+// public key and the secret key.
 OPENSSL_EXPORT int EVP_PKEY_size(const EVP_PKEY *pkey);
 
 // EVP_PKEY_bits returns the "size", in bits, of |pkey|. For an RSA key, this
@@ -690,20 +691,53 @@ OPENSSL_EXPORT int EVP_PKEY_keygen_init(EVP_PKEY_CTX *ctx);
 // containing the result. It returns one on success or zero on error.
 OPENSSL_EXPORT int EVP_PKEY_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY **out_pkey);
 
-OPENSSL_EXPORT int EVP_PKEY_encapsulate_init(EVP_PKEY_CTX *ctx,
-                                             const OSSL_PARAM params[]);
-OPENSSL_EXPORT int EVP_PKEY_encapsulate(EVP_PKEY_CTX *ctx,
-                                        unsigned char *wrapped_key,
-                                        size_t *wrapped_key_len,
-                                        unsigned char *gen_key,
-                                        size_t *gen_key_len);
-OPENSSL_EXPORT int EVP_PKEY_decapsulate_init(EVP_PKEY_CTX *ctx,
-                                             const OSSL_PARAM params[]);
-OPENSSL_EXPORT int EVP_PKEY_decapsulate(EVP_PKEY_CTX *ctx,
-                                        unsigned char *unwrapped,
-                                        size_t *unwrapped_len,
-                                        const unsigned char *wrapped,
-                                        size_t wrapped_len);
+// EVP_PKEY_encapsulate is an operation defined for a KEM (Key Encapsulation
+// Mechanism). For the KEM specified in |ctx|, the function:
+//   1. generates a random value and writes it to |shared_secret|,
+//   2. encapsulates the shared secret, producing the ciphertext, by using
+//      the public key in |ctx|, and writes the ciphertext to |ciphertext|,
+//   3. writes the length of |ciphertext| and |shared_secret| to
+//      |ciphertext_len| and |shared_secret_len|.
+//
+// If the given |ciphertext| is NULL it is assumed that the caller is doing
+// a size check: the function will write the size of the ciphertext and the
+// shared secret in |ciphertext_len| and |shared_secret_len| and return 1.
+// If |ciphertext| is non-NULL it is assumed that the caller is performing
+// the actual operation, so it is checked if the lengths of the output buffers,
+// |ciphertext_len| and |shared_secret_len|, are large enough for the KEM.
+//
+// NOTE: no allocation is done in the function, the caller is expected to
+// provide large enough |ciphertext| and |shared_secret| buffers.
+//
+// It returns one on success or zero on error.
+OPENSSL_EXPORT int EVP_PKEY_encapsulate(EVP_PKEY_CTX *ctx          /* IN  */,
+                                        uint8_t *ciphertext        /* OUT */,
+                                        size_t  *ciphertext_len    /* OUT */,
+                                        uint8_t *shared_secret     /* OUT */,
+                                        size_t  *shared_secret_len /* OUT */);
+
+// EVP_PKEY_decapsulate is an operation defined for a KEM (Key Encapsulation
+// Mechanism). For the KEM specified in |ctx|, the function:
+//   1. decapsulates the shared secret from the given |ciphertext| using the
+//      secret key configured in |ctx| and writes it to |shared_secret|,
+//   2. writes the length of |shared_secret| to |shared_secret_len|.
+//
+// If the given |shared_secret| is NULL it is assumed that the caller is doing
+// a size check: the function will write the size of the shared secret in
+// |shared_secret_len| and return 1.
+// If |shared_secret| is non-NULL it is assumed that the caller is performing
+// the actual operation, so it is checked if the length of the output buffer,
+// |shared_secret_len|, is large enough for the KEM.
+//
+// NOTE: no allocation is done in the function, the caller is expected to
+// provide large enough |shared_secret| buffer.
+//
+// It returns one on success or zero on error.
+OPENSSL_EXPORT int EVP_PKEY_decapsulate(EVP_PKEY_CTX *ctx          /* IN  */, 
+                                        uint8_t *shared_secret     /* OUT */,
+                                        size_t  *shared_secret_len /* OUT */,
+                                        uint8_t *ciphertext        /* IN  */,
+                                        size_t   ciphertext_len    /* IN  */);
 
 // EVP_PKEY_paramgen_init initialises an |EVP_PKEY_CTX| for a parameter
 // generation operation. It should be called before |EVP_PKEY_paramgen|.
@@ -1085,32 +1119,6 @@ struct evp_pkey_st {
   // methods for the key type.
   const EVP_PKEY_ASN1_METHOD *ameth;
 }; // EVP_PKEY
-
-struct evp_kem_st {
-  int name_id;
-  const char *type_name;
-  const char *description;
-
-  int (*encapsulate_init)(void *ctx,
-                          void *prov_key,
-                          const OSSL_PARAM params[]);
-  int (*encapsulate)(void *ctx,
-                     unsigned char *out,
-                     size_t *out_len,
-                     unsigned char *secret,
-                     size_t *secret_len);
-  int (*decapsulate_init)(void *ctx,
-                          void *prov_key,
-                          const OSSL_PARAM params[]);
-  int (*decapsulate)(void *ctx,
-                     unsigned char *out,
-                     size_t *out_len,
-                     const unsigned char *in,
-                     size_t in_len);
-
-}; // EVP_KEM
-
-extern const EVP_KEM EVP_KEM_kyber512;
 
 #if defined(__cplusplus)
 }  // extern C
