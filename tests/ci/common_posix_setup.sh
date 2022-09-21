@@ -91,9 +91,10 @@ function verify_symbols_prefixed {
   go run "$SRC_ROOT"/util/read_symbols.go -out "$BUILD_ROOT"/symbols_final_crypto.txt "$BUILD_ROOT"/crypto/libcrypto.a
   go run "$SRC_ROOT"/util/read_symbols.go -out "$BUILD_ROOT"/symbols_final_ssl.txt "$BUILD_ROOT"/ssl/libssl.a
   cat "$BUILD_ROOT"/symbols_final_crypto.txt  "$BUILD_ROOT"/symbols_final_ssl.txt | grep -v -e '^_\?bignum' >  "$SRC_ROOT"/symbols_final.txt
-  # Kyber symbols are temporarly excluded from prefixing.
-  # TODO(dkostic): remove the sed once Kyber source is fixed and can be prefixed.
+  # Kyber and Diltihium symbols are temporarly excluded from prefixing.
+  # TODO(dkostic): remove the sed once Kyber and Diltihium source is fixed and can be prefixed.
   sed -i '/kyber/d' "$SRC_ROOT"/symbols_final.txt
+  sed -i '/dilithium/d' "$SRC_ROOT"/symbols_final.txt
   if [ $(grep -c -v ${CUSTOM_PREFIX}  "$SRC_ROOT"/symbols_final.txt) -ne 0 ]; then
     echo "Symbol(s) missing prefix!"
     exit 1
