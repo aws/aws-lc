@@ -110,9 +110,12 @@ for shared_library in ON OFF; do
   done
 done
 
-# We only care about one FIPS dimension
+# We only care about two FIPS dimensions
 shared_library=ON
 small=OFF
 no_assembly=OFF
 fips=ON
+run_build_and_collect_metrics
+
+shared_library=OFF
 run_build_and_collect_metrics
