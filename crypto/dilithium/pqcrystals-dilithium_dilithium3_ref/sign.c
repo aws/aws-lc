@@ -326,7 +326,7 @@ int crypto_sign_open(uint8_t *m,
 
 badsig:
   /* Signature verification failed */
-  *mlen = -1;
+  *mlen = 0; /* Deviation from CRYSTALS (this is set as -1 i.e. not a size_t) */
   for(i = 0; i < smlen; ++i)
     m[i] = 0;
 
