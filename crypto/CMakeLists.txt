@@ -449,10 +449,7 @@ add_library(
   x509v3/v3_skey.c
   x509v3/v3_utl.c
 
-  $<TARGET_OBJECTS:fipsmodule>
-
   ${CRYPTO_ARCH_SOURCES}
-  ${CRYPTO_FIPS_OBJECTS}
 )
 
 target_compile_definitions(crypto_objects PRIVATE BORINGSSL_IMPLEMENTATION)
