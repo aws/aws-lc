@@ -3,7 +3,6 @@
 #include "symmetric.h"
 #include "fips202.h"
 
-#ifndef DILITHIUM_USE_AES
 void dilithium_shake128_stream_init(keccak_state *state, const uint8_t seed[SEEDBYTES], uint16_t nonce)
 {
   uint8_t t[2];
@@ -27,4 +26,3 @@ void dilithium_shake256_stream_init(keccak_state *state, const uint8_t seed[CRHB
   shake256_absorb(state, t, 2);
   shake256_finalize(state);
 }
-#endif

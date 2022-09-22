@@ -342,7 +342,6 @@ add_library(
   dilithium/pqcrystals-dilithium_dilithium3_ref/reduce.c
   dilithium/pqcrystals-dilithium_dilithium3_ref/rounding.c
   dilithium/pqcrystals-dilithium_dilithium3_ref/sign.c
-  dilithium/pqcrystals-dilithium_dilithium3_ref/symmetric-aes.c
   dilithium/pqcrystals-dilithium_dilithium3_ref/symmetric-shake.c
   dsa/dsa.c
   dsa/dsa_asn1.c
