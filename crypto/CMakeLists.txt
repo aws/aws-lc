@@ -500,6 +500,8 @@ if(FIPS_SHARED)
     DEPENDS ../util/fipstools/inject_hash/inject_hash.go
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
   )
+else()
+  build_libcrypto(crypto $<TARGET_OBJECTS:fipsmodule>)
 endif()
 
 add_dependencies(crypto global_target)
