@@ -17,6 +17,10 @@
 
 #define BM_NAMESPACE ossl
 
+#if defined(_WIN32)
+#define OPENSSL_WINDOWS
+#endif
+
 inline size_t BM_ECDSA_size(EC_KEY *key) {
   const int key_size = ECDSA_size(key);
   assert(key_size >= 0);
