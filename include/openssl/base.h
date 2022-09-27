@@ -123,6 +123,7 @@ extern "C" {
 #define OPENSSL_32_BIT
 #elif defined(__riscv) && __riscv_xlen == 64
 #define OPENSSL_64_BIT
+#define OPENSSL_RISCV64
 #else
 // Note BoringSSL only supports standard 32-bit and 64-bit two's-complement,
 // little-endian architectures. Functions will not produce the correct answer
@@ -391,6 +392,7 @@ typedef struct conf_st CONF;
 typedef struct conf_value_st CONF_VALUE;
 typedef struct crypto_buffer_pool_st CRYPTO_BUFFER_POOL;
 typedef struct crypto_buffer_st CRYPTO_BUFFER;
+typedef struct ctr_drbg_state_st CTR_DRBG_STATE;
 typedef struct dh_st DH;
 typedef struct dsa_st DSA;
 typedef struct ec_group_st EC_GROUP;
