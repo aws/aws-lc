@@ -18,7 +18,6 @@
 #include <openssl/rand.h>
 
 #include "internal.h"
-#include "../../evp_extra/internal.h"
 #include "getrandom_fillin.h"
 
 #if defined(OPENSSL_X86_64) && !defined(BORINGSSL_SHARED_LIBRARY) && \
