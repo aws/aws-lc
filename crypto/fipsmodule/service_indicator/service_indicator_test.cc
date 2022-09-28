@@ -1633,7 +1633,7 @@ TEST_P(EVP_HKDF_ServiceIndicatorTest, HKDFTest) {
 
   uint8_t output[sizeof(kHKDF_okm_tc2_sha256)];   // largest test vector output size
   EVP_PKEY_CTX *pctx;
-  size_t outlen = sizeof(output);
+  size_t outlen = test.output_len;
 
   pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_HKDF, NULL);
   EXPECT_NE(pctx, nullptr);
