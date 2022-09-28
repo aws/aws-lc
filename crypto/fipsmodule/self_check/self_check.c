@@ -926,6 +926,69 @@ static int boringssl_self_test_hkdf_sha256(void) {
                     "HKDF-SHA-256 KAT");
 }
 
+static int boringssl_self_test_evp_hkdf_sha256(void) {
+  const uint8_t kHKDF_ikm_tc1[] = {   // RFC 5869 Test Case 1
+      0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b,
+      0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b
+  };
+  const uint8_t kHKDF_salt_tc1[] = {
+      0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b,
+      0x0c
+  };
+  const uint8_t kHKDF_info_tc1[] = {
+      0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7, 0xf8, 0xf9
+  };
+  const uint8_t kHKDF_okm_tc1_sha256[] = {
+      0x3c, 0xb2, 0x5f, 0x25, 0xfa, 0xac, 0xd5, 0x7a, 0x90, 0x43, 0x4f, 0x64,
+      0xd0, 0x36, 0x2f, 0x2a, 0x2d, 0x2d, 0x0a, 0x90, 0xcf, 0x1a, 0x5a, 0x4c,
+      0x5d, 0xb0, 0x2d, 0x56, 0xec, 0xc4, 0xc5, 0xbf, 0x34, 0x00, 0x72, 0x08,
+      0xd5, 0xb8, 0x87, 0x18, 0x58, 0x65
+  };
+
+  uint8_t output[sizeof(kHKDF_okm_tc1_sha256)];
+  int retval = 0;
+  EVP_PKEY_CTX *pctx;
+  size_t outlen = sizeof(output);
+
+  pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_HKDF, NULL);
+  if (pctx == NULL) {
+    goto out;
+  }
+  if (EVP_PKEY_derive_init(pctx) <= 0) {
+    goto out;
+  }
+  if (EVP_PKEY_CTX_set_hkdf_md(pctx, EVP_sha256()) <= 0) {
+    goto out;
+  }
+  if (EVP_PKEY_CTX_set1_hkdf_key(pctx, kHKDF_ikm_tc1,
+                                 sizeof(kHKDF_ikm_tc1)) <= 0) {
+    goto out;
+  }
+  if (EVP_PKEY_CTX_set1_hkdf_salt(pctx, kHKDF_salt_tc1,
+                                  sizeof(kHKDF_salt_tc1)) <= 0) {
+    goto out;
+  }
+  if (EVP_PKEY_CTX_add1_hkdf_info(pctx, kHKDF_info_tc1,
+                                  sizeof(kHKDF_info_tc1)) <= 0) {
+    goto out;
+  }
+  if (EVP_PKEY_derive(pctx, output, &outlen) <= 0) {
+    goto out;
+  }
+  if (outlen != sizeof(output)) {
+    goto out;
+  }
+  retval = check_test(kHKDF_okm_tc1_sha256, output, sizeof(output),
+                      "HKDF-SHA-256 KAT (EVP)");
+
+out:
+  if (pctx != NULL) {
+    EVP_PKEY_CTX_free(pctx);
+  }
+
+  return retval;
+}
+
 static int boringssl_self_test_fast(void) {
   static const uint8_t kAESKey[16] = "BoringCrypto Key";
   static const uint8_t kAESIV[16] = {0};
@@ -1055,7 +1118,8 @@ static int boringssl_self_test_fast(void) {
   }
 
   if (!boringssl_self_test_sha512() ||
-      !boringssl_self_test_hkdf_sha256()) {
+      !boringssl_self_test_hkdf_sha256() ||
+      !boringssl_self_test_evp_hkdf_sha256()) {
     goto err;
   }
 
