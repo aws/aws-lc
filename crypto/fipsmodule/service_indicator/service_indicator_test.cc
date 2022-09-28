@@ -1649,6 +1649,10 @@ TEST_P(EVP_HKDF_ServiceIndicatorTest, HKDFTest) {
   EXPECT_EQ(Bytes(test.expected_output, test.output_len),
             Bytes(output, test.output_len));
   EXPECT_EQ(approved, test.expect_approved);
+
+  if (pctx != NULL) {
+    EVP_PKEY_CTX_free(pctx);
+  }
 }
 
 // RSA tests are not parameterized with the |kRSATestVectors| as key
