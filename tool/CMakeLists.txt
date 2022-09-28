@@ -72,7 +72,8 @@ endif()
 # Currently this is the default OpenSSL build we target so the "OPENSSL_1_1_BENCHMARK" flag isn't used, 
 # but we include this to maintain uniformity across OpenSSL versions
 if(OPENSSL_1_1_INSTALL_DIR)
-  build_benchmark(ossl_1_1_bm ${OPENSSL_1_1_INSTALL_DIR}/include ${OPENSSL_1_1_INSTALL_DIR}/lib/libcrypto.a)
+  find_library(OPENSSL_1_1_LIB_PATH crypto PATHS ${OPENSSL_1_1_INSTALL_DIR}/lib/ NO_DEFAULT_PATH)
+  build_benchmark(ossl_1_1_bm ${OPENSSL_1_1_INSTALL_DIR}/include ${OPENSSL_1_1_LIB_PATH})
 
   target_compile_options(ossl_1_1_bm PUBLIC -DOPENSSL_BENCHMARK -DOPENSSL_1_1_BENCHMARK)
   if(NOT MSVC AND NOT ANDROID)
@@ -82,7 +83,8 @@ endif()
 
 # This expects a directory which contains the includes in include/openssl/ and the OpenSSL artifacts in lib/
 if(OPENSSL_1_0_INSTALL_DIR)
-  build_benchmark(ossl_1_0_bm ${OPENSSL_1_0_INSTALL_DIR}/include ${OPENSSL_1_0_INSTALL_DIR}/lib/libcrypto.a)
+  find_library(OPENSSL_1_0_LIB_PATH crypto PATHS ${OPENSSL_1_0_INSTALL_DIR}/lib/ NO_DEFAULT_PATH)
+  build_benchmark(ossl_1_0_bm ${OPENSSL_1_0_INSTALL_DIR}/include ${OPENSSL_1_0_LIB_PATH})
 
   target_compile_options(ossl_1_0_bm PUBLIC -DOPENSSL_BENCHMARK -DOPENSSL_1_0_BENCHMARK)
   if(NOT MSVC AND NOT ANDROID)
@@ -92,11 +94,12 @@ endif()
 
 # This expects a directory which contains the includes in include/openssl/ and the OpenSSL artifacts in lib/ or lib64/
 if(OPENSSL_3_0_INSTALL_DIR)
-  # The low-level function calls are deprecated for OpenSSL 3.0. We should revisit using these in the future, 
-  # but disabling the warnings works for now
-  find_library(OPENSSL_3_0_LIB_PATH libcrypto.a PATHS ${OPENSSL_3_0_INSTALL_DIR}/lib64/ ${OPENSSL_3_0_INSTALL_DIR}/lib/ NO_DEFAULT_PATH)
-
-  add_definitions("-Wno-deprecated-declarations")
+  if(NOT MSVC)
+    # The low-level function calls are deprecated for OpenSSL 3.0. We should revisit using these in the future,
+    # but disabling the warnings works for now
+    add_definitions("-Wno-deprecated-declarations")
+  endif ()
+  find_library(OPENSSL_3_0_LIB_PATH crypto PATHS ${OPENSSL_3_0_INSTALL_DIR}/lib64/ ${OPENSSL_3_0_INSTALL_DIR}/lib/ NO_DEFAULT_PATH)
   build_benchmark(ossl_3_0_bm ${OPENSSL_3_0_INSTALL_DIR}/include ${OPENSSL_3_0_LIB_PATH})
 
 
@@ -108,7 +111,8 @@ endif()
 
 # This expects a directory in which the includes are in include/ and the BoringSSL artifacts are in build/
 if(BORINGSSL_INSTALL_DIR)
-  build_benchmark(bssl_bm ${BORINGSSL_INSTALL_DIR}/include ${BORINGSSL_INSTALL_DIR}/build/crypto/libcrypto.a)
+  find_library(BORINGSSL_LIB_PATH crypto PATHS ${OPENSSL_1_0_INSTALL_DIR}/build/crypto NO_DEFAULT_PATH)
+  build_benchmark(bssl_bm ${BORINGSSL_INSTALL_DIR}/include ${BORINGSSL_LIB_PATH})
 
   if(NOT MSVC AND NOT ANDROID)
     target_link_libraries(bssl_bm pthread)
