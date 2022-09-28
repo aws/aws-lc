@@ -17,6 +17,16 @@
 
 #define BM_NAMESPACE ossl
 
+#if defined(_WIN32)
+#define OPENSSL_WINDOWS
+#endif
+// OPENSSL_MSVC_PRAGMA emits a pragma on MSVC and nothing on other compilers.
+#if defined(_MSC_VER)
+#define OPENSSL_MSVC_PRAGMA(arg) __pragma(arg)
+#else
+#define OPENSSL_MSVC_PRAGMA(arg)
+#endif
+
 inline size_t BM_ECDSA_size(EC_KEY *key) {
   const int key_size = ECDSA_size(key);
   assert(key_size >= 0);
