@@ -397,6 +397,9 @@ elseif(MSVC)
       "C4701" # potentially uninitialized local
       "C4505" # unreferenced local function has been removed
       "C4702" # unreachable code in bcm.c power on tests
+      "C4191" # unsafe conversion from 'type of expression' to 'type required'
+              # TODO remove once https://github.com/openssl/openssl/issues/18957 is resolved
+      "C4996" # deprecated warnings using low level functions in OpenSSL 3.0
           )
   set(MSVC_LEVEL4_WARNINGS_LIST
       # See https://connect.microsoft.com/VisualStudio/feedback/details/1217660/warning-c4265-when-using-functional-header

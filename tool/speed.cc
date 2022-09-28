@@ -366,6 +366,96 @@ static std::string ChunkLenSuffix(size_t chunk_len) {
   return buf;
 }
 
+static bool SpeedAESGCMChunk(const EVP_CIPHER *cipher, std::string name,
+                             size_t chunk_byte_len, size_t ad_len) {
+  int len;
+  int* len_ptr = &len;
+  const size_t key_len = EVP_CIPHER_key_length(cipher);
+  static const unsigned kAlignment = 16;
+  const size_t iv_len = EVP_CIPHER_iv_length(cipher);
+  // GCM uses 16 byte tags
+  const size_t overhead_len = 16;
+  std::unique_ptr<uint8_t[]> key(new uint8_t[key_len]);
+  BM_memset(key.get(), 0, key_len);
+  std::unique_ptr<uint8_t[]> nonce(new uint8_t[iv_len]);
+  BM_memset(nonce.get(), 0, iv_len);
+  std::unique_ptr<uint8_t[]> plaintext_storage(new uint8_t[chunk_byte_len + kAlignment]);
+  std::unique_ptr<uint8_t[]> ciphertext_storage(new uint8_t[chunk_byte_len + overhead_len + kAlignment]);
+  std::unique_ptr<uint8_t[]> in2_storage(new uint8_t[chunk_byte_len + overhead_len + kAlignment]);
+  std::unique_ptr<uint8_t[]> ad(new uint8_t[ad_len]);
+  BM_memset(ad.get(), 0, ad_len);
+  std::unique_ptr<uint8_t[]> tag_storage(new uint8_t[overhead_len + kAlignment]);
+
+  uint8_t *const plaintext = static_cast<uint8_t *>(align_pointer(plaintext_storage.get(), kAlignment));
+  BM_memset(plaintext, 0, chunk_byte_len);
+  uint8_t *const ciphertext = static_cast<uint8_t *>(align_pointer(ciphertext_storage.get(), kAlignment));
+  BM_memset(ciphertext, 0, chunk_byte_len + overhead_len);
+  uint8_t *const tag = static_cast<uint8_t *>(align_pointer(tag_storage.get(), kAlignment));
+  BM_memset(tag, 0, overhead_len);
+
+  BM_NAMESPACE::UniquePtr<EVP_CIPHER_CTX> ctx(EVP_CIPHER_CTX_new());
+
+  std::string encryptName = name + " Encrypt" + ChunkLenSuffix(chunk_byte_len);
+  TimeResults encryptResults;
+
+  // Call EVP_EncryptInit_ex once with the cipher, in the benchmark loop reuse the cipher
+  if (!EVP_EncryptInit_ex(ctx.get(), cipher, NULL, key.get(), nonce.get())){
+    fprintf(stderr, "Failed to configure encryption context.\n");
+    ERR_print_errors_fp(stderr);
+    return false;
+  }
+  if (!TimeFunction(&encryptResults, [&ctx, chunk_byte_len, plaintext, ciphertext, len_ptr, tag, &key, &nonce, &ad, ad_len]() -> bool {
+        return EVP_EncryptInit_ex(ctx.get(), NULL, NULL, key.get(), nonce.get()) &&
+               EVP_EncryptUpdate(ctx.get(), NULL, len_ptr, ad.get(), ad_len) &&
+               EVP_EncryptUpdate(ctx.get(), ciphertext, len_ptr, plaintext, chunk_byte_len) &&
+               EVP_EncryptFinal_ex(ctx.get(), ciphertext + *len_ptr, len_ptr) &&
+               EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_GET_TAG, 16, tag);
+      })) {
+    fprintf(stderr, "%s failed.\n", encryptName.c_str());
+    ERR_print_errors_fp(stderr);
+    return false;
+  }
+
+  encryptResults.PrintWithBytes(encryptName, chunk_byte_len);
+  std::string decryptName = name + " Decrypt" + ChunkLenSuffix(chunk_byte_len);
+  TimeResults decryptResults;
+  // Call EVP_DecryptInit_ex once with the cipher, in the benchmark loop reuse the cipher
+  if (!EVP_DecryptInit_ex(ctx.get(), cipher, NULL, key.get(), nonce.get())){
+    fprintf(stderr, "Failed to configure decryption context.\n");
+    ERR_print_errors_fp(stderr);
+    return false;
+  }
+  if (!TimeFunction(&decryptResults, [&ctx, chunk_byte_len, plaintext, ciphertext, len_ptr, tag, &key, &nonce, &ad, ad_len]() -> bool {
+        return EVP_DecryptInit_ex(ctx.get(), NULL, NULL, key.get(), nonce.get()) &&
+               EVP_DecryptUpdate(ctx.get(), NULL, len_ptr, ad.get(), ad_len) &&
+               EVP_DecryptUpdate(ctx.get(), plaintext, len_ptr, ciphertext, chunk_byte_len) &&
+               EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_SET_TAG, 16, tag) &&
+               EVP_DecryptFinal_ex(ctx.get(), ciphertext + *len_ptr, len_ptr);
+      })) {
+    fprintf(stderr, "%s failed.\n", decryptName.c_str());
+    ERR_print_errors_fp(stderr);
+    return false;
+  }
+  decryptResults.PrintWithBytes(decryptName, chunk_byte_len);
+
+
+  return true;
+}
+static bool SpeedAESGCM(const EVP_CIPHER *cipher, const std::string &name,
+                        size_t ad_len, const std::string &selected) {
+  if (!selected.empty() && name.find(selected) == std::string::npos) {
+    return true;
+  }
+
+  for (size_t chunk_byte_len : g_chunk_lengths) {
+    if (!SpeedAESGCMChunk(cipher, name, chunk_byte_len, ad_len)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 #if !defined(OPENSSL_BENCHMARK)
 static bool SpeedAEADChunk(const EVP_AEAD *aead, std::string name,
                            size_t chunk_len, size_t ad_len,
@@ -1597,10 +1687,10 @@ bool Speed(const std::vector<std::string> &args) {
     }
   }
 
-#if !defined(OPENSSL_BENCHMARK)
   // kTLSADLen is the number of bytes of additional data that TLS passes to
   // AEADs.
   static const size_t kTLSADLen = 13;
+#if !defined(OPENSSL_BENCHMARK)
 
   // kLegacyADLen is the number of bytes that TLS passes to the "legacy" AEADs.
   // These are AEADs that weren't originally defined as AEADs, but which we use
@@ -1619,6 +1709,9 @@ bool Speed(const std::vector<std::string> &args) {
   if(!SpeedAESBlock("AES-128", 128, selected) ||
      !SpeedAESBlock("AES-192", 192, selected) ||
      !SpeedAESBlock("AES-256", 256, selected) ||
+     !SpeedAESGCM(EVP_aes_128_gcm(), "EVP-AES-128-GCM", kTLSADLen, selected) ||
+     !SpeedAESGCM(EVP_aes_192_gcm(), "EVP-AES-192-GCM", kTLSADLen, selected) ||
+     !SpeedAESGCM(EVP_aes_256_gcm(), "EVP-AES-256-GCM", kTLSADLen, selected) ||
      // OpenSSL 1.0 doesn't support AES-XTS
 #if !defined(OPENSSL_1_0_BENCHMARK)
      !SpeedAES256XTS("AES-256-XTS", selected) ||
@@ -1661,19 +1754,19 @@ bool Speed(const std::vector<std::string> &args) {
      !SpeedRSAKeyGen(selected)
 #if !defined(OPENSSL_BENCHMARK)
      ||
-     !SpeedAEAD(EVP_aead_aes_128_gcm(), "AES-128-GCM", kTLSADLen, selected) ||
-     !SpeedAEAD(EVP_aead_aes_256_gcm(), "AES-256-GCM", kTLSADLen, selected) ||
-     !SpeedAEAD(EVP_aead_chacha20_poly1305(), "ChaCha20-Poly1305", kTLSADLen, selected) ||
-     !SpeedAEAD(EVP_aead_des_ede3_cbc_sha1_tls(), "DES-EDE3-CBC-SHA1", kLegacyADLen, selected) ||
-     !SpeedAEAD(EVP_aead_aes_128_cbc_sha1_tls(), "AES-128-CBC-SHA1", kLegacyADLen, selected) ||
-     !SpeedAEAD(EVP_aead_aes_256_cbc_sha1_tls(), "AES-256-CBC-SHA1", kLegacyADLen, selected) ||
-     !SpeedAEADOpen(EVP_aead_aes_128_cbc_sha1_tls(), "AES-128-CBC-SHA1", kLegacyADLen, selected) ||
-     !SpeedAEADOpen(EVP_aead_aes_256_cbc_sha1_tls(), "AES-256-CBC-SHA1", kLegacyADLen, selected) ||
-     !SpeedAEAD(EVP_aead_aes_128_gcm_siv(), "AES-128-GCM-SIV", kTLSADLen, selected) ||
-     !SpeedAEAD(EVP_aead_aes_256_gcm_siv(), "AES-256-GCM-SIV", kTLSADLen, selected) ||
-     !SpeedAEADOpen(EVP_aead_aes_128_gcm_siv(), "AES-128-GCM-SIV", kTLSADLen, selected) ||
-     !SpeedAEADOpen(EVP_aead_aes_256_gcm_siv(), "AES-256-GCM-SIV", kTLSADLen, selected) ||
-     !SpeedAEAD(EVP_aead_aes_128_ccm_bluetooth(), "AES-128-CCM-Bluetooth", kTLSADLen, selected) ||
+     !SpeedAEAD(EVP_aead_aes_128_gcm(), "AEAD-AES-128-GCM", kTLSADLen, selected) ||
+     !SpeedAEAD(EVP_aead_aes_256_gcm(), "AEAD-AES-256-GCM", kTLSADLen, selected) ||
+     !SpeedAEAD(EVP_aead_chacha20_poly1305(), "AEAD-ChaCha20-Poly1305", kTLSADLen, selected) ||
+     !SpeedAEAD(EVP_aead_des_ede3_cbc_sha1_tls(), "AEAD-DES-EDE3-CBC-SHA1", kLegacyADLen, selected) ||
+     !SpeedAEAD(EVP_aead_aes_128_cbc_sha1_tls(), "AEAD-AES-128-CBC-SHA1", kLegacyADLen, selected) ||
+     !SpeedAEAD(EVP_aead_aes_256_cbc_sha1_tls(), "AEAD-AES-256-CBC-SHA1", kLegacyADLen, selected) ||
+     !SpeedAEADOpen(EVP_aead_aes_128_cbc_sha1_tls(), "AEAD-AES-128-CBC-SHA1", kLegacyADLen, selected) ||
+     !SpeedAEADOpen(EVP_aead_aes_256_cbc_sha1_tls(), "AEAD-AES-256-CBC-SHA1", kLegacyADLen, selected) ||
+     !SpeedAEAD(EVP_aead_aes_128_gcm_siv(), "AEAD-AES-128-GCM-SIV", kTLSADLen, selected) ||
+     !SpeedAEAD(EVP_aead_aes_256_gcm_siv(), "AEAD-AES-256-GCM-SIV", kTLSADLen, selected) ||
+     !SpeedAEADOpen(EVP_aead_aes_128_gcm_siv(), "AEAD-AES-128-GCM-SIV", kTLSADLen, selected) ||
+     !SpeedAEADOpen(EVP_aead_aes_256_gcm_siv(), "AEAD-AES-256-GCM-SIV", kTLSADLen, selected) ||
+     !SpeedAEAD(EVP_aead_aes_128_ccm_bluetooth(), "AEAD-AES-128-CCM-Bluetooth", kTLSADLen, selected) ||
      !Speed25519(selected) ||
      !SpeedSPAKE2(selected) ||
      !SpeedRSAKeyGen(selected) ||

@@ -17,6 +17,16 @@
 
 #define BM_NAMESPACE ossl
 
+#if defined(_WIN32)
+#define OPENSSL_WINDOWS
+#endif
+// OPENSSL_MSVC_PRAGMA emits a pragma on MSVC and nothing on other compilers.
+#if defined(_MSC_VER)
+#define OPENSSL_MSVC_PRAGMA(arg) __pragma(arg)
+#else
+#define OPENSSL_MSVC_PRAGMA(arg)
+#endif
+
 inline size_t BM_ECDSA_size(EC_KEY *key) {
   const int key_size = ECDSA_size(key);
   assert(key_size >= 0);
@@ -69,5 +79,22 @@ OSSL_MAKE_DELETER(EVP_MD_CTX, EVP_MD_CTX_destroy)
     }
 #endif
 } // namespace ossl
+
+// align_pointer returns |ptr|, advanced to |alignment|. |alignment| must be a
+// power of two, and |ptr| must have at least |alignment - 1| bytes of scratch
+// space.
+static inline void *align_pointer(void *ptr, size_t alignment) {
+  // |alignment| must be a power of two.
+  assert(alignment != 0 && (alignment & (alignment - 1)) == 0);
+  // Instead of aligning |ptr| as a |uintptr_t| and casting back, compute the
+  // offset and advance in pointer space. C guarantees that casting from pointer
+  // to |uintptr_t| and back gives the same pointer, but general
+  // integer-to-pointer conversions are implementation-defined. GCC does define
+  // it in the useful way, but this makes fewer assumptions.
+  uintptr_t offset = (0u - (uintptr_t)ptr) & (alignment - 1);
+  ptr = (char *)ptr + offset;
+  assert(((uintptr_t)ptr & (alignment - 1)) == 0);
+  return ptr;
+}
 
 #endif //OPENSSL_HEADER_TOOL_OSSLBM_H
