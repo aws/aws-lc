@@ -954,25 +954,25 @@ static int boringssl_self_test_evp_hkdf_sha256(void) {
   if (pctx == NULL) {
     goto out;
   }
-  if (EVP_PKEY_derive_init(pctx) <= 0) {
+  if (EVP_PKEY_derive_init(pctx) != 1) {
     goto out;
   }
-  if (EVP_PKEY_CTX_set_hkdf_md(pctx, EVP_sha256()) <= 0) {
+  if (EVP_PKEY_CTX_set_hkdf_md(pctx, EVP_sha256()) != 1) {
     goto out;
   }
   if (EVP_PKEY_CTX_set1_hkdf_key(pctx, kHKDF_ikm_tc1,
-                                 sizeof(kHKDF_ikm_tc1)) <= 0) {
+                                 sizeof(kHKDF_ikm_tc1)) != 1) {
     goto out;
   }
   if (EVP_PKEY_CTX_set1_hkdf_salt(pctx, kHKDF_salt_tc1,
-                                  sizeof(kHKDF_salt_tc1)) <= 0) {
+                                  sizeof(kHKDF_salt_tc1)) != 1) {
     goto out;
   }
   if (EVP_PKEY_CTX_add1_hkdf_info(pctx, kHKDF_info_tc1,
-                                  sizeof(kHKDF_info_tc1)) <= 0) {
+                                  sizeof(kHKDF_info_tc1)) != 1) {
     goto out;
   }
-  if (EVP_PKEY_derive(pctx, output, &outlen) <= 0) {
+  if (EVP_PKEY_derive(pctx, output, &outlen) != 1) {
     goto out;
   }
   if (outlen != sizeof(output)) {

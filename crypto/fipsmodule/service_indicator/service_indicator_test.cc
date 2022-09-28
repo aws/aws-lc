@@ -17,6 +17,7 @@
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 #include <openssl/hkdf.h>
+#include <openssl/kdf.h>
 #include <openssl/md4.h>
 #include <openssl/md5.h>
 #include <openssl/rand.h>
@@ -1613,6 +1614,40 @@ TEST_P(HKDF_ServiceIndicatorTest, HKDFTest) {
                                  test.ikm, test.ikm_size,
                                  test.salt, test.salt_size,
                                  test.info, test.info_size)));
+  EXPECT_EQ(Bytes(test.expected_output, test.output_len),
+            Bytes(output, test.output_len));
+  EXPECT_EQ(approved, test.expect_approved);
+}
+
+// TODO(CryptoAlg-1281): Do we need to test HKDF_Expand separately from this?
+class EVP_HKDF_ServiceIndicatorTest : public TestWithNoErrors<HKDFTestVector> {};
+
+INSTANTIATE_TEST_SUITE_P(All, EVP_HKDF_ServiceIndicatorTest,
+                         testing::ValuesIn(kHKDFTestVectors));
+
+TEST_P(EVP_HKDF_ServiceIndicatorTest, HKDFTest) {
+  const HKDFTestVector &test = GetParam();
+
+  FIPSStatus approved = AWSLC_NOT_APPROVED;
+
+  uint8_t output[sizeof(kHKDF_okm_tc2_sha256)];   // largest test vector output size
+  EVP_PKEY_CTX *pctx;
+  size_t outlen = sizeof(output);
+
+  pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_HKDF, NULL);
+  EXPECT_NE(pctx, nullptr);
+  EXPECT_EQ(EVP_PKEY_derive_init(pctx), 1);
+  EXPECT_EQ(EVP_PKEY_CTX_set_hkdf_md(pctx, EVP_sha256()), 1);
+  EXPECT_EQ(EVP_PKEY_CTX_set1_hkdf_key(pctx, kHKDF_ikm_tc1,
+                                       sizeof(kHKDF_ikm_tc1)), 1);
+  EXPECT_EQ(EVP_PKEY_CTX_set1_hkdf_salt(pctx, kHKDF_salt_tc1,
+                                        sizeof(kHKDF_salt_tc1)), 1);
+  EXPECT_EQ(EVP_PKEY_CTX_add1_hkdf_info(pctx, kHKDF_info_tc1,
+                                        sizeof(kHKDF_info_tc1)), 1);
+
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved, ASSERT_EQ(EVP_PKEY_derive(pctx, output, &outlen), 1));
+  EXPECT_EQ(outlen, test.output_len);
   EXPECT_EQ(Bytes(test.expected_output, test.output_len),
             Bytes(output, test.output_len));
   EXPECT_EQ(approved, test.expect_approved);
