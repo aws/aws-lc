@@ -1638,13 +1638,10 @@ TEST_P(EVP_HKDF_ServiceIndicatorTest, HKDFTest) {
   pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_HKDF, NULL);
   EXPECT_NE(pctx, nullptr);
   EXPECT_EQ(EVP_PKEY_derive_init(pctx), 1);
-  EXPECT_EQ(EVP_PKEY_CTX_set_hkdf_md(pctx, EVP_sha256()), 1);
-  EXPECT_EQ(EVP_PKEY_CTX_set1_hkdf_key(pctx, kHKDF_ikm_tc1,
-                                       sizeof(kHKDF_ikm_tc1)), 1);
-  EXPECT_EQ(EVP_PKEY_CTX_set1_hkdf_salt(pctx, kHKDF_salt_tc1,
-                                        sizeof(kHKDF_salt_tc1)), 1);
-  EXPECT_EQ(EVP_PKEY_CTX_add1_hkdf_info(pctx, kHKDF_info_tc1,
-                                        sizeof(kHKDF_info_tc1)), 1);
+  EXPECT_EQ(EVP_PKEY_CTX_set_hkdf_md(pctx, test.func()), 1);
+  EXPECT_EQ(EVP_PKEY_CTX_set1_hkdf_key(pctx, test.ikm, test.ikm_size), 1);
+  EXPECT_EQ(EVP_PKEY_CTX_set1_hkdf_salt(pctx, test.salt, test.salt_size), 1);
+  EXPECT_EQ(EVP_PKEY_CTX_add1_hkdf_info(pctx, test.info, test.info_size), 1);
 
   CALL_SERVICE_AND_CHECK_APPROVED(
       approved, ASSERT_EQ(EVP_PKEY_derive(pctx, output, &outlen), 1));
