@@ -15,10 +15,10 @@
 
 // ----------------------------------------------------------------------------
 // Projective scalar multiplication, x coordinate only, for curve25519
-// Inputs point[4], scalar[4]; output res[8]
+// Inputs scalar[4], point[4]; output res[8]
 //
 // extern void curve25519_pxscalarmul
-//   (uint64_t res[static 8],uint64_t point[static 4],uint64_t scalar[static 4])
+//   (uint64_t res[static 8],uint64_t scalar[static 4],uint64_t point[static 4])
 //
 // Given the X coordinate of an input point = (X,Y) on curve25519, which
 // could also be part of a projective representation (X,Y,1) of the same
@@ -27,8 +27,8 @@
 // X/Z meaning division modulo 2^255-19, and Y' not being computed by
 // this function (nor is any Y coordinate of the input point used).
 //
-// Standard x86-64 ABI: RDI = res, RSI = point, RDX = scalar
-// Microsoft x64 ABI:   RCX = res, RDX = point, R8 = scalar
+// Standard x86-64 ABI: RDI = res, RSI = scalar, RDX = point
+// Microsoft x64 ABI:   RCX = res, RDX = scalar, R8 = point
 // ----------------------------------------------------------------------------
 #include "_internal_s2n_bignum.h"
 
@@ -626,8 +626,8 @@ S2N_BN_SYMBOL(curve25519_pxscalarmul):
 // Move the input arguments to stable places
 
         movq    %rdi, res
-        movq    %rsi, point
-        movq    %rdx, scalar
+        movq    %rsi, scalar
+        movq    %rdx, point
 
 // Initialize (xn,zn) = (1,0) and (xm,zm) = (x,1) with swap = 0
 
@@ -646,13 +646,13 @@ S2N_BN_SYMBOL(curve25519_pxscalarmul):
         movq    %rax, 280(%rsp)
         movq    %rax, 24(%rsp)
         movq    %rax, 120(%rsp)
-        movq    (%rsi), %rax
+        movq    (%rdx), %rax
         movq    %rax, 192(%rsp)
-        movq    8(%rsi), %rax
+        movq    8(%rdx), %rax
         movq    %rax, 200(%rsp)
-        movq    16(%rsi), %rax
+        movq    16(%rdx), %rax
         movq    %rax, 208(%rsp)
-        movq    24(%rsi), %rax
+        movq    24(%rdx), %rax
         movq    %rax, 216(%rsp)
 
 // The outer loop from i = 255, ..., i = 0 (inclusive)

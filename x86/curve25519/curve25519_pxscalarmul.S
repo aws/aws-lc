@@ -15,10 +15,10 @@
 
 // ----------------------------------------------------------------------------
 // Projective scalar multiplication, x coordinate only, for curve25519
-// Inputs point[4], scalar[4]; output res[8]
+// Inputs scalar[4], point[4]; output res[8]
 //
 // extern void curve25519_pxscalarmul
-//   (uint64_t res[static 8],uint64_t point[static 4],uint64_t scalar[static 4])
+//   (uint64_t res[static 8],uint64_t scalar[static 4],uint64_t point[static 4])
 //
 // Given the X coordinate of an input point = (X,Y) on curve25519, which
 // could also be part of a projective representation (X,Y,1) of the same
@@ -27,8 +27,8 @@
 // X/Z meaning division modulo 2^255-19, and Y' not being computed by
 // this function (nor is any Y coordinate of the input point used).
 //
-// Standard x86-64 ABI: RDI = res, RSI = point, RDX = scalar
-// Microsoft x64 ABI:   RCX = res, RDX = point, R8 = scalar
+// Standard x86-64 ABI: RDI = res, RSI = scalar, RDX = point
+// Microsoft x64 ABI:   RCX = res, RDX = scalar, R8 = point
 // ----------------------------------------------------------------------------
 #include "_internal_s2n_bignum.h"
 
@@ -626,8 +626,8 @@ S2N_BN_SYMBOL(curve25519_pxscalarmul):
 // Move the input arguments to stable places
 
         mov     res, rdi
-        mov     point, rsi
-        mov     scalar, rdx
+        mov     scalar, rsi
+        mov     point, rdx
 
 // Initialize (xn,zn) = (1,0) and (xm,zm) = (x,1) with swap = 0
 
@@ -646,13 +646,13 @@ S2N_BN_SYMBOL(curve25519_pxscalarmul):
         mov     [rsp+280], rax
         mov     [rsp+24], rax
         mov     [rsp+120], rax
-        mov     rax, [rsi]
+        mov     rax, [rdx]
         mov     [rsp+192], rax
-        mov     rax, [rsi+8]
+        mov     rax, [rdx+8]
         mov     [rsp+200], rax
-        mov     rax, [rsi+16]
+        mov     rax, [rdx+16]
         mov     [rsp+208], rax
-        mov     rax, [rsi+24]
+        mov     rax, [rdx+24]
         mov     [rsp+216], rax
 
 // The outer loop from i = 255, ..., i = 0 (inclusive)

@@ -1045,7 +1045,7 @@ void reference_curve25519ladderstep
 }
 
 void reference_curve25519pxscalarmul
-  (uint64_t res[8],uint64_t point[4],uint64_t scalar[4])
+  (uint64_t res[8],uint64_t scalar[4],uint64_t point[4])
 { uint64_t pp[16];
   uint64_t *pn = pp, *pn1 = pp+8;
   uint64_t i, bf;
@@ -7666,8 +7666,8 @@ int test_curve25519_pxscalarmul(void)
 
   int c;
   for (t = 0; t < tests; ++t)
-   { random_bignum(k,b0); reference_mod(k,b1,b0,p_25519);
-     random_bignum(k,b2);
+   { random_bignum(k,b1);
+     random_bignum(k,b0); reference_mod(k,b2,b0,p_25519);
      curve25519_pxscalarmul(b3,b1,b2);
      reference_curve25519pxscalarmul(b4,b1,b2);
 
@@ -7698,8 +7698,8 @@ int test_curve25519_pxscalarmul_alt(void)
 
   int c;
   for (t = 0; t < tests; ++t)
-   { random_bignum(k,b0); reference_mod(k,b1,b0,p_25519);
-     random_bignum(k,b2);
+   { random_bignum(k,b1);
+     random_bignum(k,b0); reference_mod(k,b2,b0,p_25519);
      curve25519_pxscalarmul_alt(b3,b1,b2);
      reference_curve25519pxscalarmul(b4,b1,b2);
 

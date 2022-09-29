@@ -42,10 +42,10 @@ let curve25519_pxscalarmul_alt_mc = define_assert_from_elf
                            (* SUB (% rsp) (Imm32 (word 360)) *)
   0x48; 0x89; 0xbc; 0x24; 0x40; 0x01; 0x00; 0x00;
                            (* MOV (Memop Quadword (%% (rsp,320))) (% rdi) *)
-  0x48; 0x89; 0xb4; 0x24; 0x48; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,328))) (% rsi) *)
-  0x48; 0x89; 0x94; 0x24; 0x50; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,336))) (% rdx) *)
+  0x48; 0x89; 0xb4; 0x24; 0x50; 0x01; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,336))) (% rsi) *)
+  0x48; 0x89; 0x94; 0x24; 0x48; 0x01; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,328))) (% rdx) *)
   0x48; 0xc7; 0xc0; 0x01; 0x00; 0x00; 0x00;
                            (* MOV (% rax) (Imm32 (word 1)) *)
   0x48; 0x89; 0x84; 0x24; 0x00; 0x01; 0x00; 0x00;
@@ -74,16 +74,16 @@ let curve25519_pxscalarmul_alt_mc = define_assert_from_elf
                            (* MOV (Memop Quadword (%% (rsp,24))) (% rax) *)
   0x48; 0x89; 0x44; 0x24; 0x78;
                            (* MOV (Memop Quadword (%% (rsp,120))) (% rax) *)
-  0x48; 0x8b; 0x06;        (* MOV (% rax) (Memop Quadword (%% (rsi,0))) *)
+  0x48; 0x8b; 0x02;        (* MOV (% rax) (Memop Quadword (%% (rdx,0))) *)
   0x48; 0x89; 0x84; 0x24; 0xc0; 0x00; 0x00; 0x00;
                            (* MOV (Memop Quadword (%% (rsp,192))) (% rax) *)
-  0x48; 0x8b; 0x46; 0x08;  (* MOV (% rax) (Memop Quadword (%% (rsi,8))) *)
+  0x48; 0x8b; 0x42; 0x08;  (* MOV (% rax) (Memop Quadword (%% (rdx,8))) *)
   0x48; 0x89; 0x84; 0x24; 0xc8; 0x00; 0x00; 0x00;
                            (* MOV (Memop Quadword (%% (rsp,200))) (% rax) *)
-  0x48; 0x8b; 0x46; 0x10;  (* MOV (% rax) (Memop Quadword (%% (rsi,16))) *)
+  0x48; 0x8b; 0x42; 0x10;  (* MOV (% rax) (Memop Quadword (%% (rdx,16))) *)
   0x48; 0x89; 0x84; 0x24; 0xd0; 0x00; 0x00; 0x00;
                            (* MOV (Memop Quadword (%% (rsp,208))) (% rax) *)
-  0x48; 0x8b; 0x46; 0x18;  (* MOV (% rax) (Memop Quadword (%% (rsi,24))) *)
+  0x48; 0x8b; 0x42; 0x18;  (* MOV (% rax) (Memop Quadword (%% (rdx,24))) *)
   0x48; 0x89; 0x84; 0x24; 0xd8; 0x00; 0x00; 0x00;
                            (* MOV (Memop Quadword (%% (rsp,216))) (% rax) *)
   0xb8; 0xff; 0x00; 0x00; 0x00;
@@ -3239,17 +3239,17 @@ let lemma_diffadd2 = prove
   RING_TAC);;
 
 let CURVE25519_PXSCALARMUL_ALT_CORRECT = time prove
- (`!res point X scalar n pc stackpointer.
+ (`!res scalar n point X pc stackpointer.
     ALL (nonoverlapping (stackpointer,360))
-        [(word pc,0x16f2); (res,64); (point,32); (scalar,32)] /\
+        [(word pc,0x16f2); (res,64); (scalar,32); (point,32)] /\
     nonoverlapping (res,64) (word pc,0x16f2)
     ==> ensures x86
          (\s. bytes_loaded s (word pc) (BUTLAST curve25519_pxscalarmul_alt_mc) /\
               read RIP s = word(pc + 0x11) /\
               read RSP s = stackpointer /\
-              C_ARGUMENTS [res; point; scalar] s /\
-              bignum_from_memory (point,4) s = X /\
-              bignum_from_memory (scalar,4) s = n)
+              C_ARGUMENTS [res; scalar; point] s /\
+              bignum_from_memory (scalar,4) s = n /\
+              bignum_from_memory (point,4) s = X)
          (\s. read RIP s = word (pc + 0x16e0) /\
               !(f:A ring) P.
                   field f /\ ring_char f = p_25519 /\
@@ -3265,7 +3265,7 @@ let CURVE25519_PXSCALARMUL_ALT_CORRECT = time prove
                       memory :> bytes(stackpointer,360)])`,
   REWRITE_TAC[FORALL_PAIR_THM] THEN
   MAP_EVERY X_GEN_TAC
-   [`res:int64`; `point:int64`; `X:num`; `scalar:int64`; `nn:num`;
+   [`res:int64`; `scalar:int64`; `nn:num`; `point:int64`; `X:num`;
     `pc:num`; `stackpointer:int64`] THEN
   REWRITE_TAC[ALLPAIRS; ALL; NONOVERLAPPING_CLAUSES] THEN STRIP_TAC THEN
   REWRITE_TAC[C_ARGUMENTS; SOME_FLAGS] THEN
@@ -3613,9 +3613,9 @@ let CURVE25519_PXSCALARMUL_ALT_CORRECT = time prove
     REWRITE_TAC[lemma_diffadd2]]);;
 
 let CURVE25519_PXSCALARMUL_ALT_SUBROUTINE_CORRECT = time prove
- (`!res point X scalar n pc stackpointer returnaddress.
+ (`!res scalar n point X pc stackpointer returnaddress.
     ALL (nonoverlapping (word_sub stackpointer (word 408),408))
-        [(word pc,0x16f2); (point,32); (scalar,32)] /\
+        [(word pc,0x16f2); (scalar,32); (point,32)] /\
     nonoverlapping (res,64) (word pc,0x16f2) /\
     nonoverlapping (res,64) (word_sub stackpointer (word 408),416)
     ==> ensures x86
@@ -3623,9 +3623,9 @@ let CURVE25519_PXSCALARMUL_ALT_SUBROUTINE_CORRECT = time prove
               read RIP s = word pc /\
               read RSP s = stackpointer /\
               read (memory :> bytes64 stackpointer) s = returnaddress /\
-              C_ARGUMENTS [res; point; scalar] s /\
-              bignum_from_memory (point,4) s = X /\
-              bignum_from_memory (scalar,4) s = n)
+              C_ARGUMENTS [res; scalar; point] s /\
+              bignum_from_memory (scalar,4) s = n /\
+              bignum_from_memory (point,4) s = X)
          (\s. read RIP s = returnaddress /\
               read RSP s = word_add stackpointer (word 8) /\
               !(f:A ring) P.
@@ -3652,9 +3652,9 @@ let windows_curve25519_pxscalarmul_alt_mc = define_from_elf
   "x86/curve25519/curve25519_pxscalarmul_alt.obj";;
 
 let WINDOWS_CURVE25519_PXSCALARMUL_ALT_SUBROUTINE_CORRECT = time prove
- (`!res point X scalar n pc stackpointer returnaddress.
+ (`!res scalar n point X pc stackpointer returnaddress.
     ALL (nonoverlapping (word_sub stackpointer (word 424),424))
-        [(word pc,0x16ff); (point,32); (scalar,32)] /\
+        [(word pc,0x16ff); (scalar,32); (point,32)] /\
     nonoverlapping (res,64) (word pc,0x16ff) /\
     nonoverlapping (res,64) (word_sub stackpointer (word 424),432)
     ==> ensures x86
@@ -3662,9 +3662,9 @@ let WINDOWS_CURVE25519_PXSCALARMUL_ALT_SUBROUTINE_CORRECT = time prove
               read RIP s = word pc /\
               read RSP s = stackpointer /\
               read (memory :> bytes64 stackpointer) s = returnaddress /\
-              WINDOWS_C_ARGUMENTS [res; point; scalar] s /\
-              bignum_from_memory (point,4) s = X /\
-              bignum_from_memory (scalar,4) s = n)
+              WINDOWS_C_ARGUMENTS [res; scalar; point] s /\
+              bignum_from_memory (scalar,4) s = n /\
+              bignum_from_memory (point,4) s = X)
          (\s. read RIP s = returnaddress /\
               read RSP s = word_add stackpointer (word 8) /\
               !(f:A ring) P.

@@ -735,8 +735,8 @@ extern void curve25519_ladderstep_alt(uint64_t rr[16],uint64_t point[8],uint64_t
 
 // Projective scalar multiplication, x coordinate only, for curve25519
 // Inputs point[4], scalar[4]; output res[8]
-extern void curve25519_pxscalarmul(uint64_t res[static 8],uint64_t point[static 4],uint64_t scalar[static 4]);
-extern void curve25519_pxscalarmul_alt(uint64_t res[static 8],uint64_t point[static 4],uint64_t scalar[static 4]);
+extern void curve25519_pxscalarmul(uint64_t res[static 8],uint64_t scalar[static 4],uint64_t point[static 4]);
+extern void curve25519_pxscalarmul_alt(uint64_t res[static 8],uint64_t scalar[static 4],uint64_t point[static 4]);
 
 // Point addition on NIST curve P-256 in Montgomery-Jacobian coordinates
 // Inputs p1[12], p2[12]; output p3[12]

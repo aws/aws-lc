@@ -38,8 +38,8 @@ let curve25519_pxscalarmul_alt_mc = define_assert_from_elf
   0xa9bf57f4;       (* arm_STP X20 X21 SP (Preimmediate_Offset (iword (-- &16))) *)
   0xd10503ff;       (* arm_SUB SP SP (rvalue (word 320)) *)
   0xaa0003f1;       (* arm_MOV X17 X0 *)
-  0xaa0103f3;       (* arm_MOV X19 X1 *)
-  0xaa0203f4;       (* arm_MOV X20 X2 *)
+  0xaa0103f4;       (* arm_MOV X20 X1 *)
+  0xaa0203f3;       (* arm_MOV X19 X2 *)
   0xd2800022;       (* arm_MOV X2 (rvalue (word 1)) *)
   0xa9107fe2;       (* arm_STP X2 XZR SP (Immediate_Offset (iword (&256))) *)
   0xa9117fff;       (* arm_STP XZR XZR SP (Immediate_Offset (iword (&272))) *)
@@ -2458,19 +2458,19 @@ let lemma_diffadd2 = prove
   RING_TAC);;
 
 let CURVE25519_PXSCALARMUL_ALT_CORRECT = time prove
- (`!res point X scalar n pc stackpointer.
+ (`!res scalar n point X pc stackpointer.
     aligned 16 stackpointer /\
     ALLPAIRS nonoverlapping
       [(res,64); (stackpointer,320)]
-      [(word pc,0xffc); (point,32); (scalar,32)] /\
+      [(word pc,0xffc); (scalar,32); (point,32)] /\
     nonoverlapping (res,64) (stackpointer,320)
     ==> ensures arm
          (\s. aligned_bytes_loaded s (word pc) curve25519_pxscalarmul_alt_mc /\
               read PC s = word(pc + 0xc) /\
               read SP s = stackpointer /\
-              C_ARGUMENTS [res; point; scalar] s /\
-              bignum_from_memory (point,4) s = X /\
-              bignum_from_memory (scalar,4) s = n)
+              C_ARGUMENTS [res; scalar; point] s /\
+              bignum_from_memory (scalar,4) s = n /\
+              bignum_from_memory (point,4) s = X)
          (\s. read PC s = word (pc + 0xfec) /\
               !(f:A ring) P.
                   field f /\ ring_char f = p_25519 /\
@@ -2486,7 +2486,7 @@ let CURVE25519_PXSCALARMUL_ALT_CORRECT = time prove
                       memory :> bytes(stackpointer,320)])`,
   REWRITE_TAC[FORALL_PAIR_THM] THEN
   MAP_EVERY X_GEN_TAC
-   [`res:int64`; `point:int64`; `X:num`; `scalar:int64`; `nn:num`;
+   [`res:int64`; `scalar:int64`; `nn:num`; `point:int64`; `X:num`;
     `pc:num`; `stackpointer:int64`] THEN
   REWRITE_TAC[ALLPAIRS; ALL; NONOVERLAPPING_CLAUSES] THEN STRIP_TAC THEN
   REWRITE_TAC[C_ARGUMENTS; SOME_FLAGS] THEN
@@ -2837,20 +2837,20 @@ let CURVE25519_PXSCALARMUL_ALT_CORRECT = time prove
     REWRITE_TAC[lemma_diffadd2]]);;
 
 let CURVE25519_PXSCALARMUL_ALT_SUBROUTINE_CORRECT = time prove
- (`!res point X scalar n pc stackpointer returnaddress.
+ (`!res scalar n point X pc stackpointer returnaddress.
     aligned 16 stackpointer /\
     ALLPAIRS nonoverlapping
       [(res,64); (word_sub stackpointer (word 352),352)]
-      [(word pc,0xffc); (point,32); (scalar,32)] /\
+      [(word pc,0xffc); (scalar,32); (point,32)] /\
     nonoverlapping (res,64) (word_sub stackpointer (word 352),352)
     ==> ensures arm
          (\s. aligned_bytes_loaded s (word pc) curve25519_pxscalarmul_alt_mc /\
               read PC s = word pc /\
               read SP s = stackpointer /\
               read X30 s = returnaddress /\
-              C_ARGUMENTS [res; point; scalar] s /\
-              bignum_from_memory (point,4) s = X /\
-              bignum_from_memory (scalar,4) s = n)
+              C_ARGUMENTS [res; scalar; point] s /\
+              bignum_from_memory (scalar,4) s = n /\
+              bignum_from_memory (point,4) s = X)
          (\s. read PC s = returnaddress /\
               !(f:A ring) P.
                   field f /\ ring_char f = p_25519 /\

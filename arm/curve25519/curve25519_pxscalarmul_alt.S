@@ -15,10 +15,10 @@
 
 // ----------------------------------------------------------------------------
 // Projective scalar multiplication, x coordinate only, for curve25519
-// Inputs point[4], scalar[4]; output res[8]
+// Inputs scalar[4], point[4]; output res[8]
 //
 // extern void curve25519_pxscalarmul_alt
-//   (uint64_t res[static 8],uint64_t point[static 4],uint64_t scalar[static 4])
+//   (uint64_t res[static 8],uint64_t scalar[static 4],uint64_t point[static 4])
 //
 // Given the X coordinate of an input point = (X,Y) on curve25519, which
 // could also be part of a projective representation (X,Y,1) of the same
@@ -27,7 +27,7 @@
 // X/Z meaning division modulo 2^255-19, and Y' not being computed by
 // this function (nor is any Y coordinate of the input point used).
 //
-// Standard ARM ABI: X0 = res, X1 = point, X2 = scalar
+// Standard ARM ABI: X0 = res, X1 = scalar, X2 = point
 // ----------------------------------------------------------------------------
 #include "_internal_s2n_bignum.h"
 
@@ -633,8 +633,8 @@ S2N_BN_SYMBOL(curve25519_pxscalarmul_alt):
 // Move the input arguments to stable places
 
         mov     res, x0
-        mov     point, x1
-        mov     scalar, x2
+        mov     scalar, x1
+        mov     point, x2
 
 // Initialize (xn,zn) = (1,0) and (xm,zm) = (x,1) with swap = 0
 
