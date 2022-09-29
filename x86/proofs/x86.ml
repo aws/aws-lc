@@ -2569,7 +2569,12 @@ let X86_SUBROUTINE_SIM_TAC (machinecode,execth,offset,submachinecode,subth) =
        NORMALIZE_RELATIVE_ADDRESS_CONV))] THEN
     X86_BIGSTEP_TAC execth sname' THENL
      [MATCH_MP_TAC subimpth THEN FIRST_X_ASSUM ACCEPT_TAC;
-      ALL_TAC];;
+      ALL_TAC] THEN
+    RULE_ASSUM_TAC(CONV_RULE(TRY_CONV
+   (GEN_REWRITE_CONV I [MESON[ADD_ASSOC]
+     `read RIP s = word((pc + m) + n) <=>
+      read RIP s = word(pc + m + n)`] THENC
+    funpow 3 RAND_CONV NUM_ADD_CONV)));;
 
 let X86_SUBROUTINE_SIM_ABBREV_TAC tupper ilist0 =
   let tac = X86_SUBROUTINE_SIM_TAC tupper ilist0 in

@@ -22,14 +22,54 @@ needs "Library/rstc.ml";;
 needs "Library/floor.ml";;
 
 (* ------------------------------------------------------------------------- *)
-(* Could be a general word lemma.                                            *)
+(* Additional list operations and conversions on them.                       *)
 (* ------------------------------------------------------------------------- *)
 
-let REAL_VAL_WORD_XOR = prove
- (`!x y:N word. &(val(word_xor x y)):real =
-                (&(val x) + &(val y)) - &2 * &(val(word_and x y))`,
-  REWRITE_TAC[REAL_OF_NUM_CLAUSES; VAL_WORD_ADD_AND_XOR] THEN
-  REWRITE_TAC[GSYM REAL_OF_NUM_CLAUSES] THEN REAL_ARITH_TAC);;
+let SUB_LIST = define
+ `SUB_LIST (0,0) l = [] /\
+  SUB_LIST (SUC m,n) [] = [] /\
+  SUB_LIST (0,SUC n) [] = [] /\
+  SUB_LIST (0,SUC n) (CONS h t) = CONS h (SUB_LIST (0,n) t) /\
+  SUB_LIST (SUC m,n) (CONS h t) = SUB_LIST (m,n) t`;;
+
+let SUB_LIST_CLAUSES = prove
+ (`SUB_LIST (m,0) (l:A list) = [] /\
+   SUB_LIST (m,n) [] = [] /\
+   SUB_LIST (SUC m,n) (CONS h t) = SUB_LIST (m,n) t /\
+   SUB_LIST (0,SUC n) (CONS h t) = CONS h (SUB_LIST (0,n) t)`,
+  REWRITE_TAC[SUB_LIST] THEN CONJ_TAC THENL
+   [ALL_TAC; METIS_TAC[SUB_LIST; num_CASES]] THEN
+  MAP_EVERY (fun t -> SPEC_TAC(t,t)) [`l:A list`; `m:num`] THEN
+  INDUCT_TAC THEN ASM_REWRITE_TAC[SUB_LIST] THEN
+  LIST_INDUCT_TAC THEN ASM_REWRITE_TAC[SUB_LIST]);;
+
+let TRIM_LIST = define
+ `TRIM_LIST (h,t) l = SUB_LIST (h,LENGTH l - (h + t)) l`;;
+
+let rec LENGTH_CONV =
+  let conv0 = GEN_REWRITE_CONV I [CONJUNCT1 LENGTH]
+  and conv1 = GEN_REWRITE_CONV I [CONJUNCT2 LENGTH] in
+  let rec conv tm =
+   (conv0 ORELSEC (conv1 THENC RAND_CONV conv THENC NUM_SUC_CONV)) tm in
+  conv;;
+
+let SUB_LIST_CONV =
+  let [cth1;cth2;cth3;cth4] = CONJUNCTS SUB_LIST_CLAUSES in
+  let conv0 = GEN_REWRITE_CONV I [cth1; cth2]
+  and conv1 = GEN_REWRITE_CONV I [cth3]
+  and conv2 = GEN_REWRITE_CONV I [cth4] in
+  let rec conv tm =
+   (conv0 ORELSEC
+    (LAND_CONV(LAND_CONV num_CONV) THENC conv1 THENC conv) ORELSEC
+    (LAND_CONV(RAND_CONV num_CONV) THENC conv2 THENC RAND_CONV conv)) tm in
+  conv;;
+
+let TRIM_LIST_CONV =
+  GEN_REWRITE_CONV I [TRIM_LIST] THENC
+  LAND_CONV(RAND_CONV
+   ((BINOP2_CONV LENGTH_CONV NUM_ADD_CONV) THENC
+    NUM_SUB_CONV)) THENC
+  SUB_LIST_CONV;;
 
 (* ------------------------------------------------------------------------- *)
 (* Combined word and number and a few other things reduction.                *)
