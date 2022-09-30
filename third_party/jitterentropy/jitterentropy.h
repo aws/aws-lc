@@ -63,7 +63,6 @@ extern "C" {
  * must offer POSIX threads. If this option is disabled, no linking
  * with the POSIX threads library is needed.
  */
-#define JENT_CONF_ENABLE_INTERNAL_TIMER
 
 /*
  * Disable the loop shuffle operation
