@@ -273,6 +273,8 @@ enum {
        TEST_CURVE25519_LADDERSTEP_ALT,
        TEST_CURVE25519_PXSCALARMUL,
        TEST_CURVE25519_PXSCALARMUL_ALT,
+       TEST_CURVE25519_X25519,
+       TEST_CURVE25519_X25519_ALT,
        TEST_P256_MONTJADD,
        TEST_P256_MONTJDOUBLE,
        TEST_P256_MONTJMIXADD,
@@ -1075,6 +1077,29 @@ void reference_curve25519pxscalarmul
   if (lsb) pn[4] = 1; else pn[0] = 1;
   bignum_mux(triv,8,res,pn,res);
 
+}
+
+void reference_curve25519x25519
+  (uint64_t res[4],uint64_t scalar[4],uint64_t point[4])
+{ uint64_t mscalar[4], mpoint[4], pres[8], zinv[4], tmpspace[12];
+  uint64_t *prez = pres+4;
+
+  bignum_copy(4,mscalar,4,scalar);
+  mscalar[3] &= UINT64_C(0x7fffffffffffffff);
+  mscalar[3] |= UINT64_C(0x4000000000000000);
+  mscalar[0] &= UINT64_C(0xfffffffffffffff8);
+
+  bignum_copy(4,mpoint,4,point);
+  mpoint[3] &= UINT64_C(0x7fffffffffffffff);
+  if (!bignum_lt(4,mpoint,4,p_25519))
+     bignum_sub(4,mpoint,4,mpoint,4,p_25519);
+
+  reference_curve25519pxscalarmul(pres,mscalar,mpoint);
+
+  bignum_modinv(4,zinv,prez,p_25519,tmpspace);
+
+  bignum_mul_p25519_alt(res,pres,zinv);
+  if (bignum_iszero(4,prez)) bignum_of_word(4,res,0);
 }
 
 void reference_montjdouble
@@ -7723,6 +7748,94 @@ int test_curve25519_pxscalarmul_alt(void)
   return 0;
 }
 
+int test_curve25519_x25519(void)
+{ uint64_t t, k;
+  printf("Testing curve25519_x25519 with %d cases\n",tests);
+  k = 4;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b2);
+     random_bignum(k,b1);
+
+     // With non-trivial probability, let X be in the cofactor 8-group
+
+     if ((rand() & 15) == 0)
+      { b2[3] = UINT64_C(0x57119fd0dd4e22d8);
+        b2[2] = UINT64_C(0x868e1c58c45c4404);
+        b2[1] = UINT64_C(0x5bef839c55b1d0b1);
+        b2[0] = UINT64_C(0x248c50a3bc959c5f);
+      }
+
+     curve25519_x25519(b3,b1,b2);
+     reference_curve25519x25519(b4,b1,b2);
+
+     c = reference_compare(k,b3,k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" * "
+               "<0x%016"PRIx64"...%016"PRIx64"> = "
+               "<...0x%016"PRIx64"...%016"PRIx64"> not "
+               "<...0x%016"PRIx64"...%016"PRIx64">\n",
+               k,b1[3],b1[0],b2[3],b2[0],b3[3],b3[0],b4[3],b4[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" * "
+               "<0x%016"PRIx64"...%016"PRIx64"> = "
+               "<...0x%016"PRIx64"...%016"PRIx64">\n",
+               k,b1[3],b1[0],b2[3],b2[0],b3[3],b3[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_curve25519_x25519_alt(void)
+{ uint64_t t, k;
+  printf("Testing curve25519_x25519_alt with %d cases\n",tests);
+  k = 4;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b2);
+     random_bignum(k,b1);
+
+     // With non-trivial probability, let X be in the cofactor 8-group
+
+     if ((rand() & 15) == 0)
+      { b2[3] = UINT64_C(0x57119fd0dd4e22d8);
+        b2[2] = UINT64_C(0x868e1c58c45c4404);
+        b2[1] = UINT64_C(0x5bef839c55b1d0b1);
+        b2[0] = UINT64_C(0x248c50a3bc959c5f);
+      }
+
+     curve25519_x25519_alt(b3,b1,b2);
+     reference_curve25519x25519(b4,b1,b2);
+
+     c = reference_compare(k,b3,k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" * "
+               "<0x%016"PRIx64"...%016"PRIx64"> = "
+               "<...0x%016"PRIx64"...%016"PRIx64"> not "
+               "<...0x%016"PRIx64"...%016"PRIx64">\n",
+               k,b1[3],b1[0],b2[3],b2[0],b3[3],b3[0],b4[3],b4[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" * "
+               "<0x%016"PRIx64"...%016"PRIx64"> = "
+               "<...0x%016"PRIx64"...%016"PRIx64">\n",
+               k,b1[3],b1[0],b2[3],b2[0],b3[3],b3[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
 int test_p256_montjadd(void)
 { uint64_t t, k;
   printf("Testing p256_montjadd with %d cases\n",tests);
@@ -8524,6 +8637,8 @@ int test_all(void)
   dotest(test_curve25519_ladderstep_alt);
   dotest(test_curve25519_pxscalarmul);
   dotest(test_curve25519_pxscalarmul_alt);
+  dotest(test_curve25519_x25519);
+  dotest(test_curve25519_x25519_alt);
   dotest(test_p256_montjadd);
   dotest(test_p256_montjdouble);
   dotest(test_p256_montjmixadd);
@@ -8731,6 +8846,7 @@ int test_allnonbmi()
   dotest(test_bignum_triple_p521_alt);
   dotest(test_curve25519_ladderstep_alt);
   dotest(test_curve25519_pxscalarmul_alt);
+  dotest(test_curve25519_x25519_alt);
   dotest(test_word_bytereverse);
   dotest(test_word_clz);
   dotest(test_word_ctz);
@@ -9020,6 +9136,8 @@ int main(int argc, char *argv[])
      case TEST_CURVE25519_LADDERSTEP_ALT: return test_curve25519_ladderstep_alt();
      case TEST_CURVE25519_PXSCALARMUL:    return test_curve25519_pxscalarmul();
      case TEST_CURVE25519_PXSCALARMUL_ALT:return test_curve25519_pxscalarmul_alt();
+     case TEST_CURVE25519_X25519:         return test_curve25519_x25519();
+     case TEST_CURVE25519_X25519_ALT:     return test_curve25519_x25519_alt();
      case TEST_P256_MONTJADD:             return test_p256_montjadd();
      case TEST_P256_MONTJDOUBLE:          return test_p256_montjdouble();
      case TEST_P256_MONTJMIXADD:          return test_p256_montjmixadd();

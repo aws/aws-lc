@@ -78,6 +78,8 @@ POINT_OBJ = curve25519/curve25519_ladderstep.o \
             curve25519/curve25519_ladderstep_alt.o \
             curve25519/curve25519_pxscalarmul.o \
             curve25519/curve25519_pxscalarmul_alt.o \
+            curve25519/curve25519_x25519.o \
+            curve25519/curve25519_x25519_alt.o \
             p256/p256_montjadd.o \
             p256/p256_montjdouble.o \
             p256/p256_montjmixadd.o \
@@ -307,6 +309,9 @@ HOLDIR?=$(HOME)/hol-light
 HOLLIGHT:=HOLLIGHT_DIR=$(HOLDIR) ocaml -init $(HOLDIR)/hol.ml
 
 PROOFS = $(OBJ:.o=.correct)
+
+curve25519/curve25519_x25519.correct: generic/bignum_modinv.o proofs/curve25519_x25519.ml curve25519/curve25519_x25519.o ; (cd ..; (echo 'loadt "arm/proofs/base.ml";;'; echo 'loadt "arm/proofs/curve25519_x25519.ml";;') | $(HOLLIGHT) 2>&1) >$@
+curve25519/curve25519_x25519_alt.correct: generic/bignum_modinv.o proofs/curve25519_x25519_alt.ml curve25519/curve25519_x25519_alt.o ; (cd ..; (echo 'loadt "arm/proofs/base.ml";;'; echo 'loadt "arm/proofs/curve25519_x25519_alt.ml";;') | $(HOLLIGHT) 2>&1) >$@
 
 curve25519/%.correct: proofs/%.ml curve25519/%.o ; (cd ..; (echo 'loadt "arm/proofs/base.ml";;'; echo 'loadt "arm/proofs/$*.ml";;') | $(HOLLIGHT) 2>&1) >$@
 fastmul/%.correct: proofs/%.ml fastmul/%.o ; (cd ..; (echo 'loadt "arm/proofs/base.ml";;'; echo 'loadt "arm/proofs/$*.ml";;') | $(HOLLIGHT) 2>&1) >$@
