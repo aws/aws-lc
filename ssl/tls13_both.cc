@@ -32,11 +32,6 @@
 
 BSSL_NAMESPACE_BEGIN
 
-// kMaxKeyUpdates is the number of consecutive KeyUpdates that will be
-// processed. Without this limit an attacker could force unbounded processing
-// without being able to return application data.
-static const uint8_t kMaxKeyUpdates = 32;
-
 const uint8_t kHelloRetryRequest[SSL3_RANDOM_SIZE] = {
     0xcf, 0x21, 0xad, 0x74, 0xe5, 0x9a, 0x61, 0x11, 0xbe, 0x1d, 0x8c,
     0x02, 0x1e, 0x65, 0xb8, 0x91, 0xc2, 0xa2, 0x11, 0x16, 0x7a, 0xbb,
@@ -677,18 +672,14 @@ static bool tls13_receive_key_update(SSL *ssl, const SSLMessage &msg) {
 
 bool tls13_post_handshake(SSL *ssl, const SSLMessage &msg) {
   if (msg.type == SSL3_MT_KEY_UPDATE) {
-    ssl->s3->key_update_count++;
-    if (ssl->quic_method != nullptr ||
-        ssl->s3->key_update_count > kMaxKeyUpdates) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_TOO_MANY_KEY_UPDATES);
+    if (ssl->quic_method != nullptr) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
       return false;
     }
 
     return tls13_receive_key_update(ssl, msg);
   }
-
-  ssl->s3->key_update_count = 0;
 
   if (msg.type == SSL3_MT_NEW_SESSION_TICKET && !ssl->server) {
     return tls13_process_new_session_ticket(ssl, msg);
