@@ -314,7 +314,11 @@ struct rand_data
 #ifdef JENT_PRIVATE_COMPILE
 # define JENT_PRIVATE_STATIC static
 #else /* JENT_PRIVATE_COMPILE */
-# define JENT_PRIVATE_STATIC __attribute__((visibility("default")))
+#if defined(_MSC_VER)
+#define JENT_PRIVATE_STATIC __declspec(dllexport)
+#else
+#define JENT_PRIVATE_STATIC __attribute__((visibility("default")))
+#endif
 #endif
 
 /* Number of low bits of the time value that we want to consider */

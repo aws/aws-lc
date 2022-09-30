@@ -1,7 +1,7 @@
 /*
  * Non-physical true random number generator based on timing jitter.
  *
- * Copyright Stephan Mueller <smueller@chronox.de>, 2013 - 2022
+ * Copyright Stephan Mueller <smueller@chronox.de>, 2013 - 2021
  *
  * License
  * =======
@@ -65,77 +65,77 @@ static void jent_get_nstime(uint64_t *out)
 {
 #if defined(_M_ARM) || defined(_M_ARM64)
 
-	// Generic code.
-	LARGE_INTEGER ticks;
-	QueryPerformanceCounter(&ticks);
-	*out = ticks.QuadPart;
+       // Generic code.
+       LARGE_INTEGER ticks;
+       QueryPerformanceCounter(&ticks);
+       *out = ticks.QuadPart;
 
 #else
 
        // x86, x86_64 intrinsic
-	*out = __rdtsc();
+       *out = __rdtsc();
 
 #endif
 }
 
 static inline void *jent_zalloc(size_t len)
 {
-	void *tmp = NULL;
-	/* we have no secure memory allocation! Hence
-	 * we do not sed CRYPTO_CPU_JITTERENTROPY_SECURE_MEMORY */
+       void *tmp = NULL;
+       /* we have no secure memory allocation! Hence
+        * we do not sed CRYPTO_CPU_JITTERENTROPY_SECURE_MEMORY */
 #if defined(AWSLC)
-	tmp = OPENSSL_malloc(len);
+       tmp = OPENSSL_malloc(len);
 #else
-	tmp = malloc(len);
+       tmp = malloc(len);
 #endif
-	if(NULL != tmp)
-		memset(tmp, 0, len);
-	return tmp;
+       if(NULL != tmp)
+              memset(tmp, 0, len);
+       return tmp;
 }
 
 static inline void jent_zfree(void *ptr, unsigned int len)
 {
 #if defined(AWSLC)
-	(void) len;
-	OPENSSL_free(ptr);
+       (void) len;
+       OPENSSL_free(ptr);
 #else
-	memset(ptr, 0, len);
-	free(ptr);
+       memset(ptr, 0, len);
+       free(ptr);
 #endif
 }
 
 static inline int jent_fips_enabled(void)
 {
 #if defined(AWSLC)
-	return FIPS_mode();
+       return FIPS_mode();
 #else
-	return 0;
+       return 0;
 #endif
 }
 
 static inline void jent_memset_secure(void *s, size_t n)
 {
 #if defined(AWSLC)
-	OPENSSL_cleanse(s, n);
+       OPENSSL_cleanse(s, n);
 #else
-	SecureZeroMemory(s, n);
+       SecureZeroMemory(s, n);
 #endif
 }
 
 static inline long jent_ncpu(void)
 {
-	/*
-	 * TODO: return number of available CPUs -
-	 * this code disables timer thread as only one CPU is "detected".
-	 */
-	return 1;
+       /*
+        * TODO: return number of available CPUs -
+        * this code disables timer thread as only one CPU is "detected".
+        */
+       return 1;
 }
 
 static inline void jent_yield(void) { }
 
 static inline uint32_t jent_cache_size_roundup(void)
 {
-	return 0;
+       return 0;
 }
 
 /* --- helpers needed in user space -- */
@@ -144,7 +144,7 @@ static inline uint32_t jent_cache_size_roundup(void)
 
 static inline uint64_t rol64(uint64_t word, unsigned int shift)
 {
-	return (word << shift) | (word >> (64 - shift));
+       return (word << shift) | (word >> (64 - shift));
 }
 
 #endif /* _JITTERENTROPY_BASE_X86_H */
