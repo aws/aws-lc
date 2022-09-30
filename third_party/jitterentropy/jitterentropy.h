@@ -93,7 +93,11 @@ extern "C" {
  * Jitter RNG State Definition Section
  ***************************************************************************/
 
+#if defined(_MSC_VER)
+#include "arch/jitterentropy-base-windows.h"
+#else
 #include "jitterentropy-base-user.h"
+#endif
 
 #define SHA3_256_SIZE_DIGEST_BITS	256
 #define SHA3_256_SIZE_DIGEST		(SHA3_256_SIZE_DIGEST_BITS >> 3)
