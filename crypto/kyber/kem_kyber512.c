@@ -1,3 +1,10 @@
+/*
+------------------------------------------------------------------------------------
+ Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
+ SPDX-License-Identifier: Apache-2.0
+------------------------------------------------------------------------------------
+*/
+
 #include "../evp_extra/internal.h"
 #include "../fipsmodule/evp/internal.h"
 #include "kem_kyber.h"
