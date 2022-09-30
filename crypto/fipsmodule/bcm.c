@@ -102,6 +102,7 @@
 #include "evp/digestsign.c"
 #include "evp/evp.c"
 #include "evp/evp_ctx.c"
+#include "evp/kem.c"
 #include "evp/p_ec.c"
 #include "evp/p_rsa.c"
 #include "hkdf/hkdf.c"
