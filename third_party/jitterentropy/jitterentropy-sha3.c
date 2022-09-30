@@ -369,9 +369,9 @@ int sha3_tester(void)
 	uint8_t act[SHA3_256_SIZE_DIGEST] = { 0 };
 	unsigned int i;
 
-	sha3_256_init(ctx);
-	sha3_update(ctx, msg_256, 3);
-	sha3_final(ctx, act);
+	sha3_256_init(&ctx);
+	sha3_update(&ctx, msg_256, 3);
+	sha3_final(&ctx, act);
 
 	for (i = 0; i < SHA3_256_SIZE_DIGEST; i++) {
 		if (exp_256[i] != act[i])
