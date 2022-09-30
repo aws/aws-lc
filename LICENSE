@@ -204,6 +204,17 @@ are met:
    products derived from this software without specific prior
    written permission.
 
+
+The code in crypto/kyber/pqcrystals-kyber_kyber512_ref carries the
+Public Domain license:
+
+Public Domain (https://creativecommons.org/share-your-work/public-domain/cc0/)
+
+For Keccak and AES we are using public-domain
+code from sources and by authors listed in
+comments on top of the respective files.
+
+
 Licenses for support code
 -------------------------
  
