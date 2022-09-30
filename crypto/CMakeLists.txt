@@ -333,6 +333,9 @@ add_library(
   dh_extra/params.c
   dh_extra/dh_asn1.c
   digest_extra/digest_extra.c
+  dilithium/p_dilithium3.c
+  dilithium/p_dilithium3_asn1.c
+  dilithium/sig_dilithium3.c
   dilithium/pqcrystals-dilithium_dilithium3_ref/aes256ctr.c
   dilithium/pqcrystals-dilithium_dilithium3_ref/fips202.c
   dilithium/pqcrystals-dilithium_dilithium3_ref/ntt.c
