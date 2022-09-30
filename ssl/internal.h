@@ -2725,9 +2725,6 @@ struct SSL3_STATE {
   // received.
   uint8_t warning_alert_count = 0;
 
-  // key_update_count is the number of consecutive KeyUpdates received.
-  uint8_t key_update_count = 0;
-
   // ech_status indicates whether ECH was accepted by the server.
   ssl_ech_status_t ech_status = ssl_ech_none;
 
