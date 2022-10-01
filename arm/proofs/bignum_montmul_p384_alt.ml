@@ -485,7 +485,7 @@ let BIGNUM_MONTMUL_P384_ALT_SUBROUTINE_CORRECT = time prove
 (* But the output, still 384 bits, may then not be fully reduced mod p_384.  *)
 (* ------------------------------------------------------------------------- *)
 
-let BIGNUM_AMONTMUL_P384_CORRECT = time prove
+let BIGNUM_AMONTMUL_P384_ALT_CORRECT = time prove
  (`!z x y a b pc.
         nonoverlapping (word pc,0x450) (z,8 * 6)
         ==> ensures arm
@@ -607,7 +607,7 @@ let BIGNUM_AMONTMUL_P384_CORRECT = time prove
   REWRITE_TAC[BITVAL_CLAUSES; p_384] THEN
   CONV_TAC WORD_REDUCE_CONV THEN REAL_INTEGER_TAC);;
 
-let BIGNUM_AMONTMUL_P384_SUBROUTINE_CORRECT = time prove
+let BIGNUM_AMONTMUL_P384_ALT_SUBROUTINE_CORRECT = time prove
  (`!z x y a b pc stackpointer returnaddress.
       aligned 16 stackpointer /\
       nonoverlapping (word pc,0x450) (z,8 * 6) /\
@@ -630,5 +630,5 @@ let BIGNUM_AMONTMUL_P384_SUBROUTINE_CORRECT = time prove
                        memory :> bytes(word_sub stackpointer (word 32),32)] ,,
             MAYCHANGE SOME_FLAGS)`,
   ARM_ADD_RETURN_STACK_TAC
-   BIGNUM_MONTMUL_P384_ALT_EXEC BIGNUM_AMONTMUL_P384_CORRECT
+   BIGNUM_MONTMUL_P384_ALT_EXEC BIGNUM_AMONTMUL_P384_ALT_CORRECT
    `[X19;X20;X21;X22]` 32);;

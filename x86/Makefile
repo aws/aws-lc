@@ -376,4 +376,4 @@ secp256k1/%.correct: proofs/%.ml secp256k1/%.o secp256k1/%.obj ; (cd ..; (echo '
 
 run_proofs: $(PROOFS);
 
-proofs: run_proofs ; [ `grep SUBROUTINE_CORRECT proofs/*.ml | wc -l` -eq  `grep 'SUBROUTINE_CORRECT : thm' */*.correct | wc -l` ]
+proofs: run_proofs ; [ `grep SUBROUTINE_CORRECT proofs/*.ml | wc -l` -eq  `grep 'SUBROUTINE_CORRECT : thm' */*.correct  | cut -f2 -d' ' | sort | uniq | wc -l` ]
