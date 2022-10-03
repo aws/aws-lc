@@ -45,7 +45,7 @@ struct sha_ctx {
 	type name[(size + sizeof(type)-1) / sizeof(type)] aligned(sizeof(type));
 
 /* CTX size allows any hash type up to SHA3-224 */
-#define SHA_MAX_CTX_SIZE	368
+#define SHA_MAX_CTX_SIZE    (sizeof(struct sha_ctx))
 #define HASH_CTX_ON_STACK(name)                            \
     struct sha_ctx name
 
