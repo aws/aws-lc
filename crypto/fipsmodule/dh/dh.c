@@ -110,6 +110,8 @@ void DH_free(DH *dh) {
   OPENSSL_free(dh);
 }
 
+unsigned DH_bits(const DH *dh) { return BN_num_bits(dh->p); }
+
 const BIGNUM *DH_get0_pub_key(const DH *dh) { return dh->pub_key; }
 
 const BIGNUM *DH_get0_priv_key(const DH *dh) { return dh->priv_key; }
@@ -414,8 +416,6 @@ int DH_compute_key_hashed(DH *dh, uint8_t *out, size_t *out_len,
 }
 
 int DH_size(const DH *dh) { return BN_num_bytes(dh->p); }
-
-int DH_bits(const DH *dh) { return DH_num_bits(dh); }
 
 unsigned DH_num_bits(const DH *dh) { return BN_num_bits(dh->p); }
 

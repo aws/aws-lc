@@ -8741,6 +8741,15 @@ xNCwyMX9mtdXdQicOfNjIGUCD5OLV5PgHFPRKiHHioBAhg==
   }
 }
 
+#if defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE)
+TEST(SSLTest, EmptyClientCAList) {
+  // Use /dev/null on POSIX systems as an empty file.
+  bssl::UniquePtr<STACK_OF(X509_NAME)> names(
+      SSL_load_client_CA_file("/dev/null"));
+  EXPECT_FALSE(names);
+}
+#endif  // OPENSSL_LINUX || OPENSSL_APPLE
+
 TEST(SSLTest, EmptyWriteBlockedOnHandshakeData) {
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
   bssl::UniquePtr<SSL_CTX> server_ctx =
@@ -8850,6 +8859,11 @@ TEST(SSLTest, ErrorSyscallAfterCloseNotify) {
   EXPECT_EQ(ret, 0);
   EXPECT_EQ(SSL_get_error(client.get(), ret), SSL_ERROR_ZERO_RETURN);
 
+  // Further calls to |SSL_read| continue to report |SSL_ERROR_ZERO_RETURN|.
+  ret = SSL_read(client.get(), buf, sizeof(buf));
+  EXPECT_EQ(ret, 0);
+  EXPECT_EQ(SSL_get_error(client.get(), ret), SSL_ERROR_ZERO_RETURN);
+
   // Although the client has seen close_notify, it should continue to report
   // |SSL_ERROR_SYSCALL| when its writes fail.
   ret = SSL_write(client.get(), data, sizeof(data));
@@ -8857,6 +8871,57 @@ TEST(SSLTest, ErrorSyscallAfterCloseNotify) {
   EXPECT_EQ(SSL_get_error(client.get(), ret), SSL_ERROR_SYSCALL);
   EXPECT_TRUE(write_failed);
   write_failed = false;
+
+  // Cause |BIO_write| to fail with a return value of zero instead.
+  // |SSL_get_error| should not misinterpret this as a close_notify.
+  //
+  // This is not actually a correct implementation of |BIO_write|, but the rest
+  // of the code treats zero from |BIO_write| as an error, so ensure it does so
+  // correctly. Fixing https://crbug.com/boringssl/503 will make this case moot.
+  BIO_meth_set_write(method.get(), [](BIO *, const char *, int) -> int {
+    write_failed = true;
+    return 0;
+  });
+  ret = SSL_write(client.get(), data, sizeof(data));
+  EXPECT_EQ(ret, 0);
+  EXPECT_EQ(SSL_get_error(client.get(), ret), SSL_ERROR_SYSCALL);
+  EXPECT_TRUE(write_failed);
+  write_failed = false;
+}
+
+// Test that |SSL_shutdown|, when quiet shutdown is enabled, simulates receiving
+// a close_notify, down to |SSL_read| reporting |SSL_ERROR_ZERO_RETURN|.
+TEST(SSLTest, QuietShutdown) {
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx =
+      CreateContextWithTestCertificate(TLS_method());
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(server_ctx);
+  SSL_CTX_set_quiet_shutdown(server_ctx.get(), 1);
+  bssl::UniquePtr<SSL> client, server;
+  EXPECT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                     server_ctx.get()));
+
+  // Quiet shutdown is enabled, so |SSL_shutdown| on the server should
+  // immediately return that bidirectional shutdown "completed".
+  EXPECT_EQ(SSL_shutdown(server.get()), 1);
+
+  // Shut down writes so the client gets an EOF.
+  EXPECT_TRUE(BIO_shutdown_wr(SSL_get_wbio(server.get())));
+
+  // Confirm no close notify was actually sent. Client reads should report a
+  // transport EOF, not a close_notify. (Both have zero return, but
+  // |SSL_get_error| is different.)
+  char buf[1];
+  int ret = SSL_read(client.get(), buf, sizeof(buf));
+  EXPECT_EQ(ret, 0);
+  EXPECT_EQ(SSL_get_error(client.get(), ret), SSL_ERROR_SYSCALL);
+
+  // The server believes bidirectional shutdown completed, so reads should
+  // replay the (simulated) close_notify.
+  ret = SSL_read(server.get(), buf, sizeof(buf));
+  EXPECT_EQ(ret, 0);
+  EXPECT_EQ(SSL_get_error(server.get(), ret), SSL_ERROR_ZERO_RETURN);
 }
 
 }  // namespace
