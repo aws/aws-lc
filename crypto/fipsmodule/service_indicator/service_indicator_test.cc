@@ -1679,7 +1679,6 @@ TEST(EVP_HKDF_ServiceIndicatorTest, EVP_HKDF_Extract) {
 
     CALL_SERVICE_AND_CHECK_APPROVED(
         approved, ASSERT_TRUE(EVP_PKEY_derive(pctx, output, &outlen)));
-    EXPECT_EQ(outlen, test.output_len);
     EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
 
     if (pctx != NULL) {
@@ -1707,7 +1706,6 @@ TEST(EVP_HKDF_ServiceIndicatorTest, EVP_HKDF_Expand) {
 
     CALL_SERVICE_AND_CHECK_APPROVED(
         approved, ASSERT_TRUE(EVP_PKEY_derive(pctx, output, &outlen)));
-    EXPECT_EQ(outlen, test.output_len);
     EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
 
     if (pctx != NULL) {
