@@ -358,6 +358,19 @@ add_library(
   ex_data.c
   hpke/hpke.c
   hrss/hrss.c
+  kyber/kem_kyber512.c
+  kyber/p_kyber.c
+  kyber/p_kyber512_asn1.c
+  kyber/pqcrystals-kyber_kyber512_ref/cbd.c
+  kyber/pqcrystals-kyber_kyber512_ref/fips202.c
+  kyber/pqcrystals-kyber_kyber512_ref/indcpa.c
+  kyber/pqcrystals-kyber_kyber512_ref/kem.c
+  kyber/pqcrystals-kyber_kyber512_ref/ntt.c
+  kyber/pqcrystals-kyber_kyber512_ref/poly.c
+  kyber/pqcrystals-kyber_kyber512_ref/polyvec.c
+  kyber/pqcrystals-kyber_kyber512_ref/reduce.c
+  kyber/pqcrystals-kyber_kyber512_ref/symmetric-shake.c
+  kyber/pqcrystals-kyber_kyber512_ref/verify.c
   lhash/lhash.c
   mem.c
   obj/obj.c
@@ -387,6 +400,7 @@ add_library(
   rand_extra/forkunsafe.c
   rand_extra/fuchsia.c
   rand_extra/rand_extra.c
+  rand_extra/pq_custom_randombytes.c
   rand_extra/windows.c
   rc4/rc4.c
   refcount_c11.c
@@ -651,6 +665,7 @@ if(BUILD_TESTING)
     err/err_test.cc
     evp_extra/evp_extra_test.cc
     evp_extra/evp_test.cc
+    evp_extra/pq_kem_kat_tests_kyber512.cc
     evp_extra/scrypt_test.cc
     fipsmodule/aes/aes_test.cc
     fipsmodule/bn/bn_test.cc
@@ -674,6 +689,7 @@ if(BUILD_TESTING)
     hmac_extra/hmac_test.cc
     hrss/hrss_test.cc
     impl_dispatch_test.cc
+    kyber/p_kyber_test.cc
     lhash/lhash_test.cc
     obj/obj_test.cc
     ocsp/ocsp_test.cc
@@ -703,6 +719,7 @@ if(BUILD_TESTING)
 
     $<TARGET_OBJECTS:crypto_test_data>
     $<TARGET_OBJECTS:boringssl_gtest_main>
+
   )
 
   add_dependencies(${CRYPTO_TEST_EXEC} global_target)

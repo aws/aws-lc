@@ -3045,14 +3045,13 @@ read alert 1 0
 			expectedLocalError: "remote error: illegal parameter",
 		},
 		{
-			name: "TooManyKeyUpdates",
+			name: "LotsOfKeyUpdates",
 			config: Config{
 				MaxVersion: VersionTLS13,
 			},
-			sendKeyUpdates:   33,
+			sendKeyUpdates:   100,
 			keyUpdateRequest: keyUpdateNotRequested,
-			shouldFail:       true,
-			expectedError:    ":TOO_MANY_KEY_UPDATES:",
+			shouldFail:       false,
 		},
 		{
 			name: "EmptySessionID",
