@@ -168,13 +168,13 @@ static int is_ec_fips_approved(int curve_nid) {
 
 // is_md_fips_approved_for_signing returns one if the given message digest type
 // is FIPS approved for signing, and zero otherwise.
-// TODO (CryptoAlg-1212): FIPS validate SHA512/256 for signing.
 static int is_md_fips_approved_for_signing(int md_type) {
   switch (md_type) {
     case NID_sha224:
     case NID_sha256:
     case NID_sha384:
     case NID_sha512:
+    case NID_sha512_256:
       return 1;
     default:
       return 0;
@@ -183,7 +183,6 @@ static int is_md_fips_approved_for_signing(int md_type) {
 
 // is_md_fips_approved_for_verifying returns one if the given message digest
 // type is FIPS approved for verifying, and zero otherwise.
-// TODO (CryptoAlg-1212): FIPS validate SHA512/256 for verifying.
 static int is_md_fips_approved_for_verifying(int md_type) {
   switch (md_type) {
     case NID_sha1:
@@ -191,6 +190,7 @@ static int is_md_fips_approved_for_verifying(int md_type) {
     case NID_sha256:
     case NID_sha384:
     case NID_sha512:
+    case NID_sha512_256:
       return 1;
     default:
       return 0;
@@ -330,15 +330,14 @@ void EVP_DigestSign_verify_service_indicator(const EVP_MD_CTX *ctx) {
                                       is_md_fips_approved_for_signing);
 }
 
-// TODO (CryptoAlg-1212): FIPS validate SHA512/256 for HMAC.
 void HMAC_verify_service_indicator(const EVP_MD *evp_md) {
-  // HMAC with SHA1, SHA224, SHA256, SHA384, and SHA512 are approved.
   switch (evp_md->type){
     case NID_sha1:
     case NID_sha224:
     case NID_sha256:
     case NID_sha384:
     case NID_sha512:
+    case NID_sha512_256:
       FIPS_service_indicator_update_state();
       break;
     default:
