@@ -12,6 +12,7 @@ static const EVP_PKEY_METHOD *const non_fips_pkey_evp_methods[] = {
   &x25519_pkey_meth,
   &kyber512_pkey_meth,
   &hkdf_pkey_meth,
+  &dilithium3_pkey_meth,
 };
 
 static const EVP_PKEY_ASN1_METHOD *const asn1_evp_pkey_methods[] = {
@@ -22,6 +23,7 @@ static const EVP_PKEY_ASN1_METHOD *const asn1_evp_pkey_methods[] = {
   &ed25519_asn1_meth,
   &x25519_asn1_meth,
   &kyber512_asn1_meth,
+  &dilithium3_asn1_meth
 };
 
 OPENSSL_STATIC_ASSERT(
