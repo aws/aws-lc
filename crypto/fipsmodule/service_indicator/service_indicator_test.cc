@@ -1598,61 +1598,121 @@ static const struct HKDFTestVector {
     },
 };
 
-// TODO(CryptoAlg-1281): Do we need to test HKDF_Expand separately from this?
+// Index into the kHKDFTestVectors array; used in the EVP_HKDF_Extract and
+// EVP_HKDF_Expand tests, below.
+#define EVP_HKDF_TEST_EXTRACT_EXPAND 3
+
 class HKDF_ServiceIndicatorTest : public TestWithNoErrors<HKDFTestVector> {};
 
 INSTANTIATE_TEST_SUITE_P(All, HKDF_ServiceIndicatorTest,
                          testing::ValuesIn(kHKDFTestVectors));
 
 TEST_P(HKDF_ServiceIndicatorTest, HKDFTest) {
-  const HKDFTestVector &test = GetParam();
+    const HKDFTestVector &test = GetParam();
 
-  FIPSStatus approved = AWSLC_NOT_APPROVED;
+    FIPSStatus approved = AWSLC_NOT_APPROVED;
 
-  uint8_t output[sizeof(kHKDF_okm_tc2_sha256)];   // largest test vector output size
-  CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, ASSERT_TRUE(HKDF(output, test.output_len, test.func(),
-                                 test.ikm, test.ikm_size,
-                                 test.salt, test.salt_size,
-                                 test.info, test.info_size)));
-  EXPECT_EQ(Bytes(test.expected_output, test.output_len),
-            Bytes(output, test.output_len));
-  EXPECT_EQ(approved, test.expect_approved);
+    uint8_t output[sizeof(kHKDF_okm_tc2_sha256)];   // largest test output size
+    CALL_SERVICE_AND_CHECK_APPROVED(
+        approved, ASSERT_TRUE(HKDF(output, test.output_len, test.func(),
+                                   test.ikm, test.ikm_size,
+                                   test.salt, test.salt_size,
+                                   test.info, test.info_size)));
+    EXPECT_EQ(Bytes(test.expected_output, test.output_len),
+              Bytes(output, test.output_len));
+    EXPECT_EQ(approved, test.expect_approved);
 }
 
-// TODO(CryptoAlg-1281): Do we need to test HKDF_Expand separately from this?
 class EVP_HKDF_ServiceIndicatorTest : public TestWithNoErrors<HKDFTestVector> {};
 
 INSTANTIATE_TEST_SUITE_P(All, EVP_HKDF_ServiceIndicatorTest,
                          testing::ValuesIn(kHKDFTestVectors));
 
-TEST_P(EVP_HKDF_ServiceIndicatorTest, HKDFTest) {
-  const HKDFTestVector &test = GetParam();
+TEST_P(EVP_HKDF_ServiceIndicatorTest, EVP_HKDFTest) {
+    const HKDFTestVector &test = GetParam();
 
-  FIPSStatus approved = AWSLC_NOT_APPROVED;
+    FIPSStatus approved = AWSLC_NOT_APPROVED;
 
-  uint8_t output[sizeof(kHKDF_okm_tc2_sha256)];   // largest test vector output size
-  EVP_PKEY_CTX *pctx;
-  size_t outlen = test.output_len;
+    uint8_t output[sizeof(kHKDF_okm_tc2_sha256)];   // largest test output size
+    EVP_PKEY_CTX *pctx;
+    size_t outlen = test.output_len;
 
-  pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_HKDF, NULL);
-  EXPECT_NE(pctx, nullptr);
-  EXPECT_EQ(EVP_PKEY_derive_init(pctx), 1);
-  EXPECT_EQ(EVP_PKEY_CTX_set_hkdf_md(pctx, test.func()), 1);
-  EXPECT_EQ(EVP_PKEY_CTX_set1_hkdf_key(pctx, test.ikm, test.ikm_size), 1);
-  EXPECT_EQ(EVP_PKEY_CTX_set1_hkdf_salt(pctx, test.salt, test.salt_size), 1);
-  EXPECT_EQ(EVP_PKEY_CTX_add1_hkdf_info(pctx, test.info, test.info_size), 1);
+    pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_HKDF, NULL);
+    EXPECT_NE(pctx, nullptr);
+    EXPECT_TRUE(EVP_PKEY_derive_init(pctx));
+    EXPECT_TRUE(EVP_PKEY_CTX_hkdf_mode(pctx,
+                                       EVP_PKEY_HKDEF_MODE_EXTRACT_AND_EXPAND));
+    EXPECT_TRUE(EVP_PKEY_CTX_set_hkdf_md(pctx, test.func()));
+    EXPECT_TRUE(EVP_PKEY_CTX_set1_hkdf_key(pctx, test.ikm, test.ikm_size));
+    EXPECT_TRUE(EVP_PKEY_CTX_set1_hkdf_salt(pctx, test.salt, test.salt_size));
+    EXPECT_TRUE(EVP_PKEY_CTX_add1_hkdf_info(pctx, test.info, test.info_size));
 
-  CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, ASSERT_EQ(EVP_PKEY_derive(pctx, output, &outlen), 1));
-  EXPECT_EQ(outlen, test.output_len);
-  EXPECT_EQ(Bytes(test.expected_output, test.output_len),
-            Bytes(output, test.output_len));
-  EXPECT_EQ(approved, test.expect_approved);
+    CALL_SERVICE_AND_CHECK_APPROVED(
+        approved, ASSERT_TRUE(EVP_PKEY_derive(pctx, output, &outlen)));
+    EXPECT_EQ(outlen, test.output_len);
+    EXPECT_EQ(Bytes(test.expected_output, test.output_len),
+              Bytes(output, test.output_len));
+    EXPECT_EQ(approved, test.expect_approved);
 
-  if (pctx != NULL) {
-    EVP_PKEY_CTX_free(pctx);
-  }
+    if (pctx != NULL) {
+        EVP_PKEY_CTX_free(pctx);
+    }
+}
+
+// Test only HKDF's Extract phase, which is not approved on its own.
+TEST(EVP_HKDF_ServiceIndicatorTest, EVP_HKDF_Extract) {
+    const HKDFTestVector &test = kHKDFTestVectors[EVP_HKDF_TEST_EXTRACT_EXPAND];
+    FIPSStatus approved = AWSLC_NOT_APPROVED;
+    uint8_t output[sizeof(kHKDF_okm_tc2_sha256)];  // largest test output size
+    EVP_PKEY_CTX *pctx;
+    size_t outlen = test.output_len;
+
+    pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_HKDF, NULL);
+    EXPECT_NE(pctx, nullptr);
+    EXPECT_TRUE(EVP_PKEY_derive_init(pctx));
+    EXPECT_TRUE(EVP_PKEY_CTX_hkdf_mode(pctx,
+                                       EVP_PKEY_HKDEF_MODE_EXTRACT_ONLY));
+    EXPECT_TRUE(EVP_PKEY_CTX_set_hkdf_md(pctx, test.func()));
+    EXPECT_TRUE(EVP_PKEY_CTX_set1_hkdf_key(pctx, test.ikm, test.ikm_size));
+    EXPECT_TRUE(EVP_PKEY_CTX_set1_hkdf_salt(pctx, test.salt, test.salt_size));
+    EXPECT_TRUE(EVP_PKEY_CTX_add1_hkdf_info(pctx, test.info, test.info_size));
+
+    CALL_SERVICE_AND_CHECK_APPROVED(
+        approved, ASSERT_TRUE(EVP_PKEY_derive(pctx, output, &outlen)));
+    EXPECT_EQ(outlen, test.output_len);
+    EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+
+    if (pctx != NULL) {
+        EVP_PKEY_CTX_free(pctx);
+    }
+}
+
+// Test only HKDF's Expand phase, which is not approved on its own.
+TEST(EVP_HKDF_ServiceIndicatorTest, EVP_HKDF_Expand) {
+    const HKDFTestVector &test = kHKDFTestVectors[EVP_HKDF_TEST_EXTRACT_EXPAND];
+    FIPSStatus approved = AWSLC_NOT_APPROVED;
+    uint8_t output[sizeof(kHKDF_okm_tc2_sha256)];  // largest test output size
+    EVP_PKEY_CTX *pctx;
+    size_t outlen = test.output_len;
+
+    pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_HKDF, NULL);
+    EXPECT_NE(pctx, nullptr);
+    EXPECT_TRUE(EVP_PKEY_derive_init(pctx));
+    EXPECT_TRUE(EVP_PKEY_CTX_hkdf_mode(pctx,
+                                       EVP_PKEY_HKDEF_MODE_EXPAND_ONLY));
+    EXPECT_TRUE(EVP_PKEY_CTX_set_hkdf_md(pctx, test.func()));
+    EXPECT_TRUE(EVP_PKEY_CTX_set1_hkdf_key(pctx, test.ikm, test.ikm_size));
+    EXPECT_TRUE(EVP_PKEY_CTX_set1_hkdf_salt(pctx, test.salt, test.salt_size));
+    EXPECT_TRUE(EVP_PKEY_CTX_add1_hkdf_info(pctx, test.info, test.info_size));
+
+    CALL_SERVICE_AND_CHECK_APPROVED(
+        approved, ASSERT_TRUE(EVP_PKEY_derive(pctx, output, &outlen)));
+    EXPECT_EQ(outlen, test.output_len);
+    EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+
+    if (pctx != NULL) {
+        EVP_PKEY_CTX_free(pctx);
+    }
 }
 
 // RSA tests are not parameterized with the |kRSATestVectors| as key
