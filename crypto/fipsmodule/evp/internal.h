@@ -72,7 +72,7 @@ extern "C" {
 
 struct evp_pkey_asn1_method_st {
   int pkey_id;
-  uint8_t oid[9];
+  uint8_t oid[11];
   uint8_t oid_len;
 
   // pub_decode decodes |params| and |key| as a SubjectPublicKeyInfo
@@ -117,7 +117,7 @@ struct evp_pkey_asn1_method_st {
   int (*param_cmp)(const EVP_PKEY *a, const EVP_PKEY *b);
 
   void (*pkey_free)(EVP_PKEY *pkey);
-} /* EVP_PKEY_ASN1_METHOD */;
+}; // EVP_PKEY_ASN1_METHOD
 
 
 #define EVP_PKEY_OP_UNDEFINED 0
@@ -206,7 +206,7 @@ struct evp_pkey_ctx_st {
   int operation;
   // Algorithm specific data
   void *data;
-} /* EVP_PKEY_CTX */;
+}; // EVP_PKEY_CTX
 
 struct evp_pkey_method_st {
   int pkey_id;
@@ -244,11 +244,21 @@ struct evp_pkey_method_st {
   int (*paramgen)(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey);
 
   int (*ctrl)(EVP_PKEY_CTX *ctx, int type, int p1, void *p2);
-} /* EVP_PKEY_METHOD */;
+
+  // Encapsulate and decapsulate are operations defined for a
+  // Key Encapsulation Mechanism (KEM).
+  int (*encapsulate)(EVP_PKEY_CTX *ctx,
+                     uint8_t *ciphertext, size_t *ciphertext_len,
+                     uint8_t *shared_secret, size_t *shared_secret_len);
+
+  int (*decapsulate)(EVP_PKEY_CTX *ctx,
+                     uint8_t *shared_secret, size_t *shared_secret_len,
+                     const uint8_t *ciphertext, size_t ciphertext_len);
+}; // EVP_PKEY_METHOD
 
 #define FIPS_EVP_PKEY_METHODS 3
-#define NON_FIPS_EVP_PKEY_METHODS 3
-#define ASN1_EVP_PKEY_METHODS 6
+#define NON_FIPS_EVP_PKEY_METHODS 4
+#define ASN1_EVP_PKEY_METHODS 7
 
 struct fips_evp_pkey_methods {
   const EVP_PKEY_METHOD * methods[FIPS_EVP_PKEY_METHODS];

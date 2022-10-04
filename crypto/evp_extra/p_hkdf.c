@@ -207,6 +207,8 @@ const EVP_PKEY_METHOD hkdf_pkey_meth = {
     pkey_hkdf_derive,
     /*paramgen=*/NULL,
     pkey_hkdf_ctrl,
+    /*encapsulate*/NULL,
+    /*decapsulate*/NULL,
 };
 
 int EVP_PKEY_CTX_hkdf_mode(EVP_PKEY_CTX *ctx, int mode) {
