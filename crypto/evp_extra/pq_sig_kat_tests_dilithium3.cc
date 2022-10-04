@@ -67,13 +67,15 @@
   ASSERT_TRUE(EVP_DigestSignInit(mdctx, &dilithium_pkey_ctx, NULL, NULL, dilithium_pkey));
   ASSERT_TRUE(EVP_DigestSign(mdctx, signature, &signature_len, msg.data(), mlen_int));
   EXPECT_EQ(Bytes(sm), Bytes(signature, signature_len));
-
   //verify the signature for the message
   ASSERT_TRUE(EVP_DigestVerify(mdctx, signature, signature_len, msg.data(), mlen_int));
 
+
   EVP_PKEY_free(dilithium_pkey);
-  //EVP_MD_CTX_free(mdctx);
-  EVP_PKEY_CTX_free(dilithium_pkey_ctx);
+  //EVP_MD_CTX_cleanup(mdctx);
+  EVP_MD_CTX_free(mdctx);
+  //EVP_PKEY_CTX_free(dilithium_pkey_ctx);
+
   //md_ctx.Reset();
 }
 
