@@ -19115,7 +19115,7 @@ func addHintMismatchTests() {
 		// We run the first connection with tickets enabled, so the client is
 		// issued a ticket, then disable tickets on the second connection.
 		testCases = append(testCases, testCase{
-			name:               protocol.String() + "-HintMismatch-NoTickets1",
+			name:               protocol.String() + "-HintMismatch-NoTickets1-TLS13",
 			testType:           serverTest,
 			protocol:           protocol,
 			skipSplitHandshake: true,
@@ -19131,7 +19131,7 @@ func addHintMismatchTests() {
 			expectResumeRejected: true,
 		})
 		testCases = append(testCases, testCase{
-			name:               protocol.String() + "-HintMismatch-NoTickets2",
+			name:               protocol.String() + "-HintMismatch-NoTickets2-TLS13",
 			testType:           serverTest,
 			protocol:           protocol,
 			skipSplitHandshake: true,
@@ -19145,6 +19145,39 @@ func addHintMismatchTests() {
 			},
 			resumeSession: true,
 		})
+		if protocol != quic {
+			testCases = append(testCases, testCase{
+				name:               protocol.String() + "-HintMismatch-NoTickets1-TLS12",
+				testType:           serverTest,
+				protocol:           protocol,
+				skipSplitHandshake: true,
+				config: Config{
+					MinVersion: VersionTLS12,
+					MaxVersion: VersionTLS12,
+				},
+				flags: []string{
+					"-on-resume-allow-hint-mismatch",
+					"-on-shim-on-resume-no-ticket",
+				},
+				resumeSession:        true,
+				expectResumeRejected: true,
+			})
+			testCases = append(testCases, testCase{
+				name:               protocol.String() + "-HintMismatch-NoTickets2-TLS12",
+				testType:           serverTest,
+				protocol:           protocol,
+				skipSplitHandshake: true,
+				config: Config{
+					MinVersion: VersionTLS12,
+					MaxVersion: VersionTLS12,
+				},
+				flags: []string{
+					"-on-resume-allow-hint-mismatch",
+					"-on-handshaker-on-resume-no-ticket",
+				},
+				resumeSession: true,
+			})
+		}
 
 		// The shim and handshaker may disagree on whether to request a client
 		// certificate.

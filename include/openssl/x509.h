@@ -2582,6 +2582,10 @@ OPENSSL_EXPORT void X509_STORE_CTX_set_depth(X509_STORE_CTX *ctx, int depth);
 // will force the behaviour to match that of previous versions.
 #define X509_V_FLAG_NO_ALT_CHAINS 0x100000
 
+// X509_V_FLAG_NO_CHECK_TIME disables all time checks in certificate
+// verification.
+#define X509_V_FLAG_NO_CHECK_TIME 0x200000
+
 #define X509_VP_FLAG_DEFAULT 0x1
 #define X509_VP_FLAG_OVERWRITE 0x2
 #define X509_VP_FLAG_RESET_FLAGS 0x4
@@ -2680,8 +2684,21 @@ OPENSSL_EXPORT void X509_STORE_CTX_zero(X509_STORE_CTX *ctx);
 OPENSSL_EXPORT void X509_STORE_CTX_free(X509_STORE_CTX *ctx);
 OPENSSL_EXPORT int X509_STORE_CTX_init(X509_STORE_CTX *ctx, X509_STORE *store,
                                        X509 *x509, STACK_OF(X509) *chain);
+
+// X509_STORE_CTX_set0_trusted_stack configures |ctx| to trust the certificates
+// in |sk|. |sk| must remain valid for the duration of |ctx|.
+//
+// WARNING: This function differs from most |set0| functions in that it does not
+// take ownership of its input. The caller is required to ensure the lifetimes
+// are consistent.
+OPENSSL_EXPORT void X509_STORE_CTX_set0_trusted_stack(X509_STORE_CTX *ctx,
+                                                      STACK_OF(X509) *sk);
+
+// X509_STORE_CTX_trusted_stack is a deprecated alias for
+// |X509_STORE_CTX_set0_trusted_stack|.
 OPENSSL_EXPORT void X509_STORE_CTX_trusted_stack(X509_STORE_CTX *ctx,
                                                  STACK_OF(X509) *sk);
+
 OPENSSL_EXPORT void X509_STORE_CTX_cleanup(X509_STORE_CTX *ctx);
 
 OPENSSL_EXPORT X509_STORE *X509_STORE_CTX_get0_store(X509_STORE_CTX *ctx);
