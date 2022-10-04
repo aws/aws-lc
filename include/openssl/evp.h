@@ -181,6 +181,7 @@ OPENSSL_EXPORT EC_KEY *EVP_PKEY_get1_EC_KEY(const EVP_PKEY *pkey);
 #define EVP_PKEY_X25519 NID_X25519
 #define EVP_PKEY_KYBER512 NID_KYBER512
 #define EVP_PKEY_HKDF NID_hkdf
+#define EVP_PKEY_DILITHIUM3 NID_DILITHIUM3
 
 // EVP_PKEY_assign sets the underlying key of |pkey| to |key|, which must be of
 // the given type. It returns one if successful or zero if the |type| argument
@@ -287,8 +288,8 @@ OPENSSL_EXPORT int EVP_PKEY_get_raw_public_key(const EVP_PKEY *pkey,
 // signing options.
 //
 // For single-shot signing algorithms which do not use a pre-hash, such as
-// Ed25519, |type| should be NULL. The |EVP_MD_CTX| itself is unused but is
-// present so the API is uniform. See |EVP_DigestSign|.
+// Ed25519 and Dilithium, |type| should be NULL. The |EVP_MD_CTX| itself is
+// unused but is present so the API is uniform. See |EVP_DigestSign|.
 //
 // This function does not mutate |pkey| for thread-safety purposes and may be
 // used concurrently with other non-mutating functions on |pkey|.
@@ -343,8 +344,8 @@ OPENSSL_EXPORT int EVP_DigestSign(EVP_MD_CTX *ctx, uint8_t *out_sig,
 // signing options.
 //
 // For single-shot signing algorithms which do not use a pre-hash, such as
-// Ed25519, |type| should be NULL. The |EVP_MD_CTX| itself is unused but is
-// present so the API is uniform. See |EVP_DigestVerify|.
+// Ed25519 and Dilithium, |type| should be NULL. The |EVP_MD_CTX| itself is
+// unused but is present so the API is uniform. See |EVP_DigestVerify|.
 //
 // This function does not mutate |pkey| for thread-safety purposes and may be
 // used concurrently with other non-mutating functions on |pkey|.
@@ -550,7 +551,8 @@ OPENSSL_EXPORT int EVP_PKEY_sign_init(EVP_PKEY_CTX *ctx);
 // Otherwise, |*sig_len| must contain the number of bytes of space available at
 // |sig|. If sufficient, the signature will be written to |sig| and |*sig_len|
 // updated with the true length. This function will fail for signature
-// algorithms like Ed25519 that do not support signing pre-hashed inputs.
+// algorithms like Ed25519 and Dilithium that do not support signing pre-hashed
+// inputs.
 //
 // WARNING: |digest| must be the output of some hash function on the data to be
 // signed. Passing unhashed inputs will not result in a secure signature scheme.
@@ -573,7 +575,8 @@ OPENSSL_EXPORT int EVP_PKEY_verify_init(EVP_PKEY_CTX *ctx);
 
 // EVP_PKEY_verify verifies that |sig_len| bytes from |sig| are a valid
 // signature for |digest|. This function will fail for signature
-// algorithms like Ed25519 that do not support signing pre-hashed inputs.
+// algorithms like Ed25519 and Dilithium that do not support signing pre-hashed
+// inputs.
 //
 // WARNING: |digest| must be the output of some hash function on the data to be
 // verified. Passing unhashed inputs will not result in a secure signature
