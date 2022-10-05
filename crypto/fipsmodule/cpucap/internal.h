@@ -174,6 +174,7 @@ OPENSSL_INLINE int CRYPTO_is_ARMv8_GCM_8x_capable(void) {
 #else
   return (OPENSSL_armcap_P & ARMV8_AES_GCM_UNROLL8) != 0;
 }
+#endif
 
 #endif  // OPENSSL_ARM || OPENSSL_AARCH64
 
