@@ -3413,17 +3413,19 @@ TEST(ServiceIndicatorTest, AESXTS) {
   size_t total = 0;
   int len = 0;
 
+  // Result should be fully encrypted during |EVP_CipherUpdate| for AES-XTS.
   CALL_SERVICE_AND_CHECK_APPROVED(approved,
     EVP_CipherUpdate(ctx.get(), encrypt_result.data(), &len,
                           plaintext.data(), plaintext.size()));
   ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
   total += static_cast<size_t>(len);
   encrypt_result.resize(total);
-  // Result should be fully encrypted during |EVP_CipherUpdate| for AES-XTS.
   EXPECT_EQ(Bytes(encrypt_result), Bytes(ciphertext));
+
+  // Ensure |EVP_CipherFinal_ex| is a no-op, but only |*Final| functions
+  // should indicate service indicator approval.
   CALL_SERVICE_AND_CHECK_APPROVED(approved,
     EVP_CipherFinal_ex(ctx.get(), encrypt_result.data() + total, &len));
-  // Ensure |EVP_CipherFinal_ex| is a no-op.
   EXPECT_EQ(Bytes(encrypt_result), Bytes(ciphertext));
   EXPECT_EQ(0, len);
 
