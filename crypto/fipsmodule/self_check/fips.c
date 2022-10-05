@@ -46,12 +46,15 @@ int FIPS_query_algorithm_status(const char *algorithm) {
     "AES-GCM",
     "AES-KW",
     "AES-KWP",
+    "AES-XTS",
     "ctrDRBG",
     "ECC-SSC",
     "ECDSA-sign",
     "ECDSA-verify",
     "FFC-SSC",
     "HMAC",
+    "HKDF"
+    "PBKDF"
     "RSA-sign",
     "RSA-verify",
     "SHA-1",
