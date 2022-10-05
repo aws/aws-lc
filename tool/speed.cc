@@ -584,6 +584,59 @@ static bool SpeedAEADOpen(const EVP_AEAD *aead, const std::string &name,
 
   return true;
 }
+
+static bool SpeedKEM(const std::string &name, int nid, const std::string &selected) {
+  if (!selected.empty() && name.find(selected) == std::string::npos) {
+    return true;
+  }
+  BM_NAMESPACE::UniquePtr<EVP_PKEY_CTX> server_pkey_ctx(EVP_PKEY_CTX_new_id(nid, nullptr));
+  if (!server_pkey_ctx || !EVP_PKEY_keygen_init(server_pkey_ctx.get())) {
+    return false;
+  }
+
+  EVP_PKEY *server_pkey = NULL;
+  TimeResults results;
+  if (!TimeFunction(&results, [&server_pkey_ctx, &server_pkey]() -> bool {
+        return EVP_PKEY_keygen(server_pkey_ctx.get(), &server_pkey);
+      })) {
+    return false;
+  }
+  results.Print(name + " keygen");
+
+  size_t shared_secret_len = 0;
+  size_t ciphertext_len = 0;
+  EVP_PKEY_encapsulate(server_pkey_ctx.get(), NULL, &ciphertext_len, NULL, &shared_secret_len);
+  std::unique_ptr<uint8_t[]> ciphertext(new uint8_t[ciphertext_len]);
+  std::unique_ptr<uint8_t[]> shared_secret(new uint8_t[shared_secret_len]);
+
+  size_t public_key_size = 0;
+  EVP_PKEY_get_raw_public_key(server_pkey, NULL, &public_key_size);
+  std::unique_ptr<uint8_t[]> public_key(new uint8_t[public_key_size]);
+  EVP_PKEY_get_raw_public_key(server_pkey, public_key.get(), &public_key_size);
+
+  BM_NAMESPACE::UniquePtr<EVP_PKEY> client_pkey(EVP_PKEY_new_raw_public_key(nid,NULL,public_key.get(),public_key_size));
+  BM_NAMESPACE::UniquePtr<EVP_PKEY_CTX> client_pkey_ctx(EVP_PKEY_CTX_new(client_pkey.get(), nullptr));
+
+  if (!TimeFunction(&results, [&ciphertext, &ciphertext_len, &shared_secret, &shared_secret_len, &client_pkey_ctx]() -> bool {
+        return EVP_PKEY_encapsulate(client_pkey_ctx.get(), ciphertext.get(), &ciphertext_len, shared_secret.get(), &shared_secret_len);
+      })) {
+    return false;
+  }
+  results.Print(name + " encapsulate");
+
+  if (!TimeFunction(&results, [&ciphertext, &ciphertext_len, &shared_secret, &shared_secret_len, &server_pkey_ctx]() -> bool {
+        return EVP_PKEY_decapsulate(server_pkey_ctx.get(), shared_secret.get(), &shared_secret_len, ciphertext.get(), ciphertext_len);
+      })) {
+    return false;
+  }
+  results.Print(name + " decapsulate");
+  return true;
+}
+
+
+static bool SpeedKEM(std::string selected) {
+  return SpeedKEM("Kyber 512", NID_KYBER512, selected);
+}
 #endif
 
 static bool SpeedAESBlock(const std::string &name, unsigned bits,
@@ -1754,6 +1807,7 @@ bool Speed(const std::vector<std::string> &args) {
      !SpeedRSAKeyGen(selected)
 #if !defined(OPENSSL_BENCHMARK)
      ||
+     !SpeedKEM(selected) ||
      !SpeedAEAD(EVP_aead_aes_128_gcm(), "AEAD-AES-128-GCM", kTLSADLen, selected) ||
      !SpeedAEAD(EVP_aead_aes_256_gcm(), "AEAD-AES-256-GCM", kTLSADLen, selected) ||
      !SpeedAEAD(EVP_aead_chacha20_poly1305(), "AEAD-ChaCha20-Poly1305", kTLSADLen, selected) ||
