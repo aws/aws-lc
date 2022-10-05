@@ -58,25 +58,27 @@
   EXPECT_EQ(Bytes(sk), Bytes(dilithium3Key->priv, DILITHIUM3_PRIVATE_KEY_BYTES));
 
   //generate a signature for the message
-  EVP_MD_CTX *mdctx = NULL;
-  mdctx = EVP_MD_CTX_new();  //mem leak
-  //bssl::ScopedEVP_MD_CTX md_ctx; //md_ctx.get()
+  //EVP_MD_CTX *mdctx = NULL;
+  //EVP_MD_CTX_init(mdctx);
+  //mdctx = EVP_MD_CTX_new();  //mem leak
+  bssl::ScopedEVP_MD_CTX md_ctx; //md_ctx.get()
 
   //we have to use EVP_DigestSign because dilithium supports the use of non-hash-then-sign
   //(just like ed25519) so we first init EVP_DigestSign WITHOUT a hash function.
-  ASSERT_TRUE(EVP_DigestSignInit(mdctx, &dilithium_pkey_ctx, NULL, NULL, dilithium_pkey));
-  ASSERT_TRUE(EVP_DigestSign(mdctx, signature, &signature_len, msg.data(), mlen_int));
+  ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), NULL, NULL, NULL, dilithium_pkey));
+  ASSERT_TRUE(EVP_DigestSign(md_ctx.get(), signature, &signature_len, msg.data(), mlen_int));
   EXPECT_EQ(Bytes(sm), Bytes(signature, signature_len));
   //verify the signature for the message
-  ASSERT_TRUE(EVP_DigestVerify(mdctx, signature, signature_len, msg.data(), mlen_int));
+  ASSERT_TRUE(EVP_DigestVerify(md_ctx.get(), signature, signature_len, msg.data(), mlen_int));
 
-
+  //EVP_MD_CTX_free(md_ctx.get());
   EVP_PKEY_free(dilithium_pkey);
   //EVP_MD_CTX_cleanup(mdctx);
-  EVP_MD_CTX_free(mdctx);
-  //EVP_PKEY_CTX_free(dilithium_pkey_ctx);
 
-  //md_ctx.Reset();
+  EVP_PKEY_CTX_free(dilithium_pkey_ctx);
+
+
+  md_ctx.Reset();
 }
 
 TEST(Dilithium3Test, KAT) {
