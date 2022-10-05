@@ -275,16 +275,6 @@ static const uint8_t kAESXTSKey_256[64] = {
     0x2c, 0xf4, 0x1b, 0x08
 };
 
-// From crypto/fipsmodule/modes/xts_test.cc
-static const uint8_t kAESXTSDuplicateKey[64] = {
-    0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa, 0xf9, 0xf8, 0xf7, 0xf6, 0xf5, 0xf4,
-    0xf3, 0xf2, 0xf1, 0xf0, 0xef, 0xee, 0xed, 0xec, 0xeb, 0xea, 0xe9, 0xe8,
-    0xe7, 0xe6, 0xe5, 0xe4, 0xe3, 0xe2, 0xe1, 0xe0, 0xff, 0xfe, 0xfd, 0xfc,
-    0xfb, 0xfa, 0xf9, 0xf8, 0xf7, 0xf6, 0xf5, 0xf4, 0xf3, 0xf2, 0xf1, 0xf0,
-    0xef, 0xee, 0xed, 0xec, 0xeb, 0xea, 0xe9, 0xe8, 0xe7, 0xe6, 0xe5, 0xe4,
-    0xe3, 0xe2, 0xe1, 0xe0
-};
-
 static const uint8_t kAESXTSIV_256[16] = {
     0xad, 0xf8, 0xd9, 0x26, 0x27, 0x46, 0x4a, 0xd2, 0xf0, 0x42, 0x8e, 0x84,
     0xa9, 0xf8, 0x75, 0x64
@@ -834,18 +824,6 @@ static const struct CipherTestVector {
         AWSLC_NOT_APPROVED,
     },
     {
-        EVP_aes_256_xts(),
-        kAESXTSKey_256,
-        sizeof(kAESXTSKey_256),
-        kAESXTSIV_256,
-        sizeof(kAESXTSIV_256),
-        kAESXTSPlaintext_256,
-        sizeof(kAESXTSPlaintext_256),
-        kAESXTSCiphertext_256,
-        sizeof(kAESXTSCiphertext_256),
-        AWSLC_APPROVED,
-    },
-    {
         EVP_des_ede3(),
         kAESKey_192,
         sizeof(kAESKey_192),
@@ -948,23 +926,6 @@ TEST_P(EVPServiceIndicatorTest, EVP_Ciphers) {
                 test.expect_approved);
   TestOperation(cipher, false /* decrypt */, key, iv, plaintext, ciphertext,
                 test.expect_approved);
-}
-
-// Non-approval tests for AES-XTS.
-TEST(XTSServiceIndicatorTest, ExtraTests) {
-  FIPSStatus approved = AWSLC_NOT_APPROVED;
-  std::vector<uint8_t> key(kAESXTSDuplicateKey,
-      kAESXTSDuplicateKey + sizeof(kAESXTSDuplicateKey));
-  std::vector<uint8_t> iv(kAESXTSIV_256,
-      kAESXTSIV_256 + sizeof(kAESXTSIV_256));
-  bssl::ScopedEVP_CIPHER_CTX ctx;
-
-  // The 2 halves of the key used are identical, which will cause XTS to fail
-  // in init.
-  CALL_SERVICE_AND_CHECK_APPROVED(approved,
-    ASSERT_FALSE(EVP_CipherInit_ex(ctx.get(), EVP_aes_256_xts(), nullptr,
-                               key.data(), iv.data(), 1)));
-  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
 }
 
 static const struct DigestTestVector {
@@ -3441,6 +3402,60 @@ TEST(ServiceIndicatorTest, AESKWP) {
                                         sizeof(kAESKWPCiphertext))));
   EXPECT_EQ(Bytes(kPlaintext), Bytes(output, outlen));
   EXPECT_EQ(approved, AWSLC_APPROVED);
+}
+
+TEST(ServiceIndicatorTest, AESXTS) {
+  FIPSStatus approved = AWSLC_NOT_APPROVED;
+  std::vector<uint8_t> key(
+      kAESXTSKey_256,
+      kAESXTSKey_256 + sizeof(kAESXTSKey_256));
+  std::vector<uint8_t> iv(
+      kAESXTSIV_256,
+      kAESXTSIV_256 + sizeof(kAESXTSIV_256));
+  std::vector<uint8_t> plaintext(
+      kAESXTSPlaintext_256,
+      kAESXTSPlaintext_256 + sizeof(kAESXTSPlaintext_256));
+  std::vector<uint8_t> ciphertext(
+      kAESXTSCiphertext_256,
+      kAESXTSCiphertext_256 + sizeof(kAESXTSCiphertext_256));
+  bssl::ScopedEVP_CIPHER_CTX ctx;
+
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+    ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), EVP_aes_256_xts(), nullptr,
+                                key.data(), iv.data(), 1)));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  ASSERT_LE(EVP_CIPHER_CTX_iv_length(ctx.get()), iv.size());
+
+  ASSERT_TRUE(EVP_CIPHER_CTX_set_key_length(ctx.get(), key.size()));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+    ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), EVP_aes_256_xts(), nullptr,
+                                key.data(), iv.data(), 1)));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  ASSERT_TRUE(EVP_CIPHER_CTX_set_padding(ctx.get(), 0));
+  std::vector<uint8_t> encrypt_result;
+
+  size_t max_out = plaintext.size();
+  unsigned block_size = EVP_CIPHER_CTX_block_size(ctx.get());
+  max_out += block_size - (max_out % block_size);
+  encrypt_result.resize(max_out);
+  size_t total = 0;
+  int len = 0;
+
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+    EVP_CipherUpdate(ctx.get(), encrypt_result.data(), &len,
+                          plaintext.data(), plaintext.size()));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+  total += static_cast<size_t>(len);
+  encrypt_result.resize(total);
+  // Result should be fully encrypted during |EVP_CipherUpdate| for AES-XTS.
+  EXPECT_EQ(Bytes(encrypt_result), Bytes(ciphertext));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+    EVP_CipherFinal_ex(ctx.get(), encrypt_result.data() + total, &len));
+  // Ensure |EVP_CipherFinal_ex| is a no-op.
+  EXPECT_EQ(Bytes(encrypt_result), Bytes(ciphertext));
+  EXPECT_EQ(0, len);
+
+  ASSERT_EQ(approved, AWSLC_APPROVED);
 }
 
 TEST(ServiceIndicatorTest, FFDH) {
