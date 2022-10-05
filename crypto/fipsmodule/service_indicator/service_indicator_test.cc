@@ -275,6 +275,16 @@ static const uint8_t kAESXTSKey_256[64] = {
     0x2c, 0xf4, 0x1b, 0x08
 };
 
+// From crypto/fipsmodule/modes/xts_test.cc
+static const uint8_t kAESXTSDuplicateKey[64] = {
+    0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa, 0xf9, 0xf8, 0xf7, 0xf6, 0xf5, 0xf4,
+    0xf3, 0xf2, 0xf1, 0xf0, 0xef, 0xee, 0xed, 0xec, 0xeb, 0xea, 0xe9, 0xe8,
+    0xe7, 0xe6, 0xe5, 0xe4, 0xe3, 0xe2, 0xe1, 0xe0, 0xff, 0xfe, 0xfd, 0xfc,
+    0xfb, 0xfa, 0xf9, 0xf8, 0xf7, 0xf6, 0xf5, 0xf4, 0xf3, 0xf2, 0xf1, 0xf0,
+    0xef, 0xee, 0xed, 0xec, 0xeb, 0xea, 0xe9, 0xe8, 0xe7, 0xe6, 0xe5, 0xe4,
+    0xe3, 0xe2, 0xe1, 0xe0
+};
+
 static const uint8_t kAESXTSIV_256[16] = {
     0xad, 0xf8, 0xd9, 0x26, 0x27, 0x46, 0x4a, 0xd2, 0xf0, 0x42, 0x8e, 0x84,
     0xa9, 0xf8, 0x75, 0x64
@@ -882,8 +892,10 @@ static void TestOperation(const EVP_CIPHER *cipher, bool encrypt,
   bssl::ScopedEVP_CIPHER_CTX ctx;
   // Test running the EVP_Cipher interfaces one by one directly, and check
   // |EVP_EncryptFinal_ex| and |EVP_DecryptFinal_ex| for approval at the end.
-  ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), cipher, nullptr, nullptr, nullptr,
-                                encrypt ? 1 : 0));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+    ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), cipher, nullptr, nullptr, nullptr,
+                                encrypt ? 1 : 0)));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
   if (iv.size() > 0) {
     // IV specified for the test, so the context's IV length should match.
     ASSERT_LE(EVP_CIPHER_CTX_iv_length(ctx.get()), iv.size());
@@ -895,8 +907,10 @@ static void TestOperation(const EVP_CIPHER *cipher, bool encrypt,
 
 
   ASSERT_TRUE(EVP_CIPHER_CTX_set_key_length(ctx.get(), key.size()));
-  ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), cipher, nullptr, key.data(),
-                                iv.data(), encrypt ? 1 : 0));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+    ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), cipher, nullptr, key.data(),
+                                iv.data(), encrypt ? 1 : 0)));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
   ASSERT_TRUE(EVP_CIPHER_CTX_set_padding(ctx.get(), 0));
   std::vector<uint8_t> encrypt_result;
   DoCipherFinal(ctx.get(), &encrypt_result, in, expect_approved);
@@ -905,8 +919,10 @@ static void TestOperation(const EVP_CIPHER *cipher, bool encrypt,
   // Test using the one-shot |EVP_Cipher| function for approval.
   bssl::ScopedEVP_CIPHER_CTX ctx2;
   uint8_t output[256];
-  ASSERT_TRUE(EVP_CipherInit_ex(ctx2.get(), cipher, nullptr, key.data(),
-                                iv.data(), encrypt ? 1 : 0));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+    ASSERT_TRUE(EVP_CipherInit_ex(ctx2.get(), cipher, nullptr, key.data(),
+                                iv.data(), encrypt ? 1 : 0)));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
   CALL_SERVICE_AND_CHECK_APPROVED(
       approved, EVP_Cipher(ctx2.get(), output, in.data(), in.size()));
   EXPECT_EQ(approved, expect_approved);
@@ -932,6 +948,23 @@ TEST_P(EVPServiceIndicatorTest, EVP_Ciphers) {
                 test.expect_approved);
   TestOperation(cipher, false /* decrypt */, key, iv, plaintext, ciphertext,
                 test.expect_approved);
+}
+
+// Non-approval tests for AES-XTS.
+TEST(XTSServiceIndicatorTest, ExtraTests) {
+  FIPSStatus approved = AWSLC_NOT_APPROVED;
+  std::vector<uint8_t> key(kAESXTSDuplicateKey,
+      kAESXTSDuplicateKey + sizeof(kAESXTSDuplicateKey));
+  std::vector<uint8_t> iv(kAESXTSIV_256,
+      kAESXTSIV_256 + sizeof(kAESXTSIV_256));
+  bssl::ScopedEVP_CIPHER_CTX ctx;
+
+  // The 2 halves of the key used are identical, which will cause XTS to fail
+  // in init.
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+    ASSERT_FALSE(EVP_CipherInit_ex(ctx.get(), EVP_aes_256_xts(), nullptr,
+                               key.data(), iv.data(), 1)));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
 }
 
 static const struct DigestTestVector {
