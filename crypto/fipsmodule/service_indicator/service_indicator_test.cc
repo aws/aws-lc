@@ -697,6 +697,8 @@ static const struct CipherTestVector {
   const int key_length;
   const uint8_t *iv;
   const int iv_length;
+  const uint8_t *plaintext;
+  const int plaintext_length;
   const uint8_t *expected_ciphertext;
   const int cipher_text_length;
   const FIPSStatus expect_approved;
@@ -707,6 +709,8 @@ static const struct CipherTestVector {
         sizeof(kAESKey),
         nullptr,
         0,
+        kPlaintext,
+        sizeof(kPlaintext),
         kAESECBCiphertext,
         sizeof(kAESECBCiphertext),
         AWSLC_APPROVED,
@@ -717,6 +721,8 @@ static const struct CipherTestVector {
         sizeof(kAESKey_192),
         nullptr,
         0,
+        kPlaintext,
+        sizeof(kPlaintext),
         kAESECBCiphertext_192,
         sizeof(kAESECBCiphertext_192),
         AWSLC_APPROVED,
@@ -727,6 +733,8 @@ static const struct CipherTestVector {
         sizeof(kAESKey_256),
         nullptr,
         0,
+        kPlaintext,
+        sizeof(kPlaintext),
         kAESECBCiphertext_256,
         sizeof(kAESECBCiphertext_256),
         AWSLC_APPROVED,
@@ -737,6 +745,8 @@ static const struct CipherTestVector {
         sizeof(kAESKey),
         kAESIV,
         sizeof(kAESIV),
+        kPlaintext,
+        sizeof(kPlaintext),
         kAESCBCCiphertext,
         sizeof(kAESCBCCiphertext),
         AWSLC_APPROVED,
@@ -747,6 +757,8 @@ static const struct CipherTestVector {
         sizeof(kAESKey_192),
         kAESIV,
         sizeof(kAESIV),
+        kPlaintext,
+        sizeof(kPlaintext),
         kAESCBCCiphertext_192,
         sizeof(kAESCBCCiphertext_192),
         AWSLC_APPROVED,
@@ -757,6 +769,8 @@ static const struct CipherTestVector {
         sizeof(kAESKey_256),
         kAESIV,
         sizeof(kAESIV),
+        kPlaintext,
+        sizeof(kPlaintext),
         kAESCBCCiphertext_256,
         sizeof(kAESCBCCiphertext_256),
         AWSLC_APPROVED,
@@ -767,6 +781,8 @@ static const struct CipherTestVector {
         sizeof(kAESKey),
         kAESIV,
         sizeof(kAESIV),
+        kPlaintext,
+        sizeof(kPlaintext),
         kAESCTRCiphertext,
         sizeof(kAESCTRCiphertext),
         AWSLC_APPROVED,
@@ -777,6 +793,8 @@ static const struct CipherTestVector {
         sizeof(kAESKey_192),
         kAESIV,
         sizeof(kAESIV),
+        kPlaintext,
+        sizeof(kPlaintext),
         kAESCTRCiphertext_192,
         sizeof(kAESCTRCiphertext_192),
         AWSLC_APPROVED,
@@ -787,6 +805,8 @@ static const struct CipherTestVector {
         sizeof(kAESKey_256),
         kAESIV,
         sizeof(kAESIV),
+        kPlaintext,
+        sizeof(kPlaintext),
         kAESCTRCiphertext_256,
         sizeof(kAESCTRCiphertext_256),
         AWSLC_APPROVED,
@@ -797,9 +817,23 @@ static const struct CipherTestVector {
         sizeof(kAESKey),
         kAESIV,
         sizeof(kAESIV),
+        kPlaintext,
+        sizeof(kPlaintext),
         kAESOFBCiphertext,
         sizeof(kAESOFBCiphertext),
         AWSLC_NOT_APPROVED,
+    },
+    {
+        EVP_aes_256_xts(),
+        kAESXTSKey_256,
+        sizeof(kAESXTSKey_256),
+        kAESXTSIV_256,
+        sizeof(kAESXTSIV_256),
+        kAESXTSPlaintext_256,
+        sizeof(kAESXTSPlaintext_256),
+        kAESXTSCiphertext_256,
+        sizeof(kAESXTSCiphertext_256),
+        AWSLC_APPROVED,
     },
     {
         EVP_des_ede3(),
@@ -807,6 +841,8 @@ static const struct CipherTestVector {
         sizeof(kAESKey_192),
         nullptr,
         0,
+        kPlaintext,
+        sizeof(kPlaintext),
         kTDES_EDE3_CipherText,
         sizeof(kTDES_EDE3_CipherText),
         AWSLC_NOT_APPROVED,
@@ -817,6 +853,8 @@ static const struct CipherTestVector {
         sizeof(kAESKey_192),
         nullptr,
         0,
+        kPlaintext,
+        sizeof(kPlaintext),
         kTDES_EDE3_CBCCipherText,
         sizeof(kTDES_EDE3_CBCCipherText),
         AWSLC_NOT_APPROVED,
@@ -857,6 +895,7 @@ static void TestOperation(const EVP_CIPHER *cipher, bool encrypt,
     ASSERT_LE(EVP_CIPHER_CTX_iv_length(ctx.get()), sizeof(kAESIV));
   }
 
+
   ASSERT_TRUE(EVP_CIPHER_CTX_set_key_length(ctx.get(), key.size()));
   CALL_SERVICE_AND_CHECK_APPROVED(approved,
     ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), cipher, nullptr, key.data(),
@@ -889,7 +928,8 @@ TEST_P(EVPServiceIndicatorTest, EVP_Ciphers) {
   const EVP_CIPHER *cipher = test.cipher;
   std::vector<uint8_t> key(test.key, test.key + test.key_length);
   std::vector<uint8_t> iv(test.iv, test.iv + test.iv_length);
-  std::vector<uint8_t> plaintext(kPlaintext, kPlaintext + sizeof(kPlaintext));
+  std::vector<uint8_t> plaintext(test.plaintext,
+                                 test.plaintext + test.plaintext_length);
   std::vector<uint8_t> ciphertext(
       test.expected_ciphertext,
       test.expected_ciphertext + test.cipher_text_length);
