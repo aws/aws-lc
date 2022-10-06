@@ -285,3 +285,21 @@ int EVP_AEAD_CTX_tag_len(const EVP_AEAD_CTX *ctx, size_t *out_tag_len,
   *out_tag_len = extra_in_len + ctx->tag_len;
   return 1;
 }
+
+// EVP_aead_aes_256_gcm_det_iv_gen computes a deterministic IV compliant with
+// NIST SP 800-38D, built from an IPv4 address and the number of nanoseconds
+// since boot, writing it to |out_iv|. It returns one on success or zero for
+// error. |out_iv_len| must be exactly 12 bytes (96 bits).
+int EVP_AEAD_aes_256_gcm_det_iv_gen(const uint32_t ip_address,
+    const uint64_t time_since_boot, uint8_t *out_iv,
+    const size_t out_iv_len) {
+  if (out_iv == NULL || out_iv_len != EVP_AEAD_AES_256_GCM_DET_IV_LEN) {
+    return 0;
+  }
+
+  OPENSSL_memcpy(out_iv, &ip_address, sizeof(ip_address));
+  OPENSSL_memcpy(out_iv + sizeof(ip_address), &time_since_boot,
+                 sizeof(time_since_boot));
+
+  return 1;
+}
