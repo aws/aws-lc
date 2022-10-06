@@ -1077,7 +1077,7 @@ static const struct HMACTestVector {
     { EVP_sha256, kHMACOutput_sha256, AWSLC_APPROVED },
     { EVP_sha384, kHMACOutput_sha384, AWSLC_APPROVED },
     { EVP_sha512, kHMACOutput_sha512, AWSLC_APPROVED },
-    { EVP_sha512_256, kHMACOutput_sha512_256, AWSLC_NOT_APPROVED }
+    { EVP_sha512_256, kHMACOutput_sha512_256, AWSLC_APPROVED }
 };
 
 class HMACServiceIndicatorTest : public TestWithNoErrors<HMACTestVector> {};
@@ -1733,33 +1733,42 @@ struct RSATestVector kRSATestVectors[] = {
     { 2048, &EVP_sha256, false, AWSLC_APPROVED, AWSLC_APPROVED },
     { 2048, &EVP_sha384, false, AWSLC_APPROVED, AWSLC_APPROVED },
     { 2048, &EVP_sha512, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    // SHA-512/256 is not supported for PKCS#1v1.5 in AWS-LC.
+
     { 2048, &EVP_sha1, true, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
     { 2048, &EVP_sha224, true, AWSLC_APPROVED, AWSLC_APPROVED },
     { 2048, &EVP_sha256, true, AWSLC_APPROVED, AWSLC_APPROVED },
     { 2048, &EVP_sha384, true, AWSLC_APPROVED, AWSLC_APPROVED },
     { 2048, &EVP_sha512, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 2048, &EVP_sha512_256, true, AWSLC_APPROVED, AWSLC_APPROVED },
 
     { 3072, &EVP_sha1, false, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
     { 3072, &EVP_sha224, false, AWSLC_APPROVED, AWSLC_APPROVED },
     { 3072, &EVP_sha256, false, AWSLC_APPROVED, AWSLC_APPROVED },
     { 3072, &EVP_sha384, false, AWSLC_APPROVED, AWSLC_APPROVED },
     { 3072, &EVP_sha512, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    // SHA-512/256 is not supported for PKCS#1v1.5 in AWS-LC.
+
     { 3072, &EVP_sha1, true, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
     { 3072, &EVP_sha224, true, AWSLC_APPROVED, AWSLC_APPROVED },
     { 3072, &EVP_sha256, true, AWSLC_APPROVED, AWSLC_APPROVED },
     { 3072, &EVP_sha384, true, AWSLC_APPROVED, AWSLC_APPROVED },
     { 3072, &EVP_sha512, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 3072, &EVP_sha512_256, true, AWSLC_APPROVED, AWSLC_APPROVED },
 
     { 4096, &EVP_sha1, false, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
     { 4096, &EVP_sha224, false, AWSLC_APPROVED, AWSLC_APPROVED },
     { 4096, &EVP_sha256, false, AWSLC_APPROVED, AWSLC_APPROVED },
     { 4096, &EVP_sha384, false, AWSLC_APPROVED, AWSLC_APPROVED },
     { 4096, &EVP_sha512, false, AWSLC_APPROVED, AWSLC_APPROVED },
+    // SHA-512/256 is not supported for PKCS#1v1.5 in AWS-LC.
+
     { 4096, &EVP_sha1, true, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
     { 4096, &EVP_sha224, true, AWSLC_APPROVED, AWSLC_APPROVED },
     { 4096, &EVP_sha256, true, AWSLC_APPROVED, AWSLC_APPROVED },
     { 4096, &EVP_sha384, true, AWSLC_APPROVED, AWSLC_APPROVED },
     { 4096, &EVP_sha512, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 4096, &EVP_sha512_256, true, AWSLC_APPROVED, AWSLC_APPROVED },
 };
 
 class RSAServiceIndicatorTest : public TestWithNoErrors<RSATestVector> {};
