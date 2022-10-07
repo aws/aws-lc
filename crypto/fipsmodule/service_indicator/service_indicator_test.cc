@@ -883,8 +883,10 @@ static void TestOperation(const EVP_CIPHER *cipher, bool encrypt,
   bssl::ScopedEVP_CIPHER_CTX ctx;
   // Test running the EVP_Cipher interfaces one by one directly, and check
   // |EVP_EncryptFinal_ex| and |EVP_DecryptFinal_ex| for approval at the end.
-  ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), cipher, nullptr, nullptr, nullptr,
-                                encrypt ? 1 : 0));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+    ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), cipher, nullptr, nullptr, nullptr,
+                                encrypt ? 1 : 0)));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
   if (iv.size() > 0) {
     // IV specified for the test, so the context's IV length should match.
     ASSERT_LE(EVP_CIPHER_CTX_iv_length(ctx.get()), iv.size());
@@ -896,8 +898,10 @@ static void TestOperation(const EVP_CIPHER *cipher, bool encrypt,
 
 
   ASSERT_TRUE(EVP_CIPHER_CTX_set_key_length(ctx.get(), key.size()));
-  ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), cipher, nullptr, key.data(),
-                                iv.data(), encrypt ? 1 : 0));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+    ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), cipher, nullptr, key.data(),
+                                iv.data(), encrypt ? 1 : 0)));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
   ASSERT_TRUE(EVP_CIPHER_CTX_set_padding(ctx.get(), 0));
   std::vector<uint8_t> encrypt_result;
   DoCipherFinal(ctx.get(), &encrypt_result, in, expect_approved);
@@ -906,8 +910,10 @@ static void TestOperation(const EVP_CIPHER *cipher, bool encrypt,
   // Test using the one-shot |EVP_Cipher| function for approval.
   bssl::ScopedEVP_CIPHER_CTX ctx2;
   uint8_t output[256];
-  ASSERT_TRUE(EVP_CipherInit_ex(ctx2.get(), cipher, nullptr, key.data(),
-                                iv.data(), encrypt ? 1 : 0));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+    ASSERT_TRUE(EVP_CipherInit_ex(ctx2.get(), cipher, nullptr, key.data(),
+                                iv.data(), encrypt ? 1 : 0)));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
   CALL_SERVICE_AND_CHECK_APPROVED(
       approved, EVP_Cipher(ctx2.get(), output, in.data(), in.size()));
   EXPECT_EQ(approved, expect_approved);
@@ -3511,6 +3517,62 @@ TEST(ServiceIndicatorTest, AESKWP) {
                                         sizeof(kAESKWPCiphertext))));
   EXPECT_EQ(Bytes(kPlaintext), Bytes(output, outlen));
   EXPECT_EQ(approved, AWSLC_APPROVED);
+}
+
+TEST(ServiceIndicatorTest, AESXTS) {
+  FIPSStatus approved = AWSLC_NOT_APPROVED;
+  std::vector<uint8_t> key(
+      kAESXTSKey_256,
+      kAESXTSKey_256 + sizeof(kAESXTSKey_256));
+  std::vector<uint8_t> iv(
+      kAESXTSIV_256,
+      kAESXTSIV_256 + sizeof(kAESXTSIV_256));
+  std::vector<uint8_t> plaintext(
+      kAESXTSPlaintext_256,
+      kAESXTSPlaintext_256 + sizeof(kAESXTSPlaintext_256));
+  std::vector<uint8_t> ciphertext(
+      kAESXTSCiphertext_256,
+      kAESXTSCiphertext_256 + sizeof(kAESXTSCiphertext_256));
+  bssl::ScopedEVP_CIPHER_CTX ctx;
+
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+    ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), EVP_aes_256_xts(), nullptr,
+                                key.data(), iv.data(), 1)));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  ASSERT_LE(EVP_CIPHER_CTX_iv_length(ctx.get()), iv.size());
+
+  ASSERT_TRUE(EVP_CIPHER_CTX_set_key_length(ctx.get(), key.size()));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+    ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), EVP_aes_256_xts(), nullptr,
+                                key.data(), iv.data(), 1)));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  ASSERT_TRUE(EVP_CIPHER_CTX_set_padding(ctx.get(), 0));
+  std::vector<uint8_t> encrypt_result;
+
+  size_t max_out = plaintext.size();
+  unsigned block_size = EVP_CIPHER_CTX_block_size(ctx.get());
+  max_out += block_size - (max_out % block_size);
+  encrypt_result.resize(max_out);
+  size_t total = 0;
+  int len = 0;
+
+  // Result should be fully encrypted during |EVP_CipherUpdate| for AES-XTS.
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+    EVP_CipherUpdate(ctx.get(), encrypt_result.data(), &len,
+                          plaintext.data(), plaintext.size()));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+  total += static_cast<size_t>(len);
+  encrypt_result.resize(total);
+  EXPECT_EQ(Bytes(encrypt_result), Bytes(ciphertext));
+
+  // Ensure |EVP_CipherFinal_ex| is a no-op, but only |*Final| functions
+  // should indicate service indicator approval.
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+    EVP_CipherFinal_ex(ctx.get(), encrypt_result.data() + total, &len));
+  EXPECT_EQ(Bytes(encrypt_result), Bytes(ciphertext));
+  EXPECT_EQ(0, len);
+
+  ASSERT_EQ(approved, AWSLC_APPROVED);
 }
 
 TEST(ServiceIndicatorTest, FFDH) {
