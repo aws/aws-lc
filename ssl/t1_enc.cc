@@ -148,7 +148,7 @@
 #include <openssl/nid.h>
 #include <openssl/rand.h>
 
-#include "../crypto/fipsmodule/tls/internal.h"
+#include "../crypto/fipsmodule/kdf/internal.h"
 #include "../crypto/internal.h"
 #include "internal.h"
 

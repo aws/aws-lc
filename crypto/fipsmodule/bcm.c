@@ -105,8 +105,10 @@
 #include "evp/kem.c"
 #include "evp/p_ec.c"
 #include "evp/p_rsa.c"
-#include "hkdf/hkdf.c"
 #include "hmac/hmac.c"
+#include "kdf/hkdf.c"
+#include "kdf/pbkdf.c"
+#include "kdf/tlskdf.c"
 #include "md4/md4.c"
 #include "md5/md5.c"
 #include "modes/cbc.c"
@@ -117,7 +119,6 @@
 #include "modes/ofb.c"
 #include "modes/xts.c"
 #include "modes/polyval.c"
-#include "pbkdf/pbkdf.c"
 #include "rand/ctrdrbg.c"
 #include "rand/fork_detect.c"
 #include "rand/rand.c"
@@ -135,7 +136,6 @@
 #include "sha/sha256.c"
 #include "sha/sha3.c"
 #include "sha/sha512.c"
-#include "tls/kdf.c"
 
 
 #if defined(BORINGSSL_FIPS)
