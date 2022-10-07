@@ -10,12 +10,15 @@ let EVP_DigestSignVerifyInit_spec is_sign = do {
   crucible_alloc_global "EVP_PKEY_rsa_pkey_meth_storage";
   crucible_alloc_global "EVP_PKEY_rsa_pss_pkey_meth_storage";
   crucible_alloc_global "EVP_PKEY_ec_pkey_meth_storage";
+  crucible_alloc_global "EVP_PKEY_hkdf_pkey_meth_storage";
   crucible_alloc_global "EVP_PKEY_rsa_pkey_meth_once";
   crucible_alloc_global "EVP_PKEY_rsa_pss_pkey_meth_once";
   crucible_alloc_global "EVP_PKEY_ec_pkey_meth_once";
+  crucible_alloc_global "EVP_PKEY_hkdf_pkey_meth_once";
   crucible_alloc_global "AWSLC_fips_evp_pkey_methods_storage.0.0";
   crucible_alloc_global "AWSLC_fips_evp_pkey_methods_storage.0.1";
   crucible_alloc_global "AWSLC_fips_evp_pkey_methods_storage.0.2";
+  crucible_alloc_global "AWSLC_fips_evp_pkey_methods_storage.0.3";
   crucible_alloc_global "AWSLC_fips_evp_pkey_methods_once";
 
   ctx_ptr <- crucible_alloc (llvm_struct "struct.env_md_ctx_st");
