@@ -100,7 +100,7 @@ static int dilithium3_get_pub_raw(const EVP_PKEY *pkey, uint8_t *out,
 }
 
 static int dilithium3_pub_decode(EVP_PKEY *out, CBS *params, CBS *key) {
-  // See https://datatracker.ietf.org/doc/draft-massimo-lamps-pq-sig-certificates/00/ section 4.
+  // See https://datatracker.ietf.org/doc/draft-ietf-lamps-dilithium-certificates/ section 4.
   // The parameters must be omitted.
   if (CBS_len(params) != 0) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
@@ -113,7 +113,8 @@ static int dilithium3_pub_decode(EVP_PKEY *out, CBS *params, CBS *key) {
 static int dilithium3_pub_encode(CBB *out, const EVP_PKEY *pkey) {
   const DILITHIUM3_KEY *key = pkey->pkey.ptr;
 
-  // See https://datatracker.ietf.org/doc/draft-massimo-lamps-pq-sig-certificates/00/ section 4.
+  // See https://datatracker.ietf.org/doc/draft-ietf-lamps-dilithium-certificates/ section 4.
+  // TODO: finalize this definition - OCTETSTRING to BITSTRING conversion.
   CBB spki, algorithm, oid, key_bitstring;
   if (!CBB_add_asn1(out, &spki, CBS_ASN1_SEQUENCE) ||
       !CBB_add_asn1(&spki, &algorithm, CBS_ASN1_SEQUENCE) ||
@@ -137,7 +138,7 @@ static int dilithium3_pub_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
 }
 
 static int dilithium3_priv_decode(EVP_PKEY *out, CBS *params, CBS *key) {
-  // See https://datatracker.ietf.org/doc/draft-massimo-lamps-pq-sig-certificates/00/ section 5.
+  // See https://datatracker.ietf.org/doc/draft-ietf-lamps-dilithium-certificates/ section 6.
 
   // The parameters must be omitted.
   if (CBS_len(params) != 0) {
@@ -154,14 +155,14 @@ static int dilithium3_priv_encode(CBB *out, const EVP_PKEY *pkey) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NOT_A_PRIVATE_KEY);
     return 0;
   }
-  // See https://datatracker.ietf.org/doc/draft-massimo-lamps-pq-sig-certificates/00/ section 5.
+  // See https://datatracker.ietf.org/doc/draft-ietf-lamps-dilithium-certificates/ section 6.
   CBB pkcs8, algorithm, oid, private_key;
   if (!CBB_add_asn1(out, &pkcs8, CBS_ASN1_SEQUENCE) ||
       !CBB_add_asn1_uint64(&pkcs8, 0 /* version */) ||
       !CBB_add_asn1(&pkcs8, &algorithm, CBS_ASN1_SEQUENCE) ||
       !CBB_add_asn1(&algorithm, &oid, CBS_ASN1_OBJECT) ||
       !CBB_add_bytes(&oid, dilithium3_asn1_meth.oid, dilithium3_asn1_meth.oid_len) ||
-      !CBB_add_asn1(&pkcs8, &private_key, CBS_ASN1_BITSTRING) ||
+      !CBB_add_asn1(&pkcs8, &private_key, CBS_ASN1_OCTETSTRING) ||
       !CBB_add_bytes(&private_key, key->priv, DILITHIUM3_PRIVATE_KEY_BYTES) ||
       !CBB_flush(out)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_ENCODE_ERROR);
@@ -172,11 +173,11 @@ static int dilithium3_priv_encode(CBB *out, const EVP_PKEY *pkey) {
 }
 
 static int dilithium3_size(const EVP_PKEY *pkey) {
-  return DILITHIUM3_PUBLIC_KEY_BYTES + DILITHIUM3_PRIVATE_KEY_BYTES;
+  return DILITHIUM3_SIGNATURE_BYTES;
 }
 
 static int dilithium3_bits(const EVP_PKEY *pkey) {
-  return 8 * (DILITHIUM3_PUBLIC_KEY_BYTES + DILITHIUM3_PRIVATE_KEY_BYTES);
+  return 8 * (DILITHIUM3_PUBLIC_KEY_BYTES);
 }
 
 const EVP_PKEY_ASN1_METHOD dilithium3_asn1_meth = {
