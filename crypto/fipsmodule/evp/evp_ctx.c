@@ -72,6 +72,7 @@ DEFINE_LOCAL_DATA(struct fips_evp_pkey_methods, AWSLC_fips_evp_pkey_methods) {
   out->methods[0] = EVP_PKEY_rsa_pkey_meth();
   out->methods[1] = EVP_PKEY_rsa_pss_pkey_meth();
   out->methods[2] = EVP_PKEY_ec_pkey_meth();
+  out->methods[3] = EVP_PKEY_hkdf_pkey_meth();
 }
 
 static const EVP_PKEY_METHOD *evp_pkey_meth_find(int type) {
