@@ -25,7 +25,11 @@ OBJ = bignum_add_p25519.o \
       bignum_sqr_p25519_alt.o \
       bignum_sub_p25519.o \
       curve25519_ladderstep.o \
-      curve25519_ladderstep_alt.o
+      curve25519_ladderstep_alt.o \
+      curve25519_pxscalarmul.o \
+      curve25519_pxscalarmul_alt.o \
+      curve25519_x25519.o \
+      curve25519_x25519_alt.o
 
 %.o : %.S ; $(CC) -E -I../../include $< | as -o $@ -
 

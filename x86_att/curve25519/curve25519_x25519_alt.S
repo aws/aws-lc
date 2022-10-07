@@ -14,84 +14,79 @@
  */
 
 // ----------------------------------------------------------------------------
-// Montgomery ladder step on pairs of (X,Z)-projective curve25519 points
+// The x25519 function for curve25519
+// Inputs scalar[4], point[4]; output res[4]
 //
-// extern void curve25519_ladderstep_alt
-//   (uint64_t rr[16],uint64_t point[8],uint64_t pp[16],uint64_t b)
+// extern void curve25519_x25519_alt
+//   (uint64_t res[static 4],uint64_t scalar[static 4],uint64_t point[static 4])
 //
-// If point = (X,1) and pp = (n * (X,1),[n+1] * (X,1)) then the output
-// rr = (n' * (X,1),[n'+1] * (X,1)) where n' = 2 * n + b, with input
-// b assumed to be 0 or 1; in this setting, each pair (X,Z) is assumed to
-// be a projective y-free representation of an affine curve25519 point
-// (X/Z,y), with the initial "differential" point having Z = 1 and X its
-// affine x coordinate. In other words, the ladderstep operation is a
-// combination of doubling, differential addition and optional swapping.
+// Given a scalar n and the X coordinate of an input point P = (X,Y) on
+// curve25519 (Y can live in any extension field of characteristic 2^255-19),
+// this returns the X coordinate of n * P = (X, Y), or 0 when n * P is the
+// point at infinity. Both n and X inputs are first slightly modified/mangled
+// as specified in the relevant RFC (https://www.rfc-editor.org/rfc/rfc7748);
+// in particular the lower three bits of n are set to zero.
 //
-// Standard x86-64 ABI: RDI = rr, RSI = point, RDX = pp, RCX = b
-// Microsoft x64 ABI:   RCX = rr, RDX = point, R8 = pp, R9 = b
+// Standard x86-64 ABI: RDI = res, RSI = scalar, RDX = point
+// Microsoft x64 ABI:   RCX = res, RDX = scalar, R8 = point
 // ----------------------------------------------------------------------------
 #include "_internal_s2n_bignum.h"
 
 
-        S2N_BN_SYM_VISIBILITY_DIRECTIVE(curve25519_ladderstep_alt)
-        S2N_BN_SYM_PRIVACY_DIRECTIVE(curve25519_ladderstep_alt)
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(curve25519_x25519_alt)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(curve25519_x25519_alt)
         .text
 
 // Size of individual field elements
 
 #define NUMSIZE 32
 
-// The single field of the input point used (z assumed 1)
+// Stable homes for the input result argument during the whole body
+// and other variables that are only needed prior to the modular inverse.
 
-#define point_x 0(%rbp)
+#define res  12*NUMSIZE(%rsp)
+#define i  12*NUMSIZE+8(%rsp)
+#define swap  12*NUMSIZE+16(%rsp)
 
-// Pointer-offset pairs for pp fields
-// These use the initial register %rdx as the offset.
-// We then never need it again so it can be ephemeral
+// Pointers to result x coord to be written, assuming the base "res"
+// has been loaded into %rbp
 
-#define xn 0(%rdx)
-#define zn NUMSIZE(%rdx)
-#define xm (2*NUMSIZE)(%rdx)
-#define zm (3*NUMSIZE)(%rdx)
+#define resx 0(%rbp)
 
-// Result fields
+// Pointer-offset pairs for temporaries on stack with some aliasing.
+// Both dmsn and dnsm need space for >= 5 digits, and we allocate 8
 
-#define res0 0(%rbp)
-#define res1 NUMSIZE(%rbp)
-#define res2 (2*NUMSIZE)(%rbp)
-#define res3 (3*NUMSIZE)(%rbp)
+#define scalar (0*NUMSIZE)(%rsp)
 
-// Pointer-offset pairs for temporaries on stack
-// dmsn and dnsm need space for >= 5 digits, and we allocate 8
+#define pointx (1*NUMSIZE)(%rsp)
 
-#define sm (0*NUMSIZE)(%rsp)
-#define sn (1*NUMSIZE)(%rsp)
 #define dm (2*NUMSIZE)(%rsp)
-#define dn (3*NUMSIZE)(%rsp)
-#define dmsn (4*NUMSIZE)(%rsp)
-#define dnsm (6*NUMSIZE)(%rsp)
-#define s (8*NUMSIZE)(%rsp)
-#define d (9*NUMSIZE)(%rsp)
-#define p (10*NUMSIZE)(%rsp)
 
-// Preserved inputs
+#define zm (3*NUMSIZE)(%rsp)
+#define sm (3*NUMSIZE)(%rsp)
+#define dpro (3*NUMSIZE)(%rsp)
 
-#define rr (12*NUMSIZE)(%rsp)
-#define point (12*NUMSIZE)+8(%rsp)
-#define pp (12*NUMSIZE)+16(%rsp)
-#define bb  (12*NUMSIZE)+24(%rsp)
+#define sn (4*NUMSIZE)(%rsp)
 
-// More, but aliases to above
+#define zn (5*NUMSIZE)(%rsp)
+#define dn (5*NUMSIZE)(%rsp)
+#define e (5*NUMSIZE)(%rsp)
 
-#define sumx sm
-#define sumz sn
-#define dubx dm
-#define dubz dn
-#define e dubz
-#define spro dnsm
-#define dpro sumz
+#define dmsn (6*NUMSIZE)(%rsp)
+#define p (6*NUMSIZE)(%rsp)
+
+#define xm (8*NUMSIZE)(%rsp)
+#define dnsm (8*NUMSIZE)(%rsp)
+#define spro (8*NUMSIZE)(%rsp)
+
+#define xn (10*NUMSIZE)(%rsp)
+#define s (10*NUMSIZE)(%rsp)
+
+#define d (11*NUMSIZE)(%rsp)
 
 // Total size to reserve on the stack
+// This includes space for the 3 other variables above
+// and rounds up to a multiple of 32
 
 #define NSPACE (13*NUMSIZE)
 
@@ -776,39 +771,7 @@
         cmovzq  %rcx, %rax ;                       \
         movq    %rax, 24+P0
 
-// Paired multiplex: (w,z) := if NZ then (y,x) else (x,y)
-
-#define muxpair_4(P0,P1,P2,P3)                  \
-        movq    P2, %rax ;                      \
-        movq    P3, %rcx ;                      \
-        movq    %rax, %rdx ;                       \
-        cmovnzq %rcx, %rax ;                       \
-        cmovnzq %rdx, %rcx ;                       \
-        movq    %rax, P0 ;                      \
-        movq    %rcx, P1 ;                      \
-        movq    8+P2, %rax ;                    \
-        movq    8+P3, %rcx ;                    \
-        movq    %rax, %rdx ;                       \
-        cmovnzq %rcx, %rax ;                       \
-        cmovnzq %rdx, %rcx ;                       \
-        movq    %rax, 8+P0 ;                    \
-        movq    %rcx, 8+P1 ;                    \
-        movq    16+P2, %rax ;                   \
-        movq    16+P3, %rcx ;                   \
-        movq    %rax, %rdx ;                       \
-        cmovnzq %rcx, %rax ;                       \
-        cmovnzq %rdx, %rcx ;                       \
-        movq    %rax, 16+P0 ;                   \
-        movq    %rcx, 16+P1 ;                   \
-        movq    24+P2, %rax ;                   \
-        movq    24+P3, %rcx ;                   \
-        movq    %rax, %rdx ;                       \
-        cmovnzq %rcx, %rax ;                       \
-        cmovnzq %rdx, %rcx ;                       \
-        movq    %rax, 24+P0 ;                   \
-        movq    %rcx, 24+P1
-
-S2N_BN_SYMBOL(curve25519_ladderstep_alt):
+S2N_BN_SYMBOL(curve25519_x25519_alt):
 
 #if WINDOWS_ABI
         pushq   %rdi
@@ -816,7 +779,6 @@ S2N_BN_SYMBOL(curve25519_ladderstep_alt):
         movq    %rcx, %rdi
         movq    %rdx, %rsi
         movq    %r8, %rdx
-        movq    %r9, %rcx
 #endif
 
 // Save registers, make room for temps, preserve input arguments.
@@ -827,17 +789,89 @@ S2N_BN_SYMBOL(curve25519_ladderstep_alt):
         pushq   %r13
         pushq   %r14
         pushq   %r15
-
         subq    $NSPACE, %rsp
 
-        movq    %rdi, rr
-        movq    %rsi, point
-        movq    %rcx, bb
+// Move the output pointer to a stable place
+
+        movq    %rdi, res
+
+// Copy the inputs to the local variables while mangling them:
+//
+//  - The scalar gets turned into 01xxx...xxx000 by tweaking bits.
+//    Actually the top zero doesn't matter since the loop below
+//    never looks at it, so we don't literally modify that.
+//
+//  - The point x coord is reduced mod 2^255 *then* mod 2^255-19
+
+        movq    (%rsi), %rax
+        andq    $~7, %rax
+        movq    %rax, (%rsp)
+        movq    8(%rsi), %rax
+        movq    %rax, 8(%rsp)
+        movq    16(%rsi), %rax
+        movq    %rax, 16(%rsp)
+        movq    24(%rsi), %rax
+        bts     $62, %rax
+        movq    %rax, 24(%rsp)
+
+        movq    (%rdx), %r8
+        movq    8(%rdx), %r9
+        movq    16(%rdx), %r10
+        movq    24(%rdx), %r11
+        btr     $63, %r11
+        movq    $19, %r12
+        xorq    %r13, %r13
+        xorq    %r14, %r14
+        xorq    %r15, %r15
+        addq    %r8, %r12
+        adcq    %r9, %r13
+        adcq    %r10, %r14
+        adcq    %r11, %r15
+        btr     $63, %r15 // x >= 2^255 - 19 <=> x + 19 >= 2^255
+        cmovcq  %r12, %r8
+        movq    %r8, 32(%rsp)
+        cmovcq  %r13, %r9
+        movq    %r9, 40(%rsp)
+        cmovcq  %r14, %r10
+        movq    %r10, 48(%rsp)
+        cmovcq  %r15, %r11
+        movq    %r11, 56(%rsp)
+
+// Initialize (xn,zn) = (1,0) and (xm,zm) = (x,1) with swap = 0
+// We use the fact that the point x coordinate is still in registers
+
+        movq    $1, %rax
+        movq    %rax, 320(%rsp)
+        movq    %rax, 96(%rsp)
+        xorl    %eax, %eax
+        movq    %rax, swap
+        movq    %rax, 160(%rsp)
+        movq    %rax, 328(%rsp)
+        movq    %rax, 104(%rsp)
+        movq    %rax, 168(%rsp)
+        movq    %rax, 336(%rsp)
+        movq    %rax, 112(%rsp)
+        movq    %rax, 176(%rsp)
+        movq    %rax, 344(%rsp)
+        movq    %rax, 120(%rsp)
+        movq    %rax, 184(%rsp)
+        movq    32(%rsp), %rax
+        movq    %r8, 256(%rsp)
+        movq    %r9, 264(%rsp)
+        movq    %r10, 272(%rsp)
+        movq    %r11, 280(%rsp)
+
+// The outer loop over scalar bits from i = 254, ..., i = 0 (inclusive)
+// This starts at 254, and so implicitly masks bit 255 of the scalar.
+
+        movl    $254, %eax
+        movq    %rax, i
+
+scalarloop:
 
 // sm = xm + zm; sn = xn + zn; dm = xm - zm; dn = xn - zn
 // The adds don't need any normalization as they're fed to muls
-// Just make sure the subs fit in 4 digits. Keep pp in %rdx
-// here, after which we can forget about it.
+// Just make sure the subs fit in 4 digits.
 
         sub_4(dm,xm,zm)
         add_4(sn,xn,zn)
@@ -847,10 +881,17 @@ S2N_BN_SYMBOL(curve25519_ladderstep_alt):
 // ADDING: dmsn = dm * sn; dnsm = sm * dn
 // DOUBLING: mux d = xt - zt and s = xt + zt for appropriate choice of (xt,zt)
 
-        mul_5(dmsn,dm,sn)
+        mul_5(dmsn,sn,dm)
 
-        movq    bb, %rax
-        testq   %rax, %rax
+        movq    i, %rdx
+        movq    %rdx, %rcx
+        shrq    $6, %rdx
+        movq    (%rsp,%rdx,8), %rdx
+        shrq    %cl, %rdx
+        andq    $1, %rdx
+        cmpq    swap, %rdx
+        movq    %rdx, swap
+
         mux_4(d,dm,dn)
         mux_4(s,sm,sn)
 
@@ -872,35 +913,483 @@ S2N_BN_SYMBOL(curve25519_ladderstep_alt):
 
         sub_twice4(p,s,d)
 
-// ADDING: sumx = (dmsn + dnsm)^2
+// ADDING: xm' = (dmsn + dnsm)^2
 
-        sqr_p25519(sumx,spro)
+        sqr_p25519(xm,spro)
 
 // DOUBLING: e = 121666 * p + d
 
         cmadd_4(e,0x1db42,p,d)
 
-// DOUBLING: dubx = (xt + zt)^2 * (xt - zt)^2 = s * d
+// DOUBLING: xn' = (xt + zt)^2 * (xt - zt)^2 = s * d
 
-        mul_p25519(dubx,s,d)
+        mul_p25519(xn,s,d)
 
-// ADDING: sumz = x * (dmsn - dnsm)^2
+// ADDING: zm' = x * (dmsn - dnsm)^2
 
-        movq    point, %rbp
-        mul_p25519(sumz,dpro,point_x)
+        mul_p25519(zm,dpro,pointx)
 
-// DOUBLING: dubz = (4 * xt * zt) * ((xt - zt)^2 + 121666 * (4 * xt * zt))
-//                = p * (d + 121666 * p)
+// DOUBLING: zn' = (4 * xt * zt) * ((xt - zt)^2 + 121666 * (4 * xt * zt))
+//               = p * (d + 121666 * p)
 
-        mul_p25519(dubz,p,e)
+        mul_p25519(zn,p,e)
 
-// Multiplex the outputs
+// Loop down as far as 0 (inclusive)
 
-        movq    bb, %rax
-        movq    rr, %rbp
-        testq   %rax, %rax
-        muxpair_4(res0,res2,dubx,sumx)
-        muxpair_4(res1,res3,dubz,sumz)
+        movq    i, %rax
+        subq    $1, %rax
+        movq    %rax, i
+        jnc     scalarloop
+
+// Since the scalar was forced to be a multiple of 8, we know it's even.
+// Hence there is no need to multiplex: the projective answer is (xn,zn)
+// and we can ignore (xm,zm); indeed we could have avoided the last three
+// differential additions and just done the doublings.
+// First set up the constant sn = 2^255 - 19 for the modular inverse.
+
+        movq    $-19, %rax
+        movq    $-1, %rcx
+        movq    $0x7fffffffffffffff, %rdx
+        movq    %rax, 128(%rsp)
+        movq    %rcx, 136(%rsp)
+        movq    %rcx, 144(%rsp)
+        movq    %rdx, 152(%rsp)
+
+// Prepare to call the modular inverse function to get zm = 1/zn
+
+        movq    $4, %rdi
+        leaq    96(%rsp), %rsi
+        leaq    160(%rsp), %rdx
+        leaq    128(%rsp), %rcx
+        leaq    192(%rsp), %r8
+
+// Inline copy of bignum_modinv, identical except for stripping out the
+// prologue and epilogue saving and restoring registers and the initial
+// test for k = 0 (which is trivially false here since k = 4). For more
+// details and explanations see "x86/generic/bignum_modinv.S". Note
+// that the stack it uses for its own temporaries is 80 bytes so it
+// only overwrites pointx, scalar and dm, which are no longer needed.
+
+        movq    %rsi, 0x40(%rsp)
+        movq    %r8, 0x38(%rsp)
+        movq    %rcx, 0x48(%rsp)
+        leaq    (%r8,%rdi,8), %r10
+        movq    %r10, 0x30(%rsp)
+        leaq    (%r10,%rdi,8), %r15
+        xorq    %r11, %r11
+        xorq    %r9, %r9
+copyloop:
+        movq    (%rdx,%r9,8), %rax
+        movq    (%rcx,%r9,8), %rbx
+        movq    %rax, (%r10,%r9,8)
+        movq    %rbx, (%r15,%r9,8)
+        movq    %rbx, (%r8,%r9,8)
+        movq    %r11, (%rsi,%r9,8)
+        incq    %r9
+        cmpq    %rdi, %r9
+        jb      copyloop
+        movq    (%r8), %rax
+        movq    %rax, %rbx
+        decq    %rbx
+        movq    %rbx, (%r8)
+        movq    %rax, %rbp
+        movq    %rax, %r12
+        shlq    $0x2, %rbp
+        subq    %rbp, %r12
+        xorq    $0x2, %r12
+        movq    %r12, %rbp
+        imulq   %rax, %rbp
+        movl    $0x2, %eax
+        addq    %rbp, %rax
+        addq    $0x1, %rbp
+        imulq   %rax, %r12
+        imulq   %rbp, %rbp
+        movl    $0x1, %eax
+        addq    %rbp, %rax
+        imulq   %rax, %r12
+        imulq   %rbp, %rbp
+        movl    $0x1, %eax
+        addq    %rbp, %rax
+        imulq   %rax, %r12
+        imulq   %rbp, %rbp
+        movl    $0x1, %eax
+        addq    %rbp, %rax
+        imulq   %rax, %r12
+        movq    %r12, 0x28(%rsp)
+        movq    %rdi, %rax
+        shlq    $0x7, %rax
+        movq    %rax, 0x20(%rsp)
+outerloop:
+        movq    0x20(%rsp), %r13
+        addq    $0x3f, %r13
+        shrq    $0x6, %r13
+        cmpq    %rdi, %r13
+        cmovaeq %rdi, %r13
+        xorq    %r12, %r12
+        xorq    %r14, %r14
+        xorq    %rbp, %rbp
+        xorq    %rsi, %rsi
+        xorq    %r11, %r11
+        movq    0x30(%rsp), %r8
+        leaq    (%r8,%rdi,8), %r15
+        xorq    %r9, %r9
+toploop:
+        movq    (%r8,%r9,8), %rbx
+        movq    (%r15,%r9,8), %rcx
+        movq    %r11, %r10
+        andq    %r12, %r10
+        andq    %rbp, %r11
+        movq    %rbx, %rax
+        orq     %rcx, %rax
+        negq    %rax
+        cmovbq  %r10, %r14
+        cmovbq  %r11, %rsi
+        cmovbq  %rbx, %r12
+        cmovbq  %rcx, %rbp
+        sbbq    %r11, %r11
+        incq    %r9
+        cmpq    %r13, %r9
+        jb      toploop
+        movq    %r12, %rax
+        orq     %rbp, %rax
+        bsrq    %rax, %rcx
+        xorq    $0x3f, %rcx
+        shldq   %cl, %r14, %r12
+        shldq   %cl, %rsi, %rbp
+        movq    (%r8), %rax
+        movq    %rax, %r14
+        movq    (%r15), %rax
+        movq    %rax, %rsi
+        movl    $0x1, %r10d
+        movl    $0x0, %r11d
+        movl    $0x0, %ecx
+        movl    $0x1, %edx
+        movl    $0x3a, %r9d
+        movq    %rdi, 0x8(%rsp)
+        movq    %r13, 0x10(%rsp)
+        movq    %r8, (%rsp)
+        movq    %r15, 0x18(%rsp)
+innerloop:
+        movq    %rbp, %rax
+        movq    %rsi, %rdi
+        movq    %rcx, %r13
+        movq    %rdx, %r15
+        movq    $0x1, %rbx
+        negq    %rdi
+        andq    %r14, %rbx
+        cmoveq  %rbx, %rax
+        cmoveq  %rbx, %rdi
+        cmoveq  %rbx, %r13
+        cmoveq  %rbx, %r15
+        movq    %r12, %rbx
+        addq    %r14, %rdi
+        movq    %rdi, %r8
+        negq    %rdi
+        subq    %rax, %rbx
+        cmovbq  %r12, %rbp
+        cmovbq  %r14, %rsi
+        cmovbq  %r10, %rcx
+        cmovbq  %r11, %rdx
+        cmovaeq %r8, %rdi
+        movq    %rbx, %r12
+        notq    %rbx
+        incq    %rbx
+        cmovbq  %rbx, %r12
+        movq    %rdi, %r14
+        addq    %r13, %r10
+        addq    %r15, %r11
+        shrq    $1, %r12
+        shrq    $1, %r14
+        leaq    (%rcx,%rcx), %rcx
+        leaq    (%rdx,%rdx), %rdx
+        decq    %r9
+        jne     innerloop
+        movq    0x8(%rsp), %rdi
+        movq    0x10(%rsp), %r13
+        movq    (%rsp), %r8
+        movq    0x18(%rsp), %r15
+        movq    %r10, (%rsp)
+        movq    %r11, 0x8(%rsp)
+        movq    %rcx, 0x10(%rsp)
+        movq    %rdx, 0x18(%rsp)
+        movq    0x38(%rsp), %r8
+        movq    0x40(%rsp), %r15
+        xorq    %r14, %r14
+        xorq    %rsi, %rsi
+        xorq    %r10, %r10
+        xorq    %r11, %r11
+        xorq    %r9, %r9
+congloop:
+        movq    (%r8,%r9,8), %rcx
+        movq    (%rsp), %rax
+        mulq    %rcx
+        addq    %rax, %r14
+        adcq    $0x0, %rdx
+        movq    %rdx, %r12
+        movq    0x10(%rsp), %rax
+        mulq    %rcx
+        addq    %rax, %rsi
+        adcq    $0x0, %rdx
+        movq    %rdx, %rbp
+        movq    (%r15,%r9,8), %rcx
+        movq    0x8(%rsp), %rax
+        mulq    %rcx
+        addq    %rax, %r14
+        adcq    %rdx, %r12
+        shrdq   $0x3a, %r14, %r10
+        movq    %r10, (%r8,%r9,8)
+        movq    %r14, %r10
+        movq    %r12, %r14
+        movq    0x18(%rsp), %rax
+        mulq    %rcx
+        addq    %rax, %rsi
+        adcq    %rdx, %rbp
+        shrdq   $0x3a, %rsi, %r11
+        movq    %r11, (%r15,%r9,8)
+        movq    %rsi, %r11
+        movq    %rbp, %rsi
+        incq    %r9
+        cmpq    %rdi, %r9
+        jb      congloop
+        shldq   $0x6, %r10, %r14
+        shldq   $0x6, %r11, %rsi
+        movq    0x48(%rsp), %r15
+        movq    (%r8), %rbx
+        movq    0x28(%rsp), %r12
+        imulq   %rbx, %r12
+        movq    (%r15), %rax
+        mulq    %r12
+        addq    %rbx, %rax
+        movq    %rdx, %r10
+        movl    $0x1, %r9d
+        movq    %rdi, %rcx
+        decq    %rcx
+        je      wmontend
+wmontloop:
+        adcq    (%r8,%r9,8), %r10
+        sbbq    %rbx, %rbx
+        movq    (%r15,%r9,8), %rax
+        mulq    %r12
+        subq    %rbx, %rdx
+        addq    %r10, %rax
+        movq    %rax, -0x8(%r8,%r9,8)
+        movq    %rdx, %r10
+        incq    %r9
+        decq    %rcx
+        jne     wmontloop
+wmontend:
+        adcq    %r14, %r10
+        movq    %r10, -0x8(%r8,%rdi,8)
+        sbbq    %r10, %r10
+        negq    %r10
+        movq    %rdi, %rcx
+        xorq    %r9, %r9
+wcmploop:
+        movq    (%r8,%r9,8), %rax
+        sbbq    (%r15,%r9,8), %rax
+        incq    %r9
+        decq    %rcx
+        jne     wcmploop
+        sbbq    $0x0, %r10
+        sbbq    %r10, %r10
+        notq    %r10
+        xorq    %rcx, %rcx
+        xorq    %r9, %r9
+wcorrloop:
+        movq    (%r8,%r9,8), %rax
+        movq    (%r15,%r9,8), %rbx
+        andq    %r10, %rbx
+        negq    %rcx
+        sbbq    %rbx, %rax
+        sbbq    %rcx, %rcx
+        movq    %rax, (%r8,%r9,8)
+        incq    %r9
+        cmpq    %rdi, %r9
+        jb      wcorrloop
+        movq    0x40(%rsp), %r8
+        movq    (%r8), %rbx
+        movq    0x28(%rsp), %rbp
+        imulq   %rbx, %rbp
+        movq    (%r15), %rax
+        mulq    %rbp
+        addq    %rbx, %rax
+        movq    %rdx, %r11
+        movl    $0x1, %r9d
+        movq    %rdi, %rcx
+        decq    %rcx
+        je      zmontend
+zmontloop:
+        adcq    (%r8,%r9,8), %r11
+        sbbq    %rbx, %rbx
+        movq    (%r15,%r9,8), %rax
+        mulq    %rbp
+        subq    %rbx, %rdx
+        addq    %r11, %rax
+        movq    %rax, -0x8(%r8,%r9,8)
+        movq    %rdx, %r11
+        incq    %r9
+        decq    %rcx
+        jne     zmontloop
+zmontend:
+        adcq    %rsi, %r11
+        movq    %r11, -0x8(%r8,%rdi,8)
+        sbbq    %r11, %r11
+        negq    %r11
+        movq    %rdi, %rcx
+        xorq    %r9, %r9
+zcmploop:
+        movq    (%r8,%r9,8), %rax
+        sbbq    (%r15,%r9,8), %rax
+        incq    %r9
+        decq    %rcx
+        jne     zcmploop
+        sbbq    $0x0, %r11
+        sbbq    %r11, %r11
+        notq    %r11
+        xorq    %rcx, %rcx
+        xorq    %r9, %r9
+zcorrloop:
+        movq    (%r8,%r9,8), %rax
+        movq    (%r15,%r9,8), %rbx
+        andq    %r11, %rbx
+        negq    %rcx
+        sbbq    %rbx, %rax
+        sbbq    %rcx, %rcx
+        movq    %rax, (%r8,%r9,8)
+        incq    %r9
+        cmpq    %rdi, %r9
+        jb      zcorrloop
+        movq    0x30(%rsp), %r8
+        leaq    (%r8,%rdi,8), %r15
+        xorq    %r9, %r9
+        xorq    %r12, %r12
+        xorq    %r14, %r14
+        xorq    %rbp, %rbp
+        xorq    %rsi, %rsi
+crossloop:
+        movq    (%r8,%r9,8), %rcx
+        movq    (%rsp), %rax
+        mulq    %rcx
+        addq    %rax, %r14
+        adcq    $0x0, %rdx
+        movq    %rdx, %r10
+        movq    0x10(%rsp), %rax
+        mulq    %rcx
+        addq    %rax, %rsi
+        adcq    $0x0, %rdx
+        movq    %rdx, %r11
+        movq    (%r15,%r9,8), %rcx
+        movq    0x8(%rsp), %rax
+        mulq    %rcx
+        subq    %r12, %rdx
+        subq    %rax, %r14
+        sbbq    %rdx, %r10
+        sbbq    %r12, %r12
+        movq    %r14, (%r8,%r9,8)
+        movq    %r10, %r14
+        movq    0x18(%rsp), %rax
+        mulq    %rcx
+        subq    %rbp, %rdx
+        subq    %rax, %rsi
+        sbbq    %rdx, %r11
+        sbbq    %rbp, %rbp
+        movq    %rsi, (%r15,%r9,8)
+        movq    %r11, %rsi
+        incq    %r9
+        cmpq    %r13, %r9
+        jb      crossloop
+        xorq    %r9, %r9
+        movq    %r12, %r10
+        movq    %rbp, %r11
+        xorq    %r12, %r14
+        xorq    %rbp, %rsi
+optnegloop:
+        movq    (%r8,%r9,8), %rax
+        xorq    %r12, %rax
+        negq    %r10
+        adcq    $0x0, %rax
+        sbbq    %r10, %r10
+        movq    %rax, (%r8,%r9,8)
+        movq    (%r15,%r9,8), %rax
+        xorq    %rbp, %rax
+        negq    %r11
+        adcq    $0x0, %rax
+        sbbq    %r11, %r11
+        movq    %rax, (%r15,%r9,8)
+        incq    %r9
+        cmpq    %r13, %r9
+        jb      optnegloop
+        subq    %r10, %r14
+        subq    %r11, %rsi
+        movq    %r13, %r9
+shiftloop:
+        movq    -0x8(%r8,%r9,8), %rax
+        movq    %rax, %r10
+        shrdq   $0x3a, %r14, %rax
+        movq    %rax, -0x8(%r8,%r9,8)
+        movq    %r10, %r14
+        movq    -0x8(%r15,%r9,8), %rax
+        movq    %rax, %r11
+        shrdq   $0x3a, %rsi, %rax
+        movq    %rax, -0x8(%r15,%r9,8)
+        movq    %r11, %rsi
+        decq    %r9
+        jne     shiftloop
+        notq    %rbp
+        movq    0x48(%rsp), %rcx
+        movq    0x38(%rsp), %r8
+        movq    0x40(%rsp), %r15
+        movq    %r12, %r10
+        movq    %rbp, %r11
+        xorq    %r9, %r9
+fliploop:
+        movq    %rbp, %rdx
+        movq    (%rcx,%r9,8), %rax
+        andq    %rax, %rdx
+        andq    %r12, %rax
+        movq    (%r8,%r9,8), %rbx
+        xorq    %r12, %rbx
+        negq    %r10
+        adcq    %rbx, %rax
+        sbbq    %r10, %r10
+        movq    %rax, (%r8,%r9,8)
+        movq    (%r15,%r9,8), %rbx
+        xorq    %rbp, %rbx
+        negq    %r11
+        adcq    %rbx, %rdx
+        sbbq    %r11, %r11
+        movq    %rdx, (%r15,%r9,8)
+        incq    %r9
+        cmpq    %rdi, %r9
+        jb      fliploop
+        subq    $0x3a,  0x20(%rsp)
+        ja      outerloop
+
+// Since we eventually want to return 0 when the result is the point at
+// infinity, we force xn = 0 whenever zn = 0. This avoids building in a
+// dependency on the behavior of modular inverse in out-of-scope cases.
+
+        movq    160(%rsp), %rax
+        orq     168(%rsp), %rax
+        orq     176(%rsp), %rax
+        orq     184(%rsp), %rax
+        movq    320(%rsp), %rcx
+        cmovzq  %rax, %rcx
+        movq    %rcx, 320(%rsp)
+        movq    328(%rsp), %rcx
+        cmovzq  %rax, %rcx
+        movq    %rcx, 328(%rsp)
+        movq    336(%rsp), %rcx
+        cmovzq  %rax, %rcx
+        movq    %rcx, 336(%rsp)
+        movq    344(%rsp), %rcx
+        cmovzq  %rax, %rcx
+        movq    %rcx, 344(%rsp)
+
+// Now the result is xn * (1/zn).
+
+        movq    res, %rbp
+        mul_p25519(resx,xn,zm)
 
 // Restore stack and registers
 
