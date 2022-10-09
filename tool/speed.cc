@@ -787,11 +787,7 @@ static bool SpeedHashChunk(const EVP_MD *md, std::string name,
 #else
   BM_NAMESPACE::UniquePtr<EVP_MD_CTX> ctx(EVP_MD_CTX_new());
 #endif
-  uint8_t input[16384] = {0};
-
-  if (chunk_len > sizeof(input)) {
-    return false;
-  }
+  std::unique_ptr<uint8_t[]> input(new uint8_t[chunk_len]);
 
   TimeResults results;
   if (!TimeFunction(&results, [&ctx, md, chunk_len, &input]() -> bool {
@@ -799,7 +795,7 @@ static bool SpeedHashChunk(const EVP_MD *md, std::string name,
         unsigned int md_len;
 
         return EVP_DigestInit_ex(ctx.get(), md, NULL /* ENGINE */) &&
-               EVP_DigestUpdate(ctx.get(), input, chunk_len) &&
+               EVP_DigestUpdate(ctx.get(), input.get(), chunk_len) &&
                EVP_DigestFinal_ex(ctx.get(), digest, &md_len);
       })) {
     fprintf(stderr, "EVP_DigestInit_ex failed.\n");
