@@ -474,8 +474,8 @@ OPENSSL_EXPORT int EVP_AEAD_CTX_tag_len(const EVP_AEAD_CTX *ctx,
 //
 // This is not a general-purpose API, you should not be using it unless you
 // specifically know you need to use this.
-OPENSSL_EXPORT int EVP_AEAD_iv_from_ipv4_nanosecs(const uint32_t ip_address,
-    const uint64_t time_since_boot, uint8_t out_iv[EVP_AEAD_AES_256_GCM_IV_LEN]);
+OPENSSL_EXPORT int EVP_AEAD_iv_from_ipv4_nanosecs(const uint32_t ipv4_address,
+    const uint64_t nanosecs, uint8_t out_iv[EVP_AEAD_AES_256_GCM_IV_LEN]);
 
 #if defined(__cplusplus)
 }  // extern C
