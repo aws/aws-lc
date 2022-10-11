@@ -1220,20 +1220,16 @@ TEST(AEADTest, FreeNull) {
 
 // Deterministic IV generation for AES-GCM 256.
 TEST(AEADTest, AEADAES256GCMDetIVGen) {
-  EXPECT_FALSE(EVP_AEAD_aes_256_gcm_det_iv_gen(0, 0, nullptr, 0));
-
-  uint8_t out[EVP_AEAD_AES_256_GCM_DET_IV_LEN] = {0};
-  EXPECT_FALSE(EVP_AEAD_aes_256_gcm_det_iv_gen(0, 0, out, 0));
+  EXPECT_FALSE(EVP_AEAD_iv_from_ipv4_nanosecs(0, 0, nullptr));
 
   uint32_t ip_address = UINT32_C(0xcdfbf267);  // amazon.com when I checked.
   uint64_t fake_time = UINT64_C(0x1122334455667788);
-  uint8_t expected[EVP_AEAD_AES_256_GCM_DET_IV_LEN] = {
-    // TODO: This is the little-endian representation of those values; do we
-    // support any big-endian platforms?
+  uint8_t out[EVP_AEAD_AES_256_GCM_IV_LEN] = {0};
+  uint8_t expected[EVP_AEAD_AES_256_GCM_IV_LEN] = {
+    // Note: Little-endian byte representation.
     0x67, 0xf2, 0xfb, 0xcd, 0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11
   };
 
-  EXPECT_TRUE(EVP_AEAD_aes_256_gcm_det_iv_gen(ip_address, fake_time,
-      out, sizeof(out)));
+  EXPECT_TRUE(EVP_AEAD_iv_from_ipv4_nanosecs(ip_address, fake_time, out));
   EXPECT_EQ(Bytes(out, sizeof(out)), Bytes(expected, sizeof(expected)));
 }

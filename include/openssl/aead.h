@@ -244,9 +244,9 @@ struct evp_aead_ctx_st {
 // be used.
 #define EVP_AEAD_DEFAULT_TAG_LENGTH 0
 
-// EVP_AEAD_AES_256_GCM_DET_IV_LEN is the number of bytes required for 96 bits
-// of deterministically-generated IV to be used in AES-GCM.
-#define EVP_AEAD_AES_256_GCM_DET_IV_LEN 12
+// EVP_AEAD_AES_256_GCM_IV_LEN is the number of bytes required for 96 bits
+// of IV to be used in AES-GCM.
+#define EVP_AEAD_AES_256_GCM_IV_LEN 12
 
 // EVP_AEAD_CTX_zero sets an uninitialized |ctx| to the zero state. It must be
 // initialized with |EVP_AEAD_CTX_init| before use. It is safe, but not
@@ -467,12 +467,15 @@ OPENSSL_EXPORT int EVP_AEAD_CTX_tag_len(const EVP_AEAD_CTX *ctx,
                                         const size_t in_len,
                                         const size_t extra_in_len);
 
-// EVP_aead_aes_256_gcm_det_iv_gen computes a deterministic IV compliant with
+// EVP_AEAD_iv_from_ipv4_nanosecs computes a deterministic IV compliant with
 // NIST SP 800-38D, built from an IPv4 address and the number of nanoseconds
 // since boot, writing it to |out_iv|. It returns one on success or zero for
-// error. |out_iv_len| must be exactly 12 bytes (96 bits).
-OPENSSL_EXPORT int EVP_AEAD_aes_256_gcm_det_iv_gen(const uint32_t ip_address,
-    const uint64_t time_since_boot, uint8_t *out_iv, const size_t out_iv_len);
+// error.
+//
+// This is not a general-purpose API, you should not be using it unless you
+// specifically know you need to use this.
+OPENSSL_EXPORT int EVP_AEAD_iv_from_ipv4_nanosecs(const uint32_t ip_address,
+    const uint64_t time_since_boot, uint8_t out_iv[EVP_AEAD_AES_256_GCM_IV_LEN]);
 
 #if defined(__cplusplus)
 }  // extern C
