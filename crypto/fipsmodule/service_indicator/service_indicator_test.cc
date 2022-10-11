@@ -18,6 +18,7 @@
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 #include <openssl/hkdf.h>
+#include <openssl/kdf.h>
 #include <openssl/md4.h>
 #include <openssl/md5.h>
 #include <openssl/rand.h>
@@ -882,8 +883,10 @@ static void TestOperation(const EVP_CIPHER *cipher, bool encrypt,
   bssl::ScopedEVP_CIPHER_CTX ctx;
   // Test running the EVP_Cipher interfaces one by one directly, and check
   // |EVP_EncryptFinal_ex| and |EVP_DecryptFinal_ex| for approval at the end.
-  ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), cipher, nullptr, nullptr, nullptr,
-                                encrypt ? 1 : 0));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+    ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), cipher, nullptr, nullptr, nullptr,
+                                encrypt ? 1 : 0)));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
   if (iv.size() > 0) {
     // IV specified for the test, so the context's IV length should match.
     ASSERT_LE(EVP_CIPHER_CTX_iv_length(ctx.get()), iv.size());
@@ -895,8 +898,10 @@ static void TestOperation(const EVP_CIPHER *cipher, bool encrypt,
 
 
   ASSERT_TRUE(EVP_CIPHER_CTX_set_key_length(ctx.get(), key.size()));
-  ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), cipher, nullptr, key.data(),
-                                iv.data(), encrypt ? 1 : 0));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+    ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), cipher, nullptr, key.data(),
+                                iv.data(), encrypt ? 1 : 0)));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
   ASSERT_TRUE(EVP_CIPHER_CTX_set_padding(ctx.get(), 0));
   std::vector<uint8_t> encrypt_result;
   DoCipherFinal(ctx.get(), &encrypt_result, in, expect_approved);
@@ -905,8 +910,10 @@ static void TestOperation(const EVP_CIPHER *cipher, bool encrypt,
   // Test using the one-shot |EVP_Cipher| function for approval.
   bssl::ScopedEVP_CIPHER_CTX ctx2;
   uint8_t output[256];
-  ASSERT_TRUE(EVP_CipherInit_ex(ctx2.get(), cipher, nullptr, key.data(),
-                                iv.data(), encrypt ? 1 : 0));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+    ASSERT_TRUE(EVP_CipherInit_ex(ctx2.get(), cipher, nullptr, key.data(),
+                                iv.data(), encrypt ? 1 : 0)));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
   CALL_SERVICE_AND_CHECK_APPROVED(
       approved, EVP_Cipher(ctx2.get(), output, in.data(), in.size()));
   EXPECT_EQ(approved, expect_approved);
@@ -1597,7 +1604,10 @@ static const struct HKDFTestVector {
     },
 };
 
-// TODO(CryptoAlg-1281): Do we need to test HKDF_Expand separately from this?
+// Index into the kHKDFTestVectors array; used in the EVP_HKDF_Extract and
+// EVP_HKDF_Expand tests, below.
+#define EVP_HKDF_TEST_EXTRACT_EXPAND 3
+
 class HKDF_ServiceIndicatorTest : public TestWithNoErrors<HKDFTestVector> {};
 
 INSTANTIATE_TEST_SUITE_P(All, HKDF_ServiceIndicatorTest,
@@ -1608,15 +1618,105 @@ TEST_P(HKDF_ServiceIndicatorTest, HKDFTest) {
 
   FIPSStatus approved = AWSLC_NOT_APPROVED;
 
-  uint8_t output[sizeof(kHKDF_okm_tc2_sha256)];   // largest test vector output size
+  uint8_t output[sizeof(kHKDF_okm_tc2_sha256)];   // largest test output size
   CALL_SERVICE_AND_CHECK_APPROVED(
-      approved, ASSERT_TRUE(HKDF(output, test.output_len, test.func(),
-                                 test.ikm, test.ikm_size,
-                                 test.salt, test.salt_size,
-                                 test.info, test.info_size)));
+    approved, ASSERT_TRUE(HKDF(output, test.output_len, test.func(),
+                               test.ikm, test.ikm_size,
+                               test.salt, test.salt_size,
+                               test.info, test.info_size)));
   EXPECT_EQ(Bytes(test.expected_output, test.output_len),
             Bytes(output, test.output_len));
   EXPECT_EQ(approved, test.expect_approved);
+}
+
+class EVP_HKDF_ServiceIndicatorTest : public TestWithNoErrors<HKDFTestVector> {};
+
+INSTANTIATE_TEST_SUITE_P(All, EVP_HKDF_ServiceIndicatorTest,
+                         testing::ValuesIn(kHKDFTestVectors));
+
+TEST_P(EVP_HKDF_ServiceIndicatorTest, EVP_HKDFTest) {
+  const HKDFTestVector &test = GetParam();
+
+  FIPSStatus approved = AWSLC_NOT_APPROVED;
+
+  uint8_t output[sizeof(kHKDF_okm_tc2_sha256)];   // largest test output size
+  EVP_PKEY_CTX *pctx;
+  size_t outlen = test.output_len;
+
+  pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_HKDF, NULL);
+  EXPECT_NE(pctx, nullptr);
+  EXPECT_TRUE(EVP_PKEY_derive_init(pctx));
+  EXPECT_TRUE(EVP_PKEY_CTX_hkdf_mode(pctx,
+                                     EVP_PKEY_HKDEF_MODE_EXTRACT_AND_EXPAND));
+  EXPECT_TRUE(EVP_PKEY_CTX_set_hkdf_md(pctx, test.func()));
+  EXPECT_TRUE(EVP_PKEY_CTX_set1_hkdf_key(pctx, test.ikm, test.ikm_size));
+  EXPECT_TRUE(EVP_PKEY_CTX_set1_hkdf_salt(pctx, test.salt, test.salt_size));
+  EXPECT_TRUE(EVP_PKEY_CTX_add1_hkdf_info(pctx, test.info, test.info_size));
+
+  CALL_SERVICE_AND_CHECK_APPROVED(
+    approved, ASSERT_TRUE(EVP_PKEY_derive(pctx, output, &outlen)));
+  EXPECT_EQ(outlen, test.output_len);
+  EXPECT_EQ(Bytes(test.expected_output, test.output_len),
+            Bytes(output, test.output_len));
+  EXPECT_EQ(approved, test.expect_approved);
+
+  if (pctx != NULL) {
+    EVP_PKEY_CTX_free(pctx);
+  }
+}
+
+// Test only HKDF's Extract phase, which is not approved on its own.
+TEST(EVP_HKDF_ServiceIndicatorTest, EVP_HKDF_Extract) {
+  const HKDFTestVector &test = kHKDFTestVectors[EVP_HKDF_TEST_EXTRACT_EXPAND];
+  FIPSStatus approved = AWSLC_NOT_APPROVED;
+  uint8_t output[sizeof(kHKDF_okm_tc2_sha256)];  // largest test output size
+  EVP_PKEY_CTX *pctx;
+  size_t outlen = test.output_len;
+
+  pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_HKDF, NULL);
+  EXPECT_NE(pctx, nullptr);
+  EXPECT_TRUE(EVP_PKEY_derive_init(pctx));
+  EXPECT_TRUE(EVP_PKEY_CTX_hkdf_mode(pctx,
+                                     EVP_PKEY_HKDEF_MODE_EXTRACT_ONLY));
+  EXPECT_TRUE(EVP_PKEY_CTX_set_hkdf_md(pctx, test.func()));
+  EXPECT_TRUE(EVP_PKEY_CTX_set1_hkdf_key(pctx, test.ikm, test.ikm_size));
+  EXPECT_TRUE(EVP_PKEY_CTX_set1_hkdf_salt(pctx, test.salt, test.salt_size));
+  EXPECT_TRUE(EVP_PKEY_CTX_add1_hkdf_info(pctx, test.info, test.info_size));
+
+  CALL_SERVICE_AND_CHECK_APPROVED(
+    approved, ASSERT_TRUE(EVP_PKEY_derive(pctx, output, &outlen)));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+
+  if (pctx != NULL) {
+    EVP_PKEY_CTX_free(pctx);
+  }
+}
+
+// Test only HKDF's Expand phase, which is not approved on its own.
+TEST(EVP_HKDF_ServiceIndicatorTest, EVP_HKDF_Expand) {
+    const HKDFTestVector &test = kHKDFTestVectors[EVP_HKDF_TEST_EXTRACT_EXPAND];
+    FIPSStatus approved = AWSLC_NOT_APPROVED;
+    uint8_t output[sizeof(kHKDF_okm_tc2_sha256)];  // largest test output size
+    EVP_PKEY_CTX *pctx;
+    size_t outlen = test.output_len;
+
+    pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_HKDF, NULL);
+    EXPECT_NE(pctx, nullptr);
+    EXPECT_TRUE(EVP_PKEY_derive_init(pctx));
+    EXPECT_TRUE(EVP_PKEY_CTX_hkdf_mode(pctx,
+                                       EVP_PKEY_HKDEF_MODE_EXPAND_ONLY));
+    EXPECT_TRUE(EVP_PKEY_CTX_set_hkdf_md(pctx, test.func()));
+    EXPECT_TRUE(EVP_PKEY_CTX_set1_hkdf_key(pctx, test.ikm, test.ikm_size));
+    EXPECT_TRUE(EVP_PKEY_CTX_set1_hkdf_salt(pctx, test.salt, test.salt_size));
+    EXPECT_TRUE(EVP_PKEY_CTX_add1_hkdf_info(pctx, test.info, test.info_size));
+
+    CALL_SERVICE_AND_CHECK_APPROVED(
+        approved, ASSERT_TRUE(EVP_PKEY_derive(pctx, output, &outlen)));
+    EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+
+    if (pctx != NULL) {
+        EVP_PKEY_CTX_free(pctx);
+    }
 }
 
 // RSA tests are not parameterized with the |kRSATestVectors| as key
@@ -3417,6 +3517,62 @@ TEST(ServiceIndicatorTest, AESKWP) {
                                         sizeof(kAESKWPCiphertext))));
   EXPECT_EQ(Bytes(kPlaintext), Bytes(output, outlen));
   EXPECT_EQ(approved, AWSLC_APPROVED);
+}
+
+TEST(ServiceIndicatorTest, AESXTS) {
+  FIPSStatus approved = AWSLC_NOT_APPROVED;
+  std::vector<uint8_t> key(
+      kAESXTSKey_256,
+      kAESXTSKey_256 + sizeof(kAESXTSKey_256));
+  std::vector<uint8_t> iv(
+      kAESXTSIV_256,
+      kAESXTSIV_256 + sizeof(kAESXTSIV_256));
+  std::vector<uint8_t> plaintext(
+      kAESXTSPlaintext_256,
+      kAESXTSPlaintext_256 + sizeof(kAESXTSPlaintext_256));
+  std::vector<uint8_t> ciphertext(
+      kAESXTSCiphertext_256,
+      kAESXTSCiphertext_256 + sizeof(kAESXTSCiphertext_256));
+  bssl::ScopedEVP_CIPHER_CTX ctx;
+
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+    ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), EVP_aes_256_xts(), nullptr,
+                                key.data(), iv.data(), 1)));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  ASSERT_LE(EVP_CIPHER_CTX_iv_length(ctx.get()), iv.size());
+
+  ASSERT_TRUE(EVP_CIPHER_CTX_set_key_length(ctx.get(), key.size()));
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+    ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), EVP_aes_256_xts(), nullptr,
+                                key.data(), iv.data(), 1)));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  ASSERT_TRUE(EVP_CIPHER_CTX_set_padding(ctx.get(), 0));
+  std::vector<uint8_t> encrypt_result;
+
+  size_t max_out = plaintext.size();
+  unsigned block_size = EVP_CIPHER_CTX_block_size(ctx.get());
+  max_out += block_size - (max_out % block_size);
+  encrypt_result.resize(max_out);
+  size_t total = 0;
+  int len = 0;
+
+  // Result should be fully encrypted during |EVP_CipherUpdate| for AES-XTS.
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+    EVP_CipherUpdate(ctx.get(), encrypt_result.data(), &len,
+                          plaintext.data(), plaintext.size()));
+  ASSERT_EQ(approved, AWSLC_NOT_APPROVED);
+  total += static_cast<size_t>(len);
+  encrypt_result.resize(total);
+  EXPECT_EQ(Bytes(encrypt_result), Bytes(ciphertext));
+
+  // Ensure |EVP_CipherFinal_ex| is a no-op, but only |*Final| functions
+  // should indicate service indicator approval.
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+    EVP_CipherFinal_ex(ctx.get(), encrypt_result.data() + total, &len));
+  EXPECT_EQ(Bytes(encrypt_result), Bytes(ciphertext));
+  EXPECT_EQ(0, len);
+
+  ASSERT_EQ(approved, AWSLC_APPROVED);
 }
 
 TEST(ServiceIndicatorTest, FFDH) {
