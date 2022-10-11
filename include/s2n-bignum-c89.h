@@ -217,6 +217,10 @@ extern uint64_t bignum_digitsize (uint64_t k, uint64_t *x);
 /*  Inputs z[k]; outputs function return (remainder) and z[k] */
 extern uint64_t bignum_divmod10 (uint64_t k, uint64_t *z);
 
+/*  Double modulo p_25519, z := (2 * x) mod p_25519, assuming x reduced */
+/*  Input x[4]; output z[4] */
+extern void bignum_double_p25519 (uint64_t z[4], uint64_t x[4]);
+
 /*  Double modulo p_256, z := (2 * x) mod p_256, assuming x reduced */
 /*  Input x[4]; output z[4] */
 extern void bignum_double_p256 (uint64_t z[4], uint64_t x[4]);

@@ -117,6 +117,7 @@ enum {
        TEST_BIGNUM_DIGIT,
        TEST_BIGNUM_DIGITSIZE,
        TEST_BIGNUM_DIVMOD10,
+       TEST_BIGNUM_DOUBLE_P25519,
        TEST_BIGNUM_DOUBLE_P256,
        TEST_BIGNUM_DOUBLE_P256K1,
        TEST_BIGNUM_DOUBLE_P384,
@@ -2970,6 +2971,41 @@ int test_bignum_divmod10(void)
       }
    }
 
+  printf("All OK\n");
+  return 0;
+}
+
+int test_bignum_double_p25519(void)
+{ uint64_t i, k;
+  printf("Testing bignum_double_p25519 with %d cases\n",tests);
+  uint64_t c;
+  for (i = 0; i < tests; ++i)
+   { k = 4;
+     random_bignum(k,b2); reference_mod(k,b0,b2,p_25519);
+     bignum_double_p25519(b2,b0);
+     reference_copy(k+1,b3,k,b0);
+     reference_copy(k+1,b4,k,b0);
+     reference_add_samelen(k+1,b4,b4,b3);
+     reference_copy(k+1,b3,k,p_25519);
+     reference_mod(k+1,b5,b4,b3);
+     reference_copy(k,b3,k+1,b5);
+
+     c = reference_compare(k,b3,k,b2);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "...0x%016"PRIx64" * 2 mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64" not ...0x%016"PRIx64"\n",
+               k,b0[0],p_25519[0],b2[0],b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] "
+                    "...0x%016"PRIx64" * 2 mod ....0x%016"PRIx64" = "
+                    "...0x%016"PRIx64"\n",
+                    k,b0[0],p_25519[0],b2[0]);
+      }
+   }
   printf("All OK\n");
   return 0;
 }
@@ -8481,6 +8517,7 @@ int test_all(void)
   dotest(test_bignum_digit);
   dotest(test_bignum_digitsize);
   dotest(test_bignum_divmod10);
+  dotest(test_bignum_double_p25519);
   dotest(test_bignum_double_p256);
   dotest(test_bignum_double_p256k1);
   dotest(test_bignum_double_p384);
@@ -8729,6 +8766,7 @@ int test_allnonbmi()
   dotest(test_bignum_digit);
   dotest(test_bignum_digitsize);
   dotest(test_bignum_divmod10);
+  dotest(test_bignum_double_p25519);
   dotest(test_bignum_double_p256);
   dotest(test_bignum_double_p256k1);
   dotest(test_bignum_double_p384);
@@ -8980,6 +9018,7 @@ int main(int argc, char *argv[])
      case TEST_BIGNUM_DIGIT:              return test_bignum_digit();
      case TEST_BIGNUM_DIGITSIZE:          return test_bignum_digitsize();
      case TEST_BIGNUM_DIVMOD10 :          return test_bignum_divmod10();
+     case TEST_BIGNUM_DOUBLE_P25519:      return test_bignum_double_p25519();
      case TEST_BIGNUM_DOUBLE_P256:        return test_bignum_double_p256();
      case TEST_BIGNUM_DOUBLE_P256K1:      return test_bignum_double_p256k1();
      case TEST_BIGNUM_DOUBLE_P384:        return test_bignum_double_p384();

@@ -279,6 +279,8 @@ void call_bignum_tomont_p384_alt(void) repeat(bignum_tomont_p384_alt(b0,b1))
 
 void call_bignum_tomont_p521(void) repeat(bignum_tomont_p521(b0,b1))
 
+void call_bignum_double_p25519(void) repeat(bignum_double_p25519(b0,b1))
+
 void call_bignum_double_p256(void) repeat(bignum_double_p256(b0,b1))
 
 void call_bignum_double_p256k1(void) repeat(bignum_double_p256k1(b0,b1))
@@ -763,6 +765,7 @@ int main(void)
   timingtest(all,"bignum_digit (32 -> 1)",call_bignum_digit__32);
   timingtest(all,"bignum_digitsize (32)" ,call_bignum_digitsize__32);
   timingtest(all,"bignum_divmod10 (32 -> 32)",call_bignum_divmod10__32);
+  timingtest(all,"bignum_double_p25519",call_bignum_double_p25519);
   timingtest(all,"bignum_double_p256",call_bignum_double_p256);
   timingtest(all,"bignum_double_p256k1",call_bignum_double_p256k1);
   timingtest(all,"bignum_double_p384",call_bignum_double_p384);

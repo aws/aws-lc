@@ -41,6 +41,7 @@ bignum_demont_p521
 bignum_digit
 bignum_digitsize
 bignum_divmod10
+bignum_double_p25519
 bignum_double_p256
 bignum_double_p256k1
 bignum_double_p384
