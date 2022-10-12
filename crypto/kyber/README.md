@@ -4,7 +4,7 @@ The source code in this folder implements support for [Kyber](https://www.pq-cry
 
 Kyber is specified with three parameter sets targeting security levels 1, 3, and 5 as defined by NIST. These three versions are denoted by Kyber512, Kyber768, and Kyber1024. Moreover, the Crystals team defined additional variants of each version that internally uses AES and SHA2 instead of SHA3 and SHAKE algorithms. These versions are denoted Kyber512-90s, Kyber768-90s, and Kyber1024-90s.
 
-The AWS-LC team considers the official repository of [Kyber](https://github.com/pq-crystals/kyber) the primary source of Kyber’s implementation and takes the code directly from it. The code is integrated in AWS-LC with minimal changes that are required only to make it correctly build on many different platforms AWS-LC supports (see below for details).
+The AWS-LC team considers the official repository of [Kyber](https://github.com/pq-crystals/kyber) the primary source of Kyber’s implementation and takes the code directly from it. The code is integrated in AWS-LC with only minimal changes that are required to build on the platforms AWS-LC supports (see below for details).
 
 NIST has not published the final PQ standard yet, and is not expected to do so until 2024. Therefore, the specification and implementation of Kyber is not finalized yet. Potentially, there will be changes to Kyber in the future. Some changes might even break backwards compatibility. The AWS-LC team follows the developments around the PQC project and will update the implementation and documentation if necessary. Therefore, AWS-LC can not promise backward compatibility of the Kyber implementation and API until NIST locks in the specification and reserves the right to change the implementation if necessary.
 
