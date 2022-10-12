@@ -23,7 +23,7 @@ Only the reference C implementation of Kyber512 is currently integrated. The cod
 * `verify.c`: change to fix MSVC compiler warning (see the file for details).
 
 
-**Usage.** The APIs is defined and documented in `include/openssl/evp.h`. To see examples of how to use the APIs with Kyber512, see `crypto/kyber/p_kyber_test.cc`. TLDR:
+**Usage.** The API is defined and documented in `include/openssl/evp.h`. To see examples of how to use Kyber512, see `crypto/kyber/p_kyber_test.cc`. TLDR:
 
 ```
 // Creates a new PKEY context with Kyber512
@@ -34,6 +34,7 @@ EVP_PKEY_keygen(ctx, &key);
 
 // KEM Encapsulation
 EVP_PKEY_encapsulate(ctx, ciphertext, &ciphertext_len, shared_secret, &shared_secret_len);
+
 // KEM Decapsulation
 EVP_PKEY_decapsulate(ctx, shared_secret, &shared_secret_len, ciphertext, ciphertext_len);
 ```
