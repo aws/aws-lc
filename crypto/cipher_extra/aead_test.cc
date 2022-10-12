@@ -1224,8 +1224,8 @@ TEST(AEADTest, AEADAES256GCMDetIVGen) {
 
   uint32_t ip_address = UINT32_C(0xcdfbf267);  // amazon.com when I checked.
   uint64_t fake_time = UINT64_C(0x1122334455667788);
-  uint8_t out[EVP_AEAD_AES_256_GCM_IV_LEN] = {0};
-  uint8_t expected[EVP_AEAD_AES_256_GCM_IV_LEN] = {
+  uint8_t out[AES_GCM_NONCE_LENGTH] = {0};
+  uint8_t expected[AES_GCM_NONCE_LENGTH] = {
     // Note: Little-endian byte representation.
     0x67, 0xf2, 0xfb, 0xcd, 0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11
   };

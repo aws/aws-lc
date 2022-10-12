@@ -67,6 +67,8 @@ extern "C" {
 
 #define AES_BLOCK_SIZE 16
 
+#define AES_GCM_NONCE_LENGTH 12
+
 // aes_key_st should be an opaque type, but EVP requires that the size be
 // known.
 struct aes_key_st {

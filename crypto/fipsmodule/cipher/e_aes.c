@@ -68,8 +68,6 @@
 OPENSSL_MSVC_PRAGMA(warning(push))
 OPENSSL_MSVC_PRAGMA(warning(disable: 4702))  // Unreachable code.
 
-#define AES_GCM_NONCE_LENGTH 12
-
 #if defined(BSAES)
 static void vpaes_ctr32_encrypt_blocks_with_bsaes(const uint8_t *in,
                                                   uint8_t *out, size_t blocks,
