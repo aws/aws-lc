@@ -233,6 +233,8 @@ void call_bignum_cmul_p521(void) repeat(bignum_cmul_p521(b0,b1[0],b2))
 
 void call_bignum_cmul_p521_alt(void) repeat(bignum_cmul_p521_alt(b0,b1[0],b2))
 
+void call_bignum_optneg_p25519(void) repeat(bignum_optneg_p25519(b0,b1[0],b2))
+
 void call_bignum_optneg_p256(void) repeat(bignum_optneg_p256(b0,b1[0],b2))
 
 void call_bignum_optneg_p256k1(void) repeat(bignum_optneg_p256k1(b0,b1[0],b2))
@@ -884,6 +886,7 @@ int main(void)
   timingtest(all,"bignum_of_word (1 -> 32)",call_bignum_of_word__32);
   timingtest(all,"bignum_optadd (32x32 -> 32)" ,call_bignum_optadd__32);
   timingtest(all,"bignum_optneg (32 -> 32)" ,call_bignum_optneg__32);
+  timingtest(all,"bignum_optneg_p25519",call_bignum_optneg_p25519);
   timingtest(all,"bignum_optneg_p256",call_bignum_optneg_p256);
   timingtest(all,"bignum_optneg_p256k1",call_bignum_optneg_p256k1);
   timingtest(all,"bignum_optneg_p384",call_bignum_optneg_p384);

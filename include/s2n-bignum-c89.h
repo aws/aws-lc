@@ -580,6 +580,10 @@ extern uint64_t bignum_optadd (uint64_t k, uint64_t *z, uint64_t *x, uint64_t p,
 /*  Inputs p, x[k]; outputs function return (nonzero input) and z[k] */
 extern uint64_t bignum_optneg (uint64_t k, uint64_t *z, uint64_t p, uint64_t *x);
 
+/*  Optionally negate modulo p_25519, z := (-x) mod p_25519 (if p nonzero) or z := x (if p zero), assuming x reduced */
+/*  Inputs p, x[4]; output z[4] */
+extern void bignum_optneg_p25519 (uint64_t z[4], uint64_t p, uint64_t x[4]);
+
 /*  Optionally negate modulo p_256, z := (-x) mod p_256 (if p nonzero) or z := x (if p zero), assuming x reduced */
 /*  Inputs p, x[4]; output z[4] */
 extern void bignum_optneg_p256 (uint64_t z[4], uint64_t p, uint64_t x[4]);
