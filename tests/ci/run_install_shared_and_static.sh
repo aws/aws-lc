@@ -1,7 +1,7 @@
 #!/bin/bash
 set -exo pipefail
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: Apache-2.0 OR ISC
 
 source tests/ci/common_posix_setup.sh
 print_system_and_dependency_information

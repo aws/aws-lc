@@ -1,7 +1,7 @@
 # escape=`
 
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: Apache-2.0 OR ISC
 
 # Keep parity with the upstream tags at https://hub.docker.com/_/microsoft-windows-servercore
 FROM aws-lc/windows_base:2019
