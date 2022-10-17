@@ -16,11 +16,11 @@
 // Modifications Copyright Amazon.com, Inc. or its affiliates. See GitHub history for details.
 
 use regex::Regex;
-use std::{env, fs, io};
 use std::fs::File;
 use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::{env, fs, io};
 
 fn modify_bindings(bindings_path: &PathBuf, prefix: &str) -> io::Result<()> {
     // Needed until this issue is resolved: https://github.com/rust-lang/rust-bindgen/issues/1375
@@ -104,10 +104,7 @@ const PRELUDE: &str = r#"
 #![allow(unused_imports, non_camel_case_types, non_snake_case, non_upper_case_globals, improper_ctypes)]
 "#;
 
-fn prepare_bindings_builder(
-    manifest_dir: &Path,
-    build_prefix: Option<&str>,
-) -> bindgen::Builder {
+fn prepare_bindings_builder(manifest_dir: &Path, build_prefix: Option<&str>) -> bindgen::Builder {
     let clang_args = prepare_clang_args(manifest_dir, build_prefix);
 
     let builder = bindgen::Builder::default()
@@ -234,6 +231,14 @@ fn prepare_cmake_build(build_prefix: Option<&str>) -> cmake::Config {
             "BORINGSSL_PREFIX_HEADERS",
             include_path.display().to_string(),
         );
+    }
+
+    if cfg!(feature = "asan") {
+        env::set_var("CC", "/usr/bin/clang");
+        env::set_var("CXX", "/usr/bin/clang++");
+        env::set_var("ASM", "/usr/bin/clang");
+
+        cmake_cfg.define("ASAN", "1");
     }
 
     cmake_cfg
