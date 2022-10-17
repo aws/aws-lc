@@ -7,12 +7,12 @@
 # the same as the source code.
 
 set(JITTER_SOURCES
-        ${CMAKE_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-base.c
-        ${CMAKE_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-gcd.c
-        ${CMAKE_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-health.c
-        ${CMAKE_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-noise.c
-        ${CMAKE_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-sha3.c
-        ${CMAKE_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-timer.c)
+        ${PROJECT_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-base.c
+        ${PROJECT_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-gcd.c
+        ${PROJECT_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-health.c
+        ${PROJECT_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-noise.c
+        ${PROJECT_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-sha3.c
+        ${PROJECT_SOURCE_DIR}/third_party/jitterentropy/jitterentropy-timer.c)
 
 include_directories(../../include)
 

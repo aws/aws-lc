@@ -27,7 +27,4 @@ jobs:
     - uses: actions/checkout@v2
     - name: Build ${{ env.PACKAGE_NAME }} with FIPS mode
       run: |
-        echo "Do nothing"
-# fips-2021-10-20 does not support FIPS on macOS.
-# TODO(CryptoAlg-1286): enable below FIPS cript when related source code are copied to FIPS branch.
-        # ./tests/ci/run_fips_tests.sh
+        ./tests/ci/run_fips_tests.sh

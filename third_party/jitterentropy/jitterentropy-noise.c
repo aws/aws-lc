@@ -46,7 +46,7 @@ static uint64_t jent_loop_shuffle(struct rand_data *ec,
 	(void)ec;
 	(void)bits;
 
-	return (1U<<min);
+	return (UINT64_C(1)<<min);
 
 #else /* JENT_CONF_DISABLE_LOOP_SHUFFLE */
 
@@ -109,7 +109,7 @@ static void jent_hash_time(struct rand_data *ec, uint64_t time,
 	uint64_t hash_loop_cnt =
 		jent_loop_shuffle(ec, MAX_HASH_LOOP, MIN_HASH_LOOP);
 
-	sha3_256_init(ctx);
+	sha3_256_init(&ctx);
 
 	/*
 	 * testing purposes -- allow test app to set the counter, not
@@ -124,9 +124,9 @@ static void jent_hash_time(struct rand_data *ec, uint64_t time,
 	 * same result.
 	 */
 	for (j = 0; j < hash_loop_cnt; j++) {
-		sha3_update(ctx, ec->data, SHA3_256_SIZE_DIGEST);
-		sha3_update(ctx, (uint8_t *)&time, sizeof(uint64_t));
-		sha3_update(ctx, (uint8_t *)&j, sizeof(uint64_t));
+		sha3_update(&ctx, ec->data, SHA3_256_SIZE_DIGEST);
+		sha3_update(&ctx, (uint8_t *)&time, sizeof(uint64_t));
+		sha3_update(&ctx, (uint8_t *)&j, sizeof(uint64_t));
 
 		/*
 		 * If the time stamp is stuck, do not finally insert the value
@@ -141,12 +141,12 @@ static void jent_hash_time(struct rand_data *ec, uint64_t time,
 		 * next loop iteration.
 		 */
 		if (stuck || (j < hash_loop_cnt - 1))
-			sha3_final(ctx, itermediary);
+			sha3_final(&ctx, itermediary);
 		else
-			sha3_final(ctx, ec->data);
+			sha3_final(&ctx, ec->data);
 	}
 
-	jent_memset_secure(ctx, SHA_MAX_CTX_SIZE);
+	jent_memset_secure(&ctx, SHA_MAX_CTX_SIZE);
 	jent_memset_secure(itermediary, sizeof(itermediary));
 }
 

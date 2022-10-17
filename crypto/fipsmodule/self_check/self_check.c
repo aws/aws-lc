@@ -36,17 +36,6 @@
 #include "../rand/internal.h"
 #include "../tls/internal.h"
 
-
-// MSVC wants to put a NUL byte at the end of non-char arrays and so cannot
-// compile the real logic.
-#if defined(_MSC_VER)
-
-int BORINGSSL_self_test(void) {
-  return 0;
-}
-
-#else
-
 static void hexdump(const uint8_t *in, size_t len) {
   for (size_t i = 0; i < len; i++) {
     fprintf(stderr, "%02x", in[i]);
@@ -56,7 +45,7 @@ static void hexdump(const uint8_t *in, size_t len) {
 static int check_test(const void *expected, const void *actual,
                       size_t expected_len, const char *name) {
   if (OPENSSL_memcmp(actual, expected, expected_len) != 0) {
-    fprintf(stderr, "%s failed.\nExpected: ", name);
+    fprintf(stderr, "%s failed.\nExpected:   ", name);
     hexdump(expected, expected_len);
     fprintf(stderr, "\nCalculated: ");
     hexdump(actual, expected_len);
@@ -1003,4 +992,8 @@ int BORINGSSL_self_test(void) {
   return boringssl_fips_self_test();
 }
 
-#endif  // !_MSC_VER
+#if defined(BORINGSSL_FIPS)
+int boringssl_self_test_startup(void) {
+  return boringssl_fips_self_test();
+}
+#endif

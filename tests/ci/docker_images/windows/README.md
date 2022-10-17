@@ -1,8 +1,8 @@
 ## Building Windows Docker Images and Uploading them to AWS Elastic Container Service
 ### Prerequisites
 * An host to build the image with
-  * Windows Server 2016 with Containers. The EC2 AMI
-    Windows_Server-2016-English-Full-Containers-2019.09.11 was used to build the
+  * Windows Server 2019 with Containers. The EC2 AMI
+    EC2LaunchV2-Windows_Server-2019-English-Full-ContainersLatest-2021.12.15 was used to build the
     images used by this repository
 * Docker
   * To install run the following in an admin powershell of your new instance:

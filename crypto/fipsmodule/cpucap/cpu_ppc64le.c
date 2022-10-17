@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, Google Inc.
+/* Copyright (c) 2016, Google Inc.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -12,27 +12,24 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-#include <openssl/cpu.h>
+#include <openssl/base.h>
 
-#if (defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)) && \
-    !defined(OPENSSL_STATIC_ARMCAP)
+#if defined(OPENSSL_PPC64LE)
 
-#include <openssl/arm_arch.h>
+#include <sys/auxv.h>
 
+#if !defined(PPC_FEATURE2_HAS_VCRYPTO)
+// PPC_FEATURE2_HAS_VCRYPTO was taken from section 4.1.2.3 of the “OpenPOWER
+// ABI for Linux Supplement”.
+#define PPC_FEATURE2_HAS_VCRYPTO 0x02000000
+#endif
 
-extern uint32_t OPENSSL_armcap_P;
-
-int CRYPTO_is_NEON_capable_at_runtime(void) {
-  return (OPENSSL_armcap_P & ARMV7_NEON) != 0;
+void OPENSSL_cpuid_setup(void) {
+  OPENSSL_ppc64le_hwcap2 = getauxval(AT_HWCAP2);
 }
 
-int CRYPTO_is_ARMv8_AES_capable_at_runtime(void) {
-  return (OPENSSL_armcap_P & ARMV8_AES) != 0;
+int CRYPTO_is_PPC64LE_vcrypto_capable(void) {
+  return (OPENSSL_ppc64le_hwcap2 & PPC_FEATURE2_HAS_VCRYPTO) != 0;
 }
 
-int CRYPTO_is_ARMv8_PMULL_capable_at_runtime(void) {
-  return (OPENSSL_armcap_P & ARMV8_PMULL) != 0;
-}
-
-#endif  /* (defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)) &&
-           !defined(OPENSSL_STATIC_ARMCAP) */
+#endif  // OPENSSL_PPC64LE

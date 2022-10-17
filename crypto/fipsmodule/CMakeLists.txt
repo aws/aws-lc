@@ -179,6 +179,7 @@ if(FIPS_DELOCATE)
 
     bcm.c
   )
+  target_compile_definitions(bcm_c_generated_asm PRIVATE BORINGSSL_IMPLEMENTATION)
 
   if(ARCH STREQUAL "aarch64")
     # Perlasm output on Aarch64 needs to pass through the C preprocessor before
@@ -212,6 +213,7 @@ if(FIPS_DELOCATE)
 
     bcm-delocated.S
   )
+  target_compile_definitions(bcm_hashunset PRIVATE BORINGSSL_IMPLEMENTATION)
 
   add_dependencies(bcm_hashunset global_target)
 
@@ -239,6 +241,7 @@ if(FIPS_DELOCATE)
 
     fips_shared_support.c
   )
+  target_compile_definitions(fipsmodule PRIVATE BORINGSSL_IMPLEMENTATION)
 
   add_dependencies(fipsmodule global_target)
 
@@ -255,6 +258,7 @@ elseif(FIPS_SHARED)
 
     fips_shared_support.c
   )
+  target_compile_definitions(fipsmodule PRIVATE BORINGSSL_IMPLEMENTATION)
 
   add_dependencies(fipsmodule global_target)
 
@@ -267,24 +271,89 @@ elseif(FIPS_SHARED)
 
     ${BCM_ASM_SOURCES}
   )
+  target_compile_definitions(bcm_library PRIVATE BORINGSSL_IMPLEMENTATION)
+  target_include_directories(bcm_library PRIVATE ../../include)
 
   add_dependencies(bcm_library global_target)
-  # fips_shared.lds does not have 'clang' prefix because we want to keep merging any changes from upstream.
-  set(FIPS_CUSTOM_LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/fips_shared.lds")
-  if (GCC)
-    # gcc puts some code in sections named ".text.unlikely", ".text.exit" and ".text.startup".
-    # so we have a separate linker script for gcc.
-    set(FIPS_CUSTOM_LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/gcc_fips_shared.lds")
+  if (APPLE)
+    set(BCM_NAME bcm.o)
+    # The linker on macOS doesn't have the ability to process linker scripts,
+    # so we build the FIPS module differently than on Linux. Similarly to
+    # what OpenSSL does we produce two object files: fips_apple_{start, end}.o
+    # that contain only the markers for the start and end of __text and __const
+    # sections. The module is then produced by linking the files specified in
+    # the following order: fips_apple_start.o bcm.o fips_apple_end.o. This will
+    # generate the output object file where all the code in the __text section
+    # and all the read-only data in the __const section are between the
+    # respective start and end markers.
+    add_custom_command(
+      OUTPUT fips_apple_start.o
+      COMMAND ${CMAKE_C_COMPILER} -arch ${CMAKE_SYSTEM_PROCESSOR} -isysroot ${CMAKE_OSX_SYSROOT} -c ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c -DAWSLC_FIPS_SHARED_START -o fips_apple_start.o
+      DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
+    )
+    add_custom_command(
+      OUTPUT fips_apple_end.o
+      COMMAND ${CMAKE_C_COMPILER} -arch ${CMAKE_SYSTEM_PROCESSOR} -isysroot ${CMAKE_OSX_SYSROOT} -c ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c -DAWSLC_FIPS_SHARED_END -o fips_apple_end.o
+      DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
+    )
+
+    add_custom_command(
+      OUTPUT bcm.o
+      COMMAND ${CMAKE_LINKER} -r fips_apple_start.o -force_load $<TARGET_FILE:bcm_library> fips_apple_end.o -keep_private_externs -o bcm.o
+      DEPENDS bcm_library fips_apple_start.o fips_apple_end.o
+      WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    )
+  elseif(MSVC)
+    set(BCM_NAME bcm.lib)
+    # Like the macOS linker MSVC doesn't support linker scripts. The Windows build uses the same start/end markers
+    # as the mac build to control the placement of symbols. However, on Windows the start/bcm/end object files also
+    # contain pragmas that instruct the compiler to put the code in specific FIPS sections. These sections have a
+    # specific suffix $a through $c that controls the order of the FIPS sections when it is linked together into a
+    # Grouped Section.
+    add_custom_command(
+      OUTPUT fips_msvc_start.obj
+      COMMAND ${CMAKE_C_COMPILER} /nologo /c /DAWSLC_FIPS_SHARED_START /Fo:fips_msvc_start.obj ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
+      DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
+    )
+    add_custom_command(
+      OUTPUT fips_msvc_end.obj
+      COMMAND ${CMAKE_C_COMPILER} /nologo /c /DAWSLC_FIPS_SHARED_END /Fo:fips_msvc_end.obj ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
+      DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
+    )
+
+    get_filename_component(MSVC_BIN ${CMAKE_LINKER} DIRECTORY)
+    set(MSVC_LIB "${MSVC_BIN}/lib.exe")
+
+    add_custom_command(
+      OUTPUT ${BCM_NAME}
+      # This takes bcm_library which is static library and possibly a collection of assembly files in a CMake list.
+      # lib.exe does not handle the CMake list which uses semicolons between items, this generator expression converts
+      # it to a list of quoted strings, it also needs to be itself string escaped
+      COMMAND ${MSVC_LIB} /nologo fips_msvc_start.obj "\"$<JOIN:$<TARGET_OBJECTS:bcm_library>,\" \">\"" fips_msvc_end.obj /OUT:${BCM_NAME}
+      DEPENDS  fips_msvc_start.obj fips_msvc_end.obj bcm_library
+      WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    )
+  else()
+    set(BCM_NAME bcm.o)
+    # fips_shared.lds does not have 'clang' prefix because we want to keep merging any changes from upstream.
+    set(FIPS_CUSTOM_LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/fips_shared.lds")
+    if (GCC)
+      # gcc puts some code in sections named ".text.unlikely", ".text.exit" and ".text.startup".
+      # so we have a separate linker script for gcc.
+      set(FIPS_CUSTOM_LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/gcc_fips_shared.lds")
+    endif()
+
+    add_custom_command(
+      OUTPUT ${BCM_NAME}
+      COMMAND ${CMAKE_LINKER} -r -T ${FIPS_CUSTOM_LINKER_SCRIPT} -o ${BCM_NAME} --whole-archive $<TARGET_FILE:bcm_library>
+      DEPENDS bcm_library ${FIPS_CUSTOM_LINKER_SCRIPT}
+      WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    )
   endif()
 
-  add_custom_command(
-    OUTPUT bcm.o
-    COMMAND ${CMAKE_LINKER} -r -T ${FIPS_CUSTOM_LINKER_SCRIPT} -o bcm.o --whole-archive $<TARGET_FILE:bcm_library>
-    DEPENDS bcm_library fips_shared.lds
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-  )
+  add_custom_target(bcm_o_target DEPENDS ${BCM_NAME})
+  set(BCM_NAME ${BCM_NAME} PARENT_SCOPE)
 
-  add_custom_target(bcm_o_target DEPENDS bcm.o)
 else()
   add_library(
     fipsmodule
@@ -296,6 +365,7 @@ else()
 
     ${BCM_ASM_SOURCES}
   )
+  target_compile_definitions(fipsmodule PRIVATE BORINGSSL_IMPLEMENTATION)
 
   add_dependencies(fipsmodule global_target)
 endif()

@@ -129,13 +129,13 @@ endif()
 add_subdirectory(fipsmodule)
 
 if(FIPS_DELOCATE OR FIPS_SHARED)
-  SET_SOURCE_FILES_PROPERTIES(fipsmodule/bcm.o PROPERTIES EXTERNAL_OBJECT true)
-  SET_SOURCE_FILES_PROPERTIES(fipsmodule/bcm.o PROPERTIES GENERATED true)
+  SET_SOURCE_FILES_PROPERTIES(fipsmodule/${BCM_NAME} PROPERTIES EXTERNAL_OBJECT true)
+  SET_SOURCE_FILES_PROPERTIES(fipsmodule/${BCM_NAME} PROPERTIES GENERATED true)
 
   set(
     CRYPTO_FIPS_OBJECTS
 
-    fipsmodule/bcm.o
+    fipsmodule/${BCM_NAME}
   )
 endif()
 
@@ -483,37 +483,46 @@ function(build_libcrypto name module_source)
 endfunction()
 
 if(FIPS_SHARED)
-  build_libcrypto(crypto $<TARGET_OBJECTS:fipsmodule>)
-  # Rewrite libcrypto.so to inject the correct module hash value. This assumes
-  # UNIX-style library naming, but we only support FIPS mode on Linux anyway.
-  add_custom_command(
-    TARGET crypto POST_BUILD
-    COMMAND ${GO_EXECUTABLE} run
-    ${CMAKE_SOURCE_DIR}/util/fipstools/inject_hash/inject_hash.go
-    -o ${CMAKE_CURRENT_BINARY_DIR}/libcrypto.so -in-object ${CMAKE_CURRENT_BINARY_DIR}/libcrypto.so -sha256
-    # The DEPENDS argument to a POST_BUILD rule appears to be ignored. Thus
-    # go_executable isn't used (as it doesn't get built), but we list this
-    # dependency anyway in case it starts working in some CMake version.
-    DEPENDS ../util/fipstools/inject_hash/inject_hash.go
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-  )
+  # Rewrite libcrypto.so, libcrypto.dylib, or crypto.dll to inject the correct module
+  # hash value. For now we support the FIPS build only on Linux, macOS, iOS, and Windows.
+  if(MSVC)
+    # On Windows we use capture_hash.go to capture the computed integrity value that bcm.o prints to generate the
+    # correct value in generated_fips_shared_support.c. See FIPS.md for a full explanation of the process
+    build_libcrypto(precrypto $<TARGET_OBJECTS:fipsmodule>)
+    add_executable(fips_empty_main fipsmodule/fips_empty_main.c)
+    target_link_libraries(fips_empty_main PUBLIC precrypto)
+    add_custom_command(OUTPUT generated_fips_shared_support.c
+            COMMAND ${GO_EXECUTABLE} run
+            ${PROJECT_SOURCE_DIR}/util/fipstools/capture_hash/capture_hash.go
+            -in-executable $<TARGET_FILE:fips_empty_main> > generated_fips_shared_support.c
+            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+            DEPENDS fips_empty_main ${PROJECT_SOURCE_DIR}/util/fipstools/capture_hash/capture_hash.go
+            )
+    add_library(generated_fipsmodule OBJECT generated_fips_shared_support.c)
+    build_libcrypto(crypto $<TARGET_OBJECTS:generated_fipsmodule>)
+  else()
+    # On Apple and Linux platforms inject_hash.go can parse libcrypto and inject the hash directly into the final
+    # library.
+    build_libcrypto(crypto $<TARGET_OBJECTS:fipsmodule>)
+    if (APPLE)
+      set(INJECT_HASH_APPLE_FLAG "-apple")
+    endif()
+
+    add_custom_command(
+      TARGET crypto POST_BUILD
+      COMMAND ${GO_EXECUTABLE} run
+      ${PROJECT_SOURCE_DIR}/util/fipstools/inject_hash/inject_hash.go
+      -o $<TARGET_FILE:crypto> -in-object $<TARGET_FILE:crypto>
+      -sha256 ${INJECT_HASH_APPLE_FLAG}
+      # The DEPENDS argument to a POST_BUILD rule appears to be ignored. Thus
+      # go_executable isn't used (as it doesn't get built), but we list this
+      # dependency anyway in case it starts working in some CMake version.
+      DEPENDS ../util/fipstools/inject_hash/inject_hash.go
+      WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+    )
+  endif()
 else()
   build_libcrypto(crypto $<TARGET_OBJECTS:fipsmodule>)
-endif()
-
-add_dependencies(crypto global_target)
-
-if(FIPS_DELOCATE OR FIPS_SHARED)
-  add_dependencies(crypto bcm_o_target)
-endif()
-
-SET_TARGET_PROPERTIES(crypto PROPERTIES LINKER_LANGUAGE C)
-
-if(WIN32)
-  target_link_libraries(crypto PUBLIC ws2_32)
-endif()
-if(NOT WIN32 AND NOT ANDROID)
-  target_link_libraries(crypto PUBLIC pthread)
 endif()
 
 # Every target depends on crypto, so we add libcxx as a dependency here to
@@ -527,10 +536,6 @@ if(USE_CUSTOM_LIBCXX)
   target_link_libraries(crypto PUBLIC libcxx)
 endif()
 
-target_include_directories(crypto SYSTEM PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
-  $<INSTALL_INTERFACE:include>)
-
 if(BUILD_TESTING)
   add_subdirectory(test)
 
@@ -538,7 +543,7 @@ if(BUILD_TESTING)
   # PRNG initialisation, which means that it can't have other tests running before
   # it does.
   add_executable(
-    urandom_test
+    ${RANDOM_TEST_EXEC}
 
     fipsmodule/rand/urandom_test.cc
   )
@@ -547,16 +552,16 @@ if(BUILD_TESTING)
   # urandom_test should not be performed so we pass the compilation flag
   # and handle it in urandom_test.cc
   if(JITTER_ENTROPY)
-    target_compile_options(urandom_test PUBLIC -DJITTER_ENTROPY)
+    target_compile_options(${RANDOM_TEST_EXEC} PUBLIC -DJITTER_ENTROPY)
   endif()
 
-  target_link_libraries(urandom_test test_support_lib boringssl_gtest crypto)
+  target_link_libraries(${RANDOM_TEST_EXEC} test_support_lib boringssl_gtest crypto)
 
-  add_dependencies(urandom_test global_target)
-  add_dependencies(all_tests urandom_test)
+  add_dependencies(${RANDOM_TEST_EXEC} global_target)
+  add_dependencies(all_tests ${RANDOM_TEST_EXEC})
 
   add_executable(
-    crypto_test
+    ${CRYPTO_TEST_EXEC}
 
     abi_self_test.cc
     asn1/asn1_test.cc
@@ -597,7 +602,7 @@ if(BUILD_TESTING)
     fipsmodule/rand/fork_detect_test.cc
     fipsmodule/service_indicator/service_indicator_test.cc
     fipsmodule/sha/sha_test.cc
-    fipsmodule/cpucap/cpu-arm-linux_test.cc
+    fipsmodule/cpucap/cpu_arm_linux_test.cc
     hkdf/hkdf_test.cc
     hpke/hpke_test.cc
     hmac_extra/hmac_test.cc
@@ -631,13 +636,13 @@ if(BUILD_TESTING)
     $<TARGET_OBJECTS:boringssl_gtest_main>
   )
 
-  add_dependencies(crypto_test global_target)
+  add_dependencies(${CRYPTO_TEST_EXEC} global_target)
 
-  target_link_libraries(crypto_test test_support_lib boringssl_gtest crypto)
+  target_link_libraries(${CRYPTO_TEST_EXEC} test_support_lib boringssl_gtest crypto)
   if(WIN32)
-    target_link_libraries(crypto_test ws2_32)
+    target_link_libraries(${CRYPTO_TEST_EXEC} ws2_32)
   endif()
-  add_dependencies(all_tests crypto_test)
+  add_dependencies(all_tests ${CRYPTO_TEST_EXEC})
 endif()
 
 install(TARGETS crypto

@@ -63,7 +63,6 @@ extern "C" {
  * must offer POSIX threads. If this option is disabled, no linking
  * with the POSIX threads library is needed.
  */
-#define JENT_CONF_ENABLE_INTERNAL_TIMER
 
 /*
  * Disable the loop shuffle operation
@@ -93,7 +92,11 @@ extern "C" {
  * Jitter RNG State Definition Section
  ***************************************************************************/
 
+#if defined(_MSC_VER)
+#include "arch/jitterentropy-base-windows.h"
+#else
 #include "jitterentropy-base-user.h"
+#endif
 
 #define SHA3_256_SIZE_DIGEST_BITS	256
 #define SHA3_256_SIZE_DIGEST		(SHA3_256_SIZE_DIGEST_BITS >> 3)
@@ -310,7 +313,11 @@ struct rand_data
 #ifdef JENT_PRIVATE_COMPILE
 # define JENT_PRIVATE_STATIC static
 #else /* JENT_PRIVATE_COMPILE */
-# define JENT_PRIVATE_STATIC __attribute__((visibility("default")))
+#if defined(_MSC_VER)
+#define JENT_PRIVATE_STATIC __declspec(dllexport)
+#else
+#define JENT_PRIVATE_STATIC __attribute__((visibility("default")))
+#endif
 #endif
 
 /* Number of low bits of the time value that we want to consider */
@@ -346,12 +353,12 @@ int jent_entropy_switch_notime_impl(struct jent_notime_thread *new_thread);
 
 /* -- BEGIN timer-less threading support functions to prevent code dupes -- */
 
-struct jent_notime_ctx {
-	pthread_attr_t notime_pthread_attr;	/* pthreads library */
-	pthread_t notime_thread_id;		/* pthreads thread ID */
-};
-
 #ifdef JENT_CONF_ENABLE_INTERNAL_TIMER
+
+struct jent_notime_ctx {
+    pthread_attr_t notime_pthread_attr; /* pthreads library */
+    pthread_t notime_thread_id;     /* pthreads thread ID */
+};
 
 JENT_PRIVATE_STATIC
 int jent_notime_init(void **ctx);
