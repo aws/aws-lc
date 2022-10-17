@@ -53,6 +53,13 @@ static inline void *BM_memset(void *dst, int c, size_t n) {
 // g_print_json is true if printed output is JSON formatted.
 static bool g_print_json = false;
 
+static std::string ChunkLenSuffix(size_t chunk_len) {
+  char buf[32];
+  snprintf(buf, sizeof(buf), " (%zu byte%s)", chunk_len,
+           chunk_len != 1 ? "s" : "");
+  return buf;
+}
+
 // TimeResults represents the results of benchmarking a function.
 struct TimeResults {
   // num_calls is the number of function calls done in the time period.
@@ -76,7 +83,7 @@ struct TimeResults {
       PrintJSON(description, bytes_per_call);
     } else {
       printf("Did %u %s operations in %uus (%.1f ops/sec): %.1f MB/s\n",
-             num_calls, description.c_str(), us,
+             num_calls, (description + ChunkLenSuffix(bytes_per_call)).c_str(), us,
              (static_cast<double>(num_calls) / us) * 1000000,
              static_cast<double>(bytes_per_call * num_calls) / us);
     }
@@ -359,13 +366,6 @@ static bool SpeedRSAKeyGen(const std::string &selected) {
   return true;
 }
 
-static std::string ChunkLenSuffix(size_t chunk_len) {
-  char buf[32];
-  snprintf(buf, sizeof(buf), " (%zu byte%s)", chunk_len,
-           chunk_len != 1 ? "s" : "");
-  return buf;
-}
-
 static bool SpeedAESGCMChunk(const EVP_CIPHER *cipher, std::string name,
                              size_t chunk_byte_len, size_t ad_len) {
   int len;
@@ -395,7 +395,7 @@ static bool SpeedAESGCMChunk(const EVP_CIPHER *cipher, std::string name,
 
   BM_NAMESPACE::UniquePtr<EVP_CIPHER_CTX> ctx(EVP_CIPHER_CTX_new());
 
-  std::string encryptName = name + " Encrypt" + ChunkLenSuffix(chunk_byte_len);
+  std::string encryptName = name + " Encrypt";
   TimeResults encryptResults;
 
   // Call EVP_EncryptInit_ex once with the cipher, in the benchmark loop reuse the cipher
@@ -417,7 +417,7 @@ static bool SpeedAESGCMChunk(const EVP_CIPHER *cipher, std::string name,
   }
 
   encryptResults.PrintWithBytes(encryptName, chunk_byte_len);
-  std::string decryptName = name + " Decrypt" + ChunkLenSuffix(chunk_byte_len);
+  std::string decryptName = name + " Decrypt";
   TimeResults decryptResults;
   // Call EVP_DecryptInit_ex once with the cipher, in the benchmark loop reuse the cipher
   if (!EVP_DecryptInit_ex(ctx.get(), cipher, NULL, key.get(), nonce.get())){
@@ -462,7 +462,6 @@ static bool SpeedAEADChunk(const EVP_AEAD *aead, std::string name,
                            evp_aead_direction_t direction) {
   static const unsigned kAlignment = 16;
 
-  name += ChunkLenSuffix(chunk_len);
   BM_NAMESPACE::ScopedEVP_AEAD_CTX ctx;
   const size_t key_len = EVP_AEAD_key_length(aead);
   const size_t nonce_len = EVP_AEAD_nonce_length(aead);
@@ -584,6 +583,59 @@ static bool SpeedAEADOpen(const EVP_AEAD *aead, const std::string &name,
 
   return true;
 }
+
+static bool SpeedKEM(const std::string &name, int nid, const std::string &selected) {
+  if (!selected.empty() && name.find(selected) == std::string::npos) {
+    return true;
+  }
+  BM_NAMESPACE::UniquePtr<EVP_PKEY_CTX> server_pkey_ctx(EVP_PKEY_CTX_new_id(nid, nullptr));
+  if (!server_pkey_ctx || !EVP_PKEY_keygen_init(server_pkey_ctx.get())) {
+    return false;
+  }
+
+  EVP_PKEY *server_pkey = NULL;
+  TimeResults results;
+  if (!TimeFunction(&results, [&server_pkey_ctx, &server_pkey]() -> bool {
+        return EVP_PKEY_keygen(server_pkey_ctx.get(), &server_pkey);
+      })) {
+    return false;
+  }
+  results.Print(name + " keygen");
+
+  size_t shared_secret_len = 0;
+  size_t ciphertext_len = 0;
+  EVP_PKEY_encapsulate(server_pkey_ctx.get(), NULL, &ciphertext_len, NULL, &shared_secret_len);
+  std::unique_ptr<uint8_t[]> ciphertext(new uint8_t[ciphertext_len]);
+  std::unique_ptr<uint8_t[]> shared_secret(new uint8_t[shared_secret_len]);
+
+  size_t public_key_size = 0;
+  EVP_PKEY_get_raw_public_key(server_pkey, NULL, &public_key_size);
+  std::unique_ptr<uint8_t[]> public_key(new uint8_t[public_key_size]);
+  EVP_PKEY_get_raw_public_key(server_pkey, public_key.get(), &public_key_size);
+
+  BM_NAMESPACE::UniquePtr<EVP_PKEY> client_pkey(EVP_PKEY_new_raw_public_key(nid,NULL,public_key.get(),public_key_size));
+  BM_NAMESPACE::UniquePtr<EVP_PKEY_CTX> client_pkey_ctx(EVP_PKEY_CTX_new(client_pkey.get(), nullptr));
+
+  if (!TimeFunction(&results, [&ciphertext, &ciphertext_len, &shared_secret, &shared_secret_len, &client_pkey_ctx]() -> bool {
+        return EVP_PKEY_encapsulate(client_pkey_ctx.get(), ciphertext.get(), &ciphertext_len, shared_secret.get(), &shared_secret_len);
+      })) {
+    return false;
+  }
+  results.Print(name + " encapsulate");
+
+  if (!TimeFunction(&results, [&ciphertext, &ciphertext_len, &shared_secret, &shared_secret_len, &server_pkey_ctx]() -> bool {
+        return EVP_PKEY_decapsulate(server_pkey_ctx.get(), shared_secret.get(), &shared_secret_len, ciphertext.get(), ciphertext_len);
+      })) {
+    return false;
+  }
+  results.Print(name + " decapsulate");
+  return true;
+}
+
+
+static bool SpeedKEM(std::string selected) {
+  return SpeedKEM("Kyber512", NID_KYBER512, selected);
+}
 #endif
 
 static bool SpeedAESBlock(const std::string &name, unsigned bits,
@@ -696,7 +748,7 @@ static bool SpeedAES256XTS(const std::string &name, //const size_t in_len,
       fprintf(stderr, "AES-256-XTS initialisation or encryption failed.\n");
       return false;
     }
-    results.PrintWithBytes(name + ChunkLenSuffix(in_len) + " init and encrypt",
+    results.PrintWithBytes(name + " init and encrypt",
                            in_len);
   }
 
@@ -719,7 +771,7 @@ static bool SpeedAES256XTS(const std::string &name, //const size_t in_len,
       fprintf(stderr, "AES-256-XTS initialisation or decryption failed.\n");
       return false;
     }
-    results.PrintWithBytes(name + ChunkLenSuffix(in_len) + " init and decrypt",
+    results.PrintWithBytes(name + " init and decrypt",
                            in_len);
   }
 
@@ -735,20 +787,15 @@ static bool SpeedHashChunk(const EVP_MD *md, std::string name,
 #else
   BM_NAMESPACE::UniquePtr<EVP_MD_CTX> ctx(EVP_MD_CTX_new());
 #endif
-  uint8_t input[16384] = {0};
+  std::unique_ptr<uint8_t[]> input(new uint8_t[chunk_len]);
 
-  if (chunk_len > sizeof(input)) {
-    return false;
-  }
-
-  name += ChunkLenSuffix(chunk_len);
   TimeResults results;
   if (!TimeFunction(&results, [&ctx, md, chunk_len, &input]() -> bool {
         uint8_t digest[EVP_MAX_MD_SIZE];
         unsigned int md_len;
 
         return EVP_DigestInit_ex(ctx.get(), md, NULL /* ENGINE */) &&
-               EVP_DigestUpdate(ctx.get(), input, chunk_len) &&
+               EVP_DigestUpdate(ctx.get(), input.get(), chunk_len) &&
                EVP_DigestFinal_ex(ctx.get(), digest, &md_len);
       })) {
     fprintf(stderr, "EVP_DigestInit_ex failed.\n");
@@ -809,7 +856,6 @@ static bool SpeedHmacChunk(const EVP_MD *md, std::string name,
   if (!HMAC_Init_ex(ctx.get(), key.get(), key_len, md, NULL /* ENGINE */)) {
     fprintf(stderr, "Failed to create HMAC_CTX.\n");
   }
-  name += ChunkLenSuffix(chunk_len);
   TimeResults results;
   if (!TimeFunction(&results, [&ctx, chunk_len, &scratch]() -> bool {
         uint8_t digest[EVP_MAX_MD_SIZE];
@@ -854,7 +900,6 @@ static bool SpeedHmacChunkOneShot(const EVP_MD *md, std::string name,
     return false;
   }
 
-  name += ChunkLenSuffix(chunk_len);
   TimeResults results;
   if (!TimeFunction(&results, [&key, key_len, md, chunk_len, &scratch]() -> bool {
 
@@ -894,7 +939,6 @@ static bool SpeedRandomChunk(std::string name, size_t chunk_len) {
     return false;
   }
 
-  name += ChunkLenSuffix(chunk_len);
   TimeResults results;
   if (!TimeFunction(&results, [chunk_len, &scratch]() -> bool {
         RAND_bytes(scratch, chunk_len);
@@ -1345,7 +1389,7 @@ static bool SpeedSipHash(const std::string &selected) {
       ERR_print_errors_fp(stderr);
       return false;
     }
-    results.PrintWithBytes("SipHash-2-4" + ChunkLenSuffix(len), len);
+    results.PrintWithBytes("SipHash-2-4", len);
   }
 
   return true;
@@ -1754,6 +1798,7 @@ bool Speed(const std::vector<std::string> &args) {
      !SpeedRSAKeyGen(selected)
 #if !defined(OPENSSL_BENCHMARK)
      ||
+     !SpeedKEM(selected) ||
      !SpeedAEAD(EVP_aead_aes_128_gcm(), "AEAD-AES-128-GCM", kTLSADLen, selected) ||
      !SpeedAEAD(EVP_aead_aes_256_gcm(), "AEAD-AES-256-GCM", kTLSADLen, selected) ||
      !SpeedAEAD(EVP_aead_chacha20_poly1305(), "AEAD-ChaCha20-Poly1305", kTLSADLen, selected) ||
