@@ -291,7 +291,7 @@ int EVP_AEAD_CTX_tag_len(const EVP_AEAD_CTX *ctx, size_t *out_tag_len,
 // since boot, writing it to |out_iv|. It returns one on success or zero for
 // error.
 int EVP_AEAD_get_iv_from_ipv4_nanosecs(const uint32_t ipv4_address,
-    const uint64_t nanosecs, uint8_t out_iv[AES_GCM_NONCE_LENGTH]) {
+    const uint64_t nanosecs, uint8_t out_iv[FIPS_AES_GCM_NONCE_LENGTH]) {
   if (out_iv == NULL) {
     return 0;
   }
