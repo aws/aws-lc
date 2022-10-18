@@ -13,6 +13,12 @@
 #define KYBER512_CIPHERTEXT_BYTES 768
 #define KYBER512_SHARED_SECRET_BYTES 32
 
+#ifdef BORINGSSL_PREFIX
+#define kyber512_keypair BORINGSSL_ADD_PREFIX(BORINGSSL_PREFIX, kyber512_keypair)
+#define kyber512_encapsulate BORINGSSL_ADD_PREFIX(BORINGSSL_PREFIX, kyber512_encapsulate)
+#define kyber512_decapsulate BORINGSSL_ADD_PREFIX(BORINGSSL_PREFIX, kyber512_decapsulate)
+#endif
+
 int kyber512_keypair(uint8_t *public_key /* OUT */,
                      uint8_t *secret_key /* OUT */);
 
