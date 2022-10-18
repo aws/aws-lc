@@ -114,7 +114,10 @@ fn prepare_bindings_builder(manifest_dir: &Path, build_prefix: Option<&str>) -> 
         .derive_eq(true)
         .allowlist_file(".*/openssl/[^/]+\\.h")
         .allowlist_file(".*/rust_wrapper\\.h")
-        .default_enum_style(bindgen::EnumVariation::NewType { is_bitfield: false })
+        .default_enum_style(bindgen::EnumVariation::NewType {
+            is_bitfield: false,
+            is_global: true,
+        })
         .default_macro_constant_type(bindgen::MacroTypeVariation::Signed)
         .generate_comments(true)
         .fit_macro_constants(false)
