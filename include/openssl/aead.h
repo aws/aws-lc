@@ -15,7 +15,6 @@
 #ifndef OPENSSL_HEADER_AEAD_H
 #define OPENSSL_HEADER_AEAD_H
 
-#include <openssl/aes.h>
 #include <openssl/base.h>
 
 #if defined(__cplusplus)
