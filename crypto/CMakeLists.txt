@@ -588,6 +588,11 @@ else()
   build_libcrypto(crypto $<TARGET_OBJECTS:fipsmodule>)
 endif()
 
+if(NOT ANDROID)
+  find_package(Threads REQUIRED)
+  target_link_libraries(crypto PUBLIC Threads::Threads)
+endif()
+
 # Every target depends on crypto, so we add libcxx as a dependency here to
 # simplify injecting it everywhere.
 if(USE_CUSTOM_LIBCXX)
