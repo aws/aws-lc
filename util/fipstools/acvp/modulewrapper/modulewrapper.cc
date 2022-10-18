@@ -44,8 +44,8 @@
 #include <openssl/span.h>
 
 #include "../../../../crypto/fipsmodule/ec/internal.h"
+#include "../../../../crypto/fipsmodule/kdf/internal.h"
 #include "../../../../crypto/fipsmodule/rand/internal.h"
-#include "../../../../crypto/fipsmodule/tls/internal.h"
 #include "modulewrapper.h"
 
 
