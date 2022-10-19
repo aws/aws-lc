@@ -234,6 +234,16 @@ if (GCC)
   # https://cmake.org/cmake/help/latest/command/try_run.html
   set(MEMCMP_INVALID_STRIPPED "")
   set(MEMCMP_INVALID_STRIPPED__TRYRUN_OUTPUT "")
+
+  # See https://gitlab.kitware.com/cmake/cmake/-/issues/16920 for why we set this to 2
+  # During the `try_run` commands invoked by `check_run` a test program is run for the threading library.
+  # This test is run expecting two threads, and this variable isn't set, for some systems
+  # (particularly for systems using cross-compilation) causing our test to run without 2 threads and fail.
+  # We set this variable here to allow these builds to succeed and keep these tests around to make sure 
+  # that we properly detect the compiler bugs that we are trying to test for with these `try_run` calls.
+
+  set(THREADS_PTHREAD_ARG "2" CACHE STRING "Forcibly set by CMakeLists.txt." FORCE)
+
   if (CMAKE_BUILD_TYPE_LOWER MATCHES "release")
     # CMAKE_C_FLAGS_RELEASE enables `-O3`.
     check_run(memcmp_invalid_stripped_check.c MEMCMP_INVALID_STRIPPED "${CMAKE_C_FLAGS_RELEASE}")
