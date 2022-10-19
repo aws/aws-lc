@@ -53,7 +53,7 @@ let EVP_CipherUpdate_spec enc gcm_len len = do {
   let mres = eval_size {| gcm_len % AES_BLOCK_SIZE |};
   points_to_EVP_AES_GCM_CTX cipher_data_ptr ctx mres {{ 1 : [32] }} 0xffffffff;
 
-  ctx_ptr <- crucible_alloc_readonly (llvm_struct "struct.evp_cipher_ctx_st");
+  ctx_ptr <- crucible_alloc (llvm_struct "struct.evp_cipher_ctx_st");
   points_to_evp_cipher_ctx_st ctx_ptr cipher_ptr cipher_data_ptr enc;
 
   (in_, in_ptr) <- ptr_to_fresh_readonly "in" (llvm_array len (llvm_int 8));
@@ -65,6 +65,7 @@ let EVP_CipherUpdate_spec enc gcm_len len = do {
   let ctx' = {{ cipher_update enc ctx in_ }};
   let mres' = eval_size {| (gcm_len + len) % AES_BLOCK_SIZE |};
   points_to_EVP_AES_GCM_CTX cipher_data_ptr ctx' mres' {{ 1 : [32] }} 0xffffffff;
+  points_to_evp_cipher_ctx_st ctx_ptr cipher_ptr cipher_data_ptr enc;
 
   crucible_points_to out_ptr (crucible_term {{ ctr32_encrypt ctx in_ }});
 
