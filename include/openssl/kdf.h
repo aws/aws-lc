@@ -83,6 +83,29 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_add1_hkdf_info(EVP_PKEY_CTX *ctx,
                                                const uint8_t *info,
                                                size_t info_len);
 
+// SSH-specific KDF
+//
+// This KDF should only be called from SSH client/server code; it's not a
+// general-purpose KDF and is only Approved for FIPS 140-3 use specifically
+// in SSH.
+
+// |type| values for SSHKDF().
+#define EVP_KDF_SSHKDF_TYPE_INITIAL_IV_CLI_TO_SRV     65
+#define EVP_KDF_SSHKDF_TYPE_INITIAL_IV_SRV_TO_CLI     66
+#define EVP_KDF_SSHKDF_TYPE_ENCRYPTION_KEY_CLI_TO_SRV 67
+#define EVP_KDF_SSHKDF_TYPE_ENCRYPTION_KEY_SRV_TO_CLI 68
+#define EVP_KDF_SSHKDF_TYPE_INTEGRITY_KEY_CLI_TO_SRV  69
+#define EVP_KDF_SSHKDF_TYPE_INTEGRITY_KEY_SRV_TO_CLI  70
+
+// SSHKDF calculates |out_len| bytes of the SSH KDF, using |digest|, and
+// writes them to |out|. It returns one on success and zero on error.
+OPENSSL_EXPORT int SSHKDF(const EVP_MD *evp_md,
+                          const uint8_t *key, size_t key_len,
+                          const uint8_t *xcghash, size_t xcghash_len,
+                          const uint8_t *session_id, size_t session_id_len,
+                          char type,
+                          uint8_t *out, size_t out_len);
+
 
 #if defined(__cplusplus)
 }  // extern C
