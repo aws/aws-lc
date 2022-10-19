@@ -116,7 +116,7 @@ fn prepare_bindings_builder(manifest_dir: &Path, build_prefix: Option<&str>) -> 
         .allowlist_file(".*/rust_wrapper\\.h")
         .default_enum_style(bindgen::EnumVariation::NewType {
             is_bitfield: false,
-            is_global: true,
+            is_global: false,
         })
         .default_macro_constant_type(bindgen::MacroTypeVariation::Signed)
         .generate_comments(true)
