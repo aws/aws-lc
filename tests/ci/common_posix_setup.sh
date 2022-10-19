@@ -83,7 +83,7 @@ function generate_symbols_file {
   go run "$SRC_ROOT"/util/read_symbols.go -out "$BUILD_ROOT"/symbols_ssl.txt "$BUILD_ROOT"/ssl/libssl.a
 
   # The $BUILD_ROOT gets deleted on each run. symbols.txt must be placed elsewhere.
-  cat "$BUILD_ROOT"/symbols_crypto.txt  "$BUILD_ROOT"/symbols_ssl.txt | grep -v -e '^_\?bignum' >  "$SRC_ROOT"/symbols.txt
+  cat "$BUILD_ROOT"/symbols_crypto.txt  "$BUILD_ROOT"/symbols_ssl.txt >  "$SRC_ROOT"/symbols.txt
 }
 
 
