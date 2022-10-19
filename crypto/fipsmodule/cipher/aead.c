@@ -285,3 +285,20 @@ int EVP_AEAD_CTX_tag_len(const EVP_AEAD_CTX *ctx, size_t *out_tag_len,
   *out_tag_len = extra_in_len + ctx->tag_len;
   return 1;
 }
+
+// EVP_AEAD_iv_from_ipv4_nanosecs computes a deterministic IV compliant with
+// NIST SP 800-38D, built from an IPv4 address and the number of nanoseconds
+// since boot, writing it to |out_iv|. It returns one on success or zero for
+// error.
+int EVP_AEAD_get_iv_from_ipv4_nanosecs(const uint32_t ipv4_address,
+    const uint64_t nanosecs, uint8_t out_iv[FIPS_AES_GCM_NONCE_LENGTH]) {
+  if (out_iv == NULL) {
+    return 0;
+  }
+
+  OPENSSL_memcpy(out_iv, &ipv4_address, sizeof(ipv4_address));
+  OPENSSL_memcpy(out_iv + sizeof(ipv4_address), &nanosecs,
+                 sizeof(nanosecs));
+
+  return 1;
+}
