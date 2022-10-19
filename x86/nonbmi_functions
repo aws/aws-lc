@@ -72,6 +72,7 @@ bignum_mod_n256k1_4
 bignum_mod_n384_6
 bignum_mod_n384_alt
 bignum_mod_n521_9_alt
+bignum_mod_p25519_4
 bignum_mod_p256_4
 bignum_mod_p256_alt
 bignum_mod_p256k1_4
@@ -122,6 +123,7 @@ bignum_odd
 bignum_of_word
 bignum_optadd
 bignum_optneg
+bignum_optneg_p25519
 bignum_optneg_p256
 bignum_optneg_p256k1
 bignum_optneg_p384

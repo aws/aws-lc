@@ -473,6 +473,7 @@ void call_bignum_fromlebytes_6(void) repeat(bignum_fromlebytes_6(b0,(unsigned ch
 void call_bignum_fromlebytes_p521(void) repeat(bignum_fromlebytes_p521(b0,(unsigned char *) b1))
 void call_bignum_frombebytes_6(void) repeat(bignum_frombebytes_6(b0,(unsigned char *) b1))
 
+void call_bignum_mod_p25519_4(void) repeat(bignum_mod_p25519_4(b0,b1))
 void call_bignum_mod_n256_4(void) repeat(bignum_mod_n256_4(b0,b1))
 void call_bignum_mod_p256_4(void) repeat(bignum_mod_p256_4(b0,b1))
 void call_bignum_mod_n256k1_4(void) repeat(bignum_mod_n256k1_4(b0,b1))
@@ -812,6 +813,7 @@ int main(void)
   timingtest(all,"bignum_mod_n384_6",call_bignum_mod_n384_6);
   timingtest(bmi,"bignum_mod_n521_9",call_bignum_mod_n521_9);
   timingtest(all,"bignum_mod_n521_9_alt",call_bignum_mod_n521_9_alt);
+  timingtest(all,"bignum_mod_p25519_4",call_bignum_mod_p25519_4);
   timingtest(bmi,"bignum_mod_p256 (8 -> 4)",call_bignum_mod_p256__8);
   timingtest(all,"bignum_mod_p256_alt (8 -> 4)",call_bignum_mod_p256_alt__8);
   timingtest(all,"bignum_mod_p256_4",call_bignum_mod_p256_4);

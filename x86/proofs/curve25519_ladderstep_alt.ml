@@ -3189,13 +3189,13 @@ let CURVE25519_LADDERSTEP_ALT_CORRECT = time prove
               read RSP s = stackpointer /\
               C_ARGUMENTS [rr; point; pp; b] s /\
               bignum_pair_from_memory (point,4) s = P /\
-              bignum_quadruple_from_memory (pp,4) s = (Pm,Pn))
+              bignum_pairpair_from_memory (pp,4) s = (Pm,Pn))
          (\s. read RIP s = word (pc + 0x15bc) /\
               !Q Qm Qn.
                P = paired curve25519_encode Q /\ SND Q = &1 /\
-               (Pm,Pn) = quadrupled curve25519_encode (Qm,Qn)
-               ==> bignum_quadruple_from_memory(rr,4) s =
-                   quadrupled curve25519_encode
+               (Pm,Pn) = pairpaired curve25519_encode (Qm,Qn)
+               ==> bignum_pairpair_from_memory(rr,4) s =
+                   pairpaired curve25519_encode
                     (montgomery_ladderstep curve25519 (~(b = word 0)) Q Qm Qn))
       (MAYCHANGE [RIP; RDI; RSI; RAX; RBX; RCX; RDX; RBP;
                   R8; R9; R10; R11; R12; R13; R14; R15] ,,
@@ -3209,7 +3209,7 @@ let CURVE25519_LADDERSTEP_ALT_CORRECT = time prove
     `b:int64`; `pc:num`; `stackpointer:int64`] THEN
   REWRITE_TAC[ALLPAIRS; ALL; NONOVERLAPPING_CLAUSES] THEN STRIP_TAC THEN
   REWRITE_TAC[C_ARGUMENTS; SOME_FLAGS; PAIR_EQ;
-     bignum_pair_from_memory; bignum_quadruple_from_memory] THEN
+     bignum_pair_from_memory; bignum_pairpair_from_memory] THEN
   CONV_TAC(ONCE_DEPTH_CONV NUM_MULT_CONV) THEN
   CONV_TAC(ONCE_DEPTH_CONV NORMALIZE_RELATIVE_ADDRESS_CONV) THEN
   REWRITE_TAC[BIGNUM_FROM_MEMORY_BYTES] THEN ENSURES_INIT_TAC "s0" THEN
@@ -3252,7 +3252,7 @@ let CURVE25519_LADDERSTEP_ALT_CORRECT = time prove
   (*** Clean up the final statement ***)
 
   ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
-  REWRITE_TAC[quadrupled; paired; PAIR_EQ] THEN
+  REWRITE_TAC[pairpaired; paired; PAIR_EQ] THEN
   REWRITE_TAC[curve25519_encode; modular_encode] THEN
   MAP_EVERY X_GEN_TAC
    [`x:int`; `z:int`; `xm:int`; `zm:int`; `xn:int`; `zn:int`] THEN
@@ -3274,7 +3274,7 @@ let CURVE25519_LADDERSTEP_ALT_CORRECT = time prove
 
   POP_ASSUM_LIST(MP_TAC o end_itlist CONJ o rev) THEN
   COND_CASES_TAC THEN
-  ASM_REWRITE_TAC[quadrupled; paired; montgomery_ladderstep; modular_encode;
+  ASM_REWRITE_TAC[pairpaired; paired; montgomery_ladderstep; modular_encode;
    montgomery_xzdouble; montgomery_xzdiffadd; curve25519; PAIR_EQ] THEN
   STRIP_TAC THEN REWRITE_TAC[INTEGER_MOD_RING_CLAUSES; modular_encode] THEN
   CONV_TAC INT_REM_DOWN_CONV THEN
@@ -3309,14 +3309,14 @@ let CURVE25519_LADDERSTEP_ALT_SUBROUTINE_CORRECT = time prove
               read (memory :> bytes64 stackpointer) s = returnaddress /\
               C_ARGUMENTS [rr; point; pp; b] s /\
               bignum_pair_from_memory (point,4) s = P /\
-              bignum_quadruple_from_memory (pp,4) s = (Pm,Pn))
+              bignum_pairpair_from_memory (pp,4) s = (Pm,Pn))
          (\s. read RIP s = returnaddress /\
               read RSP s = word_add stackpointer (word 8) /\
               !Q Qm Qn.
                P = paired curve25519_encode Q /\ SND Q = &1 /\
-               (Pm,Pn) = quadrupled curve25519_encode (Qm,Qn)
-               ==> bignum_quadruple_from_memory(rr,4) s =
-                   quadrupled curve25519_encode
+               (Pm,Pn) = pairpaired curve25519_encode (Qm,Qn)
+               ==> bignum_pairpair_from_memory(rr,4) s =
+                   pairpaired curve25519_encode
                     (montgomery_ladderstep curve25519 (~(b = word 0)) Q Qm Qn))
           (MAYCHANGE [RIP; RSP; RSI; RDI; RAX; RCX; RDX; R8; R9; R10; R11] ,,
            MAYCHANGE SOME_FLAGS ,,
@@ -3347,14 +3347,14 @@ let WINDOWS_CURVE25519_LADDERSTEP_ALT_SUBROUTINE_CORRECT = time prove
               read (memory :> bytes64 stackpointer) s = returnaddress /\
               WINDOWS_C_ARGUMENTS [rr; point; pp; b] s /\
               bignum_pair_from_memory (point,4) s = P /\
-              bignum_quadruple_from_memory (pp,4) s = (Pm,Pn))
+              bignum_pairpair_from_memory (pp,4) s = (Pm,Pn))
          (\s. read RIP s = returnaddress /\
               read RSP s = word_add stackpointer (word 8) /\
               !Q Qm Qn.
                P = paired curve25519_encode Q /\ SND Q = &1 /\
-               (Pm,Pn) = quadrupled curve25519_encode (Qm,Qn)
-               ==> bignum_quadruple_from_memory(rr,4) s =
-                   quadrupled curve25519_encode
+               (Pm,Pn) = pairpaired curve25519_encode (Qm,Qn)
+               ==> bignum_pairpair_from_memory(rr,4) s =
+                   pairpaired curve25519_encode
                     (montgomery_ladderstep curve25519 (~(b = word 0)) Q Qm Qn))
           (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
            MAYCHANGE SOME_FLAGS ,,

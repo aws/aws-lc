@@ -364,6 +364,10 @@ extern void bignum_mod_n384_6 (uint64_t z[6], uint64_t x[6]);
 extern void bignum_mod_n521_9 (uint64_t z[9], uint64_t x[9]);
 extern void bignum_mod_n521_9_alt (uint64_t z[9], uint64_t x[9]);
 
+/*  Reduce modulo field characteristic, z := x mod p_25519 */
+/*  Input x[4]; output z[4] */
+extern void bignum_mod_p25519_4 (uint64_t z[4], uint64_t x[4]);
+
 /*  Reduce modulo field characteristic, z := x mod p_256 */
 /*  Input x[k]; output z[4] */
 extern void bignum_mod_p256 (uint64_t z[4], uint64_t k, uint64_t *x);
