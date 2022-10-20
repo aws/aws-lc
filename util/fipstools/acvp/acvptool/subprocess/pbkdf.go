@@ -18,6 +18,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"strings"
 )
 
 // The following structures reflect the JSON of ACVP PBKDF tests. See
@@ -54,11 +55,12 @@ type pbkdfTestResponse struct {
 
 // List of supported HMAC Algorithms by NIST
 var HmacAlgList map[string]bool = map[string]bool{
-	"SHA-1":    true,
-	"SHA2-224": true,
-	"SHA2-256": true,
-	"SHA2-384": true,
-	"SHA2-512": true,
+	"SHA-1":        true,
+	"SHA2-224":     true,
+	"SHA2-256":     true,
+	"SHA2-384":     true,
+	"SHA2-512":     true,
+	"SHA2-512/256": true,
 }
 
 // Key and salt length mins and maxes as defined by NIST
@@ -140,7 +142,7 @@ func (a *pbkdf) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 			}
 
 			// debug putting all letterse to upper in the output for now
-			testResp.DerivedKeyHex = hex.EncodeToString(result[0])
+			testResp.DerivedKeyHex = strings.ToUpper(hex.EncodeToString(result[0]))
 			response.Tests = append(response.Tests, testResp)
 		}
 
