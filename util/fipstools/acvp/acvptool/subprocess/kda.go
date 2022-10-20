@@ -15,26 +15,27 @@ import (
 // The following structures reflect the JSON of ACVP KDA HKDF tests. See
 // https://pages.nist.gov/ACVP/draft-hammett-acvp-kas-kdf-hkdf.html
 
-type kdaHDKFTestVectorSet struct {
-	Groups []kdaHDKFTestGroup `json:"testGroups"`
+type kdaTestVectorSet struct {
+	Groups []kdaTestGroup `json:"testGroups"`
+	Mode   string         `json:"mode"`
 }
 
-type kdaHDKFTestGroup struct {
-	ID     uint64               `json:"tgId"`
-	Type   string               `json:"testType"` // AFT or VAL
-	Config kdaHDKFConfiguration `json:"kdfConfiguration"`
-	Tests  []kdaHDKFTest        `json:"tests"`
+type kdaTestGroup struct {
+	ID     uint64           `json:"tgId"`
+	Type   string           `json:"testType"` // AFT or VAL
+	Config kdaConfiguration `json:"kdfConfiguration"`
+	Tests  []kdaTest        `json:"tests"`
 }
 
-type kdaHDKFTest struct {
-	ID          uint64            `json:"tcId"`
-	Params      kdaHDKFParameters `json:"kdfParameter"`
-	PartyU      kdaHDKFPartyInfo  `json:"fixedInfoPartyU"`
-	PartyV      kdaHDKFPartyInfo  `json:"fixedInfoPartyV"`
-	ExpectedHex string            `json:"dkm"`
+type kdaTest struct {
+	ID          uint64        `json:"tcId"`
+	Params      kdaParameters `json:"kdfParameter"`
+	PartyU      kdaPartyInfo  `json:"fixedInfoPartyU"`
+	PartyV      kdaPartyInfo  `json:"fixedInfoPartyV"`
+	ExpectedHex string        `json:"dkm"`
 }
 
-type kdaHDKFConfiguration struct {
+type kdaConfiguration struct {
 	Type               string `json:"kdfType"`
 	SaltMethod         string `json:"saltMethod"`
 	SaltLength         uint64 `json:"saltLen"`
@@ -44,7 +45,7 @@ type kdaHDKFConfiguration struct {
 	OutputBits         uint32 `json:"l"`
 }
 
-func (c *kdaHDKFConfiguration) extract() (outBytes uint32, hashName string, err error) {
+func (c *kdaConfiguration) extract() (outBytes uint32, hashName string, err error) {
 	if c.Type != "hkdf" ||
 		(c.SaltMethod != "default" && c.SaltMethod != "random") ||
 		!strings.Contains(c.FixedInfoPattern, "uPartyInfo||vPartyInfo") ||
@@ -56,7 +57,7 @@ func (c *kdaHDKFConfiguration) extract() (outBytes uint32, hashName string, err 
 	return c.OutputBits / 8, c.HmacAlg, nil
 }
 
-type kdaHDKFParameters struct {
+type kdaParameters struct {
 	KdfType         string `json:"kdfType"`
 	SaltHex         string `json:"salt"`
 	AlgorithmId     string `json:"algorithmID"`
@@ -67,7 +68,7 @@ type kdaHDKFParameters struct {
 	SecondaryKeyHex string `json:"t"`
 }
 
-func (p *kdaHDKFParameters) extract() (key, salt []byte, err error) {
+func (p *kdaParameters) extract() (key, salt []byte, err error) {
 	salt, err = hex.DecodeString(p.SaltHex)
 	if err != nil {
 		return nil, nil, err
@@ -81,19 +82,19 @@ func (p *kdaHDKFParameters) extract() (key, salt []byte, err error) {
 	return key, salt, nil
 }
 
-func (p *kdaHDKFParameters) data() []byte {
+func (p *kdaParameters) data() []byte {
 	ret := make([]byte, 4)
 	binary.BigEndian.PutUint32(ret, p.OutputBits)
 
 	return ret
 }
 
-type kdaHDKFPartyInfo struct {
+type kdaPartyInfo struct {
 	IDHex    string `json:"partyId"`
 	ExtraHex string `json:"ephemeralData"`
 }
 
-func (p *kdaHDKFPartyInfo) data() ([]byte, error) {
+func (p *kdaPartyInfo) data() ([]byte, error) {
 	ret, err := hex.DecodeString(p.IDHex)
 	if err != nil {
 		return nil, err
@@ -110,28 +111,28 @@ func (p *kdaHDKFPartyInfo) data() ([]byte, error) {
 	return ret, nil
 }
 
-type kdaHDKFTestGroupResponse struct {
-	ID    uint64                `json:"tgId"`
-	Tests []kdaHDKFTestResponse `json:"tests"`
+type kdaTestGroupResponse struct {
+	ID    uint64            `json:"tgId"`
+	Tests []kdaTestResponse `json:"tests"`
 }
 
-type kdaHDKFTestResponse struct {
+type kdaTestResponse struct {
 	ID     uint64 `json:"tcId"`
 	KeyOut string `json:"dkm,omitempty"`
 	Passed *bool  `json:"testPassed,omitempty"`
 }
 
-type kdaHDKF struct{}
+type kda struct{}
 
-func (k *kdaHDKF) Process(vectorSet []byte, m Transactable) (interface{}, error) {
-	var parsed kdaHDKFTestVectorSet
+func (k *kda) Process(vectorSet []byte, m Transactable) (interface{}, error) {
+	var parsed kdaTestVectorSet
 	if err := json.Unmarshal(vectorSet, &parsed); err != nil {
 		return nil, err
 	}
 
-	var respGroups []kdaHDKFTestGroupResponse
+	var respGroups []kdaTestGroupResponse
 	for _, group := range parsed.Groups {
-		groupResp := kdaHDKFTestGroupResponse{ID: group.ID}
+		groupResp := kdaTestGroupResponse{ID: group.ID}
 
 		// determine the test type
 		var isValidationTest bool
@@ -151,7 +152,7 @@ func (k *kdaHDKF) Process(vectorSet []byte, m Transactable) (interface{}, error)
 		}
 
 		for _, test := range group.Tests {
-			testResp := kdaHDKFTestResponse{ID: test.ID}
+			testResp := kdaTestResponse{ID: test.ID}
 
 			key, salt, err := test.Params.extract()
 			if err != nil {
