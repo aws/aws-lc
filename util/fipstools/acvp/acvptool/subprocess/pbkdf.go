@@ -55,12 +55,11 @@ type pbkdfTestResponse struct {
 
 // List of supported HMAC Algorithms by NIST
 var HmacAlgList map[string]bool = map[string]bool{
-	"SHA-1":        true,
-	"SHA2-224":     true,
-	"SHA2-256":     true,
-	"SHA2-384":     true,
-	"SHA2-512":     true,
-	"SHA2-512/256": true,
+	"SHA-1":    true,
+	"SHA2-224": true,
+	"SHA2-256": true,
+	"SHA2-384": true,
+	"SHA2-512": true,
 }
 
 // Key and salt length mins and maxes as defined by NIST
