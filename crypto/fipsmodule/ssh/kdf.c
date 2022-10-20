@@ -17,9 +17,15 @@ int SSHKDF(const EVP_MD *evp_md,
 {
   EVP_MD_CTX *md = NULL;
   uint8_t digest[EVP_MAX_MD_SIZE];
-  unsigned int digest_size = 0;
+  size_t digest_size = 0;
   size_t cursize = 0;
   int ret = 0;
+
+  // Sanity-check.
+  if (type < EVP_KDF_SSHKDF_TYPE_INITIAL_IV_CLI_TO_SRV ||
+      type > EVP_KDF_SSHKDF_TYPE_INTEGRITY_KEY_SRV_TO_CLI) {
+    return 0;
+  }
 
   FIPS_service_indicator_lock_state();
 
@@ -48,7 +54,7 @@ int SSHKDF(const EVP_MD *evp_md,
     goto out;
   }
 
-  if (!EVP_DigestFinal_ex(md, digest, &digest_size)) {
+  if (!EVP_DigestFinal_ex(md, digest, (unsigned int *)&digest_size)) {
     goto out;
   }
 
@@ -77,7 +83,7 @@ int SSHKDF(const EVP_MD *evp_md,
       goto out;
     }
 
-    if (!EVP_DigestFinal_ex(md, digest, &digest_size)) {
+    if (!EVP_DigestFinal_ex(md, digest, (unsigned int *)&digest_size)) {
       goto out;
     }
 

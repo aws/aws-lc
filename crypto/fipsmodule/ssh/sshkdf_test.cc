@@ -27,6 +27,15 @@ static void test_sshkdf(const EVP_MD *evp_md, const uint8_t *key, size_t key_len
         Bytes(out, sizeof(out_len)));
 }
 
+TEST(SSHKDFTest, SSHKDF_TYPE_INSANITY) {
+    // The sanity check for the |type| param happens before anything else, so
+    // we can check it without any valid info.
+    ASSERT_FALSE(SSHKDF(nullptr, nullptr, 0, nullptr, 0, nullptr, 0,
+        EVP_KDF_SSHKDF_TYPE_INITIAL_IV_CLI_TO_SRV - 1, nullptr, 0));
+    ASSERT_FALSE(SSHKDF(nullptr, nullptr, 0, nullptr, 0, nullptr, 0,
+        EVP_KDF_SSHKDF_TYPE_INTEGRITY_KEY_SRV_TO_CLI + 1, nullptr, 0));
+}
+
 TEST(SSHKDFTest, SSHKDF_SHA1) {
     const uint8_t key[] = {
         0x00, 0x00, 0x00, 0x80, 0x55, 0xba, 0xe9, 0x31, 0xc0, 0x7f, 0xd8, 0x24,
