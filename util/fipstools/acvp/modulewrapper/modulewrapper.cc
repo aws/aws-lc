@@ -394,6 +394,46 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
         }]
       },
       {
+        "vsId": 0,
+        "algorithm": "PBKDF",
+        "revision": "1.0",
+        "capabilities": [
+          {
+            "iterationCount": [
+              {
+                "min": 1,
+                "max": 10000,
+                "increment": 1
+              }
+            ],
+            "passwordLen": [
+              {
+                "min": 8,
+                "max": 64,
+                "increment": 1
+              }
+            ],
+            "saltLen": [
+              {
+                "min": 128,
+                "max": 512,
+                "increment": 8
+              }
+            ],
+            "keyLen": [
+              {
+                "min": 112,
+                "max": 2048,
+                "increment": 8
+              }
+            ],
+            "hmacAlg": [
+              "SHA2-224"
+            ]
+          }
+        ]
+      },
+      {
         "algorithm": "ctrDRBG",
         "revision": "1.0",
         "predResistanceEnabled": [false],
@@ -2026,6 +2066,36 @@ static bool FFDH(const Span<const uint8_t> args[], ReplyCallback write_reply) {
   return write_reply({BIGNUMBytes(DH_get0_pub_key(dh.get())), z});
 }
 
+static bool PBKDF(const Span<const uint8_t> args[], ReplyCallback write_reply) {
+  const Span<const uint8_t> password = args[0];
+  const Span<const uint8_t> salt = args[1];
+  const Span<const uint8_t> iterations = args[2];
+  const Span<const uint8_t> hmac_name = args[3];
+  const Span<const uint8_t> key_len = args[4];
+
+  // read bit data into useable variables
+  unsigned int iterations_uint;
+  memcpy(&iterations_uint, iterations.data(), sizeof(iterations_uint));
+  unsigned int key_len_uint;
+  memcpy(&key_len_uint, key_len.data(), sizeof(key_len_uint));
+
+  key_len_uint = key_len_uint/8;
+
+  // get the SHA algorithm we want from the name provided to us
+  const EVP_MD* hmac_alg = HashFromName(hmac_name);
+
+  std::vector<uint8_t> out_key(key_len_uint);
+  if (!PKCS5_PBKDF2_HMAC(reinterpret_cast<const char*>(password.data()),
+                          password.size(),
+                          salt.data(), salt.size(),
+                          iterations_uint, hmac_alg,
+                          key_len_uint, out_key.data())) {
+    return false;
+  }
+
+  return write_reply({Span<const uint8_t>(out_key)});
+}
+
 static struct {
   char name[kMaxNameLength + 1];
   uint8_t num_expected_args;
@@ -2110,6 +2180,7 @@ static struct {
     {"ECDH/P-384", 3, ECDH<NID_secp384r1>},
     {"ECDH/P-521", 3, ECDH<NID_secp521r1>},
     {"FFDH", 6, FFDH},
+    {"PBKDF", 5, PBKDF},
 };
 
 Handler FindHandler(Span<const Span<const uint8_t>> args) {
