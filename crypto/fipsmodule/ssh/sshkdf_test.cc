@@ -5,7 +5,7 @@
 
 #include <openssl/crypto.h>
 #include <openssl/digest.h>
-#include <openssl/kdf.h>
+#include <openssl/sshkdf.h>
 
 #include "../../internal.h"
 #include "../../test/test_util.h"

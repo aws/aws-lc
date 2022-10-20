@@ -4,6 +4,7 @@
 
 #include <openssl/digest.h>
 #include <openssl/mem.h>
+#include <openssl/sshkdf.h>
 
 #include "../service_indicator/internal.h"
 #include "../../internal.h"

@@ -24,6 +24,7 @@
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
 #include <openssl/service_indicator.h>
+#include <openssl/sshkdf.h>
 #include <openssl/err.h>
 
 #include "../../test/abi_test.h"
