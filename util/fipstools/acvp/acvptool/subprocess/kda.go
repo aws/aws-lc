@@ -9,7 +9,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"strings"
 )
 
 // The following structures reflect the JSON of ACVP KDA HKDF tests. See
@@ -28,48 +27,58 @@ type kdaTestGroup struct {
 }
 
 type kdaTest struct {
-	ID          uint64        `json:"tcId"`
-	Params      kdaParameters `json:"kdfParameter"`
-	PartyU      kdaPartyInfo  `json:"fixedInfoPartyU"`
-	PartyV      kdaPartyInfo  `json:"fixedInfoPartyV"`
-	ExpectedHex string        `json:"dkm"`
+	ID          uint64         `json:"tcId"`
+	Params      *kdaParameters `json:"kdfParameter,omitempty"`
+	PartyU      kdaPartyInfo   `json:"fixedInfoPartyU"`
+	PartyV      kdaPartyInfo   `json:"fixedInfoPartyV"`
+	ExpectedHex string         `json:"dkm,omitempty"`
 }
 
 type kdaConfiguration struct {
 	Type               string `json:"kdfType"`
 	SaltMethod         string `json:"saltMethod"`
-	SaltLength         uint64 `json:"saltLen"`
+	SaltLength         uint64 `json:"saltLen,omitempty"`
 	FixedInfoPattern   string `json:"fixedInfoPattern"`
 	FixedInputEncoding string `json:"fixedInfoEncoding"`
-	HmacAlg            string `json:"hmacAlg"`
+	HmacAlg            string `json:"hmacAlg,omitempty"`
+	AuxFunction        string `json:"auxFunction,omitempty"`
 	OutputBits         uint32 `json:"l"`
 }
 
-func (c *kdaConfiguration) extract() (outBytes uint32, hashName string, err error) {
-	if c.Type != "hkdf" ||
-		(c.SaltMethod != "default" && c.SaltMethod != "random") ||
-		!strings.Contains(c.FixedInfoPattern, "uPartyInfo||vPartyInfo") ||
-		c.FixedInputEncoding != "concatenation" ||
+func (c *kdaConfiguration) HKDFExtract() (outBytes uint32, hashName string, err error) {
+	if (c.Type != "hkdf" && c.Type != "oneStep") ||
+		c.FixedInfoPattern != "uPartyInfo||vPartyInfo||l" ||
 		c.OutputBits%8 != 0 {
-		return 0, "", fmt.Errorf("Test group not configured for KDA HKDF")
+		return 0, "", fmt.Errorf("Test group not configured for KDA HKDF or KDA oneStep")
 	}
 
-	return c.OutputBits / 8, c.HmacAlg, nil
+	var alg string
+	if len(c.HmacAlg) > 0 {
+		alg = c.HmacAlg
+	} else {
+		alg = c.AuxFunction
+	}
+
+	return c.OutputBits / 8, alg, nil
 }
 
 type kdaParameters struct {
 	KdfType         string `json:"kdfType"`
-	SaltHex         string `json:"salt"`
-	AlgorithmId     string `json:"algorithmID"`
+	SaltHex         string `json:"salt,omitempty"`
+	IV              string `json:"iv,omitempty"`
+	AlgorithmId     string `json:"algorithmId"`
 	Context         string `json:"context"`
 	Label           string `json:"label"`
 	OutputBits      uint32 `json:"l"`
 	KeyHex          string `json:"z"`
-	SecondaryKeyHex string `json:"t"`
+	SecondaryKeyHex string `json:"t,omitempty"`
 }
 
 func (p *kdaParameters) extract() (key, salt []byte, err error) {
-	salt, err = hex.DecodeString(p.SaltHex)
+
+	if len(p.SaltHex) > 0 {
+		salt, err = hex.DecodeString(p.SaltHex)
+	}
 	if err != nil {
 		return nil, nil, err
 	}
@@ -82,6 +91,7 @@ func (p *kdaParameters) extract() (key, salt []byte, err error) {
 	return key, salt, nil
 }
 
+// gets output bits as byte array
 func (p *kdaParameters) data() []byte {
 	ret := make([]byte, 4)
 	binary.BigEndian.PutUint32(ret, p.OutputBits)
@@ -146,7 +156,7 @@ func (k *kda) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 		}
 
 		// get the number of bytes to output and the hmac alg we're using
-		outBytes, hashName, err := group.Config.extract()
+		outBytes, hashName, err := group.Config.HKDFExtract()
 		if err != nil {
 			return nil, err
 		}
@@ -181,9 +191,19 @@ func (k *kda) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 			info = append(info, vData...)
 			info = append(info, lenData...)
 
-			resp, err := m.Transact("KDA/HKDF/"+hashName, 1, key, salt, info, uint32le(outBytes))
-			if err != nil {
-				return nil, fmt.Errorf("KDA_HKDF operation failed: %s", err)
+			var resp [][]byte
+
+			switch parsed.Mode {
+			case "HKDF":
+				resp, err = m.Transact("KDA/HKDF/"+hashName, 1, key, salt, info, uint32le(outBytes))
+				if err != nil {
+					return nil, fmt.Errorf("KDA_HKDF operation failed: %s", err)
+				}
+			case "OneStep":
+				resp, err = m.Transact("KDA/OneStep/"+hashName, 1, key, info, uint32le(outBytes))
+				if err != nil {
+					return nil, fmt.Errorf("KDA_OneStep operation failed: %s", err)
+				}
 			}
 
 			if isValidationTest {
