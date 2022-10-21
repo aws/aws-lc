@@ -825,6 +825,7 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
         ]
       },
       {
+        "vsId": 0,
         "algorithm": "KDA",
         "mode": "HKDF",
         "revision": "Sp800-56Cr1",
@@ -853,41 +854,6 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
           }
         ],
         "performMultiExpansionTests": false
-      },
-      {
-        "algorithm": "KDA",
-        "mode": "OneStep",
-        "revision": "Sp800-56Cr1",
-        "isSample": true,
-        "auxFunctions": [
-          {
-            "auxFunctionName": "SHA-1"
-          },
-          {
-            "auxFunctionName": "SHA2-224"
-          },
-          {
-            "auxFunctionName": "SHA2-256"
-          },
-          {
-            "auxFunctionName": "SHA2-384"
-          },
-          {
-            "auxFunctionName": "SHA2-512"
-          }
-        ],
-        "fixedInfoPattern": "uPartyInfo||vPartyInfo||l",
-        "encoding": [
-          "concatenation"
-        ],
-        "z": [
-          {
-            "min": 224,
-            "max": 65536,
-            "increment": 8
-          }
-        ],
-        "l": 1024
       },
       {
         "algorithm": "KAS-ECC-SSC",
@@ -2115,27 +2081,6 @@ static bool HKDF(const Span<const uint8_t> args[], ReplyCallback write_reply) {
   return write_reply({Span<const uint8_t>(out_key)});
 }
 
-template <const EVP_MD *(MDFunc)()>
-static bool HKDF_expand(const Span<const uint8_t> args[], ReplyCallback write_reply) {
-  const Span<const uint8_t> key = args[0];
-  const Span<const uint8_t> info = args[2];
-  const Span<const uint8_t> out_bytes = args[3];
-  const EVP_MD *md = MDFunc();
-
-  unsigned int out_bytes_uint;
-  memcpy(&out_bytes_uint, out_bytes.data(), sizeof(out_bytes_uint));
-
-
-  std::vector<uint8_t> out_key(out_bytes_uint);
-  if (!::HKDF_expand(out_key.data(), out_bytes_uint, md,
-              key.data(), key.size(),
-              info.data(), info.size())) {
-    return false;
-  }
-
-  return write_reply({Span<const uint8_t>(out_key)});
-}
-
 static struct {
   char name[kMaxNameLength + 1];
   uint8_t num_expected_args;
@@ -2225,11 +2170,6 @@ static struct {
     {"KDA/HKDF/SHA2-256", 4, HKDF<EVP_sha256>},
     {"KDA/HKDF/SHA2-384", 4, HKDF<EVP_sha384>},
     {"KDA/HKDF/SHA2-512", 4, HKDF<EVP_sha512>},
-    {"KDA/OneStep/SHA-1", 3, HKDF_expand<EVP_sha1>},
-    {"KDA/OneStep/SHA2-224", 3, HKDF_expand<EVP_sha224>},
-    {"KDA/OneStep/SHA2-256", 3, HKDF_expand<EVP_sha256>},
-    {"KDA/OneStep/SHA2-384", 3, HKDF_expand<EVP_sha384>},
-    {"KDA/OneStep/SHA2-512", 3, HKDF_expand<EVP_sha512>},
 };
 
 Handler FindHandler(Span<const Span<const uint8_t>> args) {
