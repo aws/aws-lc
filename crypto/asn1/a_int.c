@@ -273,12 +273,12 @@ int ASN1_ENUMERATED_set_int64(ASN1_ENUMERATED *a, int64_t v) {
 }
 
 int ASN1_INTEGER_set(ASN1_INTEGER *a, long v) {
-  static_assert(sizeof(long) <= sizeof(int64_t), "long fits in int64_t");
+  OPENSSL_STATIC_ASSERT(sizeof(long) <= sizeof(int64_t), long_fits_in_int64_t);
   return ASN1_INTEGER_set_int64(a, v);
 }
 
 int ASN1_ENUMERATED_set(ASN1_ENUMERATED *a, long v) {
-  static_assert(sizeof(long) <= sizeof(int64_t), "long fits in int64_t");
+  OPENSSL_STATIC_ASSERT(sizeof(long) <= sizeof(int64_t), long_fits_in_int64_t);
   return ASN1_ENUMERATED_set_int64(a, v);
 }
 
