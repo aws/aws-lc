@@ -32,7 +32,9 @@ OBJ = bignum_add_p25519.o \
       curve25519_pxscalarmul.o \
       curve25519_pxscalarmul_alt.o \
       curve25519_x25519.o \
-      curve25519_x25519_alt.o
+      curve25519_x25519_alt.o \
+      edwards25519_pepadd.o \
+      edwards25519_pepadd_alt.o
 
 %.o : %.S ; $(CC) -E -I../../include $< | as -o $@ -
 

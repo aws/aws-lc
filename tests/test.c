@@ -278,6 +278,8 @@ enum {
        TEST_CURVE25519_PXSCALARMUL_ALT,
        TEST_CURVE25519_X25519,
        TEST_CURVE25519_X25519_ALT,
+       TEST_EDWARDS25519_PEPADD,
+       TEST_EDWARDS25519_PEPADD_ALT,
        TEST_P256_MONTJADD,
        TEST_P256_MONTJDOUBLE,
        TEST_P256_MONTJMIXADD,
@@ -1103,6 +1105,28 @@ void reference_curve25519x25519
 
   bignum_mul_p25519_alt(res,pres,zinv);
   if (bignum_iszero(4,prez)) bignum_of_word(4,res,0);
+}
+
+void reference_edwards25519pepadd(uint64_t p3[16],uint64_t p1[16],uint64_t p2[12])
+{ uint64_t *x1 = p1, *y1 = p1 + 4, *z1 = p1 + 2*4, *w1 = p1 + 3*4;
+  uint64_t *ymx2 = p2, *xpy2 = p2 + 4, *kxy = p2 + 2*4;
+  uint64_t *x3 = p3, *y3 = p3 + 4, *z3 = p3 + 2*4, *w3 = p3 + 3*4;
+  uint64_t t0[4], t1[4], t2[4], t3[4], t4[4],
+           t5[4], t6[4], t7[4], t8[4], t9[4];
+  bignum_sub_p25519(t0,y1,x1);
+  bignum_mul_p25519_alt(t1,t0,ymx2);
+  bignum_add_p25519(t2,y1,x1);
+  bignum_mul_p25519_alt(t3,t2,xpy2);
+  bignum_mul_p25519_alt(t4,w1,kxy);
+  bignum_double_p25519(t5,z1);
+  bignum_sub_p25519(t6,t3,t1);
+  bignum_sub_p25519(t7,t5,t4);
+  bignum_add_p25519(t8,t5,t4);
+  bignum_add_p25519(t9,t3,t1);
+  bignum_mul_p25519_alt(x3,t6,t7);
+  bignum_mul_p25519_alt(y3,t8,t9);
+  bignum_mul_p25519_alt(z3,t7,t8);
+  bignum_mul_p25519_alt(w3,t6,t9);
 }
 
 void reference_montjdouble
@@ -7941,6 +7965,78 @@ int test_curve25519_x25519_alt(void)
   return 0;
 }
 
+int test_edwards25519_pepadd(void)
+{ uint64_t t, k;
+  printf("Testing edwards25519_pepadd with %d cases\n",tests);
+  k = 4;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b0); reference_mod(k,b1,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b1+k,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b1+2*k,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b1+3*k,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b2,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b2+k,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b2+2*k,b0,p_25519);
+     edwards25519_pepadd(b3,b1,b2);
+     reference_edwards25519pepadd(b4,b1,b2);
+
+     c = reference_compare(4*k,b3,4*k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64"> + <...0x%016"PRIx64"> = "
+               "<...0x%016"PRIx64"> not <...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0],b4[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64"> + <...0x%016"PRIx64"> = "
+               "<...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_edwards25519_pepadd_alt(void)
+{ uint64_t t, k;
+  printf("Testing edwards25519_pepadd_alt with %d cases\n",tests);
+  k = 4;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b0); reference_mod(k,b1,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b1+k,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b1+2*k,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b1+3*k,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b2,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b2+k,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b2+2*k,b0,p_25519);
+     edwards25519_pepadd_alt(b3,b1,b2);
+     reference_edwards25519pepadd(b4,b1,b2);
+
+     c = reference_compare(4*k,b3,4*k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64"> + <...0x%016"PRIx64"> = "
+               "<...0x%016"PRIx64"> not <...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0],b4[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64"> + <...0x%016"PRIx64"> = "
+               "<...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
 int test_p256_montjadd(void)
 { uint64_t t, k;
   printf("Testing p256_montjadd with %d cases\n",tests);
@@ -8747,6 +8843,8 @@ int test_all(void)
   dotest(test_curve25519_pxscalarmul_alt);
   dotest(test_curve25519_x25519);
   dotest(test_curve25519_x25519_alt);
+  dotest(test_edwards25519_pepadd);
+  dotest(test_edwards25519_pepadd_alt);
   dotest(test_p256_montjadd);
   dotest(test_p256_montjdouble);
   dotest(test_p256_montjmixadd);
@@ -8958,6 +9056,7 @@ int test_allnonbmi()
   dotest(test_curve25519_ladderstep_alt);
   dotest(test_curve25519_pxscalarmul_alt);
   dotest(test_curve25519_x25519_alt);
+  dotest(test_edwards25519_pepadd_alt);
   dotest(test_word_bytereverse);
   dotest(test_word_clz);
   dotest(test_word_ctz);
@@ -9252,6 +9351,8 @@ int main(int argc, char *argv[])
      case TEST_CURVE25519_PXSCALARMUL_ALT:return test_curve25519_pxscalarmul_alt();
      case TEST_CURVE25519_X25519:         return test_curve25519_x25519();
      case TEST_CURVE25519_X25519_ALT:     return test_curve25519_x25519_alt();
+     case TEST_EDWARDS25519_PEPADD:       return test_edwards25519_pepadd();
+     case TEST_EDWARDS25519_PEPADD_ALT:   return test_edwards25519_pepadd_alt();
      case TEST_P256_MONTJADD:             return test_p256_montjadd();
      case TEST_P256_MONTJDOUBLE:          return test_p256_montjdouble();
      case TEST_P256_MONTJMIXADD:          return test_p256_montjmixadd();

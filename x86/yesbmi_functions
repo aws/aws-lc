@@ -47,6 +47,7 @@ bignum_triple_p521
 curve25519_ladderstep
 curve25519_pxscalarmul
 curve25519_x25519
+edwards25519_pepadd
 p256_montjadd
 p256_montjdouble
 p256_montjmixadd
