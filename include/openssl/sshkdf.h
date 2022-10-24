@@ -1,5 +1,11 @@
-// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+/*
+ * Copyright 2018-2022 The OpenSSL Project Authors. All Rights Reserved.
+ *
+ * Licensed under the Apache License 2.0 (the "License").  You may not use
+ * this file except in compliance with the License.  You can obtain a copy
+ * in the file LICENSE in the source distribution or at
+ * https://www.openssl.org/source/license.html
+ */
 
 #ifndef OPENSSL_HEADER_SSHKDF_H
 #define OPENSSL_HEADER_SSHKDF_H
@@ -25,8 +31,11 @@ extern "C" {
 #define EVP_KDF_SSHKDF_TYPE_INTEGRITY_KEY_CLI_TO_SRV  69
 #define EVP_KDF_SSHKDF_TYPE_INTEGRITY_KEY_SRV_TO_CLI  70
 
-// SSHKDF calculates |out_len| bytes of the SSH KDF, using |digest|, and
-// writes them to |out|. It returns one on success and zero on error.
+// SSHKDF is a key derivation function used in the SSH Transport Layer Protocol
+// defined in Section 7.2 of RFC 4253. It calculates a derived key |out| of
+// length |out_len| bytes using |evp_md| hash algorithm from the supplied
+// shared secret |key|, hash value |xcghash| and session identifier
+// |session_id|. It returns one on success and zero on error.
 OPENSSL_EXPORT int SSHKDF(const EVP_MD *evp_md,
                           const uint8_t *key, size_t key_len,
                           const uint8_t *xcghash, size_t xcghash_len,

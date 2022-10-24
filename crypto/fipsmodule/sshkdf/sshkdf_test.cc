@@ -27,13 +27,53 @@ static void test_sshkdf(const EVP_MD *evp_md, const uint8_t *key, size_t key_len
         Bytes(out, sizeof(out_len)));
 }
 
-TEST(SSHKDFTest, SSHKDF_TYPE_INSANITY) {
-    // The sanity check for the |type| param happens before anything else, so
-    // we can check it without any valid info.
-    ASSERT_FALSE(SSHKDF(nullptr, nullptr, 0, nullptr, 0, nullptr, 0,
-        EVP_KDF_SSHKDF_TYPE_INITIAL_IV_CLI_TO_SRV - 1, nullptr, 0));
-    ASSERT_FALSE(SSHKDF(nullptr, nullptr, 0, nullptr, 0, nullptr, 0,
-        EVP_KDF_SSHKDF_TYPE_INTEGRITY_KEY_SRV_TO_CLI + 1, nullptr, 0));
+TEST(SSHKDFTest, SSHKDF_INPUT_INSANITY) {
+    uint8_t not_empty[] = {'t', 'e', 's', 't'};
+    size_t not_empty_len = sizeof(not_empty);
+    uint8_t output[] = {0};
+    size_t output_len = sizeof(output);
+    const EVP_MD *md = EVP_sha256();  // Not actually used.
+
+    ASSERT_FALSE(SSHKDF(nullptr, not_empty, not_empty_len,
+                        not_empty, not_empty_len, not_empty, not_empty_len,
+                        EVP_KDF_SSHKDF_TYPE_INITIAL_IV_CLI_TO_SRV,
+                        output, output_len));
+
+    ASSERT_FALSE(SSHKDF(md, nullptr, not_empty_len,
+                        not_empty, not_empty_len, not_empty, not_empty_len,
+                        EVP_KDF_SSHKDF_TYPE_INITIAL_IV_CLI_TO_SRV,
+                        output, output_len));
+    ASSERT_FALSE(SSHKDF(md, not_empty, 0,
+                        not_empty, not_empty_len, not_empty, not_empty_len,
+                        EVP_KDF_SSHKDF_TYPE_INITIAL_IV_CLI_TO_SRV,
+                        output, output_len));
+
+    ASSERT_FALSE(SSHKDF(md, not_empty, not_empty_len,
+                        nullptr, not_empty_len, not_empty, not_empty_len,
+                        EVP_KDF_SSHKDF_TYPE_INITIAL_IV_CLI_TO_SRV,
+                        output, output_len));
+    ASSERT_FALSE(SSHKDF(md, not_empty, not_empty_len,
+                        not_empty, 0, not_empty, not_empty_len,
+                        EVP_KDF_SSHKDF_TYPE_INITIAL_IV_CLI_TO_SRV,
+                        output, output_len));
+
+    ASSERT_FALSE(SSHKDF(md, not_empty, not_empty_len,
+                        not_empty, not_empty_len, nullptr, not_empty_len,
+                        EVP_KDF_SSHKDF_TYPE_INITIAL_IV_CLI_TO_SRV,
+                        output, output_len));
+    ASSERT_FALSE(SSHKDF(md, not_empty, not_empty_len,
+                        not_empty, not_empty_len, not_empty, 0,
+                        EVP_KDF_SSHKDF_TYPE_INITIAL_IV_CLI_TO_SRV,
+                        output, output_len));
+
+    ASSERT_FALSE(SSHKDF(md, not_empty, not_empty_len,
+                        not_empty, not_empty_len, not_empty, not_empty_len,
+                        EVP_KDF_SSHKDF_TYPE_INITIAL_IV_CLI_TO_SRV - 1,
+                        output, output_len));
+    ASSERT_FALSE(SSHKDF(md, not_empty, not_empty_len,
+                        not_empty, not_empty_len, not_empty, not_empty_len,
+                        EVP_KDF_SSHKDF_TYPE_INTEGRITY_KEY_SRV_TO_CLI + 1,
+                        output, output_len));
 }
 
 TEST(SSHKDFTest, SSHKDF_SHA1) {

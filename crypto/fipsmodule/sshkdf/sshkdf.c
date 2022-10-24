@@ -1,6 +1,11 @@
-// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
-// Based on OpenSSL 3.x SSHKDF().
+/*
+ * Copyright 2018-2022 The OpenSSL Project Authors. All Rights Reserved.
+ *
+ * Licensed under the Apache License 2.0 (the "License").  You may not use
+ * this file except in compliance with the License.  You can obtain a copy
+ * in the file LICENSE in the source distribution or at
+ * https://www.openssl.org/source/license.html
+ */
 
 #include <openssl/digest.h>
 #include <openssl/mem.h>
@@ -23,6 +28,18 @@ int SSHKDF(const EVP_MD *evp_md,
   int ret = 0;
 
   // Sanity-check.
+  if (evp_md == NULL) {
+    return 0;
+  }
+  if (key == NULL || key_len == 0) {
+    return 0;
+  }
+  if (xcghash == NULL || xcghash_len == 0) {
+    return 0;
+  }
+  if (session_id == NULL || session_id_len == 0) {
+    return 0;
+  }
   if (type < EVP_KDF_SSHKDF_TYPE_INITIAL_IV_CLI_TO_SRV ||
       type > EVP_KDF_SSHKDF_TYPE_INTEGRITY_KEY_SRV_TO_CLI) {
     return 0;
@@ -32,7 +49,7 @@ int SSHKDF(const EVP_MD *evp_md,
 
   md = EVP_MD_CTX_new();
   if (md == NULL) {
-    return 0;
+    goto out;
   }
 
   if (!EVP_DigestInit_ex(md, evp_md, NULL)) {
