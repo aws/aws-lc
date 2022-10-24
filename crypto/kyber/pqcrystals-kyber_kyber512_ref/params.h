@@ -1,6 +1,8 @@
 #ifndef PARAMS_H
 #define PARAMS_H
 
+#include <openssl/base.h>
+
 #define KYBER_K 2	/* Change this for different security strengths */
 
 //#define KYBER_90S	/* Uncomment this if you want the 90S variant */
@@ -8,25 +10,32 @@
 /* Don't change parameters below this line */
 #if   (KYBER_K == 2)
 #ifdef KYBER_90S
-#define KYBER_NAMESPACE(s) pqcrystals_kyber512_90s_ref_##s
+#define KYBER_VARIANT(s) pqcrystals_kyber512_90s_ref_##s
 #else
-#define KYBER_NAMESPACE(s) pqcrystals_kyber512_ref_##s
+#define KYBER_VARIANT(s) pqcrystals_kyber512_ref_##s
 #endif
 #elif (KYBER_K == 3)
 #ifdef KYBER_90S
-#define KYBER_NAMESPACE(s) pqcrystals_kyber768_90s_ref_##s
+#define KYBER_VARIANT(s) pqcrystals_kyber768_90s_ref_##s
 #else
-#define KYBER_NAMESPACE(s) pqcrystals_kyber768_ref_##s
+#define KYBER_VARIANT(s) pqcrystals_kyber768_ref_##s
 #endif
 #elif (KYBER_K == 4)
 #ifdef KYBER_90S
-#define KYBER_NAMESPACE(s) pqcrystals_kyber1024_90s_ref_##s
+#define KYBER_VARIANT(s) pqcrystals_kyber1024_90s_ref_##s
 #else
-#define KYBER_NAMESPACE(s) pqcrystals_kyber1024_ref_##s
+#define KYBER_VARIANT(s) pqcrystals_kyber1024_ref_##s
 #endif
 #else
 #error "KYBER_K must be in {2,3,4}"
 #endif
+
+#ifdef BORINGSSL_PREFIX
+#define KYBER_NAMESPACE(s) BORINGSSL_ADD_PREFIX(BORINGSSL_PREFIX, KYBER_VARIANT(s))
+#else
+#define KYBER_NAMESPACE(s) KYBER_VARIANT(s)
+#endif
+
 
 #define KYBER_N 256
 #define KYBER_Q 3329
