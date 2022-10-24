@@ -11,6 +11,7 @@ NIST has not published the final PQ standard yet, and is not expected to do so u
 **Supported versions.** AWS-LC supports only Kyber512 algorithm at this point. The NID assigned to Kyber512 is `NID_KYBER512` and the corresponding `PKEY` identifier is `EVP_PKEY_KYBER512`.
 
 **Source code origin and modifications.** The source code was taken from the primary source of Kyber at [link](https://github.com/pq-crystals/kyber), at [commit](https://github.com/pq-crystals/kyber/tree/faf5c3fe33e0b61c7c8a7888dd862bf5def17ad2) as of September 13th 2021.
+The `api.h`, `fips202.h` and `params.h` header files were modified [in this PR](https://github.com/awslabs/aws-lc/pull/655) to support our [prefixed symbols build](https://github.com/awslabs/aws-lc/blob/main/BUILDING.md#building-with-prefixed-symbols).
 
 Only the reference C implementation of Kyber512 is currently integrated. The code is in the `pqcrystals-kyber_kyber512_ref` folder. The following changes were made to the code.
 
