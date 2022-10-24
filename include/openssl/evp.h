@@ -124,13 +124,15 @@ OPENSSL_EXPORT int EVP_PKEY_missing_parameters(const EVP_PKEY *pkey);
 // EVP_PKEY_size returns the maximum size, in bytes, of a signature signed by
 // |pkey|. For an RSA key, this returns the number of bytes needed to represent
 // the modulus. For an EC key, this returns the maximum size of a DER-encoded
-// ECDSA signature. For a KEM key, this returns the sum of the size of the
-// public key and the secret key.
+// ECDSA signature. For a Dilithium key, this returns the signature byte size.
+// For a KEM key, this returns the sum of the size of the public key and the
+// secret key.
 OPENSSL_EXPORT int EVP_PKEY_size(const EVP_PKEY *pkey);
 
 // EVP_PKEY_bits returns the "size", in bits, of |pkey|. For an RSA key, this
 // returns the bit length of the modulus. For an EC key, this returns the bit
-// length of the group order.
+// length of the group order. For a Dilithium key, this returns the bit length
+// of the signature size.
 OPENSSL_EXPORT int EVP_PKEY_bits(const EVP_PKEY *pkey);
 
 // EVP_PKEY_id returns the type of |pkey|, which is one of the |EVP_PKEY_*|
