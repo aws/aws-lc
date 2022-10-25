@@ -36,6 +36,10 @@ extern "C" {
 // length |out_len| bytes using |evp_md| hash algorithm from the supplied
 // shared secret |key|, hash value |xcghash| and session identifier
 // |session_id|. It returns one on success and zero on error.
+//
+// |xcghash| is produced during the SSH Diffie-Hellman exchange.
+//
+// SSHKDF is only FIPS 140-3 Approved for use in SSH.
 OPENSSL_EXPORT int SSHKDF(const EVP_MD *evp_md,
                           const uint8_t *key, size_t key_len,
                           const uint8_t *xcghash, size_t xcghash_len,
