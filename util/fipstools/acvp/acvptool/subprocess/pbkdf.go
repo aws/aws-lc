@@ -100,7 +100,7 @@ func (a *pbkdf) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 				return nil, fmt.Errorf("test case %d/%d requests output key of length %d, but expected output key length between %d and %d", group.ID, test.ID, test.KeyLen, keyLenMin, keyLenMax)
 			}
 
-			// check length of salt against NIST min/max
+			// Check length of salt against NIST min/max
 			if len(test.SaltHex)*4 > saltLenMax || len(test.SaltHex)*4 < saltLenMin {
 				return nil, fmt.Errorf("test case %d/%d contains salt %q of bit length %d, but expected bit length between %d and %d", group.ID, test.ID, test.SaltHex, len(test.SaltHex)*4, saltLenMin, saltLenMax)
 			}
@@ -115,7 +115,6 @@ func (a *pbkdf) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 
 			testResp := pbkdfTestResponse{ID: test.ID}
 
-			// encode hex
 			salt, salt_err := hex.DecodeString(test.SaltHex)
 			if salt_err != nil {
 				return nil, fmt.Errorf("Salt decode failed: %s", salt_err)
@@ -129,7 +128,6 @@ func (a *pbkdf) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 				return nil, fmt.Errorf("PBKDF operation failed: %s", err)
 			}
 
-			// debug putting all letterse to upper in the output for now
 			testResp.DerivedKeyHex = strings.ToUpper(hex.EncodeToString(result[0]))
 			response.Tests = append(response.Tests, testResp)
 		}
