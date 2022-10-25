@@ -27,7 +27,7 @@ docker run -v "$(pwd)":"$(pwd)" -w "$(pwd)" --rm --platform linux/amd64 rust:lin
 ## arm64 build
 docker run -v "$(pwd)":"$(pwd)" -w "$(pwd)" --rm --platform linux/arm64 rust:linux-arm64 /bin/bash "${SCRIPT_DIR}"/_collect_symbols_build.sh
 
-sort "${SYMBOLS_COLLECT_FILE}" | uniq > "${SYMBOLS_FILE}"
+sort "${SYMBOLS_COLLECT_FILE}" | uniq | grep -v "^_\?bignum_" | grep -v "pqcrystals" > "${SYMBOLS_FILE}"
 
 popd
 
