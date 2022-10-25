@@ -136,6 +136,7 @@ TEST(Dilithium3Test, NewKeyFromBytes) {
   EVP_PKEY_CTX_free(dilithium_pkey_ctx);
   EVP_PKEY_free(new_public);
   EVP_PKEY_free(new_private);
+  EVP_PKEY_free(dilithium_pkey);
 }
 
 TEST(Dilithium3Test, KeySize) {
@@ -152,4 +153,5 @@ TEST(Dilithium3Test, KeySize) {
   EXPECT_EQ(8*(DILITHIUM3_SIGNATURE_BYTES), EVP_PKEY_bits(dilithium_pkey));
 
   EVP_PKEY_CTX_free(dilithium_pkey_ctx);
+  EVP_PKEY_free(dilithium_pkey);
 }
