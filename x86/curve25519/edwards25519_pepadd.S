@@ -152,10 +152,9 @@
         adox   r12, rsi;                        \
         adcx   r12, rsi;                        \
         shld   r12, r11, 0x1;                   \
-        movabs rcx, 0x8000000000000000;         \
         mov    edx, 0x13;                       \
         inc    r12;                             \
-        or     r11, rcx;                        \
+        bts    r11, 63;                         \
         mulx   rbx, rax, r12;                   \
         add    r8, rax;                         \
         adc    r9, rbx;                         \
@@ -168,8 +167,7 @@
         sbb    r9, rsi;                         \
         sbb    r10, rsi;                        \
         sbb    r11, rsi;                        \
-        not    rcx;                             \
-        and    r11, rcx;                        \
+        btr    r11, 63;                         \
         mov    [P0], r8;                        \
         mov    [P0+0x8], r9;                    \
         mov    [P0+0x10], r10;                  \

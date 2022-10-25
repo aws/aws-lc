@@ -790,12 +790,11 @@ let edwards25519_pepadd_mc = define_assert_from_elf
                            (* ADCX (% r12) (% rsi) *)
   0x4d; 0x0f; 0xa4; 0xdc; 0x01;
                            (* SHLD (% r12) (% r11) (Imm8 (word 1)) *)
-  0x48; 0xb9; 0x00; 0x00; 0x00; 0x00; 0x00; 0x00; 0x00; 0x80;
-                           (* MOV (% rcx) (Imm64 (word 9223372036854775808)) *)
   0xba; 0x13; 0x00; 0x00; 0x00;
                            (* MOV (% edx) (Imm32 (word 19)) *)
   0x49; 0xff; 0xc4;        (* INC (% r12) *)
-  0x49; 0x09; 0xcb;        (* OR (% r11) (% rcx) *)
+  0x49; 0x0f; 0xba; 0xeb; 0x3f;
+                           (* BTS (% r11) (Imm8 (word 63)) *)
   0xc4; 0xc2; 0xfb; 0xf6; 0xdc;
                            (* MULX4 (% rbx,% rax) (% rdx,% r12) *)
   0x49; 0x01; 0xc0;        (* ADD (% r8) (% rax) *)
@@ -809,8 +808,8 @@ let edwards25519_pepadd_mc = define_assert_from_elf
   0x49; 0x19; 0xf1;        (* SBB (% r9) (% rsi) *)
   0x49; 0x19; 0xf2;        (* SBB (% r10) (% rsi) *)
   0x49; 0x19; 0xf3;        (* SBB (% r11) (% rsi) *)
-  0x48; 0xf7; 0xd1;        (* NOT (% rcx) *)
-  0x49; 0x21; 0xcb;        (* AND (% r11) (% rcx) *)
+  0x49; 0x0f; 0xba; 0xf3; 0x3f;
+                           (* BTR (% r11) (Imm8 (word 63)) *)
   0x4c; 0x89; 0x47; 0x40;  (* MOV (Memop Quadword (%% (rdi,64))) (% r8) *)
   0x4c; 0x89; 0x4f; 0x48;  (* MOV (Memop Quadword (%% (rdi,72))) (% r9) *)
   0x4c; 0x89; 0x57; 0x50;  (* MOV (Memop Quadword (%% (rdi,80))) (% r10) *)
@@ -948,12 +947,11 @@ let edwards25519_pepadd_mc = define_assert_from_elf
                            (* ADCX (% r12) (% rsi) *)
   0x4d; 0x0f; 0xa4; 0xdc; 0x01;
                            (* SHLD (% r12) (% r11) (Imm8 (word 1)) *)
-  0x48; 0xb9; 0x00; 0x00; 0x00; 0x00; 0x00; 0x00; 0x00; 0x80;
-                           (* MOV (% rcx) (Imm64 (word 9223372036854775808)) *)
   0xba; 0x13; 0x00; 0x00; 0x00;
                            (* MOV (% edx) (Imm32 (word 19)) *)
   0x49; 0xff; 0xc4;        (* INC (% r12) *)
-  0x49; 0x09; 0xcb;        (* OR (% r11) (% rcx) *)
+  0x49; 0x0f; 0xba; 0xeb; 0x3f;
+                           (* BTS (% r11) (Imm8 (word 63)) *)
   0xc4; 0xc2; 0xfb; 0xf6; 0xdc;
                            (* MULX4 (% rbx,% rax) (% rdx,% r12) *)
   0x49; 0x01; 0xc0;        (* ADD (% r8) (% rax) *)
@@ -967,8 +965,8 @@ let edwards25519_pepadd_mc = define_assert_from_elf
   0x49; 0x19; 0xf1;        (* SBB (% r9) (% rsi) *)
   0x49; 0x19; 0xf2;        (* SBB (% r10) (% rsi) *)
   0x49; 0x19; 0xf3;        (* SBB (% r11) (% rsi) *)
-  0x48; 0xf7; 0xd1;        (* NOT (% rcx) *)
-  0x49; 0x21; 0xcb;        (* AND (% r11) (% rcx) *)
+  0x49; 0x0f; 0xba; 0xf3; 0x3f;
+                           (* BTR (% r11) (Imm8 (word 63)) *)
   0x4c; 0x89; 0x07;        (* MOV (Memop Quadword (%% (rdi,0))) (% r8) *)
   0x4c; 0x89; 0x4f; 0x08;  (* MOV (Memop Quadword (%% (rdi,8))) (% r9) *)
   0x4c; 0x89; 0x57; 0x10;  (* MOV (Memop Quadword (%% (rdi,16))) (% r10) *)
@@ -1106,12 +1104,11 @@ let edwards25519_pepadd_mc = define_assert_from_elf
                            (* ADCX (% r12) (% rsi) *)
   0x4d; 0x0f; 0xa4; 0xdc; 0x01;
                            (* SHLD (% r12) (% r11) (Imm8 (word 1)) *)
-  0x48; 0xb9; 0x00; 0x00; 0x00; 0x00; 0x00; 0x00; 0x00; 0x80;
-                           (* MOV (% rcx) (Imm64 (word 9223372036854775808)) *)
   0xba; 0x13; 0x00; 0x00; 0x00;
                            (* MOV (% edx) (Imm32 (word 19)) *)
   0x49; 0xff; 0xc4;        (* INC (% r12) *)
-  0x49; 0x09; 0xcb;        (* OR (% r11) (% rcx) *)
+  0x49; 0x0f; 0xba; 0xeb; 0x3f;
+                           (* BTS (% r11) (Imm8 (word 63)) *)
   0xc4; 0xc2; 0xfb; 0xf6; 0xdc;
                            (* MULX4 (% rbx,% rax) (% rdx,% r12) *)
   0x49; 0x01; 0xc0;        (* ADD (% r8) (% rax) *)
@@ -1125,8 +1122,8 @@ let edwards25519_pepadd_mc = define_assert_from_elf
   0x49; 0x19; 0xf1;        (* SBB (% r9) (% rsi) *)
   0x49; 0x19; 0xf2;        (* SBB (% r10) (% rsi) *)
   0x49; 0x19; 0xf3;        (* SBB (% r11) (% rsi) *)
-  0x48; 0xf7; 0xd1;        (* NOT (% rcx) *)
-  0x49; 0x21; 0xcb;        (* AND (% r11) (% rcx) *)
+  0x49; 0x0f; 0xba; 0xf3; 0x3f;
+                           (* BTR (% r11) (Imm8 (word 63)) *)
   0x4c; 0x89; 0x47; 0x20;  (* MOV (Memop Quadword (%% (rdi,32))) (% r8) *)
   0x4c; 0x89; 0x4f; 0x28;  (* MOV (Memop Quadword (%% (rdi,40))) (% r9) *)
   0x4c; 0x89; 0x57; 0x30;  (* MOV (Memop Quadword (%% (rdi,48))) (% r10) *)
@@ -1264,12 +1261,11 @@ let edwards25519_pepadd_mc = define_assert_from_elf
                            (* ADCX (% r12) (% rsi) *)
   0x4d; 0x0f; 0xa4; 0xdc; 0x01;
                            (* SHLD (% r12) (% r11) (Imm8 (word 1)) *)
-  0x48; 0xb9; 0x00; 0x00; 0x00; 0x00; 0x00; 0x00; 0x00; 0x80;
-                           (* MOV (% rcx) (Imm64 (word 9223372036854775808)) *)
   0xba; 0x13; 0x00; 0x00; 0x00;
                            (* MOV (% edx) (Imm32 (word 19)) *)
   0x49; 0xff; 0xc4;        (* INC (% r12) *)
-  0x49; 0x09; 0xcb;        (* OR (% r11) (% rcx) *)
+  0x49; 0x0f; 0xba; 0xeb; 0x3f;
+                           (* BTS (% r11) (Imm8 (word 63)) *)
   0xc4; 0xc2; 0xfb; 0xf6; 0xdc;
                            (* MULX4 (% rbx,% rax) (% rdx,% r12) *)
   0x49; 0x01; 0xc0;        (* ADD (% r8) (% rax) *)
@@ -1283,8 +1279,8 @@ let edwards25519_pepadd_mc = define_assert_from_elf
   0x49; 0x19; 0xf1;        (* SBB (% r9) (% rsi) *)
   0x49; 0x19; 0xf2;        (* SBB (% r10) (% rsi) *)
   0x49; 0x19; 0xf3;        (* SBB (% r11) (% rsi) *)
-  0x48; 0xf7; 0xd1;        (* NOT (% rcx) *)
-  0x49; 0x21; 0xcb;        (* AND (% r11) (% rcx) *)
+  0x49; 0x0f; 0xba; 0xf3; 0x3f;
+                           (* BTR (% r11) (Imm8 (word 63)) *)
   0x4c; 0x89; 0x47; 0x60;  (* MOV (Memop Quadword (%% (rdi,96))) (% r8) *)
   0x4c; 0x89; 0x4f; 0x68;  (* MOV (Memop Quadword (%% (rdi,104))) (% r9) *)
   0x4c; 0x89; 0x57; 0x70;  (* MOV (Memop Quadword (%% (rdi,112))) (% r10) *)
@@ -1364,13 +1360,13 @@ let lvs =
 (* ------------------------------------------------------------------------- *)
 
 let LOCAL_MUL_P25519_TAC =
-  X86_MACRO_SIM_ABBREV_TAC (X86_TRIM_EXEC_RULE edwards25519_pepadd_mc) 93 lvs
+  X86_MACRO_SIM_ABBREV_TAC (X86_TRIM_EXEC_RULE edwards25519_pepadd_mc) 91 lvs
    `!(t:x86state) pcin pcout q3 n3 q1 n1 q2 n2.
       !m. read(memory :> bytes(word_add (read q1 t) (word n1),8 * 4)) t = m
       ==>
       !n. read(memory :> bytes(word_add (read q2 t) (word n2),8 * 4)) t = n
       ==>
-      nonoverlapping (word pc,0xf69) (word_add (read q3 t) (word n3),8 * 4)
+      nonoverlapping (word pc,0xf45) (word_add (read q3 t) (word n3),8 * 4)
       ==> ensures x86
            (\s. bytes_loaded s (word pc) (BUTLAST edwards25519_pepadd_mc) /\
                 read RIP s = pcin /\
@@ -1443,7 +1439,7 @@ let LOCAL_MUL_P25519_TAC =
 
   (*** Quotient estimate computation ***)
 
-  X86_STEPS_TAC EDWARDS25519_PEPADD_EXEC (72--76) THEN
+  X86_STEPS_TAC EDWARDS25519_PEPADD_EXEC (72--75) THEN
   ABBREV_TAC `t = bignum_of_wordlist
    [sum_s60; sum_s63; sum_s66; word_or sum_s69 (word 9223372036854775808)]` THEN
   SUBGOAL_THEN `&ca = &t + &2 pow 255 * (&(ca DIV 2 EXP 255) - &1)`
@@ -1498,7 +1494,7 @@ let LOCAL_MUL_P25519_TAC =
   (*** The rest of the computation ***)
 
   X86_ACCSTEPS_TAC EDWARDS25519_PEPADD_EXEC
-   [77;78;79;80;81;85;86;87;88] (77--94) THEN
+   [76;77;78;79;80;84;85;86;87] (76--92) THEN
   ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
   CONV_TAC(LAND_CONV BIGNUM_EXPAND_CONV) THEN ASM_REWRITE_TAC[] THEN
   CONV_TAC SYM_CONV THEN MATCH_MP_TAC MOD_UNIQ_BALANCED_REAL THEN
@@ -1509,7 +1505,7 @@ let LOCAL_MUL_P25519_TAC =
 
   (*** Comparison computation and then the rest is easy ***)
 
-  SUBGOAL_THEN `ca < (val(hw:int64) + 1) * p_25519 <=> ~carry_s81`
+  SUBGOAL_THEN `ca < (val(hw:int64) + 1) * p_25519 <=> ~carry_s80`
   SUBST1_TAC THENL
    [CONV_TAC SYM_CONV THEN MATCH_MP_TAC FLAG_FROM_CARRY_LT THEN
     EXISTS_TAC `256` THEN ASM_REWRITE_TAC[] THEN EXPAND_TAC "t" THEN
@@ -1527,7 +1523,7 @@ let LOCAL_MUL_P25519_TAC =
     REWRITE_TAC[GSYM REAL_OF_NUM_CLAUSES; REAL_OF_NUM_MOD] THEN
     ACCUMULATOR_ASSUM_LIST(MP_TAC o end_itlist CONJ o DESUM_RULE) THEN
     DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN
-    ASM_CASES_TAC `carry_s81:bool` THEN
+    ASM_CASES_TAC `carry_s80:bool` THEN
     ASM_REWRITE_TAC[BITVAL_CLAUSES] THEN CONV_TAC WORD_REDUCE_CONV THEN
     REAL_INTEGER_TAC]);;
 
@@ -1542,7 +1538,7 @@ let LOCAL_MUL_4_TAC =
       ==>
       !n. read(memory :> bytes(word_add (read q2 t) (word n2),8 * 4)) t = n
       ==>
-      nonoverlapping (word pc,0xf69) (word_add (read q3 t) (word n3),8 * 4)
+      nonoverlapping (word pc,0xf45) (word_add (read q3 t) (word n3),8 * 4)
       ==> ensures x86
            (\s. bytes_loaded s (word pc) (BUTLAST edwards25519_pepadd_mc) /\
                 read RIP s = pcin /\
@@ -1707,7 +1703,7 @@ let LOCAL_ADD_4_TAC =
       ==>
       nonoverlapping (p1:int64,128) (stackpointer,192) /\
       nonoverlapping (p2:int64,96) (stackpointer,192) /\
-      nonoverlapping (word pc,0xf69) (word_add (read q3 t) (word n3),8 * 4)
+      nonoverlapping (word pc,0xf45) (word_add (read q3 t) (word n3),8 * 4)
       ==> ensures x86
            (\s. bytes_loaded s (word pc) (BUTLAST edwards25519_pepadd_mc) /\
                 read RIP s = pcin /\
@@ -1754,7 +1750,7 @@ let LOCAL_DOUBLE_4_TAC =
       ==>
       nonoverlapping (word_add (read q3 t) (word n3),8 * 4)
                      (word_add (read q1 t) (word n1),8 * 4) /\
-      nonoverlapping (word pc,0xf69) (word_add (read q3 t) (word n3),8 * 4)
+      nonoverlapping (word pc,0xf45) (word_add (read q3 t) (word n3),8 * 4)
       ==> ensures x86
            (\s. bytes_loaded s (word pc) (BUTLAST edwards25519_pepadd_mc) /\
                 read RIP s = pcin /\
@@ -1798,7 +1794,7 @@ let LOCAL_SUB_4_TAC =
       ==>
       !n. read(memory :> bytes(word_add (read q2 t) (word n2),8 * 4)) t = n
       ==>
-      nonoverlapping (word pc,0xf69) (word_add (read q3 t) (word n3),8 * 4)
+      nonoverlapping (word pc,0xf45) (word_add (read q3 t) (word n3),8 * 4)
       ==> ensures x86
            (\s. bytes_loaded s (word pc) (BUTLAST edwards25519_pepadd_mc) /\
                 read RIP s = pcin /\
@@ -1868,7 +1864,7 @@ let LOCAL_ADD_TWICE4_TAC =
       ==>
       !n. read(memory :> bytes(word_add (read q2 t) (word n2),8 * 4)) t = n
       ==>
-      nonoverlapping (word pc,0xf69) (word_add (read q3 t) (word n3),8 * 4)
+      nonoverlapping (word pc,0xf45) (word_add (read q3 t) (word n3),8 * 4)
       ==> ensures x86
            (\s. bytes_loaded s (word pc) (BUTLAST edwards25519_pepadd_mc) /\
                 read RIP s = pcin /\
@@ -1937,7 +1933,7 @@ let LOCAL_SUB_TWICE4_TAC =
       ==>
       !n. read(memory :> bytes(word_add (read q2 t) (word n2),8 * 4)) t = n
       ==>
-      nonoverlapping (word pc,0xf69) (word_add (read q3 t) (word n3),8 * 4)
+      nonoverlapping (word pc,0xf45) (word_add (read q3 t) (word n3),8 * 4)
       ==> ensures x86
            (\s. bytes_loaded s (word pc) (BUTLAST edwards25519_pepadd_mc) /\
                 read RIP s = pcin /\
@@ -2007,8 +2003,8 @@ let LOCAL_SUB_TWICE4_TAC =
 let EDWARDS25519_PEPADD_CORRECT = time prove
  (`!p3 p1 Q1 p2 T2 pc stackpointer.
     ALL (nonoverlapping (stackpointer,192))
-        [(word pc,0xf69); (p3,128); (p1,128); (p2,96)] /\
-    nonoverlapping (p3,128) (word pc,0xf69)
+        [(word pc,0xf45); (p3,128); (p1,128); (p2,96)] /\
+    nonoverlapping (p3,128) (word pc,0xf45)
     ==> ensures x86
          (\s. bytes_loaded s (word pc) (BUTLAST edwards25519_pepadd_mc) /\
               read RIP s = word(pc + 0x11) /\
@@ -2016,7 +2012,7 @@ let EDWARDS25519_PEPADD_CORRECT = time prove
               C_ARGUMENTS [p3; p1; p2] s /\
               bignum_quadruple_from_memory (p1,4) s = Q1 /\
               bignum_triple_from_memory(p2,4) s = T2)
-         (\s. read RIP s = word (pc + 0xf57) /\
+         (\s. read RIP s = word (pc + 0xf33) /\
               !P1 P2. P1 IN group_carrier edwards25519_group /\
                       P2 IN group_carrier edwards25519_group /\
                       edwards25519_exprojective P1 Q1 /\
@@ -2132,8 +2128,8 @@ let EDWARDS25519_PEPADD_CORRECT = time prove
 let EDWARDS25519_PEPADD_SUBROUTINE_CORRECT = time prove
  (`!p3 p1 Q1 p2 T2 pc stackpointer returnaddress.
     ALL (nonoverlapping (word_sub stackpointer (word 240),240))
-        [(word pc,0xf69); (p3,128); (p1,128); (p2,96)] /\
-    nonoverlapping (p3,128) (word pc,0xf69) /\
+        [(word pc,0xf45); (p3,128); (p1,128); (p2,96)] /\
+    nonoverlapping (p3,128) (word pc,0xf45) /\
     nonoverlapping (p3,128) (word_sub stackpointer (word 240),248)
     ==> ensures x86
          (\s. bytes_loaded s (word pc) edwards25519_pepadd_mc /\
@@ -2171,8 +2167,8 @@ let windows_edwards25519_pepadd_mc = define_from_elf
 let WINDOWS_EDWARDS25519_PEPADD_SUBROUTINE_CORRECT = prove
  (`!p3 p1 Q1 p2 T2 pc stackpointer returnaddress.
     ALL (nonoverlapping (word_sub stackpointer (word 256),256))
-        [(word pc,0xf76); (p3,128); (p1,128); (p2,96)] /\
-    nonoverlapping (p3,128) (word pc,0xf76) /\
+        [(word pc,0xf52); (p3,128); (p1,128); (p2,96)] /\
+    nonoverlapping (p3,128) (word pc,0xf52) /\
     nonoverlapping (p3,128) (word_sub stackpointer (word 256),264)
     ==> ensures x86
          (\s. bytes_loaded s (word pc) windows_edwards25519_pepadd_mc /\

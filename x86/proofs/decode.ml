@@ -2093,6 +2093,11 @@ let print_literal_from_elf file =
   let bs = array_of_bytes (load_elf_contents_x86 file) in
   print_string (make_fn_word_list bs (decode_all (term_of_array bs)));;
 
+let save_literal_from_elf deffile objfile =
+  let bs = array_of_bytes (load_elf_contents_x86 objfile) in
+  let ls = make_fn_word_list bs (decode_all (term_of_array bs)) in
+  file_of_string deffile ls;;
+
 (* Usage:
 Use
   print_literal_from_elf "x86/generic/bignum_madd.o";;

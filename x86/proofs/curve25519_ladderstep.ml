@@ -1287,12 +1287,11 @@ let curve25519_ladderstep_mc = define_assert_from_elf
                            (* ADCX (% r12) (% rdi) *)
   0x4d; 0x0f; 0xa4; 0xdc; 0x01;
                            (* SHLD (% r12) (% r11) (Imm8 (word 1)) *)
-  0x48; 0xb9; 0x00; 0x00; 0x00; 0x00; 0x00; 0x00; 0x00; 0x80;
-                           (* MOV (% rcx) (Imm64 (word 9223372036854775808)) *)
   0xba; 0x13; 0x00; 0x00; 0x00;
                            (* MOV (% edx) (Imm32 (word 19)) *)
   0x49; 0xff; 0xc4;        (* INC (% r12) *)
-  0x49; 0x09; 0xcb;        (* OR (% r11) (% rcx) *)
+  0x49; 0x0f; 0xba; 0xeb; 0x3f;
+                           (* BTS (% r11) (Imm8 (word 63)) *)
   0xc4; 0xc2; 0xfb; 0xf6; 0xdc;
                            (* MULX4 (% rbx,% rax) (% rdx,% r12) *)
   0x49; 0x01; 0xc0;        (* ADD (% r8) (% rax) *)
@@ -1306,8 +1305,8 @@ let curve25519_ladderstep_mc = define_assert_from_elf
   0x49; 0x19; 0xf9;        (* SBB (% r9) (% rdi) *)
   0x49; 0x19; 0xfa;        (* SBB (% r10) (% rdi) *)
   0x49; 0x19; 0xfb;        (* SBB (% r11) (% rdi) *)
-  0x48; 0xf7; 0xd1;        (* NOT (% rcx) *)
-  0x49; 0x21; 0xcb;        (* AND (% r11) (% rcx) *)
+  0x49; 0x0f; 0xba; 0xf3; 0x3f;
+                           (* BTR (% r11) (Imm8 (word 63)) *)
   0x4c; 0x89; 0x44; 0x24; 0x40;
                            (* MOV (Memop Quadword (%% (rsp,64))) (% r8) *)
   0x4c; 0x89; 0x4c; 0x24; 0x48;
@@ -1447,12 +1446,11 @@ let curve25519_ladderstep_mc = define_assert_from_elf
                            (* ADCX (% r12) (% rdi) *)
   0x4d; 0x0f; 0xa4; 0xdc; 0x01;
                            (* SHLD (% r12) (% r11) (Imm8 (word 1)) *)
-  0x48; 0xb9; 0x00; 0x00; 0x00; 0x00; 0x00; 0x00; 0x00; 0x80;
-                           (* MOV (% rcx) (Imm64 (word 9223372036854775808)) *)
   0xba; 0x13; 0x00; 0x00; 0x00;
                            (* MOV (% edx) (Imm32 (word 19)) *)
   0x49; 0xff; 0xc4;        (* INC (% r12) *)
-  0x49; 0x09; 0xcb;        (* OR (% r11) (% rcx) *)
+  0x49; 0x0f; 0xba; 0xeb; 0x3f;
+                           (* BTS (% r11) (Imm8 (word 63)) *)
   0xc4; 0xc2; 0xfb; 0xf6; 0xdc;
                            (* MULX4 (% rbx,% rax) (% rdx,% r12) *)
   0x49; 0x01; 0xc0;        (* ADD (% r8) (% rax) *)
@@ -1466,8 +1464,8 @@ let curve25519_ladderstep_mc = define_assert_from_elf
   0x49; 0x19; 0xf9;        (* SBB (% r9) (% rdi) *)
   0x49; 0x19; 0xfa;        (* SBB (% r10) (% rdi) *)
   0x49; 0x19; 0xfb;        (* SBB (% r11) (% rdi) *)
-  0x48; 0xf7; 0xd1;        (* NOT (% rcx) *)
-  0x49; 0x21; 0xcb;        (* AND (% r11) (% rcx) *)
+  0x49; 0x0f; 0xba; 0xf3; 0x3f;
+                           (* BTR (% r11) (Imm8 (word 63)) *)
   0x4c; 0x89; 0x44; 0x24; 0x20;
                            (* MOV (Memop Quadword (%% (rsp,32))) (% r8) *)
   0x4c; 0x89; 0x4c; 0x24; 0x28;
@@ -1609,12 +1607,11 @@ let curve25519_ladderstep_mc = define_assert_from_elf
                            (* ADCX (% r12) (% rdi) *)
   0x4d; 0x0f; 0xa4; 0xdc; 0x01;
                            (* SHLD (% r12) (% r11) (Imm8 (word 1)) *)
-  0x48; 0xb9; 0x00; 0x00; 0x00; 0x00; 0x00; 0x00; 0x00; 0x80;
-                           (* MOV (% rcx) (Imm64 (word 9223372036854775808)) *)
   0xba; 0x13; 0x00; 0x00; 0x00;
                            (* MOV (% edx) (Imm32 (word 19)) *)
   0x49; 0xff; 0xc4;        (* INC (% r12) *)
-  0x49; 0x09; 0xcb;        (* OR (% r11) (% rcx) *)
+  0x49; 0x0f; 0xba; 0xeb; 0x3f;
+                           (* BTS (% r11) (Imm8 (word 63)) *)
   0xc4; 0xc2; 0xfb; 0xf6; 0xdc;
                            (* MULX4 (% rbx,% rax) (% rdx,% r12) *)
   0x49; 0x01; 0xc0;        (* ADD (% r8) (% rax) *)
@@ -1628,8 +1625,8 @@ let curve25519_ladderstep_mc = define_assert_from_elf
   0x49; 0x19; 0xf9;        (* SBB (% r9) (% rdi) *)
   0x49; 0x19; 0xfa;        (* SBB (% r10) (% rdi) *)
   0x49; 0x19; 0xfb;        (* SBB (% r11) (% rdi) *)
-  0x48; 0xf7; 0xd1;        (* NOT (% rcx) *)
-  0x49; 0x21; 0xcb;        (* AND (% r11) (% rcx) *)
+  0x49; 0x0f; 0xba; 0xf3; 0x3f;
+                           (* BTR (% r11) (Imm8 (word 63)) *)
   0x4c; 0x89; 0x44; 0x24; 0x60;
                            (* MOV (Memop Quadword (%% (rsp,96))) (% r8) *)
   0x4c; 0x89; 0x4c; 0x24; 0x68;
@@ -1799,13 +1796,13 @@ let lvs =
 (* ------------------------------------------------------------------------- *)
 
 let LOCAL_MUL_P25519_TAC =
-  X86_MACRO_SIM_ABBREV_TAC (X86_TRIM_EXEC_RULE curve25519_ladderstep_mc) 93 lvs
+  X86_MACRO_SIM_ABBREV_TAC (X86_TRIM_EXEC_RULE curve25519_ladderstep_mc) 91 lvs
    `!(t:x86state) pcin pcout p3 n3 p1 n1 p2 n2.
       !m. read(memory :> bytes(word_add (read p1 t) (word n1),8 * 4)) t = m
       ==>
       !n. read(memory :> bytes(word_add (read p2 t) (word n2),8 * 4)) t = n
       ==>
-      nonoverlapping (word pc,0x1511) (word_add (read p3 t) (word n3),8 * 4)
+      nonoverlapping (word pc,0x14f6) (word_add (read p3 t) (word n3),8 * 4)
       ==> ensures x86
            (\s. bytes_loaded s (word pc) (BUTLAST curve25519_ladderstep_mc) /\
                 read RIP s = pcin /\
@@ -1877,7 +1874,7 @@ let LOCAL_MUL_P25519_TAC =
 
   (*** Quotient estimate computation ***)
 
-  X86_STEPS_TAC CURVE25519_LADDERSTEP_EXEC (72--76) THEN
+  X86_STEPS_TAC CURVE25519_LADDERSTEP_EXEC (72--75) THEN
   ABBREV_TAC `t = bignum_of_wordlist
    [sum_s60; sum_s63; sum_s66; word_or sum_s69 (word 9223372036854775808)]` THEN
   SUBGOAL_THEN `&ca = &t + &2 pow 255 * (&(ca DIV 2 EXP 255) - &1)`
@@ -1932,7 +1929,7 @@ let LOCAL_MUL_P25519_TAC =
   (*** The rest of the computation ***)
 
   X86_ACCSTEPS_TAC CURVE25519_LADDERSTEP_EXEC
-   [77;78;79;80;81;85;86;87;88] (77--94) THEN
+   [76;77;78;79;80;84;85;86;87] (76--92) THEN
   ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
   CONV_TAC(LAND_CONV BIGNUM_EXPAND_CONV) THEN ASM_REWRITE_TAC[] THEN
   CONV_TAC SYM_CONV THEN MATCH_MP_TAC MOD_UNIQ_BALANCED_REAL THEN
@@ -1943,7 +1940,7 @@ let LOCAL_MUL_P25519_TAC =
 
   (*** Comparison computation and then the rest is easy ***)
 
-  SUBGOAL_THEN `ca < (val(hw:int64) + 1) * p_25519 <=> ~carry_s81`
+  SUBGOAL_THEN `ca < (val(hw:int64) + 1) * p_25519 <=> ~carry_s80`
   SUBST1_TAC THENL
    [CONV_TAC SYM_CONV THEN MATCH_MP_TAC FLAG_FROM_CARRY_LT THEN
     EXISTS_TAC `256` THEN ASM_REWRITE_TAC[] THEN EXPAND_TAC "t" THEN
@@ -1961,7 +1958,7 @@ let LOCAL_MUL_P25519_TAC =
     REWRITE_TAC[GSYM REAL_OF_NUM_CLAUSES; REAL_OF_NUM_MOD] THEN
     ACCUMULATOR_ASSUM_LIST(MP_TAC o end_itlist CONJ o DESUM_RULE) THEN
     DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN
-    ASM_CASES_TAC `carry_s81:bool` THEN
+    ASM_CASES_TAC `carry_s80:bool` THEN
     ASM_REWRITE_TAC[BITVAL_CLAUSES] THEN CONV_TAC WORD_REDUCE_CONV THEN
     REAL_INTEGER_TAC]);;
 
@@ -1974,7 +1971,7 @@ let LOCAL_SQR_P25519_TAC =
    `!(t:x86state) pcin pcout p3 n3 p1 n1.
       !n. read(memory :> bytes(word_add (read p1 t) (word n1),8 * 4)) t = n
       ==>
-        nonoverlapping (word pc,0x1511) (word_add (read p3 t) (word n3),8 * 4)
+        nonoverlapping (word pc,0x14f6) (word_add (read p3 t) (word n3),8 * 4)
         ==> ensures x86
              (\s. bytes_loaded s (word pc) (BUTLAST curve25519_ladderstep_mc) /\
                   read RIP s = pcin /\
@@ -2147,7 +2144,7 @@ let LOCAL_MUL_5_TAC =
       ==>
       !n. read(memory :> bytes(word_add (read p2 t) (word n2),8 * 4)) t = n
       ==>
-      nonoverlapping (word pc,0x1511) (word_add (read p3 t) (word n3),8 * 5)
+      nonoverlapping (word pc,0x14f6) (word_add (read p3 t) (word n3),8 * 5)
       ==> ensures x86
            (\s. bytes_loaded s (word pc) (BUTLAST curve25519_ladderstep_mc) /\
                 read RIP s = pcin /\
@@ -2222,7 +2219,7 @@ let LOCAL_SQR_4_TAC =
       !n.
       read(memory :> bytes(word_add (read p1 t) (word n1),8 * 4)) t = n
       ==>
-      nonoverlapping (word pc,0x1511) (word_add (read p3 t) (word n3),8 * 4)
+      nonoverlapping (word pc,0x14f6) (word_add (read p3 t) (word n3),8 * 4)
       ==> ensures x86
            (\s. bytes_loaded s (word pc) (BUTLAST curve25519_ladderstep_mc) /\
                 read RIP s = pcin /\
@@ -2383,7 +2380,7 @@ let LOCAL_ADD_4_TAC =
       ==>
       !n. read(memory :> bytes(word_add (read p2 t) (word n2),8 * 4)) t = n
       ==>
-      nonoverlapping (word pc,0x1511) (word_add (read p3 t) (word n3),8 * 4) /\
+      nonoverlapping (word pc,0x14f6) (word_add (read p3 t) (word n3),8 * 4) /\
       nonoverlapping (pp,128) (word_add (read p3 t) (word n3),8 * 4)
       ==> ensures x86
            (\s. bytes_loaded s (word pc) (BUTLAST curve25519_ladderstep_mc) /\
@@ -2429,7 +2426,7 @@ let LOCAL_ADD5_4_TAC =
       ==>
       !n. read(memory :> bytes(word_add (read p2 t) (word n2),8 * 5)) t = n
       ==>
-      nonoverlapping (word pc,0x1511) (word_add (read p3 t) (word n3),8 * 4)
+      nonoverlapping (word pc,0x14f6) (word_add (read p3 t) (word n3),8 * 4)
       ==> ensures x86
            (\s. bytes_loaded s (word pc) (BUTLAST curve25519_ladderstep_mc) /\
                 read RIP s = pcin /\
@@ -2567,7 +2564,7 @@ let LOCAL_SUB_4_TAC =
       ==>
       !n. read(memory :> bytes(word_add (read p2 t) (word n2),8 * 4)) t = n
       ==>
-      nonoverlapping (word pc,0x1511) (word_add (read p3 t) (word n3),8 * 4)
+      nonoverlapping (word pc,0x14f6) (word_add (read p3 t) (word n3),8 * 4)
       ==> ensures x86
            (\s. bytes_loaded s (word pc) (BUTLAST curve25519_ladderstep_mc) /\
                 read RIP s = pcin /\
@@ -2635,7 +2632,7 @@ let LOCAL_SUB_TWICE4_TAC =
       ==>
       !n. read(memory :> bytes(word_add (read p2 t) (word n2),8 * 4)) t = n
       ==>
-      nonoverlapping (word pc,0x1511) (word_add (read p3 t) (word n3),8 * 4)
+      nonoverlapping (word pc,0x14f6) (word_add (read p3 t) (word n3),8 * 4)
       ==> ensures x86
            (\s. bytes_loaded s (word pc) (BUTLAST curve25519_ladderstep_mc) /\
                 read RIP s = pcin /\
@@ -2707,7 +2704,7 @@ let LOCAL_SUB5_4_TAC =
       ==>
       !n. read(memory :> bytes(word_add (read p2 t) (word n2),8 * 5)) t = n
       ==>
-      nonoverlapping (word pc,0x1511) (word_add (read p3 t) (word n3),8 * 4)
+      nonoverlapping (word pc,0x14f6) (word_add (read p3 t) (word n3),8 * 4)
       ==> ensures x86
            (\s. bytes_loaded s (word pc) (BUTLAST curve25519_ladderstep_mc) /\
                 read RIP s = pcin /\
@@ -2869,7 +2866,7 @@ let LOCAL_CMADD_4_TAC =
      ==>
      !n. read(memory :> bytes(word_add (read p2 t) (word n2),8 * 4)) t = n
      ==>
-      nonoverlapping (word pc,0x1511) (word_add (read p3 t) (word n3),8 * 4)
+      nonoverlapping (word pc,0x14f6) (word_add (read p3 t) (word n3),8 * 4)
       ==> ensures x86
            (\s. bytes_loaded s (word pc) (BUTLAST curve25519_ladderstep_mc) /\
                 read RIP s = pcin /\
@@ -3010,7 +3007,7 @@ let LOCAL_MUX_4_TAC =
      ==>
      !n. read(memory :> bytes(word_add (read p2 t) (word n2),8 * 4)) t = n
      ==>
-      nonoverlapping (word pc,0x1511) (word_add (read p3 t) (word n3),8 * 4) /\
+      nonoverlapping (word pc,0x14f6) (word_add (read p3 t) (word n3),8 * 4) /\
       nonoverlapping (pp,128) (word_add (read p3 t) (word n3),8 * 4)
       ==> ensures x86
            (\s. bytes_loaded s (word pc) (BUTLAST curve25519_ladderstep_mc) /\
@@ -3048,7 +3045,7 @@ let LOCAL_MUXPAIR_4_TAC =
      ==>
      !n. read(memory :> bytes(word_add (read p2 t) (word n2),8 * 4)) t = n
       ==>
-      nonoverlapping (word pc,0x1511) (rr:int64,8 * 16) /\
+      nonoverlapping (word pc,0x14f6) (rr:int64,8 * 16) /\
       nonoverlapping (stackpointer,416) (rr,8 * 16)
       ==> ensures x86
            (\s. bytes_loaded s (word pc) (BUTLAST curve25519_ladderstep_mc) /\
@@ -3097,7 +3094,7 @@ let CURVE25519_LADDERSTEP_CORRECT = time prove
  (`!rr point P pp Pm Pn b pc stackpointer.
     ALLPAIRS nonoverlapping
      [(rr,128); (stackpointer,416)]
-     [(word pc,0x1511); (point,64); (pp,128)] /\
+     [(word pc,0x14f6); (point,64); (pp,128)] /\
     nonoverlapping (rr,128) (stackpointer,416)
     ==> ensures x86
          (\s. bytes_loaded s (word pc) (BUTLAST curve25519_ladderstep_mc) /\
@@ -3106,7 +3103,7 @@ let CURVE25519_LADDERSTEP_CORRECT = time prove
               C_ARGUMENTS [rr; point; pp; b] s /\
               bignum_pair_from_memory (point,4) s = P /\
               bignum_pairpair_from_memory (pp,4) s = (Pm,Pn))
-         (\s. read RIP s = word (pc + 0x14ff) /\
+         (\s. read RIP s = word (pc + 0x14e4) /\
               !Q Qm Qn.
                P = paired curve25519_encode Q /\ SND Q = &1 /\
                (Pm,Pn) = pairpaired curve25519_encode (Qm,Qn)
@@ -3216,7 +3213,7 @@ let CURVE25519_LADDERSTEP_SUBROUTINE_CORRECT = time prove
  (`!rr point P pp Pm Pn b pc stackpointer returnaddress.
     ALLPAIRS nonoverlapping
      [(rr,128); (word_sub stackpointer (word 464),464)]
-     [(word pc,0x1511); (point,64); (pp,128)] /\
+     [(word pc,0x14f6); (point,64); (pp,128)] /\
     nonoverlapping (rr,128) (word_sub stackpointer (word 464),472)
     ==> ensures x86
          (\s. bytes_loaded s (word pc) curve25519_ladderstep_mc /\
@@ -3254,7 +3251,7 @@ let WINDOWS_CURVE25519_LADDERSTEP_SUBROUTINE_CORRECT = time prove
  (`!rr point P pp Pm Pn b pc stackpointer returnaddress.
     ALLPAIRS nonoverlapping
      [(rr,128); (word_sub stackpointer (word 480),480)]
-     [(word pc,0x1521); (point,64); (pp,128)] /\
+     [(word pc,0x1506); (point,64); (pp,128)] /\
     nonoverlapping (rr,128) (word_sub stackpointer (word 480),488)
     ==> ensures x86
          (\s. bytes_loaded s (word pc) windows_curve25519_ladderstep_mc /\

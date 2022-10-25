@@ -907,6 +907,11 @@ let print_literal_from_elf file =
   let bs = load_elf_contents_arm file in
   print_string (make_fn_word_list bs (decode_all (term_of_bytes bs)));;
 
+let save_literal_from_elf deffile objfile =
+  let bs = load_elf_contents_arm objfile in
+  let ls = make_fn_word_list bs (decode_all (term_of_bytes bs)) in
+  file_of_string deffile ls;;
+
 (* Usage:
 Use
   print_literal_from_elf "arm/generic/bignum_madd.o";;

@@ -192,8 +192,7 @@
         shld    r12,r11,0x1;                    \
         lea     rax,[r12+0x1];                  \
         mov     esi,0x13;                       \
-        movabs  r12,0x8000000000000000;         \
-        or      r11,r12;                        \
+        bts     r11,63;                         \
         imul    rax,rsi;                        \
         add     r8,rax;                         \
         adc     r9,rcx;                         \
@@ -206,8 +205,7 @@
         sbb     r9,rcx;                         \
         sbb     r10,rcx;                        \
         sbb     r11,rcx;                        \
-        not     r12;                            \
-        and     r11,r12;                        \
+        btr     r11,63;                         \
         mov     [P0],r8;                        \
         mov     [P0+0x8],r9;                    \
         mov     [P0+0x10],r10;                  \
