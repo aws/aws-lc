@@ -59,6 +59,7 @@ TEST(Dilithium3Test, KeyGeneration) {
   OPENSSL_free(buf);
 
   EVP_PKEY_CTX_free(dilithium_pkey_ctx);
+  EVP_PKEY_free(dilithium_pkey);
 }
 
 TEST(Dilithium3Test, KeyComparison) {
@@ -86,6 +87,8 @@ TEST(Dilithium3Test, KeyComparison) {
   EXPECT_EQ(1, EVP_PKEY_cmp(dilithium_pkey1, dilithium_pkey1));
   EXPECT_EQ(1, EVP_PKEY_cmp(dilithium_pkey2, dilithium_pkey2));
 
+  EVP_PKEY_free(dilithium_pkey1);
+  EVP_PKEY_free(dilithium_pkey2);
   EVP_PKEY_CTX_free(dilithium_pkey_ctx1);
   EVP_PKEY_CTX_free(dilithium_pkey_ctx2);
 }
