@@ -48,7 +48,7 @@ static int pkey_dilithium3_sign_message(EVP_PKEY_CTX *ctx, uint8_t *sig,
     return 0;
   }
 
-  if (DILITHIUM3_sign(sig, siglen, tbs, tbslen, key->priv)!= 0) {
+  if (DILITHIUM3_sign(sig, siglen, tbs, tbslen, key->priv) != 0) {
     return 0;
   }
 
