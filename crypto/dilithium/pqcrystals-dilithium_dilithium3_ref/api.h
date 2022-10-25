@@ -1,5 +1,5 @@
-#ifndef API_H
-#define API_H
+#ifndef API_DILITHIUM_H
+#define API_DILITHIUM_H
 
 #include <stddef.h>
 #include <stdint.h>
