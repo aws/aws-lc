@@ -859,6 +859,25 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
         ]
       },
       {
+        "algorithm": "kdf-components",
+        "mode": "ssh",
+        "revision": "1.0",
+        "isSample": true,
+        "hashAlg": [
+          "SHA-1",
+          "SHA2-224",
+          "SHA2-256",
+          "SHA2-384",
+          "SHA2-512"
+        ],
+        "cipher": [
+          "TDES",
+          "AES-128",
+          "AES-192",
+          "AES-256"
+        ]
+      },
+      {
         "algorithm": "TLS-v1.2",
         "revision": "RFC7627",
         "mode": "KDF",
@@ -2155,6 +2174,12 @@ static bool HKDF(const Span<const uint8_t> args[], ReplyCallback write_reply) {
   return write_reply({Span<const uint8_t>(out_key)});
 }
 
+template <const EVP_MD *(MDFunc)()>
+static bool SSHKDF(const Span<const uint8_t> args[], ReplyCallback write_reply) {
+  // TODO: actually implement
+  return false;
+}
+
 static struct {
   char name[kMaxNameLength + 1];
   uint8_t num_expected_args;
@@ -2245,6 +2270,12 @@ static struct {
     {"KDA/HKDF/SHA2-256", 4, HKDF<EVP_sha256>},
     {"KDA/HKDF/SHA2-384", 4, HKDF<EVP_sha384>},
     {"KDA/HKDF/SHA2-512", 4, HKDF<EVP_sha512>},
+    // TODO: uncomment once implemented
+    // {"SSHKDF/SHA-1", 5, SSHKDF<EVP_sha1>},
+    // {"SSHKDF/SHA2-224", 5, SSHKDF<EVP_sha224>},
+    // {"SSHKDF/SHA2-256", 5, SSHKDF<EVP_sha256>},
+    // {"SSHKDF/SHA2-384", 5, SSHKDF<EVP_sha384>},
+    // {"SSHKDF/SHA2-512", 5, SSHKDF<EVP_sha512>},
 };
 
 Handler FindHandler(Span<const Span<const uint8_t>> args) {

@@ -87,7 +87,8 @@ func ProcessHeader(mode string, k *kdfComp, group kdfCompTestGroup) (string, err
 	var err error
 	switch mode {
 	case "ssh":
-		return "", nil
+		method = "SSHKDF/" + group.Hash
+		err = nil
 	case "tls":
 		method, err = ProcessTLSHeader(k, group)
 	}
@@ -146,7 +147,6 @@ func (k *kdfComp) Process(vectorSet []byte, m Transactable) (interface{}, error)
 		return nil, err
 	}
 
-	// See https://pages.nist.gov/ACVP/draft-celi-acvp-kdf-tls.html
 	var ret []kdfCompTestGroupResponse
 	for _, group := range parsed.Groups {
 		response := kdfCompTestGroupResponse{
@@ -161,8 +161,84 @@ func (k *kdfComp) Process(vectorSet []byte, m Transactable) (interface{}, error)
 		for _, test := range group.Tests {
 			switch parsed.Mode {
 			case "ssh":
-				return "", nil
+				// See https://pages.nist.gov/ACVP/draft-celi-acvp-kdf-ssh.html
+				secretVal, err := hex.DecodeString(test.SecretValHex)
+				if err != nil {
+					return nil, err
+				}
+
+				hashVal, err := hex.DecodeString(test.HashValHex)
+				if err != nil {
+					return nil, err
+				}
+
+				sessionId, err := hex.DecodeString(test.SessionIdHex)
+				if err != nil {
+					return nil, err
+				}
+
+				// Definitions for last argument of Transact() can be found in aws-lc/include/openssl/sshkdf.h
+				initialIvClient, err := m.Transact(method, 1,
+					secretVal, uint32le(uint32(len(secretVal))),
+					hashVal, uint32le(uint32(len(hashVal))),
+					sessionId, uint32le(uint32(len(sessionId))),
+					uint32le(65))
+				if err != nil {
+					return nil, err
+				}
+				initialIvServer, err := m.Transact(method, 1,
+					secretVal, uint32le(uint32(len(secretVal))),
+					hashVal, uint32le(uint32(len(hashVal))),
+					sessionId, uint32le(uint32(len(sessionId))),
+					uint32le(66))
+				if err != nil {
+					return nil, err
+				}
+				encryptionKeyClient, err := m.Transact(method, 1,
+					secretVal, uint32le(uint32(len(secretVal))),
+					hashVal, uint32le(uint32(len(hashVal))),
+					sessionId, uint32le(uint32(len(sessionId))),
+					uint32le(67))
+				if err != nil {
+					return nil, err
+				}
+				encryptionKeyServer, err := m.Transact(method, 1,
+					secretVal, uint32le(uint32(len(secretVal))),
+					hashVal, uint32le(uint32(len(hashVal))),
+					sessionId, uint32le(uint32(len(sessionId))),
+					uint32le(68))
+				if err != nil {
+					return nil, err
+				}
+				integrityKeyClient, err := m.Transact(method, 1,
+					secretVal, uint32le(uint32(len(secretVal))),
+					hashVal, uint32le(uint32(len(hashVal))),
+					sessionId, uint32le(uint32(len(sessionId))),
+					uint32le(69))
+				if err != nil {
+					return nil, err
+				}
+				integrityKeyServer, err := m.Transact(method, 1,
+					secretVal, uint32le(uint32(len(secretVal))),
+					hashVal, uint32le(uint32(len(hashVal))),
+					sessionId, uint32le(uint32(len(sessionId))),
+					uint32le(70))
+				if err != nil {
+					return nil, err
+				}
+
+				response.Tests = append(response.Tests, kdfCompTestResponse{
+					ID:                     test.ID,
+					InitialIvClientHex:     hex.EncodeToString(initialIvClient[0]),
+					InitialIvServerHex:     hex.EncodeToString(initialIvServer[0]),
+					EncryptionKeyClientHex: hex.EncodeToString(encryptionKeyClient[0]),
+					EncryptionKeyServerHex: hex.EncodeToString(encryptionKeyServer[0]),
+					IntegrityKeyClientHex:  hex.EncodeToString(integrityKeyClient[0]),
+					IntegritykeyServerHex:  hex.EncodeToString(integrityKeyServer[0]),
+				})
+
 			case "tls":
+				// See https://pages.nist.gov/ACVP/draft-celi-acvp-kdf-tls.html
 				pms, err := hex.DecodeString(test.PMSHex)
 				if err != nil {
 					return nil, err
