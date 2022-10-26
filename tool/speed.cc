@@ -1118,7 +1118,7 @@ static bool SpeedECMULCurve(const std::string &name, int nid,
       })) {
     return false;
   }
-  results.Print(name + " mul ");
+  results.Print(name + " mul");
 
   // Measure scalar multiplication of the curve based point.
   if (!TimeFunction(&results, [group, pout, ctx, scalar0]() -> bool {
@@ -1130,7 +1130,7 @@ static bool SpeedECMULCurve(const std::string &name, int nid,
       })) {
     return false;
   }
-  results.Print(name + " mul base ");
+  results.Print(name + " mul base");
 
   // Measure scalar multiplication of based point and arbitrary point.
   if (!TimeFunction(&results, [group, pout, pin0, ctx, scalar0, scalar1]() -> bool {
