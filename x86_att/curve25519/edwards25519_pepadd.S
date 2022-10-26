@@ -152,10 +152,9 @@
         adoxq  %rsi, %r12 ;                        \
         adcxq  %rsi, %r12 ;                        \
         shldq  $0x1, %r11, %r12 ;                   \
-        movabs $0x8000000000000000, %rcx ;         \
         movl   $0x13, %edx ;                       \
         incq   %r12;                             \
-        orq    %rcx, %r11 ;                        \
+        bts    $63, %r11 ;                         \
         mulxq  %r12, %rax, %rbx ;                   \
         addq   %rax, %r8 ;                         \
         adcq   %rbx, %r9 ;                         \
@@ -168,8 +167,7 @@
         sbbq   %rsi, %r9 ;                         \
         sbbq   %rsi, %r10 ;                        \
         sbbq   %rsi, %r11 ;                        \
-        notq   %rcx;                             \
-        andq   %rcx, %r11 ;                        \
+        btr    $63, %r11 ;                         \
         movq   %r8, P0 ;                        \
         movq   %r9, 0x8+P0 ;                    \
         movq   %r10, 0x10+P0 ;                  \

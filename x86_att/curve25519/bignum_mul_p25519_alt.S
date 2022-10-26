@@ -183,8 +183,7 @@ S2N_BN_SYMBOL(bignum_mul_p25519_alt):
         shldq   $1, %r11, %r12
         leaq    1(%r12), %rax
         movl    $19, dshort
-        movq    $0x8000000000000000, %r12
-        orq     %r12, %r11
+        bts     $63, %r11
         imulq   d, %rax
         addq    %rax, %r8
         adcq    c, %r9
@@ -202,8 +201,7 @@ S2N_BN_SYMBOL(bignum_mul_p25519_alt):
         sbbq    c, %r9
         sbbq    c, %r10
         sbbq    c, %r11
-        notq    %r12
-        andq    %r12, %r11
+        btr     $63, %r11
 
 // Write everything back
 

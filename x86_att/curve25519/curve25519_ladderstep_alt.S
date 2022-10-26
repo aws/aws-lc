@@ -212,8 +212,7 @@
         shldq   $0x1, %r11, %r12 ;                    \
         leaq    0x1(%r12), %rax ;                  \
         movl    $0x13, %esi ;                       \
-        movabsq $0x8000000000000000, %r12 ;         \
-        orq     %r12, %r11 ;                        \
+        bts     $63, %r11 ;                         \
         imulq   %rsi, %rax ;                        \
         addq    %rax, %r8 ;                         \
         adcq    %rcx, %r9 ;                         \
@@ -226,8 +225,7 @@
         sbbq    %rcx, %r9 ;                         \
         sbbq    %rcx, %r10 ;                        \
         sbbq    %rcx, %r11 ;                        \
-        notq    %r12;                            \
-        andq    %r12, %r11 ;                        \
+        btr     $63, %r11 ;                         \
         movq    %r8, P0 ;                        \
         movq    %r9, 0x8+P0 ;                    \
         movq    %r10, 0x10+P0 ;                  \
@@ -334,8 +332,7 @@
         shldq   $0x1, %r11, %r12 ;                    \
         leaq    0x1(%r12), %rax ;                  \
         movl    $0x13, %esi ;                       \
-        movabsq $0x8000000000000000, %r12 ;         \
-        orq     %r12, %r11 ;                        \
+        bts     $63, %r11 ;                         \
         imulq   %rsi, %rax ;                        \
         addq    %rax, %r8 ;                         \
         adcq    %rcx, %r9 ;                         \
@@ -348,8 +345,7 @@
         sbbq    %rcx, %r9 ;                         \
         sbbq    %rcx, %r10 ;                        \
         sbbq    %rcx, %r11 ;                        \
-        notq    %r12;                            \
-        andq    %r12, %r11 ;                        \
+        btr     $63, %r11 ;                         \
         movq    %r8, P0 ;                        \
         movq    %r9, 0x8+P0 ;                    \
         movq    %r10, 0x10+P0 ;                  \
