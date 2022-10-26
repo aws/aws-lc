@@ -110,8 +110,8 @@ func NewWithIO(cmd *exec.Cmd, in io.WriteCloser, out io.ReadCloser) *Subprocess 
 		"KDA":               &kda{},
 		"CMAC-AES":          &keyedMACPrimitive{"CMAC-AES"},
 		"RSA":               &rsa{},
-		"kdf-components":    &tlsKDF{"kdf-components"},
-		"TLS-v1.2":          &tlsKDF{"TLS-v1.2"},
+		"kdf-components":    &kdfComp{"kdf-components"},
+		"TLS-v1.2":          &kdfComp{"TLS-v1.2"},
 		"KAS-ECC-SSC":       &kas{},
 		"KAS-FFC-SSC":       &kasDH{},
 	}
