@@ -690,6 +690,7 @@ if(BUILD_TESTING)
     fipsmodule/sha/sha3_test.cc
     fipsmodule/cpucap/cpu_arm_linux_test.cc
     fipsmodule/hkdf/hkdf_test.cc
+    fipsmodule/sshkdf/sshkdf_test.cc
     hpke/hpke_test.cc
     hmac_extra/hmac_test.cc
     hrss/hrss_test.cc
