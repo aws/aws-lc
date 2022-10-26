@@ -1064,6 +1064,24 @@ static bool SpeedECDSACurve(const std::string &name, int nid,
   return true;
 }
 
+static bool SpeedECDH(const std::string &selected) {
+  return SpeedECDHCurve("ECDH P-224", NID_secp224r1, selected) &&
+         SpeedECDHCurve("ECDH P-256", NID_X9_62_prime256v1, selected) &&
+         SpeedECDHCurve("ECDH P-384", NID_secp384r1, selected) &&
+         SpeedECDHCurve("ECDH P-521", NID_secp521r1, selected) &&
+         SpeedECDHCurve("ECDH secp256k1", NID_secp256k1, selected);
+}
+
+static bool SpeedECDSA(const std::string &selected) {
+  return SpeedECDSACurve("ECDSA P-224", NID_secp224r1, selected) &&
+         SpeedECDSACurve("ECDSA P-256", NID_X9_62_prime256v1, selected) &&
+         SpeedECDSACurve("ECDSA P-384", NID_secp384r1, selected) &&
+         SpeedECDSACurve("ECDSA P-521", NID_secp521r1, selected) &&
+         SpeedECDSACurve("ECDSA secp256k1", NID_secp256k1, selected);
+}
+
+
+#if !defined(OPENSSL_1_0_BENCHMARK)
 static bool SpeedECMULCurve(const std::string &name, int nid,
                        const std::string &selected) {
   if (!selected.empty() && name.find(selected) == std::string::npos) {
@@ -1129,22 +1147,6 @@ static bool SpeedECMULCurve(const std::string &name, int nid,
   return true;
 }
 
-static bool SpeedECDH(const std::string &selected) {
-  return SpeedECDHCurve("ECDH P-224", NID_secp224r1, selected) &&
-         SpeedECDHCurve("ECDH P-256", NID_X9_62_prime256v1, selected) &&
-         SpeedECDHCurve("ECDH P-384", NID_secp384r1, selected) &&
-         SpeedECDHCurve("ECDH P-521", NID_secp521r1, selected) &&
-         SpeedECDHCurve("ECDH secp256k1", NID_secp256k1, selected);
-}
-
-static bool SpeedECDSA(const std::string &selected) {
-  return SpeedECDSACurve("ECDSA P-224", NID_secp224r1, selected) &&
-         SpeedECDSACurve("ECDSA P-256", NID_X9_62_prime256v1, selected) &&
-         SpeedECDSACurve("ECDSA P-384", NID_secp384r1, selected) &&
-         SpeedECDSACurve("ECDSA P-521", NID_secp521r1, selected) &&
-         SpeedECDSACurve("ECDSA secp256k1", NID_secp256k1, selected);
-}
-
 static bool SpeedECMUL(const std::string &selected) {
   return SpeedECMULCurve("ECMUL P-224", NID_secp224r1, selected) &&
          SpeedECMULCurve("ECMUL P-256", NID_X9_62_prime256v1, selected) &&
@@ -1152,6 +1154,7 @@ static bool SpeedECMUL(const std::string &selected) {
          SpeedECMULCurve("ECMUL P-521", NID_secp521r1, selected) &&
          SpeedECMULCurve("ECMUL secp256k1", NID_secp256k1, selected);
 }
+#endif
 
 #if !defined(OPENSSL_BENCHMARK)
 static bool Speed25519(const std::string &selected) {
@@ -1863,9 +1866,9 @@ bool Speed(const std::vector<std::string> &args) {
      !SpeedRandom(selected) ||
      !SpeedECDH(selected) ||
      !SpeedECDSA(selected) ||
+#if !defined(OPENSSL_1_0_BENCHMARK)
      !SpeedECMUL(selected) ||
      // OpenSSL 1.0 doesn't support Scrypt
-#if !defined(OPENSSL_1_0_BENCHMARK)
      !SpeedScrypt(selected) ||
 #endif
      !SpeedRSA(selected) ||
