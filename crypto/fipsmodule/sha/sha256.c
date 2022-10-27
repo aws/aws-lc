@@ -153,8 +153,8 @@ static int sha256_final_impl(uint8_t *out, size_t md_len, SHA256_CTX *c) {
     return 0;
   }
 
-  assert(c->md_len % 4 == 0);
-  const size_t out_words = c->md_len / 4;
+  assert(md_len % 4 == 0);
+  const size_t out_words = md_len / 4;
   for (size_t i = 0; i < out_words; i++) {
     CRYPTO_store_u32_be(out, c->h[i]);
     out += 4;

@@ -85,8 +85,8 @@ static int append_ia5(STACK_OF(OPENSSL_STRING) **sk,
 
 static int ipv4_from_asc(unsigned char v4[4], const char *in);
 static int ipv6_from_asc(unsigned char v6[16], const char *in);
-static int ipv6_cb(const char *elem, int len, void *usr);
-static int ipv6_hex(unsigned char *out, const char *in, int inlen);
+static int ipv6_cb(const char *elem, size_t len, void *usr);
+static int ipv6_hex(unsigned char *out, const char *in, size_t inlen);
 
 // Add a CONF_VALUE name value pair to stack
 
@@ -1233,8 +1233,6 @@ static int ipv6_from_asc(unsigned char v6[16], const char *in) {
     return 0;
   }
 
-  // Now for some sanity checks
-
   if (v6stat.zero_pos == -1) {
     // If no '::' must have exactly 16 bytes
     if (v6stat.total != 16) {
@@ -1242,35 +1240,31 @@ static int ipv6_from_asc(unsigned char v6[16], const char *in) {
     }
   } else {
     // If '::' must have less than 16 bytes
-    if (v6stat.total == 16) {
+    if (v6stat.total >= 16) {
       return 0;
     }
-    // More than three zeroes is an error
     if (v6stat.zero_cnt > 3) {
+      // More than three zeroes is an error
       return 0;
-    }
-    // Can only have three zeroes if nothing else present
-    else if (v6stat.zero_cnt == 3) {
+    } else if (v6stat.zero_cnt == 3) {
+      // Can only have three zeroes if nothing else present
       if (v6stat.total > 0) {
         return 0;
       }
-    }
-    // Can only have two zeroes if at start or end
-    else if (v6stat.zero_cnt == 2) {
-      if ((v6stat.zero_pos != 0) && (v6stat.zero_pos != v6stat.total)) {
+    } else if (v6stat.zero_cnt == 2) {
+      // Can only have two zeroes if at start or end
+      if (v6stat.zero_pos != 0 && v6stat.zero_pos != v6stat.total) {
         return 0;
       }
-    } else
-    // Can only have one zero if *not* start or end
-    {
-      if ((v6stat.zero_pos == 0) || (v6stat.zero_pos == v6stat.total)) {
+    } else {
+      // Can only have one zero if *not* start or end
+      if (v6stat.zero_pos == 0 || v6stat.zero_pos == v6stat.total) {
         return 0;
       }
     }
   }
 
-  // Format result
-
+  // Format the result.
   if (v6stat.zero_pos >= 0) {
     // Copy initial part
     OPENSSL_memcpy(v6, v6stat.tmp, v6stat.zero_pos);
@@ -1296,7 +1290,7 @@ static int ipv6_from_asc(unsigned char v6[16], const char *in) {
   return 1;
 }
 
-static int ipv6_cb(const char *elem, int len, void *usr) {
+static int ipv6_cb(const char *elem, size_t len, void *usr) {
   IPV6_STAT *s = usr;
   // Error if 16 bytes written
   if (s->total == 16) {
@@ -1306,9 +1300,12 @@ static int ipv6_cb(const char *elem, int len, void *usr) {
     // Zero length element, corresponds to '::'
     if (s->zero_pos == -1) {
       s->zero_pos = s->total;
+    } else if (s->zero_pos != s->total) {
+      // If we've already got a :: its an error
+      return 0;
     }
-    // If we've already got a :: its an error
-    else if (s->zero_pos != s->total) {
+    if (s->zero_cnt >= 3) {
+      // More than three zeros is an error.
       return 0;
     }
     s->zero_cnt++;
@@ -1339,14 +1336,13 @@ static int ipv6_cb(const char *elem, int len, void *usr) {
 
 // Convert a string of up to 4 hex digits into the corresponding IPv6 form.
 
-static int ipv6_hex(unsigned char *out, const char *in, int inlen) {
-  unsigned char c;
-  unsigned int num = 0;
+static int ipv6_hex(unsigned char *out, const char *in, size_t inlen) {
   if (inlen > 4) {
     return 0;
   }
+  uint16_t num = 0;
   while (inlen--) {
-    c = *in++;
+    unsigned char c = *in++;
     num <<= 4;
     if ((c >= '0') && (c <= '9')) {
       num |= c - '0';

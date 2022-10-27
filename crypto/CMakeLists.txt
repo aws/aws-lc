@@ -588,6 +588,11 @@ else()
   build_libcrypto(crypto $<TARGET_OBJECTS:fipsmodule>)
 endif()
 
+if(NOT ANDROID)
+  find_package(Threads REQUIRED)
+  target_link_libraries(crypto PUBLIC Threads::Threads)
+endif()
+
 # Every target depends on crypto, so we add libcxx as a dependency here to
 # simplify injecting it everywhere.
 if(USE_CUSTOM_LIBCXX)
@@ -685,6 +690,7 @@ if(BUILD_TESTING)
     fipsmodule/sha/sha3_test.cc
     fipsmodule/cpucap/cpu_arm_linux_test.cc
     fipsmodule/hkdf/hkdf_test.cc
+    fipsmodule/sshkdf/sshkdf_test.cc
     hpke/hpke_test.cc
     hmac_extra/hmac_test.cc
     hrss/hrss_test.cc

@@ -228,6 +228,14 @@ const EVP_HPKE_KEM *EVP_hpke_x25519_hkdf_sha256(void) {
 
 uint16_t EVP_HPKE_KEM_id(const EVP_HPKE_KEM *kem) { return kem->id; }
 
+size_t EVP_HPKE_KEM_public_key_len(const EVP_HPKE_KEM *kem) {
+  return kem->public_key_len;
+}
+
+size_t EVP_HPKE_KEM_private_key_len(const EVP_HPKE_KEM *kem) {
+  return kem->private_key_len;
+}
+
 size_t EVP_HPKE_KEM_enc_len(const EVP_HPKE_KEM *kem) { return kem->enc_len; }
 
 void EVP_HPKE_KEY_zero(EVP_HPKE_KEY *key) {
@@ -318,6 +326,10 @@ const EVP_HPKE_KDF *EVP_hpke_hkdf_sha256(void) {
 }
 
 uint16_t EVP_HPKE_KDF_id(const EVP_HPKE_KDF *kdf) { return kdf->id; }
+
+const EVP_MD *EVP_HPKE_KDF_hkdf_md(const EVP_HPKE_KDF *kdf) {
+  return kdf->hkdf_md_func();
+}
 
 const EVP_HPKE_AEAD *EVP_hpke_aes_128_gcm(void) {
   static const EVP_HPKE_AEAD kAEAD = {EVP_HPKE_AES_128_GCM,

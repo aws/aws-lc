@@ -151,9 +151,10 @@ if(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS AND GO_EXECUTABLE)
     COMMAND ${GO_EXECUTABLE} run ${CMAKE_CURRENT_SOURCE_DIR}/util/make_prefix_headers.go -out ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include ${BORINGSSL_PREFIX_SYMBOLS_PATH}
     # Temporary exclude all Kyber symbols.
     # TODO(dkostic): fix the prefix build to work with Kyber source code.
-    COMMAND sed -i '/kyber/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/boringssl_prefix_symbols.h
-    COMMAND sed -i '/kyber/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/boringssl_prefix_symbols_asm.h
-    COMMAND sed -i '/kyber/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/boringssl_prefix_symbols_nasm.inc
+    COMMAND sed -i.bak '/pqcrystals/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/boringssl_prefix_symbols.h
+    COMMAND sed -i.bak '/ bignum_/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/boringssl_prefix_symbols.h
+    COMMAND sed -i.bak '/ bignum_/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/boringssl_prefix_symbols_asm.h
+    COMMAND sed -i.bak '/ bignum_/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/boringssl_prefix_symbols_nasm.inc
     DEPENDS util/make_prefix_headers.go
             ${BORINGSSL_PREFIX_SYMBOLS_PATH})
 
@@ -233,6 +234,16 @@ if (GCC)
   # https://cmake.org/cmake/help/latest/command/try_run.html
   set(MEMCMP_INVALID_STRIPPED "")
   set(MEMCMP_INVALID_STRIPPED__TRYRUN_OUTPUT "")
+
+  # See https://gitlab.kitware.com/cmake/cmake/-/issues/16920 for why we set this to 2
+  # During the `try_run` commands invoked by `check_run` a test program is run for the threading library.
+  # This test is run expecting two threads, and this variable isn't set, for some systems
+  # (particularly for systems using cross-compilation) causing our test to run without 2 threads and fail.
+  # We set this variable here to allow these builds to succeed and keep these tests around to make sure 
+  # that we properly detect the compiler bugs that we are trying to test for with these `try_run` calls.
+
+  set(THREADS_PTHREAD_ARG "2" CACHE STRING "Forcibly set by CMakeLists.txt." FORCE)
+
   if (CMAKE_BUILD_TYPE_LOWER MATCHES "release")
     # CMAKE_C_FLAGS_RELEASE enables `-O3`.
     check_run(memcmp_invalid_stripped_check.c MEMCMP_INVALID_STRIPPED "${CMAKE_C_FLAGS_RELEASE}")

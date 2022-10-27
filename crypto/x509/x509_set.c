@@ -94,12 +94,16 @@ int X509_set_version(X509 *x, long version) {
       return 0;
     }
   }
-  return ASN1_INTEGER_set(x->cert_info->version, version);
+  return ASN1_INTEGER_set_int64(x->cert_info->version, version);
 }
 
 int X509_set_serialNumber(X509 *x, const ASN1_INTEGER *serial) {
-  ASN1_INTEGER *in;
+  if (serial->type != V_ASN1_INTEGER && serial->type != V_ASN1_NEG_INTEGER) {
+    OPENSSL_PUT_ERROR(ASN1, ASN1_R_WRONG_TYPE);
+    return 0;
+  }
 
+  ASN1_INTEGER *in;
   if (x == NULL) {
     return 0;
   }

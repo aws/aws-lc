@@ -85,7 +85,7 @@ int X509_CRL_set_version(X509_CRL *x, long version) {
       return 0;
     }
   }
-  return ASN1_INTEGER_set(x->crl->version, version);
+  return ASN1_INTEGER_set_int64(x->crl->version, version);
 }
 
 int X509_CRL_set_issuer_name(X509_CRL *x, X509_NAME *name) {
@@ -215,6 +215,11 @@ const ASN1_INTEGER *X509_REVOKED_get0_serialNumber(
 int X509_REVOKED_set_serialNumber(X509_REVOKED *revoked,
                                   const ASN1_INTEGER *serial) {
   ASN1_INTEGER *in;
+
+  if (serial->type != V_ASN1_INTEGER && serial->type != V_ASN1_NEG_INTEGER) {
+    OPENSSL_PUT_ERROR(ASN1, ASN1_R_WRONG_TYPE);
+    return 0;
+  }
 
   if (revoked == NULL) {
     return 0;

@@ -100,9 +100,6 @@ void DH_free(DH *dh) {
   BN_clear_free(dh->p);
   BN_clear_free(dh->g);
   BN_clear_free(dh->q);
-  BN_clear_free(dh->j);
-  OPENSSL_free(dh->seed);
-  BN_clear_free(dh->counter);
   BN_clear_free(dh->pub_key);
   BN_clear_free(dh->priv_key);
   CRYPTO_MUTEX_cleanup(&dh->method_mont_p_lock);
@@ -367,7 +364,8 @@ int DH_compute_key(unsigned char *out, const BIGNUM *peers_key, DH *dh) {
   int ret = -1;
   BIGNUM *shared_key = BN_CTX_get(ctx);
   if (shared_key && dh_compute_key(dh, shared_key, peers_key, ctx)) {
-    ret = BN_bn2bin(shared_key, out);
+    // A |BIGNUM|'s byte count fits in |int|.
+    ret = (int)BN_bn2bin(shared_key, out);
   }
 
   BN_CTX_end(ctx);
