@@ -54,7 +54,7 @@ def create_summary(output, error, exit_code, debug):
     for l in output:
         if not debug:
             if not l or re.match(pattern, l): continue
-            if "Stack trace" in l: break
+            if "Stack frame" in l: break
         summary.append(l)
     if error: summary.append(error)
     summary.append("Exit {}".format(exit_code))
