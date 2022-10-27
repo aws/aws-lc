@@ -82,6 +82,28 @@ type kdfComp struct {
 	algo string
 }
 
+var ivLenMap = map[string]uint32{
+	"AES-128": 16,
+	"AES-192": 16,
+	"AES-256": 16,
+	"TDES":    8,
+}
+
+var encyrptionKeyLenMap = map[string]uint32{
+	"AES-128": 16,
+	"AES-192": 24,
+	"AES-256": 32,
+	"TDES":    24,
+}
+
+var integrityKeyLenMap = map[string]uint32{
+	"SHA-1":    20,
+	"SHA2-224": 28,
+	"SHA2-256": 32,
+	"SHA2-384": 48,
+	"SHA2-512": 64,
+}
+
 func ProcessHeader(mode string, k *kdfComp, group kdfCompTestGroup) (string, error) {
 	var method string
 	var err error
@@ -141,26 +163,154 @@ func ProcessTLSHeader(k *kdfComp, group kdfCompTestGroup) (string, error) {
 	return method, nil
 }
 
-var ivLenMap = map[string]uint32{
-	"AES-128": 16,
-	"AES-192": 16,
-	"AES-256": 16,
-	"TDES":    8,
+func HandleTLS(test kdfCompTest, k *kdfComp, m Transactable, method string, group kdfCompTestGroup, response *kdfCompTestGroupResponse) error {
+	// See https://pages.nist.gov/ACVP/draft-celi-acvp-kdf-tls.html
+	pms, err := hex.DecodeString(test.PMSHex)
+	if err != nil {
+		return err
+	}
+
+	clientHelloRandom, err := hex.DecodeString(test.ClientHelloRandomHex)
+	if err != nil {
+		return err
+	}
+
+	serverHelloRandom, err := hex.DecodeString(test.ServerHelloRandomHex)
+	if err != nil {
+		return err
+	}
+
+	clientRandom, err := hex.DecodeString(test.ClientRandomHex)
+	if err != nil {
+		return err
+	}
+
+	serverRandom, err := hex.DecodeString(test.ServerRandomHex)
+	if err != nil {
+		return err
+	}
+
+	sessionHash, err := hex.DecodeString(test.SessionHashHex)
+	if err != nil {
+		return err
+	}
+
+	const (
+		masterSecretLength = 48
+		masterSecretLabel  = "master secret"
+		extendedLabel      = "extended master secret"
+		keyBlockLabel      = "key expansion"
+	)
+
+	var outLenBytes [4]byte
+	binary.LittleEndian.PutUint32(outLenBytes[:], uint32(masterSecretLength))
+	var result [][]byte
+	switch k.algo {
+	case "kdf-components":
+		result, err = m.Transact(method, 1, outLenBytes[:], pms, []byte(masterSecretLabel), clientHelloRandom, serverHelloRandom)
+	case "TLS-v1.2":
+		result, err = m.Transact(method, 1, outLenBytes[:], pms, []byte(extendedLabel), sessionHash, nil)
+	default:
+		return fmt.Errorf("unknown algorithm %q", k.algo)
+	}
+	if err != nil {
+		return err
+	}
+	binary.LittleEndian.PutUint32(outLenBytes[:], uint32(group.KeyBlockBits/8))
+	// TLS 1.0, 1.1, and 1.2 use a different order for the client and server
+	// randoms when computing the key block.
+	result2, err := m.Transact(method, 1, outLenBytes[:], result[0], []byte(keyBlockLabel), serverRandom, clientRandom)
+	if err != nil {
+		return err
+	}
+
+	response.Tests = append(response.Tests, kdfCompTestResponse{
+		ID:              test.ID,
+		MasterSecretHex: hex.EncodeToString(result[0]),
+		KeyBlockHex:     hex.EncodeToString(result2[0]),
+	})
+
+	return nil
 }
 
-var encyrptionKeyLenMap = map[string]uint32{
-	"AES-128": 16,
-	"AES-192": 24,
-	"AES-256": 32,
-	"TDES":    24,
-}
+func HandleSSH(test kdfCompTest, k *kdfComp, m Transactable, method string, group kdfCompTestGroup, response *kdfCompTestGroupResponse) error {
+	// See https://pages.nist.gov/ACVP/draft-celi-acvp-kdf-ssh.html
+	secretVal, err := hex.DecodeString(test.SecretValHex)
+	if err != nil {
+		return err
+	}
 
-var integrityKeyLenMap = map[string]uint32{
-	"SHA-1":    20,
-	"SHA2-224": 28,
-	"SHA2-256": 32,
-	"SHA2-384": 48,
-	"SHA2-512": 64,
+	hashVal, err := hex.DecodeString(test.HashValHex)
+	if err != nil {
+		return err
+	}
+
+	sessionId, err := hex.DecodeString(test.SessionIdHex)
+	if err != nil {
+		return err
+	}
+
+	// NIST SP 800-135 says that the lengths of the IVs and encryption keys are determined by the supported block ciphers
+	// We can look at https://github.com/usnistgov/ACVP-Server/blob/master/gen-val/json-files/kdf-components-ssh-1.0/internalProjection.json
+	// to determine what these lengths are
+	ivLen := ivLenMap[group.Cipher]
+	encyrptionKeyLen := encyrptionKeyLenMap[group.Cipher]
+	integrityKeyLen := integrityKeyLenMap[group.Hash]
+
+	// Definitions for last argument of Transact() can be found in aws-lc/include/openssl/sshkdf.h
+	initialIvClient, err := m.Transact(method, 1,
+		secretVal, hashVal, sessionId,
+		uint32le(65), uint32le(ivLen))
+	if err != nil {
+		return err
+	}
+
+	initialIvServer, err := m.Transact(method, 1,
+		secretVal, hashVal, sessionId,
+		uint32le(66), uint32le(ivLen))
+	if err != nil {
+		return err
+	}
+
+	encryptionKeyClient, err := m.Transact(method, 1,
+		secretVal, hashVal, sessionId,
+		uint32le(67), uint32le(encyrptionKeyLen))
+	if err != nil {
+		return err
+	}
+
+	encryptionKeyServer, err := m.Transact(method, 1,
+		secretVal, hashVal, sessionId,
+		uint32le(68), uint32le(encyrptionKeyLen))
+	if err != nil {
+		return err
+	}
+
+	integrityKeyClient, err := m.Transact(method, 1,
+		secretVal, hashVal, sessionId,
+		uint32le(69), uint32le(integrityKeyLen))
+	if err != nil {
+		return err
+	}
+
+	integrityKeyServer, err := m.Transact(method, 1,
+		secretVal, hashVal, sessionId,
+		uint32le(70), uint32le(integrityKeyLen))
+	if err != nil {
+		return err
+	}
+
+	response.Tests = append(response.Tests, kdfCompTestResponse{
+		ID:                     test.ID,
+		InitialIvClientHex:     hex.EncodeToString(initialIvClient[0]),
+		InitialIvServerHex:     hex.EncodeToString(initialIvServer[0]),
+		EncryptionKeyClientHex: hex.EncodeToString(encryptionKeyClient[0]),
+		EncryptionKeyServerHex: hex.EncodeToString(encryptionKeyServer[0]),
+		IntegrityKeyClientHex:  hex.EncodeToString(integrityKeyClient[0]),
+		IntegritykeyServerHex:  hex.EncodeToString(integrityKeyServer[0]),
+	})
+
+	return nil
 }
 
 func (k *kdfComp) Process(vectorSet []byte, m Transactable) (interface{}, error) {
@@ -182,147 +332,13 @@ func (k *kdfComp) Process(vectorSet []byte, m Transactable) (interface{}, error)
 
 		for _, test := range group.Tests {
 			if parsed.Mode == "ssh" {
-				// See https://pages.nist.gov/ACVP/draft-celi-acvp-kdf-ssh.html
-				secretVal, err := hex.DecodeString(test.SecretValHex)
-				if err != nil {
-					return nil, err
-				}
-
-				hashVal, err := hex.DecodeString(test.HashValHex)
-				if err != nil {
-					return nil, err
-				}
-
-				sessionId, err := hex.DecodeString(test.SessionIdHex)
-				if err != nil {
-					return nil, err
-				}
-
-				// NIST SP 800-135 says that the lengths of the IVs and encryption keys are determined by the supported block ciphers
-				// We can look at https://github.com/usnistgov/ACVP-Server/blob/master/gen-val/json-files/kdf-components-ssh-1.0/internalProjection.json
-				// to determine what these lengths are
-				ivLen := ivLenMap[group.Cipher]
-				encyrptionKeyLen := encyrptionKeyLenMap[group.Cipher]
-				integrityKeyLen := integrityKeyLenMap[group.Hash]
-
-				// Definitions for last argument of Transact() can be found in aws-lc/include/openssl/sshkdf.h
-				initialIvClient, err := m.Transact(method, 1,
-					secretVal, hashVal, sessionId,
-					uint32le(65), uint32le(ivLen))
-				if err != nil {
-					return nil, err
-				}
-
-				initialIvServer, err := m.Transact(method, 1,
-					secretVal, hashVal, sessionId,
-					uint32le(66), uint32le(ivLen))
-				if err != nil {
-					return nil, err
-				}
-
-				encryptionKeyClient, err := m.Transact(method, 1,
-					secretVal, hashVal, sessionId,
-					uint32le(67), uint32le(encyrptionKeyLen))
-				if err != nil {
-					return nil, err
-				}
-
-				encryptionKeyServer, err := m.Transact(method, 1,
-					secretVal, hashVal, sessionId,
-					uint32le(68), uint32le(encyrptionKeyLen))
-				if err != nil {
-					return nil, err
-				}
-
-				integrityKeyClient, err := m.Transact(method, 1,
-					secretVal, hashVal, sessionId,
-					uint32le(69), uint32le(integrityKeyLen))
-				if err != nil {
-					return nil, err
-				}
-
-				integrityKeyServer, err := m.Transact(method, 1,
-					secretVal, hashVal, sessionId,
-					uint32le(70), uint32le(integrityKeyLen))
-				if err != nil {
-					return nil, err
-				}
-
-				response.Tests = append(response.Tests, kdfCompTestResponse{
-					ID:                     test.ID,
-					InitialIvClientHex:     hex.EncodeToString(initialIvClient[0]),
-					InitialIvServerHex:     hex.EncodeToString(initialIvServer[0]),
-					EncryptionKeyClientHex: hex.EncodeToString(encryptionKeyClient[0]),
-					EncryptionKeyServerHex: hex.EncodeToString(encryptionKeyServer[0]),
-					IntegrityKeyClientHex:  hex.EncodeToString(integrityKeyClient[0]),
-					IntegritykeyServerHex:  hex.EncodeToString(integrityKeyServer[0]),
-				})
+				err = HandleSSH(test, k, m, method, group, &response)
 			} else if parsed.Mode == "tls" || parsed.Mode == "KDF" {
-				// See https://pages.nist.gov/ACVP/draft-celi-acvp-kdf-tls.html
-				pms, err := hex.DecodeString(test.PMSHex)
-				if err != nil {
-					return nil, err
-				}
+				err = HandleTLS(test, k, m, method, group, &response)
+			}
 
-				clientHelloRandom, err := hex.DecodeString(test.ClientHelloRandomHex)
-				if err != nil {
-					return nil, err
-				}
-
-				serverHelloRandom, err := hex.DecodeString(test.ServerHelloRandomHex)
-				if err != nil {
-					return nil, err
-				}
-
-				clientRandom, err := hex.DecodeString(test.ClientRandomHex)
-				if err != nil {
-					return nil, err
-				}
-
-				serverRandom, err := hex.DecodeString(test.ServerRandomHex)
-				if err != nil {
-					return nil, err
-				}
-
-				sessionHash, err := hex.DecodeString(test.SessionHashHex)
-				if err != nil {
-					return nil, err
-				}
-
-				const (
-					masterSecretLength = 48
-					masterSecretLabel  = "master secret"
-					extendedLabel      = "extended master secret"
-					keyBlockLabel      = "key expansion"
-				)
-
-				var outLenBytes [4]byte
-				binary.LittleEndian.PutUint32(outLenBytes[:], uint32(masterSecretLength))
-				var result [][]byte
-				switch k.algo {
-				case "kdf-components":
-					result, err = m.Transact(method, 1, outLenBytes[:], pms, []byte(masterSecretLabel), clientHelloRandom, serverHelloRandom)
-				case "TLS-v1.2":
-					result, err = m.Transact(method, 1, outLenBytes[:], pms, []byte(extendedLabel), sessionHash, nil)
-				default:
-					return nil, fmt.Errorf("unknown algorithm %q", k.algo)
-				}
-				if err != nil {
-					return nil, err
-				}
-				binary.LittleEndian.PutUint32(outLenBytes[:], uint32(group.KeyBlockBits/8))
-				// TLS 1.0, 1.1, and 1.2 use a different order for the client and server
-				// randoms when computing the key block.
-				result2, err := m.Transact(method, 1, outLenBytes[:], result[0], []byte(keyBlockLabel), serverRandom, clientRandom)
-				if err != nil {
-					return nil, err
-				}
-
-				response.Tests = append(response.Tests, kdfCompTestResponse{
-					ID:              test.ID,
-					MasterSecretHex: hex.EncodeToString(result[0]),
-					KeyBlockHex:     hex.EncodeToString(result2[0]),
-				})
+			if err != nil {
+				return nil, err
 			}
 		}
 
