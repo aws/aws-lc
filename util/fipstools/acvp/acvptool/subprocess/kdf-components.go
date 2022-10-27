@@ -212,30 +212,35 @@ func (k *kdfComp) Process(vectorSet []byte, m Transactable) (interface{}, error)
 				if err != nil {
 					return nil, err
 				}
+
 				initialIvServer, err := m.Transact(method, 1,
 					secretVal, hashVal, sessionId,
 					uint32le(66), uint32le(ivLen))
 				if err != nil {
 					return nil, err
 				}
+
 				encryptionKeyClient, err := m.Transact(method, 1,
 					secretVal, hashVal, sessionId,
 					uint32le(67), uint32le(encyrptionKeyLen))
 				if err != nil {
 					return nil, err
 				}
+
 				encryptionKeyServer, err := m.Transact(method, 1,
 					secretVal, hashVal, sessionId,
 					uint32le(68), uint32le(encyrptionKeyLen))
 				if err != nil {
 					return nil, err
 				}
+
 				integrityKeyClient, err := m.Transact(method, 1,
 					secretVal, hashVal, sessionId,
 					uint32le(69), uint32le(integrityKeyLen))
 				if err != nil {
 					return nil, err
 				}
+
 				integrityKeyServer, err := m.Transact(method, 1,
 					secretVal, hashVal, sessionId,
 					uint32le(70), uint32le(integrityKeyLen))
