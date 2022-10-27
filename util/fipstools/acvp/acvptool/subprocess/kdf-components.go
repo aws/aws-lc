@@ -141,6 +141,28 @@ func ProcessTLSHeader(k *kdfComp, group kdfCompTestGroup) (string, error) {
 	return method, nil
 }
 
+var ivLenMap = map[string]uint32{
+	"AES-128": 16,
+	"AES-192": 16,
+	"AES-256": 16,
+	"TDES":    8,
+}
+
+var encyrptionKeyLenMap = map[string]uint32{
+	"AES-128": 16,
+	"AES-192": 24,
+	"AES-256": 32,
+	"TDES":    24,
+}
+
+var integrityKeyLenMap = map[string]uint32{
+	"SHA-1":    20,
+	"SHA2-224": 28,
+	"SHA2-256": 32,
+	"SHA2-384": 48,
+	"SHA2-512": 64,
+}
+
 func (k *kdfComp) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 	var parsed kdfCompVectorSet
 	if err := json.Unmarshal(vectorSet, &parsed); err != nil {
@@ -177,52 +199,47 @@ func (k *kdfComp) Process(vectorSet []byte, m Transactable) (interface{}, error)
 					return nil, err
 				}
 
+				// NIST SP 800-135 says that the lengths of the IVs and encryption keys are determined by the supported block ciphers
+				// We can look at https://github.com/usnistgov/ACVP-Server/blob/master/gen-val/json-files/kdf-components-ssh-1.0/internalProjection.json
+				// to determine what these lengths are
+				ivLen := ivLenMap[group.Cipher]
+				encyrptionKeyLen := encyrptionKeyLenMap[group.Cipher]
+				integrityKeyLen := integrityKeyLenMap[group.Hash]
+
 				// Definitions for last argument of Transact() can be found in aws-lc/include/openssl/sshkdf.h
 				initialIvClient, err := m.Transact(method, 1,
-					secretVal, uint32le(uint32(len(secretVal))),
-					hashVal, uint32le(uint32(len(hashVal))),
-					sessionId, uint32le(uint32(len(sessionId))),
-					uint32le(65))
+					secretVal, hashVal, sessionId,
+					uint32le(65), uint32le(ivLen))
 				if err != nil {
 					return nil, err
 				}
 				initialIvServer, err := m.Transact(method, 1,
-					secretVal, uint32le(uint32(len(secretVal))),
-					hashVal, uint32le(uint32(len(hashVal))),
-					sessionId, uint32le(uint32(len(sessionId))),
-					uint32le(66))
+					secretVal, hashVal, sessionId,
+					uint32le(66), uint32le(ivLen))
 				if err != nil {
 					return nil, err
 				}
 				encryptionKeyClient, err := m.Transact(method, 1,
-					secretVal, uint32le(uint32(len(secretVal))),
-					hashVal, uint32le(uint32(len(hashVal))),
-					sessionId, uint32le(uint32(len(sessionId))),
-					uint32le(67))
+					secretVal, hashVal, sessionId,
+					uint32le(67), uint32le(encyrptionKeyLen))
 				if err != nil {
 					return nil, err
 				}
 				encryptionKeyServer, err := m.Transact(method, 1,
-					secretVal, uint32le(uint32(len(secretVal))),
-					hashVal, uint32le(uint32(len(hashVal))),
-					sessionId, uint32le(uint32(len(sessionId))),
-					uint32le(68))
+					secretVal, hashVal, sessionId,
+					uint32le(68), uint32le(encyrptionKeyLen))
 				if err != nil {
 					return nil, err
 				}
 				integrityKeyClient, err := m.Transact(method, 1,
-					secretVal, uint32le(uint32(len(secretVal))),
-					hashVal, uint32le(uint32(len(hashVal))),
-					sessionId, uint32le(uint32(len(sessionId))),
-					uint32le(69))
+					secretVal, hashVal, sessionId,
+					uint32le(69), uint32le(integrityKeyLen))
 				if err != nil {
 					return nil, err
 				}
 				integrityKeyServer, err := m.Transact(method, 1,
-					secretVal, uint32le(uint32(len(secretVal))),
-					hashVal, uint32le(uint32(len(hashVal))),
-					sessionId, uint32le(uint32(len(sessionId))),
-					uint32le(70))
+					secretVal, hashVal, sessionId,
+					uint32le(70), uint32le(integrityKeyLen))
 				if err != nil {
 					return nil, err
 				}

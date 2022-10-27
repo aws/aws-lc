@@ -43,6 +43,7 @@
 #include <openssl/sha.h>
 #include <openssl/span.h>
 #include <openssl/hkdf.h>
+#include <openssl/sshkdf.h>
 
 #include "../../../../crypto/fipsmodule/ec/internal.h"
 #include "../../../../crypto/fipsmodule/rand/internal.h"
@@ -2102,8 +2103,30 @@ static bool HKDF(const Span<const uint8_t> args[], ReplyCallback write_reply) {
 
 template <const EVP_MD *(MDFunc)()>
 static bool SSHKDF(const Span<const uint8_t> args[], ReplyCallback write_reply) {
-  // TODO: actually implement
-  return false;
+  const Span<const uint8_t> key = args[0];
+  const Span<const uint8_t> hash = args[1];
+  const Span<const uint8_t> session_id = args[2];
+  const Span<const uint8_t> type = args[3];
+  const Span<const uint8_t> out_bytes = args[4];
+  const EVP_MD *md = MDFunc();
+
+
+  char type_char;
+  memcpy(&type_char, type.data(), sizeof(type_char));
+  unsigned int out_bytes_uint;
+  memcpy(&out_bytes_uint, out_bytes.data(), sizeof(out_bytes_uint));
+
+  std::vector<uint8_t> out(out_bytes_uint);
+  if (!::SSHKDF(md,
+                key.data(), key.size(),
+                hash.data(), hash.size(),
+                session_id.data(), session_id.size(),
+                type_char,
+                out.data(), out_bytes_uint)) {
+    return false;
+  }
+
+  return write_reply({Span<const uint8_t>(out)});
 }
 
 static struct {
@@ -2195,12 +2218,11 @@ static struct {
     {"KDA/HKDF/SHA2-256", 4, HKDF<EVP_sha256>},
     {"KDA/HKDF/SHA2-384", 4, HKDF<EVP_sha384>},
     {"KDA/HKDF/SHA2-512", 4, HKDF<EVP_sha512>},
-    // TODO: uncomment once implemented
-    // {"SSHKDF/SHA-1", 5, SSHKDF<EVP_sha1>},
-    // {"SSHKDF/SHA2-224", 5, SSHKDF<EVP_sha224>},
-    // {"SSHKDF/SHA2-256", 5, SSHKDF<EVP_sha256>},
-    // {"SSHKDF/SHA2-384", 5, SSHKDF<EVP_sha384>},
-    // {"SSHKDF/SHA2-512", 5, SSHKDF<EVP_sha512>},
+    {"SSHKDF/SHA-1", 5, SSHKDF<EVP_sha1>},
+    {"SSHKDF/SHA2-224", 5, SSHKDF<EVP_sha224>},
+    {"SSHKDF/SHA2-256", 5, SSHKDF<EVP_sha256>},
+    {"SSHKDF/SHA2-384", 5, SSHKDF<EVP_sha384>},
+    {"SSHKDF/SHA2-512", 5, SSHKDF<EVP_sha512>},
 };
 
 Handler FindHandler(Span<const Span<const uint8_t>> args) {
