@@ -1,5 +1,5 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: Apache-2.0 OR ISC
 
 // Builtin swap was added in GCC 4.8 https://gcc.gnu.org/gcc-4.8/changes.html. Recent versions of Clang pretend to be
 // 4.2 but they do support the builtin swap functions.
