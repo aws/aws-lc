@@ -85,11 +85,11 @@ type kdfComp struct {
 func ProcessHeader(mode string, k *kdfComp, group kdfCompTestGroup) (string, error) {
 	var method string
 	var err error
-	switch mode {
-	case "ssh":
+
+	if mode == "ssh" {
 		method = "SSHKDF/" + group.Hash
 		err = nil
-	case "tls":
+	} else if mode == "tls" || mode == "KDF" {
 		method, err = ProcessTLSHeader(k, group)
 	}
 
@@ -181,8 +181,7 @@ func (k *kdfComp) Process(vectorSet []byte, m Transactable) (interface{}, error)
 		}
 
 		for _, test := range group.Tests {
-			switch parsed.Mode {
-			case "ssh":
+			if parsed.Mode == "ssh" {
 				// See https://pages.nist.gov/ACVP/draft-celi-acvp-kdf-ssh.html
 				secretVal, err := hex.DecodeString(test.SecretValHex)
 				if err != nil {
@@ -253,8 +252,7 @@ func (k *kdfComp) Process(vectorSet []byte, m Transactable) (interface{}, error)
 					IntegrityKeyClientHex:  hex.EncodeToString(integrityKeyClient[0]),
 					IntegritykeyServerHex:  hex.EncodeToString(integrityKeyServer[0]),
 				})
-
-			case "tls":
+			} else if parsed.Mode == "tls" || parsed.Mode == "KDF" {
 				// See https://pages.nist.gov/ACVP/draft-celi-acvp-kdf-tls.html
 				pms, err := hex.DecodeString(test.PMSHex)
 				if err != nil {
