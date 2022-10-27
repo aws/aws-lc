@@ -12,7 +12,7 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: Apache-2.0 OR ISC
 // Modifications Copyright Amazon.com, Inc. or its affiliates. See GitHub history for details.
 
 #ifndef OPENSSL_HEADER_RUST_WRAPPER_H

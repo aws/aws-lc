@@ -1,6 +1,6 @@
 #!/bin/bash -ex
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: Apache-2.0 OR ISC
 
 # This test is aimed to run with GCC 6 and above on x86-64 architectures.
 

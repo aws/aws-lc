@@ -1,5 +1,5 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: Apache-2.0 OR ISC
 
 #ifndef AWSLC_HEADER_SERVICE_INDICATOR_INTERNAL_H
 #define AWSLC_HEADER_SERVICE_INDICATOR_INTERNAL_H
@@ -49,6 +49,7 @@ void HKDF_verify_service_indicator(const EVP_MD *evp_md, const uint8_t *salt,
     size_t salt_len, size_t info_len);
 void PBKDF2_verify_service_indicator(const EVP_MD *evp_md, size_t password_len,
                                      size_t salt_len, unsigned iterations);
+void SSHKDF_verify_service_indicator(const EVP_MD *evp_md);
 void TLSKDF_verify_service_indicator(const EVP_MD *dgst);
 
 #else
@@ -101,6 +102,9 @@ OPENSSL_INLINE void HKDF_verify_service_indicator(
 OPENSSL_INLINE void PBKDF2_verify_service_indicator(
     OPENSSL_UNUSED const EVP_MD *evp_md, OPENSSL_UNUSED size_t password_len,
     OPENSSL_UNUSED size_t salt_len, OPENSSL_UNUSED unsigned iterations) {}
+
+OPENSSL_INLINE void SSHKDF_verify_service_indicator(
+    OPENSSL_UNUSED const EVP_MD *evp_md) {}
 
 OPENSSL_INLINE void TLSKDF_verify_service_indicator(
     OPENSSL_UNUSED const EVP_MD *dgst) {}

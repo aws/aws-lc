@@ -1,5 +1,5 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: Apache-2.0 OR ISC
 
 #include <openssl/crypto.h>
 #include <openssl/service_indicator.h>
@@ -404,6 +404,25 @@ void PBKDF2_verify_service_indicator(const EVP_MD *evp_md, size_t password_len,
       break;
     default:
       break;
+  }
+}
+
+void SSHKDF_verify_service_indicator(const EVP_MD *evp_md) {
+  // FIPS 180-4 allows SHA1, and SHA2.
+  //
+  // This KDF should only be called from SSH client/server code; it's not a
+  // general-purpose KDF and is only Approved for FIPS 140-3 use specifically
+  // in SSH. There's no way to test this requirement from here.
+  switch (evp_md->type) {
+    case NID_sha1:
+    case NID_sha224:
+    case NID_sha256:
+    case NID_sha384:
+    case NID_sha512:
+      FIPS_service_indicator_update_state();
+      break;
+    default:
+    break;
   }
 }
 

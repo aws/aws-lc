@@ -136,6 +136,7 @@
 #include "sha/sha256.c"
 #include "sha/sha3.c"
 #include "sha/sha512.c"
+#include "sshkdf/sshkdf.c"
 #include "tls/kdf.c"
 
 

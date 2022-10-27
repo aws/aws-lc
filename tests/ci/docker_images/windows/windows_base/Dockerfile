@@ -1,7 +1,7 @@
 # escape=`
 
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: Apache-2.0 OR ISC
 
 FROM mcr.microsoft.com/windows/servercore:ltsc2019
 
