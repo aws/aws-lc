@@ -2109,7 +2109,7 @@ static bool PBKDF(const Span<const uint8_t> args[], ReplyCallback write_reply) {
   const Span<const uint8_t> hmac_name = args[3];
   const Span<const uint8_t> key_len = args[4];
 
-  // read bit data into useable variables
+  // Read bit data into useable variables
   unsigned int iterations_uint;
   memcpy(&iterations_uint, iterations.data(), sizeof(iterations_uint));
   unsigned int key_len_uint;
@@ -2117,7 +2117,7 @@ static bool PBKDF(const Span<const uint8_t> args[], ReplyCallback write_reply) {
 
   key_len_uint = key_len_uint/8;
 
-  // get the SHA algorithm we want from the name provided to us
+  // Get the SHA algorithm we want from the name provided to us
   const EVP_MD* hmac_alg = HashFromName(hmac_name);
 
   std::vector<uint8_t> out_key(key_len_uint);
