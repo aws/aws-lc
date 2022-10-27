@@ -12,7 +12,7 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: Apache-2.0 OR ISC
 // Modifications Copyright Amazon.com, Inc. or its affiliates. See GitHub history for details.
 
 use regex::Regex;
@@ -97,7 +97,7 @@ fn prepare_clang_args(manifest_dir: &Path, build_prefix: Option<&str>) -> Vec<St
 
 const COPYRIGHT: &str = r#"
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: Apache-2.0 OR ISC
 "#;
 
 const PRELUDE: &str = r#"

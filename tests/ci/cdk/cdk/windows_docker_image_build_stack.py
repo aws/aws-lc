@@ -1,5 +1,5 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: Apache-2.0 OR ISC
 
 from aws_cdk import core, aws_ec2 as ec2, aws_s3 as s3, aws_iam as iam, aws_ssm as ssm
 from util.iam_policies import ecr_power_user_policy_in_json, s3_read_write_policy_in_json

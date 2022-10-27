@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------------
 // Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: Apache-2.0 OR ISC
 //------------------------------------------------------------------------------------
 
 // void select_w5(uint64_t *val, uint64_t *in_t, int index);

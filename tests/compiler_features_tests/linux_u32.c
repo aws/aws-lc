@@ -1,5 +1,5 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: Apache-2.0 OR ISC
 
 // This file is to check if <linux/random.h> can be included.
 // Currently, I assume the compiler error is caused by '__u32' is not defined.

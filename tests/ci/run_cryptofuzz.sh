@@ -1,7 +1,7 @@
 #!/bin/bash
 set -exo pipefail
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: Apache-2.0 OR ISC
 
 # Sourcing these files check for environment variables which may be unset so wait to enable -u
 source tests/ci/common_fuzz.sh
