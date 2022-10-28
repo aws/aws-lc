@@ -1029,8 +1029,25 @@ static bool SpeedECDSACurve(const std::string &name, int nid,
   }
 
   BM_NAMESPACE::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(nid));
-  if (!key ||
-      !EC_KEY_generate_key(key.get())) {
+  if(!key) {
+    return false;
+  }
+
+  TimeResults results;
+  if (!TimeFunction(&results, [&key]() -> bool {
+// We run extra checks on the key in FIPS mode
+#if defined(BORINGSSL_FIPS)
+        return EC_KEY_generate_key_fips(key.get()) == 1;
+#else
+        return EC_KEY_generate_key(key.get()) == 1;
+#endif
+      })) {
+    return false;
+  }
+
+  results.Print(name + " key generation");
+
+  if (!EC_KEY_generate_key(key.get())) {
     return false;
   }
 
@@ -1042,7 +1059,6 @@ static bool SpeedECDSACurve(const std::string &name, int nid,
   BM_memset(digest, 42, sizeof(digest));
   unsigned sig_len;
 
-  TimeResults results;
   if (!TimeFunction(&results, [&key, &signature, &digest, &sig_len]() -> bool {
         return ECDSA_sign(0, digest, sizeof(digest), signature, &sig_len,
                           key.get()) == 1;
