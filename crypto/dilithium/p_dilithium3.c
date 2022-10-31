@@ -16,6 +16,11 @@ static int pkey_dilithium3_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
     return 0;
   }
 
+  if (pkey == NULL || ctx == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_MISSING_PARAMETERS);
+    return 0;
+  }
+
   if (!EVP_PKEY_set_type(pkey, EVP_PKEY_DILITHIUM3)) {
     OPENSSL_free(key);
     return 0;
@@ -32,12 +37,18 @@ static int pkey_dilithium3_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
 static int pkey_dilithium3_sign_message(EVP_PKEY_CTX *ctx, uint8_t *sig,
                                         size_t *siglen, const uint8_t *tbs,
                                         size_t tbslen) {
+  if (ctx == NULL || ctx->pkey->pkey.ptr == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_MISSING_PARAMETERS);
+    return 0;
+  }
+
   DILITHIUM3_KEY *key = ctx->pkey->pkey.ptr;
+
   if (!key->has_private) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NOT_A_PRIVATE_KEY);
     return 0;
   }
-
+  // Caller is getting parameter values.
   if (sig == NULL) {
     *siglen = DILITHIUM3_SIGNATURE_BYTES;
     return 1;
@@ -49,9 +60,10 @@ static int pkey_dilithium3_sign_message(EVP_PKEY_CTX *ctx, uint8_t *sig,
   }
 
   if (DILITHIUM3_sign(sig, siglen, tbs, tbslen, key->priv) != 0) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_SIGNATURE);
     return 0;
   }
-
+  // The size of the signature that has been written to the output buffer.
   *siglen = DILITHIUM3_SIGNATURE_BYTES;
   return 1;
 }
@@ -59,7 +71,13 @@ static int pkey_dilithium3_sign_message(EVP_PKEY_CTX *ctx, uint8_t *sig,
 static int pkey_dilithium3_verify_message(EVP_PKEY_CTX *ctx, const uint8_t *sig,
                                           size_t siglen, const uint8_t *tbs,
                                           size_t tbslen) {
+  if (ctx == NULL || ctx->pkey->pkey.ptr == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_MISSING_PARAMETERS);
+    return 0;
+  }
+
   DILITHIUM3_KEY *key = ctx->pkey->pkey.ptr;
+
   if (siglen != DILITHIUM3_SIGNATURE_BYTES ||
       DILITHIUM3_verify(tbs, tbslen, sig, siglen, key->pub) != 0) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_SIGNATURE);
