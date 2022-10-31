@@ -34,10 +34,8 @@
   size_t signature_len = DILITHIUM3_SIGNATURE_BYTES;
   sm.resize(signature_len);
 
-  //convert string read from KAT to int (is there a cleaner way?)
-  size_t mlen_int;
-  std::stringstream sstream(mlen);
-  sstream >> mlen_int;
+  //convert string read from KAT to int
+  size_t mlen_int = std::stoi(mlen);
 
   //here we fix the DRBG (AES-CTR) so that we are able to seed it with the seed
   //from the KAT (testing only)
