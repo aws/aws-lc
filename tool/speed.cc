@@ -1022,7 +1022,7 @@ static bool SpeedECDHCurve(const std::string &name, int nid,
   return true;
 }
 
-static bool SpeedECDSACurve(const std::string &name, int nid,
+static bool SpeedECGenCurve(const std::string &name, int nid,
                             const std::string &selected) {
   if (!selected.empty() && name.find(selected) == std::string::npos) {
     return true;
@@ -1045,9 +1045,19 @@ static bool SpeedECDSACurve(const std::string &name, int nid,
     return false;
   }
 
-  results.Print(name + " key generation");
+  results.Print(name);
+  return true;
+}
 
-  if (!EC_KEY_generate_key(key.get())) {
+static bool SpeedECDSACurve(const std::string &name, int nid,
+                            const std::string &selected) {
+  if (!selected.empty() && name.find(selected) == std::string::npos) {
+    return true;
+  }
+
+  BM_NAMESPACE::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(nid));
+  if(!key ||
+     !EC_KEY_generate_key(key.get())) {
     return false;
   }
 
@@ -1059,6 +1069,7 @@ static bool SpeedECDSACurve(const std::string &name, int nid,
   BM_memset(digest, 42, sizeof(digest));
   unsigned sig_len;
 
+  TimeResults results;
   if (!TimeFunction(&results, [&key, &signature, &digest, &sig_len]() -> bool {
         return ECDSA_sign(0, digest, sizeof(digest), signature, &sig_len,
                           key.get()) == 1;
@@ -1086,6 +1097,14 @@ static bool SpeedECDH(const std::string &selected) {
          SpeedECDHCurve("ECDH P-384", NID_secp384r1, selected) &&
          SpeedECDHCurve("ECDH P-521", NID_secp521r1, selected) &&
          SpeedECDHCurve("ECDH secp256k1", NID_secp256k1, selected);
+}
+
+static bool SpeedECGen(const std::string &selected) {
+  return SpeedECGenCurve("Generate P-224", NID_secp224r1, selected) &&
+         SpeedECGenCurve("Generate P-256", NID_X9_62_prime256v1, selected) &&
+         SpeedECGenCurve("Generate P-384", NID_secp384r1, selected) &&
+         SpeedECGenCurve("Generate P-521", NID_secp521r1, selected) &&
+         SpeedECGenCurve("Generate secp256k1", NID_secp256k1, selected);
 }
 
 static bool SpeedECDSA(const std::string &selected) {
@@ -1806,6 +1825,7 @@ bool Speed(const std::vector<std::string> &args) {
      !SpeedRandom(selected) ||
      !SpeedECDH(selected) ||
      !SpeedECDSA(selected) ||
+     !SpeedECGen(selected) ||
      // OpenSSL 1.0 doesn't support Scrypt
 #if !defined(OPENSSL_1_0_BENCHMARK)
      !SpeedScrypt(selected) ||
