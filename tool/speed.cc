@@ -1056,8 +1056,8 @@ static bool SpeedECDSACurve(const std::string &name, int nid,
   }
 
   BM_NAMESPACE::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(nid));
-  if(!key ||
-     !EC_KEY_generate_key(key.get())) {
+  if (!key ||
+      !EC_KEY_generate_key(key.get())) {
     return false;
   }
 
