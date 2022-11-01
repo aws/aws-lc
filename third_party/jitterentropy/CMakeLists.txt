@@ -1,5 +1,5 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: Apache-2.0 OR ISC
 #
 # This CMakeLists.txt file defines the rules to build libjitterentropy.a.
 # The compilation flags that are used are taken from Makefile in:

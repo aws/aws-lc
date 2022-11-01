@@ -1,6 +1,6 @@
 #!/bin/bash -ex
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: Apache-2.0 OR ISC
 
 if [ -n "$1" ]; then
   docker_name="$1"
