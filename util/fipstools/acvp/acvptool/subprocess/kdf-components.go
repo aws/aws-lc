@@ -104,6 +104,14 @@ var integrityKeyLenMap = map[string]uint32{
 	"SHA2-512": 64,
 }
 
+// Definitions for these constants can be found in aws-lc/include/openssl/sshkdf.h
+var SSHKDF_TYPE_IV_CLI_TO_SRV = 65
+var SSHKDF_TYPE_IV_SRV_TO_CLI = 66
+var SSHKDF_TYPE_ENCRYPT_CLI_TO_SRV = 67
+var SSHKDF_TYPE_ENCRYPT_SRV_TO_CLI = 68
+var SSHKDF_TYPE_INTEG_CLI_TO_SRV = 69
+var SSHKDF_TYPE_INTEG_SRV_TO_CLI = 70
+
 func ProcessHeader(mode string, k *kdfComp, group kdfCompTestGroup) (string, error) {
 	var method string
 	var err error
@@ -257,45 +265,44 @@ func HandleSSH(test kdfCompTest, k *kdfComp, m Transactable, method string, grou
 	encyrptionKeyLen := encyrptionKeyLenMap[group.Cipher]
 	integrityKeyLen := integrityKeyLenMap[group.Hash]
 
-	// Definitions for last argument of Transact() can be found in aws-lc/include/openssl/sshkdf.h
 	initialIvClient, err := m.Transact(method, 1,
 		secretVal, hashVal, sessionId,
-		uint32le(65), uint32le(ivLen))
+		uint32le(uint32(SSHKDF_TYPE_IV_CLI_TO_SRV)), uint32le(ivLen))
 	if err != nil {
 		return err
 	}
 
 	initialIvServer, err := m.Transact(method, 1,
 		secretVal, hashVal, sessionId,
-		uint32le(66), uint32le(ivLen))
+		uint32le(uint32(SSHKDF_TYPE_IV_SRV_TO_CLI)), uint32le(ivLen))
 	if err != nil {
 		return err
 	}
 
 	encryptionKeyClient, err := m.Transact(method, 1,
 		secretVal, hashVal, sessionId,
-		uint32le(67), uint32le(encyrptionKeyLen))
+		uint32le(uint32(SSHKDF_TYPE_ENCRYPT_CLI_TO_SRV)), uint32le(encyrptionKeyLen))
 	if err != nil {
 		return err
 	}
 
 	encryptionKeyServer, err := m.Transact(method, 1,
 		secretVal, hashVal, sessionId,
-		uint32le(68), uint32le(encyrptionKeyLen))
+		uint32le(uint32(SSHKDF_TYPE_ENCRYPT_SRV_TO_CLI)), uint32le(encyrptionKeyLen))
 	if err != nil {
 		return err
 	}
 
 	integrityKeyClient, err := m.Transact(method, 1,
 		secretVal, hashVal, sessionId,
-		uint32le(69), uint32le(integrityKeyLen))
+		uint32le(uint32(SSHKDF_TYPE_INTEG_CLI_TO_SRV)), uint32le(integrityKeyLen))
 	if err != nil {
 		return err
 	}
 
 	integrityKeyServer, err := m.Transact(method, 1,
 		secretVal, hashVal, sessionId,
-		uint32le(70), uint32le(integrityKeyLen))
+		uint32le(uint32(SSHKDF_TYPE_INTEG_SRV_TO_CLI)), uint32le(integrityKeyLen))
 	if err != nil {
 		return err
 	}
