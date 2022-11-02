@@ -21,15 +21,15 @@ import (
 	"fmt"
 )
 
-type tlsKDFVectorSet struct {
-	Mode   string            `json:"mode"`
-	Groups []tlsKDFTestGroup `json:"testGroups"`
+type kdfCompVectorSet struct {
+	Mode   string             `json:"mode"`
+	Groups []kdfCompTestGroup `json:"testGroups"`
 }
 
-type tlsKDFTestGroup struct {
-	ID    uint64       `json:"tgId"`
-	Hash  string       `json:"hashAlg"`
-	Tests []tlsKDFTest `json:"tests"`
+type kdfCompTestGroup struct {
+	ID    uint64        `json:"tgId"`
+	Hash  string        `json:"hashAlg"`
+	Tests []kdfCompTest `json:"tests"`
 	// Below values are unique to TLS Test Groups
 	TLSVersion   string `json:"tlsVersion"`
 	KeyBlockBits uint64 `json:"keyBlockLength"`
@@ -39,7 +39,7 @@ type tlsKDFTestGroup struct {
 	Cipher   string `json:"cipher"`
 }
 
-type tlsKDFTest struct {
+type kdfCompTest struct {
 	ID uint64 `json:"tcId"`
 	// Below values are unique to TLS Test Groups
 	PMSHex string `json:"preMasterSecret"`
@@ -59,12 +59,12 @@ type tlsKDFTest struct {
 	SessionIdHex string `json:"sessionId"`
 }
 
-type tlsKDFTestGroupResponse struct {
-	ID    uint64               `json:"tgId"`
-	Tests []tlsKDFTestResponse `json:"tests"`
+type kdfCompTestGroupResponse struct {
+	ID    uint64                `json:"tgId"`
+	Tests []kdfCompTestResponse `json:"tests"`
 }
 
-type tlsKDFTestResponse struct {
+type kdfCompTestResponse struct {
 	ID uint64 `json:"tcId"`
 	// Below values are unique to TLS Test Groups
 	MasterSecretHex string `json:"masterSecret,omitempty"`
@@ -78,7 +78,7 @@ type tlsKDFTestResponse struct {
 	IntegritykeyServerHex  string `json:"integrityKeyServer,omitempty"`
 }
 
-type tlsKDF struct {
+type kdfComp struct {
 	algo string
 }
 
@@ -104,7 +104,7 @@ var integrityKeyLenMap = map[string]uint32{
 	"SHA2-512": 64,
 }
 
-func ProcessHeader(mode string, k *tlsKDF, group tlsKDFTestGroup) (string, error) {
+func ProcessHeader(mode string, k *kdfComp, group kdfCompTestGroup) (string, error) {
 	var method string
 	var err error
 
@@ -118,7 +118,7 @@ func ProcessHeader(mode string, k *tlsKDF, group tlsKDFTestGroup) (string, error
 	return method, err
 }
 
-func ProcessTLSHeader(k *tlsKDF, group tlsKDFTestGroup) (string, error) {
+func ProcessTLSHeader(k *kdfComp, group kdfCompTestGroup) (string, error) {
 	var tlsVer string
 	// See https://pages.nist.gov/ACVP/draft-celi-acvp-kdf-tls.html#name-supported-kdfs for differences between
 	// kdf-components and TLS-v1.2
@@ -163,7 +163,7 @@ func ProcessTLSHeader(k *tlsKDF, group tlsKDFTestGroup) (string, error) {
 	return method, nil
 }
 
-func HandleTLS(test tlsKDFTest, k *tlsKDF, m Transactable, method string, group tlsKDFTestGroup, response *tlsKDFTestGroupResponse) error {
+func HandleTLS(test kdfCompTest, k *kdfComp, m Transactable, method string, group kdfCompTestGroup, response *kdfCompTestGroupResponse) error {
 	// See https://pages.nist.gov/ACVP/draft-celi-acvp-kdf-tls.html
 	pms, err := hex.DecodeString(test.PMSHex)
 	if err != nil {
@@ -224,7 +224,7 @@ func HandleTLS(test tlsKDFTest, k *tlsKDF, m Transactable, method string, group 
 		return err
 	}
 
-	response.Tests = append(response.Tests, tlsKDFTestResponse{
+	response.Tests = append(response.Tests, kdfCompTestResponse{
 		ID:              test.ID,
 		MasterSecretHex: hex.EncodeToString(result[0]),
 		KeyBlockHex:     hex.EncodeToString(result2[0]),
@@ -233,7 +233,7 @@ func HandleTLS(test tlsKDFTest, k *tlsKDF, m Transactable, method string, group 
 	return nil
 }
 
-func HandleSSH(test tlsKDFTest, k *tlsKDF, m Transactable, method string, group tlsKDFTestGroup, response *tlsKDFTestGroupResponse) error {
+func HandleSSH(test kdfCompTest, k *kdfComp, m Transactable, method string, group kdfCompTestGroup, response *kdfCompTestGroupResponse) error {
 	// See https://pages.nist.gov/ACVP/draft-celi-acvp-kdf-ssh.html
 	secretVal, err := hex.DecodeString(test.SecretValHex)
 	if err != nil {
@@ -300,7 +300,7 @@ func HandleSSH(test tlsKDFTest, k *tlsKDF, m Transactable, method string, group 
 		return err
 	}
 
-	response.Tests = append(response.Tests, tlsKDFTestResponse{
+	response.Tests = append(response.Tests, kdfCompTestResponse{
 		ID:                     test.ID,
 		InitialIvClientHex:     hex.EncodeToString(initialIvClient[0]),
 		InitialIvServerHex:     hex.EncodeToString(initialIvServer[0]),
@@ -313,16 +313,16 @@ func HandleSSH(test tlsKDFTest, k *tlsKDF, m Transactable, method string, group 
 	return nil
 }
 
-func (k *tlsKDF) Process(vectorSet []byte, m Transactable) (interface{}, error) {
-	var parsed tlsKDFVectorSet
+func (k *kdfComp) Process(vectorSet []byte, m Transactable) (interface{}, error) {
+	var parsed kdfCompVectorSet
 	if err := json.Unmarshal(vectorSet, &parsed); err != nil {
 		return nil, err
 	}
 
 	// See https://pages.nist.gov/ACVP/draft-celi-acvp-kdf-tls.html
-	var ret []tlsKDFTestGroupResponse
+	var ret []kdfCompTestGroupResponse
 	for _, group := range parsed.Groups {
-		response := tlsKDFTestGroupResponse{
+		response := kdfCompTestGroupResponse{
 			ID: group.ID,
 		}
 
