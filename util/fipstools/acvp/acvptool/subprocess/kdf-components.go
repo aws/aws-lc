@@ -343,6 +343,8 @@ func (k *kdfComp) Process(vectorSet []byte, m Transactable) (interface{}, error)
 				err = HandleSSH(test, k, m, method, group, &response)
 			} else if parsed.Mode == "tls" || parsed.Mode == "KDF" {
 				err = HandleTLS(test, k, m, method, group, &response)
+			} else {
+				err = fmt.Errorf("unsupported vector mode %s in group %d", parsed.Mode, group.ID)
 			}
 
 			if err != nil {
