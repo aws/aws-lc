@@ -15,67 +15,33 @@
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 // Modifications Copyright Amazon.com, Inc. or its affiliates. See GitHub history for details.
 
-use regex::Regex;
-use std::fs::File;
-use std::io::{BufRead, BufReader, BufWriter, Write};
+use bindgen::callbacks::ParseCallbacks;
+use std::env;
+use std::fmt::Debug;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::{env, fs, io};
 
-fn modify_bindings(bindings_path: &PathBuf, prefix: &str) -> io::Result<()> {
-    // Needed until this issue is resolved: https://github.com/rust-lang/rust-bindgen/issues/1375
+#[derive(Debug)]
+struct StripPrefixCallback {
+    remove_prefix: Option<String>,
+}
 
-    // This function modifies the generated bindings. The bindings are generated from our header files
-    // with symbol prefixing applied.
-    // This function will transform a line looking like this:
-    //
-    //     pub fn aws_lc_0_1_0_ERR_load_BIO_strings();
-    //
-    // Into lines like this:
-    //
-    //     #[link_name="aws_lc_0_1_0_ERR_load_BIO_strings"]
-    //     pub fn ERR_load_BIO_strings();
-    //
-    // This allows the function to appear with its original name (e.g., ERR_load_BIO_strings)
-    // in our bindings, while still being linked to the prefixed (e.g., aws_lc_0_1_0_ERR_load_BIO_strings)
-    // function name.
-
-    // The regular expression here has 3 capture groups.
-    // After the prefix is interpolated into the RE, it will have a form like this:
-    // ^(\\s+)pub\\s+(fn|static)\\s+aws_lc_0_1_0_(\\w*)(.*)
-    let prefix_symbol_detector =
-        Regex::new(&format!("^(\\s+)pub\\s+(fn|static)\\s+{}_(\\w*)(.*)", prefix)).unwrap();
-    //                        ^            ^                 ^     ^- 4: remainder
-    //                        |            |                 |- 3: original name
-    //                        |            |- 2: Symbol type, either a function or static
-    //                        |- 1: indentation at the beginning of the line
-
-    let output_path = bindings_path.parent().unwrap().join("updated_bindings.rs");
-    let bindings_reader = BufReader::new(File::open(&bindings_path)?);
-    let mut bindings_writer = BufWriter::new(File::create(&output_path)?);
-    for line in bindings_reader.lines() {
-        let line = line.unwrap().clone();
-        if let Some(captures) = prefix_symbol_detector.captures(&line) {
-            let line_start = &captures[1];
-            let symbol_type = &captures[2];
-            let symbol_name = &captures[3];
-            let line_end = &captures[4];
-            bindings_writer.write_fmt(format_args!(
-                "{}#[link_name=\"{}_{}\"]\n",
-                line_start, prefix, symbol_name
-            ))?;
-            bindings_writer.write_fmt(format_args!(
-                "{}pub {} {}{}\n",
-                line_start, symbol_type, symbol_name, line_end
-            ))?;
-        } else {
-            bindings_writer.write_fmt(format_args!("{}\n", &line))?;
+impl StripPrefixCallback {
+    fn new(prefix: &str) -> StripPrefixCallback {
+        StripPrefixCallback {
+            remove_prefix: Some(prefix.to_string()),
         }
     }
-    bindings_writer.flush()?;
-    fs::remove_file(bindings_path)?;
-    fs::rename(output_path, bindings_path)?;
-    Ok(())
+}
+
+impl ParseCallbacks for StripPrefixCallback {
+    fn generated_name_override(&self, name: &str) -> Option<String> {
+        self.remove_prefix.as_ref().map_or(None, |s| {
+            let prefix = format!("{}_", s);
+            name.strip_prefix(prefix.as_str())
+                .map_or(None, |s| Some(String::from(s)))
+        })
+    }
 }
 
 fn get_include_path(manifest_dir: &Path) -> PathBuf {
@@ -107,7 +73,7 @@ const PRELUDE: &str = r#"
 fn prepare_bindings_builder(manifest_dir: &Path, build_prefix: Option<&str>) -> bindgen::Builder {
     let clang_args = prepare_clang_args(manifest_dir, build_prefix);
 
-    let builder = bindgen::Builder::default()
+    let mut builder = bindgen::Builder::default()
         .derive_copy(true)
         .derive_debug(true)
         .derive_default(true)
@@ -134,6 +100,10 @@ fn prepare_bindings_builder(manifest_dir: &Path, build_prefix: Option<&str>) -> 
                 .display()
                 .to_string(),
         );
+
+    if let Some(ps) = build_prefix {
+        builder = builder.parse_callbacks(Box::new(StripPrefixCallback::new(ps)));
+    }
 
     builder
 }
@@ -268,7 +238,6 @@ fn main() -> Result<(), String> {
     bindings
         .write_to_file(&bindings_file)
         .expect("Unable to write bindings to file.");
-    modify_bindings(&bindings_file, &prefix).map_err(|err| err.to_string())?;
 
     let aws_lc_dir = build_aws_lc();
 
