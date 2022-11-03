@@ -329,92 +329,77 @@ int EC_KEY_check_key(const EC_KEY *eckey) {
   return 1;
 }
 
-static int EVP_EC_KEY_check_fips(EC_KEY *key) {
-  uint8_t msg[16] = {0};
-  size_t msg_len = 16;
+static int ec_key_coordinates_range_check(const EC_KEY *key) {
+  // Check that the coordinates of the public key are within the range [0, p-1].
+  // If the public key EC point is affine we simply take the x and y
+  // coordinates, otherwise, we need to convert the point to affine first.
   int ret = 0;
-  uint8_t* sig_der = NULL;
-  EVP_PKEY *evp_pkey = EVP_PKEY_new();
-  EVP_MD_CTX *ctx = EVP_MD_CTX_new();
-  const EVP_MD *hash = EVP_sha256();
-  size_t sign_len;
-  if (!evp_pkey ||
-      !ctx ||
-      !EVP_PKEY_set1_EC_KEY(evp_pkey, key) ||
-      !EVP_DigestSignInit(ctx, NULL, hash, NULL, evp_pkey) ||
-      !EVP_DigestSign(ctx, NULL, &sign_len, msg, msg_len)) {
-    goto err;
+ 
+  BIGNUM *x = BN_new();
+  BIGNUM *y = BN_new();
+
+  // Extract the x and y coordinate.
+  EC_POINT *pub_key = key->pub_key;
+  EC_GROUP *group = key->pub_key->group;
+
+  if(ec_felem_equal(group, &group->one, &pub_key->raw.Z)) {
+    // If the point is affine we simply take x and y coordinates.
+    if (!ec_felem_to_bignum(group, x, &pub_key->raw.X) ||
+        !ec_felem_to_bignum(group, y, &pub_key->raw.Y)) {
+        OPENSSL_PUT_ERROR(EC, ERR_R_EC_LIB);
+      goto end;
+    }
+  } else {
+    // If the point is in projective coordinates we convert it to affine.
+    if (!EC_POINT_get_affine_coordinates(group, pub_key, x, y, NULL)) {
+      OPENSSL_PUT_ERROR(EC, ERR_R_EC_LIB);
+      goto end;
+    }
   }
-  sig_der = OPENSSL_malloc(sign_len);
-  if (!sig_der ||
-      !EVP_DigestSign(ctx, sig_der, &sign_len, msg, msg_len)) {
-    goto err;
+
+  // Now that we have the coordinates we perform the range check.
+  if (BN_is_negative(x) || BN_cmp(x, &group->field) >= 0 ||
+      BN_is_negative(y) || BN_cmp(y, &group->field) >= 0) {
+      OPENSSL_PUT_ERROR(EC, EC_R_COORDINATES_OUT_OF_RANGE);
+    goto end;
   }
-  if (boringssl_fips_break_test("ECDSA_PWCT")) {
-    msg[0] = ~msg[0];
-  }
-  if (!EVP_DigestVerifyInit(ctx, NULL, hash, NULL, evp_pkey) ||
-      !EVP_DigestVerify(ctx, sig_der, sign_len, msg, msg_len)) {
-    goto err;
-  }
+
   ret = 1;
-err:
-  EVP_PKEY_free(evp_pkey);
-  OPENSSL_free(sig_der);
-  EVP_MD_CTX_free(ctx);
+end:
+  BN_free(x);
+  BN_free(y);
   return ret;
 }
 
-int EC_KEY_check_fips(const EC_KEY *key) {
-  // We have to avoid the underlying |EVP_DigestSign| and |EVP_DigestVerify|
-  // services in |EVP_EC_KEY_check_fips| updating the indicator state, so we
-  // lock the state here.
-  FIPS_service_indicator_lock_state();
-  int ret = 0;
+static int ec_key_ecdsa_pairwise_consistency_test(const EC_KEY *key) {
+  // Pairwise consistency test checks if a message signed by the private key
+  // can be correctly verified by the public key.
+  uint8_t data[16] = {0};
+  ECDSA_SIG *sig = ECDSA_do_sign(data, sizeof(data), key);
+  if (boringssl_fips_break_test("ECDSA_PWCT")) {
+    data[0] = ~data[0];
+  }
+  int ok = sig != NULL &&
+           ECDSA_do_verify(data, sizeof(data), sig, key);
+  ECDSA_SIG_free(sig);
 
-  if (EC_KEY_is_opaque(key)) {
+  return ok;
+}
+
+int EC_KEY_check_fips(const EC_KEY *key) {
+  int ret = 0;
+  FIPS_service_indicator_lock_state();
+
+  if (EC_KEY_is_opaque(key) ||
+      !EC_KEY_check_key(key) ||
+      !ec_key_coordinates_range_check(key)) {
     // Opaque keys can't be checked.
     OPENSSL_PUT_ERROR(EC, EC_R_PUBLIC_KEY_VALIDATION_FAILED);
     goto end;
   }
 
-  if (!EC_KEY_check_key(key)) {
-    goto end;
-  }
-
-  // Check that the coordinates are within the range [0,p-1], when the (raw)
-  // point is affine; i.e. Z=1.
-  // This is the case when validating a received public key.
-  // Note: The check for x and y being negative seems superfluous since
-  // ec_felem_to_bignum() calls BN_bin2bn() which sets the `neg` flag to 0.
-  EC_POINT *pub_key = key->pub_key;
-  EC_GROUP *group = key->pub_key->group;
-  if(ec_felem_equal(group, &group->one, &pub_key->raw.Z)) {
-    BIGNUM *x = BN_new();
-    BIGNUM *y = BN_new();
-    int check_ret = 1;
-    if (group->meth->felem_to_bytes == NULL) {
-      OPENSSL_PUT_ERROR(EC, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
-      check_ret = 0;
-    } else if (!ec_felem_to_bignum(group, x, &pub_key->raw.X) ||
-               !ec_felem_to_bignum(group, y, &pub_key->raw.Y)) {
-      // Error already written to error queue by |bn_wexpand|.
-      check_ret = 0;
-    } else if (BN_is_negative(x) || BN_is_negative(y) ||
-               BN_cmp(x, &group->field) >= 0 ||
-               BN_cmp(y, &group->field) >= 0) {
-      OPENSSL_PUT_ERROR(EC, EC_R_COORDINATES_OUT_OF_RANGE);
-      check_ret = 0;
-    }
-    BN_free(x);
-    BN_free(y);
-    if (check_ret == 0) {
-      goto end;
-    }
-  }
-
   if (key->priv_key) {
-    if (!EVP_EC_KEY_check_fips((EC_KEY*)key)) {
+    if (!ec_key_ecdsa_pairwise_consistency_test(key)) {
       OPENSSL_PUT_ERROR(EC, EC_R_PUBLIC_KEY_VALIDATION_FAILED);
       goto end;
     }
@@ -424,7 +409,7 @@ int EC_KEY_check_fips(const EC_KEY *key) {
 end:
   FIPS_service_indicator_unlock_state();
   if(ret){
-    EC_KEY_keygen_verify_service_indicator((EC_KEY*)key);
+    EC_KEY_keygen_verify_service_indicator(key);
   }
   return ret;
 }

@@ -1860,7 +1860,7 @@ TEST(ECTest, LargeXCoordinateVectors) {
       ASSERT_TRUE(EC_KEY_check_fips(key.get()));
     } else {
       ASSERT_FALSE(EC_KEY_check_fips(key.get()));
-      EXPECT_EQ(EC_R_POINT_IS_NOT_ON_CURVE,
+      EXPECT_EQ(EC_R_PUBLIC_KEY_VALIDATION_FAILED,
                 ERR_GET_REASON(ERR_peek_last_error_line(&file, &line)));
       EXPECT_PRED2(HasSuffix, file, "ec_key.c"); // within EC_KEY_check_key
     }
@@ -1869,21 +1869,9 @@ TEST(ECTest, LargeXCoordinateVectors) {
     OPENSSL_memcpy(key.get()->pub_key->raw.X.bytes,
                    (const uint8_t *)xpp.get()->d, len);
     ASSERT_FALSE(EC_KEY_check_fips(key.get()));
-
-    // |EC_KEY_check_fips| check on coordinate range can only be exercised
-    // for P-224 and P-521 when the coordinates in the raw point are not
-    // in Montgomery representation. For the other curves, they fail
-    // for the same reason as above.
-    if ((has_uint128_and_not_small() && (curve_nid == NID_secp224r1)) ||
-        (curve_nid == NID_secp521r1)) {
-      EXPECT_EQ(EC_R_COORDINATES_OUT_OF_RANGE,
-                ERR_GET_REASON(ERR_peek_last_error_line(&file, &line)));
-      EXPECT_PRED2(HasSuffix, file, "ec_key.c"); // within EC_KEY_check_fips
-    } else {
-      EXPECT_EQ(EC_R_POINT_IS_NOT_ON_CURVE,
-                ERR_GET_REASON(ERR_peek_last_error_line(&file, &line)));
-      EXPECT_PRED2(HasSuffix, file, "ec_key.c"); // within EC_KEY_check_key
-    }
+    EXPECT_EQ(EC_R_PUBLIC_KEY_VALIDATION_FAILED,
+              ERR_GET_REASON(ERR_peek_last_error_line(&file, &line)));
+    EXPECT_PRED2(HasSuffix, file, "ec_key.c"); // within EC_KEY_check_fips
   });
 }
 
