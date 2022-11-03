@@ -21,20 +21,20 @@ import (
 	"fmt"
 )
 
-type tlsKDFVectorSet struct {
-	Groups []tlsKDFTestGroup `json:"testGroups"`
+type kdfCompVectorSet struct {
+	Groups []kdfCompTestGroup `json:"testGroups"`
 }
 
-type tlsKDFTestGroup struct {
-	ID           uint64       `json:"tgId"`
-	Hash         string       `json:"hashAlg"`
-	TLSVersion   string       `json:"tlsVersion"`
-	KeyBlockBits uint64       `json:"keyBlockLength"`
-	PMSLength    uint64       `json:"preMasterSecretLength"`
-	Tests        []tlsKDFTest `json:"tests"`
+type kdfCompTestGroup struct {
+	ID           uint64        `json:"tgId"`
+	Hash         string        `json:"hashAlg"`
+	TLSVersion   string        `json:"tlsVersion"`
+	KeyBlockBits uint64        `json:"keyBlockLength"`
+	PMSLength    uint64        `json:"preMasterSecretLength"`
+	Tests        []kdfCompTest `json:"tests"`
 }
 
-type tlsKDFTest struct {
+type kdfCompTest struct {
 	ID     uint64 `json:"tcId"`
 	PMSHex string `json:"preMasterSecret"`
 	// ClientHelloRandomHex and ServerHelloRandomHex are used for deriving the
@@ -49,31 +49,31 @@ type tlsKDFTest struct {
 	SessionHashHex       string `json:"sessionHash"`
 }
 
-type tlsKDFTestGroupResponse struct {
-	ID    uint64               `json:"tgId"`
-	Tests []tlsKDFTestResponse `json:"tests"`
+type kdfCompTestGroupResponse struct {
+	ID    uint64                `json:"tgId"`
+	Tests []kdfCompTestResponse `json:"tests"`
 }
 
-type tlsKDFTestResponse struct {
+type kdfCompTestResponse struct {
 	ID              uint64 `json:"tcId"`
 	MasterSecretHex string `json:"masterSecret"`
 	KeyBlockHex     string `json:"keyBlock"`
 }
 
-type tlsKDF struct {
+type kdfComp struct {
 	algo string
 }
 
-func (k *tlsKDF) Process(vectorSet []byte, m Transactable) (interface{}, error) {
-	var parsed tlsKDFVectorSet
+func (k *kdfComp) Process(vectorSet []byte, m Transactable) (interface{}, error) {
+	var parsed kdfCompVectorSet
 	if err := json.Unmarshal(vectorSet, &parsed); err != nil {
 		return nil, err
 	}
 
 	// See https://pages.nist.gov/ACVP/draft-celi-acvp-kdf-tls.html
-	var ret []tlsKDFTestGroupResponse
+	var ret []kdfCompTestGroupResponse
 	for _, group := range parsed.Groups {
-		response := tlsKDFTestGroupResponse{
+		response := kdfCompTestGroupResponse{
 			ID: group.ID,
 		}
 
@@ -178,7 +178,7 @@ func (k *tlsKDF) Process(vectorSet []byte, m Transactable) (interface{}, error) 
 				return nil, err
 			}
 
-			response.Tests = append(response.Tests, tlsKDFTestResponse{
+			response.Tests = append(response.Tests, kdfCompTestResponse{
 				ID:              test.ID,
 				MasterSecretHex: hex.EncodeToString(result[0]),
 				KeyBlockHex:     hex.EncodeToString(result2[0]),
