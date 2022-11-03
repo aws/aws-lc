@@ -1,5 +1,5 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: Apache-2.0 OR ISC
 
 #include <openssl/base.h>
 
@@ -11,7 +11,6 @@ static const EVP_PKEY_METHOD *const non_fips_pkey_evp_methods[] = {
   &ed25519_pkey_meth,
   &x25519_pkey_meth,
   &kyber512_pkey_meth,
-  &hkdf_pkey_meth,
 };
 
 static const EVP_PKEY_ASN1_METHOD *const asn1_evp_pkey_methods[] = {

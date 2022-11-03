@@ -180,6 +180,10 @@ OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_ccm_bluetooth(void);
 // v1.0.
 OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_ccm_bluetooth_8(void);
 
+// EVP_aead_aes_128_ccm_matter is AES-128-CCM with M=16 and L=2 (16-byte tags
+// and 13-byte nonces), as used in the Matter specification.
+OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_ccm_matter(void);
+
 // EVP_has_aes_hardware returns one if we enable hardware support for fast and
 // constant-time AES-GCM.
 OPENSSL_EXPORT int EVP_has_aes_hardware(void);
@@ -459,6 +463,17 @@ OPENSSL_EXPORT int EVP_AEAD_CTX_tag_len(const EVP_AEAD_CTX *ctx,
                                         const size_t in_len,
                                         const size_t extra_in_len);
 
+// EVP_AEAD_get_iv_from_ipv4_nanosecs computes a deterministic IV compliant with
+// NIST SP 800-38D, built from an IPv4 address and the number of nanoseconds
+// since boot, writing it to |out_iv|. It returns one on success or zero for
+// error.
+//
+// This is not a general-purpose API, you should not be using it unless you
+// specifically know you need to use this.
+#define FIPS_AES_GCM_NONCE_LENGTH 12
+
+OPENSSL_EXPORT int EVP_AEAD_get_iv_from_ipv4_nanosecs(const uint32_t ipv4_address,
+    const uint64_t nanosecs, uint8_t out_iv[FIPS_AES_GCM_NONCE_LENGTH]);
 
 #if defined(__cplusplus)
 }  // extern C

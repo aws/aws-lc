@@ -3045,14 +3045,13 @@ read alert 1 0
 			expectedLocalError: "remote error: illegal parameter",
 		},
 		{
-			name: "TooManyKeyUpdates",
+			name: "LotsOfKeyUpdates",
 			config: Config{
 				MaxVersion: VersionTLS13,
 			},
-			sendKeyUpdates:   33,
+			sendKeyUpdates:   100,
 			keyUpdateRequest: keyUpdateNotRequested,
-			shouldFail:       true,
-			expectedError:    ":TOO_MANY_KEY_UPDATES:",
+			shouldFail:       false,
 		},
 		{
 			name: "EmptySessionID",
@@ -3632,6 +3631,31 @@ read alert 1 0
 				},
 			},
 			flags: []string{"-async"},
+		},
+		{
+			// DTLS 1.2 allows up to a 255-byte HelloVerifyRequest cookie, which
+			// is the largest encodable value.
+			protocol: dtls,
+			name:     "DTLS-HelloVerifyRequest-255",
+			config: Config{
+				MaxVersion: VersionTLS12,
+				Bugs: ProtocolBugs{
+					HelloVerifyRequestCookieLength: 255,
+				},
+			},
+		},
+		{
+			// DTLS 1.2 allows up to a 0-byte HelloVerifyRequest cookie, which
+			// was probably a mistake in the spec but test that it works
+			// nonetheless.
+			protocol: dtls,
+			name:     "DTLS-HelloVerifyRequest-0",
+			config: Config{
+				MaxVersion: VersionTLS12,
+				Bugs: ProtocolBugs{
+					EmptyHelloVerifyRequestCookie: true,
+				},
+			},
 		},
 	}
 	testCases = append(testCases, basicTests...)
@@ -18993,6 +19017,27 @@ func addHintMismatchTests() {
 				curveID: CurveX25519,
 			},
 		})
+		if protocol != quic {
+			testCases = append(testCases, testCase{
+				name:               protocol.String() + "-HintMismatch-ECDHE-Group",
+				testType:           serverTest,
+				protocol:           protocol,
+				skipSplitHandshake: true,
+				config: Config{
+					MinVersion:    VersionTLS12,
+					MaxVersion:    VersionTLS12,
+					DefaultCurves: []CurveID{CurveX25519, CurveP256},
+				},
+				flags: []string{
+					"-allow-hint-mismatch",
+					"-on-shim-curves", strconv.Itoa(int(CurveX25519)),
+					"-on-handshaker-curves", strconv.Itoa(int(CurveP256)),
+				},
+				expectations: connectionExpectations{
+					curveID: CurveX25519,
+				},
+			})
+		}
 
 		// If the handshaker does HelloRetryRequest, it will omit most hints.
 		// The shim should still work.
@@ -19041,7 +19086,7 @@ func addHintMismatchTests() {
 		// The shim and handshaker may have different signature algorithm
 		// preferences.
 		testCases = append(testCases, testCase{
-			name:               protocol.String() + "-HintMismatch-SignatureAlgorithm",
+			name:               protocol.String() + "-HintMismatch-SignatureAlgorithm-TLS13",
 			testType:           serverTest,
 			protocol:           protocol,
 			skipSplitHandshake: true,
@@ -19064,12 +19109,38 @@ func addHintMismatchTests() {
 				peerSignatureAlgorithm: signatureRSAPSSWithSHA256,
 			},
 		})
+		if protocol != quic {
+			testCases = append(testCases, testCase{
+				name:               protocol.String() + "-HintMismatch-SignatureAlgorithm-TLS12",
+				testType:           serverTest,
+				protocol:           protocol,
+				skipSplitHandshake: true,
+				config: Config{
+					MinVersion: VersionTLS12,
+					MaxVersion: VersionTLS12,
+					VerifySignatureAlgorithms: []signatureAlgorithm{
+						signatureRSAPSSWithSHA256,
+						signatureRSAPSSWithSHA384,
+					},
+				},
+				flags: []string{
+					"-allow-hint-mismatch",
+					"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
+					"-key-file", path.Join(*resourceDir, rsaKeyFile),
+					"-on-shim-signing-prefs", strconv.Itoa(int(signatureRSAPSSWithSHA256)),
+					"-on-handshaker-signing-prefs", strconv.Itoa(int(signatureRSAPSSWithSHA384)),
+				},
+				expectations: connectionExpectations{
+					peerSignatureAlgorithm: signatureRSAPSSWithSHA256,
+				},
+			})
+		}
 
 		// The shim and handshaker may disagree on whether resumption is allowed.
 		// We run the first connection with tickets enabled, so the client is
 		// issued a ticket, then disable tickets on the second connection.
 		testCases = append(testCases, testCase{
-			name:               protocol.String() + "-HintMismatch-NoTickets1",
+			name:               protocol.String() + "-HintMismatch-NoTickets1-TLS13",
 			testType:           serverTest,
 			protocol:           protocol,
 			skipSplitHandshake: true,
@@ -19085,7 +19156,7 @@ func addHintMismatchTests() {
 			expectResumeRejected: true,
 		})
 		testCases = append(testCases, testCase{
-			name:               protocol.String() + "-HintMismatch-NoTickets2",
+			name:               protocol.String() + "-HintMismatch-NoTickets2-TLS13",
 			testType:           serverTest,
 			protocol:           protocol,
 			skipSplitHandshake: true,
@@ -19099,6 +19170,39 @@ func addHintMismatchTests() {
 			},
 			resumeSession: true,
 		})
+		if protocol != quic {
+			testCases = append(testCases, testCase{
+				name:               protocol.String() + "-HintMismatch-NoTickets1-TLS12",
+				testType:           serverTest,
+				protocol:           protocol,
+				skipSplitHandshake: true,
+				config: Config{
+					MinVersion: VersionTLS12,
+					MaxVersion: VersionTLS12,
+				},
+				flags: []string{
+					"-on-resume-allow-hint-mismatch",
+					"-on-shim-on-resume-no-ticket",
+				},
+				resumeSession:        true,
+				expectResumeRejected: true,
+			})
+			testCases = append(testCases, testCase{
+				name:               protocol.String() + "-HintMismatch-NoTickets2-TLS12",
+				testType:           serverTest,
+				protocol:           protocol,
+				skipSplitHandshake: true,
+				config: Config{
+					MinVersion: VersionTLS12,
+					MaxVersion: VersionTLS12,
+				},
+				flags: []string{
+					"-on-resume-allow-hint-mismatch",
+					"-on-handshaker-on-resume-no-ticket",
+				},
+				resumeSession: true,
+			})
+		}
 
 		// The shim and handshaker may disagree on whether to request a client
 		// certificate.
@@ -19252,6 +19356,51 @@ func addHintMismatchTests() {
 				ocspResponse: testOCSPResponse,
 			},
 		})
+
+		// The shim and handshaker may disagree on cipher suite, to the point
+		// that one selects RSA key exchange (no applicable hint) and the other
+		// selects ECDHE_RSA (hints are useful).
+		if protocol != quic {
+			testCases = append(testCases, testCase{
+				testType:           serverTest,
+				name:               protocol.String() + "-HintMismatch-CipherMismatch1",
+				protocol:           protocol,
+				skipSplitHandshake: true,
+				config: Config{
+					MinVersion: VersionTLS12,
+					MaxVersion: VersionTLS12,
+				},
+				flags: []string{
+					"-allow-hint-mismatch",
+					"-on-shim-cipher", "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
+					"-on-handshaker-cipher", "TLS_RSA_WITH_AES_128_GCM_SHA256",
+				},
+				expectations: connectionExpectations{
+					cipher: TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+				},
+			})
+			testCases = append(testCases, testCase{
+				testType:           serverTest,
+				name:               protocol.String() + "-HintMismatch-CipherMismatch2",
+				protocol:           protocol,
+				skipSplitHandshake: true,
+				config: Config{
+					MinVersion: VersionTLS12,
+					MaxVersion: VersionTLS12,
+				},
+				flags: []string{
+					// There is no need to pass -allow-hint-mismatch. The
+					// handshaker will unnecessarily generate a signature hints.
+					// This is not reported as a mismatch because hints would
+					// not have helped the shim anyway.
+					"-on-shim-cipher", "TLS_RSA_WITH_AES_128_GCM_SHA256",
+					"-on-handshaker-cipher", "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
+				},
+				expectations: connectionExpectations{
+					cipher: TLS_RSA_WITH_AES_128_GCM_SHA256,
+				},
+			})
+		}
 	}
 }
 

@@ -1,0 +1,9 @@
+# Ignore built acvptool
+acvptool
+
+# Ignore config.json file used to connect to NIST demo server
+config.json
+config_folder
+
+# Ignore vscode folder
+*vscode*

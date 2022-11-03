@@ -1,5 +1,5 @@
 Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.<br />
-SPDX-License-Identifier: Apache-2.0
+SPDX-License-Identifier: Apache-2.0 OR ISC
 
 # Benchmarking P256 on AWS-LC and OpenSSL
 This application performs benchmarking of ECDH and ECDSA on the NIST curve P-256

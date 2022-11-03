@@ -53,6 +53,13 @@ static inline void *BM_memset(void *dst, int c, size_t n) {
 // g_print_json is true if printed output is JSON formatted.
 static bool g_print_json = false;
 
+static std::string ChunkLenSuffix(size_t chunk_len) {
+  char buf[32];
+  snprintf(buf, sizeof(buf), " (%zu byte%s)", chunk_len,
+           chunk_len != 1 ? "s" : "");
+  return buf;
+}
+
 // TimeResults represents the results of benchmarking a function.
 struct TimeResults {
   // num_calls is the number of function calls done in the time period.
@@ -76,7 +83,7 @@ struct TimeResults {
       PrintJSON(description, bytes_per_call);
     } else {
       printf("Did %u %s operations in %uus (%.1f ops/sec): %.1f MB/s\n",
-             num_calls, description.c_str(), us,
+             num_calls, (description + ChunkLenSuffix(bytes_per_call)).c_str(), us,
              (static_cast<double>(num_calls) / us) * 1000000,
              static_cast<double>(bytes_per_call * num_calls) / us);
     }
@@ -359,11 +366,94 @@ static bool SpeedRSAKeyGen(const std::string &selected) {
   return true;
 }
 
-static std::string ChunkLenSuffix(size_t chunk_len) {
-  char buf[32];
-  snprintf(buf, sizeof(buf), " (%zu byte%s)", chunk_len,
-           chunk_len != 1 ? "s" : "");
-  return buf;
+static bool SpeedAESGCMChunk(const EVP_CIPHER *cipher, std::string name,
+                             size_t chunk_byte_len, size_t ad_len) {
+  int len;
+  int* len_ptr = &len;
+  const size_t key_len = EVP_CIPHER_key_length(cipher);
+  static const unsigned kAlignment = 16;
+  const size_t iv_len = EVP_CIPHER_iv_length(cipher);
+  // GCM uses 16 byte tags
+  const size_t overhead_len = 16;
+  std::unique_ptr<uint8_t[]> key(new uint8_t[key_len]);
+  BM_memset(key.get(), 0, key_len);
+  std::unique_ptr<uint8_t[]> nonce(new uint8_t[iv_len]);
+  BM_memset(nonce.get(), 0, iv_len);
+  std::unique_ptr<uint8_t[]> plaintext_storage(new uint8_t[chunk_byte_len + kAlignment]);
+  std::unique_ptr<uint8_t[]> ciphertext_storage(new uint8_t[chunk_byte_len + overhead_len + kAlignment]);
+  std::unique_ptr<uint8_t[]> in2_storage(new uint8_t[chunk_byte_len + overhead_len + kAlignment]);
+  std::unique_ptr<uint8_t[]> ad(new uint8_t[ad_len]);
+  BM_memset(ad.get(), 0, ad_len);
+  std::unique_ptr<uint8_t[]> tag_storage(new uint8_t[overhead_len + kAlignment]);
+
+  uint8_t *const plaintext = static_cast<uint8_t *>(align_pointer(plaintext_storage.get(), kAlignment));
+  BM_memset(plaintext, 0, chunk_byte_len);
+  uint8_t *const ciphertext = static_cast<uint8_t *>(align_pointer(ciphertext_storage.get(), kAlignment));
+  BM_memset(ciphertext, 0, chunk_byte_len + overhead_len);
+  uint8_t *const tag = static_cast<uint8_t *>(align_pointer(tag_storage.get(), kAlignment));
+  BM_memset(tag, 0, overhead_len);
+
+  BM_NAMESPACE::UniquePtr<EVP_CIPHER_CTX> ctx(EVP_CIPHER_CTX_new());
+
+  std::string encryptName = name + " Encrypt";
+  TimeResults encryptResults;
+
+  // Call EVP_EncryptInit_ex once with the cipher, in the benchmark loop reuse the cipher
+  if (!EVP_EncryptInit_ex(ctx.get(), cipher, NULL, key.get(), nonce.get())){
+    fprintf(stderr, "Failed to configure encryption context.\n");
+    ERR_print_errors_fp(stderr);
+    return false;
+  }
+  if (!TimeFunction(&encryptResults, [&ctx, chunk_byte_len, plaintext, ciphertext, len_ptr, tag, &key, &nonce, &ad, ad_len]() -> bool {
+        return EVP_EncryptInit_ex(ctx.get(), NULL, NULL, key.get(), nonce.get()) &&
+               EVP_EncryptUpdate(ctx.get(), NULL, len_ptr, ad.get(), ad_len) &&
+               EVP_EncryptUpdate(ctx.get(), ciphertext, len_ptr, plaintext, chunk_byte_len) &&
+               EVP_EncryptFinal_ex(ctx.get(), ciphertext + *len_ptr, len_ptr) &&
+               EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_GET_TAG, 16, tag);
+      })) {
+    fprintf(stderr, "%s failed.\n", encryptName.c_str());
+    ERR_print_errors_fp(stderr);
+    return false;
+  }
+
+  encryptResults.PrintWithBytes(encryptName, chunk_byte_len);
+  std::string decryptName = name + " Decrypt";
+  TimeResults decryptResults;
+  // Call EVP_DecryptInit_ex once with the cipher, in the benchmark loop reuse the cipher
+  if (!EVP_DecryptInit_ex(ctx.get(), cipher, NULL, key.get(), nonce.get())){
+    fprintf(stderr, "Failed to configure decryption context.\n");
+    ERR_print_errors_fp(stderr);
+    return false;
+  }
+  if (!TimeFunction(&decryptResults, [&ctx, chunk_byte_len, plaintext, ciphertext, len_ptr, tag, &key, &nonce, &ad, ad_len]() -> bool {
+        return EVP_DecryptInit_ex(ctx.get(), NULL, NULL, key.get(), nonce.get()) &&
+               EVP_DecryptUpdate(ctx.get(), NULL, len_ptr, ad.get(), ad_len) &&
+               EVP_DecryptUpdate(ctx.get(), plaintext, len_ptr, ciphertext, chunk_byte_len) &&
+               EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_SET_TAG, 16, tag) &&
+               EVP_DecryptFinal_ex(ctx.get(), ciphertext + *len_ptr, len_ptr);
+      })) {
+    fprintf(stderr, "%s failed.\n", decryptName.c_str());
+    ERR_print_errors_fp(stderr);
+    return false;
+  }
+  decryptResults.PrintWithBytes(decryptName, chunk_byte_len);
+
+
+  return true;
+}
+static bool SpeedAESGCM(const EVP_CIPHER *cipher, const std::string &name,
+                        size_t ad_len, const std::string &selected) {
+  if (!selected.empty() && name.find(selected) == std::string::npos) {
+    return true;
+  }
+
+  for (size_t chunk_byte_len : g_chunk_lengths) {
+    if (!SpeedAESGCMChunk(cipher, name, chunk_byte_len, ad_len)) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 #if !defined(OPENSSL_BENCHMARK)
@@ -372,7 +462,6 @@ static bool SpeedAEADChunk(const EVP_AEAD *aead, std::string name,
                            evp_aead_direction_t direction) {
   static const unsigned kAlignment = 16;
 
-  name += ChunkLenSuffix(chunk_len);
   BM_NAMESPACE::ScopedEVP_AEAD_CTX ctx;
   const size_t key_len = EVP_AEAD_key_length(aead);
   const size_t nonce_len = EVP_AEAD_nonce_length(aead);
@@ -494,6 +583,59 @@ static bool SpeedAEADOpen(const EVP_AEAD *aead, const std::string &name,
 
   return true;
 }
+
+static bool SpeedKEM(const std::string &name, int nid, const std::string &selected) {
+  if (!selected.empty() && name.find(selected) == std::string::npos) {
+    return true;
+  }
+  BM_NAMESPACE::UniquePtr<EVP_PKEY_CTX> server_pkey_ctx(EVP_PKEY_CTX_new_id(nid, nullptr));
+  if (!server_pkey_ctx || !EVP_PKEY_keygen_init(server_pkey_ctx.get())) {
+    return false;
+  }
+
+  EVP_PKEY *server_pkey = NULL;
+  TimeResults results;
+  if (!TimeFunction(&results, [&server_pkey_ctx, &server_pkey]() -> bool {
+        return EVP_PKEY_keygen(server_pkey_ctx.get(), &server_pkey);
+      })) {
+    return false;
+  }
+  results.Print(name + " keygen");
+
+  size_t shared_secret_len = 0;
+  size_t ciphertext_len = 0;
+  EVP_PKEY_encapsulate(server_pkey_ctx.get(), NULL, &ciphertext_len, NULL, &shared_secret_len);
+  std::unique_ptr<uint8_t[]> ciphertext(new uint8_t[ciphertext_len]);
+  std::unique_ptr<uint8_t[]> shared_secret(new uint8_t[shared_secret_len]);
+
+  size_t public_key_size = 0;
+  EVP_PKEY_get_raw_public_key(server_pkey, NULL, &public_key_size);
+  std::unique_ptr<uint8_t[]> public_key(new uint8_t[public_key_size]);
+  EVP_PKEY_get_raw_public_key(server_pkey, public_key.get(), &public_key_size);
+
+  BM_NAMESPACE::UniquePtr<EVP_PKEY> client_pkey(EVP_PKEY_new_raw_public_key(nid,NULL,public_key.get(),public_key_size));
+  BM_NAMESPACE::UniquePtr<EVP_PKEY_CTX> client_pkey_ctx(EVP_PKEY_CTX_new(client_pkey.get(), nullptr));
+
+  if (!TimeFunction(&results, [&ciphertext, &ciphertext_len, &shared_secret, &shared_secret_len, &client_pkey_ctx]() -> bool {
+        return EVP_PKEY_encapsulate(client_pkey_ctx.get(), ciphertext.get(), &ciphertext_len, shared_secret.get(), &shared_secret_len);
+      })) {
+    return false;
+  }
+  results.Print(name + " encapsulate");
+
+  if (!TimeFunction(&results, [&ciphertext, &ciphertext_len, &shared_secret, &shared_secret_len, &server_pkey_ctx]() -> bool {
+        return EVP_PKEY_decapsulate(server_pkey_ctx.get(), shared_secret.get(), &shared_secret_len, ciphertext.get(), ciphertext_len);
+      })) {
+    return false;
+  }
+  results.Print(name + " decapsulate");
+  return true;
+}
+
+
+static bool SpeedKEM(std::string selected) {
+  return SpeedKEM("Kyber512", NID_KYBER512, selected);
+}
 #endif
 
 static bool SpeedAESBlock(const std::string &name, unsigned bits,
@@ -606,7 +748,7 @@ static bool SpeedAES256XTS(const std::string &name, //const size_t in_len,
       fprintf(stderr, "AES-256-XTS initialisation or encryption failed.\n");
       return false;
     }
-    results.PrintWithBytes(name + ChunkLenSuffix(in_len) + " init and encrypt",
+    results.PrintWithBytes(name + " init and encrypt",
                            in_len);
   }
 
@@ -629,7 +771,7 @@ static bool SpeedAES256XTS(const std::string &name, //const size_t in_len,
       fprintf(stderr, "AES-256-XTS initialisation or decryption failed.\n");
       return false;
     }
-    results.PrintWithBytes(name + ChunkLenSuffix(in_len) + " init and decrypt",
+    results.PrintWithBytes(name + " init and decrypt",
                            in_len);
   }
 
@@ -645,20 +787,15 @@ static bool SpeedHashChunk(const EVP_MD *md, std::string name,
 #else
   BM_NAMESPACE::UniquePtr<EVP_MD_CTX> ctx(EVP_MD_CTX_new());
 #endif
-  uint8_t input[16384] = {0};
+  std::unique_ptr<uint8_t[]> input(new uint8_t[chunk_len]);
 
-  if (chunk_len > sizeof(input)) {
-    return false;
-  }
-
-  name += ChunkLenSuffix(chunk_len);
   TimeResults results;
   if (!TimeFunction(&results, [&ctx, md, chunk_len, &input]() -> bool {
         uint8_t digest[EVP_MAX_MD_SIZE];
         unsigned int md_len;
 
         return EVP_DigestInit_ex(ctx.get(), md, NULL /* ENGINE */) &&
-               EVP_DigestUpdate(ctx.get(), input, chunk_len) &&
+               EVP_DigestUpdate(ctx.get(), input.get(), chunk_len) &&
                EVP_DigestFinal_ex(ctx.get(), digest, &md_len);
       })) {
     fprintf(stderr, "EVP_DigestInit_ex failed.\n");
@@ -719,7 +856,6 @@ static bool SpeedHmacChunk(const EVP_MD *md, std::string name,
   if (!HMAC_Init_ex(ctx.get(), key.get(), key_len, md, NULL /* ENGINE */)) {
     fprintf(stderr, "Failed to create HMAC_CTX.\n");
   }
-  name += ChunkLenSuffix(chunk_len);
   TimeResults results;
   if (!TimeFunction(&results, [&ctx, chunk_len, &scratch]() -> bool {
         uint8_t digest[EVP_MAX_MD_SIZE];
@@ -764,7 +900,6 @@ static bool SpeedHmacChunkOneShot(const EVP_MD *md, std::string name,
     return false;
   }
 
-  name += ChunkLenSuffix(chunk_len);
   TimeResults results;
   if (!TimeFunction(&results, [&key, key_len, md, chunk_len, &scratch]() -> bool {
 
@@ -804,7 +939,6 @@ static bool SpeedRandomChunk(std::string name, size_t chunk_len) {
     return false;
   }
 
-  name += ChunkLenSuffix(chunk_len);
   TimeResults results;
   if (!TimeFunction(&results, [chunk_len, &scratch]() -> bool {
         RAND_bytes(scratch, chunk_len);
@@ -946,6 +1080,82 @@ static bool SpeedECDSA(const std::string &selected) {
          SpeedECDSACurve("ECDSA secp256k1", NID_secp256k1, selected);
 }
 
+
+#if !defined(OPENSSL_1_0_BENCHMARK)
+static bool SpeedECMULCurve(const std::string &name, int nid,
+                       const std::string &selected) {
+  if (!selected.empty() && name.find(selected) == std::string::npos) {
+    return true;
+  }
+
+  EC_GROUP *group = EC_GROUP_new_by_curve_name(nid);
+  BN_CTX   *ctx = BN_CTX_new();
+
+  BIGNUM *scalar0 = BN_new();
+  BIGNUM *scalar1 = BN_new();
+
+  EC_POINT *pin0 = EC_POINT_new(group);
+  EC_POINT *pout = EC_POINT_new(group);
+
+  // Generate two random scalars modulo the EC group order.
+  if (!BN_rand_range(scalar0, EC_GROUP_get0_order(group)) ||
+      !BN_rand_range(scalar1, EC_GROUP_get0_order(group))) {
+      return false;
+  }
+
+  // Generate one random EC point.
+  EC_POINT_mul(group, pin0, scalar0, nullptr, nullptr, ctx);
+
+  TimeResults results;
+
+  // Measure scalar multiplication of an arbitrary curve point.
+  if (!TimeFunction(&results, [group, pout, ctx, pin0, scalar0]() -> bool {
+        if (!EC_POINT_mul(group, pout, nullptr, pin0, scalar0, ctx)) {
+          return false;
+        }
+
+        return true;
+      })) {
+    return false;
+  }
+  results.Print(name + " mul");
+
+  // Measure scalar multiplication of the curve based point.
+  if (!TimeFunction(&results, [group, pout, ctx, scalar0]() -> bool {
+        if (!EC_POINT_mul(group, pout, scalar0, nullptr, nullptr, ctx)) {
+          return false;
+        }
+
+        return true;
+      })) {
+    return false;
+  }
+  results.Print(name + " mul base");
+
+  // Measure scalar multiplication of based point and arbitrary point.
+  if (!TimeFunction(&results, [group, pout, pin0, ctx, scalar0, scalar1]() -> bool {
+        if (!EC_POINT_mul(group, pout, scalar1, pin0, scalar0, ctx)) {
+          return false;
+        }
+
+        return true;
+      })) {
+    return false;
+  }
+  results.Print(name + " mul public");
+
+  return true;
+}
+
+static bool SpeedECMUL(const std::string &selected) {
+  return SpeedECMULCurve("ECMUL P-224", NID_secp224r1, selected) &&
+         SpeedECMULCurve("ECMUL P-256", NID_X9_62_prime256v1, selected) &&
+         SpeedECMULCurve("ECMUL P-384", NID_secp384r1, selected) &&
+         SpeedECMULCurve("ECMUL P-521", NID_secp521r1, selected) &&
+         SpeedECMULCurve("ECMUL secp256k1", NID_secp256k1, selected);
+}
+#endif
+
 #if !defined(OPENSSL_BENCHMARK)
 static bool Speed25519(const std::string &selected) {
   if (!selected.empty() && selected.find("25519") == std::string::npos) {
@@ -1072,8 +1282,8 @@ static bool SpeedScrypt(const std::string &selected) {
 
   TimeResults results;
 
-  static const char kPassword[] = "password";
-  static const uint8_t kSalt[] = "NaCl";
+  static const char kPassword[] = "passwordPASSWORD";
+  static const uint8_t kSalt[] = "NaClSodiumChloride";
 
   if (!TimeFunction(&results, [&]() -> bool {
         uint8_t out[64];
@@ -1255,7 +1465,7 @@ static bool SpeedSipHash(const std::string &selected) {
       ERR_print_errors_fp(stderr);
       return false;
     }
-    results.PrintWithBytes("SipHash-2-4" + ChunkLenSuffix(len), len);
+    results.PrintWithBytes("SipHash-2-4", len);
   }
 
   return true;
@@ -1597,10 +1807,10 @@ bool Speed(const std::vector<std::string> &args) {
     }
   }
 
-#if !defined(OPENSSL_BENCHMARK)
   // kTLSADLen is the number of bytes of additional data that TLS passes to
   // AEADs.
   static const size_t kTLSADLen = 13;
+#if !defined(OPENSSL_BENCHMARK)
 
   // kLegacyADLen is the number of bytes that TLS passes to the "legacy" AEADs.
   // These are AEADs that weren't originally defined as AEADs, but which we use
@@ -1619,6 +1829,9 @@ bool Speed(const std::vector<std::string> &args) {
   if(!SpeedAESBlock("AES-128", 128, selected) ||
      !SpeedAESBlock("AES-192", 192, selected) ||
      !SpeedAESBlock("AES-256", 256, selected) ||
+     !SpeedAESGCM(EVP_aes_128_gcm(), "EVP-AES-128-GCM", kTLSADLen, selected) ||
+     !SpeedAESGCM(EVP_aes_192_gcm(), "EVP-AES-192-GCM", kTLSADLen, selected) ||
+     !SpeedAESGCM(EVP_aes_256_gcm(), "EVP-AES-256-GCM", kTLSADLen, selected) ||
      // OpenSSL 1.0 doesn't support AES-XTS
 #if !defined(OPENSSL_1_0_BENCHMARK)
      !SpeedAES256XTS("AES-256-XTS", selected) ||
@@ -1653,27 +1866,29 @@ bool Speed(const std::vector<std::string> &args) {
      !SpeedRandom(selected) ||
      !SpeedECDH(selected) ||
      !SpeedECDSA(selected) ||
-     // OpenSSL 1.0 doesn't support Scrypt
 #if !defined(OPENSSL_1_0_BENCHMARK)
+     !SpeedECMUL(selected) ||
+     // OpenSSL 1.0 doesn't support Scrypt
      !SpeedScrypt(selected) ||
 #endif
      !SpeedRSA(selected) ||
      !SpeedRSAKeyGen(selected)
 #if !defined(OPENSSL_BENCHMARK)
      ||
-     !SpeedAEAD(EVP_aead_aes_128_gcm(), "AES-128-GCM", kTLSADLen, selected) ||
-     !SpeedAEAD(EVP_aead_aes_256_gcm(), "AES-256-GCM", kTLSADLen, selected) ||
-     !SpeedAEAD(EVP_aead_chacha20_poly1305(), "ChaCha20-Poly1305", kTLSADLen, selected) ||
-     !SpeedAEAD(EVP_aead_des_ede3_cbc_sha1_tls(), "DES-EDE3-CBC-SHA1", kLegacyADLen, selected) ||
-     !SpeedAEAD(EVP_aead_aes_128_cbc_sha1_tls(), "AES-128-CBC-SHA1", kLegacyADLen, selected) ||
-     !SpeedAEAD(EVP_aead_aes_256_cbc_sha1_tls(), "AES-256-CBC-SHA1", kLegacyADLen, selected) ||
-     !SpeedAEADOpen(EVP_aead_aes_128_cbc_sha1_tls(), "AES-128-CBC-SHA1", kLegacyADLen, selected) ||
-     !SpeedAEADOpen(EVP_aead_aes_256_cbc_sha1_tls(), "AES-256-CBC-SHA1", kLegacyADLen, selected) ||
-     !SpeedAEAD(EVP_aead_aes_128_gcm_siv(), "AES-128-GCM-SIV", kTLSADLen, selected) ||
-     !SpeedAEAD(EVP_aead_aes_256_gcm_siv(), "AES-256-GCM-SIV", kTLSADLen, selected) ||
-     !SpeedAEADOpen(EVP_aead_aes_128_gcm_siv(), "AES-128-GCM-SIV", kTLSADLen, selected) ||
-     !SpeedAEADOpen(EVP_aead_aes_256_gcm_siv(), "AES-256-GCM-SIV", kTLSADLen, selected) ||
-     !SpeedAEAD(EVP_aead_aes_128_ccm_bluetooth(), "AES-128-CCM-Bluetooth", kTLSADLen, selected) ||
+     !SpeedKEM(selected) ||
+     !SpeedAEAD(EVP_aead_aes_128_gcm(), "AEAD-AES-128-GCM", kTLSADLen, selected) ||
+     !SpeedAEAD(EVP_aead_aes_256_gcm(), "AEAD-AES-256-GCM", kTLSADLen, selected) ||
+     !SpeedAEAD(EVP_aead_chacha20_poly1305(), "AEAD-ChaCha20-Poly1305", kTLSADLen, selected) ||
+     !SpeedAEAD(EVP_aead_des_ede3_cbc_sha1_tls(), "AEAD-DES-EDE3-CBC-SHA1", kLegacyADLen, selected) ||
+     !SpeedAEAD(EVP_aead_aes_128_cbc_sha1_tls(), "AEAD-AES-128-CBC-SHA1", kLegacyADLen, selected) ||
+     !SpeedAEAD(EVP_aead_aes_256_cbc_sha1_tls(), "AEAD-AES-256-CBC-SHA1", kLegacyADLen, selected) ||
+     !SpeedAEADOpen(EVP_aead_aes_128_cbc_sha1_tls(), "AEAD-AES-128-CBC-SHA1", kLegacyADLen, selected) ||
+     !SpeedAEADOpen(EVP_aead_aes_256_cbc_sha1_tls(), "AEAD-AES-256-CBC-SHA1", kLegacyADLen, selected) ||
+     !SpeedAEAD(EVP_aead_aes_128_gcm_siv(), "AEAD-AES-128-GCM-SIV", kTLSADLen, selected) ||
+     !SpeedAEAD(EVP_aead_aes_256_gcm_siv(), "AEAD-AES-256-GCM-SIV", kTLSADLen, selected) ||
+     !SpeedAEADOpen(EVP_aead_aes_128_gcm_siv(), "AEAD-AES-128-GCM-SIV", kTLSADLen, selected) ||
+     !SpeedAEADOpen(EVP_aead_aes_256_gcm_siv(), "AEAD-AES-256-GCM-SIV", kTLSADLen, selected) ||
+     !SpeedAEAD(EVP_aead_aes_128_ccm_bluetooth(), "AEAD-AES-128-CCM-Bluetooth", kTLSADLen, selected) ||
      !Speed25519(selected) ||
      !SpeedSPAKE2(selected) ||
      !SpeedRSAKeyGen(selected) ||

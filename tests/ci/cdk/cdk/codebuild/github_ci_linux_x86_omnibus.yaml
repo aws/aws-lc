@@ -1,5 +1,5 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: Apache-2.0 OR ISC
 
 version: 0.2
 
@@ -232,6 +232,14 @@ batch:
         compute-type: BUILD_GENERAL1_LARGE
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_clang-9x_latest
 
+    - identifier: install_shared_and_static
+      buildspec: ./tests/ci/codebuild/linux-x86/install_shared_and_static.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_SMALL
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_clang-9x_latest
+
     - identifier: fedora31_clang9x_x86_64
       buildspec: ./tests/ci/codebuild/linux-x86/fedora-31_clang-9x.yml
       env:
@@ -240,19 +248,21 @@ batch:
         compute-type: BUILD_GENERAL1_LARGE
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:fedora-31_clang-9x_latest
 
-    # When no SELECTCHECK env variable is undefined, formal verification is executed with a few parameters.
-    # SAW does not support thread level parallelism.
-    # Current benmarks show running quick check (using single process) can consume more than 7 GB memory. This high memory usage is normal and confirmed by Galois side.
-    # Accoridngly, BUILD_GENERAL1_LARGE (8 vCPUs, 15 GB memory) is selected for quick check, which just verfies some simple parameters.
-    # For select check (test with lots of parameters), BUILD_GENERAL1_2XLARGE (72 vCPUs, 145 GB memory) is used to speed up tests by creating multiple processes.
+    # When no SELECTCHECK env variable is defined, quick check is run with just a few parameters.
+    # We parallel the quick check proof scripts.
+    # Since each proof script takes around 7GB of memory, this results in a high demand for memory.
+    # Current benchmarks show running quick check using 8 processes can consume more than 55 GB of memory.
+    # Therefore, BUILD_GENERAL1_2XLARGE (72 vCPUs, 145 GB memory) is selected for quick check.
     - identifier: ubuntu2004_clang10x_formal_verification_quickcheck
       buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-20.04_clang-10x_formal-verification.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: false
-        compute-type: BUILD_GENERAL1_LARGE
+        compute-type: BUILD_GENERAL1_2XLARGE
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_clang-10x_formal-verification_latest
 
+    # In addition, we do select checks to verify more parameters.
+    # For select check, BUILD_GENERAL1_2XLARGE is also used to speed up proof instances by creating multiple processes for each parameter.
     # When 'SHA512_384_SELECTCHECK' is defined, SHA512-384 formal verification is executed against more parameters.
     - identifier: ubuntu2004_clang10x_formal_verification_sha_selectcheck
       buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-20.04_clang-10x_formal-verification.yml

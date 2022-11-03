@@ -70,9 +70,11 @@
 #include "cipher/e_aesccm.c"
 
 #include "cpucap/cpu_aarch64_apple.c"
+#include "cpucap/cpu_aarch64_freebsd.c"
 #include "cpucap/cpu_aarch64_fuchsia.c"
 #include "cpucap/cpu_aarch64_linux.c"
 #include "cpucap/cpu_aarch64_win.c"
+#include "cpucap/cpu_arm_freebsd.c"
 #include "cpucap/cpu_arm_linux.c"
 #include "cpucap/cpu_intel.c"
 #include "cpucap/cpu_ppc64le.c"
@@ -104,6 +106,7 @@
 #include "evp/evp_ctx.c"
 #include "evp/kem.c"
 #include "evp/p_ec.c"
+#include "evp/p_hkdf.c"
 #include "evp/p_rsa.c"
 #include "hkdf/hkdf.c"
 #include "hmac/hmac.c"
@@ -117,6 +120,7 @@
 #include "modes/ofb.c"
 #include "modes/xts.c"
 #include "modes/polyval.c"
+#include "pbkdf/pbkdf.c"
 #include "rand/ctrdrbg.c"
 #include "rand/fork_detect.c"
 #include "rand/rand.c"
@@ -134,6 +138,7 @@
 #include "sha/sha256.c"
 #include "sha/sha3.c"
 #include "sha/sha512.c"
+#include "sshkdf/sshkdf.c"
 #include "tls/kdf.c"
 
 
@@ -342,3 +347,31 @@ void BORINGSSL_FIPS_abort(void) {
 }
 
 #endif  // BORINGSSL_FIPS
+
+#if !defined(AWSLC_FIPS) && !defined(BORINGSSL_SHARED_LIBRARY)
+// When linking with a static library, if no symbols in an object file are
+// referenced then the object file is discarded, even if it has a constructor
+// function. For example, if an application is linking with libcrypto.a and
+// not referencing any symbol from crypto.o file, then crypto.o will be
+// discarded. This is an issue because we define the library constructor
+// in crypto.o so if the file is discarded then the library is not initialized.
+// Note that this is not a problem for the FIPS build because when building the
+// FIPS mode we have to ensure the initialization is done before the power-on
+// self-tests so the test function itself calls |OPENSSL_cpuid_setup|.
+//
+// So, the issue manifests only in the static non-FIPS build. The work around
+// is we add a dummy function |dummy_func_for_constructor| in |bcm.c| that
+// calls |CRYPTO_library_init| function defined in |crypto.c|. This will ensure
+// that, when linking with libcrypto.a, crypto.o will not be discarded as long
+// as bcm.o is not discarded.
+//
+// This workaround is partial in a sense that if the application that's linking
+// to libcrypto.a is not using any of the symbols from bcm.o or crypto.o then
+// both object files will be discarded. But this would be an edge case that we
+// don't expect to happen with significant probability. In case it happens, the
+// application would have to call the |CRYPTO_library_init| function itself to
+// ensure the initialization is done.
+void dummy_func_for_constructor(void) {
+    CRYPTO_library_init();
+}
+#endif

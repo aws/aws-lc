@@ -1,5 +1,5 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: Apache-2.0 OR ISC
 
 // Old versions of GCC don't support __has_include which could be used to check for stdalign.h, try to compile this
 // instead.

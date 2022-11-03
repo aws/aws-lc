@@ -20,9 +20,8 @@
 #include <openssl/kdf.h>
 #include <openssl/mem.h>
 
-#include "../internal.h"
+#include "../../internal.h"
 #include "internal.h"
-#include "../fipsmodule/evp/internal.h"
 
 
 typedef struct {
@@ -189,27 +188,25 @@ static int pkey_hkdf_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
   }
 }
 
-const EVP_PKEY_METHOD hkdf_pkey_meth = {
-    EVP_PKEY_HKDF,
-    pkey_hkdf_init,
-    pkey_hkdf_copy,
-    pkey_hkdf_cleanup,
-    /*keygen=*/NULL,
-    /*sign_init=*/NULL,
-    /*sign=*/NULL,
-    /*sign_message=*/NULL,
-    /*verify_init=*/NULL,
-    /*verify=*/NULL,
-    /*verify_message=*/NULL,
-    /*verify_recover=*/NULL,
-    /*encrypt=*/NULL,
-    /*decrypt=*/NULL,
-    pkey_hkdf_derive,
-    /*paramgen=*/NULL,
-    pkey_hkdf_ctrl,
-    /*encapsulate*/NULL,
-    /*decapsulate*/NULL,
-};
+DEFINE_METHOD_FUNCTION(EVP_PKEY_METHOD, EVP_PKEY_hkdf_pkey_meth) {
+    out->pkey_id = EVP_PKEY_HKDF;
+    out->init = pkey_hkdf_init;
+    out->copy = pkey_hkdf_copy;
+    out->cleanup = pkey_hkdf_cleanup;
+    out->keygen = NULL; /* keygen */
+    out->sign_init = NULL; /* sign_init */
+    out->sign = NULL; /* sign */
+    out->sign_message = NULL; /* sign_message */
+    out->verify_init = NULL; /* verify_init */
+    out->verify = NULL; /* verify */
+    out->verify_message = NULL; /* verify_message */
+    out->verify_recover = NULL; /* verify_recover */
+    out->encrypt = NULL; /* encrypt */
+    out->decrypt = NULL; /* decrypt */
+    out->derive = pkey_hkdf_derive;
+    out->paramgen = NULL; /* paramgen */
+    out->ctrl = pkey_hkdf_ctrl;
+}
 
 int EVP_PKEY_CTX_hkdf_mode(EVP_PKEY_CTX *ctx, int mode) {
   return EVP_PKEY_CTX_ctrl(ctx, EVP_PKEY_HKDF, EVP_PKEY_OP_DERIVE,

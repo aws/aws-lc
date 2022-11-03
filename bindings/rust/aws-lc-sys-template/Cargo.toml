@@ -22,9 +22,12 @@ include = [
     "tests/**/*.rs",
 ]
 
+[features]
+asan = []
+
 [build-dependencies]
 cmake = "0.1.48"
-bindgen = "0.60.1"
+bindgen = "0.61"
 regex = "1"
 dunce = "1.0"
 

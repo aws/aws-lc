@@ -4252,18 +4252,18 @@ TEST_P(SSLVersionTest, AutoChain) {
                           {cert_.get(), cert_.get()}));
 }
 
-static bool ExpectBadWriteRetry() {
+static bool ExpectSingleError(int lib, int reason) {
+  const char *expected = ERR_reason_error_string(ERR_PACK(lib, reason));
   int err = ERR_get_error();
-  if (ERR_GET_LIB(err) != ERR_LIB_SSL ||
-      ERR_GET_REASON(err) != SSL_R_BAD_WRITE_RETRY) {
+  if (ERR_GET_LIB(err) != lib || ERR_GET_REASON(err) != reason) {
     char buf[ERR_ERROR_STRING_BUF_LEN];
     ERR_error_string_n(err, buf, sizeof(buf));
-    fprintf(stderr, "Wanted SSL_R_BAD_WRITE_RETRY, got: %s.\n", buf);
+    fprintf(stderr, "Wanted %s, got: %s.\n", expected, buf);
     return false;
   }
 
   if (ERR_peek_error() != 0) {
-    fprintf(stderr, "Unexpected error following SSL_R_BAD_WRITE_RETRY.\n");
+    fprintf(stderr, "Unexpected error following %s.\n", expected);
     return false;
   }
 
@@ -4279,8 +4279,6 @@ TEST_P(SSLVersionTest, SSLWriteRetry) {
     SCOPED_TRACE(enable_partial_write);
 
     // Connect a client and server.
-    ASSERT_TRUE(UseCertAndKey(client_ctx_.get()));
-
     ASSERT_TRUE(Connect());
 
     if (enable_partial_write) {
@@ -4299,9 +4297,7 @@ TEST_P(SSLVersionTest, SSLWriteRetry) {
         ASSERT_EQ(SSL_get_error(client_.get(), ret), SSL_ERROR_WANT_WRITE);
         break;
       }
-
       ASSERT_EQ(ret, 5);
-
       count++;
     }
 
@@ -4314,14 +4310,14 @@ TEST_P(SSLVersionTest, SSLWriteRetry) {
     ASSERT_EQ(SSL_get_error(client_.get(),
                             SSL_write(client_.get(), data, kChunkLen - 1)),
               SSL_ERROR_SSL);
-    ASSERT_TRUE(ExpectBadWriteRetry());
+    ASSERT_TRUE(ExpectSingleError(ERR_LIB_SSL, SSL_R_BAD_WRITE_RETRY));
 
     // Retrying with a different buffer pointer is not legal.
     char data2[] = "hello";
     ASSERT_EQ(SSL_get_error(client_.get(),
                             SSL_write(client_.get(), data2, kChunkLen)),
               SSL_ERROR_SSL);
-    ASSERT_TRUE(ExpectBadWriteRetry());
+    ASSERT_TRUE(ExpectSingleError(ERR_LIB_SSL, SSL_R_BAD_WRITE_RETRY));
 
     // With |SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER|, the buffer may move.
     SSL_set_mode(client_.get(), SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
@@ -4333,7 +4329,7 @@ TEST_P(SSLVersionTest, SSLWriteRetry) {
     ASSERT_EQ(SSL_get_error(client_.get(),
                             SSL_write(client_.get(), data2, kChunkLen - 1)),
               SSL_ERROR_SSL);
-    ASSERT_TRUE(ExpectBadWriteRetry());
+    ASSERT_TRUE(ExpectSingleError(ERR_LIB_SSL, SSL_R_BAD_WRITE_RETRY));
 
     // Retrying with a larger buffer is legal.
     ASSERT_EQ(SSL_get_error(client_.get(),
@@ -4351,20 +4347,94 @@ TEST_P(SSLVersionTest, SSLWriteRetry) {
     // pending record, skip over that many bytes of input (on assumption they
     // are the same), and write the remainder. If SSL_MODE_ENABLE_PARTIAL_WRITE
     // is set, this will complete in two steps.
-    char data3[] = "_____!";
+    char data_longer[] = "_____!!!!!";
     if (enable_partial_write) {
-      ASSERT_EQ(SSL_write(client_.get(), data3, kChunkLen + 1), kChunkLen);
-      ASSERT_EQ(SSL_write(client_.get(), data3 + kChunkLen, 1), 1);
+      ASSERT_EQ(SSL_write(client_.get(), data_longer, 2 * kChunkLen),
+                kChunkLen);
+      ASSERT_EQ(SSL_write(client_.get(), data_longer + kChunkLen, kChunkLen),
+                kChunkLen);
     } else {
-      ASSERT_EQ(SSL_write(client_.get(), data3, kChunkLen + 1), kChunkLen + 1);
+      ASSERT_EQ(SSL_write(client_.get(), data_longer, 2 * kChunkLen),
+                2 * kChunkLen);
     }
 
     // Check the last write was correct. The data will be spread over two
     // records, so SSL_read returns twice.
     ASSERT_EQ(SSL_read(server_.get(), buf, sizeof(buf)), kChunkLen);
     ASSERT_EQ(OPENSSL_memcmp(buf, "hello", kChunkLen), 0);
-    ASSERT_EQ(SSL_read(server_.get(), buf, sizeof(buf)), 1);
-    ASSERT_EQ(buf[0], '!');
+    ASSERT_EQ(SSL_read(server_.get(), buf, sizeof(buf)), kChunkLen);
+    ASSERT_EQ(OPENSSL_memcmp(buf, "!!!!!", kChunkLen), 0);
+
+    // Fill the transport buffer again. This time only leave room for one
+    // record.
+    count = 0;
+    for (;;) {
+      int ret = SSL_write(client_.get(), data, kChunkLen);
+      if (ret <= 0) {
+        ASSERT_EQ(SSL_get_error(client_.get(), ret), SSL_ERROR_WANT_WRITE);
+        break;
+      }
+      ASSERT_EQ(ret, 5);
+      count++;
+    }
+    ASSERT_EQ(SSL_read(server_.get(), buf, sizeof(buf)), kChunkLen);
+    ASSERT_EQ(OPENSSL_memcmp(buf, "hello", kChunkLen), 0);
+    count--;
+
+    // Retry the last write, with a longer input. The first half is the most
+    // recently failed write, from filling the buffer. |SSL_write| should write
+    // that to the transport, and then attempt to write the second half.
+    int ret = SSL_write(client_.get(), data_longer, 2 * kChunkLen);
+    if (enable_partial_write) {
+      // If partial writes are allowed, the write will succeed partially.
+      ASSERT_EQ(ret, kChunkLen);
+
+      // Check the first half and make room for another record.
+      ASSERT_EQ(SSL_read(server_.get(), buf, sizeof(buf)), kChunkLen);
+      ASSERT_EQ(OPENSSL_memcmp(buf, "hello", kChunkLen), 0);
+      count--;
+
+      // Finish writing the input.
+      ASSERT_EQ(SSL_write(client_.get(), data_longer + kChunkLen, kChunkLen),
+                kChunkLen);
+    } else {
+      // Otherwise, although the first half made it to the transport, the second
+      // half is blocked.
+      ASSERT_EQ(ret, -1);
+      ASSERT_EQ(SSL_get_error(client_.get(), -1), SSL_ERROR_WANT_WRITE);
+
+      // Check the first half and make room for another record.
+      ASSERT_EQ(SSL_read(server_.get(), buf, sizeof(buf)), kChunkLen);
+      ASSERT_EQ(OPENSSL_memcmp(buf, "hello", kChunkLen), 0);
+      count--;
+
+      // Retrying with fewer bytes than previously attempted is an error. If the
+      // input length is less than the number of bytes successfully written, the
+      // check happens at a different point, with a different error.
+      //
+      // TODO(davidben): Should these cases use the same error?
+      ASSERT_EQ(
+          SSL_get_error(client_.get(),
+                        SSL_write(client_.get(), data_longer, kChunkLen - 1)),
+          SSL_ERROR_SSL);
+      ASSERT_TRUE(ExpectSingleError(ERR_LIB_SSL, SSL_R_BAD_LENGTH));
+
+      // Complete the write with the correct retry.
+      ASSERT_EQ(SSL_write(client_.get(), data_longer, 2 * kChunkLen),
+                2 * kChunkLen);
+    }
+
+    // Drain the input and ensure everything was written correctly.
+    for (unsigned i = 0; i < count; i++) {
+      ASSERT_EQ(SSL_read(server_.get(), buf, sizeof(buf)), kChunkLen);
+      ASSERT_EQ(OPENSSL_memcmp(buf, "hello", kChunkLen), 0);
+    }
+
+    // The final write is spread over two records.
+    ASSERT_EQ(SSL_read(server_.get(), buf, sizeof(buf)), kChunkLen);
+    ASSERT_EQ(OPENSSL_memcmp(buf, "hello", kChunkLen), 0);
+    ASSERT_EQ(SSL_read(server_.get(), buf, sizeof(buf)), kChunkLen);
+    ASSERT_EQ(OPENSSL_memcmp(buf, "!!!!!", kChunkLen), 0);
   }
 }
 
@@ -5138,157 +5208,6 @@ TEST(SSLTest, SelectNextProto) {
             SSL_select_next_proto(&result, &result_len, nullptr, 0,
                                   (const uint8_t *)"\1x\2yy\3zzz", 9));
   EXPECT_EQ(Bytes("x"), Bytes(result, result_len));
-}
-
-TEST(SSLTest, SealRecord) {
-  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLSv1_2_method())),
-      server_ctx(CreateContextWithTestCertificate(TLSv1_2_method()));
-  ASSERT_TRUE(client_ctx);
-  ASSERT_TRUE(server_ctx);
-
-  bssl::UniquePtr<SSL> client, server;
-  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
-                                     server_ctx.get()));
-
-  const std::vector<uint8_t> record = {1, 2, 3, 4, 5};
-  std::vector<uint8_t> prefix(
-      bssl::SealRecordPrefixLen(client.get(), record.size())),
-      body(record.size()),
-      suffix(bssl::SealRecordSuffixLen(client.get(), record.size()));
-  ASSERT_TRUE(bssl::SealRecord(client.get(), bssl::MakeSpan(prefix),
-                               bssl::MakeSpan(body), bssl::MakeSpan(suffix),
-                               record));
-
-  std::vector<uint8_t> sealed;
-  sealed.insert(sealed.end(), prefix.begin(), prefix.end());
-  sealed.insert(sealed.end(), body.begin(), body.end());
-  sealed.insert(sealed.end(), suffix.begin(), suffix.end());
-  std::vector<uint8_t> sealed_copy = sealed;
-
-  bssl::Span<uint8_t> plaintext;
-  size_t record_len;
-  uint8_t alert = 255;
-  EXPECT_EQ(bssl::OpenRecord(server.get(), &plaintext, &record_len, &alert,
-                             bssl::MakeSpan(sealed)),
-            bssl::OpenRecordResult::kOK);
-  EXPECT_EQ(record_len, sealed.size());
-  EXPECT_EQ(plaintext, record);
-  EXPECT_EQ(255, alert);
-}
-
-TEST(SSLTest, SealRecordInPlace) {
-  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLSv1_2_method())),
-      server_ctx(CreateContextWithTestCertificate(TLSv1_2_method()));
-  ASSERT_TRUE(client_ctx);
-  ASSERT_TRUE(server_ctx);
-
-  bssl::UniquePtr<SSL> client, server;
-  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
-                                     server_ctx.get()));
-
-  const std::vector<uint8_t> plaintext = {1, 2, 3, 4, 5};
-  std::vector<uint8_t> record = plaintext;
-  std::vector<uint8_t> prefix(
-      bssl::SealRecordPrefixLen(client.get(), record.size())),
-      suffix(bssl::SealRecordSuffixLen(client.get(), record.size()));
-  ASSERT_TRUE(bssl::SealRecord(client.get(), bssl::MakeSpan(prefix),
-                               bssl::MakeSpan(record), bssl::MakeSpan(suffix),
-                               record));
-  record.insert(record.begin(), prefix.begin(), prefix.end());
-  record.insert(record.end(), suffix.begin(), suffix.end());
-
-  bssl::Span<uint8_t> result;
-  size_t record_len;
-  uint8_t alert;
-  EXPECT_EQ(bssl::OpenRecord(server.get(), &result, &record_len, &alert,
-                             bssl::MakeSpan(record)),
-            bssl::OpenRecordResult::kOK);
-  EXPECT_EQ(record_len, record.size());
-  EXPECT_EQ(plaintext, result);
-}
-
-TEST(SSLTest, SealRecordTrailingData) {
-  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLSv1_2_method())),
-      server_ctx(CreateContextWithTestCertificate(TLSv1_2_method()));
-  ASSERT_TRUE(client_ctx);
-  ASSERT_TRUE(server_ctx);
-
-  bssl::UniquePtr<SSL> client, server;
-  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
-                                     server_ctx.get()));
-
-  const std::vector<uint8_t> plaintext = {1, 2, 3, 4, 5};
-  std::vector<uint8_t> record = plaintext;
-  std::vector<uint8_t> prefix(
-      bssl::SealRecordPrefixLen(client.get(), record.size())),
-      suffix(bssl::SealRecordSuffixLen(client.get(), record.size()));
-  ASSERT_TRUE(bssl::SealRecord(client.get(), bssl::MakeSpan(prefix),
-                               bssl::MakeSpan(record), bssl::MakeSpan(suffix),
-                               record));
-  record.insert(record.begin(), prefix.begin(), prefix.end());
-  record.insert(record.end(), suffix.begin(), suffix.end());
-  record.insert(record.end(), {5, 4, 3, 2, 1});
-
-  bssl::Span<uint8_t> result;
-  size_t record_len;
-  uint8_t alert;
-  EXPECT_EQ(bssl::OpenRecord(server.get(), &result, &record_len, &alert,
-                             bssl::MakeSpan(record)),
-            bssl::OpenRecordResult::kOK);
-  EXPECT_EQ(record_len, record.size() - 5);
-  EXPECT_EQ(plaintext, result);
-}
-
-TEST(SSLTest, SealRecordInvalidSpanSize) {
-  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLSv1_2_method())),
-      server_ctx(CreateContextWithTestCertificate(TLSv1_2_method()));
-  ASSERT_TRUE(client_ctx);
-  ASSERT_TRUE(server_ctx);
-
-  bssl::UniquePtr<SSL> client, server;
-  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
-                                     server_ctx.get()));
-
-  std::vector<uint8_t> record = {1, 2, 3, 4, 5};
-  std::vector<uint8_t> prefix(
-      bssl::SealRecordPrefixLen(client.get(), record.size())),
-      body(record.size()),
-      suffix(bssl::SealRecordSuffixLen(client.get(), record.size()));
-
-  auto expect_err = []() {
-    int err = ERR_get_error();
-    EXPECT_EQ(ERR_GET_LIB(err), ERR_LIB_SSL);
-    EXPECT_EQ(ERR_GET_REASON(err), SSL_R_BUFFER_TOO_SMALL);
-    ERR_clear_error();
-  };
-  EXPECT_FALSE(bssl::SealRecord(
-      client.get(), bssl::MakeSpan(prefix.data(), prefix.size() - 1),
-      bssl::MakeSpan(record), bssl::MakeSpan(suffix), record));
-  expect_err();
-  EXPECT_FALSE(bssl::SealRecord(
-      client.get(), bssl::MakeSpan(prefix.data(), prefix.size() + 1),
-      bssl::MakeSpan(record), bssl::MakeSpan(suffix), record));
-  expect_err();
-
-  EXPECT_FALSE(
-      bssl::SealRecord(client.get(), bssl::MakeSpan(prefix),
-                       bssl::MakeSpan(record.data(), record.size() - 1),
-                       bssl::MakeSpan(suffix), record));
-  expect_err();
-  EXPECT_FALSE(
-      bssl::SealRecord(client.get(), bssl::MakeSpan(prefix),
-                       bssl::MakeSpan(record.data(), record.size() + 1),
-                       bssl::MakeSpan(suffix), record));
-  expect_err();
-
-  EXPECT_FALSE(bssl::SealRecord(
-      client.get(), bssl::MakeSpan(prefix), bssl::MakeSpan(record),
-      bssl::MakeSpan(suffix.data(), suffix.size() - 1), record));
-  expect_err();
-  EXPECT_FALSE(bssl::SealRecord(
-      client.get(), bssl::MakeSpan(prefix), bssl::MakeSpan(record),
-      bssl::MakeSpan(suffix.data(), suffix.size() + 1), record));
-  expect_err();
 }
 
 // The client should gracefully handle no suitable ciphers being enabled.
@@ -7802,6 +7721,71 @@ TEST_P(SSLVersionTest, TicketSessionIDsMatch) {
   EXPECT_EQ(Bytes(SessionIDOf(client.get())), Bytes(SessionIDOf(server.get())));
 }
 
+static void WriteHelloRequest(SSL *server) {
+  // This function assumes TLS 1.2 with ChaCha20-Poly1305.
+  ASSERT_EQ(SSL_version(server), TLS1_2_VERSION);
+  ASSERT_EQ(SSL_CIPHER_get_cipher_nid(SSL_get_current_cipher(server)),
+            NID_chacha20_poly1305);
+
+  // Encrypt a HelloRequest.
+  uint8_t in[] = {SSL3_MT_HELLO_REQUEST, 0, 0, 0};
+#if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
+  // Fuzzer-mode records are unencrypted.
+  uint8_t record[5 + sizeof(in)];
+  record[0] = SSL3_RT_HANDSHAKE;
+  record[1] = 3;
+  record[2] = 3;  // TLS 1.2
+  record[3] = 0;
+  record[4] = sizeof(record) - 5;
+  memcpy(record + 5, in, sizeof(in));
+#else
+  // Extract key material from |server|.
+  static const size_t kKeyLen = 32;
+  static const size_t kNonceLen = 12;
+  ASSERT_EQ(2u * (kKeyLen + kNonceLen), SSL_get_key_block_len(server));
+  uint8_t key_block[2u * (kKeyLen + kNonceLen)];
+  ASSERT_TRUE(SSL_generate_key_block(server, key_block, sizeof(key_block)));
+  Span<uint8_t> key = MakeSpan(key_block + kKeyLen, kKeyLen);
+  Span<uint8_t> nonce =
+      MakeSpan(key_block + kKeyLen + kKeyLen + kNonceLen, kNonceLen);
+
+  uint8_t ad[13];
+  uint64_t seq = SSL_get_write_sequence(server);
+  for (size_t i = 0; i < 8; i++) {
+    // The nonce is XORed with the sequence number.
+    nonce[11 - i] ^= uint8_t(seq);
+    ad[7 - i] = uint8_t(seq);
+    seq >>= 8;
+  }
+
+  ad[8] = SSL3_RT_HANDSHAKE;
+  ad[9] = 3;
+  ad[10] = 3;  // TLS 1.2
+  ad[11] = 0;
+  ad[12] = sizeof(in);
+
+  uint8_t record[5 + sizeof(in) + 16];
+  record[0] = SSL3_RT_HANDSHAKE;
+  record[1] = 3;
+  record[2] = 3;  // TLS 1.2
+  record[3] = 0;
+  record[4] = sizeof(record) - 5;
+
+  ScopedEVP_AEAD_CTX aead;
+  ASSERT_TRUE(EVP_AEAD_CTX_init(aead.get(), EVP_aead_chacha20_poly1305(),
+                                key.data(), key.size(),
+                                EVP_AEAD_DEFAULT_TAG_LENGTH, nullptr));
+  size_t len;
+  ASSERT_TRUE(EVP_AEAD_CTX_seal(aead.get(), record + 5, &len,
+                                sizeof(record) - 5, nonce.data(), nonce.size(),
+                                in, sizeof(in), ad, sizeof(ad)));
+  ASSERT_EQ(sizeof(record) - 5, len);
+#endif  // BORINGSSL_UNSAFE_FUZZER_MODE
+
+  ASSERT_EQ(int(sizeof(record)),
+            BIO_write(SSL_get_wbio(server), record, sizeof(record)));
+}
+
 TEST_P(SSLTest, WriteWhileExplicitRenegotiate) {
   bssl::UniquePtr<SSL_CTX> ctx(CreateContextWithTestCertificate(TLS_method()));
   ASSERT_TRUE(ctx);
@@ -7835,64 +7819,7 @@ TEST_P(SSLTest, WriteWhileExplicitRenegotiate) {
     num_writes++;
   }
 
-  // Encrypt a HelloRequest.
-  uint8_t in[] = {SSL3_MT_HELLO_REQUEST, 0, 0, 0};
-#if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
-  // Fuzzer-mode records are unencrypted.
-  uint8_t record[5 + sizeof(in)];
-  record[0] = SSL3_RT_HANDSHAKE;
-  record[1] = 3;
-  record[2] = 3;  // TLS 1.2
-  record[3] = 0;
-  record[4] = sizeof(record) - 5;
-  memcpy(record + 5, in, sizeof(in));
-#else
-  // Extract key material from |server|.
-  static const size_t kKeyLen = 32;
-  static const size_t kNonceLen = 12;
-  ASSERT_EQ(2u * (kKeyLen + kNonceLen), SSL_get_key_block_len(server.get()));
-  uint8_t key_block[2u * (kKeyLen + kNonceLen)];
-  ASSERT_TRUE(
-      SSL_generate_key_block(server.get(), key_block, sizeof(key_block)));
-  Span<uint8_t> key = MakeSpan(key_block + kKeyLen, kKeyLen);
-  Span<uint8_t> nonce =
-      MakeSpan(key_block + kKeyLen + kKeyLen + kNonceLen, kNonceLen);
-
-  uint8_t ad[13];
-  uint64_t seq = SSL_get_write_sequence(server.get());
-  for (size_t i = 0; i < 8; i++) {
-    // The nonce is XORed with the sequence number.
-    nonce[11 - i] ^= uint8_t(seq);
-    ad[7 - i] = uint8_t(seq);
-    seq >>= 8;
-  }
-
-  ad[8] = SSL3_RT_HANDSHAKE;
-  ad[9] = 3;
-  ad[10] = 3;  // TLS 1.2
-  ad[11] = 0;
-  ad[12] = sizeof(in);
-
-  uint8_t record[5 + sizeof(in) + 16];
-  record[0] = SSL3_RT_HANDSHAKE;
-  record[1] = 3;
-  record[2] = 3;  // TLS 1.2
-  record[3] = 0;
-  record[4] = sizeof(record) - 5;
-
-  ScopedEVP_AEAD_CTX aead;
-  ASSERT_TRUE(EVP_AEAD_CTX_init(aead.get(), EVP_aead_chacha20_poly1305(),
-                                key.data(), key.size(),
-                                EVP_AEAD_DEFAULT_TAG_LENGTH, nullptr));
-  size_t len;
-  ASSERT_TRUE(EVP_AEAD_CTX_seal(aead.get(), record + 5, &len,
-                                sizeof(record) - 5, nonce.data(), nonce.size(),
-                                in, sizeof(in), ad, sizeof(ad)));
-  ASSERT_EQ(sizeof(record) - 5, len);
-#endif  // BORINGSSL_UNSAFE_FUZZER_MODE
-
-  ASSERT_EQ(int(sizeof(record)),
-            BIO_write(SSL_get_wbio(server.get()), record, sizeof(record)));
+  ASSERT_NO_FATAL_FAILURE(WriteHelloRequest(server.get()));
 
   // |SSL_read| should pick up the HelloRequest.
   uint8_t byte;
@@ -7934,6 +7861,57 @@ TEST_P(SSLTest, WriteWhileExplicitRenegotiate) {
   EXPECT_EQ(SSL_R_NO_RENEGOTIATION, ERR_GET_REASON(err));
 }
 
+TEST(SSLTest, ConnectionPropertiesDuringRenegotiate) {
+  // Configure known connection properties, so we can check against them.
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  bssl::UniquePtr<X509> cert = GetTestCertificate();
+  ASSERT_TRUE(cert);
+  bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
+  ASSERT_TRUE(key);
+  ASSERT_TRUE(SSL_CTX_use_certificate(ctx.get(), cert.get()));
+  ASSERT_TRUE(SSL_CTX_use_PrivateKey(ctx.get(), key.get()));
+  ASSERT_TRUE(SSL_CTX_set_min_proto_version(ctx.get(), TLS1_2_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(ctx.get(), TLS1_2_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_strict_cipher_list(
+      ctx.get(), "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256"));
+  ASSERT_TRUE(SSL_CTX_set1_curves_list(ctx.get(), "X25519"));
+  ASSERT_TRUE(SSL_CTX_set1_sigalgs_list(ctx.get(), "rsa_pkcs1_sha256"));
+
+  // Connect a client and server that accept renegotiation.
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(CreateClientAndServer(&client, &server, ctx.get(), ctx.get()));
+  SSL_set_renegotiate_mode(client.get(), ssl_renegotiate_freely);
+  ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
+
+  auto check_properties = [&] {
+    EXPECT_EQ(SSL_version(client.get()), TLS1_2_VERSION);
+    const SSL_CIPHER *cipher = SSL_get_current_cipher(client.get());
+    ASSERT_TRUE(cipher);
+    EXPECT_EQ(SSL_CIPHER_get_id(cipher),
+              uint32_t{TLS1_CK_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256});
+    EXPECT_EQ(SSL_get_curve_id(client.get()), SSL_CURVE_X25519);
+    EXPECT_EQ(SSL_get_peer_signature_algorithm(client.get()),
+              SSL_SIGN_RSA_PKCS1_SHA256);
+    bssl::UniquePtr<X509> peer(SSL_get_peer_certificate(client.get()));
+    ASSERT_TRUE(peer);
+    EXPECT_EQ(X509_cmp(cert.get(), peer.get()), 0);
+  };
+  check_properties();
+
+  // The server sends a HelloRequest.
+  ASSERT_NO_FATAL_FAILURE(WriteHelloRequest(server.get()));
+
+  // Reading from the client will consume the HelloRequest, start a
+  // renegotiation, and then block on a ServerHello from the server.
+  uint8_t byte;
+  ASSERT_EQ(-1, SSL_read(client.get(), &byte, 1));
+  ASSERT_EQ(SSL_ERROR_WANT_READ, SSL_get_error(client.get(), -1));
+
+  // Connection properties should continue to report values from the original
+  // handshake.
+  check_properties();
+}
 
 TEST(SSLTest, CopyWithoutEarlyData) {
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
@@ -8560,12 +8538,298 @@ TEST(SSLTest, NumTickets) {
   for (size_t num_tickets : {0, 1, 2, 3, 4, 5}) {
     SCOPED_TRACE(num_tickets);
     ASSERT_TRUE(SSL_CTX_set_num_tickets(server_ctx.get(), num_tickets));
+    EXPECT_EQ(SSL_CTX_get_num_tickets(server_ctx.get()), num_tickets);
     EXPECT_EQ(count_tickets(), num_tickets);
   }
 
   // Configuring too many tickets causes us to stop at some point.
   ASSERT_TRUE(SSL_CTX_set_num_tickets(server_ctx.get(), 100000));
+  EXPECT_EQ(SSL_CTX_get_num_tickets(server_ctx.get()), 16u);
   EXPECT_EQ(count_tickets(), 16u);
+}
+
+TEST(SSLTest, CertSubjectsToStack) {
+  const std::string kCert1 = R"(
+-----BEGIN CERTIFICATE-----
+MIIBzzCCAXagAwIBAgIJANlMBNpJfb/rMAkGByqGSM49BAEwRTELMAkGA1UEBhMC
+QVUxEzARBgNVBAgMClNvbWUtU3RhdGUxITAfBgNVBAoMGEludGVybmV0IFdpZGdp
+dHMgUHR5IEx0ZDAeFw0xNDA0MjMyMzIxNTdaFw0xNDA1MjMyMzIxNTdaMEUxCzAJ
+BgNVBAYTAkFVMRMwEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5l
+dCBXaWRnaXRzIFB0eSBMdGQwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAATmK2ni
+v2Wfl74vHg2UikzVl2u3qR4NRvvdqakendy6WgHn1peoChj5w8SjHlbifINI2xYa
+HPUdfvGULUvPciLBo1AwTjAdBgNVHQ4EFgQUq4TSrKuV8IJOFngHVVdf5CaNgtEw
+HwYDVR0jBBgwFoAUq4TSrKuV8IJOFngHVVdf5CaNgtEwDAYDVR0TBAUwAwEB/zAJ
+BgcqhkjOPQQBA0gAMEUCIQDyoDVeUTo2w4J5m+4nUIWOcAZ0lVfSKXQA9L4Vh13E
+BwIgfB55FGohg/B6dGh5XxSZmmi08cueFV7mHzJSYV51yRQ=
+-----END CERTIFICATE-----
+)";
+  const std::vector<uint8_t> kName1 = {
+      0x30, 0x45, 0x31, 0x0b, 0x30, 0x09, 0x06, 0x03, 0x55, 0x04, 0x06, 0x13,
+      0x02, 0x41, 0x55, 0x31, 0x13, 0x30, 0x11, 0x06, 0x03, 0x55, 0x04, 0x08,
+      0x0c, 0x0a, 0x53, 0x6f, 0x6d, 0x65, 0x2d, 0x53, 0x74, 0x61, 0x74, 0x65,
+      0x31, 0x21, 0x30, 0x1f, 0x06, 0x03, 0x55, 0x04, 0x0a, 0x0c, 0x18, 0x49,
+      0x6e, 0x74, 0x65, 0x72, 0x6e, 0x65, 0x74, 0x20, 0x57, 0x69, 0x64, 0x67,
+      0x69, 0x74, 0x73, 0x20, 0x50, 0x74, 0x79, 0x20, 0x4c, 0x74, 0x64};
+  const std::string kCert2 = R"(
+-----BEGIN CERTIFICATE-----
+MIICXjCCAcegAwIBAgIIWjO48ufpunYwDQYJKoZIhvcNAQELBQAwNjEaMBgGA1UE
+ChMRQm9yaW5nU1NMIFRFU1RJTkcxGDAWBgNVBAMTD0ludGVybWVkaWF0ZSBDQTAg
+Fw0xNTAxMDEwMDAwMDBaGA8yMTAwMDEwMTAwMDAwMFowMjEaMBgGA1UEChMRQm9y
+aW5nU1NMIFRFU1RJTkcxFDASBgNVBAMTC2V4YW1wbGUuY29tMIGfMA0GCSqGSIb3
+DQEBAQUAA4GNADCBiQKBgQDD0U0ZYgqShJ7oOjsyNKyVXEHqeafmk/bAoPqY/h1c
+oPw2E8KmeqiUSoTPjG5IXSblOxcqpbAXgnjPzo8DI3GNMhAf8SYNYsoH7gc7Uy7j
+5x8bUrisGnuTHqkqH6d4/e7ETJ7i3CpR8bvK16DggEvQTudLipz8FBHtYhFakfdh
+TwIDAQABo3cwdTAOBgNVHQ8BAf8EBAMCBaAwHQYDVR0lBBYwFAYIKwYBBQUHAwEG
+CCsGAQUFBwMCMAwGA1UdEwEB/wQCMAAwGQYDVR0OBBIEEKN5pvbur7mlXjeMEYA0
+4nUwGwYDVR0jBBQwEoAQjBpoqLV2211Xex+NFLIGozANBgkqhkiG9w0BAQsFAAOB
+gQBj/p+JChp//LnXWC1k121LM/ii7hFzQzMrt70bny406SGz9jAjaPOX4S3gt38y
+rhjpPukBlSzgQXFg66y6q5qp1nQTD1Cw6NkKBe9WuBlY3iYfmsf7WT8nhlT1CttU
+xNCwyMX9mtdXdQicOfNjIGUCD5OLV5PgHFPRKiHHioBAhg==
+-----END CERTIFICATE-----
+)";
+  const std::vector<uint8_t> kName2 = {
+      0x30, 0x32, 0x31, 0x1a, 0x30, 0x18, 0x06, 0x03, 0x55, 0x04, 0x0a,
+      0x13, 0x11, 0x42, 0x6f, 0x72, 0x69, 0x6e, 0x67, 0x53, 0x53, 0x4c,
+      0x20, 0x54, 0x45, 0x53, 0x54, 0x49, 0x4e, 0x47, 0x31, 0x14, 0x30,
+      0x12, 0x06, 0x03, 0x55, 0x04, 0x03, 0x13, 0x0b, 0x65, 0x78, 0x61,
+      0x6d, 0x70, 0x6c, 0x65, 0x2e, 0x63, 0x6f, 0x6d};
+
+  const struct {
+    std::vector<std::vector<uint8_t>> existing;
+    std::string pem;
+    std::vector<std::vector<uint8_t>> expected;
+  } kTests[] = {
+      // Do nothing.
+      {{}, "", {}},
+      // Append to an empty list, skipping duplicates.
+      {{}, kCert1 + kCert2 + kCert1, {kName1, kName2}},
+      // One of the names was already present.
+      {{kName1}, kCert1 + kCert2, {kName1, kName2}},
+      // Both names were already present.
+      {{kName1, kName2}, kCert1 + kCert2, {kName1, kName2}},
+      // Preserve existing duplicates.
+      {{kName1, kName2, kName2}, kCert1 + kCert2, {kName1, kName2, kName2}},
+  };
+  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(kTests); i++) {
+    SCOPED_TRACE(i);
+    const auto &t = kTests[i];
+
+    bssl::UniquePtr<STACK_OF(X509_NAME)> stack(sk_X509_NAME_new_null());
+    ASSERT_TRUE(stack);
+    for (const auto& name : t.existing) {
+      const uint8_t *inp = name.data();
+      bssl::UniquePtr<X509_NAME> name_obj(
+          d2i_X509_NAME(nullptr, &inp, name.size()));
+      ASSERT_TRUE(name_obj);
+      EXPECT_EQ(inp, name.data() + name.size());
+      ASSERT_TRUE(bssl::PushToStack(stack.get(), std::move(name_obj)));
+    }
+
+    bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(t.pem.data(), t.pem.size()));
+    ASSERT_TRUE(bio);
+    ASSERT_TRUE(SSL_add_bio_cert_subjects_to_stack(stack.get(), bio.get()));
+
+    // The function should have left |stack|'s comparison function alone.
+    EXPECT_EQ(nullptr, sk_X509_NAME_set_cmp_func(stack.get(), nullptr));
+
+    std::vector<std::vector<uint8_t>> expected = t.expected, result;
+    for (X509_NAME *name : stack.get()) {
+      uint8_t *der = nullptr;
+      int der_len = i2d_X509_NAME(name, &der);
+      ASSERT_GE(der_len, 0);
+      result.push_back(std::vector<uint8_t>(der, der + der_len));
+      OPENSSL_free(der);
+    }
+
+    // |SSL_add_bio_cert_subjects_to_stack| does not return the output in a
+    // well-defined order.
+    std::sort(expected.begin(), expected.end());
+    std::sort(result.begin(), result.end());
+    EXPECT_EQ(result, expected);
+  }
+}
+
+#if defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE)
+TEST(SSLTest, EmptyClientCAList) {
+  // Use /dev/null on POSIX systems as an empty file.
+  bssl::UniquePtr<STACK_OF(X509_NAME)> names(
+      SSL_load_client_CA_file("/dev/null"));
+  EXPECT_FALSE(names);
+}
+#endif  // OPENSSL_LINUX || OPENSSL_APPLE
+
+TEST(SSLTest, EmptyWriteBlockedOnHandshakeData) {
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx =
+      CreateContextWithTestCertificate(TLS_method());
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(server_ctx);
+  // Configure only TLS 1.3. This test requires post-handshake NewSessionTicket.
+  ASSERT_TRUE(SSL_CTX_set_min_proto_version(client_ctx.get(), TLS1_3_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), TLS1_3_VERSION));
+
+  // Connect a client and server with tiny buffer between the two.
+  bssl::UniquePtr<SSL> client(SSL_new(client_ctx.get())),
+      server(SSL_new(server_ctx.get()));
+  ASSERT_TRUE(client);
+  ASSERT_TRUE(server);
+  SSL_set_connect_state(client.get());
+  SSL_set_accept_state(server.get());
+  BIO *bio1, *bio2;
+  ASSERT_TRUE(BIO_new_bio_pair(&bio1, 1, &bio2, 1));
+  SSL_set_bio(client.get(), bio1, bio1);
+  SSL_set_bio(server.get(), bio2, bio2);
+  ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
+
+  // We defer NewSessionTicket to the first write, so the server has a pending
+  // NewSessionTicket. See https://boringssl-review.googlesource.com/34948. This
+  // means an empty write will flush the ticket. However, the transport only
+  // allows one byte through, so this will fail with |SSL_ERROR_WANT_WRITE|.
+  int ret = SSL_write(server.get(), nullptr, 0);
+  ASSERT_EQ(ret, -1);
+  ASSERT_EQ(SSL_get_error(server.get(), ret), SSL_ERROR_WANT_WRITE);
+
+  // Attempting to write non-zero data should not trip |SSL_R_BAD_WRITE_RETRY|.
+  const uint8_t kData[] = {'h', 'e', 'l', 'l', 'o'};
+  ret = SSL_write(server.get(), kData, sizeof(kData));
+  ASSERT_EQ(ret, -1);
+  ASSERT_EQ(SSL_get_error(server.get(), ret), SSL_ERROR_WANT_WRITE);
+
+  // Byte by byte, the data should eventually get through.
+  uint8_t buf[sizeof(kData)];
+  for (;;) {
+    ret = SSL_read(client.get(), buf, sizeof(buf));
+    ASSERT_EQ(ret, -1);
+    ASSERT_EQ(SSL_get_error(client.get(), ret), SSL_ERROR_WANT_READ);
+
+    ret = SSL_write(server.get(), kData, sizeof(kData));
+    if (ret > 0) {
+      ASSERT_EQ(ret, 5);
+      break;
+    }
+    ASSERT_EQ(ret, -1);
+    ASSERT_EQ(SSL_get_error(server.get(), ret), SSL_ERROR_WANT_WRITE);
+  }
+
+  ret = SSL_read(client.get(), buf, sizeof(buf));
+  ASSERT_EQ(ret, static_cast<int>(sizeof(kData)));
+  ASSERT_EQ(Bytes(buf, ret), Bytes(kData));
+}
+
+// Test that |SSL_ERROR_SYSCALL| continues to work after a close_notify.
+TEST(SSLTest, ErrorSyscallAfterCloseNotify) {
+  // Make a custom |BIO| where writes fail, but without pushing to the error
+  // queue.
+  bssl::UniquePtr<BIO_METHOD> method(BIO_meth_new(0, nullptr));
+  ASSERT_TRUE(method);
+  BIO_meth_set_create(method.get(), [](BIO *b) -> int {
+    BIO_set_init(b, 1);
+    return 1;
+  });
+  static bool write_failed = false;
+  BIO_meth_set_write(method.get(), [](BIO *, const char *, int) -> int {
+    // Fail the operation and don't add to the error queue.
+    write_failed = true;
+    return -1;
+  });
+  bssl::UniquePtr<BIO> wbio_silent_error(BIO_new(method.get()));
+  ASSERT_TRUE(wbio_silent_error);
+
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx =
+      CreateContextWithTestCertificate(TLS_method());
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(server_ctx);
+  bssl::UniquePtr<SSL> client, server;
+  EXPECT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                     server_ctx.get()));
+
+  // Replace the write |BIO| with |wbio_silent_error|.
+  SSL_set0_wbio(client.get(), wbio_silent_error.release());
+
+  // Writes should fail. There is nothing in the error queue, so
+  // |SSL_ERROR_SYSCALL| indicates the caller needs to check out-of-band.
+  const uint8_t data[1] = {0};
+  int ret = SSL_write(client.get(), data, sizeof(data));
+  EXPECT_EQ(ret, -1);
+  EXPECT_EQ(SSL_get_error(client.get(), ret), SSL_ERROR_SYSCALL);
+  EXPECT_TRUE(write_failed);
+  write_failed = false;
+
+  // Send a close_notify from the server. It should return 0 because
+  // close_notify was sent, but not received. Confusingly, this is a success
+  // output for |SSL_shutdown|'s API.
+  EXPECT_EQ(SSL_shutdown(server.get()), 0);
+
+  // Read the close_notify on the client.
+  uint8_t buf[1];
+  ret = SSL_read(client.get(), buf, sizeof(buf));
+  EXPECT_EQ(ret, 0);
+  EXPECT_EQ(SSL_get_error(client.get(), ret), SSL_ERROR_ZERO_RETURN);
+
+  // Further calls to |SSL_read| continue to report |SSL_ERROR_ZERO_RETURN|.
+  ret = SSL_read(client.get(), buf, sizeof(buf));
+  EXPECT_EQ(ret, 0);
+  EXPECT_EQ(SSL_get_error(client.get(), ret), SSL_ERROR_ZERO_RETURN);
+
+  // Although the client has seen close_notify, it should continue to report
+  // |SSL_ERROR_SYSCALL| when its writes fail.
+  ret = SSL_write(client.get(), data, sizeof(data));
+  EXPECT_EQ(ret, -1);
+  EXPECT_EQ(SSL_get_error(client.get(), ret), SSL_ERROR_SYSCALL);
+  EXPECT_TRUE(write_failed);
+  write_failed = false;
+
+  // Cause |BIO_write| to fail with a return value of zero instead.
+  // |SSL_get_error| should not misinterpret this as a close_notify.
+  //
+  // This is not actually a correct implementation of |BIO_write|, but the rest
+  // of the code treats zero from |BIO_write| as an error, so ensure it does so
+  // correctly. Fixing https://crbug.com/boringssl/503 will make this case moot.
+  BIO_meth_set_write(method.get(), [](BIO *, const char *, int) -> int {
+    write_failed = true;
+    return 0;
+  });
+  ret = SSL_write(client.get(), data, sizeof(data));
+  EXPECT_EQ(ret, 0);
+  EXPECT_EQ(SSL_get_error(client.get(), ret), SSL_ERROR_SYSCALL);
+  EXPECT_TRUE(write_failed);
+  write_failed = false;
+}
+
+// Test that |SSL_shutdown|, when quiet shutdown is enabled, simulates receiving
+// a close_notify, down to |SSL_read| reporting |SSL_ERROR_ZERO_RETURN|.
+TEST(SSLTest, QuietShutdown) {
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx =
+      CreateContextWithTestCertificate(TLS_method());
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(server_ctx);
+  SSL_CTX_set_quiet_shutdown(server_ctx.get(), 1);
+  bssl::UniquePtr<SSL> client, server;
+  EXPECT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                     server_ctx.get()));
+
+  // Quiet shutdown is enabled, so |SSL_shutdown| on the server should
+  // immediately return that bidirectional shutdown "completed".
+  EXPECT_EQ(SSL_shutdown(server.get()), 1);
+
+  // Shut down writes so the client gets an EOF.
+  EXPECT_TRUE(BIO_shutdown_wr(SSL_get_wbio(server.get())));
+
+  // Confirm no close notify was actually sent. Client reads should report a
+  // transport EOF, not a close_notify. (Both have zero return, but
+  // |SSL_get_error| is different.)
+  char buf[1];
+  int ret = SSL_read(client.get(), buf, sizeof(buf));
+  EXPECT_EQ(ret, 0);
+  EXPECT_EQ(SSL_get_error(client.get(), ret), SSL_ERROR_SYSCALL);
+
+  // The server believes bidirectional shutdown completed, so reads should
+  // replay the (simulated) close_notify.
+  ret = SSL_read(server.get(), buf, sizeof(buf));
+  EXPECT_EQ(ret, 0);
+  EXPECT_EQ(SSL_get_error(server.get(), ret), SSL_ERROR_ZERO_RETURN);
 }
 
 }  // namespace

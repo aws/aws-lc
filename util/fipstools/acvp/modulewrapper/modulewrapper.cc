@@ -28,6 +28,7 @@
 #include <openssl/bn.h>
 #include <openssl/cipher.h>
 #include <openssl/cmac.h>
+#include <openssl/ctrdrbg.h>
 #include <openssl/dh.h>
 #include <openssl/digest.h>
 #include <openssl/ec.h>
@@ -41,6 +42,7 @@
 #include <openssl/rsa.h>
 #include <openssl/sha.h>
 #include <openssl/span.h>
+#include <openssl/hkdf.h>
 
 #include "../../../../crypto/fipsmodule/ec/internal.h"
 #include "../../../../crypto/fipsmodule/rand/internal.h"
@@ -391,6 +393,50 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
         "macLen": [{
           "min": 32, "max": 256, "increment": 8
         }]
+      },
+      {
+        "vsId": 0,
+        "algorithm": "PBKDF",
+        "revision": "1.0",
+        "capabilities": [
+          {
+            "iterationCount": [
+              {
+                "min": 1,
+                "max": 10000,
+                "increment": 1
+              }
+            ],
+            "passwordLen": [
+              {
+                "min": 8,
+                "max": 64,
+                "increment": 1
+              }
+            ],
+            "saltLen": [
+              {
+                "min": 128,
+                "max": 512,
+                "increment": 8
+              }
+            ],
+            "keyLen": [
+              {
+                "min": 112,
+                "max": 2048,
+                "increment": 8
+              }
+            ],
+            "hmacAlg": [
+              "SHA-1",
+              "SHA2-224",
+              "SHA2-256",
+              "SHA2-384",
+              "SHA2-512"
+            ]
+          }
+        ]
       },
       {
         "algorithm": "ctrDRBG",
@@ -821,6 +867,37 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
           "SHA2-384",
           "SHA2-512"
         ]
+      },
+      {
+        "vsId": 0,
+        "algorithm": "KDA",
+        "mode": "HKDF",
+        "revision": "Sp800-56Cr1",
+        "isSample": true,
+        "fixedInfoPattern": "uPartyInfo||vPartyInfo||l",
+        "encoding": [
+          "concatenation"
+        ],
+        "hmacAlg": [
+          "SHA-1",
+          "SHA2-224",
+          "SHA2-256",
+          "SHA2-384",
+          "SHA2-512"
+        ],
+        "macSaltMethods": [
+          "default",
+          "random"
+        ],
+        "l": 1024,
+        "z": [
+          {
+            "min": 224,
+            "max": 65536,
+            "increment": 8
+          }
+        ],
+        "performMultiExpansionTests": false
       },
       {
         "algorithm": "KAS-ECC-SSC",
@@ -2025,6 +2102,59 @@ static bool FFDH(const Span<const uint8_t> args[], ReplyCallback write_reply) {
   return write_reply({BIGNUMBytes(DH_get0_pub_key(dh.get())), z});
 }
 
+static bool PBKDF(const Span<const uint8_t> args[], ReplyCallback write_reply) {
+  const Span<const uint8_t> password = args[0];
+  const Span<const uint8_t> salt = args[1];
+  const Span<const uint8_t> iterations = args[2];
+  const Span<const uint8_t> hmac_name = args[3];
+  const Span<const uint8_t> key_len = args[4];
+
+  // Read bit data into useable variables
+  unsigned int iterations_uint;
+  memcpy(&iterations_uint, iterations.data(), sizeof(iterations_uint));
+  unsigned int key_len_uint;
+  memcpy(&key_len_uint, key_len.data(), sizeof(key_len_uint));
+
+  key_len_uint = key_len_uint/8;
+
+  // Get the SHA algorithm we want from the name provided to us
+  const EVP_MD* hmac_alg = HashFromName(hmac_name);
+
+  std::vector<uint8_t> out_key(key_len_uint);
+  if (!PKCS5_PBKDF2_HMAC(reinterpret_cast<const char*>(password.data()),
+                          password.size(),
+                          salt.data(), salt.size(),
+                          iterations_uint, hmac_alg,
+                          key_len_uint, out_key.data())) {
+    return false;
+  }
+
+  return write_reply({Span<const uint8_t>(out_key)});
+}
+
+template <const EVP_MD *(MDFunc)()>
+static bool HKDF(const Span<const uint8_t> args[], ReplyCallback write_reply) {
+  const Span<const uint8_t> key = args[0];
+  const Span<const uint8_t> salt = args[1];
+  const Span<const uint8_t> info = args[2];
+  const Span<const uint8_t> out_bytes = args[3];
+  const EVP_MD *md = MDFunc();
+
+  unsigned int out_bytes_uint;
+  memcpy(&out_bytes_uint, out_bytes.data(), sizeof(out_bytes_uint));
+
+
+  std::vector<uint8_t> out_key(out_bytes_uint);
+  if (!::HKDF(out_key.data(), out_bytes_uint, md,
+              key.data(), key.size(),
+              salt.data(), salt.size(),
+              info.data(), info.size())) {
+    return false;
+  }
+
+  return write_reply({Span<const uint8_t>(out_key)});
+}
+
 static struct {
   char name[kMaxNameLength + 1];
   uint8_t num_expected_args;
@@ -2109,6 +2239,12 @@ static struct {
     {"ECDH/P-384", 3, ECDH<NID_secp384r1>},
     {"ECDH/P-521", 3, ECDH<NID_secp521r1>},
     {"FFDH", 6, FFDH},
+    {"PBKDF", 5, PBKDF},
+    {"KDA/HKDF/SHA-1", 4, HKDF<EVP_sha1>},
+    {"KDA/HKDF/SHA2-224", 4, HKDF<EVP_sha224>},
+    {"KDA/HKDF/SHA2-256", 4, HKDF<EVP_sha256>},
+    {"KDA/HKDF/SHA2-384", 4, HKDF<EVP_sha384>},
+    {"KDA/HKDF/SHA2-512", 4, HKDF<EVP_sha512>},
 };
 
 Handler FindHandler(Span<const Span<const uint8_t>> args) {

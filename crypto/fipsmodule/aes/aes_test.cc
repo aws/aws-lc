@@ -290,7 +290,7 @@ TEST(AESTest, ABI) {
     }
 
     if (bsaes_capable()) {
-      vpaes_set_encrypt_key(kKey, bits, &key);
+      ASSERT_EQ(vpaes_set_encrypt_key(kKey, bits, &key), 0);
       CHECK_ABI(vpaes_encrypt_key_to_bsaes, &key, &key);
       for (size_t blocks : block_counts) {
         SCOPED_TRACE(blocks);
@@ -299,7 +299,7 @@ TEST(AESTest, ABI) {
         }
       }
 
-      vpaes_set_decrypt_key(kKey, bits, &key);
+      ASSERT_EQ(vpaes_set_decrypt_key(kKey, bits, &key), 0);
       CHECK_ABI(vpaes_decrypt_key_to_bsaes, &key, &key);
       for (size_t blocks : block_counts) {
         SCOPED_TRACE(blocks);
@@ -309,7 +309,7 @@ TEST(AESTest, ABI) {
     }
 
     if (vpaes_capable()) {
-      CHECK_ABI(vpaes_set_encrypt_key, kKey, bits, &key);
+      ASSERT_EQ(CHECK_ABI(vpaes_set_encrypt_key, kKey, bits, &key), 0);
       CHECK_ABI(vpaes_encrypt, block, block, &key);
       for (size_t blocks : block_counts) {
         SCOPED_TRACE(blocks);
@@ -322,7 +322,7 @@ TEST(AESTest, ABI) {
 #endif
       }
 
-      CHECK_ABI(vpaes_set_decrypt_key, kKey, bits, &key);
+      ASSERT_EQ(CHECK_ABI(vpaes_set_decrypt_key, kKey, bits, &key), 0);
       CHECK_ABI(vpaes_decrypt, block, block, &key);
 #if defined(VPAES_CBC)
       for (size_t blocks : block_counts) {
@@ -334,7 +334,7 @@ TEST(AESTest, ABI) {
     }
 
     if (hwaes_capable()) {
-      CHECK_ABI(aes_hw_set_encrypt_key, kKey, bits, &key);
+      ASSERT_EQ(CHECK_ABI(aes_hw_set_encrypt_key, kKey, bits, &key), 0);
       CHECK_ABI(aes_hw_encrypt, block, block, &key);
       for (size_t blocks : block_counts) {
         SCOPED_TRACE(blocks);
@@ -347,7 +347,7 @@ TEST(AESTest, ABI) {
 #endif
       }
 
-      CHECK_ABI(aes_hw_set_decrypt_key, kKey, bits, &key);
+      ASSERT_EQ(CHECK_ABI(aes_hw_set_decrypt_key, kKey, bits, &key), 0);
       CHECK_ABI(aes_hw_decrypt, block, block, &key);
       for (size_t blocks : block_counts) {
         SCOPED_TRACE(blocks);

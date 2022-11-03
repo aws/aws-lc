@@ -32,11 +32,6 @@
 
 BSSL_NAMESPACE_BEGIN
 
-// kMaxKeyUpdates is the number of consecutive KeyUpdates that will be
-// processed. Without this limit an attacker could force unbounded processing
-// without being able to return application data.
-static const uint8_t kMaxKeyUpdates = 32;
-
 const uint8_t kHelloRetryRequest[SSL3_RANDOM_SIZE] = {
     0xcf, 0x21, 0xad, 0x74, 0xe5, 0x9a, 0x61, 0x11, 0xbe, 0x1d, 0x8c,
     0x02, 0x1e, 0x65, 0xb8, 0x91, 0xc2, 0xa2, 0x11, 0x16, 0x7a, 0xbb,
@@ -576,7 +571,6 @@ enum ssl_private_key_result_t tls13_add_certificate_verify(SSL_HANDSHAKE *hs) {
     return ssl_private_key_failure;
   }
 
-  // Sign the digest.
   CBB child;
   const size_t max_sig_len = EVP_PKEY_size(hs->local_pubkey.get());
   uint8_t *sig;
@@ -595,40 +589,10 @@ enum ssl_private_key_result_t tls13_add_certificate_verify(SSL_HANDSHAKE *hs) {
     return ssl_private_key_failure;
   }
 
-  SSL_HANDSHAKE_HINTS *const hints = hs->hints.get();
-  Array<uint8_t> spki;
-  if (hints) {
-    ScopedCBB spki_cbb;
-    if (!CBB_init(spki_cbb.get(), 64) ||
-        !EVP_marshal_public_key(spki_cbb.get(), hs->local_pubkey.get()) ||
-        !CBBFinishArray(spki_cbb.get(), &spki)) {
-      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
-      return ssl_private_key_failure;
-    }
-  }
-
-  if (hints && !hs->hints_requested &&
-      signature_algorithm == hints->signature_algorithm &&
-      MakeConstSpan(msg) == hints->signature_input &&
-      MakeConstSpan(spki) == hints->signature_spki &&
-      !hints->signature.empty() && hints->signature.size() <= max_sig_len) {
-    // Signature algorithm and input both match. Reuse the signature from hints.
-    sig_len = hints->signature.size();
-    OPENSSL_memcpy(sig, hints->signature.data(), sig_len);
-  } else {
-    enum ssl_private_key_result_t sign_result = ssl_private_key_sign(
-        hs, sig, &sig_len, max_sig_len, signature_algorithm, msg);
-    if (sign_result != ssl_private_key_success) {
-      return sign_result;
-    }
-    if (hints && hs->hints_requested) {
-      hints->signature_algorithm = signature_algorithm;
-      hints->signature_input = std::move(msg);
-      hints->signature_spki = std::move(spki);
-      if (!hints->signature.CopyFrom(MakeSpan(sig, sig_len))) {
-        return ssl_private_key_failure;
-      }
-    }
+  enum ssl_private_key_result_t sign_result = ssl_private_key_sign(
+      hs, sig, &sig_len, max_sig_len, signature_algorithm, msg);
+  if (sign_result != ssl_private_key_success) {
+    return sign_result;
   }
 
   if (!CBB_did_write(&child, sig_len) ||
@@ -708,18 +672,14 @@ static bool tls13_receive_key_update(SSL *ssl, const SSLMessage &msg) {
 
 bool tls13_post_handshake(SSL *ssl, const SSLMessage &msg) {
   if (msg.type == SSL3_MT_KEY_UPDATE) {
-    ssl->s3->key_update_count++;
-    if (ssl->quic_method != nullptr ||
-        ssl->s3->key_update_count > kMaxKeyUpdates) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_TOO_MANY_KEY_UPDATES);
+    if (ssl->quic_method != nullptr) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
       return false;
     }
 
     return tls13_receive_key_update(ssl, msg);
   }
-
-  ssl->s3->key_update_count = 0;
 
   if (msg.type == SSL3_MT_NEW_SESSION_TICKET && !ssl->server) {
     return tls13_process_new_session_ticket(ssl, msg);

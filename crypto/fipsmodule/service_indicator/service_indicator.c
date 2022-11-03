@@ -1,5 +1,5 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: Apache-2.0 OR ISC
 
 #include <openssl/crypto.h>
 #include <openssl/service_indicator.h>
@@ -168,13 +168,13 @@ static int is_ec_fips_approved(int curve_nid) {
 
 // is_md_fips_approved_for_signing returns one if the given message digest type
 // is FIPS approved for signing, and zero otherwise.
-// TODO (CryptoAlg-1212): FIPS validate SHA512/256 for signing.
 static int is_md_fips_approved_for_signing(int md_type) {
   switch (md_type) {
     case NID_sha224:
     case NID_sha256:
     case NID_sha384:
     case NID_sha512:
+    case NID_sha512_256:
       return 1;
     default:
       return 0;
@@ -183,7 +183,6 @@ static int is_md_fips_approved_for_signing(int md_type) {
 
 // is_md_fips_approved_for_verifying returns one if the given message digest
 // type is FIPS approved for verifying, and zero otherwise.
-// TODO (CryptoAlg-1212): FIPS validate SHA512/256 for verifying.
 static int is_md_fips_approved_for_verifying(int md_type) {
   switch (md_type) {
     case NID_sha1:
@@ -191,6 +190,7 @@ static int is_md_fips_approved_for_verifying(int md_type) {
     case NID_sha256:
     case NID_sha384:
     case NID_sha512:
+    case NID_sha512_256:
       return 1;
     default:
       return 0;
@@ -330,10 +330,44 @@ void EVP_DigestSign_verify_service_indicator(const EVP_MD_CTX *ctx) {
                                       is_md_fips_approved_for_signing);
 }
 
-// TODO (CryptoAlg-1212): FIPS validate SHA512/256 for HMAC.
 void HMAC_verify_service_indicator(const EVP_MD *evp_md) {
-  // HMAC with SHA1, SHA224, SHA256, SHA384, and SHA512 are approved.
   switch (evp_md->type){
+    case NID_sha1:
+    case NID_sha224:
+    case NID_sha256:
+    case NID_sha384:
+    case NID_sha512:
+    case NID_sha512_256:
+      FIPS_service_indicator_update_state();
+      break;
+    default:
+      break;
+  }
+}
+
+void HKDF_verify_service_indicator(const EVP_MD *evp_md,
+  const uint8_t *salt, size_t salt_len, size_t info_len) {
+  // HKDF with SHA1, SHA224, SHA256, SHA384, and SHA512 are approved.
+  //
+  // FIPS 140 parameter requirements, per NIST SP 800-108 Rev. 1:
+  //
+  // It is recommended that the length of a KDK used by a KDF be at least as
+  // large as the targeted security strength (in bits) of any application that
+  // will be supported by the use of the derived keying material.
+  //
+  // We can't test for that, as we don't know what the HKDF output will be
+  // used for.
+  //
+  // Per SP800-56Crev2, the salt cannot be empty in FIPS mode; a NULL salt
+  // is replaced in the HMAC with a buffer filled with NUL bytes (0x00),
+  // when |evp_md| is not NULL, so that's OK. Note that we reach this check
+  // if |HMAC| succeeds which cannot be the case if |evp_md| == NULL; it would
+  // have failed in |HMAC_Init_ex|.
+  if ((salt != NULL && salt_len == 0) || (info_len == 0)) {
+    return;
+  }
+
+  switch (evp_md->type) {
     case NID_sha1:
     case NID_sha224:
     case NID_sha256:
@@ -343,6 +377,52 @@ void HMAC_verify_service_indicator(const EVP_MD *evp_md) {
       break;
     default:
       break;
+  }
+}
+
+void PBKDF2_verify_service_indicator(const EVP_MD *evp_md, size_t password_len,
+                                    size_t salt_len, unsigned iterations) {
+  // PBKDF with SHA1, SHA224, SHA256, SHA384, and SHA512 are approved.
+  //
+  // FIPS 140 parameter requirements, per NIST SP800-132:
+  //
+  // * password_len >= 14 bytes (112 bits)
+  // * salt_len >= 16 bytes (128 bits), assuming its randomly generated
+  // * iterations "as large as possible, as long as the time required to
+  //   generate the key using the entered password is acceptable for the users."
+  //   (clearly we can't test for "as large as possible"); NIST SP800-132
+  //   suggests >= 1000, but it's still not a requirement.
+  switch (evp_md->type) {
+    case NID_sha1:
+    case NID_sha224:
+    case NID_sha256:
+    case NID_sha384:
+    case NID_sha512:
+      if (password_len >= 14 && salt_len >= 16 && iterations > 0) {
+        FIPS_service_indicator_update_state();
+      }
+      break;
+    default:
+      break;
+  }
+}
+
+void SSHKDF_verify_service_indicator(const EVP_MD *evp_md) {
+  // FIPS 180-4 allows SHA1, and SHA2.
+  //
+  // This KDF should only be called from SSH client/server code; it's not a
+  // general-purpose KDF and is only Approved for FIPS 140-3 use specifically
+  // in SSH. There's no way to test this requirement from here.
+  switch (evp_md->type) {
+    case NID_sha1:
+    case NID_sha224:
+    case NID_sha256:
+    case NID_sha384:
+    case NID_sha512:
+      FIPS_service_indicator_update_state();
+      break;
+    default:
+    break;
   }
 }
 
