@@ -337,6 +337,10 @@ static int ec_key_coordinates_range_check(const EC_KEY *key) {
  
   BIGNUM *x = BN_new();
   BIGNUM *y = BN_new();
+  if (x == NULL || y == NULL) {
+    OPENSSL_PUT_ERROR(EC, ERR_R_EC_LIB);
+    goto end;
+  }
 
   // Extract the x and y coordinate.
   EC_POINT *pub_key = key->pub_key;
