@@ -220,6 +220,26 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
         }]
       },
       {
+          "algorithm": "SHA3-224",
+          "revision": "2.0",
+          "messageLength": [{"min": 0, "max": 65536, "increment": 1}],
+      },
+      {
+          "algorithm": "SHA3-256",
+          "revision": "2.0",
+          "messageLength": [{"min": 0, "max": 65536, "increment": 1}],
+      },
+      {
+          "algorithm": "SHA3-384",
+          "revision": "2.0",
+          "messageLength": [{"min": 0, "max": 65536, "increment": 1}],
+      },
+      {
+          "algorithm": "SHA3-512",
+          "revision": "2.0",
+          "messageLength": [{"min": 0, "max": 65536, "increment": 1}],
+      },
+      {
         "algorithm": "SHA-1",
         "revision": "1.0",
         "messageLength": [{
