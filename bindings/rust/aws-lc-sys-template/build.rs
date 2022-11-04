@@ -16,10 +16,10 @@
 // Modifications Copyright Amazon.com, Inc. or its affiliates. See GitHub history for details.
 
 use bindgen::callbacks::ParseCallbacks;
-use std::env;
 use std::fmt::Debug;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::{env, fs};
 
 #[derive(Debug)]
 struct StripPrefixCallback {
@@ -131,9 +131,19 @@ impl OutputLibType {
             OutputLibType::Dynamic => "dylib",
         }
     }
+    fn lib_extension(&self) -> &str {
+        match self {
+            OutputLibType::Static => "a",
+            OutputLibType::Dynamic => "so",
+        }
+    }
 }
 
 impl OutputLib {
+    fn filename(&self, libtype: OutputLibType, prefix: Option<&str>) -> String {
+        format!("lib{}.{}", &self.libname(prefix), libtype.lib_extension())
+    }
+
     fn libname(&self, prefix: Option<&str>) -> String {
         format!(
             "{}{}",
@@ -152,6 +162,10 @@ impl OutputLib {
     fn locate_dir(&self, path: &Path) -> PathBuf {
         path.join(Path::new(&format!("build/{}", self.libname(None))))
             .join(get_platform_output_path())
+    }
+
+    fn locate_file(&self, path: &Path, libtype: OutputLibType, prefix: Option<&str>) -> PathBuf {
+        self.locate_dir(path).join(self.filename(libtype, prefix))
     }
 }
 
@@ -241,14 +255,18 @@ fn main() -> Result<(), String> {
 
     let aws_lc_dir = build_aws_lc();
 
+    let lib_file = Crypto.locate_file(&aws_lc_dir, Static, None);
+    let prefixed_lib_file = Crypto.locate_file(&aws_lc_dir, Static, Some(&prefix));
+    fs::rename(lib_file, prefixed_lib_file).expect("Unexpected error: Library not found");
+
     let libcrypto_dir = Crypto.locate_dir(&aws_lc_dir);
     println!("cargo:rustc-link-search=native={}", libcrypto_dir.display());
+
     println!(
         "cargo:rustc-link-lib={}={}",
         Static.rust_lib_type(),
-        Crypto.libname(None)
+        Crypto.libname(Some(&prefix))
     );
-
     println!(
         "cargo:include={}",
         get_include_path(&manifest_dir).display()
