@@ -20,6 +20,7 @@ use std::env;
 use std::fmt::Debug;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::{env, fs, io};
 
 #[derive(Debug)]
 struct StripPrefixCallback {
