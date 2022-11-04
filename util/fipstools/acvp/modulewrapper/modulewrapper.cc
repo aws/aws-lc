@@ -220,24 +220,32 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
         }]
       },
       {
-          "algorithm": "SHA3-224",
-          "revision": "2.0",
-          "messageLength": [{"min": 0, "max": 65536, "increment": 1}],
+        "algorithm": "SHA3-224",
+        "revision": "2.0",
+        "messageLength": [{
+          "min": 0, "max": 65536, "increment": 1
+        }]
       },
       {
-          "algorithm": "SHA3-256",
-          "revision": "2.0",
-          "messageLength": [{"min": 0, "max": 65536, "increment": 1}],
+        "algorithm": "SHA3-256",
+        "revision": "2.0",
+        "messageLength": [{
+          "min": 0, "max": 65536, "increment": 1
+          }]
       },
       {
-          "algorithm": "SHA3-384",
-          "revision": "2.0",
-          "messageLength": [{"min": 0, "max": 65536, "increment": 1}],
+        "algorithm": "SHA3-384",
+        "revision": "2.0",
+        "messageLength": [{
+          "min": 0, "max": 65536, "increment": 1
+        }]
       },
       {
-          "algorithm": "SHA3-512",
-          "revision": "2.0",
-          "messageLength": [{"min": 0, "max": 65536, "increment": 1}],
+        "algorithm": "SHA3-512",
+        "revision": "2.0",
+        "messageLength": [{
+          "min": 0, "max": 65536, "increment": 1
+          }]
       },
       {
         "algorithm": "SHA-1",
@@ -985,15 +993,36 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
 }
 
 template <uint8_t *(*OneShotHash)(const uint8_t *, size_t, uint8_t *),
-          size_t DigestLength>
+          size_t DigestLength, bool sha3, const EVP_MD *(MDFunc)()>
 static bool Hash(const Span<const uint8_t> args[], ReplyCallback write_reply) {
+  const Span<const uint8_t> msg = args[0];
   uint8_t digest[DigestLength];
-  OneShotHash(args[0].data(), args[0].size(), digest);
+
+  if (!sha3) {
+    OneShotHash(msg.data(), msg.size(), digest);
+  } else {
+    const EVP_MD *md = MDFunc();
+    unsigned int md_out_size = DigestLength;
+    EVP_Digest(msg.data(), msg.size(), digest, &md_out_size, md, NULL);
+  }
+
   return write_reply({Span<const uint8_t>(digest)});
 }
 
+// template <const EVP_MD *(MDFunc)(), size_t DigestLength>
+// static bool HashSha3(const Span<const uint8_t> args[], ReplyCallback write_reply) {
+//   const Span<const uint8_t> msg = args[0];
+//   const EVP_MD *md = MDFunc();
+//   unsigned int md_out_size = DigestLength;
+
+//   uint8_t digest[DigestLength];
+//   EVP_Digest(msg.data(), msg.size(), digest, &md_out_size, md, NULL);
+
+//   return write_reply({Span<const uint8_t>(digest)});
+// }
+
 template <uint8_t *(*OneShotHash)(const uint8_t *, size_t, uint8_t *),
-          size_t DigestLength>
+          size_t DigestLength, bool sha3, const EVP_MD *(MDFunc)()>
 static bool HashMCT(const Span<const uint8_t> args[],
                     ReplyCallback write_reply) {
   if (args[0].size() != DigestLength) {
@@ -1005,9 +1034,16 @@ static bool HashMCT(const Span<const uint8_t> args[],
   memcpy(buf + DigestLength, args[0].data(), DigestLength);
   memcpy(buf + 2 * DigestLength, args[0].data(), DigestLength);
 
+  const EVP_MD *md = MDFunc();
+  unsigned int md_out_size = DigestLength;
+
   for (size_t i = 0; i < 1000; i++) {
     uint8_t digest[DigestLength];
-    OneShotHash(buf, sizeof(buf), digest);
+    if (!sha3) {
+      OneShotHash(buf, sizeof(buf), digest);
+    } else {
+      EVP_Digest(buf, sizeof(buf), digest, &md_out_size, md, NULL);
+    }
     memmove(buf, buf + DigestLength, DigestLength * 2);
     memcpy(buf + DigestLength * 2, digest, DigestLength);
   }
@@ -2226,18 +2262,46 @@ static struct {
   bool (*handler)(const Span<const uint8_t> args[], ReplyCallback write_reply);
 } kFunctions[] = {
     {"getConfig", 0, GetConfig},
-    {"SHA-1", 1, Hash<SHA1, SHA_DIGEST_LENGTH>},
-    {"SHA2-224", 1, Hash<SHA224, SHA224_DIGEST_LENGTH>},
-    {"SHA2-256", 1, Hash<SHA256, SHA256_DIGEST_LENGTH>},
-    {"SHA2-384", 1, Hash<SHA384, SHA384_DIGEST_LENGTH>},
-    {"SHA2-512", 1, Hash<SHA512, SHA512_DIGEST_LENGTH>},
-    {"SHA2-512/256", 1, Hash<SHA512_256, SHA512_256_DIGEST_LENGTH>},
-    {"SHA-1/MCT", 1, HashMCT<SHA1, SHA_DIGEST_LENGTH>},
-    {"SHA2-224/MCT", 1, HashMCT<SHA224, SHA224_DIGEST_LENGTH>},
-    {"SHA2-256/MCT", 1, HashMCT<SHA256, SHA256_DIGEST_LENGTH>},
-    {"SHA2-384/MCT", 1, HashMCT<SHA384, SHA384_DIGEST_LENGTH>},
-    {"SHA2-512/MCT", 1, HashMCT<SHA512, SHA512_DIGEST_LENGTH>},
-    {"SHA2-512/256/MCT", 1, HashMCT<SHA512_256, SHA512_256_DIGEST_LENGTH>},
+    {"SHA-1", 1, Hash<SHA1, SHA_DIGEST_LENGTH, false, nullptr>},
+    {"SHA2-224", 1, Hash<SHA224, SHA224_DIGEST_LENGTH, false, nullptr>},
+    {"SHA2-256", 1, Hash<SHA256, SHA256_DIGEST_LENGTH, false, nullptr>},
+    {"SHA2-384", 1, Hash<SHA384, SHA384_DIGEST_LENGTH, false, nullptr>},
+    {"SHA2-512", 1, Hash<SHA512, SHA512_DIGEST_LENGTH, false, nullptr>},
+    {"SHA2-512/256", 1, Hash<SHA512_256, SHA512_256_DIGEST_LENGTH, false, nullptr>},
+    {"SHA3-224", 1, Hash<nullptr, SHA224_DIGEST_LENGTH, true, EVP_sha3_224>},
+    {"SHA3-256", 1, Hash<nullptr, SHA256_DIGEST_LENGTH, true, EVP_sha3_256>},
+    {"SHA3-384", 1, Hash<nullptr, SHA384_DIGEST_LENGTH, true, EVP_sha3_384>},
+    {"SHA3-512", 1, Hash<nullptr, SHA512_DIGEST_LENGTH, true, EVP_sha3_512>},
+    // {"SHA-1", 1, Hash<SHA1, SHA_DIGEST_LENGTH>},
+    // {"SHA2-224", 1, Hash<SHA224, SHA224_DIGEST_LENGTH>},
+    // {"SHA2-256", 1, Hash<SHA256, SHA256_DIGEST_LENGTH>},
+    // {"SHA2-384", 1, Hash<SHA384, SHA384_DIGEST_LENGTH>},
+    // {"SHA2-512", 1, Hash<SHA512, SHA512_DIGEST_LENGTH>},
+    // {"SHA2-512/256", 1, Hash<SHA512_256, SHA512_256_DIGEST_LENGTH>},
+    // {"SHA3-224", 1, HashSha3<EVP_sha3_224, SHA224_DIGEST_LENGTH>}, //TODO: change!
+    // {"SHA3-256", 1, HashSha3<EVP_sha3_256, SHA256_DIGEST_LENGTH>},
+    // {"SHA3-384", 1, HashSha3<EVP_sha3_384, SHA384_DIGEST_LENGTH>},
+    // {"SHA3-512", 1, HashSha3<EVP_sha3_512, SHA512_DIGEST_LENGTH>},
+    {"SHA-1/MCT", 1, HashMCT<SHA1, SHA_DIGEST_LENGTH, false, nullptr>},
+    {"SHA2-224/MCT", 1, HashMCT<SHA224, SHA224_DIGEST_LENGTH, false, nullptr>},
+    {"SHA2-256/MCT", 1, HashMCT<SHA256, SHA256_DIGEST_LENGTH, false, nullptr>},
+    {"SHA2-384/MCT", 1, HashMCT<SHA384, SHA384_DIGEST_LENGTH, false, nullptr>},
+    {"SHA2-512/MCT", 1, HashMCT<SHA512, SHA512_DIGEST_LENGTH, false, nullptr>},
+    {"SHA2-512/256/MCT", 1, HashMCT<SHA512_256, SHA512_256_DIGEST_LENGTH, false, nullptr>},
+    {"SHA3-224/MCT", 1, HashMCT<nullptr, SHA224_DIGEST_LENGTH, true, EVP_sha3_224>},
+    {"SHA3-256/MCT", 1, HashMCT<nullptr, SHA256_DIGEST_LENGTH, true, EVP_sha3_224>},
+    {"SHA3-384/MCT", 1, HashMCT<nullptr, SHA384_DIGEST_LENGTH, true, EVP_sha3_224>},
+    {"SHA3-512/MCT", 1, HashMCT<nullptr, SHA512_DIGEST_LENGTH, true, EVP_sha3_224>},
+    // {"SHA-1/MCT", 1, HashMCT<SHA1, SHA_DIGEST_LENGTH>},
+    // {"SHA2-224/MCT", 1, HashMCT<SHA224, SHA224_DIGEST_LENGTH>},
+    // {"SHA2-256/MCT", 1, HashMCT<SHA256, SHA256_DIGEST_LENGTH>},
+    // {"SHA2-384/MCT", 1, HashMCT<SHA384, SHA384_DIGEST_LENGTH>},
+    // {"SHA2-512/MCT", 1, HashMCT<SHA512, SHA512_DIGEST_LENGTH>},
+    // {"SHA2-512/256/MCT", 1, HashMCT<SHA512_256, SHA512_256_DIGEST_LENGTH>},
+    // {"SHA3-224/MCT", 1, HashMCT<SHA224, SHA224_DIGEST_LENGTH>},
+    // {"SHA3-256/MCT", 1, HashMCT<SHA256, SHA256_DIGEST_LENGTH>},
+    // {"SHA3-384/MCT", 1, HashMCT<SHA384, SHA384_DIGEST_LENGTH>},
+    // {"SHA3-512/MCT", 1, HashMCT<SHA512, SHA512_DIGEST_LENGTH>},
     {"AES/encrypt", 3, AES<AES_set_encrypt_key, AES_encrypt>},
     {"AES/decrypt", 3, AES<AES_set_decrypt_key, AES_decrypt>},
     {"AES-XTS/encrypt", 3, AES_XTS<true>},

@@ -18,12 +18,14 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"strings"
 )
 
 // The following structures reflect the JSON of ACVP hash tests. See
 // https://pages.nist.gov/ACVP/draft-celi-acvp-sha.html#name-test-vectors
 
 type hashTestVectorSet struct {
+	Algo   string          `json:"algorithm`
 	Groups []hashTestGroup `json:"testGroups"`
 }
 
@@ -78,7 +80,8 @@ func (h *hashPrimitive) Process(vectorSet []byte, m Transactable) (interface{}, 
 		}
 
 		for _, test := range group.Tests {
-			if uint64(len(test.MsgHex))*4 != test.BitLength {
+			// SHA3 test vectors have discordant messages and len values
+			if uint64(len(test.MsgHex))*4 != test.BitLength && strings.Contains(parsed.Algo, "SHA3") {
 				return nil, fmt.Errorf("test case %d/%d contains hex message of length %d but specifies a bit length of %d", group.ID, test.ID, len(test.MsgHex), test.BitLength)
 			}
 			msg, err := hex.DecodeString(test.MsgHex)
