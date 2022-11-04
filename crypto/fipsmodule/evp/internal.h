@@ -256,7 +256,7 @@ struct evp_pkey_method_st {
                      const uint8_t *ciphertext, size_t ciphertext_len);
 }; // EVP_PKEY_METHOD
 
-#define FIPS_EVP_PKEY_METHODS 5
+#define FIPS_EVP_PKEY_METHODS 4
 #define NON_FIPS_EVP_PKEY_METHODS 5
 #define ASN1_EVP_PKEY_METHODS 8
 
