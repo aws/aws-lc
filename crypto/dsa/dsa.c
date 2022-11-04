@@ -74,6 +74,7 @@
 
 #include "internal.h"
 #include "../fipsmodule/bn/internal.h"
+#include "../fipsmodule/dh/internal.h"
 #include "../internal.h"
 
 
@@ -129,6 +130,8 @@ int DSA_up_ref(DSA *dsa) {
   CRYPTO_refcount_inc(&dsa->references);
   return 1;
 }
+
+unsigned DSA_bits(const DSA *dsa) { return BN_num_bits(dsa->p); }
 
 const BIGNUM *DSA_get0_pub_key(const DSA *dsa) { return dsa->pub_key; }
 

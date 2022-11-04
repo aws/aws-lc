@@ -24,8 +24,11 @@
 #define PPC_FEATURE2_HAS_VCRYPTO 0x02000000
 #endif
 
+extern uint8_t OPENSSL_cpucap_initialized;
+
 void OPENSSL_cpuid_setup(void) {
   OPENSSL_ppc64le_hwcap2 = getauxval(AT_HWCAP2);
+  OPENSSL_cpucap_initialized = 1;
 }
 
 int CRYPTO_is_PPC64LE_vcrypto_capable(void) {

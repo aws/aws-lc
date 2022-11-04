@@ -217,8 +217,8 @@ static int rdrand(uint8_t *buf, size_t len) {
 #if defined(BORINGSSL_FIPS)
 
 static void CRYPTO_get_fips_seed(uint8_t *out_entropy, size_t out_entropy_len,
-                             int *out_used_cpu) {
-  *out_used_cpu = 0;
+                             int *out_want_additional_input) {
+  *out_want_additional_input = 0;
   // Every thread has its own Jitter instance so we fetch the one assigned
   // to the current thread.
   struct rand_thread_state *state =
@@ -240,11 +240,11 @@ static void CRYPTO_get_fips_seed(uint8_t *out_entropy, size_t out_entropy_len,
   }
 }
 
-// rand_get_seed fills |seed| with entropy and sets |*out_used_cpu| to one if
-// that entropy came directly from the CPU and zero otherwise.
+// rand_get_seed fills |seed| with entropy and sets |*out_want_additional_input|
+// to one if that entropy came directly from the CPU and zero otherwise.
 static void rand_get_seed(struct rand_thread_state *state,
                           uint8_t seed[CTR_DRBG_ENTROPY_LEN],
-                          int *out_used_cpu) {
+                          int *out_want_additional_input) {
   if (!state->last_block_valid) {
     int unused;
     CRYPTO_get_fips_seed(state->last_block, sizeof(state->last_block), &unused);
@@ -252,7 +252,7 @@ static void rand_get_seed(struct rand_thread_state *state,
   }
 
   uint8_t entropy[CTR_DRBG_ENTROPY_LEN];
-  CRYPTO_get_fips_seed(entropy, sizeof(entropy), out_used_cpu);
+  CRYPTO_get_fips_seed(entropy, sizeof(entropy), out_want_additional_input);
 
   // See FIPS 140-2, section 4.9.2. This is the “continuous random number
   // generator test” which causes the program to randomly abort. Hopefully the
@@ -280,15 +280,15 @@ static void rand_get_seed(struct rand_thread_state *state,
 
 #else // BORINGSSL_FIPS
 
-// rand_get_seed fills |seed| with entropy and sets |*out_used_cpu| to one if
-// that entropy came directly from the CPU and zero otherwise.
+// rand_get_seed fills |seed| with entropy and sets |*out_want_additional_input|
+// to one if that entropy came directly from the CPU and zero otherwise.
 static void rand_get_seed(struct rand_thread_state *state,
                           uint8_t seed[CTR_DRBG_ENTROPY_LEN],
-                          int *out_used_cpu) {
+                          int *out_want_additional_input) {
   // If not in FIPS mode, we don't overread from the system entropy source and
   // we don't depend only on the hardware RDRAND.
   CRYPTO_sysrand_for_seed(seed, CTR_DRBG_ENTROPY_LEN);
-  *out_used_cpu = 0;
+  *out_want_additional_input = 0;
 }
 
 #endif // BORINGSSL_FIPS
@@ -359,8 +359,8 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
 
     state->last_block_valid = 0;
     uint8_t seed[CTR_DRBG_ENTROPY_LEN];
-    int used_cpu;
-    rand_get_seed(state, seed, &used_cpu);
+    int want_additional_input;
+    rand_get_seed(state, seed, &want_additional_input);
 
     uint8_t personalization[CTR_DRBG_ENTROPY_LEN] = {0};
     size_t personalization_len = 0;
@@ -397,8 +397,8 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
   if (state->calls >= kReseedInterval ||
       state->fork_generation != fork_generation) {
     uint8_t seed[CTR_DRBG_ENTROPY_LEN];
-    int used_cpu;
-    rand_get_seed(state, seed, &used_cpu);
+    int want_additional_input;
+    rand_get_seed(state, seed, &want_additional_input);
 
     uint8_t add_data_for_reseed[CTR_DRBG_ENTROPY_LEN];
     size_t add_data_for_reseed_len = 0;
@@ -468,4 +468,11 @@ int RAND_bytes(uint8_t *out, size_t out_len) {
 
 int RAND_pseudo_bytes(uint8_t *buf, size_t len) {
   return RAND_bytes(buf, len);
+}
+
+void RAND_get_system_entropy_for_custom_prng(uint8_t *buf, size_t len) {
+  if (len > 256) {
+    abort();
+  }
+  CRYPTO_sysrand_for_seed(buf, len);
 }

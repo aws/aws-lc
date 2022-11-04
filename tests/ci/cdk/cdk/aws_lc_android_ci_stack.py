@@ -1,5 +1,5 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: Apache-2.0 OR ISC
 
 from aws_cdk import core, aws_codebuild as codebuild, aws_iam as iam
 from util.iam_policies import code_build_batch_policy_in_json, device_farm_access_policy_in_json

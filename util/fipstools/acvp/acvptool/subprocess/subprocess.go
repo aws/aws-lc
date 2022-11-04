@@ -85,6 +85,8 @@ func NewWithIO(cmd *exec.Cmd, in io.WriteCloser, out io.ReadCloser) *Subprocess 
 		"ACVP-AES-CBC":      &blockCipher{"AES-CBC", 16, 2, true, true, iterateAESCBC},
 		"ACVP-AES-CBC-CS3":  &blockCipher{"AES-CBC-CS3", 16, 1, false, true, iterateAESCBC},
 		"ACVP-AES-CTR":      &blockCipher{"AES-CTR", 16, 1, false, true, nil},
+		"ACVP-TDES-ECB":     &blockCipher{"3DES-ECB", 8, 3, true, false, iterate3DES},
+		"ACVP-TDES-CBC":     &blockCipher{"3DES-CBC", 8, 3, true, true, iterate3DESCBC},
 		"ACVP-AES-XTS":      &xts{},
 		"ACVP-AES-GCM":      &aead{"AES-GCM", false},
 		"ACVP-AES-GMAC":     &aead{"AES-GCM", false},
@@ -105,12 +107,14 @@ func NewWithIO(cmd *exec.Cmd, in io.WriteCloser, out io.ReadCloser) *Subprocess 
 		"hmacDRBG":          &drbg{"hmacDRBG", map[string]bool{"SHA-1": true, "SHA2-224": true, "SHA2-256": true, "SHA2-384": true, "SHA2-512": true}},
 		"KDF":               &kdfPrimitive{},
 		"KAS-KDF":           &hkdf{},
+		"KDA":               &kda{},
 		"CMAC-AES":          &keyedMACPrimitive{"CMAC-AES"},
 		"RSA":               &rsa{},
-		"kdf-components":    &tlsKDF{"kdf-components"},
-		"TLS-v1.2":          &tlsKDF{"TLS-v1.2"},
+		"kdf-components":    &kdfComp{"kdf-components"},
+		"TLS-v1.2":          &kdfComp{"TLS-v1.2"},
 		"KAS-ECC-SSC":       &kas{},
 		"KAS-FFC-SSC":       &kasDH{},
+		"PBKDF":             &pbkdf{},
 	}
 	m.primitives["ECDSA"] = &ecdsa{"ECDSA", map[string]bool{"P-224": true, "P-256": true, "P-384": true, "P-521": true}, m.primitives}
 

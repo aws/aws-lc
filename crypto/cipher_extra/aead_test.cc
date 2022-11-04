@@ -163,6 +163,9 @@ static const struct KnownAEAD kAEADs[] = {
 
     {"AES_128_CCM_BLUETOOTH_8", EVP_aead_aes_128_ccm_bluetooth_8,
      "aes_128_ccm_bluetooth_8_tests.txt", 0},
+
+    {"AES_128_CCM_Matter", EVP_aead_aes_128_ccm_matter,
+     "aes_128_ccm_matter_tests.txt", 0},
 };
 
 class PerAEADTest : public testing::TestWithParam<KnownAEAD> {
@@ -1213,4 +1216,20 @@ TEST(AEADTest, WycheproofXChaCha20Poly1305) {
 
 TEST(AEADTest, FreeNull) {
   EVP_AEAD_CTX_free(nullptr);
+}
+
+// Deterministic IV generation for AES-GCM 256.
+TEST(AEADTest, AEADAES256GCMDetIVGen) {
+  EXPECT_FALSE(EVP_AEAD_get_iv_from_ipv4_nanosecs(0, 0, nullptr));
+
+  uint32_t ip_address = UINT32_C(0xcdfbf267);  // amazon.com when I checked.
+  uint64_t fake_time = UINT64_C(0x1122334455667788);
+  uint8_t out[FIPS_AES_GCM_NONCE_LENGTH] = {0};
+  uint8_t expected[FIPS_AES_GCM_NONCE_LENGTH] = {
+    // Note: Little-endian byte representation.
+    0x67, 0xf2, 0xfb, 0xcd, 0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11
+  };
+
+  EXPECT_TRUE(EVP_AEAD_get_iv_from_ipv4_nanosecs(ip_address, fake_time, out));
+  EXPECT_EQ(Bytes(out, sizeof(out)), Bytes(expected, sizeof(expected)));
 }

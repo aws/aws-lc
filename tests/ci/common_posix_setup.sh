@@ -1,5 +1,5 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: Apache-2.0 OR ISC
 
 # If having trouble reaching proxy.golang.org, uncomment the following:
 #go env -w GOPROXY=direct
@@ -83,7 +83,7 @@ function generate_symbols_file {
   go run "$SRC_ROOT"/util/read_symbols.go -out "$BUILD_ROOT"/symbols_ssl.txt "$BUILD_ROOT"/ssl/libssl.a
 
   # The $BUILD_ROOT gets deleted on each run. symbols.txt must be placed elsewhere.
-  cat "$BUILD_ROOT"/symbols_crypto.txt  "$BUILD_ROOT"/symbols_ssl.txt | grep -v -e '^_\?bignum' >  "$SRC_ROOT"/symbols.txt
+  cat "$BUILD_ROOT"/symbols_crypto.txt  "$BUILD_ROOT"/symbols_ssl.txt >  "$SRC_ROOT"/symbols.txt
 }
 
 

@@ -398,6 +398,12 @@ Shutdown-Shim-Renegotiate-Server-Forbidden-TLS-Sync-PackHandshake
 Shutdown-Shim-Renegotiate-Server-Forbidden-TLS-Sync-SplitHandshakeRecords
 SignedCertificateTimestampList-Server-TLS-TLS12
 SupportTicketsWithSessionID
+TLS-HintMismatch-CipherMismatch1
+TLS-HintMismatch-CipherMismatch2
+TLS-HintMismatch-ECDHE-Group
+TLS-HintMismatch-NoTickets1-TLS12
+TLS-HintMismatch-NoTickets2-TLS12
+TLS-HintMismatch-SignatureAlgorithm-TLS12
 TLS-HintMismatch-Version1
 TLS-TLS12-ECDHE_ECDSA_WITH_AES_128_CBC_SHA-server
 TLS-TLS12-ECDHE_ECDSA_WITH_AES_128_GCM_SHA256-server

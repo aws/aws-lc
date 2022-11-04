@@ -52,6 +52,7 @@
 
 #include "../aes/internal.h"
 #include "../modes/internal.h"
+#include "../cipher/internal.h"
 
 void AES_ctr128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
                         const AES_KEY *key, uint8_t ivec[AES_BLOCK_SIZE],
@@ -110,6 +111,22 @@ void AES_ofb128_encrypt(const uint8_t *in, uint8_t *out, size_t length,
                         const AES_KEY *key, uint8_t *ivec, int *num) {
   unsigned num_u = (unsigned)(*num);
   CRYPTO_ofb128_encrypt(in, out, length, key, ivec, &num_u, AES_encrypt);
+  *num = (int)num_u;
+}
+
+void AES_cfb1_encrypt(const uint8_t *in, uint8_t *out, size_t bits,
+                        const AES_KEY *key, uint8_t *ivec, int *num,
+                        int enc) {
+  unsigned num_u = (unsigned)(*num);
+  CRYPTO_cfb128_1_encrypt(in, out, bits, key, ivec, &num_u, enc, AES_encrypt);
+  *num = (int)num_u;
+}
+
+void AES_cfb8_encrypt(const uint8_t *in, uint8_t *out, size_t length,
+                        const AES_KEY *key, uint8_t *ivec, int *num,
+                        int enc) {
+  unsigned num_u = (unsigned)(*num);
+  CRYPTO_cfb128_8_encrypt(in, out, length, key, ivec, &num_u, enc, AES_encrypt);
   *num = (int)num_u;
 }
 

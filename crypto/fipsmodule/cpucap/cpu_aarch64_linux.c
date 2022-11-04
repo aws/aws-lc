@@ -32,6 +32,7 @@
 
 
 extern uint32_t OPENSSL_armcap_P;
+extern uint8_t OPENSSL_cpucap_initialized;
 
 // handle_cpu_env applies the value from |in| to the CPUID values in |out[0]|.
 // See the comment in |OPENSSL_cpuid_setup| about this.
@@ -128,6 +129,8 @@ void OPENSSL_cpuid_setup(void) {
   if (env != NULL) {
     handle_cpu_env(&OPENSSL_armcap_P, env);
   }
+
+  OPENSSL_cpucap_initialized = 1;
 }
 
 #endif  // OPENSSL_AARCH64 && OPENSSL_LINUX && !OPENSSL_STATIC_ARMCAP

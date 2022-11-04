@@ -1,10 +1,13 @@
 #!/bin/bash -ex
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: Apache-2.0 OR ISC
 
 ########################################
 # Build images from AWS-LC GitHub repo #
 ########################################
+
+# Ubuntu systems might not have "jq" installed:
+# sudo apt-get install jq
 
 # Log Docker hub limit https://docs.docker.com/docker-hub/download-rate-limit/#how-can-i-check-my-current-rate
 TOKEN=$(curl "https://auth.docker.io/token?service=registry.docker.io&scope=repository:ratelimitpreview/test:pull" | jq -r .token)

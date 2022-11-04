@@ -143,6 +143,7 @@ static unsigned long getauxval_proc(unsigned long type) {
 }
 
 extern uint32_t OPENSSL_armcap_P;
+extern uint8_t OPENSSL_cpucap_initialized;
 
 static int g_has_broken_neon, g_needs_hwcap2_workaround;
 
@@ -221,6 +222,8 @@ void OPENSSL_cpuid_setup(void) {
   }
 
   OPENSSL_free(cpuinfo_data);
+
+  OPENSSL_cpucap_initialized = 1;
 }
 
 int CRYPTO_has_broken_NEON(void) { return g_has_broken_neon; }

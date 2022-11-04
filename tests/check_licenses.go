@@ -1,5 +1,5 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: Apache-2.0 OR ISC
 
 package main
 
@@ -13,7 +13,7 @@ import (
 )
 
 func main() {
-	license_regex, _ := regexp.Compile("(?i)(SPDX-License-Identifier: Apache-2.0" +
+	license_regex, _ := regexp.Compile("(?i)(SPDX-License-Identifier: Apache-2.0 OR ISC" +
 		"|Brian Smith" +
 		"|CloudFlare Ltd." +
 		"|Eric Young" +

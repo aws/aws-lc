@@ -1,5 +1,5 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: Apache-2.0 OR ISC
 
 // Weak symbols are only supported well on Linux platforms. The memory functions
 // that attempt to use weak symbols in mem.c are disabled on other platforms.

@@ -1,5 +1,5 @@
 /* Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: Apache-2.0 OR ISC
  */
 
 #include <openssl/ssl.h>
@@ -35,8 +35,8 @@ bool ssl_transfer_supported(const SSL *in) {
       !in->s3->established_session ||
       SSL_in_init(in) ||                                        // (4)
       in->version != TLS1_2_VERSION ||                          // (5)
-      in->s3->wnum != 0 ||                                      // (6)
-      in->s3->wpend_pending ||
+      in->s3->unreported_bytes_written > 0 ||                   // (6)
+      in->s3->pending_write.size() > 0 ||
       in->s3->read_shutdown != ssl_shutdown_none ||             // (7)
       in->s3->write_shutdown != ssl_shutdown_none) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_UNSUPPORTED);
