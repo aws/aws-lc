@@ -43,6 +43,7 @@
 #include <openssl/sha.h>
 #include <openssl/span.h>
 #include <openssl/hkdf.h>
+#include <openssl/sshkdf.h>
 
 #include "../../../../crypto/fipsmodule/ec/internal.h"
 #include "../../../../crypto/fipsmodule/rand/internal.h"
@@ -856,6 +857,25 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
           "SHA2-256",
           "SHA2-384",
           "SHA2-512"
+        ]
+      },
+      {
+        "algorithm": "kdf-components",
+        "mode": "ssh",
+        "revision": "1.0",
+        "isSample": true,
+        "hashAlg": [
+          "SHA-1",
+          "SHA2-224",
+          "SHA2-256",
+          "SHA2-384",
+          "SHA2-512"
+        ],
+        "cipher": [
+          "TDES",
+          "AES-128",
+          "AES-192",
+          "AES-256"
         ]
       },
       {
@@ -2155,6 +2175,31 @@ static bool HKDF(const Span<const uint8_t> args[], ReplyCallback write_reply) {
   return write_reply({Span<const uint8_t>(out_key)});
 }
 
+template <const EVP_MD *(MDFunc)(), char type_val>
+static bool SSHKDF(const Span<const uint8_t> args[], ReplyCallback write_reply) {
+  const Span<const uint8_t> key = args[0];
+  const Span<const uint8_t> hash = args[1];
+  const Span<const uint8_t> session_id = args[2];
+  const Span<const uint8_t> out_bytes = args[3];
+  const EVP_MD *md = MDFunc();
+
+
+  unsigned int out_bytes_uint;
+  memcpy(&out_bytes_uint, out_bytes.data(), sizeof(out_bytes_uint));
+
+  std::vector<uint8_t> out(out_bytes_uint);
+  if (!::SSHKDF(md,
+                key.data(), key.size(),
+                hash.data(), hash.size(),
+                session_id.data(), session_id.size(),
+                type_val,
+                out.data(), out_bytes_uint)) {
+    return false;
+  }
+
+  return write_reply({Span<const uint8_t>(out)});
+}
+
 static struct {
   char name[kMaxNameLength + 1];
   uint8_t num_expected_args;
@@ -2245,6 +2290,36 @@ static struct {
     {"KDA/HKDF/SHA2-256", 4, HKDF<EVP_sha256>},
     {"KDA/HKDF/SHA2-384", 4, HKDF<EVP_sha384>},
     {"KDA/HKDF/SHA2-512", 4, HKDF<EVP_sha512>},
+    {"SSHKDF/SHA-1/ivCli", 4, SSHKDF<EVP_sha1, EVP_KDF_SSHKDF_TYPE_INITIAL_IV_CLI_TO_SRV>},
+    {"SSHKDF/SHA2-224/ivCli", 4, SSHKDF<EVP_sha224, EVP_KDF_SSHKDF_TYPE_INITIAL_IV_CLI_TO_SRV>},
+    {"SSHKDF/SHA2-256/ivCli", 4, SSHKDF<EVP_sha256, EVP_KDF_SSHKDF_TYPE_INITIAL_IV_CLI_TO_SRV>},
+    {"SSHKDF/SHA2-384/ivCli", 4, SSHKDF<EVP_sha384, EVP_KDF_SSHKDF_TYPE_INITIAL_IV_CLI_TO_SRV>},
+    {"SSHKDF/SHA2-512/ivCli", 4, SSHKDF<EVP_sha512, EVP_KDF_SSHKDF_TYPE_INITIAL_IV_CLI_TO_SRV>},
+    {"SSHKDF/SHA-1/ivServ", 4, SSHKDF<EVP_sha1, EVP_KDF_SSHKDF_TYPE_INITIAL_IV_SRV_TO_CLI>},
+    {"SSHKDF/SHA2-224/ivServ", 4, SSHKDF<EVP_sha224, EVP_KDF_SSHKDF_TYPE_INITIAL_IV_SRV_TO_CLI>},
+    {"SSHKDF/SHA2-256/ivServ", 4, SSHKDF<EVP_sha256, EVP_KDF_SSHKDF_TYPE_INITIAL_IV_SRV_TO_CLI>},
+    {"SSHKDF/SHA2-384/ivServ", 4, SSHKDF<EVP_sha384, EVP_KDF_SSHKDF_TYPE_INITIAL_IV_SRV_TO_CLI>},
+    {"SSHKDF/SHA2-512/ivServ", 4, SSHKDF<EVP_sha512, EVP_KDF_SSHKDF_TYPE_INITIAL_IV_SRV_TO_CLI>},
+    {"SSHKDF/SHA-1/encryptCli", 4, SSHKDF<EVP_sha1, EVP_KDF_SSHKDF_TYPE_ENCRYPTION_KEY_CLI_TO_SRV>},
+    {"SSHKDF/SHA2-224/encryptCli", 4, SSHKDF<EVP_sha224, EVP_KDF_SSHKDF_TYPE_ENCRYPTION_KEY_CLI_TO_SRV>},
+    {"SSHKDF/SHA2-256/encryptCli", 4, SSHKDF<EVP_sha256, EVP_KDF_SSHKDF_TYPE_ENCRYPTION_KEY_CLI_TO_SRV>},
+    {"SSHKDF/SHA2-384/encryptCli", 4, SSHKDF<EVP_sha384, EVP_KDF_SSHKDF_TYPE_ENCRYPTION_KEY_CLI_TO_SRV>},
+    {"SSHKDF/SHA2-512/encryptCli", 4, SSHKDF<EVP_sha512, EVP_KDF_SSHKDF_TYPE_ENCRYPTION_KEY_CLI_TO_SRV>},
+    {"SSHKDF/SHA-1/encryptServ", 4, SSHKDF<EVP_sha1, EVP_KDF_SSHKDF_TYPE_ENCRYPTION_KEY_SRV_TO_CLI>},
+    {"SSHKDF/SHA2-224/encryptServ", 4, SSHKDF<EVP_sha224, EVP_KDF_SSHKDF_TYPE_ENCRYPTION_KEY_SRV_TO_CLI>},
+    {"SSHKDF/SHA2-256/encryptServ", 4, SSHKDF<EVP_sha256, EVP_KDF_SSHKDF_TYPE_ENCRYPTION_KEY_SRV_TO_CLI>},
+    {"SSHKDF/SHA2-384/encryptServ", 4, SSHKDF<EVP_sha384, EVP_KDF_SSHKDF_TYPE_ENCRYPTION_KEY_SRV_TO_CLI>},
+    {"SSHKDF/SHA2-512/encryptServ", 4, SSHKDF<EVP_sha512, EVP_KDF_SSHKDF_TYPE_ENCRYPTION_KEY_SRV_TO_CLI>},
+    {"SSHKDF/SHA-1/integCli", 4, SSHKDF<EVP_sha1, EVP_KDF_SSHKDF_TYPE_INTEGRITY_KEY_CLI_TO_SRV>},
+    {"SSHKDF/SHA2-224/integCli", 4, SSHKDF<EVP_sha224, EVP_KDF_SSHKDF_TYPE_INTEGRITY_KEY_CLI_TO_SRV>},
+    {"SSHKDF/SHA2-256/integCli", 4, SSHKDF<EVP_sha256, EVP_KDF_SSHKDF_TYPE_INTEGRITY_KEY_CLI_TO_SRV>},
+    {"SSHKDF/SHA2-384/integCli", 4, SSHKDF<EVP_sha384, EVP_KDF_SSHKDF_TYPE_INTEGRITY_KEY_CLI_TO_SRV>},
+    {"SSHKDF/SHA2-512/integCli", 4, SSHKDF<EVP_sha512, EVP_KDF_SSHKDF_TYPE_INTEGRITY_KEY_CLI_TO_SRV>},
+    {"SSHKDF/SHA-1/integServ", 4, SSHKDF<EVP_sha1, EVP_KDF_SSHKDF_TYPE_INTEGRITY_KEY_SRV_TO_CLI>},
+    {"SSHKDF/SHA2-224/integServ", 4, SSHKDF<EVP_sha224, EVP_KDF_SSHKDF_TYPE_INTEGRITY_KEY_SRV_TO_CLI>},
+    {"SSHKDF/SHA2-256/integServ", 4, SSHKDF<EVP_sha256, EVP_KDF_SSHKDF_TYPE_INTEGRITY_KEY_SRV_TO_CLI>},
+    {"SSHKDF/SHA2-384/integServ", 4, SSHKDF<EVP_sha384, EVP_KDF_SSHKDF_TYPE_INTEGRITY_KEY_SRV_TO_CLI>},
+    {"SSHKDF/SHA2-512/integServ", 4, SSHKDF<EVP_sha512, EVP_KDF_SSHKDF_TYPE_INTEGRITY_KEY_SRV_TO_CLI>},
 };
 
 Handler FindHandler(Span<const Span<const uint8_t>> args) {
