@@ -1006,18 +1006,6 @@ static bool Hash(const Span<const uint8_t> args[], ReplyCallback write_reply) {
   return write_reply({Span<const uint8_t>(digest)});
 }
 
-// template <const EVP_MD *(MDFunc)(), size_t DigestLength>
-// static bool HashSha3(const Span<const uint8_t> args[], ReplyCallback write_reply) {
-//   const Span<const uint8_t> msg = args[0];
-//   const EVP_MD *md = MDFunc();
-//   unsigned int md_out_size = DigestLength;
-
-//   uint8_t digest[DigestLength];
-//   EVP_Digest(msg.data(), msg.size(), digest, &md_out_size, md, NULL);
-
-//   return write_reply({Span<const uint8_t>(digest)});
-// }
-
 template <size_t DigestLength, const EVP_MD *(MDFunc)()>
 static bool HashMCT(const Span<const uint8_t> args[],
                     ReplyCallback write_reply) {
@@ -2275,9 +2263,9 @@ static struct {
     {"SHA2-512/MCT", 1, HashMCT<SHA512_DIGEST_LENGTH, EVP_sha512>},
     {"SHA2-512/256/MCT", 1, HashMCT<SHA512_256_DIGEST_LENGTH, EVP_sha512_256>},
     {"SHA3-224/MCT", 1, HashMCT<SHA224_DIGEST_LENGTH, EVP_sha3_224>},
-    {"SHA3-256/MCT", 1, HashMCT<SHA256_DIGEST_LENGTH, EVP_sha3_224>},
-    {"SHA3-384/MCT", 1, HashMCT<SHA384_DIGEST_LENGTH, EVP_sha3_224>},
-    {"SHA3-512/MCT", 1, HashMCT<SHA512_DIGEST_LENGTH, EVP_sha3_224>},
+    {"SHA3-256/MCT", 1, HashMCT<SHA256_DIGEST_LENGTH, EVP_sha3_256>},
+    {"SHA3-384/MCT", 1, HashMCT<SHA384_DIGEST_LENGTH, EVP_sha3_384>},
+    {"SHA3-512/MCT", 1, HashMCT<SHA512_DIGEST_LENGTH, EVP_sha3_512>},
     {"AES/encrypt", 3, AES<AES_set_encrypt_key, AES_encrypt>},
     {"AES/decrypt", 3, AES<AES_set_decrypt_key, AES_decrypt>},
     {"AES-XTS/encrypt", 3, AES_XTS<true>},
