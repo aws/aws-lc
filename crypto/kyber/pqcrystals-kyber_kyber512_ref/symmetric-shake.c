@@ -3,7 +3,6 @@
 #include <string.h>
 #include "params.h"
 #include "symmetric.h"
-#include "fips202.h"
 
 /*************************************************
 * Name:        kyber_shake128_absorb
