@@ -1036,28 +1036,23 @@ static bool HashMCTSha3(const Span<const uint8_t> args[],
   if (args[0].size() != DigestLength) {
     return false;
   }
-
-  uint8_t buf[DigestLength * 3];
-  memcpy(buf, args[0].data(), DigestLength);
-  memcpy(buf + DigestLength, args[0].data(), DigestLength);
-  memcpy(buf + 2 * DigestLength, args[0].data(), DigestLength);
-
-  const EVP_MD *md = MDFunc();
+  const EVP_MD *evp_md = MDFunc();
   unsigned int md_out_size = DigestLength;
 
-  EVP_MD_unstable_sha3_enable(true);
-  for (size_t i = 0; i < 1000; i++) {
-    uint8_t digest[DigestLength];
+  unsigned char md[1001][DigestLength];
+  unsigned char msg[1001][DigestLength];
 
-    EVP_Digest(buf, sizeof(buf), digest, &md_out_size, md, NULL);
-      
-    memmove(buf, buf + DigestLength, DigestLength * 2);
-    memcpy(buf + DigestLength * 2, digest, DigestLength);
+  memcpy(md[0], args[0].data(), DigestLength);
+
+  EVP_MD_unstable_sha3_enable(true);
+  for (size_t i = 1; i <= 1000; i++) {
+    memcpy(msg[i], md[i-1], DigestLength);
+    EVP_Digest(msg[i], sizeof(msg[i]), md[i], &md_out_size, evp_md, NULL);
   }
   EVP_MD_unstable_sha3_enable(false);
 
   return write_reply(
-      {Span<const uint8_t>(buf + 2 * DigestLength, DigestLength)});
+      {Span<const uint8_t>(md[1000])});
 }
 
 static uint32_t GetIterations(const Span<const uint8_t> iterations_bytes) {
