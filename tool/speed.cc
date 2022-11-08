@@ -1115,6 +1115,82 @@ static bool SpeedECDSA(const std::string &selected) {
          SpeedECDSACurve("ECDSA secp256k1", NID_secp256k1, selected);
 }
 
+
+#if !defined(OPENSSL_1_0_BENCHMARK)
+static bool SpeedECMULCurve(const std::string &name, int nid,
+                       const std::string &selected) {
+  if (!selected.empty() && name.find(selected) == std::string::npos) {
+    return true;
+  }
+
+  EC_GROUP *group = EC_GROUP_new_by_curve_name(nid);
+  BN_CTX   *ctx = BN_CTX_new();
+
+  BIGNUM *scalar0 = BN_new();
+  BIGNUM *scalar1 = BN_new();
+
+  EC_POINT *pin0 = EC_POINT_new(group);
+  EC_POINT *pout = EC_POINT_new(group);
+
+  // Generate two random scalars modulo the EC group order.
+  if (!BN_rand_range(scalar0, EC_GROUP_get0_order(group)) ||
+      !BN_rand_range(scalar1, EC_GROUP_get0_order(group))) {
+      return false;
+  }
+
+  // Generate one random EC point.
+  EC_POINT_mul(group, pin0, scalar0, nullptr, nullptr, ctx);
+
+  TimeResults results;
+
+  // Measure scalar multiplication of an arbitrary curve point.
+  if (!TimeFunction(&results, [group, pout, ctx, pin0, scalar0]() -> bool {
+        if (!EC_POINT_mul(group, pout, nullptr, pin0, scalar0, ctx)) {
+          return false;
+        }
+
+        return true;
+      })) {
+    return false;
+  }
+  results.Print(name + " mul");
+
+  // Measure scalar multiplication of the curve based point.
+  if (!TimeFunction(&results, [group, pout, ctx, scalar0]() -> bool {
+        if (!EC_POINT_mul(group, pout, scalar0, nullptr, nullptr, ctx)) {
+          return false;
+        }
+
+        return true;
+      })) {
+    return false;
+  }
+  results.Print(name + " mul base");
+
+  // Measure scalar multiplication of based point and arbitrary point.
+  if (!TimeFunction(&results, [group, pout, pin0, ctx, scalar0, scalar1]() -> bool {
+        if (!EC_POINT_mul(group, pout, scalar1, pin0, scalar0, ctx)) {
+          return false;
+        }
+
+        return true;
+      })) {
+    return false;
+  }
+  results.Print(name + " mul public");
+
+  return true;
+}
+
+static bool SpeedECMUL(const std::string &selected) {
+  return SpeedECMULCurve("ECMUL P-224", NID_secp224r1, selected) &&
+         SpeedECMULCurve("ECMUL P-256", NID_X9_62_prime256v1, selected) &&
+         SpeedECMULCurve("ECMUL P-384", NID_secp384r1, selected) &&
+         SpeedECMULCurve("ECMUL P-521", NID_secp521r1, selected) &&
+         SpeedECMULCurve("ECMUL secp256k1", NID_secp256k1, selected);
+}
+#endif
+
 #if !defined(OPENSSL_BENCHMARK)
 static bool Speed25519(const std::string &selected) {
   if (!selected.empty() && selected.find("25519") == std::string::npos) {
@@ -1828,6 +1904,8 @@ bool Speed(const std::vector<std::string> &args) {
      !SpeedECGen(selected) ||
      // OpenSSL 1.0 doesn't support Scrypt
 #if !defined(OPENSSL_1_0_BENCHMARK)
+     !SpeedECMUL(selected) ||
+     // OpenSSL 1.0 doesn't support Scrypt
      !SpeedScrypt(selected) ||
 #endif
      !SpeedRSA(selected) ||
