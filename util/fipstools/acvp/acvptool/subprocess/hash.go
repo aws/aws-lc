@@ -24,7 +24,6 @@ import (
 // https://pages.nist.gov/ACVP/draft-celi-acvp-sha.html#name-test-vectors
 
 type hashTestVectorSet struct {
-	Algo   string          `json:"algorithm"`
 	Groups []hashTestGroup `json:"testGroups"`
 }
 
