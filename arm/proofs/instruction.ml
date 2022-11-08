@@ -56,6 +56,26 @@ let bytes_loaded_of_append3 = prove
           bytes_loaded s (word (pc + LENGTH l1)) l2`,
   REWRITE_TAC [WORD_ADD] THEN METIS_TAC [bytes_loaded_append]);;
 
+let BYTES_LOADED_SUB_LIST = prove
+ (`!s pc l m n.
+        bytes_loaded s pc l
+        ==> bytes_loaded s (word_add pc (word m)) (SUB_LIST(m,n) l)`,
+  REPEAT GEN_TAC THEN
+  MP_TAC(ISPECL [`l:byte list`; `m + n:num`] SUB_LIST_TOPSPLIT) THEN
+  DISCH_THEN(fun th -> GEN_REWRITE_TAC (LAND_CONV o RAND_CONV) [SYM th]) THEN
+  REWRITE_TAC[bytes_loaded_append] THEN DISCH_THEN(MP_TAC o CONJUNCT1) THEN
+  REWRITE_TAC[SUB_LIST_SPLIT; ADD_CLAUSES; bytes_loaded_append] THEN
+  DISCH_THEN(MP_TAC o CONJUNCT2) THEN
+  REWRITE_TAC[LENGTH_SUB_LIST; SUB_0; MIN] THEN
+  COND_CASES_TAC THEN ASM_REWRITE_TAC[] THEN
+  ASM_MESON_TAC[LE_CASES; SUB_LIST_TRIVIAL; bytes_loaded_nil]);;
+
+let BYTES_LOADED_TRIM_LIST = prove
+ (`!s pc l m n.
+        bytes_loaded s pc l
+        ==> bytes_loaded s (word_add pc (word m)) (TRIM_LIST(m,n) l)`,
+  REWRITE_TAC[BYTES_LOADED_SUB_LIST; TRIM_LIST]);;
+
 let aligned_bytes_loaded = new_definition
  `aligned_bytes_loaded s pc l <=>
   4 divides val pc /\ bytes_loaded s pc l`;;
@@ -87,6 +107,12 @@ let aligned_bytes_loaded_append = prove
     aligned_bytes_loaded_word; bytes_loaded_append] THEN
   METIS_TAC [DIVIDES_ADD]);;
 
+let aligned_bytes_loaded_append_alt = prove
+ (`aligned_bytes_loaded s pc (APPEND l1 l2) <=>
+   aligned_bytes_loaded s pc l1 /\
+   bytes_loaded s (word_add pc (word (LENGTH l1))) l2`,
+  REWRITE_TAC[aligned_bytes_loaded; bytes_loaded_append; CONJ_ASSOC]);;
+
 let aligned_bytes_loaded_unique =
   METIS [aligned_bytes_loaded; bytes_loaded_unique]
   `!s pc l1 l2.
@@ -105,6 +131,37 @@ let aligned_bytes_loaded_of_append3 = prove
           aligned_bytes_loaded s (word (pc + LENGTH l1)) l2`,
   REPEAT GEN_TAC THEN DISCH_THEN SUBST1_TAC THEN REWRITE_TAC [WORD_ADD] THEN
   METIS_TAC [aligned_bytes_loaded_append; aligned_bytes_loaded_append_left]);;
+
+let ALIGNED_BYTES_LOADED_SUB_LIST = prove
+ (`!s pc l m n.
+        aligned_bytes_loaded s pc l /\ 4 divides m
+        ==> aligned_bytes_loaded s (word_add pc (word m)) (SUB_LIST(m,n) l)`,
+  REPEAT GEN_TAC THEN REWRITE_TAC[aligned_bytes_loaded] THEN
+  SIMP_TAC[BYTES_LOADED_SUB_LIST; VAL_WORD_ADD; VAL_WORD; DIMINDEX_64] THEN
+  CONV_TAC MOD_DOWN_CONV THEN REWRITE_TAC[GSYM (NUM_EXP_CONV `2 EXP 2`)] THEN
+  REWRITE_TAC[DIVIDES_MOD; MOD_MOD_EXP_MIN] THEN
+  ONCE_REWRITE_TAC[GSYM MOD_ADD_MOD] THEN CONV_TAC NUM_REDUCE_CONV THEN
+  SIMP_TAC[] THEN CONV_TAC NUM_REDUCE_CONV);;
+
+let ALIGNED_BYTES_LOADED_TRIM_LIST = prove
+ (`!s pc l m n.
+        aligned_bytes_loaded s pc l /\ 4 divides m
+        ==> aligned_bytes_loaded s (word_add pc (word m)) (TRIM_LIST(m,n) l)`,
+  REWRITE_TAC[ALIGNED_BYTES_LOADED_SUB_LIST; TRIM_LIST]);;
+
+(* ------------------------------------------------------------------------- *)
+(* Tweak for aligned_bytes_loaded s (word pc) (APPEND program data)          *)
+(* ------------------------------------------------------------------------- *)
+
+let ALIGNED_BYTES_LOADED_APPEND_CLAUSE = prove
+ (`aligned_bytes_loaded s (word pc) (APPEND prog data) /\
+   read PC s = pcin /\
+   rest <=>
+   aligned_bytes_loaded s (word pc) prog /\
+   read PC s = pcin /\
+   bytes_loaded s (word(pc + LENGTH prog)) data /\
+   rest`,
+  REWRITE_TAC[aligned_bytes_loaded_append_alt; GSYM WORD_ADD; CONJ_ACI]);;
 
 (* ------------------------------------------------------------------------- *)
 (* Individual flags. The numbering matches "nzcv" immediates, but does not   *)
@@ -638,6 +695,11 @@ let arm_ADDS = define
          ZF := (val d = 0) ,,
          CF := ~(val m + val n = val d) ,,
          VF := ~(ival m + ival n = ival d)) s`;;
+
+let arm_ADR = define
+ `arm_ADR Rd (off:21 word) =
+    \s. let d = word_add (word_sub (read PC s) (word 4)) (word_sx off) in
+        (Rd := d) s`;;
 
 let arm_AND = define
  `arm_AND Rd Rm Rn =
@@ -1378,7 +1440,7 @@ let arm_MOVK_ALT =
 
 let ARM_OPERATION_CLAUSES =
   map (CONV_RULE(TOP_DEPTH_CONV let_CONV) o SPEC_ALL)
-      [arm_ADC; arm_ADCS_ALT; arm_ADD; arm_ADDS_ALT; arm_AND; arm_ANDS;
+      [arm_ADC; arm_ADCS_ALT; arm_ADD; arm_ADDS_ALT; arm_ADR; arm_AND; arm_ANDS;
        arm_ASRV; arm_B; arm_BIC; arm_BICS; arm_BL; arm_BL_ABSOLUTE; arm_Bcond;
        arm_CBNZ_ALT; arm_CBZ_ALT; arm_CCMN; arm_CCMP; arm_CLZ; arm_CSEL; arm_CSINC;
        arm_CSINV; arm_CSNEG; arm_EON; arm_EOR; arm_EXTR;

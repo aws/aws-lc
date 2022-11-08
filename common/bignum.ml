@@ -620,6 +620,43 @@ let READ_BYTELIST_EQ_BYTES = prove
             READ_BYTES_BOUND_ALT; LENGTH_BYTELIST_OF_NUM]);;
 
 (* ------------------------------------------------------------------------- *)
+(* Conversion to expand "bytes_loaded" in 64-bit word assignments.           *)
+(* ------------------------------------------------------------------------- *)
+
+let DATA64_CONV =
+  let pth = prove
+   (`bytes_loaded s (word pc)
+      (CONS d0 (CONS d1 (CONS d2 (CONS d3
+         (CONS d4 (CONS d5 (CONS d6 (CONS d7 l)))))))) <=>
+     read (memory :> bytes64 (word pc)) s =
+     word(num_of_bytelist [d0;d1;d2;d3;d4;d5;d6;d7]) /\
+     bytes_loaded s (word(pc + 8)) l`,
+    SUBST1_TAC(SYM(ISPEC `l:byte list` (CONJUNCT1 APPEND))) THEN
+    REWRITE_TAC[GSYM(CONJUNCT2 APPEND)] THEN REWRITE_TAC[CONJUNCT1 APPEND] THEN
+    REWRITE_TAC[bytes_loaded_append] THEN
+    CONV_TAC(ONCE_DEPTH_CONV LENGTH_CONV) THEN
+    REWRITE_TAC[WORD_ADD] THEN AP_THM_TAC THEN AP_TERM_TAC THEN
+    REWRITE_TAC[bytes_loaded; READ_BYTELIST_EQ_BYTES] THEN
+    REWRITE_TAC[bytes64; asword; READ_COMPONENT_COMPOSE; through; read] THEN
+    CONV_TAC(ONCE_DEPTH_CONV LENGTH_CONV) THEN
+    REWRITE_TAC[GSYM VAL_EQ; VAL_WORD; DIMINDEX_64] THEN
+    CONV_TAC SYM_CONV THEN BINOP_TAC THEN MATCH_MP_TAC MOD_LT THEN
+    REWRITE_TAC[GSYM(NUM_MULT_CONV `8 * 8`); READ_BYTES_BOUND] THEN
+    W(MP_TAC o PART_MATCH lhand NUM_OF_BYTELIST_BOUND o lhand o snd) THEN
+    CONV_TAC(ONCE_DEPTH_CONV LENGTH_CONV) THEN ARITH_TAC) in
+  let rec conv tm =
+   TRY_CONV
+    (GEN_REWRITE_CONV I [pth] THENC
+    BINOP2_CONV
+      (REWRITE_CONV[num_of_bytelist] THENC
+       DEPTH_CONV WORD_NUM_RED_CONV)
+      (LAND_CONV (RAND_CONV
+        (GEN_REWRITE_CONV I [GSYM ADD_ASSOC] THENC
+         RAND_CONV NUM_ADD_CONV)) THENC
+       conv)) tm in
+  conv;;
+
+(* ------------------------------------------------------------------------- *)
 (* Bignum as a state component (little-endian only of course).               *)
 (* ------------------------------------------------------------------------- *)
 

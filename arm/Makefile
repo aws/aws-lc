@@ -70,6 +70,8 @@ POINT_OBJ = curve25519/curve25519_ladderstep.o \
             curve25519/curve25519_pxscalarmul_alt.o \
             curve25519/curve25519_x25519.o \
             curve25519/curve25519_x25519_alt.o \
+            curve25519/curve25519_x25519base.o \
+            curve25519/curve25519_x25519base_alt.o \
             curve25519/edwards25519_pepadd.o \
             curve25519/edwards25519_pepadd_alt.o \
             p256/p256_montjadd.o \
@@ -307,6 +309,8 @@ PROOFS = $(OBJ:.o=.correct)
 
 curve25519/curve25519_x25519.correct: generic/bignum_modinv.o proofs/curve25519_x25519.ml curve25519/curve25519_x25519.o ; (cd ..; (echo 'loadt "arm/proofs/base.ml";;'; echo 'loadt "arm/proofs/curve25519_x25519.ml";;') | $(HOLLIGHT) 2>&1) >$@
 curve25519/curve25519_x25519_alt.correct: generic/bignum_modinv.o proofs/curve25519_x25519_alt.ml curve25519/curve25519_x25519_alt.o ; (cd ..; (echo 'loadt "arm/proofs/base.ml";;'; echo 'loadt "arm/proofs/curve25519_x25519_alt.ml";;') | $(HOLLIGHT) 2>&1) >$@
+curve25519/curve25519_x25519base.correct: generic/bignum_modinv.o proofs/curve25519_x25519base.ml curve25519/curve25519_x25519base.o ; (cd ..; (echo 'loadt "arm/proofs/base.ml";;'; echo 'loadt "arm/proofs/curve25519_x25519base.ml";;') | $(HOLLIGHT) 2>&1) >$@
+curve25519/curve25519_x25519base_alt.correct: generic/bignum_modinv.o proofs/curve25519_x25519base_alt.ml curve25519/curve25519_x25519base_alt.o ; (cd ..; (echo 'loadt "arm/proofs/base.ml";;'; echo 'loadt "arm/proofs/curve25519_x25519base_alt.ml";;') | $(HOLLIGHT) 2>&1) >$@
 
 curve25519/%.correct: proofs/%.ml curve25519/%.o ; (cd ..; (echo 'loadt "arm/proofs/base.ml";;'; echo 'loadt "arm/proofs/$*.ml";;') | $(HOLLIGHT) 2>&1) >$@
 fastmul/%.correct: proofs/%.ml fastmul/%.o ; (cd ..; (echo 'loadt "arm/proofs/base.ml";;'; echo 'loadt "arm/proofs/$*.ml";;') | $(HOLLIGHT) 2>&1) >$@

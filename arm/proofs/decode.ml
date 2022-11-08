@@ -173,6 +173,8 @@ let decode = new_definition `!w:int32. decode w =
     SOME (arm_RET (XREG' Rn))
   | [0b10011011110:11; Rm:5; 0b011111:6; Rn:5; Rd:5] ->
     SOME (arm_UMULH (XREG' Rd) (XREG' Rn) (XREG' Rm))
+  | [0:1; immlo:2; 0b10000:5; immhi:19; Rd:5] ->
+    SOME (arm_ADR (XREG' Rd) (word_join immhi immlo))
   | [1:1; x; 0b1110000:7; ld; 0:1; imm9:9; 0b01:2; Rn:5; Rt:5] ->
     SOME (arm_ldst ld x Rt (XREG_SP Rn) (Postimmediate_Offset (word_sx imm9)))
   | [1:1; x; 0b1110000:7; ld; 0:1; imm9:9; 0b11:2; Rn:5; Rt:5] ->
@@ -615,6 +617,8 @@ let PURE_DECODE_CONV =
   | Comb((Const("word_zx",_) as f),a) -> eval_unary f a F WORD_ZX_CONV
   | Comb((Const("word_sx",_) as f),a) -> eval_unary f a F IWORD_SX_CONV
   | Comb((Const("word_not",_) as f),a) -> eval_unary f a F WORD_RED_CONV
+  | Comb(Comb((Const("word_join",_) as f),a),b) ->
+    eval_binary f a b F WORD_RED_CONV
   | Comb(Const("@",_),_) -> raise (Invalid_argument "ARB")
   | Const("ARB",_) -> raise (Invalid_argument "ARB")
   | Comb(Comb((Const("=",_) as f),a),b) -> eval_binary f a b F
@@ -901,6 +905,54 @@ let save_literal_from_elf deffile objfile =
   let bs = load_elf_contents_arm objfile in
   let ls = make_fn_word_list bs (decode_all (term_of_bytes bs)) in
   file_of_string deffile ls;;
+
+let mk_bytelist = C (curry mk_list) `:byte`;;
+
+let extract_coda_from_elf =
+  let rec try_decode_all = function
+  | Const("NIL",_) -> []
+  | tm ->
+    let th1 = READ_WORD_CONV (mk_comb (`read_int32`, tm)) in
+    let a,next = dest_pair (rand (rhs (concl th1))) in
+    try rand(rhs(concl(DECODE_CONV (mk_comb (`decode`, a)))))::
+        try_decode_all next
+    with Failure _ -> [] in
+  fun possize file ->
+    let bs = load_elf_contents_arm file in
+    let bt = term_of_bytes bs in
+    let bl = dest_list bt in
+    let codesize = if 0 <= possize && possize <= length bl then possize
+                   else 4 * length(try_decode_all bt) in
+    (mk_bytelist F_F mk_bytelist) (chop_list codesize bl);;
+
+let stringize_coda_from_elf possize file =
+   let bs = load_elf_contents_arm file in
+   let ct,dt = extract_coda_from_elf possize file in
+   let cs = make_fn_word_list bs (decode_all ct) in
+   let ds = string_of_term(mk_list(map rand (dest_list dt),`:num`)) in
+   cs ^ ds ^ ";;\n";;
+
+let print_coda_from_elf possize file =
+  Format.print_string (stringize_coda_from_elf possize file);;
+
+let save_coda_from_elf deffile possize objfile =
+  file_of_string deffile (stringize_coda_from_elf possize objfile);;
+
+let define_coda_from_elf possize codename dataname file =
+  let ct,dt = extract_coda_from_elf possize file in
+  let cdef = define_word_list codename ct in
+  let ddef = define_word_list dataname dt in
+  cdef,ddef;;
+
+let define_coda_literal_from_elf codename dataname file codelist datalist =
+  let ct,dt = extract_coda_from_elf (4 * length codelist) file in
+  let databytes =
+    mk_bytelist
+     (map (curry mk_comb `word:num->byte` o mk_small_numeral) datalist) in
+  if databytes <> dt then failwith "data part mismatch" else
+  let cdef = define_assert_word_list codename ct codelist in
+  let ddef = define_word_list dataname dt in
+  cdef,ddef;;
 
 (* Usage:
 Use

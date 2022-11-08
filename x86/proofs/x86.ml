@@ -107,6 +107,40 @@ let BYTES_LOADED_BUTLAST = prove
      [SYM(MATCH_MP APPEND_BUTLAST_LAST th)]) THEN
   SIMP_TAC[bytes_loaded_append]);;
 
+let BYTES_LOADED_SUB_LIST = prove
+ (`!s pc l m n.
+        bytes_loaded s pc l
+        ==> bytes_loaded s (word_add pc (word m)) (SUB_LIST(m,n) l)`,
+  REPEAT GEN_TAC THEN
+  MP_TAC(ISPECL [`l:byte list`; `m + n:num`] SUB_LIST_TOPSPLIT) THEN
+  DISCH_THEN(fun th -> GEN_REWRITE_TAC (LAND_CONV o RAND_CONV) [SYM th]) THEN
+  REWRITE_TAC[bytes_loaded_append] THEN DISCH_THEN(MP_TAC o CONJUNCT1) THEN
+  REWRITE_TAC[SUB_LIST_SPLIT; ADD_CLAUSES; bytes_loaded_append] THEN
+  DISCH_THEN(MP_TAC o CONJUNCT2) THEN
+  REWRITE_TAC[LENGTH_SUB_LIST; SUB_0; MIN] THEN
+  COND_CASES_TAC THEN ASM_REWRITE_TAC[] THEN
+  ASM_MESON_TAC[LE_CASES; SUB_LIST_TRIVIAL; bytes_loaded_nil]);;
+
+let BYTES_LOADED_TRIM_LIST = prove
+ (`!s pc l m n.
+        bytes_loaded s pc l
+        ==> bytes_loaded s (word_add pc (word m)) (TRIM_LIST(m,n) l)`,
+  REWRITE_TAC[BYTES_LOADED_SUB_LIST; TRIM_LIST]);;
+
+(* ------------------------------------------------------------------------- *)
+(* Tweak for bytes_loaded s (word pc) (APPEND program data)                  *)
+(* ------------------------------------------------------------------------- *)
+
+let BYTES_LOADED_APPEND_CLAUSE = prove
+ (`bytes_loaded s (word pc) (APPEND prog data) /\
+   read RIP s = pcin /\
+   rest <=>
+   bytes_loaded s (word pc) prog /\
+   read RIP s = pcin /\
+   bytes_loaded s (word(pc + LENGTH prog)) data /\
+   rest`,
+  REWRITE_TAC[bytes_loaded_append; GSYM WORD_ADD; CONJ_ACI]);;
+
 (* ------------------------------------------------------------------------- *)
 (* Shorthands for individual flags.                                          *)
 (* ------------------------------------------------------------------------- *)
@@ -1122,9 +1156,10 @@ let GPR = define
 
 let bsid_semantics = define
  `bsid_semantics(Bsid obase oind scl disp) s =
-        let bv = match obase with SOME base -> read (GPR base) s | NONE -> 0
-        and iv = match oind with SOME ind -> read (GPR ind) s | NONE -> 0 in
-        word(bv + 2 EXP (val scl) * iv + val disp):64 word`;;
+   (let bv = match obase with SOME base -> read (GPR base) s | NONE -> 0
+    and iv = match oind with SOME ind -> read (GPR ind) s | NONE -> 0 in
+    word(bv + 2 EXP (val scl) * iv + val disp):64 word) /\
+  bsid_semantics(Riprel off) s = word(val(read RIP s) + val off)`;;
 
 (* ------------------------------------------------------------------------- *)
 (* Translate an operand to a state component of given size.                  *)
@@ -1782,7 +1817,8 @@ let BSID_CLAUSES_GEN = prove
    word_add (word 0)
     (word (2 EXP (val k) * val(read (registers :> element r2) s) + val d)) /\
    bsid_semantics (Bsid (SOME(Gpr r1 Full_64)) NONE k d) s =
-   word_add (read (registers :> element r1) s) d`,
+   word_add (read (registers :> element r1) s) d /\
+   bsid_semantics(Riprel off) s = word(val(read RIP s) + val off)`,
   REWRITE_TAC[bsid_semantics; GPR] THEN
   CONV_TAC(TOP_DEPTH_CONV let_CONV) THEN
   REWRITE_TAC[ADD_CLAUSES; MULT_CLAUSES] THEN

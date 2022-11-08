@@ -145,11 +145,9 @@ let read_ModRM = define
  `read_ModRM rex [] = NONE /\
   (!b l. read_ModRM rex (CONS b l) =
    bitmatch b:byte with
-   | [0b00:2; reg:3; 0b101:3] -> NONE
-   // TODO: no rip-relative offset!
-   // read_int32 l >>= \(i,l).
-   // SOME(rex_reg (rex_R rex) reg,
-   //      RM_mem (rip_relative (ival i)), l)
+   | [0b00:2; reg:3; 0b101:3] ->
+     read_int32 l >>= \(i,l).
+     SOME((rex_reg (rex_R rex) reg,RM_mem (Riprel (word_sx i))), l)
    | [0b11:2; reg:3; rm:3] ->
      SOME((rex_reg (rex_R rex) reg, RM_reg (rex_reg (rex_B rex) rm)), l)
    | [md:2; reg:3; 0b100:3] ->
@@ -1289,6 +1287,7 @@ let READ_SIB_CONV,READ_MODRM_CONV,READ_VEX_CONV,DECODE_CONV =
     evaluate a (fun th ->
       let th = AP_THM (AP_THM (AP_TERM f th) b) c in
       delay_if true (rhs (concl th)) (F o TRANS th) BSID_CONV)
+  | Comb(Const("Riprel",_) as f,a) -> eval_unary f a F ALL_CONV
   | Comb((Const("to_wordsize",_) as f),a) -> eval_unary f a F TO_WORDSIZE_CONV
   | Comb((Const("adx",_) as f),a) -> eval_unary f a F ADX_CONV
   | Comb(Comb((Const("operand_of_RM",_) as f),a),b) ->
@@ -2087,6 +2086,65 @@ let save_literal_from_elf deffile objfile =
   let bs = array_of_bytes (load_elf_contents_x86 objfile) in
   let ls = make_fn_word_list bs (decode_all (term_of_array bs)) in
   file_of_string deffile ls;;
+
+let mk_bytelist = C (curry mk_list) `:byte`;;
+
+let extract_coda_from_elf =
+  let rec try_decode_all = function
+    | Const("NIL",_) -> []
+    | tm ->
+      try let th = DECODE_CONV (mk_comb (`decode`, tm)) in
+          let lhs,rhs = dest_eq (concl th) in
+          let tm',next = dest_comb (rand rhs) in
+          let rec len n = function
+          | t when t == next -> n
+          | Comb(Comb(Const("CONS",_),_),l) -> len (n+1) l
+          | Comb(Comb(Const("APPEND",_),
+              Comb(Comb(Const("bytelist_of_num",_),i),_)),l) ->
+            len (n + Num.int_of_num (dest_numeral i)) l
+          | Comb(Comb(Const("APPEND",_),
+              Comb(Comb(Const("bytelist_of_int",_),i),_)),l) ->
+            len (n + Num.int_of_num (dest_numeral i)) l
+          | _ -> 0 in
+          let a = len 0 (rand lhs), rand tm' in
+          a :: try_decode_all next
+      with Failure _ -> [] in
+  fun possize file ->
+    let bs = load_elf_contents_x86 file in
+    let bt = term_of_bytes bs in
+    let bl = dest_list bt in
+    let codesize = if 0 <= possize && possize <= length bl then possize
+                   else  itlist ((+) o fst) (try_decode_all bt) 0 in
+    (mk_bytelist F_F mk_bytelist) (chop_list codesize bl);;
+
+let stringize_coda_from_elf possize file =
+  let bs = load_elf_contents_x86 file in
+  let ct,dt = extract_coda_from_elf possize file in
+  let cs = make_fn_word_list (array_of_bytes bs) (decode_all ct) in
+  let ds = string_of_term(mk_list(map rand (dest_list dt),`:num`)) in
+  cs ^ ds ^ ";;\n";;
+
+let print_coda_from_elf possize file =
+  Format.print_string (stringize_coda_from_elf possize file);;
+
+let save_coda_from_elf deffile possize objfile =
+  file_of_string deffile (stringize_coda_from_elf possize objfile);;
+
+let define_coda_from_elf possize codename dataname file =
+  let ct,dt = extract_coda_from_elf possize file in
+  let cdef = define_word_list codename ct in
+  let ddef = define_word_list dataname dt in
+  cdef,ddef;;
+
+let define_coda_literal_from_elf codename dataname file codelist datalist =
+  let ct,dt = extract_coda_from_elf (length codelist) file in
+  let databytes =
+    mk_bytelist
+     (map (curry mk_comb `word:num->byte` o mk_small_numeral) datalist) in
+  if databytes <> dt then failwith "data part mismatch" else
+  let cdef = define_assert_word_list codename ct codelist in
+  let ddef = define_word_list dataname dt in
+  cdef,ddef;;
 
 (* Usage:
 Use

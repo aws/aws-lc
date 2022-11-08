@@ -1,5 +1,6 @@
-// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0 OR ISC
+/* Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0 OR ISC
+ */
 
 /* ----------------------------------------------------------------------------
  * C prototypes for s2n-bignum functions, so you can use them in C programs via
@@ -743,6 +744,11 @@ extern void curve25519_pxscalarmul_alt(uint64_t res[8],uint64_t scalar[4],uint64
 /* Inputs scalar[4], point[4]; output res[4] */
 extern void curve25519_x25519(uint64_t res[4],uint64_t scalar[4],uint64_t point[4]);
 extern void curve25519_x25519_alt(uint64_t res[4],uint64_t scalar[4],uint64_t point[4]);
+
+/* x25519 function for curve25519 on base element 9 */
+/* Input scalar[4]; output res[4] */
+extern void curve25519_x25519base(uint64_t res[4],uint64_t scalar[4]);
+extern void curve25519_x25519base_alt(uint64_t res[4],uint64_t scalar[4]);
 
 /* Extended projective + precomputed mixed addition for edwards25519 */
 /* Inputs p1[16], p2[12]; output p3[16] */

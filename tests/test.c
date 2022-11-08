@@ -266,6 +266,8 @@ enum {
        TEST_CURVE25519_PXSCALARMUL_ALT,
        TEST_CURVE25519_X25519,
        TEST_CURVE25519_X25519_ALT,
+       TEST_CURVE25519_X25519BASE,
+       TEST_CURVE25519_X25519BASE_ALT,
        TEST_EDWARDS25519_PEPADD,
        TEST_EDWARDS25519_PEPADD_ALT,
        TEST_P256_MONTJADD,
@@ -7953,6 +7955,77 @@ int test_curve25519_x25519_alt(void)
   return 0;
 }
 
+
+int test_curve25519_x25519base(void)
+{ uint64_t t, k;
+  printf("Testing curve25519_x25519base with %d cases\n",tests);
+  k = 4;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b1);
+     reference_of_word(k,b2,UINT64_C(9));
+
+     curve25519_x25519base(b3,b1);
+     reference_curve25519x25519(b4,b1,b2);
+
+     c = reference_compare(k,b3,k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" * "
+               "<0x%016"PRIx64"...%016"PRIx64"> = "
+               "<...0x%016"PRIx64"...%016"PRIx64"> not "
+               "<...0x%016"PRIx64"...%016"PRIx64">\n",
+               k,b1[3],b1[0],b2[3],b2[0],b3[3],b3[0],b4[3],b4[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" * "
+               "<0x%016"PRIx64"...%016"PRIx64"> = "
+               "<...0x%016"PRIx64"...%016"PRIx64">\n",
+               k,b1[3],b1[0],b2[3],b2[0],b3[3],b3[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_curve25519_x25519base_alt(void)
+{ uint64_t t, k;
+  printf("Testing curve25519_x25519base_alt with %d cases\n",tests);
+  k = 4;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b1);
+     reference_of_word(k,b2,UINT64_C(9));
+
+     curve25519_x25519base_alt(b3,b1);
+     reference_curve25519x25519(b4,b1,b2);
+
+     c = reference_compare(k,b3,k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" * "
+               "<0x%016"PRIx64"...%016"PRIx64"> = "
+               "<...0x%016"PRIx64"...%016"PRIx64"> not "
+               "<...0x%016"PRIx64"...%016"PRIx64">\n",
+               k,b1[3],b1[0],b2[3],b2[0],b3[3],b3[0],b4[3],b4[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" * "
+               "<0x%016"PRIx64"...%016"PRIx64"> = "
+               "<...0x%016"PRIx64"...%016"PRIx64">\n",
+               k,b1[3],b1[0],b2[3],b2[0],b3[3],b3[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
 int test_edwards25519_pepadd(void)
 { uint64_t t, k;
   printf("Testing edwards25519_pepadd with %d cases\n",tests);
@@ -8831,6 +8904,8 @@ int test_all(void)
   dotest(test_curve25519_pxscalarmul_alt);
   dotest(test_curve25519_x25519);
   dotest(test_curve25519_x25519_alt);
+  dotest(test_curve25519_x25519base);
+  dotest(test_curve25519_x25519base_alt);
   dotest(test_edwards25519_pepadd);
   dotest(test_edwards25519_pepadd_alt);
   dotest(test_p256_montjadd);
@@ -9044,6 +9119,7 @@ int test_allnonbmi()
   dotest(test_curve25519_ladderstep_alt);
   dotest(test_curve25519_pxscalarmul_alt);
   dotest(test_curve25519_x25519_alt);
+  dotest(test_curve25519_x25519base_alt);
   dotest(test_edwards25519_pepadd_alt);
   dotest(test_word_bytereverse);
   dotest(test_word_clz);
@@ -9339,6 +9415,8 @@ int main(int argc, char *argv[])
      case TEST_CURVE25519_PXSCALARMUL_ALT:return test_curve25519_pxscalarmul_alt();
      case TEST_CURVE25519_X25519:         return test_curve25519_x25519();
      case TEST_CURVE25519_X25519_ALT:     return test_curve25519_x25519_alt();
+     case TEST_CURVE25519_X25519BASE:     return test_curve25519_x25519base();
+     case TEST_CURVE25519_X25519BASE_ALT: return test_curve25519_x25519base_alt();
      case TEST_EDWARDS25519_PEPADD:       return test_edwards25519_pepadd();
      case TEST_EDWARDS25519_PEPADD_ALT:   return test_edwards25519_pepadd_alt();
      case TEST_P256_MONTJADD:             return test_p256_montjadd();

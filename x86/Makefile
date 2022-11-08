@@ -79,6 +79,8 @@ POINT_OBJ = curve25519/curve25519_ladderstep.o \
             curve25519/curve25519_pxscalarmul_alt.o \
             curve25519/curve25519_x25519.o \
             curve25519/curve25519_x25519_alt.o \
+            curve25519/curve25519_x25519base.o \
+            curve25519/curve25519_x25519base_alt.o \
             curve25519/edwards25519_pepadd.o \
             curve25519/edwards25519_pepadd_alt.o \
             p256/p256_montjadd.o \
@@ -360,6 +362,8 @@ PROOFS = $(OBJ:.o=.correct)
 
 curve25519/curve25519_x25519.correct: generic/bignum_modinv.o generic/bignum_modinv.obj proofs/curve25519_x25519.ml curve25519/curve25519_x25519.o curve25519/curve25519_x25519.obj ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/curve25519_x25519.ml";;') | $(HOLLIGHT) 2>&1) >$@
 curve25519/curve25519_x25519_alt.correct: generic/bignum_modinv.o generic/bignum_modinv.obj proofs/curve25519_x25519_alt.ml curve25519/curve25519_x25519_alt.o curve25519/curve25519_x25519_alt.obj ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/curve25519_x25519_alt.ml";;') | $(HOLLIGHT) 2>&1) >$@
+curve25519/curve25519_x25519base.correct: generic/bignum_modinv.o generic/bignum_modinv.obj proofs/curve25519_x25519base.ml curve25519/curve25519_x25519base.o curve25519/curve25519_x25519base.obj ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/curve25519_x25519base.ml";;') | $(HOLLIGHT) 2>&1) >$@
+curve25519/curve25519_x25519base_alt.correct: generic/bignum_modinv.o generic/bignum_modinv.obj proofs/curve25519_x25519base_alt.ml curve25519/curve25519_x25519base_alt.o curve25519/curve25519_x25519base_alt.obj ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/curve25519_x25519base_alt.ml";;') | $(HOLLIGHT) 2>&1) >$@
 
 curve25519/%.correct: proofs/%.ml curve25519/%.o curve25519/%.obj ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/$*.ml";;') | $(HOLLIGHT) 2>&1) >$@
 fastmul/%.correct: proofs/%.ml fastmul/%.o fastmul/%.obj ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/$*.ml";;') | $(HOLLIGHT) 2>&1) >$@
@@ -371,4 +375,4 @@ secp256k1/%.correct: proofs/%.ml secp256k1/%.o secp256k1/%.obj ; (cd ..; (echo '
 
 run_proofs: $(PROOFS);
 
-proofs: run_proofs ; [ `grep SUBROUTINE_CORRECT proofs/*.ml | wc -l` -eq  `grep 'SUBROUTINE_CORRECT : thm' */*.correct  | cut -f2 -d' ' | sort | uniq | wc -l` ]
+proofs: run_proofs ; [ `grep 'let [A-Z_0-9]*_SUBROUTINE_CORRECT' proofs/*.ml | wc -l` -eq  `grep 'SUBROUTINE_CORRECT : thm' */*.correct  | cut -f2 -d' ' | sort | uniq | wc -l` ]
