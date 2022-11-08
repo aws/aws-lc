@@ -992,15 +992,22 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
       reinterpret_cast<const uint8_t *>(kConfig), sizeof(kConfig) - 1)});
 }
 
-template <size_t DigestLength, const EVP_MD *(MDFunc)()>
+template <uint8_t *(*OneShotHash)(const uint8_t *, size_t, uint8_t *),
+          size_t DigestLength>
 static bool Hash(const Span<const uint8_t> args[], ReplyCallback write_reply) {
-  const Span<const uint8_t> msg = args[0];
+  uint8_t digest[DigestLength];
+  OneShotHash(args[0].data(), args[0].size(), digest);
+  return write_reply({Span<const uint8_t>(digest)});
+}
+
+template <const EVP_MD *(MDFunc)(), size_t DigestLength>
+static bool HashSha3(const Span<const uint8_t> args[], ReplyCallback write_reply) {
   uint8_t digest[DigestLength];
   const EVP_MD *md = MDFunc();
   unsigned int md_out_size = DigestLength;
 
   EVP_MD_unstable_sha3_enable(true);
-  EVP_Digest(msg.data(), msg.size(), digest, &md_out_size, md, NULL);
+  EVP_Digest(args[0].data(), args[0].size(), digest, &md_out_size, md, NULL);
   EVP_MD_unstable_sha3_enable(false);
 
   return write_reply({Span<const uint8_t>(digest)});
@@ -1030,7 +1037,7 @@ static bool HashMCT(const Span<const uint8_t> args[],
       {Span<const uint8_t>(buf + 2 * DigestLength, DigestLength)});
 }
 
-template <size_t DigestLength, const EVP_MD *(MDFunc)()>
+template <const EVP_MD *(MDFunc)(), size_t DigestLength>
 static bool HashMCTSha3(const Span<const uint8_t> args[],
                     ReplyCallback write_reply) {
   if (args[0].size() != DigestLength) {
@@ -2268,26 +2275,26 @@ static struct {
   bool (*handler)(const Span<const uint8_t> args[], ReplyCallback write_reply);
 } kFunctions[] = {
     {"getConfig", 0, GetConfig},
-    {"SHA-1", 1, Hash<SHA_DIGEST_LENGTH, EVP_sha1>},
-    {"SHA2-224", 1, Hash<SHA224_DIGEST_LENGTH, EVP_sha224>},
-    {"SHA2-256", 1, Hash<SHA256_DIGEST_LENGTH, EVP_sha256>},
-    {"SHA2-384", 1, Hash<SHA384_DIGEST_LENGTH, EVP_sha384>},
-    {"SHA2-512", 1, Hash<SHA512_DIGEST_LENGTH, EVP_sha512>},
-    {"SHA2-512/256", 1, Hash<SHA512_256_DIGEST_LENGTH, EVP_sha512_256>},
-    {"SHA3-224", 1, Hash<SHA224_DIGEST_LENGTH, EVP_sha3_224>},
-    {"SHA3-256", 1, Hash<SHA256_DIGEST_LENGTH, EVP_sha3_256>},
-    {"SHA3-384", 1, Hash<SHA384_DIGEST_LENGTH, EVP_sha3_384>},
-    {"SHA3-512", 1, Hash<SHA512_DIGEST_LENGTH, EVP_sha3_512>},
+    {"SHA-1", 1, Hash<SHA1, SHA_DIGEST_LENGTH>},
+    {"SHA2-224", 1, Hash<SHA224, SHA224_DIGEST_LENGTH>},
+    {"SHA2-256", 1, Hash<SHA256, SHA256_DIGEST_LENGTH>},
+    {"SHA2-384", 1, Hash<SHA384, SHA384_DIGEST_LENGTH>},
+    {"SHA2-512", 1, Hash<SHA512, SHA512_DIGEST_LENGTH>},
+    {"SHA2-512/256", 1, Hash<SHA512_256, SHA512_256_DIGEST_LENGTH>},
+    {"SHA3-224", 1, HashSha3<EVP_sha3_224, SHA224_DIGEST_LENGTH>},
+    {"SHA3-256", 1, HashSha3<EVP_sha3_256, SHA256_DIGEST_LENGTH>},
+    {"SHA3-384", 1, HashSha3<EVP_sha3_384, SHA384_DIGEST_LENGTH>},
+    {"SHA3-512", 1, HashSha3<EVP_sha3_512, SHA512_DIGEST_LENGTH>},
     {"SHA-1/MCT", 1, HashMCT<SHA1, SHA_DIGEST_LENGTH>},
     {"SHA2-224/MCT", 1, HashMCT<SHA224, SHA224_DIGEST_LENGTH>},
     {"SHA2-256/MCT", 1, HashMCT<SHA256, SHA256_DIGEST_LENGTH>},
     {"SHA2-384/MCT", 1, HashMCT<SHA384, SHA384_DIGEST_LENGTH>},
     {"SHA2-512/MCT", 1, HashMCT<SHA512, SHA512_DIGEST_LENGTH>},
     {"SHA2-512/256/MCT", 1, HashMCT<SHA512_256, SHA512_256_DIGEST_LENGTH>},
-    {"SHA3-224/MCT", 1, HashMCTSha3<SHA224_DIGEST_LENGTH, EVP_sha3_224>},
-    {"SHA3-256/MCT", 1, HashMCTSha3<SHA256_DIGEST_LENGTH, EVP_sha3_256>},
-    {"SHA3-384/MCT", 1, HashMCTSha3<SHA384_DIGEST_LENGTH, EVP_sha3_384>},
-    {"SHA3-512/MCT", 1, HashMCTSha3<SHA512_DIGEST_LENGTH, EVP_sha3_512>},
+    {"SHA3-224/MCT", 1, HashMCTSha3<EVP_sha3_224, SHA224_DIGEST_LENGTH>},
+    {"SHA3-256/MCT", 1, HashMCTSha3<EVP_sha3_256, SHA256_DIGEST_LENGTH>},
+    {"SHA3-384/MCT", 1, HashMCTSha3<EVP_sha3_384, SHA384_DIGEST_LENGTH>},
+    {"SHA3-512/MCT", 1, HashMCTSha3<EVP_sha3_512, SHA512_DIGEST_LENGTH>},
     {"AES/encrypt", 3, AES<AES_set_encrypt_key, AES_encrypt>},
     {"AES/decrypt", 3, AES<AES_set_decrypt_key, AES_decrypt>},
     {"AES-XTS/encrypt", 3, AES_XTS<true>},
