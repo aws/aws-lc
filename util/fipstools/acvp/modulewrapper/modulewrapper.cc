@@ -1039,6 +1039,9 @@ static bool HashMCTSha3(const Span<const uint8_t> args[],
   const EVP_MD *evp_md = MDFunc();
   unsigned int md_out_size = DigestLength;
 
+
+  // The following logic conforms to the Monte Carlo tests described in
+  // https://pages.nist.gov/ACVP/draft-celi-acvp-sha3.html#name-monte-carlo-tests-for-sha3-
   unsigned char md[1001][DigestLength];
   unsigned char msg[1001][DigestLength];
 
