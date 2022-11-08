@@ -52,6 +52,7 @@ set(
   crypto/ecdh_extra/ecdh_tests.txt
   crypto/evp_extra/evp_tests.txt
   crypto/evp_extra/pq_kem_kat_tests_kyber512.txt
+  crypto/evp_extra/pq_kem_kat_tests_kyber768.txt
   crypto/evp_extra/scrypt_tests.txt
   crypto/fipsmodule/aes/aes_tests.txt
   crypto/fipsmodule/bn/bn_tests.txt

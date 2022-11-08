@@ -180,6 +180,7 @@ OPENSSL_EXPORT EC_KEY *EVP_PKEY_get1_EC_KEY(const EVP_PKEY *pkey);
 #define EVP_PKEY_ED25519 NID_ED25519
 #define EVP_PKEY_X25519 NID_X25519
 #define EVP_PKEY_KYBER512 NID_KYBER512
+#define EVP_PKEY_KYBER768 NID_KYBER768
 #define EVP_PKEY_HKDF NID_hkdf
 
 // EVP_PKEY_assign sets the underlying key of |pkey| to |key|, which must be of

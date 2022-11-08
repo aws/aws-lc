@@ -26,6 +26,12 @@ typedef struct {
   uint8_t has_private;
 } KYBER512_KEY;
 
+typedef struct {
+  uint8_t pub[1184];
+  uint8_t priv[2400];
+  uint8_t has_private;
+} KYBER768_KEY;
+
 extern const EVP_PKEY_ASN1_METHOD dsa_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD ec_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD rsa_asn1_meth;
@@ -33,10 +39,12 @@ extern const EVP_PKEY_ASN1_METHOD rsa_pss_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD ed25519_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD x25519_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD kyber512_asn1_meth;
+extern const EVP_PKEY_ASN1_METHOD kyber768_asn1_meth;
 
 extern const EVP_PKEY_METHOD ed25519_pkey_meth;
 extern const EVP_PKEY_METHOD x25519_pkey_meth;
 extern const EVP_PKEY_METHOD kyber512_pkey_meth;
+extern const EVP_PKEY_METHOD kyber768_pkey_meth;
 extern const EVP_PKEY_METHOD hkdf_pkey_meth;
 
 // Returns a reference to the list |non_fips_pkey_evp_methods|. The list has

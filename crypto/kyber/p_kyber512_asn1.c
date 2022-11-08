@@ -118,7 +118,8 @@ static int kyber512_bits(const EVP_PKEY *pkey) {
 
 const EVP_PKEY_ASN1_METHOD kyber512_asn1_meth = {
     EVP_PKEY_KYBER512,
-    //1.3.6.1.4.1.2.267.8 = Kyber KEM Round-3
+    // 1.3.6.1.4.1.2.267.8 = Kyber KEM Round-3
+    // TODO(awslc): this is a placeholder OID until we get the official one.
     {0x06, 0x09, 0x2B, 0x06, 0x01, 0x04, 0x01, 0x02, 0x82, 0x0B, 0x08},
     11,
     NULL,
