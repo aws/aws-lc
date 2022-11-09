@@ -148,6 +148,7 @@ function create_prefix_headers {
 
 function prepare_crate_dir {
   echo Preparing crate directory: "${CRATE_DIR}"
+  # Removes completion marker and any other file remaining from a previous crate generation
   rm -rf "${CRATE_DIR}"
 
   mkdir -p "${CRATE_DIR}"
