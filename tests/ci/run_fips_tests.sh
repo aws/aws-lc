@@ -8,7 +8,7 @@ echo "Testing AWS-LC shared library in FIPS Release mode."
 fips_build_and_test -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=1
 
 # Static FIPS build works only on x86_64 Linux platforms (both gcc and clang),
-# and on aarch64 Linux platforms with clang.
+# and on aarch64 Linux platforms with clang. Fix tracked in CryptoAlg-1399
 if [[ ("$(uname -s)" == 'Linux'*) && (("$(uname -p)" == 'x86_64'*) || (("$(uname -p)" == 'aarch64') && ("$CC" == 'clang'*))) ]]; then
   echo "Testing AWS-LC static library in FIPS Release mode."
   fips_build_and_test -DCMAKE_BUILD_TYPE=Release
