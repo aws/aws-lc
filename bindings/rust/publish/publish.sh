@@ -40,6 +40,7 @@ cargo publish --dry-run --allow-dirty --no-verify
 
 if [[ ${PUBLISH} -eq 1 ]]; then
   # The --no-verify is needed because we create `src/bindings.rs` during the build process.
+  # The maximum crate size allowed by crates-io is 10MB.
   cargo publish --allow-dirty --no-verify
 else
   echo Not published. Use -p to publish.
