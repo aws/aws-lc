@@ -39,7 +39,7 @@ done
 
 shift $((OPTIND - 1))
 
-AWS_LC_SYS_VERSION="0.1.0"
+AWS_LC_SYS_VERSION="0.1.1"
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 AWS_LC_DIR=$( cd -- "${SCRIPT_DIR}/../../../" &> /dev/null && pwd)
@@ -47,6 +47,7 @@ CRATE_TEMPLATE_DIR="${AWS_LC_DIR}"/bindings/rust/aws-lc-sys-template
 TMP_DIR="${AWS_LC_DIR}"/bindings/rust/tmp
 SYMBOLS_FILE="${TMP_DIR}"/symbols.txt
 CRATE_DIR="${TMP_DIR}"/aws-lc-sys
+COMPLETION_MARKER="${CRATE_DIR}"/.generation_complete
 CRATE_AWS_LC_DIR="${CRATE_DIR}"/deps/aws-lc
 PREFIX_HEADERS_FILE="${CRATE_AWS_LC_DIR}"/include/boringssl_prefix_symbols.h
 
@@ -147,6 +148,8 @@ function create_prefix_headers {
 
 function prepare_crate_dir {
   echo Preparing crate directory: "${CRATE_DIR}"
+  rm -rf "${CRATE_DIR}"
+
   mkdir -p "${CRATE_DIR}"
   mkdir -p "${CRATE_AWS_LC_DIR}"/
 
@@ -157,7 +160,6 @@ function prepare_crate_dir {
         "${AWS_LC_DIR}"/ssl  \
         "${AWS_LC_DIR}"/include \
         "${AWS_LC_DIR}"/tool \
-        "${AWS_LC_DIR}"/generated-src \
         "${AWS_LC_DIR}"/CMakeLists.txt \
         "${AWS_LC_DIR}"/LICENSE \
         "${AWS_LC_DIR}"/sources.cmake \
@@ -180,3 +182,5 @@ prepare_crate_dir
 create_prefix_headers
 
 "${SCRIPT_DIR}"/_test_supported_builds.sh "$( [ ${IGNORE_MACOS} -eq 1 ] && echo '-m' )"
+
+touch "${COMPLETION_MARKER}"
