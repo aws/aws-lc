@@ -22,6 +22,11 @@ Only the reference C implementation of Kyber512 is currently integrated. The cod
 * `kem.c`: calls to `randombytes` function is replaced with calls to `pq_custom_randombytes` and the appropriate header file is included (`crypto/rand_extra/pq_custom_randombytes.h`).
 * `params.h`: `KYBER_K 2` is explicitly defined (to specify Kyber512).
 * `verify.c`: change to fix MSVC compiler warning (see the file for details).
+* `fips202.{h|c}` is moved to a separate folder `pqcrystals-kyber_common` in preparation for adding the support for Kyber768.
+* `symmetric.h`: changed to include `fips202.h` from its new location.
+* `symmetric-shake.c`: unnecessary include of `fips202.h` is removed.
+
+The reference C implementation of Kyber768 is added to `pqcrystals-kyber_kyber768_ref` folder but it is not integrated yet in AWS-LC.
 
 
 **Usage.** The API is defined and documented in `include/openssl/evp.h`. To see examples of how to use Kyber512, see `crypto/kyber/p_kyber_test.cc`. TLDR:
