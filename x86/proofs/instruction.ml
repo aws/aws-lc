@@ -198,13 +198,15 @@ let condition_INDUCTION,condition_RECURSION = define_type
    ";;
 
 (* ------------------------------------------------------------------------- *)
-(* base + index<<scale + displacement, optionally with size specified.       *)
-(* We treat the displacement as a 64-bit word; the shorter ones actually     *)
+(* The basic BSID is base + index<<scale + displacement.                     *)
+(* We also allow RIP-relative addressing, using a separate constructor.      *)
+(* In all cases the displacement is a 64-bit word; the shorter ones actually *)
 (* in the various encodings can be sign-extended.                            *)
 (* ------------------------------------------------------------------------- *)
 
 let bsid_INDUCTION,bsid_RECURSION = define_type
- "bsid = Bsid (gpr option) (gpr option) (2 word) (64 word)";;
+ "bsid = Bsid (gpr option) (gpr option) (2 word) (64 word)
+       | Riprel (64 word)";;
 
 (* ------------------------------------------------------------------------- *)
 (* Operands.                                                                 *)

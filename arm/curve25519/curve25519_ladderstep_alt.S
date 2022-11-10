@@ -451,7 +451,7 @@
         ldp     x2, x3, [p1+16];                \
         ldp     x6, x7, [p2+16];                \
         adcs    x2, x2, x6;                     \
-        adcs    x3, x3, x7;                     \
+        adc     x3, x3, x7;                     \
         stp     x0, x1, [p0];                   \
         stp     x2, x3, [p0+16]
 

@@ -20,6 +20,13 @@ let bignum_triple_from_memory = new_definition
 
 let bignum_quadruple_from_memory = new_definition
  `bignum_quadruple_from_memory (a,k) s =
+  (bignum_from_memory (a,k) s,
+   bignum_from_memory (word_add a (word(8 * k)),k) s,
+   bignum_from_memory (word_add a (word(16 * k)),k) s,
+   bignum_from_memory (word_add a (word(24 * k)),k) s)`;;
+
+let bignum_pairpair_from_memory = new_definition
+ `bignum_pairpair_from_memory (a,k) s =
   (bignum_pair_from_memory (a,k) s,
    bignum_pair_from_memory (word_add a (word(16 * k)),k) s)`;;
 
@@ -30,11 +37,15 @@ let reduced_triple = new_definition
  `reduced_triple (p:num) (m,n,r) <=> m < p /\ n < p /\ r < p`;;
 
 let reduced_quadruple = new_definition
- `reduced_quadruple (p:num) ((m,n),(r,s)) <=>
+ `reduced_quadruple (p:num) (m,n,r) <=> m < p /\ n < p /\ r < p`;;
+
+let reduced_pairpair = new_definition
+ `reduced_pairpair (p:num) ((m,n),(r,s)) <=>
     m < p /\ n < p /\ r < p /\ s < p`;;
 
 simulation_precanon_thms :=
- union [bignum_quadruple_from_memory; bignum_triple_from_memory; bignum_pair_from_memory]
+ union [bignum_pairpair_from_memory; bignum_quadruple_from_memory;
+        bignum_triple_from_memory; bignum_pair_from_memory]
        (!simulation_precanon_thms);;
 
 (* ------------------------------------------------------------------------- *)
@@ -152,4 +163,7 @@ let tripled = new_definition
  `tripled f (x,y,z) = (f x,f y,f z)`;;
 
 let quadrupled = new_definition
- `quadrupled f (p,q) = (paired f p,paired f q)`;;
+ `quadrupled f (w,x,y,z) = (f w,f x,f y,f z)`;;
+
+let pairpaired = new_definition
+ `pairpaired f ((w,x),(y,z)) = ((f w,f x),(f y,f z))`;;

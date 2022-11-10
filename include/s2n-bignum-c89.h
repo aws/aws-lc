@@ -1,5 +1,6 @@
-// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0 OR ISC
+/* Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0 OR ISC
+ */
 
 /* ----------------------------------------------------------------------------
  * C prototypes for s2n-bignum functions, so you can use them in C programs via
@@ -205,6 +206,10 @@ extern uint64_t bignum_digitsize (uint64_t k, uint64_t *x);
 /*  Inputs z[k]; outputs function return (remainder) and z[k] */
 extern uint64_t bignum_divmod10 (uint64_t k, uint64_t *z);
 
+/*  Double modulo p_25519, z := (2 * x) mod p_25519, assuming x reduced */
+/*  Input x[4]; output z[4] */
+extern void bignum_double_p25519 (uint64_t z[4], uint64_t x[4]);
+
 /*  Double modulo p_256, z := (2 * x) mod p_256, assuming x reduced */
 /*  Input x[4]; output z[4] */
 extern void bignum_double_p256 (uint64_t z[4], uint64_t x[4]);
@@ -347,6 +352,10 @@ extern void bignum_mod_n384_6 (uint64_t z[6], uint64_t x[6]);
 /*  Input x[9]; output z[9] */
 extern void bignum_mod_n521_9 (uint64_t z[9], uint64_t x[9]);
 extern void bignum_mod_n521_9_alt (uint64_t z[9], uint64_t x[9]);
+
+/*  Reduce modulo field characteristic, z := x mod p_25519 */
+/*  Input x[4]; output z[4] */
+extern void bignum_mod_p25519_4 (uint64_t z[4], uint64_t x[4]);
 
 /*  Reduce modulo field characteristic, z := x mod p_256 */
 /*  Input x[k]; output z[4] */
@@ -564,6 +573,10 @@ extern uint64_t bignum_optadd (uint64_t k, uint64_t *z, uint64_t *x, uint64_t p,
 /*  Inputs p, x[k]; outputs function return (nonzero input) and z[k] */
 extern uint64_t bignum_optneg (uint64_t k, uint64_t *z, uint64_t p, uint64_t *x);
 
+/*  Optionally negate modulo p_25519, z := (-x) mod p_25519 (if p nonzero) or z := x (if p zero), assuming x reduced */
+/*  Inputs p, x[4]; output z[4] */
+extern void bignum_optneg_p25519 (uint64_t z[4], uint64_t p, uint64_t x[4]);
+
 /*  Optionally negate modulo p_256, z := (-x) mod p_256 (if p nonzero) or z := x (if p zero), assuming x reduced */
 /*  Inputs p, x[4]; output z[4] */
 extern void bignum_optneg_p256 (uint64_t z[4], uint64_t p, uint64_t x[4]);
@@ -731,6 +744,16 @@ extern void curve25519_pxscalarmul_alt(uint64_t res[8],uint64_t scalar[4],uint64
 /* Inputs scalar[4], point[4]; output res[4] */
 extern void curve25519_x25519(uint64_t res[4],uint64_t scalar[4],uint64_t point[4]);
 extern void curve25519_x25519_alt(uint64_t res[4],uint64_t scalar[4],uint64_t point[4]);
+
+/* x25519 function for curve25519 on base element 9 */
+/* Input scalar[4]; output res[4] */
+extern void curve25519_x25519base(uint64_t res[4],uint64_t scalar[4]);
+extern void curve25519_x25519base_alt(uint64_t res[4],uint64_t scalar[4]);
+
+/* Extended projective + precomputed mixed addition for edwards25519 */
+/* Inputs p1[16], p2[12]; output p3[16] */
+extern void edwards25519_pepadd(uint64_t p3[16],uint64_t p1[16],uint64_t p2[12]);
+extern void edwards25519_pepadd_alt(uint64_t p3[16],uint64_t p1[16],uint64_t p2[12]);
 
 /* Point addition on NIST curve P-256 in Montgomery-Jacobian coordinates */
 /* Inputs p1[12], p2[12]; output p3[12] */

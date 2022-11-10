@@ -8,9 +8,12 @@
 OBJ = curve25519/bignum_add_p25519.o \
       curve25519/bignum_cmul_p25519.o \
       curve25519/bignum_cmul_p25519_alt.o \
+      curve25519/bignum_double_p25519.o \
+      curve25519/bignum_mod_p25519_4.o \
       curve25519/bignum_mul_p25519.o \
       curve25519/bignum_mul_p25519_alt.o \
       curve25519/bignum_neg_p25519.o \
+      curve25519/bignum_optneg_p25519.o \
       curve25519/bignum_sqr_p25519.o \
       curve25519/bignum_sqr_p25519_alt.o \
       curve25519/bignum_sub_p25519.o \
@@ -20,6 +23,10 @@ OBJ = curve25519/bignum_add_p25519.o \
       curve25519/curve25519_pxscalarmul_alt.o \
       curve25519/curve25519_x25519.o \
       curve25519/curve25519_x25519_alt.o \
+      curve25519/curve25519_x25519base.o \
+      curve25519/curve25519_x25519base_alt.o \
+      curve25519/edwards25519_pepadd.o \
+      curve25519/edwards25519_pepadd_alt.o \
       fastmul/bignum_emontredc_8n.o \
       fastmul/bignum_kmul_16_32.o \
       fastmul/bignum_kmul_32_64.o \

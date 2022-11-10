@@ -41,6 +41,7 @@ bignum_demont_p521
 bignum_digit
 bignum_digitsize
 bignum_divmod10
+bignum_double_p25519
 bignum_double_p256
 bignum_double_p256k1
 bignum_double_p384
@@ -71,6 +72,7 @@ bignum_mod_n256k1_4
 bignum_mod_n384_6
 bignum_mod_n384_alt
 bignum_mod_n521_9_alt
+bignum_mod_p25519_4
 bignum_mod_p256_4
 bignum_mod_p256_alt
 bignum_mod_p256k1_4
@@ -121,6 +123,7 @@ bignum_odd
 bignum_of_word
 bignum_optadd
 bignum_optneg
+bignum_optneg_p25519
 bignum_optneg_p256
 bignum_optneg_p256k1
 bignum_optneg_p384
@@ -159,6 +162,8 @@ bignum_triple_p521_alt
 curve25519_ladderstep_alt
 curve25519_pxscalarmul_alt
 curve25519_x25519_alt
+curve25519_x25519base_alt
+edwards25519_pepadd_alt
 word_bytereverse
 word_clz
 word_ctz

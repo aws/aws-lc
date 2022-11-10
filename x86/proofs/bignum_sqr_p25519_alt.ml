@@ -120,9 +120,8 @@ let bignum_sqr_p25519_alt_mc = define_assert_from_elf "bignum_sqr_p25519_alt_mc"
                            (* LEA (% rax) (%% (r12,1)) *)
   0xbe; 0x13; 0x00; 0x00; 0x00;
                            (* MOV (% esi) (Imm32 (word 19)) *)
-  0x49; 0xbc; 0x00; 0x00; 0x00; 0x00; 0x00; 0x00; 0x00; 0x80;
-                           (* MOV (% r12) (Imm64 (word 9223372036854775808)) *)
-  0x4d; 0x09; 0xe3;        (* OR (% r11) (% r12) *)
+  0x49; 0x0f; 0xba; 0xeb; 0x3f;
+                           (* BTS (% r11) (Imm8 (word 63)) *)
   0x48; 0x0f; 0xaf; 0xc6;  (* IMUL (% rax) (% rsi) *)
   0x49; 0x01; 0xc0;        (* ADD (% r8) (% rax) *)
   0x49; 0x11; 0xc9;        (* ADC (% r9) (% rcx) *)
@@ -135,8 +134,8 @@ let bignum_sqr_p25519_alt_mc = define_assert_from_elf "bignum_sqr_p25519_alt_mc"
   0x49; 0x19; 0xc9;        (* SBB (% r9) (% rcx) *)
   0x49; 0x19; 0xca;        (* SBB (% r10) (% rcx) *)
   0x49; 0x19; 0xcb;        (* SBB (% r11) (% rcx) *)
-  0x49; 0xf7; 0xd4;        (* NOT (% r12) *)
-  0x4d; 0x21; 0xe3;        (* AND (% r11) (% r12) *)
+  0x49; 0x0f; 0xba; 0xf3; 0x3f;
+                           (* BTR (% r11) (Imm8 (word 63)) *)
   0x4c; 0x89; 0x07;        (* MOV (Memop Quadword (%% (rdi,0))) (% r8) *)
   0x4c; 0x89; 0x4f; 0x08;  (* MOV (Memop Quadword (%% (rdi,8))) (% r9) *)
   0x4c; 0x89; 0x57; 0x10;  (* MOV (Memop Quadword (%% (rdi,16))) (% r10) *)
@@ -166,13 +165,13 @@ let p25519redlemma = prove
 
 let BIGNUM_SQR_P25519_ALT_CORRECT = time prove
  (`!z x n pc.
-        nonoverlapping (word pc,0x1a6) (z,8 * 4)
+        nonoverlapping (word pc,0x19d) (z,8 * 4)
         ==> ensures x86
              (\s. bytes_loaded s (word pc) (BUTLAST bignum_sqr_p25519_alt_mc) /\
                   read RIP s = word(pc + 0x8) /\
                   C_ARGUMENTS [z; x] s /\
                   bignum_from_memory (x,4) s = n)
-             (\s. read RIP s = word (pc + 0x19d) /\
+             (\s. read RIP s = word (pc + 0x194) /\
                   bignum_from_memory (z,4) s = (n EXP 2) MOD p_25519)
           (MAYCHANGE [RIP; RSI; RAX; RCX; RDX;
                       R8; R9; R10; R11; R12; R13; R14; R15] ,,
@@ -240,7 +239,7 @@ let BIGNUM_SQR_P25519_ALT_CORRECT = time prove
 
   (*** Quotient estimate computation ***)
 
-  X86_STEPS_TAC BIGNUM_SQR_P25519_ALT_EXEC (98--103) THEN
+  X86_STEPS_TAC BIGNUM_SQR_P25519_ALT_EXEC (98--102) THEN
   ABBREV_TAC `t = bignum_of_wordlist
    [sum_s76; sum_s82; sum_s88;
     word_or sum_s95 (word 9223372036854775808)]` THEN
@@ -288,7 +287,7 @@ let BIGNUM_SQR_P25519_ALT_CORRECT = time prove
     CONV_TAC MOD_DOWN_CONV THEN REFL_TAC;
     ALL_TAC] THEN
 
-  REABBREV_TAC `qm = read RAX s103` THEN
+  REABBREV_TAC `qm = read RAX s102` THEN
   SUBGOAL_THEN `&(val(qm:int64)):real = &19 * (&(val(hw:int64)) + &1)`
   ASSUME_TAC THENL
    [EXPAND_TAC "qm" THEN
@@ -302,7 +301,7 @@ let BIGNUM_SQR_P25519_ALT_CORRECT = time prove
   (*** The rest of the computation ***)
 
   X86_ACCSTEPS_TAC BIGNUM_SQR_P25519_ALT_EXEC
-   [104;105;106;107;111;112;113;114] (104--120) THEN
+   [103;104;105;106;110;111;112;113] (103--118) THEN
   ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
   CONV_TAC(LAND_CONV BIGNUM_EXPAND_CONV) THEN ASM_REWRITE_TAC[] THEN
   CONV_TAC SYM_CONV THEN MATCH_MP_TAC MOD_UNIQ_BALANCED_REAL THEN
@@ -313,7 +312,7 @@ let BIGNUM_SQR_P25519_ALT_CORRECT = time prove
 
   (*** Comparison computation and then the rest is easy ***)
 
-  SUBGOAL_THEN `ca < (val(hw:int64) + 1) * p_25519 <=> ~carry_s107`
+  SUBGOAL_THEN `ca < (val(hw:int64) + 1) * p_25519 <=> ~carry_s106`
   SUBST1_TAC THENL
    [CONV_TAC SYM_CONV THEN MATCH_MP_TAC FLAG_FROM_CARRY_LT THEN
     EXISTS_TAC `256` THEN ASM_REWRITE_TAC[] THEN EXPAND_TAC "t" THEN
@@ -331,16 +330,16 @@ let BIGNUM_SQR_P25519_ALT_CORRECT = time prove
     REWRITE_TAC[GSYM REAL_OF_NUM_CLAUSES; REAL_OF_NUM_MOD] THEN
     ACCUMULATOR_ASSUM_LIST(MP_TAC o end_itlist CONJ o DESUM_RULE) THEN
     DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN
-    ASM_CASES_TAC `carry_s107:bool` THEN
+    ASM_CASES_TAC `carry_s106:bool` THEN
     ASM_REWRITE_TAC[BITVAL_CLAUSES] THEN CONV_TAC WORD_REDUCE_CONV THEN
     REAL_INTEGER_TAC]);;
 
 let BIGNUM_SQR_P25519_ALT_SUBROUTINE_CORRECT = time prove
  (`!z x n pc stackpointer returnaddress.
-        nonoverlapping (word pc,0x1a6) (z,8 * 4) /\
+        nonoverlapping (word pc,0x19d) (z,8 * 4) /\
         nonoverlapping (z,8 * 4) (word_sub stackpointer (word 32),40) /\
         ALL (nonoverlapping (word_sub stackpointer (word 32),32))
-            [(word pc,0x1a6); (x,8 * 4)]
+            [(word pc,0x19d); (x,8 * 4)]
         ==> ensures x86
              (\s. bytes_loaded s (word pc) bignum_sqr_p25519_alt_mc /\
                   read RIP s = word pc /\
@@ -368,10 +367,10 @@ let windows_bignum_sqr_p25519_alt_mc = define_from_elf
 
 let WINDOWS_BIGNUM_SQR_P25519_ALT_SUBROUTINE_CORRECT = time prove
  (`!z x n pc stackpointer returnaddress.
-        nonoverlapping (word pc,0x1b0) (z,8 * 4) /\
+        nonoverlapping (word pc,0x1a7) (z,8 * 4) /\
         nonoverlapping (z,8 * 4) (word_sub stackpointer (word 48),56) /\
         ALL (nonoverlapping (word_sub stackpointer (word 48),48))
-            [(word pc,0x1b0); (x,8 * 4)]
+            [(word pc,0x1a7); (x,8 * 4)]
         ==> ensures x86
              (\s. bytes_loaded s (word pc) windows_bignum_sqr_p25519_alt_mc /\
                   read RIP s = word pc /\

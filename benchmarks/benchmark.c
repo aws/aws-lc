@@ -221,6 +221,8 @@ void call_bignum_cmul_p521(void) repeat(bignum_cmul_p521(b0,b1[0],b2))
 
 void call_bignum_cmul_p521_alt(void) repeat(bignum_cmul_p521_alt(b0,b1[0],b2))
 
+void call_bignum_optneg_p25519(void) repeat(bignum_optneg_p25519(b0,b1[0],b2))
+
 void call_bignum_optneg_p256(void) repeat(bignum_optneg_p256(b0,b1[0],b2))
 
 void call_bignum_optneg_p256k1(void) repeat(bignum_optneg_p256k1(b0,b1[0],b2))
@@ -266,6 +268,8 @@ void call_bignum_tomont_p384(void) repeat(bignum_tomont_p384(b0,b1))
 void call_bignum_tomont_p384_alt(void) repeat(bignum_tomont_p384_alt(b0,b1))
 
 void call_bignum_tomont_p521(void) repeat(bignum_tomont_p521(b0,b1))
+
+void call_bignum_double_p25519(void) repeat(bignum_double_p25519(b0,b1))
 
 void call_bignum_double_p256(void) repeat(bignum_double_p256(b0,b1))
 
@@ -457,6 +461,7 @@ void call_bignum_fromlebytes_6(void) repeat(bignum_fromlebytes_6(b0,(unsigned ch
 void call_bignum_fromlebytes_p521(void) repeat(bignum_fromlebytes_p521(b0,(unsigned char *) b1))
 void call_bignum_frombebytes_6(void) repeat(bignum_frombebytes_6(b0,(unsigned char *) b1))
 
+void call_bignum_mod_p25519_4(void) repeat(bignum_mod_p25519_4(b0,b1))
 void call_bignum_mod_n256_4(void) repeat(bignum_mod_n256_4(b0,b1))
 void call_bignum_mod_p256_4(void) repeat(bignum_mod_p256_4(b0,b1))
 void call_bignum_mod_n256k1_4(void) repeat(bignum_mod_n256k1_4(b0,b1))
@@ -633,10 +638,16 @@ void call_bignum_mux16__32()
 void call_curve25519_x25519(void) repeat(curve25519_x25519(b0,b1,b2))
 void call_curve25519_x25519_alt(void) repeat(curve25519_x25519_alt(b0,b1,b2))
 
+void call_curve25519_x25519base(void) repeat(curve25519_x25519base(b0,b1))
+void call_curve25519_x25519base_alt(void) repeat(curve25519_x25519base_alt(b0,b1))
+
 void call_curve25519_ladderstep(void) repeat(curve25519_ladderstep(b0,b1,b2,*b3))
 void call_curve25519_ladderstep_alt(void) repeat(curve25519_ladderstep_alt(b0,b1,b2,*b3))
 void call_curve25519_pxscalarmul(void) repeat(curve25519_pxscalarmul(b0,b1,b2))
 void call_curve25519_pxscalarmul_alt(void) repeat(curve25519_pxscalarmul_alt(b0,b1,b2))
+
+void call_edwards25519_pepadd(void) repeat(edwards25519_pepadd(b1,b2,b3))
+void call_edwards25519_pepadd_alt(void) repeat(edwards25519_pepadd_alt(b1,b2,b3))
 
 void call_p256_montjadd(void) repeat(p256_montjadd(b1,b2,b3))
 void call_p256_montjdouble(void) repeat(p256_montjdouble(b1,b2))
@@ -751,6 +762,7 @@ int main(void)
   timingtest(all,"bignum_digit (32 -> 1)",call_bignum_digit__32);
   timingtest(all,"bignum_digitsize (32)" ,call_bignum_digitsize__32);
   timingtest(all,"bignum_divmod10 (32 -> 32)",call_bignum_divmod10__32);
+  timingtest(all,"bignum_double_p25519",call_bignum_double_p25519);
   timingtest(all,"bignum_double_p256",call_bignum_double_p256);
   timingtest(all,"bignum_double_p256k1",call_bignum_double_p256k1);
   timingtest(all,"bignum_double_p384",call_bignum_double_p384);
@@ -795,6 +807,7 @@ int main(void)
   timingtest(all,"bignum_mod_n384_6",call_bignum_mod_n384_6);
   timingtest(bmi,"bignum_mod_n521_9",call_bignum_mod_n521_9);
   timingtest(all,"bignum_mod_n521_9_alt",call_bignum_mod_n521_9_alt);
+  timingtest(all,"bignum_mod_p25519_4",call_bignum_mod_p25519_4);
   timingtest(bmi,"bignum_mod_p256 (8 -> 4)",call_bignum_mod_p256__8);
   timingtest(all,"bignum_mod_p256_alt (8 -> 4)",call_bignum_mod_p256_alt__8);
   timingtest(all,"bignum_mod_p256_4",call_bignum_mod_p256_4);
@@ -869,6 +882,7 @@ int main(void)
   timingtest(all,"bignum_of_word (1 -> 32)",call_bignum_of_word__32);
   timingtest(all,"bignum_optadd (32x32 -> 32)" ,call_bignum_optadd__32);
   timingtest(all,"bignum_optneg (32 -> 32)" ,call_bignum_optneg__32);
+  timingtest(all,"bignum_optneg_p25519",call_bignum_optneg_p25519);
   timingtest(all,"bignum_optneg_p256",call_bignum_optneg_p256);
   timingtest(all,"bignum_optneg_p256k1",call_bignum_optneg_p256k1);
   timingtest(all,"bignum_optneg_p384",call_bignum_optneg_p384);
@@ -929,6 +943,10 @@ int main(void)
   timingtest(all,"curve25519_pxscalarmul_alt",call_curve25519_pxscalarmul_alt);
   timingtest(bmi,"curve25519_x25519",call_curve25519_x25519);
   timingtest(all,"curve25519_x25519_alt",call_curve25519_x25519_alt);
+  timingtest(bmi,"curve25519_x25519base",call_curve25519_x25519base);
+  timingtest(all,"curve25519_x25519base_alt",call_curve25519_x25519base_alt);
+  timingtest(bmi,"edwards25519_pepadd",call_edwards25519_pepadd);
+  timingtest(all,"edwards25519_pepadd_alt",call_edwards25519_pepadd_alt);
   timingtest(bmi,"p256_montjadd",call_p256_montjadd);
   timingtest(bmi,"p256_montjdouble",call_p256_montjdouble);
   timingtest(bmi,"p256_montjmixadd",call_p256_montjmixadd);

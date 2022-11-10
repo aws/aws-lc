@@ -105,6 +105,7 @@ enum {
        TEST_BIGNUM_DIGIT,
        TEST_BIGNUM_DIGITSIZE,
        TEST_BIGNUM_DIVMOD10,
+       TEST_BIGNUM_DOUBLE_P25519,
        TEST_BIGNUM_DOUBLE_P256,
        TEST_BIGNUM_DOUBLE_P256K1,
        TEST_BIGNUM_DOUBLE_P384,
@@ -143,6 +144,7 @@ enum {
        TEST_BIGNUM_MOD_N384_6,
        TEST_BIGNUM_MOD_N521_9,
        TEST_BIGNUM_MOD_N521_9_ALT,
+       TEST_BIGNUM_MOD_P25519_4,
        TEST_BIGNUM_MOD_P256_ALT,
        TEST_BIGNUM_MOD_P256,
        TEST_BIGNUM_MOD_P256_4,
@@ -209,6 +211,7 @@ enum {
        TEST_BIGNUM_OF_WORD,
        TEST_BIGNUM_OPTADD,
        TEST_BIGNUM_OPTNEG,
+       TEST_BIGNUM_OPTNEG_P25519,
        TEST_BIGNUM_OPTNEG_P256,
        TEST_BIGNUM_OPTNEG_P256K1,
        TEST_BIGNUM_OPTNEG_P384,
@@ -263,6 +266,10 @@ enum {
        TEST_CURVE25519_PXSCALARMUL_ALT,
        TEST_CURVE25519_X25519,
        TEST_CURVE25519_X25519_ALT,
+       TEST_CURVE25519_X25519BASE,
+       TEST_CURVE25519_X25519BASE_ALT,
+       TEST_EDWARDS25519_PEPADD,
+       TEST_EDWARDS25519_PEPADD_ALT,
        TEST_P256_MONTJADD,
        TEST_P256_MONTJDOUBLE,
        TEST_P256_MONTJMIXADD,
@@ -1088,6 +1095,28 @@ void reference_curve25519x25519
 
   bignum_mul_p25519_alt(res,pres,zinv);
   if (bignum_iszero(4,prez)) bignum_of_word(4,res,0);
+}
+
+void reference_edwards25519pepadd(uint64_t p3[16],uint64_t p1[16],uint64_t p2[12])
+{ uint64_t *x1 = p1, *y1 = p1 + 4, *z1 = p1 + 2*4, *w1 = p1 + 3*4;
+  uint64_t *ymx2 = p2, *xpy2 = p2 + 4, *kxy = p2 + 2*4;
+  uint64_t *x3 = p3, *y3 = p3 + 4, *z3 = p3 + 2*4, *w3 = p3 + 3*4;
+  uint64_t t0[4], t1[4], t2[4], t3[4], t4[4],
+           t5[4], t6[4], t7[4], t8[4], t9[4];
+  bignum_sub_p25519(t0,y1,x1);
+  bignum_mul_p25519_alt(t1,t0,ymx2);
+  bignum_add_p25519(t2,y1,x1);
+  bignum_mul_p25519_alt(t3,t2,xpy2);
+  bignum_mul_p25519_alt(t4,w1,kxy);
+  bignum_double_p25519(t5,z1);
+  bignum_sub_p25519(t6,t3,t1);
+  bignum_sub_p25519(t7,t5,t4);
+  bignum_add_p25519(t8,t5,t4);
+  bignum_add_p25519(t9,t3,t1);
+  bignum_mul_p25519_alt(x3,t6,t7);
+  bignum_mul_p25519_alt(y3,t8,t9);
+  bignum_mul_p25519_alt(z3,t7,t8);
+  bignum_mul_p25519_alt(w3,t6,t9);
 }
 
 void reference_montjdouble
@@ -2962,6 +2991,41 @@ int test_bignum_divmod10(void)
   return 0;
 }
 
+int test_bignum_double_p25519(void)
+{ uint64_t i, k;
+  printf("Testing bignum_double_p25519 with %d cases\n",tests);
+  uint64_t c;
+  for (i = 0; i < tests; ++i)
+   { k = 4;
+     random_bignum(k,b2); reference_mod(k,b0,b2,p_25519);
+     bignum_double_p25519(b2,b0);
+     reference_copy(k+1,b3,k,b0);
+     reference_copy(k+1,b4,k,b0);
+     reference_add_samelen(k+1,b4,b4,b3);
+     reference_copy(k+1,b3,k,p_25519);
+     reference_mod(k+1,b5,b4,b3);
+     reference_copy(k,b3,k+1,b5);
+
+     c = reference_compare(k,b3,k,b2);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "...0x%016"PRIx64" * 2 mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64" not ...0x%016"PRIx64"\n",
+               k,b0[0],p_25519[0],b2[0],b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] "
+                    "...0x%016"PRIx64" * 2 mod ....0x%016"PRIx64" = "
+                    "...0x%016"PRIx64"\n",
+                    k,b0[0],p_25519[0],b2[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
 int test_bignum_double_p256(void)
 { uint64_t i, k;
   printf("Testing bignum_double_p256 with %d cases\n",tests);
@@ -4110,6 +4174,39 @@ int test_bignum_mod_n521_9_alt(void)
       { printf("OK: [size %4"PRIu64"] 0x%016"PRIx64"...%016"PRIx64" mod n_521 = "
                "0x%016"PRIx64"...%016"PRIx64"\n",
                UINT64_C(9),b0[8],b0[0],b4[8],b4[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_bignum_mod_p25519_4(void)
+{ uint64_t t;
+  printf("Testing bignum_mod_p25519_4 with %d cases\n",tests);
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(4,b0);
+     if ((rand() & 0xF) == 0)
+      { b0[3] = p_25519[3];
+        b0[2] = p_25519[2];
+        b0[1] = p_25519[1];
+        b0[0] = (p_25519[0] - UINT64_C(3)) + (rand() & UINT64_C(7));
+      }
+
+     reference_mod(4,b3,b0,p_25519);
+     bignum_mod_p25519_4(b4,b0);
+     c = reference_compare(4,b3,4,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" mod p_25519 = "
+               "0x%016"PRIx64"...%016"PRIx64" not 0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(4),b0[3],b0[0],b4[3],b4[0],b3[3],b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] 0x%016"PRIx64"...%016"PRIx64" mod p_25519 = "
+               "0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(4),b0[3],b0[0],b4[3],b4[0]);
       }
    }
   printf("All OK\n");
@@ -6137,6 +6234,40 @@ int test_bignum_optneg(void)
   return 0;
 }
 
+int test_bignum_optneg_p25519(void)
+{ uint64_t i, k, p;
+  printf("Testing bignum_optneg_p25519 with %d cases\n",tests);
+  uint64_t c;
+  for (i = 0; i < tests; ++i)
+   { k = 4;
+     random_bignum(k,b2); reference_mod(k,b0,b2,p_25519);
+     p = (rand() & 1) ? 0 :
+         (rand() & 1) ? 1 :
+         (rand() & 1) ? 2 : random64();
+     bignum_optneg_p25519(b2,p,b0);
+     if ((p == 0) || reference_iszero(k,b0)) reference_copy(k,b3,k,b0);
+     else reference_sub_samelen(k,b3,p_25519,b0);
+
+     c = reference_compare(k,b3,k,b2);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "%s...0x%016"PRIx64" mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64" not ...0x%016"PRIx64"\n",
+               k,(p ? "-" : "+"),b0[0],p_25519[0],b2[0],b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] "
+               "%s...0x%016"PRIx64" mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64"\n",
+               k,(p ? "-" : "+"),b0[0],p_25519[0],b2[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
 int test_bignum_optneg_p256(void)
 { uint64_t i, k, p;
   printf("Testing bignum_optneg_p256 with %d cases\n",tests);
@@ -7824,6 +7955,149 @@ int test_curve25519_x25519_alt(void)
   return 0;
 }
 
+
+int test_curve25519_x25519base(void)
+{ uint64_t t, k;
+  printf("Testing curve25519_x25519base with %d cases\n",tests);
+  k = 4;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b1);
+     reference_of_word(k,b2,UINT64_C(9));
+
+     curve25519_x25519base(b3,b1);
+     reference_curve25519x25519(b4,b1,b2);
+
+     c = reference_compare(k,b3,k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" * "
+               "<0x%016"PRIx64"...%016"PRIx64"> = "
+               "<...0x%016"PRIx64"...%016"PRIx64"> not "
+               "<...0x%016"PRIx64"...%016"PRIx64">\n",
+               k,b1[3],b1[0],b2[3],b2[0],b3[3],b3[0],b4[3],b4[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" * "
+               "<0x%016"PRIx64"...%016"PRIx64"> = "
+               "<...0x%016"PRIx64"...%016"PRIx64">\n",
+               k,b1[3],b1[0],b2[3],b2[0],b3[3],b3[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_curve25519_x25519base_alt(void)
+{ uint64_t t, k;
+  printf("Testing curve25519_x25519base_alt with %d cases\n",tests);
+  k = 4;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b1);
+     reference_of_word(k,b2,UINT64_C(9));
+
+     curve25519_x25519base_alt(b3,b1);
+     reference_curve25519x25519(b4,b1,b2);
+
+     c = reference_compare(k,b3,k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" * "
+               "<0x%016"PRIx64"...%016"PRIx64"> = "
+               "<...0x%016"PRIx64"...%016"PRIx64"> not "
+               "<...0x%016"PRIx64"...%016"PRIx64">\n",
+               k,b1[3],b1[0],b2[3],b2[0],b3[3],b3[0],b4[3],b4[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" * "
+               "<0x%016"PRIx64"...%016"PRIx64"> = "
+               "<...0x%016"PRIx64"...%016"PRIx64">\n",
+               k,b1[3],b1[0],b2[3],b2[0],b3[3],b3[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_edwards25519_pepadd(void)
+{ uint64_t t, k;
+  printf("Testing edwards25519_pepadd with %d cases\n",tests);
+  k = 4;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b0); reference_mod(k,b1,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b1+k,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b1+2*k,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b1+3*k,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b2,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b2+k,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b2+2*k,b0,p_25519);
+     edwards25519_pepadd(b3,b1,b2);
+     reference_edwards25519pepadd(b4,b1,b2);
+
+     c = reference_compare(4*k,b3,4*k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64"> + <...0x%016"PRIx64"> = "
+               "<...0x%016"PRIx64"> not <...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0],b4[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64"> + <...0x%016"PRIx64"> = "
+               "<...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_edwards25519_pepadd_alt(void)
+{ uint64_t t, k;
+  printf("Testing edwards25519_pepadd_alt with %d cases\n",tests);
+  k = 4;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b0); reference_mod(k,b1,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b1+k,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b1+2*k,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b1+3*k,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b2,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b2+k,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b2+2*k,b0,p_25519);
+     edwards25519_pepadd_alt(b3,b1,b2);
+     reference_edwards25519pepadd(b4,b1,b2);
+
+     c = reference_compare(4*k,b3,4*k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64"> + <...0x%016"PRIx64"> = "
+               "<...0x%016"PRIx64"> not <...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0],b4[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64"> + <...0x%016"PRIx64"> = "
+               "<...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
 int test_p256_montjadd(void)
 { uint64_t t, k;
   printf("Testing p256_montjadd with %d cases\n",tests);
@@ -8469,6 +8743,7 @@ int test_all(void)
   dotest(test_bignum_digit);
   dotest(test_bignum_digitsize);
   dotest(test_bignum_divmod10);
+  dotest(test_bignum_double_p25519);
   dotest(test_bignum_double_p256);
   dotest(test_bignum_double_p256k1);
   dotest(test_bignum_double_p384);
@@ -8507,6 +8782,7 @@ int test_all(void)
   dotest(test_bignum_mod_n384_6);
   dotest(test_bignum_mod_n521_9);
   dotest(test_bignum_mod_n521_9_alt);
+  dotest(test_bignum_mod_p25519_4);
   dotest(test_bignum_mod_p256);
   dotest(test_bignum_mod_p256_alt);
   dotest(test_bignum_mod_p256_4);
@@ -8573,6 +8849,7 @@ int test_all(void)
   dotest(test_bignum_of_word);
   dotest(test_bignum_optadd);
   dotest(test_bignum_optneg);
+  dotest(test_bignum_optneg_p25519);
   dotest(test_bignum_optneg_p256);
   dotest(test_bignum_optneg_p256k1);
   dotest(test_bignum_optneg_p384);
@@ -8627,6 +8904,10 @@ int test_all(void)
   dotest(test_curve25519_pxscalarmul_alt);
   dotest(test_curve25519_x25519);
   dotest(test_curve25519_x25519_alt);
+  dotest(test_curve25519_x25519base);
+  dotest(test_curve25519_x25519base_alt);
+  dotest(test_edwards25519_pepadd);
+  dotest(test_edwards25519_pepadd_alt);
   dotest(test_p256_montjadd);
   dotest(test_p256_montjdouble);
   dotest(test_p256_montjmixadd);
@@ -8717,6 +8998,7 @@ int test_allnonbmi()
   dotest(test_bignum_digit);
   dotest(test_bignum_digitsize);
   dotest(test_bignum_divmod10);
+  dotest(test_bignum_double_p25519);
   dotest(test_bignum_double_p256);
   dotest(test_bignum_double_p256k1);
   dotest(test_bignum_double_p384);
@@ -8747,6 +9029,7 @@ int test_allnonbmi()
   dotest(test_bignum_mod_n384_alt);
   dotest(test_bignum_mod_n384_6);
   dotest(test_bignum_mod_n521_9_alt);
+  dotest(test_bignum_mod_p25519_4);
   dotest(test_bignum_mod_p256_alt);
   dotest(test_bignum_mod_p256_4);
   dotest(test_bignum_mod_p256k1_4);
@@ -8797,6 +9080,7 @@ int test_allnonbmi()
   dotest(test_bignum_of_word);
   dotest(test_bignum_optadd);
   dotest(test_bignum_optneg);
+  dotest(test_bignum_optneg_p25519);
   dotest(test_bignum_optneg_p256);
   dotest(test_bignum_optneg_p256k1);
   dotest(test_bignum_optneg_p384);
@@ -8835,6 +9119,8 @@ int test_allnonbmi()
   dotest(test_curve25519_ladderstep_alt);
   dotest(test_curve25519_pxscalarmul_alt);
   dotest(test_curve25519_x25519_alt);
+  dotest(test_curve25519_x25519base_alt);
+  dotest(test_edwards25519_pepadd_alt);
   dotest(test_word_bytereverse);
   dotest(test_word_clz);
   dotest(test_word_ctz);
@@ -8968,6 +9254,7 @@ int main(int argc, char *argv[])
      case TEST_BIGNUM_DIGIT:              return test_bignum_digit();
      case TEST_BIGNUM_DIGITSIZE:          return test_bignum_digitsize();
      case TEST_BIGNUM_DIVMOD10 :          return test_bignum_divmod10();
+     case TEST_BIGNUM_DOUBLE_P25519:      return test_bignum_double_p25519();
      case TEST_BIGNUM_DOUBLE_P256:        return test_bignum_double_p256();
      case TEST_BIGNUM_DOUBLE_P256K1:      return test_bignum_double_p256k1();
      case TEST_BIGNUM_DOUBLE_P384:        return test_bignum_double_p384();
@@ -9006,6 +9293,7 @@ int main(int argc, char *argv[])
      case TEST_BIGNUM_MOD_N384_6:         return test_bignum_mod_n384_6();
      case TEST_BIGNUM_MOD_N521_9:         return test_bignum_mod_n521_9();
      case TEST_BIGNUM_MOD_N521_9_ALT:     return test_bignum_mod_n521_9_alt();
+     case TEST_BIGNUM_MOD_P25519_4:       return test_bignum_mod_p25519_4();
      case TEST_BIGNUM_MOD_P256:           return test_bignum_mod_p256();
      case TEST_BIGNUM_MOD_P256_ALT:       return test_bignum_mod_p256_alt();
      case TEST_BIGNUM_MOD_P256_4:         return test_bignum_mod_p256_4();
@@ -9072,6 +9360,7 @@ int main(int argc, char *argv[])
      case TEST_BIGNUM_OF_WORD:            return test_bignum_of_word();
      case TEST_BIGNUM_OPTADD:             return test_bignum_optadd();
      case TEST_BIGNUM_OPTNEG:             return test_bignum_optneg();
+     case TEST_BIGNUM_OPTNEG_P25519:      return test_bignum_optneg_p25519();
      case TEST_BIGNUM_OPTNEG_P256:        return test_bignum_optneg_p256();
      case TEST_BIGNUM_OPTNEG_P256K1:      return test_bignum_optneg_p256k1();
      case TEST_BIGNUM_OPTNEG_P384:        return test_bignum_optneg_p384();
@@ -9126,6 +9415,10 @@ int main(int argc, char *argv[])
      case TEST_CURVE25519_PXSCALARMUL_ALT:return test_curve25519_pxscalarmul_alt();
      case TEST_CURVE25519_X25519:         return test_curve25519_x25519();
      case TEST_CURVE25519_X25519_ALT:     return test_curve25519_x25519_alt();
+     case TEST_CURVE25519_X25519BASE:     return test_curve25519_x25519base();
+     case TEST_CURVE25519_X25519BASE_ALT: return test_curve25519_x25519base_alt();
+     case TEST_EDWARDS25519_PEPADD:       return test_edwards25519_pepadd();
+     case TEST_EDWARDS25519_PEPADD_ALT:   return test_edwards25519_pepadd_alt();
      case TEST_P256_MONTJADD:             return test_p256_montjadd();
      case TEST_P256_MONTJDOUBLE:          return test_p256_montjdouble();
      case TEST_P256_MONTJMIXADD:          return test_p256_montjmixadd();

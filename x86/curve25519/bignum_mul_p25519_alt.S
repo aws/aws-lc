@@ -171,8 +171,7 @@ S2N_BN_SYMBOL(bignum_mul_p25519_alt):
         shld    r12, r11, 1
         lea     rax, [r12+1]
         mov     dshort, 19
-        mov     r12, 0x8000000000000000
-        or      r11, r12
+        bts     r11, 63
         imul    rax, d
         add     r8, rax
         adc     r9, c
@@ -190,8 +189,7 @@ S2N_BN_SYMBOL(bignum_mul_p25519_alt):
         sbb     r9, c
         sbb     r10, c
         sbb     r11, c
-        not     r12
-        and     r11, r12
+        btr     r11, 63
 
 // Write everything back
 

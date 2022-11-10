@@ -138,10 +138,9 @@ S2N_BN_SYMBOL(bignum_mul_p25519):
 // Use q = h + 1 as the initial quotient estimate, either right or 1 too big.
 
         shldq   $1, %r11, %r12
-        movq    $0x8000000000000000, %rcx
         movl    $19, %edx
         incq    %r12
-        orq     %rcx, %r11
+        bts     $63, %r11
         mulxq   %r12, %rax, %rbx
         addq    %rax, %r8
         adcq    %rbx, %r9
@@ -159,8 +158,7 @@ S2N_BN_SYMBOL(bignum_mul_p25519):
         sbbq    zero, %r9
         sbbq    zero, %r10
         sbbq    zero, %r11
-        notq    %rcx
-        andq    %rcx, %r11
+        btr     $63, %r11
 
 // Write everything back
 
