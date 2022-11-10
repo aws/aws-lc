@@ -16,6 +16,7 @@
 // Modifications Copyright Amazon.com, Inc. or its affiliates. See GitHub history for details.
 
 use bindgen::callbacks::ParseCallbacks;
+use std::ffi::OsStr;
 use std::fmt::Debug;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -36,10 +37,9 @@ impl StripPrefixCallback {
 
 impl ParseCallbacks for StripPrefixCallback {
     fn generated_name_override(&self, name: &str) -> Option<String> {
-        self.remove_prefix.as_ref().map_or(None, |s| {
+        self.remove_prefix.as_ref().and_then(|s| {
             let prefix = format!("{}_", s);
-            name.strip_prefix(prefix.as_str())
-                .map_or(None, |s| Some(String::from(s)))
+            name.strip_prefix(prefix.as_str()).map(String::from)
         })
     }
 }
@@ -185,20 +185,32 @@ fn prefix_string() -> String {
     format!("aws_lc_{}", VERSION.to_string().replace('.', "_"))
 }
 
-fn test_cmake_command(executable: &str) -> bool {
-    if let Ok(output) = Command::new(executable).arg("--version").output() {
+fn test_command(executable: &OsStr, args: &[&OsStr]) -> bool {
+    if let Ok(output) = Command::new(executable).args(args).output() {
         return output.status.success();
     }
     false
 }
 
-fn prepare_cmake_build(build_prefix: Option<&str>) -> cmake::Config {
-    if test_cmake_command("cmake3") {
-        env::set_var("CMAKE", "cmake3");
-    } else {
-        env::set_var("CMAKE", "cmake");
-    }
+fn test_perl_command() -> bool {
+    test_command("perl".as_ref(), &["--version".as_ref()])
+}
 
+fn test_go_command() -> bool {
+    test_command("go".as_ref(), &["version".as_ref()])
+}
+
+fn find_cmake_command() -> Option<&'static OsStr> {
+    if test_command("cmake3".as_ref(), &["--version".as_ref()]) {
+        Some("cmake3".as_ref())
+    } else if test_command("cmake".as_ref(), &["--version".as_ref()]) {
+        Some("cmake".as_ref())
+    } else {
+        None
+    }
+}
+
+fn prepare_cmake_build(build_prefix: Option<&str>) -> cmake::Config {
     let mut cmake_cfg = get_cmake_config();
 
     let opt_level = env::var("OPT_LEVEL").unwrap_or_else(|_| "0".to_string());
@@ -241,8 +253,30 @@ fn main() -> Result<(), String> {
     use crate::OutputLib::Crypto;
     use crate::OutputLibType::Static;
 
+    let mut missing_dependency = false;
+    if !test_go_command() {
+        eprintln!("Missing dependency: go-lang");
+        missing_dependency = true;
+    }
+
+    if !test_perl_command() {
+        eprintln!("Missing dependency: perl");
+        missing_dependency = true;
+    }
+
+    if let Some(cmake_cmd) = find_cmake_command() {
+        env::set_var("CMAKE", cmake_cmd);
+    } else {
+        eprintln!("Missing dependency: cmake");
+        missing_dependency = true;
+    };
+
+    if missing_dependency {
+        panic!("Required build dependency is missing. Halting build.");
+    }
+
     let manifest_dir = env::current_dir().unwrap();
-    let manifest_dir = dunce::canonicalize(&Path::new(&manifest_dir)).unwrap();
+    let manifest_dir = dunce::canonicalize(Path::new(&manifest_dir)).unwrap();
     let prefix = prefix_string();
 
     let bindings_file = manifest_dir.join("src").join("bindings.rs");
