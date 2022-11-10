@@ -6,6 +6,7 @@
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/mem.h>
+#include <openssl/obj.h>
 
 #include <vector>
 #include "../crypto/evp_extra/internal.h"
@@ -160,6 +161,33 @@ TEST(Dilithium3Test, KeySize) {
 
   EVP_PKEY_CTX_free(dilithium_pkey_ctx);
   EVP_PKEY_free(dilithium_pkey);
+}
+
+TEST(Dilithium3Test, MarshalPubKey) {
+  //generate dilithium key
+  EVP_PKEY_CTX *dilithium_pkey_ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_DILITHIUM3, nullptr);
+  EVP_PKEY *dilithium_pkey = EVP_PKEY_new();
+  EVP_PKEY_keygen_init(dilithium_pkey_ctx);
+  EVP_PKEY_keygen(dilithium_pkey_ctx, &dilithium_pkey);
+
+  //encode PKEY as DER format
+  uint8_t *der;
+  size_t der_len;
+  CBB cbb;
+  ASSERT_TRUE(CBB_init(&cbb, 0));
+  ASSERT_TRUE(EVP_marshal_public_key(&cbb, dilithium_pkey));
+  ASSERT_TRUE(CBB_finish(&cbb, &der, &der_len));
+
+  //decode DER back to PKEY
+  CBS cbs;
+  CBS_init(&cbs, der, der_len);
+  EVP_PKEY *dilithium_pkey_from_der = EVP_parse_public_key(&cbs);
+  ASSERT_TRUE(dilithium_pkey_from_der);
+  EXPECT_EQ(1, EVP_PKEY_cmp(dilithium_pkey, dilithium_pkey_from_der));
+
+  EVP_PKEY_CTX_free(dilithium_pkey_ctx);
+  EVP_PKEY_free(dilithium_pkey);
+  EVP_PKEY_free(dilithium_pkey_from_der);
 }
 
 TEST(Dilithium3Test, SIGOperations) {
