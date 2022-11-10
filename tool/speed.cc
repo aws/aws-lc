@@ -634,7 +634,8 @@ static bool SpeedKEM(const std::string &name, int nid, const std::string &select
 
 
 static bool SpeedKEM(std::string selected) {
-  return SpeedKEM("Kyber512", NID_KYBER512, selected);
+  return SpeedKEM("Kyber512", NID_KYBER512, selected) &&
+         SpeedKEM("Kyber768", NID_KYBER768, selected);
 }
 #endif
 
