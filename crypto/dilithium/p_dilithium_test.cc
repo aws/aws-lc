@@ -173,9 +173,9 @@ TEST(Dilithium3Test, DilithiumMarshal) {
 
   //Create a public key.
   bssl::UniquePtr<EVP_PKEY> pubkey(EVP_PKEY_new_raw_public_key(EVP_PKEY_DILITHIUM3,
-                                             NULL,
-                                             dilithium3Key->pub,
-                                             DILITHIUM3_PUBLIC_KEY_BYTES));
+                                                               NULL,
+                                                               dilithium3Key->pub,
+                                                               DILITHIUM3_PUBLIC_KEY_BYTES));
   ASSERT_TRUE(pubkey);
   EXPECT_EQ(EVP_PKEY_DILITHIUM3, EVP_PKEY_id(pubkey.get()));
 
@@ -195,7 +195,7 @@ TEST(Dilithium3Test, DilithiumMarshal) {
   ASSERT_TRUE(CBB_finish(cbb.get(), &der, &der_len));
   bssl::UniquePtr<uint8_t> free_der(der);
 
-  // The public key must decode properly.
+  // The public key must parse properly.
   CBS cbs;
   CBS_init(&cbs, der, der_len);
   EVP_PKEY *dilithium_pkey_from_der = EVP_parse_public_key(&cbs);
@@ -222,6 +222,11 @@ TEST(Dilithium3Test, DilithiumMarshal) {
   ASSERT_TRUE(EVP_marshal_private_key(cbb.get(), privkey.get()));
   ASSERT_TRUE(CBB_finish(cbb.get(), &der, &der_len));
   free_der.reset(der);
+
+  // The private key must parse properly.
+  CBS_init(&cbs, der, der_len);
+  EVP_PKEY *dilithium_priv_from_der = EVP_parse_private_key(&cbs);
+  ASSERT_TRUE(dilithium_priv_from_der);
 
   EVP_PKEY_CTX_free(dilithium_pkey_ctx);
   EVP_PKEY_free(dilithium_pkey);
