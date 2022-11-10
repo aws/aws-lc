@@ -173,15 +173,16 @@ TEST(Dilithium3Test, MarshalPubKey) {
   //encode PKEY as DER format
   uint8_t *der;
   size_t der_len;
-  //CBB cbb;
-  //ASSERT_TRUE(CBB_init(&cbb, 0));
-  //ASSERT_TRUE(EVP_marshal_public_key(&cbb, dilithium_pkey));
-  //ASSERT_TRUE(CBB_finish(&cbb, &der, &der_len));
-
-  bssl::ScopedCBB cbb;
-  ASSERT_TRUE(CBB_init(cbb.get(), 0));
-  ASSERT_TRUE(EVP_marshal_public_key(cbb.get(), dilithium_pkey));
-  ASSERT_TRUE(CBB_finish(cbb.get(), &der, &der_len));
+  CBB cbb;
+  ASSERT_TRUE(CBB_init(&cbb, 0));
+  ASSERT_TRUE(EVP_marshal_public_key(&cbb, dilithium_pkey));
+  ASSERT_TRUE(CBB_finish(&cbb, &der, &der_len));
+  CBB_cleanup(&cbb);
+  
+  //bssl::ScopedCBB cbb;
+  //ASSERT_TRUE(CBB_init(cbb.get(), 0));
+  //ASSERT_TRUE(EVP_marshal_public_key(cbb.get(), dilithium_pkey));
+  //ASSERT_TRUE(CBB_finish(cbb.get(), &der, &der_len));
 
   //decode DER back to PKEY
   CBS cbs;
