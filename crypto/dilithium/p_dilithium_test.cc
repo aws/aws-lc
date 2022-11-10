@@ -231,6 +231,7 @@ TEST(Dilithium3Test, DilithiumMarshal) {
   EVP_PKEY_CTX_free(dilithium_pkey_ctx);
   EVP_PKEY_free(dilithium_pkey);
   EVP_PKEY_free(dilithium_pkey_from_der);
+  EVP_PKEY_free(dilithium_priv_from_der);
 }
 
 TEST(Dilithium3Test, SIGOperations) {
