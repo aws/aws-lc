@@ -11,13 +11,6 @@
 // those can be conditionally (or based on compile-time flags) called here,
 // depending on platform support.
 
-int pqcrystals_dilithium3_ref_keypair(uint8_t *pk, uint8_t *sk);
-int pqcrystals_dilithium3_ref_signature(uint8_t *sig, size_t *siglen,
-                                        const uint8_t *m, size_t mlen,
-                                        const uint8_t *sk);
-int pqcrystals_dilithium3_ref_verify(const uint8_t *sig, size_t siglen,
-                                     const uint8_t *m, size_t mlen,
-                                     const uint8_t *pk);
 
 int DILITHIUM3_keypair(uint8_t *public_key,
                        uint8_t *secret_key) {
