@@ -14,6 +14,7 @@
 #include <inttypes.h>
 #include <time.h>
 #include <alloca.h>
+#include <string.h>
 
 // Prototypes for the assembler implementations
 
@@ -46,250 +47,6 @@ static uint64_t b12[BUFFERSIZE];
 // The actual number of tests, from input parameter or default to TESTS
 
 static int tests = TESTS;
-
-#define WHAT TEST_ALL_APPLICABLE
-
-enum {
-       TEST_ALL,
-       TEST_ALL_APPLICABLE,
-       TEST_KNOWN_VALUES,
-       TEST_BIGNUM_ADD,
-       TEST_BIGNUM_ADD_P25519,
-       TEST_BIGNUM_ADD_P256,
-       TEST_BIGNUM_ADD_P256K1,
-       TEST_BIGNUM_ADD_P384,
-       TEST_BIGNUM_ADD_P521,
-       TEST_BIGNUM_AMONTIFIER,
-       TEST_BIGNUM_AMONTMUL,
-       TEST_BIGNUM_AMONTREDC,
-       TEST_BIGNUM_AMONTSQR,
-       TEST_BIGNUM_BITFIELD,
-       TEST_BIGNUM_BITSIZE,
-       TEST_BIGNUM_BIGENDIAN_4,
-       TEST_BIGNUM_BIGENDIAN_6,
-       TEST_BIGNUM_CDIV,
-       TEST_BIGNUM_CDIV_EXACT,
-       TEST_BIGNUM_CLD,
-       TEST_BIGNUM_CLZ,
-       TEST_BIGNUM_CMADD,
-       TEST_BIGNUM_CMNEGADD,
-       TEST_BIGNUM_CMOD,
-       TEST_BIGNUM_CMUL,
-       TEST_BIGNUM_CMUL_P25519,
-       TEST_BIGNUM_CMUL_P25519_ALT,
-       TEST_BIGNUM_CMUL_P256,
-       TEST_BIGNUM_CMUL_P256_ALT,
-       TEST_BIGNUM_CMUL_P256K1,
-       TEST_BIGNUM_CMUL_P256K1_ALT,
-       TEST_BIGNUM_CMUL_P384,
-       TEST_BIGNUM_CMUL_P384_ALT,
-       TEST_BIGNUM_CMUL_P521,
-       TEST_BIGNUM_CMUL_P521_ALT,
-       TEST_BIGNUM_COPRIME,
-       TEST_BIGNUM_COPY,
-       TEST_BIGNUM_CTD,
-       TEST_BIGNUM_CTZ,
-       TEST_BIGNUM_DEAMONT_P256,
-       TEST_BIGNUM_DEAMONT_P256_ALT,
-       TEST_BIGNUM_DEAMONT_P256K1,
-       TEST_BIGNUM_DEAMONT_P384,
-       TEST_BIGNUM_DEAMONT_P384_ALT,
-       TEST_BIGNUM_DEAMONT_P521,
-       TEST_BIGNUM_DEMONT,
-       TEST_BIGNUM_DEMONT_P256,
-       TEST_BIGNUM_DEMONT_P256_ALT,
-       TEST_BIGNUM_DEMONT_P256K1,
-       TEST_BIGNUM_DEMONT_P384,
-       TEST_BIGNUM_DEMONT_P384_ALT,
-       TEST_BIGNUM_DEMONT_P521,
-       TEST_BIGNUM_DIGIT,
-       TEST_BIGNUM_DIGITSIZE,
-       TEST_BIGNUM_DIVMOD10,
-       TEST_BIGNUM_DOUBLE_P25519,
-       TEST_BIGNUM_DOUBLE_P256,
-       TEST_BIGNUM_DOUBLE_P256K1,
-       TEST_BIGNUM_DOUBLE_P384,
-       TEST_BIGNUM_DOUBLE_P521,
-       TEST_BIGNUM_EMONTREDC,
-       TEST_BIGNUM_EMONTREDC_8N,
-       TEST_BIGNUM_EQ,
-       TEST_BIGNUM_EVEN,
-       TEST_BIGNUM_FROMBEBYTES_4,
-       TEST_BIGNUM_FROMBEBYTES_6,
-       TEST_BIGNUM_FROMLEBYTES_4,
-       TEST_BIGNUM_FROMLEBYTES_6,
-       TEST_BIGNUM_FROMLEBYTES_P521,
-       TEST_BIGNUM_GE,
-       TEST_BIGNUM_GT,
-       TEST_BIGNUM_HALF_P256,
-       TEST_BIGNUM_HALF_P256K1,
-       TEST_BIGNUM_HALF_P384,
-       TEST_BIGNUM_HALF_P521,
-       TEST_BIGNUM_ISZERO,
-       TEST_BIGNUM_KMUL_16_32,
-       TEST_BIGNUM_KMUL_32_64,
-       TEST_BIGNUM_KSQR_16_32,
-       TEST_BIGNUM_KSQR_32_64,
-       TEST_BIGNUM_LE,
-       TEST_BIGNUM_LITTLEENDIAN_4,
-       TEST_BIGNUM_LITTLEENDIAN_6,
-       TEST_BIGNUM_LT,
-       TEST_BIGNUM_MADD,
-       TEST_BIGNUM_MOD_N256,
-       TEST_BIGNUM_MOD_N256_ALT,
-       TEST_BIGNUM_MOD_N256_4,
-       TEST_BIGNUM_MOD_N256K1_4,
-       TEST_BIGNUM_MOD_N384,
-       TEST_BIGNUM_MOD_N384_ALT,
-       TEST_BIGNUM_MOD_N384_6,
-       TEST_BIGNUM_MOD_N521_9,
-       TEST_BIGNUM_MOD_N521_9_ALT,
-       TEST_BIGNUM_MOD_P25519_4,
-       TEST_BIGNUM_MOD_P256_ALT,
-       TEST_BIGNUM_MOD_P256,
-       TEST_BIGNUM_MOD_P256_4,
-       TEST_BIGNUM_MOD_P256K1_4,
-       TEST_BIGNUM_MOD_P384,
-       TEST_BIGNUM_MOD_P384_ALT,
-       TEST_BIGNUM_MOD_P384_6,
-       TEST_BIGNUM_MOD_P521_9,
-       TEST_BIGNUM_MODADD,
-       TEST_BIGNUM_MODDOUBLE,
-       TEST_BIGNUM_MODIFIER,
-       TEST_BIGNUM_MODINV,
-       TEST_BIGNUM_MODOPTNEG,
-       TEST_BIGNUM_MODSUB,
-       TEST_BIGNUM_MONTIFIER,
-       TEST_BIGNUM_MONTMUL,
-       TEST_BIGNUM_MONTMUL_P256,
-       TEST_BIGNUM_MONTMUL_P256_ALT,
-       TEST_BIGNUM_MONTMUL_P256K1,
-       TEST_BIGNUM_MONTMUL_P256K1_ALT,
-       TEST_BIGNUM_MONTMUL_P384,
-       TEST_BIGNUM_MONTMUL_P384_ALT,
-       TEST_BIGNUM_MONTMUL_P521,
-       TEST_BIGNUM_MONTMUL_P521_ALT,
-       TEST_BIGNUM_MONTREDC,
-       TEST_BIGNUM_MONTSQR,
-       TEST_BIGNUM_MONTSQR_P256,
-       TEST_BIGNUM_MONTSQR_P256_ALT,
-       TEST_BIGNUM_MONTSQR_P256K1,
-       TEST_BIGNUM_MONTSQR_P256K1_ALT,
-       TEST_BIGNUM_MONTSQR_P384,
-       TEST_BIGNUM_MONTSQR_P384_ALT,
-       TEST_BIGNUM_MONTSQR_P521,
-       TEST_BIGNUM_MONTSQR_P521_ALT,
-       TEST_BIGNUM_MUL,
-       TEST_BIGNUM_MUL_4_8,
-       TEST_BIGNUM_MUL_4_8_ALT,
-       TEST_BIGNUM_MUL_6_12,
-       TEST_BIGNUM_MUL_6_12_ALT,
-       TEST_BIGNUM_MUL_8_16,
-       TEST_BIGNUM_MUL_8_16_ALT,
-       TEST_BIGNUM_MUL_P25519,
-       TEST_BIGNUM_MUL_P25519_ALT,
-       TEST_BIGNUM_MUL_P256K1,
-       TEST_BIGNUM_MUL_P256K1_ALT,
-       TEST_BIGNUM_MUL_P521,
-       TEST_BIGNUM_MUL_P521_ALT,
-       TEST_BIGNUM_MULADD10,
-       TEST_BIGNUM_MUX,
-       TEST_BIGNUM_MUX_4,
-       TEST_BIGNUM_MUX_6,
-       TEST_BIGNUM_MUX16,
-       TEST_BIGNUM_NEG_P25519,
-       TEST_BIGNUM_NEG_P256,
-       TEST_BIGNUM_NEG_P256K1,
-       TEST_BIGNUM_NEG_P384,
-       TEST_BIGNUM_NEG_P521,
-       TEST_BIGNUM_NEGMODINV,
-       TEST_BIGNUM_NONZERO,
-       TEST_BIGNUM_NONZERO_4,
-       TEST_BIGNUM_NONZERO_6,
-       TEST_BIGNUM_NORMALIZE,
-       TEST_BIGNUM_ODD,
-       TEST_BIGNUM_OF_WORD,
-       TEST_BIGNUM_OPTADD,
-       TEST_BIGNUM_OPTNEG,
-       TEST_BIGNUM_OPTNEG_P25519,
-       TEST_BIGNUM_OPTNEG_P256,
-       TEST_BIGNUM_OPTNEG_P256K1,
-       TEST_BIGNUM_OPTNEG_P384,
-       TEST_BIGNUM_OPTNEG_P521,
-       TEST_BIGNUM_OPTSUB,
-       TEST_BIGNUM_OPTSUBADD,
-       TEST_BIGNUM_POW2,
-       TEST_BIGNUM_SHL_SMALL,
-       TEST_BIGNUM_SHR_SMALL,
-       TEST_BIGNUM_SQR,
-       TEST_BIGNUM_SQR_4_8,
-       TEST_BIGNUM_SQR_4_8_ALT,
-       TEST_BIGNUM_SQR_6_12,
-       TEST_BIGNUM_SQR_6_12_ALT,
-       TEST_BIGNUM_SQR_8_16,
-       TEST_BIGNUM_SQR_8_16_ALT,
-       TEST_BIGNUM_SQR_P25519,
-       TEST_BIGNUM_SQR_P25519_ALT,
-       TEST_BIGNUM_SQR_P256K1,
-       TEST_BIGNUM_SQR_P256K1_ALT,
-       TEST_BIGNUM_SQR_P521,
-       TEST_BIGNUM_SQR_P521_ALT,
-       TEST_BIGNUM_SUB,
-       TEST_BIGNUM_SUB_P25519,
-       TEST_BIGNUM_SUB_P256,
-       TEST_BIGNUM_SUB_P256K1,
-       TEST_BIGNUM_SUB_P384,
-       TEST_BIGNUM_SUB_P521,
-       TEST_BIGNUM_TOBEBYTES_4,
-       TEST_BIGNUM_TOBEBYTES_6,
-       TEST_BIGNUM_TOLEBYTES_4,
-       TEST_BIGNUM_TOLEBYTES_6,
-       TEST_BIGNUM_TOLEBYTES_P521,
-       TEST_BIGNUM_TOMONT_P256,
-       TEST_BIGNUM_TOMONT_P256_ALT,
-       TEST_BIGNUM_TOMONT_P256K1,
-       TEST_BIGNUM_TOMONT_P256K1_ALT,
-       TEST_BIGNUM_TOMONT_P384,
-       TEST_BIGNUM_TOMONT_P384_ALT,
-       TEST_BIGNUM_TOMONT_P521,
-       TEST_BIGNUM_TRIPLE_P256,
-       TEST_BIGNUM_TRIPLE_P256_ALT,
-       TEST_BIGNUM_TRIPLE_P256K1,
-       TEST_BIGNUM_TRIPLE_P256K1_ALT,
-       TEST_BIGNUM_TRIPLE_P384,
-       TEST_BIGNUM_TRIPLE_P384_ALT,
-       TEST_BIGNUM_TRIPLE_P521,
-       TEST_BIGNUM_TRIPLE_P521_ALT,
-       TEST_CURVE25519_LADDERSTEP,
-       TEST_CURVE25519_LADDERSTEP_ALT,
-       TEST_CURVE25519_PXSCALARMUL,
-       TEST_CURVE25519_PXSCALARMUL_ALT,
-       TEST_CURVE25519_X25519,
-       TEST_CURVE25519_X25519_ALT,
-       TEST_CURVE25519_X25519BASE,
-       TEST_CURVE25519_X25519BASE_ALT,
-       TEST_EDWARDS25519_PEPADD,
-       TEST_EDWARDS25519_PEPADD_ALT,
-       TEST_P256_MONTJADD,
-       TEST_P256_MONTJDOUBLE,
-       TEST_P256_MONTJMIXADD,
-       TEST_P384_MONTJADD,
-       TEST_P384_MONTJDOUBLE,
-       TEST_P384_MONTJMIXADD,
-       TEST_P521_JADD,
-       TEST_P521_JDOUBLE,
-       TEST_P521_JMIXADD,
-       TEST_SECP256K1_JADD,
-       TEST_SECP256K1_JDOUBLE,
-       TEST_SECP256K1_JMIXADD,
-       TEST_WORD_BYTEREVERSE,
-       TEST_WORD_CLZ,
-       TEST_WORD_CTZ,
-       TEST_WORD_MAX,
-       TEST_WORD_MIN,
-       TEST_WORD_NEGMODINV,
-       TEST_WORD_RECIP
-};
 
 // ***************************************************************************
 // Random number generation
@@ -8658,6 +8415,10 @@ int test_word_recip(void)
   return 0;
 }
 
+// ****************************************************************************
+// Known value tests for certain operations
+// ****************************************************************************
+
 #define ASSIGN6(x,n0,n1,n2,n3,n4,n5) x[0] = UINT64_C(n0), x[1] = UINT64_C(n1), x[2] = UINT64_C(n2), x[3] = UINT64_C(n3), x[4] = UINT64_C(n4), x[5] = UINT64_C(n5)
 
 #define ASSIGN1(x,n) x[0] = UINT64_C(n)
@@ -8686,465 +8447,189 @@ int test_known_values(void)
     }
 }
 
-#define dotest(f) (f()==0) ? ++successes : ++failures;
+// ****************************************************************************
+// Analogous testing of relevant functions against TweetNaCl as reference
+//
+// See https://tweetnacl.cr.yp.to/ for more info on TweetNaCl
+// ****************************************************************************
 
-int test_all(void)
-{ int failures = 0, successes = 0;
+#include "tweetnacl_excerpt.c"
 
-  dotest(test_bignum_add);
-  dotest(test_bignum_add_p25519);
-  dotest(test_bignum_add_p256);
-  dotest(test_bignum_add_p256k1);
-  dotest(test_bignum_add_p384);
-  dotest(test_bignum_add_p521);
-  dotest(test_bignum_amontifier);
-  dotest(test_bignum_amontmul);
-  dotest(test_bignum_amontredc);
-  dotest(test_bignum_amontsqr);
-  dotest(test_bignum_bigendian_4);
-  dotest(test_bignum_bigendian_6);
-  dotest(test_bignum_bitfield);
-  dotest(test_bignum_bitsize);
-  dotest(test_bignum_cdiv);
-  dotest(test_bignum_cdiv_exact);
-  dotest(test_bignum_cld);
-  dotest(test_bignum_clz);
-  dotest(test_bignum_cmadd);
-  dotest(test_bignum_cmnegadd);
-  dotest(test_bignum_cmod);
-  dotest(test_bignum_cmul);
-  dotest(test_bignum_cmul_p25519);
-  dotest(test_bignum_cmul_p25519_alt);
-  dotest(test_bignum_cmul_p256);
-  dotest(test_bignum_cmul_p256_alt);
-  dotest(test_bignum_cmul_p256k1);
-  dotest(test_bignum_cmul_p256k1_alt);
-  dotest(test_bignum_cmul_p384);
-  dotest(test_bignum_cmul_p384_alt);
-  dotest(test_bignum_cmul_p521);
-  dotest(test_bignum_cmul_p521_alt);
-  dotest(test_bignum_coprime);
-  dotest(test_bignum_copy);
-  dotest(test_bignum_ctd);
-  dotest(test_bignum_ctz);
-  dotest(test_bignum_deamont_p256);
-  dotest(test_bignum_deamont_p256_alt);
-  dotest(test_bignum_deamont_p256k1);
-  dotest(test_bignum_deamont_p384);
-  dotest(test_bignum_deamont_p384_alt);
-  dotest(test_bignum_deamont_p521);
-  dotest(test_bignum_demont);
-  dotest(test_bignum_demont_p256);
-  dotest(test_bignum_demont_p256_alt);
-  dotest(test_bignum_demont_p256k1);
-  dotest(test_bignum_demont_p384);
-  dotest(test_bignum_demont_p384_alt);
-  dotest(test_bignum_demont_p521);
-  dotest(test_bignum_digit);
-  dotest(test_bignum_digitsize);
-  dotest(test_bignum_divmod10);
-  dotest(test_bignum_double_p25519);
-  dotest(test_bignum_double_p256);
-  dotest(test_bignum_double_p256k1);
-  dotest(test_bignum_double_p384);
-  dotest(test_bignum_double_p521);
-  dotest(test_bignum_emontredc);
-  dotest(test_bignum_emontredc_8n);
-  dotest(test_bignum_eq);
-  dotest(test_bignum_even);
-  dotest(test_bignum_frombebytes_4);
-  dotest(test_bignum_frombebytes_6);
-  dotest(test_bignum_fromlebytes_4);
-  dotest(test_bignum_fromlebytes_6);
-  dotest(test_bignum_fromlebytes_p521);
-  dotest(test_bignum_ge);
-  dotest(test_bignum_gt);
-  dotest(test_bignum_half_p256);
-  dotest(test_bignum_half_p256k1);
-  dotest(test_bignum_half_p384);
-  dotest(test_bignum_half_p521);
-  dotest(test_bignum_iszero);
-  dotest(test_bignum_kmul_16_32);
-  dotest(test_bignum_kmul_32_64);
-  dotest(test_bignum_ksqr_16_32);
-  dotest(test_bignum_ksqr_32_64);
-  dotest(test_bignum_le);
-  dotest(test_bignum_littleendian_4);
-  dotest(test_bignum_littleendian_6);
-  dotest(test_bignum_lt);
-  dotest(test_bignum_madd);
-  dotest(test_bignum_mod_n256);
-  dotest(test_bignum_mod_n256_alt);
-  dotest(test_bignum_mod_n256_4);
-  dotest(test_bignum_mod_n256k1_4);
-  dotest(test_bignum_mod_n384);
-  dotest(test_bignum_mod_n384_alt);
-  dotest(test_bignum_mod_n384_6);
-  dotest(test_bignum_mod_n521_9);
-  dotest(test_bignum_mod_n521_9_alt);
-  dotest(test_bignum_mod_p25519_4);
-  dotest(test_bignum_mod_p256);
-  dotest(test_bignum_mod_p256_alt);
-  dotest(test_bignum_mod_p256_4);
-  dotest(test_bignum_mod_p256k1_4);
-  dotest(test_bignum_mod_p384);
-  dotest(test_bignum_mod_p384_alt);
-  dotest(test_bignum_mod_p384_6);
-  dotest(test_bignum_mod_p521_9);
-  dotest(test_bignum_modadd);
-  dotest(test_bignum_moddouble);
-  dotest(test_bignum_modifier);
-  dotest(test_bignum_modinv);
-  dotest(test_bignum_modoptneg);
-  dotest(test_bignum_modsub);
-  dotest(test_bignum_montifier);
-  dotest(test_bignum_montmul);
-  dotest(test_bignum_montmul_p256);
-  dotest(test_bignum_montmul_p256_alt);
-  dotest(test_bignum_montmul_p256k1);
-  dotest(test_bignum_montmul_p256k1_alt);
-  dotest(test_bignum_montmul_p384);
-  dotest(test_bignum_montmul_p384_alt);
-  dotest(test_bignum_montmul_p521);
-  dotest(test_bignum_montmul_p521_alt);
-  dotest(test_bignum_montredc);
-  dotest(test_bignum_montsqr);
-  dotest(test_bignum_montsqr_p256);
-  dotest(test_bignum_montsqr_p256_alt);
-  dotest(test_bignum_montsqr_p256k1);
-  dotest(test_bignum_montsqr_p256k1_alt);
-  dotest(test_bignum_montsqr_p384);
-  dotest(test_bignum_montsqr_p384_alt);
-  dotest(test_bignum_montsqr_p521);
-  dotest(test_bignum_montsqr_p521_alt);
-  dotest(test_bignum_mul);
-  dotest(test_bignum_mul_4_8);
-  dotest(test_bignum_mul_4_8_alt);
-  dotest(test_bignum_mul_6_12);
-  dotest(test_bignum_mul_6_12_alt);
-  dotest(test_bignum_mul_8_16);
-  dotest(test_bignum_mul_8_16_alt);
-  dotest(test_bignum_mul_p25519);
-  dotest(test_bignum_mul_p25519_alt);
-  dotest(test_bignum_mul_p256k1);
-  dotest(test_bignum_mul_p256k1_alt);
-  dotest(test_bignum_mul_p521);
-  dotest(test_bignum_mul_p521_alt);
-  dotest(test_bignum_muladd10);
-  dotest(test_bignum_mux);
-  dotest(test_bignum_mux_4);
-  dotest(test_bignum_mux_6);
-  dotest(test_bignum_mux16);
-  dotest(test_bignum_neg_p25519);
-  dotest(test_bignum_neg_p256);
-  dotest(test_bignum_neg_p256k1);
-  dotest(test_bignum_neg_p384);
-  dotest(test_bignum_neg_p521);
-  dotest(test_bignum_negmodinv);
-  dotest(test_bignum_nonzero);
-  dotest(test_bignum_nonzero_4);
-  dotest(test_bignum_nonzero_6);
-  dotest(test_bignum_normalize);
-  dotest(test_bignum_odd);
-  dotest(test_bignum_of_word);
-  dotest(test_bignum_optadd);
-  dotest(test_bignum_optneg);
-  dotest(test_bignum_optneg_p25519);
-  dotest(test_bignum_optneg_p256);
-  dotest(test_bignum_optneg_p256k1);
-  dotest(test_bignum_optneg_p384);
-  dotest(test_bignum_optneg_p521);
-  dotest(test_bignum_optsub);
-  dotest(test_bignum_optsubadd);
-  dotest(test_bignum_pow2);
-  dotest(test_bignum_shl_small);
-  dotest(test_bignum_shr_small);
-  dotest(test_bignum_sqr);
-  dotest(test_bignum_sqr_4_8);
-  dotest(test_bignum_sqr_4_8_alt);
-  dotest(test_bignum_sqr_6_12);
-  dotest(test_bignum_sqr_6_12_alt);
-  dotest(test_bignum_sqr_8_16);
-  dotest(test_bignum_sqr_8_16_alt);
-  dotest(test_bignum_sqr_p25519);
-  dotest(test_bignum_sqr_p25519_alt);
-  dotest(test_bignum_sqr_p256k1);
-  dotest(test_bignum_sqr_p256k1_alt);
-  dotest(test_bignum_sqr_p521);
-  dotest(test_bignum_sqr_p521_alt);
-  dotest(test_bignum_sub);
-  dotest(test_bignum_sub_p25519);
-  dotest(test_bignum_sub_p256);
-  dotest(test_bignum_sub_p256k1);
-  dotest(test_bignum_sub_p384);
-  dotest(test_bignum_sub_p521);
-  dotest(test_bignum_tobebytes_4);
-  dotest(test_bignum_tobebytes_6);
-  dotest(test_bignum_tolebytes_4);
-  dotest(test_bignum_tolebytes_6);
-  dotest(test_bignum_tolebytes_p521);
-  dotest(test_bignum_tomont_p256);
-  dotest(test_bignum_tomont_p256_alt);
-  dotest(test_bignum_tomont_p256k1);
-  dotest(test_bignum_tomont_p256k1_alt);
-  dotest(test_bignum_tomont_p384);
-  dotest(test_bignum_tomont_p384_alt);
-  dotest(test_bignum_tomont_p521);
-  dotest(test_bignum_triple_p256);
-  dotest(test_bignum_triple_p256_alt);
-  dotest(test_bignum_triple_p256k1);
-  dotest(test_bignum_triple_p256k1_alt);
-  dotest(test_bignum_triple_p384);
-  dotest(test_bignum_triple_p384_alt);
-  dotest(test_bignum_triple_p521);
-  dotest(test_bignum_triple_p521_alt);
-  dotest(test_curve25519_ladderstep);
-  dotest(test_curve25519_ladderstep_alt);
-  dotest(test_curve25519_pxscalarmul);
-  dotest(test_curve25519_pxscalarmul_alt);
-  dotest(test_curve25519_x25519);
-  dotest(test_curve25519_x25519_alt);
-  dotest(test_curve25519_x25519base);
-  dotest(test_curve25519_x25519base_alt);
-  dotest(test_edwards25519_pepadd);
-  dotest(test_edwards25519_pepadd_alt);
-  dotest(test_p256_montjadd);
-  dotest(test_p256_montjdouble);
-  dotest(test_p256_montjmixadd);
-  dotest(test_p384_montjadd);
-  dotest(test_p384_montjdouble);
-  dotest(test_p384_montjmixadd);
-  dotest(test_p521_jadd);
-  dotest(test_p521_jdouble);
-  dotest(test_p521_jmixadd);
-  dotest(test_secp256k1_jadd);
-  dotest(test_secp256k1_jdouble);
-  dotest(test_secp256k1_jmixadd);
-  dotest(test_word_bytereverse);
-  dotest(test_word_clz);
-  dotest(test_word_ctz);
-  dotest(test_word_max);
-  dotest(test_word_min);
-  dotest(test_word_negmodinv);
-  dotest(test_word_recip);
-
-  failures += test_known_values();
-
-  if (failures != 0)
-   { printf("All tests run, **** %d failures out of %d ****\n",
-            failures,failures+successes);
-     return 1;
-   }
-  else if (tests == 0)
-   { printf("Zero tests run, *** no testing\n");
-     return 1;
-   }
-  else
-   { printf("All %d tests run, all passed\n",successes);
-     return 0;
-   }
+void tweetnacl_curve25519x25519(uint64_t *z,uint64_t *n,uint64_t *x)
+{ uint8_t *z_bytes = alloca(32), *n_bytes = alloca(32), *x_bytes = alloca(32);
+  reference_tolebytes(32,x_bytes,4,x);
+  reference_tolebytes(32,n_bytes,4,n);
+  crypto_scalarmult(z_bytes,n_bytes,x_bytes);
+  reference_fromlebytes(4,z,32,z_bytes);
 }
 
-// This skips functions where the x86 form uses instructions
-// mulx, adcx or adoc (from BMI2 and ADX extensions). This is not
-// relevant on ARM. The TEST_ALL_APPLICABLE tries to select
-// this based on the architecture and CPUID, otherwise you
-// just get "illegal instruction". Generally your machine
-// has to be fairly old not to support these instructions.
-
-int test_allnonbmi()
-{ int failures = 0, successes = 0;
-
-  dotest(test_bignum_add);
-  dotest(test_bignum_add_p25519);
-  dotest(test_bignum_add_p256);
-  dotest(test_bignum_add_p256k1);
-  dotest(test_bignum_add_p384);
-  dotest(test_bignum_add_p521);
-  dotest(test_bignum_amontifier);
-  dotest(test_bignum_amontmul);
-  dotest(test_bignum_amontredc);
-  dotest(test_bignum_amontsqr);
-  dotest(test_bignum_bigendian_4);
-  dotest(test_bignum_bigendian_6);
-  dotest(test_bignum_bitfield);
-  dotest(test_bignum_bitsize);
-  dotest(test_bignum_cdiv);
-  dotest(test_bignum_cdiv_exact);
-  dotest(test_bignum_cld);
-  dotest(test_bignum_clz);
-  dotest(test_bignum_cmadd);
-  dotest(test_bignum_cmnegadd);
-  dotest(test_bignum_cmod);
-  dotest(test_bignum_cmul);
-  dotest(test_bignum_cmul_p25519_alt);
-  dotest(test_bignum_cmul_p256_alt);
-  dotest(test_bignum_cmul_p256k1_alt);
-  dotest(test_bignum_cmul_p384_alt);
-  dotest(test_bignum_cmul_p521_alt);
-  dotest(test_bignum_coprime);
-  dotest(test_bignum_copy);
-  dotest(test_bignum_ctd);
-  dotest(test_bignum_ctz);
-  dotest(test_bignum_deamont_p256_alt);
-  dotest(test_bignum_deamont_p256k1);
-  dotest(test_bignum_deamont_p384_alt);
-  dotest(test_bignum_deamont_p521);
-  dotest(test_bignum_demont);
-  dotest(test_bignum_demont_p256_alt);
-  dotest(test_bignum_demont_p256k1);
-  dotest(test_bignum_demont_p384_alt);
-  dotest(test_bignum_demont_p521);
-  dotest(test_bignum_digit);
-  dotest(test_bignum_digitsize);
-  dotest(test_bignum_divmod10);
-  dotest(test_bignum_double_p25519);
-  dotest(test_bignum_double_p256);
-  dotest(test_bignum_double_p256k1);
-  dotest(test_bignum_double_p384);
-  dotest(test_bignum_double_p521);
-  dotest(test_bignum_emontredc);
-  dotest(test_bignum_eq);
-  dotest(test_bignum_even);
-  dotest(test_bignum_frombebytes_4);
-  dotest(test_bignum_frombebytes_6);
-  dotest(test_bignum_fromlebytes_4);
-  dotest(test_bignum_fromlebytes_6);
-  dotest(test_bignum_fromlebytes_p521);
-  dotest(test_bignum_ge);
-  dotest(test_bignum_gt);
-  dotest(test_bignum_half_p256);
-  dotest(test_bignum_half_p256k1);
-  dotest(test_bignum_half_p384);
-  dotest(test_bignum_half_p521);
-  dotest(test_bignum_iszero);
-  dotest(test_bignum_le);
-  dotest(test_bignum_littleendian_4);
-  dotest(test_bignum_littleendian_6);
-  dotest(test_bignum_lt);
-  dotest(test_bignum_madd);
-  dotest(test_bignum_mod_n256_alt);
-  dotest(test_bignum_mod_n256_4);
-  dotest(test_bignum_mod_n256k1_4);
-  dotest(test_bignum_mod_n384_alt);
-  dotest(test_bignum_mod_n384_6);
-  dotest(test_bignum_mod_n521_9_alt);
-  dotest(test_bignum_mod_p25519_4);
-  dotest(test_bignum_mod_p256_alt);
-  dotest(test_bignum_mod_p256_4);
-  dotest(test_bignum_mod_p256k1_4);
-  dotest(test_bignum_mod_p384_alt);
-  dotest(test_bignum_mod_p384_6);
-  dotest(test_bignum_mod_p521_9);
-  dotest(test_bignum_modadd);
-  dotest(test_bignum_moddouble);
-  dotest(test_bignum_modifier);
-  dotest(test_bignum_modinv);
-  dotest(test_bignum_modoptneg);
-  dotest(test_bignum_modsub);
-  dotest(test_bignum_montifier);
-  dotest(test_bignum_montmul);
-  dotest(test_bignum_montmul_p256_alt);
-  dotest(test_bignum_montmul_p256k1_alt);
-  dotest(test_bignum_montmul_p384_alt);
-  dotest(test_bignum_montmul_p521_alt);
-  dotest(test_bignum_montredc);
-  dotest(test_bignum_montsqr);
-  dotest(test_bignum_montsqr_p256_alt);
-  dotest(test_bignum_montsqr_p256k1_alt);
-  dotest(test_bignum_montsqr_p384_alt);
-  dotest(test_bignum_montsqr_p521_alt);
-  dotest(test_bignum_mul);
-  dotest(test_bignum_mul_4_8_alt);
-  dotest(test_bignum_mul_6_12_alt);
-  dotest(test_bignum_mul_8_16_alt);
-  dotest(test_bignum_mul_p25519_alt);
-  dotest(test_bignum_mul_p256k1_alt);
-  dotest(test_bignum_mul_p521_alt);
-  dotest(test_bignum_muladd10);
-  dotest(test_bignum_mux);
-  dotest(test_bignum_mux_4);
-  dotest(test_bignum_mux_6);
-  dotest(test_bignum_mux16);
-  dotest(test_bignum_neg_p25519);
-  dotest(test_bignum_neg_p256);
-  dotest(test_bignum_neg_p256k1);
-  dotest(test_bignum_neg_p384);
-  dotest(test_bignum_neg_p521);
-  dotest(test_bignum_negmodinv);
-  dotest(test_bignum_nonzero);
-  dotest(test_bignum_nonzero_4);
-  dotest(test_bignum_nonzero_6);
-  dotest(test_bignum_normalize);
-  dotest(test_bignum_odd);
-  dotest(test_bignum_of_word);
-  dotest(test_bignum_optadd);
-  dotest(test_bignum_optneg);
-  dotest(test_bignum_optneg_p25519);
-  dotest(test_bignum_optneg_p256);
-  dotest(test_bignum_optneg_p256k1);
-  dotest(test_bignum_optneg_p384);
-  dotest(test_bignum_optneg_p521);
-  dotest(test_bignum_optsub);
-  dotest(test_bignum_optsubadd);
-  dotest(test_bignum_pow2);
-  dotest(test_bignum_shl_small);
-  dotest(test_bignum_shr_small);
-  dotest(test_bignum_sqr);
-  dotest(test_bignum_sqr_4_8_alt);
-  dotest(test_bignum_sqr_6_12_alt);
-  dotest(test_bignum_sqr_8_16_alt);
-  dotest(test_bignum_sqr_p25519_alt);
-  dotest(test_bignum_sqr_p256k1_alt);
-  dotest(test_bignum_sqr_p521_alt);
-  dotest(test_bignum_sub);
-  dotest(test_bignum_sub_p25519);
-  dotest(test_bignum_sub_p256);
-  dotest(test_bignum_sub_p256k1);
-  dotest(test_bignum_sub_p384);
-  dotest(test_bignum_sub_p521);
-  dotest(test_bignum_tobebytes_4);
-  dotest(test_bignum_tobebytes_6);
-  dotest(test_bignum_tolebytes_4);
-  dotest(test_bignum_tolebytes_6);
-  dotest(test_bignum_tolebytes_p521);
-  dotest(test_bignum_tomont_p256_alt);
-  dotest(test_bignum_tomont_p256k1_alt);
-  dotest(test_bignum_tomont_p384_alt);
-  dotest(test_bignum_tomont_p521);
-  dotest(test_bignum_triple_p256_alt);
-  dotest(test_bignum_triple_p256k1_alt);
-  dotest(test_bignum_triple_p384_alt);
-  dotest(test_bignum_triple_p521_alt);
-  dotest(test_curve25519_ladderstep_alt);
-  dotest(test_curve25519_pxscalarmul_alt);
-  dotest(test_curve25519_x25519_alt);
-  dotest(test_curve25519_x25519base_alt);
-  dotest(test_edwards25519_pepadd_alt);
-  dotest(test_word_bytereverse);
-  dotest(test_word_clz);
-  dotest(test_word_ctz);
-  dotest(test_word_max);
-  dotest(test_word_min);
-  dotest(test_word_negmodinv);
-  dotest(test_word_recip);
-
-  if (failures != 0)
-   { printf("*** Partial tests (%d) run and **** %d failures ***\n",
-            successes+failures,failures);
-     return 1;
-   }
-  else if (tests == 0)
-   { printf("*** Zero tests run, *** no testing\n");
-     return 1;
-   }
-  else
-   { printf("*** Partial tests (%d) run; no failures but some skipped\n",
-            successes);
-     printf("*** x86 BMI and ADX instructions needed for other functions\n");
-     return 0;
-   }
+void tweetnacl_curve25519x25519base(uint64_t *z,uint64_t *n)
+{ uint8_t *z_bytes = alloca(32), *n_bytes = alloca(32);
+  reference_tolebytes(32,n_bytes,4,n);
+  crypto_scalarmult_base(z_bytes,n_bytes);
+  reference_fromlebytes(4,z,32,z_bytes);
 }
+
+int test_curve25519_x25519_tweetnacl(void)
+{ uint64_t t, k;
+  printf("Testing curve25519_x25519 against TweetNaCl with %d cases\n",tests);
+  k = 4;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b2);
+     random_bignum(k,b1);
+
+     // With non-trivial probability, let X be in the cofactor 8-group
+
+     if ((rand() & 15) == 0)
+      { b2[3] = UINT64_C(0x57119fd0dd4e22d8);
+        b2[2] = UINT64_C(0x868e1c58c45c4404);
+        b2[1] = UINT64_C(0x5bef839c55b1d0b1);
+        b2[0] = UINT64_C(0x248c50a3bc959c5f);
+      }
+
+     curve25519_x25519(b3,b1,b2);
+     tweetnacl_curve25519x25519(b4,b1,b2);
+
+     c = reference_compare(k,b3,k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" * "
+               "<0x%016"PRIx64"...%016"PRIx64"> = "
+               "<...0x%016"PRIx64"...%016"PRIx64"> not "
+               "<...0x%016"PRIx64"...%016"PRIx64">\n",
+               k,b1[3],b1[0],b2[3],b2[0],b3[3],b3[0],b4[3],b4[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" * "
+               "<0x%016"PRIx64"...%016"PRIx64"> = "
+               "<...0x%016"PRIx64"...%016"PRIx64">\n",
+               k,b1[3],b1[0],b2[3],b2[0],b3[3],b3[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_curve25519_x25519_alt_tweetnacl(void)
+{ uint64_t t, k;
+  printf("Testing curve25519_x25519_alt against TweetNaCl with %d cases\n",tests);
+  k = 4;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b2);
+     random_bignum(k,b1);
+
+     // With non-trivial probability, let X be in the cofactor 8-group
+
+     if ((rand() & 15) == 0)
+      { b2[3] = UINT64_C(0x57119fd0dd4e22d8);
+        b2[2] = UINT64_C(0x868e1c58c45c4404);
+        b2[1] = UINT64_C(0x5bef839c55b1d0b1);
+        b2[0] = UINT64_C(0x248c50a3bc959c5f);
+      }
+
+     curve25519_x25519_alt(b3,b1,b2);
+     tweetnacl_curve25519x25519(b4,b1,b2);
+
+     c = reference_compare(k,b3,k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" * "
+               "<0x%016"PRIx64"...%016"PRIx64"> = "
+               "<...0x%016"PRIx64"...%016"PRIx64"> not "
+               "<...0x%016"PRIx64"...%016"PRIx64">\n",
+               k,b1[3],b1[0],b2[3],b2[0],b3[3],b3[0],b4[3],b4[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" * "
+               "<0x%016"PRIx64"...%016"PRIx64"> = "
+               "<...0x%016"PRIx64"...%016"PRIx64">\n",
+               k,b1[3],b1[0],b2[3],b2[0],b3[3],b3[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+
+int test_curve25519_x25519base_tweetnacl(void)
+{ uint64_t t, k;
+  printf("Testing curve25519_x25519base against TweetNaCl with %d cases\n",tests);
+  k = 4;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b1);
+     reference_of_word(k,b2,UINT64_C(9));
+
+     curve25519_x25519base(b3,b1);
+     tweetnacl_curve25519x25519base(b4,b1);
+
+     c = reference_compare(k,b3,k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" * "
+               "<0x%016"PRIx64"...%016"PRIx64"> = "
+               "<...0x%016"PRIx64"...%016"PRIx64"> not "
+               "<...0x%016"PRIx64"...%016"PRIx64">\n",
+               k,b1[3],b1[0],b2[3],b2[0],b3[3],b3[0],b4[3],b4[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" * "
+               "<0x%016"PRIx64"...%016"PRIx64"> = "
+               "<...0x%016"PRIx64"...%016"PRIx64">\n",
+               k,b1[3],b1[0],b2[3],b2[0],b3[3],b3[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_curve25519_x25519base_alt_tweetnacl(void)
+{ uint64_t t, k;
+  printf("Testing curve25519_x25519base_alt against TweetNaCl with %d cases\n",tests);
+  k = 4;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b1);
+     reference_of_word(k,b2,UINT64_C(9));
+
+     curve25519_x25519base_alt(b3,b1);
+     tweetnacl_curve25519x25519base(b4,b1);
+
+     c = reference_compare(k,b3,k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" * "
+               "<0x%016"PRIx64"...%016"PRIx64"> = "
+               "<...0x%016"PRIx64"...%016"PRIx64"> not "
+               "<...0x%016"PRIx64"...%016"PRIx64">\n",
+               k,b1[3],b1[0],b2[3],b2[0],b3[3],b3[0],b4[3],b4[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" * "
+               "<0x%016"PRIx64"...%016"PRIx64"> = "
+               "<...0x%016"PRIx64"...%016"PRIx64">\n",
+               k,b1[3],b1[0],b2[3],b2[0],b3[3],b3[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+
 
 // ****************************************************************************
 // Main dispatching to appropriate test code
@@ -9163,285 +8648,354 @@ int cpuid_extendedfeatures(void)
   return b;
 }
 
-int all_applicable(void)
+int full_isa_support(void)
 { int c = cpuid_extendedfeatures();
   return (c & (1ul<<8)) && (c & (1ul<<19));
 }
 
 #else
 
-int all_applicable(void)
+int full_isa_support(void)
 { return 1;
 }
 
 #endif
 
-// If there is a single command line argument then interpret it
-// as the number of tests, which otherwise defaults to TESTS
-// Zero is interpreted as the default TESTS but for *all* tests
-// including known value tests.
+static char *function_to_test;
+static int tested = 0;
+static int successes = 0;
+static int failures = 0;
+static int skipped = 0;
+static int inapplicable = 0;
+
+void functionaltest(int enabled,char *name,int (*f)(void))
+{ ++tested;
+  // Only benchmark matching function name
+  // Empty string matches everything, terminal _ matches everything
+
+  char *spaceptr = strchr(name,' ');
+  int compline = (spaceptr) ? spaceptr-name : strlen(name);
+  int wantline = strlen(function_to_test);
+  int testline = wantline;
+  if (wantline == 0) testline = 0;
+  else if (function_to_test[wantline-1] == '_') testline = wantline - 1;
+  else if (testline < compline) testline = compline;
+  if (strncmp(name,function_to_test,testline))
+   { ++skipped;
+     return;
+   }
+
+  // Only benchmark function using supported instructions (on x86)
+
+  if (!enabled)
+   { printf("%-32s:             *** NOT APPLICABLE  ***\n",name);
+     ++inapplicable;
+     return;
+   }
+
+  if (f()) ++failures; else ++successes;
+}
+
+// Main function allowing various command-line options:
+//
+// ./test [-number_of_tests] [function]
+// ./test [[+]number_of_tests] [function]
+//
+// the difference being that the second one also runs extra
+// tests like known value tests even if not explicitly
+// selected in the function list.
+//
+// The function can end in an underscore which is interpreted
+// as a wildcard "*", e.g. "bignum_add_p_"
 
 int main(int argc, char *argv[])
-{ if (argc == 2)
-    tests = atoi(argv[1]);
-  else
-    tests = TESTS;
+{ int bmi = full_isa_support();
+  int all = 1;
+  int extrastrigger = 1;
 
-  if (tests == 0)
-   { tests = TESTS;
-     return test_all();
+  char *argending;
+  long negreps;
+  function_to_test = "";
+  tests = TESTS;
+
+  if (argc >= 2)
+   { negreps = strtol(argv[1],&argending,10);
+     if (negreps <= 0) extrastrigger = 0;
+     if (negreps >= 0) negreps = -negreps;
+     if (argending == argv[1])
+      { if (argc >= 3 || argv[1][0] == '-')
+         { printf("Usage: ./test [-reps] [function_name]\n");
+           printf(" e.g.: ./test -1000 bignum_add\n");
+           printf("   or: ./test -25 bignum_mul_\n");
+           return (-1);
+         }
+        else function_to_test = argv[1];
+      }
+     else
+      { tests = -negreps;
+        if (argc >= 3) function_to_test = argv[2];
+      }
    }
 
-   switch(WHAT)
-   { case TEST_ALL:                       return test_all();
+  if (tests == 0) tests = TESTS;
 
-     case TEST_ALL_APPLICABLE:            if (all_applicable())
-                                            return test_all();
-                                          else
-                                            return test_allnonbmi();
+  functionaltest(all,"bignum_add",test_bignum_add);
+  functionaltest(all,"bignum_add_p25519",test_bignum_add_p25519);
+  functionaltest(all,"bignum_add_p256",test_bignum_add_p256);
+  functionaltest(all,"bignum_add_p256k1",test_bignum_add_p256k1);
+  functionaltest(all,"bignum_add_p384",test_bignum_add_p384);
+  functionaltest(all,"bignum_add_p521",test_bignum_add_p521);
+  functionaltest(all,"bignum_amontifier",test_bignum_amontifier);
+  functionaltest(all,"bignum_amontmul",test_bignum_amontmul);
+  functionaltest(all,"bignum_amontredc",test_bignum_amontredc);
+  functionaltest(all,"bignum_amontsqr",test_bignum_amontsqr);
+  functionaltest(all,"bignum_bigendian_4",test_bignum_bigendian_4);
+  functionaltest(all,"bignum_bigendian_6",test_bignum_bigendian_6);
+  functionaltest(all,"bignum_bitfield",test_bignum_bitfield);
+  functionaltest(all,"bignum_bitsize",test_bignum_bitsize);
+  functionaltest(all,"bignum_cdiv",test_bignum_cdiv);
+  functionaltest(all,"bignum_cdiv_exact",test_bignum_cdiv_exact);
+  functionaltest(all,"bignum_cld",test_bignum_cld);
+  functionaltest(all,"bignum_clz",test_bignum_clz);
+  functionaltest(all,"bignum_cmadd",test_bignum_cmadd);
+  functionaltest(all,"bignum_cmnegadd",test_bignum_cmnegadd);
+  functionaltest(all,"bignum_cmod",test_bignum_cmod);
+  functionaltest(all,"bignum_cmul",test_bignum_cmul);
+  functionaltest(bmi,"bignum_cmul_p25519",test_bignum_cmul_p25519);
+  functionaltest(all,"bignum_cmul_p25519_alt",test_bignum_cmul_p25519_alt);
+  functionaltest(bmi,"bignum_cmul_p256",test_bignum_cmul_p256);
+  functionaltest(all,"bignum_cmul_p256_alt",test_bignum_cmul_p256_alt);
+  functionaltest(bmi,"bignum_cmul_p256k1",test_bignum_cmul_p256k1);
+  functionaltest(all,"bignum_cmul_p256k1_alt",test_bignum_cmul_p256k1_alt);
+  functionaltest(bmi,"bignum_cmul_p384",test_bignum_cmul_p384);
+  functionaltest(all,"bignum_cmul_p384_alt",test_bignum_cmul_p384_alt);
+  functionaltest(bmi,"bignum_cmul_p521",test_bignum_cmul_p521);
+  functionaltest(all,"bignum_cmul_p521_alt",test_bignum_cmul_p521_alt);
+  functionaltest(all,"bignum_coprime",test_bignum_coprime);
+  functionaltest(all,"bignum_copy",test_bignum_copy);
+  functionaltest(all,"bignum_ctd",test_bignum_ctd);
+  functionaltest(all,"bignum_ctz",test_bignum_ctz);
+  functionaltest(bmi,"bignum_deamont_p256",test_bignum_deamont_p256);
+  functionaltest(all,"bignum_deamont_p256_alt",test_bignum_deamont_p256_alt);
+  functionaltest(all,"bignum_deamont_p256k1",test_bignum_deamont_p256k1);
+  functionaltest(bmi,"bignum_deamont_p384",test_bignum_deamont_p384);
+  functionaltest(all,"bignum_deamont_p384_alt",test_bignum_deamont_p384_alt);
+  functionaltest(all,"bignum_deamont_p521",test_bignum_deamont_p521);
+  functionaltest(all,"bignum_demont",test_bignum_demont);
+  functionaltest(bmi,"bignum_demont_p256",test_bignum_demont_p256);
+  functionaltest(all,"bignum_demont_p256_alt",test_bignum_demont_p256_alt);
+  functionaltest(all,"bignum_demont_p256k1",test_bignum_demont_p256k1);
+  functionaltest(bmi,"bignum_demont_p384",test_bignum_demont_p384);
+  functionaltest(all,"bignum_demont_p384_alt",test_bignum_demont_p384_alt);
+  functionaltest(all,"bignum_demont_p521",test_bignum_demont_p521);
+  functionaltest(all,"bignum_digit",test_bignum_digit);
+  functionaltest(all,"bignum_digitsize",test_bignum_digitsize);
+  functionaltest(all,"bignum_divmod10",test_bignum_divmod10);
+  functionaltest(all,"bignum_double_p25519",test_bignum_double_p25519);
+  functionaltest(all,"bignum_double_p256",test_bignum_double_p256);
+  functionaltest(all,"bignum_double_p256k1",test_bignum_double_p256k1);
+  functionaltest(all,"bignum_double_p384",test_bignum_double_p384);
+  functionaltest(all,"bignum_double_p521",test_bignum_double_p521);
+  functionaltest(all,"bignum_emontredc",test_bignum_emontredc);
+  functionaltest(bmi,"bignum_emontredc_8n",test_bignum_emontredc_8n);
+  functionaltest(all,"bignum_eq",test_bignum_eq);
+  functionaltest(all,"bignum_even",test_bignum_even);
+  functionaltest(all,"bignum_frombebytes_4",test_bignum_frombebytes_4);
+  functionaltest(all,"bignum_frombebytes_6",test_bignum_frombebytes_6);
+  functionaltest(all,"bignum_fromlebytes_4",test_bignum_fromlebytes_4);
+  functionaltest(all,"bignum_fromlebytes_6",test_bignum_fromlebytes_6);
+  functionaltest(all,"bignum_fromlebytes_p521",test_bignum_fromlebytes_p521);
+  functionaltest(all,"bignum_ge",test_bignum_ge);
+  functionaltest(all,"bignum_gt",test_bignum_gt);
+  functionaltest(all,"bignum_half_p256",test_bignum_half_p256);
+  functionaltest(all,"bignum_half_p256k1",test_bignum_half_p256k1);
+  functionaltest(all,"bignum_half_p384",test_bignum_half_p384);
+  functionaltest(all,"bignum_half_p521",test_bignum_half_p521);
+  functionaltest(all,"bignum_iszero",test_bignum_iszero);
+  functionaltest(bmi,"bignum_kmul_16_32",test_bignum_kmul_16_32);
+  functionaltest(bmi,"bignum_kmul_32_64",test_bignum_kmul_32_64);
+  functionaltest(bmi,"bignum_ksqr_16_32",test_bignum_ksqr_16_32);
+  functionaltest(bmi,"bignum_ksqr_32_64",test_bignum_ksqr_32_64);
+  functionaltest(all,"bignum_le",test_bignum_le);
+  functionaltest(all,"bignum_littleendian_4",test_bignum_littleendian_4);
+  functionaltest(all,"bignum_littleendian_6",test_bignum_littleendian_6);
+  functionaltest(all,"bignum_lt",test_bignum_lt);
+  functionaltest(all,"bignum_madd",test_bignum_madd);
+  functionaltest(bmi,"bignum_mod_n256",test_bignum_mod_n256);
+  functionaltest(all,"bignum_mod_n256_4",test_bignum_mod_n256_4);
+  functionaltest(all,"bignum_mod_n256_alt",test_bignum_mod_n256_alt);
+  functionaltest(all,"bignum_mod_n256k1_4",test_bignum_mod_n256k1_4);
+  functionaltest(bmi,"bignum_mod_n384",test_bignum_mod_n384);
+  functionaltest(all,"bignum_mod_n384_6",test_bignum_mod_n384_6);
+  functionaltest(all,"bignum_mod_n384_alt",test_bignum_mod_n384_alt);
+  functionaltest(bmi,"bignum_mod_n521_9",test_bignum_mod_n521_9);
+  functionaltest(all,"bignum_mod_n521_9_alt",test_bignum_mod_n521_9_alt);
+  functionaltest(all,"bignum_mod_p25519_4",test_bignum_mod_p25519_4);
+  functionaltest(bmi,"bignum_mod_p256",test_bignum_mod_p256);
+  functionaltest(all,"bignum_mod_p256_4",test_bignum_mod_p256_4);
+  functionaltest(all,"bignum_mod_p256_alt",test_bignum_mod_p256_alt);
+  functionaltest(all,"bignum_mod_p256k1_4",test_bignum_mod_p256k1_4);
+  functionaltest(bmi,"bignum_mod_p384",test_bignum_mod_p384);
+  functionaltest(all,"bignum_mod_p384_6",test_bignum_mod_p384_6);
+  functionaltest(all,"bignum_mod_p384_alt",test_bignum_mod_p384_alt);
+  functionaltest(all,"bignum_mod_p521_9",test_bignum_mod_p521_9);
+  functionaltest(all,"bignum_modadd",test_bignum_modadd);
+  functionaltest(all,"bignum_moddouble",test_bignum_moddouble);
+  functionaltest(all,"bignum_modifier",test_bignum_modifier);
+  functionaltest(all,"bignum_modinv",test_bignum_modinv);
+  functionaltest(all,"bignum_modoptneg",test_bignum_modoptneg);
+  functionaltest(all,"bignum_modsub",test_bignum_modsub);
+  functionaltest(all,"bignum_montifier",test_bignum_montifier);
+  functionaltest(all,"bignum_montmul",test_bignum_montmul);
+  functionaltest(bmi,"bignum_montmul_p256",test_bignum_montmul_p256);
+  functionaltest(all,"bignum_montmul_p256_alt",test_bignum_montmul_p256_alt);
+  functionaltest(bmi,"bignum_montmul_p256k1",test_bignum_montmul_p256k1);
+  functionaltest(all,"bignum_montmul_p256k1_alt",test_bignum_montmul_p256k1_alt);
+  functionaltest(bmi,"bignum_montmul_p384",test_bignum_montmul_p384);
+  functionaltest(all,"bignum_montmul_p384_alt",test_bignum_montmul_p384_alt);
+  functionaltest(bmi,"bignum_montmul_p521",test_bignum_montmul_p521);
+  functionaltest(all,"bignum_montmul_p521_alt",test_bignum_montmul_p521_alt);
+  functionaltest(all,"bignum_montredc",test_bignum_montredc);
+  functionaltest(all,"bignum_montsqr",test_bignum_montsqr);
+  functionaltest(bmi,"bignum_montsqr_p256",test_bignum_montsqr_p256);
+  functionaltest(all,"bignum_montsqr_p256_alt",test_bignum_montsqr_p256_alt);
+  functionaltest(bmi,"bignum_montsqr_p256k1",test_bignum_montsqr_p256k1);
+  functionaltest(all,"bignum_montsqr_p256k1_alt",test_bignum_montsqr_p256k1_alt);
+  functionaltest(bmi,"bignum_montsqr_p384",test_bignum_montsqr_p384);
+  functionaltest(all,"bignum_montsqr_p384_alt",test_bignum_montsqr_p384_alt);
+  functionaltest(bmi,"bignum_montsqr_p521",test_bignum_montsqr_p521);
+  functionaltest(all,"bignum_montsqr_p521_alt",test_bignum_montsqr_p521_alt);
+  functionaltest(all,"bignum_mul",test_bignum_mul);
+  functionaltest(bmi,"bignum_mul_4_8",test_bignum_mul_4_8);
+  functionaltest(all,"bignum_mul_4_8_alt",test_bignum_mul_4_8_alt);
+  functionaltest(bmi,"bignum_mul_6_12",test_bignum_mul_6_12);
+  functionaltest(all,"bignum_mul_6_12_alt",test_bignum_mul_6_12_alt);
+  functionaltest(bmi,"bignum_mul_8_16",test_bignum_mul_8_16);
+  functionaltest(all,"bignum_mul_8_16_alt",test_bignum_mul_8_16_alt);
+  functionaltest(bmi,"bignum_mul_p25519",test_bignum_mul_p25519);
+  functionaltest(all,"bignum_mul_p25519_alt",test_bignum_mul_p25519_alt);
+  functionaltest(bmi,"bignum_mul_p256k1",test_bignum_mul_p256k1);
+  functionaltest(all,"bignum_mul_p256k1_alt",test_bignum_mul_p256k1_alt);
+  functionaltest(bmi,"bignum_mul_p521",test_bignum_mul_p521);
+  functionaltest(all,"bignum_mul_p521_alt",test_bignum_mul_p521_alt);
+  functionaltest(all,"bignum_muladd10",test_bignum_muladd10);
+  functionaltest(all,"bignum_mux",test_bignum_mux);
+  functionaltest(all,"bignum_mux16",test_bignum_mux16);
+  functionaltest(all,"bignum_mux_4",test_bignum_mux_4);
+  functionaltest(all,"bignum_mux_6",test_bignum_mux_6);
+  functionaltest(all,"bignum_neg_p25519",test_bignum_neg_p25519);
+  functionaltest(all,"bignum_neg_p256",test_bignum_neg_p256);
+  functionaltest(all,"bignum_neg_p256k1",test_bignum_neg_p256k1);
+  functionaltest(all,"bignum_neg_p384",test_bignum_neg_p384);
+  functionaltest(all,"bignum_neg_p521",test_bignum_neg_p521);
+  functionaltest(all,"bignum_negmodinv",test_bignum_negmodinv);
+  functionaltest(all,"bignum_nonzero",test_bignum_nonzero);
+  functionaltest(all,"bignum_nonzero_4",test_bignum_nonzero_4);
+  functionaltest(all,"bignum_nonzero_6",test_bignum_nonzero_6);
+  functionaltest(all,"bignum_normalize",test_bignum_normalize);
+  functionaltest(all,"bignum_odd",test_bignum_odd);
+  functionaltest(all,"bignum_of_word",test_bignum_of_word);
+  functionaltest(all,"bignum_optadd",test_bignum_optadd);
+  functionaltest(all,"bignum_optneg",test_bignum_optneg);
+  functionaltest(all,"bignum_optneg_p25519",test_bignum_optneg_p25519);
+  functionaltest(all,"bignum_optneg_p256",test_bignum_optneg_p256);
+  functionaltest(all,"bignum_optneg_p256k1",test_bignum_optneg_p256k1);
+  functionaltest(all,"bignum_optneg_p384",test_bignum_optneg_p384);
+  functionaltest(all,"bignum_optneg_p521",test_bignum_optneg_p521);
+  functionaltest(all,"bignum_optsub",test_bignum_optsub);
+  functionaltest(all,"bignum_optsubadd",test_bignum_optsubadd);
+  functionaltest(all,"bignum_pow2",test_bignum_pow2);
+  functionaltest(all,"bignum_shl_small",test_bignum_shl_small);
+  functionaltest(all,"bignum_shr_small",test_bignum_shr_small);
+  functionaltest(all,"bignum_sqr",test_bignum_sqr);
+  functionaltest(bmi,"bignum_sqr_4_8",test_bignum_sqr_4_8);
+  functionaltest(all,"bignum_sqr_4_8_alt",test_bignum_sqr_4_8_alt);
+  functionaltest(bmi,"bignum_sqr_6_12",test_bignum_sqr_6_12);
+  functionaltest(all,"bignum_sqr_6_12_alt",test_bignum_sqr_6_12_alt);
+  functionaltest(bmi,"bignum_sqr_8_16",test_bignum_sqr_8_16);
+  functionaltest(all,"bignum_sqr_8_16_alt",test_bignum_sqr_8_16_alt);
+  functionaltest(bmi,"bignum_sqr_p25519",test_bignum_sqr_p25519);
+  functionaltest(all,"bignum_sqr_p25519_alt",test_bignum_sqr_p25519_alt);
+  functionaltest(bmi,"bignum_sqr_p256k1",test_bignum_sqr_p256k1);
+  functionaltest(all,"bignum_sqr_p256k1_alt",test_bignum_sqr_p256k1_alt);
+  functionaltest(bmi,"bignum_sqr_p521",test_bignum_sqr_p521);
+  functionaltest(all,"bignum_sqr_p521_alt",test_bignum_sqr_p521_alt);
+  functionaltest(all,"bignum_sub",test_bignum_sub);
+  functionaltest(all,"bignum_sub_p25519",test_bignum_sub_p25519);
+  functionaltest(all,"bignum_sub_p256",test_bignum_sub_p256);
+  functionaltest(all,"bignum_sub_p256k1",test_bignum_sub_p256k1);
+  functionaltest(all,"bignum_sub_p384",test_bignum_sub_p384);
+  functionaltest(all,"bignum_sub_p521",test_bignum_sub_p521);
+  functionaltest(all,"bignum_tobebytes_4",test_bignum_tobebytes_4);
+  functionaltest(all,"bignum_tobebytes_6",test_bignum_tobebytes_6);
+  functionaltest(all,"bignum_tolebytes_4",test_bignum_tolebytes_4);
+  functionaltest(all,"bignum_tolebytes_6",test_bignum_tolebytes_6);
+  functionaltest(all,"bignum_tolebytes_p521",test_bignum_tolebytes_p521);
+  functionaltest(bmi,"bignum_tomont_p256",test_bignum_tomont_p256);
+  functionaltest(all,"bignum_tomont_p256_alt",test_bignum_tomont_p256_alt);
+  functionaltest(bmi,"bignum_tomont_p256k1",test_bignum_tomont_p256k1);
+  functionaltest(all,"bignum_tomont_p256k1_alt",test_bignum_tomont_p256k1_alt);
+  functionaltest(bmi,"bignum_tomont_p384",test_bignum_tomont_p384);
+  functionaltest(all,"bignum_tomont_p384_alt",test_bignum_tomont_p384_alt);
+  functionaltest(all,"bignum_tomont_p521",test_bignum_tomont_p521);
+  functionaltest(bmi,"bignum_triple_p256",test_bignum_triple_p256);
+  functionaltest(all,"bignum_triple_p256_alt",test_bignum_triple_p256_alt);
+  functionaltest(bmi,"bignum_triple_p256k1",test_bignum_triple_p256k1);
+  functionaltest(all,"bignum_triple_p256k1_alt",test_bignum_triple_p256k1_alt);
+  functionaltest(bmi,"bignum_triple_p384",test_bignum_triple_p384);
+  functionaltest(all,"bignum_triple_p384_alt",test_bignum_triple_p384_alt);
+  functionaltest(bmi,"bignum_triple_p521",test_bignum_triple_p521);
+  functionaltest(all,"bignum_triple_p521_alt",test_bignum_triple_p521_alt);
+  functionaltest(bmi,"curve25519_ladderstep",test_curve25519_ladderstep);
+  functionaltest(all,"curve25519_ladderstep_alt",test_curve25519_ladderstep_alt);
+  functionaltest(bmi,"curve25519_pxscalarmul",test_curve25519_pxscalarmul);
+  functionaltest(all,"curve25519_pxscalarmul_alt",test_curve25519_pxscalarmul_alt);
+  functionaltest(bmi,"curve25519_x25519",test_curve25519_x25519);
+  functionaltest(all,"curve25519_x25519_alt",test_curve25519_x25519_alt);
+  functionaltest(bmi,"curve25519_x25519base",test_curve25519_x25519base);
+  functionaltest(all,"curve25519_x25519base_alt",test_curve25519_x25519base_alt);
+  functionaltest(bmi,"edwards25519_pepadd",test_edwards25519_pepadd);
+  functionaltest(all,"edwards25519_pepadd_alt",test_edwards25519_pepadd_alt);
+  functionaltest(bmi,"p256_montjadd",test_p256_montjadd);
+  functionaltest(bmi,"p256_montjdouble",test_p256_montjdouble);
+  functionaltest(bmi,"p256_montjmixadd",test_p256_montjmixadd);
+  functionaltest(bmi,"p384_montjadd",test_p384_montjadd);
+  functionaltest(bmi,"p384_montjdouble",test_p384_montjdouble);
+  functionaltest(bmi,"p384_montjmixadd",test_p384_montjmixadd);
+  functionaltest(bmi,"p521_jadd",test_p521_jadd);
+  functionaltest(bmi,"p521_jdouble",test_p521_jdouble);
+  functionaltest(bmi,"p521_jmixadd",test_p521_jmixadd);
+  functionaltest(bmi,"secp256k1_jadd",test_secp256k1_jadd);
+  functionaltest(bmi,"secp256k1_jdouble",test_secp256k1_jdouble);
+  functionaltest(bmi,"secp256k1_jmixadd",test_secp256k1_jmixadd);
+  functionaltest(all,"word_bytereverse",test_word_bytereverse);
+  functionaltest(all,"word_clz",test_word_clz);
+  functionaltest(all,"word_ctz",test_word_ctz);
+  functionaltest(all,"word_max",test_word_max);
+  functionaltest(all,"word_min",test_word_min);
+  functionaltest(all,"word_negmodinv",test_word_negmodinv);
+  functionaltest(all,"word_recip",test_word_recip);
 
-     case TEST_KNOWN_VALUES:              return test_known_values();
+  if (extrastrigger) function_to_test = "_";
 
-     case TEST_BIGNUM_ADD:                return test_bignum_add();
-     case TEST_BIGNUM_ADD_P25519:         return test_bignum_add_p25519();
-     case TEST_BIGNUM_ADD_P256:           return test_bignum_add_p256();
-     case TEST_BIGNUM_ADD_P256K1:         return test_bignum_add_p256k1();
-     case TEST_BIGNUM_ADD_P384:           return test_bignum_add_p384();
-     case TEST_BIGNUM_ADD_P521:           return test_bignum_add_p521();
-     case TEST_BIGNUM_AMONTIFIER:         return test_bignum_amontifier();
-     case TEST_BIGNUM_AMONTMUL:           return test_bignum_amontmul();
-     case TEST_BIGNUM_AMONTREDC:          return test_bignum_amontredc();
-     case TEST_BIGNUM_AMONTSQR:           return test_bignum_amontsqr();
-     case TEST_BIGNUM_BIGENDIAN_4:        return test_bignum_bigendian_4();
-     case TEST_BIGNUM_BIGENDIAN_6:        return test_bignum_bigendian_6();
-     case TEST_BIGNUM_BITFIELD:           return test_bignum_bitfield();
-     case TEST_BIGNUM_BITSIZE:            return test_bignum_bitsize();
-     case TEST_BIGNUM_CDIV:               return test_bignum_cdiv();
-     case TEST_BIGNUM_CDIV_EXACT:         return test_bignum_cdiv_exact();
-     case TEST_BIGNUM_CLD:                return test_bignum_cld();
-     case TEST_BIGNUM_CLZ:                return test_bignum_clz();
-     case TEST_BIGNUM_CMADD:              return test_bignum_cmadd();
-     case TEST_BIGNUM_CMNEGADD:           return test_bignum_cmnegadd();
-     case TEST_BIGNUM_CMOD:               return test_bignum_cmod();
-     case TEST_BIGNUM_CMUL:               return test_bignum_cmul();
-     case TEST_BIGNUM_CMUL_P25519:        return test_bignum_cmul_p25519();
-     case TEST_BIGNUM_CMUL_P25519_ALT:    return test_bignum_cmul_p25519_alt();
-     case TEST_BIGNUM_CMUL_P256:          return test_bignum_cmul_p256();
-     case TEST_BIGNUM_CMUL_P256_ALT:      return test_bignum_cmul_p256_alt();
-     case TEST_BIGNUM_CMUL_P256K1:        return test_bignum_cmul_p256k1();
-     case TEST_BIGNUM_CMUL_P256K1_ALT:    return test_bignum_cmul_p256k1_alt();
-     case TEST_BIGNUM_CMUL_P384:          return test_bignum_cmul_p384();
-     case TEST_BIGNUM_CMUL_P384_ALT:      return test_bignum_cmul_p384_alt();
-     case TEST_BIGNUM_CMUL_P521:          return test_bignum_cmul_p521();
-     case TEST_BIGNUM_CMUL_P521_ALT:      return test_bignum_cmul_p521_alt();
-     case TEST_BIGNUM_COPRIME:            return test_bignum_coprime();
-     case TEST_BIGNUM_COPY:               return test_bignum_copy();
-     case TEST_BIGNUM_CTD:                return test_bignum_ctd();
-     case TEST_BIGNUM_CTZ:                return test_bignum_ctz();
-     case TEST_BIGNUM_DEAMONT_P256:       return test_bignum_deamont_p256();
-     case TEST_BIGNUM_DEAMONT_P256_ALT:   return test_bignum_deamont_p256_alt();
-     case TEST_BIGNUM_DEAMONT_P256K1:     return test_bignum_deamont_p256k1();
-     case TEST_BIGNUM_DEAMONT_P384:       return test_bignum_deamont_p384();
-     case TEST_BIGNUM_DEAMONT_P384_ALT:   return test_bignum_deamont_p384_alt();
-     case TEST_BIGNUM_DEAMONT_P521:       return test_bignum_deamont_p521();
-     case TEST_BIGNUM_DEMONT:             return test_bignum_demont();
-     case TEST_BIGNUM_DEMONT_P256:        return test_bignum_demont_p256();
-     case TEST_BIGNUM_DEMONT_P256_ALT:    return test_bignum_demont_p256_alt();
-     case TEST_BIGNUM_DEMONT_P256K1:      return test_bignum_demont_p256k1();
-     case TEST_BIGNUM_DEMONT_P384:        return test_bignum_demont_p384();
-     case TEST_BIGNUM_DEMONT_P384_ALT:    return test_bignum_demont_p384_alt();
-     case TEST_BIGNUM_DEMONT_P521:        return test_bignum_demont_p521();
-     case TEST_BIGNUM_DIGIT:              return test_bignum_digit();
-     case TEST_BIGNUM_DIGITSIZE:          return test_bignum_digitsize();
-     case TEST_BIGNUM_DIVMOD10 :          return test_bignum_divmod10();
-     case TEST_BIGNUM_DOUBLE_P25519:      return test_bignum_double_p25519();
-     case TEST_BIGNUM_DOUBLE_P256:        return test_bignum_double_p256();
-     case TEST_BIGNUM_DOUBLE_P256K1:      return test_bignum_double_p256k1();
-     case TEST_BIGNUM_DOUBLE_P384:        return test_bignum_double_p384();
-     case TEST_BIGNUM_DOUBLE_P521:        return test_bignum_double_p521();
-     case TEST_BIGNUM_EMONTREDC:          return test_bignum_emontredc();
-     case TEST_BIGNUM_EMONTREDC_8N:       return test_bignum_emontredc_8n();
-     case TEST_BIGNUM_EQ:                 return test_bignum_eq();
-     case TEST_BIGNUM_EVEN:               return test_bignum_even();
-     case TEST_BIGNUM_FROMBEBYTES_4:      return test_bignum_frombebytes_4();
-     case TEST_BIGNUM_FROMBEBYTES_6:      return test_bignum_frombebytes_6();
-     case TEST_BIGNUM_FROMLEBYTES_4:      return test_bignum_fromlebytes_4();
-     case TEST_BIGNUM_FROMLEBYTES_6:      return test_bignum_fromlebytes_6();
-     case TEST_BIGNUM_FROMLEBYTES_P521:   return test_bignum_fromlebytes_p521();
-     case TEST_BIGNUM_GE:                 return test_bignum_ge();
-     case TEST_BIGNUM_GT:                 return test_bignum_gt();
-     case TEST_BIGNUM_HALF_P256:          return test_bignum_half_p256();
-     case TEST_BIGNUM_HALF_P256K1:        return test_bignum_half_p256k1();
-     case TEST_BIGNUM_HALF_P384:          return test_bignum_half_p384();
-     case TEST_BIGNUM_HALF_P521:          return test_bignum_half_p521();
-     case TEST_BIGNUM_ISZERO:             return test_bignum_iszero();
-     case TEST_BIGNUM_KMUL_16_32:         return test_bignum_kmul_16_32();
-     case TEST_BIGNUM_KMUL_32_64:         return test_bignum_kmul_32_64();
-     case TEST_BIGNUM_KSQR_16_32:         return test_bignum_ksqr_16_32();
-     case TEST_BIGNUM_KSQR_32_64:         return test_bignum_ksqr_32_64();
-     case TEST_BIGNUM_LE:                 return test_bignum_le();
-     case TEST_BIGNUM_LITTLEENDIAN_4:     return test_bignum_littleendian_4();
-     case TEST_BIGNUM_LITTLEENDIAN_6:     return test_bignum_littleendian_6();
-     case TEST_BIGNUM_LT:                 return test_bignum_lt();
-     case TEST_BIGNUM_MADD:               return test_bignum_madd();
-     case TEST_BIGNUM_MOD_N256:           return test_bignum_mod_n256();
-     case TEST_BIGNUM_MOD_N256_ALT:       return test_bignum_mod_n256_alt();
-     case TEST_BIGNUM_MOD_N256_4:         return test_bignum_mod_n256_4();
-     case TEST_BIGNUM_MOD_N256K1_4:       return test_bignum_mod_n256k1_4();
-     case TEST_BIGNUM_MOD_N384:           return test_bignum_mod_n384();
-     case TEST_BIGNUM_MOD_N384_ALT:       return test_bignum_mod_n384_alt();
-     case TEST_BIGNUM_MOD_N384_6:         return test_bignum_mod_n384_6();
-     case TEST_BIGNUM_MOD_N521_9:         return test_bignum_mod_n521_9();
-     case TEST_BIGNUM_MOD_N521_9_ALT:     return test_bignum_mod_n521_9_alt();
-     case TEST_BIGNUM_MOD_P25519_4:       return test_bignum_mod_p25519_4();
-     case TEST_BIGNUM_MOD_P256:           return test_bignum_mod_p256();
-     case TEST_BIGNUM_MOD_P256_ALT:       return test_bignum_mod_p256_alt();
-     case TEST_BIGNUM_MOD_P256_4:         return test_bignum_mod_p256_4();
-     case TEST_BIGNUM_MOD_P256K1_4:       return test_bignum_mod_p256k1_4();
-     case TEST_BIGNUM_MOD_P384:           return test_bignum_mod_p384();
-     case TEST_BIGNUM_MOD_P384_ALT:       return test_bignum_mod_p384_alt();
-     case TEST_BIGNUM_MOD_P384_6:         return test_bignum_mod_p384_6();
-     case TEST_BIGNUM_MOD_P521_9:         return test_bignum_mod_p521_9();
-     case TEST_BIGNUM_MODADD:             return test_bignum_modadd();
-     case TEST_BIGNUM_MODDOUBLE:          return test_bignum_moddouble();
-     case TEST_BIGNUM_MODIFIER:           return test_bignum_modifier();
-     case TEST_BIGNUM_MODINV:             return test_bignum_modinv();
-     case TEST_BIGNUM_MODOPTNEG:          return test_bignum_modoptneg();
-     case TEST_BIGNUM_MODSUB:             return test_bignum_modsub();
-     case TEST_BIGNUM_MONTIFIER:          return test_bignum_montifier();
-     case TEST_BIGNUM_MONTMUL:            return test_bignum_montmul();
-     case TEST_BIGNUM_MONTMUL_P256:       return test_bignum_montmul_p256();
-     case TEST_BIGNUM_MONTMUL_P256_ALT:   return test_bignum_montmul_p256_alt();
-     case TEST_BIGNUM_MONTMUL_P256K1:     return test_bignum_montmul_p256k1();
-     case TEST_BIGNUM_MONTMUL_P256K1_ALT: return test_bignum_montmul_p256k1_alt();
-     case TEST_BIGNUM_MONTMUL_P384:       return test_bignum_montmul_p384();
-     case TEST_BIGNUM_MONTMUL_P384_ALT:   return test_bignum_montmul_p384_alt();
-     case TEST_BIGNUM_MONTMUL_P521:       return test_bignum_montmul_p521();
-     case TEST_BIGNUM_MONTMUL_P521_ALT:   return test_bignum_montmul_p521_alt();
-     case TEST_BIGNUM_MONTREDC:           return test_bignum_montredc();
-     case TEST_BIGNUM_MONTSQR:            return test_bignum_montsqr();
-     case TEST_BIGNUM_MONTSQR_P256:       return test_bignum_montsqr_p256();
-     case TEST_BIGNUM_MONTSQR_P256_ALT:   return test_bignum_montsqr_p256_alt();
-     case TEST_BIGNUM_MONTSQR_P256K1:     return test_bignum_montsqr_p256k1();
-     case TEST_BIGNUM_MONTSQR_P256K1_ALT: return test_bignum_montsqr_p256k1_alt();
-     case TEST_BIGNUM_MONTSQR_P384:       return test_bignum_montsqr_p384();
-     case TEST_BIGNUM_MONTSQR_P384_ALT:   return test_bignum_montsqr_p384_alt();
-     case TEST_BIGNUM_MONTSQR_P521:       return test_bignum_montsqr_p521();
-     case TEST_BIGNUM_MONTSQR_P521_ALT:   return test_bignum_montsqr_p521_alt();
-     case TEST_BIGNUM_MUL:                return test_bignum_mul();
-     case TEST_BIGNUM_MUL_4_8:            return test_bignum_mul_4_8();
-     case TEST_BIGNUM_MUL_4_8_ALT:        return test_bignum_mul_4_8_alt();
-     case TEST_BIGNUM_MUL_6_12:           return test_bignum_mul_6_12();
-     case TEST_BIGNUM_MUL_6_12_ALT:       return test_bignum_mul_6_12_alt();
-     case TEST_BIGNUM_MUL_8_16:           return test_bignum_mul_8_16();
-     case TEST_BIGNUM_MUL_8_16_ALT:       return test_bignum_mul_8_16_alt();
-     case TEST_BIGNUM_MUL_P25519:         return test_bignum_mul_p25519();
-     case TEST_BIGNUM_MUL_P25519_ALT:     return test_bignum_mul_p25519_alt();
-     case TEST_BIGNUM_MUL_P256K1:         return test_bignum_mul_p256k1();
-     case TEST_BIGNUM_MUL_P256K1_ALT:     return test_bignum_mul_p256k1_alt();
-     case TEST_BIGNUM_MUL_P521:           return test_bignum_mul_p521();
-     case TEST_BIGNUM_MUL_P521_ALT:       return test_bignum_mul_p521_alt();
-     case TEST_BIGNUM_MULADD10:           return test_bignum_muladd10();
-     case TEST_BIGNUM_MUX:                return test_bignum_mux();
-     case TEST_BIGNUM_MUX_4:              return test_bignum_mux_4();
-     case TEST_BIGNUM_MUX_6:              return test_bignum_mux_6();
-     case TEST_BIGNUM_MUX16:              return test_bignum_mux16();
-     case TEST_BIGNUM_NEG_P25519:         return test_bignum_neg_p25519();
-     case TEST_BIGNUM_NEG_P256:           return test_bignum_neg_p256();
-     case TEST_BIGNUM_NEG_P256K1:         return test_bignum_neg_p256k1();
-     case TEST_BIGNUM_NEG_P384:           return test_bignum_neg_p384();
-     case TEST_BIGNUM_NEG_P521:           return test_bignum_neg_p521();
-     case TEST_BIGNUM_NEGMODINV:          return test_bignum_negmodinv();
-     case TEST_BIGNUM_NONZERO:            return test_bignum_nonzero();
-     case TEST_BIGNUM_NONZERO_4:           return test_bignum_nonzero_4();
-     case TEST_BIGNUM_NONZERO_6:          return test_bignum_nonzero_6();
-     case TEST_BIGNUM_NORMALIZE:          return test_bignum_normalize();
-     case TEST_BIGNUM_ODD:                return test_bignum_odd();
-     case TEST_BIGNUM_OF_WORD:            return test_bignum_of_word();
-     case TEST_BIGNUM_OPTADD:             return test_bignum_optadd();
-     case TEST_BIGNUM_OPTNEG:             return test_bignum_optneg();
-     case TEST_BIGNUM_OPTNEG_P25519:      return test_bignum_optneg_p25519();
-     case TEST_BIGNUM_OPTNEG_P256:        return test_bignum_optneg_p256();
-     case TEST_BIGNUM_OPTNEG_P256K1:      return test_bignum_optneg_p256k1();
-     case TEST_BIGNUM_OPTNEG_P384:        return test_bignum_optneg_p384();
-     case TEST_BIGNUM_OPTNEG_P521:        return test_bignum_optneg_p521();
-     case TEST_BIGNUM_OPTSUB:             return test_bignum_optsub();
-     case TEST_BIGNUM_OPTSUBADD:          return test_bignum_optsubadd();
-     case TEST_BIGNUM_POW2:               return test_bignum_pow2();
-     case TEST_BIGNUM_SHL_SMALL:          return test_bignum_shl_small();
-     case TEST_BIGNUM_SHR_SMALL:          return test_bignum_shr_small();
-     case TEST_BIGNUM_SQR:                return test_bignum_sqr();
-     case TEST_BIGNUM_SQR_4_8:            return test_bignum_sqr_4_8();
-     case TEST_BIGNUM_SQR_4_8_ALT:        return test_bignum_sqr_4_8_alt();
-     case TEST_BIGNUM_SQR_6_12:           return test_bignum_sqr_6_12();
-     case TEST_BIGNUM_SQR_6_12_ALT:       return test_bignum_sqr_6_12_alt();
-     case TEST_BIGNUM_SQR_8_16:           return test_bignum_sqr_8_16();
-     case TEST_BIGNUM_SQR_8_16_ALT:       return test_bignum_sqr_8_16_alt();
-     case TEST_BIGNUM_SQR_P25519:         return test_bignum_sqr_p25519();
-     case TEST_BIGNUM_SQR_P25519_ALT:     return test_bignum_sqr_p25519_alt();
-     case TEST_BIGNUM_SQR_P256K1:         return test_bignum_sqr_p256k1();
-     case TEST_BIGNUM_SQR_P256K1_ALT:     return test_bignum_sqr_p256k1_alt();
-     case TEST_BIGNUM_SQR_P521:           return test_bignum_sqr_p521();
-     case TEST_BIGNUM_SQR_P521_ALT:       return test_bignum_sqr_p521_alt();
-     case TEST_BIGNUM_SUB:                return test_bignum_sub();
-     case TEST_BIGNUM_SUB_P25519:         return test_bignum_sub_p25519();
-     case TEST_BIGNUM_SUB_P256:           return test_bignum_sub_p256();
-     case TEST_BIGNUM_SUB_P256K1:         return test_bignum_sub_p256k1();
-     case TEST_BIGNUM_SUB_P384:           return test_bignum_sub_p384();
-     case TEST_BIGNUM_SUB_P521:           return test_bignum_sub_p521();
-     case TEST_BIGNUM_TOBEBYTES_4:        return test_bignum_tobebytes_4();
-     case TEST_BIGNUM_TOBEBYTES_6:        return test_bignum_tobebytes_6();
-     case TEST_BIGNUM_TOLEBYTES_4:        return test_bignum_tolebytes_4();
-     case TEST_BIGNUM_TOLEBYTES_6:        return test_bignum_tolebytes_6();
-     case TEST_BIGNUM_TOLEBYTES_P521:     return test_bignum_tolebytes_p521();
-     case TEST_BIGNUM_TOMONT_P256:        return test_bignum_tomont_p256();
-     case TEST_BIGNUM_TOMONT_P256_ALT:    return test_bignum_tomont_p256_alt();
-     case TEST_BIGNUM_TOMONT_P256K1:      return test_bignum_tomont_p256k1();
-     case TEST_BIGNUM_TOMONT_P256K1_ALT:  return test_bignum_tomont_p256k1_alt();
-     case TEST_BIGNUM_TOMONT_P384:        return test_bignum_tomont_p384();
-     case TEST_BIGNUM_TOMONT_P384_ALT:    return test_bignum_tomont_p384_alt();
-     case TEST_BIGNUM_TOMONT_P521:        return test_bignum_tomont_p521();
-     case TEST_BIGNUM_TRIPLE_P256:        return test_bignum_triple_p256();
-     case TEST_BIGNUM_TRIPLE_P256_ALT:    return test_bignum_triple_p256_alt();
-     case TEST_BIGNUM_TRIPLE_P256K1:      return test_bignum_triple_p256k1();
-     case TEST_BIGNUM_TRIPLE_P256K1_ALT:  return test_bignum_triple_p256k1_alt();
-     case TEST_BIGNUM_TRIPLE_P384:        return test_bignum_triple_p384();
-     case TEST_BIGNUM_TRIPLE_P384_ALT:    return test_bignum_triple_p384_alt();
-     case TEST_BIGNUM_TRIPLE_P521:        return test_bignum_triple_p521();
-     case TEST_BIGNUM_TRIPLE_P521_ALT:    return test_bignum_triple_p521_alt();
-     case TEST_CURVE25519_LADDERSTEP:     return test_curve25519_ladderstep();
-     case TEST_CURVE25519_LADDERSTEP_ALT: return test_curve25519_ladderstep_alt();
-     case TEST_CURVE25519_PXSCALARMUL:    return test_curve25519_pxscalarmul();
-     case TEST_CURVE25519_PXSCALARMUL_ALT:return test_curve25519_pxscalarmul_alt();
-     case TEST_CURVE25519_X25519:         return test_curve25519_x25519();
-     case TEST_CURVE25519_X25519_ALT:     return test_curve25519_x25519_alt();
-     case TEST_CURVE25519_X25519BASE:     return test_curve25519_x25519base();
-     case TEST_CURVE25519_X25519BASE_ALT: return test_curve25519_x25519base_alt();
-     case TEST_EDWARDS25519_PEPADD:       return test_edwards25519_pepadd();
-     case TEST_EDWARDS25519_PEPADD_ALT:   return test_edwards25519_pepadd_alt();
-     case TEST_P256_MONTJADD:             return test_p256_montjadd();
-     case TEST_P256_MONTJDOUBLE:          return test_p256_montjdouble();
-     case TEST_P256_MONTJMIXADD:          return test_p256_montjmixadd();
-     case TEST_P384_MONTJADD:             return test_p384_montjadd();
-     case TEST_P384_MONTJDOUBLE:          return test_p384_montjdouble();
-     case TEST_P384_MONTJMIXADD:          return test_p384_montjmixadd();
-     case TEST_P521_JADD:                 return test_p521_jadd();
-     case TEST_P521_JDOUBLE:              return test_p521_jdouble();
-     case TEST_P521_JMIXADD:              return test_p521_jmixadd();
-     case TEST_SECP256K1_JADD:            return test_secp256k1_jadd();
-     case TEST_SECP256K1_JDOUBLE:         return test_secp256k1_jdouble();
-     case TEST_SECP256K1_JMIXADD:         return test_secp256k1_jmixadd();
-     case TEST_WORD_BYTEREVERSE:          return test_word_bytereverse();
-     case TEST_WORD_CLZ:                  return test_word_clz();
-     case TEST_WORD_CTZ:                  return test_word_ctz();
-     case TEST_WORD_MAX:                  return test_word_max();
-     case TEST_WORD_MIN:                  return test_word_min();
-     case TEST_WORD_NEGMODINV:            return test_word_negmodinv();
-     case TEST_WORD_RECIP:                return test_word_recip();
+  functionaltest(bmi,"known value tests",test_known_values);
 
-     default:
-        printf("### Unknown function to test: %d\n",WHAT);
-        return 1;
+  functionaltest(bmi,"curve25519_x25519 (TweetNaCl)",test_curve25519_x25519_tweetnacl);
+  functionaltest(all,"curve25519_x25519_alt (TweetNaCl)",test_curve25519_x25519_alt_tweetnacl);
+  functionaltest(bmi,"curve25519_x25519base (TweetNaCl)",test_curve25519_x25519base_tweetnacl);
+  functionaltest(all,"curve25519_x25519base_alt (TweetNaCl)",test_curve25519_x25519base_alt_tweetnacl);
 
+  if (successes == tested)
+   { printf("All %d tests run, all passed\n",successes);
+     return 0;
    }
+
+  if (failures != 0) printf("***** FAILED %d tests\n",failures);
+  else printf("Testing all passed but is incomplete\n");
+  printf("                     Total operations to test = %3d\n",tested);
+  printf("                                       Passed = %3d\n",successes);
+  printf("                                      Failed  = %3d\n",failures);
+  printf("         Skipped because not selected by user = %3d\n",skipped);
+  printf("Skipped because inapplicable (no x86 BMI/ADX) = %3d\n",inapplicable);
+  return 1;
 }
