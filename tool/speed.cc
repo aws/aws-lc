@@ -1104,7 +1104,7 @@ static bool SpeedECDH(const std::string &selected) {
          SpeedECDHCurve("ECDH secp256k1", NID_secp256k1, selected);
 }
 
-static bool SpeedECGen(const std::string &selected) {
+static bool SpeedECKeyGen(const std::string &selected) {
   return SpeedECKeyGenCurve("Generate P-224", NID_secp224r1, selected) &&
          SpeedECKeyGenCurve("Generate P-256", NID_X9_62_prime256v1, selected) &&
          SpeedECKeyGenCurve("Generate P-384", NID_secp384r1, selected) &&
