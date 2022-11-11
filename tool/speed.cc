@@ -1906,7 +1906,7 @@ bool Speed(const std::vector<std::string> &args) {
      !SpeedRandom(selected) ||
      !SpeedECDH(selected) ||
      !SpeedECDSA(selected) ||
-     !SpeedECGen(selected) ||
+     !SpeedECKeyGen(selected) ||
      // OpenSSL 1.0 doesn't support Scrypt
 #if !defined(OPENSSL_1_0_BENCHMARK)
      !SpeedECMUL(selected) ||
