@@ -5,7 +5,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -53,7 +52,7 @@ func main() {
 	// Check that every file contains one of the known copyright headers,
 	// otherwise add it to |unlicensed_files|
 	for _, file := range files {
-		content, _ := ioutil.ReadFile(file)
+		content, _ := os.ReadFile(file)
 		if license_regex.MatchString(string(content)) != true {
 			unlicensed_files = append(unlicensed_files, file)
 		}
