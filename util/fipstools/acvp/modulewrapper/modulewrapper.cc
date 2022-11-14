@@ -220,6 +220,34 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
         }]
       },
       {
+        "algorithm": "SHA3-224",
+        "revision": "2.0",
+        "messageLength": [{
+          "min": 0, "max": 65536, "increment": 8
+        }]
+      },
+      {
+        "algorithm": "SHA3-256",
+        "revision": "2.0",
+        "messageLength": [{
+          "min": 0, "max": 65536, "increment": 8
+          }]
+      },
+      {
+        "algorithm": "SHA3-384",
+        "revision": "2.0",
+        "messageLength": [{
+          "min": 0, "max": 65536, "increment": 8
+        }]
+      },
+      {
+        "algorithm": "SHA3-512",
+        "revision": "2.0",
+        "messageLength": [{
+          "min": 0, "max": 65536, "increment": 8
+          }]
+      },
+      {
         "algorithm": "SHA-1",
         "revision": "1.0",
         "messageLength": [{
@@ -972,6 +1000,19 @@ static bool Hash(const Span<const uint8_t> args[], ReplyCallback write_reply) {
   return write_reply({Span<const uint8_t>(digest)});
 }
 
+template <const EVP_MD *(MDFunc)(), size_t DigestLength>
+static bool HashSha3(const Span<const uint8_t> args[], ReplyCallback write_reply) {
+  uint8_t digest[DigestLength];
+  const EVP_MD *md = MDFunc();
+  unsigned int md_out_size = DigestLength;
+
+  EVP_MD_unstable_sha3_enable(true);
+  EVP_Digest(args[0].data(), args[0].size(), digest, &md_out_size, md, NULL);
+  EVP_MD_unstable_sha3_enable(false);
+
+  return write_reply({Span<const uint8_t>(digest)});
+}
+
 template <uint8_t *(*OneShotHash)(const uint8_t *, size_t, uint8_t *),
           size_t DigestLength>
 static bool HashMCT(const Span<const uint8_t> args[],
@@ -994,6 +1035,34 @@ static bool HashMCT(const Span<const uint8_t> args[],
 
   return write_reply(
       {Span<const uint8_t>(buf + 2 * DigestLength, DigestLength)});
+}
+
+template <const EVP_MD *(MDFunc)(), size_t DigestLength>
+static bool HashMCTSha3(const Span<const uint8_t> args[],
+                    ReplyCallback write_reply) {
+  if (args[0].size() != DigestLength) {
+    return false;
+  }
+  const EVP_MD *evp_md = MDFunc();
+  unsigned int md_out_size = DigestLength;
+
+
+  // The following logic conforms to the Monte Carlo tests described in
+  // https://pages.nist.gov/ACVP/draft-celi-acvp-sha3.html#name-monte-carlo-tests-for-sha3-
+  unsigned char md[1001][DigestLength];
+  unsigned char msg[1001][DigestLength];
+
+  memcpy(md[0], args[0].data(), DigestLength);
+
+  EVP_MD_unstable_sha3_enable(true);
+  for (size_t i = 1; i <= 1000; i++) {
+    memcpy(msg[i], md[i-1], DigestLength);
+    EVP_Digest(msg[i], sizeof(msg[i]), md[i], &md_out_size, evp_md, NULL);
+  }
+  EVP_MD_unstable_sha3_enable(false);
+
+  return write_reply(
+      {Span<const uint8_t>(md[1000])});
 }
 
 static uint32_t GetIterations(const Span<const uint8_t> iterations_bytes) {
@@ -2212,12 +2281,20 @@ static struct {
     {"SHA2-384", 1, Hash<SHA384, SHA384_DIGEST_LENGTH>},
     {"SHA2-512", 1, Hash<SHA512, SHA512_DIGEST_LENGTH>},
     {"SHA2-512/256", 1, Hash<SHA512_256, SHA512_256_DIGEST_LENGTH>},
+    {"SHA3-224", 1, HashSha3<EVP_sha3_224, SHA224_DIGEST_LENGTH>},
+    {"SHA3-256", 1, HashSha3<EVP_sha3_256, SHA256_DIGEST_LENGTH>},
+    {"SHA3-384", 1, HashSha3<EVP_sha3_384, SHA384_DIGEST_LENGTH>},
+    {"SHA3-512", 1, HashSha3<EVP_sha3_512, SHA512_DIGEST_LENGTH>},
     {"SHA-1/MCT", 1, HashMCT<SHA1, SHA_DIGEST_LENGTH>},
     {"SHA2-224/MCT", 1, HashMCT<SHA224, SHA224_DIGEST_LENGTH>},
     {"SHA2-256/MCT", 1, HashMCT<SHA256, SHA256_DIGEST_LENGTH>},
     {"SHA2-384/MCT", 1, HashMCT<SHA384, SHA384_DIGEST_LENGTH>},
     {"SHA2-512/MCT", 1, HashMCT<SHA512, SHA512_DIGEST_LENGTH>},
     {"SHA2-512/256/MCT", 1, HashMCT<SHA512_256, SHA512_256_DIGEST_LENGTH>},
+    {"SHA3-224/MCT", 1, HashMCTSha3<EVP_sha3_224, SHA224_DIGEST_LENGTH>},
+    {"SHA3-256/MCT", 1, HashMCTSha3<EVP_sha3_256, SHA256_DIGEST_LENGTH>},
+    {"SHA3-384/MCT", 1, HashMCTSha3<EVP_sha3_384, SHA384_DIGEST_LENGTH>},
+    {"SHA3-512/MCT", 1, HashMCTSha3<EVP_sha3_512, SHA512_DIGEST_LENGTH>},
     {"AES/encrypt", 3, AES<AES_set_encrypt_key, AES_encrypt>},
     {"AES/decrypt", 3, AES<AES_set_decrypt_key, AES_decrypt>},
     {"AES-XTS/encrypt", 3, AES_XTS<true>},
