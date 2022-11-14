@@ -530,14 +530,6 @@ int RSA_add_pkcs1_prefix(uint8_t **out_msg, size_t *out_msg_len,
 int rsa_sign_no_self_test(int hash_nid, const uint8_t *digest,
                           unsigned digest_len, uint8_t *out, unsigned *out_len,
                           RSA *rsa) {
-  if (rsa->meth->sign) {
-    // All supported digest lengths fit in |unsigned|.
-    assert(digest_len <= EVP_MAX_MD_SIZE);
-    OPENSSL_STATIC_ASSERT(EVP_MAX_MD_SIZE <= UINT_MAX, digest_too_long);
-    return rsa->meth->sign(hash_nid, digest, (unsigned)digest_len, out, out_len,
-                           rsa);
-  }
-
   const unsigned rsa_size = RSA_size(rsa);
   int ret = 0;
   uint8_t *signed_msg = NULL;
