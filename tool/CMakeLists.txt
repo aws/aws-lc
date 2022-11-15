@@ -20,7 +20,8 @@ add_executable(
   transport_common.cc
 )
 
-target_include_directories(bssl PUBLIC ${AWSLC_INSTALL_DIR}/include ${AWSLC_INSTALL_DIR}/include/internal/tool)
+target_include_directories(bssl PUBLIC ../include)
+target_compile_options(bssl PUBLIC -DINTERNAL_TOOL)
 
 add_dependencies(bssl global_target)
 
@@ -58,14 +59,15 @@ function(build_benchmark target_name additional_include_dir lib_crypto)
   # include directory
   target_include_directories(${target_name} PUBLIC ${additional_include_dir} ${AWSLC_INSTALL_DIR}/include/internal/tool)
   target_link_libraries(${target_name} ${lib_crypto} ${LIBRT_FLAG})
+  if(NOT MSVC AND NOT ANDROID)
+    target_link_libraries(${target_name} pthread dl)
+  endif()
+
 endfunction()
 
 if(AWSLC_INSTALL_DIR)
-  build_benchmark(awslc_bm ${AWSLC_INSTALL_DIR}/include crypto)
-
-  if(NOT CMAKE_BUILD_TYPE)
-    target_compile_options(awslc_bm PUBLIC -DCMAKE_BUILD_TYPE_DEBUG)
-  endif()
+  find_library(AWS_LC_LIB_PATH crypto PATHS ${AWSLC_INSTALL_DIR}/lib/ NO_DEFAULT_PATH)
+  build_benchmark(awslc_bm ${AWSLC_INSTALL_DIR}/include ${AWS_LC_LIB_PATH})
 endif()
 
 # This expects a directory which contains the includes in include/openssl/ and the OpenSSL artifacts in lib/
@@ -74,22 +76,14 @@ endif()
 if(OPENSSL_1_1_INSTALL_DIR)
   find_library(OPENSSL_1_1_LIB_PATH crypto PATHS ${OPENSSL_1_1_INSTALL_DIR}/lib/ NO_DEFAULT_PATH)
   build_benchmark(ossl_1_1_bm ${OPENSSL_1_1_INSTALL_DIR}/include ${OPENSSL_1_1_LIB_PATH})
-
   target_compile_options(ossl_1_1_bm PUBLIC -DOPENSSL_BENCHMARK -DOPENSSL_1_1_BENCHMARK)
-  if(NOT MSVC AND NOT ANDROID)
-    target_link_libraries(ossl_1_1_bm pthread dl)
-  endif()
 endif()
 
 # This expects a directory which contains the includes in include/openssl/ and the OpenSSL artifacts in lib/
 if(OPENSSL_1_0_INSTALL_DIR)
   find_library(OPENSSL_1_0_LIB_PATH crypto PATHS ${OPENSSL_1_0_INSTALL_DIR}/lib/ NO_DEFAULT_PATH)
   build_benchmark(ossl_1_0_bm ${OPENSSL_1_0_INSTALL_DIR}/include ${OPENSSL_1_0_LIB_PATH})
-
   target_compile_options(ossl_1_0_bm PUBLIC -DOPENSSL_BENCHMARK -DOPENSSL_1_0_BENCHMARK)
-  if(NOT MSVC AND NOT ANDROID)
-    target_link_libraries(ossl_1_0_bm pthread dl)
-  endif()
 endif()
 
 # This expects a directory which contains the includes in include/openssl/ and the OpenSSL artifacts in lib/ or lib64/
@@ -101,20 +95,11 @@ if(OPENSSL_3_0_INSTALL_DIR)
   endif ()
   find_library(OPENSSL_3_0_LIB_PATH crypto PATHS ${OPENSSL_3_0_INSTALL_DIR}/lib64/ ${OPENSSL_3_0_INSTALL_DIR}/lib/ NO_DEFAULT_PATH)
   build_benchmark(ossl_3_0_bm ${OPENSSL_3_0_INSTALL_DIR}/include ${OPENSSL_3_0_LIB_PATH})
-
-
   target_compile_options(ossl_3_0_bm PUBLIC -DOPENSSL_BENCHMARK -DOPENSSL_3_0_BENCHMARK)
-  if(NOT MSVC AND NOT ANDROID)
-    target_link_libraries(ossl_3_0_bm pthread dl)
-  endif()
 endif()
 
-# This expects a directory in which the includes are in include/ and the BoringSSL artifacts are in build/
+
 if(BORINGSSL_INSTALL_DIR)
   find_library(BORINGSSL_LIB_PATH crypto PATHS ${OPENSSL_1_0_INSTALL_DIR}/build/crypto NO_DEFAULT_PATH)
   build_benchmark(bssl_bm ${BORINGSSL_INSTALL_DIR}/include ${BORINGSSL_LIB_PATH})
-
-  if(NOT MSVC AND NOT ANDROID)
-    target_link_libraries(bssl_bm pthread)
-  endif()
 endif()
