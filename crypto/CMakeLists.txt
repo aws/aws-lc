@@ -358,29 +358,13 @@ add_library(
   ex_data.c
   hpke/hpke.c
   hrss/hrss.c
+  kyber/kyber512_ref.c
+  kyber/kyber768_ref.c
+  kyber/pqcrystals_kyber_ref_common/fips202.c
   kyber/kem_kyber.c
   kyber/p_kyber.c
   kyber/p_kyber512_asn1.c
   kyber/p_kyber768_asn1.c
-  kyber/pqcrystals-kyber_common/fips202.c
-  kyber/pqcrystals-kyber_kyber512_ref/cbd.c
-  kyber/pqcrystals-kyber_kyber512_ref/indcpa.c
-  kyber/pqcrystals-kyber_kyber512_ref/kem.c
-  kyber/pqcrystals-kyber_kyber512_ref/ntt.c
-  kyber/pqcrystals-kyber_kyber512_ref/poly.c
-  kyber/pqcrystals-kyber_kyber512_ref/polyvec.c
-  kyber/pqcrystals-kyber_kyber512_ref/reduce.c
-  kyber/pqcrystals-kyber_kyber512_ref/symmetric-shake.c
-  kyber/pqcrystals-kyber_kyber512_ref/verify.c
-  kyber/pqcrystals-kyber_kyber768_ref/cbd.c
-  kyber/pqcrystals-kyber_kyber768_ref/indcpa.c
-  kyber/pqcrystals-kyber_kyber768_ref/kem.c
-  kyber/pqcrystals-kyber_kyber768_ref/ntt.c
-  kyber/pqcrystals-kyber_kyber768_ref/poly.c
-  kyber/pqcrystals-kyber_kyber768_ref/polyvec.c
-  kyber/pqcrystals-kyber_kyber768_ref/reduce.c
-  kyber/pqcrystals-kyber_kyber768_ref/symmetric-shake.c
-  kyber/pqcrystals-kyber_kyber768_ref/verify.c
   lhash/lhash.c
   mem.c
   obj/obj.c

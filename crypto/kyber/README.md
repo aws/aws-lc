@@ -8,26 +8,25 @@ The AWS-LC team considers the official repository of [Kyber](https://github.com/
 
 NIST has not published the final PQ standard yet, and is not expected to do so until 2024. Therefore, the specification and implementation of Kyber is not finalized yet. Potentially, there will be changes to Kyber in the future. Some changes might even break backwards compatibility. The AWS-LC team follows the developments around the PQC project and will update the implementation and documentation if necessary. Therefore, AWS-LC can not promise backward compatibility of the Kyber implementation and API until NIST locks in the specification and reserves the right to change the implementation if necessary.
 
-**Supported versions.** AWS-LC supports only Kyber512 algorithm at this point. The NID assigned to Kyber512 is `NID_KYBER512` and the corresponding `PKEY` identifier is `EVP_PKEY_KYBER512`.
+**Supported versions.** AWS-LC supports Kyber512 and Kyber768 algorithms. The NIDs assigned to Kyber512 and Kyber768 are `NID_KYBER512` and `NID_KYBER768` and the corresponding `PKEY` identifiers are `EVP_PKEY_KYBER512` and `EVP_PKEY_KYBER768`.
+
+**Implementation.** The official Kyber implementation is such that the source code for Kyber512 and Kyber768 is contained in same files while the differentiation between the two variants is done based on the value of a macro called `KYBER_K` in the `params.h` file. Therefore, we keep the source files in the `pqcrystals_kyber_ref_common` folder and include the source in two files: `kyber512_ref.c` and `kyber768_ref.c`. Before all the includes in `kyber{512|768}_ref.c` we define `KYBER_K 2`
+and `KYBER_K 3` for Kyber512 and Kyber768, respectively, so that the appropriate code paths are chosen for compilation.
 
 **Source code origin and modifications.** The source code was taken from the primary source of Kyber at [link](https://github.com/pq-crystals/kyber), at [commit](https://github.com/pq-crystals/kyber/tree/faf5c3fe33e0b61c7c8a7888dd862bf5def17ad2) as of September 13th 2021.
-The `api.h`, `fips202.h` and `params.h` header files were modified [in this PR](https://github.com/awslabs/aws-lc/pull/655) to support our [prefixed symbols build](https://github.com/awslabs/aws-lc/blob/main/BUILDING.md#building-with-prefixed-symbols).
 
-Only the reference C implementation of Kyber512 is currently integrated. The code is in the `pqcrystals-kyber_kyber512_ref` folder. The following changes were made to the code.
+Only the reference C implementation of Kyber512 is currently integrated. The code is in the `pqcrystals_kyber_ref_common` folder. The following changes were made to the code.
 
 * `randombytes.{h|c}` are deleted because we are using the randomness generation functions provided by AWS-LC.
 * `rng.{h|c}` are deleted because we are using the randomness generation functions provided by AWS-LC.
 * `sha2.h, sha256.c, sha512.c, symmetric-aes.c` are removed because we are using only the SHA3 based Kyber (SHA2 and AES are used in the 90s variants only).
 * `indcpa.c`: call to `randombytes` function is replaced with a call to `pq_custom_randombytes` and the appropriate header file is included (`crypto/rand_extra/pq_custom_randombytes.h`).
 * `kem.c`: calls to `randombytes` function is replaced with calls to `pq_custom_randombytes` and the appropriate header file is included (`crypto/rand_extra/pq_custom_randombytes.h`).
-* `params.h`: `KYBER_K 2` is explicitly defined (to specify Kyber512).
+* `params.h`: the definition of `KYBER_K` is removed because we define it in `kyber512_ref.h` and `kyber768_ref.h`.
 * `verify.c`: change to fix MSVC compiler warning (see the file for details).
-* `fips202.{h|c}` is moved to a separate folder `pqcrystals-kyber_common` in preparation for adding the support for Kyber768.
-* `symmetric.h`: changed to include `fips202.h` from its new location.
 * `symmetric-shake.c`: unnecessary include of `fips202.h` is removed.
 
-The reference C implementation of Kyber768 is added to `pqcrystals-kyber_kyber768_ref` folder but it is not integrated yet in AWS-LC.
-
+Furthermore, the `api.h`, `fips202.h` and `params.h` header files were modified [in this PR](https://github.com/awslabs/aws-lc/pull/655) to support our [prefixed symbols build](https://github.com/awslabs/aws-lc/blob/main/BUILDING.md#building-with-prefixed-symbols).
 
 **Usage.** The API is defined and documented in `include/openssl/evp.h`. To see examples of how to use Kyber512, see `crypto/kyber/p_kyber_test.cc`. TLDR:
 
