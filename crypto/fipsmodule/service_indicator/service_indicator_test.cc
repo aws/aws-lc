@@ -973,6 +973,14 @@ static const struct DigestTestVector {
         AWSLC_NOT_APPROVED,
     },
     {
+        "RIPEMD160",
+        RIPEMD160_DIGEST_LENGTH,
+        &EVP_ripemd160,
+        &RIPEMD160,
+        kOutput_ripemd160,
+        AWSLC_NOT_APPROVED,
+    },
+    {
         "SHA-1",
         SHA_DIGEST_LENGTH,
         &EVP_sha1,

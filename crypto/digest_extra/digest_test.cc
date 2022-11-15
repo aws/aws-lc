@@ -30,6 +30,7 @@
 #include <openssl/md5.h>
 #include <openssl/nid.h>
 #include <openssl/obj.h>
+#include <openssl/ripemd.h>
 #include <openssl/sha.h>
 
 #include "../fipsmodule/sha/internal.h"
@@ -49,6 +50,7 @@ struct MD {
 
 static const MD md4 = { "MD4", &EVP_md4, nullptr };
 static const MD md5 = { "MD5", &EVP_md5, &MD5 };
+static const MD ripemd160 = { "RIPEMD160", &EVP_ripemd160, &RIPEMD160 };
 static const MD sha1 = { "SHA1", &EVP_sha1, &SHA1 };
 static const MD sha224 = { "SHA224", &EVP_sha224, &SHA224 };
 static const MD sha256 = { "SHA256", &EVP_sha256, &SHA256 };
@@ -94,6 +96,18 @@ static const DigestTestVector kTestVectors[] = {
     {md5, "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789", 1,
      "d174ab98d277d9f5a5611c2c9f419d9f"},
     {md5, "1234567890", 8, "57edf4a22be3c955ac49da2e2107b67a"},
+
+    // RIPEMD16- tests, from https://homes.esat.kuleuven.be/~bosselae/ripemd160.html
+    // There doesn't appear to be an official RFC with test vectors for this.
+    {ripemd160, "", 1, "9c1185a5c5e9fc54612808977ee8f548b2258d31"},
+    {ripemd160, "a", 1, "0bdc9d2d256b3ee9daae347be6f4dc835a467ffe"},
+    {ripemd160, "abc", 1, "8eb208f7e05d987a9b044a8e98c6b087f15a0bfc"},
+    {ripemd160, "message digest", 1, "5d0689ef49d2fae572b881b123a85ffa21595f36"},
+    {ripemd160, "abcdefghijklmnopqrstuvwxyz", 1, "f71c27109c692c1b56bbdceb5b9d2865b3708dbc"},
+    {ripemd160, "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq", 1, "12a053384a9c0c88e405a06c27dcf49ada62eb2b"},
+    {ripemd160, "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789", 1, "b0e20b6e3116640286ed3a87a5713079b21f5189"},
+    {ripemd160, "1234567890", 8, "9b752e45573d4b39f4dbd3323cab82bf63326bfb"},
+    {ripemd160, "a", 1000000, "52783243c1697bdbe16d37f97f68f08325dc1528"},
 
     // SHA-1 tests, from RFC 3174.
     {sha1, "abc", 1, "a9993e364706816aba3e25717850c26c9cd0d89d"},
