@@ -243,6 +243,16 @@ uint64_t p_25519[4] =
    UINT64_C(0x7fffffffffffffff)
  };
 
+// k_25519 = 2 * d for edwards25519
+
+uint64_t k_25519[4] =
+ { UINT64_C(0xebd69b9426b2f159),
+   UINT64_C(0x00e0149a8283b156),
+   UINT64_C(0x198e80f2eef3d130),
+   UINT64_C(0x2406d9dc56dffce7)
+ };
+
+
 // ****************************************************************************
 // Reference implementations, basic and stupid ones in C
 // ****************************************************************************
@@ -852,6 +862,32 @@ void reference_curve25519x25519
 
   bignum_mul_p25519_alt(res,pres,zinv);
   if (bignum_iszero(4,prez)) bignum_of_word(4,res,0);
+}
+
+void reference_edwards25519epadd(uint64_t p3[16],uint64_t p1[16],uint64_t p2[16])
+{ uint64_t *x1 = p1, *y1 = p1 + 4, *z1 = p1 + 2*4, *w1 = p1 + 3*4;
+  uint64_t *x2 = p2, *y2 = p2 + 4, *z2 = p2 + 2*4, *w2 = p2 + 3*4;
+  uint64_t *x3 = p3, *y3 = p3 + 4, *z3 = p3 + 2*4, *w3 = p3 + 3*4;
+  uint64_t t0[4], t1[4], a[4], t2[4], t3[4], b[4], t4[4], c[4], t5[4],
+           d[4], e[4], f[4], g[4], h[4];
+  bignum_sub_p25519(t0,y1,x1);
+  bignum_sub_p25519(t1,y2,x2);
+  bignum_mul_p25519_alt(a,t0,t1);
+  bignum_add_p25519(t2,y1,x1);
+  bignum_add_p25519(t3,y2,x2);
+  bignum_mul_p25519_alt(b,t2,t3);
+  bignum_mul_p25519_alt(t4,k_25519,w2);
+  bignum_mul_p25519_alt(c,w1,t4);
+  bignum_add_p25519(t5,z2,z2);
+  bignum_mul_p25519_alt(d,z1,t5);
+  bignum_sub_p25519(e,b,a);
+  bignum_sub_p25519(f,d,c);
+  bignum_add_p25519(g,d,c);
+  bignum_add_p25519(h,b,a);
+  bignum_mul_p25519_alt(x3,e,f);
+  bignum_mul_p25519_alt(y3,g,h);
+  bignum_mul_p25519_alt(z3,f,g);
+  bignum_mul_p25519_alt(w3,e,h);
 }
 
 void reference_edwards25519pepadd(uint64_t p3[16],uint64_t p1[16],uint64_t p2[12])
@@ -7783,6 +7819,80 @@ int test_curve25519_x25519base_alt(void)
   return 0;
 }
 
+int test_edwards25519_epadd(void)
+{ uint64_t t, k;
+  printf("Testing edwards25519_epadd with %d cases\n",tests);
+  k = 4;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b0); reference_mod(k,b1,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b1+k,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b1+2*k,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b1+3*k,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b2,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b2+k,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b2+2*k,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b2+3*k,b0,p_25519);
+     edwards25519_epadd(b3,b1,b2);
+     reference_edwards25519epadd(b4,b1,b2);
+
+     c = reference_compare(4*k,b3,4*k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64"> + <...0x%016"PRIx64"> = "
+               "<...0x%016"PRIx64"> not <...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0],b4[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64"> + <...0x%016"PRIx64"> = "
+               "<...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_edwards25519_epadd_alt(void)
+{ uint64_t t, k;
+  printf("Testing edwards25519_epadd_alt with %d cases\n",tests);
+  k = 4;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b0); reference_mod(k,b1,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b1+k,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b1+2*k,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b1+3*k,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b2,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b2+k,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b2+2*k,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b2+3*k,b0,p_25519);
+     edwards25519_epadd_alt(b3,b1,b2);
+     reference_edwards25519epadd(b4,b1,b2);
+
+     c = reference_compare(4*k,b3,4*k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64"> + <...0x%016"PRIx64"> = "
+               "<...0x%016"PRIx64"> not <...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0],b4[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64"> + <...0x%016"PRIx64"> = "
+               "<...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
 int test_edwards25519_pepadd(void)
 { uint64_t t, k;
   printf("Testing edwards25519_pepadd with %d cases\n",tests);
@@ -8954,6 +9064,8 @@ int main(int argc, char *argv[])
   functionaltest(all,"curve25519_x25519_alt",test_curve25519_x25519_alt);
   functionaltest(bmi,"curve25519_x25519base",test_curve25519_x25519base);
   functionaltest(all,"curve25519_x25519base_alt",test_curve25519_x25519base_alt);
+  functionaltest(bmi,"edwards25519_epadd",test_edwards25519_epadd);
+  functionaltest(all,"edwards25519_epadd_alt",test_edwards25519_epadd_alt);
   functionaltest(bmi,"edwards25519_pepadd",test_edwards25519_pepadd);
   functionaltest(all,"edwards25519_pepadd_alt",test_edwards25519_pepadd_alt);
   functionaltest(bmi,"p256_montjadd",test_p256_montjadd);
@@ -8988,6 +9100,11 @@ int main(int argc, char *argv[])
   if (successes == tested)
    { printf("All %d tests run, all passed\n",successes);
      return 0;
+   }
+
+  if (successes + skipped == tested)
+   { printf("Skipped %d but all %d selected tests passed\n",skipped,successes);
+     return 1;
    }
 
   if (failures != 0) printf("***** FAILED %d tests\n",failures);
