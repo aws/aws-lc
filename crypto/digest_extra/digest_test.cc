@@ -97,7 +97,7 @@ static const DigestTestVector kTestVectors[] = {
      "d174ab98d277d9f5a5611c2c9f419d9f"},
     {md5, "1234567890", 8, "57edf4a22be3c955ac49da2e2107b67a"},
 
-    // RIPEMD16- tests, from https://homes.esat.kuleuven.be/~bosselae/ripemd160.html
+    // RIPEMD160 tests, from https://homes.esat.kuleuven.be/~bosselae/ripemd160.html
     // There doesn't appear to be an official RFC with test vectors for this.
     {ripemd160, "", 1, "9c1185a5c5e9fc54612808977ee8f548b2258d31"},
     {ripemd160, "a", 1, "0bdc9d2d256b3ee9daae347be6f4dc835a467ffe"},
