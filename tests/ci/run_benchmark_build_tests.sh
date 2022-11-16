@@ -15,7 +15,7 @@ openssl_3_0_branch='openssl-3.0.5'
 
 function build_aws_lc_fips {
   echo "building aws-lc in FIPS mode"
-  run_build -DCMAKE_INSTALL_PREFIX="${install_dir}/aws-lc-fips" -DFIPS=1
+  run_build -DCMAKE_INSTALL_PREFIX="${install_dir}/aws-lc-fips" -DFIPS=1 -DCMAKE_BUILD_TYPE=Release
   pushd "$BUILD_ROOT"
   ninja install
   popd
@@ -58,6 +58,12 @@ function build_openssl_3_0 {
 }
 
 # We build each tool individually so we can have more insight into what is failing
+
+# Building AWS-LC always builds bssl (which includes the speed tool) with the "local" libcrypto. We
+# also support building speed.cc with an "external" aws-lc libcrypto (and openssl). This is useful
+# when we want to compare the performance of a particular FIPS release against mainline if mainline
+# has changes in speed.cc that could affect the comparison of the FIPS to non-FIPS, or if new
+# algorithms have been added to speed.cc
 build_aws_lc_fips
 echo "Testing awslc_bm with AWS-LC FIPS"
 run_build -DAWSLC_INSTALL_DIR="${install_dir}/aws-lc-fips"

@@ -46,8 +46,9 @@ endif()
 install(TARGETS bssl
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-function(build_benchmark target_name additional_include_dir lib_crypto)
-  message("-- Building ${target_name} benchmark using header files from ${additional_include_dir} and libcrypto from ${lib_crypto}.")
+function(build_benchmark target_name install_path)
+  find_library(lib_crypto crypto PATHS ${install_path}/lib/ ${install_path}/lib64/ NO_DEFAULT_PATH)
+  message("-- Building ${target_name} benchmark using header files from ${install_path}/include and libcrypto from ${lib_crypto}.")
   add_executable(
           ${target_name}
           speed.cc
@@ -57,7 +58,7 @@ function(build_benchmark target_name additional_include_dir lib_crypto)
   )
   # Link with the internal tool directory for shared headers with the rest of the tool instead of the top level AWS-LC
   # include directory
-  target_include_directories(${target_name} PUBLIC ${additional_include_dir} ${AWSLC_INSTALL_DIR}/include/internal/tool)
+  target_include_directories(${target_name} PUBLIC ${install_path}/include ${AWSLC_INSTALL_DIR}/include/internal/tool)
   target_link_libraries(${target_name} ${lib_crypto} ${LIBRT_FLAG})
   if(NOT MSVC AND NOT ANDROID)
     target_link_libraries(${target_name} pthread dl)
@@ -66,40 +67,35 @@ function(build_benchmark target_name additional_include_dir lib_crypto)
 endfunction()
 
 if(AWSLC_INSTALL_DIR)
-  find_library(AWS_LC_LIB_PATH crypto PATHS ${AWSLC_INSTALL_DIR}/lib/ NO_DEFAULT_PATH)
-  build_benchmark(awslc_bm ${AWSLC_INSTALL_DIR}/include ${AWS_LC_LIB_PATH})
+  build_benchmark(awslc_bm ${AWSLC_INSTALL_DIR})
 endif()
 
 # This expects a directory which contains the includes in include/openssl/ and the OpenSSL artifacts in lib/
 # Currently this is the default OpenSSL build we target so the "OPENSSL_1_1_BENCHMARK" flag isn't used, 
 # but we include this to maintain uniformity across OpenSSL versions
 if(OPENSSL_1_1_INSTALL_DIR)
-  find_library(OPENSSL_1_1_LIB_PATH crypto PATHS ${OPENSSL_1_1_INSTALL_DIR}/lib/ NO_DEFAULT_PATH)
-  build_benchmark(ossl_1_1_bm ${OPENSSL_1_1_INSTALL_DIR}/include ${OPENSSL_1_1_LIB_PATH})
+  build_benchmark(ossl_1_1_bm ${OPENSSL_1_1_INSTALL_DIR})
   target_compile_options(ossl_1_1_bm PUBLIC -DOPENSSL_BENCHMARK -DOPENSSL_1_1_BENCHMARK)
 endif()
 
 # This expects a directory which contains the includes in include/openssl/ and the OpenSSL artifacts in lib/
 if(OPENSSL_1_0_INSTALL_DIR)
-  find_library(OPENSSL_1_0_LIB_PATH crypto PATHS ${OPENSSL_1_0_INSTALL_DIR}/lib/ NO_DEFAULT_PATH)
-  build_benchmark(ossl_1_0_bm ${OPENSSL_1_0_INSTALL_DIR}/include ${OPENSSL_1_0_LIB_PATH})
+  build_benchmark(ossl_1_0_bm ${OPENSSL_1_0_INSTALL_DIR})
   target_compile_options(ossl_1_0_bm PUBLIC -DOPENSSL_BENCHMARK -DOPENSSL_1_0_BENCHMARK)
 endif()
 
 # This expects a directory which contains the includes in include/openssl/ and the OpenSSL artifacts in lib/ or lib64/
 if(OPENSSL_3_0_INSTALL_DIR)
+  build_benchmark(ossl_3_0_bm ${OPENSSL_3_0_INSTALL_DIR})
+  target_compile_options(ossl_3_0_bm PUBLIC -DOPENSSL_BENCHMARK -DOPENSSL_3_0_BENCHMARK)
   if(NOT MSVC)
     # The low-level function calls are deprecated for OpenSSL 3.0. We should revisit using these in the future,
     # but disabling the warnings works for now
-    add_definitions("-Wno-deprecated-declarations")
+    target_compile_options(ossl_3_0_bm PUBLIC -Wno-deprecated-declarations)
+
   endif ()
-  find_library(OPENSSL_3_0_LIB_PATH crypto PATHS ${OPENSSL_3_0_INSTALL_DIR}/lib64/ ${OPENSSL_3_0_INSTALL_DIR}/lib/ NO_DEFAULT_PATH)
-  build_benchmark(ossl_3_0_bm ${OPENSSL_3_0_INSTALL_DIR}/include ${OPENSSL_3_0_LIB_PATH})
-  target_compile_options(ossl_3_0_bm PUBLIC -DOPENSSL_BENCHMARK -DOPENSSL_3_0_BENCHMARK)
 endif()
 
-
 if(BORINGSSL_INSTALL_DIR)
-  find_library(BORINGSSL_LIB_PATH crypto PATHS ${OPENSSL_1_0_INSTALL_DIR}/build/crypto NO_DEFAULT_PATH)
-  build_benchmark(bssl_bm ${BORINGSSL_INSTALL_DIR}/include ${BORINGSSL_LIB_PATH})
+  build_benchmark(bssl_bm ${BORINGSSL_INSTALL_DIR})
 endif()
