@@ -108,6 +108,7 @@
 #include "evp/p_rsa.c"
 #include "hkdf/hkdf.c"
 #include "hmac/hmac.c"
+#include "kbkdf/kbkdf.c"
 #include "md4/md4.c"
 #include "md5/md5.c"
 #include "modes/cbc.c"
