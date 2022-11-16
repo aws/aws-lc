@@ -245,7 +245,11 @@ fn load_env_var(var_name: &str) -> String {
 }
 
 fn build_aws_lc() -> Result<PathBuf, &'static str> {
-    let Some(cmake_cmd) = find_cmake_command() else {
+    let cmake_cmd: &OsStr;
+    if let Some(cmd) = find_cmake_command() {
+        // This can be a let-else as-of Rust 1.65
+        cmake_cmd = cmd;
+    } else {
         return Err("Missing dependency: cmake");
     };
 
