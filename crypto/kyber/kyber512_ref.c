@@ -2,7 +2,6 @@
 #define KYBER_K 2
 
 #include "./pqcrystals_kyber_ref_common/params.h"
-#include "./pqcrystals_kyber_ref_common/api.h"
 #include "./pqcrystals_kyber_ref_common/cbd.h"
 #include "./pqcrystals_kyber_ref_common/fips202.h"
 #include "./pqcrystals_kyber_ref_common/indcpa.h"
