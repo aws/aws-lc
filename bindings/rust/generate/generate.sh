@@ -14,8 +14,9 @@ IGNORE_DIRTY=0
 IGNORE_BRANCH=0
 IGNORE_UPSTREAM=0
 IGNORE_MACOS=0
+SKIP_TEST=0
 
-while getopts "dbum" option; do
+while getopts "dbums" option; do
   case ${option} in
   d )
     IGNORE_DIRTY=1
@@ -29,6 +30,9 @@ while getopts "dbum" option; do
   m )
     IGNORE_MACOS=1
     ;;
+  s )
+    SKIP_TEST=1
+    ;;
   * )
     echo Invalid argument: -"${?}"
     usage
@@ -39,7 +43,7 @@ done
 
 shift $((OPTIND - 1))
 
-AWS_LC_SYS_VERSION="0.1.1"
+AWS_LC_SYS_VERSION="0.1.2"
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 AWS_LC_DIR=$( cd -- "${SCRIPT_DIR}/../../../" &> /dev/null && pwd)
@@ -158,13 +162,15 @@ function prepare_crate_dir {
   perl -pi -e "s/__AWS_LC_SYS_VERSION__/${AWS_LC_SYS_VERSION}/g" "${CRATE_DIR}"/Cargo.toml
 
   cp -r "${AWS_LC_DIR}"/crypto  \
-        "${AWS_LC_DIR}"/ssl  \
+        "${AWS_LC_DIR}"/generated-src \
         "${AWS_LC_DIR}"/include \
         "${AWS_LC_DIR}"/tool \
         "${AWS_LC_DIR}"/CMakeLists.txt \
         "${AWS_LC_DIR}"/LICENSE \
         "${AWS_LC_DIR}"/sources.cmake \
         "${CRATE_AWS_LC_DIR}"/
+
+  rm "${CRATE_AWS_LC_DIR}"/generated-src/crypto_test_data.cc
 
   cp "${AWS_LC_DIR}"/LICENSE  "${CRATE_AWS_LC_DIR}"/
   cp "${AWS_LC_DIR}"/LICENSE  "${CRATE_DIR}"/
@@ -181,6 +187,11 @@ function prepare_crate_dir {
 
 prepare_crate_dir
 create_prefix_headers
+
+if [[ ${SKIP_TEST} -eq 1 ]]; then
+  echo Aborting. Crate generated but not tested.
+  exit 1
+fi
 
 "${SCRIPT_DIR}"/_test_supported_builds.sh "$( [ ${IGNORE_MACOS} -eq 1 ] && echo '-m' )"
 
