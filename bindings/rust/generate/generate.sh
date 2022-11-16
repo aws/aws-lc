@@ -43,7 +43,7 @@ done
 
 shift $((OPTIND - 1))
 
-AWS_LC_SYS_VERSION="0.1.2"
+AWS_LC_SYS_VERSION="0.2.0"
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 AWS_LC_DIR=$( cd -- "${SCRIPT_DIR}/../../../" &> /dev/null && pwd)
