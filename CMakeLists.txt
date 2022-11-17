@@ -312,6 +312,16 @@ if(GCC OR CLANG)
     set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wno-free-nonheap-object")
   endif()
 
+  # -Wstring-concatenation was added in Clang 12.0.0, which corresponds to
+  # AppleClang 13.0.0 per the table in
+  # https://en.wikipedia.org/wiki/Xcode#Toolchain_versions
+  if((CMAKE_C_COMPILER_ID STREQUAL "Clang" AND
+          NOT(CMAKE_C_COMPILER_VERSION VERSION_LESS "12.0.0")) OR
+  (CMAKE_C_COMPILER_ID STREQUAL "AppleClang" AND
+          NOT(CMAKE_C_COMPILER_VERSION VERSION_LESS "13.0.0")))
+    set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wstring-concatenation")
+  endif()
+
   if(CLANG OR NOT "7.0.0" VERSION_GREATER CMAKE_C_COMPILER_VERSION)
     set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wimplicit-fallthrough")
   endif()
