@@ -84,18 +84,22 @@ OPENSSL_EXPORT int KBKDF_feedback(uint8_t *out_key, size_t out_len,
 
     uint8_t *ki = OPENSSL_malloc(max(iv_len, hmac_size));
     size_t ki_len = key_in_len;
-    //if (iv != NULL && iv_len > 0) {
+    if (iv != NULL && iv_len > 0) {
+        // Set k(0) to the IV.
         memcpy(ki, iv, iv_len);
         ki_len = iv_len;
-    //}
+    }
 
     int retval = 0;
     size_t written = 0;
     size_t to_write = out_len;
 
     for (i = 1; i <= n; i++) {
-        if (!HMAC_Update(&hmac, ki, ki_len)) {
-            goto out;
+        if (!(i == 1 && iv_len == 0)) {
+            // If no IV was specified, we don't include k(0).
+            if (!HMAC_Update(&hmac, ki, ki_len)) {
+                goto out;
+            }
         }
         if (use_counter) {
             uint32_t be_i = to_be32(i);
@@ -115,7 +119,7 @@ OPENSSL_EXPORT int KBKDF_feedback(uint8_t *out_key, size_t out_len,
         // Another mystery in SP800-108r1; this iteration's ki data is
         // generated via:
         //
-        // ki = PRF(key_in, previous ki || {i ||} Label || 0x00 || Context || L)
+        // ki = PRF(key_in, previous ki || i || Label || 0x00 || Context || L)
         //
         // The test data from the CAVP Testing: SP 800-108 Key Derivation Using
         // Pseudorandom Functions - Key-Based (KBKDF) page
