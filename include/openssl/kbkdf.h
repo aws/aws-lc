@@ -16,14 +16,15 @@ extern "C" {
 // 800-108:
 // https://csrc.nist.gov/publications/detail/sp/800-108/rev-1/final
 //
-//
-
 // Generates |out_len| bytes of keying material from |key_in|, |label|,
 // |context|, and |iv| using the given |digest|, and outputs the result to
 // |out_key|. It returns one on success and zero on error.
 //
 // The |use_counter| option enables the "KDF in Feedback Mode with Counter"
 // mode.
+//
+// If your fixed-input data (|label| and |context|) are provided as a single
+// buffer, |context| is optional. The |iv| is also optional.
 OPENSSL_EXPORT int KBKDF_feedback(uint8_t *out_key, size_t out_len,
                                   const EVP_MD *digest,
                                   const uint8_t *key_in, size_t key_in_len,
