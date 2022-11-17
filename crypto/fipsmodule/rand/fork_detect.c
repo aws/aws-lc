@@ -42,7 +42,6 @@ DEFINE_STATIC_MUTEX(g_fork_detect_lock)
 DEFINE_BSS_GET(volatile char *, g_fork_detect_addr)
 DEFINE_BSS_GET(uint64_t, g_fork_generation)
 DEFINE_BSS_GET(int, g_ignore_madv_wipeonfork)
-DEFINE_BSS_GET(int, g_ignore_pthread_atfork)
 
 static int init_fork_detect_madv_wipeonfork(void *addr, long page_size) {
 
@@ -60,54 +59,15 @@ static int init_fork_detect_madv_wipeonfork(void *addr, long page_size) {
   return 1;
 }
 
-static void pthread_atfork_on_fork(void) {
-
-  struct CRYPTO_STATIC_MUTEX *const lock = g_fork_detect_lock_bss_get();
-
-  // This zeroises the first byte of the memory page pointed to by
-  // |*g_fork_detect_addr_bss_get|. This is the same byte used as fork
-  // detection sentinel in |CRYPTO_get_fork_generation|. The same memory page,
-  // and in turn, the byte, is also the memory zeroised by the |MADV_WIPEONFORK|
-  // fork detection mechanism.
-  //
-  // Aquire locks to be on the safe side. We want to avoid the checks in
-  // |CRYPTO_get_fork_generation| getting executed before setting the sentinel
-  // flag. The write lock prevents any other thread from owning any other type
-  // of lock.
-  CRYPTO_STATIC_MUTEX_lock_write(lock);
-  volatile char *const flag_ptr = *g_fork_detect_addr_bss_get();
-  *flag_ptr = 0;
-  CRYPTO_STATIC_MUTEX_unlock_write(lock);
-}
-
-static int init_fork_detect_pthread_atfork(void) {
-
-  // Register the fork handler |pthread_atfork_on_fork| that is excuted in the
-  // child process after |fork| processing completes.
-  if (pthread_atfork(NULL, NULL, pthread_atfork_on_fork) != 0) {
-    // Returns 0 on success:
-    // https://man7.org/linux/man-pages/man3/pthread_atfork.3.html#RETURN_VALUE
-    return 0;
-  }
-  return 1;
-}
-
-// We employ a layered approach to fork detection using two different
-// mechanisms:
-//  1) |MADV_WIPE_ON_FORK| a memory page through |madvise|.
-//  2) Register a fork handler through |pthread_atfork|.
 static void init_fork_detect(void) {
 
   int res = 0;
   void *addr = MAP_FAILED;
   long page_size = 0;
 
-  /*
-   * Check whether we are completely ignoring fork detection. This is only
-   * done during testing.
-   */
-  if (*g_ignore_madv_wipeonfork_bss_get() == 1 &&
-      *g_ignore_pthread_atfork_bss_get() == 1) {
+  // Check whether we are completely ignoring fork detection. This is only done
+  // during testing.
+  if (*g_ignore_madv_wipeonfork_bss_get() == 1) {
     goto cleanup;
   }
 
@@ -122,16 +82,9 @@ static void init_fork_detect(void) {
     goto cleanup;
   }
 
-  if (*g_ignore_madv_wipeonfork_bss_get() != 1) {
-    if (init_fork_detect_madv_wipeonfork(addr, page_size) == 0) {
-      goto cleanup;
-    }
-  }
 
-  if (*g_ignore_pthread_atfork_bss_get() != 1) {
-    if (init_fork_detect_pthread_atfork() == 0) {
-      goto cleanup;
-    }
+  if (init_fork_detect_madv_wipeonfork(addr, page_size) == 0) {
+    goto cleanup;
   }
 
   *((volatile char *) addr) = 1;
@@ -200,10 +153,6 @@ uint64_t CRYPTO_get_fork_generation(void) {
 
 void CRYPTO_fork_detect_ignore_madv_wipeonfork_for_testing(void) {
   *g_ignore_madv_wipeonfork_bss_get() = 1;
-}
-
-void CRYPTO_fork_detect_ignore_pthread_atfork_for_testing(void) {
-  *g_ignore_pthread_atfork_bss_get() = 1;
 }
 
 #else   // !OPENSSL_LINUX
