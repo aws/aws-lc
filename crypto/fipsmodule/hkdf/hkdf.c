@@ -55,6 +55,10 @@ int HKDF_extract(uint8_t *out_key, size_t *out_len, const EVP_MD *digest,
   // https://tools.ietf.org/html/rfc5869#section-2.2
   int ret = 0;
 
+  // We have to avoid the underlying HKDF services updating the indicator
+  // state, so we lock the state here.
+  FIPS_service_indicator_lock_state();
+
   // If salt is not given, HashLength zeros are used. However, HMAC does that
   // internally already so we can ignore it.
   unsigned len;
@@ -67,6 +71,7 @@ int HKDF_extract(uint8_t *out_key, size_t *out_len, const EVP_MD *digest,
   ret = 1;
 
 out:
+  FIPS_service_indicator_unlock_state();
   return ret;
 }
 
@@ -89,6 +94,10 @@ int HKDF_expand(uint8_t *out_key, size_t out_len, const EVP_MD *digest,
   }
 
   HMAC_CTX_init(&hmac);
+
+  // We have to avoid the underlying HMAC services updating the indicator
+  // state, so we lock the state here.
+  FIPS_service_indicator_lock_state();
 
   if (!HMAC_Init_ex(&hmac, prk, prk_len, digest, NULL)) {
     goto out;
@@ -119,6 +128,7 @@ int HKDF_expand(uint8_t *out_key, size_t out_len, const EVP_MD *digest,
   ret = 1;
 
 out:
+  FIPS_service_indicator_unlock_state();
   HMAC_CTX_cleanup(&hmac);
   if (ret != 1) {
     OPENSSL_PUT_ERROR(HKDF, ERR_R_HMAC_LIB);
