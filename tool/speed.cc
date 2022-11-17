@@ -1023,6 +1023,37 @@ static bool SpeedECDHCurve(const std::string &name, int nid,
   return true;
 }
 
+static bool SpeedECKeyGenCurve(const std::string &name, int nid,
+                            const std::string &selected) {
+  if (!selected.empty() && name.find(selected) == std::string::npos) {
+    return true;
+  }
+
+  // Setup CTX for EC Operations
+  BM_NAMESPACE::UniquePtr<EVP_PKEY_CTX> pkey_ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_EC, nullptr));
+
+  // Setup CTX for Keygen Operations
+  if (!pkey_ctx || EVP_PKEY_keygen_init(pkey_ctx.get()) != 1) {
+    return false;
+  }
+
+  // Set CTX to use our curve
+  if (EVP_PKEY_CTX_set_ec_paramgen_curve_nid(pkey_ctx.get(), nid) != 1) {
+    return false;
+  }
+
+  EVP_PKEY *key = NULL;
+
+  TimeResults results;
+  if (!TimeFunction(&results, [&pkey_ctx, &key]() -> bool {
+        return EVP_PKEY_keygen(pkey_ctx.get(), &key);
+      })) {
+      return false;
+  }
+  results.Print(name);
+  return true;
+}
+
 static bool SpeedECDSACurve(const std::string &name, int nid,
                             const std::string &selected) {
   if (!selected.empty() && name.find(selected) == std::string::npos) {
@@ -1071,6 +1102,14 @@ static bool SpeedECDH(const std::string &selected) {
          SpeedECDHCurve("ECDH P-384", NID_secp384r1, selected) &&
          SpeedECDHCurve("ECDH P-521", NID_secp521r1, selected) &&
          SpeedECDHCurve("ECDH secp256k1", NID_secp256k1, selected);
+}
+
+static bool SpeedECKeyGen(const std::string &selected) {
+  return SpeedECKeyGenCurve("Generate P-224", NID_secp224r1, selected) &&
+         SpeedECKeyGenCurve("Generate P-256", NID_X9_62_prime256v1, selected) &&
+         SpeedECKeyGenCurve("Generate P-384", NID_secp384r1, selected) &&
+         SpeedECKeyGenCurve("Generate P-521", NID_secp521r1, selected) &&
+         SpeedECKeyGenCurve("Generate secp256k1", NID_secp256k1, selected);
 }
 
 static bool SpeedECDSA(const std::string &selected) {
@@ -1867,6 +1906,7 @@ bool Speed(const std::vector<std::string> &args) {
      !SpeedRandom(selected) ||
      !SpeedECDH(selected) ||
      !SpeedECDSA(selected) ||
+     !SpeedECKeyGen(selected) ||
 #if !defined(OPENSSL_1_0_BENCHMARK)
      !SpeedECMUL(selected) ||
      // OpenSSL 1.0 doesn't support Scrypt
