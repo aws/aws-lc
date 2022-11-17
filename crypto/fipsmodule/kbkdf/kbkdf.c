@@ -59,10 +59,17 @@ OPENSSL_EXPORT int KBKDF_feedback(uint8_t *out_key, size_t out_len,
         return 0;
     }
 
+    int retval = 0;
+    uint8_t *ki = NULL;
+
+    // We have to avoid the underlying HMAC services updating the indicator
+    // state, so we lock the state here.
+    FIPS_service_indicator_lock_state();
+
     HMAC_CTX hmac;
     HMAC_CTX_init(&hmac);
     if (!HMAC_Init_ex(&hmac, key_in, key_in_len, digest, NULL)) {
-        return 0;
+        goto out;
     }
 
     size_t L = out_len * BYTEBITS;
@@ -79,10 +86,10 @@ OPENSSL_EXPORT int KBKDF_feedback(uint8_t *out_key, size_t out_len,
 
     if (n > UINT32_MAX) {
         // SP 800-108r1 section 4.0, n <= 2^r - 1
-        return 0;
+        goto out;
     }
 
-    uint8_t *ki = OPENSSL_malloc(max(iv_len, hmac_size));
+    ki = OPENSSL_malloc(max(iv_len, hmac_size));
     size_t ki_len = key_in_len;
     if (iv != NULL && iv_len > 0) {
         // Set k(0) to the IV.
@@ -90,7 +97,6 @@ OPENSSL_EXPORT int KBKDF_feedback(uint8_t *out_key, size_t out_len,
         ki_len = iv_len;
     }
 
-    int retval = 0;
     size_t written = 0;
     size_t to_write = out_len;
 
@@ -160,6 +166,9 @@ out:
         OPENSSL_free(ki);
     }
     HMAC_CTX_cleanse(&hmac);
+
+    FIPS_service_indicator_lock_state();
+    KBKDF_verify_service_indicator(digest);
 
     return retval;
 }

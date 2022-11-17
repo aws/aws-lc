@@ -347,7 +347,7 @@ void HMAC_verify_service_indicator(const EVP_MD *evp_md) {
 
 void HKDF_verify_service_indicator(const EVP_MD *evp_md,
   const uint8_t *salt, size_t salt_len, size_t info_len) {
-  // HKDF with SHA1, SHA224, SHA256, SHA384, and SHA512 are approved.
+  // HKDF with SHA1, SHA224, SHA256, SHA384, and SHA512 is approved.
   //
   // FIPS 140 parameter requirements, per NIST SP 800-108 Rev. 1:
   //
@@ -380,9 +380,25 @@ void HKDF_verify_service_indicator(const EVP_MD *evp_md,
   }
 }
 
+void KBKDF_verify_service_indicator(const EVP_MD *evp_md) {
+  // KBKDF in Feedback Mode per NIST SP800-108r1 with SHA 1, SHA224, SHA256,
+  // SHA384, and SHA512 is approved.
+  switch (evp_md->type) {
+    case NID_sha1:
+    case NID_sha224:
+    case NID_sha256:
+    case NID_sha384:
+    case NID_sha512:
+      FIPS_service_indicator_update_state();
+      break;
+    default:
+      break;
+  }
+}
+
 void PBKDF2_verify_service_indicator(const EVP_MD *evp_md, size_t password_len,
                                     size_t salt_len, unsigned iterations) {
-  // PBKDF with SHA1, SHA224, SHA256, SHA384, and SHA512 are approved.
+  // PBKDF with SHA1, SHA224, SHA256, SHA384, and SHA512 is approved.
   //
   // FIPS 140 parameter requirements, per NIST SP800-132:
   //
