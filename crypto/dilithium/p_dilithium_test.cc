@@ -163,7 +163,8 @@ TEST(Dilithium3Test, KeySize) {
   EVP_PKEY_free(dilithium_pkey);
 }
 
-TEST(Dilithium3Test, DilithiumMarshal) {
+TEST(Dilithium3Test, Encoding) {
+  // Test Dilithium keypairs are extractable, and encode/parse correctly.
   //generate dilithium key
   EVP_PKEY_CTX *dilithium_pkey_ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_DILITHIUM3, nullptr);
   EVP_PKEY *dilithium_pkey = EVP_PKEY_new();
@@ -250,27 +251,36 @@ TEST(Dilithium3Test, SIGOperations) {
   bssl::ScopedEVP_MD_CTX md_ctx;
   uint8_t signature[DILITHIUM3_SIGNATURE_BYTES];
   size_t signature_len = DILITHIUM3_SIGNATURE_BYTES;
-  std::vector<uint8_t> msg = {0x4a, 0x41, 0x4b, 0x45, 0x20, 0x4d, 0x41, 0x53, 0x53, 0x49, 0x4d, 0x4f, 0x20, 0x41, 0x57, 0x53, 0x32, 0x30, 0x32, 0x32, 0x2e};
-  std::vector<uint8_t> badmsg = {0x4a, 0x41, 0x4b, 0x45, 0x20, 0x4d, 0x41, 0x53, 0x53, 0x49, 0x4d, 0x4f, 0x20, 0x41, 0x57, 0x53, 0x32, 0x30, 0x32, 0x31, 0x2e};
+  std::vector<uint8_t> msg = {
+      0x4a, 0x41, 0x4b, 0x45, 0x20, 0x4d, 0x41, 0x53, 0x53, 0x49,
+      0x4d, 0x4f, 0x20, 0x41, 0x57, 0x53, 0x32, 0x30, 0x32, 0x32, 0x2e};
+  std::vector<uint8_t> badmsg = {
+      0x4a, 0x41, 0x4b, 0x45, 0x20, 0x4d, 0x41, 0x53, 0x53, 0x49,
+      0x4d, 0x4f, 0x20, 0x41, 0x57, 0x53, 0x32, 0x30, 0x32, 0x31, 0x2e};
 
   ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), NULL, NULL, NULL, dilithium_pkey));
-  ASSERT_TRUE(EVP_DigestSign(md_ctx.get(), signature, &signature_len, msg.data(), msg.size()));
+  ASSERT_TRUE(EVP_DigestSign(md_ctx.get(), signature, &signature_len,
+                             msg.data(), msg.size()));
 
   // verify the correct signed message
-  ASSERT_TRUE(EVP_DigestVerify(md_ctx.get(), signature, signature_len, msg.data(), msg.size()));
+  ASSERT_TRUE(EVP_DigestVerify(md_ctx.get(), signature, signature_len,
+                               msg.data(), msg.size()));
 
   // verify the signed message fails upon a bad message
-  ASSERT_FALSE(EVP_DigestVerify(md_ctx.get(), signature, signature_len, badmsg.data(), badmsg.size()));
+  ASSERT_FALSE(EVP_DigestVerify(md_ctx.get(), signature, signature_len,
+                                badmsg.data(), badmsg.size()));
 
   // sign the bad message
   uint8_t signature1[DILITHIUM3_SIGNATURE_BYTES];
-  ASSERT_TRUE(EVP_DigestSign(md_ctx.get(), signature1, &signature_len, badmsg.data(), badmsg.size()));
+  ASSERT_TRUE(EVP_DigestSign(md_ctx.get(), signature1, &signature_len,
+                             badmsg.data(), badmsg.size()));
 
   // check that the two signatures are not equal
   EXPECT_NE(0, memcmp(signature, signature1, signature_len));
 
   // verify the signed message fails upon a bad signature
-  ASSERT_FALSE(EVP_DigestVerify(md_ctx.get(), signature1, signature_len, msg.data(), msg.size()));
+  ASSERT_FALSE(EVP_DigestVerify(md_ctx.get(), signature1, signature_len,
+                                msg.data(), msg.size()));
 
   EVP_PKEY_free(dilithium_pkey);
   EVP_PKEY_CTX_free(dilithium_pkey_ctx);

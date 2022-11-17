@@ -333,19 +333,10 @@ add_library(
   dh_extra/params.c
   dh_extra/dh_asn1.c
   digest_extra/digest_extra.c
+  dilithium/dilithium3_ref.c
   dilithium/p_dilithium3.c
   dilithium/p_dilithium3_asn1.c
   dilithium/sig_dilithium3.c
-  dilithium/pqcrystals-dilithium_dilithium3_ref/aes256ctr.c
-  dilithium/pqcrystals-dilithium_dilithium3_ref/fips202.c
-  dilithium/pqcrystals-dilithium_dilithium3_ref/ntt.c
-  dilithium/pqcrystals-dilithium_dilithium3_ref/packing.c
-  dilithium/pqcrystals-dilithium_dilithium3_ref/poly.c
-  dilithium/pqcrystals-dilithium_dilithium3_ref/polyvec.c
-  dilithium/pqcrystals-dilithium_dilithium3_ref/reduce.c
-  dilithium/pqcrystals-dilithium_dilithium3_ref/rounding.c
-  dilithium/pqcrystals-dilithium_dilithium3_ref/sign.c
-  dilithium/pqcrystals-dilithium_dilithium3_ref/symmetric-shake.c
   dsa/dsa.c
   dsa/dsa_asn1.c
   ecdh_extra/ecdh_extra.c

@@ -4,7 +4,7 @@
 #include "../evp_extra/internal.h"
 #include "../fipsmodule/evp/internal.h"
 #include "sig_dilithium.h"
-#include "pqcrystals-dilithium_dilithium3_ref/api.h"
+#include "pqcrystals-dilithium_dilithium_common/api.h"
 
 // Note: These methods currently default to using the reference code for
 // Dilithium. In a future where AWS-LC has optimized options available,
