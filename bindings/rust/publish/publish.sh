@@ -2,12 +2,27 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 
+# You will need to have cargo-public-api installed:
+# cargo install public-api
+
 set -e -x
 
 PUBLISH=0
+PREV_VERSION=0
+SKIP_DIFF=0
 
-while getopts "p" option; do
+while getopts "d:sp" option; do
   case ${option} in
+  d )
+    # For example:
+    # ./publish.sh -d 0.1.1
+    PREV_VERSION="$OPTARG"
+    ;;
+  # The public API diff should only be skipped if releasing a new major version
+  # (or a new minor version when the major version number is 0).
+  s )
+    SKIP_DIFF=1
+    ;;
   p )
     PUBLISH=1
     ;;
@@ -26,16 +41,25 @@ CRATE_DIR="${TMP_DIR}"/aws-lc-sys
 COMPLETION_MARKER="${CRATE_DIR}"/.generation_complete
 
 if [[ ! -f "${COMPLETION_MARKER}" ]]; then
+  echo
   echo The crate generation script must exit successfully before publishing.
+  echo
   exit 1
 fi
 
 pushd "${CRATE_DIR}"
 cargo clean
-cargo test # sanity check
-cargo clean
 cargo clippy --fix --allow-no-vcs
 cargo fmt
+cargo test # sanity check
+cargo clean
+if [[ "${SKIP_DIFF}" -eq 0 ]]; then
+  if [[ "${PREV_VERSION}" == "0" ]]; then
+    echo Aborting. Must specify previous crate version for API diff.
+    exit 1;
+  fi
+  cargo public-api --deny changed --deny removed --diff-published "aws-lc-sys@${PREV_VERSION}"
+fi
 cargo publish --dry-run --allow-dirty --no-verify
 
 if [[ ${PUBLISH} -eq 1 ]]; then
