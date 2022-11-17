@@ -4,8 +4,11 @@
 #include <openssl/evp.h>
 #include <openssl/mem.h>
 
-#include "../crypto/evp_extra/internal.h"
+#include "../test/file_test.h"
+#include "../test/test_util.h"
+#include "../evp_extra/internal.h"
 #include "../fipsmodule/evp/internal.h"
+#include "../rand_extra/pq_custom_randombytes.h"
 #include "../internal.h"
 #include "kem_kyber.h"
 
@@ -78,8 +81,11 @@ static size_t kyber_ciphertext_size(int pkey_id) {
   return 0;
 }
 
+static const int pkeyIDsToTest[2] = { EVP_PKEY_KYBER512,
+                                      EVP_PKEY_KYBER768 };
+
 TEST(KyberTest, KeyGeneration) {
-  for (int pkey_id : {EVP_PKEY_KYBER512, EVP_PKEY_KYBER768}) {
+  for (auto pkey_id : pkeyIDsToTest) {
     EVP_PKEY_CTX *kyber_pkey_ctx = EVP_PKEY_CTX_new_id(pkey_id, nullptr);
     ASSERT_NE(kyber_pkey_ctx, nullptr);
 
@@ -129,7 +135,7 @@ TEST(KyberTest, KeyGeneration) {
 }
 
 TEST(KyberTest, KeyComparison) {
-  for (int pkey_id : {EVP_PKEY_KYBER512, EVP_PKEY_KYBER768}) {
+  for (auto pkey_id : pkeyIDsToTest) {
     EVP_PKEY_CTX *kyber_pkey_ctx1 = EVP_PKEY_CTX_new_id(pkey_id, nullptr);
     ASSERT_NE(kyber_pkey_ctx1, nullptr);
 
@@ -160,7 +166,7 @@ TEST(KyberTest, KeyComparison) {
 }
 
 TEST(KyberTest, NewKeyFromBytes) {
-  for (int pkey_id : {EVP_PKEY_KYBER512, EVP_PKEY_KYBER768}) {
+  for (auto pkey_id : pkeyIDsToTest) {
     // Source key
     EVP_PKEY_CTX *kyber_pkey_ctx = EVP_PKEY_CTX_new_id(pkey_id, nullptr);
     ASSERT_NE(kyber_pkey_ctx, nullptr);
@@ -206,7 +212,7 @@ TEST(KyberTest, NewKeyFromBytes) {
 }
 
 TEST(KyberTest, KeySize) {
-  for (int pkey_id : {EVP_PKEY_KYBER512, EVP_PKEY_KYBER768}) {
+  for (auto pkey_id : pkeyIDsToTest) {
     EVP_PKEY_CTX *kyber_pkey_ctx = EVP_PKEY_CTX_new_id(pkey_id, nullptr);
     ASSERT_NE(kyber_pkey_ctx, nullptr);
 
@@ -227,7 +233,7 @@ TEST(KyberTest, KeySize) {
 }
 
 TEST(KyberTest, KEMOperations) {
-  for (int pkey_id : {EVP_PKEY_KYBER512, EVP_PKEY_KYBER768}) {
+  for (auto pkey_id : pkeyIDsToTest) {
     // Basic functional test for Kyber that simulates two sides
     // of the key exchange mechanism.
     size_t shared_secret_len = kyber_shared_secret_size(pkey_id);
@@ -294,7 +300,7 @@ TEST(KyberTest, KEMOperations) {
 }
 
 TEST(KyberTest, KEMSizeChecks) {
-  for (int pkey_id : {EVP_PKEY_KYBER512, EVP_PKEY_KYBER768}) {
+  for (auto pkey_id : pkeyIDsToTest) {
     size_t shared_secret_len = 0;
     size_t ciphertext_len = 0;
 
@@ -345,7 +351,7 @@ TEST(KyberTest, KEMSizeChecks) {
 }
 
 TEST(KyberTest, KEMInvalidKeyType) {
-  for (int pkey_id : {EVP_PKEY_KYBER512, EVP_PKEY_KYBER768}) {
+  for (auto pkey_id : pkeyIDsToTest) {
     size_t shared_secret_len = kyber_shared_secret_size(pkey_id);
     size_t ciphertext_len = kyber_ciphertext_size(pkey_id);
 
@@ -359,6 +365,7 @@ TEST(KyberTest, KEMInvalidKeyType) {
     EVP_PKEY *kyber_pkey = EVP_PKEY_new();
     EXPECT_TRUE(EVP_PKEY_keygen_init(kyber_pkey_ctx));
     EXPECT_TRUE(EVP_PKEY_keygen(kyber_pkey_ctx, &kyber_pkey));
+
     // Swap the key for invalid type
     EVP_PKEY_CTX *rsa_pkey_ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, nullptr);
     EVP_PKEY *rsa_pkey = EVP_PKEY_new();
@@ -366,6 +373,7 @@ TEST(KyberTest, KEMInvalidKeyType) {
     kyber_pkey_ctx->pkey = rsa_pkey;
     ASSERT_FALSE(EVP_PKEY_encapsulate(kyber_pkey_ctx, ciphertext, &ciphertext_len, shared_secret, &shared_secret_len));
     ASSERT_FALSE(EVP_PKEY_decapsulate(kyber_pkey_ctx, shared_secret, &shared_secret_len, ciphertext, ciphertext_len));
+
     // Swap the key back to the original one so that the cleanups happen correctly
     kyber_pkey_ctx->pkey = kyber_pkey;
 
@@ -378,7 +386,7 @@ TEST(KyberTest, KEMInvalidKeyType) {
 }
 
 TEST(KyberTest, KEMFailureModes) {
-  for (int pkey_id : {EVP_PKEY_KYBER512, EVP_PKEY_KYBER768}) {
+  for (auto pkey_id : pkeyIDsToTest) {
     size_t shared_secret_len = kyber_shared_secret_size(pkey_id);
     size_t ciphertext_len = kyber_ciphertext_size(pkey_id);
 
@@ -395,3 +403,64 @@ TEST(KyberTest, KEMFailureModes) {
     OPENSSL_free(ciphertext);
   }
 }
+
+static void RunKAT(const char *path, int pkey_id)
+{
+  FileTestGTest(path, [&](FileTest *t) {
+    std::string count;
+    std::vector<uint8_t> seed, pk, sk, ct, ss;
+
+    size_t public_key_len = kyber_public_key_size(pkey_id);
+    size_t secret_key_len = kyber_secret_key_size(pkey_id);
+    size_t ciphertext_len = kyber_ciphertext_size(pkey_id);
+    size_t shared_secret_len = kyber_shared_secret_size(pkey_id);
+
+    uint8_t *shared_secret = (uint8_t*) OPENSSL_malloc(shared_secret_len);
+    uint8_t *ciphertext = (uint8_t*) OPENSSL_malloc(ciphertext_len);
+    ASSERT_NE(shared_secret, nullptr);
+    ASSERT_NE(ciphertext, nullptr);
+
+    ASSERT_TRUE(t->GetAttribute(&count, "count"));
+    ASSERT_TRUE(t->GetBytes(&seed, "seed"));
+    ASSERT_TRUE(t->GetBytes(&pk, "pk"));
+    ASSERT_TRUE(t->GetBytes(&sk, "sk"));
+    ASSERT_TRUE(t->GetBytes(&ct, "ct"));
+    ASSERT_TRUE(t->GetBytes(&ss, "ss"));
+
+    pq_custom_randombytes_use_deterministic_for_testing();
+    pq_custom_randombytes_init_for_testing(seed.data());
+
+    EVP_PKEY_CTX *kyber_pkey_ctx = EVP_PKEY_CTX_new_id(pkey_id, nullptr);
+    ASSERT_NE(kyber_pkey_ctx, nullptr);
+
+    EVP_PKEY *kyber_pkey = EVP_PKEY_new();
+    ASSERT_NE(kyber_pkey, nullptr);
+
+    EXPECT_TRUE(EVP_PKEY_keygen_init(kyber_pkey_ctx));
+    EXPECT_TRUE(EVP_PKEY_keygen(kyber_pkey_ctx, &kyber_pkey));
+
+    uint8_t *pub  = get_pub_from_kyber_key(kyber_pkey);
+    uint8_t *priv = get_priv_from_kyber_key(kyber_pkey);
+    EXPECT_EQ(Bytes(pk), Bytes(pub, public_key_len));
+    EXPECT_EQ(Bytes(sk), Bytes(priv, secret_key_len));
+
+    ASSERT_TRUE(EVP_PKEY_encapsulate(kyber_pkey_ctx, ciphertext, &ciphertext_len, shared_secret, &shared_secret_len));
+    EXPECT_EQ(Bytes(ct), Bytes(ciphertext, ciphertext_len));
+
+    ASSERT_TRUE(EVP_PKEY_decapsulate(kyber_pkey_ctx, shared_secret, &shared_secret_len, ciphertext, ciphertext_len));
+    EXPECT_EQ(Bytes(ss), Bytes(shared_secret, shared_secret_len));
+
+    OPENSSL_free(shared_secret);
+    OPENSSL_free(ciphertext);
+    EVP_PKEY_CTX_free(kyber_pkey_ctx);
+  });
+}
+
+TEST(KyberTest, Kyber512KAT) {
+  RunKAT("crypto/kyber/pqcrystals_kyber_kats/kyber512_kat.txt", EVP_PKEY_KYBER512);
+}
+
+TEST(KyberTest, Kyber768KAT) {
+  RunKAT("crypto/kyber/pqcrystals_kyber_kats/kyber768_kat.txt", EVP_PKEY_KYBER768);
+}
+

@@ -51,8 +51,6 @@ set(
   crypto/curve25519/ed25519_tests.txt
   crypto/ecdh_extra/ecdh_tests.txt
   crypto/evp_extra/evp_tests.txt
-  crypto/evp_extra/pq_kem_kat_tests_kyber512.txt
-  crypto/evp_extra/pq_kem_kat_tests_kyber768.txt
   crypto/evp_extra/scrypt_tests.txt
   crypto/fipsmodule/aes/aes_tests.txt
   crypto/fipsmodule/bn/bn_tests.txt
@@ -74,6 +72,8 @@ set(
   crypto/fipsmodule/sha/testvectors/SHA3_256ShortMsg.txt
   crypto/fipsmodule/sha/testvectors/SHA3_384ShortMsg.txt
   crypto/fipsmodule/sha/testvectors/SHA3_512ShortMsg.txt
+  crypto/kyber/pqcrystals_kyber_kats/kyber512_kat.txt
+  crypto/kyber/pqcrystals_kyber_kats/kyber768_kat.txt
   crypto/hmac_extra/hmac_tests.txt
   crypto/hpke/hpke_test_vectors.txt
   crypto/ocsp/test/aws/ocsp_response.der
