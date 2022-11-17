@@ -54,8 +54,8 @@ OPENSSL_EXPORT int KBKDF_feedback(uint8_t *out_key, size_t out_len,
                                   bool use_counter)
 {
     // Sanity checking.
-    if (out_key == NULL || digest == NULL ||
-        out_len < 1 ) {
+    if (out_key == NULL || digest == NULL || key_in == NULL ||
+        out_len < 1 || key_in_len < 1) {
         return 0;
     }
 
@@ -70,10 +70,12 @@ OPENSSL_EXPORT int KBKDF_feedback(uint8_t *out_key, size_t out_len,
     size_t hmac_size = HMAC_size(&hmac);
     size_t h = hmac_size * BYTEBITS;
     uint32_t i = 0;
-    //size_t r = sizeof(i) * BYTEBITS;  // TODO: What am I for?
+    // r = sizeof(i) * BYTEBITS is listed as a parameter in SP800-108r1,
+    // specified when a counter is used as input. It's not actually used in
+    // the KDF in Feedback Mode algorithm though.
     uint8_t zero = 0x00;
 
-    size_t n = 1 + ((L - 1) / h); // ceil(L/h)
+    size_t n = 1 + ((L - 1) / h);  // ceil(L/h)
 
     if (n > UINT32_MAX) {
         // SP 800-108r1 section 4.0, n <= 2^r - 1
@@ -81,8 +83,11 @@ OPENSSL_EXPORT int KBKDF_feedback(uint8_t *out_key, size_t out_len,
     }
 
     uint8_t *ki = OPENSSL_malloc(max(iv_len, hmac_size));
-    memcpy(ki, iv, iv_len);
-    size_t ki_len = iv_len;
+    size_t ki_len = key_in_len;
+    //if (iv != NULL && iv_len > 0) {
+        memcpy(ki, iv, iv_len);
+        ki_len = iv_len;
+    //}
 
     int retval = 0;
     size_t written = 0;
@@ -107,7 +112,18 @@ OPENSSL_EXPORT int KBKDF_feedback(uint8_t *out_key, size_t out_len,
                 goto out;
             }
         }
-        // TODO: Does L need to be big-endian?
+        // Another mystery in SP800-108r1; this iteration's ki data is
+        // generated via:
+        //
+        // ki = PRF(key_in, previous ki || {i ||} Label || 0x00 || Context || L)
+        //
+        // The test data from the CAVP Testing: SP 800-108 Key Derivation Using
+        // Pseudorandom Functions - Key-Based (KBKDF) page
+        // https://csrc.nist.gov/Projects/cryptographic-algorithm-validation-program/key-derivation
+        // seems to require us to ignore L.
+        //
+        // The spec also doesn't indicate whether L should be appended in
+        // big-endian format, or how large (in bits) it should be.
         /*
         if (!HMAC_Update(&hmac, (const uint8_t *)&L, sizeof(L))) {
             goto out;
