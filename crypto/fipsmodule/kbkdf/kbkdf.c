@@ -161,14 +161,14 @@ OPENSSL_EXPORT int KBKDF_feedback(uint8_t *out_key, size_t out_len,
     retval = 1;
 
 out:
+    FIPS_service_indicator_lock_state();
+    KBKDF_verify_service_indicator(digest);
+
     if (ki != NULL) {
         OPENSSL_cleanse(ki, max(iv_len, hmac_size));
         OPENSSL_free(ki);
     }
     HMAC_CTX_cleanse(&hmac);
-
-    FIPS_service_indicator_lock_state();
-    KBKDF_verify_service_indicator(digest);
 
     return retval;
 }
