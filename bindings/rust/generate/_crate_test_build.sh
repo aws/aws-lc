@@ -14,12 +14,7 @@ pushd "${CRATE_DIR}"
 export GOPROXY=direct
 
 cargo clean
-cargo clippy --fix --allow-no-vcs
-cargo fmt
-cargo build
-cargo test
 cargo test --release
-cargo publish --dry-run --allow-dirty
 cargo clean
 
 popd
