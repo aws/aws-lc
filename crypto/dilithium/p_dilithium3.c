@@ -26,7 +26,10 @@ static int pkey_dilithium3_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
     return 0;
   }
 
-  DILITHIUM3_keypair(key->pub, key->priv);
+  if (DILITHIUM3_keypair(key->pub, key->priv) != 0) {
+    return 0;
+  }
+
   key->has_private = 1;
 
   OPENSSL_free(pkey->pkey.ptr);

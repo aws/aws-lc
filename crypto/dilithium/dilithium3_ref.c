@@ -1,3 +1,7 @@
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
+
+
 #define DILITHIUM_MODE 3
 
 #include "./pqcrystals-dilithium_dilithium_common/aes256ctr.h"
