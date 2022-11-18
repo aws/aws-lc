@@ -91,8 +91,9 @@ func RunSawScript(path_to_saw_file string) {
 
 // A function to limit number of concurrent processes.
 func Wait(process_count *int, limit int, wg *sync.WaitGroup) {
-	if *process_count >= limit {
-		log.Printf("Count [%d] reached process limit [%d].", *process_count, limit)
+	// *process_count starts from 0, therefore comparing it with limit-1
+	if *process_count >= limit-1 {
+		log.Printf("Count [%d] reached process limit [%d].", *process_count+1, limit)
 		wg.Wait()
 		*process_count = 0
 	} else {
@@ -106,5 +107,5 @@ func SystemMemory() uint64 {
 	if err != nil {
 		return 0
 	}
-	return uint64(info.Totalram) * uint64(info.Unit)
+	return uint64(info.Freeram) * uint64(info.Unit)
 }

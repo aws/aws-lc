@@ -13,7 +13,7 @@ import (
 	"sync"
 )
 
-// The AES GCM proofs use approximately 8 gb of memory each, using 9 gb for headroom
+// The AES GCM proofs use more than 8.2 gb of memory each, using 9 gb for headroom
 const memory_used_per_test uint64 = 9e9
 
 func main() {
