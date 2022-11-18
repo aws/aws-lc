@@ -1,8 +1,29 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
-pub use bindings::*;
+#[cfg(all(not(feature = "bindgen"), target_os = "linux", target_arch = "x86"))]
+pub use linux_x86_bindings::*;
+#[cfg(all(not(feature = "bindgen"), target_os = "linux", target_arch = "x86"))]
+mod linux_x86_bindings;
 
+#[cfg(all(not(feature = "bindgen"), target_os = "linux", target_arch = "x86_64"))]
+pub use linux_x86_64_bindings::*;
+#[cfg(all(not(feature = "bindgen"), target_os = "linux", target_arch = "x86_64"))]
+mod linux_x86_64_bindings;
+
+#[cfg(all(not(feature = "bindgen"), target_os = "linux", target_arch = "aarch64"))]
+pub use linux_aarch64_bindings::*;
+#[cfg(all(not(feature = "bindgen"), target_os = "linux", target_arch = "aarch64"))]
+mod linux_aarch64_bindings;
+
+#[cfg(all(not(feature = "bindgen"), target_os = "macos", target_arch = "x86_64"))]
+pub use macos_x86_64_bindings::*;
+#[cfg(all(not(feature = "bindgen"), target_os = "macos", target_arch = "x86_64"))]
+mod macos_x86_64_bindings;
+
+#[cfg(feature = "bindgen")]
+pub use bindings::*;
+#[cfg(feature = "bindgen")]
 mod bindings;
 
 #[allow(non_snake_case)]

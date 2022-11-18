@@ -111,7 +111,7 @@ if [[ ! "${OSTYPE}" == "darwin"* ]]; then
     echo
     exit 1
   else
-    echo Ignoring non-MacOS. Crate will not be tested for Mac.
+    echo Ignoring non-MacOS. Crate will not be tested and bindings will not be generated for Mac.
     echo
   fi
 fi
@@ -187,6 +187,9 @@ function prepare_crate_dir {
 
 prepare_crate_dir
 create_prefix_headers
+
+perl -pi -e "s/__AWS_LC_SYS_VERSION__/${AWS_LC_SYS_VERSION}/g" "${SCRIPT_DIR}"/Cargo.toml
+"${SCRIPT_DIR}"/_generate_all_bindings_flavors.sh
 
 if [[ ${SKIP_TEST} -eq 1 ]]; then
   echo Aborting. Crate generated but not tested.

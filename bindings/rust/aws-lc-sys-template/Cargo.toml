@@ -5,7 +5,7 @@ version = "__AWS_LC_SYS_VERSION__"
 authors = ["AWS-LC"]
 edition = "2021"
 repository = "https://github.com/awslabs/aws-lc"
-license = "Apache-2.0"
+license = "Apache-2.0 OR ISC"
 rust-version = "1.57.0"
 include = [
     "build.rs",
@@ -25,9 +25,10 @@ include = [
 
 [features]
 asan = []
+bindgen = ["dep:bindgen"]
 
 [build-dependencies]
-bindgen = "0.61"
+bindgen = { version ="0.61", optional = true }
 regex = "1"
 dunce = "1.0"
 
