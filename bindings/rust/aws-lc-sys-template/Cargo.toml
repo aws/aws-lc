@@ -6,6 +6,7 @@ authors = ["AWS-LC"]
 edition = "2021"
 repository = "https://github.com/awslabs/aws-lc"
 license = "Apache-2.0"
+rust-version = "1.57.0"
 include = [
     "build.rs",
     "Cargo.toml",
@@ -26,7 +27,6 @@ include = [
 asan = []
 
 [build-dependencies]
-cmake = "0.1.48"
 bindgen = "0.61"
 regex = "1"
 dunce = "1.0"
