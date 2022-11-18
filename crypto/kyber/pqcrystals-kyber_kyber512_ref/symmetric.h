@@ -33,7 +33,7 @@ void kyber_aes256ctr_prf(uint8_t *out, size_t outlen, const uint8_t key[32], uin
 
 #else
 
-#include "fips202.h"
+#include "../pqcrystals-kyber_common/fips202.h"
 
 typedef keccak_state xof_state;
 
