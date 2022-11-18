@@ -3204,7 +3204,7 @@ TEST_P(KBKDFTestSI, KBKDFCAVPVectorsSI) {
   delete[] output;
 }
 
-INSTANTIATE_TEST_SUITE_P(KBKDFNonZeroIVSI, KBKDFTestSI,
+INSTANTIATE_TEST_SUITE_P(KBKDF_ServiceIndicatorTest, KBKDFTestSI,
                          testing::ValuesIn(nonzero_iv_vectors));
 
 // SSHKDF test vector from NIST CAVS 14.1 test vectors
