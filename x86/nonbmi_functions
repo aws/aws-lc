@@ -164,6 +164,7 @@ curve25519_pxscalarmul_alt
 curve25519_x25519_alt
 curve25519_x25519base_alt
 edwards25519_epadd_alt
+edwards25519_epdouble_alt
 edwards25519_pepadd_alt
 word_bytereverse
 word_clz

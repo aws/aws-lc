@@ -864,6 +864,50 @@ void reference_curve25519x25519
   if (bignum_iszero(4,prez)) bignum_of_word(4,res,0);
 }
 
+// Doubling formulas from projective inputs (not using the W/T input field)
+// and either generating projective or extended projective results.
+
+void reference_edwards25519pdouble(uint64_t p3[12],uint64_t p1[12])
+{ uint64_t *x1 = p1, *y1 = p1 + 4, *z1 = p1 + 2*4;
+  uint64_t *x3 = p3, *y3 = p3 + 4, *z3 = p3 + 2*4;
+  uint64_t t0[4], t1[4], t2[4], t3[4], t4[4], t5[4],
+           t6[4], t7[4], t8[4], t9[4];
+  bignum_sqr_p25519_alt(t0,x1);
+  bignum_sqr_p25519_alt(t1,y1);
+  bignum_sqr_p25519_alt(t2,z1);
+  bignum_add_p25519(t3,t2,t2);
+  bignum_add_p25519(t4,x1,y1);
+  bignum_sqr_p25519_alt(t5,t4);
+  bignum_add_p25519(t6,t0,t1);
+  bignum_sub_p25519(t7,t6,t5);
+  bignum_sub_p25519(t8,t0,t1);
+  bignum_add_p25519(t9,t3,t8);
+  bignum_mul_p25519_alt(x3,t7,t9);
+  bignum_mul_p25519_alt(y3,t8,t6);
+  bignum_mul_p25519_alt(z3,t9,t8);
+}
+
+void reference_edwards25519epdouble(uint64_t p3[16],uint64_t p1[12])
+{ uint64_t *x1 = p1, *y1 = p1 + 4, *z1 = p1 + 2*4;
+  uint64_t *x3 = p3, *y3 = p3 + 4, *z3 = p3 + 2*4, *w3 = p3 + 3*4;
+  uint64_t t0[4], t1[4], t2[4], t3[4], t4[4], t5[4],
+           t6[4], t7[4], t8[4], t9[4];
+  bignum_sqr_p25519_alt(t0,x1);
+  bignum_sqr_p25519_alt(t1,y1);
+  bignum_sqr_p25519_alt(t2,z1);
+  bignum_add_p25519(t3,t2,t2);
+  bignum_add_p25519(t4,x1,y1);
+  bignum_sqr_p25519_alt(t5,t4);
+  bignum_add_p25519(t6,t0,t1);
+  bignum_sub_p25519(t7,t6,t5);
+  bignum_sub_p25519(t8,t0,t1);
+  bignum_add_p25519(t9,t3,t8);
+  bignum_mul_p25519_alt(x3,t7,t9);
+  bignum_mul_p25519_alt(y3,t8,t6);
+  bignum_mul_p25519_alt(z3,t9,t8);
+  bignum_mul_p25519_alt(w3,t7,t6);
+}
+
 void reference_edwards25519epadd(uint64_t p3[16],uint64_t p1[16],uint64_t p2[16])
 { uint64_t *x1 = p1, *y1 = p1 + 4, *z1 = p1 + 2*4, *w1 = p1 + 3*4;
   uint64_t *x2 = p2, *y2 = p2 + 4, *z2 = p2 + 2*4, *w2 = p2 + 3*4;
@@ -7893,6 +7937,76 @@ int test_edwards25519_epadd_alt(void)
   return 0;
 }
 
+int test_edwards25519_epdouble(void)
+{ uint64_t t, k;
+  printf("Testing edwards25519_epdouble with %d cases\n",tests);
+  k = 4;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b0); reference_mod(k,b1,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b1+k,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b1+2*k,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b1+3*k,b0,p_25519);
+     edwards25519_epdouble(b3,b1);
+     reference_edwards25519epdouble(b4,b1);
+
+     c = reference_compare(4*k,b3,4*k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "2 * <...0x%016"PRIx64"> = "
+               "<...0x%016"PRIx64"> not <...0x%016"PRIx64">\n",
+               k,b1[0],b3[0],b4[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "2 * <...0x%016"PRIx64"> = "
+               "<...0x%016"PRIx64">\n",
+               k,b1[0],b3[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_edwards25519_epdouble_alt(void)
+{ uint64_t t, k;
+  printf("Testing edwards25519_epdouble_alt with %d cases\n",tests);
+  k = 4;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b0); reference_mod(k,b1,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b1+k,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b1+2*k,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b1+3*k,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b2,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b2+k,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b2+2*k,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b2+3*k,b0,p_25519);
+     edwards25519_epdouble_alt(b3,b1);
+     reference_edwards25519epdouble(b4,b1);
+
+     c = reference_compare(4*k,b3,4*k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "2 * <...0x%016"PRIx64"> = "
+               "<...0x%016"PRIx64"> not <...0x%016"PRIx64">\n",
+               k,b1[0],b3[0],b4[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "2 * <...0x%016"PRIx64"> = "
+               "<...0x%016"PRIx64">\n",
+               k,b1[0],b3[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
 int test_edwards25519_pepadd(void)
 { uint64_t t, k;
   printf("Testing edwards25519_pepadd with %d cases\n",tests);
@@ -8798,7 +8912,7 @@ void functionaltest(int enabled,char *name,int (*f)(void))
   // Only benchmark function using supported instructions (on x86)
 
   if (!enabled)
-   { printf("%-32s:             *** NOT APPLICABLE  ***\n",name);
+   { printf("Skipping %s because not applicable (x86 BMI/ADX support)\n",name);
      ++inapplicable;
      return;
    }
@@ -9066,6 +9180,8 @@ int main(int argc, char *argv[])
   functionaltest(all,"curve25519_x25519base_alt",test_curve25519_x25519base_alt);
   functionaltest(bmi,"edwards25519_epadd",test_edwards25519_epadd);
   functionaltest(all,"edwards25519_epadd_alt",test_edwards25519_epadd_alt);
+  functionaltest(bmi,"edwards25519_epdouble",test_edwards25519_epdouble);
+  functionaltest(all,"edwards25519_epdouble_alt",test_edwards25519_epdouble_alt);
   functionaltest(bmi,"edwards25519_pepadd",test_edwards25519_pepadd);
   functionaltest(all,"edwards25519_pepadd_alt",test_edwards25519_pepadd_alt);
   functionaltest(bmi,"p256_montjadd",test_p256_montjadd);

@@ -755,6 +755,11 @@ extern void curve25519_x25519base_alt(uint64_t res[4],uint64_t scalar[4]);
 extern void edwards25519_epadd(uint64_t p3[16],uint64_t p1[16],uint64_t p2[16]);
 extern void edwards25519_epadd_alt(uint64_t p3[16],uint64_t p1[16],uint64_t p2[16]);
 
+/* Extended projective doubling for edwards25519 */
+/* Inputs p1[12]; output p3[16] */
+extern void edwards25519_epdouble(uint64_t p3[16],uint64_t p1[12]);
+extern void edwards25519_epdouble_alt(uint64_t p3[16],uint64_t p1[12]);
+
 /* Extended projective + precomputed mixed addition for edwards25519 */
 /* Inputs p1[16], p2[12]; output p3[16] */
 extern void edwards25519_pepadd(uint64_t p3[16],uint64_t p1[16],uint64_t p2[12]);
