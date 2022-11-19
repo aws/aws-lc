@@ -44,6 +44,8 @@ OBJ = bignum_add_p25519.o \
       edwards25519_epadd_alt.o \
       edwards25519_epdouble.o \
       edwards25519_epdouble_alt.o \
+      edwards25519_pdouble.o \
+      edwards25519_pdouble_alt.o \
       edwards25519_pepadd.o \
       edwards25519_pepadd_alt.o
 

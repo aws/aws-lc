@@ -7947,7 +7947,6 @@ int test_edwards25519_epdouble(void)
    { random_bignum(k,b0); reference_mod(k,b1,b0,p_25519);
      random_bignum(k,b0); reference_mod(k,b1+k,b0,p_25519);
      random_bignum(k,b0); reference_mod(k,b1+2*k,b0,p_25519);
-     random_bignum(k,b0); reference_mod(k,b1+3*k,b0,p_25519);
      edwards25519_epdouble(b3,b1);
      reference_edwards25519epdouble(b4,b1);
 
@@ -7980,15 +7979,74 @@ int test_edwards25519_epdouble_alt(void)
    { random_bignum(k,b0); reference_mod(k,b1,b0,p_25519);
      random_bignum(k,b0); reference_mod(k,b1+k,b0,p_25519);
      random_bignum(k,b0); reference_mod(k,b1+2*k,b0,p_25519);
-     random_bignum(k,b0); reference_mod(k,b1+3*k,b0,p_25519);
-     random_bignum(k,b0); reference_mod(k,b2,b0,p_25519);
-     random_bignum(k,b0); reference_mod(k,b2+k,b0,p_25519);
-     random_bignum(k,b0); reference_mod(k,b2+2*k,b0,p_25519);
-     random_bignum(k,b0); reference_mod(k,b2+3*k,b0,p_25519);
      edwards25519_epdouble_alt(b3,b1);
      reference_edwards25519epdouble(b4,b1);
 
      c = reference_compare(4*k,b3,4*k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "2 * <...0x%016"PRIx64"> = "
+               "<...0x%016"PRIx64"> not <...0x%016"PRIx64">\n",
+               k,b1[0],b3[0],b4[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "2 * <...0x%016"PRIx64"> = "
+               "<...0x%016"PRIx64">\n",
+               k,b1[0],b3[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_edwards25519_pdouble(void)
+{ uint64_t t, k;
+  printf("Testing edwards25519_pdouble with %d cases\n",tests);
+  k = 4;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b0); reference_mod(k,b1,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b1+k,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b1+2*k,b0,p_25519);
+     edwards25519_pdouble(b3,b1);
+     reference_edwards25519pdouble(b4,b1);
+
+     c = reference_compare(3*k,b3,3*k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "2 * <...0x%016"PRIx64"> = "
+               "<...0x%016"PRIx64"> not <...0x%016"PRIx64">\n",
+               k,b1[0],b3[0],b4[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "2 * <...0x%016"PRIx64"> = "
+               "<...0x%016"PRIx64">\n",
+               k,b1[0],b3[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_edwards25519_pdouble_alt(void)
+{ uint64_t t, k;
+  printf("Testing edwards25519_pdouble_alt with %d cases\n",tests);
+  k = 4;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b0); reference_mod(k,b1,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b1+k,b0,p_25519);
+     random_bignum(k,b0); reference_mod(k,b1+2*k,b0,p_25519);
+     edwards25519_pdouble_alt(b3,b1);
+     reference_edwards25519pdouble(b4,b1);
+
+     c = reference_compare(3*k,b3,3*k,b4);
      if (c != 0)
       { printf("### Disparity: [size %4"PRIu64"] "
                "2 * <...0x%016"PRIx64"> = "
@@ -9182,6 +9240,8 @@ int main(int argc, char *argv[])
   functionaltest(all,"edwards25519_epadd_alt",test_edwards25519_epadd_alt);
   functionaltest(bmi,"edwards25519_epdouble",test_edwards25519_epdouble);
   functionaltest(all,"edwards25519_epdouble_alt",test_edwards25519_epdouble_alt);
+  functionaltest(bmi,"edwards25519_pdouble",test_edwards25519_pdouble);
+  functionaltest(all,"edwards25519_pdouble_alt",test_edwards25519_pdouble_alt);
   functionaltest(bmi,"edwards25519_pepadd",test_edwards25519_pepadd);
   functionaltest(all,"edwards25519_pepadd_alt",test_edwards25519_pepadd_alt);
   functionaltest(bmi,"p256_montjadd",test_p256_montjadd);

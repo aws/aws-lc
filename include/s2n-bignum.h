@@ -758,6 +758,11 @@ extern void edwards25519_epadd_alt(uint64_t p3[static 16],uint64_t p1[static 16]
 extern void edwards25519_epdouble(uint64_t p3[static 16],uint64_t p1[static 12]);
 extern void edwards25519_epdouble_alt(uint64_t p3[static 16],uint64_t p1[static 12]);
 
+// Projective doubling for edwards25519
+// Inputs p1[12]; output p3[12]
+extern void edwards25519_pdouble(uint64_t p3[static 12],uint64_t p1[static 12]);
+extern void edwards25519_pdouble_alt(uint64_t p3[static 12],uint64_t p1[static 12]);
+
 // Extended projective + precomputed mixed addition for edwards25519
 // Inputs p1[16], p2[12]; output p3[16]
 extern void edwards25519_pepadd(uint64_t p3[static 16],uint64_t p1[static 16],uint64_t p2[static 12]);

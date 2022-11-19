@@ -2,25 +2,22 @@
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
 // ----------------------------------------------------------------------------
-// Extended projective doubling for edwards25519
-// Input p1[12]; output p3[16]
+// Projective doubling for edwards25519
+// Input p1[12]; output p3[12]
 //
-// extern void edwards25519_epdouble
-//   (uint64_t p3[static 16],uint64_t p1[static 12])
+// extern void edwards25519_pdouble
+//   (uint64_t p3[static 12],uint64_t p1[static 12])
 //
 // If p1 is a point on edwards25519, returns its double p3 = 2 * p1.
-// The output p3 is in extended projective coordinates, representing
-// affine (x,y) by a quadruple (X,Y,Z,T) where x = X / Z, y = Y / Z
-// and x * y = T / Z. The input p1 may also be in the same extended
-// projective representation, but the final T field is not used so
-// a more basic projective triple (X,Y,Z) suffices.
+// Input and output are in pure projective coordinates, representing
+// an affine (x,y) by a triple (X,Y,Z) where x = X / Z, y = Y / Z.
 //
 // Standard ARM ABI: X0 = p3, X1 = p1
 // ----------------------------------------------------------------------------
 #include "_internal_s2n_bignum.h"
 
-        S2N_BN_SYM_VISIBILITY_DIRECTIVE(edwards25519_epdouble)
-        S2N_BN_SYM_PRIVACY_DIRECTIVE(edwards25519_epdouble)
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(edwards25519_pdouble)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(edwards25519_pdouble)
 
         .text
         .balign 4
@@ -43,7 +40,6 @@
 #define x_3 p3, #0
 #define y_3 p3, #NUMSIZE
 #define z_3 p3, #(2*NUMSIZE)
-#define w_3 p3, #(3*NUMSIZE)
 
 // Pointer-offset pairs for temporaries on stack
 
@@ -413,7 +409,7 @@
         stp     x3, x4, [P0];                   \
         stp     x5, x6, [P0+16]
 
-S2N_BN_SYMBOL(edwards25519_epdouble):
+S2N_BN_SYMBOL(edwards25519_pdouble):
 
 // Save regs and make room for temporaries
 
@@ -439,7 +435,6 @@ S2N_BN_SYMBOL(edwards25519_epdouble):
         sub_twice4(t1,t4,t0)
         mul_p25519(y_3,t2,t4)
         mul_p25519(z_3,t3,t2)
-        mul_p25519(w_3,t1,t4)
         mul_p25519(x_3,t1,t3)
 
 // Restore stack and registers
