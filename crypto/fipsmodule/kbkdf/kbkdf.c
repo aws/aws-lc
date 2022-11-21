@@ -27,11 +27,11 @@ static uint32_t to_be32(uint32_t host)
 }
 
 // Surprised min32/min64/etc. didn't end up in stdint.h...
-static inline size_t min(size_t a, size_t b) {
+static size_t min(size_t a, size_t b) {
     return a < b ? a : b;
 }
 
-static inline size_t max(size_t a, size_t b) {
+static size_t max(size_t a, size_t b) {
     return a > b ? a : b;
 }
 
