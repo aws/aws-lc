@@ -3175,6 +3175,16 @@ const KBKDFTestVectorSI nonzero_iv_vectors[] = {
     hmac_sha512_ko, sizeof(hmac_sha512_ko),
     AWSLC_APPROVED
   },
+  {
+    EVP_md5,
+    hmac_sha1_ki, sizeof(hmac_sha1_ki),
+    hmac_sha1_fixedinput, sizeof(hmac_sha1_fixedinput),
+    nullptr, 0,  // included in fixedinput
+    hmac_sha1_iv, sizeof(hmac_sha1_iv),
+    true,
+    hmac_sha1_ko, sizeof(hmac_sha1_ko),
+    AWSLC_NOT_APPROVED
+  },
 };
 
 class KBKDFTestSI : public testing::TestWithParam<KBKDFTestVectorSI> {
