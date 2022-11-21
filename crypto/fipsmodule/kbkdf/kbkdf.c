@@ -122,7 +122,7 @@ OPENSSL_EXPORT int KBKDF_feedback(uint8_t *out_key, size_t out_len,
                 goto out;
             }
         }
-        // Another mystery in SP800-108r1; this iteration's ki data is
+        // Another mystery in SP800-108r1; the current iteration's ki data is
         // generated via:
         //
         // ki = PRF(key_in, previous ki || i || Label || 0x00 || Context || L)
@@ -161,7 +161,7 @@ OPENSSL_EXPORT int KBKDF_feedback(uint8_t *out_key, size_t out_len,
     retval = 1;
 
 out:
-    FIPS_service_indicator_lock_state();
+    FIPS_service_indicator_unlock_state();
     KBKDF_verify_service_indicator(digest);
 
     if (ki != NULL) {
