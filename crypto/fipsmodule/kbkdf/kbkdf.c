@@ -55,7 +55,11 @@ OPENSSL_EXPORT int KBKDF_feedback(uint8_t *out_key, size_t out_len,
 {
     // Sanity checking.
     if (out_key == NULL || digest == NULL || key_in == NULL ||
-        out_len < 1 || key_in_len < 1) {
+        out_len < 1 || key_in_len < 1 ||
+        (key_in == NULL && key_in_len > 0) ||
+        (label == NULL && label_len > 0) ||
+        (context == NULL && context_len > 0) ||
+        (iv == NULL && iv_len > 0)) {
         return 0;
     }
 

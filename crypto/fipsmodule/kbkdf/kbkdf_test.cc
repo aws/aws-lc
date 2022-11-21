@@ -591,3 +591,51 @@ INSTANTIATE_TEST_SUITE_P(KBKDFZeroIV, KBKDFTest,
 
 INSTANTIATE_TEST_SUITE_P(KBKDFNonZeroIV, KBKDFTest,
                          testing::ValuesIn(nonzero_iv_vectors));
+
+TEST(KBKDFTest, KBKDFSanity) {
+    const KBKDFTestVector &kat = nonzero_iv_vectors[0];  // Just need valid data.
+
+    uint8_t *output = new uint8_t[kat.expected_len];
+
+    // NULL in required inputs:
+    EXPECT_FALSE(KBKDF_feedback(nullptr, kat.expected_len, kat.md_func(),
+        kat.ki, kat.ki_len, kat.label, kat.label_len,
+        kat.context, kat.context_len, kat.iv, kat.iv_len, kat.use_counter));
+
+    EXPECT_FALSE(KBKDF_feedback(output, kat.expected_len, NULL,
+        kat.ki, kat.ki_len, kat.label, kat.label_len,
+        kat.context, kat.context_len, kat.iv, kat.iv_len, kat.use_counter));
+
+    EXPECT_FALSE(KBKDF_feedback(output, kat.expected_len, kat.md_func(),
+        nullptr, kat.ki_len, kat.label, kat.label_len,
+        kat.context, kat.context_len, kat.iv, kat.iv_len, kat.use_counter));
+
+    // Zero-length in required inputs:
+    EXPECT_FALSE(KBKDF_feedback(output, 0, kat.md_func(),
+        kat.ki, kat.ki_len, kat.label, kat.label_len,
+        kat.context, kat.context_len, kat.iv, kat.iv_len, kat.use_counter));
+
+    EXPECT_FALSE(KBKDF_feedback(output, kat.expected_len, kat.md_func(),
+        kat.ki, 0, kat.label, kat.label_len,
+        kat.context, kat.context_len, kat.iv, kat.iv_len, kat.use_counter));
+
+    // Non-zero length with NULL optional inputs:
+    EXPECT_FALSE(KBKDF_feedback(output, kat.expected_len, kat.md_func(),
+        kat.ki, kat.ki_len, nullptr, kat.label_len,
+        kat.context, kat.context_len, kat.iv, kat.iv_len, kat.use_counter));
+
+    EXPECT_FALSE(KBKDF_feedback(output, kat.expected_len, kat.md_func(),
+        kat.ki, kat.ki_len, kat.label, kat.label_len,
+        nullptr, 1, kat.iv, kat.iv_len, kat.use_counter));
+
+    EXPECT_FALSE(KBKDF_feedback(output, kat.expected_len, kat.md_func(),
+        kat.ki, kat.ki_len, kat.label, kat.label_len,
+        kat.context, kat.context_len, nullptr, kat.iv_len, kat.use_counter));
+
+    // Valid inputs:
+    EXPECT_TRUE(KBKDF_feedback(output, kat.expected_len, kat.md_func(),
+        kat.ki, kat.ki_len, kat.label, kat.label_len,
+        kat.context, kat.context_len, kat.iv, kat.iv_len, kat.use_counter));
+
+    delete[] output;
+}
