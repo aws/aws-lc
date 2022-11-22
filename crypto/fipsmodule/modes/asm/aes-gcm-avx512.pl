@@ -37,6 +37,7 @@ $win64 = 0;
 $win64 = 1 if ($flavour =~ /[nm]asm|mingw64/ || $output =~ /\.asm$/);
 
 $avx512vaes = 1;
+for (@ARGV) { $avx512vaes = 0 if (/-DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX/); }
 
 $0 =~ m/(.*[\/\\])[^\/\\]+$/;
 $dir = $1;
@@ -4838,6 +4839,8 @@ ___
 # Fallback for old assembler.
 # Should not be reachable as |avx512vaes| flag is set to 1 explicitly.
 $code .= <<___;
+.text
+
 .globl gcm_init_avx512
 .globl gcm_ghash_avx512
 .globl gcm_gmult_avx512
@@ -4845,14 +4848,8 @@ $code .= <<___;
 .globl aes_gcm_encrypt_avx512
 .globl aes_gcm_decrypt_avx512
 
-.hidden gcm_init_avx512
-.hidden gcm_ghash_avx512
-.hidden gcm_gmult_avx512
-.hidden gcm_setiv_avx512
-.hidden aes_gcm_encrypt_avx512
-.hidden aes_gcm_decrypt_avx512
-
 .type gcm_init_avx512,\@abi-omnipotent
+gcm_init_avx512:
 gcm_ghash_avx512:
 gcm_gmult_avx512:
 gcm_setiv_avx512:

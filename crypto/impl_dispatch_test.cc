@@ -35,13 +35,17 @@ class ImplDispatchTest : public ::testing::Test {
  public:
   void SetUp() override {
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
-    vaes_vpclmulqdq_ =
-        (OPENSSL_ia32cap_P[2] & 0xC0030000) &&         // AVX512{F+DQ+BW+VL}
-        (((OPENSSL_ia32cap_P[3] >> 9) & 0x3) == 0x3);  // VAES + VPCLMULQDQ
     aesni_ = CRYPTO_is_AESNI_capable();
     avx_movbe_ = CRYPTO_is_AVX_capable() && CRYPTO_is_MOVBE_capable();
     ssse3_ = CRYPTO_is_SSSE3_capable();
     sha_ext_ = CRYPTO_is_SHAEXT_capable();
+#if !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+    vaes_vpclmulqdq_ =
+        (OPENSSL_ia32cap_P[2] & 0xC0030000) &&         // AVX512{F+DQ+BW+VL}
+        (((OPENSSL_ia32cap_P[3] >> 9) & 0x3) == 0x3);  // VAES + VPCLMULQDQ
+#else
+    vaes_vpclmulqdq_ = false;
+#endif
     is_x86_64_ =
 #if defined(OPENSSL_X86_64)
         true;
