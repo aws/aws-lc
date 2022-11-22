@@ -28,6 +28,7 @@ asan = []
 bindgen = ["dep:bindgen"]
 
 [build-dependencies]
+cmake = "0.1.48"
 bindgen = { version ="0.61", optional = true }
 regex = "1"
 dunce = "1.0"

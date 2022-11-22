@@ -15,7 +15,7 @@
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 // Modifications Copyright Amazon.com, Inc. or its affiliates. See GitHub history for details.
 
-use std::ffi::{OsStr, OsString};
+use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::{env, fs};
@@ -115,108 +115,56 @@ fn find_cmake_command() -> Option<&'static OsStr> {
     }
 }
 
-fn prepare_cmake_args(
-    aws_lc_path: &Path,
-    build_prefix: Option<&str>,
-) -> Result<Vec<OsString>, &'static str> {
-    let mut args: Vec<OsString> = vec![
-        OsString::from("-DBUILD_TESTING=OFF"),
-        OsString::from("-DBUILD_LIBSSL=OFF"),
-        OsString::from("-DDISABLE_PERL=ON"),
-        OsString::from("-DDISABLE_GO=ON"),
-        aws_lc_path.as_os_str().into(),
-    ];
+fn get_cmake_config() -> cmake::Config {
+    let pwd = env::current_dir().unwrap();
+
+    cmake::Config::new(pwd.join(AWS_LC_PATH))
+}
+
+fn prepare_cmake_build(build_prefix: Option<&str>) -> cmake::Config {
+    let mut cmake_cfg = get_cmake_config();
 
     let opt_level = env::var("OPT_LEVEL").unwrap_or_else(|_| "0".to_string());
-    if opt_level.eq("0") {
-        args.push(OsString::from("-DCMAKE_BUILD_TYPE=debug"));
-    } else if opt_level.eq("1") || opt_level.eq("2") {
-        args.push(OsString::from("-DCMAKE_BUILD_TYPE=relwithdebinfo"));
-    } else {
-        args.push(OsString::from("-DCMAKE_BUILD_TYPE=release"));
+    if opt_level.ne("0") {
+        if opt_level.eq("1") || opt_level.eq("2") {
+            cmake_cfg.define("CMAKE_BUILD_TYPE", "relwithdebinfo");
+        } else {
+            cmake_cfg.define("CMAKE_BUILD_TYPE", "release");
+        }
     }
 
     if let Some(symbol_prefix) = build_prefix {
-        args.push(OsString::from(format!(
-            "-DBORINGSSL_PREFIX={}",
-            symbol_prefix
-        )));
-        let include_path = aws_lc_path.join("include");
-        args.push(OsString::from(format!(
-            "-DBORINGSSL_PREFIX_HEADERS={}",
-            include_path.display()
-        )));
+        cmake_cfg.define("BORINGSSL_PREFIX", symbol_prefix);
+        let pwd = env::current_dir().unwrap();
+        let include_path = pwd.join(AWS_LC_PATH).join("include");
+        cmake_cfg.define(
+            "BORINGSSL_PREFIX_HEADERS",
+            include_path.display().to_string(),
+        );
     }
+
+    // Build flags that minimize our crate size.
+    cmake_cfg.define("BUILD_TESTING", "OFF");
+    cmake_cfg.define("BUILD_LIBSSL", "OFF");
+    // Build flags that minimize our dependencies.
+    cmake_cfg.define("DISABLE_PERL", "ON");
+    cmake_cfg.define("DISABLE_GO", "ON");
 
     if cfg!(feature = "asan") {
         env::set_var("CC", "/usr/bin/clang");
         env::set_var("CXX", "/usr/bin/clang++");
         env::set_var("ASM", "/usr/bin/clang");
 
-        args.push(OsString::from("-DASAN=1"));
+        cmake_cfg.define("ASAN", "1");
     }
 
-    Ok(args)
+    cmake_cfg
 }
 
-fn load_env_var(var_name: &str) -> String {
-    env::var(var_name).unwrap_or_else(|_| panic!("Missing Environment variable: {}", var_name))
-}
+fn build_aws_lc() -> PathBuf {
+    let mut cmake_cfg = prepare_cmake_build(Some(&prefix_string()));
 
-fn build_aws_lc() -> Result<PathBuf, &'static str> {
-    let cmake_cmd: &OsStr;
-    if let Some(cmd) = find_cmake_command() {
-        // This can be a let-else as-of Rust 1.65
-        cmake_cmd = cmd;
-    } else {
-        return Err("Missing dependency: cmake");
-    };
-
-    let pwd = env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-    let aws_lc_path = pwd.join(AWS_LC_PATH);
-
-    let out_dir = PathBuf::from(load_env_var("OUT_DIR"));
-    let build_dir = out_dir.join("build");
-    if !build_dir.exists() {
-        fs::create_dir_all(build_dir.clone()).unwrap();
-    }
-
-    let mut setup_command = Command::new(cmake_cmd);
-
-    setup_command.args(prepare_cmake_args(&aws_lc_path, Some(&prefix_string()))?);
-    setup_command.current_dir(&build_dir);
-    println!("running: {:?}", setup_command);
-    let output = setup_command
-        .output()
-        .map_err(|_| "cmake setup command failed")?;
-
-    if !output.status.success() {
-        eprintln!("{}", String::from_utf8(output.stderr).unwrap());
-        return Err("cmake setup command unsuccessful");
-    }
-
-    let mut build_command = Command::new(cmake_cmd);
-    build_command.args(&[
-        OsString::from("--build"),
-        OsString::from("."),
-        OsString::from("--target"),
-        OsString::from("crypto"),
-    ]);
-    build_command.current_dir(&build_dir);
-
-    println!("running: {:?}", build_command);
-    let output = build_command
-        .output()
-        .map_err(|_| "cmake build command failed")?;
-    if !output.status.success() {
-        eprintln!("-- stdout --");
-        eprintln!("{}", String::from_utf8(output.stdout).unwrap());
-        eprintln!("-- stderr --");
-        eprintln!("{}", String::from_utf8(output.stderr).unwrap());
-        return Err("cmake build command unsuccessful.");
-    }
-
-    Ok(out_dir)
+    cmake_cfg.build_target("crypto").build()
 }
 
 fn main() -> Result<(), String> {
@@ -244,7 +192,7 @@ fn main() -> Result<(), String> {
     build_bindgen::generate_bindings(&manifest_dir, Some(&prefix))
         .expect("Unable to generate bindings.");
 
-    let aws_lc_dir = build_aws_lc()?;
+    let aws_lc_dir = build_aws_lc();
     let lib_file = Crypto.locate_file(&aws_lc_dir, Static, None);
     let prefixed_lib_file = Crypto.locate_file(&aws_lc_dir, Static, Some(&prefix));
     fs::rename(lib_file, prefixed_lib_file).expect("Unexpected error: Library not found");
