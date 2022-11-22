@@ -12,27 +12,14 @@
 #include "../../internal.h"
 #include "../service_indicator/internal.h"
 
-// Convert a 32-bit little-endian value into a 32-bit big-endian value.
-// AWS-LC only supports little-endian hosts.
-static uint32_t to_be32(uint32_t host)
-{
-    uint32_t value = 0;
-
-    value |= (host & 0xff000000) >> 24;
-    value |= (host & 0x00ff0000) >> 8;
-    value |= (host & 0x0000ff00) << 8;
-    value |= (host & 0x000000ff) << 24;
-
-    return value;
+static inline size_t ct_min(size_t a, size_t b) {
+    crypto_word_t lt = constant_time_lt_w(a, b);
+    return constant_time_select_w(lt, a, b);
 }
 
-// Surprised min32/min64/etc. didn't end up in stdint.h...
-static inline size_t min(size_t a, size_t b) {
-    return a < b ? a : b;
-}
-
-static inline size_t max(size_t a, size_t b) {
-    return a > b ? a : b;
+static inline size_t ct_max(size_t a, size_t b) {
+    crypto_word_t gt = constant_time_ge_w(a, b);
+    return constant_time_select_w(gt, a, b);
 }
 
 #ifndef BYTEBITS
@@ -63,6 +50,8 @@ OPENSSL_EXPORT int KBKDF_feedback(uint8_t *out_key, size_t out_len,
         return 0;
     }
 
+    // The horrible variable names below (ki, L, h, i, n) are all courtesy of
+    // SP800-108r1.
     int retval = 0;
     uint8_t *ki = NULL;
 
@@ -93,7 +82,7 @@ OPENSSL_EXPORT int KBKDF_feedback(uint8_t *out_key, size_t out_len,
         goto out;
     }
 
-    ki = OPENSSL_malloc(max(iv_len, hmac_size));
+    ki = OPENSSL_malloc(ct_max(iv_len, hmac_size));
     size_t ki_len = key_in_len;
     if (iv != NULL && iv_len > 0) {
         // Set k(0) to the IV.
@@ -112,7 +101,7 @@ OPENSSL_EXPORT int KBKDF_feedback(uint8_t *out_key, size_t out_len,
             }
         }
         if (use_counter) {
-            uint32_t be_i = to_be32(i);
+            uint32_t be_i = CRYPTO_bswap4(i);
             if(!HMAC_Update(&hmac, (const uint8_t *)&be_i, sizeof(be_i))) {
                 goto out;
             }
@@ -149,7 +138,7 @@ OPENSSL_EXPORT int KBKDF_feedback(uint8_t *out_key, size_t out_len,
             goto out;
         }
 
-        size_t this_write = min(ki_len, to_write);
+        size_t this_write = ct_min(ki_len, to_write);
         memcpy(out_key + written, ki, this_write);
         written += this_write;
         to_write -= this_write;
@@ -166,10 +155,12 @@ OPENSSL_EXPORT int KBKDF_feedback(uint8_t *out_key, size_t out_len,
 
 out:
     FIPS_service_indicator_unlock_state();
-    KBKDF_verify_service_indicator(digest);
+    if (retval) {
+        KBKDF_verify_service_indicator(digest);
+    }
 
     if (ki != NULL) {
-        OPENSSL_cleanse(ki, max(iv_len, hmac_size));
+        OPENSSL_cleanse(ki, ct_max(iv_len, hmac_size));
         OPENSSL_free(ki);
     }
     HMAC_CTX_cleanse(&hmac);
