@@ -19,7 +19,8 @@ Only the reference C implementation of Dilithium3 is currently integrated. The c
 * `rng.{h|c}` are deleted because we are using the randomness generation functions provided by AWS-LC.
 * `symmetric-aes.c` are removed because we are using only the SHA3 based Dilithium.
 * `sign.c`: calls to `randombytes` function is replaced with calls to `pq_custom_randombytes` and the appropriate header file is included (`crypto/rand_extra/pq_custom_randombytes.h`).
-* `sign.c` was modified from `*mlen = -1;` to `*mlen = 0;` within the `crypto_sign_open` function. This was modified as `*mlen = -1;` is attempting to assign `-1` to an unsigned integer, giving the warning: ` warning C4245: '=': conversion from 'int' to 'std::size_t'`. This warning would cause Windows x86 builds to fail.
+* `sign.c` was modified from `*mlen = -1;` to `*mlen = 0;` within the `crypto_sign_open` function. This was modified as `*mlen = -1;` is attempting to assign `-1` to an unsigned integer, giving the warning: ` warning C4245: '=': conversion from 'int' to 'std::size_t'`. This warning would cause Windows x86 builds to fail. See [pq-crystals/dilithium#65](https://github.com/pq-crystals/dilithium/issues/65) for upstream issue raised.
+* `sign.c` was modified to correct the documentation around `crypto_sign_verify`. See [pq-crystals/dilithium/#66](https://github.com/pq-crystals/dilithium/pull/66) for upstream PR.
 * `config.h`: `#define DILITHIUM_MODE 3`  is explicitly defined (to specify Dilithium3).
 
 **Usage.** The API is defined and documented in `include/openssl/evp.h`. To see examples of how to use Dilithium3, see `crypto/dilithium/p_dilithium_test.cc`. TLDR:

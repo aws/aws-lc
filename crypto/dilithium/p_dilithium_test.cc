@@ -228,6 +228,7 @@ TEST(Dilithium3Test, Encoding) {
   CBS_init(&cbs, der, der_len);
   EVP_PKEY *dilithium_priv_from_der = EVP_parse_private_key(&cbs);
   ASSERT_TRUE(dilithium_priv_from_der);
+  EXPECT_EQ(1, EVP_PKEY_cmp(dilithium_priv_from_der, privkey.get()));
 
   EVP_PKEY_CTX_free(dilithium_pkey_ctx);
   EVP_PKEY_free(dilithium_pkey);

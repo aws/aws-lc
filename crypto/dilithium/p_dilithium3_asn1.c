@@ -141,7 +141,7 @@ static int dilithium3_priv_decode(EVP_PKEY *out, CBS *params, CBS *key) {
   // See https://datatracker.ietf.org/doc/draft-ietf-lamps-dilithium-certificates/ section 6.
 
   // The parameters must be omitted.
-  if (CBS_len(params) != 0) {
+  if (CBS_len(params) != 0 ) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
   }
