@@ -520,6 +520,27 @@ if(FIPS_SHARED)
       DEPENDS ../util/fipstools/inject_hash/inject_hash.go
       WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
     )
+
+    # On macOS 11 and higher on Apple Silicon, codesigning is mandatory for
+    # binaries to run. This applies to both executables and dylibs. An ad-hoc
+    # signature is sufficient, and the linker will automatically apply one when
+    # a binary is created (see https://github.com/Homebrew/brew/issues/9082).
+    #
+    # When we build libcrypto.dylib the linker automatically signs it. But then
+    # we inject the FIPS integrity hash into libcrypto.dylib which changes the
+    # binary so the signature applied by the linker is obviously not valid
+    # anymore. So when an application, like crypto_test, tries to load
+    # libcrypto.dylib it crashes because the signature is not valid. To work
+    # around this we add an ad-hoc signature to `libcrypto.dylib` after the
+    # FIPS integrity hash is injected.
+    if (APPLE AND ARCH STREQUAL "aarch64")
+      add_custom_command(
+        TARGET crypto POST_BUILD
+        COMMAND codesign -s - $<TARGET_FILE:crypto>
+        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+      )
+    endif()
+
   endif()
 else()
   build_libcrypto(crypto $<TARGET_OBJECTS:fipsmodule>)
