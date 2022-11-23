@@ -6,7 +6,7 @@ set -e
 
 function usage {
   echo
-  echo "Usage: $(basename "${0}") [-d] [-b] [-u] [-m]"
+  echo "Usage: $(basename "${0}") [-d] [-b] [-u] [-m] [-s]"
   echo
 }
 

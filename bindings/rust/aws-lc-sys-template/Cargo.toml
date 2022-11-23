@@ -25,7 +25,7 @@ include = [
 
 [features]
 asan = []
-bindgen = ["dep:bindgen"]
+run_bindgen = ["bindgen"]
 
 [build-dependencies]
 cmake = "0.1.48"
