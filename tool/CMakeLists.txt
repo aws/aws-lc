@@ -47,8 +47,8 @@ install(TARGETS bssl
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 function(build_benchmark target_name install_path)
-  find_library(lib_crypto crypto PATHS ${install_path}/lib/ ${install_path}/lib64/ NO_DEFAULT_PATH)
-  message("-- Building ${target_name} benchmark using header files from ${install_path}/include and libcrypto from ${lib_crypto}.")
+  find_library(libcrypto-${target_name} crypto PATHS ${install_path}/lib/ ${install_path}/lib64/ NO_DEFAULT_PATH)
+  message(STATUS "Building ${target_name} benchmark using header files from ${install_path}/include and libcrypto from ${libcrypto-${target_name}}.")
   add_executable(
           ${target_name}
           speed.cc
@@ -59,7 +59,7 @@ function(build_benchmark target_name install_path)
   # Link with the internal tool directory for shared headers with the rest of the tool instead of the top level AWS-LC
   # include directory
   target_include_directories(${target_name} PUBLIC ${install_path}/include ${AWSLC_INSTALL_DIR}/include/internal/tool)
-  target_link_libraries(${target_name} ${lib_crypto} ${LIBRT_FLAG})
+  target_link_libraries(${target_name} ${libcrypto-${target_name}} ${LIBRT_FLAG})
   if(NOT MSVC AND NOT ANDROID)
     target_link_libraries(${target_name} pthread dl)
   endif()
