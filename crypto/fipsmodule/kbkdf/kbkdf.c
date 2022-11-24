@@ -83,10 +83,14 @@ OPENSSL_EXPORT int KBKDF_feedback(uint8_t *out_key, size_t out_len,
     }
 
     ki = OPENSSL_malloc(ct_max(iv_len, hmac_size));
+    if (ki == NULL) {
+        OPENSSL_PUT_ERROR(CRYPTO, ERR_R_MALLOC_FAILURE);
+        goto out;
+    }
     size_t ki_len = key_in_len;
     if (iv != NULL && iv_len > 0) {
         // Set k(0) to the IV.
-        memcpy(ki, iv, iv_len);
+        OPENSSL_memcpy(ki, iv, iv_len);
         ki_len = iv_len;
     }
 
@@ -139,7 +143,11 @@ OPENSSL_EXPORT int KBKDF_feedback(uint8_t *out_key, size_t out_len,
         }
 
         size_t this_write = ct_min(ki_len, to_write);
-        memcpy(out_key + written, ki, this_write);
+        if (written + this_write > out_len) {
+            // Double-check buffer bounds.
+            this_write = out_len - written;
+        }
+        OPENSSL_memcpy(out_key + written, ki, this_write);
         written += this_write;
         to_write -= this_write;
 
@@ -159,10 +167,7 @@ out:
         KBKDF_verify_service_indicator(digest);
     }
 
-    if (ki != NULL) {
-        OPENSSL_cleanse(ki, ct_max(iv_len, hmac_size));
-        OPENSSL_free(ki);
-    }
+    OPENSSL_free(ki);
     HMAC_CTX_cleanse(&hmac);
 
     return retval;
