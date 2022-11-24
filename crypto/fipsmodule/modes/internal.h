@@ -317,16 +317,17 @@ void gcm_ghash_neon(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
 
 #if defined(OPENSSL_AARCH64)
 #define AES_ARMV8_GCM
-// Note that in the argument list, |bit_len| and |out| are interchanged compared
-// to |aesni_gcm_encrypt|. Moreover, note that it is a bit (not byte) length.
+// Note that in the argument list, the length is provided in bits (not bytes)
+// and that |bit_len| and |out| are interchanged compared to
+// |aesni_gcm_encrypt|.
 size_t aesv8_gcm_8x_enc_128(const uint8_t *in, size_t bit_len, uint8_t *out,
-                            const AES_KEY *key, uint8_t ivec[16], uint64_t *Xi);
+                            uint64_t *Xi, uint8_t ivec[16], const AES_KEY *key);
 size_t aesv8_gcm_8x_dec_128(const uint8_t *in, size_t bit_len, uint8_t *out,
-                            const AES_KEY *key, uint8_t ivec[16], uint64_t *Xi);
+                            uint64_t *Xi, uint8_t ivec[16], const AES_KEY *key);
 size_t aesv8_gcm_8x_enc_256(const uint8_t *in, size_t bit_len, uint8_t *out,
-                            const AES_KEY *key, uint8_t ivec[16], uint64_t *Xi);
+                            uint64_t *Xi, uint8_t ivec[16], const AES_KEY *key);
 size_t aesv8_gcm_8x_dec_256(const uint8_t *in, size_t bit_len, uint8_t *out,
-                            const AES_KEY *key, uint8_t ivec[16], uint64_t *Xi);
+                            uint64_t *Xi, uint8_t ivec[16], const AES_KEY *key);
 #endif
 
 #elif defined(OPENSSL_PPC64LE)
