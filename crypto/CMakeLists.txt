@@ -596,7 +596,10 @@ if(FIPS_SHARED)
     # libcrypto.dylib it crashes because the signature is not valid. To work
     # around this we add an ad-hoc signature to `libcrypto.dylib` after the
     # FIPS integrity hash is injected.
-    if (APPLE AND ARCH STREQUAL "aarch64")
+    #
+    # Note: we use CMAKE_SYSTEM_PROCESSOR directly instead of the ARCH variable
+    # because if NO_ASM build flag is defined then ARCH is set to "generic".
+    if (APPLE AND CMAKE_SYSTEM_PROCESSOR MATCHES "arm64.*|ARM64|aarch64")
       add_custom_command(
         TARGET crypto POST_BUILD
         COMMAND codesign -s - $<TARGET_FILE:crypto>
