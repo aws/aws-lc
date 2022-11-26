@@ -207,7 +207,22 @@ static int ec_missing_parameters(const EVP_PKEY *pkey) {
 }
 
 static int ec_copy_parameters(EVP_PKEY *to, const EVP_PKEY *from) {
-  return EC_KEY_set_group(to->pkey.ec, EC_KEY_get0_group(from->pkey.ec));
+  if (from->pkey.ec == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_KEY_SET);
+    return 0;
+  }
+  const EC_GROUP *group = EC_KEY_get0_group(from->pkey.ec);
+  if (group == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_MISSING_PARAMETERS);
+    return 0;
+  }
+  if (to->pkey.ec == NULL) {
+    to->pkey.ec = EC_KEY_new();
+    if (to->pkey.ec == NULL) {
+      return 0;
+    }
+  }
+  return EC_KEY_set_group(to->pkey.ec, group);
 }
 
 static int ec_cmp_parameters(const EVP_PKEY *a, const EVP_PKEY *b) {
