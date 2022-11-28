@@ -158,7 +158,7 @@ TEST(Dilithium3Test, KeySize) {
   EXPECT_TRUE(EVP_PKEY_keygen(dilithium_pkey_ctx, &dilithium_pkey));
 
   EXPECT_EQ(DILITHIUM3_SIGNATURE_BYTES, EVP_PKEY_size(dilithium_pkey));
-  EXPECT_EQ(8*(DILITHIUM3_SIGNATURE_BYTES), EVP_PKEY_bits(dilithium_pkey));
+  EXPECT_EQ(8*(DILITHIUM3_PUBLIC_KEY_BYTES), EVP_PKEY_bits(dilithium_pkey));
 
   EVP_PKEY_CTX_free(dilithium_pkey_ctx);
   EVP_PKEY_free(dilithium_pkey);
@@ -233,7 +233,7 @@ TEST(Dilithium3Test, Encoding) {
   // The private key dilithium3Key_from_der must be equal to the original key
   EXPECT_EQ(Bytes(dilithium3Key->priv), Bytes(dilithium3Key_from_der->priv,
                                               DILITHIUM3_PRIVATE_KEY_BYTES));
-  
+
   EVP_PKEY_CTX_free(dilithium_pkey_ctx);
   EVP_PKEY_free(dilithium_pkey);
   EVP_PKEY_free(dilithium_pkey_from_der);

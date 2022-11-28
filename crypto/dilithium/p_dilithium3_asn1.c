@@ -177,7 +177,7 @@ static int dilithium3_size(const EVP_PKEY *pkey) {
 }
 
 static int dilithium3_bits(const EVP_PKEY *pkey) {
-  return 8 * (DILITHIUM3_SIGNATURE_BYTES);
+  return 8 * (DILITHIUM3_PUBLIC_KEY_BYTES);
 }
 
 const EVP_PKEY_ASN1_METHOD dilithium3_asn1_meth = {
