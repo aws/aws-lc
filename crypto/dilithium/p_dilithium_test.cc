@@ -7,8 +7,7 @@
 #include <openssl/evp.h>
 #include <openssl/mem.h>
 #include <openssl/obj.h>
-#include <openssl/bio.h>
-#include <openssl/pem.h>
+#include "../test/test_util.h"
 
 #include <vector>
 #include "../crypto/evp_extra/internal.h"
@@ -230,7 +229,11 @@ TEST(Dilithium3Test, Encoding) {
   CBS_init(&cbs, der, der_len);
   EVP_PKEY *dilithium_priv_from_der = EVP_parse_private_key(&cbs);
   ASSERT_TRUE(dilithium_priv_from_der);
-
+  const DILITHIUM3_KEY *dilithium3Key_from_der = (DILITHIUM3_KEY *)(dilithium_priv_from_der->pkey.ptr);
+  // The private key dilithium3Key_from_der must be equal to the original key
+  EXPECT_EQ(Bytes(dilithium3Key->priv), Bytes(dilithium3Key_from_der->priv,
+                                              DILITHIUM3_PRIVATE_KEY_BYTES));
+  
   EVP_PKEY_CTX_free(dilithium_pkey_ctx);
   EVP_PKEY_free(dilithium_pkey);
   EVP_PKEY_free(dilithium_pkey_from_der);
