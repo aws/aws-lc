@@ -13,21 +13,20 @@ static int pkey_dilithium3_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
   DILITHIUM3_KEY *key = OPENSSL_malloc(sizeof(DILITHIUM3_KEY));
   if (key == NULL) {
     OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
-    return 0;
+    goto err;
   }
 
   if (pkey == NULL || ctx == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_MISSING_PARAMETERS);
-    return 0;
+    goto err;
   }
 
   if (!EVP_PKEY_set_type(pkey, EVP_PKEY_DILITHIUM3)) {
-    OPENSSL_free(key);
-    return 0;
+    goto err;
   }
 
   if (DILITHIUM3_keypair(key->pub, key->priv) != 0) {
-    return 0;
+    goto err;
   }
 
   key->has_private = 1;
@@ -35,6 +34,11 @@ static int pkey_dilithium3_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
   OPENSSL_free(pkey->pkey.ptr);
   pkey->pkey.ptr = key;
   return 1;
+
+err:
+  OPENSSL_free(key);
+  return 0;
+
 }
 
 static int pkey_dilithium3_sign_message(EVP_PKEY_CTX *ctx, uint8_t *sig,
@@ -63,11 +67,9 @@ static int pkey_dilithium3_sign_message(EVP_PKEY_CTX *ctx, uint8_t *sig,
   }
 
   if (DILITHIUM3_sign(sig, siglen, tbs, tbslen, key->priv) != 0) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_SIGNATURE);
+    OPENSSL_PUT_ERROR(EVP, EVP_R_SIGN_FAILURE);
     return 0;
   }
-  // The size of the signature that has been written to the output buffer.
-  *siglen = DILITHIUM3_SIGNATURE_BYTES;
   return 1;
 }
 
