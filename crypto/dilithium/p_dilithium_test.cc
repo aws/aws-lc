@@ -231,8 +231,8 @@ TEST(Dilithium3Test, Encoding) {
   ASSERT_TRUE(dilithium_priv_from_der);
   const DILITHIUM3_KEY *dilithium3Key_from_der = (DILITHIUM3_KEY *)(dilithium_priv_from_der->pkey.ptr);
   // The private key dilithium3Key_from_der must be equal to the original key
-  EXPECT_EQ(Bytes(dilithium3Key->priv), Bytes(dilithium3Key_from_der->priv,
-                                              DILITHIUM3_PRIVATE_KEY_BYTES));
+  EXPECT_EQ(Bytes(dilithium3Key->priv, DILITHIUM3_PRIVATE_KEY_BYTES),
+            Bytes(dilithium3Key_from_der->priv, DILITHIUM3_PRIVATE_KEY_BYTES));
 
   EVP_PKEY_CTX_free(dilithium_pkey_ctx);
   EVP_PKEY_free(dilithium_pkey);
@@ -290,5 +290,4 @@ TEST(Dilithium3Test, SIGOperations) {
   EVP_PKEY_free(dilithium_pkey);
   EVP_PKEY_CTX_free(dilithium_pkey_ctx);
   md_ctx.Reset();
-
 }
