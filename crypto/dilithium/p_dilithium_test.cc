@@ -281,7 +281,7 @@ TEST(Dilithium3Test, SIGOperations) {
                              badmsg.data(), badmsg.size()));
 
   // check that the two signatures are not equal
-  EXPECT_NE(0, memcmp(signature, signature1, signature_len));
+  EXPECT_NE(0, OPENSSL_memcmp(signature, signature1, signature_len));
 
   // verify the signed message fails upon a bad signature
   ASSERT_FALSE(EVP_DigestVerify(md_ctx.get(), signature1, signature_len,
