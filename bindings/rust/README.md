@@ -14,7 +14,7 @@ In order to generate the `aws-lc-sys` crate, you need to have the following inst
 * libclang
 * docker
 * C compilation tools to build AWS-LC. We pull in [generated-src](https://github.com/awslabs/aws-lc/tree/main/generated-src) into `aws-lc-sys`, so Go and Perl aren't needed (for non-FIPS).
-* CMake3.16 or above. [`cmake-rs`](https://docs.rs/cmake/latest/cmake/) appends build options after the path, which isn't supported in older versions of cmake.
+* CMake3 or above. [`cmake-rs`](https://docs.rs/cmake/latest/cmake/) appends build options after the path, which isn't supported in older versions of cmake.
 
 ### To Use
 The `aws-lc-sys` create can be built by running the [generate.sh](./generate/generate.sh) script. 

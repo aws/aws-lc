@@ -188,8 +188,7 @@ function prepare_crate_dir {
 prepare_crate_dir
 create_prefix_headers
 
-perl -pi -e "s/__AWS_LC_SYS_VERSION__/${AWS_LC_SYS_VERSION}/g" "${SCRIPT_DIR}"/Cargo.toml
-"${SCRIPT_DIR}"/_generate_all_bindings_flavors.sh
+"${SCRIPT_DIR}"/_generate_all_bindings_flavors.sh "$( [ ${IGNORE_MACOS} -eq 1 ] && echo '-m' )"
 
 if [[ ${SKIP_TEST} -eq 1 ]]; then
   echo Aborting. Crate generated but not tested.

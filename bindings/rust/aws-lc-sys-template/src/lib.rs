@@ -1,30 +1,27 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
-#[cfg(all(not(feature = "bindgen"), target_os = "linux", target_arch = "x86"))]
-pub use linux_x86_bindings::*;
-#[cfg(all(not(feature = "bindgen"), target_os = "linux", target_arch = "x86"))]
-mod linux_x86_bindings;
+macro_rules! use_bindings {
+    ($bindings:ident) => {
+        mod $bindings;
+        pub use $bindings::*;
+    }
+}
 
-#[cfg(all(not(feature = "bindgen"), target_os = "linux", target_arch = "x86_64"))]
-pub use linux_x86_64_bindings::*;
-#[cfg(all(not(feature = "bindgen"), target_os = "linux", target_arch = "x86_64"))]
-mod linux_x86_64_bindings;
+#[cfg(all(not(feature = "native_bindings"), target_os = "linux", target_arch = "x86"))]
+use_bindings!(linux_x86_bindings);
 
-#[cfg(all(not(feature = "bindgen"), target_os = "linux", target_arch = "aarch64"))]
-pub use linux_aarch64_bindings::*;
-#[cfg(all(not(feature = "bindgen"), target_os = "linux", target_arch = "aarch64"))]
-mod linux_aarch64_bindings;
+#[cfg(all(not(feature = "native_bindings"), target_os = "linux", target_arch = "x86_64"))]
+use_bindings!(linux_x86_64_bindings);
 
-#[cfg(all(not(feature = "bindgen"), target_os = "macos", target_arch = "x86_64"))]
-pub use macos_x86_64_bindings::*;
-#[cfg(all(not(feature = "bindgen"), target_os = "macos", target_arch = "x86_64"))]
-mod macos_x86_64_bindings;
+#[cfg(all(not(feature = "native_bindings"), target_os = "linux", target_arch = "aarch64"))]
+use_bindings!(linux_aarch64_bindings);
 
-#[cfg(feature = "bindgen")]
-pub use bindings::*;
-#[cfg(feature = "bindgen")]
-mod bindings;
+#[cfg(all(not(feature = "native_bindings"), target_os = "macos", target_arch = "x86_64"))]
+use_bindings!(macos_x86_64_bindings);
+
+#[cfg(feature = "native_bindings")]
+use_bindings!(bindings);
 
 #[allow(non_snake_case)]
 /// # Safety

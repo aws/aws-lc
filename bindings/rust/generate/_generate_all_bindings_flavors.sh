@@ -41,6 +41,8 @@ fi
 
 pushd "${AWS_LC_DIR}"
 
+## TODO: Find a way to pre-generate bindings for macos-aarch64 on the fly.
+
 ##
 ## These docker image can be built from Dockerfiles under: <AWS-LC-DIR>/tests/ci/docker_images/rust
 ##

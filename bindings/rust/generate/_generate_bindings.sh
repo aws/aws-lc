@@ -6,13 +6,13 @@ set -e -x
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 AWS_LC_DIR=$( cd -- "${SCRIPT_DIR}/../../../" &> /dev/null && pwd)
-GEN_DIR="${AWS_LC_DIR}"/bindings/rust/generate
 TMP_DIR="${AWS_LC_DIR}"/bindings/rust/tmp
+CRATE_DIR="${TMP_DIR}"/aws-lc-sys
 
-pushd "${GEN_DIR}"
+pushd "${CRATE_DIR}"
 
 cargo clean
-cargo run "${TMP_DIR}"/aws-lc-sys
+cargo build --features generate
 cargo clean
 
 popd
