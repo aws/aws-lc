@@ -4286,6 +4286,9 @@ extern "C" {
 #define SN_KYBER512 "KYBER512"
 #define NID_KYBER512 970
 
+#define SN_DILITHIUM3 "DILITHIUM3"
+#define NID_DILITHIUM3 971
+
 
 #if defined(__cplusplus)
 } /* extern C */
