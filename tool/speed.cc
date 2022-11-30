@@ -163,13 +163,11 @@ static uint64_t g_timeout_seconds = 1;
 static std::vector<size_t> g_chunk_lengths = {16, 256, 1350, 8192, 16384};
 
 static bool TimeFunction(TimeResults *results, std::function<bool()> func) {
-#if defined(BORINGSSL_FIPS)
-  // The first time |func| is called an expensive self checks might run that
+  // The first time |func| is called an expensive self check might run that
   // will skew the iterations between checks calculation
   if (!func()) {
     return false;
   }
-#endif
   // total_us is the total amount of time that we'll aim to measure a function
   // for.
   const uint64_t total_us = g_timeout_seconds * 1000000;
