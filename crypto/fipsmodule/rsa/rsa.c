@@ -966,7 +966,7 @@ int RSA_check_fips(const RSA *key) {
     return 0;
   }
 
-  if (!RSA_sign(NID_sha256, data, sizeof(data), sig, &sig_len, key)) {
+  if (!RSA_sign(NID_sha256, data, sizeof(data), sig, &sig_len, (RSA*) key)) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     ret = 0;
     goto cleanup;
@@ -974,7 +974,7 @@ int RSA_check_fips(const RSA *key) {
   if (boringssl_fips_break_test("RSA_PWCT")) {
     data[0] = ~data[0];
   }
-  if (!RSA_verify(NID_sha256, data, sizeof(data), sig, sig_len, key)) {
+  if (!RSA_verify(NID_sha256, data, sizeof(data), sig, sig_len, (RSA*) key)) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     ret = 0;
   }
