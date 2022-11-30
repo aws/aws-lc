@@ -130,3 +130,41 @@ extern void curve25519_x25519_byte_alt(uint8_t res[static 32], const uint8_t sca
 // another u-coordinate, is saved in |res|.
 extern void curve25519_x25519base_byte(uint8_t res[static 32], const uint8_t scalar[static 32]);
 extern void curve25519_x25519base_byte_alt(uint8_t res[static 32], const uint8_t scalar[static 32]);
+
+/// For RSA
+
+// Square, z := x^2
+// Input x[32]; output z[64]; temporary buffer t[>=72]
+extern void bignum_ksqr_32_64 (uint64_t z[static 64], uint64_t x[static 32], uint64_t t[static 72]);
+extern void bignum_ksqr_32_64_neon (uint64_t z[static 64], uint64_t x[static 32], uint64_t t[static 72]);
+
+// Square, z := x^2
+// Input x[16]; output z[32]; temporary buffer t[>=24]
+extern void bignum_ksqr_16_32 (uint64_t z[static 32], uint64_t x[static 16], uint64_t t[static 24]);
+extern void bignum_ksqr_16_32_neon (uint64_t z[static 32], uint64_t x[static 16], uint64_t t[static 24]);
+
+// Multiply z := x * y
+// Inputs x[32], y[32]; output z[64]; temporary buffer t[>=96]
+extern void bignum_kmul_32_64 (uint64_t z[static 64], uint64_t x[static 32], uint64_t y[static 32], uint64_t t[static 96]);
+extern void bignum_kmul_32_64_neon (uint64_t z[static 64], uint64_t x[static 32], uint64_t y[static 32], uint64_t t[static 96]);
+
+// Multiply z := x * y
+// Inputs x[16], y[16]; output z[32]; temporary buffer t[>=32]
+extern void bignum_kmul_16_32 (uint64_t z[static 32], uint64_t x[static 16], uint64_t y[static 16], uint64_t t[static 32]);
+extern void bignum_kmul_16_32_neon (uint64_t z[static 32], uint64_t x[static 16], uint64_t y[static 16], uint64_t t[static 32]);
+
+// Extended Montgomery reduce in 8-digit blocks, results in input-output buffer
+// Inputs z[2*k], m[k], w; outputs function return (extra result bit) and z[2*k]
+extern uint64_t bignum_emontredc_8n (uint64_t k, uint64_t *z, uint64_t *m, uint64_t w);
+extern uint64_t bignum_emontredc_8n_neon (uint64_t k, uint64_t *z, uint64_t *m, uint64_t w);
+
+// Optionally subtract, z := x - y (if p nonzero) or z := x (if p zero)
+// Inputs x[k], p, y[k]; outputs function return (carry-out) and z[k]
+extern uint64_t bignum_optsub (uint64_t k, uint64_t *z, uint64_t *x, uint64_t p, uint64_t *y);
+
+// Compare bignums, x >= y
+// Inputs x[m], y[n]; output function return
+extern uint64_t bignum_ge (uint64_t m, uint64_t *x, uint64_t n, uint64_t *y);
+
+extern uint64_t bignum_mul (uint64_t k, uint64_t *z, uint64_t m, uint64_t *x, uint64_t n, uint64_t *y);
+extern uint64_t bignum_sqr (uint64_t k, uint64_t *z, uint64_t m, uint64_t *x);

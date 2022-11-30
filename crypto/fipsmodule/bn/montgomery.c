@@ -106,8 +106,10 @@
  * (eay@cryptsoft.com).  This product includes software written by Tim
  * Hudson (tjh@cryptsoft.com). */
 
+#include <bits/time.h>
 #include <openssl/bn.h>
 
+#include <alloca.h>
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -120,6 +122,7 @@
 
 #include "internal.h"
 #include "../../internal.h"
+#include "../../../third_party/s2n-bignum/include/s2n-bignum_aws-lc.h"
 
 
 BN_MONT_CTX *BN_MONT_CTX_new(void) {
@@ -437,11 +440,65 @@ int BN_mod_mul_montgomery(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
     // This bound is implied by |bn_mont_ctx_set_N_and_n0|. |bn_mul_mont|
     // allocates |num| words on the stack, so |num| cannot be too large.
     assert((size_t)num <= BN_MONTGOMERY_MAX_WORDS);
-    if (!bn_mul_mont(r->d, a->d, b->d, mont->N.d, mont->n0, num)) {
-      // The check above ensures this won't happen.
-      assert(0);
-      OPENSSL_PUT_ERROR(BN, ERR_R_INTERNAL_ERROR);
-      return 0;
+
+    if ((num % 8 == 0) && BN_BITS2 == 64 &&
+        (2 * (uint64_t)num + 96) <= BN_MONTGOMERY_MAX_WORDS) {
+      uint64_t *l = alloca(2 * num * sizeof(uint64_t)); // result buffer of big int mult.
+      uint64_t *t = alloca(96 * sizeof(uint64_t)); // temporary buffer for max. 32x32 big int mult.
+      uint64_t *m = mont->N.d;
+      uint64_t w = mont->n0[0];
+      uint64_t *src = a->d, *src2 = b->d;
+      uint64_t *dest = r->d;
+      uint64_t c;
+
+#ifdef __ARM_NEON
+      if (num == 32) {
+        if (a->d == b->d)
+          bignum_ksqr_32_64_neon(l, src, t);
+        else
+          bignum_kmul_32_64_neon(l, src2, src, t);
+      } else if (num == 16) {
+        if (a->d == b->d)
+          bignum_ksqr_16_32_neon(l, src, t);
+        else
+          bignum_kmul_16_32_neon(l, src2, src, t);
+      } else {
+        // The general sqrs/muls have no NEON alternatives
+        if (a->d == b->d)
+          bignum_sqr(num * 2, l, num, src);
+        else
+          bignum_mul(num * 2, l, num, src2, num, src);
+      }
+      c = bignum_emontredc_8n_neon(num, l, m, w);
+#else
+      if (num == 32) {
+        if (a->d == b->d)
+          bignum_ksqr_32_64(l, src, t);
+        else
+          bignum_kmul_32_64(l, src2, src, t);
+      } else if (num == 16) {
+        if (a->d == b->d)
+          bignum_ksqr_16_32(l, src, t);
+        else
+          bignum_kmul_16_32(l, src2, src, t);
+      } else {
+        if (a->d == b->d)
+          bignum_sqr(num * 2, l, num, src);
+        else
+          bignum_mul(num * 2, l, num, src2, num, src);
+      }
+      c = bignum_emontredc_8n(num, l, m, w);
+#endif
+      c |= bignum_ge(num, l + num, num, m);
+      // dest >= m ? dest - m : dest
+      bignum_optsub(num, dest, l + num, c, m);
+    } else {
+      if (!bn_mul_mont(r->d, a->d, b->d, mont->N.d, mont->n0, num)) {
+        // The check above ensures this won't happen.
+        assert(0);
+        OPENSSL_PUT_ERROR(BN, ERR_R_INTERNAL_ERROR);
+        return 0;
+      }
     }
     r->neg = 0;
     r->width = num;
