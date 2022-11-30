@@ -1425,19 +1425,27 @@ TEST(X509Test, ZeroLengthsWithCheckFunctions) {
   EXPECT_EQ(1, X509_check_ip_asc(leaf.get(), kIPString, 0));
   EXPECT_NE(1, X509_check_ip_asc(leaf.get(), kWrongIPString, 0));
 
-  // OpenSSL supports passing zero as the length for host and email. We do not
-  // and it should always fail.
-  EXPECT_NE(1, X509_check_host(leaf.get(), kHostname, 0, 0, nullptr));
+  // AWS-LC like OpenSSL supports passing zero as the length for host and email.
+  EXPECT_EQ(1, X509_check_host(leaf.get(), kHostname, 0, 0, nullptr));
   EXPECT_NE(1, X509_check_host(leaf.get(), kWrongHostname, 0, 0, nullptr));
 
-  EXPECT_NE(1, X509_check_email(leaf.get(), kEmail, 0, 0));
+  EXPECT_EQ(1, X509_check_email(leaf.get(), kEmail, 0, 0));
   EXPECT_NE(1, X509_check_email(leaf.get(), kWrongEmail, 0, 0));
 
+  // AWS-LC like OpenSSL does not support passing in 0 for the length of the ip
+  // address bytes
   EXPECT_NE(1, X509_check_ip(leaf.get(), kIP, 0, 0));
   EXPECT_NE(1, X509_check_ip(leaf.get(), kWrongIP, 0, 0));
 
   // Unlike all the other functions, |X509_check_ip_asc| doesn't take a length,
   // so it cannot be zero.
+}
+
+TEST(X509Test, MatchFoundSetsPeername) {
+  bssl::UniquePtr<X509> leaf(CertFromPEM(kSANTypesLeaf));
+  char *peername;
+  EXPECT_EQ(1, X509_check_host(leaf.get(), kHostname, strlen(kHostname), 0, &peername));
+  EXPECT_STREQ(peername, kHostname);
 }
 
 TEST(X509Test, TestCRL) {

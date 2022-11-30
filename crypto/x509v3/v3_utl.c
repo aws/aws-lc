@@ -1064,6 +1064,9 @@ int X509_check_host(X509 *x, const char *chk, size_t chklen, unsigned int flags,
   if (chk == NULL) {
     return -2;
   }
+  if (chklen == 0) {
+    chklen = strlen(chk);
+  }
   if (OPENSSL_memchr(chk, '\0', chklen)) {
     return -2;
   }
@@ -1074,6 +1077,9 @@ int X509_check_email(X509 *x, const char *chk, size_t chklen,
                      unsigned int flags) {
   if (chk == NULL) {
     return -2;
+  }
+  if (chklen == 0) {
+    chklen = strlen(chk);
   }
   if (OPENSSL_memchr(chk, '\0', chklen)) {
     return -2;
