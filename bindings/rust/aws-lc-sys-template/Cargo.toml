@@ -31,7 +31,6 @@ native_bindings = ["bindgen"]
 # native_bindings feature. This feature is only intended for internal usage.
 generate = ["bindgen"]
 
-
 [build-dependencies]
 cmake = "0.1.48"
 bindgen = { version ="0.61", optional = true }
