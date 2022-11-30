@@ -902,7 +902,7 @@ DEFINE_LOCAL_DATA(BIGNUM, g_small_factors) {
   out->flags = BN_FLG_STATIC_DATA;
 }
 
-int RSA_check_fips(RSA *key) {
+int RSA_check_fips(const RSA *key) {
   if (RSA_is_opaque(key)) {
     // Opaque keys can't be checked.
     OPENSSL_PUT_ERROR(RSA, RSA_R_PUBLIC_KEY_VALIDATION_FAILED);

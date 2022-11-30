@@ -473,7 +473,7 @@ OPENSSL_EXPORT int RSA_check_key(const RSA *rsa);
 // RSA_check_fips performs public key validity tests on |key|. It returns one if
 // they pass and zero otherwise. Opaque keys always fail. This function does not
 // mutate |rsa| for thread-safety purposes and may be used concurrently.
-OPENSSL_EXPORT int RSA_check_fips(RSA *key);
+OPENSSL_EXPORT int RSA_check_fips(const RSA *key);
 
 // RSA_verify_PKCS1_PSS_mgf1 verifies that |EM| is a correct PSS padding of
 // |mHash|, where |mHash| is a digest produced by |Hash|. |EM| must point to
