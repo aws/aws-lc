@@ -19,6 +19,7 @@ use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::{env, fs};
+use cfg_aliases::cfg_aliases;
 
 #[cfg(feature = "bindgen")]
 mod build_bindgen;
@@ -170,6 +171,14 @@ fn build_aws_lc() -> PathBuf {
 fn main() -> Result<(), String> {
     use crate::OutputLib::Crypto;
     use crate::OutputLibType::Static;
+
+    cfg_aliases! {
+        linux_x86_bindings: { all(not(feature = "bindgen"), target_os = "linux", target_arch = "x86") },
+        linux_x86_64_bindings: { all(not(feature = "bindgen"), target_os = "linux", target_arch = "x86_64") },
+        linux_aarch64_bindings: { all(not(feature = "bindgen"), target_os = "linux", target_arch = "aarch64") },
+        macos_x86_64_bindings: { all(not(feature = "bindgen"), target_os = "macos", target_arch = "x86_64") },
+        not_pregenerated: { not(any(linux_x86_bindings, linux_aarch64_bindings, linux_x86_64_bindings, macos_x86_64_bindings)) },
+    }
 
     let mut missing_dependency = false;
 

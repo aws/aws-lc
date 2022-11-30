@@ -26,16 +26,17 @@ include = [
 [features]
 asan = []
 # Generate the bindings on the targetted platform as a fallback mechanism.
-native_bindings = ["bindgen"]
+generate_bindings = ["bindgen"]
 # Pre-generate the bindings for crate publishing. Cannot be used simultaneously with the
 # native_bindings feature. This feature is only intended for internal usage.
-generate = ["bindgen"]
+internal_generate = ["bindgen"]
 
 [build-dependencies]
 cmake = "0.1.48"
 bindgen = { version ="0.61", optional = true }
 regex = "1"
 dunce = "1.0"
+cfg_aliases = "0.1.1"
 
 [dependencies]
 libc = "0.2"

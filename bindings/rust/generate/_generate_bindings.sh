@@ -12,7 +12,7 @@ CRATE_DIR="${TMP_DIR}"/aws-lc-sys
 pushd "${CRATE_DIR}"
 
 cargo clean
-cargo build --features generate
+cargo build --features internal_generate
 cargo clean
 
 popd
