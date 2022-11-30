@@ -727,7 +727,6 @@ static bool SpeedAESBlock(const std::string &name, unsigned bits,
   return true;
 }
 
-#if !defined(OPENSSL_1_0_BENCHMARK)
 static bool SpeedAES256XTS(const std::string &name, //const size_t in_len,
                            const std::string &selected) {
   if (!selected.empty() && name.find(selected) == std::string::npos) {
@@ -797,7 +796,6 @@ static bool SpeedAES256XTS(const std::string &name, //const size_t in_len,
 
   return true;
 }
-#endif
 
 static bool SpeedHashChunk(const EVP_MD *md, std::string name,
                            size_t chunk_len) {
@@ -1891,10 +1889,7 @@ bool Speed(const std::vector<std::string> &args) {
      !SpeedAESGCM(EVP_aes_128_gcm(), "EVP-AES-128-GCM", kTLSADLen, selected) ||
      !SpeedAESGCM(EVP_aes_192_gcm(), "EVP-AES-192-GCM", kTLSADLen, selected) ||
      !SpeedAESGCM(EVP_aes_256_gcm(), "EVP-AES-256-GCM", kTLSADLen, selected) ||
-     // OpenSSL 1.0 doesn't support AES-XTS
-#if !defined(OPENSSL_1_0_BENCHMARK)
      !SpeedAES256XTS("AES-256-XTS", selected) ||
-#endif
      // OpenSSL 3.0 doesn't allow MD4 calls
 #if !defined(OPENSSL_3_0_BENCHMARK)
      !SpeedHash(EVP_md4(), "MD4", selected) ||
