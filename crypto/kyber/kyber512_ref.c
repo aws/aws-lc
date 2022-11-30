@@ -5,20 +5,12 @@
 ------------------------------------------------------------------------------------
 */
 
+// The following two lines have to be in that order, first the definition of
+// KYBER_K, and then the inclusion of params.h so that the correct version
+// of Kyber would be selected. KYBER_K equal to 2 corresponds to Kyber512.
+// Both lines also have to come before all the source files.
 #define KYBER_K 2
-
 #include "./pqcrystals_kyber_ref_common/params.h"
-#include "./pqcrystals_kyber_ref_common/cbd.h"
-#include "./pqcrystals_kyber_ref_common/fips202.h"
-#include "./pqcrystals_kyber_ref_common/indcpa.h"
-#include "./pqcrystals_kyber_ref_common/kem.h"
-#include "./pqcrystals_kyber_ref_common/ntt.h"
-#include "./pqcrystals_kyber_ref_common/poly.h"
-#include "./pqcrystals_kyber_ref_common/polyvec.h"
-#include "./pqcrystals_kyber_ref_common/reduce.h"
-#include "./pqcrystals_kyber_ref_common/symmetric.h"
-#include "./pqcrystals_kyber_ref_common/verify.h"
-
 
 #include "./pqcrystals_kyber_ref_common/cbd.c"
 #include "./pqcrystals_kyber_ref_common/indcpa.c"
