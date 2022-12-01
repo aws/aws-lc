@@ -1,3 +1,6 @@
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0 OR ISC
+
 #ifndef KEM_KYBER_H
 #define KEM_KYBER_H
 
@@ -7,7 +10,7 @@
 #include <openssl/evp.h>
 
 // The values below are taken from the |api.h| file in the
-// |crypto/kyber/pqcrystals-kyber_kyber512_ref| directory.
+// |crypto/kyber/pqcrystals_kyber_ref_common| directory.
 #define KYBER512_PUBLIC_KEY_BYTES 800
 #define KYBER512_SECRET_KEY_BYTES 1632
 #define KYBER512_CIPHERTEXT_BYTES 768

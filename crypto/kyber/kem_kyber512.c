@@ -1,14 +1,10 @@
-/*
-------------------------------------------------------------------------------------
- Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
- SPDX-License-Identifier: Apache-2.0 OR ISC
-------------------------------------------------------------------------------------
-*/
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0 OR ISC
 
 #include "../evp_extra/internal.h"
 #include "../fipsmodule/evp/internal.h"
 #include "kem_kyber.h"
-#include "pqcrystals-kyber_kyber512_ref/api.h"
+#include "pqcrystals_kyber_ref_common/api.h"
 
 // Note: These methods currently default to using the reference code for Kyber.
 // In a future where AWS-LC has optimized options available, those can be
