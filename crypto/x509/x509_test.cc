@@ -1453,9 +1453,13 @@ TEST(X509Test, WrongLengthCheckFunctions) {
 
 TEST(X509Test, MatchFoundSetsPeername) {
   bssl::UniquePtr<X509> leaf(CertFromPEM(kSANTypesLeaf));
-  char *peername;
+  char *peername = nullptr;
+  EXPECT_NE(1, X509_check_host(leaf.get(), kWrongHostname, strlen(kWrongHostname), 0, &peername));
+  ASSERT_EQ(nullptr, peername);
+  
   EXPECT_EQ(1, X509_check_host(leaf.get(), kHostname, strlen(kHostname), 0, &peername));
   EXPECT_STREQ(peername, kHostname);
+  OPENSSL_free(peername);
 }
 
 TEST(X509Test, TestCRL) {
