@@ -1441,6 +1441,16 @@ TEST(X509Test, ZeroLengthsWithCheckFunctions) {
   // so it cannot be zero.
 }
 
+TEST(X509Test, WrongLengthCheckFunctions) {
+  bssl::UniquePtr<X509> leaf(CertFromPEM(kSANTypesLeaf));
+
+  EXPECT_EQ(-2, X509_check_host(leaf.get(), kHostname, strlen(kHostname) + 1, 0, nullptr));
+  EXPECT_NE(1, X509_check_host(leaf.get(), kHostname, strlen(kHostname) - 1, 0, nullptr));
+
+  EXPECT_EQ(-2, X509_check_email(leaf.get(), kEmail, strlen(kEmail) + 1, 0));
+  EXPECT_NE(1, X509_check_email(leaf.get(), kEmail, strlen(kEmail) - 1, 0));
+}
+
 TEST(X509Test, MatchFoundSetsPeername) {
   bssl::UniquePtr<X509> leaf(CertFromPEM(kSANTypesLeaf));
   char *peername;
