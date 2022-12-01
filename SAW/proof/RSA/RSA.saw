@@ -425,7 +425,7 @@ let rsa_blinding_get_spec = do {
   crucible_ghost_value rsa_blinding_factor a;
 
   (rsa_ptr, n, e) <- pointer_to_base_fresh_rsa_st true;
-  index_used_ptr <- crucible_alloc i32;
+  index_used_ptr <- crucible_alloc i64;
   ctx_ptr <- pointer_to_bignum_ctx;
 
   crucible_execute_func [rsa_ptr, index_used_ptr, ctx_ptr];
@@ -444,7 +444,7 @@ let rsa_blinding_get_spec = do {
   crucible_points_to (crucible_field ret_ptr "counter") (crucible_term {{ 0 : [32] }});
 
 
-  index_used <- crucible_fresh_var "index_used" i32;
+  index_used <- crucible_fresh_var "index_used" i64;
   crucible_points_to index_used_ptr (crucible_term index_used);
 
   crucible_return ret_ptr;
@@ -452,7 +452,7 @@ let rsa_blinding_get_spec = do {
 
 let rsa_blinding_release_spec = do {
   (rsa_ptr, _, _) <- pointer_to_base_fresh_rsa_st true;
-  index_used <- crucible_fresh_var "index_used" i32;
+  index_used <- crucible_fresh_var "index_used" i64;
   blinding_ptr <- crucible_alloc (llvm_struct "struct.bn_blinding_st");
 
   crucible_execute_func [rsa_ptr, blinding_ptr, (crucible_term index_used)];

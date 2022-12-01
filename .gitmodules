@@ -1,7 +1,7 @@
 [submodule "src"]
 	path = src
-	branch = main
-	url = https://github.com/awslabs/aws-lc.git
+	branch = rsa_blinding_to_size_t
+	url = https://github.com/torben-hansen/aws-lc.git
 [submodule "cryptol-specs"]
 	path = cryptol-specs
 	branch = sha-imperative
