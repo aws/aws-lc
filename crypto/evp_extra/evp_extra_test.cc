@@ -1695,3 +1695,57 @@ TEST_P(EVPRsaPssBadKeyTest, InvalidSaltLength) {
 
 INSTANTIATE_TEST_SUITE_P(All, EVPRsaPssBadKeyTest,
                          testing::ValuesIn(kBadPssKeyTestInputs));
+
+
+// TODO(awslc): This is just a basic test to showcase the new KEM APIs.
+//              The full test suite will follow. 
+TEST(EVPExtraTest, KEMTest) {
+
+  // Generate a Kyber512 key.
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_KEM, nullptr));
+  ASSERT_TRUE(ctx);
+
+  ASSERT_TRUE(EVP_PKEY_CTX_set_kem_params_kem_nid(ctx.get(), NID_KYBER512));
+
+  ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
+
+  EVP_PKEY *pkey = nullptr;
+  ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &pkey));
+
+  // Encapsulate/Decapsulate with a given key.
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx2(EVP_PKEY_CTX_new(pkey, nullptr));
+  ASSERT_TRUE(ctx2);
+
+  uint8_t *ciphertext = nullptr, *shared_secret = nullptr;
+  size_t ciphertext_len, shared_secret_len;
+
+  // Get the encaps parameters lenghts.
+  ASSERT_TRUE(EVP_PKEY_encapsulate(ctx2.get(), nullptr, &ciphertext_len, nullptr, &shared_secret_len));
+  EXPECT_EQ(ciphertext_len, (size_t)768);
+  EXPECT_EQ(shared_secret_len, (size_t)32);
+
+  // Alloc memory for the parameters.
+  ciphertext = (uint8_t*) OPENSSL_malloc(ciphertext_len);
+  shared_secret = (uint8_t*) OPENSSL_malloc(shared_secret_len);
+  ASSERT_TRUE(ciphertext);
+  ASSERT_TRUE(shared_secret);
+
+  // Encapsulate.
+  ASSERT_TRUE(EVP_PKEY_encapsulate(ctx2.get(), ciphertext, &ciphertext_len, shared_secret, &shared_secret_len));
+
+  // Get the decaps parameters lenghts.
+  ASSERT_TRUE(EVP_PKEY_decapsulate(ctx2.get(), nullptr, &shared_secret_len, nullptr, ciphertext_len));
+  EXPECT_EQ(shared_secret_len, (size_t)32);
+
+  // Alloc memory for the parameters.
+  uint8_t *shared_secret2 = (uint8_t*) OPENSSL_malloc(shared_secret_len);
+  ASSERT_TRUE(shared_secret2);
+
+  // Decapsulate.
+  ASSERT_TRUE(EVP_PKEY_decapsulate(ctx2.get(), shared_secret2, &shared_secret_len, ciphertext, ciphertext_len));
+
+  // Check if the encapsulated and decapsulated shared secrets are the same.
+  for (size_t i = 0; i < shared_secret_len; i++) {
+    EXPECT_EQ(shared_secret[i], shared_secret2[i]);
+  }
+}

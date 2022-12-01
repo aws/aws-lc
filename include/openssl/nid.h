@@ -4286,6 +4286,10 @@ extern "C" {
 #define SN_KYBER512 "KYBER512"
 #define NID_KYBER512 970
 
+#define SN_kem "KEM"
+#define LN_kem "kem"
+#define NID_kem 972
+
 
 #if defined(__cplusplus)
 } /* extern C */

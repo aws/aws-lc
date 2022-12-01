@@ -179,8 +179,10 @@ OPENSSL_EXPORT EC_KEY *EVP_PKEY_get1_EC_KEY(const EVP_PKEY *pkey);
 #define EVP_PKEY_EC NID_X9_62_id_ecPublicKey
 #define EVP_PKEY_ED25519 NID_ED25519
 #define EVP_PKEY_X25519 NID_X25519
+// TODO(awslc): delete Kyber define
 #define EVP_PKEY_KYBER512 NID_KYBER512
 #define EVP_PKEY_HKDF NID_hkdf
+#define EVP_PKEY_KEM NID_kem
 
 // EVP_PKEY_assign sets the underlying key of |pkey| to |key|, which must be of
 // the given type. It returns one if successful or zero if the |type| argument
@@ -866,6 +868,10 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_get0_rsa_oaep_label(EVP_PKEY_CTX *ctx,
 OPENSSL_EXPORT int EVP_PKEY_CTX_set_ec_paramgen_curve_nid(EVP_PKEY_CTX *ctx,
                                                           int nid);
 
+// KEM specific function.
+// TODO(awslc): add description.
+OPENSSL_EXPORT int EVP_PKEY_CTX_set_kem_params_kem_nid(EVP_PKEY_CTX *ctx,
+                                                       int nid);
 
 // Deprecated functions.
 
