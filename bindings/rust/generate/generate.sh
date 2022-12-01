@@ -43,7 +43,8 @@ done
 
 shift $((OPTIND - 1))
 
-AWS_LC_SYS_VERSION="0.2.0"
+# TODO: Match AWS-LC's Github release version when this is more stable.
+AWS_LC_SYS_VERSION="0.2.1"
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 AWS_LC_DIR=$( cd -- "${SCRIPT_DIR}/../../../" &> /dev/null && pwd)
