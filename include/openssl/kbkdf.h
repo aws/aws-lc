@@ -24,7 +24,8 @@ extern "C" {
 // mode.
 //
 // If your fixed-input data (|label| and |context|) are provided as a single
-// buffer, |context| is optional. The |iv| is also optional.
+// buffer formatted according to your protocol, |context| is optional. The |iv|
+// is also optional. If you omit these, you must pass NULL and a length of 0.
 OPENSSL_EXPORT int KBKDF_feedback(uint8_t *out_key, size_t out_len,
                                   const EVP_MD *digest,
                                   const uint8_t *key_in, size_t key_in_len,
