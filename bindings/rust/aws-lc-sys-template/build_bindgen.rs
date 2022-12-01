@@ -89,26 +89,12 @@ fn prepare_bindings_builder(manifest_dir: &Path, build_prefix: Option<&str>) -> 
     builder
 }
 
-#[cfg(feature = "internal_generate")]
-pub(crate) fn target_platform_bindings_string() -> String {
-    format!(
-        "{}_{}_bindings.rs",
-        std::env::consts::OS,
-        std::env::consts::ARCH
-    )
-}
-
 pub(crate) fn generate_bindings(
     manifest_dir: &Path,
     build_prefix: Option<&str>,
+    output_name: &str,
 ) -> Result<(), &'static str> {
-    #[cfg(any(feature = "generate_bindings", not_pregenerated))]
-    let bindings_file = manifest_dir.join("src").join("bindings.rs");
-    #[cfg(feature = "internal_generate")]
-    let bindings_file = manifest_dir
-        .join("src")
-        .join(target_platform_bindings_string());
-
+    let bindings_file = manifest_dir.join("src").join(&output_name);
     let builder = prepare_bindings_builder(&manifest_dir, build_prefix);
     let bindings = builder.generate().expect("Unable to generate bindings.");
     Ok(bindings

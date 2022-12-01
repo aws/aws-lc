@@ -15,11 +15,11 @@
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 // Modifications Copyright Amazon.com, Inc. or its affiliates. See GitHub history for details.
 
+use cfg_aliases::cfg_aliases;
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::{env, fs};
-use cfg_aliases::cfg_aliases;
 
 #[cfg(feature = "bindgen")]
 mod build_bindgen;
@@ -97,6 +97,15 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 fn prefix_string() -> String {
     format!("aws_lc_{}", VERSION.to_string().replace('.', "_"))
+}
+
+#[cfg(feature = "internal_generate")]
+fn target_platform_bindings_string() -> String {
+    format!(
+        "{}_{}_bindings.rs",
+        std::env::consts::OS,
+        std::env::consts::ARCH
+    )
 }
 
 fn test_command(executable: &OsStr, args: &[&OsStr]) -> bool {
@@ -197,9 +206,16 @@ fn main() -> Result<(), String> {
     let manifest_dir = dunce::canonicalize(Path::new(&manifest_dir)).unwrap();
     let prefix = prefix_string();
 
-    #[cfg(feature = "bindgen")]
-    build_bindgen::generate_bindings(&manifest_dir, Some(&prefix))
+    #[cfg(any(feature = "bindgen", not_pregenerated))]
+    build_bindgen::generate_bindings(&manifest_dir, Some(&prefix), "bindings.rs")
         .expect("Unable to generate bindings.");
+    #[cfg(feature = "internal_generate")]
+    build_bindgen::generate_bindings(
+        &manifest_dir,
+        Some(&prefix),
+        &target_platform_bindings_string().to_string(),
+    )
+    .expect("Unable to generate bindings.");
 
     let aws_lc_dir = build_aws_lc();
     let lib_file = Crypto.locate_file(&aws_lc_dir, Static, None);

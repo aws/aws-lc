@@ -1,22 +1,14 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
-// Warn to use feature native_bindings if building on a platform where prebuilt-bindings
+// Warn to use feature generate_bindings if building on a platform where prebuilt-bindings
 // aren't available
-#[cfg(all(
-    not(feature = "native_bindings"),
-    not(any(
-        all(target_os = "linux", target_arch = "x86"),
-        all(target_os = "linux", target_arch = "x86_64"),
-        all(target_os = "linux", target_arch = "aarch64"),
-        all(target_os = "macos", target_arch = "x86_64")
-    ))
-))]
-compile_error!("Prebuilt-bindings aren't available. Turn on feature native_bindings to build.");
+#[cfg(all(not(feature = "bindgen"), not_pregenerated))]
+compile_error!("Prebuilt-bindings aren't available. Turn on feature generate_bindings to build.");
 
-#[cfg(all(feature = "native_bindings", feature = "generate"))]
+#[cfg(all(feature = "generate_bindings", feature = "internal_generate"))]
 compile_error!(
-    "Generate is only for internal usage. Only turn on feature native_bindings to build."
+    "internal_generate is only for internal usage and does not work with the generate_bindings feature."
 );
 
 macro_rules! use_bindings {
@@ -26,35 +18,19 @@ macro_rules! use_bindings {
     };
 }
 
-#[cfg(all(
-    not(feature = "native_bindings"),
-    target_os = "linux",
-    target_arch = "x86"
-))]
+#[cfg(linux_x86_bindings)]
 use_bindings!(linux_x86_bindings);
 
-#[cfg(all(
-    not(feature = "native_bindings"),
-    target_os = "linux",
-    target_arch = "x86_64"
-))]
+#[cfg(linux_x86_64_bindings)]
 use_bindings!(linux_x86_64_bindings);
 
-#[cfg(all(
-    not(feature = "native_bindings"),
-    target_os = "linux",
-    target_arch = "aarch64"
-))]
+#[cfg(linux_aarch64_bindings)]
 use_bindings!(linux_aarch64_bindings);
 
-#[cfg(all(
-    not(feature = "native_bindings"),
-    target_os = "macos",
-    target_arch = "x86_64"
-))]
+#[cfg(macos_x86_64_bindings)]
 use_bindings!(macos_x86_64_bindings);
 
-#[cfg(feature = "native_bindings")]
+#[cfg(any(feature = "bindgen", not_pregenerated))]
 use_bindings!(bindings);
 
 #[allow(non_snake_case)]
