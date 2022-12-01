@@ -154,21 +154,35 @@ int EVP_PKEY_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
 }
 
 int EVP_PKEY_copy_parameters(EVP_PKEY *to, const EVP_PKEY *from) {
-  if (to->type != from->type) {
+  if (to->type == EVP_PKEY_NONE) {
+    if (!EVP_PKEY_set_type(to, from->type)) {
+      return 0;
+    }
+  } else if (to->type != from->type) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DIFFERENT_KEY_TYPES);
-    goto err;
+    return 0;
   }
 
   if (EVP_PKEY_missing_parameters(from)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_MISSING_PARAMETERS);
-    goto err;
+    return 0;
+  }
+
+  // Once set, parameters may not change.
+  if (!EVP_PKEY_missing_parameters(to)) {
+    if (EVP_PKEY_cmp_parameters(to, from) == 1) {
+      return 1;
+    }
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DIFFERENT_PARAMETERS);
+    return 0;
   }
 
   if (from->ameth && from->ameth->param_copy) {
     return from->ameth->param_copy(to, from);
   }
 
-err:
+  // TODO(https://crbug.com/boringssl/536): If the algorithm takes no
+  // parameters, copying them should vacuously succeed.
   return 0;
 }
 
@@ -414,6 +428,8 @@ int EVP_PKEY_cmp_parameters(const EVP_PKEY *a, const EVP_PKEY *b) {
   if (a->ameth && a->ameth->param_cmp) {
     return a->ameth->param_cmp(a, b);
   }
+  // TODO(https://crbug.com/boringssl/536): If the algorithm doesn't use
+  // parameters, they should compare as vacuously equal.
   return -2;
 }
 

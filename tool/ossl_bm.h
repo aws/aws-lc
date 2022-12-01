@@ -59,6 +59,7 @@ OSSL_MAKE_DELETER(EC_KEY, EC_KEY_free)
 OSSL_MAKE_DELETER(EC_POINT, EC_POINT_free)
 OSSL_MAKE_DELETER(BN_CTX, BN_CTX_free)
 OSSL_MAKE_DELETER(EVP_CIPHER_CTX, EVP_CIPHER_CTX_free)
+OSSL_MAKE_DELETER(EVP_PKEY_CTX, EVP_PKEY_CTX_free)
 
 // OpenSSL 1.0.x has different APIs for EVP_MD_CTX and HMAC
 // We need to add more custom logic to HMAC to let it properly delete the
@@ -79,22 +80,5 @@ OSSL_MAKE_DELETER(EVP_MD_CTX, EVP_MD_CTX_destroy)
     }
 #endif
 } // namespace ossl
-
-// align_pointer returns |ptr|, advanced to |alignment|. |alignment| must be a
-// power of two, and |ptr| must have at least |alignment - 1| bytes of scratch
-// space.
-static inline void *align_pointer(void *ptr, size_t alignment) {
-  // |alignment| must be a power of two.
-  assert(alignment != 0 && (alignment & (alignment - 1)) == 0);
-  // Instead of aligning |ptr| as a |uintptr_t| and casting back, compute the
-  // offset and advance in pointer space. C guarantees that casting from pointer
-  // to |uintptr_t| and back gives the same pointer, but general
-  // integer-to-pointer conversions are implementation-defined. GCC does define
-  // it in the useful way, but this makes fewer assumptions.
-  uintptr_t offset = (0u - (uintptr_t)ptr) & (alignment - 1);
-  ptr = (char *)ptr + offset;
-  assert(((uintptr_t)ptr & (alignment - 1)) == 0);
-  return ptr;
-}
 
 #endif //OPENSSL_HEADER_TOOL_OSSLBM_H

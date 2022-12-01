@@ -272,7 +272,6 @@ add_library(
   asn1/a_mbstr.c
   asn1/a_object.c
   asn1/a_octet.c
-  asn1/a_print.c
   asn1/a_strex.c
   asn1/a_strnid.c
   asn1/a_time.c
@@ -358,19 +357,11 @@ add_library(
   ex_data.c
   hpke/hpke.c
   hrss/hrss.c
+  kyber/kyber512_ref.c
+  kyber/pqcrystals_kyber_ref_common/fips202.c
   kyber/kem_kyber512.c
   kyber/p_kyber.c
   kyber/p_kyber512_asn1.c
-  kyber/pqcrystals-kyber_common/fips202.c
-  kyber/pqcrystals-kyber_kyber512_ref/cbd.c
-  kyber/pqcrystals-kyber_kyber512_ref/indcpa.c
-  kyber/pqcrystals-kyber_kyber512_ref/kem.c
-  kyber/pqcrystals-kyber_kyber512_ref/ntt.c
-  kyber/pqcrystals-kyber_kyber512_ref/poly.c
-  kyber/pqcrystals-kyber_kyber512_ref/polyvec.c
-  kyber/pqcrystals-kyber_kyber512_ref/reduce.c
-  kyber/pqcrystals-kyber_kyber512_ref/symmetric-shake.c
-  kyber/pqcrystals-kyber_kyber512_ref/verify.c
   lhash/lhash.c
   mem.c
   obj/obj.c
@@ -583,6 +574,30 @@ if(FIPS_SHARED)
       DEPENDS ../util/fipstools/inject_hash/inject_hash.go
       WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
     )
+
+    # On macOS 11 and higher on Apple Silicon, codesigning is mandatory for
+    # binaries to run. This applies to both executables and dylibs. An ad-hoc
+    # signature is sufficient, and the linker will automatically apply one when
+    # a binary is created (see https://github.com/Homebrew/brew/issues/9082).
+    #
+    # When we build libcrypto.dylib the linker automatically signs it. But then
+    # we inject the FIPS integrity hash into libcrypto.dylib which changes the
+    # binary so the signature applied by the linker is obviously not valid
+    # anymore. So when an application, like crypto_test, tries to load
+    # libcrypto.dylib it crashes because the signature is not valid. To work
+    # around this we add an ad-hoc signature to `libcrypto.dylib` after the
+    # FIPS integrity hash is injected.
+    #
+    # Note: we use CMAKE_SYSTEM_PROCESSOR directly instead of the ARCH variable
+    # because if NO_ASM build flag is defined then ARCH is set to "generic".
+    if (APPLE AND CMAKE_SYSTEM_PROCESSOR MATCHES "arm64.*|ARM64|aarch64")
+      add_custom_command(
+        TARGET crypto POST_BUILD
+        COMMAND codesign -s - $<TARGET_FILE:crypto>
+        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+      )
+    endif()
+
   endif()
 else()
   build_libcrypto(crypto $<TARGET_OBJECTS:fipsmodule>)

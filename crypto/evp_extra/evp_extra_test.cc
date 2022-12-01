@@ -921,7 +921,8 @@ TEST(EVPExtraTest, Print) {
       EVP_PKEY_DSA, kExampleDSAKeyDER, sizeof(kExampleDSAKeyDER));
   ASSERT_TRUE(dsa);
   EXPECT_EQ(PrintToString(dsa.get(), /*indent=*/2, &EVP_PKEY_print_params),
-            R"(  P:   
+            R"(  DSA-Parameters: (2048 bit)
+  P:
       00:9e:12:fa:b3:de:12:21:35:01:dd:82:aa:10:ca:
       2d:10:1d:2d:4e:bf:ef:4d:2a:3f:8d:aa:0f:e0:ce:
       da:d8:d6:af:85:61:6a:a2:f3:25:2c:0a:2b:5a:6d:
@@ -940,11 +941,11 @@ TEST(EVPExtraTest, Print) {
       25:72:f2:45:dc:11:1f:3c:e3:9c:b6:ff:ac:c3:1b:
       0a:27:90:e7:bd:e9:02:24:ea:9b:09:31:53:62:af:
       3d:2b
-  Q:   
+  Q:
       00:f3:81:dc:f5:3e:bf:72:4f:8b:2e:5c:a8:2c:01:
       0f:b4:b5:ed:a9:35:8d:0f:d8:8e:d2:78:58:94:88:
       b5:4f:c3
-  G:   
+  G:
       0c:40:2a:72:5d:cc:3a:62:e0:2b:f4:cf:43:cd:17:
       f4:a4:93:59:12:20:22:36:69:cf:41:93:ed:ab:42:
       3a:d0:8d:fb:55:2e:30:8a:6a:57:a5:ff:bc:7c:d0:
@@ -965,7 +966,8 @@ TEST(EVPExtraTest, Print) {
       61
 )");
   EXPECT_EQ(PrintToString(dsa.get(), /*indent=*/2, &EVP_PKEY_print_public),
-            R"(  pub: 
+            R"(  Public-Key: (2048 bit)
+  pub:
       31:97:31:a1:4e:38:56:88:db:94:1d:bf:65:5c:da:
       4b:c2:10:de:74:20:03:ce:13:60:f2:25:1d:55:7c:
       5d:94:82:54:08:53:db:85:95:bf:dd:5e:50:d5:96:
@@ -984,7 +986,7 @@ TEST(EVPExtraTest, Print) {
       c0:6b:b1:15:dd:64:d7:c9:75:17:73:72:da:33:c4:
       6f:a5:47:a1:cc:d1:c6:62:e5:ca:ab:5f:2a:8f:6b:
       cc
-  P:   
+  P:
       00:9e:12:fa:b3:de:12:21:35:01:dd:82:aa:10:ca:
       2d:10:1d:2d:4e:bf:ef:4d:2a:3f:8d:aa:0f:e0:ce:
       da:d8:d6:af:85:61:6a:a2:f3:25:2c:0a:2b:5a:6d:
@@ -1003,11 +1005,11 @@ TEST(EVPExtraTest, Print) {
       25:72:f2:45:dc:11:1f:3c:e3:9c:b6:ff:ac:c3:1b:
       0a:27:90:e7:bd:e9:02:24:ea:9b:09:31:53:62:af:
       3d:2b
-  Q:   
+  Q:
       00:f3:81:dc:f5:3e:bf:72:4f:8b:2e:5c:a8:2c:01:
       0f:b4:b5:ed:a9:35:8d:0f:d8:8e:d2:78:58:94:88:
       b5:4f:c3
-  G:   
+  G:
       0c:40:2a:72:5d:cc:3a:62:e0:2b:f4:cf:43:cd:17:
       f4:a4:93:59:12:20:22:36:69:cf:41:93:ed:ab:42:
       3a:d0:8d:fb:55:2e:30:8a:6a:57:a5:ff:bc:7c:d0:
@@ -1033,7 +1035,7 @@ TEST(EVPExtraTest, Print) {
       00:b0:c7:68:70:27:43:bc:51:24:29:93:a9:71:a5:
       28:89:79:54:44:f7:c6:45:22:03:d0:ce:84:fe:61:
       17:d4:6e
-  pub: 
+  pub:
       31:97:31:a1:4e:38:56:88:db:94:1d:bf:65:5c:da:
       4b:c2:10:de:74:20:03:ce:13:60:f2:25:1d:55:7c:
       5d:94:82:54:08:53:db:85:95:bf:dd:5e:50:d5:96:
@@ -1052,7 +1054,7 @@ TEST(EVPExtraTest, Print) {
       c0:6b:b1:15:dd:64:d7:c9:75:17:73:72:da:33:c4:
       6f:a5:47:a1:cc:d1:c6:62:e5:ca:ab:5f:2a:8f:6b:
       cc
-  P:   
+  P:
       00:9e:12:fa:b3:de:12:21:35:01:dd:82:aa:10:ca:
       2d:10:1d:2d:4e:bf:ef:4d:2a:3f:8d:aa:0f:e0:ce:
       da:d8:d6:af:85:61:6a:a2:f3:25:2c:0a:2b:5a:6d:
@@ -1071,11 +1073,11 @@ TEST(EVPExtraTest, Print) {
       25:72:f2:45:dc:11:1f:3c:e3:9c:b6:ff:ac:c3:1b:
       0a:27:90:e7:bd:e9:02:24:ea:9b:09:31:53:62:af:
       3d:2b
-  Q:   
+  Q:
       00:f3:81:dc:f5:3e:bf:72:4f:8b:2e:5c:a8:2c:01:
       0f:b4:b5:ed:a9:35:8d:0f:d8:8e:d2:78:58:94:88:
       b5:4f:c3
-  G:   
+  G:
       0c:40:2a:72:5d:cc:3a:62:e0:2b:f4:cf:43:cd:17:
       f4:a4:93:59:12:20:22:36:69:cf:41:93:ed:ab:42:
       3a:d0:8d:fb:55:2e:30:8a:6a:57:a5:ff:bc:7c:d0:
@@ -1096,32 +1098,32 @@ TEST(EVPExtraTest, Print) {
       61
 )");
 
-  // TODO(davidben): This output is a little off. |BIO_hexdump| does not really
-  // fit for printing the public key, and we've lost the curve name.
   bssl::UniquePtr<EVP_PKEY> ec =
       ParsePrivateKey(EVP_PKEY_EC, kExampleECKeyDER, sizeof(kExampleECKeyDER));
   ASSERT_TRUE(ec);
   EXPECT_EQ(PrintToString(ec.get(), /*indent=*/2, &EVP_PKEY_print_params),
-            "  ECDSA-Parameters: (256 bit)\n");
+            "  ECDSA-Parameters: (P-256)\n");
   EXPECT_EQ(PrintToString(ec.get(), /*indent=*/2, &EVP_PKEY_print_public),
-            R"(  Public-Key: (256 bit)
-  00000000  04 e6 2b 69 e2 bf 65 9f  97 be 2f 1e 0d 94 8a 4c  |..+i..e.../....L|
-  00000010  d5 97 6b b7 a9 1e 0d 46  fb dd a9 a9 1e 9d dc ba  |..k....F........|
-  00000020  5a 01 e7 d6 97 a8 0a 18  f9 c3 c4 a3 1e 56 e2 7c  |Z............V.||
-  00000030  83 48 db 16 1a 1c f5 1d  7e f1 94 2d 4b cf 72 22  |.H......~..-K.r"|
-  00000040  c1                                                |.|
+            R"(  Public-Key: (P-256)
+  pub:
+      04:e6:2b:69:e2:bf:65:9f:97:be:2f:1e:0d:94:8a:
+      4c:d5:97:6b:b7:a9:1e:0d:46:fb:dd:a9:a9:1e:9d:
+      dc:ba:5a:01:e7:d6:97:a8:0a:18:f9:c3:c4:a3:1e:
+      56:e2:7c:83:48:db:16:1a:1c:f5:1d:7e:f1:94:2d:
+      4b:cf:72:22:c1
 )");
   EXPECT_EQ(PrintToString(ec.get(), /*indent=*/2, &EVP_PKEY_print_private),
-            R"(  Private-Key: (256 bit)
+            R"(  Private-Key: (P-256)
   priv:
       07:0f:08:72:7a:d4:a0:4a:9c:dd:59:c9:4d:89:68:
       77:08:b5:6f:c9:5d:30:77:0e:e8:d1:c9:ce:0a:8b:
       b4:6a
-  00000000  04 e6 2b 69 e2 bf 65 9f  97 be 2f 1e 0d 94 8a 4c  |..+i..e.../....L|
-  00000010  d5 97 6b b7 a9 1e 0d 46  fb dd a9 a9 1e 9d dc ba  |..k....F........|
-  00000020  5a 01 e7 d6 97 a8 0a 18  f9 c3 c4 a3 1e 56 e2 7c  |Z............V.||
-  00000030  83 48 db 16 1a 1c f5 1d  7e f1 94 2d 4b cf 72 22  |.H......~..-K.r"|
-  00000040  c1                                                |.|
+  pub:
+      04:e6:2b:69:e2:bf:65:9f:97:be:2f:1e:0d:94:8a:
+      4c:d5:97:6b:b7:a9:1e:0d:46:fb:dd:a9:a9:1e:9d:
+      dc:ba:5a:01:e7:d6:97:a8:0a:18:f9:c3:c4:a3:1e:
+      56:e2:7c:83:48:db:16:1a:1c:f5:1d:7e:f1:94:2d:
+      4b:cf:72:22:c1
 )");
 }
 
@@ -1523,6 +1525,76 @@ TEST(EVPExtraTest, PKEY_CTX_manual) {
   ASSERT_FALSE(ctx.get()->md_data);
   ASSERT_FALSE(ctx.get()->pctx);
   ASSERT_TRUE(pctx.get());
+}
+
+TEST(EVPExtraTest, Parameters) {
+  auto new_pkey_with_type = [](int type) -> bssl::UniquePtr<EVP_PKEY> {
+    bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+    if (!pkey ||  //
+        !EVP_PKEY_set_type(pkey.get(), type)) {
+      return nullptr;
+    }
+    return pkey;
+  };
+
+  auto new_pkey_with_curve = [](int curve_nid) -> bssl::UniquePtr<EVP_PKEY> {
+    bssl::UniquePtr<EVP_PKEY_CTX> ctx(
+        EVP_PKEY_CTX_new_id(EVP_PKEY_EC, nullptr));
+    EVP_PKEY *pkey = nullptr;
+    if (!ctx ||  //
+        !EVP_PKEY_paramgen_init(ctx.get()) ||
+        !EVP_PKEY_CTX_set_ec_paramgen_curve_nid(ctx.get(), curve_nid) ||
+        !EVP_PKEY_paramgen(ctx.get(), &pkey)) {
+      return nullptr;
+    }
+    return bssl::UniquePtr<EVP_PKEY>(pkey);
+  };
+
+  // RSA keys have no parameters.
+  bssl::UniquePtr<EVP_PKEY> rsa = new_pkey_with_type(EVP_PKEY_RSA);
+  ASSERT_TRUE(rsa);
+  EXPECT_FALSE(EVP_PKEY_missing_parameters(rsa.get()));
+
+  // EC keys have parameters.
+  bssl::UniquePtr<EVP_PKEY> ec_no_params = new_pkey_with_type(EVP_PKEY_EC);
+  ASSERT_TRUE(ec_no_params);
+  EXPECT_TRUE(EVP_PKEY_missing_parameters(ec_no_params.get()));
+
+  bssl::UniquePtr<EVP_PKEY> p256 = new_pkey_with_curve(NID_X9_62_prime256v1);
+  ASSERT_TRUE(p256);
+  EXPECT_FALSE(EVP_PKEY_missing_parameters(p256.get()));
+
+  bssl::UniquePtr<EVP_PKEY> p256_2 = new_pkey_with_curve(NID_X9_62_prime256v1);
+  ASSERT_TRUE(p256_2);
+  EXPECT_FALSE(EVP_PKEY_missing_parameters(p256_2.get()));
+
+  bssl::UniquePtr<EVP_PKEY> p384 = new_pkey_with_curve(NID_secp384r1);
+  ASSERT_TRUE(p384);
+  EXPECT_FALSE(EVP_PKEY_missing_parameters(p384.get()));
+
+  EXPECT_EQ(1, EVP_PKEY_cmp_parameters(p256.get(), p256_2.get()));
+  EXPECT_EQ(0, EVP_PKEY_cmp_parameters(p256.get(), p384.get()));
+
+  // Copying parameters onto a curve-less EC key works.
+  ASSERT_TRUE(EVP_PKEY_copy_parameters(ec_no_params.get(), p256.get()));
+  EXPECT_EQ(1, EVP_PKEY_cmp_parameters(p256.get(), ec_no_params.get()));
+
+  // No-op copies silently succeed.
+  ASSERT_TRUE(EVP_PKEY_copy_parameters(ec_no_params.get(), p256.get()));
+  EXPECT_EQ(1, EVP_PKEY_cmp_parameters(p256.get(), ec_no_params.get()));
+
+  // Copying parameters onto a type-less key works.
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+  ASSERT_TRUE(pkey);
+  ASSERT_TRUE(EVP_PKEY_copy_parameters(pkey.get(), p256.get()));
+  EXPECT_EQ(EVP_PKEY_EC, EVP_PKEY_id(pkey.get()));
+  EXPECT_EQ(1, EVP_PKEY_cmp_parameters(p256.get(), pkey.get()));
+
+  // |EVP_PKEY_copy_parameters| cannot change a key's type or curve.
+  EXPECT_FALSE(EVP_PKEY_copy_parameters(rsa.get(), p256.get()));
+  EXPECT_EQ(EVP_PKEY_RSA, EVP_PKEY_id(rsa.get()));
+  EXPECT_FALSE(EVP_PKEY_copy_parameters(rsa.get(), p256.get()));
+  EXPECT_EQ(EVP_PKEY_RSA, EVP_PKEY_id(rsa.get()));
 }
 
 struct RsassaPssParamsMatchTestInput {

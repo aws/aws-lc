@@ -26,8 +26,10 @@
 #include <openssl/trust_token.h>
 #include <openssl/cipher.h>
 
+#if defined(INTERNAL_TOOL)
 #include <../crypto/ec_extra/internal.h>
 #include <../crypto/trust_token/internal.h>
+#endif
 
 #define BM_NAMESPACE bssl
 #define BM_ECDSA_size(key) ECDSA_size(key)
