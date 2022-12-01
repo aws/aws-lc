@@ -272,7 +272,6 @@ add_library(
   asn1/a_mbstr.c
   asn1/a_object.c
   asn1/a_octet.c
-  asn1/a_print.c
   asn1/a_strex.c
   asn1/a_strnid.c
   asn1/a_time.c
@@ -358,19 +357,11 @@ add_library(
   ex_data.c
   hpke/hpke.c
   hrss/hrss.c
+  kyber/kyber512_ref.c
+  kyber/pqcrystals_kyber_ref_common/fips202.c
   kyber/kem_kyber512.c
   kyber/p_kyber.c
   kyber/p_kyber512_asn1.c
-  kyber/pqcrystals-kyber_common/fips202.c
-  kyber/pqcrystals-kyber_kyber512_ref/cbd.c
-  kyber/pqcrystals-kyber_kyber512_ref/indcpa.c
-  kyber/pqcrystals-kyber_kyber512_ref/kem.c
-  kyber/pqcrystals-kyber_kyber512_ref/ntt.c
-  kyber/pqcrystals-kyber_kyber512_ref/poly.c
-  kyber/pqcrystals-kyber_kyber512_ref/polyvec.c
-  kyber/pqcrystals-kyber_kyber512_ref/reduce.c
-  kyber/pqcrystals-kyber_kyber512_ref/symmetric-shake.c
-  kyber/pqcrystals-kyber_kyber512_ref/verify.c
   lhash/lhash.c
   mem.c
   obj/obj.c
@@ -596,7 +587,10 @@ if(FIPS_SHARED)
     # libcrypto.dylib it crashes because the signature is not valid. To work
     # around this we add an ad-hoc signature to `libcrypto.dylib` after the
     # FIPS integrity hash is injected.
-    if (APPLE AND ARCH STREQUAL "aarch64")
+    #
+    # Note: we use CMAKE_SYSTEM_PROCESSOR directly instead of the ARCH variable
+    # because if NO_ASM build flag is defined then ARCH is set to "generic".
+    if (APPLE AND CMAKE_SYSTEM_PROCESSOR MATCHES "arm64.*|ARM64|aarch64")
       add_custom_command(
         TARGET crypto POST_BUILD
         COMMAND codesign -s - $<TARGET_FILE:crypto>
