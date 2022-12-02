@@ -34,11 +34,21 @@ while getopts "d:sp" option; do
   esac
 done
 
+# Remove the internal_generation feature for bindings pre-generation before publishing.
+function remove_internal_feature {
+  if [[ "$(uname)" == "Darwin" ]]; then
+    find ./ -type f  -name "Cargo.toml" | xargs sed -i '' -e "s|${INTERNAL_FEATURE_STRING}||g"
+  else
+    find ./ -type f  -name "Cargo.toml" | xargs sed -i -e "s|${INTERNAL_FEATURE_STRING}||g"
+  fi
+}
+
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 AWS_LC_DIR=$( cd -- "${SCRIPT_DIR}/../../../" &> /dev/null && pwd)
 TMP_DIR="${AWS_LC_DIR}"/bindings/rust/tmp
 CRATE_DIR="${TMP_DIR}"/aws-lc-sys
 COMPLETION_MARKER="${CRATE_DIR}"/.generation_complete
+INTERNAL_FEATURE_STRING="^internal_generate .*"
 
 if [[ ! -f "${COMPLETION_MARKER}" ]]; then
   echo
@@ -48,6 +58,7 @@ if [[ ! -f "${COMPLETION_MARKER}" ]]; then
 fi
 
 pushd "${CRATE_DIR}"
+remove_internal_feature
 cargo clean
 cargo clippy --fix --allow-no-vcs
 cargo fmt

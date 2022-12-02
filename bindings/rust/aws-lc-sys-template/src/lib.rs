@@ -1,9 +1,37 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
-pub use bindings::*;
+// Warn to use feature generate_bindings if building on a platform where prebuilt-bindings
+// aren't available
+#[cfg(all(not(feature = "bindgen"), not_pregenerated))]
+compile_error!("Prebuilt-bindings aren't available. Turn on feature generate_bindings to build.");
 
-mod bindings;
+#[cfg(all(feature = "generate_bindings", feature = "internal_generate"))]
+compile_error!(
+    "internal_generate is only for internal usage and does not work with the generate_bindings feature."
+);
+
+macro_rules! use_bindings {
+    ($bindings:ident) => {
+        mod $bindings;
+        pub use $bindings::*;
+    };
+}
+
+#[cfg(linux_x86_bindings)]
+use_bindings!(linux_x86_bindings);
+
+#[cfg(linux_x86_64_bindings)]
+use_bindings!(linux_x86_64_bindings);
+
+#[cfg(linux_aarch64_bindings)]
+use_bindings!(linux_aarch64_bindings);
+
+#[cfg(macos_x86_64_bindings)]
+use_bindings!(macos_x86_64_bindings);
+
+#[cfg(any(feature = "bindgen", not_pregenerated))]
+use_bindings!(bindings);
 
 #[allow(non_snake_case)]
 /// # Safety
