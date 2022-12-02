@@ -15,97 +15,17 @@
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 // Modifications Copyright Amazon.com, Inc. or its affiliates. See GitHub history for details.
 
-use bindgen::callbacks::ParseCallbacks;
-use std::ffi::{OsStr, OsString};
-use std::fmt::Debug;
+use cfg_aliases::cfg_aliases;
+use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::{env, fs};
 
-#[derive(Debug)]
-struct StripPrefixCallback {
-    remove_prefix: Option<String>,
-}
+#[cfg(feature = "bindgen")]
+mod build_bindgen;
 
-impl StripPrefixCallback {
-    fn new(prefix: &str) -> StripPrefixCallback {
-        StripPrefixCallback {
-            remove_prefix: Some(prefix.to_string()),
-        }
-    }
-}
-
-impl ParseCallbacks for StripPrefixCallback {
-    fn generated_name_override(&self, name: &str) -> Option<String> {
-        self.remove_prefix.as_ref().and_then(|s| {
-            let prefix = format!("{}_", s);
-            name.strip_prefix(prefix.as_str()).map(String::from)
-        })
-    }
-}
-
-fn get_include_path(manifest_dir: &Path) -> PathBuf {
+pub(crate) fn get_include_path(manifest_dir: &Path) -> PathBuf {
     manifest_dir.join("deps").join("aws-lc").join("include")
-}
-
-fn prepare_clang_args(manifest_dir: &Path, build_prefix: Option<&str>) -> Vec<String> {
-    let mut clang_args: Vec<String> = vec![
-        "-I".to_string(),
-        get_include_path(manifest_dir).display().to_string(),
-    ];
-
-    if let Some(prefix) = build_prefix {
-        clang_args.push(format!("-DBORINGSSL_PREFIX={}", prefix));
-    }
-
-    clang_args
-}
-
-const COPYRIGHT: &str = r#"
-// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0 OR ISC
-"#;
-
-const PRELUDE: &str = r#"
-#![allow(unused_imports, non_camel_case_types, non_snake_case, non_upper_case_globals, improper_ctypes)]
-"#;
-
-fn prepare_bindings_builder(manifest_dir: &Path, build_prefix: Option<&str>) -> bindgen::Builder {
-    let clang_args = prepare_clang_args(manifest_dir, build_prefix);
-
-    let mut builder = bindgen::Builder::default()
-        .derive_copy(true)
-        .derive_debug(true)
-        .derive_default(true)
-        .derive_eq(true)
-        .allowlist_file(".*/openssl/[^/]+\\.h")
-        .allowlist_file(".*/rust_wrapper\\.h")
-        .default_enum_style(bindgen::EnumVariation::NewType {
-            is_bitfield: false,
-            is_global: false,
-        })
-        .default_macro_constant_type(bindgen::MacroTypeVariation::Signed)
-        .generate_comments(true)
-        .fit_macro_constants(false)
-        .size_t_is_usize(true)
-        .layout_tests(true)
-        .prepend_enum_name(true)
-        .rustfmt_bindings(true)
-        .clang_args(clang_args)
-        .raw_line(COPYRIGHT)
-        .raw_line(PRELUDE)
-        .header(
-            get_include_path(manifest_dir)
-                .join("rust_wrapper.h")
-                .display()
-                .to_string(),
-        );
-
-    if let Some(ps) = build_prefix {
-        builder = builder.parse_callbacks(Box::new(StripPrefixCallback::new(ps)));
-    }
-
-    builder
 }
 
 const AWS_LC_PATH: &str = "deps/aws-lc";
@@ -179,6 +99,15 @@ fn prefix_string() -> String {
     format!("aws_lc_{}", VERSION.to_string().replace('.', "_"))
 }
 
+#[cfg(feature = "internal_generate")]
+fn target_platform_bindings_string() -> String {
+    format!(
+        "{}_{}_bindings.rs",
+        std::env::consts::OS,
+        std::env::consts::ARCH
+    )
+}
+
 fn test_command(executable: &OsStr, args: &[&OsStr]) -> bool {
     if let Ok(output) = Command::new(executable).args(args).output() {
         return output.status.success();
@@ -196,113 +125,69 @@ fn find_cmake_command() -> Option<&'static OsStr> {
     }
 }
 
-fn prepare_cmake_args(
-    aws_lc_path: &Path,
-    build_prefix: Option<&str>,
-) -> Result<Vec<OsString>, &'static str> {
-    let mut args: Vec<OsString> = vec![
-        OsString::from("-DBUILD_TESTING=OFF"),
-        OsString::from("-DBUILD_LIBSSL=OFF"),
-        OsString::from("-DDISABLE_PERL=ON"),
-        OsString::from("-DDISABLE_GO=ON"),
-        aws_lc_path.as_os_str().into(),
-    ];
+fn get_cmake_config() -> cmake::Config {
+    let pwd = env::current_dir().unwrap();
+
+    cmake::Config::new(pwd.join(AWS_LC_PATH))
+}
+
+fn prepare_cmake_build(build_prefix: Option<&str>) -> cmake::Config {
+    let mut cmake_cfg = get_cmake_config();
 
     let opt_level = env::var("OPT_LEVEL").unwrap_or_else(|_| "0".to_string());
-    if opt_level.eq("0") {
-        args.push(OsString::from("-DCMAKE_BUILD_TYPE=debug"));
-    } else if opt_level.eq("1") || opt_level.eq("2") {
-        args.push(OsString::from("-DCMAKE_BUILD_TYPE=relwithdebinfo"));
-    } else {
-        args.push(OsString::from("-DCMAKE_BUILD_TYPE=release"));
+    if opt_level.ne("0") {
+        if opt_level.eq("1") || opt_level.eq("2") {
+            cmake_cfg.define("CMAKE_BUILD_TYPE", "relwithdebinfo");
+        } else {
+            cmake_cfg.define("CMAKE_BUILD_TYPE", "release");
+        }
     }
 
     if let Some(symbol_prefix) = build_prefix {
-        args.push(OsString::from(format!(
-            "-DBORINGSSL_PREFIX={}",
-            symbol_prefix
-        )));
-        let include_path = aws_lc_path.join("include");
-        args.push(OsString::from(format!(
-            "-DBORINGSSL_PREFIX_HEADERS={}",
-            include_path.display()
-        )));
+        cmake_cfg.define("BORINGSSL_PREFIX", symbol_prefix);
+        let pwd = env::current_dir().unwrap();
+        let include_path = pwd.join(AWS_LC_PATH).join("include");
+        cmake_cfg.define(
+            "BORINGSSL_PREFIX_HEADERS",
+            include_path.display().to_string(),
+        );
     }
+
+    // Build flags that minimize our crate size.
+    cmake_cfg.define("BUILD_TESTING", "OFF");
+    cmake_cfg.define("BUILD_LIBSSL", "OFF");
+    // Build flags that minimize our dependencies.
+    cmake_cfg.define("DISABLE_PERL", "ON");
+    cmake_cfg.define("DISABLE_GO", "ON");
 
     if cfg!(feature = "asan") {
         env::set_var("CC", "/usr/bin/clang");
         env::set_var("CXX", "/usr/bin/clang++");
         env::set_var("ASM", "/usr/bin/clang");
 
-        args.push(OsString::from("-DASAN=1"));
+        cmake_cfg.define("ASAN", "1");
     }
 
-    Ok(args)
+    cmake_cfg
 }
 
-fn load_env_var(var_name: &str) -> String {
-    env::var(var_name).unwrap_or_else(|_| panic!("Missing Environment variable: {}", var_name))
-}
+fn build_aws_lc() -> PathBuf {
+    let mut cmake_cfg = prepare_cmake_build(Some(&prefix_string()));
 
-fn build_aws_lc() -> Result<PathBuf, &'static str> {
-    let cmake_cmd: &OsStr;
-    if let Some(cmd) = find_cmake_command() {
-        // This can be a let-else as-of Rust 1.65
-        cmake_cmd = cmd;
-    } else {
-        return Err("Missing dependency: cmake");
-    };
-
-    let pwd = env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-    let aws_lc_path = pwd.join(AWS_LC_PATH);
-
-    let out_dir = PathBuf::from(load_env_var("OUT_DIR"));
-    let build_dir = out_dir.join("build");
-    if !build_dir.exists() {
-        fs::create_dir_all(build_dir.clone()).unwrap();
-    }
-
-    let mut setup_command = Command::new(cmake_cmd);
-
-    setup_command.args(prepare_cmake_args(&aws_lc_path, Some(&prefix_string()))?);
-    setup_command.current_dir(&build_dir);
-    println!("running: {:?}", setup_command);
-    let output = setup_command
-        .output()
-        .map_err(|_| "cmake setup command failed")?;
-
-    if !output.status.success() {
-        eprintln!("{}", String::from_utf8(output.stderr).unwrap());
-        return Err("cmake setup command unsuccessful");
-    }
-
-    let mut build_command = Command::new(cmake_cmd);
-    build_command.args(&[
-        OsString::from("--build"),
-        OsString::from("."),
-        OsString::from("--target"),
-        OsString::from("crypto"),
-    ]);
-    build_command.current_dir(&build_dir);
-
-    println!("running: {:?}", build_command);
-    let output = build_command
-        .output()
-        .map_err(|_| "cmake build command failed")?;
-    if !output.status.success() {
-        eprintln!("-- stdout --");
-        eprintln!("{}", String::from_utf8(output.stdout).unwrap());
-        eprintln!("-- stderr --");
-        eprintln!("{}", String::from_utf8(output.stderr).unwrap());
-        return Err("cmake build command unsuccessful.");
-    }
-
-    Ok(out_dir)
+    cmake_cfg.build_target("crypto").build()
 }
 
 fn main() -> Result<(), String> {
     use crate::OutputLib::Crypto;
     use crate::OutputLibType::Static;
+
+    cfg_aliases! {
+        linux_x86_bindings: { all(not(feature = "bindgen"), target_os = "linux", target_arch = "x86") },
+        linux_x86_64_bindings: { all(not(feature = "bindgen"), target_os = "linux", target_arch = "x86_64") },
+        linux_aarch64_bindings: { all(not(feature = "bindgen"), target_os = "linux", target_arch = "aarch64") },
+        macos_x86_64_bindings: { all(not(feature = "bindgen"), target_os = "macos", target_arch = "x86_64") },
+        not_pregenerated: { not(any(linux_x86_bindings, linux_aarch64_bindings, linux_x86_64_bindings, macos_x86_64_bindings)) },
+    }
 
     let mut missing_dependency = false;
 
@@ -321,16 +206,18 @@ fn main() -> Result<(), String> {
     let manifest_dir = dunce::canonicalize(Path::new(&manifest_dir)).unwrap();
     let prefix = prefix_string();
 
-    let bindings_file = manifest_dir.join("src").join("bindings.rs");
+    #[cfg(any(feature = "bindgen", not_pregenerated))]
+    build_bindgen::generate_bindings(&manifest_dir, Some(&prefix), "bindings.rs")
+        .expect("Unable to generate bindings.");
+    #[cfg(feature = "internal_generate")]
+    build_bindgen::generate_bindings(
+        &manifest_dir,
+        Some(&prefix),
+        &target_platform_bindings_string().to_string(),
+    )
+    .expect("Unable to generate bindings.");
 
-    let builder = prepare_bindings_builder(&manifest_dir, Some(&prefix));
-    let bindings = builder.generate().expect("Unable to generate bindings.");
-    bindings
-        .write_to_file(bindings_file)
-        .expect("Unable to write bindings to file.");
-
-    let aws_lc_dir = build_aws_lc()?;
-
+    let aws_lc_dir = build_aws_lc();
     let lib_file = Crypto.locate_file(&aws_lc_dir, Static, None);
     let prefixed_lib_file = Crypto.locate_file(&aws_lc_dir, Static, Some(&prefix));
     fs::rename(lib_file, prefixed_lib_file).expect("Unexpected error: Library not found");

@@ -3,8 +3,6 @@
 
 #include <openssl/base.h>
 
-#define KYBER_K 3 /* Change this for different security strengths */
-
 // #define KYBER_90S	/* Uncomment this if you want the 90S variant */
 
 /* Don't change parameters below this line */

@@ -6,7 +6,7 @@ set -e
 
 function usage {
   echo
-  echo "Usage: $(basename "${0}") [-d] [-b] [-u] [-m]"
+  echo "Usage: $(basename "${0}") [-d] [-b] [-u] [-m] [-s]"
   echo
 }
 
@@ -43,7 +43,8 @@ done
 
 shift $((OPTIND - 1))
 
-AWS_LC_SYS_VERSION="0.2.0"
+# TODO: Match AWS-LC's Github release version when this is more stable.
+AWS_LC_SYS_VERSION="0.2.1"
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 AWS_LC_DIR=$( cd -- "${SCRIPT_DIR}/../../../" &> /dev/null && pwd)
@@ -111,7 +112,7 @@ if [[ ! "${OSTYPE}" == "darwin"* ]]; then
     echo
     exit 1
   else
-    echo Ignoring non-MacOS. Crate will not be tested for Mac.
+    echo Ignoring non-MacOS. Crate will not be tested and bindings will not be generated for Mac.
     echo
   fi
 fi
@@ -187,6 +188,8 @@ function prepare_crate_dir {
 
 prepare_crate_dir
 create_prefix_headers
+
+"${SCRIPT_DIR}"/_generate_all_bindings_flavors.sh "$( [ ${IGNORE_MACOS} -eq 1 ] && echo '-m' )"
 
 if [[ ${SKIP_TEST} -eq 1 ]]; then
   echo Aborting. Crate generated but not tested.
