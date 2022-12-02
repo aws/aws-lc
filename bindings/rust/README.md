@@ -26,3 +26,13 @@ be [built](../../tests/ci/docker_images/rust/build_images.sh) and available loca
 ```
 
 See AWS-LC build documentation for more details: https://github.com/awslabs/aws-lc/blob/main/BUILDING.md
+
+### Publishing
+The `aws-lc-sys` crate should be fully generated and tested by running the [generate.sh](./generate/generate.sh) script, prior to publishing.
+The following need to be done in order to publish:
+* Log in via `cargo login`: requires API token generation from https://crates.io/settings/tokens
+* `cargo install cargo-public-api`
+
+```
+./bindings/rust/publish/publish.sh
+```
