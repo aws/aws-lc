@@ -1084,8 +1084,9 @@ class SSLKeyShare {
   HAS_VIRTUAL_DESTRUCTOR
 
   // Create returns a SSLKeyShare instance for use with group |group_id| or
-  // nullptr on error.
-  static UniquePtr<SSLKeyShare> Create(uint16_t group_id);
+  // nullptr on error. Marked with OPENSSL_EXPORT to make it available for
+  // unit tests.
+  OPENSSL_EXPORT static UniquePtr<SSLKeyShare> Create(uint16_t group_id);
 
   // Create deserializes an SSLKeyShare instance previously serialized by
   // |Serialize|.
@@ -1136,6 +1137,12 @@ struct NamedGroup {
 
 // NamedGroups returns all supported groups.
 Span<const NamedGroup> NamedGroups();
+
+// PQGroups returns all supported post-quantum groups. A post-quantum
+// group may be a hybrid group containing at least one PQ
+// component (e.g. SECP256R1_KYBER512_R3) or a standalone PQ group
+// (e.g. KYBER512_R3).
+Span<const uint16_t> PQGroups();
 
 // ssl_nid_to_group_id looks up the group corresponding to |nid|. On success, it
 // sets |*out_group_id| to the group ID and returns true. Otherwise, it returns

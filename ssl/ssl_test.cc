@@ -34,6 +34,7 @@
 #include <openssl/err.h>
 #include <openssl/hmac.h>
 #include <openssl/hpke.h>
+#include <openssl/hrss.h>
 #include <openssl/pem.h>
 #include <openssl/rand.h>
 #include <openssl/sha.h>
@@ -44,6 +45,8 @@
 #include "../crypto/internal.h"
 #include "../crypto/test/test_util.h"
 #include "internal.h"
+#include "../crypto/kyber/kem_kyber.h"
+#include "../crypto/kem/internal.h"
 
 #if defined(OPENSSL_WINDOWS)
 // Windows defines struct timeval in winsock2.h.
@@ -57,7 +60,6 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #if defined(OPENSSL_THREADS)
 #include <thread>
 #endif
-
 
 BSSL_NAMESPACE_BEGIN
 
@@ -150,6 +152,14 @@ struct CurveTest {
   const char *rule;
   // The list of expected curves, in order.
   std::vector<uint16_t> expected;
+};
+
+struct GroupTest {
+  int nid;
+  uint16_t group_id;
+  size_t offer_key_share_size;
+  size_t accept_key_share_size;
+  size_t shared_secret_size;
 };
 
 template <typename T>
@@ -547,13 +557,17 @@ static const char *kMustNotInclude3DES[] = {
 static const CurveTest kCurveTests[] = {
     {
         "P-256",
-        {SSL_CURVE_SECP256R1},
+        {
+          SSL_CURVE_SECP256R1
+        },
     },
     {
         "P-256:CECPQ2",
-        {SSL_CURVE_SECP256R1, SSL_CURVE_CECPQ2},
+        {
+          SSL_CURVE_SECP256R1,
+          SSL_CURVE_CECPQ2
+        },
     },
-
     {
         "P-256:P-384:P-521:X25519",
         {
@@ -574,6 +588,23 @@ static const CurveTest kCurveTests[] = {
     },
 };
 
+// The key share sizes are taken from the corresponding specification.
+//
+// Kyber Round 3: https://pq-crystals.org/kyber/data/kyber-specification-round3-20210804.pdf
+static const size_t kyber512_r3_offer_key_share_size = 800;
+static const size_t kyber512_r3_accept_key_share_size = 768;
+static const size_t kyber512_r3_secret_size = 32;
+
+static const GroupTest kKemGroupTests[] = {
+  {
+    NID_KYBER512_R3,
+    SSL_CURVE_KYBER512_R3,
+    kyber512_r3_offer_key_share_size,
+    kyber512_r3_accept_key_share_size,
+    kyber512_r3_secret_size,
+  },
+};
+
 static const char *kBadCurvesLists[] = {
     "",
     ":",
@@ -583,6 +614,7 @@ static const char *kBadCurvesLists[] = {
     "P-256:RSA",
     "X25519:P-256:",
     ":X25519:P-256",
+    "kyber512_r3",
 };
 
 static STACK_OF(SSL_CIPHER) *tls13_ciphers(const SSL_CTX *ctx) {
@@ -9266,6 +9298,515 @@ TEST(SSLTest, InvalidSignatureAlgorithm) {
       ctx.get(), kDuplicatePrefs, OPENSSL_ARRAY_SIZE(kDuplicatePrefs)));
   EXPECT_FALSE(SSL_CTX_set_verify_algorithm_prefs(
       ctx.get(), kDuplicatePrefs, OPENSSL_ARRAY_SIZE(kDuplicatePrefs)));
+}
+
+// Test a successful round-trip for KemKeyShare
+TEST(SSLTest, KemKeyShare) {
+  for (const GroupTest &t : kKemGroupTests) {
+    // Set up client and server with test case parameters
+    bssl::UniquePtr<SSLKeyShare> client_key_share = bssl::SSLKeyShare::Create(t.group_id);
+    bssl::UniquePtr<SSLKeyShare> server_key_share = bssl::SSLKeyShare::Create(t.group_id);
+    ASSERT_TRUE(client_key_share);
+    ASSERT_TRUE(server_key_share);
+    EXPECT_EQ(t.group_id, client_key_share->GroupID());
+    EXPECT_EQ(t.group_id, server_key_share->GroupID());
+
+    // The client generates its key pair and outputs the public key.
+    // We initialize the CBB with a capacity of 2 as a sanity check to
+    // ensure that the CBB will grow accordingly if necessary.
+    CBB client_out_public_key;
+    EXPECT_TRUE(CBB_init(&client_out_public_key, 2));
+    EXPECT_TRUE(client_key_share->Offer(&client_out_public_key));
+    EXPECT_EQ(CBB_len(&client_out_public_key), t.offer_key_share_size);
+
+    // The server accepts the public key, generates the shared secret,
+    // and outputs the ciphertext. Again, we initialize the CBB with
+    // a capacity of 2 to ensure it will grow accordingly.
+    CBB server_out_public_key;
+    EXPECT_TRUE(CBB_init(&server_out_public_key, 2));
+    uint8_t server_alert = 0;
+    Array<uint8_t> server_secret;
+    const uint8_t *client_out_public_key_data = CBB_data(&client_out_public_key);
+    ASSERT_TRUE(client_out_public_key_data);
+    Span<const uint8_t> client_public_key =
+      MakeConstSpan(client_out_public_key_data, CBB_len(&client_out_public_key));
+    EXPECT_TRUE(server_key_share->Accept(&server_out_public_key, &server_secret,
+                                         &server_alert, client_public_key));
+    EXPECT_EQ(CBB_len(&server_out_public_key), t.accept_key_share_size);
+    EXPECT_EQ(server_secret.size(), t.shared_secret_size);
+    EXPECT_EQ(server_alert, 0);
+
+    // The client accepts the ciphertext and decrypts it to obtain
+    // the shared secret.
+    uint8_t client_alert = 0;
+    Array<uint8_t> client_secret;
+    const uint8_t *server_out_public_key_data = CBB_data(&server_out_public_key);
+    ASSERT_TRUE(server_out_public_key_data);
+    Span<const uint8_t> server_public_key =
+      MakeConstSpan(server_out_public_key_data, CBB_len(&server_out_public_key));
+    EXPECT_TRUE(client_key_share->Finish(&client_secret, &client_alert, server_public_key));
+    EXPECT_EQ(client_secret.size(), t.shared_secret_size);
+    EXPECT_EQ(client_alert, 0);
+
+    // Verify that client and server arrived at the same shared secret.
+    EXPECT_EQ(0, OPENSSL_memcmp(server_secret.begin(), client_secret.begin(),
+                                t.shared_secret_size));
+    CBB_cleanup(&client_out_public_key);
+    CBB_cleanup(&server_out_public_key);
+  }
+}
+
+// Test failure cases for KEMKeyShare::Offer()
+TEST(SSLTest, BadKemKeyShareOffer) {
+  for (const GroupTest &t : kKemGroupTests) {
+    // Basic nullptr checks
+    {
+      bssl::UniquePtr<SSLKeyShare> client_key_share = bssl::SSLKeyShare::Create(t.group_id);
+      ASSERT_TRUE(client_key_share);
+
+      ASSERT_FALSE(client_key_share->Offer(nullptr));
+    }
+
+    // Offer() should fail if |client_out_public_key| has children
+    {
+      bssl::UniquePtr<SSLKeyShare> client_key_share = bssl::SSLKeyShare::Create(t.group_id);
+      ASSERT_TRUE(client_key_share);
+      CBB client_out_public_key;
+      CBB child;
+
+      EXPECT_TRUE(CBB_init(&client_out_public_key, 2));
+      client_out_public_key.child = &child;
+      EXPECT_FALSE(client_key_share->Offer(&client_out_public_key));
+      CBB_cleanup(&client_out_public_key);
+    }
+
+    // Offer() should succeed on the first call, but fail on all repeat calls
+    {
+      bssl::UniquePtr<SSLKeyShare> client_key_share = bssl::SSLKeyShare::Create(t.group_id);
+      ASSERT_TRUE(client_key_share);
+      CBB client_out_public_key;
+
+      EXPECT_TRUE(CBB_init(&client_out_public_key, 2));
+      EXPECT_TRUE(client_key_share->Offer(&client_out_public_key));
+      EXPECT_FALSE(client_key_share->Offer(&client_out_public_key));
+      EXPECT_FALSE(client_key_share->Offer(&client_out_public_key));
+      CBB_cleanup(&client_out_public_key);
+    }
+
+    // Offer() should fail if Accept() was previously called
+    {
+      bssl::UniquePtr<SSLKeyShare> client_key_share = bssl::SSLKeyShare::Create(t.group_id);
+      bssl::UniquePtr<SSLKeyShare> server_key_share = bssl::SSLKeyShare::Create(t.group_id);
+      ASSERT_TRUE(client_key_share);
+      ASSERT_TRUE(server_key_share);
+      uint8_t server_alert = 0;
+      Array<uint8_t> server_secret;
+      CBB client_out_public_key;
+      CBB server_out_public_key;
+      CBB server_offer_out;
+
+      EXPECT_TRUE(CBB_init(&client_out_public_key, t.offer_key_share_size));
+      EXPECT_TRUE(CBB_init(&server_out_public_key, t.accept_key_share_size));
+      EXPECT_TRUE(CBB_init(&server_offer_out, t.offer_key_share_size));
+
+      EXPECT_TRUE(client_key_share->Offer(&client_out_public_key));
+      const uint8_t *client_public_key_data = CBB_data(&client_out_public_key);
+      Span<const uint8_t> client_public_key =
+        MakeConstSpan(client_public_key_data, CBB_len(&client_out_public_key));
+
+      EXPECT_TRUE(server_key_share->Accept(&server_out_public_key, &server_secret, &server_alert, client_public_key));
+      EXPECT_EQ(server_alert, 0);
+
+      EXPECT_FALSE(server_key_share->Offer(&server_offer_out));
+
+      CBB_cleanup(&client_out_public_key);
+      CBB_cleanup(&server_out_public_key);
+      CBB_cleanup(&server_offer_out);
+    }
+
+    // |client_out_public_key| is properly initialized, some zeros are written
+    // to it so that it records a non-zero length, then its buffer is
+    // invalidated.
+    {
+      bssl::UniquePtr<SSLKeyShare> client_key_share = bssl::SSLKeyShare::Create(t.group_id);
+      ASSERT_TRUE(client_key_share);
+      CBB client_out_public_key;
+      CBB_init(&client_out_public_key, t.offer_key_share_size);
+      EXPECT_TRUE(CBB_add_zeros(&client_out_public_key, 2));
+      // Keep a pointer to the buffer so we can cleanup correctly
+      uint8_t *buf = client_out_public_key.u.base.buf;
+      client_out_public_key.u.base.buf = nullptr;
+      EXPECT_EQ(CBB_len(&client_out_public_key), (size_t) 2);
+      EXPECT_FALSE(client_key_share->Offer(&client_out_public_key));
+      client_out_public_key.u.base.buf = buf;
+      CBB_cleanup(&client_out_public_key);
+    }
+  }
+}
+
+// Test failure cases for KEMKeyShare::Accept()
+TEST(SSLTest, BadKemKeyShareAccept) {
+  for (const GroupTest &t : kKemGroupTests) {
+    // Basic nullptr checks
+    {
+      bssl::UniquePtr<SSLKeyShare> server_key_share = bssl::SSLKeyShare::Create(t.group_id);
+      ASSERT_TRUE(server_key_share);
+      uint8_t server_alert = 0;
+      Array<uint8_t> server_secret;
+      Span<const uint8_t> client_public_key;
+      CBB server_out_public_key;
+
+      EXPECT_FALSE(server_key_share->Accept(nullptr, &server_secret,
+                                            &server_alert, client_public_key));
+      EXPECT_EQ(server_alert, SSL_AD_INTERNAL_ERROR);
+      server_alert = 0;
+
+      EXPECT_FALSE(server_key_share->Accept(&server_out_public_key, nullptr,
+                                            &server_alert, client_public_key));
+      EXPECT_EQ(server_alert, SSL_AD_INTERNAL_ERROR);
+      server_alert = 0;
+
+      EXPECT_FALSE(server_key_share->Accept(&server_out_public_key,
+                                            &server_secret, nullptr,
+                                            client_public_key));
+    }
+
+    // |server_out_public_key| is properly initialized, then is assigned a child
+    {
+      bssl::UniquePtr<SSLKeyShare> server_key_share = bssl::SSLKeyShare::Create(t.group_id);
+      ASSERT_TRUE(server_key_share);
+      uint8_t server_alert = 0;
+      Array<uint8_t> server_secret;
+      Span<const uint8_t> client_public_key;
+      CBB server_out_public_key;
+      CBB child;
+
+      CBB_init(&server_out_public_key, t.accept_key_share_size);
+      server_out_public_key.child = &child;
+      EXPECT_FALSE(server_key_share->Accept(&server_out_public_key,
+                                            &server_secret, &server_alert,
+                                            client_public_key));
+      EXPECT_EQ(server_alert, SSL_AD_INTERNAL_ERROR);
+      CBB_cleanup(&server_out_public_key);
+    }
+
+    // |server_out_public_key| is properly initialized with CBB_init,
+    // some zeros are written to it so that it records a non-zero length,
+    // then its buffer is invalidated.
+    {
+      bssl::UniquePtr<SSLKeyShare> server_key_share = bssl::SSLKeyShare::Create(t.group_id);
+      ASSERT_TRUE(server_key_share);
+      uint8_t server_alert = 0;
+      Array<uint8_t> server_secret;
+      Span<const uint8_t> client_public_key;
+      CBB server_out_public_key;
+
+      CBB_init(&server_out_public_key, t.accept_key_share_size);
+      EXPECT_TRUE(CBB_add_zeros(&server_out_public_key, 2));
+      // Keep a pointer to the buffer so we can cleanup correctly
+      uint8_t *buf = server_out_public_key.u.base.buf;
+      server_out_public_key.u.base.buf = nullptr;
+      EXPECT_EQ(CBB_len(&server_out_public_key), (size_t) 2);
+      EXPECT_FALSE(server_key_share->Accept(&server_out_public_key,
+                                            &server_secret, &server_alert,
+                                            client_public_key));
+      EXPECT_EQ(server_alert, SSL_AD_INTERNAL_ERROR);
+      server_out_public_key.u.base.buf = buf;
+      CBB_cleanup(&server_out_public_key);
+    }
+
+    // KemKeyShare::Accept() should fail if KemKeyShare::Offer() has been
+    // previously called by that peer. The server should have no reason to
+    // call Offer(); enforcing this case will guard against that type of bug.
+    {
+      bssl::UniquePtr<SSLKeyShare> server_key_share = bssl::SSLKeyShare::Create(t.group_id);
+      ASSERT_TRUE(server_key_share);
+      uint8_t server_alert = 0;
+      Array<uint8_t> server_secret;
+      CBB server_out_public_key;
+      CBB server_offer_out;
+
+      EXPECT_TRUE(CBB_init(&server_out_public_key, t.accept_key_share_size));
+      EXPECT_TRUE(CBB_init(&server_offer_out, t.offer_key_share_size));
+      EXPECT_TRUE(server_key_share->Offer(&server_offer_out));
+      const uint8_t *server_offer_out_data = CBB_data(&server_offer_out);
+      ASSERT_TRUE(server_offer_out_data);
+      Span<const uint8_t> server_offered_pk =
+        MakeConstSpan(server_offer_out_data, CBB_len(&server_offer_out));
+      EXPECT_FALSE(server_key_share->Accept(&server_out_public_key,
+                                            &server_secret, &server_alert,
+                                            server_offered_pk));
+      EXPECT_EQ(server_alert, SSL_AD_INTERNAL_ERROR);
+      CBB_cleanup(&server_out_public_key);
+      CBB_cleanup(&server_offer_out);
+    }
+
+    // |client_public_key| is initialized with too little data
+    {
+      bssl::UniquePtr<SSLKeyShare> server_key_share = bssl::SSLKeyShare::Create(t.group_id);
+      bssl::UniquePtr<SSLKeyShare> client_key_share = bssl::SSLKeyShare::Create(t.group_id);
+      ASSERT_TRUE(server_key_share);
+      ASSERT_TRUE(client_key_share);
+      Span<const uint8_t> client_public_key;
+      Array<uint8_t> server_secret;
+      CBB server_out_public_key;
+      CBB client_out_public_key;
+      uint8_t server_alert = 0;
+
+      // Generate a valid |client_public_key|, then truncate the last byte
+      EXPECT_TRUE(CBB_init(&client_out_public_key, 64));
+      EXPECT_TRUE(client_key_share->Offer(&client_out_public_key));
+      const uint8_t *client_out_public_key_data = CBB_data(&client_out_public_key);
+      ASSERT_TRUE(client_out_public_key_data);
+      client_public_key = MakeConstSpan(client_out_public_key_data,
+                                        CBB_len(&client_out_public_key) - 1);
+
+      EXPECT_TRUE(CBB_init(&server_out_public_key, t.accept_key_share_size));
+      EXPECT_FALSE(server_key_share->Accept(&server_out_public_key,
+                                            &server_secret, &server_alert,
+                                            client_public_key));
+      EXPECT_EQ(server_alert, SSL_AD_DECODE_ERROR);
+      CBB_cleanup(&server_out_public_key);
+      CBB_cleanup(&client_out_public_key);
+    }
+
+    // |client_public_key| is initialized with too much data
+    {
+      bssl::UniquePtr<SSLKeyShare> server_key_share = bssl::SSLKeyShare::Create(t.group_id);
+      bssl::UniquePtr<SSLKeyShare> client_key_share = bssl::SSLKeyShare::Create(t.group_id);
+      ASSERT_TRUE(server_key_share);
+      ASSERT_TRUE(client_key_share);
+      Span<const uint8_t> client_public_key;
+      Array<uint8_t> server_secret;
+      CBB server_out_public_key;
+      CBB client_out_public_key;
+      uint8_t server_alert = 0;
+
+      // Generate a valid |client_public_key|, then append a byte
+      EXPECT_TRUE(CBB_init(&client_out_public_key, 64));
+      EXPECT_TRUE(client_key_share->Offer(&client_out_public_key));
+      EXPECT_TRUE(CBB_add_zeros(&client_out_public_key, 1));
+      const uint8_t *client_out_public_key_data = CBB_data(&client_out_public_key);
+      ASSERT_TRUE(client_out_public_key_data);
+      client_public_key = MakeConstSpan(client_out_public_key_data,
+                                        CBB_len(&client_out_public_key));
+
+      EXPECT_TRUE(CBB_init(&server_out_public_key, t.accept_key_share_size));
+      EXPECT_FALSE(server_key_share->Accept(&server_out_public_key,
+                                            &server_secret, &server_alert,
+                                            client_public_key));
+      EXPECT_EQ(server_alert, SSL_AD_DECODE_ERROR);
+      CBB_cleanup(&server_out_public_key);
+      CBB_cleanup(&client_out_public_key);
+    }
+
+    // |client_public_key| has been initialized but is empty
+    {
+      bssl::UniquePtr<SSLKeyShare> server_key_share = bssl::SSLKeyShare::Create(t.group_id);
+      ASSERT_TRUE(server_key_share);
+      uint8_t server_alert = 0;
+      Array<uint8_t> server_secret;
+      CBB server_out_public_key;
+
+      EXPECT_TRUE(CBB_init(&server_out_public_key, t.accept_key_share_size));
+      const uint8_t empty_client_public_key_buf[] = {0};
+      Span<const uint8_t> client_public_key =
+        MakeConstSpan(empty_client_public_key_buf, 0);
+      EXPECT_FALSE(server_key_share->Accept(&server_out_public_key,
+                                            &server_secret, &server_alert,
+                                            client_public_key));
+      EXPECT_EQ(server_alert, SSL_AD_DECODE_ERROR);
+      CBB_cleanup(&server_out_public_key);
+    }
+
+    // |client_public_key| is initialized with key material that is the correct
+    // length, but is not a valid key. In this case, the basic sanity checks
+    // will not reject the key because it has been initialized properly with
+    // the correct amount of data. The KEM encapsulate function is written
+    // so that it will return success if given an invalid key of the correct
+    // length. Therefore, the call to server_key_share->Accept() will succeed,
+    // but ultimately, the ciphertext (server's public key) will be garbage,
+    // the server and client will end up with different secrets, and the
+    // overall handshake will eventually fail.
+    {
+      bssl::UniquePtr<SSLKeyShare> server_key_share = bssl::SSLKeyShare::Create(t.group_id);
+      bssl::UniquePtr<SSLKeyShare> client_key_share = bssl::SSLKeyShare::Create(t.group_id);
+      ASSERT_TRUE(server_key_share);
+      ASSERT_TRUE(client_key_share);
+      uint8_t server_alert = 0;
+      uint8_t client_alert = 0;
+      Array<uint8_t> server_secret;
+      Array<uint8_t> client_secret;
+      CBB server_out_public_key;
+      CBB client_out_public_key;
+
+      // Start by having the client Offer() its public key
+      EXPECT_TRUE(CBB_init(&client_out_public_key, t.offer_key_share_size));
+      EXPECT_TRUE(client_key_share->Offer(&client_out_public_key));
+
+      // Then invalidate it by negating the bits in the first byte
+      uint8_t *invalid_client_public_key_buf =
+        (uint8_t *)OPENSSL_malloc(t.offer_key_share_size);
+      ASSERT_TRUE(invalid_client_public_key_buf);
+      const uint8_t *client_out_public_key_data = CBB_data(&client_out_public_key);
+      ASSERT_TRUE(client_out_public_key_data);
+      OPENSSL_memcpy(invalid_client_public_key_buf, client_out_public_key_data,
+                     t.offer_key_share_size);
+      invalid_client_public_key_buf[0] = ~invalid_client_public_key_buf[0];
+      Span<const uint8_t> client_public_key =
+        MakeConstSpan(invalid_client_public_key_buf, t.offer_key_share_size);
+
+      // When the server calls Accept() with the invalid public key, it will
+      // return success
+      EXPECT_TRUE(CBB_init(&server_out_public_key, t.accept_key_share_size));
+      EXPECT_TRUE(server_key_share->Accept(&server_out_public_key,
+                                           &server_secret, &server_alert,
+                                           client_public_key));
+
+      // And when the client calls Finish(), it will also return success
+      const uint8_t *server_out_public_key_data = CBB_data(&server_out_public_key);
+      ASSERT_TRUE(server_out_public_key_data);
+      Span<const uint8_t> server_public_key =
+        MakeConstSpan(server_out_public_key_data, CBB_len(&server_out_public_key));
+      EXPECT_TRUE(client_key_share->Finish(&client_secret, &client_alert,
+                                           server_public_key));
+
+      // The shared secrets are of the correct length...
+      EXPECT_EQ(client_secret.size(), t.shared_secret_size);
+      EXPECT_EQ(server_secret.size(), t.shared_secret_size);
+
+      // ... but they are not equal
+      EXPECT_NE(0, OPENSSL_memcmp(client_secret.data(), server_secret.data(),
+                                  t.shared_secret_size));
+
+      EXPECT_EQ(server_alert, 0);
+      EXPECT_EQ(client_alert, 0);
+      OPENSSL_free(invalid_client_public_key_buf);
+      CBB_cleanup(&server_out_public_key);
+      CBB_cleanup(&client_out_public_key);
+    }
+  }
+}
+
+TEST(SSLTest, BadKemKeyShareFinish) {
+  for (const GroupTest &t : kKemGroupTests) {
+    // Basic nullptr checks
+    {
+      bssl::UniquePtr<SSLKeyShare> client_key_share = bssl::SSLKeyShare::Create(t.group_id);
+      ASSERT_TRUE(client_key_share);
+      Span<const uint8_t> server_public_key;
+      Array<uint8_t> client_secret;
+      uint8_t client_alert = 0;
+
+      EXPECT_FALSE(client_key_share->Finish(nullptr, &client_alert,
+                                           server_public_key));
+      EXPECT_EQ(client_alert, SSL_AD_INTERNAL_ERROR);
+      client_alert = 0;
+
+      EXPECT_FALSE(client_key_share->Finish(&client_secret, nullptr,
+                                           server_public_key));
+    }
+
+    // A call to Finish() should fail if Offer() was not called previously
+    {
+      bssl::UniquePtr<SSLKeyShare> client_key_share = bssl::SSLKeyShare::Create(t.group_id);
+      ASSERT_TRUE(client_key_share);
+      Span<const uint8_t> server_public_key;
+      Array<uint8_t> client_secret;
+      uint8_t client_alert = 0;
+
+      EXPECT_FALSE(client_key_share->Finish(&client_secret, &client_alert,
+                                           server_public_key));
+      EXPECT_EQ(client_alert, SSL_AD_INTERNAL_ERROR);
+    }
+
+    // Set up the client and server states for the remaining tests
+    bssl::UniquePtr<SSLKeyShare> server_key_share = bssl::SSLKeyShare::Create(t.group_id);
+    bssl::UniquePtr<SSLKeyShare> client_key_share = bssl::SSLKeyShare::Create(t.group_id);
+    ASSERT_TRUE(server_key_share);
+    ASSERT_TRUE(client_key_share);
+    CBB client_out_public_key;
+    CBB server_out_public_key;
+    Array<uint8_t> server_secret;
+    Array<uint8_t> client_secret;
+    uint8_t client_alert = 0;
+    uint8_t server_alert = 0;
+    Span<const uint8_t> client_public_key;
+    Span<const uint8_t> server_public_key;
+
+    EXPECT_TRUE(CBB_init(&client_out_public_key, t.offer_key_share_size));
+    EXPECT_TRUE(CBB_init(&server_out_public_key, t.accept_key_share_size));
+    EXPECT_TRUE(client_key_share->Offer(&client_out_public_key));
+    const uint8_t *client_out_public_key_data = CBB_data(&client_out_public_key);
+    ASSERT_TRUE(client_out_public_key_data);
+    client_public_key = MakeConstSpan(client_out_public_key_data,
+                                      CBB_len(&client_out_public_key));
+    EXPECT_TRUE(server_key_share->Accept(&server_out_public_key, &server_secret,
+                                        &server_alert, client_public_key));
+    EXPECT_EQ(server_alert, 0);
+
+    // |server_public_key| has been initialized with too little data. Here, we
+    // initialize |server_public_key| with a fragment of an otherwise valid
+    // key. However, it doesn't matter if it is a fragment of a valid key, or
+    // complete garbage, the client will reject it all the same.
+    {
+      const uint8_t *server_out_public_key_data = CBB_data(&server_out_public_key);
+      ASSERT_TRUE(server_out_public_key_data);
+      server_public_key = MakeConstSpan(server_out_public_key_data, t.accept_key_share_size - 1);
+      EXPECT_FALSE(client_key_share->Finish(&client_secret, &client_alert, server_public_key));
+      EXPECT_EQ(client_alert, SSL_AD_DECODE_ERROR);
+      client_alert = 0;
+    }
+
+    // |server_public_key| has been initialized with too much data. Here, we
+    // initialize |server_public_key| with a valid public key, and over-read
+    // the buffer to append a random byte. However, it doesn't matter if it is a
+    // valid key with nonsense appended, or complete garbage, the client will
+    // reject it all the same.
+    {
+      const uint8_t *server_out_public_key_data = CBB_data(&server_out_public_key);
+      ASSERT_TRUE(server_out_public_key_data);
+      server_public_key = MakeConstSpan(server_out_public_key_data, t.accept_key_share_size + 1);
+      EXPECT_FALSE(client_key_share->Finish(&client_secret, &client_alert, server_public_key));
+      EXPECT_EQ(client_alert, SSL_AD_DECODE_ERROR);
+      client_alert = 0;
+    }
+
+    // |server_public_key| is initialized with an invalid key of the correct
+    // length. The decapsulation operations will succeed; however, the resulting
+    // shared secret will be garbage, and eventually the overall handshake
+    // would fail because the client secret does not match the server secret.
+    {
+      // The server's public key was already correctly generated previously in
+      // a call to Accept(). Here we invalidate it by negating the first byte.
+      uint8_t *invalid_server_public_key_buf = (uint8_t *) OPENSSL_malloc(t.accept_key_share_size);
+      ASSERT_TRUE(invalid_server_public_key_buf);
+      const uint8_t *server_out_public_key_data = CBB_data(&server_out_public_key);
+      ASSERT_TRUE(server_out_public_key_data);
+      OPENSSL_memcpy(invalid_server_public_key_buf, server_out_public_key_data, t.accept_key_share_size);
+      invalid_server_public_key_buf[0] = ~invalid_server_public_key_buf[0];
+
+      // The call to Finish() will return success
+      server_public_key =
+       MakeConstSpan(invalid_server_public_key_buf, t.accept_key_share_size);
+      EXPECT_TRUE(client_key_share->Finish(&client_secret, &client_alert, server_public_key));
+      EXPECT_EQ(client_alert, 0);
+
+      // The shared secrets are of the correct length...
+      EXPECT_EQ(client_secret.size(), t.shared_secret_size);
+      EXPECT_EQ(server_secret.size(), t.shared_secret_size);
+
+      // ... but they are not equal
+      EXPECT_NE(0, OPENSSL_memcmp(client_secret.data(), server_secret.data(),
+                                 t.shared_secret_size));
+
+
+      OPENSSL_free(invalid_server_public_key_buf);
+    }
+
+    CBB_cleanup(&server_out_public_key);
+    CBB_cleanup(&client_out_public_key);
+  }
 }
 
 }  // namespace

@@ -2366,6 +2366,11 @@ OPENSSL_EXPORT int SSL_set1_curves_list(SSL *ssl, const char *curves);
 #define SSL_CURVE_X25519 29
 #define SSL_CURVE_CECPQ2 16696
 
+// PQ and hybrid group IDs are not yet standardized. Current IDs are driven by
+// community consensus and are defined at
+// https://github.com/open-quantum-safe/openssl/blob/OQS-OpenSSL_1_1_1-stable/oqs-template/oqs-kem-info.md
+#define SSL_CURVE_KYBER512_R3 0x023A
+
 // SSL_get_curve_id returns the ID of the curve used by |ssl|'s most recently
 // completed handshake or 0 if not applicable.
 //

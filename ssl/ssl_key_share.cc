@@ -31,6 +31,7 @@
 
 #include "internal.h"
 #include "../crypto/internal.h"
+#include "../crypto/kem/internal.h"
 
 BSSL_NAMESPACE_BEGIN
 
@@ -294,6 +295,233 @@ class CECPQ2KeyShare : public SSLKeyShare {
   HRSS_private_key hrss_private_key_;
 };
 
+class KEMKeyShare : public SSLKeyShare {
+ public:
+  KEMKeyShare(int nid, uint16_t group_id) : nid_(nid), group_id_(group_id) {}
+
+  uint16_t GroupID() const override { return group_id_; }
+
+  bool Offer(CBB *out) override {
+    // Ensure |out| is valid, has no children, and has been initialized.
+    // We check that |out| has no children because otherwise CBB_data()
+    // will produce a fatal error by way of assert(cbb->child == NULL).
+    if (!out || out->child || !CBB_data(out)) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_PASSED_NULL_PARAMETER);
+      return false;
+    }
+
+    // ctx_ should not have been initialized (by e.g. a previous call
+    // to Offer()).
+    if (ctx_) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+      return false;
+    }
+
+    // Initialize the KEM ctx
+    ctx_.reset(EVP_PKEY_CTX_new_id(EVP_PKEY_KEM, nullptr));
+    if (!ctx_ || !EVP_PKEY_CTX_kem_set_params(ctx_.get(), nid_)) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+      return false;
+    }
+
+    // Generate a KEM keypair and retrieve the length of the public key
+    EVP_PKEY *raw_key = nullptr;
+    if (!EVP_PKEY_keygen_init(ctx_.get()) ||
+        !EVP_PKEY_keygen(ctx_.get(), &raw_key) ||
+        !raw_key ||
+        !EVP_PKEY_get_raw_public_key(raw_key, nullptr, &public_key_len_)) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+      return false;
+    }
+
+    // Retain the private key for decapsulation
+    UniquePtr<EVP_PKEY> pkey(raw_key);
+    ctx_.reset(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+    if (!ctx_) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+      return false;
+    }
+
+    // Write the public key to |out|
+    Array<uint8_t> public_key;
+    if (!public_key.Init(public_key_len_)) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+      return false;
+    }
+
+    size_t public_key_bytes_written = public_key_len_;
+    if (!EVP_PKEY_get_raw_public_key(pkey.get(), public_key.data(),
+                                     &public_key_bytes_written) ||
+                                     public_key_bytes_written != public_key_len_ ||
+                                     !CBB_add_bytes(out, public_key.data(), public_key_len_)) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+      return false;
+    }
+
+    return true;
+  }
+
+  bool Accept(CBB *out_public_key, Array<uint8_t> *out_secret,
+              uint8_t *out_alert, Span<const uint8_t> peer_key) override {
+    // Basic nullptr checks
+    if (!out_alert) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_PASSED_NULL_PARAMETER);
+      return false;
+    }
+
+    // Set alert to internal error by default
+    *out_alert = SSL_AD_INTERNAL_ERROR;
+
+    if (!out_secret) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_PASSED_NULL_PARAMETER);
+      return false;
+    }
+
+    // Ensure |out_public_key| is valid, has no children, and has been
+    // initialized. We check that |out_public_key| has no children because
+    // otherwise CBB_data() will produce a fatal error by way of
+    // assert(cbb->child == NULL).
+    if (!out_public_key || out_public_key->child || !CBB_data(out_public_key)) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_PASSED_NULL_PARAMETER);
+      return false;
+    }
+
+    // ctx_ should not have been initialized (by e.g. a call to Offer()).
+    if (ctx_) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+      return false;
+    }
+
+    // Ensure that peer_key is valid
+    if (!peer_key.data() || peer_key.empty()) {
+      *out_alert = SSL_AD_DECODE_ERROR;
+      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+      return false;
+    }
+
+    // Initialize pkey from the received public key
+    UniquePtr<EVP_PKEY> pkey(
+      EVP_PKEY_kem_new_raw_public_key(nid_, peer_key.begin(), peer_key.size()));
+
+    if (!pkey) {
+      *out_alert = SSL_AD_DECODE_ERROR;
+      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+      return false;
+    }
+
+    // Initialize the context with the pkey
+    ctx_.reset(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+    if (!ctx_) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+      return false;
+    }
+
+    // Retrieve the lengths of the ciphertext and shared secret
+    if (!EVP_PKEY_encapsulate(ctx_.get(), nullptr, &ciphertext_len_,
+                              nullptr, &secret_len_)) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+      return false;
+    }
+
+    // EVP_PKEY_encapsulate() will generate a shared secret, then encrypt it
+    // with the peer's public key. We send the resultant ciphertext to the
+    // peer by writing it to |out_public_key|, then...
+    Array<uint8_t> ciphertext;
+    Array<uint8_t> shared_secret;
+    if (!ciphertext.Init(ciphertext_len_) || !shared_secret.Init(secret_len_)) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+      return false;
+    }
+
+    size_t ciphertext_bytes_written = ciphertext_len_;
+    size_t secret_bytes_written = secret_len_;
+    if (!EVP_PKEY_encapsulate(ctx_.get(), ciphertext.data(),
+                              &ciphertext_bytes_written, shared_secret.data(),
+                              &secret_bytes_written) ||
+                              ciphertext_bytes_written != ciphertext_len_ ||
+                              secret_bytes_written != secret_len_ ||
+                              !CBB_add_bytes(out_public_key, ciphertext.data(), ciphertext_len_)) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+      return false;
+    }
+
+    // ...we retain the shared secret for our own use.
+    *out_secret = std::move(shared_secret);
+
+    // Success; clear the alert
+    *out_alert = 0;
+    return true;
+  }
+
+  bool Finish(Array<uint8_t> *out_secret, uint8_t *out_alert,
+              Span<const uint8_t> peer_key) override {
+    // Basic nullptr checks
+    if (!out_alert) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_PASSED_NULL_PARAMETER);
+      return false;
+    }
+
+    // Set alert to internal error by default
+    *out_alert = SSL_AD_INTERNAL_ERROR;
+
+    if (!out_secret) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_PASSED_NULL_PARAMETER);
+      return false;
+    }
+
+    // ctx_ should have been initialized by a previous call to Offer()
+    if (!ctx_) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+      return false;
+    }
+
+    // Retrieve the lengths of the ciphertext and shared secret
+    if (!EVP_PKEY_encapsulate(ctx_.get(), nullptr, &ciphertext_len_, nullptr,
+                              &secret_len_)) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+      return false;
+    }
+
+    // Ensure that peer_key is valid
+    if (!peer_key.data() || peer_key.size() != ciphertext_len_) {
+      *out_alert = SSL_AD_DECODE_ERROR;
+      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+      return false;
+    }
+
+    // |peer_key| is the ciphertext, encapsulating the shared secret,
+    // that the peer generated using our public key. We use our private
+    // key to decapsulate it, and retain the shared secret by writing
+    // it to |out_secret|.
+    uint8_t *ciphertext = (uint8_t *)peer_key.begin();
+    if (!out_secret->Init(secret_len_)) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+      return false;
+    }
+
+    size_t secret_bytes_written = secret_len_;
+    if (!EVP_PKEY_decapsulate(ctx_.get(), out_secret->data(),
+                              &secret_bytes_written, ciphertext,
+                              ciphertext_len_) ||
+                              secret_bytes_written != secret_len_) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+      return false;
+    }
+
+    // Success; clear the alert
+    *out_alert = 0;
+    return true;
+  }
+
+ private:
+  int nid_;
+  uint16_t group_id_;
+  UniquePtr<EVP_PKEY_CTX> ctx_;
+  size_t public_key_len_;
+  size_t ciphertext_len_;
+  size_t secret_len_;
+};
+
 CONSTEXPR_ARRAY NamedGroup kNamedGroups[] = {
     {NID_secp224r1, SSL_CURVE_SECP224R1, "P-224", "secp224r1"},
     {NID_X9_62_prime256v1, SSL_CURVE_SECP256R1, "P-256", "prime256v1"},
@@ -303,10 +531,19 @@ CONSTEXPR_ARRAY NamedGroup kNamedGroups[] = {
     {NID_CECPQ2, SSL_CURVE_CECPQ2, "CECPQ2", "CECPQ2"},
 };
 
+CONSTEXPR_ARRAY uint16_t kPQGroups[] = {
+    SSL_CURVE_CECPQ2,
+    SSL_CURVE_KYBER512_R3,
+};
+
 }  // namespace
 
 Span<const NamedGroup> NamedGroups() {
   return MakeConstSpan(kNamedGroups, OPENSSL_ARRAY_SIZE(kNamedGroups));
+}
+
+Span<const uint16_t> PQGroups() {
+  return MakeConstSpan(kPQGroups, OPENSSL_ARRAY_SIZE(kPQGroups));
 }
 
 UniquePtr<SSLKeyShare> SSLKeyShare::Create(uint16_t group_id) {
@@ -323,6 +560,10 @@ UniquePtr<SSLKeyShare> SSLKeyShare::Create(uint16_t group_id) {
       return MakeUnique<X25519KeyShare>();
     case SSL_CURVE_CECPQ2:
       return MakeUnique<CECPQ2KeyShare>();
+    case SSL_CURVE_KYBER512_R3:
+      // Kyber, as a standalone group, is not a NamedGroup; however, we
+      // need to create Kyber key shares as part of hybrid groups.
+      return MakeUnique<KEMKeyShare>(NID_KYBER512_R3, SSL_CURVE_KYBER512_R3);
     default:
       return nullptr;
   }

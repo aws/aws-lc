@@ -204,8 +204,16 @@ static bool tls1_check_duplicate_extensions(const CBS *cbs) {
   return true;
 }
 
+// is_post_quantum_group returns true if |id| is a group ID associated
+// with a post-quantum group (either hybrid or standalone).
+// Otherwise, it returns false.
 static bool is_post_quantum_group(uint16_t id) {
-  return id == SSL_CURVE_CECPQ2;
+  for (const uint16_t pq_group_id : PQGroups()) {
+    if (id == pq_group_id) {
+      return true;
+    }
+  }
+  return false;
 }
 
 bool ssl_client_hello_init(const SSL *ssl, SSL_CLIENT_HELLO *out,
@@ -339,13 +347,13 @@ bool tls1_get_shared_group(SSL_HANDSHAKE *hs, uint16_t *out_group_id) {
 
   for (uint16_t pref_group : pref) {
     for (uint16_t supp_group : supp) {
-      if (pref_group == supp_group &&
-          // CECPQ2(b) doesn't fit in the u8-length-prefixed ECPoint field in
-          // TLS 1.2 and below.
-          (ssl_protocol_version(ssl) >= TLS1_3_VERSION ||
-           !is_post_quantum_group(pref_group))) {
-        *out_group_id = pref_group;
-        return true;
+      if (pref_group == supp_group) {
+        // PQ groups require TLS 1.3 or later
+        if (!is_post_quantum_group(pref_group) ||
+            ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
+          *out_group_id = pref_group;
+          return true;
+        }
       }
     }
   }
@@ -405,9 +413,9 @@ bool tls1_set_curves_list(Array<uint16_t> *out_group_ids, const char *curves) {
 }
 
 bool tls1_check_group_id(const SSL_HANDSHAKE *hs, uint16_t group_id) {
+  // PQ groups require TLS 1.3 or later
   if (is_post_quantum_group(group_id) &&
       ssl_protocol_version(hs->ssl) < TLS1_3_VERSION) {
-    // CECPQ2(b) requires TLS 1.3.
     return false;
   }
 
@@ -2547,10 +2555,11 @@ static bool ext_supported_groups_add_clienthello(const SSL_HANDSHAKE *hs,
   }
 
   for (uint16_t group : tls1_get_grouplist(hs)) {
-    if (is_post_quantum_group(group) &&
-        hs->max_version < TLS1_3_VERSION) {
+    // PQ groups require TLS 1.3 or later
+    if (is_post_quantum_group(group) && hs->max_version < TLS1_3_VERSION) {
       continue;
     }
+
     if (!CBB_add_u16(&groups_bytes, group)) {
       return false;
     }
