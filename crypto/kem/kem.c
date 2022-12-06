@@ -62,6 +62,7 @@ int KEM_KEY_init(KEM_KEY *key, const KEM *kem) {
   if (key == NULL || kem == NULL) {
     return 0;
   }
+  // TODO(awslc): should we check if the key is already initialized?
 
   key->kem = kem;
   key->public_key = OPENSSL_malloc(kem->public_key_len);

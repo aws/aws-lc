@@ -43,12 +43,7 @@ static int pkey_kem_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src) {
 }
 
 static void pkey_kem_cleanup(EVP_PKEY_CTX *ctx) {
-  KEM_PKEY_CTX *dctx = ctx->data;
-  if (dctx == NULL) {
-    return;
-  }
-
-  OPENSSL_free(dctx);
+  OPENSSL_free(ctx->data);
 }
 
 static int pkey_kem_paramgen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
@@ -130,7 +125,7 @@ static int pkey_kem_encapsulate(EVP_PKEY_CTX *ctx,
       return 0;
   }
 
-  KEM_KEY *key = (KEM_KEY*) ctx->pkey->pkey.ptr;
+  KEM_KEY *key = ctx->pkey->pkey.kem;
   if (!kem->method->encaps(ciphertext, shared_secret, key->public_key)) {
     return 0;
   }
@@ -179,7 +174,7 @@ static int pkey_kem_decapsulate(EVP_PKEY_CTX *ctx,
       return 0;
   }
 
-  KEM_KEY *key = (KEM_KEY*) ctx->pkey->pkey.ptr;
+  KEM_KEY *key = ctx->pkey->pkey.kem;
   if (!key->has_secret_key) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NO_KEY_SET);
     return 0;

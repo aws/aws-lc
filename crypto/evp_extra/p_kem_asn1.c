@@ -21,7 +21,7 @@ static int kem_set_priv_raw(EVP_PKEY *pkey, const uint8_t *in, size_t len) {
     return 0;
   }
 
-  KEM_KEY *tmp_key = (KEM_KEY*) pkey->pkey.ptr;
+  KEM_KEY *tmp_key = pkey->pkey.kem;
   const KEM *kem = tmp_key->kem;
   if (kem == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
@@ -55,7 +55,7 @@ static int kem_set_pub_raw(EVP_PKEY *pkey, const uint8_t *in, size_t len) {
     return 0;
   }
 
-  KEM_KEY *tmp_key = (KEM_KEY*) pkey->pkey.ptr;
+  KEM_KEY *tmp_key = pkey->pkey.kem;
   const KEM *kem = tmp_key->kem;
   if (kem == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
@@ -90,7 +90,7 @@ static int kem_get_priv_raw(const EVP_PKEY *pkey, uint8_t *out,
     return 0;
   }
 
-  KEM_KEY *key = (KEM_KEY*) pkey->pkey.ptr;
+  KEM_KEY *key = pkey->pkey.kem;
   const KEM *kem = key->kem;
   if (kem == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
@@ -119,7 +119,7 @@ static int kem_get_pub_raw(const EVP_PKEY *pkey, uint8_t *out,
     return 0;
   }
 
-  KEM_KEY *key = (KEM_KEY*) pkey->pkey.ptr;
+  KEM_KEY *key = pkey->pkey.kem;
   const KEM *kem = key->kem;
   if (kem == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
@@ -141,17 +141,33 @@ static int kem_get_pub_raw(const EVP_PKEY *pkey, uint8_t *out,
   return 1;
 }
 
-static int kem_pub_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
-  const KEM_KEY *a_key = a->pkey.ptr;
-  const KEM_KEY *b_key = b->pkey.ptr;
+static int kem_cmp_parameters(const EVP_PKEY *a, const EVP_PKEY *b) {
+  const KEM_KEY *a_key = a->pkey.kem;
+  const KEM_KEY *b_key = b->pkey.kem;
+  if (a_key == NULL || b_key == NULL) {
+    return -2;
+  }
+
   const KEM *a_kem = a_key->kem;
   const KEM *b_kem = b_key->kem;
-  if (a_kem == NULL || b_kem == NULL || a_kem->nid != b_kem->nid) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
-    return 0;
+  if (a_kem == NULL || b_kem == NULL) {
+    return -2;
   }
+
+  return a_kem->nid == b_kem->nid;
+}
+
+static int kem_pub_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
+  int ret;
+  ret = kem_cmp_parameters(a, b);
+  if (ret <= 0) {
+    return ret;
+  }
+
+  const KEM_KEY *a_key = a->pkey.kem;
+  const KEM_KEY *b_key = b->pkey.kem;
   return OPENSSL_memcmp(a_key->public_key, b_key->public_key,
-                        a_kem->public_key_len) == 0;
+                        a_key->kem->public_key_len) == 0;
 }
 
 static int kem_size(const EVP_PKEY *pkey) {
@@ -160,7 +176,7 @@ static int kem_size(const EVP_PKEY *pkey) {
     return 0;
   }
 
-  KEM_KEY *key = (KEM_KEY*) pkey->pkey.ptr;
+  KEM_KEY *key = pkey->pkey.kem;
   const KEM *kem = key->kem;
   if (kem == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
@@ -179,20 +195,20 @@ const EVP_PKEY_ASN1_METHOD kem_asn1_meth = {
   // TODO(awslc): this is a placeholder OID. Do we need OID for KEM at all?
   {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff},
   11,
-  NULL,
-  NULL,
+  NULL, // pub_decode
+  NULL, // pub_encode
   kem_pub_cmp,
-  NULL,
-  NULL,
+  NULL, // priv_decode
+  NULL, // priv_encode
   kem_set_priv_raw,
   kem_set_pub_raw,
   kem_get_priv_raw,
   kem_get_pub_raw,
-  NULL /* pkey_opaque */,
+  NULL, // pkey_opaque
   kem_size,
   kem_bits,
-  NULL /* param_missing */,
-  NULL /* param_copy */,
-  NULL /* param_cmp */,
+  NULL, // missing_parameters
+  NULL, // param_copy
+  kem_cmp_parameters,
   kem_free,
 };
