@@ -48,12 +48,12 @@ pushd "${AWS_LC_DIR}"
 ##
 
 ## 386 build
-docker run -v "${AWS_LC_DIR}":"${AWS_LC_DIR}" -w "${AWS_LC_DIR}" --rm --platform linux/386 rust:linux-386 /bin/bash "${SCRIPT_DIR}"/_generate_bindings.sh
+docker run -v "$(pwd)":"$(pwd)" -w "$(pwd)" --rm --platform linux/386 rust:linux-386 /bin/bash "${SCRIPT_DIR}"/_generate_bindings.sh
 
 ## linux x86_64 build
-docker run -v "${AWS_LC_DIR}":"${AWS_LC_DIR}" -w "${AWS_LC_DIR}" --rm --platform linux/amd64 rust:linux-x86_64 /bin/bash "${SCRIPT_DIR}"/_generate_bindings.sh
+docker run -v "$(pwd)":"$(pwd)" -w "$(pwd)" --rm --platform linux/amd64 rust:linux-x86_64 /bin/bash "${SCRIPT_DIR}"/_generate_bindings.sh
 
 ## linux aarch64 build
-docker run -v "${AWS_LC_DIR}":"${AWS_LC_DIR}" -w "${AWS_LC_DIR}" --rm --platform linux/arm64 rust:linux-arm64 /bin/bash "${SCRIPT_DIR}"/_generate_bindings.sh
+docker run -v "$(pwd)":"$(pwd)" -w "$(pwd)" --rm --platform linux/arm64 rust:linux-arm64 /bin/bash "${SCRIPT_DIR}"/_generate_bindings.sh
 
 popd

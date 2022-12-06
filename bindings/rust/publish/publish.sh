@@ -10,8 +10,9 @@ set -e -x
 PUBLISH=0
 PREV_VERSION=0
 SKIP_DIFF=0
+FIPS=0
 
-while getopts "d:sp" option; do
+while getopts "d:spf" option; do
   case ${option} in
   d )
     # For example:
@@ -25,6 +26,9 @@ while getopts "d:sp" option; do
     ;;
   p )
     PUBLISH=1
+    ;;
+  f )
+    FIPS=1
     ;;
   * )
     echo Invalid argument: -"${?}"
@@ -46,7 +50,12 @@ function remove_internal_feature {
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 AWS_LC_DIR=$( cd -- "${SCRIPT_DIR}/../../../" &> /dev/null && pwd)
 TMP_DIR="${AWS_LC_DIR}"/bindings/rust/tmp
-CRATE_DIR="${TMP_DIR}"/aws-lc-sys
+if [[ ${FIPS} -eq 1 ]]; then
+  CRATE_NAME=aws-lc-fips-sys
+else
+  CRATE_NAME=aws-lc-sys
+fi
+CRATE_DIR="${TMP_DIR}/${CRATE_NAME}"
 COMPLETION_MARKER="${CRATE_DIR}"/.generation_complete
 INTERNAL_FEATURE_STRING="^internal_generate .*"
 
@@ -69,7 +78,7 @@ if [[ "${SKIP_DIFF}" -eq 0 ]]; then
     echo Aborting. Must specify previous crate version for API diff.
     exit 1;
   fi
-  cargo public-api --deny changed --deny removed --diff-published "aws-lc-sys@${PREV_VERSION}"
+  cargo public-api --deny changed --deny removed --diff-published "${CRATE_NAME}@${PREV_VERSION}"
 fi
 cargo publish --dry-run --allow-dirty --no-verify
 
