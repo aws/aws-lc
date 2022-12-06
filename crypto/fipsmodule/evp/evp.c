@@ -366,7 +366,7 @@ EVP_PKEY *EVP_PKEY_new_raw_private_key(int type, ENGINE *unused,
     goto err;
   }
 
-  if (!ret->ameth->set_priv_raw(ret, in, len)) {
+  if (!ret->ameth->set_priv_raw(ret, in, len, NULL, 0)) {
     goto err;
   }
 

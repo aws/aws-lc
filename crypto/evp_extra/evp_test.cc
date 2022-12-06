@@ -361,10 +361,29 @@ static bool TestDerive(FileTest *t, KeyMap *key_map, EVP_PKEY *key) {
   return true;
 }
 
+static int EVP_marshal_private_key_version_one(CBB *cbb, const EVP_PKEY *key) {
+  return EVP_marshal_private_key_version(cbb, key, EVP_PKCS8_VERSION_V1);
+}
+
+static int EVP_marshal_private_key_version_two(CBB *cbb, const EVP_PKEY *key) {
+  return EVP_marshal_private_key_version(cbb, key, EVP_PKCS8_VERSION_V2);
+}
+
 static bool TestEVP(FileTest *t, KeyMap *key_map) {
   if (t->GetType() == "PrivateKey") {
-    return ImportKey(t, key_map, EVP_parse_private_key,
-                     EVP_marshal_private_key);
+    int (*marshal_func)(CBB * cbb, const EVP_PKEY *key) =
+        EVP_marshal_private_key;
+    std::string version;
+    if (t->HasAttribute("PKCS8VersionOut") && t->GetAttribute(&version, "PKCS8VersionOut")) {
+      if (version == "1") {
+        marshal_func = EVP_marshal_private_key_version_one;
+      } else if (version == "2") {
+        marshal_func = EVP_marshal_private_key_version_two;
+      } else {
+        return false;
+      }
+    }
+    return ImportKey(t, key_map, EVP_parse_private_key, marshal_func);
   }
 
   if (t->GetType() == "PublicKey") {

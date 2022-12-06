@@ -136,7 +136,13 @@ static int rsa_pub_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
          BN_cmp(b->pkey.rsa->e, a->pkey.rsa->e) == 0;
 }
 
-static int rsa_priv_encode(CBB *out, const EVP_PKEY *key) {
+static int rsa_priv_encode(CBB *out, const EVP_PKEY *key,
+                           EVP_PKCS8_VERSION version) {
+  if (version != EVP_PKCS8_VERSION_V1) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_ENCODE_ERROR);
+    return 0;
+  }
+
   CBB pkcs8, algorithm, oid, null, private_key;
   if (!CBB_add_asn1(out, &pkcs8, CBS_ASN1_SEQUENCE) ||
       !CBB_add_asn1_uint64(&pkcs8, 0 /* version */) ||
@@ -154,7 +160,12 @@ static int rsa_priv_encode(CBB *out, const EVP_PKEY *key) {
   return 1;
 }
 
-static int rsa_priv_decode(EVP_PKEY *out, CBS *params, CBS *key) {
+static int rsa_priv_decode(EVP_PKEY *out, CBS *params, CBS *key, CBS *pubkey) {
+  if(pubkey) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+    return 0;
+  }
+
   // Per RFC 3447, A.1, the parameters have type NULL.
   CBS null;
   if (!CBS_get_asn1(params, &null, CBS_ASN1_NULL) ||
@@ -175,7 +186,7 @@ static int rsa_priv_decode(EVP_PKEY *out, CBS *params, CBS *key) {
   return 1;
 }
 
-static int rsa_pss_priv_decode(EVP_PKEY *out, CBS *params, CBS *key) {
+static int rsa_pss_priv_decode(EVP_PKEY *out, CBS *params, CBS *key, CBS *pubkey) {
   RSASSA_PSS_PARAMS *pss = NULL;
   if (!RSASSA_PSS_parse_params(params, &pss)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);

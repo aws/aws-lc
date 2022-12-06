@@ -141,8 +141,13 @@ static int eckey_pub_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
   }
 }
 
-static int eckey_priv_decode(EVP_PKEY *out, CBS *params, CBS *key) {
+static int eckey_priv_decode(EVP_PKEY *out, CBS *params, CBS *key, CBS *pubkey) {
   // See RFC 5915.
+  if(pubkey) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+    return 0;
+  }
+
   EC_GROUP *group = EC_KEY_parse_parameters(params);
   if (group == NULL || CBS_len(params) != 0) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
@@ -162,7 +167,13 @@ static int eckey_priv_decode(EVP_PKEY *out, CBS *params, CBS *key) {
   return 1;
 }
 
-static int eckey_priv_encode(CBB *out, const EVP_PKEY *key) {
+static int eckey_priv_encode(CBB *out, const EVP_PKEY *key,
+                             EVP_PKCS8_VERSION version) {
+  if (version != EVP_PKCS8_VERSION_V1) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_ENCODE_ERROR);
+    return 0;
+  }
+
   const EC_KEY *ec_key = key->pkey.ec;
 
   // Omit the redundant copy of the curve name. This contradicts RFC 5915 but

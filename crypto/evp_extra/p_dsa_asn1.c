@@ -125,8 +125,12 @@ static int dsa_pub_encode(CBB *out, const EVP_PKEY *key) {
   return 1;
 }
 
-static int dsa_priv_decode(EVP_PKEY *out, CBS *params, CBS *key) {
+static int dsa_priv_decode(EVP_PKEY *out, CBS *params, CBS *key, CBS *pubkey) {
   // See PKCS#11, v2.40, section 2.5.
+  if(pubkey) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+    return 0;
+  }
 
   // Decode parameters.
   BN_CTX *ctx = NULL;
@@ -171,7 +175,12 @@ err:
   return 0;
 }
 
-static int dsa_priv_encode(CBB *out, const EVP_PKEY *key) {
+static int dsa_priv_encode(CBB *out, const EVP_PKEY *key, EVP_PKCS8_VERSION version) {
+  if (version != EVP_PKCS8_VERSION_V1) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_ENCODE_ERROR);
+    return 0;
+  }
+
   const DSA *dsa = key->pkey.dsa;
   if (dsa == NULL || dsa->priv_key == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_MISSING_PARAMETERS);
