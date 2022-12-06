@@ -1064,7 +1064,13 @@ int X509_check_host(X509 *x, const char *chk, size_t chklen, unsigned int flags,
   if (chk == NULL) {
     return -2;
   }
-  if (OPENSSL_memchr(chk, '\0', chklen)) {
+
+  // If chcklen is 0 strlen will find the first null ('\0') byte which ensures
+  // there are no '\0' characters in the middle of the string to check for with
+  // OPENSSL_memchr
+  if (chklen == 0) {
+    chklen = strlen(chk);
+  } else if (OPENSSL_memchr(chk, '\0', chklen)) {
     return -2;
   }
   return do_x509_check(x, chk, chklen, flags, GEN_DNS, peername);
@@ -1075,7 +1081,13 @@ int X509_check_email(X509 *x, const char *chk, size_t chklen,
   if (chk == NULL) {
     return -2;
   }
-  if (OPENSSL_memchr(chk, '\0', chklen)) {
+
+  // If chcklen is 0 strlen will find the first null ('\0') byte which ensures
+  // there are no '\0' characters in the middle of the string to check for with
+  // OPENSSL_memchr
+  if (chklen == 0) {
+    chklen = strlen(chk);
+  } else if (OPENSSL_memchr(chk, '\0', chklen)) {
     return -2;
   }
   return do_x509_check(x, chk, chklen, flags, GEN_EMAIL, NULL);

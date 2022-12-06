@@ -96,7 +96,8 @@ OPENSSL_EXPORT int OPENSSL_timegm(const struct tm *tm, time_t *out);
 // |offset_day| days and |offset_sec| seconds. It returns zero on failure. |tm|
 // must be in the range of year 0000 to 9999 both before and after the update or
 // a failure will be returned.
-int OPENSSL_gmtime_adj(struct tm *tm, int offset_day, long offset_sec);
+OPENSSL_EXPORT int OPENSSL_gmtime_adj(struct tm *tm, int offset_day,
+                                      long offset_sec);
 
 // OPENSSL_gmtime_diff calculates the difference between |from| and |to|. It
 // returns one, and outputs the difference as a number of days and seconds in
@@ -136,8 +137,7 @@ ASN1_OBJECT *ASN1_OBJECT_new(void);
 // problems with invalid encodings which can break signatures.
 typedef struct ASN1_ENCODING_st {
   unsigned char *enc;  // DER encoding
-  long len;            // Length of encoding
-  int modified;        // set to 1 if 'enc' is invalid
+  long len;            // Length of encoding, or zero if not present.
   // alias_only is zero if |enc| owns the buffer that it points to
   // (although |enc| may still be NULL). If one, |enc| points into a
   // buffer that is owned elsewhere.
@@ -209,6 +209,9 @@ int asn1_enc_restore(int *len, unsigned char **out, ASN1_VALUE **pval,
 
 int asn1_enc_save(ASN1_VALUE **pval, const unsigned char *in, int inlen,
                   const ASN1_ITEM *it);
+
+// asn1_encoding_clear clears the cached encoding in |enc|.
+void asn1_encoding_clear(ASN1_ENCODING *enc);
 
 // asn1_type_value_as_pointer returns |a|'s value in pointer form. This is
 // usually the value object but, for BOOLEAN values, is 0 or 0xff cast to
