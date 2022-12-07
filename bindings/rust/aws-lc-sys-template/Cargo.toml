@@ -9,6 +9,7 @@ license = "Apache-2.0 OR ISC"
 rust-version = "1.57.0"
 include = [
     "build.rs",
+    "build_bindgen.rs",
     "Cargo.toml",
     "deps/aws-lc/**/*.c",
     "deps/aws-lc/**/*.cc",
