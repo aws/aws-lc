@@ -271,6 +271,7 @@ func processFile(filename string, supportedAlgos []map[string]interface{}, middl
 		group := map[string]interface{}{
 			"vsId":       commonFields.ID,
 			"testGroups": replyGroups,
+			"algorithm":  algo,
 		}
 		replyBytes, err := json.MarshalIndent(group, "", "    ")
 		if err != nil {
