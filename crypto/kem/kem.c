@@ -85,3 +85,35 @@ void KEM_KEY_free(KEM_KEY *key) {
 const KEM *KEM_KEY_get0_kem(KEM_KEY* key) {
   return key->kem;
 }
+
+int KEM_KEY_set_raw_public_key(KEM_KEY *key, const uint8_t *in) {
+  key->public_key = OPENSSL_memdup(in, key->kem->public_key_len);
+  if (key->public_key == NULL) {
+    return 0;
+  }
+
+  return 1;
+}
+
+int KEM_KEY_set_raw_secret_key(KEM_KEY *key, const uint8_t *in) {
+  key->secret_key = OPENSSL_memdup(in, key->kem->secret_key_len);
+  if (key->secret_key == NULL) {
+    return 0;
+  }
+  key->has_secret_key = 1;
+
+  return 1;
+}
+
+int KEM_KEY_set_raw_key(KEM_KEY *key, const uint8_t *in_public,
+                                      const uint8_t *in_secret) {
+  key->public_key = OPENSSL_memdup(in_public, key->kem->public_key_len);
+  key->secret_key = OPENSSL_memdup(in_secret, key->kem->secret_key_len);
+  if (key->public_key == NULL || key->secret_key == NULL) {
+    KEM_KEY_free(key);
+    return 0;
+  }
+  key->has_secret_key = 1;
+
+  return 1;
+}

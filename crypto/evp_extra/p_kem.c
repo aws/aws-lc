@@ -212,17 +212,115 @@ const EVP_PKEY_METHOD kem_pkey_meth = {
     pkey_kem_decapsulate,
 };
 
+// Additional KEM specific EVP functions.
 
-int EVP_PKEY_CTX_set_kem_params_kem_nid(EVP_PKEY_CTX *ctx, int nid) {
+int EVP_PKEY_CTX_kem_set_params(EVP_PKEY_CTX *ctx, int nid) {
   const KEM *kem = KEM_find_kem_by_nid(nid);
   if (kem == NULL) {
     return 0;
   }
-  // TODO(awslc): should we handle the case when ctx already has an EVP_PKEY
-  // with its own type/nid.
 
   KEM_PKEY_CTX *dctx = ctx->data;
   dctx->kem = kem;
 
+  // If the context has an associated pkey, free it.
+  if (ctx->pkey != NULL) {
+    EVP_PKEY_free(ctx->pkey);
+  }
+
   return 1;
+}
+
+
+// This function only sets KEM parameters defined by |nid| in |pkey|.
+static int EVP_PKEY_kem_set_params(EVP_PKEY *pkey, int nid) {
+  const KEM *kem = KEM_find_kem_by_nid(nid);
+  if (kem == NULL) {
+    return 0;
+  }
+
+  if (!EVP_PKEY_set_type(pkey, EVP_PKEY_KEM)) {
+    return 0;
+  }
+
+  KEM_KEY *key = KEM_KEY_new();
+  key->kem = kem;
+
+  pkey->pkey.kem = key;
+
+  return 1;
+
+}
+
+// Generate a new EVP_PKEY object of type EVP_PKEY_KEM,
+// and set KEM parameters defined by |nid|.
+static EVP_PKEY *EVP_PKEY_kem_new(int nid) {
+  EVP_PKEY *ret = EVP_PKEY_new();
+  if (ret == NULL || !EVP_PKEY_kem_set_params(ret, nid)) {
+    EVP_PKEY_free(ret);
+    return NULL;
+  }
+
+  return ret;
+}
+
+EVP_PKEY *EVP_PKEY_kem_new_raw_public_key(int nid, const uint8_t *in, size_t len) {
+  EVP_PKEY *ret = EVP_PKEY_kem_new(nid);
+  if (in == NULL || ret == NULL || ret->pkey.kem == NULL) {
+    goto err;
+  }
+
+  const KEM *kem = KEM_KEY_get0_kem(ret->pkey.kem);
+  if (kem->public_key_len != len ||
+      !KEM_KEY_set_raw_public_key(ret->pkey.kem, in)) {
+    goto err;
+  }
+
+  return ret;
+
+err:
+  EVP_PKEY_free(ret);
+  return NULL;
+}
+
+EVP_PKEY *EVP_PKEY_kem_new_raw_secret_key(int nid, const uint8_t *in, size_t len) {
+  EVP_PKEY *ret = EVP_PKEY_kem_new(nid);
+  if (in == NULL || ret == NULL || ret->pkey.kem == NULL) {
+    goto err;
+  }
+
+  const KEM *kem = KEM_KEY_get0_kem(ret->pkey.kem);
+  if (kem->secret_key_len != len ||
+      !KEM_KEY_set_raw_secret_key(ret->pkey.kem, in)) {
+    goto err;
+  }
+
+  return ret;
+
+err:
+  EVP_PKEY_free(ret);
+  return NULL;
+}
+
+EVP_PKEY *EVP_PKEY_kem_new_raw_key(int nid,
+                                   const uint8_t *in_public, size_t len_public,
+                                   const uint8_t *in_secret, size_t len_secret) {
+  EVP_PKEY *ret = EVP_PKEY_kem_new(nid);
+  if (in_public == NULL || in_secret == NULL ||
+      ret == NULL || ret->pkey.kem == NULL) {
+    goto err;
+  }
+
+  const KEM *kem = KEM_KEY_get0_kem(ret->pkey.kem);
+  if (kem->public_key_len != len_public ||
+      kem->secret_key_len != len_secret ||
+      !KEM_KEY_set_raw_key(ret->pkey.kem, in_public, in_secret)) {
+    goto err;
+  }
+
+  return ret;
+
+err:
+  EVP_PKEY_free(ret);
+  return NULL;
 }

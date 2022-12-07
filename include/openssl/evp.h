@@ -868,11 +868,36 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_get0_rsa_oaep_label(EVP_PKEY_CTX *ctx,
 OPENSSL_EXPORT int EVP_PKEY_CTX_set_ec_paramgen_curve_nid(EVP_PKEY_CTX *ctx,
                                                           int nid);
 
-// KEM specific function.
-// TODO(awslc): add description.
-OPENSSL_EXPORT int EVP_PKEY_CTX_set_kem_params_kem_nid(EVP_PKEY_CTX *ctx,
-                                                       int nid);
+// KEM specific functions.
 
+// EVP_PKEY_CTX_kem_set_params sets in |ctx| the parameters associated with
+// KEM defined by the given |nid|. It returns one on success and zero on error.
+OPENSSL_EXPORT int EVP_PKEY_CTX_kem_set_params(EVP_PKEY_CTX *ctx, int nid);
+
+// EVP_PKEY_kem_new_raw_public_key generates a new EVP_PKEY object of type
+// EVP_PKEY_KEM, initializes the KEM key based on |nid| and populates the
+// public key part of the KEM key with the contents of |in|. It returns the
+// pointer to the allocated PKEY on sucess and NULL on error.
+OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_kem_new_raw_public_key(
+                                    int nid, const uint8_t *in, size_t len);
+
+// EVP_PKEY_kem_new_raw_secret_key generates a new EVP_PKEY object of type
+// EVP_PKEY_KEM, initializes the KEM key based on |nid| and populates the
+// secret key part of the KEM key with the contents of |in|. It returns the
+// pointer to the allocated PKEY on sucess and NULL on error.
+OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_kem_new_raw_secret_key(
+                                    int nid, const uint8_t *in, size_t len);
+
+// EVP_PKEY_kem_new_raw_key generates a new EVP_PKEY object of type
+// EVP_PKEY_KEM, initializes the KEM key based on |nid| and populates the
+// public and secret key parts of the KEM key with the contents of |in_public|
+// and |in_secret|. It returns the pointer to the allocated PKEY on sucess and
+// NULL on error.
+OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_kem_new_raw_key(int nid,
+                                                  const uint8_t *in_public,
+                                                  size_t len_public,
+                                                  const uint8_t *in_secret,
+                                                  size_t len_secret);
 // Deprecated functions.
 
 // EVP_PKEY_DH is defined for compatibility, but it is impossible to create an

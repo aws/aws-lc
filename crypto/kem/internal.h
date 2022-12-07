@@ -63,6 +63,29 @@ int KEM_KEY_init(KEM_KEY *key, const KEM *kem);
 void KEM_KEY_free(KEM_KEY *key);
 const KEM *KEM_KEY_get0_kem(KEM_KEY* key);
 
+// KEM_KEY_set_raw_public_key function allocates the public key buffer
+// within the given |key| and copies the contents of |in| to it.
+//
+// NOTE: No checks are done in this function, the caller has to ensure that
+//       the pointers are valid and buffers sizes are correct.
+int KEM_KEY_set_raw_public_key(KEM_KEY *key, const uint8_t *in);
+
+// KEM_KEY_set_raw_secret_key function allocates the secret key buffer
+// within the given |key| and copies the contents of |in| to it.
+//
+// NOTE: No checks are done in this function, the caller has to ensure that
+//       the pointers are valid and buffers sizes are correct.
+int KEM_KEY_set_raw_secret_key(KEM_KEY *key, const uint8_t *in);
+
+// KEM_KEY_set_raw_key function allocates the public and secret key buffers
+// within the given |key| and copies the contents of |in_public| and
+// |in_secret| to them.
+//
+// NOTE: No checks are done in this function, the caller has to ensure that
+//       the pointers are valid and buffers sizes are correct.
+int KEM_KEY_set_raw_key(KEM_KEY *key, const uint8_t *in_public,
+                                      const uint8_t *in_secret);
+
 #if defined(__cplusplus)
 }  // extern C
 #endif
