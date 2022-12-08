@@ -90,6 +90,7 @@ OPENSSL_EXPORT bool EVP_MD_unstable_sha3_is_enabled(void);
 
 OPENSSL_EXPORT const EVP_MD *EVP_md4(void);
 OPENSSL_EXPORT const EVP_MD *EVP_md5(void);
+OPENSSL_EXPORT const EVP_MD *EVP_ripemd160(void);
 OPENSSL_EXPORT const EVP_MD *EVP_sha1(void);
 OPENSSL_EXPORT const EVP_MD *EVP_sha224(void);
 OPENSSL_EXPORT const EVP_MD *EVP_sha256(void);
