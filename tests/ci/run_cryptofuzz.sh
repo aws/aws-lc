@@ -63,7 +63,7 @@ SRC_CORPUS="$CRYPTOFUZZ_SEED_CORPUS"
 # rm -rf "$CRYPTOFUZZ_SEED_CORPUS" && mkdir "$CRYPTOFUZZ_SEED_CORPUS"
 # ./generate_corpus "$CRYPTOFUZZ_SEED_CORPUS"
 
-# Perform the actual fuzzing. We want the total build time to be about an 45 minutes:
+# Perform the actual fuzzing. We want the total build time to be about 45 minutes:
 # 5 minutes for building AWS-LC and Cryptofuzz
 # 16 minutes (1000 seconds) of fuzzing
 # 24 minutes of cleanup and merging in new inputs
