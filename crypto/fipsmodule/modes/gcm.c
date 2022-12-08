@@ -331,9 +331,11 @@ static size_t aesv8_gcm_8x_encrypt(const uint8_t *in, uint8_t *out, size_t len,
   align_bytes = len - len % 16;
 
   switch(key->rounds) {
-    // Only AES-128-GCM and AES-256-GCM are supported.
   case 10:
     aesv8_gcm_8x_enc_128(in, align_bytes * 8, out, Xi, ivec, key);
+    break;
+  case 12:
+    aesv8_gcm_8x_enc_192(in, align_bytes * 8, out, Xi, ivec, key);
     break;
   case 14:
     aesv8_gcm_8x_enc_256(in, align_bytes * 8, out, Xi, ivec, key);
@@ -355,9 +357,11 @@ static size_t aesv8_gcm_8x_decrypt(const uint8_t *in, uint8_t *out, size_t len,
   align_bytes = len - len % 16;
 
   switch(key->rounds) {
-    // Only AES-128-GCM and AES-256-GCM are supported.
   case 10:
     aesv8_gcm_8x_dec_128(in, align_bytes * 8, out, Xi, ivec, key);
+    break;
+  case 12:
+    aesv8_gcm_8x_dec_192(in, align_bytes * 8, out, Xi, ivec, key);
     break;
   case 14:
     aesv8_gcm_8x_dec_256(in, align_bytes * 8, out, Xi, ivec, key);
