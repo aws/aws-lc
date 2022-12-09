@@ -63,11 +63,11 @@ SRC_CORPUS="$CRYPTOFUZZ_SEED_CORPUS"
 # rm -rf "$CRYPTOFUZZ_SEED_CORPUS" && mkdir "$CRYPTOFUZZ_SEED_CORPUS"
 # ./generate_corpus "$CRYPTOFUZZ_SEED_CORPUS"
 
-# Perform the actual fuzzing. We want the total build time to be about an 45 minutes:
+# Perform the actual fuzzing. We want the total build time to be about 45 minutes:
 # 5 minutes for building AWS-LC and Cryptofuzz
-# 30 minutes (1800 seconds) of fuzzing
-# 10 minutes of cleanup and merging in new inputs
-TIME_FOR_EACH_FUZZ=1800
+# 16 minutes (1000 seconds) of fuzzing
+# 24 minutes of cleanup and merging in new inputs
+TIME_FOR_EACH_FUZZ=1000
 
 # Some fuzz tests can take a while but still pass. This is a tradeoff: less false positive noise, but some inputs that take
 # a long time could lead to a denial of service avenue. We're mostly interested in correctness and memory safety at this
