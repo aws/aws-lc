@@ -116,10 +116,8 @@ static inline void jent_get_nstime(uint64_t *out)
 
 static inline void jent_get_nstime(uint64_t *out)
 {
-	/* OSX does not have clock_gettime -- taken from
-	 * http://developer.apple.com/library/mac/qa/qa1398/_index.html */
 # ifdef __MACH__
-	*out = mach_absolute_time();
+	*out = clock_gettime_nsec_np(CLOCK_MONOTONIC_RAW);
 # elif _AIX
 	/* clock_gettime() on AIX returns a timer value that increments in
 	 * steps of 1000
