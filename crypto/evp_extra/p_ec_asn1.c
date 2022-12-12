@@ -167,13 +167,7 @@ static int eckey_priv_decode(EVP_PKEY *out, CBS *params, CBS *key, CBS *pubkey) 
   return 1;
 }
 
-static int eckey_priv_encode(CBB *out, const EVP_PKEY *key,
-                             EVP_PKCS8_VERSION version) {
-  if (version != EVP_PKCS8_VERSION_V1) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_ENCODE_ERROR);
-    return 0;
-  }
-
+static int eckey_priv_encode(CBB *out, const EVP_PKEY *key) {
   const EC_KEY *ec_key = key->pkey.ec;
 
   // Omit the redundant copy of the curve name. This contradicts RFC 5915 but
@@ -269,6 +263,7 @@ const EVP_PKEY_ASN1_METHOD ec_asn1_meth = {
 
   eckey_priv_decode,
   eckey_priv_encode,
+  NULL /* priv_encode_v2 */,
 
   NULL /* set_priv_raw */,
   NULL /* set_pub_raw */,

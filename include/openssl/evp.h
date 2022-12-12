@@ -237,14 +237,14 @@ OPENSSL_EXPORT EVP_PKEY *EVP_parse_private_key(CBS *cbs);
 // success and zero on error.
 OPENSSL_EXPORT int EVP_marshal_private_key(CBB *cbb, const EVP_PKEY *key);
 
-// EVP_marshal_private_key_version marshals |key| as a DER-encoded PrivateKeyInfo
-// structure (RFC 5208) or OneAsymmetricKey (RFC 5958) based on the provided |version|,
-// and appends the result to |cbb|. It returns one on success and zero on error.
+// EVP_marshal_private_key_version marshals |key| as a DER-encoded
+// OneAsymmetricKey (RFC 5958) and appends the result to |cbb|. It returns one
+// on success and zero on error.
 //
-// Ed25519 is the only private key that supports marshaling as a v2 PKCS8 structure.
-// All other private key types will return an error.
-OPENSSL_EXPORT int EVP_marshal_private_key_version(CBB *cbb, const EVP_PKEY *key,
-                                                   EVP_PKCS8_VERSION version);
+// Ed25519 and x25119 are the only private key that supports marshaling as a v2
+// PKCS8 structure. All other private key types will return
+// UNSUPPORTED_ALGORITHM error.
+OPENSSL_EXPORT int EVP_marshal_private_key_v2(CBB *cbb, const EVP_PKEY *key);
 
 // Raw keys
 //

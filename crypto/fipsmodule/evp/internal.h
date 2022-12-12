@@ -98,7 +98,11 @@ struct evp_pkey_asn1_method_st {
 
   // priv_encode encodes |key| as a PrivateKeyInfo and appends the result to
   // |out|. It returns one on success and zero on error.
-  int (*priv_encode)(CBB *out, const EVP_PKEY *key, EVP_PKCS8_VERSION version);
+  int (*priv_encode)(CBB *out, const EVP_PKEY *key);
+
+  // priv_encode_v2 encodes |key| as a OneAsymmetricKey (RFC 5958) and appends
+  // the result to |out|. It returns one on success and zero on error.
+  int (*priv_encode_v2)(CBB *out, const EVP_PKEY *key);
 
   int (*set_priv_raw)(EVP_PKEY *pkey, const uint8_t *privkey, size_t privkey_len, const uint8_t *pubkey, size_t pubkey_len);
   int (*set_pub_raw)(EVP_PKEY *pkey, const uint8_t *in, size_t len);

@@ -216,17 +216,21 @@ err:
 }
 
 int EVP_marshal_private_key(CBB *cbb, const EVP_PKEY *key) {
-  return EVP_marshal_private_key_version(cbb, key, EVP_PKCS8_VERSION_V1);
-}
-
-int EVP_marshal_private_key_version(CBB *cbb, const EVP_PKEY *key,
-                                    EVP_PKCS8_VERSION version) {
-  if (key->ameth == NULL || key->ameth->priv_encode == NULL) {
+  if (key->ameth == NULL || key->ameth->priv_decode == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
     return 0;
   }
 
-  return key->ameth->priv_encode(cbb, key, version);
+  return key->ameth->priv_encode(cbb, key);
+}
+
+int EVP_marshal_private_key_v2(CBB *cbb, const EVP_PKEY *key) {
+  if (key->ameth == NULL || key->ameth->priv_encode_v2 == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
+    return 0;
+  }
+
+  return key->ameth->priv_encode_v2(cbb, key);
 }
 
 static EVP_PKEY *old_priv_decode(CBS *cbs, int type) {

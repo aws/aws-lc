@@ -189,8 +189,7 @@ static int x25519_priv_decode(EVP_PKEY *out, CBS *params, CBS *key, CBS *pubkey)
   return x25519_set_priv_raw(out, CBS_data(&inner), CBS_len(&inner), public, public_len);
 }
 
-static int x25519_priv_encode(CBB *out, const EVP_PKEY *pkey,
-                              EVP_PKCS8_VERSION version) {
+static int x25519_priv_encode(CBB *out, const EVP_PKEY *pkey) {
   X25519_KEY *key = pkey->pkey.ptr;
   if (!key->has_private) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NOT_A_PRIVATE_KEY);
@@ -200,7 +199,7 @@ static int x25519_priv_encode(CBB *out, const EVP_PKEY *pkey,
   // See RFC 8410, section 7.
   CBB pkcs8, algorithm, oid, private_key, inner;
   if (!CBB_add_asn1(out, &pkcs8, CBS_ASN1_SEQUENCE) ||
-      !CBB_add_asn1_uint64(&pkcs8, version /* version */) ||
+      !CBB_add_asn1_uint64(&pkcs8, 0 /* version */) ||
       !CBB_add_asn1(&pkcs8, &algorithm, CBS_ASN1_SEQUENCE) ||
       !CBB_add_asn1(&algorithm, &oid, CBS_ASN1_OBJECT) ||
       !CBB_add_bytes(&oid, x25519_asn1_meth.oid, x25519_asn1_meth.oid_len) ||
@@ -208,22 +207,38 @@ static int x25519_priv_encode(CBB *out, const EVP_PKEY *pkey,
       !CBB_add_asn1(&private_key, &inner, CBS_ASN1_OCTETSTRING) ||
       // The PKCS#8 encoding stores only the 32-byte seed which is the first 32
       // bytes of the private key.
-      !CBB_add_bytes(&inner, key->priv, 32)) {
+      !CBB_add_bytes(&inner, key->priv, 32) ||
+      !CBB_flush(out)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_ENCODE_ERROR);
     return 0;
   }
 
-  if (version == EVP_PKCS8_VERSION_V2) {
-    CBB public_key;
-    if (!CBB_add_asn1(&pkcs8, &public_key, CBS_ASN1_CONTEXT_SPECIFIC|1) ||
-        !CBB_add_u8(&public_key, 0 /*no padding required*/) ||
-        !CBB_add_bytes(&public_key, key->pub, 32)) {
-      OPENSSL_PUT_ERROR(EVP, EVP_R_ENCODE_ERROR);
-      return 0;
-    }
+  return 1;
+}
+
+static int x25519_priv_encode_v2(CBB *out, const EVP_PKEY *pkey) {
+  X25519_KEY *key = pkey->pkey.ptr;
+  if (!key->has_private) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_NOT_A_PRIVATE_KEY);
+    return 0;
   }
 
-  if (!CBB_flush(out)) {
+  // See RFC 8410, section 7.
+  CBB pkcs8, algorithm, oid, private_key, inner, public_key;
+  if (!CBB_add_asn1(out, &pkcs8, CBS_ASN1_SEQUENCE) ||
+      !CBB_add_asn1_uint64(&pkcs8, 1 /* version */) ||
+      !CBB_add_asn1(&pkcs8, &algorithm, CBS_ASN1_SEQUENCE) ||
+      !CBB_add_asn1(&algorithm, &oid, CBS_ASN1_OBJECT) ||
+      !CBB_add_bytes(&oid, x25519_asn1_meth.oid, x25519_asn1_meth.oid_len) ||
+      !CBB_add_asn1(&pkcs8, &private_key, CBS_ASN1_OCTETSTRING) ||
+      !CBB_add_asn1(&private_key, &inner, CBS_ASN1_OCTETSTRING) ||
+      // The PKCS#8 encoding stores only the 32-byte seed which is the first 32
+      // bytes of the private key.
+      !CBB_add_bytes(&inner, key->priv, 32) ||
+      !CBB_add_asn1(&pkcs8, &public_key, CBS_ASN1_CONTEXT_SPECIFIC|1) ||
+      !CBB_add_u8(&public_key, 0 /*no padding required*/) ||
+      !CBB_add_bytes(&public_key, key->pub, 32) ||
+      !CBB_flush(out)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_ENCODE_ERROR);
     return 0;
   }
@@ -244,6 +259,7 @@ const EVP_PKEY_ASN1_METHOD x25519_asn1_meth = {
     x25519_pub_cmp,
     x25519_priv_decode,
     x25519_priv_encode,
+    x25519_priv_encode_v2,
     x25519_set_priv_raw,
     x25519_set_pub_raw,
     x25519_get_priv_raw,

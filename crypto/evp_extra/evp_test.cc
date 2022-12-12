@@ -362,11 +362,11 @@ static bool TestDerive(FileTest *t, KeyMap *key_map, EVP_PKEY *key) {
 }
 
 static int EVP_marshal_private_key_version_one(CBB *cbb, const EVP_PKEY *key) {
-  return EVP_marshal_private_key_version(cbb, key, EVP_PKCS8_VERSION_V1);
+  return EVP_marshal_private_key(cbb, key);
 }
 
 static int EVP_marshal_private_key_version_two(CBB *cbb, const EVP_PKEY *key) {
-  return EVP_marshal_private_key_version(cbb, key, EVP_PKCS8_VERSION_V2);
+  return EVP_marshal_private_key_v2(cbb, key);
 }
 
 static bool TestEVP(FileTest *t, KeyMap *key_map) {

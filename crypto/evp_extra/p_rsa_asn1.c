@@ -136,13 +136,7 @@ static int rsa_pub_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
          BN_cmp(b->pkey.rsa->e, a->pkey.rsa->e) == 0;
 }
 
-static int rsa_priv_encode(CBB *out, const EVP_PKEY *key,
-                           EVP_PKCS8_VERSION version) {
-  if (version != EVP_PKCS8_VERSION_V1) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_ENCODE_ERROR);
-    return 0;
-  }
-
+static int rsa_priv_encode(CBB *out, const EVP_PKEY *key) {
   CBB pkcs8, algorithm, oid, null, private_key;
   if (!CBB_add_asn1(out, &pkcs8, CBS_ASN1_SEQUENCE) ||
       !CBB_add_asn1_uint64(&pkcs8, 0 /* version */) ||
@@ -235,6 +229,7 @@ const EVP_PKEY_ASN1_METHOD rsa_asn1_meth = {
 
   rsa_priv_decode,
   rsa_priv_encode,
+  NULL /* priv_encode_v2 */,
 
   NULL /* set_priv_raw */,
   NULL /* set_pub_raw */,
@@ -262,6 +257,7 @@ const EVP_PKEY_ASN1_METHOD rsa_pss_asn1_meth = {
 
   rsa_pss_priv_decode,
   NULL /* priv_encode */,
+  NULL /* priv_encode_v2 */,
 
   NULL /* set_priv_raw */,
   NULL /* set_pub_raw */,

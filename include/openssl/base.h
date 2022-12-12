@@ -429,10 +429,6 @@ typedef struct evp_pkey_asn1_method_st EVP_PKEY_ASN1_METHOD;
 typedef struct evp_pkey_ctx_st EVP_PKEY_CTX;
 typedef struct evp_pkey_method_st EVP_PKEY_METHOD;
 typedef struct evp_pkey_st EVP_PKEY;
-typedef enum {
-  EVP_PKCS8_VERSION_V1 = 0,
-  EVP_PKCS8_VERSION_V2 = 1
-} EVP_PKCS8_VERSION;
 typedef struct hmac_ctx_st HMAC_CTX;
 typedef struct md4_state_st MD4_CTX;
 typedef struct md5_state_st MD5_CTX;

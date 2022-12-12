@@ -129,6 +129,7 @@ const EVP_PKEY_ASN1_METHOD kyber512_asn1_meth = {
     kyber512_pub_cmp,
     NULL,
     NULL,
+    NULL /* priv_encode_v2 */,
     kyber512_set_priv_raw,
     kyber512_set_pub_raw,
     kyber512_get_priv_raw,

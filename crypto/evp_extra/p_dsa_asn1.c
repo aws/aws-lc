@@ -175,12 +175,7 @@ err:
   return 0;
 }
 
-static int dsa_priv_encode(CBB *out, const EVP_PKEY *key, EVP_PKCS8_VERSION version) {
-  if (version != EVP_PKCS8_VERSION_V1) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_ENCODE_ERROR);
-    return 0;
-  }
-
+static int dsa_priv_encode(CBB *out, const EVP_PKEY *key) {
   const DSA *dsa = key->pkey.dsa;
   if (dsa == NULL || dsa->priv_key == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_MISSING_PARAMETERS);
@@ -268,6 +263,7 @@ const EVP_PKEY_ASN1_METHOD dsa_asn1_meth = {
 
   dsa_priv_decode,
   dsa_priv_encode,
+  NULL /* priv_encode_v2 */,
 
   NULL /* set_priv_raw */,
   NULL /* set_pub_raw */,
