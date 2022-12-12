@@ -129,6 +129,10 @@ static inline void jent_get_nstime(uint64_t *out)
 static inline void jent_get_nstime(uint64_t *out)
 {
 # ifdef __MACH__
+    /* Apple suggests using clock_gettime_nsec_np instead of mach_* functions:
+	 * https://developer.apple.com/documentation/kernel/1462446-mach_absolute_time
+	 * https://developer.apple.com/documentation/kernel/1646199-mach_continuous_time
+	 */
 	*out = clock_gettime_nsec_np(CLOCK_MONOTONIC_RAW);
 # elif _AIX
 	/* clock_gettime() on AIX returns a timer value that increments in
