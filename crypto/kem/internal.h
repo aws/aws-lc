@@ -25,8 +25,8 @@ typedef struct {
                 const uint8_t *secret_key);
 } KEM_METHOD;
 
-const KEM_METHOD *KEM_kyber512_method(void);
-// const KEM_METHOD *KEM_kyber768_method(void);
+extern const KEM_METHOD kem_kyber512_method;
+// extern const KEM_METHOD kem_kyber768_method;
 
 // KEM structure and helper functions.
 typedef struct {
@@ -41,13 +41,6 @@ typedef struct {
   const KEM_METHOD *method;
 } KEM;
 
-#define AWSLC_NUM_BUILT_IN_KEMS 1
-
-struct built_in_kems {
-  KEM kems[AWSLC_NUM_BUILT_IN_KEMS];
-};
-
-const struct built_in_kems *AWSLC_built_in_kems(void);
 const KEM *KEM_find_kem_by_nid(int nid);
 
 // KEM_KEY structure and helper functions.

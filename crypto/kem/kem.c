@@ -9,39 +9,43 @@
 #include "../internal.h"
 #include "internal.h"
 
-DEFINE_METHOD_FUNCTION(struct built_in_kems, AWSLC_built_in_kems) {
-  // TODO(awslc): placeholder OID, replace with the real one when available.
-  static const uint8_t kOIDKyber512[] = {0xff, 0xff, 0xff, 0xff};
-  out->kems[0].nid = NID_KYBER512;
-  out->kems[0].oid = kOIDKyber512;
-  out->kems[0].oid_len = sizeof(kOIDKyber512);
-  out->kems[0].comment = "Kyber512";
-  out->kems[0].public_key_len = 800;
-  out->kems[0].secret_key_len = 1632;
-  out->kems[0].ciphertext_len = 768;
-  out->kems[0].shared_secret_len = 32;
-  out->kems[0].method = KEM_kyber512_method();
+#define AWSLC_NUM_BUILT_IN_KEMS 1
+
+// TODO(awslc): placeholder OID, replace with the real one when available.
+static const uint8_t kOIDKyber512[] = {0xff, 0xff, 0xff, 0xff};
+
+static const KEM built_in_kems[AWSLC_NUM_BUILT_IN_KEMS] = {
+  {
+    NID_KYBER512,         // kem.nid
+    kOIDKyber512,         // kem.oid
+    sizeof(kOIDKyber512), // kem.oid_len
+    "Kyber512",           // kem.comment
+    800,                  // kem.public_key_len
+    1632,                 // kem.secret_key_len
+    768,                  // kem.ciphertext_len
+    32,                   // kem.shared_secret_len
+    &kem_kyber512_method, // kem.method
+  },
 
   // Example how adding new KEM looks like:
-  //
-  // static const uint8_t kOIDKyber768[] = {0xff, 0xff, 0xff, 0xff};
-  // out->kems[1].nid = NID_KYBER768;
-  // out->kems[1].oid = kOIDKyber768;
-  // out->kems[1].oid_len = sizeof(kOIDKyber768);
-  // out->kems[1].comment = "Kyber768";
-  // out->kems[1].public_key_len = 1184;
-  // out->kems[1].secret_key_len = 2400;
-  // out->kems[1].ciphertext_len = 1088;
-  // out->kems[1].shared_secret_len = 32;
-  // out->kems[1].method = KEM_kyber768_method();
-}
+  // {
+  //   NID_KYBER768,         // kem.nid
+  //   kOIDKyber768,         // kem.oid
+  //   sizeof(kOIDKyber768), // kem.oid_len
+  //   "Kyber7678,           // kem.comment
+  //   1184,                 // kem.public_key_len
+  //   2400,                 // kem.secret_key_len
+  //   1088,                 // kem.ciphertext_len
+  //   32,                   // kem.shared_secret_len
+  //   &kem_kyber768_method, // kem.method
+  // },
+};
 
 const KEM *KEM_find_kem_by_nid(int nid) {
-  const struct built_in_kems *kems = AWSLC_built_in_kems();
   const KEM *ret = NULL;
   for (size_t i = 0; i < AWSLC_NUM_BUILT_IN_KEMS; i++) {
-    if (kems->kems[i].nid == nid) {
-      ret = &kems->kems[i];
+    if (built_in_kems[i].nid == nid) {
+      ret = &built_in_kems[i];
       break;
     }
   }
@@ -62,7 +66,8 @@ int KEM_KEY_init(KEM_KEY *key, const KEM *kem) {
   if (key == NULL || kem == NULL) {
     return 0;
   }
-  // TODO(awslc): should we check if the key is already initialized?
+  // If the key is already initialized clear it.
+  KEM_KEY_free(key);
 
   key->kem = kem;
   key->public_key = OPENSSL_malloc(kem->public_key_len);

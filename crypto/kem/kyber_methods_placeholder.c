@@ -30,11 +30,11 @@ static int kyber512_decaps_placeholder(uint8_t *shared_secret,
   return kyber512_decapsulate(shared_secret, ciphertext, secret_key) == 0;
 }
 
-DEFINE_METHOD_FUNCTION(KEM_METHOD, KEM_kyber512_method) {
-  out->keygen = kyber512_keygen_placeholder;
-  out->encaps = kyber512_encaps_placeholder;
-  out->decaps = kyber512_decaps_placeholder;
-}
+const KEM_METHOD kem_kyber512_method = {
+  kyber512_keygen_placeholder,
+  kyber512_encaps_placeholder,
+  kyber512_decaps_placeholder,
+};
 
 // Example how adding new KEM_METHOD looks like:
 //
@@ -55,8 +55,9 @@ DEFINE_METHOD_FUNCTION(KEM_METHOD, KEM_kyber512_method) {
 //   return 1;
 // }
 // 
-// DEFINE_METHOD_FUNCTION(KEM_METHOD, KEM_kyber768_method) {
-//   out->keygen = kyber768_keygen_placeholder;
-//   out->encaps = kyber768_encaps_placeholder;
-//   out->decaps = kyber768_decaps_placeholder;
-// }
+// const KEM_METHOD kem_kyber768_method = {
+//   kyber768_keygen_placeholder,
+//   kyber768_encaps_placeholder,
+//   kyber768_decaps_placeholder,
+// };
+
