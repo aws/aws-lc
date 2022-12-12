@@ -112,7 +112,19 @@ static inline void jent_get_nstime(uint64_t *out)
 	*out = EAX_EDX_VAL(val, low, high);
 }
 
-#else /* (__x86_64__) || (__i386__) */
+#elif defined(__aarch64__)
+
+static inline void jent_get_nstime(uint64_t *out)
+{
+        uint64_t ctr_val;
+        /*
+         * Use the system counter for aarch64 (64 bit ARM).
+         */
+        __asm__ volatile("mrs %0, cntvct_el0" : "=r" (ctr_val));
+        *out = ctr_val;
+}
+
+#else /* (__x86_64__) || (__i386__) || (__aarch64__) */
 
 static inline void jent_get_nstime(uint64_t *out)
 {
