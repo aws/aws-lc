@@ -6,11 +6,6 @@
 #[cfg(all(not(feature = "bindgen"), not_pregenerated))]
 compile_error!("The FIPS static build is not supported on this platform.");
 
-#[cfg(all(feature = "generate_bindings", feature = "internal_generate"))]
-compile_error!(
-    "internal_generate is only for internal usage and does not work with the generate_bindings feature."
-);
-
 macro_rules! use_bindings {
     ($bindings:ident) => {
         mod $bindings;
@@ -24,7 +19,7 @@ use_bindings!(linux_x86_64_bindings);
 #[cfg(linux_aarch64_bindings)]
 use_bindings!(linux_aarch64_bindings);
 
-#[cfg(any(feature = "bindgen", not_pregenerated))]
+#[cfg(feature = "bindgen")]
 use_bindings!(bindings);
 
 #[allow(non_snake_case)]

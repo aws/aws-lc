@@ -9,7 +9,6 @@ license = "Apache-2.0 OR ISC"
 rust-version = "1.57.0"
 include = [
     "build.rs",
-    "build_bindgen.rs",
     "Cargo.toml",
     "deps/aws-lc/**/*.c",
     "deps/aws-lc/**/*.cc",
@@ -26,9 +25,6 @@ include = [
 
 [features]
 asan = []
-# Generate the bindings on the targetted platform as a fallback mechanism.
-# FIPS is only supported on x86_64(gcc/clang) and ARM(clang).
-generate_bindings = ["bindgen"]
 internal_generate = ["bindgen"] # Only for internal use, this line is removed prior to publishing.
 
 [build-dependencies]
