@@ -1047,6 +1047,32 @@ TEST(ASN1Test, SetTime) {
   }
 }
 
+TEST(ASN1Test, AdjTime) {
+  struct tm tm1, tm2;
+  int days, secs;
+
+  OPENSSL_posix_to_tm(0, &tm1);
+  OPENSSL_posix_to_tm(0, &tm2);
+  // Test values that are too large and should be rejected.
+  EXPECT_FALSE(OPENSSL_gmtime_adj(&tm1, INT_MIN, INT_MIN));
+  EXPECT_FALSE(OPENSSL_gmtime_adj(&tm1, INT_MAX, INT_MAX));
+  // Basic functionality.
+  EXPECT_TRUE(OPENSSL_gmtime_adj(&tm2, 1, 1));
+  EXPECT_TRUE(OPENSSL_gmtime_diff(&days, &secs, &tm1, &tm2));
+  EXPECT_EQ(days, 1);
+  EXPECT_EQ(secs, 1);
+  EXPECT_TRUE(OPENSSL_gmtime_diff(&days, &secs, &tm2, &tm1));
+  EXPECT_EQ(days, -1);
+  EXPECT_EQ(secs, -1);
+  // Test a value of days that is very large, but valid.
+  EXPECT_TRUE(OPENSSL_gmtime_adj(&tm2, 2932800, 0));
+  EXPECT_TRUE(OPENSSL_gmtime_diff(&days, &secs, &tm1, &tm2));
+  EXPECT_EQ(days, 2932801);
+  EXPECT_EQ(secs, 1);
+  EXPECT_TRUE(OPENSSL_gmtime_diff(&days, &secs, &tm2, &tm1));
+  EXPECT_EQ(days, -2932801);
+  EXPECT_EQ(secs, -1);
+}
 static std::vector<uint8_t> StringToVector(const std::string &str) {
   return std::vector<uint8_t>(str.begin(), str.end());
 }
@@ -1773,27 +1799,6 @@ TEST(ASN1Test, NegativeEnumeratedMultistring) {
       d2i_ASN1_PRINTABLE(nullptr, &p, sizeof(kMinusOne)));
   ASSERT_TRUE(str);
   TestSerialize(str.get(), i2d_ASN1_PRINTABLE, kMinusOne);
-}
-
-TEST(ASN1Test, PrintableType) {
-  const struct {
-    std::vector<uint8_t> in;
-    int result;
-  } kTests[] = {
-      {{}, V_ASN1_PRINTABLESTRING},
-      {{'a', 'A', '0', '\'', '(', ')', '+', ',', '-', '.', '/', ':', '=', '?'},
-       V_ASN1_PRINTABLESTRING},
-      {{'*'}, V_ASN1_IA5STRING},
-      {{'\0'}, V_ASN1_IA5STRING},
-      {{'\0', 'a'}, V_ASN1_IA5STRING},
-      {{0, 1, 2, 3, 125, 126, 127}, V_ASN1_IA5STRING},
-      {{0, 1, 2, 3, 125, 126, 127, 128}, V_ASN1_T61STRING},
-      {{128, 0, 1, 2, 3, 125, 126, 127}, V_ASN1_T61STRING},
-  };
-  for (const auto &t : kTests) {
-    SCOPED_TRACE(Bytes(t.in));
-    EXPECT_EQ(t.result, ASN1_PRINTABLE_type(t.in.data(), t.in.size()));
-  }
 }
 
 // Encoding a CHOICE type with an invalid selector should fail.
