@@ -53,8 +53,8 @@ static int has_hw_feature(const char *name) {
 static int is_brand(const char *in_str) {
   char brand[64];
   size_t len = sizeof(brand);
-  if (sysctlbyname(name, brand, &len, NULL, 0) != 0 ||
-      strncmp("machdep.cpu.brand_string", in_str, strnlen(in_str, len)) != 0) {
+  if (sysctlbyname("machdep.cpu.brand_string", brand, &len, NULL, 0) != 0 ||
+      strncmp(brand, in_str, strnlen(in_str, len)) != 0) {
     return 0;
   }
 
