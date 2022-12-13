@@ -22,7 +22,7 @@ use std::process::Command;
 use std::{env, fs};
 
 #[cfg(feature = "bindgen")]
-mod build_bindgen;
+mod bindgen;
 
 pub(crate) fn get_include_path(manifest_dir: &Path) -> PathBuf {
     manifest_dir.join("deps").join("aws-lc").join("include")
@@ -162,6 +162,7 @@ fn prepare_cmake_build(build_prefix: Option<&str>) -> cmake::Config {
     }
 
     cmake_cfg.define("BUILD_TESTING", "OFF");
+    cmake_cfg.define("BUILD_LIBSSL", "ON");
     cmake_cfg.define("FIPS", "1");
 
     if cfg!(feature = "asan") {
@@ -178,11 +179,11 @@ fn prepare_cmake_build(build_prefix: Option<&str>) -> cmake::Config {
 fn build_aws_lc() -> PathBuf {
     let mut cmake_cfg = prepare_cmake_build(Some(&prefix_string()));
 
-    cmake_cfg.build_target("crypto").build()
+    cmake_cfg.build_target("ssl").build()
 }
 
 fn main() -> Result<(), String> {
-    use crate::OutputLib::Crypto;
+    use crate::OutputLib::{Crypto, Ssl};
     use crate::OutputLibType::Static;
 
     cfg_aliases! {
@@ -216,10 +217,10 @@ fn main() -> Result<(), String> {
     let prefix = prefix_string();
 
     #[cfg(any(feature = "bindgen", not_pregenerated))]
-    build_bindgen::generate_bindings(&manifest_dir, Some(&prefix), "bindings.rs")
+    bindgen::generate_bindings(&manifest_dir, Some(&prefix), "bindings.rs")
         .expect("Unable to generate bindings.");
     #[cfg(feature = "internal_generate")]
-    build_bindgen::generate_bindings(
+    bindgen::generate_bindings(
         &manifest_dir,
         Some(&prefix),
         &target_platform_bindings_string().to_string(),
@@ -227,23 +228,43 @@ fn main() -> Result<(), String> {
     .expect("Unable to generate bindings.");
 
     let aws_lc_dir = build_aws_lc();
-    let lib_file = Crypto.locate_file(&aws_lc_dir, Static, None);
-    let prefixed_lib_file = Crypto.locate_file(&aws_lc_dir, Static, Some(&prefix));
-    fs::rename(lib_file, prefixed_lib_file).expect("Unexpected error: Library not found");
 
-    let libcrypto_dir = Crypto.locate_dir(&aws_lc_dir);
-    println!("cargo:rustc-link-search=native={}", libcrypto_dir.display());
+    let libcrypto_file = Crypto.locate_file(&aws_lc_dir, Static, None);
+    let prefixed_libcrypto_file = Crypto.locate_file(&aws_lc_dir, Static, Some(&prefix));
+    fs::rename(libcrypto_file, prefixed_libcrypto_file)
+        .expect("Unexpected error: Library not found");
+
+    println!(
+        "cargo:rustc-link-search=native={}",
+        Crypto.locate_dir(&aws_lc_dir).display()
+    );
 
     println!(
         "cargo:rustc-link-lib={}={}",
         Static.rust_lib_type(),
         Crypto.libname(Some(&prefix))
     );
+
+    let libssl_file = Ssl.locate_file(&aws_lc_dir, Static, None);
+    let prefixed_libssl_file = Ssl.locate_file(&aws_lc_dir, Static, Some(&prefix));
+    fs::rename(libssl_file, prefixed_libssl_file).expect("Unexpected error: Library not found");
+
+    println!(
+        "cargo:rustc-link-search=native={}",
+        Ssl.locate_dir(&aws_lc_dir).display()
+    );
+
+    println!(
+        "cargo:rustc-link-lib={}={}",
+        Static.rust_lib_type(),
+        Ssl.libname(Some(&prefix))
+    );
+
     println!(
         "cargo:include={}",
         get_include_path(&manifest_dir).display()
     );
-    println!("cargo:rerun-if-changed=build.rs");
+    println!("cargo:rerun-if-changed=build/");
 
     Ok(())
 }

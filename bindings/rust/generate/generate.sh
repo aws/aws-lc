@@ -38,6 +38,7 @@ function prepare_crate_dir {
   perl -pi -e "s/__AWS_LC_SYS_VERSION__/${AWS_LC_SYS_VERSION}/g" "${CRATE_DIR}"/Cargo.toml
 
   cp -r "${AWS_LC_DIR}"/crypto  \
+        "${AWS_LC_DIR}"/ssl \
         "${AWS_LC_DIR}"/generated-src \
         "${AWS_LC_DIR}"/include \
         "${AWS_LC_DIR}"/tool \
