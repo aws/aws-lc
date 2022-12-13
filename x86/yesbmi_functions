@@ -48,6 +48,9 @@ curve25519_ladderstep
 curve25519_pxscalarmul
 curve25519_x25519
 curve25519_x25519base
+edwards25519_epadd
+edwards25519_epdouble
+edwards25519_pdouble
 edwards25519_pepadd
 p256_montjadd
 p256_montjdouble

@@ -81,6 +81,12 @@ POINT_OBJ = curve25519/curve25519_ladderstep.o \
             curve25519/curve25519_x25519_alt.o \
             curve25519/curve25519_x25519base.o \
             curve25519/curve25519_x25519base_alt.o \
+            curve25519/edwards25519_epadd.o \
+            curve25519/edwards25519_epadd_alt.o \
+            curve25519/edwards25519_epdouble.o \
+            curve25519/edwards25519_epdouble_alt.o \
+            curve25519/edwards25519_pdouble.o \
+            curve25519/edwards25519_pdouble_alt.o \
             curve25519/edwards25519_pepadd.o \
             curve25519/edwards25519_pepadd_alt.o \
             p256/p256_montjadd.o \

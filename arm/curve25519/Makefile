@@ -40,6 +40,12 @@ OBJ = bignum_add_p25519.o \
       curve25519_x25519_alt.o \
       curve25519_x25519base.o \
       curve25519_x25519base_alt.o \
+      edwards25519_epadd.o \
+      edwards25519_epadd_alt.o \
+      edwards25519_epdouble.o \
+      edwards25519_epdouble_alt.o \
+      edwards25519_pdouble.o \
+      edwards25519_pdouble_alt.o \
       edwards25519_pepadd.o \
       edwards25519_pepadd_alt.o
 

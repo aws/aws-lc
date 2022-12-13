@@ -10,6 +10,7 @@
 #include <inttypes.h>
 #include <time.h>
 #include <math.h>
+#include <string.h>
 
 #include "../include/s2n-bignum.h"
 
@@ -24,6 +25,10 @@
 
 #define INNER_REPS UINT64_C(10000)
 #define OUTER_REPS 5
+
+// But we use an adjustable version defaulting to INNER_REPS
+
+static uint64_t inner_reps = INNER_REPS;
 
 // Big buffers for testing purposes
 
@@ -70,13 +75,16 @@ void random_bignum(uint64_t k,uint64_t *a)
 // is recomputed on the same inputs each time without trying to
 // enforce serial dependency.
 
-#define repeat(bod) {int i; for (i = 0; i < INNER_REPS; ++i) bod; }
+#define repeat(bod) {int i; for (i = 0; i < inner_reps; ++i) bod; }
 
 #define CORE_REPS (65 * OUTER_REPS)
 #define CORE_REPF ((double) CORE_REPS)
 
 // Time a single function harness "f" for function "name".
 // The "enabled" flag allows machine-dependent enabling or disabling of a test.
+// The "chosen" only runs it if the name matches
+
+static char *function_to_test;
 
 static double arithmean = 0.0, geomean = 0.0;
 int tests = 0;
@@ -87,6 +95,20 @@ void timingtest(int enabled,char *name,void (*f)(void))
   double timing[CORE_REPS];
   double covariance, dvariance, dstddev;
   clock_t start_time, finish_time, time_diff;
+
+  // Only benchmark matching function name
+  // Empty string matches everything, terminal _ matches everything
+
+  char *spaceptr = strchr(name,' ');
+  int compline = (spaceptr) ? spaceptr-name : strlen(name);
+  int wantline = strlen(function_to_test);
+  int testline = wantline;
+  if (wantline == 0) testline = 0;
+  else if (function_to_test[wantline-1] == '_') testline = wantline - 1;
+  else if (testline < compline) testline = compline;
+  if (strncmp(name,function_to_test,testline)) return;
+
+  // Only benchmark function using supported instructions (on x86)
 
   if (!enabled)
    { printf("%-32s:             *** NOT APPLICABLE  ***\n",name);
@@ -109,7 +131,7 @@ void timingtest(int enabled,char *name,void (*f)(void))
      (*f)();
      finish_time = clock();
      time_diff = finish_time - start_time;
-     timing[i] = (1e9 * (double) time_diff) / ((double) INNER_REPS * (double) CLOCKS_PER_SEC);
+     timing[i] = (1e9 * (double) time_diff) / ((double) inner_reps * (double) CLOCKS_PER_SEC);
    }
 
   // Compute the statistics
@@ -646,6 +668,15 @@ void call_curve25519_ladderstep_alt(void) repeat(curve25519_ladderstep_alt(b0,b1
 void call_curve25519_pxscalarmul(void) repeat(curve25519_pxscalarmul(b0,b1,b2))
 void call_curve25519_pxscalarmul_alt(void) repeat(curve25519_pxscalarmul_alt(b0,b1,b2))
 
+void call_edwards25519_epadd(void) repeat(edwards25519_epadd(b1,b2,b3))
+void call_edwards25519_epadd_alt(void) repeat(edwards25519_epadd_alt(b1,b2,b3))
+
+void call_edwards25519_epdouble(void) repeat(edwards25519_epdouble(b1,b2))
+void call_edwards25519_epdouble_alt(void) repeat(edwards25519_epdouble_alt(b1,b2))
+
+void call_edwards25519_pdouble(void) repeat(edwards25519_pdouble(b1,b2))
+void call_edwards25519_pdouble_alt(void) repeat(edwards25519_pdouble_alt(b1,b2))
+
 void call_edwards25519_pepadd(void) repeat(edwards25519_pepadd(b1,b2,b3))
 void call_edwards25519_pepadd_alt(void) repeat(edwards25519_pepadd_alt(b1,b2,b3))
 
@@ -665,10 +696,32 @@ void call_secp256k1_jadd(void) repeat(secp256k1_jadd(b1,b2,b3))
 void call_secp256k1_jdouble(void) repeat(secp256k1_jdouble(b1,b2))
 void call_secp256k1_jmixadd(void) repeat(secp256k1_jmixadd(b1,b2,b3))
 
-int main(void)
+int main(int argc, char *argv[])
 {
   int bmi = full_isa_support();
   int all = 1;
+  char *argending;
+  long negreps;
+  function_to_test = "";
+  inner_reps = INNER_REPS;
+
+  if (argc >= 2)
+   { negreps = strtol(argv[1],&argending,10);
+     if (negreps >= 0) negreps = -negreps;
+     if (argending == argv[1])
+      { if (argc >= 3 || argv[1][0] == '-')
+         { printf("Usage: benchmark [-reps] [function_name]\n");
+           printf(" e.g.: benchmark -10000 bignum_add\n");
+           printf("   or: benchmark -2500 bignum_mul_\n");
+           return (-1);
+         }
+        else function_to_test = argv[1];
+      }
+     else
+      { inner_reps = -negreps;
+        if (argc >= 3) function_to_test = argv[2];
+      }
+   }
 
   // Explain the results first if EXPLANATION is set
 
@@ -680,6 +733,8 @@ int main(void)
   printf("ops/sec = average number of operations per second = 10^9 / average timing.\n");
   printf("ARITHMEAN = arithmetic mean of all average function times, in nanoseconds.\n");
   printf("GEOMEAN = geometric mean of all average function times, in nanoseconds.\n");
+  printf("Repetitions per function = %d (outer) * 65 (bit densities) * %"PRIu64" (inner) = %"PRIu64"\n",
+         OUTER_REPS,inner_reps,OUTER_REPS*65*inner_reps);
   printf("---------------------------------------------------------------------------------\n\n");
   #endif
 
@@ -945,6 +1000,12 @@ int main(void)
   timingtest(all,"curve25519_x25519_alt",call_curve25519_x25519_alt);
   timingtest(bmi,"curve25519_x25519base",call_curve25519_x25519base);
   timingtest(all,"curve25519_x25519base_alt",call_curve25519_x25519base_alt);
+  timingtest(bmi,"edwards25519_epadd",call_edwards25519_epadd);
+  timingtest(all,"edwards25519_epadd_alt",call_edwards25519_epadd_alt);
+  timingtest(bmi,"edwards25519_epdouble",call_edwards25519_epdouble);
+  timingtest(all,"edwards25519_epdouble_alt",call_edwards25519_epdouble_alt);
+  timingtest(bmi,"edwards25519_pdouble",call_edwards25519_pdouble);
+  timingtest(all,"edwards25519_pdouble_alt",call_edwards25519_pdouble_alt);
   timingtest(bmi,"edwards25519_pepadd",call_edwards25519_pepadd);
   timingtest(all,"edwards25519_pepadd_alt",call_edwards25519_pepadd_alt);
   timingtest(bmi,"p256_montjadd",call_p256_montjadd);
