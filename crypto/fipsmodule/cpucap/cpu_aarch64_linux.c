@@ -37,7 +37,6 @@ extern uint8_t OPENSSL_cpucap_initialized;
 static uint64_t armv8_cpuid_probe(void) {
   uint64_t val;
   __asm__ volatile("mrs %0, MIDR_EL1" : "=r" (val));
-  printf("MIDR_EL1: 0x%016lx\n", val);
   return val;
 }
 
