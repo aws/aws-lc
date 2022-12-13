@@ -82,6 +82,9 @@ int KEM_KEY_init(KEM_KEY *key, const KEM *kem) {
 }
 
 void KEM_KEY_free(KEM_KEY *key) {
+  if (key == NULL) {
+    return;
+  }
   key->kem = NULL;
   OPENSSL_free(key->public_key);
   OPENSSL_free(key->secret_key);
