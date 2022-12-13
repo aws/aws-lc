@@ -17,6 +17,7 @@ cargo clean
 cargo clippy --fix --allow-no-vcs
 cargo fmt
 cargo test # sanity check
+cargo package # checks if published package will build.
 cargo clean
 
 popd

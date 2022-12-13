@@ -19,6 +19,8 @@ include = [
     "deps/aws-lc/**/*.cmake",
     "deps/aws-lc/**/*.errordata",
     "deps/aws-lc/**/*.go",
+    "deps/aws-lc/**/*.mod",
+    "deps/aws-lc/**/*.sum",
     "src/**/*.rs",
     "tests/**/*.rs",
 ]
