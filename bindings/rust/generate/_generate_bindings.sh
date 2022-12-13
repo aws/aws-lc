@@ -8,7 +8,10 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 AWS_LC_DIR=$( cd -- "${SCRIPT_DIR}/../../../" &> /dev/null && pwd)
 TMP_DIR="${AWS_LC_DIR}"/bindings/rust/tmp
 CRATE_DIR="${TMP_DIR}/$@"
+
 pushd "${CRATE_DIR}"
+
+export GOPROXY=direct
 
 cargo clean
 # internal_generate pre-generates the bindings for a specific platform. This feature 

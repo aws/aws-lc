@@ -46,12 +46,12 @@ function find_completion_marker {
 }
 
 function run_prepublish_checks {
-	${SCRIPT_DIR}/_publish_checks.sh "$@"
+	${SCRIPT_DIR}/_prepublish_checks.sh "$@"
 }
 
 # FIPS static build is only supported on linux.
 function run_prepublish_checks_linux {
-	docker run -v "${AWS_LC_DIR}":"${AWS_LC_DIR}" -w "${AWS_LC_DIR}" --rm --platform linux/amd64 rust:linux-x86_64 /bin/bash "${SCRIPT_DIR}"/_publish_checks.sh "$@"
+	docker run -v "${AWS_LC_DIR}":"${AWS_LC_DIR}" -w "${AWS_LC_DIR}" --rm --platform linux/amd64 rust:linux-x86_64 /bin/bash "${SCRIPT_DIR}"/_prepublish_checks.sh "$@"
 }
 
 function publish_crate {
