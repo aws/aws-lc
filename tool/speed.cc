@@ -25,6 +25,7 @@
 #include <string.h>
 
 #include "internal.h"
+#include "../crypto/dilithium/sig_dilithium.h"
 
 #if !defined(OPENSSL_BENCHMARK)
 #include "bssl_bm.h"
@@ -1120,6 +1121,64 @@ static bool SpeedECDSA(const std::string &selected) {
          SpeedECDSACurve("ECDSA secp256k1", NID_secp256k1, selected);
 }
 
+static bool SpeedDilithium3(const std::string &name, int nid,
+                            const std::string &selected) {
+  if (!selected.empty() && name.find(selected) == std::string::npos) {
+    return true;
+  }
+
+  // Setup CTX for EC Operations
+  BM_NAMESPACE::UniquePtr<EVP_PKEY_CTX> pkey_ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_DILITHIUM3, nullptr));
+
+  // Setup CTX for Keygen Operations
+  if (!pkey_ctx || EVP_PKEY_keygen_init(pkey_ctx.get()) != 1) {
+    return false;
+  }
+
+  EVP_PKEY *key = NULL;
+
+  TimeResults results;
+  if (!TimeFunction(&results, [&pkey_ctx, &key]() -> bool {
+        return EVP_PKEY_keygen(pkey_ctx.get(), &key);
+      })) {
+    return false;
+  }
+  results.Print(name + " keygen");
+
+  // Setup CTX for Sign operations
+  bssl::ScopedEVP_MD_CTX md_ctx;
+  uint8_t signature[3293];
+  size_t sig_len = 3293;
+  std::vector<uint8_t> msg = {0x68, 0x74, 0x74, 0x70, 0x73, 0x3a, 0x2f, 0x2f, 0x61, 0x77, 0x73, 0x2e,
+                              0x61, 0x6d, 0x61, 0x7a, 0x6f, 0x6e, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x73,
+                              0x65, 0x63, 0x75, 0x72, 0x69, 0x74, 0x79, 0x2f, 0x70, 0x6f, 0x73, 0x74,
+                              0x2d, 0x71, 0x75, 0x61, 0x6e, 0x74, 0x75, 0x6d, 0x2d, 0x63, 0x72, 0x79,
+                              0x70, 0x74, 0x6f, 0x67, 0x72, 0x61, 0x70, 0x68, 0x79, 0x2f};
+
+  if (!TimeFunction(&results, [&md_ctx, &key, &signature, &sig_len, &msg ]() -> bool {
+        return EVP_DigestSignInit(md_ctx.get(), NULL, NULL, NULL, key) &&
+               EVP_DigestSign(md_ctx.get(), signature, &sig_len, msg.data(), msg.size());
+      })) {
+    return false;
+  }
+  results.Print(name + " signing");
+
+  // Verify
+  if (!TimeFunction(&results, [&md_ctx, &signature, &sig_len, &msg ]() -> bool {
+        return EVP_DigestVerify(md_ctx.get(), signature, sig_len, msg.data(), msg.size());
+      })) {
+    return false;
+  }
+  results.Print(name + " verify");
+
+  EVP_PKEY_free(key);
+  md_ctx.Reset();
+  return true;
+}
+
+static bool SpeedDilithium(const std::string &selected) {
+  return SpeedDilithium3("Dilithium3", NID_DILITHIUM3, selected);
+}
 
 #if !defined(OPENSSL_1_0_BENCHMARK)
 static bool SpeedECMULCurve(const std::string &name, int nid,
@@ -1907,6 +1966,7 @@ bool Speed(const std::vector<std::string> &args) {
      !SpeedECDH(selected) ||
      !SpeedECDSA(selected) ||
      !SpeedECKeyGen(selected) ||
+     !SpeedDilithium(selected) ||
 #if !defined(OPENSSL_1_0_BENCHMARK)
      !SpeedECMUL(selected) ||
      // OpenSSL 1.0 doesn't support Scrypt
