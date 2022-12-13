@@ -1232,47 +1232,6 @@ static int Verify(
   return r1;
 }
 
-static const char kPolicyRoot[] = R"(
------BEGIN CERTIFICATE-----
-MIIBdDCCARqgAwIBAgIBATAKBggqhkjOPQQDAjAWMRQwEgYDVQQDEwtQb2xpY3kg
-Um9vdDAgFw0wMDAxMDEwMDAwMDBaGA8yMTAwMDEwMTAwMDAwMFowFjEUMBIGA1UE
-AxMLUG9saWN5IFJvb3QwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAQmdqXYl1Gv
-Y7y3jcTTK6MVXIQr44TqChRYI6IeV9tIB6jIsOY+Qol1bk8x/7A5FGOnUWFVLEAP
-EPSJwPndjolto1cwVTAOBgNVHQ8BAf8EBAMCAgQwEwYDVR0lBAwwCgYIKwYBBQUH
-AwEwDwYDVR0TAQH/BAUwAwEB/zAdBgNVHQ4EFgQU0GnnoB+yeN63WMthnh6Uh1HH
-dRIwCgYIKoZIzj0EAwIDSAAwRQIgctaVgroxlAkLhPEaTXvsE3ePYM2X+KGOJZXc
-usyO3YkCIQDN1RLJq9vHGjZzDCEehKjxHsV+XSAkdfU7nB7KjVHTKA==
------END CERTIFICATE-----
-)";
-
-static const char kPolicyIntermediate[] = R"(
------BEGIN CERTIFICATE-----
-MIIBrDCCAVGgAwIBAgIBAjAKBggqhkjOPQQDAjAWMRQwEgYDVQQDEwtQb2xpY3kg
-Um9vdDAgFw0wMDAxMDEwMDAwMDBaGA8yMTAwMDEwMTAwMDAwMFowHjEcMBoGA1UE
-AxMTUG9saWN5IEludGVybWVkaWF0ZTBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IA
-BOI6fKiM3jFLkLyAn88cvlw4SwxuygRjopP3FFBKHyUQvh3VVvfqSpSCSmp50Qia
-jQ6Dg7CTpVZVVH+bguT7JTCjgYUwgYIwDgYDVR0PAQH/BAQDAgIEMBMGA1UdJQQM
-MAoGCCsGAQUFBwMBMA8GA1UdEwEB/wQFMAMBAf8wHQYDVR0OBBYEFJDS9/4O7qhr
-CIRhwsXrPVBagG2uMCsGA1UdIAQkMCIwDwYNKoZIhvcSBAGEtwkCATAPBg0qhkiG
-9xIEAYS3CQICMAoGCCqGSM49BAMCA0kAMEYCIQCcgAbQr/HNdHwPEcWotOqtXXGH
-di6cAJtWaSynP8+UoQIhAPEMK79OO+tJHzmD0N01OdZefAwKlYZvDCQvAfAQVf7j
------END CERTIFICATE-----
-)";
-
-static const char kPolicyLeaf[] = R"(
------BEGIN CERTIFICATE-----
-MIIBpjCCAU2gAwIBAgIBAzAKBggqhkjOPQQDAjAeMRwwGgYDVQQDExNQb2xpY3kg
-SW50ZXJtZWRpYXRlMCAXDTAwMDEwMTAwMDAwMFoYDzIxMDAwMTAxMDAwMDAwWjAa
-MRgwFgYDVQQDEw93d3cuZXhhbXBsZS5jb20wWTATBgcqhkjOPQIBBggqhkjOPQMB
-BwNCAASRKti8VW2Rkma+Kt9jQkMNitlCs0l5w8u3SSwm7HZREvmcBCJBjVIREacR
-qI0umhzR2V5NLzBBP9yPD/A+Ch5Xo34wfDAOBgNVHQ8BAf8EBAMCAgQwEwYDVR0l
-BAwwCgYIKwYBBQUHAwEwDAYDVR0TAQH/BAIwADAaBgNVHREEEzARgg93d3cuZXhh
-bXBsZS5jb20wKwYDVR0gBCQwIjAPBg0qhkiG9xIEAYS3CQIBMA8GDSqGSIb3EgQB
-hLcJAgIwCgYIKoZIzj0EAwIDRwAwRAIgPTm7NO8gR+z8BqA6gV9FVwrSmOAJVzyu
-5loq9ZTtIS0CIEjBbvBcY4+Y3xWL4SUFQKQk3pNZ37xJoz2v+/yvEE5/
------END CERTIFICATE-----
-)";
-
 #if !defined(OPENSSL_WINDOWS)
 
 static const char kLargeLeaf[] = R"(
@@ -1786,21 +1745,40 @@ TEST(X509Test, PolicyTreeLimit) {
 
 #endif // !defined(OPENSSL_WINDOWS)
 
-TEST(X509Test, PolicyTreeBasic) {
-
-  bssl::UniquePtr<X509> leaf(CertFromPEM(kPolicyLeaf));
-  bssl::UniquePtr<X509> intermediate(CertFromPEM(kPolicyIntermediate));
-  bssl::UniquePtr<X509> root(CertFromPEM(kPolicyRoot));
-
-  bssl::UniquePtr<ASN1_OBJECT> oid1Good(
+TEST(X509Test, Policy) {
+  bssl::UniquePtr<ASN1_OBJECT> oid1(
       OBJ_txt2obj("1.2.840.113554.4.1.72585.2.1", /*dont_search_names=*/1));
-  ASSERT_TRUE(oid1Good);
-  bssl::UniquePtr<ASN1_OBJECT> oid2Good(
+  ASSERT_TRUE(oid1);
+  bssl::UniquePtr<ASN1_OBJECT> oid2(
       OBJ_txt2obj("1.2.840.113554.4.1.72585.2.2", /*dont_search_names=*/1));
-  ASSERT_TRUE(oid2Good);
-  bssl::UniquePtr<ASN1_OBJECT> oid3Bad(
+  ASSERT_TRUE(oid2);
+  bssl::UniquePtr<ASN1_OBJECT> oid3(
       OBJ_txt2obj("1.2.840.113554.4.1.72585.2.3", /*dont_search_names=*/1));
-  ASSERT_TRUE(oid3Bad);
+  ASSERT_TRUE(oid3);
+
+  bssl::UniquePtr<X509> root(
+      CertFromPEM(GetTestData("crypto/x509/test/policy_root.pem").c_str()));
+  ASSERT_TRUE(root);
+  bssl::UniquePtr<X509> intermediate(CertFromPEM(
+      GetTestData("crypto/x509/test/policy_intermediate.pem").c_str()));
+  ASSERT_TRUE(intermediate);
+  bssl::UniquePtr<X509> intermediate_invalid(CertFromPEM(
+      GetTestData("crypto/x509/test/policy_intermediate_invalid.pem").c_str()));
+  ASSERT_TRUE(intermediate_invalid);
+  bssl::UniquePtr<X509> leaf(
+      CertFromPEM(GetTestData("crypto/x509/test/policy_leaf.pem").c_str()));
+  ASSERT_TRUE(leaf);
+  bssl::UniquePtr<X509> leaf_invalid(CertFromPEM(
+      GetTestData("crypto/x509/test/policy_leaf_invalid.pem").c_str()));
+  ASSERT_TRUE(leaf_invalid);
+
+  // By default, OpenSSL does not check policies, so even syntax errors in the
+  // certificatePolicies extension go unnoticed. (This is probably not
+  // important.)
+  EXPECT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()},
+                              {intermediate.get()}, /*crls=*/{}));
+  EXPECT_EQ(X509_V_OK, Verify(leaf_invalid.get(), {root.get()},
+                              {intermediate.get()}, /*crls=*/{}));
 
   auto set_policies = [](X509_VERIFY_PARAM *param,
                          std::vector<const ASN1_OBJECT *> oids) {
@@ -1813,37 +1791,47 @@ TEST(X509Test, PolicyTreeBasic) {
     }
   };
 
-  // By default, policies are not checked, so even syntax errors in the
-  // certificatePolicies extension go unnoticed. Aligns with OpenSSL and
-  // BoringSSL behaviour.
-  EXPECT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()},
-                              {intermediate.get()}, /*crls=*/{}));
-
-  // The chain is good for |oid1Good| and |oid2Good|, but not |oid3Bad|.
+  // The chain is good for |oid1| and |oid2|, but not |oid3|.
   EXPECT_EQ(X509_V_OK,
             Verify(leaf.get(), {root.get()}, {intermediate.get()}, /*crls=*/{},
                    X509_V_FLAG_EXPLICIT_POLICY, [&](X509_VERIFY_PARAM *param) {
-                     set_policies(param, {oid1Good.get()});
+                     set_policies(param, {oid1.get()});
                    }));
   EXPECT_EQ(X509_V_OK,
             Verify(leaf.get(), {root.get()}, {intermediate.get()}, /*crls=*/{},
                    X509_V_FLAG_EXPLICIT_POLICY, [&](X509_VERIFY_PARAM *param) {
-                     set_policies(param, {oid2Good.get()});
+                     set_policies(param, {oid2.get()});
                    }));
   EXPECT_EQ(X509_V_ERR_NO_EXPLICIT_POLICY,
             Verify(leaf.get(), {root.get()}, {intermediate.get()}, /*crls=*/{},
                    X509_V_FLAG_EXPLICIT_POLICY, [&](X509_VERIFY_PARAM *param) {
-                     set_policies(param, {oid3Bad.get()});
+                     set_policies(param, {oid3.get()});
                    }));
   EXPECT_EQ(X509_V_OK,
             Verify(leaf.get(), {root.get()}, {intermediate.get()}, /*crls=*/{},
                    X509_V_FLAG_EXPLICIT_POLICY, [&](X509_VERIFY_PARAM *param) {
-                     set_policies(param, {oid1Good.get(), oid2Good.get()});
+                     set_policies(param, {oid1.get(), oid2.get()});
                    }));
   EXPECT_EQ(X509_V_OK,
             Verify(leaf.get(), {root.get()}, {intermediate.get()}, /*crls=*/{},
                    X509_V_FLAG_EXPLICIT_POLICY, [&](X509_VERIFY_PARAM *param) {
-                     set_policies(param, {oid1Good.get(), oid3Bad.get()});
+                     set_policies(param, {oid1.get(), oid3.get()});
+                   }));
+
+  // The policy extension in the intermediate cannot be parsed.
+  EXPECT_EQ(X509_V_ERR_INVALID_POLICY_EXTENSION,
+            Verify(leaf.get(), {root.get()}, {intermediate_invalid.get()},
+                   /*crls=*/{}, X509_V_FLAG_EXPLICIT_POLICY,
+                   [&](X509_VERIFY_PARAM *param) {
+                     set_policies(param, {oid1.get()});
+                   }));
+
+  // The policy extension in the leaf cannot be parsed.
+  EXPECT_EQ(X509_V_ERR_INVALID_POLICY_EXTENSION,
+            Verify(leaf_invalid.get(), {root.get()}, {intermediate.get()},
+                   /*crls=*/{}, X509_V_FLAG_EXPLICIT_POLICY,
+                   [&](X509_VERIFY_PARAM *param) {
+                     set_policies(param, {oid1.get()});
                    }));
 }
 
