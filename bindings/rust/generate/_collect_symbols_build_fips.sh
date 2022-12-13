@@ -45,3 +45,4 @@ cat "${SYMBOLS_TEMP_FILE}" >> "${SYMBOLS_COLLECT_FILE}"
 popd
 echo DONE
 
+

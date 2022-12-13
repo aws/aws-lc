@@ -7,8 +7,7 @@ set -e -x
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 AWS_LC_DIR=$( cd -- "${SCRIPT_DIR}/../../../" &> /dev/null && pwd)
 TMP_DIR="${AWS_LC_DIR}"/bindings/rust/tmp
-CRATE_DIR="${TMP_DIR}"/aws-lc-sys
-
+CRATE_DIR="${TMP_DIR}/$@"
 pushd "${CRATE_DIR}"
 
 cargo clean

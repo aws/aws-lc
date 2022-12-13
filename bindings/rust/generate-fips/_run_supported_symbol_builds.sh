@@ -25,4 +25,3 @@ docker run -v "$(pwd)":"$(pwd)" -w "$(pwd)" --rm --platform linux/arm64 rust:lin
 sort "${SYMBOLS_COLLECT_FILE}" | uniq | grep -v "^_\?bignum_" | grep -v "pqcrystals" | grep -v "OPENSSL_armcap_P" > "${SYMBOLS_FILE}"
 
 popd
-
