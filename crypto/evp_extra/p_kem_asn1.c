@@ -11,8 +11,8 @@
 #include "internal.h"
 
 static void kem_free(EVP_PKEY *pkey) {
-  OPENSSL_free(pkey->pkey.ptr);
-  pkey->pkey.ptr = NULL;
+  KEM_KEY_free(pkey->pkey.kem);
+  OPENSSL_free(pkey->pkey.kem);
 }
 
 static int kem_get_priv_raw(const EVP_PKEY *pkey, uint8_t *out,
