@@ -128,13 +128,7 @@ static inline void jent_get_nstime(uint64_t *out)
 
 static inline void jent_get_nstime(uint64_t *out)
 {
-# ifdef __MACH__
-    /* Apple suggests using clock_gettime_nsec_np instead of mach_* functions:
-	 * https://developer.apple.com/documentation/kernel/1462446-mach_absolute_time
-	 * https://developer.apple.com/documentation/kernel/1646199-mach_continuous_time
-	 */
-	*out = clock_gettime_nsec_np(CLOCK_MONOTONIC_RAW);
-# elif _AIX
+#ifdef _AIX
 	/* clock_gettime() on AIX returns a timer value that increments in
 	 * steps of 1000
 	 */
@@ -145,7 +139,7 @@ static inline void jent_get_nstime(uint64_t *out)
 	tmp = tmp << 32;
 	tmp = tmp | aixtime.tb_low;
 	*out = tmp;
-# else /* __MACH__ */
+# else /* __AIX */
 	/* we could use CLOCK_MONOTONIC(_RAW), but with CLOCK_REALTIME
 	 * we get some nice extra entropy once in a while from the NTP actions
 	 * that we want to use as well... though, we do not rely on that
@@ -158,10 +152,10 @@ static inline void jent_get_nstime(uint64_t *out)
 		tmp = tmp + (uint64_t)time.tv_nsec;
 	}
 	*out = tmp;
-# endif /* __MACH__ */
+# endif /* __AIX */
 }
 
-#endif /* __x86_64__ */
+#endif /* (__x86_64__) || (__i386__) || (__aarch64__) */
 
 static inline void *jent_zalloc(size_t len)
 {
