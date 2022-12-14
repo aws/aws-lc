@@ -29,13 +29,15 @@ static void ed25519_free(EVP_PKEY *pkey) {
   pkey->pkey.ptr = NULL;
 }
 
-static int ed25519_set_priv_raw(EVP_PKEY *pkey, const uint8_t *privkey, size_t privkey_len, const uint8_t *pubkey, size_t pubkey_len) {
-  if (privkey_len != 32) {
+static int ed25519_set_priv_raw(EVP_PKEY *pkey, const uint8_t *privkey,
+                                size_t privkey_len, const uint8_t *pubkey,
+                                size_t pubkey_len) {
+  if (privkey_len != ED25519_PRIVATE_KEY_SEED_LEN) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
   }
 
-  if(pubkey && pubkey_len != 32) {
+  if(pubkey && pubkey_len != ED25519_PUBLIC_KEY_LEN) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
   }
@@ -48,7 +50,7 @@ static int ed25519_set_priv_raw(EVP_PKEY *pkey, const uint8_t *privkey, size_t p
 
   // The RFC 8032 encoding stores only the 32-byte seed, so we must recover the
   // full representation which we use from it.
-  uint8_t pubkey_computed[32];
+  uint8_t pubkey_computed[ED25519_PUBLIC_KEY_LEN];
   ED25519_keypair_from_seed(pubkey_computed, key->key, privkey);
   key->has_private = 1;
 
@@ -182,6 +184,8 @@ static int ed25519_priv_decode(EVP_PKEY *out, CBS *params, CBS *key, CBS *pubkey
   const uint8_t *public= NULL;
   size_t public_len = 0;
   if (pubkey) {
+    // pubkey is encoded as an ASN.1 BIT STRING, so we handle the padding here
+    // byte here.
     uint8_t padding;
     if (!CBS_get_u8(pubkey, &padding) || padding != 0) {
       OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
@@ -239,11 +243,11 @@ static int ed25519_priv_encode_v2(CBB *out, const EVP_PKEY *pkey) {
       !CBB_add_asn1(&private_key, &inner, CBS_ASN1_OCTETSTRING) ||
       // The PKCS#8 encoding stores only the 32-byte seed which is the first 32
       // bytes of the private key.
-      !CBB_add_bytes(&inner, key->key, 32) ||
+      !CBB_add_bytes(&inner, key->key, ED25519_PRIVATE_KEY_SEED_LEN) ||
       !CBB_add_asn1(&pkcs8, &public_key, CBS_ASN1_CONTEXT_SPECIFIC | 1) ||
       !CBB_add_u8(&public_key, 0 /*no padding required*/) ||
       // The last 32-bytes of the key is the public key
-      !CBB_add_bytes(&public_key, &key->key[32], 32) || !CBB_flush(out)) {
+      !CBB_add_bytes(&public_key, &key->key[32], ED25519_PUBLIC_KEY_LEN) || !CBB_flush(out)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_ENCODE_ERROR);
     return 0;
   }
