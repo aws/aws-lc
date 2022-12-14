@@ -1838,21 +1838,29 @@ TEST_P(PerKEMTest, Encapsulation) {
   // Set ct length to be less than expected -- should fail.
   ct_len = GetParam().ciphertext_len - 1;
   ASSERT_FALSE(EVP_PKEY_encapsulate(ctx.get(), ct.data(), &ct_len, ss.data(), &ss_len));
+  uint32_t err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(EVP_R_BUFFER_TOO_SMALL, ERR_GET_REASON(err));
 
   // Set ct length to be greater than expected -- should succeed because
   // it's ok to provide buffer that's larger than needed.
   ct_len = GetParam().ciphertext_len + 1;
   ASSERT_TRUE(EVP_PKEY_encapsulate(ctx.get(), ct.data(), &ct_len, ss.data(), &ss_len));
+  EXPECT_EQ(ct_len, GetParam().ciphertext_len);
 
   // Set ss length to be less than expected -- should fail.
   ct_len = GetParam().ciphertext_len;
   ss_len = GetParam().shared_secret_len - 1;
   ASSERT_FALSE(EVP_PKEY_encapsulate(ctx.get(), ct.data(), &ct_len, ss.data(), &ss_len));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(EVP_R_BUFFER_TOO_SMALL, ERR_GET_REASON(err));
 
   // Set ss length to be greater than expected -- should succeed because
   // it's ok to provide buffer that's larger than needed.
   ss_len = GetParam().shared_secret_len + 1;
   ASSERT_TRUE(EVP_PKEY_encapsulate(ctx.get(), ct.data(), &ct_len, ss.data(), &ss_len));
+  EXPECT_EQ(ss_len, GetParam().shared_secret_len);
 }
 
 TEST_P(PerKEMTest, Decapsulation) {
@@ -1872,7 +1880,7 @@ TEST_P(PerKEMTest, Decapsulation) {
   ASSERT_TRUE(EVP_PKEY_encapsulate(ctx.get(), ct.data(), &ct_len, ss.data(), &ss_len));
 
   // ---- 2. Test basic decapsulation flow ----
-  // Encapsulate.
+  // Decapsulate.
   ASSERT_TRUE(EVP_PKEY_decapsulate(ctx.get(), ss.data(), &ss_len, ct.data(), ct_len));
 
   // Check the length set by decapsulate is as expected.
@@ -1890,11 +1898,15 @@ TEST_P(PerKEMTest, Decapsulation) {
   // Set ss length to be less than expected -- should fail.
   ss_len = GetParam().shared_secret_len - 1;
   ASSERT_FALSE(EVP_PKEY_encapsulate(ctx.get(), ct.data(), &ct_len, ss.data(), &ss_len));
+  uint32_t err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(EVP_R_BUFFER_TOO_SMALL, ERR_GET_REASON(err));
 
   // Set ss length to be greater than expected -- should succeed because
   // it's ok to provide buffer that's larger than needed.
   ss_len = GetParam().shared_secret_len + 1;
   ASSERT_TRUE(EVP_PKEY_decapsulate(ctx.get(), nullptr, &ss_len, ct.data(), ct_len));
+  EXPECT_EQ(ss_len, GetParam().shared_secret_len);
 }
 
 TEST_P(PerKEMTest, EndToEnd) {
@@ -1954,10 +1966,10 @@ TEST_P(PerKEMTest, EndToEnd) {
           }
 
 #define CMP_VEC_AND_PKEY_PUBLIC(vec, pkey, len) \
-          CMP_VEC_AND_PTR(vec, pkey->pkey.kem->public_key, len)
+          CMP_VEC_AND_PTR(vec, pkey->pkey.kem_key->public_key, len)
 
 #define CMP_VEC_AND_PKEY_SECRET(vec, pkey, len) \
-          CMP_VEC_AND_PTR(vec, pkey->pkey.kem->secret_key, len)
+          CMP_VEC_AND_PTR(vec, pkey->pkey.kem_key->secret_key, len)
 
 TEST_P(PerKEMTest, RawKeyOperations) {
   
@@ -2045,13 +2057,27 @@ TEST_P(PerKEMTest, RawKeyOperations) {
 
   //   Invalid PKEY.
   ASSERT_FALSE(EVP_PKEY_get_raw_public_key(nullptr, pk.data(), &pk_len));
+  uint32_t err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE, ERR_GET_REASON(err));
+
   ASSERT_FALSE(EVP_PKEY_get_raw_private_key(nullptr, sk.data(), &sk_len));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE, ERR_GET_REASON(err));
 
   //   Invalid lengths.
   pk_len = GetParam().public_key_len - 1;
-  sk_len = GetParam().secret_key_len - 1;
   ASSERT_FALSE(EVP_PKEY_get_raw_public_key(pkey.get(), pk.data(), &pk_len));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(EVP_R_BUFFER_TOO_SMALL, ERR_GET_REASON(err));
+
+  sk_len = GetParam().secret_key_len - 1;
   ASSERT_FALSE(EVP_PKEY_get_raw_private_key(pkey.get(), sk.data(), &sk_len));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(EVP_R_BUFFER_TOO_SMALL, ERR_GET_REASON(err));
 
   // Failures for new keys from raw data.
   pk_len = GetParam().public_key_len;
@@ -2059,27 +2085,79 @@ TEST_P(PerKEMTest, RawKeyOperations) {
 
   //   Invalid nid.
   ASSERT_FALSE(EVP_PKEY_kem_new_raw_public_key(0, pk.data(), pk_len));
-  ASSERT_FALSE(EVP_PKEY_kem_new_raw_secret_key(0, pk.data(), pk_len));
-  ASSERT_FALSE(EVP_PKEY_kem_new_raw_key(0, pk.data(), pk_len, sk.data(), sk_len));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(EVP_R_UNSUPPORTED_ALGORITHM, ERR_GET_REASON(err));
 
-  //   Invalid output buffer.
+  ASSERT_FALSE(EVP_PKEY_kem_new_raw_secret_key(0, pk.data(), pk_len));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(EVP_R_UNSUPPORTED_ALGORITHM, ERR_GET_REASON(err));
+
+  ASSERT_FALSE(EVP_PKEY_kem_new_raw_key(0, pk.data(), pk_len, sk.data(), sk_len));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(EVP_R_UNSUPPORTED_ALGORITHM, ERR_GET_REASON(err));
+
+  //   Invalid input buffer.
   ASSERT_FALSE(EVP_PKEY_kem_new_raw_public_key(nid, nullptr, pk_len));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(ERR_R_PASSED_NULL_PARAMETER, ERR_GET_REASON(err));
+
   ASSERT_FALSE(EVP_PKEY_kem_new_raw_secret_key(nid, nullptr, sk_len));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(ERR_R_PASSED_NULL_PARAMETER, ERR_GET_REASON(err));
+
   ASSERT_FALSE(EVP_PKEY_kem_new_raw_key(nid, nullptr, pk_len, sk.data(), sk_len));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(ERR_R_PASSED_NULL_PARAMETER, ERR_GET_REASON(err));
+
   ASSERT_FALSE(EVP_PKEY_kem_new_raw_key(nid, pk.data(), pk_len, nullptr, sk_len));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(ERR_R_PASSED_NULL_PARAMETER, ERR_GET_REASON(err));
 
   //   Invalid lengths.
   pk_len = GetParam().public_key_len - 1;
-  sk_len = GetParam().secret_key_len - 1;
   ASSERT_FALSE(EVP_PKEY_kem_new_raw_public_key(nid, pk.data(), pk_len));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(EVP_R_INVALID_BUFFER_SIZE, ERR_GET_REASON(err));
+
+  pk_len = GetParam().public_key_len + 1;
+  ASSERT_FALSE(EVP_PKEY_kem_new_raw_public_key(nid, pk.data(), pk_len));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(EVP_R_INVALID_BUFFER_SIZE, ERR_GET_REASON(err));
+
+  sk_len = GetParam().secret_key_len - 1;
   ASSERT_FALSE(EVP_PKEY_kem_new_raw_secret_key(nid, sk.data(), sk_len));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(EVP_R_INVALID_BUFFER_SIZE, ERR_GET_REASON(err));
+
+  sk_len = GetParam().secret_key_len + 1;
+  ASSERT_FALSE(EVP_PKEY_kem_new_raw_secret_key(nid, sk.data(), sk_len));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(EVP_R_INVALID_BUFFER_SIZE, ERR_GET_REASON(err));
+
   pk_len = GetParam().public_key_len;
   sk_len = GetParam().secret_key_len - 1;
   ASSERT_FALSE(EVP_PKEY_kem_new_raw_key(nid, pk.data(), pk_len, sk.data(), sk_len));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(EVP_R_INVALID_BUFFER_SIZE, ERR_GET_REASON(err));
+
   pk_len = GetParam().public_key_len - 1;
   sk_len = GetParam().secret_key_len;
   ASSERT_FALSE(EVP_PKEY_kem_new_raw_key(nid, pk.data(), pk_len, sk.data(), sk_len));
-
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(EVP_R_INVALID_BUFFER_SIZE, ERR_GET_REASON(err));
 }
 
 TEST_P(PerKEMTest, KAT) {

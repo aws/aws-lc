@@ -347,11 +347,11 @@ add_library(
   evp_extra/p_ec_asn1.c
   evp_extra/p_ed25519.c
   evp_extra/p_ed25519_asn1.c
+  evp_extra/p_kem.c
+  evp_extra/p_kem_asn1.c
   evp_extra/p_rsa_asn1.c
   evp_extra/p_x25519.c
   evp_extra/p_x25519_asn1.c
-  evp_extra/p_kem.c
-  evp_extra/p_kem_asn1.c
   evp_extra/p_methods.c
   evp_extra/print.c
   evp_extra/scrypt.c

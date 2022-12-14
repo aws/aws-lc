@@ -29,38 +29,8 @@ static int pkey_kem_init(EVP_PKEY_CTX *ctx) {
   return 1;
 }
 
-static int pkey_kem_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src) {
-  KEM_PKEY_CTX *dctx, *sctx;
-  if (!pkey_kem_init(dst)) {
-    return 0;
-  }
-  sctx = src->data;
-  dctx = dst->data;
-
-  dctx->kem = sctx->kem;
-
-  return 1;
-}
-
 static void pkey_kem_cleanup(EVP_PKEY_CTX *ctx) {
   OPENSSL_free(ctx->data);
-}
-
-static int pkey_kem_paramgen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
-  KEM_PKEY_CTX *dctx = ctx->data;
-  if (dctx->kem == NULL) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
-    return 0;
-  }
-  KEM_KEY *key = KEM_KEY_new();
-  if (key == NULL ||
-      !KEM_KEY_init(key, dctx->kem)) {
-    KEM_KEY_free(key);
-    return 0;
-  }
-
-  EVP_PKEY_assign(pkey, EVP_PKEY_KEM, key);
-  return 1;
 }
 
 static int pkey_kem_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
@@ -71,7 +41,7 @@ static int pkey_kem_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
       OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
       return 0;
     }
-    kem = KEM_KEY_get0_kem((KEM_KEY*)ctx->pkey->pkey.ptr);
+    kem = KEM_KEY_get0_kem(ctx->pkey->pkey.kem_key);
   }
 
   KEM_KEY *key = KEM_KEY_new();
@@ -100,7 +70,7 @@ static int pkey_kem_encapsulate(EVP_PKEY_CTX *ctx,
       OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
       return 0;
     }
-    kem = KEM_KEY_get0_kem((KEM_KEY*)ctx->pkey->pkey.ptr);
+    kem = KEM_KEY_get0_kem(ctx->pkey->pkey.kem_key);
   }
 
   // Caller is getting parameter values.
@@ -119,13 +89,13 @@ static int pkey_kem_encapsulate(EVP_PKEY_CTX *ctx,
 
   // Check that the context is properly configured.
   if (ctx->pkey == NULL ||
-      ctx->pkey->pkey.ptr == NULL ||
+      ctx->pkey->pkey.kem_key == NULL ||
       ctx->pkey->type != EVP_PKEY_KEM) {
       OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATON_NOT_INITIALIZED);
       return 0;
   }
 
-  KEM_KEY *key = ctx->pkey->pkey.kem;
+  KEM_KEY *key = ctx->pkey->pkey.kem_key;
   if (!kem->method->encaps(ciphertext, shared_secret, key->public_key)) {
     return 0;
   }
@@ -150,7 +120,7 @@ static int pkey_kem_decapsulate(EVP_PKEY_CTX *ctx,
       OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
       return 0;
     }
-    kem = KEM_KEY_get0_kem((KEM_KEY*)ctx->pkey->pkey.ptr);
+    kem = KEM_KEY_get0_kem(ctx->pkey->pkey.kem_key);
   }
 
   // Caller is getting parameter values.
@@ -168,13 +138,13 @@ static int pkey_kem_decapsulate(EVP_PKEY_CTX *ctx,
 
   // Check that the context is properly configured.
   if (ctx->pkey == NULL ||
-      ctx->pkey->pkey.ptr == NULL ||
+      ctx->pkey->pkey.kem_key == NULL ||
       ctx->pkey->type != EVP_PKEY_KEM) {
       OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATON_NOT_INITIALIZED);
       return 0;
   }
 
-  KEM_KEY *key = ctx->pkey->pkey.kem;
+  KEM_KEY *key = ctx->pkey->pkey.kem_key;
   if (!key->has_secret_key) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NO_KEY_SET);
     return 0;
@@ -193,7 +163,7 @@ static int pkey_kem_decapsulate(EVP_PKEY_CTX *ctx,
 const EVP_PKEY_METHOD kem_pkey_meth = {
     EVP_PKEY_KEM,
     pkey_kem_init,
-    pkey_kem_copy,
+    NULL,
     pkey_kem_cleanup,
     pkey_kem_keygen,
     NULL,
@@ -206,7 +176,7 @@ const EVP_PKEY_METHOD kem_pkey_meth = {
     NULL,
     NULL,
     NULL,
-    pkey_kem_paramgen,
+    NULL,
     NULL,
     pkey_kem_encapsulate,
     pkey_kem_decapsulate,
@@ -236,20 +206,25 @@ int EVP_PKEY_CTX_kem_set_params(EVP_PKEY_CTX *ctx, int nid) {
 static int EVP_PKEY_kem_set_params(EVP_PKEY *pkey, int nid) {
   const KEM *kem = KEM_find_kem_by_nid(nid);
   if (kem == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
     return 0;
   }
 
   if (!EVP_PKEY_set_type(pkey, EVP_PKEY_KEM)) {
+    // EVP_PKEY_set_type sets the appropriate error.
     return 0;
   }
 
   KEM_KEY *key = KEM_KEY_new();
-  key->kem = kem;
+  if (key == NULL) {
+    // KEM_KEY_new sets the appropriate error.
+    return 0;
+  }
 
-  pkey->pkey.kem = key;
+  key->kem = kem;
+  pkey->pkey.kem_key = key;
 
   return 1;
-
 }
 
 // Generate a new EVP_PKEY object of type EVP_PKEY_KEM,
@@ -265,14 +240,25 @@ static EVP_PKEY *EVP_PKEY_kem_new(int nid) {
 }
 
 EVP_PKEY *EVP_PKEY_kem_new_raw_public_key(int nid, const uint8_t *in, size_t len) {
+  if (in == NULL) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
+    return NULL;
+  }
+
   EVP_PKEY *ret = EVP_PKEY_kem_new(nid);
-  if (in == NULL || ret == NULL || ret->pkey.kem == NULL) {
+  if (ret == NULL || ret->pkey.kem_key == NULL) {
+    // EVP_PKEY_kem_new sets the appropriate error.
     goto err;
   }
 
-  const KEM *kem = KEM_KEY_get0_kem(ret->pkey.kem);
-  if (kem->public_key_len != len ||
-      !KEM_KEY_set_raw_public_key(ret->pkey.kem, in)) {
+  const KEM *kem = KEM_KEY_get0_kem(ret->pkey.kem_key);
+  if (kem->public_key_len != len) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
+    goto err;
+  }
+
+  if (!KEM_KEY_set_raw_public_key(ret->pkey.kem_key, in)) {
+    // KEM_KEY_set_raw_public_key sets the appropriate error.
     goto err;
   }
 
@@ -284,14 +270,25 @@ err:
 }
 
 EVP_PKEY *EVP_PKEY_kem_new_raw_secret_key(int nid, const uint8_t *in, size_t len) {
+  if (in == NULL) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
+    return NULL;
+  }
+
   EVP_PKEY *ret = EVP_PKEY_kem_new(nid);
-  if (in == NULL || ret == NULL || ret->pkey.kem == NULL) {
+  if (ret == NULL || ret->pkey.kem_key == NULL) {
+    // EVP_PKEY_kem_new sets the appropriate error.
     goto err;
   }
 
-  const KEM *kem = KEM_KEY_get0_kem(ret->pkey.kem);
-  if (kem->secret_key_len != len ||
-      !KEM_KEY_set_raw_secret_key(ret->pkey.kem, in)) {
+  const KEM *kem = KEM_KEY_get0_kem(ret->pkey.kem_key);
+  if (kem->secret_key_len != len) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
+    goto err;
+  }
+
+  if (!KEM_KEY_set_raw_secret_key(ret->pkey.kem_key, in)) {
+    // KEM_KEY_set_raw_secret_key sets the appropriate error.
     goto err;
   }
 
@@ -305,16 +302,25 @@ err:
 EVP_PKEY *EVP_PKEY_kem_new_raw_key(int nid,
                                    const uint8_t *in_public, size_t len_public,
                                    const uint8_t *in_secret, size_t len_secret) {
+  if (in_public == NULL || in_secret == NULL) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
+    return NULL;
+  }
+
   EVP_PKEY *ret = EVP_PKEY_kem_new(nid);
-  if (in_public == NULL || in_secret == NULL ||
-      ret == NULL || ret->pkey.kem == NULL) {
+  if (ret == NULL || ret->pkey.kem_key == NULL) {
+    // EVP_PKEY_kem_new sets the appropriate error.
     goto err;
   }
 
-  const KEM *kem = KEM_KEY_get0_kem(ret->pkey.kem);
-  if (kem->public_key_len != len_public ||
-      kem->secret_key_len != len_secret ||
-      !KEM_KEY_set_raw_key(ret->pkey.kem, in_public, in_secret)) {
+  const KEM *kem = KEM_KEY_get0_kem(ret->pkey.kem_key);
+  if (kem->public_key_len != len_public || kem->secret_key_len != len_secret) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_BUFFER_SIZE);
+    goto err;
+  }
+  
+  if (!KEM_KEY_set_raw_key(ret->pkey.kem_key, in_public, in_secret)) {
+    // KEM_KEY_set_raw_key sets the appropriate error.
     goto err;
   }
 

@@ -11,18 +11,18 @@
 #include "internal.h"
 
 static void kem_free(EVP_PKEY *pkey) {
-  KEM_KEY_free(pkey->pkey.kem);
-  OPENSSL_free(pkey->pkey.kem);
+  KEM_KEY_free(pkey->pkey.kem_key);
+  OPENSSL_free(pkey->pkey.kem_key);
 }
 
 static int kem_get_priv_raw(const EVP_PKEY *pkey, uint8_t *out,
                             size_t *out_len) {
-  if (pkey->pkey.ptr == NULL) {
+  if (pkey->pkey.kem_key == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
     return 0;
   }
 
-  KEM_KEY *key = pkey->pkey.kem;
+  KEM_KEY *key = pkey->pkey.kem_key;
   const KEM *kem = key->kem;
   if (kem == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
@@ -47,12 +47,12 @@ static int kem_get_priv_raw(const EVP_PKEY *pkey, uint8_t *out,
 
 static int kem_get_pub_raw(const EVP_PKEY *pkey, uint8_t *out,
                            size_t *out_len) {
-  if (pkey->pkey.kem == NULL) {
+  if (pkey->pkey.kem_key == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
     return 0;
   }
 
-  KEM_KEY *key = pkey->pkey.kem;
+  KEM_KEY *key = pkey->pkey.kem_key;
   const KEM *kem = key->kem;
   if (kem == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
@@ -76,8 +76,8 @@ static int kem_get_pub_raw(const EVP_PKEY *pkey, uint8_t *out,
 }
 
 static int kem_cmp_parameters(const EVP_PKEY *a, const EVP_PKEY *b) {
-  const KEM_KEY *a_key = a->pkey.kem;
-  const KEM_KEY *b_key = b->pkey.kem;
+  const KEM_KEY *a_key = a->pkey.kem_key;
+  const KEM_KEY *b_key = b->pkey.kem_key;
   if (a_key == NULL || b_key == NULL) {
     return -2;
   }
@@ -98,19 +98,19 @@ static int kem_pub_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
     return ret;
   }
 
-  const KEM_KEY *a_key = a->pkey.kem;
-  const KEM_KEY *b_key = b->pkey.kem;
+  const KEM_KEY *a_key = a->pkey.kem_key;
+  const KEM_KEY *b_key = b->pkey.kem_key;
   return OPENSSL_memcmp(a_key->public_key, b_key->public_key,
                         a_key->kem->public_key_len) == 0;
 }
 
 static int kem_size(const EVP_PKEY *pkey) {
-  if (pkey->pkey.ptr == NULL) {
+  if (pkey->pkey.kem_key == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
     return 0;
   }
 
-  KEM_KEY *key = pkey->pkey.kem;
+  KEM_KEY *key = pkey->pkey.kem_key;
   const KEM *kem = key->kem;
   if (kem == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);

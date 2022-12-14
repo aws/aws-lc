@@ -30,14 +30,14 @@ extern const KEM_METHOD kem_kyber512_method;
 
 // KEM structure and helper functions.
 typedef struct {
-  int nid;
+  const int nid;
   const uint8_t *oid;
-  uint8_t oid_len;
+  const uint8_t oid_len;
   const char *comment;
-  size_t public_key_len;
-  size_t secret_key_len;
-  size_t ciphertext_len;
-  size_t shared_secret_len;
+  const size_t public_key_len;
+  const size_t secret_key_len;
+  const size_t ciphertext_len;
+  const size_t shared_secret_len;
   const KEM_METHOD *method;
 } KEM;
 

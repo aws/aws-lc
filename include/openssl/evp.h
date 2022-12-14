@@ -130,7 +130,8 @@ OPENSSL_EXPORT int EVP_PKEY_size(const EVP_PKEY *pkey);
 
 // EVP_PKEY_bits returns the "size", in bits, of |pkey|. For an RSA key, this
 // returns the bit length of the modulus. For an EC key, this returns the bit
-// length of the group order.
+// length of the group order. For a KEM, this returns the the sum of the size
+// of the public key and the secret key.
 OPENSSL_EXPORT int EVP_PKEY_bits(const EVP_PKEY *pkey);
 
 // EVP_PKEY_id returns the type of |pkey|, which is one of the |EVP_PKEY_*|
@@ -1152,7 +1153,7 @@ struct evp_pkey_st {
     DSA *dsa;
     DH *dh;
     EC_KEY *ec;
-    KEM_KEY *kem;
+    KEM_KEY *kem_key;
   } pkey;
 
   // ameth contains a pointer to a method table that contains many ASN.1
