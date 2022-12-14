@@ -216,7 +216,7 @@ err:
 }
 
 int EVP_marshal_private_key(CBB *cbb, const EVP_PKEY *key) {
-  if (key->ameth == NULL || key->ameth->priv_decode == NULL) {
+  if (key->ameth == NULL || key->ameth->priv_encode == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
     return 0;
   }
