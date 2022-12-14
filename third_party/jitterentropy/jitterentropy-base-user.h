@@ -113,12 +113,19 @@ static inline void jent_get_nstime(uint64_t *out)
 
 static inline void jent_get_nstime(uint64_t *out)
 {
+#if defined(__MACH__)
+        /*
+         * macOS Apple Silicon
+         */
+        *out = clock_gettime_nsec_np(CLOCK_MONOTONIC_RAW);
+#else
         uint64_t ctr_val;
         /*
          * Use the system counter for aarch64 (64 bit ARM).
          */
         __asm__ volatile("mrs %0, cntvct_el0" : "=r" (ctr_val));
         *out = ctr_val;
+#endif
 }
 
 #else /* (__x86_64__) || (__i386__) || (__aarch64__) */
