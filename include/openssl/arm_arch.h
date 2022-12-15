@@ -101,17 +101,17 @@
 # define ARM_CPU_PART_V1           0xD40
 
 # define MIDR_PARTNUM_SHIFT       4
-# define MIDR_PARTNUM_MASK        (0xfff << MIDR_PARTNUM_SHIFT)
+# define MIDR_PARTNUM_MASK        (0xfffUL << MIDR_PARTNUM_SHIFT)
 # define MIDR_PARTNUM(midr)       \
            (((midr) & MIDR_PARTNUM_MASK) >> MIDR_PARTNUM_SHIFT)
 
 # define MIDR_IMPLEMENTER_SHIFT   24
-# define MIDR_IMPLEMENTER_MASK    (0xff << MIDR_IMPLEMENTER_SHIFT)
+# define MIDR_IMPLEMENTER_MASK    (0xffUL << MIDR_IMPLEMENTER_SHIFT)
 # define MIDR_IMPLEMENTER(midr)   \
            (((midr) & MIDR_IMPLEMENTER_MASK) >> MIDR_IMPLEMENTER_SHIFT)
 
 # define MIDR_ARCHITECTURE_SHIFT  16
-# define MIDR_ARCHITECTURE_MASK   (0xf << MIDR_ARCHITECTURE_SHIFT)
+# define MIDR_ARCHITECTURE_MASK   (0xfUL << MIDR_ARCHITECTURE_SHIFT)
 # define MIDR_ARCHITECTURE(midr)  \
            (((midr) & MIDR_ARCHITECTURE_MASK) >> MIDR_ARCHITECTURE_SHIFT)
 
@@ -122,7 +122,7 @@
 
 # define MIDR_CPU_MODEL(imp, partnum) \
            (((imp)     << MIDR_IMPLEMENTER_SHIFT)  | \
-            (0xf       << MIDR_ARCHITECTURE_SHIFT) | \
+            (0xfUL       << MIDR_ARCHITECTURE_SHIFT) | \
             ((partnum) << MIDR_PARTNUM_SHIFT))
 
 # define MIDR_IS_CPU_MODEL(midr, imp, partnum) \
