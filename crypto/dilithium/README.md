@@ -56,21 +56,12 @@ Did 4830 Dilithium3 keygen operations in 1014176us (4762.5 ops/sec)
 Did 2688 Dilithium3 signing operations in 1062613us (2529.6 ops/sec)
 Did 5124 Dilithium3 verify operations in 1014016us (5053.2 ops/sec)
 ```
+Similarly, the output in JSON format `./tool/bssl speed -filter Dilithium3 -json`.
 
-Open Quantum Safe (OQS) provides benchmarks for the liboqs implementation of Dilithium based upon the same reference implementation. Full OQS benchmarks are available at [OQS benchmarking](https://openquantumsafe.org/benchmarking/visualization/speed_sig.html). For comparison we include the OQS Dilithium3 benchmarks from 2022-12-07.
-
-``` 
-+-------------------------------+-----------+-----------------+---------+--------------+----------+----------------+
-|           Algorithm           | keypair/s | keypair(cycles) | sign/s  | sign(cycles) | verify/s | verify(cycles) |
-+-------------------------------+-----------+-----------------+---------+--------------+----------+----------------+
-| Dilithium3 AWS-LC(x86_64-ref) |    4762.5 |          524934 |  2529.6 |       988298 |   5053.2 |         494736 |
-| Dilithium3 OQS (x86_64-ref)   |    5315.0 |          470266 |  1358.3 |      1840581 |   5690.7 |         439257 |
-+-------------------------------+-----------+-----------------+---------+--------------+----------+----------------+
 ```
-Dilithium3 AWS-LC(x86_64-ref) benchmarks were taken with the following configuration:
+[
+{"description": "Dilithium3 keygen", "numCalls": 4792, "microseconds": 1025664},
+{"description": "Dilithium3 signing", "numCalls": 2411, "microseconds": 1054052},
+{"description": "Dilithium3 verify", "numCalls": 5275, "microseconds": 1024735}
+]
 ```
-CPU	        Intel(R) Xeon(R) Platinum 8259CL CPU @ 2.50GHz 
-Platform 	Linux ip-172-31-41-0 5.15.0-1026-aws
-Instance	t3.medium
-```
-
