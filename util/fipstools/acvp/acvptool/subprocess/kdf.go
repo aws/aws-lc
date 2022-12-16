@@ -102,7 +102,7 @@ func (k *kdfPrimitive) Process(vectorSet []byte, m Transactable) (interface{}, e
 			}
 
 			// Make the call to the crypto module.
-			resp, err := m.Transact("KDF/Feedback/"+group.MACMode, 2, outputBytes, key, []byte(info))
+			resp, err := m.Transact("KDF/Feedback/"+group.MACMode, 1, outputBytes, key, []byte(info))
 			if err != nil {
 				return nil, fmt.Errorf("wrapper KDF operation failed: %s", err)
 			}
