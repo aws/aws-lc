@@ -82,8 +82,16 @@ func (k *kdfPrimitive) Process(vectorSet []byte, m Transactable) (interface{}, e
 			return nil, fmt.Errorf("label location %q not supported", group.CounterLocation)
 		}
 
-		counterBits := uint32le(group.CounterBits)
+		if group.CounterBits != 32 {
+			// We only support counter lengths of 32
+			return nil, fmt.Errorf("counter length %q not supported", group.CounterBits)
+		}
+
 		outputBytes := uint32le(group.OutputBits / 8)
+
+		// Fixed data variable is determined by the IUT according to the NIST specifications
+		// We send it as part of the response so that NIST can verify whether it is correct
+		info := "6D7300933785E9A32D944438D7245E52"
 
 		for _, test := range group.Tests {
 			testResp := kdfTestResponse{ID: test.ID}
@@ -93,21 +101,8 @@ func (k *kdfPrimitive) Process(vectorSet []byte, m Transactable) (interface{}, e
 				return nil, fmt.Errorf("failed to decode Key in test case %d/%d: %v", group.ID, test.ID, err)
 			}
 
-			iv, err := hex.DecodeString(test.IvHex)
-			if err != nil {
-				return nil, fmt.Errorf("failed to decode iv in test case %d/%d: %v", group.ID, test.ID, err)
-			}
-
-			// Fixed data variable is determined by the IUT according to the NIST specifications
-			// We send it as part of the response so that NIST can verify whether it is correct
-			info := "Amazon FIPS team fixed data"
-			fixedData := make([]byte, 0, len(info)+len(iv)+len(counterBits))
-			fixedData = append(fixedData, info...)
-			fixedData = append(fixedData, iv...)
-			fixedData = append(fixedData, counterBits...)
-
 			// Make the call to the crypto module.
-			resp, err := m.Transact("KDF/Feedback/"+group.MACMode, 1, outputBytes, key, fixedData)
+			resp, err := m.Transact("KDF/Feedback/"+group.MACMode, 2, outputBytes, key, []byte(info))
 			if err != nil {
 				return nil, fmt.Errorf("wrapper KDF operation failed: %s", err)
 			}
@@ -115,7 +110,7 @@ func (k *kdfPrimitive) Process(vectorSet []byte, m Transactable) (interface{}, e
 			// Parse results.
 			testResp.ID = test.ID
 			testResp.KeyOut = hex.EncodeToString(resp[0])
-			testResp.FixedData = hex.EncodeToString(fixedData)
+			testResp.FixedData = info
 
 			groupResp.Tests = append(groupResp.Tests, testResp)
 		}
