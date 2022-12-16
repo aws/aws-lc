@@ -104,26 +104,6 @@ static int kem_pub_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
                         a_key->kem->public_key_len) == 0;
 }
 
-static int kem_size(const EVP_PKEY *pkey) {
-  if (pkey->pkey.kem_key == NULL) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
-    return 0;
-  }
-
-  KEM_KEY *key = pkey->pkey.kem_key;
-  const KEM *kem = key->kem;
-  if (kem == NULL) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
-    return 0;
-  }
-
-  return kem->public_key_len + kem->secret_key_len;
-}
-
-static int kem_bits(const EVP_PKEY *pkey) {
-  return 8 * kem_size(pkey);
-}
-
 const EVP_PKEY_ASN1_METHOD kem_asn1_meth = {
   EVP_PKEY_KEM,
   // TODO(awslc): this is a placeholder OID. Do we need OID for KEM at all?
@@ -139,8 +119,8 @@ const EVP_PKEY_ASN1_METHOD kem_asn1_meth = {
   kem_get_priv_raw,
   kem_get_pub_raw,
   NULL, // pkey_opaque
-  kem_size,
-  kem_bits,
+  NULL, // kem_size
+  NULL, // kem_bits
   NULL, // missing_parameters
   NULL, // param_copy
   kem_cmp_parameters,

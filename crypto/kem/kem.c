@@ -10,6 +10,12 @@
 #include "../internal.h"
 #include "internal.h"
 
+// The KEM parameters listed below are taken from corresponding specifications.
+// 
+// Kyber: https://pq-crystals.org/kyber/data/kyber-specification-round3-20210804.pdf
+// TODO(awslc): replace the specification reference with the actual NIST standard
+//              reference once it's published.
+
 #define AWSLC_NUM_BUILT_IN_KEMS 1
 
 // TODO(awslc): placeholder OID, replace with the real one when available.

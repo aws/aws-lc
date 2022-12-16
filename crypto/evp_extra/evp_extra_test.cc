@@ -1750,7 +1750,6 @@ TEST_P(PerKEMTest, KeyGeneration) {
   ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
   ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw));
   ASSERT_TRUE(raw);
-  pkey.reset(raw);
 
   // ---- 3. Test getting raw keys and their size ----
   size_t pk_len, sk_len;
@@ -1768,10 +1767,6 @@ TEST_P(PerKEMTest, KeyGeneration) {
   ASSERT_TRUE(EVP_PKEY_get_raw_private_key(pkey.get(), sk_raw.data(), &sk_len));
   EXPECT_EQ(pk_len, GetParam().public_key_len);
   EXPECT_EQ(sk_len, GetParam().secret_key_len);
-
-  // Test the EVP_PKEY_size function.
-  int pkey_size = GetParam().public_key_len + GetParam().secret_key_len;
-  EXPECT_EQ(EVP_PKEY_size(pkey.get()), pkey_size);
 }
 
 // Helper function that:
@@ -1976,21 +1971,21 @@ TEST_P(PerKEMTest, RawKeyOperations) {
   // ---- 1. Setup phase: generate a context and a key ----
   // Create context of KEM type.
   bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_KEM, nullptr));
-  EXPECT_TRUE(ctx);
+  ASSERT_TRUE(ctx);
 
   // Setup the context with specific KEM parameters.
-  EXPECT_TRUE(EVP_PKEY_CTX_kem_set_params(ctx.get(), GetParam().nid));
+  ASSERT_TRUE(EVP_PKEY_CTX_kem_set_params(ctx.get(), GetParam().nid));
 
   // Generate a key pair.
   EVP_PKEY *raw = nullptr;
-  EXPECT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
-  EXPECT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw));
-  EXPECT_TRUE(raw);
+  ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
+  ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw));
+  ASSERT_TRUE(raw);
 
   // Create PKEY from the generated raw key and a new context with it.
   bssl::UniquePtr<EVP_PKEY> pkey(raw);
   ctx.reset(EVP_PKEY_CTX_new(pkey.get(), nullptr));
-  EXPECT_TRUE(ctx);
+  ASSERT_TRUE(ctx);
 
   // ---- 2. Test getting raw keys ----
   size_t pk_len = GetParam().public_key_len;

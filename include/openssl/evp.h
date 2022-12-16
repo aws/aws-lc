@@ -871,7 +871,7 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_set_ec_paramgen_curve_nid(EVP_PKEY_CTX *ctx,
 
 // KEM specific functions.
 
-// EVP_PKEY_CTX_kem_set_params sets in |ctx| the parameters associated with
+// EVP_PKEY_CTX_kem_set_params sets in |ctx| the parameters associated with the
 // KEM defined by the given |nid|. It returns one on success and zero on error.
 OPENSSL_EXPORT int EVP_PKEY_CTX_kem_set_params(EVP_PKEY_CTX *ctx, int nid);
 

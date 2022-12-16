@@ -185,6 +185,18 @@ const EVP_PKEY_METHOD kem_pkey_meth = {
 // Additional KEM specific EVP functions.
 
 int EVP_PKEY_CTX_kem_set_params(EVP_PKEY_CTX *ctx, int nid) {
+  if (ctx == NULL || ctx->data == NULL) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
+  // It's not allowed to change context parameters if
+  // a PKEY is already associated with the contex.
+  if (ctx->pkey != NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_OPERATION);
+    return 0;
+  }
+
   const KEM *kem = KEM_find_kem_by_nid(nid);
   if (kem == NULL) {
     return 0;
@@ -193,16 +205,11 @@ int EVP_PKEY_CTX_kem_set_params(EVP_PKEY_CTX *ctx, int nid) {
   KEM_PKEY_CTX *dctx = ctx->data;
   dctx->kem = kem;
 
-  // If the context has an associated pkey, free it.
-  if (ctx->pkey != NULL) {
-    EVP_PKEY_free(ctx->pkey);
-  }
-
   return 1;
 }
 
 
-// This function only sets KEM parameters defined by |nid| in |pkey|.
+// This function sets KEM parameters defined by |nid| in |pkey|.
 static int EVP_PKEY_kem_set_params(EVP_PKEY *pkey, int nid) {
   const KEM *kem = KEM_find_kem_by_nid(nid);
   if (kem == NULL) {
@@ -227,8 +234,8 @@ static int EVP_PKEY_kem_set_params(EVP_PKEY *pkey, int nid) {
   return 1;
 }
 
-// Generate a new EVP_PKEY object of type EVP_PKEY_KEM,
-// and set KEM parameters defined by |nid|.
+// Returns a fresh EVP_PKEY object of type EVP_PKEY_KEM,
+// and sets KEM parameters defined by |nid|.
 static EVP_PKEY *EVP_PKEY_kem_new(int nid) {
   EVP_PKEY *ret = EVP_PKEY_new();
   if (ret == NULL || !EVP_PKEY_kem_set_params(ret, nid)) {
