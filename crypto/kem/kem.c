@@ -64,12 +64,20 @@ KEM_KEY *KEM_KEY_new(void) {
   return ret;
 }
 
+static void KEM_KEY_clear(KEM_KEY *key) {
+  key->kem = NULL;
+  OPENSSL_free(key->public_key);
+  OPENSSL_free(key->secret_key);
+  key->public_key = NULL;
+  key->secret_key = NULL;
+}
+
 int KEM_KEY_init(KEM_KEY *key, const KEM *kem) {
   if (key == NULL || kem == NULL) {
     return 0;
   }
   // If the key is already initialized clear it.
-  KEM_KEY_free(key);
+  KEM_KEY_clear(key);
 
   key->kem = kem;
   key->public_key = OPENSSL_malloc(kem->public_key_len);
@@ -77,7 +85,7 @@ int KEM_KEY_init(KEM_KEY *key, const KEM *kem) {
   key->has_secret_key = 0;
   if (key->public_key == NULL || key->secret_key == NULL) {
     OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
-    KEM_KEY_free(key);
+    KEM_KEY_clear(key);
     return 0;
   }
 
@@ -88,9 +96,8 @@ void KEM_KEY_free(KEM_KEY *key) {
   if (key == NULL) {
     return;
   }
-  key->kem = NULL;
-  OPENSSL_free(key->public_key);
-  OPENSSL_free(key->secret_key);
+  KEM_KEY_clear(key);
+  OPENSSL_free(key);
 }
 
 const KEM *KEM_KEY_get0_kem(KEM_KEY* key) {
@@ -124,7 +131,7 @@ int KEM_KEY_set_raw_key(KEM_KEY *key, const uint8_t *in_public,
   key->secret_key = OPENSSL_memdup(in_secret, key->kem->secret_key_len);
   if (key->public_key == NULL || key->secret_key == NULL) {
     OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
-    KEM_KEY_free(key);
+    KEM_KEY_clear(key);
     return 0;
   }
   key->has_secret_key = 1;

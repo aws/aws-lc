@@ -12,7 +12,7 @@
 
 static void kem_free(EVP_PKEY *pkey) {
   KEM_KEY_free(pkey->pkey.kem_key);
-  OPENSSL_free(pkey->pkey.kem_key);
+  pkey->pkey.kem_key = NULL;
 }
 
 static int kem_get_priv_raw(const EVP_PKEY *pkey, uint8_t *out,
