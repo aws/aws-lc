@@ -11,7 +11,7 @@
 #include "internal.h"
 
 // The KEM parameters listed below are taken from corresponding specifications.
-// 
+//
 // Kyber: https://pq-crystals.org/kyber/data/kyber-specification-round3-20210804.pdf
 // TODO(awslc): replace the specification reference with the actual NIST standard
 //              reference once it's published.
