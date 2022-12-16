@@ -2444,7 +2444,7 @@ static struct {
     {"SSHKDF/SHA2-512/integServ", 4, SSHKDF<EVP_sha512, EVP_KDF_SSHKDF_TYPE_INTEGRITY_KEY_SRV_TO_CLI>},
     {"KDF/Feedback/HMAC-SHA-1", 3, HKDF_expand<EVP_sha1>},
     {"KDF/Feedback/HMAC-SHA2-224", 3, HKDF_expand<EVP_sha224>},
-    {"KDF/Feedback/HMAC-SHA2-256", 3, HKDF_expand<EVP_sha224>},
+    {"KDF/Feedback/HMAC-SHA2-256", 3, HKDF_expand<EVP_sha256>},
     {"KDF/Feedback/HMAC-SHA2-384", 3, HKDF_expand<EVP_sha384>},
     {"KDF/Feedback/HMAC-SHA2-512", 3, HKDF_expand<EVP_sha512>},
     {"KDF/Feedback/HMAC-SHA2-512/256", 3, HKDF_expand<EVP_sha512_256>},
