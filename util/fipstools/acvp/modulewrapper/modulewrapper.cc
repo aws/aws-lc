@@ -894,7 +894,8 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
           }],
           "fixedDataOrder": ["after fixed data"],
           "counterLength": [32],
-          "supportsEmptyIv": true
+          "supportsEmptyIv": true,
+          "requiresEmptyIv": true
         }]
       },
       {
