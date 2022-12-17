@@ -3533,6 +3533,25 @@ struct ssl_ctx_st {
   SSL_SESSION *(*get_session_cb)(SSL *ssl, const uint8_t *data, int len,
                                  int *copy) = nullptr;
 
+  struct {
+    int sess_connect = 0;             // SSL new conn - started
+    int sess_connect_renegotiate = 0; // SSL reneg - requested
+    int sess_connect_good = 0;        // SSL new conne/reneg - finished
+    int sess_accept = 0;              // SSL new accept - started
+    int sess_accept_renegotiate = 0;  // SSL reneg - requested
+    int sess_accept_good = 0;         // SSL accept/reneg - finished
+    int sess_miss = 0;                // session lookup misses
+    int sess_timeout = 0;             // reuse attempt on timeouted session
+    int sess_cache_full = 0;          // session removed due to full cache
+    int sess_hit = 0;                 // session reuse actually done
+    int sess_cb_hit = 0;              // session-id that was not
+                                      // in the cache was
+                                      // passed back via the callback. This
+                                      // indicates that the application is
+                                      // supplying session-id's from other
+                                      // processes - spooky :-)
+  } stats;
+
   CRYPTO_refcount_t references = 1;
 
   // if defined, these override the X509_verify_cert() calls

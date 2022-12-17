@@ -666,6 +666,9 @@ static enum ssl_hs_wait_t ssl_lookup_session(
     session = UpRef(lh_SSL_SESSION_retrieve_key(ssl->session_ctx->sessions,
                                                 &session_id, hash, cmp));
     // TODO(davidben): This should probably move it to the front of the list.
+    if (session == nullptr) {
+      ssl->session_ctx->stats.sess_miss++;
+    }
   }
 
   // Fall back to the external cache, if it exists.
@@ -681,6 +684,7 @@ static enum ssl_hs_wait_t ssl_lookup_session(
       session.release();  // This pointer is not actually owned.
       return ssl_hs_pending_session;
     }
+    ssl->session_ctx->stats.sess_cb_hit++;
 
     // Increment reference count now if the session callback asks us to do so
     // (note that if the session structures returned by the callback are shared
@@ -698,11 +702,13 @@ static enum ssl_hs_wait_t ssl_lookup_session(
   }
 
   if (session && !ssl_session_is_time_valid(ssl, session.get())) {
+    ssl->session_ctx->stats.sess_timeout++;
     // The session was from the cache, so remove it.
     SSL_CTX_remove_session(ssl->session_ctx.get(), session.get());
     session.reset();
   }
 
+  ssl->session_ctx->stats.sess_hit++;
   *out_session = std::move(session);
   return ssl_hs_ok;
 }
@@ -879,6 +885,7 @@ static bool add_session_locked(SSL_CTX *ctx, UniquePtr<SSL_SESSION> session) {
                           /*lock=*/false)) {
         break;
       }
+      ctx->stats.sess_cache_full++;
     }
   }
 

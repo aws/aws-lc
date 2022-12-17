@@ -472,6 +472,7 @@ static enum ssl_hs_wait_t do_start_connect(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
 
   ssl_do_info_callback(ssl, SSL_CB_HANDSHAKE_START, 1);
+  ssl->session_ctx->stats.sess_connect++;
   // |session_reused| must be reset in case this is a renegotiation.
   ssl->s3->session_reused = false;
 
@@ -1863,6 +1864,7 @@ static enum ssl_hs_wait_t do_finish_client_handshake(SSL_HANDSHAKE *hs) {
   ssl->s3->initial_handshake_complete = true;
   if (has_new_session) {
     ssl_update_cache(ssl);
+    ssl->session_ctx->stats.sess_hit++;
   }
 
   hs->state = state_done;
@@ -1955,6 +1957,7 @@ enum ssl_hs_wait_t ssl_client_handshake(SSL_HANDSHAKE *hs) {
     }
   }
 
+  hs->ssl->session_ctx->stats.sess_connect_good++;
   ssl_do_info_callback(hs->ssl, SSL_CB_HANDSHAKE_DONE, 1);
   return ssl_hs_ok;
 }

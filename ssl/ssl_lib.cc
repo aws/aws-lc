@@ -1741,6 +1741,7 @@ int SSL_renegotiate(SSL *ssl) {
 
   // We should not have told the caller to release the private key.
   assert(!SSL_can_release_private_key(ssl));
+  ssl->session_ctx->stats.sess_connect_renegotiate++;
 
   // Renegotiation is only supported at quiescent points in the application
   // protocol, namely in HTTPS, just before reading the HTTP response.
@@ -2984,17 +2985,49 @@ int SSL_clear(SSL *ssl) {
   return 1;
 }
 
-int SSL_CTX_sess_connect(const SSL_CTX *ctx) { return 0; }
-int SSL_CTX_sess_connect_good(const SSL_CTX *ctx) { return 0; }
-int SSL_CTX_sess_connect_renegotiate(const SSL_CTX *ctx) { return 0; }
-int SSL_CTX_sess_accept(const SSL_CTX *ctx) { return 0; }
-int SSL_CTX_sess_accept_renegotiate(const SSL_CTX *ctx) { return 0; }
-int SSL_CTX_sess_accept_good(const SSL_CTX *ctx) { return 0; }
-int SSL_CTX_sess_hits(const SSL_CTX *ctx) { return 0; }
-int SSL_CTX_sess_cb_hits(const SSL_CTX *ctx) { return 0; }
-int SSL_CTX_sess_misses(const SSL_CTX *ctx) { return 0; }
-int SSL_CTX_sess_timeouts(const SSL_CTX *ctx) { return 0; }
-int SSL_CTX_sess_cache_full(const SSL_CTX *ctx) { return 0; }
+int SSL_CTX_sess_connect(const SSL_CTX *ctx) {
+  return ctx->stats.sess_connect;
+}
+
+int SSL_CTX_sess_connect_good(const SSL_CTX *ctx) {
+  return ctx->stats.sess_connect_good;
+}
+
+int SSL_CTX_sess_connect_renegotiate(const SSL_CTX *ctx) {
+  return ctx->stats.sess_connect_renegotiate;
+}
+
+int SSL_CTX_sess_accept(const SSL_CTX *ctx) {
+  return ctx->stats.sess_accept;
+}
+
+int SSL_CTX_sess_accept_renegotiate(const SSL_CTX *ctx) {
+  return ctx->stats.sess_accept;
+}
+
+int SSL_CTX_sess_accept_good(const SSL_CTX *ctx) {
+  return ctx->stats.sess_accept;
+}
+
+int SSL_CTX_sess_hits(const SSL_CTX *ctx) {
+  return ctx->stats.sess_hit;
+}
+
+int SSL_CTX_sess_cb_hits(const SSL_CTX *ctx) {
+  return ctx->stats.sess_cb_hit;
+}
+
+int SSL_CTX_sess_misses(const SSL_CTX *ctx) {
+  return ctx->stats.sess_miss;
+}
+
+int SSL_CTX_sess_timeouts(const SSL_CTX *ctx) {
+  return ctx->stats.sess_timeout;
+}
+
+int SSL_CTX_sess_cache_full(const SSL_CTX *ctx) {
+  return ctx->stats.sess_cache_full;
+}
 
 int SSL_num_renegotiations(const SSL *ssl) {
   return SSL_total_renegotiations(ssl);
