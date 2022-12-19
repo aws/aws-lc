@@ -1750,6 +1750,7 @@ TEST_P(PerKEMTest, KeyGeneration) {
   ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
   ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw));
   ASSERT_TRUE(raw);
+  pkey.reset(raw);
 
   // ---- 3. Test getting raw keys and their size ----
   size_t pk_len, sk_len;
