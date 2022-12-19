@@ -7,7 +7,7 @@ When compiled, AWS-LC will generate separate benchmarking tools when provided wi
 The `awslc_bm` tool is expected to be used when benchmarking an installation of AWS-LC with a different speed tool: e.g.
 build and install AWS-LC FIPS from 2021 but run the latest benchmark tool from main. To benchmark the AWS-LC libcrypto
 from the current folder it is recomended to run `bssl speed` which executes the same code as other benchmarks: e.g. 
-`oss_1_1_bm`.
+`ossl_1_1_bm`.
 
 Additionally, the speed tool now prints a message when it is benchmarking a non-release build of AWS-LC instead of a release build of the project.
 
