@@ -15,6 +15,7 @@
 package subprocess
 
 import (
+	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -91,7 +92,8 @@ func (k *kdfPrimitive) Process(vectorSet []byte, m Transactable) (interface{}, e
 
 		// Fixed data variable is determined by the IUT according to the NIST specifications
 		// We send it as part of the response so that NIST can verify whether it is correct
-		info := "6D7300933785E9A32D944438D7245E52"
+		fixedData := make([]byte, 4)
+		rand.Read(fixedData)
 
 		for _, test := range group.Tests {
 			testResp := kdfTestResponse{ID: test.ID}
@@ -102,7 +104,7 @@ func (k *kdfPrimitive) Process(vectorSet []byte, m Transactable) (interface{}, e
 			}
 
 			// Make the call to the crypto module.
-			resp, err := m.Transact("KDF/Feedback/"+group.MACMode, 1, outputBytes, key, []byte(info))
+			resp, err := m.Transact("KDF/Feedback/"+group.MACMode, 1, outputBytes, key, fixedData)
 			if err != nil {
 				return nil, fmt.Errorf("wrapper KDF operation failed: %s", err)
 			}
@@ -110,7 +112,7 @@ func (k *kdfPrimitive) Process(vectorSet []byte, m Transactable) (interface{}, e
 			// Parse results.
 			testResp.ID = test.ID
 			testResp.KeyOut = hex.EncodeToString(resp[0])
-			testResp.FixedData = info
+			testResp.FixedData = hex.EncodeToString(fixedData)
 
 			groupResp.Tests = append(groupResp.Tests, testResp)
 		}
