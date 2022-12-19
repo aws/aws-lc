@@ -661,7 +661,7 @@ static enum ssl_hs_wait_t ssl_lookup_session(
           MakeConstSpan(sess->session_id, sess->session_id_length);
       return key_id == sess_id ? 0 : 1;
     };
-    MutexReadLock lock(&ssl->session_ctx->lock);
+    MutexWriteLock lock(&ssl->session_ctx->lock);
     // |lh_SSL_SESSION_retrieve_key| returns a non-owning pointer.
     session = UpRef(lh_SSL_SESSION_retrieve_key(ssl->session_ctx->sessions,
                                                 &session_id, hash, cmp));
@@ -684,7 +684,10 @@ static enum ssl_hs_wait_t ssl_lookup_session(
       session.release();  // This pointer is not actually owned.
       return ssl_hs_pending_session;
     }
+//    MutexWriteLock lock(&ssl->session_ctx->lock);
+    CRYPTO_MUTEX_lock_write(&ssl->session_ctx->lock);
     ssl->session_ctx->stats.sess_cb_hit++;
+    CRYPTO_MUTEX_unlock_write(&ssl->session_ctx->lock);
 
     // Increment reference count now if the session callback asks us to do so
     // (note that if the session structures returned by the callback are shared
@@ -702,12 +705,16 @@ static enum ssl_hs_wait_t ssl_lookup_session(
   }
 
   if (session && !ssl_session_is_time_valid(ssl, session.get())) {
+    CRYPTO_MUTEX_lock_write(&ssl->session_ctx->lock);
+//    MutexWriteLock lock(&ssl->session_ctx->lock);
     ssl->session_ctx->stats.sess_timeout++;
+    CRYPTO_MUTEX_unlock_write(&ssl->session_ctx->lock);
     // The session was from the cache, so remove it.
     SSL_CTX_remove_session(ssl->session_ctx.get(), session.get());
     session.reset();
   }
 
+  MutexWriteLock lock(&ssl->session_ctx->lock);
   ssl->session_ctx->stats.sess_hit++;
   *out_session = std::move(session);
   return ssl_hs_ok;
