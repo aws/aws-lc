@@ -4,46 +4,15 @@
 
 set -e
 
-function usage {
-  echo
-  echo "Usage: $(basename "${0}") [-d] [-b] [-u] [-m]"
-  echo
-}
-
 IGNORE_DIRTY=0
 IGNORE_BRANCH=0
 IGNORE_UPSTREAM=0
 IGNORE_MACOS=0
 SKIP_TEST=0
+GENERATE_FIPS=0
 
-while getopts "dbums" option; do
-  case ${option} in
-  d )
-    IGNORE_DIRTY=1
-    ;;
-  b )
-    IGNORE_BRANCH=1
-    ;;
-  u )
-    IGNORE_UPSTREAM=1
-    ;;
-  m )
-    IGNORE_MACOS=1
-    ;;
-  s )
-    SKIP_TEST=1
-    ;;
-  * )
-    echo Invalid argument: -"${?}"
-    usage
-    exit 1
-    ;;
-  esac
-done
-
-shift $((OPTIND - 1))
-
-AWS_LC_SYS_VERSION="0.2.0"
+# TODO: Match AWS-LC's Github release version when this is more stable.
+AWS_LC_SYS_VERSION="0.2.2"
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 AWS_LC_DIR=$( cd -- "${SCRIPT_DIR}/../../../" &> /dev/null && pwd)
@@ -55,100 +24,7 @@ COMPLETION_MARKER="${CRATE_DIR}"/.generation_complete
 CRATE_AWS_LC_DIR="${CRATE_DIR}"/deps/aws-lc
 PREFIX_HEADERS_FILE="${CRATE_AWS_LC_DIR}"/include/boringssl_prefix_symbols.h
 
-if [[ ! -d ${AWS_LC_DIR} ]]; then
-  echo "$(basename "${0}")" Sanity Check Failed
-  exit 1
-fi
-
-pushd "${AWS_LC_DIR}"
-
-if [[ $(git status --porcelain | wc -l) -gt 0 ]]; then
-  echo Workspace is dirty.
-  if [[ ${IGNORE_DIRTY} -eq 0 ]]; then
-    echo Aborting. Use '-d' to ignore.
-    echo
-    exit 1
-  else
-    echo Ignoring dirty workspace.
-    echo
-  fi
-fi
-
-CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-if [ "${CURRENT_BRANCH}" != "main" ]
-then
-  echo Branch is not main.
-  if [[ ${IGNORE_BRANCH} -eq 0 ]]; then
-    echo Aborting. Use '-b' to ignore.
-    echo
-    exit 1
-  else
-    echo Ignoring wrong branch.
-    echo
-  fi
-fi
-
-git fetch
-LOCAL_HASH=$(git rev-parse HEAD)
-UPSTREAM_HASH=$(git rev-parse "${CURRENT_BRANCH}"'@{upstream}')
-
-if [[ ! "${LOCAL_HASH}" == "${UPSTREAM_HASH}" ]]; then
-  echo "${CURRENT_BRANCH}" not up to date with upstream.
-  if [[ ${IGNORE_UPSTREAM} -eq 0 ]]; then
-    echo Aborting. Use '-u' to ignore.
-    echo
-    exit 1
-  else
-    echo Ignoring branch not up to date.
-    echo
-  fi
-fi
-
-if [[ ! "${OSTYPE}" == "darwin"* ]]; then
-  echo This script is not running on MacOS.
-  if [[ ${IGNORE_MACOS} -eq 0 ]]; then
-    echo Aborting. Use '-m' to ignore.
-    echo
-    exit 1
-  else
-    echo Ignoring non-MacOS. Crate will not be tested for Mac.
-    echo
-  fi
-fi
-
-mkdir -p "${TMP_DIR}"
-
-function create_symbol_file {
-  if [[ ! -r "${SYMBOLS_FILE}" ]]; then
-    echo Symbol file not found
-    echo Performing build for supported platforms.
-    "${SCRIPT_DIR}"/_run_supported_symbol_builds.sh
-  fi
-
-  if [[ ! -r "${SYMBOLS_FILE}" ]]; then
-    echo Symbol file not found after builds performed.
-    exit 1
-  else
-    echo Symbol file generation complete
-  fi
-}
-
-function create_prefix_headers {
-  if [[ ! -r "${PREFIX_HEADERS_FILE}" || "${SYMBOLS_FILE}" -nt "${PREFIX_HEADERS_FILE}" ]]; then
-    echo Prefix headers not up to date
-    create_symbol_file
-
-    echo Generating prefix headers
-    go run "${AWS_LC_DIR}"/util/make_prefix_headers.go -out "${CRATE_AWS_LC_DIR}"/include "${SYMBOLS_FILE}"
-  fi
-
-  if [[ ! -r "${PREFIX_HEADERS_FILE}" || "${SYMBOLS_FILE}" -nt "${PREFIX_HEADERS_FILE}" ]]; then
-    echo Prefix headers not up to date after generation.
-    exit 1
-  else
-    echo Prefix headers generation complete
-  fi
-}
+source "${SCRIPT_DIR}"/_generation_tools.sh
 
 function prepare_crate_dir {
   echo Preparing crate directory: "${CRATE_DIR}"
@@ -185,14 +61,30 @@ function prepare_crate_dir {
   cp "${AWS_LC_DIR}"/tests/compiler_features_tests/*.c "${CRATE_AWS_LC_DIR}"/tests/compiler_features_tests
 }
 
+generation_options "$@"
+shift $((OPTIND - 1))
+
+if [[ ! -d ${AWS_LC_DIR} ]]; then
+  echo "$(basename "${0}")" Sanity Check Failed
+  exit 1
+fi
+
+pushd "${AWS_LC_DIR}"
+check_workspace
+check_branch
+check_running_on_macos
+mkdir -p "${TMP_DIR}"
+
+# Crate preparation.
 prepare_crate_dir
 create_prefix_headers
+source "${SCRIPT_DIR}"/_generate_all_bindings_flavors.sh 
 
+# Crate testing.
 if [[ ${SKIP_TEST} -eq 1 ]]; then
   echo Aborting. Crate generated but not tested.
   exit 1
 fi
-
-"${SCRIPT_DIR}"/_test_supported_builds.sh "$( [ ${IGNORE_MACOS} -eq 1 ] && echo '-m' )"
+source "${SCRIPT_DIR}"/_test_supported_builds.sh
 
 touch "${COMPLETION_MARKER}"

@@ -62,6 +62,7 @@
 #include <openssl/md4.h>
 #include <openssl/md5.h>
 #include <openssl/nid.h>
+#include <openssl/ripemd.h>
 #include <openssl/sha.h>
 
 #include "../../internal.h"
@@ -120,6 +121,30 @@ DEFINE_METHOD_FUNCTION(EVP_MD, EVP_md5) {
   out->final = md5_final;
   out->block_size = 64;
   out->ctx_size = sizeof(MD5_CTX);
+}
+
+
+static void ripemd160_init(EVP_MD_CTX *ctx) {
+  CHECK(RIPEMD160_Init(ctx->md_data));
+}
+
+static void ripemd160_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
+  CHECK(RIPEMD160_Update(ctx->md_data, data, count));
+}
+
+static void ripemd160_final(EVP_MD_CTX *ctx, uint8_t *out) {
+  CHECK(RIPEMD160_Final(out, ctx->md_data));
+}
+
+DEFINE_METHOD_FUNCTION(EVP_MD, EVP_ripemd160) {
+  out->type = NID_ripemd160;
+  out->md_size = RIPEMD160_DIGEST_LENGTH;
+  out->flags = 0;
+  out->init = ripemd160_init;
+  out->update = ripemd160_update;
+  out->final = ripemd160_final;
+  out->block_size = 64;
+  out->ctx_size = sizeof(RIPEMD160_CTX);
 }
 
 

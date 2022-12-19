@@ -5,10 +5,11 @@ version = "__AWS_LC_SYS_VERSION__"
 authors = ["AWS-LC"]
 edition = "2021"
 repository = "https://github.com/awslabs/aws-lc"
-license = "Apache-2.0"
+license = "Apache-2.0 OR ISC"
 rust-version = "1.57.0"
 include = [
     "build.rs",
+    "build_bindgen.rs",
     "Cargo.toml",
     "deps/aws-lc/**/*.c",
     "deps/aws-lc/**/*.cc",
@@ -25,11 +26,15 @@ include = [
 
 [features]
 asan = []
+generate_bindings = ["bindgen"] # Generate the bindings on the targetted platform as a fallback mechanism.
+internal_generate = ["bindgen"] # Only for internal use, this line is removed prior to publishing.
 
 [build-dependencies]
-bindgen = "0.61"
+cmake = "0.1.48"
+bindgen = { version = "0.61", optional = true }
 regex = "1"
 dunce = "1.0"
+cfg_aliases = "0.1.1"
 
 [dependencies]
 libc = "0.2"

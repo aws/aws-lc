@@ -43,6 +43,25 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #include <time.h>
 #endif
 
+#if !defined(INTERNAL_TOOL)
+// align_pointer returns |ptr|, advanced to |alignment|. |alignment| must be a
+// power of two, and |ptr| must have at least |alignment - 1| bytes of scratch
+// space.
+static inline void *align_pointer(void *ptr, size_t alignment) {
+  // |alignment| must be a power of two.
+  assert(alignment != 0 && (alignment & (alignment - 1)) == 0);
+  // Instead of aligning |ptr| as a |uintptr_t| and casting back, compute the
+  // offset and advance in pointer space. C guarantees that casting from pointer
+  // to |uintptr_t| and back gives the same pointer, but general
+  // integer-to-pointer conversions are implementation-defined. GCC does define
+  // it in the useful way, but this makes fewer assumptions.
+  uintptr_t offset = (0u - (uintptr_t)ptr) & (alignment - 1);
+  ptr = (char *)ptr + offset;
+  assert(((uintptr_t)ptr & (alignment - 1)) == 0);
+  return ptr;
+}
+#endif
+
 static inline void *BM_memset(void *dst, int c, size_t n) {
   if (n == 0) {
     return dst;
@@ -145,6 +164,11 @@ static uint64_t g_timeout_seconds = 1;
 static std::vector<size_t> g_chunk_lengths = {16, 256, 1350, 8192, 16384};
 
 static bool TimeFunction(TimeResults *results, std::function<bool()> func) {
+  // The first time |func| is called an expensive self check might run that
+  // will skew the iterations between checks calculation
+  if (!func()) {
+    return false;
+  }
   // total_us is the total amount of time that we'll aim to measure a function
   // for.
   const uint64_t total_us = g_timeout_seconds * 1000000;
@@ -169,6 +193,9 @@ static bool TimeFunction(TimeResults *results, std::function<bool()> func) {
     }
   }
 
+  // Don't include the time taken to run |func| to calculate
+  // |iterations_between_time_checks|
+  start = time_now();
   for (;;) {
     for (unsigned i = 0; i < iterations_between_time_checks; i++) {
       if (!func()) {
@@ -488,13 +515,13 @@ static bool SpeedAEADChunk(const EVP_AEAD *aead, std::string name,
 
   uint8_t *const in =
       static_cast<uint8_t *>(align_pointer(in_storage.get(), kAlignment));
-  OPENSSL_memset(in, 0, chunk_len);
+  BM_memset(in, 0, chunk_len);
   uint8_t *const out =
       static_cast<uint8_t *>(align_pointer(out_storage.get(), kAlignment));
-  OPENSSL_memset(out, 0, chunk_len + overhead_len);
+  BM_memset(out, 0, chunk_len + overhead_len);
   uint8_t *const tag =
       static_cast<uint8_t *>(align_pointer(tag_storage.get(), kAlignment));
-  OPENSSL_memset(tag, 0, overhead_len);
+  BM_memset(tag, 0, overhead_len);
   uint8_t *const in2 =
       static_cast<uint8_t *>(align_pointer(in2_storage.get(), kAlignment));
 
@@ -768,7 +795,6 @@ static bool SpeedAESBlock(const std::string &name, unsigned bits,
   return true;
 }
 
-#if !defined(OPENSSL_1_0_BENCHMARK)
 static bool SpeedAES256XTS(const std::string &name, //const size_t in_len,
                            const std::string &selected) {
   if (!selected.empty() && name.find(selected) == std::string::npos) {
@@ -838,7 +864,6 @@ static bool SpeedAES256XTS(const std::string &name, //const size_t in_len,
 
   return true;
 }
-#endif
 
 static bool SpeedHashChunk(const EVP_MD *md, std::string name,
                            size_t chunk_len) {
@@ -1465,6 +1490,7 @@ static bool SpeedHRSS(const std::string &selected) {
   return true;
 }
 
+#if defined(INTERNAL_TOOL)
 static bool SpeedHashToCurve(const std::string &selected) {
   if (!selected.empty() && selected.find("hashtocurve") == std::string::npos) {
     return true;
@@ -1504,6 +1530,7 @@ static bool SpeedHashToCurve(const std::string &selected) {
 
   return true;
 }
+#endif
 
 static bool SpeedBase64(const std::string &selected) {
   if (!selected.empty() && selected.find("base64") == std::string::npos) {
@@ -1570,14 +1597,11 @@ static bool SpeedSipHash(const std::string &selected) {
   return true;
 }
 
+#if defined(INTERNAL_TOOL)
 static TRUST_TOKEN_PRETOKEN *trust_token_pretoken_dup(
     TRUST_TOKEN_PRETOKEN *in) {
-  TRUST_TOKEN_PRETOKEN *out =
-      (TRUST_TOKEN_PRETOKEN *)OPENSSL_malloc(sizeof(TRUST_TOKEN_PRETOKEN));
-  if (out) {
-    OPENSSL_memcpy(out, in, sizeof(TRUST_TOKEN_PRETOKEN));
-  }
-  return out;
+  return (TRUST_TOKEN_PRETOKEN *)OPENSSL_memdup(in,
+                                                sizeof(TRUST_TOKEN_PRETOKEN));
 }
 
 static bool SpeedTrustToken(std::string name, const TRUST_TOKEN_METHOD *method,
@@ -1807,6 +1831,7 @@ static bool SpeedTrustToken(std::string name, const TRUST_TOKEN_METHOD *method,
   return true;
 }
 #endif
+#endif
 
 #if defined(BORINGSSL_FIPS)
 static bool SpeedSelfTest(const std::string &selected) {
@@ -1931,10 +1956,7 @@ bool Speed(const std::vector<std::string> &args) {
      !SpeedAESGCM(EVP_aes_128_gcm(), "EVP-AES-128-GCM", kTLSADLen, selected) ||
      !SpeedAESGCM(EVP_aes_192_gcm(), "EVP-AES-192-GCM", kTLSADLen, selected) ||
      !SpeedAESGCM(EVP_aes_256_gcm(), "EVP-AES-256-GCM", kTLSADLen, selected) ||
-     // OpenSSL 1.0 doesn't support AES-XTS
-#if !defined(OPENSSL_1_0_BENCHMARK)
      !SpeedAES256XTS("AES-256-XTS", selected) ||
-#endif
      // OpenSSL 3.0 doesn't allow MD4 calls
 #if !defined(OPENSSL_3_0_BENCHMARK)
      !SpeedHash(EVP_md4(), "MD4", selected) ||
@@ -1995,6 +2017,7 @@ bool Speed(const std::vector<std::string> &args) {
      !SpeedRSAKeyGen(selected) ||
      !SpeedHRSS(selected) ||
      !SpeedHash(EVP_blake2b256(), "BLAKE2b-256", selected) ||
+#if defined(INTERNAL_TOOL)
      !SpeedHashToCurve(selected) ||
      !SpeedTrustToken("TrustToken-Exp1-Batch1", TRUST_TOKEN_experiment_v1(), 1, selected) ||
      !SpeedTrustToken("TrustToken-Exp1-Batch10", TRUST_TOKEN_experiment_v1(), 10, selected) ||
@@ -2002,6 +2025,7 @@ bool Speed(const std::vector<std::string> &args) {
      !SpeedTrustToken("TrustToken-Exp2VOPRF-Batch10", TRUST_TOKEN_experiment_v2_voprf(), 10, selected) ||
      !SpeedTrustToken("TrustToken-Exp2PMB-Batch1", TRUST_TOKEN_experiment_v2_pmb(), 1, selected) ||
      !SpeedTrustToken("TrustToken-Exp2PMB-Batch10", TRUST_TOKEN_experiment_v2_pmb(), 10, selected) ||
+#endif
      !SpeedBase64(selected) ||
      !SpeedSipHash(selected)
 #endif
