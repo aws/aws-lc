@@ -1,6 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
+use paste::paste;
 use std::ffi::{c_char, c_long, c_void};
 
 // Warn to use feature generate_bindings if building on a platform where prebuilt-bindings
@@ -13,6 +14,7 @@ compile_error!(
     "internal_generate is only for internal usage and does not work with the generate_bindings feature."
 );
 
+#[allow(unused_macros)]
 macro_rules! use_bindings {
     ($bindings:ident) => {
         mod $bindings;
@@ -20,20 +22,40 @@ macro_rules! use_bindings {
     };
 }
 
-#[cfg(linux_x86_bindings)]
-use_bindings!(linux_x86_bindings);
+macro_rules! platform_binding {
+    ($platform:ident) => {
+        paste! {
+            #[cfg(all($platform, not(feature = "ssl")))]
+            use_bindings!([< $platform _crypto >]);
 
-#[cfg(linux_x86_64_bindings)]
-use_bindings!(linux_x86_64_bindings);
+            #[cfg(all($platform, feature = "ssl"))]
+            use_bindings!([< $platform _crypto_ssl >]);
+        }
+    };
+}
 
-#[cfg(linux_aarch64_bindings)]
-use_bindings!(linux_aarch64_bindings);
+platform_binding!(linux_x86);
 
-#[cfg(macos_x86_64_bindings)]
-use_bindings!(macos_x86_64_bindings);
+platform_binding!(linux_x86_64);
 
-#[cfg(any(feature = "bindgen", not_pregenerated))]
-use_bindings!(bindings);
+platform_binding!(linux_aarch64);
+
+platform_binding!(macos_x86_64);
+
+#[cfg(all(feature = "bindgen", not_pregenerated))]
+mod generated {
+    #![allow(
+        unused_imports,
+        non_camel_case_types,
+        non_snake_case,
+        non_upper_case_globals,
+        improper_ctypes
+    )]
+
+    include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
+}
+#[cfg(all(feature = "bindgen", not_pregenerated))]
+pub use generated::*;
 
 #[allow(non_snake_case)]
 pub fn ERR_GET_LIB(packed_error: u32) -> i32 {

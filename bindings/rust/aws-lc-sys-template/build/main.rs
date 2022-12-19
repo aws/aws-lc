@@ -16,6 +16,8 @@
 // Modifications Copyright Amazon.com, Inc. or its affiliates. See GitHub history for details.
 
 use cfg_aliases::cfg_aliases;
+#[cfg(feature = "bindgen")]
+use std::default::Default;
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -100,11 +102,12 @@ fn prefix_string() -> String {
 }
 
 #[cfg(feature = "internal_generate")]
-fn target_platform_bindings_string() -> String {
+fn target_platform_prefix(name: &str) -> String {
     format!(
-        "{}_{}_bindings.rs",
+        "{}_{}_{}",
         std::env::consts::OS,
-        std::env::consts::ARCH
+        std::env::consts::ARCH,
+        name
     )
 }
 
@@ -174,7 +177,59 @@ fn prepare_cmake_build(build_prefix: Option<&str>) -> cmake::Config {
 fn build_aws_lc() -> PathBuf {
     let mut cmake_cfg = prepare_cmake_build(Some(&prefix_string()));
 
-    cmake_cfg.build_target("ssl").build()
+    // cmake supports passing multiple arguments to target, but this is broken in the cmake crate
+    // ssl requires crypto so we can get away with just picking the top-most requried one.
+    let target = if cfg!(feature = "ssl") {
+        Some("ssl")
+    } else {
+        Some("crypto")
+    };
+
+    cmake_cfg.build_target(target.unwrap()).build()
+}
+
+#[cfg(feature = "bindgen")]
+fn generate_bindings(manifest_dir: &PathBuf, prefix: &str, bindings_path: &PathBuf) {
+    let options = bindgen::BindingOptions {
+        build_prefix: Some(&prefix),
+        include_ssl: cfg!(feature = "ssl"),
+        disable_prelude: true,
+        ..Default::default()
+    };
+
+    let bindings =
+        bindgen::generate_bindings(&manifest_dir, options).expect("Unable to generate bindings.");
+
+    bindings
+        .write(Box::new(std::fs::File::create(&bindings_path).unwrap()))
+        .expect("written bindings");
+}
+
+#[cfg(feature = "internal_generate")]
+fn generate_src_bindings(manifest_dir: &PathBuf, prefix: &str, src_bindings_path: &PathBuf) {
+    bindgen::generate_bindings(
+        &manifest_dir,
+        bindgen::BindingOptions {
+            build_prefix: Some(&prefix),
+            include_ssl: false,
+            ..Default::default()
+        },
+    )
+    .expect("Unable to generate bindings.")
+    .write_to_file(src_bindings_path.join(format!("{}.rs", target_platform_prefix("crypto"))))
+    .expect("write bindings");
+
+    bindgen::generate_bindings(
+        &manifest_dir,
+        bindgen::BindingOptions {
+            build_prefix: Some(&prefix),
+            include_ssl: true,
+            ..Default::default()
+        },
+    )
+    .expect("Unable to generate bindings.")
+    .write_to_file(src_bindings_path.join(format!("{}.rs", target_platform_prefix("crypto_ssl"))))
+    .expect("write bindings");
 }
 
 fn main() -> Result<(), String> {
@@ -182,11 +237,11 @@ fn main() -> Result<(), String> {
     use crate::OutputLibType::Static;
 
     cfg_aliases! {
-        linux_x86_bindings: { all(not(feature = "bindgen"), target_os = "linux", target_arch = "x86") },
-        linux_x86_64_bindings: { all(not(feature = "bindgen"), target_os = "linux", target_arch = "x86_64") },
-        linux_aarch64_bindings: { all(not(feature = "bindgen"), target_os = "linux", target_arch = "aarch64") },
-        macos_x86_64_bindings: { all(not(feature = "bindgen"), target_os = "macos", target_arch = "x86_64") },
-        not_pregenerated: { not(any(linux_x86_bindings, linux_aarch64_bindings, linux_x86_64_bindings, macos_x86_64_bindings)) },
+        linux_x86: { all(not(feature = "bindgen"), target_os = "linux", target_arch = "x86") },
+        linux_x86_64: { all(not(feature = "bindgen"), target_os = "linux", target_arch = "x86_64") },
+        linux_aarch64: { all(not(feature = "bindgen"), target_os = "linux", target_arch = "aarch64") },
+        macos_x86_64: { all(not(feature = "bindgen"), target_os = "macos", target_arch = "x86_64") },
+        not_pregenerated: { not(any(linux_x86, linux_aarch64, linux_x86_64, macos_x86_64)) },
     }
 
     let mut missing_dependency = false;
@@ -206,16 +261,17 @@ fn main() -> Result<(), String> {
     let manifest_dir = dunce::canonicalize(Path::new(&manifest_dir)).unwrap();
     let prefix = prefix_string();
 
-    #[cfg(any(feature = "bindgen", not_pregenerated))]
-    bindgen::generate_bindings(&manifest_dir, Some(&prefix), "bindings.rs")
-        .expect("Unable to generate bindings.");
     #[cfg(feature = "internal_generate")]
-    bindgen::generate_bindings(
-        &manifest_dir,
-        Some(&prefix),
-        &target_platform_bindings_string().to_string(),
-    )
-    .expect("Unable to generate bindings.");
+    {
+        let src_bindings_path = Path::new(&manifest_dir).join("src");
+        generate_src_bindings(&manifest_dir, &prefix, &src_bindings_path);
+    }
+
+    #[cfg(feature = "bindgen")]
+    {
+        let gen_bindings_path = Path::new(&env::var("OUT_DIR").unwrap()).join("bindings.rs");
+        generate_bindings(&manifest_dir, &prefix, &gen_bindings_path);
+    }
 
     let aws_lc_dir = build_aws_lc();
 
@@ -235,20 +291,22 @@ fn main() -> Result<(), String> {
         Crypto.libname(Some(&prefix))
     );
 
-    let libssl_file = Ssl.locate_file(&aws_lc_dir, Static, None);
-    let prefixed_libssl_file = Ssl.locate_file(&aws_lc_dir, Static, Some(&prefix));
-    fs::rename(libssl_file, prefixed_libssl_file).expect("Unexpected error: Library not found");
+    if cfg!(feature = "ssl") {
+        let libssl_file = Ssl.locate_file(&aws_lc_dir, Static, None);
+        let prefixed_libssl_file = Ssl.locate_file(&aws_lc_dir, Static, Some(&prefix));
+        fs::rename(libssl_file, prefixed_libssl_file).expect("Unexpected error: Library not found");
 
-    println!(
-        "cargo:rustc-link-search=native={}",
-        Ssl.locate_dir(&aws_lc_dir).display()
-    );
+        println!(
+            "cargo:rustc-link-search=native={}",
+            Ssl.locate_dir(&aws_lc_dir).display()
+        );
 
-    println!(
-        "cargo:rustc-link-lib={}={}",
-        Static.rust_lib_type(),
-        Ssl.libname(Some(&prefix))
-    );
+        println!(
+            "cargo:rustc-link-lib={}={}",
+            Static.rust_lib_type(),
+            Ssl.libname(Some(&prefix))
+        );
+    }
 
     println!(
         "cargo:include={}",
