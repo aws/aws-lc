@@ -82,7 +82,7 @@ func (k *kdfPrimitive) Process(vectorSet []byte, m Transactable) (interface{}, e
 			return nil, fmt.Errorf("label location %q not supported", group.CounterLocation)
 		}
 
-		if group.CounterBits != 32 {
+		if group.CounterBits != 8 {
 			// We only support counter lengths of 32
 			return nil, fmt.Errorf("counter length %q not supported", group.CounterBits)
 		}
