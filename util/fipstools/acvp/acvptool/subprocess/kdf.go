@@ -84,7 +84,7 @@ func (k *kdfPrimitive) Process(vectorSet []byte, m Transactable) (interface{}, e
 		}
 
 		if group.CounterBits != 8 {
-			// We only support counter lengths of 32
+			// We only support counter lengths of 8
 			return nil, fmt.Errorf("counter length %q not supported", group.CounterBits)
 		}
 
