@@ -29,7 +29,7 @@ In order to build the above-mentioned benchmarking tools, absolute paths to each
 ### Compiler Flags
 |  Tool Name  |  Compiler Flag  |
 | ------------- | ------------- |
- | bssl | (none) | 
+ | bssl speed | (none) | 
 | awslc_bm | -DAWSLC_INSTALL_DIR |
 | bssl_bm | -DBORINGSSL_INSTALL_DIR |
 | ossl_1_0_bm | -DOPENSSL_1_0_INSTALL_DIR |
