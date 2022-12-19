@@ -892,10 +892,29 @@ OPENSSL_EXPORT STACK_OF(OPENSSL_STRING) *X509_get1_ocsp(X509 *x);
 // Skip the subject common name fallback if subjectAltNames is missing.
 #define X509_CHECK_FLAG_NEVER_CHECK_SUBJECT 0x20
 
+// X509_check_host checks if |x| has a Common Name or Subject Alternate name
+// that matches the |chk| string up to |chklen|. If |chklen| is 0
+// X509_check_host will calculate the length using strlen. It is encouraged to
+// always pass in the length of |chk| and rely on higher level parsing to ensure
+// strlen is not called on a string that does not contain a null terminator.
+// If a match is found X509_check_host returns 1, if |peername| is not null
+// it is updated to point to the matching name in |x|.
 OPENSSL_EXPORT int X509_check_host(X509 *x, const char *chk, size_t chklen,
                                    unsigned int flags, char **peername);
+
+// X509_check_email checks if the email address in |x| matches |chk| string up
+// to |chklen|. If |chklen| is 0 X509_check_email will calculate the length
+// using strlen. It is encouraged to always pass in the length of |chk| and rely
+// on higher level parsing to ensure strlen is not called on a string that does
+// not contain a null terminator. If the certificate matches X509_check_email
+// returns 1.
 OPENSSL_EXPORT int X509_check_email(X509 *x, const char *chk, size_t chklen,
                                     unsigned int flags);
+
+// X509_check_ip checks if the IPv4 or IPv6 address in |x| matches |chk| up
+// to |chklen|. X509_check_ip does not attempt to determine the length of |chk|
+// if 0 is passed in for |chklen|. If the certificate matches X509_check_ip
+// returns 1.
 OPENSSL_EXPORT int X509_check_ip(X509 *x, const unsigned char *chk,
                                  size_t chklen, unsigned int flags);
 OPENSSL_EXPORT int X509_check_ip_asc(X509 *x, const char *ipasc,
