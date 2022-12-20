@@ -25,7 +25,6 @@
 #include <string.h>
 
 #include "internal.h"
-#include "../crypto/dilithium/sig_dilithium.h"
 
 #if !defined(OPENSSL_BENCHMARK)
 #include "bssl_bm.h"
