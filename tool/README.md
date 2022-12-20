@@ -2,7 +2,12 @@
 AWS-LC features enhanced benchmarking tools compatible with OpenSSL and BoringSSL in order to help facilitate 1-1 performance comparisons.
 
 ## Benchmarking Tools
-When compiled, AWS-LC will generate three benchmarking tools when provided with corresponding compiler flags. These tools take the same arguments as the BoringSSL speed tool does.
+When compiled, AWS-LC will generate separate benchmarking tools when provided with corresponding compiler flags. These tools take the same arguments as `bssl speed` tool.
+
+The `awslc_bm` tool is expected to be used when benchmarking an installation of AWS-LC with a different speed tool: e.g.
+build and install AWS-LC FIPS from 2021 but run the latest benchmark tool from main. To benchmark the AWS-LC libcrypto
+from the current folder it is recomended to run `bssl speed` which executes the same code as other benchmarks: e.g. 
+`ossl_1_1_bm`.
 
 Additionally, the speed tool now prints a message when it is benchmarking a non-release build of AWS-LC instead of a release build of the project.
 
@@ -24,6 +29,7 @@ In order to build the above-mentioned benchmarking tools, absolute paths to each
 ### Compiler Flags
 |  Tool Name  |  Compiler Flag  |
 | ------------- | ------------- |
+ | bssl speed | (none) | 
 | awslc_bm | -DAWSLC_INSTALL_DIR |
 | bssl_bm | -DBORINGSSL_INSTALL_DIR |
 | ossl_1_0_bm | -DOPENSSL_1_0_INSTALL_DIR |
@@ -31,44 +37,20 @@ In order to build the above-mentioned benchmarking tools, absolute paths to each
 | ossl_3_0_bm | -DOPENSSL_3_0_INSTALL_DIR |
 
 ### Expected Directory Structure
-Additionally, the benchmarking tools expects specific directory structures for the provided install locations for each library. Each package should have its own instructions for proividing an install directory, and once installed to that directory you can simply use the appropriate `INSTALL_DIR` flag to point the benchmarking tool to it.
+Additionally, the benchmarking tools expects specific directory structures for the provided install locations for each
+library. Each library has its own instructions for building and installing their libcrypto, and once installed to that 
+directory you can simply use the appropriate `INSTALL_DIR` flag to point the benchmarking tool to it. Each library is
+expected to provide the following directory structure:
 
-**AWS-LC**
 ```
--awslc_install_dir/
+-install_dir/
 --include/
-```
-
-**BoringSSL**
-```
--boringssl_install_dir/
---include/
---build/
----crypto/
-----libcrypto.a
-```
-
-**OpenSSL1.x**
-```
--openssl_install_dir/
---include/
+---openssl/
 --lib/
----libcrypto.a
-```
-
-**OpenSSL3.0**
-```
--openssl_install_dir/
---include/
---lib/
----libcrypto.a
-```
+---libcrypto
 or
-
-**OpenSSL3.0**
-```
--openssl_install_dir/
---include/
 --lib64/
----libcrypto.a
+---libcrypto
 ```
+
+The benchmark tool can be built using dynamic/shared libraries (.so, .dynalib, or .dll) or static archives (.a, or .lib).
