@@ -399,7 +399,7 @@ static const SSL_CIPHER *choose_cipher(
 static enum ssl_hs_wait_t do_start_accept(SSL_HANDSHAKE *hs) {
   ssl_do_info_callback(hs->ssl, SSL_CB_HANDSHAKE_START, 1);
   hs->state = state12_read_client_hello;
-  ssl_update_counter(hs->ssl->session_ctx,
+  ssl_update_counter(hs->ssl->session_ctx.get(),
                      hs->ssl->session_ctx->stats.sess_accept, true);
   return ssl_hs_ok;
 }
@@ -1934,7 +1934,7 @@ enum ssl_hs_wait_t ssl_server_handshake(SSL_HANDSHAKE *hs) {
     }
   }
 
-  ssl_update_counter(hs->ssl->session_ctx,
+  ssl_update_counter(hs->ssl->session_ctx.get(),
                      hs->ssl->session_ctx->stats.sess_accept_good, true);
   ssl_do_info_callback(hs->ssl, SSL_CB_HANDSHAKE_DONE, 1);
   return ssl_hs_ok;
