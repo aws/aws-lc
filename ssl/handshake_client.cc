@@ -472,8 +472,8 @@ static enum ssl_hs_wait_t do_start_connect(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
 
   ssl_do_info_callback(ssl, SSL_CB_HANDSHAKE_START, 1);
-  MutexWriteLock lock(&ssl->session_ctx->lock);
-  ssl->session_ctx->stats.sess_connect++;
+  ssl_update_counter(ssl->session_ctx,
+                     ssl->session_ctx->stats.sess_connect, true);
   // |session_reused| must be reset in case this is a renegotiation.
   ssl->s3->session_reused = false;
 
@@ -1865,8 +1865,8 @@ static enum ssl_hs_wait_t do_finish_client_handshake(SSL_HANDSHAKE *hs) {
   ssl->s3->initial_handshake_complete = true;
   if (has_new_session) {
     ssl_update_cache(ssl);
-    MutexWriteLock lock(&ssl->session_ctx->lock);
-    ssl->session_ctx->stats.sess_hit++;
+    ssl_update_counter(ssl->session_ctx,
+                        ssl->session_ctx->stats.sess_hit, true);
   }
 
   hs->state = state_done;
@@ -1959,8 +1959,8 @@ enum ssl_hs_wait_t ssl_client_handshake(SSL_HANDSHAKE *hs) {
     }
   }
 
-  MutexWriteLock lock(&hs->ssl->session_ctx->lock);
-  hs->ssl->session_ctx->stats.sess_connect_good++;
+  ssl_update_counter(hs->ssl->session_ctx,
+                     hs->ssl->session_ctx->stats.sess_connect_good, true);
   ssl_do_info_callback(hs->ssl, SSL_CB_HANDSHAKE_DONE, 1);
   return ssl_hs_ok;
 }

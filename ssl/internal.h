@@ -3436,6 +3436,18 @@ void ssl_reset_error_state(SSL *ssl);
 // current state of the error queue.
 void ssl_set_read_error(SSL *ssl);
 
+// ssl_update_counter updates the stat counters in |SSL_CTX|. `locked` should be
+// set to false if the mutex has already been locked.
+#define ssl_update_counter(ctx, counter, locked)        \
+  [&] {                                                 \
+    if(locked) {                                        \
+      MutexWriteLock ctx_lock(&ctx->lock);              \
+      counter++;                                        \
+    } else {                                            \
+      counter++;                                        \
+    }                                                   \
+  }()
+
 BSSL_NAMESPACE_END
 
 

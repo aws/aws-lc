@@ -667,7 +667,8 @@ static enum ssl_hs_wait_t ssl_lookup_session(
                                                 &session_id, hash, cmp));
     // TODO(davidben): This should probably move it to the front of the list.
     if (session == nullptr) {
-      ssl->session_ctx->stats.sess_miss++;
+      ssl_update_counter(ssl->session_ctx,
+                          ssl->session_ctx->stats.sess_hit, /*lock=*/ false);
     }
   }
 
@@ -684,10 +685,8 @@ static enum ssl_hs_wait_t ssl_lookup_session(
       session.release();  // This pointer is not actually owned.
       return ssl_hs_pending_session;
     }
-//    MutexWriteLock lock(&ssl->session_ctx->lock);
-    CRYPTO_MUTEX_lock_write(&ssl->session_ctx->lock);
-    ssl->session_ctx->stats.sess_cb_hit++;
-    CRYPTO_MUTEX_unlock_write(&ssl->session_ctx->lock);
+    ssl_update_counter(ssl->session_ctx,
+                       ssl->session_ctx->stats.sess_cb_hit, true);
 
     // Increment reference count now if the session callback asks us to do so
     // (note that if the session structures returned by the callback are shared
@@ -705,17 +704,14 @@ static enum ssl_hs_wait_t ssl_lookup_session(
   }
 
   if (session && !ssl_session_is_time_valid(ssl, session.get())) {
-    CRYPTO_MUTEX_lock_write(&ssl->session_ctx->lock);
-//    MutexWriteLock lock(&ssl->session_ctx->lock);
-    ssl->session_ctx->stats.sess_timeout++;
-    CRYPTO_MUTEX_unlock_write(&ssl->session_ctx->lock);
+    ssl_update_counter(ssl->session_ctx,
+                       ssl->session_ctx->stats.sess_timeout, true);
     // The session was from the cache, so remove it.
     SSL_CTX_remove_session(ssl->session_ctx.get(), session.get());
     session.reset();
   }
 
-  MutexWriteLock lock(&ssl->session_ctx->lock);
-  ssl->session_ctx->stats.sess_hit++;
+  ssl_update_counter(ssl->session_ctx, ssl->session_ctx->stats.sess_hit, true);
   *out_session = std::move(session);
   return ssl_hs_ok;
 }
@@ -892,7 +888,7 @@ static bool add_session_locked(SSL_CTX *ctx, UniquePtr<SSL_SESSION> session) {
                           /*lock=*/false)) {
         break;
       }
-      ctx->stats.sess_cache_full++;
+      ssl_update_counter(ctx, ctx->stats.sess_cache_full, /*lock=*/ false);
     }
   }
 
