@@ -52,16 +52,16 @@ Benchmarks for KeyGen, Sign, and Verify functionality are available within the `
 
 Example output:
 ```
-Did 4830 Dilithium3 keygen operations in 1014176us (4762.5 ops/sec)
-Did 2688 Dilithium3 signing operations in 1062613us (2529.6 ops/sec)
-Did 5124 Dilithium3 verify operations in 1014016us (5053.2 ops/sec)
+Did 5665 Dilithium3 keygen operations in 1049620us (5397.2 ops/sec)
+Did 1705 Dilithium3 signing operations in 1008741us (1690.2 ops/sec)
+Did 6690 Dilithium3 verify operations in 1044624us (6404.2 ops/sec)
 ```
 Similarly, the output in JSON format `./tool/bssl speed -filter Dilithium3 -json`.
 
 ```
 [
-{"description": "Dilithium3 keygen", "numCalls": 4830, "microseconds": 1014176},
-{"description": "Dilithium3 signing", "numCalls": 2688, "microseconds": 1062613},
-{"description": "Dilithium3 verify", "numCalls": 5124, "microseconds": 1014016}
+{"description": "Dilithium3 keygen", "numCalls": 5665, "microseconds": 1049620},
+{"description": "Dilithium3 signing", "numCalls": 1705, "microseconds": 1008741},
+{"description": "Dilithium3 verify", "numCalls": 6690, "microseconds": 1044624}
 ]
 ```

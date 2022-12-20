@@ -704,9 +704,8 @@ static bool SpeedDigestSignNID(const std::string &name, int nid,
   std::unique_ptr<uint8_t[]> signature(new uint8_t[sig_len]);
 
 
-  if (!TimeFunction(&results, [&md_ctx, &key, &signature, &sig_len, msg_len ]() -> bool {
-        return EVP_DigestSignInit(md_ctx.get(), NULL, NULL, NULL, key) &&
-               EVP_DigestSign(md_ctx.get(), signature.get(), &sig_len, msg, msg_len);
+  if (!TimeFunction(&results, [&md_ctx, &signature, &sig_len, msg_len ]() -> bool {
+        return EVP_DigestSign(md_ctx.get(), signature.get(), &sig_len, msg, msg_len);
       })) {
     return false;
   }
