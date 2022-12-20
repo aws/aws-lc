@@ -60,8 +60,8 @@ Similarly, the output in JSON format `./tool/bssl speed -filter Dilithium3 -json
 
 ```
 [
-{"description": "Dilithium3 keygen", "numCalls": 4792, "microseconds": 1025664},
-{"description": "Dilithium3 signing", "numCalls": 2411, "microseconds": 1054052},
-{"description": "Dilithium3 verify", "numCalls": 5275, "microseconds": 1024735}
+{"description": "Dilithium3 keygen", "numCalls": 4830, "microseconds": 1014176},
+{"description": "Dilithium3 signing", "numCalls": 2688, "microseconds": 1062613},
+{"description": "Dilithium3 verify", "numCalls": 5124, "microseconds": 1014016}
 ]
 ```

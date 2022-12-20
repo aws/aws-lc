@@ -664,14 +664,14 @@ static bool SpeedKEM(std::string selected) {
   return SpeedKEM("Kyber512", NID_KYBER512, selected);
 }
 
-static bool SpeedDilithium3(const std::string &name, int nid,
+static bool SpeedDigestSignNID(const std::string &name, int nid,
                             const std::string &selected) {
   if (!selected.empty() && name.find(selected) == std::string::npos) {
     return true;
   }
 
-  // Setup CTX for EC Operations
-  BM_NAMESPACE::UniquePtr<EVP_PKEY_CTX> pkey_ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_DILITHIUM3, nullptr));
+  // Setup CTX for Sign/Verify Operations
+  BM_NAMESPACE::UniquePtr<EVP_PKEY_CTX> pkey_ctx(EVP_PKEY_CTX_new_id(nid, nullptr));
 
   // Setup CTX for Keygen Operations
   if (!pkey_ctx || EVP_PKEY_keygen_init(pkey_ctx.get()) != 1) {
@@ -690,25 +690,31 @@ static bool SpeedDilithium3(const std::string &name, int nid,
 
   // Setup CTX for Sign operations
   bssl::ScopedEVP_MD_CTX md_ctx;
-  uint8_t signature[3293];
-  size_t sig_len = 3293;
-  std::vector<uint8_t> msg = {0x68, 0x74, 0x74, 0x70, 0x73, 0x3a, 0x2f, 0x2f, 0x61, 0x77, 0x73, 0x2e,
-                              0x61, 0x6d, 0x61, 0x7a, 0x6f, 0x6e, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x73,
-                              0x65, 0x63, 0x75, 0x72, 0x69, 0x74, 0x79, 0x2f, 0x70, 0x6f, 0x73, 0x74,
-                              0x2d, 0x71, 0x75, 0x61, 0x6e, 0x74, 0x75, 0x6d, 0x2d, 0x63, 0x72, 0x79,
-                              0x70, 0x74, 0x6f, 0x67, 0x72, 0x61, 0x70, 0x68, 0x79, 0x2f};
 
-  if (!TimeFunction(&results, [&md_ctx, &key, &signature, &sig_len, &msg ]() -> bool {
+  // message to be signed
+  static const uint8_t msg[32] = {0};
+  size_t msg_len = 32;
+
+  // to keep this function generic, we obtain the signature size (different for
+  // each algorithm) at run time by attempting a sign with a NULL signature.
+  // The sign algorithm must support calling NULL to obtain the signature length
+  size_t sig_len = 0;
+  EVP_DigestSignInit(md_ctx.get(), NULL, NULL, NULL, key);
+  EVP_DigestSign(md_ctx.get(), NULL, &sig_len, msg, msg_len);
+  std::unique_ptr<uint8_t[]> signature(new uint8_t[sig_len]);
+
+
+  if (!TimeFunction(&results, [&md_ctx, &key, &signature, &sig_len, msg_len ]() -> bool {
         return EVP_DigestSignInit(md_ctx.get(), NULL, NULL, NULL, key) &&
-               EVP_DigestSign(md_ctx.get(), signature, &sig_len, msg.data(), msg.size());
+               EVP_DigestSign(md_ctx.get(), signature.get(), &sig_len, msg, msg_len);
       })) {
     return false;
   }
   results.Print(name + " signing");
 
   // Verify
-  if (!TimeFunction(&results, [&md_ctx, &signature, &sig_len, &msg ]() -> bool {
-        return EVP_DigestVerify(md_ctx.get(), signature, sig_len, msg.data(), msg.size());
+  if (!TimeFunction(&results, [&md_ctx, &signature, &sig_len, msg_len ]() -> bool {
+        return EVP_DigestVerify(md_ctx.get(), signature.get(), sig_len, msg, msg_len);
       })) {
     return false;
   }
@@ -719,8 +725,8 @@ static bool SpeedDilithium3(const std::string &name, int nid,
   return true;
 }
 
-static bool SpeedDilithium(const std::string &selected) {
-  return SpeedDilithium3("Dilithium3", NID_DILITHIUM3, selected);
+static bool SpeedDigestSign(const std::string &selected) {
+  return SpeedDigestSignNID("Dilithium3", NID_DILITHIUM3, selected);
 }
 
 #endif
@@ -1997,7 +2003,7 @@ bool Speed(const std::vector<std::string> &args) {
 #if !defined(OPENSSL_BENCHMARK)
      ||
      !SpeedKEM(selected) ||
-     !SpeedDilithium(selected) ||
+     !SpeedDigestSign(selected) ||
      !SpeedAEAD(EVP_aead_aes_128_gcm(), "AEAD-AES-128-GCM", kTLSADLen, selected) ||
      !SpeedAEAD(EVP_aead_aes_256_gcm(), "AEAD-AES-256-GCM", kTLSADLen, selected) ||
      !SpeedAEAD(EVP_aead_chacha20_poly1305(), "AEAD-ChaCha20-Poly1305", kTLSADLen, selected) ||
