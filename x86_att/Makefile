@@ -238,7 +238,9 @@ OBJ = curve25519/bignum_add_p25519.o \
       secp256k1/bignum_triple_p256k1_alt.o \
       secp256k1/secp256k1_jadd.o \
       secp256k1/secp256k1_jdouble.o \
-      secp256k1/secp256k1_jmixadd.o
+      secp256k1/secp256k1_jmixadd.o \
+      sm2/bignum_add_sm2.o \
+      sm2/bignum_sub_sm2.o
 
 # The AT&T syntax source files
 
@@ -257,6 +259,7 @@ p256/%.S :: ../x86/p256/%.S             ; (cat $< | sed -E -f ./attrofy.sed >$@)
 p384/%.S :: ../x86/p384/%.S             ; (cat $< | sed -E -f ./attrofy.sed >$@) && ($(CC) -E -I../include -DWINDOWS_ABI=0 $@ | as -o /tmp/translated_object.o) ; ($(CC) -E -I../include -DWINDOWS_ABI=1 $@ | as -o /tmp/translated_object.obj) ; ($(CC) -E -I../include -DWINDOWS_ABI=0 $< | as -o /tmp/original_object.o) ; ($(CC) -E -I../include -DWINDOWS_ABI=1 $< | as -o /tmp/original_object.obj) ; (cmp -s /tmp/translated_object.o /tmp/original_object.o && cmp -s /tmp/translated_object.obj /tmp/original_object.obj)
 p521/%.S :: ../x86/p521/%.S             ; (cat $< | sed -E -f ./attrofy.sed >$@) && ($(CC) -E -I../include -DWINDOWS_ABI=0 $@ | as -o /tmp/translated_object.o) ; ($(CC) -E -I../include -DWINDOWS_ABI=1 $@ | as -o /tmp/translated_object.obj) ; ($(CC) -E -I../include -DWINDOWS_ABI=0 $< | as -o /tmp/original_object.o) ; ($(CC) -E -I../include -DWINDOWS_ABI=1 $< | as -o /tmp/original_object.obj) ; (cmp -s /tmp/translated_object.o /tmp/original_object.o && cmp -s /tmp/translated_object.obj /tmp/original_object.obj)
 secp256k1/%.S :: ../x86/secp256k1/%.S   ; (cat $< | sed -E -f ./attrofy.sed >$@) && ($(CC) -E -I../include -DWINDOWS_ABI=0 $@ | as -o /tmp/translated_object.o) ; ($(CC) -E -I../include -DWINDOWS_ABI=1 $@ | as -o /tmp/translated_object.obj) ; ($(CC) -E -I../include -DWINDOWS_ABI=0 $< | as -o /tmp/original_object.o) ; ($(CC) -E -I../include -DWINDOWS_ABI=1 $< | as -o /tmp/original_object.obj) ; (cmp -s /tmp/translated_object.o /tmp/original_object.o && cmp -s /tmp/translated_object.obj /tmp/original_object.obj)
+sm2/%.S :: ../x86/sm2/%.S               ; (cat $< | sed -E -f ./attrofy.sed >$@) && ($(CC) -E -I../include -DWINDOWS_ABI=0 $@ | as -o /tmp/translated_object.o) ; ($(CC) -E -I../include -DWINDOWS_ABI=1 $@ | as -o /tmp/translated_object.obj) ; ($(CC) -E -I../include -DWINDOWS_ABI=0 $< | as -o /tmp/original_object.o) ; ($(CC) -E -I../include -DWINDOWS_ABI=1 $< | as -o /tmp/original_object.obj) ; (cmp -s /tmp/translated_object.o /tmp/original_object.o && cmp -s /tmp/translated_object.obj /tmp/original_object.obj)
 
 clean:; rm -f */*.o
 

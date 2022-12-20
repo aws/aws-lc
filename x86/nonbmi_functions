@@ -4,6 +4,7 @@ bignum_add_p256
 bignum_add_p256k1
 bignum_add_p384
 bignum_add_p521
+bignum_add_sm2
 bignum_amontifier
 bignum_amontmul
 bignum_amontredc
@@ -146,6 +147,7 @@ bignum_sub_p256
 bignum_sub_p256k1
 bignum_sub_p384
 bignum_sub_p521
+bignum_sub_sm2
 bignum_tobebytes_4
 bignum_tobebytes_6
 bignum_tolebytes_4

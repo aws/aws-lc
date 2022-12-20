@@ -1907,7 +1907,7 @@ let EDWARDS25519_PDOUBLE_CORRECT = time prove
     CONV_TAC INT_REDUCE_CONV;
     SIMP_TAC[REWRITE_RULE[GSYM FORALL_PAIR_THM] EXPROJECTIVE_PROJECTIVE;
              FIELD_INTEGER_MOD_RING; PRIME_P25519;
-             edwards_prexprojdoublen; LET_DEF; LET_END_DEF; 
+             edwards_prexprojdoublen; LET_DEF; LET_END_DEF;
              edwards_prexprojdouble] THEN
     DISCH_THEN(MP_TAC o CONJUNCT1)] THEN
 

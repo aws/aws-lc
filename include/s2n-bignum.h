@@ -47,6 +47,10 @@ extern void bignum_add_p384 (uint64_t z[static 6], uint64_t x[static 6], uint64_
 // Inputs x[9], y[9]; output z[9]
 extern void bignum_add_p521 (uint64_t z[static 9], uint64_t x[static 9], uint64_t y[static 9]);
 
+// Add modulo p_sm2, z := (x + y) mod p_sm2, assuming x and y reduced
+// Inputs x[4], y[4]; output z[4]
+extern void bignum_add_sm2 (uint64_t z[static 4], uint64_t x[static 4], uint64_t y[static 4]);
+
 // Compute "amontification" constant z :== 2^{128k} (congruent mod m)
 // Input m[k]; output z[k]; temporary buffer t[>=k]
 extern void bignum_amontifier (uint64_t k, uint64_t *z, uint64_t *m, uint64_t *t);
@@ -668,6 +672,10 @@ extern void bignum_sub_p384 (uint64_t z[static 6], uint64_t x[static 6], uint64_
 // Subtract modulo p_521, z := (x - y) mod p_521, assuming x and y reduced
 // Inputs x[9], y[9]; output z[9]
 extern void bignum_sub_p521 (uint64_t z[static 9], uint64_t x[static 9], uint64_t y[static 9]);
+
+// Subtract modulo p_sm2, z := (x - y) mod p_sm2, assuming x and y reduced
+// Inputs x[4], y[4]; output z[4]
+extern void bignum_sub_sm2 (uint64_t z[static 4], uint64_t x[static 4], uint64_t y[static 4]);
 
 // Convert 4-digit (256-bit) bignum to big-endian bytes
 // Input x[4]; output z[32] (bytes)

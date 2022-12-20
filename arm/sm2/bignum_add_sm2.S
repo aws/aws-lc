@@ -2,18 +2,18 @@
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
 // ----------------------------------------------------------------------------
-// Add modulo p_256, z := (x + y) mod p_256, assuming x and y reduced
+// Add modulo p_sm2, z := (x + y) mod p_sm2, assuming x and y reduced
 // Inputs x[4], y[4]; output z[4]
 //
-//    extern void bignum_add_p256
+//    extern void bignum_add_sm2
 //     (uint64_t z[static 4], uint64_t x[static 4], uint64_t y[static 4]);
 //
 // Standard ARM ABI: X0 = z, X1 = x, X2 = y
 // ----------------------------------------------------------------------------
 #include "_internal_s2n_bignum.h"
 
-        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_add_p256)
-        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_add_p256)
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_add_sm2)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_add_sm2)
         .text
         .balign 4
 
@@ -30,7 +30,7 @@
 #define n2 x10
 #define n3 x11
 
-S2N_BN_SYMBOL(bignum_add_p256):
+S2N_BN_SYMBOL(bignum_add_sm2):
 
 // First just add the numbers as [c;d3;d2;d1;d0]
 
@@ -47,14 +47,14 @@ S2N_BN_SYMBOL(bignum_add_p256):
 // Now let [c;n3;n2;n1;n0] = [c;d3;d2;d1;d0] - p_sm2
 
         subs    n0, d0, #0xffffffffffffffff
-        mov     n1, #0x00000000ffffffff
+        mov     n1, #0xffffffff00000000
         sbcs    n1, d1, n1
-        sbcs    n2, d2, xzr
-        mov     n3, #0xffffffff00000001
+        adcs    n2, d2, xzr
+        mov     n3, #0xfffffffeffffffff
         sbcs    n3, d3, n3
         sbcs    c, c, xzr
 
-// Select result acording to whether (x + y) - p_256 < 0
+// Select result acording to whether (x + y) - p_sm2 < 0
 
         csel    d0, d0, n0, cc
         csel    d1, d1, n1, cc

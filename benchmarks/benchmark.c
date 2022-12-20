@@ -213,6 +213,8 @@ void call_bignum_add_p384(void) repeat(bignum_add_p384(b0,b1,b2))
 
 void call_bignum_add_p521(void) repeat(bignum_add_p521(b0,b1,b2))
 
+void call_bignum_add_sm2(void) repeat(bignum_add_sm2(b0,b1,b2))
+
 void call_bignum_sub_p25519(void) repeat(bignum_sub_p25519(b0,b1,b2))
 
 void call_bignum_sub_p256(void) repeat(bignum_sub_p256(b0,b1,b2))
@@ -222,6 +224,8 @@ void call_bignum_sub_p256k1(void) repeat(bignum_sub_p256k1(b0,b1,b2))
 void call_bignum_sub_p384(void) repeat(bignum_sub_p384(b0,b1,b2))
 
 void call_bignum_sub_p521(void) repeat(bignum_sub_p521(b0,b1,b2))
+
+void call_bignum_sub_sm2(void) repeat(bignum_sub_sm2(b0,b1,b2))
 
 void call_bignum_cmul_p25519(void) repeat(bignum_cmul_p25519(b0,b1[0],b2))
 
@@ -757,6 +761,7 @@ int main(int argc, char *argv[])
   timingtest(all,"bignum_add_p256k1",call_bignum_add_p256k1);
   timingtest(all,"bignum_add_p384",call_bignum_add_p384);
   timingtest(all,"bignum_add_p521",call_bignum_add_p521);
+  timingtest(all,"bignum_add_sm2",call_bignum_add_sm2);
   timingtest(all,"bignum_amontifier (32)",call_bignum_amontifier__32);
   timingtest(all,"bignum_amontmul (32)",call_bignum_amontmul__32);
   timingtest(all,"bignum_amontredc (32/16 -> 16)",call_bignum_amontredc__32_16);
@@ -972,6 +977,7 @@ int main(int argc, char *argv[])
   timingtest(all,"bignum_sub_p256k1",call_bignum_sub_p256k1);
   timingtest(all,"bignum_sub_p384",call_bignum_sub_p384);
   timingtest(all,"bignum_sub_p521",call_bignum_sub_p521);
+  timingtest(all,"bignum_sub_sm2",call_bignum_sub_sm2);
   timingtest(all,"bignum_tobebytes_4",call_bignum_tobebytes_4);
   timingtest(all,"bignum_tobebytes_6",call_bignum_tobebytes_6);
   timingtest(all,"bignum_tolebytes_4",call_bignum_tolebytes_4);

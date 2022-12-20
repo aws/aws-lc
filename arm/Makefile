@@ -277,7 +277,9 @@ BIGNUM_OBJ = curve25519/bignum_add_p25519.o \
              secp256k1/bignum_sqr_p256k1_alt.o \
              secp256k1/bignum_sub_p256k1.o \
              secp256k1/bignum_tomont_p256k1.o \
-             secp256k1/bignum_triple_p256k1.o
+             secp256k1/bignum_triple_p256k1.o \
+             sm2/bignum_add_sm2.o \
+             sm2/bignum_sub_sm2.o
 
 OBJ = $(POINT_OBJ) $(BIGNUM_OBJ)
 
@@ -325,6 +327,7 @@ p256/%.correct: proofs/%.ml p256/%.o ; (cd ..; (echo 'loadt "arm/proofs/base.ml"
 p384/%.correct: proofs/%.ml p384/%.o ; (cd ..; (echo 'loadt "arm/proofs/base.ml";;'; echo 'loadt "arm/proofs/$*.ml";;') | $(HOLLIGHT) 2>&1) >$@
 p521/%.correct: proofs/%.ml p521/%.o ; (cd ..; (echo 'loadt "arm/proofs/base.ml";;'; echo 'loadt "arm/proofs/$*.ml";;') | $(HOLLIGHT) 2>&1) >$@
 secp256k1/%.correct: proofs/%.ml secp256k1/%.o ; (cd ..; (echo 'loadt "arm/proofs/base.ml";;'; echo 'loadt "arm/proofs/$*.ml";;') | $(HOLLIGHT) 2>&1) >$@
+sm2/%.correct: proofs/%.ml sm2/%.o ; (cd ..; (echo 'loadt "arm/proofs/base.ml";;'; echo 'loadt "arm/proofs/$*.ml";;') | $(HOLLIGHT) 2>&1) >$@
 
 run_proofs: $(PROOFS);
 
