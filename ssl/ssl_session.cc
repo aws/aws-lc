@@ -668,7 +668,7 @@ static enum ssl_hs_wait_t ssl_lookup_session(
     // TODO(davidben): This should probably move it to the front of the list.
     if (session == nullptr) {
       ssl_update_counter(ssl->session_ctx.get(),
-                          ssl->session_ctx->stats.sess_hit, /*lock=*/ false);
+                          ssl->session_ctx->stats.sess_miss, /*lock=*/ false);
     }
   }
 
@@ -703,12 +703,14 @@ static enum ssl_hs_wait_t ssl_lookup_session(
     }
   }
 
-  if (session && !ssl_session_is_time_valid(ssl, session.get())) {
+  if (!ssl_session_is_time_valid(ssl, session.get())) {
     ssl_update_counter(ssl->session_ctx.get(),
                        ssl->session_ctx->stats.sess_timeout, true);
-    // The session was from the cache, so remove it.
-    SSL_CTX_remove_session(ssl->session_ctx.get(), session.get());
-    session.reset();
+    if(session) {
+      // The session was from the cache, so remove it.
+      SSL_CTX_remove_session(ssl->session_ctx.get(), session.get());
+      session.reset();
+    }
   }
 
   ssl_update_counter(ssl->session_ctx.get(),
@@ -903,6 +905,11 @@ void ssl_update_cache(SSL *ssl) {
   if (!SSL_SESSION_is_resumable(session) ||
       (ctx->session_cache_mode & mode) != mode) {
     return;
+  }
+  // Update client side session hit counter on successfully reused sessions.
+  if (SSL_SESSION_is_resumable(session) && !mode) {
+    ssl_update_counter(ssl->session_ctx.get(),
+                        ssl->session_ctx->stats.sess_hit, true);
   }
 
   // Clients never use the internal session cache.

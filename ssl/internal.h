@@ -3542,7 +3542,6 @@ struct ssl_ctx_st {
     int sess_connect_renegotiate = 0; // SSL reneg - requested
     int sess_connect_good = 0;        // SSL new conne/reneg - finished
     int sess_accept = 0;              // SSL new accept - started
-    int sess_accept_renegotiate = 0;  // SSL reneg - requested
     int sess_accept_good = 0;         // SSL accept/reneg - finished
     int sess_miss = 0;                // session lookup misses
     int sess_timeout = 0;             // reuse attempt on timeouted session

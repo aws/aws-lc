@@ -1865,8 +1865,6 @@ static enum ssl_hs_wait_t do_finish_client_handshake(SSL_HANDSHAKE *hs) {
   ssl->s3->initial_handshake_complete = true;
   if (has_new_session) {
     ssl_update_cache(ssl);
-    ssl_update_counter(ssl->session_ctx.get(),
-                        ssl->session_ctx->stats.sess_hit, true);
   }
 
   hs->state = state_done;

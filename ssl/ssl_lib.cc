@@ -3017,7 +3017,7 @@ int SSL_CTX_sess_accept(const SSL_CTX *ctx) {
 }
 
 int SSL_CTX_sess_accept_renegotiate(const SSL_CTX *ctx) {
-  return ssl_read_counter(ctx, ctx->stats.sess_accept_renegotiate);
+  return 0;
 }
 
 int SSL_CTX_sess_accept_good(const SSL_CTX *ctx) {
