@@ -6037,7 +6037,8 @@ TEST_P(SSLVersionTest, SessionCacheThreads) {
 
   // Hit the maximum session cache size across multiple threads, to test the
   // size enforcement logic.
-  size_t limit = SSL_CTX_sess_number(server_ctx_.get()) + 2;
+  size_t over_limit = 2;
+  size_t limit = SSL_CTX_sess_number(server_ctx_.get()) + over_limit;
   SSL_CTX_sess_set_cache_size(server_ctx_.get(), limit);
   {
     std::vector<std::thread> threads;
@@ -6051,8 +6052,8 @@ TEST_P(SSLVersionTest, SessionCacheThreads) {
       thread.join();
     }
     EXPECT_EQ(SSL_CTX_sess_number(server_ctx_.get()), limit);
-    // We go over the cache limit by 2.
-    EXPECT_EQ(SSL_CTX_sess_cache_full(server_ctx_.get()), 2);
+    // We go over the cache limit by |over_limit|.
+    EXPECT_EQ(SSL_CTX_sess_cache_full(server_ctx_.get()), (int)over_limit);
   }
 
   // Reset the session cache, this time with a mock clock.
@@ -6107,8 +6108,10 @@ TEST_P(SSLVersionTest, SessionCacheThreads) {
       thread.join();
     }
   }
-  EXPECT_EQ(SSL_CTX_sess_misses(server_ctx_.get()), 255);
-  EXPECT_EQ(SSL_CTX_sess_timeouts(server_ctx_.get()), 256);
+  // First connection is not an |sess_miss|, but failed to connect successfully.
+  // Subsequent connections will all be both timeouts and misses.
+  EXPECT_EQ(SSL_CTX_sess_misses(server_ctx_.get()), kNumConnections-1);
+  EXPECT_EQ(SSL_CTX_sess_timeouts(server_ctx_.get()), kNumConnections);
 }
 
 TEST_P(SSLVersionTest, SessionTicketThreads) {
