@@ -609,7 +609,7 @@ int CRYPTO_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
     len -= bulk;
   }
 #elif defined(AES_ARMV8_GCM)
-  if (CRYPTO_is_ARMv8_GCM_8x_capable() && len >= 16) {
+  if (CRYPTO_is_ARMv8_GCM_8x_capable() && len >= 192) {
     size_t bulk = aesv8_gcm_8x_encrypt(in, out, len, key, ctx->Yi.c, ctx->Xi.u);
     in += bulk;
     out += bulk;
@@ -704,7 +704,7 @@ int CRYPTO_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
     len -= bulk;
   }
 #elif defined(AES_ARMV8_GCM)
-  if (CRYPTO_is_ARMv8_GCM_8x_capable() && len >= 16) {
+  if (CRYPTO_is_ARMv8_GCM_8x_capable() && len >= 192) {
     size_t bulk = aesv8_gcm_8x_decrypt(in, out, len, key, ctx->Yi.c, ctx->Xi.u);
     in += bulk;
     out += bulk;
