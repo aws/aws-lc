@@ -661,14 +661,15 @@ static enum ssl_hs_wait_t ssl_lookup_session(
           MakeConstSpan(sess->session_id, sess->session_id_length);
       return key_id == sess_id ? 0 : 1;
     };
-    MutexWriteLock lock(&ssl->session_ctx->lock);
+    CRYPTO_MUTEX_lock_read(&ssl->session_ctx->lock);
     // |lh_SSL_SESSION_retrieve_key| returns a non-owning pointer.
     session = UpRef(lh_SSL_SESSION_retrieve_key(ssl->session_ctx->sessions,
                                                 &session_id, hash, cmp));
+    CRYPTO_MUTEX_unlock_read(&ssl->session_ctx->lock);
     // TODO(davidben): This should probably move it to the front of the list.
     if (session == nullptr) {
       ssl_update_counter(ssl->session_ctx.get(),
-                          ssl->session_ctx->stats.sess_miss, /*lock=*/ false);
+                          ssl->session_ctx->stats.sess_miss, true);
     }
   }
 
