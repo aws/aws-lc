@@ -3003,10 +3003,11 @@ INSTANTIATE_TEST_SUITE_P(WithVersion, SSLVersionTest,
 TEST_P(SSLVersionTest, SequenceNumber) {
   CheckCounterInit();
   ASSERT_TRUE(Connect());
-  EXPECT_NE(SSL_CTX_sess_connect(client_ctx_.get()), 0);
-  EXPECT_NE(SSL_CTX_sess_connect_good(client_ctx_.get()), 0);
-  EXPECT_NE(SSL_CTX_sess_accept(server_ctx_.get()), 0);
-  EXPECT_NE(SSL_CTX_sess_accept_good(server_ctx_.get()), 0);
+  // Counters should count one two-way successful connection.
+  EXPECT_EQ(SSL_CTX_sess_connect(client_ctx_.get()), 1);
+  EXPECT_EQ(SSL_CTX_sess_connect_good(client_ctx_.get()), 1);
+  EXPECT_EQ(SSL_CTX_sess_accept(server_ctx_.get()), 1);
+  EXPECT_EQ(SSL_CTX_sess_accept_good(server_ctx_.get()), 1);
 
   // Drain any post-handshake messages to ensure there are no unread records
   // on either end.
@@ -6050,7 +6051,8 @@ TEST_P(SSLVersionTest, SessionCacheThreads) {
       thread.join();
     }
     EXPECT_EQ(SSL_CTX_sess_number(server_ctx_.get()), limit);
-    EXPECT_NE(SSL_CTX_sess_cache_full(server_ctx_.get()), 0);
+    // We go over the cache limit by 2.
+    EXPECT_EQ(SSL_CTX_sess_cache_full(server_ctx_.get()), 2);
   }
 
   // Reset the session cache, this time with a mock clock.
@@ -6105,8 +6107,8 @@ TEST_P(SSLVersionTest, SessionCacheThreads) {
       thread.join();
     }
   }
-  EXPECT_NE(SSL_CTX_sess_misses(server_ctx_.get()), 0);
-  EXPECT_NE(SSL_CTX_sess_timeouts(server_ctx_.get()), 0);
+  EXPECT_EQ(SSL_CTX_sess_misses(server_ctx_.get()), 255);
+  EXPECT_EQ(SSL_CTX_sess_timeouts(server_ctx_.get()), 256);
 }
 
 TEST_P(SSLVersionTest, SessionTicketThreads) {
@@ -6229,7 +6231,8 @@ TEST_P(SSLVersionTest, SessionPropertiesThreads) {
   for (auto &thread : threads) {
     thread.join();
   }
-  EXPECT_NE(SSL_CTX_sess_hits(server_ctx_.get()), 0);
+  // Session has been resumed twice.
+  EXPECT_EQ(SSL_CTX_sess_hits(server_ctx_.get()), 2);
 }
 #endif  // OPENSSL_THREADS
 
@@ -7969,7 +7972,7 @@ TEST_P(SSLTest, WriteWhileExplicitRenegotiate) {
   EXPECT_EQ(ERR_LIB_SSL, ERR_GET_LIB(err));
   EXPECT_EQ(SSL_R_NO_RENEGOTIATION, ERR_GET_REASON(err));
 
-  EXPECT_NE(SSL_CTX_sess_connect_renegotiate(ctx.get()), 0);
+  EXPECT_EQ(SSL_CTX_sess_connect_renegotiate(ctx.get()), 1);
   EXPECT_EQ(SSL_CTX_sess_accept_renegotiate(ctx.get()), 0);
 }
 
@@ -8023,7 +8026,7 @@ TEST(SSLTest, ConnectionPropertiesDuringRenegotiate) {
   // Connection properties should continue to report values from the original
   // handshake.
   check_properties();
-  EXPECT_NE(SSL_CTX_sess_connect_renegotiate(ctx.get()), 0);
+  EXPECT_EQ(SSL_CTX_sess_connect_renegotiate(ctx.get()), 1);
   EXPECT_EQ(SSL_CTX_sess_accept_renegotiate(ctx.get()), 0);
 }
 
