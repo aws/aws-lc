@@ -6108,10 +6108,6 @@ TEST_P(SSLVersionTest, SessionCacheThreads) {
       thread.join();
     }
   }
-  // First connection is not an |sess_miss|, but failed to connect successfully.
-  // Subsequent connections will all be both timeouts and misses.
-  EXPECT_EQ(SSL_CTX_sess_misses(server_ctx_.get()), kNumConnections-1);
-  EXPECT_EQ(SSL_CTX_sess_timeouts(server_ctx_.get()), kNumConnections);
 }
 
 TEST_P(SSLVersionTest, SessionTicketThreads) {
@@ -6238,6 +6234,40 @@ TEST_P(SSLVersionTest, SessionPropertiesThreads) {
   EXPECT_EQ(SSL_CTX_sess_hits(server_ctx_.get()), 2);
 }
 #endif  // OPENSSL_THREADS
+
+TEST_P(SSLVersionTest, SessionMissCache) {
+  if (version() == TLS1_3_VERSION) {
+    // Our TLS 1.3 implementation does not support stateful resumption.
+    ASSERT_FALSE(CreateClientSession(client_ctx_.get(), server_ctx_.get()));
+    return;
+  }
+
+  SSL_CTX_set_options(server_ctx_.get(), SSL_OP_NO_TICKET);
+  SSL_CTX_set_session_cache_mode(client_ctx_.get(), SSL_SESS_CACHE_BOTH);
+  SSL_CTX_set_session_cache_mode(server_ctx_.get(), SSL_SESS_CACHE_BOTH);
+  SSL_CTX_set_current_time_cb(server_ctx_.get(), CurrentTimeCallback);
+
+  ClientConfig config;
+  UniquePtr<SSL> client, server;
+  // Make some sessions at an arbitrary start time. Then expire them.
+  g_current_time.tv_sec = 1000;
+  bssl::UniquePtr<SSL_SESSION> expired_session =
+      CreateClientSession(client_ctx_.get(), server_ctx_.get());
+  ASSERT_TRUE(expired_session);
+  g_current_time.tv_sec += 100 * SSL_DEFAULT_SESSION_TIMEOUT;
+
+  static const int kNumConnections = 2;
+  config.session = expired_session.get();
+  EXPECT_TRUE(ConnectClientAndServer(&client, &server, client_ctx_.get(),
+                                       server_ctx_.get(), config));
+  EXPECT_TRUE(ConnectClientAndServer(&client, &server, client_ctx_.get(),
+                                       server_ctx_.get(), config));
+
+  // First connection is not an |sess_miss|, but failed to connect successfully.
+  // Subsequent connections will all be both timeouts and misses.
+  EXPECT_EQ(SSL_CTX_sess_misses(server_ctx_.get()), kNumConnections-1);
+  EXPECT_EQ(SSL_CTX_sess_timeouts(server_ctx_.get()), kNumConnections);
+}
 
 constexpr size_t kNumQUICLevels = 4;
 static_assert(ssl_encryption_initial < kNumQUICLevels,
