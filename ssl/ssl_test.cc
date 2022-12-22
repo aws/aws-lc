@@ -6248,7 +6248,7 @@ TEST_P(SSLVersionTest, SessionMissCache) {
   SSL_CTX_set_current_time_cb(server_ctx_.get(), CurrentTimeCallback);
 
   ClientConfig config;
-  UniquePtr<SSL> client, server;
+  bssl::UniquePtr<SSL> client, server;
   // Make some sessions at an arbitrary start time. Then expire them.
   g_current_time.tv_sec = 1000;
   bssl::UniquePtr<SSL_SESSION> expired_session =
@@ -6267,6 +6267,45 @@ TEST_P(SSLVersionTest, SessionMissCache) {
   // Subsequent connections will all be both timeouts and misses.
   EXPECT_EQ(SSL_CTX_sess_misses(server_ctx_.get()), kNumConnections-1);
   EXPECT_EQ(SSL_CTX_sess_timeouts(server_ctx_.get()), kNumConnections);
+}
+
+// Callback function to force an external session cache counter update.
+// This intentionally always returns a value, to verify that the counter is
+// updated as intended.
+// Allocating any memory within the callback function will cause the address
+// sanitizers to fail, so we manage the memory externally.
+static bssl::UniquePtr<SSL_SESSION> ssl_session;
+static SSL_SESSION *get_session(SSL *ssl, const unsigned char *id, int idlen,
+                                int *do_copy) {
+    return ssl_session.release();
+}
+
+TEST_P(SSLVersionTest, SessionExternalCacheHit) {
+  if (version() == TLS1_3_VERSION) {
+    // Our TLS 1.3 implementation does not support stateful resumption.
+    ASSERT_FALSE(CreateClientSession(client_ctx_.get(), server_ctx_.get()));
+    return;
+  }
+
+  SSL_CTX_set_options(server_ctx_.get(), SSL_OP_NO_TICKET);
+  SSL_CTX_set_session_cache_mode(client_ctx_.get(), SSL_SESS_CACHE_BOTH);
+  SSL_CTX_set_session_cache_mode(server_ctx_.get(),
+                             SSL_SESS_CACHE_BOTH | SSL_SESS_CACHE_NO_INTERNAL);
+  SSL_CTX_sess_set_get_cb(server_ctx_.get(), get_session);
+
+  ClientConfig config;
+  bssl::UniquePtr<SSL> client, server;
+  bssl::UniquePtr<SSL_SESSION> session =
+        CreateClientSession(client_ctx_.get(), server_ctx_.get());
+
+  static const int kNumConnections = 2;
+  config.session = session.get();
+  for (int i = 0; i < kNumConnections; i++) {
+        ssl_session.reset(session.get());
+        EXPECT_TRUE(ConnectClientAndServer(&client, &server, client_ctx_.get(),
+                                       server_ctx_.get(), config));
+  }
+  EXPECT_EQ(SSL_CTX_sess_cb_hits(server_ctx_.get()), kNumConnections);
 }
 
 constexpr size_t kNumQUICLevels = 4;
