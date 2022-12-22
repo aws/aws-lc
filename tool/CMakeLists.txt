@@ -98,4 +98,5 @@ endif()
 
 if(BORINGSSL_INSTALL_DIR)
   build_benchmark(bssl_bm ${BORINGSSL_INSTALL_DIR})
+  target_compile_options(bssl_bm PUBLIC -DBORINGSSL_BENCHMARK)
 endif()
