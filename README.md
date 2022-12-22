@@ -24,6 +24,7 @@ mkdir aws-lc-build && cd aws-lc-build
 cmake3 -GNinja \
     -DCMAKE_BUILD_TYPE=RelWithDebInfo \
     -DCMAKE_INSTALL_PREFIX=../aws-lc-install \
+    -DFIPS=1 \
     ../aws-lc
 ninja-build run_tests && ninja-build install
 cd ../aws-lc-install/
