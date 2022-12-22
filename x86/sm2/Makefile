@@ -6,6 +6,9 @@
 # The x86 assembly (.S) files are all written for the GNU assembler
 
 OBJ = bignum_add_sm2.o \
+      bignum_mod_nsm2.o \
+      bignum_mod_nsm2_alt.o \
+      bignum_mod_nsm2_4.o \
       bignum_sub_sm2.o
 
 %.o : %.S ; $(CC) -E -I../../include $< | as -o $@ -

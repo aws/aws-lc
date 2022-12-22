@@ -15,6 +15,7 @@ bignum_ksqr_32_64
 bignum_mod_n256
 bignum_mod_n384
 bignum_mod_n521_9
+bignum_mod_nsm2
 bignum_mod_p256
 bignum_mod_p384
 bignum_montmul_p256

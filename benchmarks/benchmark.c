@@ -496,12 +496,15 @@ void call_bignum_mod_n384_6(void) repeat(bignum_mod_n384_6(b0,b1))
 void call_bignum_mod_p384_6(void) repeat(bignum_mod_p384_6(b0,b1))
 void call_bignum_mod_n521_9(void) repeat(bignum_mod_n521_9(b0,b1))
 void call_bignum_mod_n521_9_alt(void) repeat(bignum_mod_n521_9_alt(b0,b1))
+void call_bignum_mod_nsm2_4(void) repeat(bignum_mod_nsm2_4(b0,b1))
 void call_bignum_mod_p521_9(void) repeat(bignum_mod_p521_9(b0,b1))
 
 void call_bignum_mod_n256__8(void) repeat(bignum_mod_n256(b0,8,b1))
 void call_bignum_mod_n256_alt__8(void) repeat(bignum_mod_n256_alt(b0,8,b1))
 void call_bignum_mod_n384__12(void) repeat(bignum_mod_n384(b0,12,b1))
 void call_bignum_mod_n384_alt__12(void) repeat(bignum_mod_n384_alt(b0,12,b1))
+void call_bignum_mod_nsm2__8(void) repeat(bignum_mod_nsm2(b0,8,b1))
+void call_bignum_mod_nsm2_alt__8(void) repeat(bignum_mod_nsm2_alt(b0,8,b1))
 void call_bignum_mod_p256__8(void) repeat(bignum_mod_p256(b0,8,b1))
 void call_bignum_mod_p256_alt__8(void) repeat(bignum_mod_p256_alt(b0,8,b1))
 void call_bignum_mod_p384__12(void) repeat(bignum_mod_p384(b0,12,b1))
@@ -867,6 +870,9 @@ int main(int argc, char *argv[])
   timingtest(all,"bignum_mod_n384_6",call_bignum_mod_n384_6);
   timingtest(bmi,"bignum_mod_n521_9",call_bignum_mod_n521_9);
   timingtest(all,"bignum_mod_n521_9_alt",call_bignum_mod_n521_9_alt);
+  timingtest(bmi,"bignum_mod_nsm2 (8 -> 4)",call_bignum_mod_nsm2__8);
+  timingtest(all,"bignum_mod_nsm2_alt (8 -> 4)",call_bignum_mod_nsm2_alt__8);
+  timingtest(all,"bignum_mod_nsm2_4",call_bignum_mod_nsm2_4);
   timingtest(all,"bignum_mod_p25519_4",call_bignum_mod_p25519_4);
   timingtest(bmi,"bignum_mod_p256 (8 -> 4)",call_bignum_mod_p256__8);
   timingtest(all,"bignum_mod_p256_alt (8 -> 4)",call_bignum_mod_p256_alt__8);

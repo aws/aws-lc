@@ -355,6 +355,15 @@ extern void bignum_mod_n384_6 (uint64_t z[static 6], uint64_t x[static 6]);
 extern void bignum_mod_n521_9 (uint64_t z[static 9], uint64_t x[static 9]);
 extern void bignum_mod_n521_9_alt (uint64_t z[static 9], uint64_t x[static 9]);
 
+// Reduce modulo group order, z := x mod n_sm2
+// Input x[k]; output z[4]
+extern void bignum_mod_nsm2 (uint64_t z[static 4], uint64_t k, uint64_t *x);
+extern void bignum_mod_nsm2_alt (uint64_t z[static 4], uint64_t k, uint64_t *x);
+
+// Reduce modulo group order, z := x mod n_sm2
+// Input x[4]; output z[4]
+extern void bignum_mod_nsm2_4 (uint64_t z[static 4], uint64_t x[static 4]);
+
 // Reduce modulo field characteristic, z := x mod p_25519
 // Input x[4]; output z[4]
 extern void bignum_mod_p25519_4 (uint64_t z[static 4], uint64_t x[static 4]);

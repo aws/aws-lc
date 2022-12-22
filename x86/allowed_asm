@@ -58,6 +58,7 @@
 : push$
 : pushq$
 : rcr$
+: ret$
 : retq$
 : sar$
 : sbb$
