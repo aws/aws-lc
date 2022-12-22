@@ -27,7 +27,9 @@ echo "Testing AWS-LC in ${build_type} mode with control flow integrity sanitizer
 build_and_test -DCFI=1 -DUSE_CUSTOM_LIBCXX=1 "${cflags[@]}"
 
 echo "Testing AWS-LC in ${build_type} mode with undefined behavior sanitizer."
+export UBSAN_OPTIONS=print_stacktrace=1
 build_and_test -DUBSAN=1 "${cflags[@]}"
+unset UBSAN_OPTIONS
 
 if [ $(dpkg --print-architecture) == "arm64" ]; then
   # ARM MSAN runs get stuck on PoolTest.Threads for over an hour https://github.com/awslabs/aws-lc/issues/13
