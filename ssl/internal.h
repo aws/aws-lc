@@ -3436,9 +3436,9 @@ void ssl_reset_error_state(SSL *ssl);
 // current state of the error queue.
 void ssl_set_read_error(SSL *ssl);
 
-// ssl_update_counter updates the stat counters in |SSL_CTX|. `locked` should be
-// set to false if the mutex has already been locked.
-void ssl_update_counter(SSL_CTX *ctx, int &counter, bool locked);
+// ssl_update_counter updates the stat counters in |SSL_CTX|. lock should be
+// set to false when the mutex in |SSL_CTX| has already been locked.
+void ssl_update_counter(SSL_CTX *ctx, int &counter, bool lock);
 
 BSSL_NAMESPACE_END
 

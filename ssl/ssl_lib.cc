@@ -480,9 +480,9 @@ bool SSL_get_traffic_secrets(const SSL *ssl,
   return true;
 }
 
-void ssl_update_counter(SSL_CTX *ctx, int &counter, bool locked) {
-  if (locked) {
-    MutexWriteLock lock(&ctx->lock);
+void ssl_update_counter(SSL_CTX *ctx, int &counter, bool lock) {
+  if (lock) {
+    MutexWriteLock ctx_lock(&ctx->lock);
     counter++;
   } else {
     counter++;
