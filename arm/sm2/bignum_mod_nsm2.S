@@ -92,7 +92,7 @@ S2N_BN_SYMBOL(bignum_mod_nsm2_alt):
         cbz     k, writeback
 loop:
 
-// Writing the input, with the new zeroth digit implicitly appended, as 
+// Writing the input, with the new zeroth digit implicitly appended, as
 // z = 2^256 * m3 + 2^192 * m2 + t, our intended quotient approximation is
 // MIN ((m3 * (1 + 2^32 + 2^64) + m2 + 2^64) >> 64) (2^64 - 1)
 

@@ -82,6 +82,8 @@ bignum_mod_p256k1_4
 bignum_mod_p384_6
 bignum_mod_p384_alt
 bignum_mod_p521_9
+bignum_mod_sm2
+bignum_mod_sm2_4
 bignum_modadd
 bignum_moddouble
 bignum_modifier

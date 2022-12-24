@@ -281,6 +281,8 @@ BIGNUM_OBJ = curve25519/bignum_add_p25519.o \
              sm2/bignum_add_sm2.o \
              sm2/bignum_mod_nsm2.o \
              sm2/bignum_mod_nsm2_4.o \
+             sm2/bignum_mod_sm2.o \
+             sm2/bignum_mod_sm2_4.o \
              sm2/bignum_sub_sm2.o
 
 OBJ = $(POINT_OBJ) $(BIGNUM_OBJ)
