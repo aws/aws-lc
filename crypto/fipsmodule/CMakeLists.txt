@@ -75,11 +75,12 @@ if(ARCH STREQUAL "aarch64")
     BCM_ASM_SOURCES
 
     aesv8-armx.${ASM_EXT}
+    aesv8-gcm-armv8.${ASM_EXT}
+    aes-gcm-armv8-unroll8.${ASM_EXT}
     armv8-mont.${ASM_EXT}
     ghash-neon-armv8.${ASM_EXT}
     ghashv8-armx.${ASM_EXT}
     keccak1600-armv8.${ASM_EXT}
-    aes-gcm-armv8-unroll8.${ASM_EXT}
     md5-armv8.${ASM_EXT}
     p256-armv8-asm.${ASM_EXT}
     p256_beeu-armv8-asm.${ASM_EXT}
@@ -105,6 +106,8 @@ if(PERL_EXECUTABLE)
   perlasm(aesni-x86.${ASM_EXT} aes/asm/aesni-x86.pl)
   perlasm(aesp8-ppc.${ASM_EXT} aes/asm/aesp8-ppc.pl)
   perlasm(aesv8-armx.${ASM_EXT} aes/asm/aesv8-armx.pl)
+  perlasm(aesv8-gcm-armv8.${ASM_EXT} modes/asm/aesv8-gcm-armv8.pl)
+  perlasm(aes-gcm-armv8-unroll8.${ASM_EXT} modes/asm/aes-gcm-armv8-unroll8.pl)
   perlasm(armv4-mont.${ASM_EXT} bn/asm/armv4-mont.pl)
   perlasm(armv8-mont.${ASM_EXT} bn/asm/armv8-mont.pl)
   perlasm(bn-586.${ASM_EXT} bn/asm/bn-586.pl)
@@ -119,7 +122,6 @@ if(PERL_EXECUTABLE)
   perlasm(ghash-x86_64.${ASM_EXT} modes/asm/ghash-x86_64.pl)
   perlasm(ghash-x86.${ASM_EXT} modes/asm/ghash-x86.pl)
   perlasm(keccak1600-armv8.${ASM_EXT} sha/asm/keccak1600-armv8.pl)
-  perlasm(aes-gcm-armv8-unroll8.${ASM_EXT} modes/asm/aes-gcm-armv8-unroll8.pl)
   perlasm(md5-586.${ASM_EXT} md5/asm/md5-586.pl)
   perlasm(md5-armv8.${ASM_EXT} md5/asm/md5-armv8.pl)
   perlasm(md5-x86_64.${ASM_EXT} md5/asm/md5-x86_64.pl)
