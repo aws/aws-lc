@@ -61,5 +61,5 @@ static void RunTest(FileTest *t)
 }
 
 TEST(Kyber512Test, KAT) {
- FileTestGTest("crypto/evp_extra/pq_kem_kat_tests_kyber512.txt", RunTest);
+  FileTestGTest("crypto/evp_extra/pq_kem_kat_tests_kyber512.txt", RunTest);
 }

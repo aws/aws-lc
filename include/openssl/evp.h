@@ -130,7 +130,8 @@ OPENSSL_EXPORT int EVP_PKEY_size(const EVP_PKEY *pkey);
 
 // EVP_PKEY_bits returns the "size", in bits, of |pkey|. For an RSA key, this
 // returns the bit length of the modulus. For an EC key, this returns the bit
-// length of the group order.
+// length of the group order. For a KEM, this returns the the sum of the size
+// of the public key and the secret key.
 OPENSSL_EXPORT int EVP_PKEY_bits(const EVP_PKEY *pkey);
 
 // EVP_PKEY_id returns the type of |pkey|, which is one of the |EVP_PKEY_*|
@@ -179,8 +180,10 @@ OPENSSL_EXPORT EC_KEY *EVP_PKEY_get1_EC_KEY(const EVP_PKEY *pkey);
 #define EVP_PKEY_EC NID_X9_62_id_ecPublicKey
 #define EVP_PKEY_ED25519 NID_ED25519
 #define EVP_PKEY_X25519 NID_X25519
+// TODO(awslc): delete Kyber define
 #define EVP_PKEY_KYBER512 NID_KYBER512
 #define EVP_PKEY_HKDF NID_hkdf
+#define EVP_PKEY_KEM NID_kem
 
 // EVP_PKEY_assign sets the underlying key of |pkey| to |key|, which must be of
 // the given type. It returns one if successful or zero if the |type| argument
@@ -866,7 +869,36 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_get0_rsa_oaep_label(EVP_PKEY_CTX *ctx,
 OPENSSL_EXPORT int EVP_PKEY_CTX_set_ec_paramgen_curve_nid(EVP_PKEY_CTX *ctx,
                                                           int nid);
 
+// KEM specific functions.
 
+// EVP_PKEY_CTX_kem_set_params sets in |ctx| the parameters associated with the
+// KEM defined by the given |nid|. It returns one on success and zero on error.
+OPENSSL_EXPORT int EVP_PKEY_CTX_kem_set_params(EVP_PKEY_CTX *ctx, int nid);
+
+// EVP_PKEY_kem_new_raw_public_key generates a new EVP_PKEY object of type
+// EVP_PKEY_KEM, initializes the KEM key based on |nid| and populates the
+// public key part of the KEM key with the contents of |in|. It returns the
+// pointer to the allocated PKEY on sucess and NULL on error.
+OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_kem_new_raw_public_key(
+                                    int nid, const uint8_t *in, size_t len);
+
+// EVP_PKEY_kem_new_raw_secret_key generates a new EVP_PKEY object of type
+// EVP_PKEY_KEM, initializes the KEM key based on |nid| and populates the
+// secret key part of the KEM key with the contents of |in|. It returns the
+// pointer to the allocated PKEY on sucess and NULL on error.
+OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_kem_new_raw_secret_key(
+                                    int nid, const uint8_t *in, size_t len);
+
+// EVP_PKEY_kem_new_raw_key generates a new EVP_PKEY object of type
+// EVP_PKEY_KEM, initializes the KEM key based on |nid| and populates the
+// public and secret key parts of the KEM key with the contents of |in_public|
+// and |in_secret|. It returns the pointer to the allocated PKEY on sucess and
+// NULL on error.
+OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_kem_new_raw_key(int nid,
+                                                  const uint8_t *in_public,
+                                                  size_t len_public,
+                                                  const uint8_t *in_secret,
+                                                  size_t len_secret);
 // Deprecated functions.
 
 // EVP_PKEY_DH is defined for compatibility, but it is impossible to create an
@@ -1121,6 +1153,7 @@ struct evp_pkey_st {
     DSA *dsa;
     DH *dh;
     EC_KEY *ec;
+    KEM_KEY *kem_key;
   } pkey;
 
   // ameth contains a pointer to a method table that contains many ASN.1
