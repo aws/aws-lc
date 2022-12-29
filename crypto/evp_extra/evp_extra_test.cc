@@ -1714,7 +1714,7 @@ struct KnownKEM {
 };
 
 static const struct KnownKEM kKEMs[] = {
-  {"Kyber512", NID_KYBER512, 800, 1632, 768, 32, "pq_kem_kat_tests_kyber512.txt"},
+  {"Kyber512", NID_KYBER512, 800, 1632, 768, 32, "kyber/kat/kyber512.txt"},
 };
 
 class PerKEMTest : public testing::TestWithParam<KnownKEM> {};
@@ -2158,7 +2158,7 @@ TEST_P(PerKEMTest, RawKeyOperations) {
 
 TEST_P(PerKEMTest, KAT) {
 
-  std::string kat_filepath = "crypto/evp_extra/";
+  std::string kat_filepath = "crypto/";
   kat_filepath += GetParam().kat_filename;
 
   FileTestGTest(kat_filepath.c_str(), [&](FileTest *t) {
