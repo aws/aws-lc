@@ -5517,8 +5517,6 @@ TEST(X509Test, ExtensionFromConf) {
       {kTestOID, "ASN1:FORMAT:UTF8,UTF8:\xff", nullptr, {}},
 
       // We don't support these string types.
-      // TODO(davidben): Remove them from the implementation, as they don't do
-      // anything.
       {kTestOID, "ASN1:NUMERIC:0", nullptr, {}},
       {kTestOID, "ASN1:NUMERICSTRING:0", nullptr, {}},
       {kTestOID, "ASN1:VISIBLE:hello", nullptr, {}},
