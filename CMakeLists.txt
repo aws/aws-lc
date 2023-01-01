@@ -260,11 +260,6 @@ if (GCC)
 endif ()
 
 if(GCC OR CLANG)
-  check_compiler("stdalign_check.c" AWS_LC_STDALIGN_AVAILABLE)
-  check_compiler("builtin_swap_check.c" AWS_LC_BUILTIN_SWAP_SUPPORTED)
-  if(FIPS AND NOT APPLE)
-    check_compiler("linux_u32.c" AWS_LC_URANDOM_U32)
-  endif()
   # Note clang-cl is odd and sets both CLANG and MSVC. We base our configuration
   # primarily on our normal Clang one.
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
@@ -357,6 +352,12 @@ if(GCC OR CLANG)
 
   if(GCC AND "4.8" VERSION_GREATER CMAKE_C_COMPILER_VERSION AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "4.1.3")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-array-bounds")
+  endif()
+
+  check_compiler("stdalign_check.c" AWS_LC_STDALIGN_AVAILABLE)
+  check_compiler("builtin_swap_check.c" AWS_LC_BUILTIN_SWAP_SUPPORTED)
+  if(FIPS AND NOT APPLE)
+    check_compiler("linux_u32.c" AWS_LC_URANDOM_U32)
   endif()
 
 elseif(MSVC)
