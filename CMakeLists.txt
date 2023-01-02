@@ -193,7 +193,7 @@ macro(check_compiler file_to_test flag_to_set)
           COMPILE_DEFINITIONS "-Werror"
           OUTPUT_VARIABLE ERROR_MESSAGE)
   if(RESULT)
-    set(C_CXX_FLAGS "${C_CXX_FLAGS} -D${flag_to_set}")
+    set(COMPILER_CHECK_FLAGS "${COMPILER_CHECK_FLAGS} -D${flag_to_set}")
     message(STATUS "Test ${file_to_test} passed, enabling ${flag_to_set}")
   else()
     message(STATUS "Test ${file_to_test} failed, NOT enabling ${flag_to_set}:")
@@ -359,6 +359,9 @@ if(GCC OR CLANG)
   if(FIPS AND NOT APPLE)
     check_compiler("linux_u32.c" AWS_LC_URANDOM_U32)
   endif()
+
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${COMPILER_CHECK_FLAGS}")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMPILER_CHECK_FLAGS}")
 
 elseif(MSVC)
   set(MSVC_DISABLED_WARNINGS_LIST
