@@ -874,6 +874,31 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
         }]
       },
       {
+        "algorithm": "KDF",
+        "revision": "1.0",
+        "capabilities": [{
+          "kdfMode": "feedback",
+          "macMode": [
+            "HMAC-SHA-1",
+            "HMAC-SHA2-224",
+            "HMAC-SHA2-256",
+            "HMAC-SHA2-384",
+            "HMAC-SHA2-512",
+            "HMAC-SHA2-512/256"
+          ],
+          "customKeyInLength": 0,
+          "supportedLengths": [{
+            "min": 8,
+            "max": 1024,
+            "increment": 8
+          }],
+          "fixedDataOrder": ["after fixed data"],
+          "counterLength": [8],
+          "supportsEmptyIv": true,
+          "requiresEmptyIv": true
+        }]
+      },
+      {
         "algorithm": "kdf-components",
         "revision": "1.0",
         "mode": "tls",
@@ -2269,6 +2294,26 @@ static bool SSHKDF(const Span<const uint8_t> args[], ReplyCallback write_reply) 
   return write_reply({Span<const uint8_t>(out)});
 }
 
+template <const EVP_MD *(MDFunc)()>
+static bool HKDF_expand(const Span<const uint8_t> args[], ReplyCallback write_reply) {
+  const Span<const uint8_t> out_bytes = args[0];
+  const Span<const uint8_t> key_in = args[1];
+  const Span<const uint8_t> fixed_data = args[2];
+  const EVP_MD *md = MDFunc();
+
+  unsigned int out_bytes_uint;
+  memcpy(&out_bytes_uint, out_bytes.data(), sizeof(out_bytes_uint));
+
+  std::vector<uint8_t> out(out_bytes_uint);
+  if(!::HKDF_expand(out.data(), out_bytes_uint, md,
+                    key_in.data(), key_in.size(), fixed_data.data(),
+                    fixed_data.size())) {
+    return false;
+  }
+
+  return write_reply({Span<const uint8_t>(out)});
+}
+
 static struct {
   char name[kMaxNameLength + 1];
   uint8_t num_expected_args;
@@ -2397,6 +2442,12 @@ static struct {
     {"SSHKDF/SHA2-256/integServ", 4, SSHKDF<EVP_sha256, EVP_KDF_SSHKDF_TYPE_INTEGRITY_KEY_SRV_TO_CLI>},
     {"SSHKDF/SHA2-384/integServ", 4, SSHKDF<EVP_sha384, EVP_KDF_SSHKDF_TYPE_INTEGRITY_KEY_SRV_TO_CLI>},
     {"SSHKDF/SHA2-512/integServ", 4, SSHKDF<EVP_sha512, EVP_KDF_SSHKDF_TYPE_INTEGRITY_KEY_SRV_TO_CLI>},
+    {"KDF/Feedback/HMAC-SHA-1", 3, HKDF_expand<EVP_sha1>},
+    {"KDF/Feedback/HMAC-SHA2-224", 3, HKDF_expand<EVP_sha224>},
+    {"KDF/Feedback/HMAC-SHA2-256", 3, HKDF_expand<EVP_sha256>},
+    {"KDF/Feedback/HMAC-SHA2-384", 3, HKDF_expand<EVP_sha384>},
+    {"KDF/Feedback/HMAC-SHA2-512", 3, HKDF_expand<EVP_sha512>},
+    {"KDF/Feedback/HMAC-SHA2-512/256", 3, HKDF_expand<EVP_sha512_256>},
 };
 
 Handler FindHandler(Span<const Span<const uint8_t>> args) {
