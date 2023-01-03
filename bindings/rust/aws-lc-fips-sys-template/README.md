@@ -15,12 +15,12 @@ The platforms which `aws-lc-fips-sys` builds on is limited to the platforms wher
 
 CPU|OS
 -------------|-------------
-x86-64|Ubuntu
-arm-64|Ubuntu
+x86-64|Linux
+arm-64|Linux
 
 ### Tested AWS-LC FIPS Build Environments
 
-Compiler|CPU|OS
+Compiler|CPU|Distro
 -------------|-------------|-------------
 gcc-7|x86-64|Ubuntu/AL2
 clang-7|x86-64|Ubuntu/AL2
