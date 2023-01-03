@@ -20,12 +20,7 @@ arm-64|Linux
 
 ### Tested AWS-LC FIPS Build Environments
 
-Compiler|CPU|Distro
--------------|-------------|-------------
-gcc-7|x86-64|Ubuntu/AL2
-clang-7|x86-64|Ubuntu/AL2
-clang-7|arm-64|Ubuntu/AL2
-gcc 4.8.5|x86-64| CentOS 7
+`aws-lc-fips-sys` currently relies on the AWS-LC FIPS static build, please see our CI documentation at [AWS-LC](https://github.com/awslabs/aws-lc/tree/main/tests/ci#unit-tests).
 
 ## Build Prerequisites
 
