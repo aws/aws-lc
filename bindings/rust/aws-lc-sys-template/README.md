@@ -14,9 +14,9 @@ This crate pulls in the source code of AWS-LC to build with it. Bindings for pla
 
 CPU|OS
 -------------|-------------
-x86|Ubuntu
-x86-64|Ubuntu
-arm-64|Ubuntu
+x86|Linux
+x86-64|Linux
+arm-64|Linux
 x86-64|MacOS
 
 ## Build Prerequisites
