@@ -2575,6 +2575,36 @@ int test_bignum_deamont_p521(void)
   return 0;
 }
 
+int test_bignum_deamont_sm2(void)
+{ uint64_t t;
+  printf("Testing bignum_deamont_sm2 with %d cases\n",tests);
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(4,b0);
+     bignum_deamont_sm2(b4,b0);
+     reference_of_word(4,b1,UINT64_C(1));
+     reference_dmontmul(4,b3,b0,b1,p_sm2,i_sm2,b5);
+
+     c = reference_compare(4,b3,4,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "2^-256 * ...0x%016"PRIx64" mod p_sm2 = "
+               "0x%016"PRIx64"...%016"PRIx64" not 0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(4),b0[0],b4[3],b4[0],b3[3],b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "2^-256 * ...0x%016"PRIx64" mod p_sm2 = "
+               "0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(4),b0[0],b4[3],b4[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
 int test_bignum_demont(void)
 { uint64_t t, k;
   printf("Testing bignum_demont with %d cases\n",tests);
@@ -2789,6 +2819,37 @@ int test_bignum_demont_p521(void)
                "2^-576 * ...0x%016"PRIx64" mod p_521 = "
                "0x%016"PRIx64"...%016"PRIx64"\n",
                UINT64_C(6),b0[0],b4[8],b4[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_bignum_demont_sm2(void)
+{ uint64_t t;
+  printf("Testing bignum_demont_sm2 with %d cases\n",tests);
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(4,b2);
+     reference_mod(4,b0,b2,p_sm2);
+     bignum_demont_sm2(b4,b0);
+     reference_of_word(4,b1,UINT64_C(1));
+     reference_dmontmul(4,b3,b0,b1,p_sm2,i_sm2,b5);
+
+     c = reference_compare(4,b3,4,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "2^-256 * ...0x%016"PRIx64" mod p_sm2 = "
+               "0x%016"PRIx64"...%016"PRIx64" not 0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(4),b0[0],b4[3],b4[0],b3[3],b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "2^-256 * ...0x%016"PRIx64" mod p_sm2 = "
+               "0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(4),b0[0],b4[3],b4[0]);
       }
    }
   printf("All OK\n");
@@ -9311,6 +9372,7 @@ int main(int argc, char *argv[])
   functionaltest(bmi,"bignum_deamont_p384",test_bignum_deamont_p384);
   functionaltest(all,"bignum_deamont_p384_alt",test_bignum_deamont_p384_alt);
   functionaltest(all,"bignum_deamont_p521",test_bignum_deamont_p521);
+  functionaltest(all,"bignum_deamont_sm2",test_bignum_deamont_sm2);
   functionaltest(all,"bignum_demont",test_bignum_demont);
   functionaltest(bmi,"bignum_demont_p256",test_bignum_demont_p256);
   functionaltest(all,"bignum_demont_p256_alt",test_bignum_demont_p256_alt);
@@ -9318,6 +9380,7 @@ int main(int argc, char *argv[])
   functionaltest(bmi,"bignum_demont_p384",test_bignum_demont_p384);
   functionaltest(all,"bignum_demont_p384_alt",test_bignum_demont_p384_alt);
   functionaltest(all,"bignum_demont_p521",test_bignum_demont_p521);
+  functionaltest(all,"bignum_demont_sm2",test_bignum_demont_sm2);
   functionaltest(all,"bignum_digit",test_bignum_digit);
   functionaltest(all,"bignum_digitsize",test_bignum_digitsize);
   functionaltest(all,"bignum_divmod10",test_bignum_divmod10);

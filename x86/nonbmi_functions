@@ -34,11 +34,13 @@ bignum_deamont_p256_alt
 bignum_deamont_p256k1
 bignum_deamont_p384_alt
 bignum_deamont_p521
+bignum_deamont_sm2
 bignum_demont
 bignum_demont_p256_alt
 bignum_demont_p256k1
 bignum_demont_p384_alt
 bignum_demont_p521
+bignum_demont_sm2
 bignum_digit
 bignum_digitsize
 bignum_divmod10
