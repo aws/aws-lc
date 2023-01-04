@@ -8,9 +8,11 @@ The AWS-LC team considers the official repository of [Dilithium](https://github.
 
 NIST has not published the final PQ standard yet, and is not expected to do so until 2024. Therefore, the specification and implementation of Dilithium is not finalized yet. Potentially, there will be changes to Dilithium in the future. Some changes might even break backwards compatibility. The AWS-LC team follows the developments around the PQC project and will update the implementation and documentation if necessary. Therefore, AWS-LC can not promise backward compatibility of the Dilithium implementation and API until NIST locks in the specification and reserves the right to change the implementation if necessary.
 
-**Supported versions.** AWS-LC supports only Dilithium3 algorithm at this point. The NID assigned to Dilithium3 is `NID_DILITHIUM3` and the corresponding `PKEY` identifier is `EVP_PKEY_DILITHIUM3`.
+### **Supported Versions**
+AWS-LC supports only Dilithium3 algorithm at this point. The NID assigned to Dilithium3 is `NID_DILITHIUM3` and the corresponding `PKEY` identifier is `EVP_PKEY_DILITHIUM3`.
 
-**Source code origin and modifications.** The source code was taken from the primary source of Diltihium at [link](https://github.com/pq-crystals/dilithium), at [commit](https://github.com/pq-crystals/dilithium/commit/3e9b9f1412f6c7435dbeb4e10692ea58f181ee51) as of 9th May 2022.
+### **Source Code Origin and Modifications**
+The source code was taken from the primary source of Diltihium at [link](https://github.com/pq-crystals/dilithium), at [commit](https://github.com/pq-crystals/dilithium/commit/3e9b9f1412f6c7435dbeb4e10692ea58f181ee51) as of 9th May 2022.
 The `api.h`, `fips202.h` and `params.h` header files were modified [in this PR](https://github.com/awslabs/aws-lc/pull/655) to support our [prefixed symbols build](https://github.com/awslabs/aws-lc/blob/main/BUILDING.md#building-with-prefixed-symbols).
 
 Only the reference C implementation of Dilithium3 is currently integrated. The code is in the `pqcrystals-dilithium_dilithium3_ref` folder. The following changes were made to the code.
@@ -23,7 +25,8 @@ Only the reference C implementation of Dilithium3 is currently integrated. The c
 * `sign.c` was modified to correct the documentation around `crypto_sign_verify`. See [pq-crystals/dilithium/#66](https://github.com/pq-crystals/dilithium/pull/66) for upstream PR.
 * `config.h`: `#define DILITHIUM_MODE 3`  is explicitly defined (to specify Dilithium3).
 
-**Usage.** The API is defined and documented in `include/openssl/evp.h`. To see examples of how to use Dilithium3, see `crypto/dilithium/p_dilithium_test.cc`. TLDR:
+## **Example Usage** 
+The API is defined and documented in `include/openssl/evp.h`. To see examples of how to use Dilithium3, see `crypto/dilithium/p_dilithium_test.cc`. TLDR:
 
 ```
 // Creates a new PKEY and PKEY context with Dilithium3
@@ -40,4 +43,25 @@ EVP_DigestSign(md_ctx.get(), signature, &signature_len, msg, msg_len);
 
 // Verify
 EVP_DigestVerify(md_ctx.get(), signature, signature_len, msg, msg_len);
+```
+
+You can also sign Dilithium3 signatures using a `pem` private key file and the `bssl sign` tool. For example, to sign raw standard input you can use `echo "foo" | ./bssl sign -key private.pem`.
+
+## Benchmarks
+Benchmarks for KeyGen, Sign, and Verify functionality are available within the `bssl speed` tool, and can be explicitly filtered by running `./tool/bssl speed -filter Dilithium3`.
+
+Example output:
+```
+Did 5665 Dilithium3 keygen operations in 1049620us (5397.2 ops/sec)
+Did 1705 Dilithium3 signing operations in 1008741us (1690.2 ops/sec)
+Did 6690 Dilithium3 verify operations in 1044624us (6404.2 ops/sec)
+```
+Similarly, the output in JSON format `./tool/bssl speed -filter Dilithium3 -json`.
+
+```
+[
+{"description": "Dilithium3 keygen", "numCalls": 5665, "microseconds": 1049620},
+{"description": "Dilithium3 signing", "numCalls": 1705, "microseconds": 1008741},
+{"description": "Dilithium3 verify", "numCalls": 6690, "microseconds": 1044624}
+]
 ```
