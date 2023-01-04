@@ -472,6 +472,18 @@ int jent_time_entropy_init(unsigned int enable_notime)
 		jent_gcd_add_value(delta_history, delta, i);
 	}
 
+	/*
+	 * we allow up to three times the time running backwards.
+	 * CLOCK_REALTIME is affected by adjtime and NTP operations. Thus,
+	 * if such an operation just happens to interfere with our test, it
+	 * should not fail. The value of 3 should cover the NTP case being
+	 * performed during our test run.
+	 */
+	if (time_backwards > 3) {
+		ret = ENOMONOTONIC;
+		goto out;
+	}
+
 	/* First, did we encounter a health test failure? */
 	if ((health_test_result = jent_health_failure(ec))) {
 		ret = (health_test_result & JENT_RCT_FAILURE) ? ERCT : EHEALTH;
