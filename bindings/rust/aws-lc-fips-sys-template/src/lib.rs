@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
 use paste::paste;
-use std::ffi::{c_char, c_long, c_void};
+use std::os::raw::{c_long, c_char, c_void};
 
 // Warn to use feature generate_bindings if building on a platform where prebuilt-bindings
 // aren't available
