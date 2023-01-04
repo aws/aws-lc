@@ -4682,37 +4682,48 @@ OPENSSL_EXPORT void SSL_set_tmp_rsa_callback(SSL *ssl,
                                              RSA *(*cb)(SSL *ssl, int is_export,
                                                         int keylength));
 
-// SSL_CTX_sess_connect returns zero.
+// SSL_CTX_sess_connect returns the number of started SSL/TLS handshakes in
+// client mode.
 OPENSSL_EXPORT int SSL_CTX_sess_connect(const SSL_CTX *ctx);
 
-// SSL_CTX_sess_connect_good returns zero.
+// SSL_CTX_sess_connect_good returns the number of successfully established
+// SSL/TLS sessions in client mode.
 OPENSSL_EXPORT int SSL_CTX_sess_connect_good(const SSL_CTX *ctx);
 
-// SSL_CTX_sess_connect_renegotiate returns zero.
+// SSL_CTX_sess_connect_renegotiate returns the number of started renegotiations
+// in client mode.
 OPENSSL_EXPORT int SSL_CTX_sess_connect_renegotiate(const SSL_CTX *ctx);
 
-// SSL_CTX_sess_accept returns zero.
+// SSL_CTX_sess_accept returns the number of started SSL/TLS handshakes in
+// server mode.
 OPENSSL_EXPORT int SSL_CTX_sess_accept(const SSL_CTX *ctx);
 
-// SSL_CTX_sess_accept_renegotiate returns zero.
+// SSL_CTX_sess_accept_renegotiate returns zero. AWS-LC does not support server
+// side renegotiations.
 OPENSSL_EXPORT int SSL_CTX_sess_accept_renegotiate(const SSL_CTX *ctx);
 
-// SSL_CTX_sess_accept_good returns zero.
+// SSL_CTX_sess_accept_good returns the number of successfully established
+// SSL/TLS sessions in server mode.
 OPENSSL_EXPORT int SSL_CTX_sess_accept_good(const SSL_CTX *ctx);
 
-// SSL_CTX_sess_hits returns zero.
+// SSL_CTX_sess_hits returns the number of successfully reused sessions.
 OPENSSL_EXPORT int SSL_CTX_sess_hits(const SSL_CTX *ctx);
 
-// SSL_CTX_sess_cb_hits returns zero.
+// SSL_CTX_sess_cb_hits returns the number of successfully retrieved sessions
+// from the external session cache in server mode.
 OPENSSL_EXPORT int SSL_CTX_sess_cb_hits(const SSL_CTX *ctx);
 
-// SSL_CTX_sess_misses returns zero.
+// SSL_CTX_sess_misses returns the number of sessions proposed by clients that
+// were not found in the internal session cache in server mode.
 OPENSSL_EXPORT int SSL_CTX_sess_misses(const SSL_CTX *ctx);
 
-// SSL_CTX_sess_timeouts returns zero.
+// SSL_CTX_sess_timeouts returns the number of sessions proposed by clients and
+// either found in the internal or external session cache in server mode, but
+// that were invalid due to timeout.
 OPENSSL_EXPORT int SSL_CTX_sess_timeouts(const SSL_CTX *ctx);
 
-// SSL_CTX_sess_cache_full returns zero.
+// SSL_CTX_sess_cache_full returns the number of sessions that were removed
+// because the maximum session cache size was exceeded.
 OPENSSL_EXPORT int SSL_CTX_sess_cache_full(const SSL_CTX *ctx);
 
 // SSL_cutthrough_complete calls |SSL_in_false_start|.

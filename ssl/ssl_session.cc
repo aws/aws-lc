@@ -661,11 +661,16 @@ static enum ssl_hs_wait_t ssl_lookup_session(
           MakeConstSpan(sess->session_id, sess->session_id_length);
       return key_id == sess_id ? 0 : 1;
     };
-    MutexReadLock lock(&ssl->session_ctx->lock);
+    CRYPTO_MUTEX_lock_read(&ssl->session_ctx->lock);
     // |lh_SSL_SESSION_retrieve_key| returns a non-owning pointer.
     session = UpRef(lh_SSL_SESSION_retrieve_key(ssl->session_ctx->sessions,
                                                 &session_id, hash, cmp));
+    CRYPTO_MUTEX_unlock_read(&ssl->session_ctx->lock);
     // TODO(davidben): This should probably move it to the front of the list.
+    if (session == nullptr) {
+      ssl_update_counter(ssl->session_ctx.get(),
+                          ssl->session_ctx->stats.sess_miss, true);
+    }
   }
 
   // Fall back to the external cache, if it exists.
@@ -681,6 +686,8 @@ static enum ssl_hs_wait_t ssl_lookup_session(
       session.release();  // This pointer is not actually owned.
       return ssl_hs_pending_session;
     }
+    ssl_update_counter(ssl->session_ctx.get(),
+                       ssl->session_ctx->stats.sess_cb_hit, true);
 
     // Increment reference count now if the session callback asks us to do so
     // (note that if the session structures returned by the callback are shared
@@ -697,12 +704,18 @@ static enum ssl_hs_wait_t ssl_lookup_session(
     }
   }
 
-  if (session && !ssl_session_is_time_valid(ssl, session.get())) {
-    // The session was from the cache, so remove it.
-    SSL_CTX_remove_session(ssl->session_ctx.get(), session.get());
-    session.reset();
+  if (!ssl_session_is_time_valid(ssl, session.get())) {
+    ssl_update_counter(ssl->session_ctx.get(),
+                       ssl->session_ctx->stats.sess_timeout, true);
+    if(session) {
+      // The session was from the cache, so remove it.
+      SSL_CTX_remove_session(ssl->session_ctx.get(), session.get());
+      session.reset();
+    }
   }
 
+  ssl_update_counter(ssl->session_ctx.get(),
+                     ssl->session_ctx->stats.sess_hit, true);
   *out_session = std::move(session);
   return ssl_hs_ok;
 }
@@ -879,6 +892,7 @@ static bool add_session_locked(SSL_CTX *ctx, UniquePtr<SSL_SESSION> session) {
                           /*lock=*/false)) {
         break;
       }
+      ssl_update_counter(ctx, ctx->stats.sess_cache_full, /*lock=*/ false);
     }
   }
 
@@ -892,6 +906,11 @@ void ssl_update_cache(SSL *ssl) {
   if (!SSL_SESSION_is_resumable(session) ||
       (ctx->session_cache_mode & mode) != mode) {
     return;
+  }
+  // Update client side session hit counter on successfully reused sessions.
+  if (SSL_SESSION_is_resumable(session) && !mode) {
+    ssl_update_counter(ssl->session_ctx.get(),
+                        ssl->session_ctx->stats.sess_hit, true);
   }
 
   // Clients never use the internal session cache.
