@@ -42,4 +42,4 @@ libc = "0.2"
 paste = "1.0.11"
 
 [dev-dependencies]
-openssl = { version = "0.10", features = ["vendored"] }
+openssl = { version = "0.10" }
