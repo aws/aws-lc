@@ -907,11 +907,6 @@ void ssl_update_cache(SSL *ssl) {
       (ctx->session_cache_mode & mode) != mode) {
     return;
   }
-  // Update client side session hit counter on successfully reused sessions.
-  if (SSL_SESSION_is_resumable(session) && !mode) {
-    ssl_update_counter(ssl->session_ctx.get(),
-                        ssl->session_ctx->stats.sess_hit, true);
-  }
 
   // Clients never use the internal session cache.
   if (ssl->server &&
