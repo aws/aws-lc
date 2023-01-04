@@ -194,10 +194,16 @@ macro(check_compiler file_to_test flag_to_set)
           OUTPUT_VARIABLE ERROR_MESSAGE)
   if(RESULT)
     set(COMPILER_CHECK_FLAGS "${COMPILER_CHECK_FLAGS} -D${flag_to_set}")
-    message(STATUS "Test ${file_to_test} passed, enabling ${flag_to_set}")
+    message(STATUS "${file_to_test} probe is positive, enabling ${flag_to_set}")
   else()
-    message(STATUS "Test ${file_to_test} failed, NOT enabling ${flag_to_set}:")
-    message(STATUS "    ${ERROR_MESSAGE}")
+    message(STATUS "${file_to_test} probe is negative, NOT enabling ${flag_to_set}:")
+    # Some build applications use regexes on build output to highlight build
+    # errors. Below, we modify a compiler error message to avoid that a negative
+    # probe is considered an error in such build applications.
+    string(REPLACE ": error:"
+      ": compiler_error:" ERROR_MESSAGE_PROCESSED
+      ${ERROR_MESSAGE})
+    message(STATUS "    ${ERROR_MESSAGE_PROCESSED}")
   endif()
 endmacro()
 
