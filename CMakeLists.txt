@@ -193,11 +193,17 @@ macro(check_compiler file_to_test flag_to_set)
           COMPILE_DEFINITIONS "-Werror"
           OUTPUT_VARIABLE ERROR_MESSAGE)
   if(RESULT)
-    set(C_CXX_FLAGS "${C_CXX_FLAGS} -D${flag_to_set}")
-    message(STATUS "Test ${file_to_test} passed, enabling ${flag_to_set}")
+    set(COMPILER_CHECK_FLAGS "${COMPILER_CHECK_FLAGS} -D${flag_to_set}")
+    message(STATUS "${file_to_test} probe is positive, enabling ${flag_to_set}")
   else()
-    message(STATUS "Test ${file_to_test} failed, NOT enabling ${flag_to_set}:")
-    message(STATUS "    ${ERROR_MESSAGE}")
+    message(STATUS "${file_to_test} probe is negative, NOT enabling ${flag_to_set}:")
+    # Some build applications use regexes on build output to highlight build
+    # errors. Below, we modify a compiler error message to avoid that a negative
+    # probe is considered an error in such build applications.
+    string(REPLACE ": error:"
+      ": compiler_error:" ERROR_MESSAGE_PROCESSED
+      ${ERROR_MESSAGE})
+    message(STATUS "    ${ERROR_MESSAGE_PROCESSED}")
   endif()
 endmacro()
 
@@ -260,11 +266,6 @@ if (GCC)
 endif ()
 
 if(GCC OR CLANG)
-  check_compiler("stdalign_check.c" AWS_LC_STDALIGN_AVAILABLE)
-  check_compiler("builtin_swap_check.c" AWS_LC_BUILTIN_SWAP_SUPPORTED)
-  if(FIPS AND NOT APPLE)
-    check_compiler("linux_u32.c" AWS_LC_URANDOM_U32)
-  endif()
   # Note clang-cl is odd and sets both CLANG and MSVC. We base our configuration
   # primarily on our normal Clang one.
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
@@ -358,6 +359,15 @@ if(GCC OR CLANG)
   if(GCC AND "4.8" VERSION_GREATER CMAKE_C_COMPILER_VERSION AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "4.1.3")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-array-bounds")
   endif()
+
+  check_compiler("stdalign_check.c" AWS_LC_STDALIGN_AVAILABLE)
+  check_compiler("builtin_swap_check.c" AWS_LC_BUILTIN_SWAP_SUPPORTED)
+  if(FIPS AND NOT APPLE)
+    check_compiler("linux_u32.c" AWS_LC_URANDOM_U32)
+  endif()
+
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${COMPILER_CHECK_FLAGS}")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMPILER_CHECK_FLAGS}")
 
 elseif(MSVC)
   set(MSVC_DISABLED_WARNINGS_LIST
