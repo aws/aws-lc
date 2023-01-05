@@ -6234,6 +6234,7 @@ TEST_P(SSLVersionTest, SessionPropertiesThreads) {
   }
   // Session has been resumed twice.
   EXPECT_EQ(SSL_CTX_sess_hits(server_ctx_.get()), 2);
+  EXPECT_EQ(SSL_CTX_sess_hits(client_ctx_.get()), 2);
 }
 #endif  // OPENSSL_THREADS
 
@@ -7809,6 +7810,9 @@ TEST_P(SSLVersionTest, SameKeyResume) {
                                      server_ctx2.get(), config));
   EXPECT_TRUE(SSL_session_reused(client.get()));
   EXPECT_TRUE(SSL_session_reused(server.get()));
+
+  // By this point, the session has been resumed twice on the client side.
+  EXPECT_EQ(SSL_CTX_sess_hits(client_ctx_.get()), 2);
 }
 
 TEST_P(SSLVersionTest, DifferentKeyNoResume) {
