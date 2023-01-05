@@ -2270,6 +2270,74 @@ int test_bignum_cmul_p521_alt(void)
   return 0;
 }
 
+int test_bignum_cmul_sm2(void)
+{ uint64_t i, k, m;
+  printf("Testing bignum_cmul_sm2 with %d cases\n",tests);
+  uint64_t c;
+  for (i = 0; i < tests; ++i)
+   { k = 4;
+     random_bignum(k,b2); reference_mod(k,b0,b2,p_sm2);
+     m = random64();
+     bignum_cmul_sm2(b2,m,b0);
+     reference_mul(k+1,b1,1,&m,k,b0);
+     reference_copy(k+1,b3,k,p_sm2);
+     reference_mod(k+1,b4,b1,b3);
+     reference_copy(k,b3,k+1,b4);
+
+     c = reference_compare(k,b3,k,b2);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "0x%016"PRIx64" *  ...0x%016"PRIx64" mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64" not ...0x%016"PRIx64"\n",
+               k,m,b0[0],p_sm2[0],b2[0],b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] "
+                    "0x%016"PRIx64" * ...0x%016"PRIx64" mod ....0x%016"PRIx64" = "
+                    "...0x%016"PRIx64"\n",
+                    k,m,b0[0],p_sm2[0],b2[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_bignum_cmul_sm2_alt(void)
+{ uint64_t i, k, m;
+  printf("Testing bignum_cmul_sm2_alt with %d cases\n",tests);
+  uint64_t c;
+  for (i = 0; i < tests; ++i)
+   { k = 4;
+     random_bignum(k,b2); reference_mod(k,b0,b2,p_sm2);
+     m = random64();
+     bignum_cmul_sm2_alt(b2,m,b0);
+     reference_mul(k+1,b1,1,&m,k,b0);
+     reference_copy(k+1,b3,k,p_sm2);
+     reference_mod(k+1,b4,b1,b3);
+     reference_copy(k,b3,k+1,b4);
+
+     c = reference_compare(k,b3,k,b2);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "0x%016"PRIx64" *  ...0x%016"PRIx64" mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64" not ...0x%016"PRIx64"\n",
+               k,m,b0[0],p_sm2[0],b2[0],b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] "
+                    "0x%016"PRIx64" * ...0x%016"PRIx64" mod ....0x%016"PRIx64" = "
+                    "...0x%016"PRIx64"\n",
+                    k,m,b0[0],p_sm2[0],b2[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
 int test_bignum_coprime(void)
 { uint64_t i, k0, k1, kmin, kmax, c1, c2;
   printf("Testing bignum_coprime with %d cases\n",tests);
@@ -9362,6 +9430,8 @@ int main(int argc, char *argv[])
   functionaltest(all,"bignum_cmul_p384_alt",test_bignum_cmul_p384_alt);
   functionaltest(bmi,"bignum_cmul_p521",test_bignum_cmul_p521);
   functionaltest(all,"bignum_cmul_p521_alt",test_bignum_cmul_p521_alt);
+  functionaltest(bmi,"bignum_cmul_sm2",test_bignum_cmul_sm2);
+  functionaltest(all,"bignum_cmul_sm2_alt",test_bignum_cmul_sm2_alt);
   functionaltest(all,"bignum_coprime",test_bignum_coprime);
   functionaltest(all,"bignum_copy",test_bignum_copy);
   functionaltest(all,"bignum_ctd",test_bignum_ctd);

@@ -26,6 +26,7 @@ bignum_cmul_p256_alt
 bignum_cmul_p256k1_alt
 bignum_cmul_p384_alt
 bignum_cmul_p521_alt
+bignum_cmul_sm2_alt
 bignum_coprime
 bignum_copy
 bignum_ctd

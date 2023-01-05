@@ -247,6 +247,10 @@ void call_bignum_cmul_p521(void) repeat(bignum_cmul_p521(b0,b1[0],b2))
 
 void call_bignum_cmul_p521_alt(void) repeat(bignum_cmul_p521_alt(b0,b1[0],b2))
 
+void call_bignum_cmul_sm2(void) repeat(bignum_cmul_sm2(b0,b1[0],b2))
+
+void call_bignum_cmul_sm2_alt(void) repeat(bignum_cmul_sm2_alt(b0,b1[0],b2))
+
 void call_bignum_optneg_p25519(void) repeat(bignum_optneg_p25519(b0,b1[0],b2))
 
 void call_bignum_optneg_p256(void) repeat(bignum_optneg_p256(b0,b1[0],b2))
@@ -809,6 +813,8 @@ int main(int argc, char *argv[])
   timingtest(all,"bignum_cmul_p384_alt",call_bignum_cmul_p384_alt);
   timingtest(bmi,"bignum_cmul_p521",call_bignum_cmul_p521);
   timingtest(all,"bignum_cmul_p521_alt",call_bignum_cmul_p521_alt);
+  timingtest(bmi,"bignum_cmul_sm2",call_bignum_cmul_sm2);
+  timingtest(all,"bignum_cmul_sm2_alt",call_bignum_cmul_sm2_alt);
   timingtest(all,"bignum_coprime (4x4)",call_bignum_coprime__4_4);
   timingtest(all,"bignum_coprime (6x6)",call_bignum_coprime__6_6);
   timingtest(all,"bignum_coprime (16x16)",call_bignum_coprime__16_16);

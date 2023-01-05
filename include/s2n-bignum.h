@@ -140,6 +140,11 @@ extern void bignum_cmul_p384_alt (uint64_t z[static 6], uint64_t c, uint64_t x[s
 extern void bignum_cmul_p521 (uint64_t z[static 9], uint64_t c, uint64_t x[static 9]);
 extern void bignum_cmul_p521_alt (uint64_t z[static 9], uint64_t c, uint64_t x[static 9]);
 
+// Multiply by a single word modulo p_sm2, z := (c * x) mod p_sm2, assuming x reduced
+// Inputs c, x[4]; output z[4]
+extern void bignum_cmul_sm2 (uint64_t z[static 4], uint64_t c, uint64_t x[static 4]);
+extern void bignum_cmul_sm2_alt (uint64_t z[static 4], uint64_t c, uint64_t x[static 4]);
+
 // Test bignums for coprimality, gcd(x,y) = 1
 // Inputs x[m], y[n]; output function return; temporary buffer t[>=2*max(m,n)]
 extern uint64_t bignum_coprime (uint64_t m, uint64_t *x, uint64_t n, uint64_t *y, uint64_t *t);

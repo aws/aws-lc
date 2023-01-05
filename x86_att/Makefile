@@ -240,6 +240,8 @@ OBJ = curve25519/bignum_add_p25519.o \
       secp256k1/secp256k1_jdouble.o \
       secp256k1/secp256k1_jmixadd.o \
       sm2/bignum_add_sm2.o \
+      sm2/bignum_cmul_sm2.o \
+      sm2/bignum_cmul_sm2_alt.o \
       sm2/bignum_deamont_sm2.o \
       sm2/bignum_demont_sm2.o \
       sm2/bignum_mod_nsm2.o \

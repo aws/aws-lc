@@ -6,6 +6,8 @@
 # The x86 assembly (.S) files are all written for the GNU assembler
 
 OBJ = bignum_add_sm2.o \
+      bignum_cmul_sm2.o \
+      bignum_cmul_sm2_alt.o \
       bignum_deamont_sm2.o \
       bignum_demont_sm2.o \
       bignum_mod_nsm2.o \
