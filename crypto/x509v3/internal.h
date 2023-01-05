@@ -92,9 +92,9 @@ OPENSSL_EXPORT char *x509v3_bytes_to_hex(const uint8_t *in, size_t len);
 // name, |string_to_hex| converted from hex.
 unsigned char *x509v3_hex_to_bytes(const char *str, long *len);
 
-// x509v3_name_cmp returns zero if |name| is equal to |cmp| or begins with |cmp|
-// followed by '.'. Otherwise, it returns a non-zero number.
-int x509v3_name_cmp(const char *name, const char *cmp);
+// x509v3_conf_name_matches returns one if |name| is equal to |cmp| or begins
+// with |cmp| followed by '.', and zero otherwise.
+int x509v3_conf_name_matches(const char *name, const char *cmp);
 
 // x509v3_looks_like_dns_name returns one if |in| looks like a DNS name and zero
 // otherwise.
@@ -126,6 +126,13 @@ typedef struct {
 // zero on error.
 int x509V3_add_value_asn1_string(const char *name, const ASN1_STRING *value,
                                  STACK_OF(CONF_VALUE) **extlist);
+
+// X509V3_NAME_from_section adds attributes to |nm| by interpreting the
+// key/value pairs in |dn_sk|. It returns one on success and zero on error.
+// |chtype|, which should be one of |MBSTRING_*| constants, determines the
+// character encoding used to interpret values.
+int X509V3_NAME_from_section(X509_NAME *nm, const STACK_OF(CONF_VALUE) *dn_sk,
+                             int chtype);
 
 
 // Internal structures
