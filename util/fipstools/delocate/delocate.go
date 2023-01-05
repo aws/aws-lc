@@ -574,6 +574,7 @@ func (d *delocation) processAarch64Instruction(statement, instruction *node32) (
 						}
 
 						if skipWS(parts.next) != nil || parts.up.next != nil {
+							fmt.Print("\n\n", parts, parts.next, parts.up, parts.up.next, "\n\n")
 							panic("can't handle tweak or post-increment with symbol references")
 						}
 
