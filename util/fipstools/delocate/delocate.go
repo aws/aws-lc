@@ -1136,7 +1136,7 @@ func classifyInstruction(instr string, args []*node32) instructionType {
 			return instrCompare
 		}
 
-	case "sarxq", "shlxq", "shrxq":
+	case "sarxq", "shlxq", "shrxq", "pinsrq":
 		if len(args) == 3 {
 			return instrThreeArg
 		}
@@ -1402,7 +1402,7 @@ Args:
 
 				classification := classifyInstruction(instructionName, argNodes)
 				if classification != instrThreeArg && classification != instrCompare && i != 0 {
-					return nil, errors.New("GOT access must be source operand")
+					return nil, fmt.Errorf("GOT access must be source operand, %w", classification)
 				}
 
 				// Reduce the instruction to movq symbol@GOTPCREL, targetReg.
