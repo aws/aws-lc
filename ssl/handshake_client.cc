@@ -1869,6 +1869,12 @@ static enum ssl_hs_wait_t do_finish_client_handshake(SSL_HANDSHAKE *hs) {
     ssl_update_cache(ssl);
   }
 
+  if (ssl->s3->session_reused) {
+    // Update client side session hit counter on successfully reused sessions.
+    ssl_update_counter(ssl->session_ctx.get(), ssl->session_ctx->stats.sess_hit,
+                       true);
+  }
+
   hs->state = state_done;
   return ssl_hs_ok;
 }
