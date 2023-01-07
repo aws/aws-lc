@@ -222,7 +222,7 @@ batch:
         type: ARM_CONTAINER
         privileged-mode: false
         compute-type: BUILD_GENERAL1_LARGE
-        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-aarch:amazonlinux-2022_clang-11x_latest
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-aarch:amazonlinux-2022_clang-14x_latest
 
     - identifier: amazonlinux2022_clang14x_aarch_fips
       buildspec: ./tests/ci/codebuild/linux-aarch/run_fips_tests.yml
@@ -230,7 +230,7 @@ batch:
         type: ARM_CONTAINER
         privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
-        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-aarch:amazonlinux-2022_clang-11x_latest
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-aarch:amazonlinux-2022_clang-14x_latest
 
     - identifier: amazonlinux2022_gcc11x_aarch_fips
       buildspec: ./tests/ci/codebuild/linux-aarch/run_fips_tests.yml
