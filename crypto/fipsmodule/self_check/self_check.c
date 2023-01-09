@@ -932,7 +932,15 @@ static int boringssl_self_test_hkdf_sha256(void) {
 
 static int boringssl_self_test_fast(void) {
   static const uint8_t kAESKey[16] = "BoringCrypto Key";
-  static const uint8_t kAESIV[16] = {0};
+  // Older versions of gcc/release on ARM will optimize out the assembly label
+  // for kAESIV, if we define it with {0}. This does not mesh well with
+  // delocate.go, since we use these labels to determine if the symbol is
+  // "known". Expanding the definition of kAESIV gets around the unwanted
+  // assembler optimization.
+  static const uint8_t kAESIV[16] = {
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  };
 
   EVP_AEAD_CTX aead_ctx;
   EVP_AEAD_CTX_zero(&aead_ctx);
