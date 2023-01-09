@@ -986,6 +986,12 @@ let arm_UBFM = define
           else word_shl (word_subword x (0,imms+1)) (dimindex(:N) - immr) in
         (Rd := y) s`;;
 
+let arm_UMOV = define
+ `arm_UMOV Rd Rn idx size =
+   \s. let n = read Rn (s:armstate) in
+       let d:N word = word_subword n (idx*size*8,size*8) in
+       (Rd := d) s`;;
+
 let arm_UMULH = define
  `arm_UMULH Rd Rn Rm =
     \s. let n:N word = read Rn (s:armstate)
@@ -1447,7 +1453,7 @@ let ARM_OPERATION_CLAUSES =
        arm_LSL; arm_LSLV; arm_LSR; arm_LSRV;
        arm_MADD; arm_MOVK_ALT; arm_MOVN; arm_MOVZ;
        arm_MSUB; arm_ORN; arm_ORR; arm_RET; arm_RORV; arm_SBC; arm_SBCS_ALT;
-       arm_SUB; arm_SUBS_ALT; arm_UBFM; arm_UMULH;
+       arm_SUB; arm_SUBS_ALT; arm_UBFM; arm_UMOV; arm_UMULH;
     (*** 32-bit backups since the ALT forms are 64-bit only ***)
        INST_TYPE[`:32`,`:N`] arm_ADCS;
        INST_TYPE[`:32`,`:N`] arm_ADDS;

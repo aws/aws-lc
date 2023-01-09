@@ -11,6 +11,7 @@ let XREG_SP = new_definition `XREG_SP n = registers :> element n`;;
 let WREG_SP = new_definition `WREG_SP n = XREG_SP n :> zerotop_32`;;
 let XREG' = new_definition `XREG' (n:5 word) = XREG (val n)`;;
 let WREG' = new_definition `WREG' (n:5 word) = WREG (val n)`;;
+let QREG' = new_definition `QREG' (n:5 word) = QREG (val n)`;;
 
 let arm_logop = new_definition `arm_logop (opc:2 word) N
     (Rd:(armstate,N word)component) Rn Rm =
@@ -199,6 +200,12 @@ let decode = new_definition `!w:int32. decode w =
   | [x; 0b01010010:8; ld; imm7:7; Rt2:5; Rn:5; Rt:5] ->
     SOME (arm_ldstp ld x Rt Rt2 (XREG_SP Rn)
       (Immediate_Offset (iword (ival imm7 * &(if x then 8 else 4)))))
+  | [0:1; q; 0b001110000:9; imm5:5; 0b001111:6; Rn:5; Rd:5] ->
+    if q /\ word_subword imm5 (0,4) = (word 0b1000: 4 word) then // v.d
+      SOME (arm_UMOV (XREG' Rd) (QREG' Rn) (val (word_subword imm5 (4,1): 1 word)) 8)
+    else if ~q /\ word_subword imm5 (0,3) = (word 0b100: 3 word) then // v.s
+      SOME (arm_UMOV (WREG' Rd) (QREG' Rn) (val (word_subword imm5 (3,2): 2 word)) 4)
+    else NONE // v.h, v.b are unsupported
   | _ -> NONE`;;
 
 (* ------------------------------------------------------------------------- *)
@@ -235,8 +242,10 @@ let REG_CONV =
   let xs = [|X0; X1; X2; X3; X4; X5; X6; X7; X8; X9; X10;X11;X12;X13;X14;X15;
              X16;X17;X18;X19;X20;X21;X22;X23;X24;X25;X26;X27;X28;X29;X30;XZR|]
   and ws = [|W0; W1; W2; W3; W4; W5; W6; W7; W8; W9; W10;W11;W12;W13;W14;W15;
-             W16;W17;W18;W19;W20;W21;W22;W23;W24;W25;W26;W27;W28;W29;W30;WZR|] in
-  List.iter (fun A -> Array.iteri (fun i th -> A.(i) <- SYM th) A) [xs;ws];
+             W16;W17;W18;W19;W20;W21;W22;W23;W24;W25;W26;W27;W28;W29;W30;WZR|]
+  and qs = [|Q0; Q1; Q2; Q3; Q4; Q5; Q6; Q7; Q8; Q9; Q10;Q11;Q12;Q13;Q14;Q15;
+          Q16;Q17;Q18;Q19;Q20;Q21;Q22;Q23;Q24;Q25;Q26;Q27;Q28;Q29;Q30;Q31|] in
+  List.iter (fun A -> Array.iteri (fun i th -> A.(i) <- SYM th) A) [xs;ws;qs];
   let _ =
     let th1,th2 = (CONJ_PAIR o prove) (`XREG 31 = XZR /\ WREG 31 = WZR`,
       REWRITE_TAC [ARM_ZERO_REGISTER]) in
@@ -252,11 +261,11 @@ let REG_CONV =
       let th' = INST [mk_numeral (Int i),`n:num`] regth in
       TRANS (PROVE_HYP (EQT_ELIM (NUM_RED_CONV (hd (hyp th')))) th') th) A in
     F sp xth xs, F wsp wth ws in
-  let xs',ws' =
+  let xs',ws',qs' =
     let F th' A = Array.mapi (fun i ->
       TRANS (CONV_RULE (RAND_CONV (RAND_CONV WORD_RED_CONV))
         (SPEC (mk_comb (`word:num->5 word`, mk_numeral (Int i))) th'))) A in
-    F XREG' xs, F WREG' ws in
+    F XREG' xs, F WREG' ws, F QREG' qs in
   function
   | Comb(Const("XREG",_),n) -> xs.(Num.int_of_num (dest_numeral n))
   | Comb(Const("WREG",_),n) -> ws.(Num.int_of_num (dest_numeral n))
@@ -264,6 +273,8 @@ let REG_CONV =
     xs'.(Num.int_of_num (dest_numeral n))
   | Comb(Const("WREG'",_),Comb(Const("word",_),n)) ->
     ws'.(Num.int_of_num (dest_numeral n))
+  | Comb(Const("QREG'",_),Comb(Const("word",_),n)) ->
+    qs'.(Num.int_of_num (dest_numeral n))
   | Comb(Const("XREG_SP",_),Comb(Const("word",_),n)) ->
     xsp.(Num.int_of_num (dest_numeral n))
   | Comb(Const("WREG_SP",_),Comb(Const("word",_),n)) ->
@@ -583,6 +594,7 @@ let PURE_DECODE_CONV =
       raise (Invalid_argument ("Unknown match type " ^ string_of_type ty))
   | Comb((Const("XREG'",_) as f),a) -> eval_unary f a F REG_CONV
   | Comb((Const("WREG'",_) as f),a) -> eval_unary f a F REG_CONV
+  | Comb((Const("QREG'",_) as f),a) -> eval_unary f a F REG_CONV
   | Comb((Const("XREG_SP",_) as f),a) -> eval_unary f a F REG_CONV
   | Comb((Const("WREG_SP",_) as f),a) -> eval_unary f a F REG_CONV
   | Comb(Comb(Const("arm_adcop",_),_),_) ->
@@ -618,6 +630,8 @@ let PURE_DECODE_CONV =
   | Comb((Const("word_sx",_) as f),a) -> eval_unary f a F IWORD_SX_CONV
   | Comb((Const("word_not",_) as f),a) -> eval_unary f a F WORD_RED_CONV
   | Comb(Comb((Const("word_join",_) as f),a),b) ->
+    eval_binary f a b F WORD_RED_CONV
+  | Comb(Comb((Const("word_subword",_) as f),a),b) ->
     eval_binary f a b F WORD_RED_CONV
   | Comb(Const("@",_),_) -> raise (Invalid_argument "ARB")
   | Const("ARB",_) -> raise (Invalid_argument "ARB")
