@@ -15,14 +15,14 @@
 package subprocess
 
 import (
-	"bytes"
+	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 )
 
-// The following structures reflect the JSON of ACVP KDF tests. See
-// https://pages.nist.gov/ACVP/draft-celi-acvp-kdf-tls.html#name-test-vectors
+// The following structures reflect the JSON of ACVP KDF-1.0 tests. See
+// https://pages.nist.gov/ACVP/draft-celi-acvp-kbkdf.html#name-test-groups-json-schema
 
 type kdfTestVectorSet struct {
 	Groups []kdfTestGroup `json:"testGroups"`
@@ -40,9 +40,9 @@ type kdfTestGroup struct {
 	ZeroIV          bool   `json:"zeroLengthIv"`
 
 	Tests []struct {
-		ID       uint64 `json:"tcId"`
-		Key      string `json:"keyIn"`
-		Deferred bool   `json:"deferred"`
+		ID     uint64 `json:"tcId"`
+		KeyHex string `json:"keyIn"`
+		IvHex  string `json:"iv"`
 	}
 }
 
@@ -53,7 +53,6 @@ type kdfTestGroupResponse struct {
 
 type kdfTestResponse struct {
 	ID        uint64 `json:"tcId"`
-	KeyIn     string `json:"keyIn,omitempty"`
 	FixedData string `json:"fixedData"`
 	KeyOut    string `json:"keyOut"`
 }
@@ -74,54 +73,46 @@ func (k *kdfPrimitive) Process(vectorSet []byte, m Transactable) (interface{}, e
 			return nil, fmt.Errorf("%d bit key in test group %d: fractional bytes not supported", group.OutputBits, group.ID)
 		}
 
-		if group.KDFMode != "counter" {
-			// feedback mode would need the IV to be handled.
-			// double-pipeline mode is not useful.
+		if group.KDFMode != "feedback" {
+			// We only support KBKDF in feedback mode
 			return nil, fmt.Errorf("KDF mode %q not supported", group.KDFMode)
 		}
 
-		switch group.CounterLocation {
-		case "after fixed data", "before fixed data":
-			break
-		default:
-			return nil, fmt.Errorf("Label location %q not supported", group.CounterLocation)
+		if group.CounterLocation != "after fixed data" {
+			// We only support the counter location being after fixed data
+			return nil, fmt.Errorf("label location %q not supported", group.CounterLocation)
 		}
 
-		counterBits := uint32le(group.CounterBits)
+		if group.CounterBits != 8 {
+			// We only support counter lengths of 8
+			return nil, fmt.Errorf("counter length %q not supported", group.CounterBits)
+		}
+
 		outputBytes := uint32le(group.OutputBits / 8)
+
+		// Fixed data variable is determined by the IUT according to the NIST specifications
+		// We send it as part of the response so that NIST can verify whether it is correct
+		fixedData := make([]byte, 4)
+		rand.Read(fixedData)
 
 		for _, test := range group.Tests {
 			testResp := kdfTestResponse{ID: test.ID}
 
-			var key []byte
-			if test.Deferred {
-				if len(test.Key) != 0 {
-					return nil, fmt.Errorf("key provided in deferred test case %d/%d", group.ID, test.ID)
-				}
-			} else {
-				var err error
-				if key, err = hex.DecodeString(test.Key); err != nil {
-					return nil, fmt.Errorf("failed to decode Key in test case %d/%d: %v", group.ID, test.ID, err)
-				}
+			key, err := hex.DecodeString(test.KeyHex)
+			if err != nil {
+				return nil, fmt.Errorf("failed to decode Key in test case %d/%d: %v", group.ID, test.ID, err)
 			}
 
 			// Make the call to the crypto module.
-			resp, err := m.Transact("KDF-counter", 3, outputBytes, []byte(group.MACMode), []byte(group.CounterLocation), key, counterBits)
+			resp, err := m.Transact("KDF/Feedback/"+group.MACMode, 1, outputBytes, key, fixedData)
 			if err != nil {
 				return nil, fmt.Errorf("wrapper KDF operation failed: %s", err)
 			}
 
 			// Parse results.
 			testResp.ID = test.ID
-			if test.Deferred {
-				testResp.KeyIn = hex.EncodeToString(resp[0])
-			}
-			testResp.FixedData = hex.EncodeToString(resp[1])
-			testResp.KeyOut = hex.EncodeToString(resp[2])
-
-			if !test.Deferred && !bytes.Equal(resp[0], key) {
-				return nil, fmt.Errorf("wrapper returned a different key for non-deferred KDF operation")
-			}
+			testResp.KeyOut = hex.EncodeToString(resp[0])
+			testResp.FixedData = hex.EncodeToString(fixedData)
 
 			groupResp.Tests = append(groupResp.Tests, testResp)
 		}

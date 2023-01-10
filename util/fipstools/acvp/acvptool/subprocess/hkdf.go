@@ -1,32 +1,23 @@
-// Copyright (c) 2021, Google Inc.
-//
-// Permission to use, copy, modify, and/or distribute this software for any
-// purpose with or without fee is hereby granted, provided that the above
-// copyright notice and this permission notice appear in all copies.
-//
-// THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
-// WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
-// MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
-// SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
-// WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
-// OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
-// CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0 OR ISC
 
 package subprocess
 
 import (
 	"bytes"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"strings"
 )
 
-// The following structures reflect the JSON of ACVP KAS KDF tests. See
-// https://pages.nist.gov/ACVP/draft-hammett-acvp-kas-kdf-twostep.html
+// The following structures reflect the JSON of ACVP KDA HKDF tests. See
+// https://pages.nist.gov/ACVP/draft-hammett-acvp-kas-kdf-hkdf.html
 
 type hkdfTestVectorSet struct {
 	Groups []hkdfTestGroup `json:"testGroups"`
+	Mode   string          `json:"mode"`
 }
 
 type hkdfTestGroup struct {
@@ -46,38 +37,35 @@ type hkdfTest struct {
 
 type hkdfConfiguration struct {
 	Type               string `json:"kdfType"`
-	AdditionalNonce    bool   `json:"requiresAdditionalNoncePair"`
-	OutputBits         uint32 `json:"l"`
+	SaltMethod         string `json:"saltMethod"`
+	SaltLength         uint64 `json:"saltLen"`
 	FixedInfoPattern   string `json:"fixedInfoPattern"`
 	FixedInputEncoding string `json:"fixedInfoEncoding"`
-	KDFMode            string `json:"kdfMode"`
-	MACMode            string `json:"macMode"`
-	CounterLocation    string `json:"counterLocation"`
-	CounterBits        uint   `json:"counterLen"`
+	HmacAlg            string `json:"hmacAlg"`
+	OutputBits         uint32 `json:"l"`
 }
 
 func (c *hkdfConfiguration) extract() (outBytes uint32, hashName string, err error) {
-	if c.Type != "twoStep" ||
-		c.AdditionalNonce ||
-		c.FixedInfoPattern != "uPartyInfo||vPartyInfo" ||
+	if c.Type != "hkdf" ||
+		(c.SaltMethod != "default" && c.SaltMethod != "random") ||
+		!strings.Contains(c.FixedInfoPattern, "uPartyInfo||vPartyInfo") ||
 		c.FixedInputEncoding != "concatenation" ||
-		c.KDFMode != "feedback" ||
-		c.CounterLocation != "after fixed data" ||
-		c.CounterBits != 8 ||
 		c.OutputBits%8 != 0 {
-		return 0, "", fmt.Errorf("KAS-KDF not configured for HKDF: %#v", c)
+		return 0, "", fmt.Errorf("Test group not configured for KDA HKDF")
 	}
 
-	if !strings.HasPrefix(c.MACMode, "HMAC-") {
-		return 0, "", fmt.Errorf("MAC mode %q does't start with 'HMAC-'", c.MACMode)
-	}
-
-	return c.OutputBits / 8, c.MACMode[5:], nil
+	return c.OutputBits / 8, c.HmacAlg, nil
 }
 
 type hkdfParameters struct {
-	SaltHex string `json:"salt"`
-	KeyHex  string `json:"z"`
+	KdfType         string `json:"kdfType"`
+	SaltHex         string `json:"salt"`
+	AlgorithmId     string `json:"algorithmID"`
+	Context         string `json:"context"`
+	Label           string `json:"label"`
+	OutputBits      uint32 `json:"l"`
+	KeyHex          string `json:"z"`
+	SecondaryKeyHex string `json:"t"`
 }
 
 func (p *hkdfParameters) extract() (key, salt []byte, err error) {
@@ -92,6 +80,13 @@ func (p *hkdfParameters) extract() (key, salt []byte, err error) {
 	}
 
 	return key, salt, nil
+}
+
+func (p *hkdfParameters) data() []byte {
+	ret := make([]byte, 4)
+	binary.BigEndian.PutUint32(ret, p.OutputBits)
+
+	return ret
 }
 
 type hkdfPartyInfo struct {
@@ -139,6 +134,7 @@ func (k *hkdf) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 	for _, group := range parsed.Groups {
 		groupResp := hkdfTestGroupResponse{ID: group.ID}
 
+		// determine the test type
 		var isValidationTest bool
 		switch group.Type {
 		case "VAL":
@@ -149,6 +145,7 @@ func (k *hkdf) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 			return nil, fmt.Errorf("unknown test type %q", group.Type)
 		}
 
+		// get the number of bytes to output and the hmac alg we're using
 		outBytes, hashName, err := group.Config.extract()
 		if err != nil {
 			return nil, err
@@ -169,6 +166,7 @@ func (k *hkdf) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 			if err != nil {
 				return nil, err
 			}
+			lenData := test.Params.data()
 
 			var expected []byte
 			if isValidationTest {
@@ -178,13 +176,14 @@ func (k *hkdf) Process(vectorSet []byte, m Transactable) (interface{}, error) {
 				}
 			}
 
-			info := make([]byte, 0, len(uData)+len(vData))
+			info := make([]byte, 0, len(uData)+len(vData)+len(lenData))
 			info = append(info, uData...)
 			info = append(info, vData...)
+			info = append(info, lenData...)
 
-			resp, err := m.Transact("HKDF/"+hashName, 1, key, salt, info, uint32le(outBytes))
+			resp, err := m.Transact("KDA/HKDF/"+hashName, 1, key, salt, info, uint32le(outBytes))
 			if err != nil {
-				return nil, fmt.Errorf("HKDF operation failed: %s", err)
+				return nil, fmt.Errorf("KDA_HKDF operation failed: %s", err)
 			}
 
 			if isValidationTest {
