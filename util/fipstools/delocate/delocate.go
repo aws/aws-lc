@@ -588,19 +588,11 @@ func (d *delocation) processAarch64Instruction(statement, instruction *node32) (
 							panic("Symbol reference outside of ldr instruction")
 						}
 
-						// Temporary workaround for post-increment after "#:lo12:.LC9+8". Not sure
-						// if this works, but the build goes through for now.
-						//
-						// if skipWS(parts.next) != nil || parts.up.next != nil {
+						// The "parts.up.next != nil" check was removed because gcc/release appends an
+						// offset to the symbol reference. ex: #:lo12:.LC9+8
 						if skipWS(parts.next) != nil {
-							// fmt.Print("\n\n", parts, parts.next, parts.up, parts.up.next, "\n\n")
-							panic("can't handle tweak or post-increment with symbol references")
+							panic("can't handle tweak with symbol references")
 						}
-						// if parts.up.next.pegRule == ruleOffset {
-						// 	skipNodes(parts.up.next, ruleOffset)
-						// 	fmt.Print("\n\n", parts, parts.next, parts.up, parts.up.next, "\n\n")
-						// 	panic("break point")
-						// }
 
 						// Suppress the offset; adrp loaded the full address.
 						args = append(args, "["+baseAddrReg+"]")
