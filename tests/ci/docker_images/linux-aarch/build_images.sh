@@ -9,6 +9,9 @@ curl --head -H "Authorization: Bearer $TOKEN" https://registry-1.docker.io/v2/ra
 docker build -t amazonlinux-2-aarch:base amazonlinux-2_base
 docker build -t amazonlinux-2-aarch:gcc-7x amazonlinux-2_gcc-7x
 docker build -t amazonlinux-2-aarch:clang-7x amazonlinux-2_clang-7x
+docker build -t amazonlinux-2022-aarch:base amazonlinux-2022_base
+docker build -t amazonlinux-2022-aarch:gcc-11x amazonlinux-2022_gcc-11x
+docker build -t amazonlinux-2022-aarch:clang-14x amazonlinux-2022_clang-14x
 docker build -t ubuntu-20.04-aarch:base ubuntu-20.04_base
 docker build -t ubuntu-20.04-aarch:gcc-7x ubuntu-20.04_gcc-7x
 docker build -t ubuntu-20.04-aarch:gcc-8x ubuntu-20.04_gcc-8x
