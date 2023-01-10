@@ -748,6 +748,10 @@ extern void bignum_tomont_p384_alt (uint64_t z[6], uint64_t x[6]);
 /*  Input x[9]; output z[9] */
 extern void bignum_tomont_p521 (uint64_t z[9], uint64_t x[9]);
 
+/* Convert to Montgomery form z := (2^256 * x) mod p_sm2 */
+/* Input x[4]; output z[4] */
+extern void bignum_tomont_sm2 (uint64_t z[4], uint64_t x[4]);
+
 /*  Triple modulo p_256, z := (3 * x) mod p_256 */
 /*  Input x[4]; output z[4] */
 extern void bignum_triple_p256 (uint64_t z[4], uint64_t x[4]);

@@ -7654,6 +7654,38 @@ int test_bignum_tomont_p521(void)
   return 0;
 }
 
+int test_bignum_tomont_sm2(void)
+{ uint64_t t;
+  printf("Testing bignum_tomont_sm2 with %d cases\n",tests);
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(4,b0);
+     reference_modpowtwo(4,b1,256,p_sm2);
+     reference_mul(8,b2,4,b1,4,b0);
+     reference_copy(8,b1,4,p_sm2);
+     reference_mod(8,b3,b2,b1);
+     bignum_tomont_sm2(b4,b0);
+
+     c = reference_compare(4,b3,4,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "2^256 * ...0x%016"PRIx64" mod p_sm2 = "
+               "0x%016"PRIx64"...%016"PRIx64" not 0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(4),b0[0],b4[3],b4[0],b3[3],b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "2^256 * ...0x%016"PRIx64" mod p_sm2 = "
+               "0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(4),b0[0],b4[3],b4[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
 int test_bignum_triple_p256(void)
 { uint64_t i, k;
   printf("Testing bignum_triple_p256 with %d cases\n",tests);
@@ -9607,6 +9639,7 @@ int main(int argc, char *argv[])
   functionaltest(bmi,"bignum_tomont_p384",test_bignum_tomont_p384);
   functionaltest(all,"bignum_tomont_p384_alt",test_bignum_tomont_p384_alt);
   functionaltest(all,"bignum_tomont_p521",test_bignum_tomont_p521);
+  functionaltest(all,"bignum_tomont_sm2",test_bignum_tomont_sm2);
   functionaltest(bmi,"bignum_triple_p256",test_bignum_triple_p256);
   functionaltest(all,"bignum_triple_p256_alt",test_bignum_triple_p256_alt);
   functionaltest(bmi,"bignum_triple_p256k1",test_bignum_triple_p256k1);

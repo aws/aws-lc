@@ -82,7 +82,7 @@ S2N_BN_SYMBOL(bignum_tomont_p256_alt):
         ldp     d2, d3, [x1, #16]
 
 // Do an initial reduction to make sure this is < p_256, using just
-// a copy of the bignum_mod_p256 code. This is needed to set up the
+// a copy of the bignum_mod_p256_4 code. This is needed to set up the
 // invariant "input < p_256" for the main modular reduction steps.
 
         mov     t0, #0xffffffffffffffff

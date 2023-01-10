@@ -164,6 +164,7 @@ bignum_tomont_p256_alt
 bignum_tomont_p256k1_alt
 bignum_tomont_p384_alt
 bignum_tomont_p521
+bignum_tomont_sm2
 bignum_triple_p256_alt
 bignum_triple_p256k1_alt
 bignum_triple_p384_alt
