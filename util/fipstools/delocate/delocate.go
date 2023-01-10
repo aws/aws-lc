@@ -492,12 +492,13 @@ func (d *delocation) processAarch64Instruction(statement, instruction *node32) (
 		return d.loadAarch64Address(statement, targetReg, symbol, offset)
 	case "bl":
 		// We were relying on symbols defined with ".comm" to populate bssAccessorsNeeded,
-		// but gcc release does not use ".comm" to define common symbols. The accessor
-		// functions are defined with a ".type $symbol %object" followed with a
-		// ".size $symbol $symbol_size" instead. These definition methods are generic and
-		// do not only apply to symbols that need accessors. Thus we attempt to reverse
-		// engineer the accessor symbols by populating bssAccessorsNeeded with branch labels
-		// that have the accessor "_bss_get" at the suffix.
+		// but the gcc release build does not use ".comm" to define common symbols. The
+		// symbols requiring accessor functions (i.e. with a suffix_bss_get) are defined
+		// with a ".type $symbol %object" followed with a ".size $symbol $symbol_size"
+		// instead. These definition methods are generic and do not only apply to symbols
+		// that need accessors. Thus we attempt to reverse engineer the accessor symbols
+		// by populating bssAccessorsNeeded with labels from "bl" that have the accessor
+		// "_bss_get" at the suffix.
 		bss_get_symbol := d.contents(argNodes[0])
 		if strings.HasSuffix(bss_get_symbol, "_bss_get") {
 			trimmed_symbol := strings.TrimSuffix(bss_get_symbol, "_bss_get")
@@ -588,7 +589,7 @@ func (d *delocation) processAarch64Instruction(statement, instruction *node32) (
 							panic("Symbol reference outside of ldr instruction")
 						}
 
-						// The "parts.up.next != nil" check was removed because gcc/release appends an
+						// The check for "parts.up.next != nil" was removed because gcc/release appends an
 						// offset to the symbol reference. ex: #:lo12:.LC9+8
 						if skipWS(parts.next) != nil {
 							panic("can't handle tweak with symbol references")
