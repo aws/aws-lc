@@ -5,6 +5,8 @@ FROM arm64v8/amazonlinux:2022
 
 SHELL ["/bin/bash", "-c"]
 
+ENV DEPENDENCIES_DIR=/home/dependencies
+
 # Install Valgrind for Valgrind test target even though it is not needed for the base test target.
 RUN set -ex && \
     yum -y update && yum install -y \

@@ -22,8 +22,6 @@ docker build -t ubuntu-20.04:clang-9x ubuntu-20.04_clang-9x
 docker build -t ubuntu-20.04:clang-10x ubuntu-20.04_clang-10x
 docker build -t ubuntu-20.04:android ubuntu-20.04_android
 docker build -t ubuntu-20.04:clang-7x-bm-framework ubuntu-20.04_clang-7x-bm-framework
-# This passes in the Dockerfile in the folder but uses the parent directory for the context so it has access to cryptofuzz_data.zip
-docker build -t ubuntu-20.04:cryptofuzz -f ubuntu-20.04_cryptofuzz/Dockerfile ../
 docker build -t ubuntu-22.04:base ubuntu-22.04_base
 docker build -t ubuntu-22.04:gcc-11x ubuntu-22.04_gcc-11x
 docker build -t ubuntu-22.04:gcc-12x ubuntu-22.04_gcc-12x
@@ -35,6 +33,8 @@ docker build -t amazonlinux-2022:base amazonlinux-2022_base
 docker build -t amazonlinux-2022:gcc-11x amazonlinux-2022_gcc-11x
 docker build -t amazonlinux-2022:clang-14x amazonlinux-2022_clang-14x
 docker build -t amazonlinux-2022:clang-14x-sanitizer amazonlinux-2022_clang-14x_sanitizer
+# This passes in the Dockerfile in the folder but uses the parent directory for the context so it has access to cryptofuzz_data.zip
+docker build -t amazonlinux-2022:cryptofuzz -f amazonlinux-2022_clang-14x_cryptofuzz/Dockerfile ../
 docker build -t ubuntu-16.04:gcc-5x ubuntu-16.04_gcc-5x
 docker build -t centos-7:gcc-4x centos-7_gcc-4x
 docker build -t fedora-31:clang-9x fedora-31_clang-9x
