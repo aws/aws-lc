@@ -125,8 +125,12 @@ static int dsa_pub_encode(CBB *out, const EVP_PKEY *key) {
   return 1;
 }
 
-static int dsa_priv_decode(EVP_PKEY *out, CBS *params, CBS *key) {
+static int dsa_priv_decode(EVP_PKEY *out, CBS *params, CBS *key, CBS *pubkey) {
   // See PKCS#11, v2.40, section 2.5.
+  if(pubkey) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+    return 0;
+  }
 
   // Decode parameters.
   BN_CTX *ctx = NULL;
@@ -259,6 +263,7 @@ const EVP_PKEY_ASN1_METHOD dsa_asn1_meth = {
 
   dsa_priv_decode,
   dsa_priv_encode,
+  NULL /* priv_encode_v2 */,
 
   NULL /* set_priv_raw */,
   NULL /* set_pub_raw */,

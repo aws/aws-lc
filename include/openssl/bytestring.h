@@ -229,8 +229,11 @@ OPENSSL_EXPORT int CBS_get_until_first(CBS *cbs, CBS *out, uint8_t c);
 
 // CBS_get_asn1 sets |*out| to the contents of DER-encoded, ASN.1 element (not
 // including tag and length bytes) and advances |cbs| over it. The ASN.1
-// element must match |tag_value|. It returns one on success and zero
-// on error.
+// element must match |tag_value|.
+//
+// If |*out| is NULL, then the contents will be discarded.
+//
+// It returns one on success and zero on error.
 OPENSSL_EXPORT int CBS_get_asn1(CBS *cbs, CBS *out, CBS_ASN1_TAG tag_value);
 
 // CBS_get_asn1_element acts like |CBS_get_asn1| but |out| will include the

@@ -18,8 +18,8 @@ static void kyber512_free(EVP_PKEY *pkey) {
   pkey->pkey.ptr = NULL;
 }
 
-static int kyber512_set_priv_raw(EVP_PKEY *pkey, const uint8_t *in, size_t len) {
-  if (len != KYBER512_SECRET_KEY_BYTES) {
+static int kyber512_set_priv_raw(EVP_PKEY *pkey, const uint8_t *privkey, size_t privkey_len, const uint8_t *pubkey, size_t pubkey_len) {
+  if (privkey_len != KYBER512_SECRET_KEY_BYTES) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_KEYBITS);
     return 0;
   }
@@ -33,7 +33,7 @@ static int kyber512_set_priv_raw(EVP_PKEY *pkey, const uint8_t *in, size_t len) 
   OPENSSL_STATIC_ASSERT(sizeof(key->priv) >= KYBER512_SECRET_KEY_BYTES,
                         not_enough_space_for_kyber512_secret_key);
 
-  OPENSSL_memcpy(key->priv, in, len);
+  OPENSSL_memcpy(key->priv, privkey, privkey_len);
   key->has_private = 1;
 
   kyber512_free(pkey);
@@ -129,6 +129,7 @@ const EVP_PKEY_ASN1_METHOD kyber512_asn1_meth = {
     kyber512_pub_cmp,
     NULL,
     NULL,
+    NULL /* priv_encode_v2 */,
     kyber512_set_priv_raw,
     kyber512_set_pub_raw,
     kyber512_get_priv_raw,
