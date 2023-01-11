@@ -105,6 +105,12 @@ void BLAKE2B256_Init(BLAKE2B_CTX *b2b) {
 }
 
 void BLAKE2B256_Update(BLAKE2B_CTX *b2b, const void *in_data, size_t len) {
+  // A length of zero is a valid input, however there is no work to be done and
+  // the logic below attempts to apply a zero offset to the potentially null
+  // pointer in_data which is undefined behavior.
+  if (len == 0) {
+    return;
+  }
   const uint8_t *data = (const uint8_t *)in_data;
 
   size_t todo = sizeof(b2b->block.bytes) - b2b->block_used;

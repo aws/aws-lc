@@ -16,15 +16,15 @@ if [ $(dpkg --print-architecture) == "arm64" ]; then
   # Instead of running the two sets tests, only the former test is executed here. ssl runner tests are covered by |run_ssl_asan_tests.sh|.
   # https://github.com/google/sanitizers/issues/1331
   echo "Building AWS-LC in ${build_type} mode with address sanitizer, and running only non ssl test."
-  run_build -DASAN=1 -DUSE_CUSTOM_LIBCXX=1 "${cflags[@]}"
+  run_build -DASAN=1 "${cflags[@]}"
   go run util/all_tests.go -build-dir "$BUILD_ROOT"
 else
   echo "Testing AWS-LC in ${build_type} mode with address sanitizer."
-  build_and_test -DASAN=1 -DUSE_CUSTOM_LIBCXX=1 "${cflags[@]}"
+  build_and_test -DASAN=1 "${cflags[@]}"
 fi
 
 echo "Testing AWS-LC in ${build_type} mode with control flow integrity sanitizer."
-build_and_test -DCFI=1 -DUSE_CUSTOM_LIBCXX=1 "${cflags[@]}"
+build_and_test -DCFI=1 "${cflags[@]}"
 
 echo "Testing AWS-LC in ${build_type} mode with undefined behavior sanitizer."
 export UBSAN_OPTIONS=print_stacktrace=1
