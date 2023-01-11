@@ -12,7 +12,7 @@ SKIP_TEST=0
 GENERATE_FIPS=0
 
 # TODO: Match AWS-LC's Github release version when this is more stable.
-AWS_LC_SYS_VERSION="0.3.0"
+AWS_LC_SYS_VERSION="0.3.1"
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 AWS_LC_DIR=$( cd -- "${SCRIPT_DIR}/../../../" &> /dev/null && pwd)
