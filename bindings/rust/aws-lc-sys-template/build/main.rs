@@ -16,13 +16,15 @@
 // Modifications Copyright Amazon.com, Inc. or its affiliates. See GitHub history for details.
 
 use cfg_aliases::cfg_aliases;
+#[cfg(feature = "bindgen")]
+use std::default::Default;
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::{env, fs};
 
 #[cfg(feature = "bindgen")]
-mod build_bindgen;
+mod bindgen;
 
 pub(crate) fn get_include_path(manifest_dir: &Path) -> PathBuf {
     manifest_dir.join("deps").join("aws-lc").join("include")
@@ -99,20 +101,13 @@ fn prefix_string() -> String {
     format!("aws_lc_{}", VERSION.to_string().replace('.', "_"))
 }
 
-fn test_perl_command() -> bool {
-    test_command("perl".as_ref(), &["--version".as_ref()])
-}
-
-fn test_go_command() -> bool {
-    test_command("go".as_ref(), &["version".as_ref()])
-}
-
 #[cfg(feature = "internal_generate")]
-fn target_platform_bindings_string() -> String {
+fn target_platform_prefix(name: &str) -> String {
     format!(
-        "{}_{}_bindings.rs",
+        "{}_{}_{}",
         std::env::consts::OS,
-        std::env::consts::ARCH
+        std::env::consts::ARCH,
+        name
     )
 }
 
@@ -161,8 +156,12 @@ fn prepare_cmake_build(build_prefix: Option<&str>) -> cmake::Config {
         );
     }
 
+    // Build flags that minimize our crate size.
     cmake_cfg.define("BUILD_TESTING", "OFF");
-    cmake_cfg.define("FIPS", "1");
+    cmake_cfg.define("BUILD_LIBSSL", "ON");
+    // Build flags that minimize our dependencies.
+    cmake_cfg.define("DISABLE_PERL", "ON");
+    cmake_cfg.define("DISABLE_GO", "ON");
 
     if cfg!(feature = "asan") {
         env::set_var("CC", "/usr/bin/clang");
@@ -178,28 +177,75 @@ fn prepare_cmake_build(build_prefix: Option<&str>) -> cmake::Config {
 fn build_aws_lc() -> PathBuf {
     let mut cmake_cfg = prepare_cmake_build(Some(&prefix_string()));
 
-    cmake_cfg.build_target("crypto").build()
+    // cmake supports passing multiple arguments to target, but this is broken in the cmake crate
+    // ssl requires crypto so we can get away with just picking the top-most requried one.
+    let target = if cfg!(feature = "ssl") {
+        Some("ssl")
+    } else {
+        Some("crypto")
+    };
+
+    cmake_cfg.build_target(target.unwrap()).build()
+}
+
+#[cfg(feature = "bindgen")]
+fn generate_bindings(manifest_dir: &PathBuf, prefix: &str, bindings_path: &PathBuf) {
+    let options = bindgen::BindingOptions {
+        build_prefix: Some(&prefix),
+        include_ssl: cfg!(feature = "ssl"),
+        disable_prelude: true,
+        ..Default::default()
+    };
+
+    let bindings =
+        bindgen::generate_bindings(&manifest_dir, options).expect("Unable to generate bindings.");
+
+    bindings
+        .write(Box::new(std::fs::File::create(&bindings_path).unwrap()))
+        .expect("written bindings");
+}
+
+#[cfg(feature = "internal_generate")]
+fn generate_src_bindings(manifest_dir: &PathBuf, prefix: &str, src_bindings_path: &PathBuf) {
+    bindgen::generate_bindings(
+        &manifest_dir,
+        bindgen::BindingOptions {
+            build_prefix: Some(&prefix),
+            include_ssl: false,
+            ..Default::default()
+        },
+    )
+    .expect("Unable to generate bindings.")
+    .write_to_file(src_bindings_path.join(format!("{}.rs", target_platform_prefix("crypto"))))
+    .expect("write bindings");
+
+    bindgen::generate_bindings(
+        &manifest_dir,
+        bindgen::BindingOptions {
+            build_prefix: Some(&prefix),
+            include_ssl: true,
+            ..Default::default()
+        },
+    )
+    .expect("Unable to generate bindings.")
+    .write_to_file(src_bindings_path.join(format!("{}.rs", target_platform_prefix("crypto_ssl"))))
+    .expect("write bindings");
 }
 
 fn main() -> Result<(), String> {
-    use crate::OutputLib::Crypto;
+    use crate::OutputLib::{Crypto, Ssl};
     use crate::OutputLibType::Static;
 
     cfg_aliases! {
-        linux_x86_64_bindings: { all(not(feature = "bindgen"), target_os = "linux", target_arch = "x86_64") },
-        linux_aarch64_bindings: { all(not(feature = "bindgen"), target_os = "linux", target_arch = "aarch64") },
-        not_pregenerated: { not(any(linux_aarch64_bindings, linux_x86_64_bindings)) },
+        linux_x86: { all(not(feature = "bindgen"), target_os = "linux", target_arch = "x86") },
+        linux_x86_64: { all(not(feature = "bindgen"), target_os = "linux", target_arch = "x86_64") },
+        linux_aarch64: { all(not(feature = "bindgen"), target_os = "linux", target_arch = "aarch64") },
+        macos_x86_64: { all(not(feature = "bindgen"), target_os = "macos", target_arch = "x86_64") },
+        not_pregenerated: { not(any(linux_x86, linux_aarch64, linux_x86_64, macos_x86_64)) },
     }
 
     let mut missing_dependency = false;
-    if !test_go_command() {
-        eprintln!("Missing dependency: go-lang is required for FIPS.");
-        missing_dependency = true;
-    }
-    if !test_perl_command() {
-        eprintln!("Missing dependency: perl is required for FIPS.");
-        missing_dependency = true;
-    }
+
     if let Some(cmake_cmd) = find_cmake_command() {
         env::set_var("CMAKE", cmake_cmd);
     } else {
@@ -215,35 +261,58 @@ fn main() -> Result<(), String> {
     let manifest_dir = dunce::canonicalize(Path::new(&manifest_dir)).unwrap();
     let prefix = prefix_string();
 
-    #[cfg(any(feature = "bindgen", not_pregenerated))]
-    build_bindgen::generate_bindings(&manifest_dir, Some(&prefix), "bindings.rs")
-        .expect("Unable to generate bindings.");
     #[cfg(feature = "internal_generate")]
-    build_bindgen::generate_bindings(
-        &manifest_dir,
-        Some(&prefix),
-        &target_platform_bindings_string().to_string(),
-    )
-    .expect("Unable to generate bindings.");
+    {
+        let src_bindings_path = Path::new(&manifest_dir).join("src");
+        generate_src_bindings(&manifest_dir, &prefix, &src_bindings_path);
+    }
+
+    #[cfg(feature = "bindgen")]
+    {
+        let gen_bindings_path = Path::new(&env::var("OUT_DIR").unwrap()).join("bindings.rs");
+        generate_bindings(&manifest_dir, &prefix, &gen_bindings_path);
+    }
 
     let aws_lc_dir = build_aws_lc();
-    let lib_file = Crypto.locate_file(&aws_lc_dir, Static, None);
-    let prefixed_lib_file = Crypto.locate_file(&aws_lc_dir, Static, Some(&prefix));
-    fs::rename(lib_file, prefixed_lib_file).expect("Unexpected error: Library not found");
 
-    let libcrypto_dir = Crypto.locate_dir(&aws_lc_dir);
-    println!("cargo:rustc-link-search=native={}", libcrypto_dir.display());
+    let libcrypto_file = Crypto.locate_file(&aws_lc_dir, Static, None);
+    let prefixed_libcrypto_file = Crypto.locate_file(&aws_lc_dir, Static, Some(&prefix));
+    fs::rename(libcrypto_file, prefixed_libcrypto_file)
+        .expect("Unexpected error: Library not found");
+
+    println!(
+        "cargo:rustc-link-search=native={}",
+        Crypto.locate_dir(&aws_lc_dir).display()
+    );
 
     println!(
         "cargo:rustc-link-lib={}={}",
         Static.rust_lib_type(),
         Crypto.libname(Some(&prefix))
     );
+
+    if cfg!(feature = "ssl") {
+        let libssl_file = Ssl.locate_file(&aws_lc_dir, Static, None);
+        let prefixed_libssl_file = Ssl.locate_file(&aws_lc_dir, Static, Some(&prefix));
+        fs::rename(libssl_file, prefixed_libssl_file).expect("Unexpected error: Library not found");
+
+        println!(
+            "cargo:rustc-link-search=native={}",
+            Ssl.locate_dir(&aws_lc_dir).display()
+        );
+
+        println!(
+            "cargo:rustc-link-lib={}={}",
+            Static.rust_lib_type(),
+            Ssl.libname(Some(&prefix))
+        );
+    }
+
     println!(
         "cargo:include={}",
         get_include_path(&manifest_dir).display()
     );
-    println!("cargo:rerun-if-changed=build.rs");
 
+    println!("cargo:rerun-if-changed=build/");
     Ok(())
 }
