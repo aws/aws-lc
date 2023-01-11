@@ -7,8 +7,7 @@ source tests/ci/common_posix_setup.sh
 
 build_type=Release
 cflags=("-DCMAKE_BUILD_TYPE=${build_type}")
-
-if [ $(dpkg --print-architecture) == "arm64" ]; then
+if [ $(uname -p) == "aarch64" ]; then
   # BoringSSL provides two sets tests: the C/C++ tests and the blackbox tests.
   # Details: https://github.com/google/boringssl/blob/master/BUILDING.md
   # The blackbox tests (run `go test` under `ssl/test/runner`) take 30 minutes to complete on ARM when ASAN clang flag enabled.
@@ -31,7 +30,7 @@ export UBSAN_OPTIONS=print_stacktrace=1
 build_and_test -DUBSAN=1 "${cflags[@]}"
 unset UBSAN_OPTIONS
 
-if [ $(dpkg --print-architecture) == "arm64" ]; then
+if [ $(uname -p) == "aarch64" ]; then
   # ARM MSAN runs get stuck on PoolTest.Threads for over an hour https://github.com/awslabs/aws-lc/issues/13
   echo "Building AWS-LC in ${build_type} mode with memory sanitizer."
   run_build -DMSAN=1 -DUSE_CUSTOM_LIBCXX=1 "${cflags[@]}"
