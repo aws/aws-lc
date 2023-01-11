@@ -435,54 +435,54 @@ aesv8_gcm_8x_enc_128:
 	cmp	$input_ptr, $main_end_input_ptr				@ check if we have <= 8 blocks
 	b.ge	.L128_enc_tail						@ handle tail
 
-	ldp	$ctr_t0q, $ctr_t1q, [$input_ptr], #32		@ AES block 0, 1 - load plaintext
+	ldp	$ctr_t0q, $ctr_t1q, [$input_ptr], #32			@ AES block 0, 1 - load plaintext
 
-	ldp	$ctr_t2q, $ctr_t3q, [$input_ptr], #32		@ AES block 2, 3 - load plaintext
+	ldp	$ctr_t2q, $ctr_t3q, [$input_ptr], #32			@ AES block 2, 3 - load plaintext
 
-	ldp	$ctr_t4q, $ctr_t5q, [$input_ptr], #32		@ AES block 4, 5 - load plaintext
+	ldp	$ctr_t4q, $ctr_t5q, [$input_ptr], #32			@ AES block 4, 5 - load plaintext
 
-	ldp	$ctr_t6q, $ctr_t7q, [$input_ptr], #32		@ AES block 6, 7 - load plaintext
+	ldp	$ctr_t6q, $ctr_t7q, [$input_ptr], #32			@ AES block 6, 7 - load plaintext
 	cmp	$input_ptr, $main_end_input_ptr				@ check if we have <= 8 blocks
 
-	eor3	$res0b, $ctr_t0b, $ctr0b, $rk10			@ AES block 0 - result
+	eor3	$res0b, $ctr_t0b, $ctr0b, $rk10				@ AES block 0 - result
 	rev32	$ctr0.16b, $rtmp_ctr.16b				@ CTR block 8
-	add	$rtmp_ctr.4s, $rtmp_ctr.4s, $rctr_inc.4s	@ CTR block 8
+	add	$rtmp_ctr.4s, $rtmp_ctr.4s, $rctr_inc.4s		@ CTR block 8
 
-	eor3	$res1b, $ctr_t1b, $ctr1b, $rk10			@ AES block 1 - result
+	eor3	$res1b, $ctr_t1b, $ctr1b, $rk10				@ AES block 1 - result
 	stp	$res0q, $res1q, [$output_ptr], #32			@ AES block 0, 1 - store result
 
 	rev32	$ctr1.16b, $rtmp_ctr.16b				@ CTR block 9
-	eor3	$res5b, $ctr_t5b, $ctr5b, $rk10			@ AES block 5 - result
-	add	$rtmp_ctr.4s, $rtmp_ctr.4s, $rctr_inc.4s	@ CTR block 9
+	eor3	$res5b, $ctr_t5b, $ctr5b, $rk10				@ AES block 5 - result
+	add	$rtmp_ctr.4s, $rtmp_ctr.4s, $rctr_inc.4s		@ CTR block 9
 
-	eor3	$res2b, $ctr_t2b, $ctr2b, $rk10			@ AES block 2 - result
-	eor3	$res6b, $ctr_t6b, $ctr6b, $rk10			@ AES block 6 - result
-	eor3	$res4b, $ctr_t4b, $ctr4b, $rk10			@ AES block 4 - result
+	eor3	$res2b, $ctr_t2b, $ctr2b, $rk10				@ AES block 2 - result
+	eor3	$res6b, $ctr_t6b, $ctr6b, $rk10				@ AES block 6 - result
+	eor3	$res4b, $ctr_t4b, $ctr4b, $rk10				@ AES block 4 - result
 
 	rev32	$ctr2.16b, $rtmp_ctr.16b				@ CTR block 10
-	add	$rtmp_ctr.4s, $rtmp_ctr.4s, $rctr_inc.4s	@ CTR block 10
+	add	$rtmp_ctr.4s, $rtmp_ctr.4s, $rctr_inc.4s		@ CTR block 10
 
-	eor3	$res3b, $ctr_t3b, $ctr3b, $rk10			@ AES block 3 - result
-	eor3	$res7b, $ctr_t7b, $ctr7b,$rk10			@ AES block 7 - result
+	eor3	$res3b, $ctr_t3b, $ctr3b, $rk10				@ AES block 3 - result
+	eor3	$res7b, $ctr_t7b, $ctr7b,$rk10				@ AES block 7 - result
 	stp	$res2q, $res3q, [$output_ptr], #32			@ AES block 2, 3 - store result
 
 	rev32	$ctr3.16b, $rtmp_ctr.16b				@ CTR block 11
-	add	$rtmp_ctr.4s, $rtmp_ctr.4s, $rctr_inc.4s	@ CTR block 11
+	add	$rtmp_ctr.4s, $rtmp_ctr.4s, $rctr_inc.4s		@ CTR block 11
 	stp	$res4q, $res5q, [$output_ptr], #32			@ AES block 4, 5 - store result
 
 	stp	$res6q, $res7q, [$output_ptr], #32			@ AES block 6, 7 - store result
 
 	rev32	$ctr4.16b, $rtmp_ctr.16b				@ CTR block 12
-	add	$rtmp_ctr.4s, $rtmp_ctr.4s, $rctr_inc.4s	@ CTR block 12
+	add	$rtmp_ctr.4s, $rtmp_ctr.4s, $rctr_inc.4s		@ CTR block 12
 	b.ge	.L128_enc_prepretail					@ do prepretail
 
 .L128_enc_main_loop:							@ main loop start
-	rev32	$ctr5.16b, $rtmp_ctr.16b			@ CTR block 8k+13
+	rev32	$ctr5.16b, $rtmp_ctr.16b				@ CTR block 8k+13
 	ldr	$h5q, [$current_tag, #128]				@ load h5l | h5h
 	ext     $h5.16b, $h5.16b, $h5.16b, #8
 	ldr	$h6q, [$current_tag, #160]				@ load h6l | h6h
 	ext     $h6.16b, $h6.16b, $h6.16b, #8
-	add	$rtmp_ctr.4s, $rtmp_ctr.4s, $rctr_inc.4s	@ CTR block 8k+13
+	add	$rtmp_ctr.4s, $rtmp_ctr.4s, $rctr_inc.4s		@ CTR block 8k+13
 
 	rev64	$res1b, $res1b						@ GHASH block 8k+1
 	rev64	$res0b, $res0b						@ GHASH block 8k
@@ -492,7 +492,7 @@ aesv8_gcm_8x_enc_128:
 	ext     $h8.16b, $h8.16b, $h8.16b, #8
 
 	rev32	$ctr6.16b, $rtmp_ctr.16b				@ CTR block 8k+14
-	add	$rtmp_ctr.4s, $rtmp_ctr.4s, $rctr_inc.4s	@ CTR block 8k+14
+	add	$rtmp_ctr.4s, $rtmp_ctr.4s, $rctr_inc.4s		@ CTR block 8k+14
 	ext	$acc_lb, $acc_lb, $acc_lb, #8				@ PRE 0
 
 	ldr	$h56kq, [$current_tag, #144]				@ load h6k | h5k
@@ -502,92 +502,92 @@ aesv8_gcm_8x_enc_128:
 
 	ldp	$rk0q, $rk1q, [$cc, #0]				 	@ load rk0, rk1
 	eor	$res0b, $res0b, $acc_lb				 	@ PRE 1
-	rev32	$ctr7.16b, $rtmp_ctr.16b			@ CTR block 8k+15
+	rev32	$ctr7.16b, $rtmp_ctr.16b				@ CTR block 8k+15
 
 	rev64	$res7b, $res7b						@ GHASH block 8k+7 (t0, t1, t2 and t3 free)
 
-	pmull2  $t0.1q, $res1.2d, $h7.2d			@ GHASH block 8k+1 - high
+	pmull2  $t0.1q, $res1.2d, $h7.2d				@ GHASH block 8k+1 - high
 	rev64	$res2b, $res2b						@ GHASH block 8k+2
-	pmull2  $acc_h.1q, $res0.2d, $h8.2d			@ GHASH block 8k - high
+	pmull2  $acc_h.1q, $res0.2d, $h8.2d				@ GHASH block 8k - high
 
-	pmull	$h7.1q, $res1.1d, $h7.1d			@ GHASH block 8k+1 - low
-	trn1	$acc_m.2d, $res1.2d, $res0.2d		@ GHASH block 8k, 8k+1 - mid
-	pmull	$acc_l.1q, $res0.1d, $h8.1d			@ GHASH block 8k - low
+	pmull	$h7.1q, $res1.1d, $h7.1d				@ GHASH block 8k+1 - low
+	trn1	$acc_m.2d, $res1.2d, $res0.2d				@ GHASH block 8k, 8k+1 - mid
+	pmull	$acc_l.1q, $res0.1d, $h8.1d				@ GHASH block 8k - low
 
-	trn2	$res0.2d, $res1.2d, $res0.2d		@ GHASH block 8k, 8k+1 - mid
-	pmull2  $t1.1q, $res2.2d, $h6.2d			@ GHASH block 8k+2 - high
-	pmull2  $t2.1q, $res3.2d, $h5.2d			@ GHASH block 8k+3 - high
+	trn2	$res0.2d, $res1.2d, $res0.2d				@ GHASH block 8k, 8k+1 - mid
+	pmull2  $t1.1q, $res2.2d, $h6.2d				@ GHASH block 8k+2 - high
+	pmull2  $t2.1q, $res3.2d, $h5.2d				@ GHASH block 8k+3 - high
 
 	eor	$acc_lb, $acc_lb, $h7.16b				@ GHASH block 8k+1 - low
 	ldr	$h3q, [$current_tag, #80]				@ load h3l | h3h
 	ext     $h3.16b, $h3.16b, $h3.16b, #8
 	ldr	$h4q, [$current_tag, #112]				@ load h3l | h3h
 	ext     $h4.16b, $h4.16b, $h4.16b, #8
-	aese	$ctr5b, $rk0  \n  aesmc	$ctr5b, $ctr5b		@ AES block 8k+13 - round 0
+	aese	$ctr5b, $rk0  \n  aesmc	$ctr5b, $ctr5b			@ AES block 8k+13 - round 0
 
-	aese	$ctr1b, $rk0  \n  aesmc	$ctr1b, $ctr1b		@ AES block 8k+9 - round 0
-	aese	$ctr4b, $rk0  \n  aesmc	$ctr4b, $ctr4b		@ AES block 8k+12 - round 0
-	eor	$acc_hb, $acc_hb, $t0.16b				    @ GHASH block 8k+1 - high
+	aese	$ctr1b, $rk0  \n  aesmc	$ctr1b, $ctr1b			@ AES block 8k+9 - round 0
+	aese	$ctr4b, $rk0  \n  aesmc	$ctr4b, $ctr4b			@ AES block 8k+12 - round 0
+	eor	$acc_hb, $acc_hb, $t0.16b				@ GHASH block 8k+1 - high
 
 	add	$rtmp_ctr.4s, $rtmp_ctr.4s, $rctr_inc.4s		@ CTR block 8k+15
-	aese	$ctr2b, $rk0  \n  aesmc	$ctr2b, $ctr2b		@ AES block 8k+10 - round 0
+	aese	$ctr2b, $rk0  \n  aesmc	$ctr2b, $ctr2b			@ AES block 8k+10 - round 0
 	eor	$res0.16b, $res0.16b, $acc_m.16b			@ GHASH block 8k, 8k+1 - mid
 
-	aese	$ctr6b, $rk0  \n  aesmc	$ctr6b, $ctr6b		@ AES block 8k+14 - round 0
-	aese	$ctr1b, $rk1  \n  aesmc	$ctr1b, $ctr1b		@ AES block 8k+9 - round 1
-	aese	$ctr0b, $rk0  \n  aesmc	$ctr0b, $ctr0b		@ AES block 8k+8 - round 0
+	aese	$ctr6b, $rk0  \n  aesmc	$ctr6b, $ctr6b			@ AES block 8k+14 - round 0
+	aese	$ctr1b, $rk1  \n  aesmc	$ctr1b, $ctr1b			@ AES block 8k+9 - round 1
+	aese	$ctr0b, $rk0  \n  aesmc	$ctr0b, $ctr0b			@ AES block 8k+8 - round 0
 
-	aese	$ctr2b, $rk1  \n  aesmc	$ctr2b, $ctr2b		@ AES block 8k+10 - round 1
-	aese	$ctr3b, $rk0  \n  aesmc	$ctr3b, $ctr3b		@ AES block 8k+11 - round 0
+	aese	$ctr2b, $rk1  \n  aesmc	$ctr2b, $ctr2b			@ AES block 8k+10 - round 1
+	aese	$ctr3b, $rk0  \n  aesmc	$ctr3b, $ctr3b			@ AES block 8k+11 - round 0
 	pmull	$h6.1q, $res2.1d, $h6.1d				@ GHASH block 8k+2 - low
 
-	aese	$ctr5b, $rk1  \n  aesmc	$ctr5b, $ctr5b		@ AES block 8k+13 - round 1
-	aese	$ctr7b, $rk0  \n  aesmc	$ctr7b, $ctr7b		@ AES block 8k+15 - round 0
-	aese	$ctr0b, $rk1  \n  aesmc	$ctr0b, $ctr0b		@ AES block 8k+8 - round 1
+	aese	$ctr5b, $rk1  \n  aesmc	$ctr5b, $ctr5b			@ AES block 8k+13 - round 1
+	aese	$ctr7b, $rk0  \n  aesmc	$ctr7b, $ctr7b			@ AES block 8k+15 - round 0
+	aese	$ctr0b, $rk1  \n  aesmc	$ctr0b, $ctr0b			@ AES block 8k+8 - round 1
 
 	eor3	$acc_hb, $acc_hb, $t1.16b,$t2.16b			@ GHASH block 8k+2, 8k+3 - high
-	trn1	$t3.2d, $res3.2d, $res2.2d				    @ GHASH block 8k+2, 8k+3 - mid
+	trn1	$t3.2d, $res3.2d, $res2.2d				@ GHASH block 8k+2, 8k+3 - mid
 	trn2	$res2.2d, $res3.2d, $res2.2d				@ GHASH block 8k+2, 8k+3 - mid
 
 	ldp	$rk2q, $rk3q, [$cc, #32]				@ load rk2, rk3
-	aese	$ctr4b, $rk1  \n  aesmc	$ctr4b, $ctr4b		@ AES block 8k+12 - round 1
-	aese	$ctr3b, $rk1  \n  aesmc	$ctr3b, $ctr3b		@ AES block 8k+11 - round 1
+	aese	$ctr4b, $rk1  \n  aesmc	$ctr4b, $ctr4b			@ AES block 8k+12 - round 1
+	aese	$ctr3b, $rk1  \n  aesmc	$ctr3b, $ctr3b			@ AES block 8k+11 - round 1
 
 	pmull	$h5.1q, $res3.1d, $h5.1d				@ GHASH block 8k+3 - low
-	aese	$ctr7b, $rk1  \n  aesmc	$ctr7b, $ctr7b		@ AES block 8k+15 - round 1
-	aese	$ctr6b, $rk1  \n  aesmc	$ctr6b, $ctr6b		@ AES block 8k+14 - round 1
+	aese	$ctr7b, $rk1  \n  aesmc	$ctr7b, $ctr7b			@ AES block 8k+15 - round 1
+	aese	$ctr6b, $rk1  \n  aesmc	$ctr6b, $ctr6b			@ AES block 8k+14 - round 1
 
 	pmull2  $acc_m.1q, $res0.2d, $h78k.2d				@ GHASH block 8k	- mid
-	eor	$res2.16b, $res2.16b, $t3.16b				    @ GHASH block 8k+2, 8k+3 - mid
+	eor	$res2.16b, $res2.16b, $t3.16b				@ GHASH block 8k+2, 8k+3 - mid
 	pmull	$h78k.1q, $res0.1d, $h78k.1d				@ GHASH block 8k+1 - mid
 
 	rev64	$res6b, $res6b						@ GHASH block 8k+6 (t0, t1, and t2 free)
 	eor3	$acc_lb, $acc_lb, $h6.16b, $h5.16b			@ GHASH block 8k+2, 8k+3 - low
 
 	pmull2  $t3.1q, $res2.2d, $h56k.2d				@ GHASH block 8k+2 - mid
-	eor	$acc_mb, $acc_mb, $h78k.16b				    @ GHASH block 8k+1 - mid
-	pmull	$h56k.1q, $res2.1d, $h56k.1d			@ GHASH block 8k+3 - mid
+	eor	$acc_mb, $acc_mb, $h78k.16b				@ GHASH block 8k+1 - mid
+	pmull	$h56k.1q, $res2.1d, $h56k.1d				@ GHASH block 8k+3 - mid
 
-	aese	$ctr5b, $rk2  \n  aesmc	$ctr5b, $ctr5b		@ AES block 8k+13 - round 2
-	aese	$ctr4b, $rk2  \n  aesmc	$ctr4b, $ctr4b		@ AES block 8k+12 - round 2
-	aese	$ctr2b, $rk2  \n  aesmc	$ctr2b, $ctr2b		@ AES block 8k+10 - round 2
+	aese	$ctr5b, $rk2  \n  aesmc	$ctr5b, $ctr5b			@ AES block 8k+13 - round 2
+	aese	$ctr4b, $rk2  \n  aesmc	$ctr4b, $ctr4b			@ AES block 8k+12 - round 2
+	aese	$ctr2b, $rk2  \n  aesmc	$ctr2b, $ctr2b			@ AES block 8k+10 - round 2
 
-	aese	$ctr1b, $rk2  \n  aesmc	$ctr1b, $ctr1b		@ AES block 8k+9 - round 2
-	eor3	$acc_mb, $acc_mb, $h56k.16b, $t3.16b		@ GHASH block 8k+2, 8k+3 - mid
-	aese	$ctr6b, $rk2  \n  aesmc	$ctr6b, $ctr6b		@ AES block 8k+14 - round 2
+	aese	$ctr1b, $rk2  \n  aesmc	$ctr1b, $ctr1b			@ AES block 8k+9 - round 2
+	eor3	$acc_mb, $acc_mb, $h56k.16b, $t3.16b			@ GHASH block 8k+2, 8k+3 - mid
+	aese	$ctr6b, $rk2  \n  aesmc	$ctr6b, $ctr6b			@ AES block 8k+14 - round 2
 
-	aese	$ctr0b, $rk2  \n  aesmc	$ctr0b, $ctr0b		@ AES block 8k+8 - round 2
-	aese	$ctr3b, $rk2  \n  aesmc	$ctr3b, $ctr3b		@ AES block 8k+11 - round 2
-	aese	$ctr7b, $rk2  \n  aesmc	$ctr7b, $ctr7b		@ AES block 8k+15 - round 2
+	aese	$ctr0b, $rk2  \n  aesmc	$ctr0b, $ctr0b			@ AES block 8k+8 - round 2
+	aese	$ctr3b, $rk2  \n  aesmc	$ctr3b, $ctr3b			@ AES block 8k+11 - round 2
+	aese	$ctr7b, $rk2  \n  aesmc	$ctr7b, $ctr7b			@ AES block 8k+15 - round 2
 
-	aese	$ctr6b, $rk3  \n  aesmc	$ctr6b, $ctr6b		@ AES block 8k+14 - round 3
+	aese	$ctr6b, $rk3  \n  aesmc	$ctr6b, $ctr6b			@ AES block 8k+14 - round 3
 	ldr	$h12kq, [$current_tag, #48]				@ load h2k | h1k
 	ldr	$h34kq, [$current_tag, #96]				@ load h4k | h3k
 	rev64	$res4b, $res4b						@ GHASH block 8k+4 (t0, t1, and t2 free)
 
 	ldp	$rk4q, $rk5q, [$cc, #64]				@ load rk4, rk5
-	aese	$ctr2b, $rk3  \n  aesmc	$ctr2b, $ctr2b		@ AES block 8k+10 - round 3
-	aese	$ctr1b, $rk3  \n  aesmc	$ctr1b, $ctr1b		@ AES block 8k+9 - round 3
+	aese	$ctr2b, $rk3  \n  aesmc	$ctr2b, $ctr2b			@ AES block 8k+10 - round 3
+	aese	$ctr1b, $rk3  \n  aesmc	$ctr1b, $ctr1b			@ AES block 8k+9 - round 3
 
 	ldr	$h1q, [$current_tag, #32]				@ load h1l | h1h
 	ext     $h1.16b, $h1.16b, $h1.16b, #8
@@ -597,174 +597,174 @@ aesv8_gcm_8x_enc_128:
 	pmull	$h4.1q, $res4.1d, $h4.1d				@ GHASH block 8k+4 - low
 
 	trn1	$t6.2d, $res5.2d, $res4.2d				@ GHASH block 8k+4, 8k+5 - mid
-	trn2	$res4.2d, $res5.2d, $res4.2d			@ GHASH block 8k+4, 8k+5 - mid
+	trn2	$res4.2d, $res5.2d, $res4.2d				@ GHASH block 8k+4, 8k+5 - mid
 
-	aese	$ctr0b, $rk3  \n  aesmc	$ctr0b, $ctr0b		@ AES block 8k+8 - round 3
-	aese	$ctr3b, $rk3  \n  aesmc	$ctr3b, $ctr3b		@ AES block 8k+11 - round 3
+	aese	$ctr0b, $rk3  \n  aesmc	$ctr0b, $ctr0b			@ AES block 8k+8 - round 3
+	aese	$ctr3b, $rk3  \n  aesmc	$ctr3b, $ctr3b			@ AES block 8k+11 - round 3
 
-	aese	$ctr7b, $rk3  \n  aesmc	$ctr7b, $ctr7b		@ AES block 8k+15 - round 3
-	aese	$ctr4b, $rk3  \n  aesmc	$ctr4b, $ctr4b		@ AES block 8k+12 - round 3
+	aese	$ctr7b, $rk3  \n  aesmc	$ctr7b, $ctr7b			@ AES block 8k+15 - round 3
+	aese	$ctr4b, $rk3  \n  aesmc	$ctr4b, $ctr4b			@ AES block 8k+12 - round 3
 
-	aese	$ctr5b, $rk3  \n  aesmc	$ctr5b, $ctr5b		@ AES block 8k+13 - round 3
-	aese	$ctr0b, $rk4  \n  aesmc	$ctr0b, $ctr0b		@ AES block 8k+8 - round 4
+	aese	$ctr5b, $rk3  \n  aesmc	$ctr5b, $ctr5b			@ AES block 8k+13 - round 3
+	aese	$ctr0b, $rk4  \n  aesmc	$ctr0b, $ctr0b			@ AES block 8k+8 - round 4
 
-	aese	$ctr7b, $rk4  \n  aesmc	$ctr7b, $ctr7b		@ AES block 8k+15 - round 4
-	aese	$ctr3b, $rk4  \n  aesmc	$ctr3b, $ctr3b		@ AES block 8k+11 - round 4
-	aese	$ctr4b, $rk4  \n  aesmc	$ctr4b, $ctr4b		@ AES block 8k+12 - round 4
+	aese	$ctr7b, $rk4  \n  aesmc	$ctr7b, $ctr7b			@ AES block 8k+15 - round 4
+	aese	$ctr3b, $rk4  \n  aesmc	$ctr3b, $ctr3b			@ AES block 8k+11 - round 4
+	aese	$ctr4b, $rk4  \n  aesmc	$ctr4b, $ctr4b			@ AES block 8k+12 - round 4
 
-	aese	$ctr5b, $rk4  \n  aesmc	$ctr5b, $ctr5b		@ AES block 8k+13 - round 4
-	aese	$ctr6b, $rk4  \n  aesmc	$ctr6b, $ctr6b		@ AES block 8k+14 - round 4
-	aese	$ctr1b, $rk4  \n  aesmc	$ctr1b, $ctr1b		@ AES block 8k+9 - round 4
+	aese	$ctr5b, $rk4  \n  aesmc	$ctr5b, $ctr5b			@ AES block 8k+13 - round 4
+	aese	$ctr6b, $rk4  \n  aesmc	$ctr6b, $ctr6b			@ AES block 8k+14 - round 4
+	aese	$ctr1b, $rk4  \n  aesmc	$ctr1b, $ctr1b			@ AES block 8k+9 - round 4
 
 	pmull2  $t5.1q, $res5.2d, $h3.2d				@ GHASH block 8k+5 - high
 	eor	$res4.16b, $res4.16b, $t6.16b				@ GHASH block 8k+4, 8k+5 - mid
 	pmull	$h3.1q, $res5.1d, $h3.1d				@ GHASH block 8k+5 - low
 
-	aese	$ctr2b, $rk4  \n  aesmc	$ctr2b, $ctr2b		@ AES block 8k+10 - round 4
-	ldp	$rk6q, $rk7q, [$cc, #96]				    @ load rk6, rk7
+	aese	$ctr2b, $rk4  \n  aesmc	$ctr2b, $ctr2b			@ AES block 8k+10 - round 4
+	ldp	$rk6q, $rk7q, [$cc, #96]				@ load rk6, rk7
 	trn1	$t9.2d, $res7.2d, $res6.2d				@ GHASH block 8k+6, 8k+7 - mid
 
 	pmull2  $t6.1q, $res4.2d, $h34k.2d				@ GHASH block 8k+4 - mid
-	pmull	$h34k.1q, $res4.1d, $h34k.1d			@ GHASH block 8k+5 - mid
+	pmull	$h34k.1q, $res4.1d, $h34k.1d				@ GHASH block 8k+5 - mid
 	pmull2  $t7.1q, $res6.2d, $h2.2d				@ GHASH block 8k+6 - high
 
 	pmull2  $t8.1q, $res7.2d, $h1.2d				@ GHASH block 8k+7 - high
-	aese	$ctr2b, $rk5  \n  aesmc	$ctr2b, $ctr2b		@ AES block 8k+10 - round 5
-	aese	$ctr5b, $rk5  \n  aesmc	$ctr5b, $ctr5b		@ AES block 8k+13 - round 5
+	aese	$ctr2b, $rk5  \n  aesmc	$ctr2b, $ctr2b			@ AES block 8k+10 - round 5
+	aese	$ctr5b, $rk5  \n  aesmc	$ctr5b, $ctr5b			@ AES block 8k+13 - round 5
 
 	pmull	$h2.1q, $res6.1d, $h2.1d				@ GHASH block 8k+6 - low
 	eor3	$acc_hb, $acc_hb, $t4.16b, $t5.16b			@ GHASH block 8k+4, 8k+5 - high
 	trn2	$res6.2d, $res7.2d, $res6.2d				@ GHASH block 8k+6, 8k+7 - mid
 
 	eor3	$acc_lb, $acc_lb, $h4.16b, $h3.16b			@ GHASH block 8k+4, 8k+5 - low
-	aese	$ctr6b, $rk5  \n  aesmc	$ctr6b, $ctr6b		@ AES block 8k+14 - round 5
+	aese	$ctr6b, $rk5  \n  aesmc	$ctr6b, $ctr6b			@ AES block 8k+14 - round 5
 
 	eor	$res6.16b, $res6.16b, $t9.16b				@ GHASH block 8k+6, 8k+7 - mid
-	aese	$ctr7b, $rk5  \n  aesmc	$ctr7b, $ctr7b		@ AES block 8k+15 - round 5
-	aese	$ctr1b, $rk5  \n  aesmc	$ctr1b, $ctr1b		@ AES block 8k+9 - round 5
+	aese	$ctr7b, $rk5  \n  aesmc	$ctr7b, $ctr7b			@ AES block 8k+15 - round 5
+	aese	$ctr1b, $rk5  \n  aesmc	$ctr1b, $ctr1b			@ AES block 8k+9 - round 5
 
-	aese	$ctr3b, $rk5  \n  aesmc	$ctr3b, $ctr3b		@ AES block 8k+11 - round 5
-	aese	$ctr4b, $rk5  \n  aesmc	$ctr4b, $ctr4b		@ AES block 8k+12 - round 5
-	aese	$ctr0b, $rk5  \n  aesmc	$ctr0b, $ctr0b		@ AES block 8k+8 - round 5
+	aese	$ctr3b, $rk5  \n  aesmc	$ctr3b, $ctr3b			@ AES block 8k+11 - round 5
+	aese	$ctr4b, $rk5  \n  aesmc	$ctr4b, $ctr4b			@ AES block 8k+12 - round 5
+	aese	$ctr0b, $rk5  \n  aesmc	$ctr0b, $ctr0b			@ AES block 8k+8 - round 5
 
-	eor3	$acc_mb, $acc_mb, $h34k.16b, $t6.16b		@ GHASH block 8k+4, 8k+5 - mid
+	eor3	$acc_mb, $acc_mb, $h34k.16b, $t6.16b			@ GHASH block 8k+4, 8k+5 - mid
 	ldr	$mod_constantd, [$modulo_constant]			@ MODULO - load modulo constant
 	pmull	$h1.1q, $res7.1d, $h1.1d				@ GHASH block 8k+7 - low
 
-	aese	$ctr7b, $rk6  \n  aesmc	$ctr7b, $ctr7b		@ AES block 8k+15 - round 6
-	aese	$ctr5b, $rk6  \n  aesmc	$ctr5b, $ctr5b		@ AES block 8k+13 - round 6
+	aese	$ctr7b, $rk6  \n  aesmc	$ctr7b, $ctr7b			@ AES block 8k+15 - round 6
+	aese	$ctr5b, $rk6  \n  aesmc	$ctr5b, $ctr5b			@ AES block 8k+13 - round 6
 
 	pmull2  $t9.1q, $res6.2d, $h12k.2d				@ GHASH block 8k+6 - mid
-	aese	$ctr1b, $rk6  \n  aesmc	$ctr1b, $ctr1b		@ AES block 8k+9 - round 6
-	aese	$ctr2b, $rk6  \n  aesmc	$ctr2b, $ctr2b		@ AES block 8k+10 - round 6
+	aese	$ctr1b, $rk6  \n  aesmc	$ctr1b, $ctr1b			@ AES block 8k+9 - round 6
+	aese	$ctr2b, $rk6  \n  aesmc	$ctr2b, $ctr2b			@ AES block 8k+10 - round 6
 
 	pmull	$h12k.1q, $res6.1d, $h12k.1d				@ GHASH block 8k+7 - mid
 	eor3	$acc_lb, $acc_lb, $h2.16b, $h1.16b			@ GHASH block 8k+6, 8k+7 - low
 	ldp	$ctr_t0q, $ctr_t1q, [$input_ptr], #32			@ AES block 8k+8, 8k+9 - load plaintext
 
-	aese	$ctr3b, $rk6  \n  aesmc	$ctr3b, $ctr3b		@ AES block 8k+11 - round 6
+	aese	$ctr3b, $rk6  \n  aesmc	$ctr3b, $ctr3b			@ AES block 8k+11 - round 6
 	rev32	$h1.16b, $rtmp_ctr.16b					@ CTR block 8k+16
 	add	$rtmp_ctr.4s, $rtmp_ctr.4s, $rctr_inc.4s		@ CTR block 8k+16
 
-	aese	$ctr4b, $rk6  \n  aesmc	$ctr4b, $ctr4b		@ AES block 8k+12 - round 6
-	aese	$ctr0b, $rk6  \n  aesmc	$ctr0b, $ctr0b		@ AES block 8k+8 - round 6
-	aese	$ctr6b, $rk6  \n  aesmc	$ctr6b, $ctr6b		@ AES block 8k+14 - round 6
+	aese	$ctr4b, $rk6  \n  aesmc	$ctr4b, $ctr4b			@ AES block 8k+12 - round 6
+	aese	$ctr0b, $rk6  \n  aesmc	$ctr0b, $ctr0b			@ AES block 8k+8 - round 6
+	aese	$ctr6b, $rk6  \n  aesmc	$ctr6b, $ctr6b			@ AES block 8k+14 - round 6
 
-	eor3	$acc_mb, $acc_mb, $h12k.16b, $t9.16b		@ GHASH block 8k+6, 8k+7 - mid
+	eor3	$acc_mb, $acc_mb, $h12k.16b, $t9.16b			@ GHASH block 8k+6, 8k+7 - mid
 	ldp	$rk8q, $rk9q, [$cc, #128]				@ load rk8, rk9
 	eor3	$acc_hb, $acc_hb, $t7.16b, $t8.16b			@ GHASH block 8k+6, 8k+7 - high
 
-	aese	$ctr2b, $rk7  \n  aesmc	$ctr2b, $ctr2b		@ AES block 8k+10 - round 7
-	aese	$ctr7b, $rk7  \n  aesmc	$ctr7b, $ctr7b		@ AES block 8k+15 - round 7
+	aese	$ctr2b, $rk7  \n  aesmc	$ctr2b, $ctr2b			@ AES block 8k+10 - round 7
+	aese	$ctr7b, $rk7  \n  aesmc	$ctr7b, $ctr7b			@ AES block 8k+15 - round 7
 	ldp	$ctr_t2q, $ctr_t3q, [$input_ptr], #32			@ AES block 8k+10, 8k+11 - load plaintext
 
-	aese	$ctr5b, $rk7  \n  aesmc	$ctr5b, $ctr5b		@ AES block 8k+13 - round 7
-	aese	$ctr6b, $rk7  \n  aesmc	$ctr6b, $ctr6b		@ AES block 8k+14 - round 7
-	aese	$ctr1b, $rk7  \n  aesmc	$ctr1b, $ctr1b		@ AES block 8k+9 - round 7
+	aese	$ctr5b, $rk7  \n  aesmc	$ctr5b, $ctr5b			@ AES block 8k+13 - round 7
+	aese	$ctr6b, $rk7  \n  aesmc	$ctr6b, $ctr6b			@ AES block 8k+14 - round 7
+	aese	$ctr1b, $rk7  \n  aesmc	$ctr1b, $ctr1b			@ AES block 8k+9 - round 7
 
-	pmull	$t11.1q, $acc_h.1d, $mod_constant.1d	 	@ MODULO - top 64b align with mid
-	aese	$ctr0b, $rk7  \n  aesmc	$ctr0b, $ctr0b		@ AES block 8k+8 - round 7
-	aese	$ctr4b, $rk7  \n  aesmc	$ctr4b, $ctr4b		@ AES block 8k+12 - round 7
+	pmull	$t11.1q, $acc_h.1d, $mod_constant.1d		 	@ MODULO - top 64b align with mid
+	aese	$ctr0b, $rk7  \n  aesmc	$ctr0b, $ctr0b			@ AES block 8k+8 - round 7
+	aese	$ctr4b, $rk7  \n  aesmc	$ctr4b, $ctr4b			@ AES block 8k+12 - round 7
 
 	rev32	$h2.16b, $rtmp_ctr.16b					@ CTR block 8k+17
-	aese	$ctr3b, $rk7  \n  aesmc	$ctr3b, $ctr3b		@ AES block 8k+11 - round 7
+	aese	$ctr3b, $rk7  \n  aesmc	$ctr3b, $ctr3b			@ AES block 8k+11 - round 7
 
-	aese	$ctr5b, $rk8  \n  aesmc	$ctr5b, $ctr5b		@ AES block 8k+13 - round 8
+	aese	$ctr5b, $rk8  \n  aesmc	$ctr5b, $ctr5b			@ AES block 8k+13 - round 8
 	ldp	$ctr_t4q, $ctr_t5q, [$input_ptr], #32			@ AES block 8k+12, 8k+13 - load plaintext
 	add	$rtmp_ctr.4s, $rtmp_ctr.4s, $rctr_inc.4s		@ CTR block 8k+17
 
-	aese	$ctr2b, $rk8  \n  aesmc	$ctr2b, $ctr2b		@ AES block 8k+10 - round 8
-	aese	$ctr1b, $rk8  \n  aesmc	$ctr1b, $ctr1b		@ AES block 8k+9 - round 8
-	aese	$ctr7b, $rk8  \n  aesmc	$ctr7b, $ctr7b		@ AES block 8k+15 - round 8
+	aese	$ctr2b, $rk8  \n  aesmc	$ctr2b, $ctr2b			@ AES block 8k+10 - round 8
+	aese	$ctr1b, $rk8  \n  aesmc	$ctr1b, $ctr1b			@ AES block 8k+9 - round 8
+	aese	$ctr7b, $rk8  \n  aesmc	$ctr7b, $ctr7b			@ AES block 8k+15 - round 8
 
-	aese	$ctr4b, $rk8  \n  aesmc	$ctr4b, $ctr4b		@ AES block 8k+12 - round 8
+	aese	$ctr4b, $rk8  \n  aesmc	$ctr4b, $ctr4b			@ AES block 8k+12 - round 8
 	eor3	$acc_mb, $acc_mb, $acc_hb, $acc_lb		 	@ MODULO - karatsuba tidy up
-	ldr	$rk10q, [$cc, #160]					        @ load rk10
+	ldr	$rk10q, [$cc, #160]					@ load rk10
 
 	ext	$t12.16b, $acc_hb, $acc_hb, #8				@ MODULO - other top alignment
 	rev32	$h3.16b, $rtmp_ctr.16b					@ CTR block 8k+18
-	add	$rtmp_ctr.4s, $rtmp_ctr.4s, $rctr_inc.4s	@ CTR block 8k+18
-	aese	$ctr3b, $rk8  \n  aesmc	$ctr3b, $ctr3b		@ AES block 8k+11 - round 8
+	add	$rtmp_ctr.4s, $rtmp_ctr.4s, $rctr_inc.4s		@ CTR block 8k+18
+	aese	$ctr3b, $rk8  \n  aesmc	$ctr3b, $ctr3b			@ AES block 8k+11 - round 8
 
-	aese	$ctr0b, $rk8  \n  aesmc	$ctr0b, $ctr0b		@ AES block 8k+8 - round 8
-	eor3	$acc_mb, $acc_mb, $t12.16b, $t11.16b		@ MODULO - fold into mid
-	aese	$ctr6b, $rk8  \n  aesmc	$ctr6b, $ctr6b		@ AES block 8k+14 - round 8
+	aese	$ctr0b, $rk8  \n  aesmc	$ctr0b, $ctr0b			@ AES block 8k+8 - round 8
+	eor3	$acc_mb, $acc_mb, $t12.16b, $t11.16b			@ MODULO - fold into mid
+	aese	$ctr6b, $rk8  \n  aesmc	$ctr6b, $ctr6b			@ AES block 8k+14 - round 8
 
 	aese	$ctr2b, $rk9						@ AES block 8k+10 - round 9
 	aese	$ctr4b, $rk9						@ AES block 8k+12 - round 9
 	aese	$ctr1b, $rk9						@ AES block 8k+9 - round 9
 
-	ldp	$ctr_t6q, $ctr_t7q, [$input_ptr], #32		@ AES block 8k+14, 8k+15 - load plaintext
+	ldp	$ctr_t6q, $ctr_t7q, [$input_ptr], #32			@ AES block 8k+14, 8k+15 - load plaintext
 	rev32	$h4.16b, $rtmp_ctr.16b					@ CTR block 8k+19
-	add	$rtmp_ctr.4s, $rtmp_ctr.4s, $rctr_inc.4s	@ CTR block 8k+19
+	add	$rtmp_ctr.4s, $rtmp_ctr.4s, $rctr_inc.4s		@ CTR block 8k+19
 
 	cmp	$input_ptr, $main_end_input_ptr				@ LOOP CONTROL
-	eor3	$res4b, $ctr_t4b, $ctr4b, $rk10			@ AES block 4 - result
+	eor3	$res4b, $ctr_t4b, $ctr4b, $rk10				@ AES block 4 - result
 	aese	$ctr7b, $rk9						@ AES block 8k+15 - round 9
 
 	aese	$ctr6b, $rk9						@ AES block 8k+14 - round 9
 	aese	$ctr3b, $rk9						@ AES block 8k+11 - round 9
 
-	eor3	$res2b, $ctr_t2b, $ctr2b, $rk10		@ AES block 8k+10 - result
+	eor3	$res2b, $ctr_t2b, $ctr2b, $rk10				@ AES block 8k+10 - result
 
 	mov	$ctr2.16b, $h3.16b					@ CTR block 8k+18
 	aese	$ctr0b, $rk9						@ AES block 8k+8 - round 9
 
-	rev32	$ctr4.16b, $rtmp_ctr.16b			    @ CTR block 8k+20
-	add	$rtmp_ctr.4s, $rtmp_ctr.4s, $rctr_inc.4s	@ CTR block 8k+20
+	rev32	$ctr4.16b, $rtmp_ctr.16b				@ CTR block 8k+20
+	add	$rtmp_ctr.4s, $rtmp_ctr.4s, $rctr_inc.4s		@ CTR block 8k+20
 
-	eor3	$res7b, $ctr_t7b, $ctr7b, $rk10			@ AES block 7 - result
+	eor3	$res7b, $ctr_t7b, $ctr7b, $rk10				@ AES block 7 - result
 	aese	$ctr5b, $rk9						@ AES block 8k+13 - round 9
-	pmull	$acc_h.1q, $acc_m.1d, $mod_constant.1d	@ MODULO - mid 64b align with low
+	pmull	$acc_h.1q, $acc_m.1d, $mod_constant.1d			@ MODULO - mid 64b align with low
 
-	eor3	$res1b, $ctr_t1b, $ctr1b, $rk10			@ AES block 8k+9 - result
-	eor3	$res3b, $ctr_t3b, $ctr3b, $rk10			@ AES block 8k+11 - result
+	eor3	$res1b, $ctr_t1b, $ctr1b, $rk10				@ AES block 8k+9 - result
+	eor3	$res3b, $ctr_t3b, $ctr3b, $rk10				@ AES block 8k+11 - result
 	mov	$ctr3.16b, $h4.16b					@ CTR block 8k+19
 
 	ext	$t11.16b, $acc_mb, $acc_mb, #8				@ MODULO - other mid alignment
-	eor3	$res5b, $ctr_t5b, $ctr5b, $rk10			@ AES block 5 - result
+	eor3	$res5b, $ctr_t5b, $ctr5b, $rk10				@ AES block 5 - result
 	mov	$ctr1.16b, $h2.16b					@ CTR block 8k+17
 
-	eor3	$res0b, $ctr_t0b, $ctr0b, $rk10			@ AES block 8k+8 - result
+	eor3	$res0b, $ctr_t0b, $ctr0b, $rk10				@ AES block 8k+8 - result
 	mov	$ctr0.16b, $h1.16b					@ CTR block 8k+16
 	stp	$res0q, $res1q, [$output_ptr], #32			@ AES block 8k+8, 8k+9 - store result
 
 	stp	$res2q, $res3q, [$output_ptr], #32			@ AES block 8k+10, 8k+11 - store result
-	eor3	$res6b, $ctr_t6b, $ctr6b, $rk10			@ AES block 6 - result
+	eor3	$res6b, $ctr_t6b, $ctr6b, $rk10				@ AES block 6 - result
 
 	stp	$res4q, $res5q, [$output_ptr], #32			@ AES block 8k+12, 8k+13 - store result
-	eor3	$acc_lb, $acc_lb, $acc_hb, $t11.16b	 	@ MODULO - fold into low
+	eor3	$acc_lb, $acc_lb, $acc_hb, $t11.16b		 	@ MODULO - fold into low
 
 	stp	$res6q, $res7q, [$output_ptr], #32			@ AES block 8k+14, 8k+15 - store result
 	b.lt	.L128_enc_main_loop
 
 .L128_enc_prepretail:							@ PREPRETAIL
-	rev32	$ctr5.16b, $rtmp_ctr.16b			@ CTR block 8k+13
+	rev32	$ctr5.16b, $rtmp_ctr.16b				@ CTR block 8k+13
 	ldr	$h7q, [$current_tag, #176]				@ load h7l | h7h
 	ext     $h7.16b, $h7.16b, $h7.16b, #8
 	ldr	$h8q, [$current_tag, #208]				@ load h8l | h8h
 	ext     $h8.16b, $h8.16b, $h8.16b, #8
-	ext	$acc_lb, $acc_lb, $acc_lb, #8			@ PRE 0
+	ext	$acc_lb, $acc_lb, $acc_lb, #8				@ PRE 0
 
 	ldr	$h5q, [$current_tag, #128]				@ load h5l | h5h
 	ext     $h5.16b, $h5.16b, $h5.16b, #8
@@ -773,68 +773,68 @@ aesv8_gcm_8x_enc_128:
 	rev64	$res0b, $res0b						@ GHASH block 8k
 	rev64	$res1b, $res1b						@ GHASH block 8k+1
 
-	ldr	$h56kq, [$current_tag, #144]			@ load h6k | h5k
-	ldr	$h78kq, [$current_tag, #192]			@ load h6k | h5k
-	add	$rtmp_ctr.4s, $rtmp_ctr.4s, $rctr_inc.4s	@ CTR block 8k+13
+	ldr	$h56kq, [$current_tag, #144]				@ load h6k | h5k
+	ldr	$h78kq, [$current_tag, #192]				@ load h6k | h5k
+	add	$rtmp_ctr.4s, $rtmp_ctr.4s, $rctr_inc.4s		@ CTR block 8k+13
 	rev64	$res3b, $res3b						@ GHASH block 8k+3
 
 	rev64	$res2b, $res2b						@ GHASH block 8k+2
 	eor	$res0b, $res0b, $acc_lb				 	@ PRE 1
 
-	rev32	$ctr6.16b, $rtmp_ctr.16b			@ CTR block 8k+14
+	rev32	$ctr6.16b, $rtmp_ctr.16b				@ CTR block 8k+14
 
-	pmull2  $t0.1q, $res1.2d, $h7.2d			@ GHASH block 8k+1 - high
-	pmull	$acc_l.1q, $res0.1d, $h8.1d			@ GHASH block 8k - low
-	pmull2  $acc_h.1q, $res0.2d, $h8.2d			@ GHASH block 8k - high
+	pmull2  $t0.1q, $res1.2d, $h7.2d				@ GHASH block 8k+1 - high
+	pmull	$acc_l.1q, $res0.1d, $h8.1d				@ GHASH block 8k - low
+	pmull2  $acc_h.1q, $res0.2d, $h8.2d				@ GHASH block 8k - high
 
 	rev64	$res5b, $res5b						@ GHASH block 8k+5 (t0, t1, t2 and t3 free)
-	trn1	$acc_m.2d, $res1.2d, $res0.2d		@ GHASH block 8k, 8k+1 - mid
+	trn1	$acc_m.2d, $res1.2d, $res0.2d				@ GHASH block 8k, 8k+1 - mid
 
-	pmull	$h7.1q, $res1.1d, $h7.1d			@ GHASH block 8k+1 - low
+	pmull	$h7.1q, $res1.1d, $h7.1d				@ GHASH block 8k+1 - low
 	eor	$acc_hb, $acc_hb, $t0.16b				@ GHASH block 8k+1 - high
-	trn2	$res0.2d, $res1.2d, $res0.2d		@ GHASH block 8k, 8k+1 - mid
+	trn2	$res0.2d, $res1.2d, $res0.2d				@ GHASH block 8k, 8k+1 - mid
 
 	eor	$acc_lb, $acc_lb, $h7.16b				@ GHASH block 8k+1 - low
-	eor	$res0.16b, $res0.16b, $acc_m.16b		@ GHASH block 8k, 8k+1 - mid
+	eor	$res0.16b, $res0.16b, $acc_m.16b			@ GHASH block 8k, 8k+1 - mid
 
 	ldp	$rk0q, $rk1q, [$cc, #0]				 	@ load rk0, rk1
-	add	$rtmp_ctr.4s, $rtmp_ctr.4s, $rctr_inc.4s	@ CTR block 8k+14
+	add	$rtmp_ctr.4s, $rtmp_ctr.4s, $rctr_inc.4s		@ CTR block 8k+14
 
-	pmull2  $acc_m.1q, $res0.2d, $h78k.2d	   	@ GHASH block 8k	- mid
-	pmull	$h78k.1q, $res0.1d, $h78k.1d		@ GHASH block 8k+1 - mid
+	pmull2  $acc_m.1q, $res0.2d, $h78k.2d				@ GHASH block 8k	- mid
+	pmull	$h78k.1q, $res0.1d, $h78k.1d				@ GHASH block 8k+1 - mid
 
 	rev64	$res4b, $res4b						@ GHASH block 8k+4 (t0, t1, and t2 free)
 	rev64	$res7b, $res7b						@ GHASH block 8k+7 (t0, t1, t2 and t3 free)
 
 	eor	$acc_mb, $acc_mb, $h78k.16b				@ GHASH block 8k+1 - mid
 
-	rev32	$ctr7.16b, $rtmp_ctr.16b			@ CTR block 8k+15
+	rev32	$ctr7.16b, $rtmp_ctr.16b				@ CTR block 8k+15
 
 	rev64	$res6b, $res6b						@ GHASH block 8k+6 (t0, t1, and t2 free)
 
-	aese	$ctr2b, $rk0  \n  aesmc	$ctr2b, $ctr2b	@ AES block 8k+10 - round 0
+	aese	$ctr2b, $rk0  \n  aesmc	$ctr2b, $ctr2b			@ AES block 8k+10 - round 0
 
 	pmull2  $t2.1q, $res3.2d, $h5.2d				@ GHASH block 8k+3 - high
 	pmull2  $t1.1q, $res2.2d, $h6.2d				@ GHASH block 8k+2 - high
 
-	aese	$ctr6b, $rk0  \n  aesmc	$ctr6b, $ctr6b	@ AES block 8k+14 - round 0
-	aese	$ctr3b, $rk0  \n  aesmc	$ctr3b, $ctr3b	@ AES block 8k+11 - round 0
+	aese	$ctr6b, $rk0  \n  aesmc	$ctr6b, $ctr6b			@ AES block 8k+14 - round 0
+	aese	$ctr3b, $rk0  \n  aesmc	$ctr3b, $ctr3b			@ AES block 8k+11 - round 0
 
 	pmull	$h6.1q, $res2.1d, $h6.1d				@ GHASH block 8k+2 - low
-	aese	$ctr1b, $rk0  \n  aesmc	$ctr1b, $ctr1b	@ AES block 8k+9 - round 0
+	aese	$ctr1b, $rk0  \n  aesmc	$ctr1b, $ctr1b			@ AES block 8k+9 - round 0
 
-	eor3	$acc_hb, $acc_hb, $t1.16b, $t2.16b		@ GHASH block 8k+2, 8k+3 - high
+	eor3	$acc_hb, $acc_hb, $t1.16b, $t2.16b			@ GHASH block 8k+2, 8k+3 - high
 	trn1	$t3.2d, $res3.2d, $res2.2d				@ GHASH block 8k+2, 8k+3 - mid
-	trn2	$res2.2d, $res3.2d, $res2.2d			@ GHASH block 8k+2, 8k+3 - mid
+	trn2	$res2.2d, $res3.2d, $res2.2d				@ GHASH block 8k+2, 8k+3 - mid
 
-	aese	$ctr5b, $rk0  \n  aesmc	$ctr5b, $ctr5b	@ AES block 8k+13 - round 0
-	aese	$ctr7b, $rk0  \n  aesmc	$ctr7b, $ctr7b	@ AES block 8k+15 - round 0
+	aese	$ctr5b, $rk0  \n  aesmc	$ctr5b, $ctr5b			@ AES block 8k+13 - round 0
+	aese	$ctr7b, $rk0  \n  aesmc	$ctr7b, $ctr7b			@ AES block 8k+15 - round 0
 
 	eor	$res2.16b, $res2.16b, $t3.16b				@ GHASH block 8k+2, 8k+3 - mid
-	aese	$ctr4b, $rk0  \n  aesmc	$ctr4b, $ctr4b	@ AES block 8k+12 - round 0
-	aese	$ctr0b, $rk0  \n  aesmc	$ctr0b, $ctr0b	@ AES block 8k+8 - round 0
+	aese	$ctr4b, $rk0  \n  aesmc	$ctr4b, $ctr4b			@ AES block 8k+12 - round 0
+	aese	$ctr0b, $rk0  \n  aesmc	$ctr0b, $ctr0b			@ AES block 8k+8 - round 0
 
-	aese	$ctr3b, $rk1  \n  aesmc	$ctr3b, $ctr3b	@ AES block 8k+11 - round 1
+	aese	$ctr3b, $rk1  \n  aesmc	$ctr3b, $ctr3b			@ AES block 8k+11 - round 1
 	pmull	$h5.1q, $res3.1d, $h5.1d				@ GHASH block 8k+3 - low
 
 	ldr	$h3q, [$current_tag, #80]				@ load h3l | h3h
@@ -843,36 +843,36 @@ aesv8_gcm_8x_enc_128:
 	ext     $h4.16b, $h4.16b, $h4.16b, #8
 
 	ldp	$rk2q, $rk3q, [$cc, #32]				@ load rk2, rk3
-	aese	$ctr5b, $rk1  \n  aesmc	$ctr5b, $ctr5b	@ AES block 8k+13 - round 1
+	aese	$ctr5b, $rk1  \n  aesmc	$ctr5b, $ctr5b			@ AES block 8k+13 - round 1
 	pmull2  $t3.1q, $res2.2d, $h56k.2d				@ GHASH block 8k+2 - mid
 
 	eor3	$acc_lb, $acc_lb, $h6.16b, $h5.16b			@ GHASH block 8k+2, 8k+3 - low
 	pmull	$h56k.1q, $res2.1d, $h56k.1d				@ GHASH block 8k+3 - mid
 
-	aese	$ctr1b, $rk1  \n  aesmc	$ctr1b, $ctr1b		@ AES block 8k+9 - round 1
-	aese	$ctr0b, $rk1  \n  aesmc	$ctr0b, $ctr0b		@ AES block 8k+8 - round 1
+	aese	$ctr1b, $rk1  \n  aesmc	$ctr1b, $ctr1b			@ AES block 8k+9 - round 1
+	aese	$ctr0b, $rk1  \n  aesmc	$ctr0b, $ctr0b			@ AES block 8k+8 - round 1
 
-	eor3	$acc_mb, $acc_mb, $h56k.16b, $t3.16b		@ GHASH block 8k+2, 8k+3 - mid
+	eor3	$acc_mb, $acc_mb, $h56k.16b, $t3.16b			@ GHASH block 8k+2, 8k+3 - mid
 	ldr	$h12kq, [$current_tag, #48]				@ load h2k | h1k
 	ldr	$h34kq, [$current_tag, #96]				@ load h4k | h3k
-	aese	$ctr2b, $rk1  \n  aesmc	$ctr2b, $ctr2b		@ AES block 8k+10 - round 1
+	aese	$ctr2b, $rk1  \n  aesmc	$ctr2b, $ctr2b			@ AES block 8k+10 - round 1
 
-	aese	$ctr4b, $rk1  \n  aesmc	$ctr4b, $ctr4b		@ AES block 8k+12 - round 1
-	aese	$ctr7b, $rk1  \n  aesmc	$ctr7b, $ctr7b		@ AES block 8k+15 - round 1
+	aese	$ctr4b, $rk1  \n  aesmc	$ctr4b, $ctr4b			@ AES block 8k+12 - round 1
+	aese	$ctr7b, $rk1  \n  aesmc	$ctr7b, $ctr7b			@ AES block 8k+15 - round 1
 
-	aese	$ctr5b, $rk2  \n  aesmc	$ctr5b, $ctr5b		@ AES block 8k+13 - round 2
-	aese	$ctr2b, $rk2  \n  aesmc	$ctr2b, $ctr2b		@ AES block 8k+10 - round 2
-	aese	$ctr3b, $rk2  \n  aesmc	$ctr3b, $ctr3b		@ AES block 8k+11 - round 2
+	aese	$ctr5b, $rk2  \n  aesmc	$ctr5b, $ctr5b			@ AES block 8k+13 - round 2
+	aese	$ctr2b, $rk2  \n  aesmc	$ctr2b, $ctr2b			@ AES block 8k+10 - round 2
+	aese	$ctr3b, $rk2  \n  aesmc	$ctr3b, $ctr3b			@ AES block 8k+11 - round 2
 
-	aese	$ctr1b, $rk2  \n  aesmc	$ctr1b, $ctr1b		@ AES block 8k+9 - round 2
-	aese	$ctr6b, $rk1  \n  aesmc	$ctr6b, $ctr6b		@ AES block 8k+14 - round 1
-	aese	$ctr4b, $rk2  \n  aesmc	$ctr4b, $ctr4b		@ AES block 8k+12 - round 2
+	aese	$ctr1b, $rk2  \n  aesmc	$ctr1b, $ctr1b			@ AES block 8k+9 - round 2
+	aese	$ctr6b, $rk1  \n  aesmc	$ctr6b, $ctr6b			@ AES block 8k+14 - round 1
+	aese	$ctr4b, $rk2  \n  aesmc	$ctr4b, $ctr4b			@ AES block 8k+12 - round 2
 
-	aese	$ctr5b, $rk3  \n  aesmc	$ctr5b, $ctr5b		@ AES block 8k+13 - round 3
-	aese	$ctr0b, $rk2  \n  aesmc	$ctr0b, $ctr0b		@ AES block 8k+8 - round 2
+	aese	$ctr5b, $rk3  \n  aesmc	$ctr5b, $ctr5b			@ AES block 8k+13 - round 3
+	aese	$ctr0b, $rk2  \n  aesmc	$ctr0b, $ctr0b			@ AES block 8k+8 - round 2
 
-	aese	$ctr6b, $rk2  \n  aesmc	$ctr6b, $ctr6b		@ AES block 8k+14 - round 2
-	aese	$ctr7b, $rk2  \n  aesmc	$ctr7b, $ctr7b		@ AES block 8k+15 - round 2
+	aese	$ctr6b, $rk2  \n  aesmc	$ctr6b, $ctr6b			@ AES block 8k+14 - round 2
+	aese	$ctr7b, $rk2  \n  aesmc	$ctr7b, $ctr7b			@ AES block 8k+15 - round 2
 	ldp	$rk4q, $rk5q, [$cc, #64]				@ load rk4, rk5
 
 	ldr	$h1q, [$current_tag, #32]				@ load h1l | h1h
@@ -880,115 +880,115 @@ aesv8_gcm_8x_enc_128:
 	ldr	$h2q, [$current_tag, #64]				@ load h1l | h1h
 	ext     $h2.16b, $h2.16b, $h2.16b, #8
 	trn1	$t6.2d, $res5.2d, $res4.2d				@ GHASH block 8k+4, 8k+5 - mid
-	aese	$ctr0b, $rk3  \n  aesmc	$ctr0b, $ctr0b		@ AES block 8k+8 - round 3
+	aese	$ctr0b, $rk3  \n  aesmc	$ctr0b, $ctr0b			@ AES block 8k+8 - round 3
 
 	pmull2  $t4.1q, $res4.2d, $h4.2d				@ GHASH block 8k+4 - high
-	aese	$ctr6b, $rk3  \n  aesmc	$ctr6b, $ctr6b		@ AES block 8k+14 - round 3
-	aese	$ctr3b, $rk3  \n  aesmc	$ctr3b, $ctr3b		@ AES block 8k+11 - round 3
+	aese	$ctr6b, $rk3  \n  aesmc	$ctr6b, $ctr6b			@ AES block 8k+14 - round 3
+	aese	$ctr3b, $rk3  \n  aesmc	$ctr3b, $ctr3b			@ AES block 8k+11 - round 3
 
 	pmull	$h4.1q, $res4.1d, $h4.1d				@ GHASH block 8k+4 - low
-	trn2	$res4.2d, $res5.2d, $res4.2d			@ GHASH block 8k+4, 8k+5 - mid
+	trn2	$res4.2d, $res5.2d, $res4.2d				@ GHASH block 8k+4, 8k+5 - mid
 	pmull2  $t5.1q, $res5.2d, $h3.2d				@ GHASH block 8k+5 - high
 
-	aese	$ctr2b, $rk3  \n  aesmc	$ctr2b, $ctr2b		@ AES block 8k+10 - round 3
+	aese	$ctr2b, $rk3  \n  aesmc	$ctr2b, $ctr2b			@ AES block 8k+10 - round 3
 	add	$rtmp_ctr.4s, $rtmp_ctr.4s, $rctr_inc.4s		@ CTR block 8k+15
 
-	aese	$ctr7b, $rk3  \n  aesmc	$ctr7b, $ctr7b		@ AES block 8k+15 - round 3
-	aese	$ctr1b, $rk3  \n  aesmc	$ctr1b, $ctr1b		@ AES block 8k+9 - round 3
+	aese	$ctr7b, $rk3  \n  aesmc	$ctr7b, $ctr7b			@ AES block 8k+15 - round 3
+	aese	$ctr1b, $rk3  \n  aesmc	$ctr1b, $ctr1b			@ AES block 8k+9 - round 3
 	eor	$res4.16b, $res4.16b, $t6.16b				@ GHASH block 8k+4, 8k+5 - mid
 
 	pmull	$h3.1q, $res5.1d, $h3.1d				@ GHASH block 8k+5 - low
-	aese	$ctr4b, $rk3  \n  aesmc	$ctr4b, $ctr4b		@ AES block 8k+12 - round 3
+	aese	$ctr4b, $rk3  \n  aesmc	$ctr4b, $ctr4b			@ AES block 8k+12 - round 3
 	pmull2  $t7.1q, $res6.2d, $h2.2d				@ GHASH block 8k+6 - high
 
 	trn1	$t9.2d, $res7.2d, $res6.2d				@ GHASH block 8k+6, 8k+7 - mid
 	pmull	$h2.1q, $res6.1d, $h2.1d				@ GHASH block 8k+6 - low
-	trn2	$res6.2d, $res7.2d, $res6.2d			@ GHASH block 8k+6, 8k+7 - mid
+	trn2	$res6.2d, $res7.2d, $res6.2d				@ GHASH block 8k+6, 8k+7 - mid
 
-	aese	$ctr1b, $rk4  \n  aesmc	$ctr1b, $ctr1b		@ AES block 8k+9 - round 4
-	aese	$ctr3b, $rk4  \n  aesmc	$ctr3b, $ctr3b		@ AES block 8k+11 - round 4
+	aese	$ctr1b, $rk4  \n  aesmc	$ctr1b, $ctr1b			@ AES block 8k+9 - round 4
+	aese	$ctr3b, $rk4  \n  aesmc	$ctr3b, $ctr3b			@ AES block 8k+11 - round 4
 	eor3	$acc_hb, $acc_hb, $t4.16b, $t5.16b			@ GHASH block 8k+4, 8k+5 - high
 
 	eor3	$acc_lb, $acc_lb, $h4.16b, $h3.16b			@ GHASH block 8k+4, 8k+5 - low
 	eor	$res6.16b, $res6.16b, $t9.16b				@ GHASH block 8k+6, 8k+7 - mid
 	pmull2  $t6.1q, $res4.2d, $h34k.2d				@ GHASH block 8k+4 - mid
 
-	aese	$ctr1b, $rk5  \n  aesmc	$ctr1b, $ctr1b		@ AES block 8k+9 - round 5
-	aese	$ctr6b, $rk4  \n  aesmc	$ctr6b, $ctr6b		@ AES block 8k+14 - round 4
-	aese	$ctr0b, $rk4  \n  aesmc	$ctr0b, $ctr0b		@ AES block 8k+8 - round 4
+	aese	$ctr1b, $rk5  \n  aesmc	$ctr1b, $ctr1b			@ AES block 8k+9 - round 5
+	aese	$ctr6b, $rk4  \n  aesmc	$ctr6b, $ctr6b			@ AES block 8k+14 - round 4
+	aese	$ctr0b, $rk4  \n  aesmc	$ctr0b, $ctr0b			@ AES block 8k+8 - round 4
 
-	aese	$ctr7b, $rk4  \n  aesmc	$ctr7b, $ctr7b		@ AES block 8k+15 - round 4
-	aese	$ctr2b, $rk4  \n  aesmc	$ctr2b, $ctr2b		@ AES block 8k+10 - round 4
+	aese	$ctr7b, $rk4  \n  aesmc	$ctr7b, $ctr7b			@ AES block 8k+15 - round 4
+	aese	$ctr2b, $rk4  \n  aesmc	$ctr2b, $ctr2b			@ AES block 8k+10 - round 4
 
 	pmull	$h34k.1q, $res4.1d, $h34k.1d				@ GHASH block 8k+5 - mid
-	aese	$ctr4b, $rk4  \n  aesmc	$ctr4b, $ctr4b		@ AES block 8k+12 - round 4
-	aese	$ctr5b, $rk4  \n  aesmc	$ctr5b, $ctr5b		@ AES block 8k+13 - round 4
+	aese	$ctr4b, $rk4  \n  aesmc	$ctr4b, $ctr4b			@ AES block 8k+12 - round 4
+	aese	$ctr5b, $rk4  \n  aesmc	$ctr5b, $ctr5b			@ AES block 8k+13 - round 4
 
 	pmull2  $t8.1q, $res7.2d, $h1.2d				@ GHASH block 8k+7 - high
 	ldp	$rk6q, $rk7q, [$cc, #96]				@ load rk6, rk7
 	pmull	$h1.1q, $res7.1d, $h1.1d				@ GHASH block 8k+7 - low
 
-	eor3	$acc_mb, $acc_mb, $h34k.16b, $t6.16b		@ GHASH block 8k+4, 8k+5 - mid
+	eor3	$acc_mb, $acc_mb, $h34k.16b, $t6.16b			@ GHASH block 8k+4, 8k+5 - mid
 	pmull2  $t9.1q, $res6.2d, $h12k.2d				@ GHASH block 8k+6 - mid
 	pmull	$h12k.1q, $res6.1d, $h12k.1d				@ GHASH block 8k+7 - mid
 
-	aese	$ctr0b, $rk5  \n  aesmc	$ctr0b, $ctr0b		@ AES block 8k+8 - round 5
-	aese	$ctr7b, $rk5  \n  aesmc	$ctr7b, $ctr7b		@ AES block 8k+15 - round 5
+	aese	$ctr0b, $rk5  \n  aesmc	$ctr0b, $ctr0b			@ AES block 8k+8 - round 5
+	aese	$ctr7b, $rk5  \n  aesmc	$ctr7b, $ctr7b			@ AES block 8k+15 - round 5
 	ldr	$mod_constantd, [$modulo_constant]			@ MODULO - load modulo constant
 
-	aese	$ctr2b, $rk5  \n  aesmc	$ctr2b, $ctr2b		@ AES block 8k+10 - round 5
-	aese	$ctr4b, $rk5  \n  aesmc	$ctr4b, $ctr4b		@ AES block 8k+12 - round 5
+	aese	$ctr2b, $rk5  \n  aesmc	$ctr2b, $ctr2b			@ AES block 8k+10 - round 5
+	aese	$ctr4b, $rk5  \n  aesmc	$ctr4b, $ctr4b			@ AES block 8k+12 - round 5
 
 	eor3	$acc_hb, $acc_hb, $t7.16b, $t8.16b			@ GHASH block 8k+6, 8k+7 - high
-	aese	$ctr5b, $rk5  \n  aesmc	$ctr5b, $ctr5b		@ AES block 8k+13 - round 5
-	aese	$ctr6b, $rk5  \n  aesmc	$ctr6b, $ctr6b		@ AES block 8k+14 - round 5
+	aese	$ctr5b, $rk5  \n  aesmc	$ctr5b, $ctr5b			@ AES block 8k+13 - round 5
+	aese	$ctr6b, $rk5  \n  aesmc	$ctr6b, $ctr6b			@ AES block 8k+14 - round 5
 
-	aese	$ctr3b, $rk5  \n  aesmc	$ctr3b, $ctr3b		@ AES block 8k+11 - round 5
-	aese	$ctr4b, $rk6  \n  aesmc	$ctr4b, $ctr4b		@ AES block 8k+12 - round 6
+	aese	$ctr3b, $rk5  \n  aesmc	$ctr3b, $ctr3b			@ AES block 8k+11 - round 5
+	aese	$ctr4b, $rk6  \n  aesmc	$ctr4b, $ctr4b			@ AES block 8k+12 - round 6
 
-	aese	$ctr5b, $rk6  \n  aesmc	$ctr5b, $ctr5b		@ AES block 8k+13 - round 6
-	aese	$ctr2b, $rk6  \n  aesmc	$ctr2b, $ctr2b		@ AES block 8k+10 - round 6
-	aese	$ctr0b, $rk6  \n  aesmc	$ctr0b, $ctr0b		@ AES block 8k+8 - round 6
+	aese	$ctr5b, $rk6  \n  aesmc	$ctr5b, $ctr5b			@ AES block 8k+13 - round 6
+	aese	$ctr2b, $rk6  \n  aesmc	$ctr2b, $ctr2b			@ AES block 8k+10 - round 6
+	aese	$ctr0b, $rk6  \n  aesmc	$ctr0b, $ctr0b			@ AES block 8k+8 - round 6
 
-	aese	$ctr3b, $rk6  \n  aesmc	$ctr3b, $ctr3b		@ AES block 8k+11 - round 6
+	aese	$ctr3b, $rk6  \n  aesmc	$ctr3b, $ctr3b			@ AES block 8k+11 - round 6
 	eor3	$acc_lb, $acc_lb, $h2.16b, $h1.16b			@ GHASH block 8k+6, 8k+7 - low
-	eor3	$acc_mb, $acc_mb, $h12k.16b, $t9.16b		@ GHASH block 8k+6, 8k+7 - mid
+	eor3	$acc_mb, $acc_mb, $h12k.16b, $t9.16b			@ GHASH block 8k+6, 8k+7 - mid
 
-	aese	$ctr6b, $rk6  \n  aesmc	$ctr6b, $ctr6b		@ AES block 8k+14 - round 6
-	aese	$ctr1b, $rk6  \n  aesmc	$ctr1b, $ctr1b		@ AES block 8k+9 - round 6
-	aese	$ctr7b, $rk6  \n  aesmc	$ctr7b, $ctr7b		@ AES block 8k+15 - round 6
+	aese	$ctr6b, $rk6  \n  aesmc	$ctr6b, $ctr6b			@ AES block 8k+14 - round 6
+	aese	$ctr1b, $rk6  \n  aesmc	$ctr1b, $ctr1b			@ AES block 8k+9 - round 6
+	aese	$ctr7b, $rk6  \n  aesmc	$ctr7b, $ctr7b			@ AES block 8k+15 - round 6
 
-	pmull	$t11.1q, $acc_h.1d, $mod_constant.1d	 	@ MODULO - top 64b align with mid
+	pmull	$t11.1q, $acc_h.1d, $mod_constant.1d		 	@ MODULO - top 64b align with mid
 	eor3	$acc_mb, $acc_mb, $acc_hb, $acc_lb		 	@ MODULO - karatsuba tidy up
 	ldp	$rk8q, $rk9q, [$cc, #128]				@ load rk8, rk9
 
-	aese	$ctr3b, $rk7  \n  aesmc	$ctr3b, $ctr3b		@ AES block 8k+11 - round 7
-	aese	$ctr6b, $rk7  \n  aesmc	$ctr6b, $ctr6b		@ AES block 8k+14 - round 7
-	aese	$ctr1b, $rk7  \n  aesmc	$ctr1b, $ctr1b		@ AES block 8k+9 - round 7
+	aese	$ctr3b, $rk7  \n  aesmc	$ctr3b, $ctr3b			@ AES block 8k+11 - round 7
+	aese	$ctr6b, $rk7  \n  aesmc	$ctr6b, $ctr6b			@ AES block 8k+14 - round 7
+	aese	$ctr1b, $rk7  \n  aesmc	$ctr1b, $ctr1b			@ AES block 8k+9 - round 7
 	ext	$t12.16b, $acc_hb, $acc_hb, #8				@ MODULO - other top alignment
 
-	aese	$ctr5b, $rk7  \n  aesmc	$ctr5b, $ctr5b		@ AES block 8k+13 - round 7
-	aese	$ctr0b, $rk7  \n  aesmc	$ctr0b, $ctr0b		@ AES block 8k+8 - round 7
-	eor3	$acc_mb, $acc_mb, $t12.16b, $t11.16b		@ MODULO - fold into mid
+	aese	$ctr5b, $rk7  \n  aesmc	$ctr5b, $ctr5b			@ AES block 8k+13 - round 7
+	aese	$ctr0b, $rk7  \n  aesmc	$ctr0b, $ctr0b			@ AES block 8k+8 - round 7
+	eor3	$acc_mb, $acc_mb, $t12.16b, $t11.16b			@ MODULO - fold into mid
 
-	aese	$ctr2b, $rk7  \n  aesmc	$ctr2b, $ctr2b		@ AES block 8k+10 - round 7
-	aese	$ctr7b, $rk7  \n  aesmc	$ctr7b, $ctr7b		@ AES block 8k+15 - round 7
+	aese	$ctr2b, $rk7  \n  aesmc	$ctr2b, $ctr2b			@ AES block 8k+10 - round 7
+	aese	$ctr7b, $rk7  \n  aesmc	$ctr7b, $ctr7b			@ AES block 8k+15 - round 7
 
-	pmull	$acc_h.1q, $acc_m.1d, $mod_constant.1d		@ MODULO - mid 64b align with low
-	aese	$ctr4b, $rk7  \n  aesmc	$ctr4b, $ctr4b		@ AES block 8k+12 - round 7
+	pmull	$acc_h.1q, $acc_m.1d, $mod_constant.1d			@ MODULO - mid 64b align with low
+	aese	$ctr4b, $rk7  \n  aesmc	$ctr4b, $ctr4b			@ AES block 8k+12 - round 7
 
-	aese	$ctr7b, $rk8  \n  aesmc	$ctr7b, $ctr7b		@ AES block 8k+15 - round 8
-	aese	$ctr2b, $rk8  \n  aesmc	$ctr2b, $ctr2b		@ AES block 8k+10 - round 8
-	aese	$ctr1b, $rk8  \n  aesmc	$ctr1b, $ctr1b		@ AES block 8k+9 - round 8
+	aese	$ctr7b, $rk8  \n  aesmc	$ctr7b, $ctr7b			@ AES block 8k+15 - round 8
+	aese	$ctr2b, $rk8  \n  aesmc	$ctr2b, $ctr2b			@ AES block 8k+10 - round 8
+	aese	$ctr1b, $rk8  \n  aesmc	$ctr1b, $ctr1b			@ AES block 8k+9 - round 8
 	ext	$acc_mb, $acc_mb, $acc_mb, #8				@ MODULO - other mid alignment
 
-	aese	$ctr6b, $rk8  \n  aesmc	$ctr6b, $ctr6b		@ AES block 8k+14 - round 8
+	aese	$ctr6b, $rk8  \n  aesmc	$ctr6b, $ctr6b			@ AES block 8k+14 - round 8
 	eor3	$acc_lb, $acc_lb, $acc_hb, $acc_mb		 	@ MODULO - fold into low
-	aese	$ctr4b, $rk8  \n  aesmc	$ctr4b, $ctr4b		@ AES block 8k+12 - round 8
+	aese	$ctr4b, $rk8  \n  aesmc	$ctr4b, $ctr4b			@ AES block 8k+12 - round 8
 
-	aese	$ctr3b, $rk8  \n  aesmc	$ctr3b, $ctr3b		@ AES block 8k+11 - round 8
-	aese	$ctr0b, $rk8  \n  aesmc	$ctr0b, $ctr0b		@ AES block 8k+8 - round 8
-	aese	$ctr5b, $rk8  \n  aesmc	$ctr5b, $ctr5b		@ AES block 8k+13 - round 8
+	aese	$ctr3b, $rk8  \n  aesmc	$ctr3b, $ctr3b			@ AES block 8k+11 - round 8
+	aese	$ctr0b, $rk8  \n  aesmc	$ctr0b, $ctr0b			@ AES block 8k+8 - round 8
+	aese	$ctr5b, $rk8  \n  aesmc	$ctr5b, $ctr5b			@ AES block 8k+13 - round 8
 
 	ldr	$rk10q, [$cc, #160]					@ load rk10
 	aese	$ctr6b, $rk9						@ AES block 8k+14 - round 9
@@ -1011,7 +1011,7 @@ aesv8_gcm_8x_enc_128:
 	ldp	$h5q, $h56kq, [$current_tag, #128]			@ load h5l | h5h
 	ext     $h5.16b, $h5.16b, $h5.16b, #8
 
-	eor3	$res1b, $ctr_t0b, $ctr0b, $t1.16b		@ AES block 8k+8 - result
+	eor3	$res1b, $ctr_t0b, $ctr0b, $t1.16b			@ AES block 8k+8 - result
 	ext	$t0.16b, $acc_lb, $acc_lb, #8				@ prepare final partial tag
 	ldp	$h6q, $h7q, [$current_tag, #160]			@ load h6l | h6h
 	ext     $h6.16b, $h6.16b, $h6.16b, #8
@@ -1084,8 +1084,8 @@ aesv8_gcm_8x_enc_128:
 	ldr	$h12kq, [$current_tag, #48]					@ load h2k | h1k
 	sub	$rtmp_ctr.4s, $rtmp_ctr.4s, $rctr_inc.4s
 	b	 .L128_enc_blocks_less_than_1
-.L128_enc_blocks_more_than_7:					@ blocks left >  7
-	st1	{ $res1b}, [$output_ptr], #16			@ AES final-7 block  - store result
+.L128_enc_blocks_more_than_7:						@ blocks left >  7
+	st1	{ $res1b}, [$output_ptr], #16				@ AES final-7 block  - store result
 
 	rev64	$res0b, $res1b						@ GHASH final-7 block
 	ldr	$ctr_t1q, [$input_ptr], #16				@ AES final-6 block - load plaintext
@@ -1094,20 +1094,20 @@ aesv8_gcm_8x_enc_128:
 
 	ins	$rk4v.d[0], $res0.d[1]					@ GHASH final-7 block - mid
 
-	pmull2  $acc_h.1q, $res0.2d, $h8.2d			@ GHASH final-7 block - high
+	pmull2  $acc_h.1q, $res0.2d, $h8.2d				@ GHASH final-7 block - high
 
 	ins	$acc_m.d[0], $h78k.d[1]					@ GHASH final-7 block - mid
 
-	eor	$rk4v.8b, $rk4v.8b, $res0.8b			@ GHASH final-7 block - mid
+	eor	$rk4v.8b, $rk4v.8b, $res0.8b				@ GHASH final-7 block - mid
 	movi	$t0.8b, #0						@ supress further partial tag feed in
 
-	eor3	$res1b, $ctr_t1b, $ctr1b, $t1.16b		@ AES final-6 block - result
+	eor3	$res1b, $ctr_t1b, $ctr1b, $t1.16b			@ AES final-6 block - result
 
-	pmull	$acc_m.1q, $rk4v.1d, $acc_m.1d			@ GHASH final-7 block - mid
+	pmull	$acc_m.1q, $rk4v.1d, $acc_m.1d				@ GHASH final-7 block - mid
 	pmull	$acc_l.1q, $res0.1d, $h8.1d				@ GHASH final-7 block - low
 .L128_enc_blocks_more_than_6:						@ blocks left >  6
 
-	st1	{ $res1b}, [$output_ptr], #16			@ AES final-6 block - store result
+	st1	{ $res1b}, [$output_ptr], #16				@ AES final-6 block - store result
 
 	rev64	$res0b, $res1b						@ GHASH final-6 block
 	ldr	$ctr_t1q, [$input_ptr], #16				@ AES final-5 block - load plaintext
@@ -1116,13 +1116,13 @@ aesv8_gcm_8x_enc_128:
 
 	ins	$rk4v.d[0], $res0.d[1]					@ GHASH final-6 block - mid
 
-	eor3	$res1b, $ctr_t1b, $ctr2b, $t1.16b		@ AES final-5 block - result
+	eor3	$res1b, $ctr_t1b, $ctr2b, $t1.16b			@ AES final-5 block - result
 	pmull	$rk3q1, $res0.1d, $h7.1d				@ GHASH final-6 block - low
 
 	eor	$rk4v.8b, $rk4v.8b, $res0.8b				@ GHASH final-6 block - mid
 	movi	$t0.8b, #0						@ supress further partial tag feed in
 
-	pmull	$rk4v.1q, $rk4v.1d, $h78k.1d			@ GHASH final-6 block - mid
+	pmull	$rk4v.1q, $rk4v.1d, $h78k.1d				@ GHASH final-6 block - mid
 	pmull2  $rk2q1, $res0.2d, $h7.2d				@ GHASH final-6 block - high
 
 	eor	$acc_lb, $acc_lb, $rk3					@ GHASH final-6 block - low
@@ -1131,7 +1131,7 @@ aesv8_gcm_8x_enc_128:
 	eor	$acc_hb, $acc_hb, $rk2					@ GHASH final-6 block - high
 .L128_enc_blocks_more_than_5:						@ blocks left >  5
 
-	st1	{ $res1b}, [$output_ptr], #16			@ AES final-5 block - store result
+	st1	{ $res1b}, [$output_ptr], #16				@ AES final-5 block - store result
 
 	rev64	$res0b, $res1b						@ GHASH final-5 block
 
@@ -1139,19 +1139,19 @@ aesv8_gcm_8x_enc_128:
 
 	ins	$rk4v.d[0], $res0.d[1]					@ GHASH final-5 block - mid
 	ldr	$ctr_t1q, [$input_ptr], #16				@ AES final-4 block - load plaintext
-	pmull2  $rk2q1, $res0.2d, $h6.2d			@ GHASH final-5 block - high
+	pmull2  $rk2q1, $res0.2d, $h6.2d				@ GHASH final-5 block - high
 
 	eor	$acc_hb, $acc_hb, $rk2					@ GHASH final-5 block - high
 
-	eor	$rk4v.8b, $rk4v.8b, $res0.8b			@ GHASH final-5 block - mid
+	eor	$rk4v.8b, $rk4v.8b, $res0.8b				@ GHASH final-5 block - mid
 
 	ins	$rk4v.d[1], $rk4v.d[0]					@ GHASH final-5 block - mid
 
-	eor3	$res1b, $ctr_t1b, $ctr3b, $t1.16b		@ AES final-4 block - result
+	eor3	$res1b, $ctr_t1b, $ctr3b, $t1.16b			@ AES final-4 block - result
 	pmull	$rk3q1, $res0.1d, $h6.1d				@ GHASH final-5 block - low
 	movi	$t0.8b, #0						@ supress further partial tag feed in
 
-	pmull2  $rk4v.1q, $rk4v.2d, $h56k.2d			@ GHASH final-5 block - mid
+	pmull2  $rk4v.1q, $rk4v.2d, $h56k.2d				@ GHASH final-5 block - mid
 	eor	$acc_lb, $acc_lb, $rk3					@ GHASH final-5 block - low
 
 	eor	$acc_mb, $acc_mb, $rk4v.16b				@ GHASH final-5 block - mid
@@ -1167,22 +1167,22 @@ aesv8_gcm_8x_enc_128:
 
 	ins	$rk4v.d[0], $res0.d[1]					@ GHASH final-4 block - mid
 	movi	$t0.8b, #0						@ supress further partial tag feed in
-	pmull2  $rk2q1, $res0.2d, $h5.2d			@ GHASH final-4 block - high
+	pmull2  $rk2q1, $res0.2d, $h5.2d				@ GHASH final-4 block - high
 
-	eor	$rk4v.8b, $rk4v.8b, $res0.8b			@ GHASH final-4 block - mid
+	eor	$rk4v.8b, $rk4v.8b, $res0.8b				@ GHASH final-4 block - mid
 
-	pmull	$rk3q1, $res0.1d, $h5.1d			@ GHASH final-4 block - low
+	pmull	$rk3q1, $res0.1d, $h5.1d				@ GHASH final-4 block - low
 
 	eor	$acc_hb, $acc_hb, $rk2					@ GHASH final-4 block - high
-	pmull	$rk4v.1q, $rk4v.1d, $h56k.1d		@ GHASH final-4 block - mid
+	pmull	$rk4v.1q, $rk4v.1d, $h56k.1d				@ GHASH final-4 block - mid
 
 	eor	$acc_lb, $acc_lb, $rk3					@ GHASH final-4 block - low
 
-	eor3	$res1b, $ctr_t1b, $ctr4b, $t1.16b	@ AES final-3 block - result
+	eor3	$res1b, $ctr_t1b, $ctr4b, $t1.16b			@ AES final-3 block - result
 	eor	$acc_mb, $acc_mb, $rk4v.16b				@ GHASH final-4 block - mid
-.L128_enc_blocks_more_than_3:					@ blocks left >  3
+.L128_enc_blocks_more_than_3:						@ blocks left >  3
 
-	st1	{ $res1b}, [$output_ptr], #16			@ AES final-3 block - store result
+	st1	{ $res1b}, [$output_ptr], #16			  	@ AES final-3 block - store result
 
 	ldr	$h4q, [$current_tag, #112]				@ load h4l | h4h
 	ext     $h4.16b, $h4.16b, $h4.16b, #8
@@ -1194,25 +1194,25 @@ aesv8_gcm_8x_enc_128:
 
 	ins	$rk4v.d[0], $res0.d[1]					@ GHASH final-3 block - mid
 	ldr	$h34kq, [$current_tag, #96]				@ load h4k | h3k
-	pmull	$rk3q1, $res0.1d, $h4.1d			@ GHASH final-3 block - low
+	pmull	$rk3q1, $res0.1d, $h4.1d				@ GHASH final-3 block - low
 
 	ldr	$ctr_t1q, [$input_ptr], #16				@ AES final-2 block - load plaintext
 
-	eor	$rk4v.8b, $rk4v.8b, $res0.8b			@ GHASH final-3 block - mid
+	eor	$rk4v.8b, $rk4v.8b, $res0.8b				@ GHASH final-3 block - mid
 
 	ins	$rk4v.d[1], $rk4v.d[0]					@ GHASH final-3 block - mid
 	eor	$acc_lb, $acc_lb, $rk3					@ GHASH final-3 block - low
 
-	eor3	$res1b, $ctr_t1b, $ctr5b, $t1.16b		@ AES final-2 block - result
+	eor3	$res1b, $ctr_t1b, $ctr5b, $t1.16b			@ AES final-2 block - result
 
-	pmull2  $rk4v.1q, $rk4v.2d, $h34k.2d		@ GHASH final-3 block - mid
-	pmull2  $rk2q1, $res0.2d, $h4.2d			@ GHASH final-3 block - high
+	pmull2  $rk4v.1q, $rk4v.2d, $h34k.2d				@ GHASH final-3 block - mid
+	pmull2  $rk2q1, $res0.2d, $h4.2d				@ GHASH final-3 block - high
 
 	eor	$acc_mb, $acc_mb, $rk4v.16b				@ GHASH final-3 block - mid
 	eor	$acc_hb, $acc_hb, $rk2					@ GHASH final-3 block - high
-.L128_enc_blocks_more_than_2:					@ blocks left >  2
+.L128_enc_blocks_more_than_2:						@ blocks left >  2
 
-	st1	{ $res1b}, [$output_ptr], #16			@ AES final-2 block - store result
+	st1	{ $res1b}, [$output_ptr], #16			  	@ AES final-2 block - store result
 
 	rev64	$res0b, $res1b						@ GHASH final-2 block
 
@@ -1225,21 +1225,21 @@ aesv8_gcm_8x_enc_128:
 	ext     $h3.16b, $h3.16b, $h3.16b, #8
 	movi	$t0.8b, #0						@ supress further partial tag feed in
 
-	eor	$rk4v.8b, $rk4v.8b, $res0.8b			@ GHASH final-2 block - mid
-	eor3	$res1b, $ctr_t1b, $ctr6b, $t1.16b	@ AES final-1 block - result
+	eor	$rk4v.8b, $rk4v.8b, $res0.8b				@ GHASH final-2 block - mid
+	eor3	$res1b, $ctr_t1b, $ctr6b, $t1.16b			@ AES final-1 block - result
 
-	pmull2  $rk2q1, $res0.2d, $h3.2d			@ GHASH final-2 block - high
+	pmull2  $rk2q1, $res0.2d, $h3.2d				@ GHASH final-2 block - high
 
-	pmull	$rk3q1, $res0.1d, $h3.1d			@ GHASH final-2 block - low
-	pmull	$rk4v.1q, $rk4v.1d, $h34k.1d		@ GHASH final-2 block - mid
+	pmull	$rk3q1, $res0.1d, $h3.1d				@ GHASH final-2 block - low
+	pmull	$rk4v.1q, $rk4v.1d, $h34k.1d				@ GHASH final-2 block - mid
 
 	eor	$acc_hb, $acc_hb, $rk2					@ GHASH final-2 block - high
 
 	eor	$acc_mb, $acc_mb, $rk4v.16b				@ GHASH final-2 block - mid
 	eor	$acc_lb, $acc_lb, $rk3					@ GHASH final-2 block - low
-.L128_enc_blocks_more_than_1:					@ blocks left >  1
+.L128_enc_blocks_more_than_1:						@ blocks left >  1
 
-	st1	{ $res1b}, [$output_ptr], #16			@ AES final-1 block - store result
+	st1	{ $res1b}, [$output_ptr], #16			  	@ AES final-1 block - store result
 
 	ldr	$h2q, [$current_tag, #64]				@ load h2l | h2h
 	ext     $h2.16b, $h2.16b, $h2.16b, #8
@@ -1250,38 +1250,38 @@ aesv8_gcm_8x_enc_128:
 
 	movi	$t0.8b, #0						@ supress further partial tag feed in
 	ins	$rk4v.d[0], $res0.d[1]					@ GHASH final-1 block - mid
-	eor3	$res1b, $ctr_t1b, $ctr7b, $t1.16b	@ AES final block - result
+	eor3	$res1b, $ctr_t1b, $ctr7b, $t1.16b			@ AES final block - result
 
-	pmull2  $rk2q1, $res0.2d, $h2.2d			@ GHASH final-1 block - high
+	pmull2  $rk2q1, $res0.2d, $h2.2d				@ GHASH final-1 block - high
 
-	eor	$rk4v.8b, $rk4v.8b, $res0.8b			@ GHASH final-1 block - mid
+	eor	$rk4v.8b, $rk4v.8b, $res0.8b				@ GHASH final-1 block - mid
 
 	ldr	$h12kq, [$current_tag, #48]				@ load h2k | h1k
 
 	ins	$rk4v.d[1], $rk4v.d[0]					@ GHASH final-1 block - mid
 
-	pmull	$rk3q1, $res0.1d, $h2.1d			@ GHASH final-1 block - low
-	pmull2  $rk4v.1q, $rk4v.2d, $h12k.2d		@ GHASH final-1 block - mid
+	pmull	$rk3q1, $res0.1d, $h2.1d				@ GHASH final-1 block - low
+	pmull2  $rk4v.1q, $rk4v.2d, $h12k.2d				@ GHASH final-1 block - mid
 
 	eor	$acc_hb, $acc_hb, $rk2					@ GHASH final-1 block - high
 
 	eor	$acc_mb, $acc_mb, $rk4v.16b				@ GHASH final-1 block - mid
 	eor	$acc_lb, $acc_lb, $rk3					@ GHASH final-1 block - low
-.L128_enc_blocks_less_than_1:					@ blocks left <= 1
+.L128_enc_blocks_less_than_1:						@ blocks left <= 1
 
 	rev32	$rtmp_ctr.16b, $rtmp_ctr.16b
 	str	$rtmp_ctrq, [$counter]					@ store the updated counter
-	and	$bit_length, $bit_length, #127			@ bit_length %= 128
+	and	$bit_length, $bit_length, #127			 	@ bit_length %= 128
 
-	sub	$bit_length, $bit_length, #128			@ bit_length -= 128
+	sub	$bit_length, $bit_length, #128			 	@ bit_length -= 128
 
 	neg	$bit_length, $bit_length				@ bit_length = 128 - #bits in input (in range [1,128])
 
 	mvn	$temp0_x, xzr						@ temp0_x = 0xffffffffffffffff
 	ld1	{ $rk0}, [$output_ptr]					@ load existing bytes where the possibly partial last block is to be stored
-	and	$bit_length, $bit_length, #127			@ bit_length %= 128
+	and	$bit_length, $bit_length, #127			 	@ bit_length %= 128
 
-	lsr	$temp0_x, $temp0_x, $bit_length			@ temp0_x is mask for top 64b of last block
+	lsr	$temp0_x, $temp0_x, $bit_length				@ temp0_x is mask for top 64b of last block
 	mvn	$temp1_x, xzr						@ temp1_x = 0xffffffffffffffff
 	cmp	$bit_length, #64
 
@@ -1306,29 +1306,29 @@ aesv8_gcm_8x_enc_128:
 	ldr	$h1q, [$current_tag, #32]				@ load h1l | h1h
 	ext	$h1.16b, $h1.16b, $h1.16b, #8
 
-	pmull	$t0.1q, $t0.1d, $h12k.1d			@ GHASH final block - mid
+	pmull	$t0.1q, $t0.1d, $h12k.1d				@ GHASH final block - mid
 
-	pmull2  $rk2q1, $res0.2d, $h1.2d			@ GHASH final block - high
+	pmull2  $rk2q1, $res0.2d, $h1.2d				@ GHASH final block - high
 	eor	$acc_mb, $acc_mb, $t0.16b				@ GHASH final block - mid
-	ldr	$mod_constantd, [$modulo_constant]		@ MODULO - load modulo constant
+	ldr	$mod_constantd, [$modulo_constant]			@ MODULO - load modulo constant
 
-	pmull	$rk3q1, $res0.1d, $h1.1d			@ GHASH final block - low
+	pmull	$rk3q1, $res0.1d, $h1.1d				@ GHASH final block - low
 
 	eor	$acc_hb, $acc_hb, $rk2					@ GHASH final block - high
 
 	eor	$acc_lb, $acc_lb, $rk3					@ GHASH final block - low
 
-	ext	$t11.16b, $acc_hb, $acc_hb, #8			@ MODULO - other top alignment
-	pmull	$t12.1q, $acc_h.1d, $mod_constant.1d	  	@ MODULO - top 64b align with mid
+	ext	$t11.16b, $acc_hb, $acc_hb, #8			 	@ MODULO - other top alignment
+	pmull	$t12.1q, $acc_h.1d, $mod_constant.1d		  	@ MODULO - top 64b align with mid
 
 	eor3	$acc_mb, $acc_mb, $acc_hb, $acc_lb		  	@ MODULO - karatsuba tidy up
 
-	eor3	$acc_mb, $acc_mb, $t12.16b, $t11.16b	 	@ MODULO - fold into mid
+	eor3	$acc_mb, $acc_mb, $t12.16b, $t11.16b		 	@ MODULO - fold into mid
 
-	pmull	$acc_h.1q, $acc_m.1d, $mod_constant.1d		@ MODULO - mid 64b align with low
+	pmull	$acc_h.1q, $acc_m.1d, $mod_constant.1d			@ MODULO - mid 64b align with low
 	ext	$t11.16b, $acc_mb, $acc_mb, #8			  	@ MODULO - other mid alignment
 
-	eor3	$acc_lb, $acc_lb, $acc_hb, $t11.16b		@ MODULO - fold into low
+	eor3	$acc_lb, $acc_lb, $acc_hb, $t11.16b		  	@ MODULO - fold into low
 	ext	$acc_lb, $acc_lb, $acc_lb, #8
 	rev64	$acc_lb, $acc_lb
 	st1	{ $acc_l.16b }, [$current_tag]
