@@ -1294,8 +1294,8 @@ static int ipv6_from_asc(unsigned char v6[16], const char *in)
         if (v6stat.total != 16)
             return 0;
     } else {
-        /* If '::' must have less than 16 bytes */
-        if (v6stat.total == 16)
+        /* If '::' must have less than 16 bytes  */
+        if (v6stat.total >= 16)
             return 0;
         /* More than three zeroes is an error */
         if (v6stat.zero_cnt > 3)
