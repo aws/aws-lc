@@ -12,8 +12,9 @@ android {
     def main_apk_tag = ''
     def test_apk_tag = ''
     // FIPS only works with arm64 for Android.
+    // Temporarily testing static.
     if (project.hasProperty('FIPS')) {
-        cmake_args += '-DFIPS=1,-DBUILD_SHARED_LIBS=1,-DCMAKE_BUILD_TYPE=Release'
+        cmake_args += '-DFIPS=1,-DCMAKE_BUILD_TYPE=Release'
         specific_abis = 'arm64-v8a'
         main_apk_tag += '_fips'
         test_apk_tag += '_fips'

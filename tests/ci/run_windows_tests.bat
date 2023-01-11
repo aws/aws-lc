@@ -22,6 +22,8 @@ set PATH=%BUILD_DIR%;%BUILD_DIR%\crypto;%BUILD_DIR%\ssl;%PATH%
 call :build_and_test Release "-DBUILD_SHARED_LIBS=1" || goto error
 call :build_and_test Release "-DBUILD_SHARED_LIBS=1 -DFIPS=1" || goto error
 
+@rem Testing static FIPS build on Windows.
+call :build_and_test Release "-DFIPS=1" || goto error
 goto :EOF
 
 @rem %1 is the build type Release/Debug
