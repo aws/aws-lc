@@ -44,19 +44,13 @@ S2N_BN_SYMBOL(bignum_neg_p256):
         cmp     p, #0
         csetm   p, ne
 
-// Load the nontrivial words of p_256 = [n3;0;n1;-1], mask them
-// with p and subtract
+// Mask the nontrivial words of p_256 = [n3;0;n1;-1] and subtract
 
         subs    d0, p, d0
-
-        mov     t, #0x00000000ffffffff
-        and     t, t, p
+        and     t, p, #0x00000000ffffffff
         sbcs    d1, t, d1
-
         sbcs    d2, xzr, d2
-
-        mov     t, #0xffffffff00000001
-        and     t, t, p
+        and     t, p, #0xffffffff00000001
         sbc     d3, t, d3
 
 // Write back the result

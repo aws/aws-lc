@@ -381,6 +381,8 @@ void call_bignum_neg_p384(void) repeat(bignum_neg_p384(b0,b1))
 
 void call_bignum_neg_p521(void) repeat(bignum_neg_p521(b0,b1))
 
+void call_bignum_neg_sm2(void) repeat(bignum_neg_sm2(b0,b1))
+
 void call_bignum_sqr_p25519(void) repeat(bignum_sqr_p25519(b0,b1))
 
 void call_bignum_sqr_p25519_alt(void) repeat(bignum_sqr_p25519_alt(b0,b1))
@@ -957,6 +959,7 @@ int main(int argc, char *argv[])
   timingtest(all,"bignum_neg_p256k1",call_bignum_neg_p256k1);
   timingtest(all,"bignum_neg_p384",call_bignum_neg_p384);
   timingtest(all,"bignum_neg_p521",call_bignum_neg_p521);
+  timingtest(all,"bignum_neg_sm2",call_bignum_neg_sm2);
   timingtest(all,"bignum_negmodinv (32)" ,call_bignum_negmodinv__32);
   timingtest(all,"bignum_nonzero (32)" ,call_bignum_nonzero__32);
   timingtest(all,"bignum_nonzero_4",call_bignum_nonzero_4);

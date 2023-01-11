@@ -122,6 +122,7 @@ bignum_neg_p256
 bignum_neg_p256k1
 bignum_neg_p384
 bignum_neg_p521
+bignum_neg_sm2
 bignum_negmodinv
 bignum_nonzero
 bignum_nonzero_4
