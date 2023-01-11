@@ -4,13 +4,13 @@
  *)
 
 (* ========================================================================= *)
-(* Doubling modulo p_256, the field characteristic for the NIST P-256 curve. *)
+(* Doubling modulo p_sm2, the field characteristic for the CC SM2 curve.     *)
 (* ========================================================================= *)
 
-(**** print_literal_from_elf "arm/p256/bignum_double_p256.o";;
+(**** print_literal_from_elf "arm/sm2/bignum_double_sm2.o";;
  ****)
 
-let bignum_double_p256_mc = define_assert_from_elf "bignum_double_p256_mc" "arm/p256/bignum_double_p256.o"
+let bignum_double_sm2_mc = define_assert_from_elf "bignum_double_sm2_mc" "arm/sm2/bignum_double_sm2.o"
 [
   0xa9400c22;       (* arm_LDP X2 X3 X1 (Immediate_Offset (iword (&0))) *)
   0xa9411424;       (* arm_LDP X4 X5 X1 (Immediate_Offset (iword (&16))) *)
@@ -20,10 +20,10 @@ let bignum_double_p256_mc = define_assert_from_elf "bignum_double_p256_mc" "arm/
   0xba0500a5;       (* arm_ADCS X5 X5 X5 *)
   0x9a1f03e6;       (* arm_ADC X6 XZR XZR *)
   0xb1000447;       (* arm_ADDS X7 X2 (rvalue (word 1)) *)
-  0xb2407fe8;       (* arm_MOV X8 (rvalue (word 4294967295)) *)
+  0xb2607fe8;       (* arm_MOV X8 (rvalue (word 18446744069414584320)) *)
   0xfa080068;       (* arm_SBCS X8 X3 X8 *)
-  0xfa1f0089;       (* arm_SBCS X9 X4 XZR *)
-  0xb26083ea;       (* arm_MOV X10 (rvalue (word 18446744069414584321)) *)
+  0xba1f0089;       (* arm_ADCS X9 X4 XZR *)
+  0x92c0002a;       (* arm_MOVN X10 (word 1) 32 *)
   0xfa0a00aa;       (* arm_SBCS X10 X5 X10 *)
   0xfa1f00c6;       (* arm_SBCS X6 X6 XZR *)
   0x9a873042;       (* arm_CSEL X2 X2 X7 Condition_CC *)
@@ -35,25 +35,25 @@ let bignum_double_p256_mc = define_assert_from_elf "bignum_double_p256_mc" "arm/
   0xd65f03c0        (* arm_RET X30 *)
 ];;
 
-let BIGNUM_DOUBLE_P256_EXEC = ARM_MK_EXEC_RULE bignum_double_p256_mc;;
+let BIGNUM_DOUBLE_SM2_EXEC = ARM_MK_EXEC_RULE bignum_double_sm2_mc;;
 
 (* ------------------------------------------------------------------------- *)
 (* Proof.                                                                    *)
 (* ------------------------------------------------------------------------- *)
 
-let p_256 = new_definition `p_256 = 115792089210356248762697446949407573530086143415290314195533631308867097853951`;;
+let p_sm2 = new_definition `p_sm2 = 0xFFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFFFFFFFFFFFFFF`;;
 
-let BIGNUM_DOUBLE_P256_CORRECT = time prove
+let BIGNUM_DOUBLE_SM2_CORRECT = time prove
  (`!z x n pc.
         nonoverlapping (word pc,0x54) (z,8 * 4)
         ==> ensures arm
-             (\s. aligned_bytes_loaded s (word pc) bignum_double_p256_mc /\
+             (\s. aligned_bytes_loaded s (word pc) bignum_double_sm2_mc /\
                   read PC s = word pc /\
                   C_ARGUMENTS [z; x] s /\
                   bignum_from_memory (x,4) s = n)
              (\s. read PC s = word (pc + 0x50) /\
-                  (n < p_256
-                   ==> bignum_from_memory (z,4) s = (2 * n) MOD p_256))
+                  (n < p_sm2
+                   ==> bignum_from_memory (z,4) s = (2 * n) MOD p_sm2))
           (MAYCHANGE [PC; X2; X3; X4; X5; X6; X7; X8; X9; X10] ,,
            MAYCHANGE SOME_FLAGS ,,
            MAYCHANGE [memory :> bignum(z,4)])`,
@@ -64,16 +64,16 @@ let BIGNUM_DOUBLE_P256_CORRECT = time prove
   REWRITE_TAC[BIGNUM_FROM_MEMORY_BYTES] THEN ENSURES_INIT_TAC "s0" THEN
   BIGNUM_DIGITIZE_TAC "n_" `read (memory :> bytes (x,8 * 4)) s0` THEN
 
-  ARM_ACCSTEPS_TAC BIGNUM_DOUBLE_P256_EXEC (1--20) (1--20) THEN
+  ARM_ACCSTEPS_TAC BIGNUM_DOUBLE_SM2_EXEC (1--20) (1--20) THEN
   RULE_ASSUM_TAC(REWRITE_RULE[ADD_CLAUSES; VAL_WORD_BITVAL]) THEN
   ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN DISCH_TAC THEN
   RULE_ASSUM_TAC(REWRITE_RULE[REAL_BITVAL_NOT]) THEN
 
   SUBGOAL_THEN
-   `carry_s14 <=> 2 * n < p_256`
+   `carry_s14 <=> 2 * n < p_sm2`
   SUBST_ALL_TAC THENL
    [MATCH_MP_TAC FLAG_FROM_CARRY_LT THEN EXISTS_TAC `320` THEN
-    EXPAND_TAC "n" THEN REWRITE_TAC[p_256; GSYM REAL_OF_NUM_CLAUSES] THEN
+    EXPAND_TAC "n" THEN REWRITE_TAC[p_sm2; GSYM REAL_OF_NUM_CLAUSES] THEN
     ACCUMULATOR_ASSUM_LIST(MP_TAC o end_itlist CONJ o DECARRY_RULE) THEN
     DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN BOUNDER_TAC[];
     ALL_TAC] THEN
@@ -92,32 +92,32 @@ let BIGNUM_DOUBLE_P256_CORRECT = time prove
    [COND_CASES_TAC THEN ASM_REWRITE_TAC[] THEN BOUNDER_TAC[];
     ALL_TAC] THEN
   CONJ_TAC THENL
-   [UNDISCH_TAC `n < p_256` THEN
-    REWRITE_TAC[p_256; GSYM REAL_OF_NUM_CLAUSES] THEN REAL_ARITH_TAC;
+   [UNDISCH_TAC `n < p_sm2` THEN
+    REWRITE_TAC[p_sm2; GSYM REAL_OF_NUM_CLAUSES] THEN REAL_ARITH_TAC;
     ALL_TAC] THEN
   CONJ_TAC THENL [REAL_INTEGER_TAC; ALL_TAC] THEN
   FIRST_X_ASSUM(SUBST1_TAC o MATCH_MP (MESON[REAL_OF_NUM_ADD; REAL_OF_NUM_EQ]
    `a + b:num = n ==> &n = &a + &b`)) THEN
     REWRITE_TAC[GSYM REAL_OF_NUM_CLAUSES] THEN
   ACCUMULATOR_POP_ASSUM_LIST(MP_TAC o end_itlist CONJ o DESUM_RULE) THEN
-  COND_CASES_TAC THEN ASM_REWRITE_TAC[BITVAL_CLAUSES; p_256] THEN
+  COND_CASES_TAC THEN ASM_REWRITE_TAC[BITVAL_CLAUSES; p_sm2] THEN
   DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN
   CONV_TAC(RAND_CONV REAL_POLY_CONV) THEN REAL_INTEGER_TAC);;
 
-let BIGNUM_DOUBLE_P256_SUBROUTINE_CORRECT = time prove
+let BIGNUM_DOUBLE_SM2_SUBROUTINE_CORRECT = time prove
  (`!z x n pc returnaddress.
         nonoverlapping (word pc,0x54) (z,8 * 4)
         ==> ensures arm
-             (\s. aligned_bytes_loaded s (word pc) bignum_double_p256_mc /\
+             (\s. aligned_bytes_loaded s (word pc) bignum_double_sm2_mc /\
                   read PC s = word pc /\
                   read X30 s = returnaddress /\
                   C_ARGUMENTS [z; x] s /\
                   bignum_from_memory (x,4) s = n)
              (\s. read PC s = returnaddress /\
-                  (n < p_256
-                   ==> bignum_from_memory (z,4) s = (2 * n) MOD p_256))
+                  (n < p_sm2
+                   ==> bignum_from_memory (z,4) s = (2 * n) MOD p_sm2))
           (MAYCHANGE [PC; X2; X3; X4; X5; X6; X7; X8; X9; X10] ,,
            MAYCHANGE SOME_FLAGS ,,
            MAYCHANGE [memory :> bignum(z,4)])`,
   ARM_ADD_RETURN_NOSTACK_TAC
-   BIGNUM_DOUBLE_P256_EXEC BIGNUM_DOUBLE_P256_CORRECT);;
+   BIGNUM_DOUBLE_SM2_EXEC BIGNUM_DOUBLE_SM2_CORRECT);;

@@ -3190,6 +3190,41 @@ int test_bignum_double_p521(void)
   return 0;
 }
 
+int test_bignum_double_sm2(void)
+{ uint64_t i, k;
+  printf("Testing bignum_double_sm2 with %d cases\n",tests);
+  uint64_t c;
+  for (i = 0; i < tests; ++i)
+   { k = 4;
+     random_bignum(k,b2); reference_mod(k,b0,b2,p_sm2);
+     bignum_double_sm2(b2,b0);
+     reference_copy(k+1,b3,k,b0);
+     reference_copy(k+1,b4,k,b0);
+     reference_add_samelen(k+1,b4,b4,b3);
+     reference_copy(k+1,b3,k,p_sm2);
+     reference_mod(k+1,b5,b4,b3);
+     reference_copy(k,b3,k+1,b5);
+
+     c = reference_compare(k,b3,k,b2);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "...0x%016"PRIx64" * 2 mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64" not ...0x%016"PRIx64"\n",
+               k,b0[0],p_sm2[0],b2[0],b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] "
+                    "...0x%016"PRIx64" * 2 mod ....0x%016"PRIx64" = "
+                    "...0x%016"PRIx64"\n",
+                    k,b0[0],p_sm2[0],b2[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
 int test_bignum_emontredc(void)
 { uint64_t t, k, w, tc;
   printf("Testing bignum_emontredc with %d cases\n",tests);
@@ -3655,6 +3690,41 @@ int test_bignum_half_p521(void)
                "2 * (...0x%016"PRIx64" / 2) mod ....0x%016"PRIx64" = "
                "...0x%016"PRIx64"\n",
                k,b0[0],p_521[0],b3[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_bignum_half_sm2(void)
+{ uint64_t i, k;
+  printf("Testing bignum_half_sm2 with %d cases\n",tests);
+  uint64_t c;
+  for (i = 0; i < tests; ++i)
+   { k = 4;
+     random_bignum(k,b2); reference_mod(k,b0,b2,p_sm2);
+
+     bignum_half_sm2(b2,b0);
+
+     reference_adc(k+1,b4,k,b2,k,b2,0);
+     reference_copy(k+1,b5,k,p_sm2);
+     reference_mod(k+1,b6,b4,b5);
+     reference_copy(k,b3,k+1,b6);
+
+     c = reference_compare(k,b3,k,b0);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "2 * (...0x%016"PRIx64" / 2) mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64" not ...0x%016"PRIx64"\n",
+               k,b0[0],p_sm2[0],b3[0],b0[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] "
+               "2 * (...0x%016"PRIx64" / 2) mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64"\n",
+               k,b0[0],p_sm2[0],b3[0]);
       }
    }
   printf("All OK\n");
@@ -9524,6 +9594,7 @@ int main(int argc, char *argv[])
   functionaltest(all,"bignum_double_p256k1",test_bignum_double_p256k1);
   functionaltest(all,"bignum_double_p384",test_bignum_double_p384);
   functionaltest(all,"bignum_double_p521",test_bignum_double_p521);
+  functionaltest(all,"bignum_double_sm2",test_bignum_double_sm2);
   functionaltest(all,"bignum_emontredc",test_bignum_emontredc);
   functionaltest(bmi,"bignum_emontredc_8n",test_bignum_emontredc_8n);
   functionaltest(all,"bignum_eq",test_bignum_eq);
@@ -9539,6 +9610,7 @@ int main(int argc, char *argv[])
   functionaltest(all,"bignum_half_p256k1",test_bignum_half_p256k1);
   functionaltest(all,"bignum_half_p384",test_bignum_half_p384);
   functionaltest(all,"bignum_half_p521",test_bignum_half_p521);
+  functionaltest(all,"bignum_half_sm2",test_bignum_half_sm2);
   functionaltest(all,"bignum_iszero",test_bignum_iszero);
   functionaltest(bmi,"bignum_kmul_16_32",test_bignum_kmul_16_32);
   functionaltest(bmi,"bignum_kmul_32_64",test_bignum_kmul_32_64);

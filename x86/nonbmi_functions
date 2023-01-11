@@ -50,6 +50,7 @@ bignum_double_p256
 bignum_double_p256k1
 bignum_double_p384
 bignum_double_p521
+bignum_double_sm2
 bignum_emontredc
 bignum_eq
 bignum_even
@@ -64,6 +65,7 @@ bignum_half_p256
 bignum_half_p256k1
 bignum_half_p384
 bignum_half_p521
+bignum_half_sm2
 bignum_iszero
 bignum_le
 bignum_littleendian_4

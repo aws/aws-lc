@@ -2,18 +2,18 @@
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
 // ----------------------------------------------------------------------------
-// Halve modulo p_256, z := (x / 2) mod p_256, assuming x reduced
+// Halve modulo p_sm2, z := (x / 2) mod p_sm2, assuming x reduced
 // Input x[4]; output z[4]
 //
-//    extern void bignum_half_p256
+//    extern void bignum_half_sm2
 //     (uint64_t z[static 4], uint64_t x[static 4]);
 //
 // Standard ARM ABI: X0 = z, X1 = x
 // ----------------------------------------------------------------------------
 #include "_internal_s2n_bignum.h"
 
-        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_half_p256)
-        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_half_p256)
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_half_sm2)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_half_sm2)
         .text
         .balign 4
 
@@ -28,7 +28,8 @@
 #define m x7
 #define n x8
 
-S2N_BN_SYMBOL(bignum_half_p256):
+
+S2N_BN_SYMBOL(bignum_half_sm2):
 
 // Load the 4 digits of x
 
@@ -40,13 +41,13 @@ S2N_BN_SYMBOL(bignum_half_p256):
         and     m, d0, #1
         neg     m, m
 
-// Do a masked addition of p_256, catching carry in a 5th word
+// Do a masked addition of p_sm2, catching carry in a 5th word
 
         adds    d0, d0, m
-        and     n, m, #0x00000000ffffffff
+        and     n, m, #0xffffffff00000000
         adcs    d1, d1, n
-        adcs    d2, d2, xzr
-        and     n, m, #0xffffffff00000001
+        adcs    d2, d2, m
+        and     n, m, #0xfffffffeffffffff
         adcs    d3, d3, n
         adc     d4, xzr, xzr
 
