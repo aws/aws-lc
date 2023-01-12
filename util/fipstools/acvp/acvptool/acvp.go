@@ -46,6 +46,7 @@ var (
 	dumpRegcap      = flag.Bool("regcap", false, "Print module capabilities JSON to stdout")
 	configFilename  = flag.String("config", "config.json", "Location of the configuration JSON file")
 	jsonInputFile   = flag.String("json", "", "Location of a vector-set input file")
+	uploadInputFile = flag.String("upload", "", "Location of a JSON results file to upload")
 	runFlag         = flag.String("run", "", "Name of primitive to run tests for")
 	fetchFlag       = flag.String("fetch", "", "Name of primitive to fetch vectors for")
 	expectedOutFlag = flag.String("expected-out", "", "Name of a file to write the expected results to")
@@ -180,12 +181,12 @@ func trimLeadingSlash(s string) string {
 	return s
 }
 
-// looksLikeHeaderElement returns true iff element looks like it's a header, not
-// a test. Some ACVP files contain a header as the first element that should be
-// duplicated into the response, and some don't. If the element contains
-// a "url" field, or if it's missing an "algorithm" field, then we guess that
-// it's a header.
-func looksLikeHeaderElement(element json.RawMessage) bool {
+// looksLikeVectorSetHeader returns true iff element looks like it's a
+// vectorSetHeader, not a test. Some ACVP files contain a header as the first
+// element that should be duplicated into the response, and some don't. If the
+// element contains a "url" field, or if it's missing an "algorithm" field,
+// then we guess that it's a header.
+func looksLikeVectorSetHeader(element json.RawMessage) bool {
 	var headerFields struct {
 		URL       string `json:"url"`
 		Algorithm string `json:"algorithm"`
@@ -215,7 +216,7 @@ func processFile(filename string, supportedAlgos []map[string]interface{}, middl
 	}
 
 	var header json.RawMessage
-	if looksLikeHeaderElement(elements[0]) {
+	if looksLikeVectorSetHeader(elements[0]) {
 		header, elements = elements[0], elements[1:]
 		if len(elements) == 0 {
 			return errors.New("JSON input is empty")
@@ -362,12 +363,173 @@ func uploadResult(server *acvp.Server, setURL string, resultData []byte) error {
 	return nil
 }
 
+func connect(config *Config, sessionTokensCacheDir string) (*acvp.Server, error) {
+	if len(config.TOTPSecret) == 0 {
+		return nil, errors.New("config file missing TOTPSecret")
+	}
+	totpSecret, err := base64.StdEncoding.DecodeString(config.TOTPSecret)
+	if err != nil {
+		return nil, fmt.Errorf("failed to base64-decode TOTP secret from config file: %s. (Note that the secret _itself_ should be in the config, not the name of a file that contains it.)", err)
+	}
+
+	if len(config.CertPEMFile) == 0 {
+		return nil, errors.New("config file missing CertPEMFile")
+	}
+	certPEM, err := ioutil.ReadFile(config.CertPEMFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read certificate from %q: %s", config.CertPEMFile, err)
+	}
+	block, _ := pem.Decode(certPEM)
+	certDER := block.Bytes
+
+	if len(config.PrivateKeyDERFile) == 0 && len(config.PrivateKeyFile) == 0 {
+		return nil, errors.New("config file missing PrivateKeyDERFile and PrivateKeyFile")
+	}
+	if len(config.PrivateKeyDERFile) != 0 && len(config.PrivateKeyFile) != 0 {
+		return nil, errors.New("config file has both PrivateKeyDERFile and PrivateKeyFile. Can only have one.")
+	}
+	privateKeyFile := config.PrivateKeyDERFile
+	if len(config.PrivateKeyFile) > 0 {
+		privateKeyFile = config.PrivateKeyFile
+	}
+
+	keyBytes, err := ioutil.ReadFile(privateKeyFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read private key from %q: %s", privateKeyFile, err)
+	}
+
+	var keyDER []byte
+	pemBlock, _ := pem.Decode(keyBytes)
+	if pemBlock != nil {
+		keyDER = pemBlock.Bytes
+	} else {
+		keyDER = keyBytes
+	}
+
+	var certKey crypto.PrivateKey
+	if certKey, err = x509.ParsePKCS1PrivateKey(keyDER); err != nil {
+		if certKey, err = x509.ParsePKCS8PrivateKey(keyDER); err != nil {
+			return nil, fmt.Errorf("failed to parse private key from %q: %s", privateKeyFile, err)
+		}
+	}
+
+	serverURL := "https://demo.acvts.nist.gov/"
+	if len(config.ACVPServer) > 0 {
+		serverURL = config.ACVPServer
+	}
+	server := acvp.NewServer(serverURL, config.LogFile, [][]byte{certDER}, certKey, func() string {
+		return TOTP(totpSecret[:])
+	})
+
+	if len(sessionTokensCacheDir) > 0 {
+		if err := loadCachedSessionTokens(server, sessionTokensCacheDir); err != nil {
+			return nil, err
+		}
+	}
+
+	return server, nil
+}
+
+func getResultsWithRetry(server *acvp.Server, url string) (bool, error) {
+FetchResults:
+	for {
+		var results acvp.SessionResults
+		if err := server.Get(&results, trimLeadingSlash(url)+"/results"); err != nil {
+			return false, errors.New("failed to fetch session results: " + err.Error())
+		}
+
+		if results.Passed {
+			log.Print("Test passed")
+			return true, nil
+		}
+
+		for _, result := range results.Results {
+			if result.Status == "incomplete" {
+				log.Print("Server hasn't finished processing results. Waiting 10 seconds.")
+				time.Sleep(10 * time.Second)
+				continue FetchResults
+			}
+		}
+
+		log.Printf("Server did not accept results: %#v", results)
+		return false, nil
+	}
+}
+
+// vectorSetHeader is the first element in the array of JSON elements that makes
+// up the on-disk format for a vector set.
+type vectorSetHeader struct {
+	URL           string   `json:"url,omitempty"`
+	VectorSetURLs []string `json:"vectorSetUrls,omitempty"`
+	Time          string   `json:"time,omitempty"`
+}
+
+func uploadFromFile(file string, config *Config, sessionTokensCacheDir string) {
+	if len(*jsonInputFile) > 0 {
+		log.Fatalf("-upload cannot be used with -json")
+	}
+	if len(*runFlag) > 0 {
+		log.Fatalf("-upload cannot be used with -run")
+	}
+	if len(*fetchFlag) > 0 {
+		log.Fatalf("-upload cannot be used with -fetch")
+	}
+	if len(*expectedOutFlag) > 0 {
+		log.Fatalf("-upload cannot be used with -expected-out")
+	}
+	if *dumpRegcap {
+		log.Fatalf("-upload cannot be used with -regcap")
+	}
+
+	in, err := os.Open(file)
+	if err != nil {
+		log.Fatalf("Cannot open input: %s", err)
+	}
+	defer in.Close()
+
+	decoder := json.NewDecoder(in)
+
+	var input []json.RawMessage
+	if err := decoder.Decode(&input); err != nil {
+		log.Fatalf("Failed to parse input: %s", err)
+	}
+
+	if len(input) < 2 {
+		log.Fatalf("Input JSON has fewer than two elements")
+	}
+
+	var header vectorSetHeader
+	if err := json.Unmarshal(input[0], &header); err != nil {
+		log.Fatalf("Failed to parse input header: %s", err)
+	}
+
+	if numGroups := len(input) - 1; numGroups != len(header.VectorSetURLs) {
+		log.Fatalf("have %d URLs from header, but only %d result groups", len(header.VectorSetURLs), numGroups)
+	}
+
+	server, err := connect(config, sessionTokensCacheDir)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for i, url := range header.VectorSetURLs {
+		log.Printf("Uploading result for %q", url)
+		if err := uploadResult(server, url, input[i+1]); err != nil {
+			log.Fatalf("Failed to upload: %s", err)
+		}
+	}
+
+	if ok, err := getResultsWithRetry(server, header.URL); err != nil {
+		log.Fatal(err)
+	} else if !ok {
+		os.Exit(1)
+	}
+}
+
 func main() {
 	flag.Parse()
 
-	var err error
-	var middle Middle
-	middle, err = subprocess.New(*wrapperPath)
+	middle, err := subprocess.New(*wrapperPath)
 	if err != nil {
 		log.Fatalf("failed to initialise middle: %s", err)
 	}
@@ -423,53 +585,21 @@ func main() {
 		log.Fatalf("Failed to load config file: %s", err)
 	}
 
-	if len(config.TOTPSecret) == 0 {
-		log.Fatal("Config file missing TOTPSecret")
-	}
-	totpSecret, err := base64.StdEncoding.DecodeString(config.TOTPSecret)
-	if err != nil {
-		log.Fatalf("Failed to base64-decode TOTP secret from config file: %s. (Note that the secret _itself_ should be in the config, not the name of a file that contains it.)", err)
-	}
-
-	if len(config.CertPEMFile) == 0 {
-		log.Fatal("Config file missing CertPEMFile")
-	}
-	certPEM, err := ioutil.ReadFile(config.CertPEMFile)
-	if err != nil {
-		log.Fatalf("failed to read certificate from %q: %s", config.CertPEMFile, err)
-	}
-	block, _ := pem.Decode(certPEM)
-	certDER := block.Bytes
-
-	if len(config.PrivateKeyDERFile) == 0 && len(config.PrivateKeyFile) == 0 {
-		log.Fatal("Config file missing PrivateKeyDERFile and PrivateKeyFile")
-	}
-	if len(config.PrivateKeyDERFile) != 0 && len(config.PrivateKeyFile) != 0 {
-		log.Fatal("Config file has both PrivateKeyDERFile and PrivateKeyFile. Can only have one.")
-	}
-	privateKeyFile := config.PrivateKeyDERFile
-	if len(config.PrivateKeyFile) > 0 {
-		privateKeyFile = config.PrivateKeyFile
-	}
-
-	keyBytes, err := ioutil.ReadFile(privateKeyFile)
-	if err != nil {
-		log.Fatalf("failed to read private key from %q: %s", privateKeyFile, err)
-	}
-
-	var keyDER []byte
-	pemBlock, _ := pem.Decode(keyBytes)
-	if pemBlock != nil {
-		keyDER = pemBlock.Bytes
-	} else {
-		keyDER = keyBytes
-	}
-
-	var certKey crypto.PrivateKey
-	if certKey, err = x509.ParsePKCS1PrivateKey(keyDER); err != nil {
-		if certKey, err = x509.ParsePKCS8PrivateKey(keyDER); err != nil {
-			log.Fatalf("failed to parse private key from %q: %s", privateKeyFile, err)
+	var sessionTokensCacheDir string
+	if len(config.SessionTokensCache) > 0 {
+		sessionTokensCacheDir = config.SessionTokensCache
+		if strings.HasPrefix(sessionTokensCacheDir, "~/") {
+			home := os.Getenv("HOME")
+			if len(home) == 0 {
+				log.Fatal("~ used in config file but $HOME not set")
+			}
+			sessionTokensCacheDir = filepath.Join(home, sessionTokensCacheDir[2:])
 		}
+	}
+
+	if len(*uploadInputFile) > 0 {
+		uploadFromFile(*uploadInputFile, &config, sessionTokensCacheDir)
+		return
 	}
 
 	var requestedAlgosFlag string
@@ -531,27 +661,9 @@ func main() {
 		}
 	}
 
-	if len(config.ACVPServer) == 0 {
-		config.ACVPServer = "https://demo.acvts.nist.gov/"
-	}
-	server := acvp.NewServer(config.ACVPServer, config.LogFile, [][]byte{certDER}, certKey, func() string {
-		return TOTP(totpSecret[:])
-	})
-
-	var sessionTokensCacheDir string
-	if len(config.SessionTokensCache) > 0 {
-		sessionTokensCacheDir = config.SessionTokensCache
-		if strings.HasPrefix(sessionTokensCacheDir, "~/") {
-			home := os.Getenv("HOME")
-			if len(home) == 0 {
-				log.Fatal("~ used in config file but $HOME not set")
-			}
-			sessionTokensCacheDir = filepath.Join(home, sessionTokensCacheDir[2:])
-		}
-
-		if err := loadCachedSessionTokens(server, sessionTokensCacheDir); err != nil {
-			log.Fatal(err)
-		}
+	server, err := connect(&config, sessionTokensCacheDir)
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	if err := server.Login(); err != nil {
@@ -594,10 +706,10 @@ func main() {
 
 	if len(*fetchFlag) > 0 {
 		io.WriteString(fetchOutputTee, "[\n")
-		json.NewEncoder(fetchOutputTee).Encode(map[string]interface{}{
-			"url":           url,
-			"vectorSetUrls": result.VectorSetURLs,
-			"time":          time.Now().Format(time.RFC3339),
+		json.NewEncoder(fetchOutputTee).Encode(vectorSetHeader{
+			URL:           url,
+			VectorSetURLs: result.VectorSetURLs,
+			Time:          time.Now().Format(time.RFC3339),
 		})
 	}
 
@@ -674,26 +786,9 @@ func main() {
 		os.Exit(0)
 	}
 
-FetchResults:
-	for {
-		var results acvp.SessionResults
-		if err := server.Get(&results, trimLeadingSlash(url)+"/results"); err != nil {
-			log.Fatalf("Failed to fetch session results: %s", err)
-		}
-
-		if results.Passed {
-			log.Print("Test passed")
-			break
-		}
-
-		for _, result := range results.Results {
-			if result.Status == "incomplete" {
-				log.Print("Server hasn't finished processing results. Waiting 10 seconds.")
-				time.Sleep(10 * time.Second)
-				continue FetchResults
-			}
-		}
-
-		log.Fatalf("Server did not accept results: %#v", results)
+	if ok, err := getResultsWithRetry(server, url); err != nil {
+		log.Fatal(err)
+	} else if !ok {
+		os.Exit(1)
 	}
 }
