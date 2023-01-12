@@ -207,8 +207,7 @@ let decode = new_definition `!w:int32. decode w =
     else if ~q then NONE // datasize = 64 is unsupported yet
     else
       let esize:(64)word = word_shl (word 8: (64)word) (val size) in
-      let datasize:(64)word = word 128 in
-      let elements:(64)word = word_udiv datasize esize in
+      // datasize is fixed to 128. elements is datasize / esize.
       SOME (arm_MUL_VEC (QREG' Rd) (QREG' Rn) (QREG' Rm) (val esize))
 
   | [0:1; q; 0b0011110:7; immh:4; immb:3; 0b010101:6; Rn:5; Rd:5] ->
@@ -217,8 +216,7 @@ let decode = new_definition `!w:int32. decode w =
     else if ~q then NONE // datasize = 64 is unsupported yet
     else
       let esize:(64)word = word_shl (word 0b1000: (64)word) (3 - word_clz immh) in
-      let datasize:(64)word = word 128 in
-      let elements:(64)word = word_udiv datasize esize in
+      // datasize is fixed to 128. elements is datasize / esize.
       let shiftamnt:(64)word = word_sub (word_join immh immb:64 word) esize in
       SOME (arm_SHL_VEC (QREG' Rd) (QREG' Rn) (val shiftamnt) (val esize))
 
@@ -661,8 +659,6 @@ let PURE_DECODE_CONV =
   | Comb(Comb((Const("word_sub",_) as f),a),b) ->
     eval_binary f a b F WORD_RED_CONV
   | Comb(Comb((Const("word_subword",_) as f),a),b) ->
-    eval_binary f a b F WORD_RED_CONV
-  | Comb(Comb((Const("word_udiv",_) as f),a),b) ->
     eval_binary f a b F WORD_RED_CONV
   | Comb(Const("@",_),_) -> raise (Invalid_argument "ARB")
   | Const("ARB",_) -> raise (Invalid_argument "ARB")
