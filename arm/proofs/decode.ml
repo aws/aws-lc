@@ -200,6 +200,26 @@ let decode = new_definition `!w:int32. decode w =
   | [x; 0b01010010:8; ld; imm7:7; Rt2:5; Rn:5; Rt:5] ->
     SOME (arm_ldstp ld x Rt Rt2 (XREG_SP Rn)
       (Immediate_Offset (iword (ival imm7 * &(if x then 8 else 4)))))
+
+  // SIMD operations
+  | [0:1; q; 0b001110:6; size:2; 0b1:1; Rm:5; 0b100111:6; Rn:5; Rd:5] ->
+    if size = word 0b11 then NONE // "UNDEFINED"
+    else if ~q then NONE // datasize = 64 is unsupported yet
+    else
+      let esize:(64)word = word_shl (word 8: (64)word) (val size) in
+      // datasize is fixed to 128. elements is datasize / esize.
+      SOME (arm_MUL_VEC (QREG' Rd) (QREG' Rn) (QREG' Rm) (val esize))
+
+  | [0:1; q; 0b0011110:7; immh:4; immb:3; 0b010101:6; Rn:5; Rd:5] ->
+    if immh = (word 0b0: (4)word) then NONE // "asimdimm case"
+    else if bit 3 immh /\ ~q then NONE // "UNDEFINED"
+    else if ~q then NONE // datasize = 64 is unsupported yet
+    else
+      let esize:(64)word = word_shl (word 0b1000: (64)word) (3 - word_clz immh) in
+      // datasize is fixed to 128. elements is datasize / esize.
+      let shiftamnt:(64)word = word_sub (word_join immh immb:64 word) esize in
+      SOME (arm_SHL_VEC (QREG' Rd) (QREG' Rn) (val shiftamnt) (val esize))
+
   | [0:1; q; 0b001110000:9; imm5:5; 0b001111:6; Rn:5; Rd:5] ->
     if q /\ word_subword imm5 (0,4) = (word 0b1000: 4 word) then // v.d
       SOME (arm_UMOV (XREG' Rd) (QREG' Rn) (val (word_subword imm5 (4,1): 1 word)) 8)
@@ -622,14 +642,21 @@ let PURE_DECODE_CONV =
   | Comb(Comb(Const("arm_ldstb",_),_),_) -> eval_nary pth_ldstrb t F
   | Comb(Comb(Comb(Comb(Const("arm_ldstp",_),_),_),_),_) ->
     eval_nary pth_ldstp t F
+  | Comb(Comb((Const("bit",_) as f),a),b) ->
+    eval_binary f a b F WORD_RED_CONV
   | Comb((Const("Condition",_) as f),a) -> eval_unary f a F CONDITION_CONV
   | Comb((Const("decode_shift",_) as f),a) -> eval_unary f a F DECODE_SHIFT_CONV
   | Comb(Comb(Comb(Const("decode_bitmask",_),_),_),_) ->
     eval_opt t F DECODE_BITMASK_CONV
+  | Comb((Const("word_clz",_) as f),a) -> eval_unary f a F WORD_RED_CONV
   | Comb((Const("word_zx",_) as f),a) -> eval_unary f a F WORD_ZX_CONV
   | Comb((Const("word_sx",_) as f),a) -> eval_unary f a F IWORD_SX_CONV
   | Comb((Const("word_not",_) as f),a) -> eval_unary f a F WORD_RED_CONV
   | Comb(Comb((Const("word_join",_) as f),a),b) ->
+    eval_binary f a b F WORD_RED_CONV
+  | Comb(Comb((Const("word_shl",_) as f),a),b) ->
+    eval_binary f a b F WORD_RED_CONV
+  | Comb(Comb((Const("word_sub",_) as f),a),b) ->
     eval_binary f a b F WORD_RED_CONV
   | Comb(Comb((Const("word_subword",_) as f),a),b) ->
     eval_binary f a b F WORD_RED_CONV
