@@ -49,9 +49,9 @@ var extensions = []extension{
 var leafKey, intermediateKey, rootKey *ecdsa.PrivateKey
 
 func init() {
-	leafKey = ecdsaKeyFromPEMOrPanic(leafKeyPEM)
-	intermediateKey = ecdsaKeyFromPEMOrPanic(intermediateKeyPEM)
-	rootKey = ecdsaKeyFromPEMOrPanic(rootKeyPEM)
+	leafKey = mustParseECDSAKey(leafKeyPEM)
+	intermediateKey = mustParseECDSAKey(intermediateKeyPEM)
+	rootKey = mustParseECDSAKey(rootKeyPEM)
 }
 
 type templateAndKey struct {
@@ -59,7 +59,7 @@ type templateAndKey struct {
 	key      *ecdsa.PrivateKey
 }
 
-func generateCertificateOrPanic(path string, subject, issuer *templateAndKey) []byte {
+func mustGenerateCertificate(path string, subject, issuer *templateAndKey) []byte {
 	cert, err := x509.CreateCertificate(rand.Reader, &subject.template, &issuer.template, &subject.key.PublicKey, issuer.key)
 	if err != nil {
 		panic(err)
@@ -135,9 +135,9 @@ func main() {
 	}
 
 	// Generate a valid certificate chain from the templates.
-	generateCertificateOrPanic("invalid_extension_root.pem", &root, &root)
-	generateCertificateOrPanic("invalid_extension_intermediate.pem", &intermediate, &root)
-	leafDER := generateCertificateOrPanic("invalid_extension_leaf.pem", &leaf, &intermediate)
+	mustGenerateCertificate("invalid_extension_root.pem", &root, &root)
+	mustGenerateCertificate("invalid_extension_intermediate.pem", &intermediate, &root)
+	leafDER := mustGenerateCertificate("invalid_extension_leaf.pem", &leaf, &intermediate)
 
 	leafCert, err := x509.ParseCertificate(leafDER)
 	if err != nil {
@@ -151,15 +151,15 @@ func main() {
 
 		rootInvalid := root
 		rootInvalid.template.ExtraExtensions = invalidExtension
-		generateCertificateOrPanic(fmt.Sprintf("invalid_extension_root_%s.pem", ext.name), &rootInvalid, &rootInvalid)
+		mustGenerateCertificate(fmt.Sprintf("invalid_extension_root_%s.pem", ext.name), &rootInvalid, &rootInvalid)
 
 		intermediateInvalid := intermediate
 		intermediateInvalid.template.ExtraExtensions = invalidExtension
-		generateCertificateOrPanic(fmt.Sprintf("invalid_extension_intermediate_%s.pem", ext.name), &intermediateInvalid, &root)
+		mustGenerateCertificate(fmt.Sprintf("invalid_extension_intermediate_%s.pem", ext.name), &intermediateInvalid, &root)
 
 		leafInvalid := leaf
 		leafInvalid.template.ExtraExtensions = invalidExtension
-		generateCertificateOrPanic(fmt.Sprintf("invalid_extension_leaf_%s.pem", ext.name), &leafInvalid, &intermediate)
+		mustGenerateCertificate(fmt.Sprintf("invalid_extension_leaf_%s.pem", ext.name), &leafInvalid, &intermediate)
 
 		// Additionally generate a copy of the leaf certificate with extra data in
 		// the extension.
@@ -177,7 +177,7 @@ func main() {
 
 		leafTrailingData := leaf
 		leafTrailingData.template.ExtraExtensions = trailingDataExtension
-		generateCertificateOrPanic(fmt.Sprintf("trailing_data_leaf_%s.pem", ext.name), &leafTrailingData, &intermediate)
+		mustGenerateCertificate(fmt.Sprintf("trailing_data_leaf_%s.pem", ext.name), &leafTrailingData, &intermediate)
 	}
 }
 
@@ -199,7 +199,7 @@ Hr+qcPlp5N1jM3ACXys57bPujg+hRANCAAQmdqXYl1GvY7y3jcTTK6MVXIQr44Tq
 ChRYI6IeV9tIB6jIsOY+Qol1bk8x/7A5FGOnUWFVLEAPEPSJwPndjolt
 -----END PRIVATE KEY-----`
 
-func ecdsaKeyFromPEMOrPanic(in string) *ecdsa.PrivateKey {
+func mustParseECDSAKey(in string) *ecdsa.PrivateKey {
 	keyBlock, _ := pem.Decode([]byte(in))
 	if keyBlock == nil || keyBlock.Type != "PRIVATE KEY" {
 		panic("could not decode private key")
