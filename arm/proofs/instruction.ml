@@ -909,6 +909,14 @@ let arm_MSUB = define
         let d:N word = iword(ival a - ival n * ival m) in
         (Rd := d) s`;;
 
+let arm_MUL_VEC = define
+ `arm_MUL_VEC Rd Rn Rm size = // size: 8, 16 or 32
+    \s. let n = read Rn (s:armstate) in
+        let m = read Rm (s:armstate) in
+        if size = 8 then (Rd := simd16 word_mul n m) s
+        else if size = 16 then (Rd := simd8 word_mul n m) s
+        else (Rd := simd4 word_mul n m) s`;;
+
 let arm_ORN = define
  `arm_ORN Rd Rm Rn =
     \s. let m = read Rm s
@@ -959,6 +967,12 @@ let arm_SBCS = define
          ZF := (val d = 0) ,,
          CF := (&(val m) - (&(val n) + &c):int = &(val d)) ,,
          VF := ~(ival m - (ival n + &c) = ival d)) s`;;
+
+let arm_SHL_VEC = define
+ `arm_SHL_VEC Rd Rn imm size =
+    \s. let n = read Rn (s:armstate) in
+        if size = 64 then (Rd := usimd2 (\x. word_shl x imm) n) s
+        else (Rd := usimd4 (\x. word_shl x imm) n) s`;;
 
 let arm_SUB = define
  `arm_SUB Rd Rm Rn =
@@ -1439,6 +1453,14 @@ let arm_MOVK_ALT =
   REWRITE_RULE[assign; WRITE_COMPONENT_COMPOSE; read; write; subword]
     arm_MOVK;;
 
+
+(* ------------------------------------------------------------------------- *)
+(* Alternative definitions of SHL and MUL (Vector) that unfolds simdN/usimdN.*)
+(* ------------------------------------------------------------------------- *)
+
+let arm_SHL_VEC_ALT = REWRITE_RULE[usimd4;usimd2] arm_SHL_VEC;;
+let arm_MUL_VEC_ALT = REWRITE_RULE[simd16;simd8;simd4;simd2] arm_MUL_VEC;;
+
 (* ------------------------------------------------------------------------- *)
 (* Collection of standard forms of non-aliased instructions                  *)
 (* We separate the load/store instructions for a different treatment.        *)
@@ -1452,8 +1474,9 @@ let ARM_OPERATION_CLAUSES =
        arm_CSINV; arm_CSNEG; arm_EON; arm_EOR; arm_EXTR;
        arm_LSL; arm_LSLV; arm_LSR; arm_LSRV;
        arm_MADD; arm_MOVK_ALT; arm_MOVN; arm_MOVZ;
-       arm_MSUB; arm_ORN; arm_ORR; arm_RET; arm_RORV; arm_SBC; arm_SBCS_ALT;
-       arm_SUB; arm_SUBS_ALT; arm_UBFM; arm_UMOV; arm_UMULH;
+       arm_MSUB; arm_MUL_VEC_ALT; arm_ORN; arm_ORR; arm_RET;
+       arm_RORV; arm_SBC; arm_SBCS_ALT; arm_SHL_VEC_ALT; arm_SUB;
+       arm_SUBS_ALT; arm_UBFM; arm_UMOV; arm_UMULH;
     (*** 32-bit backups since the ALT forms are 64-bit only ***)
        INST_TYPE[`:32`,`:N`] arm_ADCS;
        INST_TYPE[`:32`,`:N`] arm_ADDS;
