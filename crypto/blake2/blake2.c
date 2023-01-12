@@ -122,7 +122,7 @@ void BLAKE2B256_Update(BLAKE2B_CTX *b2b, const void *in_data, size_t len) {
   data += todo;
   len -= todo;
 
-  if (!len) {
+  if (len == 0) {
     return;
   }
 
