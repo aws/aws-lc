@@ -33,7 +33,7 @@ EVP_PKEY_decapsulate(ctx, shared_secret, &shared_secret_len,
 
 The `ctx` variable above is a pointer to a “context” object of type `EVP_PKEY_CTX`. The `pkey` variable listed as an argument of `EVP_PKEY_keygen` function is a pointer to an object of type `EVP_PKEY`. The `ciphertext` and `shared_secret` are byte arrays of length `ciphertext_len` and `shared_secret_len`, respectively.
 
-**The context.** You to create the context. Depending on the use case, this can be done in two ways:
+**The context.** How to create the context? Depending on the use case, this can be done in two ways:
 
 ```
 1. EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_KEM, NULL);
@@ -223,7 +223,5 @@ EVP_PKEY_CTX_free(decaps_ctx);
 return ret;
 
 // END                          Alice's shared secret is equal to Bob's shared secret if the protocol succeeded.
-
-
 ```
 
