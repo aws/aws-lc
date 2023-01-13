@@ -160,7 +160,14 @@ int i2c_ASN1_INTEGER(const ASN1_INTEGER *in, unsigned char **outp) {
   if (pad) {
     (*outp)[0] = 0;
   }
-  OPENSSL_memcpy(*outp + pad, in->data + start, in->length - start);
+  // If in->data is null the Undefined Behavior Sanitior flags this as applying
+  // an offset to a null pointer. Gracefully handle the case even though
+  // OPENSSL_memcpy handles the case when in->data is null and in->length is zero.
+  // Don't return early because an empty integer is still encoded as a single
+  // below byte.
+  if (in->data != NULL) {
+    OPENSSL_memcpy(*outp + pad, in->data + start, in->length - start);
+  }
   if (is_negative) {
     negate_twos_complement(*outp, len);
     assert((*outp)[0] >= 0x80);

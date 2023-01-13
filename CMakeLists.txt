@@ -707,8 +707,8 @@ if(USE_CUSTOM_LIBCXX)
     message(FATAL_ERROR "USE_CUSTOM_LIBCXX only supported with Clang")
   endif()
 
-  # The docker images set an environement variable to the llvm project directory which the sandbox builds will use,
-  # you can also pass in the llvm project path as a CMake parameter which takes precedance over the environment variable
+  # The docker images set an environment variable to the llvm project directory which the sandbox builds will use,
+  # you can also pass in the llvm project path as a CMake parameter which takes precedence over the environment variable
   if(DEFINED ENV{LLVM_PROJECT_HOME} AND NOT LLVM_PROJECT_HOME)
     set(LLVM_PROJECT_HOME $ENV{LLVM_PROJECT_HOME})
   endif()
@@ -732,7 +732,7 @@ if(USE_CUSTOM_LIBCXX)
   # This is patterned after buildtools/third_party/libc++/BUILD.gn and
   # buildtools/third_party/libc++abi/BUILD.gn in Chromium.
 
-  file(GLOB LIBCXX_SOURCES "${LLVM_PROJECT_HOME}/libcxx/src/*.cpp")
+  file(GLOB LIBCXX_SOURCES "${LLVM_PROJECT_HOME}/libcxx/src/*.cpp" "${LLVM_PROJECT_HOME}/libcxx/src/ryu/*.cpp")
   file(GLOB LIBCXXABI_SOURCES "${LLVM_PROJECT_HOME}/libcxxabi/src/*.cpp")
 
   # This file is meant for exception-less builds.
@@ -751,9 +751,6 @@ if(USE_CUSTOM_LIBCXX)
     libcxxabi PRIVATE
     -D_LIBCPP_ENABLE_CXX17_REMOVED_UNEXPECTED_FUNCTIONS
   )
-  set_target_properties(libcxxabi PROPERTIES COMPILE_FLAGS "-Wno-missing-prototypes -Wno-implicit-fallthrough")
-  # libc++abi depends on libc++ internal headers.
-  set_property(TARGET libcxxabi APPEND PROPERTY INCLUDE_DIRECTORIES "${LLVM_PROJECT_HOME}/libcxx/src")
 
   add_library(libcxx ${LIBCXX_SOURCES})
   if(ASAN OR MSAN OR TSAN)
@@ -768,6 +765,15 @@ if(USE_CUSTOM_LIBCXX)
     -D_LIBCPP_BUILDING_LIBRARY
     -DLIBCXX_BUILDING_LIBCXXABI
   )
+  set_target_properties(
+    libcxx libcxxabi PROPERTIES
+    COMPILE_FLAGS "-Wno-missing-prototypes -Wno-implicit-fallthrough"
+    # libc++ and libc++abi must be built in C++20 mode.
+    CXX_STANDARD 20
+    CXX_STANDARD_REQUIRED TRUE
+  )
+  # libc++abi depends on libc++ internal headers.
+  set_property(TARGET libcxx libcxxabi APPEND PROPERTY INCLUDE_DIRECTORIES "${LLVM_PROJECT_HOME}/libcxx/src")
   target_link_libraries(libcxx libcxxabi)
 endif()
 

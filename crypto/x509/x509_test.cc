@@ -37,6 +37,10 @@
 #include "../test/test_util.h"
 #include "../x509v3/internal.h"
 
+#if defined(OPENSSL_THREADS)
+#include <thread>
+#endif
+
 
 std::string GetTestData(const char *path);
 
@@ -1293,6 +1297,31 @@ TEST(X509Test, TestVerify) {
                      /*flags=*/0, configure_callback));
   }
 }
+
+#if defined(OPENSSL_THREADS)
+// Verifying the same |X509| objects on two threads should be safe.
+TEST(X509Test, VerifyThreads) {
+  bssl::UniquePtr<X509> root(CertFromPEM(kRootCAPEM));
+  bssl::UniquePtr<X509> intermediate(CertFromPEM(kIntermediatePEM));
+  bssl::UniquePtr<X509> leaf(CertFromPEM(kLeafPEM));
+  ASSERT_TRUE(root);
+  ASSERT_TRUE(intermediate);
+  ASSERT_TRUE(leaf);
+
+  const size_t kNumThreads = 10;
+  std::vector<std::thread> threads;
+  for (size_t i = 0; i < kNumThreads; i++) {
+    threads.emplace_back([&] {
+      EXPECT_EQ(X509_V_OK,
+                Verify(leaf.get(), {root.get()}, {intermediate.get()},
+                       /*crls=*/{}));
+    });
+  }
+  for (auto &thread : threads) {
+    thread.join();
+  }
+}
+#endif  // OPENSSL_THREADS
 
 static const char kHostname[] = "example.com";
 static const char kWrongHostname[] = "example2.com";
@@ -5087,4 +5116,115 @@ TEST(X509Test, SetSerialNumberChecksASN1StringType) {
   int64_t val;
   ASSERT_TRUE(ASN1_INTEGER_get_int64(&val, X509_get0_serialNumber(root.get())));
   EXPECT_EQ(-1, val);
+}
+
+TEST(X509Test, Policy) {
+  bssl::UniquePtr<ASN1_OBJECT> oid1(
+      OBJ_txt2obj("1.2.840.113554.4.1.72585.2.1", /*dont_search_names=*/1));
+  ASSERT_TRUE(oid1);
+  bssl::UniquePtr<ASN1_OBJECT> oid2(
+      OBJ_txt2obj("1.2.840.113554.4.1.72585.2.2", /*dont_search_names=*/1));
+  ASSERT_TRUE(oid2);
+  bssl::UniquePtr<ASN1_OBJECT> oid3(
+      OBJ_txt2obj("1.2.840.113554.4.1.72585.2.3", /*dont_search_names=*/1));
+  ASSERT_TRUE(oid3);
+
+  bssl::UniquePtr<X509> root(
+      CertFromPEM(GetTestData("crypto/x509/test/policy_root.pem").c_str()));
+  ASSERT_TRUE(root);
+  bssl::UniquePtr<X509> intermediate(CertFromPEM(
+      GetTestData("crypto/x509/test/policy_intermediate.pem").c_str()));
+  ASSERT_TRUE(intermediate);
+  bssl::UniquePtr<X509> intermediate_invalid(CertFromPEM(
+      GetTestData("crypto/x509/test/policy_intermediate_invalid.pem").c_str()));
+  ASSERT_TRUE(intermediate_invalid);
+  bssl::UniquePtr<X509> intermediate_duplicate(CertFromPEM(
+      GetTestData("crypto/x509/test/policy_intermediate_duplicate.pem")
+          .c_str()));
+  ASSERT_TRUE(intermediate_duplicate);
+  bssl::UniquePtr<X509> leaf(
+      CertFromPEM(GetTestData("crypto/x509/test/policy_leaf.pem").c_str()));
+  ASSERT_TRUE(leaf);
+  bssl::UniquePtr<X509> leaf_invalid(CertFromPEM(
+      GetTestData("crypto/x509/test/policy_leaf_invalid.pem").c_str()));
+  ASSERT_TRUE(leaf_invalid);
+  bssl::UniquePtr<X509> leaf_duplicate(CertFromPEM(
+      GetTestData("crypto/x509/test/policy_leaf_duplicate.pem").c_str()));
+  ASSERT_TRUE(leaf_duplicate);
+
+  // By default, OpenSSL does not check policies, so even syntax errors in the
+  // certificatePolicies extension go unnoticed. (This is probably not
+  // important.)
+  EXPECT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()},
+                              {intermediate.get()}, /*crls=*/{}));
+  EXPECT_EQ(X509_V_OK, Verify(leaf_invalid.get(), {root.get()},
+                              {intermediate.get()}, /*crls=*/{}));
+
+  auto set_policies = [](X509_VERIFY_PARAM *param,
+                         std::vector<const ASN1_OBJECT *> oids) {
+    for (const ASN1_OBJECT *oid : oids) {
+      bssl::UniquePtr<ASN1_OBJECT> copy(OBJ_dup(oid));
+      ASSERT_TRUE(copy);
+      ASSERT_TRUE(X509_VERIFY_PARAM_add0_policy(param, copy.get()));
+      copy.release();  // |X509_VERIFY_PARAM_add0_policy| takes ownership on
+                       // success.
+    }
+  };
+
+  // The chain is good for |oid1| and |oid2|, but not |oid3|.
+  EXPECT_EQ(X509_V_OK,
+            Verify(leaf.get(), {root.get()}, {intermediate.get()}, /*crls=*/{},
+                   X509_V_FLAG_EXPLICIT_POLICY, [&](X509_VERIFY_PARAM *param) {
+                     set_policies(param, {oid1.get()});
+                   }));
+  EXPECT_EQ(X509_V_OK,
+            Verify(leaf.get(), {root.get()}, {intermediate.get()}, /*crls=*/{},
+                   X509_V_FLAG_EXPLICIT_POLICY, [&](X509_VERIFY_PARAM *param) {
+                     set_policies(param, {oid2.get()});
+                   }));
+  EXPECT_EQ(X509_V_ERR_NO_EXPLICIT_POLICY,
+            Verify(leaf.get(), {root.get()}, {intermediate.get()}, /*crls=*/{},
+                   X509_V_FLAG_EXPLICIT_POLICY, [&](X509_VERIFY_PARAM *param) {
+                     set_policies(param, {oid3.get()});
+                   }));
+  EXPECT_EQ(X509_V_OK,
+            Verify(leaf.get(), {root.get()}, {intermediate.get()}, /*crls=*/{},
+                   X509_V_FLAG_EXPLICIT_POLICY, [&](X509_VERIFY_PARAM *param) {
+                     set_policies(param, {oid1.get(), oid2.get()});
+                   }));
+  EXPECT_EQ(X509_V_OK,
+            Verify(leaf.get(), {root.get()}, {intermediate.get()}, /*crls=*/{},
+                   X509_V_FLAG_EXPLICIT_POLICY, [&](X509_VERIFY_PARAM *param) {
+                     set_policies(param, {oid1.get(), oid3.get()});
+                   }));
+
+  // The policy extension cannot be parsed.
+  EXPECT_EQ(X509_V_ERR_INVALID_POLICY_EXTENSION,
+            Verify(leaf.get(), {root.get()}, {intermediate_invalid.get()},
+                   /*crls=*/{}, X509_V_FLAG_EXPLICIT_POLICY,
+                   [&](X509_VERIFY_PARAM *param) {
+                     set_policies(param, {oid1.get()});
+                   }));
+  EXPECT_EQ(X509_V_ERR_INVALID_POLICY_EXTENSION,
+            Verify(leaf_invalid.get(), {root.get()}, {intermediate.get()},
+                   /*crls=*/{}, X509_V_FLAG_EXPLICIT_POLICY,
+                   [&](X509_VERIFY_PARAM *param) {
+                     set_policies(param, {oid1.get()});
+                   }));
+
+  // There is a duplicate policy in the policy extension.
+  EXPECT_EQ(X509_V_ERR_INVALID_POLICY_EXTENSION,
+            Verify(leaf.get(), {root.get()}, {intermediate_duplicate.get()},
+                   /*crls=*/{}, X509_V_FLAG_EXPLICIT_POLICY,
+                   [&](X509_VERIFY_PARAM *param) {
+                     set_policies(param, {oid1.get()});
+                   }));
+
+  // The policy extension in the leaf cannot be parsed.
+  EXPECT_EQ(X509_V_ERR_INVALID_POLICY_EXTENSION,
+            Verify(leaf_duplicate.get(), {root.get()}, {intermediate.get()},
+                   /*crls=*/{}, X509_V_FLAG_EXPLICIT_POLICY,
+                   [&](X509_VERIFY_PARAM *param) {
+                     set_policies(param, {oid1.get()});
+                   }));
 }
