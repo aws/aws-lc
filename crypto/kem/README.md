@@ -6,7 +6,7 @@ The purpose of a KEM is to establish a shared secret between two parties. There 
 
 ```
 1. Alice generates her key pair (public_key, secret_key). Sends public_key to Bob.
-2. Bob generates a shared secret and encapsulates it using Alices public key.
+2. Bob generates a shared secret and encapsulates it using Alice's public key.
    This produces a ciphertext. Sends ciphertext to Alice.
 3. Alice decapsulates the ciphertext with her key pair and obtains the shared secret.
    Alices and Bobs shared secrets are the same if the protocol succeeded.
