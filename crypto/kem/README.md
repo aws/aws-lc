@@ -9,7 +9,7 @@ The purpose of a KEM is to establish a shared secret between two parties. There 
 2. Bob generates a shared secret and encapsulates it using Alice's public key.
    This produces a ciphertext. Sends ciphertext to Alice.
 3. Alice decapsulates the ciphertext with her key pair and obtains the shared secret.
-   Alices and Bobs shared secrets are the same if the protocol succeeded.
+   Alice's and Bob's shared secrets are the same if the protocol succeeded.
 ```
 
 The KEM design in AWS-LC is generic and not specific to any particular KEM. The primary use-case for the API are the post-quantum cryptographic algorithms that were specified and evaluated in NIST's Post-Quantum Crypto Standardization Project ([link](https://csrc.nist.gov/Projects/post-quantum-cryptography/post-quantum-cryptography-standardization)).
