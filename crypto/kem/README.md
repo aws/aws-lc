@@ -16,7 +16,7 @@ The KEM design in AWS-LC is generic and not specific to any particular KEM. The 
 
 ## The public KEM API
 
-**Core functions.** To use a KEM, you need to have access to three core functions: key generation, encapsulation, decapsulation. Following the general design in AWS-LC, these these three functions are offered in the form of standard AWS-LC EVP APIs:
+**Core functions.** To use a KEM, you have access to three core functions: key generation, encapsulation, decapsulation. Following the general design in AWS-LC, these three functions are offered in the form of standard AWS-LC EVP APIs:
 
 ```
 // Generates a (public, private) key pair
