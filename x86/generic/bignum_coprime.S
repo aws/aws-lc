@@ -210,7 +210,7 @@ swaploop:
         cmp     i, k
         jnz     swaploop
 
-// Start of the main outer loop iterated t times
+// Start of the main outer loop iterated t / CHUNKSIZE times
 
 outerloop:
 

@@ -139,6 +139,7 @@ bignum_optneg_p256
 bignum_optneg_p256k1
 bignum_optneg_p384
 bignum_optneg_p521
+bignum_optneg_sm2
 bignum_optsub
 bignum_optsubadd
 bignum_pow2

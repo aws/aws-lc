@@ -6683,6 +6683,40 @@ int test_bignum_optneg_p521(void)
   return 0;
 }
 
+int test_bignum_optneg_sm2(void)
+{ uint64_t i, k, p;
+  printf("Testing bignum_optneg_sm2 with %d cases\n",tests);
+  uint64_t c;
+  for (i = 0; i < tests; ++i)
+   { k = 4;
+     random_bignum(k,b2); reference_mod(k,b0,b2,p_sm2);
+     p = (rand() & 1) ? 0 :
+         (rand() & 1) ? 1 :
+         (rand() & 1) ? 2 : random64();
+     bignum_optneg_sm2(b2,p,b0);
+     if ((p == 0) || reference_iszero(k,b0)) reference_copy(k,b3,k,b0);
+     else reference_sub_samelen(k,b3,p_sm2,b0);
+
+     c = reference_compare(k,b3,k,b2);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "%s...0x%016"PRIx64" mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64" not ...0x%016"PRIx64"\n",
+               k,(p ? "-" : "+"),b0[0],p_sm2[0],b2[0],b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] "
+               "%s...0x%016"PRIx64" mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64"\n",
+               k,(p ? "-" : "+"),b0[0],p_sm2[0],b2[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
 int test_bignum_optsub(void)
 { uint64_t t, i, k;
   printf("Testing bignum_optsub with %d cases\n",tests);
@@ -9708,6 +9742,7 @@ int main(int argc, char *argv[])
   functionaltest(all,"bignum_optneg_p256k1",test_bignum_optneg_p256k1);
   functionaltest(all,"bignum_optneg_p384",test_bignum_optneg_p384);
   functionaltest(all,"bignum_optneg_p521",test_bignum_optneg_p521);
+  functionaltest(all,"bignum_optneg_sm2",test_bignum_optneg_sm2);
   functionaltest(all,"bignum_optsub",test_bignum_optsub);
   functionaltest(all,"bignum_optsubadd",test_bignum_optsubadd);
   functionaltest(all,"bignum_pow2",test_bignum_pow2);

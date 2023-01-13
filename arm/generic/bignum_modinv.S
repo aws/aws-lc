@@ -155,7 +155,7 @@ copyloop:
 
         lsl     t, k, #7
 
-// Start of the main outer loop iterated t times
+// Start of the main outer loop iterated t / CHUNKSIZE times
 
 outerloop:
 

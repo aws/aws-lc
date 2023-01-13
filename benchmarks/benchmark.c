@@ -261,6 +261,8 @@ void call_bignum_optneg_p384(void) repeat(bignum_optneg_p384(b0,b1[0],b2))
 
 void call_bignum_optneg_p521(void) repeat(bignum_optneg_p521(b0,b1[0],b2))
 
+void call_bignum_optneg_sm2(void) repeat(bignum_optneg_sm2(b0,b1[0],b2))
+
 void call_bignum_deamont_p256(void) repeat(bignum_deamont_p256(b0,b1))
 
 void call_bignum_deamont_p256_alt(void) repeat(bignum_deamont_p256_alt(b0,b1))
@@ -980,6 +982,7 @@ int main(int argc, char *argv[])
   timingtest(all,"bignum_optneg_p256k1",call_bignum_optneg_p256k1);
   timingtest(all,"bignum_optneg_p384",call_bignum_optneg_p384);
   timingtest(all,"bignum_optneg_p521",call_bignum_optneg_p521);
+  timingtest(all,"bignum_optneg_sm2",call_bignum_optneg_sm2);
   timingtest(all,"bignum_optsub (32x32 -> 32)",call_bignum_optsub__32);
   timingtest(all,"bignum_optsubadd (32x32 -> 32)",call_bignum_optsubadd__32);
   timingtest(all,"bignum_pow2 (32)" ,call_bignum_pow2__32);
