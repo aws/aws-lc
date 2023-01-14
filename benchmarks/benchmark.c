@@ -345,6 +345,10 @@ void call_bignum_triple_p521(void) repeat(bignum_triple_p521(b0,b1))
 
 void call_bignum_triple_p521_alt(void) repeat(bignum_triple_p521_alt(b0,b1))
 
+void call_bignum_triple_sm2(void) repeat(bignum_triple_sm2(b0,b1))
+
+void call_bignum_triple_sm2_alt(void) repeat(bignum_triple_sm2_alt(b0,b1))
+
 void call_bignum_montmul_p256(void) repeat(bignum_montmul_p256(b0,b1,b2))
 
 void call_bignum_montmul_p256_alt(void) repeat(bignum_montmul_p256_alt(b0,b1,b2))
@@ -1035,6 +1039,8 @@ int main(int argc, char *argv[])
   timingtest(all,"bignum_triple_p384_alt",call_bignum_triple_p384_alt);
   timingtest(bmi,"bignum_triple_p521",call_bignum_triple_p521);
   timingtest(all,"bignum_triple_p521_alt",call_bignum_triple_p521_alt);
+  timingtest(bmi,"bignum_triple_sm2",call_bignum_triple_sm2);
+  timingtest(all,"bignum_triple_sm2_alt",call_bignum_triple_sm2_alt);
   timingtest(bmi,"curve25519_ladderstep",call_curve25519_ladderstep);
   timingtest(all,"curve25519_ladderstep_alt",call_curve25519_ladderstep_alt);
   timingtest(bmi,"curve25519_pxscalarmul",call_curve25519_pxscalarmul);

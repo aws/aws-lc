@@ -8111,6 +8111,78 @@ int test_bignum_triple_p521_alt(void)
   return 0;
 }
 
+int test_bignum_triple_sm2(void)
+{ uint64_t i, k;
+  printf("Testing bignum_triple_sm2 with %d cases\n",tests);
+  uint64_t c;
+  for (i = 0; i < tests; ++i)
+   { k = 4;
+     random_bignum(k,b0);
+     bignum_triple_sm2(b2,b0);
+     reference_copy(k+1,b3,k,b0);
+     reference_copy(k+1,b4,k,b0);
+     reference_add_samelen(k+1,b4,b4,b3);
+     reference_add_samelen(k+1,b4,b4,b3);
+     reference_copy(k+1,b3,k,p_sm2);
+     reference_mod(k+1,b5,b4,b3);
+     reference_copy(k,b3,k+1,b5);
+
+     c = reference_compare(k,b3,k,b2);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "...0x%016"PRIx64" * 3 mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64" not ...0x%016"PRIx64"\n",
+               k,b0[0],p_sm2[0],b2[0],b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] "
+                    "...0x%016"PRIx64" * 3 mod ....0x%016"PRIx64" = "
+                    "...0x%016"PRIx64"\n",
+                    k,b0[0],p_sm2[0],b2[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_bignum_triple_sm2_alt(void)
+{ uint64_t i, k;
+  printf("Testing bignum_triple_sm2_alt with %d cases\n",tests);
+  uint64_t c;
+  for (i = 0; i < tests; ++i)
+   { k = 4;
+     random_bignum(k,b0);
+     bignum_triple_sm2_alt(b2,b0);
+     reference_copy(k+1,b3,k,b0);
+     reference_copy(k+1,b4,k,b0);
+     reference_add_samelen(k+1,b4,b4,b3);
+     reference_add_samelen(k+1,b4,b4,b3);
+     reference_copy(k+1,b3,k,p_sm2);
+     reference_mod(k+1,b5,b4,b3);
+     reference_copy(k,b3,k+1,b5);
+
+     c = reference_compare(k,b3,k,b2);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "...0x%016"PRIx64" * 3 mod ....0x%016"PRIx64" = "
+               "...0x%016"PRIx64" not ...0x%016"PRIx64"\n",
+               k,b0[0],p_sm2[0],b2[0],b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] "
+                    "...0x%016"PRIx64" * 3 mod ....0x%016"PRIx64" = "
+                    "...0x%016"PRIx64"\n",
+                    k,b0[0],p_sm2[0],b2[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
 int test_curve25519_ladderstep(void)
 { uint64_t t, k, b;
   printf("Testing curve25519_ladderstep with %d cases\n",tests);
@@ -9789,6 +9861,8 @@ int main(int argc, char *argv[])
   functionaltest(all,"bignum_triple_p384_alt",test_bignum_triple_p384_alt);
   functionaltest(bmi,"bignum_triple_p521",test_bignum_triple_p521);
   functionaltest(all,"bignum_triple_p521_alt",test_bignum_triple_p521_alt);
+  functionaltest(bmi,"bignum_triple_sm2",test_bignum_triple_sm2);
+  functionaltest(all,"bignum_triple_sm2_alt",test_bignum_triple_sm2_alt);
   functionaltest(bmi,"curve25519_ladderstep",test_curve25519_ladderstep);
   functionaltest(all,"curve25519_ladderstep_alt",test_curve25519_ladderstep_alt);
   functionaltest(bmi,"curve25519_pxscalarmul",test_curve25519_pxscalarmul);

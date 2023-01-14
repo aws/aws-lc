@@ -254,7 +254,9 @@ OBJ = curve25519/bignum_add_p25519.o \
       sm2/bignum_neg_sm2.o \
       sm2/bignum_optneg_sm2.o \
       sm2/bignum_sub_sm2.o \
-      sm2/bignum_tomont_sm2.o
+      sm2/bignum_tomont_sm2.o \
+      sm2/bignum_triple_sm2.o \
+      sm2/bignum_triple_sm2_alt.o
 
 # The AT&T syntax source files
 

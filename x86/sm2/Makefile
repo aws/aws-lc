@@ -20,7 +20,9 @@ OBJ = bignum_add_sm2.o \
       bignum_neg_sm2.o \
       bignum_optneg_sm2.o \
       bignum_sub_sm2.o \
-      bignum_tomont_sm2.o
+      bignum_tomont_sm2.o \
+      bignum_triple_sm2.o \
+      bignum_triple_sm2_alt.o
 
 %.o : %.S ; $(CC) -E -I../../include $< | as -o $@ -
 

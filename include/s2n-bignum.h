@@ -786,6 +786,11 @@ extern void bignum_triple_p384_alt (uint64_t z[static 6], uint64_t x[static 6]);
 extern void bignum_triple_p521 (uint64_t z[static 9], uint64_t x[static 9]);
 extern void bignum_triple_p521_alt (uint64_t z[static 9], uint64_t x[static 9]);
 
+// Triple modulo p_sm2, z := (3 * x) mod p_sm2
+// Input x[4]; output z[4]
+extern void bignum_triple_sm2 (uint64_t z[static 4], uint64_t x[static 4]);
+extern void bignum_triple_sm2_alt (uint64_t z[static 4], uint64_t x[static 4]);
+
 // Montgomery ladder step for curve25519
 // Inputs point[8], pp[16], b; output rr[16]
 extern void curve25519_ladderstep(uint64_t rr[16],uint64_t point[8],uint64_t pp[16],uint64_t b);

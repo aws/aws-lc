@@ -173,6 +173,7 @@ bignum_triple_p256_alt
 bignum_triple_p256k1_alt
 bignum_triple_p384_alt
 bignum_triple_p521_alt
+bignum_triple_sm2_alt
 curve25519_ladderstep_alt
 curve25519_pxscalarmul_alt
 curve25519_x25519_alt
