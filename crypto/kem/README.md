@@ -19,14 +19,14 @@ The KEM design in AWS-LC is generic and not specific to any particular KEM. The 
 **Core functions.** To use a KEM, you have access to three core functions: key generation, encapsulation, decapsulation. Following the general design in AWS-LC, these three functions are offered in the form of standard AWS-LC EVP APIs:
 
 ```
-// Generates a (public, private) key pair
+// Generates a (public, private) key pair.
 EVP_PKEY_keygen(ctx, &pkey);
 
-// KEM Encapsulation
+// KEM Encapsulation - generates a shared secret and the corresponding ciphertext.
 EVP_PKEY_encapsulate(ctx, ciphertext, &ciphertext_len,
                           shared_secret, &shared_secret_len);
 
-// KEM Decapsulation
+// KEM Decapsulation - decapsulates given ciphertext to recover the shared secret.
 EVP_PKEY_decapsulate(ctx, shared_secret, &shared_secret_len,
                           ciphertext, ciphertext_len);
 ```
