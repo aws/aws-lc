@@ -117,7 +117,7 @@ int get_raw_public_key(/* IN  */ EVP_PKEY *key,
                        /* OUT */ uint8_t **pub_key,
                        /* OUT */ size_t *pub_key_len) {
 
-  // We call the function with NULL as the out argument
+  // We call the function with NULL as the |out| argument
   // to get the required buffer length.
   if (!EVP_PKEY_get_raw_public_key(key, NULL, pub_key_len)) {
     *pub_key_len = 0;
@@ -217,15 +217,15 @@ Note: you can use the generated |key| directly                                  
                                                                                   }
 
                                                                                   // With the helper function above and upon receiving
-                                                                                  // Alice's public key you can encapsulate to get the
-                                                                                  // shared secret and the ciphertext:
+                                                                                  // Alice's public key you can encapsulate to generate the
+                                                                                  // shared secret and the corresponding ciphertext:
                                                                                   uint8_t *ct = NULL, *ss = NULL; // ciphertext and shared secret,
                                                                                   size_t ct_len, ss_len;          // and their lengths.
 
                                                                                   int ret = encapsulate(NID_KYBER512, pub_key, pub_key_len,
                                                                                                         &ct, &ct_len, &ss, &ss_len);
 
-                                                                                  // On |ret| success, |ss| is the generated shared secret you can use,
+                                                                                  // On |ret| being SUCCESS, |ss| is the generated shared secret you can use,
                                                                                   // and |ct| is the ciphertext to be sent to Alice.
                                                                     ct                
                                                            <-------------------
@@ -281,7 +281,7 @@ size_t ss_len;        // and its length.
 int ret = decapsulate(key, ct, ct_len, &ss, &ss_len);
 EVP_PKEY_free(key);  // free if |key| not needed any more.
 
-// On |ret| success, |ss| is the generated shared secret you can use.
+// On |ret| being SUCCESS, |ss| is the generated shared secret you can use.
 
 // END                          Alice's shared secret is equal to Bob's shared secret if the protocol succeeded.
 ```
