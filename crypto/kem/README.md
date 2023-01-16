@@ -144,7 +144,7 @@ int get_raw_public_key(/* IN  */ EVP_PKEY *key,
 // With the two helper functions above you can:
 //
 //   1. Generate the key (Kyber512 key in our example),
-EVP_PKEY *key;
+EVP_PKEY *key = NULL;
 if (generate_key_pair(&key, NID_KYBER512) != SUCCESS) {
   return FAIL;
 }
@@ -211,7 +211,7 @@ Note: you can use the generated |key| directly                                  
                                                                                     }
 
                                                                                     EVP_PKEY_free(key);
-                                                                                    EVP_PKEY_CTX_free(encaps_ctx);
+                                                                                    EVP_PKEY_CTX_free(ctx);
 
                                                                                     return ret;
                                                                                   }
@@ -247,7 +247,7 @@ int decapsulate(/* IN  */ EVP_PKEY *key,
     goto end;
   }
 
-  *ss = (uint8_t*) OPENSSL_malloc(*ss_len));
+  *ss = (uint8_t*) OPENSSL_malloc(*ss_len);
   if (*ss == NULL) {
     return FAIL;
   }
