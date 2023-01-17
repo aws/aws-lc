@@ -1358,6 +1358,7 @@ TEST(RSATest, DISABLED_BlindingCacheConcurrency) {
 
 #endif  // THREADS
 
+#if !defined(AWSLC_FIPS)
 // Test the RSA key validation exception for keys with |d > n|.
 TEST(RSATest, AllowKeysWithDgtN) {
   bssl::UniquePtr<BIGNUM> e_tmp(BN_new());
@@ -1426,3 +1427,4 @@ TEST(RSATest, AllowKeysWithDgtN) {
   BN_CTX_free(ctx);
 }
 
+#endif // AWSLC_FIPS

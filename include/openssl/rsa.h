@@ -802,13 +802,16 @@ struct rsa_st {
 
 #if !defined(AWSLC_FIPS)
 #include <stdbool.h>
-// Some services are dealing with RSA keys that have been inappropriately
-// generated -- the private exponent |d| is greater than the modulus |n|.
-// Until such keys are eradicated, we _temporarly_ add a way to relax the
-// requirements for validating RSA keys such that the condition |d < n|
-// can be skipped. This "relaxed" behavior has to be explicitly enabled by
-// the user by calling |allow_rsa_keys_d_gt_n(true)|. The default behavior
-// is still to check if |d < n| and fail if not true.
+
+// This function is DEPRECATED.
+//
+// Some RSA keys are inappropriately generated -- the private exponent |d|
+// is greater than the modulus |n|. Until such keys are eradicated, we
+// _temporarly_ add a way to relax the requirements for validating RSA keys
+// such that the condition |d < n| can be skipped. This "relaxed" behavior
+// has to be explicitly enabled by the user by calling the function
+// |allow_rsa_keys_d_gt_n(true)|. The default behavior is still to check
+// if |d < n| and fail if not true.
 OPENSSL_EXPORT void allow_rsa_keys_d_gt_n(bool enable);
 #endif
 
