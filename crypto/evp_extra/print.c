@@ -60,6 +60,7 @@
 #include <openssl/mem.h>
 #include <openssl/rsa.h>
 
+#include "internal.h"
 #include "../internal.h"
 #include "../fipsmodule/rsa/internal.h"
 
@@ -306,6 +307,57 @@ static int eckey_priv_print(BIO *bp, const EVP_PKEY *pkey, int indent) {
   return do_EC_KEY_print(bp, pkey->pkey.ec, indent, 2);
 }
 
+// Dilithium keys.
+
+static int do_dilithium_print(BIO *bp, const EVP_PKEY *x, int off, int ptype) {
+  uint8_t *m = NULL;
+  int ret = 0, bit_len = 0;
+  size_t buf_len = 0;
+
+  DILITHIUM3_KEY *key = x->pkey.ptr;
+
+  m = (uint8_t *)OPENSSL_malloc(buf_len + 10);
+  if (m == NULL) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
+    goto err;
+  }
+
+  if (ptype == 1) {
+    bit_len = 1952;
+  }
+  else if (ptype == 2) {
+    bit_len = 4000;
+  }
+
+  if (!BIO_indent(bp, off, 128)) {
+    goto err;
+  }
+
+  if (ptype == 2) {
+    if (BIO_printf(bp, "Private-Key: (%d bit)\n", bit_len) <= 0) {
+      goto err;
+    }
+    BIO_hexdump(bp, key->priv, bit_len, off);
+  } else {
+    if (BIO_printf(bp, "Public-Key: (%d bit)\n", bit_len) <= 0) {
+      goto err;
+    }
+    BIO_hexdump(bp, key->pub, bit_len, off);
+  }
+  ret = 1;
+
+err:
+  OPENSSL_free(m);
+  return ret;
+}
+
+static int dilithium_pub_print(BIO *bp, const EVP_PKEY *pkey, int indent) {
+  return do_dilithium_print(bp, pkey, indent, 1);
+}
+
+static int dilithium_priv_print(BIO *bp, const EVP_PKEY *pkey, int indent) {
+  return do_dilithium_print(bp, pkey, indent, 2);
+}
 
 typedef struct {
   int type;
@@ -332,6 +384,12 @@ static EVP_PKEY_PRINT_METHOD kPrintMethods[] = {
         eckey_pub_print,
         eckey_priv_print,
         eckey_param_print,
+    },
+    {
+        EVP_PKEY_DILITHIUM3,
+        dilithium_pub_print,
+        dilithium_priv_print,
+        NULL /* param_print */,
     },
 };
 

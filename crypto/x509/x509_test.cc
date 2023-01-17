@@ -33,6 +33,7 @@
 #include <openssl/x509v3.h>
 
 #include "internal.h"
+#include "../evp_extra/internal.h"
 #include "../internal.h"
 #include "../test/test_util.h"
 #include "../x509v3/internal.h"
@@ -2299,6 +2300,68 @@ TEST(X509Test, Ed25519Sign) {
   ASSERT_TRUE(
       EVP_DigestSignInit(md_ctx.get(), nullptr, nullptr, nullptr, priv.get()));
   ASSERT_TRUE(SignatureRoundTrips(md_ctx.get(), pub.get()));
+}
+
+TEST(X509Test, DilithiumPrivKey) {
+  //generate dilithium key and encode to DER file
+  EVP_PKEY_CTX *dilithium_pkey_ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_DILITHIUM3, nullptr);
+  EVP_PKEY *dilithium_pkey = EVP_PKEY_new();
+  EVP_PKEY_keygen_init(dilithium_pkey_ctx);
+  EVP_PKEY_keygen(dilithium_pkey_ctx, &dilithium_pkey);
+
+  uint8_t *der;
+  size_t der_len;
+  CBB cbb;
+  ASSERT_TRUE(CBB_init(&cbb, 0));
+  ASSERT_TRUE(EVP_marshal_private_key(&cbb, dilithium_pkey));
+  ASSERT_TRUE(CBB_finish(&cbb, &der, &der_len));
+
+  EVP_PKEY_CTX_free(dilithium_pkey_ctx);
+  EVP_PKEY_free(dilithium_pkey);
+}
+
+TEST(X509Test, DilithiumPubKey) {
+  //generate dilithium key and encode to DER file
+  EVP_PKEY_CTX *dilithium_pkey_ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_DILITHIUM3, nullptr);
+  EVP_PKEY *dilithium_pkey = EVP_PKEY_new();
+  EVP_PKEY_keygen_init(dilithium_pkey_ctx);
+  EVP_PKEY_keygen(dilithium_pkey_ctx, &dilithium_pkey);
+
+  uint8_t *der;
+  size_t der_len;
+  CBB cbb;
+  ASSERT_TRUE(CBB_init(&cbb, 0));
+  ASSERT_TRUE(EVP_marshal_public_key(&cbb, dilithium_pkey));
+  ASSERT_TRUE(CBB_finish(&cbb, &der, &der_len));
+
+  EVP_PKEY_CTX_free(dilithium_pkey_ctx);
+  EVP_PKEY_free(dilithium_pkey);
+}
+
+TEST(X509Test, DilithiumSignVerifyCert) {
+  //generate the dilithium key
+  EVP_PKEY_CTX *dilithium_pkey_ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_DILITHIUM3, nullptr);
+  ASSERT_NE(dilithium_pkey_ctx, nullptr);
+  EVP_PKEY *dilithium_pkey = EVP_PKEY_new();
+  ASSERT_NE(dilithium_pkey, nullptr);
+  EXPECT_TRUE(EVP_PKEY_keygen_init(dilithium_pkey_ctx));
+  EXPECT_TRUE(EVP_PKEY_keygen(dilithium_pkey_ctx, &dilithium_pkey));
+
+  //generate the cert
+  bssl::UniquePtr<X509> leaf =
+      MakeTestCert("Intermediate", "Leaf", dilithium_pkey, /*is_ca=*/false);
+  ASSERT_TRUE(leaf);
+
+  //sign the cert
+  bssl::ScopedEVP_MD_CTX md_ctx;
+  EVP_DigestSignInit(md_ctx.get(), nullptr, nullptr, nullptr, dilithium_pkey);
+  ASSERT_TRUE(X509_sign_ctx(leaf.get(), md_ctx.get()));
+
+  //verify the cert
+  ASSERT_TRUE(X509_verify(leaf.get(), dilithium_pkey));
+
+  EVP_PKEY_CTX_free(dilithium_pkey_ctx);
+  EVP_PKEY_free(dilithium_pkey);
 }
 
 static bool PEMToDER(bssl::UniquePtr<uint8_t> *out, size_t *out_len,
