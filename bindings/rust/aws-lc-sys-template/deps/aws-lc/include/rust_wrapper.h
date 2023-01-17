@@ -57,6 +57,7 @@ int ERR_GET_FUNC_RUST(uint32_t packed_error);
 #include "openssl/conf.h"
 #include "openssl/cpu.h"
 #include "openssl/crypto.h"
+#include "openssl/ctrdrbg.h"
 #include "openssl/curve25519.h"
 #include "openssl/des.h"
 #include "openssl/dh.h"

@@ -78,6 +78,8 @@ type delocation struct {
 	// bssAccessorsNeeded maps from a BSS symbol name to the symbol that
 	// should be used to reference it. E.g. “P384_data_storage” ->
 	// “P384_data_storage”.
+	// Symbols saved in bssAccessorsNeeded will be rewritten with a "_bss_get"
+	// accessor appended.
 	bssAccessorsNeeded map[string]string
 	// tocLoaders is a set of symbol names for which TOC helper functions
 	// are required. (ppc64le only.)
@@ -488,6 +490,20 @@ func (d *delocation) processAarch64Instruction(statement, instruction *node32) (
 		}
 
 		return d.loadAarch64Address(statement, targetReg, symbol, offset)
+	case "bl":
+		// We were relying on symbols defined with ".comm" to populate bssAccessorsNeeded,
+		// but the gcc release build does not use ".comm" to define common symbols. The
+		// symbols requiring accessor functions (i.e. with a suffix "_bss_get") are defined
+		// with a ".type $symbol %object" followed with a ".size $symbol $symbol_size"
+		// instead. These definition methods are generic and do not only apply to symbols
+		// that need accessors. Thus we attempt to reverse engineer the accessor symbols
+		// by populating bssAccessorsNeeded with labels from "bl" that have the accessor
+		// "_bss_get" at the suffix.
+		bss_get_symbol := d.contents(argNodes[0])
+		if strings.HasSuffix(bss_get_symbol, "_bss_get") {
+			trimmed_symbol := strings.TrimSuffix(bss_get_symbol, "_bss_get")
+			d.bssAccessorsNeeded[trimmed_symbol] = trimmed_symbol
+		}
 	}
 
 	var args []string
@@ -573,8 +589,10 @@ func (d *delocation) processAarch64Instruction(statement, instruction *node32) (
 							panic("Symbol reference outside of ldr instruction")
 						}
 
-						if skipWS(parts.next) != nil || parts.up.next != nil {
-							panic("can't handle tweak or post-increment with symbol references")
+						// The check for "parts.up.next != nil" was removed because gcc/release appends an
+						// offset to the symbol reference. ex: #:lo12:.LC9+8
+						if skipWS(parts.next) != nil {
+							panic("can't handle tweak with symbol references")
 						}
 
 						// Suppress the offset; adrp loaded the full address.
@@ -1136,7 +1154,7 @@ func classifyInstruction(instr string, args []*node32) instructionType {
 			return instrCompare
 		}
 
-	case "sarxq", "shlxq", "shrxq":
+	case "sarxq", "shlxq", "shrxq", "pinsrq":
 		if len(args) == 3 {
 			return instrThreeArg
 		}
@@ -1402,7 +1420,7 @@ Args:
 
 				classification := classifyInstruction(instructionName, argNodes)
 				if classification != instrThreeArg && classification != instrCompare && i != 0 {
-					return nil, errors.New("GOT access must be source operand")
+					return nil, fmt.Errorf("GOT access must be source operand, %w", classification)
 				}
 
 				// Reduce the instruction to movq symbol@GOTPCREL, targetReg.

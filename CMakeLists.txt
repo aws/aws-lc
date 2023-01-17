@@ -193,11 +193,17 @@ macro(check_compiler file_to_test flag_to_set)
           COMPILE_DEFINITIONS "-Werror"
           OUTPUT_VARIABLE ERROR_MESSAGE)
   if(RESULT)
-    set(C_CXX_FLAGS "${C_CXX_FLAGS} -D${flag_to_set}")
-    message(STATUS "Test ${file_to_test} passed, enabling ${flag_to_set}")
+    set(COMPILER_CHECK_FLAGS "${COMPILER_CHECK_FLAGS} -D${flag_to_set}")
+    message(STATUS "${file_to_test} probe is positive, enabling ${flag_to_set}")
   else()
-    message(STATUS "Test ${file_to_test} failed, NOT enabling ${flag_to_set}:")
-    message(STATUS "    ${ERROR_MESSAGE}")
+    message(STATUS "${file_to_test} probe is negative, NOT enabling ${flag_to_set}:")
+    # Some build applications use regexes on build output to highlight build
+    # errors. Below, we modify a compiler error message to avoid that a negative
+    # probe is considered an error in such build applications.
+    string(REPLACE ": error:"
+      ": compiler_error:" ERROR_MESSAGE_PROCESSED
+      ${ERROR_MESSAGE})
+    message(STATUS "    ${ERROR_MESSAGE_PROCESSED}")
   endif()
 endmacro()
 
@@ -260,11 +266,6 @@ if (GCC)
 endif ()
 
 if(GCC OR CLANG)
-  check_compiler("stdalign_check.c" AWS_LC_STDALIGN_AVAILABLE)
-  check_compiler("builtin_swap_check.c" AWS_LC_BUILTIN_SWAP_SUPPORTED)
-  if(FIPS AND NOT APPLE)
-    check_compiler("linux_u32.c" AWS_LC_URANDOM_U32)
-  endif()
   # Note clang-cl is odd and sets both CLANG and MSVC. We base our configuration
   # primarily on our normal Clang one.
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
@@ -358,6 +359,15 @@ if(GCC OR CLANG)
   if(GCC AND "4.8" VERSION_GREATER CMAKE_C_COMPILER_VERSION AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "4.1.3")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-array-bounds")
   endif()
+
+  check_compiler("stdalign_check.c" AWS_LC_STDALIGN_AVAILABLE)
+  check_compiler("builtin_swap_check.c" AWS_LC_BUILTIN_SWAP_SUPPORTED)
+  if(FIPS AND NOT APPLE)
+    check_compiler("linux_u32.c" AWS_LC_URANDOM_U32)
+  endif()
+
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${COMPILER_CHECK_FLAGS}")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMPILER_CHECK_FLAGS}")
 
 elseif(MSVC)
   set(MSVC_DISABLED_WARNINGS_LIST
@@ -692,20 +702,13 @@ else()
   set(ARCH "generic")
 endif()
 
-if(ANDROID AND NOT ANDROID_NDK_REVISION AND ARCH STREQUAL "arm")
-  # The third-party Android-NDK CMake files somehow fail to set the -march flag
-  # for assembly files. Without this flag, the compiler believes that it's
-  # building for ARMv5.
-  set(CMAKE_ASM_FLAGS "-march=${CMAKE_SYSTEM_PROCESSOR} ${CMAKE_ASM_FLAGS}")
-endif()
-
 if(USE_CUSTOM_LIBCXX)
   if(NOT CLANG)
     message(FATAL_ERROR "USE_CUSTOM_LIBCXX only supported with Clang")
   endif()
 
-  # The docker images set an environement variable to the llvm project directory which the sandbox builds will use,
-  # you can also pass in the llvm project path as a CMake parameter which takes precedance over the environment variable
+  # The docker images set an environment variable to the llvm project directory which the sandbox builds will use,
+  # you can also pass in the llvm project path as a CMake parameter which takes precedence over the environment variable
   if(DEFINED ENV{LLVM_PROJECT_HOME} AND NOT LLVM_PROJECT_HOME)
     set(LLVM_PROJECT_HOME $ENV{LLVM_PROJECT_HOME})
   endif()
@@ -729,7 +732,7 @@ if(USE_CUSTOM_LIBCXX)
   # This is patterned after buildtools/third_party/libc++/BUILD.gn and
   # buildtools/third_party/libc++abi/BUILD.gn in Chromium.
 
-  file(GLOB LIBCXX_SOURCES "${LLVM_PROJECT_HOME}/libcxx/src/*.cpp")
+  file(GLOB LIBCXX_SOURCES "${LLVM_PROJECT_HOME}/libcxx/src/*.cpp" "${LLVM_PROJECT_HOME}/libcxx/src/ryu/*.cpp")
   file(GLOB LIBCXXABI_SOURCES "${LLVM_PROJECT_HOME}/libcxxabi/src/*.cpp")
 
   # This file is meant for exception-less builds.
@@ -748,9 +751,6 @@ if(USE_CUSTOM_LIBCXX)
     libcxxabi PRIVATE
     -D_LIBCPP_ENABLE_CXX17_REMOVED_UNEXPECTED_FUNCTIONS
   )
-  set_target_properties(libcxxabi PROPERTIES COMPILE_FLAGS "-Wno-missing-prototypes -Wno-implicit-fallthrough")
-  # libc++abi depends on libc++ internal headers.
-  set_property(TARGET libcxxabi APPEND PROPERTY INCLUDE_DIRECTORIES "${LLVM_PROJECT_HOME}/libcxx/src")
 
   add_library(libcxx ${LIBCXX_SOURCES})
   if(ASAN OR MSAN OR TSAN)
@@ -765,6 +765,15 @@ if(USE_CUSTOM_LIBCXX)
     -D_LIBCPP_BUILDING_LIBRARY
     -DLIBCXX_BUILDING_LIBCXXABI
   )
+  set_target_properties(
+    libcxx libcxxabi PROPERTIES
+    COMPILE_FLAGS "-Wno-missing-prototypes -Wno-implicit-fallthrough"
+    # libc++ and libc++abi must be built in C++20 mode.
+    CXX_STANDARD 20
+    CXX_STANDARD_REQUIRED TRUE
+  )
+  # libc++abi depends on libc++ internal headers.
+  set_property(TARGET libcxx libcxxabi APPEND PROPERTY INCLUDE_DIRECTORIES "${LLVM_PROJECT_HOME}/libcxx/src")
   target_link_libraries(libcxx libcxxabi)
 endif()
 
