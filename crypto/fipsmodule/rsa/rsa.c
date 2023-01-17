@@ -742,6 +742,43 @@ static int check_mod_inverse(int *out_ok, const BIGNUM *a, const BIGNUM *ainv,
   return ret;
 }
 
+#if !defined(AWSLC_FIPS)
+// Some services are dealing with RSA keys that have been inappropriately
+// generated -- the private exponent |d| is greater than the modulus |n|.
+// Until such keys are eradicated, we _temporarly_ add a way to relax the
+// requirements for validating RSA keys such that the condition |d < n|
+// can be skipped. This "relaxed" behavior has to be explicitly enabled by
+// the user by calling |allow_rsa_keys_d_gt_n(true)|. The default behavior
+// is still to check if |d < n| and fail if not true.
+DEFINE_BSS_GET(bool, allow_rsa_keys_d_gt_n_flag)
+DEFINE_STATIC_MUTEX(allow_rsa_keys_d_gt_n_lock)
+
+void allow_rsa_keys_d_gt_n(bool enable) {
+  CRYPTO_STATIC_MUTEX_lock_write(allow_rsa_keys_d_gt_n_lock_bss_get());
+
+  bool *flag = allow_rsa_keys_d_gt_n_flag_bss_get();
+  *flag = enable;
+
+  CRYPTO_STATIC_MUTEX_unlock_write(allow_rsa_keys_d_gt_n_lock_bss_get());
+}
+
+static bool are_rsa_keys_with_d_gt_n_allowed(void) {
+  CRYPTO_STATIC_MUTEX_lock_read(allow_rsa_keys_d_gt_n_lock_bss_get());
+
+  bool *flag = allow_rsa_keys_d_gt_n_flag_bss_get();
+  bool out = *flag;
+
+  CRYPTO_STATIC_MUTEX_unlock_read(allow_rsa_keys_d_gt_n_lock_bss_get());
+  return out;
+}
+
+#else
+
+static bool are_rsa_keys_with_d_gt_n_allowed(void) {
+  return false;
+}
+#endif
+
 int RSA_validate_key(const RSA *key, rsa_asn1_key_encoding_t key_enc_type) {
   // TODO(davidben): RSA key initialization is spread across
   // |rsa_check_public_key|, |RSA_check_key|, |freeze_private_key|, and
@@ -759,10 +796,18 @@ int RSA_validate_key(const RSA *key, rsa_asn1_key_encoding_t key_enc_type) {
     return 0;
   }
 
+  if (key->d != NULL && (BN_is_negative(key->d))) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_D_OUT_OF_RANGE);
+    return 0;
+  }
+
   // |key->d| must be bounded by |key->n|. This ensures bounds on |RSA_bits|
   // translate to bounds on the running time of private key operations.
+  // See above this functions the explanation for the exception when keys
+  // with |d > n| are allowed.
   if (key->d != NULL &&
-      (BN_is_negative(key->d) || BN_cmp(key->d, key->n) >= 0)) {
+      are_rsa_keys_with_d_gt_n_allowed() == false &&
+      BN_cmp(key->d, key->n) >= 0) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_D_OUT_OF_RANGE);
     return 0;
   }

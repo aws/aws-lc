@@ -1357,3 +1357,72 @@ TEST(RSATest, DISABLED_BlindingCacheConcurrency) {
 #endif  // X86_64
 
 #endif  // THREADS
+
+// Test the RSA key validation exception for keys with |d > n|.
+TEST(RSATest, AllowKeysWithDgtN) {
+  bssl::UniquePtr<BIGNUM> e_tmp(BN_new());
+  ASSERT_TRUE(e_tmp);
+  ASSERT_TRUE(BN_set_word(e_tmp.get(), RSA_F4));
+
+  bssl::UniquePtr<RSA> rsa(RSA_new());
+  ASSERT_TRUE(rsa);
+  ASSERT_TRUE(RSA_generate_key_ex(rsa.get(), 1024, e_tmp.get(), nullptr));
+
+  // Sanity check.
+  ASSERT_TRUE(RSA_check_key(rsa.get()));
+
+  // Allow RSA keys with |d > n|.
+  allow_rsa_keys_d_gt_n(true);
+
+  // Sanity check.
+  ASSERT_TRUE(RSA_check_key(rsa.get()));
+
+  // Create a valid key with |d > n|.
+  // Extract key parameters.
+  BIGNUM *n, *e, *d, *p, *q;
+  RSA_get0_key(rsa.get(), (const BIGNUM**)&n, (const BIGNUM**)&e, (const BIGNUM**)&d);
+  ASSERT_TRUE(n);
+  ASSERT_TRUE(e);
+  ASSERT_TRUE(d);
+  RSA_get0_factors(rsa.get(), (const BIGNUM**)&p, (const BIGNUM**)&q);
+  ASSERT_TRUE(p);
+  ASSERT_TRUE(q);
+
+  // Make a new valid |d| that is greater than |n| by
+  // adding (p-1)(q-1) to it until it becomes greater than |n|.
+  BIGNUM *pm1, *qm1, *one;
+  pm1 = BN_new();
+  qm1 = BN_new();
+  one = BN_new();
+  ASSERT_TRUE(BN_one(one));
+  ASSERT_TRUE(BN_sub(pm1, p, one));
+  ASSERT_TRUE(BN_sub(qm1, q, one));
+
+  BIGNUM *tmp = BN_new(); // tmp will hold (p-1)(q-1).
+  BN_CTX *ctx = BN_CTX_new();
+  ASSERT_TRUE(BN_mul(tmp, pm1, qm1, ctx));
+
+  while (BN_cmp(d, n) <= 0) {
+    ASSERT_TRUE(BN_add(d, d, tmp));
+  }
+
+  // Create a new "bad" key that's valid, but with |d > n|.
+  RSA *rsa_bad = RSA_new();
+  ASSERT_TRUE(RSA_set0_key(rsa_bad, n, e, d));
+
+  // Verify that we can parse the key.
+  ASSERT_TRUE(RSA_check_key(rsa_bad));
+
+  // Disallow RSA keys with |d > n|.
+  allow_rsa_keys_d_gt_n(false);
+
+  // Verify that we can't parse the key.
+  ASSERT_FALSE(RSA_check_key(rsa_bad));
+
+  BN_free(pm1);
+  BN_free(qm1);
+  BN_free(one);
+  BN_free(tmp);
+  BN_CTX_free(ctx);
+}
+
