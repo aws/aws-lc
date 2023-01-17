@@ -2603,6 +2603,8 @@ XRqE7XFhHL+7TNC2a9OOAjQsEF137YPWo+rhgko=
   ASSERT_TRUE(X509_STORE_add_cert(store.get(), root.get()));
   SSL_CTX_set_cert_store(client_ctx.get(), store.release());
   SSL_CTX_set_verify(client_ctx.get(), SSL_VERIFY_PEER, nullptr);
+  X509_VERIFY_PARAM_set_flags(SSL_CTX_get0_param(client_ctx.get()),
+                              X509_V_FLAG_NO_CHECK_TIME);
   static const char kSecretName[] = "secret.example";
   ASSERT_TRUE(X509_VERIFY_PARAM_set1_host(SSL_CTX_get0_param(client_ctx.get()),
                                           kSecretName, strlen(kSecretName)));
@@ -2962,6 +2964,31 @@ class SSLVersionTest : public ::testing::TestWithParam<VersionParam> {
     return GetParam().ssl_method == VersionParam::is_dtls;
   }
 
+  void CheckCounterInit() {
+    EXPECT_EQ(SSL_CTX_sess_connect(client_ctx_.get()), 0);
+    EXPECT_EQ(SSL_CTX_sess_connect(server_ctx_.get()), 0);
+    EXPECT_EQ(SSL_CTX_sess_connect_good(client_ctx_.get()), 0);
+    EXPECT_EQ(SSL_CTX_sess_connect_good(server_ctx_.get()), 0);
+    EXPECT_EQ(SSL_CTX_sess_connect_renegotiate(client_ctx_.get()), 0);
+    EXPECT_EQ(SSL_CTX_sess_connect_renegotiate(server_ctx_.get()), 0);
+    EXPECT_EQ(SSL_CTX_sess_accept(client_ctx_.get()), 0);
+    EXPECT_EQ(SSL_CTX_sess_accept(server_ctx_.get()), 0);
+    EXPECT_EQ(SSL_CTX_sess_accept_renegotiate(client_ctx_.get()), 0);
+    EXPECT_EQ(SSL_CTX_sess_accept_renegotiate(server_ctx_.get()), 0);
+    EXPECT_EQ(SSL_CTX_sess_accept_good(client_ctx_.get()), 0);
+    EXPECT_EQ(SSL_CTX_sess_accept_good(server_ctx_.get()), 0);
+    EXPECT_EQ(SSL_CTX_sess_hits(client_ctx_.get()), 0);
+    EXPECT_EQ(SSL_CTX_sess_hits(server_ctx_.get()), 0);
+    EXPECT_EQ(SSL_CTX_sess_cb_hits(client_ctx_.get()), 0);
+    EXPECT_EQ(SSL_CTX_sess_cb_hits(server_ctx_.get()), 0);
+    EXPECT_EQ(SSL_CTX_sess_misses(client_ctx_.get()), 0);
+    EXPECT_EQ(SSL_CTX_sess_misses(server_ctx_.get()), 0);
+    EXPECT_EQ(SSL_CTX_sess_timeouts(client_ctx_.get()), 0);
+    EXPECT_EQ(SSL_CTX_sess_timeouts(server_ctx_.get()), 0);
+    EXPECT_EQ(SSL_CTX_sess_cache_full(client_ctx_.get()), 0);
+    EXPECT_EQ(SSL_CTX_sess_cache_full(server_ctx_.get()), 0);
+  }
+
   bool shed_handshake_config_ = true;
   bssl::UniquePtr<SSL> client_, server_;
   bssl::UniquePtr<SSL_CTX> server_ctx_, client_ctx_;
@@ -2976,7 +3003,13 @@ INSTANTIATE_TEST_SUITE_P(WithVersion, SSLVersionTest,
                          });
 
 TEST_P(SSLVersionTest, SequenceNumber) {
+  CheckCounterInit();
   ASSERT_TRUE(Connect());
+  // Counters should count one two-way successful connection.
+  EXPECT_EQ(SSL_CTX_sess_connect(client_ctx_.get()), 1);
+  EXPECT_EQ(SSL_CTX_sess_connect_good(client_ctx_.get()), 1);
+  EXPECT_EQ(SSL_CTX_sess_accept(server_ctx_.get()), 1);
+  EXPECT_EQ(SSL_CTX_sess_accept_good(server_ctx_.get()), 1);
 
   // Drain any post-handshake messages to ensure there are no unread records
   // on either end.
@@ -6006,7 +6039,8 @@ TEST_P(SSLVersionTest, SessionCacheThreads) {
 
   // Hit the maximum session cache size across multiple threads, to test the
   // size enforcement logic.
-  size_t limit = SSL_CTX_sess_number(server_ctx_.get()) + 2;
+  size_t over_limit = 2;
+  size_t limit = SSL_CTX_sess_number(server_ctx_.get()) + over_limit;
   SSL_CTX_sess_set_cache_size(server_ctx_.get(), limit);
   {
     std::vector<std::thread> threads;
@@ -6020,6 +6054,8 @@ TEST_P(SSLVersionTest, SessionCacheThreads) {
       thread.join();
     }
     EXPECT_EQ(SSL_CTX_sess_number(server_ctx_.get()), limit);
+    // We go over the cache limit by |over_limit|.
+    EXPECT_EQ(SSL_CTX_sess_cache_full(server_ctx_.get()), (int)over_limit);
   }
 
   // Reset the session cache, this time with a mock clock.
@@ -6196,8 +6232,84 @@ TEST_P(SSLVersionTest, SessionPropertiesThreads) {
   for (auto &thread : threads) {
     thread.join();
   }
+  // Session has been resumed twice.
+  EXPECT_EQ(SSL_CTX_sess_hits(server_ctx_.get()), 2);
+  EXPECT_EQ(SSL_CTX_sess_hits(client_ctx_.get()), 2);
 }
 #endif  // OPENSSL_THREADS
+
+TEST_P(SSLVersionTest, SessionMissCache) {
+  if (version() == TLS1_3_VERSION) {
+    // Our TLS 1.3 implementation does not support stateful resumption.
+    ASSERT_FALSE(CreateClientSession(client_ctx_.get(), server_ctx_.get()));
+    return;
+  }
+
+  SSL_CTX_set_options(server_ctx_.get(), SSL_OP_NO_TICKET);
+  SSL_CTX_set_session_cache_mode(client_ctx_.get(), SSL_SESS_CACHE_BOTH);
+  SSL_CTX_set_session_cache_mode(server_ctx_.get(), SSL_SESS_CACHE_BOTH);
+  SSL_CTX_set_current_time_cb(server_ctx_.get(), CurrentTimeCallback);
+
+  ClientConfig config;
+  bssl::UniquePtr<SSL> client, server;
+  // Make some sessions at an arbitrary start time. Then expire them.
+  g_current_time.tv_sec = 1000;
+  bssl::UniquePtr<SSL_SESSION> expired_session =
+      CreateClientSession(client_ctx_.get(), server_ctx_.get());
+  ASSERT_TRUE(expired_session);
+  g_current_time.tv_sec += 100 * SSL_DEFAULT_SESSION_TIMEOUT;
+
+  static const int kNumConnections = 2;
+  config.session = expired_session.get();
+  EXPECT_TRUE(ConnectClientAndServer(&client, &server, client_ctx_.get(),
+                                       server_ctx_.get(), config));
+  EXPECT_TRUE(ConnectClientAndServer(&client, &server, client_ctx_.get(),
+                                       server_ctx_.get(), config));
+
+  // First connection is not an |sess_miss|, but failed to connect successfully.
+  // Subsequent connections will all be both timeouts and misses.
+  EXPECT_EQ(SSL_CTX_sess_misses(server_ctx_.get()), kNumConnections-1);
+  EXPECT_EQ(SSL_CTX_sess_timeouts(server_ctx_.get()), kNumConnections);
+}
+
+// Callback function to force an external session cache counter update.
+// This intentionally always returns a value, to verify that the counter is
+// updated as intended.
+// Allocating any memory within the callback function will cause the address
+// sanitizers to fail, so we manage the memory externally.
+static bssl::UniquePtr<SSL_SESSION> ssl_session;
+static SSL_SESSION *get_session(SSL *ssl, const unsigned char *id, int idlen,
+                                int *do_copy) {
+    return ssl_session.release();
+}
+
+TEST_P(SSLVersionTest, SessionExternalCacheHit) {
+  if (version() == TLS1_3_VERSION) {
+    // Our TLS 1.3 implementation does not support stateful resumption.
+    ASSERT_FALSE(CreateClientSession(client_ctx_.get(), server_ctx_.get()));
+    return;
+  }
+
+  SSL_CTX_set_options(server_ctx_.get(), SSL_OP_NO_TICKET);
+  SSL_CTX_set_session_cache_mode(client_ctx_.get(), SSL_SESS_CACHE_BOTH);
+  SSL_CTX_set_session_cache_mode(server_ctx_.get(),
+                             SSL_SESS_CACHE_BOTH | SSL_SESS_CACHE_NO_INTERNAL);
+  SSL_CTX_sess_set_get_cb(server_ctx_.get(), get_session);
+
+  ClientConfig config;
+  bssl::UniquePtr<SSL> client, server;
+  bssl::UniquePtr<SSL_SESSION> session =
+        CreateClientSession(client_ctx_.get(), server_ctx_.get());
+
+  static const int kNumConnections = 2;
+  config.session = session.get();
+  for (int i = 0; i < kNumConnections; i++) {
+        ssl_session.reset(session.get());
+        EXPECT_TRUE(ConnectClientAndServer(&client, &server, client_ctx_.get(),
+                                       server_ctx_.get(), config));
+  }
+  EXPECT_EQ(SSL_CTX_sess_cb_hits(server_ctx_.get()), kNumConnections);
+}
 
 constexpr size_t kNumQUICLevels = 4;
 static_assert(ssl_encryption_initial < kNumQUICLevels,
@@ -7698,6 +7810,9 @@ TEST_P(SSLVersionTest, SameKeyResume) {
                                      server_ctx2.get(), config));
   EXPECT_TRUE(SSL_session_reused(client.get()));
   EXPECT_TRUE(SSL_session_reused(server.get()));
+
+  // By this point, the session has been resumed twice on the client side.
+  EXPECT_EQ(SSL_CTX_sess_hits(client_ctx_.get()), 2);
 }
 
 TEST_P(SSLVersionTest, DifferentKeyNoResume) {
@@ -7934,6 +8049,9 @@ TEST_P(SSLTest, WriteWhileExplicitRenegotiate) {
   uint32_t err = ERR_get_error();
   EXPECT_EQ(ERR_LIB_SSL, ERR_GET_LIB(err));
   EXPECT_EQ(SSL_R_NO_RENEGOTIATION, ERR_GET_REASON(err));
+
+  EXPECT_EQ(SSL_CTX_sess_connect_renegotiate(ctx.get()), 1);
+  EXPECT_EQ(SSL_CTX_sess_accept_renegotiate(ctx.get()), 0);
 }
 
 TEST(SSLTest, ConnectionPropertiesDuringRenegotiate) {
@@ -7986,6 +8104,8 @@ TEST(SSLTest, ConnectionPropertiesDuringRenegotiate) {
   // Connection properties should continue to report values from the original
   // handshake.
   check_properties();
+  EXPECT_EQ(SSL_CTX_sess_connect_renegotiate(ctx.get()), 1);
+  EXPECT_EQ(SSL_CTX_sess_accept_renegotiate(ctx.get()), 0);
 }
 
 TEST(SSLTest, CopyWithoutEarlyData) {
@@ -8907,6 +9027,24 @@ TEST(SSLTest, QuietShutdown) {
   ret = SSL_read(server.get(), buf, sizeof(buf));
   EXPECT_EQ(ret, 0);
   EXPECT_EQ(SSL_get_error(server.get(), ret), SSL_ERROR_ZERO_RETURN);
+}
+
+TEST(SSLTest, InvalidSignatureAlgorithm) {
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+
+  static const uint16_t kInvalidPrefs[] = {1234};
+  EXPECT_FALSE(SSL_CTX_set_signing_algorithm_prefs(
+      ctx.get(), kInvalidPrefs, OPENSSL_ARRAY_SIZE(kInvalidPrefs)));
+  EXPECT_FALSE(SSL_CTX_set_verify_algorithm_prefs(
+      ctx.get(), kInvalidPrefs, OPENSSL_ARRAY_SIZE(kInvalidPrefs)));
+
+  static const uint16_t kDuplicatePrefs[] = {SSL_SIGN_RSA_PKCS1_SHA256,
+                                             SSL_SIGN_RSA_PKCS1_SHA256};
+  EXPECT_FALSE(SSL_CTX_set_signing_algorithm_prefs(
+      ctx.get(), kDuplicatePrefs, OPENSSL_ARRAY_SIZE(kDuplicatePrefs)));
+  EXPECT_FALSE(SSL_CTX_set_verify_algorithm_prefs(
+      ctx.get(), kDuplicatePrefs, OPENSSL_ARRAY_SIZE(kDuplicatePrefs)));
 }
 
 }  // namespace

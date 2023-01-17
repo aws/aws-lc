@@ -35,13 +35,12 @@ $ ./tests/ci/run_posix_tests.sh
 
 ### Unit tests
 
-General test suite with a varying set of build options (FIPS, non-FIPS, debug,
+General test suite with a varying set of build options (FIPS (shared), non-FIPS, debug,
 shared, static, etc.) is executed on the following combinations:
 
 CI Tool|Compiler|CPU|OS
 ------------ | -------------| -------------|-------------
 CodeBuild|gcc 4.1.3|x86|Ubuntu 10.04
-CodeBuild|gcc 4.8.5|x86|Centos 7
 CodeBuild|gcc 4.8.5|x86|Centos 7
 CodeBuild|gcc 4.8.5|x86-64|Centos 7
 CodeBuild|gcc 5.4.0|x86|Ubuntu 16.04
@@ -74,6 +73,20 @@ GitHub Workflow|AppleClang 13.0.0|x86-64|macOS 11
 AWS Device Farm|Android ndkVersion "21.0.6113669"|aarch64|Android 10
 AWS Device Farm|Android ndkVersion "21.0.6113669"|aarch64|Android 11
 AWS Device Farm|Android ndkVersion "21.0.6113669"|aarch64|Android 12
+
+### FIPS static build tests
+
+Unfortunately, it's a known issue that the FIPS build has limited support when producing a static library. The following platforms are what we currently test on for the static AWS-LC FIPS build.
+
+CI Tool|Compiler|CPU|OS
+------------ | -------------| -------------|-------------
+CodeBuild|gcc 4.8.5|x86-64|Centos 7
+CodeBuild|gcc 7.3.1|x86-64|AL2
+CodeBuild|gcc 7.5.0|x86-64|Ubuntu 20.04
+CodeBuild|clang 7.0.1|x86-64|AL2
+CodeBuild|clang 7.0.1|aarch64|AL2
+CodeBuild|clang 7.0.1|x86-64|Ubuntu 20.04
+CodeBuild|clang 7.0.1|aarch64|Ubuntu 20.04
 
 ### Sanitizer tests
 

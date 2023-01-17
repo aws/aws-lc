@@ -91,39 +91,6 @@ func getConfig(args [][]byte) error {
 		  "number"
 		]
 	}, {
-		"algorithm": "KAS-KDF",
-		"mode": "TwoStep",
-		"revision": "Sp800-56Cr2",
-		"capabilities": [{
-			"macSaltMethods": [
-				"random",
-				"default"
-			],
-			"fixedInfoPattern": "uPartyInfo||vPartyInfo",
-			"encoding": [
-				"concatenation"
-			],
-			"kdfMode": "feedback",
-			"macMode": [
-				"HMAC-SHA2-256"
-			],
-			"supportedLengths": [{
-				"min": 128,
-				"max": 512,
-				"increment": 64
-			}],
-			"fixedDataOrder": [
-				"after fixed data"
-			],
-			"counterLength": [
-				8
-			],
-			"requiresEmptyIv": true,
-			"supportsEmptyIv": true
-		}],
-		"l": 256,
-		"z": [256, 384]
-	}, {
 		"algorithm": "hmacDRBG",
 		"revision": "1.0",
 		"predResistanceEnabled": [false, true],

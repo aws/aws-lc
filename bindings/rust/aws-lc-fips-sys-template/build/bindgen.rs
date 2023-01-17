@@ -29,7 +29,7 @@ impl ParseCallbacks for StripPrefixCallback {
     }
 }
 
-fn prepare_clang_args(manifest_dir: &Path, build_prefix: Option<&str>) -> Vec<String> {
+fn prepare_clang_args(manifest_dir: &Path, build_prefix: &Option<&str>) -> Vec<String> {
     let mut clang_args: Vec<String> = vec![
         "-I".to_string(),
         get_include_path(manifest_dir).display().to_string(),
@@ -51,8 +51,15 @@ const PRELUDE: &str = r#"
 #![allow(unused_imports, non_camel_case_types, non_snake_case, non_upper_case_globals, improper_ctypes)]
 "#;
 
-fn prepare_bindings_builder(manifest_dir: &Path, build_prefix: Option<&str>) -> bindgen::Builder {
-    let clang_args = prepare_clang_args(manifest_dir, build_prefix);
+#[derive(Default)]
+pub(crate) struct BindingOptions<'a> {
+    pub build_prefix: Option<&'a str>,
+    pub include_ssl: bool,
+    pub disable_prelude: bool,
+}
+
+fn prepare_bindings_builder(manifest_dir: &Path, options: BindingOptions<'_>) -> bindgen::Builder {
+    let clang_args = prepare_clang_args(manifest_dir, &options.build_prefix);
 
     let mut builder = bindgen::Builder::default()
         .derive_copy(true)
@@ -61,10 +68,7 @@ fn prepare_bindings_builder(manifest_dir: &Path, build_prefix: Option<&str>) -> 
         .derive_eq(true)
         .allowlist_file(".*/openssl/[^/]+\\.h")
         .allowlist_file(".*/rust_wrapper\\.h")
-        .default_enum_style(bindgen::EnumVariation::NewType {
-            is_bitfield: false,
-            is_global: false,
-        })
+        .rustified_enum("point_conversion_form_t")
         .default_macro_constant_type(bindgen::MacroTypeVariation::Signed)
         .generate_comments(true)
         .fit_macro_constants(false)
@@ -74,7 +78,6 @@ fn prepare_bindings_builder(manifest_dir: &Path, build_prefix: Option<&str>) -> 
         .rustfmt_bindings(true)
         .clang_args(clang_args)
         .raw_line(COPYRIGHT)
-        .raw_line(PRELUDE)
         .header(
             get_include_path(manifest_dir)
                 .join("rust_wrapper.h")
@@ -82,7 +85,21 @@ fn prepare_bindings_builder(manifest_dir: &Path, build_prefix: Option<&str>) -> 
                 .to_string(),
         );
 
-    if let Some(ps) = build_prefix {
+    if !options.disable_prelude {
+        builder = builder.raw_line(PRELUDE);
+    }
+
+    if options.include_ssl {
+        builder = builder.header_contents(
+            "rust_ssl_wrapper.h",
+            "\
+#include <openssl/ssl.h>
+#include <openssl/ssl3.h>
+",
+        );
+    }
+
+    if let Some(ps) = &options.build_prefix {
         builder = builder.parse_callbacks(Box::new(StripPrefixCallback::new(ps)));
     }
 
@@ -91,13 +108,10 @@ fn prepare_bindings_builder(manifest_dir: &Path, build_prefix: Option<&str>) -> 
 
 pub(crate) fn generate_bindings(
     manifest_dir: &Path,
-    build_prefix: Option<&str>,
-    output_name: &str,
-) -> Result<(), &'static str> {
-    let bindings_file = manifest_dir.join("src").join(&output_name);
-    let builder = prepare_bindings_builder(&manifest_dir, build_prefix);
-    let bindings = builder.generate().expect("Unable to generate bindings.");
-    Ok(bindings
-        .write_to_file(bindings_file)
-        .expect("Unable to write bindings to file."))
+    options: BindingOptions<'_>,
+) -> Result<bindgen::Bindings, &'static str> {
+    let bindings = prepare_bindings_builder(&manifest_dir, options)
+        .generate()
+        .expect("Unable to generate bindings.");
+    Ok(bindings)
 }

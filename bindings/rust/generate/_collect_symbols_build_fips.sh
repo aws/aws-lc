@@ -32,12 +32,12 @@ else
 fi
 
 go env -w GOPROXY=direct
-${CMAKE} "${AWS_LC_FIPS_DIR}" -DFIPS=1
+${CMAKE} "${AWS_LC_FIPS_DIR}" -DFIPS=1 -DBUILD_LIBSSL=ON
 ${CMAKE} --build . --target clean 
-${CMAKE} --build . --target crypto
+${CMAKE} --build . --target crypto ssl
 
 pushd "${AWS_LC_FIPS_DIR}"
-go run ./util/read_symbols.go -out "${SYMBOLS_TEMP_FILE}" "${BUILD_DIR}"/crypto/libcrypto.a
+go run ./util/read_symbols.go -out "${SYMBOLS_TEMP_FILE}" "${BUILD_DIR}"/crypto/libcrypto.a "${BUILD_DIR}"/ssl/libssl.a
 popd
 
 cat "${SYMBOLS_TEMP_FILE}" >> "${SYMBOLS_COLLECT_FILE}"

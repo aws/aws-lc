@@ -403,7 +403,9 @@ err:
 
 int EVP_PKEY_get_raw_private_key(const EVP_PKEY *pkey, uint8_t *out,
                                  size_t *out_len) {
-  if (pkey->ameth->get_priv_raw == NULL) {
+  if (pkey == NULL ||
+      pkey->ameth == NULL ||
+      pkey->ameth->get_priv_raw == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
     return 0;
   }
@@ -413,7 +415,9 @@ int EVP_PKEY_get_raw_private_key(const EVP_PKEY *pkey, uint8_t *out,
 
 int EVP_PKEY_get_raw_public_key(const EVP_PKEY *pkey, uint8_t *out,
                                 size_t *out_len) {
-  if (pkey->ameth->get_pub_raw == NULL) {
+  if (pkey == NULL ||
+      pkey->ameth == NULL ||
+      pkey->ameth->get_pub_raw == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
     return 0;
   }

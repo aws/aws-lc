@@ -12,6 +12,8 @@ doc/*.html
 doc/doc.css
 bindings/rust/tmp/*
 bindings/rust/generate/target
+!bindings/rust/aws-lc-sys-template/build
+!bindings/rust/aws-lc-fips-sys-template/build
 
 util/bot/android_ndk
 util/bot/android_sdk/public
@@ -24,6 +26,7 @@ util/bot/libcxx
 util/bot/libcxxabi
 util/bot/llvm-build
 util/bot/nasm-win32.exe
+util/bot/ninja
 util/bot/perl-win32
 util/bot/perl-win32.zip
 util/bot/sde-linux64
