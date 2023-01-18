@@ -1874,9 +1874,7 @@ static void sc_muladd(uint8_t *s, const uint8_t *a, const uint8_t *b,
   s[31] = s11 >> 17;
 }
 
-#define ED25519_SEED_LEN 32
-
-void ED25519_keypair(uint8_t out_public_key[ED25519_SEED_LEN], uint8_t out_private_key[64]) {
+void ED25519_keypair(uint8_t out_public_key[32], uint8_t out_private_key[64]) {
   uint8_t seed[ED25519_SEED_LEN];
   RAND_bytes(seed, ED25519_SEED_LEN);
   ED25519_keypair_from_seed(out_public_key, out_private_key, seed);
