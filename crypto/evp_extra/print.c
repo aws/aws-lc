@@ -63,6 +63,7 @@
 #include "internal.h"
 #include "../internal.h"
 #include "../fipsmodule/rsa/internal.h"
+#include "../dilithium/sig_dilithium.h"
 
 
 static int print_hex(BIO *bp, const uint8_t *data, size_t len, int off) {
@@ -310,45 +311,36 @@ static int eckey_priv_print(BIO *bp, const EVP_PKEY *pkey, int indent) {
 // Dilithium keys.
 
 static int do_dilithium_print(BIO *bp, const EVP_PKEY *x, int off, int ptype) {
-  uint8_t *m = NULL;
-  int ret = 0, bit_len = 0;
-  size_t buf_len = 0;
-
-  DILITHIUM3_KEY *key = x->pkey.ptr;
-
-  m = (uint8_t *)OPENSSL_malloc(buf_len + 10);
-  if (m == NULL) {
-    OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
-    goto err;
-  }
-
-  if (ptype == 1) {
-    bit_len = 1952;
-  }
-  else if (ptype == 2) {
-    bit_len = 4000;
+  if (x == NULL) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
   }
 
   if (!BIO_indent(bp, off, 128)) {
-    goto err;
+    return 0;
   }
+
+  DILITHIUM3_KEY *key = x->pkey.ptr;
+  int bit_len = 0;
 
   if (ptype == 2) {
+    bit_len = DILITHIUM3_PRIVATE_KEY_BYTES;
     if (BIO_printf(bp, "Private-Key: (%d bit)\n", bit_len) <= 0) {
-      goto err;
+      return 0;
     }
-    BIO_hexdump(bp, key->priv, bit_len, off);
+    print_hex(bp, key->priv, bit_len, off);
   } else {
+    bit_len = DILITHIUM3_PUBLIC_KEY_BYTES;
     if (BIO_printf(bp, "Public-Key: (%d bit)\n", bit_len) <= 0) {
-      goto err;
+      return 0;
     }
-    BIO_hexdump(bp, key->pub, bit_len, off);
+    int ret = print_hex(bp, key->pub, bit_len, off);
+    if (!ret) {
+      return 0;
+    }
   }
-  ret = 1;
 
-err:
-  OPENSSL_free(m);
-  return ret;
+  return 1;
 }
 
 static int dilithium_pub_print(BIO *bp, const EVP_PKEY *pkey, int indent) {
