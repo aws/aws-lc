@@ -25,7 +25,7 @@ typedef struct {
                 const uint8_t *secret_key);
 } KEM_METHOD;
 
-extern const KEM_METHOD kem_kyber512_method;
+extern const KEM_METHOD kem_kyber512_r3_method;
 // extern const KEM_METHOD *KEM_kyber768_method;
 
 // KEM structure and helper functions.
