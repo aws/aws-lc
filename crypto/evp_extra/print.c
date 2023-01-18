@@ -66,7 +66,12 @@
 
 static int print_hex(BIO *bp, const uint8_t *data, size_t len, int off) {
   for (size_t i = 0; i < len; i++) {
-    if ((i % 15) == 0) {
+    if (i == 0) {
+      if (!BIO_indent(bp, off + 4, 128)) {
+        return 0;
+      }
+    }
+    else if ((i % 15) == 0) {
       if (BIO_puts(bp, "\n") <= 0 ||  //
           !BIO_indent(bp, off + 4, 128)) {
         return 0;
