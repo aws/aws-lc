@@ -743,33 +743,14 @@ static int check_mod_inverse(int *out_ok, const BIGNUM *a, const BIGNUM *ainv,
 }
 
 #if !defined(AWSLC_FIPS)
-// Some services are dealing with RSA keys that have been inappropriately
-// generated -- the private exponent |d| is greater than the modulus |n|.
-// Until such keys are eradicated, we _temporarly_ add a way to relax the
-// requirements for validating RSA keys such that the condition |d < n|
-// can be skipped. This "relaxed" behavior has to be explicitly enabled by
-// the user by calling |allow_rsa_keys_d_gt_n(true)|. The default behavior
-// is still to check if |d < n| and fail if not true.
-DEFINE_BSS_GET(bool, allow_rsa_keys_d_gt_n_flag)
-DEFINE_STATIC_MUTEX(allow_rsa_keys_d_gt_n_lock)
+static bool allow_rsa_keys_d_gt_n_flag = false;
 
-void allow_rsa_keys_d_gt_n(bool enable) {
-  CRYPTO_STATIC_MUTEX_lock_write(allow_rsa_keys_d_gt_n_lock_bss_get());
-
-  bool *flag = allow_rsa_keys_d_gt_n_flag_bss_get();
-  *flag = enable;
-
-  CRYPTO_STATIC_MUTEX_unlock_write(allow_rsa_keys_d_gt_n_lock_bss_get());
+void allow_rsa_keys_d_gt_n(void) {
+  allow_rsa_keys_d_gt_n_flag = true;
 }
 
 static bool are_rsa_keys_with_d_gt_n_allowed(void) {
-  CRYPTO_STATIC_MUTEX_lock_read(allow_rsa_keys_d_gt_n_lock_bss_get());
-
-  bool *flag = allow_rsa_keys_d_gt_n_flag_bss_get();
-  bool out = *flag;
-
-  CRYPTO_STATIC_MUTEX_unlock_read(allow_rsa_keys_d_gt_n_lock_bss_get());
-  return out;
+  return allow_rsa_keys_d_gt_n_flag;
 }
 
 #else
