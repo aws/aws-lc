@@ -13,27 +13,27 @@
 
 #include "../kyber/kem_kyber.h"
 
-static int kyber512_keygen_placeholder(uint8_t *public_key,
-                                       uint8_t *secret_key) {
+static int kyber512_r3_keygen_placeholder(uint8_t *public_key,
+                                          uint8_t *secret_key) {
   return kyber512_keypair(public_key, secret_key) == 0;
 }
 
-static int kyber512_encaps_placeholder(uint8_t *ciphertext,
-                                       uint8_t *shared_secret,
-                                       const uint8_t *public_key) {
+static int kyber512_r3_encaps_placeholder(uint8_t *ciphertext,
+                                          uint8_t *shared_secret,
+                                          const uint8_t *public_key) {
   return kyber512_encapsulate(ciphertext, shared_secret, public_key) == 0;
 }
 
-static int kyber512_decaps_placeholder(uint8_t *shared_secret,
-                                       const uint8_t *ciphertext,
-                                       const uint8_t *secret_key) {
+static int kyber512_r3_decaps_placeholder(uint8_t *shared_secret,
+                                          const uint8_t *ciphertext,
+                                          const uint8_t *secret_key) {
   return kyber512_decapsulate(shared_secret, ciphertext, secret_key) == 0;
 }
 
-const KEM_METHOD kem_kyber512_method = {
-  kyber512_keygen_placeholder,
-  kyber512_encaps_placeholder,
-  kyber512_decaps_placeholder,
+const KEM_METHOD kem_kyber512_r3_method = {
+  kyber512_r3_keygen_placeholder,
+  kyber512_r3_encaps_placeholder,
+  kyber512_r3_decaps_placeholder,
 };
 
 // Example how adding new KEM_METHOD looks like:

@@ -1373,3 +1373,4 @@ nist_sha3hashalgs 10		: SHA3-512		: sha3-512
 # NIDs for KEM type and specific KEMs (no corresponding OID).
  : KEM : kem
  : KYBER512
+ : KYBER512_R3
