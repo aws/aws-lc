@@ -23,17 +23,28 @@ mkdir "$MODULES_ROOT"
 cd "$MODULES_ROOT"
 
 # Setup the other crypto libraries for differential fuzzing
-# wolfCrypt https://github.com/guidovranken/cryptofuzz/blob/master/docs/wolfcrypt.md
-export CFLAGS="$CFLAGS -DHAVE_AES_ECB -DWOLFSSL_DES_ECB -DHAVE_ECC_SECPR2 -DHAVE_ECC_SECPR3 -DHAVE_ECC_BRAINPOOL -DHAVE_ECC_KOBLITZ -DWOLFSSL_ECDSA_SET_K -DWOLFSSL_ECDSA_SET_K_ONE_LOOP"
-git clone --depth 1 https://github.com/wolfSSL/wolfssl.git
-cd wolfssl/
-autoreconf -ivf
-./configure --enable-static --enable-md2 --enable-md4 --enable-ripemd --enable-blake2 --enable-blake2s --enable-pwdbased --enable-scrypt --enable-hkdf --enable-cmac --enable-arc4 --enable-camellia --enable-aesccm --enable-aesctr --enable-xts --enable-des3 --enable-x963kdf --enable-harden --enable-aescfb --enable-aesofb --enable-aeskeywrap --enable-aessiv --enable-aesgcm-stream --enable-keygen --enable-curve25519 --enable-curve448 --enable-shake256 --enable-shake128 --disable-crypttests --disable-examples --enable-compkey --enable-ed448 --enable-ed25519 --enable-ecccustcurves --enable-xchacha --enable-siphash --enable-cryptocb --enable-eccencrypt --enable-smallstack --enable-ed25519-stream --enable-ed448-stream --enable-eccsi
+# Botan https://github.com/guidovranken/cryptofuzz/blob/master/docs/botan.md
+git clone --depth 1 https://github.com/randombit/botan.git
+cd botan
+git rev-parse HEAD
+python3 configure.py --cc-bin=$CXX --cc-abi-flags="$CXXFLAGS" --disable-shared --disable-modules=locking_allocator,x509,tls --build-targets=static --without-documentation
 make -j$(nproc)
-export CXXFLAGS="$CXXFLAGS -DCRYPTOFUZZ_WOLFCRYPT"
-env WOLFCRYPT_LIBWOLFSSL_A_PATH `realpath src/.libs/libwolfssl.a`
-env WOLFCRYPT_INCLUDE_PATH `realpath .`
-cd "${CRYPTOFUZZ_SRC}/modules/wolfcrypt/"
+export CXXFLAGS="$CXXFLAGS -DCRYPTOFUZZ_BOTAN"
+env LIBBOTAN_A_PATH `realpath libbotan-3.a`
+env BOTAN_INCLUDE_PATH `realpath build/include`
+cd "${CRYPTOFUZZ_SRC}/modules/botan/"
+make -j$(nproc)
+
+# Crypto++ https://github.com/guidovranken/cryptofuzz/blob/master/docs/cryptopp.md
+cd "$MODULES_ROOT"
+git clone --depth 1 https://github.com/weidai11/cryptopp.git
+cd cryptopp/
+git rev-parse HEAD
+make libcryptopp.a -j$(nproc)
+export CXXFLAGS="$CXXFLAGS -DCRYPTOFUZZ_CRYPTOPP"
+env LIBCRYPTOPP_A_PATH `realpath libcryptopp.a`
+env CRYPTOPP_INCLUDE_PATH `realpath .`
+cd "${CRYPTOFUZZ_SRC}/modules/cryptopp/"
 make -j$(nproc)
 
 # Extract the seed corpus, docker layers are already compressed so this won't use any more space and save time when running
