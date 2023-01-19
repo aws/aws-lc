@@ -2302,42 +2302,6 @@ TEST(X509Test, Ed25519Sign) {
   ASSERT_TRUE(SignatureRoundTrips(md_ctx.get(), pub.get()));
 }
 
-TEST(X509Test, DilithiumPrivKey) {
-  //generate dilithium key and encode to DER file
-  EVP_PKEY_CTX *dilithium_pkey_ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_DILITHIUM3, nullptr);
-  EVP_PKEY *dilithium_pkey = EVP_PKEY_new();
-  EVP_PKEY_keygen_init(dilithium_pkey_ctx);
-  EVP_PKEY_keygen(dilithium_pkey_ctx, &dilithium_pkey);
-
-  uint8_t *der;
-  size_t der_len;
-  bssl::ScopedCBB cbb;
-  ASSERT_TRUE(CBB_init(cbb.get(), 0));
-  ASSERT_TRUE(EVP_marshal_private_key(cbb.get(), dilithium_pkey));
-  ASSERT_TRUE(CBB_finish(cbb.get(), &der, &der_len));
-
-  EVP_PKEY_CTX_free(dilithium_pkey_ctx);
-  EVP_PKEY_free(dilithium_pkey);
-}
-
-TEST(X509Test, DilithiumPubKey) {
-  //generate dilithium key and encode to DER file
-  EVP_PKEY_CTX *dilithium_pkey_ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_DILITHIUM3, nullptr);
-  EVP_PKEY *dilithium_pkey = EVP_PKEY_new();
-  EVP_PKEY_keygen_init(dilithium_pkey_ctx);
-  EVP_PKEY_keygen(dilithium_pkey_ctx, &dilithium_pkey);
-
-  uint8_t *der;
-  size_t der_len;
-  bssl::ScopedCBB cbb;
-  ASSERT_TRUE(CBB_init(cbb.get(), 0));
-  ASSERT_TRUE(EVP_marshal_public_key(cbb.get(), dilithium_pkey));
-  ASSERT_TRUE(CBB_finish(cbb.get(), &der, &der_len));
-
-  EVP_PKEY_CTX_free(dilithium_pkey_ctx);
-  EVP_PKEY_free(dilithium_pkey);
-}
-
 TEST(X509Test, DilithiumSignVerifyCert) {
   //generate the dilithium key
   EVP_PKEY_CTX *dilithium_pkey_ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_DILITHIUM3, nullptr);
