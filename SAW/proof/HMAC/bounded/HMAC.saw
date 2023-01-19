@@ -1,0 +1,225 @@
+/* 
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
+*/
+
+enable_experimental;
+
+include "../HMAC-common.saw";
+
+// Specify the relation between hmac_ctx_st and HMACState
+let points_to_hmac_ctx_st ptr context num = do {
+  // Check that `i_ctx`, `o_ctx`, and `md_ctx` match the spec.  We set the
+  // `num` argument for `i_ctx` and `o_ctx` to 0 because HMAC_Init_ex pads or
+  // hashes the key to make it exactly 128 bytes, so the `block` field of these
+  // structs is uninitialized by the digest update function.  No other function
+  // modifies `i_ctx` or `o_ctx`.
+
+  let i_ctx_ptr = llvm_cast_pointer (llvm_field ptr "i_ctx") (llvm_alias "struct.sha512_state_st");
+  let o_ctx_ptr = llvm_cast_pointer (llvm_field ptr "o_ctx") (llvm_alias "struct.sha512_state_st");
+  let md_ctx_ptr = llvm_cast_pointer (llvm_field ptr "md_ctx") (llvm_alias "struct.sha512_state_st");
+
+  points_to_sha512_state_st i_ctx_ptr {{ context.i_ctx }} 0;
+  points_to_sha512_state_st o_ctx_ptr {{ context.o_ctx }} 0;
+  points_to_sha512_state_st md_ctx_ptr {{ context.md_ctx }} num;
+
+  // Specify that `ptr.md` points to the correct global MD struct
+  crucible_points_to (crucible_field ptr "md") (crucible_global (md_storage HMAC_MD_INDEX));
+
+  // Methods struct is correct
+  crucible_alloc_global HMAC_METHODS_STORAGE;
+  points_to_AWSLC_hmac_in_place_methods (crucible_global (md_storage HMAC_MD_INDEX));
+  crucible_points_to (crucible_field ptr "methods") global_md_methods;
+
+};
+
+// Create a Cryptol HMACState
+let fresh_hmac_state_st name num = do {
+  // Create Cryptol SHAStates.  We set `n` to 0 for `i_ctx` and `o_ctx`
+  // because the init function always sets `n` to 0.
+  i_ctx <- fresh_sha512_state_st (str_concat name ".i_ctx") 0;
+  o_ctx <- fresh_sha512_state_st (str_concat name ".o_ctx") 0;
+  md_ctx <- fresh_sha512_state_st (str_concat name ".md_ctx") num;
+
+  // Build the HMACState record
+  return {{ { i_ctx = i_ctx, o_ctx = o_ctx, md_ctx = md_ctx } }};
+};
+
+// Specification of the HMAC_CTX_init function
+let HMAC_CTX_init_spec = do {
+  // Precondition: `hmac_ctx_ptr` points to an `hmac_ctx_st` struct
+  hmac_ctx_ptr <- crucible_alloc (llvm_struct "struct.hmac_ctx_st");
+
+  // Call function with `hmac_ctx_ptr`
+  crucible_execute_func [hmac_ctx_ptr];
+
+  // Postcondition: The struct pointed to by `hmac_ctx_ptr` has been zeroed out
+  zeroed_hmac_ctx_st hmac_ctx_ptr;
+};
+
+// Specification of the HMAC_Init_ex function
+let HMAC_Init_ex_spec key_len = do {
+  // Precondition: The function uses the AVX+shrd code path
+  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  // Precondition: The digest and hmac globals are allocated
+  alloc_md_globals;
+  alloc_hmac_globals;
+
+  // Precondition: `hmac_ctx_ptr` points to a zeroed out `hmac_ctx_st`
+  hmac_ctx_ptr <- crucible_alloc (llvm_struct "struct.hmac_ctx_st");
+  zeroed_hmac_ctx_st hmac_ctx_ptr;
+
+  // Precondition: `key` is an array of `key_len` bytes.  `key_ptr` points to
+  // `key`.
+  (key, key_ptr) <- ptr_to_fresh_readonly "key" (llvm_array key_len (llvm_int 8));
+
+  // Precondition: the global digest struct holds the correct values
+  points_to_env_md_st (crucible_global (md_storage HMAC_MD_INDEX));
+
+  // Call function with `hmac_ctx_ptr`, `key_ptr`, `key_len`, the global digest struct pointer, and NULL
+  crucible_execute_func
+    [ hmac_ctx_ptr
+    , key_ptr
+    , crucible_term {{ `key_len : [64] }}
+    , (crucible_global (md_storage HMAC_MD_INDEX))
+    , crucible_null
+    ];
+
+  // Postcondition: The function has not changed the variable that decides the
+  // AVX+shrd code path
+  global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  // Postcondition: The data pointed to by `hmac_ctx_ptr` matches the context
+  // returned by the cryptol function `HMACInit` when applied to `key`.
+  points_to_hmac_ctx_st hmac_ctx_ptr {{ HMACInit key }} 0;
+
+  // Postcondition: The function returns 1
+  crucible_return (crucible_term {{ 1 : [32] }});
+};
+
+// Specification of the HMAC_Update function
+let HMAC_Update_spec num len = do {
+  // Precondition: The function uses the AVX+shrd code path
+  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  // Precondition: The global digest struct is allocated and holds the correct values
+  alloc_md_globals;
+  points_to_env_md_st (crucible_global (md_storage HMAC_MD_INDEX));
+
+  // Precondition: `hmac_ctx_ptr` is a pointer to an `hmac_ctx_st`
+  hmac_ctx_ptr <- crucible_alloc (llvm_struct "struct.hmac_ctx_st");
+  // Precondition: `hmac_ctx` is a fresh Cryptol HMACState
+  hmac_ctx <- fresh_hmac_state_st "hmac_ctx" num;
+  // Precondition: `hmac_ctx_ptr` matches `hmac_ctx`
+  points_to_hmac_ctx_st hmac_ctx_ptr hmac_ctx num;
+
+  // Precondition: state must be initialized
+  hmac_ctx_is_initialized hmac_ctx_ptr;
+
+  // Precondition: `data` is an array of `len` bytes.  `data_ptr` points
+  // to `data`.
+  (data, data_ptr) <- ptr_to_fresh_readonly "data" (llvm_array len (llvm_int 8));
+
+  // Call function with `hmac_ctx_ptr`, `data_ptr`, and `len`
+  crucible_execute_func [ hmac_ctx_ptr , data_ptr , crucible_term {{ `len : [64] }} ];
+
+  // Postcondition: The function has not changed the variable that decides the
+  // AVX+shrd code path
+  global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  // Postcondition: The data pointed to by `hmac_ctx_ptr` matches the context
+  // returned by the cryptol function `HMACInit` when applied to `hmac_ctx` and
+  // `data`.
+  points_to_hmac_ctx_st hmac_ctx_ptr {{ HMACUpdate hmac_ctx data }} (eval_size {| (num + len) % SHA512_CBLOCK |});
+
+  // Postcondition: The function returns 1
+  crucible_return (crucible_term {{ 1 : [32] }});
+};
+
+// Specification of the HMAC_Final function
+let HMAC_Final_spec withLength num = do {
+  // Precondition: The function uses the AVX+shrd code path
+  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  // Precondition: The global digest struct is allocated and holds the correct values
+  alloc_md_globals;
+  points_to_env_md_st (crucible_global (md_storage HMAC_MD_INDEX));
+
+  // Precondition: `hmac_ctx_ptr` is a pointer to an `hmac_ctx_st`
+  hmac_ctx_ptr <- crucible_alloc (llvm_struct "struct.hmac_ctx_st");
+  // Precondition: `hmac_ctx` is a fresh Cryptol HMACState
+  hmac_ctx <- fresh_hmac_state_st "hmac_ctx" num;
+  // Precondition: `hmac_ctx_ptr` matches `hmac_ctx`
+  points_to_hmac_ctx_st hmac_ctx_ptr hmac_ctx num;
+  // Precondition: state must be initialized
+  hmac_ctx_is_initialized hmac_ctx_ptr;
+
+
+  // Precondition: out_ptr is allocated and correct length, and 
+  // out_len_ptr is null or points to an int.
+  (out_ptr, out_len_ptr) <- digestOut_pre withLength;
+
+  // Call function with `hmac_ctx_ptr`, `out_ptr`, and `out_len_ptr`
+  crucible_execute_func [ hmac_ctx_ptr , out_ptr , out_len_ptr ];
+
+  // Postcondition: The function has not changed the variable that decides the
+  // AVX+shrd code path
+  global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  // Postcondition: The contents of the array pointed to by `out_ptr` match the
+  // result returned by the HMACFinal cryptol spec.
+  // If length output is used, out_len_ptr points to correct length.
+  digestOut_post withLength out_ptr out_len_ptr (crucible_term {{ HMACFinal hmac_ctx }});
+
+  // Postcondition: The function returns 1
+  crucible_return (crucible_term {{ 1 : [32] }});
+};
+
+// Specification of the HMAC function
+let HMAC_spec withLength key_len data_len = do {
+  // Precondition: The function uses the AVX+shrd code path
+  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  // Precondition: The digest globals and global hmac methods storage are allocated
+  alloc_md_globals;
+  alloc_hmac_globals;
+
+  // Precondition: The global digest struct holds the corerct values
+  points_to_env_md_st (crucible_global (md_storage HMAC_MD_INDEX));
+
+  // Precondition: `key` is a fresh const array of `key_len` bytes, and
+  // `key_ptr` points to `key`
+  (key, key_ptr) <- ptr_to_fresh_readonly "key" (llvm_array key_len i8);
+
+  // Precondition: `data` is a fresh const array of `data_len` bytes, and
+  // `data_ptr` points to `data`.
+  (data, data_ptr) <- ptr_to_fresh_readonly "data" (llvm_array data_len i8);
+
+  // Precondition: md_out_ptr is allocated and correct length, and 
+  // md_out_len_ptr is null or points to an int.
+  (md_out_ptr, md_out_len_ptr) <- digestOut_pre withLength;
+
+  // Call function with arguments the global digest struct pointer, `key_ptr`, `key_len`, 
+  // `data_ptr`, `data_len`, `md_out_ptr`, and `md_out_len_ptr`
+  crucible_execute_func
+    [ (crucible_global (md_storage HMAC_MD_INDEX))
+    , key_ptr
+    , crucible_term {{ `key_len : [64] }}
+    , data_ptr
+    , crucible_term {{ `data_len : [64] }}
+    , md_out_ptr
+    , md_out_len_ptr
+    ];
+
+  // Postcondition: The function has not changed the variable that decides the AVX+shrd code path
+  global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  // Postcondition: The contents of the array pointed to by `md_out_ptr` match
+  // the result returned by the HMACFinal cryptol spec.
+  // If length output is used, md_out_len_ptr points to correct length
+  digestOut_post withLength md_out_ptr md_out_len_ptr (crucible_term {{ HMAC key data }});
+  
+  // Postcondition: The function returns `md_out_ptr`
+  crucible_return md_out_ptr;
+};

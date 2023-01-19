@@ -1,0 +1,80 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
+*/
+
+module HASH::HMAC where
+
+import Primitive::Keyless::Hash::SHA384
+import Array
+import Common::ByteArray
+import HASH::SHA384
+
+type HMACState_Array = { i_ctx  : SHAState_Array
+                       , o_ctx  : SHAState
+                       , md_ctx : SHAState_Array
+                       }
+
+HMACState_zeroized : HMACState_Array
+HMACState_zeroized = { i_ctx = SHAInit_Array_zeroized
+                     , o_ctx = SHAInit_zeroized
+                     , md_ctx = SHAInit_Array_zeroized }
+
+key_helper1 : ByteArray -> [64] -> [128][8]
+key_helper1 key key_len =
+  (arrayRangeLookup`{n=128} (arrayCopy (arrayConstant 0) 0 key 0 key_len) 0)
+
+key_helper2 : HMACState_Array -> ByteArray -> [64] -> [128][8]
+key_helper2 state key key_len =
+  (split`{48} (SHAImp_Array2 state.md_ctx key key_len)) # (zero : [128-48][8])
+
+key_init_Array : HMACState_Array -> ByteArray -> [64] -> [128][8]
+key_init_Array state key key_len =
+   ( if key_len <= 128
+     then key_helper1 key key_len
+     else key_helper2 state key key_len)
+
+ipad_byte = 0x36
+opad_byte = 0x5c
+
+ipad : [128][8] -> [128][8]
+ipad key = [ k ^ ipad_byte | k <- key ]
+
+opad : [128][8] -> [128][8]
+opad key = [ k ^ opad_byte | k <- key ]
+
+istate : HMACState_Array -> [128][8] -> SHAState_Array
+istate state key = SHAUpdate_Array (SHAInit_Array2 state.i_ctx) (arrayRangeUpdate (arrayConstant 0) 0 (ipad key)) 128
+
+ostate : [128][8] -> SHAState
+ostate key = SHAUpdate SHAInit (opad key)
+
+HMACInit_Array : HMACState_Array -> ByteArray -> [64] -> HMACState_Array
+HMACInit_Array state key key_len =
+  { i_ctx = i_state
+  , o_ctx = o_state
+  , md_ctx = i_state }
+  where
+    key' = (key_init_Array state key key_len)
+    i_state = istate state key'
+    o_state = ostate key'
+
+HMACUpdate_Array : HMACState_Array -> ByteArray -> [64] -> HMACState_Array
+HMACUpdate_Array state data len = { i_ctx = state.i_ctx
+                                  , o_ctx = state.o_ctx
+                                  , md_ctx = SHAUpdate_Array state.md_ctx data len
+                                  }
+
+HMACFinal_Array : HMACState_Array -> [48][8]
+HMACFinal_Array state = split`{48} (SHAFinal o_ctx')
+  where o_ctx' = SHAUpdate state.o_ctx buf
+        buf = split`{48} (SHAFinal_Array state.md_ctx)
+
+HMAC_Array : HMACState_Array -> ByteArray -> [64] -> ByteArray -> [64] -> [48][8]
+HMAC_Array state key key_len data data_len = HMACFinal_Array (HMACUpdate_Array (HMACInit_Array state key key_len) data data_len)
+
+HMACState_Array_eq : HMACState_Array -> HMACState_Array -> Bool
+HMACState_Array_eq state1 state2 =
+     SHAState_Array_eq state1.i_ctx state2.i_ctx
+  /\ SHAState_Array_eq state1.md_ctx state2.md_ctx
+  /\ SHAState_eq state1.o_ctx state2.o_ctx

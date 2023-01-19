@@ -234,7 +234,8 @@ ECDSA_do_sign_ov <- llvm_verify m "ECDSA_do_sign"
     simplify (addsimp jacobian_affine_0_thm empty_ss);
     simplify (addsimps mod_thms empty_ss);
     goal_eval_unint ["inv0", "ec_point_affine_scalar_mul"];
-    simplify (addsimps [append_assoc_thm_1, append_assoc_thm_2, append_at_thm] empty_ss);
+    simplify (addsimps [append_assoc_thm_1, append_at_thm] empty_ss);
+    simplify (addsimps [append_assoc_thm_2, append_slice_64_thm, append_assoc_64_thm] empty_ss);
     hoist_ifs_in_goal;
     simplify (addsimps minor_touchup_thms empty_ss);
     simplify (addsimps append_slice_384_thms empty_ss);

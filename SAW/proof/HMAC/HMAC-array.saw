@@ -1,0 +1,246 @@
+/* 
+* Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+* SPDX-License-Identifier: Apache-2.0
+*/
+
+enable_experimental;
+
+// Make a symbolic hmac_state_st
+let fresh_hmac_state_st_array name = do {
+  i_ctx <- fresh_sha512_state_st_array_n32 (str_concat name ".i_ctx");
+  o_ctx <- fresh_sha512_state_st (str_concat name ".o_ctx") 0;
+  md_ctx <- fresh_sha512_state_st_array_n32 (str_concat name ".md_ctx");
+
+  return {{ { i_ctx = i_ctx, o_ctx = o_ctx, md_ctx = md_ctx } }};
+};
+
+let fresh_hmac_state_st_array_uninitialized name = do {
+  i_ctx <- fresh_sha512_state_st_array_n32_uninitialized (str_concat name ".i_ctx");
+  o_ctx <- fresh_sha512_state_st_uninitialized (str_concat name ".o_ctx");
+  md_ctx <- fresh_sha512_state_st_array_n32_uninitialized (str_concat name ".md_ctx");
+
+  return {{ { i_ctx = i_ctx, o_ctx = o_ctx, md_ctx = md_ctx } }};
+};
+
+// The points-to for i_ctx, o_ctx and md_ctx inside a hmac_ctx_st
+let points_to_hmac_ctx_st_sha_ctx_array ptr context = do {
+  let i_ctx_ptr = llvm_cast_pointer (llvm_field ptr "i_ctx") (llvm_alias "struct.sha512_state_st");
+  let o_ctx_ptr = llvm_cast_pointer (llvm_field ptr "o_ctx") (llvm_alias "struct.sha512_state_st");
+  let md_ctx_ptr = llvm_cast_pointer (llvm_field ptr "md_ctx") (llvm_alias "struct.sha512_state_st");
+
+  points_to_sha512_state_st_array_n32 i_ctx_ptr {{ context.i_ctx }};
+  points_to_sha512_state_st o_ctx_ptr {{ context.o_ctx }} 0;
+  points_to_sha512_state_st_array_n32 md_ctx_ptr {{ context.md_ctx }};
+};
+
+let points_to_hmac_ctx_st_sha_ctx_array_uninitialized ptr context = do {
+  let i_ctx_ptr = llvm_cast_pointer (llvm_field ptr "i_ctx") (llvm_alias "struct.sha512_state_st");
+  let o_ctx_ptr = llvm_cast_pointer (llvm_field ptr "o_ctx") (llvm_alias "struct.sha512_state_st");
+  let md_ctx_ptr = llvm_cast_pointer (llvm_field ptr "md_ctx") (llvm_alias "struct.sha512_state_st");
+
+  points_to_sha512_state_st_array_n32_uninitialized i_ctx_ptr {{ context.i_ctx }};
+  points_to_sha512_state_st_uninitialized o_ctx_ptr {{ context.o_ctx }} 0;
+  points_to_sha512_state_st_array_n32_uninitialized md_ctx_ptr {{ context.md_ctx }};
+};
+
+// The points-to for hmac_ctx_st
+let points_to_hmac_ctx_st_array ptr context = do {
+  points_to_hmac_ctx_st_sha_ctx_array ptr context;
+
+  crucible_points_to (crucible_field ptr "md") (crucible_global (md_storage HMAC_MD_INDEX));
+
+  crucible_alloc_global HMAC_METHODS_STORAGE;
+  points_to_AWSLC_hmac_in_place_methods (crucible_global (md_storage HMAC_MD_INDEX));
+  crucible_points_to (crucible_field ptr "methods") global_md_methods;
+};
+
+let points_to_hmac_ctx_st_array_uninitialized ptr context = do {
+  points_to_hmac_ctx_st_sha_ctx_array_uninitialized ptr context;
+  zeroed_hmac_ctx_st ptr;
+};
+
+// hmac_ctx has been initialized and state is either 1 or 2
+let hmac_ctx_has_been_initialized ptr = do {
+  state <- points_to_hmac_ctx_state ptr;
+  crucible_postcond {{state == 1 \/ state == 2}};
+};
+
+// The invariable that internal buffer offsets n are less than SHA512_CBLOCK and
+// the internal buffer offset for o_ctx equal 0
+let hmac_ctx_n_inv ctx = {{
+  ctx.i_ctx.n < `SHA512_CBLOCK /\
+  ctx.o_ctx.n == 0 /\
+  ctx.md_ctx.n < `SHA512_CBLOCK
+}};
+let hmac_ctx_n_precond ctx = crucible_precond (hmac_ctx_n_inv ctx);
+let hmac_ctx_n_postcond ctx = crucible_postcond (hmac_ctx_n_inv ctx);
+
+let hmac_precond ptr ctx = do {
+  points_to_env_md_st (crucible_global (md_storage HMAC_MD_INDEX));
+  hmac_ctx_is_initialized ptr;
+  hmac_ctx_n_precond ctx;
+};
+
+let hmac_postcond ptr ctx = do {
+  points_to_env_md_st (crucible_global (md_storage HMAC_MD_INDEX));
+  hmac_ctx_has_been_initialized ptr;
+  hmac_ctx_n_postcond ctx;
+};
+
+// Specification for HMAC_CTX_init
+let HMAC_CTX_init_array_spec = do {
+  hmac_ctx_ptr <- crucible_alloc (llvm_struct "struct.hmac_ctx_st");
+
+  crucible_execute_func [hmac_ctx_ptr];
+
+  hmac_ctx <- fresh_hmac_state_st_array_uninitialized "hmac_ctx";
+  points_to_hmac_ctx_st_array_uninitialized hmac_ctx_ptr hmac_ctx;
+};
+
+// Specification for HMAC_Init_ex_array
+let HMAC_Init_ex_arrayRangeEq_i_ctx = "HMAC_Init_ex.arrayRangeEq.i_ctx";
+let HMAC_Init_ex_arrayRangeEq_md_ctx = "HMAC_Init_ex.arrayRangeEq.md_ctx";
+
+let HMAC_Init_ex_array_spec = do {
+  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+  alloc_md_globals;
+  alloc_hmac_globals;
+  points_to_env_md_st (crucible_global (md_storage HMAC_MD_INDEX));
+
+  hmac_ctx_ptr <- llvm_alloc (llvm_struct "struct.hmac_ctx_st");
+  hmac_ctx <- fresh_hmac_state_st_array_uninitialized "hmac_ctx";
+  points_to_hmac_ctx_st_array_uninitialized hmac_ctx_ptr hmac_ctx;
+
+  key_len <- crucible_fresh_var "key_len" i64;
+  (key, key_ptr) <- ptr_to_fresh_array_readonly "key" key_len;
+
+  // The ENGINE input is not used in the body of function HMAC_Init_ex
+  // (The assertion is optimized away by LLVM).
+  // Due to LLVM optimizations, the ENGINE input argument is optimized to be `undef`.
+  // When conducting an override with HMAC_Init_ex, `crucible_null` will not match
+  // with `undef`. Making engine_ptr a crucible_fresh_var allows the override to succeed.
+  engine_ptr <- crucible_fresh_var "engine_ptr" i64;
+
+  crucible_execute_func
+  [ hmac_ctx_ptr
+  , key_ptr
+  , (crucible_term key_len)
+  , (crucible_global (md_storage HMAC_MD_INDEX))
+  , (crucible_term engine_ptr)
+  ];
+
+  global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  let res = {{ HMACInit_Array hmac_ctx key key_len }};
+  // There exists a ByteArray called res_i_ctx_block, satisfying the constraint that
+  // its first 128 bytes is equal to the first 128 bytes of the result res.i_ctx.block returned from the spec,
+  // such that the result of the C function HMAC_Init_ex points to it.
+  res_i_ctx_block <- crucible_fresh_cryptol_var "res_i_ctx_block" {| ByteArray |};
+  res_md_ctx_block <- crucible_fresh_cryptol_var "res_md_ctx_block" {| ByteArray |};
+  points_to_hmac_ctx_st_array
+    hmac_ctx_ptr
+    {{ { i_ctx = { h = res.i_ctx.h, block = res_i_ctx_block, n = res.i_ctx.n, sz = res.i_ctx.sz }
+       , o_ctx = res.o_ctx
+       , md_ctx = { h = res.md_ctx.h, block = res_md_ctx_block, n = res.md_ctx.n, sz = res.md_ctx.sz } } }};
+  // llvm_setup_with_tag tags this postcondition with the name "HMAC_Init_ex.arrayRangeEq.i_ctx"
+  // so that the proof script can refer to this subgoal
+  llvm_setup_with_tag HMAC_Init_ex_arrayRangeEq_i_ctx
+    (crucible_postcond {{ arrayRangeEq res_i_ctx_block 0 res.i_ctx.block 0 `SHA512_CBLOCK }});
+  llvm_setup_with_tag HMAC_Init_ex_arrayRangeEq_md_ctx
+    (crucible_postcond {{ arrayRangeEq res_md_ctx_block 0 res.md_ctx.block 0 `SHA512_CBLOCK }});
+
+  hmac_postcond hmac_ctx_ptr res;
+
+  crucible_return (crucible_term {{ 1 : [32] }});
+};
+
+// Specification for HMAC_Update_Array
+let HMAC_Update_array_spec = do {
+  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+  alloc_md_globals;
+
+  hmac_ctx_ptr <- llvm_alloc (llvm_struct "struct.hmac_ctx_st");
+  hmac_ctx <- fresh_hmac_state_st_array "hmac_ctx";
+  points_to_hmac_ctx_st_array hmac_ctx_ptr hmac_ctx;
+  hmac_precond hmac_ctx_ptr hmac_ctx;
+
+  len <- crucible_fresh_var "len" i64;
+  (data, data_ptr) <- ptr_to_fresh_array_readonly "data" len;
+
+  crucible_execute_func [ hmac_ctx_ptr , data_ptr , (crucible_term len) ];
+
+  global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  let res = {{ HMACUpdate_Array hmac_ctx data len }};
+  res_md_ctx_block <- crucible_fresh_cryptol_var "res_md_ctx_block" {| ByteArray |};
+  points_to_hmac_ctx_st_array
+    hmac_ctx_ptr
+    {{ { i_ctx = res.i_ctx
+       , o_ctx = res.o_ctx
+       , md_ctx = { h = res.md_ctx.h, block = res_md_ctx_block, n = res.md_ctx.n, sz = res.md_ctx.sz } } }};
+  // There exists a ByteArray called res_i_ctx_block, satisfying the constraint that
+  // its first 128 bytes is equal to the first 128 bytes of the result res.md_ctx.block returned from the spec,
+  // such that the result of the C function HMAC_Update points to it
+  crucible_postcond {{ arrayRangeEq res_md_ctx_block 0 res.md_ctx.block 0 `SHA512_CBLOCK }};
+
+  hmac_postcond hmac_ctx_ptr res;
+
+  crucible_return (crucible_term {{ 1 : [32] }});
+};
+
+// Specification for HMAC_Final_Array
+let HMAC_Final_array_spec withLength = do {
+  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+  alloc_md_globals;
+
+  hmac_ctx_ptr <- llvm_alloc (llvm_struct "struct.hmac_ctx_st");
+  hmac_ctx <- fresh_hmac_state_st_array "hmac_ctx";
+  points_to_hmac_ctx_st_array hmac_ctx_ptr hmac_ctx;
+  hmac_precond hmac_ctx_ptr hmac_ctx;
+
+  (md_out_ptr, s_ptr) <- digestOut_pre withLength;
+
+  crucible_execute_func [ hmac_ctx_ptr , md_out_ptr, s_ptr ];
+
+  global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  digestOut_post withLength md_out_ptr s_ptr (crucible_term {{ HMACFinal_Array hmac_ctx }});
+
+  crucible_return (crucible_term {{ 1 : [32] }});
+};
+
+// Specification for HMAC_array
+let HMAC_md_out = "HMAC.md_out";
+
+let HMAC_array_spec withLength = do {
+  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+  alloc_md_globals;
+  alloc_hmac_globals;
+  points_to_env_md_st (crucible_global (md_storage HMAC_MD_INDEX));
+
+  key_len <- crucible_fresh_var "key_len" i64;
+  (key, key_ptr) <- ptr_to_fresh_array_readonly "key" key_len;
+  data_len <- crucible_fresh_var "data_len" i64;
+  (data, data_ptr) <- ptr_to_fresh_array_readonly "data" data_len;
+
+  (md_out_ptr, md_out_len_ptr) <- digestOut_pre withLength;
+
+  crucible_execute_func
+  [ (crucible_global (md_storage HMAC_MD_INDEX))
+  , key_ptr
+  , (crucible_term key_len)
+  , data_ptr
+  , (crucible_term data_len)
+  , md_out_ptr
+  , md_out_len_ptr
+  ];
+
+  global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  // llvm_setup_with_tag tags this postcondition with the name "HMAC.md_out"
+  // so that the proof script can refer to this subgoal
+  llvm_setup_with_tag HMAC_md_out
+    (digestOut_post withLength md_out_ptr md_out_len_ptr (crucible_term {{ HMAC_Array (HMACState_zeroized) key key_len data data_len }}));
+
+  crucible_return md_out_ptr;
+};

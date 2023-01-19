@@ -1,0 +1,390 @@
+/* 
+* Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+* SPDX-License-Identifier: Apache-2.0
+*/
+
+enable_experimental;
+
+// --------------------------------------------------------------------------
+//             HMACInit_Array HMAC_Init_Array3 equivalence lemmas
+
+print "Proving ipad_ipad_quote_equivalence_thm";
+ipad_ipad_quote_equivalence_thm <- prove_print
+(w4_unint_z3 [])
+({{ \key -> (ipad key) == (ipad' key) }});
+
+print "Proving opad_opad_quote_equivalence_thm";
+opad_opad_quote_equivalence_thm <- prove_print
+(w4_unint_z3 [])
+({{ \key -> (opad key) == (opad' key) }});
+
+print "Proving istate_istate_quote_equivalence_case1_thm";
+istate_istate_quote_equivalence_case1_thm <- prove_print
+(do {
+  unfolding ["istate", "istate'", "key_init_Array"];
+  w4_unint_z3 ["SHAInit_Array2", "SHAUpdate_Array", "key_helper1", "key_helper2", "ipad"];
+})
+(rewrite (cryptol_ss ())
+{{ \state key key_len ->
+  (state1.h where state1 = (istate state (key_init_Array state key key_len))) ==
+  (state2.h where state2 = (if (key_len <= 128) then (istate' state key key_len) else (istate state (key_init_Array state key key_len))))
+}});
+
+print "Proving istate_istate_quote_equivalence_case2_thm";
+istate_istate_quote_equivalence_case2_thm <- prove_print
+(do {
+  unfolding ["istate", "istate'", "key_init_Array"];
+  w4_unint_z3 ["SHAInit_Array2", "SHAUpdate_Array", "key_helper1", "key_helper2", "ipad"];
+})
+(rewrite (cryptol_ss ())
+{{ \state key key_len ->
+  (state1.h where state1 = (istate state (key_init_Array state key key_len))) ==
+  (state2.h where state2 = (if (key_len > 128) then (istate' state key key_len) else (istate state (key_init_Array state key key_len))))
+}});
+
+print "Proving istate_istate_quote_equivalence_thm";
+istate_istate_quote_equivalence_thm <- prove_print
+(do {
+  goal_eval_unint ["istate", "istate'", "key_init_Array"];
+  goal_insert istate_istate_quote_equivalence_case1_thm;
+  goal_insert istate_istate_quote_equivalence_case2_thm;
+  w4_unint_z3 ["istate", "istate'", "key_init_Array"];
+})
+(rewrite (cryptol_ss ())
+{{ \state key key_len ->
+  (state1.h where state1 = (istate state (key_init_Array state key key_len))) ==
+  (state2.h where state2 = (istate' state key key_len))
+}});
+
+print "Proving istate_quote_istate_2quote_equivalence_thm";
+istate_quote_istate_2quote_equivalence_thm <- prove_print
+(do {
+  goal_eval_unint ["SHAInit_Array2", "SHAUpdate_Array", "key_helper1", "key_helper2", "ipad"];
+  goal_insert ipad_ipad_quote_equivalence_thm;
+  w4_unint_z3 ["SHAInit_Array2", "SHAUpdate_Array", "key_helper1", "key_helper2", "ipad"];
+})
+(rewrite (cryptol_ss ())
+{{ \state key key_len ->
+  (state1.h where state1 = (istate' state key key_len)) ==
+  (state2.h where state2 = (istate'' state key key_len))
+}});
+
+print "Proving istate_istate_2quote_equivalence_thm";
+istate_istate_2quote_equivalence_thm <- prove_print
+(do {
+  goal_eval_unint ["istate", "istate''", "key_init_Array"];
+  simplify (addsimps [istate_istate_quote_equivalence_thm,
+                      istate_quote_istate_2quote_equivalence_thm]
+                     empty_ss);
+  w4_unint_z3 ["istate''"];
+})
+(rewrite (cryptol_ss ())
+{{ \state key key_len ->
+  (state1.h where state1 = (istate state (key_init_Array state key key_len))) ==
+  (state2.h where state2 = (istate'' state key key_len))
+}});
+
+print "Proving ostate_ostate_quote_equivalance_case1_thm";
+ostate_ostate_quote_equivalance_case1_thm <- prove_print
+(do {
+  unfolding ["ostate", "ostate'", "key_init_Array"];
+  w4_unint_z3 ["SHAInit", "SHAUpdate", "key_helper1", "key_helper2", "opad"];
+})
+(rewrite (cryptol_ss ())
+{{ \state key key_len ->
+  (ostate (key_init_Array state key key_len)) ==
+  (if (key_len <= 128) then (ostate' state key key_len) else (ostate (key_init_Array state key key_len)))
+}});
+
+print "Proving ostate_ostate_quote_equivalance_case2_thm";
+ostate_ostate_quote_equivalance_case2_thm <- prove_print
+(do {
+  unfolding ["ostate", "ostate'", "key_init_Array"];
+  w4_unint_z3 ["SHAInit", "SHAUpdate", "key_helper1", "key_helper2", "opad"];
+})
+(rewrite (cryptol_ss ())
+{{ \state key key_len ->
+  (ostate (key_init_Array state key key_len)) ==
+  (if (key_len > 128) then (ostate' state key key_len) else (ostate (key_init_Array state key key_len)))
+}});
+
+print "Proving ostate_ostate_quote_equivalence_thm";
+ostate_ostate_quote_equivalence_thm <- prove_print
+(do {
+  goal_eval_unint ["ostate", "ostate'", "key_init_Array"];
+  goal_insert ostate_ostate_quote_equivalance_case1_thm;
+  goal_insert ostate_ostate_quote_equivalance_case2_thm;
+  w4_unint_z3 ["ostate", "ostate'", "key_init_Array"];
+})
+(rewrite (cryptol_ss ())
+{{ \state key key_len ->
+  (ostate (key_init_Array state key key_len)) == (ostate' state key key_len)
+}});
+
+print "Proving ostate_quote_ostate_2quote_equivalence_thm";
+ostate_quote_ostate_2quote_equivalence_thm <- prove_print
+(do {
+  goal_eval_unint ["SHAInit", "SHAUpdate", "key_helper1", "key_helper2", "opad"];
+  goal_insert opad_opad_quote_equivalence_thm;
+  w4_unint_z3 ["SHAInit", "SHAUpdate", "key_helper1", "key_helper2", "opad"];
+})
+(rewrite (cryptol_ss ())
+{{ \state key key_len ->
+  (ostate' state key key_len) == (ostate'' state key key_len)
+}});
+
+print "Proving ostate_ostate_2quote_equivalence_thm";
+ostate_ostate_2quote_equivalence_thm <- prove_print
+(do {
+  goal_eval_unint ["ostate", "ostate'", "ostate''", "key_init_Array"];
+  simplify (addsimps [ostate_ostate_quote_equivalence_thm,
+                      ostate_quote_ostate_2quote_equivalence_thm]
+                     empty_ss);
+  w4_unint_z3 ["ostate''"];
+})
+(rewrite (cryptol_ss ())
+{{ \state key key_len ->
+  (ostate (key_init_Array state key key_len)) == (ostate'' state key key_len)
+}});
+
+print "Proving HMACInit_Array_HMACInit_Array3_i_ctx_equivalence_thm";
+HMACInit_Array_HMACInit_Array3_i_ctx_equivalence_thm <- prove_print
+(do {
+  goal_eval_unint ["istate", "istate''", "ostate", "ostate''", "key_init_Array"];
+  simplify (addsimps [istate_istate_2quote_equivalence_thm] empty_ss);
+  w4_unint_z3 ["istate''"];
+})
+(rewrite (cryptol_ss ())
+{{ \state key key_len ->
+  (state1.i_ctx.h where state1 = HMACInit_Array state key key_len) ==
+  (state2.i_ctx.h where state2 = HMACInit_Array3 state key key_len)
+}});
+
+print "Proving HMACInit_Array_HMACInit_Array3_md_ctx_equivalence_thm";
+HMACInit_Array_HMACInit_Array3_md_ctx_equivalence_thm <- prove_print
+(do {
+  goal_eval_unint ["istate", "istate''", "ostate", "ostate''", "key_init_Array"];
+  simplify (addsimps [istate_istate_2quote_equivalence_thm] empty_ss);
+  w4_unint_z3 ["istate''"];
+})
+(rewrite (cryptol_ss ())
+{{ \state key key_len ->
+  (state1.md_ctx.h where state1 = HMACInit_Array state key key_len) ==
+  (state2.md_ctx.h where state2 = HMACInit_Array3 state key key_len)
+}});
+
+print "Proving HMACInit_Array_HMACInit_Array3_o_ctx_equivalence_thm";
+HMACInit_Array_HMACInit_Array3_o_ctx_equivalence_thm <- prove_print
+(do {
+  goal_eval_unint ["istate", "istate''", "ostate", "ostate''", "key_init_Array"];
+  simplify (addsimps [ostate_ostate_2quote_equivalence_thm] empty_ss);
+  w4_unint_z3 ["ostate''"];
+})
+(rewrite (cryptol_ss ())
+{{ \state key key_len ->
+  (state1.o_ctx.h where state1 = HMACInit_Array state key key_len) ==
+  (state2.o_ctx.h where state2 = HMACInit_Array3 state key key_len)
+}});
+
+
+
+// ----------------------------------------------------
+//             HMAC_Init_ex helper lemmas
+
+print "Proving arrayRangeEq_ite_commute_thm";
+arrayRangeEq_ite_commute_thm <- prove_print
+(w4_unint_z3 [])
+(rewrite (cryptol_ss ())
+{{ \x y p q c ->
+  (arrayRangeEq (if c then x else y) 0 (if c then p else q) 0 128) ==
+  (if c then (arrayRangeEq x 0 p 0 128) else (arrayRangeEq y 0 q 0 128))
+}});
+
+print "Proving ite_of_arrayRangeEq_equivalence_thm";
+ite_of_arrayRangeEq_equivalence_thm <- prove_print
+(w4_unint_z3 [])
+{{ \x y m n p q c ->
+  (arrayRangeEq x 0 m 0 128) /\ (arrayRangeEq y 0 n 0 128) ==>
+  (if c then (arrayRangeEq x 0 p 0 128) else (arrayRangeEq y 0 q 0 128)) ==
+  (if c then (arrayRangeEq m 0 p 0 128) else (arrayRangeEq n 0 q 0 128))
+}};
+
+print "Proving arrayUpdate_maintains_arrayRangeEq_thm";
+arrayUpdate_maintains_arrayRangeEq_thm <- prove_print
+(w4_unint_z3 [])
+{{ \block' block n ->
+   (arrayRangeEq block' 0 block 0 128) ==>
+   (arrayRangeEq (arrayUpdate block' n 128) 0
+                 (arrayUpdate block n 128) 0
+                 128)
+}};
+
+print "Proving arraySet_maintains_arrayRangeEq_thm";
+arraySet_maintains_arrayRangeEq_thm <- prove_print
+(w4_unint_z3 [])
+{{ \block' block n ->
+  (arrayRangeEq block' 0 block 0 128) ==>
+  (arrayRangeEq (arraySet block' (n + 1) 0 (127-n)) 0
+                (arraySet block (n + 1) 0 (127-n)) 0
+                128)
+}};
+
+print "Proving arrayRangeEq_processBlock_equivalence_thm";
+arrayRangeEq_processBlock_equivalence_thm <- prove_print
+(do { goal_eval_unint ["processBlock_Common"];
+      simplify (addsimps [arrayRangeEq_arrayRangeLookup_eq_thm] empty_ss);
+      w4_unint_z3 ["processBlock_Common"];
+})
+{{ \h1 h2 block' block ->
+     (arrayRangeEq block' 0 block 0 128) /\ (h1 == h2) ==>
+     (processBlock h1 block' 0) == (processBlock h2 block 0)
+}};
+
+print "Proving arrayRangeUpdate_maintains_arrayRangeEq_thm";
+arrayRangeUpdate_maintains_arrayRangeEq_thm <- prove_print
+(w4_unint_z3 [])
+{{ \block' block sz ->
+    (arrayRangeEq block' 0 block 0 128) ==>
+    (arrayRangeEq (arrayRangeUpdate`{n=16} block' 112 sz) 0 (arrayRangeUpdate`{n=16} block 112 sz) 0 128)
+}};
+
+print "Proving arrayRangeEq_SHAFinal_Array_equivalence_thm";
+arrayRangeEq_SHAFinal_Array_equivalence_thm <- prove_print
+(do { goal_eval_unint ["processBlock"];
+      goal_insert ite_of_arrayRangeEq_equivalence_thm;
+      goal_insert arrayUpdate_maintains_arrayRangeEq_thm;
+      goal_insert arraySet_maintains_arrayRangeEq_thm;
+      goal_insert arrayRangeEq_processBlock_equivalence_thm;
+      goal_insert arrayRangeUpdate_maintains_arrayRangeEq_thm;
+      w4_unint_z3 ["processBlock"];
+      })
+{{ \block' block h n sz ->
+      (arrayRangeEq block' 0 block 0 128) ==>
+      ( (SHAFinal_Array {block = block', h = h, n = n, sz = sz}) ==
+        (SHAFinal_Array {block = block, h = h, n = n, sz = sz}) ) }};
+
+print "Proving arrayRangeEq_of_arrayRangeUpdate_thm";
+arrayRangeEq_of_arrayRangeUpdate_thm <- prove_print
+(w4_unint_z3 [])
+{{ \seq1 seq2 ->
+ (seq1 == seq2) ==>
+(arrayRangeEq (arrayRangeUpdate`{n=128} (arrayConstant 0) 0 seq1) 0
+              (arrayRangeUpdate`{n=128} (arrayConstant 0) 0 seq2) 0
+              128)
+}};
+
+
+// ----------------------------------------------------
+//             HMAC helper lemmas
+
+print "Proving SHAUpdate_Array_maintains_SHAState_Array_eq_thm";
+SHAUpdate_Array_maintains_SHAState_Array_eq_thm <- prove_print
+(do {
+  goal_eval_unint ["processBlock", "processBlocks"];
+  goal_insert arrayRangeEq_processBlock_equivalence_thm;
+  w4_unint_z3 ["processBlock", "processBlocks"];
+})
+(rewrite (cryptol_ss ())
+{{ \state1 state2 data data_len ->
+  (SHAState_Array_eq state1 state2) ==>
+  (SHAState_Array_eq (SHAUpdate_Array state1 data data_len) (SHAUpdate_Array state2 data data_len))
+}});
+
+print "Proving SHAState_Array_eq_implies_SHAFinal_Array_equal_thm";
+SHAState_Array_eq_implies_SHAFinal_Array_equal_thm <- prove_print
+(do {
+  goal_eval_unint ["SHAFinal_Array"];
+  goal_insert arrayRangeEq_SHAFinal_Array_equivalence_thm;
+  w4_unint_z3 ["SHAFinal_Array"];
+})
+{{ \state1 state2 ->
+  ((SHAState_Array_eq state1 state2) ==> ((SHAFinal_Array state1) == (SHAFinal_Array state2)))
+}};
+
+print "Proving SHAUpdate_maintains_SHAState_eq_thm";
+SHAUpdate_maintains_SHAState_eq_thm <- prove_print
+(w4_unint_z3 ["processBlock_Common"])
+{{ \state1 state2 (data1 : [384]) data2 ->
+  ((SHAState_eq state1 state2) /\ (data1 == data2)
+  ==> (SHAState_eq (SHAUpdate state1 (split`{48} data1)) (SHAUpdate state2 (split`{48} data2))))
+}};
+
+print "Proving SHAState_eq_implies_SHAFinal_equal_thm";
+SHAState_eq_implies_SHAFinal_equal_thm <- prove_print
+(w4_unint_z3 ["processBlock_Common"])
+{{ \state1 state2 ->
+  ((SHAState_eq state1 state2) ==> (SHAFinal state1) == (SHAFinal state2))
+}};
+
+print "Proving HMACState_Array_eq_implies_HMACFinal_Array_equal_thm";
+HMACState_Array_eq_implies_HMACFinal_Array_equal_thm <- prove_print
+(do {
+  goal_eval_unint ["SHAFinal_Array", "SHAUpdate", "SHAFinal"];
+  goal_insert SHAState_Array_eq_implies_SHAFinal_Array_equal_thm;
+  goal_insert SHAUpdate_maintains_SHAState_eq_thm;
+  goal_insert SHAState_eq_implies_SHAFinal_equal_thm;
+  w4_unint_z3 ["SHAFinal_Array", "SHAUpdate", "SHAFinal"];
+})
+(rewrite (cryptol_ss ())
+{{ \state1 state2 ->
+  (HMACState_Array_eq state1 state2) ==> ((HMACFinal_Array state1) == (HMACFinal_Array state2))
+}});
+
+print "Proving arrayRangeEq_HMACState_Array_eq_transitivity_thm";
+arrayRangeEq_HMACState_Array_eq_transitivity_thm <- prove_print
+(w4_unint_z3 [])
+(rewrite (cryptol_ss ())
+{{ \x iblock ih in isz iblock' oblock oh on osz mdblock mdh mdn mdsz mdblock' mdh' mdn' mdsz' ->
+  (arrayRangeEq mdblock 0 x 0 128) /\ (arrayRangeEq x 0 mdblock' 0 128) /\
+  (arrayRangeEq iblock 0 iblock' 0 128) /\ mdh == mdh' /\ mdn == mdn' /\ mdsz == mdsz' ==>
+  (HMACState_Array_eq
+    { i_ctx = {block = iblock, h = ih, n = in, sz = isz}
+    , o_ctx = {block = oblock, h = oh, n = on, sz = osz}
+    , md_ctx = {block = mdblock, h = mdh, n = mdn, sz = mdsz}
+    }
+    { i_ctx = {block = iblock', h = ih, n = in, sz = isz}
+    , o_ctx = {block = oblock, h = oh, n = on, sz = osz}
+    , md_ctx = {block = mdblock', h = mdh', n = mdn', sz = mdsz'}
+    }
+  )
+}});
+
+print "Proving HMACInit_Array_o_ctx_block_equal_zero_thm";
+HMACInit_Array_o_ctx_block_equal_zero_thm <- prove_print
+(w4_unint_z3 [])
+(rewrite (cryptol_ss ())
+{{ \state key key_len ->
+   (state'.o_ctx.block where state' = (HMACInit_Array state key key_len)) == zero
+}});
+
+print "Proving HMACInit_Array_o_ctx_n_equal_0_thm";
+HMACInit_Array_o_ctx_n_equal_0_thm <- prove_print
+(w4_unint_z3 [])
+(rewrite (cryptol_ss ())
+{{ \state key key_len ->
+  (state'.o_ctx.n where state' = (HMACInit_Array state key key_len)) == 0
+}});
+
+print "Proving HMACUpdate_Array_o_ctx_block_equal_zero_thm";
+HMACUpdate_Array_o_ctx_block_equal_zero_thm <- prove_print
+(w4_unint_z3 [])
+(rewrite (cryptol_ss ())
+{{ \state data data_len ->
+   (state'.o_ctx.block where state' = (HMACUpdate_Array state data data_len)) ==
+   if state.o_ctx.block == zero then zero else state.o_ctx.block
+}});
+
+print "Proving HMACUpdate_Array_o_ctx_n_equal_0_thm";
+HMACUpdate_Array_o_ctx_n_equal_0_thm <- prove_print
+(w4_unint_z3 [])
+(rewrite (cryptol_ss ())
+{{ \state data data_len ->
+  (state'.o_ctx.n where state' = (HMACUpdate_Array state data data_len)) ==
+  if state.o_ctx.n == 0 then 0 else state.o_ctx.n
+}});
+
+print "Proving ArrayCopy_of_arrayConstant_0_thm";
+ArrayCopy_of_arrayConstant_0_thm <- prove_print
+(w4_unint_z3 [])
+(rewrite (cryptol_ss ())
+{{ \x y -> arrayEq (arrayCopy (arrayConstant 0) x (arrayConstant 0) y 128) (arrayConstant 0) }});

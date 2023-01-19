@@ -1,0 +1,73 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
+*/
+
+/*
+  This file contains two other specifications of HMACInit_Array.
+
+  The LLVM function HMAC_Init_ex propagates if's and slices bit vectors
+  in a much different way. To bridge the spec and the LLVM version,
+  we develop two more definitions of HMACInit_Array that are all
+  equivalent to the standard one and prove their equivalence.
+
+  Note that these specifications do not need to be inspected or trusted.
+*/
+
+module HASH::HMAC_Helper where
+
+import Primitive::Keyless::Hash::SHA384
+import Array
+import Common::ByteArray
+import HASH::SHA384
+import HASH::HMAC
+
+istate' : HMACState_Array -> ByteArray -> [64] -> SHAState_Array
+istate' state key key_len =
+  if key_len <= 128 then i_state_1 else i_state_2
+  where key_1 = (key_helper1 key key_len)
+        key_2 = (key_helper2 state key key_len)
+        i_state_1 = SHAUpdate_Array (SHAInit_Array2 state.i_ctx)
+                                    (arrayRangeUpdate (arrayConstant 0) 0 (ipad key_1)) 128
+        i_state_2 = SHAUpdate_Array (SHAInit_Array2 state.i_ctx)
+                                    (arrayRangeUpdate (arrayConstant 0) 0 (ipad key_2)) 128
+
+ostate' : HMACState_Array -> ByteArray -> [64] -> SHAState
+ostate' state key key_len =
+  if key_len <= 128 then o_state_1 else o_state_2
+  where o_state_1 = SHAUpdate SHAInit (opad (key_helper1 key key_len))
+        o_state_2 = SHAUpdate SHAInit (opad (key_helper2 state key key_len))
+
+ipad_seq = 0x3636363636363636
+opad_seq = 0x5c5c5c5c5c5c5c5c
+
+ipad' : [128][8] -> [128][8]
+ipad' key = (split`{128} (join ([ join (reverse (split`{8} ((join (reverse (split`{8} k))) ^ ipad_seq))) | k <- (split`{16} (join key)) ])))
+
+opad' : [128][8] -> [128][8]
+opad' key = (split`{128} (join ([ join (reverse (split`{8} ((join (reverse (split`{8} k))) ^ opad_seq))) | k <- (split`{16} (join key)) ])))
+
+istate'' : HMACState_Array -> ByteArray -> [64] -> SHAState_Array
+istate'' state key key_len =
+  if key_len <= 128 then i_state_1 else i_state_2
+  where key_1 = (key_helper1 key key_len)
+        key_2 = (key_helper2 state key key_len)
+        i_state_1 = SHAUpdate_Array (SHAInit_Array2 state.i_ctx)
+                                    (arrayRangeUpdate (arrayConstant 0) 0 (ipad' key_1)) 128
+        i_state_2 = SHAUpdate_Array (SHAInit_Array2 state.i_ctx)
+                                    (arrayRangeUpdate (arrayConstant 0) 0 (ipad' key_2)) 128
+
+ostate'' : HMACState_Array -> ByteArray -> [64] -> SHAState
+ostate'' state key key_len =
+  if key_len <= 128 then o_state_1 else o_state_2
+  where o_state_1 = SHAUpdate SHAInit (opad' (key_helper1 key key_len))
+        o_state_2 = SHAUpdate SHAInit (opad' (key_helper2 state key key_len))
+
+HMACInit_Array3 : HMACState_Array -> ByteArray -> [64] -> HMACState_Array
+HMACInit_Array3 state key key_len =
+  { i_ctx = i_state
+  , o_ctx = o_state
+  , md_ctx = i_state }
+  where
+    i_state = istate'' state key key_len
+    o_state = ostate'' state key key_len

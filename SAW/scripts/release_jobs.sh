@@ -6,7 +6,7 @@
 # If |*_SELECTCHECK| env variable does not exist, run quick check of all algorithms.
 cd proof/SHA512 && go run SHA512-384-check-entrypoint.go
 saw proof/SHA512/verify-SHA512-512-quickcheck.saw
-cd proof/HMAC && go run HMAC-check-entrypoint.go
+saw proof/HMAC/verify-HMAC.saw
 cd proof/AES && go run AES-GCM-check-entrypoint.go
 saw proof/AES_KW/verify-AES_KW.saw
 saw proof/AES_KW/verify-AES_KWP.saw

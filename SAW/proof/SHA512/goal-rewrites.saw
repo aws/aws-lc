@@ -50,6 +50,10 @@ bvult_64_32_thm <- prove_print
   (w4_unint_z3 [])
   (rewrite (cryptol_ss ()) {{ \(x : [8]) -> (bvult block_size_minus_n_width_64 (1 + (0 # x))) == block_size_minus_n_width_minus_1_32 < (0 # x) }});
 
+bvult_64_32_thm_2 <- prove_print
+(w4_unint_z3 [])
+(rewrite (cryptol_ss ()) {{ \(x : [32]) -> (bvult block_size_minus_n_width_64 (1 + (0 # x))) == block_size_minus_n_width_minus_1_32 < x }});
+
 append_ite_8_8_thm <- prove_print
   (w4_unint_z3 [])
   (rewrite (cryptol_ss ()) {{ \c (x : [8]) y (u : [8]) v -> (if c then x else y) # (if c then u else v) == (if c then x # u else y # v) }});

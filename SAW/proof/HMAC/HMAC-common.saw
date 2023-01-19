@@ -1,0 +1,185 @@
+/* 
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
+*/
+
+enable_experimental;
+
+// The following lists are used to compute identifiers for digest functions
+// and structs. Using parallel lists is the simplest way to do this in SAW.
+// The lists below must be kept in sync.
+let MDS = ["SHA256", "SHA1", "SHA384", "SHA512", "MD5", "SHA224", "SHA512_256"];
+let EVP_MDS = ["EVP_sha256", "EVP_sha1", "EVP_sha384", "EVP_sha512", "EVP_md5", "EVP_sha224", "EVP_sha512_256"];
+let MD_INDICES = [0, 1, 2, 3, 4, 5, 6];
+
+let HMAC_MD = (nth MDS HMAC_MD_INDEX);
+let HMAC_MD_TRAMPOLINE = (str_concat "AWS_LC_TRAMPOLINE_" HMAC_MD);
+let HMAC_MD_INIT = (str_concat HMAC_MD_TRAMPOLINE "_Init");
+let HMAC_MD_UPDATE = (str_concat HMAC_MD_TRAMPOLINE "_Update");
+let HMAC_MD_FINAL = (str_concat HMAC_MD_TRAMPOLINE "_Final");
+
+let md_storage index = (str_concat (nth EVP_MDS index) "_storage");
+let md_once index = (str_concat (nth EVP_MDS index) "_once");
+let md_init index = (str_concat (nth EVP_MDS index) "_init");
+
+let HMAC_METHODS = "AWSLC_hmac_in_place_methods";
+let HMAC_METHODS_STORAGE = (str_concat HMAC_METHODS "_storage");
+let HMAC_METHODS_ONCE = (str_concat HMAC_METHODS "_once");
+let HMAC_METHODS_INIT = (str_concat HMAC_METHODS "_init");
+
+// The specs for the globals used with digests and CRYPTO_once
+// For the digest that is being verified, this spec states that 
+// "storage" global is set correctly after the function returns.
+// The init functions are verified, and then we assume a similar
+// spec on CRYPTO_once.
+
+// The init function spec states that the function produces the 
+// correct struct for the digests used with HMAC. For other digests,
+// the spec says nothing about the content of the struct.
+let evp_md_methods_init_spec index = do {
+
+  crucible_alloc_global (md_storage index);
+  crucible_alloc_global (md_once index);
+  
+  crucible_execute_func [];
+
+  if (eval_bool {{`index == `HMAC_MD_INDEX}}) then do {
+    points_to_env_md_st (crucible_global (md_storage index));
+  } else do {
+    return ();
+  };
+};
+
+// This is the spec for the invocation of CRYPTO_once that produces
+// the digest structs. It matches the spec of the init function.
+let evp_md_methods_spec index = do {
+  crucible_alloc_global (md_storage index);
+  crucible_alloc_global (md_once index);
+  crucible_execute_func
+    [ (crucible_global (md_once index))
+    , (crucible_global (md_init index))
+    ];
+
+  if (eval_bool {{`index == `HMAC_MD_INDEX}}) then do {
+    points_to_env_md_st (crucible_global (md_storage index));
+  } else do {
+    return ();
+  };
+  
+};
+
+let points_to_md_methods md ptr md_ptr = do {
+
+  crucible_points_to (crucible_elem ptr 0) md_ptr;
+
+  if md then do {
+    crucible_points_to (crucible_elem ptr 1) (crucible_global HMAC_MD_INIT);
+    crucible_points_to (crucible_elem ptr 2) (crucible_global HMAC_MD_UPDATE);
+    crucible_points_to (crucible_elem ptr 3) (crucible_global HMAC_MD_FINAL);
+  } else do {
+    return ();
+  };
+};
+
+
+let alloc_md_global index = do {
+  crucible_alloc_global (md_storage index);
+  crucible_alloc_global (md_once index);
+};
+
+let alloc_md_globals = do {
+  for MD_INDICES alloc_md_global;
+};
+
+let alloc_hmac_globals = do {
+  crucible_alloc_global HMAC_METHODS_STORAGE;
+  crucible_alloc_global HMAC_METHODS_ONCE;
+};
+
+let points_to_md_methods_index ptr index = do {
+  points_to_md_methods 
+    (eval_bool {{`index == `HMAC_MD_INDEX}}) 
+    (crucible_elem ptr index) 
+    (crucible_global (md_storage index));
+};
+
+let points_to_hmac_in_place_methods ptr = do {
+
+  // The global for the digest that is actually used is correct
+  points_to_env_md_st (crucible_global (md_storage HMAC_MD_INDEX)); 
+
+  // The evp_md pointers are used as identifiers, and we search through them in order.
+  // So we need a spec stating that the pointer values do not equal
+  // the value for which we are searching.
+  // Because these pointers have separate allocations, they must have different values.
+
+  for MD_INDICES (\x -> points_to_md_methods_index ptr x);
+  return ();
+
+};
+
+// The spec of the init function that produces the HMAC in place methods struct
+let hmac_in_place_methods_init_spec = do {
+
+  alloc_md_globals;
+  alloc_hmac_globals;
+
+  crucible_execute_func [];
+
+  points_to_hmac_in_place_methods (crucible_elem (crucible_global HMAC_METHODS_STORAGE) 0);
+};
+
+// The spec for the invocation of CRYPTO_once that produces the HMAC in place
+// methods struct. This spec matches the spec for the init function that
+// produces this struct.
+let hmac_in_place_methods_spec = do {
+  alloc_md_globals;
+  alloc_hmac_globals;
+
+  crucible_execute_func
+    [ (crucible_global HMAC_METHODS_ONCE)
+    , (crucible_global HMAC_METHODS_INIT)
+    ];
+  points_to_hmac_in_place_methods (crucible_elem (crucible_global HMAC_METHODS_STORAGE) 0);
+};
+
+let global_md_methods = (crucible_elem (crucible_field (crucible_global HMAC_METHODS_STORAGE) "methods") HMAC_MD_INDEX);
+
+let points_to_AWSLC_hmac_in_place_methods md_ptr = do {
+  points_to_md_methods true global_md_methods md_ptr;
+};
+
+let GetInPlaceMethods_spec = do {
+
+  alloc_md_globals;
+  alloc_hmac_globals;
+
+  crucible_execute_func [(crucible_global (md_storage HMAC_MD_INDEX))];
+
+  points_to_hmac_in_place_methods (crucible_elem (crucible_global HMAC_METHODS_STORAGE) 0);
+
+  crucible_return global_md_methods;
+};
+
+// Size of the hmac_ctx_st struct
+let HMAC_CTX_SIZE = llvm_sizeof m (llvm_struct "struct.hmac_ctx_st");
+
+// Specify that the fields of an `hmac_ctx_st` are null
+let zeroed_hmac_ctx_st ptr = do {
+  crucible_points_to (crucible_field ptr "md") crucible_null;
+  crucible_points_to (crucible_field ptr "methods") crucible_null;
+
+  crucible_points_to (crucible_field ptr "state") (crucible_term {{0:[8]}});
+};
+
+let points_to_hmac_ctx_state ptr = do {
+  state <- crucible_fresh_var "state" (llvm_int 8);
+  crucible_points_to (crucible_field ptr "state") (crucible_term state);
+
+  return {{ state }};
+};
+
+let hmac_ctx_is_initialized ptr = do {
+  state <- points_to_hmac_ctx_state ptr;
+  crucible_precond {{state == 1 \/ state == 2}};
+};

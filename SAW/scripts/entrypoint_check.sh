@@ -29,6 +29,8 @@ apply_patch "noinline-ec_get_x_coordinate_as_bytes"
 apply_patch "noinline-ec_get_x_coordinate_as_scalar"
 apply_patch "noinline-value_barrier_w"
 apply_patch "noinline-GetInPlaceMethods"
+apply_patch "noinline-HMAC_Update"
+apply_patch "noinline-HMAC_Final"
 
 # ...next, check the proofs using CMake's Release settings...
 

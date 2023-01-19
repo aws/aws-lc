@@ -3,16 +3,16 @@
  * SPDX-License-Identifier: Apache-2.0
 */
 
-let HMAC_quick_check = false;
+let HMAC_quick_check = true;
 
 // Import HMAC cryptol spec
-import "../../../cryptol-specs/Primitive/Keyless/Hash/HMAC.cry";
+import "../../../../cryptol-specs/Primitive/Keyless/Hash/HMAC.cry";
 
 // Include SHA512 helper functions
-include "../SHA512/SHA512-384-common.saw";
+include "../../SHA512/SHA512-384-common.saw";
 
 // Include HMAC-SHA384 definitions
-include "HMAC_SHA384.saw";
+include "../HMAC-SHA384.saw";
 
 // Include HMAC proof
-include "HMAC.saw";
+include "verify-HMAC.saw";

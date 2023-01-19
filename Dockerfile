@@ -9,8 +9,7 @@ RUN apt-get install -y wget unzip git cmake clang llvm golang python3-pip libncu
 RUN pip3 install wllvm
 
 ADD ./SAW/scripts /lc/scripts
-RUN /lc/scripts/install.sh
-ENV CRYPTOLPATH=../../../cryptol-specs
+ENV CRYPTOLPATH="../../../cryptol-specs:../../spec:../../../../cryptol-specs"
 
 # This container expects all files in the directory to be mounted or copied. 
 # The GitHub action will mount the workspace and set the working directory of the container.

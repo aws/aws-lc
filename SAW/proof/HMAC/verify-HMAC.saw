@@ -1,0 +1,215 @@
+/* 
+* Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+* SPDX-License-Identifier: Apache-2.0
+*/
+
+enable_experimental;
+
+// Import cryptol specs
+import "../../../cryptol-specs/Primitive/Keyless/Hash/SHA384.cry";
+import "../../spec/HASH/SHA384.cry";
+import "../../spec/HASH/HMAC.cry";
+import "../../spec/HASH/HMAC_Helper.cry";
+// Include SHA512 helper functions
+include "../SHA512/SHA512-384-common.saw";
+// Include SHA rewrites
+include "../SHA512/goal-rewrites.saw";
+// Include additional SHA512 definitions
+include "../SHA512/SHA512-function-specs.saw";
+
+// Include HMAC-SHA384 definitions
+include "HMAC-SHA384.saw";
+// Include HMAC common definitions
+include "HMAC-common.saw";
+// Include HMAC-array definitions
+include "HMAC-array.saw";
+// Include HMAC-array lemmas
+include "lemmas.saw";
+
+// Verify SHA512_Update when num=0 and len=SHA_DIGEST_LENGTH
+print "Verifying SHA512_Update_0_SHA_DIGEST_LENGTH_spec";
+SHA512_Update_0_SHA_DIGEST_LENGTH_ov <- llvm_verify m HMAC_MD_UPDATE
+  [sha512_block_data_order_ov]
+  false
+  (SHA512_Update_spec 0 SHA_DIGEST_LENGTH)
+  (w4_unint_z3 ["processBlock_Common"]);
+
+// Verify SHA512_Update when num-0 and len=SHA512_CBLOCK
+print "Verifying SHA512_Update_0_SHA512_CBLOCK_spec";
+SHA512_Update_0_SHA512_CBLOCK_ov <- llvm_verify m HMAC_MD_UPDATE
+  [sha512_block_data_order_ov]
+  true
+  (SHA512_Update_spec 0 SHA512_CBLOCK)
+  (w4_unint_z3 ["processBlock_Common"]);
+
+// Verify SHA512_Final when num=SHA_DIGEST_LENGTH
+print "Verifying SHA512_Final_SHA_DIGEST_LENGTH_spec";
+SHA512_Final_SHA_DIGEST_LENGTH_ov <- llvm_verify m HMAC_MD_FINAL
+  [sha512_block_data_order_ov]
+  true
+  (SHA512_Final_spec SHA_DIGEST_LENGTH)
+  (w4_unint_z3 ["processBlock_Common"]);
+
+// Verify SHA512_Update_array
+print "Verifying SHA512_Update_array_spec";
+SHA512_Update_array_ov <- llvm_verify m HMAC_MD_UPDATE
+  [sha512_block_data_order_array_ov]
+  true
+  SHA512_Update_array_spec
+  (do {
+    goal_eval_unint ["processBlocks", "processBlock_Common"];
+    simplify (addsimps [processBlocks_0_1_thm] empty_ss);
+    simplify (addsimps [arrayRangeEq_arrayRangeLookup_eq_thm, arrayCopy_zero_thm] empty_ss);
+    simplify (addsimps append_ite_thms empty_ss);
+    goal_eval_unint ["processBlocks", "processBlock_Common"];
+    w4_unint_z3 ["processBlocks", "processBlock_Common"];
+  });
+
+// Verify SHA512_Final_array
+print "Verifying SHA512_Final_array_spec";
+enable_what4_eval;
+SHA512_Final_array_ov <- llvm_verify m HMAC_MD_FINAL
+  [sha512_block_data_order_array_ov]
+  true
+  SHA512_Final_array_spec
+  (do {
+    goal_eval_unint ["processBlock_Common"];
+    simplify (addsimps [arrayUpdate_arrayCopy_thm, arraySet_zero_thm] empty_ss);
+    simplify (addsimps [bvult_64_32_thm_2] empty_ss);
+    simplify (addsimps append_ite_thms empty_ss);
+    goal_eval_unint ["processBlock_Common"];
+    w4_unint_z3 ["processBlock_Common"];
+  });
+disable_what4_eval;
+
+// Assume that the the HMAC in place methods struct produced/returned by
+// CRYPTO_once is correct.
+hmac_in_place_methods_ov <- llvm_unsafe_assume_spec
+  m
+  "CRYPTO_once"
+  hmac_in_place_methods_spec;
+
+GetInPlaceMethods_ov <- llvm_verify
+  m
+  "GetInPlaceMethods"
+  [hmac_in_place_methods_ov]
+  true
+  GetInPlaceMethods_spec
+  (w4_unint_z3 []);
+
+// Verify HMAC_CTX_init
+print "Verifying HMAC_CTX_init_array_spec.";
+llvm_verify m "HMAC_CTX_init"
+  []
+  true
+  HMAC_CTX_init_array_spec
+  (w4_unint_z3 []);
+
+// Verify HMAC_Init_ex_array
+// 4 mins
+let verify_HMAC_Init_ex_array_spec = do {
+  print "Verifying HMAC_Init_ex_array_spec with arbitrary key length.";
+  llvm_verify m "HMAC_Init_ex"
+    [ GetInPlaceMethods_ov
+    , SHA512_Update_0_SHA512_CBLOCK_ov
+    , SHA512_Final_array_ov
+    , SHA512_Update_array_ov
+    ]
+    false
+    HMAC_Init_ex_array_spec
+    (do {
+      h_goal <- goal_has_some_tag [sha512_state_st_array_h, sha512_state_st_h];
+      x_goal <- goal_has_some_tag [sha512_state_st_array_num, sha512_state_st_array_sz];
+      y_goal <- goal_has_some_tag [sha512_state_st_num, sha512_state_st_sz];
+      ar_goal <- goal_has_some_tag [HMAC_Init_ex_arrayRangeEq_i_ctx,
+                                    HMAC_Init_ex_arrayRangeEq_md_ctx];
+      if h_goal then do {
+        simplify (addsimps [HMACInit_Array_HMACInit_Array3_i_ctx_equivalence_thm] empty_ss);
+        simplify (addsimps [HMACInit_Array_HMACInit_Array3_md_ctx_equivalence_thm] empty_ss);
+        simplify (addsimps [HMACInit_Array_HMACInit_Array3_o_ctx_equivalence_thm] empty_ss);
+        goal_eval_unint ["SHAUpdate_Array", "SHAFinal_Array", "SHAUpdate"];
+        simplify (addsimps [arrayCopy_zero_thm] empty_ss);
+        goal_insert arrayRangeEq_SHAFinal_Array_equivalence_thm;
+        goal_insert arrayRangeEq_of_arrayRangeUpdate_thm;
+        w4_unint_z3 ["SHAUpdate_Array", "SHAFinal_Array", "SHAUpdate"];
+      } else if x_goal then do {
+        goal_eval_unint ["SHAFinal_Array"];
+        w4_unint_z3 ["SHAFinal_Array"];
+      } else if y_goal then do {
+        goal_eval_unint ["SHAFinal_Array", "SHAUpdate_Array"];
+        w4_unint_z3 ["SHAFinal_Array", "SHAUpdate_Array"];
+      } else if ar_goal then do {
+        goal_eval_unint ["SHAUpdate_Array", "SHAFinal_Array", "SHAUpdate"];
+        simplify (addsimps [arrayRangeEq_ite_commute_thm, arrayCopy_zero_thm] empty_ss);
+        goal_insert arrayRangeEq_SHAFinal_Array_equivalence_thm;
+        goal_insert ite_of_arrayRangeEq_equivalence_thm;
+        w4_unint_z3 ["SHAUpdate_Array", "SHAFinal_Array", "SHAUpdate"];
+      } else do {
+        goal_eval_unint ["SHAFinal_Array"];
+        w4_unint_z3 ["SHAFinal_Array"];
+      };
+     });
+};
+HMAC_Init_ex_array_ov <- verify_HMAC_Init_ex_array_spec;
+
+// Verify HMAC_Update_array
+let verify_HMAC_Update_array_spec = do {
+  print "Verifying HMAC_Update_array_spec";
+  llvm_verify m "HMAC_Update"
+    [SHA512_Update_array_ov]
+    true
+    HMAC_Update_array_spec
+    (w4_unint_z3 ["processBlocks", "processBlock_Common"]);
+};
+HMAC_Update_array_ov <- verify_HMAC_Update_array_spec;
+
+// Verify HMAC_Final_array
+let verify_HMAC_Final_array_with_length withLength = do {
+  print (str_concat "Verifying HMAC_Final_array_spec with withLength=" (show withLength));
+  llvm_verify m "HMAC_Final"
+  [ SHA512_Final_SHA_DIGEST_LENGTH_ov
+  , SHA512_Update_0_SHA_DIGEST_LENGTH_ov
+  , SHA512_Final_array_ov
+  ]
+  true
+  (HMAC_Final_array_spec withLength)
+  (do {
+    goal_eval_unint ["SHAFinal_Array", "SHAFinal"];
+    w4_unint_z3 ["SHAFinal_Array", "SHAFinal"];
+  });
+};
+HMAC_Final_array_ovs <- for [false, true] verify_HMAC_Final_array_with_length;
+
+// Verify HMAC_array
+let verify_HMAC_array_spec withLength = do {
+  llvm_verify m "HMAC"
+    (concat
+    [ OPENSSL_cleanse_ov ]
+    (concat
+    [ HMAC_Update_array_ov
+    , HMAC_Init_ex_array_ov ]
+    HMAC_Final_array_ovs))
+    false
+    (HMAC_array_spec withLength)
+    (do {
+    hmac_goal <- goal_has_some_tag [HMAC_md_out];
+
+    if hmac_goal then do {
+      unfolding ["HMAC_Array", "HMACState_zeroized", "SHAInit_zeroized", "SHAInit_Array_zeroized"];
+      goal_eval_unint ["HMACInit_Array", "HMACUpdate_Array", "HMACFinal_Array"];
+      simplify (addsimps [ArrayCopy_of_arrayConstant_0_thm] empty_ss);
+      simplify (addsimps [HMACInit_Array_o_ctx_block_equal_zero_thm,
+                          HMACUpdate_Array_o_ctx_block_equal_zero_thm] empty_ss);
+      simplify (addsimps [HMACInit_Array_o_ctx_n_equal_0_thm,
+                          HMACUpdate_Array_o_ctx_n_equal_0_thm] empty_ss);
+      goal_eval_unint ["HMACInit_Array", "SHAUpdate_Array", "HMACFinal_Array"];
+      goal_insert SHAUpdate_Array_maintains_SHAState_Array_eq_thm;
+      goal_insert arrayRangeEq_HMACState_Array_eq_transitivity_thm;
+      goal_insert HMACState_Array_eq_implies_HMACFinal_Array_equal_thm;
+      w4_unint_z3 ["HMACInit_Array", "SHAUpdate_Array", "HMACFinal_Array"];
+    } else do {
+      w4_unint_z3 ["HMACInit_Array", "HMACUpdate_Array", "HMACFinal_Array"];
+    };
+    });
+};
+for [false, true] verify_HMAC_array_spec;

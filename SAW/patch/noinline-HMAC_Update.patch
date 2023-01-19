@@ -1,0 +1,12 @@
+diff --git a/crypto/fipsmodule/hmac/hmac.c b/crypto/fipsmodule/hmac/hmac.c
+index eb14ab2bc..8f47f7f91 100644
+--- a/crypto/fipsmodule/hmac/hmac.c
++++ b/crypto/fipsmodule/hmac/hmac.c
+@@ -327,6 +327,7 @@ end:
+   return result;
+ }
+ 
++__attribute__((noinline))
+ int HMAC_Update(HMAC_CTX *ctx, const uint8_t *data, size_t data_len) {
+   if (!hmac_ctx_is_initialized(ctx)) {
+     return 0;

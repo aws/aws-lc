@@ -1,0 +1,185 @@
+/* 
+* Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+* SPDX-License-Identifier: Apache-2.0
+*/
+
+enable_experimental;
+
+// Make a symbolic sha512_state_st using ByteArray for block
+let fresh_sha512_state_st_array_n32 name = do {
+  h <- crucible_fresh_var (str_concat name ".h") (llvm_array 8 i64);
+  block <- crucible_fresh_cryptol_var (str_concat name ".block") {| ByteArray |};
+  n <- crucible_fresh_var (str_concat name ".n") i32;
+  sz <- crucible_fresh_var (str_concat name ".sz") i128;
+  return {{ { h = h, block = block, n = n, sz = sz } : SHAState_Array }};
+};
+
+// Make an uninitialized fresh_sha512_state_st_array
+// `block` has to be symbolic because the arrayEq is not supported in concrete backend
+let fresh_sha512_state_st_array_n32_uninitialized name = do {
+  block <- crucible_fresh_cryptol_var (str_concat name ".block") {| ByteArray |};
+  return {{ { h = zero, block = block, n = 0, sz = 0 } : SHAState_Array }};
+};
+
+// Make an uninitialized sha512_state_st
+let fresh_sha512_state_st_uninitialized name = do {
+  return {{ { h = zero, block = zero, n = 0, sz = 0 } : SHAState }};
+};
+
+// The points-to for sha512_state_st
+let sha512_state_st_array_block = "sha512_state_st_array.block";
+let sha512_state_st_array_sz = "sha512_state_st_array.sz";
+let sha512_state_st_array_h = "sha512_state_st_array.h";
+let sha512_state_st_array_num = "sha512_state_st_array.num";
+
+let points_to_sha512_state_st_common_array_n32 ptr (h, sz, block, n) = do {
+  llvm_setup_with_tag sha512_state_st_array_block
+    (crucible_points_to_array_prefix (crucible_field ptr "p") block {{ `SHA512_CBLOCK : [64] }});
+
+  llvm_setup_with_tag sha512_state_st_array_sz
+    (llvm_points_to_at_type (crucible_field ptr "Nl") i128 (crucible_term sz));
+
+  llvm_setup_with_tag sha512_state_st_array_h
+    (crucible_points_to (crucible_field ptr "h") (crucible_term h));
+
+  llvm_setup_with_tag sha512_state_st_array_num
+    (crucible_points_to (crucible_field ptr "num") (crucible_term n));
+
+  crucible_points_to (crucible_field ptr "md_len") (crucible_term {{ `SHA_DIGEST_LENGTH : [32] }});
+};
+
+// The points-to for sha512_state_st when md_len is 0
+// Could not merge this with the previous definition because of override failure
+let points_to_sha512_state_st_common_array_n32_uninitialized ptr (h, sz, block, n) = do {
+  crucible_points_to_array_prefix (crucible_field ptr "p") block {{ `SHA512_CBLOCK : [64] }};
+  llvm_points_to_at_type (crucible_field ptr "Nl") i128 (crucible_term sz);
+  crucible_points_to (crucible_field ptr "h") (crucible_term h);
+  crucible_points_to (crucible_field ptr "num") (crucible_term n);
+  crucible_points_to (crucible_field ptr "md_len") (crucible_term {{ 0 : [32] }});
+};
+
+// Make a symbolic sha512_state_st and assign the points-to
+let pointer_to_fresh_sha512_state_st_array_n32 name = do {
+  state <- fresh_sha512_state_st_array_n32 name;
+  ptr <- llvm_alloc_sym_init (llvm_struct "struct.sha512_state_st");
+  points_to_sha512_state_st_common_array_n32 ptr ({{state.h}}, {{state.sz}}, {{state.block}}, {{state.n}});
+  return (state, ptr);
+};
+
+// The points-to for sha512_state_st, top-level function
+let points_to_sha512_state_st_array_n32 ptr state = do {
+  points_to_sha512_state_st_common_array_n32 ptr ({{ state.h }}, {{ state.sz }}, {{ state.block }}, {{ state.n }});
+};
+
+let points_to_sha512_state_st_array_n32_uninitialized ptr state = do {
+  points_to_sha512_state_st_common_array_n32_uninitialized ptr ({{ state.h }}, {{ state.sz }}, {{ state.block }}, {{ state.n }});
+};
+
+// The points-to for sha512_state_st when md_len == 0
+let points_to_sha512_state_st_common_uninitialized ptr (h, sz, block, n) num = do {
+  (crucible_points_to (crucible_field ptr "h") (crucible_term h));
+
+  // Specify `sha512_state_st.Nl` and `sha512_state_st.Nh` contain `sz`
+  (llvm_points_to_at_type (crucible_field ptr "Nl") i128 (crucible_term sz));
+
+  if eval_bool {{ `num == 0 }} then do {
+    // Do not specify anything about `sha512_state_st.p`
+    return ();
+  } else do {
+    // Specify that the first `num` bytes of `sha512_state_st.p` match the
+    // first `num` bits of `state.block`.
+    // Untyped check because the size of `sha512_state_st.p` does not match
+    // the size of (take`{num} state.block) unless `num` == `SHA512_CBLOCK`
+    (crucible_points_to_untyped (crucible_field ptr "p") (crucible_term block));
+  };
+
+  (crucible_points_to (crucible_field ptr "num") (crucible_term n));
+
+  crucible_points_to (crucible_field ptr "md_len") (crucible_term {{ 0 : [32] }});
+};
+
+// The points-to for sha512_state_st when md_len == 0
+let points_to_sha512_state_st_uninitialized ptr state num = do {
+  points_to_sha512_state_st_common_uninitialized
+    ptr ({{ state.h }}, {{ state.sz }}, {{ take`{num} state.block }}, {{ state.n }}) num;
+};
+
+// Specification for SHA512_Update
+let SHA512_Update_spec num len = do {
+  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  (sha512_ctx, sha512_ctx_ptr) <- pointer_to_fresh_sha512_state_st "sha512_ctx" num;
+
+  (data, data_ptr) <- ptr_to_fresh_readonly "data" (llvm_array len i8);
+
+  crucible_execute_func [sha512_ctx_ptr, data_ptr, (crucible_term {{ `len : [64] }})];
+
+  global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  let res = {{ SHAUpdate sha512_ctx data }};
+  points_to_sha512_state_st sha512_ctx_ptr res (eval_size {| (num + len) % SHA512_CBLOCK |});
+  crucible_postcond {{res.n ==  (((`num + `len) % `SHA512_CBLOCK) : [32])}};
+
+  crucible_return (crucible_term {{ 1 : [32] }});
+};
+
+// Specification for SHA512_Final
+let SHA512_Final_spec num = do {
+  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  md_out_ptr <- crucible_alloc (llvm_array SHA_DIGEST_LENGTH i8);
+
+  (sha512_ctx, sha512_ctx_ptr) <- pointer_to_fresh_sha512_state_st "sha512_ctx" num;
+
+  crucible_execute_func [md_out_ptr, sha512_ctx_ptr];
+
+  global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  crucible_points_to md_out_ptr (crucible_term {{ split`{SHA_DIGEST_LENGTH} (SHAFinal sha512_ctx) }});
+
+  crucible_return (crucible_term {{ 1 : [32] }});
+};
+
+// Specification for SHA512_Update_array
+let SHA512_Update_array_spec = do {
+  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  (sha512_ctx, sha512_ctx_ptr) <- pointer_to_fresh_sha512_state_st_array_n32 "sha512_ctx";
+  crucible_precond {{ sha512_ctx.n < `SHA512_CBLOCK }};
+
+  len <- crucible_fresh_var "len" i64;
+  (data, data_ptr) <- ptr_to_fresh_array_readonly "data" len;
+
+  crucible_execute_func [sha512_ctx_ptr, data_ptr, (crucible_term len)];
+
+  global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  let res = {{ SHAUpdate_Array sha512_ctx data len }};
+  res_block <- crucible_fresh_cryptol_var "res_block" {| ByteArray |};
+  points_to_sha512_state_st_array_n32 sha512_ctx_ptr {{ { h = res.h, block = res_block, n = res.n, sz = res.sz } }};
+  // There exists a ByteArray called res_block, satisfying the constraint that
+  // its first 128 bytes is equal to the first 128 bytes of the result res.block returned from the spec,
+  // such that the result of the C function SHA512_Update points to it
+  crucible_postcond {{ arrayRangeEq res_block 0 res.block 0 `SHA512_CBLOCK }};
+  crucible_postcond {{ res.n < `SHA512_CBLOCK }};
+
+  crucible_return (crucible_term {{ 1 : [32] }});
+};
+
+// Specification for SHA512_Final_array
+let SHA512_Final_array_spec = do {
+  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  md_out_ptr <- crucible_alloc (llvm_array SHA_DIGEST_LENGTH i8);
+
+  (sha512_ctx, sha512_ctx_ptr) <- pointer_to_fresh_sha512_state_st_array_n32 "sha512_ctx";
+  crucible_precond {{ sha512_ctx.n < `SHA512_CBLOCK }};
+
+  crucible_execute_func [md_out_ptr, sha512_ctx_ptr];
+
+  global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  crucible_points_to md_out_ptr (crucible_term {{ split`{SHA_DIGEST_LENGTH} (SHAFinal_Array sha512_ctx) }});
+
+  crucible_return (crucible_term {{ 1 : [32] }});
+};
