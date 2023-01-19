@@ -1829,7 +1829,7 @@ sub INITIAL_BLOCKS_PARTIAL_CIPHER {
 
   # ;; prepare AES counter blocks
   if ($NUM_BLOCKS == 1) {
-    $code .= "vpaddd            ONE(%rip),$CTR,@{[XWORD($CTR0)]}\n";
+    $code .= "vpaddd            ONEa(%rip),$CTR,@{[XWORD($CTR0)]}\n";
   } elsif ($NUM_BLOCKS == 2) {
     $code .= <<___;
         vshufi64x2        \$0,@{[YWORD($CTR)]},@{[YWORD($CTR)]},@{[YWORD($CTR0)]}
@@ -4710,7 +4710,7 @@ ___
 }
 
 $code .= <<___;
-.data
+.text
 .align 16
 POLY:   .quad     0x0000000000000001, 0xC200000000000000
 
@@ -4744,7 +4744,7 @@ ZERO:
         .quad     0x0000000000000000, 0x0000000000000000
 
 .align 16
-ONE:
+ONEa:
         .quad     0x0000000000000001, 0x0000000000000000
 
 .align 16
