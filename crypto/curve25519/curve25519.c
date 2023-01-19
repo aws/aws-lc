@@ -1996,7 +1996,7 @@ void ED25519_keypair_from_seed(uint8_t out_public_key[32],
   ge_p3_tobytes(out_public_key, &A);
 
   OPENSSL_memcpy(out_private_key, seed, ED25519_SEED_LEN);
-  OPENSSL_memcpy(out_private_key + 32, out_public_key, 32);
+  OPENSSL_memcpy(out_private_key + ED25519_SEED_LEN, out_public_key, 32);
 }
 
 
