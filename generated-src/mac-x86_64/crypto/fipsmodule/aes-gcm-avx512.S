@@ -7,7 +7,7 @@
 #endif
 #endif
 
-#if defined(__x86_64__) && !defined(OPENSSL_NO_ASM)
+#if defined(__x86_64__) && !defined(OPENSSL_NO_ASM) && defined(__APPLE__)
 #if defined(BORINGSSL_PREFIX)
 #include <boringssl_prefix_symbols_asm.h>
 #endif
@@ -136420,4 +136420,8 @@ byte64_len_to_mask_table:
 .quad	0x0fffffffffffffff, 0x1fffffffffffffff
 .quad	0x3fffffffffffffff, 0x7fffffffffffffff
 .quad	0xffffffffffffffff
+#endif
+#if defined(__ELF__)
+// See https://www.airs.com/blog/archives/518.
+.section .note.GNU-stack,"",%progbits
 #endif

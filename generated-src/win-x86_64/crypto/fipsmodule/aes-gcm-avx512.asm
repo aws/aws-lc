@@ -1,6 +1,7 @@
 ; This file is generated from a similarly-named Perl script in the BoringSSL
 ; source tree. Do not edit by hand.
 
+%ifidn __OUTPUT_FORMAT__, win64
 default	rel
 %define XMMWORD
 %define YMMWORD
@@ -136867,3 +136868,4 @@ byte64_len_to_mask_table:
 	DQ	0x0fffffffffffffff,0x1fffffffffffffff
 	DQ	0x3fffffffffffffff,0x7fffffffffffffff
 	DQ	0xffffffffffffffff
+%endif
