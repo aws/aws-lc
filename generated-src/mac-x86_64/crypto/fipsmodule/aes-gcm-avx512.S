@@ -22398,7 +22398,7 @@ L$_small_initial_num_blocks_is_3_1_Arjlgemsqpaxhfj:
 
 L$_small_initial_num_blocks_is_1_Arjlgemsqpaxhfj:
 	vmovdqa64	SHUF_MASK(%rip),%xmm29
-	vpaddd	ONE(%rip),%xmm2,%xmm0
+	vpaddd	ONEa(%rip),%xmm2,%xmm0
 	leaq	byte64_len_to_mask_table(%rip),%r10
 	movq	%r8,%r15
 	kmovq	(%r10,%r15,8),%k1
@@ -44319,7 +44319,7 @@ L$_small_initial_num_blocks_is_3_1_wjgmgrFcljfrexe:
 
 L$_small_initial_num_blocks_is_1_wjgmgrFcljfrexe:
 	vmovdqa64	SHUF_MASK(%rip),%xmm29
-	vpaddd	ONE(%rip),%xmm2,%xmm0
+	vpaddd	ONEa(%rip),%xmm2,%xmm0
 	leaq	byte64_len_to_mask_table(%rip),%r10
 	movq	%r8,%r15
 	kmovq	(%r10,%r15,8),%k1
@@ -66892,7 +66892,7 @@ L$_small_initial_num_blocks_is_3_1_hdjaAabmubhzgrE:
 
 L$_small_initial_num_blocks_is_1_hdjaAabmubhzgrE:
 	vmovdqa64	SHUF_MASK(%rip),%xmm29
-	vpaddd	ONE(%rip),%xmm2,%xmm0
+	vpaddd	ONEa(%rip),%xmm2,%xmm0
 	leaq	byte64_len_to_mask_table(%rip),%r10
 	movq	%r8,%r15
 	kmovq	(%r10,%r15,8),%k1
@@ -88593,7 +88593,7 @@ L$_small_initial_num_blocks_is_3_1_fAioGdenAmmvupb:
 
 L$_small_initial_num_blocks_is_1_fAioGdenAmmvupb:
 	vmovdqa64	SHUF_MASK(%rip),%xmm29
-	vpaddd	ONE(%rip),%xmm2,%xmm0
+	vpaddd	ONEa(%rip),%xmm2,%xmm0
 	leaq	byte64_len_to_mask_table(%rip),%r10
 	movq	%r8,%r15
 	kmovq	(%r10,%r15,8),%k1
@@ -110514,7 +110514,7 @@ L$_small_initial_num_blocks_is_3_1_sFoDGktxtpnDmhn:
 
 L$_small_initial_num_blocks_is_1_sFoDGktxtpnDmhn:
 	vmovdqa64	SHUF_MASK(%rip),%xmm29
-	vpaddd	ONE(%rip),%xmm2,%xmm0
+	vpaddd	ONEa(%rip),%xmm2,%xmm0
 	leaq	byte64_len_to_mask_table(%rip),%r10
 	movq	%r8,%r15
 	kmovq	(%r10,%r15,8),%k1
@@ -133087,7 +133087,7 @@ L$_small_initial_num_blocks_is_3_1_vkDeiBlhaznkthD:
 
 L$_small_initial_num_blocks_is_1_vkDeiBlhaznkthD:
 	vmovdqa64	SHUF_MASK(%rip),%xmm29
-	vpaddd	ONE(%rip),%xmm2,%xmm0
+	vpaddd	ONEa(%rip),%xmm2,%xmm0
 	leaq	byte64_len_to_mask_table(%rip),%r10
 	movq	%r8,%r15
 	kmovq	(%r10,%r15,8),%k1
@@ -136294,7 +136294,7 @@ L$skip_hkeys_cleanup_byhoEGxnfawfFqd:
 L$decrypt_seh_end:
 
 
-.data	
+.text	
 .p2align	4
 POLY:.quad	0x0000000000000001, 0xC200000000000000
 
@@ -136328,7 +136328,7 @@ ZERO:
 .quad	0x0000000000000000, 0x0000000000000000
 
 .p2align	4
-ONE:
+ONEa:
 .quad	0x0000000000000001, 0x0000000000000000
 
 .p2align	4

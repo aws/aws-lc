@@ -22505,7 +22505,7 @@ $L$_small_initial_num_blocks_is_3_1_Arjlgemsqpaxhfj:
 
 $L$_small_initial_num_blocks_is_1_Arjlgemsqpaxhfj:
 	vmovdqa64	xmm29,XMMWORD[SHUF_MASK]
-	vpaddd	xmm0,xmm2,XMMWORD[ONE]
+	vpaddd	xmm0,xmm2,XMMWORD[ONEa]
 	lea	r10,[byte64_len_to_mask_table]
 	mov	r15,r13
 	kmovq	k1,[r15*8+r10]
@@ -44431,7 +44431,7 @@ $L$_small_initial_num_blocks_is_3_1_wjgmgrFcljfrexe:
 
 $L$_small_initial_num_blocks_is_1_wjgmgrFcljfrexe:
 	vmovdqa64	xmm29,XMMWORD[SHUF_MASK]
-	vpaddd	xmm0,xmm2,XMMWORD[ONE]
+	vpaddd	xmm0,xmm2,XMMWORD[ONEa]
 	lea	r10,[byte64_len_to_mask_table]
 	mov	r15,r13
 	kmovq	k1,[r15*8+r10]
@@ -67009,7 +67009,7 @@ $L$_small_initial_num_blocks_is_3_1_hdjaAabmubhzgrE:
 
 $L$_small_initial_num_blocks_is_1_hdjaAabmubhzgrE:
 	vmovdqa64	xmm29,XMMWORD[SHUF_MASK]
-	vpaddd	xmm0,xmm2,XMMWORD[ONE]
+	vpaddd	xmm0,xmm2,XMMWORD[ONEa]
 	lea	r10,[byte64_len_to_mask_table]
 	mov	r15,r13
 	kmovq	k1,[r15*8+r10]
@@ -88754,7 +88754,7 @@ $L$_small_initial_num_blocks_is_3_1_fAioGdenAmmvupb:
 
 $L$_small_initial_num_blocks_is_1_fAioGdenAmmvupb:
 	vmovdqa64	xmm29,XMMWORD[SHUF_MASK]
-	vpaddd	xmm0,xmm2,XMMWORD[ONE]
+	vpaddd	xmm0,xmm2,XMMWORD[ONEa]
 	lea	r10,[byte64_len_to_mask_table]
 	mov	r15,r13
 	kmovq	k1,[r15*8+r10]
@@ -110680,7 +110680,7 @@ $L$_small_initial_num_blocks_is_3_1_sFoDGktxtpnDmhn:
 
 $L$_small_initial_num_blocks_is_1_sFoDGktxtpnDmhn:
 	vmovdqa64	xmm29,XMMWORD[SHUF_MASK]
-	vpaddd	xmm0,xmm2,XMMWORD[ONE]
+	vpaddd	xmm0,xmm2,XMMWORD[ONEa]
 	lea	r10,[byte64_len_to_mask_table]
 	mov	r15,r13
 	kmovq	k1,[r15*8+r10]
@@ -133258,7 +133258,7 @@ $L$_small_initial_num_blocks_is_3_1_vkDeiBlhaznkthD:
 
 $L$_small_initial_num_blocks_is_1_vkDeiBlhaznkthD:
 	vmovdqa64	xmm29,XMMWORD[SHUF_MASK]
-	vpaddd	xmm0,xmm2,XMMWORD[ONE]
+	vpaddd	xmm0,xmm2,XMMWORD[ONEa]
 	lea	r10,[byte64_len_to_mask_table]
 	mov	r15,r13
 	kmovq	k1,[r15*8+r10]
@@ -136741,7 +136741,7 @@ DB	$L$decrypt_seh_push_rbp-$L$decrypt_seh_begin
 DB	80
 DB	$L$decrypt_seh_push_rbx-$L$decrypt_seh_begin
 DB	48
-section	.data data align=8
+section	.text code align=64
 
 ALIGN	16
 POLY:	DQ	0x0000000000000001,0xC200000000000000
@@ -136776,7 +136776,7 @@ ZERO:
 	DQ	0x0000000000000000,0x0000000000000000
 
 ALIGN	16
-ONE:
+ONEa:
 	DQ	0x0000000000000001,0x0000000000000000
 
 ALIGN	16

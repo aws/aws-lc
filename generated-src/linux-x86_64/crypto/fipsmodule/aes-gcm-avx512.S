@@ -22429,7 +22429,7 @@ aes_gcm_encrypt_avx512:
 
 .L_small_initial_num_blocks_is_1_Arjlgemsqpaxhfj:
 	vmovdqa64	SHUF_MASK(%rip),%xmm29
-	vpaddd	ONE(%rip),%xmm2,%xmm0
+	vpaddd	ONEa(%rip),%xmm2,%xmm0
 	leaq	byte64_len_to_mask_table(%rip),%r10
 	movq	%r8,%r15
 	kmovq	(%r10,%r15,8),%k1
@@ -44350,7 +44350,7 @@ aes_gcm_encrypt_avx512:
 
 .L_small_initial_num_blocks_is_1_wjgmgrFcljfrexe:
 	vmovdqa64	SHUF_MASK(%rip),%xmm29
-	vpaddd	ONE(%rip),%xmm2,%xmm0
+	vpaddd	ONEa(%rip),%xmm2,%xmm0
 	leaq	byte64_len_to_mask_table(%rip),%r10
 	movq	%r8,%r15
 	kmovq	(%r10,%r15,8),%k1
@@ -66923,7 +66923,7 @@ aes_gcm_encrypt_avx512:
 
 .L_small_initial_num_blocks_is_1_hdjaAabmubhzgrE:
 	vmovdqa64	SHUF_MASK(%rip),%xmm29
-	vpaddd	ONE(%rip),%xmm2,%xmm0
+	vpaddd	ONEa(%rip),%xmm2,%xmm0
 	leaq	byte64_len_to_mask_table(%rip),%r10
 	movq	%r8,%r15
 	kmovq	(%r10,%r15,8),%k1
@@ -88636,7 +88636,7 @@ aes_gcm_decrypt_avx512:
 
 .L_small_initial_num_blocks_is_1_fAioGdenAmmvupb:
 	vmovdqa64	SHUF_MASK(%rip),%xmm29
-	vpaddd	ONE(%rip),%xmm2,%xmm0
+	vpaddd	ONEa(%rip),%xmm2,%xmm0
 	leaq	byte64_len_to_mask_table(%rip),%r10
 	movq	%r8,%r15
 	kmovq	(%r10,%r15,8),%k1
@@ -110557,7 +110557,7 @@ aes_gcm_decrypt_avx512:
 
 .L_small_initial_num_blocks_is_1_sFoDGktxtpnDmhn:
 	vmovdqa64	SHUF_MASK(%rip),%xmm29
-	vpaddd	ONE(%rip),%xmm2,%xmm0
+	vpaddd	ONEa(%rip),%xmm2,%xmm0
 	leaq	byte64_len_to_mask_table(%rip),%r10
 	movq	%r8,%r15
 	kmovq	(%r10,%r15,8),%k1
@@ -133130,7 +133130,7 @@ aes_gcm_decrypt_avx512:
 
 .L_small_initial_num_blocks_is_1_vkDeiBlhaznkthD:
 	vmovdqa64	SHUF_MASK(%rip),%xmm29
-	vpaddd	ONE(%rip),%xmm2,%xmm0
+	vpaddd	ONEa(%rip),%xmm2,%xmm0
 	leaq	byte64_len_to_mask_table(%rip),%r10
 	movq	%r8,%r15
 	kmovq	(%r10,%r15,8),%k1
@@ -136343,7 +136343,7 @@ aes_gcm_decrypt_avx512:
 .Ldecrypt_seh_end:
 .cfi_endproc	
 .size	aes_gcm_decrypt_avx512, .-aes_gcm_decrypt_avx512
-.data	
+.text	
 .align	16
 POLY:.quad	0x0000000000000001, 0xC200000000000000
 
@@ -136377,7 +136377,7 @@ ZERO:
 .quad	0x0000000000000000, 0x0000000000000000
 
 .align	16
-ONE:
+ONEa:
 .quad	0x0000000000000001, 0x0000000000000000
 
 .align	16
