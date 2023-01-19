@@ -165,6 +165,9 @@ sub random_string() {
   return $str;
 }
 
+# ; Seed the RNG so the labels are generated deterministically
+srand(12345);
+
 sub BYTE {
   my ($reg) = @_;
   if ($reg =~ /%r[abcd]x/i) {
