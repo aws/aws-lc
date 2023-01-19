@@ -2311,10 +2311,10 @@ TEST(X509Test, DilithiumPrivKey) {
 
   uint8_t *der;
   size_t der_len;
-  CBB cbb;
-  ASSERT_TRUE(CBB_init(&cbb, 0));
-  ASSERT_TRUE(EVP_marshal_private_key(&cbb, dilithium_pkey));
-  ASSERT_TRUE(CBB_finish(&cbb, &der, &der_len));
+  bssl::ScopedCBB cbb;
+  ASSERT_TRUE(CBB_init(cbb.get(), 0));
+  ASSERT_TRUE(EVP_marshal_private_key(cbb.get(), dilithium_pkey));
+  ASSERT_TRUE(CBB_finish(cbb.get(), &der, &der_len));
 
   EVP_PKEY_CTX_free(dilithium_pkey_ctx);
   EVP_PKEY_free(dilithium_pkey);
@@ -2329,10 +2329,10 @@ TEST(X509Test, DilithiumPubKey) {
 
   uint8_t *der;
   size_t der_len;
-  CBB cbb;
-  ASSERT_TRUE(CBB_init(&cbb, 0));
-  ASSERT_TRUE(EVP_marshal_public_key(&cbb, dilithium_pkey));
-  ASSERT_TRUE(CBB_finish(&cbb, &der, &der_len));
+  bssl::ScopedCBB cbb;
+  ASSERT_TRUE(CBB_init(cbb.get(), 0));
+  ASSERT_TRUE(EVP_marshal_public_key(cbb.get(), dilithium_pkey));
+  ASSERT_TRUE(CBB_finish(cbb.get(), &der, &der_len));
 
   EVP_PKEY_CTX_free(dilithium_pkey_ctx);
   EVP_PKEY_free(dilithium_pkey);
