@@ -151,6 +151,20 @@ static bool pkey_supports_algorithm(const SSL *ssl, EVP_PKEY *pkey,
     return false;
   }
 
+  if (ssl_protocol_version(ssl) < TLS1_2_VERSION) {
+    // TLS 1.0 and 1.1 do not negotiate algorithms and always sign one of two
+    // hardcoded algorithms.
+    return sigalg == SSL_SIGN_RSA_PKCS1_MD5_SHA1 ||
+           sigalg == SSL_SIGN_ECDSA_SHA1;
+  }
+
+  // |SSL_SIGN_RSA_PKCS1_MD5_SHA1| is not a real SignatureScheme for TLS 1.2 and
+  // higher. It is an internal value we use to represent TLS 1.0/1.1's MD5/SHA1
+  // concatenation.
+  if (sigalg == SSL_SIGN_RSA_PKCS1_MD5_SHA1) {
+    return false;
+  }
+
   if (ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
     // RSA keys may only be used with RSA-PSS.
     if (alg->pkey_type == EVP_PKEY_RSA && !alg->is_rsa_pss) {
@@ -531,9 +545,83 @@ int SSL_is_signature_algorithm_rsa_pss(uint16_t sigalg) {
   return alg != nullptr && alg->is_rsa_pss;
 }
 
+static int compare_uint16_t(const void *p1, const void *p2) {
+  uint16_t u1 = *((const uint16_t *)p1);
+  uint16_t u2 = *((const uint16_t *)p2);
+  if (u1 < u2) {
+    return -1;
+  } else if (u1 > u2) {
+    return 1;
+  } else {
+    return 0;
+  }
+}
+
+static bool sigalgs_unique(Span<const uint16_t> in_sigalgs) {
+  if (in_sigalgs.size() < 2) {
+    return true;
+  }
+
+  Array<uint16_t> sigalgs;
+  if (!sigalgs.CopyFrom(in_sigalgs)) {
+    return false;
+  }
+
+  qsort(sigalgs.data(), sigalgs.size(), sizeof(uint16_t), compare_uint16_t);
+
+  for (size_t i = 1; i < sigalgs.size(); i++) {
+    if (sigalgs[i - 1] == sigalgs[i]) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_DUPLICATE_SIGNATURE_ALGORITHM);
+      return false;
+    }
+  }
+
+  return true;
+}
+
+static bool set_sigalg_prefs(Array<uint16_t> *out, Span<const uint16_t> prefs) {
+  if (!sigalgs_unique(prefs)) {
+    return false;
+  }
+
+  // Check for invalid algorithms, and filter out |SSL_SIGN_RSA_PKCS1_MD5_SHA1|.
+  Array<uint16_t> filtered;
+  if (!filtered.Init(prefs.size())) {
+    return false;
+  }
+  size_t added = 0;
+  for (uint16_t pref : prefs) {
+    if (pref == SSL_SIGN_RSA_PKCS1_MD5_SHA1) {
+      // Though not intended to be used with this API, we treat
+      // |SSL_SIGN_RSA_PKCS1_MD5_SHA1| as a real signature algorithm in
+      // |SSL_PRIVATE_KEY_METHOD|. Not accepting it here makes for a confusing
+      // abstraction.
+      continue;
+    }
+    if (get_signature_algorithm(pref) == nullptr) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SIGNATURE_ALGORITHM);
+      return false;
+    }
+    filtered[added] = pref;
+    added++;
+  }
+  filtered.Shrink(added);
+
+  // This can happen if |prefs| contained only |SSL_SIGN_RSA_PKCS1_MD5_SHA1|.
+  // Leaving it empty would revert to the default, so treat this as an error
+  // condition.
+  if (!prefs.empty() && filtered.empty()) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SIGNATURE_ALGORITHM);
+    return false;
+  }
+
+  *out = std::move(filtered);
+  return true;
+}
+
 int SSL_CTX_set_signing_algorithm_prefs(SSL_CTX *ctx, const uint16_t *prefs,
                                         size_t num_prefs) {
-  return ctx->cert->sigalgs.CopyFrom(MakeConstSpan(prefs, num_prefs));
+  return set_sigalg_prefs(&ctx->cert->sigalgs, MakeConstSpan(prefs, num_prefs));
 }
 
 int SSL_set_signing_algorithm_prefs(SSL *ssl, const uint16_t *prefs,
@@ -541,7 +629,8 @@ int SSL_set_signing_algorithm_prefs(SSL *ssl, const uint16_t *prefs,
   if (!ssl->config) {
     return 0;
   }
-  return ssl->config->cert->sigalgs.CopyFrom(MakeConstSpan(prefs, num_prefs));
+  return set_sigalg_prefs(&ssl->config->cert->sigalgs,
+                          MakeConstSpan(prefs, num_prefs));
 }
 
 static constexpr struct {
@@ -597,50 +686,16 @@ static bool parse_sigalg_pairs(Array<uint16_t> *out, const int *values,
   return true;
 }
 
-static int compare_uint16_t(const void *p1, const void *p2) {
-  uint16_t u1 = *((const uint16_t *)p1);
-  uint16_t u2 = *((const uint16_t *)p2);
-  if (u1 < u2) {
-    return -1;
-  } else if (u1 > u2) {
-    return 1;
-  } else {
-    return 0;
-  }
-}
-
-static bool sigalgs_unique(Span<const uint16_t> in_sigalgs) {
-  if (in_sigalgs.size() < 2) {
-    return true;
-  }
-
-  Array<uint16_t> sigalgs;
-  if (!sigalgs.CopyFrom(in_sigalgs)) {
-    return false;
-  }
-
-  qsort(sigalgs.data(), sigalgs.size(), sizeof(uint16_t), compare_uint16_t);
-
-  for (size_t i = 1; i < sigalgs.size(); i++) {
-    if (sigalgs[i - 1] == sigalgs[i]) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_DUPLICATE_SIGNATURE_ALGORITHM);
-      return false;
-    }
-  }
-
-  return true;
-}
-
 int SSL_CTX_set1_sigalgs(SSL_CTX *ctx, const int *values, size_t num_values) {
   Array<uint16_t> sigalgs;
-  if (!parse_sigalg_pairs(&sigalgs, values, num_values) ||
-      !sigalgs_unique(sigalgs)) {
+  if (!parse_sigalg_pairs(&sigalgs, values, num_values)) {
     return 0;
   }
 
   if (!SSL_CTX_set_signing_algorithm_prefs(ctx, sigalgs.data(),
                                            sigalgs.size()) ||
-      !ctx->verify_sigalgs.CopyFrom(sigalgs)) {
+      !SSL_CTX_set_verify_algorithm_prefs(ctx, sigalgs.data(),
+                                          sigalgs.size())) {
     return 0;
   }
 
@@ -654,13 +709,12 @@ int SSL_set1_sigalgs(SSL *ssl, const int *values, size_t num_values) {
   }
 
   Array<uint16_t> sigalgs;
-  if (!parse_sigalg_pairs(&sigalgs, values, num_values) ||
-      !sigalgs_unique(sigalgs)) {
+  if (!parse_sigalg_pairs(&sigalgs, values, num_values)) {
     return 0;
   }
 
   if (!SSL_set_signing_algorithm_prefs(ssl, sigalgs.data(), sigalgs.size()) ||
-      !ssl->config->verify_sigalgs.CopyFrom(sigalgs)) {
+      !SSL_set_verify_algorithm_prefs(ssl, sigalgs.data(), sigalgs.size())) {
     return 0;
   }
 
@@ -823,8 +877,7 @@ static bool parse_sigalgs_list(Array<uint16_t> *out, const char *str) {
 
 int SSL_CTX_set1_sigalgs_list(SSL_CTX *ctx, const char *str) {
   Array<uint16_t> sigalgs;
-  if (!parse_sigalgs_list(&sigalgs, str) ||
-      !sigalgs_unique(sigalgs)) {
+  if (!parse_sigalgs_list(&sigalgs, str)) {
     return 0;
   }
 
@@ -845,8 +898,7 @@ int SSL_set1_sigalgs_list(SSL *ssl, const char *str) {
   }
 
   Array<uint16_t> sigalgs;
-  if (!parse_sigalgs_list(&sigalgs, str) ||
-      !sigalgs_unique(sigalgs)) {
+  if (!parse_sigalgs_list(&sigalgs, str)) {
     return 0;
   }
 
@@ -860,7 +912,8 @@ int SSL_set1_sigalgs_list(SSL *ssl, const char *str) {
 
 int SSL_CTX_set_verify_algorithm_prefs(SSL_CTX *ctx, const uint16_t *prefs,
                                        size_t num_prefs) {
-  return ctx->verify_sigalgs.CopyFrom(MakeConstSpan(prefs, num_prefs));
+  return set_sigalg_prefs(&ctx->verify_sigalgs,
+                          MakeConstSpan(prefs, num_prefs));
 }
 
 int SSL_set_verify_algorithm_prefs(SSL *ssl, const uint16_t *prefs,
@@ -870,5 +923,6 @@ int SSL_set_verify_algorithm_prefs(SSL *ssl, const uint16_t *prefs,
     return 0;
   }
 
-  return ssl->config->verify_sigalgs.CopyFrom(MakeConstSpan(prefs, num_prefs));
+  return set_sigalg_prefs(&ssl->config->verify_sigalgs,
+                          MakeConstSpan(prefs, num_prefs));
 }

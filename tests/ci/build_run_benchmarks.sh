@@ -25,42 +25,36 @@ git clone https://github.com/awslabs/aws-lc.git aws-lc-prod
 
 # build AWSLC pr
 mkdir -p "${PR_FOLDER_NAME}"/build
-mkdir -p "${PR_FOLDER_NAME}"/install
 ${CMAKE_COMMAND} -B"${PR_FOLDER_NAME}"/build -H"${PR_FOLDER_NAME}" -GNinja -DCMAKE_BUILD_TYPE=Release \
-  -DAWSLC_INSTALL_DIR="${AWSLC_PR_ROOT}"/install \
-  -DCMAKE_INSTALL_PREFIX="${AWSLC_PR_ROOT}"/install \
   -DBUILD_TESTING=OFF
 ninja -C "${PR_FOLDER_NAME}"/build
 
 # build FIPS compliant version of AWSLC pr
 mkdir -p "${PR_FOLDER_NAME}"/fips_build
-mkdir -p "${PR_FOLDER_NAME}"/fips_install
-${CMAKE_COMMAND} -B"${PR_FOLDER_NAME}"/fips_build -H"${PR_FOLDER_NAME}" -GNinja -DFIPS=1 -DCMAKE_BUILD_TYPE=Release -DAWSLC_INSTALL_DIR="${AWSLC_PR_ROOT}"/fips_install -DBUILD_SHARED_LIBS=TRUE -DCMAKE_INSTALL_PREFIX="${AWSLC_PR_ROOT}"/fips_install
+${CMAKE_COMMAND} -B"${PR_FOLDER_NAME}"/fips_build -H"${PR_FOLDER_NAME}" -GNinja -DFIPS=1 -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=TRUE
 ninja -C "${PR_FOLDER_NAME}"/fips_build
 
 # build AWSLC prod
 mkdir -p aws-lc-prod/build
-mkdir -p aws-lc-prod/install
-${CMAKE_COMMAND} -Baws-lc-prod/build -Haws-lc-prod -GNinja -DCMAKE_BUILD_TYPE=Release -DAWSLC_INSTALL_DIR="${AWSLC_PROD_ROOT}/install" -DCMAKE_INSTALL_PREFIX="${AWSLC_PROD_ROOT}/install" -DBUILD_TESTING=OFF
+${CMAKE_COMMAND} -Baws-lc-prod/build -Haws-lc-prod -GNinja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF
 ninja -C aws-lc-prod/build
 
 #build FIPS compliant version of AWSLC prod
 mkdir -p aws-lc-prod/fips_build
-mkdir -p aws-lc-prod/fips_install
-${CMAKE_COMMAND} -Baws-lc-prod/fips_build -Haws-lc-prod -GNinja -DFIPS=1 -DCMAKE_BUILD_TYPE=Release -DAWSLC_INSTALL_DIR="${AWSLC_PROD_ROOT}/fips_install" -DBUILD_SHARED_LIBS=TRUE -DCMAKE_INSTALL_PREFIX="${AWSLC_PROD_ROOT}/fips_install"
+${CMAKE_COMMAND} -Baws-lc-prod/fips_build -Haws-lc-prod -GNinja -DFIPS=1 -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=TRUE
 ninja -C aws-lc-prod/fips_build
 
-./"${PR_FOLDER_NAME}"/build/tool/awslc_bm -timeout 1 -json > aws-lc-pr_bm.json
-./"${PR_FOLDER_NAME}"/fips_build/tool/awslc_bm -timeout 1 -json > aws-lc-pr_fips_bm.json
+./"${PR_FOLDER_NAME}"/build/tool/bssl speed -timeout 1 -json > aws-lc-pr_bm.json
+./"${PR_FOLDER_NAME}"/fips_build/tool/bssl speed -timeout 1 -json > aws-lc-pr_fips_bm.json
 
-./aws-lc-prod/build/tool/awslc_bm -timeout 1 -json > aws-lc-prod_bm.json
-./aws-lc-prod/fips_build/tool/awslc_bm -timeout 1 -json > aws-lc-prod_fips_bm.json
+./aws-lc-prod/build/tool/bssl speed -timeout 1 -json > aws-lc-prod_bm.json
+./aws-lc-prod/fips_build/tool/bssl speed -timeout 1 -json > aws-lc-prod_fips_bm.json
 
 
-./"${PR_FOLDER_NAME}"/build/tool/awslc_bm -filter trusttoken -timeout 1 -json > aws-lc-pr_tt_bm.json
-./"${PR_FOLDER_NAME}"/fips_build/tool/awslc_bm -filter trusttoken -timeout 1 -json > aws-lc-pr_tt_fips_bm.json
-./aws-lc-prod/build/tool/awslc_bm -filter trusttoken -timeout 1 -json > aws-lc-prod_tt_bm.json
-./aws-lc-prod/fips_build/tool/awslc_bm -filter trusttoken -timeout 1 -json > aws-lc-prod_tt_fips_bm.json
+./"${PR_FOLDER_NAME}"/build/tool/bssl speed -filter trusttoken -timeout 1 -json > aws-lc-pr_tt_bm.json
+./"${PR_FOLDER_NAME}"/fips_build/tool/bssl speed -filter trusttoken -timeout 1 -json > aws-lc-pr_tt_fips_bm.json
+./aws-lc-prod/build/tool/bssl speed -filter trusttoken -timeout 1 -json > aws-lc-prod_tt_bm.json
+./aws-lc-prod/fips_build/tool/bssl speed -filter trusttoken -timeout 1 -json > aws-lc-prod_tt_fips_bm.json
 
 # convert results from .json to .csv
 python3 "${PR_FOLDER_NAME}"/tests/ci/benchmark_framework/convert_json_to_csv.py aws-lc-pr_bm.json

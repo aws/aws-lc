@@ -64,6 +64,24 @@
 #include "../fipsmodule/rsa/internal.h"
 
 
+static int print_hex(BIO *bp, const uint8_t *data, size_t len, int off) {
+  for (size_t i = 0; i < len; i++) {
+    if ((i % 15) == 0) {
+      if (BIO_puts(bp, "\n") <= 0 ||  //
+          !BIO_indent(bp, off + 4, 128)) {
+        return 0;
+      }
+    }
+    if (BIO_printf(bp, "%02x%s", data[i], (i + 1 == len) ? "" : ":") <= 0) {
+      return 0;
+    }
+  }
+  if (BIO_write(bp, "\n", 1) <= 0) {
+    return 0;
+  }
+  return 1;
+}
+
 static int bn_print(BIO *bp, const char *name, const BIGNUM *num, int off) {
   if (num == NULL) {
     return 1;
@@ -105,32 +123,14 @@ static int bn_print(BIO *bp, const char *name, const BIGNUM *num, int off) {
 
   buf[0] = 0;
   BN_bn2bin(num, buf + 1);
-  const uint8_t *data = buf;
+  int ret;
   if (len > 0 && (buf[1] & 0x80) != 0) {
-    len++;  // Print the whole buffer.
+    // Print the whole buffer.
+    ret = print_hex(bp, buf, len + 1, off);
   } else {
-    data = buf + 1;  // Skip the leading zero.
+    // Skip the leading zero.
+    ret = print_hex(bp, buf + 1, len, off);
   }
-
-  int ret = 0;
-  for (size_t i = 0; i < len; i++) {
-    if ((i % 15) == 0) {
-      if (BIO_puts(bp, "\n") <= 0 ||  //
-          !BIO_indent(bp, off + 4, 128)) {
-        goto err;
-      }
-    }
-    if (BIO_printf(bp, "%02x%s", data[i], (i + 1 == len) ? "" : ":") <= 0) {
-      goto err;
-    }
-  }
-  if (BIO_write(bp, "\n", 1) <= 0) {
-    goto err;
-  }
-
-  ret = 1;
-
-err:
   OPENSSL_free(buf);
   return ret;
 }
@@ -210,18 +210,15 @@ static int do_dsa_print(BIO *bp, const DSA *x, int off, int ptype) {
     ktype = "Public-Key";
   }
 
-  if (priv_key) {
-    if (!BIO_indent(bp, off, 128) ||
-        BIO_printf(bp, "%s: (%u bit)\n", ktype, BN_num_bits(x->p)) <= 0) {
-      return 0;
-    }
-  }
-
-  if (!bn_print(bp, "priv:", priv_key, off) ||
-      !bn_print(bp, "pub: ", pub_key, off) ||
-      !bn_print(bp, "P:   ", x->p, off) ||
-      !bn_print(bp, "Q:   ", x->q, off) ||
-      !bn_print(bp, "G:   ", x->g, off)) {
+  if (!BIO_indent(bp, off, 128) ||
+      BIO_printf(bp, "%s: (%u bit)\n", ktype, BN_num_bits(x->p)) <= 0 ||
+      // |priv_key| and |pub_key| may be NULL, in which case |bn_print| will
+      // silently skip them.
+      !bn_print(bp, "priv:", priv_key, off) ||
+      !bn_print(bp, "pub:", pub_key, off) ||
+      !bn_print(bp, "P:", x->p, off) ||
+      !bn_print(bp, "Q:", x->q, off) ||
+      !bn_print(bp, "G:", x->g, off)) {
     return 0;
   }
 
@@ -262,8 +259,11 @@ static int do_EC_KEY_print(BIO *bp, const EC_KEY *x, int off, int ktype) {
   if (!BIO_indent(bp, off, 128)) {
     return 0;
   }
-  if (BIO_printf(bp, "%s: (%u bit)\n", ecstr,
-                 BN_num_bits(EC_GROUP_get0_order(group))) <= 0) {
+  int curve_name = EC_GROUP_get_curve_name(group);
+  if (BIO_printf(bp, "%s: (%s)\n", ecstr,
+                 curve_name == NID_undef
+                     ? "unknown curve"
+                     : EC_curve_nid2nist(curve_name)) <= 0) {
     return 0;
   }
 
@@ -281,7 +281,9 @@ static int do_EC_KEY_print(BIO *bp, const EC_KEY *x, int off, int ktype) {
     if (pub_len == 0) {
       return 0;
     }
-    int ret = BIO_hexdump(bp, pub, pub_len, off);
+    int ret = BIO_indent(bp, off, 128) &&  //
+              BIO_puts(bp, "pub:") > 0 &&  //
+              print_hex(bp, pub, pub_len, off);
     OPENSSL_free(pub);
     if (!ret) {
       return 0;

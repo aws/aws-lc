@@ -73,6 +73,7 @@ void EVP_MD_do_all_sorted(void (*callback)(const EVP_MD *cipher,
                           void *arg) {
   callback(EVP_md4(), "MD4", NULL, arg);
   callback(EVP_md5(), "MD5", NULL, arg);
+  callback(EVP_ripemd160(), "RIPEMD160", NULL, arg);
   callback(EVP_sha1(), "SHA1", NULL, arg);
   callback(EVP_sha224(), "SHA224", NULL, arg);
   callback(EVP_sha256(), "SHA256", NULL, arg);
@@ -82,6 +83,7 @@ void EVP_MD_do_all_sorted(void (*callback)(const EVP_MD *cipher,
 
   callback(EVP_md4(), "md4", NULL, arg);
   callback(EVP_md5(), "md5", NULL, arg);
+  callback(EVP_ripemd160(), "ripemd160", NULL, arg);
   callback(EVP_sha1(), "sha1", NULL, arg);
   callback(EVP_sha224(), "sha224", NULL, arg);
   callback(EVP_sha256(), "sha256", NULL, arg);

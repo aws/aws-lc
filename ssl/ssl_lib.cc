@@ -143,6 +143,7 @@
 #include <algorithm>
 
 #include <assert.h>
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -477,6 +478,20 @@ bool SSL_get_traffic_secrets(const SSL *ssl,
       ssl->s3->write_traffic_secret, ssl->s3->write_traffic_secret_len);
 
   return true;
+}
+
+void ssl_update_counter(SSL_CTX *ctx, int &counter, bool lock) {
+  if (lock) {
+    MutexWriteLock ctx_lock(&ctx->lock);
+    counter++;
+  } else {
+    counter++;
+  }
+}
+
+static int ssl_read_counter(const SSL_CTX *ctx, int counter) {
+  MutexReadLock lock(const_cast<CRYPTO_MUTEX *>(&ctx->lock));
+  return counter;
 }
 
 BSSL_NAMESPACE_END
@@ -1740,6 +1755,8 @@ int SSL_renegotiate(SSL *ssl) {
 
   // We should not have told the caller to release the private key.
   assert(!SSL_can_release_private_key(ssl));
+  ssl_update_counter(ssl->session_ctx.get(),
+                     ssl->session_ctx->stats.sess_connect_renegotiate, true);
 
   // Renegotiation is only supported at quiescent points in the application
   // protocol, namely in HTTPS, just before reading the HTTP response.
@@ -2200,8 +2217,10 @@ found:
 
 void SSL_get0_next_proto_negotiated(const SSL *ssl, const uint8_t **out_data,
                                     unsigned *out_len) {
+  // NPN protocols have one-byte lengths, so they must fit in |unsigned|.
+  assert(ssl->s3->next_proto_negotiated.size() <= UINT_MAX);
   *out_data = ssl->s3->next_proto_negotiated.data();
-  *out_len = ssl->s3->next_proto_negotiated.size();
+  *out_len = static_cast<unsigned>(ssl->s3->next_proto_negotiated.size());
 }
 
 void SSL_CTX_set_next_protos_advertised_cb(
@@ -2221,7 +2240,7 @@ void SSL_CTX_set_next_proto_select_cb(
 }
 
 int SSL_CTX_set_alpn_protos(SSL_CTX *ctx, const uint8_t *protos,
-                            unsigned protos_len) {
+                            size_t protos_len) {
   // Note this function's return value is backwards.
   auto span = MakeConstSpan(protos, protos_len);
   if (!span.empty() && !ssl_is_valid_alpn_list(span)) {
@@ -2231,7 +2250,7 @@ int SSL_CTX_set_alpn_protos(SSL_CTX *ctx, const uint8_t *protos,
   return ctx->alpn_client_proto_list.CopyFrom(span) ? 0 : 1;
 }
 
-int SSL_set_alpn_protos(SSL *ssl, const uint8_t *protos, unsigned protos_len) {
+int SSL_set_alpn_protos(SSL *ssl, const uint8_t *protos, size_t protos_len) {
   // Note this function's return value is backwards.
   if (!ssl->config) {
     return 1;
@@ -2255,13 +2274,16 @@ void SSL_CTX_set_alpn_select_cb(SSL_CTX *ctx,
 
 void SSL_get0_alpn_selected(const SSL *ssl, const uint8_t **out_data,
                             unsigned *out_len) {
+  Span<const uint8_t> protocol;
   if (SSL_in_early_data(ssl) && !ssl->server) {
-    *out_data = ssl->s3->hs->early_session->early_alpn.data();
-    *out_len = ssl->s3->hs->early_session->early_alpn.size();
+    protocol = ssl->s3->hs->early_session->early_alpn;
   } else {
-    *out_data = ssl->s3->alpn_selected.data();
-    *out_len = ssl->s3->alpn_selected.size();
+    protocol = ssl->s3->alpn_selected;
   }
+  // ALPN protocols have one-byte lengths, so they must fit in |unsigned|.
+  assert(protocol.size() < UINT_MAX);
+  *out_data = protocol.data();
+  *out_len = static_cast<unsigned>(protocol.size());
 }
 
 void SSL_CTX_set_allow_unknown_alpn_protos(SSL_CTX *ctx, int enabled) {
@@ -2802,6 +2824,10 @@ void SSL_set_enforce_rsa_key_usage(SSL *ssl, int enabled) {
   ssl->config->enforce_rsa_key_usage = !!enabled;
 }
 
+int SSL_was_key_usage_invalid(const SSL *ssl) {
+  return ssl->s3->was_key_usage_invalid;
+}
+
 void SSL_set_renegotiate_mode(SSL *ssl, enum ssl_renegotiate_mode_t mode) {
   ssl->renegotiate_mode = mode;
 
@@ -2978,17 +3004,49 @@ int SSL_clear(SSL *ssl) {
   return 1;
 }
 
-int SSL_CTX_sess_connect(const SSL_CTX *ctx) { return 0; }
-int SSL_CTX_sess_connect_good(const SSL_CTX *ctx) { return 0; }
-int SSL_CTX_sess_connect_renegotiate(const SSL_CTX *ctx) { return 0; }
-int SSL_CTX_sess_accept(const SSL_CTX *ctx) { return 0; }
-int SSL_CTX_sess_accept_renegotiate(const SSL_CTX *ctx) { return 0; }
-int SSL_CTX_sess_accept_good(const SSL_CTX *ctx) { return 0; }
-int SSL_CTX_sess_hits(const SSL_CTX *ctx) { return 0; }
-int SSL_CTX_sess_cb_hits(const SSL_CTX *ctx) { return 0; }
-int SSL_CTX_sess_misses(const SSL_CTX *ctx) { return 0; }
-int SSL_CTX_sess_timeouts(const SSL_CTX *ctx) { return 0; }
-int SSL_CTX_sess_cache_full(const SSL_CTX *ctx) { return 0; }
+int SSL_CTX_sess_connect(const SSL_CTX *ctx) {
+  return ssl_read_counter(ctx, ctx->stats.sess_connect);
+}
+
+int SSL_CTX_sess_connect_good(const SSL_CTX *ctx) {
+  return ssl_read_counter(ctx, ctx->stats.sess_connect_good);
+}
+
+int SSL_CTX_sess_connect_renegotiate(const SSL_CTX *ctx) {
+  return ssl_read_counter(ctx, ctx->stats.sess_connect_renegotiate);
+}
+
+int SSL_CTX_sess_accept(const SSL_CTX *ctx) {
+  return ssl_read_counter(ctx, ctx->stats.sess_accept);
+}
+
+int SSL_CTX_sess_accept_renegotiate(const SSL_CTX *ctx) {
+  return 0;
+}
+
+int SSL_CTX_sess_accept_good(const SSL_CTX *ctx) {
+  return ssl_read_counter(ctx, ctx->stats.sess_accept_good);
+}
+
+int SSL_CTX_sess_hits(const SSL_CTX *ctx) {
+  return ssl_read_counter(ctx, ctx->stats.sess_hit);
+}
+
+int SSL_CTX_sess_cb_hits(const SSL_CTX *ctx) {
+  return ssl_read_counter(ctx, ctx->stats.sess_cb_hit);
+}
+
+int SSL_CTX_sess_misses(const SSL_CTX *ctx) {
+  return ssl_read_counter(ctx, ctx->stats.sess_miss);
+}
+
+int SSL_CTX_sess_timeouts(const SSL_CTX *ctx) {
+  return ssl_read_counter(ctx, ctx->stats.sess_timeout);
+}
+
+int SSL_CTX_sess_cache_full(const SSL_CTX *ctx) {
+  return ssl_read_counter(ctx, ctx->stats.sess_cache_full);
+}
 
 int SSL_num_renegotiations(const SSL *ssl) {
   return SSL_total_renegotiations(ssl);

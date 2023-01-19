@@ -2907,7 +2907,7 @@ OPENSSL_EXPORT SSL_CTX *SSL_set_SSL_CTX(SSL *ssl, SSL_CTX *ctx);
 // WARNING: this function is dangerous because it breaks the usual return value
 // convention.
 OPENSSL_EXPORT int SSL_CTX_set_alpn_protos(SSL_CTX *ctx, const uint8_t *protos,
-                                           unsigned protos_len);
+                                           size_t protos_len);
 
 // SSL_set_alpn_protos sets the client ALPN protocol list on |ssl| to |protos|.
 // |protos| must be in wire-format (i.e. a series of non-empty, 8-bit
@@ -2918,7 +2918,7 @@ OPENSSL_EXPORT int SSL_CTX_set_alpn_protos(SSL_CTX *ctx, const uint8_t *protos,
 // WARNING: this function is dangerous because it breaks the usual return value
 // convention.
 OPENSSL_EXPORT int SSL_set_alpn_protos(SSL *ssl, const uint8_t *protos,
-                                       unsigned protos_len);
+                                       size_t protos_len);
 
 // SSL_CTX_set_alpn_select_cb sets a callback function on |ctx| that is called
 // during ClientHello processing in order to select an ALPN protocol from the
@@ -4402,11 +4402,23 @@ OPENSSL_EXPORT void SSL_CTX_set_dos_protection_cb(
 // respected on clients.
 OPENSSL_EXPORT void SSL_CTX_set_reverify_on_resume(SSL_CTX *ctx, int enabled);
 
-// SSL_set_enforce_rsa_key_usage configures whether the keyUsage extension of
-// RSA leaf certificates will be checked for consistency with the TLS
-// usage. This parameter may be set late; it will not be read until after the
+// SSL_set_enforce_rsa_key_usage configures whether, when |ssl| is a client
+// negotiating TLS 1.2 or below, the keyUsage extension of RSA leaf server
+// certificates will be checked for consistency with the TLS usage. In all other
+// cases, this check is always enabled.
+//
+// This parameter may be set late; it will not be read until after the
 // certificate verification callback.
 OPENSSL_EXPORT void SSL_set_enforce_rsa_key_usage(SSL *ssl, int enabled);
+
+// SSL_was_key_usage_invalid returns one if |ssl|'s handshake succeeded despite
+// using TLS parameters which were incompatible with the leaf certificate's
+// keyUsage extension. Otherwise, it returns zero.
+//
+// If |SSL_set_enforce_rsa_key_usage| is enabled or not applicable, this
+// function will always return zero because key usages will be consistently
+// checked.
+OPENSSL_EXPORT int SSL_was_key_usage_invalid(const SSL *ssl);
 
 // SSL_ST_* are possible values for |SSL_state|, the bitmasks that make them up,
 // and some historical values for compatibility. Only |SSL_ST_INIT| and
@@ -4670,37 +4682,48 @@ OPENSSL_EXPORT void SSL_set_tmp_rsa_callback(SSL *ssl,
                                              RSA *(*cb)(SSL *ssl, int is_export,
                                                         int keylength));
 
-// SSL_CTX_sess_connect returns zero.
+// SSL_CTX_sess_connect returns the number of started SSL/TLS handshakes in
+// client mode.
 OPENSSL_EXPORT int SSL_CTX_sess_connect(const SSL_CTX *ctx);
 
-// SSL_CTX_sess_connect_good returns zero.
+// SSL_CTX_sess_connect_good returns the number of successfully established
+// SSL/TLS sessions in client mode.
 OPENSSL_EXPORT int SSL_CTX_sess_connect_good(const SSL_CTX *ctx);
 
-// SSL_CTX_sess_connect_renegotiate returns zero.
+// SSL_CTX_sess_connect_renegotiate returns the number of started renegotiations
+// in client mode.
 OPENSSL_EXPORT int SSL_CTX_sess_connect_renegotiate(const SSL_CTX *ctx);
 
-// SSL_CTX_sess_accept returns zero.
+// SSL_CTX_sess_accept returns the number of started SSL/TLS handshakes in
+// server mode.
 OPENSSL_EXPORT int SSL_CTX_sess_accept(const SSL_CTX *ctx);
 
-// SSL_CTX_sess_accept_renegotiate returns zero.
+// SSL_CTX_sess_accept_renegotiate returns zero. AWS-LC does not support server
+// side renegotiations.
 OPENSSL_EXPORT int SSL_CTX_sess_accept_renegotiate(const SSL_CTX *ctx);
 
-// SSL_CTX_sess_accept_good returns zero.
+// SSL_CTX_sess_accept_good returns the number of successfully established
+// SSL/TLS sessions in server mode.
 OPENSSL_EXPORT int SSL_CTX_sess_accept_good(const SSL_CTX *ctx);
 
-// SSL_CTX_sess_hits returns zero.
+// SSL_CTX_sess_hits returns the number of successfully reused sessions.
 OPENSSL_EXPORT int SSL_CTX_sess_hits(const SSL_CTX *ctx);
 
-// SSL_CTX_sess_cb_hits returns zero.
+// SSL_CTX_sess_cb_hits returns the number of successfully retrieved sessions
+// from the external session cache in server mode.
 OPENSSL_EXPORT int SSL_CTX_sess_cb_hits(const SSL_CTX *ctx);
 
-// SSL_CTX_sess_misses returns zero.
+// SSL_CTX_sess_misses returns the number of sessions proposed by clients that
+// were not found in the internal session cache in server mode.
 OPENSSL_EXPORT int SSL_CTX_sess_misses(const SSL_CTX *ctx);
 
-// SSL_CTX_sess_timeouts returns zero.
+// SSL_CTX_sess_timeouts returns the number of sessions proposed by clients and
+// either found in the internal or external session cache in server mode, but
+// that were invalid due to timeout.
 OPENSSL_EXPORT int SSL_CTX_sess_timeouts(const SSL_CTX *ctx);
 
-// SSL_CTX_sess_cache_full returns zero.
+// SSL_CTX_sess_cache_full returns the number of sessions that were removed
+// because the maximum session cache size was exceeded.
 OPENSSL_EXPORT int SSL_CTX_sess_cache_full(const SSL_CTX *ctx);
 
 // SSL_cutthrough_complete calls |SSL_in_false_start|.

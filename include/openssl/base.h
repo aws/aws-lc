@@ -194,7 +194,7 @@ extern "C" {
 #define SSLEAY_VERSION_NUMBER OPENSSL_VERSION_NUMBER
 
 // BORINGSSL_API_VERSION is replaced with AWSLC_API_VERSION to avoid users interpreting AWSLC as BoringSSL.
-// Below are BorringSSL's comments on BORINGSSL_API_VERSION.
+// Below are BoringSSL's comments on BORINGSSL_API_VERSION.
 // BORINGSSL_API_VERSION is a positive integer that increments as BoringSSL
 // changes over time. The value itself is not meaningful. It will be incremented
 // whenever is convenient to coordinate an API change with consumers. This will
@@ -204,7 +204,7 @@ extern "C" {
 // against multiple revisions of BoringSSL at the same time. It is not
 // recommended to do so for longer than is necessary.
 
-#define AWSLC_API_VERSION 19
+#define AWSLC_API_VERSION 20
 
 // This string tracks the most current production release version on Github
 // https://github.com/awslabs/aws-lc/releases.
@@ -328,6 +328,19 @@ extern "C" {
 #endif
 #endif  // OPENSSL_ASM_INCOMPATIBLE
 
+// ossl_ssize_t is a signed type which is large enough to fit the size of any
+// valid memory allocation. We prefer using |size_t|, but sometimes we need a
+// signed type for OpenSSL API compatibility. This type can be used in such
+// cases to avoid overflow.
+//
+// Not all |size_t| values fit in |ossl_ssize_t|, but all |size_t| values that
+// are sizes of or indices into C objects, can be converted without overflow.
+typedef ptrdiff_t ossl_ssize_t;
+
+// CBS_ASN1_TAG is the type used by |CBS| and |CBB| for ASN.1 tags. See that
+// header for details. This type is defined in base.h as a forward declaration.
+typedef uint32_t CBS_ASN1_TAG;
+
 // CRYPTO_THREADID is a dummy value.
 typedef int CRYPTO_THREADID;
 
@@ -412,6 +425,7 @@ typedef struct evp_hpke_kdf_st EVP_HPKE_KDF;
 typedef struct evp_hpke_kem_st EVP_HPKE_KEM;
 typedef struct evp_hpke_key_st EVP_HPKE_KEY;
 typedef struct evp_kem_st EVP_KEM;
+typedef struct kem_key_st KEM_KEY;
 typedef struct evp_pkey_asn1_method_st EVP_PKEY_ASN1_METHOD;
 typedef struct evp_pkey_ctx_st EVP_PKEY_CTX;
 typedef struct evp_pkey_method_st EVP_PKEY_METHOD;

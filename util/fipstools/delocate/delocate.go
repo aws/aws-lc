@@ -17,11 +17,14 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -75,6 +78,8 @@ type delocation struct {
 	// bssAccessorsNeeded maps from a BSS symbol name to the symbol that
 	// should be used to reference it. E.g. “P384_data_storage” ->
 	// “P384_data_storage”.
+	// Symbols saved in bssAccessorsNeeded will be rewritten with a "_bss_get"
+	// accessor appended.
 	bssAccessorsNeeded map[string]string
 	// tocLoaders is a set of symbol names for which TOC helper functions
 	// are required. (ppc64le only.)
@@ -485,6 +490,20 @@ func (d *delocation) processAarch64Instruction(statement, instruction *node32) (
 		}
 
 		return d.loadAarch64Address(statement, targetReg, symbol, offset)
+	case "bl":
+		// We were relying on symbols defined with ".comm" to populate bssAccessorsNeeded,
+		// but the gcc release build does not use ".comm" to define common symbols. The
+		// symbols requiring accessor functions (i.e. with a suffix "_bss_get") are defined
+		// with a ".type $symbol %object" followed with a ".size $symbol $symbol_size"
+		// instead. These definition methods are generic and do not only apply to symbols
+		// that need accessors. Thus we attempt to reverse engineer the accessor symbols
+		// by populating bssAccessorsNeeded with labels from "bl" that have the accessor
+		// "_bss_get" at the suffix.
+		bss_get_symbol := d.contents(argNodes[0])
+		if strings.HasSuffix(bss_get_symbol, "_bss_get") {
+			trimmed_symbol := strings.TrimSuffix(bss_get_symbol, "_bss_get")
+			d.bssAccessorsNeeded[trimmed_symbol] = trimmed_symbol
+		}
 	}
 
 	var args []string
@@ -570,8 +589,10 @@ func (d *delocation) processAarch64Instruction(statement, instruction *node32) (
 							panic("Symbol reference outside of ldr instruction")
 						}
 
-						if skipWS(parts.next) != nil || parts.up.next != nil {
-							panic("can't handle tweak or post-increment with symbol references")
+						// The check for "parts.up.next != nil" was removed because gcc/release appends an
+						// offset to the symbol reference. ex: #:lo12:.LC9+8
+						if skipWS(parts.next) != nil {
+							panic("can't handle tweak with symbol references")
 						}
 
 						// Suppress the offset; adrp loaded the full address.
@@ -1133,7 +1154,7 @@ func classifyInstruction(instr string, args []*node32) instructionType {
 			return instrCompare
 		}
 
-	case "sarxq", "shlxq", "shrxq":
+	case "sarxq", "shlxq", "shrxq", "pinsrq":
 		if len(args) == 3 {
 			return instrThreeArg
 		}
@@ -1399,7 +1420,7 @@ Args:
 
 				classification := classifyInstruction(instructionName, argNodes)
 				if classification != instrThreeArg && classification != instrCompare && i != 0 {
-					return nil, errors.New("GOT access must be source operand")
+					return nil, fmt.Errorf("GOT access must be source operand, %w", classification)
 				}
 
 				// Reduce the instruction to movq symbol@GOTPCREL, targetReg.
@@ -1956,7 +1977,25 @@ func transform(w stringWriter, inputs []inputFile) error {
 	return nil
 }
 
-func parseInputs(inputs []inputFile) error {
+// preprocess runs source through the C preprocessor.
+func preprocess(cppCommand []string, path string) ([]byte, error) {
+	var args []string
+	args = append(args, cppCommand...)
+	args = append(args, path)
+
+	cpp := exec.Command(args[0], args[1:]...)
+	cpp.Stderr = os.Stderr
+	var result bytes.Buffer
+	cpp.Stdout = &result
+
+	if err := cpp.Run(); err != nil {
+		return nil, err
+	}
+
+	return result.Bytes(), nil
+}
+
+func parseInputs(inputs []inputFile, cppCommand []string) error {
 	for i, input := range inputs {
 		var contents string
 
@@ -1980,7 +2019,15 @@ func parseInputs(inputs []inputFile) error {
 				contents = string(c)
 			}
 		} else {
-			inBytes, err := ioutil.ReadFile(input.path)
+			var inBytes []byte
+			var err error
+
+			if len(cppCommand) > 0 {
+				inBytes, err = preprocess(cppCommand, input.path)
+			} else {
+				inBytes, err = ioutil.ReadFile(input.path)
+			}
+
 			if err != nil {
 				return err
 			}
@@ -2002,12 +2049,36 @@ func parseInputs(inputs []inputFile) error {
 	return nil
 }
 
+// includePathFromHeaderFilePath returns an include directory path based on the
+// path of a specific header file. It walks up the path and assumes that the
+// include files are rooted in a directory called "openssl".
+func includePathFromHeaderFilePath(path string) (string, error) {
+	dir := path
+	for {
+		var file string
+		dir, file = filepath.Split(dir)
+
+		if file == "openssl" {
+			return dir, nil
+		}
+
+		if len(dir) == 0 {
+			break
+		}
+		dir = dir[:len(dir)-1]
+	}
+
+	return "", fmt.Errorf("failed to find 'openssl' path element in header file path %q", path)
+}
+
 func main() {
 	// The .a file, if given, is expected to be an archive of textual
 	// assembly sources. That's odd, but CMake really wants to create
 	// archive files so it's the only way that we can make it work.
 	arInput := flag.String("a", "", "Path to a .a file containing assembly sources")
 	outFile := flag.String("o", "", "Path to output assembly")
+	ccPath := flag.String("cc", "", "Path to the C compiler for preprocessing inputs")
+	ccFlags := flag.String("cc-flags", "", "Flags for the C compiler when preprocessing")
 
 	flag.Parse()
 
@@ -2025,8 +2096,22 @@ func main() {
 		})
 	}
 
+	includePaths := make(map[string]struct{})
+
 	for i, path := range flag.Args() {
 		if len(path) == 0 {
+			continue
+		}
+
+		// Header files are not processed but their path is remembered
+		// and passed as -I arguments when invoking the preprocessor.
+		if strings.HasSuffix(path, ".h") {
+			dir, err := includePathFromHeaderFilePath(path)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "%s\n", err)
+				os.Exit(1)
+			}
+			includePaths[dir] = struct{}{}
 			continue
 		}
 
@@ -2036,7 +2121,27 @@ func main() {
 		})
 	}
 
-	if err := parseInputs(inputs); err != nil {
+	var cppCommand []string
+	if len(*ccPath) > 0 {
+		cppCommand = append(cppCommand, *ccPath)
+		cppCommand = append(cppCommand, strings.Fields(*ccFlags)...)
+		// Some of ccFlags might be superfluous when running the
+		// preprocessor, but we don't want the compiler complaining that
+		// "argument unused during compilation".
+		cppCommand = append(cppCommand, "-Wno-unused-command-line-argument")
+		// We are preprocessing for assembly output and need to simulate that
+		// environment for arm_arch.h.
+		cppCommand = append(cppCommand, "-D__ASSEMBLER__=1")
+
+		for includePath := range includePaths {
+			cppCommand = append(cppCommand, "-I"+includePath)
+		}
+
+		// -E requests only preprocessing.
+		cppCommand = append(cppCommand, "-E")
+	}
+
+	if err := parseInputs(inputs, cppCommand); err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err)
 		os.Exit(1)
 	}

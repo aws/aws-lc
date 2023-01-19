@@ -1608,6 +1608,7 @@ static const struct HKDFTestVector {
 // Index into the kHKDFTestVectors array; used in the EVP_HKDF_Extract and
 // EVP_HKDF_Expand tests, below.
 #define EVP_HKDF_TEST_EXTRACT_EXPAND 3
+#define EVP_HKDF_TEST_EXTRACT_EXPAND_FAIL 0
 
 class HKDF_ServiceIndicatorTest : public TestWithNoErrors<HKDFTestVector> {};
 
@@ -1693,7 +1694,8 @@ TEST(EVP_HKDF_ServiceIndicatorTest, EVP_HKDF_Extract) {
   }
 }
 
-// Test only HKDF's Expand phase, which is not approved on its own.
+// Test only HKDF's Expand phase, which is approved as a "KBKDF in Feedback
+// Mode" per NIST SP800-108r1.
 TEST(EVP_HKDF_ServiceIndicatorTest, EVP_HKDF_Expand) {
     const HKDFTestVector &test = kHKDFTestVectors[EVP_HKDF_TEST_EXTRACT_EXPAND];
     FIPSStatus approved = AWSLC_NOT_APPROVED;
@@ -1701,6 +1703,7 @@ TEST(EVP_HKDF_ServiceIndicatorTest, EVP_HKDF_Expand) {
     EVP_PKEY_CTX *pctx;
     size_t outlen = test.output_len;
 
+    // Positive test; HKDF_Expand() with an allowed hash (SHA256) is approved.
     pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_HKDF, NULL);
     EXPECT_NE(pctx, nullptr);
     EXPECT_TRUE(EVP_PKEY_derive_init(pctx));
@@ -1710,6 +1713,26 @@ TEST(EVP_HKDF_ServiceIndicatorTest, EVP_HKDF_Expand) {
     EXPECT_TRUE(EVP_PKEY_CTX_set1_hkdf_key(pctx, test.ikm, test.ikm_size));
     EXPECT_TRUE(EVP_PKEY_CTX_set1_hkdf_salt(pctx, test.salt, test.salt_size));
     EXPECT_TRUE(EVP_PKEY_CTX_add1_hkdf_info(pctx, test.info, test.info_size));
+
+    CALL_SERVICE_AND_CHECK_APPROVED(
+        approved, ASSERT_TRUE(EVP_PKEY_derive(pctx, output, &outlen)));
+    EXPECT_EQ(approved, AWSLC_APPROVED);
+
+    if (pctx != NULL) {
+        EVP_PKEY_CTX_free(pctx);
+    }
+
+    // Negative test; HKDF_Expand() with a disallowed hash (MD5).
+    const HKDFTestVector &bad_test = kHKDFTestVectors[EVP_HKDF_TEST_EXTRACT_EXPAND_FAIL];
+    pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_HKDF, NULL);
+    EXPECT_NE(pctx, nullptr);
+    EXPECT_TRUE(EVP_PKEY_derive_init(pctx));
+    EXPECT_TRUE(EVP_PKEY_CTX_hkdf_mode(pctx,
+                                       EVP_PKEY_HKDEF_MODE_EXPAND_ONLY));
+    EXPECT_TRUE(EVP_PKEY_CTX_set_hkdf_md(pctx, bad_test.func()));
+    EXPECT_TRUE(EVP_PKEY_CTX_set1_hkdf_key(pctx, bad_test.ikm, bad_test.ikm_size));
+    EXPECT_TRUE(EVP_PKEY_CTX_set1_hkdf_salt(pctx, bad_test.salt, bad_test.salt_size));
+    EXPECT_TRUE(EVP_PKEY_CTX_add1_hkdf_info(pctx, bad_test.info, bad_test.info_size));
 
     CALL_SERVICE_AND_CHECK_APPROVED(
         approved, ASSERT_TRUE(EVP_PKEY_derive(pctx, output, &outlen)));

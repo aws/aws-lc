@@ -1313,12 +1313,12 @@ TEST(ECDeathTest, SmallGroupOrderAndDie) {
 #endif
 #endif
 
-class ECCurveTest : public testing::TestWithParam<EC_builtin_curve> {
+class ECCurveTest : public testing::TestWithParam<int> {
  public:
   const EC_GROUP *group() const { return group_.get(); }
 
   void SetUp() override {
-    group_.reset(EC_GROUP_new_by_curve_name(GetParam().nid));
+    group_.reset(EC_GROUP_new_by_curve_name(GetParam()));
     ASSERT_TRUE(group_);
   }
 
@@ -1328,7 +1328,7 @@ class ECCurveTest : public testing::TestWithParam<EC_builtin_curve> {
 
 TEST_P(ECCurveTest, SetAffine) {
   // Generate an EC_KEY.
-  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(GetParam().nid));
+  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(GetParam()));
   ASSERT_TRUE(key);
   ASSERT_TRUE(EC_KEY_generate_key(key.get()));
 
@@ -1370,7 +1370,7 @@ TEST_P(ECCurveTest, SetAffine) {
 }
 
 TEST_P(ECCurveTest, IsOnCurve) {
-  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(GetParam().nid));
+  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(GetParam()));
   ASSERT_TRUE(key);
   ASSERT_TRUE(EC_KEY_generate_key(key.get()));
 
@@ -1394,12 +1394,12 @@ TEST_P(ECCurveTest, IsOnCurve) {
 }
 
 TEST_P(ECCurveTest, Compare) {
-  bssl::UniquePtr<EC_KEY> key1(EC_KEY_new_by_curve_name(GetParam().nid));
+  bssl::UniquePtr<EC_KEY> key1(EC_KEY_new_by_curve_name(GetParam()));
   ASSERT_TRUE(key1);
   ASSERT_TRUE(EC_KEY_generate_key(key1.get()));
   const EC_POINT *pub1 = EC_KEY_get0_public_key(key1.get());
 
-  bssl::UniquePtr<EC_KEY> key2(EC_KEY_new_by_curve_name(GetParam().nid));
+  bssl::UniquePtr<EC_KEY> key2(EC_KEY_new_by_curve_name(GetParam()));
   ASSERT_TRUE(key2);
   ASSERT_TRUE(EC_KEY_generate_key(key2.get()));
   const EC_POINT *pub2 = EC_KEY_get0_public_key(key2.get());
@@ -1449,13 +1449,13 @@ TEST_P(ECCurveTest, Compare) {
 
 TEST_P(ECCurveTest, GenerateFIPS) {
   // Generate an EC_KEY.
-  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(GetParam().nid));
+  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(GetParam()));
   ASSERT_TRUE(key);
   ASSERT_TRUE(EC_KEY_generate_key_fips(key.get()));
 }
 
 TEST_P(ECCurveTest, AddingEqualPoints) {
-  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(GetParam().nid));
+  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(GetParam()));
   ASSERT_TRUE(key);
   ASSERT_TRUE(EC_KEY_generate_key(key.get()));
 
@@ -1624,7 +1624,7 @@ TEST_P(ECCurveTest, MulNonMinimal) {
 
 // Test that EC_KEY_set_private_key rejects invalid values.
 TEST_P(ECCurveTest, SetInvalidPrivateKey) {
-  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(GetParam().nid));
+  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(GetParam()));
   ASSERT_TRUE(key);
 
   bssl::UniquePtr<BIGNUM> bn(BN_new());
@@ -1730,17 +1730,42 @@ TEST_P(ECCurveTest, GPlusMinusG) {
   EXPECT_TRUE(EC_POINT_is_at_infinity(group(), sum.get()));
 }
 
-static std::vector<EC_builtin_curve> AllCurves() {
+// Test that we refuse to encode or decode the point at infinity.
+TEST_P(ECCurveTest, EncodeInfinity) {
+  // The point at infinity is encoded as a single zero byte, but we do not
+  // support it.
+  static const uint8_t kInfinity[] = {0};
+  bssl::UniquePtr<EC_POINT> inf(EC_POINT_new(group()));
+  ASSERT_TRUE(inf);
+  EXPECT_FALSE(EC_POINT_oct2point(group(), inf.get(), kInfinity,
+                                  sizeof(kInfinity), nullptr));
+
+  // Encoding it also fails.
+  ASSERT_TRUE(EC_POINT_set_to_infinity(group(), inf.get()));
+  uint8_t buf[128];
+  EXPECT_EQ(
+      0u, EC_POINT_point2oct(group(), inf.get(), POINT_CONVERSION_UNCOMPRESSED,
+                             buf, sizeof(buf), nullptr));
+
+  // Measuring the length of the encoding also fails.
+  EXPECT_EQ(
+      0u, EC_POINT_point2oct(group(), inf.get(), POINT_CONVERSION_UNCOMPRESSED,
+                             nullptr, 0, nullptr));
+}
+
+static std::vector<int> AllCurves() {
   const size_t num_curves = EC_get_builtin_curves(nullptr, 0);
   std::vector<EC_builtin_curve> curves(num_curves);
   EC_get_builtin_curves(curves.data(), num_curves);
-  return curves;
+  std::vector<int> nids;
+  for (const auto& curve : curves) {
+    nids.push_back(curve.nid);
+  }
+  return nids;
 }
 
-static std::string CurveToString(
-    const testing::TestParamInfo<EC_builtin_curve> &params) {
-  // The comment field contains characters GTest rejects, so use the OBJ name.
-  return OBJ_nid2sn(params.param.nid);
+static std::string CurveToString(const testing::TestParamInfo<int> &params) {
+  return OBJ_nid2sn(params.param);
 }
 
 INSTANTIATE_TEST_SUITE_P(All, ECCurveTest, testing::ValuesIn(AllCurves()),

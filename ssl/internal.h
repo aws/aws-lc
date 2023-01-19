@@ -1340,7 +1340,8 @@ enum ssl_key_usage_t {
 // ssl_cert_check_key_usage parses the DER-encoded, X.509 certificate in |in|
 // and returns true if doesn't specify a key usage or, if it does, if it
 // includes |bit|. Otherwise it pushes to the error queue and returns false.
-bool ssl_cert_check_key_usage(const CBS *in, enum ssl_key_usage_t bit);
+OPENSSL_EXPORT bool ssl_cert_check_key_usage(const CBS *in,
+                                             enum ssl_key_usage_t bit);
 
 // ssl_cert_parse_pubkey extracts the public key from the DER-encoded, X.509
 // certificate in |in|. It returns an allocated |EVP_PKEY| or else returns
@@ -2791,6 +2792,11 @@ struct SSL3_STATE {
   // HelloRetryRequest message.
   bool used_hello_retry_request : 1;
 
+  // was_key_usage_invalid is whether the handshake succeeded despite using a
+  // TLS mode which was incompatible with the leaf certificate's keyUsage
+  // extension.
+  bool was_key_usage_invalid : 1;
+
   // hs_buf is the buffer of handshake data to process.
   UniquePtr<BUF_MEM> hs_buf;
 
@@ -3435,6 +3441,10 @@ void ssl_reset_error_state(SSL *ssl);
 // current state of the error queue.
 void ssl_set_read_error(SSL *ssl);
 
+// ssl_update_counter updates the stat counters in |SSL_CTX|. lock should be
+// set to false when the mutex in |SSL_CTX| has already been locked.
+void ssl_update_counter(SSL_CTX *ctx, int &counter, bool lock);
+
 BSSL_NAMESPACE_END
 
 
@@ -3531,6 +3541,24 @@ struct ssl_ctx_st {
   void (*remove_session_cb)(SSL_CTX *ctx, SSL_SESSION *sess) = nullptr;
   SSL_SESSION *(*get_session_cb)(SSL *ssl, const uint8_t *data, int len,
                                  int *copy) = nullptr;
+
+  struct {
+    int sess_connect = 0;             // SSL new conn - started
+    int sess_connect_renegotiate = 0; // SSL reneg - requested
+    int sess_connect_good = 0;        // SSL new conne/reneg - finished
+    int sess_accept = 0;              // SSL new accept - started
+    int sess_accept_good = 0;         // SSL accept/reneg - finished
+    int sess_miss = 0;                // session lookup misses
+    int sess_timeout = 0;             // reuse attempt on timeouted session
+    int sess_cache_full = 0;          // session removed due to full cache
+    int sess_hit = 0;                 // session reuse actually done
+    int sess_cb_hit = 0;              // session-id that was not
+                                      // in the cache was
+                                      // passed back via the callback. This
+                                      // indicates that the application is
+                                      // supplying session-id's from other
+                                      // processes - spooky :-)
+  } stats;
 
   CRYPTO_refcount_t references = 1;
 

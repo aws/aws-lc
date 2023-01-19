@@ -29,8 +29,12 @@
 #include <openssl/pkcs8.h>
 #include <openssl/rsa.h>
 
-#include "../internal.h"
+#include "../rand_extra/pq_custom_randombytes.h"
+#include "../test/file_test.h"
 #include "../test/test_util.h"
+#include "../internal.h"
+
+#include "../kem/internal.h"
 
 
 // kExampleRSAKeyDER is an RSA private key in ASN.1, DER format. Of course, you
@@ -921,7 +925,8 @@ TEST(EVPExtraTest, Print) {
       EVP_PKEY_DSA, kExampleDSAKeyDER, sizeof(kExampleDSAKeyDER));
   ASSERT_TRUE(dsa);
   EXPECT_EQ(PrintToString(dsa.get(), /*indent=*/2, &EVP_PKEY_print_params),
-            R"(  P:   
+            R"(  DSA-Parameters: (2048 bit)
+  P:
       00:9e:12:fa:b3:de:12:21:35:01:dd:82:aa:10:ca:
       2d:10:1d:2d:4e:bf:ef:4d:2a:3f:8d:aa:0f:e0:ce:
       da:d8:d6:af:85:61:6a:a2:f3:25:2c:0a:2b:5a:6d:
@@ -940,11 +945,11 @@ TEST(EVPExtraTest, Print) {
       25:72:f2:45:dc:11:1f:3c:e3:9c:b6:ff:ac:c3:1b:
       0a:27:90:e7:bd:e9:02:24:ea:9b:09:31:53:62:af:
       3d:2b
-  Q:   
+  Q:
       00:f3:81:dc:f5:3e:bf:72:4f:8b:2e:5c:a8:2c:01:
       0f:b4:b5:ed:a9:35:8d:0f:d8:8e:d2:78:58:94:88:
       b5:4f:c3
-  G:   
+  G:
       0c:40:2a:72:5d:cc:3a:62:e0:2b:f4:cf:43:cd:17:
       f4:a4:93:59:12:20:22:36:69:cf:41:93:ed:ab:42:
       3a:d0:8d:fb:55:2e:30:8a:6a:57:a5:ff:bc:7c:d0:
@@ -965,7 +970,8 @@ TEST(EVPExtraTest, Print) {
       61
 )");
   EXPECT_EQ(PrintToString(dsa.get(), /*indent=*/2, &EVP_PKEY_print_public),
-            R"(  pub: 
+            R"(  Public-Key: (2048 bit)
+  pub:
       31:97:31:a1:4e:38:56:88:db:94:1d:bf:65:5c:da:
       4b:c2:10:de:74:20:03:ce:13:60:f2:25:1d:55:7c:
       5d:94:82:54:08:53:db:85:95:bf:dd:5e:50:d5:96:
@@ -984,7 +990,7 @@ TEST(EVPExtraTest, Print) {
       c0:6b:b1:15:dd:64:d7:c9:75:17:73:72:da:33:c4:
       6f:a5:47:a1:cc:d1:c6:62:e5:ca:ab:5f:2a:8f:6b:
       cc
-  P:   
+  P:
       00:9e:12:fa:b3:de:12:21:35:01:dd:82:aa:10:ca:
       2d:10:1d:2d:4e:bf:ef:4d:2a:3f:8d:aa:0f:e0:ce:
       da:d8:d6:af:85:61:6a:a2:f3:25:2c:0a:2b:5a:6d:
@@ -1003,11 +1009,11 @@ TEST(EVPExtraTest, Print) {
       25:72:f2:45:dc:11:1f:3c:e3:9c:b6:ff:ac:c3:1b:
       0a:27:90:e7:bd:e9:02:24:ea:9b:09:31:53:62:af:
       3d:2b
-  Q:   
+  Q:
       00:f3:81:dc:f5:3e:bf:72:4f:8b:2e:5c:a8:2c:01:
       0f:b4:b5:ed:a9:35:8d:0f:d8:8e:d2:78:58:94:88:
       b5:4f:c3
-  G:   
+  G:
       0c:40:2a:72:5d:cc:3a:62:e0:2b:f4:cf:43:cd:17:
       f4:a4:93:59:12:20:22:36:69:cf:41:93:ed:ab:42:
       3a:d0:8d:fb:55:2e:30:8a:6a:57:a5:ff:bc:7c:d0:
@@ -1033,7 +1039,7 @@ TEST(EVPExtraTest, Print) {
       00:b0:c7:68:70:27:43:bc:51:24:29:93:a9:71:a5:
       28:89:79:54:44:f7:c6:45:22:03:d0:ce:84:fe:61:
       17:d4:6e
-  pub: 
+  pub:
       31:97:31:a1:4e:38:56:88:db:94:1d:bf:65:5c:da:
       4b:c2:10:de:74:20:03:ce:13:60:f2:25:1d:55:7c:
       5d:94:82:54:08:53:db:85:95:bf:dd:5e:50:d5:96:
@@ -1052,7 +1058,7 @@ TEST(EVPExtraTest, Print) {
       c0:6b:b1:15:dd:64:d7:c9:75:17:73:72:da:33:c4:
       6f:a5:47:a1:cc:d1:c6:62:e5:ca:ab:5f:2a:8f:6b:
       cc
-  P:   
+  P:
       00:9e:12:fa:b3:de:12:21:35:01:dd:82:aa:10:ca:
       2d:10:1d:2d:4e:bf:ef:4d:2a:3f:8d:aa:0f:e0:ce:
       da:d8:d6:af:85:61:6a:a2:f3:25:2c:0a:2b:5a:6d:
@@ -1071,11 +1077,11 @@ TEST(EVPExtraTest, Print) {
       25:72:f2:45:dc:11:1f:3c:e3:9c:b6:ff:ac:c3:1b:
       0a:27:90:e7:bd:e9:02:24:ea:9b:09:31:53:62:af:
       3d:2b
-  Q:   
+  Q:
       00:f3:81:dc:f5:3e:bf:72:4f:8b:2e:5c:a8:2c:01:
       0f:b4:b5:ed:a9:35:8d:0f:d8:8e:d2:78:58:94:88:
       b5:4f:c3
-  G:   
+  G:
       0c:40:2a:72:5d:cc:3a:62:e0:2b:f4:cf:43:cd:17:
       f4:a4:93:59:12:20:22:36:69:cf:41:93:ed:ab:42:
       3a:d0:8d:fb:55:2e:30:8a:6a:57:a5:ff:bc:7c:d0:
@@ -1096,32 +1102,32 @@ TEST(EVPExtraTest, Print) {
       61
 )");
 
-  // TODO(davidben): This output is a little off. |BIO_hexdump| does not really
-  // fit for printing the public key, and we've lost the curve name.
   bssl::UniquePtr<EVP_PKEY> ec =
       ParsePrivateKey(EVP_PKEY_EC, kExampleECKeyDER, sizeof(kExampleECKeyDER));
   ASSERT_TRUE(ec);
   EXPECT_EQ(PrintToString(ec.get(), /*indent=*/2, &EVP_PKEY_print_params),
-            "  ECDSA-Parameters: (256 bit)\n");
+            "  ECDSA-Parameters: (P-256)\n");
   EXPECT_EQ(PrintToString(ec.get(), /*indent=*/2, &EVP_PKEY_print_public),
-            R"(  Public-Key: (256 bit)
-  00000000  04 e6 2b 69 e2 bf 65 9f  97 be 2f 1e 0d 94 8a 4c  |..+i..e.../....L|
-  00000010  d5 97 6b b7 a9 1e 0d 46  fb dd a9 a9 1e 9d dc ba  |..k....F........|
-  00000020  5a 01 e7 d6 97 a8 0a 18  f9 c3 c4 a3 1e 56 e2 7c  |Z............V.||
-  00000030  83 48 db 16 1a 1c f5 1d  7e f1 94 2d 4b cf 72 22  |.H......~..-K.r"|
-  00000040  c1                                                |.|
+            R"(  Public-Key: (P-256)
+  pub:
+      04:e6:2b:69:e2:bf:65:9f:97:be:2f:1e:0d:94:8a:
+      4c:d5:97:6b:b7:a9:1e:0d:46:fb:dd:a9:a9:1e:9d:
+      dc:ba:5a:01:e7:d6:97:a8:0a:18:f9:c3:c4:a3:1e:
+      56:e2:7c:83:48:db:16:1a:1c:f5:1d:7e:f1:94:2d:
+      4b:cf:72:22:c1
 )");
   EXPECT_EQ(PrintToString(ec.get(), /*indent=*/2, &EVP_PKEY_print_private),
-            R"(  Private-Key: (256 bit)
+            R"(  Private-Key: (P-256)
   priv:
       07:0f:08:72:7a:d4:a0:4a:9c:dd:59:c9:4d:89:68:
       77:08:b5:6f:c9:5d:30:77:0e:e8:d1:c9:ce:0a:8b:
       b4:6a
-  00000000  04 e6 2b 69 e2 bf 65 9f  97 be 2f 1e 0d 94 8a 4c  |..+i..e.../....L|
-  00000010  d5 97 6b b7 a9 1e 0d 46  fb dd a9 a9 1e 9d dc ba  |..k....F........|
-  00000020  5a 01 e7 d6 97 a8 0a 18  f9 c3 c4 a3 1e 56 e2 7c  |Z............V.||
-  00000030  83 48 db 16 1a 1c f5 1d  7e f1 94 2d 4b cf 72 22  |.H......~..-K.r"|
-  00000040  c1                                                |.|
+  pub:
+      04:e6:2b:69:e2:bf:65:9f:97:be:2f:1e:0d:94:8a:
+      4c:d5:97:6b:b7:a9:1e:0d:46:fb:dd:a9:a9:1e:9d:
+      dc:ba:5a:01:e7:d6:97:a8:0a:18:f9:c3:c4:a3:1e:
+      56:e2:7c:83:48:db:16:1a:1c:f5:1d:7e:f1:94:2d:
+      4b:cf:72:22:c1
 )");
 }
 
@@ -1525,6 +1531,76 @@ TEST(EVPExtraTest, PKEY_CTX_manual) {
   ASSERT_TRUE(pctx.get());
 }
 
+TEST(EVPExtraTest, Parameters) {
+  auto new_pkey_with_type = [](int type) -> bssl::UniquePtr<EVP_PKEY> {
+    bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+    if (!pkey ||  //
+        !EVP_PKEY_set_type(pkey.get(), type)) {
+      return nullptr;
+    }
+    return pkey;
+  };
+
+  auto new_pkey_with_curve = [](int curve_nid) -> bssl::UniquePtr<EVP_PKEY> {
+    bssl::UniquePtr<EVP_PKEY_CTX> ctx(
+        EVP_PKEY_CTX_new_id(EVP_PKEY_EC, nullptr));
+    EVP_PKEY *pkey = nullptr;
+    if (!ctx ||  //
+        !EVP_PKEY_paramgen_init(ctx.get()) ||
+        !EVP_PKEY_CTX_set_ec_paramgen_curve_nid(ctx.get(), curve_nid) ||
+        !EVP_PKEY_paramgen(ctx.get(), &pkey)) {
+      return nullptr;
+    }
+    return bssl::UniquePtr<EVP_PKEY>(pkey);
+  };
+
+  // RSA keys have no parameters.
+  bssl::UniquePtr<EVP_PKEY> rsa = new_pkey_with_type(EVP_PKEY_RSA);
+  ASSERT_TRUE(rsa);
+  EXPECT_FALSE(EVP_PKEY_missing_parameters(rsa.get()));
+
+  // EC keys have parameters.
+  bssl::UniquePtr<EVP_PKEY> ec_no_params = new_pkey_with_type(EVP_PKEY_EC);
+  ASSERT_TRUE(ec_no_params);
+  EXPECT_TRUE(EVP_PKEY_missing_parameters(ec_no_params.get()));
+
+  bssl::UniquePtr<EVP_PKEY> p256 = new_pkey_with_curve(NID_X9_62_prime256v1);
+  ASSERT_TRUE(p256);
+  EXPECT_FALSE(EVP_PKEY_missing_parameters(p256.get()));
+
+  bssl::UniquePtr<EVP_PKEY> p256_2 = new_pkey_with_curve(NID_X9_62_prime256v1);
+  ASSERT_TRUE(p256_2);
+  EXPECT_FALSE(EVP_PKEY_missing_parameters(p256_2.get()));
+
+  bssl::UniquePtr<EVP_PKEY> p384 = new_pkey_with_curve(NID_secp384r1);
+  ASSERT_TRUE(p384);
+  EXPECT_FALSE(EVP_PKEY_missing_parameters(p384.get()));
+
+  EXPECT_EQ(1, EVP_PKEY_cmp_parameters(p256.get(), p256_2.get()));
+  EXPECT_EQ(0, EVP_PKEY_cmp_parameters(p256.get(), p384.get()));
+
+  // Copying parameters onto a curve-less EC key works.
+  ASSERT_TRUE(EVP_PKEY_copy_parameters(ec_no_params.get(), p256.get()));
+  EXPECT_EQ(1, EVP_PKEY_cmp_parameters(p256.get(), ec_no_params.get()));
+
+  // No-op copies silently succeed.
+  ASSERT_TRUE(EVP_PKEY_copy_parameters(ec_no_params.get(), p256.get()));
+  EXPECT_EQ(1, EVP_PKEY_cmp_parameters(p256.get(), ec_no_params.get()));
+
+  // Copying parameters onto a type-less key works.
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+  ASSERT_TRUE(pkey);
+  ASSERT_TRUE(EVP_PKEY_copy_parameters(pkey.get(), p256.get()));
+  EXPECT_EQ(EVP_PKEY_EC, EVP_PKEY_id(pkey.get()));
+  EXPECT_EQ(1, EVP_PKEY_cmp_parameters(p256.get(), pkey.get()));
+
+  // |EVP_PKEY_copy_parameters| cannot change a key's type or curve.
+  EXPECT_FALSE(EVP_PKEY_copy_parameters(rsa.get(), p256.get()));
+  EXPECT_EQ(EVP_PKEY_RSA, EVP_PKEY_id(rsa.get()));
+  EXPECT_FALSE(EVP_PKEY_copy_parameters(rsa.get(), p256.get()));
+  EXPECT_EQ(EVP_PKEY_RSA, EVP_PKEY_id(rsa.get()));
+}
+
 struct RsassaPssParamsMatchTestInput {
   const uint8_t *der;
   size_t der_len;
@@ -1623,3 +1699,508 @@ TEST_P(EVPRsaPssBadKeyTest, InvalidSaltLength) {
 
 INSTANTIATE_TEST_SUITE_P(All, EVPRsaPssBadKeyTest,
                          testing::ValuesIn(kBadPssKeyTestInputs));
+
+
+// START KEM TESTS
+
+struct KnownKEM {
+  const char name[20];
+  const int nid;
+  const size_t public_key_len;
+  const size_t secret_key_len;
+  const size_t ciphertext_len;
+  const size_t shared_secret_len;
+  const char *kat_filename;
+};
+
+static const struct KnownKEM kKEMs[] = {
+  {"Kyber512r3", NID_KYBER512_R3, 800, 1632, 768, 32, "pq_kem_kat_tests_kyber512.txt"},
+};
+
+class PerKEMTest : public testing::TestWithParam<KnownKEM> {};
+
+INSTANTIATE_TEST_SUITE_P(All, PerKEMTest, testing::ValuesIn(kKEMs),
+                         [](const testing::TestParamInfo<KnownKEM> &params)
+                             -> std::string { return params.param.name; });
+
+TEST_P(PerKEMTest, KeyGeneration) {
+
+  // ---- 1. Test basic key generation flow ----
+  // Create context of KEM type.
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_KEM, nullptr));
+  ASSERT_TRUE(ctx);
+
+  // Setup the context with specific KEM parameters.
+  int kem_nid = GetParam().nid;
+  ASSERT_TRUE(EVP_PKEY_CTX_kem_set_params(ctx.get(), kem_nid));
+
+  // Generate a key pair.
+  EVP_PKEY *raw = nullptr;
+  ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
+  ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw));
+  ASSERT_TRUE(raw);
+  bssl::UniquePtr<EVP_PKEY> pkey(raw);
+
+  // ---- 2. Test key generation with PKEY as a template ----
+  ctx.reset(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+  ASSERT_TRUE(ctx);
+
+  // Generate a key pair.
+  raw = nullptr;
+  ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
+  ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw));
+  ASSERT_TRUE(raw);
+  pkey.reset(raw);
+
+  // ---- 3. Test getting raw keys and their size ----
+  size_t pk_len, sk_len;
+  
+  // First getting the sizes only.
+  ASSERT_TRUE(EVP_PKEY_get_raw_public_key(pkey.get(), nullptr, &pk_len));
+  ASSERT_TRUE(EVP_PKEY_get_raw_private_key(pkey.get(), nullptr, &sk_len));
+  EXPECT_EQ(pk_len, GetParam().public_key_len);
+  EXPECT_EQ(sk_len, GetParam().secret_key_len);
+
+  // Then getting the keys and the sizes.
+  std::vector<uint8_t> pk_raw(pk_len);
+  std::vector<uint8_t> sk_raw(sk_len);
+  ASSERT_TRUE(EVP_PKEY_get_raw_public_key(pkey.get(), pk_raw.data(), &pk_len));
+  ASSERT_TRUE(EVP_PKEY_get_raw_private_key(pkey.get(), sk_raw.data(), &sk_len));
+  EXPECT_EQ(pk_len, GetParam().public_key_len);
+  EXPECT_EQ(sk_len, GetParam().secret_key_len);
+}
+
+// Helper function that:
+//   1. creates EVP_PKEY_CTX object of KEM type,
+//   2. sets the KEM parameters according to the given nid,
+//   3. generates a key pair,
+//   4. creates EVP_PKEY object from the generated key,
+//   5. creates a new context with the EVP_PKEY object and returns it.
+static bssl::UniquePtr<EVP_PKEY_CTX> setup_ctx_and_generate_key(int kem_nid) {
+
+  // Create context of KEM type.
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_KEM, nullptr));
+  EXPECT_TRUE(ctx);
+
+  // Setup the context with specific KEM parameters.
+  EXPECT_TRUE(EVP_PKEY_CTX_kem_set_params(ctx.get(), kem_nid));
+
+  // Generate a key pair.
+  EVP_PKEY *raw = nullptr;
+  EXPECT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
+  EXPECT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw));
+  EXPECT_TRUE(raw);
+
+  // Create PKEY from the generated raw key and a new context with it.
+  bssl::UniquePtr<EVP_PKEY> pkey(raw);
+  ctx.reset(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+  EXPECT_TRUE(ctx);
+
+  return ctx;
+}
+
+TEST_P(PerKEMTest, Encapsulation) {
+
+  // ---- 1. Setup phase: generate a context and a key ----
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx;
+  ctx = setup_ctx_and_generate_key(GetParam().nid);
+  ASSERT_TRUE(ctx);
+
+  // ---- 2. Test basic encapsulation flow ----
+  // Alloc ciphertext and shared secret with the expected lenghts.
+  size_t ct_len = GetParam().ciphertext_len;
+  size_t ss_len = GetParam().shared_secret_len;
+  std::vector<uint8_t> ct(ct_len);
+  std::vector<uint8_t> ss(ss_len);
+
+  // Encapsulate.
+  ASSERT_TRUE(EVP_PKEY_encapsulate(ctx.get(), ct.data(), &ct_len, ss.data(), &ss_len));
+
+  // Check the lengths set by encapsulate are as expected.
+  EXPECT_EQ(ct_len, GetParam().ciphertext_len);
+  EXPECT_EQ(ss_len, GetParam().shared_secret_len);
+
+  // ---- 3. Test getting the lengths only ----
+  // Reset the length variables.
+  ct_len = 0;
+  ss_len = 0;
+
+  // Get the lengths and check them.
+  ASSERT_TRUE(EVP_PKEY_encapsulate(ctx.get(), nullptr, &ct_len, nullptr, &ss_len));
+  EXPECT_EQ(ct_len, GetParam().ciphertext_len);
+  EXPECT_EQ(ss_len, GetParam().shared_secret_len);
+
+  // ---- 4. Test calling encapsulate with different lengths ----
+  // Set ct length to be less than expected -- should fail.
+  ct_len = GetParam().ciphertext_len - 1;
+  ASSERT_FALSE(EVP_PKEY_encapsulate(ctx.get(), ct.data(), &ct_len, ss.data(), &ss_len));
+  uint32_t err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(EVP_R_BUFFER_TOO_SMALL, ERR_GET_REASON(err));
+
+  // Set ct length to be greater than expected -- should succeed because
+  // it's ok to provide buffer that's larger than needed.
+  ct_len = GetParam().ciphertext_len + 1;
+  ASSERT_TRUE(EVP_PKEY_encapsulate(ctx.get(), ct.data(), &ct_len, ss.data(), &ss_len));
+  EXPECT_EQ(ct_len, GetParam().ciphertext_len);
+
+  // Set ss length to be less than expected -- should fail.
+  ct_len = GetParam().ciphertext_len;
+  ss_len = GetParam().shared_secret_len - 1;
+  ASSERT_FALSE(EVP_PKEY_encapsulate(ctx.get(), ct.data(), &ct_len, ss.data(), &ss_len));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(EVP_R_BUFFER_TOO_SMALL, ERR_GET_REASON(err));
+
+  // Set ss length to be greater than expected -- should succeed because
+  // it's ok to provide buffer that's larger than needed.
+  ss_len = GetParam().shared_secret_len + 1;
+  ASSERT_TRUE(EVP_PKEY_encapsulate(ctx.get(), ct.data(), &ct_len, ss.data(), &ss_len));
+  EXPECT_EQ(ss_len, GetParam().shared_secret_len);
+}
+
+TEST_P(PerKEMTest, Decapsulation) {
+
+  // ---- 1. Setup phase: generate context and key and encapsulate ----
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx;
+  ctx = setup_ctx_and_generate_key(GetParam().nid);
+  ASSERT_TRUE(ctx);
+
+  // Alloc ciphertext and shared secret with the expected lenghts.
+  size_t ct_len = GetParam().ciphertext_len;
+  size_t ss_len = GetParam().shared_secret_len;
+  std::vector<uint8_t> ct(ct_len);
+  std::vector<uint8_t> ss(ss_len);
+
+  // Encapsulate.
+  ASSERT_TRUE(EVP_PKEY_encapsulate(ctx.get(), ct.data(), &ct_len, ss.data(), &ss_len));
+
+  // ---- 2. Test basic decapsulation flow ----
+  // Decapsulate.
+  ASSERT_TRUE(EVP_PKEY_decapsulate(ctx.get(), ss.data(), &ss_len, ct.data(), ct_len));
+
+  // Check the length set by decapsulate is as expected.
+  EXPECT_EQ(ss_len, GetParam().shared_secret_len);
+
+  // ---- 3. Test getting the length only ----
+  // Reset the length variable.
+  ss_len = 0;
+
+  // Get the lengths and check them.
+  ASSERT_TRUE(EVP_PKEY_decapsulate(ctx.get(), nullptr, &ss_len, ct.data(), ct_len));
+  EXPECT_EQ(ss_len, GetParam().shared_secret_len);
+
+  // ---- 4. Test calling encapsulate with different lengths ----
+  // Set ss length to be less than expected -- should fail.
+  ss_len = GetParam().shared_secret_len - 1;
+  ASSERT_FALSE(EVP_PKEY_encapsulate(ctx.get(), ct.data(), &ct_len, ss.data(), &ss_len));
+  uint32_t err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(EVP_R_BUFFER_TOO_SMALL, ERR_GET_REASON(err));
+
+  // Set ss length to be greater than expected -- should succeed because
+  // it's ok to provide buffer that's larger than needed.
+  ss_len = GetParam().shared_secret_len + 1;
+  ASSERT_TRUE(EVP_PKEY_decapsulate(ctx.get(), nullptr, &ss_len, ct.data(), ct_len));
+  EXPECT_EQ(ss_len, GetParam().shared_secret_len);
+}
+
+TEST_P(PerKEMTest, EndToEnd) {
+  // Simulate KEM protocol:
+  //   1. Alice generates a key pair,
+  //   2. Alice's sends the public key to Bob,
+  //   3. Bob uses Alice's public key to do encapsulate,
+  //      producing a shared secret and a ciphertext,
+  //   4. Bob sends the ciphertext to Alice,
+  //   5. Alice uses its secret key to decapsulates Bob's ciphertext,
+  //      producing a shared secret.
+  //   6. Alice's and Bob's shared secrets should be the same!
+
+  // ---- 1. Alice: generate a context and a key ----
+  bssl::UniquePtr<EVP_PKEY_CTX> a_ctx;
+  a_ctx = setup_ctx_and_generate_key(GetParam().nid);
+  ASSERT_TRUE(a_ctx);
+  EVP_PKEY *a_pkey = EVP_PKEY_CTX_get0_pkey(a_ctx.get());
+  ASSERT_TRUE(a_pkey);
+
+  // ---- 2. Alice/Bob: Alice -- public key --> Bob ----
+  // Alice extracts the raw public key to be sent to Bob.
+  size_t pk_len = GetParam().public_key_len;
+  std::vector<uint8_t> a_pk(pk_len);
+  ASSERT_TRUE(EVP_PKEY_get_raw_public_key(a_pkey, a_pk.data(), &pk_len));
+
+  // Bob receives the raw key and creates a PKEY object and context.
+  bssl::UniquePtr<EVP_PKEY> b_pkey(EVP_PKEY_kem_new_raw_public_key(
+              GetParam().nid, a_pk.data(), pk_len));
+  ASSERT_TRUE(b_pkey);
+  bssl::UniquePtr<EVP_PKEY_CTX> b_ctx(EVP_PKEY_CTX_new(b_pkey.get(), nullptr));
+
+  // ---- 3. Bob: encapsulation ----
+  size_t ct_len = GetParam().ciphertext_len;
+  size_t ss_len = GetParam().shared_secret_len;
+  std::vector<uint8_t> b_ct(ct_len); // Ciphertext to be sent to Alice.
+  std::vector<uint8_t> b_ss(ss_len); // The shared secret.
+  ASSERT_TRUE(EVP_PKEY_encapsulate(b_ctx.get(), b_ct.data(), &ct_len, b_ss.data(), &ss_len));
+
+  // ---- 4. Alice/Bob: Bob -- ciphertext --> Alice ----
+  // Nothing to do here, we simply use |b_ct|.
+
+  // ---- 5. Alice: decapsulation ---- 
+  std::vector<uint8_t> a_ss(ss_len); // The shared secret.
+  ASSERT_TRUE(EVP_PKEY_decapsulate(a_ctx.get(), a_ss.data(), &ss_len, b_ct.data(), ct_len));
+
+  // ---- 6. Alice's and Bob's shared secrets are the same? ----
+  EXPECT_EQ(Bytes(a_ss), Bytes(b_ss));
+}
+
+// Helper macros to compare std::vector with raw pointers from pkey.
+#define CMP_VEC_AND_PTR(vec, ptr, len)         \
+          {                                    \
+            std::vector<uint8_t> tmp(len);     \
+            tmp.assign(ptr, ptr+len);          \
+            EXPECT_EQ(Bytes(vec), Bytes(tmp)); \
+          }
+
+#define CMP_VEC_AND_PKEY_PUBLIC(vec, pkey, len) \
+          CMP_VEC_AND_PTR(vec, pkey->pkey.kem_key->public_key, len)
+
+#define CMP_VEC_AND_PKEY_SECRET(vec, pkey, len) \
+          CMP_VEC_AND_PTR(vec, pkey->pkey.kem_key->secret_key, len)
+
+TEST_P(PerKEMTest, RawKeyOperations) {
+  
+  // ---- 1. Setup phase: generate a context and a key ----
+  // Create context of KEM type.
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_KEM, nullptr));
+  ASSERT_TRUE(ctx);
+
+  // Setup the context with specific KEM parameters.
+  ASSERT_TRUE(EVP_PKEY_CTX_kem_set_params(ctx.get(), GetParam().nid));
+
+  // Generate a key pair.
+  EVP_PKEY *raw = nullptr;
+  ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
+  ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw));
+  ASSERT_TRUE(raw);
+
+  // Create PKEY from the generated raw key and a new context with it.
+  bssl::UniquePtr<EVP_PKEY> pkey(raw);
+  ctx.reset(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+  ASSERT_TRUE(ctx);
+
+  // ---- 2. Test getting raw keys ----
+  size_t pk_len = GetParam().public_key_len;
+  size_t sk_len = GetParam().secret_key_len;
+  std::vector<uint8_t> pk(pk_len);
+  std::vector<uint8_t> sk(sk_len);
+
+  ASSERT_TRUE(EVP_PKEY_get_raw_public_key(pkey.get(), pk.data(), &pk_len));
+  ASSERT_TRUE(EVP_PKEY_get_raw_private_key(pkey.get(), sk.data(), &sk_len));
+  EXPECT_EQ(pk_len, GetParam().public_key_len);
+  EXPECT_EQ(sk_len, GetParam().secret_key_len);
+  CMP_VEC_AND_PKEY_PUBLIC(pk, pkey, pk_len);
+  CMP_VEC_AND_PKEY_SECRET(sk, pkey, sk_len);
+
+  // ---- 3. Test getting key size ----
+  pk_len = 0;
+  sk_len = 0;
+  ASSERT_TRUE(EVP_PKEY_get_raw_public_key(pkey.get(), nullptr, &pk_len));
+  ASSERT_TRUE(EVP_PKEY_get_raw_private_key(pkey.get(), nullptr, &sk_len));
+  EXPECT_EQ(pk_len, GetParam().public_key_len);
+  EXPECT_EQ(sk_len, GetParam().secret_key_len);
+
+  // ---- 4. Test creating new keys from raw data ----
+  int nid = GetParam().nid;
+  
+  bssl::UniquePtr<EVP_PKEY> pkey_pk_new(EVP_PKEY_kem_new_raw_public_key(nid, pk.data(), pk_len));
+  bssl::UniquePtr<EVP_PKEY> pkey_sk_new(EVP_PKEY_kem_new_raw_secret_key(nid, sk.data(), sk_len));
+  bssl::UniquePtr<EVP_PKEY> pkey_new(EVP_PKEY_kem_new_raw_key(nid, pk.data(), pk_len, sk.data(), sk_len));
+
+  ASSERT_TRUE(pkey_pk_new);
+  ASSERT_TRUE(pkey_sk_new);
+  ASSERT_TRUE(pkey_new);
+
+  // ---- 5. Test encaps/decaps with new keys ----
+  // Create Alice's context with the new key that has both
+  // the public and the secret part of the key.
+  bssl::UniquePtr<EVP_PKEY_CTX> a_ctx(EVP_PKEY_CTX_new(pkey_new.get(), nullptr));
+  ASSERT_TRUE(a_ctx);
+
+  // Create Bob's context with the new key that has only the public part.
+  bssl::UniquePtr<EVP_PKEY_CTX> b_ctx(EVP_PKEY_CTX_new(pkey_pk_new.get(), nullptr));
+  ASSERT_TRUE(b_ctx);
+
+  // Alloc memory for Bob's ciphertext and shared secret.
+  size_t ct_len = GetParam().ciphertext_len;
+  size_t ss_len = GetParam().shared_secret_len;
+  std::vector<uint8_t> b_ct(ct_len); // Ciphertext to be sent to Alice.
+  std::vector<uint8_t> b_ss(ss_len); // The shared secret.
+
+  // Bob encapsulates.
+  ASSERT_TRUE(EVP_PKEY_encapsulate(b_ctx.get(), b_ct.data(), &ct_len, b_ss.data(), &ss_len));
+
+  // Alice decapsulates
+  std::vector<uint8_t> a_ss(ss_len); // The shared secret.
+  ASSERT_TRUE(EVP_PKEY_decapsulate(a_ctx.get(), a_ss.data(), &ss_len, b_ct.data(), ct_len));
+
+  // Alice's and Bob's shared secrets are the same?
+  EXPECT_EQ(Bytes(a_ss), Bytes(b_ss));
+
+  // ---- 6. Test failure modes ----
+  // Failures for get_raw_public/private_key.
+  pk_len = GetParam().public_key_len;
+  sk_len = GetParam().secret_key_len;
+
+  //   Invalid PKEY.
+  ASSERT_FALSE(EVP_PKEY_get_raw_public_key(nullptr, pk.data(), &pk_len));
+  uint32_t err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE, ERR_GET_REASON(err));
+
+  ASSERT_FALSE(EVP_PKEY_get_raw_private_key(nullptr, sk.data(), &sk_len));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE, ERR_GET_REASON(err));
+
+  //   Invalid lengths.
+  pk_len = GetParam().public_key_len - 1;
+  ASSERT_FALSE(EVP_PKEY_get_raw_public_key(pkey.get(), pk.data(), &pk_len));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(EVP_R_BUFFER_TOO_SMALL, ERR_GET_REASON(err));
+
+  sk_len = GetParam().secret_key_len - 1;
+  ASSERT_FALSE(EVP_PKEY_get_raw_private_key(pkey.get(), sk.data(), &sk_len));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(EVP_R_BUFFER_TOO_SMALL, ERR_GET_REASON(err));
+
+  // Failures for new keys from raw data.
+  pk_len = GetParam().public_key_len;
+  sk_len = GetParam().secret_key_len;
+
+  //   Invalid nid.
+  ASSERT_FALSE(EVP_PKEY_kem_new_raw_public_key(0, pk.data(), pk_len));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(EVP_R_UNSUPPORTED_ALGORITHM, ERR_GET_REASON(err));
+
+  ASSERT_FALSE(EVP_PKEY_kem_new_raw_secret_key(0, pk.data(), pk_len));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(EVP_R_UNSUPPORTED_ALGORITHM, ERR_GET_REASON(err));
+
+  ASSERT_FALSE(EVP_PKEY_kem_new_raw_key(0, pk.data(), pk_len, sk.data(), sk_len));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(EVP_R_UNSUPPORTED_ALGORITHM, ERR_GET_REASON(err));
+
+  //   Invalid input buffer.
+  ASSERT_FALSE(EVP_PKEY_kem_new_raw_public_key(nid, nullptr, pk_len));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(ERR_R_PASSED_NULL_PARAMETER, ERR_GET_REASON(err));
+
+  ASSERT_FALSE(EVP_PKEY_kem_new_raw_secret_key(nid, nullptr, sk_len));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(ERR_R_PASSED_NULL_PARAMETER, ERR_GET_REASON(err));
+
+  ASSERT_FALSE(EVP_PKEY_kem_new_raw_key(nid, nullptr, pk_len, sk.data(), sk_len));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(ERR_R_PASSED_NULL_PARAMETER, ERR_GET_REASON(err));
+
+  ASSERT_FALSE(EVP_PKEY_kem_new_raw_key(nid, pk.data(), pk_len, nullptr, sk_len));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(ERR_R_PASSED_NULL_PARAMETER, ERR_GET_REASON(err));
+
+  //   Invalid lengths.
+  pk_len = GetParam().public_key_len - 1;
+  ASSERT_FALSE(EVP_PKEY_kem_new_raw_public_key(nid, pk.data(), pk_len));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(EVP_R_INVALID_BUFFER_SIZE, ERR_GET_REASON(err));
+
+  pk_len = GetParam().public_key_len + 1;
+  ASSERT_FALSE(EVP_PKEY_kem_new_raw_public_key(nid, pk.data(), pk_len));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(EVP_R_INVALID_BUFFER_SIZE, ERR_GET_REASON(err));
+
+  sk_len = GetParam().secret_key_len - 1;
+  ASSERT_FALSE(EVP_PKEY_kem_new_raw_secret_key(nid, sk.data(), sk_len));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(EVP_R_INVALID_BUFFER_SIZE, ERR_GET_REASON(err));
+
+  sk_len = GetParam().secret_key_len + 1;
+  ASSERT_FALSE(EVP_PKEY_kem_new_raw_secret_key(nid, sk.data(), sk_len));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(EVP_R_INVALID_BUFFER_SIZE, ERR_GET_REASON(err));
+
+  pk_len = GetParam().public_key_len;
+  sk_len = GetParam().secret_key_len - 1;
+  ASSERT_FALSE(EVP_PKEY_kem_new_raw_key(nid, pk.data(), pk_len, sk.data(), sk_len));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(EVP_R_INVALID_BUFFER_SIZE, ERR_GET_REASON(err));
+
+  pk_len = GetParam().public_key_len - 1;
+  sk_len = GetParam().secret_key_len;
+  ASSERT_FALSE(EVP_PKEY_kem_new_raw_key(nid, pk.data(), pk_len, sk.data(), sk_len));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(EVP_R_INVALID_BUFFER_SIZE, ERR_GET_REASON(err));
+}
+
+TEST_P(PerKEMTest, KAT) {
+
+  std::string kat_filepath = "crypto/evp_extra/";
+  kat_filepath += GetParam().kat_filename;
+
+  FileTestGTest(kat_filepath.c_str(), [&](FileTest *t) {
+    std::string count;
+    std::vector<uint8_t> seed, pk_expected, sk_expected, ct_expected, ss_expected;
+
+    ASSERT_TRUE(t->GetAttribute(&count, "count"));
+    ASSERT_TRUE(t->GetBytes(&seed, "seed"));
+    ASSERT_TRUE(t->GetBytes(&pk_expected, "pk"));
+    ASSERT_TRUE(t->GetBytes(&sk_expected, "sk"));
+    ASSERT_TRUE(t->GetBytes(&ct_expected, "ct"));
+    ASSERT_TRUE(t->GetBytes(&ss_expected, "ss"));
+
+    size_t pk_len = GetParam().public_key_len;
+    size_t sk_len = GetParam().secret_key_len;
+    size_t ct_len = GetParam().ciphertext_len;
+    size_t ss_len = GetParam().shared_secret_len;
+
+    // Set randomness generation in deterministic mode. 
+    pq_custom_randombytes_use_deterministic_for_testing();
+    pq_custom_randombytes_init_for_testing(seed.data());
+
+    // ---- 1. Setup the context and generate the key ----
+    bssl::UniquePtr<EVP_PKEY_CTX> ctx;
+    ctx = setup_ctx_and_generate_key(GetParam().nid);
+    ASSERT_TRUE(ctx);
+
+    EVP_PKEY *pkey = EVP_PKEY_CTX_get0_pkey(ctx.get());
+    ASSERT_TRUE(pkey);
+    CMP_VEC_AND_PKEY_PUBLIC(pk_expected, pkey, pk_len);
+    CMP_VEC_AND_PKEY_SECRET(sk_expected, pkey, sk_len);
+
+    // ---- 2. Encapsulation ----
+    std::vector<uint8_t> ct(ct_len);
+    std::vector<uint8_t> ss(ss_len);
+    ASSERT_TRUE(EVP_PKEY_encapsulate(ctx.get(), ct.data(), &ct_len, ss.data(), &ss_len));
+    EXPECT_EQ(Bytes(ct_expected), Bytes(ct));
+    EXPECT_EQ(Bytes(ss_expected), Bytes(ss));
+
+    // ---- 3. Decapsulation ----
+    ASSERT_TRUE(EVP_PKEY_decapsulate(ctx.get(), ss.data(), &ss_len, ct.data(), ct_len));
+    EXPECT_EQ(Bytes(ss_expected), Bytes(ss));
+  });
+}
+

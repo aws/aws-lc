@@ -11,9 +11,9 @@ run_build -DCMAKE_BUILD_TYPE=RelWithDebInfo -DFUZZ=1 -DASAN=1 -DBUILD_TESTING=OF
 set -u
 # We want our CI to take about 45 minutes:
 # 2 minutes to build AWS-LC
-# 38 minutes (2280 seconds) for all fuzzing
-# 5 minutes for cleanup and merging files
-TOTAL_FUZZ_TEST_TIME=2280
+# 25 minutes (1500 seconds) for all fuzzing
+# 18 minutes for cleanup and merging files
+TOTAL_FUZZ_TEST_TIME=1500
 FUZZ_TEST_TIMEOUT=5
 
 FUZZ_TESTS=$(find "${BUILD_ROOT}/fuzz" -type f -executable)

@@ -556,18 +556,14 @@ badhex:
   return NULL;
 }
 
-int x509v3_name_cmp(const char *name, const char *cmp) {
-  int len, ret;
-  char c;
-  len = strlen(cmp);
-  if ((ret = strncmp(name, cmp, len))) {
-    return ret;
-  }
-  c = name[len];
-  if (!c || (c == '.')) {
+int x509v3_conf_name_matches(const char *name, const char *cmp) {
+  // |name| must begin with |cmp|.
+  size_t len = strlen(cmp);
+  if (strncmp(name, cmp, len) != 0) {
     return 0;
   }
-  return 1;
+  // |name| must either be equal to |cmp| or begin with |cmp|, followed by '.'.
+  return name[len] == '\0' || name[len] == '.';
 }
 
 static int sk_strcmp(const char **a, const char **b) { return strcmp(*a, *b); }
@@ -1064,7 +1060,13 @@ int X509_check_host(X509 *x, const char *chk, size_t chklen, unsigned int flags,
   if (chk == NULL) {
     return -2;
   }
-  if (OPENSSL_memchr(chk, '\0', chklen)) {
+
+  // If chcklen is 0 strlen will find the first null ('\0') byte which ensures
+  // there are no '\0' characters in the middle of the string to check for with
+  // OPENSSL_memchr
+  if (chklen == 0) {
+    chklen = strlen(chk);
+  } else if (OPENSSL_memchr(chk, '\0', chklen)) {
     return -2;
   }
   return do_x509_check(x, chk, chklen, flags, GEN_DNS, peername);
@@ -1075,7 +1077,13 @@ int X509_check_email(X509 *x, const char *chk, size_t chklen,
   if (chk == NULL) {
     return -2;
   }
-  if (OPENSSL_memchr(chk, '\0', chklen)) {
+
+  // If chcklen is 0 strlen will find the first null ('\0') byte which ensures
+  // there are no '\0' characters in the middle of the string to check for with
+  // OPENSSL_memchr
+  if (chklen == 0) {
+    chklen = strlen(chk);
+  } else if (OPENSSL_memchr(chk, '\0', chklen)) {
     return -2;
   }
   return do_x509_check(x, chk, chklen, flags, GEN_EMAIL, NULL);
@@ -1359,21 +1367,17 @@ static int ipv6_hex(unsigned char *out, const char *in, size_t inlen) {
   return 1;
 }
 
-int X509V3_NAME_from_section(X509_NAME *nm, STACK_OF(CONF_VALUE) *dn_sk,
-                             unsigned long chtype) {
-  CONF_VALUE *v;
-  int mval;
-  size_t i;
-  char *p, *type;
+int X509V3_NAME_from_section(X509_NAME *nm, const STACK_OF(CONF_VALUE) *dn_sk,
+                             int chtype) {
   if (!nm) {
     return 0;
   }
 
-  for (i = 0; i < sk_CONF_VALUE_num(dn_sk); i++) {
-    v = sk_CONF_VALUE_value(dn_sk, i);
-    type = v->name;
+  for (size_t i = 0; i < sk_CONF_VALUE_num(dn_sk); i++) {
+    const CONF_VALUE *v = sk_CONF_VALUE_value(dn_sk, i);
+    const char *type = v->name;
     // Skip past any leading X. X: X, etc to allow for multiple instances
-    for (p = type; *p; p++) {
+    for (const char *p = type; *p; p++) {
       if ((*p == ':') || (*p == ',') || (*p == '.')) {
         p++;
         if (*p) {
@@ -1382,6 +1386,7 @@ int X509V3_NAME_from_section(X509_NAME *nm, STACK_OF(CONF_VALUE) *dn_sk,
         break;
       }
     }
+    int mval;
     if (*type == '+') {
       mval = -1;
       type++;

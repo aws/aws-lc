@@ -54,8 +54,17 @@ set(
   crypto/evp_extra/pq_kem_kat_tests_kyber512.txt
   crypto/evp_extra/scrypt_tests.txt
   crypto/fipsmodule/aes/aes_tests.txt
-  crypto/fipsmodule/bn/bn_tests.txt
-  crypto/fipsmodule/bn/miller_rabin_tests.txt
+  crypto/fipsmodule/bn/test/exp_tests.txt
+  crypto/fipsmodule/bn/test/gcd_tests.txt
+  crypto/fipsmodule/bn/test/miller_rabin_tests.txt
+  crypto/fipsmodule/bn/test/mod_exp_tests.txt
+  crypto/fipsmodule/bn/test/mod_inv_tests.txt
+  crypto/fipsmodule/bn/test/mod_mul_tests.txt
+  crypto/fipsmodule/bn/test/mod_sqrt_tests.txt
+  crypto/fipsmodule/bn/test/product_tests.txt
+  crypto/fipsmodule/bn/test/quotient_tests.txt
+  crypto/fipsmodule/bn/test/shift_tests.txt
+  crypto/fipsmodule/bn/test/sum_tests.txt
   crypto/fipsmodule/cmac/cavp_3des_cmac_tests.txt
   crypto/fipsmodule/cmac/cavp_aes128_cmac_tests.txt
   crypto/fipsmodule/cmac/cavp_aes192_cmac_tests.txt
@@ -199,6 +208,13 @@ set(
   crypto/x509/test/many_names1.pem
   crypto/x509/test/many_names2.pem
   crypto/x509/test/many_names3.pem
+  crypto/x509/test/policy_root.pem
+  crypto/x509/test/policy_intermediate_duplicate.pem
+  crypto/x509/test/policy_intermediate_invalid.pem
+  crypto/x509/test/policy_intermediate.pem
+  crypto/x509/test/policy_leaf_duplicate.pem
+  crypto/x509/test/policy_leaf_invalid.pem
+  crypto/x509/test/policy_leaf.pem
   crypto/x509/test/some_names1.pem
   crypto/x509/test/some_names2.pem
   crypto/x509/test/some_names3.pem

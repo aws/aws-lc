@@ -472,6 +472,8 @@ static enum ssl_hs_wait_t do_start_connect(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
 
   ssl_do_info_callback(ssl, SSL_CB_HANDSHAKE_START, 1);
+  ssl_update_counter(ssl->session_ctx.get(),
+                     ssl->session_ctx->stats.sess_connect, true);
   // |session_reused| must be reset in case this is a renegotiation.
   ssl->s3->session_reused = false;
 
@@ -1413,11 +1415,13 @@ static enum ssl_hs_wait_t do_send_client_key_exchange(SSL_HANDSHAKE *hs) {
     ssl_key_usage_t intended_use = (alg_k & SSL_kRSA)
                                        ? key_usage_encipherment
                                        : key_usage_digital_signature;
-    if (hs->config->enforce_rsa_key_usage ||
-        EVP_PKEY_id(hs->peer_pubkey.get()) != EVP_PKEY_RSA) {
-      if (!ssl_cert_check_key_usage(&leaf_cbs, intended_use)) {
+    if (!ssl_cert_check_key_usage(&leaf_cbs, intended_use)) {
+      if (hs->config->enforce_rsa_key_usage ||
+          EVP_PKEY_id(hs->peer_pubkey.get()) != EVP_PKEY_RSA) {
         return ssl_hs_error;
       }
+      ERR_clear_error();
+      ssl->s3->was_key_usage_invalid = true;
     }
   }
 
@@ -1865,6 +1869,12 @@ static enum ssl_hs_wait_t do_finish_client_handshake(SSL_HANDSHAKE *hs) {
     ssl_update_cache(ssl);
   }
 
+  if (ssl->s3->session_reused) {
+    // Update client side session hit counter on successfully reused sessions.
+    ssl_update_counter(ssl->session_ctx.get(), ssl->session_ctx->stats.sess_hit,
+                       true);
+  }
+
   hs->state = state_done;
   return ssl_hs_ok;
 }
@@ -1955,6 +1965,8 @@ enum ssl_hs_wait_t ssl_client_handshake(SSL_HANDSHAKE *hs) {
     }
   }
 
+  ssl_update_counter(hs->ssl->session_ctx.get(),
+                     hs->ssl->session_ctx->stats.sess_connect_good, true);
   ssl_do_info_callback(hs->ssl, SSL_CB_HANDSHAKE_DONE, 1);
   return ssl_hs_ok;
 }

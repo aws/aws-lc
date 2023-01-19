@@ -20,6 +20,7 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <inttypes.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -40,6 +41,25 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #include <sys/time.h>
 #else
 #include <time.h>
+#endif
+
+#if !defined(INTERNAL_TOOL)
+// align_pointer returns |ptr|, advanced to |alignment|. |alignment| must be a
+// power of two, and |ptr| must have at least |alignment - 1| bytes of scratch
+// space.
+static inline void *align_pointer(void *ptr, size_t alignment) {
+  // |alignment| must be a power of two.
+  assert(alignment != 0 && (alignment & (alignment - 1)) == 0);
+  // Instead of aligning |ptr| as a |uintptr_t| and casting back, compute the
+  // offset and advance in pointer space. C guarantees that casting from pointer
+  // to |uintptr_t| and back gives the same pointer, but general
+  // integer-to-pointer conversions are implementation-defined. GCC does define
+  // it in the useful way, but this makes fewer assumptions.
+  uintptr_t offset = (0u - (uintptr_t)ptr) & (alignment - 1);
+  ptr = (char *)ptr + offset;
+  assert(((uintptr_t)ptr & (alignment - 1)) == 0);
+  return ptr;
+}
 #endif
 
 static inline void *BM_memset(void *dst, int c, size_t n) {
@@ -63,17 +83,18 @@ static std::string ChunkLenSuffix(size_t chunk_len) {
 // TimeResults represents the results of benchmarking a function.
 struct TimeResults {
   // num_calls is the number of function calls done in the time period.
-  unsigned num_calls;
+  uint64_t num_calls;
   // us is the number of microseconds that elapsed in the time period.
-  unsigned us;
+  uint64_t us;
 
   void Print(const std::string &description) const {
     if (g_print_json) {
       PrintJSON(description);
     } else {
-      printf("Did %u %s operations in %uus (%.1f ops/sec)\n", num_calls,
-             description.c_str(), us,
-             (static_cast<double>(num_calls) / us) * 1000000);
+      printf(
+          "Did %" PRIu64 " %s operations in %" PRIu64 "us (%.1f ops/sec)\n",
+          num_calls, description.c_str(), us,
+          (static_cast<double>(num_calls) / static_cast<double>(us)) * 1000000);
     }
   }
 
@@ -82,10 +103,13 @@ struct TimeResults {
     if (g_print_json) {
       PrintJSON(description, bytes_per_call);
     } else {
-      printf("Did %u %s operations in %uus (%.1f ops/sec): %.1f MB/s\n",
-             num_calls, (description + ChunkLenSuffix(bytes_per_call)).c_str(), us,
-             (static_cast<double>(num_calls) / us) * 1000000,
-             static_cast<double>(bytes_per_call * num_calls) / us);
+      printf(
+          "Did %" PRIu64 " %s operations in %" PRIu64
+          "us (%.1f ops/sec): %.1f MB/s\n",
+          num_calls, (description + ChunkLenSuffix(bytes_per_call)).c_str(), us,
+          (static_cast<double>(num_calls) / static_cast<double>(us)) * 1000000,
+          static_cast<double>(bytes_per_call * num_calls) /
+              static_cast<double>(us));
     }
   }
 
@@ -96,7 +120,8 @@ struct TimeResults {
       puts(",");
     }
 
-    printf("{\"description\": \"%s\", \"numCalls\": %u, \"microseconds\": %u",
+    printf("{\"description\": \"%s\", \"numCalls\": %" PRIu64
+           ", \"microseconds\": %" PRIu64,
            description.c_str(), num_calls, us);
 
     if (bytes_per_call > 0) {
@@ -144,17 +169,22 @@ static uint64_t g_timeout_seconds = 1;
 static std::vector<size_t> g_chunk_lengths = {16, 256, 1350, 8192, 16384};
 
 static bool TimeFunction(TimeResults *results, std::function<bool()> func) {
+  // The first time |func| is called an expensive self check might run that
+  // will skew the iterations between checks calculation
+  if (!func()) {
+    return false;
+  }
   // total_us is the total amount of time that we'll aim to measure a function
   // for.
   const uint64_t total_us = g_timeout_seconds * 1000000;
   uint64_t start = time_now(), now, delta;
-  unsigned done = 0, iterations_between_time_checks;
 
   if (!func()) {
     return false;
   }
   now = time_now();
   delta = now - start;
+  unsigned iterations_between_time_checks;
   if (delta == 0) {
     iterations_between_time_checks = 250;
   } else {
@@ -168,6 +198,10 @@ static bool TimeFunction(TimeResults *results, std::function<bool()> func) {
     }
   }
 
+  // Don't include the time taken to run |func| to calculate
+  // |iterations_between_time_checks|
+  start = time_now();
+  uint64_t done = 0;
   for (;;) {
     for (unsigned i = 0; i < iterations_between_time_checks; i++) {
       if (!func()) {
@@ -202,7 +236,7 @@ static bool SpeedRSA(const std::string &selected) {
     {"RSA 8192", kDERRSAPrivate8192, kDERRSAPrivate8192Len},
   };
 
-  for(unsigned i = 0; i < BM_ARRAY_SIZE(kRSAKeys); i++) {
+  for (size_t i = 0; i < BM_ARRAY_SIZE(kRSAKeys); i++) {
     const std::string name = kRSAKeys[i].name;
 
     // d2i_RSAPrivateKey expects to be able to modify the input pointer as it parses the input data and we don't want it
@@ -314,9 +348,9 @@ static bool SpeedRSAKeyGen(const std::string &selected) {
   const std::vector<int> kSizes = {2048, 3072, 4096};
   for (int size : kSizes) {
     const uint64_t start = time_now();
-    unsigned num_calls = 0;
-    unsigned us;
-    std::vector<unsigned> durations;
+    uint64_t num_calls = 0;
+    uint64_t us;
+    std::vector<uint64_t> durations;
 
     for (;;) {
       BM_NAMESPACE::UniquePtr<RSA> rsa(RSA_new());
@@ -349,18 +383,13 @@ static bool SpeedRSAKeyGen(const std::string &selected) {
     // Distribution information is useful, but doesn't fit into the standard
     // format used by |g_print_json|.
     if (!g_print_json) {
-      // |min| and |max| must be stored in temporary variables to avoid an MSVC
-      // bug on x86. There, size_t is a typedef for unsigned, but MSVC's printf
-      // warning tries to retain the distinction and suggest %zu for size_t
-      // instead of %u. It gets confused if std::vector<unsigned> and
-      // std::vector<size_t> are both instantiated. Being typedefs, the two
-      // instantiations are identical, which somehow breaks the size_t vs
-      // unsigned metadata.
-      unsigned min = durations[0];
-      unsigned median = n & 1 ? durations[n / 2]
+      uint64_t min = durations[0];
+      uint64_t median = n & 1 ? durations[n / 2]
                               : (durations[n / 2 - 1] + durations[n / 2]) / 2;
-      unsigned max = durations[n - 1];
-      printf("  min: %uus, median: %uus, max: %uus\n", min, median, max);
+      uint64_t max = durations[n - 1];
+      printf("  min: %" PRIu64 "us, median: %" PRIu64 "us, max: %" PRIu64
+             "us\n",
+             min, median, max);
     }
   }
 
@@ -487,13 +516,13 @@ static bool SpeedAEADChunk(const EVP_AEAD *aead, std::string name,
 
   uint8_t *const in =
       static_cast<uint8_t *>(align_pointer(in_storage.get(), kAlignment));
-  OPENSSL_memset(in, 0, chunk_len);
+  BM_memset(in, 0, chunk_len);
   uint8_t *const out =
       static_cast<uint8_t *>(align_pointer(out_storage.get(), kAlignment));
-  OPENSSL_memset(out, 0, chunk_len + overhead_len);
+  BM_memset(out, 0, chunk_len + overhead_len);
   uint8_t *const tag =
       static_cast<uint8_t *>(align_pointer(tag_storage.get(), kAlignment));
-  OPENSSL_memset(tag, 0, overhead_len);
+  BM_memset(tag, 0, overhead_len);
   uint8_t *const in2 =
       static_cast<uint8_t *>(align_pointer(in2_storage.get(), kAlignment));
 
@@ -708,7 +737,6 @@ static bool SpeedAESBlock(const std::string &name, unsigned bits,
   return true;
 }
 
-#if !defined(OPENSSL_1_0_BENCHMARK)
 static bool SpeedAES256XTS(const std::string &name, //const size_t in_len,
                            const std::string &selected) {
   if (!selected.empty() && name.find(selected) == std::string::npos) {
@@ -778,7 +806,6 @@ static bool SpeedAES256XTS(const std::string &name, //const size_t in_len,
 
   return true;
 }
-#endif
 
 static bool SpeedHashChunk(const EVP_MD *md, std::string name,
                            size_t chunk_len) {
@@ -1406,6 +1433,7 @@ static bool SpeedHRSS(const std::string &selected) {
   return true;
 }
 
+#if defined(INTERNAL_TOOL)
 static bool SpeedHashToCurve(const std::string &selected) {
   if (!selected.empty() && selected.find("hashtocurve") == std::string::npos) {
     return true;
@@ -1445,6 +1473,7 @@ static bool SpeedHashToCurve(const std::string &selected) {
 
   return true;
 }
+#endif
 
 static bool SpeedBase64(const std::string &selected) {
   if (!selected.empty() && selected.find("base64") == std::string::npos) {
@@ -1511,14 +1540,11 @@ static bool SpeedSipHash(const std::string &selected) {
   return true;
 }
 
+#if defined(INTERNAL_TOOL)
 static TRUST_TOKEN_PRETOKEN *trust_token_pretoken_dup(
     TRUST_TOKEN_PRETOKEN *in) {
-  TRUST_TOKEN_PRETOKEN *out =
-      (TRUST_TOKEN_PRETOKEN *)OPENSSL_malloc(sizeof(TRUST_TOKEN_PRETOKEN));
-  if (out) {
-    OPENSSL_memcpy(out, in, sizeof(TRUST_TOKEN_PRETOKEN));
-  }
-  return out;
+  return (TRUST_TOKEN_PRETOKEN *)OPENSSL_memdup(in,
+                                                sizeof(TRUST_TOKEN_PRETOKEN));
 }
 
 static bool SpeedTrustToken(std::string name, const TRUST_TOKEN_METHOD *method,
@@ -1748,6 +1774,7 @@ static bool SpeedTrustToken(std::string name, const TRUST_TOKEN_METHOD *method,
   return true;
 }
 #endif
+#endif
 
 #if defined(BORINGSSL_FIPS)
 static bool SpeedSelfTest(const std::string &selected) {
@@ -1872,10 +1899,7 @@ bool Speed(const std::vector<std::string> &args) {
      !SpeedAESGCM(EVP_aes_128_gcm(), "EVP-AES-128-GCM", kTLSADLen, selected) ||
      !SpeedAESGCM(EVP_aes_192_gcm(), "EVP-AES-192-GCM", kTLSADLen, selected) ||
      !SpeedAESGCM(EVP_aes_256_gcm(), "EVP-AES-256-GCM", kTLSADLen, selected) ||
-     // OpenSSL 1.0 doesn't support AES-XTS
-#if !defined(OPENSSL_1_0_BENCHMARK)
      !SpeedAES256XTS("AES-256-XTS", selected) ||
-#endif
      // OpenSSL 3.0 doesn't allow MD4 calls
 #if !defined(OPENSSL_3_0_BENCHMARK)
      !SpeedHash(EVP_md4(), "MD4", selected) ||
@@ -1935,6 +1959,7 @@ bool Speed(const std::vector<std::string> &args) {
      !SpeedRSAKeyGen(selected) ||
      !SpeedHRSS(selected) ||
      !SpeedHash(EVP_blake2b256(), "BLAKE2b-256", selected) ||
+#if defined(INTERNAL_TOOL)
      !SpeedHashToCurve(selected) ||
      !SpeedTrustToken("TrustToken-Exp1-Batch1", TRUST_TOKEN_experiment_v1(), 1, selected) ||
      !SpeedTrustToken("TrustToken-Exp1-Batch10", TRUST_TOKEN_experiment_v1(), 10, selected) ||
@@ -1942,6 +1967,7 @@ bool Speed(const std::vector<std::string> &args) {
      !SpeedTrustToken("TrustToken-Exp2VOPRF-Batch10", TRUST_TOKEN_experiment_v2_voprf(), 10, selected) ||
      !SpeedTrustToken("TrustToken-Exp2PMB-Batch1", TRUST_TOKEN_experiment_v2_pmb(), 1, selected) ||
      !SpeedTrustToken("TrustToken-Exp2PMB-Batch10", TRUST_TOKEN_experiment_v2_pmb(), 10, selected) ||
+#endif
      !SpeedBase64(selected) ||
      !SpeedSipHash(selected)
 #endif

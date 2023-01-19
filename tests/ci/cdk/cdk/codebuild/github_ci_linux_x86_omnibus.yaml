@@ -122,14 +122,6 @@ batch:
         compute-type: BUILD_GENERAL1_LARGE
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_clang-9x_latest
 
-    - identifier: ubuntu2004_clang9x_x86_64_sanitizer
-      buildspec: ./tests/ci/codebuild/linux-x86/run_sanitizer_tests.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: true
-        compute-type: BUILD_GENERAL1_LARGE
-        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_clang-9x_sanitizer_latest
-
     - identifier: ubuntu2004_clang10x_x86_64
       buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
       env:
@@ -213,7 +205,7 @@ batch:
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
-        compute-type: BUILD_GENERAL1_LARGE
+        compute-type: BUILD_GENERAL1_2XLARGE
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:amazonlinux-2_gcc-7x_intel-sde_latest
 
     - identifier: amazonlinux2_gcc7x_x86_64_valgrind
@@ -223,6 +215,47 @@ batch:
         privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:amazonlinux-2_gcc-7x_latest
+
+    - identifier: amazonlinux2022_gcc11x_x86_64
+      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_LARGE
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:amazonlinux-2022_gcc-11x_latest
+
+    - identifier: amazonlinux2022_clang14x_x86_64
+      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_LARGE
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:amazonlinux-2022_clang-14x_latest
+
+    - identifier: amazonlinux2022_gcc11x_x86_64_fips
+      buildspec: ./tests/ci/codebuild/linux-x86/run_fips_tests.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_LARGE
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:amazonlinux-2022_gcc-11x_latest
+
+    - identifier: amazonlinux2022_clang14x_x86_64_fips
+      buildspec: ./tests/ci/codebuild/linux-x86/run_fips_tests.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_LARGE
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:amazonlinux-2022_clang-14x_latest
+
+    - identifier: amazonlinux2022_clang14x_x86_64_sanitizer
+      buildspec: ./tests/ci/codebuild/linux-x86/run_sanitizer_tests.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_LARGE
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:amazonlinux-2022_clang-14x_sanitizer_latest
+
 
     - identifier: s2n_integration
       buildspec: ./tests/ci/codebuild/linux-x86/s2n_integration.yml
@@ -277,7 +310,7 @@ batch:
     # When 'AES_GCM_SELECTCHECK' is defined, AES-GCM formal verification is executed against more parameters.
     # Each dimension only checks |evp_cipher_update_len| from AES_GCM_SELECTCHECK_START to AES_GCM_SELECTCHECK_END.
     # https://github.com/awslabs/aws-lc-verification/blob/master/SAW/proof/AES/verify-AES-GCM-selectcheck-template.txt
-    - identifier: ubuntu2004_clang10x_formal_verification_aes_gcm_selectcheck_1_172
+    - identifier: ubuntu2004_clang10x_formal_verification_aes_gcm_selectcheck_1_140
       buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-20.04_clang-10x_formal-verification.yml
       env:
         type: LINUX_CONTAINER
@@ -287,9 +320,9 @@ batch:
         variables:
           AES_GCM_SELECTCHECK: 1
           AES_GCM_SELECTCHECK_START: 1
-          AES_GCM_SELECTCHECK_END: 172
+          AES_GCM_SELECTCHECK_END: 140
 
-    - identifier: ubuntu2004_clang10x_formal_verification_aes_gcm_selectcheck_173_300
+    - identifier: ubuntu2004_clang10x_formal_verification_aes_gcm_selectcheck_141_231
       buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-20.04_clang-10x_formal-verification.yml
       env:
         type: LINUX_CONTAINER
@@ -298,10 +331,10 @@ batch:
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_clang-10x_formal-verification_latest
         variables:
           AES_GCM_SELECTCHECK: 1
-          AES_GCM_SELECTCHECK_START: 173
-          AES_GCM_SELECTCHECK_END: 300
+          AES_GCM_SELECTCHECK_START: 141
+          AES_GCM_SELECTCHECK_END: 231
 
-    - identifier: ubuntu2004_clang10x_formal_verification_aes_gcm_selectcheck_301_346
+    - identifier: ubuntu2004_clang10x_formal_verification_aes_gcm_selectcheck_232_289
       buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-20.04_clang-10x_formal-verification.yml
       env:
         type: LINUX_CONTAINER
@@ -310,10 +343,10 @@ batch:
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_clang-10x_formal-verification_latest
         variables:
           AES_GCM_SELECTCHECK: 1
-          AES_GCM_SELECTCHECK_START: 301
-          AES_GCM_SELECTCHECK_END: 346
+          AES_GCM_SELECTCHECK_START: 232
+          AES_GCM_SELECTCHECK_END: 289
 
-    - identifier: ubuntu2004_clang10x_formal_verification_aes_gcm_selectcheck_347_384
+    - identifier: ubuntu2004_clang10x_formal_verification_aes_gcm_selectcheck_290_325
       buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-20.04_clang-10x_formal-verification.yml
       env:
         type: LINUX_CONTAINER
@@ -322,7 +355,31 @@ batch:
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_clang-10x_formal-verification_latest
         variables:
           AES_GCM_SELECTCHECK: 1
-          AES_GCM_SELECTCHECK_START: 347
+          AES_GCM_SELECTCHECK_START: 290
+          AES_GCM_SELECTCHECK_END: 325
+
+    - identifier: ubuntu2004_clang10x_formal_verification_aes_gcm_selectcheck_326_356
+      buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-20.04_clang-10x_formal-verification.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_2XLARGE
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_clang-10x_formal-verification_latest
+        variables:
+          AES_GCM_SELECTCHECK: 1
+          AES_GCM_SELECTCHECK_START: 326
+          AES_GCM_SELECTCHECK_END: 356
+
+    - identifier: ubuntu2004_clang10x_formal_verification_aes_gcm_selectcheck_357_384
+      buildspec: ./tests/ci/codebuild/linux-x86/ubuntu-20.04_clang-10x_formal-verification.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_2XLARGE
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_clang-10x_formal-verification_latest
+        variables:
+          AES_GCM_SELECTCHECK: 1
+          AES_GCM_SELECTCHECK_START: 357
           AES_GCM_SELECTCHECK_END: 384
 
     # Build and test aws-lc without Perl/Go.

@@ -787,7 +787,7 @@ struct rsa_st {
   // num_blindings contains the size of the |blindings| and |blindings_inuse|
   // arrays. This member and the |blindings_inuse| array are protected by
   // |lock|.
-  unsigned num_blindings;
+  size_t num_blindings;
   // blindings is an array of BN_BLINDING structures that can be reserved by a
   // thread by locking |lock| and changing the corresponding element in
   // |blindings_inuse| from 0 to 1.
@@ -799,6 +799,21 @@ struct rsa_st {
   // operation and may no longer be mutated.
   unsigned private_key_frozen:1;
 };
+
+#if !defined(AWSLC_FIPS)
+#include <stdbool.h>
+
+// This function is DEPRECATED.
+//
+// Some RSA keys are inappropriately generated -- the private exponent |d|
+// is greater than the modulus |n|. Until such keys are eradicated, we
+// _temporarly_ add a way to relax the requirements for validating RSA keys
+// such that the condition |d < n| can be skipped. This "relaxed" behavior
+// has to be explicitly enabled by the user by calling the function
+// |allow_rsa_keys_d_gt_n()|. The default behavior is still to check
+// if |d < n| and fail if not true.
+OPENSSL_EXPORT void allow_rsa_keys_d_gt_n(void);
+#endif
 
 
 #if defined(__cplusplus)

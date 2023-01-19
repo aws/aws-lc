@@ -8,7 +8,7 @@
 #define OPENSSL_NO_ASM
 #endif
 
-#if !defined(OPENSSL_NO_ASM)
+#if !defined(OPENSSL_NO_ASM) && defined(__AARCH64EL__) && defined(__APPLE__)
 #if defined(BORINGSSL_PREFIX)
 #include <boringssl_prefix_symbols_asm.h>
 #endif
@@ -1402,7 +1402,7 @@ _ecp_nistz256_ord_mul_mont:
 
 ////////////////////////////////////////////////////////////////////////
 // void ecp_nistz256_ord_sqr_mont(uint64_t res[4], uint64_t a[4],
-//                                int rep);
+//                                uint64_t rep);
 .globl	_ecp_nistz256_ord_sqr_mont
 .private_extern	_ecp_nistz256_ord_sqr_mont
 
@@ -1707,4 +1707,8 @@ Lselect_w7_loop:
 
 	ret
 
-#endif  // !OPENSSL_NO_ASM
+#endif  // !OPENSSL_NO_ASM && defined(__AARCH64EL__) && defined(__APPLE__)
+#if defined(__ELF__)
+// See https://www.airs.com/blog/archives/518.
+.section .note.GNU-stack,"",%progbits
+#endif
