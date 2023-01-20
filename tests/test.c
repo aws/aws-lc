@@ -5252,6 +5252,70 @@ int test_bignum_montmul_p521_alt(void)
   return 0;
 }
 
+int test_bignum_montmul_sm2(void)
+{ uint64_t t;
+  printf("Testing bignum_montmul_sm2 with %d cases\n",tests);
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(4,b2);
+     reference_mod(4,b0,b2,p_sm2);
+     random_bignum(4,b2);
+     reference_mod(4,b1,b2,p_sm2);
+     bignum_montmul_sm2(b4,b0,b1);
+     reference_dmontmul(4,b3,b0,b1,p_sm2,i_sm2,b5);
+
+     c = reference_compare(4,b3,4,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "2^-256 * ...0x%016"PRIx64" * ...%016"PRIx64"  mod p_sm2 = "
+               "0x%016"PRIx64"...%016"PRIx64" not 0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(4),b0[0],b1[0],b4[3],b4[0],b3[3],b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "2^-256 * ...0x%016"PRIx64" * ...%016"PRIx64"  mod p_sm2 = "
+               "0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(4),b0[0],b1[0],b4[3],b4[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_bignum_montmul_sm2_alt(void)
+{ uint64_t t;
+  printf("Testing bignum_montmul_sm2_alt with %d cases\n",tests);
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(4,b2);
+     reference_mod(4,b0,b2,p_sm2);
+     random_bignum(4,b2);
+     reference_mod(4,b1,b2,p_sm2);
+     bignum_montmul_sm2_alt(b4,b0,b1);
+     reference_dmontmul(4,b3,b0,b1,p_sm2,i_sm2,b5);
+
+     c = reference_compare(4,b3,4,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "2^-256 * ...0x%016"PRIx64" * ...%016"PRIx64"  mod p_sm2 = "
+               "0x%016"PRIx64"...%016"PRIx64" not 0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(4),b0[0],b1[0],b4[3],b4[0],b3[3],b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "2^-256 * ...0x%016"PRIx64" * ...%016"PRIx64"  mod p_sm2 = "
+               "0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(4),b0[0],b1[0],b4[3],b4[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
 int test_bignum_montredc(void)
 { uint64_t t, k, n, p, r, q;
   printf("Testing bignum_montredc with %d cases\n",tests);
@@ -5579,6 +5643,66 @@ int test_bignum_montsqr_p521_alt(void)
                "2^-576 * ...0x%016"PRIx64"^2 mod p_521 = "
                "0x%016"PRIx64"...%016"PRIx64"\n",
                UINT64_C(9),b0[0],b4[8],b4[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_bignum_montsqr_sm2(void)
+{ uint64_t t;
+  printf("Testing bignum_montsqr_sm2 with %d cases\n",tests);
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(4,b2);
+     reference_mod(4,b0,b2,p_sm2);
+     bignum_montsqr_sm2(b4,b0);
+     reference_dmontmul(4,b3,b0,b0,p_sm2,i_sm2,b5);
+
+     c = reference_compare(4,b3,4,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "2^-256 * ...0x%016"PRIx64"^2 mod p_sm2 = "
+               "0x%016"PRIx64"...%016"PRIx64" not 0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(4),b0[0],b4[3],b4[0],b3[3],b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "2^-256 * ...0x%016"PRIx64"^2 mod p_sm2 = "
+               "0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(4),b0[0],b4[3],b4[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_bignum_montsqr_sm2_alt(void)
+{ uint64_t t;
+  printf("Testing bignum_montsqr_sm2_alt with %d cases\n",tests);
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(4,b2);
+     reference_mod(4,b0,b2,p_sm2);
+     bignum_montsqr_sm2_alt(b4,b0);
+     reference_dmontmul(4,b3,b0,b0,p_sm2,i_sm2,b5);
+
+     c = reference_compare(4,b3,4,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "2^-256 * ...0x%016"PRIx64"^2 mod p_sm2 = "
+               "0x%016"PRIx64"...%016"PRIx64" not 0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(4),b0[0],b4[3],b4[0],b3[3],b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "2^-256 * ...0x%016"PRIx64"^2 mod p_sm2 = "
+               "0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(4),b0[0],b4[3],b4[0]);
       }
    }
   printf("All OK\n");
@@ -9766,6 +9890,8 @@ int main(int argc, char *argv[])
   functionaltest(all,"bignum_montmul_p384_alt",test_bignum_montmul_p384_alt);
   functionaltest(bmi,"bignum_montmul_p521",test_bignum_montmul_p521);
   functionaltest(all,"bignum_montmul_p521_alt",test_bignum_montmul_p521_alt);
+  functionaltest(bmi,"bignum_montmul_sm2",test_bignum_montmul_sm2);
+  functionaltest(all,"bignum_montmul_sm2_alt",test_bignum_montmul_sm2_alt);
   functionaltest(all,"bignum_montredc",test_bignum_montredc);
   functionaltest(all,"bignum_montsqr",test_bignum_montsqr);
   functionaltest(bmi,"bignum_montsqr_p256",test_bignum_montsqr_p256);
@@ -9776,6 +9902,8 @@ int main(int argc, char *argv[])
   functionaltest(all,"bignum_montsqr_p384_alt",test_bignum_montsqr_p384_alt);
   functionaltest(bmi,"bignum_montsqr_p521",test_bignum_montsqr_p521);
   functionaltest(all,"bignum_montsqr_p521_alt",test_bignum_montsqr_p521_alt);
+  functionaltest(bmi,"bignum_montsqr_sm2",test_bignum_montsqr_sm2);
+  functionaltest(all,"bignum_montsqr_sm2_alt",test_bignum_montsqr_sm2_alt);
   functionaltest(all,"bignum_mul",test_bignum_mul);
   functionaltest(bmi,"bignum_mul_4_8",test_bignum_mul_4_8);
   functionaltest(all,"bignum_mul_4_8_alt",test_bignum_mul_4_8_alt);

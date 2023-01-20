@@ -2,46 +2,44 @@
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
 // ----------------------------------------------------------------------------
-// Montgomery multiply, z := (x * y / 2^256) mod p_256
+// Montgomery multiply, z := (x * y / 2^256) mod p_sm2
 // Inputs x[4], y[4]; output z[4]
 //
-//    extern void bignum_montmul_p256_alt
+//    extern void bignum_montmul_sm2_alt
 //     (uint64_t z[static 4], uint64_t x[static 4], uint64_t y[static 4]);
 //
-// Does z := (2^{-256} * x * y) mod p_256, assuming that the inputs x and y
-// satisfy x * y <= 2^256 * p_256 (in particular this is true if we are in
-// the "usual" case x < p_256 and y < p_256).
+// Does z := (2^{-256} * x * y) mod p_sm2, assuming that the inputs x and y
+// satisfy x * y <= 2^256 * p_sm2 (in particular this is true if we are in
+// the "usual" case x < p_sm2 and y < p_sm2).
 //
 // Standard ARM ABI: X0 = z, X1 = x, X2 = y
 // ----------------------------------------------------------------------------
 #include "_internal_s2n_bignum.h"
 
-        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_montmul_p256_alt)
-        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_montmul_p256_alt)
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_montmul_sm2_alt)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(bignum_montmul_sm2_alt)
         .text
         .balign 4
 
 // ---------------------------------------------------------------------------
 // Core one-step "short" Montgomery reduction macro. Takes input in
 // [d3;d2;d1;d0] and returns result in [d4;d3;d2;d1], adding to the
-// existing contents of [d3;d2;d1] and generating d4 from zero, re-using
-// d0 as a temporary internally together with t0, t1 and t2.
-// It is fine for d4 to be the same register as d0, and it often is.
+// existing contents of [d3;d2;d1], and using t0, t1, t2 and t3 as
+// temporaries. It is fine for d4 to be the same register as d0,
+// and it often is.
 // ---------------------------------------------------------------------------
 
-#define montreds(d4,d3,d2,d1,d0, t2,t1,t0)                                  \
-/* Let w = d0, the original word we use as offset; d0 gets recycled      */ \
-/* First let [t2;t1] = 2^32 * w                                          */ \
-/* then let [d0;t0] = (2^64 - 2^32 + 1) * w (overwrite old d0)           */ \
-        lsl     t1, d0, #32;                                        \
-        subs    t0, d0, t1;                                         \
-        lsr     t2, d0, #32;                                        \
-        sbc     d0, d0, t2;                                         \
-/* Hence [d4;..;d1] := [d3;d2;d1;0] + (2^256 - 2^224 + 2^192 + 2^96) * w */ \
-        adds    d1, d1, t1;                                         \
-        adcs    d2, d2, t2;                                         \
-        adcs    d3, d3, t0;                                         \
-        adc     d4, d0, xzr
+#define montreds(d4,d3,d2,d1,d0, t3,t2,t1,t0)                               \
+/* First let [t3;t2] = 2^32 * d0 and [t1;t0] = (2^32-1) * d0             */ \
+        lsl     t2, d0, #32;                                                \
+        lsr     t3, d0, #32;                                                \
+        subs    t0, t2, d0;                                                 \
+        sbc     t1, t3, xzr;                                                \
+/* Now [d4;d3;d2;d1] := [d0;d3;d2;d1] - [t3;t2;t1;t0]                    */ \
+        subs    d1, d1, t0;                                                 \
+        sbcs    d2, d2, t1;                                                 \
+        sbcs    d3, d3, t2;                                                 \
+        sbc     d4, d0, t3
 
 #define z x0
 #define x x1
@@ -71,7 +69,7 @@
 #define u7 a2
 #define h a3
 
-S2N_BN_SYMBOL(bignum_montmul_p256_alt):
+S2N_BN_SYMBOL(bignum_montmul_sm2_alt):
 
 // Load operands and set up row 0 = [u4;...;u0] = a0 * [b3;...;b0]
 
@@ -162,10 +160,10 @@ S2N_BN_SYMBOL(bignum_montmul_p256_alt):
 
 // Perform 4 Montgomery steps to rotate the lower half
 
-        montreds(u0,u3,u2,u1,u0, h,l,b1)
-        montreds(u1,u0,u3,u2,u1, h,l,b1)
-        montreds(u2,u1,u0,u3,u2, h,l,b1)
-        montreds(u3,u2,u1,u0,u3, h,l,b1)
+        montreds(u0,u3,u2,u1,u0, h,l,b0,b1)
+        montreds(u1,u0,u3,u2,u1, h,l,b0,b1)
+        montreds(u2,u1,u0,u3,u2, h,l,b0,b1)
+        montreds(u3,u2,u1,u0,u3, h,l,b0,b1)
 
 // Add high and low parts, catching carry in b1
 
@@ -175,19 +173,19 @@ S2N_BN_SYMBOL(bignum_montmul_p256_alt):
         adcs    u3, u3, u7
         cset    b1, cs
 
-// Set [h;0;l;-1] = p_256 and form [u7,u6,u5,u4] = [b1;u3;u2;u1;u0] - p_256
+// Set [h;-1;l;-1] = p_sm2 and form [u7,u6,u5,u4] = [b1;u3;u2;u1;u0] - p_sm2
 
-        mov     l, #0x00000000ffffffff
-        mov     h, #0xffffffff00000001
+        mov     l, #0xffffffff00000000
+        mov     h, #0xfffffffeffffffff
 
         subs    u4, u0, #-1
         sbcs    u5, u1, l
-        sbcs    u6, u2, xzr
+        adcs    u6, u2, xzr
         sbcs    u7, u3, h
         sbcs    xzr, b1, xzr
 
 // Now CF is clear if the comparison carried so the original was fine
-// Otherwise take the form with p_256 subtracted.
+// Otherwise take the form with p_sm2 subtracted.
 
         csel    u0, u0, u4, cc
         csel    u1, u1, u5, cc

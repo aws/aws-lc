@@ -365,6 +365,10 @@ void call_bignum_montmul_p521(void) repeat(bignum_montmul_p521(b0,b1,b2))
 
 void call_bignum_montmul_p521_alt(void) repeat(bignum_montmul_p521_alt(b0,b1,b2))
 
+void call_bignum_montmul_sm2(void) repeat(bignum_montmul_sm2(b0,b1,b2))
+
+void call_bignum_montmul_sm2_alt(void) repeat(bignum_montmul_sm2_alt(b0,b1,b2))
+
 void call_bignum_montsqr_p256(void) repeat(bignum_montsqr_p256(b0,b1))
 
 void call_bignum_montsqr_p256_alt(void) repeat(bignum_montsqr_p256_alt(b0,b1))
@@ -380,6 +384,10 @@ void call_bignum_montsqr_p384_alt(void) repeat(bignum_montsqr_p384_alt(b0,b1))
 void call_bignum_montsqr_p521(void) repeat(bignum_montsqr_p521(b0,b1))
 
 void call_bignum_montsqr_p521_alt(void) repeat(bignum_montsqr_p521_alt(b0,b1))
+
+void call_bignum_montsqr_sm2(void) repeat(bignum_montsqr_sm2(b0,b1))
+
+void call_bignum_montsqr_sm2_alt(void) repeat(bignum_montsqr_sm2_alt(b0,b1))
 
 void call_bignum_neg_p25519(void) repeat(bignum_neg_p25519(b0,b1))
 
@@ -933,6 +941,8 @@ int main(int argc, char *argv[])
   timingtest(all,"bignum_montmul_p384_alt",call_bignum_montmul_p384_alt);
   timingtest(bmi,"bignum_montmul_p521",call_bignum_montmul_p521);
   timingtest(all,"bignum_montmul_p521_alt",call_bignum_montmul_p521_alt);
+  timingtest(bmi,"bignum_montmul_sm2",call_bignum_montmul_sm2);
+  timingtest(all,"bignum_montmul_sm2_alt",call_bignum_montmul_sm2_alt);
   timingtest(all,"bignum_montredc (32/16 -> 16)",call_bignum_montredc__32_16);
   timingtest(all,"bignum_montsqr (32 -> 32)" ,call_bignum_montsqr__32);
   timingtest(bmi,"bignum_montsqr_p256",call_bignum_montsqr_p256);
@@ -943,6 +953,8 @@ int main(int argc, char *argv[])
   timingtest(all,"bignum_montsqr_p384_alt",call_bignum_montsqr_p384_alt);
   timingtest(bmi,"bignum_montsqr_p521",call_bignum_montsqr_p521);
   timingtest(all,"bignum_montsqr_p521_alt",call_bignum_montsqr_p521_alt);
+  timingtest(bmi,"bignum_montsqr_sm2",call_bignum_montsqr_sm2);
+  timingtest(all,"bignum_montsqr_sm2_alt",call_bignum_montsqr_sm2_alt);
   timingtest(all,"bignum_mul (4x4 -> 8)",call_bignum_mul__4_8);
   timingtest(all,"bignum_mul (6x6 -> 12)",call_bignum_mul__6_12);
   timingtest(all,"bignum_mul (8x8 -> 16)",call_bignum_mul__8_16);

@@ -475,6 +475,11 @@ extern void bignum_montmul_p384_alt (uint64_t z[static 6], uint64_t x[static 6],
 extern void bignum_montmul_p521 (uint64_t z[static 9], uint64_t x[static 9], uint64_t y[static 9]);
 extern void bignum_montmul_p521_alt (uint64_t z[static 9], uint64_t x[static 9], uint64_t y[static 9]);
 
+// Montgomery multiply, z := (x * y / 2^256) mod p_sm2
+// Inputs x[4], y[4]; output z[4]
+extern void bignum_montmul_sm2 (uint64_t z[static 4], uint64_t x[static 4], uint64_t y[static 4]);
+extern void bignum_montmul_sm2_alt (uint64_t z[static 4], uint64_t x[static 4], uint64_t y[static 4]);
+
 // Montgomery reduce, z := (x' / 2^{64p}) MOD m
 // Inputs x[n], m[k], p; output z[k]
 extern void bignum_montredc (uint64_t k, uint64_t *z, uint64_t n, uint64_t *x, uint64_t *m, uint64_t p);
@@ -502,6 +507,11 @@ extern void bignum_montsqr_p384_alt (uint64_t z[static 6], uint64_t x[static 6])
 // Input x[9]; output z[9]
 extern void bignum_montsqr_p521 (uint64_t z[static 9], uint64_t x[static 9]);
 extern void bignum_montsqr_p521_alt (uint64_t z[static 9], uint64_t x[static 9]);
+
+// Montgomery square, z := (x^2 / 2^256) mod p_sm2
+// Input x[4]; output z[4]
+extern void bignum_montsqr_sm2 (uint64_t z[static 4], uint64_t x[static 4]);
+extern void bignum_montsqr_sm2_alt (uint64_t z[static 4], uint64_t x[static 4]);
 
 // Multiply z := x * y
 // Inputs x[m], y[n]; output z[k]

@@ -251,6 +251,10 @@ OBJ = curve25519/bignum_add_p25519.o \
       sm2/bignum_mod_nsm2_4.o \
       sm2/bignum_mod_sm2.o \
       sm2/bignum_mod_sm2_4.o \
+      sm2/bignum_montmul_sm2.o \
+      sm2/bignum_montmul_sm2_alt.o \
+      sm2/bignum_montsqr_sm2.o \
+      sm2/bignum_montsqr_sm2_alt.o \
       sm2/bignum_neg_sm2.o \
       sm2/bignum_optneg_sm2.o \
       sm2/bignum_sub_sm2.o \

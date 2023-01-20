@@ -89,10 +89,10 @@ S2N_BN_SYMBOL(bignum_triple_sm2_alt):
 // Use the bitmask c for final masked addition of p_sm2.
 
         adds    d0, d0, c
-        and     t1, h, #0xffffffff00000000
+        and     t1, c, #0xffffffff00000000
         adcs    d1, d1, t1
         adcs    d2, d2, c
-        and     t0, h, #0xfffffffeffffffff
+        and     t0, c, #0xfffffffeffffffff
         adc     d3, d3, t0
 
 // Finally store the result

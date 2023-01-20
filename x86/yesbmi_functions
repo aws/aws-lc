@@ -23,10 +23,12 @@ bignum_montmul_p256
 bignum_montmul_p256k1
 bignum_montmul_p384
 bignum_montmul_p521
+bignum_montmul_sm2
 bignum_montsqr_p256
 bignum_montsqr_p256k1
 bignum_montsqr_p384
 bignum_montsqr_p521
+bignum_montsqr_sm2
 bignum_mul_4_8
 bignum_mul_6_12
 bignum_mul_8_16
