@@ -392,6 +392,8 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
       CRYPTO_STATIC_MUTEX_unlock_write(thread_states_list_lock_bss_get());
     }
 #endif
+    OPENSSL_cleanse(seed, CTR_DRBG_ENTROPY_LEN);
+    OPENSSL_cleanse(personalization, CTR_DRBG_ENTROPY_LEN);
   }
 
   if (state->calls >= kReseedInterval ||
@@ -425,6 +427,8 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
     }
     state->calls = 0;
     state->fork_generation = fork_generation;
+    OPENSSL_cleanse(seed, CTR_DRBG_ENTROPY_LEN);
+    OPENSSL_cleanse(add_data_for_reseed, CTR_DRBG_ENTROPY_LEN);
   } else {
 #if defined(BORINGSSL_FIPS)
     CRYPTO_STATIC_MUTEX_lock_read(state_clear_all_lock_bss_get());
@@ -454,6 +458,8 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
   if (state == &stack_state) {
     CTR_DRBG_clear(&state->drbg);
   }
+
+  OPENSSL_cleanse(additional_data, 32);
 
 #if defined(BORINGSSL_FIPS)
   CRYPTO_STATIC_MUTEX_unlock_read(state_clear_all_lock_bss_get());
