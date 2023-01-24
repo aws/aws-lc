@@ -1,7 +1,7 @@
 [submodule "src"]
 	path = src
 	branch = fix-gcc-ubuntu
-	url = git@github.com:samuel40791765/aws-lc.git
+	url = https://github.com/samuel40791765/aws-lc.git
 [submodule "cryptol-specs"]
 	path = cryptol-specs
 	branch = sha-imperative
