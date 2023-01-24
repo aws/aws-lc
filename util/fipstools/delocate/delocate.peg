@@ -45,6 +45,7 @@ SymbolArg <- (OpenParen WS?)? (
                Offset /
                SymbolType /
                (Offset / LocalSymbol / SymbolName / Dot) (WS? Operator WS? (Offset / LocalSymbol / SymbolName))* /
+               LocalLabelRef WS? Operator WS? LocalLabelRef /
                LocalSymbol TCMarker? /
                SymbolName Offset /
                SymbolName TCMarker?)
@@ -62,7 +63,7 @@ SymbolName <- [[A-Z._]][[A-Z.0-9$_]]*
 LocalSymbol <- '.L' [[A-Za-z.0-9$_]]+
 LocalLabel <- [0-9][0-9$]*
 LocalLabelRef <- [0-9][0-9$]*[bf]
-Instruction <- InstructionName (WS InstructionArg ((WS? ',' WS?) InstructionArg)*)?
+Instruction <- InstructionName (WS InstructionArg ((WS? ','? WS?) InstructionArg)*)?
 InstructionName <- [[A-Z]][[A-Z.0-9]]* [.+\-]?
 InstructionArg <- IndirectionIndicator? (ARMConstantTweak / RegisterOrConstant / LocalLabelRef / TOCRefHigh / TOCRefLow / GOTLocation / GOTSymbolOffset / MemoryRef) AVX512Token*
 GOTLocation <- '$_GLOBAL_OFFSET_TABLE_-' LocalSymbol
@@ -101,6 +102,12 @@ ARMPostincrement <- '!'
 BaseIndexScale <- '(' RegisterOrConstant? WS? (',' WS? RegisterOrConstant WS? (',' [0-9]+)? )? ')'
 Operator <- [+\-]
 OffsetOperator <- '+' / '-' / '*'
-Offset <- '+'? '-'? (("0b" [01]+) / ("0x" [[0-9A-F]]+) / [0-9]+ ( OffsetOperator '(' [0-9]+ OffsetOperator [0-9]+ ')' )? / [0-9]+ ( OffsetOperator [0-9]+ OffsetOperator [0-9]+ )? / [0-9]+ ( OffsetOperator [0-9]+ )? / '(' [0-9]+ WS? OffsetOperator WS? [0-9]+ ')')
+Offset <- '+'? '-'? (("0b" [01]+) /
+                     ("0x" [[0-9A-F]]+) /
+                     ([0-9]+ ( OffsetOperator '(' [0-9]+ OffsetOperator [0-9]+ ')' )? /
+                      [0-9]+ ( OffsetOperator [0-9]+ OffsetOperator [0-9]+ )? /
+                      [0-9]+ ( OffsetOperator [0-9]+ )? /
+                      '(' [0-9]+ WS? OffsetOperator WS? [0-9]+ ')')![[A-Z]]
+                    )
 Section <- [[A-Z@]]+
 SegmentRegister <- '%' [c-gs] 's:'
