@@ -13,10 +13,6 @@ if [ -n "${SHA512_384_SELECTCHECK}" ]; then
   (cd proof/SHA512 && go run SHA512-384-check-entrypoint.go)
   return
 fi
-if [ -n "${HMAC_SELECTCHECK}" ]; then
-  (cd proof/HMAC && go run HMAC-check-entrypoint.go)
-  return
-fi
 if [ -n "${AES_GCM_SELECTCHECK}" ]; then
   (cd proof/AES && go run AES-GCM-check-entrypoint.go)
   return

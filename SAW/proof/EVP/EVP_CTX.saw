@@ -96,10 +96,10 @@ let points_to_EVP_PKEY_rsa_pss_pkey_meth ptr = points_to_evp_pkey_method_st
       (crucible_global "pkey_rsa_copy") // copy
       (crucible_global "pkey_rsa_cleanup") // cleanup
       (crucible_global "pkey_rsa_keygen") // keygen
-      (crucible_global "pkey_pss_init") // sign_init
+      (crucible_global "pkey_pss_init_sign") // sign_init
       (crucible_global "pkey_rsa_sign") // sign
       crucible_null // sign_message
-      (crucible_global "pkey_pss_init") // verify_init
+      (crucible_global "pkey_pss_init_verify") // verify_init
       (crucible_global "pkey_rsa_verify") // verify
       crucible_null // verify_message
       crucible_null // verify_recover
