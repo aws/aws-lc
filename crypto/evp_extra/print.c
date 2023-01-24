@@ -310,7 +310,7 @@ static int eckey_priv_print(BIO *bp, const EVP_PKEY *pkey, int indent) {
 
 // Dilithium keys.
 
-static int do_dilithium_print(BIO *bp, const EVP_PKEY *x, int off, int ptype) {
+static int do_dilithium3_print(BIO *bp, const EVP_PKEY *x, int off, int ptype) {
   if (x == NULL) {
     OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
@@ -343,12 +343,12 @@ static int do_dilithium_print(BIO *bp, const EVP_PKEY *x, int off, int ptype) {
   return 1;
 }
 
-static int dilithium_pub_print(BIO *bp, const EVP_PKEY *pkey, int indent) {
-  return do_dilithium_print(bp, pkey, indent, 1);
+static int dilithium3_pub_print(BIO *bp, const EVP_PKEY *pkey, int indent) {
+  return do_dilithium3_print(bp, pkey, indent, 1);
 }
 
-static int dilithium_priv_print(BIO *bp, const EVP_PKEY *pkey, int indent) {
-  return do_dilithium_print(bp, pkey, indent, 2);
+static int dilithium3_priv_print(BIO *bp, const EVP_PKEY *pkey, int indent) {
+  return do_dilithium3_print(bp, pkey, indent, 2);
 }
 
 typedef struct {
@@ -379,8 +379,8 @@ static EVP_PKEY_PRINT_METHOD kPrintMethods[] = {
     },
     {
         EVP_PKEY_DILITHIUM3,
-        dilithium_pub_print,
-        dilithium_priv_print,
+        dilithium3_pub_print,
+        dilithium3_priv_print,
         NULL /* param_print */,
     },
 };
