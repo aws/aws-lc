@@ -12,26 +12,26 @@
 
 // The KEM parameters listed below are taken from corresponding specifications.
 //
-// Kyber: https://pq-crystals.org/kyber/data/kyber-specification-round3-20210804.pdf
-// TODO(awslc): replace the specification reference with the actual NIST standard
-//              reference once it's published.
+// Kyber: - https://pq-crystals.org/kyber/data/kyber-specification-round3-20210804.pdf
+//        - Kyber is not standardized yet, so we use the latest specification
+//          from Round 3 of NIST PQC project.
 
 #define AWSLC_NUM_BUILT_IN_KEMS 1
 
 // TODO(awslc): placeholder OID, replace with the real one when available.
-static const uint8_t kOIDKyber512[] = {0xff, 0xff, 0xff, 0xff};
+static const uint8_t kOIDKyber512r3[] = {0xff, 0xff, 0xff, 0xff};
 
 static const KEM built_in_kems[AWSLC_NUM_BUILT_IN_KEMS] = {
   {
-    NID_KYBER512,         // kem.nid
-    kOIDKyber512,         // kem.oid
-    sizeof(kOIDKyber512), // kem.oid_len
-    "Kyber512",           // kem.comment
-    800,                  // kem.public_key_len
-    1632,                 // kem.secret_key_len
-    768,                  // kem.ciphertext_len
-    32,                   // kem.shared_secret_len
-    &kem_kyber512_method, // kem.method
+    NID_KYBER512_R3,         // kem.nid
+    kOIDKyber512r3,          // kem.oid
+    sizeof(kOIDKyber512r3),  // kem.oid_len
+    "Kyber512 Round-3",      // kem.comment
+    800,                     // kem.public_key_len
+    1632,                    // kem.secret_key_len
+    768,                     // kem.ciphertext_len
+    32,                      // kem.shared_secret_len
+    &kem_kyber512_r3_method, // kem.method
   },
 
   // Example how adding new KEM looks like:
