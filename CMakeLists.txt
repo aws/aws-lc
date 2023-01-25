@@ -245,7 +245,7 @@ if (GCC)
   # During the `try_run` commands invoked by `check_run` a test program is run for the threading library.
   # This test is run expecting two threads, and this variable isn't set, for some systems
   # (particularly for systems using cross-compilation) causing our test to run without 2 threads and fail.
-  # We set this variable here to allow these builds to succeed and keep these tests around to make sure 
+  # We set this variable here to allow these builds to succeed and keep these tests around to make sure
   # that we properly detect the compiler bugs that we are trying to test for with these `try_run` calls.
 
   set(THREADS_PTHREAD_ARG "2" CACHE STRING "Forcibly set by CMakeLists.txt." FORCE)
@@ -338,7 +338,6 @@ if(GCC OR CLANG)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
     if(APPLE)
       set(CMAKE_MACOSX_RPATH 1)
-      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
     endif()
     if(NOT BORINGSSL_ALLOW_CXX_RUNTIME)
       set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-exceptions -fno-rtti")

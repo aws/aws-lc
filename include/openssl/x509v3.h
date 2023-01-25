@@ -126,13 +126,6 @@ struct v3_ext_method {
   void *usr_data;  // Any extension specific data
 };
 
-typedef struct X509V3_CONF_METHOD_st {
-  char *(*get_string)(void *db, const char *section, const char *value);
-  STACK_OF(CONF_VALUE) *(*get_section)(void *db, const char *section);
-  void (*free_string)(void *db, char *string);
-  void (*free_section)(void *db, STACK_OF(CONF_VALUE) *section);
-} X509V3_CONF_METHOD;
-
 // Context specific info
 struct v3_ext_ctx {
 #define CTX_TEST 0x1
@@ -141,9 +134,7 @@ struct v3_ext_ctx {
   X509 *subject_cert;
   X509_REQ *subject_req;
   X509_CRL *crl;
-  const X509V3_CONF_METHOD *db_meth;
-  void *db;
-  // Maybe more here
+  const CONF *db;
 };
 
 DEFINE_STACK_OF(X509V3_EXT_METHOD)
@@ -355,10 +346,6 @@ struct ISSUING_DIST_POINT_st {
 #define IDP_INDIRECT 0x20
 // onlysomereasons present
 #define IDP_REASONS 0x40
-
-#define X509V3_conf_err(val)                                               \
-  ERR_add_error_data(6, "section:", (val)->section, ",name:", (val)->name, \
-                     ",value:", (val)->value);
 
 #define X509V3_set_ctx_test(ctx) \
   X509V3_set_ctx(ctx, NULL, NULL, NULL, NULL, CTX_TEST)
@@ -594,52 +581,10 @@ OPENSSL_EXPORT int X509V3_EXT_REQ_add_nconf(CONF *conf, X509V3_CTX *ctx,
 OPENSSL_EXPORT int X509V3_EXT_CRL_add_nconf(CONF *conf, X509V3_CTX *ctx,
                                             const char *section, X509_CRL *crl);
 
-OPENSSL_EXPORT int X509V3_add_value_bool_nf(const char *name, int asn1_bool,
-                                            STACK_OF(CONF_VALUE) **extlist);
-OPENSSL_EXPORT int X509V3_get_value_bool(const CONF_VALUE *value,
-                                         int *asn1_bool);
-OPENSSL_EXPORT int X509V3_get_value_int(const CONF_VALUE *value,
-                                        ASN1_INTEGER **aint);
-OPENSSL_EXPORT void X509V3_set_nconf(X509V3_CTX *ctx, CONF *conf);
+OPENSSL_EXPORT void X509V3_set_nconf(X509V3_CTX *ctx, const CONF *conf);
 
-OPENSSL_EXPORT char *X509V3_get_string(X509V3_CTX *ctx, const char *name,
-                                       const char *section);
-OPENSSL_EXPORT STACK_OF(CONF_VALUE) *X509V3_get_section(X509V3_CTX *ctx,
-                                                        const char *section);
-OPENSSL_EXPORT void X509V3_string_free(X509V3_CTX *ctx, char *str);
-OPENSSL_EXPORT void X509V3_section_free(X509V3_CTX *ctx,
-                                        STACK_OF(CONF_VALUE) *section);
 OPENSSL_EXPORT void X509V3_set_ctx(X509V3_CTX *ctx, X509 *issuer, X509 *subject,
                                    X509_REQ *req, X509_CRL *crl, int flags);
-
-// X509V3_add_value appends a |CONF_VALUE| containing |name| and |value| to
-// |*extlist|. It returns one on success and zero on error. If |*extlist| is
-// NULL, it sets |*extlist| to a newly-allocated |STACK_OF(CONF_VALUE)|
-// containing the result. Either |name| or |value| may be NULL to omit the
-// field.
-//
-// On failure, if |*extlist| was NULL, |*extlist| will remain NULL when the
-// function returns.
-OPENSSL_EXPORT int X509V3_add_value(const char *name, const char *value,
-                                    STACK_OF(CONF_VALUE) **extlist);
-
-// X509V3_add_value_uchar behaves like |X509V3_add_value| but takes an
-// |unsigned char| pointer.
-OPENSSL_EXPORT int X509V3_add_value_uchar(const char *name,
-                                          const unsigned char *value,
-                                          STACK_OF(CONF_VALUE) **extlist);
-
-// X509V3_add_value_bool behaves like |X509V3_add_value| but stores the value
-// "TRUE" if |asn1_bool| is non-zero and "FALSE" otherwise.
-OPENSSL_EXPORT int X509V3_add_value_bool(const char *name, int asn1_bool,
-                                         STACK_OF(CONF_VALUE) **extlist);
-
-// X509V3_add_value_bool behaves like |X509V3_add_value| but stores a string
-// representation of |aint|. Note this string representation may be decimal or
-// hexadecimal, depending on the size of |aint|.
-OPENSSL_EXPORT int X509V3_add_value_int(const char *name,
-                                        const ASN1_INTEGER *aint,
-                                        STACK_OF(CONF_VALUE) **extlist);
 
 OPENSSL_EXPORT char *i2s_ASN1_INTEGER(const X509V3_EXT_METHOD *meth,
                                       const ASN1_INTEGER *aint);
