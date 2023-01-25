@@ -1,0 +1,26 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
+
+---
+schemaVersion: '2.2'
+description: aws-lc:bmFrameworkEc2Benchmark
+mainSteps:
+  - action: aws:runShellScript
+    name: runShellScript
+    inputs:
+      timeoutSeconds: '7200'
+      runCommand:
+        - eval $(/opt/homebrew/bin/brew shellenv)
+        - sudo su
+        - cd /tmp
+        - export HOME="/var/root"
+        - git clone {GITHUB_REPO} aws-lc-pr
+        - cd aws-lc-pr
+        # Fetch PR contents
+        - git fetch origin pull/{PR_NUM}/head:temp
+        - git checkout temp
+        - chmod +x ./tests/ci/run_posix_tests.sh
+        - ./tests/ci/run_posix_tests.sh
+        - chmod +x ./tests/ci/run_fips_tests.sh
+        - ./tests/ci/run_fips_tests.sh
+        - cd ../ && rm -rf aws-lc-pr
