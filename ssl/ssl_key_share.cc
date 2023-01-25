@@ -203,11 +203,16 @@ class CECPQ2KeyShare : public SSLKeyShare {
     uint8_t x25519_public_key[32];
     X25519_keypair(x25519_public_key, x25519_private_key_);
 
-    uint8_t hrss_entropy[HRSS_GENERATE_KEY_BYTES];
+    Array<uint8_t> hrss_entropy;
+    if (!hrss_entropy.Init(HRSS_GENERATE_KEY_BYTES)) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+      return false;
+    }
+
     HRSS_public_key hrss_public_key;
-    RAND_bytes(hrss_entropy, sizeof(hrss_entropy));
+    RAND_bytes(hrss_entropy.data(), hrss_entropy.size());
     if (!HRSS_generate_key(&hrss_public_key, &hrss_private_key_,
-                           hrss_entropy)) {
+                           hrss_entropy.data())) {
       return false;
     }
 
@@ -243,12 +248,16 @@ class CECPQ2KeyShare : public SSLKeyShare {
       return false;
     }
 
-    uint8_t ciphertext[HRSS_CIPHERTEXT_BYTES];
-    uint8_t entropy[HRSS_ENCAP_BYTES];
-    RAND_bytes(entropy, sizeof(entropy));
+    Array<uint8_t> entropy;
+    if (!entropy.Init(HRSS_ENCAP_BYTES)) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+      return false;
+    }
 
+    uint8_t ciphertext[HRSS_CIPHERTEXT_BYTES];
+    RAND_bytes(entropy.data(), entropy.size());
     if (!HRSS_encap(ciphertext, secret.data() + 32, &peer_public_key,
-                    entropy) ||
+                    entropy.data()) ||
         !CBB_add_bytes(out_public_key, x25519_public_key,
                        sizeof(x25519_public_key)) ||
         !CBB_add_bytes(out_public_key, ciphertext, sizeof(ciphertext))) {
