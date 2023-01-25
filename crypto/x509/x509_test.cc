@@ -2302,7 +2302,7 @@ TEST(X509Test, Ed25519Sign) {
   ASSERT_TRUE(SignatureRoundTrips(md_ctx.get(), pub.get()));
 }
 
-TEST(X509Test, DilithiumSignVerifyCert) {
+TEST(X509Test, Dilithium3SignVerifyCert) {
   //generate the dilithium key
   EVP_PKEY_CTX *dilithium_pkey_ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_DILITHIUM3, nullptr);
   ASSERT_NE(dilithium_pkey_ctx, nullptr);
