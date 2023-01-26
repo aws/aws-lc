@@ -2564,7 +2564,7 @@ TEST(X509Test, TestDilithium3) {
 TEST(X509Test, TestBadDilithium3) {
   // This test generates a Dilithium3 certificate from the PEM encoding
   // kDilithium3CertNull that has an explicit NULL in the signature algorithm.
-  // After extracting the public key, verifiation should fail.
+  // After extracting the public key, verification should fail.
   bssl::UniquePtr<X509> cert(CertFromPEM(kDilithium3CertNull));
   ASSERT_TRUE(cert);
 
@@ -2572,6 +2572,9 @@ TEST(X509Test, TestBadDilithium3) {
   ASSERT_TRUE(pkey);
 
   ASSERT_FALSE(X509_verify(cert.get(), pkey.get()));
+  uint32_t err = ERR_get_error();
+  ASSERT_EQ(ERR_LIB_X509, ERR_GET_LIB(err));
+  ASSERT_EQ(X509_R_SIGNATURE_ALGORITHM_MISMATCH, ERR_GET_REASON(err));
   ERR_clear_error();
 }
 
