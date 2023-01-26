@@ -614,7 +614,7 @@ static bool SpeedAEADOpen(const EVP_AEAD *aead, const std::string &name,
   return true;
 }
 
-static bool SpeedKEM(const std::string &name, int nid, const std::string &selected) {
+static bool SpeedSingleKEM(const std::string &name, int nid, const std::string &selected) {
   if (!selected.empty() && name.find(selected) == std::string::npos) {
     return true;
   }
@@ -686,7 +686,7 @@ static bool SpeedKEM(const std::string &name, int nid, const std::string &select
 
 
 static bool SpeedKEM(std::string selected) {
-  return SpeedKEM("Kyber512", NID_KYBER512, selected);
+  return SpeedSingleKEM("Kyber512_R3", NID_KYBER512_R3, selected);
 }
 #endif
 
