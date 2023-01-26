@@ -2525,31 +2525,33 @@ TEST(X509Test, Ed25519Sign) {
 
 TEST(X509Test, Dilithium3SignVerifyCert) {
   //generate the dilithium key
-  EVP_PKEY_CTX *dilithium_pkey_ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_DILITHIUM3, nullptr);
-  ASSERT_NE(dilithium_pkey_ctx, nullptr);
-  EVP_PKEY *dilithium_pkey = EVP_PKEY_new();
-  ASSERT_NE(dilithium_pkey, nullptr);
-  EXPECT_TRUE(EVP_PKEY_keygen_init(dilithium_pkey_ctx));
-  EXPECT_TRUE(EVP_PKEY_keygen(dilithium_pkey_ctx, &dilithium_pkey));
+  EVP_PKEY_CTX *pkey_ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_DILITHIUM3, nullptr);
+  ASSERT_NE(pkey_ctx, nullptr);
+  EVP_PKEY *pkey = EVP_PKEY_new();
+  ASSERT_NE(pkey, nullptr);
+  EXPECT_TRUE(EVP_PKEY_keygen_init(pkey_ctx));
+  EXPECT_TRUE(EVP_PKEY_keygen(pkey_ctx, &pkey));
 
   //generate the cert
   bssl::UniquePtr<X509> leaf =
-      MakeTestCert("Intermediate", "Leaf", dilithium_pkey, /*is_ca=*/false);
+      MakeTestCert("Intermediate", "Leaf", pkey, /*is_ca=*/false);
   ASSERT_TRUE(leaf);
 
   //sign the cert
   bssl::ScopedEVP_MD_CTX md_ctx;
-  EVP_DigestSignInit(md_ctx.get(), nullptr, nullptr, nullptr, dilithium_pkey);
+  EVP_DigestSignInit(md_ctx.get(), nullptr, nullptr, nullptr, pkey);
   ASSERT_TRUE(X509_sign_ctx(leaf.get(), md_ctx.get()));
 
   //verify the cert
-  ASSERT_TRUE(X509_verify(leaf.get(), dilithium_pkey));
+  ASSERT_TRUE(X509_verify(leaf.get(), pkey));
 
-  EVP_PKEY_CTX_free(dilithium_pkey_ctx);
-  EVP_PKEY_free(dilithium_pkey);
+  EVP_PKEY_CTX_free(pkey_ctx);
+  EVP_PKEY_free(pkey);
 }
 
 TEST(X509Test, TestDilithium3) {
+  // This test generates a Dilithium3 certificate from the PEM encoding,
+  // extracts the public key, and then verifies the certificate.
   bssl::UniquePtr<X509> cert(CertFromPEM(kDilithium3Cert));
   ASSERT_TRUE(cert);
 
@@ -2560,6 +2562,9 @@ TEST(X509Test, TestDilithium3) {
 }
 
 TEST(X509Test, TestBadDilithium3) {
+  // This test generates a Dilithium3 certificate from the PEM encoding
+  // kDilithium3CertNull that has an explicit NULL in the signature algorithm.
+  // After extracting the public key, verifiation should fail.
   bssl::UniquePtr<X509> cert(CertFromPEM(kDilithium3CertNull));
   ASSERT_TRUE(cert);
 
