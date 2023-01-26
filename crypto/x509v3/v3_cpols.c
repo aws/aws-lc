@@ -180,8 +180,7 @@ static void *r2i_certpol(const X509V3_EXT_METHOD *method, X509V3_CTX *ctx,
       ia5org = 1;
       continue;
     } else if (*pstr == '@') {
-      STACK_OF(CONF_VALUE) *polsect;
-      polsect = X509V3_get_section(ctx, pstr + 1);
+      STACK_OF(CONF_VALUE) *polsect = X509V3_get_section(ctx, pstr + 1);
       if (!polsect) {
         OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_SECTION);
 
@@ -189,7 +188,6 @@ static void *r2i_certpol(const X509V3_EXT_METHOD *method, X509V3_CTX *ctx,
         goto err;
       }
       pol = policy_section(ctx, polsect, ia5org);
-      X509V3_section_free(ctx, polsect);
       if (!pol) {
         goto err;
       }
@@ -241,7 +239,7 @@ static POLICYINFO *policy_section(X509V3_CTX *ctx,
       }
       pol->policyid = pobj;
 
-    } else if (!x509v3_name_cmp(cnf->name, "CPS")) {
+    } else if (x509v3_conf_name_matches(cnf->name, "CPS")) {
       if (!pol->qualifiers) {
         pol->qualifiers = sk_POLICYQUALINFO_new_null();
       }
@@ -263,14 +261,13 @@ static POLICYINFO *policy_section(X509V3_CTX *ctx,
       if (!ASN1_STRING_set(qual->d.cpsuri, cnf->value, strlen(cnf->value))) {
         goto merr;
       }
-    } else if (!x509v3_name_cmp(cnf->name, "userNotice")) {
-      STACK_OF(CONF_VALUE) *unot;
+    } else if (x509v3_conf_name_matches(cnf->name, "userNotice")) {
       if (*cnf->value != '@') {
         OPENSSL_PUT_ERROR(X509V3, X509V3_R_EXPECTED_A_SECTION_NAME);
         X509V3_conf_err(cnf);
         goto err;
       }
-      unot = X509V3_get_section(ctx, cnf->value + 1);
+      STACK_OF(CONF_VALUE) *unot = X509V3_get_section(ctx, cnf->value + 1);
       if (!unot) {
         OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_SECTION);
 
@@ -278,7 +275,6 @@ static POLICYINFO *policy_section(X509V3_CTX *ctx,
         goto err;
       }
       qual = notice_section(ctx, unot, ia5org);
-      X509V3_section_free(ctx, unot);
       if (!qual) {
         goto err;
       }

@@ -48,8 +48,24 @@ batch:
         compute-type: BUILD_GENERAL1_LARGE
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_gcc-7x_latest
 
+    - identifier: ubuntu2004_gcc7x_x86_64_fips
+      buildspec: ./tests/ci/codebuild/linux-x86/run_fips_tests.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_LARGE
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_gcc-7x_latest
+
     - identifier: ubuntu2004_gcc8x_x86_64
       buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_LARGE
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_gcc-8x_latest
+
+    - identifier: ubuntu2004_gcc8x_x86_64_fips
+      buildspec: ./tests/ci/codebuild/linux-x86/run_fips_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
@@ -64,8 +80,24 @@ batch:
         compute-type: BUILD_GENERAL1_LARGE
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-22.04_gcc-11x_latest
 
+    - identifier: ubuntu2204_gcc11x_x86_64_fips
+      buildspec: ./tests/ci/codebuild/linux-x86/run_fips_tests.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_LARGE
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-22.04_gcc-11x_latest
+
     - identifier: ubuntu2204_gcc12x_x86_64
       buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_LARGE
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-22.04_gcc-12x_latest
+
+    - identifier: ubuntu2204_gcc12x_x86_64_fips
+      buildspec: ./tests/ci/codebuild/linux-x86/run_fips_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
@@ -87,14 +119,6 @@ batch:
         privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_clang-7x_latest
-
-    - identifier: ubuntu2004_gcc7x_x86_64_fips
-      buildspec: ./tests/ci/codebuild/linux-x86/run_fips_tests.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: true
-        compute-type: BUILD_GENERAL1_LARGE
-        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_gcc-7x_latest
 
     - identifier: ubuntu2004_clang7x_x86_64_fips
       buildspec: ./tests/ci/codebuild/linux-x86/run_fips_tests.yml
@@ -121,14 +145,6 @@ batch:
         privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_clang-9x_latest
-
-    - identifier: ubuntu2004_clang9x_x86_64_sanitizer
-      buildspec: ./tests/ci/codebuild/linux-x86/run_sanitizer_tests.yml
-      env:
-        type: LINUX_CONTAINER
-        privileged-mode: true
-        compute-type: BUILD_GENERAL1_LARGE
-        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_clang-9x_sanitizer_latest
 
     - identifier: ubuntu2004_clang10x_x86_64
       buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
@@ -223,6 +239,47 @@ batch:
         privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:amazonlinux-2_gcc-7x_latest
+
+    - identifier: amazonlinux2022_gcc11x_x86_64
+      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_LARGE
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:amazonlinux-2022_gcc-11x_latest
+
+    - identifier: amazonlinux2022_clang14x_x86_64
+      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_LARGE
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:amazonlinux-2022_clang-14x_latest
+
+    - identifier: amazonlinux2022_gcc11x_x86_64_fips
+      buildspec: ./tests/ci/codebuild/linux-x86/run_fips_tests.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_LARGE
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:amazonlinux-2022_gcc-11x_latest
+
+    - identifier: amazonlinux2022_clang14x_x86_64_fips
+      buildspec: ./tests/ci/codebuild/linux-x86/run_fips_tests.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_LARGE
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:amazonlinux-2022_clang-14x_latest
+
+    - identifier: amazonlinux2022_clang14x_x86_64_sanitizer
+      buildspec: ./tests/ci/codebuild/linux-x86/run_sanitizer_tests.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_LARGE
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:amazonlinux-2022_clang-14x_sanitizer_latest
+
 
     - identifier: s2n_integration
       buildspec: ./tests/ci/codebuild/linux-x86/s2n_integration.yml
@@ -419,7 +476,7 @@ batch:
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
-        compute-type: BUILD_GENERAL1_SMALL
+        compute-type: BUILD_GENERAL1_MEDIUM
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_clang-7x-bm-framework_latest
 
     - identifier: ubuntu1004_gcc4_1x_x86_64_build

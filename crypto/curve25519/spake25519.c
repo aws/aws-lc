@@ -439,6 +439,8 @@ int SPAKE2_generate_msg(SPAKE2_CTX *ctx, uint8_t *out, size_t *out_len,
   *out_len = sizeof(ctx->my_msg);
   ctx->state = spake2_state_msg_generated;
 
+  OPENSSL_cleanse(private_tmp, 64);
+
   return 1;
 }
 

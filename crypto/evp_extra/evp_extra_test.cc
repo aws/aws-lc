@@ -1714,7 +1714,7 @@ struct KnownKEM {
 };
 
 static const struct KnownKEM kKEMs[] = {
-  {"Kyber512", NID_KYBER512, 800, 1632, 768, 32, "kyber/kat/kyber512.txt"},
+  {"Kyber512r3", NID_KYBER512_R3, 800, 1632, 768, 32, "kyber/kat/kyber512.txt"},
 };
 
 class PerKEMTest : public testing::TestWithParam<KnownKEM> {};
