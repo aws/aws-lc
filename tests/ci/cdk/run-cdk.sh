@@ -215,27 +215,6 @@ function setup_ci() {
 
   create_github_ci_stack
   create_android_resources
-  create_m1_ec2_instance
-}
-
-function create_m1_ec2_instance() {
-  # Use aws cli to create an M1 ec2 instance.
-  # TODO: Move resource creation to aws cdk when cdk has support for M1 ec2 instances.
-  # Issue: https://github.com/aws/aws-cdk/issues/23854
-  # AMI is for M1 MacOS Monterey.
-  ami_id="ami-084c6ab9d03ad4d46"
-  vpc_id="$(aws ec2 describe-vpcs --filter Name=tag:Name,Values=aws-lc-ci-macos-arm/aws-lc-ci-macos-arm-ec2-vpc --query Vpcs[*].VpcId --output text)"
-  sg_id="$(aws ec2 describe-security-groups --filter Name=vpc-id,Values="${vpc_id}" --filter Name=group-name,Values=macos_arm_ec2_sg --query SecurityGroups[*].GroupId --output text)"
-  subnet_id="$(aws ec2 describe-subnets --filter Name=vpc-id,Values="${vpc_id}" --filter Name=state,Values=available --filter Name=tag:Name,Values=aws-lc-ci-macos-arm/aws-lc-ci-macos-arm-ec2-vpc/PrivateSubnet1 --query Subnets[*].SubnetId --output text)"
-  host_id="$(aws ec2 describe-hosts --filter Name=state,Values=available --query Hosts[*].HostId --output text)"
-  instance_id="$(aws ec2 run-instances --image-id "${ami_id}" --count 1 \
-    --instance-type mac2.metal --security-group-ids "${sg_id}" --subnet-id "${subnet_id}" \
-    --tag-specifications 'ResourceType="instance",Tags=[{Key="Name",Value="aws-lc-ci-macos-arm-ec2-instance"},]' \
-    --iam-instance-profile Name=aws-lc-ci-macos-arm-ec2-profile \
-    --placement "AvailabilityZone=us-west-2a,HostId=${host_id},Tenancy=host"\
-    --query Instances[*].InstanceId --output text)"
-
-  echo "INSTANCE ID is ${instance_id}"
 }
 
 function create_android_resources() {
@@ -394,9 +373,6 @@ function main() {
     ;;
   update-android-resources)
     create_android_resources
-    ;;
-  update-m1-instance)
-    create_m1_ec2_instance
     ;;
   destroy-img-stack)
     destroy_docker_img_build_stack

@@ -1,10 +1,11 @@
 #!/bin/bash
 set -exo pipefail
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: Apache-2.0 OR ISC
 
 # Please run from project root folder!
 # You'll want to set the codebuild env variables set if running locally
+source tests/ci/common_ssm_setup.sh
 
 # cleanup code
 cleanup() {
@@ -24,13 +25,10 @@ echo GitHub Branch Name: "${CODEBUILD_WEBHOOK_HEAD_REF}"
 AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 echo AWS Account ID: "${AWS_ACCOUNT_ID}"
 echo GitHub Repo Link: "${CODEBUILD_SOURCE_REPO_URL}"
-export CLOUDWATCH_LOG_GROUP="aws-lc-ci-macos-arm-cw-logs"
+export cloudwatch_group_name="aws-lc-ci-macos-arm-cw-logs"
 
 # get information for ec2 instances
-vpc_id="$(aws ec2 describe-vpcs --filter Name=tag:Name,Values=aws-lc-ci-bm-framework/aws-lc-ci-bm-framework-ec2-vpc --query Vpcs[*].VpcId --output text)"
-sg_id="$(aws ec2 describe-security-groups --filter Name=vpc-id,Values="${vpc_id}" --filter Name=group-name,Values=bm_framework_ec2_sg --query SecurityGroups[*].GroupId --output text)"
-subnet_id="$(aws ec2 describe-subnets --filter Name=vpc-id,Values="${vpc_id}" --filter Name=state,Values=available --filter Name=tag:Name,Values=aws-lc-ci-bm-framework/aws-lc-ci-bm-framework-ec2-vpc/PrivateSubnet1 --query Subnets[*].SubnetId --output text)"
-ec2_instance="$(aws ec2 describe-instances --filter Name=tag:Name,Values=aws-lc-ci-macos-arm-ec2-instance --query Reservations[*].Instances[*].InstanceId --output text)"
+ec2_instance="$(aws ec2 describe-instances --filter "Name=tag:Name,Values=aws-lc-ci-macos-arm-ec2-instance" "Name=instance-state-name,Values=running" --query Reservations[*].Instances[*].InstanceId --output text)"
 
 generate_ssm_document_file() {
   # use sed to replace placeholder values inside preexisting document
@@ -38,41 +36,21 @@ generate_ssm_document_file() {
     -e "s,{PR_NUM},${CODEBUILD_WEBHOOK_TRIGGER//pr\/},g" \
     -e "s,{GITHUB_REPO},${CODEBUILD_SOURCE_REPO_URL},g" \
     tests/ci/cdk/cdk/ssm/m1_tests_ssm_document.yaml \
-    >tests/ci/cdk/cdk/ssm/m1_test_framework_ssm_document_tmp.yaml
-}
-
-create_ssm_document() {
-  local doc_name
-  doc_name=m1_test_framework_ssm_document_"${CODEBUILD_SOURCE_VERSION}"
-  aws ssm create-document --content file://tests/ci/cdk/cdk/ssm/m1_test_framework_ssm_document_tmp.yaml \
-    --name "${doc_name}" \
-    --document-type Command \
-    --document-format YAML >/dev/null
-  echo "${doc_name}"
-}
-
-#$1 is the document name, $2 is the instance ids
-run_ssm_command() {
-  local command_id
-  command_id="$(aws ssm send-command --instance-ids "${2}" \
-    --document-name "${1}" \
-    --cloud-watch-output-config CloudWatchLogGroupName="${CLOUDWATCH_LOG_GROUP}",CloudWatchOutputEnabled=true \
-    --query Command.CommandId --output text)"
-  echo "${command_id}"
+    >tests/ci/cdk/cdk/ssm/macos_arm_ssm_document.yaml
 }
 
 # create the ssm documents that will be used for the various ssm commands
 generate_ssm_document_file
 
 # Create, and run ssm command.
-ssm_doc_name=$(create_ssm_document)
+ssm_doc_name=$(create_ssm_document "macos_arm")
 ssm_document_names="${ssm_doc_name}"
 
-m1_ssm_command_id=$(run_ssm_command "${ssm_doc_name}" "${ec2_instance}")
+m1_ssm_command_id=$(run_ssm_command "${ssm_doc_name}" "${ec2_instance}" ${cloudwatch_group_name})
 ssm_command_ids="${m1_ssm_command_id}"
 
 run_url="https://${AWS_REGION}.console.aws.amazon.com/cloudwatch/home?region=${AWS_REGION}\
-#logsV2:log-groups/log-group/${CLOUDWATCH_LOG_GROUP}/log-events/\
+#logsV2:log-groups/log-group/${cloudwatch_group_name}/log-events/\
 ${m1_ssm_command_id}\$252F${ec2_instance}\$252FrunShellScript\$252Fstdout"
 
 echo "Actual Run in EC2 can be observered at CloudWatch URL: ${run_url}"
