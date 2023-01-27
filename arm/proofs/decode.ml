@@ -210,6 +210,13 @@ let decode = new_definition `!w:int32. decode w =
       // datasize is fixed to 128. elements is datasize / esize.
       SOME (arm_MUL_VEC (QREG' Rd) (QREG' Rn) (QREG' Rm) (val esize))
 
+  | [0:1; q; 0b001110:6; size:2; 0b100000000010:12; Rn:5; Rd:5] ->
+    if ~q then NONE // datasize = 64 is unsupported yet
+    else if size = (word 0b11: (2)word) then NONE // "UNDEFINED"
+    else
+      let esize:(64)word = word_shl (word 0b1000: (64)word) (val size) in
+      SOME (arm_REV64_VEC (QREG' Rd) (QREG' Rn) (val esize))
+
   | [0:1; q; 0b0011110:7; immh:4; immb:3; 0b010101:6; Rn:5; Rd:5] ->
     if immh = (word 0b0: (4)word) then NONE // "asimdimm case"
     else if bit 3 immh /\ ~q then NONE // "UNDEFINED"
@@ -220,12 +227,33 @@ let decode = new_definition `!w:int32. decode w =
       let shiftamnt:(64)word = word_sub (word_join immh immb:64 word) esize in
       SOME (arm_SHL_VEC (QREG' Rd) (QREG' Rn) (val shiftamnt) (val esize))
 
+  | [0:1; q; 0b101110:6; size:2; 0b100000001010:12; Rn:5; Rd:5] ->
+    if ~q then NONE // datasize = 128 is unsupported yet
+    else if size = (word 0b11: (2)word) then NONE // "UNDEFINED"
+    else
+      let esize: (64)word = word_shl (word 8: (64)word) (val size) in
+      SOME (arm_UADDLP (QREG' Rd) (QREG' Rn) (val esize))
+
+  | [0:1; q; 0b101110:6; size:2; 0b1:1; Rm:5; 0b100000:6; Rn:5; Rd:5] ->
+    if q then NONE // upper part is unsupported yet
+    else if size = (word 0b11: (2)word) then NONE // "UNDEFINED"
+    else
+      let esize: (64)word = word_shl (word 8: (64)word) (val size) in
+      SOME (arm_UMLAL (QREG' Rd) (QREG' Rn) (QREG' Rm) (val esize))
+
   | [0:1; q; 0b001110000:9; imm5:5; 0b001111:6; Rn:5; Rd:5] ->
     if q /\ word_subword imm5 (0,4) = (word 0b1000: 4 word) then // v.d
       SOME (arm_UMOV (XREG' Rd) (QREG' Rn) (val (word_subword imm5 (4,1): 1 word)) 8)
     else if ~q /\ word_subword imm5 (0,3) = (word 0b100: 3 word) then // v.s
       SOME (arm_UMOV (WREG' Rd) (QREG' Rn) (val (word_subword imm5 (3,2): 2 word)) 4)
     else NONE // v.h, v.b are unsupported
+
+  | [0:1; q; 0b001110:6; size:2; 0b0:1; Rm:5; 0b000110:6; Rn:5; Rd:5] ->
+    if ~q then NONE // datasize = 64 is unsupported yet
+    else
+      let esize: (64)word = word_shl (word 8: (64)word) (val size) in
+      SOME (arm_UZIP1 (QREG' Rd) (QREG' Rn) (QREG' Rm) (val esize))
+
   | _ -> NONE`;;
 
 (* ------------------------------------------------------------------------- *)
