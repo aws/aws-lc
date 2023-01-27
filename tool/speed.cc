@@ -614,57 +614,79 @@ static bool SpeedAEADOpen(const EVP_AEAD *aead, const std::string &name,
   return true;
 }
 
-static bool SpeedKEM(const std::string &name, int nid, const std::string &selected) {
+static bool SpeedSingleKEM(const std::string &name, int nid, const std::string &selected) {
   if (!selected.empty() && name.find(selected) == std::string::npos) {
     return true;
   }
-  BM_NAMESPACE::UniquePtr<EVP_PKEY_CTX> server_pkey_ctx(EVP_PKEY_CTX_new_id(nid, nullptr));
-  if (!server_pkey_ctx || !EVP_PKEY_keygen_init(server_pkey_ctx.get())) {
+  // Key generation (Alice).
+  BM_NAMESPACE::UniquePtr<EVP_PKEY_CTX> a_ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_KEM, nullptr));
+  if (!a_ctx ||
+      !EVP_PKEY_CTX_kem_set_params(a_ctx.get(), nid) ||
+      !EVP_PKEY_keygen_init(a_ctx.get())) {
     return false;
   }
 
-  EVP_PKEY *server_pkey = NULL;
+  EVP_PKEY *key = NULL;
   TimeResults results;
-  if (!TimeFunction(&results, [&server_pkey_ctx, &server_pkey]() -> bool {
-        return EVP_PKEY_keygen(server_pkey_ctx.get(), &server_pkey);
+  if (!TimeFunction(&results, [&a_ctx, &key]() -> bool {
+        return EVP_PKEY_keygen(a_ctx.get(), &key);
       })) {
     return false;
   }
   results.Print(name + " keygen");
 
-  size_t shared_secret_len = 0;
-  size_t ciphertext_len = 0;
-  EVP_PKEY_encapsulate(server_pkey_ctx.get(), NULL, &ciphertext_len, NULL, &shared_secret_len);
-  std::unique_ptr<uint8_t[]> ciphertext(new uint8_t[ciphertext_len]);
-  std::unique_ptr<uint8_t[]> shared_secret(new uint8_t[shared_secret_len]);
+  // Encapsulation setup (Bob).
+  BM_NAMESPACE::UniquePtr<EVP_PKEY_CTX> b_ctx(EVP_PKEY_CTX_new(key, nullptr));
 
-  size_t public_key_size = 0;
-  EVP_PKEY_get_raw_public_key(server_pkey, NULL, &public_key_size);
-  std::unique_ptr<uint8_t[]> public_key(new uint8_t[public_key_size]);
-  EVP_PKEY_get_raw_public_key(server_pkey, public_key.get(), &public_key_size);
+  size_t b_ss_len, b_ct_len;
+  if (!EVP_PKEY_encapsulate(b_ctx.get(), NULL, &b_ct_len, NULL, &b_ss_len)) {
+    return false;
+  }
+  std::unique_ptr<uint8_t[]> b_ct(new uint8_t[b_ct_len]);
+  std::unique_ptr<uint8_t[]> b_ss(new uint8_t[b_ss_len]);
 
-  BM_NAMESPACE::UniquePtr<EVP_PKEY> client_pkey(EVP_PKEY_new_raw_public_key(nid,NULL,public_key.get(),public_key_size));
-  BM_NAMESPACE::UniquePtr<EVP_PKEY_CTX> client_pkey_ctx(EVP_PKEY_CTX_new(client_pkey.get(), nullptr));
+  // Decapsulation setup (Alice).
+  a_ctx.reset(EVP_PKEY_CTX_new(key, nullptr));
 
-  if (!TimeFunction(&results, [&ciphertext, &ciphertext_len, &shared_secret, &shared_secret_len, &client_pkey_ctx]() -> bool {
-        return EVP_PKEY_encapsulate(client_pkey_ctx.get(), ciphertext.get(), &ciphertext_len, shared_secret.get(), &shared_secret_len);
+  size_t a_ss_len;
+  if (!EVP_PKEY_decapsulate(a_ctx.get(), NULL, &a_ss_len, NULL, 0)) {
+    return false;
+  }
+  std::unique_ptr<uint8_t[]> a_ss(new uint8_t[a_ss_len]);
+
+  // Sanity check (encaps/decaps gives the same shared secret).
+  if (!EVP_PKEY_encapsulate(b_ctx.get(), b_ct.get(), &b_ct_len, b_ss.get(), &b_ss_len) ||
+      !EVP_PKEY_decapsulate(a_ctx.get(), a_ss.get(), &a_ss_len, b_ct.get(), b_ct_len) ||
+      (a_ss_len != b_ss_len)) {
+    return false;
+  }
+  for (size_t i = 0; i < a_ss_len; i++) {
+    if (a_ss.get()[i] != b_ss.get()[i]) {
+        return false;
+    }
+  }
+
+  // Measure encapsulation and decapsulation performance.
+  if (!TimeFunction(&results, [&b_ct, &b_ct_len, &b_ss, &b_ss_len, &b_ctx]() -> bool {
+        return EVP_PKEY_encapsulate(b_ctx.get(), b_ct.get(), &b_ct_len, b_ss.get(), &b_ss_len);
       })) {
     return false;
   }
-  results.Print(name + " encapsulate");
+  results.Print(name + " encaps");
 
-  if (!TimeFunction(&results, [&ciphertext, &ciphertext_len, &shared_secret, &shared_secret_len, &server_pkey_ctx]() -> bool {
-        return EVP_PKEY_decapsulate(server_pkey_ctx.get(), shared_secret.get(), &shared_secret_len, ciphertext.get(), ciphertext_len);
+  if (!TimeFunction(&results, [&b_ct, &b_ct_len, &a_ss, &a_ss_len, &a_ctx]() -> bool {
+        return EVP_PKEY_decapsulate(a_ctx.get(), a_ss.get(), &a_ss_len, b_ct.get(), b_ct_len);
       })) {
     return false;
   }
-  results.Print(name + " decapsulate");
+  results.Print(name + " decaps");
+
   return true;
 }
 
 
 static bool SpeedKEM(std::string selected) {
-  return SpeedKEM("Kyber512", NID_KYBER512, selected);
+  return SpeedSingleKEM("Kyber512_R3", NID_KYBER512_R3, selected);
 }
 #endif
 
