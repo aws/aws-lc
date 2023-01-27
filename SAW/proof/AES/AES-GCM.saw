@@ -96,8 +96,10 @@ let aes_iv_len = 12;
 
 /*
  * Architecture features for the AVX+shrd code path
+ * ia32cap set to disable AVX512[F|DQ|BW|VL] instructions
+ * https://www.openssl.org/docs/manmaster/man3/OPENSSL_ia32cap.html
  */
-let {{ ia32cap = [0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff] : [4][32] }};
+let {{ ia32cap = [0xffffffff, 0xffffffff, 0x3ffcffff, 0xffffffff] : [4][32] }};
 
 
 include "AES.saw";
