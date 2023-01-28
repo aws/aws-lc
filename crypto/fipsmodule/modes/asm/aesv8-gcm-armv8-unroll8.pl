@@ -179,6 +179,7 @@ $code.=".arch   armv8.2-a+crypto\n";
 
 $input_ptr="x0";  #argument block
 $bit_length="x1";
+$byte_length="x9";
 $output_ptr="x2";
 $current_tag="x3";
 $counter="x16";
@@ -264,6 +265,7 @@ aesv8_gcm_8x_enc_128:
 	AARCH64_VALID_CALL_TARGET
 	cbz	x1, .L128_enc_ret
 	stp	d8, d9, [sp, #-80]!
+	lsr	$byte_length, $bit_length, #3
 	mov	$counter, x4
 	mov	$cc, x5
 	stp	d10, d11, [sp, #16]
@@ -276,7 +278,7 @@ aesv8_gcm_8x_enc_128:
 	mov	$constant_temp, #0x100000000				@ set up counter increment
 	movi	$rctr_inc.16b, #0x0
 	mov	$rctr_inc.d[1], $constant_temp
-	lsr	$main_end_input_ptr, $bit_length, #3		  	@ byte_len
+	mov	$main_end_input_ptr, $byte_length
 	ld1	{ $ctr0b}, [$counter]					@ CTR block 0
 
 	sub	$main_end_input_ptr, $main_end_input_ptr, #1	 	@ byte_len - 1
@@ -1332,7 +1334,7 @@ aesv8_gcm_8x_enc_128:
 	ext	$acc_lb, $acc_lb, $acc_lb, #8
 	rev64	$acc_lb, $acc_lb
 	st1	{ $acc_l.16b }, [$current_tag]
-	lsr	x0, $bit_length, #3					@ return sizes
+	mov	x0, $byte_length
 
 	ldp	d10, d11, [sp, #16]
 	ldp	d12, d13, [sp, #32]
@@ -1362,6 +1364,7 @@ aesv8_gcm_8x_dec_128:
 	AARCH64_VALID_CALL_TARGET
 	cbz	x1, .L128_dec_ret
 	stp	d8, d9, [sp, #-80]!
+	lsr	$byte_length, $bit_length, #3
 	mov	$counter, x4
 	mov	$cc, x5
 	stp	d10, d11, [sp, #16]
@@ -1371,7 +1374,7 @@ aesv8_gcm_8x_dec_128:
 	stp	x5, xzr, [sp, #64]
 	add	$modulo_constant, sp, #64
 
-	lsr	$main_end_input_ptr, $bit_length, #3		 	@ byte_len
+	mov	$main_end_input_ptr, $byte_length
 	ld1	{ $ctr0b}, [$counter]					@ CTR block 0
 
 	ldp	$rk0q, $rk1q, [$cc, #0]				 	@ load rk0, rk1
@@ -2423,7 +2426,7 @@ aesv8_gcm_8x_dec_128:
 
 	str	$rtmp_ctrq, [$counter]					@ store the updated counter
 
-	lsr	x0, $bit_length, #3
+	mov	x0, $byte_length
 
 	ldp	d10, d11, [sp, #16]
 	ldp	d12, d13, [sp, #32]
@@ -2516,6 +2519,7 @@ aesv8_gcm_8x_enc_192:
 	AARCH64_VALID_CALL_TARGET
 	cbz	x1, .L192_enc_ret
 	stp	d8, d9, [sp, #-80]!
+	lsr	$byte_length, $bit_length, #3
 	mov	$counter, x4
 	mov	$cc, x5
 	stp	d10, d11, [sp, #16]
@@ -2525,7 +2529,7 @@ aesv8_gcm_8x_enc_192:
 	stp	x5, xzr, [sp, #64]
 	add	$modulo_constant, sp, #64
 
-	lsr	$main_end_input_ptr, $bit_length, #3		 	@ byte_len
+	mov	$main_end_input_ptr, $byte_length
 	ld1	{ $ctr0b}, [$counter]					@ CTR block 0
 
 	mov	$constant_temp, #0x100000000				@ set up counter increment
@@ -3647,7 +3651,7 @@ aesv8_gcm_8x_enc_192:
 	rev64	$acc_lb, $acc_lb
 	st1	{ $acc_l.16b }, [$current_tag]
 
-	lsr	x0, $bit_length, #3					@ return sizes
+	mov	x0, $byte_length					@ return sizes
 
 	ldp	d10, d11, [sp, #16]
 	ldp	d12, d13, [sp, #32]
@@ -3677,6 +3681,7 @@ aesv8_gcm_8x_dec_192:
 	AARCH64_VALID_CALL_TARGET
 	cbz	x1, .L192_dec_ret
 	stp	d8, d9, [sp, #-80]!
+	lsr	$byte_length, $bit_length, #3
 	mov	$counter, x4
 	mov	$cc, x5
 	stp	d10, d11, [sp, #16]
@@ -3686,7 +3691,7 @@ aesv8_gcm_8x_dec_192:
 	stp     x5, xzr, [sp, #64]
 	add     $modulo_constant, sp, #64
 
-	lsr	$main_end_input_ptr, $bit_length, #3		 	@ byte_len
+	mov	$main_end_input_ptr, $byte_length
 	ld1	{ $ctr0b}, [$counter]					@ CTR block 0
 	ld1	{ $acc_lb}, [$current_tag]
 
@@ -4798,6 +4803,8 @@ aesv8_gcm_8x_dec_192:
 	rev64	$acc_lb, $acc_lb
 	st1	{ $acc_l.16b }, [$current_tag]
 
+	mov	x0, $byte_length
+
 	ldp	d10, d11, [sp, #16]
 	ldp	d12, d13, [sp, #32]
 	ldp	d14, d15, [sp, #48]
@@ -4889,6 +4896,7 @@ aesv8_gcm_8x_enc_256:
 	AARCH64_VALID_CALL_TARGET
 	cbz	x1, .L256_enc_ret
 	stp	d8, d9, [sp, #-80]!
+	lsr	$byte_length, $bit_length, #3
 	mov	$counter, x4
 	mov	$cc, x5
 	stp	d10, d11, [sp, #16]
@@ -4900,7 +4908,7 @@ aesv8_gcm_8x_enc_256:
 
 	ld1	{ $ctr0b}, [$counter]					@ CTR block 0
 
-	lsr	$main_end_input_ptr, $bit_length, #3		 	@ byte_len
+	mov	$main_end_input_ptr, $byte_length
 
 	mov	$constant_temp, #0x100000000			@ set up counter increment
 	movi	$rctr_inc.16b, #0x0
@@ -6088,7 +6096,7 @@ aesv8_gcm_8x_enc_256:
 		ext	$acc_lb, $acc_lb, $acc_lb, #8
 	rev64	$acc_lb, $acc_lb
 	st1	{ $acc_l.16b }, [$current_tag]
-	lsr	x0, $bit_length, #3					@ return sizes
+	mov	x0, $byte_length					@ return sizes
 
         ldp     d10, d11, [sp, #16]
 	ldp     d12, d13, [sp, #32]
@@ -6119,6 +6127,7 @@ aesv8_gcm_8x_dec_256:
 	AARCH64_VALID_CALL_TARGET
 	cbz	x1, .L256_dec_ret
 	stp	d8, d9, [sp, #-80]!
+	lsr	$byte_length, $bit_length, #3
 	mov	$counter, x4
 	mov	$cc, x5
 	stp	d10, d11, [sp, #16]
@@ -6133,7 +6142,7 @@ aesv8_gcm_8x_dec_256:
 	mov	$constant_temp, #0x100000000			@ set up counter increment
 	movi	$rctr_inc.16b, #0x0
 	mov	$rctr_inc.d[1], $constant_temp
-	lsr	$main_end_input_ptr, $bit_length, #3		  	@ byte_len
+	mov	$main_end_input_ptr, $byte_length
 
 	sub	$main_end_input_ptr, $main_end_input_ptr, #1		@ byte_len - 1
 
@@ -7314,7 +7323,7 @@ aesv8_gcm_8x_dec_256:
 	ext	$acc_lb, $acc_lb, $acc_lb, #8
 	rev64	$acc_lb, $acc_lb
 	st1	{ $acc_l.16b }, [$current_tag]
-	lsr	x0, $bit_length, #3					@ return sizes
+	mov	x0, $byte_length
 
         ldp     d10, d11, [sp, #16]
 	ldp     d12, d13, [sp, #32]
