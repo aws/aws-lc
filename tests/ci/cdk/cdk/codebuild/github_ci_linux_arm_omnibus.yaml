@@ -240,3 +240,12 @@ batch:
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-aarch:amazonlinux-2022_clang-14x_sanitizer_latest
         variables:
           AWS_LC_SSL_RUNNER_START_INDEX: 7001
+
+    - identifier: amazonlinux2022_gcc11x_aarch_valgrind
+      buildspec: ./tests/ci/codebuild/common/run_valgrind_tests.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_LARGE
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-aarch:amazonlinux-2022_gcc-11x_latest
+
