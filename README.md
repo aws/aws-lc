@@ -1,5 +1,8 @@
 # AWS LibCrypto Formal Verification
 
+[![.github/workflows/main.yml](https://github.com/awslabs/aws-lc-verification/actions/workflows/main.yml/badge.svg)](https://github.com/awslabs/aws-lc-verification/actions/workflows/main.yml)
+
+
 This repository contains specifications, proof scripts, and other artifacts required to formally verify portions of [AWS libcrypto](https://github.com/awslabs/aws-lc). Formal verification is used to locate bugs and increase assurance of the correctness and security of the library.
 
 ## Verified Code
