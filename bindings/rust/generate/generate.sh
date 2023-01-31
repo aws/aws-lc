@@ -10,9 +10,8 @@ IGNORE_UPSTREAM=0
 IGNORE_MACOS=0
 SKIP_TEST=0
 GENERATE_FIPS=0
-
-# TODO: Match AWS-LC's Github release version when this is more stable.
-AWS_LC_SYS_VERSION="0.3.1"
+CRATE_NAME="aws-lc-sys"
+CRATE_VERSION="" # User prompted for version when empty
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 AWS_LC_DIR=$( cd -- "${SCRIPT_DIR}/../../../" &> /dev/null && pwd)
@@ -35,7 +34,7 @@ function prepare_crate_dir {
   mkdir -p "${CRATE_AWS_LC_DIR}"/
 
   cp -r "${CRATE_TEMPLATE_DIR}"/* "${CRATE_DIR}"/
-  perl -pi -e "s/__AWS_LC_SYS_VERSION__/${AWS_LC_SYS_VERSION}/g" "${CRATE_DIR}"/Cargo.toml
+  perl -pi -e "s/__AWS_LC_SYS_VERSION__/${CRATE_VERSION}/g" "${CRATE_DIR}"/Cargo.toml
 
   cp -r "${AWS_LC_DIR}"/crypto  \
         "${AWS_LC_DIR}"/ssl \
@@ -76,10 +75,16 @@ check_branch
 check_running_on_macos
 mkdir -p "${TMP_DIR}"
 
+determine_generate_version
+
 # Crate preparation.
 prepare_crate_dir
 create_prefix_headers
-source "${SCRIPT_DIR}"/_generate_all_bindings_flavors.sh 
+
+public_api_diff
+
+
+source "${SCRIPT_DIR}"/_generate_all_bindings_flavors.sh
 
 # Crate testing.
 if [[ ${SKIP_TEST} -eq 1 ]]; then

@@ -10,12 +10,12 @@ IGNORE_UPSTREAM=0
 IGNORE_MACOS=0
 SKIP_TEST=0
 GENERATE_FIPS=1
-
-AWS_LC_FIPS_SYS_VERSION="0.2.0"
+AWS_LC_FIPS_BRANCH="fips-2022-11-02"
+CRATE_NAME="aws-lc-fips-sys"
+CRATE_VERSION="" # User prompted for value if empty
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 AWS_LC_DIR=$( cd -- "${SCRIPT_DIR}/../../../" &> /dev/null && pwd)
-AWS_LC_FIPS_BRANCH="fips-2022-11-02"
 CRATE_TEMPLATE_DIR="${AWS_LC_DIR}"/bindings/rust/aws-lc-fips-sys-template
 TMP_DIR="${AWS_LC_DIR}"/bindings/rust/tmp
 AWS_LC_FIPS_DIR="${TMP_DIR}"/aws-lc
@@ -27,7 +27,7 @@ PREFIX_HEADERS_FILE="${CRATE_AWS_LC_DIR}"/include/boringssl_prefix_symbols.h
 
 source "${SCRIPT_DIR}"/_generation_tools.sh
 
-# Clone the FIPS branch in local. 
+# Clone the FIPS branch in local.
 # TODO: This can be optimized to be ran and checked on the FIPS branch when this
 # commit is in the latest FIPS branch.
 function clone_fips_branch {
@@ -46,7 +46,7 @@ function prepare_crate_dir {
   mkdir -p "${CRATE_AWS_LC_DIR}"/
 
   cp -r "${CRATE_TEMPLATE_DIR}"/* "${CRATE_DIR}"/
-  perl -pi -e "s/__AWS_LC_FIPS_SYS_VERSION__/${AWS_LC_FIPS_SYS_VERSION}/g" "${CRATE_DIR}"/Cargo.toml
+  perl -pi -e "s/__AWS_LC_FIPS_SYS_VERSION__/${CRATE_VERSION}/g" "${CRATE_DIR}"/Cargo.toml
 
   cp -r "${AWS_LC_FIPS_DIR}"/crypto  \
         "${AWS_LC_FIPS_DIR}"/ssl  \
@@ -56,6 +56,7 @@ function prepare_crate_dir {
         "${AWS_LC_FIPS_DIR}"/LICENSE \
         "${AWS_LC_FIPS_DIR}"/sources.cmake \
         "${AWS_LC_FIPS_DIR}"/go.mod \
+        "${AWS_LC_FIPS_DIR}"/go.sum \
         "${CRATE_AWS_LC_DIR}"/
 
   cp "${AWS_LC_FIPS_DIR}"/LICENSE  "${CRATE_AWS_LC_DIR}"/
@@ -89,10 +90,15 @@ pushd "${AWS_LC_DIR}"
 check_workspace
 mkdir -p "${TMP_DIR}"
 
+determine_generate_version
+
 # Crate preparation.
 clone_fips_branch
 prepare_crate_dir
 create_prefix_headers
+
+public_api_diff
+
 source "${SCRIPT_DIR}"/_generate_all_bindings_flavors.sh
 
 # Crate testing.

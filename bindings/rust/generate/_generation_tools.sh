@@ -124,3 +124,52 @@ function create_prefix_headers {
     echo Prefix headers generation complete
   fi
 }
+
+function parse_version {
+  local VERSION="${1}"
+  echo Version: "${VERSION}"
+  echo "${VERSION}" | egrep -q '^[0-9]+\.[0-9]+\.[0-9]+$'
+}
+
+function determine_generate_version {
+  PUBLISHED_CRATE_VERSION=$(cargo search "${CRATE_NAME}" | egrep "^${CRATE_NAME} " | sed -e 's/.*"\(.*\)".*/\1/')
+
+  source "${SCRIPT_DIR}"/_generation_tools.sh
+
+  if ! parse_version "${PUBLISHED_CRATE_VERSION}"; then
+    echo Could not find current version of published crate.
+    exit 1
+  fi
+
+  while [ -z "${CRATE_VERSION}" ]; do
+    echo
+    echo Current published version of ${CRATE_NAME}: ${PUBLISHED_CRATE_VERSION}
+    read -p "Enter version for crate generation: " NEW_VERSION
+    if parse_version "${NEW_VERSION}"; then
+      CRATE_VERSION="${NEW_VERSION}"
+    else
+      echo Could not parse version: ${NEW_VERSION}
+    fi
+  done
+
+  echo
+  echo Generating crate with version: ${CRATE_VERSION}
+}
+
+function public_api_diff {
+  pushd "${CRATE_DIR}"
+  cargo build --features internal_generate
+  if ! cargo public-api diff --deny changed --deny removed "${PUBLISHED_CRATE_VERSION}"; then
+    while true; do
+      echo
+      echo Version changing from: ${PUBLISHED_CRATE_VERSION} to ${CRATE_VERSION}
+      read -p "API changes found.  Continue with crate generation? (yn) " yn
+      case $yn in
+        [Yy]* ) break;;
+        [Nn]* ) exit 1;;
+        * ) echo "Please answer yes or no.";;
+      esac
+    done
+  fi
+  popd
+}
