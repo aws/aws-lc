@@ -12,8 +12,10 @@ mainSteps:
       runCommand:
         - eval $(/opt/homebrew/bin/brew shellenv)
         - sudo su
-        - cd /tmp
+        - BUILD_ROOT=$(mktemp -d)
+        - cd ${BUILD_ROOT}
         - export HOME="/var/root"
+        - trap "rm -rf ${BUILD_ROOT}" EXIT
         - git clone {GITHUB_REPO} aws-lc-pr
         - cd aws-lc-pr
         # Fetch PR contents
@@ -23,4 +25,3 @@ mainSteps:
         - ./tests/ci/run_posix_tests.sh
         - chmod +x ./tests/ci/run_fips_tests.sh
         - ./tests/ci/run_fips_tests.sh
-        - cd ../ && rm -rf aws-lc-pr

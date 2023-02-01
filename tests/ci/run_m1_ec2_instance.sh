@@ -47,7 +47,6 @@ ssm_doc_name=$(create_ssm_document "macos_arm")
 ssm_document_names="${ssm_doc_name}"
 
 m1_ssm_command_id=$(run_ssm_command "${ssm_doc_name}" "${ec2_instance}" ${cloudwatch_group_name})
-ssm_command_ids="${m1_ssm_command_id}"
 
 run_url="https://${AWS_REGION}.console.aws.amazon.com/cloudwatch/home?region=${AWS_REGION}\
 #logsV2:log-groups/log-group/${cloudwatch_group_name}/log-events/\
@@ -56,33 +55,31 @@ ${m1_ssm_command_id}\$252F${ec2_instance}\$252FrunShellScript\$252Fstdout"
 echo "Actual Run in EC2 can be observered at CloudWatch URL: ${run_url}"
 
 # Give some time for the commands to run
+done=true
+success=true
 for i in {1..45}; do
   echo "${i}: Continue to wait 2 min for SSM commands to finish."
   sleep 120
-  done=true
-  success=true
-  # for each command, check its status
-  for id in ${ssm_command_ids}; do
-    ssm_command_status="$(aws ssm list-commands --command-id "${id}" --query Commands[*].Status --output text)"
-    ssm_target_count="$(aws ssm list-commands --command-id "${id}" --query Commands[*].TargetCount --output text)"
-    ssm_completed_count="$(aws ssm list-commands --command-id "${id}" --query Commands[*].CompletedCount --output text)"
-    if [[ ${ssm_command_status} == 'Success' && ${ssm_completed_count} == "${ssm_target_count}" ]]; then
-      echo "SSM command ${id} finished successfully."
-    elif [[ ${ssm_command_status} == 'Failed' && ${ssm_completed_count} == "${ssm_target_count}" ]]; then
-      echo "SSM command ${id} failed."
-      success=false
-    else
-      done=false
-    fi
-  done
+
+  ssm_command_status="$(aws ssm list-commands --command-id "${m1_ssm_command_id}" --query Commands[*].Status --output text)"
+  ssm_target_count="$(aws ssm list-commands --command-id "${m1_ssm_command_id}" --query Commands[*].TargetCount --output text)"
+  ssm_completed_count="$(aws ssm list-commands --command-id "${m1_ssm_command_id}" --query Commands[*].CompletedCount --output text)"
+  if [[ ${ssm_command_status} == 'Success' && ${ssm_completed_count} == "${ssm_target_count}" ]]; then
+    echo "SSM command ${m1_ssm_command_id} finished successfully."
+  elif [[ ${ssm_command_status} == 'Failed' && ${ssm_completed_count} == "${ssm_target_count}" ]]; then
+    echo "SSM command ${m1_ssm_command_id} failed."
+    success=false
+  else
+    done=false
+  fi
 
   # if after the loop finish and done is still true, then we're done
   if [ "${done}" = true ]; then
-    echo "All SSM commands have finished."
+    echo "M1 SSM command has finished."
 
     # if success is still true here, then none of the commands failed
     if [ "${success}" != true ]; then
-      echo "An SSM command failed!"
+      echo "M1 SSM command failed!"
       exit 1
     fi
     break
