@@ -28,12 +28,11 @@ PREFIX_HEADERS_FILE="${CRATE_AWS_LC_DIR}"/include/boringssl_prefix_symbols.h
 source "${SCRIPT_DIR}"/_generation_tools.sh
 
 # Clone the FIPS branch in local.
-# TODO: This can be optimized to be ran and checked on the FIPS branch when this
-# commit is in the latest FIPS branch.
 function clone_fips_branch {
   pushd "${TMP_DIR}"
   rm -rf aws-lc
   git clone -b ${AWS_LC_FIPS_BRANCH} --depth 1 --single-branch https://github.com/awslabs/aws-lc.git
+  AWS_LC_COMMIT_HASH=$(git log -n 1 --pretty=format:"%H" main)
   popd
 }
 
@@ -47,6 +46,7 @@ function prepare_crate_dir {
 
   cp -r "${CRATE_TEMPLATE_DIR}"/* "${CRATE_DIR}"/
   perl -pi -e "s/__AWS_LC_FIPS_SYS_VERSION__/${CRATE_VERSION}/g" "${CRATE_DIR}"/Cargo.toml
+  perl -pi -e "s/__AWS_LC_COMMIT_HASH__/${AWS_LC_COMMIT_HASH}/g" "${CRATE_DIR}"/Cargo.toml
 
   cp -r "${AWS_LC_FIPS_DIR}"/crypto  \
         "${AWS_LC_FIPS_DIR}"/ssl  \
