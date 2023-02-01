@@ -86,7 +86,10 @@ if [[ ! -d ${AWS_LC_DIR} ]]; then
   echo "$(basename "${0}")" Sanity Check Failed
   exit 1
 fi
+
 pushd "${AWS_LC_DIR}"
+# The logic for generating/publishing the FIPS crate resides on the main branch.
+check_branch
 check_workspace
 mkdir -p "${TMP_DIR}"
 
