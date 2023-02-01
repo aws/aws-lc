@@ -47,14 +47,11 @@ S2N_BN_SYMBOL(bignum_half_p384):
 
 // Do a masked addition of p_384, catching carry in a 7th word
 
-        mov     n, #0x00000000ffffffff
-        and     n, n, m
+        and     n, m, #0x00000000ffffffff
         adds    d0, d0, n
-        mov     n, #0xffffffff00000000
-        and     n, n, m
+        and     n, m, #0xffffffff00000000
         adcs    d1, d1, n
-        mov     n, #0xfffffffffffffffe
-        and     n, n, m
+        and     n, m, #0xfffffffffffffffe
         adcs    d2, d2, n
         adcs    d3, d3, m
         adcs    d4, d4, m
