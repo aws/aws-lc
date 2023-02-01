@@ -32,7 +32,7 @@ function clone_fips_branch {
   pushd "${TMP_DIR}"
   rm -rf aws-lc
   git clone -b ${AWS_LC_FIPS_BRANCH} --depth 1 --single-branch https://github.com/awslabs/aws-lc.git
-  AWS_LC_COMMIT_HASH=$(git log -n 1 --pretty=format:"%H" main)
+  AWS_LC_COMMIT_HASH=$(git -C ${AWS_LC_FIPS_DIR} log -n 1 --pretty=format:"%H" HEAD)
   popd
 }
 
