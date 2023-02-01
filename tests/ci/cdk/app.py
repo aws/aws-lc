@@ -6,6 +6,7 @@
 from aws_cdk import core
 
 from cdk.bm_framework_stack import BmFrameworkStack
+from cdk.aws_lc_mac_arm_ci_stack import AwsLcMacArmCIStack
 from cdk.aws_lc_github_ci_stack import AwsLcGitHubCIStack
 from cdk.aws_lc_github_fuzz_ci_stack import  AwsLcGitHubFuzzCIStack
 from cdk.aws_lc_android_ci_stack import AwsLcAndroidCIStack
@@ -46,6 +47,8 @@ analytics_build_spec_file = "cdk/codebuild/github_ci_analytics_omnibus.yaml"
 AwsLcGitHubAnalyticsStack(app, "aws-lc-ci-analytics", LINUX_X86_ECR_REPO, LINUX_AARCH_ECR_REPO, analytics_build_spec_file, env=env)
 bm_framework_build_spec_file = "./cdk/codebuild/bm_framework_omnibus.yaml"
 BmFrameworkStack(app, "aws-lc-ci-bm-framework", LINUX_X86_ECR_REPO, bm_framework_build_spec_file, env=env)
+mac_arm_build_spec_file = "cdk/codebuild/github_ci_macos_m1_omnibus.yaml"
+AwsLcMacArmCIStack(app, "aws-lc-ci-macos-arm", mac_arm_build_spec_file, env=env)
 android_build_spec_file = "cdk/codebuild/github_ci_android_omnibus.yaml"
 AwsLcAndroidCIStack(app, "aws-lc-ci-devicefarm-android", LINUX_X86_ECR_REPO, android_build_spec_file, env=env)
 

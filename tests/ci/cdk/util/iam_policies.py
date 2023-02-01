@@ -5,7 +5,7 @@
 
 from util.metadata import AWS_REGION, AWS_ACCOUNT
 
-def ec2_bm_framework_policies_in_json():
+def ec2_policies_in_json():
     """
     Define an IAM policy that gives permissions for starting, stopping, and getting details of EC2 instances and their Vpcs
     :return: an IAM policy statement in json.
@@ -51,7 +51,7 @@ def s3_bm_framework_policies_in_json(s3_bucket_name):
     }
 
 
-def ssm_bm_framework_policies_in_json():
+def ssm_policies_in_json():
     """
     Define an IAM policy that gives permissions to creating documents and running commands.
     :return: an IAM policy statement in json.
