@@ -146,7 +146,11 @@ function determine_generate_version {
     echo Current published version of ${CRATE_NAME}: ${PUBLISHED_CRATE_VERSION}
     read -p "Enter version for crate generation: " NEW_VERSION
     if parse_version "${NEW_VERSION}"; then
-      CRATE_VERSION="${NEW_VERSION}"
+      if perl -e "exit !(version->parse('${NEW_VERSION}')>version->parse('${PUBLISHED_CRATE_VERSION}'))"; then
+        CRATE_VERSION="${NEW_VERSION}"
+      else
+        echo New version must come after: ${PUBLISHED_CRATE_VERSION}
+      fi
     else
       echo Could not parse version: ${NEW_VERSION}
     fi
