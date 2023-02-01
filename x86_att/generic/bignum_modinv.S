@@ -203,7 +203,7 @@ copyloop:
         shlq    $7, a
         movq    a, t
 
-// Start of the main outer loop iterated t times
+// Start of the main outer loop iterated t / CHUNKSIZE times
 
 outerloop:
 

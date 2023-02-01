@@ -201,7 +201,7 @@ let BIGNUM_TRIPLE_P256_ALT_CORRECT = time prove
   CONV_TAC WORD_REDUCE_CONV THEN
   DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN REAL_INTEGER_TAC);;
 
-let BIGNUM_TRIPLE_P256ALT_SUBROUTINE_CORRECT = time prove
+let BIGNUM_TRIPLE_P256_ALT_SUBROUTINE_CORRECT = time prove
  (`!z x n pc stackpointer returnaddress.
         nonoverlapping (word pc,0x98) (z,8 * 4) /\
         nonoverlapping (stackpointer,8) (z,8 * 4)
@@ -228,7 +228,7 @@ let BIGNUM_TRIPLE_P256ALT_SUBROUTINE_CORRECT = time prove
 let windows_bignum_triple_p256_alt_mc = define_from_elf
    "windows_bignum_triple_p256_alt_mc" "x86/p256/bignum_triple_p256_alt.obj";;
 
-let WINDOWS_BIGNUM_TRIPLE_P256ALT_SUBROUTINE_CORRECT = time prove
+let WINDOWS_BIGNUM_TRIPLE_P256_ALT_SUBROUTINE_CORRECT = time prove
  (`!z x n pc stackpointer returnaddress.
         ALL (nonoverlapping (word_sub stackpointer (word 16),16))
             [(word pc,0xa2); (x,8 * 4)] /\

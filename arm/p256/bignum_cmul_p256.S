@@ -64,7 +64,7 @@ S2N_BN_SYMBOL(bignum_cmul_p256_alt):
 // intended quotient approximation is (hl + hl>>32 + 1)>>64. Note that by
 // hypothesis our product is <= (2^64 - 1) * (p_256 - 1), so there is no need
 // to max this out to avoid wrapping, unlike in the more general case of
-// bignum_mod_p256_5.
+// bignum_mod_p256.
 
         subs    xzr, xzr, xzr   // set carry flag for +1
         extr    q, h, d3, #32

@@ -28,7 +28,6 @@
 #define m x7
 #define n x8
 
-
 S2N_BN_SYMBOL(bignum_half_p256):
 
 // Load the 4 digits of x
@@ -43,15 +42,11 @@ S2N_BN_SYMBOL(bignum_half_p256):
 
 // Do a masked addition of p_256, catching carry in a 5th word
 
-        mov     n, #0xffffffffffffffff
-        and     n, n, m
-        adds    d0, d0, n
-        mov     n, #0x00000000ffffffff
-        and     n, n, m
+        adds    d0, d0, m
+        and     n, m, #0x00000000ffffffff
         adcs    d1, d1, n
         adcs    d2, d2, xzr
-        mov     n, #0xffffffff00000001
-        and     n, n, m
+        and     n, m, #0xffffffff00000001
         adcs    d3, d3, n
         adc     d4, xzr, xzr
 

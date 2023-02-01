@@ -307,7 +307,29 @@ BIGNUM_OBJ = curve25519/bignum_add_p25519.o \
              secp256k1/bignum_tomont_p256k1.o \
              secp256k1/bignum_tomont_p256k1_alt.o \
              secp256k1/bignum_triple_p256k1.o \
-             secp256k1/bignum_triple_p256k1_alt.o
+             secp256k1/bignum_triple_p256k1_alt.o \
+             sm2/bignum_add_sm2.o \
+             sm2/bignum_cmul_sm2.o \
+             sm2/bignum_cmul_sm2_alt.o \
+             sm2/bignum_deamont_sm2.o \
+             sm2/bignum_demont_sm2.o \
+             sm2/bignum_double_sm2.o \
+             sm2/bignum_half_sm2.o \
+             sm2/bignum_mod_nsm2.o \
+             sm2/bignum_mod_nsm2_alt.o \
+             sm2/bignum_mod_nsm2_4.o \
+             sm2/bignum_mod_sm2.o \
+             sm2/bignum_mod_sm2_4.o \
+             sm2/bignum_montmul_sm2.o \
+             sm2/bignum_montmul_sm2_alt.o \
+             sm2/bignum_montsqr_sm2.o \
+             sm2/bignum_montsqr_sm2_alt.o \
+             sm2/bignum_neg_sm2.o \
+             sm2/bignum_optneg_sm2.o \
+             sm2/bignum_sub_sm2.o \
+             sm2/bignum_tomont_sm2.o \
+             sm2/bignum_triple_sm2.o \
+             sm2/bignum_triple_sm2_alt.o
 
 OBJ = $(POINT_OBJ) $(BIGNUM_OBJ)
 
@@ -378,6 +400,7 @@ p256/%.correct: proofs/%.ml p256/%.o p256/%.obj ; (cd ..; (echo 'loadt "x86/proo
 p384/%.correct: proofs/%.ml p384/%.o p384/%.obj ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/$*.ml";;') | $(HOLLIGHT) 2>&1) >$@
 p521/%.correct: proofs/%.ml p521/%.o p521/%.obj ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/$*.ml";;') | $(HOLLIGHT) 2>&1) >$@
 secp256k1/%.correct: proofs/%.ml secp256k1/%.o secp256k1/%.obj ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/$*.ml";;') | $(HOLLIGHT) 2>&1) >$@
+sm2/%.correct: proofs/%.ml sm2/%.o sm2/%.obj ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/$*.ml";;') | $(HOLLIGHT) 2>&1) >$@
 
 run_proofs: $(PROOFS);
 

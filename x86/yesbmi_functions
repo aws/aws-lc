@@ -3,6 +3,7 @@ bignum_cmul_p256
 bignum_cmul_p256k1
 bignum_cmul_p384
 bignum_cmul_p521
+bignum_cmul_sm2
 bignum_deamont_p256
 bignum_deamont_p384
 bignum_demont_p256
@@ -15,16 +16,19 @@ bignum_ksqr_32_64
 bignum_mod_n256
 bignum_mod_n384
 bignum_mod_n521_9
+bignum_mod_nsm2
 bignum_mod_p256
 bignum_mod_p384
 bignum_montmul_p256
 bignum_montmul_p256k1
 bignum_montmul_p384
 bignum_montmul_p521
+bignum_montmul_sm2
 bignum_montsqr_p256
 bignum_montsqr_p256k1
 bignum_montsqr_p384
 bignum_montsqr_p521
+bignum_montsqr_sm2
 bignum_mul_4_8
 bignum_mul_6_12
 bignum_mul_8_16
@@ -44,6 +48,7 @@ bignum_triple_p256
 bignum_triple_p256k1
 bignum_triple_p384
 bignum_triple_p521
+bignum_triple_sm2
 curve25519_ladderstep
 curve25519_pxscalarmul
 curve25519_x25519

@@ -162,20 +162,20 @@ S2N_BN_SYMBOL(bignum_montmul_p256_alt):
 
 // Perform 4 Montgomery steps to rotate the lower half
 
-        montreds(u0,u3,u2,u1,u0, h,l,y)
-        montreds(u1,u0,u3,u2,u1, h,l,y)
-        montreds(u2,u1,u0,u3,u2, h,l,y)
-        montreds(u3,u2,u1,u0,u3, h,l,y)
+        montreds(u0,u3,u2,u1,u0, h,l,b1)
+        montreds(u1,u0,u3,u2,u1, h,l,b1)
+        montreds(u2,u1,u0,u3,u2, h,l,b1)
+        montreds(u3,u2,u1,u0,u3, h,l,b1)
 
-// Add high and low parts, catching carry in y
+// Add high and low parts, catching carry in b1
 
         adds    u0, u0, u4
         adcs    u1, u1, u5
         adcs    u2, u2, u6
         adcs    u3, u3, u7
-        cset    y, cs
+        cset    b1, cs
 
-// Set [h;0;l;-1] = p_256 and form [u7,u6,u5,u4] = [y;u3;u2;u1;u0] - p_256
+// Set [h;0;l;-1] = p_256 and form [u7,u6,u5,u4] = [b1;u3;u2;u1;u0] - p_256
 
         mov     l, #0x00000000ffffffff
         mov     h, #0xffffffff00000001
@@ -184,7 +184,7 @@ S2N_BN_SYMBOL(bignum_montmul_p256_alt):
         sbcs    u5, u1, l
         sbcs    u6, u2, xzr
         sbcs    u7, u3, h
-        sbcs    xzr, y, xzr
+        sbcs    xzr, b1, xzr
 
 // Now CF is clear if the comparison carried so the original was fine
 // Otherwise take the form with p_256 subtracted.

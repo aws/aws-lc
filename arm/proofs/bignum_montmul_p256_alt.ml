@@ -81,49 +81,49 @@ let bignum_montmul_p256_alt_mc =
   0xba0b0084;       (* arm_ADCS X4 X4 X11 *)
   0x9a1f00a5;       (* arm_ADC X5 X5 XZR *)
   0xd3607d8b;       (* arm_LSL X11 X12 32 *)
-  0xeb0b0182;       (* arm_SUBS X2 X12 X11 *)
+  0xeb0b0188;       (* arm_SUBS X8 X12 X11 *)
   0xd360fd86;       (* arm_LSR X6 X12 32 *)
   0xda06018c;       (* arm_SBC X12 X12 X6 *)
   0xab0b01ad;       (* arm_ADDS X13 X13 X11 *)
   0xba0601ce;       (* arm_ADCS X14 X14 X6 *)
-  0xba0201ef;       (* arm_ADCS X15 X15 X2 *)
+  0xba0801ef;       (* arm_ADCS X15 X15 X8 *)
   0x9a1f018c;       (* arm_ADC X12 X12 XZR *)
   0xd3607dab;       (* arm_LSL X11 X13 32 *)
-  0xeb0b01a2;       (* arm_SUBS X2 X13 X11 *)
+  0xeb0b01a8;       (* arm_SUBS X8 X13 X11 *)
   0xd360fda6;       (* arm_LSR X6 X13 32 *)
   0xda0601ad;       (* arm_SBC X13 X13 X6 *)
   0xab0b01ce;       (* arm_ADDS X14 X14 X11 *)
   0xba0601ef;       (* arm_ADCS X15 X15 X6 *)
-  0xba02018c;       (* arm_ADCS X12 X12 X2 *)
+  0xba08018c;       (* arm_ADCS X12 X12 X8 *)
   0x9a1f01ad;       (* arm_ADC X13 X13 XZR *)
   0xd3607dcb;       (* arm_LSL X11 X14 32 *)
-  0xeb0b01c2;       (* arm_SUBS X2 X14 X11 *)
+  0xeb0b01c8;       (* arm_SUBS X8 X14 X11 *)
   0xd360fdc6;       (* arm_LSR X6 X14 32 *)
   0xda0601ce;       (* arm_SBC X14 X14 X6 *)
   0xab0b01ef;       (* arm_ADDS X15 X15 X11 *)
   0xba06018c;       (* arm_ADCS X12 X12 X6 *)
-  0xba0201ad;       (* arm_ADCS X13 X13 X2 *)
+  0xba0801ad;       (* arm_ADCS X13 X13 X8 *)
   0x9a1f01ce;       (* arm_ADC X14 X14 XZR *)
   0xd3607deb;       (* arm_LSL X11 X15 32 *)
-  0xeb0b01e2;       (* arm_SUBS X2 X15 X11 *)
+  0xeb0b01e8;       (* arm_SUBS X8 X15 X11 *)
   0xd360fde6;       (* arm_LSR X6 X15 32 *)
   0xda0601ef;       (* arm_SBC X15 X15 X6 *)
   0xab0b018c;       (* arm_ADDS X12 X12 X11 *)
   0xba0601ad;       (* arm_ADCS X13 X13 X6 *)
-  0xba0201ce;       (* arm_ADCS X14 X14 X2 *)
+  0xba0801ce;       (* arm_ADCS X14 X14 X8 *)
   0x9a1f01ef;       (* arm_ADC X15 X15 XZR *)
   0xab10018c;       (* arm_ADDS X12 X12 X16 *)
   0xba0301ad;       (* arm_ADCS X13 X13 X3 *)
   0xba0401ce;       (* arm_ADCS X14 X14 X4 *)
   0xba0501ef;       (* arm_ADCS X15 X15 X5 *)
-  0x9a9f37e2;       (* arm_CSET X2 Condition_CS *)
+  0x9a9f37e8;       (* arm_CSET X8 Condition_CS *)
   0xb2407feb;       (* arm_MOV X11 (rvalue (word 4294967295)) *)
   0xb26083e6;       (* arm_MOV X6 (rvalue (word 18446744069414584321)) *)
   0xb1000590;       (* arm_ADDS X16 X12 (rvalue (word 1)) *)
   0xfa0b01a3;       (* arm_SBCS X3 X13 X11 *)
   0xfa1f01c4;       (* arm_SBCS X4 X14 XZR *)
   0xfa0601e5;       (* arm_SBCS X5 X15 X6 *)
-  0xfa1f005f;       (* arm_SBCS XZR X2 XZR *)
+  0xfa1f011f;       (* arm_SBCS XZR X8 XZR *)
   0x9a90318c;       (* arm_CSEL X12 X12 X16 Condition_CC *)
   0x9a8331ad;       (* arm_CSEL X13 X13 X3 Condition_CC *)
   0x9a8431ce;       (* arm_CSEL X14 X14 X4 Condition_CC *)
@@ -154,7 +154,7 @@ let BIGNUM_MONTMUL_P256_ALT_CORRECT = time prove
                   (a * b <= 2 EXP 256 * p_256
                    ==> bignum_from_memory (z,4) s =
                        (inverse_mod p_256 (2 EXP 256) * a * b) MOD p_256))
-             (MAYCHANGE [PC; X2; X3; X4; X5; X6; X7; X8; X9; X10; X11; X12;
+             (MAYCHANGE [PC; X3; X4; X5; X6; X7; X8; X9; X10; X11; X12;
                          X13; X14; X15; X16] ,,
               MAYCHANGE [memory :> bytes(z,8 * 4)] ,,
               MAYCHANGE SOME_FLAGS)`,
@@ -252,7 +252,7 @@ let BIGNUM_MONTMUL_P256_ALT_SUBROUTINE_CORRECT = time prove
                   (a * b <= 2 EXP 256 * p_256
                    ==> bignum_from_memory (z,4) s =
                        (inverse_mod p_256 (2 EXP 256) * a * b) MOD p_256))
-             (MAYCHANGE [PC; X2; X3; X4; X5; X6; X7; X8; X9; X10; X11; X12;
+             (MAYCHANGE [PC; X3; X4; X5; X6; X7; X8; X9; X10; X11; X12;
                          X13; X14; X15; X16] ,,
               MAYCHANGE [memory :> bytes(z,8 * 4)] ,,
               MAYCHANGE SOME_FLAGS)`,
@@ -277,7 +277,7 @@ let BIGNUM_AMONTMUL_P256_ALT_CORRECT = time prove
              (\s. read PC s = word (pc + 0x1d4) /\
                   (bignum_from_memory (z,4) s ==
                    inverse_mod p_256 (2 EXP 256) * a * b) (mod p_256))
-             (MAYCHANGE [PC; X2; X3; X4; X5; X6; X7; X8; X9; X10; X11; X12;
+             (MAYCHANGE [PC; X3; X4; X5; X6; X7; X8; X9; X10; X11; X12;
                          X13; X14; X15; X16] ,,
               MAYCHANGE [memory :> bytes(z,8 * 4)] ,,
               MAYCHANGE SOME_FLAGS)`,
@@ -374,7 +374,7 @@ let BIGNUM_AMONTMUL_P256_ALT_SUBROUTINE_CORRECT = time prove
              (\s. read PC s = returnaddress /\
                   (bignum_from_memory (z,4) s ==
                    inverse_mod p_256 (2 EXP 256) * a * b) (mod p_256))
-             (MAYCHANGE [PC; X2; X3; X4; X5; X6; X7; X8; X9; X10; X11; X12;
+             (MAYCHANGE [PC; X3; X4; X5; X6; X7; X8; X9; X10; X11; X12;
                          X13; X14; X15; X16] ,,
               MAYCHANGE [memory :> bytes(z,8 * 4)] ,,
               MAYCHANGE SOME_FLAGS)`,

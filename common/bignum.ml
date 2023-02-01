@@ -215,6 +215,10 @@ let BIGNUM_OF_WORDLIST_MOD = prove
   REWRITE_TAC[bignum_of_wordlist; MOD_MULT_ADD] THEN
   SIMP_TAC[MOD_LT; VAL_BOUND_64]);;
 
+let BIGNUM_OF_WORDLIST_ZAP = prove
+ (`!l. 2 EXP 64 * bignum_of_wordlist l = bignum_of_wordlist(CONS (word 0) l)`,
+  REWRITE_TAC[bignum_of_wordlist; VAL_WORD_0] THEN ARITH_TAC);;
+
 let BIGNUM_OF_WORDLIST_BOUND_LENGTH = prove
  (`!l. bignum_of_wordlist l < 2 EXP (64 * LENGTH l)`,
   LIST_INDUCT_TAC THEN REWRITE_TAC[LENGTH; bignum_of_wordlist] THEN

@@ -21,50 +21,45 @@
 #define x x1
 #define y x2
 #define c x3
-#define l x4
-#define d0 x5
-#define d1 x6
-#define d2 x7
-#define d3 x8
-
+#define d0 x4
+#define d1 x5
+#define d2 x6
+#define d3 x7
+#define n0 x8
+#define n1 x9
+#define n2 x10
+#define n3 x11
 
 S2N_BN_SYMBOL(bignum_add_p256):
 
-// First just add the numbers as c + [d3; d2; d1; d0]
+// First just add the numbers as [c;d3;d2;d1;d0]
 
         ldp     d0, d1, [x]
-        ldp     l, c, [y]
-        adds    d0, d0, l
-        adcs    d1, d1, c
+        ldp     n0, n1, [y]
+        adds    d0, d0, n0
+        adcs    d1, d1, n1
         ldp     d2, d3, [x, #16]
-        ldp     l, c, [y, #16]
-        adcs    d2, d2, l
-        adcs    d3, d3, c
+        ldp     n2, n3, [y, #16]
+        adcs    d2, d2, n2
+        adcs    d3, d3, n3
         adc     c, xzr, xzr
 
-// Now compare [d3; d2; d1; d0] with p_256
+// Now let [c;n3;n2;n1;n0] = [c;d3;d2;d1;d0] - p_sm2
 
-        subs    xzr, d0, #0xffffffffffffffff
-        mov     l, #0x00000000ffffffff
-        sbcs    xzr, d1, l
-        sbcs    xzr, d2, xzr
-        mov     l, #0xffffffff00000001
-        sbcs    xzr, d3, l
+        subs    n0, d0, #0xffffffffffffffff
+        mov     n1, #0x00000000ffffffff
+        sbcs    n1, d1, n1
+        sbcs    n2, d2, xzr
+        mov     n3, #0xffffffff00000001
+        sbcs    n3, d3, n3
+        sbcs    c, c, xzr
 
-// Now CF is set (because of inversion) if (x + y) % 2^256 >= p_256
-// Thus we want to correct if either this is set or the original carry c was
+// Select result acording to whether (x + y) - p_256 < 0
 
-        adcs    c, c, xzr
-        csetm   c, ne
-
-// Now correct by subtracting masked p_256
-
-        subs    d0, d0, c
-        and     l, c, #0x00000000ffffffff
-        sbcs    d1, d1, l
-        sbcs    d2, d2, xzr
-        and     l, c, #0xffffffff00000001
-        sbc     d3, d3, l
+        csel    d0, d0, n0, cc
+        csel    d1, d1, n1, cc
+        csel    d2, d2, n2, cc
+        csel    d3, d3, n3, cc
 
 // Store the result
 

@@ -4,6 +4,7 @@ bignum_add_p256
 bignum_add_p256k1
 bignum_add_p384
 bignum_add_p521
+bignum_add_sm2
 bignum_amontifier
 bignum_amontmul
 bignum_amontredc
@@ -25,6 +26,7 @@ bignum_cmul_p256_alt
 bignum_cmul_p256k1_alt
 bignum_cmul_p384_alt
 bignum_cmul_p521_alt
+bignum_cmul_sm2_alt
 bignum_coprime
 bignum_copy
 bignum_ctd
@@ -33,11 +35,13 @@ bignum_deamont_p256_alt
 bignum_deamont_p256k1
 bignum_deamont_p384_alt
 bignum_deamont_p521
+bignum_deamont_sm2
 bignum_demont
 bignum_demont_p256_alt
 bignum_demont_p256k1
 bignum_demont_p384_alt
 bignum_demont_p521
+bignum_demont_sm2
 bignum_digit
 bignum_digitsize
 bignum_divmod10
@@ -46,6 +50,7 @@ bignum_double_p256
 bignum_double_p256k1
 bignum_double_p384
 bignum_double_p521
+bignum_double_sm2
 bignum_emontredc
 bignum_eq
 bignum_even
@@ -60,6 +65,7 @@ bignum_half_p256
 bignum_half_p256k1
 bignum_half_p384
 bignum_half_p521
+bignum_half_sm2
 bignum_iszero
 bignum_le
 bignum_littleendian_4
@@ -72,6 +78,8 @@ bignum_mod_n256k1_4
 bignum_mod_n384_6
 bignum_mod_n384_alt
 bignum_mod_n521_9_alt
+bignum_mod_nsm2_4
+bignum_mod_nsm2_alt
 bignum_mod_p25519_4
 bignum_mod_p256_4
 bignum_mod_p256_alt
@@ -79,6 +87,8 @@ bignum_mod_p256k1_4
 bignum_mod_p384_6
 bignum_mod_p384_alt
 bignum_mod_p521_9
+bignum_mod_sm2
+bignum_mod_sm2_4
 bignum_modadd
 bignum_moddouble
 bignum_modifier
@@ -91,12 +101,14 @@ bignum_montmul_p256_alt
 bignum_montmul_p256k1_alt
 bignum_montmul_p384_alt
 bignum_montmul_p521_alt
+bignum_montmul_sm2_alt
 bignum_montredc
 bignum_montsqr
 bignum_montsqr_p256_alt
 bignum_montsqr_p256k1_alt
 bignum_montsqr_p384_alt
 bignum_montsqr_p521_alt
+bignum_montsqr_sm2_alt
 bignum_mul
 bignum_mul_4_8_alt
 bignum_mul_6_12_alt
@@ -114,6 +126,7 @@ bignum_neg_p256
 bignum_neg_p256k1
 bignum_neg_p384
 bignum_neg_p521
+bignum_neg_sm2
 bignum_negmodinv
 bignum_nonzero
 bignum_nonzero_4
@@ -128,6 +141,7 @@ bignum_optneg_p256
 bignum_optneg_p256k1
 bignum_optneg_p384
 bignum_optneg_p521
+bignum_optneg_sm2
 bignum_optsub
 bignum_optsubadd
 bignum_pow2
@@ -146,6 +160,7 @@ bignum_sub_p256
 bignum_sub_p256k1
 bignum_sub_p384
 bignum_sub_p521
+bignum_sub_sm2
 bignum_tobebytes_4
 bignum_tobebytes_6
 bignum_tolebytes_4
@@ -155,10 +170,12 @@ bignum_tomont_p256_alt
 bignum_tomont_p256k1_alt
 bignum_tomont_p384_alt
 bignum_tomont_p521
+bignum_tomont_sm2
 bignum_triple_p256_alt
 bignum_triple_p256k1_alt
 bignum_triple_p384_alt
 bignum_triple_p521_alt
+bignum_triple_sm2_alt
 curve25519_ladderstep_alt
 curve25519_pxscalarmul_alt
 curve25519_x25519_alt

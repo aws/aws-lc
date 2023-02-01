@@ -16,21 +16,17 @@ let bignum_half_p256_mc = define_assert_from_elf "bignum_half_p256_mc" "arm/p256
   0xa9411424;       (* arm_LDP X4 X5 X1 (Immediate_Offset (iword (&16))) *)
   0x92400047;       (* arm_AND X7 X2 (rvalue (word 1)) *)
   0xcb0703e7;       (* arm_NEG X7 X7 *)
-  0x92800008;       (* arm_MOVN X8 (word 0) 0 *)
-  0x8a070108;       (* arm_AND X8 X8 X7 *)
-  0xab080042;       (* arm_ADDS X2 X2 X8 *)
-  0xb2407fe8;       (* arm_MOV X8 (rvalue (word 4294967295)) *)
-  0x8a070108;       (* arm_AND X8 X8 X7 *)
+  0xab070042;       (* arm_ADDS X2 X2 X7 *)
+  0x92407ce8;       (* arm_AND X8 X7 (rvalue (word 4294967295)) *)
   0xba080063;       (* arm_ADCS X3 X3 X8 *)
   0xba1f0084;       (* arm_ADCS X4 X4 XZR *)
-  0xb26083e8;       (* arm_MOV X8 (rvalue (word 18446744069414584321)) *)
-  0x8a070108;       (* arm_AND X8 X8 X7 *)
+  0x926080e8;       (* arm_AND X8 X7 (rvalue (word 18446744069414584321)) *)
   0xba0800a5;       (* arm_ADCS X5 X5 X8 *)
   0x9a1f03e6;       (* arm_ADC X6 XZR XZR *)
-  0x93c20462;       (* arm_EXTR X2 X3 X2 (rvalue (word 1)) *)
-  0x93c30483;       (* arm_EXTR X3 X4 X3 (rvalue (word 1)) *)
-  0x93c404a4;       (* arm_EXTR X4 X5 X4 (rvalue (word 1)) *)
-  0x93c504c5;       (* arm_EXTR X5 X6 X5 (rvalue (word 1)) *)
+  0x93c20462;       (* arm_EXTR X2 X3 X2 1 *)
+  0x93c30483;       (* arm_EXTR X3 X4 X3 1 *)
+  0x93c404a4;       (* arm_EXTR X4 X5 X4 1 *)
+  0x93c504c5;       (* arm_EXTR X5 X6 X5 1 *)
   0xa9000c02;       (* arm_STP X2 X3 X0 (Immediate_Offset (iword (&0))) *)
   0xa9011404;       (* arm_STP X4 X5 X0 (Immediate_Offset (iword (&16))) *)
   0xd65f03c0        (* arm_RET X30 *)
@@ -46,13 +42,13 @@ let p_256 = new_definition `p_256 = 11579208921035624876269744694940757353008614
 
 let BIGNUM_HALF_P256_CORRECT = time prove
  (`!z x n pc.
-        nonoverlapping (word pc,0x58) (z,8 * 4)
+        nonoverlapping (word pc,0x48) (z,8 * 4)
         ==> ensures arm
              (\s. aligned_bytes_loaded s (word pc) bignum_half_p256_mc /\
                   read PC s = word pc /\
                   C_ARGUMENTS [z; x] s /\
                   bignum_from_memory (x,4) s = n)
-             (\s. read PC s = word (pc + 0x54) /\
+             (\s. read PC s = word (pc + 0x44) /\
                   (n < p_256
                    ==> bignum_from_memory (z,4) s =
                        (inverse_mod p_256 2 * n) MOD p_256))
@@ -72,7 +68,7 @@ let BIGNUM_HALF_P256_CORRECT = time prove
    [EXPAND_TAC "n" THEN REWRITE_TAC[BIT_LSB; ODD_ADD; ODD_MULT; ODD_EXP] THEN
     CONV_TAC NUM_REDUCE_CONV;
     ALL_TAC] THEN
-  ARM_ACCSTEPS_TAC BIGNUM_HALF_P256_EXEC (5--14) (5--21) THEN
+  ARM_ACCSTEPS_TAC BIGNUM_HALF_P256_EXEC (5--10) (5--17) THEN
   ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN STRIP_TAC THEN
 
   SUBGOAL_THEN
@@ -93,8 +89,8 @@ let BIGNUM_HALF_P256_CORRECT = time prove
     REWRITE_TAC[INVERSE_MOD_RMUL_EQ; COPRIME_2] THEN CONV_TAC NUM_REDUCE_CONV;
     ALL_TAC] THEN
   SUBGOAL_THEN
-   `2 EXP 256 * bitval(carry_s14) +
-    bignum_of_wordlist [sum_s7; sum_s10; sum_s11; sum_s14] =
+   `2 EXP 256 * bitval(carry_s10) +
+    bignum_of_wordlist [sum_s5; sum_s7; sum_s8; sum_s10] =
     if ODD n then n + p_256 else n`
   (SUBST1_TAC o SYM) THENL
    [REWRITE_TAC[GSYM REAL_OF_NUM_CLAUSES; bignum_of_wordlist; p_256] THEN
@@ -107,7 +103,7 @@ let BIGNUM_HALF_P256_CORRECT = time prove
     DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN REAL_ARITH_TAC;
     ALL_TAC] THEN
   CONV_TAC(LAND_CONV BIGNUM_EXPAND_CONV) THEN
-  ASM_REWRITE_TAC[] THEN DISCARD_STATE_TAC "s21" THEN
+  ASM_REWRITE_TAC[] THEN DISCARD_STATE_TAC "s17" THEN
   REWRITE_TAC[DIMINDEX_64] THEN CONV_TAC(ONCE_DEPTH_CONV NUM_MOD_CONV) THEN
   REWRITE_TAC[MATCH_MP VAL_WORD_SUBWORD_JOIN_64 (ARITH_RULE `1 <= 64`)] THEN
   SIMP_TAC[VAL_WORD_BITVAL; ADD_CLAUSES; bignum_of_wordlist; MULT_CLAUSES;
@@ -116,7 +112,7 @@ let BIGNUM_HALF_P256_CORRECT = time prove
 
 let BIGNUM_HALF_P256_SUBROUTINE_CORRECT = time prove
  (`!z x n pc returnaddress.
-        nonoverlapping (word pc,0x58) (z,8 * 4)
+        nonoverlapping (word pc,0x48) (z,8 * 4)
         ==> ensures arm
              (\s. aligned_bytes_loaded s (word pc) bignum_half_p256_mc /\
                   read PC s = word pc /\

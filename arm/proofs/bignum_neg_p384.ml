@@ -22,14 +22,11 @@ let bignum_neg_p384_mc = define_assert_from_elf "bignum_neg_p384_mc" "arm/p384/b
   0xaa030042;       (* arm_ORR X2 X2 X3 *)
   0xf100005f;       (* arm_CMP X2 (rvalue (word 0)) *)
   0xda9f03e2;       (* arm_CSETM X2 Condition_NE *)
-  0xb2407fe3;       (* arm_MOV X3 (rvalue (word 4294967295)) *)
-  0x8a020063;       (* arm_AND X3 X3 X2 *)
+  0x92407c43;       (* arm_AND X3 X2 (rvalue (word 4294967295)) *)
   0xeb040064;       (* arm_SUBS X4 X3 X4 *)
-  0xb2607fe3;       (* arm_MOV X3 (rvalue (word 18446744069414584320)) *)
-  0x8a020063;       (* arm_AND X3 X3 X2 *)
+  0x92607c43;       (* arm_AND X3 X2 (rvalue (word 18446744069414584320)) *)
   0xfa050065;       (* arm_SBCS X5 X3 X5 *)
-  0x92800023;       (* arm_MOVN X3 (word 1) 0 *)
-  0x8a020063;       (* arm_AND X3 X3 X2 *)
+  0x927ff843;       (* arm_AND X3 X2 (rvalue (word 18446744073709551614)) *)
   0xfa060066;       (* arm_SBCS X6 X3 X6 *)
   0xfa070047;       (* arm_SBCS X7 X2 X7 *)
   0xfa080048;       (* arm_SBCS X8 X2 X8 *)
@@ -50,13 +47,13 @@ let p_384 = new_definition `p_384 = 39402006196394479212279040100143613805079739
 
 let BIGNUM_NEG_P384_CORRECT = time prove
  (`!z x n pc.
-        nonoverlapping (word pc,0x68) (z,8 * 6)
+        nonoverlapping (word pc,0x5c) (z,8 * 6)
         ==> ensures arm
              (\s. aligned_bytes_loaded s (word pc) bignum_neg_p384_mc /\
                   read PC s = word pc /\
                   C_ARGUMENTS [z; x] s /\
                   bignum_from_memory (x,6) s = n)
-             (\s. read PC s = word (pc + 0x64) /\
+             (\s. read PC s = word (pc + 0x58) /\
                   (n <= p_384
                    ==> bignum_from_memory (z,6) s = (p_384 - n) MOD p_384))
           (MAYCHANGE [PC; X2; X3; X4; X5; X6; X7; X8; X9] ,,
@@ -68,10 +65,10 @@ let BIGNUM_NEG_P384_CORRECT = time prove
   REWRITE_TAC[BIGNUM_FROM_MEMORY_BYTES] THEN ENSURES_INIT_TAC "s0" THEN
   BIGNUM_DIGITIZE_TAC "n_" `read (memory :> bytes (x,8 * 6)) s0` THEN
 
-  ARM_ACCSTEPS_TAC BIGNUM_NEG_P384_EXEC [13;16;19;20;21;22] (1--25) THEN
+  ARM_ACCSTEPS_TAC BIGNUM_NEG_P384_EXEC [12;14;16;17;18;19] (1--22) THEN
   ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN STRIP_TAC THEN
   CONV_TAC(LAND_CONV BIGNUM_EXPAND_CONV) THEN
-  ASM_REWRITE_TAC[] THEN DISCARD_STATE_TAC "s25" THEN
+  ASM_REWRITE_TAC[] THEN DISCARD_STATE_TAC "s22" THEN
   REWRITE_TAC[GSYM REAL_OF_NUM_CLAUSES] THEN
   MATCH_MP_TAC EQUAL_FROM_CONGRUENT_REAL THEN
   MAP_EVERY EXISTS_TAC [`384`; `&0:real`] THEN
@@ -99,7 +96,7 @@ let BIGNUM_NEG_P384_CORRECT = time prove
 
 let BIGNUM_NEG_P384_SUBROUTINE_CORRECT = time prove
  (`!z x n pc returnaddress.
-        nonoverlapping (word pc,0x68) (z,8 * 6)
+        nonoverlapping (word pc,0x5c) (z,8 * 6)
         ==> ensures arm
              (\s. aligned_bytes_loaded s (word pc) bignum_neg_p384_mc /\
                   read PC s = word pc /\

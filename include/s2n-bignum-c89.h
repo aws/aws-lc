@@ -49,6 +49,10 @@ extern void bignum_add_p384 (uint64_t z[6], uint64_t x[6], uint64_t y[6]);
 /*  Inputs x[9], y[9]; output z[9] */
 extern void bignum_add_p521 (uint64_t z[9], uint64_t x[9], uint64_t y[9]);
 
+/*  Add modulo p_sm2, z := (x + y) mod p_sm2, assuming x and y reduced */
+/*  Inputs x[4], y[4]; output z[4] */
+extern void bignum_add_sm2 (uint64_t z[4], uint64_t x[4], uint64_t y[4]);
+
 /*  Compute "amontification" constant z :== 2^{128k} (congruent mod m) */
 /*  Input m[k]; output z[k]; temporary buffer t[>=k] */
 extern void bignum_amontifier (uint64_t k, uint64_t *z, uint64_t *m, uint64_t *t);
@@ -138,6 +142,11 @@ extern void bignum_cmul_p384_alt (uint64_t z[6], uint64_t c, uint64_t x[6]);
 extern void bignum_cmul_p521 (uint64_t z[9], uint64_t c, uint64_t x[9]);
 extern void bignum_cmul_p521_alt (uint64_t z[9], uint64_t c, uint64_t x[9]);
 
+/* Multiply by a single word modulo p_sm2, z := (c * x) mod p_sm2, assuming x reduced */
+/* Inputs c, x[4]; output z[4] */
+extern void bignum_cmul_sm2 (uint64_t z[4], uint64_t c, uint64_t x[4]);
+extern void bignum_cmul_sm2_alt (uint64_t z[4], uint64_t c, uint64_t x[4]);
+
 /*  Test bignums for coprimality, gcd(x,y) = 1 */
 /*  Inputs x[m], y[n]; output function return; temporary buffer t[>=2*max(m,n)] */
 extern uint64_t bignum_coprime (uint64_t m, uint64_t *x, uint64_t n, uint64_t *y, uint64_t *t);
@@ -172,6 +181,10 @@ extern void bignum_deamont_p384_alt (uint64_t z[6], uint64_t x[6]);
 /*  Input x[9]; output z[9] */
 extern void bignum_deamont_p521 (uint64_t z[9], uint64_t x[9]);
 
+/* Convert from almost-Montgomery form z := (x / 2^256) mod p_sm2 */
+/* Input x[4]; output z[4] */
+extern void bignum_deamont_sm2 (uint64_t z[4], uint64_t x[4]);
+
 /*  Convert from (almost-)Montgomery form z := (x / 2^{64k}) mod m */
 /*  Inputs x[k], m[k]; output z[k] */
 extern void bignum_demont (uint64_t k, uint64_t *z, uint64_t *x, uint64_t *m);
@@ -193,6 +206,10 @@ extern void bignum_demont_p384_alt (uint64_t z[6], uint64_t x[6]);
 /*  Convert from Montgomery form z := (x / 2^576) mod p_521, assuming x reduced */
 /*  Input x[9]; output z[9] */
 extern void bignum_demont_p521 (uint64_t z[9], uint64_t x[9]);
+
+/* Convert from Montgomery form z := (x / 2^256) mod p_sm2, assuming x reduced */
+/* Input x[4]; output z[4] */
+extern void bignum_demont_sm2 (uint64_t z[4], uint64_t x[4]);
 
 /*  Select digit x[n] */
 /*  Inputs x[k], n; output function return */
@@ -225,6 +242,10 @@ extern void bignum_double_p384 (uint64_t z[6], uint64_t x[6]);
 /*  Double modulo p_521, z := (2 * x) mod p_521, assuming x reduced */
 /*  Input x[9]; output z[9] */
 extern void bignum_double_p521 (uint64_t z[9], uint64_t x[9]);
+
+/*  Double modulo p_sm2, z := (2 * x) mod p_sm2, assuming x reduced */
+/*  Input x[4]; output z[4] */
+extern void bignum_double_sm2 (uint64_t z[4], uint64_t x[4]);
 
 /*  Extended Montgomery reduce, returning results in input-output buffer */
 /*  Inputs z[2*k], m[k], w; outputs function return (extra result bit) and z[2*k] */
@@ -285,6 +306,10 @@ extern void bignum_half_p384 (uint64_t z[6], uint64_t x[6]);
 /*  Halve modulo p_521, z := (x / 2) mod p_521, assuming x reduced */
 /*  Input x[9]; output z[9] */
 extern void bignum_half_p521 (uint64_t z[9], uint64_t x[9]);
+
+/*  Halve modulo p_sm2, z := (x / 2) mod p_sm2, assuming x reduced */
+/*  Input x[4]; output z[4] */
+extern void bignum_half_sm2 (uint64_t z[4], uint64_t x[4]);
 
 /*  Test bignum for zero-ness, x = 0 */
 /*  Input x[k]; output function return */
@@ -353,6 +378,15 @@ extern void bignum_mod_n384_6 (uint64_t z[6], uint64_t x[6]);
 extern void bignum_mod_n521_9 (uint64_t z[9], uint64_t x[9]);
 extern void bignum_mod_n521_9_alt (uint64_t z[9], uint64_t x[9]);
 
+/*  Reduce modulo group order, z := x mod n_sm2 */
+/*  Input x[k]; output z[4] */
+extern void bignum_mod_nsm2 (uint64_t z[4], uint64_t k, uint64_t *x);
+extern void bignum_mod_nsm2_alt (uint64_t z[4], uint64_t k, uint64_t *x);
+
+/*  Reduce modulo group order, z := x mod n_sm2 */
+/*  Input x[4]; output z[4] */
+extern void bignum_mod_nsm2_4 (uint64_t z[4], uint64_t x[4]);
+
 /*  Reduce modulo field characteristic, z := x mod p_25519 */
 /*  Input x[4]; output z[4] */
 extern void bignum_mod_p25519_4 (uint64_t z[4], uint64_t x[4]);
@@ -382,6 +416,14 @@ extern void bignum_mod_p384_6 (uint64_t z[6], uint64_t x[6]);
 /*  Reduce modulo field characteristic, z := x mod p_521 */
 /*  Input x[9]; output z[9] */
 extern void bignum_mod_p521_9 (uint64_t z[9], uint64_t x[9]);
+
+/* Reduce modulo field characteristic, z := x mod p_sm2 */
+/* Input x[k]; output z[4] */
+extern void bignum_mod_sm2 (uint64_t z[4], uint64_t k, uint64_t *x);
+
+/* Reduce modulo field characteristic, z := x mod p_sm2 */
+/* Input x[4]; output z[4] */
+extern void bignum_mod_sm2_4 (uint64_t z[4], uint64_t x[4]);
 
 /*  Add modulo m, z := (x + y) mod m, assuming x and y reduced */
 /*  Inputs x[k], y[k], m[k]; output z[k] */
@@ -435,6 +477,11 @@ extern void bignum_montmul_p384_alt (uint64_t z[6], uint64_t x[6], uint64_t y[6]
 extern void bignum_montmul_p521 (uint64_t z[9], uint64_t x[9], uint64_t y[9]);
 extern void bignum_montmul_p521_alt (uint64_t z[9], uint64_t x[9], uint64_t y[9]);
 
+/*  Montgomery multiply, z := (x * y / 2^256) mod p_sm2 */
+/*  Inputs x[4], y[4]; output z[4] */
+extern void bignum_montmul_sm2 (uint64_t z[4], uint64_t x[4], uint64_t y[4]);
+extern void bignum_montmul_sm2_alt (uint64_t z[4], uint64_t x[4], uint64_t y[4]);
+
 /*  Montgomery reduce, z := (x' / 2^{64p}) MOD m */
 /*  Inputs x[n], m[k], p; output z[k] */
 extern void bignum_montredc (uint64_t k, uint64_t *z, uint64_t n, uint64_t *x, uint64_t *m, uint64_t p);
@@ -462,6 +509,11 @@ extern void bignum_montsqr_p384_alt (uint64_t z[6], uint64_t x[6]);
 /*  Input x[9]; output z[9] */
 extern void bignum_montsqr_p521 (uint64_t z[9], uint64_t x[9]);
 extern void bignum_montsqr_p521_alt (uint64_t z[9], uint64_t x[9]);
+
+/*  Montgomery square, z := (x^2 / 2^256) mod p_sm2 */
+/*  Input x[4]; output z[4] */
+extern void bignum_montsqr_sm2 (uint64_t z[4], uint64_t x[4]);
+extern void bignum_montsqr_sm2_alt (uint64_t z[4], uint64_t x[4]);
 
 /*  Multiply z := x * y */
 /*  Inputs x[m], y[n]; output z[k] */
@@ -537,6 +589,10 @@ extern void bignum_neg_p384 (uint64_t z[6], uint64_t x[6]);
 /*  Input x[9]; output z[9] */
 extern void bignum_neg_p521 (uint64_t z[9], uint64_t x[9]);
 
+/*  Negate modulo p_sm2, z := (-x) mod p_sm2, assuming x reduced */
+/*  Input x[4]; output z[4] */
+extern void bignum_neg_sm2 (uint64_t z[4], uint64_t x[4]);
+
 /*  Negated modular inverse, z := (-1/x) mod 2^{64k} */
 /*  Input x[k]; output z[k] */
 extern void bignum_negmodinv (uint64_t k, uint64_t *z, uint64_t *x);
@@ -592,6 +648,10 @@ extern void bignum_optneg_p384 (uint64_t z[6], uint64_t p, uint64_t x[6]);
 /*  Optionally negate modulo p_521, z := (-x) mod p_521 (if p nonzero) or z := x (if p zero), assuming x reduced */
 /*  Inputs p, x[9]; output z[9] */
 extern void bignum_optneg_p521 (uint64_t z[9], uint64_t p, uint64_t x[9]);
+
+/*  Optionally negate modulo p_sm2, z := (-x) mod p_sm2 (if p nonzero) or z := x (if p zero), assuming x reduced */
+/*  Inputs p, x[4]; output z[4] */
+extern void bignum_optneg_sm2 (uint64_t z[4], uint64_t p, uint64_t x[4]);
 
 /*  Optionally subtract, z := x - y (if p nonzero) or z := x (if p zero) */
 /*  Inputs x[k], p, y[k]; outputs function return (carry-out) and z[k] */
@@ -671,6 +731,10 @@ extern void bignum_sub_p384 (uint64_t z[6], uint64_t x[6], uint64_t y[6]);
 /*  Inputs x[9], y[9]; output z[9] */
 extern void bignum_sub_p521 (uint64_t z[9], uint64_t x[9], uint64_t y[9]);
 
+/*  Subtract modulo p_sm2, z := (x - y) mod p_sm2, assuming x and y reduced */
+/*  Inputs x[4], y[4]; output z[4] */
+extern void bignum_sub_sm2 (uint64_t z[4], uint64_t x[4], uint64_t y[4]);
+
 /*  Convert 4-digit (256-bit) bignum to big-endian bytes */
 /*  Input x[4]; output z[32] (bytes) */
 extern void bignum_tobebytes_4 (uint8_t z[32], uint64_t x[4]);
@@ -710,6 +774,10 @@ extern void bignum_tomont_p384_alt (uint64_t z[6], uint64_t x[6]);
 /*  Input x[9]; output z[9] */
 extern void bignum_tomont_p521 (uint64_t z[9], uint64_t x[9]);
 
+/* Convert to Montgomery form z := (2^256 * x) mod p_sm2 */
+/* Input x[4]; output z[4] */
+extern void bignum_tomont_sm2 (uint64_t z[4], uint64_t x[4]);
+
 /*  Triple modulo p_256, z := (3 * x) mod p_256 */
 /*  Input x[4]; output z[4] */
 extern void bignum_triple_p256 (uint64_t z[4], uint64_t x[4]);
@@ -729,6 +797,11 @@ extern void bignum_triple_p384_alt (uint64_t z[6], uint64_t x[6]);
 /*  Input x[9]; output z[9] */
 extern void bignum_triple_p521 (uint64_t z[9], uint64_t x[9]);
 extern void bignum_triple_p521_alt (uint64_t z[9], uint64_t x[9]);
+
+/*  Triple modulo p_sm2, z := (3 * x) mod p_sm2 */
+/*  Input x[4]; output z[4] */
+extern void bignum_triple_sm2 (uint64_t z[4], uint64_t x[4]);
+extern void bignum_triple_sm2_alt (uint64_t z[4], uint64_t x[4]);
 
 /* Montgomery ladder step for curve25519 */
 /* Inputs point[8], pp[16], b; output rr[16] */
