@@ -43,3 +43,6 @@ paste = "1.0.11"
 
 [dev-dependencies]
 openssl = { version = "0.10" }
+
+[package.metadata.aws-lc-sys]
+commit-hash = "__AWS_LC_COMMIT_HASH__"
