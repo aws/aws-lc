@@ -31,7 +31,6 @@
 #include "../delocate.h"
 #include "./internal.h"
 
-
 // MSVC does not implement uint128_t, and crashes with intrinsics
 #if defined(BORINGSSL_HAS_UINT128)
 #define BORINGSSL_NISTP256_64BIT 1
