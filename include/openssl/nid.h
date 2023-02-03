@@ -4295,6 +4295,7 @@ extern "C" {
 
 #define SN_DILITHIUM3 "DILITHIUM3"
 #define NID_DILITHIUM3 973
+#define OBJ_DILITHIUM3 1L, 3L, 6L, 1L, 4L, 1L, 2L, 267L, 7L, 6L, 5L
 
 
 #if defined(__cplusplus)

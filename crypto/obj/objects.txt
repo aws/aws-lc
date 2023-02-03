@@ -1375,5 +1375,7 @@ nist_sha3hashalgs 10		: SHA3-512		: sha3-512
  : KYBER512
  : KYBER512_R3
 
-# NID for DILITHIUM3 (no corresponding OID).
- : DILITHIUM3
+# NID for DILITHIUM3 SIG Round-3. These are temp values from
+# https://github.com/IETF-Hackathon/pqc-certificates/blob/master/docs/oid_mapping.md
+# as we await NIST to release official OIDs.
+1 3 6 1 4 1 2 267 7 6 5 : DILITHIUM3
