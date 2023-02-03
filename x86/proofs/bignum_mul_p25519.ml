@@ -59,8 +59,7 @@ let bignum_mul_p25519_mc = define_assert_from_elf "bignum_mul_p25519_mc" "x86/cu
                            (* ADCX (% r12) (% rax) *)
   0xf3; 0x4c; 0x0f; 0x38; 0xf6; 0xed;
                            (* ADOX (% r13) (% rbp) *)
-  0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xed;
-                           (* ADCX (% r13) (% rbp) *)
+  0x49; 0x11; 0xed;        (* ADC (% r13) (% rbp) *)
   0x31; 0xed;              (* XOR (% ebp) (% ebp) *)
   0x48; 0x8b; 0x51; 0x10;  (* MOV (% rdx) (Memop Quadword (%% (rcx,16))) *)
   0xc4; 0xe2; 0xfb; 0xf6; 0x1e;
@@ -87,8 +86,7 @@ let bignum_mul_p25519_mc = define_assert_from_elf "bignum_mul_p25519_mc" "x86/cu
                            (* ADCX (% r13) (% rax) *)
   0xf3; 0x4c; 0x0f; 0x38; 0xf6; 0xf5;
                            (* ADOX (% r14) (% rbp) *)
-  0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xf5;
-                           (* ADCX (% r14) (% rbp) *)
+  0x49; 0x11; 0xee;        (* ADC (% r14) (% rbp) *)
   0x31; 0xed;              (* XOR (% ebp) (% ebp) *)
   0x48; 0x8b; 0x51; 0x18;  (* MOV (% rdx) (Memop Quadword (%% (rcx,24))) *)
   0xc4; 0xe2; 0xfb; 0xf6; 0x1e;
@@ -97,6 +95,8 @@ let bignum_mul_p25519_mc = define_assert_from_elf "bignum_mul_p25519_mc" "x86/cu
                            (* ADCX (% r11) (% rax) *)
   0xf3; 0x4c; 0x0f; 0x38; 0xf6; 0xe3;
                            (* ADOX (% r12) (% rbx) *)
+  0xc4; 0x62; 0xf3; 0xf6; 0x7e; 0x18;
+                           (* MULX4 (% r15,% rcx) (% rdx,Memop Quadword (%% (rsi,24))) *)
   0xc4; 0xe2; 0xfb; 0xf6; 0x5e; 0x08;
                            (* MULX4 (% rbx,% rax) (% rdx,Memop Quadword (%% (rsi,8))) *)
   0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xe0;
@@ -109,17 +109,25 @@ let bignum_mul_p25519_mc = define_assert_from_elf "bignum_mul_p25519_mc" "x86/cu
                            (* ADCX (% r13) (% rax) *)
   0xf3; 0x4c; 0x0f; 0x38; 0xf6; 0xf3;
                            (* ADOX (% r14) (% rbx) *)
-  0xc4; 0x62; 0xfb; 0xf6; 0x7e; 0x18;
-                           (* MULX4 (% r15,% rax) (% rdx,Memop Quadword (%% (rsi,24))) *)
-  0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xf0;
-                           (* ADCX (% r14) (% rax) *)
-  0xf3; 0x4c; 0x0f; 0x38; 0xf6; 0xfd;
-                           (* ADOX (% r15) (% rbp) *)
-  0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xfd;
-                           (* ADCX (% r15) (% rbp) *)
   0xba; 0x26; 0x00; 0x00; 0x00;
                            (* MOV (% edx) (Imm32 (word 38)) *)
+  0xc4; 0xc2; 0xfb; 0xf6; 0xdf;
+                           (* MULX4 (% rbx,% rax) (% rdx,% r15) *)
+  0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xf1;
+                           (* ADCX (% r14) (% rcx) *)
+  0xf3; 0x4c; 0x0f; 0x38; 0xf6; 0xfd;
+                           (* ADOX (% r15) (% rbp) *)
+  0x49; 0x11; 0xef;        (* ADC (% r15) (% rbp) *)
+  0x4c; 0x01; 0xd8;        (* ADD (% rax) (% r11) *)
+  0x48; 0x11; 0xeb;        (* ADC (% rbx) (% rbp) *)
+  0x48; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% rax) (Imm8 (word 63)) *)
+  0x48; 0x11; 0xdb;        (* ADC (% rbx) (% rbx) *)
+  0x48; 0x8d; 0x4b; 0x01;  (* LEA (% rcx) (%% (rbx,1)) *)
+  0x48; 0x6b; 0xc9; 0x13;  (* IMUL3 (% rcx) (% rcx,Imm8 (word 19)) *)
   0x31; 0xed;              (* XOR (% ebp) (% ebp) *)
+  0xf3; 0x4c; 0x0f; 0x38; 0xf6; 0xc1;
+                           (* ADOX (% r8) (% rcx) *)
   0xc4; 0xc2; 0xfb; 0xf6; 0xdc;
                            (* MULX4 (% rbx,% rax) (% rdx,% r12) *)
   0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xc0;
@@ -138,30 +146,14 @@ let bignum_mul_p25519_mc = define_assert_from_elf "bignum_mul_p25519_mc" "x86/cu
                            (* ADCX (% r10) (% rax) *)
   0xf3; 0x4c; 0x0f; 0x38; 0xf6; 0xdb;
                            (* ADOX (% r11) (% rbx) *)
-  0xc4; 0x42; 0xfb; 0xf6; 0xe7;
-                           (* MULX4 (% r12,% rax) (% rdx,% r15) *)
-  0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xd8;
-                           (* ADCX (% r11) (% rax) *)
-  0xf3; 0x4c; 0x0f; 0x38; 0xf6; 0xe5;
-                           (* ADOX (% r12) (% rbp) *)
-  0x66; 0x4c; 0x0f; 0x38; 0xf6; 0xe5;
-                           (* ADCX (% r12) (% rbp) *)
-  0x4d; 0x0f; 0xa4; 0xdc; 0x01;
-                           (* SHLD (% r12) (% r11) (Imm8 (word 1)) *)
-  0xba; 0x13; 0x00; 0x00; 0x00;
-                           (* MOV (% edx) (Imm32 (word 19)) *)
-  0x49; 0xff; 0xc4;        (* INC (% r12) *)
-  0x49; 0x0f; 0xba; 0xeb; 0x3f;
-                           (* BTS (% r11) (Imm8 (word 63)) *)
-  0xc4; 0xc2; 0xfb; 0xf6; 0xdc;
-                           (* MULX4 (% rbx,% rax) (% rdx,% r12) *)
-  0x49; 0x01; 0xc0;        (* ADD (% r8) (% rax) *)
-  0x49; 0x11; 0xd9;        (* ADC (% r9) (% rbx) *)
-  0x49; 0x11; 0xea;        (* ADC (% r10) (% rbp) *)
-  0x49; 0x11; 0xeb;        (* ADC (% r11) (% rbp) *)
-  0x48; 0x19; 0xc0;        (* SBB (% rax) (% rax) *)
-  0x48; 0xf7; 0xd0;        (* NOT (% rax) *)
-  0x48; 0x21; 0xd0;        (* AND (% rax) (% rdx) *)
+  0xc4; 0xc2; 0xfb; 0xf6; 0xdf;
+                           (* MULX4 (% rbx,% rax) (% rdx,% r15) *)
+  0x49; 0x11; 0xc3;        (* ADC (% r11) (% rax) *)
+  0x48; 0xc1; 0xe1; 0x3f;  (* SHL (% rcx) (Imm8 (word 63)) *)
+  0x49; 0x39; 0xcb;        (* CMP (% r11) (% rcx) *)
+  0xb8; 0x13; 0x00; 0x00; 0x00;
+                           (* MOV (% eax) (Imm32 (word 19)) *)
+  0x48; 0x0f; 0x49; 0xc5;  (* CMOVNS (% rax) (% rbp) *)
   0x49; 0x29; 0xc0;        (* SUB (% r8) (% rax) *)
   0x49; 0x19; 0xe9;        (* SBB (% r9) (% rbp) *)
   0x49; 0x19; 0xea;        (* SBB (% r10) (% rbp) *)
@@ -189,24 +181,27 @@ let BIGNUM_MUL_P25519_EXEC = X86_MK_CORE_EXEC_RULE bignum_mul_p25519_mc;;
 
 let p_25519 = new_definition `p_25519 = 57896044618658097711785492504343953926634992332820282019728792003956564819949`;;
 
-let p25519redlemma = prove
- (`!n. n <= (2 EXP 64 - 1) * (p_25519 - 1)
-       ==> let q = n DIV 2 EXP 255 + 1 in
-           q < 2 EXP 64 /\
-           q * p_25519 <= n + p_25519 /\
-           n < q * p_25519 + p_25519`,
+let p25519approxredlemma = prove
+ (`!m n. n < 40 * 2 EXP 256 /\
+         n <= 2 EXP 192 * m + 2 EXP 255 /\
+         2 EXP 192 * m <= n
+         ==> let q = m DIV 2 EXP 63 + 1 in
+             q <= 80 /\
+             q < 2 EXP 64 /\
+             q * p_25519 <= n + p_25519 /\
+             n < q * p_25519 + p_25519`,
   CONV_TAC(TOP_DEPTH_CONV let_CONV) THEN REWRITE_TAC[p_25519] THEN ARITH_TAC);;
 
 let BIGNUM_MUL_P25519_CORRECT = time prove
  (`!z x y m n pc.
-        nonoverlapping (word pc,0x1d6) (z,8 * 4)
+        nonoverlapping (word pc,0x1c3) (z,8 * 4)
         ==> ensures x86
              (\s. bytes_loaded s (word pc) (BUTLAST bignum_mul_p25519_mc) /\
                   read RIP s = word(pc + 0xa) /\
                   C_ARGUMENTS [z; x; y] s /\
                   bignum_from_memory (x,4) s = m /\
                   bignum_from_memory (y,4) s = n)
-             (\s. read RIP s = word (pc + 0x1cb) /\
+             (\s. read RIP s = word (pc + 0x1b8) /\
                   bignum_from_memory (z,4) s = (m * n) MOD p_25519)
          (MAYCHANGE [RIP; RAX; RBX; RCX; RDX; RBP;
                       R8; R9; R10; R11; R12; R13; R14; R15] ,,
@@ -220,18 +215,46 @@ let BIGNUM_MUL_P25519_CORRECT = time prove
   BIGNUM_LDIGITIZE_TAC "m_" `read (memory :> bytes (x,8 * 4)) s0` THEN
   BIGNUM_LDIGITIZE_TAC "n_" `read (memory :> bytes (y,8 * 4)) s0` THEN
 
-  (*** The initial multiplication block, similar to bignum_mul_4_8 ***)
+  (*** The initial multiplication block with quotient estimate inside ***)
 
-  X86_ACCSTEPS_TAC BIGNUM_MUL_P25519_EXEC (1--56) (1--56) THEN
+  X86_ACCSTEPS_TAC BIGNUM_MUL_P25519_EXEC (1--60) (1--60) THEN
   MAP_EVERY ABBREV_TAC
    [`l = bignum_of_wordlist[mullo_s4; sum_s15; sum_s30; sum_s45]`;
-    `h = bignum_of_wordlist[sum_s48; sum_s51; sum_s54; sum_s56]`] THEN
+    `h = bignum_of_wordlist[sum_s49; sum_s52; sum_s56; sum_s58]`] THEN
   SUBGOAL_THEN `2 EXP 256 * h + l = m * n` (SUBST1_TAC o SYM) THENL
    [MAP_EVERY EXPAND_TAC ["h"; "l"; "m"; "n"] THEN
     REWRITE_TAC[GSYM REAL_OF_NUM_CLAUSES; bignum_of_wordlist] THEN
     ACCUMULATOR_POP_ASSUM_LIST(MP_TAC o end_itlist CONJ o DECARRY_RULE) THEN
     DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN REAL_ARITH_TAC;
-    ACCUMULATOR_POP_ASSUM_LIST(K ALL_TAC)] THEN
+    ALL_TAC] THEN
+
+  (*** Instantiate the quotient approximation lemma --- fiddly proof ***)
+
+  MP_TAC(SPECL [`2 EXP 64 * val(sum_s60:int64) + val(sum_s59:int64)`;
+                `38 * h + l`] p25519approxredlemma) THEN
+  ANTS_TAC THENL
+   [CONJ_TAC THENL
+     [MAP_EVERY EXPAND_TAC ["h"; "l"] THEN BOUNDER_TAC[]; ALL_TAC] THEN
+    CONJ_TAC THENL
+     [MAP_EVERY EXPAND_TAC ["h"; "l"] THEN
+      REWRITE_TAC[bignum_of_wordlist; GSYM REAL_OF_NUM_CLAUSES] THEN
+      ACCUMULATOR_POP_ASSUM_LIST(MP_TAC o end_itlist CONJ o DECARRY_RULE) THEN
+      DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN BOUNDER_TAC[];
+      ALL_TAC] THEN
+    TRANS_TAC LE_TRANS
+     `2 EXP 192 *
+      (38 * (val(mulhi_s47:int64) + bitval carry_s56 + bitval carry_s53) +
+       val(sum_s45:int64))` THEN
+    CONJ_TAC THENL
+     [MATCH_MP_TAC(ARITH_RULE
+      `x <= 2 EXP 192 * (38 * h + s) ==> x <= 2 EXP 192 * (38 * (h + c) + s)`);
+      ALL_TAC] THEN
+    MAP_EVERY EXPAND_TAC ["h"; "l"] THEN
+    REWRITE_TAC[bignum_of_wordlist; GSYM REAL_OF_NUM_CLAUSES;
+                REAL_OF_NUM_DIV; p_25519] THEN
+    ACCUMULATOR_POP_ASSUM_LIST(MP_TAC o end_itlist CONJ o DECARRY_RULE) THEN
+    DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN BOUNDER_TAC[];
+    ACCUMULATOR_POP_ASSUM_LIST(K ALL_TAC) THEN LET_TAC THEN STRIP_TAC] THEN
 
   (*** The initial modular reduction of the high part ***)
 
@@ -243,127 +266,160 @@ let BIGNUM_MUL_P25519_CORRECT = time prove
     REWRITE_TAC[p_25519] THEN CONV_TAC NUM_REDUCE_CONV;
     ALL_TAC] THEN
 
-  (*** Instantiate the quotient approximation lemma ***)
-
-  MP_TAC(SPEC `38 * h + l` p25519redlemma) THEN ANTS_TAC THENL
-   [MAP_EVERY EXPAND_TAC ["h"; "l"] THEN REWRITE_TAC[p_25519] THEN
-    CONV_TAC NUM_REDUCE_CONV THEN BOUNDER_TAC[];
-    CONV_TAC(TOP_DEPTH_CONV let_CONV) THEN STRIP_TAC] THEN
-
-  (*** Reduction from 8 digits to 5 digits ***)
-
-  X86_ACCSTEPS_TAC BIGNUM_MUL_P25519_EXEC (57--71) (57--71) THEN
-  ABBREV_TAC
-   `ca = bignum_of_wordlist[sum_s60; sum_s63; sum_s66; sum_s69; sum_s71]` THEN
-  SUBGOAL_THEN `(38 * h + l) DIV 2 EXP 255 + 1 <= 78`
-  ASSUME_TAC THENL
-   [REWRITE_TAC[ARITH_RULE `a + 1 <= b <=> a < b`] THEN
-    SIMP_TAC[RDIV_LT_EQ; EXP_EQ_0; ARITH_EQ] THEN CONV_TAC NUM_REDUCE_CONV THEN
-    MAP_EVERY EXPAND_TAC ["h"; "l"] THEN BOUNDER_TAC[];
-    ALL_TAC] THEN
-  SUBGOAL_THEN `38 * h + l = ca` SUBST_ALL_TAC THENL
-   [MAP_EVERY EXPAND_TAC ["h"; "l"; "ca"] THEN
-    REWRITE_TAC[GSYM REAL_OF_NUM_CLAUSES; bignum_of_wordlist] THEN
-    ACCUMULATOR_POP_ASSUM_LIST(MP_TAC o end_itlist CONJ o DECARRY_RULE) THEN
-    DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN REAL_ARITH_TAC;
-    ACCUMULATOR_POP_ASSUM_LIST(K ALL_TAC)] THEN
-
   (*** Quotient estimate computation ***)
 
-  X86_STEPS_TAC BIGNUM_MUL_P25519_EXEC (72--75) THEN
-  ABBREV_TAC `t = bignum_of_wordlist
-   [sum_s60; sum_s63; sum_s66; word_or sum_s69 (word 9223372036854775808)]` THEN
-  SUBGOAL_THEN `&ca = &t + &2 pow 255 * (&(ca DIV 2 EXP 255) - &1)`
-  ASSUME_TAC THENL
-   [REWRITE_TAC[REAL_ARITH
-     `c = t + e * (d - &1):real <=> c + e = t + e * d`] THEN
-    REWRITE_TAC[REAL_OF_NUM_CLAUSES; ARITH_RULE
-    `c + d = t + 2 EXP 255 * c DIV 2 EXP 255 <=> c MOD 2 EXP 255 + d = t`] THEN
-    MAP_EVERY EXPAND_TAC ["ca"; "t"] THEN
-    REWRITE_TAC[BIGNUM_OF_WORDLIST_SPLIT_RULE(4,1)] THEN
-    REWRITE_TAC[MOD_MULT_ADD; ARITH_RULE
-     `2 EXP 256 * n = 2 EXP 255 * 2 * n`] THEN
-    REWRITE_TAC[MOD_MULT_MOD; ARITH_RULE
-     `2 EXP 255 = 2 EXP 192 * 2 EXP 63`] THEN
-    REWRITE_TAC[BIGNUM_OF_WORDLIST_SPLIT_RULE(3,1)] THEN
-    SIMP_TAC[MOD_MULT_ADD; DIV_MULT_ADD; EXP_EQ_0; ARITH_EQ] THEN
-    SUBGOAL_THEN `bignum_of_wordlist [sum_s60; sum_s63; sum_s66] < 2 EXP 192`
-    (fun th -> SIMP_TAC[th; MOD_LT; DIV_LT]) THENL
-     [BOUNDER_TAC[]; ALL_TAC] THEN
-    REWRITE_TAC[ADD_CLAUSES; ARITH_RULE
-     `(e * x + a) + e * y:num = a + e * z <=> e * (x + y) = e * z`] THEN
-    AP_TERM_TAC THEN REWRITE_TAC[BIGNUM_OF_WORDLIST_SING] THEN
-    REWRITE_TAC[GSYM VAL_WORD_AND_MASK_WORD] THEN
-    ONCE_REWRITE_TAC[WORD_BITWISE_RULE
-     `word_or x m = word_or (word_and x (word_not m)) m`] THEN
-    SIMP_TAC[VAL_WORD_OR_DISJOINT; WORD_BITWISE_RULE
-     `word_and (word_and x (word_not m)) m = word 0`] THEN
-    CONV_TAC(DEPTH_CONV WORD_NUM_RED_CONV);
-    ALL_TAC] THEN
-  ABBREV_TAC `hw:int64 = word_subword
-    ((word_join:int64->int64->int128) sum_s71 sum_s69) (63,64)` THEN
-  SUBGOAL_THEN `ca DIV 2 EXP 255 = val(hw:int64)` SUBST_ALL_TAC THENL
-   [UNDISCH_TAC `ca DIV 2 EXP 255 + 1 <= 78` THEN REWRITE_TAC[ARITH_RULE
-     `n DIV 2 EXP 255 = n DIV 2 EXP 192 DIV 2 EXP 63`] THEN
-    EXPAND_TAC "ca" THEN
-    CONV_TAC(ONCE_DEPTH_CONV BIGNUM_OF_WORDLIST_DIV_CONV) THEN
-    DISCH_THEN(fun th ->
-     MATCH_MP_TAC CONG_IMP_EQ THEN EXISTS_TAC `2 EXP 64` THEN
-     CONJ_TAC THENL [MP_TAC th THEN ARITH_TAC; REWRITE_TAC[VAL_BOUND_64]]) THEN
-    EXPAND_TAC "hw" THEN
-    SIMP_TAC[VAL_WORD_SUBWORD_JOIN; DIMINDEX_64; ARITH_LE; ARITH_LT] THEN
-    REWRITE_TAC[bignum_of_wordlist; MULT_CLAUSES; ADD_CLAUSES] THEN
-    REWRITE_TAC[CONG; ADD_SYM; MULT_SYM] THEN
-    CONV_TAC MOD_DOWN_CONV THEN REFL_TAC;
-    ALL_TAC] THEN
-  ABBREV_TAC `q:int64 = word_add hw (word 1)` THEN
-  SUBGOAL_THEN `&(val(q:int64)):real = &(val(hw:int64)) + &1` ASSUME_TAC THENL
-   [REWRITE_TAC[REAL_OF_NUM_CLAUSES] THEN EXPAND_TAC "q" THEN
-    ASM_SIMP_TAC[VAL_WORD_ADD; VAL_WORD_1; DIMINDEX_64; MOD_LT];
+  X86_STEPS_TAC BIGNUM_MUL_P25519_EXEC (61--64) THEN
+  ABBREV_TAC `hw:int64 = word_add
+         (word_add (word_add sum_s60 sum_s60)
+                   (word(bitval(bit 63 (sum_s59:int64)))))
+         (word 1)` THEN
+  SUBGOAL_THEN `q = val(hw:int64)` SUBST_ALL_TAC THENL
+   [UNDISCH_TAC `q < 2 EXP 64` THEN MAP_EVERY EXPAND_TAC ["hw"; "q"] THEN
+    REWRITE_TAC[VAL_WORD_BITVAL; VAL_WORD_ADD; DIMINDEX_64; VAL_WORD_1] THEN
+    CONV_TAC MOD_DOWN_CONV THEN MATCH_MP_TAC(MESON[MOD_LT]
+     `y = x ==> x < e ==> x = y MOD e`) THEN
+    REWRITE_TAC[ARITH_RULE `2 EXP 64 = 2 EXP 63 * 2`] THEN
+    SIMP_TAC[GSYM MULT_ASSOC; DIV_MULT_ADD; EXP_EQ_0; ARITH_EQ] THEN
+    SIMP_TAC[ARITH_RULE `((s + s) + b) + 1 = (2 * s + c) + 1 <=> b = c`] THEN
+       MP_TAC(ISPEC `sum_s59:int64` MSB_VAL) THEN REWRITE_TAC[DIMINDEX_64] THEN
+    CONV_TAC(ONCE_DEPTH_CONV NUM_SUB_CONV) THEN SIMP_TAC[bitval] THEN
+    MP_TAC(SPEC `sum_s59:int64` VAL_BOUND_64) THEN ARITH_TAC;
     ALL_TAC] THEN
 
-  (*** The rest of the computation ***)
+  (*** Actual accumulation of 38 * h + l + 19 * q ***)
 
-  X86_ACCSTEPS_TAC BIGNUM_MUL_P25519_EXEC
-   [76;77;78;79;80;84;85;86;87] (76--92) THEN
-  ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
-  CONV_TAC(LAND_CONV BIGNUM_EXPAND_CONV) THEN ASM_REWRITE_TAC[] THEN
-  CONV_TAC SYM_CONV THEN MATCH_MP_TAC MOD_UNIQ_BALANCED_REAL THEN
-  MAP_EVERY EXISTS_TAC [`val(hw:int64) + 1`; `255`] THEN
-  ASM_REWRITE_TAC[] THEN
-  CONJ_TAC THENL [REWRITE_TAC[p_25519] THEN ARITH_TAC; ALL_TAC] THEN
-  CONJ_TAC THENL [BOUNDER_TAC[]; ALL_TAC] THEN
+  ABBREV_TAC `q19:int64 = word_mul hw (word 19)` THEN
+  X86_ACCSTEPS_TAC BIGNUM_MUL_P25519_EXEC (66--79) (65--79) THEN
+  FIRST_X_ASSUM(MP_TAC o GEN_REWRITE_RULE LAND_CONV [READ_RVALUE]) THEN
+  DISCH_THEN(fun th -> SUBST_ALL_TAC th THEN ASSUME_TAC th) THEN
 
-  (*** Comparison computation and then the rest is easy ***)
+  SUBGOAL_THEN `&(val(q19:int64)):real = &19 * &(val(hw:int64))`
+  SUBST_ALL_TAC THENL
+   [EXPAND_TAC "q19" THEN ONCE_REWRITE_TAC[REAL_MUL_SYM] THEN
+    REWRITE_TAC[VAL_WORD_MUL; VAL_WORD_ADD; VAL_WORD_1; DIMINDEX_64] THEN
+    CONV_TAC WORD_REDUCE_CONV THEN REWRITE_TAC[REAL_OF_NUM_CLAUSES] THEN
+    CONV_TAC MOD_DOWN_CONV THEN MATCH_MP_TAC MOD_LT THEN
+    UNDISCH_TAC `val(hw:int64) <= 80` THEN ARITH_TAC;
+    ALL_TAC] THEN
 
-  SUBGOAL_THEN `ca < (val(hw:int64) + 1) * p_25519 <=> ~carry_s80`
-  SUBST1_TAC THENL
-   [CONV_TAC SYM_CONV THEN MATCH_MP_TAC FLAG_FROM_CARRY_LT THEN
-    EXISTS_TAC `256` THEN ASM_REWRITE_TAC[] THEN EXPAND_TAC "t" THEN
-    REWRITE_TAC[p_25519; bignum_of_wordlist; GSYM REAL_OF_NUM_CLAUSES] THEN
-    REWRITE_TAC[REAL_BITVAL_NOT] THEN CONV_TAC NUM_REDUCE_CONV THEN
-    ACCUMULATOR_ASSUM_LIST(MP_TAC o end_itlist CONJ o DECARRY_RULE) THEN
-    DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN
-    ASM_REWRITE_TAC[] THEN BOUNDER_TAC[];
-    REWRITE_TAC[REAL_BITVAL_NOT] THEN EXPAND_TAC "t" THEN
-    REWRITE_TAC[p_25519; bignum_of_wordlist; GSYM REAL_OF_NUM_CLAUSES] THEN
-    CONV_TAC NUM_REDUCE_CONV THEN
-    RULE_ASSUM_TAC(REWRITE_RULE[WORD_UNMASK_64]) THEN
-    REWRITE_TAC[SYM(NUM_REDUCE_CONV `2 EXP 63 - 1`)] THEN
-    REWRITE_TAC[VAL_WORD_AND_MASK_WORD] THEN
-    REWRITE_TAC[GSYM REAL_OF_NUM_CLAUSES; REAL_OF_NUM_MOD] THEN
+  SUBGOAL_THEN
+   `val(word_shl (q19:int64) 63) = 2 EXP 63 * val(hw:int64) MOD 2`
+  SUBST_ALL_TAC THENL
+   [REWRITE_TAC[VAL_WORD_SHL; DIMINDEX_64] THEN
+    REWRITE_TAC[MOD_MULT2; ARITH_RULE `2 EXP 64 = 2 EXP 63 * 2`] THEN
+    AP_TERM_TAC THEN REWRITE_TAC[VAL_MOD_2; BIT_LSB] THEN
+    EXPAND_TAC "q19" THEN AP_TERM_TAC THEN
+    REWRITE_TAC[word_mul; modular; ODD_VAL_WORD] THEN
+    CONV_TAC WORD_REDUCE_CONV THEN REWRITE_TAC[ODD_MULT; ARITH];
+    RULE_ASSUM_TAC(REWRITE_RULE
+     [GSYM REAL_OF_NUM_MUL; GSYM REAL_OF_NUM_POW; REAL_OF_NUM_MOD])] THEN
+
+  (*** Characterize both mangled and unmangled versions ***)
+
+  SUBGOAL_THEN
+   `(&(bignum_of_wordlist[sum_s68; sum_s71; sum_s74; sum_s77]):int ==
+     &(38 * h + l) - &p_25519 * &(val(hw:int64))) (mod (&2 pow 255)) /\
+    (&(bignum_of_wordlist[sum_s68; sum_s71; sum_s74; sum_s79]):int ==
+     &(38 * h + l) - &p_25519 * &(val(hw:int64))) (mod (&2 pow 256))`
+  MP_TAC THENL
+   [CONJ_TAC THEN REWRITE_TAC[REAL_INT_CONGRUENCE] THEN
+    REWRITE_TAC[INT_POW_EQ_0; INT_OF_NUM_EQ; ARITH_EQ] THEN
+    REWRITE_TAC[int_sub_th; int_pow_th; int_of_num_th; int_mul_th] THEN
+    MAP_EVERY EXPAND_TAC ["h"; "l"] THEN
+    REWRITE_TAC[bignum_of_wordlist; GSYM REAL_OF_NUM_CLAUSES; p_25519] THEN
     ACCUMULATOR_ASSUM_LIST(MP_TAC o end_itlist CONJ o DESUM_RULE) THEN
-    DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN
-    ASM_CASES_TAC `carry_s80:bool` THEN
-    ASM_REWRITE_TAC[BITVAL_CLAUSES] THEN CONV_TAC WORD_REDUCE_CONV THEN
-    REAL_INTEGER_TAC]);;
+    DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN REAL_INTEGER_TAC;
+    ACCUMULATOR_POP_ASSUM_LIST(K ALL_TAC) THEN STRIP_TAC] THEN
+
+  (*** The final correction ***)
+
+  X86_ACCSTEPS_TAC BIGNUM_MUL_P25519_EXEC (82--85) (80--90) THEN
+  ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
+  CONV_TAC(LAND_CONV BIGNUM_EXPAND_CONV) THEN
+  ASM_REWRITE_TAC[] THEN DISCARD_STATE_TAC "s90" THEN
+
+  SUBGOAL_THEN
+   `ival(sum_s79:int64) < &0 <=> 38 * h + l < val(hw:int64) * p_25519`
+  SUBST_ALL_TAC THENL
+   [TRANS_TAC EQ_TRANS
+     `2 EXP 255 <= bignum_of_wordlist[sum_s68; sum_s71; sum_s74; sum_s79]` THEN
+    CONJ_TAC THENL
+     [REWRITE_TAC[GSYM MSB_IVAL; MSB_VAL; ARITH_RULE
+        `2 EXP 255 <= x <=> 2 EXP 63 <= x DIV 2 EXP 192`] THEN
+      CONV_TAC(ONCE_DEPTH_CONV BIGNUM_OF_WORDLIST_DIV_CONV) THEN
+      REWRITE_TAC[DIMINDEX_64] THEN ARITH_TAC;
+      REWRITE_TAC[TAUT `(p <=> q) <=> (~q ==> ~p) /\ (q ==> p)`]] THEN
+    REWRITE_TAC[INT_NOT_LE; NOT_LE] THEN REPEAT STRIP_TAC THEN
+    FIRST_X_ASSUM(MP_TAC o check (can
+     (term_match [] `(x:int == y) (mod (&2 pow 256))`) o concl))
+    THENL
+     [ALL_TAC;
+      DISCH_THEN(MP_TAC o MATCH_MP (INTEGER_RULE
+       `(x == y) (mod n) ==> (x:int == y + n) (mod n)`))] THEN
+    DISCH_THEN(MP_TAC o MATCH_MP
+     (REWRITE_RULE[IMP_CONJ_ALT] INT_CONG_IMP_EQ)) THEN
+    REWRITE_TAC[NOT_IMP] THEN
+    (ANTS_TAC THENL
+      [MATCH_MP_TAC(INT_ARITH
+        `(&0 <= x /\ x < e) /\ (&0 <= y /\ y < e) ==> abs(x - y:int) < e`) THEN
+       CONJ_TAC THENL [BOUNDER_TAC[]; ALL_TAC];
+       ALL_TAC] THEN
+     POP_ASSUM_LIST(MP_TAC o end_itlist CONJ o rev) THEN
+     REWRITE_TAC[GSYM INT_OF_NUM_CLAUSES; p_25519] THEN INT_ARITH_TAC);
+    RULE_ASSUM_TAC(REWRITE_RULE[NOT_LT])] THEN
+
+  MATCH_MP_TAC CONG_IMP_EQ THEN EXISTS_TAC `2 EXP 255` THEN
+  CONJ_TAC THENL [BOUNDER_TAC[]; ALL_TAC] THEN
+  CONJ_TAC THENL [REWRITE_TAC[p_25519] THEN ARITH_TAC; ALL_TAC] THEN
+  REWRITE_TAC[num_congruent; GSYM INT_OF_NUM_CLAUSES; GSYM INT_OF_NUM_REM] THEN
+  MATCH_MP_TAC INT_CONG_TRANS THEN
+  EXISTS_TAC `if val(hw:int64) * p_25519 <= 38 * h + l
+              then &(38 * h + l) - &(val(hw:int64)) * &p_25519:int
+              else &(38 * h + l) - (&(val(hw:int64)) - &1) * &p_25519` THEN
+  CONJ_TAC THENL
+   [ALL_TAC;
+    MATCH_MP_TAC INT_EQ_IMP_CONG THEN CONV_TAC SYM_CONV THEN
+    REWRITE_TAC[GSYM int_of_num_th; GSYM INT_OF_NUM_REM] THEN
+    REWRITE_TAC[GSYM int_sub_th; GSYM int_mul_th] THEN
+    ONCE_REWRITE_TAC[GSYM COND_RAND] THEN REWRITE_TAC[GSYM int_eq] THEN
+    REWRITE_TAC[INT_REM_UNIQUE] THEN CONJ_TAC THENL
+     [DISJ2_TAC THEN
+      MAP_EVERY UNDISCH_TAC
+       [`val(hw:int64) * p_25519 <= (38 * h + l) + p_25519`;
+        `38 * h + l < val(hw:int64) * p_25519 + p_25519`] THEN
+      REWRITE_TAC[p_25519; GSYM INT_OF_NUM_CLAUSES] THEN INT_ARITH_TAC;
+      COND_CASES_TAC THEN REWRITE_TAC[GSYM INT_OF_NUM_CLAUSES] THEN
+      INTEGER_TAC]] THEN
+  MATCH_MP_TAC INT_CONG_TRANS THEN
+  EXISTS_TAC
+   `if val(hw:int64) * p_25519 <= 38 * h + l
+    then &(bignum_of_wordlist [sum_s68; sum_s71; sum_s74; sum_s77]):int
+    else &(bignum_of_wordlist [sum_s68; sum_s71; sum_s74; sum_s77]) +
+         &p_25519` THEN
+  CONJ_TAC THENL
+   [REWRITE_TAC[REAL_INT_CONGRUENCE; INT_POW_EQ_0; INT_OF_NUM_EQ; ARITH_EQ];
+    COND_CASES_TAC THEN ASM_REWRITE_TAC[] THEN
+    FIRST_X_ASSUM(MP_TAC o check (can
+     (term_match [] `(x:int == y) (mod (&2 pow 255))`) o concl)) THEN
+    SPEC_TAC(`(&2:int) pow 255`,`p:int`) THEN INTEGER_TAC] THEN
+  ONCE_REWRITE_TAC[COND_RAND] THEN
+  REWRITE_TAC[int_add_th; int_mul_th; int_pow_th; int_of_num_th] THEN
+  ASM_SIMP_TAC[SYM(NUM_REDUCE_CONV `2 EXP 63 - 1`)] THEN
+  REWRITE_TAC[VAL_WORD_AND_MASK_WORD] THEN
+  ABBREV_TAC `bb <=> val(hw:int64) * p_25519 <= 38 * h + l` THEN
+  REWRITE_TAC[bignum_of_wordlist; REAL_OF_NUM_MOD;
+              GSYM REAL_OF_NUM_CLAUSES; p_25519] THEN
+  ACCUMULATOR_ASSUM_LIST(MP_TAC o end_itlist CONJ o DESUM_RULE) THEN
+  DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN
+  COND_CASES_TAC THEN ASM_REWRITE_TAC[BITVAL_CLAUSES] THEN
+  CONV_TAC WORD_REDUCE_CONV THEN REAL_INTEGER_TAC);;
 
 let BIGNUM_MUL_P25519_SUBROUTINE_CORRECT = time prove
  (`!z x y m n pc stackpointer returnaddress.
-        nonoverlapping (word pc,0x1d6) (z,8 * 4) /\
+        nonoverlapping (word pc,0x1c3) (z,8 * 4) /\
         nonoverlapping (z,8 * 4) (word_sub stackpointer (word 48),56) /\
         ALL (nonoverlapping (word_sub stackpointer (word 48),48))
-            [(word pc,0x1d6); (x,8 * 4); (y,8 * 4)]
+            [(word pc,0x1c3); (x,8 * 4); (y,8 * 4)]
         ==> ensures x86
              (\s. bytes_loaded s (word pc) bignum_mul_p25519_mc /\
                   read RIP s = word pc /\
@@ -392,10 +448,10 @@ let windows_bignum_mul_p25519_mc = define_from_elf
 
 let WINDOWS_BIGNUM_MUL_P25519_SUBROUTINE_CORRECT = time prove
  (`!z x y m n pc stackpointer returnaddress.
-        nonoverlapping (word pc,0x1e3) (z,8 * 4) /\
+        nonoverlapping (word pc,0x1d0) (z,8 * 4) /\
         nonoverlapping (z,8 * 4) (word_sub stackpointer (word 64),72) /\
         ALL (nonoverlapping (word_sub stackpointer (word 64),64))
-            [(word pc,0x1e3); (x,8 * 4); (y,8 * 4)]
+            [(word pc,0x1d0); (x,8 * 4); (y,8 * 4)]
         ==> ensures x86
              (\s. bytes_loaded s (word pc) windows_bignum_mul_p25519_mc /\
                   read RIP s = word pc /\

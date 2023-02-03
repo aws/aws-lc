@@ -100,7 +100,7 @@ S2N_BN_SYMBOL(bignum_mul_p25519):
         mulpadd(%r11,%r10,8(x))
         mulpadd(%r12,%r11,16(x))
         mulpade(%r13,%r12,24(x))
-        adcxq   zero, %r13
+        adcq    zero, %r13
 
 // Add row 2
 
@@ -110,50 +110,64 @@ S2N_BN_SYMBOL(bignum_mul_p25519):
         mulpadd(%r12,%r11,8(x))
         mulpadd(%r13,%r12,16(x))
         mulpade(%r14,%r13,24(x));
-        adcxq   zero, %r14
+        adcq    zero, %r14
 
-// Add row 3
+// Add row 3; also use an early 38*r15+r11 to get a quotient estimate q
+// and then squeeze in a 19 * q computation to inject into the next
+// double-carry chain. At the end %rcx = q and %rax = 19 * q.
 
         xorl    zeroe, zeroe
         movq    24(y), %rdx
+
         mulpadd(%r12,%r11,(x))
+
+        mulxq   24(x), %rcx, %r15
+
         mulpadd(%r13,%r12,8(x))
-        mulpadd(%r14,%r13,16(x));
-        mulpade(%r15,%r14,24(x));
-        adcxq   zero, %r15
+        mulpadd(%r14,%r13,16(x))
+
+        movl    $38, %edx
+        mulxq   %r15, %rax, %rbx
+
+        adcxq   %rcx, %r14
+        adoxq   zero, %r15
+        adcq    zero, %r15
+
+        addq    %r11, %rax
+        adcq    zero, %rbx
+        btq     $63, %rax
+        adcq    %rbx, %rbx
+        leaq    1(%rbx), %rcx
+        imulq   $19, %rcx
 
 // Now we have the full 8-digit product 2^256 * h + l where
 // h = [%r15,%r14,%r13,%r12] and l = [%r11,%r10,%r9,%r8]
 // and this is == 38 * h + l (mod p_25519)
+// We add in the precalculated 19 * q as well.
+// This is kept in 4 words since we have enough information there.
 
-        movl    $38, %edx
         xorl    zeroe, zeroe
+        adoxq   %rcx, %r8
         mulpadd(%r9,%r8,%r12)
         mulpadd(%r10,%r9,%r13)
         mulpadd(%r11,%r10,%r14)
-        mulpade(%r12,%r11,%r15)
-        adcxq   zero, %r12
+        mulxq   %r15, %rax, %rbx
+        adcq    %rax, %r11
 
-// Now we have reduced to 5 digits, 2^255 * h + l = [%r12,%r11,%r10,%r9,%r8]
-// Use q = h + 1 as the initial quotient estimate, either right or 1 too big.
+// We still haven't made the -2^255 * q contribution yet. Since we
+// are now safely in 4 words we just need a single bit of q, and we
+// can actually use the LSB of %rcx = 19 * q since 19 is odd. And we
+// don't literally need to subtract, just to see whether we would
+// have a top 1 bit if we did, meaning we need to correct in the
+// last step by adding 2^255 - 19.
 
-        shldq   $1, %r11, %r12
-        movl    $19, %edx
-        incq    %r12
-        bts     $63, %r11
-        mulxq   %r12, %rax, %rbx
-        addq    %rax, %r8
-        adcq    %rbx, %r9
-        adcq    zero, %r10
-        adcq    zero, %r11
+        shlq    $63, %rcx
+        cmpq    %rcx, %r11
+        movl    $19, %eax
+        cmovns  zero, %rax
 
-// Now the effective answer is 2^256 * (CF - 1) + [u3,u2,u1,u0]
-// So we correct if CF = 0 by subtracting 19, either way masking to
-// 255 bits, i.e. by effectively adding p_25519 to the "full" answer
+// Now make that possible correction and finally mask to 255 bits
 
-        sbbq    %rax, %rax
-        notq    %rax
-        andq    %rdx, %rax
         subq    %rax, %r8
         sbbq    zero, %r9
         sbbq    zero, %r10
