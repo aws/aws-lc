@@ -41,3 +41,6 @@ cfg_aliases = "0.1.1"
 [dependencies]
 libc = "0.2"
 paste = "1.0.11"
+
+[package.metadata.aws-lc-fips-sys]
+commit-hash = "__AWS_LC_COMMIT_HASH__"

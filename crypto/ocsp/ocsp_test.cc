@@ -164,9 +164,9 @@ static void CheckOCSP_CERTSTATUS(
 // OCSP testing methods were taken from s2n's validation tests:
 // https://github.com/aws/s2n-tls/blob/main/tests/unit/s2n_x509_validator_test.c
 struct OCSPTestVectorExtended {
-  std::string ocsp_response;
-  std::string cafile;
-  std::string server_cert;
+  const char *ocsp_response;
+  const char *cafile;
+  const char *server_cert;
   const EVP_MD *dgst;
   int expected_ocsp_status;
   int expected_ocsp_verify_status;
@@ -393,7 +393,7 @@ INSTANTIATE_TEST_SUITE_P(All, OCSPTestExtended, testing::ValuesIn(nTestVectors))
 TEST_P(OCSPTestExtended, VerifyOCSPResponseExtended) {
   const OCSPTestVectorExtended &t = GetParam();
 
-  std::string data = GetTestData(std::string("crypto/ocsp/test/aws/" + t.ocsp_response + ".der").c_str());
+  std::string data = GetTestData(std::string("crypto/ocsp/test/aws/" + std::string(t.ocsp_response) + ".der").c_str());
   std::vector<uint8_t> ocsp_reponse_data(data.begin(), data.end());
 
   // OCSP response parsing and verification step.
@@ -550,9 +550,9 @@ TEST(OCSPTest, TestGoodOCSP_SHA256) {
 
 // https://github.com/openssl/openssl/blob/OpenSSL_1_1_1-stable/test/recipes/80-test_ocsp.t
 struct OCSPTestVector{
-  std::string ocsp_response;
-  std::string cafile;
-  std::string untrusted;
+  const char *ocsp_response;
+  const char *cafile;
+  const char *untrusted;
   int expected_ocsp_verify_status;
 };
 
@@ -639,7 +639,7 @@ TEST_P(OCSPTest, VerifyOCSPResponse) {
   bssl::UniquePtr<OCSP_BASICRESP> basic_response;
 
   // Get OCSP response from path.
-  std::string data = GetTestData(std::string("crypto/ocsp/test/" + t.ocsp_response + ".ors").c_str());
+  std::string data = GetTestData(std::string("crypto/ocsp/test/" + std::string(t.ocsp_response) + ".ors").c_str());
   std::vector<uint8_t> input;
   ASSERT_TRUE(DecodeBase64(&input, data.c_str()));
 
@@ -663,16 +663,16 @@ TEST_P(OCSPTest, VerifyOCSPResponse) {
 
   // Get CA root certificate from path and set up trust store.
   bssl::UniquePtr<X509> ca_certificate(CertFromPEM(
-      GetTestData(std::string("crypto/ocsp/test/" + t.cafile + ".pem").c_str()).c_str()));
+      GetTestData(std::string("crypto/ocsp/test/" + std::string(t.cafile) + ".pem").c_str()).c_str()));
   X509_STORE_add_cert(trust_store.get(),ca_certificate.get());
   ASSERT_EQ(X509_STORE_set1_param(trust_store.get(), vpm.get()), 1);
 
   // If untrusted cert chain isn't available, we only use CA cert as root cert.
-  if(t.untrusted.empty()){
+  if(std::string(t.untrusted).empty()){
     server_cert_chain = CertsToStack({ca_certificate.get()});
   }
   else {
-    server_cert_chain = CertChainFromPEM(GetTestData(std::string("crypto/ocsp/test/" + t.untrusted + ".pem").c_str()).c_str());
+    server_cert_chain = CertChainFromPEM(GetTestData(std::string("crypto/ocsp/test/" + std::string(t.untrusted) + ".pem").c_str()).c_str());
   }
   ASSERT_TRUE(server_cert_chain);
 
