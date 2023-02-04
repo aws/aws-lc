@@ -74,11 +74,20 @@ function compile_for_android() {
   # |ANDROID_APK| and |ANDROID_TEST_APK| are apk names corresponding to the settings in the test runner gradle file.
   # The working directory of this script should under `tests/ci`. 
   # AWSLCAndroidTestRunner should be at `tests/ci/android/AWSLCAndroidTestRunner`.
-  cd android/AWSLCAndroidTestRunner
+  pushd android/AWSLCAndroidTestRunner
   export ANDROID_APK_LOCATION='android/AWSLCAndroidTestRunner/app/build/outputs/apk'
   if [[ "${FIPS}" = true ]]; then
-    # FIPS (Release Shared)
-    ./gradlew assembleDebug assembleAndroidTest -PFIPS --offline
+    if [[ "${SHARED}" = true ]]; then
+      # FIPS (Release Shared)
+      ./gradlew assembleDebug assembleAndroidTest -PFIPS -PShared --offline
+    else
+      # FIPS (Release Static), go dependencies need to be copied from AWS-LC.
+      mkdir app/src/main/cpp/util
+      cp -r ../../../../util/godeps.go app/src/main/cpp/util/godeps.go
+      cp -r ../../../../go.mod app/src/main/cpp/go.mod
+      cp -r ../../../../go.sum app/src/main/cpp/go.sum
+      ./gradlew assembleDebug assembleAndroidTest -PFIPS --offline
+    fi
     export ANDROID_APK="${ANDROID_APK_LOCATION}/debug/awslc_fips.apk"
     export ANDROID_TEST_APK="${ANDROID_APK_LOCATION}/androidTest/debug/awslc_fips-androidTest.apk"
   else
@@ -108,7 +117,7 @@ function compile_for_android() {
       fi
     fi
   fi
-  cd ../../
+  popd
 }
 
 function main() {
