@@ -1,5 +1,3 @@
-include_directories(../../../../include)
-
 if(FIPS)
   add_executable(
     modulewrapper
