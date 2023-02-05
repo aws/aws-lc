@@ -14,8 +14,6 @@ add_executable(
   test_state.cc
 )
 
-add_dependencies(bssl_shim global_target)
-
 target_link_libraries(bssl_shim test_support_lib ssl crypto)
 if(WIN32)
   target_link_libraries(bssl_shim ws2_32)
@@ -34,8 +32,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     test_config.cc
     test_state.cc
   )
-
-  add_dependencies(handshaker global_target)
 
   target_link_libraries(handshaker test_support_lib ssl crypto)
 else()

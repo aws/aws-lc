@@ -35,11 +35,6 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "GNU")
   set(GCC 1)
 endif()
 
-# This is a dummy target which all other targets depend on (manually - see other
-# CMakeLists.txt files). This gives us a hook to add any targets which need to
-# run before all other targets.
-add_custom_target(global_target)
-
 if (UNIX AND NOT APPLE)
   include(GNUInstallDirs)
 elseif(NOT DEFINED CMAKE_INSTALL_LIBDIR)
@@ -157,7 +152,6 @@ if(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS AND GO_EXECUTABLE)
     COMMAND sed -i.bak '/ bignum_/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/boringssl_prefix_symbols_nasm.inc
     DEPENDS util/make_prefix_headers.go
             ${BORINGSSL_PREFIX_SYMBOLS_PATH})
-
   # add_dependencies needs a target, not a file, so we add an intermediate
   # target.
   add_custom_target(
@@ -165,7 +159,6 @@ if(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS AND GO_EXECUTABLE)
     DEPENDS symbol_prefix_include/boringssl_prefix_symbols.h
             symbol_prefix_include/boringssl_prefix_symbols_asm.h
             symbol_prefix_include/boringssl_prefix_symbols_nasm.inc)
-  add_dependencies(global_target boringssl_prefix_symbols)
 elseif(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_HEADERS)
 
   if(IS_ABSOLUTE ${BORINGSSL_PREFIX_HEADERS})
@@ -179,6 +172,8 @@ elseif(BORINGSSL_PREFIX OR BORINGSSL_PREFIX_SYMBOLS)
   message(FATAL_ERROR "Must specify both or neither of BORINGSSL_PREFIX and BORINGSSL_PREFIX_SYMBOLS")
 elseif((BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS) AND NOT GO_EXECUTABLE)
   message(FATAL_ERROR "Must have Go installed when using BORINGSSL_PREFIX and BORINGSSL_PREFIX_SYMBOLS")
+else()
+  add_custom_target(boringssl_prefix_symbols)
 endif()
 
 if("${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
