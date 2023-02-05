@@ -1,5 +1,3 @@
-include_directories(../include)
-
 if(NOT OPENSSL_NO_ASM)
   if(UNIX)
     if(ARCH STREQUAL "aarch64")
@@ -502,6 +500,7 @@ add_library(
 )
 
 target_compile_definitions(crypto_objects PRIVATE BORINGSSL_IMPLEMENTATION)
+target_include_directories(crypto_objects PRIVATE ../include)
 
 # For the prefix build, the object files need the prefix header files to build.
 add_dependencies(crypto_objects boringssl_prefix_symbols)
@@ -553,6 +552,8 @@ if(FIPS_SHARED)
       generated_fips_shared_support.c
       ${PROJECT_SOURCE_DIR}/crypto/fipsmodule/cpucap/cpucap.c
     )
+    target_include_directories(generated_fipsmodule PRIVATE ../include)
+
     build_libcrypto(crypto $<TARGET_OBJECTS:generated_fipsmodule>)
   else()
     # On Apple and Linux platforms inject_hash.go can parse libcrypto and inject
