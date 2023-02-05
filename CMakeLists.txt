@@ -795,9 +795,11 @@ if(BUILD_TESTING)
     # This is needed for the Windows build to correctly annotate GTest's API with __declspec(dllexport)
     target_compile_options(boringssl_gtest PRIVATE -DGTEST_CREATE_SHARED_LIBRARY=1)
   endif()
-  target_include_directories(boringssl_gtest PRIVATE third_party/googletest)
-
-  include_directories(third_party/googletest/include)
+  target_include_directories(
+    boringssl_gtest
+    PUBLIC third_party/googletest/include
+    PRIVATE third_party/googletest
+  )
 
   # Declare a dummy target to build all unit tests. Test targets should inject
   # themselves as dependencies next to the target definition.
