@@ -83,7 +83,9 @@ set(
   crypto/fipsmodule/sha/testvectors/SHA3_512ShortMsg.txt
   crypto/hmac_extra/hmac_tests.txt
   crypto/hpke/hpke_test_vectors.txt
-  crypto/kyber/kat/kyber512.txt
+  crypto/kyber/kat/kyber512r3.txt
+  crypto/kyber/kat/kyber768r3.txt
+  crypto/kyber/kat/kyber1024r3.txt
   crypto/ocsp/test/aws/ocsp_response.der
   crypto/ocsp/test/aws/ocsp_response_ca_signed.der
   crypto/ocsp/test/aws/ocsp_response_revoked.der

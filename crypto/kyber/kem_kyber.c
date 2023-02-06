@@ -11,20 +11,53 @@
 // conditionally (or based on compile-time flags) called here, depending on
 // platform support.
 
-int kyber512_keypair(uint8_t *public_key /* OUT */,
-                     uint8_t *secret_key /* OUT */) {
+int kyber512r3_keypair(uint8_t *public_key /* OUT */,
+                       uint8_t *secret_key /* OUT */) {
   return pqcrystals_kyber512_ref_keypair(public_key, secret_key);
 }
 
-int kyber512_encapsulate(uint8_t *ciphertext       /* OUT */,
-                         uint8_t *shared_secret    /* OUT */,
-                         const uint8_t *public_key /* IN  */) {
+int kyber512r3_encapsulate(uint8_t *ciphertext       /* OUT */,
+                           uint8_t *shared_secret    /* OUT */,
+                           const uint8_t *public_key /* IN  */) {
   return pqcrystals_kyber512_ref_enc(ciphertext, shared_secret, public_key);
 }
 
-int kyber512_decapsulate(uint8_t *shared_secret    /* OUT */,
-                         const uint8_t *ciphertext /* IN  */,
-                         const uint8_t *secret_key /* IN  */) {
+int kyber512r3_decapsulate(uint8_t *shared_secret    /* OUT */,
+                           const uint8_t *ciphertext /* IN  */,
+                           const uint8_t *secret_key /* IN  */) {
   return pqcrystals_kyber512_ref_dec(shared_secret, ciphertext, secret_key);
 }
 
+int kyber768r3_keypair(uint8_t *public_key /* OUT */,
+                       uint8_t *secret_key /* OUT */) {
+  return pqcrystals_kyber768_ref_keypair(public_key, secret_key);
+}
+
+int kyber768r3_encapsulate(uint8_t *ciphertext       /* OUT */,
+                           uint8_t *shared_secret    /* OUT */,
+                           const uint8_t *public_key /* IN  */) {
+  return pqcrystals_kyber768_ref_enc(ciphertext, shared_secret, public_key);
+}
+
+int kyber768r3_decapsulate(uint8_t *shared_secret    /* OUT */,
+                           const uint8_t *ciphertext /* IN  */,
+                           const uint8_t *secret_key /* IN  */) {
+  return pqcrystals_kyber768_ref_dec(shared_secret, ciphertext, secret_key);
+}
+
+int kyber1024r3_keypair(uint8_t *public_key /* OUT */,
+                        uint8_t *secret_key /* OUT */) {
+  return pqcrystals_kyber1024_ref_keypair(public_key, secret_key);
+}
+
+int kyber1024r3_encapsulate(uint8_t *ciphertext       /* OUT */,
+                            uint8_t *shared_secret    /* OUT */,
+                            const uint8_t *public_key /* IN  */) {
+  return pqcrystals_kyber1024_ref_enc(ciphertext, shared_secret, public_key);
+}
+
+int kyber1024r3_decapsulate(uint8_t *shared_secret    /* OUT */,
+                            const uint8_t *ciphertext /* IN  */,
+                            const uint8_t *secret_key /* IN  */) {
+  return pqcrystals_kyber1024_ref_dec(shared_secret, ciphertext, secret_key);
+}
