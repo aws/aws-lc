@@ -26,6 +26,7 @@ AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 echo AWS Account ID: "${AWS_ACCOUNT_ID}"
 echo GitHub Repo Link: "${CODEBUILD_SOURCE_REPO_URL}"
 export cloudwatch_group_name="aws-lc-ci-macos-arm-cw-logs"
+export s3_bucket_name="aws-lc-codebuild"
 
 # get information for ec2 instances
 ec2_instance="$(aws ec2 describe-instances --filter "Name=tag:Name,Values=aws-lc-ci-macos-arm-ec2-instance" "Name=instance-state-name,Values=running" --query Reservations[*].Instances[*].InstanceId --output text)"
@@ -34,7 +35,8 @@ generate_ssm_document_file() {
   # use sed to replace placeholder values inside preexisting document
   sed -e "s,{AWS_ACCOUNT_ID},${AWS_ACCOUNT_ID},g" \
     -e "s,{PR_NUM},${CODEBUILD_WEBHOOK_TRIGGER//pr\/},g" \
-    -e "s,{GITHUB_REPO},${CODEBUILD_SOURCE_REPO_URL},g" \
+    -e "s,{SOURCE},${CODEBUILD_SOURCE_REPO_URL},g" \
+    -e "s,{S3_BUCKET},${s3_bucket_name},g" \
     tests/ci/cdk/cdk/ssm/m1_tests_ssm_document.yaml \
     >tests/ci/cdk/cdk/ssm/macos_arm_ssm_document.yaml
 }
