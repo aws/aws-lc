@@ -3159,6 +3159,8 @@ TEST(X509Test, GeneralName)  {
       {0x82, 0x01, 0x61},
       // [2 PRIMITIVE] { "b" }
       {0x82, 0x01, 0x62},
+      // [3] {}. Regression test for CVE-2023-0286.
+      {0xa3, 0x00},
       // [4] {
       //   SEQUENCE {
       //     SET {
