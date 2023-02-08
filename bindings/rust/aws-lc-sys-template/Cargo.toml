@@ -32,7 +32,7 @@ ssl = []
 
 [build-dependencies]
 cmake = "0.1.48"
-bindgen = { version = "0.61", optional = true }
+bindgen = { version = "0.64.0", optional = true }
 regex = "1"
 dunce = "1.0"
 cfg_aliases = "0.1.1"
