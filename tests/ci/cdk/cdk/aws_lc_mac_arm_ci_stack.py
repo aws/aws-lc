@@ -7,7 +7,7 @@ import boto3
 from botocore.exceptions import ClientError
 from aws_cdk import core, aws_ec2 as ec2, aws_codebuild as codebuild, aws_iam as iam, aws_s3 as s3, aws_logs as logs
 from util.metadata import AWS_ACCOUNT, AWS_REGION, GITHUB_REPO_OWNER, GITHUB_REPO_NAME
-from util.iam_policies import code_build_batch_policy_in_json, ec2_policies_in_json, ssm_policies_in_json
+from util.iam_policies import code_build_batch_policy_in_json, ec2_policies_in_json, ssm_policies_in_json, s3_read_write_policy_in_json
 from util.build_spec_loader import BuildSpecLoader
 
 # detailed documentation can be found here: https://docs.aws.amazon.com/cdk/api/latest/docs/aws-ec2-readme.html
@@ -67,9 +67,13 @@ class AwsLcMacArmCIStack(core.Stack):
             build_spec=BuildSpecLoader.load(spec_file_path))
         project.enable_batch_builds()
 
+        # S3 bucket for testing internal fixes.
+        s3_read_write_policy = iam.PolicyDocument.from_json(s3_read_write_policy_in_json("aws-lc-codebuild"))
+        ec2_inline_policies = {"s3_read_write_policy": s3_read_write_policy}
         ec2_role = iam.Role(scope=self, id="{}-ec2-role".format(id),
                             role_name="{}-ec2-role".format(id),
                             assumed_by=iam.ServicePrincipal("ec2.amazonaws.com"),
+                            inline_policies=ec2_inline_policies,
                             managed_policies=[
                                 iam.ManagedPolicy.from_aws_managed_policy_name("AmazonSSMManagedInstanceCore"),
                                 iam.ManagedPolicy.from_aws_managed_policy_name("CloudWatchAgentServerPolicy")
