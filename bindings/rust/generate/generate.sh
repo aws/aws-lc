@@ -29,9 +29,7 @@ source "${SCRIPT_DIR}"/_generation_tools.sh
 # Clone the main branch in local.
 function clone_main_branch {
   pushd "${TMP_DIR}"
-  rm -rf aws-lc
   git clone -b main --depth 1 --single-branch https://github.com/awslabs/aws-lc.git
-  AWS_LC_COMMIT_HASH=$(git -C ${AWS_LC_SRC_DIR} log -n 1 --pretty=format:"%H" HEAD)
   popd
 }
 
@@ -89,7 +87,14 @@ mkdir -p "${TMP_DIR}"
 determine_generate_version
 
 # Crate preparation.
-clone_main_branch
+if [[ ! -r "${SYMBOLS_FILE}" ]] || [[! -d "${AWS_LC_SRC_DIR}" ]]; then
+  # Symbols file must be consistent with AWS-LC source directory
+  rm -f "${SYMBOLS_FILE}"
+  rm -rf "${AWS_LC_SRC_DIR}"
+  clone_main_branch
+fi
+AWS_LC_COMMIT_HASH=$(git -C ${AWS_LC_SRC_DIR} log -n 1 --pretty=format:"%H" HEAD)
+
 prepare_crate_dir
 create_prefix_headers
 
