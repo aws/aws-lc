@@ -189,6 +189,7 @@ TEST(GCMTest, ABI) {
         }
       }
     }
+#if ENABLED_AVX512
     if (crypto_gcm_avx512_enabled()) {
       CHECK_ABI_SEH(gcm_init_avx512, Htable, kH);
       CHECK_ABI_SEH(gcm_gmult_avx512, X, Htable);
@@ -223,6 +224,7 @@ TEST(GCMTest, ABI) {
         }
       }
     }
+#endif
 #endif  // GHASH_ASM_X86_64
   }
 #endif  // GHASH_ASM_X86 || GHASH_ASM_X86_64

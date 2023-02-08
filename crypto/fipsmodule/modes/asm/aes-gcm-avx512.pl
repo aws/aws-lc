@@ -62,16 +62,8 @@ my %aes_rounds = (
 # ;;; Code generation control switches
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-# ; ABI-aware zeroing of volatile registers in EPILOG().
-# ; Disabled due to performance reasons.
-my $CLEAR_SCRATCH_REGISTERS = 0;
-
 # ; Zero HKeys storage from the stack if they are stored there
 my $CLEAR_HKEYS_STORAGE_ON_EXIT = 1;
-
-# ; Enable / disable check of function arguments for null pointer
-# ; Currently disabled, as this check is handled outside.
-my $CHECK_FUNCTION_ARGUMENTS = 0;
 
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 # ;;; Global constants
@@ -393,12 +385,7 @@ ___
     $code .= ".Lskip_hkeys_cleanup_${rndsuffix}:\n";
   }
 
-  if ($CLEAR_SCRATCH_REGISTERS) {
-    &clear_scratch_gps_asm();
-    &clear_scratch_zmms_asm();
-  } else {
-    $code .= "vzeroupper\n";
-  }
+  $code .= "vzeroupper\n";
 
   if ($win64) {
 
@@ -443,38 +430,6 @@ ___
      pop     %rbx
 .cfi_pop     %rbx
 ___
-}
-
-# ; Clears all scratch ZMM registers
-# ;
-# ; It should be called before restoring the XMM registers
-# ; for Windows (XMM6-XMM15).
-# ;
-sub clear_scratch_zmms_asm {
-
-  # ; On Linux, all ZMM registers are scratch registers
-  if (!$win64) {
-    $code .= "vzeroall\n";
-  } else {
-    foreach my $i (0 .. 5) {
-      $code .= "vpxorq  %xmm${i},%xmm${i},%xmm${i}\n";
-    }
-  }
-  foreach my $i (16 .. 31) {
-    $code .= "vpxorq  %xmm${i},%xmm${i},%xmm${i}\n";
-  }
-}
-
-# Clears all scratch GP registers
-sub clear_scratch_gps_asm {
-  foreach my $reg ("%rax", "%rcx", "%rdx", "%r8", "%r9", "%r10", "%r11") {
-    $code .= "xor $reg,$reg\n";
-  }
-  if (!$win64) {
-    foreach my $reg ("%rsi", "%rdi") {
-      $code .= "xor $reg,$reg\n";
-    }
-  }
 }
 
 sub precompute_hkeys_on_stack {
@@ -4222,17 +4177,6 @@ gcm_init_avx512:
 .cfi_startproc
         endbranch
 ___
-  if ($CHECK_FUNCTION_ARGUMENTS) {
-    $code .= <<___;
-        # ;; Check Htable != NULL
-        test               $arg1,$arg1
-        jz                .Lexit_init
-
-        # ;; Check Xi != NULL
-        test               $arg2,$arg2
-        jz                .Lexit_init
-___
-  }
   $code .= <<___;
         vmovdqu64         ($arg2),%xmm16
         vpalignr           \$8,%xmm16,%xmm16,%xmm16
@@ -4253,12 +4197,7 @@ ___
         vmovdqu64         %xmm16,@{[HashKeyByIdx(1,$arg1)]} # ; store HashKey<<1 mod poly
 ___
   &PRECOMPUTE("$arg1", "%xmm16", "%xmm0", "%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5");
-  if ($CLEAR_SCRATCH_REGISTERS) {
-    &clear_scratch_gps_asm();
-    &clear_scratch_zmms_asm();
-  } else {
-    $code .= "vzeroupper\n";
-  }
+  $code .= "vzeroupper\n";
   $code .= <<___;
 .Lexit_init:
 ret
@@ -4282,17 +4221,6 @@ gcm_gmult_avx512:
 .cfi_startproc
         endbranch
 ___
-if ($CHECK_FUNCTION_ARGUMENTS) {
-  $code .= <<___;
-        # ;; Check Xi != NULL
-        test               $arg1,$arg1
-        jz                 .Lexit_gmult
-
-        # ;; Check Htable != NULL
-        test               $arg2,$arg2
-        jz                 .Lexit_gmult
-___
-}
 
 $code .= <<___;
           vmovdqu64         ($arg1),%xmm1
@@ -4310,12 +4238,7 @@ $code .= <<___;
           vmovdqu64         %xmm1,($arg1)
 ___
 
-if ($CLEAR_SCRATCH_REGISTERS) {
-  &clear_scratch_gps_asm();
-  &clear_scratch_zmms_asm();
-} else {
-  $code .= "vzeroupper\n";
-}
+$code .= "vzeroupper\n";
 
 $code .= <<___;
 .Lexit_gmult:
@@ -4342,21 +4265,6 @@ gcm_ghash_avx512:
 .Lghash_seh_begin:
         endbranch
 ___
-if ($CHECK_FUNCTION_ARGUMENTS) {
-  $code .= <<___;
-        # ;; Check Xi != NULL
-        test               $arg1,$arg1
-        jz                 .Lexit_ghash
-
-        # ;; Check Htable != NULL
-        test               $arg2,$arg2
-        jz                 .Lexit_ghash
-
-        # ;; Check in != NULL
-        test               $arg3,$arg3
-        jz                 .Lexit_ghash
-___
-}
 
 # ; NOTE: code before PROLOG() must not modify any registers
 &PROLOG(
@@ -4414,25 +4322,6 @@ ___
   1,    # allocate stack space for hkeys
   0,    # do not allocate stack space for AES blocks
   "setiv");
-if ($CHECK_FUNCTION_ARGUMENTS) {
-  $code .= <<___;
-        # ;; Check key != NULL
-        test               $arg1,$arg1
-        jz                 .Lexit_setiv
-
-        # ;; Check ctx != NULL
-        test               $arg2,$arg2
-        jz                 .Lexit_setiv
-
-        # ;; Check iv != 0
-        test               $arg3,$arg3
-        jz                 .Lexit_setiv
-
-        # ;; Check ivlen != 0
-        test               $arg4,$arg4
-        jz                 .Lexit_setiv
-___
-}
 &GCM_INIT_IV(
   "$arg1",  "$arg2",  "$arg3",  "$arg4",  "%r10",   "%r11",   "%r12",  "%r13",  "%k1",   "%xmm2",
   "%zmm1",  "%zmm11", "%zmm3",  "%zmm4",  "%zmm5",  "%zmm6",  "%zmm7", "%zmm8", "%zmm9", "%zmm10",
@@ -4479,33 +4368,6 @@ ___
   1,    # allocate stack space for hkeys
   1,    # allocate stack space for AES blocks
   "encrypt");
-if ($CHECK_FUNCTION_ARGUMENTS) {
-  $code .= <<___;
-        # ;; Check key != NULL
-        test               $arg1,$arg1
-        jz                 .Lexit_gcm_encrypt
-
-        # ;; Check ctx != NULL
-        test               $arg2,$arg2
-        jz                 .Lexit_gcm_encrypt
-
-        # ;; Check pblocklen != NULL
-        test               $arg3,$arg3
-        jz                 .Lexit_gcm_encrypt
-
-        # ;; Check in != NULL
-        test               $arg4,$arg4
-        jz                 .Lexit_gcm_encrypt
-
-        # ;; Check if len != 0
-        cmp                \$0,$arg5
-        jz                 .Lexit_gcm_encrypt
-
-        # ;; Check out != NULL
-        test               $arg6,$arg6
-        jz                 .Lexit_gcm_encrypt
-___
-}
 $code .= <<___;
         # ; load number of rounds from AES_KEY structure (offset in bytes is
         # ; size of the |rd_key| buffer)
@@ -4563,33 +4425,6 @@ ___
   1,    # allocate stack space for hkeys
   1,    # allocate stack space for AES blocks
   "decrypt");
-if ($CHECK_FUNCTION_ARGUMENTS) {
-  $code .= <<___;
-        # ;; Check key != NULL
-        test               $arg1,$arg1
-        jz                 .Lexit_gcm_decrypt
-
-        # ;; Check ctx != NULL
-        test               $arg2,$arg2
-        jz                 .Lexit_gcm_decrypt
-
-        # ;; Check pblocklen != NULL
-        test               $arg3,$arg3
-        jz                 .Lexit_gcm_decrypt
-
-        # ;; Check in != NULL
-        test               $arg4,$arg4
-        jz                 .Lexit_gcm_decrypt
-
-        # ;; Check if len != 0
-        cmp                \$0,$arg5
-        jz                 .Lexit_gcm_decrypt
-
-        # ;; Check out != NULL
-        test               $arg6,$arg6
-        jz                 .Lexit_gcm_decrypt
-___
-}
 $code .= <<___;
         # ; load number of rounds from AES_KEY structure (offset in bytes is
         # ; size of the |rd_key| buffer)
