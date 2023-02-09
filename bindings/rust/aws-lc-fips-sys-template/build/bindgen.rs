@@ -2,7 +2,7 @@
 // Modifications Copyright Amazon.com, Inc. or its affiliates. See GitHub history for details.
 
 use crate::get_include_path;
-use bindgen::callbacks::ParseCallbacks;
+use bindgen::callbacks::{ParseCallbacks, ItemInfo};
 use std::fmt::Debug;
 use std::path::Path;
 
@@ -21,10 +21,10 @@ impl StripPrefixCallback {
 
 #[cfg(feature = "bindgen")]
 impl ParseCallbacks for StripPrefixCallback {
-    fn generated_name_override(&self, name: &str) -> Option<String> {
+    fn generated_name_override(&self, item_info: ItemInfo<'_>) -> Option<String> {
         self.remove_prefix.as_ref().and_then(|s| {
             let prefix = format!("{}_", s);
-            name.strip_prefix(prefix.as_str()).map(String::from)
+            item_info.name.strip_prefix(prefix.as_str()).map(String::from)
         })
     }
 }

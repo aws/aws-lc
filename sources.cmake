@@ -50,8 +50,8 @@ set(
   crypto/cipher_extra/test/nist_cavp/tdes_ecb.txt
   crypto/curve25519/ed25519_tests.txt
   crypto/ecdh_extra/ecdh_tests.txt
+  crypto/evp_extra/sshkdf_tests.txt
   crypto/evp_extra/evp_tests.txt
-  crypto/evp_extra/pq_kem_kat_tests_kyber512.txt
   crypto/evp_extra/scrypt_tests.txt
   crypto/fipsmodule/aes/aes_tests.txt
   crypto/fipsmodule/bn/test/exp_tests.txt
@@ -84,6 +84,7 @@ set(
   crypto/fipsmodule/sha/testvectors/SHA3_512ShortMsg.txt
   crypto/hmac_extra/hmac_tests.txt
   crypto/hpke/hpke_test_vectors.txt
+  crypto/kyber/kat/kyber512.txt
   crypto/ocsp/test/aws/ocsp_response.der
   crypto/ocsp/test/aws/ocsp_response_ca_signed.der
   crypto/ocsp/test/aws/ocsp_response_revoked.der

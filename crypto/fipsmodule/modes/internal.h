@@ -140,9 +140,9 @@ typedef struct gcm128_key_st {
 
   block128_f block;
 
-  // use_aesni_gcm_crypt is true if this context should use the assembly
-  // functions |aesni_gcm_encrypt| and |aesni_gcm_decrypt| to process data.
-  unsigned use_aesni_gcm_crypt:1;
+  // use_hw_gcm_crypt is true if this context should use platform-specific
+  // assembly to process GCM data.
+  unsigned use_hw_gcm_crypt:1;
   // use_aes_gcm_crypt_avx512 is true if this context should use the assembly
   // functions |aes_gcm_encrypt_avx512| and |aes_gcm_decrypt_avx512| to
   // process data.
@@ -296,7 +296,7 @@ void gcm_ghash_avx512(uint64_t Xi[2], const u128 Htable[16], const uint8_t *in,
                       size_t len);
 
 
-#define AESNI_GCM
+#define HW_GCM
 size_t aesni_gcm_encrypt(const uint8_t *in, uint8_t *out, size_t len,
                          const AES_KEY *key, uint8_t ivec[16], uint64_t *Xi);
 size_t aesni_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,

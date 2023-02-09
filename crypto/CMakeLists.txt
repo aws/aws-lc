@@ -363,9 +363,7 @@ add_library(
   kem/kyber_methods_placeholder.c
   kyber/kyber512_ref.c
   kyber/pqcrystals_kyber_ref_common/fips202.c
-  kyber/kem_kyber512.c
-  kyber/p_kyber.c
-  kyber/p_kyber512_asn1.c
+  kyber/kem_kyber.c
   lhash/lhash.c
   mem.c
   obj/obj.c
@@ -689,7 +687,6 @@ if(BUILD_TESTING)
     err/err_test.cc
     evp_extra/evp_extra_test.cc
     evp_extra/evp_test.cc
-    evp_extra/pq_kem_kat_tests_kyber512.cc
     evp_extra/scrypt_test.cc
     fipsmodule/aes/aes_test.cc
     fipsmodule/bn/bn_test.cc
@@ -714,7 +711,6 @@ if(BUILD_TESTING)
     hmac_extra/hmac_test.cc
     hrss/hrss_test.cc
     impl_dispatch_test.cc
-    kyber/p_kyber_test.cc
     lhash/lhash_test.cc
     obj/obj_test.cc
     ocsp/ocsp_test.cc
