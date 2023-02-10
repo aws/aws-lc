@@ -1011,38 +1011,34 @@ toploop:
         movq    %r8, (%rsp)
         movq    %r15, 0x18(%rsp)
 innerloop:
-        movq    %rbp, %rax
-        movq    %rsi, %rdi
-        movq    %rcx, %r13
-        movq    %rdx, %r15
-        movq    $0x1, %rbx
-        negq    %rdi
-        andq    %r14, %rbx
-        cmoveq  %rbx, %rax
-        cmoveq  %rbx, %rdi
-        cmoveq  %rbx, %r13
-        cmoveq  %rbx, %r15
-        movq    %r12, %rbx
-        addq    %r14, %rdi
-        movq    %rdi, %r8
-        negq    %rdi
-        subq    %rax, %rbx
+        xorl    %eax, %eax
+        xorl    %ebx, %ebx
+        xorq    %r8, %r8
+        xorq    %r15, %r15
+        btq     $0x0, %r14
+        cmovbq  %rbp, %rax
+        cmovbq  %rsi, %rbx
+        cmovbq  %rcx, %r8
+        cmovbq  %rdx, %r15
+        movq    %r14, %r13
+        subq    %rbx, %r14
+        subq    %r13, %rbx
+        movq    %r12, %rdi
+        subq    %rax, %rdi
         cmovbq  %r12, %rbp
-        cmovbq  %r14, %rsi
+        leaq    -0x1(%rdi), %r12
+        cmovbq  %rbx, %r14
+        cmovbq  %r13, %rsi
+        notq    %r12
         cmovbq  %r10, %rcx
         cmovbq  %r11, %rdx
-        cmovaeq %r8, %rdi
-        movq    %rbx, %r12
-        notq    %rbx
-        incq    %rbx
-        cmovbq  %rbx, %r12
-        movq    %rdi, %r14
-        addq    %r13, %r10
+        cmovaeq %rdi, %r12
+        shrq    $1, %r14
+        addq    %r8, %r10
         addq    %r15, %r11
         shrq    $1, %r12
-        shrq    $1, %r14
-        leaq    (%rcx,%rcx), %rcx
-        leaq    (%rdx,%rdx), %rdx
+        addq    %rcx, %rcx
+        addq    %rdx, %rdx
         decq    %r9
         jne     innerloop
         movq    0x8(%rsp), %rdi
