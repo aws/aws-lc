@@ -43,6 +43,12 @@ add_library(
   tls13_server.cc
   ssl_decrepit.c
 )
+
+if(MSVC)
+  # If we're building for MSVC then we want to enable the /DEBUG:ALL flag for the debug symbols
+  set_property(TARGET ssl APPEND PROPERTY LINK_FLAGS /DEBUG:ALL)
+endif()
+
 target_compile_definitions(ssl PRIVATE BORINGSSL_IMPLEMENTATION)
 add_dependencies(ssl global_target)
 
@@ -62,6 +68,11 @@ if(BUILD_TESTING)
 
     $<TARGET_OBJECTS:boringssl_gtest_main>
   )
+  
+  if(MSVC)
+    # If we're building for MSVC then we want to enable the /DEBUG:ALL flag for the debug symbols
+    set_property(TARGET ${SSL_TEST_EXEC} APPEND PROPERTY LINK_FLAGS /DEBUG:ALL)
+  endif()
 
   add_dependencies(${SSL_TEST_EXEC} global_target)
 

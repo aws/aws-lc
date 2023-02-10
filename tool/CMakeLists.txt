@@ -43,6 +43,11 @@ else()
   endif()
 endif()
 
+if(MSVC)
+# If we're building for MSVC then we want to enable the /DEBUG:ALL flag for the debug symbols
+set_property(TARGET bssl APPEND PROPERTY LINK_FLAGS /DEBUG:ALL)
+endif()
+
 install(TARGETS bssl
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
@@ -62,6 +67,11 @@ function(build_benchmark target_name install_path)
   target_link_libraries(${target_name} ${libcrypto-${target_name}} ${LIBRT_FLAG})
   if(NOT MSVC AND NOT ANDROID)
     target_link_libraries(${target_name} pthread dl)
+  endif()
+
+  if(MSVC)
+  # If we're building for MSVC then we want to enable the /DEBUG:ALL flag for the debug symbols
+  set_property(TARGET ${target_name} APPEND PROPERTY LINK_FLAGS /DEBUG:ALL)
   endif()
 
 endfunction()

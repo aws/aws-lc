@@ -14,6 +14,11 @@ add_executable(
   test_state.cc
 )
 
+if(MSVC)
+  # If we're building for MSVC then we want to enable the /DEBUG:ALL flag for the debug symbols
+  set_property(TARGET bssl_shim APPEND PROPERTY LINK_FLAGS /DEBUG:ALL)
+endif()
+
 add_dependencies(bssl_shim global_target)
 
 target_link_libraries(bssl_shim test_support_lib ssl crypto)

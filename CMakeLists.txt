@@ -786,6 +786,11 @@ if(BUILD_TESTING)
   endif()
   target_include_directories(boringssl_gtest PRIVATE third_party/googletest)
 
+  if(MSVC)
+    # If we're building for MSVC then we want to enable the /DEBUG:ALL flag for the debug symbols
+    set_property(TARGET boringssl_gtest APPEND PROPERTY LINK_FLAGS /DEBUG:ALL)
+  endif()
+
   include_directories(third_party/googletest/include)
 
   # Declare a dummy target to build all unit tests. Test targets should inject

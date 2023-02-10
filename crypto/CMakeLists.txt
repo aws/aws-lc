@@ -530,6 +530,11 @@ function(build_libcrypto name module_source)
   target_include_directories(${name} SYSTEM PUBLIC
           $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
           $<INSTALL_INTERFACE:include>)
+  
+  if(MSVC)
+    # If we're building for MSVC then we want to enable the /DEBUG:ALL flag for the debug symbols
+    set_property(TARGET ${name} APPEND PROPERTY LINK_FLAGS /DEBUG:ALL)
+  endif()
 endfunction()
 
 if(FIPS_SHARED)
@@ -540,6 +545,9 @@ if(FIPS_SHARED)
     # correct value in generated_fips_shared_support.c. See FIPS.md for a full explanation of the process
     build_libcrypto(precrypto $<TARGET_OBJECTS:fipsmodule>)
     add_executable(fips_empty_main fipsmodule/fips_empty_main.c)
+    # If we're building for MSVC then we want to enable the /DEBUG:ALL flag for the debug symbols
+    set_property(TARGET boringssl_gtest APPEND PROPERTY LINK_FLAGS /DEBUG:ALL)
+
     target_link_libraries(fips_empty_main PUBLIC precrypto)
     add_custom_command(OUTPUT generated_fips_shared_support.c
             COMMAND ${GO_EXECUTABLE} run
@@ -648,6 +656,11 @@ if(BUILD_TESTING)
     fipsmodule/rand/urandom_test.cc
   )
 
+  if(MSVC)
+    # If we're building for MSVC then we want to enable the /DEBUG:ALL flag for the debug symbols
+    set_property(TARGET ${RANDOM_TEST_EXEC} APPEND PROPERTY LINK_FLAGS /DEBUG:ALL)
+  endif()
+
   # When using CPU Jitter as the entropy source (only in FIPS build)
   # urandom_test should not be performed so we pass the compilation flag
   # and handle it in urandom_test.cc
@@ -750,6 +763,12 @@ if(BUILD_TESTING)
     target_link_libraries(${CRYPTO_TEST_EXEC} ws2_32)
   endif()
   add_dependencies(all_tests ${CRYPTO_TEST_EXEC})
+
+  if(MSVC)
+  # If we're building for MSVC then we want to enable the /DEBUG:ALL flag for the debug symbols
+  set_property(TARGET ${CRYPTO_TEST_EXEC} APPEND PROPERTY LINK_FLAGS /DEBUG:ALL)
+  endif()
+
 endif()
 
 install(TARGETS crypto
