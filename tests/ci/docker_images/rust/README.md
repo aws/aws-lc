@@ -23,3 +23,9 @@ $ sudo yum install -y qemu-system-aarch64 qemu-system-x86 qemu-user-binfmt
 $ docker buildx create --name=container --driver=docker-container --use
 $ docker run --privileged --rm tonistiigi/binfmt --install all
 ```
+
+This may periodically need to be reset:
+```
+$ docker run --privileged --rm tonistiigi/binfmt --uninstall arm64,arm,riscv64,mips64le,s390x,ppc64le,mips64
+$ docker run --privileged --rm tonistiigi/binfmt --install all
+```
