@@ -437,7 +437,7 @@ static void RunTest(FileTest *t)
   // attributes.
   bool run_test = true;
 
-  if ((ctrlocation != "AFTER_ITER") && (rlen != "32_BITS")) {
+  if ((ctrlocation != "AFTER_FIXED") || (rlen != "8_BITS")) {
     // HKDF_expand() only works for "Counter After" and an r length of 32-bits.
     // Skip this test.
     run_test = false;
@@ -461,12 +461,16 @@ static void RunTest(FileTest *t)
 
   // Test-specific values
   ASSERT_TRUE(t->GetAttribute(&count, "COUNT"));
-  std::cout << "COUNT " << count << std::endl;
   ASSERT_TRUE(t->GetAttribute(&l_str, "L"));
   ASSERT_TRUE(t->GetBytes(&ki, "KI"));
   ASSERT_TRUE(t->GetBytes(&iv, "IV"));
   ASSERT_TRUE(t->GetBytes(&fixed, "FixedInputData"));
   ASSERT_TRUE(t->GetBytes(&ko, "KO"));
+
+  if (iv.size() > 0) {
+    // We require a zero-length IV.
+    run_test = false;
+  }
 
   // CAVP showing its work. Yes, this is awful.
   t->IgnoreAttribute("Binary rep of i");
