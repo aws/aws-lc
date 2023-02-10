@@ -312,41 +312,37 @@ toploop:
 
 innerloop:
 
-        mov     rax, n_hi
-        mov     k, n_lo
-        mov     l, n_m
-        mov     p2, n_n
-        mov     rbx, 1
-        neg     k
-        and     rbx, m_lo
-        cmovz   rax, rbx
-        cmovz   k, rbx
-        cmovz   l, rbx
-        cmovz   p2, rbx
-        mov     rbx, m_hi
+        xor     eax, eax
+        xor     ebx, ebx
+        xor     p1, p1
+        xor     p2, p2
+        bt      m_lo, 0
 
-        add     k, m_lo
-        mov     p1, k
-        neg     k
-        sub     rbx, rax
+        cmovc   rax, n_hi
+        cmovc   rbx, n_lo
+        cmovc   p1, n_m
+        cmovc   p2, n_n
 
+        mov     l, m_lo
+        sub     m_lo, rbx
+        sub     rbx, l
+        mov     k, m_hi
+        sub     k, rax
         cmovc   n_hi, m_hi
-        cmovc   n_lo, m_lo
+        lea     m_hi, [k-1]
+        cmovc   m_lo, rbx
+        cmovc   n_lo, l
+        not     m_hi
         cmovc   n_m, m_m
         cmovc   n_n, m_n
-        cmovnc  k, p1
-        mov     m_hi, rbx
-        not     rbx
-        inc     rbx
-        cmovc   m_hi, rbx
+        cmovnc  m_hi, k
 
-        mov     m_lo, k
-        add     m_m, l
+        shr     m_lo, 1
+        add     m_m, p1
         add     m_n, p2
         shr     m_hi, 1
-        shr     m_lo, 1
-        lea     n_m, [n_m+n_m]
-        lea     n_n, [n_n+n_n]
+        add     n_m, n_m
+        add     n_n, n_n
 
 // End of the inner for-loop
 

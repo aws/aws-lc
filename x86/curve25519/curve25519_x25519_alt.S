@@ -1054,38 +1054,34 @@ toploop:
         mov     [rsp], r8
         mov     [rsp+0x18], r15
 innerloop:
-        mov     rax, rbp
-        mov     rdi, rsi
-        mov     r13, rcx
-        mov     r15, rdx
-        mov     rbx, 0x1
-        neg     rdi
-        and     rbx, r14
-        cmove   rax, rbx
-        cmove   rdi, rbx
-        cmove   r13, rbx
-        cmove   r15, rbx
-        mov     rbx, r12
-        add     rdi, r14
-        mov     r8, rdi
-        neg     rdi
-        sub     rbx, rax
+        xor     eax, eax
+        xor     ebx, ebx
+        xor     r8, r8
+        xor     r15, r15
+        bt      r14, 0x0
+        cmovb   rax, rbp
+        cmovb   rbx, rsi
+        cmovb   r8, rcx
+        cmovb   r15, rdx
+        mov     r13, r14
+        sub     r14, rbx
+        sub     rbx, r13
+        mov     rdi, r12
+        sub     rdi, rax
         cmovb   rbp, r12
-        cmovb   rsi, r14
+        lea     r12, [rdi-0x1]
+        cmovb   r14, rbx
+        cmovb   rsi, r13
+        not     r12
         cmovb   rcx, r10
         cmovb   rdx, r11
-        cmovae  rdi, r8
-        mov     r12, rbx
-        not     rbx
-        inc     rbx
-        cmovb   r12, rbx
-        mov     r14, rdi
-        add     r10, r13
+        cmovae  r12, rdi
+        shr     r14, 1
+        add     r10, r8
         add     r11, r15
         shr     r12, 1
-        shr     r14, 1
-        lea     rcx, [rcx+rcx]
-        lea     rdx, [rdx+rdx]
+        add     rcx, rcx
+        add     rdx, rdx
         dec     r9
         jne     innerloop
         mov     rdi, [rsp+0x8]

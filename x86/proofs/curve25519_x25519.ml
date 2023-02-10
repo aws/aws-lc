@@ -1899,41 +1899,37 @@ let curve25519_x25519_mc = define_assert_from_elf
   0x4c; 0x89; 0x04; 0x24;  (* MOV (Memop Quadword (%% (rsp,0))) (% r8) *)
   0x4c; 0x89; 0x7c; 0x24; 0x18;
                            (* MOV (Memop Quadword (%% (rsp,24))) (% r15) *)
-  0x48; 0x89; 0xe8;        (* MOV (% rax) (% rbp) *)
-  0x48; 0x89; 0xf7;        (* MOV (% rdi) (% rsi) *)
-  0x49; 0x89; 0xcd;        (* MOV (% r13) (% rcx) *)
-  0x49; 0x89; 0xd7;        (* MOV (% r15) (% rdx) *)
-  0x48; 0xc7; 0xc3; 0x01; 0x00; 0x00; 0x00;
-                           (* MOV (% rbx) (Imm32 (word 1)) *)
-  0x48; 0xf7; 0xdf;        (* NEG (% rdi) *)
-  0x4c; 0x21; 0xf3;        (* AND (% rbx) (% r14) *)
-  0x48; 0x0f; 0x44; 0xc3;  (* CMOVE (% rax) (% rbx) *)
-  0x48; 0x0f; 0x44; 0xfb;  (* CMOVE (% rdi) (% rbx) *)
-  0x4c; 0x0f; 0x44; 0xeb;  (* CMOVE (% r13) (% rbx) *)
-  0x4c; 0x0f; 0x44; 0xfb;  (* CMOVE (% r15) (% rbx) *)
-  0x4c; 0x89; 0xe3;        (* MOV (% rbx) (% r12) *)
-  0x4c; 0x01; 0xf7;        (* ADD (% rdi) (% r14) *)
-  0x49; 0x89; 0xf8;        (* MOV (% r8) (% rdi) *)
-  0x48; 0xf7; 0xdf;        (* NEG (% rdi) *)
-  0x48; 0x29; 0xc3;        (* SUB (% rbx) (% rax) *)
+  0x31; 0xc0;              (* XOR (% eax) (% eax) *)
+  0x31; 0xdb;              (* XOR (% ebx) (% ebx) *)
+  0x4d; 0x31; 0xc0;        (* XOR (% r8) (% r8) *)
+  0x4d; 0x31; 0xff;        (* XOR (% r15) (% r15) *)
+  0x49; 0x0f; 0xba; 0xe6; 0x00;
+                           (* BT (% r14) (Imm8 (word 0)) *)
+  0x48; 0x0f; 0x42; 0xc5;  (* CMOVB (% rax) (% rbp) *)
+  0x48; 0x0f; 0x42; 0xde;  (* CMOVB (% rbx) (% rsi) *)
+  0x4c; 0x0f; 0x42; 0xc1;  (* CMOVB (% r8) (% rcx) *)
+  0x4c; 0x0f; 0x42; 0xfa;  (* CMOVB (% r15) (% rdx) *)
+  0x4d; 0x89; 0xf5;        (* MOV (% r13) (% r14) *)
+  0x49; 0x29; 0xde;        (* SUB (% r14) (% rbx) *)
+  0x4c; 0x29; 0xeb;        (* SUB (% rbx) (% r13) *)
+  0x4c; 0x89; 0xe7;        (* MOV (% rdi) (% r12) *)
+  0x48; 0x29; 0xc7;        (* SUB (% rdi) (% rax) *)
   0x49; 0x0f; 0x42; 0xec;  (* CMOVB (% rbp) (% r12) *)
-  0x49; 0x0f; 0x42; 0xf6;  (* CMOVB (% rsi) (% r14) *)
+  0x4c; 0x8d; 0x67; 0xff;  (* LEA (% r12) (%% (rdi,18446744073709551615)) *)
+  0x4c; 0x0f; 0x42; 0xf3;  (* CMOVB (% r14) (% rbx) *)
+  0x49; 0x0f; 0x42; 0xf5;  (* CMOVB (% rsi) (% r13) *)
+  0x49; 0xf7; 0xd4;        (* NOT (% r12) *)
   0x49; 0x0f; 0x42; 0xca;  (* CMOVB (% rcx) (% r10) *)
   0x49; 0x0f; 0x42; 0xd3;  (* CMOVB (% rdx) (% r11) *)
-  0x49; 0x0f; 0x43; 0xf8;  (* CMOVAE (% rdi) (% r8) *)
-  0x49; 0x89; 0xdc;        (* MOV (% r12) (% rbx) *)
-  0x48; 0xf7; 0xd3;        (* NOT (% rbx) *)
-  0x48; 0xff; 0xc3;        (* INC (% rbx) *)
-  0x4c; 0x0f; 0x42; 0xe3;  (* CMOVB (% r12) (% rbx) *)
-  0x49; 0x89; 0xfe;        (* MOV (% r14) (% rdi) *)
-  0x4d; 0x01; 0xea;        (* ADD (% r10) (% r13) *)
+  0x4c; 0x0f; 0x43; 0xe7;  (* CMOVAE (% r12) (% rdi) *)
+  0x49; 0xd1; 0xee;        (* SHR (% r14) (Imm8 (word 1)) *)
+  0x4d; 0x01; 0xc2;        (* ADD (% r10) (% r8) *)
   0x4d; 0x01; 0xfb;        (* ADD (% r11) (% r15) *)
   0x49; 0xd1; 0xec;        (* SHR (% r12) (Imm8 (word 1)) *)
-  0x49; 0xd1; 0xee;        (* SHR (% r14) (Imm8 (word 1)) *)
-  0x48; 0x8d; 0x0c; 0x09;  (* LEA (% rcx) (%%% (rcx,0,rcx)) *)
-  0x48; 0x8d; 0x14; 0x12;  (* LEA (% rdx) (%%% (rdx,0,rdx)) *)
+  0x48; 0x01; 0xc9;        (* ADD (% rcx) (% rcx) *)
+  0x48; 0x01; 0xd2;        (* ADD (% rdx) (% rdx) *)
   0x49; 0xff; 0xc9;        (* DEC (% r9) *)
-  0x75; 0x8b;              (* JNE (Imm8 (word 139)) *)
+  0x75; 0x9c;              (* JNE (Imm8 (word 156)) *)
   0x48; 0x8b; 0x7c; 0x24; 0x08;
                            (* MOV (% rdi) (Memop Quadword (%% (rsp,8))) *)
   0x4c; 0x8b; 0x6c; 0x24; 0x10;
@@ -2219,8 +2215,8 @@ let curve25519_x25519_mc = define_assert_from_elf
   0x72; 0xc3;              (* JB (Imm8 (word 195)) *)
   0x48; 0x83; 0x6c; 0x24; 0x20; 0x3a;
                            (* SUB (Memop Quadword (%% (rsp,32))) (Imm8 (word 58)) *)
-  0x0f; 0x87; 0x7c; 0xfb; 0xff; 0xff;
-                           (* JA (Imm32 (word 4294966140)) *)
+  0x0f; 0x87; 0x8d; 0xfb; 0xff; 0xff;
+                           (* JA (Imm32 (word 4294966157)) *)
   0x48; 0x8b; 0x84; 0x24; 0xa0; 0x00; 0x00; 0x00;
                            (* MOV (% rax) (Memop Quadword (%% (rsp,160))) *)
   0x48; 0x0b; 0x84; 0x24; 0xa8; 0x00; 0x00; 0x00;
@@ -2493,7 +2489,7 @@ let LOCAL_MUL_P25519_TAC =
       ==>
       !n. read(memory :> bytes(word_add (read p2 t) (word n2),8 * 4)) t = n
       ==>
-      nonoverlapping (word pc,0x1e6c) (word_add (read p3 t) (word n3),8 * 4)
+      nonoverlapping (word pc,0x1e5b) (word_add (read p3 t) (word n3),8 * 4)
       ==> ensures x86
            (\s. bytes_loaded s (word pc) (BUTLAST curve25519_x25519_mc) /\
                 read RIP s = pcin /\
@@ -2661,7 +2657,7 @@ let LOCAL_MUL_P25519_TAC =
    `!(t:x86state) pcin pcout p3 n3 p1 n1.
       !n. read(memory :> bytes(word_add (read p1 t) (word n1),8 * 4)) t = n
       ==>
-        nonoverlapping (word pc,0x1e6c) (word_add (read p3 t) (word n3),8 * 4)
+        nonoverlapping (word pc,0x1e5b) (word_add (read p3 t) (word n3),8 * 4)
         ==> ensures x86
              (\s. bytes_loaded s (word pc) (BUTLAST curve25519_x25519_mc) /\
                   read RIP s = pcin /\
@@ -2833,7 +2829,7 @@ let LOCAL_MUL_5_TAC =
       ==>
       !n. read(memory :> bytes(word_add (read p2 t) (word n2),8 * 4)) t = n
       ==>
-      nonoverlapping (word pc,0x1e6c) (word_add (read p3 t) (word n3),8 * 5)
+      nonoverlapping (word pc,0x1e5b) (word_add (read p3 t) (word n3),8 * 5)
       ==> ensures x86
            (\s. bytes_loaded s (word pc) (BUTLAST curve25519_x25519_mc) /\
                 read RIP s = pcin /\
@@ -2907,7 +2903,7 @@ let LOCAL_SQR_4_TAC =
       !n.
       read(memory :> bytes(word_add (read p1 t) (word n1),8 * 4)) t = n
       ==>
-      nonoverlapping (word pc,0x1e6c) (word_add (read p3 t) (word n3),8 * 4)
+      nonoverlapping (word pc,0x1e5b) (word_add (read p3 t) (word n3),8 * 4)
       ==> ensures x86
            (\s. bytes_loaded s (word pc) (BUTLAST curve25519_x25519_mc) /\
                 read RIP s = pcin /\
@@ -3067,7 +3063,7 @@ let LOCAL_ADD_4_TAC =
       ==>
       !n. read(memory :> bytes(word_add (read p2 t) (word n2),8 * 4)) t = n
       ==>
-      nonoverlapping (word pc,0x1e6c) (word_add (read p3 t) (word n3),8 * 4)
+      nonoverlapping (word pc,0x1e5b) (word_add (read p3 t) (word n3),8 * 4)
       ==> ensures x86
            (\s. bytes_loaded s (word pc) (BUTLAST curve25519_x25519_mc) /\
                 read RIP s = pcin /\
@@ -3111,7 +3107,7 @@ let LOCAL_ADD5_4_TAC =
       ==>
       !n. read(memory :> bytes(word_add (read p2 t) (word n2),8 * 5)) t = n
       ==>
-      nonoverlapping (word pc,0x1e6c) (word_add (read p3 t) (word n3),8 * 4)
+      nonoverlapping (word pc,0x1e5b) (word_add (read p3 t) (word n3),8 * 4)
       ==> ensures x86
            (\s. bytes_loaded s (word pc) (BUTLAST curve25519_x25519_mc) /\
                 read RIP s = pcin /\
@@ -3248,7 +3244,7 @@ let LOCAL_SUB_4_TAC =
       ==>
       !n. read(memory :> bytes(word_add (read p2 t) (word n2),8 * 4)) t = n
       ==>
-      nonoverlapping (word pc,0x1e6c) (word_add (read p3 t) (word n3),8 * 4)
+      nonoverlapping (word pc,0x1e5b) (word_add (read p3 t) (word n3),8 * 4)
       ==> ensures x86
            (\s. bytes_loaded s (word pc) (BUTLAST curve25519_x25519_mc) /\
                 read RIP s = pcin /\
@@ -3315,7 +3311,7 @@ let LOCAL_SUB_TWICE4_TAC =
       ==>
       !n. read(memory :> bytes(word_add (read p2 t) (word n2),8 * 4)) t = n
       ==>
-      nonoverlapping (word pc,0x1e6c) (word_add (read p3 t) (word n3),8 * 4)
+      nonoverlapping (word pc,0x1e5b) (word_add (read p3 t) (word n3),8 * 4)
       ==> ensures x86
            (\s. bytes_loaded s (word pc) (BUTLAST curve25519_x25519_mc) /\
                 read RIP s = pcin /\
@@ -3386,7 +3382,7 @@ let LOCAL_SUB5_4_TAC =
       ==>
       !n. read(memory :> bytes(word_add (read p2 t) (word n2),8 * 5)) t = n
       ==>
-      nonoverlapping (word pc,0x1e6c) (word_add (read p3 t) (word n3),8 * 4)
+      nonoverlapping (word pc,0x1e5b) (word_add (read p3 t) (word n3),8 * 4)
       ==> ensures x86
            (\s. bytes_loaded s (word pc) (BUTLAST curve25519_x25519_mc) /\
                 read RIP s = pcin /\
@@ -3547,7 +3543,7 @@ let LOCAL_CMADD_4_TAC =
      ==>
      !n. read(memory :> bytes(word_add (read p2 t) (word n2),8 * 4)) t = n
      ==>
-      nonoverlapping (word pc,0x1e6c) (word_add (read p3 t) (word n3),8 * 4)
+      nonoverlapping (word pc,0x1e5b) (word_add (read p3 t) (word n3),8 * 4)
       ==> ensures x86
            (\s. bytes_loaded s (word pc) (BUTLAST curve25519_x25519_mc) /\
                 read RIP s = pcin /\
@@ -3687,7 +3683,7 @@ let LOCAL_MUX_4_TAC =
      ==>
      !n. read(memory :> bytes(word_add (read p2 t) (word n2),8 * 4)) t = n
      ==>
-      nonoverlapping (word pc,0x1e6c) (word_add (read p3 t) (word n3),8 * 4) /\
+      nonoverlapping (word pc,0x1e5b) (word_add (read p3 t) (word n3),8 * 4) /\
       nonoverlapping (stackpointer:int64,416) (res,32)
       ==> ensures x86
            (\s. bytes_loaded s (word pc) (BUTLAST curve25519_x25519_mc) /\
@@ -3806,8 +3802,8 @@ let lemma_diffadd2 = prove
 let CURVE25519_X25519_CORRECT = time prove
  (`!res scalar n point X pc stackpointer.
     ALL (nonoverlapping (stackpointer,416))
-        [(word pc,0x1e6c); (res,32); (scalar,32); (point,32)] /\
-    nonoverlapping (res,32) (word pc,0x1e6c)
+        [(word pc,0x1e5b); (res,32); (scalar,32); (point,32)] /\
+    nonoverlapping (res,32) (word pc,0x1e5b)
     ==> ensures x86
          (\s. bytes_loaded s (word pc) (BUTLAST curve25519_x25519_mc) /\
               read RIP s = word(pc + 0x11) /\
@@ -3815,7 +3811,7 @@ let CURVE25519_X25519_CORRECT = time prove
               C_ARGUMENTS [res; scalar; point] s /\
               bignum_from_memory (scalar,4) s = n /\
               bignum_from_memory (point,4) s = X)
-         (\s. read RIP s = word (pc + 0x1e5a) /\
+         (\s. read RIP s = word (pc + 0x1e49) /\
               bignum_from_memory (res,4) s = rfcx25519(n,X))
          (MAYCHANGE [RIP; RDI; RSI; RAX; RBX; RCX; RDX; RBP;
                      R8; R9; R10; R11; R12; R13; R14; R15] ,,
@@ -4350,8 +4346,8 @@ let CURVE25519_X25519_CORRECT = time prove
 let CURVE25519_X25519_SUBROUTINE_CORRECT = time prove
  (`!res scalar n point X pc stackpointer returnaddress.
     ALL (nonoverlapping (word_sub stackpointer (word 464),464))
-        [(word pc,0x1e6c); (point,32); (scalar,32)] /\
-    nonoverlapping (res,32) (word pc,0x1e6c) /\
+        [(word pc,0x1e5b); (point,32); (scalar,32)] /\
+    nonoverlapping (res,32) (word pc,0x1e5b) /\
     nonoverlapping (res,32) (word_sub stackpointer (word 464),472)
     ==> ensures x86
          (\s. bytes_loaded s (word pc) curve25519_x25519_mc /\
@@ -4383,8 +4379,8 @@ let windows_curve25519_x25519_mc = define_from_elf
 let WINDOWS_CURVE25519_X25519_SUBROUTINE_CORRECT = time prove
  (`!res scalar n point X pc stackpointer returnaddress.
     ALL (nonoverlapping (word_sub stackpointer (word 480),480))
-        [(word pc,0x1e79); (point,32); (scalar,32)] /\
-    nonoverlapping (res,32) (word pc,0x1e79) /\
+        [(word pc,0x1e68); (point,32); (scalar,32)] /\
+    nonoverlapping (res,32) (word pc,0x1e68) /\
     nonoverlapping (res,32) (word_sub stackpointer (word 480),488)
     ==> ensures x86
          (\s. bytes_loaded s (word pc) windows_curve25519_x25519_mc /\

@@ -57,10 +57,10 @@ let curve25519_x25519base_alt_mc,curve25519_x25519base_alt_data =
                            (* MOV (Memop Quadword (%% (rsp,24))) (% rax) *)
   0x48; 0x8b; 0x04; 0x24;  (* MOV (% rax) (Memop Quadword (%% (rsp,0))) *)
   0x48; 0x83; 0xe0; 0x08;  (* AND (% rax) (Imm8 (word 8)) *)
-  0x4c; 0x8d; 0x15; 0x07; 0x21; 0x00; 0x00;
-                           (* LEA (% r10) (Riprel (word 8455)) *)
-  0x4c; 0x8d; 0x1d; 0x60; 0x21; 0x00; 0x00;
-                           (* LEA (% r11) (Riprel (word 8544)) *)
+  0x4c; 0x8d; 0x15; 0xf6; 0x20; 0x00; 0x00;
+                           (* LEA (% r10) (Riprel (word 8438)) *)
+  0x4c; 0x8d; 0x1d; 0x4f; 0x21; 0x00; 0x00;
+                           (* LEA (% r11) (Riprel (word 8527)) *)
   0x49; 0x8b; 0x02;        (* MOV (% rax) (Memop Quadword (%% (r10,0))) *)
   0x49; 0x8b; 0x0b;        (* MOV (% rcx) (Memop Quadword (%% (r11,0))) *)
   0x48; 0x0f; 0x45; 0xc1;  (* CMOVNE (% rax) (% rcx) *)
@@ -135,8 +135,8 @@ let curve25519_x25519base_alt_mc,curve25519_x25519base_alt_data =
                            (* MOV (Memop Quadword (%% (rsp,248))) (% rax) *)
   0x48; 0xc7; 0x84; 0x24; 0xc8; 0x01; 0x00; 0x00; 0x04; 0x00; 0x00; 0x00;
                            (* MOV (Memop Quadword (%% (rsp,456))) (Imm32 (word 4)) *)
-  0x48; 0x8d; 0x05; 0x95; 0x20; 0x00; 0x00;
-                           (* LEA (% rax) (Riprel (word 8341)) *)
+  0x48; 0x8d; 0x05; 0x84; 0x20; 0x00; 0x00;
+                           (* LEA (% rax) (Riprel (word 8324)) *)
   0x48; 0x89; 0x84; 0x24; 0xe0; 0x01; 0x00; 0x00;
                            (* MOV (Memop Quadword (%% (rsp,480))) (% rax) *)
   0x48; 0xc7; 0x84; 0x24; 0xd0; 0x01; 0x00; 0x00; 0x00; 0x00; 0x00; 0x00;
@@ -1895,8 +1895,8 @@ let curve25519_x25519base_alt_mc,curve25519_x25519base_alt_data =
                            (* LEA (% rsi) (%% (rsp,128)) *)
   0x48; 0x8d; 0x94; 0x24; 0xc0; 0x00; 0x00; 0x00;
                            (* LEA (% rdx) (%% (rsp,192)) *)
-  0x48; 0x8d; 0x0d; 0x9a; 0x07; 0x00; 0x00;
-                           (* LEA (% rcx) (Riprel (word 1946)) *)
+  0x48; 0x8d; 0x0d; 0x89; 0x07; 0x00; 0x00;
+                           (* LEA (% rcx) (Riprel (word 1929)) *)
   0x4c; 0x8d; 0x84; 0x24; 0x00; 0x01; 0x00; 0x00;
                            (* LEA (% r8) (%% (rsp,256)) *)
   0x48; 0x89; 0x74; 0x24; 0x40;
@@ -2015,41 +2015,37 @@ let curve25519_x25519base_alt_mc,curve25519_x25519base_alt_data =
   0x4c; 0x89; 0x04; 0x24;  (* MOV (Memop Quadword (%% (rsp,0))) (% r8) *)
   0x4c; 0x89; 0x7c; 0x24; 0x18;
                            (* MOV (Memop Quadword (%% (rsp,24))) (% r15) *)
-  0x48; 0x89; 0xe8;        (* MOV (% rax) (% rbp) *)
-  0x48; 0x89; 0xf7;        (* MOV (% rdi) (% rsi) *)
-  0x49; 0x89; 0xcd;        (* MOV (% r13) (% rcx) *)
-  0x49; 0x89; 0xd7;        (* MOV (% r15) (% rdx) *)
-  0x48; 0xc7; 0xc3; 0x01; 0x00; 0x00; 0x00;
-                           (* MOV (% rbx) (Imm32 (word 1)) *)
-  0x48; 0xf7; 0xdf;        (* NEG (% rdi) *)
-  0x4c; 0x21; 0xf3;        (* AND (% rbx) (% r14) *)
-  0x48; 0x0f; 0x44; 0xc3;  (* CMOVE (% rax) (% rbx) *)
-  0x48; 0x0f; 0x44; 0xfb;  (* CMOVE (% rdi) (% rbx) *)
-  0x4c; 0x0f; 0x44; 0xeb;  (* CMOVE (% r13) (% rbx) *)
-  0x4c; 0x0f; 0x44; 0xfb;  (* CMOVE (% r15) (% rbx) *)
-  0x4c; 0x89; 0xe3;        (* MOV (% rbx) (% r12) *)
-  0x4c; 0x01; 0xf7;        (* ADD (% rdi) (% r14) *)
-  0x49; 0x89; 0xf8;        (* MOV (% r8) (% rdi) *)
-  0x48; 0xf7; 0xdf;        (* NEG (% rdi) *)
-  0x48; 0x29; 0xc3;        (* SUB (% rbx) (% rax) *)
+  0x31; 0xc0;              (* XOR (% eax) (% eax) *)
+  0x31; 0xdb;              (* XOR (% ebx) (% ebx) *)
+  0x4d; 0x31; 0xc0;        (* XOR (% r8) (% r8) *)
+  0x4d; 0x31; 0xff;        (* XOR (% r15) (% r15) *)
+  0x49; 0x0f; 0xba; 0xe6; 0x00;
+                           (* BT (% r14) (Imm8 (word 0)) *)
+  0x48; 0x0f; 0x42; 0xc5;  (* CMOVB (% rax) (% rbp) *)
+  0x48; 0x0f; 0x42; 0xde;  (* CMOVB (% rbx) (% rsi) *)
+  0x4c; 0x0f; 0x42; 0xc1;  (* CMOVB (% r8) (% rcx) *)
+  0x4c; 0x0f; 0x42; 0xfa;  (* CMOVB (% r15) (% rdx) *)
+  0x4d; 0x89; 0xf5;        (* MOV (% r13) (% r14) *)
+  0x49; 0x29; 0xde;        (* SUB (% r14) (% rbx) *)
+  0x4c; 0x29; 0xeb;        (* SUB (% rbx) (% r13) *)
+  0x4c; 0x89; 0xe7;        (* MOV (% rdi) (% r12) *)
+  0x48; 0x29; 0xc7;        (* SUB (% rdi) (% rax) *)
   0x49; 0x0f; 0x42; 0xec;  (* CMOVB (% rbp) (% r12) *)
-  0x49; 0x0f; 0x42; 0xf6;  (* CMOVB (% rsi) (% r14) *)
+  0x4c; 0x8d; 0x67; 0xff;  (* LEA (% r12) (%% (rdi,18446744073709551615)) *)
+  0x4c; 0x0f; 0x42; 0xf3;  (* CMOVB (% r14) (% rbx) *)
+  0x49; 0x0f; 0x42; 0xf5;  (* CMOVB (% rsi) (% r13) *)
+  0x49; 0xf7; 0xd4;        (* NOT (% r12) *)
   0x49; 0x0f; 0x42; 0xca;  (* CMOVB (% rcx) (% r10) *)
   0x49; 0x0f; 0x42; 0xd3;  (* CMOVB (% rdx) (% r11) *)
-  0x49; 0x0f; 0x43; 0xf8;  (* CMOVAE (% rdi) (% r8) *)
-  0x49; 0x89; 0xdc;        (* MOV (% r12) (% rbx) *)
-  0x48; 0xf7; 0xd3;        (* NOT (% rbx) *)
-  0x48; 0xff; 0xc3;        (* INC (% rbx) *)
-  0x4c; 0x0f; 0x42; 0xe3;  (* CMOVB (% r12) (% rbx) *)
-  0x49; 0x89; 0xfe;        (* MOV (% r14) (% rdi) *)
-  0x4d; 0x01; 0xea;        (* ADD (% r10) (% r13) *)
+  0x4c; 0x0f; 0x43; 0xe7;  (* CMOVAE (% r12) (% rdi) *)
+  0x49; 0xd1; 0xee;        (* SHR (% r14) (Imm8 (word 1)) *)
+  0x4d; 0x01; 0xc2;        (* ADD (% r10) (% r8) *)
   0x4d; 0x01; 0xfb;        (* ADD (% r11) (% r15) *)
   0x49; 0xd1; 0xec;        (* SHR (% r12) (Imm8 (word 1)) *)
-  0x49; 0xd1; 0xee;        (* SHR (% r14) (Imm8 (word 1)) *)
-  0x48; 0x8d; 0x0c; 0x09;  (* LEA (% rcx) (%%% (rcx,0,rcx)) *)
-  0x48; 0x8d; 0x14; 0x12;  (* LEA (% rdx) (%%% (rdx,0,rdx)) *)
+  0x48; 0x01; 0xc9;        (* ADD (% rcx) (% rcx) *)
+  0x48; 0x01; 0xd2;        (* ADD (% rdx) (% rdx) *)
   0x49; 0xff; 0xc9;        (* DEC (% r9) *)
-  0x75; 0x8b;              (* JNE (Imm8 (word 139)) *)
+  0x75; 0x9c;              (* JNE (Imm8 (word 156)) *)
   0x48; 0x8b; 0x7c; 0x24; 0x08;
                            (* MOV (% rdi) (Memop Quadword (%% (rsp,8))) *)
   0x4c; 0x8b; 0x6c; 0x24; 0x10;
@@ -2335,8 +2331,8 @@ let curve25519_x25519base_alt_mc,curve25519_x25519base_alt_data =
   0x72; 0xc3;              (* JB (Imm8 (word 195)) *)
   0x48; 0x83; 0x6c; 0x24; 0x20; 0x3a;
                            (* SUB (Memop Quadword (%% (rsp,32))) (Imm8 (word 58)) *)
-  0x0f; 0x87; 0x7c; 0xfb; 0xff; 0xff;
-                           (* JA (Imm32 (word 4294966140)) *)
+  0x0f; 0x87; 0x8d; 0xfb; 0xff; 0xff;
+                           (* JA (Imm32 (word 4294966157)) *)
   0x48; 0x8b; 0xac; 0x24; 0xc0; 0x01; 0x00; 0x00;
                            (* MOV (% rbp) (Memop Quadword (%% (rsp,448))) *)
   0x48; 0x8b; 0x84; 0x24; 0xa0; 0x00; 0x00; 0x00;
@@ -5510,38 +5506,38 @@ let GE25519_GROUPER =
      (MATCH_MP pth (CONJ th1 th2));;
 
 let BYTES_LOADED_DATA = prove
- (`bytes_loaded s (word (pc + 8507)) curve25519_x25519base_alt_data <=>
-   read (memory :> bytes(word (pc + 8507),48608)) s =
+ (`bytes_loaded s (word (pc + 0x212a)) curve25519_x25519base_alt_data <=>
+   read (memory :> bytes(word (pc + 0x212a),48608)) s =
    num_of_bytelist curve25519_x25519base_alt_data`,
   REWRITE_TAC[bytes_loaded; READ_BYTELIST_EQ_BYTES;
     CONV_RULE (RAND_CONV LENGTH_CONV)
      (AP_TERM `LENGTH:byte list->num` curve25519_x25519base_alt_data)]);;
 
 let X25519BASE_TABLE_LEMMA = prove
- (`read (memory :> bytes(word (pc + 8507),48608)) s =
+ (`read (memory :> bytes(word (pc + 0x212a),48608)) s =
    num_of_bytelist curve25519_x25519base_alt_data
-   ==> bignum_from_memory(word(pc + 0x213b),4) s = p_25519 /\
+   ==> bignum_from_memory(word(pc + 0x212a),4) s = p_25519 /\
        edwards25519_exprojective
         (group_pow edwards25519_group E_25519 (2 EXP 254))
-        (bignum_from_memory(word(pc + 0x215b),4) s,
-         bignum_from_memory(word(pc + 0x217b),4) s,
+        (bignum_from_memory(word(pc + 0x214a),4) s,
+         bignum_from_memory(word(pc + 0x216a),4) s,
          1,
-         bignum_from_memory(word(pc + 0x219b),4) s) /\
+         bignum_from_memory(word(pc + 0x218a),4) s) /\
        edwards25519_exprojective
         (group_pow edwards25519_group E_25519 (2 EXP 254 + 8))
-        (bignum_from_memory(word(pc + 0x21bb),4) s,
-         bignum_from_memory(word(pc + 0x21db),4) s,
+        (bignum_from_memory(word(pc + 0x21aa),4) s,
+         bignum_from_memory(word(pc + 0x21ca),4) s,
          1,
-         bignum_from_memory(word(pc + 0x21fb),4) s) /\
+         bignum_from_memory(word(pc + 0x21ea),4) s) /\
        !i. i < 63
            ==> !j. j < 8
                    ==> edwards25519_epprojective
                         (group_pow edwards25519_group E_25519
                            (2 EXP (4 * (i + 1)) * (j + 1)))
-         (bignum_from_memory(word(pc + 0x221b + 768 * i + 96 * j),4) s,
-          bignum_from_memory(word(pc + 0x221b + 768 * i + 96 * j + 32),4) s,
-          bignum_from_memory(word(pc + 0x221b + 768 * i + 96 * j + 64),4) s) /\
-         ~(bignum_from_memory(word(pc + 0x221b + 768 * i + 96 * j + 64),4) s =
+         (bignum_from_memory(word(pc + 0x220a + 768 * i + 96 * j),4) s,
+          bignum_from_memory(word(pc + 0x220a + 768 * i + 96 * j + 32),4) s,
+          bignum_from_memory(word(pc + 0x220a + 768 * i + 96 * j + 64),4) s) /\
+         ~(bignum_from_memory(word(pc + 0x220a + 768 * i + 96 * j + 64),4) s =
            0)`,
   let GE25519_POWERS =
     end_itlist CONJ
@@ -5612,7 +5608,7 @@ let LOCAL_MUL_P25519_TAC =
       ==>
       !n. read(memory :> bytes(word_add (read p2 t) (word n2),8 * 4)) t = n
       ==>
-      nonoverlapping (word pc,0xdf1b) (word_add (read p3 t) (word n3),8 * 4)
+      nonoverlapping (word pc,0xdf0a) (word_add (read p3 t) (word n3),8 * 4)
       ==> ensures x86
            (\s. bytes_loaded s (word pc) curve25519_x25519base_alt_mc /\
                 read RIP s = pcin /\
@@ -5795,7 +5791,7 @@ let LOCAL_MUL_4_TAC =
       ==>
       !n. read(memory :> bytes(word_add (read q2 t) (word n2),8 * 4)) t = n
       ==>
-      nonoverlapping (word pc,0xdf1b) (word_add (read q3 t) (word n3),8 * 4)
+      nonoverlapping (word pc,0xdf0a) (word_add (read q3 t) (word n3),8 * 4)
       ==> ensures x86
            (\s. bytes_loaded s (word pc) curve25519_x25519base_alt_mc /\
                 read RIP s = pcin /\
@@ -5962,7 +5958,7 @@ let LOCAL_ADD_4_TAC =
       ==>
       !n. read(memory :> bytes(word_add (read q2 t) (word n2),8 * 4)) t = n
       ==>
-      nonoverlapping (word pc,0xdf1b) (word_add (read q3 t) (word n3),8 * 4)
+      nonoverlapping (word pc,0xdf0a) (word_add (read q3 t) (word n3),8 * 4)
       ==> ensures x86
            (\s. bytes_loaded s (word pc) curve25519_x25519base_alt_mc /\
                 read RIP s = pcin /\
@@ -6007,7 +6003,7 @@ let LOCAL_DOUBLE_4_TAC =
       ==>
       nonoverlapping (word_add (read q3 t) (word n3),8 * 4)
                      (word_add (read q1 t) (word n1),8 * 4) /\
-      nonoverlapping (word pc,0xdf1b) (word_add (read q3 t) (word n3),8 * 4)
+      nonoverlapping (word pc,0xdf0a) (word_add (read q3 t) (word n3),8 * 4)
       ==> ensures x86
            (\s. bytes_loaded s (word pc) curve25519_x25519base_alt_mc /\
                 read RIP s = pcin /\
@@ -6049,7 +6045,7 @@ let LOCAL_SUB_4_TAC =
       ==>
       !n. read(memory :> bytes(word_add (read q2 t) (word n2),8 * 4)) t = n
       ==>
-      nonoverlapping (word pc,0xdf1b) (word_add (read q3 t) (word n3),8 * 4)
+      nonoverlapping (word pc,0xdf0a) (word_add (read q3 t) (word n3),8 * 4)
       ==> ensures x86
            (\s. bytes_loaded s (word pc) curve25519_x25519base_alt_mc /\
                 read RIP s = pcin /\
@@ -6117,7 +6113,7 @@ let LOCAL_ADD_TWICE4_TAC =
       ==>
       !n. read(memory :> bytes(word_add (read q2 t) (word n2),8 * 4)) t = n
       ==>
-      nonoverlapping (word pc,0xdf1b) (word_add (read q3 t) (word n3),8 * 4)
+      nonoverlapping (word pc,0xdf0a) (word_add (read q3 t) (word n3),8 * 4)
       ==> ensures x86
            (\s. bytes_loaded s (word pc) curve25519_x25519base_alt_mc /\
                 read RIP s = pcin /\
@@ -6184,7 +6180,7 @@ let LOCAL_SUB_TWICE4_TAC =
       ==>
       !n. read(memory :> bytes(word_add (read q2 t) (word n2),8 * 4)) t = n
       ==>
-      nonoverlapping (word pc,0xdf1b) (word_add (read q3 t) (word n3),8 * 4)
+      nonoverlapping (word pc,0xdf0a) (word_add (read q3 t) (word n3),8 * 4)
       ==> ensures x86
            (\s. bytes_loaded s (word pc) curve25519_x25519base_alt_mc /\
                 read RIP s = pcin /\
@@ -6272,8 +6268,8 @@ let LOCAL_MODINV_TAC =
 let CURVE25519_X25519BASE_ALT_CORRECT = time prove
  (`!res scalar n pc stackpointer.
     ALL (nonoverlapping (stackpointer,488))
-        [(word pc,0xdf1b); (res,32); (scalar,32)] /\
-    nonoverlapping (res,32) (word pc,0xdf1b)
+        [(word pc,0xdf0a); (res,32); (scalar,32)] /\
+    nonoverlapping (res,32) (word pc,0xdf0a)
     ==> ensures x86
          (\s. bytes_loaded s (word pc)
                (APPEND curve25519_x25519base_alt_mc
@@ -6282,7 +6278,7 @@ let CURVE25519_X25519BASE_ALT_CORRECT = time prove
               read RSP s = stackpointer /\
               C_ARGUMENTS [res; scalar] s /\
               bignum_from_memory (scalar,4) s = n)
-         (\s. read RIP s = word (pc + 0x2129) /\
+         (\s. read RIP s = word (pc + 0x2118) /\
               bignum_from_memory (res,4) s = rfcx25519(n,9))
          (MAYCHANGE [RIP; RDI; RSI; RAX; RBX; RCX; RDX; RBP;
                      R8; R9; R10; R11; R12; R13; R14; R15] ,,
@@ -6311,12 +6307,12 @@ let CURVE25519_X25519BASE_ALT_CORRECT = time prove
 
   ENSURES_WHILE_AUP_TAC `1` `64` `pc + 0x19a` `pc + 0x189c`
    `\i s.
-      read (memory :> bytes(word(pc + 8507),48608)) s =
+      read (memory :> bytes(word(pc + 0x212a),48608)) s =
       num_of_bytelist curve25519_x25519base_alt_data /\
       read RSP s = stackpointer /\
       read (memory :> bytes64 (word_add stackpointer (word 448))) s = res /\
       read (memory :> bytes64 (word_add stackpointer (word 480))) s =
-      word(pc + 0x221b + 768 * (i - 1)) /\
+      word(pc + 0x220a + 768 * (i - 1)) /\
       read (memory :> bytes64 (word_add stackpointer (word 456))) s =
       word (4 * i) /\
       val(read (memory :> bytes64 (word_add stackpointer (word 464))) s) <= 1 /\
@@ -6348,23 +6344,23 @@ let CURVE25519_X25519BASE_ALT_CORRECT = time prove
       RULE_ASSUM_TAC(REWRITE_RULE[SYM th]) THEN ASSUME_TAC th) THEN
     SUBGOAL_THEN
      `nonoverlapping_modulo (2 EXP 64) (val(stackpointer:int64),488)
-                                       (val(wpc:int64),0xdf1b)`
+                                       (val(wpc:int64),0xdf0a)`
     ASSUME_TAC THENL
      [EXPAND_TAC "wpc" THEN NONOVERLAPPING_TAC; ALL_TAC] THEN
     REPEAT(DISCH_THEN(CONJUNCTS_THEN2 ASSUME_TAC MP_TAC)) THEN
     DISCH_THEN(K ALL_TAC) THEN
     BIGNUM_LDIGITIZE_TAC "x0_"
-      `bignum_from_memory(word_add wpc (word 8539),4) s0` THEN
+      `bignum_from_memory(word_add wpc (word 0x214a),4) s0` THEN
     BIGNUM_LDIGITIZE_TAC "y0_"
-      `bignum_from_memory(word_add wpc (word 8571),4) s0` THEN
+      `bignum_from_memory(word_add wpc (word 0x216a),4) s0` THEN
     BIGNUM_LDIGITIZE_TAC "t0_"
-      `bignum_from_memory(word_add wpc (word 8603),4) s0` THEN
+      `bignum_from_memory(word_add wpc (word 0x218a),4) s0` THEN
     BIGNUM_LDIGITIZE_TAC "x1_"
-      `bignum_from_memory(word_add wpc (word 8635),4) s0` THEN
+      `bignum_from_memory(word_add wpc (word 0x21aa),4) s0` THEN
     BIGNUM_LDIGITIZE_TAC "y1_"
-      `bignum_from_memory(word_add wpc (word 8667),4) s0` THEN
+      `bignum_from_memory(word_add wpc (word 0x21ca),4) s0` THEN
     BIGNUM_LDIGITIZE_TAC "t1_"
-      `bignum_from_memory(word_add wpc (word 8699),4) s0` THEN
+      `bignum_from_memory(word_add wpc (word 0x21ea),4) s0` THEN
 
     X86_STEPS_TAC CURVE25519_X25519BASE_ALT_EXEC (1--14) THEN
 
@@ -6533,7 +6529,7 @@ let CURVE25519_X25519BASE_ALT_CORRECT = time prove
     REWRITE_TAC[ARITH_RULE
       `pc + off + 768 * (i - 1) + jre = (pc + off + 768 * (i - 1)) + jre`] THEN
     GEN_REWRITE_TAC (LAND_CONV o ONCE_DEPTH_CONV) [WORD_ADD] THEN
-    ABBREV_TAC `tab:int64 = word(pc + 0x221b + 768 * (i - 1))` THEN
+    ABBREV_TAC `tab:int64 = word(pc + 0x220a + 768 * (i - 1))` THEN
     CONV_TAC(LAND_CONV EXPAND_CASES_CONV) THEN
     CONV_TAC(LAND_CONV NUM_REDUCE_CONV) THEN
     GEN_REWRITE_TAC (LAND_CONV o TOP_DEPTH_CONV) [WORD_ADD_0] THEN
@@ -7044,8 +7040,8 @@ let CURVE25519_X25519BASE_ALT_CORRECT = time prove
 let CURVE25519_X25519BASE_ALT_SUBROUTINE_CORRECT = time prove
  (`!res scalar n pc stackpointer returnaddress.
     ALL (nonoverlapping (word_sub stackpointer (word 536),536))
-        [(word pc,0xdf1b); (scalar,32)] /\
-    nonoverlapping (res,32) (word pc,0xdf1b) /\
+        [(word pc,0xdf0a); (scalar,32)] /\
+    nonoverlapping (res,32) (word pc,0xdf0a) /\
     nonoverlapping (res,32) (word_sub stackpointer (word 536),544)
     ==> ensures x86
          (\s. bytes_loaded s (word pc)
@@ -7077,7 +7073,7 @@ let CURVE25519_X25519BASE_ALT_SUBROUTINE_CORRECT = time prove
 
 let windows_curve25519_x25519base_alt_mc,
     windows_curve25519_x25519base_alt_data =
-  define_coda_from_elf 0x214b
+  define_coda_from_elf 0x213a
   "windows_curve25519_x25519base_alt_mc"
   "windows_curve25519_x25519base_alt_data"
   "x86/curve25519/curve25519_x25519base_alt.obj";;
@@ -7085,8 +7081,8 @@ let windows_curve25519_x25519base_alt_mc,
 let WINDOWS_CURVE25519_X25519BASE_ALT_SUBROUTINE_CORRECT = time prove
  (`!res scalar n pc stackpointer returnaddress.
     ALL (nonoverlapping (word_sub stackpointer (word 560),560))
-        [(word pc,0xdf2b); (scalar,32)] /\
-    nonoverlapping (res,32) (word pc,0xdf2b) /\
+        [(word pc,0xdf1a); (scalar,32)] /\
+    nonoverlapping (res,32) (word pc,0xdf1a) /\
     nonoverlapping (res,32) (word_sub stackpointer (word 560),568)
     ==> ensures x86
          (\s. bytes_loaded s (word pc)
@@ -7127,7 +7123,8 @@ let WINDOWS_CURVE25519_X25519BASE_ALT_SUBROUTINE_CORRECT = time prove
   ENSURES_PRESERVED_TAC "rdi_init" `RDI` THEN
   REWRITE_TAC(!simulation_precanon_thms) THEN ENSURES_INIT_TAC "s0" THEN
   X86_STEPS_TAC WINDOWS_CURVE25519_X25519BASE_ALT_EXEC (1--5) THEN
-  RULE_ASSUM_TAC(REWRITE_RULE[ARITH_RULE `pc + 8523 = (pc + 16) + 8507`]) THEN
+  RULE_ASSUM_TAC(REWRITE_RULE[ARITH_RULE
+   `pc + 0x213a = (pc + 16) + 0x212a`]) THEN
   X86_SUBROUTINE_SIM_TAC
     (windows_curve25519_x25519base_alt_mc,
      WINDOWS_CURVE25519_X25519BASE_ALT_EXEC,
