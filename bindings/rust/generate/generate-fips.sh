@@ -94,7 +94,7 @@ mkdir -p "${TMP_DIR}"
 determine_generate_version
 
 # Crate preparation.
-if [[ ! -r "${SYMBOLS_FILE}" ]] || [[! -d "${AWS_LC_FIPS_DIR}" ]]; then
+if [[ ! -r "${SYMBOLS_FILE}" || ! -d "${AWS_LC_FIPS_DIR}" ]]; then
   # Symbols file must be consistent with AWS-LC source directory
   rm -f "${SYMBOLS_FILE}"
   rm -rf "${AWS_LC_FIPS_DIR}"

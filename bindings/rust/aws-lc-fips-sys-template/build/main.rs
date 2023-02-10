@@ -98,7 +98,7 @@ fn get_platform_output_path() -> PathBuf {
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 fn prefix_string() -> String {
-    format!("aws_lc_{}", VERSION.to_string().replace('.', "_"))
+    format!("aws_lc_fips_{}", VERSION.to_string().replace('.', "_"))
 }
 
 fn test_perl_command() -> bool {
