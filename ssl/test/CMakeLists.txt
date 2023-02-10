@@ -15,8 +15,8 @@ add_executable(
 )
 
 if(MSVC)
-  # If we're building for MSVC then we want to enable the /DEBUG:ALL flag for the debug symbols
-  set_property(TARGET bssl_shim APPEND PROPERTY LINK_FLAGS /DEBUG:ALL)
+  # If we're building for MSVC then we want to enable the /DEBUG:FULL flag for the debug symbols
+  set_property(TARGET bssl_shim APPEND PROPERTY LINK_FLAGS /DEBUG:FULL)
 endif()
 
 add_dependencies(bssl_shim global_target)

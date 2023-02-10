@@ -45,8 +45,8 @@ add_library(
 )
 
 if(MSVC)
-  # If we're building for MSVC then we want to enable the /DEBUG:ALL flag for the debug symbols
-  set_property(TARGET ssl APPEND PROPERTY LINK_FLAGS /DEBUG:ALL)
+  # If we're building for MSVC then we want to enable the /DEBUG:FULL flag for the debug symbols
+  set_property(TARGET ssl APPEND PROPERTY LINK_FLAGS /DEBUG:FULL)
 endif()
 
 target_compile_definitions(ssl PRIVATE BORINGSSL_IMPLEMENTATION)
@@ -70,8 +70,8 @@ if(BUILD_TESTING)
   )
   
   if(MSVC)
-    # If we're building for MSVC then we want to enable the /DEBUG:ALL flag for the debug symbols
-    set_property(TARGET ${SSL_TEST_EXEC} APPEND PROPERTY LINK_FLAGS /DEBUG:ALL)
+    # If we're building for MSVC then we want to enable the /DEBUG:FULL flag for the debug symbols
+    set_property(TARGET ${SSL_TEST_EXEC} APPEND PROPERTY LINK_FLAGS /DEBUG:FULL)
   endif()
 
   add_dependencies(${SSL_TEST_EXEC} global_target)

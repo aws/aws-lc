@@ -787,8 +787,8 @@ if(BUILD_TESTING)
   target_include_directories(boringssl_gtest PRIVATE third_party/googletest)
 
   if(MSVC)
-    # If we're building for MSVC then we want to enable the /DEBUG:ALL flag for the debug symbols
-    set_property(TARGET boringssl_gtest APPEND PROPERTY LINK_FLAGS /DEBUG:ALL)
+    # If we're building for MSVC then we want to enable the /DEBUG:FULL flag for the debug symbols
+    set_property(TARGET boringssl_gtest APPEND PROPERTY LINK_FLAGS /DEBUG:FULL/)
   endif()
 
   include_directories(third_party/googletest/include)
