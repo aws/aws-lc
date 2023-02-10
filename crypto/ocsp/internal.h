@@ -24,6 +24,28 @@ struct ocsp_cert_id_st {
   ASN1_INTEGER *serialNumber;
 };
 
+//   Request ::=     SEQUENCE {
+//       reqCert                    CertID,
+//       singleRequestExtensions    [0] EXPLICIT Extensions OPTIONAL }
+//
+struct ocsp_one_request_st {
+    OCSP_CERTID *reqCert;
+    STACK_OF(X509_EXTENSION) *singleRequestExtensions;
+};
+
+//   TBSRequest      ::=     SEQUENCE {
+//       version             [0] EXPLICIT Version DEFAULT v1,
+//       requestorName       [1] EXPLICIT GeneralName OPTIONAL,
+//       requestList             SEQUENCE OF Request,
+//       requestExtensions   [2] EXPLICIT Extensions OPTIONAL }
+//
+struct ocsp_req_info_st {
+    ASN1_INTEGER *version;
+    GENERAL_NAME *requestorName;
+    STACK_OF(OCSP_ONEREQ) *requestList;
+    STACK_OF(X509_EXTENSION) *requestExtensions;
+};
+
 //   Signature ::= SEQUENCE {
 //       signatureAlgorithm   AlgorithmIdentifier,
 //       signature            BIT STRING,
@@ -35,6 +57,25 @@ struct ocsp_signature_st {
   STACK_OF(X509) *certs;
 };
 
+//   OCSPRequest     ::=     SEQUENCE {
+//       tbsRequest                  TBSRequest,
+//       optionalSignature   [0]     EXPLICIT Signature OPTIONAL }
+//
+struct ocsp_request_st {
+    OCSP_REQINFO tbsRequest;
+    OCSP_SIGNATURE *optionalSignature; /* OPTIONAL */
+};
+
+// Opaque OCSP request status structure
+struct ocsp_req_ctx_st {
+    int state;                  // Current I/O state
+    unsigned char *iobuf;       // Line buffer
+    int iobuflen;               // Line buffer length
+    BIO *io;                    // BIO to perform I/O with
+    BIO *mem;                   // Memory BIO response is built into
+    unsigned long asn1_len;     // ASN1 length of response
+    unsigned long max_resp_len; // Maximum length of response
+};
 
 //   OCSPResponseStatus ::= ENUMERATED {
 //       successful         (0),  --Response has valid confirmations
@@ -79,8 +120,6 @@ struct ocsp_responder_id_st {
     ASN1_OCTET_STRING *byKey;
   } value;
 };
-
-
 
 //   RevokedInfo ::= SEQUENCE {
 //     revocationTime     GeneralizedTime,

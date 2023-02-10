@@ -26,17 +26,22 @@ extern "C" {
 
 
 typedef struct ocsp_cert_id_st OCSP_CERTID;
-typedef struct ocsp_responder_id_st OCSP_RESPID;
+typedef struct ocsp_one_request_st OCSP_ONEREQ;
+typedef struct ocsp_req_info_st OCSP_REQINFO;
+typedef struct ocsp_req_ctx_st OCSP_REQ_CTX;
 typedef struct ocsp_signature_st OCSP_SIGNATURE;
+typedef struct ocsp_request_st OCSP_REQUEST;
 typedef struct ocsp_resp_bytes_st OCSP_RESPBYTES;
 typedef struct ocsp_revoked_info_st OCSP_REVOKEDINFO;
 typedef struct ocsp_cert_status_st OCSP_CERTSTATUS;
 typedef struct ocsp_single_response_st OCSP_SINGLERESP;
 typedef struct ocsp_response_data_st OCSP_RESPDATA;
 typedef struct ocsp_response_st OCSP_RESPONSE;
+typedef struct ocsp_responder_id_st OCSP_RESPID;
 typedef struct ocsp_basic_response_st OCSP_BASICRESP;
 
 DEFINE_STACK_OF(OCSP_CERTID)
+DEFINE_STACK_OF(OCSP_ONEREQ)
 DEFINE_STACK_OF(OCSP_RESPID)
 DEFINE_STACK_OF(OCSP_SINGLERESP)
 
@@ -48,8 +53,11 @@ DECLARE_ASN1_FUNCTIONS(OCSP_RESPDATA)
 DECLARE_ASN1_FUNCTIONS(OCSP_RESPID)
 DECLARE_ASN1_FUNCTIONS(OCSP_RESPONSE)
 DECLARE_ASN1_FUNCTIONS(OCSP_RESPBYTES)
+DECLARE_ASN1_FUNCTIONS(OCSP_ONEREQ)
 DECLARE_ASN1_FUNCTIONS(OCSP_CERTID)
+DECLARE_ASN1_FUNCTIONS(OCSP_REQUEST)
 DECLARE_ASN1_FUNCTIONS(OCSP_SIGNATURE)
+DECLARE_ASN1_FUNCTIONS(OCSP_REQINFO)
 
 // Returns response status from |OCSP_RESPONSE|.
 OPENSSL_EXPORT int OCSP_response_status(OCSP_RESPONSE *resp);
