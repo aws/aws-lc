@@ -98,15 +98,6 @@ _gcm_init_v8:
 	pmull	v5.1q,v5.1d,v19.1d
 	eor	v18.16b,v18.16b,v2.16b
 	eor	v4.16b,v4.16b,v7.16b
-##  	veor		v20.16b, v0.16b,v18.16b		//H^3
-##  	veor		v22.16b,v5.16b,v4.16b		//H^4
-##
-##  	ext		v16.16b,v20.16b, v20.16b,#8		//Karatsuba pre-processing
-##  	ext		v17.16b,v22.16b,v22.16b,#8
-##  	veor		v16.16b,v16.16b,v20.16b
-##  	veor		v17.16b,v17.16b,v22.16b
-##  	ext		v21.16b,v16.16b,v17.16b,#8		//pack Karatsuba pre-processed
-##  	vst1		{v20.2d-v22.2d},[x0]		//store Htable[3..5]
 
 	eor	v23.16b, v0.16b,v18.16b		//H^3
 	eor	v25.16b,v5.16b,v4.16b			//H^4
