@@ -10,7 +10,7 @@ if(FIPS)
 
   if(MSVC)
     # If we're building for MSVC then we want to enable the /DEBUG:FULL flag for the debug symbols
-    set_property(TARGET modulewrapper APPEND PROPERTY LINK_FLAGS /DEBUG:FULL)
+    target_link_options(modulewrapper PUBLIC /DEBUG:FULL)
   endif()
 
   add_dependencies(modulewrapper global_target)

@@ -44,8 +44,8 @@ else()
 endif()
 
 if(MSVC)
-# If we're building for MSVC then we want to enable the /DEBUG:FULL flag for the debug symbols
-set_property(TARGET bssl APPEND PROPERTY LINK_FLAGS /DEBUG:FULL)
+  # If we're building for MSVC then we want to enable the /DEBUG:FULL flag for the debug symbols
+  target_link_options(bssl PUBLIC /DEBUG:FULL)
 endif()
 
 install(TARGETS bssl
@@ -70,8 +70,8 @@ function(build_benchmark target_name install_path)
   endif()
 
   if(MSVC)
-  # If we're building for MSVC then we want to enable the /DEBUG:FULL flag for the debug symbols
-  set_property(TARGET ${target_name} APPEND PROPERTY LINK_FLAGS /DEBUG:FULL)
+    # If we're building for MSVC then we want to enable the /DEBUG:FULL flag for the debug symbols
+    target_link_options(${target_name} PUBLIC /DEBUG:FULL)
   endif()
 
 endfunction()

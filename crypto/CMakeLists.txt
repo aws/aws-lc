@@ -533,7 +533,7 @@ function(build_libcrypto name module_source)
   
   if(MSVC)
     # If we're building for MSVC then we want to enable the /DEBUG:FULL flag for the debug symbols
-    set_property(TARGET ${name} APPEND PROPERTY LINK_FLAGS /DEBUG:FULL)
+    target_link_options(${name} PUBLIC /DEBUG:FULL)
   endif()
 endfunction()
 
@@ -546,7 +546,7 @@ if(FIPS_SHARED)
     build_libcrypto(precrypto $<TARGET_OBJECTS:fipsmodule>)
     add_executable(fips_empty_main fipsmodule/fips_empty_main.c)
     # If we're building for MSVC then we want to enable the /DEBUG:FULL flag for the debug symbols
-    set_property(TARGET boringssl_gtest APPEND PROPERTY LINK_FLAGS /DEBUG:FULL)
+    target_link_options(boringssl_gtest PUBLIC /DEBUG:FULL)
 
     target_link_libraries(fips_empty_main PUBLIC precrypto)
     add_custom_command(OUTPUT generated_fips_shared_support.c
@@ -658,7 +658,7 @@ if(BUILD_TESTING)
 
   if(MSVC)
     # If we're building for MSVC then we want to enable the /DEBUG:FULL flag for the debug symbols
-    set_property(TARGET ${RANDOM_TEST_EXEC} APPEND PROPERTY LINK_FLAGS /DEBUG:FULL)
+    target_link_options(${RANDOM_TEST_EXEC} PUBLIC /DEBUG:FULL)
   endif()
 
   # When using CPU Jitter as the entropy source (only in FIPS build)
@@ -765,8 +765,8 @@ if(BUILD_TESTING)
   add_dependencies(all_tests ${CRYPTO_TEST_EXEC})
 
   if(MSVC)
-  # If we're building for MSVC then we want to enable the /DEBUG:FULL flag for the debug symbols
-  set_property(TARGET ${CRYPTO_TEST_EXEC} APPEND PROPERTY LINK_FLAGS /DEBUG:FULL)
+    # If we're building for MSVC then we want to enable the /DEBUG:FULL flag for the debug symbols
+    target_link_options(${CRYPTO_TEST_EXEC} PUBLIC /DEBUG:FULL)
   endif()
 
 endif()
