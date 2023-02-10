@@ -179,15 +179,6 @@ $code.=<<___;
 	vpmull.p64	$Yl,$Yl,$xC2
 	veor		$t2,$t2,$Xh
 	veor		$t3,$t3,$Yh
-##  	veor		$H, $Xl,$t2		@ H^3
-##  	veor		$H2,$Yl,$t3		@ H^4
-##
-##  	vext.8		$t0,$H, $H,#8		@ Karatsuba pre-processing
-##  	vext.8		$t1,$H2,$H2,#8
-##  	veor		$t0,$t0,$H
-##  	veor		$t1,$t1,$H2
-##  	vext.8		$Hhl,$t0,$t1,#8		@ pack Karatsuba pre-processed
-##  	vst1.64		{$H-$H2},[x0]		@ store Htable[3..5]
 
 	veor		$H3, $Xl,$t2		@ H^3
 	veor		$H4,$Yl,$t3			@ H^4

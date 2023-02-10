@@ -155,7 +155,29 @@ static size_t hw_gcm_encrypt(const uint8_t *in, uint8_t *out, size_t len,
   if (!len_blocks) {
     return 0;
   }
-  aes_gcm_enc_kernel(in, len_blocks * 8, out, Xi, ivec, key);
+
+  if (CRYPTO_is_ARMv8_GCM_8x_capable() && len >= 192) {
+    switch(key->rounds) {
+    case 10:
+      aesv8_gcm_8x_enc_128(in, len_blocks * 8, out, Xi, ivec, key);
+      break;
+    case 12:
+      aesv8_gcm_8x_enc_192(in, len_blocks * 8, out, Xi, ivec, key);
+      break;
+    case 14:
+      aesv8_gcm_8x_enc_256(in, len_blocks * 8, out, Xi, ivec, key);
+      break;
+    default:
+      // This function is allowed to process no input;
+      // the subsequent logic after calling it can process
+      // the entire input.
+      return 0;
+      break;
+    }
+  } else {
+    aes_gcm_enc_kernel(in, len_blocks * 8, out, Xi, ivec, key);
+  }
+
   return len_blocks;
 }
 
@@ -166,7 +188,29 @@ static size_t hw_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
   if (!len_blocks) {
     return 0;
   }
-  aes_gcm_dec_kernel(in, len_blocks * 8, out, Xi, ivec, key);
+
+  if (CRYPTO_is_ARMv8_GCM_8x_capable() && len >= 192) {
+    switch(key->rounds) {
+    case 10:
+      aesv8_gcm_8x_dec_128(in, len_blocks * 8, out, Xi, ivec, key);
+      break;
+    case 12:
+      aesv8_gcm_8x_dec_192(in, len_blocks * 8, out, Xi, ivec, key);
+      break;
+    case 14:
+      aesv8_gcm_8x_dec_256(in, len_blocks * 8, out, Xi, ivec, key);
+      break;
+    default:
+      // This function is allowed to process no input;
+      // the subsequent logic after calling it can process
+      // the entire input.
+      return 0;
+      break;
+    }
+  } else {
+    aes_gcm_dec_kernel(in, len_blocks * 8, out, Xi, ivec, key);
+  }
+
   return len_blocks;
 }
 
@@ -367,60 +411,6 @@ int CRYPTO_gcm128_aad(GCM128_CONTEXT *ctx, const uint8_t *aad, size_t len) {
   ctx->ares = n;
   return 1;
 }
-
-#if defined(AES_ARMV8_GCM)
-static size_t aesv8_gcm_8x_encrypt(const uint8_t *in, uint8_t *out, size_t len,
-                            const AES_KEY *key, uint8_t ivec[16],
-                            uint64_t *Xi) {
-  size_t align_bytes = 0;
-  align_bytes = len - len % 16;
-
-  switch(key->rounds) {
-  case 10:
-    aesv8_gcm_8x_enc_128(in, align_bytes * 8, out, Xi, ivec, key);
-    break;
-  case 12:
-    aesv8_gcm_8x_enc_192(in, align_bytes * 8, out, Xi, ivec, key);
-    break;
-  case 14:
-    aesv8_gcm_8x_enc_256(in, align_bytes * 8, out, Xi, ivec, key);
-    break;
-  default:
-    // This function is allowed to process no input;
-    // the subsequent logic after calling it can process
-    // the entire input.
-    return 0;
-    break;
-  }
-  return align_bytes;
-}
-
-static size_t aesv8_gcm_8x_decrypt(const uint8_t *in, uint8_t *out, size_t len,
-                            const AES_KEY *key, uint8_t ivec[16],
-                            uint64_t *Xi) {
-  size_t align_bytes = 0;
-  align_bytes = len - len % 16;
-
-  switch(key->rounds) {
-  case 10:
-    aesv8_gcm_8x_dec_128(in, align_bytes * 8, out, Xi, ivec, key);
-    break;
-  case 12:
-    aesv8_gcm_8x_dec_192(in, align_bytes * 8, out, Xi, ivec, key);
-    break;
-  case 14:
-    aesv8_gcm_8x_dec_256(in, align_bytes * 8, out, Xi, ivec, key);
-    break;
-  default:
-    // This function is allowed to process no input;
-    // the subsequent logic after calling it can process
-    // the entire input.
-    return 0;
-    break;
-  }
-  return align_bytes;
-}
-#endif // AES_ARMV8_GCM
 
 int CRYPTO_gcm128_encrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
                           const uint8_t *in, uint8_t *out, size_t len) {
@@ -653,13 +643,6 @@ int CRYPTO_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
     out += bulk;
     len -= bulk;
   }
-#elif defined(AES_ARMV8_GCM)
-  if (CRYPTO_is_ARMv8_GCM_8x_capable() && len >= 192) {
-    size_t bulk = aesv8_gcm_8x_encrypt(in, out, len, key, ctx->Yi.c, ctx->Xi.u);
-    in += bulk;
-    out += bulk;
-    len -= bulk;
-  }
 #endif
 
   uint32_t ctr = CRYPTO_bswap4(ctx->Yi.d[3]);
@@ -744,13 +727,6 @@ int CRYPTO_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
     // |hw_gcm_decrypt| may not process all the input given to it. It may
     // not process *any* of its input if it is deemed too small.
     size_t bulk = hw_gcm_decrypt(in, out, len, key, ctx->Yi.c, ctx->Xi.u);
-    in += bulk;
-    out += bulk;
-    len -= bulk;
-  }
-#elif defined(AES_ARMV8_GCM)
-  if (CRYPTO_is_ARMv8_GCM_8x_capable() && len >= 192) {
-    size_t bulk = aesv8_gcm_8x_decrypt(in, out, len, key, ctx->Yi.c, ctx->Xi.u);
     in += bulk;
     out += bulk;
     len -= bulk;
