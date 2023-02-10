@@ -170,6 +170,10 @@ extern "C" {
 #define OPENSSL_FREEBSD
 #endif
 
+#if defined(__OpenBSD__)
+#define OPENSSL_OPENBSD
+#endif
+
 // BoringSSL requires platform's locking APIs to make internal global state
 // thread-safe, including the PRNG. On some single-threaded embedded platforms,
 // locking APIs may not exist, so this dependency may be disabled with the
@@ -212,7 +216,7 @@ extern "C" {
 // ServiceIndicatorTest.AWSLCVersionString
 // Note: there are two versions of this test. Only one test is compiled
 // depending on FIPS mode.
-#define AWSLC_VERSION_NUMBER_STRING "1.3.0"
+#define AWSLC_VERSION_NUMBER_STRING "1.4.0"
 
 #if defined(BORINGSSL_SHARED_LIBRARY)
 

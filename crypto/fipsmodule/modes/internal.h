@@ -296,6 +296,7 @@ size_t aesni_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
 #endif  // OPENSSL_X86
 
 #elif defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
+
 #define GHASH_ASM_ARM
 #define GCM_FUNCREF
 
@@ -316,7 +317,6 @@ void gcm_ghash_neon(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
                     size_t len);
 
 #if defined(OPENSSL_AARCH64)
-#define AES_ARMV8_GCM
 // Note that in the argument list, the length is provided in bits (not bytes)
 // and that the order of arguments is different from that of
 // |aesni_gcm_encrypt|.
@@ -332,6 +332,12 @@ size_t aesv8_gcm_8x_enc_256(const uint8_t *in, size_t bit_len, uint8_t *out,
                             uint64_t *Xi, uint8_t ivec[16], const AES_KEY *key);
 size_t aesv8_gcm_8x_dec_256(const uint8_t *in, size_t bit_len, uint8_t *out,
                             uint64_t *Xi, uint8_t ivec[16], const AES_KEY *key);
+#define HW_GCM
+// These functions are defined in aesv8-gcm-armv8.pl.
+void aes_gcm_enc_kernel(const uint8_t *in, uint64_t in_bits, void *out,
+                        void *Xi, uint8_t *ivec, const AES_KEY *key);
+void aes_gcm_dec_kernel(const uint8_t *in, uint64_t in_bits, void *out,
+                        void *Xi, uint8_t *ivec, const AES_KEY *key);
 #endif
 
 #elif defined(OPENSSL_PPC64LE)
