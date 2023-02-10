@@ -16,6 +16,7 @@ add_executable(
 
 if(MSVC)
   # If we're building for MSVC then we want to enable the /DEBUG:FULL flag for the debug symbols
+  # This isn't the same as building in 'debug' mode, but instead generates .pdb files that allow debugging of release code.
   target_link_options(bssl_shim PUBLIC /DEBUG:FULL)
 endif()
 
