@@ -12,6 +12,8 @@ SKIP_TEST=0
 GENERATE_FIPS=0
 CRATE_NAME="aws-lc-sys"
 CRATE_VERSION="" # User prompted for version when empty
+AWS_LC_GIT_CLONE_URL=${AWS_LC_GIT_CLONE_URL:-https://github.com/awslabs/aws-lc.git}
+AWS_LC_GIT_BRANCH=${AWS_LC_GIT_BRANCH:-"main"}
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 AWS_LC_DIR=$( cd -- "${SCRIPT_DIR}/../../../" &> /dev/null && pwd)
@@ -28,9 +30,7 @@ source "${SCRIPT_DIR}"/_generation_tools.sh
 
 # Clone the main branch in local.
 function clone_main_branch {
-  pushd "${TMP_DIR}"
-  git clone -b main --depth 1 --single-branch https://github.com/awslabs/aws-lc.git
-  popd
+  git clone -b "${AWS_LC_GIT_BRANCH}" --depth 1 --single-branch "${AWS_LC_GIT_CLONE_URL}" "${AWS_LC_SRC_DIR}"
 }
 
 function prepare_crate_dir {
