@@ -338,6 +338,12 @@ ECDSA_SIG *ECDSA_do_sign(const uint8_t *digest, size_t digest_len,
   SHA512_Final(additional_data, &sha);
 
   FIPS_service_indicator_unlock_state();
+  // Cap iterations so callers who supply invalid values as custom groups do not
+  // infinite loop. This does not impact valid parameters (e.g. those covered by
+  // FIPS) because the probability of requiring even one retry is negligible,
+  // let alone 32.
+  static const int kMaxIterations = 32;
+  int iters = 0;
   for (;;) {
     EC_SCALAR k;
     if (!ec_random_nonzero_scalar(group, &k, additional_data)) {
@@ -351,6 +357,13 @@ ECDSA_SIG *ECDSA_do_sign(const uint8_t *digest, size_t digest_len,
     if (sig != NULL || !retry) {
       OPENSSL_cleanse(&k, sizeof(EC_SCALAR));
       return sig;
+    }
+
+    iters++;
+    if (iters > kMaxIterations) {
+      OPENSSL_cleanse(&k, sizeof(EC_SCALAR));
+      OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_TOO_MANY_ITERATIONS);
+      return NULL;
     }
   }
 }
