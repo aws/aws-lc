@@ -172,7 +172,7 @@ TEST(ECDHTest, InvalidPubKeyLargeCoord) {
     // Generate a generic ec key.
     EC_KEY_generate_key(priv_key.get());
 
-    size_t len = BN_num_bytes(&group.get()->field->N); // Modulus byte-length
+    size_t len = BN_num_bytes(&group.get()->field.N); // Modulus byte-length
     std::vector<uint8_t> shared_key((group.get()->curve_name == NID_secp521r1) ?
                                     SHA512_DIGEST_LENGTH : len);
 

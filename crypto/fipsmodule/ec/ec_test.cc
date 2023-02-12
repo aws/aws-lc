@@ -1267,8 +1267,8 @@ TEST(ECTest, SmallGroupOrder) {
   bssl::UniquePtr<EC_KEY> key2(EC_KEY_new());
   ASSERT_TRUE(key2);
   ASSERT_TRUE(EC_KEY_set_group(key2.get(), group.get()));
-  BN_clear(&key2.get()->group->order->N);
-  ASSERT_TRUE(BN_set_word(&key2.get()->group->order->N, 7));
+  BN_clear(&key2.get()->group->order.N);
+  ASSERT_TRUE(BN_set_word(&key2.get()->group->order.N, 7));
   ASSERT_FALSE(EC_KEY_generate_key_fips(key2.get()));
 }
 
@@ -1325,8 +1325,8 @@ TEST(ECDeathTest, SmallGroupOrderAndDie) {
   bssl::UniquePtr<EC_KEY> key2(EC_KEY_new());
   ASSERT_TRUE(key2);
   ASSERT_TRUE(EC_KEY_set_group(key2.get(), group.get()));
-  BN_clear(&key2.get()->group->order->N);
-  ASSERT_TRUE(BN_set_word(&key2.get()->group->order->N, 7));
+  BN_clear(&key2.get()->group->order.N);
+  ASSERT_TRUE(BN_set_word(&key2.get()->group->order.N, 7));
   ASSERT_DEATH_IF_SUPPORTED(EC_KEY_generate_key_fips(key2.get()), "");
 }
 
@@ -1899,10 +1899,10 @@ TEST(ECTest, LargeXCoordinateVectors) {
     // Set the raw point directly with the BIGNUM coordinates.
     // Note that both are in little-endian byte order.
     OPENSSL_memcpy(key.get()->pub_key->raw.X.words,
-                   x.get()->d, BN_BYTES * group->field->N.width);
+                   x.get()->d, BN_BYTES * group->field.N.width);
     OPENSSL_memcpy(key.get()->pub_key->raw.Y.words,
-                   y.get()->d, BN_BYTES * group->field->N.width);
-    OPENSSL_memset(key.get()->pub_key->raw.Z.words, 0, BN_BYTES * group->field->N.width);
+                   y.get()->d, BN_BYTES * group->field.N.width);
+    OPENSSL_memset(key.get()->pub_key->raw.Z.words, 0, BN_BYTES * group->field.N.width);
     key.get()->pub_key->raw.Z.words[0] = 1;
 
     // |EC_KEY_check_fips| first calls the |EC_KEY_check_key| function that
@@ -1921,7 +1921,7 @@ TEST(ECTest, LargeXCoordinateVectors) {
 
     // Now replace the x-coordinate with the larger one, x+p.
     OPENSSL_memcpy(key.get()->pub_key->raw.X.words,
-                   xpp.get()->d, BN_BYTES * group->field->N.width);
+                   xpp.get()->d, BN_BYTES * group->field.N.width);
     // We expect |EC_KEY_check_fips| to always fail when given key with x > p.
     ASSERT_FALSE(EC_KEY_check_fips(key.get()));
 
@@ -2352,6 +2352,6 @@ TEST(ECTest, FelemBytes) {
 
     bssl::UniquePtr<EC_GROUP> test_group(EC_GROUP_new_by_curve_name(nid));
     ASSERT_TRUE(test_group);
-    ASSERT_EQ(test_group.get()->field->N.width, expected_felem_words);
+    ASSERT_EQ(test_group.get()->field.N.width, expected_felem_words);
   }
 }
