@@ -1267,8 +1267,8 @@ TEST(ECTest, SmallGroupOrder) {
   bssl::UniquePtr<EC_KEY> key2(EC_KEY_new());
   ASSERT_TRUE(key2);
   ASSERT_TRUE(EC_KEY_set_group(key2.get(), group.get()));
-  BN_clear(&key2.get()->group->order);
-  ASSERT_TRUE(BN_set_word(&key2.get()->group->order, 7));
+  BN_clear(&key2.get()->group->order->N);
+  ASSERT_TRUE(BN_set_word(&key2.get()->group->order->N, 7));
   ASSERT_FALSE(EC_KEY_generate_key_fips(key2.get()));
 }
 
@@ -1325,8 +1325,8 @@ TEST(ECDeathTest, SmallGroupOrderAndDie) {
   bssl::UniquePtr<EC_KEY> key2(EC_KEY_new());
   ASSERT_TRUE(key2);
   ASSERT_TRUE(EC_KEY_set_group(key2.get(), group.get()));
-  BN_clear(&key2.get()->group->order);
-  ASSERT_TRUE(BN_set_word(&key2.get()->group->order, 7));
+  BN_clear(&key2.get()->group->order->N);
+  ASSERT_TRUE(BN_set_word(&key2.get()->group->order->N, 7));
   ASSERT_DEATH_IF_SUPPORTED(EC_KEY_generate_key_fips(key2.get()), "");
 }
 
