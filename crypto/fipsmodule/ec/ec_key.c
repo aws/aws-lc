@@ -387,7 +387,7 @@ int EC_KEY_check_fips(const EC_KEY *key) {
   // ec_felem_to_bignum() calls BN_bin2bn() which sets the `neg` flag to 0.
   EC_POINT *pub_key = key->pub_key;
   EC_GROUP *group = key->pub_key->group;
-  if(ec_felem_equal(group, &group->one, &pub_key->raw.Z)) {
+  if(ec_felem_equal(group, ec_felem_one(group), &pub_key->raw.Z)) {
     BIGNUM *x = BN_new();
     BIGNUM *y = BN_new();
     int check_ret = 1;
