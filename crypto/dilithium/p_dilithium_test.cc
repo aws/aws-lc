@@ -550,6 +550,22 @@ TEST(Dilithium3Test, Decoding) {
 
   // test that the encoded public key encodes as expected
   EXPECT_EQ(Bytes(kPublicKeySPKI), Bytes(der, der_len));
+
+  // we now decode the DER structure, then parse as a PKEY.
+  CBS cbs;
+  CBS_init(&cbs, der, der_len);
+  EVP_PKEY *dilithium_pkey_from_der = EVP_parse_public_key(&cbs);
+  ASSERT_TRUE(dilithium_pkey_from_der);
+
+  // extract the public key and check it is equivalent to original key
+  uint8_t pub_buf[1952];
+  size_t pub_len;
+  ASSERT_TRUE(EVP_PKEY_get_raw_public_key(dilithium_pkey_from_der, nullptr, &pub_len));
+  EXPECT_EQ(pub_len, 1952u);
+  ASSERT_TRUE(EVP_PKEY_get_raw_public_key(dilithium_pkey_from_der, pub_buf, &pub_len));
+  EXPECT_EQ(Bytes(kPublicKey), Bytes(pub_buf, pub_len));
+
+  EVP_PKEY_free(dilithium_pkey_from_der);
 }
 
 TEST(Dilithium3Test, SIGOperations) {
