@@ -30,6 +30,8 @@ source "${SCRIPT_DIR}"/_generation_tools.sh
 
 # Clone the main branch in local.
 function clone_main_branch {
+  echo "Cloning from: ${AWS_LC_GIT_CLONE_URL}:${AWS_LC_GIT_BRANCH}"
+  prompt_yes_no "Continue?"
   git clone -b "${AWS_LC_GIT_BRANCH}" --depth 1 --single-branch "${AWS_LC_GIT_CLONE_URL}" "${AWS_LC_SRC_DIR}"
 }
 

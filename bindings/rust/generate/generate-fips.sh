@@ -30,6 +30,8 @@ source "${SCRIPT_DIR}"/_generation_tools.sh
 
 # Clone the FIPS branch in local.
 function clone_fips_branch {
+  echo "Cloning from: ${AWS_LC_FIPS_GIT_CLONE_URL}:${AWS_LC_FIPS_GIT_BRANCH}"
+  prompt_yes_no "Continue?"
   git clone -b "${AWS_LC_FIPS_GIT_BRANCH}" --depth 1 --single-branch "${AWS_LC_FIPS_GIT_CLONE_URL}" "${AWS_LC_FIPS_DIR}"
 }
 
