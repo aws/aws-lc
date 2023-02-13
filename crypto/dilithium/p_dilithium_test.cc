@@ -547,6 +547,7 @@ TEST(Dilithium3Test, Decoding) {
   ASSERT_TRUE(CBB_init(cbb.get(), 0));
   ASSERT_TRUE(EVP_marshal_public_key(cbb.get(), pubkey.get()));
   ASSERT_TRUE(CBB_finish(cbb.get(), &der, &der_len));
+  bssl::UniquePtr<uint8_t> free_der(der);
 
   // test that the encoded public key encodes as expected
   EXPECT_EQ(Bytes(kPublicKeySPKI), Bytes(der, der_len));
