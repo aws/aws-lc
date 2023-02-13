@@ -205,6 +205,8 @@ struct ocsp_basic_response_st {
   STACK_OF(X509) *certs;
 };
 
+int OCSP_REQ_CTX_i2d(OCSP_REQ_CTX *rctx, const ASN1_ITEM *it, ASN1_VALUE *val);
+
 // Returns |OCSP_SINGLERESP| in the index of |OCSP_BASICRESP|.
 OCSP_SINGLERESP *OCSP_resp_get0(OCSP_BASICRESP *bs, size_t idx);
 
