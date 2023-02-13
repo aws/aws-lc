@@ -589,7 +589,7 @@ static int mod_mul_consttime(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
 }
 
 DSA_SIG *DSA_do_sign(const uint8_t *digest, size_t digest_len, const DSA *dsa) {
-  if (!dsa_check_parameters(dsa)) {
+  if (!dsa_check_key(dsa)) {
     return NULL;
   }
 
@@ -689,7 +689,7 @@ int DSA_do_verify(const uint8_t *digest, size_t digest_len, DSA_SIG *sig,
 int DSA_do_check_signature(int *out_valid, const uint8_t *digest,
                            size_t digest_len, DSA_SIG *sig, const DSA *dsa) {
   *out_valid = 0;
-  if (!dsa_check_parameters(dsa)) {
+  if (!dsa_check_key(dsa)) {
     return 0;
   }
 
