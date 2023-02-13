@@ -101,8 +101,27 @@ typedef enum {
 
 // Elliptic curve groups.
 
-// EC_GROUP_new_by_curve_name returns a fresh EC_GROUP object for the elliptic
-// curve specified by |nid|, or NULL on unsupported NID or allocation failure.
+// EC_group_p224 returns an |EC_GROUP| for P-224, also known as secp224r1.
+OPENSSL_EXPORT const EC_GROUP *EC_group_p224(void);
+
+// EC_group_p256 returns an |EC_GROUP| for P-256, also known as secp256r1 or
+// prime256v1.
+OPENSSL_EXPORT const EC_GROUP *EC_group_p256(void);
+
+// EC_group_p384 returns an |EC_GROUP| for P-384, also known as secp384r1.
+OPENSSL_EXPORT const EC_GROUP *EC_group_p384(void);
+
+// EC_group_p521 returns an |EC_GROUP| for P-521, also known as secp521r1.
+OPENSSL_EXPORT const EC_GROUP *EC_group_p521(void);
+
+// EC_group_secp256k1 returns an |EC_GROUP| for secp256k1.
+OPENSSL_EXPORT const EC_GROUP *EC_group_secp256k1(void);
+
+// EC_GROUP_new_by_curve_name returns the |EC_GROUP| object for the elliptic
+// curve specified by |nid|, or NULL on unsupported NID.  For OpenSSL
+// compatibility, this function returns a non-const pointer which may be passed
+// to |EC_GROUP_free|. However, the resulting object is actually static and
+// calling |EC_GROUP_free| is optional.
 //
 // The supported NIDs are (see crypto/fipsmodule/ec/ec.c):
 //   NID_secp224r1 (NIST P-224),
@@ -110,6 +129,9 @@ typedef enum {
 //   NID_secp384r1 (NIST P-384),
 //   NID_secp521r1 (NIST P-521),
 //   NID_secp256k1 (SEC/ANSI P-256 K1)
+//
+// Calling this function causes all four curves to be linked into the binary.
+// Prefer calling |EC_group_*| to allow the static linker to drop unused curves.
 //
 // If in doubt, use |NID_X9_62_prime256v1|, or see the curve25519.h header for
 // more modern primitives.
