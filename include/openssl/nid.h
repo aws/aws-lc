@@ -4293,6 +4293,12 @@ extern "C" {
 #define SN_KYBER512_R3 "KYBER512_R3"
 #define NID_KYBER512_R3 972
 
+#define SN_KYBER768_R3 "KYBER768_R3"
+#define NID_KYBER768_R3 973
+
+#define SN_KYBER1024_R3 "KYBER1024_R3"
+#define NID_KYBER1024_R3 974
+
 
 #if defined(__cplusplus)
 } /* extern C */
