@@ -139,7 +139,7 @@ static int rsa_pub_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
 static int rsa_priv_encode(CBB *out, const EVP_PKEY *key) {
   CBB pkcs8, algorithm, oid, null, private_key;
   if (!CBB_add_asn1(out, &pkcs8, CBS_ASN1_SEQUENCE) ||
-      !CBB_add_asn1_uint64(&pkcs8, 0 /* version */) ||
+      !CBB_add_asn1_uint64(&pkcs8, PKCS8_VERSION_ONE /* version */) ||
       !CBB_add_asn1(&pkcs8, &algorithm, CBS_ASN1_SEQUENCE) ||
       !CBB_add_asn1(&algorithm, &oid, CBS_ASN1_OBJECT) ||
       !CBB_add_bytes(&oid, rsa_asn1_meth.oid, rsa_asn1_meth.oid_len) ||

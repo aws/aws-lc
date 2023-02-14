@@ -208,7 +208,7 @@ static int ed25519_priv_encode(CBB *out, const EVP_PKEY *pkey) {
   // See RFC 8410, section 7.
   CBB pkcs8, algorithm, oid, private_key, inner;
   if (!CBB_add_asn1(out, &pkcs8, CBS_ASN1_SEQUENCE) ||
-      !CBB_add_asn1_uint64(&pkcs8, 0 /* version */) ||
+      !CBB_add_asn1_uint64(&pkcs8, PKCS8_VERSION_ONE /* version */) ||
       !CBB_add_asn1(&pkcs8, &algorithm, CBS_ASN1_SEQUENCE) ||
       !CBB_add_asn1(&algorithm, &oid, CBS_ASN1_OBJECT) ||
       !CBB_add_bytes(&oid, ed25519_asn1_meth.oid, ed25519_asn1_meth.oid_len) ||
@@ -235,7 +235,7 @@ static int ed25519_priv_encode_v2(CBB *out, const EVP_PKEY *pkey) {
   // See RFC 8410, section 7.
   CBB pkcs8, algorithm, oid, private_key, inner, public_key;
   if (!CBB_add_asn1(out, &pkcs8, CBS_ASN1_SEQUENCE) ||
-      !CBB_add_asn1_uint64(&pkcs8, 1 /* version */) ||
+      !CBB_add_asn1_uint64(&pkcs8, PKCS8_VERSION_TWO /* version */) ||
       !CBB_add_asn1(&pkcs8, &algorithm, CBS_ASN1_SEQUENCE) ||
       !CBB_add_asn1(&algorithm, &oid, CBS_ASN1_OBJECT) ||
       !CBB_add_bytes(&oid, ed25519_asn1_meth.oid, ed25519_asn1_meth.oid_len) ||
