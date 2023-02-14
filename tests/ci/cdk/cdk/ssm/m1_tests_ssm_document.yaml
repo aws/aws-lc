@@ -1,0 +1,34 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
+
+---
+schemaVersion: '2.2'
+description: aws-lc:bmFrameworkEc2Benchmark
+mainSteps:
+  - action: aws:runShellScript
+    name: runShellScript
+    inputs:
+      timeoutSeconds: '7200'
+      runCommand:
+        - eval $(/opt/homebrew/bin/brew shellenv)
+        - sudo su
+        - BUILD_ROOT=$(mktemp -d)
+        - cd ${BUILD_ROOT}
+        - export HOME="/var/root"
+        - export SOURCE={SOURCE}
+        - trap "rm -rf ${BUILD_ROOT}" EXIT
+        # Check if the source code is on S3, otherwise treat the source as a PR.
+        - >
+          if [[ "${SOURCE:0:16}" == 'aws-lc-codebuild' ]]; then
+            aws s3api get-object --bucket {S3_BUCKET} --key "${SOURCE##{S3_BUCKET}/}" aws-lc-pr.zip
+            unzip aws-lc-pr.zip
+          else
+            git clone {SOURCE} aws-lc-pr
+            cd aws-lc-pr
+            git fetch origin pull/{PR_NUM}/head:temp
+            git checkout temp
+          fi
+        - chmod +x ./tests/ci/run_posix_tests.sh
+        - ./tests/ci/run_posix_tests.sh
+        - chmod +x ./tests/ci/run_fips_tests.sh
+        - ./tests/ci/run_fips_tests.sh
