@@ -8,8 +8,7 @@ repository = "https://github.com/awslabs/aws-lc"
 license = "Apache-2.0 OR ISC"
 rust-version = "1.57.0"
 include = [
-    "build.rs",
-    "build_bindgen.rs",
+    "build/**/*.rs",
     "Cargo.toml",
     "deps/aws-lc/**/*.c",
     "deps/aws-lc/**/*.cc",
@@ -23,21 +22,27 @@ include = [
     "src/**/*.rs",
     "tests/**/*.rs",
 ]
+build = "build/main.rs"
 
 [features]
 asan = []
 generate_bindings = ["bindgen"] # Generate the bindings on the targetted platform as a fallback mechanism.
 internal_generate = ["bindgen"] # Only for internal use, this line is removed prior to publishing.
+ssl = []
 
 [build-dependencies]
 cmake = "0.1.48"
-bindgen = { version = "0.61", optional = true }
+bindgen = { version = "0.64.0", optional = true }
 regex = "1"
 dunce = "1.0"
 cfg_aliases = "0.1.1"
 
 [dependencies]
 libc = "0.2"
+paste = "1.0.11"
 
 [dev-dependencies]
-openssl = { version = "0.10", features = ["vendored"] }
+openssl = { version = "0.10" }
+
+[package.metadata.aws-lc-sys]
+commit-hash = "__AWS_LC_COMMIT_HASH__"
