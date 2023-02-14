@@ -30,12 +30,12 @@ static void x25519_free(EVP_PKEY *pkey) {
 }
 
 static int x25519_set_priv_raw(EVP_PKEY *pkey, const uint8_t *privkey, size_t privkey_len, const uint8_t* pubkey, size_t pubkey_len) {
-  if (privkey_len != 32) {
+  if (privkey_len != X25519_PRIVATE_KEY_LEN) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
   }
 
-  if (pubkey && pubkey_len != 32) {
+  if (pubkey && pubkey_len != X25519_PUBLIC_VALUE_LEN) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
   }
@@ -46,7 +46,7 @@ static int x25519_set_priv_raw(EVP_PKEY *pkey, const uint8_t *privkey, size_t pr
     return 0;
   }
 
-  OPENSSL_memcpy(key->priv, privkey, 32);
+  OPENSSL_memcpy(key->priv, privkey, X25519_PRIVATE_KEY_LEN);
   X25519_public_from_private(key->pub, key->priv);
   key->has_private = 1;
 
