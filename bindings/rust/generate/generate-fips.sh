@@ -30,7 +30,7 @@ source "${SCRIPT_DIR}"/_generation_tools.sh
 # Clone the FIPS branch in local.
 function clone_fips_branch {
   pushd "${TMP_DIR}"
-  git clone -b ${AWS_LC_FIPS_BRANCH} --depth 1 --single-branch https://github.com/awslabs/aws-lc.git
+  git clone -b ${AWS_LC_FIPS_BRANCH} --depth 1 --single-branch https://github.com/aws/aws-lc.git
   popd
 }
 

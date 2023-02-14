@@ -170,7 +170,7 @@ OPENSSL_EXPORT void OPENSSL_clear_free(void *ptr, size_t len);
 // |OPENSSL_malloc/free/realloc| can be customized by implementing |OPENSSL_memory_alloc/free/realloc| or calling
 // CRYPTO_set_mem_functions. If  |OPENSSL_memory_alloc/free/realloc| is defined CRYPTO_set_mem_functions will fail.
 // All of the warnings for |OPENSSL_malloc/free/realloc| apply to CRYPTO_set_mem_functions:
-// -- https://github.com/awslabs/aws-lc/blame/d164f5762b1ad5d4f2d1561fb85daa556fdff5ef/crypto/mem.c#L111-L127
+// -- https://github.com/aws/aws-lc/blame/d164f5762b1ad5d4f2d1561fb85daa556fdff5ef/crypto/mem.c#L111-L127
 // This function is only recommended for debug purpose(e.g. track mem usage).
 // AWS-LC differs from OpenSSL's  CRYPTO_set_mem_functions in that __FILE__ and __LINE__ are not supplied.
 //

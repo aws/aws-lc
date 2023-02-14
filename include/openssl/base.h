@@ -211,7 +211,7 @@ extern "C" {
 #define AWSLC_API_VERSION 20
 
 // This string tracks the most current production release version on Github
-// https://github.com/awslabs/aws-lc/releases.
+// https://github.com/aws/aws-lc/releases.
 // When bumping the encoded version number, also update the test fixture:
 // ServiceIndicatorTest.AWSLCVersionString
 // Note: there are two versions of this test. Only one test is compiled
