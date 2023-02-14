@@ -157,7 +157,7 @@ EVP_PKEY *EVP_parse_private_key(CBS *cbs) {
   int type;
   if (!CBS_get_asn1(cbs, &pkcs8, CBS_ASN1_SEQUENCE) ||
       !CBS_get_asn1_uint64(&pkcs8, &version) ||
-      version > 1 ||
+      version > PKCS8_VERSION_TWO ||
       !CBS_get_asn1(&pkcs8, &algorithm, CBS_ASN1_SEQUENCE) ||
       !CBS_get_asn1(&pkcs8, &key, CBS_ASN1_OCTETSTRING)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
@@ -183,7 +183,7 @@ EVP_PKEY *EVP_parse_private_key(CBS *cbs) {
   // divisible by 8 we leave the first octet of the bit string present, which
   // specifies the padded bit count between 0 and 7.
   if (CBS_peek_asn1_tag(&pkcs8, kPublicKeyTag)) {
-    if (version != 1 || !CBS_get_asn1(&pkcs8, &public_key, kPublicKeyTag)) {
+    if (version != PKCS8_VERSION_TWO || !CBS_get_asn1(&pkcs8, &public_key, kPublicKeyTag)) {
       OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
       return NULL;
     }
