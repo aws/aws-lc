@@ -8,7 +8,6 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 AWS_LC_DIR=$( cd -- "${SCRIPT_DIR}/../../../" &> /dev/null && pwd)
 
 if [[ "${GENERATE_FIPS}" -eq 0 ]]; then
-  CRATE_NAME="aws-lc-sys"
 
    ## macos x86_64 bindings
   if [[ ! "${OSTYPE}" == "darwin"* ]]; then
@@ -42,7 +41,6 @@ if [[ "${GENERATE_FIPS}" -eq 0 ]]; then
 
   popd
 else
-  CRATE_NAME="aws-lc-fips-sys"
 
   pushd "${AWS_LC_DIR}"
 

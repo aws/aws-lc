@@ -3441,6 +3441,10 @@ void ssl_reset_error_state(SSL *ssl);
 // current state of the error queue.
 void ssl_set_read_error(SSL *ssl);
 
+// ssl_update_counter updates the stat counters in |SSL_CTX|. lock should be
+// set to false when the mutex in |SSL_CTX| has already been locked.
+void ssl_update_counter(SSL_CTX *ctx, int &counter, bool lock);
+
 BSSL_NAMESPACE_END
 
 
@@ -3537,6 +3541,24 @@ struct ssl_ctx_st {
   void (*remove_session_cb)(SSL_CTX *ctx, SSL_SESSION *sess) = nullptr;
   SSL_SESSION *(*get_session_cb)(SSL *ssl, const uint8_t *data, int len,
                                  int *copy) = nullptr;
+
+  struct {
+    int sess_connect = 0;             // SSL new conn - started
+    int sess_connect_renegotiate = 0; // SSL reneg - requested
+    int sess_connect_good = 0;        // SSL new conne/reneg - finished
+    int sess_accept = 0;              // SSL new accept - started
+    int sess_accept_good = 0;         // SSL accept/reneg - finished
+    int sess_miss = 0;                // session lookup misses
+    int sess_timeout = 0;             // reuse attempt on timeouted session
+    int sess_cache_full = 0;          // session removed due to full cache
+    int sess_hit = 0;                 // session reuse actually done
+    int sess_cb_hit = 0;              // session-id that was not
+                                      // in the cache was
+                                      // passed back via the callback. This
+                                      // indicates that the application is
+                                      // supplying session-id's from other
+                                      // processes - spooky :-)
+  } stats;
 
   CRYPTO_refcount_t references = 1;
 

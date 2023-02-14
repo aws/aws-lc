@@ -17,7 +17,6 @@ cargo clean
 # internal_generate pre-generates the bindings for a specific platform. This feature 
 # is only intended for internal use and is removed prior to crate publishing.
 cargo build --features internal_generate
-rm "${CRATE_DIR}"/src/bindings.rs
 cargo clean
 
 popd

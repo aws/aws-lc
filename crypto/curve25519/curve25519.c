@@ -37,10 +37,6 @@
 // Various pre-computed constants.
 #include "./curve25519_tables.h"
 
-#if defined(OPENSSL_NO_ASM)
-#define FIAT_25519_NO_ASM
-#endif
-
 #if defined(BORINGSSL_CURVE25519_64BIT)
 #include "../../third_party/fiat/curve25519_64.h"
 #else
@@ -1875,9 +1871,10 @@ static void sc_muladd(uint8_t *s, const uint8_t *a, const uint8_t *b,
 }
 
 void ED25519_keypair(uint8_t out_public_key[32], uint8_t out_private_key[64]) {
-  uint8_t seed[32];
-  RAND_bytes(seed, 32);
+  uint8_t seed[ED25519_SEED_LEN];
+  RAND_bytes(seed, ED25519_SEED_LEN);
   ED25519_keypair_from_seed(out_public_key, out_private_key, seed);
+  OPENSSL_cleanse(seed, ED25519_SEED_LEN);
 }
 
 int ED25519_sign(uint8_t out_sig[64], const uint8_t *message,
@@ -1982,9 +1979,9 @@ int ED25519_verify(const uint8_t *message, size_t message_len,
 
 void ED25519_keypair_from_seed(uint8_t out_public_key[32],
                                uint8_t out_private_key[64],
-                               const uint8_t seed[32]) {
+                               const uint8_t seed[ED25519_SEED_LEN]) {
   uint8_t az[SHA512_DIGEST_LENGTH];
-  SHA512(seed, 32, az);
+  SHA512(seed, ED25519_SEED_LEN, az);
 
   az[0] &= 248;
   az[31] &= 127;
@@ -1994,8 +1991,8 @@ void ED25519_keypair_from_seed(uint8_t out_public_key[32],
   x25519_ge_scalarmult_base(&A, az);
   ge_p3_tobytes(out_public_key, &A);
 
-  OPENSSL_memcpy(out_private_key, seed, 32);
-  OPENSSL_memcpy(out_private_key + 32, out_public_key, 32);
+  OPENSSL_memcpy(out_private_key, seed, ED25519_SEED_LEN);
+  OPENSSL_memcpy(out_private_key + ED25519_SEED_LEN, out_public_key, 32);
 }
 
 

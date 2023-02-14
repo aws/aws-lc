@@ -4283,8 +4283,15 @@ extern "C" {
 #define LN_hkdf "hkdf"
 #define NID_hkdf 969
 
+#define SN_kem "KEM"
+#define LN_kem "kem"
+#define NID_kem 970
+
 #define SN_KYBER512 "KYBER512"
-#define NID_KYBER512 970
+#define NID_KYBER512 971
+
+#define SN_KYBER512_R3 "KYBER512_R3"
+#define NID_KYBER512_R3 972
 
 
 #if defined(__cplusplus)

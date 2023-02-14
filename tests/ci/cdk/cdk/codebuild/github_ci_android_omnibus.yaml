@@ -35,8 +35,15 @@ batch:
         privileged-mode: true
         compute-type: BUILD_GENERAL1_MEDIUM
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_android_latest
-    - identifier: ubuntu2004_android_fips
-      buildspec: ./tests/ci/codebuild/android/run_android_fips.yml
+    - identifier: ubuntu2004_android_fips_shared_release
+      buildspec: ./tests/ci/codebuild/android/run_android_fips_shared.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_MEDIUM
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_android_latest
+    - identifier: ubuntu2004_android_fips_static_release
+      buildspec: ./tests/ci/codebuild/android/run_android_fips_static.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true

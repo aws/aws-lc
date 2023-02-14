@@ -458,6 +458,7 @@ err:
   }
 
   BN_MONT_CTX_free(mont);
+  OPENSSL_cleanse(seed, SHA256_DIGEST_LENGTH);
 
   return ok;
 }

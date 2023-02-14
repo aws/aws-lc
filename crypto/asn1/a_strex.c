@@ -59,7 +59,7 @@
 #include <assert.h>
 #include <ctype.h>
 #include <inttypes.h>
-
+#include <limits.h>
 #include <string.h>
 #include <time.h>
 
@@ -121,7 +121,8 @@ static int do_esc_char(uint32_t c, unsigned long flags, char *do_quotes,
     return maybe_write(out, &u8, 1) ? 1 : -1;
   }
 
-  int len = (int)strlen(buf);  // |buf| is guaranteed to be short.
+  OPENSSL_STATIC_ASSERT(sizeof(buf) < INT_MAX, len_may_not_fit_in_int);
+  int len = (int)strlen(buf);
   return maybe_write(out, buf, len) ? len : -1;
 }
 

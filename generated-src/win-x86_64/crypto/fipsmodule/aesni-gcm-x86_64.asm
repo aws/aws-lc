@@ -1,6 +1,7 @@
 ; This file is generated from a similarly-named Perl script in the BoringSSL
 ; source tree. Do not edit by hand.
 
+%ifidn __OUTPUT_FORMAT__, win64
 default	rel
 %define XMMWORD
 %define YMMWORD
@@ -1031,3 +1032,4 @@ $L$SEH_gcm_enc_info:
 DB	9,0,0,0
 	DD	gcm_se_handler wrt ..imagebase
 	DD	$L$gcm_enc_body wrt ..imagebase,$L$gcm_enc_abort wrt ..imagebase
+%endif
