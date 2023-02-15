@@ -50,7 +50,7 @@ OCSP_REQ_CTX *OCSP_REQ_CTX_new(BIO *io, int maxline)
 
 void OCSP_REQ_CTX_free(OCSP_REQ_CTX *rctx)
 {
-    if (!rctx) {
+    if (rctx == NULL) {
       return;
     }
     BIO_free(rctx->mem);
