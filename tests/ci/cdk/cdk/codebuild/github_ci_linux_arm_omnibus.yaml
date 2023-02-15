@@ -18,7 +18,7 @@ batch:
       buildspec: ./tests/ci/codebuild/linux-aarch/run_fips_tests.yml
       env:
         type: ARM_CONTAINER
-        privileged-mode: true
+        privileged-mode: false
         compute-type: BUILD_GENERAL1_LARGE
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-aarch:ubuntu-20.04_gcc-7x_latest
 
@@ -82,7 +82,7 @@ batch:
       buildspec: ./tests/ci/codebuild/linux-aarch/run_fips_tests.yml
       env:
         type: ARM_CONTAINER
-        privileged-mode: true
+        privileged-mode: false
         compute-type: BUILD_GENERAL1_LARGE
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-aarch:ubuntu-20.04_clang-7x_latest
         variables:
@@ -166,7 +166,7 @@ batch:
       buildspec: ./tests/ci/codebuild/linux-aarch/run_fips_tests.yml
       env:
         type: ARM_CONTAINER
-        privileged-mode: true
+        privileged-mode: false
         compute-type: BUILD_GENERAL1_LARGE
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-aarch:amazonlinux-2_gcc-7x_latest
 
@@ -190,7 +190,7 @@ batch:
       buildspec: ./tests/ci/codebuild/linux-aarch/run_fips_tests.yml
       env:
         type: ARM_CONTAINER
-        privileged-mode: true
+        privileged-mode: false
         compute-type: BUILD_GENERAL1_LARGE
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-aarch:amazonlinux-2_clang-7x_latest
         variables:
@@ -210,7 +210,7 @@ batch:
       buildspec: ./tests/ci/codebuild/linux-aarch/run_fips_tests.yml
       env:
         type: ARM_CONTAINER
-        privileged-mode: true
+        privileged-mode: false
         compute-type: BUILD_GENERAL1_LARGE
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-aarch:amazonlinux-2022_gcc-11x_latest
 
@@ -226,7 +226,7 @@ batch:
       buildspec: ./tests/ci/codebuild/linux-aarch/run_fips_tests.yml
       env:
         type: ARM_CONTAINER
-        privileged-mode: true
+        privileged-mode: false
         compute-type: BUILD_GENERAL1_LARGE
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-aarch:amazonlinux-2022_clang-14x_latest
 
@@ -234,7 +234,7 @@ batch:
       buildspec: ./tests/ci/codebuild/linux-aarch/run_sanitizer_tests.yml
       env:
         type: ARM_CONTAINER
-        privileged-mode: true
+        privileged-mode: false
         compute-type: BUILD_GENERAL1_LARGE
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-aarch:amazonlinux-2022_clang-14x_sanitizer_latest
 
