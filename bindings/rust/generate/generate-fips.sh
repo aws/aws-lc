@@ -10,12 +10,12 @@ IGNORE_UPSTREAM=0
 IGNORE_MACOS=0
 SKIP_TEST=0
 GENERATE_FIPS=1
-
-AWS_LC_FIPS_SYS_VERSION="0.1.2"
+AWS_LC_FIPS_BRANCH="fips-2022-11-02"
+CRATE_NAME="aws-lc-fips-sys"
+CRATE_VERSION="" # User prompted for value if empty
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 AWS_LC_DIR=$( cd -- "${SCRIPT_DIR}/../../../" &> /dev/null && pwd)
-AWS_LC_FIPS_BRANCH="fips-2022-11-02"
 CRATE_TEMPLATE_DIR="${AWS_LC_DIR}"/bindings/rust/aws-lc-fips-sys-template
 TMP_DIR="${AWS_LC_DIR}"/bindings/rust/tmp
 AWS_LC_FIPS_DIR="${TMP_DIR}"/aws-lc
@@ -27,12 +27,9 @@ PREFIX_HEADERS_FILE="${CRATE_AWS_LC_DIR}"/include/boringssl_prefix_symbols.h
 
 source "${SCRIPT_DIR}"/_generation_tools.sh
 
-# Clone the FIPS branch in local. 
-# TODO: This can be optimized to be ran and checked on the FIPS branch when this
-# commit is in the latest FIPS branch.
+# Clone the FIPS branch in local.
 function clone_fips_branch {
   pushd "${TMP_DIR}"
-  rm -rf aws-lc
   git clone -b ${AWS_LC_FIPS_BRANCH} --depth 1 --single-branch https://github.com/awslabs/aws-lc.git
   popd
 }
@@ -46,7 +43,8 @@ function prepare_crate_dir {
   mkdir -p "${CRATE_AWS_LC_DIR}"/
 
   cp -r "${CRATE_TEMPLATE_DIR}"/* "${CRATE_DIR}"/
-  perl -pi -e "s/__AWS_LC_FIPS_SYS_VERSION__/${AWS_LC_FIPS_SYS_VERSION}/g" "${CRATE_DIR}"/Cargo.toml
+  perl -pi -e "s/__AWS_LC_FIPS_SYS_VERSION__/${CRATE_VERSION}/g" "${CRATE_DIR}"/Cargo.toml
+  perl -pi -e "s/__AWS_LC_COMMIT_HASH__/${AWS_LC_COMMIT_HASH}/g" "${CRATE_DIR}"/Cargo.toml
 
   cp -r "${AWS_LC_FIPS_DIR}"/crypto  \
         "${AWS_LC_FIPS_DIR}"/ssl  \
@@ -56,6 +54,7 @@ function prepare_crate_dir {
         "${AWS_LC_FIPS_DIR}"/LICENSE \
         "${AWS_LC_FIPS_DIR}"/sources.cmake \
         "${AWS_LC_FIPS_DIR}"/go.mod \
+        "${AWS_LC_FIPS_DIR}"/go.sum \
         "${CRATE_AWS_LC_DIR}"/
 
   cp "${AWS_LC_FIPS_DIR}"/LICENSE  "${CRATE_AWS_LC_DIR}"/
@@ -85,14 +84,29 @@ if [[ ! -d ${AWS_LC_DIR} ]]; then
   echo "$(basename "${0}")" Sanity Check Failed
   exit 1
 fi
+
 pushd "${AWS_LC_DIR}"
+# The logic for generating/publishing the FIPS crate resides on the main branch.
+check_branch
 check_workspace
 mkdir -p "${TMP_DIR}"
 
+determine_generate_version
+
 # Crate preparation.
-clone_fips_branch
+if [[ ! -r "${SYMBOLS_FILE}" || ! -d "${AWS_LC_FIPS_DIR}" ]]; then
+  # Symbols file must be consistent with AWS-LC source directory
+  rm -f "${SYMBOLS_FILE}"
+  rm -rf "${AWS_LC_FIPS_DIR}"
+  clone_fips_branch
+fi
+AWS_LC_COMMIT_HASH=$(git -C ${AWS_LC_FIPS_DIR} log -n 1 --pretty=format:"%H" HEAD)
+
 prepare_crate_dir
 create_prefix_headers
+
+public_api_diff
+
 source "${SCRIPT_DIR}"/_generate_all_bindings_flavors.sh
 
 # Crate testing.

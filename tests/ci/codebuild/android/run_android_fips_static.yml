@@ -10,4 +10,5 @@ phases:
         ./kickoff_devicefarm_job.sh
         --test-name "AWS-LC Android FIPS ${CODEBUILD_WEBHOOK_TRIGGER} ${CODEBUILD_RESOLVED_SOURCE_VERSION}"
         --fips true
+        --shared false
         --action start-job
