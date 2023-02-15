@@ -24,5 +24,5 @@ find_completion_marker ${COMPLETION_MARKER}
 pushd "${CRATE_DIR}"
 remove_internal_feature
 run_prepublish_checks "${CRATE_NAME}"
-publish_crate "${CRATE_NAME}"
+publish_crate
 popd
