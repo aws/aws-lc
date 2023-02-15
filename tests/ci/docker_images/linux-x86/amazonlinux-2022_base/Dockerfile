@@ -4,6 +4,9 @@
 FROM amazonlinux:2022
 
 SHELL ["/bin/bash", "-c"]
+ENV GOROOT=/usr/local/go
+ENV PATH="$GOROOT/bin:$PATH"
+ENV ASAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer
 
 # See https://github.com/google/sanitizers/wiki/MemorySanitizerLibcxxHowTo
 # Install Valgrind for Valgrind test target even though it is not needed for the base test target.
@@ -12,11 +15,11 @@ RUN set -ex && \
     cmake3 \
     ninja-build \
     perl \
-    golang \
     which \
     git \
     ca-certificates \
     wget \
+    tar \
     # valgrind is just the application and core resources.
     valgrind \
     # valgrind/memcheck.h is provided by the valgrind-devel package on AL2. see P63119011.
@@ -33,7 +36,5 @@ RUN set -ex && \
     rm -rf /tmp/* && \
     rm -rf /var/cache/yum
 
-ENV GO111MODULE=on
-# Avoid "Use -buildvcs=false to disable VCS stamping." errors due to newer versions of Go
-ENV GOFLAGS="-buildvcs=false"
-ENV ASAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer
+COPY ../install_common_x86_dependencies.sh /
+RUN set -ex && /install_common_x86_dependencies.sh && rm install_common_x86_dependencies.sh

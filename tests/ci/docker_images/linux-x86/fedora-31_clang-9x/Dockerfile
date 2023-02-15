@@ -4,6 +4,8 @@
 FROM fedora:31
 
 SHELL ["/bin/bash", "-c"]
+ENV GOROOT=/usr/local/go
+ENV PATH="$GOROOT/bin:$PATH"
 
 RUN set -ex
 
@@ -13,7 +15,7 @@ RUN dnf -y install \
     ninja-build \
     perl \
     git \
-    golang \
+    wget \
     --setopt=install_weak_deps=False --best && \
     dnf -y autoremove && \
     dnf clean all && \
@@ -21,4 +23,6 @@ RUN dnf -y install \
 
 ENV CC=clang-9
 ENV CXX=clang++-9
-ENV GO111MODULE=on
+
+COPY ../install_common_x86_dependencies.sh /
+RUN set -ex && /install_common_x86_dependencies.sh && rm install_common_x86_dependencies.sh

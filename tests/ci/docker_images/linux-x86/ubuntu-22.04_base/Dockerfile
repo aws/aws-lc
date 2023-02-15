@@ -43,8 +43,8 @@ RUN set -ex && \
     git clone https://github.com/llvm/llvm-project.git --branch llvmorg-11.1.0  --depth 1 && \
     cd llvm-project && rm -rf $(ls -A | grep -Ev "(libcxx|libcxxabi)") && \
     cd /tmp && \
-    wget https://dl.google.com/go/go1.13.12.linux-amd64.tar.gz && \
-    tar -xvf go1.13.12.linux-amd64.tar.gz && \
+    wget https://dl.google.com/go/go1.20.1.linux-amd64.tar.gz && \
+    tar -xvf go1.20.1.linux-amd64.tar.gz && \
     mv go /usr/local && \
     apt-get --purge remove -y curl unzip && \
     apt-get autoremove --purge -y && \

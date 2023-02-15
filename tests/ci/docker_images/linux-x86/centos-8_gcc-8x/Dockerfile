@@ -4,6 +4,8 @@
 FROM centos:8
 
 SHELL ["/bin/bash", "-c"]
+ENV GOROOT=/usr/local/go
+ENV PATH="$GOROOT/bin:$PATH"
 
 RUN set -ex && \
     sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-* && \
@@ -21,13 +23,15 @@ RUN set -ex && \
     cmake3 \
     ninja-build \
     perl \
-    golang \
     wget \
     unzip && \
     # Based on https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2-linux.html
     curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
     unzip awscliv2.zip && \
     ./aws/install --bin-dir /usr/bin && \
+    wget https://dl.google.com/go/go1.20.1.linux-amd64.tar.gz && \
+    tar -xvf go1.20.1.linux-amd64.tar.gz && \
+    mv go /usr/local && \
     rm -rf awscliv2.zip aws/ && \
     yum clean packages && \
     yum clean metadata && \
@@ -37,5 +41,6 @@ RUN set -ex && \
 
 ENV CC=gcc
 ENV CXX=g++
-ENV GOROOT=/usr/local/go
-ENV PATH="$GOROOT/bin:$PATH"
+
+COPY ../install_common_x86_dependencies.sh /
+RUN set -ex && /install_common_x86_dependencies.sh && rm install_common_x86_dependencies.sh

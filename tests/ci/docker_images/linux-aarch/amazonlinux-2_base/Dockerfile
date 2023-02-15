@@ -7,6 +7,9 @@ SHELL ["/bin/bash", "-c"]
 
 ENV DEPENDENCIES_DIR=/home/dependencies
 ENV LLVM_PROJECT_HOME=${DEPENDENCIES_DIR}/llvm-project
+ENV ASAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer
+ENV GOROOT=/usr/local/go
+ENV PATH="$GOROOT/bin:$PATH"
 
 # llvm, llvm-devel, libcxx, and libcxxabi are needed for the sanitizer tests.
 # 11.1.0 is the latest stable release as of 2021-02-16.
@@ -18,12 +21,12 @@ RUN set -ex && \
     cmake3 \
     ninja-build \
     perl \
-    golang \
     which \
     git \
     ca-certificates \
     wget \
     llvm \
+    tar \
     llvm-devel \
     valgrind \
     unzip && \
@@ -42,5 +45,5 @@ RUN set -ex && \
     rm -rf /tmp/* && \
     rm -rf /var/cache/yum
 
-ENV GO111MODULE=on
-ENV ASAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer
+COPY ../install_common_aarch_dependencies.sh /
+RUN set -ex && /install_common_aarch_dependencies.sh && rm install_common_aarch_dependencies.sh

@@ -10,7 +10,10 @@ FROM --platform=linux/arm64 rust:latest
 SHELL ["/bin/bash", "-c"]
 
 RUN apt-get update && \
-    apt-get -y install clang cmake golang && \
+    apt-get -y install clang cmake && \
+    wget https://dl.google.com/go/go1.20.1.linux-amd64.tar.gz && \
+    tar -xvf go1.20.1.linux-amd64.tar.gz && \
+    mv go /usr/local && \
     rustup update && \
     rustup toolchain install nightly && \
     rustup default nightly && \

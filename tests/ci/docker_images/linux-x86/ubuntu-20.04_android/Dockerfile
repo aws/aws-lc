@@ -29,8 +29,8 @@ RUN set -ex && \
     unzip && \
 # install go dependencies
     cd /tmp && \
-    wget https://dl.google.com/go/go1.13.12.linux-amd64.tar.gz && \
-    tar -xvf go1.13.12.linux-amd64.tar.gz && \
+    wget https://dl.google.com/go/go1.20.1.linux-amd64.tar.gz && \
+    tar -xvf go1.20.1.linux-amd64.tar.gz && \
     mv go /usr/local && \
 # install android-sdk from url source
     mkdir /opt/sdk && \

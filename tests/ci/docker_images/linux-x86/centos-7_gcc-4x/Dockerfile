@@ -4,10 +4,9 @@
 FROM centos:7
 
 SHELL ["/bin/bash", "-c"]
+ENV GOROOT=/usr/local/go
+ENV PATH="$GOROOT/bin:$PATH"
 
-# We manually install go 1.14.10 because of the version of git
-# for CentOS 7 is too old to support the `--unshallow` option
-# https://github.com/golang/go/issues/38373
 RUN set -ex && \
     yum -y update && \
     yum --enablerepo=extras install epel-release -y && \
@@ -30,10 +29,6 @@ RUN set -ex && \
     unzip awscliv2.zip && \
     ./aws/install --bin-dir /usr/bin && \
     rm -rf awscliv2.zip aws/ && \
-    cd /tmp && \
-    wget https://golang.org/dl/go1.14.10.linux-amd64.tar.gz && \
-    tar -xvf go1.14.10.linux-amd64.tar.gz && \
-    mv go /usr/local && \
     yum clean packages && \
     yum clean metadata && \
     yum clean all && \
@@ -42,5 +37,6 @@ RUN set -ex && \
 
 ENV CC=gcc
 ENV CXX=g++
-ENV GOROOT=/usr/local/go
-ENV PATH="$GOROOT/bin:$PATH"
+
+COPY ../install_common_x86_dependencies.sh /
+RUN set -ex && /install_common_x86_dependencies.sh && rm install_common_x86_dependencies.sh

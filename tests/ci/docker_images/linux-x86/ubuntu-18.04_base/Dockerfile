@@ -4,6 +4,8 @@
 FROM ubuntu:18.04
 
 SHELL ["/bin/bash", "-c"]
+ENV GOROOT=/usr/local/go
+ENV PATH="$GOROOT/bin:$PATH"
 
 RUN set -ex && \
     apt-get update && \
@@ -15,15 +17,11 @@ RUN set -ex && \
     perl \
     ca-certificates \
     wget && \
-    cd /tmp && \
-    wget https://dl.google.com/go/go1.13.12.linux-amd64.tar.gz && \
-    tar -xvf go1.13.12.linux-amd64.tar.gz && \
-    mv go /usr/local && \
     apt-get autoremove --purge -y && \
     apt-get clean && \
     apt-get autoclean && \
     rm -rf /var/lib/apt/lists/* && \
     rm -rf /tmp/*
 
-ENV GOROOT=/usr/local/go
-ENV PATH="$GOROOT/bin:$PATH"
+COPY ../install_common_x86_dependencies.sh /
+RUN set -ex && /install_common_x86_dependencies.sh && rm install_common_x86_dependencies.sh

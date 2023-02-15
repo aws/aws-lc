@@ -6,9 +6,11 @@ FROM ubuntu:20.04
 SHELL ["/bin/bash", "-c"]
 
 ENV DEBIAN_FRONTEND=noninteractive
-
 ENV DEPENDENCIES_DIR=/home/dependencies
 ENV LLVM_PROJECT_HOME=${DEPENDENCIES_DIR}/llvm-project
+ENV GOROOT=/usr/local/go
+ENV PATH="$GOROOT/bin:$PATH"
+ENV ASAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer
 
 # llvm, llvm-dev, libcxx, and libcxxabi are needed for the sanitizer tests.
 # 11.1.0 is the latest stable release as of 2021-02-16.
@@ -42,10 +44,6 @@ RUN set -ex && \
     cd ${DEPENDENCIES_DIR} && \
     git clone https://github.com/llvm/llvm-project.git --branch llvmorg-11.1.0  --depth 1 && \
     cd llvm-project && rm -rf $(ls -A | grep -Ev "(libcxx|libcxxabi)") && \
-    cd /tmp && \
-    wget https://dl.google.com/go/go1.13.12.linux-amd64.tar.gz && \
-    tar -xvf go1.13.12.linux-amd64.tar.gz && \
-    mv go /usr/local && \
     apt-get --purge remove -y curl unzip && \
     apt-get autoremove --purge -y && \
     apt-get clean && \
@@ -53,7 +51,5 @@ RUN set -ex && \
     rm -rf /var/lib/apt/lists/* && \
     rm -rf /tmp/*
 
-ENV GOROOT=/usr/local/go
-ENV GO111MODULE=on
-ENV ASAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer
-ENV PATH="$GOROOT/bin:$PATH"
+COPY ../install_common_x86_dependencies.sh /
+RUN set -ex && /install_common_x86_dependencies.sh && rm install_common_x86_dependencies.sh
