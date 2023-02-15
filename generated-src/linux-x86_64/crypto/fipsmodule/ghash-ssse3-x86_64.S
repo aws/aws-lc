@@ -23,7 +23,7 @@
 .align	16
 gcm_gmult_ssse3:
 .cfi_startproc	
-.Lgmult_seh_begin:
+
 	movdqu	(%rdi),%xmm0
 	movdqa	.Lreverse_bytes(%rip),%xmm10
 	movdqa	.Llow4_mask(%rip),%xmm2
@@ -199,8 +199,8 @@ gcm_gmult_ssse3:
 	pxor	%xmm5,%xmm5
 	pxor	%xmm6,%xmm6
 	.byte	0xf3,0xc3
-.Lgmult_seh_end:
 .cfi_endproc	
+
 .size	gcm_gmult_ssse3,.-gcm_gmult_ssse3
 
 
@@ -212,8 +212,8 @@ gcm_gmult_ssse3:
 .hidden gcm_ghash_ssse3
 .align	16
 gcm_ghash_ssse3:
-.Lghash_seh_begin:
 .cfi_startproc	
+
 	movdqu	(%rdi),%xmm0
 	movdqa	.Lreverse_bytes(%rip),%xmm10
 	movdqa	.Llow4_mask(%rip),%xmm11
@@ -411,8 +411,8 @@ gcm_ghash_ssse3:
 	pxor	%xmm5,%xmm5
 	pxor	%xmm6,%xmm6
 	.byte	0xf3,0xc3
-.Lghash_seh_end:
 .cfi_endproc	
+
 .size	gcm_ghash_ssse3,.-gcm_ghash_ssse3
 
 .align	16

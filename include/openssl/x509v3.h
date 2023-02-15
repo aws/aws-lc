@@ -354,7 +354,6 @@ struct ISSUING_DIST_POINT_st {
 #define EXFLAG_CRITICAL 0x200
 #define EXFLAG_PROXY 0x400
 
-#define EXFLAG_INVALID_POLICY 0x800
 #define EXFLAG_FRESHEST 0x1000
 // Self signed
 #define EXFLAG_SS 0x2000
@@ -565,8 +564,8 @@ OPENSSL_EXPORT void X509V3_conf_free(CONF_VALUE *val);
 
 // v3_ext_ctx, aka |X509V3_CTX|, contains additional context information for
 // constructing extensions. Some string formats reference additional values in
-// these objects. It must be initialized with both |X509V3_set_ctx| and
-// |X509V3_set_nconf| before use.
+// these objects. It must be initialized with |X509V3_set_ctx| or
+// |X509V3_set_ctx_test| before use.
 struct v3_ext_ctx {
   int flags;
   const X509 *issuer_cert;
@@ -576,18 +575,14 @@ struct v3_ext_ctx {
   const CONF *db;
 };
 
-// TODO(davidben): Rename this to |X509V3_CTX_TEST|.
-#define CTX_TEST 0x1
+#define X509V3_CTX_TEST 0x1
 
-// X509V3_set_ctx partially initializes |ctx| with the specified objects. Some
-// string formats will reference fields in these objects. Each object may be
-// NULL to omit it, in which case those formats cannot be used. |flags| should
-// be zero, unless called via |X509V3_set_ctx_test|.
+// X509V3_set_ctx initializes |ctx| with the specified objects. Some string
+// formats will reference fields in these objects. Each object may be NULL to
+// omit it, in which case those formats cannot be used. |flags| should be zero,
+// unless called via |X509V3_set_ctx_test|.
 //
 // |issuer|, |subject|, |req|, and |crl|, if non-NULL, must outlive |ctx|.
-//
-// WARNING: This function only partially initializes |ctx|. Callers must also
-// call |X509V3_set_nconf| or |X509V3_set_ctx_nodb|.
 OPENSSL_EXPORT void X509V3_set_ctx(X509V3_CTX *ctx, const X509 *issuer,
                                    const X509 *subject, const X509_REQ *req,
                                    const X509_CRL *crl, int flags);
@@ -597,27 +592,15 @@ OPENSSL_EXPORT void X509V3_set_ctx(X509V3_CTX *ctx, const X509 *issuer,
 // incomplete and should be discarded. This can be used to partially validate
 // syntax.
 //
-// WARNING: This function only partially initializes |ctx|. Callers must also
-// call |X509V3_set_nconf| or |X509V3_set_ctx_nodb|.
-//
 // TODO(davidben): Can we remove this?
 #define X509V3_set_ctx_test(ctx) \
-  X509V3_set_ctx(ctx, NULL, NULL, NULL, NULL, CTX_TEST)
+  X509V3_set_ctx(ctx, NULL, NULL, NULL, NULL, X509V3_CTX_TEST)
 
-// X509V3_set_nconf partially initializes |ctx| with |conf| as the config
-// database. Some string formats will reference sections in |conf|. |conf| may
-// be NULL, in which case these formats cannot be used. If non-NULL, |conf| must
-// outlive |ctx|.
-//
-// WARNING: This function only partially initializes |ctx|. Callers must also
-// call |X509V3_set_ctx| or |X509V3_set_ctx_test|.
-//
-// TODO(davidben): All the public entrypoints take a |CONF| already. OpenSSL
-// does not document the relationship between |db| in this structure and the
-// parameter, but all callers either match them, or use NULL and forget to call
-// |X509V3_set_ctx_nodb|. The latter results in reading an uninitialized pointer
-// if an applicable format is ever accidentally used. Perhaps this should be
-// automatically initialized by |X509V3_EXT_nconf|, etc.
+// X509V3_set_nconf sets |ctx| to use |conf| as the config database. |ctx| must
+// have previously been initialized by |X509V3_set_ctx| or
+// |X509V3_set_ctx_test|. Some string formats will reference sections in |conf|.
+// |conf| may be NULL, in which case these formats cannot be used. If non-NULL,
+// |conf| must outlive |ctx|.
 OPENSSL_EXPORT void X509V3_set_nconf(X509V3_CTX *ctx, const CONF *conf);
 
 // X509V3_set_ctx_nodb calls |X509V3_set_nconf| with no config database.
@@ -626,11 +609,15 @@ OPENSSL_EXPORT void X509V3_set_nconf(X509V3_CTX *ctx, const CONF *conf);
 // X509V3_EXT_nconf constructs an extension of type specified by |name|, and
 // value specified by |value|. It returns a newly-allocated |X509_EXTENSION|
 // object on success, or NULL on error. |conf| and |ctx| specify additional
-// information referenced by some formats. |conf| may be NULL, in which case
-// features which use it will be disabled or crash.
+// information referenced by some formats. Either |conf| or |ctx| may be NULL,
+// in which case features which use it will be disabled.
 //
-// TODO(davidben): Fix the crashes. Also allow |ctx| to be NULL. One caller
-// seems to do it, even though it doesn't really work.
+// If non-NULL, |ctx| must be initialized with |X509V3_set_ctx| or
+// |X509V3_set_ctx_test|.
+//
+// Both |conf| and |ctx| provide a |CONF| object. When |ctx| is non-NULL, most
+// features use the |ctx| copy, configured with |X509V3_set_ctx|, but some use
+// |conf|. Callers should ensure the two match to avoid surprisingly behavior.
 OPENSSL_EXPORT X509_EXTENSION *X509V3_EXT_nconf(const CONF *conf,
                                                 const X509V3_CTX *ctx,
                                                 const char *name,
