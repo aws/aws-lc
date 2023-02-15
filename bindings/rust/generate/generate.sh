@@ -29,7 +29,7 @@ source "${SCRIPT_DIR}"/_generation_tools.sh
 # Clone the main branch in local.
 function clone_main_branch {
   pushd "${TMP_DIR}"
-  git clone -b main --depth 1 --single-branch https://github.com/awslabs/aws-lc.git
+  git clone -b main --depth 1 --single-branch https://github.com/aws/aws-lc.git
   popd
 }
 
