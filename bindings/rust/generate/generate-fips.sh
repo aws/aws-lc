@@ -10,7 +10,10 @@ IGNORE_UPSTREAM=0
 IGNORE_MACOS=0
 SKIP_TEST=0
 GENERATE_FIPS=1
-AWS_LC_FIPS_BRANCH="fips-2022-11-02"
+DEFAULT_GIT_CLONE_URL="https://github.com/awslabs/aws-lc.git"
+DEFAULT_GIT_BRANCH="fips-2022-11-02"
+AWS_LC_FIPS_GIT_CLONE_URL=${AWS_LC_FIPS_GIT_CLONE_URL:-${DEFAULT_GIT_CLONE_URL}}
+AWS_LC_FIPS_GIT_BRANCH=${AWS_LC_FIPS_GIT_BRANCH:-${DEFAULT_GIT_BRANCH}}
 CRATE_NAME="aws-lc-fips-sys"
 CRATE_VERSION="" # User prompted for value if empty
 
@@ -29,9 +32,11 @@ source "${SCRIPT_DIR}"/_generation_tools.sh
 
 # Clone the FIPS branch in local.
 function clone_fips_branch {
-  pushd "${TMP_DIR}"
-  git clone -b ${AWS_LC_FIPS_BRANCH} --depth 1 --single-branch https://github.com/awslabs/aws-lc.git
-  popd
+  echo "Cloning from: ${AWS_LC_FIPS_GIT_CLONE_URL}:${AWS_LC_FIPS_GIT_BRANCH}"
+  if [[ "${AWS_LC_FIPS_GIT_CLONE_URL}" != "${DEFAULT_GIT_CLONE_URL}" || "${AWS_LC_FIPS_GIT_BRANCH}" != "${DEFAULT_GIT_BRANCH}" ]]; then
+    prompt_yes_no "Non-default repository URL or branch, Continue?"
+  fi
+  git clone -b "${AWS_LC_FIPS_GIT_BRANCH}" --depth 1 --single-branch "${AWS_LC_FIPS_GIT_CLONE_URL}" "${AWS_LC_FIPS_DIR}"
 }
 
 function prepare_crate_dir {
@@ -94,7 +99,7 @@ mkdir -p "${TMP_DIR}"
 determine_generate_version
 
 # Crate preparation.
-if [[ ! -r "${SYMBOLS_FILE}" ]] || [[! -d "${AWS_LC_FIPS_DIR}" ]]; then
+if [[ ! -r "${SYMBOLS_FILE}" || ! -d "${AWS_LC_FIPS_DIR}" ]]; then
   # Symbols file must be consistent with AWS-LC source directory
   rm -f "${SYMBOLS_FILE}"
   rm -rf "${AWS_LC_FIPS_DIR}"

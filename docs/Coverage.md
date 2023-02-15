@@ -1,6 +1,6 @@
 # Coverage Report
 ```shell script
-git clone git@github.com:awslabs/aws-lc.git
+git clone git@github.com:aws/aws-lc.git
 mkdir build
 cd build
 cmake -GNinja -DGCOV=1 ../aws-lc
