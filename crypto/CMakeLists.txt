@@ -623,9 +623,9 @@ if(BUILD_TESTING)
 
   macro(add_test_executable executable_name test_file)
     message(STATUS "Generating test executable ${executable_name}.")
-    add_executable(${executable_name} ${test_file} $<TARGET_OBJECTS:boringssl_gtest_main>)
+    add_executable(${executable_name} ${test_file})
     target_compile_definitions(${executable_name} PRIVATE BORINGSSL_IMPLEMENTATION)
-    target_link_libraries(${executable_name} test_support_lib boringssl_gtest crypto)
+    target_link_libraries(${executable_name} test_support_lib boringssl_gtest_main crypto)
     add_dependencies(all_tests ${executable_name})
   endmacro()
 
@@ -733,11 +733,9 @@ if(BUILD_TESTING)
     decrepit/ripemd/ripemd_test.cc
 
     $<TARGET_OBJECTS:crypto_test_data>
-    $<TARGET_OBJECTS:boringssl_gtest_main>
-
   )
 
-  target_link_libraries(${CRYPTO_TEST_EXEC} test_support_lib boringssl_gtest crypto)
+  target_link_libraries(${CRYPTO_TEST_EXEC} test_support_lib boringssl_gtest_main crypto)
   if(WIN32)
     target_link_libraries(${CRYPTO_TEST_EXEC} ws2_32)
   endif()
