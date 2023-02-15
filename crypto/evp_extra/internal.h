@@ -38,15 +38,11 @@ extern const EVP_PKEY_ASN1_METHOD rsa_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD rsa_pss_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD ed25519_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD x25519_asn1_meth;
-// TODO(awslc): remove once the new KEM APIs are implemented.
-extern const EVP_PKEY_ASN1_METHOD kyber512_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD dilithium3_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD kem_asn1_meth;
 
 extern const EVP_PKEY_METHOD ed25519_pkey_meth;
 extern const EVP_PKEY_METHOD x25519_pkey_meth;
-// TODO(awslc): remove once the new KEM APIs are implemented.
-extern const EVP_PKEY_METHOD kyber512_pkey_meth;
 extern const EVP_PKEY_METHOD hkdf_pkey_meth;
 extern const EVP_PKEY_METHOD dilithium3_pkey_meth;
 extern const EVP_PKEY_METHOD kem_pkey_meth;
