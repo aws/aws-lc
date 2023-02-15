@@ -25,7 +25,7 @@
 
 OCSP_REQ_CTX *OCSP_REQ_CTX_new(BIO *io, int maxline)
 {
-    OCSP_REQ_CTX *rctx = OPENSSL_malloc(sizeof(*rctx));
+    OCSP_REQ_CTX *rctx = OPENSSL_malloc(sizeof(OCSP_REQ_CTX));
 
     if (rctx == NULL) {
       return NULL;
