@@ -10,11 +10,17 @@
 #include "openssl/ocsp.h"
 #include "openssl/x509.h"
 
+// OCSP Request ASN.1 specification:
+// https://datatracker.ietf.org/doc/html/rfc6960#section-4.1.1
+//
+// OCSP Response ASN.1 specification:
+// https://datatracker.ietf.org/doc/html/rfc6960#section-4.2.1
 
 //   CertID ::= SEQUENCE {
 //       hashAlgorithm    AlgorithmIdentifier,
 //       issuerNameHash   OCTET STRING,  --Hash of Issuer's DN
-//       issuerKeyHash    OCTET STRING,  --Hash of Issuers public key (excluding the tag & length fields)
+//       issuerKeyHash    OCTET STRING,  --Hash of Issuers public key (excluding
+//                                         the tag & length fields)
 //       serialNumber     CertificateSerialNumber }
 //
 struct ocsp_cert_id_st {
@@ -63,7 +69,7 @@ struct ocsp_signature_st {
 //
 struct ocsp_request_st {
     OCSP_REQINFO tbsRequest;
-    OCSP_SIGNATURE *optionalSignature; /* OPTIONAL */
+    OCSP_SIGNATURE *optionalSignature;
 };
 
 // Opaque OCSP request status structure
