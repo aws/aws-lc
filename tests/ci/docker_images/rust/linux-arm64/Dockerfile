@@ -8,12 +8,11 @@
 FROM --platform=linux/arm64 rust:latest
 
 SHELL ["/bin/bash", "-c"]
+ENV GOROOT=/usr/local/go
+ENV PATH="$GOROOT/bin:$PATH"
 
 RUN apt-get update && \
     apt-get -y install clang cmake && \
-    wget https://dl.google.com/go/go1.20.1.linux-amd64.tar.gz && \
-    tar -xvf go1.20.1.linux-amd64.tar.gz && \
-    mv go /usr/local && \
     rustup update && \
     rustup toolchain install nightly && \
     rustup default nightly && \
@@ -30,3 +29,6 @@ ENV CARGO_UNSTABLE_SPARSE_REGISTRY=true
 # Static FIPS build only supports clang.
 ENV CC=clang
 ENV CXX=clang++
+
+COPY ../../dependencies/install_common_dependencies.sh /
+RUN set -ex && /install_common_dependencies.sh && rm install_common_dependencies.sh

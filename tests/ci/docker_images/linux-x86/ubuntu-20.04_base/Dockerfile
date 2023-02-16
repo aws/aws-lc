@@ -51,5 +51,5 @@ RUN set -ex && \
     rm -rf /var/lib/apt/lists/* && \
     rm -rf /tmp/*
 
-COPY ../install_common_x86_dependencies.sh /
-RUN set -ex && /install_common_x86_dependencies.sh && rm install_common_x86_dependencies.sh
+COPY ../../dependencies/install_common_dependencies.sh /
+RUN set -ex && /install_common_dependencies.sh && rm install_common_dependencies.sh

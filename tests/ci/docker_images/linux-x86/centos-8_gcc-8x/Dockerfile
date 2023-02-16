@@ -29,9 +29,6 @@ RUN set -ex && \
     curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
     unzip awscliv2.zip && \
     ./aws/install --bin-dir /usr/bin && \
-    wget https://dl.google.com/go/go1.20.1.linux-amd64.tar.gz && \
-    tar -xvf go1.20.1.linux-amd64.tar.gz && \
-    mv go /usr/local && \
     rm -rf awscliv2.zip aws/ && \
     yum clean packages && \
     yum clean metadata && \
@@ -42,5 +39,5 @@ RUN set -ex && \
 ENV CC=gcc
 ENV CXX=g++
 
-COPY ../install_common_x86_dependencies.sh /
-RUN set -ex && /install_common_x86_dependencies.sh && rm install_common_x86_dependencies.sh
+COPY ../../dependencies/install_common_dependencies.sh /
+RUN set -ex && /install_common_dependencies.sh && rm install_common_dependencies.sh

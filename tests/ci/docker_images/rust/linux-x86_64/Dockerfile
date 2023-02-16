@@ -4,12 +4,11 @@
 FROM --platform=linux/amd64 rust:latest
 
 SHELL ["/bin/bash", "-c"]
+ENV GOROOT=/usr/local/go
+ENV PATH="$GOROOT/bin:$PATH"
 
 RUN apt-get update && \
     apt-get -y install clang cmake && \
-    wget https://dl.google.com/go/go1.20.1.linux-amd64.tar.gz && \
-    tar -xvf go1.20.1.linux-amd64.tar.gz && \
-    mv go /usr/local && \
     rustup update && \
     rustup component add rustfmt clippy && \
     apt-get autoremove --purge -y && \
@@ -18,3 +17,5 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/* && \
     rm -rf /tmp/*
 
+COPY ../../dependencies/install_common_dependencies.sh /
+RUN set -ex && /install_common_dependencies.sh && rm install_common_dependencies.sh
