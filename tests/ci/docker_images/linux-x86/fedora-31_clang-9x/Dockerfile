@@ -24,5 +24,5 @@ RUN dnf -y install \
 ENV CC=clang-9
 ENV CXX=clang++-9
 
-COPY ../../dependencies/install_common_dependencies.sh /
+COPY install_common_dependencies.sh /
 RUN set -ex && /install_common_dependencies.sh && rm install_common_dependencies.sh

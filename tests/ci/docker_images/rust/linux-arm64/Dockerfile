@@ -30,5 +30,5 @@ ENV CARGO_UNSTABLE_SPARSE_REGISTRY=true
 ENV CC=clang
 ENV CXX=clang++
 
-COPY ../../dependencies/install_common_dependencies.sh /
+COPY install_common_dependencies.sh /
 RUN set -ex && /install_common_dependencies.sh && rm install_common_dependencies.sh

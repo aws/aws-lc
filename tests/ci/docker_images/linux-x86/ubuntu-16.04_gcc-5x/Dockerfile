@@ -31,5 +31,5 @@ RUN set -ex && \
 ENV CC=gcc-5
 ENV CXX=g++-5
 
-COPY ../../dependencies/install_common_dependencies.sh /
+COPY install_common_dependencies.sh /
 RUN set -ex && /install_common_dependencies.sh && rm install_common_dependencies.sh

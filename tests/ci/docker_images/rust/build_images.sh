@@ -19,6 +19,6 @@
 TOKEN=$(curl "https://auth.docker.io/token?service=registry.docker.io&scope=repository:ratelimitpreview/test:pull" | jq -r .token)
 curl --head -H "Authorization: Bearer $TOKEN" https://registry-1.docker.io/v2/ratelimitpreview/test/manifests/latest
 
-docker build -t rust:linux-386 -f linux-386/Dockerfile --load ../
-docker build -t rust:linux-arm64 -f linux-arm64/Dockerfile --load ../
-docker build -t rust:linux-x86_64 -f linux-x86_64/Dockerfile --load ../
+docker build -t rust:linux-386 -f linux-386/Dockerfile --load ../dependencies
+docker build -t rust:linux-arm64 -f linux-arm64/Dockerfile --load ../dependencies
+docker build -t rust:linux-x86_64 -f linux-x86_64/Dockerfile --load ../dependencies

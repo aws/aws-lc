@@ -23,5 +23,5 @@ RUN set -ex && \
     rm -rf /var/lib/apt/lists/* && \
     rm -rf /tmp/*
 
-COPY ../../dependencies/install_common_dependencies.sh /
+COPY install_common_dependencies.sh /
 RUN set -ex && /install_common_dependencies.sh && rm install_common_dependencies.sh

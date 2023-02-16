@@ -56,5 +56,5 @@ RUN  cd /tmp/triggerGradleDownloads && \
      ./gradlew --no-daemon --refresh-dependencies androidDependencies lint && \
      rm -rf /tmp/triggerGradleDownloads
 
-COPY ../../dependencies/install_common_dependencies.sh /
+COPY install_common_dependencies.sh /
 RUN set -ex && /install_common_dependencies.sh && rm install_common_dependencies.sh
