@@ -1374,3 +1374,5 @@ nist_sha3hashalgs 10		: SHA3-512		: sha3-512
  : KEM : kem
  : KYBER512
  : KYBER512_R3
+ : KYBER768_R3
+ : KYBER1024_R3

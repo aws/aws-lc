@@ -20,6 +20,7 @@
 .align	16
 gcm_init_clmul:
 .cfi_startproc	
+
 .L_init_clmul:
 	movdqu	(%rsi),%xmm2
 	pshufd	$78,%xmm2,%xmm2
@@ -172,6 +173,7 @@ gcm_init_clmul:
 	movdqu	%xmm4,80(%rdi)
 	.byte	0xf3,0xc3
 .cfi_endproc	
+
 .size	gcm_init_clmul,.-gcm_init_clmul
 .globl	gcm_gmult_clmul
 .hidden gcm_gmult_clmul
@@ -233,6 +235,7 @@ gcm_gmult_clmul:
 .align	32
 gcm_ghash_clmul:
 .cfi_startproc	
+
 .L_ghash_clmul:
 	movdqa	.Lbswap_mask(%rip),%xmm10
 
@@ -613,6 +616,7 @@ gcm_ghash_clmul:
 	movdqu	%xmm0,(%rdi)
 	.byte	0xf3,0xc3
 .cfi_endproc	
+
 .size	gcm_ghash_clmul,.-gcm_ghash_clmul
 .globl	gcm_init_avx
 .hidden gcm_init_avx
@@ -722,6 +726,7 @@ gcm_init_avx:
 
 	vzeroupper
 	.byte	0xf3,0xc3
+
 .cfi_endproc	
 .size	gcm_init_avx,.-gcm_init_avx
 .globl	gcm_gmult_avx
@@ -1111,6 +1116,7 @@ gcm_ghash_avx:
 	vzeroupper
 	.byte	0xf3,0xc3
 .cfi_endproc	
+
 .size	gcm_ghash_avx,.-gcm_ghash_avx
 .align	64
 .Lbswap_mask:

@@ -1265,7 +1265,7 @@ static int ipv6_from_asc(unsigned char v6[16], const char *in) {
 
     // Zero middle
     // This condition is to suppress gcc-12 warning.
-    // https://github.com/awslabs/aws-lc/issues/487
+    // https://github.com/aws/aws-lc/issues/487
     if (v6stat.zero_pos >= v6stat.total) {
         // This should not happen.
         return 0;

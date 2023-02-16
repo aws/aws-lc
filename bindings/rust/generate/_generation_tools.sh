@@ -164,16 +164,20 @@ function public_api_diff {
   pushd "${CRATE_DIR}"
   cargo build --features internal_generate
   if ! cargo public-api diff --deny changed --deny removed "${PUBLISHED_CRATE_VERSION}"; then
-    while true; do
-      echo
-      echo Version changing from: ${PUBLISHED_CRATE_VERSION} to ${CRATE_VERSION}
-      read -p "API changes found.  Continue with crate generation? (yn) " yn
-      case $yn in
-        [Yy]* ) break;;
-        [Nn]* ) exit 1;;
-        * ) echo "Please answer yes or no.";;
-      esac
-    done
+    echo
+    echo Version changing from: ${PUBLISHED_CRATE_VERSION} to ${CRATE_VERSION}
+    prompt_yes_no "API changes found.  Continue with crate generation?"
   fi
   popd
+}
+
+function prompt_yes_no {
+  while true; do
+    read -p "$1 (y/n): " yn
+    case $yn in
+      [Yy]* ) break;;
+      [Nn]* ) exit 1;;
+      * ) echo "Please answer (y)es or (n)o.";;
+    esac
+  done
 }

@@ -221,7 +221,7 @@ _aesni_ctr32_ghash_6x:
 	movbeq	0(%r14),%r12
 	vaesenc	%xmm1,%xmm14,%xmm14
 	vmovups	160-128(%rcx),%xmm1
-	cmpl	$11,%ebp
+	cmpl	$11,%r10d
 	jb	.Lenc_tail
 
 	vaesenc	%xmm15,%xmm9,%xmm9
@@ -317,7 +317,7 @@ _aesni_ctr32_ghash_6x:
 	vaesenclast	%xmm3,%xmm14,%xmm14
 	vpaddb	%xmm2,%xmm7,%xmm3
 
-	addq	$0x60,%r10
+	addq	$0x60,%rax
 	subq	$0x6,%rdx
 	jc	.L6x_done
 
@@ -349,27 +349,35 @@ _aesni_ctr32_ghash_6x:
 .align	32
 aesni_gcm_decrypt:
 .cfi_startproc	
-	xorq	%r10,%r10
+
+	xorq	%rax,%rax
 
 
 
 	cmpq	$0x60,%rdx
 	jb	.Lgcm_dec_abort
 
-	leaq	(%rsp),%rax
-.cfi_def_cfa_register	%rax
-	pushq	%rbx
-.cfi_offset	%rbx,-16
 	pushq	%rbp
-.cfi_offset	%rbp,-24
+.cfi_adjust_cfa_offset	8
+.cfi_offset	%rbp,-16
+
+	movq	%rsp,%rbp
+.cfi_def_cfa_register	%rbp
+	pushq	%rbx
+.cfi_offset	%rbx,-24
+
 	pushq	%r12
 .cfi_offset	%r12,-32
+
 	pushq	%r13
 .cfi_offset	%r13,-40
+
 	pushq	%r14
 .cfi_offset	%r14,-48
+
 	pushq	%r15
 .cfi_offset	%r15,-56
+
 	vzeroupper
 
 	vmovdqu	(%r8),%xmm1
@@ -383,7 +391,7 @@ aesni_gcm_decrypt:
 	vmovdqu	(%r11),%xmm0
 	leaq	128(%rcx),%rcx
 	leaq	32+32(%r9),%r9
-	movl	240-128(%rcx),%ebp
+	movl	240-128(%rcx),%r10d
 	vpshufb	%xmm0,%xmm8,%xmm8
 
 	andq	%r15,%r14
@@ -396,7 +404,7 @@ aesni_gcm_decrypt:
 .Ldec_no_key_aliasing:
 
 	vmovdqu	80(%rdi),%xmm7
-	leaq	(%rdi),%r14
+	movq	%rdi,%r14
 	vmovdqu	64(%rdi),%xmm4
 
 
@@ -409,7 +417,7 @@ aesni_gcm_decrypt:
 
 	vmovdqu	48(%rdi),%xmm5
 	shrq	$4,%rdx
-	xorq	%r10,%r10
+	xorq	%rax,%rax
 	vmovdqu	32(%rdi),%xmm6
 	vpshufb	%xmm0,%xmm7,%xmm7
 	vmovdqu	16(%rdi),%xmm2
@@ -438,23 +446,29 @@ aesni_gcm_decrypt:
 	vmovdqu	%xmm8,-64(%r9)
 
 	vzeroupper
-	movq	-48(%rax),%r15
+	leaq	-40(%rbp),%rsp
+.cfi_def_cfa	%rsp, 0x38
+	popq	%r15
+.cfi_adjust_cfa_offset	-8
 .cfi_restore	%r15
-	movq	-40(%rax),%r14
+	popq	%r14
+.cfi_adjust_cfa_offset	-8
 .cfi_restore	%r14
-	movq	-32(%rax),%r13
+	popq	%r13
+.cfi_adjust_cfa_offset	-8
 .cfi_restore	%r13
-	movq	-24(%rax),%r12
+	popq	%r12
+.cfi_adjust_cfa_offset	-8
 .cfi_restore	%r12
-	movq	-16(%rax),%rbp
-.cfi_restore	%rbp
-	movq	-8(%rax),%rbx
+	popq	%rbx
+.cfi_adjust_cfa_offset	-8
 .cfi_restore	%rbx
-	leaq	(%rax),%rsp
-.cfi_def_cfa_register	%rsp
+	popq	%rbp
+.cfi_adjust_cfa_offset	-8
+.cfi_restore	%rbp
 .Lgcm_dec_abort:
-	movq	%r10,%rax
 	.byte	0xf3,0xc3
+
 .cfi_endproc	
 .size	aesni_gcm_decrypt,.-aesni_gcm_decrypt
 .type	_aesni_ctr32_6x,@function
@@ -463,7 +477,7 @@ _aesni_ctr32_6x:
 .cfi_startproc	
 	vmovdqu	0-128(%rcx),%xmm4
 	vmovdqu	32(%r11),%xmm2
-	leaq	-1(%rbp),%r13
+	leaq	-1(%r10),%r13
 	vmovups	16-128(%rcx),%xmm15
 	leaq	32-128(%rcx),%r12
 	vpxor	%xmm4,%xmm1,%xmm9
@@ -556,12 +570,13 @@ _aesni_ctr32_6x:
 .align	32
 aesni_gcm_encrypt:
 .cfi_startproc	
+
 #ifdef BORINGSSL_DISPATCH_TEST
 .extern	BORINGSSL_function_hit
 .hidden BORINGSSL_function_hit
 	movb	$1,BORINGSSL_function_hit+2(%rip)
 #endif
-	xorq	%r10,%r10
+	xorq	%rax,%rax
 
 
 
@@ -569,20 +584,27 @@ aesni_gcm_encrypt:
 	cmpq	$288,%rdx
 	jb	.Lgcm_enc_abort
 
-	leaq	(%rsp),%rax
-.cfi_def_cfa_register	%rax
-	pushq	%rbx
-.cfi_offset	%rbx,-16
 	pushq	%rbp
-.cfi_offset	%rbp,-24
+.cfi_adjust_cfa_offset	8
+.cfi_offset	%rbp,-16
+
+	movq	%rsp,%rbp
+.cfi_def_cfa_register	%rbp
+	pushq	%rbx
+.cfi_offset	%rbx,-24
+
 	pushq	%r12
 .cfi_offset	%r12,-32
+
 	pushq	%r13
 .cfi_offset	%r13,-40
+
 	pushq	%r14
 .cfi_offset	%r14,-48
+
 	pushq	%r15
 .cfi_offset	%r15,-56
+
 	vzeroupper
 
 	vmovdqu	(%r8),%xmm1
@@ -594,7 +616,7 @@ aesni_gcm_encrypt:
 	leaq	128(%rcx),%rcx
 	vmovdqu	(%r11),%xmm0
 	andq	$-128,%rsp
-	movl	240-128(%rcx),%ebp
+	movl	240-128(%rcx),%r10d
 
 	andq	%r15,%r14
 	andq	%rsp,%r15
@@ -605,7 +627,7 @@ aesni_gcm_encrypt:
 	subq	%r15,%rsp
 .Lenc_no_key_aliasing:
 
-	leaq	(%rsi),%r14
+	movq	%rsi,%r14
 
 
 
@@ -636,7 +658,7 @@ aesni_gcm_encrypt:
 	vmovdqu	(%r9),%xmm8
 	leaq	32+32(%r9),%r9
 	subq	$12,%rdx
-	movq	$192,%r10
+	movq	$192,%rax
 	vpshufb	%xmm0,%xmm8,%xmm8
 
 	call	_aesni_ctr32_ghash_6x
@@ -816,25 +838,31 @@ aesni_gcm_encrypt:
 	vmovdqu	%xmm8,-64(%r9)
 
 	vzeroupper
-	movq	-48(%rax),%r15
+	leaq	-40(%rbp),%rsp
+.cfi_def_cfa	%rsp, 0x38
+	popq	%r15
+.cfi_adjust_cfa_offset	-8
 .cfi_restore	%r15
-	movq	-40(%rax),%r14
+	popq	%r14
+.cfi_adjust_cfa_offset	-8
 .cfi_restore	%r14
-	movq	-32(%rax),%r13
+	popq	%r13
+.cfi_adjust_cfa_offset	-8
 .cfi_restore	%r13
-	movq	-24(%rax),%r12
+	popq	%r12
+.cfi_adjust_cfa_offset	-8
 .cfi_restore	%r12
-	movq	-16(%rax),%rbp
-.cfi_restore	%rbp
-	movq	-8(%rax),%rbx
+	popq	%rbx
+.cfi_adjust_cfa_offset	-8
 .cfi_restore	%rbx
-	leaq	(%rax),%rsp
-.cfi_def_cfa_register	%rsp
+	popq	%rbp
+.cfi_adjust_cfa_offset	-8
+.cfi_restore	%rbp
 .Lgcm_enc_abort:
-	movq	%r10,%rax
 	.byte	0xf3,0xc3
+
 .cfi_endproc	
-.size	aesni_gcm_encrypt,.-aesni_gcm_encrypt
+.size	aesni_gcm_decrypt,.-aesni_gcm_decrypt
 .align	64
 .Lbswap_mask:
 .byte	15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0

@@ -29,14 +29,14 @@ ninja-build run_tests && ninja-build install
 cd ../aws-lc-install/
 ls *
 ```
-See [Building.md](https://github.com/awslabs/aws-lc/blob/main/BUILDING.md) for more
+See [Building.md](https://github.com/aws/aws-lc/blob/main/BUILDING.md) for more
 information about required dependencies and build options. If you’re interested in
 getting involved open an Issue to discuss your plan or talk to us on Gitter.
-[Contributing.md](https://github.com/awslabs/aws-lc/blob/main/CONTRIBUTING.md) has
+[Contributing.md](https://github.com/aws/aws-lc/blob/main/CONTRIBUTING.md) has
 info for how to specifically make the change and get it reviewed by AWS-LC maintainers.
 If you just want to use AWS-LC see our existing documentation in the public header
 files, if you’re moving your application from OpenSSL see
-[Porting_to_AWS-LC.md](https://github.com/awslabs/aws-lc/blob/main/PORTING_TO_AWSLC.md)
+[Porting_to_AWS-LC.md](https://github.com/aws/aws-lc/blob/main/PORTING_TO_AWSLC.md)
 for more information.
 
 ## Why AWS-LC?
@@ -58,7 +58,7 @@ understanding your use case in an Issue or on Gitter.
 
 AWS-LC correctness is tested on a variety of C/C++ compiler, OS, and CPU
 combinations. For a complete list of tested combinations see
-[tests/ci/Readme.md](https://github.com/awslabs/aws-lc/blob/main/tests/ci/README.md).
+[tests/ci/Readme.md](https://github.com/aws/aws-lc/blob/main/tests/ci/README.md).
 If you use a different combination and would like to make sure we test it,
 please open an issue to discuss adding it to our CI.
 
@@ -81,7 +81,7 @@ adding it to our CI.
 ### Automated testing
 
 Every change is tested with our
-[CI](https://github.com/awslabs/aws-lc/blob/main/tests/ci/README.md) that includes
+[CI](https://github.com/aws/aws-lc/blob/main/tests/ci/README.md) that includes
 positive and negative unit tests, fuzz tests, Sanitizers
 ([Address](https://clang.llvm.org/docs/AddressSanitizer.html),
 [Memory](https://clang.llvm.org/docs/MemorySanitizer.html),
