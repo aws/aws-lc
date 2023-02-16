@@ -49,12 +49,12 @@ RUN set -ex && \
     cd /opt && \
     wget -q https://services.gradle.org/distributions/${GRADLE_VERSION}-all.zip && \
     rm -rf /opt/cmdline-tools-tmp && \
-    rm -rf /tmp/* 
+    rm -rf /tmp/*
 # Preinstall gradle dependencies, so they don't need to be redownloaded in the CI.
-COPY . /tmp/triggerGradleDownloads/
+COPY linux-x86/ubuntu-20.04_android /tmp/triggerGradleDownloads/
 RUN  cd /tmp/triggerGradleDownloads && \
      ./gradlew --no-daemon --refresh-dependencies androidDependencies lint && \
      rm -rf /tmp/triggerGradleDownloads
 
-COPY install_common_dependencies.sh /
+COPY dependencies/install_common_dependencies.sh /
 RUN set -ex && /install_common_dependencies.sh && rm install_common_dependencies.sh

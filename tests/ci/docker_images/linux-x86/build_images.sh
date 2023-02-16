@@ -22,7 +22,7 @@ docker build -t ubuntu-20.04:clang-7x ubuntu-20.04_clang-7x
 docker build -t ubuntu-20.04:clang-8x ubuntu-20.04_clang-8x
 docker build -t ubuntu-20.04:clang-9x ubuntu-20.04_clang-9x
 docker build -t ubuntu-20.04:clang-10x ubuntu-20.04_clang-10x
-docker build -t ubuntu-20.04:android -f ubuntu-20.04_android/Dockerfile ../dependencies
+docker build -t ubuntu-20.04:android -f ubuntu-20.04_android/Dockerfile ../
 docker build -t ubuntu-20.04:clang-7x-bm-framework ubuntu-20.04_clang-7x-bm-framework
 docker build -t ubuntu-20.04:cryptofuzz -f ubuntu-20.04_cryptofuzz/Dockerfile ../dependencies
 docker build -t ubuntu-22.04:base -f ubuntu-22.04_base/Dockerfile ../dependencies
