@@ -211,6 +211,7 @@ struct ocsp_basic_response_st {
   STACK_OF(X509) *certs;
 };
 
+// Parses ASN.1 contents of |OCSP_REQ_CTX| into a der format.
 int OCSP_REQ_CTX_i2d(OCSP_REQ_CTX *rctx, const ASN1_ITEM *it, ASN1_VALUE *val);
 
 // Returns |OCSP_SINGLERESP| in the index of |OCSP_BASICRESP|.

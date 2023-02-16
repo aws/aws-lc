@@ -59,20 +59,27 @@ DECLARE_ASN1_FUNCTIONS(OCSP_REQUEST)
 DECLARE_ASN1_FUNCTIONS(OCSP_SIGNATURE)
 DECLARE_ASN1_FUNCTIONS(OCSP_REQINFO)
 
-// Builds a complete |OCSP_REQ_CTX| structure with the |BIO| to be used for
-// requests and response.
-OCSP_REQ_CTX *OCSP_sendreq_new(BIO *io, const char *path, OCSP_REQUEST *req,
-                               int maxline);
+// Returns an |OCSP_REQ_CTX| structure using the responder io, the URL path, the
+// |OCSP_REQUEST| req to be sent, and with a response header maximum line length
+// of maxline. If maxline is zero, a default value of 4k is used. The
+// |OCSP_REQUEST| req may be set to NULL and provided later if required.
+OPENSSL_EXPORT OCSP_REQ_CTX *OCSP_sendreq_new(BIO *io, const char *path,
+                                              OCSP_REQUEST *req, int maxline);
 
 // Creates a new |OCSP_REQ_CTX|. |OCSP_REQ_CTX| is used to contain the
 // information to send the OCSP request and gather the response over HTTP.
-OCSP_REQ_CTX *OCSP_REQ_CTX_new(BIO *io, int maxline);
+OPENSSL_EXPORT OCSP_REQ_CTX *OCSP_REQ_CTX_new(BIO *io, int maxline);
 
 // Frees the memory allocated by |OCSP_REQ_CTX|.
-void OCSP_REQ_CTX_free(OCSP_REQ_CTX *rctx);
+OPENSSL_EXPORT void OCSP_REQ_CTX_free(OCSP_REQ_CTX *rctx);
 
-int OCSP_REQ_CTX_http(OCSP_REQ_CTX *rctx, const char *op, const char *path);
-int OCSP_REQ_CTX_set1_req(OCSP_REQ_CTX *rctx, OCSP_REQUEST *req);
+// Adds the HTTP request line to the context.
+OPENSSL_EXPORT int OCSP_REQ_CTX_http(OCSP_REQ_CTX *rctx, const char *op,
+                                     const char *path);
+
+// Finalizes the HTTP request context. It is needed if an ASN.1-encoded request
+// should be sent.
+OPENSSL_EXPORT int OCSP_REQ_CTX_set1_req(OCSP_REQ_CTX *rctx, OCSP_REQUEST *req);
 
 // Returns response status from |OCSP_RESPONSE|.
 OPENSSL_EXPORT int OCSP_response_status(OCSP_RESPONSE *resp);
@@ -118,6 +125,8 @@ extern "C++" {
 
 BSSL_NAMESPACE_BEGIN
 
+BORINGSSL_MAKE_DELETER(OCSP_REQUEST, OCSP_REQUEST_free)
+BORINGSSL_MAKE_DELETER(OCSP_REQ_CTX, OCSP_REQ_CTX_free)
 BORINGSSL_MAKE_DELETER(OCSP_RESPONSE, OCSP_RESPONSE_free)
 BORINGSSL_MAKE_DELETER(OCSP_BASICRESP, OCSP_BASICRESP_free)
 BORINGSSL_MAKE_DELETER(OCSP_CERTID, OCSP_CERTID_free)
@@ -150,7 +159,6 @@ BSSL_NAMESPACE_END
 #define OCSP_R_NO_RESPONSE_DATA 108
 #define OCSP_R_RESPONSE_CONTAINS_NO_REVOCATION_DATA 111
 #define OCSP_R_ROOT_CA_NOT_TRUSTED 112
-#define OCSP_R_SERVER_RESPONSE_PARSE_ERROR 115
 #define OCSP_R_SIGNATURE_FAILURE 117
 #define OCSP_R_SIGNER_CERTIFICATE_NOT_FOUND 118
 #define OCSP_R_UNKNOWN_MESSAGE_DIGEST 119

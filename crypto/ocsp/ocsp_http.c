@@ -75,10 +75,9 @@ OCSP_REQ_CTX *OCSP_sendreq_new(BIO *io, const char *path, OCSP_REQUEST *req,
     if (!OCSP_REQ_CTX_http(rctx, "POST", path)) {
       goto err;
     }
-    if (req && !OCSP_REQ_CTX_set1_req(rctx, req)) {
+    if (req != NULL && !OCSP_REQ_CTX_set1_req(rctx, req)) {
       goto err;
     }
-
     return rctx;
 
  err:
