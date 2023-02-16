@@ -19,6 +19,7 @@
 .p2align	4
 _gcm_init_clmul:
 
+
 L$_init_clmul:
 	movdqu	(%rsi),%xmm2
 	pshufd	$78,%xmm2,%xmm2
@@ -172,6 +173,7 @@ L$_init_clmul:
 	.byte	0xf3,0xc3
 
 
+
 .globl	_gcm_gmult_clmul
 .private_extern _gcm_gmult_clmul
 
@@ -231,6 +233,7 @@ L$_gmult_clmul:
 
 .p2align	5
 _gcm_ghash_clmul:
+
 
 L$_ghash_clmul:
 	movdqa	L$bswap_mask(%rip),%xmm10
@@ -613,6 +616,7 @@ L$done:
 	.byte	0xf3,0xc3
 
 
+
 .globl	_gcm_init_avx
 .private_extern _gcm_init_avx
 
@@ -721,6 +725,7 @@ L$init_start_avx:
 
 	vzeroupper
 	.byte	0xf3,0xc3
+
 
 
 .globl	_gcm_gmult_avx
@@ -1109,6 +1114,7 @@ L$tail_no_xor_avx:
 	vmovdqu	%xmm10,(%rdi)
 	vzeroupper
 	.byte	0xf3,0xc3
+
 
 
 .p2align	6
