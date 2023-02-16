@@ -25,6 +25,7 @@ _aesv8_gcm_8x_enc_128:
 	AARCH64_VALID_CALL_TARGET
 	cbz	x1, L128_enc_ret
 	stp	d8, d9, [sp, #-80]!
+	lsr	x9, x1, #3
 	mov	x16, x4
 	mov	x8, x5
 	stp	d10, d11, [sp, #16]
@@ -37,7 +38,7 @@ _aesv8_gcm_8x_enc_128:
 	mov	x15, #0x100000000				//set up counter increment
 	movi	v31.16b, #0x0
 	mov	v31.d[1], x15
-	lsr	x5, x1, #3		  	//byte_len
+	mov	x5, x9
 	ld1	{ v0.16b}, [x16]					//CTR block 0
 
 	sub	x5, x5, #1	 	//byte_len - 1
@@ -1309,7 +1310,7 @@ L128_enc_blocks_less_than_1:	//blocks	left <= 1
 	ext	v19.16b, v19.16b, v19.16b, #8
 	rev64	v19.16b, v19.16b
 	st1	{ v19.16b }, [x3]
-	lsr	x0, x1, #3					//return sizes
+	mov	x0, x9
 
 	ldp	d10, d11, [sp, #16]
 	ldp	d12, d13, [sp, #32]
@@ -1329,6 +1330,7 @@ _aesv8_gcm_8x_dec_128:
 	AARCH64_VALID_CALL_TARGET
 	cbz	x1, L128_dec_ret
 	stp	d8, d9, [sp, #-80]!
+	lsr	x9, x1, #3
 	mov	x16, x4
 	mov	x8, x5
 	stp	d10, d11, [sp, #16]
@@ -1338,7 +1340,7 @@ _aesv8_gcm_8x_dec_128:
 	stp	x5, xzr, [sp, #64]
 	add	x10, sp, #64
 
-	lsr	x5, x1, #3		 	//byte_len
+	mov	x5, x9
 	ld1	{ v0.16b}, [x16]					//CTR block 0
 
 	ldp	q26, q27, [x8, #0]				 	//load rk0, rk1
@@ -2606,7 +2608,7 @@ L128_dec_blocks_less_than_1:	//blocks	left <= 1
 
 	str	q30, [x16]					//store the updated counter
 
-	lsr	x0, x1, #3
+	mov	x0, x9
 
 	ldp	d10, d11, [sp, #16]
 	ldp	d12, d13, [sp, #32]
@@ -2625,6 +2627,7 @@ _aesv8_gcm_8x_enc_192:
 	AARCH64_VALID_CALL_TARGET
 	cbz	x1, L192_enc_ret
 	stp	d8, d9, [sp, #-80]!
+	lsr	x9, x1, #3
 	mov	x16, x4
 	mov	x8, x5
 	stp	d10, d11, [sp, #16]
@@ -2634,7 +2637,7 @@ _aesv8_gcm_8x_enc_192:
 	stp	x5, xzr, [sp, #64]
 	add	x10, sp, #64
 
-	lsr	x5, x1, #3		 	//byte_len
+	mov	x5, x9
 	ld1	{ v0.16b}, [x16]					//CTR block 0
 
 	mov	x15, #0x100000000				//set up counter increment
@@ -4020,7 +4023,7 @@ L192_enc_blocks_less_than_1:	//blocks	left <= 1
 	rev64	v19.16b, v19.16b
 	st1	{ v19.16b }, [x3]
 
-	lsr	x0, x1, #3					//return sizes
+	mov	x0, x9					//return sizes
 
 	ldp	d10, d11, [sp, #16]
 	ldp	d12, d13, [sp, #32]
@@ -4040,6 +4043,7 @@ _aesv8_gcm_8x_dec_192:
 	AARCH64_VALID_CALL_TARGET
 	cbz	x1, L192_dec_ret
 	stp	d8, d9, [sp, #-80]!
+	lsr	x9, x1, #3
 	mov	x16, x4
 	mov	x8, x5
 	stp	d10, d11, [sp, #16]
@@ -4049,7 +4053,7 @@ _aesv8_gcm_8x_dec_192:
 	stp	x5, xzr, [sp, #64]
 	add	x10, sp, #64
 
-	lsr	x5, x1, #3		 	//byte_len
+	mov	x5, x9
 	ld1	{ v0.16b}, [x16]					//CTR block 0
 	ld1	{ v19.16b}, [x3]
 
@@ -5425,6 +5429,8 @@ L192_dec_blocks_less_than_1:	//blocks	left <= 1
 	rev64	v19.16b, v19.16b
 	st1	{ v19.16b }, [x3]
 
+	mov	x0, x9
+
 	ldp	d10, d11, [sp, #16]
 	ldp	d12, d13, [sp, #32]
 	ldp	d14, d15, [sp, #48]
@@ -5443,6 +5449,7 @@ _aesv8_gcm_8x_enc_256:
 	AARCH64_VALID_CALL_TARGET
 	cbz	x1, L256_enc_ret
 	stp	d8, d9, [sp, #-80]!
+	lsr	x9, x1, #3
 	mov	x16, x4
 	mov	x8, x5
 	stp	d10, d11, [sp, #16]
@@ -5454,7 +5461,7 @@ _aesv8_gcm_8x_enc_256:
 
 	ld1	{ v0.16b}, [x16]					//CTR block 0
 
-	lsr	x5, x1, #3		 	//byte_len
+	mov	x5, x9
 
 	mov	x15, #0x100000000			//set up counter increment
 	movi	v31.16b, #0x0
@@ -6954,7 +6961,7 @@ L256_enc_blocks_less_than_1:	//blocks	left <= 1
 	ext	v19.16b, v19.16b, v19.16b, #8
 	rev64	v19.16b, v19.16b
 	st1	{ v19.16b }, [x3]
-	lsr	x0, x1, #3					//return sizes
+	mov	x0, x9					//return sizes
 
 	ldp	d10, d11, [sp, #16]
 	ldp	d12, d13, [sp, #32]
@@ -6974,6 +6981,7 @@ _aesv8_gcm_8x_dec_256:
 	AARCH64_VALID_CALL_TARGET
 	cbz	x1, L256_dec_ret
 	stp	d8, d9, [sp, #-80]!
+	lsr	x9, x1, #3
 	mov	x16, x4
 	mov	x8, x5
 	stp	d10, d11, [sp, #16]
@@ -6988,7 +6996,7 @@ _aesv8_gcm_8x_dec_256:
 	mov	x15, #0x100000000			//set up counter increment
 	movi	v31.16b, #0x0
 	mov	v31.d[1], x15
-	lsr	x5, x1, #3		  	//byte_len
+	mov	x5, x9
 
 	sub	x5, x5, #1		//byte_len - 1
 
@@ -8481,7 +8489,7 @@ L256_dec_blocks_less_than_1:	//blocks	left <= 1
 	ext	v19.16b, v19.16b, v19.16b, #8
 	rev64	v19.16b, v19.16b
 	st1	{ v19.16b }, [x3]
-	lsr	x0, x1, #3					//return sizes
+	mov	x0, x9
 
 	ldp	d10, d11, [sp, #16]
 	ldp	d12, d13, [sp, #32]
