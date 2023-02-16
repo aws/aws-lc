@@ -29,7 +29,7 @@
 
 OCSP_REQ_CTX *OCSP_REQ_CTX_new(BIO *io, int maxline)
 {
-    OCSP_REQ_CTX *rctx = OPENSSL_malloc(sizeof(*rctx));
+    OCSP_REQ_CTX *rctx = OPENSSL_malloc(sizeof(OCSP_REQ_CTX));
 
     if (rctx == NULL) {
       return NULL;
@@ -54,7 +54,7 @@ OCSP_REQ_CTX *OCSP_REQ_CTX_new(BIO *io, int maxline)
 
 void OCSP_REQ_CTX_free(OCSP_REQ_CTX *rctx)
 {
-    if (rctx != NULL) {
+    if (rctx == NULL) {
       return;
     }
     BIO_free(rctx->mem);

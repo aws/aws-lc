@@ -64,7 +64,11 @@ DECLARE_ASN1_FUNCTIONS(OCSP_REQINFO)
 OCSP_REQ_CTX *OCSP_sendreq_new(BIO *io, const char *path, OCSP_REQUEST *req,
                                int maxline);
 
+// Creates a new |OCSP_REQ_CTX|. |OCSP_REQ_CTX| is used to contain the
+// information to send the OCSP request and gather the response over HTTP.
 OCSP_REQ_CTX *OCSP_REQ_CTX_new(BIO *io, int maxline);
+
+// Frees the memory allocated by |OCSP_REQ_CTX|.
 void OCSP_REQ_CTX_free(OCSP_REQ_CTX *rctx);
 
 int OCSP_REQ_CTX_http(OCSP_REQ_CTX *rctx, const char *op, const char *path);
