@@ -438,13 +438,15 @@ static void RunTest(FileTest *t)
   bool run_test = true;
 
   if ((ctrlocation != "AFTER_FIXED") || (rlen != "8_BITS")) {
-    // HKDF_expand() only works for "Counter After" and an r length of 32-bits.
+    // HKDF_expand() only works for "Counter After" and an r length of 8 bits.
     // Skip this test.
     run_test = false;
   }
 
   const EVP_MD *md = NULL;
   if (prf == "HMAC_SHA1") {
+    // Coverity will yell at us for this, as it should. But FIPS 140-3 still
+    // allows it in some circumstances.
     md = EVP_sha1();
   } else if (prf  == "HMAC_SHA224") {
     md = EVP_sha224();
@@ -562,13 +564,11 @@ static void RunTest(FileTest *t)
 
   // HKDF_expand being used as a KDF in Feedback Mode
   if (run_test) {
-    uint8_t *output = static_cast<uint8_t *>(new uint8_t[l_len]);
+    std::vector<uint8_t> output;
+    output.reserve(l_len);
 
-    ASSERT_TRUE(HKDF_expand(output, l_len, md, ki.data(), ki.size(), fixed.data(), fixed.size()));
-    EXPECT_EQ(Bytes(ko.data(), ko.size()), Bytes(output, l_len));
-
-    delete[] output;
-    output = NULL;
+    ASSERT_TRUE(HKDF_expand(output.data(), l_len, md, ki.data(), ki.size(), fixed.data(), fixed.size()));
+    EXPECT_EQ(Bytes(ko.data(), ko.size()), Bytes(output.data(), l_len));
   }
 }
 
