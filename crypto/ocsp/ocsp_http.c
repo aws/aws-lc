@@ -122,3 +122,8 @@ int OCSP_REQ_CTX_i2d(OCSP_REQ_CTX *rctx, const ASN1_ITEM *it, ASN1_VALUE *val)
     rctx->state = OHS_ASN1_WRITE_INIT;
     return 1;
 }
+
+BIO *OCSP_REQ_CTX_get0_mem_bio(OCSP_REQ_CTX *rctx)
+{
+    return rctx->mem;
+}
