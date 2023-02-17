@@ -154,7 +154,8 @@ OPENSSL_EXPORT void RSA_get0_crt_params(const RSA *rsa, const BIGNUM **out_dmp1,
 //
 // For a public key, |d| may be NULL, but |n| and |e| must either be non-NULL
 // or already configured on |rsa|. For a private key, |e| may be NULL, but |n|
-// and |d| must either be non-NULL or already configured on |rsa|
+// and |d| must either be non-NULL or already configured on |rsa|. Private keys
+// missing |e| are often used by the JCA.
 //
 // It is an error to call this function after |rsa| has been used for a
 // cryptographic operation. Construct a new |RSA| object instead.
