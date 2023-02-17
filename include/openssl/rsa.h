@@ -152,8 +152,9 @@ OPENSSL_EXPORT void RSA_get0_crt_params(const RSA *rsa, const BIGNUM **out_dmp1,
 // |n|, |e|, and |d| respectively, if non-NULL. On success, it takes ownership
 // of each argument and returns one. Otherwise, it returns zero.
 //
-// |d| may be NULL, but |n| and |e| must either be non-NULL or already
-// configured on |rsa|.
+// For a public key, |d| may be NULL, but |n| and |e| must either be non-NULL
+// or already configured on |rsa|. For a private key, |e| may be NULL, but |n|
+// and |d| must either be non-NULL or already configured on |rsa|
 //
 // It is an error to call this function after |rsa| has been used for a
 // cryptographic operation. Construct a new |RSA| object instead.
