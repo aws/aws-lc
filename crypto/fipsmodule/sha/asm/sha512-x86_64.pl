@@ -408,6 +408,7 @@ ___
 
 if ($SZ==4) {
 $code.=<<___;
+.section .rodata
 .align	64
 .type	$TABLE,\@object
 $TABLE:
@@ -451,9 +452,11 @@ $TABLE:
 	.long	0xffffffff,0xffffffff,0x03020100,0x0b0a0908
 	.long	0xffffffff,0xffffffff,0x03020100,0x0b0a0908
 	.asciz	"SHA256 block transform for x86_64, CRYPTOGAMS by <appro\@openssl.org>"
+.text
 ___
 } else {
 $code.=<<___;
+.section .rodata
 .align	64
 .type	$TABLE,\@object
 $TABLE:
@@ -541,6 +544,7 @@ $TABLE:
 	.quad	0x0001020304050607,0x08090a0b0c0d0e0f
 	.quad	0x0001020304050607,0x08090a0b0c0d0e0f
 	.asciz	"SHA512 block transform for x86_64, CRYPTOGAMS by <appro\@openssl.org>"
+.text
 ___
 }
 
