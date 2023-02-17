@@ -648,6 +648,57 @@ TEST(RSATest, OnlyDGiven) {
                          buf_len, key.get()));
 }
 
+TEST(RSATest, Set0Key) {
+  const int hash_nid = NID_sha256;
+  const uint8_t kDummyHash[32] = {0};
+  uint8_t sig[256];
+  unsigned sig_len = sizeof(sig);
+
+  // Reference RSA key that needs to be reset before each case as
+  // RSA_set0_key takes ownership of its parameters
+  bssl::UniquePtr<RSA> rsa;
+
+  // Allocate an empty key to imitate JCA keys via calls to RSA_set0_key
+  bssl::UniquePtr<RSA> jcaKey(RSA_new());
+  ASSERT_TRUE(jcaKey);
+
+  // FULL KEY, BLINDING => OK
+  rsa.reset(RSA_private_key_from_bytes(kKey1, sizeof(kKey1) - 1));
+  ASSERT_TRUE(rsa);
+  jcaKey.reset(RSA_new());
+  ASSERT_TRUE(jcaKey);
+  EXPECT_TRUE(RSA_set0_key(jcaKey.get(), BN_dup(rsa->n), BN_dup(rsa->e), BN_dup(rsa->d)));
+  EXPECT_TRUE(RSA_sign(hash_nid, kDummyHash, sizeof(kDummyHash), sig,
+                       &sig_len, jcaKey.get()));
+  EXPECT_TRUE(RSA_verify(hash_nid, kDummyHash, sizeof(kDummyHash), sig,
+                         sig_len, rsa.get()));
+
+  // NO |e|, BLINDNG => ERR
+  rsa.reset(RSA_private_key_from_bytes(kKey1, sizeof(kKey1) - 1));
+  ASSERT_TRUE(rsa);
+  jcaKey.reset(RSA_new());
+  ASSERT_TRUE(jcaKey);
+  EXPECT_TRUE(RSA_set0_key(jcaKey.get(), BN_dup(rsa->n), NULL, BN_dup(rsa->d)));
+  EXPECT_FALSE(RSA_sign(hash_nid, kDummyHash, sizeof(kDummyHash), sig,
+                        &sig_len, jcaKey.get()));
+  uint32_t err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_RSA, ERR_GET_LIB(err));
+  EXPECT_EQ(RSA_R_NO_PUBLIC_EXPONENT, ERR_GET_REASON(err));
+  ERR_clear_error();
+
+  // NO |e|, NO BLINDNG => OK
+  rsa.reset(RSA_private_key_from_bytes(kKey1, sizeof(kKey1) - 1));
+  ASSERT_TRUE(rsa);
+  jcaKey.reset(RSA_new());
+  ASSERT_TRUE(jcaKey);
+  EXPECT_TRUE(RSA_set0_key(jcaKey.get(), BN_dup(rsa->n), NULL, BN_dup(rsa->d)));
+  jcaKey->flags |= RSA_FLAG_NO_BLINDING;
+  EXPECT_TRUE(RSA_sign(hash_nid, kDummyHash, sizeof(kDummyHash), sig,
+                       &sig_len, jcaKey.get()));
+  EXPECT_TRUE(RSA_verify(hash_nid, kDummyHash, sizeof(kDummyHash), sig,
+                         sig_len, rsa.get()));
+}
+
 TEST(RSATest, ASN1) {
   // Test that private keys may be decoded.
   bssl::UniquePtr<RSA> rsa(
