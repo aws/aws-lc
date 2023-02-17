@@ -3,9 +3,15 @@
 
 
 FROM ubuntu:20.04
+ENV GOROOT=/usr/local/go
+ENV PATH="$GOROOT/bin:$PATH"
+ARG GO_VERSION=1.20.1
+ARG GO_ARCHIVE="go${GO_VERSION}.linux-amd64.tar.gz"
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
 RUN apt-get update
-RUN apt-get install -y wget unzip git cmake clang llvm golang python3-pip libncurses5
+RUN apt-get install -y wget unzip git cmake clang llvm python3-pip libncurses5
+RUN wget "https://dl.google.com/go/${GO_ARCHIVE}" && tar -xvf $GO_ARCHIVE && \
+   mkdir $GOROOT &&  mv go/* $GOROOT && rm $GO_ARCHIVE
 RUN pip3 install wllvm
 
 ADD ./SAW/scripts /lc/scripts
