@@ -16,7 +16,7 @@ RUN choco install git --version 2.23.0 -y && `
 choco install ninja --version 1.9.0.20190208 -y && `
 choco install strawberryperl --version 5.32.0.1 -y && `
 choco install nasm --version 2.14.02 -y && `
-choco install golang --version 1.13.1 -y && `
+choco install golang --version 1.20.1 -y && `
 choco install cmake --version 3.15.4 --installargs 'ADD_CMAKE_TO_PATH=""System""' -y
 
 # Remove Strawberryperl's GCC from path because it override's MSVC's C.
