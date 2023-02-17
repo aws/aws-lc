@@ -443,7 +443,7 @@ elseif(MSVC)
   set(CMAKE_CXX_FLAGS "-utf-8 -Wall -WX ${MSVC_DISABLED_WARNINGS_STR} ${MSVC_LEVEL4_WARNINGS_STR}")
   # We want to enable debug compiler and linker flags to obtain debug symbols
   # This isn't the same as setting CMAKE_BUILD_TYPE=Debug/RelWithDebInfo, but instead generates .pdb files that allow debugging of release code.
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Zi")
+  # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Zi")
   set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /DEBUG:FULL /OPT:REF,ICF,LBR")
   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /DEBUG:FULL /OPT:REF,ICF,LBR")
 endif()
