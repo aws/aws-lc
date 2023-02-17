@@ -667,7 +667,7 @@ TEST(RSATest, Set0Key) {
   ASSERT_TRUE(rsa);
   jcaKey.reset(RSA_new());
   ASSERT_TRUE(jcaKey);
-  EXPECT_TRUE(RSA_set0_key(jcaKey.get(), rsa->n, rsa->e, rsa->d));
+  EXPECT_TRUE(RSA_set0_key(jcaKey.get(), BN_dup(rsa->n), BN_dup(rsa->e), BN_dup(rsa->d)));
   EXPECT_TRUE(RSA_sign(hash_nid, kDummyHash, sizeof(kDummyHash), sig,
                        &sig_len, jcaKey.get()));
   EXPECT_TRUE(RSA_verify(hash_nid, kDummyHash, sizeof(kDummyHash), sig,
@@ -678,7 +678,7 @@ TEST(RSATest, Set0Key) {
   ASSERT_TRUE(rsa);
   jcaKey.reset(RSA_new());
   ASSERT_TRUE(jcaKey);
-  EXPECT_TRUE(RSA_set0_key(jcaKey.get(), rsa->n, NULL, rsa->d));
+  EXPECT_TRUE(RSA_set0_key(jcaKey.get(), BN_dup(rsa->n), NULL, BN_dup(rsa->d)));
   EXPECT_FALSE(RSA_sign(hash_nid, kDummyHash, sizeof(kDummyHash), sig,
                         &sig_len, jcaKey.get()));
   uint32_t err = ERR_get_error();
@@ -691,7 +691,7 @@ TEST(RSATest, Set0Key) {
   ASSERT_TRUE(rsa);
   jcaKey.reset(RSA_new());
   ASSERT_TRUE(jcaKey);
-  EXPECT_TRUE(RSA_set0_key(jcaKey.get(), rsa->n, NULL, rsa->d));
+  EXPECT_TRUE(RSA_set0_key(jcaKey.get(), BN_dup(rsa->n), NULL, BN_dup(rsa->d)));
   jcaKey->flags |= RSA_FLAG_NO_BLINDING;
   EXPECT_TRUE(RSA_sign(hash_nid, kDummyHash, sizeof(kDummyHash), sig,
                        &sig_len, jcaKey.get()));
