@@ -442,9 +442,10 @@ elseif(MSVC)
   set(CMAKE_C_FLAGS   "-utf-8 -Wall -WX ${MSVC_DISABLED_WARNINGS_STR} ${MSVC_LEVEL4_WARNINGS_STR}")
   set(CMAKE_CXX_FLAGS "-utf-8 -Wall -WX ${MSVC_DISABLED_WARNINGS_STR} ${MSVC_LEVEL4_WARNINGS_STR}")
 
-  # If we're using MSVC on Windows then we want to replace the '-g' debug flag with '/Zi', which accomplishes the same thing but in a manner that is compatible with VS.
+  # If we're using MSVC on Windows in FIPS mode with RelWithDebInfo then we want to replace the '-g' debug flag with '/Zi'.
+  # The '/Zi' flag accomplishes the same thing as '-g', but in a manner that is compatible with MSVC.
   # This also fixes the problem we run into with RelWithDebInfo and FIPS mode on Windows where the FIPS module wouldn't span the expected symbol.
-  if(CMAKE_BUILD_TYPE_LOWER MATCHES "relwithdebinfo")
+  if(CMAKE_BUILD_TYPE_LOWER MATCHES "relwithdebinfo" AND FIPS)
     message(STATUS "Replacing default -g flag for ${CMAKE_BUILD_TYPE} with /Zi")
     string(REPLACE "-g" "/Zi" CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO}")
     string(REPLACE "-g" "/Zi" CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
