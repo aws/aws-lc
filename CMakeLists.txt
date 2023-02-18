@@ -442,14 +442,13 @@ elseif(MSVC)
   set(CMAKE_C_FLAGS   "-utf-8 -Wall -WX ${MSVC_DISABLED_WARNINGS_STR} ${MSVC_LEVEL4_WARNINGS_STR}")
   set(CMAKE_CXX_FLAGS "-utf-8 -Wall -WX ${MSVC_DISABLED_WARNINGS_STR} ${MSVC_LEVEL4_WARNINGS_STR}")
 
-  # If we're in RelWithDebInfo then we want to override the default flag it sets to be the same as regular release, then add flags to generate .pdb files.
-  # This fixes the problem we run into with RelWithDebInfo and FIPS mode on Windows where 
-  if(CMAKE_BUILD_TYPE_LOWER MATCHES "relwithdebinfo")
-    message("Overriding default RelWithDebInfo flags with Release flags")
-    set(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELEASE}")
-    set(CMAKE_CXX_FLAGS_RELWITHDEBOINFO "${CMAKE_CXX_FLAGS_RELEASE}")
+  # If we're using MSVC on Windows then we want the '-g' debug flag with '/Zi', which accomplishes the same thing but in a manner that is compatible with VS.
+  # This also fixes the problem we run into with Debug/RelWithDebInfo and FIPS mode on Windows where the FIPS module wouldn't span the expected symbol.
+  if(CMAKE_BUILD_TYPE_LOWER MATCHES "relwithdebinfo" OR CMAKE_BUILD_TYPE_LOWER MATCHES "debug")
+    message(STATUS "Replacing default -g flag for ${CMAKE_BUILD_TYPE} with /Zi")
+    string(REPLACE "-g" "/Zi" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+    string(REPLACE "-g" "/Zi" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Zi")
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /DEBUG:FULL /OPT:REF,ICF,LBR")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /DEBUG:FULL /OPT:REF,ICF,LBR")
   endif()
