@@ -3848,4 +3848,7 @@ $L$SEH_info_bn_gather5:
 	DB	0x0b,0x01,0x21,0x00
 	DB	0x04,0xa3,0x00,0x00
 ALIGN	8
+%else
+; Work around https://bugzilla.nasm.us/show_bug.cgi?id=3392738
+ret
 %endif

@@ -3274,4 +3274,7 @@ $L$SEH_info_aesni_cbc_sha1_enc_shaext:
 	DB	9,0,0,0
 	DD	ssse3_handler wrt ..imagebase
 	DD	$L$prologue_shaext wrt ..imagebase,$L$epilogue_shaext wrt ..imagebase
+%else
+; Work around https://bugzilla.nasm.us/show_bug.cgi?id=3392738
+ret
 %endif
