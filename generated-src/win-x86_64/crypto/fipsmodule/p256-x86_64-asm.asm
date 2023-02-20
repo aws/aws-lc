@@ -4983,4 +4983,7 @@ $L$SEH_info_ecp_nistz256_point_add_affinex:
 	DD	full_handler wrt ..imagebase
 	DD	$L$add_affinex_body wrt ..imagebase,$L$add_affinex_epilogue wrt ..imagebase
 	DD	32*15+56,0
+%else
+; Work around https://bugzilla.nasm.us/show_bug.cgi?id=3392738
+ret
 %endif

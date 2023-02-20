@@ -1327,4 +1327,7 @@ $L$SEH_info_gcm_ghash_avx_0:
 	DB	$L$SEH_prolog_gcm_ghash_avx_2-$L$SEH_begin_gcm_ghash_avx_1
 	DB	1
 	DW	21
+%else
+; Work around https://bugzilla.nasm.us/show_bug.cgi?id=3392738
+ret
 %endif
