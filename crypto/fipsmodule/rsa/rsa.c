@@ -230,7 +230,7 @@ void RSA_get0_crt_params(const RSA *rsa, const BIGNUM **out_dmp1,
 
 int RSA_set0_key(RSA *rsa, BIGNUM *n, BIGNUM *e, BIGNUM *d) {
   if ((rsa->n == NULL && n == NULL) ||
-      (rsa->e == NULL && e == NULL)) {
+      (rsa->e == NULL && e == NULL && rsa->d == NULL && d == NULL)) {
     return 0;
   }
 
