@@ -174,6 +174,9 @@ let decode = new_definition `!w:int32. decode w =
     SOME (arm_RET (XREG' Rn))
   | [0b10011011110:11; Rm:5; 0b011111:6; Rn:5; Rd:5] ->
     SOME (arm_UMULH (XREG' Rd) (XREG' Rn) (XREG' Rm))
+  | [0b10011011101:11; Rm:5; o0; Ra:5; Rn:5; Rd:5] ->
+    SOME ((if o0 then arm_UMSUBL else arm_UMADDL)
+          (XREG' Rd) (WREG' Rn) (WREG' Rm) (XREG' Ra))
   | [0:1; immlo:2; 0b10000:5; immhi:19; Rd:5] ->
     SOME (arm_ADR (XREG' Rd) (word_join immhi immlo))
   | [1:1; x; 0b1110000:7; ld; 0:1; imm9:9; 0b01:2; Rn:5; Rt:5] ->
