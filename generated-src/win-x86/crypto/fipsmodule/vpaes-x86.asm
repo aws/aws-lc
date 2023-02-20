@@ -673,4 +673,7 @@ L$022cbc_abort:
 	pop	ebx
 	pop	ebp
 	ret
+%else
+; Work around https://bugzilla.nasm.us/show_bug.cgi?id=3392738
+ret
 %endif
