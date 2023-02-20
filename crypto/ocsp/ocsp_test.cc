@@ -748,7 +748,7 @@ TEST_P(OCSPRequestTest, OCSPRequestParse) {
     size_t outlen2;
     bssl::UniquePtr<OCSP_REQ_CTX> ocspReqCtxLater(OCSP_sendreq_new(bio2.get(),
                                                 nullptr, nullptr, 0));
-    ASSERT_TRUE(ocspReqCtx);
+    ASSERT_TRUE(ocspReqCtxLater);
     ASSERT_TRUE(OCSP_REQ_CTX_set1_req(ocspReqCtxLater.get(),
                                       ocspRequest.get()));
     ASSERT_TRUE(BIO_mem_contents(OCSP_REQ_CTX_get0_mem_bio(
