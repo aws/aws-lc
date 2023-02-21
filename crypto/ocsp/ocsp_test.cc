@@ -7,7 +7,9 @@
 #include "openssl/ocsp.h"
 #include "openssl/pem.h"
 
+#include "internal.h"
 #include "../internal.h"
+#include "../test/test_util.h"
 
 static const time_t invalid_before_ocsp_update_time = 1621988613;
 static const time_t valid_after_ocsp_update_time = 1621988615;
@@ -26,6 +28,8 @@ static const time_t invalid_after_ocsp_expire_time_sha256 = 1937505764;
 #define OCSP_RESPFINDSTATUS_SUCCESS                 1
 #define OCSP_RESPFINDSTATUS_ERROR                   0
 
+#define OCSP_REQUEST_PARSE_SUCCESS                 1
+#define OCSP_REQUEST_PARSE_ERROR                   0
 
 std::string GetTestData(const char *path);
 
@@ -97,6 +101,12 @@ static bssl::UniquePtr<OCSP_RESPONSE> LoadOCSP_RESPONSE(
     bssl::Span<const uint8_t> der) {
   const uint8_t *ptr = der.data();
   return bssl::UniquePtr<OCSP_RESPONSE>(d2i_OCSP_RESPONSE(nullptr, &ptr, der.size()));
+}
+
+static bssl::UniquePtr<OCSP_REQUEST> LoadOCSP_REQUEST(
+    bssl::Span<const uint8_t> der) {
+  const uint8_t *ptr = der.data();
+  return bssl::UniquePtr<OCSP_REQUEST>(d2i_OCSP_REQUEST(nullptr, &ptr, der.size()));
 }
 
 static void ExtractAndVerifyBasicOCSP(
@@ -679,4 +689,80 @@ TEST_P(OCSPTest, VerifyOCSPResponse) {
   // Does basic verification on OCSP response.
   const int ocsp_verify_status = OCSP_basic_verify(basic_response.get(), server_cert_chain.get(), trust_store.get(), 0);
   ASSERT_EQ(t.expected_ocsp_verify_status, ocsp_verify_status);
+}
+
+struct OCSPReqTestVector {
+  const char *ocsp_request;
+  int expected_status;
+};
+
+static const OCSPReqTestVector kRequestTestVectors[] = {
+    {"ocsp_request", OCSP_REQUEST_PARSE_SUCCESS},
+    {"ocsp_request_attached_cert", OCSP_REQUEST_PARSE_SUCCESS},
+    {"ocsp_request_no_nonce", OCSP_REQUEST_PARSE_SUCCESS},
+    {"ocsp_request_signed", OCSP_REQUEST_PARSE_SUCCESS},
+    {"ocsp_request_signed_sha256", OCSP_REQUEST_PARSE_SUCCESS},
+    {"ocsp_response", OCSP_REQUEST_PARSE_ERROR},
+};
+
+class OCSPRequestTest : public testing::TestWithParam<OCSPReqTestVector> {};
+
+INSTANTIATE_TEST_SUITE_P(All, OCSPRequestTest,
+                         testing::ValuesIn(kRequestTestVectors));
+
+static const char good_http_request_hdr[] =
+    "POST / HTTP/1.0\r\n"
+    "Content-Type: application/ocsp-request\r\n"
+    "Content-Length: ";
+
+TEST_P(OCSPRequestTest, OCSPRequestParse) {
+   const OCSPReqTestVector &t = GetParam();
+
+  std::string data = GetTestData(std::string("crypto/ocsp/test/aws/" +
+                                std::string(t.ocsp_request) + ".der").c_str());
+  std::vector<uint8_t> ocsp_request_data(data.begin(), data.end());
+
+  bssl::UniquePtr<OCSP_REQUEST> ocspRequest =
+      LoadOCSP_REQUEST(ocsp_request_data);
+
+  if(t.expected_status == OCSP_REQUEST_PARSE_SUCCESS) {
+    ASSERT_TRUE(ocspRequest);
+
+    // If request parsing is successful, try setting up a |OCSP_REQ_CTX| with
+    // default settings.
+    bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+    const uint8_t *out;
+    size_t outlen;
+    bssl::UniquePtr<OCSP_REQ_CTX> ocspReqCtx(OCSP_sendreq_new(bio.get(),
+                                                nullptr, ocspRequest.get(), 0));
+    ASSERT_TRUE(ocspReqCtx);
+    // Get internal memory of |OCSP_REQ_CTX| and ensure contents are written.
+    ASSERT_TRUE(BIO_mem_contents(OCSP_REQ_CTX_get0_mem_bio(ocspReqCtx.get()),
+                                 &out, &outlen));
+    ASSERT_GT(outlen, (size_t)0);
+
+    // Set up |OCSP_REQ_CTX| without a |OCSP_REQUEST|. Then finalize the context
+    // later.
+    bssl::UniquePtr<BIO> bio2(BIO_new(BIO_s_mem()));
+    const uint8_t *out2;
+    size_t outlen2;
+    bssl::UniquePtr<OCSP_REQ_CTX> ocspReqCtxLater(OCSP_sendreq_new(bio2.get(),
+                                                nullptr, nullptr, 0));
+    ASSERT_TRUE(ocspReqCtxLater);
+    ASSERT_TRUE(OCSP_REQ_CTX_set1_req(ocspReqCtxLater.get(),
+                                      ocspRequest.get()));
+    ASSERT_TRUE(BIO_mem_contents(OCSP_REQ_CTX_get0_mem_bio(
+                                     ocspReqCtxLater.get()), &out2, &outlen2));
+
+    // Ensure header contents are written as expected.
+    EXPECT_EQ(good_http_request_hdr + std::to_string(ocsp_request_data.size())
+                  + "\r", std::string(reinterpret_cast<const char *>(out),
+                            sizeof(good_http_request_hdr) +
+                              std::to_string(ocsp_request_data.size()).size()));
+    // Check |OCSP_REQ_CTX| construction methods write the exact same contents.
+    ASSERT_EQ(Bytes(out, outlen), Bytes(out2, outlen2));
+  }
+  else {
+    ASSERT_FALSE(ocspRequest);
+  }
 }

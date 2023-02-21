@@ -16,12 +16,16 @@
 #define OCSP_MAX_RESP_LENGTH    (100 * 1024)
 #define OCSP_MAX_LINE_LEN       4096;
 
-// OCSP states
+// OCSP_REQ_CTX states
 
 // If set no reading should be performed
 #define OHS_NOREAD              0x1000
 // Error condition
 #define OHS_ERROR               (0 | OHS_NOREAD)
+// First call: ready to start I/O
+#define OHS_ASN1_WRITE_INIT     (5 | OHS_NOREAD)
+// Headers set, no final \r\n included
+#define OHS_HTTP_HEADER         (9 | OHS_NOREAD)
 
 OCSP_REQ_CTX *OCSP_REQ_CTX_new(BIO *io, int maxline)
 {
@@ -56,4 +60,70 @@ void OCSP_REQ_CTX_free(OCSP_REQ_CTX *rctx)
     BIO_free(rctx->mem);
     OPENSSL_free(rctx->iobuf);
     OPENSSL_free(rctx);
+}
+
+OCSP_REQ_CTX *OCSP_sendreq_new(BIO *io, const char *path, OCSP_REQUEST *req,
+                               int maxline)
+{
+
+    OCSP_REQ_CTX *rctx = NULL;
+    rctx = OCSP_REQ_CTX_new(io, maxline);
+    if (rctx == NULL) {
+      return NULL;
+    }
+
+    if (!OCSP_REQ_CTX_http(rctx, "POST", path)) {
+      goto err;
+    }
+    if (req != NULL && !OCSP_REQ_CTX_set1_req(rctx, req)) {
+      goto err;
+    }
+    return rctx;
+
+ err:
+    OCSP_REQ_CTX_free(rctx);
+    return NULL;
+}
+
+int OCSP_REQ_CTX_http(OCSP_REQ_CTX *rctx, const char *op, const char *path)
+{
+    static const char http_hdr[] = "%s %s HTTP/1.0\r\n";
+
+    // Set to a default path, if path is NULL.
+    if (path == NULL) {
+      path = "/";
+    }
+
+    if (BIO_printf(rctx->mem, http_hdr, op, path) <= 0) {
+      return 0;
+    }
+    rctx->state = OHS_HTTP_HEADER;
+    return 1;
+}
+
+int OCSP_REQ_CTX_set1_req(OCSP_REQ_CTX *rctx, OCSP_REQUEST *req)
+{
+    return OCSP_REQ_CTX_i2d(rctx, ASN1_ITEM_rptr(OCSP_REQUEST),
+                            (ASN1_VALUE *)req);
+}
+
+int OCSP_REQ_CTX_i2d(OCSP_REQ_CTX *rctx, const ASN1_ITEM *it, ASN1_VALUE *val)
+{
+    static const char req_hdr[] =
+        "Content-Type: application/ocsp-request\r\n"
+        "Content-Length: %d\r\n\r\n";
+    int reqlen = ASN1_item_i2d(val, NULL, it);
+    if (BIO_printf(rctx->mem, req_hdr, reqlen) <= 0) {
+      return 0;
+    }
+    if (ASN1_item_i2d_bio(it, rctx->mem, val) <= 0) {
+      return 0;
+    }
+    rctx->state = OHS_ASN1_WRITE_INIT;
+    return 1;
+}
+
+BIO *OCSP_REQ_CTX_get0_mem_bio(OCSP_REQ_CTX *rctx)
+{
+    return rctx->mem;
 }

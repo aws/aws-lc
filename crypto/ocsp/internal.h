@@ -10,6 +10,10 @@
 #include "openssl/ocsp.h"
 #include "openssl/x509.h"
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 // OCSP Request ASN.1 specification:
 // https://datatracker.ietf.org/doc/html/rfc6960#section-4.1.1
 //
@@ -211,6 +215,9 @@ struct ocsp_basic_response_st {
   STACK_OF(X509) *certs;
 };
 
+// Parses ASN.1 contents of |OCSP_REQ_CTX| into a der format.
+int OCSP_REQ_CTX_i2d(OCSP_REQ_CTX *rctx, const ASN1_ITEM *it, ASN1_VALUE *val);
+
 // Returns |OCSP_SINGLERESP| in the index of |OCSP_BASICRESP|.
 OCSP_SINGLERESP *OCSP_resp_get0(OCSP_BASICRESP *bs, size_t idx);
 
@@ -234,9 +241,18 @@ OCSP_CERTID *OCSP_cert_id_new(const EVP_MD *dgst,
                                const ASN1_BIT_STRING *issuerKey,
                                const ASN1_INTEGER *serialNumber);
 
+// Returns the internal memory BIO of the |OCSP_REQ_CTX|. For AWS-LC, this is
+// only used for testing if contents of |OCSP_REQ_CTX| have been written
+// correctly.
+OPENSSL_EXPORT BIO *OCSP_REQ_CTX_get0_mem_bio(OCSP_REQ_CTX *rctx);
+
 // --- OCSP compare functions ---
 // Compares certificate id issuers, returns 0 on equal.
 int OCSP_id_issuer_cmp(const OCSP_CERTID *a, const OCSP_CERTID *b);
 
 // Compares certificate id, returns 0 on equal.
 int OCSP_id_cmp(const OCSP_CERTID *a, const OCSP_CERTID *b);
+
+#if defined(__cplusplus)
+}  // extern C
+#endif
