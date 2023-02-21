@@ -140,7 +140,7 @@ if(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS AND GO_EXECUTABLE)
   if(IS_ABSOLUTE ${BORINGSSL_PREFIX_SYMBOLS})
     set(BORINGSSL_PREFIX_SYMBOLS_PATH ${BORINGSSL_PREFIX_SYMBOLS})
   else()
-    set(BORINGSSL_PREFIX_SYMBOLS_PATH ${CMAKE_BINARY_DIR}/${BORINGSSL_PREFIX_SYMBOLS})
+    set(BORINGSSL_PREFIX_SYMBOLS_PATH ${PROJECT_BINARY_DIR}/${BORINGSSL_PREFIX_SYMBOLS})
   endif()
 
   add_custom_command(
@@ -171,7 +171,7 @@ elseif(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_HEADERS)
   if(IS_ABSOLUTE ${BORINGSSL_PREFIX_HEADERS})
     set(BORINGSSL_PREFIX_HEADERS_PATH ${BORINGSSL_PREFIX_HEADERS})
   else()
-    set(BORINGSSL_PREFIX_HEADERS_PATH ${CMAKE_BINARY_DIR}/${BORINGSSL_PREFIX_HEADERS})
+    set(BORINGSSL_PREFIX_HEADERS_PATH ${PROJECT_BINARY_DIR}/${BORINGSSL_PREFIX_HEADERS})
   endif()
 
   include_directories(${BORINGSSL_PREFIX_HEADERS_PATH})
@@ -188,7 +188,7 @@ endif()
 macro(check_compiler file_to_test flag_to_set)
   try_compile(
           RESULT
-          ${CMAKE_BINARY_DIR}
+          ${PROJECT_BINARY_DIR}
           SOURCES "${CMAKE_CURRENT_LIST_DIR}/tests/compiler_features_tests/${file_to_test}"
           COMPILE_DEFINITIONS "-Werror"
           OUTPUT_VARIABLE ERROR_MESSAGE)
@@ -633,7 +633,7 @@ function(go_executable dest package)
   else()
     # Ninja expects the target in the depfile to match the output. This is a
     # relative path from the build directory.
-    string(LENGTH "${CMAKE_BINARY_DIR}" root_dir_length)
+    string(LENGTH "${PROJECT_BINARY_DIR}" root_dir_length)
     math(EXPR root_dir_length "${root_dir_length} + 1")
     string(SUBSTRING "${CMAKE_CURRENT_BINARY_DIR}" ${root_dir_length} -1 target)
     set(target "${target}/${dest}")
@@ -881,11 +881,11 @@ if(BUILD_TESTING)
   if(GO_EXECUTABLE)
     if(FIPS)
       if(MSVC)
-        set(ACVP_TOOL ${CMAKE_BINARY_DIR}/acvptool.exe)
-        set(TEST_WRAPPER ${CMAKE_BINARY_DIR}/testmodulewrapper.exe)
+        set(ACVP_TOOL ${PROJECT_BINARY_DIR}/acvptool.exe)
+        set(TEST_WRAPPER ${PROJECT_BINARY_DIR}/testmodulewrapper.exe)
       else()
-        set(ACVP_TOOL ${CMAKE_BINARY_DIR}/acvptool)
-        set(TEST_WRAPPER ${CMAKE_BINARY_DIR}/testmodulewrapper)
+        set(ACVP_TOOL ${PROJECT_BINARY_DIR}/acvptool)
+        set(TEST_WRAPPER ${PROJECT_BINARY_DIR}/testmodulewrapper)
       endif()
       add_custom_target(
         acvp_tests
@@ -923,7 +923,7 @@ if(BUILD_TESTING)
       add_custom_target(
           run_tests
           COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
-                  ${CMAKE_BINARY_DIR}
+                  ${PROJECT_BINARY_DIR}
           WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
           DEPENDS all_tests run_ssl_runner_tests
           ${MAYBE_USES_TERMINAL})
@@ -931,7 +931,7 @@ if(BUILD_TESTING)
       add_custom_target(
           run_tests
           COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
-                  ${CMAKE_BINARY_DIR} -ssl-tests=false
+                  ${PROJECT_BINARY_DIR} -ssl-tests=false
           WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
           DEPENDS all_tests fips_specific_tests_if_any
           ${MAYBE_USES_TERMINAL}
@@ -941,7 +941,7 @@ if(BUILD_TESTING)
     add_custom_target(
         run_tests_valgrind
         COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
-                ${CMAKE_BINARY_DIR} -valgrind=true -valgrind-supp-dir "tests/ci"
+                ${PROJECT_BINARY_DIR} -valgrind=true -valgrind-supp-dir "tests/ci"
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
         DEPENDS all_tests
         ${MAYBE_USES_TERMINAL})
@@ -949,7 +949,7 @@ if(BUILD_TESTING)
     add_custom_target(
         run_tests_with_sde
         COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
-                ${CMAKE_BINARY_DIR} -sde true -sde-path "$ENV{SDEROOT}/sde"
+                ${PROJECT_BINARY_DIR} -sde true -sde-path "$ENV{SDEROOT}/sde"
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
         DEPENDS all_tests
         ${MAYBE_USES_TERMINAL})
