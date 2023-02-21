@@ -215,6 +215,14 @@ struct ocsp_basic_response_st {
   STACK_OF(X509) *certs;
 };
 
+// Try exchanging request and response via HTTP on (non-)blocking BIO in rctx.
+int OCSP_REQ_CTX_nbio(OCSP_REQ_CTX *rctx);
+
+// Like OCSP_REQ_CTX_nbio() but on successs in addition parses the response,
+// which must be a DER-encoded ASN.1 structure.
+int OCSP_REQ_CTX_nbio_d2i(OCSP_REQ_CTX *rctx,
+                          ASN1_VALUE **pval, const ASN1_ITEM *it);
+
 // Parses ASN.1 contents of |OCSP_REQ_CTX| into a der format.
 int OCSP_REQ_CTX_i2d(OCSP_REQ_CTX *rctx, const ASN1_ITEM *it, ASN1_VALUE *val);
 

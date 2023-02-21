@@ -59,12 +59,24 @@ DECLARE_ASN1_FUNCTIONS(OCSP_REQUEST)
 DECLARE_ASN1_FUNCTIONS(OCSP_SIGNATURE)
 DECLARE_ASN1_FUNCTIONS(OCSP_REQINFO)
 
+// Blocking OCSP request handler: now a special case of non-blocking I/O.
+// Combines OCSP_sendreq_new() with as many calls of OCSP_sendreq_nbio() as
+// needed and then OCSP_REQ_CTX_free(), with a response header maximum line
+// length 4k. It waits indefinitely on a response.
+OPENSSL_EXPORT OCSP_RESPONSE *OCSP_sendreq_bio(BIO *b, const char *path,
+                                               OCSP_REQUEST *req);
+
 // Returns an |OCSP_REQ_CTX| structure using the responder io, the URL path, the
 // |OCSP_REQUEST| req to be sent, and with a response header maximum line length
-// of maxline. If maxline is zero, a default value of 4k is used. The
+// of maxline. If maxline is zero or less, a default value of 4k is used. The
 // |OCSP_REQUEST| req may be set to NULL and provided later if required.
 OPENSSL_EXPORT OCSP_REQ_CTX *OCSP_sendreq_new(BIO *io, const char *path,
                                               OCSP_REQUEST *req, int maxline);
+
+// Attempts to send the request prepared in rctx and to gather the response via
+// HTTP, using the BIO io and path that were given when calling
+// OCSP_sendreq_new().
+OPENSSL_EXPORT int OCSP_sendreq_nbio(OCSP_RESPONSE **presp, OCSP_REQ_CTX *rctx);
 
 // Creates a new |OCSP_REQ_CTX|. |OCSP_REQ_CTX| is used to contain the
 // information to send the OCSP request and gather the response over HTTP.
@@ -173,6 +185,7 @@ BSSL_NAMESPACE_END
 #define OCSP_R_NO_RESPONSE_DATA 108
 #define OCSP_R_RESPONSE_CONTAINS_NO_REVOCATION_DATA 111
 #define OCSP_R_ROOT_CA_NOT_TRUSTED 112
+#define OCSP_R_SERVER_RESPONSE_PARSE_ERROR 115
 #define OCSP_R_SIGNATURE_FAILURE 117
 #define OCSP_R_SIGNER_CERTIFICATE_NOT_FOUND 118
 #define OCSP_R_UNKNOWN_MESSAGE_DIGEST 119
