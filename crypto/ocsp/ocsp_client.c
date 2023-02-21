@@ -3,6 +3,23 @@
 
 #include "internal.h"
 
+OCSP_ONEREQ *OCSP_request_add0_id(OCSP_REQUEST *req, OCSP_CERTID *cid)
+{
+    OCSP_ONEREQ *one = OCSP_ONEREQ_new();
+    if (one == NULL) {
+      return NULL;
+    }
+    // Reassign |OCSP_CERTID| allocated by OCSP_ONEREQ_new().
+    OCSP_CERTID_free(one->reqCert);
+    one->reqCert = cid;
+    if (req != NULL &&
+        !sk_OCSP_ONEREQ_push(req->tbsRequest->requestList, one)) {
+      one->reqCert = NULL;  // do not free on error
+      OCSP_ONEREQ_free(one);
+      return NULL;
+    }
+    return one;
+}
 
 int OCSP_response_status(OCSP_RESPONSE *resp) {
   if (resp == NULL){

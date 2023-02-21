@@ -81,6 +81,20 @@ OPENSSL_EXPORT int OCSP_REQ_CTX_http(OCSP_REQ_CTX *rctx, const char *op,
 // should be sent.
 OPENSSL_EXPORT int OCSP_REQ_CTX_set1_req(OCSP_REQ_CTX *rctx, OCSP_REQUEST *req);
 
+// Adds header name with value "value" to the context rctx. It can be called
+// more than once to add multiple header lines.
+OPENSSL_EXPORT int OCSP_REQ_CTX_add1_header(OCSP_REQ_CTX *rctx,
+                             const char *name, const char *value);
+
+// Add cid to req. Returns the new |OCSP_ONEREQ| pointer allocated on the stack
+// within req. This is useful if we want to add extensions.
+// WARNING: This allocates a new |OCSP_ONEREQ| and assigns the
+// pointer to cid to it. It then adds the newly allocated |OCSP_ONEREQ| to the
+// stack within req. req now takes ownership of cid, and also maintains
+// ownership of the pointer to |OCSP_ONEREQ|.
+OPENSSL_EXPORT OCSP_ONEREQ *OCSP_request_add0_id(OCSP_REQUEST *req,
+                                                 OCSP_CERTID *cid);
+
 // Returns response status from |OCSP_RESPONSE|.
 OPENSSL_EXPORT int OCSP_response_status(OCSP_RESPONSE *resp);
 

@@ -72,7 +72,7 @@ struct ocsp_signature_st {
 //       optionalSignature   [0]     EXPLICIT Signature OPTIONAL }
 //
 struct ocsp_request_st {
-    OCSP_REQINFO tbsRequest;
+    OCSP_REQINFO *tbsRequest;
     OCSP_SIGNATURE *optionalSignature;
 };
 

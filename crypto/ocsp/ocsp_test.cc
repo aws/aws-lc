@@ -766,3 +766,74 @@ TEST_P(OCSPRequestTest, OCSPRequestParse) {
     ASSERT_FALSE(ocspRequest);
   }
 }
+
+static const char extended_good_http_request_hdr[] =
+    "POST / HTTP/1.0\r\n"
+    "Accept-Charset: character-set\r\n"
+    "Content-Type: application/ocsp-request\r\n"
+    "Content-Length: ";
+
+// Check HTTP header can be written with OCSP_REQ_CTX_add1_header().
+TEST(OCSPRequestTest, AddHeader) {
+  std::string data = GetTestData(std::string("crypto/ocsp/test/aws/"
+                                             "ocsp_request.der").c_str());
+  std::vector<uint8_t> ocsp_request_data(data.begin(), data.end());
+  bssl::UniquePtr<OCSP_REQUEST> ocspRequest =
+      LoadOCSP_REQUEST(ocsp_request_data);
+
+  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+  const uint8_t *out;
+  size_t outlen;
+  bssl::UniquePtr<OCSP_REQ_CTX> ocspReqCtx(OCSP_sendreq_new(bio.get(),
+                                              nullptr, nullptr, 0));
+  ASSERT_TRUE(ocspReqCtx);
+  // Set an additional HTTP header.
+  ASSERT_TRUE(OCSP_REQ_CTX_add1_header(ocspReqCtx.get(),"Accept-Charset",
+                                       "character-set"));
+  ASSERT_TRUE(OCSP_REQ_CTX_set1_req(ocspReqCtx.get(),
+                                    ocspRequest.get()));
+
+  ASSERT_TRUE(BIO_mem_contents(OCSP_REQ_CTX_get0_mem_bio(
+                                   ocspReqCtx.get()), &out, &outlen));
+
+  // Ensure additional header contents are written as expected.
+  EXPECT_EQ(extended_good_http_request_hdr +
+                std::to_string(ocsp_request_data.size()) + "\r",
+            std::string(reinterpret_cast<const char *>(out),
+                        sizeof(extended_good_http_request_hdr) +
+                          std::to_string(ocsp_request_data.size()).size()));
+}
+
+// Check a |OCSP_CERTID| can be added to an |OCSP_REQUEST| with
+// OCSP_request_add0_id().
+TEST(OCSPRequestTest, AddCert) {
+  std::string data = GetTestData(std::string("crypto/ocsp/test/aws/"
+                                             "ocsp_request.der").c_str());
+  std::vector<uint8_t> ocsp_request_data(data.begin(), data.end());
+  bssl::UniquePtr<OCSP_REQUEST> ocspRequest =
+      LoadOCSP_REQUEST(ocsp_request_data);
+  ASSERT_TRUE(ocspRequest);
+
+  // Construct |OCSP_CERTID| from certs.
+  bssl::UniquePtr<X509> ca_cert(CertFromPEM(
+      GetTestData(std::string("crypto/ocsp/test/aws/ca_cert.pem").c_str())
+          .c_str()));
+  bssl::UniquePtr<X509> server_cert(CertFromPEM(
+      GetTestData(std::string("crypto/ocsp/test/aws/server_cert.pem").c_str())
+          .c_str()));
+  OCSP_CERTID *certId =
+      OCSP_cert_to_id(nullptr, ca_cert.get(), server_cert.get());
+  ASSERT_TRUE(certId);
+
+  OCSP_ONEREQ *oneRequest = OCSP_request_add0_id(ocspRequest.get(), certId);
+  ASSERT_TRUE(oneRequest);
+  // OCSP_request_add0_id() allocates a new |OCSP_ONEREQ| and assigns the
+  // pointer to |OCSP_CERTID| to it, then adds it to the stack within
+  // |OCSP_REQUEST|.
+  // |OCSP_REQUEST| now takes ownership of the pointer to |OCSP_CERTID| and
+  // still maintains ownership of the pointer |OCSP_ONEREQ|, so we have to set
+  // the references to NULL to avoid freeing the same pointers twice.
+  oneRequest = nullptr;
+  certId = nullptr;
+}
+
