@@ -1326,11 +1326,11 @@ static bool Speed25519(const std::string &selected) {
         in2[0] = 9;
         return X25519(out, in1, in2) == 1;
       })) {
-    fprintf(stderr, "X25519 (base-point + arbitrary point multiplication) failed.\n");
+    fprintf(stderr, "ECDH X25519 failed.\n");
     return false;
   }
 
-  results.Print("X25519 (base-point + arbitrary point multiplication)");
+  results.Print("ECDH X25519");
 
   return true;
 }
