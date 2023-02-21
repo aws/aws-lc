@@ -1314,6 +1314,24 @@ static bool Speed25519(const std::string &selected) {
 
   results.Print("Curve25519 arbitrary point multiplication");
 
+  if (!TimeFunction(&results, []() -> bool {
+        uint8_t out_base[32], in_base[32];
+        BM_memset(in_base, 0, sizeof(in_base));
+        X25519_public_from_private(out_base, in_base);
+
+        uint8_t out[32], in1[32], in2[32];
+        BM_memset(in1, 0, sizeof(in1));
+        BM_memset(in2, 0, sizeof(in2));
+        in1[0] = 1;
+        in2[0] = 9;
+        return X25519(out, in1, in2) == 1;
+      })) {
+    fprintf(stderr, "ECDH X25519 failed.\n");
+    return false;
+  }
+
+  results.Print("ECDH X25519");
+
   return true;
 }
 
