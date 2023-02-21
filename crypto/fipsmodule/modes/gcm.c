@@ -156,7 +156,12 @@ static size_t hw_gcm_encrypt(const uint8_t *in, uint8_t *out, size_t len,
     return 0;
   }
 
-  if (CRYPTO_is_ARMv8_GCM_8x_capable() && len >= 192) {
+  // The 8x-unrolled assembly implementation starts outperforming
+  // the 4x-unrolled one starting around input length of 256 bytes
+  // in the case of the EVP API.
+  // In the case of the AEAD API, it can be used for all input lengths
+  // but we are not identifying which API calls the code below.
+  if (CRYPTO_is_ARMv8_GCM_8x_capable() && len >= 256) {
     switch(key->rounds) {
     case 10:
       aesv8_gcm_8x_enc_128(in, len_blocks * 8, out, Xi, ivec, key);
@@ -189,7 +194,12 @@ static size_t hw_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
     return 0;
   }
 
-  if (CRYPTO_is_ARMv8_GCM_8x_capable() && len >= 192) {
+  // The 8x-unrolled assembly implementation starts outperforming
+  // the 4x-unrolled one starting around input length of 256 bytes
+  // in the case of the EVP API.
+  // In the case of the AEAD API, it can be used for all input lengths
+  // but we are not identifying which API calls the code below.
+  if (CRYPTO_is_ARMv8_GCM_8x_capable() && len >= 256) {
     switch(key->rounds) {
     case 10:
       aesv8_gcm_8x_dec_128(in, len_blocks * 8, out, Xi, ivec, key);
