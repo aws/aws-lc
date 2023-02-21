@@ -21,7 +21,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -2025,7 +2024,7 @@ func parseInputs(inputs []inputFile, cppCommand []string) error {
 			if len(cppCommand) > 0 {
 				inBytes, err = preprocess(cppCommand, input.path)
 			} else {
-				inBytes, err = ioutil.ReadFile(input.path)
+				inBytes, err = os.ReadFile(input.path)
 			}
 
 			if err != nil {
