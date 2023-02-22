@@ -113,6 +113,9 @@ int OCSP_REQ_CTX_add1_header(OCSP_REQ_CTX *rctx,
     if (name == NULL) {
       return 0;
     }
+    // The following being written conforms to the message-header field
+    // specification in https://www.rfc-editor.org/rfc/rfc2616#section-4.2.
+    // message-header = field-name ":" [ field-value ]
     if (BIO_puts(rctx->mem, name) <= 0) {
       return 0;
     }

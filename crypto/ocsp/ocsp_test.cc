@@ -798,10 +798,10 @@ TEST(OCSPRequestTest, AddHeader) {
 
   // Ensure additional header contents are written as expected.
   EXPECT_EQ(extended_good_http_request_hdr +
-                std::to_string(ocsp_request_data.size()) + "\r",
+                std::to_string(ocsp_request_data.size()) + "\r\n",
             std::string(reinterpret_cast<const char *>(out),
                         sizeof(extended_good_http_request_hdr) +
-                          std::to_string(ocsp_request_data.size()).size()));
+                          std::to_string(ocsp_request_data.size()).size() + 1));
 }
 
 // Check a |OCSP_CERTID| can be added to an |OCSP_REQUEST| with
