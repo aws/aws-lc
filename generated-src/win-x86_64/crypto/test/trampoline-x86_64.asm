@@ -672,4 +672,7 @@ $L$SEH_info_abi_test_bad_unwind_epilog_0:
 	DB	0
 	DB	$L$SEH_prolog_abi_test_bad_unwind_epilog_2-$L$SEH_begin_abi_test_bad_unwind_epilog_1
 	DB	192
+%else
+; Work around https://bugzilla.nasm.us/show_bug.cgi?id=3392738
+ret
 %endif

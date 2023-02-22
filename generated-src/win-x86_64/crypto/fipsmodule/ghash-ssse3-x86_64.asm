@@ -485,4 +485,7 @@ $L$SEH_info_gcm_ghash_ssse3_0:
 	DW	0
 	DB	$L$SEH_prolog_gcm_ghash_ssse3_2-$L$SEH_begin_gcm_ghash_ssse3_1
 	DB	98
+%else
+; Work around https://bugzilla.nasm.us/show_bug.cgi?id=3392738
+ret
 %endif

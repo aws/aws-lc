@@ -2460,4 +2460,7 @@ db	32,98,121,32,60,97,112,112,114,111,64,111,112,101,110,115
 db	115,108,46,111,114,103,62,0
 segment	.bss
 common	_OPENSSL_ia32cap_P 16
+%else
+; Work around https://bugzilla.nasm.us/show_bug.cgi?id=3392738
+ret
 %endif

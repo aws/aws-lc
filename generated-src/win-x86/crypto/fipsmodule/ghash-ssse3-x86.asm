@@ -291,4 +291,7 @@ db	15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0
 align	16
 L$low4_mask:
 dd	252645135,252645135,252645135,252645135
+%else
+; Work around https://bugzilla.nasm.us/show_bug.cgi?id=3392738
+ret
 %endif

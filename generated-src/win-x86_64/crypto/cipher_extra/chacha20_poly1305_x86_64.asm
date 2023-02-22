@@ -8945,4 +8945,7 @@ $L$seal_avx2_exit:
 	jmp	NEAR $L$seal_sse_tail_16
 
 
+%else
+; Work around https://bugzilla.nasm.us/show_bug.cgi?id=3392738
+ret
 %endif
