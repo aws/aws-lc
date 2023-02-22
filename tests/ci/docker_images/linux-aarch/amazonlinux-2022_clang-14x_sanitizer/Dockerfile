@@ -5,11 +5,11 @@ FROM amazonlinux-2022-aarch:clang-14x
 
 SHELL ["/bin/bash", "-c"]
 
-ENV DEPENDENCIES_DIR=/home/dependencies
 ENV LLVM_PROJECT_HOME=${DEPENDENCIES_DIR}/llvm-project
 
 RUN set -ex && \
     yum -y update && yum install -y \
+    compiler-rt \
     llvm \
     llvm-devel \
     lld && \

@@ -6,8 +6,9 @@ function env {
   echo "export ${1}=\"${2}\"" >> "${FUZZ_ROOT}/fuzz_env.sh"
 }
 # Recommended flags from https://github.com/guidovranken/cryptofuzz/blob/master/docs/building.md
-export CFLAGS="-fsanitize=address,undefined,fuzzer-no-link -O2 -g"
-export CXXFLAGS="-fsanitize=address,undefined,fuzzer-no-link -D_GLIBCXX_DEBUG -O2 -g"
+# Remove-fsanitize=undefined which doesn't fail the build but creates additional noise in build output
+export CFLAGS="-fsanitize=address,fuzzer-no-link -O2 -g -Wno-gnu-designator"
+export CXXFLAGS="-fsanitize=address,fuzzer-no-link -D_GLIBCXX_DEBUG -O2 -g"
 
 # Setup base of Cryptofuzz
 cd "$FUZZ_ROOT"
