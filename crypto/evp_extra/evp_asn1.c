@@ -144,14 +144,20 @@ int EVP_marshal_public_key(CBB *cbb, const EVP_PKEY *key) {
   return key->ameth->pub_encode(cbb, key);
 }
 
+static const unsigned kAttributesTag =
+    CBS_ASN1_CONTEXT_SPECIFIC | 0;
+
+static const unsigned kPublicKeyTag =
+    CBS_ASN1_CONTEXT_SPECIFIC | 1;
+
 EVP_PKEY *EVP_parse_private_key(CBS *cbs) {
-  // Parse the PrivateKeyInfo.
-  CBS pkcs8, algorithm, key;
+  // Parse the PrivateKeyInfo (RFC 5208) or OneAsymmetricKey (RFC 5958).
+  CBS pkcs8, algorithm, key, public_key;
   uint64_t version;
   int type;
   if (!CBS_get_asn1(cbs, &pkcs8, CBS_ASN1_SEQUENCE) ||
       !CBS_get_asn1_uint64(&pkcs8, &version) ||
-      version != 0 ||
+      version > PKCS8_VERSION_TWO ||
       !CBS_get_asn1(&pkcs8, &algorithm, CBS_ASN1_SEQUENCE) ||
       !CBS_get_asn1(&pkcs8, &key, CBS_ASN1_OCTETSTRING)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
@@ -162,7 +168,27 @@ EVP_PKEY *EVP_parse_private_key(CBS *cbs) {
     return NULL;
   }
 
-  // A PrivateKeyInfo ends with a SET of Attributes which we ignore.
+  // A PrivateKeyInfo & OneAsymmetricKey may optionally contain a SET of Attributes which
+  // we ignore.
+  if (CBS_peek_asn1_tag(&pkcs8, kAttributesTag)) {
+    if (!CBS_get_asn1(cbs, NULL, kAttributesTag)) {
+      OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+      return NULL;
+    }
+  }
+
+  int has_pub = 0;
+  // A OneAsymmetricKey may contain an optional PublicKey BIT STRING which is
+  // implicitly encoded. To support public keys that might not be a size
+  // divisible by 8 we leave the first octet of the bit string present, which
+  // specifies the padded bit count between 0 and 7.
+  if (CBS_peek_asn1_tag(&pkcs8, kPublicKeyTag)) {
+    if (version != PKCS8_VERSION_TWO || !CBS_get_asn1(&pkcs8, &public_key, kPublicKeyTag)) {
+      OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+      return NULL;
+    }
+    has_pub = 1;
+  }
 
   // Set up an |EVP_PKEY| of the appropriate type.
   EVP_PKEY *ret = EVP_PKEY_new();
@@ -176,7 +202,9 @@ EVP_PKEY *EVP_parse_private_key(CBS *cbs) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
     goto err;
   }
-  if (!ret->ameth->priv_decode(ret, &algorithm, &key)) {
+
+  if (!ret->ameth->priv_decode(ret, &algorithm, &key,
+                               has_pub ? &public_key : NULL)) {
     goto err;
   }
 
@@ -194,6 +222,15 @@ int EVP_marshal_private_key(CBB *cbb, const EVP_PKEY *key) {
   }
 
   return key->ameth->priv_encode(cbb, key);
+}
+
+int EVP_marshal_private_key_v2(CBB *cbb, const EVP_PKEY *key) {
+  if (key->ameth == NULL || key->ameth->priv_encode_v2 == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
+    return 0;
+  }
+
+  return key->ameth->priv_encode_v2(cbb, key);
 }
 
 static EVP_PKEY *old_priv_decode(CBS *cbs, int type) {

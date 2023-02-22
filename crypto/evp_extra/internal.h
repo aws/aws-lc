@@ -12,6 +12,8 @@ typedef struct {
   char has_private;
 } ED25519_KEY;
 
+#define PKCS8_VERSION_ONE 0
+#define PKCS8_VERSION_TWO 1
 #define ED25519_PUBLIC_KEY_OFFSET 32
 
 typedef struct {
