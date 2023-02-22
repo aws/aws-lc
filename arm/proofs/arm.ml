@@ -174,6 +174,17 @@ let READ_SHIFTEDREG_CLAUSES = prove
    read (Shiftedreg Rn ROR n) s = word_ror (read Rn s) n`,
   REWRITE_TAC[Shiftedreg_DEF; read; regshift_operation; ETA_AX]);;
 
+let READ_EXTENDEDREG_CLAUSES = prove
+ (`read (Extendedreg Rn UXTB) s = word_zx (word_zx (read Rn s):byte) /\
+   read (Extendedreg Rn UXTH) s = word_zx (word_zx (read Rn s):int16) /\
+   read (Extendedreg Rn UXTW) s = word_zx (word_zx (read Rn s):int32) /\
+   read (Extendedreg Rn UXTX) s = word_zx (word_zx (read Rn s):int64) /\
+   read (Extendedreg Rn SXTB) s = word_sx (word_zx (read Rn s):byte) /\
+   read (Extendedreg Rn SXTH) s = word_sx (word_zx (read Rn s):int16) /\
+   read (Extendedreg Rn SXTW) s = word_sx (word_zx (read Rn s):int32) /\
+   read (Extendedreg Rn SXTX) s = word_sx (word_zx (read Rn s):int64)`,
+  REWRITE_TAC[Extendedreg_DEF; read; extendreg_operation; ETA_AX]);;
+
 let ARM_EXEC_CONV =
   let qth = prove(`bytes64 (word_add a (word 0)) = bytes64 a`,
                   REWRITE_TAC[WORD_ADD_0])
@@ -198,7 +209,7 @@ let ARM_EXEC_CONV =
   REWRITE_CONV[WREG_EXPAND_CLAUSES] THENC
   REWRITE_CONV[READ_RVALUE; ASSIGN_ZEROTOP_32; ARM_ZERO_REGISTER;
                READ_ZEROTOP_32; WRITE_ZEROTOP_32;
-               READ_SHIFTEDREG_CLAUSES] THENC
+               READ_SHIFTEDREG_CLAUSES; READ_EXTENDEDREG_CLAUSES] THENC
   DEPTH_CONV(WORD_NUM_RED_CONV ORELSEC WORD_WORD_OPERATION_CONV);;
 
 (* ------------------------------------------------------------------------- *)

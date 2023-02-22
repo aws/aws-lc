@@ -87,6 +87,18 @@ let decode_shift = new_definition
     | [0b10:2] -> ASR
     | [0b11:2] -> ROR`;;
 
+let decode_extendtype = new_definition
+ `decode_extendtype (ety:3 word) =
+    bitmatch ety with
+      [0b000:3] -> UXTB
+    | [0b001:3] -> UXTH
+    | [0b010:3] -> UXTW
+    | [0b011:3] -> UXTX
+    | [0b100:3] -> SXTB
+    | [0b101:3] -> SXTH
+    | [0b110:3] -> SXTW
+    | [0b111:3] -> SXTX`;;
+
 let decode = new_definition `!w:int32. decode w =
   bitmatch w:int32 with
   | [sf; op; S; 0b11010000:8; Rm:5; 0:6; Rn:5; Rd:5] ->
@@ -108,6 +120,20 @@ let decode = new_definition `!w:int32. decode w =
        SOME(arm_addop op S (WREG' Rd) (WREG' Rn)
                            (Shiftedreg (WREG' Rm) (decode_shift sty) (val sam)))
     else NONE
+  | [sf; op; S; 0b01011001:8; Rm:5; option:3; imm3:3; Rn:5; Rd:5] ->
+    let sam = val imm3 in
+    let ety = decode_extendtype option in
+    if sam > 4 then NONE
+    else if sf then
+       if option = word 0b011 \/ option = word 0b111 then
+         SOME(arm_addop op S (if S then XREG' Rd else XREG_SP Rd) (XREG_SP Rn)
+                 (Shiftedreg (Extendedreg (XREG' Rm) ety) LSL sam))
+       else
+         SOME(arm_addop op S (if S then XREG' Rd else XREG_SP Rd) (XREG_SP Rn)
+                 (Shiftedreg (Extendedreg (WREG' Rm) ety) LSL sam))
+    else
+       SOME(arm_addop op S (if S then WREG' Rd else WREG_SP Rd) (WREG_SP Rn)
+               (Shiftedreg (Extendedreg (WREG' Rm) ety) LSL sam))
   | [sf; opc:2; 0b100100:6; N; immr:6; imms:6; Rn:5; Rd:5] ->
     if sf then
       decode_bitmask N immr imms >>= \imm.
@@ -422,6 +448,10 @@ let DECODE_SHIFT_CONV =
   GEN_REWRITE_CONV I [decode_shift] THENC
   BITMATCH_SEQ_CONV;;
 
+let DECODE_EXTENDTYPE_CONV =
+  GEN_REWRITE_CONV I [decode_extendtype] THENC
+  BITMATCH_SEQ_CONV;;
+
 let dest_component = function
 | Tyapp("component", [A; B]) -> A, B
 | _ -> failwith "dest_component";;
@@ -481,7 +511,8 @@ let PURE_DECODE_CONV =
       conjuncts o lhand o snd o dest_forall o concl in
     ["T";"F";",";"NONE";"SOME";"int_of_num"] @
     ["XZR";"WZR";"SP";"WSP";"rvalue";"word";"iword"] @
-    constructors_of offset_INDUCT @ ["Shiftedreg"] @
+    ["LSL"; "LSR"; "ASR"; "ROR"] @
+    constructors_of offset_INDUCT @ ["Shiftedreg"; "Extendedreg"] @
     map (fun n -> "X"^string_of_int n) (0--30) @
     map (fun n -> "W"^string_of_int n) (0--30) @
     map (fst o dest_const o fst o strip_comb o lhs o concl)
@@ -677,6 +708,8 @@ let PURE_DECODE_CONV =
     eval_binary f a b F WORD_RED_CONV
   | Comb((Const("Condition",_) as f),a) -> eval_unary f a F CONDITION_CONV
   | Comb((Const("decode_shift",_) as f),a) -> eval_unary f a F DECODE_SHIFT_CONV
+  | Comb((Const("decode_extendtype",_) as f),a) ->
+    eval_unary f a F DECODE_EXTENDTYPE_CONV
   | Comb(Comb(Comb(Const("decode_bitmask",_),_),_),_) ->
     eval_opt t F DECODE_BITMASK_CONV
   | Comb((Const("word_clz",_) as f),a) -> eval_unary f a F WORD_RED_CONV
@@ -704,8 +737,10 @@ let PURE_DECODE_CONV =
     eval_binary f a b F (GEN_REWRITE_CONV I [AND_CLAUSES])
   | Comb(Comb((Const("\\/",_) as f),a),b) ->
     eval_binary f a b F (GEN_REWRITE_CONV I [OR_CLAUSES])
+  | Comb(Comb((Const("<=",_) as f),a),b) -> eval_binary f a b F NUM_RED_CONV
   | Comb(Comb((Const(">=",_) as f),a),b) -> eval_binary f a b F NUM_RED_CONV
   | Comb(Comb((Const("<",_) as f),a),b) -> eval_binary f a b F NUM_RED_CONV
+  | Comb(Comb((Const(">",_) as f),a),b) -> eval_binary f a b F NUM_RED_CONV
   | Comb(Comb((Const("*",_) as f),a),b) -> eval_binary f a b F NUM_RED_CONV
   | Comb(Comb((Const("+",_) as f),a),b) -> eval_binary f a b F NUM_RED_CONV
   | Comb(Comb((Const("-",_) as f),a),b) -> eval_binary f a b F NUM_RED_CONV

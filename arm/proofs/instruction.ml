@@ -330,6 +330,29 @@ let SHIFTEDREG_TRIVIAL = prove
               regshift_operation; WORD_SHL_ZERO; ETA_AX]);;
 
 (* ------------------------------------------------------------------------- *)
+(* Extended register operands. Again the lvalue form is arbitrary.           *)
+(* ------------------------------------------------------------------------- *)
+
+let extendtype_INDUCT,extendtype_RECURSION = define_type
+  "extendtype = UXTB | UXTH | UXTW | UXTX | SXTB | SXTH | SXTW | SXTX";;
+
+(*** For flexibility, this takes arbitrary input and output word sizes ***)
+
+let extendreg_operation = define
+ `extendreg_operation UXTB x = word_zx (word_zx x:byte) /\
+  extendreg_operation UXTH x = word_zx (word_zx x:int16) /\
+  extendreg_operation UXTW x = word_zx (word_zx x:int32) /\
+  extendreg_operation UXTX x = word_zx (word_zx x:int64) /\
+  extendreg_operation SXTB x = word_sx (word_zx x:byte) /\
+  extendreg_operation SXTH x = word_sx (word_zx x:int16) /\
+  extendreg_operation SXTW x = word_sx (word_zx x:int32) /\
+  extendreg_operation SXTX x = word_sx (word_zx x:int64)`;;
+
+let Extendedreg_DEF = define
+ `Extendedreg reg ety =
+        component((\s. extendreg_operation ety (read reg s)),ARB)`;;
+
+(* ------------------------------------------------------------------------- *)
 (* The main SIMD register parts                                              *)
 (* ------------------------------------------------------------------------- *)
 

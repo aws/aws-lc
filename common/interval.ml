@@ -193,6 +193,10 @@ let PURE_BOUNDER_RULE =
      (`&(val(a:int64)):real <= &18446744073709551615`,
       MP_TAC(SPEC `a:int64` VAL_BOUND_64) THEN
       REWRITE_TAC[REAL_OF_NUM_LE; DIMINDEX_64] THEN ARITH_TAC)
+    and val_upperbound_gen = prove
+     (`&(val(a:N word)):real <= &2 pow dimindex(:N) - &1`,
+      REWRITE_TAC[REAL_LE_SUB_LADD; REAL_OF_NUM_CLAUSES] THEN
+      REWRITE_TAC[ARITH_RULE `a + 1 <= b <=> a < b`; VAL_BOUND])
     and valword_upperbound = prove
      (`&(val(word n:int64)) <= &n`,
       SIMP_TAC[REAL_OF_NUM_LE; VAL_WORD_LE; LE_REFL])
@@ -213,6 +217,11 @@ let PURE_BOUNDER_RULE =
      (try [PART_MATCH lhand bitvalf_upperbound t] with Failure _ -> []) @
      (try [PART_MATCH lhand bitval_upperbound t] with Failure _ -> []) @
      (try [PART_MATCH lhand val_upperbound t] with Failure _ -> []) @
+     (try [CONV_RULE
+            (RAND_CONV 
+             (LAND_CONV (RAND_CONV DIMINDEX_CONV THENC REAL_RAT_POW_CONV) THENC
+              REAL_RAT_SUB_CONV))
+            (PART_MATCH lhand val_upperbound_gen t)] with Failure _ -> []) @
      (try [let th1 = PART_MATCH lhand shift_upperbound t in
            CONV_RULE(RAND_CONV
             (LAND_CONV(RAND_CONV NUM_SUB_CONV THENC
