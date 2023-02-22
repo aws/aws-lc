@@ -13,7 +13,7 @@ In order to generate the `aws-lc-sys` crate, you need to have the following inst
 * Rust - installable with [rustup](https://rustup.rs/)
 * libclang
 * docker
-* C compilation tools to build AWS-LC. We pull in [generated-src](https://github.com/awslabs/aws-lc/tree/main/generated-src) into `aws-lc-sys`, so Go and Perl aren't needed (for non-FIPS).
+* C compilation tools to build AWS-LC. We pull in [generated-src](https://github.com/aws/aws-lc/tree/main/generated-src) into `aws-lc-sys`, so Go and Perl aren't needed (for non-FIPS).
 * CMake3 or above. [`cmake-rs`](https://docs.rs/cmake/latest/cmake/) appends build options after the path, which isn't supported in older versions of cmake.
 
 ### To Use
@@ -25,7 +25,7 @@ be [built](../../tests/ci/docker_images/rust/build_images.sh) and available loca
 ./bindings/rust/generate/generate.sh
 ```
 
-See AWS-LC build documentation for more details: https://github.com/awslabs/aws-lc/blob/main/BUILDING.md
+See AWS-LC build documentation for more details: https://github.com/aws/aws-lc/blob/main/BUILDING.md
 
 ### Publishing
 The `aws-lc-sys` crate should be fully generated and tested by running the [generate.sh](./generate/generate.sh) script, prior to publishing.

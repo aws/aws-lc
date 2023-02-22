@@ -1,22 +1,26 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 
-FROM ubuntu-20.04-aarch:clang-10x
+FROM amazonlinux-2022-aarch:clang-14x
 
 SHELL ["/bin/bash", "-c"]
 
 RUN set -ex && \
-    apt-get update && \
-    apt-get -y --no-install-recommends upgrade && \
-    apt-get -y --no-install-recommends install \
+    yum -y update && yum install -y \
     make \
-    libboost-all-dev \
-    unzip && \
-    apt-get autoremove --purge -y && \
-    apt-get clean && \
-    apt-get autoclean && \
-    rm -rf /var/lib/apt/lists/* && \
-    rm -rf /tmp/*
+    automake \
+    autoconf \
+    libtool \
+    boost-devel \
+    unzip \
+    llvm \
+    llvm-devel \
+    lld && \
+    yum clean packages && \
+    yum clean metadata && \
+    yum clean all && \
+    rm -rf /tmp/* && \
+    rm -rf /var/cache/yum
 
 ENV FUZZ_ROOT=${DEPENDENCIES_DIR}
 ENV MODULE_ROOT="${FUZZ_ROOT}/modules"
