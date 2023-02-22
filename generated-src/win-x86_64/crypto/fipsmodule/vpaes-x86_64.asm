@@ -1471,4 +1471,7 @@ $L$SEH_info_vpaes_ctr32_encrypt_blocks:
 	DB	9,0,0,0
 	DD	se_handler wrt ..imagebase
 	DD	$L$ctr32_body wrt ..imagebase,$L$ctr32_epilogue wrt ..imagebase
+%else
+; Work around https://bugzilla.nasm.us/show_bug.cgi?id=3392738
+ret
 %endif
