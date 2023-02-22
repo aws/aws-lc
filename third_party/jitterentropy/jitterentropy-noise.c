@@ -31,19 +31,16 @@
  * Update of the loop count used for the next round of
  * an entropy collection.
  *
- * @ec [in] entropy collector struct -- may be NULL
  * @bits [in] is the number of low bits of the timer to consider
  * @min [in] is the number of bits we shift the timer value to the right at
  *	     the end to make sure we have a guaranteed minimum value
  *
  * @return Newly calculated loop counter
  */
-static uint64_t jent_loop_shuffle(struct rand_data *ec,
-				  unsigned int bits, unsigned int min)
+static uint64_t jent_loop_shuffle(unsigned int bits, unsigned int min)
 {
 #ifdef JENT_CONF_DISABLE_LOOP_SHUFFLE
 
-	(void)ec;
 	(void)bits;
 
 	return (UINT64_C(1)<<min);
@@ -54,15 +51,6 @@ static uint64_t jent_loop_shuffle(struct rand_data *ec,
 	uint64_t shuffle = 0;
 	unsigned int i = 0;
 	unsigned int mask = (1U<<bits) - 1;
-
-	/*
-	 * Mix the current state of the random number into the shuffle
-	 * calculation to balance that shuffle a bit more.
-	 */
-	if (ec) {
-		jent_get_nstime_internal(ec, &time);
-		time ^= ec->data[0];
-	}
 
 	/*
 	 * We fold the time value as much as possible to ensure that as many
@@ -90,10 +78,10 @@ static uint64_t jent_loop_shuffle(struct rand_data *ec,
  * entropy pool using a hash.
  *
  * @ec [in] entropy collector struct -- may be NULL
- * @time [in] time stamp to be injected
+ * @time [in] time delta to be injected
  * @loop_cnt [in] if a value not equal to 0 is set, use the given value as
  *		  number of loops to perform the hash operation
- * @stuck [in] Is the time stamp identified as stuck?
+ * @stuck [in] Is the time delta identified as stuck?
  *
  * Output:
  * updated hash context
@@ -102,12 +90,12 @@ static void jent_hash_time(struct rand_data *ec, uint64_t time,
 			   uint64_t loop_cnt, unsigned int stuck)
 {
 	HASH_CTX_ON_STACK(ctx);
-	uint8_t itermediary[SHA3_256_SIZE_DIGEST];
+	uint8_t intermediary[SHA3_256_SIZE_DIGEST];
 	uint64_t j = 0;
 #define MAX_HASH_LOOP 3
 #define MIN_HASH_LOOP 0
 	uint64_t hash_loop_cnt =
-		jent_loop_shuffle(ec, MAX_HASH_LOOP, MIN_HASH_LOOP);
+		jent_loop_shuffle(MAX_HASH_LOOP, MIN_HASH_LOOP);
 
 	sha3_256_init(&ctx);
 
@@ -124,30 +112,27 @@ static void jent_hash_time(struct rand_data *ec, uint64_t time,
 	 * same result.
 	 */
 	for (j = 0; j < hash_loop_cnt; j++) {
-		sha3_update(&ctx, ec->data, SHA3_256_SIZE_DIGEST);
-		sha3_update(&ctx, (uint8_t *)&time, sizeof(uint64_t));
-		sha3_update(&ctx, (uint8_t *)&j, sizeof(uint64_t));
+        sha3_update(&ctx, intermediary, sizeof(intermediary));
+        sha3_update(&ctx, (uint8_t *)&ec->rct_count,
+                    sizeof(ec->rct_count));
+        sha3_update(&ctx, (uint8_t *)&ec->apt_cutoff,
+                    sizeof(ec->apt_cutoff));
+        sha3_update(&ctx, (uint8_t *)&ec->apt_observations,
+                    sizeof(ec->apt_observations));
+        sha3_update(&ctx, (uint8_t *)&ec->apt_count,
+                    sizeof(ec->apt_count));
+        sha3_update(&ctx,(uint8_t *) &ec->apt_base,
+                    sizeof(ec->apt_base));
+        sha3_update(&ctx, (uint8_t *)&j, sizeof(uint64_t));
+        sha3_final(&ctx, intermediary);
+    }
+    
+    sha3_update(ec->hash_state, intermediary, sizeof(intermediary));
 
-		/*
-		 * If the time stamp is stuck, do not finally insert the value
-		 * into the entropy pool. Although this operation should not do
-		 * any harm even when the time stamp has no entropy, SP800-90B
-		 * requires that any conditioning operation to have an identical
-		 * amount of input data according to section 3.1.5.
-		 */
-
-		/*
-		 * The sha3_final operations re-initialize the context for the
-		 * next loop iteration.
-		 */
-		if (stuck || (j < hash_loop_cnt - 1))
-			sha3_final(&ctx, itermediary);
-		else
-			sha3_final(&ctx, ec->data);
-	}
-
-	jent_memset_secure(&ctx, SHA_MAX_CTX_SIZE);
-	jent_memset_secure(itermediary, sizeof(itermediary));
+    if (!stuck)
+        sha3_update(ec->hash_state, (uint8_t *)&time, sizeof(uint64_t));
+    jent_memset_secure(&ctx, SHA_MAX_CTX_SIZE);
+    jent_memset_secure(intermediary, sizeof(intermediary));
 }
 
 /**
@@ -181,7 +166,7 @@ static void jent_memaccess(struct rand_data *ec, uint64_t loop_cnt)
 #define MAX_ACC_LOOP_BIT 7
 #define MIN_ACC_LOOP_BIT 0
 	uint64_t acc_loop_cnt =
-		jent_loop_shuffle(ec, MAX_ACC_LOOP_BIT, MIN_ACC_LOOP_BIT);
+		jent_loop_shuffle(MAX_ACC_LOOP_BIT, MIN_ACC_LOOP_BIT);
 
 	if (NULL == ec || NULL == ec->mem)
 		return;
@@ -265,7 +250,7 @@ unsigned int jent_measure_jitter(struct rand_data *ec,
 
 /**
  * Generator of one 256 bit random number
- * Function fills rand_data->data
+ * Function fills rand_data->hash_state
  *
  * @ec [in] Reference to entropy collector
  */
@@ -291,4 +276,14 @@ void jent_random_data(struct rand_data *ec)
 		if (++k >= ((DATA_SIZE_BITS + safety_factor) * ec->osr))
 			break;
 	}
+}
+
+void jent_read_random_block(struct rand_data *ec, char *dst, size_t dst_len)
+{
+	uint8_t jent_block[SHA3_256_SIZE_DIGEST];
+
+	/* The final operation automatically re-initializes the ->hash_state */
+	sha3_final(ec->hash_state, jent_block);
+	memcpy(dst, jent_block, dst_len);
+	jent_memset_secure(jent_block, sizeof(jent_block));
 }

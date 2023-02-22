@@ -154,7 +154,8 @@ ssize_t jent_read_entropy(struct rand_data *ec, char *data, size_t len)
 			tocopy = (DATA_SIZE_BITS / 8);
 		else
 			tocopy = len;
-		memcpy(p, &ec->data, tocopy);
+
+		jent_read_random_block(ec, p, tocopy);
 
 		len -= tocopy;
 		p += tocopy;
@@ -301,6 +302,12 @@ static struct rand_data
 		entropy_collector->memaccessloops = JENT_MEMORY_ACCESSLOOPS;
 	}
 
+	if (sha3_alloc(&entropy_collector->hash_state))
+		goto err;
+
+	/* Initialize the hash state */
+	sha3_256_init(entropy_collector->hash_state);
+
 	/* verify and set the oversampling rate */
 	if (osr < JENT_MIN_OSR)
 		osr = JENT_MIN_OSR;
@@ -366,6 +373,7 @@ JENT_PRIVATE_STATIC
 void jent_entropy_collector_free(struct rand_data *entropy_collector)
 {
 	if (entropy_collector != NULL) {
+		sha3_dealloc(entropy_collector->hash_state);
 		jent_notime_disable(entropy_collector);
 		if (entropy_collector->mem != NULL) {
 			jent_zfree(entropy_collector->mem, JENT_MEMORY_SIZE);

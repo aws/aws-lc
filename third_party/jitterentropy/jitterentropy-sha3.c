@@ -19,6 +19,7 @@
  */
 
 #include "jitterentropy-sha3.h"
+#include "jitterentropy-base-user.h"
 
 /***************************************************************************
  * Message Digest Implementation
@@ -379,4 +380,24 @@ int sha3_tester(void)
 	}
 
 	return 0;
+}
+
+int sha3_alloc(void **hash_state)
+{
+	struct sha_ctx *tmp;
+
+	tmp = jent_zalloc(SHA_MAX_CTX_SIZE);
+	if (!tmp)
+		return 1;
+
+	*hash_state = tmp;
+
+	return 0;
+}
+
+void sha3_dealloc(void *hash_state)
+{
+	struct sha_ctx *ctx = (struct sha_ctx *)hash_state;
+
+	jent_zfree(ctx, SHA_MAX_CTX_SIZE);
 }
