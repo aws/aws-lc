@@ -3852,4 +3852,7 @@ $L$SEH_info_cbc:
 $L$SEH_info_key:
 	DB	0x01,0x04,0x01,0x00
 	DB	0x04,0x02,0x00,0x00
+%else
+; Work around https://bugzilla.nasm.us/show_bug.cgi?id=3392738
+ret
 %endif
