@@ -3,7 +3,7 @@ SPDX-License-Identifier: Apache-2.0 OR ISC
 
 #P256 Armv8 Assembly Functions
 This application was used to develop the assembly functions committed to
-[awsls:p256-armv8](https://github.com/awslabs/aws-lc/tree/p256-armv8)
+[awsls:p256-armv8](https://github.com/aws/aws-lc/tree/p256-armv8)
 
 The goal is bringing the P-256 performance on ARMv8 at par with x86_64.
 The ARMv8 assembly code is taken from OpenSSL 1.1.1 (at [this commit](openssl/openssl@46a9ee8)).

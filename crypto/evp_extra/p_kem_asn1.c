@@ -114,7 +114,8 @@ const EVP_PKEY_ASN1_METHOD kem_asn1_meth = {
   kem_pub_cmp,
   NULL, // priv_decode
   NULL, // priv_encode
-  NULL, // set_priv_raw,
+  NULL, // priv_encode_v2
+  NULL, // set_priv_raw
   NULL, // set_pub_raw,
   kem_get_priv_raw,
   kem_get_pub_raw,

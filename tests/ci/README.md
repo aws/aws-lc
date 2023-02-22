@@ -35,7 +35,7 @@ $ ./tests/ci/run_posix_tests.sh
 
 ### Unit tests
 
-General test suite with a varying set of build options (FIPS (shared), non-FIPS, debug,
+General test suite with a varying set of build options (FIPS (shared-build), non-FIPS, debug,
 shared, static, etc.) is executed on the following combinations:
 
 CI Tool|Compiler|CPU|OS
@@ -51,6 +51,8 @@ CodeBuild|gcc 7.5.0|x86-64|Ubuntu 20.04
 CodeBuild|gcc 7.5.0|aarch64|Ubuntu 20.04
 CodeBuild|gcc 8.4.0|x86-64|Ubuntu 20.04
 CodeBuild|gcc 8.4.0|aarch64|Ubuntu 20.04
+CodeBuild|gcc 11|x86-64|AL2022
+CodeBuild|gcc 11|aarch64|AL2022
 CodeBuild|gcc 11|x86-64|Ubuntu 22.04
 CodeBuild|gcc 11|aarch64|Ubuntu 22.04
 CodeBuild|gcc 12|x86-64|Ubuntu 22.04
@@ -67,26 +69,53 @@ CodeBuild|clang 9.0.1|x86-64|Ubuntu 20.04
 CodeBuild|clang 9.0.1|aarch64|Ubuntu 20.04
 CodeBuild|clang 10.0.0|x86-64|Ubuntu 20.04
 CodeBuild|clang 10.0.0|aarch64|Ubuntu 20.04
+CodeBuild|clang 14.0.0|x86-64|AL2022
+CodeBuild|clang 14.0.0|aarch64|AL2022
 CodeBuild|Visual Studio 2015|x86-64|Windows Server 19
 CodeBuild|Visual Studio 2017|x86-64|Windows Server 19
 GitHub Workflow|AppleClang 13.0.0|x86-64|macOS 11
+SSM->EC2 Instance|AppleClang 14.0.0|aarch64|macOS 12
 AWS Device Farm|Android ndkVersion "21.0.6113669"|aarch64|Android 10
 AWS Device Farm|Android ndkVersion "21.0.6113669"|aarch64|Android 11
 AWS Device Farm|Android ndkVersion "21.0.6113669"|aarch64|Android 12
 
 ### FIPS static build tests
 
-Unfortunately, it's a known issue that the FIPS build has limited support when producing a static library. The following platforms are what we currently test on for the static AWS-LC FIPS build.
+Unfortunately, it's a known issue that the FIPS build has limited support when producing a static library. The static AWS-LC FIPS build is only supported on Linux based platforms for x86_64 and aarch64.
 
 CI Tool|Compiler|CPU|OS
 ------------ | -------------| -------------|-------------
 CodeBuild|gcc 4.8.5|x86-64|Centos 7
 CodeBuild|gcc 7.3.1|x86-64|AL2
+CodeBuild|gcc 7.3.1|aarch64|AL2
+CodeBuild|gcc 7.5.0|x86-64|Ubuntu 18.04
 CodeBuild|gcc 7.5.0|x86-64|Ubuntu 20.04
+CodeBuild|gcc 7.5.0|aarch64|Ubuntu 20.04
+CodeBuild|gcc 8.4.0|x86-64|Ubuntu 20.04
+CodeBuild|gcc 8.4.0|aarch64|Ubuntu 20.04
+CodeBuild|gcc 11|x86-64|AL2022
+CodeBuild|gcc 11|aarch64|AL2022
+CodeBuild|gcc 11|x86-64|Ubuntu 22.04
+CodeBuild|gcc 11|aarch64|Ubuntu 22.04
+CodeBuild|gcc 12|x86-64|Ubuntu 22.04
+CodeBuild|gcc 12|aarch64|Ubuntu 22.04
 CodeBuild|clang 7.0.1|x86-64|AL2
 CodeBuild|clang 7.0.1|aarch64|AL2
+CodeBuild|clang 6.0.0|x86-64|Ubuntu 18.04
+CodeBuild|clang 9.0.1|x86-64|Fedora 31
 CodeBuild|clang 7.0.1|x86-64|Ubuntu 20.04
 CodeBuild|clang 7.0.1|aarch64|Ubuntu 20.04
+CodeBuild|clang 8.0.1|x86-64|Ubuntu 20.04
+CodeBuild|clang 8.0.1|aarch64|Ubuntu 20.04
+CodeBuild|clang 9.0.1|x86-64|Ubuntu 20.04
+CodeBuild|clang 9.0.1|aarch64|Ubuntu 20.04
+CodeBuild|clang 10.0.0|x86-64|Ubuntu 20.04
+CodeBuild|clang 10.0.0|aarch64|Ubuntu 20.04
+CodeBuild|clang 14.0.0|x86-64|AL2022
+CodeBuild|clang 14.0.0|aarch64|AL2022
+AWS Device Farm|Android ndkVersion "21.0.6113669"|aarch64|Android 10
+AWS Device Farm|Android ndkVersion "21.0.6113669"|aarch64|Android 11
+AWS Device Farm|Android ndkVersion "21.0.6113669"|aarch64|Android 12
 
 ### Sanitizer tests
 
@@ -99,8 +128,8 @@ Runs all tests with:
 
 CI Tool|Compiler|CPU platform|OS
 ------------ | -------------| -------------|-------------
-CodeBuild|clang 9.0.1|x86-64|Ubuntu 20.04
-CodeBuild|clang 9.0.1|aarch64|ubuntu 20.04
+CodeBuild|clang 14.0.0|x86-64|AL2022
+CodeBuild|clang 14.0.0|aarch64|AL2022
 
 ### Valgrind tests
 
@@ -108,7 +137,7 @@ The following Valgrind tests are run for a subset of targets in `utils/all_tests
 
 CI Tool|Compiler|CPU platform|OS| memcheck 
 ------------ | -------------| -------------|-------------|-------------
-CodeBuild|gcc 7.3.1|x86-64|AL2 | X
+CodeBuild|gcc 11|x86-64|AL2022 | X
 
 ### Fuzz tests
 

@@ -976,4 +976,7 @@ L$025aw_end:
 	ret
 segment	.bss
 common	_OPENSSL_ia32cap_P 16
+%else
+; Work around https://bugzilla.nasm.us/show_bug.cgi?id=3392738
+ret
 %endif

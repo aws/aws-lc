@@ -263,7 +263,7 @@ Options:
     --help                       Displays this help
     --aws-account                AWS account for CDK deploy/destroy. Default to '620771051181'.
     --aws-region                 AWS region for AWS resources creation. Default to 'us-west-2'.
-    --github-repo-owner          GitHub repository owner. Default to 'awslabs'.
+    --github-repo-owner          GitHub repository owner. Default to 'aws'.
     --github-source-version      GitHub source version. Default to 'main'.
     --action                     Required. The value can be
                                    'deploy-ci': deploys aws-lc ci. This includes AWS and Docker image resources creation.
@@ -289,7 +289,7 @@ function export_global_variables() {
     export AWS_DEFAULT_REGION="${CDK_DEPLOY_REGION}"
   fi
   if [[ -z "${GITHUB_REPO_OWNER+x}" || -z "${GITHUB_REPO_OWNER}" ]]; then
-    export GITHUB_REPO_OWNER='awslabs'
+    export GITHUB_REPO_OWNER='aws'
   fi
   if [[ -z "${GITHUB_SOURCE_VERSION+x}" || -z "${GITHUB_SOURCE_VERSION}" ]]; then
     export GITHUB_SOURCE_VERSION='main'
@@ -307,8 +307,8 @@ function export_global_variables() {
   export WIN_DOCKER_BUILD_SSM_DOCUMENT="windows-ssm-document-${DATE_NOW}"
   export IMG_BUILD_STATUS='unknown'
   # 620771051181 is AWS-LC team AWS account.
-  if [[ "${CDK_DEPLOY_ACCOUNT}" != "620771051181" ]] && [[ "${GITHUB_REPO_OWNER}" == 'awslabs' ]]; then
-    echo "Only team account is allowed to create CI stacks on awslabs repo."
+  if [[ "${CDK_DEPLOY_ACCOUNT}" != "620771051181" ]] && [[ "${GITHUB_REPO_OWNER}" == 'aws' ]]; then
+    echo "Only team account is allowed to create CI stacks on aws repo."
     exit 1
   fi
 }

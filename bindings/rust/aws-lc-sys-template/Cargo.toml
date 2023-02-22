@@ -4,7 +4,7 @@ description = "AWS-LC is a general-purpose cryptographic library maintained by t
 version = "__AWS_LC_SYS_VERSION__"
 authors = ["AWS-LC"]
 edition = "2021"
-repository = "https://github.com/awslabs/aws-lc"
+repository = "https://github.com/aws/aws-lc"
 license = "Apache-2.0 OR ISC"
 rust-version = "1.57.0"
 include = [
@@ -32,7 +32,7 @@ ssl = []
 
 [build-dependencies]
 cmake = "0.1.48"
-bindgen = { version = "0.61", optional = true }
+bindgen = { version = "0.64.0", optional = true }
 regex = "1"
 dunce = "1.0"
 cfg_aliases = "0.1.1"
@@ -43,3 +43,6 @@ paste = "1.0.11"
 
 [dev-dependencies]
 openssl = { version = "0.10" }
+
+[package.metadata.aws-lc-sys]
+commit-hash = "__AWS_LC_COMMIT_HASH__"

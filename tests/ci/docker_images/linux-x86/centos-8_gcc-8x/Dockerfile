@@ -4,6 +4,8 @@
 FROM centos:8
 
 SHELL ["/bin/bash", "-c"]
+ENV GOROOT=/usr/local/go
+ENV PATH="$GOROOT/bin:$PATH"
 
 RUN set -ex && \
     sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-* && \
@@ -21,7 +23,6 @@ RUN set -ex && \
     cmake3 \
     ninja-build \
     perl \
-    golang \
     wget \
     unzip && \
     # Based on https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2-linux.html
@@ -37,5 +38,6 @@ RUN set -ex && \
 
 ENV CC=gcc
 ENV CXX=g++
-ENV GOROOT=/usr/local/go
-ENV PATH="$GOROOT/bin:$PATH"
+
+COPY install_common_dependencies.sh /
+RUN set -ex && /install_common_dependencies.sh && rm install_common_dependencies.sh

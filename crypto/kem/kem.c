@@ -16,10 +16,12 @@
 //        - Kyber is not standardized yet, so we use the latest specification
 //          from Round 3 of NIST PQC project.
 
-#define AWSLC_NUM_BUILT_IN_KEMS 1
+#define AWSLC_NUM_BUILT_IN_KEMS 3
 
-// TODO(awslc): placeholder OID, replace with the real one when available.
-static const uint8_t kOIDKyber512r3[] = {0xff, 0xff, 0xff, 0xff};
+// TODO(awslc): placeholder OIDs, replace with the real ones when available.
+static const uint8_t kOIDKyber512r3[]  = {0xff, 0xff, 0xff, 0xff};
+static const uint8_t kOIDKyber768r3[]  = {0xff, 0xff, 0xff, 0xff};
+static const uint8_t kOIDKyber1024r3[] = {0xff, 0xff, 0xff, 0xff};
 
 static const KEM built_in_kems[AWSLC_NUM_BUILT_IN_KEMS] = {
   {
@@ -31,21 +33,32 @@ static const KEM built_in_kems[AWSLC_NUM_BUILT_IN_KEMS] = {
     1632,                    // kem.secret_key_len
     768,                     // kem.ciphertext_len
     32,                      // kem.shared_secret_len
-    &kem_kyber512_r3_method, // kem.method
+    &kem_kyber512r3_method,  // kem.method
   },
 
-  // Example how adding new KEM looks like:
-  // {
-  //   NID_KYBER768,         // kem.nid
-  //   kOIDKyber768,         // kem.oid
-  //   sizeof(kOIDKyber768), // kem.oid_len
-  //   "Kyber7678,           // kem.comment
-  //   1184,                 // kem.public_key_len
-  //   2400,                 // kem.secret_key_len
-  //   1088,                 // kem.ciphertext_len
-  //   32,                   // kem.shared_secret_len
-  //   &kem_kyber768_method, // kem.method
-  // },
+  {
+    NID_KYBER768_R3,         // kem.nid
+    kOIDKyber768r3,          // kem.oid
+    sizeof(kOIDKyber768r3),  // kem.oid_len
+    "Kyber768 Round-3",      // kem.comment
+    1184,                    // kem.public_key_len
+    2400,                    // kem.secret_key_len
+    1088,                    // kem.ciphertext_len
+    32,                      // kem.shared_secret_len
+    &kem_kyber768r3_method,  // kem.method
+  },
+
+  {
+    NID_KYBER1024_R3,         // kem.nid
+    kOIDKyber1024r3,          // kem.oid
+    sizeof(kOIDKyber1024r3),  // kem.oid_len
+    "Kyber1024 Round-3",      // kem.comment
+    1568,                     // kem.public_key_len
+    3168,                     // kem.secret_key_len
+    1568,                     // kem.ciphertext_len
+    32,                       // kem.shared_secret_len
+    &kem_kyber1024r3_method,  // kem.method
+  },
 };
 
 const KEM *KEM_find_kem_by_nid(int nid) {
