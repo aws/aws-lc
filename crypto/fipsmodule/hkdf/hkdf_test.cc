@@ -564,11 +564,15 @@ static void RunTest(FileTest *t)
 
   // HKDF_expand being used as a KDF in Feedback Mode
   if (run_test) {
-    std::vector<uint8_t> output;
-    output.reserve(l_len);
+    // The |output| buffer is a plain C buffer because using a C++ std::vector
+    // produces a false positive in the clang Address Sanitizer checks. Note
+    // that this is done the C++ way in sshkdf_test.cc without triggering a
+    // false positive.
+    uint8_t *output = (uint8_t *)malloc(l_len);
 
-    ASSERT_TRUE(HKDF_expand(output.data(), l_len, md, ki.data(), ki.size(), fixed.data(), fixed.size()));
-    EXPECT_EQ(Bytes(ko.data(), ko.size()), Bytes(output.data(), l_len));
+    ASSERT_TRUE(HKDF_expand(output, l_len, md, ki.data(), ki.size(), fixed.data(), fixed.size()));
+    EXPECT_EQ(Bytes(ko.data(), ko.size()), Bytes(output, l_len));
+    free(output);
   }
 }
 
