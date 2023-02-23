@@ -442,15 +442,15 @@ elseif(MSVC)
   set(CMAKE_C_FLAGS   "-utf-8 -Wall -WX ${MSVC_DISABLED_WARNINGS_STR} ${MSVC_LEVEL4_WARNINGS_STR}")
   set(CMAKE_CXX_FLAGS "-utf-8 -Wall -WX ${MSVC_DISABLED_WARNINGS_STR} ${MSVC_LEVEL4_WARNINGS_STR}")
 
-  # If we're using MSVC on Windows in FIPS mode with RelWithDebInfo then we want to replace the '-g' debug flag with '/Zi'.
-  # The '/Zi' flag accomplishes the same thing as '-g', but in a manner that is compatible with MSVC.
-  # This also fixes the problem we run into with RelWithDebInfo and FIPS mode on Windows where the FIPS module wouldn't span the expected symbol.
+  # If we're using MSVC on Windows in FIPS mode with RelWithDebInfo then we want to override some of the default RelWithDebInfo flags.
+  # This fixes the problem we run into with RelWithDebInfo and FIPS mode on Windows where the FIPS module wouldn't span the expected symbol.
   if(CMAKE_BUILD_TYPE_LOWER MATCHES "relwithdebinfo" AND FIPS)
-    # We want to replace the default /debug flag with /DEBUG:FULL, to explicitly make sure that .PDBs can be used on other machines than where it's built.
+    # /Zi requires the /debug flag for executables/libraries that we want .pdb files for.
+    # We want to replace the default /debug flag with /DEBUG:FULL, to explicitly make sure that the .pdb files can be used on machines other than one on which it's built.
     string(REPLACE "/debug" "/DEBUG:FULL" CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO}")
     string(REPLACE "/debug" "/DEBUG:FULL" CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO}")
 
-    # We also want to reenable optimizations as /debug turns it off by default.
+    # The /debug flag also turns off the /OPT linker flag so we want to turn them back on across the board.
     set(CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO} /OPT:REF,ICF,LBR")
     set(CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO} /OPT:REF,ICF,LBR")
   endif()
