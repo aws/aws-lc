@@ -112,27 +112,28 @@ static void jent_hash_time(struct rand_data *ec, uint64_t time,
 	 * same result.
 	 */
 	for (j = 0; j < hash_loop_cnt; j++) {
-        sha3_update(&ctx, intermediary, sizeof(intermediary));
-        sha3_update(&ctx, (uint8_t *)&ec->rct_count,
-                    sizeof(ec->rct_count));
-        sha3_update(&ctx, (uint8_t *)&ec->apt_cutoff,
-                    sizeof(ec->apt_cutoff));
-        sha3_update(&ctx, (uint8_t *)&ec->apt_observations,
-                    sizeof(ec->apt_observations));
-        sha3_update(&ctx, (uint8_t *)&ec->apt_count,
-                    sizeof(ec->apt_count));
-        sha3_update(&ctx,(uint8_t *) &ec->apt_base,
-                    sizeof(ec->apt_base));
-        sha3_update(&ctx, (uint8_t *)&j, sizeof(uint64_t));
-        sha3_final(&ctx, intermediary);
-    }
-    
-    sha3_update(ec->hash_state, intermediary, sizeof(intermediary));
+		sha3_update(&ctx, intermediary, sizeof(intermediary));
+		sha3_update(&ctx, (uint8_t *)&ec->rct_count,
+		 	sizeof(ec->rct_count));
+		sha3_update(&ctx, (uint8_t *)&ec->apt_cutoff,
+			sizeof(ec->apt_cutoff));
+		sha3_update(&ctx, (uint8_t *)&ec->apt_observations,
+			sizeof(ec->apt_observations));
+		sha3_update(&ctx, (uint8_t *)&ec->apt_count,
+			sizeof(ec->apt_count));
+		sha3_update(&ctx,(uint8_t *) &ec->apt_base,
+			sizeof(ec->apt_base));
+		sha3_update(&ctx, (uint8_t *)&j, sizeof(uint64_t));
+		sha3_final(&ctx, intermediary);
+	}
 
-    if (!stuck)
-        sha3_update(ec->hash_state, (uint8_t *)&time, sizeof(uint64_t));
-    jent_memset_secure(&ctx, SHA_MAX_CTX_SIZE);
-    jent_memset_secure(intermediary, sizeof(intermediary));
+	sha3_update(ec->hash_state, intermediary, sizeof(intermediary));
+
+	if (!stuck) {
+		sha3_update(ec->hash_state, (uint8_t *)&time, sizeof(uint64_t));
+	}
+	jent_memset_secure(&ctx, SHA_MAX_CTX_SIZE);
+	jent_memset_secure(intermediary, sizeof(intermediary));
 }
 
 /**
