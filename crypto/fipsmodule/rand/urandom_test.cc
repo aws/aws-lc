@@ -32,6 +32,7 @@
 #include <sys/user.h>
 
 #include "fork_detect.h"
+#include "getrandom_fillin.h"
 
 #if !defined(PTRACE_O_EXITKILL)
 #define PTRACE_O_EXITKILL (1 << 20)
@@ -504,11 +505,21 @@ static std::vector<Event> TestFunctionPRNGModel(unsigned flags) {
 TEST(URandomTest, Test) {
   char buf[256];
 
+  // Some Android systems lack getrandom.
+  uint8_t scratch[1];
+  const bool has_getrandom =
+      (syscall(__NR_getrandom, scratch, sizeof(scratch), GRND_NONBLOCK) != -1 ||
+       errno != ENOSYS);
+
 #define TRACE_FLAG(flag)                                         \
   snprintf(buf, sizeof(buf), #flag ": %d", (flags & flag) != 0); \
   SCOPED_TRACE(buf);
 
   for (unsigned flags = 0; flags < NEXT_FLAG; flags++) {
+    if (!has_getrandom && !(flags & NO_GETRANDOM)) {
+        continue;
+    }
+
     TRACE_FLAG(NO_GETRANDOM);
     TRACE_FLAG(NO_URANDOM);
     TRACE_FLAG(GETRANDOM_NOT_READY);
