@@ -167,7 +167,7 @@ struct rand_data
 	 * of the RNG are marked as SENSITIVE. A user must not
 	 * access that information while the RNG executes its loops to
 	 * calculate the next random value. */
-	uint8_t data[SHA3_256_SIZE_DIGEST]; /* SENSITIVE Actual random number */
+	void *hash_state;		/* SENSITIVE hash state entropy pool */
 	uint64_t prev_time;		/* SENSITIVE Previous time stamp */
 #define DATA_SIZE_BITS (SHA3_256_SIZE_DIGEST_BITS)
 
