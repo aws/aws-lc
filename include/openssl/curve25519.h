@@ -69,6 +69,7 @@ OPENSSL_EXPORT void X25519_public_from_private(uint8_t out_public_value[32],
 // implementation as the "seed" and is the first 32 bytes of our private key.
 
 #define ED25519_PRIVATE_KEY_LEN 64
+#define ED25519_PRIVATE_KEY_SEED_LEN 32
 #define ED25519_PUBLIC_KEY_LEN 32
 #define ED25519_SIGNATURE_LEN 64
 #define ED25519_SEED_LEN 32

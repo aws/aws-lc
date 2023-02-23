@@ -13,7 +13,11 @@ android {
     def test_apk_tag = ''
     // FIPS only works with arm64 for Android.
     if (project.hasProperty('FIPS')) {
-        cmake_args += '-DFIPS=1,-DBUILD_SHARED_LIBS=1,-DCMAKE_BUILD_TYPE=Release'
+        cmake_args += '-DFIPS=1,-DCMAKE_BUILD_TYPE=Release'
+        // Shared build. If not set, the build is static.
+        if(project.hasProperty('Shared')) {
+            cmake_args += ',-DBUILD_SHARED_LIBS=1'
+        }
         specific_abis = 'arm64-v8a'
         main_apk_tag += '_fips'
         test_apk_tag += '_fips'

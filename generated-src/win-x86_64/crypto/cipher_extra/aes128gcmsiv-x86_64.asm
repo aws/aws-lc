@@ -42,7 +42,7 @@ con1:
 con2:
 	DD	0x1b,0x1b,0x1b,0x1b
 con3:
-DB	-1,-1,-1,-1,-1,-1,-1,-1,4,5,6,7,4,5,6,7
+	DB	-1,-1,-1,-1,-1,-1,-1,-1,4,5,6,7,4,5,6,7
 and_mask:
 	DD	0,0xffffffff,0xffffffff,0xffffffff
 section	.text code align=64
@@ -3276,4 +3276,7 @@ $L$SEH_begin_aes256gcmsiv_kdf:
 	DB	0F3h,0C3h		;repret
 
 $L$SEH_end_aes256gcmsiv_kdf:
+%else
+; Work around https://bugzilla.nasm.us/show_bug.cgi?id=3392738
+ret
 %endif

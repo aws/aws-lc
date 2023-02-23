@@ -140,7 +140,7 @@ if(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS AND GO_EXECUTABLE)
   if(IS_ABSOLUTE ${BORINGSSL_PREFIX_SYMBOLS})
     set(BORINGSSL_PREFIX_SYMBOLS_PATH ${BORINGSSL_PREFIX_SYMBOLS})
   else()
-    set(BORINGSSL_PREFIX_SYMBOLS_PATH ${CMAKE_BINARY_DIR}/${BORINGSSL_PREFIX_SYMBOLS})
+    set(BORINGSSL_PREFIX_SYMBOLS_PATH ${PROJECT_BINARY_DIR}/${BORINGSSL_PREFIX_SYMBOLS})
   endif()
 
   add_custom_command(
@@ -171,7 +171,7 @@ elseif(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_HEADERS)
   if(IS_ABSOLUTE ${BORINGSSL_PREFIX_HEADERS})
     set(BORINGSSL_PREFIX_HEADERS_PATH ${BORINGSSL_PREFIX_HEADERS})
   else()
-    set(BORINGSSL_PREFIX_HEADERS_PATH ${CMAKE_BINARY_DIR}/${BORINGSSL_PREFIX_HEADERS})
+    set(BORINGSSL_PREFIX_HEADERS_PATH ${PROJECT_BINARY_DIR}/${BORINGSSL_PREFIX_HEADERS})
   endif()
 
   include_directories(${BORINGSSL_PREFIX_HEADERS_PATH})
@@ -188,7 +188,7 @@ endif()
 macro(check_compiler file_to_test flag_to_set)
   try_compile(
           RESULT
-          ${CMAKE_BINARY_DIR}
+          ${PROJECT_BINARY_DIR}
           SOURCES "${CMAKE_CURRENT_LIST_DIR}/tests/compiler_features_tests/${file_to_test}"
           COMPILE_DEFINITIONS "-Werror"
           OUTPUT_VARIABLE ERROR_MESSAGE)
@@ -615,7 +615,7 @@ if(CONSTANT_TIME_VALIDATION)
 endif()
 
 function(go_executable dest package)
-  set(godeps "${CMAKE_SOURCE_DIR}/util/godeps.go")
+  set(godeps "${PROJECT_SOURCE_DIR}/util/godeps.go")
   if(CMAKE_VERSION VERSION_LESS "3.7" OR NOT CMAKE_GENERATOR STREQUAL "Ninja")
     # The DEPFILE parameter to add_custom_command is new as of CMake 3.7 and
     # only works with Ninja. Query the sources at configure time. Additionally,
@@ -629,11 +629,11 @@ function(go_executable dest package)
                        COMMAND ${GO_EXECUTABLE} build
                                -o ${CMAKE_CURRENT_BINARY_DIR}/${dest} ${package}
                        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-                       DEPENDS ${sources} ${CMAKE_SOURCE_DIR}/go.mod)
+                       DEPENDS ${sources} ${PROJECT_SOURCE_DIR}/go.mod)
   else()
     # Ninja expects the target in the depfile to match the output. This is a
     # relative path from the build directory.
-    string(LENGTH "${CMAKE_BINARY_DIR}" root_dir_length)
+    string(LENGTH "${PROJECT_BINARY_DIR}" root_dir_length)
     math(EXPR root_dir_length "${root_dir_length} + 1")
     string(SUBSTRING "${CMAKE_CURRENT_BINARY_DIR}" ${root_dir_length} -1 target)
     set(target "${target}/${dest}")
@@ -645,7 +645,7 @@ function(go_executable dest package)
                        COMMAND ${GO_EXECUTABLE} run ${godeps} -format depfile
                                -target ${target} -pkg ${package} -out ${depfile}
                        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-                       DEPENDS ${godeps} ${CMAKE_SOURCE_DIR}/go.mod
+                       DEPENDS ${godeps} ${PROJECT_SOURCE_DIR}/go.mod
                        DEPFILE ${depfile})
   endif()
 endfunction()
@@ -854,7 +854,7 @@ endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   set(HANDSHAKER_ARGS "-handshaker-path" $<TARGET_FILE:handshaker>)
-  set(SSL_TRANSFER_ARGS "-ssl-transfer-test-file" ${CMAKE_SOURCE_DIR}/ssl/test/runner/ssl_transfer/test_case_names.txt)
+  set(SSL_TRANSFER_ARGS "-ssl-transfer-test-file" ${PROJECT_SOURCE_DIR}/ssl/test/runner/ssl_transfer/test_case_names.txt)
   if(DEFINED ENV{AWS_LC_SSL_RUNNER_START_INDEX})
     set(AWS_LC_SSL_RUNNER_INDEX_FILTER "-test-case-start-index" $ENV{AWS_LC_SSL_RUNNER_START_INDEX})
   endif()
@@ -881,11 +881,11 @@ if(BUILD_TESTING)
   if(GO_EXECUTABLE)
     if(FIPS)
       if(MSVC)
-        set(ACVP_TOOL ${CMAKE_BINARY_DIR}/acvptool.exe)
-        set(TEST_WRAPPER ${CMAKE_BINARY_DIR}/testmodulewrapper.exe)
+        set(ACVP_TOOL ${PROJECT_BINARY_DIR}/acvptool.exe)
+        set(TEST_WRAPPER ${PROJECT_BINARY_DIR}/testmodulewrapper.exe)
       else()
-        set(ACVP_TOOL ${CMAKE_BINARY_DIR}/acvptool)
-        set(TEST_WRAPPER ${CMAKE_BINARY_DIR}/testmodulewrapper)
+        set(ACVP_TOOL ${PROJECT_BINARY_DIR}/acvptool)
+        set(TEST_WRAPPER ${PROJECT_BINARY_DIR}/testmodulewrapper)
       endif()
       add_custom_target(
         acvp_tests
@@ -898,7 +898,7 @@ if(BUILD_TESTING)
                 -tool ${ACVP_TOOL}
                 -module-wrappers modulewrapper:$<TARGET_FILE:modulewrapper>,testmodulewrapper:${TEST_WRAPPER}
                 -tests tests.json
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
         DEPENDS modulewrapper
         ${MAYBE_USES_TERMINAL})
 
@@ -916,23 +916,23 @@ if(BUILD_TESTING)
           COMMAND cd ssl/test/runner &&
                   ${GO_EXECUTABLE} test -timeout ${GO_TEST_TIMEOUT} -shim-path $<TARGET_FILE:bssl_shim>
                     ${HANDSHAKER_ARGS} ${RUNNER_ARGS} ${AWS_LC_SSL_RUNNER_INDEX_FILTER} ${SSL_TRANSFER_ARGS}
-          WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+          WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
           DEPENDS bssl_shim handshaker fips_specific_tests_if_any
           ${MAYBE_USES_TERMINAL})
 
       add_custom_target(
           run_tests
           COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
-                  ${CMAKE_BINARY_DIR}
-          WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+                  ${PROJECT_BINARY_DIR}
+          WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
           DEPENDS all_tests run_ssl_runner_tests
           ${MAYBE_USES_TERMINAL})
     else()
       add_custom_target(
           run_tests
           COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
-                  ${CMAKE_BINARY_DIR} -ssl-tests=false
-          WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+                  ${PROJECT_BINARY_DIR} -ssl-tests=false
+          WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
           DEPENDS all_tests fips_specific_tests_if_any
           ${MAYBE_USES_TERMINAL}
       )
@@ -941,16 +941,16 @@ if(BUILD_TESTING)
     add_custom_target(
         run_tests_valgrind
         COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
-                ${CMAKE_BINARY_DIR} -valgrind=true -valgrind-supp-dir "tests/ci"
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+                ${PROJECT_BINARY_DIR} -valgrind=true -valgrind-supp-dir "tests/ci"
+        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
         DEPENDS all_tests
         ${MAYBE_USES_TERMINAL})
 
     add_custom_target(
         run_tests_with_sde
         COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
-                ${CMAKE_BINARY_DIR} -sde true -sde-path "$ENV{SDEROOT}/sde"
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+                ${PROJECT_BINARY_DIR} -sde true -sde-path "$ENV{SDEROOT}/sde"
+        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
         DEPENDS all_tests
         ${MAYBE_USES_TERMINAL})
   else()
@@ -960,7 +960,7 @@ if(BUILD_TESTING)
           COMMAND crypto_test
           COMMAND urandom_test
           COMMAND ssl_test
-          WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+          WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
           DEPENDS all_tests
           ${MAYBE_USES_TERMINAL})
     else()
@@ -968,7 +968,7 @@ if(BUILD_TESTING)
           run_minimal_tests
           COMMAND crypto_test
           COMMAND urandom_test
-          WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+          WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
           DEPENDS all_tests
           ${MAYBE_USES_TERMINAL}
       )

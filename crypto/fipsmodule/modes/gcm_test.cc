@@ -175,17 +175,17 @@ TEST(GCMTest, ABI) {
 
         aes_hw_set_encrypt_key(kKey, 128, &aes_key);
         for (size_t blocks : kBlockCounts) {
-          CHECK_ABI(aesni_gcm_encrypt, buf, buf, blocks * 16, &aes_key, iv,
-                    gcm.Xi.u);
-          CHECK_ABI(aesni_gcm_encrypt, buf, buf, blocks * 16 + 7, &aes_key, iv,
-                    gcm.Xi.u);
+          CHECK_ABI_SEH(aesni_gcm_encrypt, buf, buf, blocks * 16, &aes_key, iv,
+                        gcm.Xi.u);
+          CHECK_ABI_SEH(aesni_gcm_encrypt, buf, buf, blocks * 16 + 7, &aes_key,
+                        iv, gcm.Xi.u);
         }
         aes_hw_set_decrypt_key(kKey, 128, &aes_key);
         for (size_t blocks : kBlockCounts) {
-          CHECK_ABI(aesni_gcm_decrypt, buf, buf, blocks * 16, &aes_key, iv,
-                    gcm.Xi.u);
-          CHECK_ABI(aesni_gcm_decrypt, buf, buf, blocks * 16 + 7, &aes_key, iv,
-                    gcm.Xi.u);
+          CHECK_ABI_SEH(aesni_gcm_decrypt, buf, buf, blocks * 16, &aes_key, iv,
+                        gcm.Xi.u);
+          CHECK_ABI_SEH(aesni_gcm_decrypt, buf, buf, blocks * 16 + 7, &aes_key,
+                        iv, gcm.Xi.u);
         }
       }
     }
@@ -210,6 +210,20 @@ TEST(GCMTest, ABI) {
     }
   }
 #endif  // GHASH_ASM_ARM
+
+#if defined(OPENSSL_AARCH64) && defined(HW_GCM)
+  if (hwaes_capable() && gcm_pmull_capable()) {
+    static const uint8_t kKey[16] = {0};
+    uint8_t iv[16] = {0};
+
+    for (size_t key_bits = 128; key_bits <= 256; key_bits += 64) {
+      AES_KEY aes_key;
+      aes_hw_set_encrypt_key(kKey, key_bits, &aes_key);
+      CHECK_ABI(aes_gcm_enc_kernel, buf, sizeof(buf) * 8, buf, X, iv, &aes_key);
+      CHECK_ABI(aes_gcm_dec_kernel, buf, sizeof(buf) * 8, buf, X, iv, &aes_key);
+    }
+  }
+#endif
 
 #if defined(GHASH_ASM_PPC64LE)
   if (CRYPTO_is_PPC64LE_vcrypto_capable()) {

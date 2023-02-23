@@ -1257,4 +1257,7 @@ L$_bn_sqr_comba4_begin:
 	pop	edi
 	pop	esi
 	ret
+%else
+; Work around https://bugzilla.nasm.us/show_bug.cgi?id=3392738
+ret
 %endif

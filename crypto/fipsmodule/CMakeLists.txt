@@ -75,6 +75,7 @@ if(ARCH STREQUAL "aarch64")
     BCM_ASM_SOURCES
 
     aesv8-armx.${ASM_EXT}
+    aesv8-gcm-armv8.${ASM_EXT}
     armv8-mont.${ASM_EXT}
     ghash-neon-armv8.${ASM_EXT}
     ghashv8-armx.${ASM_EXT}
@@ -104,6 +105,7 @@ if(PERL_EXECUTABLE)
   perlasm(aesni-x86.${ASM_EXT} aes/asm/aesni-x86.pl)
   perlasm(aesp8-ppc.${ASM_EXT} aes/asm/aesp8-ppc.pl)
   perlasm(aesv8-armx.${ASM_EXT} aes/asm/aesv8-armx.pl)
+  perlasm(aesv8-gcm-armv8.${ASM_EXT} modes/asm/aesv8-gcm-armv8.pl)
   perlasm(armv4-mont.${ASM_EXT} bn/asm/armv4-mont.pl)
   perlasm(armv8-mont.${ASM_EXT} bn/asm/armv8-mont.pl)
   perlasm(bn-586.${ASM_EXT} bn/asm/bn-586.pl)
@@ -205,10 +207,15 @@ function(cpreprocess dest src)
     set(TARGET "--target=${CMAKE_ASM_COMPILER_TARGET}")
   endif()
 
+  set(PREFIX_INCLUDE "")
+  if(BORINGSSL_PREFIX)
+    set(PREFIX_INCLUDE "-I${BORINGSSL_PREFIX_HEADERS_PATH}")
+  endif()
+
   string(REGEX REPLACE "[ ]+" ";" CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS}")
   add_custom_command(
     OUTPUT ${dest}
-    COMMAND ${CMAKE_ASM_COMPILER} ${TARGET} ${CMAKE_ASM_FLAGS} -E ${src} -I${PROJECT_SOURCE_DIR}/include > ${dest}
+    COMMAND ${CMAKE_ASM_COMPILER} ${TARGET} ${CMAKE_ASM_FLAGS} -E ${src} -I${PROJECT_SOURCE_DIR}/include ${PREFIX_INCLUDE} > ${dest}
     DEPENDS
     ${src}
     ${PROJECT_SOURCE_DIR}/include/openssl/arm_arch.h
