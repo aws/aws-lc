@@ -8,9 +8,11 @@
 FROM --platform=linux/arm64 rust:latest
 
 SHELL ["/bin/bash", "-c"]
+ENV GOROOT=/usr/local/go
+ENV PATH="$GOROOT/bin:$PATH"
 
 RUN apt-get update && \
-    apt-get -y install clang cmake golang && \
+    apt-get -y install clang cmake && \
     rustup update && \
     rustup toolchain install nightly && \
     rustup default nightly && \
@@ -27,3 +29,6 @@ ENV CARGO_UNSTABLE_SPARSE_REGISTRY=true
 # Static FIPS build only supports clang.
 ENV CC=clang
 ENV CXX=clang++
+
+COPY install_common_dependencies.sh /
+RUN set -ex && /install_common_dependencies.sh && rm install_common_dependencies.sh

@@ -4,6 +4,10 @@
 FROM arm64v8/amazonlinux:2022
 
 SHELL ["/bin/bash", "-c"]
+ENV GOROOT=/usr/local/go
+ENV PATH="$GOROOT/bin:$PATH"
+
+ENV DEPENDENCIES_DIR=/home/dependencies
 
 # Install Valgrind for Valgrind test target even though it is not needed for the base test target.
 RUN set -ex && \
@@ -11,10 +15,10 @@ RUN set -ex && \
     cmake3 \
     ninja-build \
     perl \
-    golang \
     which \
     git \
     ca-certificates \
+    tar \
     wget \
     valgrind \
     unzip && \
@@ -29,6 +33,5 @@ RUN set -ex && \
     rm -rf /tmp/* && \
     rm -rf /var/cache/yum
 
-ENV GO111MODULE=on
-# Avoid "Use -buildvcs=false to disable VCS stamping." errors due to newer versions of Go
-ENV GOFLAGS="-buildvcs=false"
+COPY install_common_dependencies.sh /
+RUN set -ex && /install_common_dependencies.sh && rm install_common_dependencies.sh

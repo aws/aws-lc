@@ -11,7 +11,8 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV ANDROID_SDK_URL commandlinetools-linux-8092744_latest
 ENV ANDROID_HOME /opt/sdk
 ENV GRADLE_VERSION gradle-5.6.4
-
+ENV GOROOT=/usr/local/go
+ENV PATH="$GOROOT/bin:$PATH"
 # ------------------------------------------------------
 # --- Android SDK
 
@@ -27,11 +28,6 @@ RUN set -ex && \
     libunwind-dev \
     wget \
     unzip && \
-# install go dependencies
-    cd /tmp && \
-    wget https://dl.google.com/go/go1.13.12.linux-amd64.tar.gz && \
-    tar -xvf go1.13.12.linux-amd64.tar.gz && \
-    mv go /usr/local && \
 # install android-sdk from url source
     mkdir /opt/sdk && \
     mkdir /opt/sdk/cmdline-tools && \
@@ -53,14 +49,12 @@ RUN set -ex && \
     cd /opt && \
     wget -q https://services.gradle.org/distributions/${GRADLE_VERSION}-all.zip && \
     rm -rf /opt/cmdline-tools-tmp && \
-    rm -rf /tmp/* 
+    rm -rf /tmp/*
 # Preinstall gradle dependencies, so they don't need to be redownloaded in the CI.
-COPY . /tmp/triggerGradleDownloads/
+COPY linux-x86/ubuntu-20.04_android /tmp/triggerGradleDownloads/
 RUN  cd /tmp/triggerGradleDownloads && \
      ./gradlew --no-daemon --refresh-dependencies androidDependencies lint && \
      rm -rf /tmp/triggerGradleDownloads
 
-
-ENV GOROOT=/usr/local/go
-ENV GO111MODULE=on
-ENV PATH="$GOROOT/bin:$PATH"
+COPY dependencies/install_common_dependencies.sh /
+RUN set -ex && /install_common_dependencies.sh && rm install_common_dependencies.sh
