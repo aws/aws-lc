@@ -10,11 +10,21 @@
 #include "openssl/ocsp.h"
 #include "openssl/x509.h"
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
+// OCSP Request ASN.1 specification:
+// https://datatracker.ietf.org/doc/html/rfc6960#section-4.1.1
+//
+// OCSP Response ASN.1 specification:
+// https://datatracker.ietf.org/doc/html/rfc6960#section-4.2.1
 
 //   CertID ::= SEQUENCE {
 //       hashAlgorithm    AlgorithmIdentifier,
 //       issuerNameHash   OCTET STRING,  --Hash of Issuer's DN
-//       issuerKeyHash    OCTET STRING,  --Hash of Issuers public key (excluding the tag & length fields)
+//       issuerKeyHash    OCTET STRING,  --Hash of Issuers public key (excluding
+//                                         the tag & length fields)
 //       serialNumber     CertificateSerialNumber }
 //
 struct ocsp_cert_id_st {
@@ -22,6 +32,28 @@ struct ocsp_cert_id_st {
   ASN1_OCTET_STRING *issuerNameHash;
   ASN1_OCTET_STRING *issuerKeyHash;
   ASN1_INTEGER *serialNumber;
+};
+
+//   Request ::=     SEQUENCE {
+//       reqCert                    CertID,
+//       singleRequestExtensions    [0] EXPLICIT Extensions OPTIONAL }
+//
+struct ocsp_one_request_st {
+    OCSP_CERTID *reqCert;
+    STACK_OF(X509_EXTENSION) *singleRequestExtensions;
+};
+
+//   TBSRequest      ::=     SEQUENCE {
+//       version             [0] EXPLICIT Version DEFAULT v1,
+//       requestorName       [1] EXPLICIT GeneralName OPTIONAL,
+//       requestList             SEQUENCE OF Request,
+//       requestExtensions   [2] EXPLICIT Extensions OPTIONAL }
+//
+struct ocsp_req_info_st {
+    ASN1_INTEGER *version;
+    GENERAL_NAME *requestorName;
+    STACK_OF(OCSP_ONEREQ) *requestList;
+    STACK_OF(X509_EXTENSION) *requestExtensions;
 };
 
 //   Signature ::= SEQUENCE {
@@ -35,6 +67,25 @@ struct ocsp_signature_st {
   STACK_OF(X509) *certs;
 };
 
+//   OCSPRequest     ::=     SEQUENCE {
+//       tbsRequest                  TBSRequest,
+//       optionalSignature   [0]     EXPLICIT Signature OPTIONAL }
+//
+struct ocsp_request_st {
+    OCSP_REQINFO tbsRequest;
+    OCSP_SIGNATURE *optionalSignature;
+};
+
+// Opaque OCSP request status structure
+struct ocsp_req_ctx_st {
+    int state;                  // Current I/O state
+    unsigned char *iobuf;       // Line buffer
+    int iobuflen;               // Line buffer length
+    BIO *io;                    // BIO to perform I/O with
+    BIO *mem;                   // Memory BIO response is built into
+    unsigned long asn1_len;     // ASN1 length of response
+    unsigned long max_resp_len; // Maximum length of response
+};
 
 //   OCSPResponseStatus ::= ENUMERATED {
 //       successful         (0),  --Response has valid confirmations
@@ -79,8 +130,6 @@ struct ocsp_responder_id_st {
     ASN1_OCTET_STRING *byKey;
   } value;
 };
-
-
 
 //   RevokedInfo ::= SEQUENCE {
 //     revocationTime     GeneralizedTime,
@@ -166,6 +215,9 @@ struct ocsp_basic_response_st {
   STACK_OF(X509) *certs;
 };
 
+// Parses ASN.1 contents of |OCSP_REQ_CTX| into a der format.
+int OCSP_REQ_CTX_i2d(OCSP_REQ_CTX *rctx, const ASN1_ITEM *it, ASN1_VALUE *val);
+
 // Returns |OCSP_SINGLERESP| in the index of |OCSP_BASICRESP|.
 OCSP_SINGLERESP *OCSP_resp_get0(OCSP_BASICRESP *bs, size_t idx);
 
@@ -189,9 +241,18 @@ OCSP_CERTID *OCSP_cert_id_new(const EVP_MD *dgst,
                                const ASN1_BIT_STRING *issuerKey,
                                const ASN1_INTEGER *serialNumber);
 
+// Returns the internal memory BIO of the |OCSP_REQ_CTX|. For AWS-LC, this is
+// only used for testing if contents of |OCSP_REQ_CTX| have been written
+// correctly.
+OPENSSL_EXPORT BIO *OCSP_REQ_CTX_get0_mem_bio(OCSP_REQ_CTX *rctx);
+
 // --- OCSP compare functions ---
 // Compares certificate id issuers, returns 0 on equal.
 int OCSP_id_issuer_cmp(const OCSP_CERTID *a, const OCSP_CERTID *b);
 
 // Compares certificate id, returns 0 on equal.
 int OCSP_id_cmp(const OCSP_CERTID *a, const OCSP_CERTID *b);
+
+#if defined(__cplusplus)
+}  // extern C
+#endif

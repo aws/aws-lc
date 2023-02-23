@@ -28,6 +28,26 @@ The leaf cert/key. OCSP responses will be generated for this cert.
 
 DER formatted OCSP response for the Server Cert.
 
+## Generating a OCSP request for the leaf cert
+```
+openssl ocsp -issuer ca_cert.pem -cert server_cert.pem -reqout ocsp_request.der
+```
+```
+openssl ocsp -no_nonce -issuer ca_cert.pem -cert server_cert.pem -reqout ocsp_request_no_nonce.der
+```
+OCSP Request signing is optional, and these requests aren't usually signed in the wild.
+
+## Generating a signed OCSP request for the leaf cert
+```
+openssl ocsp -issuer ca_cert.pem -cert server_cert.pem -signer ocsp_cert.pem -signkey ocsp_key.pem -reqout ocsp_request_signed.der
+```
+```
+openssl ocsp -sha256 -issuer ca_cert.pem -cert server_cert.pem -signer ocsp_cert.pem -signkey ocsp_key.pem -reqout ocsp_request_signed_sha256.der
+```
+```
+openssl ocsp -issuer ca_cert.pem -cert server_cert.pem -signer ocsp_cert.pem -signkey ocsp_key.pem -sign_other ca_cert.pem -reqout ocsp_request_attached_cert.der
+```
+
 ## Generating a new OCSP response for the leaf cert
 The current OCSP responses expire in 10 years. Our tests using these files only check if the timefield value has been 
 parsed correctly, so an update shouldn't be necessary.
