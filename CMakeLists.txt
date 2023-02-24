@@ -908,6 +908,13 @@ if(BUILD_TESTING)
       add_custom_target(fips_specific_tests_if_any)
     endif()
 
+    # Read util/go_tests.txt into a CMake variable.
+    file(READ util/go_tests.txt GO_TESTS)
+    string(REPLACE "\n" ";" GO_TESTS "${GO_TESTS}")
+    list(REMOVE_ITEM GO_TESTS "")
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+      util/go_tests.txt)
+
     if(BUILD_LIBSSL)
       add_custom_target(
           run_ssl_runner_tests
@@ -931,6 +938,7 @@ if(BUILD_TESTING)
           run_tests
           COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
                   ${PROJECT_BINARY_DIR}
+          COMMAND ${GO_EXECUTABLE} test ${GO_TESTS}
           WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
           DEPENDS all_tests run_ssl_runner_tests
           ${MAYBE_USES_TERMINAL})
@@ -939,6 +947,7 @@ if(BUILD_TESTING)
           run_tests
           COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
                   ${PROJECT_BINARY_DIR} -ssl-tests=false
+          COMMAND ${GO_EXECUTABLE} test ${GO_TESTS}
           WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
           DEPENDS all_tests fips_specific_tests_if_any
           ${MAYBE_USES_TERMINAL}
