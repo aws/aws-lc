@@ -107,6 +107,33 @@ int OCSP_REQ_CTX_set1_req(OCSP_REQ_CTX *rctx, OCSP_REQUEST *req)
                             (ASN1_VALUE *)req);
 }
 
+int OCSP_REQ_CTX_add1_header(OCSP_REQ_CTX *rctx,
+                             const char *name, const char *value)
+{
+    if (name == NULL) {
+      return 0;
+    }
+    // The following being written conforms to the message-header field
+    // specification in https://www.rfc-editor.org/rfc/rfc2616#section-4.2.
+    // message-header = field-name ":" [ field-value ]
+    if (BIO_puts(rctx->mem, name) <= 0) {
+      return 0;
+    }
+    if (value != NULL) {
+        if (BIO_write(rctx->mem, ": ", 2) != 2) {
+          return 0;
+        }
+        if (BIO_puts(rctx->mem, value) <= 0) {
+          return 0;
+        }
+    }
+    if (BIO_write(rctx->mem, "\r\n", 2) != 2) {
+      return 0;
+    }
+    rctx->state = OHS_HTTP_HEADER;
+    return 1;
+}
+
 int OCSP_REQ_CTX_i2d(OCSP_REQ_CTX *rctx, const ASN1_ITEM *it, ASN1_VALUE *val)
 {
     static const char req_hdr[] =
