@@ -43,6 +43,13 @@ else()
   endif()
 endif()
 
+install(TARGETS bssl
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+if(MSVC AND CMAKE_BUILD_TYPE_LOWER MATCHES "relwithdebinfo" AND FIPS)
+  install (FILES $<TARGET_FILE_DIR:bssl>/bssl.pdb DESTINATION ${CMAKE_INSTALL_LIBDIR})
+endif()
+
 function(build_benchmark target_name additional_include_dir lib_crypto)
   message(-- Building ${target_name} benchmark using header files from ${additional_include_dir} and libcrypto from ${lib_crypto}.)
   add_executable(
