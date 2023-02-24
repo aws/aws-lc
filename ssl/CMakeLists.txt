@@ -79,6 +79,10 @@ install(TARGETS ssl
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
 
+if(MSVC AND CMAKE_BUILD_TYPE_LOWER MATCHES "relwithdebinfo" AND FIPS)
+  install(FILES $<TARGET_FILE_DIR:ssl>/ssl.pdb DESTINATION ${CMAKE_INSTALL_LIBDIR})
+endif()
+
 configure_file("cmake/ssl-config.cmake"
     "${CMAKE_CURRENT_BINARY_DIR}/ssl-config.cmake"
     @ONLY)
