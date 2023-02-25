@@ -9,3 +9,6 @@ build_and_test_with_sde
 
 echo "Testing AWS-LC in release mode under Intel's SDE."
 build_and_test_with_sde -DCMAKE_BUILD_TYPE=Release
+
+echo "Testing AWS-LC in RelWithDebInfo mode under Intel's SDE with address sanitizer."
+build_and_test_with_sde -DCMAKE_BUILD_TYPE=RelWithDebInfo -DASAN=1
