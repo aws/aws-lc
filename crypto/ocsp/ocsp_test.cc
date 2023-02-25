@@ -845,7 +845,14 @@ static const char good_http_response_hdr[] =
         "Content-Length: ";
 
 static const char malformed_http_response_hdr[] =
-        "HTTP200 OK\r\n"
+        "HTTP/1.200 OK\r\n"
+        "Content-Type: application/ocsp-response\r\n"
+        "Content-Length: ";
+
+// This parses in OpenSSL, but fails in AWS-LC because we check for the HTTP
+// protocol characters at the front.
+static const char non_http_response_hdr[] =
+        "HTPT/1.1 200 OK\r\n"
         "Content-Type: application/ocsp-response\r\n"
         "Content-Length: ";
 
@@ -867,6 +874,26 @@ static const char no_info_http_response_hdr[] =
         "HTTP/1.0 200\r\n"
         "Content-Length: ";
 
+// OpenSSL uses isspace() to test for white-space characters, which includes
+// the following. ``\t''``\n''``\v''``\f''``\r''`` '
+// This should parse. "\n" is not included since it will skip the header to the
+// next line and fail the http parsing.
+static const char additional_space_http_response_hdr[] =
+        "HTTP/1.1 \t\v\r\f\t 200  \t\v\f\r\t   OK   \r\n"
+        "Content-Type: application/ocsp-response\r\n"
+        "Content-Length: ";
+
+// This should fail, since the status code is expected on the first line.
+static const char next_line_http_response_hdr[] =
+        "HTTP/1.1   \n   200    \f   OK\r\n"
+        "Content-Type: application/ocsp-response\r\n"
+        "Content-Length: ";
+
+// This should fail. Protocol info is expected at the front.
+static const char only_code_http_response_hdr[] =
+        "200\r\n"
+        "Content-Length: ";
+
 struct OCSPHTTPTestVector {
   const char *http_header;
   bool response_attached;
@@ -876,12 +903,16 @@ struct OCSPHTTPTestVector {
 static const OCSPHTTPTestVector kResponseHTTPVectors[] = {
     {good_http_response_hdr, true, OCSP_HTTP_PARSE_SUCCESS},
     {malformed_http_response_hdr, true, OCSP_HTTP_PARSE_ERROR},
+    {non_http_response_hdr, true, OCSP_HTTP_PARSE_ERROR},
     {not_ok_http_response_hdr, true, OCSP_HTTP_PARSE_ERROR},
     {no_type_http_response_hdr, true, OCSP_REQUEST_PARSE_SUCCESS},
-    {no_type_http_response_hdr, true, OCSP_REQUEST_PARSE_SUCCESS},
+    {no_info_http_response_hdr, true, OCSP_REQUEST_PARSE_SUCCESS},
+    {additional_space_http_response_hdr, true, OCSP_REQUEST_PARSE_SUCCESS},
+    {next_line_http_response_hdr, true, OCSP_HTTP_PARSE_ERROR},
+    {only_code_http_response_hdr, true, OCSP_HTTP_PARSE_ERROR},
     // HTTP Header is OK, but no actual response is attached.
     {good_http_response_hdr, false, OCSP_HTTP_PARSE_ERROR},
-    {no_info_http_response_hdr, false, OCSP_HTTP_PARSE_ERROR},
+    {no_type_http_response_hdr, false, OCSP_HTTP_PARSE_ERROR},
     {no_info_http_response_hdr, false, OCSP_HTTP_PARSE_ERROR},
 };
 

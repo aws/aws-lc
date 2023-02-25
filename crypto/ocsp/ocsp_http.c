@@ -45,61 +45,41 @@
 // Headers set, no final \r\n included
 #define OHS_HTTP_HEADER         (9 | OHS_NOREAD)
 
+static int check_protocol(char *protocol_info) {
+  if(strlen(protocol_info) >= 4 && strncmp(protocol_info, "HTTP", 4) == 0) {
+    return 1;
+  }
+  return 0;
+}
+
 // Parse the HTTP response. This will look like this: "HTTP/1.0 200 OK". We
 // need to obtain the numeric code and (optional) informational message.
-static int parse_http_line(char *line)
-{
+static int parse_http_line(char *line) {
     int http_code;
-    char *code, *reason, *end;
-    // Skip to first white space (passed protocol info)
-    for (code = line; *code != '\0' && !isspace(*code); code++) {
-      continue;
-    }
-    if (*code == '\0') {
-        OPENSSL_PUT_ERROR(OCSP,  OCSP_R_SERVER_RESPONSE_PARSE_ERROR);
-        return 0;
-    }
+    char *protocol_info, *code, *reason;
 
-    // Skip past white space to start of response code.
-    while (*code != '\0' && isspace(*code)) {
-      code++;
-    }
-    if (*code == '\0') {
-        OPENSSL_PUT_ERROR(OCSP,  OCSP_R_SERVER_RESPONSE_PARSE_ERROR);
-        return 0;
-    }
-
-    // Find end of response code: first whitespace after start of code.
-    for (reason = code; *reason != '\0' && !isspace(*reason); reason++) {
-      continue;
-    }
-    if (*reason == '\0') {
-        OPENSSL_PUT_ERROR(OCSP,  OCSP_R_SERVER_RESPONSE_PARSE_ERROR);
-        return 0;
-    }
-
-    // Set end of response code and start of message.
-    *reason++ = '\0';
-    // Attempt to parse numeric code
-    http_code = (int)strtoul(code, &end, 10);
-    if (*end != '\0') {
+    // Parse protocol info to skip over.
+    protocol_info = strtok(line, " \t\v\f\r");
+    if (protocol_info == NULL) {
+      OPENSSL_PUT_ERROR(OCSP, OCSP_R_SERVER_RESPONSE_PARSE_ERROR);
       return 0;
     }
-
-    // Skip over any leading white space in message.
-    while (*reason != '\0' && isspace(*reason)) {
-      reason++;
+    if(!check_protocol(protocol_info)) {
+      OPENSSL_PUT_ERROR(OCSP, OCSP_R_SERVER_RESPONSE_PARSE_ERROR);
+      return 0;
     }
-    if (*reason != '\0') {
-        // Finally, zap any trailing white space in message (include CRLF).
-        // We know reason has a non-white space character so this is OK.
-        for (end = reason + strlen(reason) - 1; isspace(*end); end--) {
-          *end = '\0';
-        }
+    // Parse over white space to response code.
+    code = strtok(NULL, " \t\v\f\r");
+    if (code == NULL) {
+      OPENSSL_PUT_ERROR(OCSP, OCSP_R_SERVER_RESPONSE_PARSE_ERROR);
+      return 0;
     }
+    // Information reason is optional.
+    reason = strtok(NULL, " \t\v\f\r");
+    http_code = (int)strtoul(code, NULL, 10);
     if (http_code != 200) {
         OPENSSL_PUT_ERROR(OCSP,  OCSP_R_SERVER_RESPONSE_PARSE_ERROR);
-        if (*reason == '\0') {
+        if (reason == NULL) {
           ERR_add_error_data(2, "Code=", code);
         }
         else {
@@ -110,14 +90,31 @@ static int parse_http_line(char *line)
     return 1;
 }
 
-int OCSP_REQ_CTX_nbio(OCSP_REQ_CTX *rctx)
-{
-    int i, n;
-    const unsigned char *p;
+// OHS_HTTP_HEADER represents the state where OCSP request headers have finished
+// being written, and we want to add the final "\r\n" to the OCSP request.
+// This falls through to OHS_ASN1_WRITE_INIT and OHS_ASN1_WRITE, where we start
+// writing the OCSP request from |rctx->mem| to |rctx->io|. This will continue
+// writing the contents until all |OCSP_REQUEST| ASN.1 contents have been
+// written. The |OCSP_REQUEST| write will finish off with |OHS_ASN1_FLUSH|,
+// turn into a state of OHS_FIRSTLINE, and start expecting to read the first
+// line of the HTTP OCSP response written back in |rctx->mem|.
+// OHS_FIRSTLINE expects to parse the first line of the HTTP response, which
+// contains the numeric code and (optional) informational message. The numeric
+// code is parsed and verified with parse_http_line(). OHS_HEADERS parses any
+// additional subsequent HTTP content headers in the OCSP HTTP response. Once
+// a blank line is detected, we fallthrough to the state OHS_ASN1_HEADER and
+// start saving the ASN.1 contents of the OCSP response. OHS_ASN1_HEADER checks
+// the ASN1 header contents, which should contain the length field. This then
+// falls through to |OHS_ASN1_CONTENT| where we start reading in the contents of
+// the ASN.1 OCSP response. Once all ASN.1 contents up to the length field have
+// been read, OCSP_REQ_CTX_nbio will finish in the state of OHS_DONE.
+int OCSP_REQ_CTX_nbio(OCSP_REQ_CTX *rctx) {
+    int ret, data_len;
+    const unsigned char *data;
  next_io:
     if (!(rctx->state & OHS_NOREAD)) {
-        n = BIO_read(rctx->io, rctx->iobuf, rctx->iobuflen);
-        if (n <= 0) {
+        data_len = BIO_read(rctx->io, rctx->iobuf, rctx->iobuflen);
+        if (data_len <= 0) {
             if (BIO_should_retry(rctx->io)) {
               return -1;
             }
@@ -125,7 +122,7 @@ int OCSP_REQ_CTX_nbio(OCSP_REQ_CTX *rctx)
         }
 
         // Write data to memory BIO.
-        if (BIO_write(rctx->mem, rctx->iobuf, n) != n) {
+        if (BIO_write(rctx->mem, rctx->iobuf, data_len) != data_len) {
           return 0;
         }
     }
@@ -146,10 +143,11 @@ int OCSP_REQ_CTX_nbio(OCSP_REQ_CTX *rctx)
 
         OPENSSL_FALLTHROUGH;
     case OHS_ASN1_WRITE:
-        n = BIO_get_mem_data(rctx->mem, &p);
+        data_len = BIO_get_mem_data(rctx->mem, &data);
 
-        i = BIO_write(rctx->io, p + (n - rctx->asn1_len), (int)rctx->asn1_len);
-        if (i <= 0) {
+        int write_len = BIO_write(rctx->io, data + (data_len - rctx->asn1_len),
+                                  (int)rctx->asn1_len);
+        if (write_len <= 0) {
             if (BIO_should_retry(rctx->io)) {
               return -1;
             }
@@ -157,20 +155,17 @@ int OCSP_REQ_CTX_nbio(OCSP_REQ_CTX *rctx)
             return 0;
         }
 
-        rctx->asn1_len -= i;
-
+        rctx->asn1_len -= write_len;
         if (rctx->asn1_len > 0) {
           goto next_io;
         }
-
         rctx->state = OHS_ASN1_FLUSH;
         (void)BIO_reset(rctx->mem);
 
         OPENSSL_FALLTHROUGH;
     case OHS_ASN1_FLUSH:
-
-        i = BIO_flush(rctx->io);
-        if (i > 0) {
+        ret = BIO_flush(rctx->io);
+        if (ret > 0) {
             rctx->state = OHS_FIRSTLINE;
             goto next_io;
         }
@@ -189,20 +184,20 @@ int OCSP_REQ_CTX_nbio(OCSP_REQ_CTX *rctx)
 
     // Attempt to read a line in.
  next_line:
-        // Due to &%^*$" memory BIO behaviour with BIO_gets we have to check
+        // Due to strange memory BIO behaviour with BIO_gets we have to check
         // there's a complete line in there before calling BIO_gets or we'll
         // just get a partial read.
-        n = BIO_get_mem_data(rctx->mem, &p);
-        if ((n <= 0) || !memchr(p, '\n', n)) {
-            if (n >= rctx->iobuflen) {
+        data_len = BIO_get_mem_data(rctx->mem, &data);
+        if ((data_len <= 0) || !memchr(data, '\n', data_len)) {
+            if (data_len >= rctx->iobuflen) {
                 rctx->state = OHS_ERROR;
                 return 0;
             }
             goto next_io;
         }
-        n = BIO_gets(rctx->mem, (char *)rctx->iobuf, rctx->iobuflen);
+        data_len = BIO_gets(rctx->mem, (char *)rctx->iobuf, rctx->iobuflen);
 
-        if (n <= 0) {
+        if (data_len <= 0) {
             if (BIO_should_retry(rctx->mem)) {
               goto next_io;
             }
@@ -211,7 +206,7 @@ int OCSP_REQ_CTX_nbio(OCSP_REQ_CTX *rctx)
         }
 
         // Don't allow excessive lines.
-        if (n == rctx->iobuflen) {
+        if (data_len >= rctx->iobuflen) {
             rctx->state = OHS_ERROR;
             return 0;
         }
@@ -227,12 +222,12 @@ int OCSP_REQ_CTX_nbio(OCSP_REQ_CTX *rctx)
             }
         } else {
             // Look for blank line: end of headers.
-            for (p = rctx->iobuf; *p; p++) {
-                if ((*p != '\r') && (*p != '\n')) {
+            for (data = rctx->iobuf; *data; data++) {
+                if ((*data != '\r') && (*data != '\n')) {
                   break;
                 }
             }
-            if (*p != '\0') {
+            if (*data != '\0') {
               goto next_line;
             }
 
@@ -244,50 +239,53 @@ int OCSP_REQ_CTX_nbio(OCSP_REQ_CTX *rctx)
         // Now reading ASN1 header: can read at least 2 bytes which is enough
         // for ASN1 SEQUENCE header and either length field or at least the
         // length of the length field.
-        n = BIO_get_mem_data(rctx->mem, &p);
-        if (n < 2) {
+        data_len = BIO_get_mem_data(rctx->mem, &data);
+        if (data_len < 2) {
           goto next_io;
         }
 
         // Check it is an ASN1 SEQUENCE.
-        if (*p++ != (V_ASN1_SEQUENCE | V_ASN1_CONSTRUCTED)) {
+        if (*data++ != (V_ASN1_SEQUENCE | V_ASN1_CONSTRUCTED)) {
             rctx->state = OHS_ERROR;
             return 0;
         }
 
-        // Check out length field.
-        if ((*p & 0x80) != 0) {
+        // Check out length field. This is checking to see if the length is
+        // encoded as long-form (multiple bytes) versus being a length that can
+        // be encoded into 7 bits. "0x80" implies "0x80 + N", where N is the
+        // number of length bytes to follow.
+        if ((*data & 0x80) != 0) {
             // If MSB set on initial length octet we can now always read 6
             // octets: make sure we have them.
-            if (n < 6) {
+            if (data_len < 6) {
               goto next_io;
             }
-            n = *p & 0x7F;
+            data_len = *data & 0x7F;
             // Not NDEF or excessive length.
-            if (!n || (n > 4)) {
+            if (!data_len || (data_len > 4)) {
                 rctx->state = OHS_ERROR;
                 return 0;
             }
-            p++;
+            data++;
             rctx->asn1_len = 0;
-            for (i = 0; i < n; i++) {
+            for (int i = 0; i < data_len; i++) {
                 rctx->asn1_len <<= 8;
-                rctx->asn1_len |= *p++;
+                rctx->asn1_len |= *data++;
             }
             if (rctx->asn1_len > rctx->max_resp_len) {
                 rctx->state = OHS_ERROR;
                 return 0;
             }
-            rctx->asn1_len += n + 2;
+            rctx->asn1_len += data_len + 2;
         } else {
-          rctx->asn1_len = *p + 2;
+          rctx->asn1_len = *data + 2;
         }
         rctx->state = OHS_ASN1_CONTENT;
 
         OPENSSL_FALLTHROUGH;
     case OHS_ASN1_CONTENT:
-        n = BIO_get_mem_data(rctx->mem, NULL);
-        if (n < (int)rctx->asn1_len) {
+        data_len = BIO_get_mem_data(rctx->mem, NULL);
+        if (data_len < (int)rctx->asn1_len) {
           goto next_io;
         }
         rctx->state = OHS_DONE;
@@ -317,7 +315,7 @@ OCSP_RESPONSE *OCSP_sendreq_bio(BIO *b, const char *path, OCSP_REQUEST *req)
       return NULL;
     }
 
-    // This waits indefinitely on a response.
+    // This waits indefinitely on a response, if BIO_should_retry() is on.
     do {
         rv = OCSP_sendreq_nbio(&resp, ctx);
     } while ((rv == -1) && BIO_should_retry(b));
