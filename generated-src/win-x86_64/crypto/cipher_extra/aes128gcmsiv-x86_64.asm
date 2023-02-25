@@ -3276,4 +3276,7 @@ $L$SEH_begin_aes256gcmsiv_kdf:
 	DB	0F3h,0C3h		;repret
 
 $L$SEH_end_aes256gcmsiv_kdf:
+%else
+; Work around https://bugzilla.nasm.us/show_bug.cgi?id=3392738
+ret
 %endif

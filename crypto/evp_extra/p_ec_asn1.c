@@ -141,8 +141,13 @@ static int eckey_pub_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
   }
 }
 
-static int eckey_priv_decode(EVP_PKEY *out, CBS *params, CBS *key) {
+static int eckey_priv_decode(EVP_PKEY *out, CBS *params, CBS *key, CBS *pubkey) {
   // See RFC 5915.
+  if(pubkey) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+    return 0;
+  }
+
   EC_GROUP *group = EC_KEY_parse_parameters(params);
   if (group == NULL || CBS_len(params) != 0) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
@@ -174,7 +179,7 @@ static int eckey_priv_encode(CBB *out, const EVP_PKEY *key) {
   // See RFC 5915.
   CBB pkcs8, algorithm, oid, private_key;
   if (!CBB_add_asn1(out, &pkcs8, CBS_ASN1_SEQUENCE) ||
-      !CBB_add_asn1_uint64(&pkcs8, 0 /* version */) ||
+      !CBB_add_asn1_uint64(&pkcs8, PKCS8_VERSION_ONE /* version */) ||
       !CBB_add_asn1(&pkcs8, &algorithm, CBS_ASN1_SEQUENCE) ||
       !CBB_add_asn1(&algorithm, &oid, CBS_ASN1_OBJECT) ||
       !CBB_add_bytes(&oid, ec_asn1_meth.oid, ec_asn1_meth.oid_len) ||
@@ -258,6 +263,7 @@ const EVP_PKEY_ASN1_METHOD ec_asn1_meth = {
 
   eckey_priv_decode,
   eckey_priv_encode,
+  NULL /* priv_encode_v2 */,
 
   NULL /* set_priv_raw */,
   NULL /* set_pub_raw */,

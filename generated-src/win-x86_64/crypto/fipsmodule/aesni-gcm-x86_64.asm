@@ -1082,4 +1082,7 @@ $L$SEH_info_aesni_gcm_encrypt_0:
 	DB	48
 	DB	$L$SEH_prolog_aesni_gcm_encrypt_2-$L$SEH_begin_aesni_gcm_encrypt_1
 	DB	80
+%else
+; Work around https://bugzilla.nasm.us/show_bug.cgi?id=3392738
+ret
 %endif
