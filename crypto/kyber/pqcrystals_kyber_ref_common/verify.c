@@ -27,7 +27,7 @@ int verify(const uint8_t *a, const uint8_t *b, size_t len)
    * avoids the compiler warning (which turns to an error on in MSVC) for
    * performing a negation on an unsigned value.
    */
-  return (-(int16_t)((uint16_t)r & 0x7FFF)) >> 15;
+  return (r + 0xFF) >> 8;
 }
 
 /*************************************************
