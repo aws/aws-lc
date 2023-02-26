@@ -9,7 +9,7 @@
  * original Kyber reference code and we want to ensure the proper behavior is
  * maintained.
  */
-TEST(KyberRefTest, EVP_PKEY_size) {
+TEST(KyberRefTest, verify) {
   uint8_t buf_len = 32;
   uint8_t *buf_a = (uint8_t *)OPENSSL_malloc(buf_len);
   ASSERT_NE(buf_a, nullptr);

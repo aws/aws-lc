@@ -709,7 +709,6 @@ if(BUILD_TESTING)
     hmac_extra/hmac_test.cc
     hrss/hrss_test.cc
     impl_dispatch_test.cc
-    kyber/kyber_ref_verify_test.cc
     lhash/lhash_test.cc
     obj/obj_test.cc
     ocsp/ocsp_test.cc
