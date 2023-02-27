@@ -14,19 +14,11 @@ if(ANDROID)
   endif()
 endif()
 
-if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-  # disable AVX512 support if GNU assmbler is older than 2.30
-  execute_process (
-      COMMAND bash "-c" "${CMAKE_CXX_COMPILER} -xc -c /dev/null -Wa,-v -o/dev/null 2>&1 |
-                   grep -c -E 'GNU assembler version (2.[3-9][0-9]|[3-9])'"
-      OUTPUT_VARIABLE GAS230_OR_LATER
-  )
-endif()
-
 if(ARCH STREQUAL "x86_64")
   set(
     BCM_ASM_SOURCES
 
+    aes-gcm-avx512.${ASM_EXT}
     aesni-gcm-x86_64.${ASM_EXT}
     aesni-x86_64.${ASM_EXT}
     ghash-ssse3-x86_64.${ASM_EXT}
@@ -43,14 +35,6 @@ if(ARCH STREQUAL "x86_64")
     x86_64-mont5.${ASM_EXT}
     x86_64-mont.${ASM_EXT}
   )
-  if((NOT CMAKE_CXX_COMPILER_ID STREQUAL "GNU") OR
-     (${GAS230_OR_LATER} EQUAL 1))
-       message(STATUS "Enabling avx512")
-       add_compile_definitions(ENABLED_AVX512)
-       list(APPEND BCM_ASM_SOURCES
-                   aes-gcm-avx512.${ASM_EXT}
-       )
-  endif()
 endif()
 
 
