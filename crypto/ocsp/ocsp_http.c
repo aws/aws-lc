@@ -57,9 +57,10 @@ static int check_protocol(char *protocol_info) {
 static int parse_http_line(char *line) {
     int http_code;
     char *protocol_info, *code, *reason;
+    const char *whitespace = " \t\v\f\r";
 
     // Parse protocol info to skip over.
-    protocol_info = strtok(line, " \t\v\f\r");
+    protocol_info = strtok(line, whitespace);
     if (protocol_info == NULL) {
       OPENSSL_PUT_ERROR(OCSP, OCSP_R_SERVER_RESPONSE_PARSE_ERROR);
       return 0;
@@ -69,13 +70,13 @@ static int parse_http_line(char *line) {
       return 0;
     }
     // Parse over white space to response code.
-    code = strtok(NULL, " \t\v\f\r");
+    code = strtok(NULL, whitespace);
     if (code == NULL) {
       OPENSSL_PUT_ERROR(OCSP, OCSP_R_SERVER_RESPONSE_PARSE_ERROR);
       return 0;
     }
     // Information reason is optional.
-    reason = strtok(NULL, " \t\v\f\r");
+    reason = strtok(NULL, whitespace);
     http_code = (int)strtoul(code, NULL, 10);
     if (http_code != 200) {
         OPENSSL_PUT_ERROR(OCSP,  OCSP_R_SERVER_RESPONSE_PARSE_ERROR);
