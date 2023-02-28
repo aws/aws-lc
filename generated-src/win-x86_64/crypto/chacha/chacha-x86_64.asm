@@ -1925,4 +1925,7 @@ $L$SEH_info_ChaCha20_8x:
 	DB	9,0,0,0
 	DD	full_handler wrt ..imagebase
 	DD	$L$8x_body wrt ..imagebase,$L$8x_epilogue wrt ..imagebase
+%else
+; Work around https://bugzilla.nasm.us/show_bug.cgi?id=3392738
+ret
 %endif

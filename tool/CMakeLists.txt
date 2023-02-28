@@ -46,6 +46,10 @@ endif()
 install(TARGETS bssl
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
+if(MSVC AND CMAKE_BUILD_TYPE_LOWER MATCHES "relwithdebinfo" AND FIPS)
+  install (FILES $<TARGET_FILE_DIR:bssl>/bssl.pdb DESTINATION ${CMAKE_INSTALL_LIBDIR})
+endif()
+
 function(build_benchmark target_name install_path)
   find_library(libcrypto-${target_name} crypto PATHS ${install_path}/lib/ ${install_path}/lib64/ NO_DEFAULT_PATH)
   message(STATUS "Building ${target_name} benchmark using header files from ${install_path}/include and libcrypto from ${libcrypto-${target_name}}.")
@@ -98,4 +102,5 @@ endif()
 
 if(BORINGSSL_INSTALL_DIR)
   build_benchmark(bssl_bm ${BORINGSSL_INSTALL_DIR})
+  target_compile_options(bssl_bm PUBLIC -DBORINGSSL_BENCHMARK)
 endif()

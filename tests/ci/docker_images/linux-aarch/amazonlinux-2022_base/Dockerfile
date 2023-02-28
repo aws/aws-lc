@@ -7,6 +7,8 @@ SHELL ["/bin/bash", "-c"]
 ENV GOROOT=/usr/local/go
 ENV PATH="$GOROOT/bin:$PATH"
 
+ENV DEPENDENCIES_DIR=/home/dependencies
+
 # Install Valgrind for Valgrind test target even though it is not needed for the base test target.
 RUN set -ex && \
     yum -y update && yum install -y \

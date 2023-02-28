@@ -8,6 +8,8 @@ ENV GOROOT=/usr/local/go
 ENV PATH="$GOROOT/bin:$PATH"
 ENV ASAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer
 
+ENV DEPENDENCIES_DIR=/home/dependencies
+
 # See https://github.com/google/sanitizers/wiki/MemorySanitizerLibcxxHowTo
 # Install Valgrind for Valgrind test target even though it is not needed for the base test target.
 RUN set -ex && \
