@@ -45,8 +45,8 @@
 // Headers set, no final \r\n included
 #define OHS_HTTP_HEADER         (9 | OHS_NOREAD)
 
-static int check_protocol(char *protocol_info) {
-  if(strlen(protocol_info) >= 4 && strncmp(protocol_info, "HTTP", 4) == 0) {
+static int check_protocol(char *line) {
+  if(strlen(line) >= 4 && strncmp(line, "HTTP", 4) == 0) {
     return 1;
   }
   return 0;
@@ -55,41 +55,68 @@ static int check_protocol(char *protocol_info) {
 // Parse the HTTP response. This will look like this: "HTTP/1.0 200 OK". We
 // need to obtain the numeric code and (optional) informational message.
 static int parse_http_line(char *line) {
-    int http_code;
-    char *protocol_info, *code, *reason;
-    char *rest = line;
-    const char *whitespace = " \t\v\f\r";
+  int http_code;
+  char *code, *reason, *end;
+  if (!check_protocol(line)) {
+    OPENSSL_PUT_ERROR(OCSP, OCSP_R_SERVER_RESPONSE_PARSE_ERROR);
+    return 0;
+  }
+  // Skip to first white space (passed protocol info)
+  for (code = line; *code != '\0' && !isspace(*code); code++) {
+    continue;
+  }
+  if (*code == '\0') {
+    OPENSSL_PUT_ERROR(OCSP, OCSP_R_SERVER_RESPONSE_PARSE_ERROR);
+    return 0;
+  }
 
-    // Parse protocol info to skip over.
-    protocol_info = strtok_r(line, whitespace, &rest);
-    if (protocol_info == NULL) {
-      OPENSSL_PUT_ERROR(OCSP, OCSP_R_SERVER_RESPONSE_PARSE_ERROR);
-      return 0;
+  // Skip past white space to start of response code.
+  while (*code != '\0' && isspace(*code)) {
+    code++;
+  }
+  if (*code == '\0') {
+    OPENSSL_PUT_ERROR(OCSP, OCSP_R_SERVER_RESPONSE_PARSE_ERROR);
+    return 0;
+  }
+
+  // Find end of response code: first whitespace after start of code.
+  for (reason = code; *reason != '\0' && !isspace(*reason); reason++) {
+    continue;
+  }
+  if (*reason == '\0') {
+    OPENSSL_PUT_ERROR(OCSP, OCSP_R_SERVER_RESPONSE_PARSE_ERROR);
+    return 0;
+  }
+
+  // Set end of response code and start of message.
+  *reason++ = '\0';
+  // Attempt to parse numeric code
+  http_code = (int)strtoul(code, &end, 10);
+  if (*end != '\0') {
+    return 0;
+  }
+
+  // Skip over any leading white space in message.
+  while (*reason != '\0' && isspace(*reason)) {
+    reason++;
+  }
+  if (*reason != '\0') {
+    // Finally, zap any trailing white space in message (include CRLF).
+    // We know reason has a non-white space character so this is OK.
+    for (end = reason + strlen(reason) - 1; isspace(*end); end--) {
+      *end = '\0';
     }
-    if(!check_protocol(protocol_info)) {
-      OPENSSL_PUT_ERROR(OCSP, OCSP_R_SERVER_RESPONSE_PARSE_ERROR);
-      return 0;
+  }
+  if (http_code != 200) {
+    OPENSSL_PUT_ERROR(OCSP, OCSP_R_SERVER_RESPONSE_PARSE_ERROR);
+    if (*reason == '\0') {
+      ERR_add_error_data(2, "Code=", code);
+    } else {
+      ERR_add_error_data(4, "Code=", code, ",Reason=", reason);
     }
-    // Parse over white space to response code.
-    code = strtok_r(rest, whitespace, &rest);
-    if (code == NULL) {
-      OPENSSL_PUT_ERROR(OCSP, OCSP_R_SERVER_RESPONSE_PARSE_ERROR);
-      return 0;
-    }
-    // Information reason is optional.
-    reason = strtok_r(rest, whitespace, &rest);
-    http_code = (int)strtoul(code, NULL, 10);
-    if (http_code != 200) {
-        OPENSSL_PUT_ERROR(OCSP,  OCSP_R_SERVER_RESPONSE_PARSE_ERROR);
-        if (reason == NULL) {
-          ERR_add_error_data(2, "Code=", code);
-        }
-        else {
-          ERR_add_error_data(4, "Code=", code, ",Reason=", reason);
-        }
-        return 0;
-    }
-    return 1;
+    return 0;
+  }
+  return 1;
 }
 
 // OHS_HTTP_HEADER represents the state where OCSP request headers have finished

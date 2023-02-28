@@ -79,7 +79,7 @@ struct ocsp_request_st {
 // Opaque OCSP request status structure
 struct ocsp_req_ctx_st {
     int state;                  // Current I/O state
-    unsigned char *iobuf;       // Line buffer
+    unsigned char *iobuf;       // Line buffer. Should only be modified during http exchange in OCSP_REQ_CTX_nbio.
     int iobuflen;               // Line buffer length
     BIO *io;                    // BIO to perform I/O with
     BIO *mem;                   // Memory BIO response is built into
