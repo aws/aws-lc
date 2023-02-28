@@ -81,9 +81,9 @@
 // ARMV8_SHA3 indicates support for hardware SHA-3 instructions including EOR3.
 #define ARMV8_SHA3  (1 << 11)
 
-// ARMV8_AES_GCM_UNROLL8 indicates that the microarchitecture
-// support the 8x unrolling function of GCM due to a wider pipeline.
-#define ARMV8_AES_GCM_UNROLL8 (1 << 12)
+// ARMV8_WIDE_AES_PMULL_PIPELINE indicates that the microarchitecture
+// supports a high unrolling factor of AES-GCM due to a wide AES/PMULL pipeline.
+#define ARMV8_WIDE_AES_PMULL_PIPELINE (1 << 12)
 
 //
 // MIDR_EL1 system register

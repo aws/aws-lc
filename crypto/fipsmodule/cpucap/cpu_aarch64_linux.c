@@ -128,9 +128,8 @@ void OPENSSL_cpuid_setup(void) {
   }
 
   OPENSSL_arm_midr = armv8_cpuid_probe();
-  if ((MIDR_IS_CPU_MODEL(OPENSSL_arm_midr, ARM_CPU_IMP_ARM, ARM_CPU_PART_V1)) &&
-      (OPENSSL_armcap_P & ARMV8_SHA3)) {
-    OPENSSL_armcap_P |= ARMV8_AES_GCM_UNROLL8;
+  if (MIDR_IS_CPU_MODEL(OPENSSL_arm_midr, ARM_CPU_IMP_ARM, ARM_CPU_PART_V1)) {
+    OPENSSL_armcap_P |= ARMV8_WIDE_AES_PMULL_PIPELINE;
   }
 
   // OPENSSL_armcap is a 32-bit, unsigned value which may start with "0x" to
