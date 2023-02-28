@@ -416,3 +416,166 @@ TEST(HKDFTest, WycheproofSHA512) {
   RunWycheproofTest("third_party/wycheproof_testvectors/hkdf_sha512_test.txt",
                     EVP_sha512());
 }
+
+// NIST CAVP tests for HKDF_expand() operating as a "KDF in Feedback Mode";
+// data from "KDF in Feedback Mode Test Vectors where zero length IV is allowed"
+// https://csrc.nist.gov/Projects/cryptographic-algorithm-validation-program/key-derivation
+static void RunTest(FileTest *t)
+{
+  std::string prf, ctrlocation, rlen, count, l_str;
+  std::vector<uint8_t> ki, iv, fixed, ko;
+
+  t->IgnoreAllUnusedInstructions();
+
+  ASSERT_TRUE(t->GetInstruction(&prf, "PRF"));
+  ASSERT_TRUE(t->GetInstruction(&ctrlocation, "CTRLOCATION"));
+  ASSERT_TRUE(t->GetInstruction(&rlen, "RLEN"));
+
+  // Each test passing through RunTest() needs to consume all of its attributes
+  // or it generates an error. There is no IgnoreAllAttributes() or SkipTest()
+  // that we could take advantage of to return early instead of eating all the
+  // attributes.
+  bool run_test = true;
+
+  if ((ctrlocation != "AFTER_FIXED") || (rlen != "8_BITS")) {
+    // HKDF_expand() only works for "Counter After" and an r length of 8 bits.
+    // Skip this test.
+    run_test = false;
+  }
+
+  const EVP_MD *md = NULL;
+  if (prf == "HMAC_SHA1") {
+    // Coverity will yell at us for this, as it should. But FIPS 140-3 still
+    // allows it in some circumstances.
+    md = EVP_sha1();
+  } else if (prf  == "HMAC_SHA224") {
+    md = EVP_sha224();
+  } else if (prf == "HMAC_SHA256") {
+    md = EVP_sha256();
+  } else if (prf == "HMAC_SHA384") {
+    md = EVP_sha384();
+  } else if (prf == "HMAC_SHA512") {
+    md = EVP_sha512();
+  } else {
+    // Unsupported PRF; HKDF_expand only supports the hash PRFs.
+    run_test = false;
+  }
+
+  // Test-specific values
+  ASSERT_TRUE(t->GetAttribute(&count, "COUNT"));
+  ASSERT_TRUE(t->GetAttribute(&l_str, "L"));
+  ASSERT_TRUE(t->GetBytes(&ki, "KI"));
+  ASSERT_TRUE(t->GetBytes(&iv, "IV"));
+  ASSERT_TRUE(t->GetBytes(&fixed, "FixedInputData"));
+  ASSERT_TRUE(t->GetBytes(&ko, "KO"));
+
+  if (iv.size() > 0) {
+    // We require a zero-length IV.
+    run_test = false;
+  }
+
+  // CAVP showing its work. Yes, this is awful.
+  t->IgnoreAttribute("Binary rep of i");
+  t->IgnoreAttribute("FixedInputDataByteLen");
+  t->IgnoreAttribute("initinstring");
+  t->IgnoreAttribute("instring");
+  t->IgnoreAttribute("instring/2");
+  t->IgnoreAttribute("instring/3");
+  t->IgnoreAttribute("instring/4");
+  t->IgnoreAttribute("instring/5");
+  t->IgnoreAttribute("instring/6");
+  t->IgnoreAttribute("instring/7");
+  t->IgnoreAttribute("instring/8");
+  t->IgnoreAttribute("instring/9");
+  t->IgnoreAttribute("instring/10");
+  t->IgnoreAttribute("instring/11");
+  t->IgnoreAttribute("instring/12");
+  t->IgnoreAttribute("instring/13");
+  t->IgnoreAttribute("instring/14");
+  t->IgnoreAttribute("instring/15");
+  t->IgnoreAttribute("instring/16");
+  t->IgnoreAttribute("instring/17");
+  t->IgnoreAttribute("instring/18");
+  t->IgnoreAttribute("instring/19");
+  t->IgnoreAttribute("instring/20");
+  t->IgnoreAttribute("instring/21");
+  t->IgnoreAttribute("instring/22");
+  t->IgnoreAttribute("instring/23");
+  t->IgnoreAttribute("instring/24");
+  t->IgnoreAttribute("instring/25");
+  t->IgnoreAttribute("instring/26");
+  t->IgnoreAttribute("instring/27");
+  t->IgnoreAttribute("instring/28");
+  t->IgnoreAttribute("instring/29");
+  t->IgnoreAttribute("instring/30");
+  t->IgnoreAttribute("instring/31");
+  t->IgnoreAttribute("instring/32");
+  t->IgnoreAttribute("instring/33");
+  t->IgnoreAttribute("instring/34");
+  t->IgnoreAttribute("instring/35");
+  t->IgnoreAttribute("instring/36");
+  t->IgnoreAttribute("instring/37");
+  t->IgnoreAttribute("instring/38");
+  t->IgnoreAttribute("IterationVariableData");
+  t->IgnoreAttribute("IterationVariableData/2");
+  t->IgnoreAttribute("iv");
+  t->IgnoreAttribute("IVlen");
+  t->IgnoreAttribute("K(0)");
+  t->IgnoreAttribute("K(i)");
+  t->IgnoreAttribute("K(i)/2");
+  t->IgnoreAttribute("K(i)/3");
+  t->IgnoreAttribute("K(i)/4");
+  t->IgnoreAttribute("K(i)/5");
+  t->IgnoreAttribute("K(i)/6");
+  t->IgnoreAttribute("K(i)/7");
+  t->IgnoreAttribute("K(i)/8");
+  t->IgnoreAttribute("K(i)/9");
+  t->IgnoreAttribute("K(i)/10");
+  t->IgnoreAttribute("K(i)/11");
+  t->IgnoreAttribute("K(i)/12");
+  t->IgnoreAttribute("K(i)/13");
+  t->IgnoreAttribute("K(i)/14");
+  t->IgnoreAttribute("K(i)/15");
+  t->IgnoreAttribute("K(i)/16");
+  t->IgnoreAttribute("K(i)/17");
+  t->IgnoreAttribute("K(i)/18");
+  t->IgnoreAttribute("K(i)/19");
+  t->IgnoreAttribute("K(i)/20");
+  t->IgnoreAttribute("K(i)/21");
+  t->IgnoreAttribute("K(i)/22");
+  t->IgnoreAttribute("K(i)/23");
+  t->IgnoreAttribute("K(i)/24");
+  t->IgnoreAttribute("K(i)/25");
+  t->IgnoreAttribute("K(i)/26");
+  t->IgnoreAttribute("K(i)/27");
+  t->IgnoreAttribute("K(i)/28");
+  t->IgnoreAttribute("K(i)/29");
+  t->IgnoreAttribute("K(i)/30");
+  t->IgnoreAttribute("K(i)/31");
+  t->IgnoreAttribute("K(i)/32");
+  t->IgnoreAttribute("K(i)/33");
+  t->IgnoreAttribute("K(i)/34");
+  t->IgnoreAttribute("K(i)/35");
+  t->IgnoreAttribute("K(i)/36");
+  t->IgnoreAttribute("K(i)/37");
+  t->IgnoreAttribute("K(i)/38");
+
+  unsigned long l_len = std::stoul(l_str) / 8;
+
+  // HKDF_expand being used as a KDF in Feedback Mode
+  if (run_test) {
+    // The |output| buffer is a plain C buffer because using a C++ std::vector
+    // produces a false positive in the clang Address Sanitizer checks. Note
+    // that this is done the C++ way in sshkdf_test.cc without triggering a
+    // false positive.
+    uint8_t *output = (uint8_t *)malloc(l_len);
+
+    ASSERT_TRUE(HKDF_expand(output, l_len, md, ki.data(), ki.size(), fixed.data(), fixed.size()));
+    EXPECT_EQ(Bytes(ko.data(), ko.size()), Bytes(output, l_len));
+    free(output);
+  }
+}
+
+TEST(HKDFTest, HKDFExpandCAVP) {
+  FileTestGTest("crypto/evp_extra/kbkdf_expand_tests.txt", RunTest);
+}
