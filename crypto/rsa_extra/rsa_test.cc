@@ -980,15 +980,6 @@ TEST(RSATest, CheckKey) {
   ASSERT_TRUE(BN_hex2bn(&rsa->d, kDTooLarge));
   EXPECT_FALSE(RSA_check_key(rsa.get()));
   ERR_clear_error();
-
-  // Unless, the user explicitly allowed keys with d > n to be parsed.
-  // which is possible only in non-FIPS mode.
-#if !defined(AWSLC_FIPS)
-  allow_rsa_keys_d_gt_n();
-  ASSERT_TRUE(BN_hex2bn(&rsa->d, kDTooLarge));
-  EXPECT_TRUE(RSA_check_key(rsa.get()));
-#endif
-
   ASSERT_TRUE(BN_hex2bn(&rsa->d, kD));
 
   // CRT value must either all be provided or all missing.
@@ -1417,4 +1408,3 @@ TEST(RSATest, DISABLED_BlindingCacheConcurrency) {
 #endif  // X86_64
 
 #endif  // THREADS
-
