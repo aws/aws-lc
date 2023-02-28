@@ -675,6 +675,10 @@ install(TARGETS crypto
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
 
+if(MSVC AND CMAKE_BUILD_TYPE_LOWER MATCHES "relwithdebinfo" AND FIPS)
+  install (FILES $<TARGET_FILE_DIR:crypto>/crypto.pdb DESTINATION ${CMAKE_INSTALL_LIBDIR})
+endif()
+
 configure_file("cmake/crypto-config.cmake"
     "${CMAKE_CURRENT_BINARY_DIR}/crypto-config.cmake"
     @ONLY)
