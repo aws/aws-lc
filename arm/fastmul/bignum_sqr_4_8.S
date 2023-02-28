@@ -17,145 +17,125 @@
         .balign 4
 
 // ---------------------------------------------------------------------------
-// Macro returning (c,h,l) = 3-word 1s complement (x - y) * (w - z)
-// c,h,l,t should all be different
-// t,h should not overlap w,z
+// 2x2 squaring macro: [s3;s2;s1;s0] := [a1;a0]^2 with t0,t1,t2 temporaries
+// This uses 32x32->64 multiplications to reduce the number of UMULHs
 // ---------------------------------------------------------------------------
 
-.macro muldiffn c,h,l, t, x,y, w,z
-        subs    \t, \x, \y
-        cneg    \t, \t, cc
-        csetm   \c, cc
-        subs    \h, \w, \z
-        cneg    \h, \h, cc
-        mul     \l, \t, \h
-        umulh   \h, \t, \h
-        cinv    \c, \c, cc
-        eor     \l, \l, \c
-        eor     \h, \h, \c
-.endm
+#define sqr2(s3,s2,s1,s0, a1,a1short,a0,a0short, t2,t1,t0,t0short) \
+        umull   s0, a0short, a0short;           \
+        lsr     t0, a0, #32;                    \
+        umull   s1, t0short, t0short;           \
+        umull   t0, a0short, t0short;           \
+        adds    s0, s0, t0, lsl #33;            \
+        lsr     t0, t0, #31;                    \
+        adc     s1, s1, t0;                     \
+        umull   s2, a1short, a1short;           \
+        lsr     t0, a1, #32;                    \
+        umull   s3, t0short, t0short;           \
+        umull   t0, a1short, t0short;           \
+        mul     t1, a0, a1;                     \
+        umulh   t2, a0, a1;                     \
+        adds    s2, s2, t0, lsl #33;            \
+        lsr     t0, t0, #31;                    \
+        adc     s3, s3, t0;                     \
+        adds    t1, t1, t1;                     \
+        adcs    t2, t2, t2;                     \
+        adc     s3, s3, xzr;                    \
+        adds    s1, s1, t1;                     \
+        adcs    s2, s2, t2;                     \
+        adc     s3, s3, xzr
 
-// ---------------------------------------------------------------------------
-// Start with ADK version of 2x2->4 mul
-// Then we double that and add the two sub-squares
-// ---------------------------------------------------------------------------
+// Main code
+
+#define z x0
+#define x x1
 
 #define a0 x2
 #define a1 x3
 #define a2 x4
 #define a3 x5
 
-#define m0 x6
-#define m1 x7
-#define m2 x8
-#define m3 x9
-#define m4 x10
+#define s0 x6
+#define s1 x7
+#define s2 x8
+#define s3 x9
+#define s4 x10
+#define s5 x11
+#define s6 x12
+#define s7 x13
 
-#define c1 x11
-#define h1 x12
-#define l1 x13
-#define l2 x14
+#define d0 x14
+#define d1 x15
+#define d2 x16
+
+// Short versions
+
+#define a0short w2
+#define a1short w3
+#define a2short w4
+#define a3short w5
+#define d2short w16
+#define s3short w9
 
 S2N_BN_SYMBOL(bignum_sqr_4_8):
 
 // Load all the elements
 
-        ldp     a0, a1, [x1]
-        ldp     a2, a3, [x1,#16]
+        ldp     a0, a1, [x]
+        ldp     a2, a3, [x, #16]
 
-// Do a 2x2->4 mul of the cross product, retaining in m4 + [m3,m2,m1,m0]
+// Compute L = [s3;s2;s1;s0] = square of lower half
 
-        mul     m0, a0, a2
-        mul     l2, a1, a3
-        umulh   m2, a0, a2
-        muldiffn c1,h1,l1, m3, a0,a1, a3,a2
+        sqr2(s3,s2,s1,s0, a1,a1short,a0,a0short, d0,d1,d2,d2short)
 
-        adds    m1, m0, m2
-        adc     m2, m2, xzr
+// Compute H = [s7;s6;s5;s4] = square of upper half
 
-        umulh   m3, a1, a3
+        sqr2(s7,s6,s5,s4, a3,a3short,a2,a2short, d0,d1,d2,d2short)
 
-        adds    m1, m1, l2
-        adcs    m2, m2, m3
-        adc     m3, m3, xzr
-        adds    m2, m2, l2
-        adc     m3, m3, xzr
+// Let [a1;a0] = |[a3;a2] - [a1;a0]| be the absolute difference
 
-        adds    xzr, c1, #1
-        adcs    m1, m1, l1
-        adcs    m2, m2, h1
-        adc     m3, m3, c1
+        subs    a0, a0, a2
+        sbcs    a1, a1, a3
+        csetm   d0, cc
+        eor     a0, a0, d0
+        subs    a0, a0, d0
+        eor     a1, a1, d0
+        sbc     a1, a1, d0
 
-// Double that
+// Form H' = H + L_hi (which fits in 4 words)
 
-        adds    m0, m0, m0
-        adcs    m1, m1, m1
-        adcs    m2, m2, m2
-        adcs    m3, m3, m3
-        adc     m4, xzr, xzr
+        adds    s4, s4, s2
+        adcs    s5, s5, s3
+        adcs    s6, s6, xzr
+        adc     s7, s7, xzr
 
-// Compute square of lower half
+// Let M = [d2;d1;a3;a2] = ([a3;a2] - [a1;a0])^2
 
-#define c0 x12
-#define c2 x13
-#define c3 x14
-#define d1 x15
-#define d2 x16
+        sqr2(d2,d1,a3,a2, a1,a1short,a0,a0short, d0,s2,s3,s3short)
 
-        mul     c0, a0, a0
-        mul     c2, a1, a1
-        mul     d1, a0, a1
+// Now form (2^64 + 1) * (H'::L), with a bit of carry-shortening
 
-        umulh   c1, a0, a0
-        umulh   c3, a1, a1
-        umulh   d2, a0, a1
+        adds    s2, s0, s4
+        adcs    s3, s1, s5
+        adcs    s4, s4, s6
+        adcs    s5, s5, s7
+        csetm   d0, cc
 
-        adds    c1, c1, d1
-        adcs    c2, c2, d2
-        adc     c3, c3, xzr
+// Subtract the middle term M
 
-        adds    c1, c1, d1
-        adcs    c2, c2, d2
-        adc     c3, c3, xzr
+        subs    s2, s2, a2
+        sbcs    s3, s3, a3
+        sbcs    s4, s4, d1
+        sbcs    s5, s5, d2
+        adcs    s6, s6, d0
+        adc     s7, s7, d0
 
-// Write back lower part, add upper part to mid-term
+// Store back
 
-        stp     c0, c1, [x0]
-
-        adds    m0, m0, c2
-        adcs    m1, m1, c3
-        adcs    m2, m2, xzr
-        adcs    m3, m3, xzr
-        adc     m4, m4, xzr
-
-        stp     m0, m1, [x0, #16]
-
-// Compute square of upper half as [c3,c2,c1,c0]
-
-        mul     c0, a2, a2
-        mul     c2, a3, a3
-        mul     d1, a2, a3
-
-        umulh   c1, a2, a2
-        umulh   c3, a3, a3
-        umulh   d2, a2, a3
-
-        adds    c1, c1, d1
-        adcs    c2, c2, d2
-        adc     c3, c3, xzr
-
-        adds    c1, c1, d1
-        adcs    c2, c2, d2
-        adc     c3, c3, xzr
-
-// Add up and write back
-
-        adds    c0, c0, m2
-        adcs    c1, c1, m3
-        stp     c0, c1, [x0,#32]
-        adcs    c2, c2, m4
-        adc     c3, c3, xzr
-        stp     c2, c3, [x0,#48]
+        stp     s0, s1, [z]
+        stp     s2, s3, [z, 16]
+        stp     s4, s5, [z, 32]
+        stp     s6, s7, [z, 48]
 
         ret
 

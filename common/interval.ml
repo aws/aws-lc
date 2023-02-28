@@ -218,7 +218,7 @@ let PURE_BOUNDER_RULE =
      (try [PART_MATCH lhand bitval_upperbound t] with Failure _ -> []) @
      (try [PART_MATCH lhand val_upperbound t] with Failure _ -> []) @
      (try [CONV_RULE
-            (RAND_CONV 
+            (RAND_CONV
              (LAND_CONV (RAND_CONV DIMINDEX_CONV THENC REAL_RAT_POW_CONV) THENC
               REAL_RAT_SUB_CONV))
             (PART_MATCH lhand val_upperbound_gen t)] with Failure _ -> []) @
