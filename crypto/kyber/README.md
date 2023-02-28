@@ -21,7 +21,6 @@ The following changes were made to the source code in `pqcrystals_kyber_ref_comm
 * `sha2.h, sha256.c, sha512.c, symmetric-aes.c` are removed because we are using only the SHA3 based Kyber (SHA2 and AES are used in the 90s variants only).
 * `indcpa.c`: call to `randombytes` function is replaced with a call to `pq_custom_randombytes` and the appropriate header file is included (`crypto/rand_extra/pq_custom_randombytes.h`).
 * `kem.c`: calls to `randombytes` function is replaced with calls to `pq_custom_randombytes` and the appropriate header file is included (`crypto/rand_extra/pq_custom_randombytes.h`).
-* `verify.c`: change to fix MSVC compiler warning (see the file for details).
 * `symmetric-shake.c`: unnecessary include of `fips202.h` is removed.
 * `api.h`, `fips202.h`, `params.h`: modified [in this PR](https://github.com/aws/aws-lc/pull/655) to support our [prefixed symbols build](https://github.com/aws/aws-lc/blob/main/BUILDING.md#building-with-prefixed-symbols).
 
