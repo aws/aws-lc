@@ -4,8 +4,6 @@
 #include <string.h>
 #include "internal.h"
 
-#define IS_OCSP_FLAG_SET(flags, query) (flags & query)
-
 // Set up |X509_STORE_CTX| to verify signer and returns cert chain if verify is OK
 // A |OCSP_RESPID| can be identified either by name or its keyhash.
 // https://datatracker.ietf.org/doc/html/rfc6960#section-4.2.2.3

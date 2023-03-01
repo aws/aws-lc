@@ -19,10 +19,24 @@
 extern "C" {
 #endif
 
-/* Various OCSP flags and values */
-#  define OCSP_NOINTERN                   0x2
-#  define OCSP_NOCHAIN                    0x8
-#  define OCSP_NOEXPLICIT                 0x20
+// Various OCSP flags and values
+//
+// OCSP_NOCERTS is for |OCSP_request_sign| if no certificates are included
+// in the |OCSP_REQUEST|. Certificates are optional.
+#define OCSP_NOCERTS                    0x1
+// OCSP_NOINTERN is for |OCSP_basic_verify|. Searches for certificates the
+// responder may have included in |bs| will be done, unless the flags contain
+// OCSP_NOINTERN.
+#define OCSP_NOINTERN                   0x2
+// OCSP_NOCHAIN is for |OCSP_basic_verify|. All certificates in |certs| and in
+// |bs| are considered as untrusted certificates for the construction of the
+// validation path for the signer certificate unless the OCSP_NOCHAIN flag is
+// set.
+#define OCSP_NOCHAIN                    0x8
+// OCSP_NOINTERN is for |OCSP_basic_verify|. We will check for explicit trust
+// for OCSP signing in the root CA certificate, unless the flags contain
+// OCSP_NOEXPLICIT.
+#define OCSP_NOEXPLICIT                 0x20
 
 
 typedef struct ocsp_cert_id_st OCSP_CERTID;
@@ -115,6 +129,22 @@ OPENSSL_EXPORT int OCSP_REQ_CTX_add1_header(OCSP_REQ_CTX *rctx,
 OPENSSL_EXPORT OCSP_ONEREQ *OCSP_request_add0_id(OCSP_REQUEST *req,
                                                  OCSP_CERTID *cid);
 
+// OCSP_request_set1_name sets |requestorName| from an |X509_NAME| structure.
+OPENSSL_EXPORT int OCSP_request_set1_name(OCSP_REQUEST *req, X509_NAME *nm);
+
+// OCSP_request_add1_cert adds a certificate to an |OCSP_REQUEST|.
+OPENSSL_EXPORT int OCSP_request_add1_cert(OCSP_REQUEST *req, X509 *cert);
+
+// OCSP_request_sign signs an |OCSP_REQUEST|. Signing also sets the
+// |requestorName| to the subject name of an optional signers certificate and
+// includes one or more optional certificates in the request.
+// This will fail if a signature in the |OCSP_REQUEST| already exists.
+OPENSSL_EXPORT int OCSP_request_sign(OCSP_REQUEST *req,
+                      X509 *signer,
+                      EVP_PKEY *key,
+                      const EVP_MD *dgst,
+                      STACK_OF(X509) *certs, unsigned long flags);
+
 // Returns response status from |OCSP_RESPONSE|.
 OPENSSL_EXPORT int OCSP_response_status(OCSP_RESPONSE *resp);
 
@@ -191,6 +221,7 @@ BSSL_NAMESPACE_END
 #define OCSP_R_NOT_BASIC_RESPONSE 104
 #define OCSP_R_NO_CERTIFICATES_IN_CHAIN 105
 #define OCSP_R_NO_RESPONSE_DATA 108
+#define OCSP_R_PRIVATE_KEY_DOES_NOT_MATCH_CERTIFICATE 110
 #define OCSP_R_RESPONSE_CONTAINS_NO_REVOCATION_DATA 111
 #define OCSP_R_ROOT_CA_NOT_TRUSTED 112
 #define OCSP_R_SERVER_RESPONSE_PARSE_ERROR 115
@@ -199,5 +230,6 @@ BSSL_NAMESPACE_END
 #define OCSP_R_UNKNOWN_MESSAGE_DIGEST 119
 #define OCSP_R_UNKNOWN_NID 120
 #define OCSP_R_NO_SIGNER_KEY 130
+#define OCSP_R_OCSP_REQUEST_DUPLICATE_SIGNATURE 131
 
 #endif  // AWSLC_OCSP_H

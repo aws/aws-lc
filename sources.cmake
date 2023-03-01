@@ -109,6 +109,8 @@ set(
   crypto/ocsp/test/aws/ca_cert.pem
   crypto/ocsp/test/aws/server_cert.pem
   crypto/ocsp/test/aws/server_ecdsa_cert.pem
+  crypto/ocsp/test/aws/server_ecdsa_key.pem
+  crypto/ocsp/test/aws/server_key.pem
   crypto/ocsp/test/ND1.ors
   crypto/ocsp/test/ND2.ors
   crypto/ocsp/test/ND3.ors

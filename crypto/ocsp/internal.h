@@ -262,6 +262,8 @@ int OCSP_id_issuer_cmp(const OCSP_CERTID *a, const OCSP_CERTID *b);
 // Compares certificate id, returns 0 on equal.
 int OCSP_id_cmp(const OCSP_CERTID *a, const OCSP_CERTID *b);
 
+#define IS_OCSP_FLAG_SET(flags, query) (flags & query)
+
 #if defined(__cplusplus)
 }  // extern C
 #endif
