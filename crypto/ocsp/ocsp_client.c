@@ -71,6 +71,7 @@ int OCSP_request_sign(OCSP_REQUEST *req,
     // signed once. There's no indication or use case detailed in the RFC
     // that the OCSP request can or should be signed twice.
     // https://datatracker.ietf.org/doc/html/rfc6960#section-4.1.2
+    OPENSSL_PUT_ERROR(OCSP, OCSP_R_OCSP_REQUEST_DUPLICATE_SIGNATURE);
     goto err;
   }
 
