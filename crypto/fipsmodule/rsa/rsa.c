@@ -759,10 +759,16 @@ int RSA_validate_key(const RSA *key, rsa_asn1_key_encoding_t key_enc_type) {
     return 0;
   }
 
-  // |key->d| must be bounded by |key->n|. This ensures bounds on |RSA_bits|
-  // translate to bounds on the running time of private key operations.
-  if (key->d != NULL &&
-      (BN_is_negative(key->d) || BN_cmp(key->d, key->n) >= 0)) {
+  // Previously, we ensured that |key->d| is bounded by |key->n|.
+  // This ensures bounds on |RSA_bits| translate to bounds on
+  // the running time of private key operations.
+  // However, due to some users having to deal with private keys
+  // that are valid but violate this condition we had to remove it.
+  // The main concern for keys that violate the condition (the potential
+  // DoS attack vector) is somewhat alleviated with the hard limit on
+  // the size of RSA keys we allow.
+  // This behavior is in line with OpenSSL that doesn't impose the condition.
+  if (key->d != NULL && BN_is_negative(key->d)) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_D_OUT_OF_RANGE);
     return 0;
   }
