@@ -742,24 +742,6 @@ static int check_mod_inverse(int *out_ok, const BIGNUM *a, const BIGNUM *ainv,
   return ret;
 }
 
-#if !defined(AWSLC_FIPS)
-static bool allow_rsa_keys_d_gt_n_flag = false;
-
-void allow_rsa_keys_d_gt_n(void) {
-  allow_rsa_keys_d_gt_n_flag = true;
-}
-
-static bool are_rsa_keys_with_d_gt_n_allowed(void) {
-  return allow_rsa_keys_d_gt_n_flag;
-}
-
-#else
-
-static bool are_rsa_keys_with_d_gt_n_allowed(void) {
-  return false;
-}
-#endif
-
 int RSA_validate_key(const RSA *key, rsa_asn1_key_encoding_t key_enc_type) {
   // TODO(davidben): RSA key initialization is spread across
   // |rsa_check_public_key|, |RSA_check_key|, |freeze_private_key|, and
@@ -777,18 +759,16 @@ int RSA_validate_key(const RSA *key, rsa_asn1_key_encoding_t key_enc_type) {
     return 0;
   }
 
-  if (key->d != NULL && (BN_is_negative(key->d))) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_D_OUT_OF_RANGE);
-    return 0;
-  }
-
-  // |key->d| must be bounded by |key->n|. This ensures bounds on |RSA_bits|
-  // translate to bounds on the running time of private key operations.
-  // See above this functions the explanation for the exception when keys
-  // with |d > n| are allowed.
-  if (key->d != NULL &&
-      are_rsa_keys_with_d_gt_n_allowed() == false &&
-      BN_cmp(key->d, key->n) >= 0) {
+  // Previously, we ensured that |key->d| is bounded by |key->n|.
+  // This ensures bounds on |RSA_bits| translate to bounds on
+  // the running time of private key operations.
+  // However, due to some users (V804729436) having to deal with private keys
+  // that are valid but violate this condition we had to remove it.
+  // The main concern for keys that violate the condition (the potential
+  // DoS attack vector) is somewhat alleviated with the hard limit on
+  // the size of RSA keys we allow.
+  // This behavior is in line with OpenSSL that doesn't impose the condition.
+  if (key->d != NULL && BN_is_negative(key->d)) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_D_OUT_OF_RANGE);
     return 0;
   }
