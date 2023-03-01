@@ -332,62 +332,6 @@
         movq    %r10, 0x10+P0 ;                 \
         movq    %r11, 0x18+P0
 
-// Plain 4-digit add and doubling without any normalization
-// With inputs < p_25519 (indeed < 2^255) it still gives a 4-digit result,
-// indeed one < 2 * p_25519 for normalized inputs.
-
-#define add_4(P0,P1,P2)                         \
-        movq    P1, %rax ;                      \
-        addq    P2, %rax ;                      \
-        movq    %rax, P0 ;                      \
-        movq    8+P1, %rax ;                    \
-        adcq    8+P2, %rax ;                    \
-        movq    %rax, 8+P0 ;                    \
-        movq    16+P1, %rax ;                   \
-        adcq    16+P2, %rax ;                   \
-        movq    %rax, 16+P0 ;                   \
-        movq    24+P1, %rax ;                   \
-        adcq    24+P2, %rax ;                   \
-        movq    %rax, 24+P0
-
-#define double_4(P0,P1)                         \
-        movq    P1, %rax ;                      \
-        addq    %rax, %rax ;                       \
-        movq    %rax, P0 ;                      \
-        movq    8+P1, %rax ;                    \
-        adcq    %rax, %rax ;                       \
-        movq    %rax, 8+P0 ;                    \
-        movq    16+P1, %rax ;                   \
-        adcq    %rax, %rax ;                       \
-        movq    %rax, 16+P0 ;                   \
-        movq    24+P1, %rax ;                   \
-        adcq    %rax, %rax ;                       \
-        movq    %rax, 24+P0
-
-// Subtraction of a pair of numbers < p_25519 just sufficient
-// to give a 4-digit result. It actually always does (x - z) + (2^255-19)
-// which in turn is done by (x - z) - (2^255+19) discarding the 2^256
-// implicitly
-
-#define sub_4(P0,P1,P2)                         \
-        movq    P1, %r8 ;                       \
-        subq    P2, %r8 ;                       \
-        movq    8+P1, %r9 ;                     \
-        sbbq    8+P2, %r9 ;                     \
-        movq    16+P1, %r10 ;                   \
-        sbbq    16+P2, %r10 ;                   \
-        movq    24+P1, %rax ;                   \
-        sbbq    24+P2, %rax ;                   \
-        subq    $19, %r8 ;                         \
-        movq    %r8, P0 ;                       \
-        sbbq    $0, %r9 ;                          \
-        movq    %r9, 8+P0 ;                     \
-        sbbq    $0, %r10 ;                         \
-        movq    %r10, 16+P0 ;                   \
-        sbbq    $0, %rax ;                         \
-        btc     $63, %rax ;                        \
-        movq    %rax, 24+P0
-
 // Modular subtraction with double modulus 2 * p_25519 = 2^256 - 38
 
 #define sub_twice4(P0,P1,P2)                    \
@@ -411,8 +355,11 @@
         movq    %r10, 16+P0 ;                   \
         movq    %rax, 24+P0
 
-// Modular addition with inputs double modulus 2 * p_25519 = 2^256 - 38
-// and in general only guaranteeing a 4-digit result, not even < 2 * p_25519.
+// Modular addition and doubling with double modulus 2 * p_25519 = 2^256 - 38.
+// This only ensures that the result fits in 4 digits, not that it is reduced
+// even w.r.t. double modulus. The result is always correct modulo provided
+// the sum of the inputs is < 2^256 + 2^256 - 38, so in particular provided
+// at least one of them is reduced double modulo.
 
 #define add_twice4(P0,P1,P2)                    \
         movq    P1, %r8 ;                       \
@@ -424,6 +371,27 @@
         adcq    0x10+P2, %r10 ;                 \
         movq    0x18+P1, %r11 ;                 \
         adcq    0x18+P2, %r11 ;                 \
+        movl    $38, %eax ;                        \
+        cmovncq %rcx, %rax ;                       \
+        addq    %rax, %r8 ;                        \
+        adcq    %rcx, %r9 ;                        \
+        adcq    %rcx, %r10 ;                       \
+        adcq    %rcx, %r11 ;                       \
+        movq    %r8, P0 ;                       \
+        movq    %r9, 0x8+P0 ;                   \
+        movq    %r10, 0x10+P0 ;                 \
+        movq    %r11, 0x18+P0
+
+#define double_twice4(P0,P1)                    \
+        movq    P1, %r8 ;                       \
+        xorl    %ecx, %ecx ;                       \
+        addq    %r8, %r8 ;                         \
+        movq    0x8+P1, %r9 ;                   \
+        adcq    %r9, %r9 ;                         \
+        movq    0x10+P1, %r10 ;                 \
+        adcq    %r10, %r10 ;                       \
+        movq    0x18+P1, %r11 ;                 \
+        adcq    %r11, %r11 ;                       \
         movl    $38, %eax ;                        \
         cmovncq %rcx, %rax ;                       \
         addq    %rax, %r8 ;                        \
@@ -921,11 +889,14 @@ scalarloop:
 
 // Extended-projective and precomputed mixed addition.
 // This is effectively the same as calling the standalone
-// function edwards25519_pepadd_alt(acc,acc,tabent)
+// function edwards25519_pepadd_alt(acc,acc,tabent), but we
+// only retain slightly weaker normalization < 2 * p_25519
+// throughout the inner loop, so the computation is
+// slightly different, and faster overall.
 
-        double_4(t0,z_1)
-        sub_4(t1,y_1,x_1)
-        add_4(t2,y_1,x_1)
+        double_twice4(t0,z_1)
+        sub_twice4(t1,y_1,x_1)
+        add_twice4(t2,y_1,x_1)
         mul_4(t3,w_1,kxy_2)
         mul_4(t1,t1,ymx_2)
         mul_4(t2,t2,xpy_2)
@@ -933,10 +904,10 @@ scalarloop:
         add_twice4(t0,t0,t3)
         sub_twice4(t5,t2,t1)
         add_twice4(t1,t2,t1)
-        mul_p25519(z_3,t4,t0)
-        mul_p25519(x_3,t5,t4)
-        mul_p25519(y_3,t0,t1)
-        mul_p25519(w_3,t5,t1)
+        mul_4(z_3,t4,t0)
+        mul_4(x_3,t5,t4)
+        mul_4(y_3,t0,t1)
+        mul_4(w_3,t5,t1)
 
 // End of the main loop; move on by 4 bits.
 
@@ -969,8 +940,8 @@ scalarloop:
 //
 // First the addition and subtraction:
 
-        add_4(y_3,x_3,w_3)
-        sub_4(z_3,x_3,w_3)
+        add_twice4(y_3,x_3,w_3)
+        sub_twice4(z_3,x_3,w_3)
 
 // Prepare to call the modular inverse function to get x_3 = 1/z_3
 
@@ -1379,6 +1350,9 @@ fliploop:
         ja      outerloop
 
 // The final result is (X + T) / (X - T)
+// This is the only operation in the whole computation that
+// fully reduces modulo p_25519 since now we want the canonical
+// answer as output.
 
         movq    res, %rbp
         mul_p25519(resx,y_3,x_3)
