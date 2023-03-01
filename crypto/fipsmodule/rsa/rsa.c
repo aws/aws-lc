@@ -762,7 +762,7 @@ int RSA_validate_key(const RSA *key, rsa_asn1_key_encoding_t key_enc_type) {
   // Previously, we ensured that |key->d| is bounded by |key->n|.
   // This ensures bounds on |RSA_bits| translate to bounds on
   // the running time of private key operations.
-  // However, due to some users having to deal with private keys
+  // However, due to some users (V804729436) having to deal with private keys
   // that are valid but violate this condition we had to remove it.
   // The main concern for keys that violate the condition (the potential
   // DoS attack vector) is somewhat alleviated with the hard limit on
