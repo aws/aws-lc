@@ -79,7 +79,7 @@ struct ocsp_request_st {
 // Opaque OCSP request status structure
 struct ocsp_req_ctx_st {
     int state;                  // Current I/O state
-    unsigned char *iobuf;       // Line buffer
+    unsigned char *iobuf;       // Line buffer. Should only be modified during http exchange in OCSP_REQ_CTX_nbio.
     int iobuflen;               // Line buffer length
     BIO *io;                    // BIO to perform I/O with
     BIO *mem;                   // Memory BIO response is built into
@@ -214,6 +214,15 @@ struct ocsp_basic_response_st {
   ASN1_BIT_STRING *signature;
   STACK_OF(X509) *certs;
 };
+
+// Try exchanging request and response via HTTP on (non-)blocking BIO in rctx.
+int OCSP_REQ_CTX_nbio(OCSP_REQ_CTX *rctx);
+
+// Tries to exchange the request and response with OCSP_REQ_CTX_nbio(), but on
+// success, it additionally parses the response, which must be a
+// DER-encoded ASN.1 structure.
+int OCSP_REQ_CTX_nbio_d2i(OCSP_REQ_CTX *rctx,
+                          ASN1_VALUE **pval, const ASN1_ITEM *it);
 
 // Parses ASN.1 contents of |OCSP_REQ_CTX| into a der format.
 int OCSP_REQ_CTX_i2d(OCSP_REQ_CTX *rctx, const ASN1_ITEM *it, ASN1_VALUE *val);

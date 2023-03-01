@@ -1,7 +1,6 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
-#include <time.h>
-
+#include <ctime>
 #include <gtest/gtest.h>
 
 #include "openssl/ocsp.h"
@@ -30,6 +29,9 @@ static const time_t invalid_after_ocsp_expire_time_sha256 = 1937505764;
 
 #define OCSP_REQUEST_PARSE_SUCCESS                 1
 #define OCSP_REQUEST_PARSE_ERROR                   0
+
+#define OCSP_HTTP_PARSE_SUCCESS                    1
+#define OCSP_HTTP_PARSE_ERROR                      0
 
 std::string GetTestData(const char *path);
 
@@ -837,3 +839,123 @@ TEST(OCSPRequestTest, AddCert) {
   certId = nullptr;
 }
 
+static const char good_http_response_hdr[] =
+        "HTTP/1.1 200 OK\r\n"
+        "Content-Type: application/ocsp-response\r\n"
+        "Content-Length: ";
+
+static const char malformed_http_response_hdr[] =
+        "HTTP/1.200 OK\r\n"
+        "Content-Type: application/ocsp-response\r\n"
+        "Content-Length: ";
+
+// This parses in OpenSSL, but fails in AWS-LC because we check for the HTTP
+// protocol characters at the front.
+static const char non_http_response_hdr[] =
+        "HTPT/1.1 200 OK\r\n"
+        "Content-Type: application/ocsp-response\r\n"
+        "Content-Length: ";
+
+// Only status code 200 should be accepted.
+static const char not_ok_http_response_hdr[] =
+        "HTTP/1.1 404 OK\r\n"
+        "Content-Type: application/ocsp-response\r\n"
+        "Content-Length: ";
+
+// This should parse. Only the status code is mandatory, subsequent lines are
+// optional.
+static const char no_type_http_response_hdr[] =
+        "HTTP/1.1 200 OK\r\n"
+        "Content-Length: ";
+
+// This should parse. Only the status code is mandatory, additional information
+// is optional.
+static const char no_info_http_response_hdr[] =
+        "HTTP/1.0 200\r\n"
+        "Content-Length: ";
+
+// OpenSSL uses isspace() to test for white-space characters, which includes
+// the following. ``\t''``\n''``\v''``\f''``\r''`` '
+// This should parse. "\n" is not included since it will skip the header to the
+// next line and fail the http parsing.
+static const char additional_space_http_response_hdr[] =
+        "HTTP/1.1 \t\v\r\f\t 200  \t\v\f\r\t   OK   \r\n"
+        "Content-Type: application/ocsp-response\r\n"
+        "Content-Length: ";
+
+// This should fail, since the status code is expected on the first line.
+static const char next_line_http_response_hdr[] =
+        "HTTP/1.1   \n   200    \f   OK\r\n"
+        "Content-Type: application/ocsp-response\r\n"
+        "Content-Length: ";
+
+// This should fail. Protocol info is expected at the front.
+static const char only_code_http_response_hdr[] =
+        "200\r\n"
+        "Content-Length: ";
+
+struct OCSPHTTPTestVector {
+  const char *http_header;
+  bool response_attached;
+  int expected_status;
+};
+
+static const OCSPHTTPTestVector kResponseHTTPVectors[] = {
+    {good_http_response_hdr, true, OCSP_HTTP_PARSE_SUCCESS},
+    {malformed_http_response_hdr, true, OCSP_HTTP_PARSE_ERROR},
+    {non_http_response_hdr, true, OCSP_HTTP_PARSE_ERROR},
+    {not_ok_http_response_hdr, true, OCSP_HTTP_PARSE_ERROR},
+    {no_type_http_response_hdr, true, OCSP_REQUEST_PARSE_SUCCESS},
+    {no_info_http_response_hdr, true, OCSP_REQUEST_PARSE_SUCCESS},
+    {additional_space_http_response_hdr, true, OCSP_REQUEST_PARSE_SUCCESS},
+    {next_line_http_response_hdr, true, OCSP_HTTP_PARSE_ERROR},
+    {only_code_http_response_hdr, true, OCSP_HTTP_PARSE_ERROR},
+    // HTTP Header is OK, but no actual response is attached.
+    {good_http_response_hdr, false, OCSP_HTTP_PARSE_ERROR},
+    {no_type_http_response_hdr, false, OCSP_HTTP_PARSE_ERROR},
+    {no_info_http_response_hdr, false, OCSP_HTTP_PARSE_ERROR},
+};
+
+class OCSPHTTPTest : public testing::TestWithParam<OCSPHTTPTestVector> {};
+
+INSTANTIATE_TEST_SUITE_P(All, OCSPHTTPTest,
+                         testing::ValuesIn(kResponseHTTPVectors));
+
+// Test if OCSP_sendreq_bio() can properly send out an HTTP request with
+// a |OCSP_REQUEST|, and expect an HTTP response with an OCSP response back.
+// Always sends the same OCSP request and replies with the same OCSP response.
+// This test focuses parsing the OCSP response with HTTP. We have other tests
+// to test if the actual OCSP response is parsable and verifiable.
+TEST_P(OCSPHTTPTest, OCSPRequestHTTP) {
+  const OCSPHTTPTestVector &t = GetParam();
+
+  std::string data = GetTestData(std::string(
+                             "crypto/ocsp/test/aws/ocsp_request.der").c_str());
+  std::vector<uint8_t> ocsp_request_data(data.begin(), data.end());
+  std::string respData = GetTestData(std::string(
+                             "crypto/ocsp/test/aws/ocsp_response.der").c_str());
+  std::vector<uint8_t> ocsp_response_data(respData.begin(), respData.end());
+
+  // Write an HTTP OCSP response into the BIO.
+  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+  const int respLen = (int)ocsp_response_data.size();
+  ASSERT_GT(BIO_printf(bio.get(), "%s", t.http_header), 0);
+  ASSERT_GT(BIO_printf(bio.get(), "%d\r\n\r\n", respLen), 0);
+  if(t.response_attached) {
+    ASSERT_EQ(BIO_write(bio.get(), ocsp_response_data.data(), respLen),
+              respLen);
+  }
+
+  // Sends out an OCSP request and expects an OCSP response in |BIO|.
+  bssl::UniquePtr<OCSP_REQUEST> ocspRequest =
+      LoadOCSP_REQUEST(ocsp_request_data);
+  ASSERT_TRUE(ocspRequest);
+  bssl::UniquePtr<OCSP_RESPONSE> ocspResponse(
+      OCSP_sendreq_bio(bio.get(), nullptr, ocspRequest.get()));
+  if(t.expected_status == OCSP_HTTP_PARSE_SUCCESS && t.response_attached) {
+    ASSERT_TRUE(ocspResponse);
+  }
+  else{
+    ASSERT_FALSE(ocspResponse);
+  }
+}
