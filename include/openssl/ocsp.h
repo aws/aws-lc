@@ -63,13 +63,13 @@ DECLARE_ASN1_FUNCTIONS(OCSP_REQINFO)
 // of non-blocking I/O.
 // |OCSP_sendreq_bio| combines |OCSP_sendreq_new| with as many calls of
 // |OCSP_sendreq_nbio| as needed and then |OCSP_REQ_CTX_free|, with a response
-// header maximum line length of 4k. It waits indefinitely on a response.
+// header maximum line length of 4k. It waits indefinitely on a response, if
+// |BIO_should_retry| is true and the |BIO| persists.
 //
-// WARNING: This does not support setting a timeout or adding your own HTTP
-// headers and is retained only for compatibility.
-// Use |OCSP_sendreq_nbio| and manually set your own timeout with the C standard
-// time libraries instead. You can also use |OCSP_REQ_CTX_add1_header| to add
-// your own HTTP headers.
+// WARNING: This is retained only for compatibility. This does not support
+// setting a timeout or adding your own HTTP headers.
+// Use |OCSP_sendreq_nbio| and handle the timeout accordingly to the |BIO| type.
+// You can also use |OCSP_REQ_CTX_add1_header| to add your own HTTP headers.
 OPENSSL_EXPORT OCSP_RESPONSE *OCSP_sendreq_bio(BIO *b, const char *path,
                                                OCSP_REQUEST *req);
 

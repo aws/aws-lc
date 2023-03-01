@@ -119,24 +119,34 @@ static int parse_http_line(char *line) {
   return 1;
 }
 
-// OHS_HTTP_HEADER represents the state where OCSP request headers have finished
-// being written, and we want to add the final "\r\n" to the OCSP request.
-// This falls through to OHS_ASN1_WRITE_INIT and OHS_ASN1_WRITE, where we start
-// writing the OCSP request from |rctx->mem| to |rctx->io|. This will continue
-// writing the contents until all |OCSP_REQUEST| ASN.1 contents have been
-// written. The |OCSP_REQUEST| write will finish off with |OHS_ASN1_FLUSH|,
-// turn into a state of OHS_FIRSTLINE, and start expecting to read the first
-// line of the HTTP OCSP response written back in |rctx->mem|.
-// OHS_FIRSTLINE expects to parse the first line of the HTTP response, which
-// contains the numeric code and (optional) informational message. The numeric
-// code is parsed and verified with parse_http_line(). OHS_HEADERS parses any
-// additional subsequent HTTP content headers in the OCSP HTTP response. Once
-// a blank line is detected, we fallthrough to the state OHS_ASN1_HEADER and
-// start saving the ASN.1 contents of the OCSP response. OHS_ASN1_HEADER checks
-// the ASN1 header contents, which should contain the length field. This then
-// falls through to |OHS_ASN1_CONTENT| where we start reading in the contents of
-// the ASN.1 OCSP response. Once all ASN.1 contents up to the length field have
-// been read, OCSP_REQ_CTX_nbio will finish in the state of OHS_DONE.
+// |OCSP_REQUEST| sending:
+// OHS_HTTP_HEADER should be initial state when first calling
+// |OCSP_REQ_CTX_nbio|. OHS_HTTP_HEADER represents the state where OCSP request
+// headers have finished being written, and we want to add the final "\r\n" to
+// the ASN.1 OCSP request. This falls through to OHS_ASN1_WRITE_INIT and
+// OHS_ASN1_WRITE, where we start writing the OCSP request from |rctx->mem| to
+// |rctx->io|. |OHS_ASN1_WRITE| will continue writing the ASN.1 contents until
+// all |OCSP_REQUEST| ASN.1 contents have been written. When OHS_ASN1_WRITE
+// finishes writing, we will reset the BIO contents of |rctx->mem| and set the
+// state to OHS_ASN1_FLUSH. OHS_ASN1_FLUSH will flush any buffered output that
+// had been in |rctx->io|.
+//
+// |OCSP_RESPONSE| awaiting:
+// Once OHS_ASN1_FLUSH has finished, we'll turn into a state of OHS_FIRSTLINE,
+// and start expecting to read the first line of the HTTP OCSP response written
+// back by the OCSP responder in |rctx->mem|. OHS_FIRSTLINE expects to parse the
+// first line of the HTTP response, which contains the numeric code and
+// (optional) informational message. The numeric code is parsed and verified
+// with |parse_http_line|. Once the numeric code is parsed, OHS_FIRSTLINE will
+// transtion to OHS_HEADERS. OHS_HEADERS parses any additional subsequent HTTP
+// content headers in the OCSP HTTP response. Once a blank line is detected, we
+// fallthrough to the state OHS_ASN1_HEADER and start expecting the ASN.1
+// contents of the OCSP response. OHS_ASN1_HEADER first checks the ASN1 header
+// contents, which should contain the length field. This then falls through to
+// |OHS_ASN1_CONTENT| where we start reading in the actual contents of the
+// ASN.1 OCSP response. Once all ASN.1 contents up to the length field have been
+// read, |OCSP_REQ_CTX_nbio| will finish in the state of OHS_DONE.
+// |OCSP_REQ_CTX_nbio| will not return 1 until we reach OHS_DONE.
 int OCSP_REQ_CTX_nbio(OCSP_REQ_CTX *rctx) {
     int ret, data_len;
     const unsigned char *data;
@@ -344,7 +354,8 @@ OCSP_RESPONSE *OCSP_sendreq_bio(BIO *b, const char *path, OCSP_REQUEST *req)
       return NULL;
     }
 
-    // This waits indefinitely on a response, if BIO_should_retry() is on.
+    // This waits indefinitely on a response, if |BIO_should_retry| is on and
+    // the BIO persists.
     do {
         rv = OCSP_sendreq_nbio(&resp, ctx);
     } while ((rv == -1) && BIO_should_retry(b));
