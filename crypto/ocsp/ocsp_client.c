@@ -3,22 +3,113 @@
 
 #include "internal.h"
 
-OCSP_ONEREQ *OCSP_request_add0_id(OCSP_REQUEST *req, OCSP_CERTID *cid)
-{
-    OCSP_ONEREQ *one = OCSP_ONEREQ_new();
-    if (one == NULL) {
-      return NULL;
+OCSP_ONEREQ *OCSP_request_add0_id(OCSP_REQUEST *req, OCSP_CERTID *cid) {
+  OCSP_ONEREQ *one = OCSP_ONEREQ_new();
+  if (one == NULL) {
+    return NULL;
+  }
+  // Reassign |OCSP_CERTID| allocated by OCSP_ONEREQ_new().
+  OCSP_CERTID_free(one->reqCert);
+  one->reqCert = cid;
+  if (req != NULL && !sk_OCSP_ONEREQ_push(req->tbsRequest->requestList, one)) {
+    one->reqCert = NULL;  // do not free on error
+    OCSP_ONEREQ_free(one);
+    return NULL;
+  }
+  return one;
+}
+
+int OCSP_request_set1_name(OCSP_REQUEST *req, X509_NAME *nm) {
+  GENERAL_NAME *gen = GENERAL_NAME_new();
+  if (gen == NULL) {
+    return 0;
+  }
+  if (!X509_NAME_set(&gen->d.directoryName, nm)) {
+    GENERAL_NAME_free(gen);
+    return 0;
+  }
+  gen->type = GEN_DIRNAME;
+  GENERAL_NAME_free(req->tbsRequest->requestorName);
+  req->tbsRequest->requestorName = gen;
+  return 1;
+}
+
+int OCSP_request_add1_cert(OCSP_REQUEST *req, X509 *cert) {
+  if (req->optionalSignature == NULL) {
+    req->optionalSignature = OCSP_SIGNATURE_new();
+  }
+  OCSP_SIGNATURE *sig = req->optionalSignature;
+  if (sig == NULL) {
+    return 0;
+  }
+  if (cert == NULL) {
+    return 1;
+  }
+
+  if (sig->certs == NULL && (sig->certs = sk_X509_new_null()) == NULL) {
+    return 0;
+  }
+
+  if (!sk_X509_push(sig->certs, cert)) {
+    return 0;
+  }
+  // sk_X509_push takes ownership.
+  X509_up_ref(cert);
+  return 1;
+}
+
+int OCSP_request_sign(OCSP_REQUEST *req,
+                      X509 *signer,
+                      EVP_PKEY *key,
+                      const EVP_MD *dgst,
+                      STACK_OF(X509) *certs, unsigned long flags) {
+  if (req->optionalSignature != NULL) {
+    // OpenSSL lets an |OCSP_REQUEST| be signed twice, regardless of whether
+    // an |optionalSignature| exists. Signing an OCSP Request twice creates
+    // a dangling |OCSP_SIGNATURE| pointer with no clear way of recovering it.
+    // We disallow this behavior and only allow the |OCSP_REQUEST| to be
+    // signed once. There's no indication or use case detailed in the RFC
+    // that the OCSP request can or should be signed twice.
+    // https://datatracker.ietf.org/doc/html/rfc6960#section-4.1.2
+    goto err;
+  }
+
+  if (!OCSP_request_set1_name(req, X509_get_subject_name(signer))) {
+    goto err;
+  }
+  req->optionalSignature = OCSP_SIGNATURE_new();
+  if (req->optionalSignature == NULL) {
+    goto err;
+  }
+  if (key != NULL) {
+    if (!X509_check_private_key(signer, key)) {
+      OPENSSL_PUT_ERROR(OCSP, OCSP_R_PRIVATE_KEY_DOES_NOT_MATCH_CERTIFICATE);
+      goto err;
     }
-    // Reassign |OCSP_CERTID| allocated by OCSP_ONEREQ_new().
-    OCSP_CERTID_free(one->reqCert);
-    one->reqCert = cid;
-    if (req != NULL &&
-        !sk_OCSP_ONEREQ_push(req->tbsRequest->requestList, one)) {
-      one->reqCert = NULL;  // do not free on error
-      OCSP_ONEREQ_free(one);
-      return NULL;
+    if (!ASN1_item_sign(ASN1_ITEM_rptr(OCSP_REQINFO),
+                        req->optionalSignature->signatureAlgorithm, NULL,
+                        req->optionalSignature->signature, req->tbsRequest, key,
+                        dgst)) {
+      goto err;
     }
-    return one;
+  }
+
+  if (!IS_OCSP_FLAG_SET(flags, OCSP_NOCERTS)) {
+    if (!OCSP_request_add1_cert(req, signer)) {
+      goto err;
+    }
+    for (size_t i = 0; i < sk_X509_num(certs); i++) {
+      if (!OCSP_request_add1_cert(req, sk_X509_value(certs, i))) {
+        goto err;
+      }
+    }
+  }
+
+  return 1;
+err:
+  OCSP_SIGNATURE_free(req->optionalSignature);
+  req->optionalSignature = NULL;
+  return 0;
 }
 
 int OCSP_response_status(OCSP_RESPONSE *resp) {
@@ -69,7 +160,8 @@ int OCSP_resp_find(OCSP_BASICRESP *bs, OCSP_CERTID *id, int last) {
     return -1;
   }
 
-  // |OCSP_SINGLERESP| stack is in |OCSP_BASICRESP| responseData, we look for OCSP_CERTID in here
+  // |OCSP_SINGLERESP| stack is in |OCSP_BASICRESP| responseData, we look for
+  // |OCSP_CERTID| in here.
   STACK_OF(OCSP_SINGLERESP) *sresp = bs->tbsResponseData->responses;
   OCSP_SINGLERESP *single;
 
@@ -102,7 +194,8 @@ int OCSP_single_get0_status(OCSP_SINGLERESP *single, int *reason,
   }
   int status = cst->type;
 
-  // If certificate status is revoked, we look up certificate revocation time and reason.
+  // If certificate status is revoked, we look up certificate revocation time
+  // and reason.
   if (status == V_OCSP_CERTSTATUS_REVOKED) {
     OCSP_REVOKEDINFO *rev = cst->value.revoked;
     if(rev != NULL) {
@@ -118,7 +211,8 @@ int OCSP_single_get0_status(OCSP_SINGLERESP *single, int *reason,
       }
     }
   }
-  // Send back when certificate was last updated and when is the next update time.
+  // Send back when certificate was last updated and when is the next update
+  // time.
   if (thisupd != NULL) {
     *thisupd = single->thisUpdate;
   }
@@ -133,20 +227,23 @@ int OCSP_resp_find_status(OCSP_BASICRESP *bs, OCSP_CERTID *id, int *status,
                           ASN1_GENERALIZEDTIME **revtime,
                           ASN1_GENERALIZEDTIME **thisupd,
                           ASN1_GENERALIZEDTIME **nextupd) {
-  if (bs == NULL || id == NULL){
+  if (bs == NULL || id == NULL) {
     OPENSSL_PUT_ERROR(OCSP, ERR_R_PASSED_NULL_PARAMETER);
     return -1;
   }
 
-  // we look for index of equivalent |OCSP_CERTID| of issuer certificate in |OCSP_BASICRESP|
+  // we look for index of equivalent |OCSP_CERTID| of issuer certificate in
+  // |OCSP_BASICRESP|
   int single_idx = OCSP_resp_find(bs, id, -1);
   if (single_idx < 0) {
     return 0;
   }
   OCSP_SINGLERESP *single = OCSP_resp_get0(bs, single_idx);
 
-  // Extract the update time and revocation status of certificate sent back from OCSP responder
-  int single_status = OCSP_single_get0_status(single, reason, revtime, thisupd, nextupd);
+  // Extract the update time and revocation status of certificate sent back
+  // from OCSP responder
+  int single_status =
+      OCSP_single_get0_status(single, reason, revtime, thisupd, nextupd);
   if (status != NULL) {
     *status = single_status;
   }

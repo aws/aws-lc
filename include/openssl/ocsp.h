@@ -19,10 +19,14 @@
 extern "C" {
 #endif
 
-/* Various OCSP flags and values */
-#  define OCSP_NOINTERN                   0x2
-#  define OCSP_NOCHAIN                    0x8
-#  define OCSP_NOEXPLICIT                 0x20
+// Various OCSP flags and values
+
+// Set OCSP_NOCERTS for OCSP_request_sign() if no certificates are included
+// in the |OCSP_REQUEST|. Certificates are optional.
+#define OCSP_NOCERTS                    0x1
+#define OCSP_NOINTERN                   0x2
+#define OCSP_NOCHAIN                    0x8
+#define OCSP_NOEXPLICIT                 0x20
 
 
 typedef struct ocsp_cert_id_st OCSP_CERTID;
@@ -115,6 +119,22 @@ OPENSSL_EXPORT int OCSP_REQ_CTX_add1_header(OCSP_REQ_CTX *rctx,
 OPENSSL_EXPORT OCSP_ONEREQ *OCSP_request_add0_id(OCSP_REQUEST *req,
                                                  OCSP_CERTID *cid);
 
+// Set |requestorName| from an |X509_NAME| structure.
+OPENSSL_EXPORT int OCSP_request_set1_name(OCSP_REQUEST *req, X509_NAME *nm);
+
+// Add a certificate to an OCSP request.
+OPENSSL_EXPORT int OCSP_request_add1_cert(OCSP_REQUEST *req, X509 *cert);
+
+// Sign an OCSP request set the |requestorName| to the subject name of an
+// optional signers certificate and include one or more optional certificates
+// in the request.
+// This will fail if a signature in the |OCSP_REQUEST| already exists.
+OPENSSL_EXPORT int OCSP_request_sign(OCSP_REQUEST *req,
+                      X509 *signer,
+                      EVP_PKEY *key,
+                      const EVP_MD *dgst,
+                      STACK_OF(X509) *certs, unsigned long flags);
+
 // Returns response status from |OCSP_RESPONSE|.
 OPENSSL_EXPORT int OCSP_response_status(OCSP_RESPONSE *resp);
 
@@ -191,6 +211,7 @@ BSSL_NAMESPACE_END
 #define OCSP_R_NOT_BASIC_RESPONSE 104
 #define OCSP_R_NO_CERTIFICATES_IN_CHAIN 105
 #define OCSP_R_NO_RESPONSE_DATA 108
+#define OCSP_R_PRIVATE_KEY_DOES_NOT_MATCH_CERTIFICATE 110
 #define OCSP_R_RESPONSE_CONTAINS_NO_REVOCATION_DATA 111
 #define OCSP_R_ROOT_CA_NOT_TRUSTED 112
 #define OCSP_R_SERVER_RESPONSE_PARSE_ERROR 115
