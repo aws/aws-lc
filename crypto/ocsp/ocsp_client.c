@@ -4,58 +4,59 @@
 #include "internal.h"
 
 OCSP_ONEREQ *OCSP_request_add0_id(OCSP_REQUEST *req, OCSP_CERTID *cid) {
-  OCSP_ONEREQ *one = OCSP_ONEREQ_new();
-  if (one == NULL) {
-    return NULL;
-  }
-  // Reassign |OCSP_CERTID| allocated by OCSP_ONEREQ_new().
-  OCSP_CERTID_free(one->reqCert);
-  one->reqCert = cid;
-  if (req != NULL && !sk_OCSP_ONEREQ_push(req->tbsRequest->requestList, one)) {
-    one->reqCert = NULL;  // do not free on error
-    OCSP_ONEREQ_free(one);
-    return NULL;
-  }
-  return one;
+    OCSP_ONEREQ *one = OCSP_ONEREQ_new();
+    if (one == NULL) {
+        return NULL;
+    }
+    // Reassign |OCSP_CERTID| allocated by OCSP_ONEREQ_new().
+    OCSP_CERTID_free(one->reqCert);
+    one->reqCert = cid;
+    if (req != NULL &&
+        !sk_OCSP_ONEREQ_push(req->tbsRequest->requestList, one)) {
+        one->reqCert = NULL;  // do not free on error
+        OCSP_ONEREQ_free(one);
+        return NULL;
+    }
+    return one;
 }
 
 int OCSP_request_set1_name(OCSP_REQUEST *req, X509_NAME *nm) {
-  GENERAL_NAME *gen = GENERAL_NAME_new();
-  if (gen == NULL) {
-    return 0;
-  }
-  if (!X509_NAME_set(&gen->d.directoryName, nm)) {
-    GENERAL_NAME_free(gen);
-    return 0;
-  }
-  gen->type = GEN_DIRNAME;
-  GENERAL_NAME_free(req->tbsRequest->requestorName);
-  req->tbsRequest->requestorName = gen;
-  return 1;
+    GENERAL_NAME *gen = GENERAL_NAME_new();
+    if (gen == NULL) {
+        return 0;
+    }
+    if (!X509_NAME_set(&gen->d.directoryName, nm)) {
+        GENERAL_NAME_free(gen);
+        return 0;
+    }
+    gen->type = GEN_DIRNAME;
+    GENERAL_NAME_free(req->tbsRequest->requestorName);
+    req->tbsRequest->requestorName = gen;
+    return 1;
 }
 
 int OCSP_request_add1_cert(OCSP_REQUEST *req, X509 *cert) {
-  if (req->optionalSignature == NULL) {
-    req->optionalSignature = OCSP_SIGNATURE_new();
-  }
-  OCSP_SIGNATURE *sig = req->optionalSignature;
-  if (sig == NULL) {
-    return 0;
-  }
-  if (cert == NULL) {
+    if (req->optionalSignature == NULL) {
+        req->optionalSignature = OCSP_SIGNATURE_new();
+    }
+    OCSP_SIGNATURE *sig = req->optionalSignature;
+    if (sig == NULL) {
+        return 0;
+    }
+    if (cert == NULL) {
+        return 1;
+    }
+
+    if (sig->certs == NULL && (sig->certs = sk_X509_new_null()) == NULL) {
+        return 0;
+    }
+
+    if (!sk_X509_push(sig->certs, cert)) {
+        return 0;
+    }
+    // sk_X509_push takes ownership.
+    X509_up_ref(cert);
     return 1;
-  }
-
-  if (sig->certs == NULL && (sig->certs = sk_X509_new_null()) == NULL) {
-    return 0;
-  }
-
-  if (!sk_X509_push(sig->certs, cert)) {
-    return 0;
-  }
-  // sk_X509_push takes ownership.
-  X509_up_ref(cert);
-  return 1;
 }
 
 int OCSP_request_sign(OCSP_REQUEST *req,
@@ -63,54 +64,55 @@ int OCSP_request_sign(OCSP_REQUEST *req,
                       EVP_PKEY *key,
                       const EVP_MD *dgst,
                       STACK_OF(X509) *certs, unsigned long flags) {
-  if (req->optionalSignature != NULL) {
-    // OpenSSL lets an |OCSP_REQUEST| be signed twice, regardless of whether
-    // an |optionalSignature| exists. Signing an OCSP Request twice creates
-    // a dangling |OCSP_SIGNATURE| pointer with no clear way of recovering it.
-    // We disallow this behavior and only allow the |OCSP_REQUEST| to be
-    // signed once. There's no indication or use case detailed in the RFC
-    // that the OCSP request can or should be signed twice.
-    // https://datatracker.ietf.org/doc/html/rfc6960#section-4.1.2
-    OPENSSL_PUT_ERROR(OCSP, OCSP_R_OCSP_REQUEST_DUPLICATE_SIGNATURE);
-    goto err;
-  }
-
-  if (!OCSP_request_set1_name(req, X509_get_subject_name(signer))) {
-    goto err;
-  }
-  req->optionalSignature = OCSP_SIGNATURE_new();
-  if (req->optionalSignature == NULL) {
-    goto err;
-  }
-  if (key != NULL) {
-    if (!X509_check_private_key(signer, key)) {
-      OPENSSL_PUT_ERROR(OCSP, OCSP_R_PRIVATE_KEY_DOES_NOT_MATCH_CERTIFICATE);
-      goto err;
-    }
-    if (!ASN1_item_sign(ASN1_ITEM_rptr(OCSP_REQINFO),
-                        req->optionalSignature->signatureAlgorithm, NULL,
-                        req->optionalSignature->signature, req->tbsRequest, key,
-                        dgst)) {
-      goto err;
-    }
-  }
-
-  if (!IS_OCSP_FLAG_SET(flags, OCSP_NOCERTS)) {
-    if (!OCSP_request_add1_cert(req, signer)) {
-      goto err;
-    }
-    for (size_t i = 0; i < sk_X509_num(certs); i++) {
-      if (!OCSP_request_add1_cert(req, sk_X509_value(certs, i))) {
+    if (req->optionalSignature != NULL) {
+        // OpenSSL lets an |OCSP_REQUEST| be signed twice, regardless of whether
+        // an |optionalSignature| exists. Signing an OCSP Request twice creates
+        // a dangling |OCSP_SIGNATURE| pointer with no clear way of recovering
+        // it. We disallow this behavior and only allow the |OCSP_REQUEST| to be
+        // signed once. There's no indication or use case detailed in the RFC
+        // that the OCSP request can or should be signed twice.
+        // https://datatracker.ietf.org/doc/html/rfc6960#section-4.1.2
+        OPENSSL_PUT_ERROR(OCSP, OCSP_R_OCSP_REQUEST_DUPLICATE_SIGNATURE);
         goto err;
-      }
     }
-  }
 
-  return 1;
+    if (!OCSP_request_set1_name(req, X509_get_subject_name(signer))) {
+        goto err;
+    }
+    req->optionalSignature = OCSP_SIGNATURE_new();
+    if (req->optionalSignature == NULL) {
+        goto err;
+    }
+    if (key != NULL) {
+        if (!X509_check_private_key(signer, key)) {
+            OPENSSL_PUT_ERROR(OCSP,
+                            OCSP_R_PRIVATE_KEY_DOES_NOT_MATCH_CERTIFICATE);
+            goto err;
+        }
+        if (!ASN1_item_sign(ASN1_ITEM_rptr(OCSP_REQINFO),
+                            req->optionalSignature->signatureAlgorithm, NULL,
+                            req->optionalSignature->signature, req->tbsRequest,
+                            key, dgst)) {
+            goto err;
+        }
+    }
+
+    if (!IS_OCSP_FLAG_SET(flags, OCSP_NOCERTS)) {
+        if (!OCSP_request_add1_cert(req, signer)) {
+            goto err;
+        }
+        for (size_t i = 0; i < sk_X509_num(certs); i++) {
+            if (!OCSP_request_add1_cert(req, sk_X509_value(certs, i))) {
+                goto err;
+            }
+        }
+    }
+
+    return 1;
 err:
-  OCSP_SIGNATURE_free(req->optionalSignature);
-  req->optionalSignature = NULL;
-  return 0;
+    OCSP_SIGNATURE_free(req->optionalSignature);
+    req->optionalSignature = NULL;
+    return 0;
 }
 
 int OCSP_response_status(OCSP_RESPONSE *resp) {
