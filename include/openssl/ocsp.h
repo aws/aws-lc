@@ -100,28 +100,32 @@ OPENSSL_EXPORT OCSP_REQ_CTX *OCSP_sendreq_new(BIO *io, const char *path,
 // when calling |OCSP_sendreq_new|.
 OPENSSL_EXPORT int OCSP_sendreq_nbio(OCSP_RESPONSE **presp, OCSP_REQ_CTX *rctx);
 
-// Creates a new |OCSP_REQ_CTX|. |OCSP_REQ_CTX| is used to contain the
-// information to send the OCSP request and gather the response over HTTP.
+// OCSP_REQ_CTX_new creates a new |OCSP_REQ_CTX|. |OCSP_REQ_CTX| is used to
+// contain the information to send the OCSP request and gather the response
+// over HTTP.
 OPENSSL_EXPORT OCSP_REQ_CTX *OCSP_REQ_CTX_new(BIO *io, int maxline);
 
-// Frees the memory allocated by |OCSP_REQ_CTX|.
+// OCSP_REQ_CTX_free frees the memory allocated by |OCSP_REQ_CTX|.
 OPENSSL_EXPORT void OCSP_REQ_CTX_free(OCSP_REQ_CTX *rctx);
 
-// Adds the HTTP request line to the context.
+// OCSP_REQ_CTX_http adds the HTTP request line to the context.
 OPENSSL_EXPORT int OCSP_REQ_CTX_http(OCSP_REQ_CTX *rctx, const char *op,
                                      const char *path);
 
-// Finalizes the HTTP request context. It is needed if an ASN.1-encoded request
-// should be sent.
+// OCSP_REQ_CTX_set1_req finalizes the HTTP request context. It is needed if
+// an ASN.1-encoded request should be sent.
 OPENSSL_EXPORT int OCSP_REQ_CTX_set1_req(OCSP_REQ_CTX *rctx, OCSP_REQUEST *req);
 
-// Adds header name with value |value| to the context |rctx|. It can be called
-// more than once to add multiple header lines.
+// OCSP_REQ_CTX_add1_header adds header name with value |value| to the
+// context |rctx|. It can be called  more than once to add multiple header
+// lines.
 OPENSSL_EXPORT int OCSP_REQ_CTX_add1_header(OCSP_REQ_CTX *rctx,
-                             const char *name, const char *value);
+                                            const char *name,
+                                            const char *value);
 
-// Add |cid| to |req|. Returns the new |OCSP_ONEREQ| pointer allocated on the
-// stack within |req|. This is useful if we want to add extensions.
+// OCSP_request_add0_id adds |cid| to |req|. Returns the new |OCSP_ONEREQ|
+// pointer allocated on the stack within |req|. This is useful if we want to
+// add extensions.
 // WARNING: This allocates a new |OCSP_ONEREQ| and assigns the  pointer to |cid|
 // to it. It then adds the newly allocated |OCSP_ONEREQ| to the stack within
 // |req|. |req| now takes ownership of |cid|, and also maintains ownership of
@@ -140,36 +144,42 @@ OPENSSL_EXPORT int OCSP_request_add1_cert(OCSP_REQUEST *req, X509 *cert);
 // includes one or more optional certificates in the request.
 // This will fail if a signature in the |OCSP_REQUEST| already exists.
 OPENSSL_EXPORT int OCSP_request_sign(OCSP_REQUEST *req,
-                      X509 *signer,
-                      EVP_PKEY *key,
-                      const EVP_MD *dgst,
-                      STACK_OF(X509) *certs, unsigned long flags);
+                                     X509 *signer,
+                                     EVP_PKEY *key,
+                                     const EVP_MD *dgst,
+                                     STACK_OF(X509) *certs,
+                                     unsigned long flags);
 
-// Returns response status from |OCSP_RESPONSE|.
+// OCSP_response_status returns response status from |OCSP_RESPONSE|.
 OPENSSL_EXPORT int OCSP_response_status(OCSP_RESPONSE *resp);
 
-// Returns |OCSP_BASICRESP| from |OCSP_RESPONSE|.
+// OCSP_response_get1_basic returns |OCSP_BASICRESP| from |OCSP_RESPONSE|.
 OPENSSL_EXPORT OCSP_BASICRESP *OCSP_response_get1_basic(OCSP_RESPONSE *resp);
 
-// Looks up a cert id and extract the update time and revocation status of
-// certificate sent back from OCSP responder if found. Returns 1 on success.
+// OCSP_resp_find_status looks up a cert id and extract the update time and
+// revocation status of  certificate sent back from OCSP responder if found.
+// Returns 1 on success.
 //
-// Note: 1. Revocation status code is passed into |*status| parameter. Status code will
-//          not be passed if |*status| is NULL.
-OPENSSL_EXPORT int OCSP_resp_find_status(OCSP_BASICRESP *bs, OCSP_CERTID *id, int *status,
-                          int *reason,
-                          ASN1_GENERALIZEDTIME **revtime,
-                          ASN1_GENERALIZEDTIME **thisupd,
-                          ASN1_GENERALIZEDTIME **nextupd);
+// Note: 1. Revocation status code is passed into |*status| parameter. Status
+//          code will not be passed if |*status| is NULL.
+OPENSSL_EXPORT int OCSP_resp_find_status(OCSP_BASICRESP *bs,
+                                         OCSP_CERTID *id,
+                                         int *status,
+                                         int *reason,
+                                         ASN1_GENERALIZEDTIME **revtime,
+                                         ASN1_GENERALIZEDTIME **thisupd,
+                                         ASN1_GENERALIZEDTIME **nextupd);
 
-// Verifies a basic response message. Returns 1 on success, 0 on error, or -1 on
-// fatal errors such as malloc failure.
+// OCSP_basic_verify verifies a basic response message. Returns 1 on success,
+// 0 on error, or -1 on fatal errors such as malloc failure.
 //
-// Note: 1. Checks that OCSP response CAN be verified, not that it has been verified.
+// Note: 1. Checks that OCSP response CAN be verified, not that it has been
+//          verified.
 OPENSSL_EXPORT int OCSP_basic_verify(OCSP_BASICRESP *bs, STACK_OF(X509) *certs,
                                      X509_STORE *st, unsigned long flags);
 
-// Returns a |OCSP_CERTID| converted from a certificate and its issuer.
+// OCSP_cert_to_id returns a |OCSP_CERTID| converted from a certificate and
+// its issuer.
 //
 // Note: 1. If subject is NULL, we get the subject name from the issuer and set
 //          the serial number is NULL.
@@ -177,8 +187,9 @@ OPENSSL_EXPORT int OCSP_basic_verify(OCSP_BASICRESP *bs, STACK_OF(X509) *certs,
 //          algorithm when the digest is set as NULL. We keep this to maintain
 //          backwards compatibility, but strongly advise to set a digest when
 //          using this function.
-OPENSSL_EXPORT OCSP_CERTID *OCSP_cert_to_id(const EVP_MD *dgst, const X509 *subject,
-                                            const X509 *issuer);
+OPENSSL_EXPORT OCSP_CERTID * OCSP_cert_to_id(const EVP_MD *dgst,
+                                             const X509 *subject,
+                                             const X509 *issuer);
 
 #ifdef __cplusplus
 }

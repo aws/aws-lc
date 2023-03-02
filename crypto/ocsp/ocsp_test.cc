@@ -39,30 +39,33 @@ static const time_t invalid_after_ocsp_expire_time_sha256 = 1937505764;
 std::string GetTestData(const char *path);
 
 static bool DecodeBase64(std::vector<uint8_t> *out, const char *in) {
-  int temp_length = 0;
-  size_t total_length = 0;
-  EVP_ENCODE_CTX ctx;
-  EVP_DecodeInit(&ctx);
-  out->resize(strlen(in));
+    int temp_length = 0;
+    size_t total_length = 0;
+    EVP_ENCODE_CTX ctx;
+    EVP_DecodeInit(&ctx);
+    out->resize(strlen(in));
 
-  int decode_update_result = EVP_DecodeUpdate(&ctx, out->data(), &temp_length, (const uint8_t *) in, strlen(in));
-  if(decode_update_result != 1 && decode_update_result != 0) {
-      fprintf(stderr, "EVP_DecodeUpdate failed\n");
-      return false;
-  }
-  total_length += temp_length;
-  temp_length = 0;
+    int decode_update_result = EVP_DecodeUpdate(&ctx, out->data(), &temp_length,
+                                                (const uint8_t *) in,
+                                                strlen(in));
+    if (decode_update_result != 1 && decode_update_result != 0) {
+        fprintf(stderr, "EVP_DecodeUpdate failed\n");
+        return false;
+    }
+    total_length += temp_length;
+    temp_length = 0;
 
-  if (1 != EVP_DecodeFinal(&ctx, &out->data()[total_length], &temp_length)) {
-    fprintf(stderr, "EVP_DecodeFinal failed\n");
-    return false;
-  }
-  total_length += temp_length;
-  out->resize(total_length);
-  return true;
+    if (1 != EVP_DecodeFinal(&ctx, &out->data()[total_length], &temp_length)) {
+        fprintf(stderr, "EVP_DecodeFinal failed\n");
+        return false;
+    }
+    total_length += temp_length;
+    out->resize(total_length);
+    return true;
 }
 
-// CertFromPEM parses the given, NUL-terminated pem block and returns an |X509*|.
+// CertFromPEM parses the given, NUL-terminated pem block and returns an
+// |X509*|.
 static bssl::UniquePtr<X509> CertFromPEM(const char *pem) {
   bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(pem, strlen(pem)));
   return bssl::UniquePtr<X509>(
@@ -82,22 +85,23 @@ static bssl::UniquePtr<EC_KEY> ECDSAFromPEM(const char *pem) {
 }
 
 static bssl::UniquePtr<STACK_OF(X509)> CertChainFromPEM(const char *pem) {
-  bssl::UniquePtr<STACK_OF(X509)> stack(sk_X509_new_null());
-  if (!stack) {
-    return nullptr;
-  }
+    bssl::UniquePtr<STACK_OF(X509)> stack(sk_X509_new_null());
+    if (!stack) {
+        return nullptr;
+    }
 
-  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(pem, strlen(pem)));
-  for (;;) {
-    bssl::UniquePtr<X509> cert = bssl::UniquePtr<X509>(PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
-    if(cert == nullptr){
-      break;
+    bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(pem, strlen(pem)));
+    for (;;) {
+        bssl::UniquePtr<X509> cert = bssl::UniquePtr<X509>(
+                PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
+        if (cert == nullptr) {
+            break;
+        }
+        if (!bssl::PushToStack(stack.get(), bssl::UpRef(cert.get()))) {
+            return nullptr;
+        }
     }
-    if (!bssl::PushToStack(stack.get(), bssl::UpRef(cert.get()))) {
-      return nullptr;
-    }
-  }
-  return stack;
+    return stack;
 }
 
 static bssl::UniquePtr<STACK_OF(X509)> CertsToStack(
@@ -116,14 +120,16 @@ static bssl::UniquePtr<STACK_OF(X509)> CertsToStack(
 
 static bssl::UniquePtr<OCSP_RESPONSE> LoadOCSP_RESPONSE(
     bssl::Span<const uint8_t> der) {
-  const uint8_t *ptr = der.data();
-  return bssl::UniquePtr<OCSP_RESPONSE>(d2i_OCSP_RESPONSE(nullptr, &ptr, der.size()));
+    const uint8_t *ptr = der.data();
+    return bssl::UniquePtr<OCSP_RESPONSE>(
+            d2i_OCSP_RESPONSE(nullptr, &ptr, der.size()));
 }
 
 static bssl::UniquePtr<OCSP_REQUEST> LoadOCSP_REQUEST(
     bssl::Span<const uint8_t> der) {
-  const uint8_t *ptr = der.data();
-  return bssl::UniquePtr<OCSP_REQUEST>(d2i_OCSP_REQUEST(nullptr, &ptr, der.size()));
+    const uint8_t *ptr = der.data();
+    return bssl::UniquePtr<OCSP_REQUEST>(
+            d2i_OCSP_REQUEST(nullptr, &ptr, der.size()));
 }
 
 static void ExtractAndVerifyBasicOCSP(
@@ -133,36 +139,41 @@ static void ExtractAndVerifyBasicOCSP(
     const std::string server_cert_file,
     int expected_ocsp_verify_status,
     bssl::UniquePtr<OCSP_BASICRESP> *basic_response,
-    bssl::UniquePtr<STACK_OF(X509)> *server_cert_chain){
-  bssl::UniquePtr<OCSP_RESPONSE> ocsp_response;
+    bssl::UniquePtr<STACK_OF(X509)> *server_cert_chain) {
+    bssl::UniquePtr<OCSP_RESPONSE> ocsp_response;
 
-  ocsp_response = LoadOCSP_RESPONSE(der);
-  ASSERT_TRUE(ocsp_response);
+    ocsp_response = LoadOCSP_RESPONSE(der);
+    ASSERT_TRUE(ocsp_response);
 
-  int ret = OCSP_response_status(ocsp_response.get());
-  ASSERT_EQ(expected_ocsp_status, ret);
-  if(ret != OCSP_RESPONSE_STATUS_SUCCESSFUL) {
-    return;
-  }
+    int ret = OCSP_response_status(ocsp_response.get());
+    ASSERT_EQ(expected_ocsp_status, ret);
+    if (ret != OCSP_RESPONSE_STATUS_SUCCESSFUL) {
+        return;
+    }
 
-  *basic_response = bssl::UniquePtr<OCSP_BASICRESP>(OCSP_response_get1_basic(ocsp_response.get()));
-  ASSERT_TRUE(*basic_response);
+    *basic_response = bssl::UniquePtr<OCSP_BASICRESP>(
+            OCSP_response_get1_basic(ocsp_response.get()));
+    ASSERT_TRUE(*basic_response);
 
-  // Set up trust store and certificate chain.
-  bssl::UniquePtr<X509> ca_cert(CertFromPEM(
-      GetTestData(std::string("crypto/ocsp/test/aws/" + ca_cert_file + ".pem").c_str()).c_str()));
-  bssl::UniquePtr<X509> server_cert(CertFromPEM(
-      GetTestData(std::string("crypto/ocsp/test/aws/" + server_cert_file+ ".pem").c_str()).c_str()));
+    // Set up trust store and certificate chain.
+    bssl::UniquePtr<X509> ca_cert(CertFromPEM(
+            GetTestData(std::string("crypto/ocsp/test/aws/" + ca_cert_file +
+                                    ".pem").c_str()).c_str()));
+    bssl::UniquePtr<X509> server_cert(CertFromPEM(
+            GetTestData(std::string("crypto/ocsp/test/aws/" + server_cert_file +
+                                    ".pem").c_str()).c_str()));
 
-  bssl::UniquePtr<X509_STORE> trust_store(X509_STORE_new());
-  X509_STORE_add_cert(trust_store.get(),ca_cert.get());
-  *server_cert_chain = CertsToStack(
-      {server_cert.get(),ca_cert.get()});
-  ASSERT_TRUE(*server_cert_chain);
+    bssl::UniquePtr<X509_STORE> trust_store(X509_STORE_new());
+    X509_STORE_add_cert(trust_store.get(), ca_cert.get());
+    *server_cert_chain = CertsToStack(
+            {server_cert.get(), ca_cert.get()});
+    ASSERT_TRUE(*server_cert_chain);
 
-  // Verifies the OCSP responder's signature on the OCSP response data.
-  const int ocsp_verify_err = OCSP_basic_verify(basic_response->get(), server_cert_chain->get(), trust_store.get(), 0);
-  ASSERT_EQ(expected_ocsp_verify_status, ocsp_verify_err);
+    // Verifies the OCSP responder's signature on the OCSP response data.
+    const int ocsp_verify_err = OCSP_basic_verify(basic_response->get(),
+                                                  server_cert_chain->get(),
+                                                  trust_store.get(), 0);
+    ASSERT_EQ(expected_ocsp_verify_status, ocsp_verify_err);
 }
 
 static void CheckOCSP_CERTSTATUS(
@@ -172,18 +183,21 @@ static void CheckOCSP_CERTSTATUS(
     int expected_resp_find_status,
     int *status,
     ASN1_GENERALIZEDTIME **thisupd,
-    ASN1_GENERALIZEDTIME **nextupd){
-  X509 *subject = sk_X509_value(server_cert_chain->get(), 0);
-  X509 *issuer = sk_X509_value(server_cert_chain->get(), 1);
-  // Convert issuer certificate to |OCSP_CERTID|.
-  bssl::UniquePtr<OCSP_CERTID> cert_id = bssl::UniquePtr<OCSP_CERTID>(OCSP_cert_to_id(dgst, subject, issuer));
-  ASSERT_TRUE(cert_id);
+    ASN1_GENERALIZEDTIME **nextupd) {
+    X509 *subject = sk_X509_value(server_cert_chain->get(), 0);
+    X509 *issuer = sk_X509_value(server_cert_chain->get(), 1);
+    // Convert issuer certificate to |OCSP_CERTID|.
+    bssl::UniquePtr<OCSP_CERTID> cert_id = bssl::UniquePtr<OCSP_CERTID>(
+            OCSP_cert_to_id(dgst, subject, issuer));
+    ASSERT_TRUE(cert_id);
 
-  int reason = 0;
-  ASN1_GENERALIZEDTIME *revtime;
-  // Checks revocation status of the response.
-  const int ocsp_resp_find_status_res = OCSP_resp_find_status(basic_response->get(), cert_id.get(), status, &reason, &revtime, thisupd, nextupd);
-  ASSERT_EQ(expected_resp_find_status, ocsp_resp_find_status_res);
+    int reason = 0;
+    ASN1_GENERALIZEDTIME *revtime;
+    // Checks revocation status of the response.
+    const int ocsp_resp_find_status_res = OCSP_resp_find_status(
+            basic_response->get(), cert_id.get(), status, &reason, &revtime,
+            thisupd, nextupd);
+    ASSERT_EQ(expected_resp_find_status, ocsp_resp_find_status_res);
 }
 
 // Test data below are taken from s2n's ocsp test files:
@@ -263,9 +277,9 @@ static const OCSPTestVectorExtended nTestVectors[] = {
         OCSP_RESPFINDSTATUS_SUCCESS,
         V_OCSP_CERTSTATUS_UNKNOWN
     },
-    // Test OCSP response signed by the correct responder certificate, but not for
-    // the requested certificate. (So this would be a completely valid response to a
-    // different OCSP request for the other certificate.)
+    // Test OCSP response signed by the correct responder certificate, but not
+    // for the requested certificate. (So this would be a completely valid
+    // response to a different OCSP request for the other certificate.)
     {
         "ocsp_response",
         "ca_cert",
@@ -277,9 +291,10 @@ static const OCSPTestVectorExtended nTestVectors[] = {
         0
     },
     // Test OCSP response where the requested certificate was signed by the OCSP
-    // responder, but signed by the wrong requested OCSP responder key certificate.
-    // However, this incorrect OCSP responder certificate may be a valid OCSP
-    // responder for some other case and also chains to a trusted root.
+    // responder, but signed by the wrong requested OCSP responder key
+    // certificate. However, this incorrect OCSP responder certificate may be
+    // a valid OCSP responder for some other case and also chains to a
+    // trusted root.
     {
         "ocsp_response_wrong_signer",
         "ca_cert",
@@ -413,40 +428,45 @@ static const OCSPTestVectorExtended nTestVectors[] = {
     },
 };
 
-class OCSPTestExtended : public testing::TestWithParam<OCSPTestVectorExtended> {};
+class OCSPTestExtended :
+        public testing::TestWithParam<OCSPTestVectorExtended> {};
 
-INSTANTIATE_TEST_SUITE_P(All, OCSPTestExtended, testing::ValuesIn(nTestVectors));
+INSTANTIATE_TEST_SUITE_P(All, OCSPTestExtended,
+                         testing::ValuesIn(nTestVectors));
 
 TEST_P(OCSPTestExtended, VerifyOCSPResponseExtended) {
-  const OCSPTestVectorExtended &t = GetParam();
+    const OCSPTestVectorExtended &t = GetParam();
 
-  std::string data = GetTestData(std::string("crypto/ocsp/test/aws/" + std::string(t.ocsp_response) + ".der").c_str());
-  std::vector<uint8_t> ocsp_reponse_data(data.begin(), data.end());
+    std::string data = GetTestData(std::string(
+            "crypto/ocsp/test/aws/" + std::string(t.ocsp_response) +
+            ".der").c_str());
+    std::vector<uint8_t> ocsp_reponse_data(data.begin(), data.end());
 
-  // OCSP response parsing and verification step.
-  bssl::UniquePtr<OCSP_BASICRESP> basic_response;
-  bssl::UniquePtr<STACK_OF(X509)> server_cert_chain;
-  ExtractAndVerifyBasicOCSP(ocsp_reponse_data,
-                            t.expected_ocsp_status,
-                            t.cafile,
-                            t.server_cert,
-                            t.expected_ocsp_verify_status,
-                            &basic_response,
-                            &server_cert_chain);
+    // OCSP response parsing and verification step.
+    bssl::UniquePtr<OCSP_BASICRESP> basic_response;
+    bssl::UniquePtr<STACK_OF(X509)> server_cert_chain;
+    ExtractAndVerifyBasicOCSP(ocsp_reponse_data,
+                              t.expected_ocsp_status,
+                              t.cafile,
+                              t.server_cert,
+                              t.expected_ocsp_verify_status,
+                              &basic_response,
+                              &server_cert_chain);
 
-  // If OCSP basic verify is successful, we check the OCSP response status.
-  if(t.expected_ocsp_verify_status == OCSP_VERIFYSTATUS_SUCCESS) {
-    int status = 0;
-    ASN1_GENERALIZEDTIME *thisupd, *nextupd;
-    CheckOCSP_CERTSTATUS(&basic_response, &server_cert_chain, t.dgst,
-                         t.expected_ocsp_resp_find_status, &status, &thisupd,
-                         &nextupd);
-    // If OCSP response status retrieving is successful, we check if the cert
-    // status of the OCSP response is correct.
-    if (t.expected_ocsp_resp_find_status == OCSP_RESPFINDSTATUS_SUCCESS) {
-      ASSERT_EQ(t.expected_ocsp_cert_status, status);
+    // If OCSP basic verify is successful, we check the OCSP response status.
+    if (t.expected_ocsp_verify_status == OCSP_VERIFYSTATUS_SUCCESS) {
+        int status = 0;
+        ASN1_GENERALIZEDTIME *thisupd, *nextupd;
+        CheckOCSP_CERTSTATUS(&basic_response, &server_cert_chain, t.dgst,
+                             t.expected_ocsp_resp_find_status, &status,
+                             &thisupd,
+                             &nextupd);
+        // If OCSP response status retrieving is successful, we check if the cert
+        // status of the OCSP response is correct.
+        if (t.expected_ocsp_resp_find_status == OCSP_RESPFINDSTATUS_SUCCESS) {
+            ASSERT_EQ(t.expected_ocsp_cert_status, status);
+        }
     }
-  }
 }
 
 // === Specific test cases ===
@@ -454,123 +474,126 @@ TEST_P(OCSPTestExtended, VerifyOCSPResponseExtended) {
 // Test valid OCSP response signed by an OCSP responder along with check for
 // correct time field parsing.
 TEST(OCSPTest, TestGoodOCSP) {
-  std::string data = GetTestData(std::string("crypto/ocsp/test/aws/ocsp_response.der").c_str());
-  std::vector<uint8_t> ocsp_reponse_data(data.begin(), data.end());
+    std::string data = GetTestData(
+            std::string("crypto/ocsp/test/aws/ocsp_response.der").c_str());
+    std::vector<uint8_t> ocsp_reponse_data(data.begin(), data.end());
 
-  bssl::UniquePtr<OCSP_BASICRESP> basic_response;
-  bssl::UniquePtr<STACK_OF(X509)> server_cert_chain;
-  ExtractAndVerifyBasicOCSP(ocsp_reponse_data,
-                            OCSP_RESPONSE_STATUS_SUCCESSFUL,
-                            "ca_cert",
-                            "server_cert",
-                            OCSP_VERIFYSTATUS_SUCCESS,
-                            &basic_response,
-                            &server_cert_chain);
+    bssl::UniquePtr<OCSP_BASICRESP> basic_response;
+    bssl::UniquePtr<STACK_OF(X509)> server_cert_chain;
+    ExtractAndVerifyBasicOCSP(ocsp_reponse_data,
+                              OCSP_RESPONSE_STATUS_SUCCESSFUL,
+                              "ca_cert",
+                              "server_cert",
+                              OCSP_VERIFYSTATUS_SUCCESS,
+                              &basic_response,
+                              &server_cert_chain);
 
-  int status = 0;
-  ASN1_GENERALIZEDTIME *thisupd, *nextupd;
-  CheckOCSP_CERTSTATUS(&basic_response,
-                       &server_cert_chain,
-                       EVP_sha1(),
-                       OCSP_RESPFINDSTATUS_SUCCESS,
-                       &status,
-                       &thisupd,
-                       &nextupd);
-  ASSERT_EQ(V_OCSP_CERTSTATUS_GOOD, status);
+    int status = 0;
+    ASN1_GENERALIZEDTIME *thisupd, *nextupd;
+    CheckOCSP_CERTSTATUS(&basic_response,
+                         &server_cert_chain,
+                         EVP_sha1(),
+                         OCSP_RESPFINDSTATUS_SUCCESS,
+                         &status,
+                         &thisupd,
+                         &nextupd);
+    ASSERT_EQ(V_OCSP_CERTSTATUS_GOOD, status);
 
-  // If OCSP response is verifiable and all good, an OCSP client should check
-  // time fields to see if the response is still valid.
+    // If OCSP response is verifiable and all good, an OCSP client should check
+    // time fields to see if the response is still valid.
 
-  // Check before OCSP was last updated connection timestamp
-  time_t connection_time = invalid_before_ocsp_update_time;
-  ASSERT_EQ(1, X509_cmp_time(thisupd, &connection_time));
-  ASSERT_EQ(1, X509_cmp_time(nextupd, &connection_time));
+    // Check before OCSP was last updated connection timestamp
+    time_t connection_time = invalid_before_ocsp_update_time;
+    ASSERT_EQ(1, X509_cmp_time(thisupd, &connection_time));
+    ASSERT_EQ(1, X509_cmp_time(nextupd, &connection_time));
 
-  // Check valid connection timestamp right after OCSP response was validated.
-  connection_time = valid_after_ocsp_update_time;
-  ASSERT_EQ(-1, X509_cmp_time(thisupd, &connection_time));
-  ASSERT_EQ(1, X509_cmp_time(nextupd, &connection_time));
+    // Check valid connection timestamp right after OCSP response was validated.
+    connection_time = valid_after_ocsp_update_time;
+    ASSERT_EQ(-1, X509_cmp_time(thisupd, &connection_time));
+    ASSERT_EQ(1, X509_cmp_time(nextupd, &connection_time));
 
-  // Check valid connection timestamp right before OCSP response expires.
-  connection_time = valid_before_ocsp_expire_time;
-  ASSERT_EQ(-1, X509_cmp_time(thisupd, &connection_time));
-  ASSERT_EQ(1, X509_cmp_time(nextupd, &connection_time));
+    // Check valid connection timestamp right before OCSP response expires.
+    connection_time = valid_before_ocsp_expire_time;
+    ASSERT_EQ(-1, X509_cmp_time(thisupd, &connection_time));
+    ASSERT_EQ(1, X509_cmp_time(nextupd, &connection_time));
 
-  // Check expired connection timestamp
-  connection_time = invalid_after_ocsp_expire_time;
-  ASSERT_EQ(-1, X509_cmp_time(thisupd, &connection_time));
-  ASSERT_EQ(-1, X509_cmp_time(nextupd, &connection_time));
+    // Check expired connection timestamp
+    connection_time = invalid_after_ocsp_expire_time;
+    ASSERT_EQ(-1, X509_cmp_time(thisupd, &connection_time));
+    ASSERT_EQ(-1, X509_cmp_time(nextupd, &connection_time));
 }
 
 // Test valid OCSP response, but the data itself is untrusted.
 TEST(OCSPTest, TestUntrustedDataOCSP) {
-  std::string data = GetTestData(std::string("crypto/ocsp/test/aws/ocsp_response.der").c_str());
-  std::vector<uint8_t> ocsp_reponse_data(data.begin(), data.end());
+    std::string data = GetTestData(
+            std::string("crypto/ocsp/test/aws/ocsp_response.der").c_str());
+    std::vector<uint8_t> ocsp_reponse_data(data.begin(), data.end());
 
-  // Mess up a byte right in the middle of the cert.
-  ocsp_reponse_data[800] = ocsp_reponse_data[800] + 1;
+    // Mess up a byte right in the middle of the cert.
+    ocsp_reponse_data[800] = ocsp_reponse_data[800] + 1;
 
-  bssl::UniquePtr<OCSP_BASICRESP> basic_response;
-  bssl::UniquePtr<STACK_OF(X509)> server_cert_chain;
-  ExtractAndVerifyBasicOCSP(ocsp_reponse_data,
-                            OCSP_RESPONSE_STATUS_SUCCESSFUL,
-                            "ca_cert",
-                            "server_cert",
-                            OCSP_VERIFYSTATUS_ERROR,
-                            &basic_response,
-                            &server_cert_chain);
+    bssl::UniquePtr<OCSP_BASICRESP> basic_response;
+    bssl::UniquePtr<STACK_OF(X509)> server_cert_chain;
+    ExtractAndVerifyBasicOCSP(ocsp_reponse_data,
+                              OCSP_RESPONSE_STATUS_SUCCESSFUL,
+                              "ca_cert",
+                              "server_cert",
+                              OCSP_VERIFYSTATUS_ERROR,
+                              &basic_response,
+                              &server_cert_chain);
 }
 
 
 // Test valid OCSP response hashed with sha256 along with check for correct time
 // field parsing.
 TEST(OCSPTest, TestGoodOCSP_SHA256) {
-  std::string data = GetTestData(std::string("crypto/ocsp/test/aws/ocsp_response_sha256.der").c_str());
-  std::vector<uint8_t> ocsp_reponse_data(data.begin(), data.end());
+    std::string data = GetTestData(std::string(
+            "crypto/ocsp/test/aws/ocsp_response_sha256.der").c_str());
+    std::vector<uint8_t> ocsp_reponse_data(data.begin(), data.end());
 
-  bssl::UniquePtr<OCSP_BASICRESP> basic_response;
-  bssl::UniquePtr<STACK_OF(X509)> server_cert_chain;
-  ExtractAndVerifyBasicOCSP(ocsp_reponse_data,
-                            OCSP_RESPONSE_STATUS_SUCCESSFUL,
-                            "ca_cert",
-                            "server_cert",
-                            OCSP_VERIFYSTATUS_SUCCESS,
-                            &basic_response,
-                            &server_cert_chain);
+    bssl::UniquePtr<OCSP_BASICRESP> basic_response;
+    bssl::UniquePtr<STACK_OF(X509)> server_cert_chain;
+    ExtractAndVerifyBasicOCSP(ocsp_reponse_data,
+                              OCSP_RESPONSE_STATUS_SUCCESSFUL,
+                              "ca_cert",
+                              "server_cert",
+                              OCSP_VERIFYSTATUS_SUCCESS,
+                              &basic_response,
+                              &server_cert_chain);
 
-  int status = 0;
-  ASN1_GENERALIZEDTIME *thisupd, *nextupd;
-  CheckOCSP_CERTSTATUS(&basic_response,
-                       &server_cert_chain,
-                       EVP_sha256(),
-                       OCSP_RESPFINDSTATUS_SUCCESS,
-                       &status,
-                       &thisupd,
-                       &nextupd);
-  ASSERT_EQ(V_OCSP_CERTSTATUS_GOOD, status);
+    int status = 0;
+    ASN1_GENERALIZEDTIME *thisupd, *nextupd;
+    CheckOCSP_CERTSTATUS(&basic_response,
+                         &server_cert_chain,
+                         EVP_sha256(),
+                         OCSP_RESPFINDSTATUS_SUCCESS,
+                         &status,
+                         &thisupd,
+                         &nextupd);
+    ASSERT_EQ(V_OCSP_CERTSTATUS_GOOD, status);
 
-  // If OCSP response is verifiable and all good, an OCSP client should check
-  // time fields to see if the response is still valid.
+    // If OCSP response is verifiable and all good, an OCSP client should check
+    // time fields to see if the response is still valid.
 
-  // Check before OCSP was last updated connection timestamp.
-  time_t connection_time = invalid_before_ocsp_update_time_sha256;
-  ASSERT_EQ(1, X509_cmp_time(thisupd, &connection_time));
-  ASSERT_EQ(1, X509_cmp_time(nextupd, &connection_time));
+    // Check before OCSP was last updated connection timestamp.
+    time_t connection_time = invalid_before_ocsp_update_time_sha256;
+    ASSERT_EQ(1, X509_cmp_time(thisupd, &connection_time));
+    ASSERT_EQ(1, X509_cmp_time(nextupd, &connection_time));
 
-  // Check valid connection timestamp right after OCSP response was validated.
-  connection_time = valid_after_ocsp_update_time_sha256;
-  ASSERT_EQ(-1, X509_cmp_time(thisupd, &connection_time));
-  ASSERT_EQ(1, X509_cmp_time(nextupd, &connection_time));
+    // Check valid connection timestamp right after OCSP response was validated.
+    connection_time = valid_after_ocsp_update_time_sha256;
+    ASSERT_EQ(-1, X509_cmp_time(thisupd, &connection_time));
+    ASSERT_EQ(1, X509_cmp_time(nextupd, &connection_time));
 
-  // Check valid connection timestamp right before OCSP response expires.
-  connection_time = valid_before_ocsp_expire_time_sha256;
-  ASSERT_EQ(-1, X509_cmp_time(thisupd, &connection_time));
-  ASSERT_EQ(1, X509_cmp_time(nextupd, &connection_time));
+    // Check valid connection timestamp right before OCSP response expires.
+    connection_time = valid_before_ocsp_expire_time_sha256;
+    ASSERT_EQ(-1, X509_cmp_time(thisupd, &connection_time));
+    ASSERT_EQ(1, X509_cmp_time(nextupd, &connection_time));
 
-  // Check expired connection timestamp.
-  connection_time = invalid_after_ocsp_expire_time_sha256;
-  ASSERT_EQ(-1, X509_cmp_time(thisupd, &connection_time));
-  ASSERT_EQ(-1, X509_cmp_time(nextupd, &connection_time));
+    // Check expired connection timestamp.
+    connection_time = invalid_after_ocsp_expire_time_sha256;
+    ASSERT_EQ(-1, X509_cmp_time(thisupd, &connection_time));
+    ASSERT_EQ(-1, X509_cmp_time(nextupd, &connection_time));
 }
 
 // === Translation of OpenSSL's OCSP tests ===
@@ -660,52 +683,62 @@ class OCSPTest : public testing::TestWithParam<OCSPTestVector> {};
 INSTANTIATE_TEST_SUITE_P(All, OCSPTest, testing::ValuesIn(kTestVectors));
 
 TEST_P(OCSPTest, VerifyOCSPResponse) {
-  const OCSPTestVector &t = GetParam();
+    const OCSPTestVector &t = GetParam();
 
-  bssl::UniquePtr<OCSP_RESPONSE> ocsp_response;
-  bssl::UniquePtr<OCSP_BASICRESP> basic_response;
+    bssl::UniquePtr<OCSP_RESPONSE> ocsp_response;
+    bssl::UniquePtr<OCSP_BASICRESP> basic_response;
 
-  // Get OCSP response from path.
-  std::string data = GetTestData(std::string("crypto/ocsp/test/" + std::string(t.ocsp_response) + ".ors").c_str());
-  std::vector<uint8_t> input;
-  ASSERT_TRUE(DecodeBase64(&input, data.c_str()));
+    // Get OCSP response from path.
+    std::string data = GetTestData(std::string(
+            "crypto/ocsp/test/" + std::string(t.ocsp_response) +
+            ".ors").c_str());
+    std::vector<uint8_t> input;
+    ASSERT_TRUE(DecodeBase64(&input, data.c_str()));
 
-  ocsp_response = LoadOCSP_RESPONSE(input);
-  ASSERT_TRUE(ocsp_response);
+    ocsp_response = LoadOCSP_RESPONSE(input);
+    ASSERT_TRUE(ocsp_response);
 
-  int ret = OCSP_response_status(ocsp_response.get());
-  ASSERT_EQ(OCSP_RESPONSE_STATUS_SUCCESSFUL, ret);
+    int ret = OCSP_response_status(ocsp_response.get());
+    ASSERT_EQ(OCSP_RESPONSE_STATUS_SUCCESSFUL, ret);
 
-  basic_response = bssl::UniquePtr<OCSP_BASICRESP>(OCSP_response_get1_basic(ocsp_response.get()));
-  ASSERT_TRUE(basic_response);
+    basic_response = bssl::UniquePtr<OCSP_BASICRESP>(
+            OCSP_response_get1_basic(ocsp_response.get()));
+    ASSERT_TRUE(basic_response);
 
-  // Set up OpenSSL OCSP tests trust store parameters and cert chain.
-  bssl::UniquePtr<STACK_OF(X509)> server_cert_chain;
-  bssl::UniquePtr<X509_STORE> trust_store(X509_STORE_new());
-  bssl::UniquePtr<X509_VERIFY_PARAM> vpm(X509_VERIFY_PARAM_new());
-  X509_VERIFY_PARAM_set_time(vpm.get(), (time_t)1355875200);
-  // Discussion for whether this flag should be on by default or not:
-  // https://github.com/openssl/openssl/issues/7871
-  ASSERT_EQ(X509_VERIFY_PARAM_set_flags(vpm.get(), X509_V_FLAG_PARTIAL_CHAIN), 1);
+    // Set up OpenSSL OCSP tests trust store parameters and cert chain.
+    bssl::UniquePtr<STACK_OF(X509)> server_cert_chain;
+    bssl::UniquePtr<X509_STORE> trust_store(X509_STORE_new());
+    bssl::UniquePtr<X509_VERIFY_PARAM> vpm(X509_VERIFY_PARAM_new());
+    X509_VERIFY_PARAM_set_time(vpm.get(), (time_t) 1355875200);
+    // Discussion for whether this flag should be on by default or not:
+    // https://github.com/openssl/openssl/issues/7871
+    ASSERT_EQ(X509_VERIFY_PARAM_set_flags(vpm.get(), X509_V_FLAG_PARTIAL_CHAIN),
+              1);
 
-  // Get CA root certificate from path and set up trust store.
-  bssl::UniquePtr<X509> ca_certificate(CertFromPEM(
-      GetTestData(std::string("crypto/ocsp/test/" + std::string(t.cafile) + ".pem").c_str()).c_str()));
-  X509_STORE_add_cert(trust_store.get(),ca_certificate.get());
-  ASSERT_EQ(X509_STORE_set1_param(trust_store.get(), vpm.get()), 1);
+    // Get CA root certificate from path and set up trust store.
+    bssl::UniquePtr<X509> ca_certificate(CertFromPEM(
+            GetTestData(std::string(
+                    "crypto/ocsp/test/" + std::string(t.cafile) +
+                    ".pem").c_str()).c_str()));
+    X509_STORE_add_cert(trust_store.get(), ca_certificate.get());
+    ASSERT_EQ(X509_STORE_set1_param(trust_store.get(), vpm.get()), 1);
 
-  // If untrusted cert chain isn't available, we only use CA cert as root cert.
-  if(std::string(t.untrusted).empty()){
-    server_cert_chain = CertsToStack({ca_certificate.get()});
-  }
-  else {
-    server_cert_chain = CertChainFromPEM(GetTestData(std::string("crypto/ocsp/test/" + std::string(t.untrusted) + ".pem").c_str()).c_str());
-  }
-  ASSERT_TRUE(server_cert_chain);
+    // If untrusted cert chain isn't available, we only use CA cert as root
+    // cert.
+    if (std::string(t.untrusted).empty()) {
+        server_cert_chain = CertsToStack({ca_certificate.get()});
+    } else {
+        server_cert_chain = CertChainFromPEM(GetTestData(std::string(
+                "crypto/ocsp/test/" + std::string(t.untrusted) +
+                ".pem").c_str()).c_str());
+    }
+    ASSERT_TRUE(server_cert_chain);
 
-  // Does basic verification on OCSP response.
-  const int ocsp_verify_status = OCSP_basic_verify(basic_response.get(), server_cert_chain.get(), trust_store.get(), 0);
-  ASSERT_EQ(t.expected_ocsp_verify_status, ocsp_verify_status);
+    // Does basic verification on OCSP response.
+    const int ocsp_verify_status = OCSP_basic_verify(basic_response.get(),
+                                                     server_cert_chain.get(),
+                                                     trust_store.get(), 0);
+    ASSERT_EQ(t.expected_ocsp_verify_status, ocsp_verify_status);
 }
 
 struct OCSPReqTestVector {
@@ -898,50 +931,52 @@ TEST_P(OCSPRequestTest, OCSPRequestParse) {
 }
 
 TEST_P(OCSPRequestTest, OCSPRequestSign) {
-  const OCSPReqTestVector &t = GetParam();
+    const OCSPReqTestVector &t = GetParam();
 
-  std::string data = GetTestData(std::string("crypto/ocsp/test/aws/" +
-                              std::string(t.ocsp_request) + ".der").c_str());
-  std::vector<uint8_t> ocsp_request_data(data.begin(), data.end());
-  bssl::UniquePtr<OCSP_REQUEST> ocspRequest =
-      LoadOCSP_REQUEST(ocsp_request_data);
+    std::string data = GetTestData(std::string("crypto/ocsp/test/aws/" +
+                                               std::string(t.ocsp_request) +
+                                               ".der").c_str());
+    std::vector<uint8_t> ocsp_request_data(data.begin(), data.end());
+    bssl::UniquePtr<OCSP_REQUEST> ocspRequest =
+            LoadOCSP_REQUEST(ocsp_request_data);
 
-  bssl::UniquePtr<X509> server_cert(CertFromPEM(
-      GetTestData(std::string("crypto/ocsp/test/aws/" +
-                        std::string(t.signer_cert) +".pem").c_str()).c_str()));
-  ASSERT_TRUE(server_cert);
-  bssl::UniquePtr<STACK_OF(X509)> additional_cert(CertChainFromPEM(
-      GetTestData(std::string("crypto/ocsp/test/aws/ca_cert.pem").c_str())
-          .c_str()));
-  ASSERT_TRUE(additional_cert);
+    bssl::UniquePtr<X509> server_cert(CertFromPEM(
+            GetTestData(std::string("crypto/ocsp/test/aws/" +
+                                    std::string(t.signer_cert) +
+                                    ".pem").c_str()).c_str()));
+    ASSERT_TRUE(server_cert);
+    bssl::UniquePtr<STACK_OF(X509)> additional_cert(CertChainFromPEM(
+            GetTestData(std::string("crypto/ocsp/test/aws/ca_cert.pem").c_str())
+                    .c_str()));
+    ASSERT_TRUE(additional_cert);
 
-  if (t.expected_parse_status == OCSP_REQUEST_PARSE_SUCCESS) {
-    bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
-    if(std::string(t.private_key) == "server_key") {
-      bssl::UniquePtr<RSA> rsa(
-          RSAFromPEM(GetTestData(std::string("crypto/ocsp/test/aws/" +
-                       std::string(t.private_key) + ".pem").c_str()).c_str()));
-      ASSERT_TRUE(rsa);
-      ASSERT_TRUE(EVP_PKEY_set1_RSA(pkey.get(), rsa.get()));
-    }
-    else {
-      bssl::UniquePtr<EC_KEY> ecdsa(
-          ECDSAFromPEM(GetTestData(std::string("crypto/ocsp/test/aws/" +
-                       std::string(t.private_key) + ".pem").c_str()).c_str()));
-      ASSERT_TRUE(ecdsa);
-      ASSERT_TRUE(EVP_PKEY_set1_EC_KEY(pkey.get(), ecdsa.get()));
-    }
+    if (t.expected_parse_status == OCSP_REQUEST_PARSE_SUCCESS) {
+        bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+        if (std::string(t.private_key) == "server_key") {
+            bssl::UniquePtr<RSA> rsa(
+                    RSAFromPEM(GetTestData(std::string("crypto/ocsp/test/aws/" +
+                        std::string(t.private_key) +".pem").c_str()).c_str()));
+            ASSERT_TRUE(rsa);
+            ASSERT_TRUE(EVP_PKEY_set1_RSA(pkey.get(), rsa.get()));
+        } else {
+            bssl::UniquePtr<EC_KEY> ecdsa(
+                    ECDSAFromPEM(
+                            GetTestData(std::string("crypto/ocsp/test/aws/" +
+                                                    std::string(t.private_key) +
+                                                    ".pem").c_str()).c_str()));
+            ASSERT_TRUE(ecdsa);
+            ASSERT_TRUE(EVP_PKEY_set1_EC_KEY(pkey.get(), ecdsa.get()));
+        }
 
-    int ret = OCSP_request_sign(ocspRequest.get(), server_cert.get(),
+        int ret = OCSP_request_sign(ocspRequest.get(), server_cert.get(),
                                     pkey.get(), t.dgst,
                                     additional_cert.get(), 0);
-    if(t.expected_sign_status == OCSP_REQUEST_SIGN_SUCCESS) {
-      ASSERT_TRUE(ret);
+        if (t.expected_sign_status == OCSP_REQUEST_SIGN_SUCCESS) {
+            ASSERT_TRUE(ret);
+        } else {
+            ASSERT_FALSE(ret);
+        }
     }
-    else {
-      ASSERT_FALSE(ret);
-    }
-  }
 }
 
 static const char extended_good_http_request_hdr[] =
@@ -952,66 +987,68 @@ static const char extended_good_http_request_hdr[] =
 
 // Check HTTP header can be written with OCSP_REQ_CTX_add1_header().
 TEST(OCSPRequestTest, AddHeader) {
-  std::string data = GetTestData(std::string("crypto/ocsp/test/aws/"
-                                             "ocsp_request.der").c_str());
-  std::vector<uint8_t> ocsp_request_data(data.begin(), data.end());
-  bssl::UniquePtr<OCSP_REQUEST> ocspRequest =
-      LoadOCSP_REQUEST(ocsp_request_data);
+    std::string data = GetTestData(std::string("crypto/ocsp/test/aws/"
+                                               "ocsp_request.der").c_str());
+    std::vector<uint8_t> ocsp_request_data(data.begin(), data.end());
+    bssl::UniquePtr<OCSP_REQUEST> ocspRequest =
+            LoadOCSP_REQUEST(ocsp_request_data);
 
-  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
-  const uint8_t *out;
-  size_t outlen;
-  bssl::UniquePtr<OCSP_REQ_CTX> ocspReqCtx(OCSP_sendreq_new(bio.get(),
-                                              nullptr, nullptr, 0));
-  ASSERT_TRUE(ocspReqCtx);
-  // Set an additional HTTP header.
-  ASSERT_TRUE(OCSP_REQ_CTX_add1_header(ocspReqCtx.get(),"Accept-Charset",
-                                       "character-set"));
-  ASSERT_TRUE(OCSP_REQ_CTX_set1_req(ocspReqCtx.get(),
-                                    ocspRequest.get()));
+    bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+    const uint8_t *out;
+    size_t outlen;
+    bssl::UniquePtr<OCSP_REQ_CTX> ocspReqCtx(OCSP_sendreq_new(bio.get(),
+                                                              nullptr, nullptr,
+                                                              0));
+    ASSERT_TRUE(ocspReqCtx);
+    // Set an additional HTTP header.
+    ASSERT_TRUE(OCSP_REQ_CTX_add1_header(ocspReqCtx.get(), "Accept-Charset",
+                                         "character-set"));
+    ASSERT_TRUE(OCSP_REQ_CTX_set1_req(ocspReqCtx.get(),
+                                      ocspRequest.get()));
 
-  ASSERT_TRUE(BIO_mem_contents(OCSP_REQ_CTX_get0_mem_bio(
-                                   ocspReqCtx.get()), &out, &outlen));
+    ASSERT_TRUE(BIO_mem_contents(OCSP_REQ_CTX_get0_mem_bio(
+            ocspReqCtx.get()), &out, &outlen));
 
-  // Ensure additional header contents are written as expected.
-  EXPECT_EQ(extended_good_http_request_hdr +
-                std::to_string(ocsp_request_data.size()) + "\r\n",
-            std::string(reinterpret_cast<const char *>(out),
-                        sizeof(extended_good_http_request_hdr) +
+    // Ensure additional header contents are written as expected.
+    EXPECT_EQ(extended_good_http_request_hdr +
+              std::to_string(ocsp_request_data.size()) + "\r\n",
+              std::string(reinterpret_cast<const char *>(out),
+                          sizeof(extended_good_http_request_hdr) +
                           std::to_string(ocsp_request_data.size()).size() + 1));
 }
 
 // Check a |OCSP_CERTID| can be added to an |OCSP_REQUEST| with
 // OCSP_request_add0_id().
 TEST(OCSPRequestTest, AddCert) {
-  std::string data = GetTestData(std::string("crypto/ocsp/test/aws/"
-                                             "ocsp_request.der").c_str());
-  std::vector<uint8_t> ocsp_request_data(data.begin(), data.end());
-  bssl::UniquePtr<OCSP_REQUEST> ocspRequest =
-      LoadOCSP_REQUEST(ocsp_request_data);
-  ASSERT_TRUE(ocspRequest);
+    std::string data = GetTestData(std::string("crypto/ocsp/test/aws/"
+                                               "ocsp_request.der").c_str());
+    std::vector<uint8_t> ocsp_request_data(data.begin(), data.end());
+    bssl::UniquePtr<OCSP_REQUEST> ocspRequest =
+            LoadOCSP_REQUEST(ocsp_request_data);
+    ASSERT_TRUE(ocspRequest);
 
-  // Construct |OCSP_CERTID| from certs.
-  bssl::UniquePtr<X509> ca_cert(CertFromPEM(
-      GetTestData(std::string("crypto/ocsp/test/aws/ca_cert.pem").c_str())
-          .c_str()));
-  bssl::UniquePtr<X509> server_cert(CertFromPEM(
-      GetTestData(std::string("crypto/ocsp/test/aws/server_cert.pem").c_str())
-          .c_str()));
-  OCSP_CERTID *certId =
-      OCSP_cert_to_id(nullptr, ca_cert.get(), server_cert.get());
-  ASSERT_TRUE(certId);
+    // Construct |OCSP_CERTID| from certs.
+    bssl::UniquePtr<X509> ca_cert(CertFromPEM(
+            GetTestData(std::string("crypto/ocsp/test/aws/ca_cert.pem").c_str())
+                    .c_str()));
+    bssl::UniquePtr<X509> server_cert(CertFromPEM(
+            GetTestData(
+                    std::string("crypto/ocsp/test/aws/server_cert.pem").c_str())
+                    .c_str()));
+    OCSP_CERTID *certId =
+            OCSP_cert_to_id(nullptr, ca_cert.get(), server_cert.get());
+    ASSERT_TRUE(certId);
 
-  OCSP_ONEREQ *oneRequest = OCSP_request_add0_id(ocspRequest.get(), certId);
-  ASSERT_TRUE(oneRequest);
-  // OCSP_request_add0_id() allocates a new |OCSP_ONEREQ| and assigns the
-  // pointer to |OCSP_CERTID| to it, then adds it to the stack within
-  // |OCSP_REQUEST|.
-  // |OCSP_REQUEST| now takes ownership of the pointer to |OCSP_CERTID| and
-  // still maintains ownership of the pointer |OCSP_ONEREQ|, so we have to set
-  // the references to NULL to avoid freeing the same pointers twice.
-  oneRequest = nullptr;
-  certId = nullptr;
+    OCSP_ONEREQ *oneRequest = OCSP_request_add0_id(ocspRequest.get(), certId);
+    ASSERT_TRUE(oneRequest);
+    // OCSP_request_add0_id() allocates a new |OCSP_ONEREQ| and assigns the
+    // pointer to |OCSP_CERTID| to it, then adds it to the stack within
+    // |OCSP_REQUEST|.
+    // |OCSP_REQUEST| now takes ownership of the pointer to |OCSP_CERTID| and
+    // still maintains ownership of the pointer |OCSP_ONEREQ|, so we have to set
+    // the references to NULL to avoid freeing the same pointers twice.
+    oneRequest = nullptr;
+    certId = nullptr;
 }
 
 static const char good_http_response_hdr[] =
@@ -1070,9 +1107,9 @@ static const char only_code_http_response_hdr[] =
         "Content-Length: ";
 
 struct OCSPHTTPTestVector {
-  const char *http_header;
-  bool response_attached;
-  int expected_status;
+    const char *http_header;
+    bool response_attached;
+    int expected_status;
 };
 
 static const OCSPHTTPTestVector kResponseHTTPVectors[] = {
@@ -1102,35 +1139,34 @@ INSTANTIATE_TEST_SUITE_P(All, OCSPHTTPTest,
 // This test focuses parsing the OCSP response with HTTP. We have other tests
 // to test if the actual OCSP response is parsable and verifiable.
 TEST_P(OCSPHTTPTest, OCSPRequestHTTP) {
-  const OCSPHTTPTestVector &t = GetParam();
+    const OCSPHTTPTestVector &t = GetParam();
 
-  std::string data = GetTestData(std::string(
-                             "crypto/ocsp/test/aws/ocsp_request.der").c_str());
-  std::vector<uint8_t> ocsp_request_data(data.begin(), data.end());
-  std::string respData = GetTestData(std::string(
-                             "crypto/ocsp/test/aws/ocsp_response.der").c_str());
-  std::vector<uint8_t> ocsp_response_data(respData.begin(), respData.end());
+    std::string data = GetTestData(std::string(
+            "crypto/ocsp/test/aws/ocsp_request.der").c_str());
+    std::vector<uint8_t> ocsp_request_data(data.begin(), data.end());
+    std::string respData = GetTestData(std::string(
+            "crypto/ocsp/test/aws/ocsp_response.der").c_str());
+    std::vector<uint8_t> ocsp_response_data(respData.begin(), respData.end());
 
-  // Write an HTTP OCSP response into the BIO.
-  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
-  const int respLen = (int)ocsp_response_data.size();
-  ASSERT_GT(BIO_printf(bio.get(), "%s", t.http_header), 0);
-  ASSERT_GT(BIO_printf(bio.get(), "%d\r\n\r\n", respLen), 0);
-  if(t.response_attached) {
-    ASSERT_EQ(BIO_write(bio.get(), ocsp_response_data.data(), respLen),
-              respLen);
-  }
+    // Write an HTTP OCSP response into the BIO.
+    bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+    const int respLen = (int) ocsp_response_data.size();
+    ASSERT_GT(BIO_printf(bio.get(), "%s", t.http_header), 0);
+    ASSERT_GT(BIO_printf(bio.get(), "%d\r\n\r\n", respLen), 0);
+    if (t.response_attached) {
+        ASSERT_EQ(BIO_write(bio.get(), ocsp_response_data.data(), respLen),
+                  respLen);
+    }
 
-  // Sends out an OCSP request and expects an OCSP response in |BIO|.
-  bssl::UniquePtr<OCSP_REQUEST> ocspRequest =
-      LoadOCSP_REQUEST(ocsp_request_data);
-  ASSERT_TRUE(ocspRequest);
-  bssl::UniquePtr<OCSP_RESPONSE> ocspResponse(
-      OCSP_sendreq_bio(bio.get(), nullptr, ocspRequest.get()));
-  if(t.expected_status == OCSP_HTTP_PARSE_SUCCESS && t.response_attached) {
-    ASSERT_TRUE(ocspResponse);
-  }
-  else{
-    ASSERT_FALSE(ocspResponse);
-  }
+    // Sends out an OCSP request and expects an OCSP response in |BIO|.
+    bssl::UniquePtr<OCSP_REQUEST> ocspRequest =
+            LoadOCSP_REQUEST(ocsp_request_data);
+    ASSERT_TRUE(ocspRequest);
+    bssl::UniquePtr<OCSP_RESPONSE> ocspResponse(
+            OCSP_sendreq_bio(bio.get(), nullptr, ocspRequest.get()));
+    if (t.expected_status == OCSP_HTTP_PARSE_SUCCESS && t.response_attached) {
+        ASSERT_TRUE(ocspResponse);
+    } else {
+        ASSERT_FALSE(ocspResponse);
+    }
 }
