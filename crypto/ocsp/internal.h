@@ -39,8 +39,8 @@ struct ocsp_cert_id_st {
 //       singleRequestExtensions    [0] EXPLICIT Extensions OPTIONAL }
 //
 struct ocsp_one_request_st {
-    OCSP_CERTID *reqCert;
-    STACK_OF(X509_EXTENSION) *singleRequestExtensions;
+  OCSP_CERTID *reqCert;
+  STACK_OF(X509_EXTENSION) *singleRequestExtensions;
 };
 
 //   TBSRequest      ::=     SEQUENCE {
@@ -50,10 +50,10 @@ struct ocsp_one_request_st {
 //       requestExtensions   [2] EXPLICIT Extensions OPTIONAL }
 //
 struct ocsp_req_info_st {
-    ASN1_INTEGER *version;
-    GENERAL_NAME *requestorName;
-    STACK_OF(OCSP_ONEREQ) *requestList;
-    STACK_OF(X509_EXTENSION) *requestExtensions;
+  ASN1_INTEGER *version;
+  GENERAL_NAME *requestorName;
+  STACK_OF(OCSP_ONEREQ) *requestList;
+  STACK_OF(X509_EXTENSION) *requestExtensions;
 };
 
 //   Signature ::= SEQUENCE {
@@ -72,19 +72,20 @@ struct ocsp_signature_st {
 //       optionalSignature   [0]     EXPLICIT Signature OPTIONAL }
 //
 struct ocsp_request_st {
-    OCSP_REQINFO *tbsRequest;
-    OCSP_SIGNATURE *optionalSignature;
+  OCSP_REQINFO *tbsRequest;
+  OCSP_SIGNATURE *optionalSignature;
 };
 
 // Opaque OCSP request status structure
 struct ocsp_req_ctx_st {
-    int state;                  // Current I/O state
-    unsigned char *iobuf;       // Line buffer. Should only be modified during http exchange in OCSP_REQ_CTX_nbio.
-    int iobuflen;               // Line buffer length
-    BIO *io;                    // BIO to perform I/O with
-    BIO *mem;                   // Memory BIO response is built into
-    unsigned long asn1_len;     // ASN1 length of response
-    unsigned long max_resp_len; // Maximum length of response
+  int state;                   // Current I/O state
+  unsigned char *iobuf;        // Line buffer. Should only be modified during
+                               // http exchange in OCSP_REQ_CTX_nbio.
+  int iobuflen;                // Line buffer length
+  BIO *io;                     // BIO to perform I/O with
+  BIO *mem;                    // Memory BIO response is built into
+  unsigned long asn1_len;      // ASN1 length of response
+  unsigned long max_resp_len;  // Maximum length of response
 };
 
 //   OCSPResponseStatus ::= ENUMERATED {
@@ -221,8 +222,8 @@ int OCSP_REQ_CTX_nbio(OCSP_REQ_CTX *rctx);
 // Tries to exchange the request and response with OCSP_REQ_CTX_nbio(), but on
 // success, it additionally parses the response, which must be a
 // DER-encoded ASN.1 structure.
-int OCSP_REQ_CTX_nbio_d2i(OCSP_REQ_CTX *rctx,
-                          ASN1_VALUE **pval, const ASN1_ITEM *it);
+int OCSP_REQ_CTX_nbio_d2i(OCSP_REQ_CTX *rctx, ASN1_VALUE **pval,
+                          const ASN1_ITEM *it);
 
 // Parses ASN.1 contents of |OCSP_REQ_CTX| into a der format.
 int OCSP_REQ_CTX_i2d(OCSP_REQ_CTX *rctx, const ASN1_ITEM *it, ASN1_VALUE *val);
@@ -237,18 +238,18 @@ int OCSP_resp_find(OCSP_BASICRESP *bs, OCSP_CERTID *id, int last);
 // Returns status of |OCSP_SINGLERESP|
 //
 // Note: 1. Reason value is allowed to be null.
-//       2. Time values passed into function are allowed to be NULL if certificate
-//          fields are empty.
-//       3. revtime and reason values only set if the certificate status is revoked.
+//       2. Time values passed into function are allowed to be NULL if
+//          certificate fields are empty.
+//       3. revtime and reason values only set if the certificate status is
+//          revoked.
 int OCSP_single_get0_status(OCSP_SINGLERESP *single, int *reason,
-                                     ASN1_GENERALIZEDTIME **revtime,
-                                     ASN1_GENERALIZEDTIME **thisupd,
-                                     ASN1_GENERALIZEDTIME **nextupd);
+                            ASN1_GENERALIZEDTIME **revtime,
+                            ASN1_GENERALIZEDTIME **thisupd,
+                            ASN1_GENERALIZEDTIME **nextupd);
 
-OCSP_CERTID *OCSP_cert_id_new(const EVP_MD *dgst,
-                               const X509_NAME *issuerName,
-                               const ASN1_BIT_STRING *issuerKey,
-                               const ASN1_INTEGER *serialNumber);
+OCSP_CERTID *OCSP_cert_id_new(const EVP_MD *dgst, const X509_NAME *issuerName,
+                              const ASN1_BIT_STRING *issuerKey,
+                              const ASN1_INTEGER *serialNumber);
 
 // Returns the internal memory BIO of the |OCSP_REQ_CTX|. For AWS-LC, this is
 // only used for testing if contents of |OCSP_REQ_CTX| have been written

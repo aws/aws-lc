@@ -28,11 +28,10 @@ OCSP_CERTID *OCSP_cert_to_id(const EVP_MD *dgst, const X509 *subject,
   return OCSP_cert_id_new(dgst, iname, ikey, serial);
 }
 
-OCSP_CERTID *OCSP_cert_id_new(const EVP_MD *dgst,
-                              const X509_NAME *issuerName,
+OCSP_CERTID *OCSP_cert_id_new(const EVP_MD *dgst, const X509_NAME *issuerName,
                               const ASN1_BIT_STRING *issuerKey,
                               const ASN1_INTEGER *serialNumber) {
-  if(dgst == NULL || issuerName == NULL || issuerKey == NULL) {
+  if (dgst == NULL || issuerName == NULL || issuerKey == NULL) {
     OPENSSL_PUT_ERROR(OCSP, ERR_R_PASSED_NULL_PARAMETER);
     return NULL;
   }
@@ -54,7 +53,7 @@ OCSP_CERTID *OCSP_cert_id_new(const EVP_MD *dgst,
     goto err;
   }
   alg->algorithm = OBJ_nid2obj(nid);
-  if ( alg->algorithm == NULL) {
+  if (alg->algorithm == NULL) {
     goto err;
   }
   alg->parameter = ASN1_TYPE_new();
@@ -88,11 +87,11 @@ err:
 }
 
 int OCSP_id_issuer_cmp(const OCSP_CERTID *a, const OCSP_CERTID *b) {
-  if (a == NULL || b == NULL){
+  if (a == NULL || b == NULL) {
     OPENSSL_PUT_ERROR(OCSP, ERR_R_PASSED_NULL_PARAMETER);
     return -1;
   }
-  if (a->hashAlgorithm == NULL || b->hashAlgorithm == NULL){
+  if (a->hashAlgorithm == NULL || b->hashAlgorithm == NULL) {
     OPENSSL_PUT_ERROR(OCSP, ERR_R_PASSED_NULL_PARAMETER);
     return -1;
   }
@@ -110,7 +109,7 @@ int OCSP_id_issuer_cmp(const OCSP_CERTID *a, const OCSP_CERTID *b) {
 }
 
 int OCSP_id_cmp(const OCSP_CERTID *a, const OCSP_CERTID *b) {
-  if (a == NULL || b == NULL){
+  if (a == NULL || b == NULL) {
     OPENSSL_PUT_ERROR(OCSP, ERR_R_PASSED_NULL_PARAMETER);
     return -1;
   }
