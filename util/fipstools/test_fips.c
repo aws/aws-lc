@@ -192,6 +192,15 @@ int main(int argc, char **argv) {
 
   OPENSSL_cleanse(&aes_key, sizeof(aes_key));
 
+  if (AES_set_encrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key) != 0)
+  {
+    fprintf(stderr, "AES_set_encrypt_key failed.\n");
+    goto err;
+  }
+  AES_wrap_key(&aes_key, NULL, output, kPlaintext, sizeof(kPlaintext));
+
+  OPENSSL_cleanse(&aes_key, sizeof(aes_key));
+
   DES_key_schedule des1, des2, des3;
   DES_cblock des_iv;
   DES_set_key(&kDESKey1, &des1);
