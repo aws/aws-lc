@@ -106,6 +106,8 @@ int main(int argc, char **argv) {
   printf("  got ");
   hexdump(output, sizeof(kPlaintext));
 
+  OPENSSL_cleanse(&aes_key, sizeof(aes_key));
+
   size_t out_len;
   uint8_t nonce[EVP_AEAD_MAX_NONCE_LENGTH];
   OPENSSL_memset(nonce, 0, sizeof(nonce));
@@ -140,7 +142,38 @@ int main(int argc, char **argv) {
   printf("  got ");
   hexdump(output, out_len);
 
+  EVP_AEAD_CTX_zero(&aead_ctx);
   EVP_AEAD_CTX_cleanup(&aead_ctx);
+
+  OPENSSL_memset(nonce, 0, sizeof(nonce));
+  if (!EVP_AEAD_CTX_init(&aead_ctx, EVP_aead_aes_128_ccm_bluetooth(), kAESKey, SIZEOF(kAESKey), 0, NULL))
+  {
+    fprintf(stderr, "EVP_AED_CTX_init for AES-128-CCM failed.\n");
+    goto err;
+  }
+
+  /* AES-CCM Encryption */
+  memcpy(aes_iv, 0, sizeof(aes_iv));
+  if (AES_set_encrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key) != 0)
+  {
+    fprintf(stderr, "AES_set_encrypt_key failed.\n");
+    goto err;
+  }
+
+  printf("About to AES-CCM seal ");
+  hexdump(output, out_len);
+  if (!EVP_AEAD_CTX_seal(&aead_ctx, output, &out_len, sizeof(output), nonce,
+                        EVP_AEAD_nonce_length(EVP_aead_aes_128_ccm_bluetooth()),
+                        kPlaintext, sizeof(kPlaintext), NULL, 0))
+  {
+    fprintf(stderr, "EVP_AEAD_CTX_seal for AES-128-CCM failed.\n");
+    goto err;
+  }
+  printf("  got ");
+  hexdump(output, out_len);
+
+  OPENSSL_cleanse(&aes_key, sizeof(aes_key));
+  EVP_AEAD_CTX_zero(&aead_ctx);
 
   DES_key_schedule des1, des2, des3;
   DES_cblock des_iv;
