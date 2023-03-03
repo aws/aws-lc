@@ -17,8 +17,7 @@
 #include "../internal.h"
 #include "internal.h"
 
-#define OCSP_MAX_RESP_LENGTH (100 * 1024)
-#define OCSP_MAX_LINE_LEN 4096;
+#define OCSP_MAX_LINE_LEN       4096;
 
 // OCSP_REQ_CTX states
 
@@ -505,3 +504,11 @@ int OCSP_REQ_CTX_i2d(OCSP_REQ_CTX *rctx, const ASN1_ITEM *it, ASN1_VALUE *val) {
 }
 
 BIO *OCSP_REQ_CTX_get0_mem_bio(OCSP_REQ_CTX *rctx) { return rctx->mem; }
+
+void OCSP_set_max_response_length(OCSP_REQ_CTX *rctx, unsigned long len) {
+  if (len == 0) {
+    rctx->max_resp_len = OCSP_MAX_RESP_LENGTH;
+  } else {
+    rctx->max_resp_len = len;
+  }
+}
