@@ -154,10 +154,10 @@ int OCSP_parse_url(const char *url, char **phost, char **pport, char **ppath,
   // will be overwritten. |pssl| will be set to true, if https is being used.
   if (strcmp(buffer, "http") == 0) {
     *pssl = 0;
-    port = (char*)"80";
+    port = (char *)"80";
   } else if (strcmp(buffer, "https") == 0) {
     *pssl = 1;
-    port = (char*)"443";
+    port = (char *)"443";
   } else {
     goto parse_err;
   }

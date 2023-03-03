@@ -100,7 +100,9 @@ OPENSSL_EXPORT OCSP_REQ_CTX *OCSP_REQ_CTX_new(BIO *io, int maxline);
 OPENSSL_EXPORT void OCSP_REQ_CTX_free(OCSP_REQ_CTX *rctx);
 
 // OCSP_set_max_response_length sets the maximum response length for an OCSP
-// request over HTTP.
+// request over HTTP to |len|. If a custom max response length is needed, this
+// should be set before |OCSP_REQ_CTX| is sent out to retrieve the OCSP
+// response.
 OPENSSL_EXPORT void OCSP_set_max_response_length(OCSP_REQ_CTX *rctx,
                                                  unsigned long len);
 
@@ -185,9 +187,11 @@ OPENSSL_EXPORT OCSP_CERTID *OCSP_cert_to_id(const EVP_MD *dgst,
                                             const X509 *issuer);
 
 // OCSP_parse_url parses an OCSP responder URL and returns its component parts.
-// The url argument must be a null-terminated string containing the URL to be
+// |url| argument must be a null-terminated string containing the URL to be
 // parsed. The other arguments are pointers to variables that will be set to the
-// parsed components of the URL:
+// parsed components of the URL. When |OCSP_parse_url| returns 1, these
+// arguments will allocate new memory with a copy of value. It is the caller's
+// responsibility to free these.
 //
 //  |phost|: A pointer to a char pointer that will be set to the host component
 //           of the URL. If the URL does not contain a host component, this will

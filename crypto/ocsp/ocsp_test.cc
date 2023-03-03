@@ -36,8 +36,8 @@ static const time_t invalid_after_ocsp_expire_time_sha256 = 1937505764;
 #define OCSP_REQUEST_SIGN_SUCCESS 1
 #define OCSP_REQUEST_SIGN_ERROR 0
 
-#define OCSP_URL_PARSE_SUCCESS                    1
-#define OCSP_URL_PARSE_ERROR                      0
+#define OCSP_URL_PARSE_SUCCESS 1
+#define OCSP_URL_PARSE_ERROR 0
 
 std::string GetTestData(const char *path);
 
@@ -829,15 +829,16 @@ TEST(OCSPRequestTest, AddCert) {
 // length.
 TEST(OCSPRequestTest, SetResponseLength) {
   std::string data = GetTestData(std::string("crypto/ocsp/test/aws/"
-                                             "ocsp_request.der").c_str());
+                                             "ocsp_request.der")
+                                     .c_str());
   std::vector<uint8_t> ocsp_request_data(data.begin(), data.end());
   bssl::UniquePtr<OCSP_REQUEST> ocspRequest =
       LoadOCSP_REQUEST(ocsp_request_data);
   ASSERT_TRUE(ocspRequest);
 
   bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
-  bssl::UniquePtr<OCSP_REQ_CTX> ocspReqCtx(OCSP_sendreq_new(bio.get(),
-                                              nullptr, nullptr, 0));
+  bssl::UniquePtr<OCSP_REQ_CTX> ocspReqCtx(
+      OCSP_sendreq_new(bio.get(), nullptr, nullptr, 0));
   ASSERT_TRUE(ocspReqCtx);
 
   // Check custom length is set correctly.
@@ -971,12 +972,12 @@ TEST_P(OCSPHTTPTest, OCSPRequestHTTP) {
 }
 
 struct OCSPURLTestVector {
-    const char *ocsp_url;
-    const char *expected_host;
-    const char *expected_port;
-    const char *expected_path;
-    int expected_ssl;
-    int expected_status;
+  const char *ocsp_url;
+  const char *expected_host;
+  const char *expected_port;
+  const char *expected_path;
+  int expected_ssl;
+  int expected_status;
 };
 
 static const OCSPURLTestVector kOCSPURLVectors[] = {
@@ -1023,8 +1024,7 @@ static const OCSPURLTestVector kOCSPURLVectors[] = {
 
 class OCSPURLTest : public testing::TestWithParam<OCSPURLTestVector> {};
 
-INSTANTIATE_TEST_SUITE_P(All, OCSPURLTest,
-                         testing::ValuesIn(kOCSPURLVectors));
+INSTANTIATE_TEST_SUITE_P(All, OCSPURLTest, testing::ValuesIn(kOCSPURLVectors));
 
 TEST_P(OCSPURLTest, OCSPParseURL) {
   const OCSPURLTestVector &t = GetParam();

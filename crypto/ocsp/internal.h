@@ -269,7 +269,7 @@ int OCSP_id_issuer_cmp(const OCSP_CERTID *a, const OCSP_CERTID *b);
 int OCSP_id_cmp(const OCSP_CERTID *a, const OCSP_CERTID *b);
 
 #define IS_OCSP_FLAG_SET(flags, query) (flags & query)
-#define OCSP_MAX_RESP_LENGTH    (100 * 1024)
+#define OCSP_MAX_RESP_LENGTH (100 * 1024)
 
 #if defined(__cplusplus)
 }  // extern C

@@ -17,7 +17,7 @@
 #include "../internal.h"
 #include "internal.h"
 
-#define OCSP_MAX_LINE_LEN       4096;
+#define OCSP_MAX_LINE_LEN 4096;
 
 // OCSP_REQ_CTX states
 
