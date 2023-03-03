@@ -22,7 +22,7 @@ jobs:
           stale-issue-label: closing-soon
           exempt-issue-label: automation-exempt
           stale-pr-label: no-pr-activity
-          exempt-pr-labels: automation-exempt
+          exempt-pr-label: automation-exempt
           response-requested-label: response-requested
 
           # Don't set closed-for-staleness label to skip closing very old issues
