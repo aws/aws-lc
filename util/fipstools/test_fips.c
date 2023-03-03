@@ -176,14 +176,21 @@ int main(int argc, char **argv) {
   EVP_AEAD_CTX_zero(&aead_ctx);
 
   AES_set_encrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key);
-  for (size_t j = 0; j < sizeof(kPlaintext) / 128, j++)
+  for (size_t j = 0; j < sizeof(kPlaintext) / 128; j++)
   {
     AES_ecb_encrypt(&kPlaintext[j * 128], & output[j * 128], &aes_key, 1);
   }
 
   OPENSSL_cleanse(&aes_key, sizeof(aes_key));
 
+  memcpy(aes_iv, 0, sizeof(aes_iv));
+  unsigned num = 0;
+  uint8_t ecount_buf[128];
 
+  AES_set_encrypt_key(kPlaintext, 8 * sizeof(kPlaintext), &aes_key);
+  AES_ctr128_encrypt(kPlaintext, output, sizeof(kPlaintext), &aes_key, aes_iv, ecount_buf, &num);
+
+  OPENSSL_cleanse(&aes_key, sizeof(aes_key));
 
   DES_key_schedule des1, des2, des3;
   DES_cblock des_iv;
