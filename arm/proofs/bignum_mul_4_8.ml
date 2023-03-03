@@ -15,8 +15,18 @@ let bignum_mul_4_8_mc =
 [
   0xa9401023;       (* arm_LDP X3 X4 X1 (Immediate_Offset (iword (&0))) *)
   0xa9401845;       (* arm_LDP X5 X6 X2 (Immediate_Offset (iword (&0))) *)
-  0x9b057c67;       (* arm_MUL X7 X3 X5 *)
-  0x9bc57c68;       (* arm_UMULH X8 X3 X5 *)
+  0x9ba57c67;       (* arm_UMULL X7 W3 W5 *)
+  0xd360fc71;       (* arm_LSR X17 X3 32 *)
+  0x9ba57e2f;       (* arm_UMULL X15 W17 W5 *)
+  0xd360fcb0;       (* arm_LSR X16 X5 32 *)
+  0x9bb17e08;       (* arm_UMULL X8 W16 W17 *)
+  0x9bb07c70;       (* arm_UMULL X16 W3 W16 *)
+  0xab0f80e7;       (* arm_ADDS X7 X7 (Shiftedreg X15 LSL 32) *)
+  0xd360fdef;       (* arm_LSR X15 X15 32 *)
+  0x9a0f0108;       (* arm_ADC X8 X8 X15 *)
+  0xab1080e7;       (* arm_ADDS X7 X7 (Shiftedreg X16 LSL 32) *)
+  0xd360fe10;       (* arm_LSR X16 X16 32 *)
+  0x9a100108;       (* arm_ADC X8 X8 X16 *)
   0x9b067c89;       (* arm_MUL X9 X4 X6 *)
   0x9bc67c8a;       (* arm_UMULH X10 X4 X6 *)
   0xeb030084;       (* arm_SUBS X4 X4 X3 *)
@@ -40,8 +50,18 @@ let bignum_mul_4_8_mc =
   0x9a10014a;       (* arm_ADC X10 X10 X16 *)
   0xa9411023;       (* arm_LDP X3 X4 X1 (Immediate_Offset (iword (&16))) *)
   0xa9411845;       (* arm_LDP X5 X6 X2 (Immediate_Offset (iword (&16))) *)
-  0x9b057c6b;       (* arm_MUL X11 X3 X5 *)
-  0x9bc57c6c;       (* arm_UMULH X12 X3 X5 *)
+  0x9ba57c6b;       (* arm_UMULL X11 W3 W5 *)
+  0xd360fc71;       (* arm_LSR X17 X3 32 *)
+  0x9ba57e2f;       (* arm_UMULL X15 W17 W5 *)
+  0xd360fcb0;       (* arm_LSR X16 X5 32 *)
+  0x9bb17e0c;       (* arm_UMULL X12 W16 W17 *)
+  0x9bb07c70;       (* arm_UMULL X16 W3 W16 *)
+  0xab0f816b;       (* arm_ADDS X11 X11 (Shiftedreg X15 LSL 32) *)
+  0xd360fdef;       (* arm_LSR X15 X15 32 *)
+  0x9a0f018c;       (* arm_ADC X12 X12 X15 *)
+  0xab10816b;       (* arm_ADDS X11 X11 (Shiftedreg X16 LSL 32) *)
+  0xd360fe10;       (* arm_LSR X16 X16 32 *)
+  0x9a10018c;       (* arm_ADC X12 X12 X16 *)
   0x9b067c8d;       (* arm_MUL X13 X4 X6 *)
   0x9bc67c8e;       (* arm_UMULH X14 X4 X6 *)
   0xeb030084;       (* arm_SUBS X4 X4 X3 *)
@@ -171,6 +191,24 @@ let lemma2 = prove
   MAP_EVERY ASM_CASES_TAC [`y1:real <= y0`; `x1:real < x0`] THEN
   ASM_REWRITE_TAC[BITVAL_CLAUSES] THEN ASM_REAL_ARITH_TAC);;
 
+let VAL_WORD_MADDL_0 = prove
+ (`!x y. val(word(0 + val(x:int32) * val(y:int32)):int64) = val x * val y`,
+  REPEAT GEN_TAC THEN REWRITE_TAC[ADD_CLAUSES; VAL_WORD_EQ_EQ] THEN
+  REWRITE_TAC[DIMINDEX_64; ARITH_RULE `2 EXP 64 = 2 EXP 32 * 2 EXP 32`] THEN
+  MATCH_MP_TAC LT_MULT2 THEN REWRITE_TAC[GSYM DIMINDEX_32; VAL_BOUND]);;
+
+let DIVMOD_32_32 = prove
+ (`!n. (2 EXP 32 * n) MOD 2 EXP 64 = 2 EXP 32 * n MOD 2 EXP 32`,
+  REWRITE_TAC[GSYM MOD_MULT2] THEN ARITH_TAC);;
+
+let VAL_WORD_SPLIT32 = prove
+ (`!x. 2 EXP 32 * val(word_zx(word_ushr x 32):int32) + val(word_zx x:int32) =
+       val(x:int64)`,
+  REWRITE_TAC[VAL_WORD_USHR; VAL_WORD_ZX_GEN; DIMINDEX_32] THEN
+  GEN_TAC THEN REWRITE_TAC[GSYM MOD_MULT_MOD; GSYM EXP_ADD] THEN
+  CONV_TAC(ONCE_DEPTH_CONV NUM_ADD_CONV) THEN
+  MATCH_MP_TAC MOD_LT THEN REWRITE_TAC[VAL_BOUND_64]);;
+
 (* ------------------------------------------------------------------------- *)
 (* Proof.                                                                    *)
 (* ------------------------------------------------------------------------- *)
@@ -197,14 +235,14 @@ let KARATSUBA12_TAC =
 
 let BIGNUM_MUL_4_8_CORRECT = prove
  (`!z x y a b pc.
-      nonoverlapping (word pc,0x1d4) (z,8 * 8)
+      nonoverlapping (word pc,0x224) (z,8 * 8)
       ==> ensures arm
             (\s. aligned_bytes_loaded s (word pc) bignum_mul_4_8_mc /\
                  read PC s = word pc /\
                  C_ARGUMENTS [z; x; y] s /\
                  bignum_from_memory (x,4) s = a /\
                  bignum_from_memory (y,4) s = b)
-            (\s. read PC s = word (pc + 0x1d0) /\
+            (\s. read PC s = word (pc + 0x220) /\
                  bignum_from_memory (z,8) s = a * b)
             (MAYCHANGE [PC; X1; X2; X3; X4; X5; X6; X7; X8; X9; X10; X11;
                         X12; X13; X14; X15; X16; X17] ,,
@@ -219,10 +257,36 @@ let BIGNUM_MUL_4_8_CORRECT = prove
   BIGNUM_LDIGITIZE_TAC "x_" `bignum_from_memory (x,4) s0` THEN
   BIGNUM_LDIGITIZE_TAC "y_" `bignum_from_memory (y,4) s0` THEN
 
+  (*** Retrofitted insertion for the 32-bit fiddling (1 of 2) ***)
+
+  ARM_ACCSTEPS_TAC BIGNUM_MUL_4_8_EXEC [9;11;12;14] (1--14) THEN
+  RULE_ASSUM_TAC(REWRITE_RULE
+   [VAL_WORD_MADDL_0; VAL_WORD_USHR; VAL_WORD_SHL;
+    DIVMOD_32_32; DIMINDEX_64]) THEN
+  SUBGOAL_THEN
+   `&2 pow 64 * &(val(sum_s14:int64)) + &(val(sum_s12:int64)):real =
+    &(val(x_0:int64)) * &(val(y_0:int64))`
+  MP_TAC THENL
+   [MATCH_MP_TAC EQUAL_FROM_CONGRUENT_REAL THEN
+    MAP_EVERY EXISTS_TAC [`128`; `&0:real`] THEN
+    REPLICATE_TAC 2 (CONJ_TAC THENL [BOUNDER_TAC[]; ALL_TAC]) THEN
+    REWRITE_TAC[INTEGER_CLOSED] THEN
+    MAP_EVERY (SUBST_ALL_TAC o SYM o C SPEC VAL_WORD_SPLIT32)
+     [`x_0:int64`; `y_0:int64`] THEN
+    REWRITE_TAC[GSYM REAL_OF_NUM_CLAUSES] THEN
+    RULE_ASSUM_TAC(REWRITE_RULE[GSYM REAL_OF_NUM_CLAUSES; REAL_OF_NUM_DIV]) THEN
+    ACCUMULATOR_ASSUM_LIST(MP_TAC o end_itlist CONJ o DESUM_RULE) THEN
+    DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN REAL_INTEGER_TAC;
+    ACCUMULATOR_POP_ASSUM_LIST(K ALL_TAC) THEN DISCH_TAC THEN
+    POP_ASSUM_LIST(MP_TAC o end_itlist CONJ o rev) THEN
+    SPEC_TAC(`sum_s12:int64`,`mullo_s3:int64`) THEN
+    SPEC_TAC(`sum_s14:int64`,`mulhi_s3:int64`) THEN
+    SPEC_TAC(`s14:armstate`,`s4:armstate`) THEN REPEAT STRIP_TAC] THEN
+
   (*** First nested block multiplying the lower halves ***)
 
   ARM_ACCSTEPS_TAC BIGNUM_MUL_4_8_EXEC
-   [3;5;10;11;15;17;18;19;22;24;25] (1--25) THEN
+   [5;10;11;15;17;18;19;22;24;25] (5--25) THEN
   RULE_ASSUM_TAC(REWRITE_RULE[lemma0; lemma1]) THEN
 
   MAP_EVERY ABBREV_TAC
@@ -238,10 +302,36 @@ let BIGNUM_MUL_4_8_CORRECT = prove
     ACCUMULATOR_POP_ASSUM_LIST(K ALL_TAC) THEN
     DISCARD_MATCHING_ASSUMPTIONS [`word a = b`]] THEN
 
+  (*** Retrofitted insertion for the 32-bit fiddling (2 of 2) ***)
+
+  ARM_ACCSTEPS_TAC BIGNUM_MUL_4_8_EXEC [34;36;37;39] (26--39) THEN
+  RULE_ASSUM_TAC(REWRITE_RULE
+   [VAL_WORD_MADDL_0; VAL_WORD_USHR; VAL_WORD_SHL;
+    DIVMOD_32_32; DIMINDEX_64]) THEN
+  SUBGOAL_THEN
+   `&2 pow 64 * &(val(sum_s39:int64)) + &(val(sum_s37:int64)):real =
+    &(val(x_2:int64)) * &(val(y_2:int64))`
+  MP_TAC THENL
+   [MATCH_MP_TAC EQUAL_FROM_CONGRUENT_REAL THEN
+    MAP_EVERY EXISTS_TAC [`128`; `&0:real`] THEN
+    REPLICATE_TAC 2 (CONJ_TAC THENL [BOUNDER_TAC[]; ALL_TAC]) THEN
+    REWRITE_TAC[INTEGER_CLOSED] THEN
+    MAP_EVERY (SUBST_ALL_TAC o SYM o C SPEC VAL_WORD_SPLIT32)
+     [`x_2:int64`; `y_2:int64`] THEN
+    REWRITE_TAC[GSYM REAL_OF_NUM_CLAUSES] THEN
+    RULE_ASSUM_TAC(REWRITE_RULE[GSYM REAL_OF_NUM_CLAUSES; REAL_OF_NUM_DIV]) THEN
+    ACCUMULATOR_ASSUM_LIST(MP_TAC o end_itlist CONJ o DESUM_RULE) THEN
+    DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN REAL_INTEGER_TAC;
+    ACCUMULATOR_POP_ASSUM_LIST(K ALL_TAC) THEN DISCH_TAC THEN
+    POP_ASSUM_LIST(MP_TAC o end_itlist CONJ o rev) THEN
+    SPEC_TAC(`sum_s37:int64`,`mullo_s28:int64`) THEN
+    SPEC_TAC(`sum_s39:int64`,`mulhi_s28:int64`) THEN
+    SPEC_TAC(`s39:armstate`,`s29:armstate`) THEN REPEAT STRIP_TAC] THEN
+
   (*** Second nested block multiplying the upper halves ***)
 
   ARM_ACCSTEPS_TAC BIGNUM_MUL_4_8_EXEC
-   [28;30;35;36;40;42;43;44;47;49;50] (26--50) THEN
+   [30;35;36;40;42;43;44;47;49;50] (30--50) THEN
   RULE_ASSUM_TAC(REWRITE_RULE[lemma0; lemma1]) THEN
 
   ABBREV_TAC
@@ -410,7 +500,7 @@ let BIGNUM_MUL_4_8_CORRECT = prove
 
 let BIGNUM_MUL_4_8_SUBROUTINE_CORRECT = prove
  (`!z x y a b pc returnaddress.
-        nonoverlapping (word pc,0x1d4) (z,8 * 8)
+        nonoverlapping (word pc,0x224) (z,8 * 8)
         ==> ensures arm
               (\s. aligned_bytes_loaded s (word pc) bignum_mul_4_8_mc /\
                    read PC s = word pc /\

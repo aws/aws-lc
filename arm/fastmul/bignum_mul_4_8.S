@@ -22,8 +22,10 @@
 #define y x2
 
 #define a0 x3
+#define a0short w3
 #define a1 x4
 #define b0 x5
+#define b0short w5
 #define b1 x6
 
 #define u0 x7
@@ -52,12 +54,24 @@
 S2N_BN_SYMBOL(bignum_mul_4_8):
 
 // Multiply the low halves using Karatsuba 2x2->4 to get [u3,u2,u1,u0]
+// The zeroth multiplication (only) is done via 32-bit breakdowns
 
         ldp     a0, a1, [x]
         ldp     b0, b1, [y]
 
-        mul     u0, a0, b0
-        umulh   u1, a0, b0
+        umull   u0, a0short, b0short
+        lsr     x17, a0, #32
+        umull   x15, w17, b0short
+        lsr     x16, b0, #32
+        umull   u1, w16, w17
+        umull   x16, a0short, w16
+        adds    u0, u0, x15, lsl #32
+        lsr     x15, x15, #32
+        adc     u1, u1, x15
+        adds    u0, u0, x16, lsl #32
+        lsr     x16, x16, #32
+        adc     u1, u1, x16
+
         mul     u2, a1, b1
         umulh   u3, a1, b1
 
@@ -87,12 +101,24 @@ S2N_BN_SYMBOL(bignum_mul_4_8):
         adc     u3, u3, sgn
 
 // Multiply the high halves using Karatsuba 2x2->4 to get [u7,u6,u5,u4]
+// Again, the zeroth multiplication (only) is done via 32-bit breakdowns
 
         ldp     a0, a1, [x, #16]
         ldp     b0, b1, [y, #16]
 
-        mul     u4, a0, b0
-        umulh   u5, a0, b0
+        umull   u4, a0short, b0short
+        lsr     x17, a0, #32
+        umull   x15, w17, b0short
+        lsr     x16, b0, #32
+        umull   u5, w16, w17
+        umull   x16, a0short, w16
+        adds    u4, u4, x15, lsl #32
+        lsr     x15, x15, #32
+        adc     u5, u5, x15
+        adds    u4, u4, x16, lsl #32
+        lsr     x16, x16, #32
+        adc     u5, u5, x16
+
         mul     u6, a1, b1
         umulh   u7, a1, b1
 
