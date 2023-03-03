@@ -145,6 +145,13 @@ int main(int argc, char **argv) {
   EVP_AEAD_CTX_zero(&aead_ctx);
   EVP_AEAD_CTX_cleanup(&aead_ctx);
 
+  /* AES-CCM Encryption */
+  if (AES_set_encrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key) != 0)
+  {
+    fprintf(stderr, "AES_set_encrypt_key failed.\n");
+    goto err;
+  }
+
   OPENSSL_memset(nonce, 0, sizeof(nonce));
   if (!EVP_AEAD_CTX_init(&aead_ctx, EVP_aead_aes_128_ccm_bluetooth(), kAESKey, sizeof(kAESKey), 0, NULL))
   {
@@ -152,7 +159,6 @@ int main(int argc, char **argv) {
     goto err;
   }
 
-  /* AES-CCM Encryption */
   printf("About to AES-CCM seal ");
   hexdump(output, out_len);
   if (!EVP_AEAD_CTX_seal(&aead_ctx, output, &out_len, sizeof(output), nonce,
@@ -168,28 +174,51 @@ int main(int argc, char **argv) {
   OPENSSL_cleanse(&aes_key, sizeof(aes_key));
   EVP_AEAD_CTX_zero(&aead_ctx);
 
+  /* AES-ECB Encryption */
+  if (AES_set_encrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key) != 0)
+  {
+    fprintf(stderr, "AES_set_encrypt_key failed.\n");
+    goto err;
+  }
+  printf("About to AES-ECB encrypt ");
+  hexdump(output, out_len);
   for (size_t j = 0; j < sizeof(kPlaintext) / 16; j++)
   {
     AES_ecb_encrypt(&kPlaintext[j * 128], & output[j * 128], &aes_key, 1);
   }
+  printf("  got ");
+  hexdump(output, out_len);
 
   OPENSSL_cleanse(&aes_key, sizeof(aes_key));
 
   unsigned int num = 0;
   uint8_t ecount_buf[128];
 
-  AES_set_encrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key);
-  AES_ctr128_encrypt(kPlaintext, output, sizeof(kPlaintext), &aes_key, aes_iv, ecount_buf, &num);
-
-
-  OPENSSL_cleanse(&aes_key, sizeof(aes_key));
-
+  /* AES-CTR Encryption */
   if (AES_set_encrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key) != 0)
   {
     fprintf(stderr, "AES_set_encrypt_key failed.\n");
     goto err;
   }
+  printf("About to AES-CTR Encrypt ");
+  hexdump(output, out_len);
+  AES_ctr128_encrypt(kPlaintext, output, sizeof(kPlaintext), &aes_key, aes_iv, ecount_buf, &num);
+  printf("  got ");
+  hexdump(output, out_len);
+
+  OPENSSL_cleanse(&aes_key, sizeof(aes_key));
+
+  /* AES-KW Wrap */
+  if (AES_set_encrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key) != 0)
+  {
+    fprintf(stderr, "AES_set_encrypt_key failed.\n");
+    goto err;
+  }
+  printf("About to AES-KW Wrap ");
+  hexdump(output, out_len);
   AES_wrap_key(&aes_key, NULL, output, kPlaintext, sizeof(kPlaintext));
+  printf("  got ");
+  hexdump(output, out_len);
 
   OPENSSL_cleanse(&aes_key, sizeof(aes_key));
 
