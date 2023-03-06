@@ -164,6 +164,20 @@ OPENSSL_EXPORT int OCSP_resp_find_status(OCSP_BASICRESP *bs, OCSP_CERTID *id,
                                          ASN1_GENERALIZEDTIME **thisupd,
                                          ASN1_GENERALIZEDTIME **nextupd);
 
+// OCSP_check_validity checks the validity of |thisUpdate| and |nextUpdate|
+// fields from an |OCSP_SINGLERESP|.
+//
+// Note: It is possible that the request will take a few
+// seconds to process and/or the time won't be totally accurate. Therefore,
+// to avoid rejecting otherwise valid time we allow the times to be within
+// |nsec| of the current time. Also, to avoid accepting very old responses
+// without a |nextUpdate| field an optional |maxsec| parameter specifies the
+// maximum age the |thisUpdate| field can be. |maxsec| should be set to "-1",
+// if the maximum age should not be checked.
+OPENSSL_EXPORT int OCSP_check_validity(ASN1_GENERALIZEDTIME *thisupd,
+                                       ASN1_GENERALIZEDTIME *nextupd, long nsec,
+                                       long maxsec);
+
 // OCSP_basic_verify verifies a basic response message. Returns 1 if the
 // response is valid, 0 if the signature cannot be verified, or -1 on fatal
 // errors such as malloc failure.
@@ -211,6 +225,12 @@ OPENSSL_EXPORT OCSP_CERTID *OCSP_cert_to_id(const EVP_MD *dgst,
 OPENSSL_EXPORT int OCSP_parse_url(const char *url, char **phost, char **pport,
                                   char **ppath, int *pssl);
 
+// OCSP_response_status_str prints OCSP response status in a string.
+OPENSSL_EXPORT const char *OCSP_response_status_str(long s);
+
+// OCSP_cert_status_str prints OCSP cert status in a string.
+OPENSSL_EXPORT const char *OCSP_cert_status_str(long s);
+
 
 #ifdef __cplusplus
 }
@@ -246,7 +266,6 @@ BSSL_NAMESPACE_END
 #define V_OCSP_CERTSTATUS_REVOKED 1
 #define V_OCSP_CERTSTATUS_UNKNOWN 2
 
-
 #define OCSP_R_CERTIFICATE_VERIFY_ERROR 101
 #define OCSP_R_DIGEST_ERR 102
 #define OCSP_R_MISSING_OCSPSIGNING_USAGE 103
@@ -262,6 +281,12 @@ BSSL_NAMESPACE_END
 #define OCSP_R_UNKNOWN_MESSAGE_DIGEST 119
 #define OCSP_R_UNKNOWN_NID 120
 #define OCSP_R_ERROR_PARSING_URL 121
+#define OCSP_R_ERROR_IN_NEXTUPDATE_FIELD 122
+#define OCSP_R_ERROR_IN_THISUPDATE_FIELD 123
+#define OCSP_R_NEXTUPDATE_BEFORE_THISUPDATE 124
+#define OCSP_R_STATUS_EXPIRED 125
+#define OCSP_R_STATUS_NOT_YET_VALID 126
+#define OCSP_R_STATUS_TOO_OLD 127
 #define OCSP_R_NO_SIGNER_KEY 130
 #define OCSP_R_OCSP_REQUEST_DUPLICATE_SIGNATURE 131
 
