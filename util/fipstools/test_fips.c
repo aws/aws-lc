@@ -120,6 +120,7 @@ int main(int argc, char **argv) {
   }
 
   /* AES-GCM Encryption */
+  memset(aes_iv, 0, sizeof(aes_iv));
   if (AES_set_encrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key) != 0) {
     printf("AES_set_encrypt_key failed\n");
     goto err;
@@ -136,6 +137,7 @@ int main(int argc, char **argv) {
   hexdump(output, out_len);
 
   /* AES-GCM Decryption */
+  memset(aes_iv, 0, sizeof(aes_iv));
   printf("About to AES-GCM open ");
   hexdump(output, out_len);
   if (!EVP_AEAD_CTX_open(&aead_ctx, output, &out_len, sizeof(output), nonce,
@@ -159,6 +161,7 @@ int main(int argc, char **argv) {
   }
 
   /* AES-CCM Encryption */
+  memset(aes_iv, 0, sizeof(aes_iv));
   printf("About to AES-CCM seal ");
   hexdump(kPlaintext, sizeof(kPlaintext));
   if (!EVP_AEAD_CTX_seal(&aead_ctx, output, &out_len, sizeof(output), nonce,
@@ -172,6 +175,7 @@ int main(int argc, char **argv) {
   hexdump(output, out_len);
 
   /* AES-CCM Decryption */
+  memset(aes_iv, 0, sizeof(aes_iv));
   if (AES_set_decrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key) != 0) {
     printf("AES decrypt failed\n");
     goto err;
@@ -193,6 +197,7 @@ int main(int argc, char **argv) {
 
   /* AES-ECB */
   /* AES-ECB Encryption */
+  memset(aes_iv, 0, sizeof(aes_iv));
   if (AES_set_encrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key) != 0)
   {
     fprintf(stderr, "AES_set_encrypt_key failed.\n");
@@ -208,6 +213,7 @@ int main(int argc, char **argv) {
   hexdump(output, out_len);
 
   /* AES-ECB Decryption */
+  memset(aes_iv, 0, sizeof(aes_iv));
   if (AES_set_decrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key) != 0) {
     printf("AES decrypt failed\n");
     goto err;
@@ -226,7 +232,9 @@ int main(int argc, char **argv) {
   unsigned int num = 0;
   uint8_t ecount_buf[128];
 
+  /* AES-CTR */
   /* AES-CTR Encryption */
+  memset(aes_iv, 0, sizeof(aes_iv));
   if (AES_set_encrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key) != 0)
   {
     fprintf(stderr, "AES_set_encrypt_key failed.\n");
@@ -235,6 +243,15 @@ int main(int argc, char **argv) {
   printf("About to AES-CTR Encrypt ");
   hexdump(output, out_len);
   AES_ctr128_encrypt(kPlaintext, output, sizeof(kPlaintext), &aes_key, aes_iv, ecount_buf, &num);
+  printf("  got ");
+  hexdump(output, out_len);
+
+
+  /* AES-CTR Decryption */
+  memset(aes_iv, 0, sizeof(aes_iv));
+  printf("About to AES-CTR Decrypt ");
+  hexdump(output, out_len);
+  AES_ctr128_encrypt(output, output, out_len, &aes_key, aes_iv, ecount_buf, &num);
   printf("  got ");
   hexdump(output, out_len);
 
