@@ -108,6 +108,7 @@ int main(int argc, char **argv) {
 
   OPENSSL_cleanse(&aes_key, sizeof(aes_key));
 
+ /* AES-GCM */
   size_t out_len;
   uint8_t nonce[EVP_AEAD_MAX_NONCE_LENGTH];
   OPENSSL_memset(nonce, 0, sizeof(nonce));
@@ -119,6 +120,10 @@ int main(int argc, char **argv) {
   }
 
   /* AES-GCM Encryption */
+  if (AES_set_encrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key) != 0) {
+    printf("AES_set_encrypt_key failed\n");
+    goto err;
+  }
   printf("About to AES-GCM seal ");
   hexdump(output, sizeof(kPlaintext));
   if (!EVP_AEAD_CTX_seal(&aead_ctx, output, &out_len, sizeof(output), nonce,
@@ -145,13 +150,7 @@ int main(int argc, char **argv) {
   EVP_AEAD_CTX_zero(&aead_ctx);
   EVP_AEAD_CTX_cleanup(&aead_ctx);
 
-  /* AES-CCM Encryption */
-  if (AES_set_encrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key) != 0)
-  {
-    fprintf(stderr, "AES_set_encrypt_key failed.\n");
-    goto err;
-  }
-
+  /* AES-CCM */
   OPENSSL_memset(nonce, 0, sizeof(nonce));
   if (!EVP_AEAD_CTX_init(&aead_ctx, EVP_aead_aes_128_ccm_bluetooth(), kAESKey, sizeof(kAESKey), 0, NULL))
   {
@@ -159,6 +158,7 @@ int main(int argc, char **argv) {
     goto err;
   }
 
+  /* AES-CCM Encryption */
   printf("About to AES-CCM seal ");
   hexdump(output, out_len);
   if (!EVP_AEAD_CTX_seal(&aead_ctx, output, &out_len, sizeof(output), nonce,
@@ -171,6 +171,23 @@ int main(int argc, char **argv) {
   printf("  got ");
   hexdump(output, out_len);
 
+  /* AES-CCM Decryption */
+  if (AES_set_decrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key) != 0) {
+    printf("AES decrypt failed\n");
+    goto err;
+  }
+  printf("About to AES-CCM open ");
+  hexdump(output, out_len);
+  if (!EVP_AEAD_CTX_open(&aead_ctx, output, &out_len, sizeof(output), nonce,
+                        EVP_AEAD_nonce_length(EVP_aead_aes_128_ccm_bluetooth()),
+                        output, out_len, NULL, 0))
+  {
+    fprintf(stderr, "EVP_AEAD_CTX_open for AES-128-CCM failed.\n");
+    goto err;
+  }
+  printf("  got ");
+  hexdump(output, out_len);
+  
   OPENSSL_cleanse(&aes_key, sizeof(aes_key));
   EVP_AEAD_CTX_zero(&aead_ctx);
 
