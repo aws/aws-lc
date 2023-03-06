@@ -31,6 +31,8 @@ apply_patch "noinline-value_barrier_w"
 apply_patch "noinline-GetInPlaceMethods"
 apply_patch "noinline-HMAC_Update"
 apply_patch "noinline-HMAC_Final"
+apply_patch "noinline-HKDF_extract"
+apply_patch "noinline-HKDF_expand"
 
 # ...next, check the proofs using CMake's Release settings...
 

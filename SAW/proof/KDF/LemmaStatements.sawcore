@@ -1,0 +1,192 @@
+-- Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module LemmaStatements where
+import Prelude;
+
+ite_bool_and : Prop;
+ite_bool_and =
+  (h : Bool) -> (c : Bool) ->
+  EqTrue
+  (boolEq (ite Bool h c False) (and h c));
+
+bvEq_vecEq_48_8_16_equivalence : Prop;
+bvEq_vecEq_48_8_16_equivalence =
+  (x : Vec 48 (Vec 8 Bool)) ->
+  (y : Vec 48 (Vec 8 Bool)) ->
+  EqTrue
+  (boolEq
+    (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and
+      (bvEq 8 (at 48 (Vec 8 Bool) x 0) (at 48 (Vec 8 Bool) y 0))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 1) (at 48 (Vec 8 Bool) y 1)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 2) (at 48 (Vec 8 Bool) y 2)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 3) (at 48 (Vec 8 Bool) y 3)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 4) (at 48 (Vec 8 Bool) y 4)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 5) (at 48 (Vec 8 Bool) y 5)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 6) (at 48 (Vec 8 Bool) y 6)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 7) (at 48 (Vec 8 Bool) y 7)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 8) (at 48 (Vec 8 Bool) y 8)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 9) (at 48 (Vec 8 Bool) y 9)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 10) (at 48 (Vec 8 Bool) y 10)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 11) (at 48 (Vec 8 Bool) y 11)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 12) (at 48 (Vec 8 Bool) y 12)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 13) (at 48 (Vec 8 Bool) y 13)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 14) (at 48 (Vec 8 Bool) y 14)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 15) (at 48 (Vec 8 Bool) y 15)))
+    (vecEq 16 (Vec 8 Bool) (bvEq 8)
+      (take (Vec 8 Bool) 16 32 x)
+      (take (Vec 8 Bool) 16 32 y)));
+
+bvEq_vecEq_48_8_32_equivalence : Prop;
+bvEq_vecEq_48_8_32_equivalence =
+  (x : Vec 48 (Vec 8 Bool)) ->
+  (y : Vec 48 (Vec 8 Bool)) ->
+  EqTrue
+  (boolEq
+    (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and
+      (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and
+      (bvEq 8 (at 48 (Vec 8 Bool) x 0) (at 48 (Vec 8 Bool) y 0))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 1) (at 48 (Vec 8 Bool) y 1)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 2) (at 48 (Vec 8 Bool) y 2)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 3) (at 48 (Vec 8 Bool) y 3)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 4) (at 48 (Vec 8 Bool) y 4)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 5) (at 48 (Vec 8 Bool) y 5)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 6) (at 48 (Vec 8 Bool) y 6)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 7) (at 48 (Vec 8 Bool) y 7)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 8) (at 48 (Vec 8 Bool) y 8)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 9) (at 48 (Vec 8 Bool) y 9)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 10) (at 48 (Vec 8 Bool) y 10)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 11) (at 48 (Vec 8 Bool) y 11)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 12) (at 48 (Vec 8 Bool) y 12)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 13) (at 48 (Vec 8 Bool) y 13)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 14) (at 48 (Vec 8 Bool) y 14)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 15) (at 48 (Vec 8 Bool) y 15)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 16) (at 48 (Vec 8 Bool) y 16)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 17) (at 48 (Vec 8 Bool) y 17)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 18) (at 48 (Vec 8 Bool) y 18)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 19) (at 48 (Vec 8 Bool) y 19)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 20) (at 48 (Vec 8 Bool) y 20)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 21) (at 48 (Vec 8 Bool) y 21)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 22) (at 48 (Vec 8 Bool) y 22)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 23) (at 48 (Vec 8 Bool) y 23)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 24) (at 48 (Vec 8 Bool) y 24)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 25) (at 48 (Vec 8 Bool) y 25)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 26) (at 48 (Vec 8 Bool) y 26)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 27) (at 48 (Vec 8 Bool) y 27)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 28) (at 48 (Vec 8 Bool) y 28)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 29) (at 48 (Vec 8 Bool) y 29)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 30) (at 48 (Vec 8 Bool) y 30)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 31) (at 48 (Vec 8 Bool) y 31)))
+    (vecEq 32 (Vec 8 Bool) (bvEq 8)
+      (take (Vec 8 Bool) 32 16 x)
+      (take (Vec 8 Bool) 32 16 y)));
+
+bvEq_vecEq_48_8_48_equivalence : Prop;
+bvEq_vecEq_48_8_48_equivalence =
+  (x : Vec 48 (Vec 8 Bool)) ->
+  (y : Vec 48 (Vec 8 Bool)) ->
+  EqTrue
+  (boolEq
+    (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and
+      (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and
+      (and (and (and (and (and (and (and (and (and (and (and (and (and (and (and
+      (bvEq 8 (at 48 (Vec 8 Bool) x 0) (at 48 (Vec 8 Bool) y 0))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 1) (at 48 (Vec 8 Bool) y 1)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 2) (at 48 (Vec 8 Bool) y 2)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 3) (at 48 (Vec 8 Bool) y 3)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 4) (at 48 (Vec 8 Bool) y 4)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 5) (at 48 (Vec 8 Bool) y 5)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 6) (at 48 (Vec 8 Bool) y 6)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 7) (at 48 (Vec 8 Bool) y 7)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 8) (at 48 (Vec 8 Bool) y 8)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 9) (at 48 (Vec 8 Bool) y 9)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 10) (at 48 (Vec 8 Bool) y 10)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 11) (at 48 (Vec 8 Bool) y 11)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 12) (at 48 (Vec 8 Bool) y 12)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 13) (at 48 (Vec 8 Bool) y 13)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 14) (at 48 (Vec 8 Bool) y 14)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 15) (at 48 (Vec 8 Bool) y 15)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 16) (at 48 (Vec 8 Bool) y 16)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 17) (at 48 (Vec 8 Bool) y 17)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 18) (at 48 (Vec 8 Bool) y 18)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 19) (at 48 (Vec 8 Bool) y 19)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 20) (at 48 (Vec 8 Bool) y 20)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 21) (at 48 (Vec 8 Bool) y 21)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 22) (at 48 (Vec 8 Bool) y 22)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 23) (at 48 (Vec 8 Bool) y 23)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 24) (at 48 (Vec 8 Bool) y 24)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 25) (at 48 (Vec 8 Bool) y 25)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 26) (at 48 (Vec 8 Bool) y 26)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 27) (at 48 (Vec 8 Bool) y 27)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 28) (at 48 (Vec 8 Bool) y 28)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 29) (at 48 (Vec 8 Bool) y 29)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 30) (at 48 (Vec 8 Bool) y 30)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 31) (at 48 (Vec 8 Bool) y 31)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 32) (at 48 (Vec 8 Bool) y 32)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 33) (at 48 (Vec 8 Bool) y 33)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 34) (at 48 (Vec 8 Bool) y 34)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 35) (at 48 (Vec 8 Bool) y 35)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 36) (at 48 (Vec 8 Bool) y 36)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 37) (at 48 (Vec 8 Bool) y 37)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 38) (at 48 (Vec 8 Bool) y 38)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 39) (at 48 (Vec 8 Bool) y 39)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 40) (at 48 (Vec 8 Bool) y 40)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 41) (at 48 (Vec 8 Bool) y 41)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 42) (at 48 (Vec 8 Bool) y 42)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 43) (at 48 (Vec 8 Bool) y 43)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 44) (at 48 (Vec 8 Bool) y 44)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 45) (at 48 (Vec 8 Bool) y 45)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 46) (at 48 (Vec 8 Bool) y 46)))
+      (bvEq 8 (at 48 (Vec 8 Bool) x 47) (at 48 (Vec 8 Bool) y 47)))
+    (vecEq 48 (Vec 8 Bool) (bvEq 8)
+      (take (Vec 8 Bool) 48 0 x)
+      (take (Vec 8 Bool) 48 0 y)));
+
+bvEq_vecEq_8_64_equivalence : Prop;
+bvEq_vecEq_8_64_equivalence =
+  (x : Vec 8 (Vec 64 Bool)) ->
+  (y : Vec 8 (Vec 64 Bool)) ->
+  (m : Array (Vec 64 Bool) (Vec 8 Bool)) ->
+  (n : Array (Vec 64 Bool) (Vec 8 Bool)) ->
+  (a : Vec 32 Bool) ->
+  (b : Vec 32 Bool) ->
+  (c : Vec 128 Bool) ->
+  (d : Vec 128 Bool) ->
+  EqTrue
+  (boolEq
+    (and (and (and (and (and (and (and (and (and (and
+      (arrayRangeEq 64 (Vec 8 Bool) m (bvNat 64 0) n (bvNat 64 0) (bvNat 64 128))
+        (bvEq 64 (at 8 (Vec 64 Bool) x 0) (at 8 (Vec 64 Bool) y 0)))
+          (bvEq 64 (at 8 (Vec 64 Bool) x 1) (at 8 (Vec 64 Bool) y 1)))
+            (bvEq 64 (at 8 (Vec 64 Bool) x 2) (at 8 (Vec 64 Bool) y 2)))
+              (bvEq 64 (at 8 (Vec 64 Bool) x 3) (at 8 (Vec 64 Bool) y 3)))
+                (bvEq 64 (at 8 (Vec 64 Bool) x 4) (at 8 (Vec 64 Bool) y 4)))
+                  (bvEq 64 (at 8 (Vec 64 Bool) x 5) (at 8 (Vec 64 Bool) y 5)))
+                    (bvEq 64 (at 8 (Vec 64 Bool) x 6) (at 8 (Vec 64 Bool) y 6)))
+                      (bvEq 64 (at 8 (Vec 64 Bool) x 7) (at 8 (Vec 64 Bool) y 7)))
+                        (bvEq 32 a b)) (bvEq 128 c d))
+    (and (arrayRangeEq 64 (Vec 8 Bool) m (bvNat 64 0) n (bvNat 64 0) (bvNat 64 128))
+      (and (vecEq 8 (Vec 64 Bool) (bvEq 64) x y)
+        (and (bvEq 32 a b) (bvEq 128 c d)))));
+
+replicate_128_8_equivalence : Prop;
+replicate_128_8_equivalence =
+EqTrue
+(vecEq 128 (Vec 8 Bool) (bvEq 8)
+       [ bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0
+       , bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0
+       , bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0
+       , bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0
+       , bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0
+       , bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0
+       , bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0
+       , bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0
+       , bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0
+       , bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0
+       , bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0
+       , bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0
+       , bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0
+       , bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0
+       , bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0
+       , bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0, bvNat 8 0 ]
+       (replicate 128 (Vec 8 Bool) (bvNat 8 0)));

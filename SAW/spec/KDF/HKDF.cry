@@ -1,0 +1,41 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
+*/
+
+/*
+  References:
+    https://www.rfc-editor.org/rfc/rfc5869.html (Main source)
+    https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Cr2.pdf
+    https://eprint.iacr.org/2010/264.pdf
+*/
+
+module KDF::HKDF where
+
+import Array
+import Common::ByteArray
+import HASH::SHA384
+import HASH::HMAC
+import HASH::HMAC_Seq
+
+type maxHash = 255
+
+HKDF_extract : ByteArray -> [64] -> ByteArray -> [64] -> [digestsize_bytes][8]
+HKDF_extract salt salt_len ikm ikm_len =
+  HMAC_Array (HMACState_zeroized) salt salt_len ikm ikm_len
+
+HKDF_expand : {l} (l <= maxHash*digestsize_bytes) => [digestsize_bytes][8] -> ByteArray -> [64] -> [l][8]
+HKDF_expand prk info info_len = take (join (tail t))
+  where t = [zero:[digestsize_bytes][8]]
+            # [ HMAC_SeqKey (HMACState_zeroized) prk data data_len
+                where data = if i == 1
+                             then arrayUpdate (arrayCopy (arrayConstant 0) 0 info 0 info_len) info_len 1
+                             else arrayUpdate (arrayCopy (arrayRangeUpdate (arrayConstant 0) 0 prev)
+                                                         `(digestsize_bytes) info 0 info_len)
+                                              (`(digestsize_bytes) + info_len)
+                                              i
+                      data_len = if i == 1 then info_len + 1 else `(digestsize_bytes) + info_len + 1
+              | prev <- t | i <- [ 1 : [8] ...] ]
+
+HKDF : {l} (l <= maxHash*digestsize_bytes) => ByteArray -> [64] -> ByteArray -> [64] -> ByteArray -> [64] -> [l][8]
+HKDF ikm ikm_len salt salt_len info info_len = HKDF_expand`{l=l} (HKDF_extract salt salt_len ikm ikm_len) info info_len

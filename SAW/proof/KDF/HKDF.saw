@@ -1,0 +1,111 @@
+/*
+* Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+* SPDX-License-Identifier: Apache-2.0
+*/
+
+enable_experimental;
+
+let digestOut_64_pre = do {
+  out_ptr <- llvm_alloc (llvm_array SHA_DIGEST_LENGTH i8);
+  out_len_ptr <- llvm_alloc i64;
+  return (out_ptr, out_len_ptr);
+};
+
+let digestOut_64_post out_ptr out_len_ptr out_value = do {
+  crucible_points_to out_ptr out_value;
+  crucible_points_to out_len_ptr (crucible_term {{`SHA_DIGEST_LENGTH : [64]}} );
+};
+
+// HKDF_extract
+let HKDF_extract_spec = do {
+  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+  alloc_md_globals;
+  alloc_hmac_globals;
+  points_to_env_md_st (crucible_global (md_storage HMAC_MD_INDEX));
+
+  secret_len <- crucible_fresh_var "secret_len" i64;
+  (secret, secret_ptr) <- ptr_to_fresh_array_readonly "secret" secret_len;
+  salt_len <- crucible_fresh_var "salt_len" i64;
+  (salt, salt_ptr) <- ptr_to_fresh_array_readonly "salt" salt_len;
+
+  (out_ptr, out_len_ptr) <- digestOut_64_pre;
+
+  crucible_execute_func
+  [ out_ptr
+  , out_len_ptr
+  , (crucible_global (md_storage HMAC_MD_INDEX))
+  , secret_ptr
+  , (crucible_term secret_len)
+  , salt_ptr
+  , (crucible_term salt_len)
+  ];
+
+  global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
+  points_to_env_md_st (crucible_global (md_storage HMAC_MD_INDEX));
+
+  digestOut_64_post out_ptr out_len_ptr (crucible_term {{ HKDF_extract salt salt_len secret secret_len }});
+
+  crucible_return (crucible_term {{ 1 : [32] }});
+};
+
+// HKDF_expand specification
+let HKDF_out = "HKDF.out";
+
+let HKDF_expand_spec outLen = do {
+  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+  alloc_md_globals;
+  alloc_hmac_globals;
+  points_to_env_md_st (crucible_global (md_storage HMAC_MD_INDEX));
+
+  out_ptr <- llvm_alloc (llvm_array outLen i8);
+  (prk, prk_ptr) <- ptr_to_fresh_readonly "prk" (llvm_array SHA_DIGEST_LENGTH i8);
+  info_len <- crucible_fresh_var "info_len" i64;
+  (info, info_ptr) <- ptr_to_fresh_array_readonly "info" info_len;
+
+  crucible_execute_func
+  [ out_ptr
+  , (crucible_term {{ `outLen : [64] }} )
+  , (crucible_global (md_storage HMAC_MD_INDEX))
+  , prk_ptr
+  , (crucible_term {{ `SHA_DIGEST_LENGTH : [64]}} )
+  , info_ptr
+  , (crucible_term info_len)
+  ];
+
+  llvm_setup_with_tag HKDF_out
+    (crucible_points_to out_ptr (crucible_term {{ HKDF_expand`{l = outLen} prk info info_len }}));
+
+  crucible_return (crucible_term {{ 1 : [32] }});
+};
+
+// HKDF specification
+let HKDF_spec outLen = do {
+  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+  alloc_md_globals;
+  alloc_hmac_globals;
+  points_to_env_md_st (crucible_global (md_storage HMAC_MD_INDEX));
+
+  out_ptr <- llvm_alloc (llvm_array outLen i8);
+  secret_len <- crucible_fresh_var "secret_len" i64;
+  (secret, secret_ptr) <- ptr_to_fresh_array_readonly "secret" secret_len;
+  salt_len <- crucible_fresh_var "salt_len" i64;
+  (salt, salt_ptr) <- ptr_to_fresh_array_readonly "salt" salt_len;
+  info_len <- crucible_fresh_var "info_len" i64;
+  (info, info_ptr) <- ptr_to_fresh_array_readonly "info" info_len;
+
+  crucible_execute_func
+  [ out_ptr
+  , (crucible_term {{ `outLen : [64] }} )
+  , (crucible_global (md_storage HMAC_MD_INDEX))
+  , secret_ptr
+  , (crucible_term secret_len)
+  , salt_ptr
+  , (crucible_term salt_len)
+  , info_ptr
+  , (crucible_term info_len)
+  ];
+
+  crucible_points_to out_ptr (crucible_term {{ HKDF`{l = outLen} secret secret_len salt salt_len info info_len }});
+
+  crucible_return (crucible_term {{ 1 : [32] }});
+};

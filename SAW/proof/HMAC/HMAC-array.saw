@@ -65,6 +65,17 @@ let hmac_ctx_has_been_initialized ptr = do {
   crucible_postcond {{state == 1 \/ state == 2}};
 };
 
+// hmac_ctx is ready for use but still need HMAC_Init_ex called
+let hmac_ctx_ready_precond ptr = do {
+  state <- points_to_hmac_ctx_state ptr;
+  crucible_precond {{state == 3}};
+};
+
+let hmac_ctx_ready_postcond ptr = do {
+  state <- points_to_hmac_ctx_state ptr;
+  crucible_postcond {{state == 3}};
+};
+
 // The invariable that internal buffer offsets n are less than SHA512_CBLOCK and
 // the internal buffer offset for o_ctx equal 0
 let hmac_ctx_n_inv ctx = {{
@@ -84,6 +95,18 @@ let hmac_precond ptr ctx = do {
 let hmac_postcond ptr ctx = do {
   points_to_env_md_st (crucible_global (md_storage HMAC_MD_INDEX));
   hmac_ctx_has_been_initialized ptr;
+  hmac_ctx_n_postcond ctx;
+};
+
+let hmac_ready_precond ptr ctx = do {
+  points_to_env_md_st (crucible_global (md_storage HMAC_MD_INDEX));
+  hmac_ctx_ready_precond ptr;
+  hmac_ctx_n_precond ctx;
+};
+
+let hmac_ready_postcond ptr ctx = do {
+  points_to_env_md_st (crucible_global (md_storage HMAC_MD_INDEX));
+  hmac_ctx_ready_postcond ptr;
   hmac_ctx_n_postcond ctx;
 };
 
@@ -154,6 +177,37 @@ let HMAC_Init_ex_array_spec = do {
   crucible_return (crucible_term {{ 1 : [32] }});
 };
 
+let HMAC_Init_ex_null_spec = do {
+  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+  alloc_md_globals;
+
+  hmac_ctx_ptr <- llvm_alloc (llvm_struct "struct.hmac_ctx_st");
+  hmac_ctx <- fresh_hmac_state_st_array "hmac_ctx";
+  points_to_hmac_ctx_st_array hmac_ctx_ptr hmac_ctx;
+  hmac_ready_precond hmac_ctx_ptr hmac_ctx;
+
+  // The ENGINE input is not used in the body of function HMAC_Init_ex
+  // (The assertion is optimized away by LLVM).
+  // Due to LLVM optimizations, the ENGINE input argument is optimized to be `undef`.
+  // When conducting an override with HMAC_Init_ex, `crucible_null` will not match
+  // with `undef`. Making engine_ptr a crucible_fresh_var allows the override to succeed.
+  engine_ptr <- crucible_fresh_var "engine_ptr" i64;
+
+  crucible_execute_func
+  [ hmac_ctx_ptr
+  , crucible_null
+  , (crucible_term {{ 0 : [64] }})
+  , crucible_null
+  , (crucible_term engine_ptr)
+  ];
+
+  global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
+  points_to_hmac_ctx_st_array hmac_ctx_ptr hmac_ctx;
+  hmac_postcond hmac_ctx_ptr hmac_ctx;
+
+  crucible_return (crucible_term {{ 1 : [32] }});
+};
+
 // Specification for HMAC_Update_Array
 let HMAC_Update_array_spec = do {
   global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
@@ -203,6 +257,41 @@ let HMAC_Final_array_spec withLength = do {
   crucible_execute_func [ hmac_ctx_ptr , md_out_ptr, s_ptr ];
 
   global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
+  points_to_env_md_st (crucible_global (md_storage HMAC_MD_INDEX));
+
+  digestOut_post withLength md_out_ptr s_ptr (crucible_term {{ HMACFinal_Array hmac_ctx }});
+
+  crucible_return (crucible_term {{ 1 : [32] }});
+};
+
+// Specification for HMAC_Final_Array with postcond on hmac_ctx
+let HMAC_Final_array_with_hmac_ctx_spec withLength = do {
+  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+  alloc_md_globals;
+
+  hmac_ctx_ptr <- llvm_alloc (llvm_struct "struct.hmac_ctx_st");
+  hmac_ctx <- fresh_hmac_state_st_array "hmac_ctx";
+  points_to_hmac_ctx_st_array hmac_ctx_ptr hmac_ctx;
+  hmac_precond hmac_ctx_ptr hmac_ctx;
+
+  (md_out_ptr, s_ptr) <- digestOut_pre withLength;
+
+  crucible_execute_func [ hmac_ctx_ptr , md_out_ptr, s_ptr ];
+
+  global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
+  points_to_env_md_st (crucible_global (md_storage HMAC_MD_INDEX));
+
+  let res = {{ { i_ctx = hmac_ctx.i_ctx , o_ctx = hmac_ctx.o_ctx , md_ctx = hmac_ctx.i_ctx } }};
+  res_md_ctx_block <- crucible_fresh_cryptol_var "res_md_ctx_block" {| ByteArray |};
+  points_to_hmac_ctx_st_array
+    hmac_ctx_ptr
+    {{ { i_ctx = res.i_ctx
+       , o_ctx = res.o_ctx
+       , md_ctx = { h = res.md_ctx.h, block = res_md_ctx_block, n = res.md_ctx.n, sz = res.md_ctx.sz } } }};
+  // We say the hmac_ctx.md_ctx.block points to some block res_md_ctx_block.
+  // Since the content in block doesn't matter, this postcondition is enough for
+  // satisfying the preconditions of the next HMAC_Init_ex call.
+  hmac_ready_postcond hmac_ctx_ptr res;
 
   digestOut_post withLength md_out_ptr s_ptr (crucible_term {{ HMACFinal_Array hmac_ctx }});
 
@@ -236,6 +325,7 @@ let HMAC_array_spec withLength = do {
   ];
 
   global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
+  points_to_env_md_st (crucible_global (md_storage HMAC_MD_INDEX));
 
   // llvm_setup_with_tag tags this postcondition with the name "HMAC.md_out"
   // so that the proof script can refer to this subgoal

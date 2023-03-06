@@ -9,10 +9,12 @@ enable_experimental;
 import "../../../cryptol-specs/Primitive/Keyless/Hash/SHA384.cry";
 import "../../spec/HASH/SHA384.cry";
 import "../../spec/HASH/HMAC.cry";
+import "../../spec/HASH/HMAC_Seq.cry";
 import "../../spec/HASH/HMAC_Helper.cry";
 // Include SHA512 helper functions
-include "../SHA512/SHA512-384-common.saw";
-// Include SHA rewrites
+include "../SHA512/SHA512-384.saw";
+include "../SHA512/SHA512-common.saw";
+// Include SHA512 rewrites
 include "../SHA512/goal-rewrites.saw";
 // Include additional SHA512 definitions
 include "../SHA512/SHA512-function-specs.saw";
@@ -152,6 +154,24 @@ let verify_HMAC_Init_ex_array_spec = do {
 };
 HMAC_Init_ex_array_ov <- verify_HMAC_Init_ex_array_spec;
 
+// verify HMAC_Init_ex_null
+let verify_HMAC_Init_ex_null_spec = do {
+  print "Verifying HMAC_Init_ex_null_spec.";
+  llvm_verify m "HMAC_Init_ex"
+  [ GetInPlaceMethods_ov
+  , SHA512_Update_0_SHA512_CBLOCK_ov
+  , SHA512_Final_array_ov
+  , SHA512_Update_array_ov
+  ]
+  true
+  HMAC_Init_ex_null_spec
+  (do {
+    goal_eval_unint ["SHAUpdate_Array", "SHAFinal_Array", "SHAUpdate"];
+    w4_unint_z3 ["SHAUpdate_Array", "SHAFinal_Array", "SHAUpdate"];
+  });
+};
+verify_HMAC_Init_ex_null_spec;
+
 // Verify HMAC_Update_array
 let verify_HMAC_Update_array_spec = do {
   print "Verifying HMAC_Update_array_spec";
@@ -180,8 +200,26 @@ let verify_HMAC_Final_array_with_length withLength = do {
 };
 HMAC_Final_array_ovs <- for [false, true] verify_HMAC_Final_array_with_length;
 
+// Verify HMAC_Final_array with postcond for hmac_ctx
+let verify_HMAC_Final_array_with_hmac_ctx_with_length withLength = do {
+  print (str_concat "Verifying HMAC_Final_array_with_hmac_ctx_spec with withLength=" (show withLength));
+  llvm_verify m "HMAC_Final"
+  [ SHA512_Final_SHA_DIGEST_LENGTH_ov
+  , SHA512_Update_0_SHA_DIGEST_LENGTH_ov
+  , SHA512_Final_array_ov
+  ]
+  true
+  (HMAC_Final_array_with_hmac_ctx_spec withLength)
+  (do {
+    goal_eval_unint ["SHAFinal_Array", "SHAFinal"];
+    w4_unint_z3 ["SHAFinal_Array", "SHAFinal"];
+  });
+};
+for [false, true] verify_HMAC_Final_array_with_hmac_ctx_with_length;
+
 // Verify HMAC_array
 let verify_HMAC_array_spec withLength = do {
+  print (str_concat "Verifying HMAC_array_spec with withLength=" (show withLength));
   llvm_verify m "HMAC"
     (concat
     [ OPENSSL_cleanse_ov ]

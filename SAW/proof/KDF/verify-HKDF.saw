@@ -1,0 +1,116 @@
+/*
+* Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+* SPDX-License-Identifier: Apache-2.0
+*/
+
+enable_experimental;
+
+import "../../../cryptol-specs/Primitive/Keyless/Hash/SHA384.cry";
+import "../../spec/HASH/SHA384.cry";
+import "../../spec/HASH/HMAC.cry";
+import "../../spec/HASH/HMAC_Helper.cry";
+import "../../spec/HASH/HMAC_Seq.cry";
+import "../../spec/KDF/HKDF.cry";
+
+include "../SHA512/SHA512-384-common.saw";
+include "../SHA512/goal-rewrites.saw";
+include "../SHA512/SHA512-function-specs.saw";
+include "../HMAC/HMAC-SHA384.saw";
+include "../HMAC/HMAC-common.saw";
+include "../HMAC/HMAC-array.saw";
+include "../HMAC/lemmas.saw";
+
+include "lemmas.saw";
+include "HKDF.saw";
+
+// Assume HMAC, HMAC_Init_ex, HMAC_Update and HMAC_Final satisfy the specs to save proof time
+// The specifications are verified in ../HMAC/verify-HMAC.saw
+HMAC_array_withLength_ov <- crucible_llvm_unsafe_assume_spec m "HMAC" (HMAC_array_spec true);
+HMAC_Init_ex_array_ov <- crucible_llvm_unsafe_assume_spec m "HMAC_Init_ex" HMAC_Init_ex_array_spec;
+HMAC_Update_array_ov <- crucible_llvm_unsafe_assume_spec m "HMAC_Update" HMAC_Update_array_spec;
+HMAC_Final_array_ov <- crucible_llvm_unsafe_assume_spec m "HMAC_Final" (HMAC_Final_array_with_hmac_ctx_spec false);
+
+// verify HKDF_extract
+let verify_HKDF_extract = do {
+  print "Verifying HKDF_extract";
+  llvm_verify m "HKDF_extract"
+  [HMAC_array_withLength_ov]
+  true
+  HKDF_extract_spec
+  (w4_unint_z3 ["HMAC_Array"]);
+};
+HKDF_extract_ov <- verify_HKDF_extract;
+
+// verify HKDF_expand with output length 16 32 48
+let verify_HKDF_expand (outLen, bvEq_vecEq_equivalence_thm, HMAC_expand_thm) = do {
+  print (str_concat "Verifying HKDF_expand with digest length =" (show outLen));
+  llvm_verify m "HKDF_expand"
+  [  HMAC_Init_ex_array_ov
+  , OPENSSL_cleanse_ov
+  , OPENSSL_malloc_init_ov
+  , HMAC_Final_array_ov
+  , HMAC_Update_array_ov
+  ]
+  true
+  (HKDF_expand_spec outLen)
+  (do {
+    hard_goal <- goal_has_some_tag [HKDF_out];
+    if hard_goal then do {
+      goal_eval_unint ["HMACInit_Array", "SHAUpdate_Array", "HMACFinal_Array"];
+      simplify (addsimps [ArrayCopy_of_arrayConstant_0_thm] empty_ss);
+      simplify (addsimps [HMACInit_Array_o_ctx_block_equal_zero_thm] empty_ss);
+      simplify (addsimps [HMACInit_Array_o_ctx_n_equal_0_thm] empty_ss);
+      goal_eval_unint ["HMACInit_Array", "SHAUpdate_Array", "HMACFinal_Array"];
+      normalize_sequent;
+      focus_concl 3;
+      simplify (addsimps [bvEq_vecEq_equivalence_thm] empty_ss);
+      simplify (addsimps [replicate_128_8_equivalence_thm] empty_ss);
+      goal_apply HMAC_expand_thm;
+      // (1)
+      w4_unint_z3 ["HMACInit_Array", "SHAUpdate_Array", "HMACFinal_Array"];
+      // (2)
+      w4_unint_z3 ["HMACInit_Array", "SHAUpdate_Array", "HMACFinal_Array"];
+      // (3)
+      w4_unint_z3 ["HMACInit_Array", "SHAUpdate_Array", "HMACFinal_Array"];
+      // (4)
+      w4_unint_z3 ["HMACInit_Array", "SHAUpdate_Array", "HMACFinal_Array"];
+      // (5)
+      goal_eval_unint ["HMACInit_Array", "SHAUpdate_Array", "HMACFinal_Array"];
+      normalize_sequent;
+      focus_concl 3;
+      simplify (addsimps [bvEq_vecEq_8_64_equivalence_thm] empty_ss);
+      goal_apply SHAUpdate_2compositional_concrete_thm;
+      // (5.1)
+      w4_unint_z3 ["HMACInit_Array", "SHAUpdate_Array", "HMACFinal_Array"];
+      // (5.2)
+      w4_unint_z3 ["HMACInit_Array", "SHAUpdate_Array", "HMACFinal_Array"];
+      // (6)
+      goal_eval_unint ["HMACInit_Array", "SHAUpdate_Array", "HMACFinal_Array"];
+      goal_insert HMACState_Array_eq_implies_HMACFinal_Array_equal_thm;
+      w4_unint_z3 ["HMACInit_Array", "SHAUpdate_Array", "HMACFinal_Array"];
+    } else do {
+      goal_eval_unint ["HMACInit_Array", "SHAUpdate_Array", "HMACFinal_Array"];
+      simplify (addsimps [ArrayCopy_of_arrayConstant_0_thm] empty_ss);
+      simplify (addsimps [HMACInit_Array_o_ctx_block_equal_zero_thm] empty_ss);
+      simplify (addsimps [HMACInit_Array_o_ctx_n_equal_0_thm] empty_ss);
+      w4_unint_z3 ["HMACInit_Array", "SHAUpdate_Array", "HMACFinal_Array"];
+    };
+  });
+};
+HKDF_expand_ovs <-
+for [ (16, bvEq_vecEq_48_8_16_equivalence_thm, HMAC_expand_16_thm)
+    , (32, bvEq_vecEq_48_8_32_equivalence_thm, HMAC_expand_32_thm)
+    , (48, bvEq_vecEq_48_8_48_equivalence_thm, HMAC_expand_48_thm) ] verify_HKDF_expand;
+
+// verify HKDF with output length 16 32 48
+let verify_HKDF outLen = do {
+  print (str_concat "Verifying HKDF with output key length = " (show outLen));
+  llvm_verify m "HKDF"
+  (concat
+    HKDF_expand_ovs
+    [ HKDF_extract_ov])
+  true
+  (HKDF_spec outLen)
+  (w4_unint_z3 ["HKDF_expand", "HKDF_extract"]);
+};
+for [16, 32, 48] verify_HKDF;

@@ -1,0 +1,16 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
+*/
+
+module HASH::HMAC_Seq where
+
+import Primitive::Keyless::Hash::SHA384
+import Array
+import Common::ByteArray
+import HASH::SHA384
+import HASH::HMAC
+
+HMAC_SeqKey : HMACState_Array -> [digestsize_bytes][8] -> ByteArray -> [64] -> [digestsize_bytes][8]
+HMAC_SeqKey state key data data_len = HMAC_Array state key_array `(digestsize_bytes) data data_len
+  where key_array = arrayRangeUpdate (arrayConstant 0) 0 key

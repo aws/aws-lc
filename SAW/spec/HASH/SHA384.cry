@@ -9,13 +9,17 @@ import Primitive::Keyless::Hash::SHA384
 import Array
 import Common::ByteArray
 
+type digest_size = 384
+type digestsize_bytes = 48
+type blocksize_bytes = 128
+
 SHAInit_Array2 : SHAState_Array -> SHAState_Array
 SHAInit_Array2 state = { h = SHAInit_Array.h
                        , block = state.block
                        , n = 0
                        , sz = 0 }
 
-SHAImp_Array2 : SHAState_Array -> ByteArray -> [64] -> [384]
+SHAImp_Array2 : SHAState_Array -> ByteArray -> [64] -> [digest_size]
 SHAImp_Array2 state msg msg_len = SHAFinal_Array (SHAUpdate_Array (SHAInit_Array2 state) msg msg_len)
 
 SHAInit_Array_zeroized : SHAState_Array
@@ -43,7 +47,7 @@ SHAState_eq state1 state2 =
 
 SHAState_Array_eq : SHAState_Array -> SHAState_Array -> Bool
 SHAState_Array_eq state1 state2 =
-     (arrayRangeEqual state1.block 0 state2.block 0 128)
+     (arrayRangeEqual state1.block 0 state2.block 0 `(blocksize_bytes))
   /\ state1.h == state2.h
   /\ state1.n == state2.n
   /\ state1.sz == state2.sz

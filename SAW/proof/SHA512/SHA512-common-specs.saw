@@ -1,0 +1,368 @@
+/* 
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
+*/
+
+
+enable_experimental;
+
+// Include helper functions
+include "../common/helpers.saw";
+// Include rewrite rules
+include "sha512_block_data_order-goal-rewrites.saw";
+
+/*
+ * SHA512 defines
+ */
+// Size of a block in bytes
+let SHA512_CBLOCK = 128;
+
+// Size of the SHA512 context struct
+let SHA512_CTX_SIZE = llvm_sizeof m (llvm_struct "struct.sha512_state_st");
+
+// Assume OpenSSL memory functions satisfy specs
+include "memory.saw";
+
+////////////////////////////////////////////////////////////////////////////////
+// Specifications
+
+/*
+ * This section of the SAW script contains specifications of the functions that
+ * SAW will verify.  Each specification can be broken down into 3 components:
+ * preconditions, a function call description, and postconditions.
+ *
+ * A precondition is a predicate that must be true prior to the application of
+ * a function for the specification's postcondition to hold.  Preconditions are
+ * typically restrictions on function inputs or global state.  For example, a
+ * function that returns the first element of an array might have a
+ * precondition that the array is not empty.  A specification makes no
+ * guarantees about how the function acts when the precondition is violated.
+ * In a SAW specification, preconditions are the statements that come before a
+ * function call description.  If a function has no preconditions we say that
+ * the precondition is "true", meaning that the postcondition holds for all
+ * possible inputs and program states.
+ *
+ * A function call description tells SAW how to call the function being
+ * specified.  It has the form:
+ *     crucible_execute_func [<list of arguments>]
+ * These arguments are typically from the preconditions, specification inputs,
+ * global variables, and literals.  SAW does not actually execute the function,
+ * but rather uses symbolic execution to examine all possible executions
+ * through the function, subject to precondition constraints.  For example,
+ * if a precondition states that a variable `ctx_ptr` is a pointer to an
+ * `env_md_ctx_st` struct:
+ *     ctx_ptr <- crucible_alloc (llvm_struct "struct.env_md_ctx_st");
+ * And the function call description takes `ctx_ptr` as an input:
+ *     crucible_execute_func [ctx_ptr];
+ * Then SAW will reason about the function over all possible `env_md_ctx_st`
+ * structs.  We call `ctx_ptr` a symbol because SAW does not evaluate it, but
+ * rather treats it as the set of all possible `env_md_ctx_st` structs.
+ *
+ * A postcondition is a predicate that must be true following the application
+ * of a function, assuming the function's precondition held.  From a logic
+ * perspective, you can think of this as:
+ *     (<conjunction of preconditions> /\ <function application>) ->
+ *     <conjunction of postconditions>
+ * where "/\" is logical AND and "->" is logical implication.  If a SAW proof
+ * succeeds, then SAW guarantees that the postconditions hold following function
+ * application, so long as the function's preconditions held just prior to the
+ * function's application.  In a SAW specification, postconditions are the
+ * statements that come after a function call description.  If a function has
+ * no postconditions, then we say that the postcondition is "true", meaning
+ * that the specification makes no guarantees about the function's behavior.
+ */
+
+/*
+ * Architecture features for the AVX+shrd code path
+ */
+let {{ ia32cap = [0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff] : [4][32] }};
+
+
+/*
+ * Specification of block function for SHA512
+ */
+let sha512_block_data_order_spec = do {
+  // Precondition: The function uses the AVX+shrd code path
+  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  // Precondition: `state_ptr` points to an array of 8 64 bit integers
+  (state, state_ptr) <- ptr_to_fresh "state" (llvm_array 8 i64);
+
+  // Precondition: `data_ptr` points to a const message block
+  (data, data_ptr) <- ptr_to_fresh_readonly "data" (llvm_array SHA512_CBLOCK i8);
+
+  // Call function with `state_ptr`, `data_ptr`, and the value `1`
+  crucible_execute_func [state_ptr, data_ptr, crucible_term {{ 1 : [64] }}];
+
+  // Postcondition: The function has not changed the variable that decides the AVX+shrd code path
+  global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  // Postcondition: The data pointed to by `state_ptr` is equivalent to the
+  // return value of the processBlock_Common Cryptol spec function applied to `state`
+  // and `data`.
+  crucible_points_to state_ptr (crucible_term {{ processBlock_Common state (split (join data)) }});
+};
+
+let sha512_block_data_order_array_spec = do {
+  // Precondition: The function uses the AVX+shrd code path
+  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  // Precondition: `state_ptr` points to an array of 8 64 bit integers
+  (state, state_ptr) <- ptr_to_fresh "state" (llvm_array 8 i64);
+
+  // Precondition: `data_ptr` points to const memory that contains `num`
+  // message blocks
+  num <- crucible_fresh_var "num" i64;
+  let len = {{ num * `SHA512_CBLOCK }};
+  (data, data_ptr) <- ptr_to_fresh_array_readonly "data" len;
+
+  crucible_precond {{ len != 0 }};
+
+  // Call function with `state_ptr`, `data_ptr`, and `num`
+  crucible_execute_func [state_ptr, data_ptr, (crucible_term num)];
+
+  // Postcondition: The function has not changed the variable that decides the AVX+shrd code path
+  global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  // Postcondition: The data pointed to by `state_ptr` is equivalent to the
+  // return value of the processBlock_Common Cryptol spec function applied to `state`
+  // and `data`.
+  crucible_points_to state_ptr (crucible_term {{ processBlocks state data 0 num }});
+};
+
+
+/*
+ * Helpers for specifying the SHA512 structs
+ */
+// Create a Cryptol SHAState
+let fresh_sha512_state_st name n = do {
+  // Hash value
+  h <- crucible_fresh_var (str_concat name ".h") (llvm_array 8 i64);
+  // Message block
+  block <- if eval_bool {{ `n == 0 }} then do {
+    // Do not specify anything about `sha512_state_st.p`
+    return {{ [] : [0][8] }};
+  } else do {
+    crucible_fresh_var (str_concat name ".block") (llvm_array n i8);
+  };
+  // Size
+  sz <- crucible_fresh_var (str_concat name ".sz") i128;
+  // Build SHAState, padding `block` with zeros to fit
+  return {{ { h = h, block = (block # zero) : [SHA512_CBLOCK][8], n = `n : [32], sz = sz } }};
+};
+
+/*
+ * The next functions all specify structs used in the C SHA implementation.
+ * Most of the statements in these are of the form:
+ *    crucible_points_to (crucible_field ptr "name") (crucible_term {{ term }})
+ * which indicates that the field `name` of the struct pointed to by `ptr`
+ * contains the value `term`.  Some have the form:
+ *    crucible_points_to (crucible_field ptr "name") (crucible_global GLOBAL)
+ * which indicates that the field `name` of the struct pointed to by `ptr`
+ * contains the value of the global variable `GLOBAL`.
+ * All statements that do not match these two forms are documented inline
+ */
+// Specify the sha512_state_st struct from a SHAState
+let sha512_state_st_h = "sha512_state_st.h";
+let sha512_state_st_sz = "sha512_state_st.sz";
+let sha512_state_st_block = "sha512_state_st.block";
+let sha512_state_st_num = "sha512_state_st.num";
+
+let points_to_sha512_state_st_common ptr (h, sz, block, n) num = do {
+  // llvm_setup_with_tag tags this postcondition with the name "sha512_state_st.h"
+  // so that the proof script can refer to this subgoal, and similar for others
+  llvm_setup_with_tag sha512_state_st_h
+    (crucible_points_to (crucible_field ptr "h") (crucible_term h));
+
+  // Specify `sha512_state_st.Nl` and `sha512_state_st.Nh` contain `sz`
+  llvm_setup_with_tag sha512_state_st_sz
+    (llvm_points_to_at_type (crucible_field ptr "Nl") i128 (crucible_term sz));
+
+  if eval_bool {{ `num == 0 }} then do {
+    // Do not specify anything about `sha512_state_st.p`
+    return ();
+  } else do {
+    // Specify that the first `num` bytes of `sha512_state_st.p` match the
+    // first `num` bits of `state.block`.
+    // Untyped check because the size of `sha512_state_st.p` does not match
+    // the size of (take`{num} state.block) unless `num` == `SHA512_CBLOCK`
+    llvm_setup_with_tag sha512_state_st_block
+      (crucible_points_to_untyped (crucible_field ptr "p") (crucible_term block));
+  };
+
+  llvm_setup_with_tag sha512_state_st_num
+    (crucible_points_to (crucible_field ptr "num") (crucible_term n));
+  crucible_points_to (crucible_field ptr "md_len") (crucible_term {{ `SHA_DIGEST_LENGTH : [32] }});
+};
+
+// Specify the sha512_state_st struct from a SHAState
+let points_to_sha512_state_st ptr state num = do {
+ points_to_sha512_state_st_common ptr ({{ state.h }}, {{ state.sz }}, {{ take`{num} state.block }}, {{ state.n }}) num;
+};
+
+let pointer_to_fresh_sha512_state_st name n = do {
+  // Hash value
+  h <- crucible_fresh_var (str_concat name ".h") (llvm_array 8 i64);
+  // Message block
+  block <- if eval_bool {{ `n == 0 }} then do {
+    // Do not specify anything about `sha512_state_st.p`
+    return {{ [] : [0][8] }};
+  } else do {
+    crucible_fresh_var (str_concat name ".block") (llvm_array n i8);
+  };
+  // Size
+  sz <- crucible_fresh_var (str_concat name ".sz") i128;
+  // Build SHAState, padding `block` with zeros to fit
+  let state = {{ { h = h, block = (block # zero) : [SHA512_CBLOCK][8], n = `n : [32], sz = sz } }};
+
+  // `ptr` is a pointer to a `sha512_state_st` struct
+  ptr <- crucible_alloc (llvm_struct "struct.sha512_state_st");
+  points_to_sha512_state_st_common ptr (h, sz, block, {{ `n : [32]}}) n;
+
+  return (state, ptr);
+};
+
+// Create a Cryptol SHAState
+let fresh_sha512_state_st_array name = do {
+  // Hash value
+  h <- crucible_fresh_var (str_concat name ".h") (llvm_array 8 i64);
+  // Message block
+  block <- crucible_fresh_cryptol_var (str_concat name ".block") {| ByteArray |};
+  // Index
+  n' <- crucible_fresh_var (str_concat name ".n") i8;
+  let n = {{ (0 # n') : [32] }};
+  // Size
+  sz <- crucible_fresh_var (str_concat name ".sz") i128;
+  // Build SHAState
+  return {{ { h = h, block = block, n = n, sz = sz } : SHAState_Array }};
+};
+
+/*
+ * The next functions all specify structs used in the C SHA implementation.
+ * Most of the statements in these are of the form:
+ *    crucible_points_to (crucible_field ptr "name") (crucible_term {{ term }})
+ * which indicates that the field `name` of the struct pointed to by `ptr`
+ * contains the value `term`.  Some have the form:
+ *    crucible_points_to (crucible_field ptr "name") (crucible_global GLOBAL)
+ * which indicates that the field `name` of the struct pointed to by `ptr`
+ * contains the value of the global variable `GLOBAL`.
+ * All statements that do not match these two forms are documented inline
+ */
+// Specify the sha512_state_st_array struct from a SHAState
+let points_to_sha512_state_st_common_array ptr (h, sz, block, n) = do {
+  (crucible_points_to_array_prefix (crucible_field ptr "p") block {{ `SHA512_CBLOCK : [64] }});
+
+  // Specify `sha512_state_st.Nl` and `sha512_state_st.Nh` contain `sz`
+  (llvm_points_to_at_type (crucible_field ptr "Nl") i128 (crucible_term sz));
+
+  (crucible_points_to (crucible_field ptr "h") (crucible_term h));
+
+  // `num` points to an array of 4 bytes,
+  // with the lowest byte being n and the three higher bytes being 0
+  (crucible_points_to
+    (llvm_cast_pointer (crucible_field ptr "num") (llvm_array 4 i8))
+    (llvm_array_value
+      [ crucible_term n
+      , crucible_term {{ 0 : [8] }}
+      , crucible_term {{ 0 : [8] }}
+      , crucible_term {{ 0 : [8] }}
+      ]));
+
+  crucible_points_to (crucible_field ptr "md_len") (crucible_term {{ `SHA_DIGEST_LENGTH : [32] }});
+};
+
+// Specify the sha512_state_st struct from a SHAState
+let points_to_sha512_state_st_array ptr state = do {
+  points_to_sha512_state_st_common_array ptr ({{ state.h }}, {{ state.sz }}, {{ state.block }}, {{ drop`{24} state.n }});
+};
+
+let pointer_to_fresh_sha512_state_st_array name = do {
+  // Hash value
+  h <- crucible_fresh_var (str_concat name ".h") (llvm_array 8 i64);
+  // Message block
+  block <- crucible_fresh_cryptol_var (str_concat name ".block") {| ByteArray |};
+  // Index
+  n <- crucible_fresh_var (str_concat name ".n") i8;
+  // Size
+  sz <- crucible_fresh_var (str_concat name ".sz") i128;
+  // Build SHAState
+  let state = {{ { h = h, block = block, n = 0 # n, sz = sz } : SHAState_Array }};
+
+  // `ptr` is a pointer to a `sha512_state_st` struct
+  ptr <- llvm_alloc_sym_init (llvm_struct "struct.sha512_state_st");
+  points_to_sha512_state_st_common_array ptr (h, sz, block, n);
+
+  return (state, ptr);
+};
+
+// Specify the env_md_st struct
+let points_to_env_md_st ptr = do {
+  //type
+  crucible_points_to (crucible_elem ptr 0) (crucible_term {{ `NID : [32] }});
+  //md_size
+  crucible_points_to (crucible_elem ptr 1) (crucible_term {{ `SHA_DIGEST_LENGTH : [32] }});
+  //flags
+  crucible_points_to (crucible_elem ptr 2) (crucible_term {{ 0 : [32] }});
+  //init
+  crucible_points_to (crucible_elem ptr 3) (crucible_global SHA_INIT);
+  //update
+  crucible_points_to (crucible_elem ptr 4) (crucible_global SHA_UPDATE);
+  //final
+  crucible_points_to (crucible_elem ptr 5) (crucible_global SHA_FINAL);
+  //block_size
+  crucible_points_to (crucible_elem ptr 6) (crucible_term {{ `SHA512_CBLOCK : [32] }});
+  //ctx_size
+  crucible_points_to (crucible_elem ptr 7) (crucible_term {{ `SHA512_CTX_SIZE : [32] }});
+};
+
+// Specify the env_md_ctx_st struct
+let points_to_env_md_ctx_st ptr digest_ptr md_data_ptr = do {
+  crucible_points_to (crucible_field ptr "digest") digest_ptr;
+  crucible_points_to (crucible_field ptr "md_data") md_data_ptr;
+
+  // Specify that the `pctx` and `pctx_ops` fields are null
+  crucible_points_to (crucible_field ptr "pctx") crucible_null;
+  crucible_points_to (crucible_field ptr "pctx_ops") crucible_null;
+};
+
+let points_to_evp_md_pctx_ops ptr = do {
+  //free
+  crucible_points_to (crucible_elem ptr 0) (crucible_global "EVP_PKEY_CTX_free");
+  //dup
+  crucible_points_to (crucible_elem ptr 1) (crucible_global "EVP_PKEY_CTX_dup");
+};
+
+let pointer_to_evp_md_pctx_ops = do {
+  ptr <- crucible_alloc_readonly (llvm_struct "struct.evp_md_pctx_ops");
+  points_to_evp_md_pctx_ops ptr;
+  return ptr;
+};
+
+// Specify the env_md_ctx_st struct with non-null pctx and pctx_ops
+let points_to_env_md_ctx_st_with_pctx ptr digest_ptr md_data_ptr pctx_ptr pctx_ops_ptr = do {
+  crucible_points_to (crucible_field ptr "digest") digest_ptr;
+  crucible_points_to (crucible_field ptr "md_data") md_data_ptr;
+  crucible_points_to (crucible_field ptr "pctx") pctx_ptr;
+  crucible_points_to (crucible_field ptr "pctx_ops") pctx_ops_ptr;
+  //crucible_points_to (crucible_field ptr "pctx_ops") (crucible_global "md_pctx_ops");
+};
+
+// Specification of `EVP_MD_pctx_ops_init`, the initialization
+// function for `EVP_MD_pctx_ops_storage`.
+let EVP_MD_pctx_ops_init_spec = do {
+  crucible_alloc_global "EVP_MD_pctx_ops_storage";
+  crucible_execute_func [];
+  points_to_evp_md_pctx_ops (crucible_global "EVP_MD_pctx_ops_storage");
+};
+let EVP_MD_pctx_ops_spec = do {
+  crucible_alloc_global "EVP_MD_pctx_ops_storage";
+  crucible_alloc_global "EVP_MD_pctx_ops_once";
+  crucible_execute_func
+    [ (crucible_global "EVP_MD_pctx_ops_once")
+    , (crucible_global "EVP_MD_pctx_ops_init")
+    ];
+  points_to_evp_md_pctx_ops (crucible_global "EVP_MD_pctx_ops_storage");
+};
+
+// Specifications of the various EVP functions
+include "evp-function-specs.saw";

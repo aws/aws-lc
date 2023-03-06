@@ -1,0 +1,238 @@
+/*
+* Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+* SPDX-License-Identifier: Apache-2.0
+*/
+
+enable_experimental;
+
+load_sawcore_from_file "LemmaStatements.sawcore";
+
+let eqTrue x = term_apply (parse_core "EqTrue") [x];
+
+let prove_lemma nm unfolds =
+prove_extcore (w4_unint_z3 [])
+  (beta_reduce_term
+    (unfold_term (concat [nm] unfolds) (parse_core_mod "LemmaStatements" nm)));
+
+print "Proving bvEq_vecEq_48_8_16_equivalence_thm";
+bvEq_vecEq_48_8_16_equivalence_thm <-
+  prove_lemma "bvEq_vecEq_48_8_16_equivalence" [];
+
+print "Proving bvEq_vecEq_48_8_32_equivalence_thm";
+bvEq_vecEq_48_8_32_equivalence_thm <-
+  prove_lemma "bvEq_vecEq_48_8_32_equivalence" [];
+
+print "Proving bvEq_vecEq_48_8_48_equivalence_thm";
+bvEq_vecEq_48_8_48_equivalence_thm <-
+  prove_lemma "bvEq_vecEq_48_8_48_equivalence" [];
+
+print "Proving bvEq_vecEq_8_64_equivalence_thm";
+bvEq_vecEq_8_64_equivalence_thm <-
+  prove_lemma "bvEq_vecEq_8_64_equivalence" [];
+
+print "Proving replicate_128_8_equivalence";
+replicate_128_8_equivalence_thm <-
+  prove_lemma "replicate_128_8_equivalence" [];
+
+print "Proving ite_bool_and_thm";
+ite_bool_and_thm <-
+  prove_lemma "ite_bool_and" [];
+
+
+print "Proving SHAUpdate_2compositional_thm";
+SHAUpdate_2compositional_thm <- prove_print
+(do {
+  goal_eval_unint ["processBlocks", "processBlock_Common"];
+  simplify (addsimps [processBlocks_0_1_thm] empty_ss);
+  simplify (addsimps [arrayRangeEq_arrayRangeLookup_eq_thm, arrayCopy_zero_thm] empty_ss);
+  w4_unint_z3 ["processBlocks", "processBlock_Common"];
+})
+(rewrite (cryptol_ss ())
+{{ \(state : HMACState_Array) block1 block2 ctr info info_len ->
+((((arrayRangeEq block1 0 state.md_ctx.block 0 128) && (arrayRangeEq block2 0 res.block 0 128)) ==>
+  (SHAState_Array_eq (SHAUpdate_Array {block = block2, h = h1, n = n1, sz = sz1}
+                                      (arrayUpdate (arrayConstant 0) 0 ctr) 1)
+                     (SHAUpdate_Array { block = state.md_ctx.block
+                                      , h = state.md_ctx.h
+                                      , n = state.md_ctx.n
+                                      , sz = state.md_ctx.sz}
+                                      (arrayUpdate (arrayCopy (arrayConstant 0) 0 info 0 info_len) info_len ctr)
+                                      (info_len + 1))))
+where res = SHAUpdate_Array {block = block1, h = state.md_ctx.h, n = state.md_ctx.n, sz = state.md_ctx.sz} info info_len
+      h1 = res.h
+      n1 = res.n
+      sz1 = res.sz)
+}});
+
+
+let HMAC_expand_statement len =
+do {
+  info <- fresh_symbolic "info" {| ByteArray |};
+  info_len <- fresh_symbolic "info_len" {| [64] |};
+  res_i_ctx_block <- fresh_symbolic "res_i_ctx_block" {| ByteArray |};
+  res_md_ctx_block1 <- fresh_symbolic "res_md_ctx_block1" {| ByteArray |};
+  res_md_ctx_block2 <- fresh_symbolic "res_md_ctx_block2" {| ByteArray |};
+  res_md_ctx_block3 <- fresh_symbolic "res_md_ctx_block3" {| ByteArray |};
+  state1 <- fresh_symbolic "state1" {| HMACState_Array |};
+
+  let allvars = [info, info_len, res_md_ctx_block1, res_md_ctx_block2, res_md_ctx_block3, res_i_ctx_block, state1];
+
+  let state2_spec = {{
+    SHAUpdate_Array
+      {block = state1.md_ctx.block, h = state1.md_ctx.h, n = state1.md_ctx.n, sz = state1.md_ctx.sz}
+      (arrayUpdate (arrayCopy (arrayConstant 0) 0 info 0 info_len) info_len 1) (1 + info_len)
+  }};
+
+  let state1_impl = {{
+    { block = res_md_ctx_block1
+    , h = state1.md_ctx.h
+    , n = state1.md_ctx.n
+    , sz = state1.md_ctx.sz
+    }
+  }};
+
+  let state2_impl = {{ SHAUpdate_Array state1_impl info info_len }};
+
+  let state3_impl = {{
+    { block = res_md_ctx_block2
+    , h = state2_impl.h
+    , n = state2_impl.n
+    , sz = state2_impl.sz
+    }
+  }};
+
+  let state4_impl = {{ SHAUpdate_Array state3_impl (arrayUpdate (arrayConstant 0) 0 1) 1 }};
+
+  let out_state_spec = {{
+    { i_ctx = {block = state1.i_ctx.block, h = state1.i_ctx.h, n = state1.i_ctx.n, sz = state1.i_ctx.sz}
+    , md_ctx = {block = state2_spec.block, h = state2_spec.h, n = state2_spec.n, sz = state2_spec.sz}
+    , o_ctx =  {block = zero, h = state1.o_ctx.h, n = 0, sz = state1.o_ctx.sz}
+  }
+  }};
+
+  let out_spec = {{ HMACFinal_Array out_state_spec }};
+
+  let out_state_impl = {{
+    { i_ctx = { block = res_i_ctx_block, h = state1.i_ctx.h, n = state1.i_ctx.n, sz = state1.i_ctx.sz }
+    , md_ctx = { block = res_md_ctx_block3, h = state4_impl.h, n = state4_impl.n, sz = state4_impl.sz }
+    , o_ctx =  {block = zero, h = state1.o_ctx.h, n = 0, sz = state1.o_ctx.sz}
+    }
+  }};
+
+  let out_impl = {{ HMACFinal_Array out_state_impl }};
+
+  let hypo1 = eqTrue {{ arrayRangeEq res_md_ctx_block1 0 state1.md_ctx.block 0 128 }};
+
+  let hypo2 = eqTrue {{ arrayRangeEq res_md_ctx_block2 0 state2_impl.block 0 128 }};
+
+  let hypo3 = eqTrue {{ arrayRangeEq res_md_ctx_block3 0 state4_impl.block 0 128 }};
+
+  let hypo4 = eqTrue {{ arrayRangeEq res_i_ctx_block 0 state1.i_ctx.block 0 128 }};
+
+  let lemma1 = eqTrue
+    (term_apply (parse_core "implies")
+    [ {{ (arrayRangeEq res_md_ctx_block1 0 state1.md_ctx.block 0 128)
+      && (arrayRangeEq res_md_ctx_block2 0 state2_impl.block 0 128)}}
+      , {{ (SHAState_Array_eq state2_spec state4_impl) }} ]);
+
+  let lemma2 = eqTrue
+    (term_apply (parse_core "implies")
+    [ {{ (HMACState_Array_eq out_state_spec out_state_impl) }} , {{ out_spec == out_impl }} ]);
+
+  let concl = eqTrue {{ take`{front=len} out_impl == take out_spec }};
+
+  let goal = (implies_term hypo1
+               (implies_term hypo2
+                 (implies_term hypo3
+                   (implies_term hypo4 (implies_term lemma1 (implies_term lemma2 concl))))));
+
+  return (generalize_term allvars
+    (rewrite (cryptol_ss ())
+      (unfold_term ["ecEq", "SHAState_Array_eq"] goal)));
+};
+
+HMAC_expand_16_statement <- (HMAC_expand_statement 16);
+HMAC_expand_16_thm <-
+prove_extcore
+do { w4_unint_z3 ["HMACInit_Array", "SHAUpdate_Array", "HMACFinal_Array"]; }
+HMAC_expand_16_statement;
+
+HMAC_expand_32_statement <- (HMAC_expand_statement 32);
+HMAC_expand_32_thm <-
+prove_extcore
+do { w4_unint_z3 ["HMACInit_Array", "SHAUpdate_Array", "HMACFinal_Array"]; }
+HMAC_expand_32_statement;
+
+HMAC_expand_48_statement <- (HMAC_expand_statement 48);
+HMAC_expand_48_thm <-
+prove_extcore
+do { w4_unint_z3 ["HMACInit_Array", "SHAUpdate_Array", "HMACFinal_Array"]; }
+HMAC_expand_48_statement;
+
+
+SHAUpdate_2compositional_concrete_statement <-
+do {
+  info <- fresh_symbolic "info" {| ByteArray |};
+  info_len <- fresh_symbolic "info_len" {| [64] |};
+  res_md_ctx_block1 <- fresh_symbolic "res_md_ctx_block1" {| ByteArray |};
+  res_md_ctx_block2 <- fresh_symbolic "res_md_ctx_block2" {| ByteArray |};
+  state1 <- fresh_symbolic "state1" {| HMACState_Array |};
+
+  let allvars = [info, info_len, res_md_ctx_block1, res_md_ctx_block2, state1];
+
+  let state2_spec = {{
+    SHAUpdate_Array
+      {block = state1.md_ctx.block, h = state1.md_ctx.h, n = state1.md_ctx.n, sz = state1.md_ctx.sz}
+      (arrayUpdate (arrayCopy (arrayConstant 0) 0 info 0 info_len) info_len 1) (1 + info_len)
+  }};
+
+  let state1_impl = {{
+    { block = res_md_ctx_block1
+    , h = state1.md_ctx.h
+    , n = state1.md_ctx.n
+    , sz = state1.md_ctx.sz
+    }
+  }};
+
+  let state2_impl = {{ SHAUpdate_Array state1_impl info info_len }};
+
+  let state3_impl = {{
+    { block = res_md_ctx_block2
+    , h = state2_impl.h
+    , n = state2_impl.n
+    , sz = state2_impl.sz
+    }
+  }};
+
+  let state4_impl = {{ SHAUpdate_Array state3_impl (arrayUpdate (arrayConstant 0) 0 1) 1 }};
+
+  let hypo1 = eqTrue {{ arrayRangeEq res_md_ctx_block1 0 state1.md_ctx.block 0 128 }};
+  let hypo2 = eqTrue  {{ arrayRangeEq res_md_ctx_block2 0 state2_impl.block 0 128 }};
+
+  let concl = (implies_term hypo1
+               (implies_term hypo2 (eqTrue {{ SHAState_Array_eq state2_spec state4_impl }} )));
+
+  return (generalize_term allvars
+    (rewrite (addsimps [ite_bool_and_thm] (cryptol_ss ()))
+      (unfold_term ["ecEq", "/\\", "SHAState_Array_eq"] concl)));
+};
+
+SHAUpdate_2compositional_concrete_thm <-
+prove_extcore
+do {
+  goal_eval_unint ["HMACInit_Array", "SHAUpdate_Array", "HMACFinal_Array"];
+  info <- goal_intro "info";
+  info_len <- goal_intro "info_len";
+  res_md_ctx_block1 <- goal_intro "res_md_ctx_block1";
+  res_md_ctx_block2 <- goal_intro "res_md_ctx_block2";
+  state1 <- goal_intro "state1";
+  goal_insert_and_specialize SHAUpdate_2compositional_thm
+  [ state1
+  , res_md_ctx_block1
+  , res_md_ctx_block2
+  , {{ 1 : [8] }}
+  , info
+  , info_len ];
+  w4_unint_z3 ["HMACInit_Array", "SHAUpdate_Array", "HMACFinal_Array"];
+}
+SHAUpdate_2compositional_concrete_statement;

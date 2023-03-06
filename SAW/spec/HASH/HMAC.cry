@@ -20,33 +20,33 @@ HMACState_zeroized = { i_ctx = SHAInit_Array_zeroized
                      , o_ctx = SHAInit_zeroized
                      , md_ctx = SHAInit_Array_zeroized }
 
-key_helper1 : ByteArray -> [64] -> [128][8]
+key_helper1 : ByteArray -> [64] -> [blocksize_bytes][8]
 key_helper1 key key_len =
-  (arrayRangeLookup`{n=128} (arrayCopy (arrayConstant 0) 0 key 0 key_len) 0)
+  (arrayRangeLookup`{n=blocksize_bytes} (arrayCopy (arrayConstant 0) 0 key 0 key_len) 0)
 
-key_helper2 : HMACState_Array -> ByteArray -> [64] -> [128][8]
+key_helper2 : HMACState_Array -> ByteArray -> [64] -> [blocksize_bytes][8]
 key_helper2 state key key_len =
-  (split`{48} (SHAImp_Array2 state.md_ctx key key_len)) # (zero : [128-48][8])
+  (split`{digestsize_bytes} (SHAImp_Array2 state.md_ctx key key_len)) # zero
 
-key_init_Array : HMACState_Array -> ByteArray -> [64] -> [128][8]
+key_init_Array : HMACState_Array -> ByteArray -> [64] -> [blocksize_bytes][8]
 key_init_Array state key key_len =
-   ( if key_len <= 128
+   ( if key_len <= `(blocksize_bytes)
      then key_helper1 key key_len
      else key_helper2 state key key_len)
 
 ipad_byte = 0x36
 opad_byte = 0x5c
 
-ipad : [128][8] -> [128][8]
+ipad : [blocksize_bytes][8] -> [blocksize_bytes][8]
 ipad key = [ k ^ ipad_byte | k <- key ]
 
-opad : [128][8] -> [128][8]
+opad : [blocksize_bytes][8] -> [blocksize_bytes][8]
 opad key = [ k ^ opad_byte | k <- key ]
 
-istate : HMACState_Array -> [128][8] -> SHAState_Array
-istate state key = SHAUpdate_Array (SHAInit_Array2 state.i_ctx) (arrayRangeUpdate (arrayConstant 0) 0 (ipad key)) 128
+istate : HMACState_Array -> [blocksize_bytes][8] -> SHAState_Array
+istate state key = SHAUpdate_Array (SHAInit_Array2 state.i_ctx) (arrayRangeUpdate (arrayConstant 0) 0 (ipad key)) `(blocksize_bytes)
 
-ostate : [128][8] -> SHAState
+ostate : [blocksize_bytes][8] -> SHAState
 ostate key = SHAUpdate SHAInit (opad key)
 
 HMACInit_Array : HMACState_Array -> ByteArray -> [64] -> HMACState_Array
@@ -65,12 +65,12 @@ HMACUpdate_Array state data len = { i_ctx = state.i_ctx
                                   , md_ctx = SHAUpdate_Array state.md_ctx data len
                                   }
 
-HMACFinal_Array : HMACState_Array -> [48][8]
-HMACFinal_Array state = split`{48} (SHAFinal o_ctx')
+HMACFinal_Array : HMACState_Array -> [digestsize_bytes][8]
+HMACFinal_Array state = split`{digestsize_bytes} (SHAFinal o_ctx')
   where o_ctx' = SHAUpdate state.o_ctx buf
-        buf = split`{48} (SHAFinal_Array state.md_ctx)
+        buf = split`{digestsize_bytes} (SHAFinal_Array state.md_ctx)
 
-HMAC_Array : HMACState_Array -> ByteArray -> [64] -> ByteArray -> [64] -> [48][8]
+HMAC_Array : HMACState_Array -> ByteArray -> [64] -> ByteArray -> [64] -> [digestsize_bytes][8]
 HMAC_Array state key key_len data data_len = HMACFinal_Array (HMACUpdate_Array (HMACInit_Array state key key_len) data data_len)
 
 HMACState_Array_eq : HMACState_Array -> HMACState_Array -> Bool

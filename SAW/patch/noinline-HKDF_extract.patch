@@ -1,0 +1,12 @@
+diff --git a/crypto/fipsmodule/hkdf/hkdf.c b/crypto/fipsmodule/hkdf/hkdf.c
+index f9821d45c..2889ee782 100644
+--- a/crypto/fipsmodule/hkdf/hkdf.c
++++ b/crypto/fipsmodule/hkdf/hkdf.c
+@@ -54,6 +54,7 @@ out:
+   return ret;
+ }
+ 
++__attribute__((noinline))
+ int HKDF_extract(uint8_t *out_key, size_t *out_len, const EVP_MD *digest,
+                  const uint8_t *secret, size_t secret_len, const uint8_t *salt,
+                  size_t salt_len) {
