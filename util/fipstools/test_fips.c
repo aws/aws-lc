@@ -160,7 +160,7 @@ int main(int argc, char **argv) {
 
   /* AES-CCM Encryption */
   printf("About to AES-CCM seal ");
-  hexdump(output, out_len);
+  hexdump(kPlaintext, sizeof(kPlaintext));
   if (!EVP_AEAD_CTX_seal(&aead_ctx, output, &out_len, sizeof(output), nonce,
                         EVP_AEAD_nonce_length(EVP_aead_aes_128_ccm_bluetooth()),
                         kPlaintext, sizeof(kPlaintext), NULL, 0))
@@ -191,6 +191,7 @@ int main(int argc, char **argv) {
   OPENSSL_cleanse(&aes_key, sizeof(aes_key));
   EVP_AEAD_CTX_zero(&aead_ctx);
 
+  /* AES-ECB */
   /* AES-ECB Encryption */
   if (AES_set_encrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key) != 0)
   {
@@ -201,7 +202,21 @@ int main(int argc, char **argv) {
   hexdump(output, out_len);
   for (size_t j = 0; j < sizeof(kPlaintext) / 16; j++)
   {
-    AES_ecb_encrypt(&kPlaintext[j * 128], & output[j * 128], &aes_key, 1);
+    AES_ecb_encrypt(&kPlaintext[j * 128], & output[j * 128], &aes_key, AES_ENCRYPT);
+  }
+  printf("  got ");
+  hexdump(output, out_len);
+
+  /* AES-ECB Decryption */
+  if (AES_set_decrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key) != 0) {
+    printf("AES decrypt failed\n");
+    goto err;
+  }
+  printf("About to AES-ECB decrypt ");
+  hexdump(output, out_len);
+  for (size_t j = 0; j < out_len / 16; j++)
+  {
+    AES_ecb_encrypt(&output[j * 128], & output[j * 128], &aes_key, AES_DECRYPT);
   }
   printf("  got ");
   hexdump(output, out_len);
