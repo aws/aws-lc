@@ -825,6 +825,11 @@ TEST(OCSPRequestTest, AddCert) {
   certId = nullptr;
 }
 
+static const char good_http_response_hdr[] =
+    "HTTP/1.1 200 OK\r\n"
+    "Content-Type: application/ocsp-response\r\n"
+    "Content-Length: ";
+
 // Test that |OCSP_set_max_response_length| correctly sets the maximum response
 // length.
 TEST(OCSPRequestTest, SetResponseLength) {
@@ -849,12 +854,23 @@ TEST(OCSPRequestTest, SetResponseLength) {
   // Check that default length is set correctly.
   OCSP_set_max_response_length(ocspReqCtx.get(), 0);
   EXPECT_EQ((int)ocspReqCtx.get()->max_resp_len, OCSP_MAX_RESP_LENGTH);
-}
 
-static const char good_http_response_hdr[] =
-    "HTTP/1.1 200 OK\r\n"
-    "Content-Type: application/ocsp-response\r\n"
-    "Content-Length: ";
+  // Write an HTTP OCSP response into the BIO.
+  std::string respData = GetTestData(
+      std::string("crypto/ocsp/test/aws/ocsp_response.der").c_str());
+  std::vector<uint8_t> ocsp_response_data(respData.begin(), respData.end());
+  const int respLen = (int)ocsp_response_data.size();
+  ASSERT_GT(BIO_printf(bio.get(), "%s", good_http_response_hdr), 0);
+  ASSERT_GT(BIO_printf(bio.get(), "%d\r\n\r\n", respLen), 0);
+  ASSERT_EQ(BIO_write(bio.get(), ocsp_response_data.data(), respLen), respLen);
+
+  // Set max response length to a length that is too short on purpose.
+  OCSP_set_max_response_length(ocspReqCtx.get(), 1);
+
+  // Sends out an OCSP request and expects an OCSP response in |BIO| with
+  // |OCSP_REQ_CTX_nbio|. This should fail if the expected length is too short.
+  EXPECT_FALSE(OCSP_REQ_CTX_nbio(ocspReqCtx.get()));
+}
 
 static const char malformed_http_response_hdr[] =
     "HTTP/1.200 OK\r\n"

@@ -222,7 +222,7 @@ DECLARE_ASN1_FUNCTIONS(OCSP_REQINFO)
 DECLARE_ASN1_FUNCTIONS(OCSP_SIGNATURE)
 
 // Try exchanging request and response via HTTP on (non-)blocking BIO in rctx.
-int OCSP_REQ_CTX_nbio(OCSP_REQ_CTX *rctx);
+OPENSSL_EXPORT int OCSP_REQ_CTX_nbio(OCSP_REQ_CTX *rctx);
 
 // Tries to exchange the request and response with OCSP_REQ_CTX_nbio(), but on
 // success, it additionally parses the response, which must be a
