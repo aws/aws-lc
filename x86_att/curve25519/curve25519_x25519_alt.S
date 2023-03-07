@@ -78,10 +78,8 @@
 
 #define NSPACE (13*NUMSIZE)
 
-// Macros wrapping up the basic field operation calls
-// bignum_mul_p25519_alt and bignum_sqr_p25519_alt.
-// These two are only trivially different from pure
-// function calls to those subroutines.
+// Macro wrapping up the basic field operation bignum_mul_p25519_alt, only
+// trivially different from a pure function call to that subroutine.
 
 #define mul_p25519(P0,P1,P2)                    \
         movq    P1, %rax ;                      \
@@ -214,77 +212,91 @@
         movq    %r10, 0x10+P0 ;                  \
         movq    %r11, 0x18+P0
 
-#define sqr_p25519(P0,P1)                       \
+// A version of multiplication that only guarantees output < 2 * p_25519.
+// This basically skips the +1 and final correction in quotient estimation.
+
+#define mul_4(P0,P1,P2)                         \
         movq    P1, %rax ;                      \
-        mulq    %rax;                            \
+        mulq     P2;                 \
         movq    %rax, %r8 ;                         \
         movq    %rdx, %r9 ;                         \
         xorq    %r10, %r10 ;                        \
         xorq    %r11, %r11 ;                        \
         movq    P1, %rax ;                      \
-        mulq     0x8+P1;             \
-        addq    %rax, %rax ;                        \
-        adcq    %rdx, %rdx ;                        \
-        adcq    $0x0, %r11 ;                        \
+        mulq     0x8+P2;             \
+        addq    %rax, %r9 ;                         \
+        adcq    %rdx, %r10 ;                        \
+        movq    0x8+P1, %rax ;                  \
+        mulq     P2;                 \
         addq    %rax, %r9 ;                         \
         adcq    %rdx, %r10 ;                        \
         adcq    $0x0, %r11 ;                        \
         xorq    %r12, %r12 ;                        \
+        movq    P1, %rax ;                      \
+        mulq     0x10+P2;            \
+        addq    %rax, %r10 ;                        \
+        adcq    %rdx, %r11 ;                        \
+        adcq    %r12, %r12 ;                        \
         movq    0x8+P1, %rax ;                  \
-        mulq    %rax;                            \
+        mulq     0x8+P2;             \
         addq    %rax, %r10 ;                        \
         adcq    %rdx, %r11 ;                        \
         adcq    $0x0, %r12 ;                        \
-        movq    P1, %rax ;                      \
-        mulq     0x10+P1;            \
-        addq    %rax, %rax ;                        \
-        adcq    %rdx, %rdx ;                        \
-        adcq    $0x0, %r12 ;                        \
+        movq    0x10+P1, %rax ;                 \
+        mulq     P2;                 \
         addq    %rax, %r10 ;                        \
         adcq    %rdx, %r11 ;                        \
         adcq    $0x0, %r12 ;                        \
         xorq    %r13, %r13 ;                        \
         movq    P1, %rax ;                      \
-        mulq     0x18+P1;            \
-        addq    %rax, %rax ;                        \
-        adcq    %rdx, %rdx ;                        \
-        adcq    $0x0, %r13 ;                        \
+        mulq     0x18+P2;            \
+        addq    %rax, %r11 ;                        \
+        adcq    %rdx, %r12 ;                        \
+        adcq    %r13, %r13 ;                        \
+        movq    0x8+P1, %rax ;                  \
+        mulq     0x10+P2;            \
         addq    %rax, %r11 ;                        \
         adcq    %rdx, %r12 ;                        \
         adcq    $0x0, %r13 ;                        \
-        movq    0x8+P1, %rax ;                  \
-        mulq     0x10+P1;            \
-        addq    %rax, %rax ;                        \
-        adcq    %rdx, %rdx ;                        \
+        movq    0x10+P1, %rax ;                 \
+        mulq     0x8+P2;             \
+        addq    %rax, %r11 ;                        \
+        adcq    %rdx, %r12 ;                        \
         adcq    $0x0, %r13 ;                        \
+        movq    0x18+P1, %rax ;                 \
+        mulq     P2;                 \
         addq    %rax, %r11 ;                        \
         adcq    %rdx, %r12 ;                        \
         adcq    $0x0, %r13 ;                        \
         xorq    %r14, %r14 ;                        \
         movq    0x8+P1, %rax ;                  \
-        mulq     0x18+P1;            \
-        addq    %rax, %rax ;                        \
-        adcq    %rdx, %rdx ;                        \
-        adcq    $0x0, %r14 ;                        \
+        mulq     0x18+P2;            \
+        addq    %rax, %r12 ;                        \
+        adcq    %rdx, %r13 ;                        \
+        adcq    %r14, %r14 ;                        \
+        movq    0x10+P1, %rax ;                 \
+        mulq     0x10+P2;            \
         addq    %rax, %r12 ;                        \
         adcq    %rdx, %r13 ;                        \
         adcq    $0x0, %r14 ;                        \
-        movq    0x10+P1, %rax ;                 \
-        mulq    %rax;                            \
+        movq    0x18+P1, %rax ;                 \
+        mulq     0x8+P2;             \
         addq    %rax, %r12 ;                        \
         adcq    %rdx, %r13 ;                        \
         adcq    $0x0, %r14 ;                        \
         xorq    %r15, %r15 ;                        \
         movq    0x10+P1, %rax ;                 \
-        mulq     0x18+P1;            \
-        addq    %rax, %rax ;                        \
-        adcq    %rdx, %rdx ;                        \
-        adcq    $0x0, %r15 ;                        \
+        mulq     0x18+P2;            \
+        addq    %rax, %r13 ;                        \
+        adcq    %rdx, %r14 ;                        \
+        adcq    %r15, %r15 ;                        \
+        movq    0x18+P1, %rax ;                 \
+        mulq     0x10+P2;            \
         addq    %rax, %r13 ;                        \
         adcq    %rdx, %r14 ;                        \
         adcq    $0x0, %r15 ;                        \
         movq    0x18+P1, %rax ;                 \
-        mulq    %rax;                            \
+        mulq     0x18+P2;            \
         addq    %rax, %r14 ;                        \
         adcq    %rdx, %r15 ;                        \
         movl    $0x26, %esi ;                       \
@@ -313,25 +325,16 @@
         movq    %rdx, %r12 ;                        \
         adcq    %rcx, %r12 ;                        \
         shldq   $0x1, %r11, %r12 ;                    \
-        leaq    0x1(%r12), %rax ;                  \
-        movl    $0x13, %esi ;                       \
-        bts     $63, %r11 ;                         \
-        imulq   %rsi, %rax ;                        \
-        addq    %rax, %r8 ;                         \
-        adcq    %rcx, %r9 ;                         \
-        adcq    %rcx, %r10 ;                        \
-        adcq    %rcx, %r11 ;                        \
-        sbbq    %rax, %rax ;                        \
-        notq    %rax;                            \
-        andq    %rsi, %rax ;                        \
-        subq    %rax, %r8 ;                         \
-        sbbq    %rcx, %r9 ;                         \
-        sbbq    %rcx, %r10 ;                        \
-        sbbq    %rcx, %r11 ;                        \
-        btr     $63, %r11 ;                         \
-        movq    %r8, P0 ;                        \
-        movq    %r9, 0x8+P0 ;                    \
-        movq    %r10, 0x10+P0 ;                  \
+        btr     $0x3f, %r11 ;                      \
+        movl    $0x13, %edx ;                      \
+        imulq   %r12, %rdx ;                       \
+        addq    %rdx, %r8 ;                        \
+        adcq    %rcx, %r9 ;                        \
+        adcq    %rcx, %r10 ;                       \
+        adcq    %rcx, %r11 ;                       \
+        movq    %r8, P0 ;                       \
+        movq    %r9, 0x8+P0 ;                   \
+        movq    %r10, 0x10+P0 ;                 \
         movq    %r11, 0x18+P0
 
 // Multiplication just giving a 5-digit result (actually < 39 * p_25519)
@@ -567,23 +570,6 @@
         movq    %r10, 0x10+P0 ;                 \
         movq    %r11, 0x18+P0
 
-// Plain 4-digit add without any normalization
-// With inputs < p_25519 (indeed < 2^255) it still gives a 4-digit result
-
-#define add_4(P0,P1,P2)                         \
-        movq    P1, %rax ;                      \
-        addq    P2, %rax ;                      \
-        movq    %rax, P0 ;                      \
-        movq    8+P1, %rax ;                    \
-        adcq    8+P2, %rax ;                    \
-        movq    %rax, 8+P0 ;                    \
-        movq    16+P1, %rax ;                   \
-        adcq    16+P2, %rax ;                   \
-        movq    %rax, 16+P0 ;                   \
-        movq    24+P1, %rax ;                   \
-        adcq    24+P2, %rax ;                   \
-        movq    %rax, 24+P0
-
 // Add 5-digit inputs and normalize to 4 digits
 
 #define add5_4(P0,P1,P2)                        \
@@ -611,29 +597,32 @@
         movq   %r10, 0x10+P0 ;                  \
         movq   %r11, 0x18+P0
 
-// Subtraction of a pair of numbers < p_25519 just sufficient
-// to give a 4-digit result. It actually always does (x - z) + (2^255-19)
-// which in turn is done by (x - z) - (2^255+19) discarding the 2^256
-// implicitly
+// Modular addition with double modulus 2 * p_25519 = 2^256 - 38.
+// This only ensures that the result fits in 4 digits, not that it is reduced
+// even w.r.t. double modulus. The result is always correct modulo provided
+// the sum of the inputs is < 2^256 + 2^256 - 38, so in particular provided
+// at least one of them is reduced double modulo.
 
-#define sub_4(P0,P1,P2)                         \
+#define add_twice4(P0,P1,P2)                    \
         movq    P1, %r8 ;                       \
-        subq    P2, %r8 ;                       \
-        movq    8+P1, %r9 ;                     \
-        sbbq    8+P2, %r9 ;                     \
-        movq    16+P1, %r10 ;                   \
-        sbbq    16+P2, %r10 ;                   \
-        movq    24+P1, %rax ;                   \
-        sbbq    24+P2, %rax ;                   \
-        subq    $19, %r8 ;                         \
+        xorl    %ecx, %ecx ;                       \
+        addq    P2, %r8 ;                       \
+        movq    0x8+P1, %r9 ;                   \
+        adcq    0x8+P2, %r9 ;                   \
+        movq    0x10+P1, %r10 ;                 \
+        adcq    0x10+P2, %r10 ;                 \
+        movq    0x18+P1, %r11 ;                 \
+        adcq    0x18+P2, %r11 ;                 \
+        movl    $38, %eax ;                        \
+        cmovncq %rcx, %rax ;                       \
+        addq    %rax, %r8 ;                        \
+        adcq    %rcx, %r9 ;                        \
+        adcq    %rcx, %r10 ;                       \
+        adcq    %rcx, %r11 ;                       \
         movq    %r8, P0 ;                       \
-        sbbq    $0, %r9 ;                          \
-        movq    %r9, 8+P0 ;                     \
-        sbbq    $0, %r10 ;                         \
-        movq    %r10, 16+P0 ;                   \
-        sbbq    $0, %rax ;                         \
-        btc     $63, %rax ;                        \
-        movq    %rax, 24+P0
+        movq    %r9, 0x8+P0 ;                   \
+        movq    %r10, 0x10+P0 ;                 \
+        movq    %r11, 0x18+P0
 
 // Modular subtraction with double modulus 2 * p_25519 = 2^256 - 38
 
@@ -779,23 +768,22 @@ S2N_BN_SYMBOL(curve25519_x25519_alt):
 
         movq    %rdi, res
 
-// Copy the inputs to the local variables while mangling them:
+// Copy the inputs to the local variables with minimal mangling:
 //
-//  - The scalar gets turned into 01xxx...xxx000 by tweaking bits.
-//    Actually the top zero doesn't matter since the loop below
-//    never looks at it, so we don't literally modify that.
+//  - The scalar is in principle turned into 01xxx...xxx000 but
+//    in the structure below the special handling of these bits is
+//    explicit in the main computation; the scalar is just copied.
 //
-//  - The point x coord is reduced mod 2^255 *then* mod 2^255-19
+//  - The point x coord is reduced mod 2^255 by masking off the
+//    top bit. In the main loop we only need reduction < 2 * p_25519.
 
         movq    (%rsi), %rax
-        andq    $~7, %rax
         movq    %rax, (%rsp)
         movq    8(%rsi), %rax
         movq    %rax, 8(%rsp)
         movq    16(%rsi), %rax
         movq    %rax, 16(%rsp)
         movq    24(%rsi), %rax
-        bts     $62, %rax
         movq    %rax, 24(%rsp)
 
         movq    (%rdx), %r8
@@ -803,69 +791,56 @@ S2N_BN_SYMBOL(curve25519_x25519_alt):
         movq    16(%rdx), %r10
         movq    24(%rdx), %r11
         btr     $63, %r11
-        movq    $19, %r12
-        xorq    %r13, %r13
-        xorq    %r14, %r14
-        xorq    %r15, %r15
-        addq    %r8, %r12
-        adcq    %r9, %r13
-        adcq    %r10, %r14
-        adcq    %r11, %r15
-        btr     $63, %r15 // x >= 2^255 - 19 <=> x + 19 >= 2^255
-        cmovcq  %r12, %r8
         movq    %r8, 32(%rsp)
-        cmovcq  %r13, %r9
         movq    %r9, 40(%rsp)
-        cmovcq  %r14, %r10
         movq    %r10, 48(%rsp)
-        cmovcq  %r15, %r11
         movq    %r11, 56(%rsp)
 
-// Initialize (xn,zn) = (1,0) and (xm,zm) = (x,1) with swap = 0
-// We use the fact that the point x coordinate is still in registers
+// Initialize with explicit doubling in order to handle set bit 254.
+// Set swap = 1 and (xm,zm) = (x,1) then double as (xn,zn) = 2 * (x,1).
+// We use the fact that the point x coordinate is still in registers.
+// Since zm = 1 we could do the doubling with an operation count of
+// 2 * S + M instead of 2 * S + 2 * M, but it doesn't seem worth
+// the slight complication arising from a different linear combination.
 
-        movq    $1, %rax
-        movq    %rax, 320(%rsp)
+        movl    $1, %eax
+        movq    %rax, swap
+        movq    %r8, 256(%rsp)
         movq    %rax, 96(%rsp)
         xorl    %eax, %eax
-        movq    %rax, swap
-        movq    %rax, 160(%rsp)
-        movq    %rax, 328(%rsp)
-        movq    %rax, 104(%rsp)
-        movq    %rax, 168(%rsp)
-        movq    %rax, 336(%rsp)
-        movq    %rax, 112(%rsp)
-        movq    %rax, 176(%rsp)
-        movq    %rax, 344(%rsp)
-        movq    %rax, 120(%rsp)
-        movq    %rax, 184(%rsp)
-        movq    32(%rsp), %rax
-        movq    %r8, 256(%rsp)
         movq    %r9, 264(%rsp)
+        movq    %rax, 104(%rsp)
         movq    %r10, 272(%rsp)
+        movq    %rax, 112(%rsp)
         movq    %r11, 280(%rsp)
+        movq    %rax, 120(%rsp)
 
-// The outer loop over scalar bits from i = 254, ..., i = 0 (inclusive)
-// This starts at 254, and so implicitly masks bit 255 of the scalar.
+        sub_twice4(d,xm,zm)
+        add_twice4(s,xm,zm)
+        sqr_4(d,d)
+        sqr_4(s,s)
+        sub_twice4(p,s,d)
+        cmadd_4(e,0x1db42,p,d)
+        mul_4(xn,s,d)
+        mul_4(zn,p,e)
 
-        movl    $254, %eax
+// The main loop over unmodified bits from i = 253, ..., i = 3 (inclusive).
+// This is a classic Montgomery ladder, with the main coordinates only
+// reduced mod 2 * p_25519, some intermediate results even more loosely.
+
+        movl    $253, %eax
         movq    %rax, i
 
 scalarloop:
 
 // sm = xm + zm; sn = xn + zn; dm = xm - zm; dn = xn - zn
-// The adds don't need any normalization as they're fed to muls
-// Just make sure the subs fit in 4 digits.
 
-        sub_4(dm,xm,zm)
-        add_4(sn,xn,zn)
-        sub_4(dn,xn,zn)
-        add_4(sm,xm,zm)
+        sub_twice4(dm,xm,zm)
+        add_twice4(sn,xn,zn)
+        sub_twice4(dn,xn,zn)
+        add_twice4(sm,xm,zm)
 
-// ADDING: dmsn = dm * sn; dnsm = sm * dn
 // DOUBLING: mux d = xt - zt and s = xt + zt for appropriate choice of (xt,zt)
-
-        mul_5(dmsn,sn,dm)
 
         movq    i, %rdx
         movq    %rdx, %rcx
@@ -875,22 +850,25 @@ scalarloop:
         andq    $1, %rdx
         cmpq    swap, %rdx
         movq    %rdx, swap
-
         mux_4(d,dm,dn)
         mux_4(s,sm,sn)
 
+// ADDING: dmsn = dm * sn; dnsm = sm * dn
+
+        mul_5(dmsn,sn,dm)
+
         mul_5(dnsm,sm,dn)
 
-// DOUBLING: d = (xt - zt)^2 normalized only to 4 digits
+// DOUBLING: d = (xt - zt)^2
 
         sqr_4(d,d)
 
 // ADDING: dpro = (dmsn - dnsm)^2, spro = (dmsn + dnsm)^2
-// DOUBLING: s = (xt + zt)^2, normalized only to 4 digits
+// DOUBLING: s = (xt + zt)^2
 
         sub5_4(dpro,dmsn,dnsm)
-        sqr_4(s,s)
         add5_4(spro,dmsn,dnsm)
+        sqr_4(s,s)
         sqr_4(dpro,dpro)
 
 // DOUBLING: p = 4 * xt * zt = s - d
@@ -899,7 +877,7 @@ scalarloop:
 
 // ADDING: xm' = (dmsn + dnsm)^2
 
-        sqr_p25519(xm,spro)
+        sqr_4(xm,spro)
 
 // DOUBLING: e = 121666 * p + d
 
@@ -907,28 +885,63 @@ scalarloop:
 
 // DOUBLING: xn' = (xt + zt)^2 * (xt - zt)^2 = s * d
 
-        mul_p25519(xn,s,d)
-
-// ADDING: zm' = x * (dmsn - dnsm)^2
-
-        mul_p25519(zm,dpro,pointx)
+        mul_4(xn,s,d)
 
 // DOUBLING: zn' = (4 * xt * zt) * ((xt - zt)^2 + 121666 * (4 * xt * zt))
 //               = p * (d + 121666 * p)
 
-        mul_p25519(zn,p,e)
+        mul_4(zn,p,e)
 
-// Loop down as far as 0 (inclusive)
+// ADDING: zm' = x * (dmsn - dnsm)^2
+
+        mul_4(zm,dpro,pointx)
+
+// Loop down as far as 3 (inclusive)
 
         movq    i, %rax
         subq    $1, %rax
         movq    %rax, i
+        cmpq    $3, %rax
         jnc     scalarloop
 
-// Since the scalar was forced to be a multiple of 8, we know it's even.
-// Hence there is no need to multiplex: the projective answer is (xn,zn)
-// and we can ignore (xm,zm); indeed we could have avoided the last three
-// differential additions and just done the doublings.
+// Multiplex directly into (xn,zn) then do three pure doubling steps;
+// this accounts for the implicit zeroing of the three lowest bits
+// of the scalar. On the very last doubling we *fully* reduce zn mod
+// p_25519 to ease checking for degeneracy below.
+
+        movq    swap, %rdx
+        testq   %rdx, %rdx
+        mux_4(xn,xm,xn)
+        mux_4(zn,zm,zn)
+
+        sub_twice4(d,xn,zn)
+        add_twice4(s,xn,zn)
+        sqr_4(d,d)
+        sqr_4(s,s)
+        sub_twice4(p,s,d)
+        cmadd_4(e,0x1db42,p,d)
+        mul_4(xn,s,d)
+        mul_4(zn,p,e)
+
+        sub_twice4(d,xn,zn)
+        add_twice4(s,xn,zn)
+        sqr_4(d,d)
+        sqr_4(s,s)
+        sub_twice4(p,s,d)
+        cmadd_4(e,0x1db42,p,d)
+        mul_4(xn,s,d)
+        mul_4(zn,p,e)
+
+        sub_twice4(d,xn,zn)
+        add_twice4(s,xn,zn)
+        sqr_4(d,d)
+        sqr_4(s,s)
+        sub_twice4(p,s,d)
+        cmadd_4(e,0x1db42,p,d)
+        mul_4(xn,s,d)
+        mul_p25519(zn,p,e)
+
+// The projective result of the scalar multiplication is now (xn,zn).
 // First set up the constant sn = 2^255 - 19 for the modular inverse.
 
         movq    $-19, %rax
@@ -1366,7 +1379,7 @@ fliploop:
         cmovzq  %rax, %rcx
         movq    %rcx, 344(%rsp)
 
-// Now the result is xn * (1/zn).
+// Now the result is xn * (1/zn), fully reduced modulo p.
 
         movq    res, %rbp
         mul_p25519(resx,xn,zm)
