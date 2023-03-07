@@ -78,10 +78,8 @@
 
 #define NSPACE (13*NUMSIZE)
 
-// Macros wrapping up the basic field operation calls
-// bignum_mul_p25519 and bignum_sqr_p25519.
-// These two are only trivially different from pure
-// function calls to those subroutines.
+// Macro wrapping up the basic field operation bignum_mul_p25519, only
+// trivially different from a pure function call to that subroutine.
 
 #define mul_p25519(P0,P1,P2)                    \
         xor    edi, edi;                        \
@@ -176,78 +174,89 @@
         mov    [P0+0x10], r10;                  \
         mov    [P0+0x18], r11
 
-#define sqr_p25519(P0,P1)                       \
-        mov    rdx, [P1];                       \
-        mulx   r15, r8, rdx;                    \
-        mulx   r10, r9, [P1+0x8];               \
-        mulx   r12, r11, [P1+0x18];             \
-        mov    rdx, [P1+0x10];                  \
-        mulx   r14, r13, [P1+0x18];             \
-        xor    ebx, ebx;                        \
-        mulx   rcx, rax, [P1];                  \
-        adcx   r10, rax;                        \
-        adox   r11, rcx;                        \
-        mulx   rcx, rax, [P1+0x8];              \
-        adcx   r11, rax;                        \
-        adox   r12, rcx;                        \
-        mov    rdx, [P1+0x18];                  \
-        mulx   rcx, rax, [P1+0x8];              \
-        adcx   r12, rax;                        \
-        adox   r13, rcx;                        \
-        adcx   r13, rbx;                        \
-        adox   r14, rbx;                        \
-        adc    r14, rbx;                        \
-        xor    ebx, ebx;                        \
-        adcx   r9, r9;                          \
-        adox   r9, r15;                         \
-        mov    rdx, [P1+0x8];                   \
-        mulx   rdx, rax, rdx;                   \
-        adcx   r10, r10;                        \
-        adox   r10, rax;                        \
-        adcx   r11, r11;                        \
-        adox   r11, rdx;                        \
-        mov    rdx, [P1+0x10];                  \
-        mulx   rdx, rax, rdx;                   \
-        adcx   r12, r12;                        \
-        adox   r12, rax;                        \
-        adcx   r13, r13;                        \
-        adox   r13, rdx;                        \
-        mov    rdx, [P1+0x18];                  \
-        mulx   r15, rax, rdx;                   \
-        adcx   r14, r14;                        \
-        adox   r14, rax;                        \
-        adcx   r15, rbx;                        \
-        adox   r15, rbx;                        \
-        mov    edx, 0x26;                       \
-        xor    ebx, ebx;                        \
-        mulx   rcx, rax, r12;                   \
-        adcx   r8, rax;                         \
-        adox   r9, rcx;                         \
-        mulx   rcx, rax, r13;                   \
+
+// A version of multiplication that only guarantees output < 2 * p_25519.
+// This basically skips the +1 and final correction in quotient estimation.
+
+#define mul_4(P0,P1,P2)                         \
+        xor    ecx, ecx;                        \
+        mov    rdx, [P2];                       \
+        mulx   r9, r8, [P1];                    \
+        mulx   r10, rax, [P1+0x8];              \
+        add    r9, rax;                         \
+        mulx   r11, rax, [P1+0x10];             \
+        adc    r10, rax;                        \
+        mulx   r12, rax, [P1+0x18];             \
+        adc    r11, rax;                        \
+        adc    r12, rcx;                        \
+        xor    ecx, ecx;                        \
+        mov    rdx, [P2+0x8];                   \
+        mulx   rbx, rax, [P1];                  \
         adcx   r9, rax;                         \
-        adox   r10, rcx;                        \
-        mulx   rcx, rax, r14;                   \
+        adox   r10, rbx;                        \
+        mulx   rbx, rax, [P1+0x8];              \
         adcx   r10, rax;                        \
-        adox   r11, rcx;                        \
-        mulx   r12, rax, r15;                   \
+        adox   r11, rbx;                        \
+        mulx   rbx, rax, [P1+0x10];             \
         adcx   r11, rax;                        \
         adox   r12, rbx;                        \
-        adcx   r12, rbx;                        \
+        mulx   r13, rax, [P1+0x18];             \
+        adcx   r12, rax;                        \
+        adox   r13, rcx;                        \
+        adcx   r13, rcx;                        \
+        xor    ecx, ecx;                        \
+        mov    rdx, [P2+0x10];                  \
+        mulx   rbx, rax, [P1];                  \
+        adcx   r10, rax;                        \
+        adox   r11, rbx;                        \
+        mulx   rbx, rax, [P1+0x8];              \
+        adcx   r11, rax;                        \
+        adox   r12, rbx;                        \
+        mulx   rbx, rax, [P1+0x10];             \
+        adcx   r12, rax;                        \
+        adox   r13, rbx;                        \
+        mulx   r14, rax, [P1+0x18];             \
+        adcx   r13, rax;                        \
+        adox   r14, rcx;                        \
+        adcx   r14, rcx;                        \
+        xor    ecx, ecx;                        \
+        mov    rdx, [P2+0x18];                  \
+        mulx   rbx, rax, [P1];                  \
+        adcx   r11, rax;                        \
+        adox   r12, rbx;                        \
+        mulx   rbx, rax, [P1+0x8];              \
+        adcx   r12, rax;                        \
+        adox   r13, rbx;                        \
+        mulx   rbx, rax, [P1+0x10];             \
+        adcx   r13, rax;                        \
+        adox   r14, rbx;                        \
+        mulx   r15, rax, [P1+0x18];             \
+        adcx   r14, rax;                        \
+        adox   r15, rcx;                        \
+        adcx   r15, rcx;                        \
+        mov    edx, 0x26;                       \
+        xor    ecx, ecx;                        \
+        mulx   rbx, rax, r12;                   \
+        adcx   r8, rax;                         \
+        adox   r9, rbx;                         \
+        mulx   rbx, rax, r13;                   \
+        adcx   r9, rax;                         \
+        adox   r10, rbx;                        \
+        mulx   rbx, rax, r14;                   \
+        adcx   r10, rax;                        \
+        adox   r11, rbx;                        \
+        mulx   r12, rax, r15;                   \
+        adcx   r11, rax;                        \
+        adox   r12, rcx;                        \
+        adcx   r12, rcx;                        \
         shld   r12, r11, 0x1;                   \
-        mov    edx, 0x13;                       \
-        lea    rax, [r12+0x1];                  \
-        bts    r11, 0x3f;                       \
-        imul   rax, rdx;                        \
-        add    r8, rax;                         \
-        adc    r9, rbx;                         \
-        adc    r10, rbx;                        \
-        adc    r11, rbx;                        \
-        cmovb  rdx, rbx;                        \
-        sub    r8, rdx;                         \
-        sbb    r9, rbx;                         \
-        sbb    r10, rbx;                        \
-        sbb    r11, rbx;                        \
         btr    r11, 0x3f;                       \
+        mov    edx, 0x13;                       \
+        imul   rdx, r12;                        \
+        add    r8, rdx;                         \
+        adc    r9, rcx;                         \
+        adc    r10, rcx;                        \
+        adc    r11, rcx;                        \
         mov    [P0], r8;                        \
         mov    [P0+0x8], r9;                    \
         mov    [P0+0x10], r10;                  \
@@ -407,23 +416,6 @@
         mov    [P0+0x10], r10;                  \
         mov    [P0+0x18], r11
 
-// Plain 4-digit add without any normalization
-// With inputs < p_25519 (indeed < 2^255) it still gives a 4-digit result
-
-#define add_4(P0,P1,P2)                         \
-        mov     rax, [P1];                      \
-        add     rax, [P2];                      \
-        mov     [P0], rax;                      \
-        mov     rax, [P1+8];                    \
-        adc     rax, [P2+8];                    \
-        mov     [P0+8], rax;                    \
-        mov     rax, [P1+16];                   \
-        adc     rax, [P2+16];                   \
-        mov     [P0+16], rax;                   \
-        mov     rax, [P1+24];                   \
-        adc     rax, [P2+24];                   \
-        mov     [P0+24], rax
-
 // Add 5-digit inputs and normalize to 4 digits
 
 #define add5_4(P0,P1,P2)                        \
@@ -451,29 +443,32 @@
         mov    [P0+0x10], r10;                  \
         mov    [P0+0x18], r11
 
-// Subtraction of a pair of numbers < p_25519 just sufficient
-// to give a 4-digit result. It actually always does (x - z) + (2^255-19)
-// which in turn is done by (x - z) - (2^255+19) discarding the 2^256
-// implicitly
+// Modular addition with double modulus 2 * p_25519 = 2^256 - 38.
+// This only ensures that the result fits in 4 digits, not that it is reduced
+// even w.r.t. double modulus. The result is always correct modulo provided
+// the sum of the inputs is < 2^256 + 2^256 - 38, so in particular provided
+// at least one of them is reduced double modulo.
 
-#define sub_4(P0,P1,P2)                         \
+#define add_twice4(P0,P1,P2)                    \
         mov     r8, [P1];                       \
-        sub     r8, [P2];                       \
-        mov     r9, [P1+8];                     \
-        sbb     r9, [P2+8];                     \
-        mov     r10, [P1+16];                   \
-        sbb     r10, [P2+16];                   \
-        mov     rax, [P1+24];                   \
-        sbb     rax, [P2+24];                   \
-        sub     r8, 19;                         \
+        xor     ecx, ecx;                       \
+        add     r8, [P2];                       \
+        mov     r9, [P1+0x8];                   \
+        adc     r9, [P2+0x8];                   \
+        mov     r10, [P1+0x10];                 \
+        adc     r10, [P2+0x10];                 \
+        mov     r11, [P1+0x18];                 \
+        adc     r11, [P2+0x18];                 \
+        mov     eax, 38;                        \
+        cmovnc  rax, rcx;                       \
+        add     r8, rax;                        \
+        adc     r9, rcx;                        \
+        adc     r10, rcx;                       \
+        adc     r11, rcx;                       \
         mov     [P0], r8;                       \
-        sbb     r9, 0;                          \
-        mov     [P0+8], r9;                     \
-        sbb     r10, 0;                         \
-        mov     [P0+16], r10;                   \
-        sbb     rax, 0;                         \
-        btc     rax, 63;                        \
-        mov     [P0+24], rax
+        mov     [P0+0x8], r9;                   \
+        mov     [P0+0x10], r10;                 \
+        mov     [P0+0x18], r11
 
 // Modular subtraction with double modulus 2 * p_25519 = 2^256 - 38
 
@@ -613,23 +608,22 @@ S2N_BN_SYMBOL(curve25519_x25519):
 
         mov     res, rdi
 
-// Copy the inputs to the local variables while mangling them:
+// Copy the inputs to the local variables with minimal mangling:
 //
-//  - The scalar gets turned into 01xxx...xxx000 by tweaking bits.
-//    Actually the top zero doesn't matter since the loop below
-//    never looks at it, so we don't literally modify that.
+//  - The scalar is in principle turned into 01xxx...xxx000 but
+//    in the structure below the special handling of these bits is
+//    explicit in the main computation; the scalar is just copied.
 //
-//  - The point x coord is reduced mod 2^255 *then* mod 2^255-19
+//  - The point x coord is reduced mod 2^255 by masking off the
+//    top bit. In the main loop we only need reduction < 2 * p_25519.
 
         mov     rax, [rsi]
-        and     rax, ~7
         mov     [rsp], rax
         mov     rax, [rsi+8]
         mov     [rsp+8], rax
         mov     rax, [rsi+16]
         mov     [rsp+16], rax
         mov     rax, [rsi+24]
-        bts     rax, 62
         mov     [rsp+24], rax
 
         mov     r8, [rdx]
@@ -637,69 +631,56 @@ S2N_BN_SYMBOL(curve25519_x25519):
         mov     r10, [rdx+16]
         mov     r11, [rdx+24]
         btr     r11, 63
-        mov     r12, 19
-        xor     r13, r13
-        xor     r14, r14
-        xor     r15, r15
-        add     r12, r8
-        adc     r13, r9
-        adc     r14, r10
-        adc     r15, r11
-        btr     r15, 63         // x >= 2^255 - 19 <=> x + 19 >= 2^255
-        cmovc   r8, r12
         mov     [rsp+32], r8
-        cmovc   r9, r13
         mov     [rsp+40], r9
-        cmovc   r10, r14
         mov     [rsp+48], r10
-        cmovc   r11, r15
         mov     [rsp+56], r11
 
-// Initialize (xn,zn) = (1,0) and (xm,zm) = (x,1) with swap = 0
-// We use the fact that the point x coordinate is still in registers
+// Initialize with explicit doubling in order to handle set bit 254.
+// Set swap = 1 and (xm,zm) = (x,1) then double as (xn,zn) = 2 * (x,1).
+// We use the fact that the point x coordinate is still in registers.
+// Since zm = 1 we could do the doubling with an operation count of
+// 2 * S + M instead of 2 * S + 2 * M, but it doesn't seem worth
+// the slight complication arising from a different linear combination.
 
-        mov     rax, 1
-        mov     [rsp+320], rax
+        mov     eax, 1
+        mov     swap, rax
+        mov     [rsp+256], r8
         mov     [rsp+96], rax
         xor     eax, eax
-        mov     swap, rax
-        mov     [rsp+160], rax
-        mov     [rsp+328], rax
-        mov     [rsp+104], rax
-        mov     [rsp+168], rax
-        mov     [rsp+336], rax
-        mov     [rsp+112], rax
-        mov     [rsp+176], rax
-        mov     [rsp+344], rax
-        mov     [rsp+120], rax
-        mov     [rsp+184], rax
-        mov     rax, [rsp+32]
-        mov     [rsp+256], r8
         mov     [rsp+264], r9
+        mov     [rsp+104], rax
         mov     [rsp+272], r10
+        mov     [rsp+112], rax
         mov     [rsp+280], r11
+        mov     [rsp+120], rax
 
-// The outer loop over scalar bits from i = 254, ..., i = 0 (inclusive)
-// This starts at 254, and so implicitly masks bit 255 of the scalar.
+        sub_twice4(d,xm,zm)
+        add_twice4(s,xm,zm)
+        sqr_4(d,d)
+        sqr_4(s,s)
+        sub_twice4(p,s,d)
+        cmadd_4(e,0x1db42,p,d)
+        mul_4(xn,s,d)
+        mul_4(zn,p,e)
 
-        mov     eax, 254
+// The main loop over unmodified bits from i = 253, ..., i = 3 (inclusive).
+// This is a classic Montgomery ladder, with the main coordinates only
+// reduced mod 2 * p_25519, some intermediate results even more loosely.
+
+        mov     eax, 253
         mov     i, rax
 
 scalarloop:
 
 // sm = xm + zm; sn = xn + zn; dm = xm - zm; dn = xn - zn
-// The adds don't need any normalization as they're fed to muls
-// Just make sure the subs fit in 4 digits.
 
-        sub_4(dm,xm,zm)
-        add_4(sn,xn,zn)
-        sub_4(dn,xn,zn)
-        add_4(sm,xm,zm)
+        sub_twice4(dm,xm,zm)
+        add_twice4(sn,xn,zn)
+        sub_twice4(dn,xn,zn)
+        add_twice4(sm,xm,zm)
 
-// ADDING: dmsn = dm * sn; dnsm = sm * dn
 // DOUBLING: mux d = xt - zt and s = xt + zt for appropriate choice of (xt,zt)
-
-        mul_5(dmsn,sn,dm)
 
         mov     rdx, i
         mov     rcx, rdx
@@ -709,22 +690,25 @@ scalarloop:
         and     rdx, 1
         cmp     rdx, swap
         mov     swap, rdx
-
         mux_4(d,dm,dn)
         mux_4(s,sm,sn)
 
+// ADDING: dmsn = dm * sn; dnsm = sm * dn
+
+        mul_5(dmsn,sn,dm)
+
         mul_5(dnsm,sm,dn)
 
-// DOUBLING: d = (xt - zt)^2 normalized only to 4 digits
+// DOUBLING: d = (xt - zt)^2
 
         sqr_4(d,d)
 
 // ADDING: dpro = (dmsn - dnsm)^2, spro = (dmsn + dnsm)^2
-// DOUBLING: s = (xt + zt)^2, normalized only to 4 digits
+// DOUBLING: s = (xt + zt)^2
 
         sub5_4(dpro,dmsn,dnsm)
-        sqr_4(s,s)
         add5_4(spro,dmsn,dnsm)
+        sqr_4(s,s)
         sqr_4(dpro,dpro)
 
 // DOUBLING: p = 4 * xt * zt = s - d
@@ -733,7 +717,7 @@ scalarloop:
 
 // ADDING: xm' = (dmsn + dnsm)^2
 
-        sqr_p25519(xm,spro)
+        sqr_4(xm,spro)
 
 // DOUBLING: e = 121666 * p + d
 
@@ -741,28 +725,63 @@ scalarloop:
 
 // DOUBLING: xn' = (xt + zt)^2 * (xt - zt)^2 = s * d
 
-        mul_p25519(xn,s,d)
-
-// ADDING: zm' = x * (dmsn - dnsm)^2
-
-        mul_p25519(zm,dpro,pointx)
+        mul_4(xn,s,d)
 
 // DOUBLING: zn' = (4 * xt * zt) * ((xt - zt)^2 + 121666 * (4 * xt * zt))
 //               = p * (d + 121666 * p)
 
-        mul_p25519(zn,p,e)
+        mul_4(zn,p,e)
 
-// Loop down as far as 0 (inclusive)
+// ADDING: zm' = x * (dmsn - dnsm)^2
+
+        mul_4(zm,dpro,pointx)
+
+// Loop down as far as 3 (inclusive)
 
         mov     rax, i
         sub     rax, 1
         mov     i, rax
+        cmp     rax, 3
         jnc     scalarloop
 
-// Since the scalar was forced to be a multiple of 8, we know it's even.
-// Hence there is no need to multiplex: the projective answer is (xn,zn)
-// and we can ignore (xm,zm); indeed we could have avoided the last three
-// differential additions and just done the doublings.
+// Multiplex directly into (xn,zn) then do three pure doubling steps;
+// this accounts for the implicit zeroing of the three lowest bits
+// of the scalar. On the very last doubling we *fully* reduce zn mod
+// p_25519 to ease checking for degeneracy below.
+
+        mov     rdx, swap
+        test    rdx, rdx
+        mux_4(xn,xm,xn)
+        mux_4(zn,zm,zn)
+
+        sub_twice4(d,xn,zn)
+        add_twice4(s,xn,zn)
+        sqr_4(d,d)
+        sqr_4(s,s)
+        sub_twice4(p,s,d)
+        cmadd_4(e,0x1db42,p,d)
+        mul_4(xn,s,d)
+        mul_4(zn,p,e)
+
+        sub_twice4(d,xn,zn)
+        add_twice4(s,xn,zn)
+        sqr_4(d,d)
+        sqr_4(s,s)
+        sub_twice4(p,s,d)
+        cmadd_4(e,0x1db42,p,d)
+        mul_4(xn,s,d)
+        mul_4(zn,p,e)
+
+        sub_twice4(d,xn,zn)
+        add_twice4(s,xn,zn)
+        sqr_4(d,d)
+        sqr_4(s,s)
+        sub_twice4(p,s,d)
+        cmadd_4(e,0x1db42,p,d)
+        mul_4(xn,s,d)
+        mul_p25519(zn,p,e)
+
+// The projective result of the scalar multiplication is now (xn,zn).
 // First set up the constant sn = 2^255 - 19 for the modular inverse.
 
         mov     rax, -19
@@ -1200,7 +1219,7 @@ fliploop:
         cmovz   rcx, rax
         mov     [rsp+344], rcx
 
-// Now the result is xn * (1/zn).
+// Now the result is xn * (1/zn), fully reduced modulo p.
 
         mov     rbp, res
         mul_p25519(resx,xn,zm)

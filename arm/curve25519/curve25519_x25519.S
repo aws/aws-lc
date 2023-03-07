@@ -75,10 +75,8 @@
 
 #define NSPACE (12*NUMSIZE)
 
-// Macros wrapping up the basic field operation calls
-// bignum_mul_p25519 and bignum_sqr_p25519.
-// These two are only trivially different from pure
-// function calls to those subroutines.
+// Macro wrapping up the basic field operation bignum_mul_p25519, only
+// trivially different from a pure function call to that subroutine.
 
 #define mul_p25519(p0,p1,p2)                    \
         ldp     x3, x4, [p1];                   \
@@ -243,121 +241,165 @@
         stp     x7, x8, [p0];                   \
         stp     x9, x10, [p0+16]
 
-#define sqr_p25519(p0,p1)                       \
-        ldp     x6, x7, [p1];                   \
-        ldp     x10, x11, [p1+16];              \
-        mul     x4, x6, x10;                    \
-        mul     x9, x7, x11;                    \
-        umulh   x12, x6, x10;                   \
-        subs    x13, x6, x7;                    \
-        cneg    x13, x13, cc;                   \
-        csetm   x3, cc;                         \
-        subs    x2, x11, x10;                   \
-        cneg    x2, x2, cc;                     \
-        mul     x8, x13, x2;                    \
-        umulh   x2, x13, x2;                    \
-        cinv    x3, x3, cc;                     \
-        eor     x8, x8, x3;                     \
-        eor     x2, x2, x3;                     \
-        adds    x5, x4, x12;                    \
-        adc     x12, x12, xzr;                  \
-        umulh   x13, x7, x11;                   \
-        adds    x5, x5, x9;                     \
-        adcs    x12, x12, x13;                  \
-        adc     x13, x13, xzr;                  \
-        adds    x12, x12, x9;                   \
-        adc     x13, x13, xzr;                  \
-        cmn     x3, #0x1;                       \
-        adcs    x5, x5, x8;                     \
-        adcs    x12, x12, x2;                   \
-        adc     x13, x13, x3;                   \
-        adds    x4, x4, x4;                     \
-        adcs    x5, x5, x5;                     \
-        adcs    x12, x12, x12;                  \
-        adcs    x13, x13, x13;                  \
-        adc     x14, xzr, xzr;                  \
-        mul     x2, x6, x6;                     \
-        mul     x8, x7, x7;                     \
-        mul     x15, x6, x7;                    \
-        umulh   x3, x6, x6;                     \
-        umulh   x9, x7, x7;                     \
-        umulh   x16, x6, x7;                    \
-        adds    x3, x3, x15;                    \
-        adcs    x8, x8, x16;                    \
-        adc     x9, x9, xzr;                    \
-        adds    x3, x3, x15;                    \
-        adcs    x8, x8, x16;                    \
-        adc     x9, x9, xzr;                    \
-        adds    x4, x4, x8;                     \
-        adcs    x5, x5, x9;                     \
-        adcs    x12, x12, xzr;                  \
+// A version of multiplication that only guarantees output < 2 * p_25519.
+// This basically skips the +1 and final correction in quotient estimation.
+
+#define mul_4(P0,P1,P2)                         \
+        ldp     x3, x4, [P1];                   \
+        ldp     x5, x6, [P2];                   \
+        mul     x7, x3, x5;                     \
+        umulh   x8, x3, x5;                     \
+        mul     x9, x4, x6;                     \
+        umulh   x10, x4, x6;                    \
+        subs    x4, x4, x3;                     \
+        cneg    x4, x4, cc;                     \
+        csetm   x16, cc;                        \
+        adds    x9, x9, x8;                     \
+        adc     x10, x10, xzr;                  \
+        subs    x3, x5, x6;                     \
+        cneg    x3, x3, cc;                     \
+        cinv    x16, x16, cc;                   \
+        mul     x15, x4, x3;                    \
+        umulh   x3, x4, x3;                     \
+        adds    x8, x7, x9;                     \
+        adcs    x9, x9, x10;                    \
+        adc     x10, x10, xzr;                  \
+        cmn     x16, #0x1;                      \
+        eor     x15, x15, x16;                  \
+        adcs    x8, x15, x8;                    \
+        eor     x3, x3, x16;                    \
+        adcs    x9, x3, x9;                     \
+        adc     x10, x10, x16;                  \
+        ldp     x3, x4, [P1+16];                \
+        ldp     x5, x6, [P2+16];                \
+        mul     x11, x3, x5;                    \
+        umulh   x12, x3, x5;                    \
+        mul     x13, x4, x6;                    \
+        umulh   x14, x4, x6;                    \
+        subs    x4, x4, x3;                     \
+        cneg    x4, x4, cc;                     \
+        csetm   x16, cc;                        \
+        adds    x13, x13, x12;                  \
+        adc     x14, x14, xzr;                  \
+        subs    x3, x5, x6;                     \
+        cneg    x3, x3, cc;                     \
+        cinv    x16, x16, cc;                   \
+        mul     x15, x4, x3;                    \
+        umulh   x3, x4, x3;                     \
+        adds    x12, x11, x13;                  \
+        adcs    x13, x13, x14;                  \
+        adc     x14, x14, xzr;                  \
+        cmn     x16, #0x1;                      \
+        eor     x15, x15, x16;                  \
+        adcs    x12, x15, x12;                  \
+        eor     x3, x3, x16;                    \
+        adcs    x13, x3, x13;                   \
+        adc     x14, x14, x16;                  \
+        ldp     x3, x4, [P1+16];                \
+        ldp     x15, x16, [P1];                 \
+        subs    x3, x3, x15;                    \
+        sbcs    x4, x4, x16;                    \
+        csetm   x16, cc;                        \
+        ldp     x15, x0, [P2];                  \
+        subs    x5, x15, x5;                    \
+        sbcs    x6, x0, x6;                     \
+        csetm   x0, cc;                         \
+        eor     x3, x3, x16;                    \
+        subs    x3, x3, x16;                    \
+        eor     x4, x4, x16;                    \
+        sbc     x4, x4, x16;                    \
+        eor     x5, x5, x0;                     \
+        subs    x5, x5, x0;                     \
+        eor     x6, x6, x0;                     \
+        sbc     x6, x6, x0;                     \
+        eor     x16, x0, x16;                   \
+        adds    x11, x11, x9;                   \
+        adcs    x12, x12, x10;                  \
         adcs    x13, x13, xzr;                  \
         adc     x14, x14, xzr;                  \
-        mul     x6, x10, x10;                   \
-        mul     x8, x11, x11;                   \
-        mul     x15, x10, x11;                  \
-        umulh   x7, x10, x10;                   \
-        umulh   x9, x11, x11;                   \
-        umulh   x16, x10, x11;                  \
-        adds    x7, x7, x15;                    \
-        adcs    x8, x8, x16;                    \
-        adc     x9, x9, xzr;                    \
-        adds    x7, x7, x15;                    \
-        adcs    x8, x8, x16;                    \
-        adc     x9, x9, xzr;                    \
-        adds    x6, x6, x12;                    \
-        adcs    x7, x7, x13;                    \
-        adcs    x8, x8, x14;                    \
-        adc     x9, x9, xzr;                    \
-        mov     x10, #0x26;                     \
-        and     x11, x6, #0xffffffff;           \
-        lsr     x12, x6, #32;                   \
-        mul     x11, x10, x11;                  \
-        mul     x12, x10, x12;                  \
-        adds    x2, x2, x11;                    \
-        and     x11, x7, #0xffffffff;           \
-        lsr     x7, x7, #32;                    \
-        mul     x11, x10, x11;                  \
-        mul     x7, x10, x7;                    \
-        adcs    x3, x3, x11;                    \
-        and     x11, x8, #0xffffffff;           \
-        lsr     x8, x8, #32;                    \
-        mul     x11, x10, x11;                  \
-        mul     x8, x10, x8;                    \
-        adcs    x4, x4, x11;                    \
-        and     x11, x9, #0xffffffff;           \
-        lsr     x9, x9, #32;                    \
-        mul     x11, x10, x11;                  \
-        mul     x9, x10, x9;                    \
-        adcs    x5, x5, x11;                    \
-        cset    x6, cs;                         \
-        lsl     x11, x12, #32;                  \
-        adds    x2, x2, x11;                    \
-        extr    x11, x7, x12, #32;              \
-        adcs    x3, x3, x11;                    \
-        extr    x11, x8, x7, #32;               \
-        adcs    x4, x4, x11;                    \
-        extr    x11, x9, x8, #32;               \
-        adcs    x5, x5, x11;                    \
-        lsr     x11, x9, #32;                   \
-        adc     x6, x6, x11;                    \
-        cmn     x5, x5;                         \
-        orr     x5, x5, #0x8000000000000000;    \
-        adc     x13, x6, x6;                    \
-        mov     x10, #0x13;                     \
-        madd    x11, x10, x13, x10;             \
-        adds    x2, x2, x11;                    \
-        adcs    x3, x3, xzr;                    \
-        adcs    x4, x4, xzr;                    \
-        adcs    x5, x5, xzr;                    \
-        csel    x10, x10, xzr, cc;              \
-        subs    x2, x2, x10;                    \
-        sbcs    x3, x3, xzr;                    \
-        sbcs    x4, x4, xzr;                    \
-        sbc     x5, x5, xzr;                    \
-        and     x5, x5, #0x7fffffffffffffff;    \
-        stp     x2, x3, [p0];                   \
-        stp     x4, x5, [p0+16]
+        mul     x2, x3, x5;                     \
+        umulh   x0, x3, x5;                     \
+        mul     x15, x4, x6;                    \
+        umulh   x1, x4, x6;                     \
+        subs    x4, x4, x3;                     \
+        cneg    x4, x4, cc;                     \
+        csetm   x9, cc;                         \
+        adds    x15, x15, x0;                   \
+        adc     x1, x1, xzr;                    \
+        subs    x6, x5, x6;                     \
+        cneg    x6, x6, cc;                     \
+        cinv    x9, x9, cc;                     \
+        mul     x5, x4, x6;                     \
+        umulh   x6, x4, x6;                     \
+        adds    x0, x2, x15;                    \
+        adcs    x15, x15, x1;                   \
+        adc     x1, x1, xzr;                    \
+        cmn     x9, #0x1;                       \
+        eor     x5, x5, x9;                     \
+        adcs    x0, x5, x0;                     \
+        eor     x6, x6, x9;                     \
+        adcs    x15, x6, x15;                   \
+        adc     x1, x1, x9;                     \
+        adds    x9, x11, x7;                    \
+        adcs    x10, x12, x8;                   \
+        adcs    x11, x13, x11;                  \
+        adcs    x12, x14, x12;                  \
+        adcs    x13, x13, xzr;                  \
+        adc     x14, x14, xzr;                  \
+        cmn     x16, #0x1;                      \
+        eor     x2, x2, x16;                    \
+        adcs    x9, x2, x9;                     \
+        eor     x0, x0, x16;                    \
+        adcs    x10, x0, x10;                   \
+        eor     x15, x15, x16;                  \
+        adcs    x11, x15, x11;                  \
+        eor     x1, x1, x16;                    \
+        adcs    x12, x1, x12;                   \
+        adcs    x13, x13, x16;                  \
+        adc     x14, x14, x16;                  \
+        mov     x3, #0x26;                      \
+        and     x5, x11, #0xffffffff;           \
+        lsr     x4, x11, #32;                   \
+        mul     x5, x3, x5;                     \
+        mul     x4, x3, x4;                     \
+        adds    x7, x7, x5;                     \
+        and     x5, x12, #0xffffffff;           \
+        lsr     x12, x12, #32;                  \
+        mul     x5, x3, x5;                     \
+        mul     x12, x3, x12;                   \
+        adcs    x8, x8, x5;                     \
+        and     x5, x13, #0xffffffff;           \
+        lsr     x13, x13, #32;                  \
+        mul     x5, x3, x5;                     \
+        mul     x13, x3, x13;                   \
+        adcs    x9, x9, x5;                     \
+        and     x5, x14, #0xffffffff;           \
+        lsr     x14, x14, #32;                  \
+        mul     x5, x3, x5;                     \
+        mul     x14, x3, x14;                   \
+        adcs    x10, x10, x5;                   \
+        cset    x11, cs;                        \
+        lsl     x5, x4, #32;                    \
+        adds    x7, x7, x5;                     \
+        extr    x5, x12, x4, #32;               \
+        adcs    x8, x8, x5;                     \
+        extr    x5, x13, x12, #32;              \
+        adcs    x9, x9, x5;                     \
+        extr    x5, x14, x13, #32;              \
+        adcs    x10, x10, x5;                   \
+        lsr     x5, x14, #32;                   \
+        adc     x11, x11, x5;                   \
+        cmn     x10, x10;                       \
+        bic     x10, x10, #0x8000000000000000;  \
+        adc     x0, x11, x11;                   \
+        mov     x3, #19;                        \
+        mul     x5, x3, x0;                     \
+        adds    x7, x7, x5;                     \
+        adcs    x8, x8, xzr;                    \
+        adcs    x9, x9, xzr;                    \
+        adc     x10, x10, xzr;                  \
+        stp     x7, x8, [P0];                   \
+        stp     x9, x10, [P0+16]
 
 // Multiplication just giving a 5-digit result (actually < 39 * 2^256)
 // by not doing anything beyond the first stage of reduction
@@ -625,21 +667,6 @@
         stp     x2, x3, [p0];                   \
         stp     x4, x5, [p0+16]
 
-// Plain 4-digit add without any normalization
-// With inputs < p_25519 (indeed < 2^255) it still gives a 4-digit result
-
-#define add_4(p0,p1,p2)                         \
-        ldp     x0, x1, [p1];                   \
-        ldp     x4, x5, [p2];                   \
-        adds    x0, x0, x4;                     \
-        adcs    x1, x1, x5;                     \
-        ldp     x2, x3, [p1+16];                \
-        ldp     x6, x7, [p2+16];                \
-        adcs    x2, x2, x6;                     \
-        adc     x3, x3, x7;                     \
-        stp     x0, x1, [p0];                   \
-        stp     x2, x3, [p0+16]
-
 // Add 5-digit inputs and normalize to 4 digits
 
 #define add5_4(p0,p1,p2)                        \
@@ -666,28 +693,29 @@
         stp     x0, x1, [p0];                   \
         stp     x2, x3, [p0+16]
 
-// Subtraction of a pair of numbers < p_25519 just sufficient
-// to give a 4-digit result. It actually always does (x - z) + (2^255-19)
-// which in turn is done by (x - z) - (2^255+19) discarding the 2^256
-// implicitly
+// Modular addition and doubling with double modulus 2 * p_25519 = 2^256 - 38.
+// This only ensures that the result fits in 4 digits, not that it is reduced
+// even w.r.t. double modulus. The result is always correct modulo provided
+// the sum of the inputs is < 2^256 + 2^256 - 38, so in particular provided
+// at least one of them is reduced double modulo.
 
-#define sub_4(p0,p1,p2)                         \
-        ldp     x5, x6, [p1];                   \
-        ldp     x4, x3, [p2];                   \
-        subs    x5, x5, x4;                     \
-        sbcs    x6, x6, x3;                     \
-        ldp     x7, x8, [p1+16];                \
-        ldp     x4, x3, [p2+16];                \
-        sbcs    x7, x7, x4;                     \
-        sbcs    x8, x8, x3;                     \
-        mov     x3, #19;                        \
-        subs    x5, x5, x3;                     \
-        sbcs    x6, x6, xzr;                    \
-        sbcs    x7, x7, xzr;                    \
-        mov     x4, #0x8000000000000000;        \
-        sbc     x8, x8, x4;                     \
-        stp     x5, x6, [p0];                   \
-        stp     x7, x8, [p0+16]
+#define add_twice4(P0,P1,P2)                    \
+        ldp     x3, x4, [P1];                   \
+        ldp     x7, x8, [P2];                   \
+        adds    x3, x3, x7;                     \
+        adcs    x4, x4, x8;                     \
+        ldp     x5, x6, [P1+16];                \
+        ldp     x7, x8, [P2+16];                \
+        adcs    x5, x5, x7;                     \
+        adcs    x6, x6, x8;                     \
+        mov     x9, #38;                        \
+        csel    x9, x9, xzr, cs;                \
+        adds    x3, x3, x9;                     \
+        adcs    x4, x4, xzr;                    \
+        adcs    x5, x5, xzr;                    \
+        adc     x6, x6, xzr;                    \
+        stp     x3, x4, [P0];                   \
+        stp     x5, x6, [P0+16]
 
 // Modular subtraction with double modulus 2 * p_25519 = 2^256 - 38
 
@@ -809,72 +837,67 @@ S2N_BN_SYMBOL(curve25519_x25519):
 
         mov     res, x0
 
-// Copy the inputs to the local variables while mangling them:
+// Copy the inputs to the local variables with minimal mangling:
 //
-//  - The scalar gets turned into 01xxx...xxx000 by tweaking bits.
-//    Actually the top zero doesn't matter since the loop below
-//    never looks at it, so we don't literally modify that.
+//  - The scalar is in principle turned into 01xxx...xxx000 but
+//    in the structure below the special handling of these bits is
+//    explicit in the main computation; the scalar is just copied.
 //
-//  - The point x coord is reduced mod 2^255 *then* mod 2^255-19
+//  - The point x coord is reduced mod 2^255 by masking off the
+//    top bit. In the main loop we only need reduction < 2 * p_25519.
 
         ldp     x10, x11, [x1]
-        bic     x10, x10, #7
         stp     x10, x11, [scalar]
         ldp     x12, x13, [x1, #16]
-        orr     x13, x13, #0x4000000000000000
         stp     x12, x13, [scalar+16]
 
         ldp     x10, x11, [x2]
-        subs    x6, x10, #-19
-        adcs    x7, x11, xzr
+        stp     x10, x11, [pointx]
         ldp     x12, x13, [x2, #16]
         and     x13, x13, #0x7fffffffffffffff
-        adcs    x8, x12, xzr
-        mov     x9, #0x7fffffffffffffff
-        sbcs    x9, x13, x9
-
-        csel    x10, x6, x10, cs
-        csel    x11, x7, x11, cs
-        csel    x12, x8, x12, cs
-        csel    x13, x9, x13, cs
-
-        stp     x10, x11, [pointx]
         stp     x12, x13, [pointx+16]
 
-// Initialize (xn,zn) = (1,0) and (xm,zm) = (x,1) with swap = 0
-// We use the fact that the point x coordinate is still in registers
+// Initialize with explicit doubling in order to handle set bit 254.
+// Set swap = 1 and (xm,zm) = (x,1) then double as (xn,zn) = 2 * (x,1).
+// We use the fact that the point x coordinate is still in registers.
+// Since zm = 1 we could do the doubling with an operation count of
+// 2 * S + M instead of 2 * S + 2 * M, but it doesn't seem worth
+// the slight complication arising from a different linear combination.
 
-        mov     x2, #1
-        stp     x2, xzr, [xn]
-        stp     xzr, xzr, [xn+16]
-        stp     xzr, xzr, [zn]
-        stp     xzr, xzr, [zn+16]
+        mov     swap, #1
         stp     x10, x11, [xm]
         stp     x12, x13, [xm+16]
-        stp     x2, xzr, [zm]
+        stp     swap, xzr, [zm]
         stp     xzr, xzr, [zm+16]
-        mov     swap, xzr
 
-// The outer loop over scalar bits from i = 254, ..., i = 0 (inclusive)
-// This starts at 254, and so implicitly masks bit 255 of the scalar.
+        sub_twice4(d,xm,zm)
+        add_twice4(s,xm,zm)
+        sqr_4(d,d)
+        sqr_4(s,s)
+        sub_twice4(p,s,d)
+        mov     x1, 0xdb42
+        orr     x1, x1, 0x10000
+        cmadd_4(e,p,d)
+        mul_4(xn,s,d)
+        mul_4(zn,p,e)
 
-        mov     i, #254
+// The main loop over unmodified bits from i = 253, ..., i = 3 (inclusive).
+// This is a classic Montgomery ladder, with the main coordinates only
+// reduced mod 2 * p_25519, some intermediate results even more loosely.
+
+        mov     i, #253
 
 scalarloop:
 
+
 // sm = xm + zm; sn = xn + zn; dm = xm - zm; dn = xn - zn
-// The adds don't need any normalization as they're fed to muls
-// Just make sure the subs fit in 4 digits
 
-        sub_4(dm, xm, zm)
-        add_4(sn, xn, zn)
-        sub_4(dn, xn, zn)
-        add_4(sm, xm, zm)
+        sub_twice4(dm,xm,zm)
+        add_twice4(sn,xn,zn)
+        sub_twice4(dn,xn,zn)
+        add_twice4(sm,xm,zm)
 
-// ADDING: dmsn = dm * sn; dnsm = sm * dn
 // DOUBLING: mux d = xt - zt and s = xt + zt for appropriate choice of (xt,zt)
-
-        mul_5(dmsn,sn,dm)
 
         lsr     x0, i, #6
         ldr     x2, [sp, x0, lsl #3]    // Exploiting scalar = sp exactly
@@ -887,18 +910,22 @@ scalarloop:
         mux_4(d,dm,dn)
         mux_4(s,sm,sn)
 
+// ADDING: dmsn = dm * sn; dnsm = sm * dn
+
+        mul_5(dmsn,sn,dm)
+
         mul_5(dnsm,sm,dn)
 
-// DOUBLING: d = (xt - zt)^2 normalized only to 4 digits
+// DOUBLING: d = (xt - zt)^2
 
         sqr_4(d,d)
 
 // ADDING: dpro = (dmsn - dnsm)^2, spro = (dmsn + dnsm)^2
-// DOUBLING: s = (xt + zt)^2, normalized only to 4 digits
+// DOUBLING: s = (xt + zt)^2
 
         sub5_4(dpro,dmsn,dnsm)
-        sqr_4(s,s)
         add5_4(spro,dmsn,dnsm)
+        sqr_4(s,s)
         sqr_4(dpro,dpro)
 
 // DOUBLING: p = 4 * xt * zt = s - d
@@ -907,7 +934,7 @@ scalarloop:
 
 // ADDING: xm' = (dmsn + dnsm)^2
 
-        sqr_p25519(xm,spro)
+        sqr_4(xm,spro)
 
 // DOUBLING: e = 121666 * p + d
 
@@ -917,26 +944,66 @@ scalarloop:
 
 // DOUBLING: xn' = (xt + zt)^2 * (xt - zt)^2 = s * d
 
-        mul_p25519(xn,s,d)
-
-// ADDING: zm' = x * (dmsn - dnsm)^2
-
-        mul_p25519(zm,dpro,pointx)
+        mul_4(xn,s,d)
 
 // DOUBLING: zn' = (4 * xt * zt) * ((xt - zt)^2 + 121666 * (4 * xt * zt))
 //               = p * (d + 121666 * p)
 
-        mul_p25519(zn,p,e)
+        mul_4(zn,p,e)
 
-// Loop down as far as 0 (inclusive)
+// ADDING: zm' = x * (dmsn - dnsm)^2
 
-        subs    i, i, #1
+        mul_4(zm,dpro,pointx)
+
+// Loop down as far as 3 (inclusive)
+
+        sub     i, i, #1
+        cmp     i, #3
         bcs     scalarloop
 
-// Since the scalar was forced to be a multiple of 8, we know it's even.
-// Hence there is no need to multiplex: the projective answer is (xn,zn)
-// and we can ignore (xm,zm); indeed we could have avoided the last three
-// differential additions and just done the doublings.
+// Multiplex directly into (xn,zn) then do three pure doubling steps;
+// this accounts for the implicit zeroing of the three lowest bits
+// of the scalar. On the very last doubling we *fully* reduce zn mod
+// p_25519 to ease checking for degeneracy below.
+
+        cmp     swap, xzr
+        mux_4(xn,xm,xn)
+        mux_4(zn,zm,zn)
+
+        sub_twice4(d,xn,zn)
+        add_twice4(s,xn,zn)
+        sqr_4(d,d)
+        sqr_4(s,s)
+        sub_twice4(p,s,d)
+        mov     x1, 0xdb42
+        orr     x1, x1, 0x10000
+        cmadd_4(e,p,d)
+        mul_4(xn,s,d)
+        mul_4(zn,p,e)
+
+        sub_twice4(d,xn,zn)
+        add_twice4(s,xn,zn)
+        sqr_4(d,d)
+        sqr_4(s,s)
+        sub_twice4(p,s,d)
+        mov     x1, 0xdb42
+        orr     x1, x1, 0x10000
+        cmadd_4(e,p,d)
+        mul_4(xn,s,d)
+        mul_4(zn,p,e)
+
+        sub_twice4(d,xn,zn)
+        add_twice4(s,xn,zn)
+        sqr_4(d,d)
+        sqr_4(s,s)
+        sub_twice4(p,s,d)
+        mov     x1, 0xdb42
+        orr     x1, x1, 0x10000
+        cmadd_4(e,p,d)
+        mul_4(xn,s,d)
+        mul_p25519(zn,p,e)
+
+// The projective result of the scalar multiplication is now (xn,zn).
 // First set up the constant sn = 2^255 - 19 for the modular inverse.
 
         mov     x0, #-19
@@ -1307,7 +1374,7 @@ zfliploop:
         csel    x3, x3, xzr, ne
         stp     x2, x3, [xn+16]
 
-// Now the result is xn * (1/zn).
+// Now the result is xn * (1/zn), fully reduced modulo p.
 
         mul_p25519(resx,xn,zm)
 
