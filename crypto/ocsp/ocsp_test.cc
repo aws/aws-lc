@@ -412,6 +412,7 @@ TEST(OCSPTest, TestGoodOCSP) {
   EXPECT_EQ(OCSP_R_STATUS_NOT_YET_VALID, ERR_GET_REASON(err));
   err = ERR_get_error();
   EXPECT_EQ(OCSP_R_STATUS_EXPIRED, ERR_GET_REASON(err));
+  ERR_clear_error();
 
   // Check that "NEXTUPDATE_BEFORE_THISUPDATE" is properly detected. We have to
   // use |valid_after_ocsp_update_time| instead of |nextupd| to avoid a
