@@ -4699,6 +4699,119 @@ aes_gcm_decrypt_avx512:
 ___
 }
 
+# Bits 7 & 4 contain the src1 register's MSB in inverted form
+# Bits 6 & 5 contian the dst register's MSB in inverted form
+# Bits 1 & 0 is fixed to 10 for vaesenc* instrcutions and 11
+# for vpclmulqdq instruction
+sub evex_byte1 {
+  my ($mm, $src1, $dst) = @_;
+  # set default to zero
+  $src1 //= 0;
+  $dst //= 0;
+
+  my $byte = 0xf0 | $mm;
+
+  if (($src1 & 0x8) > 0) {
+      $byte = $byte & 0x7f;
+  } 
+  if (($src1 & 0x10) > 0) {
+      $byte = $byte & 0xef;
+  }
+
+  if (($dst & 0x8) > 0) {
+      $byte = $byte & 0xdf;
+  }
+  if (($dst & 0x10) > 0) {
+      $byte = $byte & 0xbf;
+  }
+  return $byte;
+}
+
+# Bits 6->3 contians the lower 4 bits of src2 register in inverted form
+# Bits 0->2 is fixed to 101
+sub evex_byte2 {
+  my $src2 = shift;
+  $src2 = ($src2 & 0x0f) ^ 0x0f;
+  return (($src2 << 3) | 0x05);
+}
+
+# Bits 6 & 5 tells about the operand register types and bit 3 contains
+# the src2 register's MSB in inverted form
+sub evex_byte3 {
+  my ($type, $src2) = @_;
+  my $byte = 0x0; # default for xmm registers
+  if ($type eq 'y') {
+	$byte = 0x01;
+  } elsif ($type eq 'z') {
+	$byte = 0x02;
+  }
+  
+  $byte = $byte << 5;
+
+  if (!($src2 & 0x10)) {
+      $byte = $byte | 0x08;
+  }
+  return $byte;
+}
+
+sub vpclmulqdq {
+  my $line = shift;
+  my @opcode = (0x62);
+  my $inst_type = 0x03; #vpclmulqdq
+  my %opcodelet = (
+     "vpclmulqdq" => 0x44,
+  );
+  if ($line=~/(vpclmul[a-z]+)\s+\$0x([0-9]+),\s*%([xyz])mm([0-9]+),\s*%[xyz]mm([0-9]+),\s*%[xyz]mm([0-9]+)/) {
+        return undef if (!defined($opcodelet{$1}));
+        my $byte1 = evex_byte1($inst_type, $6, $4);
+        my $byte2 = evex_byte2($5);
+        my $byte3 = evex_byte3($3, $5);
+        my $modrm = 0xc0 | (($4 & 7) | (($6 & 7) << 3));
+	push @opcode,$byte1,$byte2,$byte3;
+	push @opcode,($opcodelet{$1});
+	push @opcode,$modrm;
+	push @opcode,hex($2);
+        return ".byte\t".join(',',@opcode);
+  } 
+  return $line;
+}
+
+sub vaesni {
+  my $line = shift;
+  my @opcode = (0x62);
+  my $inst_type = 0x02; # vaesenc
+  my $byte1, $byte2, $byte3;
+  my %opcodelet = (
+     "vaesenc" => 0xdc, "vaesenclast" => 0xdd,
+  );
+  if ($line=~/(vaes[a-z]+)\s+%([xyz])mm([0-9]+),\s*%[xyz]mm([0-9]+),\s*%[xyz]mm([0-9]*)/) {
+        return undef if (!defined($opcodelet{$1}));
+        $byte1 = evex_byte1($inst_type, $5, $3);
+        $byte2 = evex_byte2($4);
+        $byte3 = evex_byte3($2, $4);
+        my $modrm = 0xc0 | ((($5 & 7) << 3) | ($3 & 7));
+	push @opcode,$byte1,$byte2,$byte3;
+	push @opcode,($opcodelet{$1});
+	push @opcode,$modrm;
+        return ".byte\t".join(',',@opcode);
+  } elsif ($line=~/(vaes[a-z]+)\s+([0-9]+)\(%rdi\),\s*%([xyz])mm([0-9]+),\s*%[xyz]mm([0-9]+)/) {
+        return undef if (!defined($opcodelet{$1}));
+        $byte1 = evex_byte1($inst_type);
+        $byte2 = evex_byte2($5);
+        $byte3 = evex_byte3($3, $5);
+        push @opcode,$byte1,$byte2,$byte3;
+        push @opcode,($opcodelet{$1});
+        push @opcode,0x4f;
+        my $off = sprintf('%2x',$2);
+        push @opcode,(hex($off)>>4);
+        return ".byte\t".join(',',@opcode);
+  }
+  return $line;
+}       
+
 $code =~ s/\`([^\`]*)\`/eval $1/gem;
+$code =~ s/\b(vpclmul.*).*$/vpclmulqdq($1)/gem;
+$code =~ s/\b(vaesenc.*).*$/vaesni($1)/gem;
+
 print $code;
 close STDOUT or die "error closing STDOUT: $!";

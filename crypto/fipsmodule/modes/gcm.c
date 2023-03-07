@@ -258,10 +258,12 @@ void CRYPTO_gcm128_setiv(GCM128_CONTEXT *ctx, const AES_KEY *key,
   ctx->ares = 0;
   ctx->mres = 0;
 
+#if !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
   if (ctx->gcm_key.use_aes_gcm_crypt_avx512) {
     gcm_setiv_avx512(key, ctx, iv, len);
     return;
   }
+#endif
 
   uint32_t ctr;
   if (len == 12) {
@@ -556,10 +558,12 @@ int CRYPTO_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
     ctx->ares = 0;
   }
 
+#if !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
   if (ctx->gcm_key.use_aes_gcm_crypt_avx512 && len > 0) {
     aes_gcm_encrypt_avx512(key, ctx, &ctx->mres, in, len, out);
     return 1;
   }
+#endif
 
   unsigned n = ctx->mres;
   if (n) {
@@ -647,10 +651,12 @@ int CRYPTO_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
     ctx->ares = 0;
   }
 
+#if !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
   if (ctx->gcm_key.use_aes_gcm_crypt_avx512 && len > 0) {
     aes_gcm_decrypt_avx512(key, ctx, &ctx->mres, in, len, out);
     return 1;
   }
+#endif
 
   unsigned n = ctx->mres;
   if (n) {
