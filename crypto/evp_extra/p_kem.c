@@ -53,8 +53,6 @@ static int pkey_kem_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
     return 0;
   }
 
-  key->has_secret_key = 1;
-
   return 1;
 }
 
@@ -145,7 +143,7 @@ static int pkey_kem_decapsulate(EVP_PKEY_CTX *ctx,
   }
 
   KEM_KEY *key = ctx->pkey->pkey.kem_key;
-  if (!key->has_secret_key) {
+  if (key->secret_key == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NO_KEY_SET);
     return 0;
   }
