@@ -2077,6 +2077,24 @@ TEST_P(PerKEMTest, RawKeyOperations) {
   EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
   EXPECT_EQ(EVP_R_BUFFER_TOO_SMALL, ERR_GET_REASON(err));
 
+  //   Missing public/private key.
+  pk_len = GetParam().public_key_len;
+  sk_len = GetParam().secret_key_len;
+  pkey_pk_new.reset(EVP_PKEY_kem_new_raw_public_key(nid, pk.data(), pk_len));
+  pkey_sk_new.reset(EVP_PKEY_kem_new_raw_secret_key(nid, sk.data(), sk_len));
+  ASSERT_TRUE(pkey_pk_new);
+  ASSERT_TRUE(pkey_sk_new);
+
+  ASSERT_FALSE(EVP_PKEY_get_raw_private_key(pkey_pk_new.get(), sk.data(), &sk_len));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(EVP_R_NO_KEY_SET, ERR_GET_REASON(err));
+
+  ASSERT_FALSE(EVP_PKEY_get_raw_public_key(pkey_sk_new.get(), pk.data(), &pk_len));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(EVP_R_NO_KEY_SET, ERR_GET_REASON(err));
+
   // Failures for new keys from raw data.
   pk_len = GetParam().public_key_len;
   sk_len = GetParam().secret_key_len;
