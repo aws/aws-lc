@@ -12,6 +12,8 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+//go:build ignore
+
 package main
 
 import (
@@ -21,7 +23,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -293,7 +294,7 @@ func main() {
 	}
 
 	// Stage everything in a temporary directory.
-	tmpDir, err := ioutil.TempDir("", "boringssl-android")
+	tmpDir, err := os.MkdirTemp("", "boringssl-android")
 	if err != nil {
 		fmt.Printf("Error making temporary directory: %s\n", err)
 		os.Exit(1)

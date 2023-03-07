@@ -686,7 +686,9 @@ static bool SpeedSingleKEM(const std::string &name, int nid, const std::string &
 
 
 static bool SpeedKEM(std::string selected) {
-  return SpeedSingleKEM("Kyber512_R3", NID_KYBER512_R3, selected);
+  return SpeedSingleKEM("Kyber512_R3", NID_KYBER512_R3, selected) &&
+         SpeedSingleKEM("Kyber768_R3", NID_KYBER768_R3, selected) &&
+         SpeedSingleKEM("Kyber1024_R3", NID_KYBER1024_R3, selected);
 }
 #endif
 
@@ -886,7 +888,7 @@ static bool SpeedHash(const EVP_MD *md, const std::string &name,
 static bool SpeedHmacChunk(const EVP_MD *md, std::string name,
                            size_t chunk_len) {
   // OpenSSL 1.0.x doesn't have a function that creates a new,
-  // properly initialized HMAC pointer so we need to create 
+  // properly initialized HMAC pointer so we need to create
   // the pointer and then do the initialization logic ourselves
 #if defined(OPENSSL_1_0_BENCHMARK)
   BM_NAMESPACE::UniquePtr<HMAC_CTX> ctx(new HMAC_CTX);
@@ -1312,6 +1314,24 @@ static bool Speed25519(const std::string &selected) {
 
   results.Print("Curve25519 arbitrary point multiplication");
 
+  if (!TimeFunction(&results, []() -> bool {
+        uint8_t out_base[32], in_base[32];
+        BM_memset(in_base, 0, sizeof(in_base));
+        X25519_public_from_private(out_base, in_base);
+
+        uint8_t out[32], in1[32], in2[32];
+        BM_memset(in1, 0, sizeof(in1));
+        BM_memset(in2, 0, sizeof(in2));
+        in1[0] = 1;
+        in2[0] = 9;
+        return X25519(out, in1, in2) == 1;
+      })) {
+    fprintf(stderr, "ECDH X25519 failed.\n");
+    return false;
+  }
+
+  results.Print("ECDH X25519");
+
   return true;
 }
 
@@ -1564,9 +1584,9 @@ static bool SpeedSipHash(const std::string &selected) {
 
 #if defined(INTERNAL_TOOL)
 static TRUST_TOKEN_PRETOKEN *trust_token_pretoken_dup(
-    TRUST_TOKEN_PRETOKEN *in) {
-  return (TRUST_TOKEN_PRETOKEN *)OPENSSL_memdup(in,
-                                                sizeof(TRUST_TOKEN_PRETOKEN));
+    const TRUST_TOKEN_PRETOKEN *in) {
+  return static_cast<TRUST_TOKEN_PRETOKEN *>(
+      OPENSSL_memdup(in, sizeof(TRUST_TOKEN_PRETOKEN)));
 }
 
 static bool SpeedTrustToken(std::string name, const TRUST_TOKEN_METHOD *method,
@@ -1741,17 +1761,14 @@ static bool SpeedTrustToken(std::string name, const TRUST_TOKEN_METHOD *method,
   BM_NAMESPACE::UniquePtr<uint8_t> free_redeem_msg(redeem_msg);
 
   if (!TimeFunction(&results, [&]() -> bool {
-        uint8_t *redeem_resp = NULL;
-        size_t redeem_resp_len;
-        TRUST_TOKEN *rtoken = NULL;
+        uint32_t public_value;
+        uint8_t private_value;
+        TRUST_TOKEN *rtoken;
         uint8_t *client_data = NULL;
         size_t client_data_len;
-        uint64_t redemption_time;
         int ok = TRUST_TOKEN_ISSUER_redeem(
-            issuer.get(), &redeem_resp, &redeem_resp_len, &rtoken, &client_data,
-            &client_data_len, &redemption_time, redeem_msg, redeem_msg_len,
-            /*lifetime=*/600);
-        OPENSSL_free(redeem_resp);
+            issuer.get(), &public_value, &private_value, &rtoken, &client_data,
+            &client_data_len, redeem_msg, redeem_msg_len);
         OPENSSL_free(client_data);
         TRUST_TOKEN_free(rtoken);
         return ok;
@@ -1761,37 +1778,19 @@ static bool SpeedTrustToken(std::string name, const TRUST_TOKEN_METHOD *method,
   }
   results.Print(name + " redeem");
 
-  uint8_t *redeem_resp = NULL;
-  size_t redeem_resp_len;
-  TRUST_TOKEN *rtoken = NULL;
+  uint32_t public_value;
+  uint8_t private_value;
+  TRUST_TOKEN *rtoken;
   uint8_t *client_data = NULL;
   size_t client_data_len;
-  uint64_t redemption_time;
-  if (!TRUST_TOKEN_ISSUER_redeem(issuer.get(), &redeem_resp, &redeem_resp_len,
+  if (!TRUST_TOKEN_ISSUER_redeem(issuer.get(), &public_value, &private_value,
                                  &rtoken, &client_data, &client_data_len,
-                                 &redemption_time, redeem_msg, redeem_msg_len,
-                                 /*lifetime=*/600)) {
+                                 redeem_msg, redeem_msg_len)) {
     fprintf(stderr, "TRUST_TOKEN_ISSUER_redeem failed.\n");
     return false;
   }
-  BM_NAMESPACE::UniquePtr<uint8_t> free_redeem_resp(redeem_resp);
   BM_NAMESPACE::UniquePtr<uint8_t> free_client_data(client_data);
   BM_NAMESPACE::UniquePtr<TRUST_TOKEN> free_rtoken(rtoken);
-
-  if (!TimeFunction(&results, [&]() -> bool {
-        uint8_t *srr = NULL, *sig = NULL;
-        size_t srr_len, sig_len;
-        int ok = TRUST_TOKEN_CLIENT_finish_redemption(
-            client.get(), &srr, &srr_len, &sig, &sig_len, redeem_resp,
-            redeem_resp_len);
-        OPENSSL_free(srr);
-        OPENSSL_free(sig);
-        return ok;
-      })) {
-    fprintf(stderr, "TRUST_TOKEN_CLIENT_finish_redemption failed.\n");
-    return false;
-  }
-  results.Print(name + " finish_redemption");
 
   return true;
 }
@@ -1812,6 +1811,101 @@ static bool SpeedSelfTest(const std::string &selected) {
   }
 
   results.Print("self-test");
+  return true;
+}
+#endif
+
+#if !defined(OPENSSL_BENCHMARK) && !defined(BORINGSSL_BENCHMARK)
+static bool SpeedPKCS8(const std::string &selected) {
+  if (!selected.empty() && selected.find("pkcs8") == std::string::npos) {
+    return true;
+  }
+
+  uint8_t pubkey[ED25519_PUBLIC_KEY_LEN];
+  uint8_t privkey[ED25519_PRIVATE_KEY_LEN];
+
+  ED25519_keypair(pubkey, privkey);
+
+  EVP_PKEY *key = EVP_PKEY_new_raw_private_key(EVP_PKEY_ED25519, nullptr, &privkey[0], ED25519_PRIVATE_KEY_SEED_LEN);
+
+  if(!key) {
+    return false;
+  }
+
+  CBB out;
+  if (!CBB_init(&out, 1024)) {
+    return false;
+  }
+
+  TimeResults results;
+  if (!TimeFunction(&results, [&out, &key]() -> bool {
+        if (!EVP_marshal_private_key(&out, key)) {
+          return false;
+        }
+        return true;
+      })) {
+    EVP_PKEY_free(key);
+    return false;
+  }
+  results.Print("Ed25519 PKCS#8 v1 encode");
+
+  CBS in;
+
+  CBS_init(&in, CBB_data(&out), CBB_len(&out));
+
+  EVP_PKEY *parsed = NULL;
+
+  if (!TimeFunction(&results, [&in, &parsed]() -> bool {
+        parsed = EVP_parse_private_key(&in);
+        if (!parsed) {
+          return false;
+        }
+        return true;
+      })) {
+    EVP_PKEY_free(key);
+    return false;
+  }
+  results.Print("Ed25519 PKCS#8 v1 decode");
+
+  EVP_PKEY_free(parsed);
+
+  CBB_cleanup(&out);
+
+  if (!CBB_init(&out, 1024)) {
+    return false;
+  }
+
+  if (!TimeFunction(&results, [&out, &key]() -> bool {
+        if (!EVP_marshal_private_key_v2(&out, key)) {
+          return false;
+        }
+        return true;
+      })) {
+    CBB_cleanup(&out);
+    EVP_PKEY_free(key);
+    return false;
+  }
+  results.Print("Ed25519 PKCS#8 v2 encode");
+
+  CBS_init(&in, CBB_data(&out), CBB_len(&out));
+
+  if (!TimeFunction(&results, [&in, &parsed]() -> bool {
+        parsed = EVP_parse_private_key(&in);
+        if (!parsed) {
+          return false;
+        }
+        return true;
+      })) {
+    CBB_cleanup(&out);
+    EVP_PKEY_free(key);
+    return false;
+  }
+  results.Print("Ed25519 PKCS#8 v2 decode");
+
+  EVP_PKEY_free(parsed);
+  CBB_cleanup(&out);
+  EVP_PKEY_free(key);
+
   return true;
 }
 #endif
@@ -1989,6 +2083,9 @@ bool Speed(const std::vector<std::string> &args) {
      !SpeedTrustToken("TrustToken-Exp2VOPRF-Batch10", TRUST_TOKEN_experiment_v2_voprf(), 10, selected) ||
      !SpeedTrustToken("TrustToken-Exp2PMB-Batch1", TRUST_TOKEN_experiment_v2_pmb(), 1, selected) ||
      !SpeedTrustToken("TrustToken-Exp2PMB-Batch10", TRUST_TOKEN_experiment_v2_pmb(), 10, selected) ||
+#endif
+#if !defined(OPENSSL_BENCHMARK) && !defined(BORINGSSL_BENCHMARK)
+     !SpeedPKCS8(selected) ||
 #endif
      !SpeedBase64(selected) ||
      !SpeedSipHash(selected)

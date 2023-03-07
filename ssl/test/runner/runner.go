@@ -32,7 +32,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/big"
 	"net"
 	"os"
@@ -240,7 +239,7 @@ func initCertificates() {
 		*testCerts[i].cert = cert
 	}
 
-	channelIDPEMBlock, err := ioutil.ReadFile(path.Join(*resourceDir, channelIDKeyFile))
+	channelIDPEMBlock, err := os.ReadFile(path.Join(*resourceDir, channelIDKeyFile))
 	if err != nil {
 		panic(err)
 	}
@@ -300,7 +299,7 @@ type delegatedCredentialConfig struct {
 
 func loadRSAPrivateKey(filename string) (priv *rsa.PrivateKey, privPKCS8 []byte, err error) {
 	pemPath := path.Join(*resourceDir, filename)
-	pemBytes, err := ioutil.ReadFile(pemPath)
+	pemBytes, err := os.ReadFile(pemPath)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -718,7 +717,7 @@ func appendTranscript(path string, data []byte) error {
 		return nil
 	}
 
-	settings, err := ioutil.ReadFile(path)
+	settings, err := os.ReadFile(path)
 	if err != nil {
 		if !os.IsNotExist(err) {
 			return err
@@ -729,7 +728,7 @@ func appendTranscript(path string, data []byte) error {
 	}
 
 	settings = append(settings, data...)
-	return ioutil.WriteFile(path, settings, 0644)
+	return os.WriteFile(path, settings, 0644)
 }
 
 // A timeoutConn implements an idle timeout on each Read and Write operation.
@@ -828,7 +827,7 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool, tr
 				bb := newByteBuilder()
 				bb.addU24LengthPrefixed().addBytes(encodedInner)
 				bb.addBytes(outer)
-				return ioutil.WriteFile(filepath.Join(dir, name), bb.finish(), 0644)
+				return os.WriteFile(filepath.Join(dir, name), bb.finish(), 0644)
 			}
 		}
 
@@ -1097,7 +1096,7 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool, tr
 			return fmt.Errorf("messageLen < 0 not supported for DTLS tests")
 		}
 		// Read until EOF.
-		_, err := io.Copy(ioutil.Discard, tlsConn)
+		_, err := io.Copy(io.Discard, tlsConn)
 		return err
 	}
 	if messageLen == 0 {
@@ -11988,17 +11987,36 @@ func addCurveTests() {
 		},
 	})
 
-	// ... but only if CECPQ2 is listed first.
+	// ... and the other way around
 	testCases = append(testCases, testCase{
-		name: "CECPQ2KeyShareNotIncludedSecond",
+		name: "CECPQ2KeyShareIncludedSecond",
 		config: Config{
 			MinVersion: VersionTLS13,
 			Bugs: ProtocolBugs{
-				ExpectedKeyShares: []CurveID{CurveX25519},
+				ExpectedKeyShares: []CurveID{CurveX25519, CurveCECPQ2},
 			},
 		},
 		flags: []string{
 			"-curves", strconv.Itoa(int(CurveX25519)),
+			"-curves", strconv.Itoa(int(CurveCECPQ2)),
+			"-expect-curve-id", strconv.Itoa(int(CurveX25519)),
+		},
+	})
+
+        // ... and even if there's another curve in the middle because it's the
+        // first classical and first post-quantum "curves" that get key shares
+        // included.
+	testCases = append(testCases, testCase{
+		name: "CECPQ2KeyShareIncludedThird",
+		config: Config{
+			MinVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				ExpectedKeyShares: []CurveID{CurveX25519, CurveCECPQ2},
+			},
+		},
+		flags: []string{
+			"-curves", strconv.Itoa(int(CurveX25519)),
+			"-curves", strconv.Itoa(int(CurveP256)),
 			"-curves", strconv.Itoa(int(CurveCECPQ2)),
 			"-expect-curve-id", strconv.Itoa(int(CurveX25519)),
 		},
@@ -15334,95 +15352,6 @@ func addTLS13CipherPreferenceTests() {
 		expectedError:      ":NO_SHARED_CIPHER:",
 		expectedLocalError: "remote error: handshake failure",
 	})
-
-	// CECPQ2 prefers 256-bit ciphers but will use AES-128 if there's nothing else.
-	testCases = append(testCases, testCase{
-		testType: serverTest,
-		name:     "TLS13-CipherPreference-CECPQ2-AES128Only",
-		config: Config{
-			MaxVersion: VersionTLS13,
-			CipherSuites: []uint16{
-				TLS_AES_128_GCM_SHA256,
-			},
-		},
-		flags: []string{
-			"-curves", strconv.Itoa(int(CurveCECPQ2)),
-		},
-	})
-
-	// When a 256-bit cipher is offered, even if not in first place, it should be
-	// picked.
-	testCases = append(testCases, testCase{
-		testType: serverTest,
-		name:     "TLS13-CipherPreference-CECPQ2-AES256Preferred",
-		config: Config{
-			MaxVersion: VersionTLS13,
-			CipherSuites: []uint16{
-				TLS_AES_128_GCM_SHA256,
-				TLS_AES_256_GCM_SHA384,
-			},
-		},
-		flags: []string{
-			"-curves", strconv.Itoa(int(CurveCECPQ2)),
-		},
-		expectations: connectionExpectations{
-			cipher: TLS_AES_256_GCM_SHA384,
-		},
-	})
-	// ... but when CECPQ2 isn't being used, the client's preference controls.
-	testCases = append(testCases, testCase{
-		testType: serverTest,
-		name:     "TLS13-CipherPreference-CECPQ2-AES128PreferredOtherwise",
-		config: Config{
-			MaxVersion: VersionTLS13,
-			CipherSuites: []uint16{
-				TLS_AES_128_GCM_SHA256,
-				TLS_AES_256_GCM_SHA384,
-			},
-		},
-		flags: []string{
-			"-curves", strconv.Itoa(int(CurveX25519)),
-		},
-		expectations: connectionExpectations{
-			cipher: TLS_AES_128_GCM_SHA256,
-		},
-	})
-
-	// Test that CECPQ2 continues to honor AES vs ChaCha20 logic.
-	testCases = append(testCases, testCase{
-		testType: serverTest,
-		name:     "TLS13-CipherPreference-CECPQ2-AES128-ChaCha20-AES256",
-		config: Config{
-			MaxVersion: VersionTLS13,
-			CipherSuites: []uint16{
-				TLS_AES_128_GCM_SHA256,
-				TLS_CHACHA20_POLY1305_SHA256,
-				TLS_AES_256_GCM_SHA384,
-			},
-		},
-		flags: []string{
-			"-curves", strconv.Itoa(int(CurveCECPQ2)),
-			"-expect-cipher-aes", strconv.Itoa(int(TLS_CHACHA20_POLY1305_SHA256)),
-			"-expect-cipher-no-aes", strconv.Itoa(int(TLS_CHACHA20_POLY1305_SHA256)),
-		},
-	})
-	testCases = append(testCases, testCase{
-		testType: serverTest,
-		name:     "TLS13-CipherPreference-CECPQ2-AES128-AES256-ChaCha20",
-		config: Config{
-			MaxVersion: VersionTLS13,
-			CipherSuites: []uint16{
-				TLS_AES_128_GCM_SHA256,
-				TLS_AES_256_GCM_SHA384,
-				TLS_CHACHA20_POLY1305_SHA256,
-			},
-		},
-		flags: []string{
-			"-curves", strconv.Itoa(int(CurveCECPQ2)),
-			"-expect-cipher-aes", strconv.Itoa(int(TLS_AES_256_GCM_SHA384)),
-			"-expect-cipher-no-aes", strconv.Itoa(int(TLS_CHACHA20_POLY1305_SHA256)),
-		},
-	})
 }
 
 func addPeekTests() {
@@ -16674,7 +16603,7 @@ func addJDK11WorkaroundTests() {
 
 func addDelegatedCredentialTests() {
 	certPath := path.Join(*resourceDir, rsaCertificateFile)
-	pemBytes, err := ioutil.ReadFile(certPath)
+	pemBytes, err := os.ReadFile(certPath)
 	if err != nil {
 		panic(err)
 	}
@@ -19678,7 +19607,7 @@ func main() {
 	initCertificates()
 
 	if len(*shimConfigFile) != 0 {
-		encoded, err := ioutil.ReadFile(*shimConfigFile)
+		encoded, err := os.ReadFile(*shimConfigFile)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Couldn't read config file %q: %s\n", *shimConfigFile, err)
 			os.Exit(1)

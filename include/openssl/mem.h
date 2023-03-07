@@ -111,8 +111,17 @@ OPENSSL_EXPORT char *OPENSSL_strdup(const char *s);
 // OPENSSL_strnlen has the same behaviour as strnlen(3).
 OPENSSL_EXPORT size_t OPENSSL_strnlen(const char *s, size_t len);
 
-// OPENSSL_tolower is a locale-independent version of tolower(3).
+// OPENSSL_isdigit is a locale-independent version of isdigit(3), It
+// only recognizes '0' through '9' as digits.
+OPENSSL_EXPORT int OPENSSL_isdigit(int c);
+
+// OPENSSL_tolower is a locale-independent version of tolower(3). It only
+// lowercases ASCII values. Other values are returned as-is.
 OPENSSL_EXPORT int OPENSSL_tolower(int c);
+
+// OPENSSL_isspace is a locale-independent version of isspace(3). It only
+// recognizes '\t', '\n', '\v', '\f', '\r', and ' '.
+OPENSSL_EXPORT int OPENSSL_isspace(int c);
 
 // OPENSSL_strcasecmp is a locale-independent version of strcasecmp(3).
 OPENSSL_EXPORT int OPENSSL_strcasecmp(const char *a, const char *b);
@@ -170,7 +179,7 @@ OPENSSL_EXPORT void OPENSSL_clear_free(void *ptr, size_t len);
 // |OPENSSL_malloc/free/realloc| can be customized by implementing |OPENSSL_memory_alloc/free/realloc| or calling
 // CRYPTO_set_mem_functions. If  |OPENSSL_memory_alloc/free/realloc| is defined CRYPTO_set_mem_functions will fail.
 // All of the warnings for |OPENSSL_malloc/free/realloc| apply to CRYPTO_set_mem_functions:
-// -- https://github.com/awslabs/aws-lc/blame/d164f5762b1ad5d4f2d1561fb85daa556fdff5ef/crypto/mem.c#L111-L127
+// -- https://github.com/aws/aws-lc/blame/d164f5762b1ad5d4f2d1561fb85daa556fdff5ef/crypto/mem.c#L111-L127
 // This function is only recommended for debug purpose(e.g. track mem usage).
 // AWS-LC differs from OpenSSL's  CRYPTO_set_mem_functions in that __FILE__ and __LINE__ are not supplied.
 //

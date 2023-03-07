@@ -360,8 +360,10 @@ add_library(
   hpke/hpke.c
   hrss/hrss.c
   kem/kem.c
-  kem/kyber_methods_placeholder.c
-  kyber/kyber512_ref.c
+  kem/kem_methods.c
+  kyber/kyber512r3_ref.c
+  kyber/kyber768r3_ref.c
+  kyber/kyber1024r3_ref.c
   kyber/pqcrystals_kyber_ref_common/fips202.c
   kyber/kem_kyber.c
   lhash/lhash.c
@@ -419,6 +421,7 @@ add_library(
   x509/by_file.c
   x509/i2d_pr.c
   x509/name_print.c
+  x509/policy.c
   x509/rsa_pss.c
   x509/t_crl.c
   x509/t_req.c
@@ -458,11 +461,6 @@ add_library(
   x509/x_val.c
   x509/x_x509.c
   x509/x_x509a.c
-  x509v3/pcy_cache.c
-  x509v3/pcy_data.c
-  x509v3/pcy_map.c
-  x509v3/pcy_node.c
-  x509v3/pcy_tree.c
   x509v3/v3_akey.c
   x509v3/v3_akeya.c
   x509v3/v3_alt.c
@@ -756,6 +754,10 @@ install(TARGETS crypto
         EXPORT crypto-targets
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
+
+if(MSVC AND CMAKE_BUILD_TYPE_LOWER MATCHES "relwithdebinfo" AND FIPS)
+  install (FILES $<TARGET_FILE_DIR:crypto>/crypto.pdb DESTINATION ${CMAKE_INSTALL_LIBDIR})
+endif()
 
 configure_file("cmake/crypto-config.cmake"
     "${CMAKE_CURRENT_BINARY_DIR}/crypto-config.cmake"

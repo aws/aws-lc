@@ -648,6 +648,57 @@ TEST(RSATest, OnlyDGiven) {
                          buf_len, key.get()));
 }
 
+TEST(RSATest, Set0Key) {
+  const int hash_nid = NID_sha256;
+  const uint8_t kDummyHash[32] = {0};
+  uint8_t sig[256];
+  unsigned sig_len = sizeof(sig);
+
+  // Reference RSA key that needs to be reset before each case as
+  // RSA_set0_key takes ownership of its parameters
+  bssl::UniquePtr<RSA> rsa;
+
+  // Allocate an empty key to imitate JCA keys via calls to RSA_set0_key
+  bssl::UniquePtr<RSA> jcaKey(RSA_new());
+  ASSERT_TRUE(jcaKey);
+
+  // FULL KEY, BLINDING => OK
+  rsa.reset(RSA_private_key_from_bytes(kKey1, sizeof(kKey1) - 1));
+  ASSERT_TRUE(rsa);
+  jcaKey.reset(RSA_new());
+  ASSERT_TRUE(jcaKey);
+  EXPECT_TRUE(RSA_set0_key(jcaKey.get(), BN_dup(rsa->n), BN_dup(rsa->e), BN_dup(rsa->d)));
+  EXPECT_TRUE(RSA_sign(hash_nid, kDummyHash, sizeof(kDummyHash), sig,
+                       &sig_len, jcaKey.get()));
+  EXPECT_TRUE(RSA_verify(hash_nid, kDummyHash, sizeof(kDummyHash), sig,
+                         sig_len, rsa.get()));
+
+  // NO |e|, BLINDNG => ERR
+  rsa.reset(RSA_private_key_from_bytes(kKey1, sizeof(kKey1) - 1));
+  ASSERT_TRUE(rsa);
+  jcaKey.reset(RSA_new());
+  ASSERT_TRUE(jcaKey);
+  EXPECT_TRUE(RSA_set0_key(jcaKey.get(), BN_dup(rsa->n), NULL, BN_dup(rsa->d)));
+  EXPECT_FALSE(RSA_sign(hash_nid, kDummyHash, sizeof(kDummyHash), sig,
+                        &sig_len, jcaKey.get()));
+  uint32_t err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_RSA, ERR_GET_LIB(err));
+  EXPECT_EQ(RSA_R_NO_PUBLIC_EXPONENT, ERR_GET_REASON(err));
+  ERR_clear_error();
+
+  // NO |e|, NO BLINDNG => OK
+  rsa.reset(RSA_private_key_from_bytes(kKey1, sizeof(kKey1) - 1));
+  ASSERT_TRUE(rsa);
+  jcaKey.reset(RSA_new());
+  ASSERT_TRUE(jcaKey);
+  EXPECT_TRUE(RSA_set0_key(jcaKey.get(), BN_dup(rsa->n), NULL, BN_dup(rsa->d)));
+  jcaKey->flags |= RSA_FLAG_NO_BLINDING;
+  EXPECT_TRUE(RSA_sign(hash_nid, kDummyHash, sizeof(kDummyHash), sig,
+                       &sig_len, jcaKey.get()));
+  EXPECT_TRUE(RSA_verify(hash_nid, kDummyHash, sizeof(kDummyHash), sig,
+                         sig_len, rsa.get()));
+}
+
 TEST(RSATest, ASN1) {
   // Test that private keys may be decoded.
   bssl::UniquePtr<RSA> rsa(
@@ -916,8 +967,8 @@ TEST(RSATest, CheckKey) {
   ASSERT_TRUE(BN_hex2bn(&rsa->d, kDEuler));
   EXPECT_TRUE(RSA_check_key(rsa.get()));
 
-  // If d is completely out of range but otherwise valid, it is rejected.
-  static const char kDTooLarge[] =
+  // If d is out of range, d > n,  but otherwise valid, it is accepted.
+  static const char kDgtN[] =
       "f2c885128cf04101c283553617c210d8ffd14cde98dc420c3c9892b55606cbedcda24298"
       "7655b3f7b9433c2c316293a1cf1a2b034f197aeec1de8d81a67d94cc902b9fce1712d5a4"
       "9c257ff705725cd77338d23535d3b87c8f4cecc15a6b72641ffd81aea106839d216b5fcd"
@@ -926,18 +977,8 @@ TEST(RSATest, CheckKey) {
       "1601fe843c79cc3efbcb8eafd79262bdd25e2bdf21440f774e26d88ed7df938c5cf6982d"
       "e9fa635b8ca36ce5c5fbd579a53cbb0348ceae752d4bc5621c5acc922ca2082494633337"
       "42e770c1";
-  ASSERT_TRUE(BN_hex2bn(&rsa->d, kDTooLarge));
-  EXPECT_FALSE(RSA_check_key(rsa.get()));
-  ERR_clear_error();
-
-  // Unless, the user explicitly allowed keys with d > n to be parsed.
-  // which is possible only in non-FIPS mode.
-#if !defined(AWSLC_FIPS)
-  allow_rsa_keys_d_gt_n();
-  ASSERT_TRUE(BN_hex2bn(&rsa->d, kDTooLarge));
+  ASSERT_TRUE(BN_hex2bn(&rsa->d, kDgtN));
   EXPECT_TRUE(RSA_check_key(rsa.get()));
-#endif
-
   ASSERT_TRUE(BN_hex2bn(&rsa->d, kD));
 
   // CRT value must either all be provided or all missing.
@@ -1366,4 +1407,3 @@ TEST(RSATest, DISABLED_BlindingCacheConcurrency) {
 #endif  // X86_64
 
 #endif  // THREADS
-

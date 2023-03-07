@@ -21,7 +21,7 @@ AWSLC_PROD_ROOT=$(pwd)/aws-lc-prod
 source ${AWSLC_PR_ROOT}/tests/ci/common_posix_setup.sh
 
 # clone the various repositories we need (we already have aws-lc-pr since we need it to run this script)
-git clone https://github.com/awslabs/aws-lc.git aws-lc-prod
+git clone https://github.com/aws/aws-lc.git aws-lc-prod
 
 # build AWSLC pr
 mkdir -p "${PR_FOLDER_NAME}"/build

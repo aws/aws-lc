@@ -211,12 +211,12 @@ extern "C" {
 #define AWSLC_API_VERSION 20
 
 // This string tracks the most current production release version on Github
-// https://github.com/awslabs/aws-lc/releases.
+// https://github.com/aws/aws-lc/releases.
 // When bumping the encoded version number, also update the test fixture:
 // ServiceIndicatorTest.AWSLCVersionString
 // Note: there are two versions of this test. Only one test is compiled
 // depending on FIPS mode.
-#define AWSLC_VERSION_NUMBER_STRING "1.4.0"
+#define AWSLC_VERSION_NUMBER_STRING "1.5.0"
 
 #if defined(BORINGSSL_SHARED_LIBRARY)
 
@@ -537,8 +537,8 @@ namespace internal {
 template <typename T, typename Enable = void>
 struct DeleterImpl {};
 
-template <typename T>
 struct Deleter {
+  template <typename T>
   void operator()(T *ptr) {
     // Rather than specialize Deleter for each type, we specialize
     // DeleterImpl. This allows bssl::UniquePtr<T> to be used while only
@@ -622,7 +622,7 @@ class StackAllocatedMovable {
 //   bssl::UniquePtr<RSA> rsa(RSA_new());
 //   bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
 template <typename T>
-using UniquePtr = std::unique_ptr<T, internal::Deleter<T>>;
+using UniquePtr = std::unique_ptr<T, internal::Deleter>;
 
 #define BORINGSSL_MAKE_UP_REF(type, up_ref_func)             \
   inline UniquePtr<type> UpRef(type *v) {                    \

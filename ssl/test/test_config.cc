@@ -28,6 +28,7 @@
 #include <type_traits>
 
 #include <openssl/base64.h>
+#include <openssl/hmac.h>
 #include <openssl/hpke.h>
 #include <openssl/rand.h>
 #include <openssl/span.h>
@@ -62,7 +63,7 @@ bool StringToInt(T *out, const char *str) {
 
   // |strtoull| allows leading '-' with wraparound. Additionally, both
   // functions accept empty strings and leading whitespace.
-  if (!isdigit(static_cast<unsigned char>(*str)) &&
+  if (!OPENSSL_isdigit(static_cast<unsigned char>(*str)) &&
       (!std::is_signed<T>::value || *str != '-')) {
     return false;
   }
