@@ -93,7 +93,13 @@ static int pkey_kem_encapsulate(EVP_PKEY_CTX *ctx,
       return 0;
   }
 
+  // Check that the key has a public key set.
   KEM_KEY *key = ctx->pkey->pkey.kem_key;
+  if (key->public_key == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_KEY_SET);
+    return 0;
+  }
+
   if (!kem->method->encaps(ciphertext, shared_secret, key->public_key)) {
     return 0;
   }
@@ -142,6 +148,7 @@ static int pkey_kem_decapsulate(EVP_PKEY_CTX *ctx,
       return 0;
   }
 
+  // Check that the key has a secret key set.
   KEM_KEY *key = ctx->pkey->pkey.kem_key;
   if (key->secret_key == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NO_KEY_SET);
