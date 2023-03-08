@@ -174,7 +174,6 @@
         movq   %r10, 0x10+P0 ;                  \
         movq   %r11, 0x18+P0
 
-
 // A version of multiplication that only guarantees output < 2 * p_25519.
 // This basically skips the +1 and final correction in quotient estimation.
 
@@ -695,9 +694,8 @@ scalarloop:
 
 // ADDING: dmsn = dm * sn; dnsm = sm * dn
 
-        mul_5(dmsn,sn,dm)
-
         mul_5(dnsm,sm,dn)
+        mul_5(dmsn,sn,dm)
 
 // DOUBLING: d = (xt - zt)^2
 
