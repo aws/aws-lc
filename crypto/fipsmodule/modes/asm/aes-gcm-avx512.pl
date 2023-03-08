@@ -4713,7 +4713,7 @@ sub evex_byte1 {
 
   if (($src1 & 0x8) > 0) {
       $byte = $byte & 0x7f;
-  } 
+  }
   if (($src1 & 0x10) > 0) {
       $byte = $byte & 0xef;
   }
@@ -4745,7 +4745,7 @@ sub evex_byte3 {
   } elsif ($type eq 'z') {
 	$byte = 0x02;
   }
-  
+
   $byte = $byte << 5;
 
   if (!($src2 & 0x10)) {
@@ -4772,7 +4772,7 @@ sub vpclmulqdq {
 	push @opcode,$modrm;
 	push @opcode,hex($2);
         return ".byte\t".join(',',@opcode);
-  } 
+  }
   return $line;
 }
 
@@ -4807,7 +4807,7 @@ sub vaesni {
         return ".byte\t".join(',',@opcode);
   }
   return $line;
-}       
+}
 
 $code =~ s/\`([^\`]*)\`/eval $1/gem;
 $code =~ s/\b(vpclmul.*).*$/vpclmulqdq($1)/gem;
