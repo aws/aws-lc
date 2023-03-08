@@ -855,9 +855,8 @@ scalarloop:
 
 // ADDING: dmsn = dm * sn; dnsm = sm * dn
 
-        mul_5(dmsn,sn,dm)
-
         mul_5(dnsm,sm,dn)
+        mul_5(dmsn,sn,dm)
 
 // DOUBLING: d = (xt - zt)^2
 
