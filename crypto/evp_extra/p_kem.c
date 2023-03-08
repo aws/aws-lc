@@ -72,7 +72,7 @@ static int pkey_kem_encapsulate(EVP_PKEY_CTX *ctx,
   }
 
   // Caller is getting parameter values.
-  if (ciphertext == NULL) {
+  if (ciphertext == NULL || shared_secret == NULL) {
     *ciphertext_len = kem->ciphertext_len;
     *shared_secret_len = kem->shared_secret_len;
     return 1;

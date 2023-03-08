@@ -710,12 +710,14 @@ OPENSSL_EXPORT int EVP_PKEY_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY **out_pkey);
 //   3. writes the length of |ciphertext| and |shared_secret| to
 //      |ciphertext_len| and |shared_secret_len|.
 //
-// If the given |ciphertext| is NULL it is assumed that the caller is doing
-// a size check: the function will write the size of the ciphertext and the
-// shared secret in |ciphertext_len| and |shared_secret_len| and return 1.
-// If |ciphertext| is non-NULL it is assumed that the caller is performing
-// the actual operation, so it is checked if the lengths of the output buffers,
-// |ciphertext_len| and |shared_secret_len|, are large enough for the KEM.
+// If the given |ciphertext| or |shared_secret| is NULL it is assumed that
+// the caller is doing a size check: the function will write the size of
+// the ciphertext and the shared secret in |ciphertext_len| and
+// |shared_secret_len| and return 1.
+// If |ciphertext| and |shared_secret| are not NULL it is assumed that the
+// caller is performing the actual operation, so it is checked if the lengths
+// of the output buffers, |ciphertext_len| and |shared_secret_len|, are large
+// enough for the KEM.
 //
 // NOTE: no allocation is done in the function, the caller is expected to
 // provide large enough |ciphertext| and |shared_secret| buffers.
