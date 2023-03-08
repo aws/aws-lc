@@ -678,7 +678,6 @@ S2N_BN_SYMBOL(curve25519_x25519_alt):
 
 scalarloop:
 
-
 // sm = xm + zm; sn = xn + zn; dm = xm - zm; dn = xn - zn
 
         sub_twice4(dm,xm,zm)
@@ -686,7 +685,10 @@ scalarloop:
         sub_twice4(dn,xn,zn)
         add_twice4(sm,xm,zm)
 
+// ADDING: dmsn = dm * sn
 // DOUBLING: mux d = xt - zt and s = xt + zt for appropriate choice of (xt,zt)
+
+        mul_5(dmsn,sn,dm)
 
         lsr     x0, i, #6
         ldr     x2, [sp, x0, lsl #3]    // Exploiting scalar = sp exactly
@@ -699,9 +701,7 @@ scalarloop:
         mux_4(d,dm,dn)
         mux_4(s,sm,sn)
 
-// ADDING: dmsn = dm * sn; dnsm = sm * dn
-
-        mul_5(dmsn,sn,dm)
+// ADDING: dnsm = sm * dn
 
         mul_5(dnsm,sm,dn)
 
@@ -713,8 +713,8 @@ scalarloop:
 // DOUBLING: s = (xt + zt)^2
 
         sub5_4(dpro,dmsn,dnsm)
-        add5_4(spro,dmsn,dnsm)
         sqr_4(s,s)
+        add5_4(spro,dmsn,dnsm)
         sqr_4(dpro,dpro)
 
 // DOUBLING: p = 4 * xt * zt = s - d
@@ -735,14 +735,14 @@ scalarloop:
 
         mul_4(xn,s,d)
 
+// ADDING: zm' = x * (dmsn - dnsm)^2
+
+        mul_4(zm,dpro,pointx)
+
 // DOUBLING: zn' = (4 * xt * zt) * ((xt - zt)^2 + 121666 * (4 * xt * zt))
 //               = p * (d + 121666 * p)
 
         mul_4(zn,p,e)
-
-// ADDING: zm' = x * (dmsn - dnsm)^2
-
-        mul_4(zm,dpro,pointx)
 
 // Loop down as far as 3 (inclusive)
 
