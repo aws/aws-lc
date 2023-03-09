@@ -72,10 +72,17 @@ static int pkey_kem_encapsulate(EVP_PKEY_CTX *ctx,
   }
 
   // Caller is getting parameter values.
-  if (ciphertext == NULL || shared_secret == NULL) {
+  if (ciphertext == NULL && shared_secret == NULL) {
     *ciphertext_len = kem->ciphertext_len;
     *shared_secret_len = kem->shared_secret_len;
     return 1;
+  }
+
+  // If not getting parameter values, then both
+  // output buffers need to be valid (non-NULL)
+  if (ciphertext == NULL || shared_secret == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_MISSING_PARAMETERS);
+    return 0;
   }
 
   // The output buffers need to be large enough.

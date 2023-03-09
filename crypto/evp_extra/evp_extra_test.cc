@@ -1832,19 +1832,22 @@ TEST_P(PerKEMTest, Encapsulation) {
   EXPECT_EQ(ct_len, GetParam().ciphertext_len);
   EXPECT_EQ(ss_len, GetParam().shared_secret_len);
 
-  ASSERT_TRUE(EVP_PKEY_encapsulate(ctx.get(), ct.data(), &ct_len, nullptr, &ss_len));
-  EXPECT_EQ(ct_len, GetParam().ciphertext_len);
-  EXPECT_EQ(ss_len, GetParam().shared_secret_len);
+  // When only one of |ct| or |ss| is NULL the function fails.
+  ASSERT_FALSE(EVP_PKEY_encapsulate(ctx.get(), ct.data(), &ct_len, nullptr, &ss_len));
+  uint32_t err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(EVP_R_MISSING_PARAMETERS, ERR_GET_REASON(err));
 
-  ASSERT_TRUE(EVP_PKEY_encapsulate(ctx.get(), nullptr, &ct_len, ss.data(), &ss_len));
-  EXPECT_EQ(ct_len, GetParam().ciphertext_len);
-  EXPECT_EQ(ss_len, GetParam().shared_secret_len);
+  ASSERT_FALSE(EVP_PKEY_encapsulate(ctx.get(), nullptr, &ct_len, ss.data(), &ss_len));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(EVP_R_MISSING_PARAMETERS, ERR_GET_REASON(err));
 
   // ---- 4. Test calling encapsulate with different lengths ----
   // Set ct length to be less than expected -- should fail.
   ct_len = GetParam().ciphertext_len - 1;
   ASSERT_FALSE(EVP_PKEY_encapsulate(ctx.get(), ct.data(), &ct_len, ss.data(), &ss_len));
-  uint32_t err = ERR_get_error();
+  err = ERR_get_error();
   EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
   EXPECT_EQ(EVP_R_BUFFER_TOO_SMALL, ERR_GET_REASON(err));
 
