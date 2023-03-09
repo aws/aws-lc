@@ -28,7 +28,7 @@ let curve25519_x25519_alt_mc = define_assert_from_elf
   0xa9bf53f3;       (* arm_STP X19 X20 SP (Preimmediate_Offset (iword (-- &16))) *)
   0xa9bf5bf5;       (* arm_STP X21 X22 SP (Preimmediate_Offset (iword (-- &16))) *)
   0xa9bf63f7;       (* arm_STP X23 X24 SP (Preimmediate_Offset (iword (-- &16))) *)
-  0xd10603ff;       (* arm_SUB SP SP (rvalue (word 384)) *)
+  0xd10503ff;       (* arm_SUB SP SP (rvalue (word 320)) *)
   0xaa0003f7;       (* arm_MOV X23 X0 *)
   0xa9402c2a;       (* arm_LDP X10 X11 X1 (Immediate_Offset (iword (&0))) *)
   0xa9002fea;       (* arm_STP X10 X11 SP (Immediate_Offset (iword (&0))) *)
@@ -40,15 +40,15 @@ let curve25519_x25519_alt_mc = define_assert_from_elf
   0x9240f9ad;       (* arm_AND X13 X13 (rvalue (word 9223372036854775807)) *)
   0xa90337ec;       (* arm_STP X12 X13 SP (Immediate_Offset (iword (&48))) *)
   0xd2800035;       (* arm_MOV X21 (rvalue (word 1)) *)
-  0xa9102fea;       (* arm_STP X10 X11 SP (Immediate_Offset (iword (&256))) *)
-  0xa91137ec;       (* arm_STP X12 X13 SP (Immediate_Offset (iword (&272))) *)
+  0xa90e2fea;       (* arm_STP X10 X11 SP (Immediate_Offset (iword (&224))) *)
+  0xa90f37ec;       (* arm_STP X12 X13 SP (Immediate_Offset (iword (&240))) *)
   0xa9047ff5;       (* arm_STP X21 XZR SP (Immediate_Offset (iword (&64))) *)
   0xa9057fff;       (* arm_STP XZR XZR SP (Immediate_Offset (iword (&80))) *)
-  0xa9501be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&256))) *)
+  0xa94e1be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&224))) *)
   0xa9440fe4;       (* arm_LDP X4 X3 SP (Immediate_Offset (iword (&64))) *)
   0xeb0400a5;       (* arm_SUBS X5 X5 X4 *)
   0xfa0300c6;       (* arm_SBCS X6 X6 X3 *)
-  0xa95123e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&272))) *)
+  0xa94f23e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&240))) *)
   0xa9450fe4;       (* arm_LDP X4 X3 SP (Immediate_Offset (iword (&80))) *)
   0xfa0400e7;       (* arm_SBCS X7 X7 X4 *)
   0xfa030108;       (* arm_SBCS X8 X8 X3 *)
@@ -58,13 +58,13 @@ let curve25519_x25519_alt_mc = define_assert_from_elf
   0xfa1f00c6;       (* arm_SBCS X6 X6 XZR *)
   0xfa1f00e7;       (* arm_SBCS X7 X7 XZR *)
   0xda1f0108;       (* arm_SBC X8 X8 XZR *)
-  0xa9161be5;       (* arm_STP X5 X6 SP (Immediate_Offset (iword (&352))) *)
-  0xa91723e7;       (* arm_STP X7 X8 SP (Immediate_Offset (iword (&368))) *)
-  0xa95013e3;       (* arm_LDP X3 X4 SP (Immediate_Offset (iword (&256))) *)
+  0xa9101be5;       (* arm_STP X5 X6 SP (Immediate_Offset (iword (&256))) *)
+  0xa91123e7;       (* arm_STP X7 X8 SP (Immediate_Offset (iword (&272))) *)
+  0xa94e13e3;       (* arm_LDP X3 X4 SP (Immediate_Offset (iword (&224))) *)
   0xa94423e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&64))) *)
   0xab070063;       (* arm_ADDS X3 X3 X7 *)
   0xba080084;       (* arm_ADCS X4 X4 X8 *)
-  0xa9511be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&272))) *)
+  0xa94f1be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&240))) *)
   0xa94523e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&80))) *)
   0xba0700a5;       (* arm_ADCS X5 X5 X7 *)
   0xba0800c6;       (* arm_ADCS X6 X6 X8 *)
@@ -74,12 +74,12 @@ let curve25519_x25519_alt_mc = define_assert_from_elf
   0xba1f0084;       (* arm_ADCS X4 X4 XZR *)
   0xba1f00a5;       (* arm_ADCS X5 X5 XZR *)
   0x9a1f00c6;       (* arm_ADC X6 X6 XZR *)
-  0xa91413e3;       (* arm_STP X3 X4 SP (Immediate_Offset (iword (&320))) *)
-  0xa9151be5;       (* arm_STP X5 X6 SP (Immediate_Offset (iword (&336))) *)
-  0xa9560fe2;       (* arm_LDP X2 X3 SP (Immediate_Offset (iword (&352))) *)
+  0xa91213e3;       (* arm_STP X3 X4 SP (Immediate_Offset (iword (&288))) *)
+  0xa9131be5;       (* arm_STP X5 X6 SP (Immediate_Offset (iword (&304))) *)
+  0xa9500fe2;       (* arm_LDP X2 X3 SP (Immediate_Offset (iword (&256))) *)
   0x9b037c49;       (* arm_MUL X9 X2 X3 *)
   0x9bc37c4a;       (* arm_UMULH X10 X2 X3 *)
-  0xa95717e4;       (* arm_LDP X4 X5 SP (Immediate_Offset (iword (&368))) *)
+  0xa95117e4;       (* arm_LDP X4 X5 SP (Immediate_Offset (iword (&272))) *)
   0x9b057c4b;       (* arm_MUL X11 X2 X5 *)
   0x9bc57c4c;       (* arm_UMULH X12 X2 X5 *)
   0x9b047c47;       (* arm_MUL X7 X2 X4 *)
@@ -148,12 +148,12 @@ let curve25519_x25519_alt_mc = define_assert_from_elf
   0xba1f0129;       (* arm_ADCS X9 X9 XZR *)
   0xba1f014a;       (* arm_ADCS X10 X10 XZR *)
   0x9a1f016b;       (* arm_ADC X11 X11 XZR *)
-  0xa91627e8;       (* arm_STP X8 X9 SP (Immediate_Offset (iword (&352))) *)
-  0xa9172fea;       (* arm_STP X10 X11 SP (Immediate_Offset (iword (&368))) *)
-  0xa9540fe2;       (* arm_LDP X2 X3 SP (Immediate_Offset (iword (&320))) *)
+  0xa91027e8;       (* arm_STP X8 X9 SP (Immediate_Offset (iword (&256))) *)
+  0xa9112fea;       (* arm_STP X10 X11 SP (Immediate_Offset (iword (&272))) *)
+  0xa9520fe2;       (* arm_LDP X2 X3 SP (Immediate_Offset (iword (&288))) *)
   0x9b037c49;       (* arm_MUL X9 X2 X3 *)
   0x9bc37c4a;       (* arm_UMULH X10 X2 X3 *)
-  0xa95517e4;       (* arm_LDP X4 X5 SP (Immediate_Offset (iword (&336))) *)
+  0xa95317e4;       (* arm_LDP X4 X5 SP (Immediate_Offset (iword (&304))) *)
   0x9b057c4b;       (* arm_MUL X11 X2 X5 *)
   0x9bc57c4c;       (* arm_UMULH X12 X2 X5 *)
   0x9b047c47;       (* arm_MUL X7 X2 X4 *)
@@ -222,14 +222,14 @@ let curve25519_x25519_alt_mc = define_assert_from_elf
   0xba1f0129;       (* arm_ADCS X9 X9 XZR *)
   0xba1f014a;       (* arm_ADCS X10 X10 XZR *)
   0x9a1f016b;       (* arm_ADC X11 X11 XZR *)
-  0xa91427e8;       (* arm_STP X8 X9 SP (Immediate_Offset (iword (&320))) *)
-  0xa9152fea;       (* arm_STP X10 X11 SP (Immediate_Offset (iword (&336))) *)
-  0xa9541be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&320))) *)
-  0xa9560fe4;       (* arm_LDP X4 X3 SP (Immediate_Offset (iword (&352))) *)
+  0xa91227e8;       (* arm_STP X8 X9 SP (Immediate_Offset (iword (&288))) *)
+  0xa9132fea;       (* arm_STP X10 X11 SP (Immediate_Offset (iword (&304))) *)
+  0xa9521be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&288))) *)
+  0xa9500fe4;       (* arm_LDP X4 X3 SP (Immediate_Offset (iword (&256))) *)
   0xeb0400a5;       (* arm_SUBS X5 X5 X4 *)
   0xfa0300c6;       (* arm_SBCS X6 X6 X3 *)
-  0xa95523e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&336))) *)
-  0xa9570fe4;       (* arm_LDP X4 X3 SP (Immediate_Offset (iword (&368))) *)
+  0xa95323e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&304))) *)
+  0xa9510fe4;       (* arm_LDP X4 X3 SP (Immediate_Offset (iword (&272))) *)
   0xfa0400e7;       (* arm_SBCS X7 X7 X4 *)
   0xfa030108;       (* arm_SBCS X8 X8 X3 *)
   0xd28004c4;       (* arm_MOV X4 (rvalue (word 38)) *)
@@ -256,10 +256,10 @@ let curve25519_x25519_alt_mc = define_assert_from_elf
   0xba0800a5;       (* arm_ADCS X5 X5 X8 *)
   0xba0900c6;       (* arm_ADCS X6 X6 X9 *)
   0x9a1f014a;       (* arm_ADC X10 X10 XZR *)
-  0xa95623e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&352))) *)
+  0xa95023e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&256))) *)
   0xab070063;       (* arm_ADDS X3 X3 X7 *)
   0xba080084;       (* arm_ADCS X4 X4 X8 *)
-  0xa95723e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&368))) *)
+  0xa95123e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&272))) *)
   0xba0700a5;       (* arm_ADCS X5 X5 X7 *)
   0xba0800c6;       (* arm_ADCS X6 X6 X8 *)
   0x9a1f014a;       (* arm_ADC X10 X10 XZR *)
@@ -274,14 +274,14 @@ let curve25519_x25519_alt_mc = define_assert_from_elf
   0x9a1f00c6;       (* arm_ADC X6 X6 XZR *)
   0xa90a13e3;       (* arm_STP X3 X4 SP (Immediate_Offset (iword (&160))) *)
   0xa90b1be5;       (* arm_STP X5 X6 SP (Immediate_Offset (iword (&176))) *)
-  0xa95413e3;       (* arm_LDP X3 X4 SP (Immediate_Offset (iword (&320))) *)
-  0xa95623e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&352))) *)
+  0xa95213e3;       (* arm_LDP X3 X4 SP (Immediate_Offset (iword (&288))) *)
+  0xa95023e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&256))) *)
   0x9b077c6c;       (* arm_MUL X12 X3 X7 *)
   0x9bc77c6d;       (* arm_UMULH X13 X3 X7 *)
   0x9b087c6b;       (* arm_MUL X11 X3 X8 *)
   0x9bc87c6e;       (* arm_UMULH X14 X3 X8 *)
   0xab0b01ad;       (* arm_ADDS X13 X13 X11 *)
-  0xa9572be9;       (* arm_LDP X9 X10 SP (Immediate_Offset (iword (&368))) *)
+  0xa9512be9;       (* arm_LDP X9 X10 SP (Immediate_Offset (iword (&272))) *)
   0x9b097c6b;       (* arm_MUL X11 X3 X9 *)
   0x9bc97c6f;       (* arm_UMULH X15 X3 X9 *)
   0xba0b01ce;       (* arm_ADCS X14 X14 X11 *)
@@ -289,7 +289,7 @@ let curve25519_x25519_alt_mc = define_assert_from_elf
   0x9bca7c70;       (* arm_UMULH X16 X3 X10 *)
   0xba0b01ef;       (* arm_ADCS X15 X15 X11 *)
   0x9a1f0210;       (* arm_ADC X16 X16 XZR *)
-  0xa9551be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&336))) *)
+  0xa9531be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&304))) *)
   0x9b077c8b;       (* arm_MUL X11 X4 X7 *)
   0xab0b01ad;       (* arm_ADDS X13 X13 X11 *)
   0x9b087c8b;       (* arm_MUL X11 X4 X8 *)
@@ -368,8 +368,8 @@ let curve25519_x25519_alt_mc = define_assert_from_elf
   0xba1f01ad;       (* arm_ADCS X13 X13 XZR *)
   0xba1f01ce;       (* arm_ADCS X14 X14 XZR *)
   0x9a1f01ef;       (* arm_ADC X15 X15 XZR *)
-  0xa91437ec;       (* arm_STP X12 X13 SP (Immediate_Offset (iword (&320))) *)
-  0xa9153fee;       (* arm_STP X14 X15 SP (Immediate_Offset (iword (&336))) *)
+  0xa91237ec;       (* arm_STP X12 X13 SP (Immediate_Offset (iword (&288))) *)
+  0xa9133fee;       (* arm_STP X14 X15 SP (Immediate_Offset (iword (&304))) *)
   0xa94c13e3;       (* arm_LDP X3 X4 SP (Immediate_Offset (iword (&192))) *)
   0xa94a23e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&160))) *)
   0x9b077c6c;       (* arm_MUL X12 X3 X7 *)
@@ -467,11 +467,11 @@ let curve25519_x25519_alt_mc = define_assert_from_elf
   0xa90a37ec;       (* arm_STP X12 X13 SP (Immediate_Offset (iword (&160))) *)
   0xa90b3fee;       (* arm_STP X14 X15 SP (Immediate_Offset (iword (&176))) *)
   0xd2801fb4;       (* arm_MOV X20 (rvalue (word 253)) *)
-  0xa9501be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&256))) *)
+  0xa94e1be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&224))) *)
   0xa9440fe4;       (* arm_LDP X4 X3 SP (Immediate_Offset (iword (&64))) *)
   0xeb0400a5;       (* arm_SUBS X5 X5 X4 *)
   0xfa0300c6;       (* arm_SBCS X6 X6 X3 *)
-  0xa95123e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&272))) *)
+  0xa94f23e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&240))) *)
   0xa9450fe4;       (* arm_LDP X4 X3 SP (Immediate_Offset (iword (&80))) *)
   0xfa0400e7;       (* arm_SBCS X7 X7 X4 *)
   0xfa030108;       (* arm_SBCS X8 X8 X3 *)
@@ -483,11 +483,11 @@ let curve25519_x25519_alt_mc = define_assert_from_elf
   0xda1f0108;       (* arm_SBC X8 X8 XZR *)
   0xa9081be5;       (* arm_STP X5 X6 SP (Immediate_Offset (iword (&128))) *)
   0xa90923e7;       (* arm_STP X7 X8 SP (Immediate_Offset (iword (&144))) *)
-  0xa95413e3;       (* arm_LDP X3 X4 SP (Immediate_Offset (iword (&320))) *)
+  0xa95213e3;       (* arm_LDP X3 X4 SP (Immediate_Offset (iword (&288))) *)
   0xa94a23e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&160))) *)
   0xab070063;       (* arm_ADDS X3 X3 X7 *)
   0xba080084;       (* arm_ADCS X4 X4 X8 *)
-  0xa9551be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&336))) *)
+  0xa9531be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&304))) *)
   0xa94b23e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&176))) *)
   0xba0700a5;       (* arm_ADCS X5 X5 X7 *)
   0xba0800c6;       (* arm_ADCS X6 X6 X8 *)
@@ -499,11 +499,11 @@ let curve25519_x25519_alt_mc = define_assert_from_elf
   0x9a1f00c6;       (* arm_ADC X6 X6 XZR *)
   0xa90613e3;       (* arm_STP X3 X4 SP (Immediate_Offset (iword (&96))) *)
   0xa9071be5;       (* arm_STP X5 X6 SP (Immediate_Offset (iword (&112))) *)
-  0xa9541be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&320))) *)
+  0xa9521be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&288))) *)
   0xa94a0fe4;       (* arm_LDP X4 X3 SP (Immediate_Offset (iword (&160))) *)
   0xeb0400a5;       (* arm_SUBS X5 X5 X4 *)
   0xfa0300c6;       (* arm_SBCS X6 X6 X3 *)
-  0xa95523e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&336))) *)
+  0xa95323e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&304))) *)
   0xa94b0fe4;       (* arm_LDP X4 X3 SP (Immediate_Offset (iword (&176))) *)
   0xfa0400e7;       (* arm_SBCS X7 X7 X4 *)
   0xfa030108;       (* arm_SBCS X8 X8 X3 *)
@@ -515,11 +515,11 @@ let curve25519_x25519_alt_mc = define_assert_from_elf
   0xda1f0108;       (* arm_SBC X8 X8 XZR *)
   0xa90a1be5;       (* arm_STP X5 X6 SP (Immediate_Offset (iword (&160))) *)
   0xa90b23e7;       (* arm_STP X7 X8 SP (Immediate_Offset (iword (&176))) *)
-  0xa95013e3;       (* arm_LDP X3 X4 SP (Immediate_Offset (iword (&256))) *)
+  0xa94e13e3;       (* arm_LDP X3 X4 SP (Immediate_Offset (iword (&224))) *)
   0xa94423e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&64))) *)
   0xab070063;       (* arm_ADDS X3 X3 X7 *)
   0xba080084;       (* arm_ADCS X4 X4 X8 *)
-  0xa9511be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&272))) *)
+  0xa94f1be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&240))) *)
   0xa94523e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&80))) *)
   0xba0700a5;       (* arm_ADCS X5 X5 X7 *)
   0xba0800c6;       (* arm_ADCS X6 X6 X8 *)
@@ -616,9 +616,17 @@ let curve25519_x25519_alt_mc = define_assert_from_elf
   0xba0301ce;       (* arm_ADCS X14 X14 X3 *)
   0xba0401ef;       (* arm_ADCS X15 X15 X4 *)
   0x9a050210;       (* arm_ADC X16 X16 X5 *)
+  0xab0f01ff;       (* arm_CMN X15 X15 *)
+  0x9240f9ef;       (* arm_AND X15 X15 (rvalue (word 9223372036854775807)) *)
+  0x9a100208;       (* arm_ADC X8 X16 X16 *)
+  0xd2800267;       (* arm_MOV X7 (rvalue (word 19)) *)
+  0x9b087ceb;       (* arm_MUL X11 X7 X8 *)
+  0xab0b018c;       (* arm_ADDS X12 X12 X11 *)
+  0xba1f01ad;       (* arm_ADCS X13 X13 XZR *)
+  0xba1f01ce;       (* arm_ADCS X14 X14 XZR *)
+  0x9a1f01ef;       (* arm_ADC X15 X15 XZR *)
   0xa90c37ec;       (* arm_STP X12 X13 SP (Immediate_Offset (iword (&192))) *)
   0xa90d3fee;       (* arm_STP X14 X15 SP (Immediate_Offset (iword (&208))) *)
-  0xf90073f0;       (* arm_STR X16 SP (Immediate_Offset (word 224)) *)
   0xd346fe80;       (* arm_LSR X0 X20 6 *)
   0xf8607be2;       (* arm_LDR X2 SP (Shiftreg_Offset X0 3) *)
   0x9ad42442;       (* arm_LSRV X2 X2 X20 *)
@@ -629,22 +637,22 @@ let curve25519_x25519_alt_mc = define_assert_from_elf
   0xa94a0fe2;       (* arm_LDP X2 X3 SP (Immediate_Offset (iword (&160))) *)
   0x9a821000;       (* arm_CSEL X0 X0 X2 Condition_NE *)
   0x9a831021;       (* arm_CSEL X1 X1 X3 Condition_NE *)
-  0xa91607e0;       (* arm_STP X0 X1 SP (Immediate_Offset (iword (&352))) *)
+  0xa91007e0;       (* arm_STP X0 X1 SP (Immediate_Offset (iword (&256))) *)
   0xa94907e0;       (* arm_LDP X0 X1 SP (Immediate_Offset (iword (&144))) *)
   0xa94b0fe2;       (* arm_LDP X2 X3 SP (Immediate_Offset (iword (&176))) *)
   0x9a821000;       (* arm_CSEL X0 X0 X2 Condition_NE *)
   0x9a831021;       (* arm_CSEL X1 X1 X3 Condition_NE *)
-  0xa91707e0;       (* arm_STP X0 X1 SP (Immediate_Offset (iword (&368))) *)
+  0xa91107e0;       (* arm_STP X0 X1 SP (Immediate_Offset (iword (&272))) *)
   0xa94407e0;       (* arm_LDP X0 X1 SP (Immediate_Offset (iword (&64))) *)
   0xa9460fe2;       (* arm_LDP X2 X3 SP (Immediate_Offset (iword (&96))) *)
   0x9a821000;       (* arm_CSEL X0 X0 X2 Condition_NE *)
   0x9a831021;       (* arm_CSEL X1 X1 X3 Condition_NE *)
-  0xa91407e0;       (* arm_STP X0 X1 SP (Immediate_Offset (iword (&320))) *)
+  0xa91207e0;       (* arm_STP X0 X1 SP (Immediate_Offset (iword (&288))) *)
   0xa94507e0;       (* arm_LDP X0 X1 SP (Immediate_Offset (iword (&80))) *)
   0xa9470fe2;       (* arm_LDP X2 X3 SP (Immediate_Offset (iword (&112))) *)
   0x9a821000;       (* arm_CSEL X0 X0 X2 Condition_NE *)
   0x9a831021;       (* arm_CSEL X1 X1 X3 Condition_NE *)
-  0xa91507e0;       (* arm_STP X0 X1 SP (Immediate_Offset (iword (&336))) *)
+  0xa91307e0;       (* arm_STP X0 X1 SP (Immediate_Offset (iword (&304))) *)
   0xa94413e3;       (* arm_LDP X3 X4 SP (Immediate_Offset (iword (&64))) *)
   0xa94a23e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&160))) *)
   0x9b077c6c;       (* arm_MUL X12 X3 X7 *)
@@ -730,298 +738,17 @@ let curve25519_x25519_alt_mc = define_assert_from_elf
   0xba0301ce;       (* arm_ADCS X14 X14 X3 *)
   0xba0401ef;       (* arm_ADCS X15 X15 X4 *)
   0x9a050210;       (* arm_ADC X16 X16 X5 *)
-  0xa91037ec;       (* arm_STP X12 X13 SP (Immediate_Offset (iword (&256))) *)
-  0xa9113fee;       (* arm_STP X14 X15 SP (Immediate_Offset (iword (&272))) *)
-  0xf90093f0;       (* arm_STR X16 SP (Immediate_Offset (word 288)) *)
-  0xa9560fe2;       (* arm_LDP X2 X3 SP (Immediate_Offset (iword (&352))) *)
-  0x9b037c49;       (* arm_MUL X9 X2 X3 *)
-  0x9bc37c4a;       (* arm_UMULH X10 X2 X3 *)
-  0xa95717e4;       (* arm_LDP X4 X5 SP (Immediate_Offset (iword (&368))) *)
-  0x9b057c4b;       (* arm_MUL X11 X2 X5 *)
-  0x9bc57c4c;       (* arm_UMULH X12 X2 X5 *)
-  0x9b047c47;       (* arm_MUL X7 X2 X4 *)
-  0x9bc47c46;       (* arm_UMULH X6 X2 X4 *)
-  0xab07014a;       (* arm_ADDS X10 X10 X7 *)
-  0xba06016b;       (* arm_ADCS X11 X11 X6 *)
-  0x9b047c67;       (* arm_MUL X7 X3 X4 *)
-  0x9bc47c66;       (* arm_UMULH X6 X3 X4 *)
-  0x9a1f00c6;       (* arm_ADC X6 X6 XZR *)
-  0xab07016b;       (* arm_ADDS X11 X11 X7 *)
-  0x9b057c8d;       (* arm_MUL X13 X4 X5 *)
-  0x9bc57c8e;       (* arm_UMULH X14 X4 X5 *)
-  0xba06018c;       (* arm_ADCS X12 X12 X6 *)
-  0x9b057c67;       (* arm_MUL X7 X3 X5 *)
-  0x9bc57c66;       (* arm_UMULH X6 X3 X5 *)
-  0x9a1f00c6;       (* arm_ADC X6 X6 XZR *)
-  0xab07018c;       (* arm_ADDS X12 X12 X7 *)
-  0xba0601ad;       (* arm_ADCS X13 X13 X6 *)
-  0x9a1f01ce;       (* arm_ADC X14 X14 XZR *)
-  0xab090129;       (* arm_ADDS X9 X9 X9 *)
-  0xba0a014a;       (* arm_ADCS X10 X10 X10 *)
-  0xba0b016b;       (* arm_ADCS X11 X11 X11 *)
-  0xba0c018c;       (* arm_ADCS X12 X12 X12 *)
-  0xba0d01ad;       (* arm_ADCS X13 X13 X13 *)
-  0xba0e01ce;       (* arm_ADCS X14 X14 X14 *)
-  0x9a9f37e6;       (* arm_CSET X6 Condition_CS *)
-  0x9bc27c47;       (* arm_UMULH X7 X2 X2 *)
-  0x9b027c48;       (* arm_MUL X8 X2 X2 *)
-  0xab070129;       (* arm_ADDS X9 X9 X7 *)
-  0x9b037c67;       (* arm_MUL X7 X3 X3 *)
-  0xba07014a;       (* arm_ADCS X10 X10 X7 *)
-  0x9bc37c67;       (* arm_UMULH X7 X3 X3 *)
-  0xba07016b;       (* arm_ADCS X11 X11 X7 *)
-  0x9b047c87;       (* arm_MUL X7 X4 X4 *)
-  0xba07018c;       (* arm_ADCS X12 X12 X7 *)
-  0x9bc47c87;       (* arm_UMULH X7 X4 X4 *)
-  0xba0701ad;       (* arm_ADCS X13 X13 X7 *)
-  0x9b057ca7;       (* arm_MUL X7 X5 X5 *)
-  0xba0701ce;       (* arm_ADCS X14 X14 X7 *)
-  0x9bc57ca7;       (* arm_UMULH X7 X5 X5 *)
-  0x9a0700c6;       (* arm_ADC X6 X6 X7 *)
-  0xd28004c3;       (* arm_MOV X3 (rvalue (word 38)) *)
-  0x9b0c7c67;       (* arm_MUL X7 X3 X12 *)
-  0x9bcc7c64;       (* arm_UMULH X4 X3 X12 *)
-  0xab070108;       (* arm_ADDS X8 X8 X7 *)
-  0x9b0d7c67;       (* arm_MUL X7 X3 X13 *)
-  0x9bcd7c6d;       (* arm_UMULH X13 X3 X13 *)
-  0xba070129;       (* arm_ADCS X9 X9 X7 *)
-  0x9b0e7c67;       (* arm_MUL X7 X3 X14 *)
-  0x9bce7c6e;       (* arm_UMULH X14 X3 X14 *)
-  0xba07014a;       (* arm_ADCS X10 X10 X7 *)
-  0x9b067c67;       (* arm_MUL X7 X3 X6 *)
-  0x9bc67c66;       (* arm_UMULH X6 X3 X6 *)
-  0xba07016b;       (* arm_ADCS X11 X11 X7 *)
-  0x9a9f37ec;       (* arm_CSET X12 Condition_CS *)
-  0xab040129;       (* arm_ADDS X9 X9 X4 *)
-  0xba0d014a;       (* arm_ADCS X10 X10 X13 *)
-  0xba0e016b;       (* arm_ADCS X11 X11 X14 *)
-  0x9a06018c;       (* arm_ADC X12 X12 X6 *)
-  0xab0b017f;       (* arm_CMN X11 X11 *)
-  0x9240f96b;       (* arm_AND X11 X11 (rvalue (word 9223372036854775807)) *)
-  0x9a0c0182;       (* arm_ADC X2 X12 X12 *)
-  0xd2800263;       (* arm_MOV X3 (rvalue (word 19)) *)
-  0x9b027c67;       (* arm_MUL X7 X3 X2 *)
-  0xab070108;       (* arm_ADDS X8 X8 X7 *)
-  0xba1f0129;       (* arm_ADCS X9 X9 XZR *)
-  0xba1f014a;       (* arm_ADCS X10 X10 XZR *)
-  0x9a1f016b;       (* arm_ADC X11 X11 XZR *)
-  0xa91627e8;       (* arm_STP X8 X9 SP (Immediate_Offset (iword (&352))) *)
-  0xa9172fea;       (* arm_STP X10 X11 SP (Immediate_Offset (iword (&368))) *)
-  0xa94c07e0;       (* arm_LDP X0 X1 SP (Immediate_Offset (iword (&192))) *)
-  0xa95017e4;       (* arm_LDP X4 X5 SP (Immediate_Offset (iword (&256))) *)
-  0xeb040000;       (* arm_SUBS X0 X0 X4 *)
-  0xfa050021;       (* arm_SBCS X1 X1 X5 *)
-  0xa94d0fe2;       (* arm_LDP X2 X3 SP (Immediate_Offset (iword (&208))) *)
-  0xa9511fe6;       (* arm_LDP X6 X7 SP (Immediate_Offset (iword (&272))) *)
-  0xfa060042;       (* arm_SBCS X2 X2 X6 *)
-  0xfa070063;       (* arm_SBCS X3 X3 X7 *)
-  0xf94073e4;       (* arm_LDR X4 SP (Immediate_Offset (word 224)) *)
-  0xf94093e5;       (* arm_LDR X5 SP (Immediate_Offset (word 288)) *)
-  0xda050084;       (* arm_SBC X4 X4 X5 *)
-  0x928946e7;       (* arm_MOVN X7 (word 18999) 0 *)
-  0xab070000;       (* arm_ADDS X0 X0 X7 *)
-  0xfa1f0021;       (* arm_SBCS X1 X1 XZR *)
-  0xfa1f0042;       (* arm_SBCS X2 X2 XZR *)
-  0xfa1f0063;       (* arm_SBCS X3 X3 XZR *)
-  0xd2803e67;       (* arm_MOV X7 (rvalue (word 499)) *)
-  0x9a070084;       (* arm_ADC X4 X4 X7 *)
-  0xab03007f;       (* arm_CMN X3 X3 *)
-  0x9240f863;       (* arm_AND X3 X3 (rvalue (word 9223372036854775807)) *)
-  0x9a040088;       (* arm_ADC X8 X4 X4 *)
+  0xab0f01ff;       (* arm_CMN X15 X15 *)
+  0x9240f9ef;       (* arm_AND X15 X15 (rvalue (word 9223372036854775807)) *)
+  0x9a100208;       (* arm_ADC X8 X16 X16 *)
   0xd2800267;       (* arm_MOV X7 (rvalue (word 19)) *)
   0x9b087ceb;       (* arm_MUL X11 X7 X8 *)
-  0xab0b0000;       (* arm_ADDS X0 X0 X11 *)
-  0xba1f0021;       (* arm_ADCS X1 X1 XZR *)
-  0xba1f0042;       (* arm_ADCS X2 X2 XZR *)
-  0x9a1f0063;       (* arm_ADC X3 X3 XZR *)
-  0xa90407e0;       (* arm_STP X0 X1 SP (Immediate_Offset (iword (&64))) *)
-  0xa9050fe2;       (* arm_STP X2 X3 SP (Immediate_Offset (iword (&80))) *)
-  0xa9540fe2;       (* arm_LDP X2 X3 SP (Immediate_Offset (iword (&320))) *)
-  0x9b037c49;       (* arm_MUL X9 X2 X3 *)
-  0x9bc37c4a;       (* arm_UMULH X10 X2 X3 *)
-  0xa95517e4;       (* arm_LDP X4 X5 SP (Immediate_Offset (iword (&336))) *)
-  0x9b057c4b;       (* arm_MUL X11 X2 X5 *)
-  0x9bc57c4c;       (* arm_UMULH X12 X2 X5 *)
-  0x9b047c47;       (* arm_MUL X7 X2 X4 *)
-  0x9bc47c46;       (* arm_UMULH X6 X2 X4 *)
-  0xab07014a;       (* arm_ADDS X10 X10 X7 *)
-  0xba06016b;       (* arm_ADCS X11 X11 X6 *)
-  0x9b047c67;       (* arm_MUL X7 X3 X4 *)
-  0x9bc47c66;       (* arm_UMULH X6 X3 X4 *)
-  0x9a1f00c6;       (* arm_ADC X6 X6 XZR *)
-  0xab07016b;       (* arm_ADDS X11 X11 X7 *)
-  0x9b057c8d;       (* arm_MUL X13 X4 X5 *)
-  0x9bc57c8e;       (* arm_UMULH X14 X4 X5 *)
-  0xba06018c;       (* arm_ADCS X12 X12 X6 *)
-  0x9b057c67;       (* arm_MUL X7 X3 X5 *)
-  0x9bc57c66;       (* arm_UMULH X6 X3 X5 *)
-  0x9a1f00c6;       (* arm_ADC X6 X6 XZR *)
-  0xab07018c;       (* arm_ADDS X12 X12 X7 *)
-  0xba0601ad;       (* arm_ADCS X13 X13 X6 *)
-  0x9a1f01ce;       (* arm_ADC X14 X14 XZR *)
-  0xab090129;       (* arm_ADDS X9 X9 X9 *)
-  0xba0a014a;       (* arm_ADCS X10 X10 X10 *)
-  0xba0b016b;       (* arm_ADCS X11 X11 X11 *)
-  0xba0c018c;       (* arm_ADCS X12 X12 X12 *)
-  0xba0d01ad;       (* arm_ADCS X13 X13 X13 *)
-  0xba0e01ce;       (* arm_ADCS X14 X14 X14 *)
-  0x9a9f37e6;       (* arm_CSET X6 Condition_CS *)
-  0x9bc27c47;       (* arm_UMULH X7 X2 X2 *)
-  0x9b027c48;       (* arm_MUL X8 X2 X2 *)
-  0xab070129;       (* arm_ADDS X9 X9 X7 *)
-  0x9b037c67;       (* arm_MUL X7 X3 X3 *)
-  0xba07014a;       (* arm_ADCS X10 X10 X7 *)
-  0x9bc37c67;       (* arm_UMULH X7 X3 X3 *)
-  0xba07016b;       (* arm_ADCS X11 X11 X7 *)
-  0x9b047c87;       (* arm_MUL X7 X4 X4 *)
-  0xba07018c;       (* arm_ADCS X12 X12 X7 *)
-  0x9bc47c87;       (* arm_UMULH X7 X4 X4 *)
-  0xba0701ad;       (* arm_ADCS X13 X13 X7 *)
-  0x9b057ca7;       (* arm_MUL X7 X5 X5 *)
-  0xba0701ce;       (* arm_ADCS X14 X14 X7 *)
-  0x9bc57ca7;       (* arm_UMULH X7 X5 X5 *)
-  0x9a0700c6;       (* arm_ADC X6 X6 X7 *)
-  0xd28004c3;       (* arm_MOV X3 (rvalue (word 38)) *)
-  0x9b0c7c67;       (* arm_MUL X7 X3 X12 *)
-  0x9bcc7c64;       (* arm_UMULH X4 X3 X12 *)
-  0xab070108;       (* arm_ADDS X8 X8 X7 *)
-  0x9b0d7c67;       (* arm_MUL X7 X3 X13 *)
-  0x9bcd7c6d;       (* arm_UMULH X13 X3 X13 *)
-  0xba070129;       (* arm_ADCS X9 X9 X7 *)
-  0x9b0e7c67;       (* arm_MUL X7 X3 X14 *)
-  0x9bce7c6e;       (* arm_UMULH X14 X3 X14 *)
-  0xba07014a;       (* arm_ADCS X10 X10 X7 *)
-  0x9b067c67;       (* arm_MUL X7 X3 X6 *)
-  0x9bc67c66;       (* arm_UMULH X6 X3 X6 *)
-  0xba07016b;       (* arm_ADCS X11 X11 X7 *)
-  0x9a9f37ec;       (* arm_CSET X12 Condition_CS *)
-  0xab040129;       (* arm_ADDS X9 X9 X4 *)
-  0xba0d014a;       (* arm_ADCS X10 X10 X13 *)
-  0xba0e016b;       (* arm_ADCS X11 X11 X14 *)
-  0x9a06018c;       (* arm_ADC X12 X12 X6 *)
-  0xab0b017f;       (* arm_CMN X11 X11 *)
-  0x9240f96b;       (* arm_AND X11 X11 (rvalue (word 9223372036854775807)) *)
-  0x9a0c0182;       (* arm_ADC X2 X12 X12 *)
-  0xd2800263;       (* arm_MOV X3 (rvalue (word 19)) *)
-  0x9b027c67;       (* arm_MUL X7 X3 X2 *)
-  0xab070108;       (* arm_ADDS X8 X8 X7 *)
-  0xba1f0129;       (* arm_ADCS X9 X9 XZR *)
-  0xba1f014a;       (* arm_ADCS X10 X10 XZR *)
-  0x9a1f016b;       (* arm_ADC X11 X11 XZR *)
-  0xa91427e8;       (* arm_STP X8 X9 SP (Immediate_Offset (iword (&320))) *)
-  0xa9152fea;       (* arm_STP X10 X11 SP (Immediate_Offset (iword (&336))) *)
-  0xa94c07e0;       (* arm_LDP X0 X1 SP (Immediate_Offset (iword (&192))) *)
-  0xa95017e4;       (* arm_LDP X4 X5 SP (Immediate_Offset (iword (&256))) *)
-  0xab040000;       (* arm_ADDS X0 X0 X4 *)
-  0xba050021;       (* arm_ADCS X1 X1 X5 *)
-  0xa94d0fe2;       (* arm_LDP X2 X3 SP (Immediate_Offset (iword (&208))) *)
-  0xa9511fe6;       (* arm_LDP X6 X7 SP (Immediate_Offset (iword (&272))) *)
-  0xba060042;       (* arm_ADCS X2 X2 X6 *)
-  0xba070063;       (* arm_ADCS X3 X3 X7 *)
-  0xf94073e4;       (* arm_LDR X4 SP (Immediate_Offset (word 224)) *)
-  0xf94093e5;       (* arm_LDR X5 SP (Immediate_Offset (word 288)) *)
-  0x9a050084;       (* arm_ADC X4 X4 X5 *)
-  0xab03007f;       (* arm_CMN X3 X3 *)
-  0x9240f863;       (* arm_AND X3 X3 (rvalue (word 9223372036854775807)) *)
-  0x9a040088;       (* arm_ADC X8 X4 X4 *)
-  0xd2800267;       (* arm_MOV X7 (rvalue (word 19)) *)
-  0x9b087ceb;       (* arm_MUL X11 X7 X8 *)
-  0xab0b0000;       (* arm_ADDS X0 X0 X11 *)
-  0xba1f0021;       (* arm_ADCS X1 X1 XZR *)
-  0xba1f0042;       (* arm_ADCS X2 X2 XZR *)
-  0x9a1f0063;       (* arm_ADC X3 X3 XZR *)
-  0xa91007e0;       (* arm_STP X0 X1 SP (Immediate_Offset (iword (&256))) *)
-  0xa9110fe2;       (* arm_STP X2 X3 SP (Immediate_Offset (iword (&272))) *)
-  0xa9440fe2;       (* arm_LDP X2 X3 SP (Immediate_Offset (iword (&64))) *)
-  0x9b037c49;       (* arm_MUL X9 X2 X3 *)
-  0x9bc37c4a;       (* arm_UMULH X10 X2 X3 *)
-  0xa94517e4;       (* arm_LDP X4 X5 SP (Immediate_Offset (iword (&80))) *)
-  0x9b057c4b;       (* arm_MUL X11 X2 X5 *)
-  0x9bc57c4c;       (* arm_UMULH X12 X2 X5 *)
-  0x9b047c47;       (* arm_MUL X7 X2 X4 *)
-  0x9bc47c46;       (* arm_UMULH X6 X2 X4 *)
-  0xab07014a;       (* arm_ADDS X10 X10 X7 *)
-  0xba06016b;       (* arm_ADCS X11 X11 X6 *)
-  0x9b047c67;       (* arm_MUL X7 X3 X4 *)
-  0x9bc47c66;       (* arm_UMULH X6 X3 X4 *)
-  0x9a1f00c6;       (* arm_ADC X6 X6 XZR *)
-  0xab07016b;       (* arm_ADDS X11 X11 X7 *)
-  0x9b057c8d;       (* arm_MUL X13 X4 X5 *)
-  0x9bc57c8e;       (* arm_UMULH X14 X4 X5 *)
-  0xba06018c;       (* arm_ADCS X12 X12 X6 *)
-  0x9b057c67;       (* arm_MUL X7 X3 X5 *)
-  0x9bc57c66;       (* arm_UMULH X6 X3 X5 *)
-  0x9a1f00c6;       (* arm_ADC X6 X6 XZR *)
-  0xab07018c;       (* arm_ADDS X12 X12 X7 *)
-  0xba0601ad;       (* arm_ADCS X13 X13 X6 *)
-  0x9a1f01ce;       (* arm_ADC X14 X14 XZR *)
-  0xab090129;       (* arm_ADDS X9 X9 X9 *)
-  0xba0a014a;       (* arm_ADCS X10 X10 X10 *)
-  0xba0b016b;       (* arm_ADCS X11 X11 X11 *)
-  0xba0c018c;       (* arm_ADCS X12 X12 X12 *)
-  0xba0d01ad;       (* arm_ADCS X13 X13 X13 *)
-  0xba0e01ce;       (* arm_ADCS X14 X14 X14 *)
-  0x9a9f37e6;       (* arm_CSET X6 Condition_CS *)
-  0x9bc27c47;       (* arm_UMULH X7 X2 X2 *)
-  0x9b027c48;       (* arm_MUL X8 X2 X2 *)
-  0xab070129;       (* arm_ADDS X9 X9 X7 *)
-  0x9b037c67;       (* arm_MUL X7 X3 X3 *)
-  0xba07014a;       (* arm_ADCS X10 X10 X7 *)
-  0x9bc37c67;       (* arm_UMULH X7 X3 X3 *)
-  0xba07016b;       (* arm_ADCS X11 X11 X7 *)
-  0x9b047c87;       (* arm_MUL X7 X4 X4 *)
-  0xba07018c;       (* arm_ADCS X12 X12 X7 *)
-  0x9bc47c87;       (* arm_UMULH X7 X4 X4 *)
-  0xba0701ad;       (* arm_ADCS X13 X13 X7 *)
-  0x9b057ca7;       (* arm_MUL X7 X5 X5 *)
-  0xba0701ce;       (* arm_ADCS X14 X14 X7 *)
-  0x9bc57ca7;       (* arm_UMULH X7 X5 X5 *)
-  0x9a0700c6;       (* arm_ADC X6 X6 X7 *)
-  0xd28004c3;       (* arm_MOV X3 (rvalue (word 38)) *)
-  0x9b0c7c67;       (* arm_MUL X7 X3 X12 *)
-  0x9bcc7c64;       (* arm_UMULH X4 X3 X12 *)
-  0xab070108;       (* arm_ADDS X8 X8 X7 *)
-  0x9b0d7c67;       (* arm_MUL X7 X3 X13 *)
-  0x9bcd7c6d;       (* arm_UMULH X13 X3 X13 *)
-  0xba070129;       (* arm_ADCS X9 X9 X7 *)
-  0x9b0e7c67;       (* arm_MUL X7 X3 X14 *)
-  0x9bce7c6e;       (* arm_UMULH X14 X3 X14 *)
-  0xba07014a;       (* arm_ADCS X10 X10 X7 *)
-  0x9b067c67;       (* arm_MUL X7 X3 X6 *)
-  0x9bc67c66;       (* arm_UMULH X6 X3 X6 *)
-  0xba07016b;       (* arm_ADCS X11 X11 X7 *)
-  0x9a9f37ec;       (* arm_CSET X12 Condition_CS *)
-  0xab040129;       (* arm_ADDS X9 X9 X4 *)
-  0xba0d014a;       (* arm_ADCS X10 X10 X13 *)
-  0xba0e016b;       (* arm_ADCS X11 X11 X14 *)
-  0x9a06018c;       (* arm_ADC X12 X12 X6 *)
-  0xab0b017f;       (* arm_CMN X11 X11 *)
-  0x9240f96b;       (* arm_AND X11 X11 (rvalue (word 9223372036854775807)) *)
-  0x9a0c0182;       (* arm_ADC X2 X12 X12 *)
-  0xd2800263;       (* arm_MOV X3 (rvalue (word 19)) *)
-  0x9b027c67;       (* arm_MUL X7 X3 X2 *)
-  0xab070108;       (* arm_ADDS X8 X8 X7 *)
-  0xba1f0129;       (* arm_ADCS X9 X9 XZR *)
-  0xba1f014a;       (* arm_ADCS X10 X10 XZR *)
-  0x9a1f016b;       (* arm_ADC X11 X11 XZR *)
-  0xa90427e8;       (* arm_STP X8 X9 SP (Immediate_Offset (iword (&64))) *)
-  0xa9052fea;       (* arm_STP X10 X11 SP (Immediate_Offset (iword (&80))) *)
-  0xa9541be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&320))) *)
-  0xa9560fe4;       (* arm_LDP X4 X3 SP (Immediate_Offset (iword (&352))) *)
-  0xeb0400a5;       (* arm_SUBS X5 X5 X4 *)
-  0xfa0300c6;       (* arm_SBCS X6 X6 X3 *)
-  0xa95523e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&336))) *)
-  0xa9570fe4;       (* arm_LDP X4 X3 SP (Immediate_Offset (iword (&368))) *)
-  0xfa0400e7;       (* arm_SBCS X7 X7 X4 *)
-  0xfa030108;       (* arm_SBCS X8 X8 X3 *)
-  0xd28004c4;       (* arm_MOV X4 (rvalue (word 38)) *)
-  0x9a9f3083;       (* arm_CSEL X3 X4 XZR Condition_CC *)
-  0xeb0300a5;       (* arm_SUBS X5 X5 X3 *)
-  0xfa1f00c6;       (* arm_SBCS X6 X6 XZR *)
-  0xfa1f00e7;       (* arm_SBCS X7 X7 XZR *)
-  0xda1f0108;       (* arm_SBC X8 X8 XZR *)
-  0xa90c1be5;       (* arm_STP X5 X6 SP (Immediate_Offset (iword (&192))) *)
-  0xa90d23e7;       (* arm_STP X7 X8 SP (Immediate_Offset (iword (&208))) *)
+  0xab0b018c;       (* arm_ADDS X12 X12 X11 *)
+  0xba1f01ad;       (* arm_ADCS X13 X13 XZR *)
+  0xba1f01ce;       (* arm_ADCS X14 X14 XZR *)
+  0x9a1f01ef;       (* arm_ADC X15 X15 XZR *)
+  0xa90e37ec;       (* arm_STP X12 X13 SP (Immediate_Offset (iword (&224))) *)
+  0xa90f3fee;       (* arm_STP X14 X15 SP (Immediate_Offset (iword (&240))) *)
   0xa9500fe2;       (* arm_LDP X2 X3 SP (Immediate_Offset (iword (&256))) *)
   0x9b037c49;       (* arm_MUL X9 X2 X3 *)
   0x9bc37c4a;       (* arm_UMULH X10 X2 X3 *)
@@ -1096,6 +823,276 @@ let curve25519_x25519_alt_mc = define_assert_from_elf
   0x9a1f016b;       (* arm_ADC X11 X11 XZR *)
   0xa91027e8;       (* arm_STP X8 X9 SP (Immediate_Offset (iword (&256))) *)
   0xa9112fea;       (* arm_STP X10 X11 SP (Immediate_Offset (iword (&272))) *)
+  0xa94c1be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&192))) *)
+  0xa94e0fe4;       (* arm_LDP X4 X3 SP (Immediate_Offset (iword (&224))) *)
+  0xeb0400a5;       (* arm_SUBS X5 X5 X4 *)
+  0xfa0300c6;       (* arm_SBCS X6 X6 X3 *)
+  0xa94d23e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&208))) *)
+  0xa94f0fe4;       (* arm_LDP X4 X3 SP (Immediate_Offset (iword (&240))) *)
+  0xfa0400e7;       (* arm_SBCS X7 X7 X4 *)
+  0xfa030108;       (* arm_SBCS X8 X8 X3 *)
+  0xd28004c4;       (* arm_MOV X4 (rvalue (word 38)) *)
+  0x9a9f3083;       (* arm_CSEL X3 X4 XZR Condition_CC *)
+  0xeb0300a5;       (* arm_SUBS X5 X5 X3 *)
+  0xfa1f00c6;       (* arm_SBCS X6 X6 XZR *)
+  0xfa1f00e7;       (* arm_SBCS X7 X7 XZR *)
+  0xda1f0108;       (* arm_SBC X8 X8 XZR *)
+  0xa9041be5;       (* arm_STP X5 X6 SP (Immediate_Offset (iword (&64))) *)
+  0xa90523e7;       (* arm_STP X7 X8 SP (Immediate_Offset (iword (&80))) *)
+  0xa9520fe2;       (* arm_LDP X2 X3 SP (Immediate_Offset (iword (&288))) *)
+  0x9b037c49;       (* arm_MUL X9 X2 X3 *)
+  0x9bc37c4a;       (* arm_UMULH X10 X2 X3 *)
+  0xa95317e4;       (* arm_LDP X4 X5 SP (Immediate_Offset (iword (&304))) *)
+  0x9b057c4b;       (* arm_MUL X11 X2 X5 *)
+  0x9bc57c4c;       (* arm_UMULH X12 X2 X5 *)
+  0x9b047c47;       (* arm_MUL X7 X2 X4 *)
+  0x9bc47c46;       (* arm_UMULH X6 X2 X4 *)
+  0xab07014a;       (* arm_ADDS X10 X10 X7 *)
+  0xba06016b;       (* arm_ADCS X11 X11 X6 *)
+  0x9b047c67;       (* arm_MUL X7 X3 X4 *)
+  0x9bc47c66;       (* arm_UMULH X6 X3 X4 *)
+  0x9a1f00c6;       (* arm_ADC X6 X6 XZR *)
+  0xab07016b;       (* arm_ADDS X11 X11 X7 *)
+  0x9b057c8d;       (* arm_MUL X13 X4 X5 *)
+  0x9bc57c8e;       (* arm_UMULH X14 X4 X5 *)
+  0xba06018c;       (* arm_ADCS X12 X12 X6 *)
+  0x9b057c67;       (* arm_MUL X7 X3 X5 *)
+  0x9bc57c66;       (* arm_UMULH X6 X3 X5 *)
+  0x9a1f00c6;       (* arm_ADC X6 X6 XZR *)
+  0xab07018c;       (* arm_ADDS X12 X12 X7 *)
+  0xba0601ad;       (* arm_ADCS X13 X13 X6 *)
+  0x9a1f01ce;       (* arm_ADC X14 X14 XZR *)
+  0xab090129;       (* arm_ADDS X9 X9 X9 *)
+  0xba0a014a;       (* arm_ADCS X10 X10 X10 *)
+  0xba0b016b;       (* arm_ADCS X11 X11 X11 *)
+  0xba0c018c;       (* arm_ADCS X12 X12 X12 *)
+  0xba0d01ad;       (* arm_ADCS X13 X13 X13 *)
+  0xba0e01ce;       (* arm_ADCS X14 X14 X14 *)
+  0x9a9f37e6;       (* arm_CSET X6 Condition_CS *)
+  0x9bc27c47;       (* arm_UMULH X7 X2 X2 *)
+  0x9b027c48;       (* arm_MUL X8 X2 X2 *)
+  0xab070129;       (* arm_ADDS X9 X9 X7 *)
+  0x9b037c67;       (* arm_MUL X7 X3 X3 *)
+  0xba07014a;       (* arm_ADCS X10 X10 X7 *)
+  0x9bc37c67;       (* arm_UMULH X7 X3 X3 *)
+  0xba07016b;       (* arm_ADCS X11 X11 X7 *)
+  0x9b047c87;       (* arm_MUL X7 X4 X4 *)
+  0xba07018c;       (* arm_ADCS X12 X12 X7 *)
+  0x9bc47c87;       (* arm_UMULH X7 X4 X4 *)
+  0xba0701ad;       (* arm_ADCS X13 X13 X7 *)
+  0x9b057ca7;       (* arm_MUL X7 X5 X5 *)
+  0xba0701ce;       (* arm_ADCS X14 X14 X7 *)
+  0x9bc57ca7;       (* arm_UMULH X7 X5 X5 *)
+  0x9a0700c6;       (* arm_ADC X6 X6 X7 *)
+  0xd28004c3;       (* arm_MOV X3 (rvalue (word 38)) *)
+  0x9b0c7c67;       (* arm_MUL X7 X3 X12 *)
+  0x9bcc7c64;       (* arm_UMULH X4 X3 X12 *)
+  0xab070108;       (* arm_ADDS X8 X8 X7 *)
+  0x9b0d7c67;       (* arm_MUL X7 X3 X13 *)
+  0x9bcd7c6d;       (* arm_UMULH X13 X3 X13 *)
+  0xba070129;       (* arm_ADCS X9 X9 X7 *)
+  0x9b0e7c67;       (* arm_MUL X7 X3 X14 *)
+  0x9bce7c6e;       (* arm_UMULH X14 X3 X14 *)
+  0xba07014a;       (* arm_ADCS X10 X10 X7 *)
+  0x9b067c67;       (* arm_MUL X7 X3 X6 *)
+  0x9bc67c66;       (* arm_UMULH X6 X3 X6 *)
+  0xba07016b;       (* arm_ADCS X11 X11 X7 *)
+  0x9a9f37ec;       (* arm_CSET X12 Condition_CS *)
+  0xab040129;       (* arm_ADDS X9 X9 X4 *)
+  0xba0d014a;       (* arm_ADCS X10 X10 X13 *)
+  0xba0e016b;       (* arm_ADCS X11 X11 X14 *)
+  0x9a06018c;       (* arm_ADC X12 X12 X6 *)
+  0xab0b017f;       (* arm_CMN X11 X11 *)
+  0x9240f96b;       (* arm_AND X11 X11 (rvalue (word 9223372036854775807)) *)
+  0x9a0c0182;       (* arm_ADC X2 X12 X12 *)
+  0xd2800263;       (* arm_MOV X3 (rvalue (word 19)) *)
+  0x9b027c67;       (* arm_MUL X7 X3 X2 *)
+  0xab070108;       (* arm_ADDS X8 X8 X7 *)
+  0xba1f0129;       (* arm_ADCS X9 X9 XZR *)
+  0xba1f014a;       (* arm_ADCS X10 X10 XZR *)
+  0x9a1f016b;       (* arm_ADC X11 X11 XZR *)
+  0xa91227e8;       (* arm_STP X8 X9 SP (Immediate_Offset (iword (&288))) *)
+  0xa9132fea;       (* arm_STP X10 X11 SP (Immediate_Offset (iword (&304))) *)
+  0xa94c13e3;       (* arm_LDP X3 X4 SP (Immediate_Offset (iword (&192))) *)
+  0xa94e23e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&224))) *)
+  0xab070063;       (* arm_ADDS X3 X3 X7 *)
+  0xba080084;       (* arm_ADCS X4 X4 X8 *)
+  0xa94d1be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&208))) *)
+  0xa94f23e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&240))) *)
+  0xba0700a5;       (* arm_ADCS X5 X5 X7 *)
+  0xba0800c6;       (* arm_ADCS X6 X6 X8 *)
+  0xd28004c9;       (* arm_MOV X9 (rvalue (word 38)) *)
+  0x9a9f2129;       (* arm_CSEL X9 X9 XZR Condition_CS *)
+  0xab090063;       (* arm_ADDS X3 X3 X9 *)
+  0xba1f0084;       (* arm_ADCS X4 X4 XZR *)
+  0xba1f00a5;       (* arm_ADCS X5 X5 XZR *)
+  0x9a1f00c6;       (* arm_ADC X6 X6 XZR *)
+  0xa90e13e3;       (* arm_STP X3 X4 SP (Immediate_Offset (iword (&224))) *)
+  0xa90f1be5;       (* arm_STP X5 X6 SP (Immediate_Offset (iword (&240))) *)
+  0xa9440fe2;       (* arm_LDP X2 X3 SP (Immediate_Offset (iword (&64))) *)
+  0x9b037c49;       (* arm_MUL X9 X2 X3 *)
+  0x9bc37c4a;       (* arm_UMULH X10 X2 X3 *)
+  0xa94517e4;       (* arm_LDP X4 X5 SP (Immediate_Offset (iword (&80))) *)
+  0x9b057c4b;       (* arm_MUL X11 X2 X5 *)
+  0x9bc57c4c;       (* arm_UMULH X12 X2 X5 *)
+  0x9b047c47;       (* arm_MUL X7 X2 X4 *)
+  0x9bc47c46;       (* arm_UMULH X6 X2 X4 *)
+  0xab07014a;       (* arm_ADDS X10 X10 X7 *)
+  0xba06016b;       (* arm_ADCS X11 X11 X6 *)
+  0x9b047c67;       (* arm_MUL X7 X3 X4 *)
+  0x9bc47c66;       (* arm_UMULH X6 X3 X4 *)
+  0x9a1f00c6;       (* arm_ADC X6 X6 XZR *)
+  0xab07016b;       (* arm_ADDS X11 X11 X7 *)
+  0x9b057c8d;       (* arm_MUL X13 X4 X5 *)
+  0x9bc57c8e;       (* arm_UMULH X14 X4 X5 *)
+  0xba06018c;       (* arm_ADCS X12 X12 X6 *)
+  0x9b057c67;       (* arm_MUL X7 X3 X5 *)
+  0x9bc57c66;       (* arm_UMULH X6 X3 X5 *)
+  0x9a1f00c6;       (* arm_ADC X6 X6 XZR *)
+  0xab07018c;       (* arm_ADDS X12 X12 X7 *)
+  0xba0601ad;       (* arm_ADCS X13 X13 X6 *)
+  0x9a1f01ce;       (* arm_ADC X14 X14 XZR *)
+  0xab090129;       (* arm_ADDS X9 X9 X9 *)
+  0xba0a014a;       (* arm_ADCS X10 X10 X10 *)
+  0xba0b016b;       (* arm_ADCS X11 X11 X11 *)
+  0xba0c018c;       (* arm_ADCS X12 X12 X12 *)
+  0xba0d01ad;       (* arm_ADCS X13 X13 X13 *)
+  0xba0e01ce;       (* arm_ADCS X14 X14 X14 *)
+  0x9a9f37e6;       (* arm_CSET X6 Condition_CS *)
+  0x9bc27c47;       (* arm_UMULH X7 X2 X2 *)
+  0x9b027c48;       (* arm_MUL X8 X2 X2 *)
+  0xab070129;       (* arm_ADDS X9 X9 X7 *)
+  0x9b037c67;       (* arm_MUL X7 X3 X3 *)
+  0xba07014a;       (* arm_ADCS X10 X10 X7 *)
+  0x9bc37c67;       (* arm_UMULH X7 X3 X3 *)
+  0xba07016b;       (* arm_ADCS X11 X11 X7 *)
+  0x9b047c87;       (* arm_MUL X7 X4 X4 *)
+  0xba07018c;       (* arm_ADCS X12 X12 X7 *)
+  0x9bc47c87;       (* arm_UMULH X7 X4 X4 *)
+  0xba0701ad;       (* arm_ADCS X13 X13 X7 *)
+  0x9b057ca7;       (* arm_MUL X7 X5 X5 *)
+  0xba0701ce;       (* arm_ADCS X14 X14 X7 *)
+  0x9bc57ca7;       (* arm_UMULH X7 X5 X5 *)
+  0x9a0700c6;       (* arm_ADC X6 X6 X7 *)
+  0xd28004c3;       (* arm_MOV X3 (rvalue (word 38)) *)
+  0x9b0c7c67;       (* arm_MUL X7 X3 X12 *)
+  0x9bcc7c64;       (* arm_UMULH X4 X3 X12 *)
+  0xab070108;       (* arm_ADDS X8 X8 X7 *)
+  0x9b0d7c67;       (* arm_MUL X7 X3 X13 *)
+  0x9bcd7c6d;       (* arm_UMULH X13 X3 X13 *)
+  0xba070129;       (* arm_ADCS X9 X9 X7 *)
+  0x9b0e7c67;       (* arm_MUL X7 X3 X14 *)
+  0x9bce7c6e;       (* arm_UMULH X14 X3 X14 *)
+  0xba07014a;       (* arm_ADCS X10 X10 X7 *)
+  0x9b067c67;       (* arm_MUL X7 X3 X6 *)
+  0x9bc67c66;       (* arm_UMULH X6 X3 X6 *)
+  0xba07016b;       (* arm_ADCS X11 X11 X7 *)
+  0x9a9f37ec;       (* arm_CSET X12 Condition_CS *)
+  0xab040129;       (* arm_ADDS X9 X9 X4 *)
+  0xba0d014a;       (* arm_ADCS X10 X10 X13 *)
+  0xba0e016b;       (* arm_ADCS X11 X11 X14 *)
+  0x9a06018c;       (* arm_ADC X12 X12 X6 *)
+  0xab0b017f;       (* arm_CMN X11 X11 *)
+  0x9240f96b;       (* arm_AND X11 X11 (rvalue (word 9223372036854775807)) *)
+  0x9a0c0182;       (* arm_ADC X2 X12 X12 *)
+  0xd2800263;       (* arm_MOV X3 (rvalue (word 19)) *)
+  0x9b027c67;       (* arm_MUL X7 X3 X2 *)
+  0xab070108;       (* arm_ADDS X8 X8 X7 *)
+  0xba1f0129;       (* arm_ADCS X9 X9 XZR *)
+  0xba1f014a;       (* arm_ADCS X10 X10 XZR *)
+  0x9a1f016b;       (* arm_ADC X11 X11 XZR *)
+  0xa90427e8;       (* arm_STP X8 X9 SP (Immediate_Offset (iword (&64))) *)
+  0xa9052fea;       (* arm_STP X10 X11 SP (Immediate_Offset (iword (&80))) *)
+  0xa9521be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&288))) *)
+  0xa9500fe4;       (* arm_LDP X4 X3 SP (Immediate_Offset (iword (&256))) *)
+  0xeb0400a5;       (* arm_SUBS X5 X5 X4 *)
+  0xfa0300c6;       (* arm_SBCS X6 X6 X3 *)
+  0xa95323e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&304))) *)
+  0xa9510fe4;       (* arm_LDP X4 X3 SP (Immediate_Offset (iword (&272))) *)
+  0xfa0400e7;       (* arm_SBCS X7 X7 X4 *)
+  0xfa030108;       (* arm_SBCS X8 X8 X3 *)
+  0xd28004c4;       (* arm_MOV X4 (rvalue (word 38)) *)
+  0x9a9f3083;       (* arm_CSEL X3 X4 XZR Condition_CC *)
+  0xeb0300a5;       (* arm_SUBS X5 X5 X3 *)
+  0xfa1f00c6;       (* arm_SBCS X6 X6 XZR *)
+  0xfa1f00e7;       (* arm_SBCS X7 X7 XZR *)
+  0xda1f0108;       (* arm_SBC X8 X8 XZR *)
+  0xa90c1be5;       (* arm_STP X5 X6 SP (Immediate_Offset (iword (&192))) *)
+  0xa90d23e7;       (* arm_STP X7 X8 SP (Immediate_Offset (iword (&208))) *)
+  0xa94e0fe2;       (* arm_LDP X2 X3 SP (Immediate_Offset (iword (&224))) *)
+  0x9b037c49;       (* arm_MUL X9 X2 X3 *)
+  0x9bc37c4a;       (* arm_UMULH X10 X2 X3 *)
+  0xa94f17e4;       (* arm_LDP X4 X5 SP (Immediate_Offset (iword (&240))) *)
+  0x9b057c4b;       (* arm_MUL X11 X2 X5 *)
+  0x9bc57c4c;       (* arm_UMULH X12 X2 X5 *)
+  0x9b047c47;       (* arm_MUL X7 X2 X4 *)
+  0x9bc47c46;       (* arm_UMULH X6 X2 X4 *)
+  0xab07014a;       (* arm_ADDS X10 X10 X7 *)
+  0xba06016b;       (* arm_ADCS X11 X11 X6 *)
+  0x9b047c67;       (* arm_MUL X7 X3 X4 *)
+  0x9bc47c66;       (* arm_UMULH X6 X3 X4 *)
+  0x9a1f00c6;       (* arm_ADC X6 X6 XZR *)
+  0xab07016b;       (* arm_ADDS X11 X11 X7 *)
+  0x9b057c8d;       (* arm_MUL X13 X4 X5 *)
+  0x9bc57c8e;       (* arm_UMULH X14 X4 X5 *)
+  0xba06018c;       (* arm_ADCS X12 X12 X6 *)
+  0x9b057c67;       (* arm_MUL X7 X3 X5 *)
+  0x9bc57c66;       (* arm_UMULH X6 X3 X5 *)
+  0x9a1f00c6;       (* arm_ADC X6 X6 XZR *)
+  0xab07018c;       (* arm_ADDS X12 X12 X7 *)
+  0xba0601ad;       (* arm_ADCS X13 X13 X6 *)
+  0x9a1f01ce;       (* arm_ADC X14 X14 XZR *)
+  0xab090129;       (* arm_ADDS X9 X9 X9 *)
+  0xba0a014a;       (* arm_ADCS X10 X10 X10 *)
+  0xba0b016b;       (* arm_ADCS X11 X11 X11 *)
+  0xba0c018c;       (* arm_ADCS X12 X12 X12 *)
+  0xba0d01ad;       (* arm_ADCS X13 X13 X13 *)
+  0xba0e01ce;       (* arm_ADCS X14 X14 X14 *)
+  0x9a9f37e6;       (* arm_CSET X6 Condition_CS *)
+  0x9bc27c47;       (* arm_UMULH X7 X2 X2 *)
+  0x9b027c48;       (* arm_MUL X8 X2 X2 *)
+  0xab070129;       (* arm_ADDS X9 X9 X7 *)
+  0x9b037c67;       (* arm_MUL X7 X3 X3 *)
+  0xba07014a;       (* arm_ADCS X10 X10 X7 *)
+  0x9bc37c67;       (* arm_UMULH X7 X3 X3 *)
+  0xba07016b;       (* arm_ADCS X11 X11 X7 *)
+  0x9b047c87;       (* arm_MUL X7 X4 X4 *)
+  0xba07018c;       (* arm_ADCS X12 X12 X7 *)
+  0x9bc47c87;       (* arm_UMULH X7 X4 X4 *)
+  0xba0701ad;       (* arm_ADCS X13 X13 X7 *)
+  0x9b057ca7;       (* arm_MUL X7 X5 X5 *)
+  0xba0701ce;       (* arm_ADCS X14 X14 X7 *)
+  0x9bc57ca7;       (* arm_UMULH X7 X5 X5 *)
+  0x9a0700c6;       (* arm_ADC X6 X6 X7 *)
+  0xd28004c3;       (* arm_MOV X3 (rvalue (word 38)) *)
+  0x9b0c7c67;       (* arm_MUL X7 X3 X12 *)
+  0x9bcc7c64;       (* arm_UMULH X4 X3 X12 *)
+  0xab070108;       (* arm_ADDS X8 X8 X7 *)
+  0x9b0d7c67;       (* arm_MUL X7 X3 X13 *)
+  0x9bcd7c6d;       (* arm_UMULH X13 X3 X13 *)
+  0xba070129;       (* arm_ADCS X9 X9 X7 *)
+  0x9b0e7c67;       (* arm_MUL X7 X3 X14 *)
+  0x9bce7c6e;       (* arm_UMULH X14 X3 X14 *)
+  0xba07014a;       (* arm_ADCS X10 X10 X7 *)
+  0x9b067c67;       (* arm_MUL X7 X3 X6 *)
+  0x9bc67c66;       (* arm_UMULH X6 X3 X6 *)
+  0xba07016b;       (* arm_ADCS X11 X11 X7 *)
+  0x9a9f37ec;       (* arm_CSET X12 Condition_CS *)
+  0xab040129;       (* arm_ADDS X9 X9 X4 *)
+  0xba0d014a;       (* arm_ADCS X10 X10 X13 *)
+  0xba0e016b;       (* arm_ADCS X11 X11 X14 *)
+  0x9a06018c;       (* arm_ADC X12 X12 X6 *)
+  0xab0b017f;       (* arm_CMN X11 X11 *)
+  0x9240f96b;       (* arm_AND X11 X11 (rvalue (word 9223372036854775807)) *)
+  0x9a0c0182;       (* arm_ADC X2 X12 X12 *)
+  0xd2800263;       (* arm_MOV X3 (rvalue (word 19)) *)
+  0x9b027c67;       (* arm_MUL X7 X3 X2 *)
+  0xab070108;       (* arm_ADDS X8 X8 X7 *)
+  0xba1f0129;       (* arm_ADCS X9 X9 XZR *)
+  0xba1f014a;       (* arm_ADCS X10 X10 XZR *)
+  0x9a1f016b;       (* arm_ADC X11 X11 XZR *)
+  0xa90e27e8;       (* arm_STP X8 X9 SP (Immediate_Offset (iword (&224))) *)
+  0xa90f2fea;       (* arm_STP X10 X11 SP (Immediate_Offset (iword (&240))) *)
   0xd29b6841;       (* arm_MOV X1 (rvalue (word 56130)) *)
   0xb2700021;       (* arm_ORR X1 X1 (rvalue (word 65536)) *)
   0xa94c23e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&192))) *)
@@ -1112,10 +1109,10 @@ let curve25519_x25519_alt_mc = define_assert_from_elf
   0xba0800a5;       (* arm_ADCS X5 X5 X8 *)
   0xba0900c6;       (* arm_ADCS X6 X6 X9 *)
   0x9a1f014a;       (* arm_ADC X10 X10 XZR *)
-  0xa95623e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&352))) *)
+  0xa95023e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&256))) *)
   0xab070063;       (* arm_ADDS X3 X3 X7 *)
   0xba080084;       (* arm_ADCS X4 X4 X8 *)
-  0xa95723e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&368))) *)
+  0xa95123e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&272))) *)
   0xba0700a5;       (* arm_ADCS X5 X5 X7 *)
   0xba0800c6;       (* arm_ADCS X6 X6 X8 *)
   0x9a1f014a;       (* arm_ADC X10 X10 XZR *)
@@ -1130,14 +1127,14 @@ let curve25519_x25519_alt_mc = define_assert_from_elf
   0x9a1f00c6;       (* arm_ADC X6 X6 XZR *)
   0xa90a13e3;       (* arm_STP X3 X4 SP (Immediate_Offset (iword (&160))) *)
   0xa90b1be5;       (* arm_STP X5 X6 SP (Immediate_Offset (iword (&176))) *)
-  0xa95413e3;       (* arm_LDP X3 X4 SP (Immediate_Offset (iword (&320))) *)
-  0xa95623e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&352))) *)
+  0xa95213e3;       (* arm_LDP X3 X4 SP (Immediate_Offset (iword (&288))) *)
+  0xa95023e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&256))) *)
   0x9b077c6c;       (* arm_MUL X12 X3 X7 *)
   0x9bc77c6d;       (* arm_UMULH X13 X3 X7 *)
   0x9b087c6b;       (* arm_MUL X11 X3 X8 *)
   0x9bc87c6e;       (* arm_UMULH X14 X3 X8 *)
   0xab0b01ad;       (* arm_ADDS X13 X13 X11 *)
-  0xa9572be9;       (* arm_LDP X9 X10 SP (Immediate_Offset (iword (&368))) *)
+  0xa9512be9;       (* arm_LDP X9 X10 SP (Immediate_Offset (iword (&272))) *)
   0x9b097c6b;       (* arm_MUL X11 X3 X9 *)
   0x9bc97c6f;       (* arm_UMULH X15 X3 X9 *)
   0xba0b01ce;       (* arm_ADCS X14 X14 X11 *)
@@ -1145,7 +1142,7 @@ let curve25519_x25519_alt_mc = define_assert_from_elf
   0x9bca7c70;       (* arm_UMULH X16 X3 X10 *)
   0xba0b01ef;       (* arm_ADCS X15 X15 X11 *)
   0x9a1f0210;       (* arm_ADC X16 X16 XZR *)
-  0xa9551be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&336))) *)
+  0xa9531be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&304))) *)
   0x9b077c8b;       (* arm_MUL X11 X4 X7 *)
   0xab0b01ad;       (* arm_ADDS X13 X13 X11 *)
   0x9b087c8b;       (* arm_MUL X11 X4 X8 *)
@@ -1224,8 +1221,8 @@ let curve25519_x25519_alt_mc = define_assert_from_elf
   0xba1f01ad;       (* arm_ADCS X13 X13 XZR *)
   0xba1f01ce;       (* arm_ADCS X14 X14 XZR *)
   0x9a1f01ef;       (* arm_ADC X15 X15 XZR *)
-  0xa91437ec;       (* arm_STP X12 X13 SP (Immediate_Offset (iword (&320))) *)
-  0xa9153fee;       (* arm_STP X14 X15 SP (Immediate_Offset (iword (&336))) *)
+  0xa91237ec;       (* arm_STP X12 X13 SP (Immediate_Offset (iword (&288))) *)
+  0xa9133fee;       (* arm_STP X14 X15 SP (Immediate_Offset (iword (&304))) *)
   0xa94413e3;       (* arm_LDP X3 X4 SP (Immediate_Offset (iword (&64))) *)
   0xa94223e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&32))) *)
   0x9b077c6c;       (* arm_MUL X12 X3 X7 *)
@@ -1420,18 +1417,18 @@ let curve25519_x25519_alt_mc = define_assert_from_elf
   0xa90b3fee;       (* arm_STP X14 X15 SP (Immediate_Offset (iword (&176))) *)
   0xd1000694;       (* arm_SUB X20 X20 (rvalue (word 1)) *)
   0xf1000e9f;       (* arm_CMP X20 (rvalue (word 3)) *)
-  0x54ff88e2;       (* arm_BCS (word 2093340) *)
+  0x54ff8942;       (* arm_BCS (word 2093352) *)
   0xeb1f02bf;       (* arm_CMP X21 XZR *)
-  0xa95007e0;       (* arm_LDP X0 X1 SP (Immediate_Offset (iword (&256))) *)
-  0xa9540fe2;       (* arm_LDP X2 X3 SP (Immediate_Offset (iword (&320))) *)
+  0xa94e07e0;       (* arm_LDP X0 X1 SP (Immediate_Offset (iword (&224))) *)
+  0xa9520fe2;       (* arm_LDP X2 X3 SP (Immediate_Offset (iword (&288))) *)
   0x9a821000;       (* arm_CSEL X0 X0 X2 Condition_NE *)
   0x9a831021;       (* arm_CSEL X1 X1 X3 Condition_NE *)
-  0xa91407e0;       (* arm_STP X0 X1 SP (Immediate_Offset (iword (&320))) *)
-  0xa95107e0;       (* arm_LDP X0 X1 SP (Immediate_Offset (iword (&272))) *)
-  0xa9550fe2;       (* arm_LDP X2 X3 SP (Immediate_Offset (iword (&336))) *)
+  0xa91207e0;       (* arm_STP X0 X1 SP (Immediate_Offset (iword (&288))) *)
+  0xa94f07e0;       (* arm_LDP X0 X1 SP (Immediate_Offset (iword (&240))) *)
+  0xa9530fe2;       (* arm_LDP X2 X3 SP (Immediate_Offset (iword (&304))) *)
   0x9a821000;       (* arm_CSEL X0 X0 X2 Condition_NE *)
   0x9a831021;       (* arm_CSEL X1 X1 X3 Condition_NE *)
-  0xa91507e0;       (* arm_STP X0 X1 SP (Immediate_Offset (iword (&336))) *)
+  0xa91307e0;       (* arm_STP X0 X1 SP (Immediate_Offset (iword (&304))) *)
   0xa94407e0;       (* arm_LDP X0 X1 SP (Immediate_Offset (iword (&64))) *)
   0xa94a0fe2;       (* arm_LDP X2 X3 SP (Immediate_Offset (iword (&160))) *)
   0x9a821000;       (* arm_CSEL X0 X0 X2 Condition_NE *)
@@ -1442,11 +1439,11 @@ let curve25519_x25519_alt_mc = define_assert_from_elf
   0x9a821000;       (* arm_CSEL X0 X0 X2 Condition_NE *)
   0x9a831021;       (* arm_CSEL X1 X1 X3 Condition_NE *)
   0xa90b07e0;       (* arm_STP X0 X1 SP (Immediate_Offset (iword (&176))) *)
-  0xa9541be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&320))) *)
+  0xa9521be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&288))) *)
   0xa94a0fe4;       (* arm_LDP X4 X3 SP (Immediate_Offset (iword (&160))) *)
   0xeb0400a5;       (* arm_SUBS X5 X5 X4 *)
   0xfa0300c6;       (* arm_SBCS X6 X6 X3 *)
-  0xa95523e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&336))) *)
+  0xa95323e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&304))) *)
   0xa94b0fe4;       (* arm_LDP X4 X3 SP (Immediate_Offset (iword (&176))) *)
   0xfa0400e7;       (* arm_SBCS X7 X7 X4 *)
   0xfa030108;       (* arm_SBCS X8 X8 X3 *)
@@ -1456,13 +1453,13 @@ let curve25519_x25519_alt_mc = define_assert_from_elf
   0xfa1f00c6;       (* arm_SBCS X6 X6 XZR *)
   0xfa1f00e7;       (* arm_SBCS X7 X7 XZR *)
   0xda1f0108;       (* arm_SBC X8 X8 XZR *)
-  0xa9161be5;       (* arm_STP X5 X6 SP (Immediate_Offset (iword (&352))) *)
-  0xa91723e7;       (* arm_STP X7 X8 SP (Immediate_Offset (iword (&368))) *)
-  0xa95413e3;       (* arm_LDP X3 X4 SP (Immediate_Offset (iword (&320))) *)
+  0xa9101be5;       (* arm_STP X5 X6 SP (Immediate_Offset (iword (&256))) *)
+  0xa91123e7;       (* arm_STP X7 X8 SP (Immediate_Offset (iword (&272))) *)
+  0xa95213e3;       (* arm_LDP X3 X4 SP (Immediate_Offset (iword (&288))) *)
   0xa94a23e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&160))) *)
   0xab070063;       (* arm_ADDS X3 X3 X7 *)
   0xba080084;       (* arm_ADCS X4 X4 X8 *)
-  0xa9551be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&336))) *)
+  0xa9531be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&304))) *)
   0xa94b23e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&176))) *)
   0xba0700a5;       (* arm_ADCS X5 X5 X7 *)
   0xba0800c6;       (* arm_ADCS X6 X6 X8 *)
@@ -1472,12 +1469,12 @@ let curve25519_x25519_alt_mc = define_assert_from_elf
   0xba1f0084;       (* arm_ADCS X4 X4 XZR *)
   0xba1f00a5;       (* arm_ADCS X5 X5 XZR *)
   0x9a1f00c6;       (* arm_ADC X6 X6 XZR *)
-  0xa91413e3;       (* arm_STP X3 X4 SP (Immediate_Offset (iword (&320))) *)
-  0xa9151be5;       (* arm_STP X5 X6 SP (Immediate_Offset (iword (&336))) *)
-  0xa9560fe2;       (* arm_LDP X2 X3 SP (Immediate_Offset (iword (&352))) *)
+  0xa91213e3;       (* arm_STP X3 X4 SP (Immediate_Offset (iword (&288))) *)
+  0xa9131be5;       (* arm_STP X5 X6 SP (Immediate_Offset (iword (&304))) *)
+  0xa9500fe2;       (* arm_LDP X2 X3 SP (Immediate_Offset (iword (&256))) *)
   0x9b037c49;       (* arm_MUL X9 X2 X3 *)
   0x9bc37c4a;       (* arm_UMULH X10 X2 X3 *)
-  0xa95717e4;       (* arm_LDP X4 X5 SP (Immediate_Offset (iword (&368))) *)
+  0xa95117e4;       (* arm_LDP X4 X5 SP (Immediate_Offset (iword (&272))) *)
   0x9b057c4b;       (* arm_MUL X11 X2 X5 *)
   0x9bc57c4c;       (* arm_UMULH X12 X2 X5 *)
   0x9b047c47;       (* arm_MUL X7 X2 X4 *)
@@ -1546,12 +1543,12 @@ let curve25519_x25519_alt_mc = define_assert_from_elf
   0xba1f0129;       (* arm_ADCS X9 X9 XZR *)
   0xba1f014a;       (* arm_ADCS X10 X10 XZR *)
   0x9a1f016b;       (* arm_ADC X11 X11 XZR *)
-  0xa91627e8;       (* arm_STP X8 X9 SP (Immediate_Offset (iword (&352))) *)
-  0xa9172fea;       (* arm_STP X10 X11 SP (Immediate_Offset (iword (&368))) *)
-  0xa9540fe2;       (* arm_LDP X2 X3 SP (Immediate_Offset (iword (&320))) *)
+  0xa91027e8;       (* arm_STP X8 X9 SP (Immediate_Offset (iword (&256))) *)
+  0xa9112fea;       (* arm_STP X10 X11 SP (Immediate_Offset (iword (&272))) *)
+  0xa9520fe2;       (* arm_LDP X2 X3 SP (Immediate_Offset (iword (&288))) *)
   0x9b037c49;       (* arm_MUL X9 X2 X3 *)
   0x9bc37c4a;       (* arm_UMULH X10 X2 X3 *)
-  0xa95517e4;       (* arm_LDP X4 X5 SP (Immediate_Offset (iword (&336))) *)
+  0xa95317e4;       (* arm_LDP X4 X5 SP (Immediate_Offset (iword (&304))) *)
   0x9b057c4b;       (* arm_MUL X11 X2 X5 *)
   0x9bc57c4c;       (* arm_UMULH X12 X2 X5 *)
   0x9b047c47;       (* arm_MUL X7 X2 X4 *)
@@ -1620,14 +1617,14 @@ let curve25519_x25519_alt_mc = define_assert_from_elf
   0xba1f0129;       (* arm_ADCS X9 X9 XZR *)
   0xba1f014a;       (* arm_ADCS X10 X10 XZR *)
   0x9a1f016b;       (* arm_ADC X11 X11 XZR *)
-  0xa91427e8;       (* arm_STP X8 X9 SP (Immediate_Offset (iword (&320))) *)
-  0xa9152fea;       (* arm_STP X10 X11 SP (Immediate_Offset (iword (&336))) *)
-  0xa9541be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&320))) *)
-  0xa9560fe4;       (* arm_LDP X4 X3 SP (Immediate_Offset (iword (&352))) *)
+  0xa91227e8;       (* arm_STP X8 X9 SP (Immediate_Offset (iword (&288))) *)
+  0xa9132fea;       (* arm_STP X10 X11 SP (Immediate_Offset (iword (&304))) *)
+  0xa9521be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&288))) *)
+  0xa9500fe4;       (* arm_LDP X4 X3 SP (Immediate_Offset (iword (&256))) *)
   0xeb0400a5;       (* arm_SUBS X5 X5 X4 *)
   0xfa0300c6;       (* arm_SBCS X6 X6 X3 *)
-  0xa95523e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&336))) *)
-  0xa9570fe4;       (* arm_LDP X4 X3 SP (Immediate_Offset (iword (&368))) *)
+  0xa95323e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&304))) *)
+  0xa9510fe4;       (* arm_LDP X4 X3 SP (Immediate_Offset (iword (&272))) *)
   0xfa0400e7;       (* arm_SBCS X7 X7 X4 *)
   0xfa030108;       (* arm_SBCS X8 X8 X3 *)
   0xd28004c4;       (* arm_MOV X4 (rvalue (word 38)) *)
@@ -1654,10 +1651,10 @@ let curve25519_x25519_alt_mc = define_assert_from_elf
   0xba0800a5;       (* arm_ADCS X5 X5 X8 *)
   0xba0900c6;       (* arm_ADCS X6 X6 X9 *)
   0x9a1f014a;       (* arm_ADC X10 X10 XZR *)
-  0xa95623e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&352))) *)
+  0xa95023e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&256))) *)
   0xab070063;       (* arm_ADDS X3 X3 X7 *)
   0xba080084;       (* arm_ADCS X4 X4 X8 *)
-  0xa95723e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&368))) *)
+  0xa95123e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&272))) *)
   0xba0700a5;       (* arm_ADCS X5 X5 X7 *)
   0xba0800c6;       (* arm_ADCS X6 X6 X8 *)
   0x9a1f014a;       (* arm_ADC X10 X10 XZR *)
@@ -1672,14 +1669,14 @@ let curve25519_x25519_alt_mc = define_assert_from_elf
   0x9a1f00c6;       (* arm_ADC X6 X6 XZR *)
   0xa90a13e3;       (* arm_STP X3 X4 SP (Immediate_Offset (iword (&160))) *)
   0xa90b1be5;       (* arm_STP X5 X6 SP (Immediate_Offset (iword (&176))) *)
-  0xa95413e3;       (* arm_LDP X3 X4 SP (Immediate_Offset (iword (&320))) *)
-  0xa95623e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&352))) *)
+  0xa95213e3;       (* arm_LDP X3 X4 SP (Immediate_Offset (iword (&288))) *)
+  0xa95023e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&256))) *)
   0x9b077c6c;       (* arm_MUL X12 X3 X7 *)
   0x9bc77c6d;       (* arm_UMULH X13 X3 X7 *)
   0x9b087c6b;       (* arm_MUL X11 X3 X8 *)
   0x9bc87c6e;       (* arm_UMULH X14 X3 X8 *)
   0xab0b01ad;       (* arm_ADDS X13 X13 X11 *)
-  0xa9572be9;       (* arm_LDP X9 X10 SP (Immediate_Offset (iword (&368))) *)
+  0xa9512be9;       (* arm_LDP X9 X10 SP (Immediate_Offset (iword (&272))) *)
   0x9b097c6b;       (* arm_MUL X11 X3 X9 *)
   0x9bc97c6f;       (* arm_UMULH X15 X3 X9 *)
   0xba0b01ce;       (* arm_ADCS X14 X14 X11 *)
@@ -1687,7 +1684,7 @@ let curve25519_x25519_alt_mc = define_assert_from_elf
   0x9bca7c70;       (* arm_UMULH X16 X3 X10 *)
   0xba0b01ef;       (* arm_ADCS X15 X15 X11 *)
   0x9a1f0210;       (* arm_ADC X16 X16 XZR *)
-  0xa9551be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&336))) *)
+  0xa9531be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&304))) *)
   0x9b077c8b;       (* arm_MUL X11 X4 X7 *)
   0xab0b01ad;       (* arm_ADDS X13 X13 X11 *)
   0x9b087c8b;       (* arm_MUL X11 X4 X8 *)
@@ -1766,8 +1763,8 @@ let curve25519_x25519_alt_mc = define_assert_from_elf
   0xba1f01ad;       (* arm_ADCS X13 X13 XZR *)
   0xba1f01ce;       (* arm_ADCS X14 X14 XZR *)
   0x9a1f01ef;       (* arm_ADC X15 X15 XZR *)
-  0xa91437ec;       (* arm_STP X12 X13 SP (Immediate_Offset (iword (&320))) *)
-  0xa9153fee;       (* arm_STP X14 X15 SP (Immediate_Offset (iword (&336))) *)
+  0xa91237ec;       (* arm_STP X12 X13 SP (Immediate_Offset (iword (&288))) *)
+  0xa9133fee;       (* arm_STP X14 X15 SP (Immediate_Offset (iword (&304))) *)
   0xa94c13e3;       (* arm_LDP X3 X4 SP (Immediate_Offset (iword (&192))) *)
   0xa94a23e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&160))) *)
   0x9b077c6c;       (* arm_MUL X12 X3 X7 *)
@@ -1864,11 +1861,11 @@ let curve25519_x25519_alt_mc = define_assert_from_elf
   0x9a1f01ef;       (* arm_ADC X15 X15 XZR *)
   0xa90a37ec;       (* arm_STP X12 X13 SP (Immediate_Offset (iword (&160))) *)
   0xa90b3fee;       (* arm_STP X14 X15 SP (Immediate_Offset (iword (&176))) *)
-  0xa9541be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&320))) *)
+  0xa9521be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&288))) *)
   0xa94a0fe4;       (* arm_LDP X4 X3 SP (Immediate_Offset (iword (&160))) *)
   0xeb0400a5;       (* arm_SUBS X5 X5 X4 *)
   0xfa0300c6;       (* arm_SBCS X6 X6 X3 *)
-  0xa95523e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&336))) *)
+  0xa95323e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&304))) *)
   0xa94b0fe4;       (* arm_LDP X4 X3 SP (Immediate_Offset (iword (&176))) *)
   0xfa0400e7;       (* arm_SBCS X7 X7 X4 *)
   0xfa030108;       (* arm_SBCS X8 X8 X3 *)
@@ -1878,13 +1875,13 @@ let curve25519_x25519_alt_mc = define_assert_from_elf
   0xfa1f00c6;       (* arm_SBCS X6 X6 XZR *)
   0xfa1f00e7;       (* arm_SBCS X7 X7 XZR *)
   0xda1f0108;       (* arm_SBC X8 X8 XZR *)
-  0xa9161be5;       (* arm_STP X5 X6 SP (Immediate_Offset (iword (&352))) *)
-  0xa91723e7;       (* arm_STP X7 X8 SP (Immediate_Offset (iword (&368))) *)
-  0xa95413e3;       (* arm_LDP X3 X4 SP (Immediate_Offset (iword (&320))) *)
+  0xa9101be5;       (* arm_STP X5 X6 SP (Immediate_Offset (iword (&256))) *)
+  0xa91123e7;       (* arm_STP X7 X8 SP (Immediate_Offset (iword (&272))) *)
+  0xa95213e3;       (* arm_LDP X3 X4 SP (Immediate_Offset (iword (&288))) *)
   0xa94a23e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&160))) *)
   0xab070063;       (* arm_ADDS X3 X3 X7 *)
   0xba080084;       (* arm_ADCS X4 X4 X8 *)
-  0xa9551be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&336))) *)
+  0xa9531be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&304))) *)
   0xa94b23e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&176))) *)
   0xba0700a5;       (* arm_ADCS X5 X5 X7 *)
   0xba0800c6;       (* arm_ADCS X6 X6 X8 *)
@@ -1894,12 +1891,12 @@ let curve25519_x25519_alt_mc = define_assert_from_elf
   0xba1f0084;       (* arm_ADCS X4 X4 XZR *)
   0xba1f00a5;       (* arm_ADCS X5 X5 XZR *)
   0x9a1f00c6;       (* arm_ADC X6 X6 XZR *)
-  0xa91413e3;       (* arm_STP X3 X4 SP (Immediate_Offset (iword (&320))) *)
-  0xa9151be5;       (* arm_STP X5 X6 SP (Immediate_Offset (iword (&336))) *)
-  0xa9560fe2;       (* arm_LDP X2 X3 SP (Immediate_Offset (iword (&352))) *)
+  0xa91213e3;       (* arm_STP X3 X4 SP (Immediate_Offset (iword (&288))) *)
+  0xa9131be5;       (* arm_STP X5 X6 SP (Immediate_Offset (iword (&304))) *)
+  0xa9500fe2;       (* arm_LDP X2 X3 SP (Immediate_Offset (iword (&256))) *)
   0x9b037c49;       (* arm_MUL X9 X2 X3 *)
   0x9bc37c4a;       (* arm_UMULH X10 X2 X3 *)
-  0xa95717e4;       (* arm_LDP X4 X5 SP (Immediate_Offset (iword (&368))) *)
+  0xa95117e4;       (* arm_LDP X4 X5 SP (Immediate_Offset (iword (&272))) *)
   0x9b057c4b;       (* arm_MUL X11 X2 X5 *)
   0x9bc57c4c;       (* arm_UMULH X12 X2 X5 *)
   0x9b047c47;       (* arm_MUL X7 X2 X4 *)
@@ -1968,12 +1965,12 @@ let curve25519_x25519_alt_mc = define_assert_from_elf
   0xba1f0129;       (* arm_ADCS X9 X9 XZR *)
   0xba1f014a;       (* arm_ADCS X10 X10 XZR *)
   0x9a1f016b;       (* arm_ADC X11 X11 XZR *)
-  0xa91627e8;       (* arm_STP X8 X9 SP (Immediate_Offset (iword (&352))) *)
-  0xa9172fea;       (* arm_STP X10 X11 SP (Immediate_Offset (iword (&368))) *)
-  0xa9540fe2;       (* arm_LDP X2 X3 SP (Immediate_Offset (iword (&320))) *)
+  0xa91027e8;       (* arm_STP X8 X9 SP (Immediate_Offset (iword (&256))) *)
+  0xa9112fea;       (* arm_STP X10 X11 SP (Immediate_Offset (iword (&272))) *)
+  0xa9520fe2;       (* arm_LDP X2 X3 SP (Immediate_Offset (iword (&288))) *)
   0x9b037c49;       (* arm_MUL X9 X2 X3 *)
   0x9bc37c4a;       (* arm_UMULH X10 X2 X3 *)
-  0xa95517e4;       (* arm_LDP X4 X5 SP (Immediate_Offset (iword (&336))) *)
+  0xa95317e4;       (* arm_LDP X4 X5 SP (Immediate_Offset (iword (&304))) *)
   0x9b057c4b;       (* arm_MUL X11 X2 X5 *)
   0x9bc57c4c;       (* arm_UMULH X12 X2 X5 *)
   0x9b047c47;       (* arm_MUL X7 X2 X4 *)
@@ -2042,14 +2039,14 @@ let curve25519_x25519_alt_mc = define_assert_from_elf
   0xba1f0129;       (* arm_ADCS X9 X9 XZR *)
   0xba1f014a;       (* arm_ADCS X10 X10 XZR *)
   0x9a1f016b;       (* arm_ADC X11 X11 XZR *)
-  0xa91427e8;       (* arm_STP X8 X9 SP (Immediate_Offset (iword (&320))) *)
-  0xa9152fea;       (* arm_STP X10 X11 SP (Immediate_Offset (iword (&336))) *)
-  0xa9541be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&320))) *)
-  0xa9560fe4;       (* arm_LDP X4 X3 SP (Immediate_Offset (iword (&352))) *)
+  0xa91227e8;       (* arm_STP X8 X9 SP (Immediate_Offset (iword (&288))) *)
+  0xa9132fea;       (* arm_STP X10 X11 SP (Immediate_Offset (iword (&304))) *)
+  0xa9521be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&288))) *)
+  0xa9500fe4;       (* arm_LDP X4 X3 SP (Immediate_Offset (iword (&256))) *)
   0xeb0400a5;       (* arm_SUBS X5 X5 X4 *)
   0xfa0300c6;       (* arm_SBCS X6 X6 X3 *)
-  0xa95523e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&336))) *)
-  0xa9570fe4;       (* arm_LDP X4 X3 SP (Immediate_Offset (iword (&368))) *)
+  0xa95323e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&304))) *)
+  0xa9510fe4;       (* arm_LDP X4 X3 SP (Immediate_Offset (iword (&272))) *)
   0xfa0400e7;       (* arm_SBCS X7 X7 X4 *)
   0xfa030108;       (* arm_SBCS X8 X8 X3 *)
   0xd28004c4;       (* arm_MOV X4 (rvalue (word 38)) *)
@@ -2076,10 +2073,10 @@ let curve25519_x25519_alt_mc = define_assert_from_elf
   0xba0800a5;       (* arm_ADCS X5 X5 X8 *)
   0xba0900c6;       (* arm_ADCS X6 X6 X9 *)
   0x9a1f014a;       (* arm_ADC X10 X10 XZR *)
-  0xa95623e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&352))) *)
+  0xa95023e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&256))) *)
   0xab070063;       (* arm_ADDS X3 X3 X7 *)
   0xba080084;       (* arm_ADCS X4 X4 X8 *)
-  0xa95723e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&368))) *)
+  0xa95123e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&272))) *)
   0xba0700a5;       (* arm_ADCS X5 X5 X7 *)
   0xba0800c6;       (* arm_ADCS X6 X6 X8 *)
   0x9a1f014a;       (* arm_ADC X10 X10 XZR *)
@@ -2094,14 +2091,14 @@ let curve25519_x25519_alt_mc = define_assert_from_elf
   0x9a1f00c6;       (* arm_ADC X6 X6 XZR *)
   0xa90a13e3;       (* arm_STP X3 X4 SP (Immediate_Offset (iword (&160))) *)
   0xa90b1be5;       (* arm_STP X5 X6 SP (Immediate_Offset (iword (&176))) *)
-  0xa95413e3;       (* arm_LDP X3 X4 SP (Immediate_Offset (iword (&320))) *)
-  0xa95623e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&352))) *)
+  0xa95213e3;       (* arm_LDP X3 X4 SP (Immediate_Offset (iword (&288))) *)
+  0xa95023e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&256))) *)
   0x9b077c6c;       (* arm_MUL X12 X3 X7 *)
   0x9bc77c6d;       (* arm_UMULH X13 X3 X7 *)
   0x9b087c6b;       (* arm_MUL X11 X3 X8 *)
   0x9bc87c6e;       (* arm_UMULH X14 X3 X8 *)
   0xab0b01ad;       (* arm_ADDS X13 X13 X11 *)
-  0xa9572be9;       (* arm_LDP X9 X10 SP (Immediate_Offset (iword (&368))) *)
+  0xa9512be9;       (* arm_LDP X9 X10 SP (Immediate_Offset (iword (&272))) *)
   0x9b097c6b;       (* arm_MUL X11 X3 X9 *)
   0x9bc97c6f;       (* arm_UMULH X15 X3 X9 *)
   0xba0b01ce;       (* arm_ADCS X14 X14 X11 *)
@@ -2109,7 +2106,7 @@ let curve25519_x25519_alt_mc = define_assert_from_elf
   0x9bca7c70;       (* arm_UMULH X16 X3 X10 *)
   0xba0b01ef;       (* arm_ADCS X15 X15 X11 *)
   0x9a1f0210;       (* arm_ADC X16 X16 XZR *)
-  0xa9551be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&336))) *)
+  0xa9531be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&304))) *)
   0x9b077c8b;       (* arm_MUL X11 X4 X7 *)
   0xab0b01ad;       (* arm_ADDS X13 X13 X11 *)
   0x9b087c8b;       (* arm_MUL X11 X4 X8 *)
@@ -2188,8 +2185,8 @@ let curve25519_x25519_alt_mc = define_assert_from_elf
   0xba1f01ad;       (* arm_ADCS X13 X13 XZR *)
   0xba1f01ce;       (* arm_ADCS X14 X14 XZR *)
   0x9a1f01ef;       (* arm_ADC X15 X15 XZR *)
-  0xa91437ec;       (* arm_STP X12 X13 SP (Immediate_Offset (iword (&320))) *)
-  0xa9153fee;       (* arm_STP X14 X15 SP (Immediate_Offset (iword (&336))) *)
+  0xa91237ec;       (* arm_STP X12 X13 SP (Immediate_Offset (iword (&288))) *)
+  0xa9133fee;       (* arm_STP X14 X15 SP (Immediate_Offset (iword (&304))) *)
   0xa94c13e3;       (* arm_LDP X3 X4 SP (Immediate_Offset (iword (&192))) *)
   0xa94a23e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&160))) *)
   0x9b077c6c;       (* arm_MUL X12 X3 X7 *)
@@ -2286,11 +2283,11 @@ let curve25519_x25519_alt_mc = define_assert_from_elf
   0x9a1f01ef;       (* arm_ADC X15 X15 XZR *)
   0xa90a37ec;       (* arm_STP X12 X13 SP (Immediate_Offset (iword (&160))) *)
   0xa90b3fee;       (* arm_STP X14 X15 SP (Immediate_Offset (iword (&176))) *)
-  0xa9541be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&320))) *)
+  0xa9521be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&288))) *)
   0xa94a0fe4;       (* arm_LDP X4 X3 SP (Immediate_Offset (iword (&160))) *)
   0xeb0400a5;       (* arm_SUBS X5 X5 X4 *)
   0xfa0300c6;       (* arm_SBCS X6 X6 X3 *)
-  0xa95523e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&336))) *)
+  0xa95323e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&304))) *)
   0xa94b0fe4;       (* arm_LDP X4 X3 SP (Immediate_Offset (iword (&176))) *)
   0xfa0400e7;       (* arm_SBCS X7 X7 X4 *)
   0xfa030108;       (* arm_SBCS X8 X8 X3 *)
@@ -2300,13 +2297,13 @@ let curve25519_x25519_alt_mc = define_assert_from_elf
   0xfa1f00c6;       (* arm_SBCS X6 X6 XZR *)
   0xfa1f00e7;       (* arm_SBCS X7 X7 XZR *)
   0xda1f0108;       (* arm_SBC X8 X8 XZR *)
-  0xa9161be5;       (* arm_STP X5 X6 SP (Immediate_Offset (iword (&352))) *)
-  0xa91723e7;       (* arm_STP X7 X8 SP (Immediate_Offset (iword (&368))) *)
-  0xa95413e3;       (* arm_LDP X3 X4 SP (Immediate_Offset (iword (&320))) *)
+  0xa9101be5;       (* arm_STP X5 X6 SP (Immediate_Offset (iword (&256))) *)
+  0xa91123e7;       (* arm_STP X7 X8 SP (Immediate_Offset (iword (&272))) *)
+  0xa95213e3;       (* arm_LDP X3 X4 SP (Immediate_Offset (iword (&288))) *)
   0xa94a23e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&160))) *)
   0xab070063;       (* arm_ADDS X3 X3 X7 *)
   0xba080084;       (* arm_ADCS X4 X4 X8 *)
-  0xa9551be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&336))) *)
+  0xa9531be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&304))) *)
   0xa94b23e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&176))) *)
   0xba0700a5;       (* arm_ADCS X5 X5 X7 *)
   0xba0800c6;       (* arm_ADCS X6 X6 X8 *)
@@ -2316,12 +2313,12 @@ let curve25519_x25519_alt_mc = define_assert_from_elf
   0xba1f0084;       (* arm_ADCS X4 X4 XZR *)
   0xba1f00a5;       (* arm_ADCS X5 X5 XZR *)
   0x9a1f00c6;       (* arm_ADC X6 X6 XZR *)
-  0xa91413e3;       (* arm_STP X3 X4 SP (Immediate_Offset (iword (&320))) *)
-  0xa9151be5;       (* arm_STP X5 X6 SP (Immediate_Offset (iword (&336))) *)
-  0xa9560fe2;       (* arm_LDP X2 X3 SP (Immediate_Offset (iword (&352))) *)
+  0xa91213e3;       (* arm_STP X3 X4 SP (Immediate_Offset (iword (&288))) *)
+  0xa9131be5;       (* arm_STP X5 X6 SP (Immediate_Offset (iword (&304))) *)
+  0xa9500fe2;       (* arm_LDP X2 X3 SP (Immediate_Offset (iword (&256))) *)
   0x9b037c49;       (* arm_MUL X9 X2 X3 *)
   0x9bc37c4a;       (* arm_UMULH X10 X2 X3 *)
-  0xa95717e4;       (* arm_LDP X4 X5 SP (Immediate_Offset (iword (&368))) *)
+  0xa95117e4;       (* arm_LDP X4 X5 SP (Immediate_Offset (iword (&272))) *)
   0x9b057c4b;       (* arm_MUL X11 X2 X5 *)
   0x9bc57c4c;       (* arm_UMULH X12 X2 X5 *)
   0x9b047c47;       (* arm_MUL X7 X2 X4 *)
@@ -2390,12 +2387,12 @@ let curve25519_x25519_alt_mc = define_assert_from_elf
   0xba1f0129;       (* arm_ADCS X9 X9 XZR *)
   0xba1f014a;       (* arm_ADCS X10 X10 XZR *)
   0x9a1f016b;       (* arm_ADC X11 X11 XZR *)
-  0xa91627e8;       (* arm_STP X8 X9 SP (Immediate_Offset (iword (&352))) *)
-  0xa9172fea;       (* arm_STP X10 X11 SP (Immediate_Offset (iword (&368))) *)
-  0xa9540fe2;       (* arm_LDP X2 X3 SP (Immediate_Offset (iword (&320))) *)
+  0xa91027e8;       (* arm_STP X8 X9 SP (Immediate_Offset (iword (&256))) *)
+  0xa9112fea;       (* arm_STP X10 X11 SP (Immediate_Offset (iword (&272))) *)
+  0xa9520fe2;       (* arm_LDP X2 X3 SP (Immediate_Offset (iword (&288))) *)
   0x9b037c49;       (* arm_MUL X9 X2 X3 *)
   0x9bc37c4a;       (* arm_UMULH X10 X2 X3 *)
-  0xa95517e4;       (* arm_LDP X4 X5 SP (Immediate_Offset (iword (&336))) *)
+  0xa95317e4;       (* arm_LDP X4 X5 SP (Immediate_Offset (iword (&304))) *)
   0x9b057c4b;       (* arm_MUL X11 X2 X5 *)
   0x9bc57c4c;       (* arm_UMULH X12 X2 X5 *)
   0x9b047c47;       (* arm_MUL X7 X2 X4 *)
@@ -2464,14 +2461,14 @@ let curve25519_x25519_alt_mc = define_assert_from_elf
   0xba1f0129;       (* arm_ADCS X9 X9 XZR *)
   0xba1f014a;       (* arm_ADCS X10 X10 XZR *)
   0x9a1f016b;       (* arm_ADC X11 X11 XZR *)
-  0xa91427e8;       (* arm_STP X8 X9 SP (Immediate_Offset (iword (&320))) *)
-  0xa9152fea;       (* arm_STP X10 X11 SP (Immediate_Offset (iword (&336))) *)
-  0xa9541be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&320))) *)
-  0xa9560fe4;       (* arm_LDP X4 X3 SP (Immediate_Offset (iword (&352))) *)
+  0xa91227e8;       (* arm_STP X8 X9 SP (Immediate_Offset (iword (&288))) *)
+  0xa9132fea;       (* arm_STP X10 X11 SP (Immediate_Offset (iword (&304))) *)
+  0xa9521be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&288))) *)
+  0xa9500fe4;       (* arm_LDP X4 X3 SP (Immediate_Offset (iword (&256))) *)
   0xeb0400a5;       (* arm_SUBS X5 X5 X4 *)
   0xfa0300c6;       (* arm_SBCS X6 X6 X3 *)
-  0xa95523e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&336))) *)
-  0xa9570fe4;       (* arm_LDP X4 X3 SP (Immediate_Offset (iword (&368))) *)
+  0xa95323e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&304))) *)
+  0xa9510fe4;       (* arm_LDP X4 X3 SP (Immediate_Offset (iword (&272))) *)
   0xfa0400e7;       (* arm_SBCS X7 X7 X4 *)
   0xfa030108;       (* arm_SBCS X8 X8 X3 *)
   0xd28004c4;       (* arm_MOV X4 (rvalue (word 38)) *)
@@ -2498,10 +2495,10 @@ let curve25519_x25519_alt_mc = define_assert_from_elf
   0xba0800a5;       (* arm_ADCS X5 X5 X8 *)
   0xba0900c6;       (* arm_ADCS X6 X6 X9 *)
   0x9a1f014a;       (* arm_ADC X10 X10 XZR *)
-  0xa95623e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&352))) *)
+  0xa95023e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&256))) *)
   0xab070063;       (* arm_ADDS X3 X3 X7 *)
   0xba080084;       (* arm_ADCS X4 X4 X8 *)
-  0xa95723e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&368))) *)
+  0xa95123e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&272))) *)
   0xba0700a5;       (* arm_ADCS X5 X5 X7 *)
   0xba0800c6;       (* arm_ADCS X6 X6 X8 *)
   0x9a1f014a;       (* arm_ADC X10 X10 XZR *)
@@ -2516,14 +2513,14 @@ let curve25519_x25519_alt_mc = define_assert_from_elf
   0x9a1f00c6;       (* arm_ADC X6 X6 XZR *)
   0xa90a13e3;       (* arm_STP X3 X4 SP (Immediate_Offset (iword (&160))) *)
   0xa90b1be5;       (* arm_STP X5 X6 SP (Immediate_Offset (iword (&176))) *)
-  0xa95413e3;       (* arm_LDP X3 X4 SP (Immediate_Offset (iword (&320))) *)
-  0xa95623e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&352))) *)
+  0xa95213e3;       (* arm_LDP X3 X4 SP (Immediate_Offset (iword (&288))) *)
+  0xa95023e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&256))) *)
   0x9b077c6c;       (* arm_MUL X12 X3 X7 *)
   0x9bc77c6d;       (* arm_UMULH X13 X3 X7 *)
   0x9b087c6b;       (* arm_MUL X11 X3 X8 *)
   0x9bc87c6e;       (* arm_UMULH X14 X3 X8 *)
   0xab0b01ad;       (* arm_ADDS X13 X13 X11 *)
-  0xa9572be9;       (* arm_LDP X9 X10 SP (Immediate_Offset (iword (&368))) *)
+  0xa9512be9;       (* arm_LDP X9 X10 SP (Immediate_Offset (iword (&272))) *)
   0x9b097c6b;       (* arm_MUL X11 X3 X9 *)
   0x9bc97c6f;       (* arm_UMULH X15 X3 X9 *)
   0xba0b01ce;       (* arm_ADCS X14 X14 X11 *)
@@ -2531,7 +2528,7 @@ let curve25519_x25519_alt_mc = define_assert_from_elf
   0x9bca7c70;       (* arm_UMULH X16 X3 X10 *)
   0xba0b01ef;       (* arm_ADCS X15 X15 X11 *)
   0x9a1f0210;       (* arm_ADC X16 X16 XZR *)
-  0xa9551be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&336))) *)
+  0xa9531be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&304))) *)
   0x9b077c8b;       (* arm_MUL X11 X4 X7 *)
   0xab0b01ad;       (* arm_ADDS X13 X13 X11 *)
   0x9b087c8b;       (* arm_MUL X11 X4 X8 *)
@@ -2610,8 +2607,8 @@ let curve25519_x25519_alt_mc = define_assert_from_elf
   0xba1f01ad;       (* arm_ADCS X13 X13 XZR *)
   0xba1f01ce;       (* arm_ADCS X14 X14 XZR *)
   0x9a1f01ef;       (* arm_ADC X15 X15 XZR *)
-  0xa91437ec;       (* arm_STP X12 X13 SP (Immediate_Offset (iword (&320))) *)
-  0xa9153fee;       (* arm_STP X14 X15 SP (Immediate_Offset (iword (&336))) *)
+  0xa91237ec;       (* arm_STP X12 X13 SP (Immediate_Offset (iword (&288))) *)
+  0xa9133fee;       (* arm_STP X14 X15 SP (Immediate_Offset (iword (&304))) *)
   0xa94c13e3;       (* arm_LDP X3 X4 SP (Immediate_Offset (iword (&192))) *)
   0xa94a23e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&160))) *)
   0x9b077c6c;       (* arm_MUL X12 X3 X7 *)
@@ -3039,15 +3036,15 @@ let curve25519_x25519_alt_mc = define_assert_from_elf
   0xaa030042;       (* arm_ORR X2 X2 X3 *)
   0xaa020004;       (* arm_ORR X4 X0 X2 *)
   0xeb1f009f;       (* arm_CMP X4 XZR *)
-  0xa95407e0;       (* arm_LDP X0 X1 SP (Immediate_Offset (iword (&320))) *)
+  0xa95207e0;       (* arm_LDP X0 X1 SP (Immediate_Offset (iword (&288))) *)
   0x9a9f1000;       (* arm_CSEL X0 X0 XZR Condition_NE *)
   0x9a9f1021;       (* arm_CSEL X1 X1 XZR Condition_NE *)
-  0xa9550fe2;       (* arm_LDP X2 X3 SP (Immediate_Offset (iword (&336))) *)
-  0xa91407e0;       (* arm_STP X0 X1 SP (Immediate_Offset (iword (&320))) *)
+  0xa9530fe2;       (* arm_LDP X2 X3 SP (Immediate_Offset (iword (&304))) *)
+  0xa91207e0;       (* arm_STP X0 X1 SP (Immediate_Offset (iword (&288))) *)
   0x9a9f1042;       (* arm_CSEL X2 X2 XZR Condition_NE *)
   0x9a9f1063;       (* arm_CSEL X3 X3 XZR Condition_NE *)
-  0xa9150fe2;       (* arm_STP X2 X3 SP (Immediate_Offset (iword (&336))) *)
-  0xa95413e3;       (* arm_LDP X3 X4 SP (Immediate_Offset (iword (&320))) *)
+  0xa9130fe2;       (* arm_STP X2 X3 SP (Immediate_Offset (iword (&304))) *)
+  0xa95213e3;       (* arm_LDP X3 X4 SP (Immediate_Offset (iword (&288))) *)
   0xa94423e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&64))) *)
   0x9b077c6c;       (* arm_MUL X12 X3 X7 *)
   0x9bc77c6d;       (* arm_UMULH X13 X3 X7 *)
@@ -3062,7 +3059,7 @@ let curve25519_x25519_alt_mc = define_assert_from_elf
   0x9bca7c70;       (* arm_UMULH X16 X3 X10 *)
   0xba0b01ef;       (* arm_ADCS X15 X15 X11 *)
   0x9a1f0210;       (* arm_ADC X16 X16 XZR *)
-  0xa9551be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&336))) *)
+  0xa9531be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&304))) *)
   0x9b077c8b;       (* arm_MUL X11 X4 X7 *)
   0xab0b01ad;       (* arm_ADDS X13 X13 X11 *)
   0x9b087c8b;       (* arm_MUL X11 X4 X8 *)
@@ -3149,7 +3146,7 @@ let curve25519_x25519_alt_mc = define_assert_from_elf
   0x9240f9ef;       (* arm_AND X15 X15 (rvalue (word 9223372036854775807)) *)
   0xa90036ec;       (* arm_STP X12 X13 X23 (Immediate_Offset (iword (&0))) *)
   0xa9013eee;       (* arm_STP X14 X15 X23 (Immediate_Offset (iword (&16))) *)
-  0x910603ff;       (* arm_ADD SP SP (rvalue (word 384)) *)
+  0x910503ff;       (* arm_ADD SP SP (rvalue (word 320)) *)
   0xa8c163f7;       (* arm_LDP X23 X24 SP (Postimmediate_Offset (iword (&16))) *)
   0xa8c15bf5;       (* arm_LDP X21 X22 SP (Postimmediate_Offset (iword (&16))) *)
   0xa8c153f3;       (* arm_LDP X19 X20 SP (Postimmediate_Offset (iword (&16))) *)
@@ -3211,12 +3208,12 @@ let lvs =
   "e",[`SP`;`160`];
   "dmsn",[`SP`;`192`];
   "p",[`SP`;`192`];
-  "xm",[`SP`;`256`];
-  "dnsm",[`SP`;`256`];
-  "spro",[`SP`;`256`];
-  "xn",[`SP`;`320`];
-  "s",[`SP`;`320`];
-  "d",[`SP`;`352`]];;
+  "xm",[`SP`;`224`];
+  "dnsm",[`SP`;`224`];
+  "spro",[`SP`;`224`];
+  "d",[`SP`;`256`];
+  "xn",[`SP`;`288`];
+  "s",[`SP`;`288`]];;
 
 (* ------------------------------------------------------------------------- *)
 (* Instances of mul_p25519.                                                  *)
@@ -3230,7 +3227,7 @@ let LOCAL_MUL_P25519_TAC =
       !n. read(memory :> bytes(word_add (read p2 t) (word n2),8 * 4)) t = n
       ==>
       aligned 16 (read SP t) /\
-      nonoverlapping (word pc,0x30e4) (word_add (read p3 t) (word n3),8 * 4)
+      nonoverlapping (word pc,0x30d8) (word_add (read p3 t) (word n3),8 * 4)
       ==> ensures arm
            (\s. aligned_bytes_loaded s (word pc) curve25519_x25519_alt_mc /\
                 read PC s = pcin /\
@@ -3408,7 +3405,7 @@ let LOCAL_MUL_4_TAC =
       !n. read(memory :> bytes(word_add (read p2 t) (word n2),8 * 4)) t = n
       ==>
       aligned 16 (read SP t) /\
-      nonoverlapping (word pc,0x30e4) (word_add (read p3 t) (word n3),8 * 4)
+      nonoverlapping (word pc,0x30d8) (word_add (read p3 t) (word n3),8 * 4)
       ==> ensures arm
            (\s. aligned_bytes_loaded s (word pc) curve25519_x25519_alt_mc /\
                 read PC s = pcin /\
@@ -3574,7 +3571,7 @@ let LOCAL_MUL_5_TAC =
       !n. read(memory :> bytes(word_add (read p2 t) (word n2),8 * 4)) t = n
       ==>
       aligned 16 (read SP t) /\
-      nonoverlapping (word pc,0x30e4) (word_add (read p3 t) (word n3),8 * 5)
+      nonoverlapping (word pc,0x30d8) (word_add (read p3 t) (word n3),8 * 5)
       ==> ensures arm
            (\s. aligned_bytes_loaded s (word pc) curve25519_x25519_alt_mc /\
                 read PC s = pcin /\
@@ -3651,7 +3648,7 @@ let LOCAL_SQR_4_TAC =
       read(memory :> bytes(word_add (read p1 t) (word n1),8 * 4)) t = n
       ==>
       aligned 16 (read SP t) /\
-      nonoverlapping (word pc,0x30e4) (word_add (read p3 t) (word n3),8 * 4)
+      nonoverlapping (word pc,0x30d8) (word_add (read p3 t) (word n3),8 * 4)
       ==> ensures arm
            (\s. aligned_bytes_loaded s (word pc) curve25519_x25519_alt_mc /\
                 read PC s = pcin /\
@@ -3814,7 +3811,7 @@ let LOCAL_ADD5_4_TAC =
       !n. read(memory :> bytes(word_add (read p2 t) (word n2),8 * 5)) t = n
       ==>
       aligned 16 (read SP t) /\
-      nonoverlapping (word pc,0x30e4) (word_add (read p3 t) (word n3),8 * 4)
+      nonoverlapping (word pc,0x30d8) (word_add (read p3 t) (word n3),8 * 4)
       ==> ensures arm
            (\s. aligned_bytes_loaded s (word pc) curve25519_x25519_alt_mc /\
                 read PC s = pcin /\
@@ -3951,7 +3948,7 @@ let LOCAL_ADD_TWICE4_TAC =
       !n. read(memory :> bytes(word_add (read p2 t) (word n2),8 * 4)) t = n
       ==>
       aligned 16 (read SP t) /\
-      nonoverlapping (word pc,0x30e4) (word_add (read p3 t) (word n3),8 * 4)
+      nonoverlapping (word pc,0x30d8) (word_add (read p3 t) (word n3),8 * 4)
       ==> ensures arm
            (\s. aligned_bytes_loaded s (word pc) curve25519_x25519_alt_mc /\
                 read PC s = pcin /\
@@ -4024,7 +4021,7 @@ let LOCAL_SUB_TWICE4_TAC =
       !n. read(memory :> bytes(word_add (read p2 t) (word n2),8 * 4)) t = n
       ==>
       aligned 16 (read SP t) /\
-      nonoverlapping (word pc,0x30e4) (word_add (read p3 t) (word n3),8 * 4)
+      nonoverlapping (word pc,0x30d8) (word_add (read p3 t) (word n3),8 * 4)
       ==> ensures arm
            (\s. aligned_bytes_loaded s (word pc) curve25519_x25519_alt_mc /\
                 read PC s = pcin /\
@@ -4103,7 +4100,7 @@ let LOCAL_SUB5_4_TAC =
       !n. read(memory :> bytes(word_add (read p2 t) (word n2),8 * 5)) t = n
       ==>
       aligned 16 (read SP t) /\
-      nonoverlapping (word pc,0x30e4) (word_add (read p3 t) (word n3),8 * 4)
+      nonoverlapping (word pc,0x30d8) (word_add (read p3 t) (word n3),8 * 4)
       ==> ensures arm
            (\s. aligned_bytes_loaded s (word pc) curve25519_x25519_alt_mc /\
                 read PC s = pcin /\
@@ -4264,7 +4261,7 @@ let LOCAL_CMADD_4_TAC =
      !n. read(memory :> bytes(word_add (read p2 t) (word n2),8 * 4)) t = n
      ==>
       aligned 16 (read SP t) /\
-      nonoverlapping (word pc,0x30e4) (word_add (read p3 t) (word n3),8 * 4)
+      nonoverlapping (word pc,0x30d8) (word_add (read p3 t) (word n3),8 * 4)
       ==> ensures arm
            (\s. aligned_bytes_loaded s (word pc) curve25519_x25519_alt_mc /\
                 read PC s = pcin /\
@@ -4408,7 +4405,7 @@ let LOCAL_MUX_4_TAC =
      !n. read(memory :> bytes(word_add (read p2 t) (word n2),8 * 4)) t = n
      ==>
       aligned 16 (read SP t) /\
-      nonoverlapping (word pc,0x30e4) (word_add (read p3 t) (word n3),8 * 4) /\
+      nonoverlapping (word pc,0x30d8) (word_add (read p3 t) (word n3),8 * 4) /\
       nonoverlapping (stackpointer:int64,320) (res,32)
       ==> ensures arm
            (\s. aligned_bytes_loaded s (word pc) curve25519_x25519_alt_mc /\
@@ -4444,13 +4441,13 @@ let LOCAL_MODINV_TAC =
   and th = CONV_RULE (DEPTH_CONV WORD_NUM_RED_CONV)
                      (SPEC `word 4:int64` CORE_MODINV_CORRECT) in
   ARM_SUBROUTINE_SIM_TAC
-   (curve25519_x25519_alt_mc,CURVE25519_X25519_ALT_EXEC,0x2a2c,cth,th)
+   (curve25519_x25519_alt_mc,CURVE25519_X25519_ALT_EXEC,0x2a20,cth,th)
    [`read X1 s`; `read X2 s`;
     `read (memory :> bytes(read X2 s,8 * 4)) s`;
     `read X3 s`;
     `read (memory :> bytes(read X3 s,8 * 4)) s`;
     `read X4 s`;
-    `pc + 0x2a2c`];;
+    `pc + 0x2a20`];;
 
 (* ------------------------------------------------------------------------- *)
 (* Overall point operation proof.                                            *)
@@ -4539,9 +4536,9 @@ let lemma_diffadd2 = prove
 let CURVE25519_X25519_ALT_CORRECT = time prove
  (`!res scalar n point X pc stackpointer.
     aligned 16 stackpointer /\
-    ALL (nonoverlapping (stackpointer,384))
-        [(word pc,0x30e4); (res,32); (scalar,32); (point,32)] /\
-    nonoverlapping (res,32) (word pc,0x30e4)
+    ALL (nonoverlapping (stackpointer,320))
+        [(word pc,0x30d8); (res,32); (scalar,32); (point,32)] /\
+    nonoverlapping (res,32) (word pc,0x30d8)
     ==> ensures arm
          (\s. aligned_bytes_loaded s (word pc) curve25519_x25519_alt_mc /\
               read PC s = word(pc + 0x10) /\
@@ -4549,14 +4546,14 @@ let CURVE25519_X25519_ALT_CORRECT = time prove
               C_ARGUMENTS [res; scalar; point] s /\
               bignum_from_memory (scalar,4) s = n /\
               bignum_from_memory (point,4) s = X)
-         (\s. read PC s = word (pc + 0x30d0) /\
+         (\s. read PC s = word (pc + 0x30c4) /\
               bignum_from_memory (res,4) s = rfcx25519(n,X))
           (MAYCHANGE [PC; X0; X1; X2; X3; X4; X5; X6; X7; X8; X9; X10;
                       X11; X12; X13; X14; X15; X16; X17; X19; X20;
                       X21; X22; X23] ,,
            MAYCHANGE SOME_FLAGS ,,
            MAYCHANGE [memory :> bytes(res,32);
-                      memory :> bytes(stackpointer,384)])`,
+                      memory :> bytes(stackpointer,320)])`,
   REWRITE_TAC[FORALL_PAIR_THM] THEN
   MAP_EVERY X_GEN_TAC
    [`res:int64`; `scalar:int64`; `n_input:num`; `point:int64`; `X_input:num`;
@@ -4573,7 +4570,7 @@ let CURVE25519_X25519_ALT_CORRECT = time prove
 
   (*** Setup of the main loop ***)
 
-  ENSURES_WHILE_ADOWN_TAC `254` `3` `pc + 0x6e8` `pc + 0x15c8`
+  ENSURES_WHILE_ADOWN_TAC `254` `3` `pc + 0x6e8` `pc + 0x15bc`
    `\i s.
       read SP s = stackpointer /\
       read X23 s = res /\
@@ -4583,8 +4580,8 @@ let CURVE25519_X25519_ALT_CORRECT = time prove
       read X21 s = word(bitval(ODD(nn DIV 2 EXP i))) /\
       bignum_from_memory(word_add stackpointer (word 64),4) s < 2 * p_25519 /\
       bignum_from_memory(word_add stackpointer (word 160),4) s < 2 * p_25519 /\
-      bignum_from_memory(word_add stackpointer (word 256),4) s < 2 * p_25519 /\
-      bignum_from_memory(word_add stackpointer (word 320),4) s < 2 * p_25519 /\
+      bignum_from_memory(word_add stackpointer (word 224),4) s < 2 * p_25519 /\
+      bignum_from_memory(word_add stackpointer (word 288),4) s < 2 * p_25519 /\
       !(f:(int#int) ring) P.
         field f /\ ring_char f = p_25519 /\
         P IN group_carrier(curve25519x_group f) /\
@@ -4595,22 +4592,22 @@ let CURVE25519_X25519_ALT_CORRECT = time prove
           MOD p_25519 <= 1 /\
         bignum_from_memory(word_add stackpointer (word 160),4) s
           MOD p_25519 = 0 /\
-        bignum_from_memory(word_add stackpointer (word 256),4) s
+        bignum_from_memory(word_add stackpointer (word 224),4) s
           MOD p_25519 = 0 /\
-        bignum_from_memory(word_add stackpointer (word 320),4) s
+        bignum_from_memory(word_add stackpointer (word 288),4) s
           MOD p_25519 <= 1
       else
       curve25519x_halfcanonically_represents f
        (group_pow (curve25519x_group f) P
            (if ODD(nn DIV 2 EXP i)
             then nn DIV 2 EXP i + 1 else nn DIV 2 EXP i))
-       (bignum_from_memory(word_add stackpointer (word 320),4) s,
+       (bignum_from_memory(word_add stackpointer (word 288),4) s,
         bignum_from_memory(word_add stackpointer (word 160),4) s) /\
       curve25519x_halfcanonically_represents f
        (group_pow (curve25519x_group f) P
           (if ODD(nn DIV 2 EXP i)
            then nn DIV 2 EXP i else nn DIV 2 EXP i + 1))
-       (bignum_from_memory(word_add stackpointer (word 256),4) s,
+       (bignum_from_memory(word_add stackpointer (word 224),4) s,
         bignum_from_memory(word_add stackpointer (word 64),4) s)` THEN
   REPEAT CONJ_TAC THENL
    [ARITH_TAC;
@@ -4624,7 +4621,7 @@ let CURVE25519_X25519_ALT_CORRECT = time prove
     SUBGOAL_THEN
      `bignum_from_memory (stackpointer,4) s15 = n_input /\
       bignum_from_memory (word_add stackpointer (word 32),4) s15 = X /\
-      bignum_from_memory(word_add stackpointer (word 256),4) s15 = X /\
+      bignum_from_memory(word_add stackpointer (word 224),4) s15 = X /\
       bignum_from_memory(word_add stackpointer (word 64),4) s15 = 1`
     STRIP_ASSUME_TAC THENL
      [CONV_TAC(ONCE_DEPTH_CONV BIGNUM_LEXPAND_CONV) THEN
@@ -4702,11 +4699,11 @@ let CURVE25519_X25519_ALT_CORRECT = time prove
 
     X_GEN_TAC `i:num` THEN STRIP_TAC THEN
     GHOST_INTRO_TAC `xn:num`
-     `bignum_from_memory (word_add stackpointer (word 320),4)` THEN
+     `bignum_from_memory (word_add stackpointer (word 288),4)` THEN
     GHOST_INTRO_TAC `zn:num`
      `bignum_from_memory (word_add stackpointer (word 160),4)` THEN
     GHOST_INTRO_TAC `xm:num`
-     `bignum_from_memory (word_add stackpointer (word 256),4)` THEN
+     `bignum_from_memory (word_add stackpointer (word 224),4)` THEN
     GHOST_INTRO_TAC `zm:num`
      `bignum_from_memory(word_add stackpointer (word 64),4)` THEN
     REWRITE_TAC[WORD_RULE `word_sub (word (i + 1)) (word 1) = word i`] THEN
@@ -4715,7 +4712,7 @@ let CURVE25519_X25519_ALT_CORRECT = time prove
     LOCAL_ADD_TWICE4_TAC 0 ["sn"; "xn"; "zn"] THEN
     LOCAL_SUB_TWICE4_TAC 0 ["dn"; "xn"; "zn"] THEN
     LOCAL_ADD_TWICE4_TAC 0 ["sm"; "xm"; "zm"] THEN
-    LOCAL_MUL_5_TAC 0 ["dmsn"; "sn"; "dm"] THEN
+    LOCAL_MUL_4_TAC 0 ["dmsn"; "sn"; "dm"] THEN
     SUBGOAL_THEN
      `read(memory :> bytes64(word_add stackpointer
        (word(8 * val(word_ushr (word i:int64) 6))))) s5 =
@@ -4772,11 +4769,11 @@ let CURVE25519_X25519_ALT_CORRECT = time prove
        `word(bitval b) = word(bitval c) <=> (b <=> c)`]) THEN
     LOCAL_MUX_4_TAC 0 ["d"; "dm"; "dn"] THEN
     LOCAL_MUX_4_TAC 0 ["s"; "sm"; "sn"] THEN
-    LOCAL_MUL_5_TAC 0 ["dnsm"; "sm"; "dn"] THEN
+    LOCAL_MUL_4_TAC 0 ["dnsm"; "sm"; "dn"] THEN
     LOCAL_SQR_4_TAC 0 ["d"; "d"] THEN
-    LOCAL_SUB5_4_TAC 0 ["dpro"; "dmsn"; "dnsm"] THEN
+    LOCAL_SUB_TWICE4_TAC 0 ["dpro"; "dmsn"; "dnsm"] THEN
     LOCAL_SQR_4_TAC 0 ["s"; "s"] THEN
-    LOCAL_ADD5_4_TAC 0 ["spro"; "dmsn"; "dnsm"] THEN
+    LOCAL_ADD_TWICE4_TAC 0 ["spro"; "dmsn"; "dnsm"] THEN
     LOCAL_SQR_4_TAC 0 ["dpro"; "dpro"] THEN
     LOCAL_SUB_TWICE4_TAC 0 ["p"; "s"; "d"] THEN
     LOCAL_SQR_4_TAC 0 ["xm"; "spro"] THEN
@@ -4794,13 +4791,6 @@ let CURVE25519_X25519_ALT_CORRECT = time prove
     DISCARD_STATE_TAC "s28" THEN
     DISCARD_MATCHING_ASSUMPTIONS
      [`aligned a b`; `val(word i) = i`; `nonoverlapping_modulo a b c`] THEN
-    FIRST_X_ASSUM(MP_TAC o check (is_imp o concl)) THEN
-    ANTS_TAC THENL
-     [ASM_REWRITE_TAC[] THEN
-      REWRITE_TAC[p_25519] THEN CONV_TAC NUM_REDUCE_CONV THEN
-      RULE_ASSUM_TAC(CONV_RULE NUM_REDUCE_CONV o REWRITE_RULE[p_25519]) THEN
-      ASM BOUNDER_TAC[];
-      STRIP_TAC] THEN
     RULE_ASSUM_TAC(REWRITE_RULE[EXP_2]) THEN
     RULE_ASSUM_TAC(REWRITE_RULE[num_congruent; GSYM INT_OF_NUM_CLAUSES]) THEN
     RULE_ASSUM_TAC(REWRITE_RULE[GSYM INT_REM_EQ]) THEN
@@ -4900,11 +4890,11 @@ let CURVE25519_X25519_ALT_CORRECT = time prove
   (*** Multiplexing before last doublings ***)
 
   GHOST_INTRO_TAC `xn:num`
-   `bignum_from_memory (word_add stackpointer (word 320),4)` THEN
+   `bignum_from_memory (word_add stackpointer (word 288),4)` THEN
   GHOST_INTRO_TAC `zn:num`
    `bignum_from_memory (word_add stackpointer (word 160),4)` THEN
   GHOST_INTRO_TAC `xm:num`
-   `bignum_from_memory (word_add stackpointer (word 256),4)` THEN
+   `bignum_from_memory (word_add stackpointer (word 224),4)` THEN
   GHOST_INTRO_TAC `zm:num`
    `bignum_from_memory(word_add stackpointer (word 64),4)` THEN
   GLOBALIZE_PRECONDITION_TAC THEN
@@ -4913,7 +4903,7 @@ let CURVE25519_X25519_ALT_CORRECT = time prove
   LOCAL_MUX_4_TAC 0 ["zn"; "zm"; "zn"] THEN
 
   MAP_EVERY (fun t -> REABBREV_TAC t THEN POP_ASSUM SUBST_ALL_TAC)
-   [`xn8 = read(memory :> bytes(word_add stackpointer (word 320),8 * 4)) s5`;
+   [`xn8 = read(memory :> bytes(word_add stackpointer (word 288),8 * 4)) s5`;
     `zn8 =
      read(memory :> bytes(word_add stackpointer (word 160),8 * 4)) s5`] THEN
   SUBGOAL_THEN
@@ -4960,7 +4950,7 @@ let CURVE25519_X25519_ALT_CORRECT = time prove
   LOCAL_MUL_4_TAC 0 ["xn"; "s"; "d"] THEN
   LOCAL_MUL_4_TAC 0 ["zn"; "p"; "e"] THEN
   MAP_EVERY (fun t -> REABBREV_TAC t THEN POP_ASSUM SUBST_ALL_TAC)
-   [`xn4 = read(memory :> bytes(word_add stackpointer (word 320),8 * 4)) s15`;
+   [`xn4 = read(memory :> bytes(word_add stackpointer (word 288),8 * 4)) s15`;
     `zn4 =
      read(memory :> bytes(word_add stackpointer (word 160),8 * 4)) s15`] THEN
   SUBGOAL_THEN
@@ -5030,7 +5020,7 @@ let CURVE25519_X25519_ALT_CORRECT = time prove
   LOCAL_MUL_4_TAC 0 ["xn"; "s"; "d"] THEN
   LOCAL_MUL_4_TAC 0 ["zn"; "p"; "e"] THEN
   MAP_EVERY (fun t -> REABBREV_TAC t THEN POP_ASSUM SUBST_ALL_TAC)
-   [`xn2 = read(memory :> bytes(word_add stackpointer (word 320),8 * 4)) s25`;
+   [`xn2 = read(memory :> bytes(word_add stackpointer (word 288),8 * 4)) s25`;
     `zn2 =
      read(memory :> bytes(word_add stackpointer (word 160),8 * 4)) s25`] THEN
   SUBGOAL_THEN
@@ -5205,13 +5195,13 @@ let CURVE25519_X25519_ALT_CORRECT = time prove
   (*** The tweaking to force xn = 0 whenever zn = 0 ***)
 
   BIGNUM_LDIGITIZE_TAC "xn_"
-   `read(memory :> bytes(word_add stackpointer (word 320),8 * 4)) s46` THEN
+   `read(memory :> bytes(word_add stackpointer (word 288),8 * 4)) s46` THEN
   BIGNUM_LDIGITIZE_TAC "zn_"
    `read(memory :> bytes(word_add stackpointer (word 160),8 * 4)) s46` THEN
   ARM_STEPS_TAC CURVE25519_X25519_ALT_EXEC (47--60) THEN
 
   SUBGOAL_THEN
-   `read(memory :> bytes(word_add stackpointer (word 320),8 * 4)) s60 =
+   `read(memory :> bytes(word_add stackpointer (word 288),8 * 4)) s60 =
     if zn = 0 then 0 else xn`
   ASSUME_TAC THENL
    [CONV_TAC(ONCE_DEPTH_CONV BIGNUM_LEXPAND_CONV) THEN
@@ -5311,9 +5301,9 @@ let CURVE25519_X25519_ALT_CORRECT = time prove
 let CURVE25519_X25519_ALT_SUBROUTINE_CORRECT = time prove
  (`!res scalar n point X pc stackpointer returnaddress.
     aligned 16 stackpointer /\
-    ALL (nonoverlapping (word_sub stackpointer (word 432),432))
-        [(word pc,0x30e4); (res,32); (scalar,32); (point,32)] /\
-    nonoverlapping (res,32) (word pc,0x30e4)
+    ALL (nonoverlapping (word_sub stackpointer (word 368),368))
+        [(word pc,0x4420); (res,32); (scalar,32); (point,32)] /\
+    nonoverlapping (res,32) (word pc,0x4420)
     ==> ensures arm
          (\s. aligned_bytes_loaded s (word pc) curve25519_x25519_alt_mc /\
               read PC s = word pc /\
@@ -5328,7 +5318,7 @@ let CURVE25519_X25519_ALT_SUBROUTINE_CORRECT = time prove
                       X11; X12; X13; X14; X15; X16; X17] ,,
            MAYCHANGE SOME_FLAGS ,,
            MAYCHANGE [memory :> bytes(res,32);
-                      memory :> bytes(word_sub stackpointer (word 432),432)])`,
+                      memory :> bytes(word_sub stackpointer (word 368),368)])`,
   ARM_ADD_RETURN_STACK_TAC CURVE25519_X25519_ALT_EXEC
     CURVE25519_X25519_ALT_CORRECT
-    `[X19; X20; X21; X22; X23; X24]` 432);;
+    `[X19; X20; X21; X22; X23; X24]` 368);;
