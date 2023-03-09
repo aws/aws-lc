@@ -257,7 +257,18 @@ int main(int argc, char **argv) {
   }
   printf("About to AES-KW Wrap ");
   hexdump(output, out_len);
-  AES_wrap_key(&aes_key, NULL, output, kPlaintext, sizeof(kPlaintext));
+  out_len = AES_wrap_key(&aes_key, NULL, output, kPlaintext, sizeof(kPlaintext));
+  printf("  got ");
+  hexdump(output, out_len);
+
+  /* AES-KW Unwrap */
+  if (AES_set_decrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key) != 0) {
+    fprintf(stderr, "AES decrypt failed.\n");
+    goto err;
+  }
+  printf("About to AES-KW Unwrap ");
+  hexdump(output, out_len);
+  out_len = AES_unwrap_key(&aes_key, NULL, output, output, out_len);
   printf("  got ");
   hexdump(output, out_len);
 
