@@ -36,6 +36,9 @@ static const time_t invalid_after_ocsp_expire_time_sha256 = 1937505764;
 #define OCSP_REQUEST_SIGN_SUCCESS 1
 #define OCSP_REQUEST_SIGN_ERROR 0
 
+#define OCSP_URL_PARSE_SUCCESS 1
+#define OCSP_URL_PARSE_ERROR 0
+
 std::string GetTestData(const char *path);
 
 static bool DecodeBase64(std::vector<uint8_t> *out, const char *in) {
@@ -827,6 +830,48 @@ static const char good_http_response_hdr[] =
     "Content-Type: application/ocsp-response\r\n"
     "Content-Length: ";
 
+// Test that |OCSP_set_max_response_length| correctly sets the maximum response
+// length.
+TEST(OCSPRequestTest, SetResponseLength) {
+  std::string data = GetTestData(std::string("crypto/ocsp/test/aws/"
+                                             "ocsp_request.der")
+                                     .c_str());
+  std::vector<uint8_t> ocsp_request_data(data.begin(), data.end());
+  bssl::UniquePtr<OCSP_REQUEST> ocspRequest =
+      LoadOCSP_REQUEST(ocsp_request_data);
+  ASSERT_TRUE(ocspRequest);
+
+  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+  bssl::UniquePtr<OCSP_REQ_CTX> ocspReqCtx(
+      OCSP_sendreq_new(bio.get(), nullptr, nullptr, 0));
+  ASSERT_TRUE(ocspReqCtx);
+
+  // Check custom length is set correctly.
+  int new_len = 40000;
+  OCSP_set_max_response_length(ocspReqCtx.get(), new_len);
+  EXPECT_EQ((int)ocspReqCtx.get()->max_resp_len, new_len);
+
+  // Check that default length is set correctly.
+  OCSP_set_max_response_length(ocspReqCtx.get(), 0);
+  EXPECT_EQ((int)ocspReqCtx.get()->max_resp_len, OCSP_MAX_RESP_LENGTH);
+
+  // Write an HTTP OCSP response into the BIO.
+  std::string respData = GetTestData(
+      std::string("crypto/ocsp/test/aws/ocsp_response.der").c_str());
+  std::vector<uint8_t> ocsp_response_data(respData.begin(), respData.end());
+  const int respLen = (int)ocsp_response_data.size();
+  ASSERT_GT(BIO_printf(bio.get(), "%s", good_http_response_hdr), 0);
+  ASSERT_GT(BIO_printf(bio.get(), "%d\r\n\r\n", respLen), 0);
+  ASSERT_EQ(BIO_write(bio.get(), ocsp_response_data.data(), respLen), respLen);
+
+  // Set max response length to a length that is too short on purpose.
+  OCSP_set_max_response_length(ocspReqCtx.get(), 1);
+
+  // Sends out an OCSP request and expects an OCSP response in |BIO| with
+  // |OCSP_REQ_CTX_nbio|. This should fail if the expected length is too short.
+  EXPECT_FALSE(OCSP_REQ_CTX_nbio(ocspReqCtx.get()));
+}
+
 static const char malformed_http_response_hdr[] =
     "HTTP/1.200 OK\r\n"
     "Content-Type: application/ocsp-response\r\n"
@@ -939,5 +984,86 @@ TEST_P(OCSPHTTPTest, OCSPRequestHTTP) {
     ASSERT_TRUE(ocspResponse);
   } else {
     ASSERT_FALSE(ocspResponse);
+  }
+}
+
+struct OCSPURLTestVector {
+  const char *ocsp_url;
+  const char *expected_host;
+  const char *expected_port;
+  const char *expected_path;
+  int expected_ssl;
+  int expected_status;
+};
+
+static const OCSPURLTestVector kOCSPURLVectors[] = {
+    // === VALID URLs ===
+    {"http://ocsp.example.com/", "ocsp.example.com", "80", "/", 0,
+     OCSP_URL_PARSE_SUCCESS},
+    // Non-standard port.
+    {"http://ocsp.example.com:8080/", "ocsp.example.com", "8080", "/", 0,
+     OCSP_URL_PARSE_SUCCESS},
+    {"http://ocsp.example.com/ocsp", "ocsp.example.com", "80", "/ocsp", 0,
+     OCSP_URL_PARSE_SUCCESS},
+    // Port for HTTPS is 443.
+    {"https://ocsp.example.com/", "ocsp.example.com", "443", "/", 1,
+     OCSP_URL_PARSE_SUCCESS},
+    // Empty path, the default should be "/".
+    {"https://ocsp.example.com", "ocsp.example.com", "443", "/", 1,
+     OCSP_URL_PARSE_SUCCESS},
+    // Parsing an IPv6 host address.
+    {"http://[2001:db8::1]/ocsp", "2001:db8::1", "80", "/ocsp", 0,
+     OCSP_URL_PARSE_SUCCESS},
+    {"https://[2001:db8::1]/ocsp", "2001:db8::1", "443", "/ocsp", 1,
+     OCSP_URL_PARSE_SUCCESS},
+    // Parsing a URL with an invalid port, but OpenSSL still parses the string
+    // where the port is expected.
+    {"http://ocsp.example.com:invalid/", "ocsp.example.com", "invalid", "/", 0,
+     OCSP_URL_PARSE_SUCCESS},
+    // Empty host component.
+    {"http:///ocsp", "", "80", "/ocsp", 0, OCSP_URL_PARSE_SUCCESS},
+
+    // === INVALID URLs ===
+    // Not http or https in front.
+    {"htp://ocsp.example.com/", nullptr, nullptr, nullptr, 0,
+     OCSP_URL_PARSE_ERROR},
+    // Double slash is mandatory.
+    {"http:/ocsp.example.com/", nullptr, nullptr, nullptr, 0,
+     OCSP_URL_PARSE_ERROR},
+    // Malformed.
+    {"httocsp.example.com/", nullptr, nullptr, nullptr, 0,
+     OCSP_URL_PARSE_ERROR},
+    // No closing bracket for ipv6.
+    {"http://[2001:db8::1/", nullptr, nullptr, nullptr, 0,
+     OCSP_URL_PARSE_ERROR},
+};
+
+class OCSPURLTest : public testing::TestWithParam<OCSPURLTestVector> {};
+
+INSTANTIATE_TEST_SUITE_P(All, OCSPURLTest, testing::ValuesIn(kOCSPURLVectors));
+
+TEST_P(OCSPURLTest, OCSPParseURL) {
+  const OCSPURLTestVector &t = GetParam();
+
+  char *host = nullptr;
+  char *path = nullptr;
+  char *port = nullptr;
+  int is_ssl;
+
+  int ret = OCSP_parse_url(t.ocsp_url, &host, &port, &path, &is_ssl);
+  if (t.expected_status == OCSP_URL_PARSE_SUCCESS) {
+    EXPECT_EQ(ret, OCSP_URL_PARSE_SUCCESS);
+    EXPECT_EQ(std::string(host), std::string(t.expected_host));
+    EXPECT_EQ(std::string(port), std::string(t.expected_port));
+    EXPECT_EQ(std::string(path), std::string(t.expected_path));
+    EXPECT_EQ(std::string(path), std::string(t.expected_path));
+    OPENSSL_free(host);
+    OPENSSL_free(path);
+    OPENSSL_free(port);
+  } else {
+    EXPECT_EQ(ret, OCSP_URL_PARSE_ERROR);
+    EXPECT_FALSE(host);
+    EXPECT_FALSE(port);
+    EXPECT_FALSE(path);
   }
 }

@@ -99,6 +99,13 @@ OPENSSL_EXPORT OCSP_REQ_CTX *OCSP_REQ_CTX_new(BIO *io, int maxline);
 // OCSP_REQ_CTX_free frees the memory allocated by |OCSP_REQ_CTX|.
 OPENSSL_EXPORT void OCSP_REQ_CTX_free(OCSP_REQ_CTX *rctx);
 
+// OCSP_set_max_response_length sets the maximum response length for an OCSP
+// request over HTTP to |len|. If a custom max response length is needed, this
+// should be set before |OCSP_REQ_CTX| is sent out to retrieve the OCSP
+// response.
+OPENSSL_EXPORT void OCSP_set_max_response_length(OCSP_REQ_CTX *rctx,
+                                                 unsigned long len);
+
 // OCSP_REQ_CTX_http adds the HTTP request line to the context.
 OPENSSL_EXPORT int OCSP_REQ_CTX_http(OCSP_REQ_CTX *rctx, const char *op,
                                      const char *path);
@@ -179,6 +186,32 @@ OPENSSL_EXPORT OCSP_CERTID *OCSP_cert_to_id(const EVP_MD *dgst,
                                             const X509 *subject,
                                             const X509 *issuer);
 
+// OCSP_parse_url parses an OCSP responder URL and returns its component parts.
+// |url| argument must be a null-terminated string containing the URL to be
+// parsed. The other arguments are pointers to variables that will be set to the
+// parsed components of the URL. When |OCSP_parse_url| returns 1, these
+// arguments will allocate new memory with a copy of value. It is the caller's
+// responsibility to free these.
+//
+//  |phost|: A pointer to a char pointer that will be set to the host component
+//           of the URL. If the URL does not contain a host component, this will
+//           be set to an empty string.
+//  |pport|: A pointer to an int that will be set to the port number specified
+//           in the URL, or to the default port (80 for HTTP, 443 for HTTPS)
+//           if no port number is specified.
+//  |ppath|: A pointer to a char pointer that will be set to the path component
+//           of the URL. If the URL does not contain a path component, this
+//           will be set to "/".
+//  |pssl|:  A pointer to an int that will be set to 1 if the URL specifies the
+//           HTTPS protocol, or 0 if HTTP.
+//
+// Note: |OCSP_parse_url| does not perform any validation of the URL or its
+//        components beyond basic parsing. It is the responsibility of the
+//        caller to ensure that the URL is well-formed and valid.
+OPENSSL_EXPORT int OCSP_parse_url(const char *url, char **phost, char **pport,
+                                  char **ppath, int *pssl);
+
+
 #ifdef __cplusplus
 }
 #endif
@@ -228,6 +261,7 @@ BSSL_NAMESPACE_END
 #define OCSP_R_SIGNER_CERTIFICATE_NOT_FOUND 118
 #define OCSP_R_UNKNOWN_MESSAGE_DIGEST 119
 #define OCSP_R_UNKNOWN_NID 120
+#define OCSP_R_ERROR_PARSING_URL 121
 #define OCSP_R_NO_SIGNER_KEY 130
 #define OCSP_R_OCSP_REQUEST_DUPLICATE_SIGNATURE 131
 

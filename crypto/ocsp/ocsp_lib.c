@@ -1,6 +1,9 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
+#include <openssl/mem.h>
+#include <string.h>
+
 #include "internal.h"
 
 OCSP_CERTID *OCSP_cert_to_id(const EVP_MD *dgst, const X509 *subject,
@@ -122,4 +125,106 @@ int OCSP_id_cmp(const OCSP_CERTID *a, const OCSP_CERTID *b) {
   // Compare certificate serialNumber
   ret = ASN1_INTEGER_cmp(a->serialNumber, b->serialNumber);
   return ret;
+}
+
+int OCSP_parse_url(const char *url, char **phost, char **pport, char **ppath,
+                   int *pssl) {
+  char *parser, *buffer;
+  char *host = NULL;
+  char *port = NULL;
+
+  *phost = NULL;
+  *pport = NULL;
+  *ppath = NULL;
+
+  // Duplicate into the buffer since the contents are going to be changed.
+  buffer = OPENSSL_strdup(url);
+  if (buffer == NULL) {
+    goto mem_err;
+  }
+
+  // Check for initial colon
+  parser = strchr(buffer, ':');
+  if (parser == NULL) {
+    goto parse_err;
+  }
+  *(parser++) = '\0';
+
+  // Set default ports for http and https. If a port is specified later, this
+  // will be overwritten. |pssl| will be set to true, if https is being used.
+  if (strcmp(buffer, "http") == 0) {
+    *pssl = 0;
+    port = (char *)"80";
+  } else if (strcmp(buffer, "https") == 0) {
+    *pssl = 1;
+    port = (char *)"443";
+  } else {
+    goto parse_err;
+  }
+
+  // Check for double slash.
+  if ((parser[0] != '/') || (parser[1] != '/')) {
+    goto parse_err;
+  }
+  parser += 2;
+  host = parser;
+
+  // Check for trailing part of path.
+  parser = strchr(parser, '/');
+  if (parser == NULL) {
+    // Default is "/" if there is no trailing path in the URL.
+    *ppath = OPENSSL_strdup("/");
+  } else {
+    *ppath = OPENSSL_strdup(parser);
+    // Set start of path to 0 so hostname is valid.
+    *parser = '\0';
+  }
+  if (*ppath == NULL) {
+    goto mem_err;
+  }
+
+  parser = host;
+  // Checks if the host is an ipv6 host address.
+  if (host[0] == '[') {
+    host++;
+    parser = strchr(host, ']');
+    if (parser == NULL) {
+      goto parse_err;
+    }
+    *parser = '\0';
+    parser++;
+  }
+
+  // Look for optional ':' for port number.
+  if ((parser = strchr(parser, ':'))) {
+    *parser = 0;
+    port = parser + 1;
+  }
+
+  *pport = OPENSSL_strdup(port);
+  if (*pport == NULL) {
+    goto mem_err;
+  }
+
+  *phost = OPENSSL_strdup(host);
+  if (*phost == NULL) {
+    goto mem_err;
+  }
+  OPENSSL_free(buffer);
+  return 1;
+
+mem_err:
+  OPENSSL_PUT_ERROR(OCSP, ERR_R_MALLOC_FAILURE);
+  goto err;
+parse_err:
+  OPENSSL_PUT_ERROR(OCSP, OCSP_R_ERROR_PARSING_URL);
+err:
+  OPENSSL_free(buffer);
+  OPENSSL_free(*ppath);
+  *ppath = NULL;
+  OPENSSL_free(*pport);
+  *pport = NULL;
+  OPENSSL_free(*phost);
+  *phost = NULL;
+  return 0;
 }
