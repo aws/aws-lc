@@ -29,6 +29,7 @@
 
 #include "internal.h"
 #include "fipsmodule/cpucap/internal.h"
+#include "fipsmodule/modes/internal.h"
 
 
 class ImplDispatchTest : public ::testing::Test {
@@ -39,19 +40,21 @@ class ImplDispatchTest : public ::testing::Test {
     avx_movbe_ = CRYPTO_is_AVX_capable() && CRYPTO_is_MOVBE_capable();
     ssse3_ = CRYPTO_is_SSSE3_capable();
     sha_ext_ = CRYPTO_is_SHAEXT_capable();
-#if !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
     vaes_vpclmulqdq_ =
         (OPENSSL_ia32cap_P[2] & 0xC0030000) &&         // AVX512{F+DQ+BW+VL}
         (((OPENSSL_ia32cap_P[3] >> 9) & 0x3) == 0x3);  // VAES + VPCLMULQDQ
-#else
-    vaes_vpclmulqdq_ = false;
-#endif
     is_x86_64_ =
 #if defined(OPENSSL_X86_64)
         true;
 #else
         false;
 #endif
+    is_assembler_too_old =
+#if defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+        true;
+#else
+        false;
+#endif // MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX
 #endif  // X86 || X86_64
   }
 
@@ -68,7 +71,6 @@ class ImplDispatchTest : public ::testing::Test {
 
     for (const auto& flag : flags) {
       SCOPED_TRACE(flag.first);
-
       ASSERT_LT(flag.first, sizeof(BORINGSSL_function_hit));
       EXPECT_EQ(flag.second, BORINGSSL_function_hit[flag.first] == 1);
       BORINGSSL_function_hit[flag.first] = 0;
@@ -87,6 +89,7 @@ class ImplDispatchTest : public ::testing::Test {
   bool ssse3_ = false;
   bool sha_ext_ = false;
   bool is_x86_64_ = false;
+  bool is_assembler_too_old = false;
 #endif
 };
 
@@ -105,15 +108,18 @@ constexpr size_t kFlag_aes_gcm_encrypt_avx512 = 7;
 TEST_F(ImplDispatchTest, AEAD_AES_GCM) {
   AssertFunctionsHit(
       {
-          {kFlag_aes_hw_ctr32_encrypt_blocks, aesni_ && !vaes_vpclmulqdq_},
+          {kFlag_aes_hw_ctr32_encrypt_blocks, aesni_ &&
+           (is_assembler_too_old || !vaes_vpclmulqdq_)},
           {kFlag_aes_hw_encrypt, aesni_},
           {kFlag_aes_hw_set_encrypt_key, aesni_},
           {kFlag_aesni_gcm_encrypt,
-           is_x86_64_ && aesni_ && avx_movbe_ && !vaes_vpclmulqdq_},
+           is_x86_64_ && aesni_ && avx_movbe_ &&
+           !is_assembler_too_old && !vaes_vpclmulqdq_},
           {kFlag_vpaes_encrypt, ssse3_ && !aesni_},
           {kFlag_vpaes_set_encrypt_key, ssse3_ && !aesni_},
           {kFlag_aes_gcm_encrypt_avx512,
-           is_x86_64_ && aesni_ && vaes_vpclmulqdq_},
+           is_x86_64_ && aesni_ && !is_assembler_too_old &&
+           vaes_vpclmulqdq_},
       },
       [] {
         const uint8_t kZeros[16] = {0};
