@@ -39,6 +39,11 @@ static int kem_get_priv_raw(const EVP_PKEY *pkey, uint8_t *out,
     return 0;
   }
 
+  if (key->secret_key == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_KEY_SET);
+    return 0;
+  }
+
   OPENSSL_memcpy(out, key->secret_key, kem->secret_key_len);
   *out_len = kem->secret_key_len;
 
@@ -66,6 +71,11 @@ static int kem_get_pub_raw(const EVP_PKEY *pkey, uint8_t *out,
 
   if (*out_len < kem->public_key_len) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_BUFFER_TOO_SMALL);
+    return 0;
+  }
+
+  if (key->public_key == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_KEY_SET);
     return 0;
   }
 
