@@ -456,6 +456,8 @@ SHA3_Squeeze:
 	mov	$out,x1
 	mov	$len,x2
 	mov	$bsz,x3
+	cmp	$len,#0
+	beq	.Lsqueeze_done
 .Loop_squeeze:
 	ldr	x4,[x0],#8
 	cmp	$len,#8
@@ -731,6 +733,8 @@ SHA3_Squeeze_cext:
 	add	x29,sp,#0
 	mov	x9,$ctx
 	mov	x10,$bsz
+	cmp	$len,#0
+	beq	.Lsqueeze_done_ce
 .Loop_squeeze_ce:
 	ldr	x4,[x9],#8
 	cmp	$len,#8
