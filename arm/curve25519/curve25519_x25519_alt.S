@@ -77,15 +77,15 @@
 // Macro wrapping up the basic field operation bignum_mul_p25519_alt, only
 // trivially different from a pure function call to that subroutine.
 
-#define mul_p25519(p0,p1,p2)                    \
-        ldp     x3, x4, [p1];                   \
-        ldp     x7, x8, [p2];                   \
+#define mul_p25519(P0,P1,P2)                    \
+        ldp     x3, x4, [P1];                   \
+        ldp     x7, x8, [P2];                   \
         mul     x12, x3, x7;                    \
         umulh   x13, x3, x7;                    \
         mul     x11, x3, x8;                    \
         umulh   x14, x3, x8;                    \
         adds    x13, x13, x11;                  \
-        ldp     x9, x10, [p2+16];               \
+        ldp     x9, x10, [P2+16];               \
         mul     x11, x3, x9;                    \
         umulh   x15, x3, x9;                    \
         adcs    x14, x14, x11;                  \
@@ -93,7 +93,7 @@
         umulh   x16, x3, x10;                   \
         adcs    x15, x15, x11;                  \
         adc     x16, x16, xzr;                  \
-        ldp     x5, x6, [p1+16];                \
+        ldp     x5, x6, [P1+16];                \
         mul     x11, x4, x7;                    \
         adds    x13, x13, x11;                  \
         mul     x11, x4, x8;                    \
@@ -145,7 +145,7 @@
         umulh   x11, x6, x9;                    \
         adcs    x4, x4, x11;                    \
         adc     x5, x5, xzr;                    \
-        mov     x7, #38;                        \
+        mov     x7, #0x26;                      \
         mul     x11, x7, x16;                   \
         umulh   x9, x7, x16;                    \
         adds    x12, x12, x11;                  \
@@ -158,28 +158,26 @@
         mul     x11, x7, x5;                    \
         umulh   x5, x7, x5;                     \
         adcs    x15, x15, x11;                  \
-        cset    x16, hs;                        \
-        adds    x13, x13, x9;                   \
-        adcs    x14, x14, x3;                   \
-        adcs    x15, x15, x4;                   \
+        cset    x16, cs;                        \
+        adds    x15, x15, x4;                   \
         adc     x16, x16, x5;                   \
         cmn     x15, x15;                       \
         orr     x15, x15, #0x8000000000000000;  \
         adc     x8, x16, x16;                   \
-        mov     x7, #19;                        \
+        mov     x7, #0x13;                      \
         madd    x11, x7, x8, x7;                \
         adds    x12, x12, x11;                  \
-        adcs    x13, x13, xzr;                  \
-        adcs    x14, x14, xzr;                  \
+        adcs    x13, x13, x9;                   \
+        adcs    x14, x14, x3;                   \
         adcs    x15, x15, xzr;                  \
-        csel    x7, x7, xzr, lo;                \
+        csel    x7, x7, xzr, cc;                \
         subs    x12, x12, x7;                   \
         sbcs    x13, x13, xzr;                  \
         sbcs    x14, x14, xzr;                  \
         sbc     x15, x15, xzr;                  \
         and     x15, x15, #0x7fffffffffffffff;  \
-        stp     x12, x13, [p0];                 \
-        stp     x14, x15, [p0+16]
+        stp     x12, x13, [P0];                 \
+        stp     x14, x15, [P0+16]
 
 // A version of multiplication that only guarantees output < 2 * p_25519.
 // This basically skips the +1 and final correction in quotient estimation.
@@ -252,7 +250,7 @@
         umulh   x11, x6, x9;                    \
         adcs    x4, x4, x11;                    \
         adc     x5, x5, xzr;                    \
-        mov     x7, #38;                        \
+        mov     x7, #0x26;                      \
         mul     x11, x7, x16;                   \
         umulh   x9, x7, x16;                    \
         adds    x12, x12, x11;                  \
@@ -265,19 +263,17 @@
         mul     x11, x7, x5;                    \
         umulh   x5, x7, x5;                     \
         adcs    x15, x15, x11;                  \
-        cset    x16, hs;                        \
-        adds    x13, x13, x9;                   \
-        adcs    x14, x14, x3;                   \
-        adcs    x15, x15, x4;                   \
+        cset    x16, cs;                        \
+        adds    x15, x15, x4;                   \
         adc     x16, x16, x5;                   \
         cmn     x15, x15;                       \
         bic     x15, x15, #0x8000000000000000;  \
         adc     x8, x16, x16;                   \
-        mov     x7, #19;                        \
+        mov     x7, #0x13;                      \
         mul     x11, x7, x8;                    \
         adds    x12, x12, x11;                  \
-        adcs    x13, x13, xzr;                  \
-        adcs    x14, x14, xzr;                  \
+        adcs    x13, x13, x9;                   \
+        adcs    x14, x14, x3;                   \
         adc     x15, x15, xzr;                  \
         stp     x12, x13, [P0];                 \
         stp     x14, x15, [P0+16]
@@ -286,11 +282,11 @@
 // basically skipping the +1 in the quotient estimate and the final
 // optional correction.
 
-#define sqr_4(p0,p1)                            \
-        ldp     x2, x3, [p1];                   \
+#define sqr_4(P0,P1)                            \
+        ldp     x2, x3, [P1];                   \
         mul     x9, x2, x3;                     \
         umulh   x10, x2, x3;                    \
-        ldp     x4, x5, [p1+16];                \
+        ldp     x4, x5, [P1+16];                \
         mul     x11, x2, x5;                    \
         umulh   x12, x2, x5;                    \
         mul     x7, x2, x4;                     \
@@ -316,7 +312,7 @@
         adcs    x12, x12, x12;                  \
         adcs    x13, x13, x13;                  \
         adcs    x14, x14, x14;                  \
-        cset    x6, hs;                         \
+        cset    x6, cs;                         \
         umulh   x7, x2, x2;                     \
         mul     x8, x2, x2;                     \
         adds    x9, x9, x7;                     \
@@ -332,7 +328,7 @@
         adcs    x14, x14, x7;                   \
         umulh   x7, x5, x5;                     \
         adc     x6, x6, x7;                     \
-        mov     x3, #38;                        \
+        mov     x3, #0x26;                      \
         mul     x7, x3, x12;                    \
         umulh   x4, x3, x12;                    \
         adds    x8, x8, x7;                     \
@@ -345,22 +341,20 @@
         mul     x7, x3, x6;                     \
         umulh   x6, x3, x6;                     \
         adcs    x11, x11, x7;                   \
-        cset    x12, hs;                        \
-        adds    x9, x9, x4;                     \
-        adcs    x10, x10, x13;                  \
-        adcs    x11, x11, x14;                  \
+        cset    x12, cs;                        \
+        adds    x11, x11, x14;                  \
         adc     x12, x12, x6;                   \
         cmn     x11, x11;                       \
         bic     x11, x11, #0x8000000000000000;  \
         adc     x2, x12, x12;                   \
-        mov     x3, #19;                        \
+        mov     x3, #0x13;                      \
         mul     x7, x3, x2;                     \
         adds    x8, x8, x7;                     \
-        adcs    x9, x9, xzr;                    \
-        adcs    x10, x10, xzr;                  \
+        adcs    x9, x9, x4;                     \
+        adcs    x10, x10, x13;                  \
         adc     x11, x11, xzr;                  \
-        stp     x8, x9, [p0];                   \
-        stp     x10, x11, [p0+16]
+        stp     x8, x9, [P0];                   \
+        stp     x10, x11, [P0+16]
 
 // Modular addition with double modulus 2 * p_25519 = 2^256 - 38.
 // This only ensures that the result fits in 4 digits, not that it is reduced
