@@ -154,8 +154,7 @@ int main(int argc, char **argv) {
 
   /* AES-CCM */
   OPENSSL_memset(nonce, 0, sizeof(nonce));
-  if (!EVP_AEAD_CTX_init(&aead_ctx, EVP_aead_aes_128_ccm_bluetooth(), kAESKey, sizeof(kAESKey), 0, NULL))
-  {
+  if (!EVP_AEAD_CTX_init(&aead_ctx, EVP_aead_aes_128_ccm_bluetooth(), kAESKey, sizeof(kAESKey), 0, NULL)) {
     fprintf(stderr, "EVP_AED_CTX_init for AES-128-CCM failed.\n");
     goto err;
   }
@@ -166,8 +165,7 @@ int main(int argc, char **argv) {
   hexdump(kPlaintext, sizeof(kPlaintext));
   if (!EVP_AEAD_CTX_seal(&aead_ctx, output, &out_len, sizeof(output), nonce,
                         EVP_AEAD_nonce_length(EVP_aead_aes_128_ccm_bluetooth()),
-                        kPlaintext, sizeof(kPlaintext), NULL, 0))
-  {
+                        kPlaintext, sizeof(kPlaintext), NULL, 0)) {
     fprintf(stderr, "EVP_AEAD_CTX_seal for AES-128-CCM failed.\n");
     goto err;
   }
@@ -184,8 +182,7 @@ int main(int argc, char **argv) {
   hexdump(output, out_len);
   if (!EVP_AEAD_CTX_open(&aead_ctx, output, &out_len, sizeof(output), nonce,
                         EVP_AEAD_nonce_length(EVP_aead_aes_128_ccm_bluetooth()),
-                        output, out_len, NULL, 0))
-  {
+                        output, out_len, NULL, 0)) {
     fprintf(stderr, "EVP_AEAD_CTX_open for AES-128-CCM failed.\n");
     goto err;
   }
@@ -198,15 +195,13 @@ int main(int argc, char **argv) {
   /* AES-ECB */
   /* AES-ECB Encryption */
   OPENSSL_memset(aes_iv, 0, sizeof(aes_iv));
-  if (AES_set_encrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key) != 0)
-  {
+  if (AES_set_encrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key) != 0) {
     fprintf(stderr, "AES_set_encrypt_key failed.\n");
     goto err;
   }
   printf("About to AES-ECB encrypt ");
   hexdump(output, out_len);
-  for (size_t j = 0; j < sizeof(kPlaintext) / 16; j++)
-  {
+  for (size_t j = 0; j < sizeof(kPlaintext) / 16; j++) {
     AES_ecb_encrypt(&kPlaintext[j * 128], & output[j * 128], &aes_key, AES_ENCRYPT);
   }
   printf("  got ");
@@ -220,8 +215,7 @@ int main(int argc, char **argv) {
   }
   printf("About to AES-ECB decrypt ");
   hexdump(output, out_len);
-  for (size_t j = 0; j < out_len / 16; j++)
-  {
+  for (size_t j = 0; j < out_len / 16; j++) {
     AES_ecb_encrypt(&output[j * 128], & output[j * 128], &aes_key, AES_DECRYPT);
   }
   printf("  got ");
@@ -235,8 +229,7 @@ int main(int argc, char **argv) {
   /* AES-CTR */
   /* AES-CTR Encryption */
   OPENSSL_memset(aes_iv, 0, sizeof(aes_iv));
-  if (AES_set_encrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key) != 0)
-  {
+  if (AES_set_encrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key) != 0) {
     fprintf(stderr, "AES_set_encrypt_key failed.\n");
     goto err;
   }
@@ -258,8 +251,7 @@ int main(int argc, char **argv) {
   OPENSSL_cleanse(&aes_key, sizeof(aes_key));
 
   /* AES-KW Wrap */
-  if (AES_set_encrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key) != 0)
-  {
+  if (AES_set_encrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key) != 0) {
     fprintf(stderr, "AES_set_encrypt_key failed.\n");
     goto err;
   }
