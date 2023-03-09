@@ -22,7 +22,8 @@ static const uint8_t kOCSPRequestDER[] = {
 };
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
-  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(buf, len));
+  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+  BIO_write(bio.get(), buf, len);
   // |OCSP_REQ_CTX| needs a dummy OCSP_REQUEST to be sent out, before an
   // HTTP OCSP response can be expected.
   const uint8_t *data = kOCSPRequestDER;
@@ -38,6 +39,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
     const uint8_t *contents;
     size_t outlen;
     if(!BIO_mem_contents(req_ctx->mem, &contents, &outlen)){
+      fprintf(stderr, "SSL Serialization fuzz executed code block 0.\n");
       return 1;
     }
   }
