@@ -41,7 +41,6 @@
 #define resx res, #0
 
 // Pointer-offset pairs for temporaries on stack with some aliasing.
-// Both dmsn and dnsm need space for >= 5 digits, and we allocate 8
 
 #define scalar sp, #(0*NUMSIZE)
 
@@ -62,18 +61,18 @@
 #define dmsn sp, #(6*NUMSIZE)
 #define p sp, #(6*NUMSIZE)
 
-#define xm sp, #(8*NUMSIZE)
-#define dnsm sp, #(8*NUMSIZE)
-#define spro sp, #(8*NUMSIZE)
+#define xm sp, #(7*NUMSIZE)
+#define dnsm sp, #(7*NUMSIZE)
+#define spro sp, #(7*NUMSIZE)
 
-#define xn sp, #(10*NUMSIZE)
-#define s sp, #(10*NUMSIZE)
+#define d sp, #(8*NUMSIZE)
 
-#define d sp, #(11*NUMSIZE)
+#define xn sp, #(9*NUMSIZE)
+#define s sp, #(9*NUMSIZE)
 
 // Total size to reserve on the stack
 
-#define NSPACE (12*NUMSIZE)
+#define NSPACE (10*NUMSIZE)
 
 // Macro wrapping up the basic field operation bignum_mul_p25519_alt, only
 // trivially different from a pure function call to that subroutine.
@@ -283,99 +282,6 @@
         stp     x12, x13, [P0];                 \
         stp     x14, x15, [P0+16]
 
-// Multiplication just giving a 5-digit result (actually < 39 * 2^256)
-// by not doing anything beyond the first stage of reduction
-
-#define mul_5(p0,p1,p2)                         \
-        ldp     x3, x4, [p1];                   \
-        ldp     x7, x8, [p2];                   \
-        mul     x12, x3, x7;                    \
-        umulh   x13, x3, x7;                    \
-        mul     x11, x3, x8;                    \
-        umulh   x14, x3, x8;                    \
-        adds    x13, x13, x11;                  \
-        ldp     x9, x10, [p2+16];               \
-        mul     x11, x3, x9;                    \
-        umulh   x15, x3, x9;                    \
-        adcs    x14, x14, x11;                  \
-        mul     x11, x3, x10;                   \
-        umulh   x16, x3, x10;                   \
-        adcs    x15, x15, x11;                  \
-        adc     x16, x16, xzr;                  \
-        ldp     x5, x6, [p1+16];                \
-        mul     x11, x4, x7;                    \
-        adds    x13, x13, x11;                  \
-        mul     x11, x4, x8;                    \
-        adcs    x14, x14, x11;                  \
-        mul     x11, x4, x9;                    \
-        adcs    x15, x15, x11;                  \
-        mul     x11, x4, x10;                   \
-        adcs    x16, x16, x11;                  \
-        umulh   x3, x4, x10;                    \
-        adc     x3, x3, xzr;                    \
-        umulh   x11, x4, x7;                    \
-        adds    x14, x14, x11;                  \
-        umulh   x11, x4, x8;                    \
-        adcs    x15, x15, x11;                  \
-        umulh   x11, x4, x9;                    \
-        adcs    x16, x16, x11;                  \
-        adc     x3, x3, xzr;                    \
-        mul     x11, x5, x7;                    \
-        adds    x14, x14, x11;                  \
-        mul     x11, x5, x8;                    \
-        adcs    x15, x15, x11;                  \
-        mul     x11, x5, x9;                    \
-        adcs    x16, x16, x11;                  \
-        mul     x11, x5, x10;                   \
-        adcs    x3, x3, x11;                    \
-        umulh   x4, x5, x10;                    \
-        adc     x4, x4, xzr;                    \
-        umulh   x11, x5, x7;                    \
-        adds    x15, x15, x11;                  \
-        umulh   x11, x5, x8;                    \
-        adcs    x16, x16, x11;                  \
-        umulh   x11, x5, x9;                    \
-        adcs    x3, x3, x11;                    \
-        adc     x4, x4, xzr;                    \
-        mul     x11, x6, x7;                    \
-        adds    x15, x15, x11;                  \
-        mul     x11, x6, x8;                    \
-        adcs    x16, x16, x11;                  \
-        mul     x11, x6, x9;                    \
-        adcs    x3, x3, x11;                    \
-        mul     x11, x6, x10;                   \
-        adcs    x4, x4, x11;                    \
-        umulh   x5, x6, x10;                    \
-        adc     x5, x5, xzr;                    \
-        umulh   x11, x6, x7;                    \
-        adds    x16, x16, x11;                  \
-        umulh   x11, x6, x8;                    \
-        adcs    x3, x3, x11;                    \
-        umulh   x11, x6, x9;                    \
-        adcs    x4, x4, x11;                    \
-        adc     x5, x5, xzr;                    \
-        mov     x7, #38;                        \
-        mul     x11, x7, x16;                   \
-        umulh   x9, x7, x16;                    \
-        adds    x12, x12, x11;                  \
-        mul     x11, x7, x3;                    \
-        umulh   x3, x7, x3;                     \
-        adcs    x13, x13, x11;                  \
-        mul     x11, x7, x4;                    \
-        umulh   x4, x7, x4;                     \
-        adcs    x14, x14, x11;                  \
-        mul     x11, x7, x5;                    \
-        umulh   x5, x7, x5;                     \
-        adcs    x15, x15, x11;                  \
-        cset    x16, hs;                        \
-        adds    x13, x13, x9;                   \
-        adcs    x14, x14, x3;                   \
-        adcs    x15, x15, x4;                   \
-        adc     x16, x16, x5;                   \
-        stp     x12, x13, [p0];                 \
-        stp     x14, x15, [p0+16];              \
-        str     x16, [p0+32]
-
 // Squaring just giving a result < 2 * p_25519, which is done by
 // basically skipping the +1 in the quotient estimate and the final
 // optional correction.
@@ -456,33 +362,7 @@
         stp     x8, x9, [p0];                   \
         stp     x10, x11, [p0+16]
 
-// Add 5-digit inputs and normalize to 4 digits
-
-#define add5_4(p0,p1,p2)                        \
-        ldp     x0, x1, [p1];                   \
-        ldp     x4, x5, [p2];                   \
-        adds    x0, x0, x4;                     \
-        adcs    x1, x1, x5;                     \
-        ldp     x2, x3, [p1+16];                \
-        ldp     x6, x7, [p2+16];                \
-        adcs    x2, x2, x6;                     \
-        adcs    x3, x3, x7;                     \
-        ldr     x4, [p1+32];                    \
-        ldr     x5, [p2+32];                    \
-        adc     x4, x4, x5;                     \
-        cmn     x3, x3;                         \
-        bic     x3, x3, #0x8000000000000000;    \
-        adc     x8, x4, x4;                     \
-        mov     x7, #19;                        \
-        mul     x11, x7, x8;                    \
-        adds    x0, x0, x11;                    \
-        adcs    x1, x1, xzr;                    \
-        adcs    x2, x2, xzr;                    \
-        adc     x3, x3, xzr;                    \
-        stp     x0, x1, [p0];                   \
-        stp     x2, x3, [p0+16]
-
-// Modular addition and doubling with double modulus 2 * p_25519 = 2^256 - 38.
+// Modular addition with double modulus 2 * p_25519 = 2^256 - 38.
 // This only ensures that the result fits in 4 digits, not that it is reduced
 // even w.r.t. double modulus. The result is always correct modulo provided
 // the sum of the inputs is < 2^256 + 2^256 - 38, so in particular provided
@@ -525,40 +405,6 @@
         sbc     x8, x8, xzr;                    \
         stp     x5, x6, [p0];                   \
         stp     x7, x8, [p0+16]
-
-// 5-digit subtraction with upward bias to make it positive, adding
-// 1000 * (2^255 - 19) = 2^256 * 500 - 19000, then normalizing to 4 digits
-
-#define sub5_4(p0,p1,p2)                        \
-        ldp     x0, x1, [p1];                   \
-        ldp     x4, x5, [p2];                   \
-        subs    x0, x0, x4;                     \
-        sbcs    x1, x1, x5;                     \
-        ldp     x2, x3, [p1+16];                \
-        ldp     x6, x7, [p2+16];                \
-        sbcs    x2, x2, x6;                     \
-        sbcs    x3, x3, x7;                     \
-        ldr     x4, [p1+32];                    \
-        ldr     x5, [p2+32];                    \
-        sbc     x4, x4, x5;                     \
-        mov     x7, -19000;                     \
-        adds x0, x0, x7;                        \
-        sbcs    x1, x1, xzr;                    \
-        sbcs    x2, x2, xzr;                    \
-        sbcs    x3, x3, xzr;                    \
-        mov     x7, 499;                        \
-        adc     x4, x4, x7;                     \
-        cmn     x3, x3;                         \
-        bic     x3, x3, #0x8000000000000000;    \
-        adc     x8, x4, x4;                     \
-        mov     x7, #19;                        \
-        mul     x11, x7, x8;                    \
-        adds    x0, x0, x11;                    \
-        adcs    x1, x1, xzr;                    \
-        adcs    x2, x2, xzr;                    \
-        adc     x3, x3, xzr;                    \
-        stp     x0, x1, [p0];                   \
-        stp     x2, x3, [p0+16]
 
 // Combined z = c * x + y with reduction only < 2 * p_25519
 // where c is initially in the X1 register. It is assumed
@@ -688,7 +534,7 @@ scalarloop:
 // ADDING: dmsn = dm * sn
 // DOUBLING: mux d = xt - zt and s = xt + zt for appropriate choice of (xt,zt)
 
-        mul_5(dmsn,sn,dm)
+        mul_4(dmsn,sn,dm)
 
         lsr     x0, i, #6
         ldr     x2, [sp, x0, lsl #3]    // Exploiting scalar = sp exactly
@@ -703,7 +549,7 @@ scalarloop:
 
 // ADDING: dnsm = sm * dn
 
-        mul_5(dnsm,sm,dn)
+        mul_4(dnsm,sm,dn)
 
 // DOUBLING: d = (xt - zt)^2
 
@@ -712,9 +558,9 @@ scalarloop:
 // ADDING: dpro = (dmsn - dnsm)^2, spro = (dmsn + dnsm)^2
 // DOUBLING: s = (xt + zt)^2
 
-        sub5_4(dpro,dmsn,dnsm)
+        sub_twice4(dpro,dmsn,dnsm)
         sqr_4(s,s)
-        add5_4(spro,dmsn,dnsm)
+        add_twice4(spro,dmsn,dnsm)
         sqr_4(dpro,dpro)
 
 // DOUBLING: p = 4 * xt * zt = s - d
