@@ -4358,7 +4358,7 @@ aes_gcm_encrypt_avx512:
 .Lencrypt_seh_begin:
 #ifdef BORINGSSL_DISPATCH_TEST
 .extern     BORINGSSL_function_hit
-        movb              \$1,BORINGSSL_function_hit+6(%rip)
+        movb              \$1,BORINGSSL_function_hit+7(%rip)
 #endif
         endbranch
 ___

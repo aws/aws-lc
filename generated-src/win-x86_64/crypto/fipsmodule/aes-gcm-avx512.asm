@@ -3984,7 +3984,7 @@ aes_gcm_encrypt_avx512:
 $L$encrypt_seh_begin:
 %ifdef BORINGSSL_DISPATCH_TEST
 EXTERN	BORINGSSL_function_hit
-	mov	BYTE[((BORINGSSL_function_hit+6))],1
+	mov	BYTE[((BORINGSSL_function_hit+7))],1
 %endif
 DB	243,15,30,250
 	push	rbx

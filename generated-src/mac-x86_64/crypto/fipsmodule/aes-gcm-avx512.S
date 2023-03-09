@@ -3909,7 +3909,7 @@ _aes_gcm_encrypt_avx512:
 L$encrypt_seh_begin:
 #ifdef BORINGSSL_DISPATCH_TEST
 
-	movb	$1,_BORINGSSL_function_hit+6(%rip)
+	movb	$1,_BORINGSSL_function_hit+7(%rip)
 #endif
 .byte	243,15,30,250
 	pushq	%rbx

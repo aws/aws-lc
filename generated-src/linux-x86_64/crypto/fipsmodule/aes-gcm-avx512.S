@@ -3934,7 +3934,7 @@ aes_gcm_encrypt_avx512:
 #ifdef BORINGSSL_DISPATCH_TEST
 .extern	BORINGSSL_function_hit
 .hidden BORINGSSL_function_hit
-	movb	$1,BORINGSSL_function_hit+6(%rip)
+	movb	$1,BORINGSSL_function_hit+7(%rip)
 #endif
 .byte	243,15,30,250
 	pushq	%rbx
