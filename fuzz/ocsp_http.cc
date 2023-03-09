@@ -39,7 +39,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
     const uint8_t *contents;
     size_t outlen;
     if(!BIO_mem_contents(req_ctx->mem, &contents, &outlen)){
-      fprintf(stderr, "SSL Serialization fuzz executed code block 0.\n");
+      // This code block shouldn't be reached. |req_ctx->mem| should always have
+      // contents if |OCSP_REQ_CTX_nbio| returns 1.
       return 1;
     }
   }
