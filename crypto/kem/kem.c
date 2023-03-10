@@ -101,7 +101,6 @@ int KEM_KEY_init(KEM_KEY *key, const KEM *kem) {
   key->kem = kem;
   key->public_key = OPENSSL_malloc(kem->public_key_len);
   key->secret_key = OPENSSL_malloc(kem->secret_key_len);
-  key->has_secret_key = 0;
   if (key->public_key == NULL || key->secret_key == NULL) {
     OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
     KEM_KEY_clear(key);
@@ -139,7 +138,6 @@ int KEM_KEY_set_raw_secret_key(KEM_KEY *key, const uint8_t *in) {
     OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
     return 0;
   }
-  key->has_secret_key = 1;
 
   return 1;
 }
@@ -153,7 +151,6 @@ int KEM_KEY_set_raw_key(KEM_KEY *key, const uint8_t *in_public,
     KEM_KEY_clear(key);
     return 0;
   }
-  key->has_secret_key = 1;
 
   return 1;
 }

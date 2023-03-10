@@ -377,11 +377,20 @@ char *OPENSSL_strdup(const char *s) {
   return ret;
 }
 
+int OPENSSL_isdigit(int c) {
+  return c >= '0' && c <= '9';
+}
+
 int OPENSSL_tolower(int c) {
   if (c >= 'A' && c <= 'Z') {
     return c + ('a' - 'A');
   }
   return c;
+}
+
+int OPENSSL_isspace(int c) {
+  return c == '\t' || c == '\n' || c == '\v' || c == '\f' || c == '\r' ||
+         c == ' ';
 }
 
 int OPENSSL_strcasecmp(const char *a, const char *b) {
