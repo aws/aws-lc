@@ -495,6 +495,8 @@ _SHA3_Squeeze:
 	mov	x20,x1
 	mov	x21,x2
 	mov	x22,x3
+	cmp	x21,#0
+	beq	Lsqueeze_done
 Loop_squeeze:
 	ldr	x4,[x0],#8
 	cmp	x21,#8
@@ -902,6 +904,8 @@ _SHA3_Squeeze_cext:
 	add	x29,sp,#0
 	mov	x9,x0
 	mov	x10,x3
+	cmp	x2,#0
+	beq	Lsqueeze_done_ce
 Loop_squeeze_ce:
 	ldr	x4,[x9],#8
 	cmp	x2,#8
