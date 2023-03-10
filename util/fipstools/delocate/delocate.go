@@ -70,6 +70,12 @@ type delocation struct {
 	symbols map[string]struct{}
 	// localEntrySymbols is the set of symbols with .localentry directives.
 	localEntrySymbols map[string]struct{}
+	// cpuCapUniqueRef is the set of unique references for each occurrence of
+	// OPENSSL_ia32cap_P.
+	cpuCapUniqueRef map[string]string
+	// cpuCapUniqueRefCounter is a counter which value is appended to a
+	// cpuCapUniqueRef value to ensure global uniqueness.
+	cpuCapUniqueRefCounter int
 	// redirectors maps from out-call symbol name to the name of a
 	// redirector function for that symbol. E.g. “memcpy” ->
 	// “bcm_redirector_memcpy”.
@@ -1372,14 +1378,13 @@ Args:
 
 				changed = true
 
-				// Flag-altering instructions (i.e. addq) are going to be used so the
-				// flags need to be preserved.
-				wrappers = append(wrappers, saveFlags(d.output, false /* Red Zone not yet cleared */))
-
+				cpuCapUniqueRefCounterString := strconv.Itoa(d.cpuCapUniqueRefCounter)
+				trimmedReg := strings.Trim(reg, "%")
 				wrappers = append(wrappers, func(k func()) {
-					d.output.WriteString("\tleaq\tOPENSSL_ia32cap_addr_delta(%rip), " + reg + "\n")
-					d.output.WriteString("\taddq\t(" + reg + "), " + reg + "\n")
+					d.output.WriteString("\tjmp\tLOPENSSL_ia32cap_P_" + trimmedReg + "_" + cpuCapUniqueRefCounterString + "\n")
+					d.output.WriteString("LOPENSSL_ia32cap_P_" + trimmedReg + "_" + cpuCapUniqueRefCounterString + "_return:\n")
 				})
+				d.cpuCapUniqueRef[trimmedReg + "_" + cpuCapUniqueRefCounterString] = trimmedReg + "_" + cpuCapUniqueRefCounterString
 
 				break Args
 			}
@@ -1527,13 +1532,13 @@ Args:
 				}
 
 				if symbol == "OPENSSL_ia32cap_P" {
-					// Flag-altering instructions (i.e. addq) are going to be used so the
-					// flags need to be preserved.
-					wrappers = append(wrappers, saveFlags(d.output, redzoneCleared))
+					cpuCapUniqueRefCounterString := strconv.Itoa(d.cpuCapUniqueRefCounter)
+					trimmedReg := strings.Trim(targetReg, "%")
 					wrappers = append(wrappers, func(k func()) {
-						d.output.WriteString("\tleaq\tOPENSSL_ia32cap_addr_delta(%rip), " + targetReg + "\n")
-						d.output.WriteString("\taddq\t(" + targetReg + "), " + targetReg + "\n")
+						d.output.WriteString("\tjmp\tLOPENSSL_ia32cap_P_" + trimmedReg + "_" + cpuCapUniqueRefCounterString + "\n")
+						d.output.WriteString("LOPENSSL_ia32cap_P_" + trimmedReg + "_" + cpuCapUniqueRefCounterString + "_return:\n")
 					})
+					d.cpuCapUniqueRef[trimmedReg + "_" + cpuCapUniqueRefCounterString] = trimmedReg + "_" + cpuCapUniqueRefCounterString
 				} else if useGOT {
 					wrappers = append(wrappers, d.loadFromGOT(d.output, targetReg, symbol, section, redzoneCleared))
 				} else {
@@ -1630,6 +1635,7 @@ Args:
 		wrappers.do(func() {
 			d.output.WriteString(replacement)
 		})
+		d.cpuCapUniqueRefCounter = d.cpuCapUniqueRefCounter + 1
 	} else {
 		d.writeNode(statement)
 	}
@@ -1790,17 +1796,19 @@ func transform(w stringWriter, inputs []inputFile) error {
 	}
 
 	d := &delocation{
-		symbols:             symbols,
-		localEntrySymbols:   localEntrySymbols,
-		processor:           processor,
-		commentIndicator:    commentIndicator,
-		output:              w,
-		redirectors:         make(map[string]string),
-		bssAccessorsNeeded:  make(map[string]string),
-		tocLoaders:          make(map[string]struct{}),
-		gotExternalsNeeded:  make(map[string]struct{}),
-		gotOffsetsNeeded:    make(map[string]struct{}),
-		gotOffOffsetsNeeded: make(map[string]struct{}),
+		symbols:             	symbols,
+		localEntrySymbols:   	localEntrySymbols,
+		processor:           	processor,
+		commentIndicator:    	commentIndicator,
+		output:              	w,
+		cpuCapUniqueRef:		make(map[string]string),
+		cpuCapUniqueRefCounter:	0,
+		redirectors:         	make(map[string]string),
+		bssAccessorsNeeded:  	make(map[string]string),
+		tocLoaders:          	make(map[string]struct{}),
+		gotExternalsNeeded:  	make(map[string]struct{}),
+		gotOffsetsNeeded:    	make(map[string]struct{}),
+		gotOffOffsetsNeeded: 	make(map[string]struct{}),
 	}
 
 	w.WriteString(".text\n")
@@ -1953,11 +1961,13 @@ func transform(w stringWriter, inputs []inputFile) error {
 		w.WriteString("\tleaq OPENSSL_ia32cap_P(%rip), %rax\n")
 		w.WriteString("\tret\n")
 
-		w.WriteString(".extern OPENSSL_ia32cap_P\n")
-		w.WriteString(".type OPENSSL_ia32cap_addr_delta, @object\n")
-		w.WriteString(".size OPENSSL_ia32cap_addr_delta, 8\n")
-		w.WriteString("OPENSSL_ia32cap_addr_delta:\n")
-		w.WriteString(".quad OPENSSL_ia32cap_P-OPENSSL_ia32cap_addr_delta\n")
+		for reference := range d.cpuCapUniqueRef {
+			w.WriteString("LOPENSSL_ia32cap_P_" + reference + ":\n")
+			// Get register name that is part of the unique reference
+			// <register>_<unique numerical suffix>
+			w.WriteString("\tleaq OPENSSL_ia32cap_P(%rip), %" + strings.Split(reference, "_")[0] + "\n")
+			w.WriteString("\tjmp LOPENSSL_ia32cap_P_" + reference + "_return\n")
+		}
 
 		if d.gotDeltaNeeded {
 			w.WriteString(".Lboringssl_got_delta:\n")
