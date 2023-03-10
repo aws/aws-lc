@@ -62,8 +62,8 @@
 
 #define NSPACE (6*NUMSIZE)
 
-// Macro wrapping up the basic field multiplication, only trivially
-// different from a pure function call to bignum_mul_p25519_alt.
+// Macro wrapping up the basic field operation bignum_mul_p25519_alt, only
+// trivially different from a pure function call to that subroutine.
 
 #define mul_p25519(P0,P1,P2)                    \
         ldp     x3, x4, [P1];                   \
@@ -133,7 +133,7 @@
         umulh   x11, x6, x9;                    \
         adcs    x4, x4, x11;                    \
         adc     x5, x5, xzr;                    \
-        mov     x7, #38;                        \
+        mov     x7, #0x26;                      \
         mul     x11, x7, x16;                   \
         umulh   x9, x7, x16;                    \
         adds    x12, x12, x11;                  \
@@ -146,21 +146,19 @@
         mul     x11, x7, x5;                    \
         umulh   x5, x7, x5;                     \
         adcs    x15, x15, x11;                  \
-        cset    x16, hs;                        \
-        adds    x13, x13, x9;                   \
-        adcs    x14, x14, x3;                   \
-        adcs    x15, x15, x4;                   \
+        cset    x16, cs;                        \
+        adds    x15, x15, x4;                   \
         adc     x16, x16, x5;                   \
         cmn     x15, x15;                       \
         orr     x15, x15, #0x8000000000000000;  \
         adc     x8, x16, x16;                   \
-        mov     x7, #19;                        \
+        mov     x7, #0x13;                      \
         madd    x11, x7, x8, x7;                \
         adds    x12, x12, x11;                  \
-        adcs    x13, x13, xzr;                  \
-        adcs    x14, x14, xzr;                  \
+        adcs    x13, x13, x9;                   \
+        adcs    x14, x14, x3;                   \
         adcs    x15, x15, xzr;                  \
-        csel    x7, x7, xzr, lo;                \
+        csel    x7, x7, xzr, cc;                \
         subs    x12, x12, x7;                   \
         sbcs    x13, x13, xzr;                  \
         sbcs    x14, x14, xzr;                  \
@@ -240,7 +238,7 @@
         umulh   x11, x6, x9;                    \
         adcs    x4, x4, x11;                    \
         adc     x5, x5, xzr;                    \
-        mov     x7, #38;                        \
+        mov     x7, #0x26;                      \
         mul     x11, x7, x16;                   \
         umulh   x9, x7, x16;                    \
         adds    x12, x12, x11;                  \
@@ -253,19 +251,17 @@
         mul     x11, x7, x5;                    \
         umulh   x5, x7, x5;                     \
         adcs    x15, x15, x11;                  \
-        cset    x16, hs;                        \
-        adds    x13, x13, x9;                   \
-        adcs    x14, x14, x3;                   \
-        adcs    x15, x15, x4;                   \
+        cset    x16, cs;                        \
+        adds    x15, x15, x4;                   \
         adc     x16, x16, x5;                   \
         cmn     x15, x15;                       \
         bic     x15, x15, #0x8000000000000000;  \
         adc     x8, x16, x16;                   \
-        mov     x7, #19;                        \
+        mov     x7, #0x13;                      \
         mul     x11, x7, x8;                    \
         adds    x12, x12, x11;                  \
-        adcs    x13, x13, xzr;                  \
-        adcs    x14, x14, xzr;                  \
+        adcs    x13, x13, x9;                   \
+        adcs    x14, x14, x3;                   \
         adc     x15, x15, xzr;                  \
         stp     x12, x13, [P0];                 \
         stp     x14, x15, [P0+16]
