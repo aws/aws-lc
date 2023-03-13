@@ -450,6 +450,8 @@ SHA3_Squeeze:
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-48]!
 	add	x29,sp,#0
+	cmp	x2,#0
+	beq	.Lsqueeze_abort
 	stp	x19,x20,[sp,#16]
 	stp	x21,x22,[sp,#32]
 	mov	$A_flat,x0			// put aside arguments
@@ -503,6 +505,7 @@ SHA3_Squeeze:
 .Lsqueeze_done:
 	ldp	x19,x20,[sp,#16]
 	ldp	x21,x22,[sp,#32]
+.Lsqueeze_abort:
 	ldp	x29,x30,[sp],#48
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
@@ -729,6 +732,8 @@ SHA3_Squeeze_cext:
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-16]!
 	add	x29,sp,#0
+	cmp	$len,#0
+	beq	.Lsqueeze_done_ce
 	mov	x9,$ctx
 	mov	x10,$bsz
 .Loop_squeeze_ce:
