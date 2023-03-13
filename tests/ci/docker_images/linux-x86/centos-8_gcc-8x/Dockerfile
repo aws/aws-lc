@@ -10,9 +10,9 @@ ENV PATH="$GOROOT/bin:$PATH"
 RUN set -ex && \
     sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-* && \
     sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-* && \
-    yum -y update && \
-    yum --enablerepo=extras install epel-release -y && \
-    yum -y install \
+    dnf -y distro-sync && \
+    yum -y --enablerepo=extras install epel-release && \
+    yum -y --enablerepo=powertools install \
     gcc \
     libgcc.i686 \
     glibc-devel.x86_64 \

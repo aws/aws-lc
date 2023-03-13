@@ -1,5 +1,5 @@
 add_executable(
-  bssl
+  awslc
 
   args.cc
   ciphers.cc
@@ -20,34 +20,40 @@ add_executable(
   transport_common.cc
 )
 
-target_include_directories(bssl PUBLIC ../include)
-target_compile_options(bssl PUBLIC -DINTERNAL_TOOL)
+target_include_directories(awslc PUBLIC ../include)
+target_compile_options(awslc PUBLIC -DINTERNAL_TOOL)
 
-add_dependencies(bssl global_target)
+add_custom_target(link_bssl ALL
+        COMMAND ${CMAKE_COMMAND} -E create_symlink awslc bssl)
+add_dependencies(link_bssl global_target)
+add_dependencies(awslc link_bssl)
 
 if(WIN32)
-  target_link_libraries(bssl ws2_32)
+  target_link_libraries(awslc ws2_32)
 endif()
 
 if(APPLE OR WIN32 OR ANDROID)
-  target_link_libraries(bssl ssl crypto)
+  target_link_libraries(awslc ssl crypto)
   set(LIBRT_FLAG "")
 else()
   find_library(FOUND_LIBRT rt)
   if(FOUND_LIBRT)
-    target_link_libraries(bssl ssl crypto -lrt)
+    target_link_libraries(awslc ssl crypto -lrt)
     set(LIBRT_FLAG "-lrt")
   else()
-    target_link_libraries(bssl ssl crypto)
+    target_link_libraries(awslc ssl crypto)
     set(LIBRT_FLAG "")
   endif()
 endif()
 
-install(TARGETS bssl
-        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(TARGETS awslc
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+install(CODE "execute_process( COMMAND ${CMAKE_COMMAND} -E create_symlink \${CMAKE_INSTALL_PREFIX}/bin/awslc \${CMAKE_INSTALL_PREFIX}/bin/bssl )")
+
 
 if(MSVC AND CMAKE_BUILD_TYPE_LOWER MATCHES "relwithdebinfo" AND FIPS)
-  install (FILES $<TARGET_FILE_DIR:bssl>/bssl.pdb DESTINATION ${CMAKE_INSTALL_LIBDIR})
+  install (FILES $<TARGET_FILE_DIR:awslc>/awslc.pdb DESTINATION ${CMAKE_INSTALL_LIBDIR})
 endif()
 
 function(build_benchmark target_name install_path)
@@ -75,7 +81,7 @@ if(AWSLC_INSTALL_DIR)
 endif()
 
 # This expects a directory which contains the includes in include/openssl/ and the OpenSSL artifacts in lib/
-# Currently this is the default OpenSSL build we target so the "OPENSSL_1_1_BENCHMARK" flag isn't used, 
+# Currently this is the default OpenSSL build we target so the "OPENSSL_1_1_BENCHMARK" flag isn't used,
 # but we include this to maintain uniformity across OpenSSL versions
 if(OPENSSL_1_1_INSTALL_DIR)
   build_benchmark(ossl_1_1_bm ${OPENSSL_1_1_INSTALL_DIR})
