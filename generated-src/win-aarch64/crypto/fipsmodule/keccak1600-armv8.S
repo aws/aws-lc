@@ -497,7 +497,7 @@ SHA3_Squeeze:
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-48]!
 	add	x29,sp,#0
-	cmp	x21,#0
+	cmp	x2,#0
 	beq	Lsqueeze_abort
 	stp	x19,x20,[sp,#16]
 	stp	x21,x22,[sp,#32]
