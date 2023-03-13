@@ -1,8 +1,8 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
-#include "internal.h"
 #include "../asn1/internal.h"
+#include "internal.h"
 
 OCSP_ONEREQ *OCSP_request_add0_id(OCSP_REQUEST *req, OCSP_CERTID *cid) {
   OCSP_ONEREQ *one = OCSP_ONEREQ_new();
@@ -249,9 +249,6 @@ int OCSP_resp_find_status(OCSP_BASICRESP *bs, OCSP_CERTID *id, int *status,
   return 1;
 }
 
-// TODO: Port usages of "int64_t" time comparisons to |X509_cmp_time_posix| when
-// https://github.com/google/boringssl/commit/6e20b77e6b79069e2468686bdc69169d3fa2252e
-// is imported.
 int OCSP_check_validity(ASN1_GENERALIZEDTIME *thisupd,
                         ASN1_GENERALIZEDTIME *nextupd, long nsec, long maxsec) {
   int ret = 1;
@@ -263,10 +260,8 @@ int OCSP_check_validity(ASN1_GENERALIZEDTIME *thisupd,
     OPENSSL_PUT_ERROR(OCSP, OCSP_R_ERROR_IN_THISUPDATE_FIELD);
     ret = 0;
   } else {
-    int64_t thisupd_posix;
     t_tmp = t_now + nsec;
-    if (ASN1_TIME_to_posix(thisupd, &thisupd_posix) &&
-        thisupd_posix - t_tmp > 0) {
+    if (X509_cmp_time_posix(thisupd, t_tmp) > 0) {
       OPENSSL_PUT_ERROR(OCSP, OCSP_R_STATUS_NOT_YET_VALID);
       ret = 0;
     }
@@ -275,7 +270,7 @@ int OCSP_check_validity(ASN1_GENERALIZEDTIME *thisupd,
     // |maxsec| in the past.
     if (maxsec >= 0) {
       t_tmp = t_now - maxsec;
-      if (thisupd_posix - t_tmp <= 0) {
+      if (X509_cmp_time_posix(thisupd, t_tmp) < 0) {
         OPENSSL_PUT_ERROR(OCSP, OCSP_R_STATUS_TOO_OLD);
         ret = 0;
       }
@@ -293,10 +288,8 @@ int OCSP_check_validity(ASN1_GENERALIZEDTIME *thisupd,
     OPENSSL_PUT_ERROR(OCSP, OCSP_R_ERROR_IN_NEXTUPDATE_FIELD);
     ret = 0;
   } else {
-    int64_t nextupd_posix;
     t_tmp = t_now - nsec;
-    if (ASN1_TIME_to_posix(nextupd, &nextupd_posix) &&
-        nextupd_posix - t_tmp <= 0) {
+    if (X509_cmp_time_posix(nextupd, t_tmp) < 0) {
       OPENSSL_PUT_ERROR(OCSP, OCSP_R_STATUS_EXPIRED);
       ret = 0;
     }
