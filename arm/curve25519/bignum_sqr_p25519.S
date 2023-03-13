@@ -31,148 +31,187 @@
 #define u6 x8
 #define u7 x9
 
+#define u0short w2
+#define u1short w3
+#define u2short w4
+#define u3short w5
+#define u4short w6
+#define u5short w7
+#define u6short w8
+#define u7short w9
+
 #define c x10
+#define cshort w10
 #define l x11
+#define lshort w11
 #define h x12
+#define hshort w12
 #define q x13
+#define qshort w13
+
+#define t1 x14
+#define t1short w14
+#define t2 x15
+#define t2short w15
+#define t3 x16
+#define t3short w16
 
 S2N_BN_SYMBOL(bignum_sqr_p25519):
 
 // First just a near-clone of bignum_sqr_4_8 to get the square, using
 // different registers to collect full product without writeback.
 
-        ldp     u4, u5, [x]
-        ldp     x10, x11, [x, #16]
-        mul     u2, u4, x10
-        mul     u7, u5, x11
-        umulh   x12, u4, x10
-        subs    x13, u4, u5
-        cneg    x13, x13, cc
-        csetm   u1, cc
-        subs    u0, x11, x10
-        cneg    u0, u0, cc
-        mul     u6, x13, u0
-        umulh   u0, x13, u0
-        cinv    u1, u1, cc
-        eor     u6, u6, u1
-        eor     u0, u0, u1
-        adds    u3, u2, x12
-        adc     x12, x12, xzr
-        umulh   x13, u5, x11
-        adds    u3, u3, u7
-        adcs    x12, x12, x13
-        adc     x13, x13, xzr
-        adds    x12, x12, u7
-        adc     x13, x13, xzr
-        cmn     u1, #0x1
-        adcs    u3, u3, u6
-        adcs    x12, x12, u0
-        adc     x13, x13, u1
+        ldp     c, l, [x]
+        ldp     h, q, [x, #16]
+        umull   u0, cshort, cshort
+        lsr     t1, c, #32
+        umull   u1, t1short, t1short
+        umull   t1, cshort, t1short
+        adds    u0, u0, t1, lsl #33
+        lsr     t1, t1, #31
+        adc     u1, u1, t1
+        umull   u2, lshort, lshort
+        lsr     t1, l, #32
+        umull   u3, t1short, t1short
+        umull   t1, lshort, t1short
+        mul     t2, c, l
+        umulh   t3, c, l
+        adds    u2, u2, t1, lsl #33
+        lsr     t1, t1, #31
+        adc     u3, u3, t1
+        adds    t2, t2, t2
+        adcs    t3, t3, t3
+        adc     u3, u3, xzr
+        adds    u1, u1, t2
+        adcs    u2, u2, t3
+        adc     u3, u3, xzr
+        umull   u4, hshort, hshort
+        lsr     t1, h, #32
+        umull   u5, t1short, t1short
+        umull   t1, hshort, t1short
+        adds    u4, u4, t1, lsl #33
+        lsr     t1, t1, #31
+        adc     u5, u5, t1
+        umull   u6, qshort, qshort
+        lsr     t1, q, #32
+        umull   u7, t1short, t1short
+        umull   t1, qshort, t1short
+        mul     t2, h, q
+        umulh   t3, h, q
+        adds    u6, u6, t1, lsl #33
+        lsr     t1, t1, #31
+        adc     u7, u7, t1
+        adds    t2, t2, t2
+        adcs    t3, t3, t3
+        adc     u7, u7, xzr
+        adds    u5, u5, t2
+        adcs    u6, u6, t3
+        adc     u7, u7, xzr
+        subs    c, c, h
+        sbcs    l, l, q
+        csetm   t3, cc
+        eor     c, c, t3
+        subs    c, c, t3
+        eor     l, l, t3
+        sbc     l, l, t3
+        adds    u4, u4, u2
+        adcs    u5, u5, u3
+        adcs    u6, u6, xzr
+        adc     u7, u7, xzr
+        umull   h, cshort, cshort
+        lsr     u3, c, #32
+        umull   q, u3short, u3short
+        umull   u3, cshort, u3short
+        adds    h, h, u3, lsl #33
+        lsr     u3, u3, #31
+        adc     q, q, u3
+        umull   t2, lshort, lshort
+        lsr     u3, l, #32
+        umull   t1, u3short, u3short
+        umull   u3, lshort, u3short
+        mul     u2, c, l
+        umulh   t3, c, l
+        adds    t2, t2, u3, lsl #33
+        lsr     u3, u3, #31
+        adc     t1, t1, u3
         adds    u2, u2, u2
-        adcs    u3, u3, u3
-        adcs    x12, x12, x12
-        adcs    x13, x13, x13
-        adc     x14, xzr, xzr
-        mul     u0, u4, u4
-        mul     u6, u5, u5
-        mul     x15, u4, u5
-        umulh   u1, u4, u4
-        umulh   u7, u5, u5
-        umulh   x16, u4, u5
-        adds    u1, u1, x15
-        adcs    u6, u6, x16
-        adc     u7, u7, xzr
-        adds    u1, u1, x15
-        adcs    u6, u6, x16
-        adc     u7, u7, xzr
-        adds    u2, u2, u6
-        adcs    u3, u3, u7
-        adcs    x12, x12, xzr
-        adcs    x13, x13, xzr
-        adc     x14, x14, xzr
-        mul     u4, x10, x10
-        mul     u6, x11, x11
-        mul     x15, x10, x11
-        umulh   u5, x10, x10
-        umulh   u7, x11, x11
-        umulh   x16, x10, x11
-        adds    u5, u5, x15
-        adcs    u6, u6, x16
-        adc     u7, u7, xzr
-        adds    u5, u5, x15
-        adcs    u6, u6, x16
-        adc     u7, u7, xzr
-        adds    u4, u4, x12
-        adcs    u5, u5, x13
-        adcs    u6, u6, x14
-        adc     u7, u7, xzr
+        adcs    t3, t3, t3
+        adc     t1, t1, xzr
+        adds    q, q, u2
+        adcs    t2, t2, t3
+        adc     t1, t1, xzr
+        adds    u2, u0, u4
+        adcs    u3, u1, u5
+        adcs    u4, u4, u6
+        adcs    u5, u5, u7
+        csetm   t3, cc
+        subs    u2, u2, h
+        sbcs    u3, u3, q
+        sbcs    u4, u4, t2
+        sbcs    u5, u5, t1
+        adcs    u6, u6, t3
+        adc     u7, u7, t3
 
 // Now we have the full 8-digit product 2^256 * h + l where
 // h = [u7,u6,u5,u4] and l = [u3,u2,u1,u0]
 // and this is == 38 * h + l (mod p_25519).
-// To avoid umulh, we plug together high and low parts of each
-// product separately.
+// We do the 38 * h + l using 32-bit multiplies avoiding umulh,
+// and pre-estimate and feed in the next-level quotient
+// q = h + 1 where h = an early version of the high 255 bits.
+// We add 2^255 * h - 19 * (h + 1), so end up offset by 2^255.
 
         mov     c, #38
 
-        and     l, u4, #0xFFFFFFFF
-        lsr     h, u4, #32
-        mul     l, c, l
-        mul     h, c, h
-        adds    u0, u0, l
+        umull   h, u4short, cshort
+        add     h, h, u0short, uxtw
+        lsr     u0, u0, #32
+        lsr     u4, u4, #32
+        umaddl  u4, u4short, cshort, u0
+        mov     u0, h
 
-        and     l, u5, #0xFFFFFFFF
+        umull   h, u5short, cshort
+        add     h, h, u1short, uxtw
+        lsr     u1, u1, #32
         lsr     u5, u5, #32
-        mul     l, c, l
-        mul     u5, c, u5
-        adcs    u1, u1, l
+        umaddl  u5, u5short, cshort, u1
+        mov     u1, h
 
-        and     l, u6, #0xFFFFFFFF
+        umull   h, u6short, cshort
+        add     h, h, u2short, uxtw
+        lsr     u2, u2, #32
         lsr     u6, u6, #32
-        mul     l, c, l
-        mul     u6, c, u6
-        adcs    u2, u2, l
+        umaddl  u6, u6short, cshort, u2
+        mov     u2, h
 
-        and     l, u7, #0xFFFFFFFF
+        umull   h, u7short, cshort
+        add     h, h, u3short, uxtw
+        lsr     u3, u3, #32
         lsr     u7, u7, #32
-        mul     l, c, l
-        mul     u7, c, u7
-        adcs    u3, u3, l
-        cset    u4, cs
+        umaddl  u7, u7short, cshort, u3
+        mov     u3, h
 
-        lsl     l, h, #32
-        adds    u0, u0, l
+        lsr     q, u7, #31
 
-        extr    l, u5, h, #32
-        adcs    u1, u1, l
+        mov     l, #19
+        umaddl  l, lshort, qshort, l
+        add     u0, u0, l
 
-        extr    l, u6, u5, #32
-        adcs    u2, u2, l
+        adds    u0, u0, u4, lsl #32
+        extr    c, u5, u4, #32
+        adcs    u1, u1, c
+        extr    c, u6, u5, #32
+        adcs    u2, u2, c
+        extr    c, u7, u6, #32
+        lsl     l, q, #63
+        eor     u3, u3, l
+        adc     u3, u3, c
 
-        extr    l, u7, u6, #32
-        adcs    u3, u3, l
+// Now we correct by a final 2^255-19 if the top bit is clear
+// meaning that the "real" pre-reduced result is negative.
 
-        lsr     l, u7, #32
-        adc     u4, u4, l
-
-// Now we have reduced to 5 digits, 2^255 * h + l = [u4,u3,u2,u1,u0]
-// Use q = h + 1 as the initial quotient estimate, either right or 1 too big.
-
-        adds    xzr, u3, u3
-        orr     u3, u3, #0x8000000000000000
-        adc     q, u4, u4
         mov     c, #19
-        madd    l, c, q, c
-        adds    u0, u0, l
-        adcs    u1, u1, xzr
-        adcs    u2, u2, xzr
-        adcs    u3, u3, xzr
-
-// Now the effective answer is 2^256 * (CF - 1) + [u3,u2,u1,u0]
-// So we correct if CF = 0 by subtracting 19, either way masking to
-// 255 bits, i.e. by effectively adding p_25519 to the "full" answer
-
-        csel    c, c, xzr, cc
+        tst     u3, #0x8000000000000000
+        csel    c, c, xzr, pl
         subs    u0, u0, c
         sbcs    u1, u1, xzr
         sbcs    u2, u2, xzr

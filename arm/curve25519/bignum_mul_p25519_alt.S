@@ -160,13 +160,15 @@ S2N_BN_SYMBOL(bignum_mul_p25519_alt):
         adcs    u3, u3, l
         cset    u4, cs
 
-        adds    u1, u1, h
-        adcs    u2, u2, u5
-        adcs    u3, u3, u6
+// Compute the top part deferring the [u5,h] addition till the following
+// carry chain. This is enough to get a good quotient estimate and saves
+// a couple of instructions.
+
+        adds    u3, u3, u6
         adc     u4, u4, u7
 
-// Now we have reduced to 5 digits, 2^255 * h + l = [u4,u3,u2,u1,u0]
-// Use q = h + 1 as the initial quotient estimate, either right or 1 too big.
+// Now we have reduced to 5 digits, 2^255 * H + L = [u4,u3,u2,u1,u0]
+// Use q = H + 1 as the initial quotient estimate, either right or 1 too big.
 
         adds    xzr, u3, u3
         orr     u3, u3, #0x8000000000000000
@@ -174,8 +176,8 @@ S2N_BN_SYMBOL(bignum_mul_p25519_alt):
         mov     c, #19
         madd    l, c, q, c
         adds    u0, u0, l
-        adcs    u1, u1, xzr
-        adcs    u2, u2, xzr
+        adcs    u1, u1, h
+        adcs    u2, u2, u5
         adcs    u3, u3, xzr
 
 // Now the effective answer is 2^256 * (CF - 1) + [u3,u2,u1,u0]
@@ -187,7 +189,7 @@ S2N_BN_SYMBOL(bignum_mul_p25519_alt):
         sbcs    u1, u1, xzr
         sbcs    u2, u2, xzr
         sbc     u3, u3, xzr
-        and     u3, u3, #~0x8000000000000000
+        bic     u3, u3, #0x8000000000000000
 
 // Write back and return
 

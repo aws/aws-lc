@@ -256,62 +256,6 @@
         mov    [P0+0x10], r10;                  \
         mov    [P0+0x18], r11
 
-// Plain 4-digit add and doubling without any normalization
-// With inputs < p_25519 (indeed < 2^255) it still gives a 4-digit result,
-// indeed one < 2 * p_25519 for normalized inputs.
-
-#define add_4(P0,P1,P2)                         \
-        mov     rax, [P1];                      \
-        add     rax, [P2];                      \
-        mov     [P0], rax;                      \
-        mov     rax, [P1+8];                    \
-        adc     rax, [P2+8];                    \
-        mov     [P0+8], rax;                    \
-        mov     rax, [P1+16];                   \
-        adc     rax, [P2+16];                   \
-        mov     [P0+16], rax;                   \
-        mov     rax, [P1+24];                   \
-        adc     rax, [P2+24];                   \
-        mov     [P0+24], rax
-
-#define double_4(P0,P1)                         \
-        mov     rax, [P1];                      \
-        add     rax, rax;                       \
-        mov     [P0], rax;                      \
-        mov     rax, [P1+8];                    \
-        adc     rax, rax;                       \
-        mov     [P0+8], rax;                    \
-        mov     rax, [P1+16];                   \
-        adc     rax, rax;                       \
-        mov     [P0+16], rax;                   \
-        mov     rax, [P1+24];                   \
-        adc     rax, rax;                       \
-        mov     [P0+24], rax
-
-// Subtraction of a pair of numbers < p_25519 just sufficient
-// to give a 4-digit result. It actually always does (x - z) + (2^255-19)
-// which in turn is done by (x - z) - (2^255+19) discarding the 2^256
-// implicitly
-
-#define sub_4(P0,P1,P2)                         \
-        mov     r8, [P1];                       \
-        sub     r8, [P2];                       \
-        mov     r9, [P1+8];                     \
-        sbb     r9, [P2+8];                     \
-        mov     r10, [P1+16];                   \
-        sbb     r10, [P2+16];                   \
-        mov     rax, [P1+24];                   \
-        sbb     rax, [P2+24];                   \
-        sub     r8, 19;                         \
-        mov     [P0], r8;                       \
-        sbb     r9, 0;                          \
-        mov     [P0+8], r9;                     \
-        sbb     r10, 0;                         \
-        mov     [P0+16], r10;                   \
-        sbb     rax, 0;                         \
-        btc     rax, 63;                        \
-        mov     [P0+24], rax
-
 // Modular subtraction with double modulus 2 * p_25519 = 2^256 - 38
 
 #define sub_twice4(P0,P1,P2)                    \
@@ -335,8 +279,11 @@
         mov     [P0+16], r10;                   \
         mov     [P0+24], rax
 
-// Modular addition with inputs double modulus 2 * p_25519 = 2^256 - 38
-// and in general only guaranteeing a 4-digit result, not even < 2 * p_25519.
+// Modular addition and doubling with double modulus 2 * p_25519 = 2^256 - 38.
+// This only ensures that the result fits in 4 digits, not that it is reduced
+// even w.r.t. double modulus. The result is always correct modulo provided
+// the sum of the inputs is < 2^256 + 2^256 - 38, so in particular provided
+// at least one of them is reduced double modulo.
 
 #define add_twice4(P0,P1,P2)                    \
         mov     r8, [P1];                       \
@@ -348,6 +295,27 @@
         adc     r10, [P2+0x10];                 \
         mov     r11, [P1+0x18];                 \
         adc     r11, [P2+0x18];                 \
+        mov     eax, 38;                        \
+        cmovnc  rax, rcx;                       \
+        add     r8, rax;                        \
+        adc     r9, rcx;                        \
+        adc     r10, rcx;                       \
+        adc     r11, rcx;                       \
+        mov     [P0], r8;                       \
+        mov     [P0+0x8], r9;                   \
+        mov     [P0+0x10], r10;                 \
+        mov     [P0+0x18], r11
+
+#define double_twice4(P0,P1)                    \
+        mov     r8, [P1];                       \
+        xor     ecx, ecx;                       \
+        add     r8, r8;                         \
+        mov     r9, [P1+0x8];                   \
+        adc     r9, r9;                         \
+        mov     r10, [P1+0x10];                 \
+        adc     r10, r10;                       \
+        mov     r11, [P1+0x18];                 \
+        adc     r11, r11;                       \
         mov     eax, 38;                        \
         cmovnc  rax, rcx;                       \
         add     r8, rax;                        \
@@ -845,11 +813,14 @@ scalarloop:
 
 // Extended-projective and precomputed mixed addition.
 // This is effectively the same as calling the standalone
-// function edwards25519_pepadd(acc,acc,tabent)
+// function edwards25519_pepadd(acc,acc,tabent), but we
+// only retain slightly weaker normalization < 2 * p_25519
+// throughout the inner loop, so the computation is
+// slightly different, and faster overall.
 
-        double_4(t0,z_1)
-        sub_4(t1,y_1,x_1)
-        add_4(t2,y_1,x_1)
+        double_twice4(t0,z_1)
+        sub_twice4(t1,y_1,x_1)
+        add_twice4(t2,y_1,x_1)
         mul_4(t3,w_1,kxy_2)
         mul_4(t1,t1,ymx_2)
         mul_4(t2,t2,xpy_2)
@@ -857,10 +828,10 @@ scalarloop:
         add_twice4(t0,t0,t3)
         sub_twice4(t5,t2,t1)
         add_twice4(t1,t2,t1)
-        mul_p25519(z_3,t4,t0)
-        mul_p25519(x_3,t5,t4)
-        mul_p25519(y_3,t0,t1)
-        mul_p25519(w_3,t5,t1)
+        mul_4(z_3,t4,t0)
+        mul_4(x_3,t5,t4)
+        mul_4(y_3,t0,t1)
+        mul_4(w_3,t5,t1)
 
 // End of the main loop; move on by 4 bits.
 
@@ -893,10 +864,12 @@ scalarloop:
 //
 // First the addition and subtraction:
 
-        add_4(y_3,x_3,w_3)
-        sub_4(z_3,x_3,w_3)
+        add_twice4(y_3,x_3,w_3)
+        sub_twice4(z_3,x_3,w_3)
 
 // Prepare to call the modular inverse function to get x_3 = 1/z_3
+// Note that this works for the weakly normalized z_3 equally well.
+// The non-coprime case z_3 == 0 (mod p_25519) cannot arise anyway.
 
         mov     rdi, 4
         lea     rsi, [rsp+128]
@@ -1011,38 +984,34 @@ toploop:
         mov     [rsp], r8
         mov     [rsp+0x18], r15
 innerloop:
-        mov     rax, rbp
-        mov     rdi, rsi
-        mov     r13, rcx
-        mov     r15, rdx
-        mov     rbx, 0x1
-        neg     rdi
-        and     rbx, r14
-        cmove   rax, rbx
-        cmove   rdi, rbx
-        cmove   r13, rbx
-        cmove   r15, rbx
-        mov     rbx, r12
-        add     rdi, r14
-        mov     r8, rdi
-        neg     rdi
-        sub     rbx, rax
+        xor     eax, eax
+        xor     ebx, ebx
+        xor     r8, r8
+        xor     r15, r15
+        bt      r14, 0x0
+        cmovb   rax, rbp
+        cmovb   rbx, rsi
+        cmovb   r8, rcx
+        cmovb   r15, rdx
+        mov     r13, r14
+        sub     r14, rbx
+        sub     rbx, r13
+        mov     rdi, r12
+        sub     rdi, rax
         cmovb   rbp, r12
-        cmovb   rsi, r14
+        lea     r12, [rdi-0x1]
+        cmovb   r14, rbx
+        cmovb   rsi, r13
+        not     r12
         cmovb   rcx, r10
         cmovb   rdx, r11
-        cmovae  rdi, r8
-        mov     r12, rbx
-        not     rbx
-        inc     rbx
-        cmovb   r12, rbx
-        mov     r14, rdi
-        add     r10, r13
+        cmovae  r12, rdi
+        shr     r14, 1
+        add     r10, r8
         add     r11, r15
         shr     r12, 1
-        shr     r14, 1
-        lea     rcx, [rcx+rcx]
-        lea     rdx, [rdx+rdx]
+        add     rcx, rcx
+        add     rdx, rdx
         dec     r9
         jne     innerloop
         mov     rdi, [rsp+0x8]
@@ -1307,6 +1276,9 @@ fliploop:
         ja      outerloop
 
 // The final result is (X + T) / (X - T)
+// This is the only operation in the whole computation that
+// fully reduces modulo p_25519 since now we want the canonical
+// answer as output.
 
         mov     rbp, res
         mul_p25519(resx,y_3,x_3)

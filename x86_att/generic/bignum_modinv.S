@@ -312,41 +312,37 @@ toploop:
 
 innerloop:
 
-        movq    n_hi, %rax
-        movq    n_lo, k
-        movq    n_m, l
-        movq    n_n, p2
-        movq    $1, %rbx
-        negq    k
-        andq    m_lo, %rbx
-        cmovzq  %rbx, %rax
-        cmovzq  %rbx, k
-        cmovzq  %rbx, l
-        cmovzq  %rbx, p2
-        movq    m_hi, %rbx
+        xorl    %eax, %eax
+        xorl    %ebx, %ebx
+        xorq    p1, p1
+        xorq    p2, p2
+        btq     $0, m_lo
 
-        addq    m_lo, k
-        movq    k, p1
-        negq    k
-        subq    %rax, %rbx
+        cmovcq  n_hi, %rax
+        cmovcq  n_lo, %rbx
+        cmovcq  n_m, p1
+        cmovcq  n_n, p2
 
+        movq    m_lo, l
+        subq    %rbx, m_lo
+        subq    l, %rbx
+        movq    m_hi, k
+        subq    %rax, k
         cmovcq  m_hi, n_hi
-        cmovcq  m_lo, n_lo
+        leaq    -1(k), m_hi
+        cmovcq  %rbx, m_lo
+        cmovcq  l, n_lo
+        notq    m_hi
         cmovcq  m_m, n_m
         cmovcq  m_n, n_n
-        cmovncq p1, k
-        movq    %rbx, m_hi
-        notq    %rbx
-        incq    %rbx
-        cmovcq  %rbx, m_hi
+        cmovncq k, m_hi
 
-        movq    k, m_lo
-        addq    l, m_m
+        shrq    $1, m_lo
+        addq    p1, m_m
         addq    p2, m_n
         shrq    $1, m_hi
-        shrq    $1, m_lo
-        leaq    (n_m,n_m), n_m
-        leaq    (n_n,n_n), n_n
+        addq    n_m, n_m
+        addq    n_n, n_n
 
 // End of the inner for-loop
 

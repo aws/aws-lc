@@ -100,7 +100,7 @@ S2N_BN_SYMBOL(bignum_mul_p25519):
         mulpadd(r11,r10,[x+8])
         mulpadd(r12,r11,[x+16])
         mulpade(r13,r12,[x+24])
-        adcx    r13, zero
+        adc     r13, zero
 
 // Add row 2
 
@@ -110,50 +110,64 @@ S2N_BN_SYMBOL(bignum_mul_p25519):
         mulpadd(r12,r11,[x+8])
         mulpadd(r13,r12,[x+16])
         mulpade(r14,r13,[x+24]);
-        adcx    r14, zero
+        adc     r14, zero
 
-// Add row 3
+// Add row 3; also use an early 38*r15+r11 to get a quotient estimate q
+// and then squeeze in a 19 * q computation to inject into the next
+// double-carry chain. At the end rcx = q and rax = 19 * q.
 
         xor     zeroe, zeroe
         mov     rdx, [y+24]
+
         mulpadd(r12,r11,[x])
+
+        mulx    r15, rcx, [x+24]
+
         mulpadd(r13,r12,[x+8])
-        mulpadd(r14,r13,[x+16]);
-        mulpade(r15,r14,[x+24]);
-        adcx    r15, zero
+        mulpadd(r14,r13,[x+16])
+
+        mov     edx, 38
+        mulx    rbx, rax, r15
+
+        adcx    r14, rcx
+        adox    r15, zero
+        adc     r15, zero
+
+        add     rax, r11
+        adc     rbx, zero
+        bt      rax, 63
+        adc     rbx, rbx
+        lea     rcx, [rbx+1]
+        imul    rcx, 19
 
 // Now we have the full 8-digit product 2^256 * h + l where
 // h = [r15,r14,r13,r12] and l = [r11,r10,r9,r8]
 // and this is == 38 * h + l (mod p_25519)
+// We add in the precalculated 19 * q as well.
+// This is kept in 4 words since we have enough information there.
 
-        mov     edx, 38
         xor     zeroe, zeroe
+        adox    r8, rcx
         mulpadd(r9,r8,r12)
         mulpadd(r10,r9,r13)
         mulpadd(r11,r10,r14)
-        mulpade(r12,r11,r15)
-        adcx    r12, zero
+        mulx    rbx, rax, r15
+        adc     r11, rax
 
-// Now we have reduced to 5 digits, 2^255 * h + l = [r12,r11,r10,r9,r8]
-// Use q = h + 1 as the initial quotient estimate, either right or 1 too big.
+// We still haven't made the -2^255 * q contribution yet. Since we
+// are now safely in 4 words we just need a single bit of q, and we
+// can actually use the LSB of rcx = 19 * q since 19 is odd. And we
+// don't literally need to subtract, just to see whether we would
+// have a top 1 bit if we did, meaning we need to correct in the
+// last step by adding 2^255 - 19.
 
-        shld    r12, r11, 1
-        mov     edx, 19
-        inc     r12
-        bts     r11, 63
-        mulx    rbx, rax, r12
-        add     r8, rax
-        adc     r9, rbx
-        adc     r10, zero
-        adc     r11, zero
+        shl     rcx, 63
+        cmp     r11, rcx
+        mov     eax, 19
+        cmovns  rax, zero
 
-// Now the effective answer is 2^256 * (CF - 1) + [u3,u2,u1,u0]
-// So we correct if CF = 0 by subtracting 19, either way masking to
-// 255 bits, i.e. by effectively adding p_25519 to the "full" answer
+// Now make that possible correction and finally mask to 255 bits
 
-        sbb     rax, rax
-        not     rax
-        and     rax, rdx
         sub     r8, rax
         sbb     r9, zero
         sbb     r10, zero

@@ -330,6 +330,29 @@ let SHIFTEDREG_TRIVIAL = prove
               regshift_operation; WORD_SHL_ZERO; ETA_AX]);;
 
 (* ------------------------------------------------------------------------- *)
+(* Extended register operands. Again the lvalue form is arbitrary.           *)
+(* ------------------------------------------------------------------------- *)
+
+let extendtype_INDUCT,extendtype_RECURSION = define_type
+  "extendtype = UXTB | UXTH | UXTW | UXTX | SXTB | SXTH | SXTW | SXTX";;
+
+(*** For flexibility, this takes arbitrary input and output word sizes ***)
+
+let extendreg_operation = define
+ `extendreg_operation UXTB x = word_zx (word_zx x:byte) /\
+  extendreg_operation UXTH x = word_zx (word_zx x:int16) /\
+  extendreg_operation UXTW x = word_zx (word_zx x:int32) /\
+  extendreg_operation UXTX x = word_zx (word_zx x:int64) /\
+  extendreg_operation SXTB x = word_sx (word_zx x:byte) /\
+  extendreg_operation SXTH x = word_sx (word_zx x:int16) /\
+  extendreg_operation SXTW x = word_sx (word_zx x:int32) /\
+  extendreg_operation SXTX x = word_sx (word_zx x:int64)`;;
+
+let Extendedreg_DEF = define
+ `Extendedreg reg ety =
+        component((\s. extendreg_operation ety (read reg s)),ARB)`;;
+
+(* ------------------------------------------------------------------------- *)
 (* The main SIMD register parts                                              *)
 (* ------------------------------------------------------------------------- *)
 
@@ -1035,6 +1058,14 @@ let arm_UBFM = define
           else word_shl (word_subword x (0,imms+1)) (dimindex(:N) - immr) in
         (Rd := y) s`;;
 
+let arm_UMADDL = define
+ `arm_UMADDL Rd Rn Rm Ra =
+    \s. let n:int32 = read Rn (s:armstate)
+        and m:int32 = read Rm s
+        and a:int64 = read Ra s in
+        let d:int64 = word(val a + val n * val m) in
+        (Rd := d) s`;;
+
 let arm_UMLAL = define
  `arm_UMLAL Rd Rn Rm esize =
     \s. let n:(128)word = read Rn (s:armstate) in
@@ -1054,6 +1085,14 @@ let arm_UMLAL = define
           let nlowzx = usimd8 (word_zx:(8)word->(16)word) nlow in
           let mlowzx = usimd8 (word_zx:(8)word->(16)word) mlow in
           (Rd := simd8 word_add (simd8 word_mul nlowzx mlowzx) d) s`;;
+
+let arm_UMSUBL = define
+ `arm_UMSUBL Rd Rn Rm Ra =
+    \s. let n:int32 = read Rn (s:armstate)
+        and m:int32 = read Rm s
+        and a:int64 = read Ra s in
+        let d:int64 = iword(&(val a) - &(val n) * &(val m)) in
+        (Rd := d) s`;;
 
 let arm_UMOV = define
  `arm_UMOV Rd Rn idx size =
@@ -1258,6 +1297,9 @@ let arm_ROR = define `arm_ROR Rd Rs lsb = arm_EXTR Rd Rs Rs lsb`;;
 
 let arm_TST = define `arm_TST Rm Rn = arm_ANDS ZR Rm Rn`;;
 
+let arm_UMNEGL = define `arm_UMNEGL Rd Rn Rm = arm_UMSUBL Rd Rn Rm XZR`;;
+let arm_UMULL = define `arm_UMULL Rd Rn Rm = arm_UMADDL Rd Rn Rm XZR`;;
+
 let ARM_INSTRUCTION_ALIASES =
  [arm_BEQ; arm_BNE; arm_BCS; arm_BHS; arm_BCC;
   arm_BLO; arm_BMI; arm_BPL; arm_BVS; arm_BVC;
@@ -1265,7 +1307,8 @@ let ARM_INSTRUCTION_ALIASES =
   arm_BLE; arm_BAL; arm_BNV; arm_CINC; arm_CINV;
   arm_CNEG; arm_CMN; arm_CMP;arm_CSET; arm_CSETM;
   arm_MOV; arm_MNEG; arm_MUL; arm_MVN; arm_NEG;
-  arm_NEGS; arm_NGC; arm_NGCS; arm_ROR; arm_TST];;
+  arm_NEGS; arm_NGC; arm_NGCS; arm_ROR; arm_TST;
+  arm_UMNEGL; arm_UMULL];;
 
 (* ------------------------------------------------------------------------- *)
 (* These two are treated by ARM as aliases, but since they are such          *)
@@ -1556,8 +1599,8 @@ let ARM_OPERATION_CLAUSES =
        arm_MADD; arm_MOVK_ALT; arm_MOVN; arm_MOVZ;
        arm_MSUB; arm_MUL_VEC_ALT; arm_ORN; arm_ORR; arm_RET; arm_REV64_VEC_ALT;
        arm_RORV; arm_SBC; arm_SBCS_ALT; arm_SHL_VEC_ALT; arm_SUB;
-       arm_SUBS_ALT; arm_UADDLP_ALT; arm_UBFM; arm_UMOV; arm_UMLAL_ALT; arm_UMULH;
-       arm_UZIP1_ALT;
+       arm_SUBS_ALT; arm_UADDLP_ALT; arm_UBFM; arm_UMOV; arm_UMADDL;
+       arm_UMLAL_ALT; arm_UMSUBL; arm_UMULH; arm_UZIP1_ALT;
     (*** 32-bit backups since the ALT forms are 64-bit only ***)
        INST_TYPE[`:32`,`:N`] arm_ADCS;
        INST_TYPE[`:32`,`:N`] arm_ADDS;
