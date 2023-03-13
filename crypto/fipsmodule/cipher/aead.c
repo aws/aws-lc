@@ -304,3 +304,29 @@ int EVP_AEAD_get_iv_from_ipv4_nanosecs(
 
   return 1;
 }
+
+int EVP_AEAD_CTX_serialize_state(const EVP_AEAD_CTX *ctx, CBB *cbb) {
+  // EVP_AEAD_CTX must be initialized by EVP_AEAD_CTX_init first.
+  if (!ctx->aead) {
+    return 0;
+  }
+
+  if (!ctx->aead->serialize_state) {
+    return 1;
+  }
+
+  return ctx->aead->serialize_state(ctx, cbb);
+}
+
+int EVP_AEAD_CTX_deserialize_state(const EVP_AEAD_CTX *ctx, CBS *cbs) {
+  // EVP_AEAD_CTX must be initialized by EVP_AEAD_CTX_init first.
+  if (!ctx->aead) {
+    return 0;
+  }
+
+  if (!ctx->aead->deserialize_state) {
+    return CBS_len(cbs) == 0;
+  }
+
+  return ctx->aead->deserialize_state(ctx, cbs);
+}

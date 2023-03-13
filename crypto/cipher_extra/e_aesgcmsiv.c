@@ -519,6 +519,8 @@ static const EVP_AEAD aead_aes_128_gcm_siv_asm = {
     NULL /* open_gather */,
     NULL /* get_iv */,
     NULL /* tag_len */,
+    NULL /* serialize_state */,
+    NULL /* deserialize_state */,
 };
 
 static const EVP_AEAD aead_aes_256_gcm_siv_asm = {
@@ -536,6 +538,8 @@ static const EVP_AEAD aead_aes_256_gcm_siv_asm = {
     NULL /* open_gather */,
     NULL /* get_iv */,
     NULL /* tag_len */,
+    NULL /* serialize_state */,
+    NULL /* deserialize_state */,
 };
 
 #endif  // X86_64 && !NO_ASM && !WINDOWS
@@ -802,6 +806,8 @@ static const EVP_AEAD aead_aes_128_gcm_siv = {
     aead_aes_gcm_siv_open_gather,
     NULL /* get_iv */,
     NULL /* tag_len */,
+    NULL /* serialize_state */,
+    NULL /* deserialize_state */,
 };
 
 static const EVP_AEAD aead_aes_256_gcm_siv = {
@@ -819,6 +825,8 @@ static const EVP_AEAD aead_aes_256_gcm_siv = {
     aead_aes_gcm_siv_open_gather,
     NULL /* get_iv */,
     NULL /* tag_len */,
+    NULL /* serialize_state */,
+    NULL /* deserialize_state */,
 };
 
 #if defined(AES_GCM_SIV_ASM)

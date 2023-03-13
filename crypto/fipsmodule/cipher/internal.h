@@ -61,6 +61,7 @@
 
 #include <openssl/aead.h>
 #include <openssl/aes.h>
+#include <openssl/bytestring.h>
 
 #include "../../internal.h"
 #include "../modes/internal.h"
@@ -72,6 +73,13 @@ extern "C" {
 
 // EVP_CIPH_MODE_MASK contains the bits of |flags| that represent the mode.
 #define EVP_CIPH_MODE_MASK 0x3f
+
+static const unsigned int kAesGcmTls13MinNextNonceTag =
+    CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 0;
+static const unsigned int kAesGcmTls13MaskTag =
+    CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 1;
+static const unsigned int kAesGcmTls13FirstTag =
+    CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 2;
 
 // EVP_AEAD represents a specific AEAD algorithm.
 struct evp_aead_st {
@@ -110,6 +118,10 @@ struct evp_aead_st {
 
   size_t (*tag_len)(const EVP_AEAD_CTX *ctx, size_t in_Len,
                     size_t extra_in_len);
+
+  int (*serialize_state)(const EVP_AEAD_CTX *ctx, CBB *cbb);
+
+  int (*deserialize_state)(const EVP_AEAD_CTX *ctx, CBS *cbs);
 };
 
 struct evp_cipher_st {

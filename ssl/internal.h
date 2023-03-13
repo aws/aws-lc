@@ -877,6 +877,10 @@ class SSLAEADContext {
 
   bool GetIV(const uint8_t **out_iv, size_t *out_iv_len) const;
 
+  int SerializeState(CBB *cbb) const;
+
+  int DeserializeState(CBS *cbs) const;
+
  private:
   // GetAdditionalData returns the additional data, writing into |storage| if
   // necessary.
@@ -4049,5 +4053,9 @@ struct ssl_ech_keys_st {
   ~ssl_ech_keys_st() = default;
   friend OPENSSL_EXPORT void SSL_ECH_KEYS_free(SSL_ECH_KEYS *);
 };
+
+bool SSL3_STATE_get_optional_asn1_int64(CBS *cbs, int64_t *out,
+                                        CBS_ASN1_TAG tag,
+                                        int64_t default_value);
 
 #endif  // OPENSSL_HEADER_SSL_INTERNAL_H

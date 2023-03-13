@@ -475,6 +475,26 @@ OPENSSL_EXPORT int EVP_AEAD_get_iv_from_ipv4_nanosecs(
     const uint32_t ipv4_address, const uint64_t nanosecs,
     uint8_t out_iv[FIPS_AES_GCM_NONCE_LENGTH]);
 
+// **EXPERIMENTAL** EVP_AEAD_CTX_serialize_state serializes the state of |ctx|,
+// and writes it to |cbb|. The serialized bytes contains only the subset of data
+// necessary to restore the state of an |EVP_AEAD_CTX| after initializing a new
+// instance using |EVP_AEAD_CTX_init|. If the given |EVP_AEAD| algorithm does
+// not have a state serialization function, this function will return 1, but
+// will write no content to |cbb|. Otherwise the function returns 1 on success
+// or zero for an error.
+OPENSSL_EXPORT int EVP_AEAD_CTX_serialize_state(const EVP_AEAD_CTX *ctx,
+                                                CBB *cbb);
+
+// **EXPERIMENTAL** EVP_AEAD_CTX_deserialize_state deserializes the state
+// contained in |cbs|, configures the |ctx| to match. The deserialized bytes
+// contains only the subset of data necessary to restore the state of an
+// |EVP_AEAD_CTX| after initializing a new instance using |EVP_AEAD_CTX_init|.
+// If the given |EVP_AEAD| algorithm does not have a state deserialization
+// function, this function will return 1 iff the |cbs| length is zero, otherwise
+// it will return zero. Otherwise the function returns 1 on success or zero for
+// an error.
+OPENSSL_EXPORT int EVP_AEAD_CTX_deserialize_state(const EVP_AEAD_CTX *ctx,
+                                                  CBS *cbs);
 
 #if defined(__cplusplus)
 }  // extern C

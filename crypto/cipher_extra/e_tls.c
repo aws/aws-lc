@@ -485,6 +485,8 @@ static const EVP_AEAD aead_aes_128_cbc_sha1_tls = {
     NULL,  // open_gather
     NULL,  // get_iv
     aead_tls_tag_len,
+    NULL /* serialize_state */,
+    NULL /* deserialize_state */,
 };
 
 static const EVP_AEAD aead_aes_128_cbc_sha1_tls_implicit_iv = {
@@ -502,6 +504,8 @@ static const EVP_AEAD aead_aes_128_cbc_sha1_tls_implicit_iv = {
     NULL,             // open_gather
     aead_tls_get_iv,  // get_iv
     aead_tls_tag_len,
+    NULL /* serialize_state */,
+    NULL /* deserialize_state */,
 };
 
 static const EVP_AEAD aead_aes_256_cbc_sha1_tls = {
@@ -519,6 +523,8 @@ static const EVP_AEAD aead_aes_256_cbc_sha1_tls = {
     NULL,  // open_gather
     NULL,  // get_iv
     aead_tls_tag_len,
+    NULL /* serialize_state */,
+    NULL /* deserialize_state */,
 };
 
 static const EVP_AEAD aead_aes_256_cbc_sha1_tls_implicit_iv = {
@@ -536,6 +542,8 @@ static const EVP_AEAD aead_aes_256_cbc_sha1_tls_implicit_iv = {
     NULL,             // open_gather
     aead_tls_get_iv,  // get_iv
     aead_tls_tag_len,
+    NULL /* serialize_state */,
+    NULL /* deserialize_state */,
 };
 
 static const EVP_AEAD aead_aes_128_cbc_sha256_tls = {
@@ -553,6 +561,8 @@ static const EVP_AEAD aead_aes_128_cbc_sha256_tls = {
     NULL,  // open_gather
     NULL,  // get_iv
     aead_tls_tag_len,
+    NULL /* serialize_state */,
+    NULL /* deserialize_state */,
 };
 
 static const EVP_AEAD aead_aes_128_cbc_sha256_tls_implicit_iv = {
@@ -570,6 +580,8 @@ static const EVP_AEAD aead_aes_128_cbc_sha256_tls_implicit_iv = {
     NULL,             // open_gather
     aead_tls_get_iv,  // get_iv
     aead_tls_tag_len,
+    NULL /* serialize_state */,
+    NULL /* deserialize_state */,
 };
 
 static const EVP_AEAD aead_des_ede3_cbc_sha1_tls = {
@@ -587,6 +599,8 @@ static const EVP_AEAD aead_des_ede3_cbc_sha1_tls = {
     NULL,  // open_gather
     NULL,  // get_iv
     aead_tls_tag_len,
+    NULL /* serialize_state */,
+    NULL /* deserialize_state */,
 };
 
 static const EVP_AEAD aead_des_ede3_cbc_sha1_tls_implicit_iv = {
@@ -604,6 +618,8 @@ static const EVP_AEAD aead_des_ede3_cbc_sha1_tls_implicit_iv = {
     NULL,             // open_gather
     aead_tls_get_iv,  // get_iv
     aead_tls_tag_len,
+    NULL /* serialize_state */,
+    NULL /* deserialize_state */,
 };
 
 static const EVP_AEAD aead_null_sha1_tls = {
@@ -621,6 +637,8 @@ static const EVP_AEAD aead_null_sha1_tls = {
     NULL,  // open_gather
     NULL,  // get_iv
     aead_tls_tag_len,
+    NULL /* serialize_state */,
+    NULL /* deserialize_state */,
 };
 
 const EVP_AEAD *EVP_aead_aes_128_cbc_sha1_tls(void) {
