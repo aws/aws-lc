@@ -888,7 +888,7 @@ static bool SpeedHash(const EVP_MD *md, const std::string &name,
 static bool SpeedHmacChunk(const EVP_MD *md, std::string name,
                            size_t chunk_len) {
   // OpenSSL 1.0.x doesn't have a function that creates a new,
-  // properly initialized HMAC pointer so we need to create 
+  // properly initialized HMAC pointer so we need to create
   // the pointer and then do the initialization logic ourselves
 #if defined(OPENSSL_1_0_BENCHMARK)
   BM_NAMESPACE::UniquePtr<HMAC_CTX> ctx(new HMAC_CTX);
@@ -1761,17 +1761,14 @@ static bool SpeedTrustToken(std::string name, const TRUST_TOKEN_METHOD *method,
   BM_NAMESPACE::UniquePtr<uint8_t> free_redeem_msg(redeem_msg);
 
   if (!TimeFunction(&results, [&]() -> bool {
-        uint8_t *redeem_resp = NULL;
-        size_t redeem_resp_len;
-        TRUST_TOKEN *rtoken = NULL;
+        uint32_t public_value;
+        uint8_t private_value;
+        TRUST_TOKEN *rtoken;
         uint8_t *client_data = NULL;
         size_t client_data_len;
-        uint64_t redemption_time;
         int ok = TRUST_TOKEN_ISSUER_redeem(
-            issuer.get(), &redeem_resp, &redeem_resp_len, &rtoken, &client_data,
-            &client_data_len, &redemption_time, redeem_msg, redeem_msg_len,
-            /*lifetime=*/600);
-        OPENSSL_free(redeem_resp);
+            issuer.get(), &public_value, &private_value, &rtoken, &client_data,
+            &client_data_len, redeem_msg, redeem_msg_len);
         OPENSSL_free(client_data);
         TRUST_TOKEN_free(rtoken);
         return ok;
@@ -1781,37 +1778,19 @@ static bool SpeedTrustToken(std::string name, const TRUST_TOKEN_METHOD *method,
   }
   results.Print(name + " redeem");
 
-  uint8_t *redeem_resp = NULL;
-  size_t redeem_resp_len;
-  TRUST_TOKEN *rtoken = NULL;
+  uint32_t public_value;
+  uint8_t private_value;
+  TRUST_TOKEN *rtoken;
   uint8_t *client_data = NULL;
   size_t client_data_len;
-  uint64_t redemption_time;
-  if (!TRUST_TOKEN_ISSUER_redeem(issuer.get(), &redeem_resp, &redeem_resp_len,
+  if (!TRUST_TOKEN_ISSUER_redeem(issuer.get(), &public_value, &private_value,
                                  &rtoken, &client_data, &client_data_len,
-                                 &redemption_time, redeem_msg, redeem_msg_len,
-                                 /*lifetime=*/600)) {
+                                 redeem_msg, redeem_msg_len)) {
     fprintf(stderr, "TRUST_TOKEN_ISSUER_redeem failed.\n");
     return false;
   }
-  BM_NAMESPACE::UniquePtr<uint8_t> free_redeem_resp(redeem_resp);
   BM_NAMESPACE::UniquePtr<uint8_t> free_client_data(client_data);
   BM_NAMESPACE::UniquePtr<TRUST_TOKEN> free_rtoken(rtoken);
-
-  if (!TimeFunction(&results, [&]() -> bool {
-        uint8_t *srr = NULL, *sig = NULL;
-        size_t srr_len, sig_len;
-        int ok = TRUST_TOKEN_CLIENT_finish_redemption(
-            client.get(), &srr, &srr_len, &sig, &sig_len, redeem_resp,
-            redeem_resp_len);
-        OPENSSL_free(srr);
-        OPENSSL_free(sig);
-        return ok;
-      })) {
-    fprintf(stderr, "TRUST_TOKEN_CLIENT_finish_redemption failed.\n");
-    return false;
-  }
-  results.Print(name + " finish_redemption");
 
   return true;
 }

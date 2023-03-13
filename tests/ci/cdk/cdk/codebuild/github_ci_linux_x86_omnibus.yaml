@@ -220,6 +220,23 @@ batch:
         compute-type: BUILD_GENERAL1_LARGE
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:centos-7_gcc-4x_latest
 
+    - identifier: centos8_gcc8x_x86_64
+      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_LARGE
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:centos-8_gcc-8x_latest
+
+    - identifier: centos8_gcc8x_x86_64_fips
+      buildspec: ./tests/ci/codebuild/linux-x86/run_fips_tests.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_LARGE
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:centos-8_gcc-8x_latest
+
+
     - identifier: amazonlinux2_gcc7x_x86_64
       buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
       env:

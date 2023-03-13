@@ -1146,7 +1146,7 @@ static bssl::UniquePtr<STACK_OF(X509_CRL)> CRLsToStack(
   return stack;
 }
 
-static const time_t kReferenceTime = 1474934400 /* Sep 27th, 2016 */;
+static const int64_t kReferenceTime = 1474934400 /* Sep 27th, 2016 */;
 
 static int Verify(
     X509 *leaf, const std::vector<X509 *> &roots,
@@ -1180,7 +1180,7 @@ static int Verify(
   X509_STORE_CTX_set0_crls(ctx.get(), crls_stack.get());
 
   X509_VERIFY_PARAM *param = X509_STORE_CTX_get0_param(ctx.get());
-  X509_VERIFY_PARAM_set_time(param, kReferenceTime);
+  X509_VERIFY_PARAM_set_time_posix(param, kReferenceTime);
   if (configure_callback) {
     configure_callback(param);
   }
@@ -1552,7 +1552,7 @@ TEST(X509Test, TestCRL) {
   EXPECT_EQ(X509_V_ERR_CRL_HAS_EXPIRED,
             Verify(leaf.get(), {root.get()}, {root.get()}, {basic_crl.get()},
                    X509_V_FLAG_CRL_CHECK, [](X509_VERIFY_PARAM *param) {
-                     X509_VERIFY_PARAM_set_time(
+                     X509_VERIFY_PARAM_set_time_posix(
                          param, kReferenceTime + 2 * 30 * 24 * 3600);
                    }));
 
@@ -1561,7 +1561,7 @@ TEST(X509Test, TestCRL) {
             Verify(leaf.get(), {root.get()}, {root.get()}, {basic_crl.get()},
                    X509_V_FLAG_CRL_CHECK | X509_V_FLAG_NO_CHECK_TIME,
                    [](X509_VERIFY_PARAM *param) {
-                     X509_VERIFY_PARAM_set_time(
+                     X509_VERIFY_PARAM_set_time_posix(
                          param, kReferenceTime + 2 * 30 * 24 * 3600);
                    }));
 
@@ -2117,7 +2117,7 @@ TEST(X509Test, SignCRL) {
         ASSERT_TRUE(X509_CRL_set_version(crl.get(), X509_CRL_VERSION_2));
         bssl::UniquePtr<ASN1_TIME> last_update(ASN1_TIME_new());
         ASSERT_TRUE(last_update);
-        ASSERT_TRUE(ASN1_TIME_set(last_update.get(), kReferenceTime));
+        ASSERT_TRUE(ASN1_TIME_set_posix(last_update.get(), kReferenceTime));
         ASSERT_TRUE(X509_CRL_set1_lastUpdate(crl.get(), last_update.get()));
         bssl::UniquePtr<X509_NAME> issuer(X509_NAME_new());
         ASSERT_TRUE(issuer);
@@ -2567,6 +2567,67 @@ TEST(X509Test, X509NameSet) {
   // Check that the correct entries get incremented when inserting new entry.
   EXPECT_EQ(X509_NAME_ENTRY_set(X509_NAME_get_entry(name.get(), 1)), 1);
   EXPECT_EQ(X509_NAME_ENTRY_set(X509_NAME_get_entry(name.get(), 2)), 2);
+}
+
+// Tests that |X509_NAME_hash| and |X509_NAME_hash_old|'s values never change.
+// These functions figure into |X509_LOOKUP_hash_dir|'s on-disk format, so they
+// must remain stable. In particular, if we ever remove name canonicalization,
+// we'll need to preserve it for |X509_NAME_hash|.
+TEST(X509Test, NameHash) {
+  struct {
+    std::vector<uint8_t> name_der;
+    unsigned long hash;
+    unsigned long hash_old;
+  } kTests[] = {
+      // SEQUENCE {
+      //   SET {
+      //     SEQUENCE {
+      //       # commonName
+      //       OBJECT_IDENTIFIER { 2.5.4.3 }
+      //       UTF8String { "Test Name" }
+      //     }
+      //   }
+      // }
+      {{0x30, 0x14, 0x31, 0x12, 0x30, 0x10, 0x06, 0x03, 0x55, 0x04, 0x03,
+        0x0c, 0x09, 0x54, 0x65, 0x73, 0x74, 0x20, 0x4e, 0x61, 0x6d, 0x65},
+       0xc90fba01,
+       0x8c0d4fea},
+
+      // This name canonicalizes to the same value, with OpenSSL's algorithm, as
+      // the above input, so |hash| matches. |hash_old| doesn't use
+      // canonicalization and does not match.
+      //
+      // SEQUENCE {
+      //   SET {
+      //     SEQUENCE {
+      //       # commonName
+      //       OBJECT_IDENTIFIER { 2.5.4.3 }
+      //       BMPString {
+      //         u"\x09\n\x0b\x0c\x0d tEST\x09\n\x0b\x0c\x0d "
+      //         u"\x09\n\x0b\x0c\x0d nAME\x09\n\x0b\x0c\x0d "
+      //       }
+      //     }
+      //   }
+      // }
+      {{0x30, 0x4b, 0x31, 0x49, 0x30, 0x47, 0x06, 0x03, 0x55, 0x04, 0x03,
+        0x1e, 0x40, 0x00, 0x09, 0x00, 0x0a, 0x00, 0x0b, 0x00, 0x0c, 0x00,
+        0x0d, 0x00, 0x20, 0x00, 0x74, 0x00, 0x45, 0x00, 0x53, 0x00, 0x54,
+        0x00, 0x09, 0x00, 0x0a, 0x00, 0x0b, 0x00, 0x0c, 0x00, 0x0d, 0x00,
+        0x20, 0x00, 0x09, 0x00, 0x0a, 0x00, 0x0b, 0x00, 0x0c, 0x00, 0x0d,
+        0x00, 0x20, 0x00, 0x6e, 0x00, 0x41, 0x00, 0x4d, 0x00, 0x45, 0x00,
+        0x09, 0x00, 0x0a, 0x00, 0x0b, 0x00, 0x0c, 0x00, 0x0d, 0x00, 0x20},
+       0xc90fba01,
+       0xbe2dd8c8},
+  };
+  for (const auto &t : kTests) {
+    SCOPED_TRACE(Bytes(t.name_der));
+    const uint8_t *der = t.name_der.data();
+    bssl::UniquePtr<X509_NAME> name(
+        d2i_X509_NAME(nullptr, &der, t.name_der.size()));
+    ASSERT_TRUE(name);
+    EXPECT_EQ(t.hash, X509_NAME_hash(name.get()));
+    EXPECT_EQ(t.hash_old, X509_NAME_hash_old(name.get()));
+  }
 }
 
 TEST(X509Test, NoBasicConstraintsCertSign) {
@@ -3917,13 +3978,13 @@ TEST(X509Test, Expiry) {
   // The following are measured in seconds relative to kReferenceTime. The
   // validity periods are staggered so we can independently test both leaf and
   // root time checks.
-  const time_t kSecondsInDay = 24 * 3600;
-  const time_t kRootStart = -30 * kSecondsInDay;
-  const time_t kIntermediateStart = -20 * kSecondsInDay;
-  const time_t kLeafStart = -10 * kSecondsInDay;
-  const time_t kIntermediateEnd = 10 * kSecondsInDay;
-  const time_t kLeafEnd = 20 * kSecondsInDay;
-  const time_t kRootEnd = 30 * kSecondsInDay;
+  const int64_t kSecondsInDay = 24 * 3600;
+  const int64_t kRootStart = -30 * kSecondsInDay;
+  const int64_t kIntermediateStart = -20 * kSecondsInDay;
+  const int64_t kLeafStart = -10 * kSecondsInDay;
+  const int64_t kIntermediateEnd = 10 * kSecondsInDay;
+  const int64_t kLeafEnd = 20 * kSecondsInDay;
+  const int64_t kRootEnd = 30 * kSecondsInDay;
 
   bssl::UniquePtr<X509> root =
       MakeTestCert("Root", "Root", key.get(), /*is_ca=*/true);
@@ -3961,9 +4022,9 @@ TEST(X509Test, Expiry) {
   ASSERT_TRUE(X509_sign(leaf.get(), key.get(), EVP_sha256()));
 
   struct VerifyAt {
-    time_t time;
+    int64_t time;
     void operator()(X509_VERIFY_PARAM *param) const {
-      X509_VERIFY_PARAM_set_time(param, time);
+      X509_VERIFY_PARAM_set_time_posix(param, time);
     }
   };
 
@@ -5349,6 +5410,10 @@ TEST(X509Test, ExtensionFromConf) {
       // If no config is provided, this should fail.
       {"basicConstraints", "critical,@section", nullptr, {}},
 
+      // issuingDistributionPoint takes a list of name:value pairs. Omitting the
+      // value is not allowed.
+      {"issuingDistributionPoint", "fullname", nullptr, {}},
+
       // The "DER:" prefix just specifies an arbitrary byte string. Colons
       // separators are ignored.
       {kTestOID, "DER:0001020304", nullptr, {0x30, 0x15, 0x06, 0x0c, 0x2a, 0x86,
@@ -5661,8 +5726,8 @@ TEST(X509Test, ExtensionFromConf) {
         0x01, 0x84, 0xb7, 0x09, 0x02, 0x04, 0x04, 0x03, 0x02, 0x02, 0x44}},
 
       {kTestOID, "ASN1:FORMAT:BITLIST,BITSTR:1,invalid,5", nullptr, {}},
-      // TODO(davidben): Handle overflow and enable this test.
-      // {kTestOID, "ASN1:FORMAT:BITLIST,BITSTR:4294967296", nullptr, {}},
+      // Overflow.
+      {kTestOID, "ASN1:FORMAT:BITLIST,BITSTR:4294967296", nullptr, {}},
 
       // Unsupported formats for string types.
       {kTestOID, "ASN1:FORMAT:BITLIST,IA5:abcd", nullptr, {}},
@@ -5735,6 +5800,13 @@ val = SEQ:seq1
         0x30, 0x12, 0x7f, 0x64, 0x0f, 0xbf, 0x87, 0x68, 0x0b, 0x04,
         0x09, 0x30, 0x07, 0x31, 0x05, 0x03, 0x03, 0x00, 0x05, 0x00}},
 
+      // Invalid tag numbers.
+      {kTestOID, "ASN1:EXP:-1,NULL", nullptr, {}},
+      {kTestOID, "ASN1:EXP:1?,NULL", nullptr, {}},
+      // Fits in |uint32_t| but exceeds |CBS_ASN1_TAG_NUMBER_MASK|, the largest
+      // tag number we support.
+      {kTestOID, "ASN1:EXP:536870912,NULL", nullptr, {}},
+
       // Implicit tagging may also be applied to the underlying type, or the
       // wrapping modifiers.
       {kTestOID,
@@ -5750,6 +5822,9 @@ val = SEQ:seq1
       // here.
       {kTestOID, "ASN1:IMP:1,EXP:1,NULL", nullptr, {}},
       {kTestOID, "ASN1:IMP:1,IMP:1,NULL", nullptr, {}},
+
+      // [UNIVERSAL 0] is reserved.
+      {kTestOID, "ASN1:0U,NULL", nullptr, {}},
 
       // Leading and trailing spaces on name:value pairs are removed. However,
       // while these pairs are delimited by commas, a type will consumes
@@ -5827,4 +5902,15 @@ key = FORMAT:HEX,OCTWRAP,OCT:9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703
       EXPECT_EQ(Bytes(t.expected), Bytes(der, len));
     }
   }
+}
+
+TEST(X509Test, AddUnserializableExtension) {
+  bssl::UniquePtr<EVP_PKEY> key = PrivateKeyFromPEM(kP256Key);
+  ASSERT_TRUE(key);
+  bssl::UniquePtr<X509> x509 =
+      MakeTestCert("Issuer", "Subject", key.get(), /*is_ca=*/true);
+  ASSERT_TRUE(x509);
+  bssl::UniquePtr<X509_EXTENSION> ext(X509_EXTENSION_new());
+  ASSERT_TRUE(X509_EXTENSION_set_object(ext.get(), OBJ_nid2obj(NID_undef)));
+  EXPECT_FALSE(X509_add_ext(x509.get(), ext.get(), /*loc=*/-1));
 }
