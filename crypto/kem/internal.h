@@ -49,7 +49,6 @@ struct kem_key_st {
   const KEM *kem;
   uint8_t *public_key;
   uint8_t *secret_key;
-  uint8_t has_secret_key;
 };
 
 KEM_KEY *KEM_KEY_new(void);

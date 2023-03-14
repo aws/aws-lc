@@ -375,6 +375,7 @@ elseif(MSVC)
               # Disable this because it flags even when there is a default.
       "C4100" # 'exarg' : unreferenced formal parameter
       "C4127" # conditional expression is constant
+      "C4146" # unary minus operator applied to unsigned type, result still unsigned
       "C4200" # nonstandard extension used : zero-sized array in
               # struct/union.
       "C4204" # nonstandard extension used: non-constant aggregate initializer
