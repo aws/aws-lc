@@ -112,6 +112,16 @@ set(
   crypto/ocsp/test/aws/server_ecdsa_cert.pem
   crypto/ocsp/test/aws/server_ecdsa_key.pem
   crypto/ocsp/test/aws/server_key.pem
+  crypto/ocsp/test/integration-tests/AmazonInter1.cer
+  crypto/ocsp/test/integration-tests/AmazonInter2.cer
+  crypto/ocsp/test/integration-tests/AmazonRootCA1.cer
+  crypto/ocsp/test/integration-tests/AmazonRootCA2.cer
+  crypto/ocsp/test/integration-tests/expired.sca1a.amazontrust.com.cer
+  crypto/ocsp/test/integration-tests/expired.sca2a.amazontrust.com.cer
+  crypto/ocsp/test/integration-tests/good.sca1a.amazontrust.com.cer
+  crypto/ocsp/test/integration-tests/good.sca2a.amazontrust.com.cer
+  crypto/ocsp/test/integration-tests/revoked.sca1a.amazontrust.com.cer
+  crypto/ocsp/test/integration-tests/revoked.sca2a.amazontrust.com.cer
   crypto/ocsp/test/ND1.ors
   crypto/ocsp/test/ND2.ors
   crypto/ocsp/test/ND3.ors
