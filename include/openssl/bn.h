@@ -974,6 +974,12 @@ OPENSSL_EXPORT int BN_bn2binpad(const BIGNUM *in, uint8_t *out, int len);
 // BN_secure_new calls |BN_new|.
 OPENSSL_EXPORT BIGNUM *BN_secure_new(void);
 
+#define BN_FLG_MALLOCED 0x01
+#define BN_FLG_STATIC_DATA 0x02
+#define BN_FLG_CONSTTIME   0x04
+
+// BN_set_flags is a no-op
+OPENSSL_EXPORT void BN_set_flags(BIGNUM *b, int flags);
 
 // Private functions
 
@@ -1015,14 +1021,6 @@ struct bn_mont_ctx_st {
 };
 
 OPENSSL_EXPORT unsigned BN_num_bits_word(BN_ULONG l);
-
-#define BN_FLG_MALLOCED 0x01
-#define BN_FLG_STATIC_DATA 0x02
-// |BN_FLG_CONSTTIME| has been removed and intentionally omitted so code relying
-// on it will not compile. Consumers outside BoringSSL should use the
-// higher-level cryptographic algorithms exposed by other modules. Consumers
-// within the library should call the appropriate timing-sensitive algorithm
-// directly.
 
 
 #if defined(__cplusplus)
