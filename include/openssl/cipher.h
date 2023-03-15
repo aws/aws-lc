@@ -143,6 +143,9 @@ OPENSSL_EXPORT int EVP_CIPHER_CTX_copy(EVP_CIPHER_CTX *out,
 OPENSSL_EXPORT int EVP_CIPHER_CTX_reset(EVP_CIPHER_CTX *ctx);
 
 
+OPENSSL_EXPORT int EVP_CIPHER_CTX_get_iv(const EVP_CIPHER_CTX *ctx,
+                                         unsigned char *iv, size_t len);
+
 // Cipher context configuration.
 
 // EVP_CipherInit_ex configures |ctx| for a fresh encryption (or decryption, if
