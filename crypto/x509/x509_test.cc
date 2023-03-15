@@ -1146,7 +1146,7 @@ static bssl::UniquePtr<STACK_OF(X509_CRL)> CRLsToStack(
   return stack;
 }
 
-static const time_t kReferenceTime = 1474934400 /* Sep 27th, 2016 */;
+static const int64_t kReferenceTime = 1474934400 /* Sep 27th, 2016 */;
 
 static int Verify(
     X509 *leaf, const std::vector<X509 *> &roots,
@@ -1180,7 +1180,7 @@ static int Verify(
   X509_STORE_CTX_set0_crls(ctx.get(), crls_stack.get());
 
   X509_VERIFY_PARAM *param = X509_STORE_CTX_get0_param(ctx.get());
-  X509_VERIFY_PARAM_set_time(param, kReferenceTime);
+  X509_VERIFY_PARAM_set_time_posix(param, kReferenceTime);
   if (configure_callback) {
     configure_callback(param);
   }
@@ -1552,7 +1552,7 @@ TEST(X509Test, TestCRL) {
   EXPECT_EQ(X509_V_ERR_CRL_HAS_EXPIRED,
             Verify(leaf.get(), {root.get()}, {root.get()}, {basic_crl.get()},
                    X509_V_FLAG_CRL_CHECK, [](X509_VERIFY_PARAM *param) {
-                     X509_VERIFY_PARAM_set_time(
+                     X509_VERIFY_PARAM_set_time_posix(
                          param, kReferenceTime + 2 * 30 * 24 * 3600);
                    }));
 
@@ -1561,7 +1561,7 @@ TEST(X509Test, TestCRL) {
             Verify(leaf.get(), {root.get()}, {root.get()}, {basic_crl.get()},
                    X509_V_FLAG_CRL_CHECK | X509_V_FLAG_NO_CHECK_TIME,
                    [](X509_VERIFY_PARAM *param) {
-                     X509_VERIFY_PARAM_set_time(
+                     X509_VERIFY_PARAM_set_time_posix(
                          param, kReferenceTime + 2 * 30 * 24 * 3600);
                    }));
 
@@ -2117,7 +2117,7 @@ TEST(X509Test, SignCRL) {
         ASSERT_TRUE(X509_CRL_set_version(crl.get(), X509_CRL_VERSION_2));
         bssl::UniquePtr<ASN1_TIME> last_update(ASN1_TIME_new());
         ASSERT_TRUE(last_update);
-        ASSERT_TRUE(ASN1_TIME_set(last_update.get(), kReferenceTime));
+        ASSERT_TRUE(ASN1_TIME_set_posix(last_update.get(), kReferenceTime));
         ASSERT_TRUE(X509_CRL_set1_lastUpdate(crl.get(), last_update.get()));
         bssl::UniquePtr<X509_NAME> issuer(X509_NAME_new());
         ASSERT_TRUE(issuer);
@@ -3978,13 +3978,13 @@ TEST(X509Test, Expiry) {
   // The following are measured in seconds relative to kReferenceTime. The
   // validity periods are staggered so we can independently test both leaf and
   // root time checks.
-  const time_t kSecondsInDay = 24 * 3600;
-  const time_t kRootStart = -30 * kSecondsInDay;
-  const time_t kIntermediateStart = -20 * kSecondsInDay;
-  const time_t kLeafStart = -10 * kSecondsInDay;
-  const time_t kIntermediateEnd = 10 * kSecondsInDay;
-  const time_t kLeafEnd = 20 * kSecondsInDay;
-  const time_t kRootEnd = 30 * kSecondsInDay;
+  const int64_t kSecondsInDay = 24 * 3600;
+  const int64_t kRootStart = -30 * kSecondsInDay;
+  const int64_t kIntermediateStart = -20 * kSecondsInDay;
+  const int64_t kLeafStart = -10 * kSecondsInDay;
+  const int64_t kIntermediateEnd = 10 * kSecondsInDay;
+  const int64_t kLeafEnd = 20 * kSecondsInDay;
+  const int64_t kRootEnd = 30 * kSecondsInDay;
 
   bssl::UniquePtr<X509> root =
       MakeTestCert("Root", "Root", key.get(), /*is_ca=*/true);
@@ -4022,9 +4022,9 @@ TEST(X509Test, Expiry) {
   ASSERT_TRUE(X509_sign(leaf.get(), key.get(), EVP_sha256()));
 
   struct VerifyAt {
-    time_t time;
+    int64_t time;
     void operator()(X509_VERIFY_PARAM *param) const {
-      X509_VERIFY_PARAM_set_time(param, time);
+      X509_VERIFY_PARAM_set_time_posix(param, time);
     }
   };
 
@@ -5400,6 +5400,19 @@ TEST(X509Test, ExtensionFromConf) {
        {0x30, 0x0f, 0x06, 0x03, 0x55, 0x1d, 0x13, 0x01, 0x01, 0xff, 0x04, 0x05,
         0x30, 0x03, 0x01, 0x01, 0xff}},
 
+      {"basicConstraints",
+       "critical,CA:true,pathlen:1",
+       nullptr,
+       {0x30, 0x12, 0x06, 0x03, 0x55, 0x1d, 0x13, 0x01, 0x01, 0xff,
+        0x04, 0x08, 0x30, 0x06, 0x01, 0x01, 0xff, 0x02, 0x01, 0x01}},
+
+      // key:value tuples can be repeated and just override the previous value.
+      {"basicConstraints",
+       "critical,CA:true,pathlen:100,pathlen:1",
+       nullptr,
+       {0x30, 0x12, 0x06, 0x03, 0x55, 0x1d, 0x13, 0x01, 0x01, 0xff,
+        0x04, 0x08, 0x30, 0x06, 0x01, 0x01, 0xff, 0x02, 0x01, 0x01}},
+
       // Extension contents may be referenced from a config section.
       {"basicConstraints",
        "critical,@section",
@@ -5413,6 +5426,60 @@ TEST(X509Test, ExtensionFromConf) {
       // issuingDistributionPoint takes a list of name:value pairs. Omitting the
       // value is not allowed.
       {"issuingDistributionPoint", "fullname", nullptr, {}},
+
+      // Duplicate reason keys are an error. Reaching this case is interesting.
+      // The value can a string like "key:value,key:value", or it can be
+      // "@section" and reference a config section. If using a string, duplicate
+      // keys are possible, but then it is impossible to put commas in the
+      // value, as onlysomereasons expects. If using a section reference, it is
+      // impossible to have a duplicate key because the config file parser
+      // overrides the old value.
+      {"issuingDistributionPoint",
+       "onlysomereasons:keyCompromise",
+       nullptr,
+       {0x30, 0x0d, 0x06, 0x03, 0x55, 0x1d, 0x1c, 0x04, 0x06, 0x30, 0x04, 0x83,
+        0x02, 0x06, 0x40}},
+      {"issuingDistributionPoint",
+       "onlysomereasons:keyCompromise,onlysomereasons:CACompromise\n",
+       nullptr,
+       {}},
+
+      // subjectAltName has a series of string-based inputs for each name type.
+      {"subjectAltName",
+       "email:foo@example.com, URI:https://example.com, DNS:example.com, "
+       "RID:1.2.3.4, IP:127.0.0.1, IP:::1, dirName:section, "
+       "otherName:1.2.3.4;BOOLEAN:TRUE",
+       "[section]\nCN=Test\n",
+       {0x30, 0x78, 0x06, 0x03, 0x55, 0x1d, 0x11, 0x04, 0x71, 0x30, 0x6f, 0x81,
+        0x0f, 0x66, 0x6f, 0x6f, 0x40, 0x65, 0x78, 0x61, 0x6d, 0x70, 0x6c, 0x65,
+        0x2e, 0x63, 0x6f, 0x6d, 0x86, 0x13, 0x68, 0x74, 0x74, 0x70, 0x73, 0x3a,
+        0x2f, 0x2f, 0x65, 0x78, 0x61, 0x6d, 0x70, 0x6c, 0x65, 0x2e, 0x63, 0x6f,
+        0x6d, 0x82, 0x0b, 0x65, 0x78, 0x61, 0x6d, 0x70, 0x6c, 0x65, 0x2e, 0x63,
+        0x6f, 0x6d, 0x88, 0x03, 0x2a, 0x03, 0x04, 0x87, 0x04, 0x7f, 0x00, 0x00,
+        0x01, 0x87, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xa4, 0x11, 0x30, 0x0f, 0x31,
+        0x0d, 0x30, 0x0b, 0x06, 0x03, 0x55, 0x04, 0x03, 0x0c, 0x04, 0x54, 0x65,
+        0x73, 0x74, 0xa0, 0x0a, 0x06, 0x03, 0x2a, 0x03, 0x04, 0xa0, 0x03, 0x01,
+        0x01, 0xff}},
+
+      // Syntax errors in each case, where they exist. (The string types just
+      // copy the string in as-is.)
+      {"subjectAltName", "RID:not_an_oid", nullptr, {}},
+      {"subjectAltName", "IP:not_an_ip", nullptr, {}},
+      {"subjectAltName", "dirName:no_conf_db", nullptr, {}},
+      {"subjectAltName", "dirName:missing_section", "[section]\nCN=Test\n", {}},
+      {"subjectAltName", "otherName:missing_semicolon", nullptr, {}},
+      {"subjectAltName", "otherName:1.2.3.4", nullptr, {}},
+      {"subjectAltName", "otherName:invalid_oid;BOOLEAN:TRUE", nullptr, {}},
+      {"subjectAltName", "otherName:1.2.3.4;invalid_value", nullptr, {}},
+
+      {"policyMappings",
+       "1.1.1.1:2.2.2.2",
+       nullptr,
+       {0x30, 0x15, 0x06, 0x03, 0x55, 0x1d, 0x21, 0x04, 0x0e, 0x30, 0x0c, 0x30,
+        0x0a, 0x06, 0x03, 0x29, 0x01, 0x01, 0x06, 0x03, 0x52, 0x02, 0x02}},
+      {"policyMappings", "invalid_oid:2.2.2.2", nullptr, {}},
+      {"policyMappings", "1.1.1.1:invalid_oid", nullptr, {}},
 
       // The "DER:" prefix just specifies an arbitrary byte string. Colons
       // separators are ignored.
@@ -5726,8 +5793,18 @@ TEST(X509Test, ExtensionFromConf) {
         0x01, 0x84, 0xb7, 0x09, 0x02, 0x04, 0x04, 0x03, 0x02, 0x02, 0x44}},
 
       {kTestOID, "ASN1:FORMAT:BITLIST,BITSTR:1,invalid,5", nullptr, {}},
-      // Overflow.
-      {kTestOID, "ASN1:FORMAT:BITLIST,BITSTR:4294967296", nullptr, {}},
+      // Negative bit inidices are not allowed.
+      {kTestOID, "ASN1:FORMAT:BITLIST,BITSTR:-1", nullptr, {}},
+      // We cap bit indices at 256.
+      {kTestOID, "ASN1:FORMAT:BITLIST,BITSTR:257", nullptr, {}},
+      {kTestOID,
+       "ASN1:FORMAT:BITLIST,BITSTR:256",
+       nullptr,
+       {0x30, 0x34, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04,
+        0x01, 0x84, 0xb7, 0x09, 0x02, 0x04, 0x24, 0x03, 0x22, 0x07, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80}},
 
       // Unsupported formats for string types.
       {kTestOID, "ASN1:FORMAT:BITLIST,IA5:abcd", nullptr, {}},

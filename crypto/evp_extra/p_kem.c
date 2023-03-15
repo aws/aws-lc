@@ -53,8 +53,6 @@ static int pkey_kem_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
     return 0;
   }
 
-  key->has_secret_key = 1;
-
   return 1;
 }
 
@@ -74,10 +72,17 @@ static int pkey_kem_encapsulate(EVP_PKEY_CTX *ctx,
   }
 
   // Caller is getting parameter values.
-  if (ciphertext == NULL) {
+  if (ciphertext == NULL && shared_secret == NULL) {
     *ciphertext_len = kem->ciphertext_len;
     *shared_secret_len = kem->shared_secret_len;
     return 1;
+  }
+
+  // If not getting parameter values, then both
+  // output buffers need to be valid (non-NULL)
+  if (ciphertext == NULL || shared_secret == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_MISSING_PARAMETERS);
+    return 0;
   }
 
   // The output buffers need to be large enough.
@@ -95,7 +100,13 @@ static int pkey_kem_encapsulate(EVP_PKEY_CTX *ctx,
       return 0;
   }
 
+  // Check that the key has a public key set.
   KEM_KEY *key = ctx->pkey->pkey.kem_key;
+  if (key->public_key == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_KEY_SET);
+    return 0;
+  }
+
   if (!kem->method->encaps(ciphertext, shared_secret, key->public_key)) {
     return 0;
   }
@@ -144,8 +155,9 @@ static int pkey_kem_decapsulate(EVP_PKEY_CTX *ctx,
       return 0;
   }
 
+  // Check that the key has a secret key set.
   KEM_KEY *key = ctx->pkey->pkey.kem_key;
-  if (!key->has_secret_key) {
+  if (key->secret_key == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NO_KEY_SET);
     return 0;
   }

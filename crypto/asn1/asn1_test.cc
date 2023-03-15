@@ -921,7 +921,7 @@ static std::string ASN1StringToStdString(const ASN1_STRING *str) {
                      ASN1_STRING_get0_data(str) + ASN1_STRING_length(str));
 }
 
-static bool ASN1Time_check_time_t(const ASN1_TIME *s, time_t t) {
+static bool ASN1Time_check_posix(const ASN1_TIME *s, int64_t t) {
   struct tm stm, ttm;
   int day, sec;
 
@@ -939,7 +939,7 @@ static bool ASN1Time_check_time_t(const ASN1_TIME *s, time_t t) {
     default:
       return false;
   }
-  if (!OPENSSL_gmtime(&t, &ttm) ||
+  if (!OPENSSL_posix_to_tm(t, &ttm) ||
       !OPENSSL_gmtime_diff(&day, &sec, &ttm, &stm)) {
     return false;
   }
@@ -963,37 +963,35 @@ static std::string PrintStringToBIO(const ASN1_STRING *str,
 
 TEST(ASN1Test, SetTime) {
   static const struct {
-    time_t time;
+    int64_t time;
     const char *generalized;
     const char *utc;
     const char *printed;
   } kTests[] = {
-    {-631152001, "19491231235959Z", nullptr, "Dec 31 23:59:59 1949 GMT"},
-    {-631152000, "19500101000000Z", "500101000000Z",
-     "Jan  1 00:00:00 1950 GMT"},
-    {0, "19700101000000Z", "700101000000Z", "Jan  1 00:00:00 1970 GMT"},
-    {981173106, "20010203040506Z", "010203040506Z", "Feb  3 04:05:06 2001 GMT"},
-    {951804000, "20000229060000Z", "000229060000Z", "Feb 29 06:00:00 2000 GMT"},
-    // NASA says this is the correct time for posterity.
-    {-16751025, "19690621025615Z", "690621025615Z", "Jun 21 02:56:15 1969 GMT"},
-    // -1 is sometimes used as an error value. Ensure we correctly handle it.
-    {-1, "19691231235959Z", "691231235959Z", "Dec 31 23:59:59 1969 GMT"},
-#if defined(OPENSSL_64_BIT)
-    // TODO(https://crbug.com/boringssl/416): These cases overflow 32-bit
-    // |time_t| and do not consistently work on 32-bit platforms. For now,
-    // disable the tests on 32-bit. Re-enable them once the bug is fixed.
-    {2524607999, "20491231235959Z", "491231235959Z",
-     "Dec 31 23:59:59 2049 GMT"},
-    {2524608000, "20500101000000Z", nullptr, "Jan  1 00:00:00 2050 GMT"},
-    // Test boundary conditions.
-    {-62167219200, "00000101000000Z", nullptr, "Jan  1 00:00:00 0 GMT"},
-    {-62167219201, nullptr, nullptr, nullptr},
-    {253402300799, "99991231235959Z", nullptr, "Dec 31 23:59:59 9999 GMT"},
-    {253402300800, nullptr, nullptr, nullptr},
-#endif
+      {-631152001, "19491231235959Z", nullptr, "Dec 31 23:59:59 1949 GMT"},
+      {-631152000, "19500101000000Z", "500101000000Z",
+       "Jan  1 00:00:00 1950 GMT"},
+      {0, "19700101000000Z", "700101000000Z", "Jan  1 00:00:00 1970 GMT"},
+      {981173106, "20010203040506Z", "010203040506Z",
+       "Feb  3 04:05:06 2001 GMT"},
+      {951804000, "20000229060000Z", "000229060000Z",
+       "Feb 29 06:00:00 2000 GMT"},
+      // NASA says this is the correct time for posterity.
+      {-16751025, "19690621025615Z", "690621025615Z",
+       "Jun 21 02:56:15 1969 GMT"},
+      // -1 is sometimes used as an error value. Ensure we correctly handle it.
+      {-1, "19691231235959Z", "691231235959Z", "Dec 31 23:59:59 1969 GMT"},
+      {2524607999, "20491231235959Z", "491231235959Z",
+       "Dec 31 23:59:59 2049 GMT"},
+      {2524608000, "20500101000000Z", nullptr, "Jan  1 00:00:00 2050 GMT"},
+      // Test boundary conditions.
+      {-62167219200, "00000101000000Z", nullptr, "Jan  1 00:00:00 0 GMT"},
+      {-62167219201, nullptr, nullptr, nullptr},
+      {253402300799, "99991231235959Z", nullptr, "Dec 31 23:59:59 9999 GMT"},
+      {253402300800, nullptr, nullptr, nullptr},
   };
   for (const auto &t : kTests) {
-    time_t tt;
+    int64_t tt;
     SCOPED_TRACE(t.time);
 
     bssl::UniquePtr<ASN1_UTCTIME> utc(ASN1_UTCTIME_set(nullptr, t.time));
@@ -1001,8 +999,8 @@ TEST(ASN1Test, SetTime) {
       ASSERT_TRUE(utc);
       EXPECT_EQ(V_ASN1_UTCTIME, ASN1_STRING_type(utc.get()));
       EXPECT_EQ(t.utc, ASN1StringToStdString(utc.get()));
-      EXPECT_TRUE(ASN1Time_check_time_t(utc.get(), t.time));
-      EXPECT_EQ(ASN1_TIME_to_time_t(utc.get(), &tt), 1);
+      EXPECT_TRUE(ASN1Time_check_posix(utc.get(), t.time));
+      EXPECT_EQ(ASN1_TIME_to_posix(utc.get(), &tt), 1);
       EXPECT_EQ(tt, t.time);
       EXPECT_EQ(PrintStringToBIO(utc.get(), &ASN1_UTCTIME_print), t.printed);
       EXPECT_EQ(PrintStringToBIO(utc.get(), &ASN1_TIME_print), t.printed);
@@ -1016,8 +1014,8 @@ TEST(ASN1Test, SetTime) {
       ASSERT_TRUE(generalized);
       EXPECT_EQ(V_ASN1_GENERALIZEDTIME, ASN1_STRING_type(generalized.get()));
       EXPECT_EQ(t.generalized, ASN1StringToStdString(generalized.get()));
-      EXPECT_TRUE(ASN1Time_check_time_t(generalized.get(), t.time));
-      EXPECT_EQ(ASN1_TIME_to_time_t(generalized.get(), &tt), 1);
+      EXPECT_TRUE(ASN1Time_check_posix(generalized.get(), t.time));
+      EXPECT_EQ(ASN1_TIME_to_posix(generalized.get(), &tt), 1);
       EXPECT_EQ(tt, t.time);
       EXPECT_EQ(
           PrintStringToBIO(generalized.get(), &ASN1_GENERALIZEDTIME_print),
@@ -1028,7 +1026,7 @@ TEST(ASN1Test, SetTime) {
       EXPECT_FALSE(generalized);
     }
 
-    bssl::UniquePtr<ASN1_TIME> choice(ASN1_TIME_set(nullptr, t.time));
+    bssl::UniquePtr<ASN1_TIME> choice(ASN1_TIME_set_posix(nullptr, t.time));
     if (t.generalized) {
       ASSERT_TRUE(choice);
       if (t.utc) {
@@ -1038,8 +1036,8 @@ TEST(ASN1Test, SetTime) {
         EXPECT_EQ(V_ASN1_GENERALIZEDTIME, ASN1_STRING_type(choice.get()));
         EXPECT_EQ(t.generalized, ASN1StringToStdString(choice.get()));
       }
-      EXPECT_TRUE(ASN1Time_check_time_t(choice.get(), t.time));
-      EXPECT_EQ(ASN1_TIME_to_time_t(choice.get(), &tt), 1);
+      EXPECT_TRUE(ASN1Time_check_posix(choice.get(), t.time));
+      EXPECT_EQ(ASN1_TIME_to_posix(choice.get(), &tt), 1);
       EXPECT_EQ(tt, t.time);
     } else {
       EXPECT_FALSE(choice);
@@ -2516,6 +2514,63 @@ TEST(ASN1Test, OptionalAndDefaultBooleans) {
   EXPECT_EQ(obj->default_false, ASN1_BOOLEAN_TRUE);
 
   // TODO(https://crbug.com/boringssl/354): Reject explicit DEFAULTs.
+}
+
+// EXPLICIT_BOOLEAN is a [1] EXPLICIT BOOLEAN.
+ASN1_ITEM_TEMPLATE(EXPLICIT_BOOLEAN) = ASN1_EX_TEMPLATE_TYPE(ASN1_TFLG_EXPLICIT,
+                                                             1,
+                                                             EXPLICIT_BOOLEAN,
+                                                             ASN1_BOOLEAN)
+ASN1_ITEM_TEMPLATE_END(EXPLICIT_BOOLEAN)
+
+// EXPLICIT_OCTET_STRING is a [2] EXPLICIT OCTET STRING.
+ASN1_ITEM_TEMPLATE(EXPLICIT_OCTET_STRING) = ASN1_EX_TEMPLATE_TYPE(
+    ASN1_TFLG_EXPLICIT, 2, EXPLICIT_OCTET_STRING, ASN1_OCTET_STRING)
+ASN1_ITEM_TEMPLATE_END(EXPLICIT_OCTET_STRING)
+
+// DOUBLY_TAGGED is
+//   SEQUENCE {
+//     b   [3] EXPLICIT [1] EXPLICIT BOOLEAN OPTIONAL,
+//     oct [4] EXPLICIT [2] EXPLICIT OCTET STRING OPTIONAL }
+// with explicit tagging.
+struct DOUBLY_TAGGED {
+  ASN1_BOOLEAN b;
+  ASN1_OCTET_STRING *oct;
+};
+
+DECLARE_ASN1_FUNCTIONS(DOUBLY_TAGGED)
+ASN1_SEQUENCE(DOUBLY_TAGGED) = {
+    ASN1_EXP_OPT(DOUBLY_TAGGED, b, EXPLICIT_BOOLEAN, 3),
+    ASN1_EXP_OPT(DOUBLY_TAGGED, oct, EXPLICIT_OCTET_STRING, 4),
+} ASN1_SEQUENCE_END(DOUBLY_TAGGED)
+IMPLEMENT_ASN1_FUNCTIONS(DOUBLY_TAGGED)
+
+// Test that optional fields with two layers of explicit tagging are correctly
+// handled.
+TEST(ASN1Test, DoublyTagged) {
+  std::unique_ptr<DOUBLY_TAGGED, decltype(&DOUBLY_TAGGED_free)> obj(
+      nullptr, DOUBLY_TAGGED_free);
+
+  // Both fields missing.
+  static const uint8_t kOmitted[] = {0x30, 0x00};
+  const uint8_t *inp = kOmitted;
+  obj.reset(d2i_DOUBLY_TAGGED(nullptr, &inp, sizeof(kOmitted)));
+  ASSERT_TRUE(obj);
+  EXPECT_EQ(obj->b, -1);
+  EXPECT_FALSE(obj->oct);
+  TestSerialize(obj.get(), i2d_DOUBLY_TAGGED, kOmitted);
+
+  // Both fields present, true and the empty string.
+  static const uint8_t kTrueEmpty[] = {0x30, 0x0d, 0xa3, 0x05, 0xa1,
+                                       0x03, 0x01, 0x01, 0xff, 0xa4,
+                                       0x04, 0xa2, 0x02, 0x04, 0x00};
+  inp = kTrueEmpty;
+  obj.reset(d2i_DOUBLY_TAGGED(nullptr, &inp, sizeof(kTrueEmpty)));
+  ASSERT_TRUE(obj);
+  EXPECT_EQ(obj->b, 0xff);
+  ASSERT_TRUE(obj->oct);
+  EXPECT_EQ(ASN1_STRING_length(obj->oct), 0);
+  TestSerialize(obj.get(), i2d_DOUBLY_TAGGED, kTrueEmpty);
 }
 
 #endif  // !WINDOWS || !SHARED_LIBRARY

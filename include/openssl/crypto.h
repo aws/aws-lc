@@ -75,8 +75,7 @@ OPENSSL_EXPORT void CRYPTO_pre_sandbox_init(void);
 
 #if defined(OPENSSL_ARM) && defined(OPENSSL_LINUX) && \
     !defined(OPENSSL_STATIC_ARMCAP)
-// CRYPTO_has_broken_NEON returns one if the current CPU is known to have a
-// broken NEON unit. See https://crbug.com/341598.
+// CRYPTO_has_broken_NEON returns zero.
 OPENSSL_EXPORT int CRYPTO_has_broken_NEON(void);
 
 // CRYPTO_needs_hwcap2_workaround returns one if the ARMv8 AArch32 AT_HWCAP2
