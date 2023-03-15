@@ -450,7 +450,6 @@ static bool SpeedAESGCMChunk(const EVP_CIPHER *cipher, std::string name,
     encryptResults.PrintWithBytes(encryptName, chunk_byte_len);
   }
   else {
-    // Call EVP_EncryptInit_ex once with the cipher, in the benchmark loop reuse the cipher
     if (!(EVP_EncryptInit_ex(ctx.get(), cipher, NULL, key.get(), nonce.get()) &&
           EVP_EncryptUpdate(ctx.get(), NULL, len_ptr, ad.get(), ad_len) &&
           EVP_EncryptUpdate(ctx.get(), ciphertext, len_ptr, plaintext, chunk_byte_len) &&

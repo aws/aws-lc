@@ -173,9 +173,8 @@ static size_t hw_gcm_encrypt(const uint8_t *in, uint8_t *out, size_t len,
       aesv8_gcm_8x_enc_256(in, len_blocks * 8, out, Xi, ivec, key);
       break;
     default:
-      // This function is allowed to process no input;
-      // the subsequent logic after calling it can process
-      // the entire input.
+      // The subsequent logic after returning can process
+      // the input or return an error.
       return 0;
       break;
     }
@@ -211,9 +210,8 @@ static size_t hw_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
       aesv8_gcm_8x_dec_256(in, len_blocks * 8, out, Xi, ivec, key);
       break;
     default:
-      // This function is allowed to process no input;
-      // the subsequent logic after calling it can process
-      // the entire input.
+      // The subsequent logic after returning can process
+      // the input or return an error.
       return 0;
       break;
     }
