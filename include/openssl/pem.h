@@ -475,5 +475,7 @@ OPENSSL_EXPORT int PEM_write_PKCS8PrivateKey(FILE *fp, EVP_PKEY *x,
 #define PEM_R_SHORT_HEADER 112
 #define PEM_R_UNSUPPORTED_CIPHER 113
 #define PEM_R_UNSUPPORTED_ENCRYPTION 114
+// For OpenSSL compatibility. Not used internally.
+#define PEM_R_PROBLEMS_GETTING_PASSWORD 115
 
 #endif  // OPENSSL_HEADER_PEM_H
