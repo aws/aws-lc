@@ -1158,6 +1158,12 @@ static const IntegrationTestVector kIntegrationTestVectors[] = {
      "ocsp.sca1a.amazontrust.com", OCSP_RESPONDER_CONN_SUCCESS},
     {"AmazonInter2", "expired.sca2a.amazontrust.com",
      "ocsp.sca2a.amazontrust.com", OCSP_RESPONDER_CONN_SUCCESS},
+    // Try connecting to the OCSP responder with an invalid OCSP request.
+    // These should fail.
+    {"AmazonInter1", nullptr, "ocsp.sca3a.amazontrust.com",
+     OCSP_RESPONDER_CONN_ERROR},
+    {"AmazonInter2", nullptr, "ocsp.sca4a.amazontrust.com",
+     OCSP_RESPONDER_CONN_ERROR},
     // Connect to an unauthorized OCSP responder endpoint. This will
     // successfully get an OCSP response, but will only have the field
     // |OCSP_RESPONSE_STATUS_UNAUTHORIZED|.
@@ -1196,13 +1202,15 @@ TEST_P(OCSPIntegrationTest, AmazonTrustServices) {
                       .c_str())
           .c_str()));
   ASSERT_TRUE(issuer);
-  bssl::UniquePtr<X509> certificate(CertFromPEM(
-      GetTestData(std::string("crypto/ocsp/test/integration-tests/" +
-                              std::string(t.cert) + ".cer")
-                      .c_str())
-          .c_str()));
-  ASSERT_TRUE(certificate);
-
+  bssl::UniquePtr<X509> certificate;
+  if (t.cert) {
+    certificate = bssl::UniquePtr<X509>(CertFromPEM(
+        GetTestData(std::string("crypto/ocsp/test/integration-tests/" +
+                                std::string(t.cert) + ".cer")
+                        .c_str())
+            .c_str()));
+    ASSERT_TRUE(certificate);
+  }
   bssl::UniquePtr<OCSP_REQUEST> request(OCSP_REQUEST_new());
   OCSP_CERTID *id =
       OCSP_cert_to_id(EVP_sha1(), certificate.get(), issuer.get());
@@ -1235,7 +1243,7 @@ TEST_P(OCSPIntegrationTest, AmazonTrustServices) {
   // Check if an OCSP response has been successfully retrieved.
   if (t.expected_status == OCSP_RESPONDER_CONN_SUCCESS) {
     EXPECT_TRUE(resp);
-    OPENSSL_free(resp);
+    OCSP_RESPONSE_free(resp);
   } else {
     EXPECT_FALSE(resp);
   }
