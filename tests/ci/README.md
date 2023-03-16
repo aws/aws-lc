@@ -31,6 +31,18 @@ $ docker run -v `pwd`:`pwd` -w `pwd` -it ubuntu-20.04:clang-9x
 $ ./tests/ci/run_posix_tests.sh
 ```
 
+Before building a "non-base" image you need to build the corresponding base one.
+For example, to be able to build the `ubuntu-20.04_clang-9x` image from above,
+you first need to build the base image `ubuntu-20.04_base`. In addition, the
+base image has to be built with with the dependencies directory as the context
+so it has access to the script that installs dependencies. So the full command
+would look like this:
+```
+$ docker build -t ubuntu-18.04:base -f tests/ci/docker_images/linux-x86/ubuntu-18.04_base/Dockerfile tests/ci/docker_images/dependencies
+```
+For more examples, see `build_images.sh` script in directories corresponding
+to different platforms (linux-x86, linux-aarch, windows, rust).
+
 ## Test locations
 
 ### Unit tests
