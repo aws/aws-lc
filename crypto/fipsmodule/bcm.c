@@ -160,7 +160,7 @@ extern const uint8_t BORINGSSL_bcm_rodata_end[];
 // We need to get OPENSSL_ia32cap_P from cpucap.c without including the file
 // However, OPENSSL_ia32cap is only defined for x86 processors
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
-extern const uint32_t OPENSSL_ia32cap_P[];
+extern uint32_t OPENSSL_ia32cap_P[4];
 #endif
 
 // assert_within is used to sanity check that certain symbols are within the
