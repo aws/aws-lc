@@ -1221,7 +1221,6 @@ TEST_P(OCSPIntegrationTest, AmazonTrustServices) {
   ASSERT_TRUE(bio);
   BIO_set_conn_port(bio.get(), "80");
   BIO_set_retry_read(bio.get());
-  BIO_set_nbio(bio.get(), 1);
   ASSERT_TRUE(BIO_do_connect(bio.get()));
 
   // Set up a |OCSP_REQ_CTX| to be sent out.
