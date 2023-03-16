@@ -802,6 +802,8 @@ int ERR_pop_to_mark(void) {
   return 0;
 }
 
+void ERR_load_CRYPTO_strings(void) {}
+
 void ERR_load_crypto_strings(void) {}
 
 void ERR_free_strings(void) {}
