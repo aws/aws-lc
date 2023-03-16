@@ -266,10 +266,10 @@ void OPENSSL_cpuid_setup(void) {
     extended_features[0] &= ~(1u << 19);
   }
 
-  OPENSSL_ia32cap_P[0] = edx;
-  OPENSSL_ia32cap_P[1] = ecx;
-  OPENSSL_ia32cap_P[2] = extended_features[0];
-  OPENSSL_ia32cap_P[3] = extended_features[1];
+  OPENSSL_ia32cap_get()[0] = edx;
+  OPENSSL_ia32cap_get()[1] = ecx;
+  OPENSSL_ia32cap_get()[2] = extended_features[0];
+  OPENSSL_ia32cap_get()[3] = extended_features[1];
 
   OPENSSL_cpucap_initialized = 1;
 
@@ -293,10 +293,10 @@ void OPENSSL_cpuid_setup(void) {
   // The first value determines OPENSSL_ia32cap_P[0] and [1]. The second [2]
   // and [3].
 
-  handle_cpu_env(&OPENSSL_ia32cap_P[0], env1);
+  handle_cpu_env(&(OPENSSL_ia32cap_get()[0]), env1);
   env2 = strchr(env1, ':');
   if (env2 != NULL) {
-    handle_cpu_env(&OPENSSL_ia32cap_P[2], env2 + 1);
+    handle_cpu_env(&(OPENSSL_ia32cap_get()[2]), env2 + 1);
   }
 }
 
