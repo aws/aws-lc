@@ -244,11 +244,8 @@ static const OCSPTestVectorExtended nTestVectors[] = {
     {"ocsp_response_unknown", "ca_cert", "server_cert", EVP_sha1(),
      OCSP_RESPONSE_STATUS_SUCCESSFUL, "successful", OCSP_VERIFYSTATUS_SUCCESS,
      OCSP_RESPFINDSTATUS_SUCCESS, V_OCSP_CERTSTATUS_UNKNOWN, "unknown"},
-    // Test OCSP response signed by the correct responder certificate, but not
-    // for
-    // the requested certificate. (So this would be a completely valid response
-    // to a
-    // different OCSP request for the other certificate.)
+    // for the requested certificate. (So this would be a completely valid
+    // response to a different OCSP request for the other certificate.)
     {"ocsp_response", "ca_cert", "server_ecdsa_cert", EVP_sha1(),
      OCSP_RESPONSE_STATUS_SUCCESSFUL, "successful", OCSP_VERIFYSTATUS_SUCCESS,
      OCSP_RESPFINDSTATUS_ERROR, 0, nullptr},

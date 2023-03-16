@@ -167,20 +167,23 @@ OPENSSL_EXPORT int OCSP_resp_find_status(OCSP_BASICRESP *bs, OCSP_CERTID *id,
 // OCSP_check_validity checks the validity of |thisUpdate| and |nextUpdate|
 // fields from an |OCSP_SINGLERESP|.
 //
-// Note: It is possible that the request will take a few
-// seconds to process and/or the time won't be totally accurate. Therefore,
-// to avoid rejecting otherwise valid time we allow the times to be within
-// |nsec| of the current time. Also, to avoid accepting very old responses
-// without a |nextUpdate| field an optional |maxsec| parameter specifies the
-// maximum age the |thisUpdate| field can be. |maxsec| should be set to "-1",
-// if the maximum age should not be checked.
-OPENSSL_EXPORT int OCSP_check_validity(ASN1_GENERALIZEDTIME *thisupd,
-                                       ASN1_GENERALIZEDTIME *nextupd, long nsec,
-                                       long maxsec);
+// Note: It is possible that the request will take a few  seconds to process
+// and/or the time won't be totally accurate. Therefore, to avoid rejecting
+// otherwise valid time we allow the times to be within |drift_num_seconds| of
+// the current  time. Also, to avoid accepting very old responses without a
+// |nextUpdate| field, an optional |max_age_seconds| parameter specifies the
+// maximum age the |thisUpdate| field can be. |max_age_seconds| should be the
+// number of seconds relative to |thisUpdate|. You can also set
+// |max_age_seconds| to "-1", if the maximum age should not be checked.
+OPENSSL_EXPORT int OCSP_check_validity(ASN1_GENERALIZEDTIME *thisUpdate,
+                                       ASN1_GENERALIZEDTIME *nextUpdate,
+                                       long drift_num_seconds,
+                                       long max_age_seconds);
 
-// OCSP_basic_verify verifies a basic response message. Returns 1 if the
-// response is valid, 0 if the signature cannot be verified, or -1 on fatal
-// errors such as malloc failure.
+// OCSP_basic_verify verifies a basic response message. It checks that |bs| is
+// correctly signed and that the signer certificate can be validated.
+// Returns 1 if the response is valid, 0 if the signature cannot be verified,
+// or -1 on fatal errors such as malloc failure.
 //
 // Note: 1. Checks that OCSP response CAN be verified, not that it has been
 //          verified.
@@ -225,11 +228,13 @@ OPENSSL_EXPORT OCSP_CERTID *OCSP_cert_to_id(const EVP_MD *dgst,
 OPENSSL_EXPORT int OCSP_parse_url(const char *url, char **phost, char **pport,
                                   char **ppath, int *pssl);
 
-// OCSP_response_status_str prints OCSP response status in a string.
-OPENSSL_EXPORT const char *OCSP_response_status_str(long s);
+// OCSP_response_status_str returns the OCSP response status of |status_code| as
+// a string.
+OPENSSL_EXPORT const char *OCSP_response_status_str(long status_code);
 
-// OCSP_cert_status_str prints OCSP cert status in a string.
-OPENSSL_EXPORT const char *OCSP_cert_status_str(long s);
+// OCSP_cert_status_str returns the OCSP cert status of |status_code| as
+// a string.
+OPENSSL_EXPORT const char *OCSP_cert_status_str(long status_code);
 
 
 #ifdef __cplusplus
