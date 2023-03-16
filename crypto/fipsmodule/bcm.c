@@ -70,6 +70,7 @@
 #include "cipher/e_aes.c"
 #include "cipher/e_aesccm.c"
 
+#include "cpucap/internal.h"
 #include "cpucap/cpu_aarch64_apple.c"
 #include "cpucap/cpu_aarch64_freebsd.c"
 #include "cpucap/cpu_aarch64_fuchsia.c"
@@ -155,12 +156,6 @@ extern const uint8_t BORINGSSL_bcm_text_hash[];
 #if defined(BORINGSSL_SHARED_LIBRARY)
 extern const uint8_t BORINGSSL_bcm_rodata_start[];
 extern const uint8_t BORINGSSL_bcm_rodata_end[];
-#endif
-
-// We need to get OPENSSL_ia32cap_P from cpucap.c without including the file
-// However, OPENSSL_ia32cap is only defined for x86 processors
-#if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
-extern uint32_t OPENSSL_ia32cap_P[4];
 #endif
 
 // assert_within is used to sanity check that certain symbols are within the
@@ -274,6 +269,8 @@ int BORINGSSL_integrity_test(void) {
   assert_not_within(start, CRYPTO_chacha_20, end);
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
   assert_not_within(start, OPENSSL_ia32cap_P, end);
+#elif defined(OPENSSL_AARCH64)
+  assert_not_within(start, &OPENSSL_armcap_P, end);
 #endif  
 
 #if defined(BORINGSSL_SHARED_LIBRARY)
@@ -290,6 +287,8 @@ int BORINGSSL_integrity_test(void) {
   assert_within(rodata_start, kPKCS1SigPrefixes, rodata_end);
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
   assert_not_within(rodata_start, OPENSSL_ia32cap_P, rodata_end);
+#elif defined(OPENSSL_AARCH64)
+  assert_not_within(rodata_start, &OPENSSL_armcap_P, rodata_end);
 #endif
 
   // Per FIPS 140-3 we have to perform the CAST of the HMAC used for integrity
