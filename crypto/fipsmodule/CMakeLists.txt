@@ -154,6 +154,13 @@ if(PERL_EXECUTABLE)
   perlasm(x86-mont.${ASM_EXT} bn/asm/x86-mont.pl)
 endif()
 
+# clang-6 knows how to compile AVX512 instructions, but only if it's given
+# the right flags. The flags are not required for any of the other compilers
+# we are running in the CI.
+if(ARCH STREQUAL "x86_64" AND CLANG AND CMAKE_C_COMPILER_VERSION VERSION_LESS "7.0.0")
+  set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/aes-gcm-avx512.${ASM_EXT} PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512bw -mavx512dq -mavx512vl")
+endif()
+
 # s2n-bignum files can be compiled on Unix platforms only (except Apple),
 # and on x86_64 and aarch64 systems only.
 if((ARCH STREQUAL "x86_64" OR ARCH STREQUAL "aarch64") AND
