@@ -1239,18 +1239,6 @@ func (d *delocation) loadFromGOT(w stringWriter, destination, symbol, section st
 	}
 }
 
-func saveFlags(w stringWriter, redzoneCleared bool) wrapperFunc {
-	return func(k func()) {
-		if !redzoneCleared {
-			w.WriteString("\tleaq -128(%rsp), %rsp\n") // Clear the red zone.
-			defer w.WriteString("\tleaq 128(%rsp), %rsp\n")
-		}
-		w.WriteString("\tpushfq\n")
-		k()
-		w.WriteString("\tpopfq\n")
-	}
-}
-
 func saveRegister(w stringWriter, avoidRegs []string) (wrapperFunc, string) {
 	candidates := []string{"%rax", "%rbx", "%rcx", "%rdx"}
 
