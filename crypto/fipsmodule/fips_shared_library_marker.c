@@ -21,7 +21,8 @@
 #if defined(_MSC_VER)
 #pragma code_seg(".fipstx$a")
 #pragma data_seg(".fipsda$a")
-#pragma const_seg(".fipsda$a")
+#pragma const_seg(".fipsco$a")
+#pragma bss_seg(".fipsbs$a")
 #endif
 
 // Dummy but not empty function and array to avoid the compiler completely
@@ -36,7 +37,8 @@ const uint8_t BORINGSSL_bcm_rodata_start[16] =
 #if defined(_MSC_VER)
 #pragma code_seg(".fipstx$z")
 #pragma data_seg(".fipsda$z")
-#pragma const_seg(".fipsda$z")
+#pragma const_seg(".fipsco$z")
+#pragma bss_seg(".fipsbs$z")
 #endif
 
 // Dummy but not empty function and array to avoid the compiler completely
