@@ -672,8 +672,12 @@ OPENSSL_EXPORT int BN_pseudo_rand_range(BIGNUM *rnd, const BIGNUM *range);
 // When other code needs to call a BN generation function it will often take a
 // BN_GENCB argument and may call the function with other argument values.
 struct bn_gencb_st {
+  uint8_t type;
   void *arg;        // callback-specific data
-  int (*callback)(int event, int n, struct bn_gencb_st *);
+  union {
+    int (*new_style)(int event, int n, struct bn_gencb_st *);
+    void (*old_style)(int, int, void *);
+  } callback;
 };
 
 // BN_GENCB_new returns a newly-allocated |BN_GENCB| object, or NULL on
@@ -684,8 +688,10 @@ OPENSSL_EXPORT BN_GENCB *BN_GENCB_new(void);
 // BN_GENCB_free releases memory associated with |callback|.
 OPENSSL_EXPORT void BN_GENCB_free(BN_GENCB *callback);
 
-// BN_GENCB_set configures |callback| to call |f| and sets |callout->arg| to
-// |arg|.
+// BN_GENCB_set configures |callback| to call |f| and sets |callback->arg| to
+// |arg|. Only one callback can be configured in a |BN_GENCB|, calling
+// |BN_GENCB_set| or |BN_GENCB_set_old| multiple times will overwrite the
+// callback.
 OPENSSL_EXPORT void BN_GENCB_set(BN_GENCB *callback,
                                  int (*f)(int event, int n, BN_GENCB *),
                                  void *arg);
@@ -918,6 +924,16 @@ OPENSSL_EXPORT int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a,
 
 
 // Deprecated functions
+
+// BN_GENCB_set_old behaves like |BN_GENCB_set| which is the recommended way to
+// set a callback on a |BN_GENCB|. |BN_GENCB_set_old| configures |callback| to
+// call |f| and sets |callback->arg| to |arg|. The only difference between
+// |BN_GENCB_set| and |BN_GENCB_set_old| is the argument and return types in
+// |callback|. Only one callback can be configured in a |BN_GENCB|, calling
+// |BN_GENCB_set| or |BN_GENCB_set_old| multiple times will overwrite the
+// callback.
+OPENSSL_EXPORT void BN_GENCB_set_old(BN_GENCB *callback,
+                                     void (*f)(int, int, void *), void *cb_arg);
 
 // BN_bn2mpi serialises the value of |in| to |out|, using a format that consists
 // of the number's length in bytes represented as a 4-byte big-endian number,
