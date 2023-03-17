@@ -7,7 +7,7 @@
  * are met:
  *
  * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer. 
+ *    notice, this list of conditions and the following disclaimer.
  *
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in
@@ -532,4 +532,43 @@ int i2o_ECPublicKey(const EC_KEY *key, uint8_t **outp) {
   int ret = CBB_finish_i2d(&cbb, outp);
   // Historically, this function used the wrong return value on error.
   return ret > 0 ? ret : 0;
+}
+
+size_t EC_POINT_point2buf(const EC_GROUP *group, const EC_POINT *point,
+                          point_conversion_form_t form, unsigned char **pbuf,
+                          BN_CTX *ctx) {
+  size_t len;
+  unsigned char *buf;
+
+  len = EC_POINT_point2oct(group, point, form, NULL, 0, NULL);
+  if (len == 0)
+    return 0;
+  if ((buf = OPENSSL_malloc(len)) == NULL) {
+    return 0;
+  }
+  len = EC_POINT_point2oct(group, point, form, buf, len, ctx);
+  if (len == 0) {
+    OPENSSL_free(buf);
+    return 0;
+  }
+  *pbuf = buf;
+  return len;
+}
+
+BIGNUM *EC_POINT_point2bn(const EC_GROUP *group, const EC_POINT *point,
+                          point_conversion_form_t form, BIGNUM *ret,
+                          BN_CTX *ctx) {
+  size_t buf_len = 0;
+  unsigned char *buf;
+
+  buf_len = EC_POINT_point2buf(group, point, form, &buf, ctx);
+
+  if (buf_len == 0)
+    return NULL;
+
+  ret = BN_bin2bn(buf, buf_len, ret);
+
+  OPENSSL_free(buf);
+
+  return ret;
 }
