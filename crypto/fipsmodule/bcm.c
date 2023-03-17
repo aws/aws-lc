@@ -70,6 +70,7 @@
 #include "cipher/e_aes.c"
 #include "cipher/e_aesccm.c"
 
+#include "cpucap/internal.h"
 #include "cpucap/cpu_aarch64_apple.c"
 #include "cpucap/cpu_aarch64_freebsd.c"
 #include "cpucap/cpu_aarch64_fuchsia.c"
@@ -266,6 +267,11 @@ int BORINGSSL_integrity_test(void) {
   assert_within(start, EVP_AEAD_CTX_seal, end);
   assert_not_within(start, OPENSSL_cleanse, end);
   assert_not_within(start, CRYPTO_chacha_20, end);
+#if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
+  assert_not_within(start, OPENSSL_ia32cap_P, end);
+#elif defined(OPENSSL_AARCH64)
+  assert_not_within(start, &OPENSSL_armcap_P, end);
+#endif  
 
 #if defined(BORINGSSL_SHARED_LIBRARY)
   const uint8_t *const rodata_start = BORINGSSL_bcm_rodata_start;
@@ -279,6 +285,11 @@ int BORINGSSL_integrity_test(void) {
   assert_within(rodata_start, kPrimes, rodata_end);
   assert_within(rodata_start, kP256Params, rodata_end);
   assert_within(rodata_start, kPKCS1SigPrefixes, rodata_end);
+#if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
+  assert_not_within(rodata_start, OPENSSL_ia32cap_P, rodata_end);
+#elif defined(OPENSSL_AARCH64)
+  assert_not_within(rodata_start, &OPENSSL_armcap_P, rodata_end);
+#endif
 
   // Per FIPS 140-3 we have to perform the CAST of the HMAC used for integrity
   // check before the integrity check itself. So we first call
