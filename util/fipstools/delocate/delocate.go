@@ -1539,12 +1539,14 @@ Args:
 				}
 
 				if symbol == "OPENSSL_ia32cap_P" {
+
 					uniqueSymbol := newCpuCapUniqueSymbol(len(d.cpuCapUniqueSymbols), targetReg)
 					wrappers = append(wrappers, func(k func()) {
 						d.output.WriteString("\tjmp\t" + uniqueSymbol.getIntelSymbol() + "\n")
 						d.output.WriteString(uniqueSymbol.getIntelSymbolReturn() + ":\n")
 					})
 					d.cpuCapUniqueSymbols = append(d.cpuCapUniqueSymbols, uniqueSymbol)
+
 				} else if useGOT {
 					wrappers = append(wrappers, d.loadFromGOT(d.output, targetReg, symbol, section, redzoneCleared))
 				} else {
@@ -1965,6 +1967,8 @@ func transform(w stringWriter, inputs []inputFile) error {
 		w.WriteString("\tleaq OPENSSL_ia32cap_P(%rip), %rax\n")
 		w.WriteString("\tret\n")
 
+		// This is a fixed order iteration. such that we can soundly write tests
+		// for this in /testdata.
 		for _, uniqueSymbol := range d.cpuCapUniqueSymbols {
 			w.WriteString(".type " + uniqueSymbol.getIntelSymbol() + ", @function\n")
 			w.WriteString(uniqueSymbol.getIntelSymbol() + ":\n")
