@@ -59,6 +59,29 @@ const (
 	aarch64
 )
 
+type cpuCapUniqueSymbol struct {
+	registerName string
+	suffixUniqueness string
+}
+
+const cpuCapIntelSymbolPrefix = "LOPENSSL_ia32cap_P_"
+
+func (uniqueSymbol cpuCapUniqueSymbol) getIntelSymbol() string {
+	return cpuCapIntelSymbolPrefix + uniqueSymbol.registerName + uniqueSymbol.suffixUniqueness
+}
+
+func (uniqueSymbol cpuCapUniqueSymbol) getIntelSymbolReturn() string {
+	return cpuCapIntelSymbolPrefix + uniqueSymbol.registerName + uniqueSymbol.suffixUniqueness + "_return"
+}
+
+// uniqueness must be a globally unique integer value
+func newCpuCapUniqueSymbol(uniqueness int, registerName string) *cpuCapUniqueSymbol {
+    uniqueSymbol := new(cpuCapUniqueSymbol)
+    uniqueSymbol.registerName = strings.Trim(registerName, "%") // should work with both AT&T and Intel syntax
+    uniqueSymbol.suffixUniqueness = strconv.Itoa(uniqueness)
+    return uniqueSymbol
+}
+
 // delocation holds the state needed during a delocation operation.
 type delocation struct {
 	processor processorType
@@ -70,12 +93,9 @@ type delocation struct {
 	symbols map[string]struct{}
 	// localEntrySymbols is the set of symbols with .localentry directives.
 	localEntrySymbols map[string]struct{}
-	// cpuCapUniqueRef is the set of unique references for each occurrence of
-	// OPENSSL_ia32cap_P.
-	cpuCapUniqueRef map[string]string
-	// cpuCapUniqueRefCounter is a counter which value is appended to a
-	// cpuCapUniqueRef value to ensure global uniqueness.
-	cpuCapUniqueRefCounter int
+	// cpuCapUniqueSymbols represents the set of unique references for each
+	// discovered occurrence of OPENSSL_ia32cap_P.
+	cpuCapUniqueSymbols []*cpuCapUniqueSymbol
 	// redirectors maps from out-call symbol name to the name of a
 	// redirector function for that symbol. E.g. “memcpy” ->
 	// “bcm_redirector_memcpy”.
@@ -1376,15 +1396,14 @@ Args:
 					return nil, fmt.Errorf("tried to load OPENSSL_ia32cap_P into %q, which is not a standard register.", reg)
 				}
 
-				changed = true
-
-				cpuCapUniqueRefCounterString := strconv.Itoa(d.cpuCapUniqueRefCounter)
-				trimmedReg := strings.Trim(reg, "%")
+				uniqueSymbol := newCpuCapUniqueSymbol(len(d.cpuCapUniqueSymbols), reg)
 				wrappers = append(wrappers, func(k func()) {
-					d.output.WriteString("\tjmp\tLOPENSSL_ia32cap_P_" + trimmedReg + "_" + cpuCapUniqueRefCounterString + "\n")
-					d.output.WriteString("LOPENSSL_ia32cap_P_" + trimmedReg + "_" + cpuCapUniqueRefCounterString + "_return:\n")
+					d.output.WriteString("\tjmp\t" + uniqueSymbol.getIntelSymbol() + "\n")
+					d.output.WriteString(uniqueSymbol.getIntelSymbolReturn() + ":\n")
 				})
-				d.cpuCapUniqueRef[trimmedReg + "_" + cpuCapUniqueRefCounterString] = trimmedReg + "_" + cpuCapUniqueRefCounterString
+				d.cpuCapUniqueSymbols = append(d.cpuCapUniqueSymbols, uniqueSymbol)
+
+				changed = true
 
 				break Args
 			}
@@ -1532,13 +1551,12 @@ Args:
 				}
 
 				if symbol == "OPENSSL_ia32cap_P" {
-					cpuCapUniqueRefCounterString := strconv.Itoa(d.cpuCapUniqueRefCounter)
-					trimmedReg := strings.Trim(targetReg, "%")
+					uniqueSymbol := newCpuCapUniqueSymbol(len(d.cpuCapUniqueSymbols), targetReg)
 					wrappers = append(wrappers, func(k func()) {
-						d.output.WriteString("\tjmp\tLOPENSSL_ia32cap_P_" + trimmedReg + "_" + cpuCapUniqueRefCounterString + "\n")
-						d.output.WriteString("LOPENSSL_ia32cap_P_" + trimmedReg + "_" + cpuCapUniqueRefCounterString + "_return:\n")
+						d.output.WriteString("\tjmp\t" + uniqueSymbol.getIntelSymbol() + "\n")
+						d.output.WriteString(uniqueSymbol.getIntelSymbolReturn() + ":\n")
 					})
-					d.cpuCapUniqueRef[trimmedReg + "_" + cpuCapUniqueRefCounterString] = trimmedReg + "_" + cpuCapUniqueRefCounterString
+					d.cpuCapUniqueSymbols = append(d.cpuCapUniqueSymbols, uniqueSymbol)
 				} else if useGOT {
 					wrappers = append(wrappers, d.loadFromGOT(d.output, targetReg, symbol, section, redzoneCleared))
 				} else {
@@ -1635,7 +1653,6 @@ Args:
 		wrappers.do(func() {
 			d.output.WriteString(replacement)
 		})
-		d.cpuCapUniqueRefCounter = d.cpuCapUniqueRefCounter + 1
 	} else {
 		d.writeNode(statement)
 	}
@@ -1801,8 +1818,7 @@ func transform(w stringWriter, inputs []inputFile) error {
 		processor:           	processor,
 		commentIndicator:    	commentIndicator,
 		output:              	w,
-		cpuCapUniqueRef:		make(map[string]string),
-		cpuCapUniqueRefCounter:	0,
+		cpuCapUniqueSymbols:    []*cpuCapUniqueSymbol{},
 		redirectors:         	make(map[string]string),
 		bssAccessorsNeeded:  	make(map[string]string),
 		tocLoaders:          	make(map[string]struct{}),
@@ -1961,12 +1977,11 @@ func transform(w stringWriter, inputs []inputFile) error {
 		w.WriteString("\tleaq OPENSSL_ia32cap_P(%rip), %rax\n")
 		w.WriteString("\tret\n")
 
-		for reference := range d.cpuCapUniqueRef {
-			w.WriteString("LOPENSSL_ia32cap_P_" + reference + ":\n")
-			// Get register name that is part of the unique reference
-			// <register>_<unique numerical suffix>
-			w.WriteString("\tleaq OPENSSL_ia32cap_P(%rip), %" + strings.Split(reference, "_")[0] + "\n")
-			w.WriteString("\tjmp LOPENSSL_ia32cap_P_" + reference + "_return\n")
+		for _, uniqueSymbol := range d.cpuCapUniqueSymbols {
+			w.WriteString(".type " + uniqueSymbol.getIntelSymbol() + ", @function\n")
+			w.WriteString(uniqueSymbol.getIntelSymbol() + ":\n")
+			w.WriteString("\tleaq OPENSSL_ia32cap_P(%rip), %" + uniqueSymbol.registerName + "\n")
+			w.WriteString("\tjmp " + uniqueSymbol.getIntelSymbolReturn() + "\n")
 		}
 
 		if d.gotDeltaNeeded {
