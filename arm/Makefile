@@ -91,7 +91,10 @@ POINT_OBJ = curve25519/curve25519_ladderstep.o \
             p521/p521_jmixadd.o \
             secp256k1/secp256k1_jadd.o \
             secp256k1/secp256k1_jdouble.o \
-            secp256k1/secp256k1_jmixadd.o
+            secp256k1/secp256k1_jmixadd.o \
+            sm2/sm2_montjadd.o \
+            sm2/sm2_montjmixadd.o \
+            sm2/sm2_montjdouble.o
 
 BIGNUM_OBJ = curve25519/bignum_add_p25519.o \
              curve25519/bignum_cmul_p25519.o \

@@ -39,7 +39,10 @@ OBJ = bignum_add_sm2.o \
       bignum_optneg_sm2.o \
       bignum_sub_sm2.o \
       bignum_tomont_sm2.o \
-      bignum_triple_sm2.o
+      bignum_triple_sm2.o \
+      sm2_montjadd.o \
+      sm2_montjdouble.o \
+      sm2_montjmixadd.o
 
 %.o : %.S ; $(CC) -E -I../../include $< | $(GAS) -o $@ -
 
