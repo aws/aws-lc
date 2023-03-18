@@ -735,6 +735,10 @@ void call_secp256k1_jadd(void) repeat(secp256k1_jadd(b1,b2,b3))
 void call_secp256k1_jdouble(void) repeat(secp256k1_jdouble(b1,b2))
 void call_secp256k1_jmixadd(void) repeat(secp256k1_jmixadd(b1,b2,b3))
 
+void call_sm2_montjadd(void) repeat(sm2_montjadd(b1,b2,b3))
+void call_sm2_montjdouble(void) repeat(sm2_montjdouble(b1,b2))
+void call_sm2_montjmixadd(void) repeat(sm2_montjmixadd(b1,b2,b3))
+
 int main(int argc, char *argv[])
 {
   int bmi = full_isa_support();
@@ -1081,6 +1085,9 @@ int main(int argc, char *argv[])
   timingtest(bmi,"secp256k1_jadd",call_secp256k1_jadd);
   timingtest(bmi,"secp256k1_jdouble",call_secp256k1_jdouble);
   timingtest(bmi,"secp256k1_jmixadd",call_secp256k1_jmixadd);
+  timingtest(bmi,"sm2_montjadd",call_sm2_montjadd);
+  timingtest(bmi,"sm2_montjdouble",call_sm2_montjdouble);
+  timingtest(bmi,"sm2_montjmixadd",call_sm2_montjmixadd);
   timingtest(all,"word_bytereverse",call_word_bytereverse);
   timingtest(all,"word_clz",call_word_clz);
   timingtest(all,"word_ctz",call_word_ctz);

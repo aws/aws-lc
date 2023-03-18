@@ -275,6 +275,15 @@ uint64_t i_sm2[4] =
    UINT64_C(0xFFFFFFFC00000001)
  };
 
+// (-3 * 2^256) mod p_sm2 (Montgomery form of a coefficient)
+
+uint64_t a_sm2[4] =
+ { UINT64_C(0xFFFFFFFFFFFFFFFC),
+   UINT64_C(0xFFFFFFFC00000003),
+   UINT64_C(0xFFFFFFFFFFFFFFFF),
+   UINT64_C(0xFFFFFFFBFFFFFFFF)
+ };
+
 // ****************************************************************************
 // Reference implementations, basic and stupid ones in C
 // ****************************************************************************
@@ -9292,6 +9301,109 @@ int test_secp256k1_jmixadd(void)
   return 0;
 }
 
+int test_sm2_montjadd(void)
+{ uint64_t t, k;
+  printf("Testing sm2_montjadd with %d cases\n",tests);
+  k = 4;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b0); reference_mod(k,b1,b0,p_sm2);
+     random_bignum(k,b0); reference_mod(k,b1+k,b0,p_sm2);
+     random_bignum(k,b0); reference_mod(k,b1+2*k,b0,p_sm2);
+     random_bignum(k,b0); reference_mod(k,b2,b0,p_sm2);
+     random_bignum(k,b0); reference_mod(k,b2+k,b0,p_sm2);
+     random_bignum(k,b0); reference_mod(k,b2+2*k,b0,p_sm2);
+
+     sm2_montjadd(b3,b1,b2);
+     reference_montjadd(k,b4,b1,b2,p_sm2);
+
+     c = reference_compare(3*k,b3,3*k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64"> + <...0x%016"PRIx64"> = "
+               "<...0x%016"PRIx64"> not <...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0],b4[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64"> + <...0x%016"PRIx64"> = "
+              "<...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_sm2_montjdouble(void)
+{ uint64_t t, k;
+  printf("Testing sm2_montjdouble with %d cases\n",tests);
+  k = 4;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b0); reference_mod(k,b1,b0,p_sm2);
+     random_bignum(k,b0); reference_mod(k,b1+k,b0,p_sm2);
+     random_bignum(k,b0); reference_mod(k,b1+2*k,b0,p_sm2);
+
+     reference_montjdouble(k,b4,b1,a_sm2,p_sm2);
+     sm2_montjdouble(b3,b1);
+
+     c = reference_compare(3*k,b3,3*k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "2 * <...0x%016"PRIx64"> = "
+               "<...0x%016"PRIx64"> not <...0x%016"PRIx64">\n",
+               k,b1[0],b3[0],b4[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "2 * <...0x%016"PRIx64"> = "
+               "<...0x%016"PRIx64">\n",
+               k,b1[0],b3[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_sm2_montjmixadd(void)
+{ uint64_t t, k;
+  printf("Testing sm2_montjmixadd with %d cases\n",tests);
+  k = 4;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b0); reference_mod(k,b1,b0,p_sm2);
+     random_bignum(k,b0); reference_mod(k,b1+k,b0,p_sm2);
+     random_bignum(k,b0); reference_mod(k,b1+2*k,b0,p_sm2);
+     random_bignum(k,b0); reference_mod(k,b2,b0,p_sm2);
+     random_bignum(k,b0); reference_mod(k,b2+k,b0,p_sm2);
+     sm2_montjmixadd(b3,b1,b2);
+     reference_montjmixadd(k,b4,b1,b2,p_sm2);
+
+     c = reference_compare(3*k,b3,3*k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64"> + <...0x%016"PRIx64"> = "
+               "<...0x%016"PRIx64"> not <...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0],b4[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "<...0x%016"PRIx64"> + <...0x%016"PRIx64"> = "
+               "<...0x%016"PRIx64">\n",
+               k,b1[0],b2[0],b3[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
 int test_word_bytereverse(void)
 { uint64_t i, a, x, y;
   printf("Testing word_bytereverse with %d cases\n",tests);
@@ -10019,6 +10131,9 @@ int main(int argc, char *argv[])
   functionaltest(bmi,"secp256k1_jadd",test_secp256k1_jadd);
   functionaltest(bmi,"secp256k1_jdouble",test_secp256k1_jdouble);
   functionaltest(bmi,"secp256k1_jmixadd",test_secp256k1_jmixadd);
+  functionaltest(bmi,"sm2_montjadd",test_sm2_montjadd);
+  functionaltest(bmi,"sm2_montjdouble",test_sm2_montjdouble);
+  functionaltest(bmi,"sm2_montjmixadd",test_sm2_montjmixadd);
   functionaltest(all,"word_bytereverse",test_word_bytereverse);
   functionaltest(all,"word_clz",test_word_clz);
   functionaltest(all,"word_ctz",test_word_ctz);

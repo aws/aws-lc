@@ -54,7 +54,7 @@ S2N_BN_SYMBOL(bignum_add_p256):
         sbcs    n3, d3, n3
         sbcs    c, c, xzr
 
-// Select result acording to whether (x + y) - p_256 < 0
+// Select result according to whether (x + y) - p_256 < 0
 
         csel    d0, d0, n0, cc
         csel    d1, d1, n1, cc

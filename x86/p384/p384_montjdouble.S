@@ -913,7 +913,7 @@ S2N_BN_SYMBOL(p384_montjdouble):
 #endif
 
 // Save registers and make room on stack for temporary variables
-// Save the outpuy pointer rdi which gets overwritten in earlier
+// Save the output pointer rdi which gets overwritten in earlier
 // operations before it is used.
 
         push   rbx

@@ -544,8 +544,6 @@ S2N_BN_SYMBOL(p256_montjdouble):
 #endif
 
 // Save registers and make room on stack for temporary variables
-// Save the outpuy pointer %rdi which gets overwritten in earlier
-// operations before it is used.
 
         pushq  %rbx
         pushq  %rbp
