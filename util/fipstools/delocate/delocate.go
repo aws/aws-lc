@@ -59,6 +59,7 @@ const (
 	aarch64
 )
 
+// represents a unique symbol for an occurrence of OPENSSL_ia32cap_P.
 type cpuCapUniqueSymbol struct {
 	registerName string
 	suffixUniqueness string
@@ -71,13 +72,13 @@ func (uniqueSymbol cpuCapUniqueSymbol) getIntelSymbol() string {
 }
 
 func (uniqueSymbol cpuCapUniqueSymbol) getIntelSymbolReturn() string {
-	return cpuCapIntelSymbolPrefix + uniqueSymbol.registerName + uniqueSymbol.suffixUniqueness + "_return"
+	return uniqueSymbol.getIntelSymbol() + "_return"
 }
 
-// uniqueness must be a globally unique integer value
+// uniqueness must be a globally unique integer value.
 func newCpuCapUniqueSymbol(uniqueness int, registerName string) *cpuCapUniqueSymbol {
     uniqueSymbol := new(cpuCapUniqueSymbol)
-    uniqueSymbol.registerName = strings.Trim(registerName, "%") // should work with both AT&T and Intel syntax
+    uniqueSymbol.registerName = strings.Trim(registerName, "%") // should work with both AT&T and Intel syntax.
     uniqueSymbol.suffixUniqueness = strconv.Itoa(uniqueness)
     return uniqueSymbol
 }
@@ -93,7 +94,7 @@ type delocation struct {
 	symbols map[string]struct{}
 	// localEntrySymbols is the set of symbols with .localentry directives.
 	localEntrySymbols map[string]struct{}
-	// cpuCapUniqueSymbols represents the set of unique references for each
+	// cpuCapUniqueSymbols represents the set of unique symbols for each
 	// discovered occurrence of OPENSSL_ia32cap_P.
 	cpuCapUniqueSymbols []*cpuCapUniqueSymbol
 	// redirectors maps from out-call symbol name to the name of a
@@ -1967,8 +1968,8 @@ func transform(w stringWriter, inputs []inputFile) error {
 		w.WriteString("\tleaq OPENSSL_ia32cap_P(%rip), %rax\n")
 		w.WriteString("\tret\n")
 
-		// This is a fixed order iteration. such that we can soundly write tests
-		// for this in /testdata.
+		// Luckily, this is a fixed order iteration. So, that we can write
+		// deterministic tests for this in /testdata.
 		for _, uniqueSymbol := range d.cpuCapUniqueSymbols {
 			w.WriteString(".type " + uniqueSymbol.getIntelSymbol() + ", @function\n")
 			w.WriteString(uniqueSymbol.getIntelSymbol() + ":\n")
