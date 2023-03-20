@@ -94,12 +94,5 @@ TEST(CryptoTest, FIPSdownstreamPrecompilationFlag) {
 TEST(Crypto, OnDemandIntegrityTest) {
   BORINGSSL_integrity_test();
 }
-#else
-// If FIPS isn't defined there's no point in running the integrity check.
-// However, since we explicitly point to this test on x86 in order to ensure that OPENSSL_ia32cap isn't in the FIPS boundary,
-// we should define it.
-TEST(Crypto, OnDemandIntegrityTest) {
-  ASSERT_TRUE(1);
-}
 #endif
 
