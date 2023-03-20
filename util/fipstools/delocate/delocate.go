@@ -1968,7 +1968,7 @@ func transform(w stringWriter, inputs []inputFile) error {
 		w.WriteString("\tleaq OPENSSL_ia32cap_P(%rip), %rax\n")
 		w.WriteString("\tret\n")
 
-		// Luckily, this is a fixed order iteration. So, that we can write
+		// Luckily, this is a fixed order iteration. So, we can write
 		// deterministic tests for this in /testdata.
 		for _, uniqueSymbol := range d.cpuCapUniqueSymbols {
 			w.WriteString(".type " + uniqueSymbol.getIntelSymbol() + ", @function\n")
