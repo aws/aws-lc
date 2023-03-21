@@ -192,7 +192,7 @@ struct SSL_X509_METHOD;
 //
 // Note: unlike |new|, this does not support non-public constructors.
 template <typename T, typename... Args>
-T *New(Args &&... args) {
+T *New(Args &&...args) {
   void *t = OPENSSL_malloc(sizeof(T));
   if (t == nullptr) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
@@ -224,7 +224,7 @@ struct DeleterImpl<T, typename std::enable_if<T::kAllowUniquePtr>::type> {
 // MakeUnique behaves like |std::make_unique| but returns nullptr on allocation
 // error.
 template <typename T, typename... Args>
-UniquePtr<T> MakeUnique(Args &&... args) {
+UniquePtr<T> MakeUnique(Args &&...args) {
   return UniquePtr<T>(New<T>(std::forward<Args>(args)...));
 }
 
@@ -534,7 +534,8 @@ struct ssl_cipher_st {
 
 // tls_print_all_supported_cipher_suites prints all supported cipher suites for
 // all TLS versions to stdout.
-OPENSSL_EXPORT bool tls_print_all_supported_cipher_suites(bool use_openssl_name);
+OPENSSL_EXPORT bool tls_print_all_supported_cipher_suites(
+    bool use_openssl_name);
 
 BSSL_NAMESPACE_BEGIN
 
@@ -646,12 +647,14 @@ const EVP_MD *ssl_get_handshake_digest(uint16_t version,
 // ssl_create_cipher_list evaluates |rule_str|. It sets |*out_cipher_list| to a
 // newly-allocated |SSLCipherPreferenceList| containing the result. It returns
 // true on success and false on failure. If |strict| is true, nonsense will be
-// rejected. If false, nonsense will be silently ignored. If |config_tls13| is true,
-// only TLS 1.3 ciphers are considered in |ssl_cipher_collect_ciphers|. If false,
-// TLS 1.2 and below ciphers participate in |ssl_cipher_collect_ciphers|. An empty
-// result is considered an error regardless of |strict| or |config_tls13|.
+// rejected. If false, nonsense will be silently ignored. If |config_tls13| is
+// true, only TLS 1.3 ciphers are considered in |ssl_cipher_collect_ciphers|. If
+// false, TLS 1.2 and below ciphers participate in |ssl_cipher_collect_ciphers|.
+// An empty result is considered an error regardless of |strict| or
+// |config_tls13|.
 bool ssl_create_cipher_list(UniquePtr<SSLCipherPreferenceList> *out_cipher_list,
-                            const char *rule_str, bool strict, bool config_tls13);
+                            const char *rule_str, bool strict,
+                            bool config_tls13);
 
 // ssl_cipher_auth_mask_for_key returns the mask of cipher |algorithm_auth|
 // values suitable for use with |key| in TLS 1.2 and below.
@@ -675,10 +678,11 @@ size_t ssl_cipher_get_record_split_len(const SSL_CIPHER *cipher);
 
 // ssl_choose_tls13_cipher returns an |SSL_CIPHER| corresponding with the best
 // available from |cipher_suites| compatible with |version|, |group_id| and
-// configured |tls13_ciphers|. It returns NULL if there isn't a compatible cipher.
-const SSL_CIPHER *ssl_choose_tls13_cipher(CBS cipher_suites, uint16_t version,
-                                          uint16_t group_id,
-                                          const STACK_OF(SSL_CIPHER) *tls13_ciphers);
+// configured |tls13_ciphers|. It returns NULL if there isn't a compatible
+// cipher.
+const SSL_CIPHER *ssl_choose_tls13_cipher(
+    CBS cipher_suites, uint16_t version, uint16_t group_id,
+    const STACK_OF(SSL_CIPHER) *tls13_ciphers);
 
 
 // Transcript layer.
@@ -1278,7 +1282,8 @@ class SSLBuffer {
   // buf_allocated_ is true if |buf_| points to allocated data and must be freed
   // or false if it points into |inline_buf_|.
   bool buf_allocated_ = false;
-  // buf_size_ is how much memory allocated for |buf_|. This is needed by |DoSerialization|.
+  // buf_size_ is how much memory allocated for |buf_|. This is needed by
+  // |DoSerialization|.
   size_t buf_size_ = 0;
 };
 
@@ -1368,7 +1373,7 @@ bool ssl_add_client_CA_list(SSL_HANDSHAKE *hs, CBB *cbb);
 // a server's leaf certificate for |hs|. Otherwise, it returns zero and pushes
 // an error on the error queue.
 bool ssl_check_leaf_certificate(SSL_HANDSHAKE *hs, EVP_PKEY *pkey,
-                               const CRYPTO_BUFFER *leaf);
+                                const CRYPTO_BUFFER *leaf);
 
 // ssl_on_certificate_selected is called once the certificate has been selected.
 // It finalizes the certificate and initializes |hs->local_pubkey|. It returns
@@ -1611,7 +1616,7 @@ struct DC {
   UniquePtr<EVP_PKEY> pkey;
 
  private:
-  friend DC* New<DC>();
+  friend DC *New<DC>();
   DC();
 };
 
@@ -3159,7 +3164,7 @@ bool ssl_is_key_type_supported(int key_type);
 // counterpart to |privkey|. Otherwise it returns false and pushes a helpful
 // message on the error queue.
 bool ssl_compare_public_and_private_key(const EVP_PKEY *pubkey,
-                                       const EVP_PKEY *privkey);
+                                        const EVP_PKEY *privkey);
 bool ssl_cert_check_private_key(const CERT *cert, const EVP_PKEY *privkey);
 bool ssl_get_new_session(SSL_HANDSHAKE *hs);
 int ssl_encrypt_ticket(SSL_HANDSHAKE *hs, CBB *out, const SSL_SESSION *session);
@@ -3497,7 +3502,8 @@ struct ssl_ctx_st {
   const SSL_QUIC_METHOD *quic_method = nullptr;
 
   // Currently, cipher_list holds the tls1.2 and below ciphersuites.
-  // TODO: move |tls13_cipher_list| to |cipher_list| during cipher configuration.
+  // TODO: move |tls13_cipher_list| to |cipher_list| during cipher
+  // configuration.
   bssl::UniquePtr<bssl::SSLCipherPreferenceList> cipher_list;
 
   // tls13_cipher_list holds the tls1.3 and above ciphersuites.
@@ -3543,21 +3549,21 @@ struct ssl_ctx_st {
                                  int *copy) = nullptr;
 
   struct {
-    int sess_connect = 0;             // SSL new conn - started
-    int sess_connect_renegotiate = 0; // SSL reneg - requested
-    int sess_connect_good = 0;        // SSL new conne/reneg - finished
-    int sess_accept = 0;              // SSL new accept - started
-    int sess_accept_good = 0;         // SSL accept/reneg - finished
-    int sess_miss = 0;                // session lookup misses
-    int sess_timeout = 0;             // reuse attempt on timeouted session
-    int sess_cache_full = 0;          // session removed due to full cache
-    int sess_hit = 0;                 // session reuse actually done
-    int sess_cb_hit = 0;              // session-id that was not
-                                      // in the cache was
-                                      // passed back via the callback. This
-                                      // indicates that the application is
-                                      // supplying session-id's from other
-                                      // processes - spooky :-)
+    int sess_connect = 0;              // SSL new conn - started
+    int sess_connect_renegotiate = 0;  // SSL reneg - requested
+    int sess_connect_good = 0;         // SSL new conne/reneg - finished
+    int sess_accept = 0;               // SSL new accept - started
+    int sess_accept_good = 0;          // SSL accept/reneg - finished
+    int sess_miss = 0;                 // session lookup misses
+    int sess_timeout = 0;              // reuse attempt on timeouted session
+    int sess_cache_full = 0;           // session removed due to full cache
+    int sess_hit = 0;                  // session reuse actually done
+    int sess_cb_hit = 0;               // session-id that was not
+                                       // in the cache was
+                                       // passed back via the callback. This
+                                       // indicates that the application is
+                                       // supplying session-id's from other
+                                       // processes - spooky :-)
   } stats;
 
   CRYPTO_refcount_t references = 1;
