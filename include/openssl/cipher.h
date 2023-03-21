@@ -387,19 +387,21 @@ OPENSSL_EXPORT int EVP_BytesToKey(const EVP_CIPHER *type, const EVP_MD *md,
 // their needs). Thus this exists only to allow code to compile.
 #define EVP_CIPH_FLAG_NON_FIPS_ALLOW 0
 
-// Legacy AEAD Functions. Deprecated. Don't take a dependency on these ciphers.
 
-// EVP_aes_128/256_cbc_hmac_sha1/256 are imported from OpenSSL to provide AES CBC
+// Deprecated functions
+
+// EVP_aes_128/256_cbc_hmac_sha1/256 return |EVP_CIPHER| objects that implement
+// the named cipher algorithm. They are imported from OpenSSL to provide AES CBC
 // HMAC SHA stitch implementation. These methods are TLS specific.
 //
 // WARNING: these APIs usage can get wrong easily. Below functions include details.
 //     |aesni_cbc_hmac_sha1_cipher| and |aesni_cbc_hmac_sha256_cipher|.
+
+
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_cbc_hmac_sha1(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_cbc_hmac_sha1(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_cbc_hmac_sha256(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_cbc_hmac_sha256(void);
-
-// Deprecated functions
 
 // EVP_CipherInit acts like EVP_CipherInit_ex except that |EVP_CIPHER_CTX_init|
 // is called on |cipher| first, if |cipher| is not NULL.
@@ -633,13 +635,16 @@ typedef struct evp_cipher_info_st {
   unsigned char iv[EVP_MAX_IV_LENGTH];
 } EVP_CIPHER_INFO;
 
-// The following constants are used by AES-CBC stitch ctrl methods.
-// AEAD cipher deduces payload length and returns number of bytes required to
-// store MAC and eventual padding. Subsequent call to EVP_Cipher even
-// appends/verifies MAC.
+
+// AES-CBC stitch ctrl method constants
+
+// EVP_CTRL_AEAD_TLS1_AAD is a control command for |EVP_CIPHER_CTX_ctrl| to set
+// the length of the TLS additional authenticated data
 #define EVP_CTRL_AEAD_TLS1_AAD 0x16
-// RFC 5246 defines additional data to be 13 bytes in length.
+// EVP_AEAD_TLS1_AAD_LEN is the length of the additional authenticated data from
+// RFC 5246.
 #define EVP_AEAD_TLS1_AAD_LEN 13
+
 
 #if defined(__cplusplus)
 }  // extern C

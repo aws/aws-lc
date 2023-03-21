@@ -15,7 +15,7 @@
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
-#ifdef __cplusplus
+#if defined(__cplusplus)
 extern "C" {
 #endif
 
@@ -51,14 +51,15 @@ DECLARE_ASN1_FUNCTIONS(OCSP_RESPBYTES)
 DECLARE_ASN1_FUNCTIONS(OCSP_CERTID)
 DECLARE_ASN1_FUNCTIONS(OCSP_SIGNATURE)
 
-// Returns response status from |OCSP_RESPONSE|.
+// OCSP_response_status returns response status from |OCSP_RESPONSE|.
 OPENSSL_EXPORT int OCSP_response_status(OCSP_RESPONSE *resp);
 
-// Returns |OCSP_BASICRESP| from |OCSP_RESPONSE|.
+// OCSP_response_get1_basic returns |OCSP_BASICRESP| from |OCSP_RESPONSE|.
 OPENSSL_EXPORT OCSP_BASICRESP *OCSP_response_get1_basic(OCSP_RESPONSE *resp);
 
-// Looks up a cert id and extract the update time and revocation status of
-// certificate sent back from OCSP responder if found. Returns 1 on success.
+// OCSP_resp_find_status looks up a cert id and extracts the update time and
+// revocation status of certificate sent back from OCSP responder if found.
+// Returns 1 on success.
 //
 // Note: 1. Revocation status code is passed into |*status| parameter. Status code will
 //          not be passed if |*status| is NULL.
@@ -68,14 +69,15 @@ OPENSSL_EXPORT int OCSP_resp_find_status(OCSP_BASICRESP *bs, OCSP_CERTID *id, in
                           ASN1_GENERALIZEDTIME **thisupd,
                           ASN1_GENERALIZEDTIME **nextupd);
 
-// Verifies a basic response message. Returns 1 on success, 0 on error, or -1 on
-// fatal errors such as malloc failure.
+// OCSP_basic_verify verifies a basic response message. Returns 1 on success, 0
+// on error, or -1 on fatal errors such as malloc failure.
 //
 // Note: 1. Checks that OCSP response CAN be verified, not that it has been verified.
 OPENSSL_EXPORT int OCSP_basic_verify(OCSP_BASICRESP *bs, STACK_OF(X509) *certs,
                                      X509_STORE *st, unsigned long flags);
 
-// Returns a |OCSP_CERTID| converted from a certificate and its issuer.
+// OCSP_cert_to_id returns a |OCSP_CERTID| converted from a certificate and its
+// issuer.
 //
 // Note: 1. If subject is NULL, we get the subject name from the issuer and set
 //          the serial number is NULL.
@@ -86,8 +88,9 @@ OPENSSL_EXPORT int OCSP_basic_verify(OCSP_BASICRESP *bs, STACK_OF(X509) *certs,
 OPENSSL_EXPORT OCSP_CERTID *OCSP_cert_to_id(const EVP_MD *dgst, const X509 *subject,
                                             const X509 *issuer);
 
-#ifdef __cplusplus
-}
+
+#if defined(__cplusplus)
+}  // extern C
 #endif
 
 #if !defined(BORINGSSL_NO_CXX)

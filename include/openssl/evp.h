@@ -181,6 +181,7 @@ OPENSSL_EXPORT EC_KEY *EVP_PKEY_get1_EC_KEY(const EVP_PKEY *pkey);
 #define EVP_PKEY_ED25519 NID_ED25519
 #define EVP_PKEY_X25519 NID_X25519
 // TODO(awslc): delete Kyber define
+
 #define EVP_PKEY_KYBER512 NID_KYBER512
 #define EVP_PKEY_HKDF NID_hkdf
 #define EVP_PKEY_KEM NID_kem
@@ -1175,6 +1176,7 @@ struct evp_pkey_st {
   // methods for the key type.
   const EVP_PKEY_ASN1_METHOD *ameth;
 }; // EVP_PKEY
+
 
 #if defined(__cplusplus)
 }  // extern C

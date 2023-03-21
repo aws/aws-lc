@@ -328,14 +328,15 @@ OPENSSL_EXPORT int i2d_DHparams(const DH *in, unsigned char **outp);
 OPENSSL_EXPORT int DH_compute_key(uint8_t *out, const BIGNUM *peers_key,
                                   DH *dh);
 
-// Standard parameters. These parameters are taken from RFC 5114.
-// This function returns a new DH object with standard parameters. It returns
-// NULL on allocation failure.
+// DH_get_2048_256 returns the 2048-bit MODP Group with 256-bit Prime Order
+// Subgroup from RFC 5114. This function returns a new DH object with standard
+// parameters. It returns NULL on allocation failure.
 //
 // Warning: 2048-256 is no longer an optimal parameter for Diffie-Hellman. No
 // one should use finite field Diffie-Hellman anymore.
 // This function has been deprecated with no replacement.
 OPENSSL_EXPORT DH *DH_get_2048_256(void);
+
 
 #if defined(__cplusplus)
 }  // extern C
