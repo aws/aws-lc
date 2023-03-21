@@ -61,7 +61,7 @@ static int parse_http_line(char *line) {
     return 0;
   }
   // Skip to first white space (passed protocol info)
-  for (code = line; *code != '\0' && !isspace(*code); code++) {
+  for (code = line; *code != '\0' && !OPENSSL_isspace(*code); code++) {
     continue;
   }
   if (*code == '\0') {
@@ -70,7 +70,7 @@ static int parse_http_line(char *line) {
   }
 
   // Skip past white space to start of response code.
-  while (*code != '\0' && isspace(*code)) {
+  while (*code != '\0' && OPENSSL_isspace(*code)) {
     code++;
   }
   if (*code == '\0') {
@@ -79,7 +79,7 @@ static int parse_http_line(char *line) {
   }
 
   // Find end of response code: first whitespace after start of code.
-  for (reason = code; *reason != '\0' && !isspace(*reason); reason++) {
+  for (reason = code; *reason != '\0' && !OPENSSL_isspace(*reason); reason++) {
     continue;
   }
   if (*reason == '\0') {
@@ -96,13 +96,13 @@ static int parse_http_line(char *line) {
   }
 
   // Skip over any leading white space in message.
-  while (*reason != '\0' && isspace(*reason)) {
+  while (*reason != '\0' && OPENSSL_isspace(*reason)) {
     reason++;
   }
   if (*reason != '\0') {
     // Finally, zap any trailing white space in message (include CRLF).
     // We know reason has a non-white space character so this is OK.
-    for (end = reason + strlen(reason) - 1; isspace(*end); end--) {
+    for (end = reason + strlen(reason) - 1; OPENSSL_isspace(*end); end--) {
       *end = '\0';
     }
   }
