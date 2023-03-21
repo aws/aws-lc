@@ -57,8 +57,7 @@ static int aead_tls_init(EVP_AEAD_CTX *ctx, const uint8_t *key, size_t key_len,
                          size_t tag_len, enum evp_aead_direction_t dir,
                          const EVP_CIPHER *cipher, const EVP_MD *md,
                          char implicit_iv) {
-  if (tag_len != EVP_AEAD_DEFAULT_TAG_LENGTH &&
-      tag_len != EVP_MD_size(md)) {
+  if (tag_len != EVP_AEAD_DEFAULT_TAG_LENGTH && tag_len != EVP_MD_size(md)) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_TAG_SIZE);
     return 0;
   }
@@ -71,14 +70,15 @@ static int aead_tls_init(EVP_AEAD_CTX *ctx, const uint8_t *key, size_t key_len,
   size_t mac_key_len = EVP_MD_size(md);
   size_t enc_key_len = EVP_CIPHER_key_length(cipher);
   assert(mac_key_len + enc_key_len +
-         (implicit_iv ? EVP_CIPHER_iv_length(cipher) : 0) == key_len);
+             (implicit_iv ? EVP_CIPHER_iv_length(cipher) : 0) ==
+         key_len);
 
   AEAD_TLS_CTX *tls_ctx = OPENSSL_malloc(sizeof(AEAD_TLS_CTX));
   if (tls_ctx == NULL) {
     OPENSSL_PUT_ERROR(CRYPTO, ERR_R_MALLOC_FAILURE);
     return 0;
   }
-  ctx->state.ptr = (void*)tls_ctx;
+  ctx->state.ptr = (void *)tls_ctx;
 
   EVP_CIPHER_CTX_init(&tls_ctx->cipher_ctx);
   HMAC_CTX_init(&tls_ctx->hmac_ctx);
@@ -192,7 +192,8 @@ static int aead_tls_seal_scatter(const EVP_AEAD_CTX *ctx, uint8_t *out,
   // block from encrypting the input and split the result between |out| and
   // |out_tag|. Then feed the rest.
 
-  const size_t early_mac_len = (block_size - (in_len % block_size)) % block_size;
+  const size_t early_mac_len =
+      (block_size - (in_len % block_size)) % block_size;
   if (early_mac_len != 0) {
     assert(len + block_size - early_mac_len == in_len);
     uint8_t buf[EVP_MAX_BLOCK_LENGTH];
@@ -419,9 +420,10 @@ static int aead_aes_256_cbc_sha1_tls_implicit_iv_init(
                        EVP_sha1(), 1);
 }
 
-static int aead_aes_128_cbc_sha256_tls_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
-                                          size_t key_len, size_t tag_len,
-                                          enum evp_aead_direction_t dir) {
+static int aead_aes_128_cbc_sha256_tls_init(EVP_AEAD_CTX *ctx,
+                                            const uint8_t *key, size_t key_len,
+                                            size_t tag_len,
+                                            enum evp_aead_direction_t dir) {
   return aead_tls_init(ctx, key, key_len, tag_len, dir, EVP_aes_128_cbc(),
                        EVP_sha256(), 0);
 }
