@@ -19,6 +19,24 @@
 extern "C" {
 #endif
 
+//  CRLReason ::= ENUMERATED {
+//        unspecified             (0),
+//        keyCompromise           (1),
+//        cACompromise            (2),
+//        affiliationChanged      (3),
+//        superseded              (4),
+//        cessationOfOperation    (5),
+//        certificateHold         (6),
+//        removeFromCRL           (8) }
+#define OCSP_REVOKED_STATUS_UNSPECIFIED 0
+#define OCSP_REVOKED_STATUS_KEYCOMPROMISE 1
+#define OCSP_REVOKED_STATUS_CACOMPROMISE 2
+#define OCSP_REVOKED_STATUS_AFFILIATIONCHANGED 3
+#define OCSP_REVOKED_STATUS_SUPERSEDED 4
+#define OCSP_REVOKED_STATUS_CESSATIONOFOPERATION 5
+#define OCSP_REVOKED_STATUS_CERTIFICATEHOLD 6
+#define OCSP_REVOKED_STATUS_REMOVEFROMCRL 8
+
 // Various OCSP flags and values
 //
 // OCSP_NOCERTS is for |OCSP_request_sign| if no certificates are included
@@ -280,6 +298,8 @@ OPENSSL_EXPORT const char *OCSP_response_status_str(long status_code);
 // a string.
 OPENSSL_EXPORT const char *OCSP_cert_status_str(long status_code);
 
+// OCSP_crl_reason_str prints the OCSP CRL reason into a string.
+OPENSSL_EXPORT const char *OCSP_crl_reason_str(long s);
 
 #ifdef __cplusplus
 }

@@ -44,3 +44,17 @@ const char *OCSP_cert_status_str(long status_code) {
   size_t tbl_size = (sizeof(cstat_tbl) / sizeof((cstat_tbl)[0]));
   return do_table2string(status_code, cstat_tbl, tbl_size);
 }
+
+const char *OCSP_crl_reason_str(long s) {
+  static const OCSP_TBLSTR reason_tbl[] = {
+      {OCSP_REVOKED_STATUS_UNSPECIFIED, "unspecified"},
+      {OCSP_REVOKED_STATUS_KEYCOMPROMISE, "keyCompromise"},
+      {OCSP_REVOKED_STATUS_CACOMPROMISE, "cACompromise"},
+      {OCSP_REVOKED_STATUS_AFFILIATIONCHANGED, "affiliationChanged"},
+      {OCSP_REVOKED_STATUS_SUPERSEDED, "superseded"},
+      {OCSP_REVOKED_STATUS_CESSATIONOFOPERATION, "cessationOfOperation"},
+      {OCSP_REVOKED_STATUS_CERTIFICATEHOLD, "certificateHold"},
+      {OCSP_REVOKED_STATUS_REMOVEFROMCRL, "removeFromCRL"}};
+  size_t tbl_size = (sizeof(reason_tbl) / sizeof((reason_tbl)[0]));
+  return do_table2string(s, reason_tbl, tbl_size);
+}
