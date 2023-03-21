@@ -38,6 +38,11 @@ static uint64_t b10[BUFFERSIZE];
 static uint64_t b11[BUFFERSIZE];
 static uint64_t b12[BUFFERSIZE];
 
+static uint8_t bb1[BUFFERSIZE];
+static uint8_t bb2[BUFFERSIZE];
+static uint8_t bb3[BUFFERSIZE];
+static uint8_t bb4[BUFFERSIZE];
+
 // What to test, default number of tests, verbosity of output
 
 #define VERBOSE 1
@@ -8542,6 +8547,99 @@ int test_curve25519_x25519_alt(void)
   return 0;
 }
 
+int test_curve25519_x25519_byte(void)
+{ uint64_t t, k;
+  printf("Testing curve25519_x25519_byte with %d cases\n",tests);
+  k = 4;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b2);
+     random_bignum(k,b1);
+
+     // With non-trivial probability, let X be in the cofactor 8-group
+
+     if ((rand() & 15) == 0)
+      { b2[3] = UINT64_C(0x57119fd0dd4e22d8);
+        b2[2] = UINT64_C(0x868e1c58c45c4404);
+        b2[1] = UINT64_C(0x5bef839c55b1d0b1);
+        b2[0] = UINT64_C(0x248c50a3bc959c5f);
+      }
+
+     reference_tolebytes(32,bb1,4,b1);
+     reference_tolebytes(32,bb2,4,b2);
+     curve25519_x25519_byte(bb3,bb1,bb2);
+     reference_fromlebytes(4,b3,32,bb3);
+     reference_curve25519x25519(b4,b1,b2);
+
+     c = reference_compare(k,b3,k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" * "
+               "<0x%016"PRIx64"...%016"PRIx64"> = "
+               "<...0x%016"PRIx64"...%016"PRIx64"> not "
+               "<...0x%016"PRIx64"...%016"PRIx64">\n",
+               k,b1[3],b1[0],b2[3],b2[0],b3[3],b3[0],b4[3],b4[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" * "
+               "<0x%016"PRIx64"...%016"PRIx64"> = "
+               "<...0x%016"PRIx64"...%016"PRIx64">\n",
+               k,b1[3],b1[0],b2[3],b2[0],b3[3],b3[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_curve25519_x25519_byte_alt(void)
+{ uint64_t t, k;
+  printf("Testing curve25519_x25519_byte_alt with %d cases\n",tests);
+  k = 4;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b2);
+     random_bignum(k,b1);
+
+     // With non-trivial probability, let X be in the cofactor 8-group
+
+     if ((rand() & 15) == 0)
+      { b2[3] = UINT64_C(0x57119fd0dd4e22d8);
+        b2[2] = UINT64_C(0x868e1c58c45c4404);
+        b2[1] = UINT64_C(0x5bef839c55b1d0b1);
+        b2[0] = UINT64_C(0x248c50a3bc959c5f);
+      }
+
+     reference_tolebytes(32,bb1,4,b1);
+     reference_tolebytes(32,bb2,4,b2);
+     curve25519_x25519_byte_alt(bb3,bb1,bb2);
+     reference_fromlebytes(4,b3,32,bb3);
+     reference_curve25519x25519(b4,b1,b2);
+
+     c = reference_compare(k,b3,k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" * "
+               "<0x%016"PRIx64"...%016"PRIx64"> = "
+               "<...0x%016"PRIx64"...%016"PRIx64"> not "
+               "<...0x%016"PRIx64"...%016"PRIx64">\n",
+               k,b1[3],b1[0],b2[3],b2[0],b3[3],b3[0],b4[3],b4[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" * "
+               "<0x%016"PRIx64"...%016"PRIx64"> = "
+               "<...0x%016"PRIx64"...%016"PRIx64">\n",
+               k,b1[3],b1[0],b2[3],b2[0],b3[3],b3[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
 
 int test_curve25519_x25519base(void)
 { uint64_t t, k;
@@ -8589,6 +8687,80 @@ int test_curve25519_x25519base_alt(void)
      reference_of_word(k,b2,UINT64_C(9));
 
      curve25519_x25519base_alt(b3,b1);
+     reference_curve25519x25519(b4,b1,b2);
+
+     c = reference_compare(k,b3,k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" * "
+               "<0x%016"PRIx64"...%016"PRIx64"> = "
+               "<...0x%016"PRIx64"...%016"PRIx64"> not "
+               "<...0x%016"PRIx64"...%016"PRIx64">\n",
+               k,b1[3],b1[0],b2[3],b2[0],b3[3],b3[0],b4[3],b4[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" * "
+               "<0x%016"PRIx64"...%016"PRIx64"> = "
+               "<...0x%016"PRIx64"...%016"PRIx64">\n",
+               k,b1[3],b1[0],b2[3],b2[0],b3[3],b3[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_curve25519_x25519base_byte(void)
+{ uint64_t t, k;
+  printf("Testing curve25519_x25519base_byte with %d cases\n",tests);
+  k = 4;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b1);
+     reference_of_word(k,b2,UINT64_C(9));
+
+     reference_tolebytes(32,bb1,4,b1);
+     curve25519_x25519base_byte(bb3,bb1);
+     reference_fromlebytes(4,b3,32,bb3);
+     reference_curve25519x25519(b4,b1,b2);
+
+     c = reference_compare(k,b3,k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" * "
+               "<0x%016"PRIx64"...%016"PRIx64"> = "
+               "<...0x%016"PRIx64"...%016"PRIx64"> not "
+               "<...0x%016"PRIx64"...%016"PRIx64">\n",
+               k,b1[3],b1[0],b2[3],b2[0],b3[3],b3[0],b4[3],b4[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" * "
+               "<0x%016"PRIx64"...%016"PRIx64"> = "
+               "<...0x%016"PRIx64"...%016"PRIx64">\n",
+               k,b1[3],b1[0],b2[3],b2[0],b3[3],b3[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_curve25519_x25519base_byte_alt(void)
+{ uint64_t t, k;
+  printf("Testing curve25519_x25519base_byte_alt with %d cases\n",tests);
+  k = 4;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b1);
+     reference_of_word(k,b2,UINT64_C(9));
+
+     reference_tolebytes(32,bb1,4,b1);
+     curve25519_x25519base_byte_alt(bb3,bb1);
+     reference_fromlebytes(4,b3,32,bb3);
      reference_curve25519x25519(b4,b1,b2);
 
      c = reference_compare(k,b3,k,b4);
@@ -9765,6 +9937,177 @@ int test_curve25519_x25519base_alt_tweetnacl(void)
 }
 
 
+int test_curve25519_x25519_byte_tweetnacl(void)
+{ uint64_t t, k;
+  printf("Testing curve25519_x25519 against TweetNaCl with %d cases\n",tests);
+  k = 4;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b2);
+     random_bignum(k,b1);
+
+     // With non-trivial probability, let X be in the cofactor 8-group
+
+     if ((rand() & 15) == 0)
+      { b2[3] = UINT64_C(0x57119fd0dd4e22d8);
+        b2[2] = UINT64_C(0x868e1c58c45c4404);
+        b2[1] = UINT64_C(0x5bef839c55b1d0b1);
+        b2[0] = UINT64_C(0x248c50a3bc959c5f);
+      }
+
+     reference_tolebytes(32,bb1,4,b1);
+     reference_tolebytes(32,bb2,4,b2);
+     curve25519_x25519_byte(bb3,bb1,bb2);
+     crypto_scalarmult(bb4,bb1,bb2);
+     reference_fromlebytes(4,b3,32,bb3);
+     reference_fromlebytes(4,b4,32,bb4);
+
+     c = reference_compare(k,b3,k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" * "
+               "<0x%016"PRIx64"...%016"PRIx64"> = "
+               "<...0x%016"PRIx64"...%016"PRIx64"> not "
+               "<...0x%016"PRIx64"...%016"PRIx64">\n",
+               k,b1[3],b1[0],b2[3],b2[0],b3[3],b3[0],b4[3],b4[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" * "
+               "<0x%016"PRIx64"...%016"PRIx64"> = "
+               "<...0x%016"PRIx64"...%016"PRIx64">\n",
+               k,b1[3],b1[0],b2[3],b2[0],b3[3],b3[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_curve25519_x25519_byte_alt_tweetnacl(void)
+{ uint64_t t, k;
+  printf("Testing curve25519_x25519_alt against TweetNaCl with %d cases\n",tests);
+  k = 4;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b2);
+     random_bignum(k,b1);
+
+     // With non-trivial probability, let X be in the cofactor 8-group
+
+     if ((rand() & 15) == 0)
+      { b2[3] = UINT64_C(0x57119fd0dd4e22d8);
+        b2[2] = UINT64_C(0x868e1c58c45c4404);
+        b2[1] = UINT64_C(0x5bef839c55b1d0b1);
+        b2[0] = UINT64_C(0x248c50a3bc959c5f);
+      }
+
+     reference_tolebytes(32,bb1,4,b1);
+     reference_tolebytes(32,bb2,4,b2);
+     curve25519_x25519_byte_alt(bb3,bb1,bb2);
+     crypto_scalarmult(bb4,bb1,bb2);
+     reference_fromlebytes(4,b3,32,bb3);
+     reference_fromlebytes(4,b4,32,bb4);
+
+     c = reference_compare(k,b3,k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" * "
+               "<0x%016"PRIx64"...%016"PRIx64"> = "
+               "<...0x%016"PRIx64"...%016"PRIx64"> not "
+               "<...0x%016"PRIx64"...%016"PRIx64">\n",
+               k,b1[3],b1[0],b2[3],b2[0],b3[3],b3[0],b4[3],b4[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" * "
+               "<0x%016"PRIx64"...%016"PRIx64"> = "
+               "<...0x%016"PRIx64"...%016"PRIx64">\n",
+               k,b1[3],b1[0],b2[3],b2[0],b3[3],b3[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_curve25519_x25519base_byte_tweetnacl(void)
+{ uint64_t t, k;
+  printf("Testing curve25519_x25519base against TweetNaCl with %d cases\n",tests);
+  k = 4;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b1);
+     reference_of_word(k,b2,UINT64_C(9));
+
+     reference_tolebytes(32,bb1,4,b1);
+     curve25519_x25519base_byte(bb3,bb1);
+     crypto_scalarmult_base(bb4,bb1);
+     reference_fromlebytes(4,b3,32,bb3);
+     reference_fromlebytes(4,b4,32,bb4);
+
+     c = reference_compare(k,b3,k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" * "
+               "<0x%016"PRIx64"...%016"PRIx64"> = "
+               "<...0x%016"PRIx64"...%016"PRIx64"> not "
+               "<...0x%016"PRIx64"...%016"PRIx64">\n",
+               k,b1[3],b1[0],b2[3],b2[0],b3[3],b3[0],b4[3],b4[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" * "
+               "<0x%016"PRIx64"...%016"PRIx64"> = "
+               "<...0x%016"PRIx64"...%016"PRIx64">\n",
+               k,b1[3],b1[0],b2[3],b2[0],b3[3],b3[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_curve25519_x25519base_byte_alt_tweetnacl(void)
+{ uint64_t t, k;
+  printf("Testing curve25519_x25519base_alt against TweetNaCl with %d cases\n",tests);
+  k = 4;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b1);
+     reference_of_word(k,b2,UINT64_C(9));
+
+     reference_tolebytes(32,bb1,4,b1);
+     curve25519_x25519base_byte_alt(bb3,bb1);
+     crypto_scalarmult_base(bb4,bb1);
+     reference_fromlebytes(4,b3,32,bb3);
+     reference_fromlebytes(4,b4,32,bb4);
+
+     c = reference_compare(k,b3,k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" * "
+               "<0x%016"PRIx64"...%016"PRIx64"> = "
+               "<...0x%016"PRIx64"...%016"PRIx64"> not "
+               "<...0x%016"PRIx64"...%016"PRIx64">\n",
+               k,b1[3],b1[0],b2[3],b2[0],b3[3],b3[0],b4[3],b4[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" * "
+               "<0x%016"PRIx64"...%016"PRIx64"> = "
+               "<...0x%016"PRIx64"...%016"PRIx64">\n",
+               k,b1[3],b1[0],b2[3],b2[0],b3[3],b3[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
 
 // ****************************************************************************
 // Main dispatching to appropriate test code
@@ -10109,8 +10452,12 @@ int main(int argc, char *argv[])
   functionaltest(all,"curve25519_pxscalarmul_alt",test_curve25519_pxscalarmul_alt);
   functionaltest(bmi,"curve25519_x25519",test_curve25519_x25519);
   functionaltest(all,"curve25519_x25519_alt",test_curve25519_x25519_alt);
+  functionaltest(bmi,"curve25519_x25519_byte",test_curve25519_x25519_byte);
+  functionaltest(all,"curve25519_x25519_byte_alt",test_curve25519_x25519_byte_alt);
   functionaltest(bmi,"curve25519_x25519base",test_curve25519_x25519base);
   functionaltest(all,"curve25519_x25519base_alt",test_curve25519_x25519base_alt);
+  functionaltest(bmi,"curve25519_x25519base_byte",test_curve25519_x25519base_byte);
+  functionaltest(all,"curve25519_x25519base_byte_alt",test_curve25519_x25519base_byte_alt);
   functionaltest(bmi,"edwards25519_epadd",test_edwards25519_epadd);
   functionaltest(all,"edwards25519_epadd_alt",test_edwards25519_epadd_alt);
   functionaltest(bmi,"edwards25519_epdouble",test_edwards25519_epdouble);
@@ -10148,8 +10495,12 @@ int main(int argc, char *argv[])
 
   functionaltest(bmi,"curve25519_x25519 (TweetNaCl)",test_curve25519_x25519_tweetnacl);
   functionaltest(all,"curve25519_x25519_alt (TweetNaCl)",test_curve25519_x25519_alt_tweetnacl);
+  functionaltest(bmi,"curve25519_x25519_byte (TweetNaCl)",test_curve25519_x25519_byte_tweetnacl);
+  functionaltest(all,"curve25519_x25519_byte+alt (TweetNaCl)",test_curve25519_x25519_byte_alt_tweetnacl);
   functionaltest(bmi,"curve25519_x25519base (TweetNaCl)",test_curve25519_x25519base_tweetnacl);
   functionaltest(all,"curve25519_x25519base_alt (TweetNaCl)",test_curve25519_x25519base_alt_tweetnacl);
+  functionaltest(bmi,"curve25519_x25519base_byte (TweetNaCl)",test_curve25519_x25519base_byte_tweetnacl);
+  functionaltest(all,"curve25519_x25519base_byte_alt (TweetNaCl)",test_curve25519_x25519base_byte_alt_tweetnacl);
 
   if (successes == tested)
    { printf("All %d tests run, all passed\n",successes);

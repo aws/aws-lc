@@ -816,10 +816,20 @@ extern void curve25519_pxscalarmul_alt(uint64_t res[static 8],uint64_t scalar[st
 extern void curve25519_x25519(uint64_t res[static 4],uint64_t scalar[static 4],uint64_t point[static 4]);
 extern void curve25519_x25519_alt(uint64_t res[static 4],uint64_t scalar[static 4],uint64_t point[static 4]);
 
+// x25519 function for curve25519 (byte array arguments)
+// Inputs scalar[32] (bytes), point[32] (bytes); output res[32] (bytes)
+extern void curve25519_x25519_byte(uint8_t res[static 32],uint8_t scalar[static 32],uint8_t point[static 32]);
+extern void curve25519_x25519_byte_alt(uint8_t res[static 32],uint8_t scalar[static 32],uint8_t point[static 32]);
+
 // x25519 function for curve25519 on base element 9
 // Input scalar[4]; output res[4]
 extern void curve25519_x25519base(uint64_t res[static 4],uint64_t scalar[static 4]);
 extern void curve25519_x25519base_alt(uint64_t res[static 4],uint64_t scalar[static 4]);
+
+// x25519 function for curve25519 on base element 9 (byte array arguments)
+// Input scalar[32] (bytes); output res[32] (bytes)
+extern void curve25519_x25519base_byte(uint8_t res[static 32],uint8_t scalar[static 32]);
+extern void curve25519_x25519base_byte_alt(uint8_t res[static 32],uint8_t scalar[static 32]);
 
 // Extended projective addition for edwards25519
 // Inputs p1[16], p2[16]; output p3[16]

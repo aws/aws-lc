@@ -818,10 +818,20 @@ extern void curve25519_pxscalarmul_alt(uint64_t res[8],uint64_t scalar[4],uint64
 extern void curve25519_x25519(uint64_t res[4],uint64_t scalar[4],uint64_t point[4]);
 extern void curve25519_x25519_alt(uint64_t res[4],uint64_t scalar[4],uint64_t point[4]);
 
+/* x25519 function for curve25519 (byte array arguments) */
+/* Inputs scalar[32] (bytes), point[32] (bytes); output res[32] (bytes) */
+extern void curve25519_x25519_byte(uint8_t res[32],uint8_t scalar[32],uint8_t point[32]);
+extern void curve25519_x25519_byte_alt(uint8_t res[32],uint8_t scalar[32],uint8_t point[32]);
+
 /* x25519 function for curve25519 on base element 9 */
 /* Input scalar[4]; output res[4] */
 extern void curve25519_x25519base(uint64_t res[4],uint64_t scalar[4]);
 extern void curve25519_x25519base_alt(uint64_t res[4],uint64_t scalar[4]);
+
+/* x25519 function for curve25519 on base element 9 (byte array arguments) */
+/* Input scalar[32] (bytes); output res[32] (bytes) */
+extern void curve25519_x25519base_byte(uint8_t res[32],uint8_t scalar[32]);
+extern void curve25519_x25519base_byte_alt(uint8_t res[32],uint8_t scalar[32]);
 
 /* Extended projective addition for edwards25519 */
 /* Inputs p1[16], p2[16]; output p3[16] */
@@ -835,8 +845,8 @@ extern void edwards25519_epdouble_alt(uint64_t p3[16],uint64_t p1[12]);
 
 /* Projective doubling for edwards25519 */
 /* Inputs p1[12]; output p3[12] */
-extern void edwards25519_epdouble(uint64_t p3[12],uint64_t p1[12]);
-extern void edwards25519_epdouble_alt(uint64_t p3[12],uint64_t p1[12]);
+extern void edwards25519_pdouble(uint64_t p3[12],uint64_t p1[12]);
+extern void edwards25519_pdouble_alt(uint64_t p3[12],uint64_t p1[12]);
 
 /* Extended projective + precomputed mixed addition for edwards25519 */
 /* Inputs p1[16], p2[12]; output p3[16] */

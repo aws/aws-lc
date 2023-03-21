@@ -38,8 +38,12 @@ OBJ = bignum_add_p25519.o \
       curve25519_pxscalarmul_alt.o \
       curve25519_x25519.o \
       curve25519_x25519_alt.o \
+      curve25519_x25519_byte.o \
+      curve25519_x25519_byte_alt.o \
       curve25519_x25519base.o \
       curve25519_x25519base_alt.o \
+      curve25519_x25519base_byte.o \
+      curve25519_x25519base_byte_alt.o \
       edwards25519_epadd.o \
       edwards25519_epadd_alt.o \
       edwards25519_epdouble.o \
