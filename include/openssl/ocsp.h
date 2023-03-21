@@ -167,15 +167,24 @@ OPENSSL_EXPORT int OCSP_resp_find_status(OCSP_BASICRESP *bs, OCSP_CERTID *id,
 // OCSP_check_validity checks the validity of |thisUpdate| and |nextUpdate|
 // fields from an |OCSP_SINGLERESP|.
 //
-// Note: It is possible that the request will take a few seconds to process
-// and/or the local system time isn't exactly the same as the OCSP responder's
-// time. Therefore, to avoid rejecting otherwise valid time we allow the times
-// to be within |drift_num_seconds| of the current time. Also, to avoid
-// accepting very old responses without a |nextUpdate| field, an optional
-// |max_age_seconds| parameter specifies the maximum age the |thisUpdate| field
-// can be. |max_age_seconds| should be the number of seconds relative to
-// |thisUpdate|. You can also set |max_age_seconds| to "-1", if the maximum age
-// should not be checked.
+// Note: 1. It is possible that the request will take a few seconds to process
+//          and/or the local system time isn't exactly the same as the OCSP
+//          responder's time. Therefore, to avoid rejecting otherwise valid time
+//          we allow the times to be within |drift_num_seconds| of the current
+//          time.
+//      2.  Also, to avoid accepting very old responses without a
+//          |nextUpdate| field, an optional |max_age_seconds| parameter
+//          specifies the maximum age the |thisUpdate| field can be.
+//          |max_age_seconds| should be the number of seconds relative to
+//          |thisUpdate|. You can also set |max_age_seconds| to "-1", if the
+//          maximum age should not be checked.
+//      3.  |thisUpdate| should be within the range of: (current time -
+//          max_age_seconds) < |thisUpdate| < (current time +
+//          drift_num_seconds).
+//          |nextUpdate| should be in the future: (current time +
+//          drift_num_seconds) < |nextUpdate|.
+//      4.  |thisUpdate| and |nextUpdate| are defined in the RFC:
+//          https://datatracker.ietf.org/doc/html/rfc6960#section-2.4
 OPENSSL_EXPORT int OCSP_check_validity(ASN1_GENERALIZEDTIME *thisUpdate,
                                        ASN1_GENERALIZEDTIME *nextUpdate,
                                        long drift_num_seconds,
