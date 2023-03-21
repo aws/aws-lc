@@ -72,6 +72,10 @@ DECLARE_ASN1_FUNCTIONS(OCSP_RESPONSE)
 DECLARE_ASN1_FUNCTIONS(OCSP_CERTID)
 DECLARE_ASN1_FUNCTIONS(OCSP_REQUEST)
 
+// d2i_OCSP_REQUEST_bio parses an OCSP request in DER format from a BIO object
+// and converts it into an |OCSP_REQUEST|.
+OPENSSL_EXPORT OCSP_REQUEST *d2i_OCSP_REQUEST_bio(BIO *bp, OCSP_REQUEST **preq);
+
 // d2i_OCSP_RESPONSE_bio parses a DER-encoded OCSP response from |bp|, converts
 // it into an |OCSP_RESPONSE|, and writes the result in |presp|.
 OPENSSL_EXPORT OCSP_RESPONSE *d2i_OCSP_RESPONSE_bio(BIO *bp,
@@ -80,6 +84,13 @@ OPENSSL_EXPORT OCSP_RESPONSE *d2i_OCSP_RESPONSE_bio(BIO *bp,
 // i2d_OCSP_RESPONSE_bio marshals |presp| as a DER-encoded OCSP response and
 // writes the result to |bp|.
 OPENSSL_EXPORT int i2d_OCSP_RESPONSE_bio(BIO *bp, OCSP_RESPONSE *presp);
+
+// i2d_OCSP_REQUEST_bio parses an |OCSP_REQUEST| structure and writes the OCSP
+// request in DER format into a BIO object.
+OPENSSL_EXPORT int i2d_OCSP_REQUEST_bio(BIO *bp, OCSP_REQUEST *preq);
+
+// OCSP_CERTID_dup creates a copy of an |OCSP_CERTID| structure.
+OPENSSL_EXPORT OCSP_CERTID *OCSP_CERTID_dup(OCSP_CERTID *id);
 
 // OCSP_sendreq_bio is a blocking OCSP request handler which is a special case
 // of non-blocking I/O.
