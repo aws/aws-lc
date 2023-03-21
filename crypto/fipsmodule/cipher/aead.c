@@ -21,8 +21,8 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
-#include "internal.h"
 #include "../../internal.h"
+#include "internal.h"
 
 
 size_t EVP_AEAD_key_length(const EVP_AEAD *aead) { return aead->key_len; }
@@ -150,11 +150,13 @@ error:
   return 0;
 }
 
-int EVP_AEAD_CTX_seal_scatter(
-    const EVP_AEAD_CTX *ctx, uint8_t *out, uint8_t *out_tag, size_t
-    *out_tag_len, size_t max_out_tag_len, const uint8_t *nonce, size_t
-    nonce_len, const uint8_t *in, size_t in_len, const uint8_t *extra_in,
-    size_t extra_in_len, const uint8_t *ad, size_t ad_len) {
+int EVP_AEAD_CTX_seal_scatter(const EVP_AEAD_CTX *ctx, uint8_t *out,
+                              uint8_t *out_tag, size_t *out_tag_len,
+                              size_t max_out_tag_len, const uint8_t *nonce,
+                              size_t nonce_len, const uint8_t *in,
+                              size_t in_len, const uint8_t *extra_in,
+                              size_t extra_in_len, const uint8_t *ad,
+                              size_t ad_len) {
   // |in| and |out| may alias exactly, |out_tag| may not alias.
   if (!check_alias(in, in_len, out, in_len) ||
       buffers_alias(out, in_len, out_tag, max_out_tag_len) ||
@@ -194,7 +196,7 @@ int EVP_AEAD_CTX_open(const EVP_AEAD_CTX *ctx, uint8_t *out, size_t *out_len,
 
   if (ctx->aead->open) {
     if (!ctx->aead->open(ctx, out, out_len, max_out_len, nonce, nonce_len, in,
-                        in_len, ad, ad_len)) {
+                         in_len, ad, ad_len)) {
       goto error;
     }
     return 1;
@@ -290,15 +292,15 @@ int EVP_AEAD_CTX_tag_len(const EVP_AEAD_CTX *ctx, size_t *out_tag_len,
 // NIST SP 800-38D, built from an IPv4 address and the number of nanoseconds
 // since boot, writing it to |out_iv|. It returns one on success or zero for
 // error.
-int EVP_AEAD_get_iv_from_ipv4_nanosecs(const uint32_t ipv4_address,
-    const uint64_t nanosecs, uint8_t out_iv[FIPS_AES_GCM_NONCE_LENGTH]) {
+int EVP_AEAD_get_iv_from_ipv4_nanosecs(
+    const uint32_t ipv4_address, const uint64_t nanosecs,
+    uint8_t out_iv[FIPS_AES_GCM_NONCE_LENGTH]) {
   if (out_iv == NULL) {
     return 0;
   }
 
   OPENSSL_memcpy(out_iv, &ipv4_address, sizeof(ipv4_address));
-  OPENSSL_memcpy(out_iv + sizeof(ipv4_address), &nanosecs,
-                 sizeof(nanosecs));
+  OPENSSL_memcpy(out_iv + sizeof(ipv4_address), &nanosecs, sizeof(nanosecs));
 
   return 1;
 }

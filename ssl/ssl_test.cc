@@ -26,8 +26,8 @@
 
 #include <openssl/aead.h>
 #include <openssl/base64.h>
-#include <openssl/bytestring.h>
 #include <openssl/bio.h>
+#include <openssl/bytestring.h>
 #include <openssl/cipher.h>
 #include <openssl/crypto.h>
 #include <openssl/curve25519.h>
@@ -35,15 +35,15 @@
 #include <openssl/hmac.h>
 #include <openssl/hpke.h>
 #include <openssl/pem.h>
+#include <openssl/rand.h>
 #include <openssl/sha.h>
 #include <openssl/ssl.h>
-#include <openssl/rand.h>
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
-#include "internal.h"
 #include "../crypto/internal.h"
 #include "../crypto/test/test_util.h"
+#include "internal.h"
 
 #if defined(OPENSSL_WINDOWS)
 // Windows defines struct timeval in winsock2.h.
@@ -75,25 +75,25 @@ namespace {
 struct VersionParam {
   uint16_t version;
   enum { is_tls, is_dtls } ssl_method;
-  // This field is used to generate custom test name suffixes 
+  // This field is used to generate custom test name suffixes
   // based on the test parameters.
   const char name[20];
-  // SSL transfer: the sever SSL is encoded into bytes, and then decoded to another SSL.
-  // After transfer, the encoded SSL is freed. The decoded one is used to exchange data.
-  // This flag is to replay existing tests with the transferred SSL.
-  // If false, the tests use the original server SSL.
-  // If true, the tests are replayed with the transferred server SSL.
-  // Note: SSL transfer works only with TLS 1.2 after handshake finished.
+  // SSL transfer: the sever SSL is encoded into bytes, and then decoded to
+  // another SSL. After transfer, the encoded SSL is freed. The decoded one is
+  // used to exchange data. This flag is to replay existing tests with the
+  // transferred SSL. If false, the tests use the original server SSL. If true,
+  // the tests are replayed with the transferred server SSL. Note: SSL transfer
+  // works only with TLS 1.2 after handshake finished.
   bool transfer_ssl;
 };
 
 struct SSLTestParam {
-  // SSL transfer: the sever SSL is encoded into bytes, and then decoded to another SSL.
-  // After transfer, the encoded SSL is freed. The decoded one is used to exchange data.
-  // This flag is to replay existing tests with the transferred SSL.
-  // If false, the tests use the original server SSL.
-  // If true, the tests are replayed with the transferred server SSL.
-  // Note: SSL transfer works only with TLS 1.2 after handshake finished.
+  // SSL transfer: the sever SSL is encoded into bytes, and then decoded to
+  // another SSL. After transfer, the encoded SSL is freed. The decoded one is
+  // used to exchange data. This flag is to replay existing tests with the
+  // transferred SSL. If false, the tests use the original server SSL. If true,
+  // the tests are replayed with the transferred server SSL. Note: SSL transfer
+  // works only with TLS 1.2 after handshake finished.
   bool transfer_ssl;
 };
 
@@ -119,8 +119,7 @@ static const SSLTestParam kSSLTestParams[] = {
 
 class SSLTest : public testing::TestWithParam<SSLTestParam> {};
 
-INSTANTIATE_TEST_SUITE_P(SSLTests, SSLTest,
-                         testing::ValuesIn(kSSLTestParams),
+INSTANTIATE_TEST_SUITE_P(SSLTests, SSLTest, testing::ValuesIn(kSSLTestParams),
                          [](const testing::TestParamInfo<SSLTestParam> &i) {
                            if (i.param.transfer_ssl) {
                              return "SSL_Transfer";
@@ -386,7 +385,8 @@ static const CipherTest kCipherTests[] = {
     },
     // Spaces, semi-colons and commas are separators.
     {
-        "AES128-SHA: ECDHE-RSA-AES128-GCM-SHA256 AES256-SHA ,ECDHE-ECDSA-AES128-GCM-SHA256 ; AES128-GCM-SHA256",
+        "AES128-SHA: ECDHE-RSA-AES128-GCM-SHA256 AES256-SHA "
+        ",ECDHE-ECDSA-AES128-GCM-SHA256 ; AES128-GCM-SHA256",
         {
             {TLS1_CK_RSA_WITH_AES_128_SHA, 0},
             {TLS1_CK_ECDHE_RSA_WITH_AES_128_GCM_SHA256, 0},
@@ -499,91 +499,83 @@ static const CipherTest kTLSv13CipherTests[] = {
 };
 
 static const char *kBadRules[] = {
-  // Invalid brackets.
-  "[ECDHE-RSA-CHACHA20-POLY1305|ECDHE-RSA-AES128-GCM-SHA256",
-  "RSA]",
-  "[[RSA]]",
-  // Operators inside brackets.
-  "[+RSA]",
-  // Unknown directive.
-  "@BOGUS",
-  // Empty cipher lists error at SSL_CTX_set_cipher_list.
-  "",
-  "BOGUS",
-  // COMPLEMENTOFDEFAULT is empty.
-  "COMPLEMENTOFDEFAULT",
-  // Invalid command.
-  "?BAR",
-  // Special operators are not allowed if groups are used.
-  "[ECDHE-RSA-CHACHA20-POLY1305|ECDHE-RSA-AES128-GCM-SHA256]:+FOO",
-  "[ECDHE-RSA-CHACHA20-POLY1305|ECDHE-RSA-AES128-GCM-SHA256]:!FOO",
-  "[ECDHE-RSA-CHACHA20-POLY1305|ECDHE-RSA-AES128-GCM-SHA256]:-FOO",
-  "[ECDHE-RSA-CHACHA20-POLY1305|ECDHE-RSA-AES128-GCM-SHA256]:@STRENGTH",
-  // Opcode supplied, but missing selector.
-  "+",
-  // Spaces are forbidden in equal-preference groups.
-  "[AES128-SHA | AES128-SHA256]",
+    // Invalid brackets.
+    "[ECDHE-RSA-CHACHA20-POLY1305|ECDHE-RSA-AES128-GCM-SHA256",
+    "RSA]",
+    "[[RSA]]",
+    // Operators inside brackets.
+    "[+RSA]",
+    // Unknown directive.
+    "@BOGUS",
+    // Empty cipher lists error at SSL_CTX_set_cipher_list.
+    "",
+    "BOGUS",
+    // COMPLEMENTOFDEFAULT is empty.
+    "COMPLEMENTOFDEFAULT",
+    // Invalid command.
+    "?BAR",
+    // Special operators are not allowed if groups are used.
+    "[ECDHE-RSA-CHACHA20-POLY1305|ECDHE-RSA-AES128-GCM-SHA256]:+FOO",
+    "[ECDHE-RSA-CHACHA20-POLY1305|ECDHE-RSA-AES128-GCM-SHA256]:!FOO",
+    "[ECDHE-RSA-CHACHA20-POLY1305|ECDHE-RSA-AES128-GCM-SHA256]:-FOO",
+    "[ECDHE-RSA-CHACHA20-POLY1305|ECDHE-RSA-AES128-GCM-SHA256]:@STRENGTH",
+    // Opcode supplied, but missing selector.
+    "+",
+    // Spaces are forbidden in equal-preference groups.
+    "[AES128-SHA | AES128-SHA256]",
 };
 
 static const char *kMustNotIncludeNull[] = {
-  "ALL",
-  "DEFAULT",
-  "HIGH",
-  "FIPS",
-  "SHA",
-  "SHA1",
-  "RSA",
-  "SSLv3",
-  "TLSv1",
-  "TLSv1.2",
+    "ALL",  "DEFAULT", "HIGH",  "FIPS",  "SHA",
+    "SHA1", "RSA",     "SSLv3", "TLSv1", "TLSv1.2",
 };
 
 static const char *kTLSv13MustNotIncludeNull[] = {
-  "ALL",
-  "DEFAULT",
-  "HIGH",
-  "FIPS",
+    "ALL",
+    "DEFAULT",
+    "HIGH",
+    "FIPS",
 };
 
 static const CurveTest kCurveTests[] = {
-  {
-    "P-256",
-    { SSL_CURVE_SECP256R1 },
-  },
-  {
-    "P-256:CECPQ2",
-    { SSL_CURVE_SECP256R1, SSL_CURVE_CECPQ2 },
-  },
+    {
+        "P-256",
+        {SSL_CURVE_SECP256R1},
+    },
+    {
+        "P-256:CECPQ2",
+        {SSL_CURVE_SECP256R1, SSL_CURVE_CECPQ2},
+    },
 
-  {
-    "P-256:P-384:P-521:X25519",
     {
-      SSL_CURVE_SECP256R1,
-      SSL_CURVE_SECP384R1,
-      SSL_CURVE_SECP521R1,
-      SSL_CURVE_X25519,
+        "P-256:P-384:P-521:X25519",
+        {
+            SSL_CURVE_SECP256R1,
+            SSL_CURVE_SECP384R1,
+            SSL_CURVE_SECP521R1,
+            SSL_CURVE_X25519,
+        },
     },
-  },
-  {
-    "prime256v1:secp384r1:secp521r1:x25519",
     {
-      SSL_CURVE_SECP256R1,
-      SSL_CURVE_SECP384R1,
-      SSL_CURVE_SECP521R1,
-      SSL_CURVE_X25519,
+        "prime256v1:secp384r1:secp521r1:x25519",
+        {
+            SSL_CURVE_SECP256R1,
+            SSL_CURVE_SECP384R1,
+            SSL_CURVE_SECP521R1,
+            SSL_CURVE_X25519,
+        },
     },
-  },
 };
 
 static const char *kBadCurvesLists[] = {
-  "",
-  ":",
-  "::",
-  "P-256::X25519",
-  "RSA:P-256",
-  "P-256:RSA",
-  "X25519:P-256:",
-  ":X25519:P-256",
+    "",
+    ":",
+    "::",
+    "P-256::X25519",
+    "RSA:P-256",
+    "P-256:RSA",
+    "X25519:P-256:",
+    ":X25519:P-256",
 };
 
 static STACK_OF(SSL_CIPHER) *tls13_ciphers(const SSL_CTX *ctx) {
@@ -605,8 +597,8 @@ static int cipher_in_group(const SSL_CTX *ctx, size_t i, bool tlsv13_ciphers) {
 static std::string CipherListToString(SSL_CTX *ctx, bool tlsv13_ciphers) {
   bool in_group = false;
   std::string ret;
-  const STACK_OF(SSL_CIPHER) *ciphers = tlsv13_ciphers ? 
-    tls13_ciphers(ctx) : SSL_CTX_get_ciphers(ctx);
+  const STACK_OF(SSL_CIPHER) *ciphers =
+      tlsv13_ciphers ? tls13_ciphers(ctx) : SSL_CTX_get_ciphers(ctx);
   for (size_t i = 0; i < sk_SSL_CIPHER_num(ciphers); i++) {
     const SSL_CIPHER *cipher = sk_SSL_CIPHER_value(ciphers, i);
     if (!in_group && cipher_in_group(ctx, i, tlsv13_ciphers)) {
@@ -630,8 +622,8 @@ static std::string CipherListToString(SSL_CTX *ctx, bool tlsv13_ciphers) {
 static bool CipherListsEqual(SSL_CTX *ctx,
                              const std::vector<ExpectedCipher> &expected,
                              bool tlsv13_ciphers) {
-  STACK_OF(SSL_CIPHER) *ciphers = tlsv13_ciphers ? 
-    tls13_ciphers(ctx) : SSL_CTX_get_ciphers(ctx);
+  STACK_OF(SSL_CIPHER) *ciphers =
+      tlsv13_ciphers ? tls13_ciphers(ctx) : SSL_CTX_get_ciphers(ctx);
   if (sk_SSL_CIPHER_num(ciphers) != expected.size()) {
     return false;
   }
@@ -639,7 +631,8 @@ static bool CipherListsEqual(SSL_CTX *ctx,
   for (size_t i = 0; i < expected.size(); i++) {
     const SSL_CIPHER *cipher = sk_SSL_CIPHER_value(ciphers, i);
     if (expected[i].id != SSL_CIPHER_get_id(cipher) ||
-        expected[i].in_group_flag != !!cipher_in_group(ctx, i, tlsv13_ciphers)) {
+        expected[i].in_group_flag !=
+            !!cipher_in_group(ctx, i, tlsv13_ciphers)) {
       return false;
     }
   }
@@ -648,39 +641,37 @@ static bool CipherListsEqual(SSL_CTX *ctx,
 }
 
 // Functions used by SSL encode/decode tests.
-static void EncodeAndDecodeSSL(SSL *in, SSL_CTX *ctx, bssl::UniquePtr<SSL> *out) {
+static void EncodeAndDecodeSSL(SSL *in, SSL_CTX *ctx,
+                               bssl::UniquePtr<SSL> *out) {
   // Encoding SSL to bytes.
   size_t encoded_len;
   bssl::UniquePtr<uint8_t> encoded;
   uint8_t *encoded_raw;
   ASSERT_TRUE(SSL_to_bytes(in, &encoded_raw, &encoded_len));
-  ASSERT_TRUE(encoded_len)
-      << "SSL_to_bytes failed. Error code: "
-      << ERR_reason_error_string(ERR_get_error());
+  ASSERT_TRUE(encoded_len) << "SSL_to_bytes failed. Error code: "
+                           << ERR_reason_error_string(ERR_get_error());
   encoded.reset(encoded_raw);
   // Decoding SSL from the bytes.
   const uint8_t *ptr2 = encoded.get();
   SSL *server2_ = SSL_from_bytes(ptr2, encoded_len, ctx);
-  ASSERT_TRUE(server2_)
-      << "SSL_from_bytes failed. Error code: "
-      << ERR_reason_error_string(ERR_get_error());
+  ASSERT_TRUE(server2_) << "SSL_from_bytes failed. Error code: "
+                        << ERR_reason_error_string(ERR_get_error());
   out->reset(server2_);
 }
 
-static void TransferBIOs(bssl::UniquePtr<SSL> *from, SSL* to) {
+static void TransferBIOs(bssl::UniquePtr<SSL> *from, SSL *to) {
   // Fetch the bio.
   BIO *rbio = SSL_get_rbio(from->get());
-  ASSERT_TRUE(rbio)
-      << "rbio is not set"
-      << ERR_reason_error_string(ERR_get_error());
+  ASSERT_TRUE(rbio) << "rbio is not set"
+                    << ERR_reason_error_string(ERR_get_error());
   BIO *wbio = SSL_get_wbio(from->get());
-  ASSERT_TRUE(wbio)
-      << "wbio is not set"
-      << ERR_reason_error_string(ERR_get_error());
+  ASSERT_TRUE(wbio) << "wbio is not set"
+                    << ERR_reason_error_string(ERR_get_error());
   // Move the bio.
   // Increase ref count of |rbio|.
-  // |SSL_set_bio(to, rbio, wbio)| only increments the references of |rbio| by 1 when |rbio == wbio|.
-  // But |SSL_free| decreases the reference of |rbio| and |wbio|.
+  // |SSL_set_bio(to, rbio, wbio)| only increments the references of |rbio| by 1
+  // when |rbio == wbio|. But |SSL_free| decreases the reference of |rbio| and
+  // |wbio|.
   if (rbio == wbio) {
     BIO_up_ref(rbio);
   }
@@ -697,7 +688,8 @@ static void TransferBIOs(bssl::UniquePtr<SSL> *from, SSL* to) {
 // 3. Free the SSL of |in|.
 // 4. If |out| is not nullptr, |out| will hold the decoded SSL.
 //    Else, |in| will get reset to hold the decoded SSL.
-static void TransferSSL(bssl::UniquePtr<SSL> *in, SSL_CTX *in_ctx, bssl::UniquePtr<SSL> *out) {
+static void TransferSSL(bssl::UniquePtr<SSL> *in, SSL_CTX *in_ctx,
+                        bssl::UniquePtr<SSL> *out) {
   bssl::UniquePtr<SSL> decoded_ssl;
   EncodeAndDecodeSSL(in->get(), in_ctx, &decoded_ssl);
   if (!decoded_ssl) {
@@ -788,7 +780,8 @@ TEST(SSLTest, CipherRules) {
 
     // Test lax mode.
     ASSERT_TRUE(SSL_CTX_set_cipher_list(ctx.get(), t.rule));
-    EXPECT_TRUE(CipherListsEqual(ctx.get(), t.expected, false /* not TLSv1.3 only */))
+    EXPECT_TRUE(
+        CipherListsEqual(ctx.get(), t.expected, false /* not TLSv1.3 only */))
         << "Cipher rule evaluated to:\n"
         << CipherListToString(ctx.get(), false /* not TLSv1.3 only */);
 
@@ -797,7 +790,8 @@ TEST(SSLTest, CipherRules) {
       EXPECT_FALSE(SSL_CTX_set_strict_cipher_list(ctx.get(), t.rule));
     } else {
       ASSERT_TRUE(SSL_CTX_set_strict_cipher_list(ctx.get(), t.rule));
-      EXPECT_TRUE(CipherListsEqual(ctx.get(), t.expected, false /* not TLSv1.3 only */))
+      EXPECT_TRUE(
+          CipherListsEqual(ctx.get(), t.expected, false /* not TLSv1.3 only */))
           << "Cipher rule evaluated to:\n"
           << CipherListToString(ctx.get(), false /* not TLSv1.3 only */);
     }
@@ -814,8 +808,9 @@ TEST(SSLTest, CipherRules) {
 
   // kTLSv13RuleOnly are valid test cases for |SSL_CTX_set_ciphersuites|,
   // which configures only TLSv1.3 ciphers.
-  // |SSL_CTX_set_cipher_list| only supports TLSv1.2 and below ciphers configuration.
-  // Accordingly, kTLSv13RuleOnly result in |SSL_R_NO_CIPHER_MATCH|.
+  // |SSL_CTX_set_cipher_list| only supports TLSv1.2 and below ciphers
+  // configuration. Accordingly, kTLSv13RuleOnly result in
+  // |SSL_R_NO_CIPHER_MATCH|.
   for (const CipherTest &t : kTLSv13RuleOnly) {
     SCOPED_TRACE(t.rule);
     bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
@@ -838,8 +833,10 @@ TEST(SSLTest, CipherRules) {
   }
 }
 
-static std::vector<CipherTest> combine_tests(const CipherTest *c1, size_t size_1,
-  const CipherTest *c2, size_t size_2) {
+static std::vector<CipherTest> combine_tests(const CipherTest *c1,
+                                             size_t size_1,
+                                             const CipherTest *c2,
+                                             size_t size_2) {
   std::vector<CipherTest> ret(size_1 + size_2);
   size_t j = 0;
   for (size_t i = 0; i < size_1; i++) {
@@ -852,8 +849,9 @@ static std::vector<CipherTest> combine_tests(const CipherTest *c1, size_t size_1
 }
 
 TEST(SSLTest, TLSv13CipherRules) {
-  std::vector<CipherTest> cipherRules = combine_tests(kTLSv13RuleOnly,
-    OPENSSL_ARRAY_SIZE(kTLSv13RuleOnly), kTLSv13CipherTests, OPENSSL_ARRAY_SIZE(kTLSv13CipherTests));
+  std::vector<CipherTest> cipherRules =
+      combine_tests(kTLSv13RuleOnly, OPENSSL_ARRAY_SIZE(kTLSv13RuleOnly),
+                    kTLSv13CipherTests, OPENSSL_ARRAY_SIZE(kTLSv13CipherTests));
   for (const CipherTest &t : cipherRules) {
     SCOPED_TRACE(t.rule);
     bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
@@ -861,7 +859,8 @@ TEST(SSLTest, TLSv13CipherRules) {
 
     // Test lax mode.
     ASSERT_TRUE(SSL_CTX_set_ciphersuites(ctx.get(), t.rule));
-    EXPECT_TRUE(CipherListsEqual(ctx.get(), t.expected, true /* TLSv1.3 only */))
+    EXPECT_TRUE(
+        CipherListsEqual(ctx.get(), t.expected, true /* TLSv1.3 only */))
         << "Cipher rule evaluated to:\n"
         << CipherListToString(ctx.get(), true /* TLSv1.3 only */);
 
@@ -1075,8 +1074,9 @@ static const char kBoringSSLSession[] =
     "g6JqyzYRnOhIZqNtf7gT1Ef+i1pcc/yu2RsyGTirlzQUqpbS66McFAhJtrvlke+D"
     "NusdVm/K2rxzY5Dkf3s+Iss9B+1fOHSc4wNQTqGvmO5h8oQ/Eg==";
 
-// kBadSessionExtraField is a custom serialized SSL_SESSION generated by replacing
-// the final (optional) element of |kCustomSession| with tag number 99.
+// kBadSessionExtraField is a custom serialized SSL_SESSION generated by
+// replacing the final (optional) element of |kCustomSession| with tag
+// number 99.
 static const char kBadSessionExtraField[] =
     "MIIBdgIBAQICAwMEAsAvBCAG5Q1ndq4Yfmbeo1zwLkNRKmCXGdNgWvGT3cskV0yQ"
     "kAQwJlrlzkAWBOWiLj/jJ76D7l+UXoizP2KI2C7I2FccqMmIfFmmkUy32nIJ0mZH"
@@ -1402,8 +1402,7 @@ static bssl::UniquePtr<SSL_SESSION> CreateSessionWithTicket(uint16_t version,
   std::vector<uint8_t> ticket(ticket_len, 'a');
   bssl::UniquePtr<SSL_SESSION> session(
       SSL_SESSION_from_bytes(der.data(), der.size(), ssl_ctx.get()));
-  if (!session ||
-      !SSL_SESSION_set_protocol_version(session.get(), version) ||
+  if (!session || !SSL_SESSION_set_protocol_version(session.get(), version) ||
       !SSL_SESSION_set_ticket(session.get(), ticket.data(), ticket.size())) {
     return nullptr;
   }
@@ -1635,8 +1634,7 @@ static bssl::UniquePtr<CRYPTO_BUFFER> BufferFromPEM(const char *pem) {
   char *name, *header;
   uint8_t *data;
   long data_len;
-  if (!PEM_read_bio(bio.get(), &name, &header, &data,
-                    &data_len)) {
+  if (!PEM_read_bio(bio.get(), &name, &header, &data, &data_len)) {
     return nullptr;
   }
   OPENSSL_free(name);
@@ -1749,8 +1747,7 @@ static bool CompleteHandshakes(SSL *client, SSL *server) {
   for (;;) {
     int client_ret = SSL_do_handshake(client);
     int client_err = SSL_get_error(client, client_ret);
-    if (client_err != SSL_ERROR_NONE &&
-        client_err != SSL_ERROR_WANT_READ &&
+    if (client_err != SSL_ERROR_NONE && client_err != SSL_ERROR_WANT_READ &&
         client_err != SSL_ERROR_WANT_WRITE &&
         client_err != SSL_ERROR_PENDING_TICKET) {
       fprintf(stderr, "Client error: %s\n", SSL_error_description(client_err));
@@ -1759,8 +1756,7 @@ static bool CompleteHandshakes(SSL *client, SSL *server) {
 
     int server_ret = SSL_do_handshake(server);
     int server_err = SSL_get_error(server, server_ret);
-    if (server_err != SSL_ERROR_NONE &&
-        server_err != SSL_ERROR_WANT_READ &&
+    if (server_err != SSL_ERROR_NONE && server_err != SSL_ERROR_WANT_READ &&
         server_err != SSL_ERROR_WANT_WRITE &&
         server_err != SSL_ERROR_PENDING_TICKET) {
       fprintf(stderr, "Server error: %s\n", SSL_error_description(server_err));
@@ -1987,8 +1983,7 @@ struct ECHConfigParams {
 
 // MakeECHConfig serializes an ECHConfig from |params| and writes it to
 // |*out|.
-bool MakeECHConfig(std::vector<uint8_t> *out,
-                         const ECHConfigParams &params) {
+bool MakeECHConfig(std::vector<uint8_t> *out, const ECHConfigParams &params) {
   uint16_t kem_id = params.kem_id == 0
                         ? EVP_HPKE_KEM_id(EVP_HPKE_KEY_kem(params.key))
                         : params.kem_id;
@@ -2005,8 +2000,7 @@ bool MakeECHConfig(std::vector<uint8_t> *out,
 
   bssl::ScopedCBB cbb;
   CBB contents, child;
-  if (!CBB_init(cbb.get(), 64) ||
-      !CBB_add_u16(cbb.get(), params.version) ||
+  if (!CBB_init(cbb.get(), 64) || !CBB_add_u16(cbb.get(), params.version) ||
       !CBB_add_u16_length_prefixed(cbb.get(), &contents) ||
       !CBB_add_u8(&contents, params.config_id) ||
       !CBB_add_u16(&contents, kem_id) ||
@@ -2207,7 +2201,8 @@ TEST(SSLTest, ECHKeyConsistency) {
   truncated.public_key.assign(public_key, public_key + public_key_len - 1);
   ASSERT_TRUE(MakeECHConfig(&ech_config, truncated));
   EXPECT_FALSE(SSL_ECH_KEYS_add(keys.get(), /*is_retry_config=*/1,
-                                ech_config.data(), ech_config.size(), key.get()));
+                                ech_config.data(), ech_config.size(),
+                                key.get()));
 
   // Adding an ECHConfig with the right public key, but wrong KEM ID, is an
   // error.
@@ -2451,10 +2446,10 @@ TEST(SSLTest, ECHPublicName) {
   EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("www.example-.com")));
   EXPECT_FALSE(
       ssl_is_valid_ech_public_name(str_to_span("no_underscores.example")));
-  EXPECT_FALSE(ssl_is_valid_ech_public_name(
-      str_to_span("invalid_chars.\x01.example")));
-  EXPECT_FALSE(ssl_is_valid_ech_public_name(
-      str_to_span("invalid_chars.\xff.example")));
+  EXPECT_FALSE(
+      ssl_is_valid_ech_public_name(str_to_span("invalid_chars.\x01.example")));
+  EXPECT_FALSE(
+      ssl_is_valid_ech_public_name(str_to_span("invalid_chars.\xff.example")));
   static const uint8_t kWithNUL[] = {'t', 'e', 's', 't', 0};
   EXPECT_FALSE(ssl_is_valid_ech_public_name(kWithNUL));
 
@@ -2481,12 +2476,11 @@ TEST(SSLTest, ECHPublicName) {
       str_to_span("example.0x0123456789abcdefABCDEF")));
   // Adding a non-digit or non-hex character makes it a valid DNS name again.
   // Single-component numbers are rejected.
-  EXPECT_TRUE(ssl_is_valid_ech_public_name(
-      str_to_span("example.1234567890a")));
-  EXPECT_TRUE(ssl_is_valid_ech_public_name(
-      str_to_span("example.01234567890a")));
-  EXPECT_TRUE(ssl_is_valid_ech_public_name(
-      str_to_span("example.0x123456789abcdefg")));
+  EXPECT_TRUE(ssl_is_valid_ech_public_name(str_to_span("example.1234567890a")));
+  EXPECT_TRUE(
+      ssl_is_valid_ech_public_name(str_to_span("example.01234567890a")));
+  EXPECT_TRUE(
+      ssl_is_valid_ech_public_name(str_to_span("example.0x123456789abcdefg")));
   EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("1")));
   EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("01")));
   EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("0x01")));
@@ -2781,15 +2775,15 @@ TEST(SSLTest, TLS13ExporterAvailability) {
 }
 
 static void AppendSession(SSL_SESSION *session, void *arg) {
-  std::vector<SSL_SESSION*> *out =
-      reinterpret_cast<std::vector<SSL_SESSION*>*>(arg);
+  std::vector<SSL_SESSION *> *out =
+      reinterpret_cast<std::vector<SSL_SESSION *> *>(arg);
   out->push_back(session);
 }
 
 // CacheEquals returns true if |ctx|'s session cache consists of |expected|, in
 // order.
 static bool CacheEquals(SSL_CTX *ctx,
-                        const std::vector<SSL_SESSION*> &expected) {
+                        const std::vector<SSL_SESSION *> &expected) {
   // Check the linked list.
   SSL_SESSION *ptr = ctx->session_cache_head;
   for (SSL_SESSION *session : expected) {
@@ -2809,7 +2803,7 @@ static bool CacheEquals(SSL_CTX *ctx,
   }
 
   // Check the hash table.
-  std::vector<SSL_SESSION*> actual, expected_copy;
+  std::vector<SSL_SESSION *> actual, expected_copy;
   lh_SSL_SESSION_doall_arg(ctx->sessions, AppendSession, &actual);
   expected_copy = expected;
 
@@ -2941,9 +2935,9 @@ class SSLVersionTest : public ::testing::TestWithParam<VersionParam> {
   }
 
   bool Connect(const ClientConfig &config = ClientConfig()) {
-    bool connected = ConnectClientAndServer(&client_, &server_, client_ctx_.get(),
-                                  server_ctx_.get(), config,
-                                  shed_handshake_config_);
+    bool connected = ConnectClientAndServer(
+        &client_, &server_, client_ctx_.get(), server_ctx_.get(), config,
+        shed_handshake_config_);
     if (connected) {
       TransferServerSSL();
     }
@@ -3185,8 +3179,7 @@ TEST_P(SSLVersionTest, WriteAfterHandshakeSentFatalAlert) {
     } else {
       invalid = {'i', 'n', 'v', 'a', 'l', 'i', 'd'};
     }
-    bssl::UniquePtr<BIO> rbio(
-        BIO_new_mem_buf(invalid.data(), invalid.size()));
+    bssl::UniquePtr<BIO> rbio(BIO_new_mem_buf(invalid.data(), invalid.size()));
     ASSERT_TRUE(rbio);
     SSL_set0_rbio(ssl.get(), rbio.release());
 
@@ -3542,39 +3535,39 @@ TEST(SSLTest, ClientHello) {
     uint16_t max_version;
     std::vector<uint8_t> expected;
   } kTests[] = {
-    {TLS1_VERSION,
-     {0x16, 0x03, 0x01, 0x00, 0x5a, 0x01, 0x00, 0x00, 0x56, 0x03, 0x01, 0x00,
-      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0e, 0xc0, 0x09,
-      0xc0, 0x13, 0xc0, 0x0a, 0xc0, 0x14, 0x00, 0x2f, 0x00, 0x35, 0x00, 0x0a,
-      0x01, 0x00, 0x00, 0x1f, 0x00, 0x17, 0x00, 0x00, 0xff, 0x01, 0x00, 0x01,
-      0x00, 0x00, 0x0a, 0x00, 0x08, 0x00, 0x06, 0x00, 0x1d, 0x00, 0x17, 0x00,
-      0x18, 0x00, 0x0b, 0x00, 0x02, 0x01, 0x00, 0x00, 0x23, 0x00, 0x00}},
-    {TLS1_1_VERSION,
-     {0x16, 0x03, 0x01, 0x00, 0x5a, 0x01, 0x00, 0x00, 0x56, 0x03, 0x02, 0x00,
-      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0e, 0xc0, 0x09,
-      0xc0, 0x13, 0xc0, 0x0a, 0xc0, 0x14, 0x00, 0x2f, 0x00, 0x35, 0x00, 0x0a,
-      0x01, 0x00, 0x00, 0x1f, 0x00, 0x17, 0x00, 0x00, 0xff, 0x01, 0x00, 0x01,
-      0x00, 0x00, 0x0a, 0x00, 0x08, 0x00, 0x06, 0x00, 0x1d, 0x00, 0x17, 0x00,
-      0x18, 0x00, 0x0b, 0x00, 0x02, 0x01, 0x00, 0x00, 0x23, 0x00, 0x00}},
-    {TLS1_2_VERSION,
-     {0x16, 0x03, 0x01, 0x00, 0x86, 0x01, 0x00, 0x00, 0x82, 0x03, 0x03, 0x00,
-      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x22, 0xcc, 0xa9,
-      0xcc, 0xa8, 0xc0, 0x2b, 0xc0, 0x2f, 0xc0, 0x2c, 0xc0, 0x30, 0xc0, 0x09,
-      0xc0, 0x13, 0xc0, 0x27, 0xc0, 0x0a, 0xc0, 0x14, 0x00, 0x9c, 0x00, 0x9d,
-      0x00, 0x2f, 0x00, 0x3c, 0x00, 0x35, 0x00, 0x0a, 0x01, 0x00, 0x00, 0x37,
-      0x00, 0x17, 0x00, 0x00, 0xff, 0x01, 0x00, 0x01, 0x00, 0x00, 0x0a, 0x00,
-      0x08, 0x00, 0x06, 0x00, 0x1d, 0x00, 0x17, 0x00, 0x18, 0x00, 0x0b, 0x00,
-      0x02, 0x01, 0x00, 0x00, 0x23, 0x00, 0x00, 0x00, 0x0d, 0x00, 0x14, 0x00,
-      0x12, 0x04, 0x03, 0x08, 0x04, 0x04, 0x01, 0x05, 0x03, 0x08, 0x05, 0x05,
-      0x01, 0x08, 0x06, 0x06, 0x01, 0x02, 0x01}},
-    // TODO(davidben): Add a change detector for TLS 1.3 once the spec and our
-    // implementation has settled enough that it won't change.
+      {TLS1_VERSION,
+       {0x16, 0x03, 0x01, 0x00, 0x5a, 0x01, 0x00, 0x00, 0x56, 0x03, 0x01, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0e, 0xc0, 0x09,
+        0xc0, 0x13, 0xc0, 0x0a, 0xc0, 0x14, 0x00, 0x2f, 0x00, 0x35, 0x00, 0x0a,
+        0x01, 0x00, 0x00, 0x1f, 0x00, 0x17, 0x00, 0x00, 0xff, 0x01, 0x00, 0x01,
+        0x00, 0x00, 0x0a, 0x00, 0x08, 0x00, 0x06, 0x00, 0x1d, 0x00, 0x17, 0x00,
+        0x18, 0x00, 0x0b, 0x00, 0x02, 0x01, 0x00, 0x00, 0x23, 0x00, 0x00}},
+      {TLS1_1_VERSION,
+       {0x16, 0x03, 0x01, 0x00, 0x5a, 0x01, 0x00, 0x00, 0x56, 0x03, 0x02, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0e, 0xc0, 0x09,
+        0xc0, 0x13, 0xc0, 0x0a, 0xc0, 0x14, 0x00, 0x2f, 0x00, 0x35, 0x00, 0x0a,
+        0x01, 0x00, 0x00, 0x1f, 0x00, 0x17, 0x00, 0x00, 0xff, 0x01, 0x00, 0x01,
+        0x00, 0x00, 0x0a, 0x00, 0x08, 0x00, 0x06, 0x00, 0x1d, 0x00, 0x17, 0x00,
+        0x18, 0x00, 0x0b, 0x00, 0x02, 0x01, 0x00, 0x00, 0x23, 0x00, 0x00}},
+      {TLS1_2_VERSION,
+       {0x16, 0x03, 0x01, 0x00, 0x86, 0x01, 0x00, 0x00, 0x82, 0x03, 0x03, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x22, 0xcc, 0xa9,
+        0xcc, 0xa8, 0xc0, 0x2b, 0xc0, 0x2f, 0xc0, 0x2c, 0xc0, 0x30, 0xc0, 0x09,
+        0xc0, 0x13, 0xc0, 0x27, 0xc0, 0x0a, 0xc0, 0x14, 0x00, 0x9c, 0x00, 0x9d,
+        0x00, 0x2f, 0x00, 0x3c, 0x00, 0x35, 0x00, 0x0a, 0x01, 0x00, 0x00, 0x37,
+        0x00, 0x17, 0x00, 0x00, 0xff, 0x01, 0x00, 0x01, 0x00, 0x00, 0x0a, 0x00,
+        0x08, 0x00, 0x06, 0x00, 0x1d, 0x00, 0x17, 0x00, 0x18, 0x00, 0x0b, 0x00,
+        0x02, 0x01, 0x00, 0x00, 0x23, 0x00, 0x00, 0x00, 0x0d, 0x00, 0x14, 0x00,
+        0x12, 0x04, 0x03, 0x08, 0x04, 0x04, 0x01, 0x05, 0x03, 0x08, 0x05, 0x05,
+        0x01, 0x08, 0x06, 0x06, 0x01, 0x02, 0x01}},
+      // TODO(davidben): Add a change detector for TLS 1.3 once the spec and our
+      // implementation has settled enough that it won't change.
   };
 
   for (const auto &t : kTests) {
@@ -4289,7 +4282,7 @@ TEST_P(SSLVersionTest, SSLClearFailsWithShedding) {
   ASSERT_FALSE(SSL_clear(server_.get()));
 }
 
-static bool ChainsEqual(STACK_OF(X509) * chain,
+static bool ChainsEqual(STACK_OF(X509) *chain,
                         const std::vector<X509 *> &expected) {
   if (sk_X509_num(chain) != expected.size()) {
     return false;
@@ -4786,7 +4779,7 @@ TEST(SSLTest, SetChainAndKeyMismatch) {
   ASSERT_TRUE(key);
   bssl::UniquePtr<CRYPTO_BUFFER> leaf = GetChainTestCertificateBuffer();
   ASSERT_TRUE(leaf);
-  std::vector<CRYPTO_BUFFER*> chain = {
+  std::vector<CRYPTO_BUFFER *> chain = {
       leaf.get(),
   };
 
@@ -4811,8 +4804,9 @@ TEST(SSLTest, SetChainAndKey) {
   bssl::UniquePtr<CRYPTO_BUFFER> intermediate =
       GetChainTestIntermediateBuffer();
   ASSERT_TRUE(intermediate);
-  std::vector<CRYPTO_BUFFER*> chain = {
-      leaf.get(), intermediate.get(),
+  std::vector<CRYPTO_BUFFER *> chain = {
+      leaf.get(),
+      intermediate.get(),
   };
   ASSERT_TRUE(SSL_CTX_set_chain_and_key(server_ctx.get(), &chain[0],
                                         chain.size(), key.get(), nullptr));
@@ -4841,7 +4835,7 @@ TEST(SSLTest, BuffersFailWithoutCustomVerify) {
   ASSERT_TRUE(key);
   bssl::UniquePtr<CRYPTO_BUFFER> leaf = GetChainTestCertificateBuffer();
   ASSERT_TRUE(leaf);
-  std::vector<CRYPTO_BUFFER*> chain = { leaf.get() };
+  std::vector<CRYPTO_BUFFER *> chain = {leaf.get()};
   ASSERT_TRUE(SSL_CTX_set_chain_and_key(server_ctx.get(), &chain[0],
                                         chain.size(), key.get(), nullptr));
 
@@ -4871,7 +4865,7 @@ TEST(SSLTest, CustomVerify) {
   ASSERT_TRUE(key);
   bssl::UniquePtr<CRYPTO_BUFFER> leaf = GetChainTestCertificateBuffer();
   ASSERT_TRUE(leaf);
-  std::vector<CRYPTO_BUFFER*> chain = { leaf.get() };
+  std::vector<CRYPTO_BUFFER *> chain = {leaf.get()};
   ASSERT_TRUE(SSL_CTX_set_chain_and_key(server_ctx.get(), &chain[0],
                                         chain.size(), key.get(), nullptr));
 
@@ -5015,7 +5009,7 @@ static int ssl_test_ticket_aead_ex_index_dup(CRYPTO_EX_DATA *to,
 static void ssl_test_ticket_aead_ex_index_free(void *parent, void *ptr,
                                                CRYPTO_EX_DATA *ad, int index,
                                                long argl, void *argp) {
-  auto state = reinterpret_cast<ssl_test_ticket_aead_state*>(ptr);
+  auto state = reinterpret_cast<ssl_test_ticket_aead_state *>(ptr);
   if (state == nullptr) {
     return;
   }
@@ -5035,9 +5029,7 @@ static int ssl_test_ticket_aead_get_ex_index() {
   return g_ssl_test_ticket_aead_ex_index;
 }
 
-static size_t ssl_test_ticket_aead_max_overhead(SSL *ssl) {
-  return 1;
-}
+static size_t ssl_test_ticket_aead_max_overhead(SSL *ssl) { return 1; }
 
 static int ssl_test_ticket_aead_seal(SSL *ssl, uint8_t *out, size_t *out_len,
                                      size_t max_out_len, const uint8_t *in,
@@ -5096,9 +5088,9 @@ static ssl_ticket_aead_result_t ssl_test_ticket_aead_open(
 }
 
 static const SSL_TICKET_AEAD_METHOD kSSLTestTicketMethod = {
-  ssl_test_ticket_aead_max_overhead,
-  ssl_test_ticket_aead_seal,
-  ssl_test_ticket_aead_open,
+    ssl_test_ticket_aead_max_overhead,
+    ssl_test_ticket_aead_seal,
+    ssl_test_ticket_aead_open,
 };
 
 static void ConnectClientAndServerWithTicketMethod(
@@ -5158,7 +5150,8 @@ TEST_P(TicketAEADMethodTest, Resume) {
       testing::get<2>(GetParam());
   const bool transfer_ssl = testing::get<3>(GetParam());
   if (transfer_ssl && (version == TLS1_3_VERSION)) {
-    // TODO: remove this condition when TLS1_3 is supported by SSL encode/decode.
+    // TODO: remove this condition when TLS1_3 is supported by SSL
+    // encode/decode.
     return;
   }
 
@@ -5179,7 +5172,8 @@ TEST_P(TicketAEADMethodTest, Resume) {
   ConnectClientAndServerWithTicketMethod(&client, &server, client_ctx.get(),
                                          server_ctx.get(), retry_count,
                                          failure_mode, nullptr);
-  // Only transfer when the code is to test SSL transfer and the connection is finished successuflly.
+  // Only transfer when the code is to test SSL transfer and the connection is
+  // finished successuflly.
   if (transfer_ssl && server) {
     // |server| is reset to hold the transferred SSL.
     TransferSSL(&server, server_ctx.get(), nullptr);
@@ -5203,7 +5197,8 @@ TEST_P(TicketAEADMethodTest, Resume) {
                                          server_ctx.get(), retry_count,
                                          failure_mode, session.get());
   // Do SSL transfer again.
-  // Only transfer when the code is to test SSL transfer and the connection is finished successuflly.
+  // Only transfer when the code is to test SSL transfer and the connection is
+  // finished successuflly.
   if (transfer_ssl && server) {
     // |server| is reset to hold the transferred SSL.
     TransferSSL(&server, server_ctx.get(), nullptr);
@@ -5695,7 +5690,7 @@ static std::string SigAlgsToString(Span<const uint16_t> sigalgs) {
 
     char buf[8];
     snprintf(buf, sizeof(buf) - 1, "0x%02x", v);
-    buf[sizeof(buf)-1] = 0;
+    buf[sizeof(buf) - 1] = 0;
     ret += std::string(buf);
   }
 
@@ -5901,23 +5896,31 @@ TEST(SSLTest, ApplyHandoffRemovesUnsupportedCurves) {
 TEST(SSLTest, EncodeAndDecodeKAT) {
   bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
   // In runner.go, the test case "Basic-Server-TLS-Sync-SSL_Transfer" is used to
-  // generate below bytes by adding print statement on the output of |SSL_to_bytes|
-  // in bssl_shim.cc.
+  // generate below bytes by adding print statement on the output of
+  // |SSL_to_bytes| in bssl_shim.cc.
   const std::string data =
-    "308201173082011302010102020303020240003081fa020101040800000000000000010408000000"
-    "00000000010420000004d29e62f41ded4bb33d0faa6ffada380e2c489dfbfb444f574e4752440104"
-    "20cf3926d1ec5a562a642935a8050222b0aed93ffd9d1cac682274d942e99e42a604020000020100"
-    "020103040cb9b409f5129440622f87f84402010c040c1f49e2e989c66a263e9c227502010c020100"
-    "020100020100a05b3059020101020203030402cca80400043085668dcf9f0921094ebd7f91bf2a8c"
-    "60d276e4c279fd85a989402f678682324fd8098dc19d900b856d0a77e048e3ced2a104020204d2a2"
-    "0402021c20a4020400b1030101ffb20302011da206040474657374a7030101ff020108020100a003"
-    "0101ff";
+      "308201173082011302010102020303020240003081fa0201010408000000000000000104"
+      "08000000"
+      "00000000010420000004d29e62f41ded4bb33d0faa6ffada380e2c489dfbfb444f574e47"
+      "52440104"
+      "20cf3926d1ec5a562a642935a8050222b0aed93ffd9d1cac682274d942e99e42a6040200"
+      "00020100"
+      "020103040cb9b409f5129440622f87f84402010c040c1f49e2e989c66a263e9c22750201"
+      "0c020100"
+      "020100020100a05b3059020101020203030402cca80400043085668dcf9f0921094ebd7f"
+      "91bf2a8c"
+      "60d276e4c279fd85a989402f678682324fd8098dc19d900b856d0a77e048e3ced2a10402"
+      "0204d2a2"
+      "0402021c20a4020400b1030101ffb20302011da206040474657374a7030101ff02010802"
+      "0100a003"
+      "0101ff";
 
   std::vector<uint8_t> bytes;
   ASSERT_TRUE(DecodeHex(&bytes, data));
 
   // Check the bytes are decoded successfully.
-  bssl::UniquePtr<SSL> ssl(SSL_from_bytes(bytes.data(), bytes.size(), server_ctx.get()));
+  bssl::UniquePtr<SSL> ssl(
+      SSL_from_bytes(bytes.data(), bytes.size(), server_ctx.get()));
   ASSERT_TRUE(ssl);
   // Check the ssl can be encoded successfully.
   size_t encoded_len;
@@ -5966,12 +5969,13 @@ TEST_P(SSLVersionTest, VerifyBeforeCertRequest) {
       [](SSL *ssl, uint8_t *out_alert) { return ssl_verify_invalid; });
 
   // cert_cb should not be called. Verification should fail first.
-  SSL_CTX_set_cert_cb(client_ctx_.get(),
-                      [](SSL *ssl, void *arg) {
-                        ADD_FAILURE() << "cert_cb unexpectedly called";
-                        return 0;
-                      },
-                      nullptr);
+  SSL_CTX_set_cert_cb(
+      client_ctx_.get(),
+      [](SSL *ssl, void *arg) {
+        ADD_FAILURE() << "cert_cb unexpectedly called";
+        return 0;
+      },
+      nullptr);
 
   bssl::UniquePtr<SSL> client, server;
   EXPECT_FALSE(ConnectClientAndServer(&client, &server, client_ctx_.get(),
@@ -6262,13 +6266,13 @@ TEST_P(SSLVersionTest, SessionMissCache) {
   static const int kNumConnections = 2;
   config.session = expired_session.get();
   EXPECT_TRUE(ConnectClientAndServer(&client, &server, client_ctx_.get(),
-                                       server_ctx_.get(), config));
+                                     server_ctx_.get(), config));
   EXPECT_TRUE(ConnectClientAndServer(&client, &server, client_ctx_.get(),
-                                       server_ctx_.get(), config));
+                                     server_ctx_.get(), config));
 
   // First connection is not an |sess_miss|, but failed to connect successfully.
   // Subsequent connections will all be both timeouts and misses.
-  EXPECT_EQ(SSL_CTX_sess_misses(server_ctx_.get()), kNumConnections-1);
+  EXPECT_EQ(SSL_CTX_sess_misses(server_ctx_.get()), kNumConnections - 1);
   EXPECT_EQ(SSL_CTX_sess_timeouts(server_ctx_.get()), kNumConnections);
 }
 
@@ -6280,7 +6284,7 @@ TEST_P(SSLVersionTest, SessionMissCache) {
 static bssl::UniquePtr<SSL_SESSION> ssl_session;
 static SSL_SESSION *get_session(SSL *ssl, const unsigned char *id, int idlen,
                                 int *do_copy) {
-    return ssl_session.release();
+  return ssl_session.release();
 }
 
 TEST_P(SSLVersionTest, SessionExternalCacheHit) {
@@ -6292,20 +6296,20 @@ TEST_P(SSLVersionTest, SessionExternalCacheHit) {
 
   SSL_CTX_set_options(server_ctx_.get(), SSL_OP_NO_TICKET);
   SSL_CTX_set_session_cache_mode(client_ctx_.get(), SSL_SESS_CACHE_BOTH);
-  SSL_CTX_set_session_cache_mode(server_ctx_.get(),
-                             SSL_SESS_CACHE_BOTH | SSL_SESS_CACHE_NO_INTERNAL);
+  SSL_CTX_set_session_cache_mode(
+      server_ctx_.get(), SSL_SESS_CACHE_BOTH | SSL_SESS_CACHE_NO_INTERNAL);
   SSL_CTX_sess_set_get_cb(server_ctx_.get(), get_session);
 
   ClientConfig config;
   bssl::UniquePtr<SSL> client, server;
   bssl::UniquePtr<SSL_SESSION> session =
-        CreateClientSession(client_ctx_.get(), server_ctx_.get());
+      CreateClientSession(client_ctx_.get(), server_ctx_.get());
 
   static const int kNumConnections = 2;
   config.session = session.get();
   for (int i = 0; i < kNumConnections; i++) {
-        ssl_session.reset(session.get());
-        EXPECT_TRUE(ConnectClientAndServer(&client, &server, client_ctx_.get(),
+    ssl_session.reset(session.get());
+    EXPECT_TRUE(ConnectClientAndServer(&client, &server, client_ctx_.get(),
                                        server_ctx_.get(), config));
   }
   EXPECT_EQ(SSL_CTX_sess_cb_hits(server_ctx_.get()), kNumConnections);
@@ -6551,8 +6555,7 @@ class MockQUICTransportPair {
   bool SecretsMatch(ssl_encryption_level_t level) const {
     // We only need to check |HasReadSecret| and |HasWriteSecret| on |client_|.
     // |PeerSecretsMatch| checks that |server_| is analogously configured.
-    return client_.PeerSecretsMatch(level) &&
-           client_.HasWriteSecret(level) &&
+    return client_.PeerSecretsMatch(level) && client_.HasWriteSecret(level) &&
            (level == ssl_encryption_early_data || client_.HasReadSecret(level));
   }
 
@@ -6604,9 +6607,7 @@ class QUICMethodTest : public testing::Test {
            SSL_provide_quic_data(ssl, level, data.data(), data.size());
   }
 
-  void AllowOutOfOrderWrites() {
-    allow_out_of_order_writes_ = true;
-  }
+  void AllowOutOfOrderWrites() { allow_out_of_order_writes_ = true; }
 
   bool CreateClientAndServer() {
     client_.reset(SSL_new(client_ctx_.get()));
@@ -6703,8 +6704,7 @@ class QUICMethodTest : public testing::Test {
   bssl::UniquePtr<SSL_SESSION> CreateClientSessionForQUIC() {
     g_last_session = nullptr;
     SSL_CTX_sess_set_new_cb(client_ctx_.get(), SaveLastSession);
-    if (!CreateClientAndServer() ||
-        !CompleteHandshakesForQUIC()) {
+    if (!CreateClientAndServer() || !CompleteHandshakesForQUIC()) {
       return nullptr;
     }
 
@@ -7182,11 +7182,12 @@ TEST_F(QUICMethodTest, Async) {
 
   // Install an asynchronous certificate callback.
   bool cert_cb_ok = false;
-  SSL_set_cert_cb(server_.get(),
-                  [](SSL *, void *arg) -> int {
-                    return *static_cast<bool *>(arg) ? 1 : -1;
-                  },
-                  &cert_cb_ok);
+  SSL_set_cert_cb(
+      server_.get(),
+      [](SSL *, void *arg) -> int {
+        return *static_cast<bool *>(arg) ? 1 : -1;
+      },
+      &cert_cb_ok);
 
   for (;;) {
     int client_ret = SSL_do_handshake(client_.get());
@@ -7883,7 +7884,7 @@ TEST_P(SSLVersionTest, UnrelatedServerNoResume) {
   EXPECT_FALSE(SSL_session_reused(server.get()));
 }
 
-Span<const uint8_t> SessionIDOf(const SSL* ssl) {
+Span<const uint8_t> SessionIDOf(const SSL *ssl) {
   const SSL_SESSION *session = SSL_get_session(ssl);
   unsigned len;
   const uint8_t *data = SSL_SESSION_get_id(session, &len);
@@ -8127,7 +8128,7 @@ TEST(SSLTest, CopyWithoutEarlyData) {
   // The client should attempt early data with |session|.
   bssl::UniquePtr<SSL> client, server;
   ASSERT_TRUE(CreateClientAndServer(&client, &server, client_ctx.get(),
-                                     server_ctx.get()));
+                                    server_ctx.get()));
   SSL_set_session(client.get(), session.get());
   SSL_set_early_data_enabled(client.get(), 1);
   ASSERT_EQ(1, SSL_do_handshake(client.get()));
@@ -8813,7 +8814,7 @@ xNCwyMX9mtdXdQicOfNjIGUCD5OLV5PgHFPRKiHHioBAhg==
 
     bssl::UniquePtr<STACK_OF(X509_NAME)> stack(sk_X509_NAME_new_null());
     ASSERT_TRUE(stack);
-    for (const auto& name : t.existing) {
+    for (const auto &name : t.existing) {
       const uint8_t *inp = name.data();
       bssl::UniquePtr<X509_NAME> name_obj(
           d2i_X509_NAME(nullptr, &inp, name.size()));
