@@ -10,6 +10,9 @@
 extern "C" {
 #endif
 
+// FIPS 140-3 Approved Security Service Indicator
+
+
 // |FIPS_service_indicator_before_call| and |FIPS_service_indicator_after_call|
 // both currently return the same local thread counter which is slowly
 // incremented whenever approved services are called.
@@ -20,6 +23,8 @@ extern "C" {
 // not equal, this means that the service called in between is deemed to be
 // approved. If the values are still the same, this means the counter has not
 // been incremented, and the service called is otherwise not approved for FIPS.
+
+
 OPENSSL_EXPORT uint64_t FIPS_service_indicator_before_call(void);
 OPENSSL_EXPORT uint64_t FIPS_service_indicator_after_call(void);
 
@@ -34,7 +39,7 @@ enum FIPSStatus {
 
 #define AWSLC_MODE_STRING "AWS-LC FIPS "
 
-// This macro provides a bundled way to do an approval check and run the service.
+// CALL_SERVICE_AND_CHECK_APPROVED performs an approval check and runs the service.
 // The |approved| value passed in will change to |AWSLC_APPROVED| and
 // |AWSLC_NOT_APPROVED| accordingly to the approved state of the service ran.
 // It is highly recommended that users of the service indicator use this macro
@@ -55,8 +60,9 @@ enum FIPSStatus {
 
 #define AWSLC_MODE_STRING "AWS-LC "
 
-// Assume |AWSLC_APPROVED| when FIPS is not on, for easier consumer compatibility
-// that have both FIPS and non-FIPS libraries.
+// CALL_SERVICE_AND_CHECK_APPROVED always returns |AWSLC_APPROVED| when AWS-LC
+// is not built in FIPS mode for easier consumer compatibility that have both
+// FIPS and non-FIPS libraries.
 #define CALL_SERVICE_AND_CHECK_APPROVED(approved, func)             \
   do {                                                              \
     (approved) = AWSLC_APPROVED;                                    \
@@ -67,6 +73,7 @@ enum FIPSStatus {
 #endif // AWSLC_FIPS
 
 #define AWSLC_VERSION_STRING AWSLC_MODE_STRING AWSLC_VERSION_NUMBER_STRING
+
 
 #if defined(__cplusplus)
 }  // extern C
