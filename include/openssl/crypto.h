@@ -197,6 +197,7 @@ OPENSSL_EXPORT uint32_t FIPS_version(void);
 OPENSSL_EXPORT int FIPS_query_algorithm_status(const char *algorithm);
 #endif //BORINGSSL_FIPS_140_3
 
+
 #if defined(__cplusplus)
 }  // extern C
 #endif
