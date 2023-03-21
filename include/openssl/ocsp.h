@@ -33,11 +33,19 @@ extern "C" {
 // validation path for the signer certificate unless the OCSP_NOCHAIN flag is
 // set.
 #define OCSP_NOCHAIN 0x8
+// OCSP_NOVERIFY is for |OCSP_basic_verify|. This is a no-op flag in AWS-LC.
+// When setting this flag in OpenSSL, the |OCSP_BASICRESP|'s signature will
+// still be verified, but setting this flag skips verifying the signer's
+// certificate.
+#define OCSP_NOVERIFY 0x10
 // OCSP_NOINTERN is for |OCSP_basic_verify|. We will check for explicit trust
 // for OCSP signing in the root CA certificate, unless the flags contain
 // OCSP_NOEXPLICIT.
 #define OCSP_NOEXPLICIT 0x20
-
+// OCSP_TRUSTOTHER is for |OCSP_basic_verify|. This is a no-op flag in AWS-LC.
+// When setting this flag in OpenSSL, if the reponse signer's cert is one of
+// those in the |certs| stack then it is implicitly trusted.
+#define OCSP_TRUSTOTHER 0x200
 
 typedef struct ocsp_cert_id_st OCSP_CERTID;
 typedef struct ocsp_one_request_st OCSP_ONEREQ;
@@ -63,6 +71,15 @@ DECLARE_ASN1_FUNCTIONS(OCSP_BASICRESP)
 DECLARE_ASN1_FUNCTIONS(OCSP_RESPONSE)
 DECLARE_ASN1_FUNCTIONS(OCSP_CERTID)
 DECLARE_ASN1_FUNCTIONS(OCSP_REQUEST)
+
+// d2i_OCSP_RESPONSE_bio parses an OCSP response in DER format from a BIO object
+// and converts it into an |OCSP_RESPONSE|.
+OPENSSL_EXPORT OCSP_RESPONSE *d2i_OCSP_RESPONSE_bio(BIO *bp,
+                                                    OCSP_RESPONSE **presp);
+
+// i2d_OCSP_RESPONSE_bio parses an |OCSP_RESPONSE| structure and writes the OCSP
+// response in DER format into a BIO object.
+OPENSSL_EXPORT int i2d_OCSP_RESPONSE_bio(BIO *bp, OCSP_RESPONSE *presp);
 
 // OCSP_sendreq_bio is a blocking OCSP request handler which is a special case
 // of non-blocking I/O.
@@ -167,6 +184,11 @@ int OCSP_single_get0_status(OCSP_SINGLERESP *single, int *reason,
                             ASN1_GENERALIZEDTIME **revtime,
                             ASN1_GENERALIZEDTIME **thisupd,
                             ASN1_GENERALIZEDTIME **nextupd);
+
+// OCSP_resp_find returns the index of a |OCSP_SINGLERESP| in |OCSP_BASICRESP|
+// which matches a given certificate ID, returns -1 if not found.
+OPENSSL_EXPORT int OCSP_resp_find(OCSP_BASICRESP *bs, OCSP_CERTID *id,
+                                  int last);
 
 // OCSP_resp_find_status looks up a cert id and extract the update time and
 // revocation status of  certificate sent back from OCSP responder if found.
