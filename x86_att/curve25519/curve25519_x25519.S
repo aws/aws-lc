@@ -8,6 +8,13 @@
 // extern void curve25519_x25519
 //   (uint64_t res[static 4],uint64_t scalar[static 4],uint64_t point[static 4])
 //
+// The function has a second prototype considering the arguments as arrays
+// of bytes rather than 64-bit words. The underlying code is the same, since
+// the x86 platform is little-endian.
+//
+// extern void curve25519_x25519_byte
+//   (uint8_t res[static 32],uint8_t scalar[static 32],uint8_t point[static 32])
+//
 // Given a scalar n and the X coordinate of an input point P = (X,Y) on
 // curve25519 (Y can live in any extension field of characteristic 2^255-19),
 // this returns the X coordinate of n * P = (X, Y), or 0 when n * P is the
@@ -23,6 +30,8 @@
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(curve25519_x25519)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(curve25519_x25519)
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(curve25519_x25519_byte)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(curve25519_x25519_byte)
         .text
 
 // Size of individual field elements
@@ -584,6 +593,7 @@
         movq    %rax, 24+P0
 
 S2N_BN_SYMBOL(curve25519_x25519):
+S2N_BN_SYMBOL(curve25519_x25519_byte):
 
 #if WINDOWS_ABI
         pushq   %rdi
