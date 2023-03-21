@@ -156,10 +156,6 @@ void BN_clear(BIGNUM *bn) {
   bn->neg = 0;
 }
 
-void BN_set_flags(BIGNUM *b, int flags) {
-  // No-op
-}
-
 DEFINE_METHOD_FUNCTION(BIGNUM, BN_value_one) {
   static const BN_ULONG kOneLimbs[1] = { 1 };
   out->d = (BN_ULONG*) kOneLimbs;
