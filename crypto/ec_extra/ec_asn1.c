@@ -541,8 +541,9 @@ size_t EC_POINT_point2buf(const EC_GROUP *group, const EC_POINT *point,
   unsigned char *buf;
 
   len = EC_POINT_point2oct(group, point, form, NULL, 0, NULL);
-  if (len == 0)
+  if (len == 0) {
     return 0;
+  }
   if ((buf = OPENSSL_malloc(len)) == NULL) {
     return 0;
   }
@@ -563,8 +564,9 @@ BIGNUM *EC_POINT_point2bn(const EC_GROUP *group, const EC_POINT *point,
 
   buf_len = EC_POINT_point2buf(group, point, form, &buf, ctx);
 
-  if (buf_len == 0)
+  if (buf_len == 0) {
     return NULL;
+  }
 
   ret = BN_bin2bn(buf, buf_len, ret);
 

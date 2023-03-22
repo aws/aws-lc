@@ -16,8 +16,8 @@
 #define OPENSSL_HEADER_CRYPTO_H
 
 #include <openssl/base.h>
-#include <openssl/sha.h>
 #include <openssl/err.h>
+#include <openssl/sha.h>
 
 // Upstream OpenSSL defines |OPENSSL_malloc|, etc., in crypto.h rather than
 // mem.h.

@@ -590,11 +590,13 @@ unsigned EVP_CIPHER_CTX_key_length(const EVP_CIPHER_CTX *ctx) {
 
 int EVP_CIPHER_CTX_get_iv(const EVP_CIPHER_CTX *ctx, unsigned char *iv,
                           size_t len) {
-  if (ctx == NULL || iv == NULL)
+  if (ctx == NULL || iv == NULL) {
     return 0;
+  }
 
-  if (len > EVP_MAX_IV_LENGTH || len != EVP_CIPHER_CTX_iv_length(ctx))
+  if (len > EVP_MAX_IV_LENGTH || len != EVP_CIPHER_CTX_iv_length(ctx)) {
     return 0;
+  }
 
   if (len > 0) {
     memcpy(iv, ctx->iv, len);
