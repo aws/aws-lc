@@ -214,7 +214,7 @@ OPENSSL_EXPORT size_t EVP_AEAD_max_tag_len(const EVP_AEAD *aead);
 union evp_aead_ctx_st_state {
   uint8_t opaque[580];
   uint64_t alignment;
-  void* ptr;
+  void *ptr;
 };
 
 // An evp_aead_ctx_st (typedefed as |EVP_AEAD_CTX| in base.h) represents an AEAD
@@ -359,12 +359,10 @@ OPENSSL_EXPORT int EVP_AEAD_CTX_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
 // If |in| and |out| alias then |out| must be == |in|. |out_tag| may not alias
 // any other argument.
 OPENSSL_EXPORT int EVP_AEAD_CTX_seal_scatter(
-    const EVP_AEAD_CTX *ctx, uint8_t *out,
-    uint8_t *out_tag, size_t *out_tag_len, size_t max_out_tag_len,
-    const uint8_t *nonce, size_t nonce_len,
-    const uint8_t *in, size_t in_len,
-    const uint8_t *extra_in, size_t extra_in_len,
-    const uint8_t *ad, size_t ad_len);
+    const EVP_AEAD_CTX *ctx, uint8_t *out, uint8_t *out_tag,
+    size_t *out_tag_len, size_t max_out_tag_len, const uint8_t *nonce,
+    size_t nonce_len, const uint8_t *in, size_t in_len, const uint8_t *extra_in,
+    size_t extra_in_len, const uint8_t *ad, size_t ad_len);
 
 // EVP_AEAD_CTX_open_gather decrypts and authenticates |in_len| bytes from |in|
 // and authenticates |ad_len| bytes from |ad| using |in_tag_len| bytes of
@@ -407,7 +405,8 @@ OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_256_cbc_sha1_tls(void);
 OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_256_cbc_sha1_tls_implicit_iv(void);
 
 OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_cbc_sha256_tls(void);
-OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_cbc_sha256_tls_implicit_iv(void);
+OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_cbc_sha256_tls_implicit_iv(
+    void);
 
 OPENSSL_EXPORT const EVP_AEAD *EVP_aead_des_ede3_cbc_sha1_tls(void);
 OPENSSL_EXPORT const EVP_AEAD *EVP_aead_des_ede3_cbc_sha1_tls_implicit_iv(void);
@@ -463,6 +462,8 @@ OPENSSL_EXPORT int EVP_AEAD_CTX_tag_len(const EVP_AEAD_CTX *ctx,
                                         const size_t in_len,
                                         const size_t extra_in_len);
 
+#define FIPS_AES_GCM_NONCE_LENGTH 12
+
 // EVP_AEAD_get_iv_from_ipv4_nanosecs computes a deterministic IV compliant with
 // NIST SP 800-38D, built from an IPv4 address and the number of nanoseconds
 // since boot, writing it to |out_iv|. It returns one on success or zero for
@@ -470,10 +471,10 @@ OPENSSL_EXPORT int EVP_AEAD_CTX_tag_len(const EVP_AEAD_CTX *ctx,
 //
 // This is not a general-purpose API, you should not be using it unless you
 // specifically know you need to use this.
-#define FIPS_AES_GCM_NONCE_LENGTH 12
+OPENSSL_EXPORT int EVP_AEAD_get_iv_from_ipv4_nanosecs(
+    const uint32_t ipv4_address, const uint64_t nanosecs,
+    uint8_t out_iv[FIPS_AES_GCM_NONCE_LENGTH]);
 
-OPENSSL_EXPORT int EVP_AEAD_get_iv_from_ipv4_nanosecs(const uint32_t ipv4_address,
-    const uint64_t nanosecs, uint8_t out_iv[FIPS_AES_GCM_NONCE_LENGTH]);
 
 #if defined(__cplusplus)
 }  // extern C
