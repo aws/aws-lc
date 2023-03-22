@@ -1161,3 +1161,18 @@ TEST_P(OCSPURLTest, OCSPParseURL) {
     EXPECT_FALSE(path);
   }
 }
+
+TEST(OCSPCRLTest, OCSPCRLString) {
+  for (int reason_code = 0; reason_code < 10; reason_code++) {
+    if (reason_code == 7) {
+      // Reason Code 7 is not used.
+      EXPECT_EQ("(UNKNOWN)", std::string(OCSP_crl_reason_str(7)));
+      continue;
+    }
+    EXPECT_NE("(UNKNOWN)", std::string(OCSP_crl_reason_str(reason_code)));
+  }
+  // More unexpected cases.
+  EXPECT_EQ("(UNKNOWN)", std::string(OCSP_crl_reason_str(100)));
+  EXPECT_EQ("(UNKNOWN)", std::string(OCSP_crl_reason_str(-1)));
+  EXPECT_EQ("(UNKNOWN)", std::string(OCSP_crl_reason_str(-100)));
+}
