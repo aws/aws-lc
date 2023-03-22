@@ -699,8 +699,14 @@ void call_bignum_mux16__32()
 void call_curve25519_x25519(void) repeat(curve25519_x25519(b0,b1,b2))
 void call_curve25519_x25519_alt(void) repeat(curve25519_x25519_alt(b0,b1,b2))
 
+void call_curve25519_x25519_byte(void) repeat(curve25519_x25519_byte((unsigned char *) b0,(unsigned char *) b1,(unsigned char *) b2))
+void call_curve25519_x25519_byte_alt(void) repeat(curve25519_x25519_byte_alt((unsigned char *) b0,(unsigned char *) b1,(unsigned char *) b2))
+
 void call_curve25519_x25519base(void) repeat(curve25519_x25519base(b0,b1))
 void call_curve25519_x25519base_alt(void) repeat(curve25519_x25519base_alt(b0,b1))
+
+void call_curve25519_x25519base_byte(void) repeat(curve25519_x25519base_byte((unsigned char *) b0,(unsigned char *) b1))
+void call_curve25519_x25519base_byte_alt(void) repeat(curve25519_x25519base_byte_alt((unsigned char *) b0,(unsigned char *) b1))
 
 void call_curve25519_ladderstep(void) repeat(curve25519_ladderstep(b0,b1,b2,*b3))
 void call_curve25519_ladderstep_alt(void) repeat(curve25519_ladderstep_alt(b0,b1,b2,*b3))
@@ -1063,8 +1069,12 @@ int main(int argc, char *argv[])
   timingtest(all,"curve25519_pxscalarmul_alt",call_curve25519_pxscalarmul_alt);
   timingtest(bmi,"curve25519_x25519",call_curve25519_x25519);
   timingtest(all,"curve25519_x25519_alt",call_curve25519_x25519_alt);
+  timingtest(bmi,"curve25519_x25519_byte",call_curve25519_x25519_byte);
+  timingtest(all,"curve25519_x25519_byte_alt",call_curve25519_x25519_byte_alt);
   timingtest(bmi,"curve25519_x25519base",call_curve25519_x25519base);
   timingtest(all,"curve25519_x25519base_alt",call_curve25519_x25519base_alt);
+  timingtest(bmi,"curve25519_x25519base_byte",call_curve25519_x25519base_byte);
+  timingtest(all,"curve25519_x25519base_byte_alt",call_curve25519_x25519base_byte_alt);
   timingtest(bmi,"edwards25519_epadd",call_edwards25519_epadd);
   timingtest(all,"edwards25519_epadd_alt",call_edwards25519_epadd_alt);
   timingtest(bmi,"edwards25519_epdouble",call_edwards25519_epdouble);
