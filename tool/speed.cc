@@ -684,12 +684,76 @@ static bool SpeedSingleKEM(const std::string &name, int nid, const std::string &
   return true;
 }
 
-
 static bool SpeedKEM(std::string selected) {
   return SpeedSingleKEM("Kyber512_R3", NID_KYBER512_R3, selected) &&
          SpeedSingleKEM("Kyber768_R3", NID_KYBER768_R3, selected) &&
          SpeedSingleKEM("Kyber1024_R3", NID_KYBER1024_R3, selected);
 }
+
+static bool SpeedDigestSignNID(const std::string &name, int nid,
+                            const std::string &selected) {
+  if (!selected.empty() && name.find(selected) == std::string::npos) {
+    return true;
+  }
+
+  // Setup CTX for Sign/Verify Operations
+  BM_NAMESPACE::UniquePtr<EVP_PKEY_CTX> pkey_ctx(EVP_PKEY_CTX_new_id(nid, nullptr));
+
+  // Setup CTX for Keygen Operations
+  if (!pkey_ctx || EVP_PKEY_keygen_init(pkey_ctx.get()) != 1) {
+    return false;
+  }
+
+  EVP_PKEY *key = NULL;
+
+  TimeResults results;
+  if (!TimeFunction(&results, [&pkey_ctx, &key]() -> bool {
+        return EVP_PKEY_keygen(pkey_ctx.get(), &key);
+      })) {
+    return false;
+  }
+  results.Print(name + " keygen");
+
+  // Setup CTX for Sign operations
+  bssl::ScopedEVP_MD_CTX md_ctx;
+
+  // message to be signed
+  static const uint8_t msg[32] = {0};
+  size_t msg_len = 32;
+
+  // to keep this function generic, we obtain the signature size (different for
+  // each algorithm) at run time by attempting a sign with a NULL signature.
+  // The sign algorithm must support calling NULL to obtain the signature length
+  size_t sig_len = 0;
+  EVP_DigestSignInit(md_ctx.get(), NULL, NULL, NULL, key);
+  EVP_DigestSign(md_ctx.get(), NULL, &sig_len, msg, msg_len);
+  std::unique_ptr<uint8_t[]> signature(new uint8_t[sig_len]);
+
+
+  if (!TimeFunction(&results, [&md_ctx, &signature, &sig_len, msg_len ]() -> bool {
+        return EVP_DigestSign(md_ctx.get(), signature.get(), &sig_len, msg, msg_len);
+      })) {
+    return false;
+  }
+  results.Print(name + " signing");
+
+  // Verify
+  if (!TimeFunction(&results, [&md_ctx, &signature, &sig_len, msg_len ]() -> bool {
+        return EVP_DigestVerify(md_ctx.get(), signature.get(), sig_len, msg, msg_len);
+      })) {
+    return false;
+  }
+  results.Print(name + " verify");
+
+  EVP_PKEY_free(key);
+  md_ctx.Reset();
+  return true;
+}
+
+static bool SpeedDigestSign(const std::string &selected) {
+  return SpeedDigestSignNID("Dilithium3", NID_DILITHIUM3, selected);
+}
+
 #endif
 
 static bool SpeedAESBlock(const std::string &name, unsigned bits,
@@ -1170,7 +1234,6 @@ static bool SpeedECDSA(const std::string &selected) {
          SpeedECDSACurve("ECDSA P-521", NID_secp521r1, selected) &&
          SpeedECDSACurve("ECDSA secp256k1", NID_secp256k1, selected);
 }
-
 
 #if !defined(OPENSSL_1_0_BENCHMARK)
 static bool SpeedECMULCurve(const std::string &name, int nid,
@@ -2057,6 +2120,7 @@ bool Speed(const std::vector<std::string> &args) {
 #if !defined(OPENSSL_BENCHMARK)
      ||
      !SpeedKEM(selected) ||
+     !SpeedDigestSign(selected) ||
      !SpeedAEAD(EVP_aead_aes_128_gcm(), "AEAD-AES-128-GCM", kTLSADLen, selected) ||
      !SpeedAEAD(EVP_aead_aes_256_gcm(), "AEAD-AES-256-GCM", kTLSADLen, selected) ||
      !SpeedAEAD(EVP_aead_chacha20_poly1305(), "AEAD-ChaCha20-Poly1305", kTLSADLen, selected) ||
