@@ -142,7 +142,9 @@ OPENSSL_EXPORT int EVP_CIPHER_CTX_copy(EVP_CIPHER_CTX *out,
 // |EVP_CIPHER_CTX_init| and returns one.
 OPENSSL_EXPORT int EVP_CIPHER_CTX_reset(EVP_CIPHER_CTX *ctx);
 
-
+// EVP_CIPHER_CTX_get_iv retrieves the IV from |*ctx|, copying it to |iv|. The
+// IV length, |len|, must equal the expected IV length for the context as
+// provided by |EVP_CIPHER_CTX_iv_length|.
 OPENSSL_EXPORT int EVP_CIPHER_CTX_get_iv(const EVP_CIPHER_CTX *ctx,
                                          unsigned char *iv, size_t len);
 
