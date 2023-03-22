@@ -599,7 +599,7 @@ int EVP_CIPHER_CTX_get_iv(const EVP_CIPHER_CTX *ctx, unsigned char *iv,
   }
 
   if (len > 0) {
-    memcpy(iv, ctx->iv, len);
+    OPENSSL_memcpy(iv, ctx->iv, len);
   }
   return 1;
 }
