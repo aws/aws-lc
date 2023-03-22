@@ -21,6 +21,7 @@
 #include <openssl/err.h>
 #include <openssl/rand.h>
 
+#include "../crypto/fipsmodule/cipher/internal.h"
 #include "../crypto/internal.h"
 #include "internal.h"
 
