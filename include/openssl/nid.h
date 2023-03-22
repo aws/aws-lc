@@ -65,7 +65,6 @@
 extern "C" {
 #endif
 
-
 /* The nid library provides numbered values for ASN.1 object identifiers and
  * other symbols. These values are used by other libraries to identify
  * cryptographic primitives.
@@ -78,7 +77,6 @@ extern "C" {
  *
  * These values should not be used outside of a single process; they are not
  * stable identifiers. */
-
 
 #define SN_undef "UNDEF"
 #define LN_undef "undefined"
@@ -4298,7 +4296,6 @@ extern "C" {
 
 #define SN_KYBER1024_R3 "KYBER1024_R3"
 #define NID_KYBER1024_R3 974
-
 
 #if defined(__cplusplus)
 } /* extern C */
