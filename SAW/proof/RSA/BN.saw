@@ -190,7 +190,12 @@ BN_num_bits_e_bits_ov <- llvm_verify m "BN_num_bits"
   (BN_num_bits_spec 17)
   (w4_unint_z3 []);
 
-BN_is_odd_ov <- crucible_llvm_unsafe_assume_spec
+BN_is_odd_e_ov <- crucible_llvm_unsafe_assume_spec
   m
   "BN_is_odd"
   (BN_is_odd_spec e_words);
+
+BN_is_odd_n_ov <- crucible_llvm_unsafe_assume_spec
+  m
+  "BN_is_odd"
+  (BN_is_odd_spec n_words);
