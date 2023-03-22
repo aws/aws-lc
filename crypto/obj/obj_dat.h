@@ -10791,8 +10791,8 @@ static const uint16_t kNIDsInLongNameOrder[] = {
 static const uint16_t kNIDsInOIDOrder[] = {
     434 /* 0.9 (OBJ_data) */,
     182 /* 1.2 (OBJ_member_body) */,
-    676 /* 1.3 (OBJ_identified_organization) */,
     379 /* 1.3 (OBJ_org) */,
+    676 /* 1.3 (OBJ_identified_organization) */,
     11 /* 2.5 (OBJ_X500) */,
     647 /* 2.23 (OBJ_international_organizations) */,
     380 /* 1.3.6 (OBJ_dod) */,
