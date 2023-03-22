@@ -272,7 +272,7 @@ OPENSSL_EXPORT int EC_POINT_point2cbb(CBB *out, const EC_GROUP *group,
 // EC_POINT_point2buf allocates a buffer of suitable length and writes an
 // EC_POINT to it in octet format. The allocated buffer is written to *pbuf and
 // its length is returned. The caller must free up the allocated buffer with a
-// call to OPENSSL_free(). Since the allocated buffer value is written to *pbuf
+// call to |OPENSSL_free|. Since the allocated buffer value is written to |*pbuf|
 // the pbuf parameter MUST NOT be NULL.
 OPENSSL_EXPORT size_t EC_POINT_point2buf(const EC_GROUP *group,
                                          const EC_POINT *point,
