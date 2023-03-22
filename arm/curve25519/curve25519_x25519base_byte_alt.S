@@ -2,15 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
 // ----------------------------------------------------------------------------
-// The x25519 function for curve25519 on base element 9
-// Input scalar[4]; output res[4]
-//
-// extern void curve25519_x25519base_alt
-//   (uint64_t res[static 4],uint64_t scalar[static 4]);
-//
-// The function has a second prototype considering the arguments as arrays
-// of bytes rather than 64-bit words. The underlying code is the same, since
-// the x86 platform is little-endian.
+// The x25519 function for curve25519 on base element 9 (byte array arguments)
+// Input scalar[32] (bytes); output res[32] (bytes)
 //
 // extern void curve25519_x25519base_byte_alt
 //   (uint8_t res[static 32],uint8_t scalar[static 32])
@@ -19,350 +12,291 @@
 // the standard generator. The scalar is first slightly modified/mangled
 // as specified in the relevant RFC (https://www.rfc-editor.org/rfc/rfc7748).
 //
-// Standard x86-64 ABI: RDI = res, RSI = scalar
-// Microsoft x64 ABI:   RCX = res, RDX = scalar
+// Standard ARM ABI: X0 = res, X1 = scalar
 // ----------------------------------------------------------------------------
 #include "_internal_s2n_bignum.h"
 
-
-        S2N_BN_SYM_VISIBILITY_DIRECTIVE(curve25519_x25519base_alt)
-        S2N_BN_SYM_PRIVACY_DIRECTIVE(curve25519_x25519base_alt)
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(curve25519_x25519base_byte_alt)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(curve25519_x25519base_byte_alt)
+
         .text
+        .balign 4
 
 // Size of individual field elements
 
 #define NUMSIZE 32
 
+// Stable home for the input result argument during the whole body
+
+#define res x23
+
+// Other variables that are only needed prior to the modular inverse.
+
+#define tab x19
+
+#define i x20
+
+#define bias x21
+
+#define bf x22
+#define ix x22
+
 // Pointer-offset pairs for result and temporaries on stack with some aliasing.
-// The result "resx" assumes the "res" pointer has been preloaded into %rbp.
 
-#define resx (0*NUMSIZE)(%rbp)
+#define resx res, #(0*NUMSIZE)
 
-#define scalar (0*NUMSIZE)(%rsp)
+#define scalar sp, #(0*NUMSIZE)
 
-#define tabent (1*NUMSIZE)(%rsp)
-#define ymx_2 (1*NUMSIZE)(%rsp)
-#define xpy_2 (2*NUMSIZE)(%rsp)
-#define kxy_2 (3*NUMSIZE)(%rsp)
+#define tabent sp, #(1*NUMSIZE)
+#define ymx_2 sp, #(1*NUMSIZE)
+#define xpy_2 sp, #(2*NUMSIZE)
+#define kxy_2 sp, #(3*NUMSIZE)
 
-#define acc (4*NUMSIZE)(%rsp)
-#define x_1 (4*NUMSIZE)(%rsp)
-#define y_1 (5*NUMSIZE)(%rsp)
-#define z_1 (6*NUMSIZE)(%rsp)
-#define w_1 (7*NUMSIZE)(%rsp)
-#define x_3 (4*NUMSIZE)(%rsp)
-#define y_3 (5*NUMSIZE)(%rsp)
-#define z_3 (6*NUMSIZE)(%rsp)
-#define w_3 (7*NUMSIZE)(%rsp)
+#define acc sp, #(4*NUMSIZE)
+#define x_1 sp, #(4*NUMSIZE)
+#define y_1 sp, #(5*NUMSIZE)
+#define z_1 sp, #(6*NUMSIZE)
+#define w_1 sp, #(7*NUMSIZE)
+#define x_3 sp, #(4*NUMSIZE)
+#define y_3 sp, #(5*NUMSIZE)
+#define z_3 sp, #(6*NUMSIZE)
+#define w_3 sp, #(7*NUMSIZE)
 
-#define tmpspace (8*NUMSIZE)(%rsp)
-#define t0 (8*NUMSIZE)(%rsp)
-#define t1 (9*NUMSIZE)(%rsp)
-#define t2 (10*NUMSIZE)(%rsp)
-#define t3 (11*NUMSIZE)(%rsp)
-#define t4 (12*NUMSIZE)(%rsp)
-#define t5 (13*NUMSIZE)(%rsp)
-
-// Stable homes for the input result pointer, and other variables
-
-#define res  14*NUMSIZE(%rsp)
-
-#define i  14*NUMSIZE+8(%rsp)
-
-#define bias  14*NUMSIZE+16(%rsp)
-
-#define bf  14*NUMSIZE+24(%rsp)
-#define ix  14*NUMSIZE+24(%rsp)
-
-#define tab  15*NUMSIZE(%rsp)
+#define tmpspace sp, #(8*NUMSIZE)
+#define t0 sp, #(8*NUMSIZE)
+#define t1 sp, #(9*NUMSIZE)
+#define t2 sp, #(10*NUMSIZE)
+#define t3 sp, #(11*NUMSIZE)
+#define t4 sp, #(12*NUMSIZE)
+#define t5 sp, #(13*NUMSIZE)
 
 // Total size to reserve on the stack
 
-#define NSPACE (15*NUMSIZE+8)
+#define NSPACE (14*NUMSIZE)
 
-// Macro wrapping up the basic field multiplication, only trivially
-// different from a pure function call to bignum_mul_p25519_alt.
+// Macro wrapping up the basic field operation bignum_mul_p25519_alt, only
+// trivially different from a pure function call to that subroutine.
 
 #define mul_p25519(P0,P1,P2)                    \
-        movq    P1, %rax ;                      \
-        mulq     P2;                 \
-        movq    %rax, %r8 ;                         \
-        movq    %rdx, %r9 ;                         \
-        xorq    %r10, %r10 ;                        \
-        xorq    %r11, %r11 ;                        \
-        movq    P1, %rax ;                      \
-        mulq     0x8+P2;             \
-        addq    %rax, %r9 ;                         \
-        adcq    %rdx, %r10 ;                        \
-        movq    0x8+P1, %rax ;                  \
-        mulq     P2;                 \
-        addq    %rax, %r9 ;                         \
-        adcq    %rdx, %r10 ;                        \
-        adcq    $0x0, %r11 ;                        \
-        xorq    %r12, %r12 ;                        \
-        movq    P1, %rax ;                      \
-        mulq     0x10+P2;            \
-        addq    %rax, %r10 ;                        \
-        adcq    %rdx, %r11 ;                        \
-        adcq    %r12, %r12 ;                        \
-        movq    0x8+P1, %rax ;                  \
-        mulq     0x8+P2;             \
-        addq    %rax, %r10 ;                        \
-        adcq    %rdx, %r11 ;                        \
-        adcq    $0x0, %r12 ;                        \
-        movq    0x10+P1, %rax ;                 \
-        mulq     P2;                 \
-        addq    %rax, %r10 ;                        \
-        adcq    %rdx, %r11 ;                        \
-        adcq    $0x0, %r12 ;                        \
-        xorq    %r13, %r13 ;                        \
-        movq    P1, %rax ;                      \
-        mulq     0x18+P2;            \
-        addq    %rax, %r11 ;                        \
-        adcq    %rdx, %r12 ;                        \
-        adcq    %r13, %r13 ;                        \
-        movq    0x8+P1, %rax ;                  \
-        mulq     0x10+P2;            \
-        addq    %rax, %r11 ;                        \
-        adcq    %rdx, %r12 ;                        \
-        adcq    $0x0, %r13 ;                        \
-        movq    0x10+P1, %rax ;                 \
-        mulq     0x8+P2;             \
-        addq    %rax, %r11 ;                        \
-        adcq    %rdx, %r12 ;                        \
-        adcq    $0x0, %r13 ;                        \
-        movq    0x18+P1, %rax ;                 \
-        mulq     P2;                 \
-        addq    %rax, %r11 ;                        \
-        adcq    %rdx, %r12 ;                        \
-        adcq    $0x0, %r13 ;                        \
-        xorq    %r14, %r14 ;                        \
-        movq    0x8+P1, %rax ;                  \
-        mulq     0x18+P2;            \
-        addq    %rax, %r12 ;                        \
-        adcq    %rdx, %r13 ;                        \
-        adcq    %r14, %r14 ;                        \
-        movq    0x10+P1, %rax ;                 \
-        mulq     0x10+P2;            \
-        addq    %rax, %r12 ;                        \
-        adcq    %rdx, %r13 ;                        \
-        adcq    $0x0, %r14 ;                        \
-        movq    0x18+P1, %rax ;                 \
-        mulq     0x8+P2;             \
-        addq    %rax, %r12 ;                        \
-        adcq    %rdx, %r13 ;                        \
-        adcq    $0x0, %r14 ;                        \
-        xorq    %r15, %r15 ;                        \
-        movq    0x10+P1, %rax ;                 \
-        mulq     0x18+P2;            \
-        addq    %rax, %r13 ;                        \
-        adcq    %rdx, %r14 ;                        \
-        adcq    %r15, %r15 ;                        \
-        movq    0x18+P1, %rax ;                 \
-        mulq     0x10+P2;            \
-        addq    %rax, %r13 ;                        \
-        adcq    %rdx, %r14 ;                        \
-        adcq    $0x0, %r15 ;                        \
-        movq    0x18+P1, %rax ;                 \
-        mulq     0x18+P2;            \
-        addq    %rax, %r14 ;                        \
-        adcq    %rdx, %r15 ;                        \
-        movl    $0x26, %esi ;                       \
-        movq    %r12, %rax ;                        \
-        mulq    %rsi;                            \
-        addq    %rax, %r8 ;                         \
-        adcq    %rdx, %r9 ;                         \
-        sbbq    %rcx, %rcx ;                        \
-        movq    %r13, %rax ;                        \
-        mulq    %rsi;                            \
-        subq    %rcx, %rdx ;                        \
-        addq    %rax, %r9 ;                         \
-        adcq    %rdx, %r10 ;                        \
-        sbbq    %rcx, %rcx ;                        \
-        movq    %r14, %rax ;                        \
-        mulq    %rsi;                            \
-        subq    %rcx, %rdx ;                        \
-        addq    %rax, %r10 ;                        \
-        adcq    %rdx, %r11 ;                        \
-        sbbq    %rcx, %rcx ;                        \
-        movq    %r15, %rax ;                        \
-        mulq    %rsi;                            \
-        subq    %rcx, %rdx ;                        \
-        xorq    %rcx, %rcx ;                        \
-        addq    %rax, %r11 ;                        \
-        movq    %rdx, %r12 ;                        \
-        adcq    %rcx, %r12 ;                        \
-        shldq   $0x1, %r11, %r12 ;                    \
-        leaq    0x1(%r12), %rax ;                  \
-        movl    $0x13, %esi ;                       \
-        bts     $63, %r11 ;                         \
-        imulq   %rsi, %rax ;                        \
-        addq    %rax, %r8 ;                         \
-        adcq    %rcx, %r9 ;                         \
-        adcq    %rcx, %r10 ;                        \
-        adcq    %rcx, %r11 ;                        \
-        sbbq    %rax, %rax ;                        \
-        notq    %rax;                            \
-        andq    %rsi, %rax ;                        \
-        subq    %rax, %r8 ;                         \
-        sbbq    %rcx, %r9 ;                         \
-        sbbq    %rcx, %r10 ;                        \
-        sbbq    %rcx, %r11 ;                        \
-        btr     $63, %r11 ;                         \
-        movq    %r8, P0 ;                        \
-        movq    %r9, 0x8+P0 ;                    \
-        movq    %r10, 0x10+P0 ;                  \
-        movq    %r11, 0x18+P0
+        ldp     x3, x4, [P1];                   \
+        ldp     x7, x8, [P2];                   \
+        mul     x12, x3, x7;                    \
+        umulh   x13, x3, x7;                    \
+        mul     x11, x3, x8;                    \
+        umulh   x14, x3, x8;                    \
+        adds    x13, x13, x11;                  \
+        ldp     x9, x10, [P2+16];               \
+        mul     x11, x3, x9;                    \
+        umulh   x15, x3, x9;                    \
+        adcs    x14, x14, x11;                  \
+        mul     x11, x3, x10;                   \
+        umulh   x16, x3, x10;                   \
+        adcs    x15, x15, x11;                  \
+        adc     x16, x16, xzr;                  \
+        ldp     x5, x6, [P1+16];                \
+        mul     x11, x4, x7;                    \
+        adds    x13, x13, x11;                  \
+        mul     x11, x4, x8;                    \
+        adcs    x14, x14, x11;                  \
+        mul     x11, x4, x9;                    \
+        adcs    x15, x15, x11;                  \
+        mul     x11, x4, x10;                   \
+        adcs    x16, x16, x11;                  \
+        umulh   x3, x4, x10;                    \
+        adc     x3, x3, xzr;                    \
+        umulh   x11, x4, x7;                    \
+        adds    x14, x14, x11;                  \
+        umulh   x11, x4, x8;                    \
+        adcs    x15, x15, x11;                  \
+        umulh   x11, x4, x9;                    \
+        adcs    x16, x16, x11;                  \
+        adc     x3, x3, xzr;                    \
+        mul     x11, x5, x7;                    \
+        adds    x14, x14, x11;                  \
+        mul     x11, x5, x8;                    \
+        adcs    x15, x15, x11;                  \
+        mul     x11, x5, x9;                    \
+        adcs    x16, x16, x11;                  \
+        mul     x11, x5, x10;                   \
+        adcs    x3, x3, x11;                    \
+        umulh   x4, x5, x10;                    \
+        adc     x4, x4, xzr;                    \
+        umulh   x11, x5, x7;                    \
+        adds    x15, x15, x11;                  \
+        umulh   x11, x5, x8;                    \
+        adcs    x16, x16, x11;                  \
+        umulh   x11, x5, x9;                    \
+        adcs    x3, x3, x11;                    \
+        adc     x4, x4, xzr;                    \
+        mul     x11, x6, x7;                    \
+        adds    x15, x15, x11;                  \
+        mul     x11, x6, x8;                    \
+        adcs    x16, x16, x11;                  \
+        mul     x11, x6, x9;                    \
+        adcs    x3, x3, x11;                    \
+        mul     x11, x6, x10;                   \
+        adcs    x4, x4, x11;                    \
+        umulh   x5, x6, x10;                    \
+        adc     x5, x5, xzr;                    \
+        umulh   x11, x6, x7;                    \
+        adds    x16, x16, x11;                  \
+        umulh   x11, x6, x8;                    \
+        adcs    x3, x3, x11;                    \
+        umulh   x11, x6, x9;                    \
+        adcs    x4, x4, x11;                    \
+        adc     x5, x5, xzr;                    \
+        mov     x7, #0x26;                      \
+        mul     x11, x7, x16;                   \
+        umulh   x9, x7, x16;                    \
+        adds    x12, x12, x11;                  \
+        mul     x11, x7, x3;                    \
+        umulh   x3, x7, x3;                     \
+        adcs    x13, x13, x11;                  \
+        mul     x11, x7, x4;                    \
+        umulh   x4, x7, x4;                     \
+        adcs    x14, x14, x11;                  \
+        mul     x11, x7, x5;                    \
+        umulh   x5, x7, x5;                     \
+        adcs    x15, x15, x11;                  \
+        cset    x16, cs;                        \
+        adds    x15, x15, x4;                   \
+        adc     x16, x16, x5;                   \
+        cmn     x15, x15;                       \
+        orr     x15, x15, #0x8000000000000000;  \
+        adc     x8, x16, x16;                   \
+        mov     x7, #0x13;                      \
+        madd    x11, x7, x8, x7;                \
+        adds    x12, x12, x11;                  \
+        adcs    x13, x13, x9;                   \
+        adcs    x14, x14, x3;                   \
+        adcs    x15, x15, xzr;                  \
+        csel    x7, x7, xzr, cc;                \
+        subs    x12, x12, x7;                   \
+        sbcs    x13, x13, xzr;                  \
+        sbcs    x14, x14, xzr;                  \
+        sbc     x15, x15, xzr;                  \
+        and     x15, x15, #0x7fffffffffffffff;  \
+        stp     x12, x13, [P0];                 \
+        stp     x14, x15, [P0+16]
 
 // A version of multiplication that only guarantees output < 2 * p_25519.
 // This basically skips the +1 and final correction in quotient estimation.
 
 #define mul_4(P0,P1,P2)                         \
-        movq    P1, %rax ;                      \
-        mulq     P2;                 \
-        movq    %rax, %r8 ;                         \
-        movq    %rdx, %r9 ;                         \
-        xorq    %r10, %r10 ;                        \
-        xorq    %r11, %r11 ;                        \
-        movq    P1, %rax ;                      \
-        mulq     0x8+P2;             \
-        addq    %rax, %r9 ;                         \
-        adcq    %rdx, %r10 ;                        \
-        movq    0x8+P1, %rax ;                  \
-        mulq     P2;                 \
-        addq    %rax, %r9 ;                         \
-        adcq    %rdx, %r10 ;                        \
-        adcq    $0x0, %r11 ;                        \
-        xorq    %r12, %r12 ;                        \
-        movq    P1, %rax ;                      \
-        mulq     0x10+P2;            \
-        addq    %rax, %r10 ;                        \
-        adcq    %rdx, %r11 ;                        \
-        adcq    %r12, %r12 ;                        \
-        movq    0x8+P1, %rax ;                  \
-        mulq     0x8+P2;             \
-        addq    %rax, %r10 ;                        \
-        adcq    %rdx, %r11 ;                        \
-        adcq    $0x0, %r12 ;                        \
-        movq    0x10+P1, %rax ;                 \
-        mulq     P2;                 \
-        addq    %rax, %r10 ;                        \
-        adcq    %rdx, %r11 ;                        \
-        adcq    $0x0, %r12 ;                        \
-        xorq    %r13, %r13 ;                        \
-        movq    P1, %rax ;                      \
-        mulq     0x18+P2;            \
-        addq    %rax, %r11 ;                        \
-        adcq    %rdx, %r12 ;                        \
-        adcq    %r13, %r13 ;                        \
-        movq    0x8+P1, %rax ;                  \
-        mulq     0x10+P2;            \
-        addq    %rax, %r11 ;                        \
-        adcq    %rdx, %r12 ;                        \
-        adcq    $0x0, %r13 ;                        \
-        movq    0x10+P1, %rax ;                 \
-        mulq     0x8+P2;             \
-        addq    %rax, %r11 ;                        \
-        adcq    %rdx, %r12 ;                        \
-        adcq    $0x0, %r13 ;                        \
-        movq    0x18+P1, %rax ;                 \
-        mulq     P2;                 \
-        addq    %rax, %r11 ;                        \
-        adcq    %rdx, %r12 ;                        \
-        adcq    $0x0, %r13 ;                        \
-        xorq    %r14, %r14 ;                        \
-        movq    0x8+P1, %rax ;                  \
-        mulq     0x18+P2;            \
-        addq    %rax, %r12 ;                        \
-        adcq    %rdx, %r13 ;                        \
-        adcq    %r14, %r14 ;                        \
-        movq    0x10+P1, %rax ;                 \
-        mulq     0x10+P2;            \
-        addq    %rax, %r12 ;                        \
-        adcq    %rdx, %r13 ;                        \
-        adcq    $0x0, %r14 ;                        \
-        movq    0x18+P1, %rax ;                 \
-        mulq     0x8+P2;             \
-        addq    %rax, %r12 ;                        \
-        adcq    %rdx, %r13 ;                        \
-        adcq    $0x0, %r14 ;                        \
-        xorq    %r15, %r15 ;                        \
-        movq    0x10+P1, %rax ;                 \
-        mulq     0x18+P2;            \
-        addq    %rax, %r13 ;                        \
-        adcq    %rdx, %r14 ;                        \
-        adcq    %r15, %r15 ;                        \
-        movq    0x18+P1, %rax ;                 \
-        mulq     0x10+P2;            \
-        addq    %rax, %r13 ;                        \
-        adcq    %rdx, %r14 ;                        \
-        adcq    $0x0, %r15 ;                        \
-        movq    0x18+P1, %rax ;                 \
-        mulq     0x18+P2;            \
-        addq    %rax, %r14 ;                        \
-        adcq    %rdx, %r15 ;                        \
-        movl    $0x26, %ebx ;                       \
-        movq    %r12, %rax ;                        \
-        mulq    %rbx;                            \
-        addq    %rax, %r8 ;                         \
-        adcq    %rdx, %r9 ;                         \
-        sbbq    %rcx, %rcx ;                        \
-        movq    %r13, %rax ;                        \
-        mulq    %rbx;                            \
-        subq    %rcx, %rdx ;                        \
-        addq    %rax, %r9 ;                         \
-        adcq    %rdx, %r10 ;                        \
-        sbbq    %rcx, %rcx ;                        \
-        movq    %r14, %rax ;                        \
-        mulq    %rbx;                            \
-        subq    %rcx, %rdx ;                        \
-        addq    %rax, %r10 ;                        \
-        adcq    %rdx, %r11 ;                        \
-        sbbq    %rcx, %rcx ;                        \
-        movq    %r15, %rax ;                        \
-        mulq    %rbx;                            \
-        subq    %rcx, %rdx ;                        \
-        xorq    %rcx, %rcx ;                        \
-        addq    %rax, %r11 ;                        \
-        movq    %rdx, %r12 ;                        \
-        adcq    %rcx, %r12 ;                        \
-        shldq   $0x1, %r11, %r12 ;                    \
-        btr     $0x3f, %r11 ;                      \
-        movl    $0x13, %edx ;                      \
-        imulq   %r12, %rdx ;                       \
-        addq    %rdx, %r8 ;                        \
-        adcq    %rcx, %r9 ;                        \
-        adcq    %rcx, %r10 ;                       \
-        adcq    %rcx, %r11 ;                       \
-        movq    %r8, P0 ;                       \
-        movq    %r9, 0x8+P0 ;                   \
-        movq    %r10, 0x10+P0 ;                 \
-        movq    %r11, 0x18+P0
+        ldp     x3, x4, [P1];                   \
+        ldp     x7, x8, [P2];                   \
+        mul     x12, x3, x7;                    \
+        umulh   x13, x3, x7;                    \
+        mul     x11, x3, x8;                    \
+        umulh   x14, x3, x8;                    \
+        adds    x13, x13, x11;                  \
+        ldp     x9, x10, [P2+16];               \
+        mul     x11, x3, x9;                    \
+        umulh   x15, x3, x9;                    \
+        adcs    x14, x14, x11;                  \
+        mul     x11, x3, x10;                   \
+        umulh   x16, x3, x10;                   \
+        adcs    x15, x15, x11;                  \
+        adc     x16, x16, xzr;                  \
+        ldp     x5, x6, [P1+16];                \
+        mul     x11, x4, x7;                    \
+        adds    x13, x13, x11;                  \
+        mul     x11, x4, x8;                    \
+        adcs    x14, x14, x11;                  \
+        mul     x11, x4, x9;                    \
+        adcs    x15, x15, x11;                  \
+        mul     x11, x4, x10;                   \
+        adcs    x16, x16, x11;                  \
+        umulh   x3, x4, x10;                    \
+        adc     x3, x3, xzr;                    \
+        umulh   x11, x4, x7;                    \
+        adds    x14, x14, x11;                  \
+        umulh   x11, x4, x8;                    \
+        adcs    x15, x15, x11;                  \
+        umulh   x11, x4, x9;                    \
+        adcs    x16, x16, x11;                  \
+        adc     x3, x3, xzr;                    \
+        mul     x11, x5, x7;                    \
+        adds    x14, x14, x11;                  \
+        mul     x11, x5, x8;                    \
+        adcs    x15, x15, x11;                  \
+        mul     x11, x5, x9;                    \
+        adcs    x16, x16, x11;                  \
+        mul     x11, x5, x10;                   \
+        adcs    x3, x3, x11;                    \
+        umulh   x4, x5, x10;                    \
+        adc     x4, x4, xzr;                    \
+        umulh   x11, x5, x7;                    \
+        adds    x15, x15, x11;                  \
+        umulh   x11, x5, x8;                    \
+        adcs    x16, x16, x11;                  \
+        umulh   x11, x5, x9;                    \
+        adcs    x3, x3, x11;                    \
+        adc     x4, x4, xzr;                    \
+        mul     x11, x6, x7;                    \
+        adds    x15, x15, x11;                  \
+        mul     x11, x6, x8;                    \
+        adcs    x16, x16, x11;                  \
+        mul     x11, x6, x9;                    \
+        adcs    x3, x3, x11;                    \
+        mul     x11, x6, x10;                   \
+        adcs    x4, x4, x11;                    \
+        umulh   x5, x6, x10;                    \
+        adc     x5, x5, xzr;                    \
+        umulh   x11, x6, x7;                    \
+        adds    x16, x16, x11;                  \
+        umulh   x11, x6, x8;                    \
+        adcs    x3, x3, x11;                    \
+        umulh   x11, x6, x9;                    \
+        adcs    x4, x4, x11;                    \
+        adc     x5, x5, xzr;                    \
+        mov     x7, #0x26;                      \
+        mul     x11, x7, x16;                   \
+        umulh   x9, x7, x16;                    \
+        adds    x12, x12, x11;                  \
+        mul     x11, x7, x3;                    \
+        umulh   x3, x7, x3;                     \
+        adcs    x13, x13, x11;                  \
+        mul     x11, x7, x4;                    \
+        umulh   x4, x7, x4;                     \
+        adcs    x14, x14, x11;                  \
+        mul     x11, x7, x5;                    \
+        umulh   x5, x7, x5;                     \
+        adcs    x15, x15, x11;                  \
+        cset    x16, cs;                        \
+        adds    x15, x15, x4;                   \
+        adc     x16, x16, x5;                   \
+        cmn     x15, x15;                       \
+        bic     x15, x15, #0x8000000000000000;  \
+        adc     x8, x16, x16;                   \
+        mov     x7, #0x13;                      \
+        mul     x11, x7, x8;                    \
+        adds    x12, x12, x11;                  \
+        adcs    x13, x13, x9;                   \
+        adcs    x14, x14, x3;                   \
+        adc     x15, x15, xzr;                  \
+        stp     x12, x13, [P0];                 \
+        stp     x14, x15, [P0+16]
 
 // Modular subtraction with double modulus 2 * p_25519 = 2^256 - 38
 
 #define sub_twice4(P0,P1,P2)                    \
-        movq    P1, %r8 ;                       \
-        xorl    %ebx, %ebx ;                       \
-        subq    P2, %r8 ;                       \
-        movq    8+P1, %r9 ;                     \
-        sbbq    8+P2, %r9 ;                     \
-        movl    $38, %ecx ;                        \
-        movq    16+P1, %r10 ;                   \
-        sbbq    16+P2, %r10 ;                   \
-        movq    24+P1, %rax ;                   \
-        sbbq    24+P2, %rax ;                   \
-        cmovncq %rbx, %rcx ;                       \
-        subq    %rcx, %r8 ;                        \
-        sbbq    %rbx, %r9 ;                        \
-        sbbq    %rbx, %r10 ;                       \
-        sbbq    %rbx, %rax ;                       \
-        movq    %r8, P0 ;                       \
-        movq    %r9, 8+P0 ;                     \
-        movq    %r10, 16+P0 ;                   \
-        movq    %rax, 24+P0
+        ldp     x5, x6, [P1];                   \
+        ldp     x4, x3, [P2];                   \
+        subs    x5, x5, x4;                     \
+        sbcs    x6, x6, x3;                     \
+        ldp     x7, x8, [P1+16];                \
+        ldp     x4, x3, [P2+16];                \
+        sbcs    x7, x7, x4;                     \
+        sbcs    x8, x8, x3;                     \
+        mov     x4, #38;                        \
+        csel    x3, x4, xzr, lo;                \
+        subs    x5, x5, x3;                     \
+        sbcs    x6, x6, xzr;                    \
+        sbcs    x7, x7, xzr;                    \
+        sbc     x8, x8, xzr;                    \
+        stp     x5, x6, [P0];                   \
+        stp     x7, x8, [P0+16]
 
 // Modular addition and doubling with double modulus 2 * p_25519 = 2^256 - 38.
 // This only ensures that the result fits in 4 digits, not that it is reduced
@@ -371,79 +305,51 @@
 // at least one of them is reduced double modulo.
 
 #define add_twice4(P0,P1,P2)                    \
-        movq    P1, %r8 ;                       \
-        xorl    %ecx, %ecx ;                       \
-        addq    P2, %r8 ;                       \
-        movq    0x8+P1, %r9 ;                   \
-        adcq    0x8+P2, %r9 ;                   \
-        movq    0x10+P1, %r10 ;                 \
-        adcq    0x10+P2, %r10 ;                 \
-        movq    0x18+P1, %r11 ;                 \
-        adcq    0x18+P2, %r11 ;                 \
-        movl    $38, %eax ;                        \
-        cmovncq %rcx, %rax ;                       \
-        addq    %rax, %r8 ;                        \
-        adcq    %rcx, %r9 ;                        \
-        adcq    %rcx, %r10 ;                       \
-        adcq    %rcx, %r11 ;                       \
-        movq    %r8, P0 ;                       \
-        movq    %r9, 0x8+P0 ;                   \
-        movq    %r10, 0x10+P0 ;                 \
-        movq    %r11, 0x18+P0
+        ldp     x3, x4, [P1];                   \
+        ldp     x7, x8, [P2];                   \
+        adds    x3, x3, x7;                     \
+        adcs    x4, x4, x8;                     \
+        ldp     x5, x6, [P1+16];                \
+        ldp     x7, x8, [P2+16];                \
+        adcs    x5, x5, x7;                     \
+        adcs    x6, x6, x8;                     \
+        mov     x9, #38;                        \
+        csel    x9, x9, xzr, cs;                \
+        adds    x3, x3, x9;                     \
+        adcs    x4, x4, xzr;                    \
+        adcs    x5, x5, xzr;                    \
+        adc     x6, x6, xzr;                    \
+        stp     x3, x4, [P0];                   \
+        stp     x5, x6, [P0+16]
 
 #define double_twice4(P0,P1)                    \
-        movq    P1, %r8 ;                       \
-        xorl    %ecx, %ecx ;                       \
-        addq    %r8, %r8 ;                         \
-        movq    0x8+P1, %r9 ;                   \
-        adcq    %r9, %r9 ;                         \
-        movq    0x10+P1, %r10 ;                 \
-        adcq    %r10, %r10 ;                       \
-        movq    0x18+P1, %r11 ;                 \
-        adcq    %r11, %r11 ;                       \
-        movl    $38, %eax ;                        \
-        cmovncq %rcx, %rax ;                       \
-        addq    %rax, %r8 ;                        \
-        adcq    %rcx, %r9 ;                        \
-        adcq    %rcx, %r10 ;                       \
-        adcq    %rcx, %r11 ;                       \
-        movq    %r8, P0 ;                       \
-        movq    %r9, 0x8+P0 ;                   \
-        movq    %r10, 0x10+P0 ;                 \
-        movq    %r11, 0x18+P0
+        ldp     x3, x4, [P1];                   \
+        adds    x3, x3, x3;                     \
+        adcs    x4, x4, x4;                     \
+        ldp     x5, x6, [P1+16];                \
+        adcs    x5, x5, x5;                     \
+        adcs    x6, x6, x6;                     \
+        mov     x9, #38;                        \
+        csel    x9, x9, xzr, cs;                \
+        adds    x3, x3, x9;                     \
+        adcs    x4, x4, xzr;                    \
+        adcs    x5, x5, xzr;                    \
+        adc     x6, x6, xzr;                    \
+        stp     x3, x4, [P0];                   \
+        stp     x5, x6, [P0+16]
 
-S2N_BN_SYMBOL(curve25519_x25519base_alt):
 S2N_BN_SYMBOL(curve25519_x25519base_byte_alt):
 
-// In this case the Windows form literally makes a subroutine call.
-// This avoids hassle arising from keeping code and data together.
+// Save regs and make room for temporaries
 
-#if WINDOWS_ABI
-        pushq   %rdi
-        pushq   %rsi
-        movq    %rcx, %rdi
-        movq    %rdx, %rsi
-        callq   curve25519_x25519base_alt_standard
-        popq    %rsi
-        popq    %rdi
-        ret
-
-curve25519_x25519base_alt_standard:
-#endif
-
-// Save registers, make room for temps, preserve input arguments.
-
-        pushq   %rbx
-        pushq   %rbp
-        pushq   %r12
-        pushq   %r13
-        pushq   %r14
-        pushq   %r15
-        subq    $NSPACE, %rsp
+        stp     x19, x20, [sp, -16]!
+        stp     x21, x22, [sp, -16]!
+        stp     x23, x24, [sp, -16]!
+        sub     sp, sp, #NSPACE
 
 // Move the output pointer to a stable place
 
-        movq    %rdi, res
+        mov     res, x0
 
 // Copy the input scalar to its local variable while mangling it.
 // In principle the mangling is into 01xxx...xxx000, but actually
@@ -451,15 +357,70 @@ curve25519_x25519base_alt_standard:
 // 2^254 * G is taken care of by the starting value for the addition
 // chain below, while we never look at the three low bits at all.
 
-        movq    (%rsi), %rax
-        movq    %rax, (%rsp)
-        movq    8(%rsi), %rax
-        movq    %rax, 8(%rsp)
-        movq    16(%rsi), %rax
-        movq    %rax, 16(%rsp)
-        movq    $0x3fffffffffffffff, %rax
-        andq    24(%rsi), %rax
-        movq    %rax, 24(%rsp)
+        ldrb    w10, [x1]
+        ldrb    w0, [x1, #1]
+        orr     x10, x10, x0, lsl #8
+        ldrb    w0, [x1, #2]
+        orr     x10, x10, x0, lsl #16
+        ldrb    w0, [x1, #3]
+        orr     x10, x10, x0, lsl #24
+        ldrb    w0, [x1, #4]
+        orr     x10, x10, x0, lsl #32
+        ldrb    w0, [x1, #5]
+        orr     x10, x10, x0, lsl #40
+        ldrb    w0, [x1, #6]
+        orr     x10, x10, x0, lsl #48
+        ldrb    w0, [x1, #7]
+        orr     x10, x10, x0, lsl #56
+        ldrb    w11, [x1, #8]
+        ldrb    w0, [x1, #9]
+        orr     x11, x11, x0, lsl #8
+        ldrb    w0, [x1, #10]
+        orr     x11, x11, x0, lsl #16
+        ldrb    w0, [x1, #11]
+        orr     x11, x11, x0, lsl #24
+        ldrb    w0, [x1, #12]
+        orr     x11, x11, x0, lsl #32
+        ldrb    w0, [x1, #13]
+        orr     x11, x11, x0, lsl #40
+        ldrb    w0, [x1, #14]
+        orr     x11, x11, x0, lsl #48
+        ldrb    w0, [x1, #15]
+        orr     x11, x11, x0, lsl #56
+        stp     x10, x11, [scalar]
+
+        ldrb    w12, [x1, #16]
+        ldrb    w0, [x1, #17]
+        orr     x12, x12, x0, lsl #8
+        ldrb    w0, [x1, #18]
+        orr     x12, x12, x0, lsl #16
+        ldrb    w0, [x1, #19]
+        orr     x12, x12, x0, lsl #24
+        ldrb    w0, [x1, #20]
+        orr     x12, x12, x0, lsl #32
+        ldrb    w0, [x1, #21]
+        orr     x12, x12, x0, lsl #40
+        ldrb    w0, [x1, #22]
+        orr     x12, x12, x0, lsl #48
+        ldrb    w0, [x1, #23]
+        orr     x12, x12, x0, lsl #56
+        ldrb    w13, [x1, #24]
+        ldrb    w0, [x1, #25]
+        orr     x13, x13, x0, lsl #8
+        ldrb    w0, [x1, #26]
+        orr     x13, x13, x0, lsl #16
+        ldrb    w0, [x1, #27]
+        orr     x13, x13, x0, lsl #24
+        ldrb    w0, [x1, #28]
+        orr     x13, x13, x0, lsl #32
+        ldrb    w0, [x1, #29]
+        orr     x13, x13, x0, lsl #40
+        ldrb    w0, [x1, #30]
+        orr     x13, x13, x0, lsl #48
+        ldrb    w0, [x1, #31]
+        orr     x13, x13, x0, lsl #56
+        bic     x13, x13, #0xc000000000000000
+        stp     x12, x13, [scalar+16]
 
 // The main part of the computation is on the edwards25519 curve in
 // extended-projective coordinates (X,Y,Z,T), representing a point
@@ -472,78 +433,50 @@ curve25519_x25519base_alt_standard:
 // depending on bit 3 of the scalar, the only nonzero bit of the bottom 4.
 // Thus, we have effectively dealt with bits 0, 1, 2, 3, 254 and 255.
 
-        movq    (%rsp), %rax
-        andq    $8, %rax
+        ldr     x0, [scalar]
+        ands    xzr, x0, #8
 
-        leaq    edwards25519_0g(%rip), %r10
-        leaq    edwards25519_8g(%rip), %r11
+        adr     x10, edwards25519_0g
+        adr     x11, edwards25519_8g
+        ldp     x0, x1, [x10]
+        ldp     x2, x3, [x11]
+        csel    x0, x0, x2, eq
+        csel    x1, x1, x3, eq
+        stp     x0, x1, [acc]
 
-        movq    (%r10), %rax
-        movq    (%r11), %rcx
-        cmovnzq %rcx, %rax
-        movq    %rax, 8*16(%rsp)
+        ldp     x0, x1, [x10, 1*16]
+        ldp     x2, x3, [x11, 1*16]
+        csel    x0, x0, x2, eq
+        csel    x1, x1, x3, eq
+        stp     x0, x1, [acc+1*16]
 
-        movq    8*1(%r10), %rax
-        movq    8*1(%r11), %rcx
-        cmovnzq %rcx, %rax
-        movq    %rax, 8*17(%rsp)
+        ldp     x0, x1, [x10, 2*16]
+        ldp     x2, x3, [x11, 2*16]
+        csel    x0, x0, x2, eq
+        csel    x1, x1, x3, eq
+        stp     x0, x1, [acc+2*16]
 
-        movq    8*2(%r10), %rax
-        movq    8*2(%r11), %rcx
-        cmovnzq %rcx, %rax
-        movq    %rax, 8*18(%rsp)
+        ldp     x0, x1, [x10, 3*16]
+        ldp     x2, x3, [x11, 3*16]
+        csel    x0, x0, x2, eq
+        csel    x1, x1, x3, eq
+        stp     x0, x1, [acc+3*16]
 
-        movq    8*3(%r10), %rax
-        movq    8*3(%r11), %rcx
-        cmovnzq %rcx, %rax
-        movq    %rax, 8*19(%rsp)
+        mov     x0, #1
+        stp     x0, xzr, [acc+4*16]
+        stp     xzr, xzr, [acc+5*16]
 
-        movq    8*4(%r10), %rax
-        movq    8*4(%r11), %rcx
-        cmovnzq %rcx, %rax
-        movq    %rax, 8*20(%rsp)
+        ldp     x0, x1, [x10, 4*16]
+        ldp     x2, x3, [x11, 4*16]
+        csel    x0, x0, x2, eq
+        csel    x1, x1, x3, eq
+        stp     x0, x1, [acc+6*16]
 
-        movq    8*5(%r10), %rax
-        movq    8*5(%r11), %rcx
-        cmovnzq %rcx, %rax
-        movq    %rax, 8*21(%rsp)
-
-        movq    8*6(%r10), %rax
-        movq    8*6(%r11), %rcx
-        cmovnzq %rcx, %rax
-        movq    %rax, 8*22(%rsp)
-
-        movq    8*7(%r10), %rax
-        movq    8*7(%r11), %rcx
-        cmovnzq %rcx, %rax
-        movq    %rax, 8*23(%rsp)
-
-        movl    $1, %eax
-        movq    %rax, 8*24(%rsp)
-        movl    $0, %eax
-        movq    %rax, 8*25(%rsp)
-        movq    %rax, 8*26(%rsp)
-        movq    %rax, 8*27(%rsp)
-
-        movq    8*8(%r10), %rax
-        movq    8*8(%r11), %rcx
-        cmovnzq %rcx, %rax
-        movq    %rax, 8*28(%rsp)
-
-        movq    8*9(%r10), %rax
-        movq    8*9(%r11), %rcx
-        cmovnzq %rcx, %rax
-        movq    %rax, 8*29(%rsp)
-
-        movq    8*10(%r10), %rax
-        movq    8*10(%r11), %rcx
-        cmovnzq %rcx, %rax
-        movq    %rax, 8*30(%rsp)
-
-        movq    8*11(%r10), %rax
-        movq    8*11(%r11), %rcx
-        cmovnzq %rcx, %rax
-        movq    %rax, 8*31(%rsp)
+        ldp     x0, x1, [x10, 5*16]
+        ldp     x2, x3, [x11, 5*16]
+        csel    x0, x0, x2, eq
+        csel    x1, x1, x3, eq
+        stp     x0, x1, [acc+7*16]
 
 // The counter "i" tracks the bit position for which the scalar has
 // already been absorbed, starting at 4 and going up in chunks of 4.
@@ -559,10 +492,9 @@ curve25519_x25519base_alt_standard:
 // end because of the clearing of bit 255 of the scalar, meaning the
 // l >= 9 case cannot arise on the last iteration.
 
-        movq    $4, i
-        leaq    edwards25519_gtable(%rip), %rax
-        movq    %rax, tab
-        movq    $0, bias
+        mov     i, 4
+        adr     tab, edwards25519_gtable
+        mov     bias, xzr
 
 // Start of the main loop, repeated 63 times for i = 4, 8, ..., 252
 
@@ -572,269 +504,211 @@ scalarloop:
 // Choose the table index "ix" as bf when bf <= 8 and 16 - bf for bf >= 9,
 // setting the bias to 1 for the next iteration in the latter case.
 
-        movq    i, %rax
-        movq    %rax, %rcx
-        shrq    $6, %rax
-        movq    (%rsp,%rax,8), %rax // Exploiting scalar = sp exactly
-        shrq    %cl, %rax
-        andq    $15, %rax
-        addq    bias, %rax
-        movq    %rax, bf
+        lsr     x0, i, #6
+        ldr     x2, [sp, x0, lsl #3]    // Exploiting scalar = sp exactly
+        lsr     x2, x2, i
+        and     x2, x2, #15
+        add     bf, x2, bias
 
-        cmpq    $9, bf
-        sbbq    %rax, %rax
-        incq    %rax
-        movq    %rax, bias
+        cmp     bf, 9
+        cset    bias, cs
 
-        movq    $16, %rdi
-        subq    bf, %rdi
-        cmpq    $0, bias
-        cmovzq  bf, %rdi
-        movq    %rdi, ix
+        mov     x0, 16
+        sub     x0, x0, bf
+        cmp     bias, xzr
+        csel    ix, x0, bf, ne
 
 // Perform constant-time lookup in the table to get element number "ix".
 // The table entry for the affine point (x,y) is actually a triple
 // (y - x,x + y,2 * d * x * y) to precompute parts of the addition.
 // Note that "ix" can be 0, so we set up the appropriate identity first.
 
-        movl    $1, %eax
-        xorl    %ebx, %ebx
-        xorl    %ecx, %ecx
-        xorl    %edx, %edx
-        movl    $1, %r8d
-        xorl    %r9d, %r9d
-        xorl    %r10d, %r10d
-        xorl    %r11d, %r11d
-        xorl    %r12d, %r12d
-        xorl    %r13d, %r13d
-        xorl    %r14d, %r14d
-        xorl    %r15d, %r15d
+        mov     x0, #1
+        mov     x1, xzr
+        mov     x2, xzr
+        mov     x3, xzr
+        mov     x4, #1
+        mov     x5, xzr
+        mov     x6, xzr
+        mov     x7, xzr
+        mov     x8, xzr
+        mov     x9, xzr
+        mov     x10, xzr
+        mov     x11, xzr
 
-        movq    tab, %rbp
+        cmp     ix, #1
+        ldp     x12, x13, [tab]
+        csel    x0, x0, x12, ne
+        csel    x1, x1, x13, ne
+        ldp     x12, x13, [tab, #16]
+        csel    x2, x2, x12, ne
+        csel    x3, x3, x13, ne
+        ldp     x12, x13, [tab, #32]
+        csel    x4, x4, x12, ne
+        csel    x5, x5, x13, ne
+        ldp     x12, x13, [tab, #48]
+        csel    x6, x6, x12, ne
+        csel    x7, x7, x13, ne
+        ldp     x12, x13, [tab, #64]
+        csel    x8, x8, x12, ne
+        csel    x9, x9, x13, ne
+        ldp     x12, x13, [tab, #80]
+        csel    x10, x10, x12, ne
+        csel    x11, x11, x13, ne
+        add     tab, tab, #96
 
-        cmpq    $1, ix
-        movq    (%rbp), %rsi
-        cmovzq  %rsi, %rax
-        movq    8(%rbp), %rsi
-        cmovzq  %rsi, %rbx
-        movq    16(%rbp), %rsi
-        cmovzq  %rsi, %rcx
-        movq    24(%rbp), %rsi
-        cmovzq  %rsi, %rdx
-        movq    32(%rbp), %rsi
-        cmovzq  %rsi, %r8
-        movq    40(%rbp), %rsi
-        cmovzq  %rsi, %r9
-        movq    48(%rbp), %rsi
-        cmovzq  %rsi, %r10
-        movq    56(%rbp), %rsi
-        cmovzq  %rsi, %r11
-        movq    64(%rbp), %rsi
-        cmovzq  %rsi, %r12
-        movq    72(%rbp), %rsi
-        cmovzq  %rsi, %r13
-        movq    80(%rbp), %rsi
-        cmovzq  %rsi, %r14
-        movq    88(%rbp), %rsi
-        cmovzq  %rsi, %r15
-        addq    $96, %rbp
+        cmp     ix, #2
+        ldp     x12, x13, [tab]
+        csel    x0, x0, x12, ne
+        csel    x1, x1, x13, ne
+        ldp     x12, x13, [tab, #16]
+        csel    x2, x2, x12, ne
+        csel    x3, x3, x13, ne
+        ldp     x12, x13, [tab, #32]
+        csel    x4, x4, x12, ne
+        csel    x5, x5, x13, ne
+        ldp     x12, x13, [tab, #48]
+        csel    x6, x6, x12, ne
+        csel    x7, x7, x13, ne
+        ldp     x12, x13, [tab, #64]
+        csel    x8, x8, x12, ne
+        csel    x9, x9, x13, ne
+        ldp     x12, x13, [tab, #80]
+        csel    x10, x10, x12, ne
+        csel    x11, x11, x13, ne
+        add     tab, tab, #96
 
-        cmpq    $2, ix
-        movq    (%rbp), %rsi
-        cmovzq  %rsi, %rax
-        movq    8(%rbp), %rsi
-        cmovzq  %rsi, %rbx
-        movq    16(%rbp), %rsi
-        cmovzq  %rsi, %rcx
-        movq    24(%rbp), %rsi
-        cmovzq  %rsi, %rdx
-        movq    32(%rbp), %rsi
-        cmovzq  %rsi, %r8
-        movq    40(%rbp), %rsi
-        cmovzq  %rsi, %r9
-        movq    48(%rbp), %rsi
-        cmovzq  %rsi, %r10
-        movq    56(%rbp), %rsi
-        cmovzq  %rsi, %r11
-        movq    64(%rbp), %rsi
-        cmovzq  %rsi, %r12
-        movq    72(%rbp), %rsi
-        cmovzq  %rsi, %r13
-        movq    80(%rbp), %rsi
-        cmovzq  %rsi, %r14
-        movq    88(%rbp), %rsi
-        cmovzq  %rsi, %r15
-        addq    $96, %rbp
+        cmp     ix, #3
+        ldp     x12, x13, [tab]
+        csel    x0, x0, x12, ne
+        csel    x1, x1, x13, ne
+        ldp     x12, x13, [tab, #16]
+        csel    x2, x2, x12, ne
+        csel    x3, x3, x13, ne
+        ldp     x12, x13, [tab, #32]
+        csel    x4, x4, x12, ne
+        csel    x5, x5, x13, ne
+        ldp     x12, x13, [tab, #48]
+        csel    x6, x6, x12, ne
+        csel    x7, x7, x13, ne
+        ldp     x12, x13, [tab, #64]
+        csel    x8, x8, x12, ne
+        csel    x9, x9, x13, ne
+        ldp     x12, x13, [tab, #80]
+        csel    x10, x10, x12, ne
+        csel    x11, x11, x13, ne
+        add     tab, tab, #96
 
-        cmpq    $3, ix
-        movq    (%rbp), %rsi
-        cmovzq  %rsi, %rax
-        movq    8(%rbp), %rsi
-        cmovzq  %rsi, %rbx
-        movq    16(%rbp), %rsi
-        cmovzq  %rsi, %rcx
-        movq    24(%rbp), %rsi
-        cmovzq  %rsi, %rdx
-        movq    32(%rbp), %rsi
-        cmovzq  %rsi, %r8
-        movq    40(%rbp), %rsi
-        cmovzq  %rsi, %r9
-        movq    48(%rbp), %rsi
-        cmovzq  %rsi, %r10
-        movq    56(%rbp), %rsi
-        cmovzq  %rsi, %r11
-        movq    64(%rbp), %rsi
-        cmovzq  %rsi, %r12
-        movq    72(%rbp), %rsi
-        cmovzq  %rsi, %r13
-        movq    80(%rbp), %rsi
-        cmovzq  %rsi, %r14
-        movq    88(%rbp), %rsi
-        cmovzq  %rsi, %r15
-        addq    $96, %rbp
+        cmp     ix, #4
+        ldp     x12, x13, [tab]
+        csel    x0, x0, x12, ne
+        csel    x1, x1, x13, ne
+        ldp     x12, x13, [tab, #16]
+        csel    x2, x2, x12, ne
+        csel    x3, x3, x13, ne
+        ldp     x12, x13, [tab, #32]
+        csel    x4, x4, x12, ne
+        csel    x5, x5, x13, ne
+        ldp     x12, x13, [tab, #48]
+        csel    x6, x6, x12, ne
+        csel    x7, x7, x13, ne
+        ldp     x12, x13, [tab, #64]
+        csel    x8, x8, x12, ne
+        csel    x9, x9, x13, ne
+        ldp     x12, x13, [tab, #80]
+        csel    x10, x10, x12, ne
+        csel    x11, x11, x13, ne
+        add     tab, tab, #96
 
-        cmpq    $4, ix
-        movq    (%rbp), %rsi
-        cmovzq  %rsi, %rax
-        movq    8(%rbp), %rsi
-        cmovzq  %rsi, %rbx
-        movq    16(%rbp), %rsi
-        cmovzq  %rsi, %rcx
-        movq    24(%rbp), %rsi
-        cmovzq  %rsi, %rdx
-        movq    32(%rbp), %rsi
-        cmovzq  %rsi, %r8
-        movq    40(%rbp), %rsi
-        cmovzq  %rsi, %r9
-        movq    48(%rbp), %rsi
-        cmovzq  %rsi, %r10
-        movq    56(%rbp), %rsi
-        cmovzq  %rsi, %r11
-        movq    64(%rbp), %rsi
-        cmovzq  %rsi, %r12
-        movq    72(%rbp), %rsi
-        cmovzq  %rsi, %r13
-        movq    80(%rbp), %rsi
-        cmovzq  %rsi, %r14
-        movq    88(%rbp), %rsi
-        cmovzq  %rsi, %r15
-        addq    $96, %rbp
+        cmp     ix, #5
+        ldp     x12, x13, [tab]
+        csel    x0, x0, x12, ne
+        csel    x1, x1, x13, ne
+        ldp     x12, x13, [tab, #16]
+        csel    x2, x2, x12, ne
+        csel    x3, x3, x13, ne
+        ldp     x12, x13, [tab, #32]
+        csel    x4, x4, x12, ne
+        csel    x5, x5, x13, ne
+        ldp     x12, x13, [tab, #48]
+        csel    x6, x6, x12, ne
+        csel    x7, x7, x13, ne
+        ldp     x12, x13, [tab, #64]
+        csel    x8, x8, x12, ne
+        csel    x9, x9, x13, ne
+        ldp     x12, x13, [tab, #80]
+        csel    x10, x10, x12, ne
+        csel    x11, x11, x13, ne
+        add     tab, tab, #96
 
-        cmpq    $5, ix
-        movq    (%rbp), %rsi
-        cmovzq  %rsi, %rax
-        movq    8(%rbp), %rsi
-        cmovzq  %rsi, %rbx
-        movq    16(%rbp), %rsi
-        cmovzq  %rsi, %rcx
-        movq    24(%rbp), %rsi
-        cmovzq  %rsi, %rdx
-        movq    32(%rbp), %rsi
-        cmovzq  %rsi, %r8
-        movq    40(%rbp), %rsi
-        cmovzq  %rsi, %r9
-        movq    48(%rbp), %rsi
-        cmovzq  %rsi, %r10
-        movq    56(%rbp), %rsi
-        cmovzq  %rsi, %r11
-        movq    64(%rbp), %rsi
-        cmovzq  %rsi, %r12
-        movq    72(%rbp), %rsi
-        cmovzq  %rsi, %r13
-        movq    80(%rbp), %rsi
-        cmovzq  %rsi, %r14
-        movq    88(%rbp), %rsi
-        cmovzq  %rsi, %r15
-        addq    $96, %rbp
+        cmp     ix, #6
+        ldp     x12, x13, [tab]
+        csel    x0, x0, x12, ne
+        csel    x1, x1, x13, ne
+        ldp     x12, x13, [tab, #16]
+        csel    x2, x2, x12, ne
+        csel    x3, x3, x13, ne
+        ldp     x12, x13, [tab, #32]
+        csel    x4, x4, x12, ne
+        csel    x5, x5, x13, ne
+        ldp     x12, x13, [tab, #48]
+        csel    x6, x6, x12, ne
+        csel    x7, x7, x13, ne
+        ldp     x12, x13, [tab, #64]
+        csel    x8, x8, x12, ne
+        csel    x9, x9, x13, ne
+        ldp     x12, x13, [tab, #80]
+        csel    x10, x10, x12, ne
+        csel    x11, x11, x13, ne
+        add     tab, tab, #96
 
-        cmpq    $6, ix
-        movq    (%rbp), %rsi
-        cmovzq  %rsi, %rax
-        movq    8(%rbp), %rsi
-        cmovzq  %rsi, %rbx
-        movq    16(%rbp), %rsi
-        cmovzq  %rsi, %rcx
-        movq    24(%rbp), %rsi
-        cmovzq  %rsi, %rdx
-        movq    32(%rbp), %rsi
-        cmovzq  %rsi, %r8
-        movq    40(%rbp), %rsi
-        cmovzq  %rsi, %r9
-        movq    48(%rbp), %rsi
-        cmovzq  %rsi, %r10
-        movq    56(%rbp), %rsi
-        cmovzq  %rsi, %r11
-        movq    64(%rbp), %rsi
-        cmovzq  %rsi, %r12
-        movq    72(%rbp), %rsi
-        cmovzq  %rsi, %r13
-        movq    80(%rbp), %rsi
-        cmovzq  %rsi, %r14
-        movq    88(%rbp), %rsi
-        cmovzq  %rsi, %r15
-        addq    $96, %rbp
+        cmp     ix, #7
+        ldp     x12, x13, [tab]
+        csel    x0, x0, x12, ne
+        csel    x1, x1, x13, ne
+        ldp     x12, x13, [tab, #16]
+        csel    x2, x2, x12, ne
+        csel    x3, x3, x13, ne
+        ldp     x12, x13, [tab, #32]
+        csel    x4, x4, x12, ne
+        csel    x5, x5, x13, ne
+        ldp     x12, x13, [tab, #48]
+        csel    x6, x6, x12, ne
+        csel    x7, x7, x13, ne
+        ldp     x12, x13, [tab, #64]
+        csel    x8, x8, x12, ne
+        csel    x9, x9, x13, ne
+        ldp     x12, x13, [tab, #80]
+        csel    x10, x10, x12, ne
+        csel    x11, x11, x13, ne
+        add     tab, tab, #96
 
-        cmpq    $7, ix
-        movq    (%rbp), %rsi
-        cmovzq  %rsi, %rax
-        movq    8(%rbp), %rsi
-        cmovzq  %rsi, %rbx
-        movq    16(%rbp), %rsi
-        cmovzq  %rsi, %rcx
-        movq    24(%rbp), %rsi
-        cmovzq  %rsi, %rdx
-        movq    32(%rbp), %rsi
-        cmovzq  %rsi, %r8
-        movq    40(%rbp), %rsi
-        cmovzq  %rsi, %r9
-        movq    48(%rbp), %rsi
-        cmovzq  %rsi, %r10
-        movq    56(%rbp), %rsi
-        cmovzq  %rsi, %r11
-        movq    64(%rbp), %rsi
-        cmovzq  %rsi, %r12
-        movq    72(%rbp), %rsi
-        cmovzq  %rsi, %r13
-        movq    80(%rbp), %rsi
-        cmovzq  %rsi, %r14
-        movq    88(%rbp), %rsi
-        cmovzq  %rsi, %r15
-        addq    $96, %rbp
-
-        cmpq    $8, ix
-        movq    (%rbp), %rsi
-        cmovzq  %rsi, %rax
-        movq    8(%rbp), %rsi
-        cmovzq  %rsi, %rbx
-        movq    16(%rbp), %rsi
-        cmovzq  %rsi, %rcx
-        movq    24(%rbp), %rsi
-        cmovzq  %rsi, %rdx
-        movq    32(%rbp), %rsi
-        cmovzq  %rsi, %r8
-        movq    40(%rbp), %rsi
-        cmovzq  %rsi, %r9
-        movq    48(%rbp), %rsi
-        cmovzq  %rsi, %r10
-        movq    56(%rbp), %rsi
-        cmovzq  %rsi, %r11
-        movq    64(%rbp), %rsi
-        cmovzq  %rsi, %r12
-        movq    72(%rbp), %rsi
-        cmovzq  %rsi, %r13
-        movq    80(%rbp), %rsi
-        cmovzq  %rsi, %r14
-        movq    88(%rbp), %rsi
-        cmovzq  %rsi, %r15
-
-        addq    $96, %rbp
-        movq    %rbp, tab
+        cmp     ix, #8
+        ldp     x12, x13, [tab]
+        csel    x0, x0, x12, ne
+        csel    x1, x1, x13, ne
+        ldp     x12, x13, [tab, #16]
+        csel    x2, x2, x12, ne
+        csel    x3, x3, x13, ne
+        ldp     x12, x13, [tab, #32]
+        csel    x4, x4, x12, ne
+        csel    x5, x5, x13, ne
+        ldp     x12, x13, [tab, #48]
+        csel    x6, x6, x12, ne
+        csel    x7, x7, x13, ne
+        ldp     x12, x13, [tab, #64]
+        csel    x8, x8, x12, ne
+        csel    x9, x9, x13, ne
+        ldp     x12, x13, [tab, #80]
+        csel    x10, x10, x12, ne
+        csel    x11, x11, x13, ne
+        add     tab, tab, #96
 
 // We now have the triple from the table in registers as follows
 //
-//      [%rdx;%rcx;%rbx;%rax] = y - x
-//      [%r11;%r10;%r9;%r8] = x + y
-//      [%r15;%r14;%r13;%r12] = 2 * d * x * y
+//      [x3;x2;x1;x0] = y - x
+//      [x7;x6;x5;x4] = x + y
+//      [x11;x10;x9;x8] = 2 * d * x * y
 //
 // In case bias = 1 we need to negate this. For Edwards curves
 // -(x,y) = (-x,y), i.e. we need to negate the x coordinate.
@@ -847,55 +721,39 @@ scalarloop:
 // that in the zero case the whole negation is trivial, and
 // so indeed is the swapping.
 
-        cmpq    $0, bias
+        cmp     bias, #0
 
-        movq    %rax, %rsi
-        cmovnzq %r8, %rsi
-        cmovnzq %rax, %r8
-        movq    %rsi, 32(%rsp)
-        movq    %r8, 64(%rsp)
+        csel    x12, x0, x4, eq
+        csel    x13, x1, x5, eq
+        csel    x14, x2, x6, eq
+        csel    x15, x3, x7, eq
+        stp     x12, x13, [tabent]
+        stp     x14, x15, [tabent+16]
 
-        movq    %rbx, %rsi
-        cmovnzq %r9, %rsi
-        cmovnzq %rbx, %r9
-        movq    %rsi, 40(%rsp)
-        movq    %r9, 72(%rsp)
+        csel    x12, x0, x4, ne
+        csel    x13, x1, x5, ne
+        csel    x14, x2, x6, ne
+        csel    x15, x3, x7, ne
+        stp     x12, x13, [tabent+32]
+        stp     x14, x15, [tabent+48]
 
-        movq    %rcx, %rsi
-        cmovnzq %r10, %rsi
-        cmovnzq %rcx, %r10
-        movq    %rsi, 48(%rsp)
-        movq    %r10, 80(%rsp)
+        mov     x0, #-19
+        subs    x0, x0, x8
+        mov     x2, #-1
+        sbcs    x1, x2, x9
+        sbcs    x2, x2, x10
+        mov     x3, #0x7FFFFFFFFFFFFFFF
+        sbc     x3, x3, x11
 
-        movq    %rdx, %rsi
-        cmovnzq %r11, %rsi
-        cmovnzq %rdx, %r11
-        movq    %rsi, 56(%rsp)
-        movq    %r11, 88(%rsp)
+        cmp     ix, xzr
+        ccmp    bias, xzr, #4, ne
 
-        movq    $-19, %rax
-        movq    $-1, %rbx
-        movq    $-1, %rcx
-        movq    $0x7fffffffffffffff, %rdx
-        subq    %r12, %rax
-        sbbq    %r13, %rbx
-        sbbq    %r14, %rcx
-        sbbq    %r15, %rdx
-
-        movq    ix, %r8
-        movq    bias, %r9
-        testq   %r8, %r8
-        cmovzq  %r8, %r9
-        testq   %r9, %r9
-
-        cmovzq  %r12, %rax
-        cmovzq  %r13, %rbx
-        cmovzq  %r14, %rcx
-        cmovzq  %r15, %rdx
-        movq    %rax, 96(%rsp)
-        movq    %rbx, 104(%rsp)
-        movq    %rcx, 112(%rsp)
-        movq    %rdx, 120(%rsp)
+        csel    x0, x0, x8, ne
+        csel    x1, x1, x9, ne
+        stp     x0, x1, [tabent+64]
+        csel    x2, x2, x10, ne
+        csel    x3, x3, x11, ne
+        stp     x2, x3, [tabent+80]
 
 // Extended-projective and precomputed mixed addition.
 // This is effectively the same as calling the standalone
@@ -921,9 +779,9 @@ scalarloop:
 
 // End of the main loop; move on by 4 bits.
 
-        addq    $4, i
-        cmpq    $256, i
-        jc      scalarloop
+        add     i, i, 4
+        cmp     i, 256
+        bcc     scalarloop
 
 // Now we need to translate from Edwards curve edwards25519 back
 // to the Montgomery form curve25519. The mapping in the affine
@@ -954,429 +812,430 @@ scalarloop:
         sub_twice4(z_3,x_3,w_3)
 
 // Prepare to call the modular inverse function to get x_3 = 1/z_3
+// Note that this works for the weakly normalized z_3 equally well.
+// The non-coprime case z_3 == 0 (mod p_25519) cannot arise anyway.
 
-        movq    $4, %rdi
-        leaq    128(%rsp), %rsi
-        leaq    192(%rsp), %rdx
-        leaq    p_25519(%rip), %rcx
-        leaq    256(%rsp), %r8
+        mov     x0, 4
+        add     x1, x_3
+        add     x2, z_3
+        adr     x3, p_25519
+        add     x4, tmpspace
 
 // Inline copy of bignum_modinv, identical except for stripping out the
 // prologue and epilogue saving and restoring registers and the initial
 // test for k = 0 (which is trivially false here since k = 4). For more
-// details and explanations see "x86/generic/bignum_modinv.S". Note
-// that the stack it uses for its own temporaries is 80 bytes so it
-// only overwrites local variables that are no longer needed.
+// details and explanations see "arm/generic/bignum_modinv.S".
 
-        movq    %rsi, 0x40(%rsp)
-        movq    %r8, 0x38(%rsp)
-        movq    %rcx, 0x48(%rsp)
-        leaq    (%r8,%rdi,8), %r10
-        movq    %r10, 0x30(%rsp)
-        leaq    (%r10,%rdi,8), %r15
-        xorq    %r11, %r11
-        xorq    %r9, %r9
+        lsl     x10, x0, #3
+        add     x21, x4, x10
+        add     x22, x21, x10
+        mov     x10, xzr
 copyloop:
-        movq    (%rdx,%r9,8), %rax
-        movq    (%rcx,%r9,8), %rbx
-        movq    %rax, (%r10,%r9,8)
-        movq    %rbx, (%r15,%r9,8)
-        movq    %rbx, (%r8,%r9,8)
-        movq    %r11, (%rsi,%r9,8)
-        incq    %r9
-        cmpq    %rdi, %r9
-        jb      copyloop
-        movq    (%r8), %rax
-        movq    %rax, %rbx
-        decq    %rbx
-        movq    %rbx, (%r8)
-        movq    %rax, %rbp
-        movq    %rax, %r12
-        shlq    $0x2, %rbp
-        subq    %rbp, %r12
-        xorq    $0x2, %r12
-        movq    %r12, %rbp
-        imulq   %rax, %rbp
-        movl    $0x2, %eax
-        addq    %rbp, %rax
-        addq    $0x1, %rbp
-        imulq   %rax, %r12
-        imulq   %rbp, %rbp
-        movl    $0x1, %eax
-        addq    %rbp, %rax
-        imulq   %rax, %r12
-        imulq   %rbp, %rbp
-        movl    $0x1, %eax
-        addq    %rbp, %rax
-        imulq   %rax, %r12
-        imulq   %rbp, %rbp
-        movl    $0x1, %eax
-        addq    %rbp, %rax
-        imulq   %rax, %r12
-        movq    %r12, 0x28(%rsp)
-        movq    %rdi, %rax
-        shlq    $0x7, %rax
-        movq    %rax, 0x20(%rsp)
+        ldr     x11, [x2, x10, lsl #3]
+        ldr     x12, [x3, x10, lsl #3]
+        str     x11, [x21, x10, lsl #3]
+        str     x12, [x22, x10, lsl #3]
+        str     x12, [x4, x10, lsl #3]
+        str     xzr, [x1, x10, lsl #3]
+        add     x10, x10, #0x1
+        cmp     x10, x0
+        b.cc    copyloop
+        ldr     x11, [x4]
+        sub     x12, x11, #0x1
+        str     x12, [x4]
+        lsl     x20, x11, #2
+        sub     x20, x11, x20
+        eor     x20, x20, #0x2
+        mov     x12, #0x1
+        madd    x12, x11, x20, x12
+        mul     x11, x12, x12
+        madd    x20, x12, x20, x20
+        mul     x12, x11, x11
+        madd    x20, x11, x20, x20
+        mul     x11, x12, x12
+        madd    x20, x12, x20, x20
+        madd    x20, x11, x20, x20
+        lsl     x2, x0, #7
 outerloop:
-        movq    0x20(%rsp), %r13
-        addq    $0x3f, %r13
-        shrq    $0x6, %r13
-        cmpq    %rdi, %r13
-        cmovaeq %rdi, %r13
-        xorq    %r12, %r12
-        xorq    %r14, %r14
-        xorq    %rbp, %rbp
-        xorq    %rsi, %rsi
-        xorq    %r11, %r11
-        movq    0x30(%rsp), %r8
-        leaq    (%r8,%rdi,8), %r15
-        xorq    %r9, %r9
+        add     x10, x2, #0x3f
+        lsr     x5, x10, #6
+        cmp     x5, x0
+        csel    x5, x0, x5, cs
+        mov     x13, xzr
+        mov     x15, xzr
+        mov     x14, xzr
+        mov     x16, xzr
+        mov     x19, xzr
+        mov     x10, xzr
 toploop:
-        movq    (%r8,%r9,8), %rbx
-        movq    (%r15,%r9,8), %rcx
-        movq    %r11, %r10
-        andq    %r12, %r10
-        andq    %rbp, %r11
-        movq    %rbx, %rax
-        orq     %rcx, %rax
-        negq    %rax
-        cmovbq  %r10, %r14
-        cmovbq  %r11, %rsi
-        cmovbq  %rbx, %r12
-        cmovbq  %rcx, %rbp
-        sbbq    %r11, %r11
-        incq    %r9
-        cmpq    %r13, %r9
-        jb      toploop
-        movq    %r12, %rax
-        orq     %rbp, %rax
-        bsrq    %rax, %rcx
-        xorq    $0x3f, %rcx
-        shldq   %cl, %r14, %r12
-        shldq   %cl, %rsi, %rbp
-        movq    (%r8), %rax
-        movq    %rax, %r14
-        movq    (%r15), %rax
-        movq    %rax, %rsi
-        movl    $0x1, %r10d
-        movl    $0x0, %r11d
-        movl    $0x0, %ecx
-        movl    $0x1, %edx
-        movl    $0x3a, %r9d
-        movq    %rdi, 0x8(%rsp)
-        movq    %r13, 0x10(%rsp)
-        movq    %r8, (%rsp)
-        movq    %r15, 0x18(%rsp)
+        ldr     x11, [x21, x10, lsl #3]
+        ldr     x12, [x22, x10, lsl #3]
+        orr     x17, x11, x12
+        cmp     x17, xzr
+        and     x17, x19, x13
+        csel    x15, x17, x15, ne
+        and     x17, x19, x14
+        csel    x16, x17, x16, ne
+        csel    x13, x11, x13, ne
+        csel    x14, x12, x14, ne
+        csetm   x19, ne
+        add     x10, x10, #0x1
+        cmp     x10, x5
+        b.cc    toploop
+        orr     x11, x13, x14
+        clz     x12, x11
+        negs    x17, x12
+        lsl     x13, x13, x12
+        csel    x15, x15, xzr, ne
+        lsl     x14, x14, x12
+        csel    x16, x16, xzr, ne
+        lsr     x15, x15, x17
+        lsr     x16, x16, x17
+        orr     x13, x13, x15
+        orr     x14, x14, x16
+        ldr     x15, [x21]
+        ldr     x16, [x22]
+        mov     x6, #0x1
+        mov     x7, xzr
+        mov     x8, xzr
+        mov     x9, #0x1
+        mov     x10, #0x3a
+        tst     x15, #0x1
 innerloop:
-        xorl    %eax, %eax
-        xorl    %ebx, %ebx
-        xorq    %r8, %r8
-        xorq    %r15, %r15
-        btq     $0x0, %r14
-        cmovbq  %rbp, %rax
-        cmovbq  %rsi, %rbx
-        cmovbq  %rcx, %r8
-        cmovbq  %rdx, %r15
-        movq    %r14, %r13
-        subq    %rbx, %r14
-        subq    %r13, %rbx
-        movq    %r12, %rdi
-        subq    %rax, %rdi
-        cmovbq  %r12, %rbp
-        leaq    -0x1(%rdi), %r12
-        cmovbq  %rbx, %r14
-        cmovbq  %r13, %rsi
-        notq    %r12
-        cmovbq  %r10, %rcx
-        cmovbq  %r11, %rdx
-        cmovaeq %rdi, %r12
-        shrq    $1, %r14
-        addq    %r8, %r10
-        addq    %r15, %r11
-        shrq    $1, %r12
-        addq    %rcx, %rcx
-        addq    %rdx, %rdx
-        decq    %r9
-        jne     innerloop
-        movq    0x8(%rsp), %rdi
-        movq    0x10(%rsp), %r13
-        movq    (%rsp), %r8
-        movq    0x18(%rsp), %r15
-        movq    %r10, (%rsp)
-        movq    %r11, 0x8(%rsp)
-        movq    %rcx, 0x10(%rsp)
-        movq    %rdx, 0x18(%rsp)
-        movq    0x38(%rsp), %r8
-        movq    0x40(%rsp), %r15
-        xorq    %r14, %r14
-        xorq    %rsi, %rsi
-        xorq    %r10, %r10
-        xorq    %r11, %r11
-        xorq    %r9, %r9
+        csel    x11, x14, xzr, ne
+        csel    x12, x16, xzr, ne
+        csel    x17, x8, xzr, ne
+        csel    x19, x9, xzr, ne
+        ccmp    x13, x14, #0x2, ne
+        sub     x11, x13, x11
+        sub     x12, x15, x12
+        csel    x14, x14, x13, cs
+        cneg    x11, x11, cc
+        csel    x16, x16, x15, cs
+        cneg    x15, x12, cc
+        csel    x8, x8, x6, cs
+        csel    x9, x9, x7, cs
+        tst     x12, #0x2
+        add     x6, x6, x17
+        add     x7, x7, x19
+        lsr     x13, x11, #1
+        lsr     x15, x15, #1
+        add     x8, x8, x8
+        add     x9, x9, x9
+        sub     x10, x10, #0x1
+        cbnz    x10, innerloop
+        mov     x13, xzr
+        mov     x14, xzr
+        mov     x17, xzr
+        mov     x19, xzr
+        mov     x10, xzr
 congloop:
-        movq    (%r8,%r9,8), %rcx
-        movq    (%rsp), %rax
-        mulq    %rcx
-        addq    %rax, %r14
-        adcq    $0x0, %rdx
-        movq    %rdx, %r12
-        movq    0x10(%rsp), %rax
-        mulq    %rcx
-        addq    %rax, %rsi
-        adcq    $0x0, %rdx
-        movq    %rdx, %rbp
-        movq    (%r15,%r9,8), %rcx
-        movq    0x8(%rsp), %rax
-        mulq    %rcx
-        addq    %rax, %r14
-        adcq    %rdx, %r12
-        shrdq   $0x3a, %r14, %r10
-        movq    %r10, (%r8,%r9,8)
-        movq    %r14, %r10
-        movq    %r12, %r14
-        movq    0x18(%rsp), %rax
-        mulq    %rcx
-        addq    %rax, %rsi
-        adcq    %rdx, %rbp
-        shrdq   $0x3a, %rsi, %r11
-        movq    %r11, (%r15,%r9,8)
-        movq    %rsi, %r11
-        movq    %rbp, %rsi
-        incq    %r9
-        cmpq    %rdi, %r9
-        jb      congloop
-        shldq   $0x6, %r10, %r14
-        shldq   $0x6, %r11, %rsi
-        movq    0x48(%rsp), %r15
-        movq    (%r8), %rbx
-        movq    0x28(%rsp), %r12
-        imulq   %rbx, %r12
-        movq    (%r15), %rax
-        mulq    %r12
-        addq    %rbx, %rax
-        movq    %rdx, %r10
-        movl    $0x1, %r9d
-        movq    %rdi, %rcx
-        decq    %rcx
-        je      wmontend
+        ldr     x11, [x4, x10, lsl #3]
+        ldr     x12, [x1, x10, lsl #3]
+        mul     x15, x6, x11
+        mul     x16, x7, x12
+        adds    x15, x15, x13
+        umulh   x13, x6, x11
+        adc     x13, x13, xzr
+        adds    x15, x15, x16
+        extr    x17, x15, x17, #58
+        str     x17, [x4, x10, lsl #3]
+        mov     x17, x15
+        umulh   x15, x7, x12
+        adc     x13, x13, x15
+        mul     x15, x8, x11
+        mul     x16, x9, x12
+        adds    x15, x15, x14
+        umulh   x14, x8, x11
+        adc     x14, x14, xzr
+        adds    x15, x15, x16
+        extr    x19, x15, x19, #58
+        str     x19, [x1, x10, lsl #3]
+        mov     x19, x15
+        umulh   x15, x9, x12
+        adc     x14, x14, x15
+        add     x10, x10, #0x1
+        cmp     x10, x0
+        b.cc    congloop
+        extr    x13, x13, x17, #58
+        extr    x14, x14, x19, #58
+        ldr     x11, [x4]
+        mul     x17, x11, x20
+        ldr     x12, [x3]
+        mul     x15, x17, x12
+        umulh   x16, x17, x12
+        adds    x11, x11, x15
+        mov     x10, #0x1
+        sub     x11, x0, #0x1
+        cbz     x11, wmontend
 wmontloop:
-        adcq    (%r8,%r9,8), %r10
-        sbbq    %rbx, %rbx
-        movq    (%r15,%r9,8), %rax
-        mulq    %r12
-        subq    %rbx, %rdx
-        addq    %r10, %rax
-        movq    %rax, -0x8(%r8,%r9,8)
-        movq    %rdx, %r10
-        incq    %r9
-        decq    %rcx
-        jne     wmontloop
+        ldr     x11, [x3, x10, lsl #3]
+        ldr     x12, [x4, x10, lsl #3]
+        mul     x15, x17, x11
+        adcs    x12, x12, x16
+        umulh   x16, x17, x11
+        adc     x16, x16, xzr
+        adds    x12, x12, x15
+        sub     x15, x10, #0x1
+        str     x12, [x4, x15, lsl #3]
+        add     x10, x10, #0x1
+        sub     x11, x10, x0
+        cbnz    x11, wmontloop
 wmontend:
-        adcq    %r14, %r10
-        movq    %r10, -0x8(%r8,%rdi,8)
-        sbbq    %r10, %r10
-        negq    %r10
-        movq    %rdi, %rcx
-        xorq    %r9, %r9
+        adcs    x16, x16, x13
+        adc     x13, xzr, xzr
+        sub     x15, x10, #0x1
+        str     x16, [x4, x15, lsl #3]
+        negs    x10, xzr
 wcmploop:
-        movq    (%r8,%r9,8), %rax
-        sbbq    (%r15,%r9,8), %rax
-        incq    %r9
-        decq    %rcx
-        jne     wcmploop
-        sbbq    $0x0, %r10
-        sbbq    %r10, %r10
-        notq    %r10
-        xorq    %rcx, %rcx
-        xorq    %r9, %r9
+        ldr     x11, [x4, x10, lsl #3]
+        ldr     x12, [x3, x10, lsl #3]
+        sbcs    xzr, x11, x12
+        add     x10, x10, #0x1
+        sub     x11, x10, x0
+        cbnz    x11, wcmploop
+        sbcs    xzr, x13, xzr
+        csetm   x13, cs
+        negs    x10, xzr
 wcorrloop:
-        movq    (%r8,%r9,8), %rax
-        movq    (%r15,%r9,8), %rbx
-        andq    %r10, %rbx
-        negq    %rcx
-        sbbq    %rbx, %rax
-        sbbq    %rcx, %rcx
-        movq    %rax, (%r8,%r9,8)
-        incq    %r9
-        cmpq    %rdi, %r9
-        jb      wcorrloop
-        movq    0x40(%rsp), %r8
-        movq    (%r8), %rbx
-        movq    0x28(%rsp), %rbp
-        imulq   %rbx, %rbp
-        movq    (%r15), %rax
-        mulq    %rbp
-        addq    %rbx, %rax
-        movq    %rdx, %r11
-        movl    $0x1, %r9d
-        movq    %rdi, %rcx
-        decq    %rcx
-        je      zmontend
+        ldr     x11, [x4, x10, lsl #3]
+        ldr     x12, [x3, x10, lsl #3]
+        and     x12, x12, x13
+        sbcs    x11, x11, x12
+        str     x11, [x4, x10, lsl #3]
+        add     x10, x10, #0x1
+        sub     x11, x10, x0
+        cbnz    x11, wcorrloop
+        ldr     x11, [x1]
+        mul     x17, x11, x20
+        ldr     x12, [x3]
+        mul     x15, x17, x12
+        umulh   x16, x17, x12
+        adds    x11, x11, x15
+        mov     x10, #0x1
+        sub     x11, x0, #0x1
+        cbz     x11, zmontend
 zmontloop:
-        adcq    (%r8,%r9,8), %r11
-        sbbq    %rbx, %rbx
-        movq    (%r15,%r9,8), %rax
-        mulq    %rbp
-        subq    %rbx, %rdx
-        addq    %r11, %rax
-        movq    %rax, -0x8(%r8,%r9,8)
-        movq    %rdx, %r11
-        incq    %r9
-        decq    %rcx
-        jne     zmontloop
+        ldr     x11, [x3, x10, lsl #3]
+        ldr     x12, [x1, x10, lsl #3]
+        mul     x15, x17, x11
+        adcs    x12, x12, x16
+        umulh   x16, x17, x11
+        adc     x16, x16, xzr
+        adds    x12, x12, x15
+        sub     x15, x10, #0x1
+        str     x12, [x1, x15, lsl #3]
+        add     x10, x10, #0x1
+        sub     x11, x10, x0
+        cbnz    x11, zmontloop
 zmontend:
-        adcq    %rsi, %r11
-        movq    %r11, -0x8(%r8,%rdi,8)
-        sbbq    %r11, %r11
-        negq    %r11
-        movq    %rdi, %rcx
-        xorq    %r9, %r9
+        adcs    x16, x16, x14
+        adc     x14, xzr, xzr
+        sub     x15, x10, #0x1
+        str     x16, [x1, x15, lsl #3]
+        negs    x10, xzr
 zcmploop:
-        movq    (%r8,%r9,8), %rax
-        sbbq    (%r15,%r9,8), %rax
-        incq    %r9
-        decq    %rcx
-        jne     zcmploop
-        sbbq    $0x0, %r11
-        sbbq    %r11, %r11
-        notq    %r11
-        xorq    %rcx, %rcx
-        xorq    %r9, %r9
+        ldr     x11, [x1, x10, lsl #3]
+        ldr     x12, [x3, x10, lsl #3]
+        sbcs    xzr, x11, x12
+        add     x10, x10, #0x1
+        sub     x11, x10, x0
+        cbnz    x11, zcmploop
+        sbcs    xzr, x14, xzr
+        csetm   x14, cs
+        negs    x10, xzr
 zcorrloop:
-        movq    (%r8,%r9,8), %rax
-        movq    (%r15,%r9,8), %rbx
-        andq    %r11, %rbx
-        negq    %rcx
-        sbbq    %rbx, %rax
-        sbbq    %rcx, %rcx
-        movq    %rax, (%r8,%r9,8)
-        incq    %r9
-        cmpq    %rdi, %r9
-        jb      zcorrloop
-        movq    0x30(%rsp), %r8
-        leaq    (%r8,%rdi,8), %r15
-        xorq    %r9, %r9
-        xorq    %r12, %r12
-        xorq    %r14, %r14
-        xorq    %rbp, %rbp
-        xorq    %rsi, %rsi
+        ldr     x11, [x1, x10, lsl #3]
+        ldr     x12, [x3, x10, lsl #3]
+        and     x12, x12, x14
+        sbcs    x11, x11, x12
+        str     x11, [x1, x10, lsl #3]
+        add     x10, x10, #0x1
+        sub     x11, x10, x0
+        cbnz    x11, zcorrloop
+        mov     x13, xzr
+        mov     x14, xzr
+        mov     x17, xzr
+        mov     x19, xzr
+        mov     x10, xzr
 crossloop:
-        movq    (%r8,%r9,8), %rcx
-        movq    (%rsp), %rax
-        mulq    %rcx
-        addq    %rax, %r14
-        adcq    $0x0, %rdx
-        movq    %rdx, %r10
-        movq    0x10(%rsp), %rax
-        mulq    %rcx
-        addq    %rax, %rsi
-        adcq    $0x0, %rdx
-        movq    %rdx, %r11
-        movq    (%r15,%r9,8), %rcx
-        movq    0x8(%rsp), %rax
-        mulq    %rcx
-        subq    %r12, %rdx
-        subq    %rax, %r14
-        sbbq    %rdx, %r10
-        sbbq    %r12, %r12
-        movq    %r14, (%r8,%r9,8)
-        movq    %r10, %r14
-        movq    0x18(%rsp), %rax
-        mulq    %rcx
-        subq    %rbp, %rdx
-        subq    %rax, %rsi
-        sbbq    %rdx, %r11
-        sbbq    %rbp, %rbp
-        movq    %rsi, (%r15,%r9,8)
-        movq    %r11, %rsi
-        incq    %r9
-        cmpq    %r13, %r9
-        jb      crossloop
-        xorq    %r9, %r9
-        movq    %r12, %r10
-        movq    %rbp, %r11
-        xorq    %r12, %r14
-        xorq    %rbp, %rsi
-optnegloop:
-        movq    (%r8,%r9,8), %rax
-        xorq    %r12, %rax
-        negq    %r10
-        adcq    $0x0, %rax
-        sbbq    %r10, %r10
-        movq    %rax, (%r8,%r9,8)
-        movq    (%r15,%r9,8), %rax
-        xorq    %rbp, %rax
-        negq    %r11
-        adcq    $0x0, %rax
-        sbbq    %r11, %r11
-        movq    %rax, (%r15,%r9,8)
-        incq    %r9
-        cmpq    %r13, %r9
-        jb      optnegloop
-        subq    %r10, %r14
-        subq    %r11, %rsi
-        movq    %r13, %r9
-shiftloop:
-        movq    -0x8(%r8,%r9,8), %rax
-        movq    %rax, %r10
-        shrdq   $0x3a, %r14, %rax
-        movq    %rax, -0x8(%r8,%r9,8)
-        movq    %r10, %r14
-        movq    -0x8(%r15,%r9,8), %rax
-        movq    %rax, %r11
-        shrdq   $0x3a, %rsi, %rax
-        movq    %rax, -0x8(%r15,%r9,8)
-        movq    %r11, %rsi
-        decq    %r9
-        jne     shiftloop
-        notq    %rbp
-        movq    0x48(%rsp), %rcx
-        movq    0x38(%rsp), %r8
-        movq    0x40(%rsp), %r15
-        movq    %r12, %r10
-        movq    %rbp, %r11
-        xorq    %r9, %r9
-fliploop:
-        movq    %rbp, %rdx
-        movq    (%rcx,%r9,8), %rax
-        andq    %rax, %rdx
-        andq    %r12, %rax
-        movq    (%r8,%r9,8), %rbx
-        xorq    %r12, %rbx
-        negq    %r10
-        adcq    %rbx, %rax
-        sbbq    %r10, %r10
-        movq    %rax, (%r8,%r9,8)
-        movq    (%r15,%r9,8), %rbx
-        xorq    %rbp, %rbx
-        negq    %r11
-        adcq    %rbx, %rdx
-        sbbq    %r11, %r11
-        movq    %rdx, (%r15,%r9,8)
-        incq    %r9
-        cmpq    %rdi, %r9
-        jb      fliploop
-        subq    $0x3a,  0x20(%rsp)
-        ja      outerloop
+        ldr     x11, [x21, x10, lsl #3]
+        ldr     x12, [x22, x10, lsl #3]
+        mul     x15, x6, x11
+        mul     x16, x7, x12
+        adds    x15, x15, x13
+        umulh   x13, x6, x11
+        adc     x13, x13, xzr
+        subs    x15, x15, x16
+        str     x15, [x21, x10, lsl #3]
+        umulh   x15, x7, x12
+        sub     x17, x15, x17
+        sbcs    x13, x13, x17
+        csetm   x17, cc
+        mul     x15, x8, x11
+        mul     x16, x9, x12
+        adds    x15, x15, x14
+        umulh   x14, x8, x11
+        adc     x14, x14, xzr
+        subs    x15, x15, x16
+        str     x15, [x22, x10, lsl #3]
+        umulh   x15, x9, x12
+        sub     x19, x15, x19
+        sbcs    x14, x14, x19
+        csetm   x19, cc
+        add     x10, x10, #0x1
+        cmp     x10, x5
+        b.cc    crossloop
+        cmn     x17, x17
+        ldr     x15, [x21]
+        mov     x10, xzr
+        sub     x6, x5, #0x1
+        cbz     x6, negskip1
+negloop1:
+        add     x11, x10, #0x8
+        ldr     x12, [x21, x11]
+        extr    x15, x12, x15, #58
+        eor     x15, x15, x17
+        adcs    x15, x15, xzr
+        str     x15, [x21, x10]
+        mov     x15, x12
+        add     x10, x10, #0x8
+        sub     x6, x6, #0x1
+        cbnz    x6, negloop1
+negskip1:
+        extr    x15, x13, x15, #58
+        eor     x15, x15, x17
+        adcs    x15, x15, xzr
+        str     x15, [x21, x10]
+        cmn     x19, x19
+        ldr     x15, [x22]
+        mov     x10, xzr
+        sub     x6, x5, #0x1
+        cbz     x6, negskip2
+negloop2:
+        add     x11, x10, #0x8
+        ldr     x12, [x22, x11]
+        extr    x15, x12, x15, #58
+        eor     x15, x15, x19
+        adcs    x15, x15, xzr
+        str     x15, [x22, x10]
+        mov     x15, x12
+        add     x10, x10, #0x8
+        sub     x6, x6, #0x1
+        cbnz    x6, negloop2
+negskip2:
+        extr    x15, x14, x15, #58
+        eor     x15, x15, x19
+        adcs    x15, x15, xzr
+        str     x15, [x22, x10]
+        mov     x10, xzr
+        cmn     x17, x17
+wfliploop:
+        ldr     x11, [x3, x10, lsl #3]
+        ldr     x12, [x4, x10, lsl #3]
+        and     x11, x11, x17
+        eor     x12, x12, x17
+        adcs    x11, x11, x12
+        str     x11, [x4, x10, lsl #3]
+        add     x10, x10, #0x1
+        sub     x11, x10, x0
+        cbnz    x11, wfliploop
+        mvn     x19, x19
+        mov     x10, xzr
+        cmn     x19, x19
+zfliploop:
+        ldr     x11, [x3, x10, lsl #3]
+        ldr     x12, [x1, x10, lsl #3]
+        and     x11, x11, x19
+        eor     x12, x12, x19
+        adcs    x11, x11, x12
+        str     x11, [x1, x10, lsl #3]
+        add     x10, x10, #0x1
+        sub     x11, x10, x0
+        cbnz    x11, zfliploop
+        subs    x2, x2, #0x3a
+        b.hi    outerloop
 
 // The final result is (X + T) / (X - T)
 // This is the only operation in the whole computation that
 // fully reduces modulo p_25519 since now we want the canonical
 // answer as output.
 
-        movq    res, %rbp
-        mul_p25519(resx,y_3,x_3)
+        mul_p25519(x_1,y_3,x_3)
+
+        ldp     x10, x11, [x_1]
+        strb    w10, [resx]
+        lsr     x10, x10, #8
+        strb    w10, [resx+1]
+        lsr     x10, x10, #8
+        strb    w10, [resx+2]
+        lsr     x10, x10, #8
+        strb    w10, [resx+3]
+        lsr     x10, x10, #8
+        strb    w10, [resx+4]
+        lsr     x10, x10, #8
+        strb    w10, [resx+5]
+        lsr     x10, x10, #8
+        strb    w10, [resx+6]
+        lsr     x10, x10, #8
+        strb    w10, [resx+7]
+
+        strb    w11, [resx+8]
+        lsr     x11, x11, #8
+        strb    w11, [resx+9]
+        lsr     x11, x11, #8
+        strb    w11, [resx+10]
+        lsr     x11, x11, #8
+        strb    w11, [resx+11]
+        lsr     x11, x11, #8
+        strb    w11, [resx+12]
+        lsr     x11, x11, #8
+        strb    w11, [resx+13]
+        lsr     x11, x11, #8
+        strb    w11, [resx+14]
+        lsr     x11, x11, #8
+        strb    w11, [resx+15]
+
+        ldp     x12, x13, [x_1+16]
+        strb    w12, [resx+16]
+        lsr     x12, x12, #8
+        strb    w12, [resx+17]
+        lsr     x12, x12, #8
+        strb    w12, [resx+18]
+        lsr     x12, x12, #8
+        strb    w12, [resx+19]
+        lsr     x12, x12, #8
+        strb    w12, [resx+20]
+        lsr     x12, x12, #8
+        strb    w12, [resx+21]
+        lsr     x12, x12, #8
+        strb    w12, [resx+22]
+        lsr     x12, x12, #8
+        strb    w12, [resx+23]
+
+        strb    w13, [resx+24]
+        lsr     x13, x13, #8
+        strb    w13, [resx+25]
+        lsr     x13, x13, #8
+        strb    w13, [resx+26]
+        lsr     x13, x13, #8
+        strb    w13, [resx+27]
+        lsr     x13, x13, #8
+        strb    w13, [resx+28]
+        lsr     x13, x13, #8
+        strb    w13, [resx+29]
+        lsr     x13, x13, #8
+        strb    w13, [resx+30]
+        lsr     x13, x13, #8
+        strb    w13, [resx+31]
 
 // Restore stack and registers
 
-        addq    $NSPACE, %rsp
+        add     sp, sp, #NSPACE
+        ldp     x23, x24, [sp], 16
+        ldp     x21, x22, [sp], 16
+        ldp     x19, x20, [sp], 16
 
-        popq    %r15
-        popq    %r14
-        popq    %r13
-        popq    %r12
-        popq    %rbp
-        popq    %rbx
         ret
 
 // ****************************************************************************
@@ -1387,7 +1246,7 @@ fliploop:
 // .section .rodata
 // ****************************************************************************
 
-// The modulus, for the modular inverse
+// The modulus p_25519 = 2^255 - 19, for the modular inverse
 
 p_25519:
         .quad   0xffffffffffffffed
@@ -1396,7 +1255,7 @@ p_25519:
         .quad   0x7fffffffffffffff
 
 // 2^254 * G and (2^254 + 8) * G in extended-projective coordinates
-// but with z = 1 assumed and hence left out, so they are (X,Y,T) only.
+// but with Z = 1 assumed and hence left out, so they are (X,Y,T) only.
 
 edwards25519_0g:
 
