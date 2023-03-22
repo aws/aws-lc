@@ -6,7 +6,14 @@
 // Input scalar[4]; output res[4]
 //
 // extern void curve25519_x25519base
-//   (uint64_t res[static 4],uint64_t scalar[static 4]);
+//   (uint64_t res[static 4],uint64_t scalar[static 4])
+//
+// The function has a second prototype considering the arguments as arrays
+// of bytes rather than 64-bit words. The underlying code is the same, since
+// the x86 platform is little-endian.
+//
+// extern void curve25519_x25519base_byte
+//   (uint8_t res[static 32],uint8_t scalar[static 32])
 //
 // Given a scalar n, returns the X coordinate of n * G where G = (9,...) is
 // the standard generator. The scalar is first slightly modified/mangled
@@ -20,6 +27,8 @@
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(curve25519_x25519base)
         S2N_BN_SYM_PRIVACY_DIRECTIVE(curve25519_x25519base)
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(curve25519_x25519base_byte)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(curve25519_x25519base_byte)
         .text
 
 // Size of individual field elements
@@ -328,6 +337,7 @@
         movq    %r11, 0x18+P0
 
 S2N_BN_SYMBOL(curve25519_x25519base):
+S2N_BN_SYMBOL(curve25519_x25519base_byte):
 
 // In this case the Windows form literally makes a subroutine call.
 // This avoids hassle arising from keeping code and data together.
