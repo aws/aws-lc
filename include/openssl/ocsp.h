@@ -280,9 +280,9 @@ OPENSSL_EXPORT const char *OCSP_response_status_str(long status_code);
 // a string.
 OPENSSL_EXPORT const char *OCSP_cert_status_str(long status_code);
 
-// OCSP_crl_reason_str returns the OCSP CRL reason of |status_code| a string.
+// OCSP_crl_reason_str returns the OCSP CRL reason of |status_code| as a string.
 // |OCSP_resp_find_status| can be used to retrieve the reason status code
-// from on OCSP response.
+// if an OCSP response is revoked.
 OPENSSL_EXPORT const char *OCSP_crl_reason_str(long status_code);
 
 #ifdef __cplusplus

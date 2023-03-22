@@ -1163,7 +1163,7 @@ TEST_P(OCSPURLTest, OCSPParseURL) {
 }
 
 TEST(OCSPCRLTest, OCSPCRLString) {
-  for (int reason_code = 0; reason_code < 10; reason_code++) {
+  for (int reason_code = 0; reason_code < 11; reason_code++) {
     if (reason_code == 7) {
       // Reason Code 7 is not used.
       EXPECT_EQ("(UNKNOWN)", std::string(OCSP_crl_reason_str(7)));
