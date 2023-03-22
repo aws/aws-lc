@@ -534,7 +534,7 @@ int i2o_ECPublicKey(const EC_KEY *key, uint8_t **outp) {
   return ret > 0 ? ret : 0;
 }
 
-size_t EC_POINT_point2buf(const EC_GROUP *group, const EC_POINT *point,
+static size_t EC_POINT_point2buf(const EC_GROUP *group, const EC_POINT *point,
                           point_conversion_form_t form, unsigned char **pbuf,
                           BN_CTX *ctx) {
   size_t len;
@@ -545,6 +545,7 @@ size_t EC_POINT_point2buf(const EC_GROUP *group, const EC_POINT *point,
     return 0;
   }
   if ((buf = OPENSSL_malloc(len)) == NULL) {
+    OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
     return 0;
   }
   len = EC_POINT_point2oct(group, point, form, buf, len, ctx);
