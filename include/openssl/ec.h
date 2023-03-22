@@ -269,7 +269,7 @@ OPENSSL_EXPORT int EC_POINT_point2cbb(CBB *out, const EC_GROUP *group,
                                       point_conversion_form_t form,
                                       BN_CTX *ctx);
 
-// EC_POINT_point2bn converts an EC_POINT to BIGNUM. Returns the pointer to the
+// EC_POINT_point2bn converts an |EC_POINT| to |BIGNUM.| Returns the pointer to the
 // BIGNUM supplied or NULL on error.
 OPENSSL_EXPORT BIGNUM *EC_POINT_point2bn(const EC_GROUP *group,
                                          const EC_POINT *point,
