@@ -72,8 +72,8 @@ DECLARE_ASN1_FUNCTIONS(OCSP_RESPONSE)
 DECLARE_ASN1_FUNCTIONS(OCSP_CERTID)
 DECLARE_ASN1_FUNCTIONS(OCSP_REQUEST)
 
-// d2i_OCSP_REQUEST_bio parses an OCSP request in DER format from a BIO object
-// and converts it into an |OCSP_REQUEST|.
+// d2i_OCSP_REQUEST_bio parses a DER-encoded OCSP request from |bp|, converts it
+// into an |OCSP_REQUEST|, and writes the result in |preq|.
 OPENSSL_EXPORT OCSP_REQUEST *d2i_OCSP_REQUEST_bio(BIO *bp, OCSP_REQUEST **preq);
 
 // d2i_OCSP_RESPONSE_bio parses a DER-encoded OCSP response from |bp|, converts
@@ -85,11 +85,12 @@ OPENSSL_EXPORT OCSP_RESPONSE *d2i_OCSP_RESPONSE_bio(BIO *bp,
 // writes the result to |bp|.
 OPENSSL_EXPORT int i2d_OCSP_RESPONSE_bio(BIO *bp, OCSP_RESPONSE *presp);
 
-// i2d_OCSP_REQUEST_bio parses an |OCSP_REQUEST| structure and writes the OCSP
-// request in DER format into a BIO object.
+// i2d_OCSP_REQUEST_bio marshals |preq| as a DER-encoded OCSP request and
+// writes the result to |bp|.
 OPENSSL_EXPORT int i2d_OCSP_REQUEST_bio(BIO *bp, OCSP_REQUEST *preq);
 
-// OCSP_CERTID_dup creates a copy of an |OCSP_CERTID| structure.
+// OCSP_CERTID_dup allocates a new |OCSP_CERTID| and sets it equal to the state
+// of |id|. It returns the new |OCSP_CERTID| or NULL on error.
 OPENSSL_EXPORT OCSP_CERTID *OCSP_CERTID_dup(OCSP_CERTID *id);
 
 // OCSP_sendreq_bio is a blocking OCSP request handler which is a special case
