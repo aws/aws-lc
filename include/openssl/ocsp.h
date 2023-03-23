@@ -242,6 +242,17 @@ OPENSSL_EXPORT OCSP_CERTID *OCSP_cert_to_id(const EVP_MD *dgst,
 OPENSSL_EXPORT int OCSP_parse_url(const char *url, char **phost, char **pport,
                                   char **ppath, int *pssl);
 
+// OCSP_id_get0_info returns the issuer name hash, hash OID, issuer key hash,
+// and the serial number contained in an |OCSP_CERTID|. If any of the values
+// are not required, the corresponding parameter can be set to NULL.
+OPENSSL_EXPORT int OCSP_id_get0_info(ASN1_OCTET_STRING **nameHash,
+                                     ASN1_OBJECT **algor,
+                                     ASN1_OCTET_STRING **keyHash,
+                                     ASN1_INTEGER **serial, OCSP_CERTID *cid);
+
+// OCSP_basic_add1_cert adds a certificate to an |OCSP_BASICRESP|.
+OPENSSL_EXPORT int OCSP_basic_add1_cert(OCSP_BASICRESP *resp, X509 *cert);
+
 // OCSP_response_status_str returns the OCSP response status of |status_code| as
 // a string.
 OPENSSL_EXPORT const char *OCSP_response_status_str(long status_code);

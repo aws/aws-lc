@@ -493,6 +493,52 @@ TEST(OCSPTest, TestGoodOCSP_SHA256) {
   ASSERT_EQ(-1, X509_cmp_time(nextupd, &connection_time));
 }
 
+TEST(OCSPTest, GetInfo) {
+  bssl::UniquePtr<X509> issuer(CertFromPEM(
+      GetTestData(std::string("crypto/ocsp/test/aws/ca_cert.pem").c_str())
+          .c_str()));
+  bssl::UniquePtr<X509> subject(CertFromPEM(
+      GetTestData(std::string("crypto/ocsp/test/aws/server_cert.pem").c_str())
+          .c_str()));
+
+  // Create a sample |OCSP_CERTID| structure.
+  bssl::UniquePtr<OCSP_CERTID> cert_id(
+      OCSP_cert_to_id(EVP_sha256(), subject.get(), issuer.get()));
+  ASSERT_TRUE(cert_id);
+
+  ASN1_OCTET_STRING *nameHash = nullptr;
+  ASN1_OBJECT *algo = nullptr;
+  ASN1_OCTET_STRING *keyHash = nullptr;
+  ASN1_INTEGER *serial = nullptr;
+  EXPECT_TRUE(
+      OCSP_id_get0_info(&nameHash, &algo, &keyHash, &serial, cert_id.get()));
+  EXPECT_EQ(nameHash, cert_id.get()->issuerNameHash);
+  EXPECT_EQ(algo, cert_id.get()->hashAlgorithm->algorithm);
+  EXPECT_EQ(keyHash, cert_id.get()->issuerKeyHash);
+  EXPECT_EQ(serial, cert_id.get()->serialNumber);
+}
+
+TEST(OCSPTest, BasicAddCert) {
+  std::string respData = GetTestData(
+      std::string("crypto/ocsp/test/aws/ocsp_response.der").c_str());
+  std::vector<uint8_t> ocsp_response_data(respData.begin(), respData.end());
+  bssl::UniquePtr<OCSP_RESPONSE> ocspResponse =
+      LoadOCSP_RESPONSE(ocsp_response_data);
+  bssl::UniquePtr<OCSP_BASICRESP> basicResponse(
+      OCSP_response_get1_basic(ocspResponse.get()));
+  ASSERT_TRUE(basicResponse);
+
+  bssl::UniquePtr<X509> cert(CertFromPEM(
+      GetTestData(std::string("crypto/ocsp/test/aws/ca_cert.pem").c_str())
+          .c_str()));
+
+  EXPECT_TRUE(OCSP_basic_add1_cert(basicResponse.get(), cert.get()));
+  // Check that the cert is the same as the one added to the stack.
+  EXPECT_EQ(sk_X509_value(basicResponse.get()->certs,
+                          sk_X509_num(basicResponse.get()->certs) - 1),
+            cert.get());
+}
+
 // === Translation of OpenSSL's OCSP tests ===
 
 // https://github.com/openssl/openssl/blob/OpenSSL_1_1_1-stable/test/recipes/80-test_ocsp.t
