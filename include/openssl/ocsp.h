@@ -72,13 +72,13 @@ DECLARE_ASN1_FUNCTIONS(OCSP_RESPONSE)
 DECLARE_ASN1_FUNCTIONS(OCSP_CERTID)
 DECLARE_ASN1_FUNCTIONS(OCSP_REQUEST)
 
-// d2i_OCSP_RESPONSE_bio parses an OCSP response in DER format from a BIO object
-// and converts it into an |OCSP_RESPONSE|.
+// d2i_OCSP_RESPONSE_bio parses a DER-encoded OCSP response from |bp|, converts
+// it into an |OCSP_RESPONSE|, and writes the result in |presp|.
 OPENSSL_EXPORT OCSP_RESPONSE *d2i_OCSP_RESPONSE_bio(BIO *bp,
                                                     OCSP_RESPONSE **presp);
 
-// i2d_OCSP_RESPONSE_bio parses an |OCSP_RESPONSE| structure and writes the OCSP
-// response in DER format into a BIO object.
+// i2d_OCSP_RESPONSE_bio marshals |presp| as a DER-encoded OCSP response and
+// writes the result to |bp|.
 OPENSSL_EXPORT int i2d_OCSP_RESPONSE_bio(BIO *bp, OCSP_RESPONSE *presp);
 
 // OCSP_sendreq_bio is a blocking OCSP request handler which is a special case
