@@ -233,24 +233,9 @@ int OCSP_REQ_CTX_nbio_d2i(OCSP_REQ_CTX *rctx, ASN1_VALUE **pval,
 // Parses ASN.1 contents of |OCSP_REQ_CTX| into a der format.
 int OCSP_REQ_CTX_i2d(OCSP_REQ_CTX *rctx, const ASN1_ITEM *it, ASN1_VALUE *val);
 
-// Returns |OCSP_SINGLERESP| in the index of |OCSP_BASICRESP|.
-OCSP_SINGLERESP *OCSP_resp_get0(OCSP_BASICRESP *bs, size_t idx);
-
 // Returns index of |OCSP_SINGLERESP| in |OCSP_BASICRESP| matching a
 // given certificate ID, returns -1 if not found.
 int OCSP_resp_find(OCSP_BASICRESP *bs, OCSP_CERTID *id, int last);
-
-// Returns status of |OCSP_SINGLERESP|
-//
-// Note: 1. Reason value is allowed to be null.
-//       2. Time values passed into function are allowed to be NULL if
-//          certificate fields are empty.
-//       3. revtime and reason values only set if the certificate status is
-//          revoked.
-int OCSP_single_get0_status(OCSP_SINGLERESP *single, int *reason,
-                            ASN1_GENERALIZEDTIME **revtime,
-                            ASN1_GENERALIZEDTIME **thisupd,
-                            ASN1_GENERALIZEDTIME **nextupd);
 
 OCSP_CERTID *OCSP_cert_id_new(const EVP_MD *dgst, const X509_NAME *issuerName,
                               const ASN1_BIT_STRING *issuerKey,
@@ -264,9 +249,6 @@ OPENSSL_EXPORT BIO *OCSP_REQ_CTX_get0_mem_bio(OCSP_REQ_CTX *rctx);
 // --- OCSP compare functions ---
 // Compares certificate id issuers, returns 0 on equal.
 int OCSP_id_issuer_cmp(const OCSP_CERTID *a, const OCSP_CERTID *b);
-
-// Compares certificate id, returns 0 on equal.
-int OCSP_id_cmp(const OCSP_CERTID *a, const OCSP_CERTID *b);
 
 #define IS_OCSP_FLAG_SET(flags, query) (flags & query)
 #define OCSP_MAX_RESP_LENGTH (100 * 1024)

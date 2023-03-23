@@ -152,6 +152,22 @@ OPENSSL_EXPORT int OCSP_response_status(OCSP_RESPONSE *resp);
 // OCSP_response_get1_basic returns |OCSP_BASICRESP| from |OCSP_RESPONSE|.
 OPENSSL_EXPORT OCSP_BASICRESP *OCSP_response_get1_basic(OCSP_RESPONSE *resp);
 
+// OCSP_resp_get0 returns the |OCSP_SINGLERESP| at the |idx| within
+// |OCSP_BASICRESP|.
+OCSP_SINGLERESP *OCSP_resp_get0(OCSP_BASICRESP *bs, size_t idx);
+
+// OCSP_single_get0_status returns the status of an |OCSP_SINGLERESP|.
+//
+// Note: 1. |reason| value is allowed to be null.
+//       2. Time values passed into function are allowed to be NULL if
+//          certificate fields are empty.
+//       3. |revtime| and |reason| values only set if the certificate status is
+//          revoked.
+int OCSP_single_get0_status(OCSP_SINGLERESP *single, int *reason,
+                            ASN1_GENERALIZEDTIME **revtime,
+                            ASN1_GENERALIZEDTIME **thisupd,
+                            ASN1_GENERALIZEDTIME **nextupd);
+
 // OCSP_resp_find_status looks up a cert id and extract the update time and
 // revocation status of  certificate sent back from OCSP responder if found.
 // Returns 1 on success.
@@ -241,6 +257,9 @@ OPENSSL_EXPORT OCSP_CERTID *OCSP_cert_to_id(const EVP_MD *dgst,
 //        caller to ensure that the URL is well-formed and valid.
 OPENSSL_EXPORT int OCSP_parse_url(const char *url, char **phost, char **pport,
                                   char **ppath, int *pssl);
+
+// OCSP_id_cmp compares the contents of |OCSP_CERTID|, returns 0 on equal.
+int OCSP_id_cmp(const OCSP_CERTID *a, const OCSP_CERTID *b);
 
 // OCSP_id_get0_info returns the issuer name hash, hash OID, issuer key hash,
 // and the serial number contained in an |OCSP_CERTID|. If any of the values
