@@ -24,6 +24,10 @@ Only the reference C implementation of Dilithium3 is currently integrated. The c
 * `sign.c` was modified from `*mlen = -1;` to `*mlen = 0;` within the `crypto_sign_open` function. This was modified as `*mlen = -1;` is attempting to assign `-1` to an unsigned integer, giving the warning: ` warning C4245: '=': conversion from 'int' to 'std::size_t'`. This warning would cause Windows x86 builds to fail. See [pq-crystals/dilithium#65](https://github.com/pq-crystals/dilithium/issues/65) for upstream issue raised.
 * `sign.c` was modified to correct the documentation around `crypto_sign_verify`. See [pq-crystals/dilithium/#66](https://github.com/pq-crystals/dilithium/pull/66) for upstream PR.
 * `config.h`: `#define DILITHIUM_MODE 3`  is explicitly defined (to specify Dilithium3).
+* `reduce.c`: modify documentation comment for `reduce32`, fixing upper bound for return value `r`.
+* `aes256ctr.{h|c}`: these files were removed.
+* `config.h`: remove references to AES-mode dilithium
+* `symmetric.h`: remove references to AES-mode dilithium
 
 ## **Example Usage** 
 The API is defined and documented in `include/openssl/evp.h`. To see examples of how to use Dilithium3, see `crypto/dilithium/p_dilithium_test.cc`. TLDR:

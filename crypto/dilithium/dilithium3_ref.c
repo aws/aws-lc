@@ -4,7 +4,6 @@
 
 #define DILITHIUM_MODE 3
 
-#include "./pqcrystals-dilithium_dilithium_common/aes256ctr.h"
 #include "./pqcrystals-dilithium_dilithium_common/config.h"
 #include "./pqcrystals-dilithium_dilithium_common/fips202.h"
 #include "./pqcrystals-dilithium_dilithium_common/ntt.h"
@@ -16,7 +15,6 @@
 #include "./pqcrystals-dilithium_dilithium_common/sign.h"
 #include "./pqcrystals-dilithium_dilithium_common/symmetric.h"
 
-#include "./pqcrystals-dilithium_dilithium_common/aes256ctr.c"
 #include "./pqcrystals-dilithium_dilithium_common/fips202.c"
 #include "./pqcrystals-dilithium_dilithium_common/ntt.c"
 #include "./pqcrystals-dilithium_dilithium_common/packing.c"
