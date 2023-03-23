@@ -544,6 +544,8 @@ static int SSL3_STATE_parse_session(CBS *cbs, UniquePtr<SSL_SESSION> *out,
 // |ssl| is used because |tls1_configure_aead| is used to recover
 // |aead_read_ctx| and |aead_write_ctx|.
 static int SSL3_STATE_from_bytes(SSL *ssl, CBS *cbs, const SSL_CTX *ctx) {
+  // We expect the caller to have configured |ssl| with the protocol
+  // version prior to calling us.
   uint16_t protocol_version;
   if (!ssl_protocol_version_from_wire(&protocol_version, ssl->version)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL3_STATE);
@@ -626,7 +628,7 @@ static int SSL3_STATE_from_bytes(SSL *ssl, CBS *cbs, const SSL_CTX *ctx) {
 
   // We should have no more data at this point of we are deserializing v1
   // encoding.
-  if (!is_v2 && CBS_len(&s3)) {
+  if (!is_v2 && CBS_len(&s3) > 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL3_STATE);
     return 0;
   }
@@ -1114,6 +1116,7 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
   SSL_set_accept_state(ssl);
 
   // This is called separately to avoid overriding error code.
+  // This function expects ssl->version to have been set, otherwise will error!
   if (!SSL3_STATE_from_bytes(ssl, &ssl_cbs, ssl->ctx.get())) {
     return 0;
   }

@@ -74,13 +74,6 @@ extern "C" {
 // EVP_CIPH_MODE_MASK contains the bits of |flags| that represent the mode.
 #define EVP_CIPH_MODE_MASK 0x3f
 
-static const unsigned int kAesGcmTls13MinNextNonceTag =
-    CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 0;
-static const unsigned int kAesGcmTls13MaskTag =
-    CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 1;
-static const unsigned int kAesGcmTls13FirstTag =
-    CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 2;
-
 // EVP_AEAD represents a specific AEAD algorithm.
 struct evp_aead_st {
   uint8_t key_len;
@@ -182,7 +175,10 @@ void AES_cfb1_encrypt(const uint8_t *in, uint8_t *out, size_t bits,
 void AES_cfb8_encrypt(const uint8_t *in, uint8_t *out, size_t len,
                       const AES_KEY *key, uint8_t *ivec, int *num, int enc);
 
-// **EXPERIMENTAL** EVP_AEAD_CTX_serialize_state serializes the state of |ctx|,
+
+// EXPERIMENTAL functions for use in the TLS Transfer function. See |SSL_to_bytes| for more details.
+
+//  EVP_AEAD_CTX_serialize_state serializes the state of |ctx|,
 // and writes it to |cbb|. The serialized bytes contains only the subset of data
 // necessary to restore the state of an |EVP_AEAD_CTX| after initializing a new
 // instance using |EVP_AEAD_CTX_init|. If the given |EVP_AEAD| algorithm does

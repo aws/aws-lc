@@ -1559,7 +1559,7 @@ static int aead_aes_gcm_tls13_serialize_state(const EVP_AEAD_CTX *ctx,
   struct aead_aes_gcm_tls13_ctx *gcm_ctx =
       (struct aead_aes_gcm_tls13_ctx *)&ctx->state;
 
-  CBB state, child;
+  CBB state;
 
   if (!CBB_add_asn1(cbb, &state, CBS_ASN1_SEQUENCE) ||
       !CBB_add_asn1_uint64(&state, AEAD_AES_GCM_TLS13_STATE_SERDE_VERSION)) {
@@ -1567,20 +1567,17 @@ static int aead_aes_gcm_tls13_serialize_state(const EVP_AEAD_CTX *ctx,
     return 0;
   }
 
-  if (!CBB_add_asn1(&state, &child, kAesGcmTls13MinNextNonceTag) ||
-      !CBB_add_asn1_uint64(&child, gcm_ctx->min_next_nonce)) {
+  if (!CBB_add_asn1_uint64(&state, gcm_ctx->min_next_nonce)) {
     OPENSSL_PUT_ERROR(CIPHER, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 
-  if (!CBB_add_asn1(&state, &child, kAesGcmTls13MaskTag) ||
-      !CBB_add_asn1_uint64(&child, gcm_ctx->mask)) {
+  if (!CBB_add_asn1_uint64(&state, gcm_ctx->mask)) {
     OPENSSL_PUT_ERROR(CIPHER, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 
-  if (!CBB_add_asn1(&state, &child, kAesGcmTls13FirstTag) ||
-      !CBB_add_asn1_bool(&child, gcm_ctx->first ? 1 : 0)) {
+  if (!CBB_add_asn1_bool(&state, gcm_ctx->first ? 1 : 0)) {
     OPENSSL_PUT_ERROR(CIPHER, ERR_R_MALLOC_FAILURE);
     return 0;
   }
@@ -1595,40 +1592,37 @@ static int aead_aes_gcm_tls13_deserialize_state(const EVP_AEAD_CTX *ctx,
   struct aead_aes_gcm_tls13_ctx *gcm_ctx =
       (struct aead_aes_gcm_tls13_ctx *)&ctx->state;
 
-  CBS state, child;
+  CBS state;
 
   if (!CBS_get_asn1(cbs, &state, CBS_ASN1_SEQUENCE)) {
-    OPENSSL_PUT_ERROR(CIPHER, ERR_R_CIPHER_LIB);
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_SERIALIZATION_INVALID_EVP_AEAD_CTX);
     return 0;
   }
 
   uint64_t serde_version;
   if (!CBS_get_asn1_uint64(&state, &serde_version) ||
       AEAD_AES_GCM_TLS13_STATE_SERDE_VERSION != serde_version) {
-    OPENSSL_PUT_ERROR(CIPHER, ERR_R_CIPHER_LIB);
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_SERIALIZATION_INVALID_EVP_AEAD_CTX);
     return 0;
   }
 
   uint64_t min_next_nonce;
-  if (!CBS_get_asn1(&state, &child, kAesGcmTls13MinNextNonceTag) ||
-      !CBS_get_asn1_uint64(&child, &min_next_nonce)) {
-    OPENSSL_PUT_ERROR(CIPHER, ERR_R_CIPHER_LIB);
+  if (!CBS_get_asn1_uint64(&state, &min_next_nonce)) {
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_SERIALIZATION_INVALID_EVP_AEAD_CTX);
     return 0;
   }
   gcm_ctx->min_next_nonce = min_next_nonce;
 
   uint64_t mask;
-  if (!CBS_get_asn1(&state, &child, kAesGcmTls13MaskTag) ||
-      !CBS_get_asn1_uint64(&child, &mask)) {
-    OPENSSL_PUT_ERROR(CIPHER, ERR_R_CIPHER_LIB);
+  if (!CBS_get_asn1_uint64(&state, &mask)) {
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_SERIALIZATION_INVALID_EVP_AEAD_CTX);
     return 0;
   }
   gcm_ctx->mask = mask;
 
   int first;
-  if (!CBS_get_asn1(&state, &child, kAesGcmTls13FirstTag) ||
-      !CBS_get_asn1_bool(&child, &first)) {
-    OPENSSL_PUT_ERROR(CIPHER, ERR_R_CIPHER_LIB);
+  if (!CBS_get_asn1_bool(&state, &first)) {
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_SERIALIZATION_INVALID_EVP_AEAD_CTX);
     return 0;
   }
   gcm_ctx->first = first ? 1 : 0;
@@ -1667,6 +1661,9 @@ DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_aes_256_gcm_tls13) {
   out->cleanup = aead_aes_gcm_cleanup;
   out->seal_scatter = aead_aes_gcm_tls13_seal_scatter;
   out->open_gather = aead_aes_gcm_open_gather;
+
+  out->serialize_state = aead_aes_gcm_tls13_serialize_state;
+  out->deserialize_state = aead_aes_gcm_tls13_deserialize_state;
 }
 
 int EVP_has_aes_hardware(void) {

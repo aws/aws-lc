@@ -5023,16 +5023,20 @@ TEST(SSLTest, MultiTransferReadWrite) {
 
   for (const std::string &suite : suites) {
     bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+    bssl::UniquePtr<SSL_CTX> server_ctx(
+        CreateContextWithTestCertificate(TLS_method()));
 
     ASSERT_TRUE(SSL_CTX_set_ciphersuites(client_ctx.get(), suite.c_str()));
+    ASSERT_TRUE(SSL_CTX_set_ciphersuites(server_ctx.get(), suite.c_str()));
 
     ASSERT_TRUE(
         SSL_CTX_set_min_proto_version(client_ctx.get(), TLS1_3_VERSION));
     ASSERT_TRUE(
         SSL_CTX_set_max_proto_version(client_ctx.get(), TLS1_3_VERSION));
-
-    bssl::UniquePtr<SSL_CTX> server_ctx(
-        CreateContextWithTestCertificate(TLS_method()));
+    ASSERT_TRUE(
+        SSL_CTX_set_min_proto_version(server_ctx.get(), TLS1_3_VERSION));
+    ASSERT_TRUE(
+        SSL_CTX_set_max_proto_version(server_ctx.get(), TLS1_3_VERSION));
 
     ClientConfig config;
     bssl::UniquePtr<SSL> client, server;
@@ -5048,12 +5052,23 @@ TEST(SSLTest, MultiTransferReadWrite) {
     for (int t = 0; t < 5; t++) {
       for (int i = 0; i < 20; i++) {
         std::string send_str = std::to_string(i);
+
+        // Assert server open
         ASSERT_TRUE(
             SSL_write(client.get(), send_str.c_str(), send_str.length()));
         int read = SSL_read(server.get(), buf, buf_cap);
         ASSERT_TRUE(read);
         ASSERT_TRUE((size_t)read == send_str.length());
         std::string read_str(buf, read);
+        ASSERT_EQ(send_str, read_str);
+
+        // Assert server seal
+        ASSERT_TRUE(
+            SSL_write(server.get(), send_str.c_str(), send_str.length()));
+        read = SSL_read(client.get(), buf, buf_cap);
+        ASSERT_TRUE(read);
+        ASSERT_TRUE((size_t)read == send_str.length());
+        read_str = std::string(buf, read);
         ASSERT_EQ(send_str, read_str);
       }
       bssl::UniquePtr<SSL> transfer_server;
@@ -5975,40 +5990,97 @@ TEST(SSLTest, ApplyHandoffRemovesUnsupportedCurves) {
   EXPECT_EQ(1u, server->config->supported_group_list.size());
 }
 
-TEST(SSLTest, TLS12EncodeAndDecodeKAT_V1) {
+struct EncodeDecodeKATTestParam {
+  const char *input;
+  const char *output;
+};
+
+static const EncodeDecodeKATTestParam kEncodeDecodeKATs[] = {
+    // V1 input round-trips as V2 output
+    {"308201173082011302010102020303020240003081fa0201010408000000000000000104"
+     "0800000000000000010420000004d29e62f41ded4bb33d0faa6ffada380e2c489dfbfb44"
+     "4f574e475244010420cf3926d1ec5a562a642935a8050222b0aed93ffd9d1cac682274d9"
+     "42e99e42a604020000020100020103040cb9b409f5129440622f87f84402010c040c1f49"
+     "e2e989c66a263e9c227502010c020100020100020100a05b3059020101020203030402cc"
+     "a80400043085668dcf9f0921094ebd7f91bf2a8c60d276e4c279fd85a989402f67868232"
+     "4fd8098dc19d900b856d0a77e048e3ced2a104020204d2a20402021c20a4020400b10301"
+     "01ffb20302011da206040474657374a7030101ff020108020100a0030101ff",
+     "308201173082011302010102020303020240003081fa0201020408000000000000000104"
+     "0800000000000000010420000004d29e62f41ded4bb33d0faa6ffada380e2c489dfbfb44"
+     "4f574e475244010420cf3926d1ec5a562a642935a8050222b0aed93ffd9d1cac682274d9"
+     "42e99e42a604020000020100020103040cb9b409f5129440622f87f84402010c040c1f49"
+     "e2e989c66a263e9c227502010c020100020100020100a05b3059020101020203030402cc"
+     "a80400043085668dcf9f0921094ebd7f91bf2a8c60d276e4c279fd85a989402f67868232"
+     "4fd8098dc19d900b856d0a77e048e3ced2a104020204d2a20402021c20a4020400b10301"
+     "01ffb20302011da206040474657374a7030101ff020108020100a0030101ff"},
+    // In runner.go, the test case "Basic-Server-TLS-Sync-SSL_Transfer" is used
+    // to
+    // generate below bytes by adding print statement on the output of
+    // |SSL_to_bytes| in bssl_shim.cc.
+    {"308201173082011302010102020303020240003081fa0201020408000000000000000104"
+     "0800000000000000010420000004d29e62f41ded4bb33d0faa6ffada380e2c489dfbfb44"
+     "4f574e475244010420cf3926d1ec5a562a642935a8050222b0aed93ffd9d1cac682274d9"
+     "42e99e42a604020000020100020103040cb9b409f5129440622f87f84402010c040c1f49"
+     "e2e989c66a263e9c227502010c020100020100020100a05b3059020101020203030402cc"
+     "a80400043085668dcf9f0921094ebd7f91bf2a8c60d276e4c279fd85a989402f67868232"
+     "4fd8098dc19d900b856d0a77e048e3ced2a104020204d2a20402021c20a4020400b10301"
+     "01ffb20302011da206040474657374a7030101ff020108020100a0030101ff",
+     nullptr},
+    // In runner.go, the test case
+    // "TLS-TLS13-AES_128_GCM_SHA256-server-SSL_Transfer" is used to generate
+    // below bytes by adding print statement on the output of |SSL_to_bytes| in
+    // bssl_shim.cc.
+    {"308203783082037402010102020304020240003082035a020102040800000000000000000"
+     "408000000000000000004201653d9c572a43da37c674a98f93f9ac7f8b30b7cd4e1a920fd"
+     "e79e09b46cbd2e04208aa06fc962171e7b206fff74b7dcc5bc11aaa285f720d41c813dd3c"
+     "3809bf10604020000020100020101040c000000000000000000000000020100040c000000"
+     "000000000000000000020100020100020100020100a04e304c02010102020304040213010"
+     "4000420c076b887063e02ead067f7dd0b13807e10f2bc66183ac685a3d37c717a35bde1a1"
+     "04020204d2a205020302a300a4020400b20302011db9050203093a80a206040474657374a"
+     "b03020100ac03010100ad03010100ae03010100af03020100b03204305b298476f4750b2e"
+     "7802bfd35a410f8f33bcb3f65d2181a3cd2b8bc0233ee7220000000000000000000000000"
+     "0000000b103020120b2320430098089375725c53851878a7a8258dd9aa9b3df39e1ec1d47"
+     "821b449110fc8e8500000000000000000000000000000000b303020120b43204301e28e81"
+     "48b07db06bf33560458df80b76c83b6b89608ba691c4712442db15f0b0000000000000000"
+     "0000000000000000b503020120b88201700482016c040000b20002a300fde20d0b010000a"
+     "04280f9d09b2aa156c0d96f9875cbb5b97688552fbe24cc9b55633e1dbd39140bd61c64c0"
+     "426151eddcb0f5b8a5381e2a41419566740ec824df00aa32ccb79079e0b2aa42a09a719a0"
+     "02af44bbcba3e1f9816eb7989ff58d2b72ba51664d27c5e62c9e54d3acb318c911521d70f"
+     "a2605909716f2763d929c77423aa4081beb6a688e4c437e8fceb803f44051305a1e35d4ce"
+     "4d1006f00c3956c7d43e216c6362e0004caca0000040000b20002a300f302867f010100a0"
+     "4280f9d09b2aa156c0d96f9875cbb5b95544db8b9a0812d4e5ff144cbad3d328117039644"
+     "9a2afdc50cf94d9e5fee373e5c6bd7d966dd3571725544f98d3e9337e2c4be293210a7a77"
+     "06590637f373194e669519d6706e86435c533f50a1873bd641fb2793f258e2bf103d4231e"
+     "4d51255f882fda6adf9fb00efba1150e46baef1bda601c63bae8da31db263026e58f4d7cf"
+     "8d675e1897a0831b92207bdba1400004caca0000ba1b3019020101020403001301040e300"
+     "c0201010201000201000101ffbb1b3019020101020403001301040e300c02010102010002"
+     "01000101ff020108020100a0030101ff",
+     nullptr}};
+
+class EncodeDecodeKATTest
+    : public testing::TestWithParam<EncodeDecodeKATTestParam> {};
+
+INSTANTIATE_TEST_SUITE_P(EncodeAndDecodeKATTests, EncodeDecodeKATTest,
+                         testing::ValuesIn(kEncodeDecodeKATs));
+
+TEST_P(EncodeDecodeKATTest, RoundTrips) {
+  std::string input(GetParam().input);
+  std::string output;
+  if (GetParam().output) {
+    output = std::string(GetParam().output);
+  } else {
+    output = std::string(GetParam().input);
+  }
+
+  std::vector<uint8_t> input_bytes;
+  ASSERT_TRUE(DecodeHex(&input_bytes, input));
+  std::vector<uint8_t> output_bytes;
+  ASSERT_TRUE(DecodeHex(&output_bytes, output));
+
   bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
-  // In runner.go, the test case "Basic-Server-TLS-Sync-SSL_Transfer" is used to
-  // generate below bytes by adding print statement on the output of
-  // |SSL_to_bytes| in bssl_shim.cc.
-  const std::string v1 =
-      "308201173082011302010102020303020240003081fa0201010408000000000000000104"
-      "0800000000000000010420000004d29e62f41ded4bb33d0faa6ffada380e2c489dfbfb44"
-      "4f574e475244010420cf3926d1ec5a562a642935a8050222b0aed93ffd9d1cac682274d9"
-      "42e99e42a604020000020100020103040cb9b409f5129440622f87f84402010c040c1f49"
-      "e2e989c66a263e9c227502010c020100020100020100a05b3059020101020203030402cc"
-      "a80400043085668dcf9f0921094ebd7f91bf2a8c60d276e4c279fd85a989402f67868232"
-      "4fd8098dc19d900b856d0a77e048e3ced2a104020204d2a20402021c20a4020400b10301"
-      "01ffb20302011da206040474657374a7030101ff020108020100a0030101ff";
-
-  const std::string v2 =
-      "308201173082011302010102020303020240003081fa0201020408000000000000000104"
-      "0800000000000000010420000004d29e62f41ded4bb33d0faa6ffada380e2c489dfbfb44"
-      "4f574e475244010420cf3926d1ec5a562a642935a8050222b0aed93ffd9d1cac682274d9"
-      "42e99e42a604020000020100020103040cb9b409f5129440622f87f84402010c040c1f49"
-      "e2e989c66a263e9c227502010c020100020100020100a05b3059020101020203030402cc"
-      "a80400043085668dcf9f0921094ebd7f91bf2a8c60d276e4c279fd85a989402f67868232"
-      "4fd8098dc19d900b856d0a77e048e3ced2a104020204d2a20402021c20a4020400b10301"
-      "01ffb20302011da206040474657374a7030101ff020108020100a0030101ff";
-
-  std::vector<uint8_t> v1b;
-  ASSERT_TRUE(DecodeHex(&v1b, v1));
-
-  std::vector<uint8_t> v2b;
-  ASSERT_TRUE(DecodeHex(&v2b, v2));
-
   // Check the bytes are decoded successfully.
   bssl::UniquePtr<SSL> ssl(
-      SSL_from_bytes(v1b.data(), v1b.size(), server_ctx.get()));
+      SSL_from_bytes(input_bytes.data(), input_bytes.size(), server_ctx.get()));
   ASSERT_TRUE(ssl);
   // Check the ssl can be encoded successfully.
   size_t encoded_len;
@@ -6017,93 +6089,8 @@ TEST(SSLTest, TLS12EncodeAndDecodeKAT_V1) {
   bssl::UniquePtr<uint8_t> encoded_ptr;
   encoded_ptr.reset(encoded);
   // Check the encoded bytes are the same as the test input.
-  ASSERT_EQ(v2b.size(), encoded_len);
-  ASSERT_EQ(memcmp(v2b.data(), encoded, encoded_len), 0);
-}
-
-TEST(SSLTest, TLS12EncodeAndDecodeKAT_V2) {
-  bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
-  // In runner.go, the test case "Basic-Server-TLS-Sync-SSL_Transfer" is used to
-  // generate below bytes by adding print statement on the output of
-  // |SSL_to_bytes| in bssl_shim.cc.
-  const std::string data =
-      "308201173082011302010102020303020240003081fa0201020408000000000000000104"
-      "0800000000000000010420000004d29e62f41ded4bb33d0faa6ffada380e2c489dfbfb44"
-      "4f574e475244010420cf3926d1ec5a562a642935a8050222b0aed93ffd9d1cac682274d9"
-      "42e99e42a604020000020100020103040cb9b409f5129440622f87f84402010c040c1f49"
-      "e2e989c66a263e9c227502010c020100020100020100a05b3059020101020203030402cc"
-      "a80400043085668dcf9f0921094ebd7f91bf2a8c60d276e4c279fd85a989402f67868232"
-      "4fd8098dc19d900b856d0a77e048e3ced2a104020204d2a20402021c20a4020400b10301"
-      "01ffb20302011da206040474657374a7030101ff020108020100a0030101ff";
-
-  std::vector<uint8_t> bytes;
-  ASSERT_TRUE(DecodeHex(&bytes, data));
-
-  // Check the bytes are decoded successfully.
-  bssl::UniquePtr<SSL> ssl(
-      SSL_from_bytes(bytes.data(), bytes.size(), server_ctx.get()));
-  ASSERT_TRUE(ssl);
-  // Check the ssl can be encoded successfully.
-  size_t encoded_len;
-  uint8_t *encoded;
-  ASSERT_TRUE(SSL_to_bytes(ssl.get(), &encoded, &encoded_len));
-  bssl::UniquePtr<uint8_t> encoded_ptr;
-  encoded_ptr.reset(encoded);
-  // Check the encoded bytes are the same as the test input.
-  ASSERT_EQ(bytes.size(), encoded_len);
-  ASSERT_EQ(memcmp(bytes.data(), encoded, encoded_len), 0);
-}
-
-TEST(SSLTest, TLS13EncodeAndDecodeKAT_V2) {
-  bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
-  // In runner.go, the test case
-  // "TLS-TLS13-AES_128_GCM_SHA256-server-SSL_Transfer" is used to generate
-  // below bytes by adding print statement on the output of |SSL_to_bytes| in
-  // bssl_shim.cc.
-  const std::string data =
-      "308203883082038402010102020304020240003082036a02010204080000000000000000"
-      "040800000000000000000420f4cfc8c67fc475fa9d88d1101d0b2157b6e2387d03a291b2"
-      "6b27feaa51ffe5dd04200a5a51719606b2e8a020e7eed8e222e7c54f6da017d4fcf1fae1"
-      "37ae3f48c50604020000020100020101040c000000000000000000000000020100040c00"
-      "0000000000000000000000020100020100020100020100a04e304c020101020203040402"
-      "130104000420d49b34442a95b4e4389ab3f1350b691078a42d0c32e31753e96b09e105c5"
-      "5904a104020204d2a205020302a300a4020400b20302011db9050203093a80a206040474"
-      "657374ab03020100ac03010100ad03010100ae03010100af03020100b032043061d40697"
-      "be09d1bcabc050b3ff0c25787a1be2cd389a0bd8f54df14064daac7b0000000000000000"
-      "0000000000000000b103020120b23204300cf385cf75b40fdfb8c45ba08883008c5e6ee8"
-      "c921117f2380f9c7985eee2a8f00000000000000000000000000000000b303020120b432"
-      "04304cb04d105badfa89afe60826952e7414bc3cc7b47b2d583c6d28e861fe6c2ddb0000"
-      "0000000000000000000000000000b503020120b88201700482016c040000b20002a300cd"
-      "eb9873010000a00a7f8dd384398ea9db904773e3ca0f07499c5760fed1cb824d3fed3c97"
-      "5c04692b7270d20faf6038b5d021352fc874b3a4042e33affbf856f78440e6a18cd4c2b2"
-      "244dc327eb6e2c45bd9adecb19e111eaf09731e887ada727fb4db44ef4472a8aaa0af3e6"
-      "7f0e10f77434e86c3cd52dd43ae6d240b40319be2ea96656546ee3f9af9f8d701b8037f0"
-      "518f83dd369990cfa6679fd0564b1eeb08add1d3c1c9b800045a5a0000040000b20002a3"
-      "00764934a8010100a00a7f8dd384398ea9db904773e3ca0f0727820592f2aeeab39dde79"
-      "07e11b51c6d1ecb761f608ab1c75307991294f16b7d93bedb36207057fe0164e64c69081"
-      "045932e46ba8016ff6cddc7dd4a8c0c2a70407fa3a473cfa7c571dfe0fe85179aaa31c3a"
-      "aeae19e751ad3502dc234096640f7d8b9ff0a901bfd547f35d1b778e4762f30e1bc42778"
-      "c015b5ffba97a09c34c5dcb8c7e151234aedf620ebf584a51700045a5a0000ba23302102"
-      "0101020403001301a01604143012020101a003020100a103020100a2030101ffbb233021"
-      "020101020403001301a01604143012020101a003020100a103020100a2030101ff020108"
-      "020100a0030101ff";
-
-  std::vector<uint8_t> bytes;
-  ASSERT_TRUE(DecodeHex(&bytes, data));
-
-  // Check the bytes are decoded successfully.
-  bssl::UniquePtr<SSL> ssl(
-      SSL_from_bytes(bytes.data(), bytes.size(), server_ctx.get()));
-  ASSERT_TRUE(ssl);
-  // Check the ssl can be encoded successfully.
-  size_t encoded_len;
-  uint8_t *encoded;
-  ASSERT_TRUE(SSL_to_bytes(ssl.get(), &encoded, &encoded_len));
-  bssl::UniquePtr<uint8_t> encoded_ptr;
-  encoded_ptr.reset(encoded);
-  // Check the encoded bytes are the same as the test input.
-  ASSERT_EQ(bytes.size(), encoded_len);
-  ASSERT_EQ(memcmp(bytes.data(), encoded, encoded_len), 0);
+  ASSERT_EQ(output_bytes.size(), encoded_len);
+  ASSERT_EQ(memcmp(output_bytes.data(), encoded, encoded_len), 0);
 }
 
 TEST(SSLTest, ZeroSizedWiteFlushesHandshakeMessages) {

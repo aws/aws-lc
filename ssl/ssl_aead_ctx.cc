@@ -431,23 +431,19 @@ bool SSLAEADContext::GetIV(const uint8_t **out_iv, size_t *out_iv_len) const {
 
 #define SSLAEADCONTEXT_SERDE_VERSION 1
 
-static const unsigned int kSSLAEADContextCipherStateTag =
-    CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 0;
-
 /*
  * SSLAEADContextVersion ::= INTEGER {v1 (1)}
  *
  * SSLAEADContext ::= SEQUENCE {
  *   serializationVersion SSLAEADContextVersion,
  *   cipher         INTEGER,
- *   cipherState    [0] OCTET STRING
+ *   cipherState    OCTET STRING
  * }
  */
 int SSLAEADContext::SerializeState(CBB *cbb) const {
   uint32_t cipher_id = SSL_CIPHER_get_id(cipher_);
 
   CBB seq;
-  CBB cipher_state_octet;
   ScopedCBB cipher_state;
 
   if (!CBB_add_asn1(cbb, &seq, CBS_ASN1_SEQUENCE) ||
@@ -457,14 +453,24 @@ int SSLAEADContext::SerializeState(CBB *cbb) const {
     return 0;
   }
 
-  CBB_init(cipher_state.get(), 1024);
-  if (!CBB_add_asn1(&seq, &cipher_state_octet, kSSLAEADContextCipherStateTag)) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-    return 0;
-  }
+  // 50 here is just an initial capacity based on some worst case calculations
+  // of the AES GCM state structure encoding with headroom:
+  //
+  // -- 2 bytes for sequence tag+length
+  // AeadAesGCMTls13State ::= SEQUENCE {
+  //   -- 2 bytes for tag+length and 8 bytes if a full uint64
+  //   serializationVersion AeadAesGCMTls13StateSerializationVersion,
+  //   -- 2 bytes for tag+length and 8 bytes if a full uint64
+  //   minNextNonce   INTEGER,
+  //   -- 2 bytes for tag+length and 8 bytes if a full uint64
+  //   mask           INTEGER,
+  //   -- 2 bytes for tag+length and 1 byte
+  //   first          BOOLEAN
+  // }
+  CBB_init(cipher_state.get(), 50);
 
   if (!EVP_AEAD_CTX_serialize_state(ctx_.get(), cipher_state.get()) ||
-      !CBB_add_asn1_octet_string(&cipher_state_octet,
+      !CBB_add_asn1_octet_string(&seq,
                                  CBB_data(cipher_state.get()),
                                  CBB_len(cipher_state.get()))) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
@@ -492,11 +498,9 @@ int SSLAEADContext::DeserializeState(CBS *cbs) const {
   }
 
   CBS child;
-  CBS cipher_state_octet;
 
-  if (!CBS_get_asn1(&seq, &child, kSSLAEADContextCipherStateTag) ||
-      !CBS_get_asn1(&child, &cipher_state_octet, CBS_ASN1_OCTETSTRING) ||
-      !EVP_AEAD_CTX_deserialize_state(ctx_.get(), &cipher_state_octet)) {
+  if (!CBS_get_asn1(&seq, &child, CBS_ASN1_OCTETSTRING) ||
+      !EVP_AEAD_CTX_deserialize_state(ctx_.get(), &child)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL_AEAD_CONTEXT);
     return 0;
   }
