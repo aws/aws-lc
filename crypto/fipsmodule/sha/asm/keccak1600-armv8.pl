@@ -343,10 +343,10 @@ KeccakF1600:
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 .size	KeccakF1600,.-KeccakF1600
-.globl	SHA3_Absorb
-.type	SHA3_Absorb,%function
+.globl	SHA3_Absorb_hw
+.type	SHA3_Absorb_hw,%function
 .align	5
-SHA3_Absorb:
+SHA3_Absorb_hw:
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-128]!
 	add	x29,sp,#0
@@ -438,15 +438,15 @@ $code.=<<___;
 	ldp	x29,x30,[sp],#128
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
-.size	SHA3_Absorb,.-SHA3_Absorb
+.size	SHA3_Absorb_hw,.-SHA3_Absorb_hw
 ___
 {
 my ($A_flat,$out,$len,$bsz) = map("x$_",(19..22));
 $code.=<<___;
-.globl	SHA3_Squeeze
-.type	SHA3_Squeeze,%function
+.globl	SHA3_Squeeze_hw
+.type	SHA3_Squeeze_hw,%function
 .align	5
-SHA3_Squeeze:
+SHA3_Squeeze_hw:
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-48]!
 	add	x29,sp,#0
@@ -509,7 +509,7 @@ SHA3_Squeeze:
 	ldp	x29,x30,[sp],#48
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
-.size	SHA3_Squeeze,.-SHA3_Squeeze
+.size	SHA3_Squeeze_hw,.-SHA3_Squeeze_hw
 ___
 }								}}}
 								{{{
