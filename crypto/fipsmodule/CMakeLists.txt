@@ -18,7 +18,6 @@ if(ARCH STREQUAL "x86_64")
   set(
     BCM_ASM_SOURCES
 
-    aes-gcm-avx512.${ASM_EXT}
     aesni-gcm-x86_64.${ASM_EXT}
     aesni-x86_64.${ASM_EXT}
     ghash-ssse3-x86_64.${ASM_EXT}
@@ -35,8 +34,13 @@ if(ARCH STREQUAL "x86_64")
     x86_64-mont5.${ASM_EXT}
     x86_64-mont.${ASM_EXT}
   )
-endif()
 
+  # TODO(awslc): fix the aes-gcm-avx512.pl script to generate
+  # assembly that can be handled by MSVC linker (CryptoAlg-1701).
+  if (NOT WINDOWS)
+    list(APPEND BCM_ASM_SOURCES aes-gcm-avx512.${ASM_EXT})
+  endif()
+endif()
 
 if(ARCH STREQUAL "x86")
   set(
@@ -318,7 +322,7 @@ if(FIPS_DELOCATE)
   # but only if it's given the right flags (e.g. -mavx512*).
   # The flags are not required for any other compiler we are running in the CI.
   if ((CMAKE_ASM_COMPILER_ID MATCHES "Clang" OR CMAKE_ASM_COMPILER MATCHES "clang") AND
-    (CMAKE_ASM_COMPILER_VERSION VERSION_LESS "7.0.0") AND (ARCH STREQUAL "x86_64"))
+      (CMAKE_ASM_COMPILER_VERSION VERSION_LESS "7.0.0") AND (ARCH STREQUAL "x86_64"))
     set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/bcm-delocated.S PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512bw -mavx512dq -mavx512vl")
   endif()
 
