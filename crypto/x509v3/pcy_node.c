@@ -110,9 +110,21 @@ X509_POLICY_NODE *level_find_node(const X509_POLICY_LEVEL *level,
 X509_POLICY_NODE *level_add_node(X509_POLICY_LEVEL *level,
                                  X509_POLICY_DATA *data,
                                  X509_POLICY_NODE *parent,
-                                 X509_POLICY_TREE *tree)
+                                 X509_POLICY_TREE *tree,
+                                 int extra_data)
 {
     X509_POLICY_NODE *node;
+
+    if (tree == NULL) {
+        return NULL;
+    }
+
+    // Verify that the policy tree isn't too large. Implemented in relation
+    // to CVE-2023-0464. See https://www.ietf.org/archive/id/draft-davidben-x509-policy-graph-00.html#name-limit-policy-tree-size
+    if (tree->node_count >= tree->node_maximum) {
+        return NULL;
+    }
+
     node = OPENSSL_malloc(sizeof(X509_POLICY_NODE));
     if (!node)
         return NULL;
@@ -135,7 +147,7 @@ X509_POLICY_NODE *level_add_node(X509_POLICY_LEVEL *level,
         }
     }
 
-    if (tree) {
+    if (extra_data) {
         if (!tree->extra_data)
             tree->extra_data = sk_X509_POLICY_DATA_new_null();
         if (!tree->extra_data)
@@ -144,6 +156,7 @@ X509_POLICY_NODE *level_add_node(X509_POLICY_LEVEL *level,
             goto node_error;
     }
 
+    tree->node_count++;
     if (parent)
         parent->nchild++;
 
