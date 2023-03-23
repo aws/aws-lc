@@ -103,8 +103,8 @@ static const X509V3_EXT_METHOD *const standard_exts[] = {
     &v3_crl_reason,
     &v3_crl_invdate,
     &v3_info,
-#ifndef OPENSSL_NO_OCSP
     &v3_ocsp_nonce,
+#ifndef OPENSSL_NO_OCSP
     &v3_ocsp_crlid,
     &v3_ocsp_accresp,
     &v3_ocsp_acutoff,

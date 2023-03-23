@@ -1,0 +1,113 @@
+/*
+ * Copyright 2015-2021 The OpenSSL Project Authors. All Rights Reserved.
+ *
+ * Licensed under the Apache License 2.0 (the "License").  You may not use
+ * this file except in compliance with the License.  You can obtain a copy
+ * in the file LICENSE in the source distribution or at
+ * https://www.openssl.org/source/license.html
+ */
+
+// SPDX-License-Identifier: Apache-2.0 OR ISC
+// Modifications Copyright Amazon.com, Inc. or its affiliates.
+
+#include <openssl/mem.h>
+#include <openssl/rand.h>
+#include <string.h>
+
+#include "internal.h"
+
+#define OCSP_DEFAULT_NONCE_LENGTH 16
+
+int OCSP_REQUEST_get_ext_by_NID(OCSP_REQUEST *req, int nid, int lastpos) {
+  return (
+      X509v3_get_ext_by_NID(req->tbsRequest->requestExtensions, nid, lastpos));
+}
+
+X509_EXTENSION *OCSP_REQUEST_get_ext(OCSP_REQUEST *req, int loc) {
+  return X509v3_get_ext(req->tbsRequest->requestExtensions, loc);
+}
+
+int OCSP_BASICRESP_get_ext_by_NID(OCSP_BASICRESP *bs, int nid, int lastpos) {
+  return (X509v3_get_ext_by_NID(bs->tbsResponseData->responseExtensions, nid,
+                                lastpos));
+}
+
+X509_EXTENSION *OCSP_BASICRESP_get_ext(OCSP_BASICRESP *bs, int loc) {
+  return X509v3_get_ext(bs->tbsResponseData->responseExtensions, loc);
+}
+
+static int ocsp_add_nonce(STACK_OF(X509_EXTENSION) **exts, unsigned char *val,
+                          int len) {
+  unsigned char *tmpval;
+  ASN1_OCTET_STRING os;
+  int ret = 0;
+  if (len <= 0) {
+    len = OCSP_DEFAULT_NONCE_LENGTH;
+  }
+  // Create the OCTET STRING manually by writing out the header and
+  // appending the content octets. This avoids an extra memory allocation
+  // operation in some cases. Applications should *NOT* do this because it
+  // relies on library internals.
+  os.length = ASN1_object_size(0, len, V_ASN1_OCTET_STRING);
+  if (os.length < 0) {
+    return 0;
+  }
+
+  os.data = OPENSSL_malloc(os.length);
+  if (os.data == NULL) {
+    goto err;
+  }
+  tmpval = os.data;
+  ASN1_put_object(&tmpval, 0, len, V_ASN1_OCTET_STRING, V_ASN1_UNIVERSAL);
+  if (val != NULL) {
+    memcpy(tmpval, val, len);
+  } else if (RAND_bytes(tmpval, len) <= 0) {
+    goto err;
+  }
+  if (X509V3_add1_i2d(exts, NID_id_pkix_OCSP_Nonce, &os, 0,
+                      X509V3_ADD_REPLACE) <= 0) {
+    goto err;
+  }
+  ret = 1;
+err:
+  OPENSSL_free(os.data);
+  return ret;
+}
+
+int OCSP_request_add1_nonce(OCSP_REQUEST *req, unsigned char *val, int len) {
+  return ocsp_add_nonce(&req->tbsRequest->requestExtensions, val, len);
+}
+
+int OCSP_check_nonce(OCSP_REQUEST *req, OCSP_BASICRESP *bs) {
+  // Since we are only interested in the presence or absence of
+  // the nonce and comparing its value there is no need to use
+  // the X509V3 routines: this way we can avoid them allocating an
+  // ASN1_OCTET_STRING structure for the value which would be
+  // freed immediately anyway.
+
+  int req_idx, resp_idx;
+  X509_EXTENSION *req_ext, *resp_ext;
+  req_idx = OCSP_REQUEST_get_ext_by_NID(req, NID_id_pkix_OCSP_Nonce, -1);
+  resp_idx = OCSP_BASICRESP_get_ext_by_NID(bs, NID_id_pkix_OCSP_Nonce, -1);
+  // Check that both are absent.
+  if ((req_idx < 0) && (resp_idx < 0)) {
+    return 2;
+  }
+  // Check in request only.
+  if ((req_idx >= 0) && (resp_idx < 0)) {
+    return -1;
+  }
+  // Check in response, but not request.
+  if ((req_idx < 0) && (resp_idx >= 0)) {
+    return 3;
+  }
+  // Otherwise, there is a nonce in both the request and response, so retrieve
+  // the extensions.
+  req_ext = OCSP_REQUEST_get_ext(req, req_idx);
+  resp_ext = OCSP_BASICRESP_get_ext(bs, resp_idx);
+  if (ASN1_OCTET_STRING_cmp(X509_EXTENSION_get_data(req_ext),
+                            X509_EXTENSION_get_data(resp_ext))) {
+    return 0;
+  }
+  return 1;
+}

@@ -372,6 +372,7 @@ add_library(
   obj/obj_xref.c
   ocsp/ocsp_asn.c
   ocsp/ocsp_client.c
+  ocsp/ocsp_extension.c
   ocsp/ocsp_http.c
   ocsp/ocsp_lib.c
   ocsp/ocsp_print.c
