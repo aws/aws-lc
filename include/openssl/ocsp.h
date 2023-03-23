@@ -356,6 +356,20 @@ OPENSSL_EXPORT const char *OCSP_cert_status_str(long status_code);
 // if an OCSP response is revoked.
 OPENSSL_EXPORT const char *OCSP_crl_reason_str(long status_code);
 
+// OCSP_REQUEST_print prints the contents of an OCSP request to |bp|. |flags| is
+// used to configure printing of the |req|'s extensions (See
+// |X509V3_extensions_print| for more information).
+// This is typically used for debugging or diagnostic purposes.
+OPENSSL_EXPORT int OCSP_REQUEST_print(BIO *bp, OCSP_REQUEST *req,
+                                      unsigned long flags);
+
+// OCSP_RESPONSE_print prints the contents of an OCSP response to |bp|. |flags|
+// is used to configure printing of the |resp|'s extensions (See
+// |X509V3_extensions_print| for more information).
+// This is typically used for debugging or diagnostic purposes.
+OPENSSL_EXPORT int OCSP_RESPONSE_print(BIO *bp, OCSP_RESPONSE *resp,
+                                       unsigned long flags);
+
 
 #if defined(__cplusplus)
 }  // extern C
