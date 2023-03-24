@@ -375,6 +375,7 @@ add_library(
   ocsp/ocsp_http.c
   ocsp/ocsp_lib.c
   ocsp/ocsp_print.c
+  ocsp/ocsp_server.c
   ocsp/ocsp_verify.c
   pem/pem_all.c
   pem/pem_info.c
