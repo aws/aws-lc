@@ -39,6 +39,11 @@ $win64 = 1 if ($flavour =~ /[nm]asm|mingw64/ || $output =~ /\.asm$/);
 $avx512vaes = 1;
 for (@ARGV) { $avx512vaes = 0 if (/-DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX/); }
 
+# TODO(awslc, CryptoAlg-1701): fix the script to generate assembly that
+# can be handled by MSVC2015 linker. Currently, the linker chokes on
+# the generated debug info.
+$avx512vaes = 0 if ($win64 == 1);
+
 $0 =~ m/(.*[\/\\])[^\/\\]+$/;
 $dir = $1;
 ($xlate = "${dir}x86_64-xlate.pl" and -f $xlate)

@@ -18,6 +18,7 @@ if(ARCH STREQUAL "x86_64")
   set(
     BCM_ASM_SOURCES
 
+    aes-gcm-avx512.${ASM_EXT}
     aesni-gcm-x86_64.${ASM_EXT}
     aesni-x86_64.${ASM_EXT}
     ghash-ssse3-x86_64.${ASM_EXT}
@@ -34,12 +35,6 @@ if(ARCH STREQUAL "x86_64")
     x86_64-mont5.${ASM_EXT}
     x86_64-mont.${ASM_EXT}
   )
-
-  # TODO(awslc): fix the aes-gcm-avx512.pl script to generate
-  # assembly that can be handled by MSVC linker (CryptoAlg-1701).
-  if (NOT WINDOWS)
-    list(APPEND BCM_ASM_SOURCES aes-gcm-avx512.${ASM_EXT})
-  endif()
 endif()
 
 if(ARCH STREQUAL "x86")
