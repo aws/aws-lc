@@ -1259,4 +1259,6 @@ TEST(OCSPTest, CertIDDup) {
   EXPECT_EQ(
       X509_ALGOR_cmp(orig_id.get()->hashAlgorithm, dup_id.get()->hashAlgorithm),
       0);
+  // Check that the duplicated structure is not just a replicated pointer.
+  EXPECT_NE(orig_id.get(), dup_id.get());
 }
