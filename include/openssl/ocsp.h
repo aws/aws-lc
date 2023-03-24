@@ -185,8 +185,8 @@ int OCSP_single_get0_status(OCSP_SINGLERESP *single, int *reason,
                             ASN1_GENERALIZEDTIME **thisupd,
                             ASN1_GENERALIZEDTIME **nextupd);
 
-// OCSP_resp_find returns the index of a |OCSP_SINGLERESP| in |OCSP_BASICRESP|
-// which matches a given certificate ID, returns -1 if not found.
+// OCSP_resp_find returns the index of the |OCSP_SINGLERESP| in |bs| which
+// matches |id| if found, or -1 if not found.
 OPENSSL_EXPORT int OCSP_resp_find(OCSP_BASICRESP *bs, OCSP_CERTID *id,
                                   int last);
 
