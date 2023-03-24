@@ -37,7 +37,7 @@ if(ARCH STREQUAL "x86_64")
 
   # TODO(awslc): fix the aes-gcm-avx512.pl script to generate
   # assembly that can be handled by MSVC linker (CryptoAlg-1701).
-  if (NOT WINDOWS)
+  if (NOT WIN32)
     list(APPEND BCM_ASM_SOURCES aes-gcm-avx512.${ASM_EXT})
   endif()
 endif()
