@@ -475,6 +475,7 @@ OPENSSL_EXPORT int EVP_AEAD_get_iv_from_ipv4_nanosecs(
     const uint32_t ipv4_address, const uint64_t nanosecs,
     uint8_t out_iv[FIPS_AES_GCM_NONCE_LENGTH]);
 
+
 #if defined(__cplusplus)
 }  // extern C
 
