@@ -19,8 +19,8 @@
 #define OCSP_DEFAULT_NONCE_LENGTH 16
 
 int OCSP_REQUEST_get_ext_by_NID(OCSP_REQUEST *req, int nid, int lastpos) {
-  return (
-      X509v3_get_ext_by_NID(req->tbsRequest->requestExtensions, nid, lastpos));
+  return X509v3_get_ext_by_NID(req->tbsRequest->requestExtensions, nid,
+                               lastpos);
 }
 
 X509_EXTENSION *OCSP_REQUEST_get_ext(OCSP_REQUEST *req, int loc) {
@@ -28,8 +28,8 @@ X509_EXTENSION *OCSP_REQUEST_get_ext(OCSP_REQUEST *req, int loc) {
 }
 
 int OCSP_BASICRESP_get_ext_by_NID(OCSP_BASICRESP *bs, int nid, int lastpos) {
-  return (X509v3_get_ext_by_NID(bs->tbsResponseData->responseExtensions, nid,
-                                lastpos));
+  return X509v3_get_ext_by_NID(bs->tbsResponseData->responseExtensions, nid,
+                               lastpos);
 }
 
 X509_EXTENSION *OCSP_BASICRESP_get_ext(OCSP_BASICRESP *bs, int loc) {

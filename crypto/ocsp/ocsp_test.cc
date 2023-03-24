@@ -1196,10 +1196,10 @@ static const OCSPNonceTestVector kNonceTestVectors[] = {
     // OCSP request with no nonce, but an OCSP response that does have one.
     {"ocsp_request_no_nonce", "ocsp_response", false, nullptr, 0,
      OCSP_NONCE_RESPONSE_ONLY},
-    // OCSP request with no nonce, but an OCSP response that does have one.
+    // OCSP request with a nonce, but an OCSP response that does not have one.
     {"ocsp_request", "ocsp_response_no_nonce", false, nullptr, 0,
      OCSP_NONCE_REQUEST_ONLY},
-    // OCSP request with no nonce, but an OCSP response that does have one.
+    // An OCSP request and an OCSP response that don't have a nonce to compare.
     {"ocsp_request_no_nonce", "ocsp_response_no_nonce", false, nullptr, 0,
      OCSP_NONCE_BOTH_ABSENT},
 };
