@@ -131,20 +131,20 @@ OPENSSL_EXPORT int OCSP_REQ_CTX_add1_header(OCSP_REQ_CTX *rctx,
 OPENSSL_EXPORT OCSP_ONEREQ *OCSP_request_add0_id(OCSP_REQUEST *req,
                                                  OCSP_CERTID *cid);
 
-// OCSP_request_add1_nonce adds a nonce of value |val| and length |len| to an
-// |OCSP_REQUEST|. If |val| is NULL, a random nonce is generated and used. If
-// |len| is zero or negative, a default length of 16 bytes will be used.
+// OCSP_request_add1_nonce adds a nonce of value |val| and length |len| to
+// |req|. If |val| is NULL, a random nonce is generated and used. If |len| is
+// zero or negative, a default length of 16 bytes will be used.
 OPENSSL_EXPORT int OCSP_request_add1_nonce(OCSP_REQUEST *req,
                                            unsigned char *val, int len);
 
-// OCSP_check_nonce checks nonce validity in a request and response.
+// OCSP_check_nonce checks nonce existence and equality in |req| and |bs|.
 //
 // Return value reflects result:
 //    1: nonces present and equal.
 //    2: nonces both absent.
-//    3: nonce present in response only.
+//    3: nonce present in |bs| only.
 //    0: nonces both present and not equal.
-//    -1: nonce in request only.
+//    -1: nonce in |req| only.
 //  For most responders, clients can check "return > 0".
 //  If an OCSP responder doesn't handle nonces, "return != 0" may be necessary.
 //  "return == 0" will always be an error if the nonces are both present, but
