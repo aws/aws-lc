@@ -92,5 +92,8 @@
   },
   {
     "cmd": ["crypto/mem_set_test"]
+  },
+  {
+    "cmd": ["crypto/integration_test"]
   }
 ]
