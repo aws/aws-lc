@@ -188,7 +188,7 @@ void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
     gcm_init_avx512(out_table, H);
     *out_mult = gcm_gmult_avx512;
     *out_hash = gcm_ghash_avx512;
-    *out_is_avx = 3;
+    *out_is_avx = 1;
     return;
   }
   if (crypto_gcm_clmul_enabled()) {
@@ -269,7 +269,6 @@ void CRYPTO_gcm128_init_key(GCM128_KEY *gcm_key, const AES_KEY *aes_key,
       0;
 #else
     gcm_key->use_hw_gcm_crypt = (is_avx && block_is_hwaes) ? 1 : 0;
-    gcm_key->use_aes_gcm_crypt_avx512 = ((is_avx > 2) && block_is_hwaes) ? 1 : 0;
 #endif
 }
 
@@ -290,7 +289,7 @@ void CRYPTO_gcm128_setiv(GCM128_CONTEXT *ctx, const AES_KEY *key,
   ctx->mres = 0;
 
 #if defined(GHASH_ASM_X86_64)
-  if (ctx->gcm_key.use_aes_gcm_crypt_avx512) {
+  if (ctx->gcm_key.use_hw_gcm_crypt && crypto_gcm_avx512_enabled()) {
     gcm_setiv_avx512(key, ctx, iv, len);
     return;
   }
@@ -590,7 +589,7 @@ int CRYPTO_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
   }
 
 #if defined(GHASH_ASM_X86_64)
-  if (ctx->gcm_key.use_aes_gcm_crypt_avx512 && len > 0) {
+  if (ctx->gcm_key.use_hw_gcm_crypt && crypto_gcm_avx512_enabled() && len > 0) {
     aes_gcm_encrypt_avx512(key, ctx, &ctx->mres, in, len, out);
     return 1;
   }
@@ -683,7 +682,7 @@ int CRYPTO_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
   }
 
 #if defined(GHASH_ASM_X86_64)
-  if (ctx->gcm_key.use_aes_gcm_crypt_avx512 && len > 0) {
+  if (ctx->gcm_key.use_hw_gcm_crypt && crypto_gcm_avx512_enabled() && len > 0) {
     aes_gcm_decrypt_avx512(key, ctx, &ctx->mres, in, len, out);
     return 1;
   }

@@ -143,10 +143,6 @@ typedef struct gcm128_key_st {
   // use_hw_gcm_crypt is true if this context should use platform-specific
   // assembly to process GCM data.
   unsigned use_hw_gcm_crypt:1;
-  // use_aes_gcm_crypt_avx512 is true if this context should use the assembly
-  // functions |aes_gcm_encrypt_avx512| and |aes_gcm_decrypt_avx512| to
-  // process data.
-  unsigned use_aes_gcm_crypt_avx512:1;
 } GCM128_KEY;
 
 // GCM128_CONTEXT contains state for a single GCM operation. The structure
