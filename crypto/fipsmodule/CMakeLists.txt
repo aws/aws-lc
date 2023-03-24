@@ -79,6 +79,7 @@ if(ARCH STREQUAL "aarch64")
     aesv8-armx.${ASM_EXT}
     aesv8-gcm-armv8.${ASM_EXT}
     armv8-mont.${ASM_EXT}
+    bn-armv8.${ASM_EXT}
     ghash-neon-armv8.${ASM_EXT}
     ghashv8-armx.${ASM_EXT}
     keccak1600-armv8.${ASM_EXT}
@@ -112,6 +113,7 @@ if(PERL_EXECUTABLE)
   perlasm(armv4-mont.${ASM_EXT} bn/asm/armv4-mont.pl)
   perlasm(armv8-mont.${ASM_EXT} bn/asm/armv8-mont.pl)
   perlasm(bn-586.${ASM_EXT} bn/asm/bn-586.pl)
+  perlasm(bn-armv8.${ASM_EXT} bn/asm/bn-armv8.pl)
   perlasm(bsaes-armv7.${ASM_EXT} aes/asm/bsaes-armv7.pl)
   perlasm(co-586.${ASM_EXT} bn/asm/co-586.pl)
   perlasm(ghash-armv4.${ASM_EXT} modes/asm/ghash-armv4.pl)

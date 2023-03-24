@@ -1099,6 +1099,7 @@ Args:
 
 type instructionType int
 
+// also update stringifier when making changes to this enum.
 const (
 	instrPush instructionType = iota
 	instrMove
@@ -1120,6 +1121,13 @@ const (
 	instrCompare
 	instrOther
 )
+
+func (index instructionType) String() string {
+	return [...]string{"instrPush", "instrMove", "instrTransformingMove",
+		"instrJump", "instrConditionalMove", "instrCombine",
+		"instrMemoryVectorCombine", "instrThreeArg",
+		"instrCompare", "instrOther"}[index]
+}
 
 func classifyInstruction(instr string, args []*node32) instructionType {
 	switch instr {
@@ -1419,7 +1427,7 @@ Args:
 
 				classification := classifyInstruction(instructionName, argNodes)
 				if classification != instrThreeArg && classification != instrCompare && i != 0 {
-					return nil, fmt.Errorf("GOT access must be source operand, %w", classification)
+					return nil, fmt.Errorf("GOT access must be source operand, %s", classification)
 				}
 
 				// Reduce the instruction to movq symbol@GOTPCREL, targetReg.

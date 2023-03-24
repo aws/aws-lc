@@ -159,7 +159,7 @@ void SSLAEADContext::SetVersionIfNullCipher(uint16_t version) {
 
 uint16_t SSLAEADContext::ProtocolVersion() const {
   uint16_t protocol_version;
-  if(!ssl_protocol_version_from_wire(&protocol_version, version_)) {
+  if (!ssl_protocol_version_from_wire(&protocol_version, version_)) {
     assert(false);
     return 0;
   }
@@ -376,8 +376,7 @@ bool SSLAEADContext::SealScatter(uint8_t *out_prefix, uint8_t *out,
       OPENSSL_PUT_ERROR(SSL, SSL_R_OUTPUT_ALIASES_INPUT);
       return false;
     }
-    OPENSSL_memcpy(out_prefix, nonce + fixed_nonce_len_,
-                   variable_nonce_len_);
+    OPENSSL_memcpy(out_prefix, nonce + fixed_nonce_len_, variable_nonce_len_);
   }
 
   // XOR the fixed nonce, if necessary.

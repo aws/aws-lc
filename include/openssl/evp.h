@@ -181,6 +181,7 @@ OPENSSL_EXPORT EC_KEY *EVP_PKEY_get1_EC_KEY(const EVP_PKEY *pkey);
 #define EVP_PKEY_ED25519 NID_ED25519
 #define EVP_PKEY_X25519 NID_X25519
 // TODO(awslc): delete Kyber define
+
 #define EVP_PKEY_KYBER512 NID_KYBER512
 #define EVP_PKEY_HKDF NID_hkdf
 #define EVP_PKEY_KEM NID_kem
@@ -710,12 +711,18 @@ OPENSSL_EXPORT int EVP_PKEY_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY **out_pkey);
 //   3. writes the length of |ciphertext| and |shared_secret| to
 //      |ciphertext_len| and |shared_secret_len|.
 //
-// If the given |ciphertext| is NULL it is assumed that the caller is doing
-// a size check: the function will write the size of the ciphertext and the
-// shared secret in |ciphertext_len| and |shared_secret_len| and return 1.
-// If |ciphertext| is non-NULL it is assumed that the caller is performing
-// the actual operation, so it is checked if the lengths of the output buffers,
-// |ciphertext_len| and |shared_secret_len|, are large enough for the KEM.
+// The function requires that output buffers, |ciphertext| and |shared_secret|,
+// be either both NULL or both non-NULL. Otherwise, a failure is returned.
+//
+// If both |ciphertext| and |shared_secret| are NULL it is assumed that
+// the caller is doing a size check: the function will write the size of
+// the ciphertext and the shared secret in |ciphertext_len| and
+// |shared_secret_len| and return successfully.
+//
+// If both |ciphertext| and |shared_secret| are not NULL it is assumed that
+// the caller is performing the actual operation. The function will check
+// additionally if the lengths of the output buffers, |ciphertext_len| and
+// |shared_secret_len|, are large enough for the KEM.
 //
 // NOTE: no allocation is done in the function, the caller is expected to
 // provide large enough |ciphertext| and |shared_secret| buffers.
@@ -735,10 +742,11 @@ OPENSSL_EXPORT int EVP_PKEY_encapsulate(EVP_PKEY_CTX *ctx          /* IN  */,
 //
 // If the given |shared_secret| is NULL it is assumed that the caller is doing
 // a size check: the function will write the size of the shared secret in
-// |shared_secret_len| and return 1.
+// |shared_secret_len| and return successfully.
+//
 // If |shared_secret| is non-NULL it is assumed that the caller is performing
-// the actual operation, so it is checked if the length of the output buffer,
-// |shared_secret_len|, is large enough for the KEM.
+// the actual operation. The functions will check additionally if the length of
+// the output buffer |shared_secret_len| is large enough for the KEM.
 //
 // NOTE: no allocation is done in the function, the caller is expected to
 // provide large enough |shared_secret| buffer.
@@ -1168,6 +1176,7 @@ struct evp_pkey_st {
   // methods for the key type.
   const EVP_PKEY_ASN1_METHOD *ameth;
 }; // EVP_PKEY
+
 
 #if defined(__cplusplus)
 }  // extern C

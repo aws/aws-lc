@@ -29,6 +29,10 @@
 
 #include "internal.h"
 
+static bool version(const std::vector<std::string> &args) {
+  printf("%s\n", AWSLC_VERSION_NUMBER_STRING);
+  return true;
+}
 
 static bool IsFIPS(const std::vector<std::string> &args) {
   printf("%d\n", FIPS_mode());
@@ -63,6 +67,7 @@ static const Tool kTools[] = {
   { "sha512256sum", SHA512256Sum },
   { "sign", Sign },
   { "speed", Speed },
+  { "version", version },
   { "", nullptr },
 };
 
