@@ -153,10 +153,10 @@ OPENSSL_EXPORT int OCSP_response_status(OCSP_RESPONSE *resp);
 OPENSSL_EXPORT OCSP_BASICRESP *OCSP_response_get1_basic(OCSP_RESPONSE *resp);
 
 // OCSP_resp_get0 returns the |OCSP_SINGLERESP| at the |idx| within
-// |OCSP_BASICRESP|.
+// |bs|.
 OCSP_SINGLERESP *OCSP_resp_get0(OCSP_BASICRESP *bs, size_t idx);
 
-// OCSP_single_get0_status returns the status of an |OCSP_SINGLERESP|.
+// OCSP_single_get0_status returns the status of |single|.
 //
 // Note: 1. |reason| value is allowed to be null.
 //       2. Time values passed into function are allowed to be NULL if
@@ -262,14 +262,14 @@ OPENSSL_EXPORT int OCSP_parse_url(const char *url, char **phost, char **pport,
 int OCSP_id_cmp(const OCSP_CERTID *a, const OCSP_CERTID *b);
 
 // OCSP_id_get0_info returns the issuer name hash, hash OID, issuer key hash,
-// and the serial number contained in an |OCSP_CERTID|. If any of the values
-// are not required, the corresponding parameter can be set to NULL.
+// and the serial number contained in |cid|. If any of the values are not
+// required, the corresponding parameter can be set to NULL.
 OPENSSL_EXPORT int OCSP_id_get0_info(ASN1_OCTET_STRING **nameHash,
                                      ASN1_OBJECT **algor,
                                      ASN1_OCTET_STRING **keyHash,
                                      ASN1_INTEGER **serial, OCSP_CERTID *cid);
 
-// OCSP_basic_add1_cert adds a certificate to an |OCSP_BASICRESP|.
+// OCSP_basic_add1_cert adds |cert| to the |resp|.
 OPENSSL_EXPORT int OCSP_basic_add1_cert(OCSP_BASICRESP *resp, X509 *cert);
 
 // OCSP_response_status_str returns the OCSP response status of |status_code| as
