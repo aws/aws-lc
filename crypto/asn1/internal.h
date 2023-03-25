@@ -56,8 +56,8 @@
  *
  */
 
-#ifndef OPENSSL_HEADER_ASN1_ASN1_LOCL_H
-#define OPENSSL_HEADER_ASN1_ASN1_LOCL_H
+#ifndef OPENSSL_HEADER_ASN1_INTERNAL_H
+#define OPENSSL_HEADER_ASN1_INTERNAL_H
 
 #include <time.h>
 
@@ -252,4 +252,4 @@ OPENSSL_EXPORT void asn1_get_string_table_for_testing(
 }  // extern C
 #endif
 
-#endif  // OPENSSL_HEADER_ASN1_ASN1_LOCL_H
+#endif  // OPENSSL_HEADER_ASN1_INTERNAL_H
