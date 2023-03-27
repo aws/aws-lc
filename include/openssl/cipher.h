@@ -145,7 +145,7 @@ OPENSSL_EXPORT int EVP_CIPHER_CTX_reset(EVP_CIPHER_CTX *ctx);
 // EVP_CIPHER_CTX_get_iv retrieves the IV from |*ctx|, copying it to |iv|. The
 // IV length, |len|, must equal the expected IV length for the context as
 // provided by |EVP_CIPHER_CTX_iv_length|.
-OPENSSL_EXPORT int EVP_CIPHER_CTX_get_iv(const EVP_CIPHER_CTX *ctx,
+AWS_LC_DEPRECATED OPENSSL_EXPORT int EVP_CIPHER_CTX_get_iv(const EVP_CIPHER_CTX *ctx,
                                          unsigned char *iv, size_t len);
 
 // Cipher context configuration.

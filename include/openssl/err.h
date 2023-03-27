@@ -150,7 +150,7 @@ OPENSSL_EXPORT void ERR_load_BIO_strings(void);
 OPENSSL_EXPORT void ERR_load_ERR_strings(void);
 
 // ERR_load_CRYPTO_strings does nothing.
-OPENSSL_EXPORT void ERR_load_CRYPTO_strings(void);
+AWS_LC_DEPRECATED OPENSSL_EXPORT void ERR_load_CRYPTO_strings(void);
 
 // ERR_load_crypto_strings does nothing.
 OPENSSL_EXPORT void ERR_load_crypto_strings(void);

@@ -745,6 +745,7 @@ if(BUILD_TESTING)
   add_dependencies(${CRYPTO_TEST_EXEC} global_target)
 
   target_link_libraries(${CRYPTO_TEST_EXEC} test_support_lib boringssl_gtest crypto)
+  target_compile_options(${CRYPTO_TEST_EXEC} PUBLIC -Wno-deprecated-declarations)
   if(WIN32)
     target_link_libraries(${CRYPTO_TEST_EXEC} ws2_32)
   endif()
