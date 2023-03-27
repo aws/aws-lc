@@ -249,6 +249,7 @@ static int tree_init(X509_POLICY_TREE **ptree, STACK_OF(X509) *certs,
     tree->user_policies = NULL;
     // Limit the growth of the tree to mitigate CVE-2023-0464
     tree->node_maximum = OPENSSL_POLICY_TREE_NODES_MAX;
+    tree->node_count = 0;
 
     if (!tree->levels) {
         OPENSSL_free(tree);

@@ -1073,7 +1073,23 @@ TXHOSQQD8Dl4BK0wOet+TP6LBEjHlRFjAqK4bu9xpxV2
 -----END CERTIFICATE-----
 )";
 
-
+// VecCertChainFromPEM parses a sequence of PEM X509 certificate blocks and
+// returns a vector of |X509*| containing each of the parsed blocks.
+// Last block must be NUL-terminated. Typically, the sequence will be a chain
+// of intermediates.
+// Caller should free each element of the vector.
+static const std::vector<X509 *> VecCertChainFromPEM(const char *pemChain) {
+  std::vector<X509 *> vecCertChain;
+  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(pemChain, strlen(pemChain)));
+  for (;;) {
+    X509 *cert = PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr);
+    if(cert == nullptr){
+      break;
+    }
+    vecCertChain.push_back(cert);
+  }
+  return vecCertChain;
+}
 
 // CertFromPEM parses the given, NUL-terminated pem block and returns an
 // |X509*|.
@@ -1213,104 +1229,17 @@ static int Verify(
   return r1;
 }
 
-static const char kSmallLeaf[] = R"(
------BEGIN CERTIFICATE-----
-MIIBmjCCAT+gAwIBAgIBADAKBggqhkjOPQQDAjAWMRQwEgYDVQQDEwtQb2xpY3kg
-Q0EgMTAgFw0wMDAxMDEwMDAwMDBaGA8yMTAwMDEwMTAwMDAwMFowGjEYMBYGA1UE
-AxMPd3d3LmV4YW1wbGUuY29tMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAER7oh
-z+MnwilNhyEB2bZTuYBpeiwW4QlpYZU6b/8uWOldyMXCaPmaXwY60nrMznfFJX6F
-h8dC6XIzvQmjUMdSoqN4MHYwDgYDVR0PAQH/BAQDAgeAMBMGA1UdJQQMMAoGCCsG
-AQUFBwMBMAwGA1UdEwEB/wQCMAAwGgYDVR0RBBMwEYIPd3d3LmV4YW1wbGUuY29t
-MCUGA1UdIAQeMBwwDAYKYIZIAWUDAgEwATAMBgpghkgBZQMCATACMAoGCCqGSM49
-BAMCA0kAMEYCIQC2km5juUULIRYsRgHuLFEiABBR0pDAyTbl9LRjlkSeEQIhAO9b
-ye60dMNbhY1OOzrr4mDRv0tuNmbGBErcFs61YZkC
------END CERTIFICATE-----
-)";
-
-static const char kSmallPolicyTree[] = R"(
------BEGIN CERTIFICATE-----
-MIICETCCAbagAwIBAgIBATAKBggqhkjOPQQDAjAWMRQwEgYDVQQDEwtQb2xpY3kg
-Q0EgMjAgFw0wMDAxMDEwMDAwMDBaGA8yMTAwMDEwMTAwMDAwMFowFjEUMBIGA1UE
-AxMLUG9saWN5IENBIDEwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAQu7GyNFjN6
-Sqwk1CZAt+lzTC/Us6ZkO5nsmb8yAuPb6RJ0A2LvUbsmZea+UyBFq3VuEbbuCoeE
-KRbKkS6wefAzo4HyMIHvMA4GA1UdDwEB/wQEAwICBDATBgNVHSUEDDAKBggrBgEF
-BQcDATAPBgNVHRMBAf8EBTADAQH/MB0GA1UdDgQWBBSQkJvfn8gFHIXVTBJ4hrtP
-ypA9QTAlBgNVHSAEHjAcMAwGCmCGSAFlAwIBMAEwDAYKYIZIAWUDAgEwAjBxBgNV
-HSEEajBoMBgGCmCGSAFlAwIBMAEGCmCGSAFlAwIBMAEwGAYKYIZIAWUDAgEwAQYK
-YIZIAWUDAgEwAjAYBgpghkgBZQMCATACBgpghkgBZQMCATABMBgGCmCGSAFlAwIB
-MAIGCmCGSAFlAwIBMAIwCgYIKoZIzj0EAwIDSQAwRgIhALn6/b3H+jLusJE5QiaS
-PiwrLcl+NDguWCnxo0c6AfduAiEApkXUN+7vRfXeFFd9CfA1BnTW3eUzBOsukZoN
-zaj+utk=
------END CERTIFICATE-----
------BEGIN CERTIFICATE-----
-MIICDzCCAbagAwIBAgIBAjAKBggqhkjOPQQDAjAWMRQwEgYDVQQDEwtQb2xpY3kg
-Q0EgMzAgFw0wMDAxMDEwMDAwMDBaGA8yMTAwMDEwMTAwMDAwMFowFjEUMBIGA1UE
-AxMLUG9saWN5IENBIDIwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAT+p+A+K6MI
-R3eVP/+2O7lam32HU10frEKpyQslZAabYJwkc9iq5WatMbTMPQibuOIWHFl02uJ8
-cxGKy/Hke8P5o4HyMIHvMA4GA1UdDwEB/wQEAwICBDATBgNVHSUEDDAKBggrBgEF
-BQcDATAPBgNVHRMBAf8EBTADAQH/MB0GA1UdDgQWBBSSOt6HCXw+L/4uzJsInqqA
-XrWt8DAlBgNVHSAEHjAcMAwGCmCGSAFlAwIBMAEwDAYKYIZIAWUDAgEwAjBxBgNV
-HSEEajBoMBgGCmCGSAFlAwIBMAEGCmCGSAFlAwIBMAEwGAYKYIZIAWUDAgEwAQYK
-YIZIAWUDAgEwAjAYBgpghkgBZQMCATACBgpghkgBZQMCATABMBgGCmCGSAFlAwIB
-MAIGCmCGSAFlAwIBMAIwCgYIKoZIzj0EAwIDRwAwRAIgS/vh3osFy+q1MLuVnAdg
-gMINfiIJw1+3zbYsJYlNhWgCICu6Qgzee4NwIrJagcdVA0RAfnCOo6wfvikpl0ts
-EepA
------END CERTIFICATE-----
------BEGIN CERTIFICATE-----
-MIICEDCCAbagAwIBAgIBAzAKBggqhkjOPQQDAjAWMRQwEgYDVQQDEwtQb2xpY3kg
-Q0EgNDAgFw0wMDAxMDEwMDAwMDBaGA8yMTAwMDEwMTAwMDAwMFowFjEUMBIGA1UE
-AxMLUG9saWN5IENBIDMwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAQONHKgpAJ6
-vE41FYBekpLzybpBQp/gUmgRPKrcL0z4lLTDjCG3j6yIbZma8u2bPM1MBXw5otZ7
-xVFhQ1AkZIOco4HyMIHvMA4GA1UdDwEB/wQEAwICBDATBgNVHSUEDDAKBggrBgEF
-BQcDATAPBgNVHRMBAf8EBTADAQH/MB0GA1UdDgQWBBQ69465BL89BXORf4sSnneU
-exkm0jAlBgNVHSAEHjAcMAwGCmCGSAFlAwIBMAEwDAYKYIZIAWUDAgEwAjBxBgNV
-HSEEajBoMBgGCmCGSAFlAwIBMAEGCmCGSAFlAwIBMAEwGAYKYIZIAWUDAgEwAQYK
-YIZIAWUDAgEwAjAYBgpghkgBZQMCATACBgpghkgBZQMCATABMBgGCmCGSAFlAwIB
-MAIGCmCGSAFlAwIBMAIwCgYIKoZIzj0EAwIDSAAwRQIhAPK9PqPxgme9x6TPFh2z
-vv+qVEM2WxOTdRKOPgUYzCp9AiBl8qO3szv5jNDzb0fRIqVp37v9yBjWcgO9Wl02
-QDCpGw==
------END CERTIFICATE-----
------BEGIN CERTIFICATE-----
-MIICETCCAbagAwIBAgIBBDAKBggqhkjOPQQDAjAWMRQwEgYDVQQDEwtQb2xpY3kg
-Q0EgNTAgFw0wMDAxMDEwMDAwMDBaGA8yMTAwMDEwMTAwMDAwMFowFjEUMBIGA1UE
-AxMLUG9saWN5IENBIDQwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAASLrUP7BFi7
-+LE2uDVCZ2Z2HK6BpL/kjBbwKkLxlJe+LqNolzu53b8+WtHwrvPPVkD9t3KMdWXU
-K7NtHYgXUz07o4HyMIHvMA4GA1UdDwEB/wQEAwICBDATBgNVHSUEDDAKBggrBgEF
-BQcDATAPBgNVHRMBAf8EBTADAQH/MB0GA1UdDgQWBBS0kaY2oJVEBLtjkqI8pXsv
-eqm3VDAlBgNVHSAEHjAcMAwGCmCGSAFlAwIBMAEwDAYKYIZIAWUDAgEwAjBxBgNV
-HSEEajBoMBgGCmCGSAFlAwIBMAEGCmCGSAFlAwIBMAEwGAYKYIZIAWUDAgEwAQYK
-YIZIAWUDAgEwAjAYBgpghkgBZQMCATACBgpghkgBZQMCATABMBgGCmCGSAFlAwIB
-MAIGCmCGSAFlAwIBMAIwCgYIKoZIzj0EAwIDSQAwRgIhAJuTMvMUda4Y29V1Tm5O
-jCqBThR2NwdQfnET1sjch3Q7AiEA7nEudfXKMljjz608aWtafTkw5V5I2/SbuUKr
-vjprfIo=
------END CERTIFICATE-----
------BEGIN CERTIFICATE-----
-MIICEDCCAbagAwIBAgIBBTAKBggqhkjOPQQDAjAWMRQwEgYDVQQDEwtQb2xpY3kg
-Q0EgNTAgFw0wMDAxMDEwMDAwMDBaGA8yMTAwMDEwMTAwMDAwMFowFjEUMBIGA1UE
-AxMLUG9saWN5IENBIDUwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAQ9RuYVzUGB
-FkAEM9kHe9xynDo/NcsiaAO3+E2u7jJQQN50d6hVEDHf9961omldhKhP4HTNfhqj
-VMIHKGMhXCgKo4HyMIHvMA4GA1UdDwEB/wQEAwICBDATBgNVHSUEDDAKBggrBgEF
-BQcDATAPBgNVHRMBAf8EBTADAQH/MB0GA1UdDgQWBBTVrjWaVjkfMpilq5tGZ4zZ
-iJtaSDAlBgNVHSAEHjAcMAwGCmCGSAFlAwIBMAEwDAYKYIZIAWUDAgEwAjBxBgNV
-HSEEajBoMBgGCmCGSAFlAwIBMAEGCmCGSAFlAwIBMAEwGAYKYIZIAWUDAgEwAQYK
-YIZIAWUDAgEwAjAYBgpghkgBZQMCATACBgpghkgBZQMCATABMBgGCmCGSAFlAwIB
-MAIGCmCGSAFlAwIBMAIwCgYIKoZIzj0EAwIDSAAwRQIhAPVgPpACX2ylQMEMSntw
-izxKHTSPhXuF6IHhNHRz7KFnAiB8y/QcF7N2iXNZEqffWSkVted/XOw3Xrck0sJ6
-4eXNcw==
------END CERTIFICATE-----
-)";
-
 static const char kLargeLeaf[] = R"(
 -----BEGIN CERTIFICATE-----
-MIIBnTCCAQagAwIBAgIBAzANBgkqhkiG9w0BAQsFADArMRcwFQYDVQQKEw5Cb3Jp
-bmdTU0wgVGVzdDEQMA4GA1UEAxMHUm9vdCBDQTAgFw0wMDAxMDEwMDAwMDBaGA8y
-MDk5MDEwMTAwMDAwMFowFDESMBAGA1UEAxMJRUtVIG1zU0dDMFkwEwYHKoZIzj0C
-AQYIKoZIzj0DAQcDQgAEpSFSqbYY86ZcMamE606dqdyjWlwhSHKOLUFsUUIzkMPz
-KHRu/x3Yzi8+Hm8eFK/TnCbkpYsYw4hIw00176dYzaMtMCswDAYDVR0TAQH/BAIw
-ADAbBgNVHSMEFDASgBBAN9cB+0AvuBx+VAQnjFkBMA0GCSqGSIb3DQEBCwUAA4GB
-AHvYzynIkjLThExHRS+385hfv4vgrQSMmCM1SAnEIjSBGsU7RPgiGAstN06XivuF
-T1fNugRmTu4OtOIbfdYkcjavJufw9hR9zWTt77CNMTy9XmOZLgdS5boFTtLCztr3
-TXHOSQQD8Dl4BK0wOet+TP6LBEjHlRFjAqK4bu9xpxV2
+MIIBmTCCAT+gAwIBAgIBADAKBggqhkjOPQQDAjAWMRQwEgYDVQQDEwtQb2xpY3kg
+Q0EgMTAgFw0wMDAxMDEwMDAwMDBaGA8yMTAwMDEwMTAwMDAwMFowGjEYMBYGA1UE
+AxMPd3d3LmV4YW1wbGUuY29tMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEp6Qe
+jrN6A0ZjqaFbX/zO01aVYXH5kthBDTEO/fU4H0CdwqrfyMsFrObwssrTJcsmSFKP
+x1FYr8wT2wCACs19lqN4MHYwDgYDVR0PAQH/BAQDAgeAMBMGA1UdJQQMMAoGCCsG
+AQUFBwMBMAwGA1UdEwEB/wQCMAAwGgYDVR0RBBMwEYIPd3d3LmV4YW1wbGUuY29t
+MCUGA1UdIAQeMBwwDAYKYIZIAWUDAgEwATAMBgpghkgBZQMCATACMAoGCCqGSM49
+BAMCA0gAMEUCIDGT8SVBkWJEZ2EzXm8M895NrNRmfc8uoheP0KKv+ndHAiEA2Onr
+20J+zTaR7vONY/1DleMm7fGY3UxTobSHSvOKbfY=
 -----END CERTIFICATE-----
 )";
 
@@ -1735,6 +1664,9 @@ AgEwAgYKYIZIAWUDAgEwAjAKBggqhkjOPQQDAgNIADBFAiEA1D2Fm3D8REQtj8o4
 ZrnDyWam0Rx6cEMsvmeoafOBUeUCIBW0IoUYmF46faRQWKN7R8wnvbjUw0bxztzy
 okUR5Pma
 -----END CERTIFICATE-----
+)";
+
+static const char kLargePolicyTreeRoot[] = R"(
 -----BEGIN CERTIFICATE-----
 MIICEjCCAbigAwIBAgIBHzAKBggqhkjOPQQDAjAXMRUwEwYDVQQDEwxQb2xpY3kg
 Q0EgMzEwIBcNMDAwMTAxMDAwMDAwWhgPMjEwMDAxMDEwMDAwMDBaMBcxFTATBgNV
@@ -1751,27 +1683,161 @@ W3De9dSX
 -----END CERTIFICATE-----
 )";
 
+static const char kPolicyRoot[] = R"(
+-----BEGIN CERTIFICATE-----
+MIIBdDCCARqgAwIBAgIBATAKBggqhkjOPQQDAjAWMRQwEgYDVQQDEwtQb2xpY3kg
+Um9vdDAgFw0wMDAxMDEwMDAwMDBaGA8yMTAwMDEwMTAwMDAwMFowFjEUMBIGA1UE
+AxMLUG9saWN5IFJvb3QwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAQmdqXYl1Gv
+Y7y3jcTTK6MVXIQr44TqChRYI6IeV9tIB6jIsOY+Qol1bk8x/7A5FGOnUWFVLEAP
+EPSJwPndjolto1cwVTAOBgNVHQ8BAf8EBAMCAgQwEwYDVR0lBAwwCgYIKwYBBQUH
+AwEwDwYDVR0TAQH/BAUwAwEB/zAdBgNVHQ4EFgQU0GnnoB+yeN63WMthnh6Uh1HH
+dRIwCgYIKoZIzj0EAwIDSAAwRQIgctaVgroxlAkLhPEaTXvsE3ePYM2X+KGOJZXc
+usyO3YkCIQDN1RLJq9vHGjZzDCEehKjxHsV+XSAkdfU7nB7KjVHTKA==
+-----END CERTIFICATE-----
+)";
+
+static const char kPolicyIntermediate[] = R"(
+-----BEGIN CERTIFICATE-----
+MIIBrDCCAVGgAwIBAgIBAjAKBggqhkjOPQQDAjAWMRQwEgYDVQQDEwtQb2xpY3kg
+Um9vdDAgFw0wMDAxMDEwMDAwMDBaGA8yMTAwMDEwMTAwMDAwMFowHjEcMBoGA1UE
+AxMTUG9saWN5IEludGVybWVkaWF0ZTBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IA
+BOI6fKiM3jFLkLyAn88cvlw4SwxuygRjopP3FFBKHyUQvh3VVvfqSpSCSmp50Qia
+jQ6Dg7CTpVZVVH+bguT7JTCjgYUwgYIwDgYDVR0PAQH/BAQDAgIEMBMGA1UdJQQM
+MAoGCCsGAQUFBwMBMA8GA1UdEwEB/wQFMAMBAf8wHQYDVR0OBBYEFJDS9/4O7qhr
+CIRhwsXrPVBagG2uMCsGA1UdIAQkMCIwDwYNKoZIhvcSBAGEtwkCATAPBg0qhkiG
+9xIEAYS3CQICMAoGCCqGSM49BAMCA0kAMEYCIQCcgAbQr/HNdHwPEcWotOqtXXGH
+di6cAJtWaSynP8+UoQIhAPEMK79OO+tJHzmD0N01OdZefAwKlYZvDCQvAfAQVf7j
+-----END CERTIFICATE-----
+)";
+
+static const char kPolicyLeaf[] = R"(
+-----BEGIN CERTIFICATE-----
+MIIBpjCCAU2gAwIBAgIBAzAKBggqhkjOPQQDAjAeMRwwGgYDVQQDExNQb2xpY3kg
+SW50ZXJtZWRpYXRlMCAXDTAwMDEwMTAwMDAwMFoYDzIxMDAwMTAxMDAwMDAwWjAa
+MRgwFgYDVQQDEw93d3cuZXhhbXBsZS5jb20wWTATBgcqhkjOPQIBBggqhkjOPQMB
+BwNCAASRKti8VW2Rkma+Kt9jQkMNitlCs0l5w8u3SSwm7HZREvmcBCJBjVIREacR
+qI0umhzR2V5NLzBBP9yPD/A+Ch5Xo34wfDAOBgNVHQ8BAf8EBAMCAgQwEwYDVR0l
+BAwwCgYIKwYBBQUHAwEwDAYDVR0TAQH/BAIwADAaBgNVHREEEzARgg93d3cuZXhh
+bXBsZS5jb20wKwYDVR0gBCQwIjAPBg0qhkiG9xIEAYS3CQIBMA8GDSqGSIb3EgQB
+hLcJAgIwCgYIKoZIzj0EAwIDRwAwRAIgPTm7NO8gR+z8BqA6gV9FVwrSmOAJVzyu
+5loq9ZTtIS0CIEjBbvBcY4+Y3xWL4SUFQKQk3pNZ37xJoz2v+/yvEE5/
+-----END CERTIFICATE-----
+)";
+
 TEST(X509Test, PolicyTreeLimit) {
-  //  cross_signing_root
-  //         |
-  //   root_cross_signed    root
-  //              \         /
-  //             intermediate
-  //                |     |
-  //              leaf  leaf_no_key_usage
-  //                      |
-  //                    forgery
-    std::function<void(X509_VERIFY_PARAM *)> configure_callback;
-      configure_callback = [&](X509_VERIFY_PARAM *param) {
-        X509_VERIFY_PARAM_clear_flags(param, X509_V_FLAG_TRUSTED_FIRST);
-      };
-  bssl::UniquePtr<X509> chain_with_root(CertFromPEM(kSmallPolicyTree));
-  bssl::UniquePtr<X509> leaf(CertFromPEM(kSmallLeaf));
-  //  bssl::UniquePtr<X509> chain_with_root(CertFromPEM(kLargePolicyTree));
-  //bssl::UniquePtr<X509> leaf(CertFromPEM(kLargeLeaf));
-// Each chain works individually.
-ASSERT_EQ(X509_V_OK, Verify(leaf.get(), {chain_with_root.get()}, {},
-                            /*crls=*/{}, /*flags=*/0, configure_callback));
+  bssl::UniquePtr<X509> leaf(CertFromPEM(kLargeLeaf));
+  const std::vector<X509 *> intermediates(VecCertChainFromPEM(kLargePolicyTree));
+  bssl::UniquePtr<X509> root(CertFromPEM(kLargePolicyTreeRoot));
+
+  bssl::UniquePtr<ASN1_OBJECT> oid1Exits(
+      OBJ_txt2obj("2.16.840.1.101.3.2.1.48.1", /*dont_search_names=*/1));
+  ASSERT_TRUE(oid1Exits);
+  bssl::UniquePtr<ASN1_OBJECT> oid2Exits(
+      OBJ_txt2obj("2.16.840.1.101.3.2.1.48.2", /*dont_search_names=*/1));
+  ASSERT_TRUE(oid2Exits);
+  bssl::UniquePtr<ASN1_OBJECT> oid3DoesNotExist(
+      OBJ_txt2obj("1.2.840.113554.4.1.72585.2.3", /*dont_search_names=*/1));
+  ASSERT_TRUE(oid3DoesNotExist);
+
+  auto set_policies = [](X509_VERIFY_PARAM *param,
+                         std::vector<const ASN1_OBJECT *> oids) {
+    for (const ASN1_OBJECT *oid : oids) {
+      bssl::UniquePtr<ASN1_OBJECT> copy(OBJ_dup(oid));
+      ASSERT_TRUE(copy);
+      ASSERT_TRUE(X509_VERIFY_PARAM_add0_policy(param, copy.get()));
+      copy.release();  // |X509_VERIFY_PARAM_add0_policy| takes ownership on
+                       // success.
+    }
+  };
+
+  // Check that two existing policies |oid1Exits| and |oid2Exits| both result
+  // in limit reached errors. |X509_V_ERR_OUT_OF_MEM| is the rather confusing
+  // error returned in the error case, but we can't generally "bubble up" the
+  // maximum node error without a larger re-factor.
+  EXPECT_EQ(X509_V_ERR_OUT_OF_MEM,
+            Verify(leaf.get(), {root.get()}, {intermediates}, /*crls=*/{},
+                   X509_V_FLAG_EXPLICIT_POLICY, [&](X509_VERIFY_PARAM *param) {
+                     set_policies(param, {oid1Exits.get()});
+                   }));
+
+  EXPECT_EQ(X509_V_ERR_OUT_OF_MEM,
+            Verify(leaf.get(), {root.get()}, {intermediates}, /*crls=*/{},
+                   X509_V_FLAG_EXPLICIT_POLICY, [&](X509_VERIFY_PARAM *param) {
+                     set_policies(param, {oid2Exits.get()});
+                   }));
+
+  // Even for a non-existing policy |oid3DoesNotExist|, the limit reached error
+  // would apply because the policy tree is build regardless.
+  EXPECT_EQ(X509_V_ERR_OUT_OF_MEM,
+            Verify(leaf.get(), {root.get()}, {intermediates}, /*crls=*/{},
+                   X509_V_FLAG_EXPLICIT_POLICY, [&](X509_VERIFY_PARAM *param) {
+                     set_policies(param, {oid3DoesNotExist.get()});
+                   }));
+
+  for (X509 *cert : intermediates) {
+    X509_free(cert);
+  }
+}
+
+TEST(X509Test, PolicyTreeBasic) {
+
+  bssl::UniquePtr<X509> leaf(CertFromPEM(kPolicyLeaf));
+  bssl::UniquePtr<X509> intermediate(CertFromPEM(kPolicyIntermediate));
+  bssl::UniquePtr<X509> root(CertFromPEM(kPolicyRoot));
+
+  bssl::UniquePtr<ASN1_OBJECT> oid1Good(
+      OBJ_txt2obj("1.2.840.113554.4.1.72585.2.1", /*dont_search_names=*/1));
+  ASSERT_TRUE(oid1Good);
+  bssl::UniquePtr<ASN1_OBJECT> oid2Good(
+      OBJ_txt2obj("1.2.840.113554.4.1.72585.2.2", /*dont_search_names=*/1));
+  ASSERT_TRUE(oid2Good);
+  bssl::UniquePtr<ASN1_OBJECT> oid3Bad(
+      OBJ_txt2obj("1.2.840.113554.4.1.72585.2.3", /*dont_search_names=*/1));
+  ASSERT_TRUE(oid3Bad);
+
+  auto set_policies = [](X509_VERIFY_PARAM *param,
+                         std::vector<const ASN1_OBJECT *> oids) {
+    for (const ASN1_OBJECT *oid : oids) {
+      bssl::UniquePtr<ASN1_OBJECT> copy(OBJ_dup(oid));
+      ASSERT_TRUE(copy);
+      ASSERT_TRUE(X509_VERIFY_PARAM_add0_policy(param, copy.get()));
+      copy.release();  // |X509_VERIFY_PARAM_add0_policy| takes ownership on
+                       // success.
+    }
+  };
+
+  // By default, policies are not checked, so even syntax errors in the
+  // certificatePolicies extension go unnoticed. Aligns with OpenSSL and
+  // BoringSSL behaviour.
+  EXPECT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()},
+                              {intermediate.get()}, /*crls=*/{}));
+
+  // The chain is good for |oid1Good| and |oid2Good|, but not |oid3Bad|.
+  EXPECT_EQ(X509_V_OK,
+            Verify(leaf.get(), {root.get()}, {intermediate.get()}, /*crls=*/{},
+                   X509_V_FLAG_EXPLICIT_POLICY, [&](X509_VERIFY_PARAM *param) {
+                     set_policies(param, {oid1Good.get()});
+                   }));
+  EXPECT_EQ(X509_V_OK,
+            Verify(leaf.get(), {root.get()}, {intermediate.get()}, /*crls=*/{},
+                   X509_V_FLAG_EXPLICIT_POLICY, [&](X509_VERIFY_PARAM *param) {
+                     set_policies(param, {oid2Good.get()});
+                   }));
+  EXPECT_EQ(X509_V_ERR_NO_EXPLICIT_POLICY,
+            Verify(leaf.get(), {root.get()}, {intermediate.get()}, /*crls=*/{},
+                   X509_V_FLAG_EXPLICIT_POLICY, [&](X509_VERIFY_PARAM *param) {
+                     set_policies(param, {oid3Bad.get()});
+                   }));
+  EXPECT_EQ(X509_V_OK,
+            Verify(leaf.get(), {root.get()}, {intermediate.get()}, /*crls=*/{},
+                   X509_V_FLAG_EXPLICIT_POLICY, [&](X509_VERIFY_PARAM *param) {
+                     set_policies(param, {oid1Good.get(), oid2Good.get()});
+                   }));
+  EXPECT_EQ(X509_V_OK,
+            Verify(leaf.get(), {root.get()}, {intermediate.get()}, /*crls=*/{},
+                   X509_V_FLAG_EXPLICIT_POLICY, [&](X509_VERIFY_PARAM *param) {
+                     set_policies(param, {oid1Good.get(), oid3Bad.get()});
+                   }));
 }
 
 
