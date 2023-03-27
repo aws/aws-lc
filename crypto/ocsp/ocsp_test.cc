@@ -1255,3 +1255,51 @@ TEST_P(OCSPNonceTest, OCSPNonce) {
   EXPECT_EQ(OCSP_check_nonce(ocspRequest.get(), basicResponse.get()),
             t.nonce_check_status);
 }
+
+TEST(OCSPTest, OCSPCRLString) {
+  for (int reason_code = 0; reason_code < 11; reason_code++) {
+    if (reason_code == 7) {
+      // Reason Code 7 is not used.
+      EXPECT_EQ("(UNKNOWN)", std::string(OCSP_crl_reason_str(7)));
+      continue;
+    }
+    EXPECT_NE("(UNKNOWN)", std::string(OCSP_crl_reason_str(reason_code)));
+  }
+  // More unexpected cases.
+  EXPECT_EQ("(UNKNOWN)", std::string(OCSP_crl_reason_str(100)));
+  EXPECT_EQ("(UNKNOWN)", std::string(OCSP_crl_reason_str(-1)));
+  EXPECT_EQ("(UNKNOWN)", std::string(OCSP_crl_reason_str(-100)));
+}
+
+TEST(OCSPBIOTest, OCSPBIOTest) {
+  std::string reqData =
+      GetTestData(std::string("crypto/ocsp/test/aws/ocsp_request.der").c_str());
+  std::vector<uint8_t> ocsp_request_data(reqData.begin(), reqData.end());
+  std::string respData = GetTestData(
+      std::string("crypto/ocsp/test/aws/ocsp_response.der").c_str());
+  std::vector<uint8_t> ocsp_response_data(respData.begin(), respData.end());
+
+  // Write an OCSP response into the BIO.
+  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+  int respLen = (int)ocsp_response_data.size();
+  ASSERT_EQ(BIO_write(bio.get(), ocsp_response_data.data(), respLen), respLen);
+  bssl::UniquePtr<OCSP_RESPONSE> ocspResponse(
+      d2i_OCSP_RESPONSE_bio(bio.get(), nullptr));
+  EXPECT_TRUE(ocspResponse);
+
+  // Reserialize the OCSP response.
+  EXPECT_TRUE(i2d_OCSP_RESPONSE_bio(bio.get(), ocspResponse.get()));
+  const uint8_t *bio_data;
+  size_t bio_len;
+  ASSERT_TRUE(BIO_mem_contents(bio.get(), &bio_data, &bio_len));
+  EXPECT_EQ(Bytes(bio_data, bio_len),
+            Bytes(ocsp_response_data.data(), respLen));
+
+  // Write an OCSP request into the BIO, but it shouldn't successfully parse
+  // with |d2i_OCSP_RESPONSE_bio|.
+  BIO_reset(bio.get());
+  const int reqLen = (int)ocsp_request_data.size();
+  ASSERT_EQ(BIO_write(bio.get(), ocsp_request_data.data(), reqLen), reqLen);
+  ocspResponse.reset(d2i_OCSP_RESPONSE_bio(bio.get(), nullptr));
+  EXPECT_FALSE(ocspResponse);
+}

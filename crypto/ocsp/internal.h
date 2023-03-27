@@ -14,6 +14,33 @@
 extern "C" {
 #endif
 
+// OCSP reason codes identify the reason for the certificate revocation.
+//
+//  CRLReason ::= ENUMERATED {
+//        unspecified             (0),
+//        keyCompromise           (1),
+//        cACompromise            (2),
+//        affiliationChanged      (3),
+//        superseded              (4),
+//        cessationOfOperation    (5),
+//        -- value 7 is not used
+//        certificateHold         (6),
+//        removeFromCRL           (8),
+//        privilegeWithdrawn      (9),
+//        aACompromise            (10) }
+//
+// Reason Code RFC: https://www.rfc-editor.org/rfc/rfc5280#section-5.3.1
+#define OCSP_REVOKED_STATUS_UNSPECIFIED 0
+#define OCSP_REVOKED_STATUS_KEYCOMPROMISE 1
+#define OCSP_REVOKED_STATUS_CACOMPROMISE 2
+#define OCSP_REVOKED_STATUS_AFFILIATIONCHANGED 3
+#define OCSP_REVOKED_STATUS_SUPERSEDED 4
+#define OCSP_REVOKED_STATUS_CESSATIONOFOPERATION 5
+#define OCSP_REVOKED_STATUS_CERTIFICATEHOLD 6
+#define OCSP_REVOKED_STATUS_REMOVEFROMCRL 8
+#define OCSP_REVOKED_STATUS_PRIVILEGEWITHDRAWN 9
+#define OCSP_REVOKED_STATUS_AACOMPROMISE 10
+
 // OCSP Request ASN.1 specification:
 // https://datatracker.ietf.org/doc/html/rfc6960#section-4.1.1
 //
@@ -232,10 +259,6 @@ int OCSP_REQ_CTX_nbio_d2i(OCSP_REQ_CTX *rctx, ASN1_VALUE **pval,
 
 // Parses ASN.1 contents of |OCSP_REQ_CTX| into a der format.
 int OCSP_REQ_CTX_i2d(OCSP_REQ_CTX *rctx, const ASN1_ITEM *it, ASN1_VALUE *val);
-
-// Returns index of |OCSP_SINGLERESP| in |OCSP_BASICRESP| matching a
-// given certificate ID, returns -1 if not found.
-int OCSP_resp_find(OCSP_BASICRESP *bs, OCSP_CERTID *id, int last);
 
 OCSP_CERTID *OCSP_cert_id_new(const EVP_MD *dgst, const X509_NAME *issuerName,
                               const ASN1_BIT_STRING *issuerKey,
