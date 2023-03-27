@@ -220,6 +220,7 @@ static void TestCipherAPI(const EVP_CIPHER *cipher, Operation op, bool padding,
   unsigned char *iv_copy = (unsigned char *)malloc(EVP_MAX_IV_LENGTH);
   if (iv_copy == NULL) {
     FAIL();
+    return;
   }
   if (is_aead) {
     ASSERT_FALSE(EVP_CIPHER_CTX_get_iv(ctx.get(), iv_copy, iv.size()));
