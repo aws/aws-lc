@@ -1259,6 +1259,50 @@ TEST(RSATest, KeygenInternalRetry) {
   EXPECT_TRUE(RSA_generate_key_ex(rsa.get(), 2048, e.get(), &cb));
 }
 
+TEST(RSATest, OldCallback) {
+  bssl::UniquePtr<RSA> rsa(RSA_new());
+  ASSERT_TRUE(rsa);
+  BN_GENCB cb;
+
+  int old_callback_call_count = 0;
+  void (*old_style_callback)(int, int, void *) = [](int event, int n,
+                                                   void *ptr) -> void {
+    BN_GENCB *cb_ptr = static_cast<BN_GENCB *>(ptr);
+    int *count_ptr = static_cast<int *>(cb_ptr->arg);
+    *count_ptr += 1;
+  };
+
+  int new_callback_call_count = 0;
+  int (*new_style_callback)(int, int, BN_GENCB *cb_ptr) = [](int event, int n,
+                                                    BN_GENCB *cb_ptr) -> int {
+    int *count_ptr = static_cast<int *>(cb_ptr->arg);
+    *count_ptr += 1;
+    return 1;
+  };
+
+  // Set the new style first, setting the old should overwrite the new callback
+  BN_GENCB_set(&cb, new_style_callback, &new_callback_call_count);
+  BN_GENCB_set_old(&cb, old_style_callback, &old_callback_call_count);
+
+  bssl::UniquePtr<BIGNUM> e(BN_new());
+  ASSERT_TRUE(e);
+  ASSERT_TRUE(BN_set_word(e.get(), RSA_F4));
+  EXPECT_TRUE(RSA_generate_key_ex(rsa.get(), 2048, e.get(), &cb));
+  // The old callback should have been called at least once
+  EXPECT_NE(old_callback_call_count, 0);
+  // The new callback shouldn't have been called
+  EXPECT_EQ(new_callback_call_count, 0);
+  int previous_count = old_callback_call_count;
+
+  // Set the new style again and overwrite the old style
+  BN_GENCB_set(&cb, new_style_callback, &new_callback_call_count);
+  EXPECT_TRUE(RSA_generate_key_ex(rsa.get(), 2048, e.get(), &cb));
+  // The old callback should have been overwritten and not called
+  EXPECT_EQ(previous_count, old_callback_call_count);
+  // The new callback should have been called at least once
+  EXPECT_NE(new_callback_call_count, 0);
+}
+
 #if !defined(BORINGSSL_SHARED_LIBRARY)
 TEST(RSATest, SqrtTwo) {
   bssl::UniquePtr<BIGNUM> sqrt(BN_new()), pow2(BN_new());

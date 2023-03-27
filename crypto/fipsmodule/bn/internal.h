@@ -217,6 +217,10 @@ extern "C" {
 #define Hw(t) ((BN_ULONG)((t) >> BN_BITS2))
 #endif
 
+#define BN_GENCB_UNSET 0
+#define BN_GENCB_NEW_STYLE 1
+#define BN_GENCB_OLD_STYLE 2
+
 // bn_minimal_width returns the minimal value of |bn->top| which fits the
 // value of |bn|.
 int bn_minimal_width(const BIGNUM *bn);
