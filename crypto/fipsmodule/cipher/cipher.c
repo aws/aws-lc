@@ -598,6 +598,11 @@ int EVP_CIPHER_CTX_get_iv(const EVP_CIPHER_CTX *ctx, unsigned char *iv,
     return 0;
   }
 
+  const EVP_CIPHER *cipher = EVP_CIPHER_CTX_cipher(ctx);
+  if (EVP_CIPHER_mode(cipher) == EVP_CIPH_GCM_MODE) {
+    return 0;
+  }
+
   if (len > 0) {
     OPENSSL_memcpy(iv, ctx->iv, len);
   }

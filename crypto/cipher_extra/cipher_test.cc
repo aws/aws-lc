@@ -217,6 +217,18 @@ static void TestCipherAPI(const EVP_CIPHER *cipher, Operation op, bool padding,
                                 /*engine=*/nullptr,
                                 /*key=*/nullptr, iv.data(), /*enc=*/-1));
 
+  unsigned char *iv_copy = (unsigned char *)malloc(EVP_MAX_IV_LENGTH);
+  if (iv_copy == NULL) {
+    FAIL();
+  }
+  if (is_aead) {
+    ASSERT_FALSE(EVP_CIPHER_CTX_get_iv(ctx.get(), iv_copy, iv.size()));
+  } else {
+    ASSERT_TRUE(EVP_CIPHER_CTX_get_iv(ctx.get(), iv_copy, iv.size()));
+    ASSERT_EQ(0, memcmp(iv.data(), iv_copy, iv.size()));
+  }
+  free(iv_copy);
+
   if (is_aead && !encrypt) {
     ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_SET_TAG,
                                     tag.size(),
