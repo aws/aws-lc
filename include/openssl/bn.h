@@ -689,7 +689,9 @@ OPENSSL_EXPORT BN_GENCB *BN_GENCB_new(void);
 OPENSSL_EXPORT void BN_GENCB_free(BN_GENCB *callback);
 
 // BN_GENCB_set configures |callback| to call |f| and sets |callback->arg| to
-// |arg|. Only one callback can be configured in a |BN_GENCB|, calling
+// |arg|. |BN_GENCB_set| is recommended over |BN_GENCB_set_old| as |BN_GENCB_set|
+// accepts callbacks that return a result and have a strong type for the
+// |BN_GENCB|. Only one callback can be configured in a |BN_GENCB|, calling
 // |BN_GENCB_set| or |BN_GENCB_set_old| multiple times will overwrite the
 // callback.
 OPENSSL_EXPORT void BN_GENCB_set(BN_GENCB *callback,
