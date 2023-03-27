@@ -1162,6 +1162,21 @@ TEST_P(OCSPURLTest, OCSPParseURL) {
   }
 }
 
+TEST(OCSPTest, OCSPCRLString) {
+  for (int reason_code = 0; reason_code < 11; reason_code++) {
+    if (reason_code == 7) {
+      // Reason Code 7 is not used.
+      EXPECT_EQ("(UNKNOWN)", std::string(OCSP_crl_reason_str(7)));
+      continue;
+    }
+    EXPECT_NE("(UNKNOWN)", std::string(OCSP_crl_reason_str(reason_code)));
+  }
+  // More unexpected cases.
+  EXPECT_EQ("(UNKNOWN)", std::string(OCSP_crl_reason_str(100)));
+  EXPECT_EQ("(UNKNOWN)", std::string(OCSP_crl_reason_str(-1)));
+  EXPECT_EQ("(UNKNOWN)", std::string(OCSP_crl_reason_str(-100)));
+}
+
 TEST(OCSPBIOTest, OCSPBIOTest) {
   std::string reqData =
       GetTestData(std::string("crypto/ocsp/test/aws/ocsp_request.der").c_str());
