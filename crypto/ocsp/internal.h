@@ -260,10 +260,6 @@ int OCSP_REQ_CTX_nbio_d2i(OCSP_REQ_CTX *rctx, ASN1_VALUE **pval,
 // Parses ASN.1 contents of |OCSP_REQ_CTX| into a der format.
 int OCSP_REQ_CTX_i2d(OCSP_REQ_CTX *rctx, const ASN1_ITEM *it, ASN1_VALUE *val);
 
-// Returns index of |OCSP_SINGLERESP| in |OCSP_BASICRESP| matching a
-// given certificate ID, returns -1 if not found.
-int OCSP_resp_find(OCSP_BASICRESP *bs, OCSP_CERTID *id, int last);
-
 OCSP_CERTID *OCSP_cert_id_new(const EVP_MD *dgst, const X509_NAME *issuerName,
                               const ASN1_BIT_STRING *issuerKey,
                               const ASN1_INTEGER *serialNumber);
