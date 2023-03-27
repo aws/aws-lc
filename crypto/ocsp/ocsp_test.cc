@@ -369,6 +369,9 @@ TEST(OCSPTest, TestGoodOCSP) {
                        &nextupd);
   ASSERT_EQ(V_OCSP_CERTSTATUS_GOOD, status);
 
+  // There is 1 |OCSP_SINGLERESP| in the |basic_response|.
+  EXPECT_EQ(OCSP_resp_count(basic_response.get()), 1);
+
   // If OCSP response is verifiable and all good, an OCSP client should check
   // time fields to see if the response is still valid.
 
@@ -468,6 +471,9 @@ TEST(OCSPTest, TestGoodOCSP_SHA256) {
                        OCSP_RESPFINDSTATUS_SUCCESS, &status, &thisupd,
                        &nextupd);
   ASSERT_EQ(V_OCSP_CERTSTATUS_GOOD, status);
+
+  // There is 1 |OCSP_SINGLERESP| in the |basic_response|.
+  EXPECT_EQ(OCSP_resp_count(basic_response.get()), 1);
 
   // If OCSP response is verifiable and all good, an OCSP client should check
   // time fields to see if the response is still valid.

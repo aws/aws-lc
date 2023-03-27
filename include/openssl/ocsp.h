@@ -181,6 +181,10 @@ OPENSSL_EXPORT int OCSP_response_status(OCSP_RESPONSE *resp);
 // OCSP_response_get1_basic returns |OCSP_BASICRESP| from |OCSP_RESPONSE|.
 OPENSSL_EXPORT OCSP_BASICRESP *OCSP_response_get1_basic(OCSP_RESPONSE *resp);
 
+// OCSP_resp_count returns the number of |OCSP_SINGLERESP| responses present
+// in |bs|.
+OPENSSL_EXPORT int OCSP_resp_count(OCSP_BASICRESP *bs);
+
 // OCSP_resp_get0 returns the |OCSP_SINGLERESP| at the |idx| within
 // |bs|.
 OCSP_SINGLERESP *OCSP_resp_get0(OCSP_BASICRESP *bs, size_t idx);
@@ -305,6 +309,10 @@ OPENSSL_EXPORT int OCSP_id_get0_info(ASN1_OCTET_STRING **nameHash,
 
 // OCSP_basic_add1_cert adds |cert| to the |resp|.
 OPENSSL_EXPORT int OCSP_basic_add1_cert(OCSP_BASICRESP *resp, X509 *cert);
+
+// OCSP_SINGLERESP_get0_id returns the |OCSP_CERTID| within |x|.
+OPENSSL_EXPORT const OCSP_CERTID *OCSP_SINGLERESP_get0_id(
+    const OCSP_SINGLERESP *x);
 
 // OCSP_response_status_str returns the OCSP response status of |status_code| as
 // a string.
