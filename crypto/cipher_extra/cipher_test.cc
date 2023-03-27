@@ -220,13 +220,14 @@ static void TestCipherAPI(const EVP_CIPHER *cipher, Operation op, bool padding,
   unsigned char *iv_copy = (unsigned char *)malloc(EVP_MAX_IV_LENGTH);
   if (iv_copy == NULL) {
     FAIL();
-    return;
   }
   if (is_aead) {
     ASSERT_FALSE(EVP_CIPHER_CTX_get_iv(ctx.get(), iv_copy, iv.size()));
   } else {
     ASSERT_TRUE(EVP_CIPHER_CTX_get_iv(ctx.get(), iv_copy, iv.size()));
-    ASSERT_EQ(0, memcmp(iv.data(), iv_copy, iv.size()));
+    if (iv.data() != NULL) {
+      ASSERT_EQ(0, memcmp(iv.data(), iv_copy, iv.size()));
+    }
   }
   free(iv_copy);
 
