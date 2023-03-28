@@ -537,6 +537,15 @@ static const char *kTLSv13MustNotIncludeNull[] = {
     "FIPS",
 };
 
+static const char *kMustNotInclude3DES[] = {
+    "ALL",
+    "DEFAULT",
+    "HIGH",
+    "FIPS",
+    "TLSv1",
+    "TLSv1.2",
+};
+
 static const CurveTest kCurveTests[] = {
     {
         "P-256",
@@ -829,6 +838,17 @@ TEST(SSLTest, CipherRules) {
     ASSERT_TRUE(SSL_CTX_set_strict_cipher_list(ctx.get(), rule));
     for (const SSL_CIPHER *cipher : SSL_CTX_get_ciphers(ctx.get())) {
       EXPECT_NE(NID_undef, SSL_CIPHER_get_cipher_nid(cipher));
+    }
+  }
+
+  for (const char *rule : kMustNotInclude3DES) {
+    SCOPED_TRACE(rule);
+    bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+    ASSERT_TRUE(ctx);
+
+    ASSERT_TRUE(SSL_CTX_set_strict_cipher_list(ctx.get(), rule));
+    for (const SSL_CIPHER *cipher : SSL_CTX_get_ciphers(ctx.get())) {
+      EXPECT_NE(NID_des_ede3_cbc, SSL_CIPHER_get_cipher_nid(cipher));
     }
   }
 }

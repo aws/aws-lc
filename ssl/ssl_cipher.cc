@@ -1283,8 +1283,7 @@ bool ssl_create_cipher_list(UniquePtr<SSLCipherPreferenceList> *out_cipher_list,
   ssl_cipher_apply_rule(0, ~0u, ~0u, ~0u, ~0u, 0, CIPHER_DEL, -1, false, &head,
                         &tail);
 
-  // If the rule_string begins with DEFAULT, apply the default rule before
-  // using the (possibly available) additional rules.
+  // Check for keyword rules that map to the default "ALL" rule.
   const char *rule_p = rule_str;
   size_t matched_rule_length = 0;
   if (is_known_default_alias_keyword_filter_rule(rule_str, &matched_rule_length)) {
