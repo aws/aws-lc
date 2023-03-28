@@ -568,7 +568,7 @@ static const CIPHER_ALIAS kCipherAliases[] = {
 
     // Legacy protocol minimum version aliases. "TLSv1" is intentionally the
     // same as "SSLv3".
-    {"SSLv3", ~0u, ~0u, ~0u, ~0u, SSL3_VERSION},
+    {"SSLv3", ~0u, ~0u, ~SSL_3DES, ~0u, SSL3_VERSION},
     {"TLSv1", ~0u, ~0u, ~SSL_3DES, ~0u, SSL3_VERSION},
     {"TLSv1.2", ~0u, ~0u, ~SSL_3DES, ~0u, TLS1_2_VERSION},
 

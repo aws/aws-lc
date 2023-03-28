@@ -542,6 +542,7 @@ static const char *kMustNotInclude3DES[] = {
     "DEFAULT",
     "HIGH",
     "FIPS",
+    "SSLv3",
     "TLSv1",
     "TLSv1.2",
 };
