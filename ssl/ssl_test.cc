@@ -541,13 +541,7 @@ static const char *kTLSv13MustNotIncludeNull[] = {
 };
 
 static const char *kMustNotInclude3DES[] = {
-    "ALL",
-    "DEFAULT",
-    "HIGH",
-    "FIPS",
-    "SSLv3",
-    "TLSv1",
-    "TLSv1.2",
+    "ALL", "DEFAULT", "HIGH", "FIPS", "SSLv3", "TLSv1", "TLSv1.2",
 };
 
 static const CurveTest kCurveTests[] = {
@@ -1624,6 +1618,18 @@ static bssl::UniquePtr<SSL_CTX> CreateContextWithTestCertificate(
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
   bssl::UniquePtr<X509> cert = GetTestCertificate();
   bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
+  if (!ctx || !cert || !key ||
+      !SSL_CTX_use_certificate(ctx.get(), cert.get()) ||
+      !SSL_CTX_use_PrivateKey(ctx.get(), key.get())) {
+    return nullptr;
+  }
+  return ctx;
+}
+
+static bssl::UniquePtr<SSL_CTX> CreateContextWithCertificate(
+    const SSL_METHOD *method, bssl::UniquePtr<X509> cert,
+    bssl::UniquePtr<EVP_PKEY> key) {
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
   if (!ctx || !cert || !key ||
       !SSL_CTX_use_certificate(ctx.get(), cert.get()) ||
       !SSL_CTX_use_PrivateKey(ctx.get(), key.get())) {
@@ -3568,7 +3574,7 @@ TEST(SSLTest, ClientHello) {
     std::vector<uint8_t> expected;
   } kTests[] = {
       {TLS1_VERSION,
-        {0x16, 0x03, 0x01, 0x00, 0x58, 0x01, 0x00, 0x00, 0x54, 0x03, 0x01, 0x00,
+       {0x16, 0x03, 0x01, 0x00, 0x58, 0x01, 0x00, 0x00, 0x54, 0x03, 0x01, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0c, 0xc0, 0x09,
@@ -3577,7 +3583,7 @@ TEST(SSLTest, ClientHello) {
         0x0a, 0x00, 0x08, 0x00, 0x06, 0x00, 0x1d, 0x00, 0x17, 0x00, 0x18, 0x00,
         0x0b, 0x00, 0x02, 0x01, 0x00, 0x00, 0x23, 0x00, 0x00}},
       {TLS1_1_VERSION,
-        {0x16, 0x03, 0x01, 0x00, 0x58, 0x01, 0x00, 0x00, 0x54, 0x03, 0x02, 0x00,
+       {0x16, 0x03, 0x01, 0x00, 0x58, 0x01, 0x00, 0x00, 0x54, 0x03, 0x02, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0c, 0xc0, 0x09,
@@ -3586,7 +3592,7 @@ TEST(SSLTest, ClientHello) {
         0x0a, 0x00, 0x08, 0x00, 0x06, 0x00, 0x1d, 0x00, 0x17, 0x00, 0x18, 0x00,
         0x0b, 0x00, 0x02, 0x01, 0x00, 0x00, 0x23, 0x00, 0x00}},
       {TLS1_2_VERSION,
-        {0x16, 0x03, 0x01, 0x00, 0x84, 0x01, 0x00, 0x00, 0x80, 0x03, 0x03, 0x00,
+       {0x16, 0x03, 0x01, 0x00, 0x84, 0x01, 0x00, 0x00, 0x80, 0x03, 0x03, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x20, 0xcc, 0xa9,
@@ -5017,64 +5023,110 @@ TEST(SSLTest, EmptyCipherList) {
   EXPECT_EQ(0u, sk_SSL_CIPHER_num(SSL_CTX_get_ciphers(ctx.get())));
 }
 
-TEST(SSLTest, MultiTransferReadWrite) {
-  std::string suites[] = {"TLS_AES_128_GCM_SHA256:", "TLS_AES_256_GCM_SHA384:",
-                          "TLS_CHACHA20_POLY1305_SHA256:"};
+struct MultiTransferReadWriteTestParams {
+  std::string suite;
+  bool tls13;
+  bssl::UniquePtr<X509> (*certificate)();
+  bssl::UniquePtr<EVP_PKEY> (*key)();
+};
 
-  for (const std::string &suite : suites) {
-    bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
-    bssl::UniquePtr<SSL_CTX> server_ctx(
-        CreateContextWithTestCertificate(TLS_method()));
+static const MultiTransferReadWriteTestParams kMultiTransferReadWriteTests[] = {
+    {"TLS_AES_128_GCM_SHA256:", true, GetECDSATestCertificate, GetECDSATestKey},
+    {"TLS_AES_256_GCM_SHA384:", true, GetECDSATestCertificate, GetECDSATestKey},
+    {"TLS_CHACHA20_POLY1305_SHA256:", true, GetECDSATestCertificate,
+     GetECDSATestKey},
+    {"TLS_RSA_WITH_NULL_SHA:", false, GetTestCertificate, GetTestKey},
+    {"TLS_RSA_WITH_3DES_EDE_CBC_SHA:", false, GetTestCertificate, GetTestKey},
+    {"TLS_RSA_WITH_AES_128_CBC_SHA:", false, GetTestCertificate, GetTestKey},
+    {"TLS_RSA_WITH_AES_256_CBC_SHA:", false, GetTestCertificate, GetTestKey},
+    {"TLS_RSA_WITH_AES_128_CBC_SHA256:", false, GetTestCertificate, GetTestKey},
+    {"TLS_RSA_WITH_AES_128_GCM_SHA256:", false, GetTestCertificate, GetTestKey},
+    {"TLS_RSA_WITH_AES_256_GCM_SHA384:", false, GetTestCertificate, GetTestKey},
+    {"TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA:", false, GetECDSATestCertificate,
+     GetECDSATestKey},
+    {"TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA:", false, GetECDSATestCertificate,
+     GetECDSATestKey},
+    {"TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA:", false, GetTestCertificate,
+     GetTestKey},
+    {"TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA:", false, GetTestCertificate,
+     GetTestKey},
+    {"TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256:", false, GetTestCertificate,
+     GetTestKey},
+    {"TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256:", false, GetECDSATestCertificate,
+     GetECDSATestKey},
+    {"TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384:", false, GetECDSATestCertificate,
+     GetECDSATestKey},
+    {"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256:", false, GetTestCertificate,
+     GetTestKey},
+    {"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384:", false, GetTestCertificate,
+     GetTestKey},
+    {"TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256:", false, GetTestCertificate,
+     GetTestKey},
+    {"TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256:", false,
+     GetECDSATestCertificate, GetECDSATestKey}};
 
-    ASSERT_TRUE(SSL_CTX_set_ciphersuites(client_ctx.get(), suite.c_str()));
-    ASSERT_TRUE(SSL_CTX_set_ciphersuites(server_ctx.get(), suite.c_str()));
+class MultiTransferReadWriteTest
+    : public testing::TestWithParam<MultiTransferReadWriteTestParams> {};
 
-    ASSERT_TRUE(
-        SSL_CTX_set_min_proto_version(client_ctx.get(), TLS1_3_VERSION));
-    ASSERT_TRUE(
-        SSL_CTX_set_max_proto_version(client_ctx.get(), TLS1_3_VERSION));
-    ASSERT_TRUE(
-        SSL_CTX_set_min_proto_version(server_ctx.get(), TLS1_3_VERSION));
-    ASSERT_TRUE(
-        SSL_CTX_set_max_proto_version(server_ctx.get(), TLS1_3_VERSION));
+INSTANTIATE_TEST_SUITE_P(SuiteTests, MultiTransferReadWriteTest,
+                         testing::ValuesIn(kMultiTransferReadWriteTests));
 
-    ClientConfig config;
-    bssl::UniquePtr<SSL> client, server;
+TEST_P(MultiTransferReadWriteTest, SuiteTransfers) {
+  auto params = GetParam();
 
-    ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
-                                       server_ctx.get(), config, true));
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx(CreateContextWithCertificate(
+      TLS_method(), params.certificate(), params.key()));
 
-    ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
+  uint16_t version = TLS1_2_VERSION;
+  int (*set_cipher_suites)(SSL_CTX *, const char *) = SSL_CTX_set_cipher_list;
+  if (params.tls13) {
+    version = TLS1_3_VERSION;
+    set_cipher_suites = SSL_CTX_set_ciphersuites;
+  }
 
-    char buf[3];
-    size_t buf_cap = sizeof(buf);
+  ASSERT_TRUE(set_cipher_suites(client_ctx.get(), params.suite.c_str()));
+  ASSERT_TRUE(set_cipher_suites(server_ctx.get(), params.suite.c_str()));
 
-    for (int t = 0; t < 5; t++) {
-      for (int i = 0; i < 20; i++) {
-        std::string send_str = std::to_string(i);
+  ASSERT_TRUE(SSL_CTX_set_min_proto_version(client_ctx.get(), version));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), version));
+  ASSERT_TRUE(SSL_CTX_set_min_proto_version(server_ctx.get(), version));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(server_ctx.get(), version));
 
-        // Assert server open
-        ASSERT_TRUE(
-            SSL_write(client.get(), send_str.c_str(), send_str.length()));
-        int read = SSL_read(server.get(), buf, buf_cap);
-        ASSERT_TRUE(read);
-        ASSERT_TRUE((size_t)read == send_str.length());
-        std::string read_str(buf, read);
-        ASSERT_EQ(send_str, read_str);
+  ClientConfig config;
+  bssl::UniquePtr<SSL> client, server;
 
-        // Assert server seal
-        ASSERT_TRUE(
-            SSL_write(server.get(), send_str.c_str(), send_str.length()));
-        read = SSL_read(client.get(), buf, buf_cap);
-        ASSERT_TRUE(read);
-        ASSERT_TRUE((size_t)read == send_str.length());
-        read_str = std::string(buf, read);
-        ASSERT_EQ(send_str, read_str);
-      }
-      bssl::UniquePtr<SSL> transfer_server;
-      TransferSSL(&server, server_ctx.get(), &transfer_server);
-      server = std::move(transfer_server);
+  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                     server_ctx.get(), config, true));
+
+  ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
+
+  char buf[3];
+  size_t buf_cap = sizeof(buf);
+
+  for (int t = 0; t < 5; t++) {
+    for (int i = 0; i < 20; i++) {
+      std::string send_str = std::to_string(i);
+
+      // Assert server open
+      ASSERT_TRUE(SSL_write(client.get(), send_str.c_str(), send_str.length()));
+      int read = SSL_read(server.get(), buf, buf_cap);
+      ASSERT_TRUE(read);
+      ASSERT_TRUE((size_t)read == send_str.length());
+      std::string read_str(buf, read);
+      ASSERT_EQ(send_str, read_str);
+
+      // Assert server seal
+      ASSERT_TRUE(SSL_write(server.get(), send_str.c_str(), send_str.length()));
+      read = SSL_read(client.get(), buf, buf_cap);
+      ASSERT_TRUE(read);
+      ASSERT_TRUE((size_t)read == send_str.length());
+      read_str = std::string(buf, read);
+      ASSERT_EQ(send_str, read_str);
     }
+    bssl::UniquePtr<SSL> transfer_server;
+    TransferSSL(&server, server_ctx.get(), &transfer_server);
+    server = std::move(transfer_server);
   }
 }
 
@@ -6014,8 +6066,7 @@ static const EncodeDecodeKATTestParam kEncodeDecodeKATs[] = {
      "4fd8098dc19d900b856d0a77e048e3ced2a104020204d2a20402021c20a4020400b10301"
      "01ffb20302011da206040474657374a7030101ff020108020100a0030101ff"},
     // In runner.go, the test case "Basic-Server-TLS-Sync-SSL_Transfer" is used
-    // to
-    // generate below bytes by adding print statement on the output of
+    // to generate below bytes by adding print statement on the output of
     // |SSL_to_bytes| in bssl_shim.cc.
     {"308201173082011302010102020303020240003081fa0201020408000000000000000104"
      "0800000000000000010420000004d29e62f41ded4bb33d0faa6ffada380e2c489dfbfb44"

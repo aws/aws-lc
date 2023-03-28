@@ -565,8 +565,8 @@ static int SSL3_STATE_from_bytes(SSL *ssl, CBS *cbs, const SSL_CTX *ctx) {
   int pending_app_data_present, read_buffer_present;
   if (!CBS_get_asn1(cbs, &s3, CBS_ASN1_SEQUENCE) ||
       !CBS_get_asn1_uint64(&s3, &serde_version) ||
-      serde_version > SSL3_STATE_SERDE_VERSION_TWO || (protocol_version >= TLS1_3_VERSION &&
-       serde_version < SSL3_STATE_SERDE_VERSION_TWO) ||
+      serde_version > SSL3_STATE_SERDE_VERSION_TWO ||
+      (is_tls13 && serde_version < SSL3_STATE_SERDE_VERSION_TWO) ||
       !CBS_get_asn1(&s3, &read_seq, CBS_ASN1_OCTETSTRING) ||
       CBS_len(&read_seq) != TLS_SEQ_NUM_SIZE ||
       !CBS_get_asn1(&s3, &write_seq, CBS_ASN1_OCTETSTRING) ||
@@ -624,7 +624,7 @@ static int SSL3_STATE_from_bytes(SSL *ssl, CBS *cbs, const SSL_CTX *ctx) {
     return 0;
   }
 
-  bool is_v2 = serde_version >= SSL3_STATE_SERDE_VERSION_TWO;
+  bool is_v2 = serde_version == SSL3_STATE_SERDE_VERSION_TWO;
 
   // We should have no more data at this point of we are deserializing v1
   // encoding.
@@ -641,7 +641,7 @@ static int SSL3_STATE_from_bytes(SSL *ssl, CBS *cbs, const SSL_CTX *ctx) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL3_STATE);
     return 0;
   }
-  out->early_data_skipped = early_data_skipped;
+  out->early_data_skipped = static_cast<uint16_t>(early_data_skipped);
 
   int delegated_credential_used;
   if (!CBS_get_optional_asn1_bool(&s3, &delegated_credential_used,
@@ -668,13 +668,13 @@ static int SSL3_STATE_from_bytes(SSL *ssl, CBS *cbs, const SSL_CTX *ctx) {
   out->used_hello_retry_request = used_hello_retry_request != 0;
 
   int64_t ticket_age_skew;
-  if (!SSL3_STATE_get_optional_asn1_int64(&s3, &ticket_age_skew,
-                                          kS3TicketAgeSkewTag, 0) ||
+  if (!CBS_get_optional_asn1_int64(&s3, &ticket_age_skew, kS3TicketAgeSkewTag,
+                                   0) ||
       ticket_age_skew > INT32_MAX) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL3_STATE);
     return 0;
   }
-  out->ticket_age_skew = ticket_age_skew;
+  out->ticket_age_skew = static_cast<int32_t>(ticket_age_skew);
 
   CBS write_traffic_secret;
   int write_traffic_secret_present;
@@ -1201,22 +1201,4 @@ int SSL_to_bytes(const SSL *in, uint8_t **out_data, size_t *out_len) {
   }
 
   return CBB_finish(cbb.get(), out_data, out_len);
-}
-
-bool SSL3_STATE_get_optional_asn1_int64(CBS *cbs, int64_t *out,
-                                        CBS_ASN1_TAG tag,
-                                        int64_t default_value) {
-  CBS child;
-  int present;
-  if (!CBS_get_optional_asn1(cbs, &child, &present, tag)) {
-    return 0;
-  }
-  if (present) {
-    if (!CBS_get_asn1_int64(&child, out) || CBS_len(&child) != 0) {
-      return 0;
-    }
-  } else {
-    *out = default_value;
-  }
-  return 1;
 }

@@ -4054,8 +4054,4 @@ struct ssl_ech_keys_st {
   friend OPENSSL_EXPORT void SSL_ECH_KEYS_free(SSL_ECH_KEYS *);
 };
 
-bool SSL3_STATE_get_optional_asn1_int64(CBS *cbs, int64_t *out,
-                                        CBS_ASN1_TAG tag,
-                                        int64_t default_value);
-
 #endif  // OPENSSL_HEADER_SSL_INTERNAL_H
