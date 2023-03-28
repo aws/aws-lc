@@ -932,6 +932,15 @@ if(BUILD_TESTING)
           ${MAYBE_USES_TERMINAL})
 
       add_custom_target(
+          run_ssl_runner_tests_valgrind
+          COMMAND cd ssl/test/runner &&
+          ${GO_EXECUTABLE} test -timeout ${GO_TEST_TIMEOUT} -shim-path $<TARGET_FILE:bssl_shim> -valgrind
+          ${HANDSHAKER_ARGS} ${RUNNER_ARGS} ${AWS_LC_SSL_RUNNER_INDEX_FILTER} ${SSL_TRANSFER_ARGS}
+          WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+          DEPENDS bssl_shim handshaker fips_specific_tests_if_any
+          ${MAYBE_USES_TERMINAL})
+
+      add_custom_target(
           run_tests
           COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
                   ${PROJECT_BINARY_DIR}
