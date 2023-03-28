@@ -269,13 +269,6 @@ OPENSSL_EXPORT int EC_POINT_point2cbb(CBB *out, const EC_GROUP *group,
                                       point_conversion_form_t form,
                                       BN_CTX *ctx);
 
-// EC_POINT_point2bn converts an |EC_POINT| to |BIGNUM.| Returns the pointer to the
-// BIGNUM supplied or NULL on error.
-AWS_LC_DEPRECATED OPENSSL_EXPORT BIGNUM *EC_POINT_point2bn(const EC_GROUP *group,
-                                         const EC_POINT *point,
-                                         point_conversion_form_t form,
-                                         BIGNUM *ret, BN_CTX *ctx);
-
 // EC_POINT_oct2point sets |point| from |len| bytes of X9.62 format
 // serialisation in |buf|. It returns one on success and zero on error. The
 // |ctx| argument may be used if not NULL. It's considered an error if |buf|
@@ -352,6 +345,14 @@ OPENSSL_EXPORT int EC_GROUP_set_generator(EC_GROUP *group,
                                           const EC_POINT *generator,
                                           const BIGNUM *order,
                                           const BIGNUM *cofactor);
+
+
+// EC_POINT_point2bn converts an |EC_POINT| to |BIGNUM|. On success, returns the
+// BIGNUM pointer supplied, |ret|. Otherwise, it returns NULL on error. The
+// |ctx| argument may be used if not NULL.
+AWS_LC_DEPRECATED OPENSSL_EXPORT BIGNUM *EC_POINT_point2bn(
+    const EC_GROUP *group, const EC_POINT *point, point_conversion_form_t form,
+    BIGNUM *ret, BN_CTX *ctx);
 
 // EC_GROUP_get_order sets |*order| to the order of |group|, if it's not
 // NULL. It returns one on success and zero otherwise. |ctx| is ignored. Use
