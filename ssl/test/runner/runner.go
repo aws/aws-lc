@@ -19600,7 +19600,7 @@ func fixUpCipherSuites() {
 		if cipherSuitesContains(testCases[index].config.CipherSuites, TLS_RSA_WITH_3DES_EDE_CBC_SHA) ||
 			cipherSuitesContains(testCases[index].renegotiateCiphers, TLS_RSA_WITH_3DES_EDE_CBC_SHA) {
 			add_disabld_cipher_suite = true
-			disabled_ciphers = ":3DES"
+			disabled_ciphers = disabled_ciphers + ":3DES"
 		}
 
 		if add_disabld_cipher_suite && flagsContains(testCases[index].flags, "-cipher") {
