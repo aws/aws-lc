@@ -64,8 +64,8 @@
 #include <openssl/mem.h>
 #include <openssl/nid.h>
 
-#include "../../internal.h"
 #include "internal.h"
+#include "../../internal.h"
 
 
 void EVP_CIPHER_CTX_init(EVP_CIPHER_CTX *ctx) {
@@ -470,7 +470,7 @@ int EVP_DecryptFinal_ex(EVP_CIPHER_CTX *ctx, unsigned char *out, int *out_len) {
   // |ctx->cipher->cipher| calls the static aes encryption function way under
   // the hood instead of |EVP_Cipher|, so the service indicator does not need
   // locking here.
-
+ 
   if (ctx->poisoned) {
     OPENSSL_PUT_ERROR(CIPHER, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     return 0;
@@ -574,7 +574,9 @@ const EVP_CIPHER *EVP_CIPHER_CTX_cipher(const EVP_CIPHER_CTX *ctx) {
   return ctx->cipher;
 }
 
-int EVP_CIPHER_CTX_nid(const EVP_CIPHER_CTX *ctx) { return ctx->cipher->nid; }
+int EVP_CIPHER_CTX_nid(const EVP_CIPHER_CTX *ctx) {
+  return ctx->cipher->nid;
+}
 
 int EVP_CIPHER_CTX_encrypting(const EVP_CIPHER_CTX *ctx) {
   return ctx->encrypt;
@@ -704,6 +706,8 @@ int EVP_DecryptFinal(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len) {
   return EVP_DecryptFinal_ex(ctx, out, out_len);
 }
 
-int EVP_add_cipher_alias(const char *a, const char *b) { return 1; }
+int EVP_add_cipher_alias(const char *a, const char *b) {
+  return 1;
+}
 
 void EVP_CIPHER_CTX_set_flags(const EVP_CIPHER_CTX *ctx, uint32_t flags) {}
