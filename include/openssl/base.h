@@ -486,9 +486,9 @@ typedef void *OPENSSL_BLOCK;
 #if __STDC_VERSION__ > 202300L
 #define AWS_LC_DEPRECATED [[deprecated]]
 #elif __has_attribute(deprecated)
-#define AWS_LC_DEPRECATED  __attribute__((deprecated))
+#define AWS_LC_DEPRECATED __attribute__((deprecated))
 #else
-#define AWS_LC_DEPRECATED  /* deprecated */
+#define AWS_LC_DEPRECATED /* deprecated */
 #endif
 
 #if defined(__cplusplus)

@@ -142,6 +142,7 @@ OPENSSL_EXPORT int EVP_CIPHER_CTX_copy(EVP_CIPHER_CTX *out,
 // |EVP_CIPHER_CTX_init| and returns one.
 OPENSSL_EXPORT int EVP_CIPHER_CTX_reset(EVP_CIPHER_CTX *ctx);
 
+
 // Cipher context configuration.
 
 // EVP_CipherInit_ex configures |ctx| for a fresh encryption (or decryption, if
@@ -426,7 +427,6 @@ OPENSSL_EXPORT int EVP_EncryptFinal(EVP_CIPHER_CTX *ctx, uint8_t *out,
 // EVP_DecryptFinal calls |EVP_DecryptFinal_ex|.
 OPENSSL_EXPORT int EVP_DecryptFinal(EVP_CIPHER_CTX *ctx, uint8_t *out,
                                     int *out_len);
-
 
 // EVP_Cipher historically exposed an internal implementation detail of |ctx|
 // and should not be used. Use |EVP_CipherUpdate| and |EVP_CipherFinal_ex|

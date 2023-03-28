@@ -1020,8 +1020,8 @@ TEST(ECTest, ArbitraryCurve) {
                                                   x.get(), y.get(), nullptr));
   ASSERT_TRUE(EC_KEY_set_public_key(key2.get(), point.get()));
 
-  bssl::UniquePtr<BIGNUM> converted(EC_POINT_point2bn( group.get(), point.get(),
-                                POINT_CONVERSION_UNCOMPRESSED, NULL, NULL));
+  bssl::UniquePtr<BIGNUM> converted(EC_POINT_point2bn(
+      group.get(), point.get(), POINT_CONVERSION_UNCOMPRESSED, NULL, NULL));
   ASSERT_TRUE(converted);
   ASSERT_TRUE(BN_cmp(converted.get(), x.get()));
 
