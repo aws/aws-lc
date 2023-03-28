@@ -129,6 +129,11 @@ void DH_get0_key(const DH *dh, const BIGNUM **out_pub_key,
   }
 }
 
+void DH_clear_flags(DH *dh, int flags) {
+  (void) dh;
+  (void) flags;
+}
+
 int DH_set0_key(DH *dh, BIGNUM *pub_key, BIGNUM *priv_key) {
   if (pub_key != NULL) {
     BN_free(dh->pub_key);
