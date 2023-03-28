@@ -160,6 +160,9 @@ OPENSSL_EXPORT int ENGINE_register_all_complete(void);
 // OPENSSL_load_builtin_modules does nothing.
 OPENSSL_EXPORT void OPENSSL_load_builtin_modules(void);
 
+// AWS-LC does not support custom flags when initializing the library, these
+// values are included to simplify building other software that expects them.
+
 #define OPENSSL_INIT_NO_LOAD_CRYPTO_STRINGS 0
 #define OPENSSL_INIT_LOAD_CRYPTO_STRINGS 0
 #define OPENSSL_INIT_ADD_ALL_CIPHERS 0
@@ -168,6 +171,7 @@ OPENSSL_EXPORT void OPENSSL_load_builtin_modules(void);
 #define OPENSSL_INIT_NO_ADD_ALL_DIGESTS 0
 #define OPENSSL_INIT_LOAD_CONFIG 0
 #define OPENSSL_INIT_NO_LOAD_CONFIG 0
+#define OPENSSL_INIT_ENGINE_ALL_BUILTIN 0
 
 // OPENSSL_init_crypto calls |CRYPTO_library_init| and returns one.
 OPENSSL_EXPORT int OPENSSL_init_crypto(uint64_t opts,
