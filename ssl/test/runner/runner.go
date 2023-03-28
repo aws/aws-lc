@@ -19567,18 +19567,18 @@ func checkTests() {
 	}
 }
 
-func cipherSuitesContains(cipherSuites []uint16, id uint16) bool {
-	for _, cipherSuite := range cipherSuites {
-		if cipherSuite == id {
+func uint16SliceContains(slice []uint16, element uint16) bool {
+	for _, slice_element := range slice {
+		if slice_element == element {
 			return true
 		}
 	}
 	return false
 }
 
-func flagsContains(flags []string, subStr string) bool {
-	for _, str := range flags {
-		if str == subStr {
+func stringSliceContains(slice []string, subStr string) bool {
+	for _, slice_element := range slice {
+		if slice_element == subStr {
 			return true
 		}
 	}
@@ -19588,27 +19588,28 @@ func flagsContains(flags []string, subStr string) bool {
 func fixUpCipherSuites() {
 
 	// Iterate by reference
-	for index, _ := range testCases {
+	for index, test_case := range testCases {
 		var add_disabld_cipher_suite bool
 		var disabled_ciphers string
 
-		if cipherSuitesContains(testCases[index].config.CipherSuites, TLS_RSA_WITH_NULL_SHA) ||
-			cipherSuitesContains(testCases[index].renegotiateCiphers, TLS_RSA_WITH_NULL_SHA) {
+		if uint16SliceContains(test_case.config.CipherSuites, TLS_RSA_WITH_NULL_SHA) ||
+			uint16SliceContains(test_case.renegotiateCiphers, TLS_RSA_WITH_NULL_SHA) {
 			add_disabld_cipher_suite = true
 			disabled_ciphers = ":NULL-SHA"
 		}
-		if cipherSuitesContains(testCases[index].config.CipherSuites, TLS_RSA_WITH_3DES_EDE_CBC_SHA) ||
-			cipherSuitesContains(testCases[index].renegotiateCiphers, TLS_RSA_WITH_3DES_EDE_CBC_SHA) {
+		if uint16SliceContains(test_case.config.CipherSuites, TLS_RSA_WITH_3DES_EDE_CBC_SHA) ||
+			uint16SliceContains(test_case.renegotiateCiphers, TLS_RSA_WITH_3DES_EDE_CBC_SHA) {
 			add_disabld_cipher_suite = true
 			disabled_ciphers = disabled_ciphers + ":3DES"
 		}
 
-		if add_disabld_cipher_suite && flagsContains(testCases[index].flags, "-cipher") {
-			panic(fmt.Sprintf("Test %q duplicates -cipher in arguments", testCases[index].name))
+		if add_disabld_cipher_suite && stringSliceContains(test_case.flags, "-cipher") {
+			panic(fmt.Sprintf("Test %q duplicates -cipher in arguments", test_case.name))
 		}
 
 		if add_disabld_cipher_suite {
-			testCases[index].flags = append(testCases[index].flags, "-cipher", "DEFAULT" + disabled_ciphers)
+			test_case.flags = append(test_case.flags, "-cipher", "DEFAULT" + disabled_ciphers)
+			testCases[index] = test_case
 		}
 	}
 }

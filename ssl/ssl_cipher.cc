@@ -569,8 +569,8 @@ static const CIPHER_ALIAS kCipherAliases[] = {
     // Legacy protocol minimum version aliases. "TLSv1" is intentionally the
     // same as "SSLv3".
     {"SSLv3", ~0u, ~0u, ~0u, ~0u, SSL3_VERSION},
-    {"TLSv1", ~0u, ~0u, ~0u, ~0u, SSL3_VERSION},
-    {"TLSv1.2", ~0u, ~0u, ~0u, ~0u, TLS1_2_VERSION},
+    {"TLSv1", ~0u, ~0u, ~SSL_3DES, ~0u, SSL3_VERSION},
+    {"TLSv1.2", ~0u, ~0u, ~SSL_3DES, ~0u, TLS1_2_VERSION},
 
     // Temporary no-op aliases corresponding to removed SHA-2 legacy CBC
     // ciphers. These should be removed after 2018-05-14.
@@ -1208,6 +1208,7 @@ static bool is_known_default_alias_keyword_filter_rule(const char *rule,
       return true;
     }
   }
+  *matched_rule_length = 0;
   return false;
 }
 

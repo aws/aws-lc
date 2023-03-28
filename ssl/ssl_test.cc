@@ -5865,7 +5865,7 @@ TEST(SSLTest, DISABLED_ApplyHandoffRemovesUnsupportedCiphers) {
       0x1d,
   };
 
-  EXPECT_EQ(21u, sk_SSL_CIPHER_num(SSL_get_ciphers(server.get())));
+  EXPECT_EQ(22u, sk_SSL_CIPHER_num(SSL_get_ciphers(server.get())));
   ASSERT_TRUE(
       SSL_apply_handoff(server.get(), {handoff, OPENSSL_ARRAY_SIZE(handoff)}));
   EXPECT_EQ(1u, sk_SSL_CIPHER_num(SSL_get_ciphers(server.get())));
