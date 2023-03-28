@@ -23,6 +23,7 @@
 #include <openssl/bn.h>
 #include <openssl/bytestring.h>
 #include <openssl/crypto.h>
+#include <openssl/ec.h>
 #include <openssl/ec_key.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
@@ -1019,6 +1020,11 @@ TEST(ECTest, ArbitraryCurve) {
                                                   x.get(), y.get(), nullptr));
   ASSERT_TRUE(EC_KEY_set_public_key(key2.get(), point.get()));
 
+  bssl::UniquePtr<BIGNUM> converted(EC_POINT_point2bn( group.get(), point.get(),
+                                POINT_CONVERSION_UNCOMPRESSED, NULL, NULL));
+  ASSERT_TRUE(converted);
+  ASSERT_TRUE(BN_cmp(converted.get(), x.get()));
+
   // The key must be valid according to the new group too.
   EXPECT_TRUE(EC_KEY_check_key(key2.get()));
 
@@ -1829,8 +1835,8 @@ static int has_uint128_and_not_small() {
 }
 
 // Test for out-of-range coordinates in public-key validation in
-// |EC_KEY_check_fips|. This test can only be exercised when the coordinates 
-// in the raw point are not in Montgomery representation, which is the case 
+// |EC_KEY_check_fips|. This test can only be exercised when the coordinates
+// in the raw point are not in Montgomery representation, which is the case
 // for P-224 in some builds (see below) and for P-521.
 TEST(ECTest, LargeXCoordinateVectors) {
   int line;
