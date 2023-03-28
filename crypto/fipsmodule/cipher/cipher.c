@@ -588,27 +588,6 @@ unsigned EVP_CIPHER_CTX_key_length(const EVP_CIPHER_CTX *ctx) {
   return ctx->key_len;
 }
 
-int EVP_CIPHER_CTX_get_iv(const EVP_CIPHER_CTX *ctx, unsigned char *iv,
-                          size_t len) {
-  if (ctx == NULL || iv == NULL) {
-    return 0;
-  }
-
-  if (len > EVP_MAX_IV_LENGTH || len != EVP_CIPHER_CTX_iv_length(ctx)) {
-    return 0;
-  }
-
-  const EVP_CIPHER *cipher = EVP_CIPHER_CTX_cipher(ctx);
-  if (EVP_CIPHER_mode(cipher) == EVP_CIPH_GCM_MODE) {
-    return 0;
-  }
-
-  if (len > 0) {
-    OPENSSL_memcpy(iv, ctx->iv, len);
-  }
-  return 1;
-}
-
 unsigned EVP_CIPHER_CTX_iv_length(const EVP_CIPHER_CTX *ctx) {
   return ctx->cipher->iv_len;
 }
