@@ -3759,10 +3759,6 @@ func addTestForCipherSuite(suite testCipherSuite, ver tlsVersion, protocol proto
 			"-psk", psk,
 			"-psk-identity", pskIdentity)
 	}
-	if hasComponent(suite.name, "NULL") {
-		// NULL ciphers must be explicitly enabled.
-		flags = append(flags, "-cipher", "DEFAULT:NULL-SHA")
-	}
 
 	var shouldFail bool
 	if isTLS12Only(suite.name) && ver.version < VersionTLS12 {
@@ -19571,6 +19567,53 @@ func checkTests() {
 	}
 }
 
+func uint16SliceContains(slice []uint16, element uint16) bool {
+	for _, slice_element := range slice {
+		if slice_element == element {
+			return true
+		}
+	}
+	return false
+}
+
+func stringSliceContains(slice []string, subStr string) bool {
+	for _, slice_element := range slice {
+		if slice_element == subStr {
+			return true
+		}
+	}
+	return false
+}
+
+func fixUpCipherSuites() {
+
+	// Iterate by reference
+	for index, test_case := range testCases {
+		var add_disabld_cipher_suite bool
+		var disabled_ciphers string
+
+		if uint16SliceContains(test_case.config.CipherSuites, TLS_RSA_WITH_NULL_SHA) ||
+			uint16SliceContains(test_case.renegotiateCiphers, TLS_RSA_WITH_NULL_SHA) {
+			add_disabld_cipher_suite = true
+			disabled_ciphers = ":NULL-SHA"
+		}
+		if uint16SliceContains(test_case.config.CipherSuites, TLS_RSA_WITH_3DES_EDE_CBC_SHA) ||
+			uint16SliceContains(test_case.renegotiateCiphers, TLS_RSA_WITH_3DES_EDE_CBC_SHA) {
+			add_disabld_cipher_suite = true
+			disabled_ciphers = disabled_ciphers + ":3DES"
+		}
+
+		if add_disabld_cipher_suite && stringSliceContains(test_case.flags, "-cipher") {
+			panic(fmt.Sprintf("Test %q duplicates -cipher in arguments", test_case.name))
+		}
+
+		if add_disabld_cipher_suite {
+			test_case.flags = append(test_case.flags, "-cipher", "DEFAULT" + disabled_ciphers)
+			testCases[index] = test_case
+		}
+	}
+}
+
 // filterTests filters |inputTests| given the index range [|startIndex|, |endIndex|].
 // When |startIndex| is negative, the default value |0| is used.
 // When |endIndex| is negative, the default value |len(inputTests) - 1| is used.
@@ -19677,6 +19720,8 @@ func main() {
 		os.Exit(1)
 	}
 	testCases = append(testCases, toAppend...)
+
+	fixUpCipherSuites()
 
 	if len(*sslTransferConfig) > 0 {
 		// Init ssl transfer helper.
