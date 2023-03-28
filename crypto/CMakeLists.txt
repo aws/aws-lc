@@ -221,6 +221,62 @@ endif()
 
 if(GO_EXECUTABLE)
   add_custom_command(
+          OUTPUT
+          err/asn1.errordata
+          err/bio.errordata
+          err/bn.errordata
+          err/cipher.errordata
+          err/conf.errordata
+          err/dh.errordata
+          err/digest.errordata
+          err/dsa.errordata
+          err/ec.errordata
+          err/ecdh.errordata
+          err/ecdsa.errordata
+          err/engine.errordata
+          err/evp.errordata
+          err/hkdf.errordata
+          err/obj.errordata
+          err/ocsp.errordata
+          err/pem.errordata
+          err/pkcs7.errordata
+          err/pkcs8.errordata
+          err/rsa.errordata
+          err/ssl.errordata
+          err/trust_token.errordata
+          err/x509.errordata
+          err/x509v3.errordata
+          ${PROJECT_SOURCE_DIR}/include/openssl/asn1.h
+          ${PROJECT_SOURCE_DIR}/include/openssl/bio.h
+          ${PROJECT_SOURCE_DIR}/include/openssl/bn.h
+          ${PROJECT_SOURCE_DIR}/include/openssl/cipher.h
+          ${PROJECT_SOURCE_DIR}/include/openssl/conf.h
+          ${PROJECT_SOURCE_DIR}/include/openssl/dh.h
+          ${PROJECT_SOURCE_DIR}/include/openssl/digest.h
+          ${PROJECT_SOURCE_DIR}/include/openssl/dsa.h
+          ${PROJECT_SOURCE_DIR}/include/openssl/ec.h
+          ${PROJECT_SOURCE_DIR}/include/openssl/ecdh.h
+          ${PROJECT_SOURCE_DIR}/include/openssl/ecdsa.h
+          ${PROJECT_SOURCE_DIR}/include/openssl/engine.h
+          ${PROJECT_SOURCE_DIR}/include/openssl/evp.h
+          ${PROJECT_SOURCE_DIR}/include/openssl/hkdf.h
+          ${PROJECT_SOURCE_DIR}/include/openssl/obj.h
+          ${PROJECT_SOURCE_DIR}/include/openssl/ocsp.h
+          ${PROJECT_SOURCE_DIR}/include/openssl/pem.h
+          ${PROJECT_SOURCE_DIR}/include/openssl/pkcs7.h
+          ${PROJECT_SOURCE_DIR}/include/openssl/pkcs8.h
+          ${PROJECT_SOURCE_DIR}/include/openssl/rsa.h
+          ${PROJECT_SOURCE_DIR}/include/openssl/ssl.h
+          ${PROJECT_SOURCE_DIR}/include/openssl/trust_token.h
+          ${PROJECT_SOURCE_DIR}/include/openssl/x509.h
+          ${PROJECT_SOURCE_DIR}/include/openssl/x509v3.h
+          COMMAND ${GO_EXECUTABLE} run ${PROJECT_SOURCE_DIR}/util/make_errors.go asn1 bio bn cipher conf dh digest dsa ec ecdh ecdsa engine evp hkdf obj ocsp pem pkcs7 pkcs8 rsa ssl trust_token x509 x509v3
+          DEPENDS
+            ${PROJECT_SOURCE_DIR}/util/make_errors.go
+          WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+  )
+
+  add_custom_command(
     OUTPUT err_data.c
     COMMAND ${GO_EXECUTABLE} run err_data_generate.go > ${CMAKE_CURRENT_BINARY_DIR}/err_data.c
     DEPENDS
@@ -233,9 +289,9 @@ if(GO_EXECUTABLE)
     err/dh.errordata
     err/digest.errordata
     err/dsa.errordata
+    err/ec.errordata
     err/ecdh.errordata
     err/ecdsa.errordata
-    err/ec.errordata
     err/engine.errordata
     err/evp.errordata
     err/hkdf.errordata
@@ -251,7 +307,13 @@ if(GO_EXECUTABLE)
     err/x509v3.errordata
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/err
   )
+
+  # This gives us a target we can later use to force a dependency on the fipsmodule targets to take.
+  # The crypto_objects target will do the right thing already since it depends on err_data.c
+  add_custom_target(generate_crypto_errors SOURCES err_data.c)
 else()
+  # Make sure the target still exists to keep reference to it happy
+  add_custom_target(generate_crypto_errors)
   file(COPY ${GENERATE_CODE_ROOT}/err_data.c DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
 endif()
 
@@ -532,6 +594,8 @@ function(build_libcrypto name module_source)
 endfunction()
 
 if(FIPS_SHARED)
+  add_dependencies(fipsmodule generate_crypto_errors)
+  add_dependencies(bcm_library generate_crypto_errors)
   # Rewrite libcrypto.so, libcrypto.dylib, or crypto.dll to inject the correct module
   # hash value. For now we support the FIPS build only on Linux, macOS, iOS, and Windows.
   if(MSVC)
@@ -601,6 +665,11 @@ if(FIPS_SHARED)
 
   endif()
 else()
+  if(FIPS_DELOCATE)
+      add_dependencies(bcm_c_generated_asm generate_crypto_errors)
+  endif()
+  # fipsmodule references include/openssl/*.h headers that need to be updated first
+  add_dependencies(fipsmodule generate_crypto_errors)
   build_libcrypto(crypto $<TARGET_OBJECTS:fipsmodule>)
 endif()
 

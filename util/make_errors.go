@@ -36,6 +36,18 @@ const reservedReasonCode = 1000
 
 var resetFlag *bool = flag.Bool("reset", false, "If true, ignore current assignments and reassign from scratch")
 
+// This map of library names to error code keys tracks reasons that should be removed from a librarys set of reasons.
+var specialCaseRemovals = map[string]map[string]struct{}{
+	// For compatability reasons documented in https://github.com/google/boringssl/commit/80aa6949756d327476750f9ea2c9700aa2a027c5
+	// there are error codes declared in the bio library that are for the asn1 library. and are already defined in asn1.
+	"bio": {
+		"ASN1_R_ASN1_R_DECODE_ERROR":    struct{}{},
+		"ASN1_R_ASN1_R_HEADER_TOO_LONG": struct{}{},
+		"ASN1_R_ASN1_R_NOT_ENOUGH_DATA": struct{}{},
+		"ASN1_R_ASN1_R_TOO_LONG":        struct{}{},
+	},
+}
+
 type libraryInfo struct {
 	sourceDirs []string
 	headerName string
@@ -60,6 +72,16 @@ func getLibraryInfo(lib string) libraryInfo {
 	}
 
 	return info
+}
+
+func removeSpecialCases(lib string, reasons map[string]int) {
+	removals, ok := specialCaseRemovals[lib]
+	if !ok {
+		return
+	}
+	for key := range removals {
+		delete(reasons, key)
+	}
 }
 
 func makeErrors(lib string, reset bool) error {
@@ -129,6 +151,8 @@ func makeErrors(lib string, reset bool) error {
 			}
 		}
 	}
+
+	removeSpecialCases(lib, reasons)
 
 	assignNewValues(reasons, reservedReasonCode)
 
