@@ -522,8 +522,11 @@ typedef struct cipher_alias_st {
 } CIPHER_ALIAS;
 
 static const CIPHER_ALIAS kCipherAliases[] = {
-    // "ALL" doesn't include eNULL. It must be explicitly enabled.
-    {"ALL", ~0u, ~0u, ~0u, ~0u, 0},
+    // "ALL" is the default rule and includes everything except: SSL_3DES and
+    // SSL_eNULL, which must be explicitly configured.
+    // Several "known" keyword rules map to "ALL". See
+    // is_known_default_alias_keyword_filter_rule().
+    {"ALL", ~0u, ~0u, ~(SSL_3DES | SSL_eNULL), ~0u, 0},
 
     // The "COMPLEMENTOFDEFAULT" rule is omitted. It matches nothing.
 
@@ -565,13 +568,9 @@ static const CIPHER_ALIAS kCipherAliases[] = {
 
     // Legacy protocol minimum version aliases. "TLSv1" is intentionally the
     // same as "SSLv3".
-    {"SSLv3", ~0u, ~0u, ~0u, ~0u, SSL3_VERSION},
-    {"TLSv1", ~0u, ~0u, ~0u, ~0u, SSL3_VERSION},
-    {"TLSv1.2", ~0u, ~0u, ~0u, ~0u, TLS1_2_VERSION},
-
-    // Legacy strength classes.
-    {"HIGH", ~0u, ~0u, ~0u, ~0u, 0},
-    {"FIPS", ~0u, ~0u, ~0u, ~0u, 0},
+    {"SSLv3", ~0u, ~0u, ~SSL_3DES, ~0u, SSL3_VERSION},
+    {"TLSv1", ~0u, ~0u, ~SSL_3DES, ~0u, SSL3_VERSION},
+    {"TLSv1.2", ~0u, ~0u, ~SSL_3DES, ~0u, TLS1_2_VERSION},
 
     // Temporary no-op aliases corresponding to removed SHA-2 legacy CBC
     // ciphers. These should be removed after 2018-05-14.
@@ -1186,6 +1185,26 @@ static bool ssl_cipher_process_rulestr(const char *rule_str,
   return true;
 }
 
+static const char *kKnownKeywordFilterRulesMappingToDefault[] = {
+  "ALL",
+  "DEFAULT",
+  "FIPS",
+  "HIGH",
+};
+
+static bool is_known_default_alias_keyword_filter_rule(const char *rule,
+  size_t *matched_rule_length) {
+
+  for (auto known_rule : kKnownKeywordFilterRulesMappingToDefault) {
+    if (strncmp(rule, known_rule, strlen(known_rule)) == 0) {
+      *matched_rule_length = (size_t) strlen(known_rule);
+      return true;
+    }
+  }
+  *matched_rule_length = 0;
+  return false;
+}
+
 bool ssl_create_cipher_list(UniquePtr<SSLCipherPreferenceList> *out_cipher_list,
                             const char *rule_str, bool strict) {
   // Return with error if nothing to do.
@@ -1255,15 +1274,16 @@ bool ssl_create_cipher_list(UniquePtr<SSLCipherPreferenceList> *out_cipher_list,
   ssl_cipher_apply_rule(0, ~0u, ~0u, ~0u, ~0u, 0, CIPHER_DEL, -1, false, &head,
                         &tail);
 
-  // If the rule_string begins with DEFAULT, apply the default rule before
-  // using the (possibly available) additional rules.
+  // Check for keyword rules that map to the default "ALL" rule.
   const char *rule_p = rule_str;
-  if (strncmp(rule_str, "DEFAULT", 7) == 0) {
+  size_t matched_rule_length = 0;
+  if (is_known_default_alias_keyword_filter_rule(rule_str, &matched_rule_length)) {
     if (!ssl_cipher_process_rulestr(SSL_DEFAULT_CIPHER_LIST, &head, &tail,
                                     strict)) {
       return false;
     }
-    rule_p += 7;
+
+    rule_p += matched_rule_length;
     if (*rule_p == ':') {
       rule_p++;
     }
