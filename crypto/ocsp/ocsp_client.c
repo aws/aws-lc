@@ -306,3 +306,14 @@ int OCSP_check_validity(ASN1_GENERALIZEDTIME *thisUpdate,
 
   return ret;
 }
+
+int OCSP_resp_count(OCSP_BASICRESP *bs) {
+  if (bs == NULL) {
+    return -1;
+  }
+  return (int)sk_OCSP_SINGLERESP_num(bs->tbsResponseData->responses);
+}
+
+const OCSP_CERTID *OCSP_SINGLERESP_get0_id(const OCSP_SINGLERESP *single) {
+  return single->certId;
+}
