@@ -375,6 +375,9 @@ TEST(OCSPTest, TestGoodOCSP) {
                        &nextupd);
   ASSERT_EQ(V_OCSP_CERTSTATUS_GOOD, status);
 
+  // There is 1 |OCSP_SINGLERESP| in the |basic_response|.
+  EXPECT_EQ(OCSP_resp_count(basic_response.get()), 1);
+
   // If OCSP response is verifiable and all good, an OCSP client should check
   // time fields to see if the response is still valid.
 
@@ -474,6 +477,9 @@ TEST(OCSPTest, TestGoodOCSP_SHA256) {
                        OCSP_RESPFINDSTATUS_SUCCESS, &status, &thisupd,
                        &nextupd);
   ASSERT_EQ(V_OCSP_CERTSTATUS_GOOD, status);
+
+  // There is 1 |OCSP_SINGLERESP| in the |basic_response|.
+  EXPECT_EQ(OCSP_resp_count(basic_response.get()), 1);
 
   // If OCSP response is verifiable and all good, an OCSP client should check
   // time fields to see if the response is still valid.
@@ -1271,7 +1277,7 @@ TEST(OCSPTest, OCSPCRLString) {
   EXPECT_EQ("(UNKNOWN)", std::string(OCSP_crl_reason_str(-100)));
 }
 
-TEST(OCSPBIOTest, OCSPBIOTest) {
+TEST(OCSPTest, OCSPBIOTest) {
   std::string reqData =
       GetTestData(std::string("crypto/ocsp/test/aws/ocsp_request.der").c_str());
   std::vector<uint8_t> ocsp_request_data(reqData.begin(), reqData.end());
@@ -1302,4 +1308,57 @@ TEST(OCSPBIOTest, OCSPBIOTest) {
   ASSERT_EQ(BIO_write(bio.get(), ocsp_request_data.data(), reqLen), reqLen);
   ocspResponse.reset(d2i_OCSP_RESPONSE_bio(bio.get(), nullptr));
   EXPECT_FALSE(ocspResponse);
+
+  // Write an OCSP request into the BIO.
+  bio.reset(BIO_new(BIO_s_mem()));
+  ASSERT_EQ(BIO_write(bio.get(), ocsp_request_data.data(), reqLen), reqLen);
+  bssl::UniquePtr<OCSP_REQUEST> ocspRequest(
+      d2i_OCSP_REQUEST_bio(bio.get(), nullptr));
+  EXPECT_TRUE(ocspRequest);
+
+  // Reserialize the OCSP request.
+  EXPECT_TRUE(i2d_OCSP_REQUEST_bio(bio.get(), ocspRequest.get()));
+  ASSERT_TRUE(BIO_mem_contents(bio.get(), &bio_data, &bio_len));
+  EXPECT_EQ(Bytes(bio_data, bio_len), Bytes(ocsp_request_data.data(), reqLen));
+
+  // Write an OCSP response into the BIO, but it shouldn't successfully parse
+  // with |d2i_OCSP_REQUEST_bio|.
+  BIO_reset(bio.get());
+  ASSERT_EQ(BIO_write(bio.get(), ocsp_response_data.data(), respLen), respLen);
+  ocspRequest.reset(d2i_OCSP_REQUEST_bio(bio.get(), nullptr));
+  EXPECT_FALSE(ocspRequest);
+}
+
+TEST(OCSPTest, CertIDDup) {
+  bssl::UniquePtr<X509> issuer(CertFromPEM(
+      GetTestData(std::string("crypto/ocsp/test/aws/ca_cert.pem").c_str())
+          .c_str()));
+  bssl::UniquePtr<X509> subject(CertFromPEM(
+      GetTestData(std::string("crypto/ocsp/test/aws/server_cert.pem").c_str())
+          .c_str()));
+
+  // Create a sample OCSP_CERTID structure
+  bssl::UniquePtr<OCSP_CERTID> orig_id(
+      OCSP_cert_to_id(EVP_sha256(), subject.get(), issuer.get()));
+  ASSERT_TRUE(orig_id);
+
+  // Duplicate the OCSP_CERTID structure
+  bssl::UniquePtr<OCSP_CERTID> dup_id(OCSP_CERTID_dup(orig_id.get()));
+  ASSERT_TRUE(dup_id);
+
+  // Check that the duplicated structure has the same values as the original.
+  EXPECT_EQ(
+      ASN1_INTEGER_cmp(orig_id.get()->serialNumber, dup_id.get()->serialNumber),
+      0);
+  EXPECT_EQ(ASN1_STRING_cmp(orig_id.get()->issuerNameHash,
+                            dup_id.get()->issuerNameHash),
+            0);
+  EXPECT_EQ(ASN1_STRING_cmp(orig_id.get()->issuerKeyHash,
+                            dup_id.get()->issuerKeyHash),
+            0);
+  EXPECT_EQ(
+      X509_ALGOR_cmp(orig_id.get()->hashAlgorithm, dup_id.get()->hashAlgorithm),
+      0);
+  // Check that the duplicated structure is not just a replicated pointer.
+  EXPECT_NE(orig_id.get(), dup_id.get());
 }

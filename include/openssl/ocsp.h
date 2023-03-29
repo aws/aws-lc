@@ -72,6 +72,10 @@ DECLARE_ASN1_FUNCTIONS(OCSP_RESPONSE)
 DECLARE_ASN1_FUNCTIONS(OCSP_CERTID)
 DECLARE_ASN1_FUNCTIONS(OCSP_REQUEST)
 
+// d2i_OCSP_REQUEST_bio parses a DER-encoded OCSP request from |bp|, converts it
+// into an |OCSP_REQUEST|, and writes the result in |preq|.
+OPENSSL_EXPORT OCSP_REQUEST *d2i_OCSP_REQUEST_bio(BIO *bp, OCSP_REQUEST **preq);
+
 // d2i_OCSP_RESPONSE_bio parses a DER-encoded OCSP response from |bp|, converts
 // it into an |OCSP_RESPONSE|, and writes the result in |presp|.
 OPENSSL_EXPORT OCSP_RESPONSE *d2i_OCSP_RESPONSE_bio(BIO *bp,
@@ -80,6 +84,14 @@ OPENSSL_EXPORT OCSP_RESPONSE *d2i_OCSP_RESPONSE_bio(BIO *bp,
 // i2d_OCSP_RESPONSE_bio marshals |presp| as a DER-encoded OCSP response and
 // writes the result to |bp|.
 OPENSSL_EXPORT int i2d_OCSP_RESPONSE_bio(BIO *bp, OCSP_RESPONSE *presp);
+
+// i2d_OCSP_REQUEST_bio marshals |preq| as a DER-encoded OCSP request and
+// writes the result to |bp|.
+OPENSSL_EXPORT int i2d_OCSP_REQUEST_bio(BIO *bp, OCSP_REQUEST *preq);
+
+// OCSP_CERTID_dup allocates a new |OCSP_CERTID| and sets it equal to the state
+// of |id|. It returns the new |OCSP_CERTID| or NULL on error.
+OPENSSL_EXPORT OCSP_CERTID *OCSP_CERTID_dup(OCSP_CERTID *id);
 
 // OCSP_sendreq_bio is a blocking OCSP request handler which is a special case
 // of non-blocking I/O.
@@ -188,6 +200,10 @@ OPENSSL_EXPORT int OCSP_response_status(OCSP_RESPONSE *resp);
 
 // OCSP_response_get1_basic returns |OCSP_BASICRESP| from |OCSP_RESPONSE|.
 OPENSSL_EXPORT OCSP_BASICRESP *OCSP_response_get1_basic(OCSP_RESPONSE *resp);
+
+// OCSP_resp_count returns the number of |OCSP_SINGLERESP| responses present
+// in |bs|.
+OPENSSL_EXPORT int OCSP_resp_count(OCSP_BASICRESP *bs);
 
 // OCSP_resp_get0 returns the |OCSP_SINGLERESP| at the |idx| within
 // |bs|.
@@ -313,6 +329,10 @@ OPENSSL_EXPORT int OCSP_id_get0_info(ASN1_OCTET_STRING **nameHash,
 
 // OCSP_basic_add1_cert adds |cert| to the |resp|.
 OPENSSL_EXPORT int OCSP_basic_add1_cert(OCSP_BASICRESP *resp, X509 *cert);
+
+// OCSP_SINGLERESP_get0_id returns the |OCSP_CERTID| within |x|.
+OPENSSL_EXPORT const OCSP_CERTID *OCSP_SINGLERESP_get0_id(
+    const OCSP_SINGLERESP *x);
 
 // OCSP_response_status_str returns the OCSP response status of |status_code| as
 // a string.
