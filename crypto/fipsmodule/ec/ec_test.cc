@@ -1020,11 +1020,6 @@ TEST(ECTest, ArbitraryCurve) {
                                                   x.get(), y.get(), nullptr));
   ASSERT_TRUE(EC_KEY_set_public_key(key2.get(), point.get()));
 
-  bssl::UniquePtr<BIGNUM> converted(EC_POINT_point2bn(
-      group.get(), point.get(), POINT_CONVERSION_UNCOMPRESSED, NULL, NULL));
-  ASSERT_TRUE(converted);
-  ASSERT_TRUE(BN_cmp(converted.get(), x.get()));
-
   // The key must be valid according to the new group too.
   EXPECT_TRUE(EC_KEY_check_key(key2.get()));
 
@@ -1041,6 +1036,15 @@ TEST(ECTest, ArbitraryCurve) {
 
   EXPECT_EQ(0, EC_GROUP_cmp(group.get(), group.get(), NULL));
   EXPECT_EQ(0, EC_GROUP_cmp(group2.get(), group.get(), NULL));
+
+  bssl::UniquePtr<BIGNUM> converted_generator1(EC_POINT_point2bn(
+      group.get(), generator.get(), POINT_CONVERSION_UNCOMPRESSED, NULL, NULL));
+  ASSERT_TRUE(converted_generator1);
+
+  bssl::UniquePtr<BIGNUM> converted_generator2(EC_POINT_point2bn(
+      group2.get(), generator2.get(), POINT_CONVERSION_UNCOMPRESSED, NULL, NULL));
+  ASSERT_TRUE(converted_generator2);
+  EXPECT_EQ(0, BN_cmp(converted_generator1.get(), converted_generator2.get()));
 
   // group3 uses the wrong generator.
   bssl::UniquePtr<EC_GROUP> group3(
