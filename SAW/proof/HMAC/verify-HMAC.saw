@@ -112,7 +112,8 @@ llvm_verify m "HMAC_CTX_init"
 let verify_HMAC_Init_ex_array_spec = do {
   print "Verifying HMAC_Init_ex_array_spec with arbitrary key length.";
   llvm_verify m "HMAC_Init_ex"
-    [ GetInPlaceMethods_ov
+    [ OPENSSL_cleanse_ov
+    , GetInPlaceMethods_ov
     , SHA512_Update_0_SHA512_CBLOCK_ov
     , SHA512_Final_array_ov
     , SHA512_Update_array_ov
