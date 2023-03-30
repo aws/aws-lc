@@ -90,8 +90,7 @@
     "skip_valgrind": true
   },
   {
-    "cmd": ["ssl/ssl_test"],
-    "skip_valgrind": true
+    "cmd": ["ssl/ssl_test"]
   },
   {
     "cmd": ["crypto/mem_test"]
