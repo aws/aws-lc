@@ -65,22 +65,22 @@ type cpuCapUniqueSymbol struct {
 	suffixUniqueness string
 }
 
-const cpuCapIntelSymbolPrefix = "LOPENSSL_ia32cap_P_"
+const cpuCapx86SymbolPrefix = "LOPENSSL_ia32cap_P_"
 
-func (uniqueSymbol cpuCapUniqueSymbol) getIntelSymbol() string {
-	return cpuCapIntelSymbolPrefix + uniqueSymbol.registerName + uniqueSymbol.suffixUniqueness
+func (uniqueSymbol cpuCapUniqueSymbol) getx86Symbol() string {
+	return cpuCapx86SymbolPrefix + uniqueSymbol.registerName + uniqueSymbol.suffixUniqueness
 }
 
-func (uniqueSymbol cpuCapUniqueSymbol) getIntelSymbolReturn() string {
-	return uniqueSymbol.getIntelSymbol() + "_return"
+func (uniqueSymbol cpuCapUniqueSymbol) getx86SymbolReturn() string {
+	return uniqueSymbol.getx86Symbol() + "_return"
 }
 
 // uniqueness must be a globally unique integer value.
 func newCpuCapUniqueSymbol(uniqueness int, registerName string) *cpuCapUniqueSymbol {
-    uniqueSymbol := new(cpuCapUniqueSymbol)
-    uniqueSymbol.registerName = strings.Trim(registerName, "%") // should work with both AT&T and Intel syntax.
-    uniqueSymbol.suffixUniqueness = strconv.Itoa(uniqueness)
-    return uniqueSymbol
+	return &cpuCapUniqueSymbol{
+	    registerName: strings.Trim(registerName, "%"), // should work with both AT&T and Intel syntax.
+	    suffixUniqueness: strconv.Itoa(uniqueness),
+	}
 }
 
 // delocation holds the state needed during a delocation operation.
@@ -1387,8 +1387,8 @@ Args:
 
 				uniqueSymbol := newCpuCapUniqueSymbol(len(d.cpuCapUniqueSymbols), reg)
 				wrappers = append(wrappers, func(k func()) {
-					d.output.WriteString("\tjmp\t" + uniqueSymbol.getIntelSymbol() + "\n")
-					d.output.WriteString(uniqueSymbol.getIntelSymbolReturn() + ":\n")
+					d.output.WriteString("\tjmp\t" + uniqueSymbol.getx86Symbol() + "\n")
+					d.output.WriteString(uniqueSymbol.getx86SymbolReturn() + ":\n")
 				})
 				d.cpuCapUniqueSymbols = append(d.cpuCapUniqueSymbols, uniqueSymbol)
 
@@ -1543,8 +1543,8 @@ Args:
 
 					uniqueSymbol := newCpuCapUniqueSymbol(len(d.cpuCapUniqueSymbols), targetReg)
 					wrappers = append(wrappers, func(k func()) {
-						d.output.WriteString("\tjmp\t" + uniqueSymbol.getIntelSymbol() + "\n")
-						d.output.WriteString(uniqueSymbol.getIntelSymbolReturn() + ":\n")
+						d.output.WriteString("\tjmp\t" + uniqueSymbol.getx86Symbol() + "\n")
+						d.output.WriteString(uniqueSymbol.getx86SymbolReturn() + ":\n")
 					})
 					d.cpuCapUniqueSymbols = append(d.cpuCapUniqueSymbols, uniqueSymbol)
 
@@ -1971,10 +1971,10 @@ func transform(w stringWriter, inputs []inputFile) error {
 		// Luckily, this is a fixed order iteration. So, we can write
 		// deterministic tests for this in /testdata.
 		for _, uniqueSymbol := range d.cpuCapUniqueSymbols {
-			w.WriteString(".type " + uniqueSymbol.getIntelSymbol() + ", @function\n")
-			w.WriteString(uniqueSymbol.getIntelSymbol() + ":\n")
+			w.WriteString(".type " + uniqueSymbol.getx86Symbol() + ", @function\n")
+			w.WriteString(uniqueSymbol.getx86Symbol() + ":\n")
 			w.WriteString("\tleaq OPENSSL_ia32cap_P(%rip), %" + uniqueSymbol.registerName + "\n")
-			w.WriteString("\tjmp " + uniqueSymbol.getIntelSymbolReturn() + "\n")
+			w.WriteString("\tjmp " + uniqueSymbol.getx86SymbolReturn() + "\n")
 		}
 
 		if d.gotDeltaNeeded {
