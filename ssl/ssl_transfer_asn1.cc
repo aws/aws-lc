@@ -80,7 +80,6 @@ static int parse_optional_string(CBS *cbs, UniquePtr<char> *out, unsigned tag,
     }
     char *raw = nullptr;
     if (!CBS_strdup(&value, &raw)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;
     }
     out->reset(raw);
@@ -293,20 +292,17 @@ static int SSL3_STATE_to_bytes(SSL3_STATE *in, uint16_t protocol_version,
       !CBB_add_asn1_uint64(&s3, in->empty_record_count) ||
       !CBB_add_asn1_uint64(&s3, in->warning_alert_count) ||
       !CBB_add_asn1_uint64(&s3, in->total_renegotiations)) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 
   if (!CBB_add_asn1(&s3, &child, kS3EstablishedSessionTag) ||
       !ssl_session_serialize(in->established_session.get(), &child)) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 
   if (in->session_reused) {
     if (!CBB_add_asn1(&s3, &child, kS3SessionReusedTag) ||
         !CBB_add_asn1_bool(&child, true)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;
     }
   }
@@ -316,7 +312,6 @@ static int SSL3_STATE_to_bytes(SSL3_STATE *in, uint16_t protocol_version,
         !CBB_add_asn1_octet_string(&child,
                                    (const uint8_t *)(in->hostname.get()),
                                    strlen(in->hostname.get()))) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;
     }
   }
@@ -325,7 +320,6 @@ static int SSL3_STATE_to_bytes(SSL3_STATE *in, uint16_t protocol_version,
     if (!CBB_add_asn1(&s3, &child, kS3ALPNSelectedTag) ||
         !CBB_add_asn1_octet_string(&child, in->alpn_selected.data(),
                                    in->alpn_selected.size())) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;
     }
   }
@@ -334,7 +328,6 @@ static int SSL3_STATE_to_bytes(SSL3_STATE *in, uint16_t protocol_version,
     if (!CBB_add_asn1(&s3, &child, kS3NextProtoNegotiatedTag) ||
         !CBB_add_asn1_octet_string(&child, in->next_proto_negotiated.data(),
                                    in->next_proto_negotiated.size())) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;
     }
   }
@@ -342,13 +335,11 @@ static int SSL3_STATE_to_bytes(SSL3_STATE *in, uint16_t protocol_version,
   if (in->channel_id_valid) {
     if (!CBB_add_asn1(&s3, &child, kS3ChannelIdValidTag) ||
         !CBB_add_asn1_bool(&child, true)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;
     }
     if (!CBB_add_asn1(&s3, &child, kS3ChannelIdTag) ||
         !CBB_add_asn1_octet_string(&child, in->channel_id,
                                    SSL3_CHANNEL_ID_SIZE)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;
     }
   }
@@ -356,7 +347,6 @@ static int SSL3_STATE_to_bytes(SSL3_STATE *in, uint16_t protocol_version,
   if (in->send_connection_binding) {
     if (!CBB_add_asn1(&s3, &child, kS3SendConnectionBindingTag) ||
         !CBB_add_asn1_bool(&child, true)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;
     }
   }
@@ -374,7 +364,6 @@ static int SSL3_STATE_to_bytes(SSL3_STATE *in, uint16_t protocol_version,
         !CBB_add_asn1(&child, &child2, CBS_ASN1_SEQUENCE) ||
         !CBB_add_asn1_uint64(&child2, offset) ||
         !CBB_add_asn1_uint64(&child2, in->pending_app_data.size())) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;
     }
   }
@@ -390,7 +379,6 @@ static int SSL3_STATE_to_bytes(SSL3_STATE *in, uint16_t protocol_version,
   if (in->established_session.get()->not_resumable) {
     if (!CBB_add_asn1(&s3, &child, kS3NotResumableTag) ||
         !CBB_add_asn1_bool(&child, true)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;
     }
   }
@@ -968,21 +956,18 @@ static int SSL_CONFIG_to_bytes(SSL_CONFIG *in, CBB *cbb) {
       !CBB_add_asn1_uint64(&config, kSSLConfigVersion) ||
       !CBB_add_asn1_uint64(&config, in->conf_max_version) ||
       !CBB_add_asn1_uint64(&config, in->conf_min_version)) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 
   if (in->ocsp_stapling_enabled) {
     if (!CBB_add_asn1(&config, &child, kSSLConfigOcspStaplingEnabledTag) ||
         !CBB_add_asn1_bool(&child, true)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;
     }
   }
   if (in->jdk11_workaround) {
     if (!CBB_add_asn1(&config, &child, kSSLConfigJdk11WorkaroundTag) ||
         !CBB_add_asn1_bool(&child, true)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;
     }
   }
@@ -1057,14 +1042,12 @@ static int SSL_to_bytes_full(const SSL *in, CBB *cbb) {
       !SSL3_STATE_to_bytes(in->s3, ssl_protocol_version(in), &ssl) ||
       !CBB_add_asn1_uint64(&ssl, in->mode) ||
       !CBB_add_asn1_uint64(&ssl, in->options)) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 
   if (in->quiet_shutdown) {
     if (!CBB_add_asn1(&ssl, &child, kSSLQuietShutdownTag) ||
         !CBB_add_asn1_bool(&child, true)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;
     }
   }
@@ -1072,7 +1055,6 @@ static int SSL_to_bytes_full(const SSL *in, CBB *cbb) {
   if (in->config) {
     if (!CBB_add_asn1(&ssl, &child, kSSLConfigTag) ||
         !SSL_CONFIG_to_bytes(in->config.get(), &child)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;
     }
   }

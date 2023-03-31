@@ -708,7 +708,6 @@ static size_t evp_pkey_get1_tls_encodedpoint_x25519(const EVP_PKEY *pkey,
   out_len = X25519_SHARED_KEY_LEN;
   *out_ptr = OPENSSL_malloc(X25519_SHARED_KEY_LEN);
   if (NULL == *out_ptr) {
-    OPENSSL_PUT_ERROR(CRYPTO, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 

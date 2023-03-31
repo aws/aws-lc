@@ -204,7 +204,6 @@ class CECPQ2KeyShare : public SSLKeyShare {
 
     Array<uint8_t> hrss_entropy;
     if (!hrss_entropy.Init(HRSS_GENERATE_KEY_BYTES)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return false;
     }
 
@@ -248,7 +247,6 @@ class CECPQ2KeyShare : public SSLKeyShare {
 
     Array<uint8_t> entropy;
     if (!entropy.Init(HRSS_ENCAP_BYTES)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return false;
     }
 
