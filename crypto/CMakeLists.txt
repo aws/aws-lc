@@ -687,11 +687,11 @@ if(BUILD_TESTING)
     dh_extra/dh_test.cc
     digest_extra/digest_test.cc
     dilithium/p_dilithium_test.cc
+    dilithium/pq_sig_kat_tests_dilithium3.cc
     dsa/dsa_test.cc
     err/err_test.cc
     evp_extra/evp_extra_test.cc
     evp_extra/evp_test.cc
-    evp_extra/pq_sig_kat_tests_dilithium3.cc
     evp_extra/scrypt_test.cc
     fipsmodule/aes/aes_test.cc
     fipsmodule/bn/bn_test.cc

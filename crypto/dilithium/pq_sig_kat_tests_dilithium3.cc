@@ -5,11 +5,11 @@
 #include <openssl/evp.h>
 #include <vector>
 #include "../fipsmodule/evp/internal.h"
-#include "../dilithium/sig_dilithium.h"
+#include "../evp_extra/internal.h"
 #include "../test/file_test.h"
 #include "../test/test_util.h"
 #include "../rand_extra/pq_custom_randombytes.h"
-#include "./internal.h"
+#include "./sig_dilithium.h"
 
  static void RunTest(FileTest *t)
 {
