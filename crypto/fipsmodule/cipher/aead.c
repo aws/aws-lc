@@ -398,7 +398,7 @@ int EVP_AEAD_CTX_deserialize_state(const EVP_AEAD_CTX *ctx, CBS *cbs) {
   return ctx->aead->deserialize_state(ctx, &state);
 }
 
-size_t EVP_AEAD_CTX_get_aead_id(const EVP_AEAD_CTX *ctx) {
+uint8_t EVP_AEAD_CTX_get_aead_id(const EVP_AEAD_CTX *ctx) {
   if (!ctx->aead) {
     return AEAD_UNKNOWN_ID;
   }

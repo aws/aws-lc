@@ -74,13 +74,11 @@ extern "C" {
 // EVP_CIPH_MODE_MASK contains the bits of |flags| that represent the mode.
 #define EVP_CIPH_MODE_MASK 0x3f
 
-// Set of EVP_AEAD->evp_aead_id identifiers, zero is reserved as the "unknown"
+// Set of EVP_AEAD->aead_id identifiers, zero is reserved as the "unknown"
 // value since it is the default for a structure.
 #define AEAD_UNKNOWN_ID 0
 #define AEAD_AES_128_CTR_HMAC_SHA256_ID 1
 #define AEAD_AES_256_CTR_HMAC_SHA256_ID 2
-#define AEAD_AES_128_GCM_SIV_ASM_ID 3
-#define AEAD_AES_256_GCM_SIV_ASM_ID 4
 #define AEAD_AES_128_GCM_SIV_ID 5
 #define AEAD_AES_256_GCM_SIV_ID 6
 #define AEAD_CHACHA20_POLY1305_ID 7
@@ -236,7 +234,7 @@ OPENSSL_EXPORT int EVP_AEAD_CTX_serialize_state(const EVP_AEAD_CTX *ctx,
 OPENSSL_EXPORT int EVP_AEAD_CTX_deserialize_state(const EVP_AEAD_CTX *ctx,
                                                   CBS *cbs);
 
-size_t EVP_AEAD_CTX_get_aead_id(const EVP_AEAD_CTX *ctx);
+OPENSSL_EXPORT uint8_t EVP_AEAD_CTX_get_aead_id(const EVP_AEAD_CTX *ctx);
 
 #if defined(__cplusplus)
 }  // extern C

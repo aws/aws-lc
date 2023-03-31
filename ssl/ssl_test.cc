@@ -5024,7 +5024,7 @@ TEST(SSLTest, EmptyCipherList) {
 }
 
 struct MultiTransferReadWriteTestParams {
-  std::string suite;
+  const char suite[50];
   bool tls13;
   bssl::UniquePtr<X509> (*certificate)();
   bssl::UniquePtr<EVP_PKEY> (*key)();
@@ -5085,8 +5085,8 @@ TEST_P(MultiTransferReadWriteTest, SuiteTransfers) {
     set_cipher_suites = SSL_CTX_set_ciphersuites;
   }
 
-  ASSERT_TRUE(set_cipher_suites(client_ctx.get(), params.suite.c_str()));
-  ASSERT_TRUE(set_cipher_suites(server_ctx.get(), params.suite.c_str()));
+  ASSERT_TRUE(set_cipher_suites(client_ctx.get(), params.suite));
+  ASSERT_TRUE(set_cipher_suites(server_ctx.get(), params.suite));
 
   ASSERT_TRUE(SSL_CTX_set_min_proto_version(client_ctx.get(), version));
   ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), version));
