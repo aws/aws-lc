@@ -536,9 +536,9 @@ int i2o_ECPublicKey(const EC_KEY *key, uint8_t **outp) {
 
 static size_t EC_POINT_point2buf(const EC_GROUP *group, const EC_POINT *point,
                                  point_conversion_form_t form,
-                                 unsigned char **pbuf, BN_CTX *ctx) {
+                                 uint8_t **pbuf, BN_CTX *ctx) {
   size_t len;
-  unsigned char *buf;
+  uint8_t *buf;
 
   len = EC_POINT_point2oct(group, point, form, NULL, 0, NULL);
   if (len == 0) {
@@ -562,7 +562,7 @@ BIGNUM *EC_POINT_point2bn(const EC_GROUP *group, const EC_POINT *point,
                           point_conversion_form_t form, BIGNUM *ret,
                           BN_CTX *ctx) {
   size_t buf_len = 0;
-  unsigned char *buf;
+  uint8_t *buf;
 
   buf_len = EC_POINT_point2buf(group, point, form, &buf, ctx);
 
