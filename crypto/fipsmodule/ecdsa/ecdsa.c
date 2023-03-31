@@ -341,6 +341,7 @@ ECDSA_SIG *ECDSA_do_sign(const uint8_t *digest, size_t digest_len,
   for (;;) {
     EC_SCALAR k;
     if (!ec_random_nonzero_scalar(group, &k, additional_data)) {
+      OPENSSL_cleanse(&k, sizeof(EC_SCALAR));
       return NULL;
     }
 
@@ -348,6 +349,7 @@ ECDSA_SIG *ECDSA_do_sign(const uint8_t *digest, size_t digest_len,
     ECDSA_SIG *sig =
         ecdsa_sign_impl(group, &retry, priv_key, &k, digest, digest_len);
     if (sig != NULL || !retry) {
+      OPENSSL_cleanse(&k, sizeof(EC_SCALAR));
       return sig;
     }
   }
