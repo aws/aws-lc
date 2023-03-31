@@ -248,11 +248,11 @@ KeccakF1600:
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 .size	KeccakF1600,.-KeccakF1600
-.globl	SHA3_Absorb
-.hidden	SHA3_Absorb
-.type	SHA3_Absorb,%function
+.globl	SHA3_Absorb_hw
+.hidden	SHA3_Absorb_hw
+.type	SHA3_Absorb_hw,%function
 .align	5
-SHA3_Absorb:
+SHA3_Absorb_hw:
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-128]!
 	add	x29,sp,#0
@@ -480,12 +480,12 @@ SHA3_Absorb:
 	ldp	x29,x30,[sp],#128
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
-.size	SHA3_Absorb,.-SHA3_Absorb
-.globl	SHA3_Squeeze
-.hidden	SHA3_Squeeze
-.type	SHA3_Squeeze,%function
+.size	SHA3_Absorb_hw,.-SHA3_Absorb_hw
+.globl	SHA3_Squeeze_hw
+.hidden	SHA3_Squeeze_hw
+.type	SHA3_Squeeze_hw,%function
 .align	5
-SHA3_Squeeze:
+SHA3_Squeeze_hw:
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-48]!
 	add	x29,sp,#0
@@ -548,7 +548,7 @@ SHA3_Squeeze:
 	ldp	x29,x30,[sp],#48
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
-.size	SHA3_Squeeze,.-SHA3_Squeeze
+.size	SHA3_Squeeze_hw,.-SHA3_Squeeze_hw
 .type	KeccakF1600_ce,%function
 .align	5
 KeccakF1600_ce:
