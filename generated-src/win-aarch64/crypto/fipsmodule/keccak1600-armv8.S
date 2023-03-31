@@ -252,13 +252,13 @@ KeccakF1600:
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 
-.globl	SHA3_Absorb
+.globl	SHA3_Absorb_hw
 
-.def SHA3_Absorb
+.def SHA3_Absorb_hw
    .type 32
 .endef
 .align	5
-SHA3_Absorb:
+SHA3_Absorb_hw:
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-128]!
 	add	x29,sp,#0
@@ -487,13 +487,13 @@ Labsorbed:
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 
-.globl	SHA3_Squeeze
+.globl	SHA3_Squeeze_hw
 
-.def SHA3_Squeeze
+.def SHA3_Squeeze_hw
    .type 32
 .endef
 .align	5
-SHA3_Squeeze:
+SHA3_Squeeze_hw:
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-48]!
 	add	x29,sp,#0
