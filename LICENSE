@@ -205,8 +205,8 @@ are met:
    products derived from this software without specific prior
    written permission.
 
-The code in crypto/kyber/pqcrystals-kyber_kyber512_ref and
-crypto/dilithium/pqcrystals_dilithium_ref_common carry the
+
+The code in crypto/kyber/pqcrystals-kyber_kyber512_ref carries the
 Public Domain license:
 
 Public Domain (https://creativecommons.org/share-your-work/public-domain/cc0/)
