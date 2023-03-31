@@ -18,7 +18,7 @@ if(ARCH STREQUAL "x86_64")
   set(
     BCM_ASM_SOURCES
 
-    aes-gcm-avx512.${ASM_EXT}
+    aesni-gcm-avx512.${ASM_EXT}
     aesni-gcm-x86_64.${ASM_EXT}
     aesni-x86_64.${ASM_EXT}
     ghash-ssse3-x86_64.${ASM_EXT}
@@ -104,7 +104,7 @@ endif()
 
 if(PERL_EXECUTABLE)
   perlasm(aesni-gcm-x86_64.${ASM_EXT} modes/asm/aesni-gcm-x86_64.pl)
-  perlasm(aes-gcm-avx512.${ASM_EXT} modes/asm/aes-gcm-avx512.pl)
+  perlasm(aesni-gcm-avx512.${ASM_EXT} modes/asm/aesni-gcm-avx512.pl)
   perlasm(aesni-x86_64.${ASM_EXT} aes/asm/aesni-x86_64.pl)
   perlasm(aesni-x86.${ASM_EXT} aes/asm/aesni-x86.pl)
   perlasm(aesp8-ppc.${ASM_EXT} aes/asm/aesp8-ppc.pl)
@@ -160,7 +160,7 @@ endif()
 # The flags are not required for any other compiler we are running in the CI.
 if ((CMAKE_ASM_COMPILER_ID MATCHES "Clang" OR CMAKE_ASM_COMPILER MATCHES "clang") AND
     (CMAKE_ASM_COMPILER_VERSION VERSION_LESS "7.0.0") AND (ARCH STREQUAL "x86_64"))
-  set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/aes-gcm-avx512.${ASM_EXT} PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512bw -mavx512dq -mavx512vl")
+  set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/aesni-gcm-avx512.${ASM_EXT} PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512bw -mavx512dq -mavx512vl")
 endif()
 
 # s2n-bignum files can be compiled on Unix platforms only (except Apple),

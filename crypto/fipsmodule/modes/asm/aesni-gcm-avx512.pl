@@ -26,6 +26,17 @@
 # on demand keeping them in the local frame.
 #
 #======================================================================
+#
+# The main building block of the loop is code that finely stitches AES-CTR
+# and GHASH functions on 16 blocks of data. It uses VAES and VPCLMULQDQ
+# instructions with full width of ZMM registers. AES-CTR and GHASH execute
+# in parallel to large extend. The main loop executes this 16 block parallel
+# code three times. Consequently, it processes 3 x 16 = 48 blocks of data and
+# GHASH reduction is done only at the end of the loop (once per 48 blocks).
+# In the main loop, AES-CTR cipher is ahead of GHASH by 32 blocks. For example,
+# when in 16 block parallel code AES-CTR processes blocks number 48 to 63 then
+# GHASH processes blocks number 16 to 31.
+
 # The first two arguments should always be the flavour and output file path.
 if ($#ARGV < 1) { die "Not enough arguments provided.
   Two arguments are necessary: the flavour and the output file path."; }
@@ -144,7 +155,7 @@ if ($win64) {
 my $CTX_OFFSET_CurCount  = (16 * 0);          #  ; (Yi) Current counter for generation of encryption key
 my $CTX_OFFSET_PEncBlock = (16 * 1);          #  ; (repurposed EKi field) Partial block buffer
 my $CTX_OFFSET_EK0       = (16 * 2);          #  ; (EK0) Encrypted Y0 counter (see gcm spec notation)
-my $CTX_OFFSET_AadLen    = (16 * 3);          #  ; (len.u[0]) Length of Hash which has been input
+my $CTX_OFFSET_AadLen    = (16 * 3);          #  ; (len.u[0]) Length of AAD which has been input
 my $CTX_OFFSET_InLen     = ((16 * 3) + 8);    #  ; (len.u[1]) Length of input data which will be encrypted or decrypted
 my $CTX_OFFSET_AadHash   = (16 * 4);          #  ; (Xi) Current hash
 my $CTX_OFFSET_HTable    = (16 * 6);          #  ; (Htable) Precomputed table (allows 16 values)
