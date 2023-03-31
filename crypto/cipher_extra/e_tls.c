@@ -75,7 +75,6 @@ static int aead_tls_init(EVP_AEAD_CTX *ctx, const uint8_t *key, size_t key_len,
 
   AEAD_TLS_CTX *tls_ctx = OPENSSL_malloc(sizeof(AEAD_TLS_CTX));
   if (tls_ctx == NULL) {
-    OPENSSL_PUT_ERROR(CRYPTO, ERR_R_MALLOC_FAILURE);
     return 0;
   }
   ctx->state.ptr = (void *)tls_ctx;
