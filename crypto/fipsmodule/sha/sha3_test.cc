@@ -21,35 +21,19 @@ class SHA3TestVector {
   ~SHA3TestVector() = default;
 
   bool ReadFromFileTest(FileTest *t);
-  
+
   void NISTTestVectors(const EVP_MD *algorithm) const {
     uint32_t digest_length;
     std::unique_ptr<uint8_t[]> digest(new uint8_t[EVP_MD_size(algorithm)]);
     EVP_MD_CTX* ctx = EVP_MD_CTX_new();
 
-    // SHA3 is disabled by default. First test this assumption and then enable SHA3 and test it.
-    ASSERT_FALSE(EVP_DigestInit(ctx, algorithm));
-    ASSERT_FALSE(EVP_DigestUpdate(ctx, msg_.data(), len_ / 8));
-    ASSERT_FALSE(EVP_DigestFinal(ctx, digest.get(), &digest_length));
-
-    // Enable SHA3
-    EVP_MD_unstable_sha3_enable(true);
-
     // Test the correctness via the Init, Update and Final Digest APIs.
     ASSERT_TRUE(EVP_DigestInit(ctx, algorithm));
     ASSERT_TRUE(EVP_DigestUpdate(ctx, msg_.data(), len_ / 8));
     ASSERT_TRUE(EVP_DigestFinal(ctx, digest.get(), &digest_length));
-    
+
     ASSERT_EQ(Bytes(digest.get(), EVP_MD_size(algorithm)),
               Bytes(digest_.data(), EVP_MD_size(algorithm)));
- 
-    // Disable SHA3
-    EVP_MD_unstable_sha3_enable(false);
-
-    // Test again SHA3 when |unstable_sha3_enabled_flag| is disabled.
-    ASSERT_FALSE(EVP_DigestInit(ctx, algorithm));
-    ASSERT_FALSE(EVP_DigestUpdate(ctx, msg_.data(), len_ / 8));
-    ASSERT_FALSE(EVP_DigestFinal(ctx, digest.get(), &digest_length));
 
     OPENSSL_free(ctx);
   }
@@ -58,24 +42,12 @@ class SHA3TestVector {
     uint32_t digest_length;
     std::unique_ptr<uint8_t[]> digest(new uint8_t[EVP_MD_size(algorithm)]);
     EVP_MD_CTX* ctx = EVP_MD_CTX_new();
-    
-    // SHA3 is disabled by default. First test this assumption and then enable SHA3 and test it.
-    ASSERT_FALSE(EVP_Digest(msg_.data(), len_ / 8, digest.get(), &digest_length, algorithm, NULL));
-
-    // Enable SHA3
-    EVP_MD_unstable_sha3_enable(true);
 
     // Test the correctness via the Single-Shot EVP_Digest APIs.
     ASSERT_TRUE(EVP_Digest(msg_.data(), len_ / 8, digest.get(), &digest_length, algorithm, NULL));
-   
+
     ASSERT_EQ(Bytes(digest.get(), EVP_MD_size(algorithm)),
               Bytes(digest_.data(), EVP_MD_size(algorithm)));
-
-    // Disable SHA3
-    EVP_MD_unstable_sha3_enable(false);
-
-    // Test again SHA3 when |unstable_sha3_enabled_flag| is disabled.
-    ASSERT_FALSE(EVP_Digest(msg_.data(), len_ / 8, digest.get(), &digest_length, algorithm, NULL));
 
     OPENSSL_free(ctx);
   }
@@ -84,40 +56,20 @@ class SHA3TestVector {
     uint32_t digest_length = out_len_ / 8;
     std::unique_ptr<uint8_t[]> digest(new uint8_t[digest_length]);
 
-    ASSERT_FALSE(SHAKE128(msg_.data(), msg_.size() , digest.get(), out_len_));
-
-    // Enable SHA3
-    EVP_MD_unstable_sha3_enable(true);
-    
     ASSERT_TRUE(SHAKE128(msg_.data(), msg_.size() , digest.get(), out_len_));
-    
+
     ASSERT_EQ(Bytes(digest.get(), out_len_ / 8),
             Bytes(digest_.data(), out_len_ / 8));
-
-    // Disable SHA3
-    EVP_MD_unstable_sha3_enable(false);
-
-    ASSERT_FALSE(SHAKE128(msg_.data(), msg_.size() , digest.get(), out_len_));
   }
 
   void NISTTestVectors_SHAKE256() const {
     uint32_t digest_length = out_len_ / 8;
     std::unique_ptr<uint8_t[]> digest(new uint8_t[digest_length]);
 
-    ASSERT_FALSE(SHAKE256(msg_.data(), msg_.size() , digest.get(), out_len_));
-
-    // Enable SHA3
-    EVP_MD_unstable_sha3_enable(true);
-    
     ASSERT_TRUE(SHAKE256(msg_.data(), msg_.size() , digest.get(), out_len_));
-    
+
     ASSERT_EQ(Bytes(digest.get(), out_len_ / 8),
             Bytes(digest_.data(), out_len_ / 8));
-
-    // Disable SHA3
-    EVP_MD_unstable_sha3_enable(false);
-
-    ASSERT_FALSE(SHAKE256(msg_.data(), msg_.size() , digest.get(), out_len_));
   }
 
  private:
@@ -131,7 +83,7 @@ class SHA3TestVector {
 template <typename T>
 bool FileTestReadInt(FileTest *file_test, T *out, const std::string &key) {
   std::string s;
-  return file_test->GetAttribute(&s, key) && 
+  return file_test->GetAttribute(&s, key) &&
   testing::internal::ParseInt32(testing::Message() << "The value " << s.data() << \
   " is not convertable to an integer.", s.data(), (int *) out);
 }
@@ -148,7 +100,7 @@ bool SHA3TestVector::ReadFromFileTest(FileTest *t) {
       return false;
     }
   }
-  
+
   if (!t->GetBytes(&msg_, "Msg") ||
       !t->GetBytes(&digest_, "MD")) {
     return false;
