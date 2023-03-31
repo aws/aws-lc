@@ -65,18 +65,6 @@
 extern "C" {
 #endif
 
-// EVP_MD_unstable_sha3_enable manges runtime access to the SHA3 implementation.
-// If |enable| is true the SHA3 implementation will be enabled. If |enable| is
-// false, the SHA3 implementation will be disabled. If the SHA3 implementation
-// is disabled, using the implementation in any way will cause AWS-LC to exit
-// the process.
-// |unstable_sha3_enabled_flag| is configured globally.
-OPENSSL_EXPORT void EVP_MD_unstable_sha3_enable(bool enable);
-
-// EVP_MD_unstable_sha3_is_enabled returns whether SHA3 is enabled.
-// |unstable_sha3_enabled_flag| is configured globally.
-OPENSSL_EXPORT bool EVP_MD_unstable_sha3_is_enabled(void);
-
 // Digest functions.
 //
 // An EVP_MD abstracts the details of a specific hash function allowing code to
@@ -275,6 +263,13 @@ OPENSSL_EXPORT int EVP_marshal_digest_algorithm(CBB *cbb, const EVP_MD *md);
 
 
 // Deprecated functions.
+
+
+// EVP_MD_unstable_sha3_enable is a no-op as SHA3 is always enabled.
+OPENSSL_EXPORT void EVP_MD_unstable_sha3_enable(bool enable);
+
+// EVP_MD_unstable_sha3_is_enabled always returns true as SHA3 is always enabled.
+OPENSSL_EXPORT bool EVP_MD_unstable_sha3_is_enabled(void);
 
 // EVP_MD_CTX_copy sets |out|, which must /not/ be initialised, to be a copy of
 // |in|. It returns one on success and zero on error.
