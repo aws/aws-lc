@@ -617,16 +617,9 @@ static int SSL3_STATE_from_bytes(SSL *ssl, CBS *cbs, const SSL_CTX *ctx) {
     return 0;
   }
 
-  // We know upfront that if the serde version is not v2 for TLS1.3 then we
-  // need to abort.
-  if (serde_version < SSL3_STATE_SERDE_VERSION_TWO && is_tls13) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL3_STATE);
-    return 0;
-  }
-
   bool is_v2 = serde_version == SSL3_STATE_SERDE_VERSION_TWO;
 
-  // We should have no more data at this point of we are deserializing v1
+  // We should have no more data at this point if we are deserializing v1
   // encoding.
   if (!is_v2 && CBS_len(&s3) > 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL3_STATE);

@@ -1,7 +1,7 @@
 AwsLcTlsTransfer DEFINITIONS EXPLICIT TAGS ::= BEGIN
 
 TransferPackage ::= SEQUENCE {
-    ssl SSL
+    ssl            SSL
 }
 
 SSLSerializationVersion ::= INTEGER {v1 (1)}
@@ -19,7 +19,7 @@ SSL ::= SEQUENCE {
 
 SSL3StateSerializationVersion ::= INTEGER {
                    v1 (1),
-                   v2 (2) -- Added additional fields to support TLS 1.3
+                   v2 (2)  -- Added additional fields to support TLS 1.3
                }
 
 SSL3State ::= SEQUENCE {
@@ -82,9 +82,17 @@ SSLAEADContextVersion ::= INTEGER {v1 (1)}
 SSLAEADContext ::= SEQUENCE {
     serializationVersion SSLAEADContextVersion,
     cipher         INTEGER,
+    cipherState    EvpAeadCtxState
+}
+
+EvpAeadCtxStateSerializationVersion ::= INTEGER {v1 (1)}
+
+EvpAeadCtxState ::= SEQUENCE {
+    serializationVersion EvpAeadCtxStateSerializationVersion,
+    evpAeadCipherIdentifier INTEGER,
     -- This OCTET STRING wraps whatever the underlying state encoding is, which is dependent on the configured cipher.
     -- For example AeadAesGCMTls13State describe the state encoding for AES-GCM with TLS 1.3.
-    cipherState    OCTET STRING
+    state          OCTET STRING
 }
 
 AeadAesGCMTls13StateSerializationVersion ::= INTEGER {v1 (1)}

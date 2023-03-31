@@ -17,6 +17,7 @@
 #include <assert.h>
 #include <string.h>
 
+#include <openssl/bytestring.h>
 #include <openssl/cipher.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
@@ -305,17 +306,68 @@ int EVP_AEAD_get_iv_from_ipv4_nanosecs(
   return 1;
 }
 
+#define EVP_AEAD_CTX_SERDE_VERSION 1
+
 int EVP_AEAD_CTX_serialize_state(const EVP_AEAD_CTX *ctx, CBB *cbb) {
   // EVP_AEAD_CTX must be initialized by EVP_AEAD_CTX_init first.
   if (!ctx->aead) {
     return 0;
   }
 
-  if (!ctx->aead->serialize_state) {
-    return 1;
+  size_t aead_id = EVP_AEAD_CTX_get_aead_id(ctx);
+
+  // We shouldn't serialize if we don't have a proper identifier
+  if (aead_id == AEAD_UNKNOWN_ID) {
+    OPENSSL_PUT_ERROR(CIPHER, ERR_R_MALLOC_FAILURE);
+    return 0;
   }
 
-  return ctx->aead->serialize_state(ctx, cbb);
+  CBB seq;
+
+  if (!CBB_add_asn1(cbb, &seq, CBS_ASN1_SEQUENCE) ||
+      !CBB_add_asn1_uint64(&seq, EVP_AEAD_CTX_SERDE_VERSION) ||
+      !CBB_add_asn1_uint64(&seq, aead_id)) {
+    OPENSSL_PUT_ERROR(CIPHER, ERR_R_MALLOC_FAILURE);
+    return 0;
+  }
+
+  CBB state;
+
+  // 50 here is just an initial capacity based on some estimated calculations
+  // of the AES GCM state structure encoding with headroom:
+  //
+  // -- 2 bytes for sequence tag+length
+  // AeadAesGCMTls13State ::= SEQUENCE {
+  //   -- 2 bytes for tag+length and 8 bytes if a full uint64
+  //   serializationVersion AeadAesGCMTls13StateSerializationVersion,
+  //   -- 2 bytes for tag+length and 8 bytes if a full uint64
+  //   minNextNonce   INTEGER,
+  //   -- 2 bytes for tag+length and 8 bytes if a full uint64
+  //   mask           INTEGER,
+  //   -- 2 bytes for tag+length and 1 byte
+  //   first          BOOLEAN
+  // }
+  if (!CBB_init(&state, 50)) {
+    OPENSSL_PUT_ERROR(CIPHER, ERR_R_MALLOC_FAILURE);
+    return 0;
+  }
+
+  if (ctx->aead->serialize_state) {
+    if (!ctx->aead->serialize_state(ctx, &state)) {
+      CBB_cleanup(&state);
+      OPENSSL_PUT_ERROR(CIPHER, ERR_R_MALLOC_FAILURE);
+      return 0;
+    }
+  }
+
+  if (!CBB_add_asn1_octet_string(&seq, CBB_data(&state), CBB_len(&state))) {
+    CBB_cleanup(&state);
+    OPENSSL_PUT_ERROR(CIPHER, ERR_R_MALLOC_FAILURE);
+    return 0;
+  }
+
+  CBB_cleanup(&state);
+  return CBB_flush(cbb);
 }
 
 int EVP_AEAD_CTX_deserialize_state(const EVP_AEAD_CTX *ctx, CBS *cbs) {
@@ -324,9 +376,32 @@ int EVP_AEAD_CTX_deserialize_state(const EVP_AEAD_CTX *ctx, CBS *cbs) {
     return 0;
   }
 
-  if (!ctx->aead->deserialize_state) {
-    return CBS_len(cbs) == 0;
+  CBS seq;
+  uint64_t version;
+  uint64_t aead_id;
+  CBS state;
+
+  if (!CBS_get_asn1(cbs, &seq, CBS_ASN1_SEQUENCE) ||
+      !CBS_get_asn1_uint64(&seq, &version) ||
+      version != EVP_AEAD_CTX_SERDE_VERSION ||
+      !CBS_get_asn1_uint64(&seq, &aead_id) || aead_id > UINT8_MAX ||
+      aead_id != EVP_AEAD_CTX_get_aead_id(ctx) ||
+      !CBS_get_asn1(&seq, &state, CBS_ASN1_OCTETSTRING)) {
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_SERIALIZATION_INVALID_EVP_AEAD_CTX);
+    return 0;
   }
 
-  return ctx->aead->deserialize_state(ctx, cbs);
+  if (!ctx->aead->deserialize_state) {
+    return CBS_len(&state) == 0;
+  }
+
+  return ctx->aead->deserialize_state(ctx, &state);
+}
+
+size_t EVP_AEAD_CTX_get_aead_id(const EVP_AEAD_CTX *ctx) {
+  if (!ctx->aead) {
+    return AEAD_UNKNOWN_ID;
+  }
+
+  return ctx->aead->aead_id;
 }

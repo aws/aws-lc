@@ -242,6 +242,7 @@ static const EVP_AEAD aead_aes_128_ctr_hmac_sha256 = {
     12,                                    // nonce length
     EVP_AEAD_AES_CTR_HMAC_SHA256_TAG_LEN,  // overhead
     EVP_AEAD_AES_CTR_HMAC_SHA256_TAG_LEN,  // max tag length
+    AEAD_AES_128_CTR_HMAC_SHA256_ID,       // evp_aead_id
     0,                                     // seal_scatter_supports_extra_in
 
     aead_aes_ctr_hmac_sha256_init,
@@ -261,6 +262,7 @@ static const EVP_AEAD aead_aes_256_ctr_hmac_sha256 = {
     12,                                    // nonce length
     EVP_AEAD_AES_CTR_HMAC_SHA256_TAG_LEN,  // overhead
     EVP_AEAD_AES_CTR_HMAC_SHA256_TAG_LEN,  // max tag length
+    AEAD_AES_256_CTR_HMAC_SHA256_ID,       // evp_aead_id
     0,                                     // seal_scatter_supports_extra_in
 
     aead_aes_ctr_hmac_sha256_init,

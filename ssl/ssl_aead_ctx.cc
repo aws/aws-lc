@@ -437,14 +437,13 @@ bool SSLAEADContext::GetIV(const uint8_t **out_iv, size_t *out_iv_len) const {
  * SSLAEADContext ::= SEQUENCE {
  *   serializationVersion SSLAEADContextVersion,
  *   cipher         INTEGER,
- *   cipherState    OCTET STRING
+ *   cipherState    EvpAeadCtxState
  * }
  */
 int SSLAEADContext::SerializeState(CBB *cbb) const {
   uint32_t cipher_id = SSL_CIPHER_get_id(cipher_);
 
   CBB seq;
-  ScopedCBB cipher_state;
 
   if (!CBB_add_asn1(cbb, &seq, CBS_ASN1_SEQUENCE) ||
       !CBB_add_asn1_uint64(&seq, SSLAEADCONTEXT_SERDE_VERSION) ||
@@ -453,26 +452,7 @@ int SSLAEADContext::SerializeState(CBB *cbb) const {
     return 0;
   }
 
-  // 50 here is just an initial capacity based on some worst case calculations
-  // of the AES GCM state structure encoding with headroom:
-  //
-  // -- 2 bytes for sequence tag+length
-  // AeadAesGCMTls13State ::= SEQUENCE {
-  //   -- 2 bytes for tag+length and 8 bytes if a full uint64
-  //   serializationVersion AeadAesGCMTls13StateSerializationVersion,
-  //   -- 2 bytes for tag+length and 8 bytes if a full uint64
-  //   minNextNonce   INTEGER,
-  //   -- 2 bytes for tag+length and 8 bytes if a full uint64
-  //   mask           INTEGER,
-  //   -- 2 bytes for tag+length and 1 byte
-  //   first          BOOLEAN
-  // }
-  CBB_init(cipher_state.get(), 50);
-
-  if (!EVP_AEAD_CTX_serialize_state(ctx_.get(), cipher_state.get()) ||
-      !CBB_add_asn1_octet_string(&seq,
-                                 CBB_data(cipher_state.get()),
-                                 CBB_len(cipher_state.get()))) {
+  if (!EVP_AEAD_CTX_serialize_state(ctx_.get(), &seq)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
   }
@@ -497,10 +477,7 @@ int SSLAEADContext::DeserializeState(CBS *cbs) const {
     return 0;
   }
 
-  CBS child;
-
-  if (!CBS_get_asn1(&seq, &child, CBS_ASN1_OCTETSTRING) ||
-      !EVP_AEAD_CTX_deserialize_state(ctx_.get(), &child)) {
+  if (!EVP_AEAD_CTX_deserialize_state(ctx_.get(), &seq)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL_AEAD_CONTEXT);
     return 0;
   }
