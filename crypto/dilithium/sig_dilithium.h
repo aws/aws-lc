@@ -10,7 +10,7 @@
 #include <openssl/evp.h>
 
 // The values below are taken from the |api.h| file in the
-// |crypto/dilithium/pqcrystals-dilithium_dilithium_common| directory.
+// |crypto/dilithium/pqcrystals_dilithium_ref_common| directory.
 #define DILITHIUM3_PUBLIC_KEY_BYTES 1952
 #define DILITHIUM3_PRIVATE_KEY_BYTES 4000
 #define DILITHIUM3_SIGNATURE_BYTES 3293

@@ -15,7 +15,7 @@ AWS-LC supports only Dilithium3 algorithm at this point. The NID assigned to Dil
 The source code was taken from the primary source of Diltihium at [link](https://github.com/pq-crystals/dilithium), at [commit](https://github.com/pq-crystals/dilithium/commit/3e9b9f1412f6c7435dbeb4e10692ea58f181ee51) as of 9th May 2022.
 The `api.h`, `fips202.h` and `params.h` header files were modified [in this PR](https://github.com/awslabs/aws-lc/pull/655) to support our [prefixed symbols build](https://github.com/awslabs/aws-lc/blob/main/BUILDING.md#building-with-prefixed-symbols).
 
-Only the reference C implementation of Dilithium3 is currently integrated. The code is in the `pqcrystals-dilithium_dilithium3_ref` folder. The following changes were made to the code.
+Only the reference C implementation of Dilithium3 is currently integrated. The code is in the `pqcrystals_dilithium_ref_common` folder. The following changes were made to the code.
 
 * `randombytes.{h|c}` are deleted because we are using the randomness generation functions provided by AWS-LC.
 * `rng.{h|c}` are deleted because we are using the randomness generation functions provided by AWS-LC.
