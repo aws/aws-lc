@@ -211,6 +211,26 @@ TEST(SHA3Test, NISTTestVectors_SingleShot) {
   });
 }
 
+TEST(KeccakInternalTest, SqueezeOutputBufferOverflow) {
+    EVP_MD_unstable_sha3_enable(true);
+
+    KECCAK1600_CTX ctx;
+    std::vector<uint8_t> out;
+    std::vector<uint8_t> canary(8);
+    std::fill(canary.begin(), canary.end(), 0xff);
+
+    const size_t out_lens[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, (1<<5), (1<<16)+1 };
+    for (auto out_len : out_lens) {
+        EXPECT_TRUE(SHA3_Init(&ctx, SHA3_PAD_CHAR, SHA3_384_DIGEST_BITLENGTH));
+        out.resize(out_len + canary.size());
+        std::copy(canary.begin(), canary.end(), out.end() - canary.size());
+        SHA3_Squeeze(ctx.A, out.data(), out_len, ctx.block_size);
+        EXPECT_TRUE(std::equal(out.end() - canary.size(), out.end(), canary.begin()) == true);
+    }
+
+    EVP_MD_unstable_sha3_enable(false);
+}
+
 TEST(SHAKE128Test, NISTTestVectors) {
   FileTestGTest("crypto/fipsmodule/sha/testvectors/SHAKE128VariableOut.txt", [](FileTest *t) {
     SHA3TestVector test_vec;
