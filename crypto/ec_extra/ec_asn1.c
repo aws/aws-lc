@@ -544,7 +544,8 @@ static size_t EC_POINT_point2buf(const EC_GROUP *group, const EC_POINT *point,
   if (len == 0) {
     return 0;
   }
-  if ((buf = OPENSSL_malloc(len)) == NULL) {
+  buf = OPENSSL_malloc(len);
+  if (buf == NULL) {
     OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
     return 0;
   }
