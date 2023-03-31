@@ -460,7 +460,6 @@ OPENSSL_EXPORT int PEM_write_PKCS8PrivateKey(FILE *fp, const EVP_PKEY *x,
 }
 #endif
 
-// For OpenSSL compatibility. Not used internally.
 #define PEM_R_BAD_BASE64_DECODE 100
 #define PEM_R_BAD_DECRYPT 101
 #define PEM_R_BAD_END_LINE 102
