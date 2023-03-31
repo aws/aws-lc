@@ -65,9 +65,8 @@
 #include <openssl/nid.h>
 #include <openssl/rsa.h>
 
-#include "../../internal.h"
-#include "../rsa/internal.h"
 #include "internal.h"
+#include "../rsa/internal.h"
 #include "../../rsa_extra/internal.h"
 
 #define NO_PSS_SALT_LEN_RESTRICTION -1
