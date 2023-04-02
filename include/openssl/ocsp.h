@@ -33,11 +33,19 @@ extern "C" {
 // validation path for the signer certificate unless the OCSP_NOCHAIN flag is
 // set.
 #define OCSP_NOCHAIN 0x8
+// OCSP_NOVERIFY is for |OCSP_basic_verify|. This is a no-op flag in AWS-LC.
+// When setting this flag in OpenSSL, the |OCSP_BASICRESP|'s signature will
+// still be verified, but setting this flag skips verifying the signer's
+// certificate.
+#define OCSP_NOVERIFY 0
 // OCSP_NOINTERN is for |OCSP_basic_verify|. We will check for explicit trust
 // for OCSP signing in the root CA certificate, unless the flags contain
 // OCSP_NOEXPLICIT.
 #define OCSP_NOEXPLICIT 0x20
-
+// OCSP_TRUSTOTHER is for |OCSP_basic_verify|. This is a no-op flag in AWS-LC.
+// When setting this flag in OpenSSL, if the reponse signer's cert is one of
+// those in the |certs| stack then it is implicitly trusted.
+#define OCSP_TRUSTOTHER 0
 
 typedef struct ocsp_cert_id_st OCSP_CERTID;
 typedef struct ocsp_one_request_st OCSP_ONEREQ;
@@ -63,6 +71,27 @@ DECLARE_ASN1_FUNCTIONS(OCSP_BASICRESP)
 DECLARE_ASN1_FUNCTIONS(OCSP_RESPONSE)
 DECLARE_ASN1_FUNCTIONS(OCSP_CERTID)
 DECLARE_ASN1_FUNCTIONS(OCSP_REQUEST)
+
+// d2i_OCSP_REQUEST_bio parses a DER-encoded OCSP request from |bp|, converts it
+// into an |OCSP_REQUEST|, and writes the result in |preq|.
+OPENSSL_EXPORT OCSP_REQUEST *d2i_OCSP_REQUEST_bio(BIO *bp, OCSP_REQUEST **preq);
+
+// d2i_OCSP_RESPONSE_bio parses a DER-encoded OCSP response from |bp|, converts
+// it into an |OCSP_RESPONSE|, and writes the result in |presp|.
+OPENSSL_EXPORT OCSP_RESPONSE *d2i_OCSP_RESPONSE_bio(BIO *bp,
+                                                    OCSP_RESPONSE **presp);
+
+// i2d_OCSP_RESPONSE_bio marshals |presp| as a DER-encoded OCSP response and
+// writes the result to |bp|.
+OPENSSL_EXPORT int i2d_OCSP_RESPONSE_bio(BIO *bp, OCSP_RESPONSE *presp);
+
+// i2d_OCSP_REQUEST_bio marshals |preq| as a DER-encoded OCSP request and
+// writes the result to |bp|.
+OPENSSL_EXPORT int i2d_OCSP_REQUEST_bio(BIO *bp, OCSP_REQUEST *preq);
+
+// OCSP_CERTID_dup allocates a new |OCSP_CERTID| and sets it equal to the state
+// of |id|. It returns the new |OCSP_CERTID| or NULL on error.
+OPENSSL_EXPORT OCSP_CERTID *OCSP_CERTID_dup(OCSP_CERTID *id);
 
 // OCSP_sendreq_bio is a blocking OCSP request handler which is a special case
 // of non-blocking I/O.
@@ -151,6 +180,31 @@ OPENSSL_EXPORT int OCSP_response_status(OCSP_RESPONSE *resp);
 
 // OCSP_response_get1_basic returns |OCSP_BASICRESP| from |OCSP_RESPONSE|.
 OPENSSL_EXPORT OCSP_BASICRESP *OCSP_response_get1_basic(OCSP_RESPONSE *resp);
+
+// OCSP_resp_count returns the number of |OCSP_SINGLERESP| responses present
+// in |bs|.
+OPENSSL_EXPORT int OCSP_resp_count(OCSP_BASICRESP *bs);
+
+// OCSP_resp_get0 returns the |OCSP_SINGLERESP| at the |idx| within
+// |bs|.
+OCSP_SINGLERESP *OCSP_resp_get0(OCSP_BASICRESP *bs, size_t idx);
+
+// OCSP_single_get0_status returns the status of |single|.
+//
+// Note: 1. |reason| value is allowed to be null.
+//       2. Time values passed into function are allowed to be NULL if
+//          certificate fields are empty.
+//       3. |revtime| and |reason| values only set if the certificate status is
+//          revoked.
+int OCSP_single_get0_status(OCSP_SINGLERESP *single, int *reason,
+                            ASN1_GENERALIZEDTIME **revtime,
+                            ASN1_GENERALIZEDTIME **thisupd,
+                            ASN1_GENERALIZEDTIME **nextupd);
+
+// OCSP_resp_find returns the index of the |OCSP_SINGLERESP| in |bs| which
+// matches |id| if found, or -1 if not found.
+OPENSSL_EXPORT int OCSP_resp_find(OCSP_BASICRESP *bs, OCSP_CERTID *id,
+                                  int last);
 
 // OCSP_resp_find_status looks up a cert id and extract the update time and
 // revocation status of  certificate sent back from OCSP responder if found.
@@ -242,6 +296,24 @@ OPENSSL_EXPORT OCSP_CERTID *OCSP_cert_to_id(const EVP_MD *dgst,
 OPENSSL_EXPORT int OCSP_parse_url(const char *url, char **phost, char **pport,
                                   char **ppath, int *pssl);
 
+// OCSP_id_cmp compares the contents of |OCSP_CERTID|, returns 0 on equal.
+int OCSP_id_cmp(const OCSP_CERTID *a, const OCSP_CERTID *b);
+
+// OCSP_id_get0_info returns the issuer name hash, hash OID, issuer key hash,
+// and the serial number contained in |cid|. If any of the values are not
+// required, the corresponding parameter can be set to NULL.
+OPENSSL_EXPORT int OCSP_id_get0_info(ASN1_OCTET_STRING **nameHash,
+                                     ASN1_OBJECT **algor,
+                                     ASN1_OCTET_STRING **keyHash,
+                                     ASN1_INTEGER **serial, OCSP_CERTID *cid);
+
+// OCSP_basic_add1_cert adds |cert| to the |resp|.
+OPENSSL_EXPORT int OCSP_basic_add1_cert(OCSP_BASICRESP *resp, X509 *cert);
+
+// OCSP_SINGLERESP_get0_id returns the |OCSP_CERTID| within |x|.
+OPENSSL_EXPORT const OCSP_CERTID *OCSP_SINGLERESP_get0_id(
+    const OCSP_SINGLERESP *x);
+
 // OCSP_response_status_str returns the OCSP response status of |status_code| as
 // a string.
 OPENSSL_EXPORT const char *OCSP_response_status_str(long status_code);
@@ -250,6 +322,10 @@ OPENSSL_EXPORT const char *OCSP_response_status_str(long status_code);
 // a string.
 OPENSSL_EXPORT const char *OCSP_cert_status_str(long status_code);
 
+// OCSP_crl_reason_str returns the OCSP CRL reason of |status_code| as a string.
+// |OCSP_resp_find_status| can be used to retrieve the reason status code
+// if an OCSP response is revoked.
+OPENSSL_EXPORT const char *OCSP_crl_reason_str(long status_code);
 
 #ifdef __cplusplus
 }
