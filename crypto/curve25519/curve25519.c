@@ -31,51 +31,6 @@
 #include "../internal.h"
 #include "../fipsmodule/cpucap/internal.h"
 
-// x25519_NEON is defined in asm/x25519-arm.S.
-#if defined(OPENSSL_ARM) && !defined(OPENSSL_NO_ASM) && !defined(OPENSSL_APPLE)
-#define BORINGSSL_X25519_NEON
-#endif
-
-void x25519_NEON(uint8_t out[32], const uint8_t scalar[32],
-                 const uint8_t point[32]);
-
-#if defined(BORINGSSL_X25519_NEON)
-
-OPENSSL_INLINE int curve25519_asm_capable(void) {
-  return CRYPTO_is_NEON_capable();
-}
-
-#else
-
-OPENSSL_INLINE int curve25519_asm_capable(void) {
-  return 0;
-}
-
-void x25519_NEON(uint8_t out[32], const uint8_t scalar[32],
-                 const uint8_t point[32]) {
-  abort();
-}
-
-#endif
-
-
-void ED25519_keypair_from_seed(uint8_t out_public_key[32],
-                               uint8_t out_private_key[64],
-                               const uint8_t seed[ED25519_SEED_LEN]) {
-  uint8_t az[SHA512_DIGEST_LENGTH];
-  SHA512(seed, ED25519_SEED_LEN, az);
-
-  az[0] &= 248;
-  az[31] &= 127;
-  az[31] |= 64;
-
-  ge_p3 A;
-  x25519_ge_scalarmult_base(&A, az);
-  ge_p3_tobytes(out_public_key, &A);
-
-  OPENSSL_memcpy(out_private_key, seed, ED25519_SEED_LEN);
-  OPENSSL_memcpy(out_private_key + ED25519_SEED_LEN, out_public_key, 32);
-}
 
 void ED25519_keypair(uint8_t out_public_key[32], uint8_t out_private_key[64]) {
   uint8_t seed[ED25519_SEED_LEN];
@@ -184,22 +139,35 @@ int ED25519_verify(const uint8_t *message, size_t message_len,
   return CRYPTO_memcmp(rcheck, rcopy, sizeof(rcheck)) == 0;
 }
 
+void ED25519_keypair_from_seed(uint8_t out_public_key[32],
+                               uint8_t out_private_key[64],
+                               const uint8_t seed[ED25519_SEED_LEN]) {
+  uint8_t az[SHA512_DIGEST_LENGTH];
+  SHA512(seed, ED25519_SEED_LEN, az);
 
-void X25519_public_from_private(uint8_t out_public_value[32],
-                                const uint8_t private_key[32]) {
+  az[0] &= 248;
+  az[31] &= 127;
+  az[31] |= 64;
 
-  uint8_t e[32];
-  OPENSSL_memcpy(e, private_key, 32);
-  e[0] &= 248;
-  e[31] &= 127;
-  e[31] |= 64;
+  ge_p3 A;
+  x25519_ge_scalarmult_base(&A, az);
+  ge_p3_tobytes(out_public_key, &A);
 
-  if (curve25519_asm_capable()) {
-    static const uint8_t kMongomeryBasePoint[32] = {9};
-    x25519_NEON(out_public_value, private_key, kMongomeryBasePoint);
-  } else {
-    X25519_public_from_private_nohw(out_public_value, e);
+  OPENSSL_memcpy(out_private_key, seed, ED25519_SEED_LEN);
+  OPENSSL_memcpy(out_private_key + ED25519_SEED_LEN, out_public_key, 32);
+}
+
+
+static void x25519_scalar_mult(uint8_t out[32], const uint8_t scalar[32],
+                               const uint8_t point[32]) {
+#if defined(BORINGSSL_X25519_NEON)
+  if (CRYPTO_is_NEON_capable()) {
+    x25519_NEON(out, scalar, point);
+    return;
   }
+#endif
+
+  x25519_scalar_mult_generic_nohw(out, scalar, point);
 }
 
 void X25519_keypair(uint8_t out_public_value[32], uint8_t out_private_key[32]) {
@@ -227,16 +195,28 @@ void X25519_keypair(uint8_t out_public_value[32], uint8_t out_private_key[32]) {
 
 int X25519(uint8_t out_shared_key[32], const uint8_t private_key[32],
            const uint8_t peer_public_value[32]) {
-
   static const uint8_t kZeros[32] = {0};
-
-  if (curve25519_asm_capable()) {
-    x25519_NEON(out_shared_key, private_key, peer_public_value);
-  } else {
-    x25519_scalar_mult_generic_nohw(out_shared_key, private_key, peer_public_value);
-  }
-
+  x25519_scalar_mult(out_shared_key, private_key, peer_public_value);
   // The all-zero output results when the input is a point of small order.
-  // See https://www.rfc-editor.org/rfc/rfc7748#section-6.1.
   return CRYPTO_memcmp(kZeros, out_shared_key, 32) != 0;
+}
+
+void X25519_public_from_private(uint8_t out_public_value[32],
+                                const uint8_t private_key[32]) {
+
+#if defined(BORINGSSL_X25519_NEON)
+  if (CRYPTO_is_NEON_capable()) {
+    static const uint8_t kMongomeryBasePoint[32] = {9};
+    x25519_NEON(out_public_value, private_key, kMongomeryBasePoint);
+    return;
+  }
+#endif
+
+  uint8_t e[32];
+  OPENSSL_memcpy(e, private_key, 32);
+  e[0] &= 248;
+  e[31] &= 127;
+  e[31] |= 64;
+
+  X25519_public_from_private_nohw(out_public_value, e);
 }
