@@ -88,12 +88,12 @@
     "skip_valgrind": true
   },
   {
+    "cmd": ["ssl/integration_test"]
+  },
+  {
     "cmd": ["crypto/mem_test"]
   },
   {
     "cmd": ["crypto/mem_set_test"]
-  },
-  {
-    "cmd": ["crypto/integration_test"]
   }
 ]

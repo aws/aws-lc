@@ -53,6 +53,27 @@ target_include_directories(ssl SYSTEM PUBLIC
   $<INSTALL_INTERFACE:include>)
 
 if(BUILD_TESTING)
+  # ocsp_integration_test.cc does integration tests with the Amazon Trust
+  # Services OCSP responder. This is ran as its own test executable because
+  # internal sandbox builds cannot properly connect with the host.
+  # Since the integration test relies on libssl functionalities to retrieve
+  # the certification chain from a host, this integration test dimension is
+  # built with ssl instead of crypto.
+  add_executable(
+    ${INTEGRATION_TEST_EXEC}
+
+    ../crypto/ocsp/ocsp_integration_test.cc
+    ../tool/transport_common.cc
+    ../tool/fd.cc
+
+    $<TARGET_OBJECTS:crypto_test_data>
+    $<TARGET_OBJECTS:boringssl_gtest_main>
+  )
+  add_dependencies(${INTEGRATION_TEST_EXEC} global_target)
+  target_link_libraries(${INTEGRATION_TEST_EXEC} test_support_lib
+          boringssl_gtest ssl crypto)
+  add_dependencies(all_tests ${INTEGRATION_TEST_EXEC})
+
   add_executable(
     ${SSL_TEST_EXEC}
 
