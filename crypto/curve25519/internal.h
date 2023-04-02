@@ -23,15 +23,6 @@ extern "C" {
 
 #include "../internal.h"
 
-
-#if defined(OPENSSL_ARM) && !defined(OPENSSL_NO_ASM) && !defined(OPENSSL_APPLE)
-#define BORINGSSL_X25519_NEON
-
-// x25519_NEON is defined in asm/x25519-arm.S.
-void x25519_NEON(uint8_t out[32], const uint8_t scalar[32],
-                 const uint8_t point[32]);
-#endif
-
 #if defined(BORINGSSL_HAS_UINT128)
 #define BORINGSSL_CURVE25519_64BIT
 #endif
@@ -153,7 +144,6 @@ struct spake2_ctx_st {
   enum spake2_state_t state;
   char disable_password_scalar_hack;
 };
-
 
 #if defined(__cplusplus)
 }  // extern C
