@@ -667,12 +667,15 @@ if(BUILD_TESTING)
     ${INTEGRATION_TEST_EXEC}
 
     ocsp/ocsp_integration_test.cc
+    ../tool/transport_common.cc
+    ../tool/fd.cc
 
     $<TARGET_OBJECTS:crypto_test_data>
     $<TARGET_OBJECTS:boringssl_gtest_main>
   )
   add_dependencies(${INTEGRATION_TEST_EXEC} global_target)
-  target_link_libraries(${INTEGRATION_TEST_EXEC} test_support_lib boringssl_gtest crypto)
+  target_link_libraries(${INTEGRATION_TEST_EXEC} test_support_lib
+          boringssl_gtest crypto ssl)
   add_dependencies(all_tests ${INTEGRATION_TEST_EXEC})
 
   add_executable(
