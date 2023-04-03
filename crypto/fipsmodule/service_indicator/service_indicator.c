@@ -408,7 +408,7 @@ void PBKDF2_verify_service_indicator(const EVP_MD *evp_md, size_t password_len,
   //   (clearly we can't test for "as large as possible");
   //   NIST SP800-132 suggests >= 1000. For real-world implementations the
   //   actual iteration count should be much higher (at least hundreds of
-  //   >>thousands), but as a general-purpose cryptographic library, AWS-LC
+  //   thousands), but as a general-purpose cryptographic library, AWS-LC
   //   can't make this decision.
   switch (evp_md->type) {
     case NID_sha1:
@@ -416,7 +416,7 @@ void PBKDF2_verify_service_indicator(const EVP_MD *evp_md, size_t password_len,
     case NID_sha256:
     case NID_sha384:
     case NID_sha512:
-      if (password_len >= 14 && salt_len >= 16 && iterations > 1000) {
+      if (password_len >= 14 && salt_len >= 16 && iterations >= 1000) {
         FIPS_service_indicator_update_state();
       }
       break;
