@@ -1,6 +1,16 @@
 #############################################################################
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-# SPDX-License-Identifier: Apache-2.0 OR ISC
+#
+# Licensed under the Apache License, Version 2.0 (the "License").
+# You may not use this file except in compliance with the License.
+# A copy of the License is located at
+#
+#  http://aws.amazon.com/apache2.0
+#
+# or in the "LICENSE" file accompanying this file. This file is distributed
+# on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+# express or implied. See the License for the specific language governing
+# permissions and limitations under the License.
 #############################################################################
 
 # If actually on an ARM8 machine, just use the GNU assmbler (as). Otherwise
@@ -43,10 +53,7 @@ OBJ = bignum_add_p384.o \
       bignum_optneg_p384.o \
       bignum_sub_p384.o \
       bignum_tomont_p384.o \
-      bignum_triple_p384.o \
-      p384_montjadd.o \
-      p384_montjdouble.o \
-      p384_montjmixadd.o
+      bignum_triple_p384.o
 
 %.o : %.S ; $(CC) -E -I../../include $< | $(GAS) -o $@ -
 

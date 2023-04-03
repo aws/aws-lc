@@ -1,5 +1,17 @@
-// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0 OR ISC
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License").
+ * You may not use this file except in compliance with the License.
+ * A copy of the License is located at
+ *
+ *  http://aws.amazon.com/apache2.0
+ *
+ * or in the "LICENSE" file accompanying this file. This file is distributed
+ * on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+ * express or implied. See the License for the specific language governing
+ * permissions and limitations under the License.
+ */
 
 // ----------------------------------------------------------------------------
 // Square modulo p_521, z := (x^2) mod p_521, assuming x reduced
@@ -31,23 +43,23 @@
 
 #define l x10
 
-#define u0 x2 // The same as a0
-#define u1 x11
-#define u2 x12
-#define u3 x13
-#define u4 x14
-#define u5 x15
-#define u6 x16
-#define u7 x17
-#define u8 x19
-#define u9 x20
-#define u10 x21
-#define u11 x22
-#define u12 x23
-#define u13 x24
-#define u14 x25
-#define u15 x26
-#define u16 x4 // The same as a2
+#define u0 x11
+#define u1 x12
+#define u2 x13
+#define u3 x14
+#define u4 x15
+#define u5 x16
+#define u6 x17
+#define u7 x19
+#define u8 x20
+#define u9 x21
+#define u10 x22
+#define u11 x23
+#define u12 x24
+#define u13 x25
+#define u14 x26
+#define u15 x27
+#define u16 x29
 
 S2N_BN_SYMBOL(bignum_sqr_p521_alt):
 
@@ -57,6 +69,7 @@ S2N_BN_SYMBOL(bignum_sqr_p521_alt):
         stp     x21, x22, [sp, #-16]!
         stp     x23, x24, [sp, #-16]!
         stp     x25, x26, [sp, #-16]!
+        stp     x27, x29, [sp, #-16]!
 
 // Load low 8 elements as [a7;a6;a5;a4;a3;a2;a1;a0], set up an initial
 // window [u8;u7;u6;u5;u4;u3;u2;u1] =  10 + 20 + 30 + 40 + 50 + 60 + 70
@@ -218,6 +231,7 @@ S2N_BN_SYMBOL(bignum_sqr_p521_alt):
 // Add the homogeneous terms 00 + 11 + 22 + 33 + 44 + 55 + 66 + 77
 
         umulh   l, a0, a0
+        mul     u0, a0, a0
         adds    u1, u1, l
 
         mul     l, a1, a1
@@ -255,57 +269,48 @@ S2N_BN_SYMBOL(bignum_sqr_p521_alt):
         umulh   l, a7, a7
         adc     u15, u15, l
 
-// Now load in the top digit a8, and immediately double the register
+// Now load in the top digit a8, and also set up its double and square
 
         ldr     a8, [x, #64]
+        mul     u16, a8, a8
         add     a8, a8, a8
 
-// Add (2 * a8) * [a7;...;a0] into the top of the buffer
-// At the end of the first chain we form u16 = a8 ^ 2.
-// This needs us to shift right the modified a8 again but it saves a
-// register, and the overall performance impact seems slightly positive.
+// Add a8 * [a7;...;a0] into the top of the buffer
 
         mul     l, a8, a0
         adds    u8, u8, l
-        umulh   l, a8, a0
+        mul     l, a8, a1
         adcs    u9, u9, l
         mul     l, a8, a2
         adcs    u10, u10, l
-        umulh   l, a8, a2
+        mul     l, a8, a3
         adcs    u11, u11, l
         mul     l, a8, a4
         adcs    u12, u12, l
-        umulh   l, a8, a4
+        mul     l, a8, a5
         adcs    u13, u13, l
         mul     l, a8, a6
         adcs    u14, u14, l
-        umulh   l, a8, a6
+        mul     l, a8, a7
         adcs    u15, u15, l
-        lsr     u16, a8, #1
-        mul     u16, u16, u16
         adc     u16, u16, xzr
 
-        mul     l, a8, a1
+        umulh   l, a8, a0
         adds    u9, u9, l
         umulh   l, a8, a1
         adcs    u10, u10, l
-        mul     l, a8, a3
+        umulh   l, a8, a2
         adcs    u11, u11, l
         umulh   l, a8, a3
         adcs    u12, u12, l
-        mul     l, a8, a5
+        umulh   l, a8, a4
         adcs    u13, u13, l
         umulh   l, a8, a5
         adcs    u14, u14, l
-        mul     l, a8, a7
+        umulh   l, a8, a6
         adcs    u15, u15, l
         umulh   l, a8, a7
         adc     u16, u16, l
-
-// Finally squeeze in the lowest mul. This didn't need to be involved
-// in the addition chains and moreover lets us re-use u0 == a0
-
-        mul     u0, a0, a0
 
 // Now we have the full product, which we consider as
 // 2^521 * h + l. Form h + l + 1
@@ -356,6 +361,7 @@ S2N_BN_SYMBOL(bignum_sqr_p521_alt):
 
 // Restore registers and return
 
+        ldp     x27, x29, [sp], #16
         ldp     x25, x26, [sp], #16
         ldp     x23, x24, [sp], #16
         ldp     x21, x22, [sp], #16

@@ -1,5 +1,17 @@
-// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0 OR ISC
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License").
+ * You may not use this file except in compliance with the License.
+ * A copy of the License is located at
+ *
+ *  http://aws.amazon.com/apache2.0
+ *
+ * or in the "LICENSE" file accompanying this file. This file is distributed
+ * on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+ * express or implied. See the License for the specific language governing
+ * permissions and limitations under the License.
+ */
 
 // ----------------------------------------------------------------------------
 // Halve modulo p_384, z := (x / 2) mod p_384, assuming x reduced
@@ -47,11 +59,14 @@ S2N_BN_SYMBOL(bignum_half_p384):
 
 // Do a masked addition of p_384, catching carry in a 7th word
 
-        and     n, m, #0x00000000ffffffff
+        mov     n, #0x00000000ffffffff
+        and     n, n, m
         adds    d0, d0, n
-        and     n, m, #0xffffffff00000000
+        mov     n, #0xffffffff00000000
+        and     n, n, m
         adcs    d1, d1, n
-        and     n, m, #0xfffffffffffffffe
+        mov     n, #0xfffffffffffffffe
+        and     n, n, m
         adcs    d2, d2, n
         adcs    d3, d3, m
         adcs    d4, d4, m
