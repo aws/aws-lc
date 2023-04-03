@@ -384,7 +384,7 @@ int EVP_AEAD_CTX_deserialize_state(const EVP_AEAD_CTX *ctx, CBS *cbs) {
   if (!CBS_get_asn1(cbs, &seq, CBS_ASN1_SEQUENCE) ||
       !CBS_get_asn1_uint64(&seq, &version) ||
       version != EVP_AEAD_CTX_SERDE_VERSION ||
-      !CBS_get_asn1_uint64(&seq, &aead_id) || aead_id > UINT8_MAX ||
+      !CBS_get_asn1_uint64(&seq, &aead_id) || aead_id > UINT16_MAX ||
       aead_id != EVP_AEAD_CTX_get_aead_id(ctx) ||
       !CBS_get_asn1(&seq, &state, CBS_ASN1_OCTETSTRING)) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_SERIALIZATION_INVALID_EVP_AEAD_CTX);
@@ -398,7 +398,7 @@ int EVP_AEAD_CTX_deserialize_state(const EVP_AEAD_CTX *ctx, CBS *cbs) {
   return ctx->aead->deserialize_state(ctx, &state);
 }
 
-uint8_t EVP_AEAD_CTX_get_aead_id(const EVP_AEAD_CTX *ctx) {
+uint16_t EVP_AEAD_CTX_get_aead_id(const EVP_AEAD_CTX *ctx) {
   if (!ctx->aead) {
     return AEAD_UNKNOWN_ID;
   }

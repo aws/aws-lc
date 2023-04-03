@@ -75,35 +75,37 @@ extern "C" {
 #define EVP_CIPH_MODE_MASK 0x3f
 
 // Set of EVP_AEAD->aead_id identifiers, zero is reserved as the "unknown"
-// value since it is the default for a structure.
+// value since it is the default for a structure. Implementations of the same
+// algorithms should use the same identifier. For example, machine-optimised
+// assembly versions should use the same identifier as their C counterparts.
 #define AEAD_UNKNOWN_ID 0
 #define AEAD_AES_128_CTR_HMAC_SHA256_ID 1
 #define AEAD_AES_256_CTR_HMAC_SHA256_ID 2
-#define AEAD_AES_128_GCM_SIV_ID 5
-#define AEAD_AES_256_GCM_SIV_ID 6
-#define AEAD_CHACHA20_POLY1305_ID 7
-#define AEAD_XCHACHA20_POLY1305_ID 8
-#define AEAD_AES_128_CBC_SHA1_TLS_ID 9
-#define AEAD_AES_128_CBC_SHA1_TLS_IMPLICIT_IV_ID 10
-#define AEAD_AES_256_CBC_SHA1_TLS_ID 11
-#define AEAD_AES_256_CBC_SHA1_TLS_IMPLICIT_IV_ID 12
-#define AEAD_AES_128_CBC_SHA256_TLS_ID 13
-#define AEAD_AES_128_CBC_SHA256_TLS_IMPLICIT_IV_ID 14
-#define AEAD_DES_EDE3_CBC_SHA1_TLS_ID 15
-#define AEAD_DES_EDE3_CBC_SHA1_TLS_IMPLICIT_IV_ID 16
-#define AEAD_NULL_SHA1_TLS_ID 17
-#define AEAD_AES_128_GCM_ID 18
-#define AEAD_AES_192_GCM_ID 19
-#define AEAD_AES_256_GCM_ID 20
-#define AEAD_AES_128_GCM_RANDNONCE_ID 21
-#define AEAD_AES_256_GCM_RANDNONCE_ID 22
-#define AEAD_AES_128_GCM_TLS12_ID 23
-#define AEAD_AES_256_GCM_TLS12_ID 24
-#define AEAD_AES_128_GCM_TLS13_ID 25
-#define AEAD_AES_256_GCM_TLS13_ID 26
-#define AEAD_AES_128_CCM_BLUETOOTH_ID 27
-#define AEAD_AES_128_CCM_BLUETOOTH_8_ID 28
-#define AEAD_AES_128_CCM_MATTER_ID 29
+#define AEAD_AES_128_GCM_SIV_ID 3
+#define AEAD_AES_256_GCM_SIV_ID 4
+#define AEAD_CHACHA20_POLY1305_ID 5
+#define AEAD_XCHACHA20_POLY1305_ID 6
+#define AEAD_AES_128_CBC_SHA1_TLS_ID 7
+#define AEAD_AES_128_CBC_SHA1_TLS_IMPLICIT_IV_ID 8
+#define AEAD_AES_256_CBC_SHA1_TLS_ID 9
+#define AEAD_AES_256_CBC_SHA1_TLS_IMPLICIT_IV_ID 10
+#define AEAD_AES_128_CBC_SHA256_TLS_ID 11
+#define AEAD_AES_128_CBC_SHA256_TLS_IMPLICIT_IV_ID 12
+#define AEAD_DES_EDE3_CBC_SHA1_TLS_ID 13
+#define AEAD_DES_EDE3_CBC_SHA1_TLS_IMPLICIT_IV_ID 14
+#define AEAD_NULL_SHA1_TLS_ID 15
+#define AEAD_AES_128_GCM_ID 16
+#define AEAD_AES_192_GCM_ID 17
+#define AEAD_AES_256_GCM_ID 18
+#define AEAD_AES_128_GCM_RANDNONCE_ID 19
+#define AEAD_AES_256_GCM_RANDNONCE_ID 20
+#define AEAD_AES_128_GCM_TLS12_ID 21
+#define AEAD_AES_256_GCM_TLS12_ID 22
+#define AEAD_AES_128_GCM_TLS13_ID 23
+#define AEAD_AES_256_GCM_TLS13_ID 24
+#define AEAD_AES_128_CCM_BLUETOOTH_ID 25
+#define AEAD_AES_128_CCM_BLUETOOTH_8_ID 26
+#define AEAD_AES_128_CCM_MATTER_ID 27
 
 // EVP_AEAD represents a specific AEAD algorithm.
 struct evp_aead_st {
@@ -111,7 +113,7 @@ struct evp_aead_st {
   uint8_t nonce_len;
   uint8_t overhead;
   uint8_t max_tag_len;
-  uint8_t aead_id;
+  uint16_t aead_id;
   int seal_scatter_supports_extra_in;
 
   // init initialises an |EVP_AEAD_CTX|. If this call returns zero then
@@ -234,7 +236,7 @@ OPENSSL_EXPORT int EVP_AEAD_CTX_serialize_state(const EVP_AEAD_CTX *ctx,
 OPENSSL_EXPORT int EVP_AEAD_CTX_deserialize_state(const EVP_AEAD_CTX *ctx,
                                                   CBS *cbs);
 
-OPENSSL_EXPORT uint8_t EVP_AEAD_CTX_get_aead_id(const EVP_AEAD_CTX *ctx);
+OPENSSL_EXPORT uint16_t EVP_AEAD_CTX_get_aead_id(const EVP_AEAD_CTX *ctx);
 
 #if defined(__cplusplus)
 }  // extern C
