@@ -1,5 +1,17 @@
-// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-// SPDX-License-Identifier: Apache-2.0 OR ISC
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License").
+ * You may not use this file except in compliance with the License.
+ * A copy of the License is located at
+ *
+ *  http://aws.amazon.com/apache2.0
+ *
+ * or in the "LICENSE" file accompanying this file. This file is distributed
+ * on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+ * express or implied. See the License for the specific language governing
+ * permissions and limitations under the License.
+ */
 
 // ----------------------------------------------------------------------------
 // Convert to Montgomery form z := (2^384 * x) mod p_384
@@ -91,7 +103,7 @@ S2N_BN_SYMBOL(bignum_tomont_p384_alt):
         ldp     d4, d5, [x1, #32]
 
 // Do an initial reduction to make sure this is < p_384, using just
-// a copy of the bignum_mod_p384_6 code. This is needed to set up the
+// a copy of the bignum_mod_p384 code. This is needed to set up the
 // invariant "input < p_384" for the main modular reduction steps.
 
         mov     n0, #0x00000000ffffffff
