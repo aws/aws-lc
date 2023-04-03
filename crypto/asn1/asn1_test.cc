@@ -1336,6 +1336,7 @@ TEST(ASN1Test, StringPrintEx) {
     SCOPED_TRACE(t.flags);
 
     bssl::UniquePtr<ASN1_STRING> str(ASN1_STRING_type_new(t.type));
+    ASSERT_TRUE(str);
     ASSERT_TRUE(ASN1_STRING_set(str.get(), t.data.data(), t.data.size()));
     str->flags = t.str_flags;
 
@@ -1378,6 +1379,7 @@ TEST(ASN1Test, StringPrintEx) {
     SCOPED_TRACE(t.flags);
 
     bssl::UniquePtr<ASN1_STRING> str(ASN1_STRING_type_new(t.type));
+    ASSERT_TRUE(str);
     ASSERT_TRUE(ASN1_STRING_set(str.get(), t.data.data(), t.data.size()));
     str->flags = t.str_flags;
 

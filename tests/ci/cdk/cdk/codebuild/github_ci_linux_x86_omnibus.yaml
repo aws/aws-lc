@@ -294,7 +294,7 @@ batch:
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
-        compute-type: BUILD_GENERAL1_LARGE
+        compute-type: BUILD_GENERAL1_2XLARGE
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:amazonlinux-2022_gcc-11x_latest
 
     - identifier: amazonlinux2022_gcc11x_x86_64

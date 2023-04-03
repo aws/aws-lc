@@ -121,7 +121,6 @@ recursedeps = [
 ]
 
 hooks = [
-  # TODO(https://crbug.com/1180257): Use CIPD for CMake on Windows.
   {
     'name': 'perl_win32',
     'pattern': '.',

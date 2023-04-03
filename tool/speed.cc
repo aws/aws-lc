@@ -232,6 +232,7 @@ static bool SpeedRSA(const std::string &selected) {
     const size_t key_len;
   } kRSAKeys[] = {
     {"RSA 2048", kDERRSAPrivate2048, kDERRSAPrivate2048Len},
+    {"RSA 3072", kDERRSAPrivate3072, kDERRSAPrivate3072Len},
     {"RSA 4096", kDERRSAPrivate4096, kDERRSAPrivate4096Len},
     {"RSA 8192", kDERRSAPrivate8192, kDERRSAPrivate8192Len},
   };
@@ -880,13 +881,6 @@ static bool SpeedHashChunk(const EVP_MD *md, std::string name,
 
 static bool SpeedHash(const EVP_MD *md, const std::string &name,
                       const std::string &selected) {
-  // This SHA3 API is AWS-LC specific.
-#if defined(OPENSSL_IS_AWSLC)
-  if (name.find("SHA3") != std::string::npos) {
-    EVP_MD_unstable_sha3_enable(true);
-  }
-#endif
-
   if (!selected.empty() && name.find(selected) == std::string::npos) {
     return true;
   }
@@ -897,10 +891,6 @@ static bool SpeedHash(const EVP_MD *md, const std::string &name,
     }
   }
 
-  // This SHA3 API is AWS-LC specific.
-#if defined(OPENSSL_IS_AWSLC)
-  EVP_MD_unstable_sha3_enable(false);
-#endif
   return true;
 }
 

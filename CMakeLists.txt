@@ -290,9 +290,6 @@ if(GCC OR CLANG)
     # as -Weverything, to match MSVC. Instead -W3 is the alias for -Wall.
     # See http://llvm.org/viewvc/llvm-project?view=revision&revision=319116
     set(C_CXX_FLAGS "${C_CXX_FLAGS} -W3 -Wno-unused-parameter -fmsc-version=1900")
-    # googletest suppresses warning C4996 via a pragma, but clang-cl does not
-    # honor it. Suppress it here to compensate. See https://crbug.com/772117.
-    set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wno-deprecated-declarations")
   else()
     if(EMSCRIPTEN)
       # emscripten's emcc/clang does not accept the "-ggdb" flag.
@@ -930,6 +927,15 @@ if(BUILD_TESTING)
           COMMAND cd ssl/test/runner &&
                   ${GO_EXECUTABLE} test -timeout ${GO_TEST_TIMEOUT} -shim-path $<TARGET_FILE:bssl_shim>
                     ${HANDSHAKER_ARGS} ${RUNNER_ARGS} ${AWS_LC_SSL_RUNNER_INDEX_FILTER} ${SSL_TRANSFER_ARGS}
+          WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+          DEPENDS bssl_shim handshaker fips_specific_tests_if_any
+          ${MAYBE_USES_TERMINAL})
+
+      add_custom_target(
+          run_ssl_runner_tests_valgrind
+          COMMAND cd ssl/test/runner &&
+          ${GO_EXECUTABLE} test -timeout ${GO_TEST_TIMEOUT} -shim-path $<TARGET_FILE:bssl_shim> -valgrind
+          ${HANDSHAKER_ARGS} ${RUNNER_ARGS} ${AWS_LC_SSL_RUNNER_INDEX_FILTER} ${SSL_TRANSFER_ARGS}
           WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
           DEPENDS bssl_shim handshaker fips_specific_tests_if_any
           ${MAYBE_USES_TERMINAL})

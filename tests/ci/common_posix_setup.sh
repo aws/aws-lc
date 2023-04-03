@@ -130,7 +130,7 @@ function fips_build_and_test {
 
 function build_and_test_valgrind {
   run_build "$@"
-  run_cmake_custom_target 'run_tests_valgrind'
+  run_cmake_custom_target 'run_tests_valgrind' && run_cmake_custom_target 'run_ssl_runner_tests_valgrind'
 }
 
 function build_and_test_with_sde {
