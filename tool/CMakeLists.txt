@@ -23,8 +23,6 @@ add_executable(
 target_include_directories(bssl PUBLIC ../include)
 target_compile_options(bssl PUBLIC -DINTERNAL_TOOL)
 
-add_dependencies(bssl global_target)
-
 if(WIN32)
   target_link_libraries(bssl ws2_32)
 endif()

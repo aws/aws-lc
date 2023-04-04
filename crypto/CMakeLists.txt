@@ -1,5 +1,3 @@
-include_directories(../include)
-
 if(NOT OPENSSL_NO_ASM)
   if(UNIX)
     if(ARCH STREQUAL "aarch64")
@@ -502,9 +500,10 @@ add_library(
 )
 
 target_compile_definitions(crypto_objects PRIVATE BORINGSSL_IMPLEMENTATION)
+target_include_directories(crypto_objects PRIVATE ../include)
 
 # For the prefix build, the object files need the prefix header files to build.
-add_dependencies(crypto_objects global_target)
+add_dependencies(crypto_objects boringssl_prefix_symbols)
 
 function(build_libcrypto name module_source)
   if(FIPS)
@@ -512,8 +511,6 @@ function(build_libcrypto name module_source)
   else()
     add_library(${name} $<TARGET_OBJECTS:crypto_objects> ${CRYPTO_FIPS_OBJECTS} ${module_source})
   endif()
-
-  add_dependencies(${name}  global_target)
 
   if(FIPS_DELOCATE OR FIPS_SHARED)
     add_dependencies(${name} bcm_o_target)
@@ -555,6 +552,8 @@ if(FIPS_SHARED)
       generated_fips_shared_support.c
       ${PROJECT_SOURCE_DIR}/crypto/fipsmodule/cpucap/cpucap.c
     )
+    target_include_directories(generated_fipsmodule PRIVATE ../include)
+
     build_libcrypto(crypto $<TARGET_OBJECTS:generated_fipsmodule>)
   else()
     # On Apple and Linux platforms inject_hash.go can parse libcrypto and inject
@@ -625,10 +624,9 @@ if(BUILD_TESTING)
 
   macro(add_test_executable executable_name test_file)
     message(STATUS "Generating test executable ${executable_name}.")
-    add_executable(${executable_name} ${test_file} $<TARGET_OBJECTS:boringssl_gtest_main>)
+    add_executable(${executable_name} ${test_file})
     target_compile_definitions(${executable_name} PRIVATE BORINGSSL_IMPLEMENTATION)
-    add_dependencies(${executable_name} global_target)
-    target_link_libraries(${executable_name} test_support_lib boringssl_gtest crypto)
+    target_link_libraries(${executable_name} test_support_lib boringssl_gtest_main crypto)
     add_dependencies(all_tests ${executable_name})
   endmacro()
 
@@ -643,7 +641,6 @@ if(BUILD_TESTING)
   # it does.
   add_executable(
     ${RANDOM_TEST_EXEC}
-
     fipsmodule/rand/urandom_test.cc
   )
 
@@ -656,7 +653,6 @@ if(BUILD_TESTING)
 
   target_link_libraries(${RANDOM_TEST_EXEC} test_support_lib boringssl_gtest crypto)
 
-  add_dependencies(${RANDOM_TEST_EXEC} global_target)
   add_dependencies(all_tests ${RANDOM_TEST_EXEC})
 
   add_executable(
@@ -738,13 +734,9 @@ if(BUILD_TESTING)
     decrepit/ripemd/ripemd_test.cc
 
     $<TARGET_OBJECTS:crypto_test_data>
-    $<TARGET_OBJECTS:boringssl_gtest_main>
-
   )
 
-  add_dependencies(${CRYPTO_TEST_EXEC} global_target)
-
-  target_link_libraries(${CRYPTO_TEST_EXEC} test_support_lib boringssl_gtest crypto)
+  target_link_libraries(${CRYPTO_TEST_EXEC} test_support_lib boringssl_gtest_main crypto)
   if(WIN32)
     target_link_libraries(${CRYPTO_TEST_EXEC} ws2_32)
   endif()

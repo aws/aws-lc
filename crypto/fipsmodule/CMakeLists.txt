@@ -1,6 +1,3 @@
-include_directories(../../include)
-
-
 if(ANDROID)
   # Since "--Wa,--noexecstack" is not used during the preprocessor step of Android (because assembler is not invoked),
   # Clang reports that argument as unused. We remove the flag only for the FIPS build of Android.
@@ -302,8 +299,8 @@ if(FIPS_DELOCATE)
     set(BCM_ASM_PROCESSED_SOURCES ${BCM_ASM_SOURCES})
   endif()
 
-  add_dependencies(bcm_c_generated_asm global_target)
-
+  add_dependencies(bcm_c_generated_asm boringssl_prefix_symbols)
+  target_include_directories(bcm_c_generated_asm PRIVATE ../../include)
   set_target_properties(bcm_c_generated_asm PROPERTIES COMPILE_OPTIONS "-S")
   set_target_properties(bcm_c_generated_asm PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
@@ -332,7 +329,7 @@ if(FIPS_DELOCATE)
   )
   target_compile_definitions(bcm_hashunset PRIVATE BORINGSSL_IMPLEMENTATION)
 
-  add_dependencies(bcm_hashunset global_target)
+  add_dependencies(bcm_hashunset boringssl_prefix_symbols)
 
   set_target_properties(bcm_hashunset PROPERTIES POSITION_INDEPENDENT_CODE ON)
   set_target_properties(bcm_hashunset PROPERTIES LINKER_LANGUAGE C)
@@ -362,7 +359,8 @@ if(FIPS_DELOCATE)
   )
   target_compile_definitions(fipsmodule PRIVATE BORINGSSL_IMPLEMENTATION)
 
-  add_dependencies(fipsmodule global_target)
+  add_dependencies(fipsmodule boringssl_prefix_symbols)
+  target_include_directories(fipsmodule PRIVATE ../../include)
 
   set_target_properties(fipsmodule PROPERTIES LINKER_LANGUAGE C)
 elseif(FIPS_SHARED)
@@ -380,7 +378,8 @@ elseif(FIPS_SHARED)
   )
   target_compile_definitions(fipsmodule PRIVATE BORINGSSL_IMPLEMENTATION)
 
-  add_dependencies(fipsmodule global_target)
+  add_dependencies(fipsmodule boringssl_prefix_symbols)
+  target_include_directories(fipsmodule PRIVATE ../../include)
 
   add_library(
     bcm_library
@@ -394,7 +393,8 @@ elseif(FIPS_SHARED)
   target_compile_definitions(bcm_library PRIVATE BORINGSSL_IMPLEMENTATION)
   target_include_directories(bcm_library PRIVATE ../../include)
 
-  add_dependencies(bcm_library global_target)
+  add_dependencies(bcm_library boringssl_prefix_symbols)
+  target_include_directories(bcm_library PRIVATE ../../include)
   if (APPLE)
     set(BCM_NAME bcm.o)
     # The linker on macOS doesn't have the ability to process linker scripts,
@@ -488,5 +488,6 @@ else()
   )
   target_compile_definitions(fipsmodule PRIVATE BORINGSSL_IMPLEMENTATION)
 
-  add_dependencies(fipsmodule global_target)
+  add_dependencies(fipsmodule boringssl_prefix_symbols)
+  target_include_directories(fipsmodule PRIVATE ../../include)
 endif()
