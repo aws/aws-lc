@@ -76,7 +76,7 @@ static const unsigned kReseedInterval = 4096;
 // code and re-compile.
 #if defined(OPENSSL_X86_64) && !defined(OPENSSL_NO_ASM) && \
     !defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE)
-  static const enum seed_sourcing seed_sourcing_mode = SEED_SOURCING_JITTER_ENTROPY;
+  static const enum seed_sourcing seed_sourcing_mode = SEED_SOURCING_RDRAND;
 #else
   static const enum seed_sourcing seed_sourcing_mode = SEED_SOURCING_JITTER_ENTROPY;
 #endif
@@ -231,6 +231,9 @@ static int rdrand(uint8_t *buf, const size_t len) {
 
 #else
 
+OPENSSL_STATIC_ASSERT(seed_sourcing_mode != SEED_SOURCING_RDRAND,
+  rdrand_cannot_be_the_entropy_source_for_this_build_configuration);
+
 static int rdrand(uint8_t *buf, size_t len) {
   return 0;
 }
@@ -243,7 +246,9 @@ static void get_fips_seed_from_sourcing_mode(struct rand_thread_state *state,
   uint8_t *out_entropy, size_t out_entropy_len) {
 
   if (seed_sourcing_mode == SEED_SOURCING_RDRAND) {
-    return;
+    if (rdrand(out_entropy, out_entropy_len) != 1) {
+      abort();
+    }
   } else if (seed_sourcing_mode == SEED_SOURCING_JITTER_ENTROPY) {
     if (state->jitter_ec == NULL) {
       abort();
@@ -255,7 +260,7 @@ static void get_fips_seed_from_sourcing_mode(struct rand_thread_state *state,
       abort();
     }
   } else {
-    // This shouldn't happen.
+    // This shouldn't happen. But in case it does, it's very fatal!
     abort();
   }
 }
@@ -267,7 +272,7 @@ static void CRYPTO_get_fips_seed(uint8_t *out_entropy, size_t out_entropy_len,
   // to the current thread.
   struct rand_thread_state *state =
       CRYPTO_get_thread_local(OPENSSL_THREAD_LOCAL_RAND);
-  if (state == NULL || state->jitter_ec == NULL) {
+  if (state == NULL) {
     abort();
   }
 
