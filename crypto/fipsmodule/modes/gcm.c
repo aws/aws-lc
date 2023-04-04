@@ -184,6 +184,13 @@ void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
   out_key->lo = H[1];
 
 #if defined(GHASH_ASM_X86_64)
+  if (crypto_gcm_avx512_enabled()) {
+    gcm_init_avx512(out_table, H);
+    *out_mult = gcm_gmult_avx512;
+    *out_hash = gcm_ghash_avx512;
+    *out_is_avx = 1;
+    return;
+  }
   if (crypto_gcm_clmul_enabled()) {
     if (CRYPTO_is_AVX_capable() && CRYPTO_is_MOVBE_capable()) {
       gcm_init_avx(out_table, H);
@@ -280,6 +287,13 @@ void CRYPTO_gcm128_setiv(GCM128_CONTEXT *ctx, const AES_KEY *key,
   ctx->len.u[1] = 0;  // message length
   ctx->ares = 0;
   ctx->mres = 0;
+
+#if defined(GHASH_ASM_X86_64)
+  if (ctx->gcm_key.use_hw_gcm_crypt && crypto_gcm_avx512_enabled()) {
+    gcm_setiv_avx512(key, ctx, iv, len);
+    return;
+  }
+#endif
 
   uint32_t ctr;
   if (len == 12) {
@@ -574,6 +588,13 @@ int CRYPTO_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
     ctx->ares = 0;
   }
 
+#if defined(GHASH_ASM_X86_64)
+  if (ctx->gcm_key.use_hw_gcm_crypt && crypto_gcm_avx512_enabled() && len > 0) {
+    aes_gcm_encrypt_avx512(key, ctx, &ctx->mres, in, len, out);
+    return 1;
+  }
+#endif
+
   unsigned n = ctx->mres;
   if (n) {
     while (n && len) {
@@ -659,6 +680,13 @@ int CRYPTO_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
     GCM_MUL(ctx, Xi);
     ctx->ares = 0;
   }
+
+#if defined(GHASH_ASM_X86_64)
+  if (ctx->gcm_key.use_hw_gcm_crypt && crypto_gcm_avx512_enabled() && len > 0) {
+    aes_gcm_decrypt_avx512(key, ctx, &ctx->mres, in, len, out);
+    return 1;
+  }
+#endif
 
   unsigned n = ctx->mres;
   if (n) {
@@ -761,6 +789,18 @@ void CRYPTO_gcm128_tag(GCM128_CONTEXT *ctx, unsigned char *tag, size_t len) {
 int crypto_gcm_clmul_enabled(void) {
 #if defined(GHASH_ASM_X86) || defined(GHASH_ASM_X86_64)
   return CRYPTO_is_FXSR_capable() && CRYPTO_is_PCLMUL_capable();
+#else
+  return 0;
+#endif
+}
+
+int crypto_gcm_avx512_enabled(void) {
+#if defined(GHASH_ASM_X86_64) && \
+    !defined(OPENSSL_WINDOWS) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+    // TODO(awslc): remove the Windows guard once CryptoAlg-1701 is resolved.
+  return (CRYPTO_is_VAES_capable() &&
+          CRYPTO_is_AVX512_capable() &&
+          CRYPTO_is_VPCLMULQDQ_capable());
 #else
   return 0;
 #endif
