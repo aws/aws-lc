@@ -71,11 +71,22 @@ enum seed_sourcing {
 
 #if defined(BORINGSSL_FIPS)
 static const unsigned kReseedInterval = 4096;
-static const enum seed_sourcing seed_sourcing_mode = SEED_SOURCING_JITTER_ENTROPY;
+
+// This is a purely static configuration. To change it, would need to modify
+// code and re-compile.
+#if defined(OPENSSL_X86_64) && !defined(OPENSSL_NO_ASM) && \
+    !defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE)
+  static const enum seed_sourcing seed_sourcing_mode = SEED_SOURCING_JITTER_ENTROPY;
 #else
+  static const enum seed_sourcing seed_sourcing_mode = SEED_SOURCING_JITTER_ENTROPY;
+#endif
+
+#else // defined(BORINGSSL_FIPS)
+
 static const unsigned kReseedInterval = 4096;
 static const enum seed_sourcing seed_sourcing_mode = SEED_SOURCING_DEFAULT;
-#endif
+
+#endif // defined(BORINGSSL_FIPS)
 
 // CRNGT_BLOCK_SIZE is the number of bytes in a “block” for the purposes of the
 // continuous random number generator test in FIPS 140-2, section 4.9.2.
@@ -172,9 +183,9 @@ static void rand_thread_state_free(void *state_in) {
   CTR_DRBG_clear(&state->drbg);
   OPENSSL_cleanse(state->last_block, sizeof(state->last_block));
 
-    if (seed_sourcing_mode == SEED_SOURCING_JITTER_ENTROPY) {
-      jent_entropy_collector_free(state->jitter_ec);
-    }
+  if (seed_sourcing_mode == SEED_SOURCING_JITTER_ENTROPY) {
+    jent_entropy_collector_free(state->jitter_ec);
+  }
 #endif
 
   OPENSSL_free(state);
