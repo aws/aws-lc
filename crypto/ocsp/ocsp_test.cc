@@ -39,12 +39,6 @@ static const time_t invalid_after_ocsp_expire_time_sha256 = 1937505764;
 #define OCSP_URL_PARSE_SUCCESS 1
 #define OCSP_URL_PARSE_ERROR 0
 
-#define OCSP_NONCE_EQUAL 1
-#define OCSP_NONCE_BOTH_ABSENT 2
-#define OCSP_NONCE_RESPONSE_ONLY 3
-#define OCSP_NONCE_NOT_EQUAL 0
-#define OCSP_NONCE_REQUEST_ONLY -1
-
 std::string GetTestData(const char *path);
 
 static bool DecodeBase64(std::vector<uint8_t> *out, const char *in) {

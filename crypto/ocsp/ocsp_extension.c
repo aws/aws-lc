@@ -91,15 +91,15 @@ int OCSP_check_nonce(OCSP_REQUEST *req, OCSP_BASICRESP *bs) {
   resp_idx = OCSP_BASICRESP_get_ext_by_NID(bs, NID_id_pkix_OCSP_Nonce, -1);
   // Check that both are absent.
   if ((req_idx < 0) && (resp_idx < 0)) {
-    return 2;
+    return OCSP_NONCE_BOTH_ABSENT;
   }
   // Check in request only.
   if ((req_idx >= 0) && (resp_idx < 0)) {
-    return -1;
+    return OCSP_NONCE_REQUEST_ONLY;
   }
   // Check in response, but not request.
   if ((req_idx < 0) && (resp_idx >= 0)) {
-    return 3;
+    return OCSP_NONCE_RESPONSE_ONLY;
   }
   // Otherwise, there is a nonce in both the request and response, so retrieve
   // the extensions.
@@ -107,7 +107,7 @@ int OCSP_check_nonce(OCSP_REQUEST *req, OCSP_BASICRESP *bs) {
   resp_ext = OCSP_BASICRESP_get_ext(bs, resp_idx);
   if (ASN1_OCTET_STRING_cmp(X509_EXTENSION_get_data(req_ext),
                             X509_EXTENSION_get_data(resp_ext))) {
-    return 0;
+    return OCSP_NONCE_NOT_EQUAL;
   }
-  return 1;
+  return OCSP_NONCE_EQUAL;
 }

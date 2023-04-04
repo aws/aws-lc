@@ -169,11 +169,11 @@ OPENSSL_EXPORT int OCSP_request_add1_nonce(OCSP_REQUEST *req,
 // OCSP_check_nonce checks nonce existence and equality in |req| and |bs|.
 //
 // Return value reflects result:
-//    1: nonces present and equal.
-//    2: nonces both absent.
-//    3: nonce present in |bs| only.
-//    0: nonces both present and not equal.
-//    -1: nonce in |req| only.
+//    OCSP_NONCE_EQUAL (1: nonces present and equal.)
+//    OCSP_NONCE_BOTH_ABSENT (2: nonces both absent.)
+//    OCSP_NONCE_RESPONSE_ONLY (3: nonce present in |bs| only.)
+//    OCSP_NONCE_NOT_EQUAL (0: nonces both present and not equal.)
+//    OCSP_NONCE_REQUEST_ONLY (-1: nonce in |req| only.)
 //  For most responders, clients can check "return > 0".
 //  If an OCSP responder doesn't handle nonces, "return != 0" may be necessary.
 //  "return == 0" will always be an error if the nonces are both present, but
@@ -380,6 +380,12 @@ BSSL_NAMESPACE_END
 #define V_OCSP_CERTSTATUS_GOOD 0
 #define V_OCSP_CERTSTATUS_REVOKED 1
 #define V_OCSP_CERTSTATUS_UNKNOWN 2
+
+#define OCSP_NONCE_EQUAL 1
+#define OCSP_NONCE_BOTH_ABSENT 2
+#define OCSP_NONCE_RESPONSE_ONLY 3
+#define OCSP_NONCE_NOT_EQUAL 0
+#define OCSP_NONCE_REQUEST_ONLY -1
 
 #define OCSP_R_CERTIFICATE_VERIFY_ERROR 101
 #define OCSP_R_DIGEST_ERR 102
