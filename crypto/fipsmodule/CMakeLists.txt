@@ -17,6 +17,7 @@ if(ARCH STREQUAL "x86_64")
   set(
     BCM_ASM_SOURCES
 
+    aesni-gcm-avx512.${ASM_EXT}
     aesni-gcm-x86_64.${ASM_EXT}
     aesni-x86_64.${ASM_EXT}
     ghash-ssse3-x86_64.${ASM_EXT}
@@ -101,6 +102,7 @@ endif()
 
 if(PERL_EXECUTABLE)
   perlasm(aesni-gcm-x86_64.${ASM_EXT} modes/asm/aesni-gcm-x86_64.pl)
+  perlasm(aesni-gcm-avx512.${ASM_EXT} modes/asm/aesni-gcm-avx512.pl)
   perlasm(aesni-x86_64.${ASM_EXT} aes/asm/aesni-x86_64.pl)
   perlasm(aesni-x86.${ASM_EXT} aes/asm/aesni-x86.pl)
   perlasm(aesp8-ppc.${ASM_EXT} aes/asm/aesp8-ppc.pl)
@@ -148,6 +150,14 @@ if(PERL_EXECUTABLE)
   perlasm(x86_64-mont5.${ASM_EXT} bn/asm/x86_64-mont5.pl)
   perlasm(x86_64-mont.${ASM_EXT} bn/asm/x86_64-mont.pl)
   perlasm(x86-mont.${ASM_EXT} bn/asm/x86-mont.pl)
+endif()
+
+# clang-6 (and older) knows how to compile AVX512 assembly instructions,
+# but only if it's given the right flags (e.g. -mavx512*).
+# The flags are not required for any other compiler we are running in the CI.
+if ((CMAKE_ASM_COMPILER_ID MATCHES "Clang" OR CMAKE_ASM_COMPILER MATCHES "clang") AND
+    (CMAKE_ASM_COMPILER_VERSION VERSION_LESS "7.0.0") AND (ARCH STREQUAL "x86_64"))
+  set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/aesni-gcm-avx512.${ASM_EXT} PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512bw -mavx512dq -mavx512vl")
 endif()
 
 # s2n-bignum files can be compiled on Unix platforms only (except Apple),
@@ -302,6 +312,14 @@ if(FIPS_DELOCATE)
     DEPENDS bcm_c_generated_asm delocate ${BCM_ASM_PROCESSED_SOURCES}
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   )
+
+  # clang-6 (and older) knows how to compile AVX512 assembly instructions,
+  # but only if it's given the right flags (e.g. -mavx512*).
+  # The flags are not required for any other compiler we are running in the CI.
+  if ((CMAKE_ASM_COMPILER_ID MATCHES "Clang" OR CMAKE_ASM_COMPILER MATCHES "clang") AND
+      (CMAKE_ASM_COMPILER_VERSION VERSION_LESS "7.0.0") AND (ARCH STREQUAL "x86_64"))
+    set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/bcm-delocated.S PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512bw -mavx512dq -mavx512vl")
+  endif()
 
   add_library(
     bcm_hashunset
