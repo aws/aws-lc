@@ -63,10 +63,18 @@
 // kReseedInterval is the number of generate calls made to CTR-DRBG before
 // reseeding.
 
+enum seed_sourcing {
+  SEED_SOURCING_DEFAULT = 0,
+  SEED_SOURCING_JITTER_ENTROPY = 1,
+  SEED_SOURCING_RDRAND = 2,
+};
+
 #if defined(BORINGSSL_FIPS)
-static const unsigned kReseedInterval = 16777216;
+static const unsigned kReseedInterval = 4096;
+static const enum seed_sourcing seed_sourcing_mode = SEED_SOURCING_JITTER_ENTROPY;
 #else
 static const unsigned kReseedInterval = 4096;
+static const enum seed_sourcing seed_sourcing_mode = SEED_SOURCING_DEFAULT;
 #endif
 
 // CRNGT_BLOCK_SIZE is the number of bytes in a “block” for the purposes of the
@@ -128,7 +136,9 @@ static void rand_thread_state_clear_all(void) {
     CTR_DRBG_clear(&cur->drbg);
     OPENSSL_cleanse(cur->last_block, sizeof(cur->last_block));
 
-    jent_entropy_collector_free(cur->jitter_ec);
+    if (seed_sourcing_mode == SEED_SOURCING_JITTER_ENTROPY) {
+      jent_entropy_collector_free(cur->jitter_ec);
+    }
   }
   // The locks are deliberately left locked so that any threads that are still
   // running will hang if they try to call |RAND_bytes|.
@@ -162,7 +172,9 @@ static void rand_thread_state_free(void *state_in) {
   CTR_DRBG_clear(&state->drbg);
   OPENSSL_cleanse(state->last_block, sizeof(state->last_block));
 
-  jent_entropy_collector_free(state->jitter_ec);
+    if (seed_sourcing_mode == SEED_SOURCING_JITTER_ENTROPY) {
+      jent_entropy_collector_free(state->jitter_ec);
+    }
 #endif
 
   OPENSSL_free(state);
@@ -216,6 +228,27 @@ static int rdrand(uint8_t *buf, size_t len) {
 
 #if defined(BORINGSSL_FIPS)
 
+static void get_fips_seed_from_sourcing_mode(struct rand_thread_state *state,
+  uint8_t *out_entropy, size_t out_entropy_len) {
+
+  if (seed_sourcing_mode == SEED_SOURCING_RDRAND) {
+    return;
+  } else if (seed_sourcing_mode == SEED_SOURCING_JITTER_ENTROPY) {
+    if (state->jitter_ec == NULL) {
+      abort();
+    }
+
+    // Generate the required number of bytes with Jitter.
+    if (jent_read_entropy_safe(&state->jitter_ec, (char *) out_entropy,
+                               out_entropy_len) != (ssize_t) out_entropy_len) {
+      abort();
+    }
+  } else {
+    // This shouldn't happen.
+    abort();
+  }
+}
+
 static void CRYPTO_get_fips_seed(uint8_t *out_entropy, size_t out_entropy_len,
                              int *out_want_additional_input) {
   *out_want_additional_input = 0;
@@ -227,11 +260,7 @@ static void CRYPTO_get_fips_seed(uint8_t *out_entropy, size_t out_entropy_len,
     abort();
   }
 
-  // Generate the required number of bytes with Jitter.
-  if (jent_read_entropy_safe(&state->jitter_ec, (char *) out_entropy,
-                             out_entropy_len) != (ssize_t) out_entropy_len) {
-    abort();
-  }
+  get_fips_seed_from_sourcing_mode(state, out_entropy, out_entropy_len);
 
   if (boringssl_fips_break_test("CRNG")) {
     // This breaks the "continuous random number generator test" defined in FIPS
@@ -346,14 +375,16 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
     }
 
 #if defined(BORINGSSL_FIPS)
-    // Initialize the thread-local Jitter instance.
-    state->jitter_ec = NULL;
-    // The first parameter passed to |jent_entropy_collector_alloc| function is
-    // the desired oversampling rate. Passing a 0 tells Jitter module to use
-    // the default rate (which is 3 in Jitter v3.1.0).
-    state->jitter_ec = jent_entropy_collector_alloc(0, JENT_FORCE_FIPS);
-    if (state->jitter_ec == NULL) {
-      abort();
+    if (seed_sourcing_mode == SEED_SOURCING_JITTER_ENTROPY) {
+      // Initialize the thread-local Jitter instance.
+      state->jitter_ec = NULL;
+      // The first parameter passed to |jent_entropy_collector_alloc| function is
+      // the desired oversampling rate. Passing a 0 tells Jitter module to use
+      // the default rate (which is 3 in Jitter v3.1.0).
+      state->jitter_ec = jent_entropy_collector_alloc(0, JENT_FORCE_FIPS);
+      if (state->jitter_ec == NULL) {
+        abort();
+      }
     }
 #endif
 
