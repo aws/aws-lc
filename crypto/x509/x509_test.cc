@@ -2662,7 +2662,8 @@ TEST(X509Test, Ed25519Sign) {
 }
 
 TEST(X509Test, Dilithium3SignVerifyCert) {
-  //generate the dilithium key
+  // This test generates a Dilithium3 keypair, generates and signs a
+  // certificate, then verifies the certificate's signature.
   EVP_PKEY_CTX *pkey_ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_DILITHIUM3, nullptr);
   ASSERT_NE(pkey_ctx, nullptr);
   EVP_PKEY *pkey = EVP_PKEY_new();
@@ -2670,17 +2671,14 @@ TEST(X509Test, Dilithium3SignVerifyCert) {
   EXPECT_TRUE(EVP_PKEY_keygen_init(pkey_ctx));
   EXPECT_TRUE(EVP_PKEY_keygen(pkey_ctx, &pkey));
 
-  //generate the cert
   bssl::UniquePtr<X509> leaf =
       MakeTestCert("Intermediate", "Leaf", pkey, /*is_ca=*/false);
   ASSERT_TRUE(leaf);
 
-  //sign the cert
   bssl::ScopedEVP_MD_CTX md_ctx;
   EVP_DigestSignInit(md_ctx.get(), nullptr, nullptr, nullptr, pkey);
   ASSERT_TRUE(X509_sign_ctx(leaf.get(), md_ctx.get()));
 
-  //verify the cert
   ASSERT_TRUE(X509_verify(leaf.get(), pkey));
 
   EVP_PKEY_CTX_free(pkey_ctx);
@@ -2688,7 +2686,7 @@ TEST(X509Test, Dilithium3SignVerifyCert) {
 }
 
 TEST(X509Test, TestDilithium3) {
-  // This test generates a Dilithium3 certificate from the PEM encoding,
+  // This test decodes a Dilithium3 certificate from the PEM encoding,
   // extracts the public key, and then verifies the certificate.
   bssl::UniquePtr<X509> cert(CertFromPEM(kDilithium3Cert));
   ASSERT_TRUE(cert);

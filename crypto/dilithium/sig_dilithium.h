@@ -35,7 +35,7 @@ int DILITHIUM3_sign(uint8_t *sig, size_t *sig_len,
 // to input signature, |sig_len| is the length of the signature, |message| is
 // a pointer to message, |message_len| is the length of the message and
 // |public_key| is a pointer to bit-packed public key. Returns 0 if signature
-// could be verified correctly and -1 otherwise.
+// could be verified successfully and -1 otherwise.
 int DILITHIUM3_verify(const uint8_t *message,
                       size_t message_len,
                       const uint8_t *sig,

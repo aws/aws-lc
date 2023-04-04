@@ -173,11 +173,6 @@ static int dilithium3_priv_encode(CBB *out, const EVP_PKEY *pkey) {
   return 1;
 }
 
-static int dilithium3_priv_encode_v2(CBB *out, const EVP_PKEY *pkey) {
-OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
-return 0;
-}
-
 static int dilithium3_size(const EVP_PKEY *pkey) {
   return DILITHIUM3_SIGNATURE_BYTES;
 }
@@ -198,7 +193,7 @@ const EVP_PKEY_ASN1_METHOD dilithium3_asn1_meth = {
     dilithium3_pub_cmp,
     dilithium3_priv_decode,
     dilithium3_priv_encode,
-    dilithium3_priv_encode_v2,
+    NULL /*priv_encode_v2*/,
     dilithium3_set_priv_raw,
     dilithium3_set_pub_raw,
     dilithium3_get_priv_raw,
