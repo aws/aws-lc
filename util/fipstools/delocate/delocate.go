@@ -59,6 +59,30 @@ const (
 	aarch64
 )
 
+// represents a unique symbol for an occurrence of OPENSSL_ia32cap_P.
+type cpuCapUniqueSymbol struct {
+	registerName string
+	suffixUniqueness string
+}
+
+const cpuCapx86SymbolPrefix = "LOPENSSL_ia32cap_P_"
+
+func (uniqueSymbol cpuCapUniqueSymbol) getx86Symbol() string {
+	return cpuCapx86SymbolPrefix + uniqueSymbol.registerName + uniqueSymbol.suffixUniqueness
+}
+
+func (uniqueSymbol cpuCapUniqueSymbol) getx86SymbolReturn() string {
+	return uniqueSymbol.getx86Symbol() + "_return"
+}
+
+// uniqueness must be a globally unique integer value.
+func newCpuCapUniqueSymbol(uniqueness int, registerName string) *cpuCapUniqueSymbol {
+	return &cpuCapUniqueSymbol{
+	    registerName: strings.Trim(registerName, "%"), // should work with both AT&T and Intel syntax.
+	    suffixUniqueness: strconv.Itoa(uniqueness),
+	}
+}
+
 // delocation holds the state needed during a delocation operation.
 type delocation struct {
 	processor processorType
@@ -70,6 +94,9 @@ type delocation struct {
 	symbols map[string]struct{}
 	// localEntrySymbols is the set of symbols with .localentry directives.
 	localEntrySymbols map[string]struct{}
+	// cpuCapUniqueSymbols represents the set of unique symbols for each
+	// discovered occurrence of OPENSSL_ia32cap_P.
+	cpuCapUniqueSymbols []*cpuCapUniqueSymbol
 	// redirectors maps from out-call symbol name to the name of a
 	// redirector function for that symbol. E.g. “memcpy” ->
 	// “bcm_redirector_memcpy”.
@@ -1205,18 +1232,6 @@ func (d *delocation) loadFromGOT(w stringWriter, destination, symbol, section st
 	}
 }
 
-func saveFlags(w stringWriter, redzoneCleared bool) wrapperFunc {
-	return func(k func()) {
-		if !redzoneCleared {
-			w.WriteString("\tleaq -128(%rsp), %rsp\n") // Clear the red zone.
-			defer w.WriteString("\tleaq 128(%rsp), %rsp\n")
-		}
-		w.WriteString("\tpushfq\n")
-		k()
-		w.WriteString("\tpopfq\n")
-	}
-}
-
 func saveRegister(w stringWriter, avoidRegs []string) (wrapperFunc, string) {
 	candidates := []string{"%rax", "%rbx", "%rcx", "%rdx"}
 
@@ -1362,16 +1377,14 @@ Args:
 					return nil, fmt.Errorf("tried to load OPENSSL_ia32cap_P into %q, which is not a standard register.", reg)
 				}
 
-				changed = true
-
-				// Flag-altering instructions (i.e. addq) are going to be used so the
-				// flags need to be preserved.
-				wrappers = append(wrappers, saveFlags(d.output, false /* Red Zone not yet cleared */))
-
+				uniqueSymbol := newCpuCapUniqueSymbol(len(d.cpuCapUniqueSymbols), reg)
 				wrappers = append(wrappers, func(k func()) {
-					d.output.WriteString("\tleaq\tOPENSSL_ia32cap_addr_delta(%rip), " + reg + "\n")
-					d.output.WriteString("\taddq\t(" + reg + "), " + reg + "\n")
+					d.output.WriteString("\tjmp\t" + uniqueSymbol.getx86Symbol() + "\n")
+					d.output.WriteString(uniqueSymbol.getx86SymbolReturn() + ":\n")
 				})
+				d.cpuCapUniqueSymbols = append(d.cpuCapUniqueSymbols, uniqueSymbol)
+
+				changed = true
 
 				break Args
 			}
@@ -1519,13 +1532,14 @@ Args:
 				}
 
 				if symbol == "OPENSSL_ia32cap_P" {
-					// Flag-altering instructions (i.e. addq) are going to be used so the
-					// flags need to be preserved.
-					wrappers = append(wrappers, saveFlags(d.output, redzoneCleared))
+
+					uniqueSymbol := newCpuCapUniqueSymbol(len(d.cpuCapUniqueSymbols), targetReg)
 					wrappers = append(wrappers, func(k func()) {
-						d.output.WriteString("\tleaq\tOPENSSL_ia32cap_addr_delta(%rip), " + targetReg + "\n")
-						d.output.WriteString("\taddq\t(" + targetReg + "), " + targetReg + "\n")
+						d.output.WriteString("\tjmp\t" + uniqueSymbol.getx86Symbol() + "\n")
+						d.output.WriteString(uniqueSymbol.getx86SymbolReturn() + ":\n")
 					})
+					d.cpuCapUniqueSymbols = append(d.cpuCapUniqueSymbols, uniqueSymbol)
+
 				} else if useGOT {
 					wrappers = append(wrappers, d.loadFromGOT(d.output, targetReg, symbol, section, redzoneCleared))
 				} else {
@@ -1782,17 +1796,18 @@ func transform(w stringWriter, inputs []inputFile) error {
 	}
 
 	d := &delocation{
-		symbols:             symbols,
-		localEntrySymbols:   localEntrySymbols,
-		processor:           processor,
-		commentIndicator:    commentIndicator,
-		output:              w,
-		redirectors:         make(map[string]string),
-		bssAccessorsNeeded:  make(map[string]string),
-		tocLoaders:          make(map[string]struct{}),
-		gotExternalsNeeded:  make(map[string]struct{}),
-		gotOffsetsNeeded:    make(map[string]struct{}),
-		gotOffOffsetsNeeded: make(map[string]struct{}),
+		symbols:             	symbols,
+		localEntrySymbols:   	localEntrySymbols,
+		processor:           	processor,
+		commentIndicator:    	commentIndicator,
+		output:              	w,
+		cpuCapUniqueSymbols:    []*cpuCapUniqueSymbol{},
+		redirectors:         	make(map[string]string),
+		bssAccessorsNeeded:  	make(map[string]string),
+		tocLoaders:          	make(map[string]struct{}),
+		gotExternalsNeeded:  	make(map[string]struct{}),
+		gotOffsetsNeeded:    	make(map[string]struct{}),
+		gotOffOffsetsNeeded: 	make(map[string]struct{}),
 	}
 
 	w.WriteString(".text\n")
@@ -1945,11 +1960,14 @@ func transform(w stringWriter, inputs []inputFile) error {
 		w.WriteString("\tleaq OPENSSL_ia32cap_P(%rip), %rax\n")
 		w.WriteString("\tret\n")
 
-		w.WriteString(".extern OPENSSL_ia32cap_P\n")
-		w.WriteString(".type OPENSSL_ia32cap_addr_delta, @object\n")
-		w.WriteString(".size OPENSSL_ia32cap_addr_delta, 8\n")
-		w.WriteString("OPENSSL_ia32cap_addr_delta:\n")
-		w.WriteString(".quad OPENSSL_ia32cap_P-OPENSSL_ia32cap_addr_delta\n")
+		// Luckily, this is a fixed order iteration. So, we can write
+		// deterministic tests for this in /testdata.
+		for _, uniqueSymbol := range d.cpuCapUniqueSymbols {
+			w.WriteString(".type " + uniqueSymbol.getx86Symbol() + ", @function\n")
+			w.WriteString(uniqueSymbol.getx86Symbol() + ":\n")
+			w.WriteString("\tleaq OPENSSL_ia32cap_P(%rip), %" + uniqueSymbol.registerName + "\n")
+			w.WriteString("\tjmp " + uniqueSymbol.getx86SymbolReturn() + "\n")
+		}
 
 		if d.gotDeltaNeeded {
 			w.WriteString(".Lboringssl_got_delta:\n")
