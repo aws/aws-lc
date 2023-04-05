@@ -242,6 +242,7 @@ static const EVP_AEAD aead_aes_128_ctr_hmac_sha256 = {
     12,                                    // nonce length
     EVP_AEAD_AES_CTR_HMAC_SHA256_TAG_LEN,  // overhead
     EVP_AEAD_AES_CTR_HMAC_SHA256_TAG_LEN,  // max tag length
+    AEAD_AES_128_CTR_HMAC_SHA256_ID,       // evp_aead_id
     0,                                     // seal_scatter_supports_extra_in
 
     aead_aes_ctr_hmac_sha256_init,
@@ -252,6 +253,8 @@ static const EVP_AEAD aead_aes_128_ctr_hmac_sha256 = {
     aead_aes_ctr_hmac_sha256_open_gather,
     NULL /* get_iv */,
     NULL /* tag_len */,
+    NULL /* serialize_state */,
+    NULL /* deserialize_state */,
 };
 
 static const EVP_AEAD aead_aes_256_ctr_hmac_sha256 = {
@@ -259,6 +262,7 @@ static const EVP_AEAD aead_aes_256_ctr_hmac_sha256 = {
     12,                                    // nonce length
     EVP_AEAD_AES_CTR_HMAC_SHA256_TAG_LEN,  // overhead
     EVP_AEAD_AES_CTR_HMAC_SHA256_TAG_LEN,  // max tag length
+    AEAD_AES_256_CTR_HMAC_SHA256_ID,       // evp_aead_id
     0,                                     // seal_scatter_supports_extra_in
 
     aead_aes_ctr_hmac_sha256_init,
@@ -269,6 +273,8 @@ static const EVP_AEAD aead_aes_256_ctr_hmac_sha256 = {
     aead_aes_ctr_hmac_sha256_open_gather,
     NULL /* get_iv */,
     NULL /* tag_len */,
+    NULL /* serialize_state */,
+    NULL /* deserialize_state */,
 };
 
 const EVP_AEAD *EVP_aead_aes_128_ctr_hmac_sha256(void) {

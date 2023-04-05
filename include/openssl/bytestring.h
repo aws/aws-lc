@@ -259,8 +259,7 @@ OPENSSL_EXPORT int CBS_peek_asn1_tag(const CBS *cbs, CBS_ASN1_TAG tag_value);
 // (not including tag and length bytes), sets |*out_tag| to the tag number, and
 // advances |*cbs|. It returns one on success and zero on error. Either of |out|
 // and |out_tag| may be NULL to ignore the value.
-OPENSSL_EXPORT int CBS_get_any_asn1(CBS *cbs, CBS *out,
-                                    CBS_ASN1_TAG *out_tag);
+OPENSSL_EXPORT int CBS_get_any_asn1(CBS *cbs, CBS *out, CBS_ASN1_TAG *out_tag);
 
 // CBS_get_any_asn1_element sets |*out| to contain the next ASN.1 element from
 // |*cbs| (including header bytes) and advances |*cbs|. It sets |*out_tag| to
@@ -386,6 +385,14 @@ OPENSSL_EXPORT int CBS_parse_generalized_time(const CBS *cbs, struct tm *out_tm,
 // |out_tm->tm_yday|.
 OPENSSL_EXPORT int CBS_parse_utc_time(const CBS *cbs, struct tm *out_tm,
                                       int allow_timezone_offset);
+
+// CBS_get_optional_asn1_int64 gets an optional, explicitly-tagged INTEGER from
+// |cbs|. If present, it sets |*out| to the value. Otherwise, it sets |*out| to
+// |default_value|. It returns one on success and zero on error, where error
+// includes the integer being too large to represent in 64 bits.
+OPENSSL_EXPORT int CBS_get_optional_asn1_int64(CBS *cbs, int64_t *out,
+                                               CBS_ASN1_TAG tag,
+                                               int64_t default_value);
 
 // CRYPTO ByteBuilder.
 //
