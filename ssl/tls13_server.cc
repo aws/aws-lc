@@ -123,7 +123,11 @@ static const SSL_CIPHER *choose_tls13_cipher(
     tls13_ciphers = ssl->ctx->tls13_cipher_list.get()->ciphers.get();
   }
 
-  return ssl_choose_tls13_cipher(cipher_suites, version, group_id, tls13_ciphers);
+  return ssl_choose_tls13_cipher(cipher_suites,
+                                 ssl->config->aes_hw_override
+                                     ? ssl->config->aes_hw_override_value
+                                     : EVP_has_aes_hardware(),
+                                 version, group_id, tls13_ciphers);
 }
 
 static bool add_new_session_tickets(SSL_HANDSHAKE *hs, bool *out_sent_tickets) {

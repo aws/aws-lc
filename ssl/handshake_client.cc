@@ -218,7 +218,7 @@ static void ssl_get_client_disabled(const SSL_HANDSHAKE *hs,
 // collect_cipher_protocol_ids uses |cbb| to collect IANA-assigned numbers
 // of |ciphers|. |mask_a|, |mask_k|, |max_version| and |min_version|
 // are used to filter the |ciphers|. |any_enabled| will be true if not all
-// ciphers are filtered out. 
+// ciphers are filtered out.
 // It returns true when success. It returns false otherwise.
 static bool collect_cipher_protocol_ids(STACK_OF(SSL_CIPHER) *ciphers,
   CBB *cbb, uint32_t mask_k, uint32_t mask_a, uint16_t max_version,
@@ -276,7 +276,11 @@ static bool ssl_write_client_cipher_list(const SSL_HANDSHAKE *hs, CBB *out,
   } else if (hs->max_version >= TLS1_3_VERSION) {
     // Use the built in TLSv1.3 ciphers. Order ChaCha20-Poly1305 relative to
     // AES-GCM based on hardware support.
-    if (!EVP_has_aes_hardware() &&
+    const bool has_aes_hw = ssl->config->aes_hw_override
+                                ? ssl->config->aes_hw_override_value
+                                : EVP_has_aes_hardware();
+
+    if (!has_aes_hw &&
         !CBB_add_u16(&child, TLS1_CK_CHACHA20_POLY1305_SHA256 & 0xffff)) {
       return false;
     }
@@ -284,7 +288,7 @@ static bool ssl_write_client_cipher_list(const SSL_HANDSHAKE *hs, CBB *out,
         !CBB_add_u16(&child, TLS1_CK_AES_256_GCM_SHA384 & 0xffff)) {
       return false;
     }
-    if (EVP_has_aes_hardware() &&
+    if (has_aes_hw &&
         !CBB_add_u16(&child, TLS1_CK_CHACHA20_POLY1305_SHA256 & 0xffff)) {
       return false;
     }
