@@ -95,6 +95,7 @@ static const enum seed_source seed_source_mode = SEED_SOURCE_JITTER_ENTROPY;
 
 #else // defined(BORINGSSL_FIPS)
 
+static const unsigned kReseedInterval = 4096;
 static const enum seed_source seed_sourc_mode = SEED_SOURCE_DEFAULT;
 
 #endif // defined(BORINGSSL_FIPS)
