@@ -52,41 +52,53 @@
 // This might be a bit of a leap of faith, esp on Windows, but there's nothing
 // that we can do about it.)
 
-// When in FIPS mode we use the CPU Jitter entropy source to seed our DRBG.  
-// This entropy source is very slow and can incur a cost anywhere between 10-60ms
+
+enum seed_source {
+  SEED_SOURCE_DEFAULT,
+  SEED_SOURCE_JITTER_ENTROPY,
+  SEED_SOURCE_RDRAND,
+};
+
+// Choose the source of seed entropy. This is determined by the following
+// decision tree:
+// if (FIPS mode) {
+//   if (X86_64 && assembly allowed && not deterministic mode): use rdrand
+//   else: use jitter
+// else: use default
+//
+// This is purely a static configuration. There are no compile-time or run-time
+// configuration options.
+//
+// kReseedInterval is the number of generate calls made to CTR-DRBG before
+// reseeding.
+#if defined(BORINGSSL_FIPS)
+
+#if defined(OPENSSL_X86_64) && !defined(OPENSSL_NO_ASM) && \
+    !defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE)
+
+static const unsigned kReseedInterval = 4096;
+static const enum seed_source seed_source_mode = SEED_SOURCE_RDRAND;
+
+#else
+
+// CPU Jitter is very slow and can incur a cost anywhere between 10-60ms
 // depending on configuration and CPU.  Increasing to 2^24 will amortize the 
 // penalty over more requests.  This is the same value used in OpenSSL 3.0  
 // and meets the requirements defined in SP 800-90B for a max reseed of interval (2^48)
 //
 // CPU Jitter:  https://www.chronox.de/jent/doc/CPU-Jitter-NPTRNG.html
-// 
-// kReseedInterval is the number of generate calls made to CTR-DRBG before
-// reseeding.
+//
+static const unsigned kReseedInterval = 16777216;
+static const enum seed_source seed_source_mode = SEED_SOURCE_JITTER_ENTROPY;
 
-enum seed_sourcing {
-  SEED_SOURCING_DEFAULT = 0,
-  SEED_SOURCING_JITTER_ENTROPY = 1,
-  SEED_SOURCING_RDRAND = 2,
-};
-
-#if defined(BORINGSSL_FIPS)
-static const unsigned kReseedInterval = 4096;
-
-// This is a purely static configuration. To change it, would need to modify
-// code and re-compile.
-#if defined(OPENSSL_X86_64) && !defined(OPENSSL_NO_ASM) && \
-    !defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE)
-  static const enum seed_sourcing seed_sourcing_mode = SEED_SOURCING_RDRAND;
-#else
-  static const enum seed_sourcing seed_sourcing_mode = SEED_SOURCING_JITTER_ENTROPY;
 #endif
 
 #else // defined(BORINGSSL_FIPS)
 
-static const unsigned kReseedInterval = 4096;
-static const enum seed_sourcing seed_sourcing_mode = SEED_SOURCING_DEFAULT;
+static const enum seed_source seed_sourc_mode = SEED_SOURCE_DEFAULT;
 
 #endif // defined(BORINGSSL_FIPS)
+
 
 // CRNGT_BLOCK_SIZE is the number of bytes in a “block” for the purposes of the
 // continuous random number generator test in FIPS 140-2, section 4.9.2.
@@ -116,6 +128,7 @@ struct rand_thread_state {
   struct rand_data *jitter_ec;
 #endif
 };
+
 
 #if defined(BORINGSSL_FIPS)
 // thread_states_list is the head of a linked-list of all |rand_thread_state|
@@ -147,7 +160,7 @@ static void rand_thread_state_clear_all(void) {
     CTR_DRBG_clear(&cur->drbg);
     OPENSSL_cleanse(cur->last_block, sizeof(cur->last_block));
 
-    if (seed_sourcing_mode == SEED_SOURCING_JITTER_ENTROPY) {
+    if (seed_source_mode == SEED_SOURCE_JITTER_ENTROPY) {
       jent_entropy_collector_free(cur->jitter_ec);
     }
   }
@@ -183,7 +196,7 @@ static void rand_thread_state_free(void *state_in) {
   CTR_DRBG_clear(&state->drbg);
   OPENSSL_cleanse(state->last_block, sizeof(state->last_block));
 
-  if (seed_sourcing_mode == SEED_SOURCING_JITTER_ENTROPY) {
+  if (seed_source_mode == SEED_SOURCE_JITTER_ENTROPY) {
     jent_entropy_collector_free(state->jitter_ec);
   }
 #endif
@@ -231,10 +244,9 @@ static int rdrand(uint8_t *buf, const size_t len) {
 
 #else
 
-OPENSSL_STATIC_ASSERT(seed_sourcing_mode != SEED_SOURCING_RDRAND,
-  rdrand_cannot_be_the_entropy_source_for_this_build_configuration);
-
 static int rdrand(uint8_t *buf, size_t len) {
+  // Reaching this point when seed_source_mode == SEED_SOURCE_RDRAND is fatal.
+  // But it is captured in get_fips_seed_from_source_mode(), that will abort.
   return 0;
 }
 
@@ -242,19 +254,18 @@ static int rdrand(uint8_t *buf, size_t len) {
 
 #if defined(BORINGSSL_FIPS)
 
-static void get_fips_seed_from_sourcing_mode(struct rand_thread_state *state,
+static void get_fips_seed_from_source_mode(struct rand_thread_state *state,
   uint8_t *out_entropy, size_t out_entropy_len) {
 
-  if (seed_sourcing_mode == SEED_SOURCING_RDRAND) {
+  if (seed_source_mode == SEED_SOURCE_RDRAND) {
     if (rdrand(out_entropy, out_entropy_len) != 1) {
       abort();
     }
-  } else if (seed_sourcing_mode == SEED_SOURCING_JITTER_ENTROPY) {
+  } else if (seed_source_mode == SEED_SOURCE_JITTER_ENTROPY) {
     if (state->jitter_ec == NULL) {
       abort();
     }
 
-    // Generate the required number of bytes with Jitter.
     if (jent_read_entropy_safe(&state->jitter_ec, (char *) out_entropy,
                                out_entropy_len) != (ssize_t) out_entropy_len) {
       abort();
@@ -276,7 +287,9 @@ static void CRYPTO_get_fips_seed(uint8_t *out_entropy, size_t out_entropy_len,
     abort();
   }
 
-  get_fips_seed_from_sourcing_mode(state, out_entropy, out_entropy_len);
+  // Generate the requested number of bytes from the configured seed entropy
+  // source.
+  get_fips_seed_from_source_mode(state, out_entropy, out_entropy_len);
 
   if (boringssl_fips_break_test("CRNG")) {
     // This breaks the "continuous random number generator test" defined in FIPS
@@ -391,7 +404,7 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
     }
 
 #if defined(BORINGSSL_FIPS)
-    if (seed_sourcing_mode == SEED_SOURCING_JITTER_ENTROPY) {
+    if (seed_source_mode == SEED_SOURCE_JITTER_ENTROPY) {
       // Initialize the thread-local Jitter instance.
       state->jitter_ec = NULL;
       // The first parameter passed to |jent_entropy_collector_alloc| function is
@@ -412,9 +425,9 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
     uint8_t personalization[CTR_DRBG_ENTROPY_LEN] = {0};
     size_t personalization_len = 0;
 #if defined(BORINGSSL_FIPS) && defined(OPENSSL_URANDOM)
-    // In FIPS mode we get the entropy from CPU Jitter. In order to not rely
-    // completely on Jitter we add to |CTR_DRBG_init| a personalization string
-    // that we read from urandom.
+    // In FIPS mode we get the entropy from CPU Jitter / rdrand. In order to not
+    // rely completely on the entropy source we add to |CTR_DRBG_reseed|
+    // additional data that we read from the OS randomness source.
     CRYPTO_sysrand(personalization, sizeof(personalization));
     personalization_len = sizeof(personalization);
 #endif
@@ -462,9 +475,9 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
     // kernel, syscalls made with |syscall| did not abort the transaction.
     CRYPTO_STATIC_MUTEX_lock_read(state_clear_all_lock_bss_get());
 
-    // In FIPS mode we get the entropy from CPU Jitter. In order to not rely
-    // completely on Jitter we add to |CTR_DRBG_reseed| additional data
-    // that we read from urandom.
+    // In FIPS mode we get the entropy from CPU Jitter / rdrand. In order to not
+    // rely completely on the entropy source we add to |CTR_DRBG_reseed|
+    // additional data that we read from the OS randomness source.
     CRYPTO_sysrand(add_data_for_reseed, sizeof(add_data_for_reseed));
     add_data_for_reseed_len = sizeof(add_data_for_reseed);
 #endif
