@@ -145,19 +145,24 @@ int RSA_padding_check_PKCS1_type_1(uint8_t *out, size_t *out_len,
   return 1;
 }
 
-static void rand_nonzero(uint8_t *out, size_t len) {
+static int rand_nonzero(uint8_t *out, size_t len) {
   // |RAND_bytes| calls within the fipsmodule should be wrapped with state lock
   // functions to avoid updating the service indicator with the DRBG functions.
   FIPS_service_indicator_lock_state();
-  RAND_bytes(out, len);
+  if(!RAND_bytes(out, len)) {
+    return 0;
+  }
 
   for (size_t i = 0; i < len; i++) {
     while (out[i] == 0) {
-      RAND_bytes(out + i, 1);
+      if(!RAND_bytes(out + i, 1)) {
+        return 0;
+      }
     }
   }
 
   FIPS_service_indicator_unlock_state();
+  return 1;
 }
 
 int RSA_padding_add_PKCS1_type_2(uint8_t *to, size_t to_len,
@@ -177,7 +182,9 @@ int RSA_padding_add_PKCS1_type_2(uint8_t *to, size_t to_len,
   to[1] = 2;
 
   size_t padding_len = to_len - 3 - from_len;
-  rand_nonzero(to + 2, padding_len);
+  if(!rand_nonzero(to + 2, padding_len)) {
+    return 0;
+  }
 
   to[2 + padding_len] = 0;
   OPENSSL_memcpy(to + to_len - from_len, from, from_len);

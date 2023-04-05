@@ -108,7 +108,6 @@
 
 #ifndef OPENSSL_HEADER_CRYPTO_INTERNAL_H
 #define OPENSSL_HEADER_CRYPTO_INTERNAL_H
-
 #include <openssl/crypto.h>
 #include <openssl/ex_data.h>
 #include <openssl/service_indicator.h>
@@ -117,6 +116,27 @@
 
 #include <assert.h>
 #include <string.h>
+
+// Windows doesn't really support weak symbols as of May 2019, and Clang on
+// Windows will emit strong symbols instead. See
+// https://bugs.llvm.org/show_bug.cgi?id=37598
+#if defined(__ELF__) && defined(__GNUC__)
+#define WEAK_SYMBOL_FUNC(rettype, name, args) \
+  rettype name args __attribute__((weak));
+#else
+#define WEAK_SYMBOL_FUNC(rettype, name, args) static rettype(*name) args = NULL;
+#endif
+
+// Our assembly does not use the GOT to reference symbols, which means
+// references to visible symbols will often require a TEXTREL. This is
+// undesirable, so all assembly-referenced symbols should be hidden. CPU
+// capabilities are the only such symbols defined in C. Explicitly hide them,
+// rather than rely on being built with -fvisibility=hidden.
+#if defined(OPENSSL_WINDOWS)
+#define HIDDEN
+#else
+#define HIDDEN __attribute__((visibility("hidden")))
+#endif
 
 #if defined(BORINGSSL_CONSTANT_TIME_VALIDATION)
 #include <valgrind/memcheck.h>
@@ -946,14 +966,14 @@ static inline uint64_t CRYPTO_rotr_u64(uint64_t value, int shift) {
 
 #if defined(BORINGSSL_FIPS)
 
-// BORINGSSL_FIPS_abort is called when a FIPS power-on or continuous test
-// fails. It prevents any further cryptographic operations by the current
-// process.
-#if defined(_MSC_VER)
-__declspec(noreturn) void BORINGSSL_FIPS_abort(void);
-#else
-void BORINGSSL_FIPS_abort(void) __attribute__((noreturn));
-#endif
+// AWS_LC_FIPS_error is called when a FIPS power-on or continuous test
+// fails. By default, it:
+// * Prints the error to stderr
+// * Prevents any further cryptographic operations by exiting the current process
+// Users can optionally define |void AWS_LC_FIPS_Callback(const char* error)|
+// in their application. AWS-LC will call that function on any error, then return
+// its own error and prevent further calls to AWS-LC's FIPS APIs.
+int AWS_LC_FIPS_error(const char* message, const int error_code);
 
 // boringssl_self_test_startup runs all startup self tests and returns one on
 // success or zero on error. Startup self tests do not include lazy tests.

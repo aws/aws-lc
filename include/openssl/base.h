@@ -53,7 +53,6 @@
 #ifndef OPENSSL_HEADER_BASE_H
 #define OPENSSL_HEADER_BASE_H
 
-
 // This file should be the first included by all BoringSSL headers.
 
 #include <stddef.h>

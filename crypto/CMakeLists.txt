@@ -635,6 +635,8 @@ if(BUILD_TESTING)
   add_test_executable(${MEM_TEST_EXEC} mem_test.cc)
   # mem_set_test.cc tests memory overrides via |CRYPTO_set_mem_functions|.
   add_test_executable(${MEM_SET_TEST_EXEC} mem_set_test.cc)
+  # fips_callback_test tests that setting the callback overrides the default abort behavior
+  add_test_executable(${FIPS_CALLBACK_TEST_EXEC} fips_callback_test.cc)
 
   # urandom_test is a separate binary because it needs to be able to observe the
   # PRNG initialisation, which means that it can't have other tests running before

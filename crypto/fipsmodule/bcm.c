@@ -17,6 +17,7 @@
 #endif
 
 #include <openssl/crypto.h>
+#include <openssl/err.h>
 
 #include <stdlib.h>
 #if defined(BORINGSSL_FIPS) && defined(OPENSSL_ANDROID)
@@ -161,38 +162,30 @@ extern const uint8_t BORINGSSL_bcm_rodata_end[];
 // assert_within is used to sanity check that certain symbols are within the
 // bounds of the integrity check. It checks that start <= symbol < end and
 // aborts otherwise.
-static void assert_within(const void *start, const void *symbol,
+static int assert_within(const void *start, const void *symbol,
                           const void *end) {
   const uintptr_t start_val = (uintptr_t) start;
   const uintptr_t symbol_val = (uintptr_t) symbol;
   const uintptr_t end_val = (uintptr_t) end;
 
   if (start_val <= symbol_val && symbol_val < end_val) {
-    return;
+    return 1;
   }
 
-  fprintf(
-      stderr,
-      "FIPS module doesn't span expected symbol. Expected %p <= %p < %p\n",
-      start, symbol, end);
-  BORINGSSL_FIPS_abort();
+  return AWS_LC_FIPS_error("FIPS module doesn't span expected symbol.", ERR_R_FIPS_TEST_FAILURE);
 }
 
-static void assert_not_within(const void *start, const void *symbol,
+static int assert_not_within(const void *start, const void *symbol,
                           const void *end) {
   const uintptr_t start_val = (uintptr_t) start;
   const uintptr_t symbol_val = (uintptr_t) symbol;
   const uintptr_t end_val = (uintptr_t) end;
 
   if (start_val >= symbol_val || symbol_val > end_val) {
-    return;
+    return 1;
   }
 
-  fprintf(
-      stderr,
-      "FIPS module spans unexpected symbol, expected %p < %p || %p > %p\n",
-      symbol, start, symbol, end);
-  BORINGSSL_FIPS_abort();
+  return AWS_LC_FIPS_error("FIPS module spans unexpected symbol.", ERR_R_FIPS_TEST_FAILURE);
 }
 
 #if defined(OPENSSL_ANDROID) && defined(OPENSSL_AARCH64)
@@ -231,47 +224,49 @@ static void BORINGSSL_bcm_power_on_self_test(void) {
 #endif
 
   if (jent_entropy_init()) {
-    fprintf(stderr, "CPU Jitter entropy RNG initialization failed.\n");
-    goto err;
+    AWS_LC_FIPS_error("CPU Jitter entropy RNG initialization failed.", ERR_R_FIPS_TEST_FAILURE);
   }
 
 #if !defined(OPENSSL_ASAN)
   // Integrity tests cannot run under ASAN because it involves reading the full
   // .text section, which triggers the global-buffer overflow detection.
   if (!BORINGSSL_integrity_test()) {
-    goto err;
+    AWS_LC_FIPS_error("BORINGSSL_integrity_test failed.", ERR_R_FIPS_TEST_FAILURE);
   }
 #endif  // OPENSSL_ASAN
 
   if (!boringssl_self_test_startup()) {
-    goto err;
+    AWS_LC_FIPS_error("boringssl_self_test_startup failed.", ERR_R_FIPS_TEST_FAILURE);
   }
 
   return;
-
-err:
-  BORINGSSL_FIPS_abort();
 }
 
 #if !defined(OPENSSL_ASAN)
 int BORINGSSL_integrity_test(void) {
+  if (!FIPS_mode()) {
+    return AWS_LC_FIPS_error("FIPS_mode not healthy.", ERR_R_FIPS_TEST_FAILURE);
+  }
   const uint8_t *const start = BORINGSSL_bcm_text_start;
   const uint8_t *const end = BORINGSSL_bcm_text_end;
 
-  assert_within(start, AES_encrypt, end);
-  assert_within(start, RSA_sign, end);
-  assert_within(start, RAND_bytes, end);
-  assert_within(start, EC_GROUP_cmp, end);
-  assert_within(start, SHA256_Update, end);
-  assert_within(start, ECDSA_do_verify, end);
-  assert_within(start, EVP_AEAD_CTX_seal, end);
-  assert_not_within(start, OPENSSL_cleanse, end);
-  assert_not_within(start, CRYPTO_chacha_20, end);
+  if (!assert_within(start, AES_encrypt, end) ||
+      !assert_within(start, RSA_sign, end) ||
+      !assert_within(start, RAND_bytes, end) ||
+      !assert_within(start, EC_GROUP_cmp, end) ||
+      !assert_within(start, SHA256_Update, end) ||
+      !assert_within(start, ECDSA_do_verify, end) ||
+      !assert_within(start, EVP_AEAD_CTX_seal, end) ||
+      !assert_not_within(start, OPENSSL_cleanse, end) ||
+      !assert_not_within(start, CRYPTO_chacha_20, end) ||
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
-  assert_not_within(start, OPENSSL_ia32cap_P, end);
+      !assert_not_within(start, OPENSSL_ia32cap_P, end)
 #elif defined(OPENSSL_AARCH64)
-  assert_not_within(start, &OPENSSL_armcap_P, end);
-#endif  
+      !assert_not_within(start, &OPENSSL_armcap_P, end)
+#endif
+  ) {
+    return 0;
+  }
 
 #if defined(BORINGSSL_SHARED_LIBRARY)
   const uint8_t *const rodata_start = BORINGSSL_bcm_rodata_start;
@@ -282,14 +277,17 @@ int BORINGSSL_integrity_test(void) {
   const uint8_t *const rodata_end = BORINGSSL_bcm_text_end;
 #endif
 
-  assert_within(rodata_start, kPrimes, rodata_end);
-  assert_within(rodata_start, kP256Params, rodata_end);
-  assert_within(rodata_start, kPKCS1SigPrefixes, rodata_end);
+  if (!assert_within(rodata_start, kPrimes, rodata_end) ||
+      !assert_within(rodata_start, kP256Params, rodata_end) ||
+      !assert_within(rodata_start, kPKCS1SigPrefixes, rodata_end) ||
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
-  assert_not_within(rodata_start, OPENSSL_ia32cap_P, rodata_end);
+      !assert_not_within(rodata_start, OPENSSL_ia32cap_P, rodata_end)
 #elif defined(OPENSSL_AARCH64)
-  assert_not_within(rodata_start, &OPENSSL_armcap_P, rodata_end);
+      !assert_not_within(rodata_start, &OPENSSL_armcap_P, rodata_end)
 #endif
+  ) {
+    return 0;
+  }
 
   // Per FIPS 140-3 we have to perform the CAST of the HMAC used for integrity
   // check before the integrity check itself. So we first call
@@ -350,10 +348,21 @@ int BORINGSSL_integrity_test(void) {
 }
 #endif  // OPENSSL_ASAN
 
-void BORINGSSL_FIPS_abort(void) {
-  for (;;) {
-    abort();
-    exit(1);
+WEAK_SYMBOL_FUNC(void, AWS_LC_fips_failure_callback, (const char* error))
+
+extern uint8_t aws_lc_internal_fips_health;
+int AWS_LC_FIPS_error(const char* message, const int error_code) {
+  aws_lc_internal_fips_health = 0;
+  if (AWS_LC_fips_failure_callback == NULL) {
+    fprintf(stderr, "%s.\n", message);
+    for (;;) {
+      abort();
+      exit(1);
+    }
+  } else {
+    OPENSSL_PUT_ERROR(FIPS, error_code);
+    AWS_LC_fips_failure_callback(message);
+    return 0;
   }
 }
 

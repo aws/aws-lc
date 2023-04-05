@@ -17,16 +17,23 @@
 #include "../../internal.h"
 #include "../delocate.h"
 
-
-int FIPS_mode(void) {
 #if defined(BORINGSSL_FIPS) && !defined(OPENSSL_ASAN)
-  return 1;
-#else
-  return 0;
-#endif
+// To simplify the runtime behavior initialize the current health status to 1,
+// any call to AWS_LC_FIPS_error will permanently set it to 0.
+extern uint8_t aws_lc_internal_fips_health;
+int FIPS_mode(void) {
+  return aws_lc_internal_fips_health;
 }
 
-int FIPS_mode_set(int on) { return on == FIPS_mode(); }
+// Users can not enable/disable the FIPS mode of AWS-LC at runtime
+int FIPS_mode_set(int on) { return on == 1; }
+
+#else
+int FIPS_mode(void) { return 0; }
+int FIPS_mode_set(int on) { return on == 0; }
+
+#endif
+
 
 #if defined(BORINGSSL_FIPS_140_3)
 

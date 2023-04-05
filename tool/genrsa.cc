@@ -46,11 +46,9 @@ bool GenerateRSAKey(const std::vector<std::string> &args) {
   }
 
   bssl::UniquePtr<RSA> rsa(RSA_new());
-  bssl::UniquePtr<BIGNUM> e(BN_new());
   bssl::UniquePtr<BIO> bio(BIO_new_fp(stdout, BIO_NOCLOSE));
 
-  if (!BN_set_word(e.get(), RSA_F4) ||
-      !RSA_generate_key_ex(rsa.get(), bits, e.get(), NULL) ||
+  if (!RSA_generate_key_fips(rsa.get(), bits, NULL) ||
       !PEM_write_bio_RSAPrivateKey(bio.get(), rsa.get(), NULL /* cipher */,
                                    NULL /* key */, 0 /* key len */,
                                    NULL /* password callback */,

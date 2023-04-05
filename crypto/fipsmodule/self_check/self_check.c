@@ -801,7 +801,7 @@ err:
 
 static void run_self_test_rsa(void) {
   if (!boringssl_self_test_rsa()) {
-    BORINGSSL_FIPS_abort();
+    AWS_LC_FIPS_error("boringssl_self_test_rsa failed.", ERR_R_FIPS_TEST_FAILURE);
   }
 }
 
@@ -813,7 +813,7 @@ void boringssl_ensure_rsa_self_test(void) {
 
 static void run_self_test_ecc(void) {
   if (!boringssl_self_test_ecc()) {
-    BORINGSSL_FIPS_abort();
+    AWS_LC_FIPS_error("boringssl_self_test_ecc failed.", ERR_R_FIPS_TEST_FAILURE);
   }
 }
 
@@ -825,7 +825,7 @@ void boringssl_ensure_ecc_self_test(void) {
 
 static void run_self_test_ffdh(void) {
   if (!boringssl_self_test_ffdh()) {
-    BORINGSSL_FIPS_abort();
+    AWS_LC_FIPS_error("boringssl_self_test_ffdh failed.", ERR_R_FIPS_TEST_FAILURE);
   }
 }
 
@@ -1194,12 +1194,22 @@ err:
 }
 
 int BORINGSSL_self_test(void) {
+#if defined(BORINGSSL_FIPS)
+  if (!FIPS_mode()) {
+    return AWS_LC_FIPS_error("FIPS_mode not healthy.", ERR_R_FIPS_TEST_FAILURE);
+  }
+#endif
+
   if (!boringssl_self_test_fast() ||
       // When requested to run self tests, also run the lazy tests.
       !boringssl_self_test_rsa() ||
       !boringssl_self_test_ecc() ||
       !boringssl_self_test_ffdh()) {
+#if defined(BORINGSSL_FIPS)
+    return AWS_LC_FIPS_error("BORINGSSL_self_test did not pass.", ERR_R_FIPS_TEST_FAILURE);
+#else
     return 0;
+#endif
   }
 
   return 1;

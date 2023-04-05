@@ -10,16 +10,10 @@
 // module to satisfy the FIPS requirements.
 
 #include <openssl/cpu.h>
+#include "../../internal.h"
 
-// Our assembly does not use the GOT to reference symbols, which means
-// references to visible symbols will often require a TEXTREL. This is
-// undesirable, so all assembly-referenced symbols should be hidden. CPU
-// capabilities are the only such symbols defined in C. Explicitly hide them,
-// rather than rely on being built with -fvisibility=hidden.
-#if defined(OPENSSL_WINDOWS)
-#define HIDDEN
-#else
-#define HIDDEN __attribute__((visibility("hidden")))
+#if defined(BORINGSSL_FIPS)
+HIDDEN uint8_t aws_lc_internal_fips_health = 1;
 #endif
 
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
@@ -79,7 +73,7 @@ HIDDEN uint32_t OPENSSL_armcap_P = 0;
 
 #if defined(BORINGSSL_DISPATCH_TEST)
 // This value must be explicitly initialized to zero. See similar comment above.
-HIDDEN uint8_t BORINGSSL_function_hit[7] = {0};
+HIDDEN uint8_t BORINGSSL_function_hit[8] = {0};
 #endif
 
 // This variable is used only for testing purposes to ensure that the library
