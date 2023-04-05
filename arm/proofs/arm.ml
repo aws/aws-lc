@@ -188,6 +188,8 @@ let READ_EXTENDEDREG_CLAUSES = prove
 let ARM_EXEC_CONV =
   let qth = prove(`bytes64 (word_add a (word 0)) = bytes64 a`,
                   REWRITE_TAC[WORD_ADD_0])
+  and qth_wbytes = prove(`wbytes (word_add a (word 0)) = wbytes a`,
+                  REWRITE_TAC[WORD_ADD_0])
   and rth = prove
    (`word_add (read SP s) (iword (-- &16)) =
      word_sub (read SP s) (word 16) /\
@@ -202,6 +204,7 @@ let ARM_EXEC_CONV =
     ONCE_DEPTH_CONV(LAND_CONV DIMINDEX_CONV THENC NUM_DIV_CONV) THENC
     GEN_REWRITE_CONV ONCE_DEPTH_CONV [GSYM BYTES64_WBYTES] THENC
     GEN_REWRITE_CONV ONCE_DEPTH_CONV [qth] THENC
+    GEN_REWRITE_CONV ONCE_DEPTH_CONV [qth_wbytes] THENC
     GEN_REWRITE_CONV ONCE_DEPTH_CONV [rth] THENC
     GEN_REWRITE_CONV ONCE_DEPTH_CONV [CONJUNCT2 SEQ_ID]) ORELSEC
    (GEN_REWRITE_CONV I ARM_OPERATION_CLAUSES THENC
