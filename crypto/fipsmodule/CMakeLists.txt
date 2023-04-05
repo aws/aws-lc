@@ -1,5 +1,3 @@
-include_directories(../../include)
-
 if(ANDROID)
   # Since "--Wa,--noexecstack" is not used during the preprocessor step of Android (because assembler is not invoked),
   # Clang reports that argument as unused. We remove the flag only for the FIPS build of Android.
@@ -17,6 +15,7 @@ if(ARCH STREQUAL "x86_64")
   set(
     BCM_ASM_SOURCES
 
+    aesni-gcm-avx512.${ASM_EXT}
     aesni-gcm-x86_64.${ASM_EXT}
     aesni-x86_64.${ASM_EXT}
     ghash-ssse3-x86_64.${ASM_EXT}
@@ -102,6 +101,7 @@ endif()
 
 if(PERL_EXECUTABLE)
   perlasm(aesni-gcm-x86_64.${ASM_EXT} modes/asm/aesni-gcm-x86_64.pl)
+  perlasm(aesni-gcm-avx512.${ASM_EXT} modes/asm/aesni-gcm-avx512.pl)
   perlasm(aesni-x86_64.${ASM_EXT} aes/asm/aesni-x86_64.pl)
   perlasm(aesni-x86.${ASM_EXT} aes/asm/aesni-x86.pl)
   perlasm(aesp8-ppc.${ASM_EXT} aes/asm/aesp8-ppc.pl)
@@ -150,6 +150,14 @@ if(PERL_EXECUTABLE)
   perlasm(x86_64-mont5.${ASM_EXT} bn/asm/x86_64-mont5.pl)
   perlasm(x86_64-mont.${ASM_EXT} bn/asm/x86_64-mont.pl)
   perlasm(x86-mont.${ASM_EXT} bn/asm/x86-mont.pl)
+endif()
+
+# clang-6 (and older) knows how to compile AVX512 assembly instructions,
+# but only if it's given the right flags (e.g. -mavx512*).
+# The flags are not required for any other compiler we are running in the CI.
+if ((CMAKE_ASM_COMPILER_ID MATCHES "Clang" OR CMAKE_ASM_COMPILER MATCHES "clang") AND
+    (CMAKE_ASM_COMPILER_VERSION VERSION_LESS "7.0.0") AND (ARCH STREQUAL "x86_64"))
+  set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/aesni-gcm-avx512.${ASM_EXT} PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512bw -mavx512dq -mavx512vl")
 endif()
 
 # s2n-bignum files can be compiled on Unix platforms only (except Apple),
@@ -291,8 +299,8 @@ if(FIPS_DELOCATE)
     set(BCM_ASM_PROCESSED_SOURCES ${BCM_ASM_SOURCES})
   endif()
 
-  add_dependencies(bcm_c_generated_asm global_target)
-
+  add_dependencies(bcm_c_generated_asm boringssl_prefix_symbols)
+  target_include_directories(bcm_c_generated_asm PRIVATE ../../include)
   set_target_properties(bcm_c_generated_asm PROPERTIES COMPILE_OPTIONS "-S")
   set_target_properties(bcm_c_generated_asm PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
@@ -304,6 +312,14 @@ if(FIPS_DELOCATE)
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   )
 
+  # clang-6 (and older) knows how to compile AVX512 assembly instructions,
+  # but only if it's given the right flags (e.g. -mavx512*).
+  # The flags are not required for any other compiler we are running in the CI.
+  if ((CMAKE_ASM_COMPILER_ID MATCHES "Clang" OR CMAKE_ASM_COMPILER MATCHES "clang") AND
+      (CMAKE_ASM_COMPILER_VERSION VERSION_LESS "7.0.0") AND (ARCH STREQUAL "x86_64"))
+    set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/bcm-delocated.S PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512bw -mavx512dq -mavx512vl")
+  endif()
+
   add_library(
     bcm_hashunset
 
@@ -313,7 +329,7 @@ if(FIPS_DELOCATE)
   )
   target_compile_definitions(bcm_hashunset PRIVATE BORINGSSL_IMPLEMENTATION)
 
-  add_dependencies(bcm_hashunset global_target)
+  add_dependencies(bcm_hashunset boringssl_prefix_symbols)
 
   set_target_properties(bcm_hashunset PROPERTIES POSITION_INDEPENDENT_CODE ON)
   set_target_properties(bcm_hashunset PROPERTIES LINKER_LANGUAGE C)
@@ -343,7 +359,8 @@ if(FIPS_DELOCATE)
   )
   target_compile_definitions(fipsmodule PRIVATE BORINGSSL_IMPLEMENTATION)
 
-  add_dependencies(fipsmodule global_target)
+  add_dependencies(fipsmodule boringssl_prefix_symbols)
+  target_include_directories(fipsmodule PRIVATE ../../include)
 
   set_target_properties(fipsmodule PROPERTIES LINKER_LANGUAGE C)
 elseif(FIPS_SHARED)
@@ -361,7 +378,8 @@ elseif(FIPS_SHARED)
   )
   target_compile_definitions(fipsmodule PRIVATE BORINGSSL_IMPLEMENTATION)
 
-  add_dependencies(fipsmodule global_target)
+  add_dependencies(fipsmodule boringssl_prefix_symbols)
+  target_include_directories(fipsmodule PRIVATE ../../include)
 
   add_library(
     bcm_library
@@ -375,7 +393,8 @@ elseif(FIPS_SHARED)
   target_compile_definitions(bcm_library PRIVATE BORINGSSL_IMPLEMENTATION)
   target_include_directories(bcm_library PRIVATE ../../include)
 
-  add_dependencies(bcm_library global_target)
+  add_dependencies(bcm_library boringssl_prefix_symbols)
+  target_include_directories(bcm_library PRIVATE ../../include)
   if (APPLE)
     set(BCM_NAME bcm.o)
     # The linker on macOS doesn't have the ability to process linker scripts,
@@ -469,5 +488,6 @@ else()
   )
   target_compile_definitions(fipsmodule PRIVATE BORINGSSL_IMPLEMENTATION)
 
-  add_dependencies(fipsmodule global_target)
+  add_dependencies(fipsmodule boringssl_prefix_symbols)
+  target_include_directories(fipsmodule PRIVATE ../../include)
 endif()

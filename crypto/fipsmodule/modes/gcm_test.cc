@@ -189,6 +189,40 @@ TEST(GCMTest, ABI) {
         }
       }
     }
+    if (crypto_gcm_avx512_enabled()) {
+      CHECK_ABI_SEH(gcm_init_avx512, Htable, kH);
+      CHECK_ABI_SEH(gcm_gmult_avx512, X, Htable);
+      for (size_t blocks : kBlockCounts) {
+        CHECK_ABI_SEH(gcm_ghash_avx512, X, Htable, buf, 16 * blocks);
+      }
+
+      if (hwaes_capable()) {
+        AES_KEY aes_key;
+        static const uint8_t kKey[16] = {0};
+
+        // aes_gcm_*_avx512 makes assumptions about |GCM128_CONTEXT|'s layout.
+        GCM128_CONTEXT gcm;
+        memset(&gcm, 0, sizeof(gcm));
+        memcpy(&gcm.gcm_key.H, kH, sizeof(kH));
+        memcpy(&gcm.gcm_key.Htable, Htable, sizeof(Htable));
+        memcpy(&gcm.Xi, X, sizeof(X));
+        uint8_t iv[16] = {0};
+
+        aes_hw_set_encrypt_key(kKey, 128, &aes_key);
+
+        CHECK_ABI_SEH(gcm_setiv_avx512, &aes_key, &gcm, iv, sizeof(iv));
+
+        for (size_t blocks : kBlockCounts) {
+          CHECK_ABI_SEH(aes_gcm_encrypt_avx512, &aes_key, &gcm, &gcm.mres, buf,
+                        blocks * 16, buf);
+        }
+        aes_hw_set_decrypt_key(kKey, 128, &aes_key);
+        for (size_t blocks : kBlockCounts) {
+          CHECK_ABI_SEH(aes_gcm_decrypt_avx512, &aes_key, &gcm, &gcm.mres, buf,
+                        blocks * 16, buf);
+        }
+      }
+    }
 #endif  // GHASH_ASM_X86_64
   }
 #endif  // GHASH_ASM_X86 || GHASH_ASM_X86_64
