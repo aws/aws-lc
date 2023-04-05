@@ -509,6 +509,7 @@ static const EVP_AEAD aead_aes_128_gcm_siv_asm = {
     EVP_AEAD_AES_GCM_SIV_NONCE_LEN,  // nonce length
     EVP_AEAD_AES_GCM_SIV_TAG_LEN,    // overhead
     EVP_AEAD_AES_GCM_SIV_TAG_LEN,    // max tag length
+    AEAD_AES_128_GCM_SIV_ID,         // evp_aead_id
     0,                               // seal_scatter_supports_extra_in
 
     aead_aes_gcm_siv_asm_init,
@@ -519,6 +520,8 @@ static const EVP_AEAD aead_aes_128_gcm_siv_asm = {
     NULL /* open_gather */,
     NULL /* get_iv */,
     NULL /* tag_len */,
+    NULL /* serialize_state */,
+    NULL /* deserialize_state */,
 };
 
 static const EVP_AEAD aead_aes_256_gcm_siv_asm = {
@@ -526,6 +529,7 @@ static const EVP_AEAD aead_aes_256_gcm_siv_asm = {
     EVP_AEAD_AES_GCM_SIV_NONCE_LEN,  // nonce length
     EVP_AEAD_AES_GCM_SIV_TAG_LEN,    // overhead
     EVP_AEAD_AES_GCM_SIV_TAG_LEN,    // max tag length
+    AEAD_AES_256_GCM_SIV_ID,         // evp_aead_id
     0,                               // seal_scatter_supports_extra_in
 
     aead_aes_gcm_siv_asm_init,
@@ -536,6 +540,8 @@ static const EVP_AEAD aead_aes_256_gcm_siv_asm = {
     NULL /* open_gather */,
     NULL /* get_iv */,
     NULL /* tag_len */,
+    NULL /* serialize_state */,
+    NULL /* deserialize_state */,
 };
 
 #endif  // X86_64 && !NO_ASM && !WINDOWS
@@ -792,6 +798,7 @@ static const EVP_AEAD aead_aes_128_gcm_siv = {
     EVP_AEAD_AES_GCM_SIV_NONCE_LEN,  // nonce length
     EVP_AEAD_AES_GCM_SIV_TAG_LEN,    // overhead
     EVP_AEAD_AES_GCM_SIV_TAG_LEN,    // max tag length
+    AEAD_AES_128_GCM_SIV_ID,         // evp_aead_id
     0,                               // seal_scatter_supports_extra_in
 
     aead_aes_gcm_siv_init,
@@ -802,6 +809,8 @@ static const EVP_AEAD aead_aes_128_gcm_siv = {
     aead_aes_gcm_siv_open_gather,
     NULL /* get_iv */,
     NULL /* tag_len */,
+    NULL /* serialize_state */,
+    NULL /* deserialize_state */,
 };
 
 static const EVP_AEAD aead_aes_256_gcm_siv = {
@@ -809,6 +818,7 @@ static const EVP_AEAD aead_aes_256_gcm_siv = {
     EVP_AEAD_AES_GCM_SIV_NONCE_LEN,  // nonce length
     EVP_AEAD_AES_GCM_SIV_TAG_LEN,    // overhead
     EVP_AEAD_AES_GCM_SIV_TAG_LEN,    // max tag length
+    AEAD_AES_256_GCM_SIV_ID,         // evp_aead_id
     0,                               // seal_scatter_supports_extra_in
 
     aead_aes_gcm_siv_init,
@@ -819,6 +829,8 @@ static const EVP_AEAD aead_aes_256_gcm_siv = {
     aead_aes_gcm_siv_open_gather,
     NULL /* get_iv */,
     NULL /* tag_len */,
+    NULL /* serialize_state */,
+    NULL /* deserialize_state */,
 };
 
 #if defined(AES_GCM_SIV_ASM)

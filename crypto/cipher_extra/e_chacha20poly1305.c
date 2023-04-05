@@ -300,11 +300,12 @@ static int aead_xchacha20_poly1305_open_gather(
 }
 
 static const EVP_AEAD aead_chacha20_poly1305 = {
-    32,                // key len
-    12,                // nonce len
-    POLY1305_TAG_LEN,  // overhead
-    POLY1305_TAG_LEN,  // max tag length
-    1,                 // seal_scatter_supports_extra_in
+    32,                         // key len
+    12,                         // nonce len
+    POLY1305_TAG_LEN,           // overhead
+    POLY1305_TAG_LEN,           // max tag length
+    AEAD_CHACHA20_POLY1305_ID,  // evp_aead_id
+    1,                          // seal_scatter_supports_extra_in
 
     aead_chacha20_poly1305_init,
     NULL,  // init_with_direction
@@ -314,14 +315,17 @@ static const EVP_AEAD aead_chacha20_poly1305 = {
     aead_chacha20_poly1305_open_gather,
     NULL,  // get_iv
     NULL,  // tag_len
+    NULL,  // serialize_state
+    NULL,  // deserialize_state
 };
 
 static const EVP_AEAD aead_xchacha20_poly1305 = {
-    32,                // key len
-    24,                // nonce len
-    POLY1305_TAG_LEN,  // overhead
-    POLY1305_TAG_LEN,  // max tag length
-    1,                 // seal_scatter_supports_extra_in
+    32,                          // key len
+    24,                          // nonce len
+    POLY1305_TAG_LEN,            // overhead
+    POLY1305_TAG_LEN,            // max tag length
+    AEAD_XCHACHA20_POLY1305_ID,  // evp_aead_id
+    1,                           // seal_scatter_supports_extra_in
 
     aead_chacha20_poly1305_init,
     NULL,  // init_with_direction
@@ -331,6 +335,8 @@ static const EVP_AEAD aead_xchacha20_poly1305 = {
     aead_xchacha20_poly1305_open_gather,
     NULL,  // get_iv
     NULL,  // tag_len
+    NULL,  // serialize_state
+    NULL,  // deserialize_state
 };
 
 const EVP_AEAD *EVP_aead_chacha20_poly1305(void) {

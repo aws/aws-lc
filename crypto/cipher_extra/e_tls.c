@@ -471,11 +471,12 @@ static int aead_null_sha1_tls_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
 }
 
 static const EVP_AEAD aead_aes_128_cbc_sha1_tls = {
-    SHA_DIGEST_LENGTH + 16,  // key len (SHA1 + AES128)
-    16,                      // nonce len (IV)
-    16 + SHA_DIGEST_LENGTH,  // overhead (padding + SHA1)
-    SHA_DIGEST_LENGTH,       // max tag length
-    0,                       // seal_scatter_supports_extra_in
+    SHA_DIGEST_LENGTH + 16,        // key len (SHA1 + AES128)
+    16,                            // nonce len (IV)
+    16 + SHA_DIGEST_LENGTH,        // overhead (padding + SHA1)
+    SHA_DIGEST_LENGTH,             // max tag length
+    AEAD_AES_128_CBC_SHA1_TLS_ID,  // evp_aead_id
+    0,                             // seal_scatter_supports_extra_in
 
     NULL,  // init
     aead_aes_128_cbc_sha1_tls_init,
@@ -485,14 +486,17 @@ static const EVP_AEAD aead_aes_128_cbc_sha1_tls = {
     NULL,  // open_gather
     NULL,  // get_iv
     aead_tls_tag_len,
+    NULL /* serialize_state */,
+    NULL /* deserialize_state */,
 };
 
 static const EVP_AEAD aead_aes_128_cbc_sha1_tls_implicit_iv = {
-    SHA_DIGEST_LENGTH + 16 + 16,  // key len (SHA1 + AES128 + IV)
-    0,                            // nonce len
-    16 + SHA_DIGEST_LENGTH,       // overhead (padding + SHA1)
-    SHA_DIGEST_LENGTH,            // max tag length
-    0,                            // seal_scatter_supports_extra_in
+    SHA_DIGEST_LENGTH + 16 + 16,               // key len (SHA1 + AES128 + IV)
+    0,                                         // nonce len
+    16 + SHA_DIGEST_LENGTH,                    // overhead (padding + SHA1)
+    SHA_DIGEST_LENGTH,                         // max tag length
+    AEAD_AES_128_CBC_SHA1_TLS_IMPLICIT_IV_ID,  // evp_aead_id
+    0,                                         // seal_scatter_supports_extra_in
 
     NULL,  // init
     aead_aes_128_cbc_sha1_tls_implicit_iv_init,
@@ -502,14 +506,17 @@ static const EVP_AEAD aead_aes_128_cbc_sha1_tls_implicit_iv = {
     NULL,             // open_gather
     aead_tls_get_iv,  // get_iv
     aead_tls_tag_len,
+    NULL /* serialize_state */,
+    NULL /* deserialize_state */,
 };
 
 static const EVP_AEAD aead_aes_256_cbc_sha1_tls = {
-    SHA_DIGEST_LENGTH + 32,  // key len (SHA1 + AES256)
-    16,                      // nonce len (IV)
-    16 + SHA_DIGEST_LENGTH,  // overhead (padding + SHA1)
-    SHA_DIGEST_LENGTH,       // max tag length
-    0,                       // seal_scatter_supports_extra_in
+    SHA_DIGEST_LENGTH + 32,        // key len (SHA1 + AES256)
+    16,                            // nonce len (IV)
+    16 + SHA_DIGEST_LENGTH,        // overhead (padding + SHA1)
+    SHA_DIGEST_LENGTH,             // max tag length
+    AEAD_AES_256_CBC_SHA1_TLS_ID,  // evp_aead_id
+    0,                             // seal_scatter_supports_extra_in
 
     NULL,  // init
     aead_aes_256_cbc_sha1_tls_init,
@@ -519,14 +526,17 @@ static const EVP_AEAD aead_aes_256_cbc_sha1_tls = {
     NULL,  // open_gather
     NULL,  // get_iv
     aead_tls_tag_len,
+    NULL /* serialize_state */,
+    NULL /* deserialize_state */,
 };
 
 static const EVP_AEAD aead_aes_256_cbc_sha1_tls_implicit_iv = {
-    SHA_DIGEST_LENGTH + 32 + 16,  // key len (SHA1 + AES256 + IV)
-    0,                            // nonce len
-    16 + SHA_DIGEST_LENGTH,       // overhead (padding + SHA1)
-    SHA_DIGEST_LENGTH,            // max tag length
-    0,                            // seal_scatter_supports_extra_in
+    SHA_DIGEST_LENGTH + 32 + 16,               // key len (SHA1 + AES256 + IV)
+    0,                                         // nonce len
+    16 + SHA_DIGEST_LENGTH,                    // overhead (padding + SHA1)
+    SHA_DIGEST_LENGTH,                         // max tag length
+    AEAD_AES_256_CBC_SHA1_TLS_IMPLICIT_IV_ID,  // evp_aead_id
+    0,                                         // seal_scatter_supports_extra_in
 
     NULL,  // init
     aead_aes_256_cbc_sha1_tls_implicit_iv_init,
@@ -536,14 +546,17 @@ static const EVP_AEAD aead_aes_256_cbc_sha1_tls_implicit_iv = {
     NULL,             // open_gather
     aead_tls_get_iv,  // get_iv
     aead_tls_tag_len,
+    NULL /* serialize_state */,
+    NULL /* deserialize_state */,
 };
 
 static const EVP_AEAD aead_aes_128_cbc_sha256_tls = {
-    SHA256_DIGEST_LENGTH + 16,  // key len (SHA256 + AES128)
-    16,                         // nonce len (IV)
-    16 + SHA256_DIGEST_LENGTH,  // overhead (padding + SHA256)
-    SHA256_DIGEST_LENGTH,       // max tag length
-    0,                          // seal_scatter_supports_extra_in
+    SHA256_DIGEST_LENGTH + 16,       // key len (SHA256 + AES128)
+    16,                              // nonce len (IV)
+    16 + SHA256_DIGEST_LENGTH,       // overhead (padding + SHA256)
+    SHA256_DIGEST_LENGTH,            // max tag length
+    AEAD_AES_128_CBC_SHA256_TLS_ID,  // evp_aead_id
+    0,                               // seal_scatter_supports_extra_in
 
     NULL,  // init
     aead_aes_128_cbc_sha256_tls_init,
@@ -553,6 +566,8 @@ static const EVP_AEAD aead_aes_128_cbc_sha256_tls = {
     NULL,  // open_gather
     NULL,  // get_iv
     aead_tls_tag_len,
+    NULL /* serialize_state */,
+    NULL /* deserialize_state */,
 };
 
 static const EVP_AEAD aead_aes_128_cbc_sha256_tls_implicit_iv = {
@@ -560,7 +575,8 @@ static const EVP_AEAD aead_aes_128_cbc_sha256_tls_implicit_iv = {
     0,                               // nonce len
     16 + SHA256_DIGEST_LENGTH,       // overhead (padding + SHA256)
     SHA256_DIGEST_LENGTH,            // max tag length
-    0,                               // seal_scatter_supports_extra_in
+    AEAD_AES_128_CBC_SHA256_TLS_IMPLICIT_IV_ID,  // evp_aead_id
+    0,  // seal_scatter_supports_extra_in
 
     NULL,  // init
     aead_aes_128_cbc_sha256_tls_implicit_iv_init,
@@ -570,14 +586,17 @@ static const EVP_AEAD aead_aes_128_cbc_sha256_tls_implicit_iv = {
     NULL,             // open_gather
     aead_tls_get_iv,  // get_iv
     aead_tls_tag_len,
+    NULL /* serialize_state */,
+    NULL /* deserialize_state */,
 };
 
 static const EVP_AEAD aead_des_ede3_cbc_sha1_tls = {
-    SHA_DIGEST_LENGTH + 24,  // key len (SHA1 + 3DES)
-    8,                       // nonce len (IV)
-    8 + SHA_DIGEST_LENGTH,   // overhead (padding + SHA1)
-    SHA_DIGEST_LENGTH,       // max tag length
-    0,                       // seal_scatter_supports_extra_in
+    SHA_DIGEST_LENGTH + 24,         // key len (SHA1 + 3DES)
+    8,                              // nonce len (IV)
+    8 + SHA_DIGEST_LENGTH,          // overhead (padding + SHA1)
+    SHA_DIGEST_LENGTH,              // max tag length
+    AEAD_DES_EDE3_CBC_SHA1_TLS_ID,  // evp_aead_id
+    0,                              // seal_scatter_supports_extra_in
 
     NULL,  // init
     aead_des_ede3_cbc_sha1_tls_init,
@@ -587,14 +606,17 @@ static const EVP_AEAD aead_des_ede3_cbc_sha1_tls = {
     NULL,  // open_gather
     NULL,  // get_iv
     aead_tls_tag_len,
+    NULL /* serialize_state */,
+    NULL /* deserialize_state */,
 };
 
 static const EVP_AEAD aead_des_ede3_cbc_sha1_tls_implicit_iv = {
-    SHA_DIGEST_LENGTH + 24 + 8,  // key len (SHA1 + 3DES + IV)
-    0,                           // nonce len
-    8 + SHA_DIGEST_LENGTH,       // overhead (padding + SHA1)
-    SHA_DIGEST_LENGTH,           // max tag length
-    0,                           // seal_scatter_supports_extra_in
+    SHA_DIGEST_LENGTH + 24 + 8,                 // key len (SHA1 + 3DES + IV)
+    0,                                          // nonce len
+    8 + SHA_DIGEST_LENGTH,                      // overhead (padding + SHA1)
+    SHA_DIGEST_LENGTH,                          // max tag length
+    AEAD_DES_EDE3_CBC_SHA1_TLS_IMPLICIT_IV_ID,  // evp_aead_id
+    0,  // seal_scatter_supports_extra_in
 
     NULL,  // init
     aead_des_ede3_cbc_sha1_tls_implicit_iv_init,
@@ -604,14 +626,17 @@ static const EVP_AEAD aead_des_ede3_cbc_sha1_tls_implicit_iv = {
     NULL,             // open_gather
     aead_tls_get_iv,  // get_iv
     aead_tls_tag_len,
+    NULL /* serialize_state */,
+    NULL /* deserialize_state */,
 };
 
 static const EVP_AEAD aead_null_sha1_tls = {
-    SHA_DIGEST_LENGTH,  // key len
-    0,                  // nonce len
-    SHA_DIGEST_LENGTH,  // overhead (SHA1)
-    SHA_DIGEST_LENGTH,  // max tag length
-    0,                  // seal_scatter_supports_extra_in
+    SHA_DIGEST_LENGTH,      // key len
+    0,                      // nonce len
+    SHA_DIGEST_LENGTH,      // overhead (SHA1)
+    SHA_DIGEST_LENGTH,      // max tag length
+    AEAD_NULL_SHA1_TLS_ID,  // evp_aead_id
+    0,                      // seal_scatter_supports_extra_in
 
     NULL,  // init
     aead_null_sha1_tls_init,
@@ -621,6 +646,8 @@ static const EVP_AEAD aead_null_sha1_tls = {
     NULL,  // open_gather
     NULL,  // get_iv
     aead_tls_tag_len,
+    NULL /* serialize_state */,
+    NULL /* deserialize_state */,
 };
 
 const EVP_AEAD *EVP_aead_aes_128_cbc_sha1_tls(void) {
