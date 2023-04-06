@@ -118,6 +118,22 @@ void x25519_ge_scalarmult_base(ge_p3 *h, const uint8_t a[32]);
 void x25519_ge_scalarmult(ge_p2 *r, const uint8_t *scalar, const ge_p3 *A);
 void x25519_sc_reduce(uint8_t s[64]);
 
+void x25519_scalar_mult_generic_nohw(uint8_t out[32],
+                                      const uint8_t scalar[32],
+                                      const uint8_t point[32]);
+void X25519_public_from_private_nohw(uint8_t out_public_value[32],
+                                      const uint8_t private_key[32]);
+
+// Port to internal linkage in curve25519_nohw.c when adding implementation
+// from s2n-bignum ed25519
+void ge_p3_tobytes(uint8_t s[32], const ge_p3 *h);
+void sc_muladd(uint8_t *s, const uint8_t *a, const uint8_t *b,
+                      const uint8_t *c);
+void fe_neg(fe_loose *h, const fe *f);
+void fe_carry(fe *h, const fe_loose* f);
+void ge_double_scalarmult_vartime(ge_p2 *r, const uint8_t *a,
+                                         const ge_p3 *A, const uint8_t *b);
+
 enum spake2_state_t {
   spake2_state_init = 0,
   spake2_state_msg_generated,
