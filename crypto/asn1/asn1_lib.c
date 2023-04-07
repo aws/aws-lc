@@ -347,6 +347,10 @@ void ASN1_STRING_free(ASN1_STRING *str) {
   OPENSSL_free(str);
 }
 
+void ASN1_STRING_clear_free(ASN1_STRING *str) {
+  ASN1_STRING_free(str);
+}
+
 int ASN1_STRING_cmp(const ASN1_STRING *a, const ASN1_STRING *b) {
   // Capture padding bits and implicit truncation in BIT STRINGs.
   int a_length = a->length, b_length = b->length;
