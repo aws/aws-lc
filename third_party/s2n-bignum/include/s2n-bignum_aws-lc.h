@@ -121,12 +121,12 @@ extern void bignum_tolebytes_p521(uint8_t z[static 66], const uint64_t x[static 
 // function specified in https://www.rfc-editor.org/rfc/rfc7748. |scalar| is the
 // scalar, |point| is the u-coordinate of the elliptic curve
 // point. The result, another u-coordinate, is saved in |res|.
-extern void curve25519_x25519_byte(uint8_t res[static 32], uint8_t scalar[static 32], uint8_t point[static 32]);
-extern void curve25519_x25519_byte_alt(uint8_t res[static 32], uint8_t scalar[static 32], uint8_t point[static 32]);
+extern void curve25519_x25519_byte(uint8_t res[static 32], const uint8_t scalar[static 32], const uint8_t point[static 32]);
+extern void curve25519_x25519_byte_alt(uint8_t res[static 32], const uint8_t scalar[static 32], const uint8_t point[static 32]);
 
 // curve25519_x25519base_byte and curve25519_x25519base_byte_alt computes the
 // x25519 function specified in https://www.rfc-editor.org/rfc/rfc7748 using the
 // the basepoint specified in section 4.1. |scalar| is the scalar. The result,
 // another u-coordinate, is saved in |res|.
-extern void curve25519_x25519base_byte(uint8_t res[static 32], uint8_t scalar[static 32]);
-extern void curve25519_x25519base_byte_alt(uint8_t res[static 32], uint8_t scalar[static 32]);
+extern void curve25519_x25519base_byte(uint8_t res[static 32], const uint8_t scalar[static 32]);
+extern void curve25519_x25519base_byte_alt(uint8_t res[static 32], const uint8_t scalar[static 32]);

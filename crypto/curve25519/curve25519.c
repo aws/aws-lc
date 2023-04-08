@@ -50,40 +50,43 @@ OPENSSL_INLINE int x25519_s2n_bignum_capable(void) {
 #endif
 }
 
+OPENSSL_INLINE int x25519_Armv7_neon_capable(void) {
+#if defined(BORINGSSL_X25519_NEON)
+  return CRYPTO_is_NEON_capable();
+#else
+  return 0;
+#endif
+}
+
 // Stub functions if implementation are not compiled.
 
 #if !defined(CURVE25519_S2N_BIGNUM_CAPABLE)
-
-void curve25519_x25519_byte(uint8_t res[static 32], uint8_t scalar[static 32],
-  uint8_t point[static 32]) {
+void curve25519_x25519_byte(uint8_t res[static 32],
+  const uint8_t scalar[static 32], const uint8_t point[static 32]) {
   abort();
 }
 void curve25519_x25519_byte_alt(uint8_t res[static 32],
-  uint8_t scalar[static 32], uint8_t point[static 32]) {
+  const uint8_t scalar[static 32], cosnt uint8_t point[static 32]) {
   abort();
 }
-
 void curve25519_x25519base_byte(uint8_t res[static 32],
-  uint8_t scalar[static 32]) {
+  const uint8_t scalar[static 32]) {
   abort();
 }
 void curve25519_x25519base_byte_alt(uint8_t res[static 32],
-  uint8_t scalar[static 32]) {
+  const uint8_t scalar[static 32]) {
   abort();
 }
-
 #endif // !defined(CURVE25519_ASM_CAPABLE)
 
 void x25519_NEON(uint8_t out[32], const uint8_t scalar[32],
                  const uint8_t point[32]);
 
 #if !defined(BORINGSSL_X25519_NEON_CAPABLE)
-
 void x25519_NEON(uint8_t out[32], const uint8_t scalar[32],
                  const uint8_t point[32]) {
   abort();
 }
-
 #endif // !defined(BORINGSSL_X25519_NEON)
 
 // Run-time detection for each implementation
@@ -137,13 +140,6 @@ OPENSSL_INLINE int x25519_s2n_bignum_no_alt_capable(void) {
 #endif
 }
 
-OPENSSL_INLINE int x25519_Armv7_neon_capable(void) {
-#if defined(BORINGSSL_X25519_NEON)
-  return CRYPTO_is_NEON_capable();
-#else
-  return 0;
-}
-
 
 // Below is the decision logic for which assembly backend implementation
 // of x25519 s2n-bignum we should use if x25519 s2n-bignum capable. Currently,
@@ -166,7 +162,8 @@ OPENSSL_INLINE int x25519_Armv7_neon_capable(void) {
 //   x25519_s2n_bignum_alt_capable() specifically looks to match CPUs that have
 //   wide multipliers. Hence, s2n-bignum-alt will only be used on such CPUs.   
 
-OPENSSL_INLINE void x25519_s2n_bignum(uint8_t out_shared_key[32],
+#include <stdio.h>
+static void x25519_s2n_bignum(uint8_t out_shared_key[32],
   const uint8_t private_key[32], const uint8_t peer_public_value[32]) {
 
   uint8_t private_key_internal_demask[32];
@@ -207,8 +204,7 @@ OPENSSL_INLINE void x25519_s2n_bignum(uint8_t out_shared_key[32],
 #endif
 }
 
-
-OPENSSL_INLINE int x25519_s2n_bignum_public_from_private(
+static void x25519_s2n_bignum_public_from_private(
   uint8_t out_public_value[32], const uint8_t private_key[32]) {
 
   uint8_t private_key_internal_demask[32];
@@ -220,9 +216,9 @@ OPENSSL_INLINE int x25519_s2n_bignum_public_from_private(
 #if defined(OPENSSL_X86_64)
 
   if (x25519_s2n_bignum_no_alt_capable() == 1) {
-    curve25519_x25519base_byte(out_shared_key, private_key_internal_demask);
+    curve25519_x25519base_byte(out_public_value, private_key_internal_demask);
   } else if (x25519_s2n_bignum_alt_capable() == 1) {
-    curve25519_x25519base_byte_alt(out_shared_key, private_key_internal_demask);
+    curve25519_x25519base_byte_alt(out_public_value, private_key_internal_demask);
   } else {
     abort();
   }
@@ -230,9 +226,9 @@ OPENSSL_INLINE int x25519_s2n_bignum_public_from_private(
 #elif defined(OPENSSL_AARCH64)
 
   if (x25519_s2n_bignum_alt_capable() == 1) {
-    curve25519_x25519base_byte_alt(out_shared_key, private_key_internal_demask);
+    curve25519_x25519base_byte_alt(out_public_value, private_key_internal_demask);
   } else if (x25519_s2n_bignum_no_alt_capable() == 1) {
-    curve25519_x25519base_byte(out_shared_key, private_key_internal_demask);
+    curve25519_x25519base_byte(out_public_value, private_key_internal_demask);
   } else {
     abort();
   }
@@ -381,7 +377,7 @@ void X25519_public_from_private(uint8_t out_public_value[32],
     static const uint8_t kMongomeryBasePoint[32] = {9};
     x25519_NEON(out_public_value, private_key, kMongomeryBasePoint);
   } else {
-    x25519_public_from_private_nohw(out_public_value, e);
+    x25519_public_from_private_nohw(out_public_value, private_key);
   }
 }
 
@@ -414,8 +410,8 @@ int X25519(uint8_t out_shared_key[32], const uint8_t private_key[32],
   static const uint8_t kZeros[32] = {0};
 
   if (x25519_s2n_bignum_capable() == 1) {
-    x25519_s2n_bignum(out_public_value, private_key, peer_public_value);
-  } else (curve25519_asm_capable() == 1) {
+    x25519_s2n_bignum(out_shared_key, private_key, peer_public_value);
+  } else if (x25519_Armv7_neon_capable() == 1) {
     x25519_NEON(out_shared_key, private_key, peer_public_value);
   } else {
     x25519_scalar_mult_generic_nohw(out_shared_key, private_key, peer_public_value);
