@@ -58,7 +58,7 @@ OPENSSL_INLINE int x25519_Armv7_neon_capable(void) {
 #endif
 }
 
-// Stub functions if implementation are not compiled.
+// Stub functions if implementations are not compiled.
 
 #if !defined(CURVE25519_S2N_BIGNUM_CAPABLE)
 void curve25519_x25519_byte(uint8_t res[static 32],
@@ -143,7 +143,7 @@ OPENSSL_INLINE int x25519_s2n_bignum_no_alt_capable(void) {
 
 // Below is the decision logic for which assembly backend implementation
 // of x25519 s2n-bignum we should use if x25519 s2n-bignum capable. Currently,
-// we support the following implementations
+// we support the following implementations.
 //
 // x86_64:
 //   - s2n-bignum-no-alt: hardware implementation using bmi2+adx instruction sets
@@ -160,9 +160,9 @@ OPENSSL_INLINE int x25519_s2n_bignum_no_alt_capable(void) {
 // For aarch64: if a wide multiplier is supported, we prefer s2n-bignum-alt over
 //   s2n-bignum-no-alt if the former is supported.
 //   x25519_s2n_bignum_alt_capable() specifically looks to match CPUs that have
-//   wide multipliers. Hence, s2n-bignum-alt will only be used on such CPUs.   
+//   wide multipliers. this ensures that s2n-bignum-alt will only be used on
+//   such CPUs.
 
-#include <stdio.h>
 static void x25519_s2n_bignum(uint8_t out_shared_key[32],
   const uint8_t private_key[32], const uint8_t peer_public_value[32]) {
 
