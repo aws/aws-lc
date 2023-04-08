@@ -31,33 +31,184 @@
 #include "../internal.h"
 #include "../fipsmodule/cpucap/internal.h"
 
+#include "../../third_party/s2n-bignum/include/s2n-bignum_aws-lc.h"
+
 // x25519_NEON is defined in asm/x25519-arm.S.
 #if defined(OPENSSL_ARM) && !defined(OPENSSL_NO_ASM) && !defined(OPENSSL_APPLE)
 #define BORINGSSL_X25519_NEON
 #endif
 
+#if (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64)) && !defined(OPENSSL_NO_ASM)
+#define CURVE25519_ASM_CAPABLE
+#endif
 
 void x25519_NEON(uint8_t out[32], const uint8_t scalar[32],
                  const uint8_t point[32]);
 
-#if defined(BORINGSSL_X25519_NEON)
 
-OPENSSL_INLINE int curve25519_asm_capable(void) {
-  return CRYPTO_is_NEON_capable();
-}
-
+OPENSSL_INLINE int x25519_s2n_bignum_capable(void) {
+#if defined(CURVE25519_ASM_CAPABLE)
+  return 1;
 #else
-
-OPENSSL_INLINE int curve25519_asm_capable(void) {
   return 0;
+#endif
 }
+
+#if !defined(CURVE25519_ASM_CAPABLE)
+
+void curve25519_x25519_byte(uint8_t res[static 32], uint8_t scalar[static 32], uint8_t point[static 32]) {
+  abort();
+}
+void curve25519_x25519_byte_alt(uint8_t res[static 32], uint8_t scalar[static 32], uint8_t point[static 32]) {
+  abort();
+}
+
+void curve25519_x25519base_byte(uint8_t res[static 32], uint8_t scalar[static 32]) {
+  abort();
+}
+void curve25519_x25519base_byte_alt(uint8_t res[static 32], uint8_t scalar[static 32]) {
+  abort();
+}
+
+#endif // !defined(CURVE25519_ASM_CAPABLE)
+
+#if !defined(BORINGSSL_X25519_NEON)
 
 void x25519_NEON(uint8_t out[32], const uint8_t scalar[32],
                  const uint8_t point[32]) {
   abort();
 }
 
+#endif // !defined(BORINGSSL_X25519_NEON)
+// Below is the decision logic for which assembly backend implementation
+// of x25519 we should use.
+// Currently, we support the following implementations
+//
+// For x86:
+//  - C: Native C-implementation
+//  - s2n-bignum-no-alt: hardware implementation using bmi2+adx
+//  - s2n-bignum-alt: hardware implementation using standard instructions
+//
+// For aarch64:
+//  - C: Native C-implementation
+//  - s2n-bignum-no-alt: hardware implementation for "small" multiplier throughput
+//  - s2n-bignum-alt: hardware implementation for "higher" multiplier throughput
+//
+// For aarch32:
+//  - neon: hardware implementation that works on Armv7
+//
+// If we figure out at run-time that we are not asm capable, we always fall back
+// to the C-implementation.
+//
+// Performance numbers justifying the decision logic:
+//
+// TODO: put table here....
+//
+
+#define S2N_BIGNUM_USE_NO_ALT 1
+#define S2N_BIGNUM_USE_ALT 2
+
+OPENSSL_INLINE int x25519_s2n_bignum_alt_capable(void);
+OPENSSL_INLINE int x25519_s2n_bignum_no_alt_capable(void);
+
+OPENSSL_INLINE int x25519_s2n_bignum_alt_capable(void) {
+#if defined(OPENSSL_X86_64)
+
+  // If x25519 asm capable, the x86_64 alt s2n-bignum version should support
+  // pretty much any x86_86 CPU.
+  return 1;
+
+#elif defined(OPENSSL_AARCH64)
+
+  if (CRYPTO_is_ARMv8_wide_multiplier_capable() == 1) {
+    return 1;
+  } else {
+    return 0;
+  }
+
+#else
+
+  return 0;
+
 #endif
+}
+
+OPENSSL_INLINE int x25519_s2n_bignum_no_alt_capable(void) {
+#if defined(OPENSSL_X86_64)
+
+  if (CRYPTO_is_BMI2_capable() == 1 && CRYPTO_is_ADX_capable() == 1) {
+    return 1;
+  } else {
+    return 0;
+  }
+
+#elif defined(OPENSSL_AARCH64)
+
+  // If x25519 asm capable, the Armv8 non-alt s2n-bignum version  should
+  // support pretty much any Armv8 CPU.
+  return 1;
+
+#else
+
+  return 0;
+
+#endif
+}
+
+OPENSSL_INLINE int x25519_s2n_bignum() {
+
+Do the unmanling thingy here...
+
+#if defined(OPENSSL_X86_64)
+
+  if (x25519_s2n_bignum_no_alt_capable() == 1) {
+    return S2N_BIGNUM_USE_NO_ALT;
+  } else if (x25519_s2n_bignum_alt_capable() == 1) {
+    return S2N_BIGNUM_USE_ALT;
+  } else {
+    abort();
+  }
+
+#elif defined(OPENSSL_AARCH64)
+
+  if (x25519_s2n_bignum_alt_capable() == 1) {
+    return S2N_BIGNUM_USE_ALT;
+  } else if (x25519_s2n_bignum_no_alt_capable() == 1) {
+    return S2N_BIGNUM_USE_NO_ALT;
+  } else {
+    abort();
+  }
+
+#else 
+
+  // Should not call this function except if s2n-bignum is support.
+  abort();
+}
+
+
+OPENSSL_INLINE int x25519_s2n_bignum_private_key_something(...) {
+  
+}
+
+// The neon implementation also works on 32-bit Arm ISAs.
+OPENSSL_INLINE int x25519_Armv7_neon_capable(void) {
+#if defined(BORINGSSL_X25519_NEON)
+  return CRYPTO_is_NEON_capable();
+#else
+  return 0;
+}
+
+void x25519_hw(uint8_t out_shared_key[32], const uint8_t private_key[32],
+           const uint8_t peer_public_value[32]) {
+
+  uint8_t e[32];
+  OPENSSL_memcpy(e, private_key, 32);
+  e[0] &= 248;
+  e[31] &= 127;
+  e[31] |= 64;
+
+  if ()
+}
 
 
 void ED25519_keypair_from_seed(uint8_t out_public_key[32],
@@ -195,7 +346,10 @@ void X25519_public_from_private(uint8_t out_public_value[32],
   e[31] &= 127;
   e[31] |= 64;
 
-  if (curve25519_asm_capable()) {
+  if (x25519_s2n_bignum_capable()) {
+    x25519_s2n_bignum_select();
+  }
+  else if (x25519_Armv7_neon_capable()) {
     static const uint8_t kMongomeryBasePoint[32] = {9};
     x25519_NEON(out_public_value, private_key, kMongomeryBasePoint);
   } else {
