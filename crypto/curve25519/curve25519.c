@@ -37,7 +37,15 @@
 #define BORINGSSL_X25519_NEON_CAPABLE
 #endif
 
-#if (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64)) && !defined(OPENSSL_NO_ASM)
+// Remove when proper byte-level APIs for x25519 s2n-bignum interface have been
+// imported...
+#if defined(OPENSSL_AARCH64)
+#undef OPENSSL_AARCH64
+#endif
+
+#if (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64)) && \
+    (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE)) && \
+    !defined(OPENSSL_NO_ASM) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
 #define CURVE25519_S2N_BIGNUM_CAPABLE
 #endif
 
@@ -66,7 +74,7 @@ void curve25519_x25519_byte(uint8_t res[static 32],
   abort();
 }
 void curve25519_x25519_byte_alt(uint8_t res[static 32],
-  const uint8_t scalar[static 32], cosnt uint8_t point[static 32]) {
+  const uint8_t scalar[static 32], const uint8_t point[static 32]) {
   abort();
 }
 void curve25519_x25519base_byte(uint8_t res[static 32],
