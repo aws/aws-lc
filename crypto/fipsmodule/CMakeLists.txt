@@ -192,6 +192,7 @@ if((ARCH STREQUAL "x86_64" OR ARCH STREQUAL "aarch64") AND
     p384/bignum_montsqr_p384_alt.S
     p384/bignum_nonzero_6.S
     p384/bignum_littleendian_6.S
+
     p521/bignum_add_p521.S
     p521/bignum_sub_p521.S
     p521/bignum_neg_p521.S
@@ -201,6 +202,11 @@ if((ARCH STREQUAL "x86_64" OR ARCH STREQUAL "aarch64") AND
     p521/bignum_sqr_p521_alt.S
     p521/bignum_tolebytes_p521.S
     p521/bignum_fromlebytes_p521.S
+
+    curve25519/curve25519_x25519.S
+    curve25519/curve25519_x25519_alt.S
+    curve25519/curve25519_x25519base.S
+    curve25519/curve25519_x25519base_alt.S
   )
   if(ARCH STREQUAL "x86_64")
     # The files below contain the alternative functions for x86_64.
