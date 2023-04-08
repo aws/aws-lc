@@ -52,7 +52,8 @@ OPENSSL_STATIC_ASSERT(ERR_LIB_CIPHER == 30, library_value_changed)
 OPENSSL_STATIC_ASSERT(ERR_LIB_HKDF == 31, library_value_changed)
 OPENSSL_STATIC_ASSERT(ERR_LIB_TRUST_TOKEN == 32, library_value_changed)
 OPENSSL_STATIC_ASSERT(ERR_LIB_USER == 33, library_value_changed)
-OPENSSL_STATIC_ASSERT(ERR_NUM_LIBS == 34, number_of_libraries_changed)
+OPENSSL_STATIC_ASSERT(ERR_LIB_FIPS == 34, library_value_changed)
+OPENSSL_STATIC_ASSERT(ERR_NUM_LIBS == 35, number_of_libraries_changed)
 
 const uint32_t kOpenSSLReasonValues[] = {
     0xc320885,
