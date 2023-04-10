@@ -10,6 +10,7 @@ add_library(
   wycheproof_util.cc
 )
 
+
 if (LIBUNWIND_FOUND)
   target_compile_options(test_support_lib PRIVATE ${LIBUNWIND_CFLAGS_OTHER})
   target_include_directories(test_support_lib PRIVATE ${LIBUNWIND_INCLUDE_DIRS})
@@ -18,6 +19,7 @@ endif()
 if(WIN32)
   target_link_libraries(test_support_lib dbghelp)
 endif()
+add_dependencies(test_support_lib generate_crypto_errors)
 add_dependencies(test_support_lib global_target)
 
 add_library(
@@ -28,4 +30,5 @@ add_library(
   gtest_main.cc
 )
 
+add_dependencies(boringssl_gtest_main generate_crypto_errors)
 add_dependencies(boringssl_gtest_main global_target)

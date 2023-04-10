@@ -291,6 +291,7 @@ if(FIPS_DELOCATE)
     set(BCM_ASM_PROCESSED_SOURCES ${BCM_ASM_SOURCES})
   endif()
 
+  add_dependencies(bcm_c_generated_asm generate_crypto_errors)
   add_dependencies(bcm_c_generated_asm global_target)
 
   set_target_properties(bcm_c_generated_asm PROPERTIES COMPILE_OPTIONS "-S")
@@ -343,6 +344,7 @@ if(FIPS_DELOCATE)
   )
   target_compile_definitions(fipsmodule PRIVATE BORINGSSL_IMPLEMENTATION)
 
+  add_dependencies(fipsmodule generate_crypto_errors)
   add_dependencies(fipsmodule global_target)
 
   set_target_properties(fipsmodule PROPERTIES LINKER_LANGUAGE C)
@@ -361,6 +363,7 @@ elseif(FIPS_SHARED)
   )
   target_compile_definitions(fipsmodule PRIVATE BORINGSSL_IMPLEMENTATION)
 
+  add_dependencies(fipsmodule generate_crypto_errors)
   add_dependencies(fipsmodule global_target)
 
   add_library(
@@ -375,6 +378,7 @@ elseif(FIPS_SHARED)
   target_compile_definitions(bcm_library PRIVATE BORINGSSL_IMPLEMENTATION)
   target_include_directories(bcm_library PRIVATE ../../include)
 
+  add_dependencies(bcm_library generate_crypto_errors)
   add_dependencies(bcm_library global_target)
   if (APPLE)
     set(BCM_NAME bcm.o)
@@ -469,5 +473,6 @@ else()
   )
   target_compile_definitions(fipsmodule PRIVATE BORINGSSL_IMPLEMENTATION)
 
+  add_dependencies(fipsmodule generate_crypto_errors)
   add_dependencies(fipsmodule global_target)
 endif()

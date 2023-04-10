@@ -594,8 +594,6 @@ function(build_libcrypto name module_source)
 endfunction()
 
 if(FIPS_SHARED)
-  add_dependencies(fipsmodule generate_crypto_errors)
-  add_dependencies(bcm_library generate_crypto_errors)
   # Rewrite libcrypto.so, libcrypto.dylib, or crypto.dll to inject the correct module
   # hash value. For now we support the FIPS build only on Linux, macOS, iOS, and Windows.
   if(MSVC)
@@ -665,11 +663,7 @@ if(FIPS_SHARED)
 
   endif()
 else()
-  if(FIPS_DELOCATE)
-      add_dependencies(bcm_c_generated_asm generate_crypto_errors)
-  endif()
   # fipsmodule references include/openssl/*.h headers that need to be updated first
-  add_dependencies(fipsmodule generate_crypto_errors)
   build_libcrypto(crypto $<TARGET_OBJECTS:fipsmodule>)
 endif()
 
