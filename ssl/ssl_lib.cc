@@ -2144,7 +2144,6 @@ int SSL_set_tlsext_host_name(SSL *ssl, const char *name) {
   }
   ssl->hostname.reset(OPENSSL_strdup(name));
   if (ssl->hostname == nullptr) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
   }
   return 1;

@@ -343,6 +343,11 @@ OPENSSL_EXPORT int EVP_BytesToKey(const EVP_CIPHER *type, const EVP_MD *md,
 
 // Buffer length in bits not bytes: CFB1 mode only.
 # define EVP_CIPH_FLAG_LENGTH_BITS 0x2000
+// The following values are never returned from |EVP_CIPHER_mode| and are
+// included only to make it easier to compile code with BoringSSL.
+#define EVP_CIPH_CCM_MODE 0x8
+#define EVP_CIPH_OCB_MODE 0x9
+#define EVP_CIPH_WRAP_MODE 0xa
 
 
 // Cipher flags (for |EVP_CIPHER_flags|).
@@ -531,9 +536,6 @@ OPENSSL_EXPORT const EVP_CIPHER *EVP_bf_cfb(void);
 
 // The following flags do nothing and are included only to make it easier to
 // compile code with BoringSSL.
-#define EVP_CIPH_CCM_MODE (-1)
-#define EVP_CIPH_OCB_MODE (-2)
-#define EVP_CIPH_WRAP_MODE (-3)
 #define EVP_CIPHER_CTX_FLAG_WRAP_ALLOW 0
 
 // EVP_CIPHER_CTX_set_flags does nothing.
@@ -694,5 +696,6 @@ BSSL_NAMESPACE_END
 #define CIPHER_R_XTS_DUPLICATED_KEYS 138
 #define CIPHER_R_XTS_DATA_UNIT_IS_TOO_LARGE 139
 #define CIPHER_R_CTRL_OPERATION_NOT_PERFORMED 140
+#define CIPHER_R_SERIALIZATION_INVALID_EVP_AEAD_CTX 141
 
 #endif  // OPENSSL_HEADER_CIPHER_H

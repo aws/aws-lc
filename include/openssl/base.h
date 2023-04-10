@@ -208,7 +208,7 @@ extern "C" {
 // against multiple revisions of BoringSSL at the same time. It is not
 // recommended to do so for longer than is necessary.
 
-#define AWSLC_API_VERSION 20
+#define AWSLC_API_VERSION 21
 
 // This string tracks the most current production release version on Github
 // https://github.com/aws/aws-lc/releases.
@@ -216,7 +216,7 @@ extern "C" {
 // ServiceIndicatorTest.AWSLCVersionString
 // Note: there are two versions of this test. Only one test is compiled
 // depending on FIPS mode.
-#define AWSLC_VERSION_NUMBER_STRING "1.6.0"
+#define AWSLC_VERSION_NUMBER_STRING "1.7.0"
 
 #if defined(BORINGSSL_SHARED_LIBRARY)
 

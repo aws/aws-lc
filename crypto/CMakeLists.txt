@@ -326,6 +326,7 @@ add_library(
   conf/conf.c
   crypto.c
   curve25519/curve25519.c
+  curve25519/curve25519_nohw.c
   curve25519/spake25519.c
   des/des.c
   dh_extra/params.c
