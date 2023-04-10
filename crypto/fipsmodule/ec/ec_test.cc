@@ -1046,6 +1046,16 @@ TEST(ECTest, ArbitraryCurve) {
   ASSERT_TRUE(converted_generator2);
   EXPECT_EQ(0, BN_cmp(converted_generator1.get(), converted_generator2.get()));
 
+  bssl::UniquePtr<BIGNUM> converted_generator3(EC_POINT_point2bn(
+      group.get(), generator.get(), POINT_CONVERSION_COMPRESSED, NULL, NULL));
+  ASSERT_TRUE(converted_generator3);
+
+  bssl::UniquePtr<BIGNUM> converted_generator4(EC_POINT_point2bn(
+      group2.get(), generator2.get(), POINT_CONVERSION_COMPRESSED, NULL, NULL));
+  ASSERT_TRUE(converted_generator4);
+  EXPECT_EQ(0, BN_cmp(converted_generator3.get(), converted_generator4.get()));
+
+
   // group3 uses the wrong generator.
   bssl::UniquePtr<EC_GROUP> group3(
       EC_GROUP_new_curve_GFp(p.get(), a.get(), b.get(), ctx.get()));
