@@ -20,6 +20,7 @@ option(BUILD_TESTING "Build all test targets for AWS-LC" ON)
 option(BUILD_LIBSSL "Build libssl for AWS-LC" ON)
 option(DISABLE_PERL "Disable Perl for AWS-LC" OFF)
 option(DISABLE_GO "Disable Go for AWS-LC" OFF)
+include(cmake/go.cmake)
 
 enable_language(C)
 
@@ -35,11 +36,6 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "GNU")
   set(GCC 1)
 endif()
 
-# This is a dummy target which all other targets depend on (manually - see other
-# CMakeLists.txt files). This gives us a hook to add any targets which need to
-# run before all other targets.
-add_custom_target(global_target)
-
 if (UNIX AND NOT APPLE)
   include(GNUInstallDirs)
 elseif(NOT DEFINED CMAKE_INSTALL_LIBDIR)
@@ -54,20 +50,14 @@ install(DIRECTORY include/openssl
 )
 
 if(ANDROID)
-  # Android-NDK CMake files reconfigure the path and so Go and Perl won't be
-  # found. However, ninja will still find them in $PATH if we just name them.
+  # Android-NDK CMake files reconfigure the path and so Perl won't be found.
+  # However, ninja will still find them in $PATH if we just name them.
   if(NOT DISABLE_PERL AND NOT PERL_EXECUTABLE)
     set(PERL_EXECUTABLE "perl")
-  endif()
-  if(NOT DISABLE_GO AND NOT GO_EXECUTABLE)
-    set(GO_EXECUTABLE "go")
   endif()
 else()
   if(NOT DISABLE_PERL)
     find_package(Perl)
-  endif()
-  if(NOT DISABLE_GO)
-    find_program(GO_EXECUTABLE go)
   endif()
 endif()
 
@@ -157,7 +147,6 @@ if(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS AND GO_EXECUTABLE)
     COMMAND sed -i.bak '/ bignum_/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/boringssl_prefix_symbols_nasm.inc
     DEPENDS util/make_prefix_headers.go
             ${BORINGSSL_PREFIX_SYMBOLS_PATH})
-
   # add_dependencies needs a target, not a file, so we add an intermediate
   # target.
   add_custom_target(
@@ -165,7 +154,6 @@ if(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS AND GO_EXECUTABLE)
     DEPENDS symbol_prefix_include/boringssl_prefix_symbols.h
             symbol_prefix_include/boringssl_prefix_symbols_asm.h
             symbol_prefix_include/boringssl_prefix_symbols_nasm.inc)
-  add_dependencies(global_target boringssl_prefix_symbols)
 elseif(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_HEADERS)
 
   if(IS_ABSOLUTE ${BORINGSSL_PREFIX_HEADERS})
@@ -175,10 +163,14 @@ elseif(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_HEADERS)
   endif()
 
   include_directories(${BORINGSSL_PREFIX_HEADERS_PATH})
+
+  add_custom_target(boringssl_prefix_symbols)
 elseif(BORINGSSL_PREFIX OR BORINGSSL_PREFIX_SYMBOLS)
   message(FATAL_ERROR "Must specify both or neither of BORINGSSL_PREFIX and BORINGSSL_PREFIX_SYMBOLS")
 elseif((BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS) AND NOT GO_EXECUTABLE)
   message(FATAL_ERROR "Must have Go installed when using BORINGSSL_PREFIX and BORINGSSL_PREFIX_SYMBOLS")
+else()
+  add_custom_target(boringssl_prefix_symbols)
 endif()
 
 if("${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
@@ -625,42 +617,6 @@ if(CONSTANT_TIME_VALIDATION)
   add_definitions(-DNDEBUG)
 endif()
 
-function(go_executable dest package)
-  set(godeps "${PROJECT_SOURCE_DIR}/util/godeps.go")
-  if(CMAKE_VERSION VERSION_LESS "3.7" OR NOT CMAKE_GENERATOR STREQUAL "Ninja")
-    # The DEPFILE parameter to add_custom_command is new as of CMake 3.7 and
-    # only works with Ninja. Query the sources at configure time. Additionally,
-    # everything depends on go.mod. That affects what external packages to use.
-    execute_process(COMMAND ${GO_EXECUTABLE} run ${godeps} -format cmake
-                            -pkg ${package}
-                    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-                    OUTPUT_VARIABLE sources
-                    RESULT_VARIABLE godeps_result)
-    add_custom_command(OUTPUT ${dest}
-                       COMMAND ${GO_EXECUTABLE} build
-                               -o ${CMAKE_CURRENT_BINARY_DIR}/${dest} ${package}
-                       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-                       DEPENDS ${sources} ${PROJECT_SOURCE_DIR}/go.mod)
-  else()
-    # Ninja expects the target in the depfile to match the output. This is a
-    # relative path from the build directory.
-    string(LENGTH "${PROJECT_BINARY_DIR}" root_dir_length)
-    math(EXPR root_dir_length "${root_dir_length} + 1")
-    string(SUBSTRING "${CMAKE_CURRENT_BINARY_DIR}" ${root_dir_length} -1 target)
-    set(target "${target}/${dest}")
-
-    set(depfile "${CMAKE_CURRENT_BINARY_DIR}/${dest}.d")
-    add_custom_command(OUTPUT ${dest}
-                       COMMAND ${GO_EXECUTABLE} build
-                               -o ${CMAKE_CURRENT_BINARY_DIR}/${dest} ${package}
-                       COMMAND ${GO_EXECUTABLE} run ${godeps} -format depfile
-                               -target ${target} -pkg ${package} -out ${depfile}
-                       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-                       DEPENDS ${godeps} ${PROJECT_SOURCE_DIR}/go.mod
-                       DEPFILE ${depfile})
-  endif()
-endfunction()
-
 # CMake's iOS support uses Apple's multiple-architecture toolchain. It takes an
 # architecture list from CMAKE_OSX_ARCHITECTURES, leaves CMAKE_SYSTEM_PROCESSOR
 # alone, and expects all architecture-specific logic to be conditioned within
@@ -673,6 +629,14 @@ if(NOT OPENSSL_NO_ASM AND CMAKE_OSX_ARCHITECTURES)
     message(FATAL_ERROR "Universal binaries not supported.")
   endif()
   list(GET CMAKE_OSX_ARCHITECTURES 0 CMAKE_SYSTEM_PROCESSOR)
+endif()
+
+if(MALLOC_FAILURE_TESTING)
+  add_definitions(-DBORINGSSL_MALLOC_FAILURE_TESTING)
+endif()
+
+if(OPENSSL_NO_ASM)
+  add_definitions(-DOPENSSL_NO_ASM)
 endif()
 
 TEST_BIG_ENDIAN(BIG_ENDIAN)
@@ -791,13 +755,18 @@ if(BUILD_TESTING)
   # Add minimal googletest targets. The provided one has many side-effects, and
   # googletest has a very straightforward build.
   add_library(boringssl_gtest third_party/googletest/src/gtest-all.cc)
+  if(USE_CUSTOM_LIBCXX)
+    target_link_libraries(boringssl_gtest libcxx)
+  endif()
   if(BUILD_SHARED_LIBS)
     # This is needed for the Windows build to correctly annotate GTest's API with __declspec(dllexport)
     target_compile_options(boringssl_gtest PRIVATE -DGTEST_CREATE_SHARED_LIBRARY=1)
   endif()
-  target_include_directories(boringssl_gtest PRIVATE third_party/googletest)
-
-  include_directories(third_party/googletest/include)
+  target_include_directories(
+    boringssl_gtest
+    PUBLIC third_party/googletest/include
+    PRIVATE third_party/googletest
+  )
 
   # Declare a dummy target to build all unit tests. Test targets should inject
   # themselves as dependencies next to the target definition.

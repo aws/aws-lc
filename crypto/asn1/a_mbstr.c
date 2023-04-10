@@ -162,20 +162,16 @@ int ASN1_mbstring_ncopy(ASN1_STRING **out, const unsigned char *in, int len,
 
     nchar++;
     utf8_len += cbb_get_utf8_len(c);
+    if (maxsize > 0 && nchar > (size_t)maxsize) {
+      OPENSSL_PUT_ERROR(ASN1, ASN1_R_STRING_TOO_LONG);
+      ERR_add_error_dataf("maxsize=%ld", maxsize);
+      return -1;
+    }
   }
 
-  char strbuf[32];
   if (minsize > 0 && nchar < (size_t)minsize) {
     OPENSSL_PUT_ERROR(ASN1, ASN1_R_STRING_TOO_SHORT);
-    BIO_snprintf(strbuf, sizeof strbuf, "%ld", minsize);
-    ERR_add_error_data(2, "minsize=", strbuf);
-    return -1;
-  }
-
-  if (maxsize > 0 && nchar > (size_t)maxsize) {
-    OPENSSL_PUT_ERROR(ASN1, ASN1_R_STRING_TOO_LONG);
-    BIO_snprintf(strbuf, sizeof strbuf, "%ld", maxsize);
-    ERR_add_error_data(2, "maxsize=", strbuf);
+    ERR_add_error_dataf("minsize=%ld", minsize);
     return -1;
   }
 
@@ -222,7 +218,6 @@ int ASN1_mbstring_ncopy(ASN1_STRING **out, const unsigned char *in, int len,
     free_dest = 1;
     dest = ASN1_STRING_type_new(str_type);
     if (!dest) {
-      OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
       return -1;
     }
   }
@@ -230,7 +225,6 @@ int ASN1_mbstring_ncopy(ASN1_STRING **out, const unsigned char *in, int len,
   // If both the same type just copy across
   if (inform == outform) {
     if (!ASN1_STRING_set(dest, in, len)) {
-      OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
       goto err;
     }
     dest->type = str_type;
@@ -240,7 +234,6 @@ int ASN1_mbstring_ncopy(ASN1_STRING **out, const unsigned char *in, int len,
 
   CBB cbb;
   if (!CBB_init(&cbb, size_estimate + 1)) {
-    OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
     goto err;
   }
   CBS_init(&cbs, in, len);

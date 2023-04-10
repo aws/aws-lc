@@ -146,6 +146,10 @@ extern "C" {
 // strategies that may not be ideal for other applications. Non-cryptographic
 // uses should use a more general-purpose integer library, especially if
 // performance-sensitive.
+//
+// Many functions in BN scale quadratically or higher in the bit length of their
+// input. Callers at this layer are assumed to have capped input sizes within
+// their performance tolerances.
 
 
 // BN_ULONG is the native word size when working with big integers.
@@ -293,6 +297,10 @@ OPENSSL_EXPORT int BN_hex2bn(BIGNUM **outp, const char *in);
 // BN_bn2dec returns an allocated string that contains a NUL-terminated,
 // decimal representation of |bn|. If |bn| is negative, the first char in the
 // resulting string will be '-'. Returns NULL on allocation failure.
+//
+// Converting an arbitrarily large integer to decimal is quadratic in the bit
+// length of |a|. This function assumes the caller has capped the input within
+// performance tolerances.
 OPENSSL_EXPORT char *BN_bn2dec(const BIGNUM *a);
 
 // BN_dec2bn parses the leading decimal number from |in|, which may be
@@ -301,6 +309,10 @@ OPENSSL_EXPORT char *BN_bn2dec(const BIGNUM *a);
 // decimal number and stores it in |*outp|. If |*outp| is NULL then it
 // allocates a new BIGNUM and updates |*outp|. It returns the number of bytes
 // of |in| processed or zero on error.
+//
+// Converting an arbitrarily large integer to decimal is quadratic in the bit
+// length of |a|. This function assumes the caller has capped the input within
+// performance tolerances.
 OPENSSL_EXPORT int BN_dec2bn(BIGNUM **outp, const char *in);
 
 // BN_asc2bn acts like |BN_dec2bn| or |BN_hex2bn| depending on whether |in|
@@ -1036,8 +1048,14 @@ OPENSSL_EXPORT unsigned BN_num_bits_word(BN_ULONG l);
 
 #define BN_FLG_MALLOCED 0x01
 #define BN_FLG_STATIC_DATA 0x02
+
+#ifdef AWS_LC_INTERNAL_IGNORE_BN_SET_FLAGS
+#define BN_set_flags(x, y) /* Ignored */
+#define BN_FLG_CONSTTIME 0x04
+#endif /* AWS_LC_INTERNAL_IGNORE_BN_SET_FLAGS */
+
 // |BN_FLG_CONSTTIME| has been removed and intentionally omitted so code relying
-// on it will not compile. Consumers outside BoringSSL should use the
+// on it will not compile unless the flag above is set. Consumers should use the
 // higher-level cryptographic algorithms exposed by other modules. Consumers
 // within the library should call the appropriate timing-sensitive algorithm
 // directly.

@@ -2398,7 +2398,8 @@ OPENSSL_EXPORT const char *SSL_get_curve_name(uint16_t curve_id);
 // ownership of the buffer and must call |OPENSSL_free| when done. It returns
 // one on success and zero on error.
 //
-// WARNING: Currently only works with TLS 1.2 after handshake finished.
+// WARNING: Currently only works with TLS 1.2 or TLS 1.3 after handshake has
+// finished.
 // WARNING: Currently only supports |SSL| as server.
 // WARNING: CRYPTO_EX_DATA |ssl->ex_data| is not encoded. Remember set |ex_data|
 // back after decode. WARNING: BIO |ssl->rbio| and |ssl->wbio| are not encoded.
@@ -5724,6 +5725,7 @@ BSSL_NAMESPACE_END
 #define SSL_R_SERIALIZATION_INVALID_SSL_CONFIG 502
 #define SSL_R_SERIALIZATION_INVALID_SSL3_STATE 503
 #define SSL_R_SERIALIZATION_INVALID_SSL_BUFFER 505
+#define SSL_R_SERIALIZATION_INVALID_SSL_AEAD_CONTEXT 506
 #define SSL_R_SSLV3_ALERT_CLOSE_NOTIFY 1000
 #define SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE 1010
 #define SSL_R_SSLV3_ALERT_BAD_RECORD_MAC 1020

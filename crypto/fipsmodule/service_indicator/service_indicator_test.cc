@@ -2644,6 +2644,11 @@ static const uint8_t kPBKDF2DerivedKey5SHA1[] = {
     0x62, 0xc0, 0xe4, 0x4a, 0x8b, 0x29, 0x1a, 0x96, 0x4c, 0xf2, 0xf0, 0x70,
     0x38    // 25 bytes
 };
+static const uint8_t kPBKDF2DerivedKey6SHA1[] = {
+    0xac, 0xf8, 0xb4, 0x67, 0x41, 0xc7, 0xf3, 0xd1, 0xa0, 0xc0, 0x08, 0xbe,
+    0x9b, 0x23, 0x96, 0x78, 0xbd, 0x93, 0xda, 0x4a, 0x30, 0xd4, 0xfb, 0xf0,
+    0x33    // 25 bytes
+};
 
 static const uint8_t kPBKDF2DerivedKey1SHA224[] = {
     0x3c, 0x19, 0x8c, 0xbd, 0xb9, 0x46, 0x4b, 0x78, 0x57, 0x96, 0x6b, 0xd0,
@@ -2665,6 +2670,11 @@ static const uint8_t kPBKDF2DerivedKey5SHA224[] = {
     0x05, 0x6c, 0x4b, 0xa4, 0x38, 0xde, 0xd9, 0x1f, 0xc1, 0x4e, 0x05, 0x94,
     0xe6, 0xf5, 0x2b, 0x87, 0xe1, 0xf3, 0x69, 0x0c, 0x0d, 0xc0, 0xfb, 0xc0,
     0x57    // 25 bytes
+};
+static const uint8_t kPBKDF2DerivedKey6SHA224[] = {
+    0x0f, 0x51, 0xe7, 0x77, 0x07, 0x88, 0x5e, 0x09, 0x20, 0xd7, 0x46, 0x6c,
+    0x8f, 0xdf, 0xd6, 0x07, 0x38, 0x31, 0xde, 0xfe, 0x01, 0x29, 0x22, 0xbf,
+    0x47    // 25 bytes
 };
 
 static const uint8_t kPBKDF2DerivedKey1SHA256[] = {
@@ -2688,6 +2698,11 @@ static const uint8_t kPBKDF2DerivedKey5SHA256[] = {
     0x11, 0x6e, 0x84, 0xcf, 0x2b, 0x17, 0x34, 0x7e, 0xbc, 0x18, 0x00, 0x18,
     0x1c    // 25 bytes
 };
+static const uint8_t kPBKDF2DerivedKey6SHA256[] = {
+    0x09, 0x3e, 0x1a, 0xd8, 0x63, 0x30, 0x71, 0x9c, 0x17, 0xcf, 0xb0, 0x53,
+    0x3e, 0x1f, 0xc8, 0x51, 0x29, 0x71, 0x54, 0x28, 0x5d, 0xf7, 0x8e, 0x41,
+    0xaa    // 25 bytes
+};
 
 static const uint8_t kPBKDF2DerivedKey1SHA384[] = {
     0xc0, 0xe1, 0x4f, 0x06, 0xe4, 0x9e, 0x32, 0xd7, 0x3f, 0x9f, 0x52, 0xdd,
@@ -2710,6 +2725,11 @@ static const uint8_t kPBKDF2DerivedKey5SHA384[] = {
     0x31, 0xc5, 0x2a, 0xe6, 0xc5, 0xc1, 0xb0, 0xee, 0xd1, 0x8f, 0x4d, 0x28,
     0x3b    // 25 bytes
 };
+static const uint8_t kPBKDF2DerivedKey6SHA384[] = {
+    0xd6, 0xb7, 0x36, 0x38, 0xe3, 0x59, 0xee, 0x39, 0xae, 0x1b, 0x5c, 0x24,
+    0xb2, 0x5c, 0x56, 0x14, 0x5b, 0x57, 0xb1, 0x75, 0xdc, 0x6f, 0x75, 0xb8,
+    0x12    // 25 bytes
+};
 
 static const uint8_t kPBKDF2DerivedKey1SHA512[] = {
     0x86, 0x7f, 0x70, 0xcf, 0x1a, 0xde, 0x02, 0xcf, 0xf3, 0x75, 0x25, 0x99,
@@ -2731,6 +2751,11 @@ static const uint8_t kPBKDF2DerivedKey5SHA512[] = {
     0x8c, 0x05, 0x11, 0xf4, 0xc6, 0xe5, 0x97, 0xc6, 0xac, 0x63, 0x15, 0xd8,
     0xf0, 0x36, 0x2e, 0x22, 0x5f, 0x3c, 0x50, 0x14, 0x95, 0xba, 0x23, 0xb8,
     0x68    // 25 bytes
+};
+static const uint8_t kPBKDF2DerivedKey6SHA512[] = {
+    0x14, 0xe8, 0xb0, 0x63, 0x43, 0xf9, 0x04, 0xc6, 0xa8, 0x55, 0xcb, 0xe0,
+    0x7b, 0xaf, 0xe6, 0xf8, 0xac, 0x13, 0x8f, 0xcb, 0x91, 0x2d, 0xbd, 0x33,
+    0x49   // 25 bytes
 };
 
 static const struct PBKDF2TestVector {
@@ -2786,6 +2811,14 @@ static const struct PBKDF2TestVector {
         sizeof(kPBKDF2DerivedKey5SHA1), kPBKDF2DerivedKey5SHA1,
         AWSLC_APPROVED
     },
+    {
+        EVP_sha1,
+        kPBKDF2Password2, sizeof(kPBKDF2Password2),
+        kPBKDF2Salt2, sizeof(kPBKDF2Salt2),
+        999,
+        sizeof(kPBKDF2DerivedKey6SHA1), kPBKDF2DerivedKey6SHA1,
+        AWSLC_NOT_APPROVED
+    },
 
     // SHA224 outputs from
     // https://github.com/brycx/Test-Vector-Generation/pull/1
@@ -2828,6 +2861,14 @@ static const struct PBKDF2TestVector {
         4096,
         sizeof(kPBKDF2DerivedKey5SHA224), kPBKDF2DerivedKey5SHA224,
         AWSLC_APPROVED
+    },
+    {
+        EVP_sha224,
+        kPBKDF2Password2, sizeof(kPBKDF2Password2),
+        kPBKDF2Salt2, sizeof(kPBKDF2Salt2),
+        999,
+        sizeof(kPBKDF2DerivedKey6SHA224), kPBKDF2DerivedKey6SHA224,
+        AWSLC_NOT_APPROVED
     },
 
     // SHA256 outputs from
@@ -2872,6 +2913,14 @@ static const struct PBKDF2TestVector {
         sizeof(kPBKDF2DerivedKey5SHA256), kPBKDF2DerivedKey5SHA256,
         AWSLC_APPROVED
     },
+    {
+        EVP_sha256,
+        kPBKDF2Password2, sizeof(kPBKDF2Password2),
+        kPBKDF2Salt2, sizeof(kPBKDF2Salt2),
+        999,
+        sizeof(kPBKDF2DerivedKey6SHA256), kPBKDF2DerivedKey6SHA256,
+        AWSLC_NOT_APPROVED
+    },
 
     // SHA384 outputs from
     // https://github.com/brycx/Test-Vector-Generation/blob/master/PBKDF2/pbkdf2-hmac-sha2-test-vectors.md
@@ -2915,6 +2964,14 @@ static const struct PBKDF2TestVector {
         sizeof(kPBKDF2DerivedKey5SHA384), kPBKDF2DerivedKey5SHA384,
         AWSLC_APPROVED
     },
+    {
+        EVP_sha384,
+        kPBKDF2Password2, sizeof(kPBKDF2Password2),
+        kPBKDF2Salt2, sizeof(kPBKDF2Salt2),
+        999,
+        sizeof(kPBKDF2DerivedKey6SHA384), kPBKDF2DerivedKey6SHA384,
+        AWSLC_NOT_APPROVED
+    },
 
     // SHA512 outputs from
     // https://github.com/brycx/Test-Vector-Generation/blob/master/PBKDF2/pbkdf2-hmac-sha2-test-vectors.md
@@ -2957,6 +3014,14 @@ static const struct PBKDF2TestVector {
         4096,
         sizeof(kPBKDF2DerivedKey5SHA512), kPBKDF2DerivedKey5SHA512,
         AWSLC_APPROVED
+    },
+    {
+        EVP_sha512,
+        kPBKDF2Password2, sizeof(kPBKDF2Password2),
+        kPBKDF2Salt2, sizeof(kPBKDF2Salt2),
+        999,
+        sizeof(kPBKDF2DerivedKey6SHA512), kPBKDF2DerivedKey6SHA512,
+        AWSLC_NOT_APPROVED
     },
 };
 
@@ -3899,7 +3964,7 @@ TEST(ServiceIndicatorTest, DRBG) {
 // Since this is running in FIPS mode it should end in FIPS
 // Update this when the AWS-LC version number is modified
 TEST(ServiceIndicatorTest, AWSLCVersionString) {
-  ASSERT_STREQ(awslc_version_string(), "AWS-LC FIPS 1.6.0");
+  ASSERT_STREQ(awslc_version_string(), "AWS-LC FIPS 1.7.0");
 }
 
 #else
@@ -3942,6 +4007,6 @@ TEST(ServiceIndicatorTest, BasicTest) {
 // Since this is not running in FIPS mode it shouldn't end in FIPS
 // Update this when the AWS-LC version number is modified
 TEST(ServiceIndicatorTest, AWSLCVersionString) {
-  ASSERT_STREQ(awslc_version_string(), "AWS-LC 1.6.0");
+  ASSERT_STREQ(awslc_version_string(), "AWS-LC 1.7.0");
 }
 #endif // AWSLC_FIPS

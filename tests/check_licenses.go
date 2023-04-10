@@ -20,7 +20,7 @@ func main() {
 		"|Intel" +
 		"|Marc Bevand" +
 		"|OpenSSL license|OpenSSL Project)")
-	filematcher, _ := regexp.Compile("(Dockerfile|\\.(ASM|c|cc|cmake|h|sh|go|pl|ps1|yml|s|S))$")
+	filematcher, _ := regexp.Compile("(Dockerfile|\\.(ASM|c|cc|h|sh|go|pl|ps1|yml|s|S))$")
 
 	var files []string
 	var unlicensed_files []string
