@@ -28,7 +28,7 @@ popd
 SCRATCH_FOLDER="${ROOT}/SCRATCH_AWSLC_OPENSSH_INTERN_TEST"
 AWS_LC_BUILD_FOLDER="${SCRATCH_FOLDER}/aws-lc-build"
 AWS_LC_INSTALL_FOLDER="${SCRATCH_FOLDER}/aws-lc-install"
-OPENSSH_REPO_FOLDER="${SCRATCH_FOLDER}/openssh-portable"
+OPENSSH_WORKSPACE_FOLDER="${SCRATCH_FOLDER}/openssh-portable"
 OPENSSH_INSTALL_FOLDER="${SCRATCH_FOLDER}/openssh-install"
 
 NINJA_COMMAND=ninja
@@ -51,7 +51,7 @@ function aws_lc_build() {
 }
 
 function openssh_build() {
-  pushd "${OPENSSH_REPO_FOLDER}"
+  pushd "${OPENSSH_WORKSPACE_FOLDER}"
   autoreconf
   export LD_LIBRARY_PATH
   LD_LIBRARY_PATH=$(readlink -f "${AWS_LC_INSTALL_FOLDER}"/lib*)
@@ -62,8 +62,16 @@ function openssh_build() {
 	popd
 }
 
+function checkout_openssh_branch() {
+  pushd "${OPENSSH_WORKSPACE_FOLDER}"
+  make clean
+  git clean -f -d
+  git checkout --track origin/"$1"
+  popd
+}
+
 function openssh_run_tests() {
-  pushd "${OPENSSH_REPO_FOLDER}"
+  pushd "${OPENSSH_WORKSPACE_FOLDER}"
 	export TEST_SSH_UNSAFE_PERMISSIONS=1
 	export SKIP_LTESTS="agent multiplex agent-restrict"
 	make tests
@@ -79,7 +87,12 @@ ls
 # Buld AWS-LC as a shared library
 aws_lc_build -DBUILD_SHARED_LIBS=1
 
-# Build openssh and run tests.
+# Using default branch. Build openssh and run tests.
+openssh_build
+openssh_run_tests
+
+# Using branch V_8_9
+checkout_openssh_branch V_8_9
 openssh_build
 openssh_run_tests
 
