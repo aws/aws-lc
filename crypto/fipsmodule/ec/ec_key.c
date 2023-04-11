@@ -540,10 +540,10 @@ int EC_KEY_generate_key_fips(EC_KEY *eckey) {
   eckey->priv_key = NULL;
 
 #if defined(AWSLC_FIPS)
-  BORINGSSL_FIPS_abort();
-#else
-  return 0;
+  return AWS_LC_FIPS_error("EC_KEY_generate_key_fips failed", ERR_R_FIPS_TEST_FAILURE);
 #endif
+
+  return 0;
 }
 
 int EC_KEY_get_ex_new_index(long argl, void *argp, CRYPTO_EX_unused *unused,

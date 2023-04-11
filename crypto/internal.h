@@ -950,9 +950,9 @@ static inline uint64_t CRYPTO_rotr_u64(uint64_t value, int shift) {
 // fails. It prevents any further cryptographic operations by the current
 // process.
 #if defined(_MSC_VER)
-__declspec(noreturn) void BORINGSSL_FIPS_abort(void);
+int BORINGSSL_FIPS_abort(const char* message, const int error_code);
 #else
-void BORINGSSL_FIPS_abort(void) __attribute__((noreturn));
+int AWS_LC_FIPS_error(const char* message, const int error_code);
 #endif
 
 // boringssl_self_test_startup runs all startup self tests and returns one on
@@ -1027,6 +1027,16 @@ extern uint8_t BORINGSSL_function_hit[8];
 #if !defined(AWSLC_FIPS) && !defined(BORINGSSL_SHARED_LIBRARY)
 // This function is defined in |bcm.c|, see the comment therein for explanation.
 void dummy_func_for_constructor(void);
+#endif
+
+// Windows doesn't really support weak symbols as of May 2019, and Clang on
+// Windows will emit strong symbols instead. See
+// https://bugs.llvm.org/show_bug.cgi?id=37598
+#if defined(__ELF__) && defined(__GNUC__)
+#define WEAK_SYMBOL_FUNC(rettype, name, args) \
+  rettype name args __attribute__((weak));
+#else
+#define WEAK_SYMBOL_FUNC(rettype, name, args) static rettype(*name) args = NULL;
 #endif
 
 #if defined(__cplusplus)
