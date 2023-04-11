@@ -56,7 +56,7 @@ function openssh_build() {
   export LD_LIBRARY_PATH
   LD_LIBRARY_PATH=$(readlink -f "${AWS_LC_INSTALL_FOLDER}"/lib*)
   export CFLAGS="-DAWS_LC_INTERNAL_IGNORE_BN_SET_FLAGS=1 -DHAVE_RSA_METH_FREE=1 -DHAVE_RSA_METH_DUP=1 -DHAVE_RSA_METH_SET1_NAME=1 -DHAVE_RSA_METH_SET_PRIV_ENC=1 -DHAVE_RSA_METH_SET_PRIV_DEC=1"
-  ./configure --with-ssl-dir="${AWS_LC_INSTALL_FOLDER}" --prefix="${OPENSSH_INSTALL_FOLDER}" --disable-pkcs11
+  ./configure --with-ssl-dir="${AWS_LC_INSTALL_FOLDER}" --prefix="${OPENSSH_INSTALL_FOLDER}" --disable-pkcs11 --with-zlib=no
   make install
   ls -R "${OPENSSH_INSTALL_FOLDER}"
   popd
