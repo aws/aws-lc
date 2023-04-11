@@ -5,9 +5,7 @@
 source tests/ci/common_posix_setup.sh
 
 # BORINGSSL_FIPS_BREAK_TESTS allows the BCM integrity hash check to fail without calling AWS_LC_FIPS_error
-#run_build -DFIPS=1 -DCMAKE_C_FLAGS="-DBORINGSSL_FIPS_BREAK_TESTS"
-cd "$BUILD_ROOT"
-ninja
+run_build -DFIPS=1 -DCMAKE_C_FLAGS="-DBORINGSSL_FIPS_BREAK_TESTS"
 
 cd "$SRC_ROOT"
 "${SRC_ROOT}/util/fipstools/test-break-kat.sh"
