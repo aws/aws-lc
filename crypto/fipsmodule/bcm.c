@@ -349,7 +349,7 @@ WEAK_SYMBOL_FUNC(void, AWS_LC_fips_failure_callback, (const char* error))
 
 int AWS_LC_FIPS_error(const char* message, const int error_code) {
   if (AWS_LC_fips_failure_callback == NULL) {
-    fprintf(stderr, "%s.\n", message);
+    fprintf(stderr, "%s\n", message);
     for (;;) {
       abort();
       exit(1);
