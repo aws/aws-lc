@@ -55,6 +55,12 @@ class ImplDispatchTest : public ::testing::Test {
 #else
         false;
 #endif // MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX
+    is_assembler_too_old_avx512 =
+#if defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX512)
+        true;
+#else
+        false;
+#endif // MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX512
 #endif  // X86 || X86_64
   }
 
@@ -90,6 +96,7 @@ class ImplDispatchTest : public ::testing::Test {
   bool sha_ext_ = false;
   bool is_x86_64_ = false;
   bool is_assembler_too_old = false;
+  bool is_assembler_too_old_avx512 = false;
 #endif
 };
 
@@ -119,6 +126,7 @@ TEST_F(ImplDispatchTest, AEAD_AES_GCM) {
           {kFlag_vpaes_set_encrypt_key, ssse3_ && !aesni_},
           {kFlag_aes_gcm_encrypt_avx512,
            is_x86_64_ && aesni_ && !is_assembler_too_old &&
+           !is_assembler_too_old_avx512 &&
            vaes_vpclmulqdq_},
       },
       [] {

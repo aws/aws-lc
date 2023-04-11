@@ -224,6 +224,14 @@ if(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
   message(STATUS "MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX selected, removing AVX optimisations")
 endif()
 
+# Some assemblers know about AVX but not AVX512 instructions, e.g. gcc 4.8.2.
+# This flag can be set to handle such cases.
+option(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX512 "Exclude AVX512 code from the build" OFF)
+if(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX512)
+  add_definitions(-DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX512)
+  message(STATUS "MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX512 selected, removing AVX512 optimisations")
+endif()
+
 # Detect if memcmp is wrongly stripped like strcmp.
 # If exists, let CMake generate a warning.
 # memcmp bug link https://gcc.gnu.org/bugzilla/show_bug.cgi?id=95189.
