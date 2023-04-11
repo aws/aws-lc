@@ -44,6 +44,7 @@ pushd "${SCRATCH_FOLDER}"
 # Test helper functions.
 
 function aws_lc_build() {
+  export GOPROXY=direct
   ${CMAKE_COMMAND} "${AWS_LC_DIR}" -GNinja "-B${AWS_LC_BUILD_FOLDER}" "-DCMAKE_INSTALL_PREFIX=${AWS_LC_INSTALL_FOLDER}" "$@"
   ${NINJA_COMMAND} -C "${AWS_LC_BUILD_FOLDER}" install
   ls -R "${AWS_LC_INSTALL_FOLDER}"
@@ -56,7 +57,7 @@ function openssh_build() {
   export LD_LIBRARY_PATH
   LD_LIBRARY_PATH=$(readlink -f "${AWS_LC_INSTALL_FOLDER}"/lib*)
   export CFLAGS="-DAWS_LC_INTERNAL_IGNORE_BN_SET_FLAGS=1 -DHAVE_RSA_METH_FREE=1 -DHAVE_RSA_METH_DUP=1 -DHAVE_RSA_METH_SET1_NAME=1 -DHAVE_RSA_METH_SET_PRIV_ENC=1 -DHAVE_RSA_METH_SET_PRIV_DEC=1"
-  ./configure --with-ssl-dir="${AWS_LC_INSTALL_FOLDER}" --prefix="${OPENSSH_INSTALL_FOLDER}" --disable-pkcs11 --with-zlib=no
+  ./configure --with-ssl-dir="${AWS_LC_INSTALL_FOLDER}" --prefix="${OPENSSH_INSTALL_FOLDER}" --disable-pkcs11
   make install
   ls -R "${OPENSSH_INSTALL_FOLDER}"
   popd
@@ -72,6 +73,9 @@ function checkout_openssh_branch() {
 
 function openssh_run_tests() {
   pushd "${OPENSSH_WORKSPACE_FOLDER}"
+  if ! id -u sshd; then
+    useradd sshd
+  fi
   export TEST_SSH_UNSAFE_PERMISSIONS=1
   export SKIP_LTESTS="agent multiplex agent-restrict"
   make tests
