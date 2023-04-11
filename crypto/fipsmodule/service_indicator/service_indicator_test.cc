@@ -2011,14 +2011,16 @@ TEST_P(RSAServiceIndicatorTest, RSASigGen) {
   EXPECT_EQ(approved, test.sig_gen_expect_approved);
 
   if (test.use_pss) {
-    // Odd configurations of PSS, for example where the salt length is not equal
-    // to the hash length, are not approved.
+    // Odd configurations of PSS, for example where the salt length larger than
+    // the hash length, are not approved.
     md_ctx.Reset();
     ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), &pctx, test.func(), nullptr,
                                    pkey.get()));
     ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_PKCS1_PSS_PADDING));
-    ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_pss_saltlen(pctx, 10));
-    CALL_SERVICE_AND_CHECK_APPROVED(approved,
+    ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_pss_saltlen(
+        pctx, (int)EVP_MD_CTX_size(md_ctx.get()) + 1));
+    CALL_SERVICE_AND_CHECK_APPROVED(
+        approved,
         ASSERT_TRUE(EVP_DigestSign(md_ctx.get(), oneshot_output.data(),
                                    &sig_len, kPlaintext, sizeof(kPlaintext))));
     EXPECT_EQ(approved, AWSLC_NOT_APPROVED);

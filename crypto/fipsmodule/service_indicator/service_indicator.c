@@ -225,22 +225,33 @@ static void evp_md_ctx_verify_service_indicator(const EVP_MD_CTX *ctx,
     if (!EVP_PKEY_CTX_get_rsa_padding(pctx, &padding)) {
       goto err;
     }
-    if (padding == RSA_PKCS1_PSS_PADDING) {
-      int salt_len;
-      const EVP_MD *mgf1_md;
-      if (!EVP_PKEY_CTX_get_rsa_pss_saltlen(pctx, &salt_len) ||
-          !EVP_PKEY_CTX_get_rsa_mgf1_md(pctx, &mgf1_md) ||
-          (salt_len != -1 && salt_len != (int)EVP_MD_size(pctx_md)) ||
-          EVP_MD_type(mgf1_md) != md_type) {
-        // Only PSS where saltLen == hashLen is tested with ACVP. Cases with
-        // non-standard padding functions are also excluded.
-        goto err;
-      }
-    }
-
     // The approved RSA key sizes for signing are 2048, 3072 and 4096 bits.
     // Note: |EVP_PKEY_size| returns the size in bytes.
     size_t pkey_size = EVP_PKEY_size(ctx->pctx->pkey);
+
+    if (padding == RSA_PKCS1_PSS_PADDING) {
+      int salt_len;
+      int hash_len = (int)EVP_MD_size(pctx_md);
+      const EVP_MD *mgf1_md;
+      if (!EVP_PKEY_CTX_get_rsa_pss_saltlen(pctx, &salt_len) ||
+          !EVP_PKEY_CTX_get_rsa_mgf1_md(pctx, &mgf1_md) ||
+          EVP_MD_type(mgf1_md) != md_type) {
+        goto err;
+      }
+      // RSA_PSS_SALTLEN_DIGEST (-1) has the special meaning of "sLen ==
+      // hLen", other values need additional checks.
+      // FIPS 186-4, Section 5.5, requires that if the RSA key size is 1024
+      // bits (128 bytes) and the hash function output block is 512 bits
+      // (64 bytes), then the length of the salt shall be "0 <= sLen <=
+      // hLen-2". Otherwise it requires that the salt length used in PSS
+      // satisfies "0 <= sLen <= hLen".
+      if (salt_len != RSA_PSS_SALTLEN_DIGEST &&
+          ((pkey_size == 128 && hash_len == 64 &&
+            (salt_len > hash_len - 2 || salt_len < 0)) ||
+           (salt_len > hash_len || salt_len < 0))) {
+        goto err;
+      }
+    }
 
     // Check if the MD type and the RSA key size are approved.
     if (md_ok(md_type) &&
