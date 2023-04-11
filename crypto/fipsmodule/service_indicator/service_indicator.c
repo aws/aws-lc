@@ -20,8 +20,8 @@ int is_fips_build(void) {
 #if defined(AWSLC_FIPS)
 
 #define STATE_UNLOCKED 0
-#define TLS_MD_MASTER_SECRET_CONST "master secret"
-#define TLS_MD_MASTER_SECRET_CONST_SIZE 13
+#define TLS_MD_EXTENDED_MASTER_SECRET_CONST "extended master secret"
+#define TLS_MD_EXTENDED_MASTER_SECRET_CONST_SIZE 22
 
 // fips_service_indicator_state is a thread-local structure that stores the
 // state of the FIPS service indicator.
@@ -455,16 +455,16 @@ void TLSKDF_verify_service_indicator(const EVP_MD *dgst, const char *label,
   }
   // HMAC-SHA{256, 384, 512} are approved for use in the KDF in TLS 1.2.
   // These Key Derivation functions are to be used in the context of the TLS
-  // protocol. The label "master secret" is not allowed because it implies
-  // that the PRF is being used within a TLS 1.0/1.1 context. We do the check
-  // this way since the PRF can be used for other purposes.
+  // protocol. Only the label "extended master secret" is allowed because
+  // it implies that the PRF is being used within a TLS 1.2 context.
   switch (dgst->type) {
     case NID_sha256:
     case NID_sha384:
     case NID_sha512:
-      if (!(label_len >= TLS_MD_MASTER_SECRET_CONST_SIZE && memcmp(label,
-           TLS_MD_MASTER_SECRET_CONST, TLS_MD_MASTER_SECRET_CONST_SIZE) == 0)) {
-        FIPS_service_indicator_update_state();
+      if (label_len >= TLS_MD_EXTENDED_MASTER_SECRET_CONST_SIZE &&
+          memcmp(label, TLS_MD_EXTENDED_MASTER_SECRET_CONST,
+                 TLS_MD_EXTENDED_MASTER_SECRET_CONST_SIZE) == 0) {
+          FIPS_service_indicator_update_state();
       }
       break;
     default:
