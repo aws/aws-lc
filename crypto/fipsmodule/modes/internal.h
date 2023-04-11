@@ -280,24 +280,22 @@ void gcm_gmult_ssse3(uint64_t Xi[2], const u128 Htable[16]);
 void gcm_ghash_ssse3(uint64_t Xi[2], const u128 Htable[16], const uint8_t *in,
                      size_t len);
 
-#if defined(OPENSSL_X86_64) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX) \
-  && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+#if defined(OPENSSL_X86_64) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
 #define GHASH_ASM_X86_64
 void gcm_init_avx(u128 Htable[16], const uint64_t Xi[2]);
 void gcm_gmult_avx(uint64_t Xi[2], const u128 Htable[16]);
 void gcm_ghash_avx(uint64_t Xi[2], const u128 Htable[16], const uint8_t *in,
                    size_t len);
-void gcm_init_avx512(u128 Htable[16], const uint64_t Xi[2]);
-void gcm_gmult_avx512(uint64_t Xi[2], const u128 Htable[16]);
-void gcm_ghash_avx512(uint64_t Xi[2], const u128 Htable[16], const uint8_t *in,
-                      size_t len);
-
-
 #define HW_GCM
 size_t aesni_gcm_encrypt(const uint8_t *in, uint8_t *out, size_t len,
                          const AES_KEY *key, uint8_t ivec[16], uint64_t *Xi);
 size_t aesni_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
                          const AES_KEY *key, uint8_t ivec[16], uint64_t *Xi);
+#if !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX512)
+void gcm_init_avx512(u128 Htable[16], const uint64_t Xi[2]);
+void gcm_gmult_avx512(uint64_t Xi[2], const u128 Htable[16]);
+void gcm_ghash_avx512(uint64_t Xi[2], const u128 Htable[16], const uint8_t *in,
+                      size_t len);
 void gcm_setiv_avx512(const AES_KEY *key, const GCM128_CONTEXT *ctx,
                       const uint8_t *iv, size_t ivlen);
 void aes_gcm_encrypt_avx512(const AES_KEY *key, const GCM128_CONTEXT *ctx,
@@ -306,7 +304,8 @@ void aes_gcm_encrypt_avx512(const AES_KEY *key, const GCM128_CONTEXT *ctx,
 void aes_gcm_decrypt_avx512(const AES_KEY *key, const GCM128_CONTEXT *ctx,
                             unsigned *pblocklen, const uint8_t *in, size_t len,
                             uint8_t *out);
-#endif  // OPENSSL_X86_64
+#endif  // !MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX512
+#endif  // OPENSSL_X86_64 && !MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX
 
 #if defined(OPENSSL_X86)
 #define GHASH_ASM_X86

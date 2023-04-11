@@ -221,6 +221,7 @@ endmacro()
 option(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX "Exclude AVX code from the build" OFF)
 if(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
   add_definitions(-DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+  add_definitions(-DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX512)
   message(STATUS "MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX selected, removing AVX optimisations")
 endif()
 
