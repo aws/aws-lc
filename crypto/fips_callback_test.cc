@@ -74,7 +74,7 @@ TEST(FIPSCallback, PowerOnTests) {
   char* broken_kat = getenv("FIPS_CALLBACK_TEST_POWER_ON_TEST_FAILURE");
   if (broken_kat != nullptr) {
     struct test_config config;
-    if(find(intergity_tests.begin(), intergity_tests.end(), broken_kat) != intergity_tests.end()) {
+    if(find(integrity_tests.begin(), integrity_tests.end(), broken_kat) != integrity_tests.end()) {
       config = integrity_test_config;
     } else if (find(lazy_tests.begin(), lazy_tests.end(), broken_kat) != lazy_tests.end()) {
       config = lazy_test_config;
