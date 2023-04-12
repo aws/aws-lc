@@ -196,7 +196,8 @@ OPENSSL_INLINE int CRYPTO_is_ARMv8_GCM_8x_capable(void) {
   return 0;
 #else
   return ((OPENSSL_armcap_P & ARMV8_SHA3) != 0 &&
-    (OPENSSL_armcap_P & ARMV8_WIDE_AES_PMULL_PIPELINE) != 0);
+          ((OPENSSL_armcap_P & ARMV8_NEOVERSE_V1) != 0 ||
+           (OPENSSL_armcap_P & ARMV8_APPLE_M1) != 0));
 }
 #endif
 

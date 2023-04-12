@@ -95,7 +95,7 @@ void OPENSSL_cpuid_setup(void) {
   }
 
   if (is_brand("Apple M1")) {
-    OPENSSL_armcap_P |= ARMV8_WIDE_AES_PMULL_PIPELINE;
+    OPENSSL_armcap_P |= ARMV8_APPLE_M1;
   }
 
   OPENSSL_cpucap_initialized = 1;

@@ -81,9 +81,11 @@
 // ARMV8_SHA3 indicates support for hardware SHA-3 instructions including EOR3.
 #define ARMV8_SHA3  (1 << 11)
 
-// ARMV8_WIDE_AES_PMULL_PIPELINE indicates that the microarchitecture
-// supports a high unrolling factor of AES-GCM due to a wide AES/PMULL pipeline.
-#define ARMV8_WIDE_AES_PMULL_PIPELINE (1 << 12)
+// The Neoverse V1 and Apple M1 micro-architectures are detected to enable
+// high unrolling factor of AES-GCM and other algorithms that leverage a
+// wide crypto pipeline and fast multiplier.
+#define ARMV8_NEOVERSE_V1 (1 << 12)
+#define ARMV8_APPLE_M1 (1 << 13)
 
 //
 // MIDR_EL1 system register
