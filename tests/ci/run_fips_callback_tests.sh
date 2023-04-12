@@ -13,7 +13,7 @@ cd "$SRC_ROOT"
 original_test="${BUILD_ROOT}/crypto/fips_callback_test"
 broken_test="${BUILD_ROOT}/crypto/fips_callback_test_broken"
 
-# Be default the integrity test should startup
+# By default, the integrity test should start up.
 module_status=$("${BUILD_ROOT}/tool/bssl" isfips)
 [[ "1" == "${module_status}" ]] || { echo >&2 "FIPS Mode validation failed for default build."; exit 1; }
 # Don't define FIPS_CALLBACK_TEST_POWER_ON_TEST_FAILURE because this is a working module even with the callback installed
