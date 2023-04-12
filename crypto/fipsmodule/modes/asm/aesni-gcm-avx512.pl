@@ -48,7 +48,8 @@ $win64 = 0;
 $win64 = 1 if ($flavour =~ /[nm]asm|mingw64/ || $output =~ /\.asm$/);
 
 $avx512vaes = 1;
-for (@ARGV) { $avx512vaes = 0 if (/-DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX/); }
+for (@ARGV) { $avx512vaes = 0 if
+   (/-DMY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX/); }
 
 # TODO(awslc, CryptoAlg-1701): fix the script to generate assembly that
 # can be handled by MSVC2015 linker. Currently, the linker chokes on
