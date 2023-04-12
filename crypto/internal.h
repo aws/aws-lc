@@ -949,7 +949,7 @@ static inline uint64_t CRYPTO_rotr_u64(uint64_t value, int shift) {
 // AWS_LC_FIPS_error is called when a FIPS power-on or continuous test
 // fails. It calls |AWS_LC_fips_failure_callback| if the weak symbol is defined
 // in your application and then returns 0. If |AWS_LC_fips_failure_callback|
-// is not defined It prevents any further cryptographic operations by the
+// is not defined, it prevents any further cryptographic operations by the
 // current process.
 int AWS_LC_FIPS_error(const char* message, const int error_code);
 
