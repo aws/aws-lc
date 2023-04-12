@@ -125,7 +125,7 @@ TEST_F(ImplDispatchTest, AEAD_AES_GCM) {
           {kFlag_vpaes_encrypt, ssse3_ && !aesni_},
           {kFlag_vpaes_set_encrypt_key, ssse3_ && !aesni_},
           {kFlag_aes_gcm_encrypt_avx512,
-           is_x86_64_ && aesni_ && !is_assembler_too_old &&
+           is_x86_64_ && aesni_ &&
            !is_assembler_too_old_avx512 &&
            vaes_vpclmulqdq_},
       },
