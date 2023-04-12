@@ -31,9 +31,9 @@ func main() {
 		panic("Executable did not fail as expected")
 	}
 	lines := strings.Split(string(out), "\r\n")
-	if len(lines) != 4 {
+	if len(lines) != 5 {
 		fmt.Fprintf(os.Stderr, string(out))
-		panic(fmt.Sprintf("Expected 4 lines in output but got %d", len(lines)))
+		panic(fmt.Sprintf("Expected 5 lines in output but got %d", len(lines)))
 	}
 
 	if lines[0] != line0 {

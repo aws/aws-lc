@@ -318,7 +318,8 @@ static void rand_get_seed(struct rand_thread_state *state,
   // rate of failure is small enough not to be a problem in practice.
   if (CRYPTO_memcmp(state->last_block, entropy, CRNGT_BLOCK_SIZE) == 0) {
     fprintf(stderr, "CRNGT failed.\n");
-    BORINGSSL_FIPS_abort();
+    // TODO return the result from AWS_LC_FIPS_error and update rand_get_seed to return an int
+    AWS_LC_FIPS_error("CRNGT failed.", ERR_R_FIPS_TEST_FAILURE);
   }
 
   OPENSSL_STATIC_ASSERT(sizeof(entropy) % CRNGT_BLOCK_SIZE == 0, _)
@@ -326,8 +327,8 @@ static void rand_get_seed(struct rand_thread_state *state,
        i += CRNGT_BLOCK_SIZE) {
     if (CRYPTO_memcmp(entropy + i - CRNGT_BLOCK_SIZE, entropy + i,
                       CRNGT_BLOCK_SIZE) == 0) {
-      fprintf(stderr, "CRNGT failed.\n");
-      BORINGSSL_FIPS_abort();
+      // TODO return the result from AWS_LC_FIPS_error and update rand_get_seed to return an int
+      AWS_LC_FIPS_error("CRNGT failed.", ERR_R_FIPS_TEST_FAILURE);
     }
   }
   OPENSSL_memcpy(state->last_block,
