@@ -634,7 +634,7 @@ S2N_BN_SYMBOL(curve25519_x25519_byte_alt):
 
         mov     i, #253
 
-scalarloop:
+curve25519_x25519_byte_alt_scalarloop:
 
 // sm = xm + zm; sn = xn + zn; dm = xm - zm; dn = xn - zn
 
@@ -706,7 +706,7 @@ scalarloop:
 
         sub     i, i, #1
         cmp     i, #3
-        bcs     scalarloop
+        bcs     curve25519_x25519_byte_alt_scalarloop
 
 // Multiplex directly into (xn,zn) then do three pure doubling steps;
 // this accounts for the implicit zeroing of the three lowest bits
@@ -776,7 +776,7 @@ scalarloop:
         add     x21, x4, x10
         add     x22, x21, x10
         mov     x10, xzr
-copyloop:
+curve25519_x25519_byte_alt_copyloop:
         ldr     x11, [x2, x10, lsl #3]
         ldr     x12, [x3, x10, lsl #3]
         str     x11, [x21, x10, lsl #3]
@@ -785,7 +785,7 @@ copyloop:
         str     xzr, [x1, x10, lsl #3]
         add     x10, x10, #0x1
         cmp     x10, x0
-        b.cc    copyloop
+        b.cc    curve25519_x25519_byte_alt_copyloop
         ldr     x11, [x4]
         sub     x12, x11, #0x1
         str     x12, [x4]
@@ -802,7 +802,7 @@ copyloop:
         madd    x20, x12, x20, x20
         madd    x20, x11, x20, x20
         lsl     x2, x0, #7
-outerloop:
+curve25519_x25519_byte_alt_outerloop:
         add     x10, x2, #0x3f
         lsr     x5, x10, #6
         cmp     x5, x0
@@ -813,7 +813,7 @@ outerloop:
         mov     x16, xzr
         mov     x19, xzr
         mov     x10, xzr
-toploop:
+curve25519_x25519_byte_alt_toploop:
         ldr     x11, [x21, x10, lsl #3]
         ldr     x12, [x22, x10, lsl #3]
         orr     x17, x11, x12
@@ -827,7 +827,7 @@ toploop:
         csetm   x19, ne
         add     x10, x10, #0x1
         cmp     x10, x5
-        b.cc    toploop
+        b.cc    curve25519_x25519_byte_alt_toploop
         orr     x11, x13, x14
         clz     x12, x11
         negs    x17, x12
@@ -847,7 +847,7 @@ toploop:
         mov     x9, #0x1
         mov     x10, #0x3a
         tst     x15, #0x1
-innerloop:
+curve25519_x25519_byte_alt_innerloop:
         csel    x11, x14, xzr, ne
         csel    x12, x16, xzr, ne
         csel    x17, x8, xzr, ne
@@ -869,13 +869,13 @@ innerloop:
         add     x8, x8, x8
         add     x9, x9, x9
         sub     x10, x10, #0x1
-        cbnz    x10, innerloop
+        cbnz    x10, curve25519_x25519_byte_alt_innerloop
         mov     x13, xzr
         mov     x14, xzr
         mov     x17, xzr
         mov     x19, xzr
         mov     x10, xzr
-congloop:
+curve25519_x25519_byte_alt_congloop:
         ldr     x11, [x4, x10, lsl #3]
         ldr     x12, [x1, x10, lsl #3]
         mul     x15, x6, x11
@@ -902,7 +902,7 @@ congloop:
         adc     x14, x14, x15
         add     x10, x10, #0x1
         cmp     x10, x0
-        b.cc    congloop
+        b.cc    curve25519_x25519_byte_alt_congloop
         extr    x13, x13, x17, #58
         extr    x14, x14, x19, #58
         ldr     x11, [x4]
@@ -913,8 +913,8 @@ congloop:
         adds    x11, x11, x15
         mov     x10, #0x1
         sub     x11, x0, #0x1
-        cbz     x11, wmontend
-wmontloop:
+        cbz     x11, curve25519_x25519_byte_alt_wmontend
+curve25519_x25519_byte_alt_wmontloop:
         ldr     x11, [x3, x10, lsl #3]
         ldr     x12, [x4, x10, lsl #3]
         mul     x15, x17, x11
@@ -926,24 +926,24 @@ wmontloop:
         str     x12, [x4, x15, lsl #3]
         add     x10, x10, #0x1
         sub     x11, x10, x0
-        cbnz    x11, wmontloop
-wmontend:
+        cbnz    x11, curve25519_x25519_byte_alt_wmontloop
+curve25519_x25519_byte_alt_wmontend:
         adcs    x16, x16, x13
         adc     x13, xzr, xzr
         sub     x15, x10, #0x1
         str     x16, [x4, x15, lsl #3]
         negs    x10, xzr
-wcmploop:
+curve25519_x25519_byte_alt_wcmploop:
         ldr     x11, [x4, x10, lsl #3]
         ldr     x12, [x3, x10, lsl #3]
         sbcs    xzr, x11, x12
         add     x10, x10, #0x1
         sub     x11, x10, x0
-        cbnz    x11, wcmploop
+        cbnz    x11, curve25519_x25519_byte_alt_wcmploop
         sbcs    xzr, x13, xzr
         csetm   x13, cs
         negs    x10, xzr
-wcorrloop:
+curve25519_x25519_byte_alt_wcorrloop:
         ldr     x11, [x4, x10, lsl #3]
         ldr     x12, [x3, x10, lsl #3]
         and     x12, x12, x13
@@ -951,7 +951,7 @@ wcorrloop:
         str     x11, [x4, x10, lsl #3]
         add     x10, x10, #0x1
         sub     x11, x10, x0
-        cbnz    x11, wcorrloop
+        cbnz    x11, curve25519_x25519_byte_alt_wcorrloop
         ldr     x11, [x1]
         mul     x17, x11, x20
         ldr     x12, [x3]
@@ -960,8 +960,8 @@ wcorrloop:
         adds    x11, x11, x15
         mov     x10, #0x1
         sub     x11, x0, #0x1
-        cbz     x11, zmontend
-zmontloop:
+        cbz     x11, curve25519_x25519_byte_alt_zmontend
+curve25519_x25519_byte_alt_zmontloop:
         ldr     x11, [x3, x10, lsl #3]
         ldr     x12, [x1, x10, lsl #3]
         mul     x15, x17, x11
@@ -973,24 +973,24 @@ zmontloop:
         str     x12, [x1, x15, lsl #3]
         add     x10, x10, #0x1
         sub     x11, x10, x0
-        cbnz    x11, zmontloop
-zmontend:
+        cbnz    x11, curve25519_x25519_byte_alt_zmontloop
+curve25519_x25519_byte_alt_zmontend:
         adcs    x16, x16, x14
         adc     x14, xzr, xzr
         sub     x15, x10, #0x1
         str     x16, [x1, x15, lsl #3]
         negs    x10, xzr
-zcmploop:
+curve25519_x25519_byte_alt_zcmploop:
         ldr     x11, [x1, x10, lsl #3]
         ldr     x12, [x3, x10, lsl #3]
         sbcs    xzr, x11, x12
         add     x10, x10, #0x1
         sub     x11, x10, x0
-        cbnz    x11, zcmploop
+        cbnz    x11, curve25519_x25519_byte_alt_zcmploop
         sbcs    xzr, x14, xzr
         csetm   x14, cs
         negs    x10, xzr
-zcorrloop:
+curve25519_x25519_byte_alt_zcorrloop:
         ldr     x11, [x1, x10, lsl #3]
         ldr     x12, [x3, x10, lsl #3]
         and     x12, x12, x14
@@ -998,13 +998,13 @@ zcorrloop:
         str     x11, [x1, x10, lsl #3]
         add     x10, x10, #0x1
         sub     x11, x10, x0
-        cbnz    x11, zcorrloop
+        cbnz    x11, curve25519_x25519_byte_alt_zcorrloop
         mov     x13, xzr
         mov     x14, xzr
         mov     x17, xzr
         mov     x19, xzr
         mov     x10, xzr
-crossloop:
+curve25519_x25519_byte_alt_crossloop:
         ldr     x11, [x21, x10, lsl #3]
         ldr     x12, [x22, x10, lsl #3]
         mul     x15, x6, x11
@@ -1031,13 +1031,13 @@ crossloop:
         csetm   x19, cc
         add     x10, x10, #0x1
         cmp     x10, x5
-        b.cc    crossloop
+        b.cc    curve25519_x25519_byte_alt_crossloop
         cmn     x17, x17
         ldr     x15, [x21]
         mov     x10, xzr
         sub     x6, x5, #0x1
-        cbz     x6, negskip1
-negloop1:
+        cbz     x6, curve25519_x25519_byte_alt_negskip1
+curve25519_x25519_byte_alt_negloop1:
         add     x11, x10, #0x8
         ldr     x12, [x21, x11]
         extr    x15, x12, x15, #58
@@ -1047,8 +1047,8 @@ negloop1:
         mov     x15, x12
         add     x10, x10, #0x8
         sub     x6, x6, #0x1
-        cbnz    x6, negloop1
-negskip1:
+        cbnz    x6, curve25519_x25519_byte_alt_negloop1
+curve25519_x25519_byte_alt_negskip1:
         extr    x15, x13, x15, #58
         eor     x15, x15, x17
         adcs    x15, x15, xzr
@@ -1057,8 +1057,8 @@ negskip1:
         ldr     x15, [x22]
         mov     x10, xzr
         sub     x6, x5, #0x1
-        cbz     x6, negskip2
-negloop2:
+        cbz     x6, curve25519_x25519_byte_alt_negskip2
+curve25519_x25519_byte_alt_negloop2:
         add     x11, x10, #0x8
         ldr     x12, [x22, x11]
         extr    x15, x12, x15, #58
@@ -1068,15 +1068,15 @@ negloop2:
         mov     x15, x12
         add     x10, x10, #0x8
         sub     x6, x6, #0x1
-        cbnz    x6, negloop2
-negskip2:
+        cbnz    x6, curve25519_x25519_byte_alt_negloop2
+curve25519_x25519_byte_alt_negskip2:
         extr    x15, x14, x15, #58
         eor     x15, x15, x19
         adcs    x15, x15, xzr
         str     x15, [x22, x10]
         mov     x10, xzr
         cmn     x17, x17
-wfliploop:
+curve25519_x25519_byte_alt_wfliploop:
         ldr     x11, [x3, x10, lsl #3]
         ldr     x12, [x4, x10, lsl #3]
         and     x11, x11, x17
@@ -1085,11 +1085,11 @@ wfliploop:
         str     x11, [x4, x10, lsl #3]
         add     x10, x10, #0x1
         sub     x11, x10, x0
-        cbnz    x11, wfliploop
+        cbnz    x11, curve25519_x25519_byte_alt_wfliploop
         mvn     x19, x19
         mov     x10, xzr
         cmn     x19, x19
-zfliploop:
+curve25519_x25519_byte_alt_zfliploop:
         ldr     x11, [x3, x10, lsl #3]
         ldr     x12, [x1, x10, lsl #3]
         and     x11, x11, x19
@@ -1098,9 +1098,9 @@ zfliploop:
         str     x11, [x1, x10, lsl #3]
         add     x10, x10, #0x1
         sub     x11, x10, x0
-        cbnz    x11, zfliploop
+        cbnz    x11, curve25519_x25519_byte_alt_zfliploop
         subs    x2, x2, #0x3a
-        b.hi    outerloop
+        b.hi    curve25519_x25519_byte_alt_outerloop
 
 // Since we eventually want to return 0 when the result is the point at
 // infinity, we force xn = 0 whenever zn = 0. This avoids building in a

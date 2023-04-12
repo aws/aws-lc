@@ -347,12 +347,12 @@ S2N_BN_SYMBOL(curve25519_x25519base_byte):
         push    rsi
         mov     rdi, rcx
         mov     rsi, rdx
-        call    curve25519_x25519base_standard
+        call    curve25519_x25519base_curve25519_x25519base_standard
         pop     rsi
         pop     rdi
         ret
 
-curve25519_x25519base_standard:
+curve25519_x25519base_curve25519_x25519base_standard:
 #endif
 
 // Save registers, make room for temps, preserve input arguments.
@@ -399,8 +399,8 @@ curve25519_x25519base_standard:
         mov     rax, [rsp]
         and     rax, 8
 
-        lea     r10, [rip+edwards25519_0g]
-        lea     r11, [rip+edwards25519_8g]
+        lea     r10, [rip+curve25519_x25519base_edwards25519_0g]
+        lea     r11, [rip+curve25519_x25519base_edwards25519_8g]
 
         mov     rax, [r10]
         mov     rcx, [r11]
@@ -484,13 +484,13 @@ curve25519_x25519base_standard:
 // l >= 9 case cannot arise on the last iteration.
 
         mov     i, 4
-        lea     rax, [rip+edwards25519_gtable]
+        lea     rax, [rip+curve25519_x25519base_edwards25519_gtable]
         mov     tab, rax
         mov     bias, 0
 
 // Start of the main loop, repeated 63 times for i = 4, 8, ..., 252
 
-scalarloop:
+curve25519_x25519base_scalarloop:
 
 // Look at the next 4-bit field "bf", adding the previous bias as well.
 // Choose the table index "ix" as bf when bf <= 8 and 16 - bf for bf >= 9,
@@ -847,7 +847,7 @@ scalarloop:
 
         add     i, 4
         cmp     i, 256
-        jc      scalarloop
+        jc      curve25519_x25519base_scalarloop
 
 // Now we need to translate from Edwards curve edwards25519 back
 // to the Montgomery form curve25519. The mapping in the affine
@@ -884,7 +884,7 @@ scalarloop:
         mov     rdi, 4
         lea     rsi, [rsp+128]
         lea     rdx, [rsp+192]
-        lea     rcx, [rip+p_25519]
+        lea     rcx, [rip+curve25519_x25519base_p_25519]
         lea     r8, [rsp+256]
 
 // Inline copy of bignum_modinv, identical except for stripping out the
@@ -902,7 +902,7 @@ scalarloop:
         lea     r15, [r10+8*rdi]
         xor     r11, r11
         xor     r9, r9
-copyloop:
+curve25519_x25519base_copyloop:
         mov     rax, [rdx+8*r9]
         mov     rbx, [rcx+8*r9]
         mov     [r10+8*r9], rax
@@ -911,7 +911,7 @@ copyloop:
         mov     [rsi+8*r9], r11
         inc     r9
         cmp     r9, rdi
-        jb      copyloop
+        jb      curve25519_x25519base_copyloop
         mov     rax, [r8]
         mov     rbx, rax
         dec     rbx
@@ -943,7 +943,7 @@ copyloop:
         mov     rax, rdi
         shl     rax, 0x7
         mov     [rsp+0x20], rax
-outerloop:
+curve25519_x25519base_outerloop:
         mov     r13, [rsp+0x20]
         add     r13, 0x3f
         shr     r13, 0x6
@@ -957,7 +957,7 @@ outerloop:
         mov     r8, [rsp+0x30]
         lea     r15, [r8+8*rdi]
         xor     r9, r9
-toploop:
+curve25519_x25519base_toploop:
         mov     rbx, [r8+8*r9]
         mov     rcx, [r15+8*r9]
         mov     r10, r11
@@ -973,7 +973,7 @@ toploop:
         sbb     r11, r11
         inc     r9
         cmp     r9, r13
-        jb      toploop
+        jb      curve25519_x25519base_toploop
         mov     rax, r12
         or      rax, rbp
         bsr     rcx, rax
@@ -993,7 +993,7 @@ toploop:
         mov     [rsp+0x10], r13
         mov     [rsp], r8
         mov     [rsp+0x18], r15
-innerloop:
+curve25519_x25519base_innerloop:
         xor     eax, eax
         xor     ebx, ebx
         xor     r8, r8
@@ -1023,7 +1023,7 @@ innerloop:
         add     rcx, rcx
         add     rdx, rdx
         dec     r9
-        jne     innerloop
+        jne     curve25519_x25519base_innerloop
         mov     rdi, [rsp+0x8]
         mov     r13, [rsp+0x10]
         mov     r8, [rsp]
@@ -1039,7 +1039,7 @@ innerloop:
         xor     r10, r10
         xor     r11, r11
         xor     r9, r9
-congloop:
+curve25519_x25519base_congloop:
         mov     rcx, [r8+8*r9]
         mov     rax, [rsp]
         mul     rcx
@@ -1070,7 +1070,7 @@ congloop:
         mov     rsi, rbp
         inc     r9
         cmp     r9, rdi
-        jb      congloop
+        jb      curve25519_x25519base_congloop
         shld    r14, r10, 0x6
         shld    rsi, r11, 0x6
         mov     r15, [rsp+0x48]
@@ -1084,8 +1084,8 @@ congloop:
         mov     r9d, 0x1
         mov     rcx, rdi
         dec     rcx
-        je      wmontend
-wmontloop:
+        je      curve25519_x25519base_wmontend
+curve25519_x25519base_wmontloop:
         adc     r10, [r8+8*r9]
         sbb     rbx, rbx
         mov     rax, [r15+8*r9]
@@ -1096,26 +1096,26 @@ wmontloop:
         mov     r10, rdx
         inc     r9
         dec     rcx
-        jne     wmontloop
-wmontend:
+        jne     curve25519_x25519base_wmontloop
+curve25519_x25519base_wmontend:
         adc     r10, r14
         mov     [r8+8*rdi-0x8], r10
         sbb     r10, r10
         neg     r10
         mov     rcx, rdi
         xor     r9, r9
-wcmploop:
+curve25519_x25519base_wcmploop:
         mov     rax, [r8+8*r9]
         sbb     rax, [r15+8*r9]
         inc     r9
         dec     rcx
-        jne     wcmploop
+        jne     curve25519_x25519base_wcmploop
         sbb     r10, 0x0
         sbb     r10, r10
         not     r10
         xor     rcx, rcx
         xor     r9, r9
-wcorrloop:
+curve25519_x25519base_wcorrloop:
         mov     rax, [r8+8*r9]
         mov     rbx, [r15+8*r9]
         and     rbx, r10
@@ -1125,7 +1125,7 @@ wcorrloop:
         mov     [r8+8*r9], rax
         inc     r9
         cmp     r9, rdi
-        jb      wcorrloop
+        jb      curve25519_x25519base_wcorrloop
         mov     r8, [rsp+0x40]
         mov     rbx, [r8]
         mov     rbp, [rsp+0x28]
@@ -1137,8 +1137,8 @@ wcorrloop:
         mov     r9d, 0x1
         mov     rcx, rdi
         dec     rcx
-        je      zmontend
-zmontloop:
+        je      curve25519_x25519base_zmontend
+curve25519_x25519base_zmontloop:
         adc     r11, [r8+8*r9]
         sbb     rbx, rbx
         mov     rax, [r15+8*r9]
@@ -1149,26 +1149,26 @@ zmontloop:
         mov     r11, rdx
         inc     r9
         dec     rcx
-        jne     zmontloop
-zmontend:
+        jne     curve25519_x25519base_zmontloop
+curve25519_x25519base_zmontend:
         adc     r11, rsi
         mov     [r8+8*rdi-0x8], r11
         sbb     r11, r11
         neg     r11
         mov     rcx, rdi
         xor     r9, r9
-zcmploop:
+curve25519_x25519base_zcmploop:
         mov     rax, [r8+8*r9]
         sbb     rax, [r15+8*r9]
         inc     r9
         dec     rcx
-        jne     zcmploop
+        jne     curve25519_x25519base_zcmploop
         sbb     r11, 0x0
         sbb     r11, r11
         not     r11
         xor     rcx, rcx
         xor     r9, r9
-zcorrloop:
+curve25519_x25519base_zcorrloop:
         mov     rax, [r8+8*r9]
         mov     rbx, [r15+8*r9]
         and     rbx, r11
@@ -1178,7 +1178,7 @@ zcorrloop:
         mov     [r8+8*r9], rax
         inc     r9
         cmp     r9, rdi
-        jb      zcorrloop
+        jb      curve25519_x25519base_zcorrloop
         mov     r8, [rsp+0x30]
         lea     r15, [r8+8*rdi]
         xor     r9, r9
@@ -1186,7 +1186,7 @@ zcorrloop:
         xor     r14, r14
         xor     rbp, rbp
         xor     rsi, rsi
-crossloop:
+curve25519_x25519base_crossloop:
         mov     rcx, [r8+8*r9]
         mov     rax, [rsp]
         mul     rcx
@@ -1217,13 +1217,13 @@ crossloop:
         mov     rsi, r11
         inc     r9
         cmp     r9, r13
-        jb      crossloop
+        jb      curve25519_x25519base_crossloop
         xor     r9, r9
         mov     r10, r12
         mov     r11, rbp
         xor     r14, r12
         xor     rsi, rbp
-optnegloop:
+curve25519_x25519base_optnegloop:
         mov     rax, [r8+8*r9]
         xor     rax, r12
         neg     r10
@@ -1238,11 +1238,11 @@ optnegloop:
         mov     [r15+8*r9], rax
         inc     r9
         cmp     r9, r13
-        jb      optnegloop
+        jb      curve25519_x25519base_optnegloop
         sub     r14, r10
         sub     rsi, r11
         mov     r9, r13
-shiftloop:
+curve25519_x25519base_shiftloop:
         mov     rax, [r8+8*r9-0x8]
         mov     r10, rax
         shrd    rax, r14, 0x3a
@@ -1254,7 +1254,7 @@ shiftloop:
         mov     [r15+8*r9-0x8], rax
         mov     rsi, r11
         dec     r9
-        jne     shiftloop
+        jne     curve25519_x25519base_shiftloop
         not     rbp
         mov     rcx, [rsp+0x48]
         mov     r8, [rsp+0x38]
@@ -1262,7 +1262,7 @@ shiftloop:
         mov     r10, r12
         mov     r11, rbp
         xor     r9, r9
-fliploop:
+curve25519_x25519base_fliploop:
         mov     rdx, rbp
         mov     rax, [rcx+8*r9]
         and     rdx, rax
@@ -1281,9 +1281,9 @@ fliploop:
         mov     [r15+8*r9], rdx
         inc     r9
         cmp     r9, rdi
-        jb      fliploop
+        jb      curve25519_x25519base_fliploop
         sub     QWORD PTR [rsp+0x20], 0x3a
-        ja      outerloop
+        ja      curve25519_x25519base_outerloop
 
 // The final result is (X + T) / (X - T)
 // This is the only operation in the whole computation that
@@ -1315,7 +1315,7 @@ fliploop:
 
 // The modulus, for the modular inverse
 
-p_25519:
+curve25519_x25519base_p_25519:
         .quad   0xffffffffffffffed
         .quad   0xffffffffffffffff
         .quad   0xffffffffffffffff
@@ -1324,7 +1324,7 @@ p_25519:
 // 2^254 * G and (2^254 + 8) * G in extended-projective coordinates
 // but with z = 1 assumed and hence left out, so they are (X,Y,T) only.
 
-edwards25519_0g:
+curve25519_x25519base_edwards25519_0g:
 
         .quad   0x251037f7cf4e861d
         .quad   0x10ede0fb19fb128f
@@ -1341,7 +1341,7 @@ edwards25519_0g:
         .quad   0x72e302a348492870
         .quad   0x1253c19e53dbe1bc
 
-edwards25519_8g:
+curve25519_x25519base_edwards25519_8g:
 
         .quad   0x331d086e0d9abcaa
         .quad   0x1e23c96d311a10c9
@@ -1361,7 +1361,7 @@ edwards25519_8g:
 // Precomputed table of multiples of generator for edwards25519
 // all in precomputed extended-projective (y-x,x+y,2*d*x*y) triples.
 
-edwards25519_gtable:
+curve25519_x25519base_edwards25519_gtable:
 
         // 2^4 * 1 * G
 
