@@ -12,3 +12,4 @@ phases:
   build:
     commands:
       - ./tests/ci/run_fips_tests.sh
+      - ./tests/ci/run_fips_callback_tests.sh

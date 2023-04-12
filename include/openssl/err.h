@@ -327,6 +327,7 @@ enum {
   ERR_LIB_HKDF,
   ERR_LIB_TRUST_TOKEN,
   ERR_LIB_USER,
+  ERR_LIB_FIPS,
   ERR_NUM_LIBS
 };
 
@@ -378,7 +379,7 @@ enum {
 #define ERR_R_PASSED_NULL_PARAMETER (3 | ERR_R_FATAL)
 #define ERR_R_INTERNAL_ERROR (4 | ERR_R_FATAL)
 #define ERR_R_OVERFLOW (5 | ERR_R_FATAL)
-
+#define ERR_R_FIPS_TEST_FAILURE (6 | ERR_R_FATAL)
 
 // Deprecated functions.
 
