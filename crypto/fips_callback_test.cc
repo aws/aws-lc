@@ -47,7 +47,7 @@ const test_config integrity_test_config = {
     1,
     2
 };
-vector<string> intergity_tests = {"SHA-256", "HMAC-SHA-256"};
+vector<string> integrity_tests = {"SHA-256", "HMAC-SHA-256"};
 
 // The fast tests run automatically at startup and will report a failure to
 // the test callback immediately, and then again when BORINGSSL_self_test is called
