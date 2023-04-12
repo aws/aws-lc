@@ -155,7 +155,33 @@ static size_t hw_gcm_encrypt(const uint8_t *in, uint8_t *out, size_t len,
   if (!len_blocks) {
     return 0;
   }
-  aes_gcm_enc_kernel(in, len_blocks * 8, out, Xi, ivec, key);
+
+  // The 8x-unrolled assembly implementation starts outperforming
+  // the 4x-unrolled one starting around input length of 256 bytes
+  // in the case of the EVP API.
+  // In the case of the AEAD API, it can be used for all input lengths
+  // but we are not identifying which API calls the code below.
+  if (CRYPTO_is_ARMv8_GCM_8x_capable() && len >= 256) {
+    switch(key->rounds) {
+    case 10:
+      aesv8_gcm_8x_enc_128(in, len_blocks * 8, out, Xi, ivec, key);
+      break;
+    case 12:
+      aesv8_gcm_8x_enc_192(in, len_blocks * 8, out, Xi, ivec, key);
+      break;
+    case 14:
+      aesv8_gcm_8x_enc_256(in, len_blocks * 8, out, Xi, ivec, key);
+      break;
+    default:
+      // The subsequent logic after returning can process
+      // the input or return an error.
+      return 0;
+      break;
+    }
+  } else {
+    aes_gcm_enc_kernel(in, len_blocks * 8, out, Xi, ivec, key);
+  }
+
   return len_blocks;
 }
 
@@ -166,7 +192,33 @@ static size_t hw_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
   if (!len_blocks) {
     return 0;
   }
-  aes_gcm_dec_kernel(in, len_blocks * 8, out, Xi, ivec, key);
+
+  // The 8x-unrolled assembly implementation starts outperforming
+  // the 4x-unrolled one starting around input length of 256 bytes
+  // in the case of the EVP API.
+  // In the case of the AEAD API, it can be used for all input lengths
+  // but we are not identifying which API calls the code below.
+  if (CRYPTO_is_ARMv8_GCM_8x_capable() && len >= 256) {
+    switch(key->rounds) {
+    case 10:
+      aesv8_gcm_8x_dec_128(in, len_blocks * 8, out, Xi, ivec, key);
+      break;
+    case 12:
+      aesv8_gcm_8x_dec_192(in, len_blocks * 8, out, Xi, ivec, key);
+      break;
+    case 14:
+      aesv8_gcm_8x_dec_256(in, len_blocks * 8, out, Xi, ivec, key);
+      break;
+    default:
+      // The subsequent logic after returning can process
+      // the input or return an error.
+      return 0;
+      break;
+    }
+  } else {
+    aes_gcm_dec_kernel(in, len_blocks * 8, out, Xi, ivec, key);
+  }
+
   return len_blocks;
 }
 
