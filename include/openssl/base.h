@@ -216,7 +216,7 @@ extern "C" {
 // ServiceIndicatorTest.AWSLCVersionString
 // Note: there are two versions of this test. Only one test is compiled
 // depending on FIPS mode.
-#define AWSLC_VERSION_NUMBER_STRING "1.7.0"
+#define AWSLC_VERSION_NUMBER_STRING "1.8.0"
 
 #if defined(BORINGSSL_SHARED_LIBRARY)
 
@@ -479,6 +479,17 @@ typedef struct x509_store_st X509_STORE;
 typedef struct x509_trust_st X509_TRUST;
 
 typedef void *OPENSSL_BLOCK;
+
+#ifndef __has_attribute
+#define __has_attribute(x) 0
+#endif
+#if __STDC_VERSION__ > 202300L
+#define AWS_LC_DEPRECATED [[deprecated]]
+#elif __has_attribute(deprecated)
+#define AWS_LC_DEPRECATED __attribute__((deprecated))
+#else
+#define AWS_LC_DEPRECATED /* deprecated */
+#endif
 
 #if defined(__cplusplus)
 }  // extern C

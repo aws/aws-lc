@@ -23,6 +23,7 @@
 #include <openssl/bn.h>
 #include <openssl/bytestring.h>
 #include <openssl/crypto.h>
+#include <openssl/ec.h>
 #include <openssl/ec_key.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
@@ -1036,6 +1037,25 @@ TEST(ECTest, ArbitraryCurve) {
   EXPECT_EQ(0, EC_GROUP_cmp(group.get(), group.get(), NULL));
   EXPECT_EQ(0, EC_GROUP_cmp(group2.get(), group.get(), NULL));
 
+  bssl::UniquePtr<BIGNUM> converted_generator1(EC_POINT_point2bn(
+      group.get(), generator.get(), POINT_CONVERSION_UNCOMPRESSED, NULL, NULL));
+  ASSERT_TRUE(converted_generator1);
+
+  bssl::UniquePtr<BIGNUM> converted_generator2(EC_POINT_point2bn(
+      group2.get(), generator2.get(), POINT_CONVERSION_UNCOMPRESSED, NULL, NULL));
+  ASSERT_TRUE(converted_generator2);
+  EXPECT_EQ(0, BN_cmp(converted_generator1.get(), converted_generator2.get()));
+
+  bssl::UniquePtr<BIGNUM> converted_generator3(EC_POINT_point2bn(
+      group.get(), generator.get(), POINT_CONVERSION_COMPRESSED, NULL, NULL));
+  ASSERT_TRUE(converted_generator3);
+
+  bssl::UniquePtr<BIGNUM> converted_generator4(EC_POINT_point2bn(
+      group2.get(), generator2.get(), POINT_CONVERSION_COMPRESSED, NULL, NULL));
+  ASSERT_TRUE(converted_generator4);
+  EXPECT_EQ(0, BN_cmp(converted_generator3.get(), converted_generator4.get()));
+
+
   // group3 uses the wrong generator.
   bssl::UniquePtr<EC_GROUP> group3(
       EC_GROUP_new_curve_GFp(p.get(), a.get(), b.get(), ctx.get()));
@@ -1829,8 +1849,8 @@ static int has_uint128_and_not_small() {
 }
 
 // Test for out-of-range coordinates in public-key validation in
-// |EC_KEY_check_fips|. This test can only be exercised when the coordinates 
-// in the raw point are not in Montgomery representation, which is the case 
+// |EC_KEY_check_fips|. This test can only be exercised when the coordinates
+// in the raw point are not in Montgomery representation, which is the case
 // for P-224 in some builds (see below) and for P-521.
 TEST(ECTest, LargeXCoordinateVectors) {
   int line;

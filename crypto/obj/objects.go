@@ -376,7 +376,7 @@ func writeNumbers(path string, objs *objects) error {
 
 func clangFormat(input string) (string, error) {
 	var b bytes.Buffer
-	cmd := exec.Command("clang-format")
+	cmd := exec.Command("clang-format", "--style=Google")
 	cmd.Stdin = strings.NewReader(input)
 	cmd.Stdout = &b
 	cmd.Stderr = os.Stderr
