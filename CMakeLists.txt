@@ -222,7 +222,7 @@ option(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX "Exclude AVX code from the build" OFF)
 if(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
   add_definitions(-DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
   add_definitions(-DMY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
-  set(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX "ON")
+  set(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX ON)
   message(STATUS "MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX selected, removing AVX optimisations")
 endif()
 
