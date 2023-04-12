@@ -48,6 +48,25 @@ static int has_hw_feature(const char *name) {
   return value != 0;
 }
 
+// This function compares the brand retrieved with the input string
+// up to the length of the shortest of these 2 strings.
+static int is_brand(const char *in_str) {
+  char brand[64];
+  size_t len = sizeof(brand);
+  if (sysctlbyname("machdep.cpu.brand_string", brand, &len, NULL, 0) != 0 ||
+      strncmp(brand, in_str, strnlen(in_str, len)) != 0) {
+    return 0;
+  }
+
+  if (len > sizeof(brand)) {
+    // This should not happen; too large of a brand for this function.
+    assert(0);
+    return 0;
+  }
+
+  return 1;
+}
+
 void OPENSSL_cpuid_setup(void) {
   // Apple ARM64 platforms have NEON and cryptography extensions available
   // statically, so we do not need to query them. In particular, there sometimes
@@ -69,6 +88,14 @@ void OPENSSL_cpuid_setup(void) {
   if (has_hw_feature("hw.optional.arm.FEAT_SHA512") ||
       has_hw_feature("hw.optional.armv8_2_sha512")) {
     OPENSSL_armcap_P |= ARMV8_SHA512;
+  }
+
+  if (has_hw_feature("hw.optional.armv8_2_sha3")) {
+    OPENSSL_armcap_P |= ARMV8_SHA3;
+  }
+
+  if (is_brand("Apple M1")) {
+    OPENSSL_armcap_P |= ARMV8_APPLE_M1;
   }
 
   OPENSSL_cpucap_initialized = 1;

@@ -34,6 +34,12 @@
 extern uint32_t OPENSSL_armcap_P;
 extern uint8_t OPENSSL_cpucap_initialized;
 
+static uint64_t armv8_cpuid_probe(void) {
+  uint64_t val;
+  __asm__ volatile("mrs %0, MIDR_EL1" : "=r" (val));
+  return val;
+}
+
 // handle_cpu_env applies the value from |in| to the CPUID values in |out[0]|.
 // See the comment in |OPENSSL_cpuid_setup| about this.
 static void handle_cpu_env(uint32_t *out, const char *in) {
@@ -90,6 +96,9 @@ void OPENSSL_cpuid_setup(void) {
   static const unsigned long kSHA1 = 1 << 5;
   static const unsigned long kSHA256 = 1 << 6;
   static const unsigned long kSHA512 = 1 << 21;
+  static const unsigned long kSHA3 = 1 << 17;
+
+  uint64_t OPENSSL_arm_midr = 0;
 
   if ((hwcap & kNEON) == 0) {
     // Matching OpenSSL, if NEON is missing, don't report other features
@@ -113,6 +122,16 @@ void OPENSSL_cpuid_setup(void) {
   }
   if (hwcap & kSHA512) {
     OPENSSL_armcap_P |= ARMV8_SHA512;
+  }
+  if (hwcap & kSHA3) {
+    OPENSSL_armcap_P |= ARMV8_SHA3;
+  }
+
+  // Check if the CPU model is Neoverse V1,
+  // which has a wide crypto/SIMD pipeline.
+  OPENSSL_arm_midr = armv8_cpuid_probe();
+  if (MIDR_IS_CPU_MODEL(OPENSSL_arm_midr, ARM_CPU_IMP_ARM, ARM_CPU_PART_V1)) {
+    OPENSSL_armcap_P |= ARMV8_NEOVERSE_V1;
   }
 
   // OPENSSL_armcap is a 32-bit, unsigned value which may start with "0x" to

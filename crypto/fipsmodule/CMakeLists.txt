@@ -77,6 +77,7 @@ if(ARCH STREQUAL "aarch64")
 
     aesv8-armx.${ASM_EXT}
     aesv8-gcm-armv8.${ASM_EXT}
+    aesv8-gcm-armv8-unroll8.${ASM_EXT}
     armv8-mont.${ASM_EXT}
     ghash-neon-armv8.${ASM_EXT}
     ghashv8-armx.${ASM_EXT}
@@ -108,6 +109,7 @@ if(PERL_EXECUTABLE)
   perlasm(aesp8-ppc.${ASM_EXT} aes/asm/aesp8-ppc.pl)
   perlasm(aesv8-armx.${ASM_EXT} aes/asm/aesv8-armx.pl)
   perlasm(aesv8-gcm-armv8.${ASM_EXT} modes/asm/aesv8-gcm-armv8.pl)
+  perlasm(aesv8-gcm-armv8-unroll8.${ASM_EXT} modes/asm/aesv8-gcm-armv8-unroll8.pl)
   perlasm(armv4-mont.${ASM_EXT} bn/asm/armv4-mont.pl)
   perlasm(armv8-mont.${ASM_EXT} bn/asm/armv8-mont.pl)
   perlasm(bn-586.${ASM_EXT} bn/asm/bn-586.pl)
