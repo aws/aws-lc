@@ -51,11 +51,16 @@ function aws_lc_build() {
   rm -rf "${AWS_LC_BUILD_FOLDER:?}"/*
 }
 
+function install_aws_lc() {
+  AWS_LC_LIB_FOLDER=$(readlink -f "${AWS_LC_INSTALL_FOLDER}"/lib*)
+  echo "${AWS_LC_LIB_FOLDER}" > /etc/ld.so.conf.d/aws-lc.conf
+  rm -f /etc/ld.so.cache
+  ldconfig
+}
+
 function openssh_build() {
   pushd "${OPENSSH_WORKSPACE_FOLDER}"
   autoreconf
-  export LD_LIBRARY_PATH
-  LD_LIBRARY_PATH=$(readlink -f "${AWS_LC_INSTALL_FOLDER}"/lib*)
   export CFLAGS="-DAWS_LC_INTERNAL_IGNORE_BN_SET_FLAGS=1 -DHAVE_RSA_METH_FREE=1 -DHAVE_RSA_METH_DUP=1 -DHAVE_RSA_METH_SET1_NAME=1 -DHAVE_RSA_METH_SET_PRIV_ENC=1 -DHAVE_RSA_METH_SET_PRIV_DEC=1"
   ./configure --with-ssl-dir="${AWS_LC_INSTALL_FOLDER}" --prefix="${OPENSSH_INSTALL_FOLDER}" --disable-pkcs11
   make install
@@ -77,7 +82,7 @@ function openssh_run_tests() {
     useradd sshd
   fi
   export TEST_SSH_UNSAFE_PERMISSIONS=1
-  export SKIP_LTESTS="agent multiplex agent-restrict"
+  export SKIP_LTESTS="$@"
   make tests
   popd
 }
@@ -90,6 +95,7 @@ ls
 
 # Buld AWS-LC as a shared library
 aws_lc_build -DBUILD_SHARED_LIBS=1
+install_aws_lc
 
 # Using default branch. Build openssh and run tests.
 openssh_build
@@ -98,6 +104,7 @@ openssh_run_tests
 # Using branch V_8_9
 checkout_openssh_branch V_8_9
 openssh_build
-openssh_run_tests
+# In v8.9, the "percent" test requires the 'openssl' cli command
+openssh_run_tests "percent"
 
 popd
