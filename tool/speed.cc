@@ -420,7 +420,7 @@ static bool SpeedRSAKeyGen(bool is_fips, const std::string &selected) {
 }
 
 static bool SpeedAESGCMChunk(const EVP_CIPHER *cipher, std::string name,
-                             size_t chunk_byte_len, size_t ad_len) {
+                             size_t chunk_byte_len, size_t ad_len, bool encrypt) {
   int len;
   int* len_ptr = &len;
   const size_t key_len = EVP_CIPHER_key_length(cipher);
@@ -448,49 +448,61 @@ static bool SpeedAESGCMChunk(const EVP_CIPHER *cipher, std::string name,
 
   BM_NAMESPACE::UniquePtr<EVP_CIPHER_CTX> ctx(EVP_CIPHER_CTX_new());
 
-  std::string encryptName = name + " Encrypt";
-  TimeResults encryptResults;
+  if (encrypt) {
+    std::string encryptName = name + " Encrypt";
+    TimeResults encryptResults;
 
-  // Call EVP_EncryptInit_ex once with the cipher, in the benchmark loop reuse the cipher
-  if (!EVP_EncryptInit_ex(ctx.get(), cipher, NULL, key.get(), nonce.get())){
-    fprintf(stderr, "Failed to configure encryption context.\n");
-    ERR_print_errors_fp(stderr);
-    return false;
-  }
-  if (!TimeFunction(&encryptResults, [&ctx, chunk_byte_len, plaintext, ciphertext, len_ptr, tag, &key, &nonce, &ad, ad_len]() -> bool {
-        return EVP_EncryptInit_ex(ctx.get(), NULL, NULL, key.get(), nonce.get()) &&
-               EVP_EncryptUpdate(ctx.get(), NULL, len_ptr, ad.get(), ad_len) &&
-               EVP_EncryptUpdate(ctx.get(), ciphertext, len_ptr, plaintext, chunk_byte_len) &&
-               EVP_EncryptFinal_ex(ctx.get(), ciphertext + *len_ptr, len_ptr) &&
-               EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_GET_TAG, 16, tag);
-      })) {
-    fprintf(stderr, "%s failed.\n", encryptName.c_str());
-    ERR_print_errors_fp(stderr);
-    return false;
-  }
+    // Call EVP_EncryptInit_ex once with the cipher, in the benchmark loop reuse the cipher
+    if (!EVP_EncryptInit_ex(ctx.get(), cipher, NULL, key.get(), nonce.get())){
+      fprintf(stderr, "Failed to configure encryption context.\n");
+      ERR_print_errors_fp(stderr);
+      return false;
+    }
+    if (!TimeFunction(&encryptResults, [&ctx, chunk_byte_len, plaintext, ciphertext, len_ptr, tag, &key, &nonce, &ad, ad_len]() -> bool {
+      return EVP_EncryptInit_ex(ctx.get(), NULL, NULL, key.get(), nonce.get()) &&
+        EVP_EncryptUpdate(ctx.get(), NULL, len_ptr, ad.get(), ad_len) &&
+        EVP_EncryptUpdate(ctx.get(), ciphertext, len_ptr, plaintext, chunk_byte_len) &&
+        EVP_EncryptFinal_ex(ctx.get(), ciphertext + *len_ptr, len_ptr) &&
+        EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_GET_TAG, 16, tag);
+    })) {
+      fprintf(stderr, "%s failed.\n", encryptName.c_str());
+      ERR_print_errors_fp(stderr);
+      return false;
+    }
 
-  encryptResults.PrintWithBytes(encryptName, chunk_byte_len);
-  std::string decryptName = name + " Decrypt";
-  TimeResults decryptResults;
-  // Call EVP_DecryptInit_ex once with the cipher, in the benchmark loop reuse the cipher
-  if (!EVP_DecryptInit_ex(ctx.get(), cipher, NULL, key.get(), nonce.get())){
-    fprintf(stderr, "Failed to configure decryption context.\n");
-    ERR_print_errors_fp(stderr);
-    return false;
+    encryptResults.PrintWithBytes(encryptName, chunk_byte_len);
   }
-  if (!TimeFunction(&decryptResults, [&ctx, chunk_byte_len, plaintext, ciphertext, len_ptr, tag, &key, &nonce, &ad, ad_len]() -> bool {
-        return EVP_DecryptInit_ex(ctx.get(), NULL, NULL, key.get(), nonce.get()) &&
-               EVP_DecryptUpdate(ctx.get(), NULL, len_ptr, ad.get(), ad_len) &&
-               EVP_DecryptUpdate(ctx.get(), plaintext, len_ptr, ciphertext, chunk_byte_len) &&
-               EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_SET_TAG, 16, tag) &&
-               EVP_DecryptFinal_ex(ctx.get(), ciphertext + *len_ptr, len_ptr);
-      })) {
-    fprintf(stderr, "%s failed.\n", decryptName.c_str());
-    ERR_print_errors_fp(stderr);
-    return false;
+  else {
+    if (!(EVP_EncryptInit_ex(ctx.get(), cipher, NULL, key.get(), nonce.get()) &&
+          EVP_EncryptUpdate(ctx.get(), NULL, len_ptr, ad.get(), ad_len) &&
+          EVP_EncryptUpdate(ctx.get(), ciphertext, len_ptr, plaintext, chunk_byte_len) &&
+          EVP_EncryptFinal_ex(ctx.get(), ciphertext + *len_ptr, len_ptr) &&
+          EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_GET_TAG, 16, tag))) {
+      fprintf(stderr, "Failed to perform one encryption.\n");
+      ERR_print_errors_fp(stderr);
+      return false;
+    }
+    std::string decryptName = name + " Decrypt";
+    TimeResults decryptResults;
+    // Call EVP_DecryptInit_ex once with the cipher, in the benchmark loop reuse the cipher
+    if (!EVP_DecryptInit_ex(ctx.get(), cipher, NULL, key.get(), nonce.get())){
+      fprintf(stderr, "Failed to configure decryption context.\n");
+      ERR_print_errors_fp(stderr);
+      return false;
+    }
+    if (!TimeFunction(&decryptResults, [&ctx, chunk_byte_len, plaintext, ciphertext, len_ptr, tag, &key, &nonce, &ad, ad_len]() -> bool {
+      return EVP_DecryptInit_ex(ctx.get(), NULL, NULL, key.get(), nonce.get()) &&
+        EVP_DecryptUpdate(ctx.get(), NULL, len_ptr, ad.get(), ad_len) &&
+        EVP_DecryptUpdate(ctx.get(), plaintext, len_ptr, ciphertext, chunk_byte_len) &&
+        EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_SET_TAG, 16, tag) &&
+        EVP_DecryptFinal_ex(ctx.get(), ciphertext + *len_ptr, len_ptr);
+    })) {
+      fprintf(stderr, "%s failed.\n", decryptName.c_str());
+      ERR_print_errors_fp(stderr);
+      return false;
+    }
+    decryptResults.PrintWithBytes(decryptName, chunk_byte_len);
   }
-  decryptResults.PrintWithBytes(decryptName, chunk_byte_len);
-
 
   return true;
 }
@@ -501,7 +513,14 @@ static bool SpeedAESGCM(const EVP_CIPHER *cipher, const std::string &name,
   }
 
   for (size_t chunk_byte_len : g_chunk_lengths) {
-    if (!SpeedAESGCMChunk(cipher, name, chunk_byte_len, ad_len)) {
+    if (!SpeedAESGCMChunk(cipher, name, chunk_byte_len, ad_len,
+                          /*encrypt*/ true)) {
+      return false;
+    }
+  }
+
+  for (size_t chunk_byte_len : g_chunk_lengths) {
+    if (!SpeedAESGCMChunk(cipher, name, chunk_byte_len, ad_len, false)) {
       return false;
     }
   }
@@ -2091,7 +2110,9 @@ bool Speed(const std::vector<std::string> &args) {
      ||
      !SpeedKEM(selected) ||
      !SpeedAEAD(EVP_aead_aes_128_gcm(), "AEAD-AES-128-GCM", kTLSADLen, selected) ||
+     !SpeedAEADOpen(EVP_aead_aes_128_gcm(), "AEAD-AES-128-GCM", kTLSADLen, selected) ||
      !SpeedAEAD(EVP_aead_aes_256_gcm(), "AEAD-AES-256-GCM", kTLSADLen, selected) ||
+     !SpeedAEADOpen(EVP_aead_aes_256_gcm(), "AEAD-AES-256-GCM", kTLSADLen, selected) ||
      !SpeedAEAD(EVP_aead_chacha20_poly1305(), "AEAD-ChaCha20-Poly1305", kTLSADLen, selected) ||
      !SpeedAEAD(EVP_aead_des_ede3_cbc_sha1_tls(), "AEAD-DES-EDE3-CBC-SHA1", kLegacyADLen, selected) ||
      !SpeedAEAD(EVP_aead_aes_128_cbc_sha1_tls(), "AEAD-AES-128-CBC-SHA1", kLegacyADLen, selected) ||
