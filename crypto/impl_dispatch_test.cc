@@ -56,11 +56,11 @@ class ImplDispatchTest : public ::testing::Test {
         false;
 #endif // MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX
     is_assembler_too_old_avx512 =
-#if defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX512)
+#if defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
         true;
 #else
         false;
-#endif // MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX512
+#endif // MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 #endif  // X86 || X86_64
   }
 

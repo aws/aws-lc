@@ -47,7 +47,7 @@ for build_option in "${build_options_to_test[@]}"; do
   run_build ${build_option} -DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX=ON
 done
 
-## Build option: MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX512
+## Build option: MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 for build_option in "${build_options_to_test[@]}"; do
-  run_build ${build_option} -DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX512=ON
+  run_build ${build_option} -DMY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX=ON
 done

@@ -189,7 +189,7 @@ TEST(GCMTest, ABI) {
         }
       }
     }
-#if !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX512)
+#if !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
     if (crypto_gcm_avx512_enabled()) {
       CHECK_ABI_SEH(gcm_init_avx512, Htable, kH);
       CHECK_ABI_SEH(gcm_gmult_avx512, X, Htable);
@@ -224,7 +224,7 @@ TEST(GCMTest, ABI) {
         }
       }
     }
-#endif // !MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX512)
+#endif // !MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
 #endif  // GHASH_ASM_X86_64
   }
 #endif  // GHASH_ASM_X86 || GHASH_ASM_X86_64

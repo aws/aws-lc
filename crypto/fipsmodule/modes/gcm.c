@@ -797,7 +797,7 @@ int crypto_gcm_clmul_enabled(void) {
 int crypto_gcm_avx512_enabled(void) {
 #if defined(GHASH_ASM_X86_64) && \
     !defined(OPENSSL_WINDOWS) && \
-    !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX512)
+    !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
     // TODO(awslc): remove the Windows guard once CryptoAlg-1701 is resolved.
   return (CRYPTO_is_VAES_capable() &&
           CRYPTO_is_AVX512_capable() &&
