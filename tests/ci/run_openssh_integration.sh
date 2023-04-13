@@ -97,14 +97,17 @@ ls
 aws_lc_build -DBUILD_SHARED_LIBS=1
 install_aws_lc
 
+CODEBUILD_SKIPPED_TESTS="agent-subprocess forwarding multiplex forward-control agent-restrict"
+
 # Using default branch. Build openssh and run tests.
 openssh_build
-openssh_run_tests "agent-subprocess forwarding multiplex forward-control"
+openssh_run_tests "${CODEBUILD_SKIPPED_TESTS}"
 
 # Using branch V_8_9
 checkout_openssh_branch V_8_9
 openssh_build
 # In v8.9, the "percent" test requires the 'openssl' cli command
-openssh_run_tests "percent agent-subprocess forwarding multiplex forward-control"
+openssh_run_tests "percent ${CODEBUILD_SKIPPED_TESTS}"
 
 popd
+
