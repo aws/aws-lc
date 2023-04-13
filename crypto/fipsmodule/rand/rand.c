@@ -242,7 +242,7 @@ static void CRYPTO_get_fips_seed(uint8_t *out_entropy, size_t out_entropy_len,
 
 // rand_get_seed fills |seed| with entropy and sets |*out_want_additional_input|
 // to one if that entropy came directly from the CPU and zero otherwise.
-static void rand_get_seed(struct rand_thread_state *state,
+static int rand_get_seed(struct rand_thread_state *state,
                           uint8_t seed[CTR_DRBG_ENTROPY_LEN],
                           int *out_want_additional_input) {
   if (!state->last_block_valid) {
@@ -258,9 +258,7 @@ static void rand_get_seed(struct rand_thread_state *state,
   // generator test” which causes the program to randomly abort. Hopefully the
   // rate of failure is small enough not to be a problem in practice.
   if (CRYPTO_memcmp(state->last_block, entropy, CRNGT_BLOCK_SIZE) == 0) {
-    fprintf(stderr, "CRNGT failed.\n");
-    // TODO return the result from AWS_LC_FIPS_error and update rand_get_seed to return an int
-    AWS_LC_FIPS_error("CRNGT failed.", ERR_R_FIPS_TEST_FAILURE);
+    return AWS_LC_FIPS_error("CRNGT failed.", ERR_R_FIPS_TEST_FAILURE);
   }
 
   OPENSSL_STATIC_ASSERT(sizeof(entropy) % CRNGT_BLOCK_SIZE == 0, _)
@@ -268,8 +266,7 @@ static void rand_get_seed(struct rand_thread_state *state,
        i += CRNGT_BLOCK_SIZE) {
     if (CRYPTO_memcmp(entropy + i - CRNGT_BLOCK_SIZE, entropy + i,
                       CRNGT_BLOCK_SIZE) == 0) {
-      // TODO return the result from AWS_LC_FIPS_error and update rand_get_seed to return an int
-      AWS_LC_FIPS_error("CRNGT failed.", ERR_R_FIPS_TEST_FAILURE);
+      return AWS_LC_FIPS_error("CRNGT failed.", ERR_R_FIPS_TEST_FAILURE);
     }
   }
   OPENSSL_memcpy(state->last_block,
@@ -277,27 +274,29 @@ static void rand_get_seed(struct rand_thread_state *state,
                  CRNGT_BLOCK_SIZE);
 
   OPENSSL_memcpy(seed, entropy, CTR_DRBG_ENTROPY_LEN);
+  return 1;
 }
 
 #else // BORINGSSL_FIPS
 
 // rand_get_seed fills |seed| with entropy and sets |*out_want_additional_input|
 // to one if that entropy came directly from the CPU and zero otherwise.
-static void rand_get_seed(struct rand_thread_state *state,
+static int rand_get_seed(struct rand_thread_state *state,
                           uint8_t seed[CTR_DRBG_ENTROPY_LEN],
                           int *out_want_additional_input) {
   // If not in FIPS mode, we don't overread from the system entropy source and
   // we don't depend only on the hardware RDRAND.
   CRYPTO_sysrand_for_seed(seed, CTR_DRBG_ENTROPY_LEN);
   *out_want_additional_input = 0;
+  return 1;
 }
 
 #endif // BORINGSSL_FIPS
 
-void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
+int RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
                                      const uint8_t user_additional_data[32]) {
   if (out_len == 0) {
-    return;
+    return 1;
   }
 
   const uint64_t fork_generation = CRYPTO_get_fork_generation();
@@ -361,7 +360,9 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
     state->last_block_valid = 0;
     uint8_t seed[CTR_DRBG_ENTROPY_LEN];
     int want_additional_input;
-    rand_get_seed(state, seed, &want_additional_input);
+    if (!rand_get_seed(state, seed, &want_additional_input)) {
+      return 0;
+    }
 
     uint8_t personalization[CTR_DRBG_ENTROPY_LEN] = {0};
     size_t personalization_len = 0;
@@ -401,7 +402,9 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
       state->fork_generation != fork_generation) {
     uint8_t seed[CTR_DRBG_ENTROPY_LEN];
     int want_additional_input;
-    rand_get_seed(state, seed, &want_additional_input);
+    if (!rand_get_seed(state, seed, &want_additional_input)){
+      return 0;
+    }
 
     uint8_t add_data_for_reseed[CTR_DRBG_ENTROPY_LEN];
     size_t add_data_for_reseed_len = 0;
@@ -465,12 +468,12 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
 #if defined(BORINGSSL_FIPS)
   CRYPTO_STATIC_MUTEX_unlock_read(state_clear_all_lock_bss_get());
 #endif
+  return 1;
 }
 
 int RAND_bytes(uint8_t *out, size_t out_len) {
   static const uint8_t kZeroAdditionalData[32] = {0};
-  RAND_bytes_with_additional_data(out, out_len, kZeroAdditionalData);
-  return 1;
+  return RAND_bytes_with_additional_data(out, out_len, kZeroAdditionalData);
 }
 
 int RAND_pseudo_bytes(uint8_t *buf, size_t len) {

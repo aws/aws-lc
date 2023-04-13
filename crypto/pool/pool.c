@@ -55,7 +55,11 @@ CRYPTO_BUFFER_POOL* CRYPTO_BUFFER_POOL_new(void) {
   }
 
   CRYPTO_MUTEX_init(&pool->lock);
-  RAND_bytes((uint8_t *)&pool->hash_key, sizeof(pool->hash_key));
+  if (!RAND_bytes((uint8_t *)&pool->hash_key, sizeof(pool->hash_key))) {
+    OPENSSL_free(pool);
+    return NULL;
+
+  }
 
   return pool;
 }

@@ -28,3 +28,14 @@ for kat in $KATS; do
   $broken_test --gtest_filter=FIPSCallback.PowerOnTests
   unset FIPS_CALLBACK_TEST_POWER_ON_TEST_FAILURE
 done
+
+runtime_tests=("CRNG")
+for runtime_test in "${runtime_tests[@]}"; do
+  # Tell our test what test is expected to fail
+  export FIPS_CALLBACK_TEST_RUNTIME_TEST_FAILURE="$runtime_test"
+  # Tell bcm which test to break
+  export BORINGSSL_FIPS_BREAK_TEST="$runtime_test"
+  # These tests will have side affects in the future (modifying the global FIPS state) and must be run in separate process
+  $original_test --gtest_filter=FIPSCallback.PowerOnTests
+  $original_test --gtest_filter=FIPSCallback.DRBGRuntime
+done
