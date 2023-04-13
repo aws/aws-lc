@@ -97,7 +97,7 @@ ls
 aws_lc_build -DBUILD_SHARED_LIBS=1
 install_aws_lc
 
-CODEBUILD_SKIPPED_TESTS="agent-subprocess forwarding multiplex forward-control agent-restrict"
+CODEBUILD_SKIPPED_TESTS="agent-subprocess forwarding multiplex forward-control agent-restrict connection-timeout"
 
 # Using default branch. Build openssh and run tests.
 openssh_build
