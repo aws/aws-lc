@@ -25,6 +25,12 @@ pushd ..
 ROOT=$(pwd)
 popd
 
+#OPENSSH_REPO_URL="https://github.com/openssh/openssh-portable.git"
+
+## TESTING
+OPENSSH_REPO_URL="https://github.com/justsmth/openssh-portable.git"
+########
+
 SCRATCH_FOLDER="${ROOT}/SCRATCH_AWSLC_OPENSSH_INTERN_TEST"
 AWS_LC_BUILD_FOLDER="${SCRATCH_FOLDER}/aws-lc-build"
 AWS_LC_INSTALL_FOLDER="${SCRATCH_FOLDER}/aws-lc-install"
@@ -70,7 +76,9 @@ function openssh_build() {
 
 function checkout_openssh_branch() {
   pushd "${OPENSSH_WORKSPACE_FOLDER}"
-  make clean
+  if [ -f Makefile ]; then
+    make clean
+  fi
   git clean -f -d
   git checkout --track origin/"$1"
   popd
@@ -90,12 +98,27 @@ function openssh_run_tests() {
 mkdir -p "${AWS_LC_BUILD_FOLDER}" "${AWS_LC_INSTALL_FOLDER}" "${OPENSSH_INSTALL_FOLDER}"
 
 # Get latest OpenSSH version.
-git clone https://github.com/openssh/openssh-portable.git
+git clone "${OPENSSH_REPO_URL}"
 ls
 
 # Buld AWS-LC as a shared library
 aws_lc_build -DBUILD_SHARED_LIBS=1
 install_aws_lc
+
+## TESTING
+checkout_openssh_branch aws-lc-codebuild-failures
+openssh_build
+
+pushd "${OPENSSH_WORKSPACE_FOLDER}"/regress
+useradd sshd
+
+set +e
+PATH=`pwd`/..:$PATH:. TEST_SHELL=/bin/sh sh test-exec.sh `pwd` agent-subprocess.sh
+cat regress.log
+
+popd
+exit 1
+########
 
 CODEBUILD_SKIPPED_TESTS="agent-subprocess forwarding multiplex forward-control agent-restrict connection-timeout"
 
