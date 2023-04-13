@@ -315,6 +315,13 @@ int ec_point_mul_no_self_test(const EC_GROUP *group, EC_POINT *r,
                               const BIGNUM *g_scalar, const EC_POINT *p,
                               const BIGNUM *p_scalar, BN_CTX *ctx);
 
+// ecdh_compute_shared_secret_no_self_test does the same as
+// |ECDH_compute_shared_secret|, but doesn't try to run the self-test first.
+// This is for use in the self tests themselves, to prevent an infinite loop.
+int ecdh_compute_shared_secret_no_self_test(uint8_t *buf, size_t *buflen,
+                                            const EC_POINT *pub_key,
+                                            const EC_KEY *priv_key);
+
 // ec_point_mul_scalar sets |r| to |p| * |scalar|. Both inputs are considered
 // secret.
 int ec_point_mul_scalar(const EC_GROUP *group, EC_RAW_POINT *r,

@@ -78,10 +78,9 @@
 #include "../ec/internal.h"
 #include "../service_indicator/internal.h"
 
-
-int ECDH_compute_shared_secret(uint8_t *buf, size_t *buflen, const EC_POINT *pub_key,
-                               const EC_KEY *priv_key) {
-  boringssl_ensure_ecc_self_test();
+int ecdh_compute_shared_secret_no_self_test(uint8_t *buf, size_t *buflen,
+                                            const EC_POINT *pub_key,
+                                            const EC_KEY *priv_key) {
   if (priv_key->priv_key == NULL) {
     OPENSSL_PUT_ERROR(ECDH, ECDH_R_NO_PRIVATE_VALUE);
     return 0;
@@ -131,6 +130,15 @@ end:
   return ret;
 }
 
+int ECDH_compute_shared_secret(uint8_t *buf, size_t *buflen,
+                               const EC_POINT *pub_key,
+                               const EC_KEY *priv_key) {
+  boringssl_ensure_ecc_self_test();
+
+  return ecdh_compute_shared_secret_no_self_test(buf, buflen, pub_key,
+                                                 priv_key);
+}
+
 int ECDH_compute_key_fips(uint8_t *out, size_t out_len, const EC_POINT *pub_key,
                           const EC_KEY *priv_key) {
   // Lock state here to avoid underlying |SHA*| functions updating the service
@@ -166,7 +174,7 @@ int ECDH_compute_key_fips(uint8_t *out, size_t out_len, const EC_POINT *pub_key,
 
 end:
   FIPS_service_indicator_unlock_state();
-  if(ret) {
+  if (ret) {
     ECDH_verify_service_indicator(priv_key);
   }
   return ret;

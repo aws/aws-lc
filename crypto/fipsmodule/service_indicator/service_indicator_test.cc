@@ -2420,7 +2420,6 @@ TEST_P(ECDSAServiceIndicatorTest, ManualECDSASignVerify) {
   bssl::UniquePtr<EC_GROUP> group(EC_GROUP_new_by_curve_name(test.nid));
   bssl::UniquePtr<EC_KEY> eckey(EC_KEY_new());
   bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
-  bssl::ScopedEVP_MD_CTX md_ctx;
   ASSERT_TRUE(eckey);
   ASSERT_TRUE(EC_KEY_set_group(eckey.get(), group.get()));
 
@@ -2511,7 +2510,6 @@ TEST_P(ECDH_ServiceIndicatorTest, ECDH) {
   bssl::UniquePtr<EC_GROUP> group(EC_GROUP_new_by_curve_name(test.nid));
   bssl::UniquePtr<EC_KEY> our_key(EC_KEY_new());
   bssl::UniquePtr<EC_KEY> peer_key(EC_KEY_new());
-  bssl::ScopedEVP_MD_CTX md_ctx;
   ASSERT_TRUE(our_key);
   ASSERT_TRUE(peer_key);
 
