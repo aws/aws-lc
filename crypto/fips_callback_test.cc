@@ -7,8 +7,10 @@
 #if defined(__ELF__) && defined(__GNUC__)
 
 #include <gtest/gtest.h>
+#include <openssl/ec_key.h>
 #include <openssl/nid.h>
 #include <openssl/rand.h>
+#include <openssl/rsa.h>
 #include <algorithm>
 #include <list>
 #include <string>
@@ -85,15 +87,15 @@ TEST(FIPSCallback, PowerOnTests) {
     ASSERT_EQ(config.initial_failure_count, failure_count);
 
     // Trigger lazy tests to run
-    ASSERT_EQ(0, BORINGSSL_self_test());
+    ASSERT_FALSE(BORINGSSL_self_test());
     ASSERT_EQ(config.expected_failure_count, failure_count);
     ASSERT_TRUE(message_in_errors(config.expected_failure_message));
   } else {
     // break-kat.go has not run and corrupted this test yet, everything should work
-    ASSERT_EQ(1, BORINGSSL_self_test());
+    ASSERT_TRUE(BORINGSSL_self_test());
     ASSERT_EQ(0, failure_count);
-    ASSERT_EQ(1, FIPS_mode());
   }
+  ASSERT_EQ(1, FIPS_mode());
 }
 
 TEST(FIPSCallback, DRBGRuntime) {
@@ -106,15 +108,55 @@ TEST(FIPSCallback, DRBGRuntime) {
   uint8_t buf[10];
   if (broken_runtime_test != nullptr && strcmp(broken_runtime_test, "CRNG" ) == 0) {
     ASSERT_FALSE(RAND_bytes(buf, sizeof(buf)));
-    // TODO: make AWS_LC_FIPS_error update a new global state so FIPS_mode returns 0
-    ASSERT_EQ(1, FIPS_mode());
     ASSERT_EQ(1, failure_count);
   } else {
     // BORINGSSL_FIPS_BREAK_TEST has not been set and everything should work
     ASSERT_TRUE(RAND_bytes(buf, sizeof(buf)));
-    ASSERT_EQ(1, FIPS_mode());
     ASSERT_EQ(0, failure_count);
   }
+  ASSERT_EQ(1, FIPS_mode());
+}
+
+TEST(FIPSCallback, RSARuntimeTest) {
+  // At this point the library has loaded, if a self test was broken
+  // AWS_LC_FIPS_Callback would have already been called. If this test
+  // wasn't broken the call count should be zero
+  char*broken_runtime_test = getenv("BORINGSSL_FIPS_BREAK_TEST");
+  bssl::UniquePtr<RSA> rsa(RSA_new());
+  ASSERT_EQ(0, failure_count);
+  ASSERT_EQ(1, FIPS_mode());
+  if (broken_runtime_test != nullptr && (strcmp(broken_runtime_test, "RSA_PWCT" ) == 0 ||
+                                         strcmp(broken_runtime_test, "CRNG" ) == 0)) {
+    ASSERT_FALSE(RSA_generate_key_fips(rsa.get(), 2048, nullptr));
+    // RSA key generation can call the DRBG multiple times before failing
+    ASSERT_NE(0, failure_count);
+  } else {
+    // BORINGSSL_FIPS_BREAK_TEST has not been set and everything should work
+    ASSERT_TRUE(RSA_generate_key_fips(rsa.get(), 2048, nullptr));
+  }
+  ASSERT_EQ(1, FIPS_mode());
+}
+
+TEST(FIPSCallback, ECDSARuntimeTest) {
+  // At this point the library has loaded, if a self test was broken
+  // AWS_LC_FIPS_Callback would have already been called. If this test
+  // wasn't broken the call count should be zero
+  char*broken_runtime_test = getenv("BORINGSSL_FIPS_BREAK_TEST");
+  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(NID_X9_62_prime256v1));
+  ASSERT_TRUE(key);
+  ASSERT_EQ(0, failure_count);
+  ASSERT_EQ(1, FIPS_mode());
+  if (broken_runtime_test != nullptr && (strcmp(broken_runtime_test, "ECDSA_PWCT" ) == 0 ||
+                                         strcmp(broken_runtime_test, "CRNG" ) == 0)) {
+    ASSERT_FALSE(EC_KEY_generate_key_fips(key.get()));
+    // RSA key generation can call the DRBG multiple times before failing, we
+    // don't know how many times, but it should fail at least once.
+    ASSERT_NE(0, failure_count);
+  } else {
+    // BORINGSSL_FIPS_BREAK_TEST has not been set and everything should work
+    ASSERT_TRUE(EC_KEY_generate_key_fips(key.get()));
+  }
+  ASSERT_EQ(1, FIPS_mode());
 }
 
 #endif
