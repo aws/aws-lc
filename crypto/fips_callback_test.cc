@@ -8,6 +8,7 @@
 
 #include <gtest/gtest.h>
 #include <openssl/nid.h>
+#include <openssl/rand.h>
 #include <algorithm>
 #include <list>
 #include <string>
@@ -92,6 +93,27 @@ TEST(FIPSCallback, PowerOnTests) {
     ASSERT_EQ(1, BORINGSSL_self_test());
     ASSERT_EQ(0, failure_count);
     ASSERT_EQ(1, FIPS_mode());
+  }
+}
+
+TEST(FIPSCallback, DRBGRuntime) {
+  // At this point the library has loaded, if a self test was broken
+  // AWS_LC_FIPS_Callback would have already been called. If this test
+  // wasn't broken the call count should be zero
+  char*broken_runtime_test = getenv("BORINGSSL_FIPS_BREAK_TEST");
+  ASSERT_EQ(0, failure_count);
+  ASSERT_EQ(1, FIPS_mode());
+  uint8_t buf[10];
+  if (broken_runtime_test != nullptr && strcmp(broken_runtime_test, "CRNG" ) == 0) {
+    ASSERT_FALSE(RAND_bytes(buf, sizeof(buf)));
+    // TODO: make AWS_LC_FIPS_error update a new global state so FIPS_mode returns 0
+    ASSERT_EQ(1, FIPS_mode());
+    ASSERT_EQ(1, failure_count);
+  } else {
+    // BORINGSSL_FIPS_BREAK_TEST has not been set and everything should work
+    ASSERT_TRUE(RAND_bytes(buf, sizeof(buf)));
+    ASSERT_EQ(1, FIPS_mode());
+    ASSERT_EQ(0, failure_count);
   }
 }
 

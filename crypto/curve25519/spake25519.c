@@ -353,7 +353,9 @@ int SPAKE2_generate_msg(SPAKE2_CTX *ctx, uint8_t *out, size_t *out_len,
   }
 
   uint8_t private_tmp[64];
-  RAND_bytes(private_tmp, sizeof(private_tmp));
+  if (!RAND_bytes(private_tmp, sizeof(private_tmp))) {
+    return 0;
+  }
   x25519_sc_reduce(private_tmp);
   // Multiply by the cofactor (eight) so that we'll clear it when operating on
   // the peer's point later in the protocol.

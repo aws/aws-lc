@@ -1999,7 +1999,8 @@ int HRSS_generate_key(
   if (!vars) {
     // If the caller ignores the return value the output will still be safe.
     // The private key output is randomised in case it's later passed to
-    // |HRSS_encap|.
+    // |HRSS_encap|. As this is the error case we can't error out harder
+    // hence the result of RAND_bytes is not checked.
     memset(out_pub, 0, sizeof(struct HRSS_public_key));
     RAND_bytes((uint8_t*) out_priv, sizeof(struct HRSS_private_key));
     return 0;
@@ -2062,7 +2063,8 @@ int HRSS_encap(uint8_t out_ciphertext[POLY_BYTES], uint8_t out_shared_key[32],
   if (!vars) {
     // If the caller ignores the return value the output will still be safe.
     // The private key output is randomised in case it's used to encrypt and
-    // transmit something.
+    // transmit something. As this is the error case we can't error out harder
+    // hence the result of RAND_bytes is not checked.
     memset(out_ciphertext, 0, POLY_BYTES);
     RAND_bytes(out_shared_key, 32);
     return 0;
@@ -2124,7 +2126,8 @@ int HRSS_decap(uint8_t out_shared_key[HRSS_KEY_BYTES],
   if (!vars) {
     // If the caller ignores the return value the output will still be safe.
     // The private key output is randomised in case it's used to encrypt and
-    // transmit something.
+    // transmit something. As this is the error case we can't error out harder
+    // hence the result of RAND_bytes is not checked.
     RAND_bytes(out_shared_key, HRSS_KEY_BYTES);
     return 0;
   }

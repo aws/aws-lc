@@ -227,7 +227,9 @@ static STACK_OF(TRUST_TOKEN_PRETOKEN) *voprf_blind(const VOPRF_METHOD *method,
       goto err;
     }
 
-    RAND_bytes(pretoken->salt, sizeof(pretoken->salt));
+    if(!RAND_bytes(pretoken->salt, sizeof(pretoken->salt))) {
+      goto err;
+    }
     if (include_message) {
       assert(SHA512_DIGEST_LENGTH == TRUST_TOKEN_NONCE_SIZE);
       SHA512_Init(&hash_ctx);
