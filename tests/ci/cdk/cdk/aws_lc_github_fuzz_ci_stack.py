@@ -4,6 +4,7 @@
 from aws_cdk import Duration, Size, Stack, aws_codebuild as codebuild, aws_iam as iam, aws_ec2 as ec2, aws_efs as efs
 from constructs import Construct
 
+from cdk.components import PruneStaleGitHubBuilds
 from util.ecr_util import ecr_arn
 from util.iam_policies import code_build_batch_policy_in_json, \
     code_build_publish_metrics_in_json
@@ -124,3 +125,5 @@ class AwsLcGitHubFuzzCIStack(Stack):
           "MountPoint": "/efs_fuzzing_root",
           "Type": "EFS"
         }])
+
+        PruneStaleGitHubBuilds(scope=self, id="PruneStaleGitHubBuilds", project=fuzz_codebuild)

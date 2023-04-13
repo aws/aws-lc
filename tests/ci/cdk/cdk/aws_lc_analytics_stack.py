@@ -4,6 +4,7 @@
 from aws_cdk import Duration, Stack, aws_codebuild as codebuild, aws_iam as iam, aws_ec2 as ec2, aws_efs as efs
 from constructs import Construct
 
+from cdk.components import PruneStaleGitHubBuilds
 from util.iam_policies import code_build_publish_metrics_in_json
 from util.metadata import GITHUB_REPO_OWNER, GITHUB_REPO_NAME
 from util.build_spec_loader import BuildSpecLoader
@@ -53,3 +54,5 @@ class AwsLcGitHubAnalyticsStack(Stack):
                                                    build_image=codebuild.LinuxBuildImage.STANDARD_4_0),
             build_spec=BuildSpecLoader.load(spec_file_path))
         analytics.enable_batch_builds()
+
+        PruneStaleGitHubBuilds(scope=self, id="PruneStaleGitHubBuilds", project=analytics)

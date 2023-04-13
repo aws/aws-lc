@@ -16,7 +16,7 @@ setuptools.setup(
     author="AWS-LC",
 
     package_dir={"": "cdk"},
-    packages=setuptools.find_packages(where="cdk"),
+    packages=setuptools.find_namespace_packages(where="cdk"),
 
     install_requires=[
         # CDK dependencies.

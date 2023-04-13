@@ -7,6 +7,8 @@ import boto3
 from botocore.exceptions import ClientError
 from aws_cdk import Duration, Stack, aws_ec2 as ec2, aws_codebuild as codebuild, aws_iam as iam, aws_s3 as s3, aws_logs as logs
 from constructs import Construct
+
+from cdk.components import PruneStaleGitHubBuilds
 from util.metadata import AWS_ACCOUNT, AWS_REGION, GITHUB_REPO_OWNER, GITHUB_REPO_NAME
 from util.iam_policies import code_build_batch_policy_in_json, s3_read_write_policy_in_json, \
     ec2_bm_framework_policies_in_json, ssm_bm_framework_policies_in_json, s3_bm_framework_policies_in_json, \
@@ -79,6 +81,8 @@ class BmFrameworkStack(Stack):
                                                    build_image=codebuild.LinuxBuildImage.STANDARD_4_0),
             build_spec=BuildSpecLoader.load(spec_file_path))
         project.enable_batch_builds()
+
+        PruneStaleGitHubBuilds(scope=self, id="PruneStaleGitHubBuilds", project=project)
 
         # use boto3 to determine if a bucket with the name that we want exists, and if it doesn't, create it
         s3_res = boto3.resource('s3')

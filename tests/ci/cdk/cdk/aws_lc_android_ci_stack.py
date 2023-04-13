@@ -3,6 +3,8 @@
 
 from aws_cdk import Duration, Stack, aws_codebuild as codebuild, aws_iam as iam
 from constructs import Construct
+
+from cdk.components import PruneStaleGitHubBuilds
 from util.iam_policies import code_build_batch_policy_in_json, device_farm_access_policy_in_json
 from util.metadata import GITHUB_REPO_OWNER, GITHUB_REPO_NAME
 from util.build_spec_loader import BuildSpecLoader
@@ -10,6 +12,7 @@ from util.build_spec_loader import BuildSpecLoader
 
 class AwsLcAndroidCIStack(Stack):
     """Define a stack used to batch execute AWS-LC tests in GitHub."""
+
     # The Device Farm resource used to in this CI spec, must be manually created.
     # TODO: Automate Device Farm creation with cdk script.
 
@@ -59,3 +62,5 @@ class AwsLcAndroidCIStack(Stack):
                                                    build_image=codebuild.LinuxBuildImage.STANDARD_4_0),
             build_spec=BuildSpecLoader.load(spec_file_path))
         project.enable_batch_builds()
+
+        PruneStaleGitHubBuilds(scope=self, id="PruneStaleGitHubBuilds", project=project)
