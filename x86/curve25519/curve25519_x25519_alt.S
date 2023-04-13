@@ -841,7 +841,7 @@ S2N_BN_SYMBOL(curve25519_x25519_byte_alt):
         mov     eax, 253
         mov     i, rax
 
-scalarloop:
+curve25519_x25519_alt_scalarloop:
 
 // sm = xm + zm; sn = xn + zn; dm = xm - zm; dn = xn - zn
 
@@ -911,7 +911,7 @@ scalarloop:
         sub     rax, 1
         mov     i, rax
         cmp     rax, 3
-        jnc     scalarloop
+        jnc     curve25519_x25519_alt_scalarloop
 
 // Multiplex directly into (xn,zn) then do three pure doubling steps;
 // this accounts for the implicit zeroing of the three lowest bits
@@ -984,7 +984,7 @@ scalarloop:
         lea     r15, [r10+8*rdi]
         xor     r11, r11
         xor     r9, r9
-copyloop:
+curve25519_x25519_alt_copyloop:
         mov     rax, [rdx+8*r9]
         mov     rbx, [rcx+8*r9]
         mov     [r10+8*r9], rax
@@ -993,7 +993,7 @@ copyloop:
         mov     [rsi+8*r9], r11
         inc     r9
         cmp     r9, rdi
-        jb      copyloop
+        jb      curve25519_x25519_alt_copyloop
         mov     rax, [r8]
         mov     rbx, rax
         dec     rbx
@@ -1025,7 +1025,7 @@ copyloop:
         mov     rax, rdi
         shl     rax, 0x7
         mov     [rsp+0x20], rax
-outerloop:
+curve25519_x25519_alt_outerloop:
         mov     r13, [rsp+0x20]
         add     r13, 0x3f
         shr     r13, 0x6
@@ -1039,7 +1039,7 @@ outerloop:
         mov     r8, [rsp+0x30]
         lea     r15, [r8+8*rdi]
         xor     r9, r9
-toploop:
+curve25519_x25519_alt_toploop:
         mov     rbx, [r8+8*r9]
         mov     rcx, [r15+8*r9]
         mov     r10, r11
@@ -1055,7 +1055,7 @@ toploop:
         sbb     r11, r11
         inc     r9
         cmp     r9, r13
-        jb      toploop
+        jb      curve25519_x25519_alt_toploop
         mov     rax, r12
         or      rax, rbp
         bsr     rcx, rax
@@ -1075,7 +1075,7 @@ toploop:
         mov     [rsp+0x10], r13
         mov     [rsp], r8
         mov     [rsp+0x18], r15
-innerloop:
+curve25519_x25519_alt_innerloop:
         xor     eax, eax
         xor     ebx, ebx
         xor     r8, r8
@@ -1105,7 +1105,7 @@ innerloop:
         add     rcx, rcx
         add     rdx, rdx
         dec     r9
-        jne     innerloop
+        jne     curve25519_x25519_alt_innerloop
         mov     rdi, [rsp+0x8]
         mov     r13, [rsp+0x10]
         mov     r8, [rsp]
@@ -1121,7 +1121,7 @@ innerloop:
         xor     r10, r10
         xor     r11, r11
         xor     r9, r9
-congloop:
+curve25519_x25519_alt_congloop:
         mov     rcx, [r8+8*r9]
         mov     rax, [rsp]
         mul     rcx
@@ -1152,7 +1152,7 @@ congloop:
         mov     rsi, rbp
         inc     r9
         cmp     r9, rdi
-        jb      congloop
+        jb      curve25519_x25519_alt_congloop
         shld    r14, r10, 0x6
         shld    rsi, r11, 0x6
         mov     r15, [rsp+0x48]
@@ -1166,8 +1166,8 @@ congloop:
         mov     r9d, 0x1
         mov     rcx, rdi
         dec     rcx
-        je      wmontend
-wmontloop:
+        je      curve25519_x25519_alt_wmontend
+curve25519_x25519_alt_wmontloop:
         adc     r10, [r8+8*r9]
         sbb     rbx, rbx
         mov     rax, [r15+8*r9]
@@ -1178,26 +1178,26 @@ wmontloop:
         mov     r10, rdx
         inc     r9
         dec     rcx
-        jne     wmontloop
-wmontend:
+        jne     curve25519_x25519_alt_wmontloop
+curve25519_x25519_alt_wmontend:
         adc     r10, r14
         mov     [r8+8*rdi-0x8], r10
         sbb     r10, r10
         neg     r10
         mov     rcx, rdi
         xor     r9, r9
-wcmploop:
+curve25519_x25519_alt_wcmploop:
         mov     rax, [r8+8*r9]
         sbb     rax, [r15+8*r9]
         inc     r9
         dec     rcx
-        jne     wcmploop
+        jne     curve25519_x25519_alt_wcmploop
         sbb     r10, 0x0
         sbb     r10, r10
         not     r10
         xor     rcx, rcx
         xor     r9, r9
-wcorrloop:
+curve25519_x25519_alt_wcorrloop:
         mov     rax, [r8+8*r9]
         mov     rbx, [r15+8*r9]
         and     rbx, r10
@@ -1207,7 +1207,7 @@ wcorrloop:
         mov     [r8+8*r9], rax
         inc     r9
         cmp     r9, rdi
-        jb      wcorrloop
+        jb      curve25519_x25519_alt_wcorrloop
         mov     r8, [rsp+0x40]
         mov     rbx, [r8]
         mov     rbp, [rsp+0x28]
@@ -1219,8 +1219,8 @@ wcorrloop:
         mov     r9d, 0x1
         mov     rcx, rdi
         dec     rcx
-        je      zmontend
-zmontloop:
+        je      curve25519_x25519_alt_zmontend
+curve25519_x25519_alt_zmontloop:
         adc     r11, [r8+8*r9]
         sbb     rbx, rbx
         mov     rax, [r15+8*r9]
@@ -1231,26 +1231,26 @@ zmontloop:
         mov     r11, rdx
         inc     r9
         dec     rcx
-        jne     zmontloop
-zmontend:
+        jne     curve25519_x25519_alt_zmontloop
+curve25519_x25519_alt_zmontend:
         adc     r11, rsi
         mov     [r8+8*rdi-0x8], r11
         sbb     r11, r11
         neg     r11
         mov     rcx, rdi
         xor     r9, r9
-zcmploop:
+curve25519_x25519_alt_zcmploop:
         mov     rax, [r8+8*r9]
         sbb     rax, [r15+8*r9]
         inc     r9
         dec     rcx
-        jne     zcmploop
+        jne     curve25519_x25519_alt_zcmploop
         sbb     r11, 0x0
         sbb     r11, r11
         not     r11
         xor     rcx, rcx
         xor     r9, r9
-zcorrloop:
+curve25519_x25519_alt_zcorrloop:
         mov     rax, [r8+8*r9]
         mov     rbx, [r15+8*r9]
         and     rbx, r11
@@ -1260,7 +1260,7 @@ zcorrloop:
         mov     [r8+8*r9], rax
         inc     r9
         cmp     r9, rdi
-        jb      zcorrloop
+        jb      curve25519_x25519_alt_zcorrloop
         mov     r8, [rsp+0x30]
         lea     r15, [r8+8*rdi]
         xor     r9, r9
@@ -1268,7 +1268,7 @@ zcorrloop:
         xor     r14, r14
         xor     rbp, rbp
         xor     rsi, rsi
-crossloop:
+curve25519_x25519_alt_crossloop:
         mov     rcx, [r8+8*r9]
         mov     rax, [rsp]
         mul     rcx
@@ -1299,13 +1299,13 @@ crossloop:
         mov     rsi, r11
         inc     r9
         cmp     r9, r13
-        jb      crossloop
+        jb      curve25519_x25519_alt_crossloop
         xor     r9, r9
         mov     r10, r12
         mov     r11, rbp
         xor     r14, r12
         xor     rsi, rbp
-optnegloop:
+curve25519_x25519_alt_optnegloop:
         mov     rax, [r8+8*r9]
         xor     rax, r12
         neg     r10
@@ -1320,11 +1320,11 @@ optnegloop:
         mov     [r15+8*r9], rax
         inc     r9
         cmp     r9, r13
-        jb      optnegloop
+        jb      curve25519_x25519_alt_optnegloop
         sub     r14, r10
         sub     rsi, r11
         mov     r9, r13
-shiftloop:
+curve25519_x25519_alt_shiftloop:
         mov     rax, [r8+8*r9-0x8]
         mov     r10, rax
         shrd    rax, r14, 0x3a
@@ -1336,7 +1336,7 @@ shiftloop:
         mov     [r15+8*r9-0x8], rax
         mov     rsi, r11
         dec     r9
-        jne     shiftloop
+        jne     curve25519_x25519_alt_shiftloop
         not     rbp
         mov     rcx, [rsp+0x48]
         mov     r8, [rsp+0x38]
@@ -1344,7 +1344,7 @@ shiftloop:
         mov     r10, r12
         mov     r11, rbp
         xor     r9, r9
-fliploop:
+curve25519_x25519_alt_fliploop:
         mov     rdx, rbp
         mov     rax, [rcx+8*r9]
         and     rdx, rax
@@ -1363,9 +1363,9 @@ fliploop:
         mov     [r15+8*r9], rdx
         inc     r9
         cmp     r9, rdi
-        jb      fliploop
+        jb      curve25519_x25519_alt_fliploop
         sub     QWORD PTR [rsp+0x20], 0x3a
-        ja      outerloop
+        ja      curve25519_x25519_alt_outerloop
 
 // Since we eventually want to return 0 when the result is the point at
 // infinity, we force xn = 0 whenever zn = 0. This avoids building in a
