@@ -35,12 +35,6 @@
 #define BORINGSSL_X25519_NEON_CAPABLE
 #endif
 
-// Remove when proper byte-level APIs for x25519 s2n-bignum interface have been
-// imported...
-#if defined(OPENSSL_AARCH64)
-#undef OPENSSL_AARCH64
-#endif
-
 #if (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64)) && \
     (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE)) && \
     !defined(OPENSSL_NO_ASM) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
