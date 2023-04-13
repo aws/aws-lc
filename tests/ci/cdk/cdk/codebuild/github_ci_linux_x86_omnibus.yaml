@@ -349,7 +349,7 @@ batch:
       buildspec: ./tests/ci/codebuild/linux-x86/openssh_integration.yml
       env:
         type: LINUX_CONTAINER
-        privileged-mode: false
+        privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:amazonlinux-2022_clang-14x_latest
 
