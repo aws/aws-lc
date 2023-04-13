@@ -1295,7 +1295,9 @@ static int aead_aes_gcm_seal_scatter_randnonce(
   // |RAND_bytes| calls within the fipsmodule should be wrapped with state lock
   // functions to avoid updating the service indicator with the DRBG functions.
   FIPS_service_indicator_lock_state();
-  RAND_bytes(nonce, sizeof(nonce));
+  if (!RAND_bytes(nonce, sizeof(nonce))) {
+    return 0;
+  }
   FIPS_service_indicator_unlock_state();
   const struct aead_aes_gcm_ctx *gcm_ctx =
       (const struct aead_aes_gcm_ctx *)&ctx->state;

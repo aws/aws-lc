@@ -1872,7 +1872,12 @@ static void sc_muladd(uint8_t *s, const uint8_t *a, const uint8_t *b,
 
 void ED25519_keypair(uint8_t out_public_key[32], uint8_t out_private_key[64]) {
   uint8_t seed[ED25519_SEED_LEN];
-  RAND_bytes(seed, ED25519_SEED_LEN);
+  if (!RAND_bytes(seed, ED25519_SEED_LEN)) {
+    // This is a public void function and can't be updated
+    OPENSSL_cleanse(out_public_key, 32);
+    OPENSSL_cleanse(out_private_key, 64);
+    return;
+  }
   ED25519_keypair_from_seed(out_public_key, out_private_key, seed);
   OPENSSL_cleanse(seed, ED25519_SEED_LEN);
 }
@@ -2091,7 +2096,12 @@ static void x25519_scalar_mult(uint8_t out[32], const uint8_t scalar[32],
 }
 
 void X25519_keypair(uint8_t out_public_value[32], uint8_t out_private_key[32]) {
-  RAND_bytes(out_private_key, 32);
+  if (!RAND_bytes(out_private_key, 32)) {
+    // This is a public void function and can't be updated
+    OPENSSL_cleanse(out_public_value, 32);
+    OPENSSL_cleanse(out_private_key, 64);
+    return;
+  }
 
   // All X25519 implementations should decode scalars correctly (see
   // https://tools.ietf.org/html/rfc7748#section-5). However, if an
