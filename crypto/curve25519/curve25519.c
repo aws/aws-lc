@@ -2099,7 +2099,7 @@ void X25519_keypair(uint8_t out_public_value[32], uint8_t out_private_key[32]) {
   if (!RAND_bytes(out_private_key, 32)) {
     // This is a public void function and can't be updated
     OPENSSL_cleanse(out_public_value, 32);
-    OPENSSL_cleanse(out_private_key, 64);
+    OPENSSL_cleanse(out_private_key, 32);
     return;
   }
 
