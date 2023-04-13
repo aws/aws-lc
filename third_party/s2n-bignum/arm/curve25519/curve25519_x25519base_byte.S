@@ -2,11 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
 // ----------------------------------------------------------------------------
-// The x25519 function for curve25519 on base element 9
-// Input scalar[4]; output res[4]
+// The x25519 function for curve25519 on base element 9 (byte array arguments)
+// Input scalar[32] (bytes); output res[32] (bytes)
 //
-// extern void curve25519_x25519base
-//   (uint64_t res[static 4],uint64_t scalar[static 4]);
+// extern void curve25519_x25519base_byte
+//   (uint8_t res[static 32],uint8_t scalar[static 32])
 //
 // Given a scalar n, returns the X coordinate of n * G where G = (9,...) is
 // the standard generator. The scalar is first slightly modified/mangled
@@ -16,8 +16,8 @@
 // ----------------------------------------------------------------------------
 #include "_internal_s2n_bignum.h"
 
-        S2N_BN_SYM_VISIBILITY_DIRECTIVE(curve25519_x25519base)
-        S2N_BN_SYM_PRIVACY_DIRECTIVE(curve25519_x25519base)
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(curve25519_x25519base_byte)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(curve25519_x25519base_byte)
 
         .text
         .balign 4
@@ -496,7 +496,7 @@
         stp     x3, x4, [P0];                   \
         stp     x5, x6, [P0+16]
 
-S2N_BN_SYMBOL(curve25519_x25519base):
+S2N_BN_SYMBOL(curve25519_x25519base_byte):
 
 // Save regs and make room for temporaries
 
@@ -515,9 +515,68 @@ S2N_BN_SYMBOL(curve25519_x25519base):
 // 2^254 * G is taken care of by the starting value for the addition
 // chain below, while we never look at the three low bits at all.
 
-        ldp     x10, x11, [x1]
+        ldrb    w10, [x1]
+        ldrb    w0, [x1, #1]
+        orr     x10, x10, x0, lsl #8
+        ldrb    w0, [x1, #2]
+        orr     x10, x10, x0, lsl #16
+        ldrb    w0, [x1, #3]
+        orr     x10, x10, x0, lsl #24
+        ldrb    w0, [x1, #4]
+        orr     x10, x10, x0, lsl #32
+        ldrb    w0, [x1, #5]
+        orr     x10, x10, x0, lsl #40
+        ldrb    w0, [x1, #6]
+        orr     x10, x10, x0, lsl #48
+        ldrb    w0, [x1, #7]
+        orr     x10, x10, x0, lsl #56
+        ldrb    w11, [x1, #8]
+        ldrb    w0, [x1, #9]
+        orr     x11, x11, x0, lsl #8
+        ldrb    w0, [x1, #10]
+        orr     x11, x11, x0, lsl #16
+        ldrb    w0, [x1, #11]
+        orr     x11, x11, x0, lsl #24
+        ldrb    w0, [x1, #12]
+        orr     x11, x11, x0, lsl #32
+        ldrb    w0, [x1, #13]
+        orr     x11, x11, x0, lsl #40
+        ldrb    w0, [x1, #14]
+        orr     x11, x11, x0, lsl #48
+        ldrb    w0, [x1, #15]
+        orr     x11, x11, x0, lsl #56
         stp     x10, x11, [scalar]
-        ldp     x12, x13, [x1, #16]
+
+        ldrb    w12, [x1, #16]
+        ldrb    w0, [x1, #17]
+        orr     x12, x12, x0, lsl #8
+        ldrb    w0, [x1, #18]
+        orr     x12, x12, x0, lsl #16
+        ldrb    w0, [x1, #19]
+        orr     x12, x12, x0, lsl #24
+        ldrb    w0, [x1, #20]
+        orr     x12, x12, x0, lsl #32
+        ldrb    w0, [x1, #21]
+        orr     x12, x12, x0, lsl #40
+        ldrb    w0, [x1, #22]
+        orr     x12, x12, x0, lsl #48
+        ldrb    w0, [x1, #23]
+        orr     x12, x12, x0, lsl #56
+        ldrb    w13, [x1, #24]
+        ldrb    w0, [x1, #25]
+        orr     x13, x13, x0, lsl #8
+        ldrb    w0, [x1, #26]
+        orr     x13, x13, x0, lsl #16
+        ldrb    w0, [x1, #27]
+        orr     x13, x13, x0, lsl #24
+        ldrb    w0, [x1, #28]
+        orr     x13, x13, x0, lsl #32
+        ldrb    w0, [x1, #29]
+        orr     x13, x13, x0, lsl #40
+        ldrb    w0, [x1, #30]
+        orr     x13, x13, x0, lsl #48
+        ldrb    w0, [x1, #31]
+        orr     x13, x13, x0, lsl #56
         bic     x13, x13, #0xc000000000000000
         stp     x12, x13, [scalar+16]
 
@@ -535,8 +594,8 @@ S2N_BN_SYMBOL(curve25519_x25519base):
         ldr     x0, [scalar]
         ands    xzr, x0, #8
 
-        adr     x10, curve25519_x25519base_edwards25519_0g
-        adr     x11, curve25519_x25519base_edwards25519_8g
+        adr     x10, curve25519_x25519base_byte_edwards25519_0g
+        adr     x11, curve25519_x25519base_byte_edwards25519_8g
         ldp     x0, x1, [x10]
         ldp     x2, x3, [x11]
         csel    x0, x0, x2, eq
@@ -592,12 +651,12 @@ S2N_BN_SYMBOL(curve25519_x25519base):
 // l >= 9 case cannot arise on the last iteration.
 
         mov     i, 4
-        adr     tab, curve25519_x25519base_edwards25519_gtable
+        adr     tab, curve25519_x25519base_byte_edwards25519_gtable
         mov     bias, xzr
 
 // Start of the main loop, repeated 63 times for i = 4, 8, ..., 252
 
-curve25519_x25519base_scalarloop:
+curve25519_x25519base_byte_scalarloop:
 
 // Look at the next 4-bit field "bf", adding the previous bias as well.
 // Choose the table index "ix" as bf when bf <= 8 and 16 - bf for bf >= 9,
@@ -880,7 +939,7 @@ curve25519_x25519base_scalarloop:
 
         add     i, i, 4
         cmp     i, 256
-        bcc     curve25519_x25519base_scalarloop
+        bcc     curve25519_x25519base_byte_scalarloop
 
 // Now we need to translate from Edwards curve edwards25519 back
 // to the Montgomery form curve25519. The mapping in the affine
@@ -917,7 +976,7 @@ curve25519_x25519base_scalarloop:
         mov     x0, 4
         add     x1, x_3
         add     x2, z_3
-        adr     x3, curve25519_x25519base_p_25519
+        adr     x3, curve25519_x25519base_byte_p_25519
         add     x4, tmpspace
 
 // Inline copy of bignum_modinv, identical except for stripping out the
@@ -929,7 +988,7 @@ curve25519_x25519base_scalarloop:
         add     x21, x4, x10
         add     x22, x21, x10
         mov     x10, xzr
-curve25519_x25519base_copyloop:
+curve25519_x25519base_byte_copyloop:
         ldr     x11, [x2, x10, lsl #3]
         ldr     x12, [x3, x10, lsl #3]
         str     x11, [x21, x10, lsl #3]
@@ -938,7 +997,7 @@ curve25519_x25519base_copyloop:
         str     xzr, [x1, x10, lsl #3]
         add     x10, x10, #0x1
         cmp     x10, x0
-        b.cc    curve25519_x25519base_copyloop
+        b.cc    curve25519_x25519base_byte_copyloop
         ldr     x11, [x4]
         sub     x12, x11, #0x1
         str     x12, [x4]
@@ -955,7 +1014,7 @@ curve25519_x25519base_copyloop:
         madd    x20, x12, x20, x20
         madd    x20, x11, x20, x20
         lsl     x2, x0, #7
-curve25519_x25519base_outerloop:
+curve25519_x25519base_byte_outerloop:
         add     x10, x2, #0x3f
         lsr     x5, x10, #6
         cmp     x5, x0
@@ -966,7 +1025,7 @@ curve25519_x25519base_outerloop:
         mov     x16, xzr
         mov     x19, xzr
         mov     x10, xzr
-curve25519_x25519base_toploop:
+curve25519_x25519base_byte_toploop:
         ldr     x11, [x21, x10, lsl #3]
         ldr     x12, [x22, x10, lsl #3]
         orr     x17, x11, x12
@@ -980,7 +1039,7 @@ curve25519_x25519base_toploop:
         csetm   x19, ne
         add     x10, x10, #0x1
         cmp     x10, x5
-        b.cc    curve25519_x25519base_toploop
+        b.cc    curve25519_x25519base_byte_toploop
         orr     x11, x13, x14
         clz     x12, x11
         negs    x17, x12
@@ -1000,7 +1059,7 @@ curve25519_x25519base_toploop:
         mov     x9, #0x1
         mov     x10, #0x3a
         tst     x15, #0x1
-curve25519_x25519base_innerloop:
+curve25519_x25519base_byte_innerloop:
         csel    x11, x14, xzr, ne
         csel    x12, x16, xzr, ne
         csel    x17, x8, xzr, ne
@@ -1022,13 +1081,13 @@ curve25519_x25519base_innerloop:
         add     x8, x8, x8
         add     x9, x9, x9
         sub     x10, x10, #0x1
-        cbnz    x10, curve25519_x25519base_innerloop
+        cbnz    x10, curve25519_x25519base_byte_innerloop
         mov     x13, xzr
         mov     x14, xzr
         mov     x17, xzr
         mov     x19, xzr
         mov     x10, xzr
-curve25519_x25519base_congloop:
+curve25519_x25519base_byte_congloop:
         ldr     x11, [x4, x10, lsl #3]
         ldr     x12, [x1, x10, lsl #3]
         mul     x15, x6, x11
@@ -1055,7 +1114,7 @@ curve25519_x25519base_congloop:
         adc     x14, x14, x15
         add     x10, x10, #0x1
         cmp     x10, x0
-        b.cc    curve25519_x25519base_congloop
+        b.cc    curve25519_x25519base_byte_congloop
         extr    x13, x13, x17, #58
         extr    x14, x14, x19, #58
         ldr     x11, [x4]
@@ -1066,8 +1125,8 @@ curve25519_x25519base_congloop:
         adds    x11, x11, x15
         mov     x10, #0x1
         sub     x11, x0, #0x1
-        cbz     x11, curve25519_x25519base_wmontend
-curve25519_x25519base_wmontloop:
+        cbz     x11, curve25519_x25519base_byte_wmontend
+curve25519_x25519base_byte_wmontloop:
         ldr     x11, [x3, x10, lsl #3]
         ldr     x12, [x4, x10, lsl #3]
         mul     x15, x17, x11
@@ -1079,24 +1138,24 @@ curve25519_x25519base_wmontloop:
         str     x12, [x4, x15, lsl #3]
         add     x10, x10, #0x1
         sub     x11, x10, x0
-        cbnz    x11, curve25519_x25519base_wmontloop
-curve25519_x25519base_wmontend:
+        cbnz    x11, curve25519_x25519base_byte_wmontloop
+curve25519_x25519base_byte_wmontend:
         adcs    x16, x16, x13
         adc     x13, xzr, xzr
         sub     x15, x10, #0x1
         str     x16, [x4, x15, lsl #3]
         negs    x10, xzr
-curve25519_x25519base_wcmploop:
+curve25519_x25519base_byte_wcmploop:
         ldr     x11, [x4, x10, lsl #3]
         ldr     x12, [x3, x10, lsl #3]
         sbcs    xzr, x11, x12
         add     x10, x10, #0x1
         sub     x11, x10, x0
-        cbnz    x11, curve25519_x25519base_wcmploop
+        cbnz    x11, curve25519_x25519base_byte_wcmploop
         sbcs    xzr, x13, xzr
         csetm   x13, cs
         negs    x10, xzr
-curve25519_x25519base_wcorrloop:
+curve25519_x25519base_byte_wcorrloop:
         ldr     x11, [x4, x10, lsl #3]
         ldr     x12, [x3, x10, lsl #3]
         and     x12, x12, x13
@@ -1104,7 +1163,7 @@ curve25519_x25519base_wcorrloop:
         str     x11, [x4, x10, lsl #3]
         add     x10, x10, #0x1
         sub     x11, x10, x0
-        cbnz    x11, curve25519_x25519base_wcorrloop
+        cbnz    x11, curve25519_x25519base_byte_wcorrloop
         ldr     x11, [x1]
         mul     x17, x11, x20
         ldr     x12, [x3]
@@ -1113,8 +1172,8 @@ curve25519_x25519base_wcorrloop:
         adds    x11, x11, x15
         mov     x10, #0x1
         sub     x11, x0, #0x1
-        cbz     x11, curve25519_x25519base_zmontend
-curve25519_x25519base_zmontloop:
+        cbz     x11, curve25519_x25519base_byte_zmontend
+curve25519_x25519base_byte_zmontloop:
         ldr     x11, [x3, x10, lsl #3]
         ldr     x12, [x1, x10, lsl #3]
         mul     x15, x17, x11
@@ -1126,24 +1185,24 @@ curve25519_x25519base_zmontloop:
         str     x12, [x1, x15, lsl #3]
         add     x10, x10, #0x1
         sub     x11, x10, x0
-        cbnz    x11, curve25519_x25519base_zmontloop
-curve25519_x25519base_zmontend:
+        cbnz    x11, curve25519_x25519base_byte_zmontloop
+curve25519_x25519base_byte_zmontend:
         adcs    x16, x16, x14
         adc     x14, xzr, xzr
         sub     x15, x10, #0x1
         str     x16, [x1, x15, lsl #3]
         negs    x10, xzr
-curve25519_x25519base_zcmploop:
+curve25519_x25519base_byte_zcmploop:
         ldr     x11, [x1, x10, lsl #3]
         ldr     x12, [x3, x10, lsl #3]
         sbcs    xzr, x11, x12
         add     x10, x10, #0x1
         sub     x11, x10, x0
-        cbnz    x11, curve25519_x25519base_zcmploop
+        cbnz    x11, curve25519_x25519base_byte_zcmploop
         sbcs    xzr, x14, xzr
         csetm   x14, cs
         negs    x10, xzr
-curve25519_x25519base_zcorrloop:
+curve25519_x25519base_byte_zcorrloop:
         ldr     x11, [x1, x10, lsl #3]
         ldr     x12, [x3, x10, lsl #3]
         and     x12, x12, x14
@@ -1151,13 +1210,13 @@ curve25519_x25519base_zcorrloop:
         str     x11, [x1, x10, lsl #3]
         add     x10, x10, #0x1
         sub     x11, x10, x0
-        cbnz    x11, curve25519_x25519base_zcorrloop
+        cbnz    x11, curve25519_x25519base_byte_zcorrloop
         mov     x13, xzr
         mov     x14, xzr
         mov     x17, xzr
         mov     x19, xzr
         mov     x10, xzr
-curve25519_x25519base_crossloop:
+curve25519_x25519base_byte_crossloop:
         ldr     x11, [x21, x10, lsl #3]
         ldr     x12, [x22, x10, lsl #3]
         mul     x15, x6, x11
@@ -1184,13 +1243,13 @@ curve25519_x25519base_crossloop:
         csetm   x19, cc
         add     x10, x10, #0x1
         cmp     x10, x5
-        b.cc    curve25519_x25519base_crossloop
+        b.cc    curve25519_x25519base_byte_crossloop
         cmn     x17, x17
         ldr     x15, [x21]
         mov     x10, xzr
         sub     x6, x5, #0x1
-        cbz     x6, curve25519_x25519base_negskip1
-curve25519_x25519base_negloop1:
+        cbz     x6, curve25519_x25519base_byte_negskip1
+curve25519_x25519base_byte_negloop1:
         add     x11, x10, #0x8
         ldr     x12, [x21, x11]
         extr    x15, x12, x15, #58
@@ -1200,8 +1259,8 @@ curve25519_x25519base_negloop1:
         mov     x15, x12
         add     x10, x10, #0x8
         sub     x6, x6, #0x1
-        cbnz    x6, curve25519_x25519base_negloop1
-curve25519_x25519base_negskip1:
+        cbnz    x6, curve25519_x25519base_byte_negloop1
+curve25519_x25519base_byte_negskip1:
         extr    x15, x13, x15, #58
         eor     x15, x15, x17
         adcs    x15, x15, xzr
@@ -1210,8 +1269,8 @@ curve25519_x25519base_negskip1:
         ldr     x15, [x22]
         mov     x10, xzr
         sub     x6, x5, #0x1
-        cbz     x6, curve25519_x25519base_negskip2
-curve25519_x25519base_negloop2:
+        cbz     x6, curve25519_x25519base_byte_negskip2
+curve25519_x25519base_byte_negloop2:
         add     x11, x10, #0x8
         ldr     x12, [x22, x11]
         extr    x15, x12, x15, #58
@@ -1221,15 +1280,15 @@ curve25519_x25519base_negloop2:
         mov     x15, x12
         add     x10, x10, #0x8
         sub     x6, x6, #0x1
-        cbnz    x6, curve25519_x25519base_negloop2
-curve25519_x25519base_negskip2:
+        cbnz    x6, curve25519_x25519base_byte_negloop2
+curve25519_x25519base_byte_negskip2:
         extr    x15, x14, x15, #58
         eor     x15, x15, x19
         adcs    x15, x15, xzr
         str     x15, [x22, x10]
         mov     x10, xzr
         cmn     x17, x17
-curve25519_x25519base_wfliploop:
+curve25519_x25519base_byte_wfliploop:
         ldr     x11, [x3, x10, lsl #3]
         ldr     x12, [x4, x10, lsl #3]
         and     x11, x11, x17
@@ -1238,11 +1297,11 @@ curve25519_x25519base_wfliploop:
         str     x11, [x4, x10, lsl #3]
         add     x10, x10, #0x1
         sub     x11, x10, x0
-        cbnz    x11, curve25519_x25519base_wfliploop
+        cbnz    x11, curve25519_x25519base_byte_wfliploop
         mvn     x19, x19
         mov     x10, xzr
         cmn     x19, x19
-curve25519_x25519base_zfliploop:
+curve25519_x25519base_byte_zfliploop:
         ldr     x11, [x3, x10, lsl #3]
         ldr     x12, [x1, x10, lsl #3]
         and     x11, x11, x19
@@ -1251,16 +1310,83 @@ curve25519_x25519base_zfliploop:
         str     x11, [x1, x10, lsl #3]
         add     x10, x10, #0x1
         sub     x11, x10, x0
-        cbnz    x11, curve25519_x25519base_zfliploop
+        cbnz    x11, curve25519_x25519base_byte_zfliploop
         subs    x2, x2, #0x3a
-        b.hi    curve25519_x25519base_outerloop
+        b.hi    curve25519_x25519base_byte_outerloop
 
 // The final result is (X + T) / (X - T)
 // This is the only operation in the whole computation that
 // fully reduces modulo p_25519 since now we want the canonical
 // answer as output.
 
-        mul_p25519(resx,y_3,x_3)
+        mul_p25519(x_1,y_3,x_3)
+
+        ldp     x10, x11, [x_1]
+        strb    w10, [resx]
+        lsr     x10, x10, #8
+        strb    w10, [resx+1]
+        lsr     x10, x10, #8
+        strb    w10, [resx+2]
+        lsr     x10, x10, #8
+        strb    w10, [resx+3]
+        lsr     x10, x10, #8
+        strb    w10, [resx+4]
+        lsr     x10, x10, #8
+        strb    w10, [resx+5]
+        lsr     x10, x10, #8
+        strb    w10, [resx+6]
+        lsr     x10, x10, #8
+        strb    w10, [resx+7]
+
+        strb    w11, [resx+8]
+        lsr     x11, x11, #8
+        strb    w11, [resx+9]
+        lsr     x11, x11, #8
+        strb    w11, [resx+10]
+        lsr     x11, x11, #8
+        strb    w11, [resx+11]
+        lsr     x11, x11, #8
+        strb    w11, [resx+12]
+        lsr     x11, x11, #8
+        strb    w11, [resx+13]
+        lsr     x11, x11, #8
+        strb    w11, [resx+14]
+        lsr     x11, x11, #8
+        strb    w11, [resx+15]
+
+        ldp     x12, x13, [x_1+16]
+        strb    w12, [resx+16]
+        lsr     x12, x12, #8
+        strb    w12, [resx+17]
+        lsr     x12, x12, #8
+        strb    w12, [resx+18]
+        lsr     x12, x12, #8
+        strb    w12, [resx+19]
+        lsr     x12, x12, #8
+        strb    w12, [resx+20]
+        lsr     x12, x12, #8
+        strb    w12, [resx+21]
+        lsr     x12, x12, #8
+        strb    w12, [resx+22]
+        lsr     x12, x12, #8
+        strb    w12, [resx+23]
+
+        strb    w13, [resx+24]
+        lsr     x13, x13, #8
+        strb    w13, [resx+25]
+        lsr     x13, x13, #8
+        strb    w13, [resx+26]
+        lsr     x13, x13, #8
+        strb    w13, [resx+27]
+        lsr     x13, x13, #8
+        strb    w13, [resx+28]
+        lsr     x13, x13, #8
+        strb    w13, [resx+29]
+        lsr     x13, x13, #8
+        strb    w13, [resx+30]
+        lsr     x13, x13, #8
+        strb    w13, [resx+31]
+
 
 // Restore stack and registers
 
@@ -1281,7 +1407,7 @@ curve25519_x25519base_zfliploop:
 
 // The modulus p_25519 = 2^255 - 19, for the modular inverse
 
-curve25519_x25519base_p_25519:
+curve25519_x25519base_byte_p_25519:
         .quad   0xffffffffffffffed
         .quad   0xffffffffffffffff
         .quad   0xffffffffffffffff
@@ -1290,7 +1416,7 @@ curve25519_x25519base_p_25519:
 // 2^254 * G and (2^254 + 8) * G in extended-projective coordinates
 // but with Z = 1 assumed and hence left out, so they are (X,Y,T) only.
 
-curve25519_x25519base_edwards25519_0g:
+curve25519_x25519base_byte_edwards25519_0g:
 
         .quad   0x251037f7cf4e861d
         .quad   0x10ede0fb19fb128f
@@ -1307,7 +1433,7 @@ curve25519_x25519base_edwards25519_0g:
         .quad   0x72e302a348492870
         .quad   0x1253c19e53dbe1bc
 
-curve25519_x25519base_edwards25519_8g:
+curve25519_x25519base_byte_edwards25519_8g:
 
         .quad   0x331d086e0d9abcaa
         .quad   0x1e23c96d311a10c9
@@ -1327,7 +1453,7 @@ curve25519_x25519base_edwards25519_8g:
 // Precomputed table of multiples of generator for edwards25519
 // all in precomputed extended-projective (y-x,x+y,2*d*x*y) triples.
 
-curve25519_x25519base_edwards25519_gtable:
+curve25519_x25519base_byte_edwards25519_gtable:
 
         // 2^4 * 1 * G
 
