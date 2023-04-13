@@ -97,9 +97,7 @@ ls
 aws_lc_build -DBUILD_SHARED_LIBS=1
 install_aws_lc
 
-# These tests require privileged mode
-# CODEBUILD_SKIPPED_TESTS="agent-subprocess forwarding multiplex forward-control agent-restrict connection-timeout"
-CODEBUILD_SKIPPED_TESTS=""
+CODEBUILD_SKIPPED_TESTS="agent-subprocess forwarding multiplex forward-control agent-restrict connection-timeout"
 
 # Using default branch. Build openssh and run tests.
 openssh_build
