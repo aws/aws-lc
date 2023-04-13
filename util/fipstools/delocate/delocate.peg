@@ -106,9 +106,11 @@ Operator <- [+\-]
 OffsetOperator <- '+' / '-' / '*'
 Offset <- '+'? '-'? (("0b" [01]+) /
                      ("0x" [[0-9A-F]]+) /
-                     ([0-9]+ ( OffsetOperator '(' [0-9]+ OffsetOperator [0-9]+ ')' )? /
+                     ([0-9]+ WS OffsetOperator [0-9]+ /
+                      [0-9]+ ( OffsetOperator '(' [0-9]+ OffsetOperator [0-9]+ ')' )? /
                       [0-9]+ ( OffsetOperator [0-9]+ OffsetOperator [0-9]+ )? /
                       [0-9]+ ( OffsetOperator [0-9]+ )? /
+                      '(' [0-9]+ WS? OffsetOperator WS? [0-9]+ ')' OffsetOperator [0-9]+ OffsetOperator [0-9]+ /
                       '(' [0-9]+ WS? OffsetOperator WS? [0-9]+ ')' /
                       '(' [0-9]+ WS? OffsetOperator WS? [0-9]+ WS? OffsetOperator WS? [0-9]+')')![[A-Z]]
                     )
