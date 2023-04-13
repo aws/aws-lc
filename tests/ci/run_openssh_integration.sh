@@ -99,12 +99,12 @@ install_aws_lc
 
 # Using default branch. Build openssh and run tests.
 openssh_build
-openssh_run_tests "agent-subprocess"
+openssh_run_tests "agent-subprocess forwarding"
 
 # Using branch V_8_9
 checkout_openssh_branch V_8_9
 openssh_build
 # In v8.9, the "percent" test requires the 'openssl' cli command
-openssh_run_tests "percent agent-subprocess"
+openssh_run_tests "percent agent-subprocess forwarding"
 
 popd
