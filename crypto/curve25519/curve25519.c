@@ -62,6 +62,14 @@ OPENSSL_INLINE int x25519_Armv7_neon_capable(void) {
 // Stub functions if implementations are not compiled.
 
 #if !defined(CURVE25519_S2N_BIGNUM_CAPABLE)
+
+void curve25519_x25519_byte(uint8_t res[32], const uint8_t scalar[32],
+  const uint8_t point[32]);
+void curve25519_x25519_byte_alt(uint8_t res[32], const uint8_t scalar[32],
+  const uint8_t point[32]);
+void curve25519_x25519base_byte(uint8_t res[32], const uint8_t scalar[32]);
+void curve25519_x25519base_byte_alt(uint8_t res[32], const uint8_t scalar[32]);
+
 void curve25519_x25519_byte(uint8_t res[32], const uint8_t scalar[32],
   const uint8_t point[32]) {
   abort();
@@ -73,10 +81,10 @@ void curve25519_x25519_byte_alt(uint8_t res[32], const uint8_t scalar[32],
 void curve25519_x25519base_byte(uint8_t res[32], const uint8_t scalar[32]) {
   abort();
 }
-void curve25519_x25519base_byte_alt(uint8_t res[32],
-  const uint8_t scalar[32]) {
+void curve25519_x25519base_byte_alt(uint8_t res[32], const uint8_t scalar[32]) {
   abort();
 }
+
 #endif // !defined(CURVE25519_ASM_CAPABLE)
 
 void x25519_NEON(uint8_t out[32], const uint8_t scalar[32],
