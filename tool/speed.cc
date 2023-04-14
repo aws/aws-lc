@@ -357,10 +357,19 @@ static bool SpeedRSAKeyGen(const std::string &selected) {
       BM_NAMESPACE::UniquePtr<RSA> rsa(RSA_new());
 
       const uint64_t iteration_start = time_now();
-      if (!RSA_generate_key_ex(rsa.get(), size, e.get(), nullptr)) {
-        fprintf(stderr, "RSA_generate_key_ex failed.\n");
-        ERR_print_errors_fp(stderr);
-        return false;
+      if(FIPS_mode()){
+        if (!RSA_generate_key_fips(rsa.get(), size, nullptr)) {
+          fprintf(stderr, "RSA_generate_key_fips failed.\n");
+          ERR_print_errors_fp(stderr);
+          return false;
+        }
+      }
+      else {
+        if (!RSA_generate_key_ex(rsa.get(), size, e.get(), nullptr)) {
+          fprintf(stderr, "RSA_generate_key_ex failed.\n");
+          ERR_print_errors_fp(stderr);
+          return false;
+        }
       }
       const uint64_t iteration_end = time_now();
 
@@ -2117,9 +2126,7 @@ bool Speed(const std::vector<std::string> &args) {
      !SpeedScrypt(selected) ||
 #endif
      !SpeedRSA(selected) ||
-     !SpeedRSAKeyGen(selected)
 #if !defined(OPENSSL_BENCHMARK)
-     ||
      !SpeedKEM(selected) ||
      !SpeedAEAD(EVP_aead_aes_128_gcm(), "AEAD-AES-128-GCM", kTLSADLen, selected) ||
      !SpeedAEADOpen(EVP_aead_aes_128_gcm(), "AEAD-AES-128-GCM", kTLSADLen, selected) ||
