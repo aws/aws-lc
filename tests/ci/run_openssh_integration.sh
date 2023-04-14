@@ -112,9 +112,12 @@ openssh_build
 pushd "${OPENSSH_WORKSPACE_FOLDER}"/regress
 useradd sshd
 
+export TEST_SSH_TRACE=1
+
 set +e
 PATH=`pwd`/..:$PATH:. TEST_SHELL=/bin/sh sh test-exec.sh `pwd` agent-subprocess.sh
-cat regress.log
+cat *.log
+cat log/*
 
 popd
 exit 1
