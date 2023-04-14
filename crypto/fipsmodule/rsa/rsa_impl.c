@@ -364,6 +364,81 @@ err:
   return ret;
 }
 
+int rsa_encrypt_pkcs1_oeap_for_known_answer_test(RSA *rsa, size_t *out_len,
+                                                 uint8_t *out, size_t max_out,
+                                                 const uint8_t *in,
+                                                 size_t in_len) {
+  if (!rsa_check_public_key(rsa, RSA_PUBLIC_KEY)) {
+    return 0;
+  }
+
+  const unsigned rsa_size = RSA_size(rsa);
+  BIGNUM *f, *result;
+  uint8_t *buf = NULL;
+  BN_CTX *ctx = NULL;
+  int i, ret = 0;
+
+  if (max_out < rsa_size) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_OUTPUT_BUFFER_TOO_SMALL);
+    return 0;
+  }
+
+  ctx = BN_CTX_new();
+  if (ctx == NULL) {
+    goto err;
+  }
+
+  BN_CTX_start(ctx);
+  f = BN_CTX_get(ctx);
+  result = BN_CTX_get(ctx);
+  buf = OPENSSL_malloc(rsa_size);
+  if (!f || !result || !buf) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
+    goto err;
+  }
+
+  // Use SHA-256 for both hashes and no label.
+  i = rsa_padding_add_pkcs1_oeap_for_known_answer_test(
+      buf, rsa_size, in, in_len, NULL, 0, EVP_sha256(), EVP_sha256());
+  if (i <= 0) {
+    goto err;
+  }
+
+  if (BN_bin2bn(buf, rsa_size, f) == NULL) {
+    goto err;
+  }
+
+  if (BN_ucmp(f, rsa->n) >= 0) {
+    // usually the padding functions would catch this
+    OPENSSL_PUT_ERROR(RSA, RSA_R_DATA_TOO_LARGE_FOR_MODULUS);
+    goto err;
+  }
+
+  if (!BN_MONT_CTX_set_locked(&rsa->mont_n, &rsa->lock, rsa->n, ctx) ||
+      !BN_mod_exp_mont(result, f, rsa->e, &rsa->mont_n->N, ctx, rsa->mont_n)) {
+    goto err;
+  }
+
+  // put in leading 0 bytes if the number is less than the length of the
+  // modulus
+  if (!BN_bn2bin_padded(out, rsa_size, result)) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
+    goto err;
+  }
+
+  *out_len = rsa_size;
+  ret = 1;
+
+err:
+  if (ctx != NULL) {
+    BN_CTX_end(ctx);
+    BN_CTX_free(ctx);
+  }
+  OPENSSL_free(buf);
+
+  return ret;
+}
+
 // MAX_BLINDINGS_PER_RSA defines the maximum number of cached BN_BLINDINGs per
 // RSA*. Then this limit is exceeded, BN_BLINDING objects will be created and
 // destroyed as needed.
@@ -535,6 +610,50 @@ int rsa_default_sign_raw(RSA *rsa, size_t *out_len, uint8_t *out,
   CONSTTIME_DECLASSIFY(out, rsa_size);
   *out_len = rsa_size;
   ret = 1;
+
+err:
+  OPENSSL_free(buf);
+
+  return ret;
+}
+
+int rsa_decrypt_pkcs1_oeap_for_known_answer_test(RSA *rsa, size_t *out_len,
+              uint8_t *out, size_t max_out, const uint8_t *in, size_t in_len) {
+  const unsigned rsa_size = RSA_size(rsa);
+  uint8_t *buf = NULL;
+  int ret = 0;
+
+  if (max_out < rsa_size) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_OUTPUT_BUFFER_TOO_SMALL);
+    return 0;
+  }
+
+  // Allocate a temporary buffer to hold the padded plaintext.
+  buf = OPENSSL_malloc(rsa_size);
+  if (buf == NULL) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
+    goto err;
+  }
+
+  if (in_len != rsa_size) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_DATA_LEN_NOT_EQUAL_TO_MOD_LEN);
+    goto err;
+  }
+
+  if (!RSA_private_transform(rsa, buf, in, rsa_size)) {
+    goto err;
+  }
+
+  // Use the default parameters: SHA-1 for both hashes and no label.
+  ret = RSA_padding_check_PKCS1_OAEP_mgf1(out, out_len, rsa_size, buf,
+                                          rsa_size, NULL, 0, EVP_sha256(),
+                                          EVP_sha256());
+  CONSTTIME_DECLASSIFY(&ret, sizeof(ret));
+  if (!ret) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_PADDING_CHECK_FAILED);
+  } else {
+    CONSTTIME_DECLASSIFY(out, *out_len);
+  }
 
 err:
   OPENSSL_free(buf);

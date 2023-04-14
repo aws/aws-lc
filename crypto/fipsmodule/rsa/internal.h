@@ -67,9 +67,9 @@ extern "C" {
 #endif
 
 typedef enum {
-    RSA_STRIPPED_KEY,
-    RSA_CRT_KEY,
-    RSA_PUBLIC_KEY
+  RSA_STRIPPED_KEY,
+  RSA_CRT_KEY,
+  RSA_PUBLIC_KEY
 } rsa_asn1_key_encoding_t;
 
 // Default implementations of RSA operations.
@@ -151,6 +151,25 @@ int rsa_sign_no_self_test(int hash_nid, const uint8_t *digest,
                           size_t digest_len, uint8_t *out, unsigned *out_len,
                           RSA *rsa);
 
+// rsa_encryption_with_seed_for_known_answer_test is strictly used for KAT
+// testing within the self tests. We need to give the seed a hard-coded
+// value, so that the ciphertext isn't non-deterministic.
+// See ecdsa_sign_with_nonce_for_known_answer_test for an example of us doing
+// something similar for ECDSA.
+int rsa_encrypt_pkcs1_oeap_for_known_answer_test(RSA *rsa, size_t *out_len,
+                                                 uint8_t *out, size_t max_out,
+                                                 const uint8_t *in,
+                                                 size_t in_len);
+
+int rsa_decrypt_pkcs1_oeap_for_known_answer_test(RSA *rsa, size_t *out_len,
+                                                 uint8_t *out, size_t max_out,
+                                                 const uint8_t *in,
+                                                 size_t in_len);
+
+int rsa_padding_add_pkcs1_oeap_for_known_answer_test(
+    uint8_t *to, size_t to_len, const uint8_t *from, size_t from_len,
+    const uint8_t *param, size_t param_len, const EVP_MD *md,
+    const EVP_MD *mgf1md);
 
 #if defined(__cplusplus)
 }  // extern C

@@ -66,7 +66,9 @@ const test_config lazy_test_config = {
     1
 };
 
-vector<string> lazy_tests = {"ECDSA-sign", "ECDSA-verify", "FFDH", "RSA-sign", "RSA-verify", "Z-computation"};
+vector<string> lazy_tests = {"ECDSA-sign", "ECDSA-verify", "FFDH",
+                             "RSA-decryption", "RSA-encryption",
+                             "RSA-sign", "RSA-verify", "Z-computation"};
 
 TEST(FIPSCallback, PowerOnTests) {
   // At this point the library has loaded, if a self test was broken

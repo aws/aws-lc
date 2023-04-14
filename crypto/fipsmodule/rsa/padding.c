@@ -721,3 +721,77 @@ err:
 
   return ret;
 }
+
+// Function contents are the same as |RSA_padding_add_PKCS1_OAEP_mgf1|, but
+// it uses
+int rsa_padding_add_pkcs1_oeap_for_known_answer_test(
+    uint8_t *to, size_t to_len, const uint8_t *from, size_t from_len,
+    const uint8_t *param, size_t param_len, const EVP_MD *md,
+    const EVP_MD *mgf1md) {
+  FIPS_service_indicator_lock_state();
+  int ret = 0;
+  if (md == NULL) {
+    md = EVP_sha1();
+  }
+  if (mgf1md == NULL) {
+    mgf1md = md;
+  }
+
+  size_t mdlen = EVP_MD_size(md);
+  size_t emlen = to_len - 1;
+  uint8_t *dbmask = OPENSSL_malloc(emlen - mdlen);
+  if (dbmask == NULL) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
+    goto out;
+  }
+
+  if (to_len < 2 * mdlen + 2) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_KEY_SIZE_TOO_SMALL);
+    goto out;
+  }
+
+
+  if (from_len > emlen - 2 * mdlen - 1) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_DATA_TOO_LARGE_FOR_KEY_SIZE);
+    goto out;
+  }
+
+  if (emlen < 2 * mdlen + 1) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_KEY_SIZE_TOO_SMALL);
+    goto out;
+  }
+
+  to[0] = 0;
+  uint8_t *seed = to + 1;
+  uint8_t *db = to + mdlen + 1;
+
+  if (!EVP_Digest(param, param_len, db, NULL, md, NULL)) {
+    goto out;
+  }
+  OPENSSL_memset(db + mdlen, 0, emlen - from_len - 2 * mdlen - 1);
+  db[emlen - from_len - mdlen - 1] = 0x01;
+  OPENSSL_memcpy(db + emlen - from_len - mdlen, from, from_len);
+  // This was RAND_bytes.
+  OPENSSL_memset(seed, 0, mdlen);
+
+  if (!PKCS1_MGF1(dbmask, emlen - mdlen, seed, mdlen, mgf1md)) {
+    goto out;
+  }
+  for (size_t i = 0; i < emlen - mdlen; i++) {
+    db[i] ^= dbmask[i];
+  }
+
+  uint8_t seedmask[EVP_MAX_MD_SIZE];
+  if (!PKCS1_MGF1(seedmask, mdlen, db, emlen - mdlen, mgf1md)) {
+    goto out;
+  }
+  for (size_t i = 0; i < mdlen; i++) {
+    seed[i] ^= seedmask[i];
+  }
+  ret = 1;
+
+out:
+  OPENSSL_free(dbmask);
+  FIPS_service_indicator_unlock_state();
+  return ret;
+}
