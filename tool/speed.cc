@@ -2004,6 +2004,11 @@ static const argument_t kArguments[] = {
 };
 
 bool Speed(const std::vector<std::string> &args) {
+#if defined(OPENSSL_IS_AWSLC)
+  // For mainline AWS-LC this is a no-op, however if speed.cc built with an old
+  // branch of AWS-LC SHA3 might be disabled by default and fail the benchmark.
+  EVP_MD_unstable_sha3_enable(true);
+#endif
   std::map<std::string, std::string> args_map;
   if (!ParseKeyValueArguments(&args_map, args, kArguments)) {
     PrintUsage(kArguments);
