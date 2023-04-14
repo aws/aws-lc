@@ -124,6 +124,7 @@ int ECDH_compute_shared_secret(uint8_t *buf, size_t *buflen, const EC_POINT *pub
 
   ret = 1;
 end:
+  OPENSSL_cleanse(&shared_point, sizeof(EC_RAW_POINT));
   FIPS_service_indicator_unlock_state();
   if (key_pub_key != NULL) {
     EC_KEY_free(key_pub_key);
