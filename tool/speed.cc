@@ -1836,6 +1836,42 @@ static bool SpeedSelfTest(const std::string &selected) {
   results.Print("self-test");
   return true;
 }
+
+static bool SpeedJitter(size_t chunk_size) {
+  struct rand_data *jitter_ec = jent_entropy_collector_alloc(0, JENT_FORCE_FIPS);
+
+  std::unique_ptr<char[]> input(new char[chunk_size]);
+  TimeResults results;
+
+  if (!TimeFunction(&results, [&jitter_ec, &input, chunk_size]() -> bool {
+        size_t bytes =
+            jent_read_entropy_safe(&jitter_ec, input.get(), chunk_size);
+        if (bytes != chunk_size) {
+          return false;
+        }
+        return true;
+      })){
+    jent_entropy_collector_free(jitter_ec);
+
+    return false;
+  }
+  results.PrintWithBytes("Jitter", chunk_size);
+
+  jent_entropy_collector_free(jitter_ec);
+  return true;
+}
+
+static bool SpeedJitter(std::string selected) {
+  if (!selected.empty() && selected.find("Jitter") == std::string::npos) {
+    return true;
+  }
+  for (size_t chunk_size : g_chunk_lengths) {
+    if (!SpeedJitter(chunk_size)) {
+      return false;
+    }
+  }
+  return true;
+}
 #endif
 
 #if !defined(OPENSSL_BENCHMARK) && !defined(BORINGSSL_BENCHMARK)
@@ -2119,7 +2155,8 @@ bool Speed(const std::vector<std::string> &args) {
     return false;
   }
 #if defined(BORINGSSL_FIPS)
-  if (!SpeedSelfTest(selected)) {
+  if (!SpeedSelfTest(selected) ||
+      !SpeedJitter(selected)) {
     return false;
   }
 #endif
