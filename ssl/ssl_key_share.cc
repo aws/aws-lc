@@ -24,6 +24,7 @@
 #include <openssl/curve25519.h>
 #include <openssl/ec.h>
 #include <openssl/err.h>
+#include <openssl/evp.h>
 #include <openssl/hrss.h>
 #include <openssl/mem.h>
 #include <openssl/nid.h>
@@ -325,11 +326,13 @@ class KEMKeyShare : public SSLKeyShare {
     }
 
     // Generate a KEM keypair and retrieve the length of the public key
+    size_t public_key_len = 0;
     EVP_PKEY *raw_key = nullptr;
     if (!EVP_PKEY_keygen_init(ctx_.get()) ||
         !EVP_PKEY_keygen(ctx_.get(), &raw_key) ||
         !raw_key ||
-        !EVP_PKEY_get_raw_public_key(raw_key, nullptr, &public_key_len_)) {
+        !EVP_PKEY_get_raw_public_key(raw_key, nullptr, &public_key_len)) {
+      EVP_PKEY_free(raw_key);
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       return false;
     }
@@ -344,16 +347,16 @@ class KEMKeyShare : public SSLKeyShare {
 
     // Write the public key to |out|
     Array<uint8_t> public_key;
-    if (!public_key.Init(public_key_len_)) {
+    if (!public_key.Init(public_key_len)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return false;
     }
 
-    size_t public_key_bytes_written = public_key_len_;
+    size_t public_key_bytes_written = public_key_len;
     if (!EVP_PKEY_get_raw_public_key(pkey.get(), public_key.data(),
                                      &public_key_bytes_written) ||
-                                     public_key_bytes_written != public_key_len_ ||
-                                     !CBB_add_bytes(out, public_key.data(), public_key_len_)) {
+                                     public_key_bytes_written != public_key_len ||
+                                     !CBB_add_bytes(out, public_key.data(), public_key_len)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       return false;
     }
@@ -361,6 +364,9 @@ class KEMKeyShare : public SSLKeyShare {
     return true;
   }
 
+  // Because this is a KEM key share, |out_public_key| will be the ciphertext
+  // resulting from the encapsulation of the shared secret under the
+  // received public key, |peek_key|.
   bool Accept(CBB *out_public_key, Array<uint8_t> *out_secret,
               uint8_t *out_alert, Span<const uint8_t> peer_key) override {
     // Basic nullptr checks
@@ -417,8 +423,10 @@ class KEMKeyShare : public SSLKeyShare {
     }
 
     // Retrieve the lengths of the ciphertext and shared secret
-    if (!EVP_PKEY_encapsulate(ctx_.get(), nullptr, &ciphertext_len_,
-                              nullptr, &secret_len_)) {
+    size_t ciphertext_len = 0;
+    size_t secret_len = 0;
+    if (!EVP_PKEY_encapsulate(ctx_.get(), nullptr, &ciphertext_len,
+                              nullptr, &secret_len)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       return false;
     }
@@ -428,19 +436,19 @@ class KEMKeyShare : public SSLKeyShare {
     // peer by writing it to |out_public_key|, then...
     Array<uint8_t> ciphertext;
     Array<uint8_t> shared_secret;
-    if (!ciphertext.Init(ciphertext_len_) || !shared_secret.Init(secret_len_)) {
+    if (!ciphertext.Init(ciphertext_len) || !shared_secret.Init(secret_len)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return false;
     }
 
-    size_t ciphertext_bytes_written = ciphertext_len_;
-    size_t secret_bytes_written = secret_len_;
+    size_t ciphertext_bytes_written = ciphertext_len;
+    size_t secret_bytes_written = secret_len;
     if (!EVP_PKEY_encapsulate(ctx_.get(), ciphertext.data(),
                               &ciphertext_bytes_written, shared_secret.data(),
                               &secret_bytes_written) ||
-                              ciphertext_bytes_written != ciphertext_len_ ||
-                              secret_bytes_written != secret_len_ ||
-                              !CBB_add_bytes(out_public_key, ciphertext.data(), ciphertext_len_)) {
+                              ciphertext_bytes_written != ciphertext_len ||
+                              secret_bytes_written != secret_len ||
+                              !CBB_add_bytes(out_public_key, ciphertext.data(), ciphertext_len)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       return false;
     }
@@ -453,6 +461,10 @@ class KEMKeyShare : public SSLKeyShare {
     return true;
   }
 
+  // Because this is a KEM key share, |peer_key| is actually the ciphertext
+  // resulting from the peer encapsulating the shared secret under our public key.
+  // In Finish(), we use our previously generated private key to decrypt
+  // that ciphertext and obtain the shared secret.
   bool Finish(Array<uint8_t> *out_secret, uint8_t *out_alert,
               Span<const uint8_t> peer_key) override {
     // Basic nullptr checks
@@ -476,14 +488,16 @@ class KEMKeyShare : public SSLKeyShare {
     }
 
     // Retrieve the lengths of the ciphertext and shared secret
-    if (!EVP_PKEY_encapsulate(ctx_.get(), nullptr, &ciphertext_len_, nullptr,
-                              &secret_len_)) {
+    size_t ciphertext_len = 0;
+    size_t secret_len = 0;
+    if (!EVP_PKEY_encapsulate(ctx_.get(), nullptr, &ciphertext_len, nullptr,
+                              &secret_len)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       return false;
     }
 
     // Ensure that peer_key is valid
-    if (!peer_key.data() || peer_key.size() != ciphertext_len_) {
+    if (!peer_key.data() || peer_key.size() != ciphertext_len) {
       *out_alert = SSL_AD_DECODE_ERROR;
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       return false;
@@ -494,16 +508,16 @@ class KEMKeyShare : public SSLKeyShare {
     // key to decapsulate it, and retain the shared secret by writing
     // it to |out_secret|.
     uint8_t *ciphertext = (uint8_t *)peer_key.begin();
-    if (!out_secret->Init(secret_len_)) {
+    if (!out_secret->Init(secret_len)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return false;
     }
 
-    size_t secret_bytes_written = secret_len_;
+    size_t secret_bytes_written = secret_len;
     if (!EVP_PKEY_decapsulate(ctx_.get(), out_secret->data(),
                               &secret_bytes_written, ciphertext,
-                              ciphertext_len_) ||
-                              secret_bytes_written != secret_len_) {
+                              ciphertext_len) ||
+                              secret_bytes_written != secret_len) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       return false;
     }
@@ -517,9 +531,6 @@ class KEMKeyShare : public SSLKeyShare {
   int nid_;
   uint16_t group_id_;
   UniquePtr<EVP_PKEY_CTX> ctx_;
-  size_t public_key_len_;
-  size_t ciphertext_len_;
-  size_t secret_len_;
 };
 
 CONSTEXPR_ARRAY NamedGroup kNamedGroups[] = {
