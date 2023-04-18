@@ -430,14 +430,14 @@ static bool SpeedAESGCMChunk(const EVP_CIPHER *cipher, std::string name,
     std::string encryptName = name + " Encrypt";
     TimeResults encryptResults;
 
-    // Call EVP_EncryptInit_ex once with the cipher, in the benchmark loop reuse the cipher
+    // Call EVP_EncryptInit_ex once with the cipher and key, the benchmark loop will reuse both
     if (!EVP_EncryptInit_ex(ctx.get(), cipher, NULL, key.get(), nonce.get())){
       fprintf(stderr, "Failed to configure encryption context.\n");
       ERR_print_errors_fp(stderr);
       return false;
     }
-    if (!TimeFunction(&encryptResults, [&ctx, chunk_byte_len, plaintext, ciphertext, len_ptr, tag, &key, &nonce, &ad, ad_len]() -> bool {
-      return EVP_EncryptInit_ex(ctx.get(), NULL, NULL, key.get(), nonce.get()) &&
+    if (!TimeFunction(&encryptResults, [&ctx, chunk_byte_len, plaintext, ciphertext, len_ptr, tag, &nonce, &ad, ad_len]() -> bool {
+      return EVP_EncryptInit_ex(ctx.get(), NULL, NULL, NULL, nonce.get()) &&
         EVP_EncryptUpdate(ctx.get(), NULL, len_ptr, ad.get(), ad_len) &&
         EVP_EncryptUpdate(ctx.get(), ciphertext, len_ptr, plaintext, chunk_byte_len) &&
         EVP_EncryptFinal_ex(ctx.get(), ciphertext + *len_ptr, len_ptr) &&
@@ -462,14 +462,14 @@ static bool SpeedAESGCMChunk(const EVP_CIPHER *cipher, std::string name,
     }
     std::string decryptName = name + " Decrypt";
     TimeResults decryptResults;
-    // Call EVP_DecryptInit_ex once with the cipher, in the benchmark loop reuse the cipher
+    // Call EVP_DecryptInit_ex once with the cipher and key, the benchmark loop will reuse both
     if (!EVP_DecryptInit_ex(ctx.get(), cipher, NULL, key.get(), nonce.get())){
       fprintf(stderr, "Failed to configure decryption context.\n");
       ERR_print_errors_fp(stderr);
       return false;
     }
-    if (!TimeFunction(&decryptResults, [&ctx, chunk_byte_len, plaintext, ciphertext, len_ptr, tag, &key, &nonce, &ad, ad_len]() -> bool {
-      return EVP_DecryptInit_ex(ctx.get(), NULL, NULL, key.get(), nonce.get()) &&
+    if (!TimeFunction(&decryptResults, [&ctx, chunk_byte_len, plaintext, ciphertext, len_ptr, tag, &nonce, &ad, ad_len]() -> bool {
+      return EVP_DecryptInit_ex(ctx.get(), NULL, NULL, NULL, nonce.get()) &&
         EVP_DecryptUpdate(ctx.get(), NULL, len_ptr, ad.get(), ad_len) &&
         EVP_DecryptUpdate(ctx.get(), plaintext, len_ptr, ciphertext, chunk_byte_len) &&
         EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_SET_TAG, 16, tag) &&
@@ -802,6 +802,13 @@ static bool SpeedAES256XTS(const std::string &name, //const size_t in_len,
   });
 
   BM_NAMESPACE::UniquePtr<EVP_CIPHER_CTX> ctx(EVP_CIPHER_CTX_new());
+  // Call EVP_EncryptInit_ex once with the cipher and key, the benchmark loop will reuse both
+  if (!EVP_EncryptInit_ex(ctx.get(), cipher, nullptr, key.data(),
+                          iv.data())){
+    fprintf(stderr, "Failed to configure AES XTS encryption context.\n");
+    ERR_print_errors_fp(stderr);
+    return false;
+  }
   // Benchmark initialisation and encryption
   for (size_t in_len : g_chunk_lengths) {
     in.resize(in_len);
@@ -810,7 +817,7 @@ static bool SpeedAES256XTS(const std::string &name, //const size_t in_len,
     int len;
     TimeResults results;
     if (!TimeFunction(&results, [&]() -> bool {
-          if (!EVP_EncryptInit_ex(ctx.get(), cipher, nullptr, key.data(),
+          if (!EVP_EncryptInit_ex(ctx.get(), nullptr, nullptr, nullptr,
                                   iv.data()) ||
               !EVP_EncryptUpdate(ctx.get(), out.data(), &len, in.data(),
                                  in.size())) {
@@ -826,6 +833,13 @@ static bool SpeedAES256XTS(const std::string &name, //const size_t in_len,
   }
 
   // Benchmark initialisation and decryption
+  // Call EVP_DecryptInit_ex once with the cipher and key, the benchmark loop will reuse both
+  if (!EVP_DecryptInit_ex(ctx.get(), cipher, nullptr, key.data(),
+                          iv.data())){
+    fprintf(stderr, "Failed to configure AES XTS encryption context.\n");
+    ERR_print_errors_fp(stderr);
+    return false;
+  }
   for (size_t in_len : g_chunk_lengths) {
     in.resize(in_len);
     out.resize(in_len);
@@ -833,7 +847,7 @@ static bool SpeedAES256XTS(const std::string &name, //const size_t in_len,
     int len;
     TimeResults results;
     if (!TimeFunction(&results, [&]() -> bool {
-          if (!EVP_DecryptInit_ex(ctx.get(), cipher, nullptr, key.data(),
+          if (!EVP_DecryptInit_ex(ctx.get(), nullptr, nullptr, nullptr,
                                   iv.data()) ||
               !EVP_DecryptUpdate(ctx.get(), out.data(), &len, in.data(),
                                  in.size())) {
