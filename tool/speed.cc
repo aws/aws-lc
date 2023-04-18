@@ -335,7 +335,7 @@ static bool SpeedRSA(const std::string &selected) {
   return true;
 }
 
-static bool SpeedRSAKeyGen(const std::string &selected) {
+static bool SpeedRSAKeyGen(bool is_fips, const std::string &selected) {
   // Don't run this by default because it's so slow.
   if (selected != "RSAKeyGen") {
     return true;
@@ -357,19 +357,25 @@ static bool SpeedRSAKeyGen(const std::string &selected) {
       BM_NAMESPACE::UniquePtr<RSA> rsa(RSA_new());
 
       const uint64_t iteration_start = time_now();
-#if defined(AWSLC_FIPS)
-      if (!RSA_generate_key_fips(rsa.get(), size, nullptr)) {
-        fprintf(stderr, "RSA_generate_key_fips failed.\n");
-        ERR_print_errors_fp(stderr);
-        return false;
-      }
+      if(is_fips){
+#if !defined(OPENSSL_BENCHMARK)
+        // RSA_generate_key_fips is AWS-LC specific.
+        if (!RSA_generate_key_fips(rsa.get(), size, nullptr)) {
+          fprintf(stderr, "RSA_generate_key_fips failed.\n");
+          ERR_print_errors_fp(stderr);
+          return false;
+        }
 #else
-      if (!RSA_generate_key_ex(rsa.get(), size, e.get(), nullptr)) {
-        fprintf(stderr, "RSA_generate_key_ex failed.\n");
-        ERR_print_errors_fp(stderr);
-        return false;
-      }
+        return true;
 #endif
+      }
+      else {
+        if (!RSA_generate_key_ex(rsa.get(), size, e.get(), nullptr)) {
+          fprintf(stderr, "RSA_generate_key_ex failed.\n");
+          ERR_print_errors_fp(stderr);
+          return false;
+        }
+      }
       const uint64_t iteration_end = time_now();
 
       num_calls++;
@@ -382,8 +388,12 @@ static bool SpeedRSAKeyGen(const std::string &selected) {
     }
 
     std::sort(durations.begin(), durations.end());
+    std::string rsa_type = std::string("RSA ");
+    if (is_fips) {
+      rsa_type += "FIPS ";
+    }
     const std::string description =
-        std::string("RSA ") + std::to_string(size) + std::string(" key-gen");
+        rsa_type + std::to_string(size) + std::string(" key-gen");
     const TimeResults results = {num_calls, us};
     results.Print(description);
     const size_t n = durations.size();
@@ -2125,7 +2135,9 @@ bool Speed(const std::vector<std::string> &args) {
      !SpeedScrypt(selected) ||
 #endif
      !SpeedRSA(selected) ||
+     !SpeedRSAKeyGen(false, selected)
 #if !defined(OPENSSL_BENCHMARK)
+     ||
      !SpeedKEM(selected) ||
      !SpeedAEAD(EVP_aead_aes_128_gcm(), "AEAD-AES-128-GCM", kTLSADLen, selected) ||
      !SpeedAEADOpen(EVP_aead_aes_128_gcm(), "AEAD-AES-128-GCM", kTLSADLen, selected) ||
@@ -2144,7 +2156,7 @@ bool Speed(const std::vector<std::string> &args) {
      !SpeedAEAD(EVP_aead_aes_128_ccm_bluetooth(), "AEAD-AES-128-CCM-Bluetooth", kTLSADLen, selected) ||
      !Speed25519(selected) ||
      !SpeedSPAKE2(selected) ||
-     !SpeedRSAKeyGen(selected) ||
+     !SpeedRSAKeyGen(true, selected) ||
      !SpeedHRSS(selected) ||
      !SpeedHash(EVP_blake2b256(), "BLAKE2b-256", selected) ||
 #if defined(INTERNAL_TOOL)
