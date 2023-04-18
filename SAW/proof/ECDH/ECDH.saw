@@ -143,6 +143,7 @@ llvm_verify m "EVP_PKEY_derive"
   , OPENSSL_malloc_ov
   , EC_KEY_check_fips_ov
   , EC_KEY_free_ov
+  , OPENSSL_cleanse_ov
   ]
   true
   EVP_PKEY_derive_spec
