@@ -7,9 +7,6 @@ SHELL ["/bin/bash", "-c"]
 
 RUN set -ex && \
     dnf -y upgrade --releasever=latest && dnf install -y \
-    make \
-    automake \
-    autoconf \
     libtool \
     boost-devel \
     unzip \
