@@ -4722,8 +4722,8 @@ ___
 sub evex_byte1 {
   my ($mm, $src1, $dst) = @_;
   # set default to zero
-  $src1 //= 0;
-  $dst //= 0;
+  $src1 = 0 if (!defined($src1));
+  $dst = 0 if (!defined($dst));
 
   my $byte = 0xf0 | $mm;
 
