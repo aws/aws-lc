@@ -126,7 +126,7 @@ extern void curve25519_x25519_byte_alt(uint8_t res[static 32], const uint8_t sca
 
 // curve25519_x25519base_byte and curve25519_x25519base_byte_alt computes the
 // x25519 function specified in https://www.rfc-editor.org/rfc/rfc7748 using the
-// the basepoint specified in section 4.1. |scalar| is the scalar. The result,
+// basepoint specified in section 4.1. |scalar| is the scalar. The result,
 // another u-coordinate, is saved in |res|.
 extern void curve25519_x25519base_byte(uint8_t res[static 32], const uint8_t scalar[static 32]);
 extern void curve25519_x25519base_byte_alt(uint8_t res[static 32], const uint8_t scalar[static 32]);

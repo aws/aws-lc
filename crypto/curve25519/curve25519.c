@@ -105,7 +105,7 @@ void x25519_NEON(uint8_t out[32], const uint8_t scalar[32],
 OPENSSL_INLINE int x25519_s2n_bignum_alt_capable(void);
 OPENSSL_INLINE int x25519_s2n_bignum_no_alt_capable(void);
 
-// For aarch64, |x25519_s2n_bignum_alt_capable| returns 1 if we catagorize the
+// For aarch64, |x25519_s2n_bignum_alt_capable| returns 1 if we categorize the
 // CPU as a CPU having a wide multiplier (i.e. "higher" throughput). CPUs with
 // this feature are e.g.: AWS Graviton 3 and Apple M1. Return 0 otherwise, so we
 // don't match CPUs without wide multipliers.
