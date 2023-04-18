@@ -1,0 +1,90 @@
+/*
+* Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+* SPDX-License-Identifier: Apache-2.0
+*/
+
+let arrayRangeEq = parse_core "arrayRangeEq 64 (Vec 8 Bool)";
+
+arrayRangeEq_of_arrayCopy_of_arrayCopy_thm <- prove_folding_theorem
+  {{ \a l b n -> (arrayRangeEq (arrayCopy (arrayConstant 0) 0 (arrayCopy a l b 0 n) l n) 0 b 0 n)}};
+
+zero_append_of_ite_thm <- prove_folding_theorem
+  {{ \c (x : [1]) (y : [1]) -> (((zero:[31]) # (if c then x else y)) == (if c then (zero # x) else (zero # y))) }};
+
+// -------------------------------------------------------
+
+load_sawcore_from_file "LemmaStatements.sawcore";
+
+let prove_lemma nm unfolds =
+prove_extcore (w4_unint_z3 [])
+  (beta_reduce_term
+    (unfold_term (concat [nm] unfolds) (parse_core_mod "LemmaStatements" nm)));
+
+EVP_DigestSign_goal_equivalence_thm <-
+  prove_lemma "EVP_DigestSign_goal_equivalence" [];
+
+// -------------------------------------------------------
+// SHA lemmas
+
+// The block_array assignment is equivalent to
+// (arrayRangeUpdate (arrayConstant 0) 0 (arrayRangeLookup`{n=128} block 0))
+// We state the rule in an expanded form so that it can be matched with the goal
+SHAFinal_Array_equality_thm <- prove_print
+(do {
+  goal_insert SHAState_Array_eq_implies_SHAFinal_Array_equal_thm;
+  w4_unint_z3 ["SHAFinal_Array"];
+})
+(rewrite (cryptol_ss ())
+{{ \block h n sz -> (impl == spec
+where block_array =  (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate
+       (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate
+       (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate
+       (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate
+       (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate
+       (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate
+       (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate
+       (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate
+       (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate
+       (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate
+       (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate
+       (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate
+       (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate
+       (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate
+       (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate
+       (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate (arrayUpdate
+       (arrayUpdate (arrayConstant 0)
+        0 (arrayLookup block 0)) 1 (arrayLookup block 1)) 2 (arrayLookup block 2)) 3 (arrayLookup block 3))
+        4 (arrayLookup block 4)) 5 (arrayLookup block 5)) 6 (arrayLookup block 6)) 7 (arrayLookup block 7))
+        8 (arrayLookup block 8)) 9 (arrayLookup block 9)) 10 (arrayLookup block 10)) 11 (arrayLookup block 11))
+        12 (arrayLookup block 12)) 13 (arrayLookup block 13)) 14 (arrayLookup block 14)) 15 (arrayLookup block 15))
+        16 (arrayLookup block 16)) 17 (arrayLookup block 17)) 18 (arrayLookup block 18)) 19 (arrayLookup block 19))
+        20 (arrayLookup block 20)) 21 (arrayLookup block 21)) 22 (arrayLookup block 22)) 23 (arrayLookup block 23))
+        24 (arrayLookup block 24)) 25 (arrayLookup block 25)) 26 (arrayLookup block 26)) 27 (arrayLookup block 27))
+        28 (arrayLookup block 28)) 29 (arrayLookup block 29)) 30 (arrayLookup block 30)) 31 (arrayLookup block 31))
+        32 (arrayLookup block 32)) 33 (arrayLookup block 33)) 34 (arrayLookup block 34)) 35 (arrayLookup block 35))
+        36 (arrayLookup block 36)) 37 (arrayLookup block 37)) 38 (arrayLookup block 38)) 39 (arrayLookup block 39))
+        40 (arrayLookup block 40)) 41 (arrayLookup block 41)) 42 (arrayLookup block 42)) 43 (arrayLookup block 43))
+        44 (arrayLookup block 44)) 45 (arrayLookup block 45)) 46 (arrayLookup block 46)) 47 (arrayLookup block 47))
+        48 (arrayLookup block 48)) 49 (arrayLookup block 49)) 50 (arrayLookup block 50)) 51 (arrayLookup block 51))
+        52 (arrayLookup block 52)) 53 (arrayLookup block 53)) 54 (arrayLookup block 54)) 55 (arrayLookup block 55))
+        56 (arrayLookup block 56)) 57 (arrayLookup block 57)) 58 (arrayLookup block 58)) 59 (arrayLookup block 59))
+        60 (arrayLookup block 60)) 61 (arrayLookup block 61)) 62 (arrayLookup block 62)) 63 (arrayLookup block 63))
+        64 (arrayLookup block 64)) 65 (arrayLookup block 65)) 66 (arrayLookup block 66)) 67 (arrayLookup block 67))
+        68 (arrayLookup block 68)) 69 (arrayLookup block 69)) 70 (arrayLookup block 70)) 71 (arrayLookup block 71))
+        72 (arrayLookup block 72)) 73 (arrayLookup block 73)) 74 (arrayLookup block 74)) 75 (arrayLookup block 75))
+        76 (arrayLookup block 76)) 77 (arrayLookup block 77)) 78 (arrayLookup block 78)) 79 (arrayLookup block 79))
+        80 (arrayLookup block 80)) 81 (arrayLookup block 81)) 82 (arrayLookup block 82)) 83 (arrayLookup block 83))
+        84 (arrayLookup block 84)) 85 (arrayLookup block 85)) 86 (arrayLookup block 86)) 87 (arrayLookup block 87))
+        88 (arrayLookup block 88)) 89 (arrayLookup block 89)) 90 (arrayLookup block 90)) 91 (arrayLookup block 91))
+        92 (arrayLookup block 92)) 93 (arrayLookup block 93)) 94 (arrayLookup block 94)) 95 (arrayLookup block 95))
+        96 (arrayLookup block 96)) 97 (arrayLookup block 97)) 98 (arrayLookup block 98)) 99 (arrayLookup block 99))
+        100 (arrayLookup block 100)) 101 (arrayLookup block 101)) 102 (arrayLookup block 102)) 103 (arrayLookup block 103))
+        104 (arrayLookup block 104)) 105 (arrayLookup block 105)) 106 (arrayLookup block 106)) 107 (arrayLookup block 107))
+        108 (arrayLookup block 108)) 109 (arrayLookup block 109)) 110 (arrayLookup block 110)) 111 (arrayLookup block 111))
+        112 (arrayLookup block 112)) 113 (arrayLookup block 113)) 114 (arrayLookup block 114)) 115 (arrayLookup block 115))
+        116 (arrayLookup block 116)) 117 (arrayLookup block 117)) 118 (arrayLookup block 118)) 119 (arrayLookup block 119))
+        120 (arrayLookup block 120)) 121 (arrayLookup block 121)) 122 (arrayLookup block 122)) 123 (arrayLookup block 123))
+        124 (arrayLookup block 124)) 125 (arrayLookup block 125)) 126 (arrayLookup block 126)) 127 (arrayLookup block 127))
+      impl = (SHAFinal_Array {block = block_array, h = h, n = n, sz = sz})
+      spec = (SHAFinal_Array {block = block, h = h, n = n, sz = sz}))
+}});

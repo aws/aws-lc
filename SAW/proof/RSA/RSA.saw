@@ -57,6 +57,51 @@ include "arithmetic-axioms.saw";
 include "goal-rewrites.saw";
 include "../EVP/EVP_CTX.saw";
 
+/*
+* SHA definitions
+*/
+
+let EVP_DigestFinal_ex_spec withLength num = do {
+  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  // Precondition: md_out_ptr is allocated and correct length, and 
+  // s_ptr is null or points to an int.
+  (md_out_ptr, s_ptr) <- digestOut_pre withLength;
+
+  // Precondition: `ctx_ptr` points to an `env_md_ctx_st` struct
+  ctx_ptr <- crucible_alloc_readonly (llvm_struct "struct.env_md_ctx_st");
+
+  // Precondition: `digest_ptr` points to a const `env_md_st` struct satisfying
+  // the `digest_ptr` specification.
+  digest_ptr <- crucible_alloc_readonly (llvm_struct "struct.env_md_st");
+  points_to_env_md_st digest_ptr;
+
+  // Precondition: `sha512_ctx_ptr` is a pointer to a `sha512_state_st` struct
+  // Precondition: `sha512_ctx` is a fresh Cryptol SHAState
+  // Precondition: `sha512_ctx_ptr` matches `sha512_ctx`.  The message blocks
+  // of the two must only match up to the first `num` bits
+  (sha512_ctx, sha512_ctx_ptr) <- pointer_to_fresh_sha512_state_st "sha512_ctx" num;
+
+  // Precondition: Struct pointed to by `ctx_ptr` points to `digest_ptr` and
+  // `sha512_ctx_ptr`.
+  points_to_env_md_ctx_st ctx_ptr digest_ptr sha512_ctx_ptr;
+
+  // Call function with `ctx_ptr`, `md_out_ptr`, and `s_ptr`
+  crucible_execute_func [ctx_ptr, md_out_ptr, s_ptr];
+
+  global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  // Postcondition: The data pointed to by `md_out_ptr` matches the message
+  // digest returned by the Cryptol function `SHAFinal`.  The reverses,
+  // splits, and joins transform the Cryptol function's big endian output to
+  // little endian.
+  // If length output is used, s_ptr points to correct length.
+  digestOut_post withLength md_out_ptr s_ptr
+    (crucible_term {{ split`{SHA_DIGEST_LENGTH} (SHAFinal sha512_ctx) }});
+
+  // Postcondition: The function returns 1
+  crucible_return (crucible_term {{ 1 : [32] }});
+};
 
 /*
  * Structure definitions

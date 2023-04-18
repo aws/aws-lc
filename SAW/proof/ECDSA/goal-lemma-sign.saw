@@ -1,0 +1,332 @@
+/*
+* Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+* SPDX-License-Identifier: Apache-2.0
+*/
+
+enable_experimental;
+
+let eqTrue x = term_apply (parse_core "EqTrue") [x];
+
+EVP_DigestSign_statement <-
+do {
+  block1 <- fresh_symbolic "block1" {| ByteArray |};
+  block2 <- fresh_symbolic "block2" {| ByteArray |};
+  block3 <- fresh_symbolic "block3" {| ByteArray |};
+  h <- fresh_symbolic "h" {| [8][64] |};
+  n <- fresh_symbolic "n" {| [32] |};
+  sz <- fresh_symbolic "sz" {| [128] |};
+  data <- fresh_symbolic "data" {| ByteArray |};
+  data_len <- fresh_symbolic "data_len" {| [64] |};
+  priv_key <- fresh_symbolic "priv_key" {| [384] |};
+  k <- fresh_symbolic "k" {| Integer |};
+  references <- fresh_symbolic "references" {| [32] |};
+
+  let allvars = [block1, block2, block3, h, n, sz, data, data_len, priv_key, k, references];
+
+  let update_spec =
+    {{ ECDSA_SignVerify_Update {block = block1, h = h, n = n, sz = sz} data data_len }};
+  let update_impl =
+    {{ ECDSA_SignVerify_Update {block = block2, h = h, n = n, sz = sz} data data_len }};
+
+  let spec_state = {{ {block = update_spec.block, h = update_spec.h, n = update_spec.n, sz = update_spec.sz} }};
+  let final_spec = {{ ECDSA_Sign_Final priv_key spec_state k }};
+  let impl_state = {{ {block = block3, h = update_impl.h, n = update_impl.n, sz = update_impl.sz} }};
+  let final_impl = {{ ECDSA_Sign_Final priv_key impl_state k }};
+
+  let lemma = eqTrue {{ ( (final_impl.s == final_spec.s)
+                       && (final_impl.r == final_spec.r))
+                     || ~(arrayRangeEq block3 0 update_impl.block 0 128) }};
+
+  let concl = eqTrue {{
+                       (((( ~(is_num_bits_bn`{r_bits} (scalarToBV final_spec.r))
+                         || ~(is_num_bits_bn`{s_bits} (scalarToBV final_spec.s))
+                         || ~(n < 128)
+                         || ((scalarFromBV priv_key) % `P384_n != (scalarFromBV priv_key))
+                         || (references == 0)
+                         || (k % `P384_n == 0)
+                         || (final_spec.r == 0)
+                         || (final_spec.s == 0)
+                         || ((scalarFromBV priv_key) % `P384_n != (scalarFromBV priv_key))
+                         || (references == 0)
+                         || (k % `P384_n == 0)
+                         || ~(update_impl.n < 128) )
+                        ||
+                        (  (is_num_bits_bn`{s_bits} (scalarToBV final_impl.s))
+                        && (is_num_bits_bn`{r_bits} (scalarToBV final_impl.r))
+                        && ((scalarFromBV priv_key) % `P384_n == (scalarFromBV priv_key))
+                        && (references != 0)
+                        && (k % `P384_n != 0)
+                        && (update_impl.n < 128)
+                        && (final_impl.s != 0)
+                        && (final_impl.r != 0) ))
+                        || (final_spec.r == 0))
+                        || (final_spec.s == 0))
+                        || ~(arrayRangeEq block3 0 update_impl.block 0 128)
+                     }};
+
+  let goal = (implies_term lemma concl);
+
+  return (generalize_term allvars
+           (rewrite (cryptol_ss ())
+             (unfold_term ["ecEq"] goal)));
+};
+
+EVP_DigestSign_thm <-
+prove_extcore
+do { goal_eval_unint ["is_num_bits_bn", "scalarToBV", "scalarFromBV", "ECDSA_Sign_Final", "ECDSA_SignVerify_Update"];
+     w4_unint_z3 ["is_num_bits_bn", "scalarToBV", "ECDSA_Sign_Final", "ECDSA_SignVerify_Update"];
+     }
+EVP_DigestSign_statement;
+
+
+EVP_DigestSign_equal_statement <-
+do {
+  block1 <- fresh_symbolic "block1" {| ByteArray |};
+  block2 <- fresh_symbolic "block2" {| ByteArray |};
+  block3 <- fresh_symbolic "block3" {| ByteArray |};
+  h <- fresh_symbolic "h" {| [8][64] |};
+  n <- fresh_symbolic "n" {| [32] |};
+  sz <- fresh_symbolic "sz" {| [128] |};
+  data <- fresh_symbolic "data" {| ByteArray |};
+  data_len <- fresh_symbolic "data_len" {| [64] |};
+  priv_key <- fresh_symbolic "priv_key" {| [384] |};
+  k <- fresh_symbolic "k" {| Integer |};
+
+  let allvars = [block1, block2, block3, h, n, sz, data, data_len, priv_key, k];
+
+  let update_spec =
+    {{ ECDSA_SignVerify_Update {block = block1, h = h, n = n, sz = sz} data data_len }};
+  let update_impl =
+    {{ ECDSA_SignVerify_Update {block = block2, h = h, n = n, sz = sz} data data_len }};
+
+  let spec_state = {{ {block = update_spec.block, h = update_spec.h, n = update_spec.n, sz = update_spec.sz} }};
+  let final_spec = {{ ECDSA_Sign_Final priv_key spec_state k }};
+  let impl_state = {{ {block = block3, h = update_impl.h, n = update_impl.n, sz = update_impl.sz} }};
+  let final_impl = {{ ECDSA_Sign_Final priv_key impl_state k }};
+
+  let lemma = eqTrue {{ (arrayRangeEq block1 0 block2 0 128) }};
+
+  let concl = eqTrue {{ ( (final_impl.s == final_spec.s)
+                       && (final_impl.r == final_spec.r))
+                     || ~(arrayRangeEq block3 0 update_impl.block 0 128) }};
+
+  let goal = (implies_term lemma concl);
+
+  return (generalize_term allvars
+           (rewrite (cryptol_ss ())
+             (unfold_term ["ecEq"] goal)));
+};
+
+EVP_DigestSign_equal_thm <-
+prove_extcore
+do { goal_eval_unint ["SHAFinal_Array", "SHAUpdate_Array", "ECDSA_sign"];
+  block1 <- goal_intro "block1";
+  block2 <- goal_intro "block2";
+  block3 <- goal_intro "block3";
+  h <- goal_intro "h";
+  sz <- goal_intro "sz";
+  n <- goal_intro "n";
+  data <- goal_intro "data";
+  data_len <- goal_intro "data_len";
+  goal_insert_and_specialize SHAFinal_Array_of_SHAUpdate_Array_equivalence_thm [block1, block2, block3, h, sz, n, data, data_len];
+  w4_unint_z3 ["SHAFinal_Array", "SHAUpdate_Array", "ECDSA_sign"];
+}
+EVP_DigestSign_equal_statement;
+
+EVP_DigestSign_equal_r_statement <-
+do {
+  block1 <- fresh_symbolic "block1" {| ByteArray |};
+  block2 <- fresh_symbolic "block2" {| ByteArray |};
+  block3 <- fresh_symbolic "block3" {| ByteArray |};
+  h <- fresh_symbolic "h" {| [8][64] |};
+  n <- fresh_symbolic "n" {| [32] |};
+  sz <- fresh_symbolic "sz" {| [128] |};
+  data <- fresh_symbolic "data" {| ByteArray |};
+  data_len <- fresh_symbolic "data_len" {| [64] |};
+  priv_key <- fresh_symbolic "priv_key" {| [384] |};
+  k <- fresh_symbolic "k" {| Integer |};
+
+  let allvars = [block1, block2, block3, h, n, sz, data, data_len, priv_key, k];
+
+  let update_spec =
+    {{ ECDSA_SignVerify_Update {block = block1, h = h, n = n, sz = sz} data data_len }};
+  let update_impl =
+    {{ ECDSA_SignVerify_Update {block = block2, h = h, n = n, sz = sz} data data_len }};
+
+  let spec_state = {{ {block = update_spec.block, h = update_spec.h, n = update_spec.n, sz = update_spec.sz} }};
+  let final_spec = {{ ECDSA_Sign_Final priv_key spec_state k }};
+  let impl_state = {{ {block = block3, h = update_impl.h, n = update_impl.n, sz = update_impl.sz} }};
+  let final_impl = {{ ECDSA_Sign_Final priv_key impl_state k }};
+
+  let lemma = eqTrue {{ (arrayRangeEq block1 0 block2 0 128)
+                     && (arrayRangeEq block3 0 update_impl.block 0 128) }};
+
+  let concl = eqTrue {{ final_impl.r == final_spec.r }};
+
+  let goal = (implies_term lemma concl);
+
+  return (generalize_term allvars
+           (rewrite (cryptol_ss ())
+             (unfold_term ["ecEq"] goal)));
+};
+
+EVP_DigestSign_equal_r_thm <-
+prove_extcore
+do { goal_eval_unint ["SHAFinal_Array", "SHAUpdate_Array", "ECDSA_sign"];
+  block1 <- goal_intro "block1";
+  block2 <- goal_intro "block2";
+  block3 <- goal_intro "block3";
+  h <- goal_intro "h";
+  sz <- goal_intro "sz";
+  n <- goal_intro "n";
+  data <- goal_intro "data";
+  data_len <- goal_intro "data_len";
+  goal_insert_and_specialize SHAFinal_Array_of_SHAUpdate_Array_equivalence_thm [block1, block2, block3, h, sz, n, data, data_len];
+  w4_unint_z3 ["SHAFinal_Array", "SHAUpdate_Array", "ECDSA_sign"];
+}
+EVP_DigestSign_equal_r_statement;
+
+EVP_DigestSign_equal_s_statement <-
+do {
+  block1 <- fresh_symbolic "block1" {| ByteArray |};
+  block2 <- fresh_symbolic "block2" {| ByteArray |};
+  block3 <- fresh_symbolic "block3" {| ByteArray |};
+  h <- fresh_symbolic "h" {| [8][64] |};
+  n <- fresh_symbolic "n" {| [32] |};
+  sz <- fresh_symbolic "sz" {| [128] |};
+  data <- fresh_symbolic "data" {| ByteArray |};
+  data_len <- fresh_symbolic "data_len" {| [64] |};
+  priv_key <- fresh_symbolic "priv_key" {| [384] |};
+  k <- fresh_symbolic "k" {| Integer |};
+
+  let allvars = [block1, block2, block3, h, n, sz, data, data_len, priv_key, k];
+
+  let update_spec =
+    {{ ECDSA_SignVerify_Update {block = block1, h = h, n = n, sz = sz} data data_len }};
+  let update_impl =
+    {{ ECDSA_SignVerify_Update {block = block2, h = h, n = n, sz = sz} data data_len }};
+
+  let spec_state = {{ {block = update_spec.block, h = update_spec.h, n = update_spec.n, sz = update_spec.sz} }};
+  let final_spec = {{ ECDSA_Sign_Final priv_key spec_state k }};
+  let impl_state = {{ {block = block3, h = update_impl.h, n = update_impl.n, sz = update_impl.sz} }};
+  let final_impl = {{ ECDSA_Sign_Final priv_key impl_state k }};
+
+  let lemma = eqTrue {{ (arrayRangeEq block1 0 block2 0 128)
+                     && (arrayRangeEq block3 0 update_impl.block 0 128) }};
+
+  let concl = eqTrue {{ final_impl.s == final_spec.s }};
+
+  let goal = (implies_term lemma concl);
+
+  return (generalize_term allvars
+           (rewrite (cryptol_ss ())
+             (unfold_term ["ecEq"] goal)));
+};
+
+EVP_DigestSign_equal_s_thm <-
+prove_extcore
+do { goal_eval_unint ["SHAFinal_Array", "SHAUpdate_Array", "ECDSA_sign"];
+  block1 <- goal_intro "block1";
+  block2 <- goal_intro "block2";
+  block3 <- goal_intro "block3";
+  h <- goal_intro "h";
+  sz <- goal_intro "sz";
+  n <- goal_intro "n";
+  data <- goal_intro "data";
+  data_len <- goal_intro "data_len";
+  goal_insert_and_specialize SHAFinal_Array_of_SHAUpdate_Array_equivalence_thm [block1, block2, block3, h, sz, n, data, data_len];
+  w4_unint_z3 ["SHAFinal_Array", "SHAUpdate_Array", "ECDSA_sign"];
+}
+EVP_DigestSign_equal_s_statement;
+
+EVP_DigestSign_equal_join_r_statement <-
+do {
+  block1 <- fresh_symbolic "block1" {| ByteArray |};
+  block2 <- fresh_symbolic "block2" {| ByteArray |};
+  block3 <- fresh_symbolic "block3" {| ByteArray |};
+  h <- fresh_symbolic "h" {| [8][64] |};
+  n <- fresh_symbolic "n" {| [32] |};
+  sz <- fresh_symbolic "sz" {| [128] |};
+  data <- fresh_symbolic "data" {| ByteArray |};
+  data_len <- fresh_symbolic "data_len" {| [64] |};
+  priv_key <- fresh_symbolic "priv_key" {| [384] |};
+  k <- fresh_symbolic "k" {| Integer |};
+  r <- fresh_symbolic "r" {| [48][8] |};
+
+  let allvars = [block1, block2, block3, h, n, sz, data, data_len, priv_key, k, r];
+
+  let update_spec =
+    {{ ECDSA_SignVerify_Update {block = block1, h = h, n = n, sz = sz} data data_len }};
+  let update_impl =
+    {{ ECDSA_SignVerify_Update {block = block2, h = h, n = n, sz = sz} data data_len }};
+
+  let spec_state = {{ {block = update_spec.block, h = update_spec.h, n = update_spec.n, sz = update_spec.sz} }};
+  let final_spec = {{ ECDSA_Sign_Final priv_key spec_state k }};
+  let impl_state = {{ {block = block3, h = update_impl.h, n = update_impl.n, sz = update_impl.sz} }};
+  let final_impl = {{ ECDSA_Sign_Final priv_key impl_state k }};
+
+  let lemma = eqTrue {{ final_impl.r == final_spec.r }};
+
+  let concl = eqTrue (term_apply (parse_core "implies")
+    [{{ ((scalarToBV final_impl.r) == (join r)) }}, {{((scalarToBV final_spec.r) == (join r)) }}]);
+
+  let goal = (implies_term lemma concl);
+
+  return (generalize_term allvars
+           (rewrite (cryptol_ss ())
+             (unfold_term ["ecEq"] goal)));
+};
+
+EVP_DigestSign_equal_join_r_thm <-
+prove_extcore
+do {
+  goal_eval_unint ["scalarToBV", "ECDSA_Sign_Final", "ECDSA_SignVerify_Update"];
+  w4_unint_z3 ["scalarToBV", "ECDSA_Sign_Final", "ECDSA_SignVerify_Update"];
+}
+EVP_DigestSign_equal_join_r_statement;
+
+EVP_DigestSign_equal_join_s_statement <-
+do {
+  block1 <- fresh_symbolic "block1" {| ByteArray |};
+  block2 <- fresh_symbolic "block2" {| ByteArray |};
+  block3 <- fresh_symbolic "block3" {| ByteArray |};
+  h <- fresh_symbolic "h" {| [8][64] |};
+  n <- fresh_symbolic "n" {| [32] |};
+  sz <- fresh_symbolic "sz" {| [128] |};
+  data <- fresh_symbolic "data" {| ByteArray |};
+  data_len <- fresh_symbolic "data_len" {| [64] |};
+  priv_key <- fresh_symbolic "priv_key" {| [384] |};
+  k <- fresh_symbolic "k" {| Integer |};
+  s <- fresh_symbolic "s" {| [48][8] |};
+
+  let allvars = [block1, block2, block3, h, n, sz, data, data_len, priv_key, k, s];
+
+  let update_spec =
+    {{ ECDSA_SignVerify_Update {block = block1, h = h, n = n, sz = sz} data data_len }};
+  let update_impl =
+    {{ ECDSA_SignVerify_Update {block = block2, h = h, n = n, sz = sz} data data_len }};
+
+  let spec_state = {{ {block = update_spec.block, h = update_spec.h, n = update_spec.n, sz = update_spec.sz} }};
+  let final_spec = {{ ECDSA_Sign_Final priv_key spec_state k }};
+  let impl_state = {{ {block = block3, h = update_impl.h, n = update_impl.n, sz = update_impl.sz} }};
+  let final_impl = {{ ECDSA_Sign_Final priv_key impl_state k }};
+
+  let lemma = eqTrue {{ final_impl.s == final_spec.s }};
+
+  let concl = eqTrue (term_apply (parse_core "implies")
+    [{{ ((scalarToBV final_impl.s) == (join s)) }}, {{((scalarToBV final_spec.s) == (join s)) }}]);
+
+  let goal = (implies_term lemma concl);
+
+  return (generalize_term allvars
+           (rewrite (cryptol_ss ())
+             (unfold_term ["ecEq"] goal)));
+};
+
+EVP_DigestSign_equal_join_s_thm <-
+prove_extcore
+do {
+  goal_eval_unint ["scalarToBV", "ECDSA_Sign_Final", "ECDSA_SignVerify_Update"];
+  w4_unint_z3 ["scalarToBV", "ECDSA_Sign_Final", "ECDSA_SignVerify_Update"];
+}
+EVP_DigestSign_equal_join_s_statement;

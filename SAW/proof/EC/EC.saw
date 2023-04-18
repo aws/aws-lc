@@ -211,10 +211,15 @@ let points_to_evp_pkey_st ptr pkey_ptr = do {
 
 let POINT_CONVERSION_UNCOMPRESSED = 4;
 
-let points_to_ec_key_st ptr group_ptr pub_key_ptr priv_key_ptr = do {
+let points_to_ec_key_st ptr group_ptr pub_key_ptr (priv_specified, priv_key_ptr) = do {
   crucible_points_to (crucible_field ptr "group") group_ptr;
   crucible_points_to (crucible_field ptr "pub_key") pub_key_ptr;
-  crucible_points_to (crucible_field ptr "priv_key") priv_key_ptr;
+  // If private key is specified, then point the ec_key_st.priv_key to priv_key_ptr
+  // Otherwise specify nothing about ec_key_st.priv_key
+  if priv_specified then do {
+    crucible_points_to (crucible_field ptr "priv_key") priv_key_ptr;
+  } else do {
+    return (); };
   crucible_points_to (crucible_field ptr "enc_flag") (crucible_term {{ 0 : [32] }});
   crucible_points_to (crucible_field ptr "conv_form") (crucible_term {{ `POINT_CONVERSION_UNCOMPRESSED : [32] }});
   references <- crucible_fresh_var "references" i32;
@@ -228,6 +233,8 @@ let pointer_to_fresh_ec_key_st group_ptr is_priv = do {
   pub_key_ptr <- crucible_alloc_readonly (llvm_struct "struct.ec_point_st");
   pub_key <- points_to_fresh_ec_point_st pub_key_ptr group_ptr;
 
+  // If is_priv is true, then priv_key_ptr is allocated properly.
+  // Otherwise, specify nothing for priv_key_ptr.
   (priv_key_ptr, priv_key) <- if is_priv then do {
     priv_key_ptr <- crucible_alloc_readonly (llvm_struct "struct.EC_WRAPPED_SCALAR");
     priv_key <- crucible_fresh_var "priv_key" i384;
@@ -235,11 +242,12 @@ let pointer_to_fresh_ec_key_st group_ptr is_priv = do {
     crucible_precond {{ (scalarFromBV priv_key) % `P384_n == scalarFromBV priv_key }};
     return (priv_key_ptr, priv_key);
   } else do {
-    priv_key_ptr <- crucible_fresh_pointer (llvm_struct "struct.EC_WRAPPED_SCALAR");
-    return (priv_key_ptr, {{ undefined : [384] }});
+    // Using crucible_null to keep SAW's type system happy.
+    // There is no specification for ec_key_st.priv_key when is_priv is false.
+    return (crucible_null, {{ undefined : [384] }});
   };
 
-  points_to_ec_key_st ec_key_ptr group_ptr pub_key_ptr priv_key_ptr;
+  points_to_ec_key_st ec_key_ptr group_ptr pub_key_ptr (is_priv, priv_key_ptr);
 
   return (ec_key_ptr, pub_key, priv_key);
 };

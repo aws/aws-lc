@@ -16,6 +16,7 @@ include "../SHA512/SHA512-384.saw";
 include "../SHA512/SHA512-common.saw";
 // Include SHA512 rewrites
 include "../SHA512/goal-rewrites.saw";
+include "../SHA512/lemmas.saw";
 // Include additional SHA512 definitions
 include "../SHA512/SHA512-function-specs.saw";
 

@@ -1,0 +1,12 @@
+diff --git a/crypto/fipsmodule/evp/digestsign.c b/crypto/fipsmodule/evp/digestsign.c
+index 6abd7722e..debf981fb 100644
+--- a/crypto/fipsmodule/evp/digestsign.c
++++ b/crypto/fipsmodule/evp/digestsign.c
+@@ -138,6 +138,7 @@ int EVP_DigestSignUpdate(EVP_MD_CTX *ctx, const void *data, size_t len) {
+   return EVP_DigestUpdate(ctx, data, len);
+ }
+ 
++__attribute__((noinline))
+ int EVP_DigestVerifyUpdate(EVP_MD_CTX *ctx, const void *data, size_t len) {
+   if (!uses_prehash(ctx, evp_verify)) {
+     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);

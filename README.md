@@ -16,7 +16,7 @@ AWS libcrypto includes many cryptographic algorithm implementations for several 
 | AES-GCM   | 256 | EVP_CipherInit_ex, EVP_EncryptUpdate, EVP_DecryptUpdate, EVP_EncryptFinal_ex, EVP_DecryptFinal_ex | SandyBridge-Skylake | InputLength, NoEngine, MemCorrect, InitZero, AESNI_GCM_Patch, AES_GCM_FROM_CIPHER_CTX_Correct, NoInline | [SAW](SAW/README.md) |
 | <nobr>AES-KW(P)</nobr>  | 256     | AES_wrap_key, AES_unwrap_key, AES_wrap_key_padded, AES_unwrap_key_padded | SandyBridge+ | InputLength, MemCorrect, NoInline |[SAW](SAW/README.md) |
 | Elliptic Curve Keys and Parameters | with <nobr>P-384</nobr> | EVP_PKEY_CTX_new_id, EVP_PKEY_CTX_new, EVP_PKEY_paramgen_init, EVP_PKEY_CTX_set_ec_paramgen_curve_nid, EVP_PKEY_paramgen, EVP_PKEY_keygen_init, EVP_PKEY_keygen | SandyBridge+ | EC_Ops_Correct, NoEngine, MemCorrect, CRYPTO_refcount_Correct, CRYPTO_once_Correct |[SAW](SAW/README.md) |
-| ECDSA     | with <nobr>P-384</nobr>, <nobr>SHA-384</nobr> | EVP_DigestSignInit, EVP_DigestVerifyInit, EVP_DigestSignUpdate, EVP_DigestVerifyUpdate, EVP_DigestSignFinal, EVP_DigestVerifyFinal | SandyBridge+ | EC_Ops_Correct, InputLength, NoEngine, MemCorrect, ECDSA_k_Valid, ECDSA_SignatureLength, CRYPTO_refcount_Correct, CRYPTO_once_Correct, ERR_put_error_Correct, NoInline |[SAW](SAW/README.md) |
+| ECDSA     | with <nobr>P-384</nobr>, <nobr>SHA-384</nobr> | EVP_DigestSignInit, EVP_DigestVerifyInit, EVP_DigestSignUpdate, EVP_DigestVerifyUpdate, EVP_DigestSignFinal, EVP_DigestVerifyFinal, EVP_DigestSign, EVP_DigestVerify | SandyBridge+ | EC_Ops_Correct, NoEngine, MemCorrect, ECDSA_k_Valid, ECDSA_SignatureLength, CRYPTO_refcount_Correct, CRYPTO_once_Correct, ERR_put_error_Correct, NoInline |[SAW](SAW/README.md) |
 | ECDH      | with <nobr>P-384</nobr> | EVP_PKEY_derive_init, EVP_PKEY_derive | SandyBridge+ | EC_Ops_Correct, MemCorrect, NoEngine, CRYPTO_refcount_Correct, PubKeyValid |[SAW](SAW/README.md) |
 | HKDF      | with <nobr>HMAC-SHA384</nobr> | HKDF_extract, HKDF_expand, HKDF | SandyBridge+ | MemCorrect, NoEngine, NoInline, OutputLength, CRYPTO_once_Correct  |[SAW](SAW/README.md) |
 
@@ -64,6 +64,10 @@ Most of the code is verified with optimizations enabled, which causes Clang to a
 | `HMAC_Update` | HMAC | The specification for `HMAC_Update` is used in the compositional proof of `HMAC`. Without `noinline`, `HMAC_Update` will be inlined and the override for `HMAC_Update` will fail. |
 | `HKDF_extract` | HKDF | The specification for `HKDF_extract` is used in the compositional proof of `HKDF`. Without `noinline`, `HKDF_extract` will be inlined and the override for `HKDF_extract` will fail. |
 | `HKDF_expand` | HKDF | The specification for `HKDF_expand` is used in the compositional proof of `HKDF`. Without `noinline`, `HKDF_expand` will be inlined and the override for `HKDF_expand` will fail. |
+| `SHA384_Update` | ECDSA | The specification for `SHA384_Update` is used in the compositional proof of `EVP_DigestSignUpdate`. Without `noinline`, `SHA384_Update` will be inlined and the override for `SHA384_Update` will fail. |
+| `SHA384_Final` | ECDSA | The specification for `SHA384_Final` is used in the compositional proof of `EVP_DigestSignFinal`. Without `noinline`, `SHA384_Final` will be inlined and the override for `SHA384_Final` will fail. |
+| `EVP_DigestSignUpdate` | ECDSA | The specification for `EVP_DigestSignUpdate` is used in the compositional proof of `EVP_DigestSign`. Without `noinline`, `EVP_DigestSignUpdate` will be inlined and the override for `EVP_DigestSignUpdate` will fail. |
+| `EVP_DigestVerifyUpdate` | ECDSA | The specification for `EVP_DigestVerifyUpdate` is used in the compositional proof of `EVP_DigestVerify`. Without `noinline`, `EVP_DigestVerifyUpdate` will be inlined and the override for `EVP_DigestVerifyUpdate` will fail. |
 
 ## License
 

@@ -3,5 +3,336 @@
  * SPDX-License-Identifier: Apache-2.0
 */
 
-include "ECDSA.saw";
+enable_experimental;
 
+import "../../../cryptol-specs/Common/utils.cry";
+import "../../../cryptol-specs/Common/EC/EC_P384.cry" hiding (w);
+import "../../spec/HASH/SHA384.cry";
+import "../../spec/ECDSA/ECDSA.cry";
+
+include "../common/helpers.saw";
+include "../SHA512/SHA512-384-common.saw";
+include "../common/internal.saw";
+include "../SHA512/SHA512-function-specs.saw";
+include "../SHA512/goal-rewrites.saw";
+include "../SHA512/lemmas.saw";
+include "goal-rewrites.saw";
+include "lemmas.saw";
+
+include "ECDSA.saw";
+include "evp-function-specs.saw";
+
+include "goal-lemma-sign.saw";
+include "goal-lemma-verify.saw";
+
+BN_num_bits_r_bits_ov <- llvm_verify m "BN_num_bits"
+  []
+  true
+  (BN_num_bits_spec r_bits)
+  (w4_unint_yices []);
+BN_num_bits_s_bits_ov <- llvm_verify m "BN_num_bits"
+  []
+  true
+  (BN_num_bits_spec s_bits)
+  (w4_unint_yices []);
+BN_num_bits_ec_bits_ov <- llvm_verify m "BN_num_bits"
+  []
+  true
+  (BN_num_bits_spec ec_bits)
+  (w4_unint_yices []);
+
+
+// assume (without proving) the equivalence of point operations in affine and
+// jacobian coordinates
+jacobian_affine_0_thm <- prove_print
+  (do {
+    assume_unsat;
+  })
+  (rewrite (cryptol_ss ()) {{ \k -> fromJacobian { x = ((ec_point_jacobian_scalar_mul (k % `P384_n) P384_G_Jacobian).x % `P384_p), y = ((ec_point_jacobian_scalar_mul (k % `P384_n) P384_G_Jacobian).y % `P384_p), z = ((ec_point_jacobian_scalar_mul (k % `P384_n) P384_G_Jacobian).z % `P384_p) } == ec_point_affine_scalar_mul (k % `P384_n) P384_G }});
+jacobian_affine_1_thm <- prove_print
+  (do {
+    assume_unsat;
+  })
+  (rewrite (cryptol_ss ()) {{ \u1 u2 Q -> fromJacobian { x = ((ec_point_jacobian_add (ec_point_jacobian_scalar_mul (u1 % `P384_n) P384_G_Jacobian) (ec_point_jacobian_scalar_mul (u2 % `P384_n) Q)).x % `P384_p), y = ((ec_point_jacobian_add (ec_point_jacobian_scalar_mul (u1 % `P384_n) P384_G_Jacobian) (ec_point_jacobian_scalar_mul (u2 % `P384_n) Q)).y % `P384_p), z = ((ec_point_jacobian_add (ec_point_jacobian_scalar_mul (u1 % `P384_n) P384_G_Jacobian) (ec_point_jacobian_scalar_mul (u2 % `P384_n) Q)).z % `P384_p) } == ec_point_affine_add (ec_point_affine_scalar_mul (u1 % `P384_n) P384_G) (ec_point_affine_scalar_mul (u2 % `P384_n) (fromJacobian Q)) }});
+
+
+ECDSA_do_sign_ov <- llvm_verify m "ECDSA_do_sign"
+  [ sha512_block_data_order_ov
+  , ec_bignum_to_scalar_ov
+  , ec_simple_scalar_inv0_montgomery_ov
+  , ec_get_x_coordinate_as_scalar_ov
+  , ec_scalar_is_zero_false_ov
+  , BN_is_zero_false_ov
+  , OPENSSL_malloc_ov
+  , OPENSSL_cleanse_ov
+  , bn_rand_range_words_ov
+  , bn_sub_words_ov
+  , bn_from_montgomery_small_ov
+  , bn_from_montgomery_small_same_ov
+  , bn_mod_mul_montgomery_small_ov
+  , bn_mod_mul_montgomery_small_same_l_ov
+  , bn_mod_mul_montgomery_small_same_r_ov
+  , bn_mod_mul_montgomery_small_RR_d_ov
+  , bn_mod_mul_montgomery_small_RR_d_same_ov
+  , bn_mod_add_words_ov
+  , bn_mod_add_words_same_l_ov
+  , ec_GFp_mont_mul_base_ov
+  , ec_GFp_simple_is_on_curve_ov
+  , ec_GFp_mont_mul_public_batch_ov
+  , ec_GFp_mont_cmp_x_coordinate_ov
+  , value_barrier_w_ov
+  ]
+  true
+  ECDSA_do_sign_spec
+  (do {
+    unfolding ["ECDSA_sign"];
+    unfolding ["jacobianToMontBV", "jacobianFromMontBV", "jacobianToMont", "jacobianFromMont", "jacobianToBV", "jacobianFromBV"];
+    simplify (cryptol_ss ());
+    simplify (addsimp scalarBV_thm empty_ss);
+    simplify (addsimp fieldElementBV_thm empty_ss);
+    simplify (addsimps mont_thms empty_ss);
+    simplify (addsimp jacobian_affine_0_thm empty_ss);
+    simplify (addsimps mod_thms empty_ss);
+    goal_eval_unint ["inv0", "ec_point_affine_scalar_mul"];
+    simplify (addsimps [append_assoc_thm_1, append_at_thm] empty_ss);
+    simplify (addsimps [append_assoc_thm_2, append_slice_64_thm, append_assoc_64_thm] empty_ss);
+    hoist_ifs_in_goal;
+    simplify (addsimps minor_touchup_thms empty_ss);
+    simplify (addsimps append_slice_384_thms empty_ss);
+    simplify (addsimps [add_negate_thm, toInteger_sub_384_thm_1] empty_ss);
+    hoist_ifs_in_goal;
+    simplify (addsimps minor_touchup_thms empty_ss);
+    simplify (addsimp fromToInteger_thm empty_ss);
+    simplify (addsimp toInteger_sub_384_thm_2 empty_ss);
+    hoist_ifs_in_goal;
+    simplify (addsimps minor_touchup_thms empty_ss);
+    simplify (addsimp eq_modulo_arith_thm empty_ss);
+    w4_unint_z3 ["inv0", "ec_point_affine_scalar_mul"];
+  });
+
+ecdsa_do_verify_no_self_test_ov <- llvm_verify m "ecdsa_do_verify_no_self_test"
+  [ BN_is_zero_ov
+  , ec_bignum_to_scalar_ov
+  , ec_simple_scalar_inv0_montgomery_ov
+  , ec_scalar_is_zero_ov
+  , ec_get_x_coordinate_as_scalar_ov
+  , bn_reduce_once_in_place_false_ov
+  , bn_from_montgomery_small_ov
+  , bn_from_montgomery_small_same_ov
+  , bn_mod_mul_montgomery_small_ov
+  , bn_mod_mul_montgomery_small_same_r_ov
+  , bn_mod_mul_montgomery_small_RR_d_ov
+  , bn_mod_mul_montgomery_small_RR_d_same_ov
+  , bn_mod_add_words_ov
+  , ERR_put_error_ov
+  , ec_GFp_mont_mul_base_ov
+  , ec_GFp_simple_is_on_curve_ov
+  , ec_GFp_mont_mul_public_batch_ov
+  , ec_GFp_mont_cmp_x_coordinate_ov
+  ]
+  true
+  ecdsa_do_verify_no_self_test_spec
+  (do {
+    unfolding ["ECDSA_verify"];
+    unfolding ["jacobianToMontBV", "jacobianFromMontBV", "jacobianToMont", "jacobianFromMont", "jacobianToBV", "jacobianFromBV"];
+    simplify (cryptol_ss ());
+    simplify (addsimp scalarBV_thm empty_ss);
+    simplify (addsimp fieldElementBV_thm empty_ss);
+    simplify (addsimps mont_thms empty_ss);
+    simplify (addsimp jacobian_affine_1_thm empty_ss);
+    simplify (addsimps mod_thms empty_ss);
+    goal_eval_unint ["inv0", "ec_point_affine_add", "ec_point_affine_scalar_mul", "fromJacobian"];
+    simplify (addsimp mod_2_384_thm empty_ss);
+    w4_unint_z3 ["inv0", "ec_point_affine_add", "ec_point_affine_scalar_mul", "fromJacobian"];
+  });
+
+
+llvm_verify m "EVP_DigestSignInit"
+  [ EVP_MD_pctx_ops_ov
+  , AWSLC_fips_evp_pkey_methods_ov
+  , OPENSSL_malloc_init_ov
+  , CRYPTO_refcount_inc_ov
+  ]
+  true
+  (EVP_DigestSignVerifyInit_spec true)
+  (w4_unint_yices []);
+llvm_verify m "EVP_DigestVerifyInit"
+  [ EVP_MD_pctx_ops_ov
+  , AWSLC_fips_evp_pkey_methods_ov
+  , OPENSSL_malloc_init_ov
+  , CRYPTO_refcount_inc_ov
+  ]
+  true
+  (EVP_DigestSignVerifyInit_spec false)
+  (w4_unint_yices []);
+
+SHA512_Update_array_ov <- llvm_verify m "SHA384_Update"
+  [sha512_block_data_order_array_ov]
+  true
+  SHA512_Update_array_spec
+  (do {
+    goal_eval_unint ["processBlocks", "processBlock_Common"];
+    simplify (addsimps [processBlocks_0_1_thm] empty_ss);
+    simplify (addsimps [arrayRangeEq_arrayRangeLookup_eq_thm, arrayCopy_zero_thm] empty_ss);
+    simplify (addsimps append_ite_thms empty_ss);
+    goal_eval_unint ["processBlocks", "processBlock_Common"];
+    w4_unint_z3 ["processBlocks", "processBlock_Common"];
+  });
+
+enable_what4_eval;
+SHA512_Final_array_ov <- llvm_verify m "SHA384_Final"
+[sha512_block_data_order_array_ov]
+true
+SHA512_Final_array_spec
+(do {
+  goal_eval_unint ["processBlock_Common"];
+  simplify (addsimps [arrayUpdate_arrayCopy_thm, arraySet_zero_thm] empty_ss);
+  simplify (addsimps [bvult_64_32_thm_2] empty_ss);
+  simplify (addsimps append_ite_thms empty_ss);
+  goal_eval_unint ["processBlock_Common"];
+  w4_unint_z3 ["processBlock_Common"];
+});
+disable_what4_eval;
+
+EVP_DigestSignUpdate_ov <- llvm_verify m "EVP_DigestSignUpdate"
+  [ SHA512_Update_array_ov ]
+  true
+  (EVP_DigestSignVerifyUpdate_spec true)
+  (do {
+    goal_eval_unint ["SHAUpdate_Array"];
+    goal_insert arrayRangeEq_of_arrayCopy_of_arrayCopy_thm;
+    goal_insert n_equal_of_SHAUpdate_Array_thm;
+    goal_insert h_equal_of_SHAUpdate_Array_thm;
+    goal_insert sz_equal_of_SHAUpdate_Array_thm;
+    goal_insert block_arrayRangeEq_of_SHAUpdate_Array_thm;
+    w4_unint_z3 ["SHAUpdate_Array"];
+  });
+EVP_DigestVerifyUpdate_ov <- llvm_verify m "EVP_DigestVerifyUpdate"
+  [ SHA512_Update_array_ov ]
+  true
+  (EVP_DigestSignVerifyUpdate_spec false)
+  (do {
+    goal_eval_unint ["SHAUpdate_Array"];
+    goal_insert arrayRangeEq_of_arrayCopy_of_arrayCopy_thm;
+    goal_insert n_equal_of_SHAUpdate_Array_thm;
+    goal_insert h_equal_of_SHAUpdate_Array_thm;
+    goal_insert sz_equal_of_SHAUpdate_Array_thm;
+    goal_insert block_arrayRangeEq_of_SHAUpdate_Array_thm;
+    w4_unint_z3 ["SHAUpdate_Array"];
+  });
+
+EVP_DigestSignFinal_ov <- llvm_verify m "EVP_DigestSignFinal"
+  [ OPENSSL_malloc_ov
+  , OPENSSL_free_nonnull_ov
+  , OPENSSL_free_nonnull_ecdsa_sig_st_ov
+  , OPENSSL_free_nonnull_cbb_buffer_st_ov
+  , OPENSSL_free_null_ov
+  , OPENSSL_cleanse_ov
+  , CRYPTO_refcount_inc_ov
+  , CRYPTO_refcount_dec_and_test_zero_ov
+  , SHA512_Final_array_ov
+  , BN_num_bits_r_bits_ov
+  , BN_num_bits_s_bits_ov
+  , BN_num_bits_ec_bits_ov
+  , ECDSA_do_sign_ov
+  ]
+  true
+  EVP_DigestSignFinal_spec
+  (do {
+    goal_eval_unint ["ECDSA_sign", "SHAFinal_Array"];
+    simplify (addsimps [SHAFinal_Array_equality_thm] empty_ss);
+    w4_unint_z3 ["ECDSA_sign", "SHAFinal_Array"];
+  });
+
+EVP_DigestVerifyFinal_ov <- llvm_verify m "EVP_DigestVerifyFinal"
+  (concat
+    [ OPENSSL_malloc_ov
+    , OPENSSL_malloc_null_ov
+    , OPENSSL_realloc_null_ov
+    , OPENSSL_free_nonnull_ov
+    , OPENSSL_free_nonnull_ecdsa_sig_st_ov
+    , OPENSSL_free_nonnull_bignum_st_ov
+    , OPENSSL_free_nonnull_cbb_buffer_st_ov
+    , OPENSSL_free_null_ov
+    , OPENSSL_cleanse_ov
+    , CRYPTO_refcount_inc_ov
+    , CRYPTO_refcount_dec_and_test_zero_ov
+    , bcmp_ov
+    , SHA512_Final_array_ov
+    , BN_num_bits_r_bits_ov
+    , BN_num_bits_s_bits_ov
+    , ecdsa_do_verify_no_self_test_ov
+    ]
+    OPENSSL_realloc_ovs)
+  true
+  EVP_DigestVerifyFinal_spec
+  (do {
+    goal_eval_unint ["ECDSA_verify", "fromJacobian", "SHAFinal_Array"];
+    simplify (addsimps [SHAFinal_Array_equality_thm] empty_ss);
+    w4_unint_z3 ["ECDSA_verify", "fromJacobian", "SHAFinal_Array"];
+  });
+
+llvm_verify m "EVP_DigestSign"
+[ EVP_DigestSignUpdate_ov
+, EVP_DigestSignFinal_ov
+]
+true
+EVP_DigestSign_spec
+(do {
+  goal_eval_unint ["ECDSA_Sign_Final", "ECDSA_SignVerify_Update", "is_num_bits_bn", "scalarToBV", "scalarFromBV", "join"];
+
+  // ghost variable conditions
+  goal_num_when 1 do {
+    simplify (addsimps [EVP_DigestSign_goal_equivalence_thm] empty_ss);
+    goal_apply EVP_DigestSign_thm;
+    goal_apply EVP_DigestSign_equal_thm;
+    goal_insert arrayRangeEq_of_arrayCopy_of_arrayCopy_thm;
+  };
+  // r goal
+  goal_num_when 2 do {
+    normalize_sequent;
+    // Manipulate the sequent so that all free variables appear in the focused conclusion.
+    // This allows the goal_apply to be successfully applied.
+    retain_hyps [8, 10];
+    retain_concl [10];
+    focus_concl 0;
+    goal_revert_hyp 1;
+    goal_apply EVP_DigestSign_equal_join_r_thm;
+    goal_apply EVP_DigestSign_equal_r_thm;
+  };
+  // s goal
+  goal_num_when 3 do {
+    normalize_sequent;
+    // Manipulate the sequent so that all free variables appear in the focused conclusion.
+    // This allows the goal_apply to be successfully applied.
+    retain_hyps [8, 9];
+    retain_concl [10];
+    focus_concl 0;
+    goal_revert_hyp 1;
+    goal_apply EVP_DigestSign_equal_join_s_thm;
+    goal_apply EVP_DigestSign_equal_s_thm;
+  };
+
+  w4_unint_z3 ["ECDSA_Sign_Final", "ECDSA_SignVerify_Update"];
+});
+
+llvm_verify m "EVP_DigestVerify"
+[ EVP_DigestVerifyUpdate_ov
+, EVP_DigestVerifyFinal_ov
+]
+true
+EVP_DigestVerify_spec
+(do {
+  goal_eval_unint ["ECDSA_Verify_Final", "ECDSA_SignVerify_Update", "join", "is_num_bits_bn"];
+
+  // return value goal
+  goal_num_when 1 do {
+    simplify (addsimps [zero_append_of_ite_thm] empty_ss);
+    normalize_sequent;
+    focus_concl 2;
+    goal_apply EVP_DigestVerify_thm;
+    goal_apply EVP_DigestVerify_equal_thm;
+  };
+
+  w4_unint_z3 ["ECDSA_Verify_Final", "ECDSA_SignVerify_Update"];
+});

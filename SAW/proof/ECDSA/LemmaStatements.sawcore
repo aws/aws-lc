@@ -1,0 +1,70 @@
+-- Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+module LemmaStatements where
+import Cryptol;
+
+EVP_DigestSign_goal_equivalence : Prop;
+EVP_DigestSign_goal_equivalence =
+  (a : Bool) ->
+  (b : Bool) ->
+  (c : Bool) ->
+  (d : Bool) ->
+  (s1 : Integer) ->
+  (r1 : Integer) ->
+  (s2 : Integer) ->
+  (r2 : Integer) ->
+  (block : Array (Vec 64 Bool) (Vec 8 Bool)) ->
+  (block3 : Array (Vec 64 Bool) (Vec 8 Bool)) ->
+  (priv_key : Integer) ->
+  (references : (Vec 32 Bool)) ->
+  (k : Integer) ->
+  (n : (Vec 32 Bool)) ->
+  (n_new : (Vec 32 Bool)) ->
+  (P384_n : Integer) ->
+  EqTrue
+  (boolEq
+    (or (or (or (or (or (or (or (or (or (or (or (or (or (or (or
+      (not a) (not b))
+        (not (bvult 32 n (bvNat 32 128))))
+          (not (intEq priv_key (intMod priv_key P384_n))))
+            (bvEq 32 (bvNat 32 0) references))
+              (intEq (natToInt 0) (intMod k P384_n)))
+                (intEq (natToInt 0) s1))
+                  (intEq (natToInt 0) r1))
+                    (not (intEq priv_key (intMod priv_key P384_n))))
+                      (bvEq 32 (bvNat 32 0) references))
+                        (intEq (natToInt 0) (intMod k P384_n)))
+                          (not (bvult 32 n_new (bvNat 32 128))))
+      (and (and (and (and (and (and (and c d)
+        (intEq priv_key (intMod priv_key P384_n)))
+          (not (bvEq 32 (bvNat 32 0) references)))
+            (not (intEq (natToInt 0) (intMod k P384_n))))
+              (bvult 32 n_new (bvNat 32 128)))
+                (not (intEq (natToInt 0) s2)))
+                  (not (intEq (natToInt 0) r2))))
+       (intEq (natToInt 0) s1))
+       (intEq (natToInt 0) r1))
+       (not (arrayRangeEq 64 (Vec 8 Bool) block3 (bvNat 64 0) block (bvNat 64 0) (bvNat 64 128))))
+    (or (or (or (or (or (not a) (or (not b)
+      (or (not (bvult 32 n (bvNat 32 128)))
+        (or (not (ecEq Integer PEqInteger (intMod priv_key P384_n) priv_key))
+          (or (bvEq 32 references (bvNat 32 0))
+            (or (intEq (intMod k P384_n) (natToInt 0))
+              (or (intEq s1 (natToInt 0))
+                (or (intEq r1 (natToInt 0))
+                  (or (not (ecEq Integer PEqInteger (intMod priv_key P384_n) priv_key))
+                    (or (bvEq 32 references (bvNat 32 0))
+                      (or (intEq (intMod k P384_n) (natToInt 0))
+                        (not (bvult 32 n_new (bvNat 32 128))))))))))))))
+            (and c (and d
+              (and (intEq (intMod priv_key P384_n) priv_key)
+                (and (not (ecEq (Vec 32 Bool) (PEqWord 32) references (bvNat 32 0)))
+                  (and (not (ecEq Integer PEqInteger (intMod k P384_n) (natToInt 0)))
+                    (and (bvult 32 n_new (bvNat 32 128))
+                      (and (not (ecEq Integer PEqInteger s2 (natToInt 0)))
+                           (not (ecEq Integer PEqInteger r2 (natToInt 0)))))))))))
+            (intEq s1 (natToInt 0)))
+            (intEq r1 (natToInt 0)))
+         (not
+           (arrayRangeEq 64 (Vec 8 Bool) block3 (bvNat 64 0) block (bvNat 64 0) (bvNat 64 128)))));

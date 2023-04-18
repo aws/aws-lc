@@ -103,7 +103,7 @@ let EVP_PKEY_paramgen_spec = do {
 
   out_key_ptr <- crucible_alloc (llvm_struct "struct.evp_pkey_st");
   ec_key_ptr <- crucible_alloc (llvm_struct "struct.ec_key_st");
-  points_to_ec_key_st ec_key_ptr group_ptr crucible_null crucible_null;
+  points_to_ec_key_st ec_key_ptr group_ptr crucible_null (true, crucible_null);
   points_to_evp_pkey_st_with_references out_key_ptr {{ 1 : [32] }} ec_key_ptr;
   crucible_points_to out_pkey_ptr_ptr out_key_ptr;
 
@@ -137,7 +137,7 @@ let EVP_PKEY_keygen_spec = do {
   crucible_postcond {{ fromJacobian (jacobianFromMontBV pub_key) == EC_keyPrivateToPublic d }};
   priv_key_ptr <- crucible_alloc (llvm_struct "struct.EC_WRAPPED_SCALAR");
   points_to_EC_WRAPPED_SCALAR priv_key_ptr {{ scalarToBV (d % `P384_n) }};
-  points_to_ec_key_st ec_key_ptr group_ptr pub_key_ptr priv_key_ptr;
+  points_to_ec_key_st ec_key_ptr group_ptr pub_key_ptr (true, priv_key_ptr);
   points_to_evp_pkey_st_with_references out_key_ptr {{ 1 : [32] }} ec_key_ptr;
   crucible_points_to out_pkey_ptr_ptr out_key_ptr;
 

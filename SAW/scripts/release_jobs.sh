@@ -4,8 +4,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 # If |*_SELECTCHECK| env variable does not exist, run quick check of all algorithms.
-cd proof/SHA512 && go run SHA512-384-check-entrypoint.go
-saw proof/SHA512/verify-SHA512-512-quickcheck.saw
+saw proof/SHA512/verify-SHA512-384.saw
+saw proof/SHA512/verify-SHA512-512.saw
 saw proof/HMAC/verify-HMAC.saw
 saw proof/KDF/verify-HKDF.saw
 cd proof/AES && go run AES-GCM-check-entrypoint.go

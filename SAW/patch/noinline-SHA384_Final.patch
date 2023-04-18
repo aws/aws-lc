@@ -1,0 +1,12 @@
+diff --git a/crypto/fipsmodule/sha/sha512.c b/crypto/fipsmodule/sha/sha512.c
+index 51ed22c3c..9c04261d4 100644
+--- a/crypto/fipsmodule/sha/sha512.c
++++ b/crypto/fipsmodule/sha/sha512.c
+@@ -181,6 +181,7 @@ static void sha512_block_data_order(uint64_t *state, const uint8_t *in,
+ #endif
+ 
+ 
++__attribute__((noinline))
+ int SHA384_Final(uint8_t out[SHA384_DIGEST_LENGTH], SHA512_CTX *sha) {
+   // This function must be paired with |SHA384_Init|, which sets |sha->md_len|
+   // to |SHA384_DIGEST_LENGTH|.

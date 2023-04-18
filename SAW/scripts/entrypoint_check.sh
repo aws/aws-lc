@@ -33,6 +33,10 @@ apply_patch "noinline-HMAC_Update"
 apply_patch "noinline-HMAC_Final"
 apply_patch "noinline-HKDF_extract"
 apply_patch "noinline-HKDF_expand"
+apply_patch "noinline-SHA384_Final"
+apply_patch "noinline-SHA384_Update"
+apply_patch "noinline-EVP_DigestSignUpdate"
+apply_patch "noinline-EVP_DigestVerifyUpdate"
 
 # ...next, check the proofs using CMake's Release settings...
 

@@ -14,6 +14,7 @@ import "../../spec/KDF/HKDF.cry";
 
 include "../SHA512/SHA512-384-common.saw";
 include "../SHA512/goal-rewrites.saw";
+include "../SHA512/lemmas.saw";
 include "../SHA512/SHA512-function-specs.saw";
 include "../HMAC/HMAC-SHA384.saw";
 include "../HMAC/HMAC-common.saw";

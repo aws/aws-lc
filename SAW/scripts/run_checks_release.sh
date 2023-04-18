@@ -9,10 +9,6 @@ set -ex
 
 # TODO: reenable proof on SHA-256 when resolved https://github.com/awslabs/aws-lc-verification/issues/32
 # If |*_SELECTCHECK| env variable exists, skip quick check of other algorithms.
-if [ -n "${SHA512_384_SELECTCHECK}" ]; then
-  (cd proof/SHA512 && go run SHA512-384-check-entrypoint.go)
-  return
-fi
 if [ -n "${AES_GCM_SELECTCHECK}" ]; then
   (cd proof/AES && go run AES-GCM-check-entrypoint.go)
   return

@@ -3,25 +3,15 @@
  * SPDX-License-Identifier: Apache-2.0
 */
 
-
-import "../../../cryptol-specs/Common/EC/EC_P384.cry";
-import "../../../cryptol-specs/Common/utils.cry";
-
-
-include "../SHA512/SHA512-384-common.saw";
-include "../common/internal.saw";
-
-
-include "goal-rewrites.saw";
-
-
 /*
  * Verification parameters.
  */
-let r_bits = 383;
-let s_bits = 383;
-let r_bytes = eval_size {| r_bits / 8 + 1 |};
-let s_bytes = eval_size {| s_bits / 8 + 1 |};
+
+let r_bits = eval_size {| r_bits |};
+let s_bits = eval_size {| s_bits |};
+let r_bytes = eval_size {| r_bytes |};
+let s_bytes = eval_size {| s_bytes |};
+
 // compute the ASN1 signature length (in bytes)
 let compute_asn1_sig_len r_len s_len = eval_size {| 1 /* sequence tag */ + 1 /* sequence len */ + 1 /* integer tag */ + 1 /* integer len */ + r_len + 1 /* integer tag */ + 1 /* integer len */ + s_len |};
 let sig_len = compute_asn1_sig_len r_bytes s_bytes;
@@ -90,10 +80,14 @@ is_num_bits_bn x = if `m == `P384_w
 // operation. Assume that the signature of `digest` with `priv_key` using `k`
 // is valid, that is, that `r` and `s` are non-zero. Assume that the bitwidth
 // of `r` is `r_bits` and the bitwidth of `s` is `s_bits`.
-let nondeterministic_valid_k priv_key digest = do {
+let nondeterministic_valid_k priv_key digest internal = do {
   k <- crucible_fresh_cryptol_var "k" {| Integer |};
   crucible_precond {{ k % `P384_n != 0 }};
-  let sig = {{ ECDSA_sign (scalarFromBV priv_key) (scalarFromBV (join digest)) (k % `P384_n) }};
+  sig <- if internal then do {
+      return {{ ECDSA_sign (scalarFromBV priv_key) (scalarFromBV (join digest)) (k % `P384_n) }};
+    } else do {
+      return {{ ECDSA_Sign_Final priv_key digest k }};
+    };
   crucible_precond {{ sig.r != 0 }};
   crucible_precond {{ sig.s != 0 }};
   crucible_precond {{ is_num_bits_bn`{r_bits} (scalarToBV sig.r) }};
@@ -114,7 +108,7 @@ let ECDSA_do_sign_spec = do {
 
   // the symbolic integer to be used as the random integer `k` by the sign
   // operation
-  k <- nondeterministic_valid_k priv_key digest;
+  k <- nondeterministic_valid_k priv_key digest true;
 
   crucible_execute_func [digest_ptr, (crucible_term {{ `SHA_DIGEST_LENGTH : [64] }}), ec_key_ptr];
 
@@ -156,213 +150,3 @@ let ecdsa_do_verify_no_self_test_spec = do {
   let ret = {{ ECDSA_verify (fromJacobian (jacobianFromMontBV pub_key)) (scalarFromBV (join digest)) { r = (scalarFromBV r), s = (scalarFromBV s) } }};
   crucible_return (crucible_term {{ if ret then 1 : [32] else 0 }});
 };
-
-
-// Specifications of the various EVP functions
-include "evp-function-specs.saw";
-
-
-////////////////////////////////////////////////////////////////////////////////
-// Proof commands
-
-BN_num_bits_r_bits_ov <- llvm_verify m "BN_num_bits"
-  []
-  true
-  (BN_num_bits_spec r_bits)
-  (w4_unint_yices []);
-BN_num_bits_s_bits_ov <- llvm_verify m "BN_num_bits"
-  []
-  true
-  (BN_num_bits_spec s_bits)
-  (w4_unint_yices []);
-BN_num_bits_ec_bits_ov <- llvm_verify m "BN_num_bits"
-  []
-  true
-  (BN_num_bits_spec ec_bits)
-  (w4_unint_yices []);
-
-
-// assume (without proving) the equivalence of point operations in affine and
-// jacobian coordinates
-jacobian_affine_0_thm <- prove_print
-  (do {
-    assume_unsat;
-  })
-  (rewrite (cryptol_ss ()) {{ \k -> fromJacobian { x = ((ec_point_jacobian_scalar_mul (k % `P384_n) P384_G_Jacobian).x % `P384_p), y = ((ec_point_jacobian_scalar_mul (k % `P384_n) P384_G_Jacobian).y % `P384_p), z = ((ec_point_jacobian_scalar_mul (k % `P384_n) P384_G_Jacobian).z % `P384_p) } == ec_point_affine_scalar_mul (k % `P384_n) P384_G }});
-jacobian_affine_1_thm <- prove_print
-  (do {
-    assume_unsat;
-  })
-  (rewrite (cryptol_ss ()) {{ \u1 u2 Q -> fromJacobian { x = ((ec_point_jacobian_add (ec_point_jacobian_scalar_mul (u1 % `P384_n) P384_G_Jacobian) (ec_point_jacobian_scalar_mul (u2 % `P384_n) Q)).x % `P384_p), y = ((ec_point_jacobian_add (ec_point_jacobian_scalar_mul (u1 % `P384_n) P384_G_Jacobian) (ec_point_jacobian_scalar_mul (u2 % `P384_n) Q)).y % `P384_p), z = ((ec_point_jacobian_add (ec_point_jacobian_scalar_mul (u1 % `P384_n) P384_G_Jacobian) (ec_point_jacobian_scalar_mul (u2 % `P384_n) Q)).z % `P384_p) } == ec_point_affine_add (ec_point_affine_scalar_mul (u1 % `P384_n) P384_G) (ec_point_affine_scalar_mul (u2 % `P384_n) (fromJacobian Q)) }});
-
-
-ECDSA_do_sign_ov <- llvm_verify m "ECDSA_do_sign"
-  [ sha512_block_data_order_ov
-  , ec_bignum_to_scalar_ov
-  , ec_simple_scalar_inv0_montgomery_ov
-  , ec_get_x_coordinate_as_scalar_ov
-  , ec_scalar_is_zero_false_ov
-  , BN_is_zero_false_ov
-  , OPENSSL_malloc_ov
-  , OPENSSL_cleanse_ov
-  , bn_rand_range_words_ov
-  , bn_sub_words_ov
-  , bn_from_montgomery_small_ov
-  , bn_from_montgomery_small_same_ov
-  , bn_mod_mul_montgomery_small_ov
-  , bn_mod_mul_montgomery_small_same_l_ov
-  , bn_mod_mul_montgomery_small_same_r_ov
-  , bn_mod_mul_montgomery_small_RR_d_ov
-  , bn_mod_mul_montgomery_small_RR_d_same_ov
-  , bn_mod_add_words_ov
-  , bn_mod_add_words_same_l_ov
-  , ec_GFp_mont_mul_base_ov
-  , ec_GFp_simple_is_on_curve_ov
-  , ec_GFp_mont_mul_public_batch_ov
-  , ec_GFp_mont_cmp_x_coordinate_ov
-  , value_barrier_w_ov
-  ]
-  true
-  ECDSA_do_sign_spec
-  (do {
-    unfolding ["ECDSA_sign"];
-    unfolding ["jacobianToMontBV", "jacobianFromMontBV", "jacobianToMont", "jacobianFromMont", "jacobianToBV", "jacobianFromBV"];
-    simplify (cryptol_ss ());
-    simplify (addsimp scalarBV_thm empty_ss);
-    simplify (addsimp fieldElementBV_thm empty_ss);
-    simplify (addsimps mont_thms empty_ss);
-    simplify (addsimp jacobian_affine_0_thm empty_ss);
-    simplify (addsimps mod_thms empty_ss);
-    goal_eval_unint ["inv0", "ec_point_affine_scalar_mul"];
-    simplify (addsimps [append_assoc_thm_1, append_at_thm] empty_ss);
-    simplify (addsimps [append_assoc_thm_2, append_slice_64_thm, append_assoc_64_thm] empty_ss);
-    hoist_ifs_in_goal;
-    simplify (addsimps minor_touchup_thms empty_ss);
-    simplify (addsimps append_slice_384_thms empty_ss);
-    simplify (addsimps [add_negate_thm, toInteger_sub_384_thm_1] empty_ss);
-    hoist_ifs_in_goal;
-    simplify (addsimps minor_touchup_thms empty_ss);
-    simplify (addsimp fromToInteger_thm empty_ss);
-    simplify (addsimp toInteger_sub_384_thm_2 empty_ss);
-    hoist_ifs_in_goal;
-    simplify (addsimps minor_touchup_thms empty_ss);
-    simplify (addsimp eq_modulo_arith_thm empty_ss);
-    w4_unint_z3 ["inv0", "ec_point_affine_scalar_mul"];
-  });
-
-ecdsa_do_verify_no_self_test_ov <- llvm_verify m "ecdsa_do_verify_no_self_test"
-  [ BN_is_zero_ov
-  , ec_bignum_to_scalar_ov
-  , ec_simple_scalar_inv0_montgomery_ov
-  , ec_scalar_is_zero_ov
-  , ec_get_x_coordinate_as_scalar_ov
-  , bn_reduce_once_in_place_false_ov
-  , bn_from_montgomery_small_ov
-  , bn_from_montgomery_small_same_ov
-  , bn_mod_mul_montgomery_small_ov
-  , bn_mod_mul_montgomery_small_same_r_ov
-  , bn_mod_mul_montgomery_small_RR_d_ov
-  , bn_mod_mul_montgomery_small_RR_d_same_ov
-  , bn_mod_add_words_ov
-  , ERR_put_error_ov
-  , ec_GFp_mont_mul_base_ov
-  , ec_GFp_simple_is_on_curve_ov
-  , ec_GFp_mont_mul_public_batch_ov
-  , ec_GFp_mont_cmp_x_coordinate_ov
-  ]
-  true
-  ecdsa_do_verify_no_self_test_spec
-  (do {
-    unfolding ["ECDSA_verify"];
-    unfolding ["jacobianToMontBV", "jacobianFromMontBV", "jacobianToMont", "jacobianFromMont", "jacobianToBV", "jacobianFromBV"];
-    simplify (cryptol_ss ());
-    simplify (addsimp scalarBV_thm empty_ss);
-    simplify (addsimp fieldElementBV_thm empty_ss);
-    simplify (addsimps mont_thms empty_ss);
-    simplify (addsimp jacobian_affine_1_thm empty_ss);
-    simplify (addsimps mod_thms empty_ss);
-    goal_eval_unint ["inv0", "ec_point_affine_add", "ec_point_affine_scalar_mul", "fromJacobian"];
-    simplify (addsimp mod_2_384_thm empty_ss);
-    w4_unint_z3 ["inv0", "ec_point_affine_add", "ec_point_affine_scalar_mul", "fromJacobian"];
-  });
-
-
-llvm_verify m "EVP_DigestSignInit"
-  [ EVP_MD_pctx_ops_ov
-  , AWSLC_fips_evp_pkey_methods_ov
-  , OPENSSL_malloc_ov
-  , CRYPTO_refcount_inc_ov
-  ]
-  true
-  (EVP_DigestSignVerifyInit_spec true)
-  (w4_unint_yices []);
-llvm_verify m "EVP_DigestVerifyInit"
-  [ EVP_MD_pctx_ops_ov
-  , AWSLC_fips_evp_pkey_methods_ov
-  , OPENSSL_malloc_ov
-  , CRYPTO_refcount_inc_ov
-  ]
-  true
-  (EVP_DigestSignVerifyInit_spec false)
-  (w4_unint_yices []);
-
-llvm_verify m "EVP_DigestSignUpdate"
-  [sha512_block_data_order_ov]
-  true
-  (EVP_DigestSignVerifyUpdate_spec true 127 241)
-  (w4_unint_yices ["processBlock_Common"]);
-llvm_verify m "EVP_DigestVerifyUpdate"
-  [sha512_block_data_order_ov]
-  true
-  (EVP_DigestSignVerifyUpdate_spec false 127 241)
-  (w4_unint_yices ["processBlock_Common"]);
-
-llvm_verify m "EVP_DigestSignFinal"
-  [ OPENSSL_malloc_ov
-  , OPENSSL_free_nonnull_ov
-  , OPENSSL_free_nonnull_ecdsa_sig_st_ov
-  , OPENSSL_free_nonnull_cbb_buffer_st_ov
-  , OPENSSL_free_null_ov
-  , OPENSSL_cleanse_ov
-  , CRYPTO_refcount_inc_ov
-  , CRYPTO_refcount_dec_and_test_zero_ov
-  , sha512_block_data_order_ov
-  , BN_num_bits_r_bits_ov
-  , BN_num_bits_s_bits_ov
-  , BN_num_bits_ec_bits_ov
-  , ECDSA_do_sign_ov
-  ]
-  true
-  (EVP_DigestSignFinal_spec 112)
-  (do {
-    goal_eval_unint ["ECDSA_sign", "processBlock_Common"];
-    w4_unint_z3 ["ECDSA_sign", "processBlock_Common"];
-  });
-
-llvm_verify m "EVP_DigestVerifyFinal"
-  (concat
-    [ OPENSSL_malloc_ov
-    , OPENSSL_malloc_null_ov
-    , OPENSSL_realloc_null_ov
-    , OPENSSL_free_nonnull_ov
-    , OPENSSL_free_nonnull_ecdsa_sig_st_ov
-    , OPENSSL_free_nonnull_bignum_st_ov
-    , OPENSSL_free_nonnull_cbb_buffer_st_ov
-    , OPENSSL_free_null_ov
-    , OPENSSL_cleanse_ov
-    , CRYPTO_refcount_inc_ov
-    , CRYPTO_refcount_dec_and_test_zero_ov
-    , bcmp_ov
-    , sha512_block_data_order_ov
-    , BN_num_bits_r_bits_ov
-    , BN_num_bits_s_bits_ov
-    , ecdsa_do_verify_no_self_test_ov
-    ]
-    OPENSSL_realloc_ovs)
-  true
-  (EVP_DigestVerifyFinal_spec 112)
-  (do {
-    goal_eval_unint ["ECDSA_verify", "fromJacobian", "processBlock_Common"];
-    w4_unint_z3 ["ECDSA_verify", "fromJacobian", "processBlock_Common"];
-  });
-

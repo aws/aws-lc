@@ -1,0 +1,32 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
+*/
+
+module ECDSA::ECDSA where
+
+import Array
+import Common::ByteArray
+import Primitive::Keyless::Hash::SHA384
+import Common::EC::EC_P384
+import HASH::SHA384
+
+type r_bits = 383
+type s_bits = 383
+type r_bytes = r_bits / 8 + 1
+type s_bytes = s_bits / 8 + 1
+
+ECDSA_SignVerify_Update : SHAState_Array -> ByteArray -> [64] -> SHAState_Array
+ECDSA_SignVerify_Update state data len = SHAUpdate_Array state data len
+
+ECDSA_Sign_Final : [P384_w] -> SHAState_Array -> Integer -> ECDSA_Signature
+ECDSA_Sign_Final priv_key state k = ECDSA_sign d z k_mod
+  where d = (scalarFromBV priv_key)
+        z = (scalarFromBV (join (split`{digestsize_bytes} (SHAFinal_Array state))))
+        k_mod = (k % `P384_n)
+
+ECDSA_Verify_Final : JacobianBVPoint -> SHAState_Array -> [r_bytes][8] -> [s_bytes][8] -> Bit
+ECDSA_Verify_Final pub_key state r s = ECDSA_verify Q z sig
+  where Q = (fromJacobian (jacobianFromMontBV pub_key))
+        sig = { r = (scalarFromBV (join r)), s = (scalarFromBV (join s)) }
+        z = (scalarFromBV (join (split`{digestsize_bytes} (SHAFinal_Array state))))
