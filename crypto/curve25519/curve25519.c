@@ -52,7 +52,7 @@ OPENSSL_INLINE int x25519_s2n_bignum_capable(void) {
 }
 
 OPENSSL_INLINE int x25519_Armv7_neon_capable(void) {
-#if defined(BORINGSSL_X25519_NEON)
+#if defined(BORINGSSL_X25519_NEON_CAPABLE)
   return CRYPTO_is_NEON_capable();
 #else
   return 0;
@@ -97,7 +97,7 @@ void x25519_NEON(uint8_t out[32], const uint8_t scalar[32],
                  const uint8_t point[32]) {
   abort();
 }
-#endif // !defined(BORINGSSL_X25519_NEON)
+#endif // !defined(BORINGSSL_X25519_NEON_CAPABLE)
 
 
 // Run-time detection for each implementation
