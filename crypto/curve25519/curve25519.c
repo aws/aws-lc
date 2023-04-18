@@ -60,6 +60,8 @@ OPENSSL_INLINE int x25519_Armv7_neon_capable(void) {
 }
 
 // Stub functions if implementations are not compiled.
+// These functions have to abort, otherwise we risk applications assuming they
+// did work without actually doing anything.
 
 #if !defined(CURVE25519_S2N_BIGNUM_CAPABLE)
 
@@ -96,6 +98,7 @@ void x25519_NEON(uint8_t out[32], const uint8_t scalar[32],
   abort();
 }
 #endif // !defined(BORINGSSL_X25519_NEON)
+
 
 // Run-time detection for each implementation
 
@@ -171,7 +174,7 @@ OPENSSL_INLINE int x25519_s2n_bignum_no_alt_capable(void) {
 //   wide multipliers. this ensures that s2n-bignum-alt will only be used on
 //   such CPUs.
 
-static void x25519_s2n_bignum(uint8_t out_shared_key[32],
+static int x25519_s2n_bignum(uint8_t out_shared_key[32],
   const uint8_t private_key[32], const uint8_t peer_public_value[32]) {
 
   uint8_t private_key_internal_demask[32];
@@ -185,11 +188,11 @@ static void x25519_s2n_bignum(uint8_t out_shared_key[32],
   if (x25519_s2n_bignum_no_alt_capable() == 1) {
     curve25519_x25519_byte(out_shared_key, private_key_internal_demask,
       peer_public_value);
+    return 1;
   } else if (x25519_s2n_bignum_alt_capable() == 1) {
     curve25519_x25519_byte_alt(out_shared_key, private_key_internal_demask,
       peer_public_value);
-  } else {
-    abort();
+    return 1;
   }
 
 #elif defined(OPENSSL_AARCH64)
@@ -197,22 +200,20 @@ static void x25519_s2n_bignum(uint8_t out_shared_key[32],
   if (x25519_s2n_bignum_alt_capable() == 1) {
     curve25519_x25519_byte_alt(out_shared_key, private_key_internal_demask,
       peer_public_value);
+    return 1;
   } else if (x25519_s2n_bignum_no_alt_capable() == 1) {
     curve25519_x25519_byte(out_shared_key, private_key_internal_demask,
       peer_public_value);
-  } else {
-    abort();
+    return 1;
   }
 
-#else
+#endif
 
   // Should not call this function unless s2n-bignum is supported.
-  abort();
-
-#endif
+  return 0;
 }
 
-static void x25519_s2n_bignum_public_from_private(
+static int x25519_s2n_bignum_public_from_private(
   uint8_t out_public_value[32], const uint8_t private_key[32]) {
 
   uint8_t private_key_internal_demask[32];
@@ -225,28 +226,26 @@ static void x25519_s2n_bignum_public_from_private(
 
   if (x25519_s2n_bignum_no_alt_capable() == 1) {
     curve25519_x25519base_byte(out_public_value, private_key_internal_demask);
+    return 1;
   } else if (x25519_s2n_bignum_alt_capable() == 1) {
     curve25519_x25519base_byte_alt(out_public_value, private_key_internal_demask);
-  } else {
-    abort();
+    return 1;
   }
 
 #elif defined(OPENSSL_AARCH64)
 
   if (x25519_s2n_bignum_alt_capable() == 1) {
     curve25519_x25519base_byte_alt(out_public_value, private_key_internal_demask);
+    return 1;
   } else if (x25519_s2n_bignum_no_alt_capable() == 1) {
     curve25519_x25519base_byte(out_public_value, private_key_internal_demask);
-  } else {
-    abort();
+    return 1;
   }
 
-#else
+#endif
 
   // Should not call this function unless s2n-bignum is supported.
-  abort();
-
-#endif
+  return 0;
 }
 
 
@@ -378,13 +377,19 @@ int ED25519_verify(const uint8_t *message, size_t message_len,
 
 void X25519_public_from_private(uint8_t out_public_value[32],
                                 const uint8_t private_key[32]) {
+  uint8_t c_impl_fallback = 1;
 
   if (x25519_s2n_bignum_capable() == 1) {
-    x25519_s2n_bignum_public_from_private(out_public_value, private_key);
+    if (x25519_s2n_bignum_public_from_private(out_public_value, private_key) == 1) {
+      c_impl_fallback = 0;
+    }
   } else if (x25519_Armv7_neon_capable() == 1) {
     static const uint8_t kMongomeryBasePoint[32] = {9};
     x25519_NEON(out_public_value, private_key, kMongomeryBasePoint);
-  } else {
+    c_impl_fallback = 0;
+  }
+
+  if (c_impl_fallback == 1) {
     x25519_public_from_private_nohw(out_public_value, private_key);
   }
 }
@@ -416,12 +421,18 @@ int X25519(uint8_t out_shared_key[32], const uint8_t private_key[32],
            const uint8_t peer_public_value[32]) {
 
   static const uint8_t kZeros[32] = {0};
+  uint8_t c_impl_fallback = 1;
 
   if (x25519_s2n_bignum_capable() == 1) {
-    x25519_s2n_bignum(out_shared_key, private_key, peer_public_value);
+    if (x25519_s2n_bignum(out_shared_key, private_key, peer_public_value) == 1) {
+      c_impl_fallback = 0;
+    }
   } else if (x25519_Armv7_neon_capable() == 1) {
     x25519_NEON(out_shared_key, private_key, peer_public_value);
-  } else {
+    c_impl_fallback = 0;
+  }
+
+  if (c_impl_fallback == 1) {
     x25519_scalar_mult_generic_nohw(out_shared_key, private_key, peer_public_value);
   }
 
