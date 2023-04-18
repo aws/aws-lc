@@ -949,14 +949,24 @@ if(BUILD_TESTING)
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
         DEPENDS all_tests
         ${MAYBE_USES_TERMINAL})
-
-    add_custom_target(
+    if(ASAN)
+      # urandom_tests hang and stop running when built with SDE+ASAN, so we skip over the them.
+      add_custom_target(
+          run_tests_with_sde
+          COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
+                  ${PROJECT_BINARY_DIR} -sde=true -skip-urandom=true -sde-path=$ENV{SDEROOT}/sde
+          WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+          DEPENDS all_tests
+          ${MAYBE_USES_TERMINAL})
+    else()
+      add_custom_target(
         run_tests_with_sde
         COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
                 ${PROJECT_BINARY_DIR} -sde=true -sde-path=$ENV{SDEROOT}/sde
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
         DEPENDS all_tests
         ${MAYBE_USES_TERMINAL})
+    endif()
   else()
     if(BUILD_LIBSSL)
       add_custom_target(

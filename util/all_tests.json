@@ -35,13 +35,15 @@
   },
   {
     "cmd": ["crypto/urandom_test"],
-    "skip_valgrind": true
+    "skip_valgrind": true,
+    "skip_urandom": true
   },
   {
     "comment": "Without RDRAND",
     "cmd": ["crypto/urandom_test"],
     "env": ["OPENSSL_ia32cap=~0x4000000000000000"],
     "skip_valgrind": true,
+    "skip_urandom": true,
     "target_arch": "x86"
   },
   {
@@ -49,6 +51,7 @@
     "cmd": ["crypto/urandom_test"],
     "env": ["OPENSSL_ia32cap=~0x0000000040000000"],
     "skip_valgrind": true,
+    "skip_urandom": true,
     "target_arch": "x86"
   },
   {
@@ -56,6 +59,7 @@
     "cmd": ["crypto/urandom_test"],
     "env": ["OPENSSL_ia32cap=|0x0000000040000000"],
     "skip_valgrind": true,
+    "skip_urandom": true,
     "target_arch": "x86"
   },
   {
@@ -63,6 +67,7 @@
     "cmd": ["crypto/urandom_test"],
     "env": ["OPENSSL_ia32cap=~0x4000000000000000", "BORINGSSL_IGNORE_MADV_WIPEONFORK=1"],
     "skip_valgrind": true,
+    "skip_urandom": true,
     "target_arch": "x86"
   },
   {
@@ -70,6 +75,7 @@
     "cmd": ["crypto/urandom_test"],
     "env": ["OPENSSL_ia32cap=~0x0000000040000000", "BORINGSSL_IGNORE_MADV_WIPEONFORK=1"],
     "skip_valgrind": true,
+    "skip_urandom": true,
     "target_arch": "x86"
   },
   {
