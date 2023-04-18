@@ -605,6 +605,26 @@ TEST(XTSTest, InputTooLong) {
 
 }
 
+static void encrypt_and_decrypt(bssl::ScopedEVP_CIPHER_CTX &ctx_encrypt,
+  bssl::ScopedEVP_CIPHER_CTX &ctx_decrypt, std::vector<uint8_t> pt,
+  std::vector<uint8_t> ct_expected) {
+
+  int len = 0;
+  std::vector<uint8_t> ct_actual(pt.size()), pt_actual(pt.size());
+
+  ASSERT_TRUE(EVP_EncryptUpdate(ctx_encrypt.get(), ct_actual.data(), &len,
+    pt.data(), pt.size()));
+  EXPECT_EQ(len, (int) pt.size());
+  EXPECT_EQ(Bytes(ct_expected), Bytes(ct_actual));
+
+  ASSERT_TRUE(EVP_DecryptUpdate(ctx_decrypt.get(), pt_actual.data(), &len,
+    ct_actual.data(), ct_actual.size()));
+  EXPECT_EQ(len, (int) pt.size());
+  EXPECT_EQ(Bytes(pt), Bytes(pt_actual));
+}
+
+// Test that XTS mode API can be used without re-initializing the entire key
+// context if the only thing that changes is the tweak.
 TEST(XTSTest, SectorTweakAPIUsage) {
 
   std::vector<uint8_t> key, sectorTweak1, sectorTweak2, pt, ct1_expected, ct2_expected;
@@ -659,62 +679,54 @@ TEST(XTSTest, SectorTweakAPIUsage) {
         "0cdc2a8b332b1f8824108ac937eb050585608ee734097fc09054fbff89eeaeea791f4a"
         "7ab1f9868294a4f9e27b42af8100cb9d59cef9645803"));
 
-  std::vector<uint8_t> ct1_repeat_init(pt.size()), ct2_repeat_init(pt.size());
-  std::vector<uint8_t> ct1_repeat_init_no_cipher(pt.size()), ct2_repeat_init_no_cipher(pt.size());
-  std::vector<uint8_t> ct1_no_repeat_init(pt.size()), ct2_no_repeat_init(pt.size());
-
-  bssl::ScopedEVP_CIPHER_CTX ctx_repeat_key_init;
-  bssl::ScopedEVP_CIPHER_CTX ctx_repeat_key_init_no_cipher;
-  bssl::ScopedEVP_CIPHER_CTX ctx_no_repeat_key_init;
-
-  int len;
+  bssl::ScopedEVP_CIPHER_CTX ctx_encrypt;
+  bssl::ScopedEVP_CIPHER_CTX ctx_decrypt;
 
   // Firstly, encrypt and decrypt doing a full re-init for each sector.
-  ASSERT_TRUE(EVP_EncryptInit_ex(ctx_repeat_key_init.get(), EVP_aes_256_xts(),
+  ASSERT_TRUE(EVP_EncryptInit_ex(ctx_encrypt.get(), EVP_aes_256_xts(),
     nullptr, key.data(), sectorTweak1.data()));
-  ASSERT_TRUE(EVP_EncryptUpdate(ctx_repeat_key_init.get(),
-    ct1_repeat_init.data(), &len, pt.data(), pt.size()));
-  ct1_repeat_init.resize(len);
-  EXPECT_EQ(Bytes(ct1_expected), Bytes(ct1_repeat_init));
+  ASSERT_TRUE(EVP_DecryptInit_ex(ctx_decrypt.get(), EVP_aes_256_xts(),
+    nullptr, key.data(), sectorTweak1.data()));
+  encrypt_and_decrypt(ctx_encrypt, ctx_decrypt, pt, ct1_expected);
 
-  ASSERT_TRUE(EVP_EncryptInit_ex(ctx_repeat_key_init.get(), EVP_aes_256_xts(),
+  ASSERT_TRUE(EVP_EncryptInit_ex(ctx_encrypt.get(), EVP_aes_256_xts(),
     nullptr, key.data(), sectorTweak2.data()));
-  ASSERT_TRUE(EVP_EncryptUpdate(ctx_repeat_key_init.get(),
-    ct2_repeat_init.data(), &len, pt.data(), pt.size()));
-  ct2_repeat_init.resize(len);
-  EXPECT_EQ(Bytes(ct2_expected), Bytes(ct2_repeat_init));
+  ASSERT_TRUE(EVP_DecryptInit_ex(ctx_decrypt.get(), EVP_aes_256_xts(),
+    nullptr, key.data(), sectorTweak2.data()));
+  encrypt_and_decrypt(ctx_encrypt, ctx_decrypt, pt, ct2_expected);
+
+  ctx_encrypt.Reset();
+  ctx_decrypt.Reset();
 
   // Secondly, encrypt and decrypt but do not re-init the cipher structure.
   // Expects this to work since we are using the same cipher implementation.
-  ASSERT_TRUE(EVP_EncryptInit_ex(ctx_repeat_key_init_no_cipher.get(), EVP_aes_256_xts(),
+  ASSERT_TRUE(EVP_EncryptInit_ex(ctx_encrypt.get(), EVP_aes_256_xts(),
     nullptr, key.data(), sectorTweak1.data()));
-  ASSERT_TRUE(EVP_EncryptUpdate(ctx_repeat_key_init_no_cipher.get(),
-    ct1_repeat_init_no_cipher.data(), &len, pt.data(), pt.size()));
-  ct1_repeat_init_no_cipher.resize(len);
-  EXPECT_EQ(Bytes(ct1_expected), Bytes(ct1_repeat_init_no_cipher));
+  ASSERT_TRUE(EVP_DecryptInit_ex(ctx_decrypt.get(), EVP_aes_256_xts(),
+    nullptr, key.data(), sectorTweak1.data()));
+  encrypt_and_decrypt(ctx_encrypt, ctx_decrypt, pt, ct1_expected);
 
-  ASSERT_TRUE(EVP_EncryptInit_ex(ctx_repeat_key_init_no_cipher.get(), nullptr,
+  ASSERT_TRUE(EVP_EncryptInit_ex(ctx_encrypt.get(), nullptr,
     nullptr, key.data(), sectorTweak2.data()));
-  ASSERT_TRUE(EVP_EncryptUpdate(ctx_repeat_key_init_no_cipher.get(),
-    ct2_repeat_init_no_cipher.data(), &len, pt.data(), pt.size()));
-  ct2_repeat_init_no_cipher.resize(len);
-  EXPECT_EQ(Bytes(ct2_expected), Bytes(ct2_repeat_init_no_cipher));
+  ASSERT_TRUE(EVP_DecryptInit_ex(ctx_decrypt.get(), nullptr,
+    nullptr, key.data(), sectorTweak2.data()));
+  encrypt_and_decrypt(ctx_encrypt, ctx_decrypt, pt, ct2_expected);
+
+  ctx_encrypt.Reset();
+  ctx_decrypt.Reset();
 
   // Thirdly, encrypt and decrypt but only re-init the sector tweak.
   // Expects this to work since the key context does not change, only the tweak.
   // XTS is designed specifically to enable this kind of re-use.
-  ASSERT_TRUE(EVP_EncryptInit_ex(ctx_no_repeat_key_init.get(), EVP_aes_256_xts(),
+  ASSERT_TRUE(EVP_EncryptInit_ex(ctx_encrypt.get(), EVP_aes_256_xts(),
     nullptr, key.data(), sectorTweak1.data()));
-  ASSERT_TRUE(EVP_EncryptUpdate(ctx_no_repeat_key_init.get(),
-    ct1_no_repeat_init.data(), &len, pt.data(), pt.size()));
-  ct1_no_repeat_init.resize(len);
-  EXPECT_EQ(Bytes(ct1_expected), Bytes(ct1_no_repeat_init));
+  ASSERT_TRUE(EVP_DecryptInit_ex(ctx_decrypt.get(), EVP_aes_256_xts(),
+    nullptr, key.data(), sectorTweak1.data()));
+  encrypt_and_decrypt(ctx_encrypt, ctx_decrypt, pt, ct1_expected);
 
-  ASSERT_TRUE(EVP_EncryptInit_ex(ctx_no_repeat_key_init.get(), nullptr,
+  ASSERT_TRUE(EVP_EncryptInit_ex(ctx_encrypt.get(), nullptr,
     nullptr, nullptr, sectorTweak2.data()));
-  ASSERT_TRUE(EVP_EncryptUpdate(ctx_repeat_key_init.get(),
-    ct2_no_repeat_init.data(), &len, pt.data(), pt.size()));
-  ct2_no_repeat_init.resize(len);
-  EXPECT_EQ(Bytes(ct2_expected), Bytes(ct2_no_repeat_init));
+  ASSERT_TRUE(EVP_DecryptInit_ex(ctx_decrypt.get(), nullptr,
+    nullptr, nullptr, sectorTweak2.data()));
+  encrypt_and_decrypt(ctx_encrypt, ctx_decrypt, pt, ct2_expected);
 }
-
