@@ -60,6 +60,8 @@ OPENSSL_INLINE int x25519_Armv7_neon_capable(void) {
 }
 
 // Stub functions if implementations are not compiled.
+// These functions have to abort, otherwise we risk applications assuming they
+// did work without actually doing anything.
 
 #if !defined(CURVE25519_S2N_BIGNUM_CAPABLE)
 
@@ -96,6 +98,7 @@ void x25519_NEON(uint8_t out[32], const uint8_t scalar[32],
   abort();
 }
 #endif // !defined(BORINGSSL_X25519_NEON)
+
 
 // Run-time detection for each implementation
 
