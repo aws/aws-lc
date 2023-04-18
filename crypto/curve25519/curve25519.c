@@ -87,7 +87,7 @@ void curve25519_x25519base_byte_alt(uint8_t res[32], const uint8_t scalar[32]) {
   abort();
 }
 
-#endif // !defined(CURVE25519_ASM_CAPABLE)
+#endif // !defined(CURVE25519_S2N_BIGNUM_CAPABLE)
 
 void x25519_NEON(uint8_t out[32], const uint8_t scalar[32],
                  const uint8_t point[32]);
