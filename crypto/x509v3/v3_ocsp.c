@@ -14,6 +14,7 @@
 #include <openssl/asn1.h>
 #include <openssl/bio.h>
 #include <openssl/nid.h>
+#include "../internal.h"
 
 // OCSP extensions and a couple of CRL entry extensions
 
@@ -102,7 +103,7 @@ static void *ocsp_nonce_new(void) { return ASN1_OCTET_STRING_new(); }
 static int i2d_ocsp_nonce(void *a, unsigned char **pp) {
   ASN1_OCTET_STRING *os = a;
   if (pp != NULL) {
-    memcpy(*pp, os->data, os->length);
+    OPENSSL_memcpy(*pp, os->data, os->length);
     *pp += os->length;
   }
   return os->length;

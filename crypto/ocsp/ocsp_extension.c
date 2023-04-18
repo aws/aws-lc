@@ -14,6 +14,7 @@
 #include <openssl/rand.h>
 #include <string.h>
 
+#include "../internal.h"
 #include "internal.h"
 
 #define OCSP_DEFAULT_NONCE_LENGTH 16
@@ -60,7 +61,7 @@ static int ocsp_add_nonce(STACK_OF(X509_EXTENSION) **exts, unsigned char *val,
   tmpval = os.data;
   ASN1_put_object(&tmpval, 0, len, V_ASN1_OCTET_STRING, V_ASN1_UNIVERSAL);
   if (val != NULL) {
-    memcpy(tmpval, val, len);
+    OPENSSL_memcpy(tmpval, val, len);
   } else if (RAND_bytes(tmpval, len) <= 0) {
     goto err;
   }
@@ -75,10 +76,22 @@ err:
 }
 
 int OCSP_request_add1_nonce(OCSP_REQUEST *req, unsigned char *val, int len) {
+  if (req == NULL) {
+    OPENSSL_PUT_ERROR(OCSP, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+  if(val != NULL && len <= 0) {
+    OPENSSL_PUT_ERROR(OCSP, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+    return 0;
+  }
   return ocsp_add_nonce(&req->tbsRequest->requestExtensions, val, len);
 }
 
 int OCSP_check_nonce(OCSP_REQUEST *req, OCSP_BASICRESP *bs) {
+  if(req == NULL || bs == NULL) {
+    OPENSSL_PUT_ERROR(OCSP, ERR_R_PASSED_NULL_PARAMETER);
+    return OCSP_NONCE_NOT_EQUAL;
+  }
   // Since we are only interested in the presence or absence of
   // the nonce and comparing its value there is no need to use
   // the X509V3 routines: this way we can avoid them allocating an
