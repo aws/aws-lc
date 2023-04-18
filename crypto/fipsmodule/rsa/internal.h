@@ -67,9 +67,9 @@ extern "C" {
 #endif
 
 typedef enum {
-    RSA_STRIPPED_KEY,
-    RSA_CRT_KEY,
-    RSA_PUBLIC_KEY
+  RSA_STRIPPED_KEY,
+  RSA_CRT_KEY,
+  RSA_PUBLIC_KEY
 } rsa_asn1_key_encoding_t;
 
 // Default implementations of RSA operations.
@@ -150,6 +150,14 @@ int rsa_verify_raw_no_self_test(RSA *rsa, size_t *out_len, uint8_t *out,
 int rsa_sign_no_self_test(int hash_nid, const uint8_t *digest,
                           size_t digest_len, uint8_t *out, unsigned *out_len,
                           RSA *rsa);
+
+int rsa_digestsign_no_self_test(const EVP_MD *md, const uint8_t *input,
+                                size_t in_len, uint8_t *out, unsigned *out_len,
+                                RSA *rsa);
+
+int rsa_digestverify_no_self_test(const EVP_MD *md, const uint8_t *input,
+                                  size_t in_len, const uint8_t *sig,
+                                  size_t sig_len, RSA *rsa);
 
 
 #if defined(__cplusplus)
