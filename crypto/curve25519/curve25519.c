@@ -126,7 +126,7 @@ OPENSSL_INLINE int x25519_s2n_bignum_alt_capable(void) {
 #endif
 }
 
-// For aarch64, |x25519_s2n_bignum_alt_capable| always returns 1. If x25519
+// For aarch64, |x25519_s2n_bignum_no_alt_capable| always returns 1. If x25519
 // s2n-bignum capable, the Armv8 s2n-bignum-alt version should be supported on
 // pretty much any Armv8 CPU.
 //
@@ -158,8 +158,8 @@ OPENSSL_INLINE int x25519_s2n_bignum_no_alt_capable(void) {
 //   - s2n-bignum-alt: hardware implementation using standard instructions
 //
 // aarch64:
-//   - s2n-bignum-no-alt: hardware implementation for "small" multiplier throughput
-//   - s2n-bignum-alt: hardware implementation for "higher" multiplier throughput
+//   - s2n-bignum-no-alt: hardware implementation for "low" multiplier throughput
+//   - s2n-bignum-alt: hardware implementation for "high" multiplier throughput
 //
 // Through experiments we have found that:
 //
