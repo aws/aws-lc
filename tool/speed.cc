@@ -357,20 +357,19 @@ static bool SpeedRSAKeyGen(const std::string &selected) {
       BM_NAMESPACE::UniquePtr<RSA> rsa(RSA_new());
 
       const uint64_t iteration_start = time_now();
-      if(FIPS_mode()){
-        if (!RSA_generate_key_fips(rsa.get(), size, nullptr)) {
-          fprintf(stderr, "RSA_generate_key_fips failed.\n");
-          ERR_print_errors_fp(stderr);
-          return false;
-        }
+#if defined(AWSLC_FIPS)
+      if (!RSA_generate_key_fips(rsa.get(), size, nullptr)) {
+        fprintf(stderr, "RSA_generate_key_fips failed.\n");
+        ERR_print_errors_fp(stderr);
+        return false;
       }
-      else {
-        if (!RSA_generate_key_ex(rsa.get(), size, e.get(), nullptr)) {
-          fprintf(stderr, "RSA_generate_key_ex failed.\n");
-          ERR_print_errors_fp(stderr);
-          return false;
-        }
+#else
+      if (!RSA_generate_key_ex(rsa.get(), size, e.get(), nullptr)) {
+        fprintf(stderr, "RSA_generate_key_ex failed.\n");
+        ERR_print_errors_fp(stderr);
+        return false;
       }
+#endif
       const uint64_t iteration_end = time_now();
 
       num_calls++;
@@ -1829,7 +1828,7 @@ static bool SpeedTrustToken(std::string name, const TRUST_TOKEN_METHOD *method,
 #endif
 #endif
 
-#if defined(BORINGSSL_FIPS)
+#if defined(AWSLC_FIPS)
 static bool SpeedSelfTest(const std::string &selected) {
   if (!selected.empty() && selected.find("self-test") == std::string::npos) {
     return true;
@@ -2166,7 +2165,7 @@ bool Speed(const std::vector<std::string> &args) {
      ) {
     return false;
   }
-#if defined(BORINGSSL_FIPS)
+#if defined(AWSLC_FIPS)
   if (!SpeedSelfTest(selected) ||
       !SpeedJitter(selected)) {
     return false;
