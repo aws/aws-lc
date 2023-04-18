@@ -40,55 +40,55 @@ static bool message_in_errors(const string& expected_message) {
 struct test_config {
   string expected_failure_message;
   int initial_failure_count;
-  int expected_failure_count;
 };
 
 // If hmac sha-256 is broken the integrity check can not be trusted to check
 // itself and fails earlier
+set<string> integrity_test_names = {"SHA-256", "HMAC-SHA-256"};
 const test_config integrity_test_config = {
     "BORINGSSL_integrity_test",
     1,
-    2
 };
-vector<string> integrity_tests = {"SHA-256", "HMAC-SHA-256"};
+
+// The lazy tests are not run at power up, only when called directly with
+// BORINGSSL_self_test, therefore the callback should have been called once
+set<string> lazy_test_names = {"ECDSA-sign", "ECDSA-verify", "FFDH", "RSA-sign", "RSA-verify", "Z-computation"};
+const test_config lazy_test_config = {
+    "BORINGSSL_self_test",
+    0,
+};
 
 // The fast tests run automatically at startup and will report a failure to
 // the test callback immediately, and then again when BORINGSSL_self_test is called
 const test_config fast_test_config = {
     "boringssl_self_test_startup",
     1,
-    2
 };
 
-// The lazy tests are not run at power up, only when called directly with
-// BORINGSSL_self_test, therefore the callback should have been called once
-const test_config lazy_test_config = {
-    "BORINGSSL_self_test",
-    0,
-    1
-};
-
-vector<string> lazy_tests = {"ECDSA-sign", "ECDSA-verify", "FFDH", "RSA-sign", "RSA-verify", "Z-computation"};
+static test_config get_self_test_failure_config(char* broken_kat) {
+  if(integrity_test_names.find(broken_kat) != integrity_test_names.end()) {
+    return integrity_test_config;
+  } else if (lazy_test_names.find(broken_kat) != lazy_test_names.end()) {
+    return lazy_test_config;
+  } else {
+    return fast_test_config;
+  }
+}
 
 TEST(FIPSCallback, PowerOnTests) {
+  ASSERT_EQ(1, FIPS_mode());
   // At this point the library has loaded, if a self test was broken
   // AWS_LC_FIPS_Callback would have already been called. If this test
   // wasn't broken the call count should be zero
   char* broken_kat = getenv("FIPS_CALLBACK_TEST_POWER_ON_TEST_FAILURE");
   if (broken_kat != nullptr) {
-    struct test_config config;
-    if(find(integrity_tests.begin(), integrity_tests.end(), broken_kat) != integrity_tests.end()) {
-      config = integrity_test_config;
-    } else if (find(lazy_tests.begin(), lazy_tests.end(), broken_kat) != lazy_tests.end()) {
-      config = lazy_test_config;
-    } else {
-      config = fast_test_config;
-    }
+    test_config config = get_self_test_failure_config(broken_kat);
+    // Fast tests will have already run and if they were broken our callback would
+    // have already been called
     ASSERT_EQ(config.initial_failure_count, failure_count);
-
-    // Trigger lazy tests to run
+    // BORINGSSL_self_test will re-run the fast tests and trigger the lazy tests.
     ASSERT_FALSE(BORINGSSL_self_test());
-    ASSERT_EQ(config.expected_failure_count, failure_count);
+    ASSERT_EQ(config.initial_failure_count + 1, failure_count);
     ASSERT_TRUE(message_in_errors(config.expected_failure_message));
   } else {
     // break-kat.go has not run and corrupted this test yet, everything should work
@@ -128,7 +128,8 @@ TEST(FIPSCallback, RSARuntimeTest) {
   if (broken_runtime_test != nullptr && (strcmp(broken_runtime_test, "RSA_PWCT" ) == 0 ||
                                          strcmp(broken_runtime_test, "CRNG" ) == 0)) {
     ASSERT_FALSE(RSA_generate_key_fips(rsa.get(), 2048, nullptr));
-    // RSA key generation can call the DRBG multiple times before failing
+    // RSA key generation can call the DRBG multiple times before failing we
+    // don't know how many times, but it should fail at least once.
     ASSERT_NE(0, failure_count);
   } else {
     // BORINGSSL_FIPS_BREAK_TEST has not been set and everything should work
@@ -149,7 +150,7 @@ TEST(FIPSCallback, ECDSARuntimeTest) {
   if (broken_runtime_test != nullptr && (strcmp(broken_runtime_test, "ECDSA_PWCT" ) == 0 ||
                                          strcmp(broken_runtime_test, "CRNG" ) == 0)) {
     ASSERT_FALSE(EC_KEY_generate_key_fips(key.get()));
-    // RSA key generation can call the DRBG multiple times before failing, we
+    // EC key generation can call the DRBG multiple times before failing, we
     // don't know how many times, but it should fail at least once.
     ASSERT_NE(0, failure_count);
   } else {
