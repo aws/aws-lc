@@ -624,6 +624,19 @@ int RSA_sign_pss_mgf1(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
   return ret;
 }
 
+int rsa_digestsign_no_self_test(const EVP_MD *md, const uint8_t *input,
+                                size_t in_len, uint8_t *out, unsigned *out_len,
+                                RSA *rsa) {
+  uint8_t digest[EVP_MAX_MD_SIZE];
+  unsigned int digest_len;
+  if (!EVP_Digest(input, in_len, digest, &digest_len, md, NULL)) {
+    return 0;
+  }
+
+  return rsa_sign_no_self_test(EVP_MD_type(md), digest, digest_len, out,
+                               out_len, rsa);
+}
+
 int rsa_verify_no_self_test(int hash_nid, const uint8_t *digest,
                             size_t digest_len, const uint8_t *sig,
                             size_t sig_len, RSA *rsa) {
@@ -678,6 +691,19 @@ out:
     OPENSSL_free(signed_msg);
   }
   return ret;
+}
+
+int rsa_digestverify_no_self_test(const EVP_MD *md, const uint8_t *input,
+                                  size_t in_len, const uint8_t *sig,
+                                  size_t sig_len, RSA *rsa) {
+  uint8_t digest[EVP_MAX_MD_SIZE];
+  unsigned int digest_len;
+  if (!EVP_Digest(input, in_len, digest, &digest_len, md, NULL)) {
+    return 0;
+  }
+
+  return rsa_verify_no_self_test(EVP_MD_type(md), digest, digest_len, sig,
+                                 sig_len, rsa);
 }
 
 int RSA_verify(int hash_nid, const uint8_t *digest, size_t digest_len,
