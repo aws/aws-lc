@@ -151,10 +151,16 @@ int rsa_sign_no_self_test(int hash_nid, const uint8_t *digest,
                           size_t digest_len, uint8_t *out, unsigned *out_len,
                           RSA *rsa);
 
+// rsa_digestsign_no_self_test calculates the digest and calls
+// |rsa_sign_no_self_test|, which doesn't try to run the self-test first. This
+// is for use in the self tests themselves, to prevent an infinite loop.
 int rsa_digestsign_no_self_test(const EVP_MD *md, const uint8_t *input,
                                 size_t in_len, uint8_t *out, unsigned *out_len,
                                 RSA *rsa);
 
+// rsa_digestverify_no_self_test calculates the digest and calls
+// |rsa_verify_no_self_test|, which doesn't try to run the self-test first. This
+// is for use in the self tests themselves, to prevent an infinite loop.
 int rsa_digestverify_no_self_test(const EVP_MD *md, const uint8_t *input,
                                   size_t in_len, const uint8_t *sig,
                                   size_t sig_len, RSA *rsa);
