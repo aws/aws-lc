@@ -40,7 +40,7 @@ var (
 	useCallgrind    = flag.Bool("callgrind", false, "If true, run code under valgrind to generate callgrind traces.")
 	useGDB          = flag.Bool("gdb", false, "If true, run BoringSSL code under gdb")
 	useSDE          = flag.Bool("sde", false, "If true, run BoringSSL code under Intel's SDE for each supported chip")
-	skipURandom     = flag.Bool("skip-urandom", false, "If true, skip over the urandom tests. Running with ASAN under Intel's SDE will cause the urandom tests to hang forever.")
+	skipValgrind    = flag.Bool("skip-valgrind", false, "If true, skip over tests that have skip_valgrind defined. Running with ASAN under Intel's SDE will also cause these tests to hang forever.")
 	sslTests        = flag.Bool("ssl-tests", true, "If true, run BoringSSL tests against libssl")
 	sdePath         = flag.String("sde-path", "sde", "The path to find the sde binary.")
 	buildDir        = flag.String("build-dir", "build", "The build directory to run the tests from.")
@@ -377,7 +377,7 @@ func main() {
 					continue
 				}
 				// SDE+ASAN does not work with urandom_test.
-				if *skipURandom && test.SkipURandom {
+				if *skipValgrind && test.SkipValgrind {
 				    continue
 				}
 

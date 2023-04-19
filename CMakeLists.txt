@@ -954,7 +954,7 @@ if(BUILD_TESTING)
       add_custom_target(
           run_tests_with_sde
           COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
-                  ${PROJECT_BINARY_DIR} -sde=true -skip-urandom=true -sde-path=$ENV{SDEROOT}/sde
+                  ${PROJECT_BINARY_DIR} -sde=true -skip-valgrind=true -sde-path=$ENV{SDEROOT}/sde
           WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
           DEPENDS all_tests
           ${MAYBE_USES_TERMINAL})

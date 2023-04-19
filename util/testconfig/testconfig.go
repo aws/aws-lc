@@ -24,7 +24,6 @@ type Test struct {
 	Env           	[]string `json:"env"`
 	SkipSDE       	bool     `json:"skip_sde"`
 	SkipValgrind 	bool 	 `json:"skip_valgrind"`
-	SkipURandom     bool     `json:"skip_urandom"`
 	ValgrindSupp  	[]string `json:"valgrind_supp"`
 	TargetArch  	string 	`json:"target_arch"`
 }
