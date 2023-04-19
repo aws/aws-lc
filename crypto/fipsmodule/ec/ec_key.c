@@ -357,6 +357,7 @@ static int EVP_EC_KEY_check_fips(EC_KEY *key) {
   ret = 1;
 err:
   EVP_PKEY_free(evp_pkey);
+  EVP_MD_CTX_cleanse(&ctx);
   OPENSSL_free(sig_der);
   return ret;
 }
