@@ -1,26 +1,23 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 
-FROM amazonlinux-2022:clang-14x
+FROM amazonlinux-2023:clang-15x
 
 SHELL ["/bin/bash", "-c"]
 
 RUN set -ex && \
-    yum -y update && yum install -y \
-    make \
-    automake \
-    autoconf \
+    dnf -y upgrade --releasever=latest && dnf install -y \
     libtool \
     boost-devel \
     unzip \
     llvm \
     llvm-devel \
     lld && \
-    yum clean packages && \
-    yum clean metadata && \
-    yum clean all && \
+    dnf clean packages && \
+    dnf clean metadata && \
+    dnf clean all && \
     rm -rf /tmp/* && \
-    rm -rf /var/cache/yum
+    rm -rf /var/cache/dnf
 
 ENV FUZZ_ROOT=${DEPENDENCIES_DIR}
 ENV MODULE_ROOT="${FUZZ_ROOT}/modules"
