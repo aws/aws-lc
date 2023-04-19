@@ -289,53 +289,53 @@ batch:
         compute-type: BUILD_GENERAL1_2XLARGE
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:amazonlinux-2_gcc-7x_intel-sde_latest
 
-    - identifier: amazonlinux2022_gcc11x_x86_64_valgrind
+    - identifier: amazonlinux2023_gcc11x_x86_64_valgrind
       buildspec: ./tests/ci/codebuild/common/run_valgrind_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
         compute-type: BUILD_GENERAL1_2XLARGE
-        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:amazonlinux-2022_gcc-11x_latest
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:amazonlinux-2023_gcc-11x_latest
 
-    - identifier: amazonlinux2022_gcc11x_x86_64
+    - identifier: amazonlinux2023_gcc11x_x86_64
       buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
-        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:amazonlinux-2022_gcc-11x_latest
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:amazonlinux-2023_gcc-11x_latest
 
-    - identifier: amazonlinux2022_gcc11x_x86_64_fips
+    - identifier: amazonlinux2023_gcc11x_x86_64_fips
       buildspec: ./tests/ci/codebuild/linux-x86/run_fips_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
-        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:amazonlinux-2022_gcc-11x_latest
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:amazonlinux-2023_gcc-11x_latest
 
-    - identifier: amazonlinux2022_clang14x_x86_64
+    - identifier: amazonlinux2023_clang15x_x86_64
       buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
-        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:amazonlinux-2022_clang-14x_latest
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:amazonlinux-2023_clang-15x_latest
 
-    - identifier: amazonlinux2022_clang14x_x86_64_fips
+    - identifier: amazonlinux2023_clang15x_x86_64_fips
       buildspec: ./tests/ci/codebuild/linux-x86/run_fips_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
-        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:amazonlinux-2022_clang-14x_latest
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:amazonlinux-2023_clang-15x_latest
 
-    - identifier: amazonlinux2022_clang14x_x86_64_sanitizer
+    - identifier: amazonlinux2023_clang15x_x86_64_sanitizer
       buildspec: ./tests/ci/codebuild/linux-x86/run_sanitizer_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
-        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:amazonlinux-2022_clang-14x_sanitizer_latest
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:amazonlinux-2023_clang-15x_sanitizer_latest
 
     - identifier: s2n_integration
       buildspec: ./tests/ci/codebuild/linux-x86/s2n_integration.yml
