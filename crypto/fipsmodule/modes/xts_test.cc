@@ -604,3 +604,129 @@ TEST(XTSTest, InputTooLong) {
                       (XTS_MAX_BLOCKS_PER_DATA_UNIT * AES_BLOCK_SIZE) + 1));
 
 }
+
+static void encrypt_and_decrypt(bssl::ScopedEVP_CIPHER_CTX &ctx_encrypt,
+  bssl::ScopedEVP_CIPHER_CTX &ctx_decrypt, std::vector<uint8_t> pt,
+  std::vector<uint8_t> ct_expected) {
+
+  int len = 0;
+  std::vector<uint8_t> ct_actual(pt.size()), pt_actual(pt.size());
+
+  ASSERT_TRUE(EVP_EncryptUpdate(ctx_encrypt.get(), ct_actual.data(), &len,
+    pt.data(), pt.size()));
+  EXPECT_EQ(len, (int) pt.size());
+  EXPECT_EQ(Bytes(ct_expected), Bytes(ct_actual));
+
+  ASSERT_TRUE(EVP_DecryptUpdate(ctx_decrypt.get(), pt_actual.data(), &len,
+    ct_actual.data(), ct_actual.size()));
+  EXPECT_EQ(len, (int) pt.size());
+  EXPECT_EQ(Bytes(pt), Bytes(pt_actual));
+}
+
+// Test that XTS mode API can be used without re-initializing the entire key
+// context if the only thing that changes is the tweak.
+TEST(XTSTest, SectorTweakAPIUsage) {
+
+  std::vector<uint8_t> key, sectorTweak1, sectorTweak2, pt, ct1_expected, ct2_expected;
+  // First two test vectors in kXTSTestCases.
+  ASSERT_TRUE(DecodeHex(&key, "2718281828459045235360287471352662497757247093699959574966967627"
+                               "3141592653589793238462643383279502884197169399375105820974944592"));
+  ASSERT_TRUE(DecodeHex(&sectorTweak1, "ff000000000000000000000000000000"));
+  ASSERT_TRUE(DecodeHex(&sectorTweak2, "ffff0000000000000000000000000000"));
+  ASSERT_TRUE(DecodeHex(&pt, "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122"
+        "232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445"
+        "464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768"
+        "696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b"
+        "8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadae"
+        "afb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1"
+        "d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4"
+        "f5f6f7f8f9fafbfcfdfeff000102030405060708090a0b0c0d0e0f1011121314151617"
+        "18191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a"
+        "3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d"
+        "5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f80"
+        "8182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3"
+        "a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6"
+        "c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9"
+        "eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff"));
+  ASSERT_TRUE(DecodeHex(&ct1_expected, "1c3b3a102f770386e4836c99e370cf9bea00803f5e482357a4ae12d414a3e63b5d31e2"
+        "76f8fe4a8d66b317f9ac683f44680a86ac35adfc3345befecb4bb188fd5776926c49a3"
+        "095eb108fd1098baec70aaa66999a72a82f27d848b21d4a741b0c5cd4d5fff9dac89ae"
+        "ba122961d03a757123e9870f8acf1000020887891429ca2a3e7a7d7df7b10355165c8b"
+        "9a6d0a7de8b062c4500dc4cd120c0f7418dae3d0b5781c34803fa75421c790dfe1de18"
+        "34f280d7667b327f6c8cd7557e12ac3a0f93ec05c52e0493ef31a12d3d9260f79a289d"
+        "6a379bc70c50841473d1a8cc81ec583e9645e07b8d9670655ba5bbcfecc6dc3966380a"
+        "d8fecb17b6ba02469a020a84e18e8f84252070c13e9f1f289be54fbc481457778f6160"
+        "15e1327a02b140f1505eb309326d68378f8374595c849d84f4c333ec4423885143cb47"
+        "bd71c5edae9be69a2ffeceb1bec9de244fbe15992b11b77c040f12bd8f6a975a44a0f9"
+        "0c29a9abc3d4d893927284c58754cce294529f8614dcd2aba991925fedc4ae74ffac6e"
+        "333b93eb4aff0479da9a410e4450e0dd7ae4c6e2910900575da401fc07059f645e8b7e"
+        "9bfdef33943054ff84011493c27b3429eaedb4ed5376441a77ed43851ad77f16f541df"
+        "d269d50d6a5f14fb0aab1cbb4c1550be97f7ab4066193c4caa773dad38014bd2092fa7"
+        "55c824bb5e54c4f36ffda9fcea70b9c6e693e148c151"));
+  ASSERT_TRUE(DecodeHex(&ct2_expected, "77a31251618a15e6b92d1d66dffe7b50b50bad552305ba0217a610688eff7e11e1d022"
+        "5438e093242d6db274fde801d4cae06f2092c728b2478559df58e837c2469ee4a4fa79"
+        "4e4bbc7f39bc026e3cb72c33b0888f25b4acf56a2a9804f1ce6d3d6e1dc6ca181d4b54"
+        "6179d55544aa7760c40d06741539c7e3cd9d2f6650b2013fd0eeb8c2b8e3d8d240ccae"
+        "2d4c98320a7442e1c8d75a42d6e6cfa4c2eca1798d158c7aecdf82490f24bb9b38e108"
+        "bcda12c3faf9a21141c3613b58367f922aaa26cd22f23d708dae699ad7cb40a8ad0b6e"
+        "2784973dcb605684c08b8d6998c69aac049921871ebb65301a4619ca80ecb485a31d74"
+        "4223ce8ddc2394828d6a80470c092f5ba413c3378fa6054255c6f9df4495862bbb3287"
+        "681f931b687c888abf844dfc8fc28331e579928cd12bd2390ae123cf03818d14dedde5"
+        "c0c24c8ab018bfca75ca096f2d531f3d1619e785f1ada437cab92e980558b3dce1474a"
+        "fb75bfedbf8ff54cb2618e0244c9ac0d3c66fb51598cd2db11f9be39791abe447c6309"
+        "4f7c453b7ff87cb5bb36b7c79efb0872d17058b83b15ab0866ad8a58656c5a7e20dbdf"
+        "308b2461d97c0ec0024a2715055249cf3b478ddd4740de654f75ca686e0d7345c69ed5"
+        "0cdc2a8b332b1f8824108ac937eb050585608ee734097fc09054fbff89eeaeea791f4a"
+        "7ab1f9868294a4f9e27b42af8100cb9d59cef9645803"));
+
+  bssl::ScopedEVP_CIPHER_CTX ctx_encrypt;
+  bssl::ScopedEVP_CIPHER_CTX ctx_decrypt;
+
+  // Firstly, encrypt and decrypt doing a full re-init for each sector.
+  ASSERT_TRUE(EVP_EncryptInit_ex(ctx_encrypt.get(), EVP_aes_256_xts(),
+    nullptr, key.data(), sectorTweak1.data()));
+  ASSERT_TRUE(EVP_DecryptInit_ex(ctx_decrypt.get(), EVP_aes_256_xts(),
+    nullptr, key.data(), sectorTweak1.data()));
+  encrypt_and_decrypt(ctx_encrypt, ctx_decrypt, pt, ct1_expected);
+
+  ASSERT_TRUE(EVP_EncryptInit_ex(ctx_encrypt.get(), EVP_aes_256_xts(),
+    nullptr, key.data(), sectorTweak2.data()));
+  ASSERT_TRUE(EVP_DecryptInit_ex(ctx_decrypt.get(), EVP_aes_256_xts(),
+    nullptr, key.data(), sectorTweak2.data()));
+  encrypt_and_decrypt(ctx_encrypt, ctx_decrypt, pt, ct2_expected);
+
+  ctx_encrypt.Reset();
+  ctx_decrypt.Reset();
+
+  // Secondly, encrypt and decrypt but do not re-init the cipher structure.
+  // Expects this to work since we are using the same cipher implementation.
+  ASSERT_TRUE(EVP_EncryptInit_ex(ctx_encrypt.get(), EVP_aes_256_xts(),
+    nullptr, key.data(), sectorTweak1.data()));
+  ASSERT_TRUE(EVP_DecryptInit_ex(ctx_decrypt.get(), EVP_aes_256_xts(),
+    nullptr, key.data(), sectorTweak1.data()));
+  encrypt_and_decrypt(ctx_encrypt, ctx_decrypt, pt, ct1_expected);
+
+  ASSERT_TRUE(EVP_EncryptInit_ex(ctx_encrypt.get(), nullptr,
+    nullptr, key.data(), sectorTweak2.data()));
+  ASSERT_TRUE(EVP_DecryptInit_ex(ctx_decrypt.get(), nullptr,
+    nullptr, key.data(), sectorTweak2.data()));
+  encrypt_and_decrypt(ctx_encrypt, ctx_decrypt, pt, ct2_expected);
+
+  ctx_encrypt.Reset();
+  ctx_decrypt.Reset();
+
+  // Thirdly, encrypt and decrypt but only re-init the sector tweak.
+  // Expects this to work since the key context does not change, only the tweak.
+  // XTS is designed specifically to enable this kind of re-use.
+  ASSERT_TRUE(EVP_EncryptInit_ex(ctx_encrypt.get(), EVP_aes_256_xts(),
+    nullptr, key.data(), sectorTweak1.data()));
+  ASSERT_TRUE(EVP_DecryptInit_ex(ctx_decrypt.get(), EVP_aes_256_xts(),
+    nullptr, key.data(), sectorTweak1.data()));
+  encrypt_and_decrypt(ctx_encrypt, ctx_decrypt, pt, ct1_expected);
+
+  ASSERT_TRUE(EVP_EncryptInit_ex(ctx_encrypt.get(), nullptr,
+    nullptr, nullptr, sectorTweak2.data()));
+  ASSERT_TRUE(EVP_DecryptInit_ex(ctx_decrypt.get(), nullptr,
+    nullptr, nullptr, sectorTweak2.data()));
+  encrypt_and_decrypt(ctx_encrypt, ctx_decrypt, pt, ct2_expected);
+}
