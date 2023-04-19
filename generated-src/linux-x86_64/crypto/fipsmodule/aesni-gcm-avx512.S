@@ -136343,7 +136343,7 @@ aes_gcm_decrypt_avx512:
 .Ldecrypt_seh_end:
 .cfi_endproc	
 .size	aes_gcm_decrypt_avx512, .-aes_gcm_decrypt_avx512
-.text	
+.section	.rodata
 .align	16
 POLY:.quad	0x0000000000000001, 0xC200000000000000
 

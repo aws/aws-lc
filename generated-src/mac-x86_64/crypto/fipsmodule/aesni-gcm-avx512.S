@@ -136294,7 +136294,7 @@ L$skip_hkeys_cleanup_byhoEGxnfawfFqd:
 L$decrypt_seh_end:
 
 
-.text	
+.section	__DATA,__const
 .p2align	4
 POLY:.quad	0x0000000000000001, 0xC200000000000000
 
