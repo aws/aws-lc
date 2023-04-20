@@ -1256,6 +1256,30 @@ TEST_P(OCSPNonceTest, OCSPNonce) {
             t.nonce_check_status);
 }
 
+TEST(OCSPTest, OCSPNonce) {
+  std::string data = GetTestData(
+      std::string("crypto/ocsp/test/aws/ocsp_request_no_nonce.der").c_str());
+  std::vector<uint8_t> ocsp_request_data(data.begin(), data.end());
+  bssl::UniquePtr<OCSP_REQUEST> ocspRequest =
+      LoadOCSP_REQUEST(ocsp_request_data);
+
+  // Adding a nonce but using 0 to trigger the default specified length
+  // should fail. A length must be specified when adding a specified nonce.
+  EXPECT_FALSE(
+      OCSP_request_add1_nonce(ocspRequest.get(), ocsp_response_nonce, 0));
+
+  // Adding a random nonce with the default length should succeed.
+  // |OCSP_REQUEST_get_ext_by_NID| returns a negative number if a nonce does
+  // not exist.
+  EXPECT_LT(OCSP_REQUEST_get_ext_by_NID(ocspRequest.get(),
+                                        NID_id_pkix_OCSP_Nonce, -1),
+            0);
+  EXPECT_TRUE(OCSP_request_add1_nonce(ocspRequest.get(), nullptr, 0));
+  EXPECT_GE(OCSP_REQUEST_get_ext_by_NID(ocspRequest.get(),
+                                        NID_id_pkix_OCSP_Nonce, -1),
+            0);
+}
+
 TEST(OCSPTest, OCSPCRLString) {
   for (int reason_code = 0; reason_code < 11; reason_code++) {
     if (reason_code == 7) {
