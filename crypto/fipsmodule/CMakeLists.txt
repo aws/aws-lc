@@ -192,6 +192,7 @@ if((ARCH STREQUAL "x86_64" OR ARCH STREQUAL "aarch64") AND
     p384/bignum_montsqr_p384_alt.S
     p384/bignum_nonzero_6.S
     p384/bignum_littleendian_6.S
+
     p521/bignum_add_p521.S
     p521/bignum_sub_p521.S
     p521/bignum_neg_p521.S
@@ -202,6 +203,7 @@ if((ARCH STREQUAL "x86_64" OR ARCH STREQUAL "aarch64") AND
     p521/bignum_tolebytes_p521.S
     p521/bignum_fromlebytes_p521.S
   )
+
   if(ARCH STREQUAL "x86_64")
     # The files below contain the alternative functions for x86_64.
     # For AArch64, the alternative tomont/deamont functions are
@@ -209,7 +211,21 @@ if((ARCH STREQUAL "x86_64" OR ARCH STREQUAL "aarch64") AND
     # in the corresponding "non-alt" files (bignum_<deamont|tomont>_p384.S)
     list(APPEND S2N_BIGNUM_ASM_SOURCES
                 p384/bignum_tomont_p384_alt.S
-                p384/bignum_deamont_p384_alt.S)
+                p384/bignum_deamont_p384_alt.S
+                curve25519/curve25519_x25519.S
+                curve25519/curve25519_x25519_alt.S
+                curve25519/curve25519_x25519base.S
+                curve25519/curve25519_x25519base_alt.S
+                )
+  elseif(ARCH STREQUAL "aarch64")
+    # byte-level interface for aarch64 s2n-bignum curve25519 is in
+    # files with "byte" tags.
+    list(APPEND S2N_BIGNUM_ASM_SOURCES
+                curve25519/curve25519_x25519_byte.S
+                curve25519/curve25519_x25519_byte_alt.S
+                curve25519/curve25519_x25519base_byte.S
+                curve25519/curve25519_x25519base_byte_alt.S
+                )
   endif()
 endif()
 
