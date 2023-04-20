@@ -273,7 +273,7 @@ static const XTSTestCase kXTSTestCases[] = {
     // the AArch64 implementation produces the same output.
     // The plaintext lengths were chosen such that one or more vectors
     // exercise a certain path in the assembly code.
-    // len = 44 blocks = 2 blocks + 12 bytes
+    // len = 44 bytes = 2 blocks + 12 bytes
     {
         "1338d7d3d66137abf00c8f33050cff7e0a6fa10ff2e2bd860119dfa68ee815c4"
         "4aa1bfc76f2e084d81b862c05aae29711bf167fff7432a7b9c5899ab069fff0f",
@@ -351,6 +351,20 @@ static const XTSTestCase kXTSTestCases[] = {
         "e1c241d0ff691de6b47ad81eac2b925b474e1fd14311edb95219ce64677f497b"
         "8917567652e9b4ef3838baf35e400fe1ffe2f16cfa1900d7ae2b67f0e6f43b71",
     },
+    // len = 100 bytes = 6 blocks + 4 bytes
+    {
+        "fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0efeeedecebeae9e8e7e6e5e4e3e2e1e0"
+        "bfbebdbcbbbab9b8b7b6b5b4b3b2b1b0afaeadacabaaa9a8a7a6a5a4a3a2a1a0",
+        "9a785634120000000000000000000000",
+        "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+        "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f"
+        "404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f"
+        "60616263",
+        "c30ca8f2ed57307edc87e544867ac888348c208928d7406269954551cb627b5b"
+        "e1c241d0ff691de6b47ad81eac2b925b474e1fd14311edb95219ce64677f497b"
+        "8917567652e9b4ef3838baf35e400fe1aad32ff4d83b0af3f6a176025bd1321b"
+        "ffe2f16c",
+    },
     // len = 128 bytes = 8 blocks
     {
         "fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0efeeedecebeae9e8e7e6e5e4e3e2e1e0"
@@ -381,7 +395,6 @@ static const XTSTestCase kXTSTestCases[] = {
         "769d1b0e0c0b99ea11de58fcd3b72e1be0ad32884698e15420e52c96b698bba1"
         "ce3d9a8750b8",
     },
-
     // len = 144 bytes = 9 blocks
     {
         "fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0efeeedecebeae9e8e7e6e5e4e3e2e1e0"
@@ -448,9 +461,131 @@ static const XTSTestCase kXTSTestCases[] = {
         "e11b6adce343e1f38c6a879463c080d7254c4d65cf40e04934108bcde6bda824"
         "4a72a90b1e",
     },
+    // len = 176 bytes = 11 blocks
+    {
+        "fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0efeeedecebeae9e8e7e6e5e4e3e2e1e0"
+        "bfbebdbcbbbab9b8b7b6b5b4b3b2b1b0afaeadacabaaa9a8a7a6a5a4a3a2a1a0",
+        "9a785634120000000000000000000000",
+        "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+        "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f"
+        "404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f"
+        "606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f"
+        "808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f"
+        "a0a1a2a3a4a5a6a7a8a9aaabacadaeaf",
+        "c30ca8f2ed57307edc87e544867ac888348c208928d7406269954551cb627b5b"
+        "e1c241d0ff691de6b47ad81eac2b925b474e1fd14311edb95219ce64677f497b"
+        "8917567652e9b4ef3838baf35e400fe1ffe2f16cfa1900d7ae2b67f0e6f43b71"
+        "769d1b0e0c0b99ea11de58fcd3b72e1bce3d9a8750b87e945d77f4dc39d73b04"
+        "e11b6adce343e1f38c6a879463c080d74a72a90b1e6fe46b7bc95a929f79947e"
+        "ae8cc61cbb5f8cbd0c6f052e95ed6539",
+    },
+    // len = 185 bytes = 11 blocks + 9 bytes
+    {
+        "fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0efeeedecebeae9e8e7e6e5e4e3e2e1e0"
+        "bfbebdbcbbbab9b8b7b6b5b4b3b2b1b0afaeadacabaaa9a8a7a6a5a4a3a2a1a0",
+        "9a785634120000000000000000000000",
+        "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+        "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f"
+        "404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f"
+        "606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f"
+        "808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f"
+        "a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8",
+        "c30ca8f2ed57307edc87e544867ac888348c208928d7406269954551cb627b5b"
+        "e1c241d0ff691de6b47ad81eac2b925b474e1fd14311edb95219ce64677f497b"
+        "8917567652e9b4ef3838baf35e400fe1ffe2f16cfa1900d7ae2b67f0e6f43b71"
+        "769d1b0e0c0b99ea11de58fcd3b72e1bce3d9a8750b87e945d77f4dc39d73b04"
+        "e11b6adce343e1f38c6a879463c080d74a72a90b1e6fe46b7bc95a929f79947e"
+        "3ed782ad26e98e07f14d47f3c2a8e92aae8cc61cbb5f8cbd0c",
+    },
+    // len = 224 bytes = 14 blocks
+    {
+        "fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0efeeedecebeae9e8e7e6e5e4e3e2e1e0"
+        "bfbebdbcbbbab9b8b7b6b5b4b3b2b1b0afaeadacabaaa9a8a7a6a5a4a3a2a1a0",
+        "9a785634120000000000000000000000",
+        "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+        "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f"
+        "404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f"
+        "606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f"
+        "808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f"
+        "a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf"
+        "c0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedf",
+        "c30ca8f2ed57307edc87e544867ac888348c208928d7406269954551cb627b5b"
+        "e1c241d0ff691de6b47ad81eac2b925b474e1fd14311edb95219ce64677f497b"
+        "8917567652e9b4ef3838baf35e400fe1ffe2f16cfa1900d7ae2b67f0e6f43b71"
+        "769d1b0e0c0b99ea11de58fcd3b72e1bce3d9a8750b87e945d77f4dc39d73b04"
+        "e11b6adce343e1f38c6a879463c080d74a72a90b1e6fe46b7bc95a929f79947e"
+        "ae8cc61cbb5f8cbd0c6f052e95ed65399009f56148fc07d88c8e0113d7eafb1f"
+        "ea39991882130ee45e95a3c6bc508f09c990add0cd3f1ca3403c096f9277e785",
+    },
+    // len = 226 bytes = 14 blocks + 2 bytes
+    {
+        "fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0efeeedecebeae9e8e7e6e5e4e3e2e1e0"
+        "bfbebdbcbbbab9b8b7b6b5b4b3b2b1b0afaeadacabaaa9a8a7a6a5a4a3a2a1a0",
+        "9a785634120000000000000000000000",
+        "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+        "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f"
+        "404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f"
+        "606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f"
+        "808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f"
+        "a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf"
+        "c0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedf"
+        "e0e1",
+        "c30ca8f2ed57307edc87e544867ac888348c208928d7406269954551cb627b5b"
+        "e1c241d0ff691de6b47ad81eac2b925b474e1fd14311edb95219ce64677f497b"
+        "8917567652e9b4ef3838baf35e400fe1ffe2f16cfa1900d7ae2b67f0e6f43b71"
+        "769d1b0e0c0b99ea11de58fcd3b72e1bce3d9a8750b87e945d77f4dc39d73b04"
+        "e11b6adce343e1f38c6a879463c080d74a72a90b1e6fe46b7bc95a929f79947e"
+        "ae8cc61cbb5f8cbd0c6f052e95ed65399009f56148fc07d88c8e0113d7eafb1f"
+        "ea39991882130ee45e95a3c6bc508f09d2ee8fafae5864a6b21b93bf6a642637"
+        "c990",
+    },
+    // len = 240 bytes = 15 blocks
+    {
+        "fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0efeeedecebeae9e8e7e6e5e4e3e2e1e0"
+        "bfbebdbcbbbab9b8b7b6b5b4b3b2b1b0afaeadacabaaa9a8a7a6a5a4a3a2a1a0",
+        "9a785634120000000000000000000000",
+        "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+        "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f"
+        "404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f"
+        "606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f"
+        "808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f"
+        "a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf"
+        "c0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedf"
+        "e0e1e2e3e4e5e6e7e8e9eaebecedeeef",
+        "c30ca8f2ed57307edc87e544867ac888348c208928d7406269954551cb627b5b"
+        "e1c241d0ff691de6b47ad81eac2b925b474e1fd14311edb95219ce64677f497b"
+        "8917567652e9b4ef3838baf35e400fe1ffe2f16cfa1900d7ae2b67f0e6f43b71"
+        "769d1b0e0c0b99ea11de58fcd3b72e1bce3d9a8750b87e945d77f4dc39d73b04"
+        "e11b6adce343e1f38c6a879463c080d74a72a90b1e6fe46b7bc95a929f79947e"
+        "ae8cc61cbb5f8cbd0c6f052e95ed65399009f56148fc07d88c8e0113d7eafb1f"
+        "ea39991882130ee45e95a3c6bc508f09c990add0cd3f1ca3403c096f9277e785"
+        "6ea0659808172173e234f7dfd6f9789b",
+    },
+    // len = 253 bytes = 15 blocks + 13 bytes
+    {
+        "fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0efeeedecebeae9e8e7e6e5e4e3e2e1e0"
+        "bfbebdbcbbbab9b8b7b6b5b4b3b2b1b0afaeadacabaaa9a8a7a6a5a4a3a2a1a0",
+        "9a785634120000000000000000000000",
+        "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+        "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f"
+        "404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f"
+        "606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f"
+        "808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f"
+        "a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf"
+        "c0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedf"
+        "e0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfc",
+        "c30ca8f2ed57307edc87e544867ac888348c208928d7406269954551cb627b5b"
+        "e1c241d0ff691de6b47ad81eac2b925b474e1fd14311edb95219ce64677f497b"
+        "8917567652e9b4ef3838baf35e400fe1ffe2f16cfa1900d7ae2b67f0e6f43b71"
+        "769d1b0e0c0b99ea11de58fcd3b72e1bce3d9a8750b87e945d77f4dc39d73b04"
+        "e11b6adce343e1f38c6a879463c080d74a72a90b1e6fe46b7bc95a929f79947e"
+        "ae8cc61cbb5f8cbd0c6f052e95ed65399009f56148fc07d88c8e0113d7eafb1f"
+        "ea39991882130ee45e95a3c6bc508f09c990add0cd3f1ca3403c096f9277e785"
+        "4cd6a885857fba751416febc2cc41f2e6ea0659808172173e234f7dfd6",
+    },
     // Test vectors from NIST
     // https://csrc.nist.gov/projects/cryptographic-algorithm-validation-program
-    // 256-bit key, 256-bit data
+    // 256-bit key, 256-bit data (32 bytes, 2 blocks)
     {
         "1ea661c58d943a0e4801e42f4b0947149e7f9f8e3e68d0c7505210bd311a0e7c"
         "d6e13ffdf2418d8d1911c004cda58da3d619b7e2b9141e58318eea392cf41b08",
@@ -458,7 +593,7 @@ static const XTSTestCase kXTSTestCases[] = {
         "2eedea52cd8215e1acc647e810bbc3642e87287f8d2e57e36c0a24fbc12a202e",
         "cbaad0e2f6cea3f50b37f934d46a9b130b9d54f07e34f36af793e86f73c6d7db",
     },
-    // 256-bit key, 384-bit data
+    // 256-bit key, 384-bit data (48 bytes, 3 blocks)
     {
         "266c336b3b01489f3267f52835fd92f674374b88b4e1ebd2d36a5f457581d9d0"
         "42c3eef7b0b7e5137b086496b4d9e6ac658d7196a23f23f036172fdb8faee527",
@@ -468,7 +603,7 @@ static const XTSTestCase kXTSTestCases[] = {
         "c73256870cc2f4dd57acc74b5456dbd776912a128bc1f77d72cdebbf270044b7"
         "a43ceed29025e1e8be211fa3c3ed002d",
     },
-    // 256-bit key, 384-bit data
+    // 256-bit key, 384-bit data (48 bytes, 3 blocks)
     {
         "33e89e817ff8d037d6ac5a2296657503f20885d94c483e26449066bd9284d130"
         "2dbdbb4b66b6b9f4687f13dd028eb6aa528ca91deb9c5f40db93218806033801",
