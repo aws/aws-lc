@@ -424,8 +424,8 @@ S2N_BN_SYMBOL(edwards25519_scalarmulbase_alt):
 // Initialize accumulator "acc" to either 0 or 2^251 * B depending on
 // bit 251 of the (reduced) scalar. That leaves bits 0..250 to handle.
 
-        adr     x10, edwards25519_0g
-        adr     x11, edwards25519_251g
+        adr     x10, edwards25519_scalarmulbase_alt_edwards25519_0g
+        adr     x11, edwards25519_scalarmulbase_alt_edwards25519_251g
         ldp     x0, x1, [x10]
         ldp     x2, x3, [x11]
         csel    x0, x0, x2, eq
@@ -480,12 +480,12 @@ S2N_BN_SYMBOL(edwards25519_scalarmulbase_alt):
 // end because we made sure bit 251 is clear in the reduced scalar.
 
         mov     i, 0
-        adr     tab, edwards25519_gtable
+        adr     tab, edwards25519_scalarmulbase_alt_edwards25519_gtable
         mov     bias, xzr
 
 // Start of the main loop, repeated 63 times for i = 0, 4, 8, ..., 248
 
-scalarloop:
+edwards25519_scalarmulbase_alt_scalarloop:
 
 // Look at the next 4-bit field "bf", adding the previous bias as well.
 // Choose the table index "ix" as bf when bf <= 8 and 16 - bf for bf >= 9,
@@ -768,7 +768,7 @@ scalarloop:
 
         add     i, i, 4
         cmp     i, 252
-        bcc     scalarloop
+        bcc     edwards25519_scalarmulbase_alt_scalarloop
 
 // Insert the optional negation of the projective X coordinate, and
 // so by extension the final affine x coordinate x = X/Z and thus
@@ -801,7 +801,7 @@ scalarloop:
         mov     x0, 4
         add     x1, w_3
         add     x2, z_3
-        adr     x3, p_25519
+        adr     x3, edwards25519_scalarmulbase_alt_p_25519
         add     x4, tmpspace
 
 // Inline copy of bignum_modinv, identical except for stripping out the
@@ -813,7 +813,7 @@ scalarloop:
         add     x21, x4, x10
         add     x22, x21, x10
         mov     x10, xzr
-copyloop:
+edwards25519_scalarmulbase_alt_copyloop:
         ldr     x11, [x2, x10, lsl #3]
         ldr     x12, [x3, x10, lsl #3]
         str     x11, [x21, x10, lsl #3]
@@ -822,7 +822,7 @@ copyloop:
         str     xzr, [x1, x10, lsl #3]
         add     x10, x10, #0x1
         cmp     x10, x0
-        b.cc    copyloop
+        b.cc    edwards25519_scalarmulbase_alt_copyloop
         ldr     x11, [x4]
         sub     x12, x11, #0x1
         str     x12, [x4]
@@ -839,7 +839,7 @@ copyloop:
         madd    x20, x12, x20, x20
         madd    x20, x11, x20, x20
         lsl     x2, x0, #7
-outerloop:
+edwards25519_scalarmulbase_alt_outerloop:
         add     x10, x2, #0x3f
         lsr     x5, x10, #6
         cmp     x5, x0
@@ -850,7 +850,7 @@ outerloop:
         mov     x16, xzr
         mov     x19, xzr
         mov     x10, xzr
-toploop:
+edwards25519_scalarmulbase_alt_toploop:
         ldr     x11, [x21, x10, lsl #3]
         ldr     x12, [x22, x10, lsl #3]
         orr     x17, x11, x12
@@ -864,7 +864,7 @@ toploop:
         csetm   x19, ne
         add     x10, x10, #0x1
         cmp     x10, x5
-        b.cc    toploop
+        b.cc    edwards25519_scalarmulbase_alt_toploop
         orr     x11, x13, x14
         clz     x12, x11
         negs    x17, x12
@@ -884,7 +884,7 @@ toploop:
         mov     x9, #0x1
         mov     x10, #0x3a
         tst     x15, #0x1
-innerloop:
+edwards25519_scalarmulbase_alt_innerloop:
         csel    x11, x14, xzr, ne
         csel    x12, x16, xzr, ne
         csel    x17, x8, xzr, ne
@@ -906,13 +906,13 @@ innerloop:
         add     x8, x8, x8
         add     x9, x9, x9
         sub     x10, x10, #0x1
-        cbnz    x10, innerloop
+        cbnz    x10, edwards25519_scalarmulbase_alt_innerloop
         mov     x13, xzr
         mov     x14, xzr
         mov     x17, xzr
         mov     x19, xzr
         mov     x10, xzr
-congloop:
+edwards25519_scalarmulbase_alt_congloop:
         ldr     x11, [x4, x10, lsl #3]
         ldr     x12, [x1, x10, lsl #3]
         mul     x15, x6, x11
@@ -939,7 +939,7 @@ congloop:
         adc     x14, x14, x15
         add     x10, x10, #0x1
         cmp     x10, x0
-        b.cc    congloop
+        b.cc    edwards25519_scalarmulbase_alt_congloop
         extr    x13, x13, x17, #58
         extr    x14, x14, x19, #58
         ldr     x11, [x4]
@@ -950,8 +950,8 @@ congloop:
         adds    x11, x11, x15
         mov     x10, #0x1
         sub     x11, x0, #0x1
-        cbz     x11, wmontend
-wmontloop:
+        cbz     x11, edwards25519_scalarmulbase_alt_wmontend
+edwards25519_scalarmulbase_alt_wmontloop:
         ldr     x11, [x3, x10, lsl #3]
         ldr     x12, [x4, x10, lsl #3]
         mul     x15, x17, x11
@@ -963,24 +963,24 @@ wmontloop:
         str     x12, [x4, x15, lsl #3]
         add     x10, x10, #0x1
         sub     x11, x10, x0
-        cbnz    x11, wmontloop
-wmontend:
+        cbnz    x11, edwards25519_scalarmulbase_alt_wmontloop
+edwards25519_scalarmulbase_alt_wmontend:
         adcs    x16, x16, x13
         adc     x13, xzr, xzr
         sub     x15, x10, #0x1
         str     x16, [x4, x15, lsl #3]
         negs    x10, xzr
-wcmploop:
+edwards25519_scalarmulbase_alt_wcmploop:
         ldr     x11, [x4, x10, lsl #3]
         ldr     x12, [x3, x10, lsl #3]
         sbcs    xzr, x11, x12
         add     x10, x10, #0x1
         sub     x11, x10, x0
-        cbnz    x11, wcmploop
+        cbnz    x11, edwards25519_scalarmulbase_alt_wcmploop
         sbcs    xzr, x13, xzr
         csetm   x13, cs
         negs    x10, xzr
-wcorrloop:
+edwards25519_scalarmulbase_alt_wcorrloop:
         ldr     x11, [x4, x10, lsl #3]
         ldr     x12, [x3, x10, lsl #3]
         and     x12, x12, x13
@@ -988,7 +988,7 @@ wcorrloop:
         str     x11, [x4, x10, lsl #3]
         add     x10, x10, #0x1
         sub     x11, x10, x0
-        cbnz    x11, wcorrloop
+        cbnz    x11, edwards25519_scalarmulbase_alt_wcorrloop
         ldr     x11, [x1]
         mul     x17, x11, x20
         ldr     x12, [x3]
@@ -997,8 +997,8 @@ wcorrloop:
         adds    x11, x11, x15
         mov     x10, #0x1
         sub     x11, x0, #0x1
-        cbz     x11, zmontend
-zmontloop:
+        cbz     x11, edwards25519_scalarmulbase_alt_zmontend
+edwards25519_scalarmulbase_alt_zmontloop:
         ldr     x11, [x3, x10, lsl #3]
         ldr     x12, [x1, x10, lsl #3]
         mul     x15, x17, x11
@@ -1010,24 +1010,24 @@ zmontloop:
         str     x12, [x1, x15, lsl #3]
         add     x10, x10, #0x1
         sub     x11, x10, x0
-        cbnz    x11, zmontloop
-zmontend:
+        cbnz    x11, edwards25519_scalarmulbase_alt_zmontloop
+edwards25519_scalarmulbase_alt_zmontend:
         adcs    x16, x16, x14
         adc     x14, xzr, xzr
         sub     x15, x10, #0x1
         str     x16, [x1, x15, lsl #3]
         negs    x10, xzr
-zcmploop:
+edwards25519_scalarmulbase_alt_zcmploop:
         ldr     x11, [x1, x10, lsl #3]
         ldr     x12, [x3, x10, lsl #3]
         sbcs    xzr, x11, x12
         add     x10, x10, #0x1
         sub     x11, x10, x0
-        cbnz    x11, zcmploop
+        cbnz    x11, edwards25519_scalarmulbase_alt_zcmploop
         sbcs    xzr, x14, xzr
         csetm   x14, cs
         negs    x10, xzr
-zcorrloop:
+edwards25519_scalarmulbase_alt_zcorrloop:
         ldr     x11, [x1, x10, lsl #3]
         ldr     x12, [x3, x10, lsl #3]
         and     x12, x12, x14
@@ -1035,13 +1035,13 @@ zcorrloop:
         str     x11, [x1, x10, lsl #3]
         add     x10, x10, #0x1
         sub     x11, x10, x0
-        cbnz    x11, zcorrloop
+        cbnz    x11, edwards25519_scalarmulbase_alt_zcorrloop
         mov     x13, xzr
         mov     x14, xzr
         mov     x17, xzr
         mov     x19, xzr
         mov     x10, xzr
-crossloop:
+edwards25519_scalarmulbase_alt_crossloop:
         ldr     x11, [x21, x10, lsl #3]
         ldr     x12, [x22, x10, lsl #3]
         mul     x15, x6, x11
@@ -1068,13 +1068,13 @@ crossloop:
         csetm   x19, cc
         add     x10, x10, #0x1
         cmp     x10, x5
-        b.cc    crossloop
+        b.cc    edwards25519_scalarmulbase_alt_crossloop
         cmn     x17, x17
         ldr     x15, [x21]
         mov     x10, xzr
         sub     x6, x5, #0x1
-        cbz     x6, negskip1
-negloop1:
+        cbz     x6, edwards25519_scalarmulbase_alt_negskip1
+edwards25519_scalarmulbase_alt_negloop1:
         add     x11, x10, #0x8
         ldr     x12, [x21, x11]
         extr    x15, x12, x15, #58
@@ -1084,8 +1084,8 @@ negloop1:
         mov     x15, x12
         add     x10, x10, #0x8
         sub     x6, x6, #0x1
-        cbnz    x6, negloop1
-negskip1:
+        cbnz    x6, edwards25519_scalarmulbase_alt_negloop1
+edwards25519_scalarmulbase_alt_negskip1:
         extr    x15, x13, x15, #58
         eor     x15, x15, x17
         adcs    x15, x15, xzr
@@ -1094,8 +1094,8 @@ negskip1:
         ldr     x15, [x22]
         mov     x10, xzr
         sub     x6, x5, #0x1
-        cbz     x6, negskip2
-negloop2:
+        cbz     x6, edwards25519_scalarmulbase_alt_negskip2
+edwards25519_scalarmulbase_alt_negloop2:
         add     x11, x10, #0x8
         ldr     x12, [x22, x11]
         extr    x15, x12, x15, #58
@@ -1105,15 +1105,15 @@ negloop2:
         mov     x15, x12
         add     x10, x10, #0x8
         sub     x6, x6, #0x1
-        cbnz    x6, negloop2
-negskip2:
+        cbnz    x6, edwards25519_scalarmulbase_alt_negloop2
+edwards25519_scalarmulbase_alt_negskip2:
         extr    x15, x14, x15, #58
         eor     x15, x15, x19
         adcs    x15, x15, xzr
         str     x15, [x22, x10]
         mov     x10, xzr
         cmn     x17, x17
-wfliploop:
+edwards25519_scalarmulbase_alt_wfliploop:
         ldr     x11, [x3, x10, lsl #3]
         ldr     x12, [x4, x10, lsl #3]
         and     x11, x11, x17
@@ -1122,11 +1122,11 @@ wfliploop:
         str     x11, [x4, x10, lsl #3]
         add     x10, x10, #0x1
         sub     x11, x10, x0
-        cbnz    x11, wfliploop
+        cbnz    x11, edwards25519_scalarmulbase_alt_wfliploop
         mvn     x19, x19
         mov     x10, xzr
         cmn     x19, x19
-zfliploop:
+edwards25519_scalarmulbase_alt_zfliploop:
         ldr     x11, [x3, x10, lsl #3]
         ldr     x12, [x1, x10, lsl #3]
         and     x11, x11, x19
@@ -1135,9 +1135,9 @@ zfliploop:
         str     x11, [x1, x10, lsl #3]
         add     x10, x10, #0x1
         sub     x11, x10, x0
-        cbnz    x11, zfliploop
+        cbnz    x11, edwards25519_scalarmulbase_alt_zfliploop
         subs    x2, x2, #0x3a
-        b.hi    outerloop
+        b.hi    edwards25519_scalarmulbase_alt_outerloop
 
 // The final result is x = X * inv(Z), y = Y * inv(Z).
 // These are the only operations in the whole computation that
@@ -1166,7 +1166,7 @@ zfliploop:
 
 // The modulus p_25519 = 2^255 - 19, for the modular inverse
 
-p_25519:
+edwards25519_scalarmulbase_alt_p_25519:
         .quad   0xffffffffffffffed
         .quad   0xffffffffffffffff
         .quad   0xffffffffffffffff
@@ -1175,7 +1175,7 @@ p_25519:
 // 0 * B = 0 and 2^251 * B in extended-projective coordinates
 // but with Z = 1 assumed and hence left out, so they are (X,Y,T) only.
 
-edwards25519_0g:
+edwards25519_scalarmulbase_alt_edwards25519_0g:
 
         .quad   0x0000000000000000
         .quad   0x0000000000000000
@@ -1192,7 +1192,7 @@ edwards25519_0g:
         .quad   0x0000000000000000
         .quad   0x0000000000000000
 
-edwards25519_251g:
+edwards25519_scalarmulbase_alt_edwards25519_251g:
 
         .quad   0x525f946d7c7220e7
         .quad   0x4636b0b2f1e35444
@@ -1210,7 +1210,7 @@ edwards25519_251g:
 // Precomputed table of multiples of generator for edwards25519
 // all in precomputed extended-projective (y-x,x+y,2*d*x*y) triples.
 
-edwards25519_gtable:
+edwards25519_scalarmulbase_alt_edwards25519_gtable:
 
         // 2^0 * 1 * G
 
