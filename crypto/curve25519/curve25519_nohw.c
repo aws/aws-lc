@@ -1945,11 +1945,17 @@ void x25519_scalar_mult_generic_nohw(uint8_t out[32],
   fe_tobytes(out, &x2);
 }
 
-void X25519_public_from_private_nohw(uint8_t out_public_value[32],
+void x25519_public_from_private_nohw(uint8_t out_public_value[32],
                                       const uint8_t private_key[32]) {
 
+  uint8_t e[32];
+  OPENSSL_memcpy(e, private_key, 32);
+  e[0] &= 248;
+  e[31] &= 127;
+  e[31] |= 64;
+
   ge_p3 A;
-  x25519_ge_scalarmult_base(&A, private_key);
+  x25519_ge_scalarmult_base(&A, e);
 
   // We only need the u-coordinate of the curve25519 point. The map is
   // u=(y+1)/(1-y). Since y=Y/Z, this gives u=(Z+Y)/(Z-Y).

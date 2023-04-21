@@ -433,3 +433,29 @@ err:
   ECDSA_SIG_free(s);
   return ret;
 }
+
+ECDSA_SIG *ecdsa_digestsign_no_self_test(const EVP_MD *md, const uint8_t *input,
+                                         size_t in_len, const EC_KEY *eckey,
+                                         const uint8_t *nonce,
+                                         size_t nonce_len) {
+  uint8_t digest[EVP_MAX_MD_SIZE];
+  unsigned int digest_len;
+  if (!EVP_Digest(input, in_len, digest, &digest_len, md, NULL)) {
+    return 0;
+  }
+
+  return ecdsa_sign_with_nonce_for_known_answer_test(digest, digest_len, eckey,
+                                                     nonce, nonce_len);
+}
+
+int ecdsa_digestverify_no_self_test(const EVP_MD *md, const uint8_t *input,
+                                    size_t in_len, const ECDSA_SIG *sig,
+                                    const EC_KEY *eckey){
+  uint8_t digest[EVP_MAX_MD_SIZE];
+  unsigned int digest_len;
+  if (!EVP_Digest(input, in_len, digest, &digest_len, md, NULL)) {
+    return 0;
+  }
+
+  return ecdsa_do_verify_no_self_test(digest, digest_len, sig, eckey);
+}

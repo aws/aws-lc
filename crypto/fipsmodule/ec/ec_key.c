@@ -333,33 +333,33 @@ static int EVP_EC_KEY_check_fips(EC_KEY *key) {
   int ret = 0;
   uint8_t* sig_der = NULL;
   EVP_PKEY *evp_pkey = EVP_PKEY_new();
-  EVP_MD_CTX *ctx = EVP_MD_CTX_new();
+  EVP_MD_CTX ctx;
+  EVP_MD_CTX_init(&ctx);
   const EVP_MD *hash = EVP_sha256();
   size_t sign_len;
   if (!evp_pkey ||
-      !ctx ||
       !EVP_PKEY_set1_EC_KEY(evp_pkey, key) ||
-      !EVP_DigestSignInit(ctx, NULL, hash, NULL, evp_pkey) ||
-      !EVP_DigestSign(ctx, NULL, &sign_len, msg, msg_len)) {
+      !EVP_DigestSignInit(&ctx, NULL, hash, NULL, evp_pkey) ||
+      !EVP_DigestSign(&ctx, NULL, &sign_len, msg, msg_len)) {
     goto err;
   }
   sig_der = OPENSSL_malloc(sign_len);
   if (!sig_der ||
-      !EVP_DigestSign(ctx, sig_der, &sign_len, msg, msg_len)) {
+      !EVP_DigestSign(&ctx, sig_der, &sign_len, msg, msg_len)) {
     goto err;
   }
   if (boringssl_fips_break_test("ECDSA_PWCT")) {
     msg[0] = ~msg[0];
   }
-  if (!EVP_DigestVerifyInit(ctx, NULL, hash, NULL, evp_pkey) ||
-      !EVP_DigestVerify(ctx, sig_der, sign_len, msg, msg_len)) {
+  if (!EVP_DigestVerifyInit(&ctx, NULL, hash, NULL, evp_pkey) ||
+      !EVP_DigestVerify(&ctx, sig_der, sign_len, msg, msg_len)) {
     goto err;
   }
   ret = 1;
 err:
   EVP_PKEY_free(evp_pkey);
+  EVP_MD_CTX_cleanse(&ctx);
   OPENSSL_free(sig_der);
-  EVP_MD_CTX_free(ctx);
   return ret;
 }
 
