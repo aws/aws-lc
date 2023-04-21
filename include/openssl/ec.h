@@ -372,9 +372,11 @@ OPENSSL_EXPORT int EC_GROUP_set_generator(EC_GROUP *group,
                                           const BIGNUM *cofactor);
 
 
-// EC_POINT_point2bn converts an |EC_POINT| to |BIGNUM|. On success, returns the
-// BIGNUM pointer supplied, |ret|. Otherwise, it returns NULL on error. The
-// |ctx| argument may be used if not NULL.
+// EC_POINT_point2bn converts an |EC_POINT| to a |BIGNUM| by serializing the
+// point into the X9.62 form given by |form| then interpretting it as a BIGNUM.
+// On success, it returns the BIGNUM pointer supplied or, if |ret| is NULL,
+// allocates and returns a fresh |BIGNUM|. On error, it returns NULL. The |ctx|
+// argument may be used if not NULL.
 AWS_LC_DEPRECATED OPENSSL_EXPORT BIGNUM *EC_POINT_point2bn(
     const EC_GROUP *group, const EC_POINT *point, point_conversion_form_t form,
     BIGNUM *ret, BN_CTX *ctx);

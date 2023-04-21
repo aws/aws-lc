@@ -112,7 +112,7 @@ void x25519_sc_reduce(uint8_t s[64]);
 void x25519_scalar_mult_generic_nohw(uint8_t out[32],
                                       const uint8_t scalar[32],
                                       const uint8_t point[32]);
-void X25519_public_from_private_nohw(uint8_t out_public_value[32],
+void x25519_public_from_private_nohw(uint8_t out_public_value[32],
                                       const uint8_t private_key[32]);
 
 // Port to internal linkage in curve25519_nohw.c when adding implementation
