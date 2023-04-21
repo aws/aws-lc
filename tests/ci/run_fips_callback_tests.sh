@@ -29,7 +29,7 @@ for kat in $KATS; do
   unset FIPS_CALLBACK_TEST_POWER_ON_TEST_FAILURE
 done
 
-runtime_tests=("CRNG")
+runtime_tests=("RSA_PWCT" "ECDSA_PWCT" "CRNG")
 for runtime_test in "${runtime_tests[@]}"; do
   # Tell our test what test is expected to fail
   export FIPS_CALLBACK_TEST_RUNTIME_TEST_FAILURE="$runtime_test"
@@ -38,4 +38,6 @@ for runtime_test in "${runtime_tests[@]}"; do
   # These tests will have side affects in the future (modifying the global FIPS state) and must be run in separate process
   $original_test --gtest_filter=FIPSCallback.PowerOnTests
   $original_test --gtest_filter=FIPSCallback.DRBGRuntime
+  $original_test --gtest_filter=FIPSCallback.RSARuntimeTest
+  $original_test --gtest_filter=FIPSCallback.ECDSARuntimeTest
 done
