@@ -31,33 +31,226 @@
 #include "../internal.h"
 #include "../fipsmodule/cpucap/internal.h"
 
-// x25519_NEON is defined in asm/x25519-arm.S.
 #if defined(OPENSSL_ARM) && !defined(OPENSSL_NO_ASM) && !defined(OPENSSL_APPLE)
-#define BORINGSSL_X25519_NEON
+#define BORINGSSL_X25519_NEON_CAPABLE
 #endif
 
+#if (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64)) && \
+    (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE)) && \
+    !defined(OPENSSL_NO_ASM) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+#include "../../third_party/s2n-bignum/include/s2n-bignum_aws-lc.h"
+#define CURVE25519_S2N_BIGNUM_CAPABLE
+#endif
+
+
+OPENSSL_INLINE int x25519_s2n_bignum_capable(void) {
+#if defined(CURVE25519_S2N_BIGNUM_CAPABLE)
+  return 1;
+#else
+  return 0;
+#endif
+}
+
+OPENSSL_INLINE int x25519_Armv7_neon_capable(void) {
+#if defined(BORINGSSL_X25519_NEON_CAPABLE)
+  return CRYPTO_is_NEON_capable();
+#else
+  return 0;
+#endif
+}
+
+// Stub functions if implementations are not compiled.
+// These functions have to abort, otherwise we risk applications assuming they
+// did work without actually doing anything.
+
+#if !defined(CURVE25519_S2N_BIGNUM_CAPABLE)
+
+void curve25519_x25519_byte(uint8_t res[32], const uint8_t scalar[32],
+  const uint8_t point[32]);
+void curve25519_x25519_byte_alt(uint8_t res[32], const uint8_t scalar[32],
+  const uint8_t point[32]);
+void curve25519_x25519base_byte(uint8_t res[32], const uint8_t scalar[32]);
+void curve25519_x25519base_byte_alt(uint8_t res[32], const uint8_t scalar[32]);
+
+void curve25519_x25519_byte(uint8_t res[32], const uint8_t scalar[32],
+  const uint8_t point[32]) {
+  abort();
+}
+void curve25519_x25519_byte_alt(uint8_t res[32], const uint8_t scalar[32],
+  const uint8_t point[32]) {
+  abort();
+}
+void curve25519_x25519base_byte(uint8_t res[32], const uint8_t scalar[32]) {
+  abort();
+}
+void curve25519_x25519base_byte_alt(uint8_t res[32], const uint8_t scalar[32]) {
+  abort();
+}
+
+#endif // !defined(CURVE25519_S2N_BIGNUM_CAPABLE)
 
 void x25519_NEON(uint8_t out[32], const uint8_t scalar[32],
                  const uint8_t point[32]);
 
-#if defined(BORINGSSL_X25519_NEON)
-
-OPENSSL_INLINE int curve25519_asm_capable(void) {
-  return CRYPTO_is_NEON_capable();
-}
-
-#else
-
-OPENSSL_INLINE int curve25519_asm_capable(void) {
-  return 0;
-}
-
+#if !defined(BORINGSSL_X25519_NEON_CAPABLE)
 void x25519_NEON(uint8_t out[32], const uint8_t scalar[32],
                  const uint8_t point[32]) {
   abort();
 }
+#endif // !defined(BORINGSSL_X25519_NEON_CAPABLE)
+
+
+// Run-time detection for each implementation
+
+OPENSSL_INLINE int x25519_s2n_bignum_alt_capable(void);
+OPENSSL_INLINE int x25519_s2n_bignum_no_alt_capable(void);
+
+// For aarch64, |x25519_s2n_bignum_alt_capable| returns 1 if we categorize the
+// CPU as a CPU having a wide multiplier (i.e. "higher" throughput). CPUs with
+// this feature are e.g.: AWS Graviton 3 and Apple M1. Return 0 otherwise, so we
+// don't match CPUs without wide multipliers.
+//
+// For x86_64, |x25519_s2n_bignum_alt_capable| always returns 1. If x25519
+// s2n-bignum capable, the x86_64 s2n-bignum-alt version should be supported on
+// pretty much any x86_64 CPU.
+//
+// For all other architectures, return 0.
+OPENSSL_INLINE int x25519_s2n_bignum_alt_capable(void) {
+#if defined(OPENSSL_X86_64)
+  return 1;
+#elif defined(OPENSSL_AARCH64)
+  if (CRYPTO_is_ARMv8_wide_multiplier_capable() == 1) {
+    return 1;
+  } else {
+    return 0;
+  }
+#else
+  return 0;
+#endif
+}
+
+// For aarch64, |x25519_s2n_bignum_no_alt_capable| always returns 1. If x25519
+// s2n-bignum capable, the Armv8 s2n-bignum-alt version should be supported on
+// pretty much any Armv8 CPU.
+//
+// For x86_64, |x25519_s2n_bignum_alt_capable| returns 1 if we detect support
+// for bmi+adx instruction sets. Return 0 otherwise.
+//
+// For all other architectures, return 0.
+OPENSSL_INLINE int x25519_s2n_bignum_no_alt_capable(void) {
+#if defined(OPENSSL_X86_64)
+  if (CRYPTO_is_BMI2_capable() == 1 && CRYPTO_is_ADX_capable() == 1) {
+    return 1;
+  } else {
+    return 0;
+  }
+#elif defined(OPENSSL_AARCH64)
+  return 1;
+#else
+  return 0;
+#endif
+}
+
+
+// Below is the decision logic for which assembly backend implementation
+// of x25519 s2n-bignum we should use if x25519 s2n-bignum capable. Currently,
+// we support the following implementations.
+//
+// x86_64:
+//   - s2n-bignum-no-alt: hardware implementation using bmi2+adx instruction sets
+//   - s2n-bignum-alt: hardware implementation using standard instructions
+//
+// aarch64:
+//   - s2n-bignum-no-alt: hardware implementation for "low" multiplier throughput
+//   - s2n-bignum-alt: hardware implementation for "high" multiplier throughput
+//
+// Through experiments we have found that:
+//
+// For x86_64: bmi+adc will almost always give a performance boost. So, here we
+//   prefer s2n-bignum-no-alt over s2n-bignum-alt if the former is supported.
+// For aarch64: if a wide multiplier is supported, we prefer s2n-bignum-alt over
+//   s2n-bignum-no-alt if the former is supported.
+//   x25519_s2n_bignum_alt_capable() specifically looks to match CPUs that have
+//   wide multipliers. this ensures that s2n-bignum-alt will only be used on
+//   such CPUs.
+
+static void x25519_s2n_bignum(uint8_t out_shared_key[32],
+  const uint8_t private_key[32], const uint8_t peer_public_value[32]) {
+
+  uint8_t private_key_internal_demask[32];
+  OPENSSL_memcpy(private_key_internal_demask, private_key, 32);
+  private_key_internal_demask[0] &= 248;
+  private_key_internal_demask[31] &= 127;
+  private_key_internal_demask[31] |= 64;
+
+#if defined(OPENSSL_X86_64)
+
+  if (x25519_s2n_bignum_no_alt_capable() == 1) {
+    curve25519_x25519_byte(out_shared_key, private_key_internal_demask,
+      peer_public_value);
+  } else if (x25519_s2n_bignum_alt_capable() == 1) {
+    curve25519_x25519_byte_alt(out_shared_key, private_key_internal_demask,
+      peer_public_value);
+  } else {
+    abort();
+  }
+
+#elif defined(OPENSSL_AARCH64)
+
+  if (x25519_s2n_bignum_alt_capable() == 1) {
+    curve25519_x25519_byte_alt(out_shared_key, private_key_internal_demask,
+      peer_public_value);
+  } else if (x25519_s2n_bignum_no_alt_capable() == 1) {
+    curve25519_x25519_byte(out_shared_key, private_key_internal_demask,
+      peer_public_value);
+  } else {
+    abort();
+  }
+
+#else
+
+  // Should not call this function unless s2n-bignum is supported.
+  abort();
 
 #endif
+}
+
+static void x25519_s2n_bignum_public_from_private(
+  uint8_t out_public_value[32], const uint8_t private_key[32]) {
+
+  uint8_t private_key_internal_demask[32];
+  OPENSSL_memcpy(private_key_internal_demask, private_key, 32);
+  private_key_internal_demask[0] &= 248;
+  private_key_internal_demask[31] &= 127;
+  private_key_internal_demask[31] |= 64;
+
+#if defined(OPENSSL_X86_64)
+
+  if (x25519_s2n_bignum_no_alt_capable() == 1) {
+    curve25519_x25519base_byte(out_public_value, private_key_internal_demask);
+  } else if (x25519_s2n_bignum_alt_capable() == 1) {
+    curve25519_x25519base_byte_alt(out_public_value, private_key_internal_demask);
+  } else {
+    abort();
+  }
+
+#elif defined(OPENSSL_AARCH64)
+
+  if (x25519_s2n_bignum_alt_capable() == 1) {
+    curve25519_x25519base_byte_alt(out_public_value, private_key_internal_demask);
+  } else if (x25519_s2n_bignum_no_alt_capable() == 1) {
+    curve25519_x25519base_byte(out_public_value, private_key_internal_demask);
+  } else {
+    abort();
+  }
+
+#else
+
+  // Should not call this function unless s2n-bignum is supported.
+  abort();
+
+#endif
+}
 
 
 void ED25519_keypair_from_seed(uint8_t out_public_key[32],
@@ -189,17 +382,13 @@ int ED25519_verify(const uint8_t *message, size_t message_len,
 void X25519_public_from_private(uint8_t out_public_value[32],
                                 const uint8_t private_key[32]) {
 
-  uint8_t e[32];
-  OPENSSL_memcpy(e, private_key, 32);
-  e[0] &= 248;
-  e[31] &= 127;
-  e[31] |= 64;
-
-  if (curve25519_asm_capable()) {
+  if (x25519_s2n_bignum_capable() == 1) {
+    x25519_s2n_bignum_public_from_private(out_public_value, private_key);
+  } else if (x25519_Armv7_neon_capable() == 1) {
     static const uint8_t kMongomeryBasePoint[32] = {9};
     x25519_NEON(out_public_value, private_key, kMongomeryBasePoint);
   } else {
-    X25519_public_from_private_nohw(out_public_value, e);
+    x25519_public_from_private_nohw(out_public_value, private_key);
   }
 }
 
@@ -231,7 +420,9 @@ int X25519(uint8_t out_shared_key[32], const uint8_t private_key[32],
 
   static const uint8_t kZeros[32] = {0};
 
-  if (curve25519_asm_capable()) {
+  if (x25519_s2n_bignum_capable() == 1) {
+    x25519_s2n_bignum(out_shared_key, private_key, peer_public_value);
+  } else if (x25519_Armv7_neon_capable() == 1) {
     x25519_NEON(out_shared_key, private_key, peer_public_value);
   } else {
     x25519_scalar_mult_generic_nohw(out_shared_key, private_key, peer_public_value);
