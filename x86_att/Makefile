@@ -33,6 +33,8 @@ OBJ = curve25519/bignum_add_p25519.o \
       curve25519/edwards25519_pdouble_alt.o \
       curve25519/edwards25519_pepadd.o \
       curve25519/edwards25519_pepadd_alt.o \
+      curve25519/edwards25519_scalarmulbase.o \
+      curve25519/edwards25519_scalarmulbase_alt.o \
       fastmul/bignum_emontredc_8n.o \
       fastmul/bignum_kmul_16_32.o \
       fastmul/bignum_kmul_32_64.o \

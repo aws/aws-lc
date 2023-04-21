@@ -257,6 +257,30 @@ uint64_t k_25519[4] =
    UINT64_C(0x2406d9dc56dffce7)
  };
 
+// Full basepoint for edwards25519
+
+uint64_t g_edwards25519[8] =
+{
+  UINT64_C(0xc9562d608f25d51a),
+  UINT64_C(0x692cc7609525a7b2),
+  UINT64_C(0xc0a4e231fdd6dc5c),
+  UINT64_C(0x216936d3cd6e53fe),
+  UINT64_C(0x6666666666666658),
+  UINT64_C(0x6666666666666666),
+  UINT64_C(0x6666666666666666),
+  UINT64_C(0x6666666666666666)
+};
+
+// Basepoint order for edwards25519
+
+uint64_t m_edwards25519[4] =
+{
+  UINT64_C(0x5812631a5cf5d3ed),
+  UINT64_C(0x14def9dea2f79cd6),
+  UINT64_C(0x0000000000000000),
+  UINT64_C(0x1000000000000000)
+};
+
 // Parameters for sm2
 
 uint64_t p_sm2[4] =
@@ -990,6 +1014,43 @@ void reference_edwards25519pepadd(uint64_t p3[16],uint64_t p1[16],uint64_t p2[12
   bignum_mul_p25519_alt(y3,t8,t9);
   bignum_mul_p25519_alt(z3,t7,t8);
   bignum_mul_p25519_alt(w3,t6,t9);
+}
+
+void reference_edwards25519scalarmul
+ (uint64_t res[8],uint64_t scalar[4],uint64_t point[static 8])
+{ uint64_t ep[16], acc[16], zinv[4], tmpspace[12], bf;
+  int i;
+
+  // ep = extended-projective initial point
+
+  bignum_copy(8,ep,8,point);
+  bignum_of_word(4,ep+8,UINT64_C(1));
+  bignum_mul_p25519_alt(ep+12,point,point+4);
+
+ // acc = extended-projective (0,1)
+
+  bignum_of_word(4,acc,UINT64_C(0));
+  bignum_of_word(4,acc+4,UINT64_C(1));
+  bignum_of_word(4,acc+8,UINT64_C(1));
+  bignum_of_word(4,acc+12,UINT64_C(0));
+
+  i = 256;
+  do
+   { --i;
+     reference_edwards25519epdouble(acc,acc);
+     bf = (scalar[i>>6] >> (i & 0x3F)) & 1ull;
+     if (bf) reference_edwards25519epadd(acc,acc,ep);
+   }
+  while (i != 0);
+
+  bignum_modinv(4,zinv,acc+8,p_25519,tmpspace);
+
+  bignum_mul_p25519_alt(res,acc,zinv);
+  bignum_mul_p25519_alt(res+4,acc+4,zinv);
+}
+
+void reference_edwards25519scalarmulbase(uint64_t res[8],uint64_t scalar[4])
+{ reference_edwards25519scalarmul(res,scalar,g_edwards25519);
 }
 
 void reference_montjdouble
@@ -9059,6 +9120,110 @@ int test_edwards25519_pepadd_alt(void)
   return 0;
 }
 
+int test_edwards25519_scalarmulbase(void)
+{ uint64_t t, k;
+  printf("Testing edwards25519_scalarmulbase with %d cases\n",tests);
+  k = 4;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b1);
+
+     // With non-zero probability exercise values near multiples of
+     // the basepoint element order
+
+     if ((rand() & 0xF) == 0)
+      { bignum_cmul(4,b1,(rand() & 0xF),4,m_edwards25519);
+        if ((rand() & 0x3) == 0) b1[0] += (rand() & 0x3);
+      }
+
+     // With non-zero probability exercise close to top
+     // word of the basepoint order 2^252
+
+     if ((rand() & 0x3F) == 0)
+      { b1[3] = UINT64_C(0x1000000000000000) * rand();
+        b1[2] = random64d(6);
+        b1[1] = random64();
+        b1[0] = random64();
+      }
+
+     edwards25519_scalarmulbase(b3,b1);
+     reference_edwards25519scalarmulbase(b4,b1);
+
+     c = reference_compare(8,b3,8,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" * "
+               "<0x%016"PRIx64"...%016"PRIx64"> = "
+               "<...0x%016"PRIx64"...%016"PRIx64"> not "
+               "<...0x%016"PRIx64"...%016"PRIx64">\n",
+               k,b1[3],b1[0],g_edwards25519[3],g_edwards25519[0],b3[3],b3[0],b4[3],b4[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" * "
+               "<0x%016"PRIx64"...%016"PRIx64"> = "
+               "<...0x%016"PRIx64"...%016"PRIx64">\n",
+               k,b1[3],b1[0],g_edwards25519[3],g_edwards25519[0],b3[3],b3[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_edwards25519_scalarmulbase_alt(void)
+{ uint64_t t, k;
+  printf("Testing edwards25519_scalarmulbase_alt with %d cases\n",tests);
+  k = 4;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b1);
+
+     // With non-zero probability exercise values near multiples of
+     // the basepoint element order
+
+     if ((rand() & 0xF) == 0)
+      { bignum_cmul(4,b1,(rand() & 0xF),4,m_edwards25519);
+        if ((rand() & 0x3) == 0) b1[0] += (rand() & 0x3);
+      }
+
+     // With non-zero probability exercise close to top
+     // word of the basepoint order 2^252
+
+     if ((rand() & 0x3F) == 0)
+      { b1[3] = UINT64_C(0x1000000000000000) * rand();
+        b1[2] = random64d(6);
+        b1[1] = random64();
+        b1[0] = random64();
+      }
+
+     edwards25519_scalarmulbase_alt(b3,b1);
+     reference_edwards25519scalarmulbase(b4,b1);
+
+     c = reference_compare(8,b3,8,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" * "
+               "<0x%016"PRIx64"...%016"PRIx64"> = "
+               "<...0x%016"PRIx64"...%016"PRIx64"> not "
+               "<...0x%016"PRIx64"...%016"PRIx64">\n",
+               k,b1[3],b1[0],g_edwards25519[3],g_edwards25519[0],b3[3],b3[0],b4[3],b4[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" * "
+               "<0x%016"PRIx64"...%016"PRIx64"> = "
+               "<...0x%016"PRIx64"...%016"PRIx64">\n",
+               k,b1[3],b1[0],g_edwards25519[3],g_edwards25519[0],b3[3],b3[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
 int test_p256_montjadd(void)
 { uint64_t t, k;
   printf("Testing p256_montjadd with %d cases\n",tests);
@@ -9777,6 +9942,20 @@ void tweetnacl_curve25519x25519base(uint64_t *z,uint64_t *n)
   reference_fromlebytes(4,z,32,z_bytes);
 }
 
+void tweetnacl_edwards25519scalarmulbase(uint64_t *z,uint64_t *n)
+{ uint8_t *n_bytes = alloca(32), *x_bytes = alloca(32), *y_bytes = alloca(32);
+  gf z_gf[4], x, y, zinv;
+  reference_tolebytes(32,n_bytes,4,n);
+  scalarbase(z_gf,n_bytes);
+  inv25519(zinv,z_gf[2]);
+  M(x,z_gf[0],zinv);
+  M(y,z_gf[1],zinv);
+  pack25519(x_bytes,x);
+  pack25519(y_bytes,y);
+  reference_fromlebytes(4,z,32,x_bytes);
+  reference_fromlebytes(4,z+4,32,y_bytes);
+}
+
 int test_curve25519_x25519_tweetnacl(void)
 { uint64_t t, k;
   printf("Testing curve25519_x25519 against TweetNaCl with %d cases\n",tests);
@@ -9864,7 +10043,6 @@ int test_curve25519_x25519_alt_tweetnacl(void)
   printf("All OK\n");
   return 0;
 }
-
 
 int test_curve25519_x25519base_tweetnacl(void)
 { uint64_t t, k;
@@ -10103,6 +10281,110 @@ int test_curve25519_x25519base_byte_alt_tweetnacl(void)
                "<0x%016"PRIx64"...%016"PRIx64"> = "
                "<...0x%016"PRIx64"...%016"PRIx64">\n",
                k,b1[3],b1[0],b2[3],b2[0],b3[3],b3[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_edwards25519_scalarmulbase_tweetnacl(void)
+{ uint64_t t, k;
+  printf("Testing edwards25519_scalarmulbase against TweetNaCl with %d cases\n",tests);
+  k = 4;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b1);
+
+     // With non-zero probability exercise values near multiples of
+     // the basepoint element order
+
+     if ((rand() & 0xF) == 0)
+      { bignum_cmul(4,b1,(rand() & 0xF),4,m_edwards25519);
+        if ((rand() & 0x3) == 0) b1[0] += (rand() & 0x3);
+      }
+
+     // With non-zero probability exercise close to top
+     // word of the basepoint order 2^252
+
+     if ((rand() & 0x3F) == 0)
+      { b1[3] = UINT64_C(0x1000000000000000) * rand();
+        b1[2] = random64d(6);
+        b1[1] = random64();
+        b1[0] = random64();
+      }
+
+     edwards25519_scalarmulbase(b3,b1);
+     tweetnacl_edwards25519scalarmulbase(b4,b1);
+
+     c = reference_compare(8,b3,8,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" * "
+               "<0x%016"PRIx64"...%016"PRIx64"> = "
+               "<...0x%016"PRIx64"...%016"PRIx64"> not "
+               "<...0x%016"PRIx64"...%016"PRIx64">\n",
+               k,b1[3],b1[0],g_edwards25519[3],g_edwards25519[0],b3[3],b3[0],b4[3],b4[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" * "
+               "<0x%016"PRIx64"...%016"PRIx64"> = "
+               "<...0x%016"PRIx64"...%016"PRIx64">\n",
+               k,b1[3],b1[0],g_edwards25519[3],g_edwards25519[0],b3[3],b3[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_edwards25519_scalarmulbase_alt_tweetnacl(void)
+{ uint64_t t, k;
+  printf("Testing edwards25519_scalarmulbase_alt against TweetNaCl with %d cases\n",tests);
+  k = 4;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(k,b1);
+
+     // With non-zero probability exercise values near multiples of
+     // the basepoint element order
+
+     if ((rand() & 0xF) == 0)
+      { bignum_cmul(4,b1,(rand() & 0xF),4,m_edwards25519);
+        if ((rand() & 0x3) == 0) b1[0] += (rand() & 0x3);
+      }
+
+     // With non-zero probability exercise close to top
+     // word of the basepoint order 2^252
+
+     if ((rand() & 0x3F) == 0)
+      { b1[3] = UINT64_C(0x1000000000000000) * rand();
+        b1[2] = random64d(6);
+        b1[1] = random64();
+        b1[0] = random64();
+      }
+
+     edwards25519_scalarmulbase_alt(b3,b1);
+     tweetnacl_edwards25519scalarmulbase(b4,b1);
+
+     c = reference_compare(8,b3,8,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" * "
+               "<0x%016"PRIx64"...%016"PRIx64"> = "
+               "<...0x%016"PRIx64"...%016"PRIx64"> not "
+               "<...0x%016"PRIx64"...%016"PRIx64">\n",
+               k,b1[3],b1[0],g_edwards25519[3],g_edwards25519[0],b3[3],b3[0],b4[3],b4[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" * "
+               "<0x%016"PRIx64"...%016"PRIx64"> = "
+               "<...0x%016"PRIx64"...%016"PRIx64">\n",
+               k,b1[3],b1[0],g_edwards25519[3],g_edwards25519[0],b3[3],b3[0]);
       }
    }
   printf("All OK\n");
@@ -10466,6 +10748,8 @@ int main(int argc, char *argv[])
   functionaltest(all,"edwards25519_pdouble_alt",test_edwards25519_pdouble_alt);
   functionaltest(bmi,"edwards25519_pepadd",test_edwards25519_pepadd);
   functionaltest(all,"edwards25519_pepadd_alt",test_edwards25519_pepadd_alt);
+  functionaltest(bmi,"edwards25519_scalarmulbase",test_edwards25519_scalarmulbase);
+  functionaltest(all,"edwards25519_scalarmulbase_alt",test_edwards25519_scalarmulbase_alt);
   functionaltest(bmi,"p256_montjadd",test_p256_montjadd);
   functionaltest(bmi,"p256_montjdouble",test_p256_montjdouble);
   functionaltest(bmi,"p256_montjmixadd",test_p256_montjmixadd);
@@ -10501,6 +10785,8 @@ int main(int argc, char *argv[])
   functionaltest(all,"curve25519_x25519base_alt (TweetNaCl)",test_curve25519_x25519base_alt_tweetnacl);
   functionaltest(bmi,"curve25519_x25519base_byte (TweetNaCl)",test_curve25519_x25519base_byte_tweetnacl);
   functionaltest(all,"curve25519_x25519base_byte_alt (TweetNaCl)",test_curve25519_x25519base_byte_alt_tweetnacl);
+  functionaltest(bmi,"edwards25519_scalarmulbase (TweetNaCl)",test_edwards25519_scalarmulbase_tweetnacl);
+  functionaltest(all,"edwards25519_scalarmulbase_alt (TweetNaCl)",test_edwards25519_scalarmulbase_alt_tweetnacl);
 
   if (successes == tested)
    { printf("All %d tests run, all passed\n",successes);

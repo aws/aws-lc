@@ -59,6 +59,7 @@ edwards25519_epadd
 edwards25519_epdouble
 edwards25519_pdouble
 edwards25519_pepadd
+edwards25519_scalarmulbase
 p256_montjadd
 p256_montjdouble
 p256_montjmixadd
