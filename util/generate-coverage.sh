@@ -30,7 +30,7 @@ cd "$BUILD"
 cmake "$SRC" -GNinja -DGCOV=1
 ninja
 
-cp -r "$SRC/crypto" "$SRC/include" "$SRC/ssl" "$SRC/tool" \
+cp -r "$SRC/crypto" "$SRC/include" "$SRC/ssl" "$SRC/tool" "$SRC/third_party" \
   "$BUILD_SRC"
 cp -r "$BUILD"/* "$BUILD_SRC"
 mkdir "$BUILD/callgrind/"
@@ -42,7 +42,12 @@ util/generate-asm-lcov.py "$BUILD/callgrind" "$BUILD" > "$BUILD/asm.info"
 go run "util/all_tests.go" -build-dir "$BUILD"
 
 cd "$SRC/ssl/test/runner"
-go test -shim-path "$BUILD/ssl/test/bssl_shim" -num-workers 1
+go test -shim-path "$BUILD/ssl/test/bssl_shim" -handshaker-path "$BUILD/ssl/test/handshaker" -num-workers 1
+
+## TODO: lcov fails for bcm.c.o with the following error msg.
+## geninfo: ERROR: GCOV failed for /tmp/boringssl.FfIv7q/crypto/fipsmodule/CMakeFiles/fipsmodule.dir/bcm.c.gcda!
+rm "$BUILD/crypto/fipsmodule/CMakeFiles/fipsmodule.dir/bcm.c.gcda"
+rm "$BUILD/crypto/fipsmodule/CMakeFiles/fipsmodule.dir/bcm.c.gcno"
 
 cd "$LCOV"
 lcov -c -d "$BUILD" -b "$BUILD" -o "$BUILD/lcov.info"
@@ -55,4 +60,5 @@ genhtml -p "$BUILD_SRC" "$BUILD/final.info"
 rm -rf "$BUILD"
 rm -rf "$BUILD_SRC"
 
-xdg-open index.html
+# Open webpage on Ubuntu.
+# xdg-open index.html

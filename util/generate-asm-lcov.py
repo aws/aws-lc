@@ -104,6 +104,7 @@ def generate(data):
   for i in range(len(data)):
     if 'User-annotated source' in data[i] and i < len(data) - 1:
       filename = data[i].split(':', 1)[1].strip()
+      filename = filename.split('\\n')[0]
       res = data[i + 1]
       if filename not in out:
         out[filename] = None
@@ -118,7 +119,7 @@ def output(data):
   """Takes a dictionary |data| of filenames and execution counts and generates
   a LCOV coverage output."""
   out = ''
-  for filename, counts in data.iteritems():
+  for filename, counts in data.items():
     out += 'SF:%s\n' % (os.path.abspath(filename))
     for line, count in enumerate(counts):
       if count != None:
@@ -128,7 +129,7 @@ def output(data):
 
 if __name__ == '__main__':
   if len(sys.argv) != 3:
-    print '%s <Callgrind Folder> <Build Folder>' % (__file__)
+    print('%s <Callgrind Folder> <Build Folder>' % (__file__))
     sys.exit()
 
   cg_folder = sys.argv[1]
@@ -149,4 +150,4 @@ if __name__ == '__main__':
 
   annotated = merge(cg_files, srcs)
   lcov = generate(annotated)
-  print output(lcov)
+  print(output(lcov))

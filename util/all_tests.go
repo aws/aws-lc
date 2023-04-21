@@ -386,7 +386,7 @@ func main() {
 				continue
 			}
 
-			if *useValgrind {
+			if *useValgrind || *useCallgrind {
 				if test.SkipValgrind {
 					continue
 				}
