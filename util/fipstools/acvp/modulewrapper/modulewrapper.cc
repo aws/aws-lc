@@ -1031,9 +1031,7 @@ static bool HashSha3(const Span<const uint8_t> args[], ReplyCallback write_reply
   const EVP_MD *md = MDFunc();
   unsigned int md_out_size = DigestLength;
 
-  EVP_MD_unstable_sha3_enable(true);
   EVP_Digest(args[0].data(), args[0].size(), digest, &md_out_size, md, NULL);
-  EVP_MD_unstable_sha3_enable(false);
 
   return write_reply({Span<const uint8_t>(digest)});
 }
@@ -1079,12 +1077,10 @@ static bool HashMCTSha3(const Span<const uint8_t> args[],
 
   memcpy(md[0], args[0].data(), DigestLength);
 
-  EVP_MD_unstable_sha3_enable(true);
   for (size_t i = 1; i <= 1000; i++) {
     memcpy(msg[i], md[i-1], DigestLength);
     EVP_Digest(msg[i], sizeof(msg[i]), md[i], &md_out_size, evp_md, NULL);
   }
-  EVP_MD_unstable_sha3_enable(false);
 
   return write_reply(
       {Span<const uint8_t>(md[1000])});

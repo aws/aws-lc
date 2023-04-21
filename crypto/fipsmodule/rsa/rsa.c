@@ -624,6 +624,19 @@ int RSA_sign_pss_mgf1(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
   return ret;
 }
 
+int rsa_digestsign_no_self_test(const EVP_MD *md, const uint8_t *input,
+                                size_t in_len, uint8_t *out, unsigned *out_len,
+                                RSA *rsa) {
+  uint8_t digest[EVP_MAX_MD_SIZE];
+  unsigned int digest_len;
+  if (!EVP_Digest(input, in_len, digest, &digest_len, md, NULL)) {
+    return 0;
+  }
+
+  return rsa_sign_no_self_test(EVP_MD_type(md), digest, digest_len, out,
+                               out_len, rsa);
+}
+
 int rsa_verify_no_self_test(int hash_nid, const uint8_t *digest,
                             size_t digest_len, const uint8_t *sig,
                             size_t sig_len, RSA *rsa) {
@@ -678,6 +691,19 @@ out:
     OPENSSL_free(signed_msg);
   }
   return ret;
+}
+
+int rsa_digestverify_no_self_test(const EVP_MD *md, const uint8_t *input,
+                                  size_t in_len, const uint8_t *sig,
+                                  size_t sig_len, RSA *rsa) {
+  uint8_t digest[EVP_MAX_MD_SIZE];
+  unsigned int digest_len;
+  if (!EVP_Digest(input, in_len, digest, &digest_len, md, NULL)) {
+    return 0;
+  }
+
+  return rsa_verify_no_self_test(EVP_MD_type(md), digest, digest_len, sig,
+                                 sig_len, rsa);
 }
 
 int RSA_verify(int hash_nid, const uint8_t *digest, size_t digest_len,
@@ -908,6 +934,42 @@ DEFINE_LOCAL_DATA(BIGNUM, g_small_factors) {
   out->flags = BN_FLG_STATIC_DATA;
 }
 
+static int EVP_RSA_KEY_check_fips(RSA *key) {
+  uint8_t msg[1] = {0};
+  size_t msg_len = 1;
+  int ret = 0;
+  uint8_t* sig_der = NULL;
+  EVP_PKEY *evp_pkey = EVP_PKEY_new();
+  EVP_MD_CTX ctx;
+  EVP_MD_CTX_init(&ctx);
+  const EVP_MD *hash = EVP_sha256();
+  size_t sign_len;
+  if (!evp_pkey ||
+      !EVP_PKEY_set1_RSA(evp_pkey, key) ||
+      !EVP_DigestSignInit(&ctx, NULL, hash, NULL, evp_pkey) ||
+      !EVP_DigestSign(&ctx, NULL, &sign_len, msg, msg_len)) {
+    goto err;
+  }
+  sig_der = OPENSSL_malloc(sign_len);
+  if (!sig_der ||
+      !EVP_DigestSign(&ctx, sig_der, &sign_len, msg, msg_len)) {
+    goto err;
+  }
+  if (boringssl_fips_break_test("RSA_PWCT")) {
+    msg[0] = ~msg[0];
+  }
+  if (!EVP_DigestVerifyInit(&ctx, NULL, hash, NULL, evp_pkey) ||
+      !EVP_DigestVerify(&ctx, sig_der, sign_len, msg, msg_len)) {
+    goto err;
+  }
+  ret = 1;
+err:
+  EVP_PKEY_free(evp_pkey);
+  EVP_MD_CTX_cleanse(&ctx);
+  OPENSSL_free(sig_der);
+  return ret;
+}
+
 int RSA_check_fips(RSA *key) {
   if (RSA_is_opaque(key)) {
     // Opaque keys can't be checked.
@@ -964,29 +1026,10 @@ int RSA_check_fips(RSA *key) {
   // section 9.9, it is not known whether |rsa| will be used for signing or
   // encryption, so either pair-wise consistency self-test is acceptable. We
   // perform a signing test.
-  uint8_t data[32] = {0};
-  unsigned sig_len = RSA_size(key);
-  uint8_t *sig = OPENSSL_malloc(sig_len);
-  if (sig == NULL) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
-    return 0;
-  }
-
-  if (!RSA_sign(NID_sha256, data, sizeof(data), sig, &sig_len, key)) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
-    ret = 0;
-    goto cleanup;
-  }
-  if (boringssl_fips_break_test("RSA_PWCT")) {
-    data[0] = ~data[0];
-  }
-  if (!RSA_verify(NID_sha256, data, sizeof(data), sig, sig_len, key)) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
+  if (!EVP_RSA_KEY_check_fips(key)) {
+    OPENSSL_PUT_ERROR(EC, RSA_R_PUBLIC_KEY_VALIDATION_FAILED);
     ret = 0;
   }
-
-cleanup:
-  OPENSSL_free(sig);
 
   return ret;
 }

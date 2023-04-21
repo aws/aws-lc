@@ -873,6 +873,10 @@ class SSLAEADContext {
 
   bool GetIV(const uint8_t **out_iv, size_t *out_iv_len) const;
 
+  int SerializeState(CBB *cbb) const;
+
+  int DeserializeState(CBS *cbs) const;
+
  private:
   // GetAdditionalData returns the additional data, writing into |storage| if
   // necessary.

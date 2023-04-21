@@ -77,8 +77,8 @@ static const p384_felem p384_felem_one = {
 // every x86 CPU so we have to check if they are available and in case
 // they are not we fallback to slightly slower but generic implementation.
 static inline uint8_t p384_use_s2n_bignum_alt(void) {
-  return ((OPENSSL_ia32cap_P[2] & (1u <<  8)) == 0) || // bmi2
-         ((OPENSSL_ia32cap_P[2] & (1u << 19)) == 0);   // adx
+  return ((OPENSSL_ia32cap_get()[2] & (1u <<  8)) == 0) || // bmi2
+         ((OPENSSL_ia32cap_get()[2] & (1u << 19)) == 0);   // adx
 }
 #else
 // On aarch64 platforms s2n-bignum has two implementations of certain

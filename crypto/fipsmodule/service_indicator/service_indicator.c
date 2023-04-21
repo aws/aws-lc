@@ -20,6 +20,8 @@ int is_fips_build(void) {
 #if defined(AWSLC_FIPS)
 
 #define STATE_UNLOCKED 0
+#define TLS_MD_EXTENDED_MASTER_SECRET_CONST "extended master secret"
+#define TLS_MD_EXTENDED_MASTER_SECRET_CONST_SIZE 22
 
 // fips_service_indicator_state is a thread-local structure that stores the
 // state of the FIPS service indicator.
@@ -405,15 +407,18 @@ void PBKDF2_verify_service_indicator(const EVP_MD *evp_md, size_t password_len,
   // * salt_len >= 16 bytes (128 bits), assuming its randomly generated
   // * iterations "as large as possible, as long as the time required to
   //   generate the key using the entered password is acceptable for the users."
-  //   (clearly we can't test for "as large as possible"); NIST SP800-132
-  //   suggests >= 1000, but it's still not a requirement.
+  //   (clearly we can't test for "as large as possible");
+  //   NIST SP800-132 suggests >= 1000. For real-world implementations the
+  //   actual iteration count should be much higher (at least hundreds of
+  //   thousands), but as a general-purpose cryptographic library, AWS-LC
+  //   can't make this decision.
   switch (evp_md->type) {
     case NID_sha1:
     case NID_sha224:
     case NID_sha256:
     case NID_sha384:
     case NID_sha512:
-      if (password_len >= 14 && salt_len >= 16 && iterations > 0) {
+      if (password_len >= 14 && salt_len >= 16 && iterations >= 1000) {
         FIPS_service_indicator_update_state();
       }
       break;
@@ -441,20 +446,27 @@ void SSHKDF_verify_service_indicator(const EVP_MD *evp_md) {
   }
 }
 
-void TLSKDF_verify_service_indicator(const EVP_MD *dgst) {
-  // HMAC-MD5, HMAC-SHA1, and HMAC-MD5/HMAC-SHA1 (both used concurrently) are
-  // approved for use in the KDF in TLS 1.0/1.1.
+void TLSKDF_verify_service_indicator(const EVP_MD *dgst, const char *label,
+                                     size_t label_len) {
+  // HMAC-MD5/HMAC-SHA1 (both used concurrently) is approved for use in the KDF
+  // in TLS 1.0/1.1.
+  if(dgst->type == NID_md5_sha1) {
+    FIPS_service_indicator_update_state();
+    return;
+  }
   // HMAC-SHA{256, 384, 512} are approved for use in the KDF in TLS 1.2.
   // These Key Derivation functions are to be used in the context of the TLS
-  // protocol.
+  // protocol. Only the label "extended master secret" is allowed because
+  // it implies that the PRF is being used within a TLS 1.2 context.
   switch (dgst->type) {
-    case NID_md5:
-    case NID_sha1:
-    case NID_md5_sha1:
     case NID_sha256:
     case NID_sha384:
     case NID_sha512:
-      FIPS_service_indicator_update_state();
+      if (label_len >= TLS_MD_EXTENDED_MASTER_SECRET_CONST_SIZE &&
+          memcmp(label, TLS_MD_EXTENDED_MASTER_SECRET_CONST,
+                 TLS_MD_EXTENDED_MASTER_SECRET_CONST_SIZE) == 0) {
+          FIPS_service_indicator_update_state();
+      }
       break;
     default:
       break;

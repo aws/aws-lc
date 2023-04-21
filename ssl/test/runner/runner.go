@@ -82,6 +82,7 @@ var (
 	sslFuzzSeedDir     = flag.String("ssl-fuzz-seed-dir", "", "The directory in which to write the output of |SSL_to_bytes|.")
 	testCaseStartIndex = flag.Int("test-case-start-index", -1, "If non-negative, test case is filtered in if the index in |testCases| >= test-case-start-index.")
 	testCaseEndIndex   = flag.Int("test-case-end-index", -1, "If non-negative, test case is filtered in if the index in |testCases| <= test-case-end-index.")
+	dumpTestCases      = flag.Bool("dump-tests", false, "Outputs all the available test cases after filtering. Useful for producing a new set of ssl transfer tests file.")
 )
 
 // ShimConfigurations is used with the “json” package and represents a shim
@@ -491,6 +492,20 @@ const (
 	serverTest
 )
 
+func (t testType) MarshalJSON() ([]byte, error) {
+	return json.Marshal(t.String())
+}
+
+func (t testType) String() string {
+	switch t {
+	case clientTest:
+		return "client"
+	case serverTest:
+		return "server"
+	}
+	return "unknown test type"
+}
+
 type protocol int
 
 const (
@@ -498,6 +513,10 @@ const (
 	dtls
 	quic
 )
+
+func (p protocol) MarshalJSON() ([]byte, error) {
+	return json.Marshal(p.String())
+}
 
 func (p protocol) String() string {
 	switch p {
@@ -708,6 +727,22 @@ type testCase struct {
 	// skipVersionNameCheck, if true, will skip the consistency check between
 	// test name and the versions.
 	skipVersionNameCheck bool
+}
+
+func (t *testCase) MarshalJSON() ([]byte, error) {
+	type out struct {
+		TestType   testType
+		Protocol   protocol
+		Name       string
+		ShouldFail bool
+	}
+
+	return json.Marshal(&out{
+		TestType:   t.testType,
+		Protocol:   t.protocol,
+		Name:       t.name,
+		ShouldFail: t.shouldFail,
+	})
 }
 
 var testCases []testCase
@@ -19736,6 +19771,16 @@ func main() {
 
 	testCases = filterTests(testCases, *testCaseStartIndex, *testCaseEndIndex)
 
+	if *dumpTestCases {
+		jb, err := json.MarshalIndent(testCases, "", "  ")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error encoding json: %v", err)
+			os.Exit(1)
+		}
+		fmt.Printf("%s\n", jb)
+		return
+	}
+
 	checkTests()
 
 	numWorkers := *numWorkersFlag
@@ -19845,7 +19890,9 @@ func main() {
 	if (sslTransferHelper != nil) &&
 		// Skip test file content check when the tests are filtered.
 		(*testCaseStartIndex < 0) &&
-		(*testCaseEndIndex < 0) {
+		(*testCaseEndIndex < 0) &&
+		len(*testToRun) == 0 &&
+		len(*skipTest) == 0 {
 		sslTransferHelper.RefreshTestFileContent()
 	}
 }
