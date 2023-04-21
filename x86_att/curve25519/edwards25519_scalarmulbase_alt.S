@@ -413,12 +413,12 @@ S2N_BN_SYMBOL(edwards25519_scalarmulbase_alt):
         pushq   %rsi
         movq    %rcx, %rdi
         movq    %rdx, %rsi
-        callq   curve25519_x25519base_standard
+        callq   edwards25519_scalarmulbase_alt_curve25519_x25519base_standard
         popq    %rsi
         popq    %rdi
         ret
 
-curve25519_x25519base_standard:
+edwards25519_scalarmulbase_alt_curve25519_x25519base_standard:
 #endif
 
 // Save registers, make room for temps, preserve input arguments.
@@ -504,8 +504,8 @@ curve25519_x25519base_standard:
 // Initialize accumulator "acc" to either 0 or 2^251 * B depending on
 // bit 251 of the (reduced) scalar. That leaves bits 0..250 to handle.
 
-        leaq    edwards25519_0g(%rip), %r10
-        leaq    edwards25519_251g(%rip), %r11
+        leaq    edwards25519_scalarmulbase_alt_edwards25519_0g(%rip), %r10
+        leaq    edwards25519_scalarmulbase_alt_edwards25519_251g(%rip), %r11
 
         movq    (%r10), %rax
         movq    (%r11), %rcx
@@ -588,13 +588,13 @@ curve25519_x25519base_standard:
 // end because we made sure bit 251 is clear in the reduced scalar.
 
         movq    $0, i
-        leaq    edwards25519_gtable(%rip), %rax
+        leaq    edwards25519_scalarmulbase_alt_edwards25519_gtable(%rip), %rax
         movq    %rax, tab
         movq    $0, bias
 
 // Start of the main loop, repeated 63 times for i = 4, 8, ..., 252
 
-scalarloop:
+edwards25519_scalarmulbase_alt_scalarloop:
 
 // Look at the next 4-bit field "bf", adding the previous bias as well.
 // Choose the table index "ix" as bf when bf <= 8 and 16 - bf for bf >= 9,
@@ -951,7 +951,7 @@ scalarloop:
 
         addq    $4, i
         cmpq    $252, i
-        jc      scalarloop
+        jc      edwards25519_scalarmulbase_alt_scalarloop
 
 // Insert the optional negation of the projective X coordinate, and
 // so by extension the final affine x coordinate x = X/Z and thus
@@ -990,7 +990,7 @@ scalarloop:
         movq    $4, %rdi
         leaq    224(%rsp), %rsi
         leaq    192(%rsp), %rdx
-        leaq    p_25519(%rip), %rcx
+        leaq    edwards25519_scalarmulbase_alt_p_25519(%rip), %rcx
         leaq    256(%rsp), %r8
 
 // Inline copy of bignum_modinv, identical except for stripping out the
@@ -1008,7 +1008,7 @@ scalarloop:
         leaq    (%r10,%rdi,8), %r15
         xorq    %r11, %r11
         xorq    %r9, %r9
-copyloop:
+edwards25519_scalarmulbase_alt_copyloop:
         movq    (%rdx,%r9,8), %rax
         movq    (%rcx,%r9,8), %rbx
         movq    %rax, (%r10,%r9,8)
@@ -1017,7 +1017,7 @@ copyloop:
         movq    %r11, (%rsi,%r9,8)
         incq    %r9
         cmpq    %rdi, %r9
-        jb      copyloop
+        jb      edwards25519_scalarmulbase_alt_copyloop
         movq    (%r8), %rax
         movq    %rax, %rbx
         decq    %rbx
@@ -1049,7 +1049,7 @@ copyloop:
         movq    %rdi, %rax
         shlq    $0x7, %rax
         movq    %rax, 0x20(%rsp)
-outerloop:
+edwards25519_scalarmulbase_alt_outerloop:
         movq    0x20(%rsp), %r13
         addq    $0x3f, %r13
         shrq    $0x6, %r13
@@ -1063,7 +1063,7 @@ outerloop:
         movq    0x30(%rsp), %r8
         leaq    (%r8,%rdi,8), %r15
         xorq    %r9, %r9
-toploop:
+edwards25519_scalarmulbase_alt_toploop:
         movq    (%r8,%r9,8), %rbx
         movq    (%r15,%r9,8), %rcx
         movq    %r11, %r10
@@ -1079,7 +1079,7 @@ toploop:
         sbbq    %r11, %r11
         incq    %r9
         cmpq    %r13, %r9
-        jb      toploop
+        jb      edwards25519_scalarmulbase_alt_toploop
         movq    %r12, %rax
         orq     %rbp, %rax
         bsrq    %rax, %rcx
@@ -1099,7 +1099,7 @@ toploop:
         movq    %r13, 0x10(%rsp)
         movq    %r8, (%rsp)
         movq    %r15, 0x18(%rsp)
-innerloop:
+edwards25519_scalarmulbase_alt_innerloop:
         xorl    %eax, %eax
         xorl    %ebx, %ebx
         xorq    %r8, %r8
@@ -1129,7 +1129,7 @@ innerloop:
         addq    %rcx, %rcx
         addq    %rdx, %rdx
         decq    %r9
-        jne     innerloop
+        jne     edwards25519_scalarmulbase_alt_innerloop
         movq    0x8(%rsp), %rdi
         movq    0x10(%rsp), %r13
         movq    (%rsp), %r8
@@ -1145,7 +1145,7 @@ innerloop:
         xorq    %r10, %r10
         xorq    %r11, %r11
         xorq    %r9, %r9
-congloop:
+edwards25519_scalarmulbase_alt_congloop:
         movq    (%r8,%r9,8), %rcx
         movq    (%rsp), %rax
         mulq    %rcx
@@ -1176,7 +1176,7 @@ congloop:
         movq    %rbp, %rsi
         incq    %r9
         cmpq    %rdi, %r9
-        jb      congloop
+        jb      edwards25519_scalarmulbase_alt_congloop
         shldq   $0x6, %r10, %r14
         shldq   $0x6, %r11, %rsi
         movq    0x48(%rsp), %r15
@@ -1190,8 +1190,8 @@ congloop:
         movl    $0x1, %r9d
         movq    %rdi, %rcx
         decq    %rcx
-        je      wmontend
-wmontloop:
+        je      edwards25519_scalarmulbase_alt_wmontend
+edwards25519_scalarmulbase_alt_wmontloop:
         adcq    (%r8,%r9,8), %r10
         sbbq    %rbx, %rbx
         movq    (%r15,%r9,8), %rax
@@ -1202,26 +1202,26 @@ wmontloop:
         movq    %rdx, %r10
         incq    %r9
         decq    %rcx
-        jne     wmontloop
-wmontend:
+        jne     edwards25519_scalarmulbase_alt_wmontloop
+edwards25519_scalarmulbase_alt_wmontend:
         adcq    %r14, %r10
         movq    %r10, -0x8(%r8,%rdi,8)
         sbbq    %r10, %r10
         negq    %r10
         movq    %rdi, %rcx
         xorq    %r9, %r9
-wcmploop:
+edwards25519_scalarmulbase_alt_wcmploop:
         movq    (%r8,%r9,8), %rax
         sbbq    (%r15,%r9,8), %rax
         incq    %r9
         decq    %rcx
-        jne     wcmploop
+        jne     edwards25519_scalarmulbase_alt_wcmploop
         sbbq    $0x0, %r10
         sbbq    %r10, %r10
         notq    %r10
         xorq    %rcx, %rcx
         xorq    %r9, %r9
-wcorrloop:
+edwards25519_scalarmulbase_alt_wcorrloop:
         movq    (%r8,%r9,8), %rax
         movq    (%r15,%r9,8), %rbx
         andq    %r10, %rbx
@@ -1231,7 +1231,7 @@ wcorrloop:
         movq    %rax, (%r8,%r9,8)
         incq    %r9
         cmpq    %rdi, %r9
-        jb      wcorrloop
+        jb      edwards25519_scalarmulbase_alt_wcorrloop
         movq    0x40(%rsp), %r8
         movq    (%r8), %rbx
         movq    0x28(%rsp), %rbp
@@ -1243,8 +1243,8 @@ wcorrloop:
         movl    $0x1, %r9d
         movq    %rdi, %rcx
         decq    %rcx
-        je      zmontend
-zmontloop:
+        je      edwards25519_scalarmulbase_alt_zmontend
+edwards25519_scalarmulbase_alt_zmontloop:
         adcq    (%r8,%r9,8), %r11
         sbbq    %rbx, %rbx
         movq    (%r15,%r9,8), %rax
@@ -1255,26 +1255,26 @@ zmontloop:
         movq    %rdx, %r11
         incq    %r9
         decq    %rcx
-        jne     zmontloop
-zmontend:
+        jne     edwards25519_scalarmulbase_alt_zmontloop
+edwards25519_scalarmulbase_alt_zmontend:
         adcq    %rsi, %r11
         movq    %r11, -0x8(%r8,%rdi,8)
         sbbq    %r11, %r11
         negq    %r11
         movq    %rdi, %rcx
         xorq    %r9, %r9
-zcmploop:
+edwards25519_scalarmulbase_alt_zcmploop:
         movq    (%r8,%r9,8), %rax
         sbbq    (%r15,%r9,8), %rax
         incq    %r9
         decq    %rcx
-        jne     zcmploop
+        jne     edwards25519_scalarmulbase_alt_zcmploop
         sbbq    $0x0, %r11
         sbbq    %r11, %r11
         notq    %r11
         xorq    %rcx, %rcx
         xorq    %r9, %r9
-zcorrloop:
+edwards25519_scalarmulbase_alt_zcorrloop:
         movq    (%r8,%r9,8), %rax
         movq    (%r15,%r9,8), %rbx
         andq    %r11, %rbx
@@ -1284,7 +1284,7 @@ zcorrloop:
         movq    %rax, (%r8,%r9,8)
         incq    %r9
         cmpq    %rdi, %r9
-        jb      zcorrloop
+        jb      edwards25519_scalarmulbase_alt_zcorrloop
         movq    0x30(%rsp), %r8
         leaq    (%r8,%rdi,8), %r15
         xorq    %r9, %r9
@@ -1292,7 +1292,7 @@ zcorrloop:
         xorq    %r14, %r14
         xorq    %rbp, %rbp
         xorq    %rsi, %rsi
-crossloop:
+edwards25519_scalarmulbase_alt_crossloop:
         movq    (%r8,%r9,8), %rcx
         movq    (%rsp), %rax
         mulq    %rcx
@@ -1323,13 +1323,13 @@ crossloop:
         movq    %r11, %rsi
         incq    %r9
         cmpq    %r13, %r9
-        jb      crossloop
+        jb      edwards25519_scalarmulbase_alt_crossloop
         xorq    %r9, %r9
         movq    %r12, %r10
         movq    %rbp, %r11
         xorq    %r12, %r14
         xorq    %rbp, %rsi
-optnegloop:
+edwards25519_scalarmulbase_alt_optnegloop:
         movq    (%r8,%r9,8), %rax
         xorq    %r12, %rax
         negq    %r10
@@ -1344,11 +1344,11 @@ optnegloop:
         movq    %rax, (%r15,%r9,8)
         incq    %r9
         cmpq    %r13, %r9
-        jb      optnegloop
+        jb      edwards25519_scalarmulbase_alt_optnegloop
         subq    %r10, %r14
         subq    %r11, %rsi
         movq    %r13, %r9
-shiftloop:
+edwards25519_scalarmulbase_alt_shiftloop:
         movq    -0x8(%r8,%r9,8), %rax
         movq    %rax, %r10
         shrdq   $0x3a, %r14, %rax
@@ -1360,7 +1360,7 @@ shiftloop:
         movq    %rax, -0x8(%r15,%r9,8)
         movq    %r11, %rsi
         decq    %r9
-        jne     shiftloop
+        jne     edwards25519_scalarmulbase_alt_shiftloop
         notq    %rbp
         movq    0x48(%rsp), %rcx
         movq    0x38(%rsp), %r8
@@ -1368,7 +1368,7 @@ shiftloop:
         movq    %r12, %r10
         movq    %rbp, %r11
         xorq    %r9, %r9
-fliploop:
+edwards25519_scalarmulbase_alt_fliploop:
         movq    %rbp, %rdx
         movq    (%rcx,%r9,8), %rax
         andq    %rax, %rdx
@@ -1387,9 +1387,9 @@ fliploop:
         movq    %rdx, (%r15,%r9,8)
         incq    %r9
         cmpq    %rdi, %r9
-        jb      fliploop
+        jb      edwards25519_scalarmulbase_alt_fliploop
         subq    $0x3a,  0x20(%rsp)
-        ja      outerloop
+        ja      edwards25519_scalarmulbase_alt_outerloop
 
 // The final result is x = X * inv(Z), y = Y * inv(Z).
 // These are the only operations in the whole computation that
@@ -1422,7 +1422,7 @@ fliploop:
 
 // The modulus, for the modular inverse
 
-p_25519:
+edwards25519_scalarmulbase_alt_p_25519:
         .quad   0xffffffffffffffed
         .quad   0xffffffffffffffff
         .quad   0xffffffffffffffff
@@ -1431,7 +1431,7 @@ p_25519:
 // 0 * B = 0 and 2^251 * B in extended-projective coordinates
 // but with Z = 1 assumed and hence left out, so they are (X,Y,T) only.
 
-edwards25519_0g:
+edwards25519_scalarmulbase_alt_edwards25519_0g:
 
         .quad   0x0000000000000000
         .quad   0x0000000000000000
@@ -1448,7 +1448,7 @@ edwards25519_0g:
         .quad   0x0000000000000000
         .quad   0x0000000000000000
 
-edwards25519_251g:
+edwards25519_scalarmulbase_alt_edwards25519_251g:
 
         .quad   0x525f946d7c7220e7
         .quad   0x4636b0b2f1e35444
@@ -1466,7 +1466,7 @@ edwards25519_251g:
 // Precomputed table of multiples of generator for edwards25519
 // all in precomputed extended-projective (y-x,x+y,2*d*x*y) triples.
 
-edwards25519_gtable:
+edwards25519_scalarmulbase_alt_edwards25519_gtable:
 
         // 2^0 * 1 * G
 
