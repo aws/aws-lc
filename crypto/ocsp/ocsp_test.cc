@@ -1168,6 +1168,118 @@ TEST_P(OCSPURLTest, OCSPParseURL) {
   }
 }
 
+// Nonce value used in "crypto/ocsp/test/aws/ocsp_response.der".
+static unsigned char ocsp_response_nonce[] = {
+    0xaf, 0xab, 0xd4, 0xec, 0x6a, 0x17, 0x2c, 0x4a,
+    0x98, 0xfb, 0x1a, 0x6d, 0x22, 0xff, 0x29, 0x28};
+
+struct OCSPNonceTestVector {
+  const char *ocsp_request;
+  const char *ocsp_response;
+  bool add_nonce;
+  unsigned char *nonce;
+  int nonce_len;
+  int nonce_check_status;
+};
+
+static const OCSPNonceTestVector kNonceTestVectors[] = {
+    // Add a nonce to an OCSP request without a nonce.
+    {"ocsp_request_no_nonce", "ocsp_response", true, ocsp_response_nonce,
+     sizeof(ocsp_response_nonce), OCSP_NONCE_EQUAL},
+    // Add a nonce to an OCSP request with a nonce. The original nonce should be
+    // overwritten.
+    {"ocsp_request", "ocsp_response", true, ocsp_response_nonce,
+     sizeof(ocsp_response_nonce), OCSP_NONCE_EQUAL},
+    // Generate a random nonce, which should be different from the nonce
+    // available in the OCSP response (unless we have a collision).
+    {"ocsp_request", "ocsp_response", true, nullptr, 0, OCSP_NONCE_NOT_EQUAL},
+    // OCSP request with no nonce, but an OCSP response that does have one.
+    {"ocsp_request_no_nonce", "ocsp_response", false, nullptr, 0,
+     OCSP_NONCE_RESPONSE_ONLY},
+    // OCSP request with a nonce, but an OCSP response that does not have one.
+    {"ocsp_request", "ocsp_response_no_nonce", false, nullptr, 0,
+     OCSP_NONCE_REQUEST_ONLY},
+    // An OCSP request and an OCSP response that don't have a nonce to compare.
+    {"ocsp_request_no_nonce", "ocsp_response_no_nonce", false, nullptr, 0,
+     OCSP_NONCE_BOTH_ABSENT},
+};
+
+class OCSPNonceTest : public testing::TestWithParam<OCSPNonceTestVector> {};
+
+INSTANTIATE_TEST_SUITE_P(All, OCSPNonceTest,
+                         testing::ValuesIn(kNonceTestVectors));
+
+TEST_P(OCSPNonceTest, OCSPNonce) {
+  const OCSPNonceTestVector &t = GetParam();
+
+  std::string data =
+      GetTestData(std::string("crypto/ocsp/test/aws/" +
+                              std::string(t.ocsp_request) + ".der")
+                      .c_str());
+  std::vector<uint8_t> ocsp_request_data(data.begin(), data.end());
+  bssl::UniquePtr<OCSP_REQUEST> ocspRequest =
+      LoadOCSP_REQUEST(ocsp_request_data);
+  std::string respData =
+      GetTestData(std::string("crypto/ocsp/test/aws/" +
+                              std::string(t.ocsp_response) + ".der")
+                      .c_str());
+  std::vector<uint8_t> ocsp_response_data(respData.begin(), respData.end());
+  bssl::UniquePtr<OCSP_RESPONSE> ocspResponse =
+      LoadOCSP_RESPONSE(ocsp_response_data);
+  bssl::UniquePtr<OCSP_BASICRESP> basicResponse(
+      OCSP_response_get1_basic(ocspResponse.get()));
+  ASSERT_TRUE(basicResponse);
+
+  if (t.add_nonce) {
+    // Adding a nonce should succeed. The original nonce will get overwritten
+    // if one already exists.
+    EXPECT_TRUE(
+        OCSP_request_add1_nonce(ocspRequest.get(), t.nonce, t.nonce_len));
+
+    // Check if hard coded nonce value has been written correctly.
+    if (t.nonce) {
+      int req_idx = OCSP_REQUEST_get_ext_by_NID(ocspRequest.get(),
+                                                NID_id_pkix_OCSP_Nonce, -1);
+      const ASN1_OCTET_STRING *nonce_data = X509_EXTENSION_get_data(
+          OCSP_REQUEST_get_ext(ocspRequest.get(), req_idx));
+
+      // The ASN.1 Octet String data type encoding begins with a Tag byte of
+      // 0x04. The second byte is the length of the encoded value, so we compare
+      // the rest of the bytes to ensure the nonce value was written correctly.
+      // https://www.ietf.org/rfc/rfc6025.html#section-2.1.2
+      EXPECT_EQ(Bytes(&ASN1_STRING_get0_data(nonce_data)[2],
+                      ASN1_STRING_length(nonce_data) - 2),
+                Bytes(t.nonce, t.nonce_len));
+    }
+  }
+  EXPECT_EQ(OCSP_check_nonce(ocspRequest.get(), basicResponse.get()),
+            t.nonce_check_status);
+}
+
+TEST(OCSPTest, OCSPNonce) {
+  std::string data = GetTestData(
+      std::string("crypto/ocsp/test/aws/ocsp_request_no_nonce.der").c_str());
+  std::vector<uint8_t> ocsp_request_data(data.begin(), data.end());
+  bssl::UniquePtr<OCSP_REQUEST> ocspRequest =
+      LoadOCSP_REQUEST(ocsp_request_data);
+
+  // Adding a nonce but using 0 to trigger the default specified length
+  // should fail. A length must be specified when adding a specified nonce.
+  EXPECT_FALSE(
+      OCSP_request_add1_nonce(ocspRequest.get(), ocsp_response_nonce, 0));
+
+  // Adding a random nonce with the default length should succeed.
+  // |OCSP_REQUEST_get_ext_by_NID| returns a negative number if a nonce does
+  // not exist.
+  EXPECT_LT(OCSP_REQUEST_get_ext_by_NID(ocspRequest.get(),
+                                        NID_id_pkix_OCSP_Nonce, -1),
+            0);
+  EXPECT_TRUE(OCSP_request_add1_nonce(ocspRequest.get(), nullptr, 0));
+  EXPECT_GE(OCSP_REQUEST_get_ext_by_NID(ocspRequest.get(),
+                                        NID_id_pkix_OCSP_Nonce, -1),
+            0);
+}
+
 TEST(OCSPTest, OCSPCRLString) {
   for (int reason_code = 0; reason_code < 11; reason_code++) {
     if (reason_code == 7) {

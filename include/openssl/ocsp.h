@@ -160,6 +160,34 @@ OPENSSL_EXPORT int OCSP_REQ_CTX_add1_header(OCSP_REQ_CTX *rctx,
 OPENSSL_EXPORT OCSP_ONEREQ *OCSP_request_add0_id(OCSP_REQUEST *req,
                                                  OCSP_CERTID *cid);
 
+// OCSP_request_add1_nonce adds a nonce of value |val| and length |len| to
+// |req|. If |val| is NULL, a random nonce is generated and used. If |len| is
+// zero or negative, a default length of 16 bytes will be used.
+// If |val| is non-NULL, |len| must equal the length of |val|. This is different
+// from OpenSSL, which allows a default length for |len| to be used. Misusage
+// of the default length could result in a read overflow, so we disallow it.
+OPENSSL_EXPORT int OCSP_request_add1_nonce(OCSP_REQUEST *req,
+                                           unsigned char *val, int len);
+
+// OCSP_check_nonce checks nonce existence and equality in |req| and |bs|. If
+// there is parsing issue with |req| or |bs|, it will be determined that a
+// nonce does not exist within |req| or |bs|.
+//
+// Return value reflects result:
+//    OCSP_NONCE_EQUAL (1: nonces present and equal.)
+//    OCSP_NONCE_BOTH_ABSENT (2: nonces both absent.)
+//    OCSP_NONCE_RESPONSE_ONLY (3: nonce present in |bs| only.)
+//    OCSP_NONCE_NOT_EQUAL (0: parameters are NULL or nonces are both present
+//                             but not equal.)
+//    OCSP_NONCE_REQUEST_ONLY (-1: nonce in |req| only.)
+//
+//  For most responders, clients can check "return > 0".
+//  If an OCSP responder doesn't handle nonces, "return != 0" may be necessary.
+//  "return == 0" will always be an error. The error can mean that NULL
+//  parameter was passed into the function, or that the nonces are both present,
+//  but aren't equal.
+OPENSSL_EXPORT int OCSP_check_nonce(OCSP_REQUEST *req, OCSP_BASICRESP *bs);
+
 // OCSP_request_set1_name sets |requestorName| from an |X509_NAME| structure.
 OPENSSL_EXPORT int OCSP_request_set1_name(OCSP_REQUEST *req, X509_NAME *nm);
 
@@ -360,6 +388,12 @@ BSSL_NAMESPACE_END
 #define V_OCSP_CERTSTATUS_GOOD 0
 #define V_OCSP_CERTSTATUS_REVOKED 1
 #define V_OCSP_CERTSTATUS_UNKNOWN 2
+
+#define OCSP_NONCE_EQUAL 1
+#define OCSP_NONCE_BOTH_ABSENT 2
+#define OCSP_NONCE_RESPONSE_ONLY 3
+#define OCSP_NONCE_NOT_EQUAL 0
+#define OCSP_NONCE_REQUEST_ONLY -1
 
 #define OCSP_R_CERTIFICATE_VERIFY_ERROR 101
 #define OCSP_R_DIGEST_ERR 102
