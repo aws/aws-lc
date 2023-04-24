@@ -136343,7 +136343,7 @@ aes_gcm_decrypt_avx512:
 .Ldecrypt_seh_end:
 .cfi_endproc	
 .size	aes_gcm_decrypt_avx512, .-aes_gcm_decrypt_avx512
-.text	
+.section	.rodata
 .align	16
 POLY:.quad	0x0000000000000001, 0xC200000000000000
 
@@ -136469,6 +136469,7 @@ byte64_len_to_mask_table:
 .quad	0x0fffffffffffffff, 0x1fffffffffffffff
 .quad	0x3fffffffffffffff, 0x7fffffffffffffff
 .quad	0xffffffffffffffff
+.text	
 #endif
 #if defined(__ELF__)
 // See https://www.airs.com/blog/archives/518.
