@@ -742,10 +742,18 @@ TEST(XTSTest, InputTooLong) {
 
 static void encrypt_and_decrypt(bssl::ScopedEVP_CIPHER_CTX &ctx_encrypt,
   bssl::ScopedEVP_CIPHER_CTX &ctx_decrypt, std::vector<uint8_t> pt,
-  std::vector<uint8_t> ct_expected) {
+  std::vector<uint8_t> ct_expected, bool do_tweak,
+  std::vector<uint8_t> tweak) {
 
   int len = 0;
   std::vector<uint8_t> ct_actual(pt.size()), pt_actual(pt.size());
+
+  if (do_tweak) {
+      ASSERT_TRUE(EVP_EncryptInit_ex(ctx_encrypt.get(), nullptr,
+        nullptr, nullptr, tweak.data()));
+      ASSERT_TRUE(EVP_DecryptInit_ex(ctx_decrypt.get(), nullptr,
+        nullptr, nullptr, tweak.data()));
+  }
 
   ASSERT_TRUE(EVP_EncryptUpdate(ctx_encrypt.get(), ct_actual.data(), &len,
     pt.data(), pt.size()));
@@ -822,13 +830,13 @@ TEST(XTSTest, SectorTweakAPIUsage) {
     nullptr, key.data(), sectorTweak1.data()));
   ASSERT_TRUE(EVP_DecryptInit_ex(ctx_decrypt.get(), EVP_aes_256_xts(),
     nullptr, key.data(), sectorTweak1.data()));
-  encrypt_and_decrypt(ctx_encrypt, ctx_decrypt, pt, ct1_expected);
+  encrypt_and_decrypt(ctx_encrypt, ctx_decrypt, pt, ct1_expected, false, {});
 
   ASSERT_TRUE(EVP_EncryptInit_ex(ctx_encrypt.get(), EVP_aes_256_xts(),
     nullptr, key.data(), sectorTweak2.data()));
   ASSERT_TRUE(EVP_DecryptInit_ex(ctx_decrypt.get(), EVP_aes_256_xts(),
     nullptr, key.data(), sectorTweak2.data()));
-  encrypt_and_decrypt(ctx_encrypt, ctx_decrypt, pt, ct2_expected);
+  encrypt_and_decrypt(ctx_encrypt, ctx_decrypt, pt, ct2_expected, false, {});
 
   ctx_encrypt.Reset();
   ctx_decrypt.Reset();
@@ -839,13 +847,13 @@ TEST(XTSTest, SectorTweakAPIUsage) {
     nullptr, key.data(), sectorTweak1.data()));
   ASSERT_TRUE(EVP_DecryptInit_ex(ctx_decrypt.get(), EVP_aes_256_xts(),
     nullptr, key.data(), sectorTweak1.data()));
-  encrypt_and_decrypt(ctx_encrypt, ctx_decrypt, pt, ct1_expected);
+  encrypt_and_decrypt(ctx_encrypt, ctx_decrypt, pt, ct1_expected, false, {});
 
   ASSERT_TRUE(EVP_EncryptInit_ex(ctx_encrypt.get(), nullptr,
     nullptr, key.data(), sectorTweak2.data()));
   ASSERT_TRUE(EVP_DecryptInit_ex(ctx_decrypt.get(), nullptr,
     nullptr, key.data(), sectorTweak2.data()));
-  encrypt_and_decrypt(ctx_encrypt, ctx_decrypt, pt, ct2_expected);
+  encrypt_and_decrypt(ctx_encrypt, ctx_decrypt, pt, ct2_expected, false, {});
 
   ctx_encrypt.Reset();
   ctx_decrypt.Reset();
@@ -857,11 +865,25 @@ TEST(XTSTest, SectorTweakAPIUsage) {
     nullptr, key.data(), sectorTweak1.data()));
   ASSERT_TRUE(EVP_DecryptInit_ex(ctx_decrypt.get(), EVP_aes_256_xts(),
     nullptr, key.data(), sectorTweak1.data()));
-  encrypt_and_decrypt(ctx_encrypt, ctx_decrypt, pt, ct1_expected);
+  encrypt_and_decrypt(ctx_encrypt, ctx_decrypt, pt, ct1_expected, false, {});
 
   ASSERT_TRUE(EVP_EncryptInit_ex(ctx_encrypt.get(), nullptr,
     nullptr, nullptr, sectorTweak2.data()));
   ASSERT_TRUE(EVP_DecryptInit_ex(ctx_decrypt.get(), nullptr,
     nullptr, nullptr, sectorTweak2.data()));
-  encrypt_and_decrypt(ctx_encrypt, ctx_decrypt, pt, ct2_expected);
+  encrypt_and_decrypt(ctx_encrypt, ctx_decrypt, pt, ct2_expected, false, {});
+
+  ctx_encrypt.Reset();
+  ctx_decrypt.Reset();
+
+  // Finally, encrypt and decrypt but only re-init the sector tweak and do the
+  // key init and sector tweak init in different function calls.
+  // Expects this to work since the key context does not change, only the tweak.
+  // XTS is designed specifically to enable this kind of re-use.
+  ASSERT_TRUE(EVP_EncryptInit_ex(ctx_encrypt.get(), EVP_aes_256_xts(),
+    nullptr, key.data(), nullptr));
+  ASSERT_TRUE(EVP_DecryptInit_ex(ctx_decrypt.get(), EVP_aes_256_xts(),
+    nullptr, key.data(), nullptr));
+  encrypt_and_decrypt(ctx_encrypt, ctx_decrypt, pt, ct1_expected, true, sectorTweak1);
+  encrypt_and_decrypt(ctx_encrypt, ctx_decrypt, pt, ct2_expected, true, sectorTweak2);
 }
