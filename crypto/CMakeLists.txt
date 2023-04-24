@@ -157,7 +157,6 @@ if(ARCH STREQUAL "arm")
     CRYPTO_ARCH_SOURCES
 
     chacha/chacha-armv4.${ASM_EXT}
-    curve25519/asm/x25519-asm-arm.S
     poly1305/poly1305_arm_asm.S
     test/trampoline-armv4.${ASM_EXT}
   )
