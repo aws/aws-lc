@@ -186,6 +186,7 @@ edwards25519_epadd_alt
 edwards25519_epdouble_alt
 edwards25519_pdouble_alt
 edwards25519_pepadd_alt
+edwards25519_scalarmulbase_alt
 word_bytereverse
 word_clz
 word_ctz

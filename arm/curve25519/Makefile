@@ -51,7 +51,9 @@ OBJ = bignum_add_p25519.o \
       edwards25519_pdouble.o \
       edwards25519_pdouble_alt.o \
       edwards25519_pepadd.o \
-      edwards25519_pepadd_alt.o
+      edwards25519_pepadd_alt.o \
+      edwards25519_scalarmulbase.o \
+      edwards25519_scalarmulbase_alt.o
 
 %.o : %.S ; $(CC) -E -I../../include $< | $(GAS) -o $@ -
 
