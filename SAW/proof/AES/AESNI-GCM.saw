@@ -61,14 +61,14 @@ add_x86_preserved_reg "rax";
 enable_what4_hash_consing;
 
 aesni_gcm_encrypt_ov <- llvm_verify_x86 m "../../build/x86/crypto/crypto_test" "aesni_gcm_encrypt"
-  [ ("aesni_gcm_encrypt", 1200) // we need .Lbswap_mask, which lives in .text after aesni_gcm_encrypt (1081 bytes itself). 1200 bytes is an arbitrary size that I guessed would be large enough to contain the right bytes after alignment.
+  [ ("boringssl_self_test_ecc.kP256Scalar", 192) // We need .Lbswap_mask. Its location is <boringssl_self_test_ecc.kP256Scalar+0x50>. 192 bytes is an offset that would be large enough to contain the right bytes after alignment.
   ]
   true
   (aesni_gcm_cipher_spec {{ 1 : [32] }} aesni_gcm_cipher_gcm_len aesni_gcm_cipher_len)
   aesni_gcm_cipher_tactic;
 
 aesni_gcm_decrypt_ov <- llvm_verify_x86 m "../../build/x86/crypto/crypto_test" "aesni_gcm_decrypt"
-  [ ("aesni_gcm_encrypt", 1200) // we need .Lbswap_mask, which lives in .text after aesni_gcm_encrypt (1081 bytes itself). 1200 bytes is an arbitrary size that I guessed would be large enough to contain the right bytes after alignment.
+  [ ("boringssl_self_test_ecc.kP256Scalar", 192)
   ]
   true
   (aesni_gcm_cipher_spec {{ 0 : [32] }} aesni_gcm_cipher_gcm_len aesni_gcm_cipher_len)
@@ -76,4 +76,3 @@ aesni_gcm_decrypt_ov <- llvm_verify_x86 m "../../build/x86/crypto/crypto_test" "
 
 disable_what4_hash_consing;
 default_x86_preserved_reg;
-

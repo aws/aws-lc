@@ -48,7 +48,14 @@ let gcm_ghash_avx_spec len = do {
 
 enable_what4_hash_consing;
 gcm_init_avx_ov <- llvm_verify_x86 m "../../build/x86/crypto/crypto_test" "gcm_init_avx"
-  [ ("gcm_ghash_avx", 1800) // similar hack to the one in AESNI-GCM.saw to grab .L0x1c2_polynomial, we need a better way to handle this
+  // How to find clues for constructing the global symbol pair?
+  // 1. Find the location of the function "gcm_init_avx" in the assembly
+  //    using "nm crypto_test | grep gcm_init_avx"
+  // 2. Find the instruction that uses the constant -- L0x1c2_polynomial
+  // 3. If there is a comment, then the comment tells us where that constant is;
+  //    else the address should be
+  //      %rip (current_instruction_addr) + 8 (current_instruction_size) + the displacement offset
+  [ ("boringssl_self_test_ecc.kP256Scalar", 640) // We need .L0x1c2_polynomial. Its location is <boringssl_self_test_ecc.kP256Scalar+0x260>. 640 bytes is an offset that would be large enough to contain the right bytes after alignment.
   ]
   true
   gcm_init_avx_spec
@@ -60,7 +67,7 @@ gcm_init_avx_ov <- llvm_verify_x86 m "../../build/x86/crypto/crypto_test" "gcm_i
 disable_what4_hash_consing;
 
 gcm_gmult_avx_ov <- llvm_verify_x86 m "../../build/x86/crypto/crypto_test" "gcm_gmult_avx"
-  [ ("gcm_ghash_avx", 1800)
+  [ ("boringssl_self_test_ecc.kP256Scalar", 640)
   ]
   true
   gcm_gmult_avx_spec
@@ -82,14 +89,14 @@ let gcm_ghash_avx_tactic = do {
 };
 
 gcm_ghash_avx_encrypt_ov <- llvm_verify_x86 m "../../build/x86/crypto/crypto_test" "gcm_ghash_avx"
-  [ ("gcm_ghash_avx", 1800)
+  [ ("boringssl_self_test_ecc.kP256Scalar", 640)
   ]
   true
   (gcm_ghash_avx_spec GHASH_length_blocks_encrypt)
   gcm_ghash_avx_tactic;
 
 gcm_ghash_avx_decrypt_ov <- llvm_verify_x86 m "../../build/x86/crypto/crypto_test" "gcm_ghash_avx"
-  [ ("gcm_ghash_avx", 1800)
+  [ ("boringssl_self_test_ecc.kP256Scalar", 640)
   ]
   true
   (gcm_ghash_avx_spec GHASH_length_blocks_decrypt)
