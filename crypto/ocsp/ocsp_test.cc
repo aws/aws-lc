@@ -1380,3 +1380,66 @@ TEST(OCSPTest, CertIDDup) {
   // Check that the duplicated structure is not just a replicated pointer.
   EXPECT_NE(orig_id.get(), dup_id.get());
 }
+
+TEST(OCSPTest, OCSPResponsePrint) {
+  static const std::string kExpected[] = {
+      "OCSP Response Data:",    "    OCSP Response Status:",
+      "    Response Type:",     "    Version:",
+      "    Responder Id:",      "    Produced At:",
+      "    Responses:",         "    Certificate ID:",
+      "      Hash Algorithm:",  "      Issuer Name Hash:",
+      "      Issuer Key Hash:", "      Serial Number:",
+      "    Cert Status:",       "    This Update:",
+      "    Next Update:",       "    Response Extensions:"};
+
+  std::string respData = GetTestData(
+      std::string("crypto/ocsp/test/aws/ocsp_response.der").c_str());
+  std::vector<uint8_t> ocsp_response_data(respData.begin(), respData.end());
+  bssl::UniquePtr<OCSP_RESPONSE> ocspResponse =
+      LoadOCSP_RESPONSE(ocsp_response_data);
+
+  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+  EXPECT_TRUE(OCSP_RESPONSE_print(bio.get(), ocspResponse.get(), 0));
+  char *out;
+  ASSERT_TRUE(BIO_get_mem_data(bio.get(), &out));
+
+  // Iterate through |kExpected| and verify that |OCSP_RESPONSE_print| has
+  // the expected format.
+  char *token = strtok(out, "\n");
+  for (size_t i = 0; i < sizeof(kExpected) / sizeof(kExpected[0]); i++) {
+    EXPECT_EQ(OPENSSL_memcmp(token, kExpected[i].c_str(),
+                             strlen(kExpected[i].c_str())),
+              0);
+    token = strtok(nullptr, "\n");
+  }
+}
+
+TEST(OCSPTest, OCSPRequestPrint) {
+  static const std::string kExpected[] = {
+      "OCSP Request Data:",         "    Version:",
+      "    Requestor List:",        "        Certificate ID:",
+      "          Hash Algorithm:",  "          Issuer Name Hash:",
+      "          Issuer Key Hash:", "          Serial Number:",
+      "    Request Extensions:",    "        OCSP Nonce: "};
+
+  std::string data =
+      GetTestData(std::string("crypto/ocsp/test/aws/ocsp_request.der").c_str());
+  std::vector<uint8_t> ocsp_request_data(data.begin(), data.end());
+  bssl::UniquePtr<OCSP_REQUEST> ocspRequest =
+      LoadOCSP_REQUEST(ocsp_request_data);
+
+  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+  EXPECT_TRUE(OCSP_REQUEST_print(bio.get(), ocspRequest.get(), 0));
+  char *out;
+  ASSERT_TRUE(BIO_get_mem_data(bio.get(), &out));
+
+  // Iterate through |kExpected| and verify that |OCSP_REQUEST_print| has
+  // the expected format.
+  char *token = strtok(out, "\n");
+  for (size_t i = 0; i < sizeof(kExpected) / sizeof(kExpected[0]); i++) {
+    EXPECT_EQ(OPENSSL_memcmp(token, kExpected[i].c_str(),
+                             strlen(kExpected[i].c_str())),
+              0);
+    token = strtok(nullptr, "\n");
+  }
+}
