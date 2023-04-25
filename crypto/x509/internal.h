@@ -147,7 +147,6 @@ struct x509_st {
   CRYPTO_EX_DATA ex_data;
   // These contain copies of various extension values
   long ex_pathlen;
-  long ex_pcpathlen;
   uint32_t ex_flags;
   uint32_t ex_kusage;
   uint32_t ex_xkusage;
@@ -229,7 +228,7 @@ struct X509_crl_st {
 
 struct X509_VERIFY_PARAM_st {
   char *name;
-  time_t check_time;                // Time to use
+  int64_t check_time;               // POSIX time to use
   unsigned long inh_flags;          // Inheritance flags
   unsigned long flags;              // Various verify flags
   int purpose;                      // purpose to check untrusted certificates

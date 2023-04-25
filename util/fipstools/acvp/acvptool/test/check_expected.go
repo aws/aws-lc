@@ -12,8 +12,6 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-//go:build ignore
-
 package main
 
 import (
@@ -201,6 +199,7 @@ func doTest(test invocation) error {
 }
 
 func writeUpdate(path string, contents []byte) {
+	path = strings.TrimSuffix(path, ".bz2")
 	if err := os.WriteFile(path, contents, 0644); err != nil {
 		log.Printf("Failed to create missing file %q: %s", path, err)
 	} else {

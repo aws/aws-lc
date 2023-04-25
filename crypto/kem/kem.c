@@ -75,7 +75,6 @@ const KEM *KEM_find_kem_by_nid(int nid) {
 KEM_KEY *KEM_KEY_new(void) {
   KEM_KEY *ret = OPENSSL_malloc(sizeof(KEM_KEY));
   if (ret == NULL) {
-    OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
 
@@ -101,9 +100,7 @@ int KEM_KEY_init(KEM_KEY *key, const KEM *kem) {
   key->kem = kem;
   key->public_key = OPENSSL_malloc(kem->public_key_len);
   key->secret_key = OPENSSL_malloc(kem->secret_key_len);
-  key->has_secret_key = 0;
   if (key->public_key == NULL || key->secret_key == NULL) {
-    OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
     KEM_KEY_clear(key);
     return 0;
   }
@@ -126,7 +123,6 @@ const KEM *KEM_KEY_get0_kem(KEM_KEY* key) {
 int KEM_KEY_set_raw_public_key(KEM_KEY *key, const uint8_t *in) {
   key->public_key = OPENSSL_memdup(in, key->kem->public_key_len);
   if (key->public_key == NULL) {
-    OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 
@@ -136,10 +132,8 @@ int KEM_KEY_set_raw_public_key(KEM_KEY *key, const uint8_t *in) {
 int KEM_KEY_set_raw_secret_key(KEM_KEY *key, const uint8_t *in) {
   key->secret_key = OPENSSL_memdup(in, key->kem->secret_key_len);
   if (key->secret_key == NULL) {
-    OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
     return 0;
   }
-  key->has_secret_key = 1;
 
   return 1;
 }
@@ -149,11 +143,9 @@ int KEM_KEY_set_raw_key(KEM_KEY *key, const uint8_t *in_public,
   key->public_key = OPENSSL_memdup(in_public, key->kem->public_key_len);
   key->secret_key = OPENSSL_memdup(in_secret, key->kem->secret_key_len);
   if (key->public_key == NULL || key->secret_key == NULL) {
-    OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
     KEM_KEY_clear(key);
     return 0;
   }
-  key->has_secret_key = 1;
 
   return 1;
 }

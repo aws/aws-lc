@@ -73,10 +73,12 @@ TOCRefHigh <- '.TOC.-' ('0b' / ('.L' [a-zA-Z_0-9]+)) "@ha"
 TOCRefLow <- '.TOC.-' ('0b' / ('.L' [a-zA-Z_0-9]+)) "@l"
 IndirectionIndicator <- '*'
 RegisterOrConstant <- (('%'[[A-Z]][[A-Z0-9]]*) /
+                       ('$' [0-9]+ WS? '*' WS? '(' [0-9]+ WS? '-' WS? [0-9]+ ')' ) /
                        ('$'? ((Offset Offset) / Offset)) /
                        ('#' Offset ('*' [0-9]+ ('-' [0-9] [0-9]*)?)? ) /
                        ('#' '~'? '(' [0-9] WS? "<<" WS? [0-9] [0-9]? ')' ) /
-                       (('#' / '$') '~'? '0x' [[0-9A-F]]+ ) /
+                       (('#' / '$') '~'? '0x'? [[0-9A-F]]+ ) /
+                       ('$(-' [0-9]+ ')') /
                        ARMRegister)
                       ![fb:(+\-]
 ARMConstantTweak <- (([us] "xt" [xwhb]) / "lsl" / "lsr" / "ror" / "asr") (WS '#'? Offset)?
@@ -104,10 +106,13 @@ Operator <- [+\-]
 OffsetOperator <- '+' / '-' / '*'
 Offset <- '+'? '-'? (("0b" [01]+) /
                      ("0x" [[0-9A-F]]+) /
-                     ([0-9]+ ( OffsetOperator '(' [0-9]+ OffsetOperator [0-9]+ ')' )? /
+                     ([0-9]+ WS OffsetOperator [0-9]+ /
+                      [0-9]+ ( OffsetOperator '(' [0-9]+ OffsetOperator [0-9]+ ')' )? /
                       [0-9]+ ( OffsetOperator [0-9]+ OffsetOperator [0-9]+ )? /
                       [0-9]+ ( OffsetOperator [0-9]+ )? /
-                      '(' [0-9]+ WS? OffsetOperator WS? [0-9]+ ')')![[A-Z]]
+                      '(' [0-9]+ WS? OffsetOperator WS? [0-9]+ ')' OffsetOperator [0-9]+ OffsetOperator [0-9]+ /
+                      '(' [0-9]+ WS? OffsetOperator WS? [0-9]+ ')' /
+                      '(' [0-9]+ WS? OffsetOperator WS? [0-9]+ WS? OffsetOperator WS? [0-9]+')')![[A-Z]]
                     )
 Section <- [[A-Z@]]+
 SegmentRegister <- '%' [c-gs] 's:'

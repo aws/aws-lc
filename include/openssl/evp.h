@@ -181,6 +181,7 @@ OPENSSL_EXPORT EC_KEY *EVP_PKEY_get1_EC_KEY(const EVP_PKEY *pkey);
 #define EVP_PKEY_ED25519 NID_ED25519
 #define EVP_PKEY_X25519 NID_X25519
 // TODO(awslc): delete Kyber define
+
 #define EVP_PKEY_KYBER512 NID_KYBER512
 #define EVP_PKEY_HKDF NID_hkdf
 #define EVP_PKEY_KEM NID_kem
@@ -488,7 +489,9 @@ OPENSSL_EXPORT int EVP_PKEY_print_params(BIO *out, const EVP_PKEY *pkey,
 
 // PKCS5_PBKDF2_HMAC computes |iterations| iterations of PBKDF2 of |password|
 // and |salt|, using |digest|, and outputs |key_len| bytes to |out_key|. It
-// returns one on success and zero on allocation failure or if iterations is 0.
+// returns one on success and zero on allocation failure or if |iterations| is
+// 0. It's recommended that |iterations| be set to a much higher number (at
+// least hundreds of thousands).
 OPENSSL_EXPORT int PKCS5_PBKDF2_HMAC(const char *password, size_t password_len,
                                      const uint8_t *salt, size_t salt_len,
                                      unsigned iterations, const EVP_MD *digest,
@@ -710,12 +713,18 @@ OPENSSL_EXPORT int EVP_PKEY_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY **out_pkey);
 //   3. writes the length of |ciphertext| and |shared_secret| to
 //      |ciphertext_len| and |shared_secret_len|.
 //
-// If the given |ciphertext| is NULL it is assumed that the caller is doing
-// a size check: the function will write the size of the ciphertext and the
-// shared secret in |ciphertext_len| and |shared_secret_len| and return 1.
-// If |ciphertext| is non-NULL it is assumed that the caller is performing
-// the actual operation, so it is checked if the lengths of the output buffers,
-// |ciphertext_len| and |shared_secret_len|, are large enough for the KEM.
+// The function requires that output buffers, |ciphertext| and |shared_secret|,
+// be either both NULL or both non-NULL. Otherwise, a failure is returned.
+//
+// If both |ciphertext| and |shared_secret| are NULL it is assumed that
+// the caller is doing a size check: the function will write the size of
+// the ciphertext and the shared secret in |ciphertext_len| and
+// |shared_secret_len| and return successfully.
+//
+// If both |ciphertext| and |shared_secret| are not NULL it is assumed that
+// the caller is performing the actual operation. The function will check
+// additionally if the lengths of the output buffers, |ciphertext_len| and
+// |shared_secret_len|, are large enough for the KEM.
 //
 // NOTE: no allocation is done in the function, the caller is expected to
 // provide large enough |ciphertext| and |shared_secret| buffers.
@@ -735,16 +744,17 @@ OPENSSL_EXPORT int EVP_PKEY_encapsulate(EVP_PKEY_CTX *ctx          /* IN  */,
 //
 // If the given |shared_secret| is NULL it is assumed that the caller is doing
 // a size check: the function will write the size of the shared secret in
-// |shared_secret_len| and return 1.
+// |shared_secret_len| and return successfully.
+//
 // If |shared_secret| is non-NULL it is assumed that the caller is performing
-// the actual operation, so it is checked if the length of the output buffer,
-// |shared_secret_len|, is large enough for the KEM.
+// the actual operation. The functions will check additionally if the length of
+// the output buffer |shared_secret_len| is large enough for the KEM.
 //
 // NOTE: no allocation is done in the function, the caller is expected to
 // provide large enough |shared_secret| buffer.
 //
 // It returns one on success or zero on error.
-OPENSSL_EXPORT int EVP_PKEY_decapsulate(EVP_PKEY_CTX *ctx          /* IN  */, 
+OPENSSL_EXPORT int EVP_PKEY_decapsulate(EVP_PKEY_CTX *ctx          /* IN  */,
                                         uint8_t *shared_secret     /* OUT */,
                                         size_t  *shared_secret_len /* OUT */,
                                         uint8_t *ciphertext        /* IN  */,
@@ -1145,29 +1155,6 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_set_dsa_paramgen_q_bits(EVP_PKEY_CTX *ctx,
 #define EVPerr(function, reason) \
   ERR_put_error(ERR_LIB_EVP, 0, reason, __FILE__, __LINE__)
 
-
-// Private structures.
-
-struct evp_pkey_st {
-  CRYPTO_refcount_t references;
-
-  // type contains one of the EVP_PKEY_* values or NID_undef and determines
-  // which element (if any) of the |pkey| union is valid.
-  int type;
-
-  union {
-    void *ptr;
-    RSA *rsa;
-    DSA *dsa;
-    DH *dh;
-    EC_KEY *ec;
-    KEM_KEY *kem_key;
-  } pkey;
-
-  // ameth contains a pointer to a method table that contains many ASN.1
-  // methods for the key type.
-  const EVP_PKEY_ASN1_METHOD *ameth;
-}; // EVP_PKEY
 
 #if defined(__cplusplus)
 }  // extern C

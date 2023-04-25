@@ -75,7 +75,7 @@
 
 #define MIN_LENGTH 4
 
-static int load_iv(char **fromp, unsigned char *to, int num);
+static int load_iv(char **fromp, unsigned char *to, size_t num);
 static int check_pem(const char *nm, const char *name);
 
 void PEM_proc_type(char *buf, int type) {
@@ -298,7 +298,6 @@ int PEM_ASN1_write_bio(i2d_of_void *i2d, const char *name, BIO *bp, void *x,
   // actually it needs the cipher block size extra...
   data = (unsigned char *)OPENSSL_malloc((unsigned int)dsize + 20);
   if (data == NULL) {
-    OPENSSL_PUT_ERROR(PEM, ERR_R_MALLOC_FAILURE);
     goto err;
   }
   p = data;
@@ -464,8 +463,8 @@ int PEM_get_EVP_CIPHER_INFO(char *header, EVP_CIPHER_INFO *cipher) {
   p = header;
   for (;;) {
     c = *header;
-    if (!(((c >= 'A') && (c <= 'Z')) || (c == '-') ||
-          ((c >= '0') && (c <= '9')))) {
+    if (!((c >= 'A' && c <= 'Z') || c == '-' ||
+          OPENSSL_isdigit(c))) {
       break;
     }
     header++;
@@ -493,28 +492,22 @@ int PEM_get_EVP_CIPHER_INFO(char *header, EVP_CIPHER_INFO *cipher) {
   return 1;
 }
 
-static int load_iv(char **fromp, unsigned char *to, int num) {
-  int v, i;
+static int load_iv(char **fromp, unsigned char *to, size_t num) {
+  uint8_t v;
   char *from;
 
   from = *fromp;
-  for (i = 0; i < num; i++) {
+  for (size_t i = 0; i < num; i++) {
     to[i] = 0;
   }
   num *= 2;
-  for (i = 0; i < num; i++) {
-    if ((*from >= '0') && (*from <= '9')) {
-      v = *from - '0';
-    } else if ((*from >= 'A') && (*from <= 'F')) {
-      v = *from - 'A' + 10;
-    } else if ((*from >= 'a') && (*from <= 'f')) {
-      v = *from - 'a' + 10;
-    } else {
+  for (size_t i = 0; i < num; i++) {
+    if (!OPENSSL_fromxdigit(&v, *from)) {
       OPENSSL_PUT_ERROR(PEM, PEM_R_BAD_IV_CHARS);
       return 0;
     }
     from++;
-    to[i / 2] |= v << (long)((!(i & 1)) * 4);
+    to[i / 2] |= v << (!(i & 1)) * 4;
   }
 
   *fromp = from;
@@ -558,7 +551,6 @@ int PEM_write_bio(BIO *bp, const char *name, const char *header,
 
   buf = OPENSSL_malloc(PEM_BUFSIZE * 8);
   if (buf == NULL) {
-    reason = ERR_R_MALLOC_FAILURE;
     goto err;
   }
 
@@ -621,7 +613,6 @@ int PEM_read_bio(BIO *bp, char **name, char **header, unsigned char **data,
     BUF_MEM_free(nameB);
     BUF_MEM_free(headerB);
     BUF_MEM_free(dataB);
-    OPENSSL_PUT_ERROR(PEM, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 
@@ -647,7 +638,6 @@ int PEM_read_bio(BIO *bp, char **name, char **header, unsigned char **data,
         continue;
       }
       if (!BUF_MEM_grow(nameB, i + 9)) {
-        OPENSSL_PUT_ERROR(PEM, ERR_R_MALLOC_FAILURE);
         goto err;
       }
       OPENSSL_memcpy(nameB->data, &(buf[11]), i - 6);
@@ -657,7 +647,6 @@ int PEM_read_bio(BIO *bp, char **name, char **header, unsigned char **data,
   }
   hl = 0;
   if (!BUF_MEM_grow(headerB, 256)) {
-    OPENSSL_PUT_ERROR(PEM, ERR_R_MALLOC_FAILURE);
     goto err;
   }
   headerB->data[0] = '\0';
@@ -677,7 +666,6 @@ int PEM_read_bio(BIO *bp, char **name, char **header, unsigned char **data,
       break;
     }
     if (!BUF_MEM_grow(headerB, hl + i + 9)) {
-      OPENSSL_PUT_ERROR(PEM, ERR_R_MALLOC_FAILURE);
       goto err;
     }
     if (strncmp(buf, "-----END ", 9) == 0) {
@@ -691,7 +679,6 @@ int PEM_read_bio(BIO *bp, char **name, char **header, unsigned char **data,
 
   bl = 0;
   if (!BUF_MEM_grow(dataB, 1024)) {
-    OPENSSL_PUT_ERROR(PEM, ERR_R_MALLOC_FAILURE);
     goto err;
   }
   dataB->data[0] = '\0';
@@ -718,7 +705,6 @@ int PEM_read_bio(BIO *bp, char **name, char **header, unsigned char **data,
         break;
       }
       if (!BUF_MEM_grow_clean(dataB, i + bl + 9)) {
-        OPENSSL_PUT_ERROR(PEM, ERR_R_MALLOC_FAILURE);
         goto err;
       }
       OPENSSL_memcpy(&(dataB->data[bl]), buf, i);

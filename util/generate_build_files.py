@@ -189,7 +189,7 @@ def ArchForAsmFilename(filename):
   """Returns the architectures that a given asm file should be compiled for
   based on substrings in the filename."""
 
-  if 'x86_64' in filename or 'avx2' in filename:
+  if 'x86_64' in filename or 'avx2' in filename or 'avx512' in filename:
     return ['x86_64']
   elif ('x86' in filename and 'x86_64' not in filename) or '586' in filename:
     return ['x86']

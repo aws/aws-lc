@@ -77,7 +77,7 @@ bool ssl_is_key_type_supported(int key_type) {
 }
 
 static bool ssl_set_pkey(CERT *cert, EVP_PKEY *pkey) {
-  if (!ssl_is_key_type_supported(pkey->type)) {
+  if (!ssl_is_key_type_supported(EVP_PKEY_id(pkey))) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
     return false;
   }
@@ -859,8 +859,7 @@ static bool parse_sigalgs_list(Array<uint16_t> *out, const char *str) {
           return false;
         }
 
-        if ((c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') ||
-            (c >= 'A' && c <= 'Z') || c == '-' || c == '_') {
+        if (OPENSSL_isalnum(c) || c == '-' || c == '_') {
           buf[buf_used++] = c;
         } else {
           OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SIGNATURE_ALGORITHM);

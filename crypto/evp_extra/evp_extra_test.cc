@@ -35,6 +35,7 @@
 #include "../internal.h"
 
 #include "../kem/internal.h"
+#include "../fipsmodule/evp/internal.h"
 
 
 // kExampleRSAKeyDER is an RSA private key in ASN.1, DER format. Of course, you
@@ -1756,7 +1757,7 @@ TEST_P(PerKEMTest, KeyGeneration) {
 
   // ---- 3. Test getting raw keys and their size ----
   size_t pk_len, sk_len;
-  
+
   // First getting the sizes only.
   ASSERT_TRUE(EVP_PKEY_get_raw_public_key(pkey.get(), nullptr, &pk_len));
   ASSERT_TRUE(EVP_PKEY_get_raw_private_key(pkey.get(), nullptr, &sk_len));
@@ -1832,11 +1833,22 @@ TEST_P(PerKEMTest, Encapsulation) {
   EXPECT_EQ(ct_len, GetParam().ciphertext_len);
   EXPECT_EQ(ss_len, GetParam().shared_secret_len);
 
+  // When only one of |ct| or |ss| is NULL the function fails.
+  ASSERT_FALSE(EVP_PKEY_encapsulate(ctx.get(), ct.data(), &ct_len, nullptr, &ss_len));
+  uint32_t err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(EVP_R_MISSING_PARAMETERS, ERR_GET_REASON(err));
+
+  ASSERT_FALSE(EVP_PKEY_encapsulate(ctx.get(), nullptr, &ct_len, ss.data(), &ss_len));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(EVP_R_MISSING_PARAMETERS, ERR_GET_REASON(err));
+
   // ---- 4. Test calling encapsulate with different lengths ----
   // Set ct length to be less than expected -- should fail.
   ct_len = GetParam().ciphertext_len - 1;
   ASSERT_FALSE(EVP_PKEY_encapsulate(ctx.get(), ct.data(), &ct_len, ss.data(), &ss_len));
-  uint32_t err = ERR_get_error();
+  err = ERR_get_error();
   EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
   EXPECT_EQ(EVP_R_BUFFER_TOO_SMALL, ERR_GET_REASON(err));
 
@@ -1947,7 +1959,7 @@ TEST_P(PerKEMTest, EndToEnd) {
   // ---- 4. Alice/Bob: Bob -- ciphertext --> Alice ----
   // Nothing to do here, we simply use |b_ct|.
 
-  // ---- 5. Alice: decapsulation ---- 
+  // ---- 5. Alice: decapsulation ----
   std::vector<uint8_t> a_ss(ss_len); // The shared secret.
   ASSERT_TRUE(EVP_PKEY_decapsulate(a_ctx.get(), a_ss.data(), &ss_len, b_ct.data(), ct_len));
 
@@ -1970,7 +1982,7 @@ TEST_P(PerKEMTest, EndToEnd) {
           CMP_VEC_AND_PTR(vec, pkey->pkey.kem_key->secret_key, len)
 
 TEST_P(PerKEMTest, RawKeyOperations) {
-  
+
   // ---- 1. Setup phase: generate a context and a key ----
   // Create context of KEM type.
   bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_KEM, nullptr));
@@ -2013,7 +2025,7 @@ TEST_P(PerKEMTest, RawKeyOperations) {
 
   // ---- 4. Test creating new keys from raw data ----
   int nid = GetParam().nid;
-  
+
   bssl::UniquePtr<EVP_PKEY> pkey_pk_new(EVP_PKEY_kem_new_raw_public_key(nid, pk.data(), pk_len));
   bssl::UniquePtr<EVP_PKEY> pkey_sk_new(EVP_PKEY_kem_new_raw_secret_key(nid, sk.data(), sk_len));
   bssl::UniquePtr<EVP_PKEY> pkey_new(EVP_PKEY_kem_new_raw_key(nid, pk.data(), pk_len, sk.data(), sk_len));
@@ -2076,6 +2088,24 @@ TEST_P(PerKEMTest, RawKeyOperations) {
   err = ERR_get_error();
   EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
   EXPECT_EQ(EVP_R_BUFFER_TOO_SMALL, ERR_GET_REASON(err));
+
+  //   Missing public/private key.
+  pk_len = GetParam().public_key_len;
+  sk_len = GetParam().secret_key_len;
+  pkey_pk_new.reset(EVP_PKEY_kem_new_raw_public_key(nid, pk.data(), pk_len));
+  pkey_sk_new.reset(EVP_PKEY_kem_new_raw_secret_key(nid, sk.data(), sk_len));
+  ASSERT_TRUE(pkey_pk_new);
+  ASSERT_TRUE(pkey_sk_new);
+
+  ASSERT_FALSE(EVP_PKEY_get_raw_private_key(pkey_pk_new.get(), sk.data(), &sk_len));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(EVP_R_NO_KEY_SET, ERR_GET_REASON(err));
+
+  ASSERT_FALSE(EVP_PKEY_get_raw_public_key(pkey_sk_new.get(), pk.data(), &pk_len));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(EVP_R_NO_KEY_SET, ERR_GET_REASON(err));
 
   // Failures for new keys from raw data.
   pk_len = GetParam().public_key_len;
@@ -2179,7 +2209,7 @@ TEST_P(PerKEMTest, KAT) {
     size_t ct_len = GetParam().ciphertext_len;
     size_t ss_len = GetParam().shared_secret_len;
 
-    // Set randomness generation in deterministic mode. 
+    // Set randomness generation in deterministic mode.
     pq_custom_randombytes_use_deterministic_for_testing();
     pq_custom_randombytes_init_for_testing(seed.data());
 
@@ -2205,4 +2235,3 @@ TEST_P(PerKEMTest, KAT) {
     EXPECT_EQ(Bytes(ss_expected), Bytes(ss));
   });
 }
-

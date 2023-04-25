@@ -65,17 +65,6 @@
 extern "C" {
 #endif
 
-// If |enable| is true the SHA3 implementation will be enabled. If |enable| is
-// false, the SHA3 implementation will be disabled. If the SHA3 implementation
-// is disabled, using the implementation in any way will cause AWS-LC to exit
-// the process.
-// |unstable_sha3_enabled_flag| is configured globally.
-OPENSSL_EXPORT void EVP_MD_unstable_sha3_enable(bool enable);
-
-// EVP_MD_unstable_sha3_is_enabled returns wheather SHA3 is enabled.
-// |unstable_sha3_enabled_flag| is configured globally.
-OPENSSL_EXPORT bool EVP_MD_unstable_sha3_is_enabled(void);
-
 // Digest functions.
 //
 // An EVP_MD abstracts the details of a specific hash function allowing code to
@@ -275,6 +264,13 @@ OPENSSL_EXPORT int EVP_marshal_digest_algorithm(CBB *cbb, const EVP_MD *md);
 
 // Deprecated functions.
 
+
+// EVP_MD_unstable_sha3_enable is a no-op as SHA3 is always enabled.
+OPENSSL_EXPORT void EVP_MD_unstable_sha3_enable(bool enable);
+
+// EVP_MD_unstable_sha3_is_enabled always returns true as SHA3 is always enabled.
+OPENSSL_EXPORT bool EVP_MD_unstable_sha3_is_enabled(void);
+
 // EVP_MD_CTX_copy sets |out|, which must /not/ be initialised, to be a copy of
 // |in|. It returns one on success and zero on error.
 OPENSSL_EXPORT int EVP_MD_CTX_copy(EVP_MD_CTX *out, const EVP_MD_CTX *in);
@@ -313,10 +309,7 @@ OPENSSL_EXPORT void EVP_MD_CTX_set_flags(EVP_MD_CTX *ctx, int flags);
 // EVP_MD_nid calls |EVP_MD_type|.
 OPENSSL_EXPORT int EVP_MD_nid(const EVP_MD *md);
 
-// This function was deprecated from OpenSSL in BoringSSL, but was brought back
-// to AWS-LC.
-//
-// |EVP_MD_CTX_set_pkey_ctx| sets |ctx|'s |EVP_PKEY_CTX| reference to |pctx|.
+// EVP_MD_CTX_set_pkey_ctx sets |ctx|'s |EVP_PKEY_CTX| reference to |pctx|.
 // The |EVP_PKEY_CTX| object |pctx| needs to have been initialised before
 // associating it with |ctx|. The hash functions associated to |ctx| and |pctx|
 // must be equal. Once |EVP_MD_CTX_set_pkey_ctx| is called, the caller is

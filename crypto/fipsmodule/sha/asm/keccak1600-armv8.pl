@@ -343,10 +343,10 @@ KeccakF1600:
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 .size	KeccakF1600,.-KeccakF1600
-.globl	SHA3_Absorb
-.type	SHA3_Absorb,%function
+.globl	SHA3_Absorb_hw
+.type	SHA3_Absorb_hw,%function
 .align	5
-SHA3_Absorb:
+SHA3_Absorb_hw:
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-128]!
 	add	x29,sp,#0
@@ -438,18 +438,20 @@ $code.=<<___;
 	ldp	x29,x30,[sp],#128
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
-.size	SHA3_Absorb,.-SHA3_Absorb
+.size	SHA3_Absorb_hw,.-SHA3_Absorb_hw
 ___
 {
 my ($A_flat,$out,$len,$bsz) = map("x$_",(19..22));
 $code.=<<___;
-.globl	SHA3_Squeeze
-.type	SHA3_Squeeze,%function
+.globl	SHA3_Squeeze_hw
+.type	SHA3_Squeeze_hw,%function
 .align	5
-SHA3_Squeeze:
+SHA3_Squeeze_hw:
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-48]!
 	add	x29,sp,#0
+	cmp	x2,#0
+	beq	.Lsqueeze_abort
 	stp	x19,x20,[sp,#16]
 	stp	x21,x22,[sp,#32]
 	mov	$A_flat,x0			// put aside arguments
@@ -503,10 +505,11 @@ SHA3_Squeeze:
 .Lsqueeze_done:
 	ldp	x19,x20,[sp,#16]
 	ldp	x21,x22,[sp,#32]
+.Lsqueeze_abort:
 	ldp	x29,x30,[sp],#48
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
-.size	SHA3_Squeeze,.-SHA3_Squeeze
+.size	SHA3_Squeeze_hw,.-SHA3_Squeeze_hw
 ___
 }								}}}
 								{{{
@@ -729,6 +732,8 @@ SHA3_Squeeze_cext:
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-16]!
 	add	x29,sp,#0
+	cmp	$len,#0
+	beq	.Lsqueeze_done_ce
 	mov	x9,$ctx
 	mov	x10,$bsz
 .Loop_squeeze_ce:

@@ -69,6 +69,7 @@
 #include <openssl/bn.h>
 #include <openssl/crypto.h>
 #include <openssl/err.h>
+#include <openssl/pem.h>
 #include <openssl/span.h>
 
 #include "../test/test_util.h"
@@ -169,7 +170,7 @@ static const uint8_t fips_sig_bad_r[] = {
     0xdc, 0xd8, 0xc8,
 };
 
-static bssl::UniquePtr<DSA> GetFIPSDSA(void) {
+static bssl::UniquePtr<DSA> GetFIPSDSAGroup(void) {
   bssl::UniquePtr<DSA> dsa(DSA_new());
   if (!dsa) {
     return nullptr;
@@ -184,6 +185,14 @@ static bssl::UniquePtr<DSA> GetFIPSDSA(void) {
   p.release();
   q.release();
   g.release();
+  return dsa;
+}
+
+static bssl::UniquePtr<DSA> GetFIPSDSA(void) {
+  bssl::UniquePtr<DSA> dsa = GetFIPSDSAGroup();
+  if (!dsa) {
+    return nullptr;
+  }
   bssl::UniquePtr<BIGNUM> pub_key(BN_bin2bn(fips_y, sizeof(fips_y), nullptr));
   bssl::UniquePtr<BIGNUM> priv_key(BN_bin2bn(fips_x, sizeof(fips_x), nullptr));
   if (!pub_key || !priv_key ||
@@ -258,4 +267,72 @@ TEST(DSATest, InvalidGroup) {
   uint32_t err = ERR_get_error();
   EXPECT_EQ(ERR_LIB_DSA, ERR_GET_LIB(err));
   EXPECT_EQ(DSA_R_INVALID_PARAMETERS, ERR_GET_REASON(err));
+}
+
+// Signing and verifying should cleanly fail when the DSA object is empty.
+TEST(DSATest, MissingParameters) {
+  bssl::UniquePtr<DSA> dsa(DSA_new());
+  ASSERT_TRUE(dsa);
+  EXPECT_EQ(-1, DSA_verify(0, fips_digest, sizeof(fips_digest), fips_sig,
+                           sizeof(fips_sig), dsa.get()));
+
+  std::vector<uint8_t> sig(DSA_size(dsa.get()));
+  unsigned sig_len;
+  EXPECT_FALSE(DSA_sign(0, fips_digest, sizeof(fips_digest), sig.data(),
+                        &sig_len, dsa.get()));
+}
+
+// Verifying should cleanly fail when the public key is missing.
+TEST(DSATest, MissingPublic) {
+  bssl::UniquePtr<DSA> dsa = GetFIPSDSAGroup();
+  ASSERT_TRUE(dsa);
+  EXPECT_EQ(-1, DSA_verify(0, fips_digest, sizeof(fips_digest), fips_sig,
+                           sizeof(fips_sig), dsa.get()));
+}
+
+// Signing should cleanly fail when the private key is missing.
+TEST(DSATest, MissingPrivate) {
+  bssl::UniquePtr<DSA> dsa = GetFIPSDSAGroup();
+  ASSERT_TRUE(dsa);
+
+  std::vector<uint8_t> sig(DSA_size(dsa.get()));
+  unsigned sig_len;
+  EXPECT_FALSE(DSA_sign(0, fips_digest, sizeof(fips_digest), sig.data(),
+                        &sig_len, dsa.get()));
+}
+
+// A zero private key is invalid and can cause signing to loop forever.
+TEST(DSATest, ZeroPrivateKey) {
+  bssl::UniquePtr<DSA> dsa = GetFIPSDSA();
+  ASSERT_TRUE(dsa);
+  BN_zero(dsa->priv_key);
+
+  static const uint8_t kZeroDigest[32] = {0};
+  std::vector<uint8_t> sig(DSA_size(dsa.get()));
+  unsigned sig_len;
+  EXPECT_FALSE(DSA_sign(0, kZeroDigest, sizeof(kZeroDigest), sig.data(),
+                        &sig_len, dsa.get()));
+}
+
+// If the "field" is actually a ring and the "generator" of the multiplicative
+// subgroup is actually nilpotent with low degree, DSA signing never completes.
+// Test that we give up in the infinite loop.
+TEST(DSATest, NilpotentGenerator) {
+  static const char kPEM[] = R"(
+-----BEGIN DSA PRIVATE KEY-----
+MGECAQACFQHH+MnFXh4NNlZiV/zUVb5a5ib3kwIVAOP8ZOKvDwabKzEr/moq3y1z
+E3vJAhUAl/2Ylx9fWbzHdh1URsc/c6IM/TECAQECFCsjU4AZRcuks45g1NMOUeCB
+Epvg
+-----END DSA PRIVATE KEY-----
+)";
+  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(kPEM, sizeof(kPEM)));
+  ASSERT_TRUE(bio);
+  bssl::UniquePtr<DSA> dsa(
+      PEM_read_bio_DSAPrivateKey(bio.get(), nullptr, nullptr, nullptr));
+  ASSERT_TRUE(dsa);
+
+  std::vector<uint8_t> sig(DSA_size(dsa.get()));
+  unsigned sig_len;
+  EXPECT_FALSE(DSA_sign(0, fips_digest, sizeof(fips_digest), sig.data(),
+                        &sig_len, dsa.get()));
 }

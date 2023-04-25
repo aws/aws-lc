@@ -248,11 +248,11 @@ KeccakF1600:
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 
-.globl	_SHA3_Absorb
-.private_extern	_SHA3_Absorb
+.globl	_SHA3_Absorb_hw
+.private_extern	_SHA3_Absorb_hw
 
 .align	5
-_SHA3_Absorb:
+_SHA3_Absorb_hw:
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-128]!
 	add	x29,sp,#0
@@ -481,14 +481,16 @@ Labsorbed:
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
 
-.globl	_SHA3_Squeeze
-.private_extern	_SHA3_Squeeze
+.globl	_SHA3_Squeeze_hw
+.private_extern	_SHA3_Squeeze_hw
 
 .align	5
-_SHA3_Squeeze:
+_SHA3_Squeeze_hw:
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-48]!
 	add	x29,sp,#0
+	cmp	x2,#0
+	beq	Lsqueeze_abort
 	stp	x19,x20,[sp,#16]
 	stp	x21,x22,[sp,#32]
 	mov	x19,x0			// put aside arguments
@@ -542,6 +544,7 @@ Lsqueeze_tail:
 Lsqueeze_done:
 	ldp	x19,x20,[sp,#16]
 	ldp	x21,x22,[sp,#32]
+Lsqueeze_abort:
 	ldp	x29,x30,[sp],#48
 	AARCH64_VALIDATE_LINK_REGISTER
 	ret
@@ -900,6 +903,8 @@ _SHA3_Squeeze_cext:
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-16]!
 	add	x29,sp,#0
+	cmp	x2,#0
+	beq	Lsqueeze_done_ce
 	mov	x9,x0
 	mov	x10,x3
 Loop_squeeze_ce:
