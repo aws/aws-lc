@@ -32,6 +32,7 @@
 #include <sys/user.h>
 
 #include "fork_detect.h"
+#include "getrandom_fillin.h"
 
 #if !defined(PTRACE_O_EXITKILL)
 #define PTRACE_O_EXITKILL (1 << 20)
@@ -185,7 +186,8 @@ static void GetTrace(std::vector<Event> *out_trace, unsigned flags,
   // Parent process
   int status;
   ASSERT_EQ(child_pid, waitpid(child_pid, &status, 0));
-  ASSERT_TRUE(WIFSTOPPED(status) && WSTOPSIG(status) == SIGSTOP);
+  ASSERT_TRUE(WIFSTOPPED(status) && WSTOPSIG(status) == SIGSTOP)
+      << "Child was not stopped with SIGSTOP: " << status;
 
   // Set options so that:
   //   a) the child process is killed once this process dies.
@@ -213,7 +215,8 @@ static void GetTrace(std::vector<Event> *out_trace, unsigned flags,
     }
 
     // Otherwise the only valid ptrace event is a system call stop.
-    ASSERT_TRUE(WIFSTOPPED(status) && WSTOPSIG(status) == (SIGTRAP | 0x80));
+    ASSERT_TRUE(WIFSTOPPED(status) && WSTOPSIG(status) == (SIGTRAP | 0x80))
+        << "Child was not stopped with a syscall stop: " << status;
 
     struct user_regs_struct regs;
     ASSERT_EQ(0, ptrace(PTRACE_GETREGS, child_pid, nullptr, &regs));
@@ -504,11 +507,21 @@ static std::vector<Event> TestFunctionPRNGModel(unsigned flags) {
 TEST(URandomTest, Test) {
   char buf[256];
 
+  // Some Android systems lack getrandom.
+  uint8_t scratch[1];
+  const bool has_getrandom =
+      (syscall(__NR_getrandom, scratch, sizeof(scratch), GRND_NONBLOCK) != -1 ||
+       errno != ENOSYS);
+
 #define TRACE_FLAG(flag)                                         \
   snprintf(buf, sizeof(buf), #flag ": %d", (flags & flag) != 0); \
   SCOPED_TRACE(buf);
 
   for (unsigned flags = 0; flags < NEXT_FLAG; flags++) {
+    if (!has_getrandom && !(flags & NO_GETRANDOM)) {
+        continue;
+    }
+
     TRACE_FLAG(NO_GETRANDOM);
     TRACE_FLAG(NO_URANDOM);
     TRACE_FLAG(GETRANDOM_NOT_READY);
