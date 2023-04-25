@@ -208,7 +208,6 @@ def ArchForAsmFilename(filename):
 def WriteAsmFiles(perlasms):
   """Generates asm files from perlasm directives for each supported OS x
   platform combination."""
-  asmfiles = {}
 
   for osarch in OS_ARCH_COMBOS:
     (osname, arch, perlasm_style, extra_args, asm_ext) = osarch
@@ -224,15 +223,6 @@ def WriteAsmFiles(perlasms):
       if arch in ArchForAsmFilename(filename):
         PerlAsm(os.path.join(DEST_DIR, output), perlasm['input'], perlasm_style,
                 perlasm['extra_args'] + extra_args)
-        asmfiles.setdefault(key, []).append(output)
-
-  for (key, non_perl_asm_files) in NON_PERL_FILES.items():
-    asmfiles.setdefault(key, []).extend(non_perl_asm_files)
-
-  for files in asmfiles.values():
-    files.sort()
-
-  return asmfiles
 
 
 def ExtractVariablesFromCMakeFile(cmakefile):
@@ -366,7 +356,7 @@ def main():
       'urandom_test': urandom_test_files,
   }
 
-  asm_outputs = sorted(WriteAsmFiles(ReadPerlAsmOperations()).items())
+  sorted(WriteAsmFiles(ReadPerlAsmOperations()).items())
 
   return 0
 
