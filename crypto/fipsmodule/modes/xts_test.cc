@@ -876,8 +876,8 @@ TEST(XTSTest, SectorTweakAPIUsage) {
   ctx_encrypt.Reset();
   ctx_decrypt.Reset();
 
-  // Finally, encrypt and decrypt but only re-init the sector tweak and do the
-  // key init and sector tweak init in different function calls.
+  // Finally, encrypt and decrypt as in the previous case, but do the initial
+  // key init and sector tweak init separately in two different function calls.
   // Expects this to work since the key context does not change, only the tweak.
   // XTS is designed specifically to enable this kind of re-use.
   ASSERT_TRUE(EVP_EncryptInit_ex(ctx_encrypt.get(), EVP_aes_256_xts(),
