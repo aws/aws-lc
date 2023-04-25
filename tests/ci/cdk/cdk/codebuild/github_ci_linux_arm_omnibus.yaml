@@ -289,10 +289,10 @@ batch:
         variables:
           AWS_LC_SSL_RUNNER_START_INDEX: 7001
 
-#   - identifier: amazonlinux2023_gcc11x_aarch_valgrind
-#     buildspec: ./tests/ci/codebuild/common/run_valgrind_tests.yml
-#     env:
-#       type: ARM_CONTAINER
-#       privileged-mode: true
-#       compute-type: BUILD_GENERAL1_LARGE
-#       image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-aarch:amazonlinux-2023_gcc-11x_latest
+    - identifier: amazonlinux2023_gcc11x_aarch_valgrind
+      buildspec: ./tests/ci/codebuild/common/run_valgrind_tests.yml
+      env:
+        type: ARM_CONTAINER
+        privileged-mode: true
+        compute-type: BUILD_GENERAL1_LARGE
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-aarch:amazonlinux-2023_gcc-11x_latest

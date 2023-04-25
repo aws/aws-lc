@@ -22,6 +22,8 @@ if [[ "${KERNEL_NAME}" == "Darwin" ]]; then
 else
   # Assume KERNEL_NAME is Linux.
   NUM_CPU_THREADS=$(grep -c ^processor /proc/cpuinfo)
+  CPU_PART=$(grep -Po -m 1 'CPU part.*:\s\K.*' /proc/cpuinfo)
+  NUM_CPU_PART=$(grep -c $CPU_PART /proc/cpuinfo)
 fi
 
 PLATFORM=$(uname -m)
@@ -140,8 +142,22 @@ function fips_build_and_test {
 }
 
 function build_and_test_valgrind {
-  run_build "$@"
+  if [[ $PLATFORM == "aarch64" ]]; then
+    VALGRIND_STATIC_CAP_FLAGS="-DOPENSSL_STATIC_ARMCAP -DOPENSSL_STATIC_ARMCAP_NEON"
+    VALGRIND_STATIC_CAP_FLAGS+=" -DOPENSSL_STATIC_ARMCAP_AES -DOPENSSL_STATIC_ARMCAP_PMULL "
+    VALGRIND_STATIC_CAP_FLAGS+=" -DOPENSSL_STATIC_ARMCAP_SHA1 -DOPENSSL_STATIC_ARMCAP_SHA256 "
+    VALGRIND_STATIC_CAP_FLAGS+=" -DOPENSSL_STATIC_ARMCAP_SHA512 "
+    if [[ $NUM_CPU_PART == $NUM_CPU_THREADS ]] && [[ ${CPU_PART} =~ 0x[dD]40 ]]; then
+      VALGRIND_STATIC_CAP_FLAGS+=" -DOPENSSL_STATIC_ARMCAP_SHA3 -DOPENSSL_STATIC_ARMCAP_NEOVERSE_V1"
+    fi
+  fi
+
+  run_build "$@" -DCMAKE_C_FLAGS="$VALGRIND_STATIC_CAP_FLAGS"
   run_cmake_custom_target 'run_tests_valgrind' && run_cmake_custom_target 'run_ssl_runner_tests_valgrind'
+
+  run_build "$@" -DOPENSSL_NO_ASM=1
+  run_cmake_custom_target 'run_tests_valgrind' && run_cmake_custom_target 'run_ssl_runner_tests_valgrind'
+
 }
 
 function build_and_test_with_sde {
