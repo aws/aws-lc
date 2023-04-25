@@ -20,7 +20,8 @@ extern "C" {
 #endif
 
 // Various OCSP flags and values
-//
+
+
 // OCSP_NOCERTS is for |OCSP_request_sign| if no certificates are included
 // in the |OCSP_REQUEST|. Certificates are optional.
 #define OCSP_NOCERTS 0x1
@@ -38,7 +39,7 @@ extern "C" {
 // still be verified, but setting this flag skips verifying the signer's
 // certificate.
 #define OCSP_NOVERIFY 0
-// OCSP_NOINTERN is for |OCSP_basic_verify|. We will check for explicit trust
+// OCSP_NOEXPLICIT is for |OCSP_basic_verify|. We will check for explicit trust
 // for OCSP signing in the root CA certificate, unless the flags contain
 // OCSP_NOEXPLICIT.
 #define OCSP_NOEXPLICIT 0x20
@@ -355,7 +356,8 @@ OPENSSL_EXPORT const char *OCSP_cert_status_str(long status_code);
 // if an OCSP response is revoked.
 OPENSSL_EXPORT const char *OCSP_crl_reason_str(long status_code);
 
-#ifdef __cplusplus
+
+#if defined(__cplusplus)
 }  // extern C
 #endif
 
