@@ -356,7 +356,7 @@ def main():
       'urandom_test': urandom_test_files,
   }
 
-  sorted(WriteAsmFiles(ReadPerlAsmOperations()).items())
+  WriteAsmFiles(ReadPerlAsmOperations())
 
   return 0
 
