@@ -1438,6 +1438,7 @@ TEST(X509Test, ZeroLengthsWithX509PARAM) {
 
 TEST(X509Test, ZeroLengthsWithCheckFunctions) {
   bssl::UniquePtr<X509> leaf(CertFromPEM(kSANTypesLeaf));
+  ASSERT_TRUE(leaf);
 
   EXPECT_EQ(
       1, X509_check_host(leaf.get(), kHostname, strlen(kHostname), 0, nullptr));
@@ -2489,7 +2490,9 @@ TEST(X509Test, TestPrintUTCTIME) {
   for (auto t : asn1_utctime_tests) {
     SCOPED_TRACE(t.val);
     bssl::UniquePtr<ASN1_UTCTIME> tm(ASN1_UTCTIME_new());
+    ASSERT_TRUE(tm);
     bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+    ASSERT_TRUE(bio);
 
     // Use this instead of ASN1_UTCTIME_set() because some callers get
     // type-confused and pass ASN1_GENERALIZEDTIME to ASN1_UTCTIME_print().
@@ -2547,6 +2550,7 @@ TEST(X509Test, PrettyPrintIntegers) {
 
 TEST(X509Test, X509NameSet) {
   bssl::UniquePtr<X509_NAME> name(X509_NAME_new());
+  ASSERT_TRUE(name);
   EXPECT_TRUE(X509_NAME_add_entry_by_txt(
       name.get(), "C", MBSTRING_ASC, reinterpret_cast<const uint8_t *>("US"),
       -1, -1, 0));
@@ -3707,6 +3711,12 @@ TEST(X509Test, GeneralName)  {
         d2i_GENERAL_NAME(nullptr, &ptr, kNames[i].size()));
     ASSERT_TRUE(a);
     ASSERT_EQ(ptr, kNames[i].data() + kNames[i].size());
+
+    uint8_t *enc = nullptr;
+    int enc_len = i2d_GENERAL_NAME(a.get(), &enc);
+    ASSERT_GE(enc_len, 0);
+    bssl::UniquePtr<uint8_t> free_enc(enc);
+    EXPECT_EQ(Bytes(enc, enc_len), Bytes(kNames[i]));
 
     for (size_t j = 0; j < OPENSSL_ARRAY_SIZE(kNames); j++) {
       SCOPED_TRACE(Bytes(kNames[j]));
@@ -5387,7 +5397,8 @@ TEST(X509Test, ExtensionFromConf) {
   static const char kTestOID[] = "1.2.840.113554.4.1.72585.2";
   const struct {
     const char *name;
-    const char *value;
+    std::string value;
+    // conf is the serialized confdb, or nullptr if none is to be provided.
     const char *conf;
     // expected is the resulting extension, encoded in DER, or the empty string
     // if an error is expected.
@@ -5426,6 +5437,35 @@ TEST(X509Test, ExtensionFromConf) {
       // issuingDistributionPoint takes a list of name:value pairs. Omitting the
       // value is not allowed.
       {"issuingDistributionPoint", "fullname", nullptr, {}},
+
+      {"issuingDistributionPoint",
+       "relativename:name",
+       "[name]\nCN=Hello\n",
+       {0x30, 0x1b, 0x06, 0x03, 0x55, 0x1d, 0x1c, 0x04, 0x14, 0x30,
+        0x12, 0xa0, 0x10, 0xa1, 0x0e, 0x30, 0x0c, 0x06, 0x03, 0x55,
+        0x04, 0x03, 0x0c, 0x05, 0x48, 0x65, 0x6c, 0x6c, 0x6f}},
+
+      // relativename referencing a section which doesn't exist.
+      {"issuingDistributionPoint",
+       "relativename:wrong_section_name",
+       "[name]\nCN=Hello\n",
+       {}},
+
+      // relativename must be a single RDN. By default, the section-based name
+      // syntax puts each attribute into its own RDN.
+      {"issuingDistributionPoint",
+       "relativename:name",
+       "[name]\nCN=Hello\nC=US\n",
+       {}},
+
+      // A single RDN with multiple attributes is allowed.
+      {"issuingDistributionPoint",
+       "relativename:name",
+       "[name]\nCN=Hello\n+C=US\n",
+       {0x30, 0x26, 0x06, 0x03, 0x55, 0x1d, 0x1c, 0x04, 0x1f, 0x30,
+        0x1d, 0xa0, 0x1b, 0xa1, 0x19, 0x30, 0x09, 0x06, 0x03, 0x55,
+        0x04, 0x06, 0x13, 0x02, 0x55, 0x53, 0x30, 0x0c, 0x06, 0x03,
+        0x55, 0x04, 0x03, 0x0c, 0x05, 0x48, 0x65, 0x6c, 0x6c, 0x6f}},
 
       // Duplicate reason keys are an error. Reaching this case is interesting.
       // The value can a string like "key:value,key:value", or it can be
@@ -5933,6 +5973,68 @@ key = FORMAT:HEX,OCTWRAP,OCT:9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703
         0x20, 0x9d, 0x61, 0xb1, 0x9d, 0xef, 0xfd, 0x5a, 0x60, 0xba, 0x84,
         0x4a, 0xf4, 0x92, 0xec, 0x2c, 0xc4, 0x44, 0x49, 0xc5, 0x69, 0x7b,
         0x32, 0x69, 0x19, 0x70, 0x3b, 0xac, 0x03, 0x1c, 0xae, 0x7f, 0x60}},
+
+      // Sections can be referenced multiple times.
+      {kTestOID,
+       "ASN1:SEQUENCE:seq1",
+       R"(
+[seq1]
+val1 = SEQUENCE:seq2
+val2 = SEQUENCE:seq2
+[seq2]
+val1 = INT:1
+val2 = INT:2
+)",
+       {0x30, 0x22, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7,
+        0x12, 0x04, 0x01, 0x84, 0xb7, 0x09, 0x02, 0x04, 0x12,
+        0x30, 0x10, 0x30, 0x06, 0x02, 0x01, 0x01, 0x02, 0x01,
+        0x02, 0x30, 0x06, 0x02, 0x01, 0x01, 0x02, 0x01, 0x02}},
+
+      // But we cap this before it blows up exponentially.
+      {kTestOID,
+       "ASN1:SEQ:seq1",
+       R"(
+[seq1]
+val1 = SEQ:seq2
+val2 = SEQ:seq2
+[seq2]
+val1 = SEQ:seq3
+val2 = SEQ:seq3
+[seq3]
+val1 = SEQ:seq4
+val2 = SEQ:seq4
+[seq4]
+val1 = SEQ:seq5
+val2 = SEQ:seq5
+[seq5]
+val1 = SEQ:seq6
+val2 = SEQ:seq6
+[seq6]
+val1 = SEQ:seq7
+val2 = SEQ:seq7
+[seq7]
+val1 = SEQ:seq8
+val2 = SEQ:seq8
+[seq8]
+val1 = SEQ:seq9
+val2 = SEQ:seq9
+[seq9]
+val1 = SEQ:seq10
+val2 = SEQ:seq10
+[seq10]
+val1 = SEQ:seq11
+val2 = SEQ:seq11
+[seq11]
+val1 = SEQ:seq12
+val2 = SEQ:seq12
+[seq12]
+val1 = IA5:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+val2 = IA5:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+)",
+       {}},
+
+      // Integer sizes are capped to mitigate quadratic behavior.
+      {kTestOID, "ASN1:INT:" + std::string(16384, '9'), nullptr, {}},
   };
   for (const auto &t : kTests) {
     SCOPED_TRACE(t.name);
@@ -5951,7 +6053,7 @@ key = FORMAT:HEX,OCTWRAP,OCT:9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703
     }
 
     bssl::UniquePtr<X509_EXTENSION> ext(
-        X509V3_EXT_nconf(conf.get(), nullptr, t.name, t.value));
+        X509V3_EXT_nconf(conf.get(), nullptr, t.name, t.value.c_str()));
     if (t.expected.empty()) {
       EXPECT_FALSE(ext);
     } else {
@@ -5967,7 +6069,7 @@ key = FORMAT:HEX,OCTWRAP,OCT:9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703
     X509V3_CTX ctx;
     X509V3_set_ctx(&ctx, nullptr, nullptr, nullptr, nullptr, 0);
     X509V3_set_nconf(&ctx, conf.get());
-    ext.reset(X509V3_EXT_nconf(conf.get(), &ctx, t.name, t.value));
+    ext.reset(X509V3_EXT_nconf(conf.get(), &ctx, t.name, t.value.c_str()));
     if (t.expected.empty()) {
       EXPECT_FALSE(ext);
     } else {

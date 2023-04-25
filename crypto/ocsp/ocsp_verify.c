@@ -132,7 +132,6 @@ static int ocsp_verify_signer(X509 *signer, X509_STORE *st,
   int ret = -1;
 
   if (ctx == NULL) {
-    OPENSSL_PUT_ERROR(OCSP, ERR_R_MALLOC_FAILURE);
     goto end;
   }
   if (!X509_STORE_CTX_init(ctx, st, signer, untrusted)) {

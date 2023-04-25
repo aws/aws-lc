@@ -407,6 +407,7 @@ DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_aes_128_ccm_bluetooth) {
   out->nonce_len = 13;
   out->overhead = 4;
   out->max_tag_len = 4;
+  out->aead_id = AEAD_AES_128_CCM_BLUETOOTH_ID;
   out->seal_scatter_supports_extra_in = 0;
 
   out->init = aead_aes_ccm_bluetooth_init;
@@ -427,6 +428,7 @@ DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_aes_128_ccm_bluetooth_8) {
   out->nonce_len = 13;
   out->overhead = 8;
   out->max_tag_len = 8;
+  out->aead_id = AEAD_AES_128_CCM_BLUETOOTH_8_ID;
   out->seal_scatter_supports_extra_in = 0;
 
   out->init = aead_aes_ccm_bluetooth_8_init;
@@ -446,6 +448,7 @@ DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_aes_128_ccm_matter) {
   out->key_len = 16;
   out->nonce_len = 13;
   out->overhead = 16;
+  out->aead_id = AEAD_AES_128_CCM_MATTER_ID;
   out->max_tag_len = 16;
 
   out->init = aead_aes_ccm_matter_init;

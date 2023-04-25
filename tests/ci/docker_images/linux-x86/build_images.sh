@@ -31,11 +31,11 @@ docker build -t amazonlinux-2:base -f amazonlinux-2_base/Dockerfile ../dependenc
 docker build -t amazonlinux-2:gcc-7x amazonlinux-2_gcc-7x
 docker build -t amazonlinux-2:gcc-7x-intel-sde amazonlinux-2_gcc-7x-intel-sde
 docker build -t amazonlinux-2:clang-7x amazonlinux-2_clang-7x
-docker build -t amazonlinux-2022:base -f amazonlinux-2022_base/Dockerfile ../dependencies
-docker build -t amazonlinux-2022:gcc-11x amazonlinux-2022_gcc-11x
-docker build -t amazonlinux-2022:clang-14x amazonlinux-2022_clang-14x
-docker build -t amazonlinux-2022:clang-14x-sanitizer amazonlinux-2022_clang-14x_sanitizer
-docker build -t amazonlinux-2022:cryptofuzz -f amazonlinux-2022_clang-14x_cryptofuzz/Dockerfile ../dependencies
+docker build -t amazonlinux-2023:base -f amazonlinux-2023_base/Dockerfile ../dependencies
+docker build -t amazonlinux-2023:gcc-11x amazonlinux-2023_gcc-11x
+docker build -t amazonlinux-2023:clang-15x amazonlinux-2023_clang-15x
+docker build -t amazonlinux-2023:clang-15x-sanitizer amazonlinux-2023_clang-15x_sanitizer
+docker build -t amazonlinux-2023:cryptofuzz -f amazonlinux-2023_clang-15x_cryptofuzz/Dockerfile ../dependencies
 docker build -t ubuntu-16.04:gcc-5x -f ubuntu-16.04_gcc-5x/Dockerfile ../dependencies
 docker build -t centos-7:gcc-4x -f centos-7_gcc-4x/Dockerfile ../dependencies
 docker build -t centos-8:gcc-8x -f centos-8_gcc-8x/Dockerfile ../dependencies
