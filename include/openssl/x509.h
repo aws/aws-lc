@@ -938,7 +938,7 @@ OPENSSL_EXPORT int X509_NAME_add_entry(X509_NAME *name,
 // success or zero on error. The entry's attribute type is |obj|. The entry's
 // attribute value is determined by |type|, |bytes|, and |len|, as in
 // |X509_NAME_ENTRY_set_data|. The entry's position is determined by |loc| and
-// |set| as in |X509_NAME_entry|.
+// |set| as in |X509_NAME_add_entry|.
 OPENSSL_EXPORT int X509_NAME_add_entry_by_OBJ(X509_NAME *name,
                                               const ASN1_OBJECT *obj, int type,
                                               const uint8_t *bytes, int len,
@@ -2565,7 +2565,7 @@ OPENSSL_EXPORT void X509_STORE_CTX_set_depth(X509_STORE_CTX *ctx, int depth);
 #define X509_V_FLAG_IGNORE_CRITICAL 0x10
 // Does nothing as its functionality has been enabled by default.
 #define X509_V_FLAG_X509_STRICT 0x00
-// Enable proxy certificate validation
+// This flag does nothing as proxy certificate support has been removed.
 #define X509_V_FLAG_ALLOW_PROXY_CERTS 0x40
 // Enable policy checking
 #define X509_V_FLAG_POLICY_CHECK 0x80

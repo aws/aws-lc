@@ -15,7 +15,7 @@
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
-#ifdef __cplusplus
+#if defined(__cplusplus)
 extern "C" {
 #endif
 
@@ -286,8 +286,8 @@ OPENSSL_EXPORT int OCSP_check_validity(ASN1_GENERALIZEDTIME *thisUpdate,
 OPENSSL_EXPORT int OCSP_basic_verify(OCSP_BASICRESP *bs, STACK_OF(X509) *certs,
                                      X509_STORE *st, unsigned long flags);
 
-// OCSP_cert_to_id returns a |OCSP_CERTID| converted from a certificate and
-// its issuer.
+// OCSP_cert_to_id returns a |OCSP_CERTID| converted from a certificate and its
+// issuer.
 //
 // Note: 1. If subject is NULL, we get the subject name from the issuer and set
 //          the serial number is NULL.
@@ -356,7 +356,7 @@ OPENSSL_EXPORT const char *OCSP_cert_status_str(long status_code);
 OPENSSL_EXPORT const char *OCSP_crl_reason_str(long status_code);
 
 #ifdef __cplusplus
-}
+}  // extern C
 #endif
 
 #if !defined(BORINGSSL_NO_CXX)
