@@ -14,6 +14,8 @@ echo "$SRC_ROOT"
 BUILD_ROOT="${SRC_ROOT}/test_build_dir"
 echo "$BUILD_ROOT"
 
+PLATFORM=$(uname -m)
+
 NUM_CPU_THREADS=''
 KERNEL_NAME=$(uname -s)
 if [[ "${KERNEL_NAME}" == "Darwin" ]]; then
@@ -22,11 +24,11 @@ if [[ "${KERNEL_NAME}" == "Darwin" ]]; then
 else
   # Assume KERNEL_NAME is Linux.
   NUM_CPU_THREADS=$(grep -c ^processor /proc/cpuinfo)
-  CPU_PART=$(grep -Po -m 1 'CPU part.*:\s\K.*' /proc/cpuinfo)
-  NUM_CPU_PART=$(grep -c $CPU_PART /proc/cpuinfo)
+  if [[ $PLATFORM == "aarch64" ]]; then
+    CPU_PART=$(grep -Po -m 1 'CPU part.*:\s\K.*' /proc/cpuinfo)
+    NUM_CPU_PART=$(grep -c $CPU_PART /proc/cpuinfo)
+  fi
 fi
-
-PLATFORM=$(uname -m)
 
 # Pick cmake3 if possible. We don't know of any OS that installs a cmake3
 # executable that is not at least version 3.0.
