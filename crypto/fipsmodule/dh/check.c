@@ -60,6 +60,7 @@
 
 #include "internal.h"
 
+static int DH_check_impl(const DH *dh, int *out_flags, int number_of_rounds);
 
 int DH_check_pub_key(const DH *dh, const BIGNUM *pub_key, int *out_flags) {
   *out_flags = 0;
@@ -111,8 +112,15 @@ err:
   return ok;
 }
 
-
 int DH_check(const DH *dh, int *out_flags) {
+  return DH_check_impl(dh, out_flags, BN_prime_checks_for_validation);
+}
+
+int DH_check_trusted(const DH *dh, int *out_flags) {
+  return DH_check_impl(dh, out_flags, BN_prime_checks_for_validation_DH_trusted);
+}
+
+static int DH_check_impl(const DH *dh, int *out_flags, int number_of_rounds) {
   // Check that p is a safe prime and if g is 2, 3 or 5, check that it is a
   // suitable generator where:
   //   for 2, p mod 24 == 11
@@ -153,7 +161,7 @@ int DH_check(const DH *dh, int *out_flags) {
         *out_flags |= DH_CHECK_NOT_SUITABLE_GENERATOR;
       }
     }
-    r = BN_is_prime_ex(dh->q, BN_prime_checks_for_validation, ctx, NULL);
+    r = BN_is_prime_ex(dh->q, number_of_rounds, ctx, NULL);
     if (r < 0) {
       goto err;
     }
@@ -187,7 +195,7 @@ int DH_check(const DH *dh, int *out_flags) {
     *out_flags |= DH_CHECK_UNABLE_TO_CHECK_GENERATOR;
   }
 
-  r = BN_is_prime_ex(dh->p, BN_prime_checks_for_validation, ctx, NULL);
+  r = BN_is_prime_ex(dh->p, number_of_rounds, ctx, NULL);
   if (r < 0) {
     goto err;
   }
@@ -197,7 +205,7 @@ int DH_check(const DH *dh, int *out_flags) {
     if (!BN_rshift1(t1, dh->p)) {
       goto err;
     }
-    r = BN_is_prime_ex(t1, BN_prime_checks_for_validation, ctx, NULL);
+    r = BN_is_prime_ex(t1, number_of_rounds, ctx, NULL);
     if (r < 0) {
       goto err;
     }

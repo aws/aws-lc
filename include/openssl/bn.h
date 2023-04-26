@@ -740,6 +740,13 @@ OPENSSL_EXPORT int BN_generate_prime_ex(BIGNUM *ret, int bits, int safe,
 // https://eprint.iacr.org/2018/749. (1/4)^64 = 2^{-128}.)
 #define BN_prime_checks_for_validation 64
 
+// Same as |BN_prime_checks_for_validation| for the case where the consumer
+// trusts that DH parameters are from a trusted source.
+// It gives a false positive rate of at most 2^{-64}. (The worst case
+// false positive rate for a single iteration is 1/4 per
+// https://eprint.iacr.org/2018/749. (1/4)^32 = 2^{-64}.)
+#define BN_prime_checks_for_validation_DH_trusted 32
+
 // BN_prime_checks_for_generation can be used as the |checks| argument to the
 // primality testing functions when generating random primes. It gives a false
 // positive rate at most the security level of the corresponding RSA key size.

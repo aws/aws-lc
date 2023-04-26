@@ -80,8 +80,14 @@ TEST(DHTest, Basic) {
   ASSERT_TRUE(a);
   ASSERT_TRUE(DH_generate_parameters_ex(a.get(), 64, DH_GENERATOR_5, nullptr));
 
-  int check_result;
+  int check_result = 0;
   ASSERT_TRUE(DH_check(a.get(), &check_result));
+  EXPECT_FALSE(check_result & DH_CHECK_P_NOT_PRIME);
+  EXPECT_FALSE(check_result & DH_CHECK_P_NOT_SAFE_PRIME);
+  EXPECT_FALSE(check_result & DH_CHECK_UNABLE_TO_CHECK_GENERATOR);
+  EXPECT_FALSE(check_result & DH_CHECK_NOT_SUITABLE_GENERATOR);
+  check_result = 0;
+  ASSERT_TRUE(DH_check_trusted(a.get(), &check_result));
   EXPECT_FALSE(check_result & DH_CHECK_P_NOT_PRIME);
   EXPECT_FALSE(check_result & DH_CHECK_P_NOT_SAFE_PRIME);
   EXPECT_FALSE(check_result & DH_CHECK_UNABLE_TO_CHECK_GENERATOR);
