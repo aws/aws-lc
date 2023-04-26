@@ -445,7 +445,7 @@ static bool SpeedAESGCMChunk(const EVP_CIPHER *cipher, std::string name,
   BM_NAMESPACE::UniquePtr<EVP_CIPHER_CTX> ctx(EVP_CIPHER_CTX_new());
 
   if (encrypt) {
-    std::string encryptName = name + " Encrypt";
+    std::string encryptName = name + " encrypt";
     TimeResults encryptResults;
 
     // Call EVP_EncryptInit_ex once with the cipher and key, the benchmark loop will reuse both
@@ -478,7 +478,7 @@ static bool SpeedAESGCMChunk(const EVP_CIPHER *cipher, std::string name,
       ERR_print_errors_fp(stderr);
       return false;
     }
-    std::string decryptName = name + " Decrypt";
+    std::string decryptName = name + " decrypt";
     TimeResults decryptResults;
     // Call EVP_DecryptInit_ex once with the cipher and key, the benchmark loop will reuse both
     if (!EVP_DecryptInit_ex(ctx.get(), cipher, NULL, key.get(), nonce.get())){
@@ -883,8 +883,7 @@ static bool SpeedAES256XTS(const std::string &name, //const size_t in_len,
       fprintf(stderr, "AES-256-XTS initialisation or encryption failed.\n");
       return false;
     }
-    results.PrintWithBytes(name + " encrypt",
-                           in_len);
+    results.PrintWithBytes(name + " encrypt", in_len);
   }
 
   // Benchmark initialisation and decryption
@@ -916,8 +915,7 @@ static bool SpeedAES256XTS(const std::string &name, //const size_t in_len,
       fprintf(stderr, "AES-256-XTS initialisation or decryption failed.\n");
       return false;
     }
-    results.PrintWithBytes(name + " decrypt",
-                           in_len);
+    results.PrintWithBytes(name + " decrypt", in_len);
   }
 
   return true;
