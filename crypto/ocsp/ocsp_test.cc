@@ -1384,15 +1384,15 @@ TEST(OCSPTest, CertIDDup) {
 
 TEST(OCSPTest, OCSPResponsePrint) {
   static const std::array<std::string, 18> kExpected{
-      "OCSP Response Data:",      "    OCSP Response Status:",
-      "    Response Type:",       "    Version:",
-      "    Responder Id:",        "    Produced At:",
-      "    Responses:",           "    Certificate ID:",
-      "      Hash Algorithm:",    "      Issuer Name Hash:",
-      "      Issuer Key Hash:",   "      Serial Number:",
-      "    Cert Status:",         "    This Update:",
-      "    Next Update:",         "",
-      "    Response Extensions:", "        OCSP Nonce:"};
+      "OCSP Response Data",      "    OCSP Response Status",
+      "    Response Type",       "    Version",
+      "    Responder Id",        "    Produced At",
+      "    Responses",           "    Certificate ID",
+      "      Hash Algorithm",    "      Issuer Name Hash",
+      "      Issuer Key Hash",   "      Serial Number",
+      "    Cert Status",         "    This Update",
+      "    Next Update",         "",
+      "    Response Extensions", "        OCSP Nonce"};
 
   std::string respData = GetTestData(
       std::string("crypto/ocsp/test/aws/ocsp_response.der").c_str());
@@ -1412,19 +1412,21 @@ TEST(OCSPTest, OCSPResponsePrint) {
   std::string line;
   for (const auto &expected : kExpected) {
     std::getline(iss, line);
-    EXPECT_EQ(OPENSSL_memcmp(line.c_str(), expected.c_str(),
-                             strlen(expected.c_str())),
-              0);
+    // Each line has a colon before the expected label.
+    std::istringstream line_stream(line);
+    std::string parsed_line;
+    std::getline(line_stream, parsed_line, ':');
+    EXPECT_EQ(parsed_line, expected);
   }
 }
 
 TEST(OCSPTest, OCSPRequestPrint) {
-  static const std::array<std::string, 10> kExpected2{
-      "OCSP Request Data:",         "    Version:",
-      "    Requestor List:",        "        Certificate ID:",
-      "          Hash Algorithm:",  "          Issuer Name Hash:",
-      "          Issuer Key Hash:", "          Serial Number:",
-      "    Request Extensions:",    "        OCSP Nonce: "};
+  static const std::array<std::string, 10> kExpected{
+      "OCSP Request Data",         "    Version",
+      "    Requestor List",        "        Certificate ID",
+      "          Hash Algorithm",  "          Issuer Name Hash",
+      "          Issuer Key Hash", "          Serial Number",
+      "    Request Extensions",    "        OCSP Nonce"};
 
   std::string data =
       GetTestData(std::string("crypto/ocsp/test/aws/ocsp_request.der").c_str());
@@ -1442,10 +1444,12 @@ TEST(OCSPTest, OCSPRequestPrint) {
   // the expected format.
   std::istringstream iss((std::string((char *)out, outlen)));
   std::string line;
-  for (const auto &expected : kExpected2) {
+  for (const auto &expected : kExpected) {
     std::getline(iss, line);
-    EXPECT_EQ(OPENSSL_memcmp(line.c_str(), expected.c_str(),
-                             strlen(expected.c_str())),
-              0);
+    // Each line has a colon before the expected label.
+    std::istringstream line_stream(line);
+    std::string parsed_line;
+    std::getline(line_stream, parsed_line, ':');
+    EXPECT_EQ(parsed_line, expected);
   }
 }
