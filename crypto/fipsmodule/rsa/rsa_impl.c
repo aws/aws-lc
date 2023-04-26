@@ -130,7 +130,7 @@ static int freeze_private_key(RSA *rsa, BN_CTX *ctx) {
     goto err;
   }
 
-  if (rsa->p != NULL && rsa->q != NULL) {
+  if (rsa->e != NULL && rsa->p != NULL && rsa->q != NULL) {
     // TODO: p and q are also CONSTTIME_SECRET but not yet marked as such
     // because the Montgomery code does things like test whether or not values
     // are zero. So the secret marking probably needs to happen inside that
@@ -413,6 +413,11 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx);
 int rsa_verify_raw_no_self_test(RSA *rsa, size_t *out_len, uint8_t *out,
                                 size_t max_out, const uint8_t *in,
                                 size_t in_len, int padding) {
+  if (rsa->n == NULL || rsa->e == NULL) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_VALUE_MISSING);
+    return 0;
+  }
+
   if (!is_public_component_of_rsa_key_good(rsa)) {
     return 0;
   }
@@ -552,13 +557,18 @@ int rsa_default_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
     goto err;
   }
 
-  const int do_blinding = (rsa->flags & RSA_FLAG_NO_BLINDING) == 0;
+  const int do_blinding =
+      (rsa->flags & (RSA_FLAG_NO_BLINDING | RSA_FLAG_NO_PUBLIC_EXPONENT)) == 0;
 
   if (rsa->e == NULL && do_blinding) {
     // We cannot do blinding or verification without |e|, and continuing without
     // those countermeasures is dangerous. However, the Java/Android RSA API
     // requires support for keys where only |d| and |n| (and not |e|) are known.
-    // The callers that require that bad behavior set |RSA_FLAG_NO_BLINDING|.
+    // The callers that require that bad behavior must set
+    // |RSA_FLAG_NO_BLINDING| or use |RSA_new_private_key_no_e|.
+    //
+    // TODO(davidben): Update this comment when Conscrypt is updated to use
+    // |RSA_new_private_key_no_e|.
     OPENSSL_PUT_ERROR(RSA, RSA_R_NO_PUBLIC_EXPONENT);
     goto err;
   }
