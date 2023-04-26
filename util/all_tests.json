@@ -93,7 +93,8 @@
     "skip_valgrind": true
   },
   {
-    "cmd": ["ssl/ssl_test"]
+    "cmd": ["ssl/ssl_test"],
+    "env": ["AWS_LC_GO_TEST_TIMEOUT=20"]
   },
   {
     "cmd": ["crypto/mem_test"]
