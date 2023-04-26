@@ -144,11 +144,16 @@ function fips_build_and_test {
 }
 
 function build_and_test_valgrind {
+  # Set capabilities via the static flags.
+  # This is because valgrind declares the instruction
+  #   mrs %0, MIDR_EL1
+  # which fetches the CPU part number, as illegal.
+  # For some reason, valgrind also declares SHA512 instructions illegal,
+  # so the SHA512 capability is not included below.
   if [[ $PLATFORM == "aarch64" ]]; then
     VALGRIND_STATIC_CAP_FLAGS="-DOPENSSL_STATIC_ARMCAP -DOPENSSL_STATIC_ARMCAP_NEON"
     VALGRIND_STATIC_CAP_FLAGS+=" -DOPENSSL_STATIC_ARMCAP_AES -DOPENSSL_STATIC_ARMCAP_PMULL "
     VALGRIND_STATIC_CAP_FLAGS+=" -DOPENSSL_STATIC_ARMCAP_SHA1 -DOPENSSL_STATIC_ARMCAP_SHA256 "
-    VALGRIND_STATIC_CAP_FLAGS+=" -DOPENSSL_STATIC_ARMCAP_SHA512 "
     if [[ $NUM_CPU_PART == $NUM_CPU_THREADS ]] && [[ ${CPU_PART} =~ 0x[dD]40 ]]; then
       VALGRIND_STATIC_CAP_FLAGS+=" -DOPENSSL_STATIC_ARMCAP_SHA3 -DOPENSSL_STATIC_ARMCAP_NEOVERSE_V1"
     fi
@@ -157,7 +162,9 @@ function build_and_test_valgrind {
   run_build "$@" -DCMAKE_C_FLAGS="$VALGRIND_STATIC_CAP_FLAGS"
   run_cmake_custom_target 'run_tests_valgrind' && run_cmake_custom_target 'run_ssl_runner_tests_valgrind'
 
-  run_build "$@" -DOPENSSL_NO_ASM=1
+  # Disable all capabilities and run again
+  VALGRIND_STATIC_CAP_FLAGS="-DOPENSSL_STATIC_ARMCAP "
+  run_build "$@" -DCMAKE_C_FLAGS="$VALGRIND_STATIC_CAP_FLAGS"
   run_cmake_custom_target 'run_tests_valgrind' && run_cmake_custom_target 'run_ssl_runner_tests_valgrind'
 
 }
