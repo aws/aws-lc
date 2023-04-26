@@ -691,6 +691,7 @@ elseif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "riscv64")
   set(ARCH "riscv64")
 else()
   message(STATUS "Unknown processor found. Using generic implementations. Processor:" ${CMAKE_SYSTEM_PROCESSOR})
+  add_definitions(-DOPENSSL_NO_ASM)
   set(ARCH "generic")
 endif()
 
