@@ -1,6 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 #include <gtest/gtest.h>
+#include <array>
 #include <ctime>
 
 #include "openssl/ocsp.h"
@@ -1382,15 +1383,16 @@ TEST(OCSPTest, CertIDDup) {
 }
 
 TEST(OCSPTest, OCSPResponsePrint) {
-  static const std::string kExpected[] = {
-      "OCSP Response Data:",    "    OCSP Response Status:",
-      "    Response Type:",     "    Version:",
-      "    Responder Id:",      "    Produced At:",
-      "    Responses:",         "    Certificate ID:",
-      "      Hash Algorithm:",  "      Issuer Name Hash:",
-      "      Issuer Key Hash:", "      Serial Number:",
-      "    Cert Status:",       "    This Update:",
-      "    Next Update:",       "    Response Extensions:"};
+  static const std::array<std::string, 18> kExpected{
+      "OCSP Response Data:",      "    OCSP Response Status:",
+      "    Response Type:",       "    Version:",
+      "    Responder Id:",        "    Produced At:",
+      "    Responses:",           "    Certificate ID:",
+      "      Hash Algorithm:",    "      Issuer Name Hash:",
+      "      Issuer Key Hash:",   "      Serial Number:",
+      "    Cert Status:",         "    This Update:",
+      "    Next Update:",         "",
+      "    Response Extensions:", "        OCSP Nonce:"};
 
   std::string respData = GetTestData(
       std::string("crypto/ocsp/test/aws/ocsp_response.der").c_str());
@@ -1400,22 +1402,24 @@ TEST(OCSPTest, OCSPResponsePrint) {
 
   bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
   EXPECT_TRUE(OCSP_RESPONSE_print(bio.get(), ocspResponse.get(), 0));
-  char *out;
-  ASSERT_TRUE(BIO_get_mem_data(bio.get(), &out));
+  const uint8_t *out;
+  size_t outlen;
+  ASSERT_TRUE(BIO_mem_contents(bio.get(), &out, &outlen));
 
   // Iterate through |kExpected| and verify that |OCSP_RESPONSE_print| has
   // the expected format.
-  char *token = strtok(out, "\n");
-  for (size_t i = 0; i < sizeof(kExpected) / sizeof(kExpected[0]); i++) {
-    EXPECT_EQ(OPENSSL_memcmp(token, kExpected[i].c_str(),
-                             strlen(kExpected[i].c_str())),
+  std::istringstream iss((std::string((char *)out, outlen)));
+  std::string line;
+  for (const auto &expected : kExpected) {
+    std::getline(iss, line);
+    EXPECT_EQ(OPENSSL_memcmp(line.c_str(), expected.c_str(),
+                             strlen(expected.c_str())),
               0);
-    token = strtok(nullptr, "\n");
   }
 }
 
 TEST(OCSPTest, OCSPRequestPrint) {
-  static const std::string kExpected[] = {
+  static const std::array<std::string, 10> kExpected2{
       "OCSP Request Data:",         "    Version:",
       "    Requestor List:",        "        Certificate ID:",
       "          Hash Algorithm:",  "          Issuer Name Hash:",
@@ -1430,16 +1434,18 @@ TEST(OCSPTest, OCSPRequestPrint) {
 
   bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
   EXPECT_TRUE(OCSP_REQUEST_print(bio.get(), ocspRequest.get(), 0));
-  char *out;
-  ASSERT_TRUE(BIO_get_mem_data(bio.get(), &out));
+  const uint8_t *out;
+  size_t outlen;
+  ASSERT_TRUE(BIO_mem_contents(bio.get(), &out, &outlen));
 
   // Iterate through |kExpected| and verify that |OCSP_REQUEST_print| has
   // the expected format.
-  char *token = strtok(out, "\n");
-  for (size_t i = 0; i < sizeof(kExpected) / sizeof(kExpected[0]); i++) {
-    EXPECT_EQ(OPENSSL_memcmp(token, kExpected[i].c_str(),
-                             strlen(kExpected[i].c_str())),
+  std::istringstream iss((std::string((char *)out, outlen)));
+  std::string line;
+  for (const auto &expected : kExpected2) {
+    std::getline(iss, line);
+    EXPECT_EQ(OPENSSL_memcmp(line.c_str(), expected.c_str(),
+                             strlen(expected.c_str())),
               0);
-    token = strtok(nullptr, "\n");
   }
 }
