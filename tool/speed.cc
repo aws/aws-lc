@@ -1988,7 +1988,7 @@ static bool SpeedJitter(std::string selected) {
 static bool SpeedDHcheck(size_t prime_bit_length) {
 
   TimeResults results;
-  bssl::UniquePtr<DH> dh_params(DH_new());
+  BM_NAMESPACE::UniquePtr<DH> dh_params(DH_new());
   if (dh_params == nullptr) {
     return false;
   }
@@ -2310,7 +2310,8 @@ bool Speed(const std::vector<std::string> &args) {
      !SpeedScrypt(selected) ||
 #endif
      !SpeedRSA(selected) ||
-     !SpeedRSAKeyGen(false, selected)
+     !SpeedRSAKeyGen(false, selected) ||
+     !SpeedDHcheck(selected)
 #if !defined(OPENSSL_BENCHMARK)
      ||
      !SpeedKEM(selected) ||
@@ -2347,9 +2348,8 @@ bool Speed(const std::vector<std::string> &args) {
      !SpeedPKCS8(selected) ||
 #endif
      !SpeedBase64(selected) ||
-     !SpeedSipHash(selected) ||
+     !SpeedSipHash(selected)
 #endif
-     !SpeedDHcheck(selected)
      ) {
     return false;
   }
