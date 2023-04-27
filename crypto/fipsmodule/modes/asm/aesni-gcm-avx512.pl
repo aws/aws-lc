@@ -4562,7 +4562,7 @@ ___
 }
 
 $code .= <<___;
-.text
+.section .rodata
 .align 16
 POLY:   .quad     0x0000000000000001, 0xC200000000000000
 
@@ -4688,6 +4688,7 @@ byte64_len_to_mask_table:
         .quad      0x0fffffffffffffff, 0x1fffffffffffffff
         .quad      0x3fffffffffffffff, 0x7fffffffffffffff
         .quad      0xffffffffffffffff
+.text
 ___
 
 } else {
