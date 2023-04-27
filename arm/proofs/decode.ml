@@ -70,6 +70,31 @@ let arm_ldstb = new_definition `arm_ldstb ld Rt =
 let arm_ldstp = new_definition `arm_ldstp ld x Rt Rt2 =
   if x then (if ld then arm_LDP else arm_STP) (XREG' Rt) (XREG' Rt2)
        else (if ld then arm_LDP else arm_STP) (WREG' Rt) (WREG' Rt2)`;;
+(* The 'AdvSimdExpandImm' shared function in the A64 ISA specification.
+   This definition takes one 8-bit word and expands it to 64 bit according to
+   op and cmode. *)
+let arm_adv_simd_expand_imm = new_definition
+  `(arm_adv_simd_expand_imm:(8)word->(1)word->(4)word->((64)word)option)
+      abcdefgh op cmode =
+    if val cmode = 14 /\ val op = 1 then
+      let rep8 = \(x:bool). if x then (word 255:(8)word) else (word 0) in
+      let res: (64)word =
+        word_join (rep8 (bit 7 abcdefgh))
+          (word_join (rep8 (bit 6 abcdefgh))
+            (word_join (rep8 (bit 5 abcdefgh))
+              (word_join (rep8 (bit 4 abcdefgh))
+                (word_join (rep8 (bit 3 abcdefgh))
+                  (word_join (rep8 (bit 2 abcdefgh))
+                    (word_join (rep8 (bit 1 abcdefgh))
+                               (rep8 (bit 0 abcdefgh)):(16)word)
+                  :(24)word)
+                :(32)word)
+              :(40)word)
+            :(48)word)
+          :(56)word) in
+      SOME res
+    else // Other cases are uncovered.
+      NONE`;;
 
 let decode_bitmask = new_definition `!N immr imms.
   decode_bitmask (N:bool) (immr:6 word) (imms:6 word):(N word)option =
@@ -101,6 +126,11 @@ let decode_extendtype = new_definition
     | [0b110:3] -> SXTW
     | [0b111:3] -> SXTX`;;
 
+(* Decodes the 4-byte word w. decode must use language features and
+   functions that can be evaluated by the 'evaluate' function in
+   PURE_DECODE_CONV.
+   To see the instruction's official bit formats, you will want to read the
+   "Arm A64 Instruction Set Architecture" document from online. *)
 let decode = new_definition `!w:int32. decode w =
   bitmatch w:int32 with
   | [sf; op; S; 0b11010000:8; Rm:5; 0:6; Rn:5; Rd:5] ->
@@ -232,12 +262,55 @@ let decode = new_definition `!w:int32. decode w =
     SOME (arm_ldstp ld x Rt Rt2 (XREG_SP Rn)
       (Immediate_Offset (iword (ival imm7 * &(if x then 8 else 4)))))
 
-  // SIMD operations
+  // SIMD ld,st operations
   | [0b00:2; 0b111101:6; 0b11:2; imm12:12; Rn:5; Rt:5] ->
     // LDR (immediate, SIMD&FP), Unsigned offset. Q registers only
     SOME (arm_ldst_q T Rt (XREG_SP Rn) (Immediate_Offset (word (val imm12 * 16))))
 
+  // SIMD operations
+  | [0:1; q; 0b001110:6; size:2; 1:1; Rm:5; 0b100001:6; Rn:5; Rd:5] ->
+    // ADD
+    if size = (word 0b11:(2)word) /\ ~q then NONE // "UNDEFINED"
+    else
+      let esize = 8 * (2 EXP (val size)) in
+      let datasize = if q then 128 else 64 in
+      let elements = datasize DIV esize in
+      // sub_op is false
+      SOME (arm_ADD_VEC (QREG' Rd) (QREG' Rn) (QREG' Rm) esize datasize)
+  
+  | [0:1; q; 0b001110001:9; Rm:5; 0b000111:6; Rn:5; Rd:5] ->
+    // AND
+    SOME (arm_AND_VEC (QREG' Rd) (QREG' Rn) (QREG' Rm) (if q then 128 else 64))
+
+  | [0:1; q; 0b001110000:9; imm5:5; 0b000011:6; Rn:5; Rd:5] ->
+    // DUP
+    if q /\ word_subword imm5 (0,4) = (word 0b1000:4 word) then
+      // DUP Vd.2d, Xn
+      // TODO: support more cases of DUP
+      SOME (arm_DUP (QREG' Rd) (XREG' Rn))
+    else NONE
+
+  | [0:1; q; 0b101110000:9; Rm:5; 0:1; imm4:4; 0:1; Rn:5; Rd:5] ->
+    // EXT
+    if ~q /\ bit 3 imm4 then NONE // "UNDEFINED"
+    else if q then
+      let pos = (val imm4) * 8 in
+      // datasize is fixed to 128.
+      SOME (arm_EXT (QREG' Rd) (QREG' Rm) (QREG' Rn) pos)
+    else NONE
+
+  | [0:1; q; 1:1; 0b0111100000:10; abc:3; cmode:4; 0b01:2; defgh:5; Rd:5] ->
+    // MOVI
+    if q then
+      let abcdefgh:(8)word = word_join abc defgh in
+      let imm = arm_adv_simd_expand_imm abcdefgh (word 1:(1)word) cmode in
+      match imm with
+      | SOME imm -> SOME (arm_MOVI (QREG' Rd) imm)
+      | NONE -> NONE
+    else NONE
+
   | [0:1; q; 0b001110:6; size:2; 0b1:1; Rm:5; 0b100111:6; Rn:5; Rd:5] ->
+    // MUL
     if size = word 0b11 then NONE // "UNDEFINED"
     else if ~q then NONE // datasize = 64 is unsupported yet
     else
@@ -245,7 +318,12 @@ let decode = new_definition `!w:int32. decode w =
       // datasize is fixed to 128. elements is datasize / esize.
       SOME (arm_MUL_VEC (QREG' Rd) (QREG' Rn) (QREG' Rm) (val esize))
 
+  | [0:1; q; 0b001110101:9; Rm:5; 0b000111:6; Rn:5; Rd:5] ->
+    // MOV, ORR
+    SOME (arm_ORR_VEC (QREG' Rd) (QREG' Rn) (QREG' Rm) (if q then 128 else 64))
+
   | [0:1; q; 0b001110:6; size:2; 0b100000000010:12; Rn:5; Rd:5] ->
+    // REV64
     if ~q then NONE // datasize = 64 is unsupported yet
     else if size = (word 0b11: (2)word) then NONE // "UNDEFINED"
     else
@@ -253,6 +331,7 @@ let decode = new_definition `!w:int32. decode w =
       SOME (arm_REV64_VEC (QREG' Rd) (QREG' Rn) (val esize))
 
   | [0:1; q; 0b0011110:7; immh:4; immb:3; 0b010101:6; Rn:5; Rd:5] ->
+    // SHL
     if immh = (word 0b0: (4)word) then NONE // "asimdimm case"
     else if bit 3 immh /\ ~q then NONE // "UNDEFINED"
     else if ~q then NONE // datasize = 64 is unsupported yet
@@ -262,7 +341,23 @@ let decode = new_definition `!w:int32. decode w =
       let shiftamnt:(64)word = word_sub (word_join immh immb:64 word) esize in
       SOME (arm_SHL_VEC (QREG' Rd) (QREG' Rn) (val shiftamnt) (val esize))
 
+  | [0:1; q; 0b0011110:7; immh:4; immb:3; 0b100001:6; Rn:5; Rd:5] ->
+    // SHRN
+    if q then NONE // writing to the upper part is unsupported yet
+    else if immh = (word 0b0:(4)word) then NONE // "asimdimm case"
+    else if bit 3 immh then NONE // "UNDEFINED"
+    else
+      let highest_set_bit =
+        if bit 2 immh then 2 else if bit 1 immh then 1 else 0 in
+      let esize = 8 * (2 EXP highest_set_bit) in
+      // datasize is 64, part is 0
+      let elements = 64 DIV esize in
+      let shift = (2 * esize) - val(word_join immh immb: (7)word) in
+      // round is false
+      SOME (arm_SHRN (QREG' Rd) (QREG' Rn) shift esize)
+
   | [0:1; q; 0b101110:6; size:2; 0b100000001010:12; Rn:5; Rd:5] ->
+    // UADDLP
     if ~q then NONE // datasize = 128 is unsupported yet
     else if size = (word 0b11: (2)word) then NONE // "UNDEFINED"
     else
@@ -270,6 +365,7 @@ let decode = new_definition `!w:int32. decode w =
       SOME (arm_UADDLP (QREG' Rd) (QREG' Rn) (val esize))
 
   | [0:1; q; 0b101110:6; size:2; 0b1:1; Rm:5; 0b100000:6; Rn:5; Rd:5] ->
+    // UMLAL
     if q then NONE // upper part is unsupported yet
     else if size = (word 0b11: (2)word) then NONE // "UNDEFINED"
     else
@@ -277,6 +373,7 @@ let decode = new_definition `!w:int32. decode w =
       SOME (arm_UMLAL (QREG' Rd) (QREG' Rn) (QREG' Rm) (val esize))
 
   | [0:1; q; 0b001110000:9; imm5:5; 0b001111:6; Rn:5; Rd:5] ->
+    // UMOV
     if q /\ word_subword imm5 (0,4) = (word 0b1000: 4 word) then // v.d
       SOME (arm_UMOV (XREG' Rd) (QREG' Rn) (val (word_subword imm5 (4,1): 1 word)) 8)
     else if ~q /\ word_subword imm5 (0,3) = (word 0b100: 3 word) then // v.s
@@ -284,10 +381,21 @@ let decode = new_definition `!w:int32. decode w =
     else NONE // v.h, v.b are unsupported
 
   | [0:1; q; 0b001110:6; size:2; 0b0:1; Rm:5; 0b000110:6; Rn:5; Rd:5] ->
+    // UZIP1
     if ~q then NONE // datasize = 64 is unsupported yet
     else
       let esize: (64)word = word_shl (word 8: (64)word) (val size) in
       SOME (arm_UZIP1 (QREG' Rd) (QREG' Rn) (QREG' Rm) (val esize))
+
+  | [0:1; q; 0b001110:6; size:2; 0:1; Rm:5; 0b001110:6; Rn:5; Rd:5] ->
+    // ZIP1
+    if size = (word 0b11:(2)word) /\ ~q then NONE // "UNDEFINED"
+    else
+      let esize = 8 * (2 EXP (val size)) in
+      let datasize = if q then 128 else 64 in
+      let elements = datasize DIV esize in
+      // part is 0, pairs is elements / 2
+      SOME (arm_ZIP1 (QREG' Rd) (QREG' Rn) (QREG' Rm) esize datasize)
 
   | _ -> NONE`;;
 
@@ -531,10 +639,15 @@ let PURE_DECODE_CONV =
       (gcounter := count + 1;
       mk_var ("eval%"^(string_of_int count), ty)) in
 
+  (* 'mk_pth thm term_list' specializes thm's quantifiers and instantiates
+      unbound variables with term_list *)
   let mk_pth th =
     let th = SPEC_ALL th in
     let _,es = strip_comb (lhs (concl th)) in
     C INST th o C zip es in
+  (* 'mk_pth_split thm ty term_list' instantiates the bitwidth of words (`:N`)
+      that thm uses with ty and performs mk_pth. ty must be either `:32` or
+      `:64`. *)
   let mk_pth_split th =
     split_32_64 (fun ty -> mk_pth (INST_TYPE [ty,`:N`] th)) in
 
@@ -557,8 +670,18 @@ let PURE_DECODE_CONV =
   and pth_ldst = mk_pth arm_ldst
   and pth_ldst_q = mk_pth arm_ldst_q
   and pth_ldstrb = mk_pth arm_ldstb
-  and pth_ldstp = mk_pth arm_ldstp in
+  and pth_ldstp = mk_pth arm_ldstp
+  and pth_adv_simd_expand_imm = mk_pth arm_adv_simd_expand_imm in
 
+  (* Given a product type ty, `eval_prod ty` returns a pair of
+    (t, fn) where t is a term of ty whose operands are fully
+    filled with fresh variables, and fn is a function that takes some
+    term of ty and returns its operands replaced with the new vars.
+    Precisely speaking, 'snd (eval_prod `:(A,B)prod`) (term, ls)' creates
+    new variables that are to be mapped to the variables in term and returns
+    the mapping list concatenated by ls. If the type variable is a tree of
+    prod, it is recursively splitted and the mapping is correspondingly
+    created. *)
   let rec eval_prod = function
   | Tyapp("prod",[A;B]) ->
     let tm1, f1 = eval_prod A in
@@ -592,6 +715,20 @@ let PURE_DECODE_CONV =
         | _ -> failwith "eval_opt")
     | ty -> failwith ("eval_opt " ^ string_of_type ty) in
 
+  (* Evaluates term t in a continuation-passing style. The continuation
+     'F(thm, binding)' takes (1) thm: a rewrite rule that describes the
+     equality `e = v` where `e` was the previous expression and `v` is the
+     result of evaluation (2) binding: a list of free variables and
+     their values.
+     To understand this function further, you can start with the "LET"
+     case which is HOL Light's let binding `let x = e1 in e2` that
+     (1) evaluates e1, (2) takes `|- e1 = v1` and evaluates e2.
+     The benefit of using this continuation-passing style over repetitively
+     applying rewriting rules is its speed.
+     To understand the data structure of HOL Light's terms, you will want
+     to disable the term printer in OCaml REPL via
+     "#remove_printer pp_print_qterm;;". This can be enabled by
+     "#disable_printer pp_print_qterm;;" again. *)
   let rec evaluate t (F:thm->(term*term)list->thm) = match t with
   | Comb(Comb(Const(">>=",_),f),g) ->
     evaluate f (fun th ->
@@ -712,6 +849,8 @@ let PURE_DECODE_CONV =
   | Comb(Comb(Const("arm_ldstb",_),_),_) -> eval_nary pth_ldstrb t F
   | Comb(Comb(Comb(Comb(Const("arm_ldstp",_),_),_),_),_) ->
     eval_nary pth_ldstp t F
+  | Comb(Comb(Comb(Const("arm_adv_simd_expand_imm",_),_),_),_) ->
+    eval_nary pth_adv_simd_expand_imm t F
   | Comb(Comb((Const("bit",_) as f),a),b) ->
     eval_binary f a b F WORD_RED_CONV
   | Comb((Const("Condition",_) as f),a) -> eval_unary f a F CONDITION_CONV
@@ -752,6 +891,7 @@ let PURE_DECODE_CONV =
   | Comb(Comb((Const("*",_) as f),a),b) -> eval_binary f a b F NUM_RED_CONV
   | Comb(Comb((Const("+",_) as f),a),b) -> eval_binary f a b F NUM_RED_CONV
   | Comb(Comb((Const("-",_) as f),a),b) -> eval_binary f a b F NUM_RED_CONV
+  | Comb(Comb((Const("DIV",_) as f),a),b) -> eval_binary f a b F NUM_RED_CONV
   | Comb(Comb((Const("EXP",_) as f),a),b) -> eval_binary f a b F NUM_RED_CONV
   | Comb(Comb((Const("int_mul",_) as f),a),b) ->
     eval_binary f a b F INT_RED_CONV
