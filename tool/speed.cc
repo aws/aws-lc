@@ -204,7 +204,8 @@ static uint64_t time_now() {
 }
 #endif
 
-static uint64_t g_timeout_seconds = 1;
+#define TIMEOUT_SECONDS_DEFAULT 1
+static uint64_t g_timeout_seconds = TIMEOUT_SECONDS_DEFAULT;
 static std::vector<size_t> g_chunk_lengths = {16, 256, 1350, 8192, 16384};
 static std::vector<size_t> g_prime_bit_lengths = {2048, 3072};
 
@@ -2013,12 +2014,14 @@ static bool SpeedDHcheck(size_t prime_bit_length) {
 }
 
 static bool SpeedDHcheck(std::string selected) {
-  if (!selected.empty() && selected.find("dhcheck") == std::string::npos) {
+  // Don't run this by default because it's so slow.
+  if (selected != "dhcheck") {
     return true;
   }
 
-  if (!g_print_json) {
-    printf("DH check speed test is very slow. Speed test works best with higher timeouts.\n");
+  uint64_t maybe_reset_timeout = g_timeout_seconds;
+  if (g_timeout_seconds == TIMEOUT_SECONDS_DEFAULT) {
+    g_timeout_seconds = 10;
   }
 
   for (size_t prime_bit_length : g_prime_bit_lengths) {
@@ -2026,6 +2029,8 @@ static bool SpeedDHcheck(std::string selected) {
       return false;
     }
   }
+
+  g_timeout_seconds = maybe_reset_timeout;
 
   return true;
 }
