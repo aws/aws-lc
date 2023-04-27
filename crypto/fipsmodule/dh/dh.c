@@ -74,7 +74,6 @@
 DH *DH_new(void) {
   DH *dh = OPENSSL_malloc(sizeof(DH));
   if (dh == NULL) {
-    OPENSSL_PUT_ERROR(DH, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
 
@@ -127,6 +126,11 @@ void DH_get0_key(const DH *dh, const BIGNUM **out_pub_key,
   if (out_priv_key != NULL) {
     *out_priv_key = dh->priv_key;
   }
+}
+
+void DH_clear_flags(DH *dh, int flags) {
+  (void) dh;
+  (void) flags;
 }
 
 int DH_set0_key(DH *dh, BIGNUM *pub_key, BIGNUM *priv_key) {

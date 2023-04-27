@@ -297,20 +297,6 @@ typedef struct POLICY_CONSTRAINTS_st {
   ASN1_INTEGER *inhibitPolicyMapping;
 } POLICY_CONSTRAINTS;
 
-// Proxy certificate structures, see RFC 3820
-typedef struct PROXY_POLICY_st {
-  ASN1_OBJECT *policyLanguage;
-  ASN1_OCTET_STRING *policy;
-} PROXY_POLICY;
-
-typedef struct PROXY_CERT_INFO_EXTENSION_st {
-  ASN1_INTEGER *pcPathLengthConstraint;
-  PROXY_POLICY *proxyPolicy;
-} PROXY_CERT_INFO_EXTENSION;
-
-DECLARE_ASN1_FUNCTIONS_const(PROXY_POLICY)
-DECLARE_ASN1_FUNCTIONS_const(PROXY_CERT_INFO_EXTENSION)
-
 struct ISSUING_DIST_POINT_st {
   DIST_POINT_NAME *distpoint;
   int onlyuser;
@@ -352,7 +338,6 @@ struct ISSUING_DIST_POINT_st {
 #define EXFLAG_INVALID 0x80
 #define EXFLAG_SET 0x100
 #define EXFLAG_CRITICAL 0x200
-#define EXFLAG_PROXY 0x400
 
 #define EXFLAG_FRESHEST 0x1000
 // Self signed
@@ -426,12 +411,6 @@ DECLARE_ASN1_FUNCTIONS(AUTHORITY_KEYID)
 DECLARE_ASN1_FUNCTIONS(GENERAL_NAME)
 OPENSSL_EXPORT GENERAL_NAME *GENERAL_NAME_dup(GENERAL_NAME *a);
 
-// GENERAL_NAME_cmp returns zero if |a| and |b| are equal and a non-zero
-// value otherwise. Note this function does not provide a comparison suitable
-// for sorting.
-OPENSSL_EXPORT int GENERAL_NAME_cmp(const GENERAL_NAME *a,
-                                    const GENERAL_NAME *b);
-
 // i2v_GENERAL_NAME serializes |gen| as a |CONF_VALUE|. If |ret| is non-NULL, it
 // appends the value to |ret| and returns |ret| on success or NULL on error. If
 // it returns NULL, the caller is still responsible for freeing |ret|. If |ret|
@@ -468,7 +447,6 @@ OPENSSL_EXPORT GENERAL_NAMES *v2i_GENERAL_NAMES(
 
 DECLARE_ASN1_FUNCTIONS_const(OTHERNAME)
 DECLARE_ASN1_FUNCTIONS_const(EDIPARTYNAME)
-OPENSSL_EXPORT int OTHERNAME_cmp(OTHERNAME *a, OTHERNAME *b);
 OPENSSL_EXPORT void GENERAL_NAME_set0_value(GENERAL_NAME *a, int type,
                                             void *value);
 OPENSSL_EXPORT void *GENERAL_NAME_get0_value(const GENERAL_NAME *a, int *ptype);

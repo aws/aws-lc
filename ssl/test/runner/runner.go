@@ -82,6 +82,7 @@ var (
 	sslFuzzSeedDir     = flag.String("ssl-fuzz-seed-dir", "", "The directory in which to write the output of |SSL_to_bytes|.")
 	testCaseStartIndex = flag.Int("test-case-start-index", -1, "If non-negative, test case is filtered in if the index in |testCases| >= test-case-start-index.")
 	testCaseEndIndex   = flag.Int("test-case-end-index", -1, "If non-negative, test case is filtered in if the index in |testCases| <= test-case-end-index.")
+	dumpTestCases      = flag.Bool("dump-tests", false, "Outputs all the available test cases after filtering. Useful for producing a new set of ssl transfer tests file.")
 )
 
 // ShimConfigurations is used with the “json” package and represents a shim
@@ -491,6 +492,20 @@ const (
 	serverTest
 )
 
+func (t testType) MarshalJSON() ([]byte, error) {
+	return json.Marshal(t.String())
+}
+
+func (t testType) String() string {
+	switch t {
+	case clientTest:
+		return "client"
+	case serverTest:
+		return "server"
+	}
+	return "unknown test type"
+}
+
 type protocol int
 
 const (
@@ -498,6 +513,10 @@ const (
 	dtls
 	quic
 )
+
+func (p protocol) MarshalJSON() ([]byte, error) {
+	return json.Marshal(p.String())
+}
 
 func (p protocol) String() string {
 	switch p {
@@ -708,6 +727,22 @@ type testCase struct {
 	// skipVersionNameCheck, if true, will skip the consistency check between
 	// test name and the versions.
 	skipVersionNameCheck bool
+}
+
+func (t *testCase) MarshalJSON() ([]byte, error) {
+	type out struct {
+		TestType   testType
+		Protocol   protocol
+		Name       string
+		ShouldFail bool
+	}
+
+	return json.Marshal(&out{
+		TestType:   t.testType,
+		Protocol:   t.protocol,
+		Name:       t.name,
+		ShouldFail: t.shouldFail,
+	})
 }
 
 var testCases []testCase
@@ -1259,7 +1294,7 @@ type shimProcess struct {
 	stdout, stderr bytes.Buffer
 	// default value is false.
 	// This is marked as true in |(s *shimProcess) wait()|.
-	idled          bool
+	idled bool
 }
 
 // newShimProcess starts a new shim with the specified executable, flags, and
@@ -2023,7 +2058,7 @@ func convertToSSLTransferTests(tests []testCase) (sslTransferTests []testCase, e
 			stTest.flags = append(stTest.flags, "-do-ssl-transfer")
 			// When |sslFuzzSeedDir| is specified, pass below flag to let bssl_shim dump the output of |SSL_to_bytes|.
 			if len(*sslFuzzSeedDir) != 0 {
-				stTest.flags = append(stTest.flags, "-ssl-fuzz-seed-path-prefix", *sslFuzzSeedDir + "/" + stTest.name)
+				stTest.flags = append(stTest.flags, "-ssl-fuzz-seed-path-prefix", *sslFuzzSeedDir+"/"+stTest.name)
 			}
 			sslTransferTests = append(sslTransferTests, stTest)
 		} else {
@@ -3758,10 +3793,6 @@ func addTestForCipherSuite(suite testCipherSuite, ver tlsVersion, protocol proto
 		flags = append(flags,
 			"-psk", psk,
 			"-psk-identity", pskIdentity)
-	}
-	if hasComponent(suite.name, "NULL") {
-		// NULL ciphers must be explicitly enabled.
-		flags = append(flags, "-cipher", "DEFAULT:NULL-SHA")
 	}
 
 	var shouldFail bool
@@ -12003,9 +12034,9 @@ func addCurveTests() {
 		},
 	})
 
-        // ... and even if there's another curve in the middle because it's the
-        // first classical and first post-quantum "curves" that get key shares
-        // included.
+	// ... and even if there's another curve in the middle because it's the
+	// first classical and first post-quantum "curves" that get key shares
+	// included.
 	testCases = append(testCases, testCase{
 		name: "CECPQ2KeyShareIncludedThird",
 		config: Config{
@@ -15274,9 +15305,9 @@ func addTLS13CipherPreferenceTests() {
 	})
 
 	tls13CipherSuites := map[string]uint16{
-		"TLS_AES_256_GCM_SHA384": TLS_AES_256_GCM_SHA384,
+		"TLS_AES_256_GCM_SHA384":       TLS_AES_256_GCM_SHA384,
 		"TLS_CHACHA20_POLY1305_SHA256": TLS_CHACHA20_POLY1305_SHA256,
-		"TLS_AES_128_GCM_SHA256": TLS_AES_128_GCM_SHA256,
+		"TLS_AES_128_GCM_SHA256":       TLS_AES_128_GCM_SHA256,
 	}
 	for cipherSuite, cipherSuiteId := range tls13CipherSuites {
 		// Test that the client sends the configured TLSv1.3 ciphersuites instead of the built in ciphersuites.
@@ -15296,7 +15327,7 @@ func addTLS13CipherPreferenceTests() {
 		// Test that the server uses the configured TLSv1.3 ciphersuites instead of the built in ciphersuites.
 		testCases = append(testCases, testCase{
 			testType: serverTest,
-			name: "TLS13-Configured-Ciphersuites-Server-" + cipherSuite,
+			name:     "TLS13-Configured-Ciphersuites-Server-" + cipherSuite,
 			config: Config{
 				MaxVersion: VersionTLS13,
 				CipherSuites: []uint16{
@@ -15329,14 +15360,14 @@ func addTLS13CipherPreferenceTests() {
 		flags: []string{
 			"-tls13-ciphersuites", "TLS_CHACHA20_POLY1305_SHA256",
 		},
-		shouldFail:    true,
-		expectedError: ":HANDSHAKE_FAILURE_ON_CLIENT_HELLO:",
+		shouldFail:         true,
+		expectedError:      ":HANDSHAKE_FAILURE_ON_CLIENT_HELLO:",
 		expectedLocalError: "tls: no cipher suite supported by both client and server",
 	})
 
 	testCases = append(testCases, testCase{
 		testType: serverTest,
-		name: "TLS13-Configured-Ciphersuites-Server-No-Shared-Cipher",
+		name:     "TLS13-Configured-Ciphersuites-Server-No-Shared-Cipher",
 		config: Config{
 			MaxVersion: VersionTLS13,
 			CipherSuites: []uint16{
@@ -15348,7 +15379,7 @@ func addTLS13CipherPreferenceTests() {
 		flags: []string{
 			"-tls13-ciphersuites", "TLS_CHACHA20_POLY1305_SHA256",
 		},
-		shouldFail:    true,
+		shouldFail:         true,
 		expectedError:      ":NO_SHARED_CIPHER:",
 		expectedLocalError: "remote error: handshake failure",
 	})
@@ -15428,12 +15459,12 @@ func addPeekTests() {
 // For SSL transfer(encode/decode), this tests are converted to test the serialization of
 // |ssl->s3->read_buffer| and |ssl->s3->pending_app_data|.
 // Below is the difference between |addPeekTests| and |addServerPeekTests|.
-// 1. addServerPeekTests uses bssl_shim as server.
-// 2. The MaxVersion is set to TLS 1.2. The default one seems TLS 1.3.
-// 3. Let Golang TLS client sends messages(len: |maxPlaintext * 50 + 1|) to repeatedly test |SSL_peek| and |SSL_read|.
-//    Here, the 50 is just a magic number used to test SSL_peek with more rounds.
-//    100 was used but it caused some tcp io timeout on macOS. See below reference
-//    CryptoAlg-850?selectedConversation=8749cd07-dcec-44f1-8405-c22aad9fb306. 
+//  1. addServerPeekTests uses bssl_shim as server.
+//  2. The MaxVersion is set to TLS 1.2. The default one seems TLS 1.3.
+//  3. Let Golang TLS client sends messages(len: |maxPlaintext * 50 + 1|) to repeatedly test |SSL_peek| and |SSL_read|.
+//     Here, the 50 is just a magic number used to test SSL_peek with more rounds.
+//     100 was used but it caused some tcp io timeout on macOS. See below reference
+//     CryptoAlg-850?selectedConversation=8749cd07-dcec-44f1-8405-c22aad9fb306.
 func addServerPeekTests() {
 	// Test SSL_peek works, including on empty records.
 	testCases = append(testCases, testCase{
@@ -15442,9 +15473,9 @@ func addServerPeekTests() {
 		config: Config{
 			MaxVersion: VersionTLS12,
 		},
-		messageLen: maxPlaintext * 50 + 1,
+		messageLen:       maxPlaintext*50 + 1,
 		sendEmptyRecords: 1,
-		flags: []string{"-peek-then-read"},
+		flags:            []string{"-peek-then-read"},
 	})
 
 	// Test SSL_peek can drive the initial handshake.
@@ -15455,7 +15486,7 @@ func addServerPeekTests() {
 			MinVersion: VersionTLS11,
 			MaxVersion: VersionTLS12,
 		},
-		messageLen: maxPlaintext * 50 + 1,
+		messageLen: maxPlaintext*50 + 1,
 		flags: []string{
 			"-peek-then-read",
 			"-implicit-handshake",
@@ -15472,7 +15503,7 @@ func addServerPeekTests() {
 				ExpectCloseNotify: true,
 			},
 		},
-		messageLen: maxPlaintext * 50 + 1,
+		messageLen: maxPlaintext*50 + 1,
 		flags: []string{
 			"-peek-then-read",
 			"-check-close-notify",
@@ -19571,6 +19602,53 @@ func checkTests() {
 	}
 }
 
+func uint16SliceContains(slice []uint16, element uint16) bool {
+	for _, slice_element := range slice {
+		if slice_element == element {
+			return true
+		}
+	}
+	return false
+}
+
+func stringSliceContains(slice []string, subStr string) bool {
+	for _, slice_element := range slice {
+		if slice_element == subStr {
+			return true
+		}
+	}
+	return false
+}
+
+func fixUpCipherSuites() {
+
+	// Iterate by reference
+	for index, test_case := range testCases {
+		var add_disabld_cipher_suite bool
+		var disabled_ciphers string
+
+		if uint16SliceContains(test_case.config.CipherSuites, TLS_RSA_WITH_NULL_SHA) ||
+			uint16SliceContains(test_case.renegotiateCiphers, TLS_RSA_WITH_NULL_SHA) {
+			add_disabld_cipher_suite = true
+			disabled_ciphers = ":NULL-SHA"
+		}
+		if uint16SliceContains(test_case.config.CipherSuites, TLS_RSA_WITH_3DES_EDE_CBC_SHA) ||
+			uint16SliceContains(test_case.renegotiateCiphers, TLS_RSA_WITH_3DES_EDE_CBC_SHA) {
+			add_disabld_cipher_suite = true
+			disabled_ciphers = disabled_ciphers + ":3DES"
+		}
+
+		if add_disabld_cipher_suite && stringSliceContains(test_case.flags, "-cipher") {
+			panic(fmt.Sprintf("Test %q duplicates -cipher in arguments", test_case.name))
+		}
+
+		if add_disabld_cipher_suite {
+			test_case.flags = append(test_case.flags, "-cipher", "DEFAULT" + disabled_ciphers)
+			testCases[index] = test_case
+		}
+	}
+}
+
 // filterTests filters |inputTests| given the index range [|startIndex|, |endIndex|].
 // When |startIndex| is negative, the default value |0| is used.
 // When |endIndex| is negative, the default value |len(inputTests) - 1| is used.
@@ -19678,6 +19756,8 @@ func main() {
 	}
 	testCases = append(testCases, toAppend...)
 
+	fixUpCipherSuites()
+
 	if len(*sslTransferConfig) > 0 {
 		// Init ssl transfer helper.
 		sslTransferHelper = ssl_transfer.NewTestHelper(*sslTransferConfig, len(testCases))
@@ -19690,6 +19770,16 @@ func main() {
 	}
 
 	testCases = filterTests(testCases, *testCaseStartIndex, *testCaseEndIndex)
+
+	if *dumpTestCases {
+		jb, err := json.MarshalIndent(testCases, "", "  ")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error encoding json: %v", err)
+			os.Exit(1)
+		}
+		fmt.Printf("%s\n", jb)
+		return
+	}
 
 	checkTests()
 
@@ -19800,7 +19890,9 @@ func main() {
 	if (sslTransferHelper != nil) &&
 		// Skip test file content check when the tests are filtered.
 		(*testCaseStartIndex < 0) &&
-		(*testCaseEndIndex < 0) {
+		(*testCaseEndIndex < 0) &&
+		len(*testToRun) == 0 &&
+		len(*skipTest) == 0 {
 		sslTransferHelper.RefreshTestFileContent()
 	}
 }

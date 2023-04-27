@@ -146,6 +146,10 @@ extern "C" {
 // strategies that may not be ideal for other applications. Non-cryptographic
 // uses should use a more general-purpose integer library, especially if
 // performance-sensitive.
+//
+// Many functions in BN scale quadratically or higher in the bit length of their
+// input. Callers at this layer are assumed to have capped input sizes within
+// their performance tolerances.
 
 
 // BN_ULONG is the native word size when working with big integers.
@@ -293,6 +297,10 @@ OPENSSL_EXPORT int BN_hex2bn(BIGNUM **outp, const char *in);
 // BN_bn2dec returns an allocated string that contains a NUL-terminated,
 // decimal representation of |bn|. If |bn| is negative, the first char in the
 // resulting string will be '-'. Returns NULL on allocation failure.
+//
+// Converting an arbitrarily large integer to decimal is quadratic in the bit
+// length of |a|. This function assumes the caller has capped the input within
+// performance tolerances.
 OPENSSL_EXPORT char *BN_bn2dec(const BIGNUM *a);
 
 // BN_dec2bn parses the leading decimal number from |in|, which may be
@@ -301,6 +309,10 @@ OPENSSL_EXPORT char *BN_bn2dec(const BIGNUM *a);
 // decimal number and stores it in |*outp|. If |*outp| is NULL then it
 // allocates a new BIGNUM and updates |*outp|. It returns the number of bytes
 // of |in| processed or zero on error.
+//
+// Converting an arbitrarily large integer to decimal is quadratic in the bit
+// length of |a|. This function assumes the caller has capped the input within
+// performance tolerances.
 OPENSSL_EXPORT int BN_dec2bn(BIGNUM **outp, const char *in);
 
 // BN_asc2bn acts like |BN_dec2bn| or |BN_hex2bn| depending on whether |in|
@@ -672,8 +684,12 @@ OPENSSL_EXPORT int BN_pseudo_rand_range(BIGNUM *rnd, const BIGNUM *range);
 // When other code needs to call a BN generation function it will often take a
 // BN_GENCB argument and may call the function with other argument values.
 struct bn_gencb_st {
+  uint8_t type;
   void *arg;        // callback-specific data
-  int (*callback)(int event, int n, struct bn_gencb_st *);
+  union {
+    int (*new_style)(int event, int n, struct bn_gencb_st *);
+    void (*old_style)(int, int, void *);
+  } callback;
 };
 
 // BN_GENCB_new returns a newly-allocated |BN_GENCB| object, or NULL on
@@ -684,8 +700,12 @@ OPENSSL_EXPORT BN_GENCB *BN_GENCB_new(void);
 // BN_GENCB_free releases memory associated with |callback|.
 OPENSSL_EXPORT void BN_GENCB_free(BN_GENCB *callback);
 
-// BN_GENCB_set configures |callback| to call |f| and sets |callout->arg| to
-// |arg|.
+// BN_GENCB_set configures |callback| to call |f| and sets |callback->arg| to
+// |arg|. |BN_GENCB_set| is recommended over |BN_GENCB_set_old| as |BN_GENCB_set|
+// accepts callbacks that return a result and have a strong type for the
+// |BN_GENCB|. Only one callback can be configured in a |BN_GENCB|, calling
+// |BN_GENCB_set| or |BN_GENCB_set_old| multiple times will overwrite the
+// callback.
 OPENSSL_EXPORT void BN_GENCB_set(BN_GENCB *callback,
                                  int (*f)(int event, int n, BN_GENCB *),
                                  void *arg);
@@ -919,6 +939,16 @@ OPENSSL_EXPORT int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a,
 
 // Deprecated functions
 
+// BN_GENCB_set_old behaves like |BN_GENCB_set| which is the recommended way to
+// set a callback on a |BN_GENCB|. |BN_GENCB_set_old| configures |callback| to
+// call |f| and sets |callback->arg| to |arg|. The only difference between
+// |BN_GENCB_set| and |BN_GENCB_set_old| is the argument and return types in
+// |callback|. Only one callback can be configured in a |BN_GENCB|, calling
+// |BN_GENCB_set| or |BN_GENCB_set_old| multiple times will overwrite the
+// callback.
+OPENSSL_EXPORT void BN_GENCB_set_old(BN_GENCB *callback,
+                                     void (*f)(int, int, void *), void *cb_arg);
+
 // BN_bn2mpi serialises the value of |in| to |out|, using a format that consists
 // of the number's length in bytes represented as a 4-byte big-endian number,
 // and the number itself in big-endian format, where the most significant bit
@@ -1018,8 +1048,14 @@ OPENSSL_EXPORT unsigned BN_num_bits_word(BN_ULONG l);
 
 #define BN_FLG_MALLOCED 0x01
 #define BN_FLG_STATIC_DATA 0x02
+
+#ifdef AWS_LC_INTERNAL_IGNORE_BN_SET_FLAGS
+#define BN_set_flags(x, y) /* Ignored */
+#define BN_FLG_CONSTTIME 0x04
+#endif /* AWS_LC_INTERNAL_IGNORE_BN_SET_FLAGS */
+
 // |BN_FLG_CONSTTIME| has been removed and intentionally omitted so code relying
-// on it will not compile. Consumers outside BoringSSL should use the
+// on it will not compile unless the flag above is set. Consumers should use the
 // higher-level cryptographic algorithms exposed by other modules. Consumers
 // within the library should call the appropriate timing-sensitive algorithm
 // directly.

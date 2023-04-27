@@ -28,6 +28,12 @@
     "target_arch": "arm"
   },
   {
+    "comment": "Test OPENSSL_ia32cap on crypto_test for x86, as urandom_test is disabled for shared builds on x86",
+    "cmd": ["crypto/crypto_test", "--gtest_filter=Crypto.OnDemandIntegrityTest"],
+    "env": ["OPENSSL_ia32cap=0:0"],
+    "target_arch": "x86"
+  },
+  {
     "cmd": ["crypto/urandom_test"],
     "skip_valgrind": true
   },
@@ -84,8 +90,7 @@
     "skip_valgrind": true
   },
   {
-    "cmd": ["ssl/ssl_test"],
-    "skip_valgrind": true
+    "cmd": ["ssl/ssl_test"]
   },
   {
     "cmd": ["ssl/integration_test"]

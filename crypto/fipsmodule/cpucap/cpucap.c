@@ -69,6 +69,9 @@ HIDDEN uint32_t OPENSSL_armcap_P =
 #if defined(__ARM_FEATURE_SHA512)
     ARMV8_SHA512 |
 #endif
+#if defined(__ARM_FEATURE_SHA3)
+    ARMV8_SHA3 |
+#endif
     0;
 
 #else
@@ -79,7 +82,7 @@ HIDDEN uint32_t OPENSSL_armcap_P = 0;
 
 #if defined(BORINGSSL_DISPATCH_TEST)
 // This value must be explicitly initialized to zero. See similar comment above.
-HIDDEN uint8_t BORINGSSL_function_hit[7] = {0};
+HIDDEN uint8_t BORINGSSL_function_hit[8] = {0};
 #endif
 
 // This variable is used only for testing purposes to ensure that the library

@@ -16,6 +16,7 @@
 #define OPENSSL_HEADER_CRYPTO_H
 
 #include <openssl/base.h>
+#include <openssl/err.h>
 #include <openssl/sha.h>
 
 // Upstream OpenSSL defines |OPENSSL_malloc|, etc., in crypto.h rather than
@@ -159,6 +160,9 @@ OPENSSL_EXPORT int ENGINE_register_all_complete(void);
 // OPENSSL_load_builtin_modules does nothing.
 OPENSSL_EXPORT void OPENSSL_load_builtin_modules(void);
 
+// AWS-LC does not support custom flags when initializing the library, these
+// values are included to simplify building other software that expects them.
+
 #define OPENSSL_INIT_NO_LOAD_CRYPTO_STRINGS 0
 #define OPENSSL_INIT_LOAD_CRYPTO_STRINGS 0
 #define OPENSSL_INIT_ADD_ALL_CIPHERS 0
@@ -167,6 +171,7 @@ OPENSSL_EXPORT void OPENSSL_load_builtin_modules(void);
 #define OPENSSL_INIT_NO_ADD_ALL_DIGESTS 0
 #define OPENSSL_INIT_LOAD_CONFIG 0
 #define OPENSSL_INIT_NO_LOAD_CONFIG 0
+#define OPENSSL_INIT_ENGINE_ALL_BUILTIN 0
 
 // OPENSSL_init_crypto calls |CRYPTO_library_init| and returns one.
 OPENSSL_EXPORT int OPENSSL_init_crypto(uint64_t opts,
@@ -196,6 +201,7 @@ OPENSSL_EXPORT uint32_t FIPS_version(void);
 // the current BoringSSL and zero otherwise.
 OPENSSL_EXPORT int FIPS_query_algorithm_status(const char *algorithm);
 #endif //BORINGSSL_FIPS_140_3
+
 
 #if defined(__cplusplus)
 }  // extern C

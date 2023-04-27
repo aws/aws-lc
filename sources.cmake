@@ -95,6 +95,7 @@ set(
   crypto/ocsp/test/aws/ocsp_request_signed_sha256.der
   crypto/ocsp/test/aws/ocsp_response.der
   crypto/ocsp/test/aws/ocsp_response_ca_signed.der
+  crypto/ocsp/test/aws/ocsp_response_no_nonce.der
   crypto/ocsp/test/aws/ocsp_response_revoked.der
   crypto/ocsp/test/aws/ocsp_response_unknown.der
   crypto/ocsp/test/aws/ocsp_response_wrong_signer.der

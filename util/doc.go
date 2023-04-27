@@ -1,5 +1,3 @@
-//go:build ignore
-
 // doc generates HTML files from the comments in header files.
 //
 // doc expects to be given the path to a JSON file via the --config option.
@@ -610,7 +608,7 @@ func generate(outPath string, config *Config) (map[string]string, error) {
 	headerTmpl, err := headerTmpl.Parse(`<!DOCTYPE html>
 <html>
   <head>
-    <title>BoringSSL - {{.Name}}</title>
+    <title>AWS-LC - {{.Name}}</title>
     <meta charset="utf-8">
     <link rel="stylesheet" type="text/css" href="doc.css">
   </head>
@@ -706,7 +704,7 @@ func generateIndex(outPath string, config *Config, headerDescriptions map[string
 	indexTmpl, err := indexTmpl.Parse(`<!DOCTYPE html5>
 
   <head>
-    <title>BoringSSL - Headers</title>
+    <title>AWS-LC - Headers</title>
     <meta charset="utf-8">
     <link rel="stylesheet" type="text/css" href="doc.css">
   </head>
@@ -714,7 +712,7 @@ func generateIndex(outPath string, config *Config, headerDescriptions map[string
   <body>
     <div id="main">
       <div class="title">
-        <h2>BoringSSL Headers</h2>
+        <h2>AWS-LC Headers</h2>
       </div>
       <table>
         {{range .Sections}}

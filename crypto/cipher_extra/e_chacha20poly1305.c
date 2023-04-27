@@ -23,10 +23,10 @@
 #include <openssl/poly1305.h>
 #include <openssl/type_check.h>
 
-#include "internal.h"
 #include "../chacha/internal.h"
 #include "../fipsmodule/cipher/internal.h"
 #include "../internal.h"
+#include "internal.h"
 
 struct aead_chacha20_poly1305_ctx {
   uint8_t key[32];
@@ -87,7 +87,7 @@ static void calc_tag(uint8_t tag[POLY1305_TAG_LEN], const uint8_t *key,
   CRYPTO_chacha_20(poly1305_key, poly1305_key, sizeof(poly1305_key), key, nonce,
                    0);
 
-  static const uint8_t padding[16] = { 0 };  // Padding is all zeros.
+  static const uint8_t padding[16] = {0};  // Padding is all zeros.
   poly1305_state ctx;
   CRYPTO_poly1305_init(&ctx, poly1305_key);
   CRYPTO_poly1305_update(&ctx, ad, ad_len);
@@ -107,9 +107,9 @@ static void calc_tag(uint8_t tag[POLY1305_TAG_LEN], const uint8_t *key,
 }
 
 static int chacha20_poly1305_seal_scatter(
-    const uint8_t *key, uint8_t *out, uint8_t *out_tag,
-    size_t *out_tag_len, size_t max_out_tag_len, const uint8_t *nonce,
-    size_t nonce_len, const uint8_t *in, size_t in_len, const uint8_t *extra_in,
+    const uint8_t *key, uint8_t *out, uint8_t *out_tag, size_t *out_tag_len,
+    size_t max_out_tag_len, const uint8_t *nonce, size_t nonce_len,
+    const uint8_t *in, size_t in_len, const uint8_t *extra_in,
     size_t extra_in_len, const uint8_t *ad, size_t ad_len, size_t tag_len) {
   if (extra_in_len + tag_len < tag_len) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_TOO_LARGE);
@@ -151,8 +151,7 @@ static int chacha20_poly1305_seal_scatter(
 
     for (size_t done = 0; done < extra_in_len; block_counter++) {
       memset(block, 0, sizeof(block));
-      CRYPTO_chacha_20(block, block, sizeof(block), key, nonce,
-                       block_counter);
+      CRYPTO_chacha_20(block, block, sizeof(block), key, nonce, block_counter);
       for (size_t i = offset; i < sizeof(block) && done < extra_in_len;
            i++, done++) {
         out_tag[done] = extra_in[done] ^ block[i];
@@ -213,15 +212,17 @@ static int aead_xchacha20_poly1305_seal_scatter(
   OPENSSL_memcpy(&derived_nonce[4], &nonce[16], 8);
 
   return chacha20_poly1305_seal_scatter(
-      derived_key, out, out_tag, out_tag_len, max_out_tag_len,
-      derived_nonce, sizeof(derived_nonce), in, in_len, extra_in, extra_in_len,
-      ad, ad_len, ctx->tag_len);
+      derived_key, out, out_tag, out_tag_len, max_out_tag_len, derived_nonce,
+      sizeof(derived_nonce), in, in_len, extra_in, extra_in_len, ad, ad_len,
+      ctx->tag_len);
 }
 
-static int chacha20_poly1305_open_gather(
-    const uint8_t *key, uint8_t *out, const uint8_t *nonce,
-    size_t nonce_len, const uint8_t *in, size_t in_len, const uint8_t *in_tag,
-    size_t in_tag_len, const uint8_t *ad, size_t ad_len, size_t tag_len) {
+static int chacha20_poly1305_open_gather(const uint8_t *key, uint8_t *out,
+                                         const uint8_t *nonce, size_t nonce_len,
+                                         const uint8_t *in, size_t in_len,
+                                         const uint8_t *in_tag,
+                                         size_t in_tag_len, const uint8_t *ad,
+                                         size_t ad_len, size_t tag_len) {
   if (nonce_len != 12) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_NONCE_SIZE);
     return 0;
@@ -299,11 +300,12 @@ static int aead_xchacha20_poly1305_open_gather(
 }
 
 static const EVP_AEAD aead_chacha20_poly1305 = {
-    32,                // key len
-    12,                // nonce len
-    POLY1305_TAG_LEN,  // overhead
-    POLY1305_TAG_LEN,  // max tag length
-    1,                 // seal_scatter_supports_extra_in
+    32,                         // key len
+    12,                         // nonce len
+    POLY1305_TAG_LEN,           // overhead
+    POLY1305_TAG_LEN,           // max tag length
+    AEAD_CHACHA20_POLY1305_ID,  // evp_aead_id
+    1,                          // seal_scatter_supports_extra_in
 
     aead_chacha20_poly1305_init,
     NULL,  // init_with_direction
@@ -313,14 +315,17 @@ static const EVP_AEAD aead_chacha20_poly1305 = {
     aead_chacha20_poly1305_open_gather,
     NULL,  // get_iv
     NULL,  // tag_len
+    NULL,  // serialize_state
+    NULL,  // deserialize_state
 };
 
 static const EVP_AEAD aead_xchacha20_poly1305 = {
-    32,                // key len
-    24,                // nonce len
-    POLY1305_TAG_LEN,  // overhead
-    POLY1305_TAG_LEN,  // max tag length
-    1,                 // seal_scatter_supports_extra_in
+    32,                          // key len
+    24,                          // nonce len
+    POLY1305_TAG_LEN,            // overhead
+    POLY1305_TAG_LEN,            // max tag length
+    AEAD_XCHACHA20_POLY1305_ID,  // evp_aead_id
+    1,                           // seal_scatter_supports_extra_in
 
     aead_chacha20_poly1305_init,
     NULL,  // init_with_direction
@@ -330,6 +335,8 @@ static const EVP_AEAD aead_xchacha20_poly1305 = {
     aead_xchacha20_poly1305_open_gather,
     NULL,  // get_iv
     NULL,  // tag_len
+    NULL,  // serialize_state
+    NULL,  // deserialize_state
 };
 
 const EVP_AEAD *EVP_aead_chacha20_poly1305(void) {

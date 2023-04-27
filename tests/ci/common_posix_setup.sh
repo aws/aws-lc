@@ -90,7 +90,18 @@ function generate_symbols_file {
 function verify_symbols_prefixed {
   go run "$SRC_ROOT"/util/read_symbols.go -out "$BUILD_ROOT"/symbols_final_crypto.txt "$BUILD_ROOT"/crypto/libcrypto.a
   go run "$SRC_ROOT"/util/read_symbols.go -out "$BUILD_ROOT"/symbols_final_ssl.txt "$BUILD_ROOT"/ssl/libssl.a
-  cat "$BUILD_ROOT"/symbols_final_crypto.txt  "$BUILD_ROOT"/symbols_final_ssl.txt | grep -v -e '^_\?bignum' >  "$SRC_ROOT"/symbols_final.txt
+  # For grep's basic regular expression language the meta-characters (e.g. "?",
+  # "|", etc.) are interpreted as literal characters. To keep their
+  # meta-character semantics, they must be escaped with "\".
+  # Deciphering the pattern "^_\?\(bignum\|curve25519_x25519\)":
+  #  * "^": anchor at start of line.
+  #  * "_\?": might contain underscore.
+  #  * "\(bignum\|curve25519_x25519\)": match string of either "bignum" or "curve25519_x25519".
+  # Recall that the option "-v" reverse the pattern matching. So, we are really
+  # filtering out lines that contain either "bignum" or "curve25519_x25519".
+  cat "$BUILD_ROOT"/symbols_final_crypto.txt  "$BUILD_ROOT"/symbols_final_ssl.txt | grep -v -e '^_\?\(bignum\|curve25519_x25519\)' >  "$SRC_ROOT"/symbols_final.txt
+  # Now filter out every line that has the unique prefix $CUSTOM_PREFIX. If we
+  # have any lines left, then some symbol(s) weren't prefixed, unexpectedly.
   if [ $(grep -c -v ${CUSTOM_PREFIX}  "$SRC_ROOT"/symbols_final.txt) -ne 0 ]; then
     echo "Symbol(s) missing prefix!"
     exit 1
@@ -130,7 +141,7 @@ function fips_build_and_test {
 
 function build_and_test_valgrind {
   run_build "$@"
-  run_cmake_custom_target 'run_tests_valgrind'
+  run_cmake_custom_target 'run_tests_valgrind' && run_cmake_custom_target 'run_ssl_runner_tests_valgrind'
 }
 
 function build_and_test_with_sde {

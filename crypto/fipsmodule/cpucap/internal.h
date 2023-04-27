@@ -115,6 +115,18 @@ OPENSSL_INLINE int CRYPTO_is_SHAEXT_capable(void) {
   return (OPENSSL_ia32cap_get()[2] & (1 << 29)) != 0;
 }
 
+OPENSSL_INLINE int CRYPTO_is_AVX512_capable(void) {
+  return (OPENSSL_ia32cap_get()[2] & 0xC0030000) != 0;
+}
+
+OPENSSL_INLINE int CRYPTO_is_VAES_capable(void) {
+  return (OPENSSL_ia32cap_get()[3] & (1u << (41 - 32))) != 0;
+}
+
+OPENSSL_INLINE int CRYPTO_is_VPCLMULQDQ_capable(void) {
+  return (OPENSSL_ia32cap_get()[3] & (1u << (42 - 32))) != 0;
+}
+
 #endif  // OPENSSL_X86 || OPENSSL_X86_64
 
 #if defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
@@ -176,6 +188,25 @@ OPENSSL_INLINE int CRYPTO_is_ARMv8_PMULL_capable(void) {
   return 0;
 #else
   return (OPENSSL_armcap_P & ARMV8_PMULL) != 0;
+#endif
+}
+
+OPENSSL_INLINE int CRYPTO_is_ARMv8_GCM_8x_capable(void) {
+#if defined(OPENSSL_STATIC_ARMCAP)
+  return 0;
+#else
+  return ((OPENSSL_armcap_P & ARMV8_SHA3) != 0 &&
+          ((OPENSSL_armcap_P & ARMV8_NEOVERSE_V1) != 0 ||
+           (OPENSSL_armcap_P & ARMV8_APPLE_M1) != 0));
+#endif
+}
+
+OPENSSL_INLINE int CRYPTO_is_ARMv8_wide_multiplier_capable(void) {
+#if defined(OPENSSL_STATIC_ARMCAP)
+  return 0;
+#else
+  return (OPENSSL_armcap_P & ARMV8_NEOVERSE_V1) != 0 ||
+           (OPENSSL_armcap_P & ARMV8_APPLE_M1) != 0;
 #endif
 }
 

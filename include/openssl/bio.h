@@ -87,7 +87,6 @@ OPENSSL_EXPORT BIO *BIO_new(const BIO_METHOD *method);
 // drops to zero, it (optionally) calls the BIO's callback with |BIO_CB_FREE|,
 // calls the destroy callback, if present, on the method and frees |bio| itself.
 // It then repeats that for the next BIO in the chain, if any.
-
 //
 // It returns one on success or zero otherwise.
 OPENSSL_EXPORT int BIO_free(BIO *bio);
