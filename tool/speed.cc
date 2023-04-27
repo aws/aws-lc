@@ -2011,6 +2011,7 @@ static bool SpeedDHcheck(size_t prime_bit_length) {
 
   results.PrintWithPrimes("DH check(s)", prime_bit_length);
 
+#if !defined(OPENSSL_BENCHMARK)
   if (!TimeFunction(&results, [&dh_params]() -> bool {
         int result = 0;
         if (DH_check_trusted(dh_params.get(), &result) != 1) {
@@ -2022,6 +2023,8 @@ static bool SpeedDHcheck(size_t prime_bit_length) {
   }
 
   results.PrintWithPrimes("DH trusted check(s)", prime_bit_length);
+#endif
+
   return true;
 }
 

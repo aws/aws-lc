@@ -256,11 +256,13 @@ OPENSSL_EXPORT unsigned DH_num_bits(const DH *dh);
 // Note: these checks may be quite computationally expensive.
 OPENSSL_EXPORT int DH_check(const DH *dh, int *out_flags);
 
-// Use |DH_check|.
-//
 // DH_check_trusted is the same as |DH_check| but for the case where the
-// consumer explicitly trusts the DH parameters. This will not work in cases
-// where an actor can maliciously choose DH parameters.
+// consumer explicitly trusts the DH parameters |dh|. This will not work in
+// cases where the input can be adversarially chosen. So, unless you know
+// better, always use |DH_check|. |DH_check_trusted| is less computationally
+// intensive than |DH_check|.
+//
+// Note: Use |DH_check|!
 OPENSSL_EXPORT int DH_check_trusted(const DH *dh, int *out_flags);
 
 #define DH_CHECK_PUBKEY_TOO_SMALL 0x1
