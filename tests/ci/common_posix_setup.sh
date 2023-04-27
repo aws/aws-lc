@@ -159,7 +159,7 @@ function build_and_test_valgrind {
     fi
   fi
 
-  export AWS_LC_GO_TEST_TIMEOUT="30m"
+  export AWS_LC_GO_TEST_TIMEOUT="60m"
   run_build "$@" -DCMAKE_C_FLAGS="$VALGRIND_STATIC_CAP_FLAGS"
   run_cmake_custom_target 'run_tests_valgrind' && run_cmake_custom_target 'run_ssl_runner_tests_valgrind'
 
