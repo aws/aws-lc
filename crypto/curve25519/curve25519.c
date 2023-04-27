@@ -31,10 +31,6 @@
 #include "../internal.h"
 #include "../fipsmodule/cpucap/internal.h"
 
-#if defined(OPENSSL_ARM) && !defined(OPENSSL_NO_ASM) && !defined(OPENSSL_APPLE)
-#define BORINGSSL_X25519_NEON_CAPABLE
-#endif
-
 #if (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64)) && \
     (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE)) && \
     !defined(OPENSSL_NO_ASM) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
@@ -46,14 +42,6 @@
 OPENSSL_INLINE int x25519_s2n_bignum_capable(void) {
 #if defined(CURVE25519_S2N_BIGNUM_CAPABLE)
   return 1;
-#else
-  return 0;
-#endif
-}
-
-OPENSSL_INLINE int x25519_Armv7_neon_capable(void) {
-#if defined(BORINGSSL_X25519_NEON_CAPABLE)
-  return CRYPTO_is_NEON_capable();
 #else
   return 0;
 #endif
@@ -88,16 +76,6 @@ void curve25519_x25519base_byte_alt(uint8_t res[32], const uint8_t scalar[32]) {
 }
 
 #endif // !defined(CURVE25519_S2N_BIGNUM_CAPABLE)
-
-void x25519_NEON(uint8_t out[32], const uint8_t scalar[32],
-                 const uint8_t point[32]);
-
-#if !defined(BORINGSSL_X25519_NEON_CAPABLE)
-void x25519_NEON(uint8_t out[32], const uint8_t scalar[32],
-                 const uint8_t point[32]) {
-  abort();
-}
-#endif // !defined(BORINGSSL_X25519_NEON_CAPABLE)
 
 
 // Run-time detection for each implementation
@@ -384,9 +362,6 @@ void X25519_public_from_private(uint8_t out_public_value[32],
 
   if (x25519_s2n_bignum_capable() == 1) {
     x25519_s2n_bignum_public_from_private(out_public_value, private_key);
-  } else if (x25519_Armv7_neon_capable() == 1) {
-    static const uint8_t kMongomeryBasePoint[32] = {9};
-    x25519_NEON(out_public_value, private_key, kMongomeryBasePoint);
   } else {
     x25519_public_from_private_nohw(out_public_value, private_key);
   }
@@ -422,8 +397,6 @@ int X25519(uint8_t out_shared_key[32], const uint8_t private_key[32],
 
   if (x25519_s2n_bignum_capable() == 1) {
     x25519_s2n_bignum(out_shared_key, private_key, peer_public_value);
-  } else if (x25519_Armv7_neon_capable() == 1) {
-    x25519_NEON(out_shared_key, private_key, peer_public_value);
   } else {
     x25519_scalar_mult_generic_nohw(out_shared_key, private_key, peer_public_value);
   }
