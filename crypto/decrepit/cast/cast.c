@@ -54,7 +54,6 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.]. */
 
-#include <openssl/cast.h>
 #include <openssl/cipher.h>
 #include <openssl/obj.h>
 
@@ -354,65 +353,6 @@ void CAST_set_key(CAST_KEY *key, size_t len, const uint8_t *data) {
   }
 }
 
-// The input and output encrypted as though 64bit cfb mode is being used. The
-// extra state information to record how much of the 64bit block we have used
-// is contained in *num.
-void CAST_cfb64_encrypt(const uint8_t *in, uint8_t *out, size_t length,
-                        const CAST_KEY *schedule, uint8_t *ivec, int *num,
-                        int enc) {
-  uint32_t v0, v1, t;
-  int n = *num;
-  size_t l = length;
-  uint32_t ti[2];
-  uint8_t *iv, c, cc;
-
-  iv = ivec;
-  if (enc) {
-    while (l--) {
-      if (n == 0) {
-        n2l(iv, v0);
-        ti[0] = v0;
-        n2l(iv, v1);
-        ti[1] = v1;
-        CAST_encrypt((uint32_t *)ti, schedule);
-        iv = ivec;
-        t = ti[0];
-        l2n(t, iv);
-        t = ti[1];
-        l2n(t, iv);
-        iv = ivec;
-      }
-      c = *(in++) ^ iv[n];
-      *(out++) = c;
-      iv[n] = c;
-      n = (n + 1) & 0x07;
-    }
-  } else {
-    while (l--) {
-      if (n == 0) {
-        n2l(iv, v0);
-        ti[0] = v0;
-        n2l(iv, v1);
-        ti[1] = v1;
-        CAST_encrypt((uint32_t *)ti, schedule);
-        iv = ivec;
-        t = ti[0];
-        l2n(t, iv);
-        t = ti[1];
-        l2n(t, iv);
-        iv = ivec;
-      }
-      cc = *(in++);
-      c = iv[n];
-      iv[n] = cc;
-      *(out++) = c ^ cc;
-      n = (n + 1) & 0x07;
-    }
-  }
-  v0 = v1 = ti[0] = ti[1] = t = c = cc = 0;
-  *num = n;
-}
-
 static int cast_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
                          const uint8_t *iv, int enc) {
   CAST_KEY *cast_key = ctx->cipher_data;
@@ -423,6 +363,7 @@ static int cast_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
 static int cast_ecb_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
                            size_t len) {
   CAST_KEY *cast_key = ctx->cipher_data;
+  assert(len % CAST_BLOCK == 0);
 
   while (len >= CAST_BLOCK) {
     CAST_ecb_encrypt(in, out, cast_key, ctx->encrypt);

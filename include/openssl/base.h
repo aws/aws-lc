@@ -400,6 +400,7 @@ typedef struct blake2b_state_st BLAKE2B_CTX;
 typedef struct bn_gencb_st BN_GENCB;
 typedef struct bn_mont_ctx_st BN_MONT_CTX;
 typedef struct buf_mem_st BUF_MEM;
+typedef struct cast_key_st CAST_KEY;
 typedef struct cbb_st CBB;
 typedef struct cbs_st CBS;
 typedef struct cmac_ctx_st CMAC_CTX;
