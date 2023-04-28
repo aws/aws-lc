@@ -64,11 +64,9 @@ if(BUILD_TESTING)
     ../tool/fd.cc
 
     $<TARGET_OBJECTS:crypto_test_data>
-    $<TARGET_OBJECTS:boringssl_gtest_main>
   )
-  add_dependencies(${INTEGRATION_TEST_EXEC} global_target)
   target_link_libraries(${INTEGRATION_TEST_EXEC} test_support_lib
-          boringssl_gtest ssl crypto)
+          boringssl_gtest_main ssl crypto)
   add_dependencies(all_tests ${INTEGRATION_TEST_EXEC})
 
   add_executable(
