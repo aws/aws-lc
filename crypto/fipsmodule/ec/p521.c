@@ -14,6 +14,7 @@
 #include <openssl/mem.h>
 
 #include "../bn/internal.h"
+#include "../cpucap/internal.h"
 #include "../delocate.h"
 #include "internal.h"
 
@@ -80,8 +81,7 @@ static const p521_limb_t p521_felem_p[P521_NLIMBS] = {
 // every x86 CPU so we have to check if they are available and in case
 // they are not we fallback to slightly slower but generic implementation.
 static inline uint8_t p521_use_s2n_bignum_alt(void) {
-  return ((OPENSSL_ia32cap_get()[2] & (1u <<  8)) == 0) || // bmi2
-         ((OPENSSL_ia32cap_get()[2] & (1u << 19)) == 0);   // adx
+  return (!CRYPTO_is_BMI2_capable() || !CRYPTO_is_ADX_capable());
 }
 #else
 // On aarch64 platforms s2n-bignum has two implementations of certain
@@ -89,16 +89,8 @@ static inline uint8_t p521_use_s2n_bignum_alt(void) {
 // Depending on the architecture one version is faster than the other.
 // Generally, the "_alt" functions are faster on architectures with higher
 // multiplier throughput, for example, Graviton 3, Apple's M1 and iPhone chips.
-// Until we find a clear way to determine in runtime which architecture we
-// are running on we stick with the default s2n-bignum functions. Except in
-// the case of Apple, because we know that on Apple's Arm chips the "_alt"
-// functions are faster.
 static inline uint8_t p521_use_s2n_bignum_alt(void) {
-#if defined(OPENSSL_APPLE)
-  return 1;
-#else
-  return 0;
-#endif
+  return CRYPTO_is_ARMv8_wide_multiplier_capable();
 }
 #endif
 
