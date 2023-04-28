@@ -1187,6 +1187,31 @@ let arm_UMULH = define
         let d:N word = word((val n * val m) DIV (2 EXP dimindex(:N))) in
         (Rd := d) s`;;
 
+let arm_USRA_VEC = define
+ `arm_USRA_VEC Rd Rn shift esize datasize =
+    \s. let n:(128)word = read Rn s in
+        let n:(128)word =
+          if esize = 64 then usimd2 (\x. word_ushr x shift) n
+          else if esize = 32 then usimd4 (\x. word_ushr x shift) n
+          else if esize = 16 then usimd8 (\x. word_ushr x shift) n
+          else usimd16 (\x. word_ushr x shift) n in
+        let d:(128)word = read Rd s in
+        if datasize = 128 then
+          let d:(128)word =
+            if esize = 64 then simd2 word_add d n
+            else if esize = 32 then simd4 word_add d n
+            else if esize = 16 then simd8 word_add d n
+            else simd16 word_add d n in
+          (Rd := d) s
+        else // datasize = 64
+          let n:(64)word = word_subword n (0,64):(64)word in
+          let d:(64)word = word_subword d (0,64):(64)word in
+          let d:(64)word =
+            if esize = 32 then simd2 word_add d n
+            else if esize = 16 then simd4 word_add d n
+            else simd8 word_add d n in
+          (Rd := word_zx d:(128)word) s`;;
+
 let arm_UZIP1 = define
  `arm_UZIP1 Rd Rn Rm esize =
     \s. let n:(128)word = read Rn (s:armstate) in
@@ -1727,6 +1752,7 @@ let arm_SHL_VEC_ALT =   REWRITE_RULE all_simd_rules arm_SHL_VEC;;
 let arm_MUL_VEC_ALT =   REWRITE_RULE all_simd_rules arm_MUL_VEC;;
 let arm_UADDLP_ALT =    REWRITE_RULE all_simd_rules arm_UADDLP;;
 let arm_UMLAL_ALT =     REWRITE_RULE all_simd_rules arm_UMLAL;;
+let arm_USRA_VEC_ALT =  REWRITE_RULE all_simd_rules arm_USRA_VEC;;
 let arm_UZIP1_ALT =     REWRITE_RULE all_simd_rules arm_UZIP1;;
 let arm_ZIP1_ALT =      REWRITE_RULE all_simd_rules arm_ZIP1;;
 
@@ -1748,7 +1774,7 @@ let ARM_OPERATION_CLAUSES =
        arm_RET; arm_REV64_VEC_ALT;
        arm_RORV; arm_SBC; arm_SBCS_ALT; arm_SHL_VEC_ALT; arm_SHRN_ALT; arm_SUB;
        arm_SUBS_ALT; arm_UADDLP_ALT; arm_UBFM; arm_UMOV; arm_UMADDL;
-       arm_UMLAL_ALT; arm_UMSUBL; arm_UMULH; arm_UZIP1_ALT;
+       arm_UMLAL_ALT; arm_UMSUBL; arm_UMULH; arm_USRA_VEC_ALT; arm_UZIP1_ALT;
        arm_ZIP1_ALT;
     (*** 32-bit backups since the ALT forms are 64-bit only ***)
        INST_TYPE[`:32`,`:N`] arm_ADCS;
