@@ -130,12 +130,19 @@ TEST(ECDHTest, TestVectors) {
   });
 }
 
-static int has_uint128_and_not_small() {
+// Returns 1 if the curve defined by |nid| is using Montgomery representation
+// for field elements (based on the build configuration). Returns 0 otherwise.
+static int is_curve_using_mont_felem_impl(int nid) {
+  if (nid == NID_secp224r1) {
 #if defined(BORINGSSL_HAS_UINT128) && !defined(OPENSSL_SMALL)
-  return 1;
-#else
-  return 0;
+    return 0;
 #endif
+  } else if (nid == NID_secp521r1) {
+#if !defined(OPENSSL_SMALL)
+    return 0;
+#endif
+  }
+  return 1;
 }
 
 // The following test is adapted from ECTest.LargeXCoordinateVectors
@@ -207,8 +214,7 @@ TEST(ECDHTest, InvalidPubKeyLargeCoord) {
                                 priv_key.get());
 
     int curve_nid = group.get()->curve_name;
-    if ((has_uint128_and_not_small() && (curve_nid == NID_secp224r1)) ||
-        (curve_nid == NID_secp521r1)) {
+    if (!is_curve_using_mont_felem_impl(curve_nid)) {
       ASSERT_TRUE(ret);
     } else {
       ASSERT_FALSE(ret);

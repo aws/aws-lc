@@ -1846,7 +1846,7 @@ static bool HasSuffix(const char *str, const char *suffix) {
 }
 
 // Returns 1 if the curve defined by |nid| is using Montgomery representation
-// for field elements. Returns 0 otherwise.
+// for field elements (based on the build configuration). Returns 0 otherwise.
 static int is_curve_using_mont_felem_impl(int nid) {
   if (nid == NID_secp224r1) {
 #if defined(BORINGSSL_HAS_UINT128) && !defined(OPENSSL_SMALL)
