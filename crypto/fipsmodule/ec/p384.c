@@ -14,6 +14,8 @@
 #include "../delocate.h"
 #include "internal.h"
 
+#if !defined(OPENSSL_SMALL)
+
 // We have two implementations of the field arithmetic for P-384 curve:
 //   - Fiat-crypto
 //   - s2n-bignum
@@ -29,7 +31,7 @@
 //   #define p384_felem_add(out, in0, in1) bignum_add_p384(out, in0, in1)
 // when s2n-bignum is used.
 //
-#if !defined(OPENSSL_NO_ASM) && \
+#if !defined(OPENSSL_NO_ASM) && !defined(OPENSSL_SMALL) && \
     (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE)) && \
     (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64)) && \
     !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
@@ -1489,3 +1491,4 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistp384_method) {
 //     a = -0xfffffffffffffffffffffffffffffffffffffffffffffffc7634d81f4372ddf581a0db248b0a77aecec196accc52973
 // '''
 //
+#endif // !defined(OPENSSL_SMALL)
