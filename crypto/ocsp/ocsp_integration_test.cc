@@ -74,12 +74,15 @@ static void ValidateOCSPResponse(OCSP_RESPONSE *response,
   ASSERT_EQ(OCSP_response_status(response),
             authorized_responder ? OCSP_RESPONSE_STATUS_SUCCESSFUL
                                  : OCSP_RESPONSE_STATUS_UNAUTHORIZED);
-  if (!authorized_responder) {
-    return;
-  }
-
   bssl::UniquePtr<OCSP_BASICRESP> basic_response(
       OCSP_response_get1_basic(response));
+
+  // The OCSP response should not have any additional data to parse if it's an
+  // unauthorized responder.
+  if (!authorized_responder) {
+    ASSERT_FALSE(basic_response);
+    return;
+  }
   ASSERT_TRUE(basic_response);
 
   // Set up trust store. The CA certificate should be the last one in the chain.

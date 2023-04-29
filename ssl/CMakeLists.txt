@@ -55,7 +55,7 @@ if(BUILD_TESTING)
   # internal sandbox builds cannot properly connect with the host.
   # Since the integration test relies on libssl functionalities to retrieve
   # the certification chain from a host, this integration test dimension is
-  # built with ssl instead of crypto.
+  # built with libssl and libcrypto.
   add_executable(
     ${INTEGRATION_TEST_EXEC}
 
