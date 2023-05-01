@@ -5346,6 +5346,7 @@ OPENSSL_EXPORT uint16_t SSL_CIPHER_get_value(const SSL_CIPHER *cipher);
 #define SSL_CTX_set1_curves SSL_CTX_set1_curves
 #define SSL_CTX_set_max_cert_list SSL_CTX_set_max_cert_list
 #define SSL_CTX_set_max_send_fragment SSL_CTX_set_max_send_fragment
+#define SSL_CTX_set_min_proto_version SSL_CTX_set_min_proto_version
 #define SSL_CTX_set_mode SSL_CTX_set_mode
 #define SSL_CTX_set_msg_callback_arg SSL_CTX_set_msg_callback_arg
 #define SSL_CTX_set_options SSL_CTX_set_options
