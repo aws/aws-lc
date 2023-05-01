@@ -80,6 +80,13 @@ static std::string ChunkLenSuffix(size_t chunk_len) {
   return buf;
 }
 
+static std::string PrimeLenSuffix(size_t prime_length) {
+  char buf[32];
+  snprintf(buf, sizeof(buf), " (%zu bit%s)", prime_length,
+           prime_length != 1 ? "s" : "");
+  return buf;
+}
+
 // TimeResults represents the results of benchmarking a function.
 struct TimeResults {
   // num_calls is the number of function calls done in the time period.
@@ -113,6 +120,19 @@ struct TimeResults {
     }
   }
 
+  void PrintWithPrimes(const std::string &description,
+                      size_t prime_size) const {
+    if (g_print_json) {
+      PrintJSON(description, "primeSizePerCall", prime_size);
+    } else {
+      printf(
+          "Did %" PRIu64 " %s operations in %" PRIu64
+          "us (%.3f ops/sec)\n",
+          num_calls, (description + PrimeLenSuffix(prime_size)).c_str(), us,
+          (static_cast<double>(num_calls) / static_cast<double>(us)) * 1000000);
+    }
+  }
+
  private:
   void PrintJSON(const std::string &description,
                  size_t bytes_per_call = 0) const {
@@ -126,6 +146,25 @@ struct TimeResults {
 
     if (bytes_per_call > 0) {
       printf(", \"bytesPerCall\": %zu", bytes_per_call);
+    }
+
+    printf("}");
+    first_json_printed = true;
+  }
+
+  void PrintJSON(const std::string &description,
+                 const std::string &size_label,
+                 size_t size = 0) const {
+    if (first_json_printed) {
+      puts(",");
+    }
+
+    printf("{\"description\": \"%s\", \"numCalls\": %" PRIu64
+           ", \"microseconds\": %" PRIu64,
+           description.c_str(), num_calls, us);
+
+    if (size > 0) {
+      printf(", \"%s\": %zu", size_label.c_str(), size);
     }
 
     printf("}");
@@ -165,8 +204,10 @@ static uint64_t time_now() {
 }
 #endif
 
-static uint64_t g_timeout_seconds = 1;
+#define TIMEOUT_SECONDS_DEFAULT 1
+static uint64_t g_timeout_seconds = TIMEOUT_SECONDS_DEFAULT;
 static std::vector<size_t> g_chunk_lengths = {16, 256, 1350, 8192, 16384};
+static std::vector<size_t> g_prime_bit_lengths = {2048, 3072};
 
 static bool TimeFunction(TimeResults *results, std::function<bool()> func) {
   // The first time |func| is called an expensive self check might run that
@@ -1944,6 +1985,56 @@ static bool SpeedJitter(std::string selected) {
 }
 #endif
 
+static bool SpeedDHcheck(size_t prime_bit_length) {
+
+  TimeResults results;
+  BM_NAMESPACE::UniquePtr<DH> dh_params(DH_new());
+  if (dh_params == nullptr) {
+    return false;
+  }
+
+  // DH_generate_parameters_ex grows exponentially slower as prime length grows.
+  if (DH_generate_parameters_ex(dh_params.get(), prime_bit_length,
+    DH_GENERATOR_2, nullptr) != 1) {
+    return false;
+  }
+
+  if (!TimeFunction(&results, [&dh_params]() -> bool {
+        int result = 0;
+        if (DH_check(dh_params.get(), &result) != 1) {
+          return false;
+        }
+        return true;
+      })) {
+    return false;
+  }
+
+  results.PrintWithPrimes("DH check(s)", prime_bit_length);
+  return true;
+}
+
+static bool SpeedDHcheck(std::string selected) {
+  // Don't run this by default because it's so slow.
+  if (selected != "dhcheck") {
+    return true;
+  }
+
+  uint64_t maybe_reset_timeout = g_timeout_seconds;
+  if (g_timeout_seconds == TIMEOUT_SECONDS_DEFAULT) {
+    g_timeout_seconds = 10;
+  }
+
+  for (size_t prime_bit_length : g_prime_bit_lengths) {
+    if (!SpeedDHcheck(prime_bit_length)) {
+      return false;
+    }
+  }
+
+  g_timeout_seconds = maybe_reset_timeout;
+
+  return true;
+}
+
 #if !defined(OPENSSL_BENCHMARK) && !defined(BORINGSSL_BENCHMARK)
 static bool SpeedPKCS8(const std::string &selected) {
   if (!selected.empty() && selected.find("pkcs8") == std::string::npos) {
@@ -2057,6 +2148,12 @@ static const argument_t kArguments[] = {
         "16,256,1350,8192,16384)",
     },
     {
+        "-primes",
+        kOptionalArgument,
+        "A comma-separated list of prime input sizes (bits) to run tests at "
+        "(default is 2048,3072)",
+    },
+    {
         "-json",
         kBooleanArgument,
         "If this flag is set, speed will print the output of each benchmark in "
@@ -2072,6 +2169,38 @@ static const argument_t kArguments[] = {
         "",
     },
 };
+
+// parseCommaArgumentToGlobalVector clears |vector| and parses comma-separated
+// input for the argument |arg_name| in |args_map|.
+static bool parseCommaArgumentToGlobalVector(std::vector<size_t> &vector, 
+  std::map<std::string, std::string> &args_map, const std::string &arg_name) {
+
+    vector.clear();
+    const char *start = args_map[arg_name.c_str()].data();
+    const char *end = start + args_map[arg_name.c_str()].size();
+    while (start != end) {
+      errno = 0;
+      char *ptr;
+      unsigned long long val = strtoull(start, &ptr, 10);
+      if (ptr == start /* no numeric characters found */ ||
+          errno == ERANGE /* overflow */ ||
+          static_cast<size_t>(val) != val) {
+        fprintf(stderr, "Error parsing %s argument\n", arg_name.c_str());
+        return false;
+      }
+      vector.push_back(static_cast<size_t>(val));
+      start = ptr;
+      if (start != end) {
+        if (*start != ',') {
+          fprintf(stderr, "Error parsing %s argument\n", arg_name.c_str());
+          return false;
+        }
+        start++;
+      }
+    }
+
+    return true;
+}
 
 bool Speed(const std::vector<std::string> &args) {
 #if defined(OPENSSL_IS_AWSLC)
@@ -2099,28 +2228,16 @@ bool Speed(const std::vector<std::string> &args) {
   }
 
   if (args_map.count("-chunks") != 0) {
-    g_chunk_lengths.clear();
-    const char *start = args_map["-chunks"].data();
-    const char *end = start + args_map["-chunks"].size();
-    while (start != end) {
-      errno = 0;
-      char *ptr;
-      unsigned long long val = strtoull(start, &ptr, 10);
-      if (ptr == start /* no numeric characters found */ ||
-          errno == ERANGE /* overflow */ ||
-          static_cast<size_t>(val) != val) {
-        fprintf(stderr, "Error parsing -chunks argument\n");
-        return false;
-      }
-      g_chunk_lengths.push_back(static_cast<size_t>(val));
-      start = ptr;
-      if (start != end) {
-        if (*start != ',') {
-          fprintf(stderr, "Error parsing -chunks argument\n");
-          return false;
-        }
-        start++;
-      }
+    if (!parseCommaArgumentToGlobalVector(g_chunk_lengths,
+        args_map, "-chunks")) {
+      return false;
+    }
+  }
+
+  if (args_map.count("-primes") != 0) {
+    if (!parseCommaArgumentToGlobalVector(g_prime_bit_lengths,
+        args_map, "-primes")) {
+      return false;
     }
   }
 
@@ -2187,7 +2304,8 @@ bool Speed(const std::vector<std::string> &args) {
      !SpeedScrypt(selected) ||
 #endif
      !SpeedRSA(selected) ||
-     !SpeedRSAKeyGen(false, selected)
+     !SpeedRSAKeyGen(false, selected) ||
+     !SpeedDHcheck(selected)
 #if !defined(OPENSSL_BENCHMARK)
      ||
      !SpeedKEM(selected) ||
