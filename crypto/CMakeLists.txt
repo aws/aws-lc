@@ -488,6 +488,7 @@ add_library(
   x509v3/v3_utl.c
   decrepit/bio/base64_bio.c
   decrepit/blowfish/blowfish.c
+  decrepit/cast/cast.c
   decrepit/cast/cast_tables.c
   decrepit/cfb/cfb.c
   decrepit/dh/dh_decrepit.c
@@ -732,6 +733,7 @@ if(BUILD_TESTING)
     x509/x509_time_test.cc
     x509v3/tab_test.cc
     decrepit/blowfish/blowfish_test.cc
+    decrepit/cast/cast_test.cc
     decrepit/cfb/cfb_test.cc
     decrepit/evp/evp_test.cc
     decrepit/ripemd/ripemd_test.cc
