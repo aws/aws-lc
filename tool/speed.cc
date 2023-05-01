@@ -2170,6 +2170,38 @@ static const argument_t kArguments[] = {
     },
 };
 
+// parseCommaArgumentToGlobalVector clears |vector| and parses comma-separated
+// input for the argument |arg_name| in |args_map|.
+static bool parseCommaArgumentToGlobalVector(std::vector<size_t> &vector, 
+  std::map<std::string, std::string> &args_map, const std::string &arg_name) {
+
+    vector.clear();
+    const char *start = args_map[arg_name.c_str()].data();
+    const char *end = start + args_map[arg_name.c_str()].size();
+    while (start != end) {
+      errno = 0;
+      char *ptr;
+      unsigned long long val = strtoull(start, &ptr, 10);
+      if (ptr == start /* no numeric characters found */ ||
+          errno == ERANGE /* overflow */ ||
+          static_cast<size_t>(val) != val) {
+        fprintf(stderr, "Error parsing %s argument\n", arg_name.c_str());
+        return false;
+      }
+      vector.push_back(static_cast<size_t>(val));
+      start = ptr;
+      if (start != end) {
+        if (*start != ',') {
+          fprintf(stderr, "Error parsing %s argument\n", arg_name.c_str());
+          return false;
+        }
+        start++;
+      }
+    }
+
+    return true;
+}
+
 bool Speed(const std::vector<std::string> &args) {
 #if defined(OPENSSL_IS_AWSLC)
   // For mainline AWS-LC this is a no-op, however if speed.cc built with an old
@@ -2196,54 +2228,16 @@ bool Speed(const std::vector<std::string> &args) {
   }
 
   if (args_map.count("-chunks") != 0) {
-    g_chunk_lengths.clear();
-    const char *start = args_map["-chunks"].data();
-    const char *end = start + args_map["-chunks"].size();
-    while (start != end) {
-      errno = 0;
-      char *ptr;
-      unsigned long long val = strtoull(start, &ptr, 10);
-      if (ptr == start /* no numeric characters found */ ||
-          errno == ERANGE /* overflow */ ||
-          static_cast<size_t>(val) != val) {
-        fprintf(stderr, "Error parsing -chunks argument\n");
-        return false;
-      }
-      g_chunk_lengths.push_back(static_cast<size_t>(val));
-      start = ptr;
-      if (start != end) {
-        if (*start != ',') {
-          fprintf(stderr, "Error parsing -chunks argument\n");
-          return false;
-        }
-        start++;
-      }
+    if (!parseCommaArgumentToGlobalVector(g_chunk_lengths,
+        args_map, "-chunks")) {
+      return false;
     }
   }
 
   if (args_map.count("-primes") != 0) {
-    g_prime_bit_lengths.clear();
-    const char *start = args_map["-primes"].data();
-    const char *end = start + args_map["-primes"].size();
-    while (start != end) {
-      errno = 0;
-      char *ptr;
-      unsigned long long val = strtoull(start, &ptr, 10);
-      if (ptr == start /* no numeric characters found */ ||
-          errno == ERANGE /* overflow */ ||
-          static_cast<size_t>(val) != val) {
-        fprintf(stderr, "Error parsing -primes argument\n");
-        return false;
-      }
-      g_prime_bit_lengths.push_back(static_cast<size_t>(val));
-      start = ptr;
-      if (start != end) {
-        if (*start != ',') {
-          fprintf(stderr, "Error parsing -primes argument\n");
-          return false;
-        }
-        start++;
-      }
+    if (!parseCommaArgumentToGlobalVector(g_prime_bit_lengths,
+        args_map, "-primes")) {
+      return false;
     }
   }
 
