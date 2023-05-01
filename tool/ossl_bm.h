@@ -7,6 +7,7 @@
 #include <openssl/aes.h>
 #include <openssl/bn.h>
 #include <openssl/crypto.h>
+#include <openssl/dh.h>
 #include <openssl/ec.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
@@ -53,6 +54,7 @@ template <typename T> struct Deleter {
 } // namespace internal
 template <typename T> using UniquePtr = std::unique_ptr<T, internal::Deleter<T>>;
 
+OSSL_MAKE_DELETER(DH, DH_free)
 OSSL_MAKE_DELETER(RSA, RSA_free)
 OSSL_MAKE_DELETER(BIGNUM, BN_free)
 OSSL_MAKE_DELETER(EC_KEY, EC_KEY_free)
