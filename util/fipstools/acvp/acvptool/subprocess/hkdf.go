@@ -124,7 +124,7 @@ type hkdfTestResponse struct {
 
 type hkdf struct{}
 
-func (k *hkdf) Process(vectorSet []byte, m Transactable) (interface{}, error) {
+func (k *hkdf) Process(vectorSet []byte, m Transactable) (any, error) {
 	var parsed hkdfTestVectorSet
 	if err := json.Unmarshal(vectorSet, &parsed); err != nil {
 		return nil, err
