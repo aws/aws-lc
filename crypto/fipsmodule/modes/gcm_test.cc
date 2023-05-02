@@ -197,7 +197,6 @@ TEST(GCMTest, ABI) {
         // aes_gcm_*_avx512 makes assumptions about |GCM128_CONTEXT|'s layout.
         GCM128_CONTEXT gcm;
         memset(&gcm, 0, sizeof(gcm));
-        memcpy(&gcm.gcm_key.H, kH, sizeof(kH));
         memcpy(&gcm.gcm_key.Htable, Htable, sizeof(Htable));
         memcpy(&gcm.Xi, X, sizeof(X));
         uint8_t iv[16] = {0};
