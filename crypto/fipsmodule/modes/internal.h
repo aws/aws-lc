@@ -292,9 +292,11 @@ void gcm_ghash_avx512(uint64_t Xi[2], const u128 Htable[16], const uint8_t *in,
                       size_t len);
 #define HW_GCM
 size_t aesni_gcm_encrypt(const uint8_t *in, uint8_t *out, size_t len,
-                         const AES_KEY *key, uint8_t ivec[16], uint64_t *Xi);
+                         const AES_KEY *key, uint8_t ivec[16],
+                         const u128 Htable[16], uint64_t *Xi);
 size_t aesni_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
-                         const AES_KEY *key, uint8_t ivec[16], uint64_t *Xi);
+                         const AES_KEY *key, uint8_t ivec[16],
+                         const u128 Htable[16], uint64_t *Xi);
 void gcm_setiv_avx512(const AES_KEY *key, const GCM128_CONTEXT *ctx,
                       const uint8_t *iv, size_t ivlen);
 void aes_gcm_encrypt_avx512(const AES_KEY *key, const GCM128_CONTEXT *ctx,
