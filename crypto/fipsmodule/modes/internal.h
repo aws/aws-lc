@@ -338,24 +338,32 @@ void gcm_ghash_neon(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
 
 // These functions are defined in aesv8-gcm-armv8.pl.
 void aes_gcm_enc_kernel(const uint8_t *in, uint64_t in_bits, void *out,
-                        void *Xi, uint8_t *ivec, const AES_KEY *key);
+                        void *Xi, uint8_t *ivec, const AES_KEY *key,
+                        const u128 Htable[16]);
 void aes_gcm_dec_kernel(const uint8_t *in, uint64_t in_bits, void *out,
-                        void *Xi, uint8_t *ivec, const AES_KEY *key);
+                        void *Xi, uint8_t *ivec, const AES_KEY *key,
+                        const u128 Htable[16]);
 
 // These functions are defined in aesv8-gcm-armv8-unroll8.pl.
 // They take input length in BITS and return number of BYTES processed.
 size_t aesv8_gcm_8x_enc_128(const uint8_t *in, size_t bit_len, uint8_t *out,
-                            uint64_t *Xi, uint8_t ivec[16], const AES_KEY *key);
+                            uint64_t *Xi, uint8_t ivec[16], const AES_KEY *key,
+                            const u128 Htable[16]);
 size_t aesv8_gcm_8x_dec_128(const uint8_t *in, size_t bit_len, uint8_t *out,
-                            uint64_t *Xi, uint8_t ivec[16], const AES_KEY *key);
+                            uint64_t *Xi, uint8_t ivec[16], const AES_KEY *key,
+                            const u128 Htable[16]);
 size_t aesv8_gcm_8x_enc_192(const uint8_t *in, size_t bit_len, uint8_t *out,
-                            uint64_t *Xi, uint8_t ivec[16], const AES_KEY *key);
+                            uint64_t *Xi, uint8_t ivec[16], const AES_KEY *key,
+                            const u128 Htable[16]);
 size_t aesv8_gcm_8x_dec_192(const uint8_t *in, size_t bit_len, uint8_t *out,
-                            uint64_t *Xi, uint8_t ivec[16], const AES_KEY *key);
+                            uint64_t *Xi, uint8_t ivec[16], const AES_KEY *key,
+                            const u128 Htable[16]);
 size_t aesv8_gcm_8x_enc_256(const uint8_t *in, size_t bit_len, uint8_t *out,
-                            uint64_t *Xi, uint8_t ivec[16], const AES_KEY *key);
+                            uint64_t *Xi, uint8_t ivec[16], const AES_KEY *key,
+                            const u128 Htable[16]);
 size_t aesv8_gcm_8x_dec_256(const uint8_t *in, size_t bit_len, uint8_t *out,
-                            uint64_t *Xi, uint8_t ivec[16], const AES_KEY *key);
+                            uint64_t *Xi, uint8_t ivec[16], const AES_KEY *key,
+                            const u128 Htable[16]);
 #endif
 
 #elif defined(OPENSSL_PPC64LE)
