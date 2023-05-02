@@ -66,20 +66,24 @@ function build_openssl_3_0 {
 # algorithms have been added to speed.cc
 build_aws_lc_fips
 echo "Testing awslc_bm with AWS-LC FIPS"
-run_build -DAWSLC_INSTALL_DIR="${install_dir}/aws-lc-fips"
+run_build -DAWSLC_INSTALL_DIR="${install_dir}/aws-lc-fips" -DASAN=1
 "${BUILD_ROOT}/tool/awslc_bm"
+
+# Run the "local" benchmark that was built with the AWS-LC FIPS benchmark, only do this once because this tool
+# is always the same regardless of what additional external libcrypto is built
+"${BUILD_ROOT}/tool/bssl speed"
 
 build_openssl_1_0
 echo "Testing ossl_bm with OpenSSL 1.0"
-run_build -DOPENSSL_1_0_INSTALL_DIR="${install_dir}/openssl-1.0"
+run_build -DOPENSSL_1_0_INSTALL_DIR="${install_dir}/openssl-1.0" -DASAN=1
 "${BUILD_ROOT}/tool/ossl_1_0_bm"
 
 build_openssl_1_1
 echo "Testing ossl_bm with OpenSSL 1.1"
-run_build -DOPENSSL_1_1_INSTALL_DIR="${install_dir}/openssl-1.1"
+run_build -DOPENSSL_1_1_INSTALL_DIR="${install_dir}/openssl-1.1" -DASAN=1
 "${BUILD_ROOT}/tool/ossl_1_1_bm"
 
 build_openssl_3_0
 echo "Testing ossl_bm with OpenSSL 3.0"
-run_build -DOPENSSL_3_0_INSTALL_DIR="${install_dir}/openssl-3.0"
+run_build -DOPENSSL_3_0_INSTALL_DIR="${install_dir}/openssl-3.0" -DASAN=1
 "${BUILD_ROOT}/tool/ossl_3_0_bm"
