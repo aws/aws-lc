@@ -885,6 +885,19 @@ if(BUILD_TESTING)
         set(ACVP_TOOL ${PROJECT_BINARY_DIR}/acvptool)
         set(TEST_WRAPPER ${PROJECT_BINARY_DIR}/testmodulewrapper)
       endif()
+
+      # Read util/go_fips_tests.txt into a CMake variable.
+      file(READ util/go_fips_tests.txt GO_FIPS_TESTS)
+      string(REPLACE "\n" ";" GO_FIPS_TESTS "${GO_FIPS_TESTS}")
+      list(REMOVE_ITEM GO_FIPS_TESTS "")
+      set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+        util/go_fips_tests.txt)
+
+      if(MSVC)
+        # Delocator doesn't support Windows. So, this test would fail.
+        string(REGEX REPLACE "./util/fipstools/delocate" "" GO_FIPS_TESTS "${GO_FIPS_TESTS}")
+      endif()
+
       add_custom_target(
         acvp_tests
         COMMAND ${GO_EXECUTABLE} build -o ${ACVP_TOOL}
@@ -910,6 +923,9 @@ if(BUILD_TESTING)
 
     # Read util/go_tests.txt into a CMake variable.
     file(READ util/go_tests.txt GO_TESTS)
+    foreach(fips_specific_test ${GO_FIPS_TESTS})
+      set(GO_TESTS "${GO_TESTS}\n${fips_specific_test}")
+    endforeach()
     string(REPLACE "\n" ";" GO_TESTS "${GO_TESTS}")
     list(REMOVE_ITEM GO_TESTS "")
     set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
@@ -937,7 +953,7 @@ if(BUILD_TESTING)
       add_custom_target(
           run_tests
           COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
-                  ${PROJECT_BINARY_DIR}
+                 ${PROJECT_BINARY_DIR}
           COMMAND ${GO_EXECUTABLE} test ${GO_TESTS}
           WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
           DEPENDS all_tests run_ssl_runner_tests
