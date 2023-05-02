@@ -151,6 +151,20 @@ void aes_hw_xts_decrypt(const uint8_t *in, uint8_t *out, size_t length,
 OPENSSL_EXPORT int aes_hw_xts_cipher(const uint8_t *in, uint8_t *out, size_t length,
                                       const AES_KEY *key1, const AES_KEY *key2,
                                       const uint8_t iv[16], int enc);
+
+#if defined(OPENSSL_X86_64) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+#define GHASH_ASM_X86_64
+void aes_hw_xts_encrypt_avx512(const uint8_t *in, uint8_t *out, size_t length,
+                               const AES_KEY *key1, const AES_KEY *key2,
+                               const uint8_t iv[16]);
+void aes_hw_xts_decrypt_avx512(const uint8_t *in, uint8_t *out, size_t length,
+                               const AES_KEY *key1, const AES_KEY *key2,
+                               const uint8_t iv[16]);
+int crypto_xts_avx512_enabled(void);
+
+#endif //GHASH_ASM_X86_64
+
+
 #else
 OPENSSL_INLINE int hwaes_xts_available(void) { return 0; }
 OPENSSL_INLINE void aes_hw_xts_encrypt(const uint8_t *in, uint8_t *out, size_t length,

@@ -138,6 +138,14 @@ void AES_cfb128_encrypt(const uint8_t *in, uint8_t *out, size_t length,
   *num = (int)num_u;
 }
 
+#if defined(GHASH_ASM_X86_64)
+int crypto_xts_avx512_enabled(void) {
+  return (CRYPTO_is_VAES_capable() &&
+          CRYPTO_is_AVX512_capable() &&
+          CRYPTO_is_VPCLMULQDQ_capable());
+}
+#endif
+
 #if defined(HWAES_XTS)
 int aes_hw_xts_cipher(const uint8_t *in, uint8_t *out, size_t length,
                        const AES_KEY *key1, const AES_KEY *key2,
@@ -148,8 +156,20 @@ int aes_hw_xts_cipher(const uint8_t *in, uint8_t *out, size_t length,
   if (length < 16) return 0;
 
   if (enc) {
+#if defined(GHASH_ASM_X86_64)
+    if (crypto_xts_avx512_enabled()) {
+      aes_hw_xts_encrypt_avx512(in, out, length, key1, key2, iv);
+      return 1;
+    }
+#endif
     aes_hw_xts_encrypt(in, out, length, key1, key2, iv);
   } else {
+#if defined(GHASH_ASM_X86_64)
+    if (crypto_xts_avx512_enabled()) {
+      aes_hw_xts_decrypt_avx512(in, out, length, key1, key2, iv);
+      return 1;
+    }
+#endif
     aes_hw_xts_decrypt(in, out, length, key1, key2, iv);
   }
   return 1;
