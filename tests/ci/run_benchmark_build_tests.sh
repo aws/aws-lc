@@ -71,7 +71,7 @@ run_build -DAWSLC_INSTALL_DIR="${install_dir}/aws-lc-fips" -DASAN=1
 
 # Run the "local" benchmark that was built with the AWS-LC FIPS benchmark, only do this once because this tool
 # is always the same regardless of what additional external libcrypto is built
-"${BUILD_ROOT}/tool/bssl speed"
+"${BUILD_ROOT}/tool/bssl" speed
 
 build_openssl_1_0
 echo "Testing ossl_bm with OpenSSL 1.0"
