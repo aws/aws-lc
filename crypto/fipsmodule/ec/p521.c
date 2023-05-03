@@ -490,7 +490,7 @@ static void p521_point_add(p521_felem x3, p521_felem y3, p521_felem z3,
 // Takes the Jacobian coordinates (X, Y, Z) of a point and returns:
 //   (X', Y') = (X/Z^2, Y/Z^3).
 static int ec_GFp_nistp521_point_get_affine_coordinates(
-    const EC_GROUP *group, const EC_RAW_POINT *point,
+    const EC_GROUP *group, const EC_JACOBIAN *point,
     EC_FELEM *x_out, EC_FELEM *y_out) {
 
   if (ec_GFp_simple_is_at_infinity(group, point)) {
@@ -522,8 +522,8 @@ static int ec_GFp_nistp521_point_get_affine_coordinates(
   return 1;
 }
 
-static void ec_GFp_nistp521_add(const EC_GROUP *group, EC_RAW_POINT *r,
-                                const EC_RAW_POINT *a, const EC_RAW_POINT *b) {
+static void ec_GFp_nistp521_add(const EC_GROUP *group, EC_JACOBIAN *r,
+                                const EC_JACOBIAN *a, const EC_JACOBIAN *b) {
   p521_felem x1, y1, z1, x2, y2, z2;
   p521_from_generic(x1, &a->X);
   p521_from_generic(y1, &a->Y);
@@ -537,8 +537,8 @@ static void ec_GFp_nistp521_add(const EC_GROUP *group, EC_RAW_POINT *r,
   p521_to_generic(&r->Z, z1);
 }
 
-static void ec_GFp_nistp521_dbl(const EC_GROUP *group, EC_RAW_POINT *r,
-                                const EC_RAW_POINT *a) {
+static void ec_GFp_nistp521_dbl(const EC_GROUP *group, EC_JACOBIAN *r,
+                                const EC_JACOBIAN *a) {
   p521_felem x, y, z;
   p521_from_generic(x, &a->X);
   p521_from_generic(y, &a->Y);
@@ -599,7 +599,7 @@ OPENSSL_STATIC_ASSERT(P521_MUL_WSIZE == 5,
 #define P521_MUL_WSIZE_MASK   ((P521_MUL_TWO_TO_WSIZE << 1) - 1)
 
 // Number of |P521_MUL_WSIZE|-bit windows in a 521-bit value
-#define P521_MUL_NWINDOWS     ((521 + P521_MUL_WSIZE - 1)/P521_MUL_WSIZE) 
+#define P521_MUL_NWINDOWS     ((521 + P521_MUL_WSIZE - 1)/P521_MUL_WSIZE)
 
 // For the public point in |ec_GFp_nistp521_point_mul_public| function
 // we use window size equal to 5.
@@ -688,8 +688,8 @@ static void p521_select_point_affine(p521_felem out[2],
 //          negate it if s_i is negative, and add it to the accumulator.
 //
 // Note: this function is constant-time.
-static void ec_GFp_nistp521_point_mul(const EC_GROUP *group, EC_RAW_POINT *r,
-                                      const EC_RAW_POINT *p,
+static void ec_GFp_nistp521_point_mul(const EC_GROUP *group, EC_JACOBIAN *r,
+                                      const EC_JACOBIAN *p,
                                       const EC_SCALAR *scalar) {
 
   p521_felem res[3] = {{0}, {0}, {0}}, tmp[3] = {{0}, {0}, {0}}, ftmp;
@@ -834,7 +834,7 @@ static void ec_GFp_nistp521_point_mul(const EC_GROUP *group, EC_RAW_POINT *r,
 //
 // Note: this function is constant-time.
 static void ec_GFp_nistp521_point_mul_base(const EC_GROUP *group,
-                                           EC_RAW_POINT *r,
+                                           EC_JACOBIAN *r,
                                            const EC_SCALAR *scalar) {
 
   p521_felem res[3] = {{0}, {0}, {0}}, tmp[3] = {{0}, {0}, {0}}, ftmp;
@@ -941,9 +941,9 @@ static void ec_GFp_nistp521_point_mul_base(const EC_GROUP *group,
 //
 // Note: this function is NOT constant-time.
 static void ec_GFp_nistp521_point_mul_public(const EC_GROUP *group,
-                                             EC_RAW_POINT *r,
+                                             EC_JACOBIAN *r,
                                              const EC_SCALAR *g_scalar,
-                                             const EC_RAW_POINT *p,
+                                             const EC_JACOBIAN *p,
                                              const EC_SCALAR *p_scalar) {
 
   p521_felem res[3] = {{0}, {0}, {0}}, two_p[3] = {{0}, {0}, {0}}, ftmp;
