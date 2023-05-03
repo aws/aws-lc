@@ -1302,28 +1302,28 @@ static bool SpeedECMULCurve(const std::string &name, int nid,
     return true;
   }
 
-  EC_GROUP *group = EC_GROUP_new_by_curve_name(nid);
+  BM_NAMESPACE::UniquePtr<EC_GROUP> group(EC_GROUP_new_by_curve_name(nid));
   BM_NAMESPACE::UniquePtr<BN_CTX> ctx(BN_CTX_new());
   BM_NAMESPACE::UniquePtr<BIGNUM> scalar0(BN_new());
   BM_NAMESPACE::UniquePtr<BIGNUM> scalar1(BN_new());
-  BM_NAMESPACE::UniquePtr<EC_POINT> pin0(EC_POINT_new(group));
-  BM_NAMESPACE::UniquePtr<EC_POINT> pout(EC_POINT_new(group));
+  BM_NAMESPACE::UniquePtr<EC_POINT> pin0(EC_POINT_new(group.get()));
+  BM_NAMESPACE::UniquePtr<EC_POINT> pout(EC_POINT_new(group.get()));
 
 
   // Generate two random scalars modulo the EC group order.
-  if (!BN_rand_range(scalar0.get(), EC_GROUP_get0_order(group)) ||
-      !BN_rand_range(scalar1.get(), EC_GROUP_get0_order(group))) {
+  if (!BN_rand_range(scalar0.get(), EC_GROUP_get0_order(group.get())) ||
+      !BN_rand_range(scalar1.get(), EC_GROUP_get0_order(group.get()))) {
       return false;
   }
 
   // Generate one random EC point.
-  EC_POINT_mul(group, pin0.get(), scalar0.get(), nullptr, nullptr, ctx.get());
+  EC_POINT_mul(group.get(), pin0.get(), scalar0.get(), nullptr, nullptr, ctx.get());
 
   TimeResults results;
 
   // Measure scalar multiplication of an arbitrary curve point.
-  if (!TimeFunction(&results, [group, &pout, &ctx, &pin0, &scalar0]() -> bool {
-        if (!EC_POINT_mul(group, pout.get(), nullptr, pin0.get(), scalar0.get(), ctx.get())) {
+  if (!TimeFunction(&results, [&group, &pout, &ctx, &pin0, &scalar0]() -> bool {
+        if (!EC_POINT_mul(group.get(), pout.get(), nullptr, pin0.get(), scalar0.get(), ctx.get())) {
           return false;
         }
 
@@ -1334,8 +1334,8 @@ static bool SpeedECMULCurve(const std::string &name, int nid,
   results.Print(name + " mul");
 
   // Measure scalar multiplication of the curve based point.
-  if (!TimeFunction(&results, [group, &pout, &ctx, &scalar0]() -> bool {
-        if (!EC_POINT_mul(group, pout.get(), scalar0.get(), nullptr, nullptr, ctx.get())) {
+  if (!TimeFunction(&results, [&group, &pout, &ctx, &scalar0]() -> bool {
+        if (!EC_POINT_mul(group.get(), pout.get(), scalar0.get(), nullptr, nullptr, ctx.get())) {
           return false;
         }
 
@@ -1346,8 +1346,8 @@ static bool SpeedECMULCurve(const std::string &name, int nid,
   results.Print(name + " mul base");
 
   // Measure scalar multiplication of based point and arbitrary point.
-  if (!TimeFunction(&results, [group, &pout, &pin0, &ctx, &scalar0, &scalar1]() -> bool {
-        if (!EC_POINT_mul(group, pout.get(), scalar1.get(), pin0.get(), scalar0.get(), ctx.get())) {
+  if (!TimeFunction(&results, [&group, &pout, &pin0, &ctx, &scalar0, &scalar1]() -> bool {
+        if (!EC_POINT_mul(group.get(), pout.get(), scalar1.get(), pin0.get(), scalar0.get(), ctx.get())) {
           return false;
         }
 
