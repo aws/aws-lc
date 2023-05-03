@@ -114,7 +114,7 @@ int ECDH_compute_shared_secret(uint8_t *buf, size_t *buflen, const EC_POINT *pub
     goto end;
   }
 
-  EC_RAW_POINT shared_point;
+  EC_JACOBIAN shared_point;
   if (!ec_point_mul_scalar(group, &shared_point, &pub_key->raw, priv) ||
       !ec_get_x_coordinate_as_bytes(group, buf, buflen, *buflen,
                                     &shared_point)) {
@@ -124,7 +124,7 @@ int ECDH_compute_shared_secret(uint8_t *buf, size_t *buflen, const EC_POINT *pub
 
   ret = 1;
 end:
-  OPENSSL_cleanse(&shared_point, sizeof(EC_RAW_POINT));
+  OPENSSL_cleanse(&shared_point, sizeof(EC_JACOBIAN));
   FIPS_service_indicator_unlock_state();
   if (key_pub_key != NULL) {
     EC_KEY_free(key_pub_key);
