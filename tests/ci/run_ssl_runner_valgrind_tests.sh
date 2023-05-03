@@ -5,4 +5,4 @@
 source tests/ci/common_posix_setup.sh
 
 echo "Testing AWS-LC in debug mode under Valgrind."
-build_and_test_ssl_valgrind
+build_and_test_ssl_runner_valgrind

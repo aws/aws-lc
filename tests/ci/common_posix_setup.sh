@@ -172,7 +172,7 @@ function build_and_test_valgrind {
   fi
 }
 
-function build_and_test_ssl_valgrind {
+function build_and_test_ssl_runner_valgrind {
   export AWS_LC_GO_TEST_TIMEOUT="60m"
 
   if [[ $PLATFORM == "aarch64" ]]; then

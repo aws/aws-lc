@@ -297,8 +297,8 @@ batch:
         compute-type: BUILD_GENERAL1_LARGE
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-aarch:amazonlinux-2023_gcc-11x_latest
 
-    - identifier: amazonlinux2023_gcc11x_aarch_ssl_valgrind
-      buildspec: ./tests/ci/codebuild/common/run_ssl_valgrind_tests.yml
+    - identifier: amazonlinux2023_gcc11x_aarch_ssl_runner_valgrind
+      buildspec: ./tests/ci/codebuild/common/run_ssl_runner_valgrind_tests.yml
       env:
         type: ARM_CONTAINER
         privileged-mode: true
