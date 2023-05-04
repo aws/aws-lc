@@ -208,7 +208,7 @@ extern "C" {
 // against multiple revisions of BoringSSL at the same time. It is not
 // recommended to do so for longer than is necessary.
 
-#define AWSLC_API_VERSION 20
+#define AWSLC_API_VERSION 21
 
 // This string tracks the most current production release version on Github
 // https://github.com/aws/aws-lc/releases.
@@ -216,7 +216,7 @@ extern "C" {
 // ServiceIndicatorTest.AWSLCVersionString
 // Note: there are two versions of this test. Only one test is compiled
 // depending on FIPS mode.
-#define AWSLC_VERSION_NUMBER_STRING "1.6.0"
+#define AWSLC_VERSION_NUMBER_STRING "1.9.0"
 
 #if defined(BORINGSSL_SHARED_LIBRARY)
 
@@ -400,6 +400,7 @@ typedef struct blake2b_state_st BLAKE2B_CTX;
 typedef struct bn_gencb_st BN_GENCB;
 typedef struct bn_mont_ctx_st BN_MONT_CTX;
 typedef struct buf_mem_st BUF_MEM;
+typedef struct cast_key_st CAST_KEY;
 typedef struct cbb_st CBB;
 typedef struct cbs_st CBS;
 typedef struct cmac_ctx_st CMAC_CTX;
@@ -479,6 +480,17 @@ typedef struct x509_store_st X509_STORE;
 typedef struct x509_trust_st X509_TRUST;
 
 typedef void *OPENSSL_BLOCK;
+
+#ifndef __has_attribute
+#define __has_attribute(x) 0
+#endif
+#if __STDC_VERSION__ > 202300L
+#define AWS_LC_DEPRECATED [[deprecated]]
+#elif __has_attribute(deprecated)
+#define AWS_LC_DEPRECATED __attribute__((deprecated))
+#else
+#define AWS_LC_DEPRECATED /* deprecated */
+#endif
 
 #if defined(__cplusplus)
 }  // extern C

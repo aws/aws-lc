@@ -79,6 +79,10 @@ if(PERL_EXECUTABLE)
       set(PERLASM_FLAGS "${PERLASM_FLAGS} -DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX")
     endif()
 
+    if(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+      set(PERLASM_FLAGS "${PERLASM_FLAGS} -DMY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX")
+    endif()
+
     add_custom_command(
       OUTPUT ${dest}
       COMMAND ${CMAKE_COMMAND} -E make_directory ${dir}
@@ -153,7 +157,6 @@ if(ARCH STREQUAL "arm")
     CRYPTO_ARCH_SOURCES
 
     chacha/chacha-armv4.${ASM_EXT}
-    curve25519/asm/x25519-asm-arm.S
     poly1305/poly1305_arm_asm.S
     test/trampoline-armv4.${ASM_EXT}
   )
@@ -326,6 +329,7 @@ add_library(
   conf/conf.c
   crypto.c
   curve25519/curve25519.c
+  curve25519/curve25519_nohw.c
   curve25519/spake25519.c
   des/des.c
   dh_extra/params.c
@@ -481,8 +485,6 @@ add_library(
   x509v3/v3_lib.c
   x509v3/v3_ncons.c
   x509v3/v3_ocsp.c
-  x509v3/v3_pci.c
-  x509v3/v3_pcia.c
   x509v3/v3_pcons.c
   x509v3/v3_pmaps.c
   x509v3/v3_prn.c
@@ -491,6 +493,7 @@ add_library(
   x509v3/v3_utl.c
   decrepit/bio/base64_bio.c
   decrepit/blowfish/blowfish.c
+  decrepit/cast/cast.c
   decrepit/cast/cast_tables.c
   decrepit/cfb/cfb.c
   decrepit/dh/dh_decrepit.c
@@ -734,6 +737,7 @@ if(BUILD_TESTING)
     x509/x509_time_test.cc
     x509v3/tab_test.cc
     decrepit/blowfish/blowfish_test.cc
+    decrepit/cast/cast_test.cc
     decrepit/cfb/cfb_test.cc
     decrepit/evp/evp_test.cc
     decrepit/ripemd/ripemd_test.cc
@@ -744,6 +748,8 @@ if(BUILD_TESTING)
   target_link_libraries(${CRYPTO_TEST_EXEC} test_support_lib boringssl_gtest_main crypto)
   if(WIN32)
     target_link_libraries(${CRYPTO_TEST_EXEC} ws2_32)
+  else()
+    target_compile_options(${CRYPTO_TEST_EXEC} PUBLIC -Wno-deprecated-declarations)
   endif()
   add_dependencies(all_tests ${CRYPTO_TEST_EXEC})
 endif()

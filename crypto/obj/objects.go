@@ -12,8 +12,6 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-//go:build ignore
-
 package main
 
 import (
@@ -376,7 +374,7 @@ func writeNumbers(path string, objs *objects) error {
 
 func clangFormat(input string) (string, error) {
 	var b bytes.Buffer
-	cmd := exec.Command("clang-format")
+	cmd := exec.Command("clang-format", "--style=Google")
 	cmd.Stdin = strings.NewReader(input)
 	cmd.Stdout = &b
 	cmd.Stderr = os.Stderr

@@ -20,6 +20,7 @@ option(BUILD_TESTING "Build all test targets for AWS-LC" ON)
 option(BUILD_LIBSSL "Build libssl for AWS-LC" ON)
 option(DISABLE_PERL "Disable Perl for AWS-LC" OFF)
 option(DISABLE_GO "Disable Go for AWS-LC" OFF)
+include(cmake/go.cmake)
 
 enable_language(C)
 
@@ -49,20 +50,14 @@ install(DIRECTORY include/openssl
 )
 
 if(ANDROID)
-  # Android-NDK CMake files reconfigure the path and so Go and Perl won't be
-  # found. However, ninja will still find them in $PATH if we just name them.
+  # Android-NDK CMake files reconfigure the path and so Perl won't be found.
+  # However, ninja will still find them in $PATH if we just name them.
   if(NOT DISABLE_PERL AND NOT PERL_EXECUTABLE)
     set(PERL_EXECUTABLE "perl")
-  endif()
-  if(NOT DISABLE_GO AND NOT GO_EXECUTABLE)
-    set(GO_EXECUTABLE "go")
   endif()
 else()
   if(NOT DISABLE_PERL)
     find_package(Perl)
-  endif()
-  if(NOT DISABLE_GO)
-    find_program(GO_EXECUTABLE go)
   endif()
 endif()
 
@@ -150,6 +145,9 @@ if(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS AND GO_EXECUTABLE)
     COMMAND sed -i.bak '/ bignum_/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/boringssl_prefix_symbols.h
     COMMAND sed -i.bak '/ bignum_/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/boringssl_prefix_symbols_asm.h
     COMMAND sed -i.bak '/ bignum_/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/boringssl_prefix_symbols_nasm.inc
+    COMMAND sed -i.bak '/ curve25519_x25519/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/boringssl_prefix_symbols.h
+    COMMAND sed -i.bak '/ curve25519_x25519/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/boringssl_prefix_symbols_asm.h
+    COMMAND sed -i.bak '/ curve25519_x25519/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/boringssl_prefix_symbols_nasm.inc
     DEPENDS util/make_prefix_headers.go
             ${BORINGSSL_PREFIX_SYMBOLS_PATH})
   # add_dependencies needs a target, not a file, so we add an intermediate
@@ -168,6 +166,8 @@ elseif(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_HEADERS)
   endif()
 
   include_directories(${BORINGSSL_PREFIX_HEADERS_PATH})
+
+  add_custom_target(boringssl_prefix_symbols)
 elseif(BORINGSSL_PREFIX OR BORINGSSL_PREFIX_SYMBOLS)
   message(FATAL_ERROR "Must specify both or neither of BORINGSSL_PREFIX and BORINGSSL_PREFIX_SYMBOLS")
 elseif((BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS) AND NOT GO_EXECUTABLE)
@@ -222,9 +222,24 @@ endmacro()
 # assumption we make for some of the assembly implementations. This flag
 # can be set to handle such cases.
 option(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX "Exclude AVX code from the build" OFF)
+
+# Some assemblers know about AVX but not AVX512 instructions, e.g. gcc 4.8.2.
+# This flag can be set to handle such cases.
+# Note that the flag's name has "512AVX" instead of "AVX512" so that it doesn't
+# include the entire flag -DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX and match it
+# in the Perl files checks.
+option(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX "Exclude AVX512 code from the build" OFF)
+
 if(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
   add_definitions(-DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+  add_definitions(-DMY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+  set(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX ON)
   message(STATUS "MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX selected, removing AVX optimisations")
+endif()
+
+if(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+  add_definitions(-DMY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+  message(STATUS "MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX selected, removing AVX512 optimisations")
 endif()
 
 # Detect if memcmp is wrongly stripped like strcmp.
@@ -620,42 +635,6 @@ if(CONSTANT_TIME_VALIDATION)
   add_definitions(-DNDEBUG)
 endif()
 
-function(go_executable dest package)
-  set(godeps "${PROJECT_SOURCE_DIR}/util/godeps.go")
-  if(CMAKE_VERSION VERSION_LESS "3.7" OR NOT CMAKE_GENERATOR STREQUAL "Ninja")
-    # The DEPFILE parameter to add_custom_command is new as of CMake 3.7 and
-    # only works with Ninja. Query the sources at configure time. Additionally,
-    # everything depends on go.mod. That affects what external packages to use.
-    execute_process(COMMAND ${GO_EXECUTABLE} run ${godeps} -format cmake
-                            -pkg ${package}
-                    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-                    OUTPUT_VARIABLE sources
-                    RESULT_VARIABLE godeps_result)
-    add_custom_command(OUTPUT ${dest}
-                       COMMAND ${GO_EXECUTABLE} build
-                               -o ${CMAKE_CURRENT_BINARY_DIR}/${dest} ${package}
-                       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-                       DEPENDS ${sources} ${PROJECT_SOURCE_DIR}/go.mod)
-  else()
-    # Ninja expects the target in the depfile to match the output. This is a
-    # relative path from the build directory.
-    string(LENGTH "${PROJECT_BINARY_DIR}" root_dir_length)
-    math(EXPR root_dir_length "${root_dir_length} + 1")
-    string(SUBSTRING "${CMAKE_CURRENT_BINARY_DIR}" ${root_dir_length} -1 target)
-    set(target "${target}/${dest}")
-
-    set(depfile "${CMAKE_CURRENT_BINARY_DIR}/${dest}.d")
-    add_custom_command(OUTPUT ${dest}
-                       COMMAND ${GO_EXECUTABLE} build
-                               -o ${CMAKE_CURRENT_BINARY_DIR}/${dest} ${package}
-                       COMMAND ${GO_EXECUTABLE} run ${godeps} -format depfile
-                               -target ${target} -pkg ${package} -out ${depfile}
-                       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-                       DEPENDS ${godeps} ${PROJECT_SOURCE_DIR}/go.mod
-                       DEPFILE ${depfile})
-  endif()
-endfunction()
-
 # CMake's iOS support uses Apple's multiple-architecture toolchain. It takes an
 # architecture list from CMAKE_OSX_ARCHITECTURES, leaves CMAKE_SYSTEM_PROCESSOR
 # alone, and expects all architecture-specific logic to be conditioned within
@@ -668,6 +647,14 @@ if(NOT OPENSSL_NO_ASM AND CMAKE_OSX_ARCHITECTURES)
     message(FATAL_ERROR "Universal binaries not supported.")
   endif()
   list(GET CMAKE_OSX_ARCHITECTURES 0 CMAKE_SYSTEM_PROCESSOR)
+endif()
+
+if(MALLOC_FAILURE_TESTING)
+  add_definitions(-DBORINGSSL_MALLOC_FAILURE_TESTING)
+endif()
+
+if(OPENSSL_NO_ASM)
+  add_definitions(-DOPENSSL_NO_ASM)
 endif()
 
 TEST_BIG_ENDIAN(BIG_ENDIAN)
@@ -898,6 +885,19 @@ if(BUILD_TESTING)
         set(ACVP_TOOL ${PROJECT_BINARY_DIR}/acvptool)
         set(TEST_WRAPPER ${PROJECT_BINARY_DIR}/testmodulewrapper)
       endif()
+
+      # Read util/go_fips_tests.txt into a CMake variable.
+      file(READ util/go_fips_tests.txt GO_FIPS_TESTS)
+      string(REPLACE "\n" ";" GO_FIPS_TESTS "${GO_FIPS_TESTS}")
+      list(REMOVE_ITEM GO_FIPS_TESTS "")
+      set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+        util/go_fips_tests.txt)
+
+      if(MSVC)
+        # Delocator doesn't support Windows. So, this test would fail.
+        string(REGEX REPLACE "./util/fipstools/delocate" "" GO_FIPS_TESTS "${GO_FIPS_TESTS}")
+      endif()
+
       add_custom_target(
         acvp_tests
         COMMAND ${GO_EXECUTABLE} build -o ${ACVP_TOOL}
@@ -921,6 +921,16 @@ if(BUILD_TESTING)
       add_custom_target(fips_specific_tests_if_any)
     endif()
 
+    # Read util/go_tests.txt into a CMake variable.
+    file(READ util/go_tests.txt GO_TESTS)
+    foreach(fips_specific_test ${GO_FIPS_TESTS})
+      set(GO_TESTS "${GO_TESTS}\n${fips_specific_test}")
+    endforeach()
+    string(REPLACE "\n" ";" GO_TESTS "${GO_TESTS}")
+    list(REMOVE_ITEM GO_TESTS "")
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+      util/go_tests.txt)
+
     if(BUILD_LIBSSL)
       add_custom_target(
           run_ssl_runner_tests
@@ -943,7 +953,8 @@ if(BUILD_TESTING)
       add_custom_target(
           run_tests
           COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
-                  ${PROJECT_BINARY_DIR}
+                 ${PROJECT_BINARY_DIR}
+          COMMAND ${GO_EXECUTABLE} test ${GO_TESTS}
           WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
           DEPENDS all_tests run_ssl_runner_tests
           ${MAYBE_USES_TERMINAL})
@@ -952,6 +963,7 @@ if(BUILD_TESTING)
           run_tests
           COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
                   ${PROJECT_BINARY_DIR} -ssl-tests=false
+          COMMAND ${GO_EXECUTABLE} test ${GO_TESTS}
           WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
           DEPENDS all_tests fips_specific_tests_if_any
           ${MAYBE_USES_TERMINAL}

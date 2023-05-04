@@ -83,7 +83,8 @@ struct VersionParam {
   // used to exchange data. This flag is to replay existing tests with the
   // transferred SSL. If false, the tests use the original server SSL. If true,
   // the tests are replayed with the transferred server SSL. Note: SSL transfer
-  // works only with TLS 1.2 after handshake finished.
+  // works only with either TLS 1.2 or TLS 1.3 after handshake finished and all
+  // post-handshake messages have been flushed.
   bool transfer_ssl;
 };
 
@@ -93,7 +94,8 @@ struct SSLTestParam {
   // used to exchange data. This flag is to replay existing tests with the
   // transferred SSL. If false, the tests use the original server SSL. If true,
   // the tests are replayed with the transferred server SSL. Note: SSL transfer
-  // works only with TLS 1.2 after handshake finished.
+  // works only with either TLS 1.2 or TLS 1.3 after handshake finished and all
+  // post-handshake messages have been flushed.
   bool transfer_ssl;
 };
 
@@ -110,6 +112,7 @@ static const VersionParam kAllVersions[] = {
     {DTLS1_VERSION, VersionParam::is_dtls, "DTLS1", !TRANSFER_SSL},
     {DTLS1_2_VERSION, VersionParam::is_dtls, "DTLS1_2", !TRANSFER_SSL},
     {TLS1_2_VERSION, VersionParam::is_tls, "TLS1_2_SSL_TRANSFER", TRANSFER_SSL},
+    {TLS1_3_VERSION, VersionParam::is_tls, "TLS1_3_SSL_TRANSFER", TRANSFER_SSL},
 };
 
 static const SSLTestParam kSSLTestParams[] = {
@@ -538,13 +541,7 @@ static const char *kTLSv13MustNotIncludeNull[] = {
 };
 
 static const char *kMustNotInclude3DES[] = {
-    "ALL",
-    "DEFAULT",
-    "HIGH",
-    "FIPS",
-    "SSLv3",
-    "TLSv1",
-    "TLSv1.2",
+    "ALL", "DEFAULT", "HIGH", "FIPS", "SSLv3", "TLSv1", "TLSv1.2",
 };
 
 static const CurveTest kCurveTests[] = {
@@ -1621,6 +1618,18 @@ static bssl::UniquePtr<SSL_CTX> CreateContextWithTestCertificate(
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
   bssl::UniquePtr<X509> cert = GetTestCertificate();
   bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
+  if (!ctx || !cert || !key ||
+      !SSL_CTX_use_certificate(ctx.get(), cert.get()) ||
+      !SSL_CTX_use_PrivateKey(ctx.get(), key.get())) {
+    return nullptr;
+  }
+  return ctx;
+}
+
+static bssl::UniquePtr<SSL_CTX> CreateContextWithCertificate(
+    const SSL_METHOD *method, bssl::UniquePtr<X509> cert,
+    bssl::UniquePtr<EVP_PKEY> key) {
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
   if (!ctx || !cert || !key ||
       !SSL_CTX_use_certificate(ctx.get(), cert.get()) ||
       !SSL_CTX_use_PrivateKey(ctx.get(), key.get())) {
@@ -3565,7 +3574,7 @@ TEST(SSLTest, ClientHello) {
     std::vector<uint8_t> expected;
   } kTests[] = {
       {TLS1_VERSION,
-        {0x16, 0x03, 0x01, 0x00, 0x58, 0x01, 0x00, 0x00, 0x54, 0x03, 0x01, 0x00,
+       {0x16, 0x03, 0x01, 0x00, 0x58, 0x01, 0x00, 0x00, 0x54, 0x03, 0x01, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0c, 0xc0, 0x09,
@@ -3574,7 +3583,7 @@ TEST(SSLTest, ClientHello) {
         0x0a, 0x00, 0x08, 0x00, 0x06, 0x00, 0x1d, 0x00, 0x17, 0x00, 0x18, 0x00,
         0x0b, 0x00, 0x02, 0x01, 0x00, 0x00, 0x23, 0x00, 0x00}},
       {TLS1_1_VERSION,
-        {0x16, 0x03, 0x01, 0x00, 0x58, 0x01, 0x00, 0x00, 0x54, 0x03, 0x02, 0x00,
+       {0x16, 0x03, 0x01, 0x00, 0x58, 0x01, 0x00, 0x00, 0x54, 0x03, 0x02, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0c, 0xc0, 0x09,
@@ -3583,7 +3592,7 @@ TEST(SSLTest, ClientHello) {
         0x0a, 0x00, 0x08, 0x00, 0x06, 0x00, 0x1d, 0x00, 0x17, 0x00, 0x18, 0x00,
         0x0b, 0x00, 0x02, 0x01, 0x00, 0x00, 0x23, 0x00, 0x00}},
       {TLS1_2_VERSION,
-        {0x16, 0x03, 0x01, 0x00, 0x84, 0x01, 0x00, 0x00, 0x80, 0x03, 0x03, 0x00,
+       {0x16, 0x03, 0x01, 0x00, 0x84, 0x01, 0x00, 0x00, 0x80, 0x03, 0x03, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x20, 0xcc, 0xa9,
@@ -5014,6 +5023,116 @@ TEST(SSLTest, EmptyCipherList) {
   EXPECT_EQ(0u, sk_SSL_CIPHER_num(SSL_CTX_get_ciphers(ctx.get())));
 }
 
+struct MultiTransferReadWriteTestParams {
+  const char suite[50];
+  bool tls13;
+  bssl::UniquePtr<X509> (*certificate)();
+  bssl::UniquePtr<EVP_PKEY> (*key)();
+};
+
+static const MultiTransferReadWriteTestParams kMultiTransferReadWriteTests[] = {
+    {"TLS_AES_128_GCM_SHA256:", true, GetECDSATestCertificate, GetECDSATestKey},
+    {"TLS_AES_256_GCM_SHA384:", true, GetECDSATestCertificate, GetECDSATestKey},
+    {"TLS_CHACHA20_POLY1305_SHA256:", true, GetECDSATestCertificate,
+     GetECDSATestKey},
+    {"TLS_RSA_WITH_NULL_SHA:", false, GetTestCertificate, GetTestKey},
+    {"TLS_RSA_WITH_3DES_EDE_CBC_SHA:", false, GetTestCertificate, GetTestKey},
+    {"TLS_RSA_WITH_AES_128_CBC_SHA:", false, GetTestCertificate, GetTestKey},
+    {"TLS_RSA_WITH_AES_256_CBC_SHA:", false, GetTestCertificate, GetTestKey},
+    {"TLS_RSA_WITH_AES_128_CBC_SHA256:", false, GetTestCertificate, GetTestKey},
+    {"TLS_RSA_WITH_AES_128_GCM_SHA256:", false, GetTestCertificate, GetTestKey},
+    {"TLS_RSA_WITH_AES_256_GCM_SHA384:", false, GetTestCertificate, GetTestKey},
+    {"TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA:", false, GetECDSATestCertificate,
+     GetECDSATestKey},
+    {"TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA:", false, GetECDSATestCertificate,
+     GetECDSATestKey},
+    {"TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA:", false, GetTestCertificate,
+     GetTestKey},
+    {"TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA:", false, GetTestCertificate,
+     GetTestKey},
+    {"TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256:", false, GetTestCertificate,
+     GetTestKey},
+    {"TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256:", false, GetECDSATestCertificate,
+     GetECDSATestKey},
+    {"TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384:", false, GetECDSATestCertificate,
+     GetECDSATestKey},
+    {"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256:", false, GetTestCertificate,
+     GetTestKey},
+    {"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384:", false, GetTestCertificate,
+     GetTestKey},
+    {"TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256:", false, GetTestCertificate,
+     GetTestKey},
+    {"TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256:", false,
+     GetECDSATestCertificate, GetECDSATestKey}};
+
+class MultiTransferReadWriteTest
+    : public testing::TestWithParam<MultiTransferReadWriteTestParams> {};
+
+INSTANTIATE_TEST_SUITE_P(SuiteTests, MultiTransferReadWriteTest,
+                         testing::ValuesIn(kMultiTransferReadWriteTests));
+
+TEST_P(MultiTransferReadWriteTest, SuiteTransfers) {
+  auto params = GetParam();
+
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx(CreateContextWithCertificate(
+      TLS_method(), params.certificate(), params.key()));
+
+  uint16_t version = TLS1_2_VERSION;
+  int (*set_cipher_suites)(SSL_CTX *, const char *) = SSL_CTX_set_cipher_list;
+  if (params.tls13) {
+    version = TLS1_3_VERSION;
+    set_cipher_suites = SSL_CTX_set_ciphersuites;
+  }
+
+  ASSERT_TRUE(set_cipher_suites(client_ctx.get(), params.suite));
+  ASSERT_TRUE(set_cipher_suites(server_ctx.get(), params.suite));
+
+  ASSERT_TRUE(SSL_CTX_set_min_proto_version(client_ctx.get(), version));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), version));
+  ASSERT_TRUE(SSL_CTX_set_min_proto_version(server_ctx.get(), version));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(server_ctx.get(), version));
+
+  ClientConfig config;
+  bssl::UniquePtr<SSL> client, server;
+
+  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                     server_ctx.get(), config, true));
+
+  ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
+
+  bssl::UniquePtr<SSL> transfer_server;
+  TransferSSL(&server, server_ctx.get(), &transfer_server);
+  server = std::move(transfer_server);
+
+  char buf[3];
+  size_t buf_cap = sizeof(buf);
+
+  for (size_t t = 0; t < 5; t++) {
+    for (size_t i = 0; i < 20; i++) {
+      std::string send_str = std::to_string(i);
+
+      // Assert server open
+      ASSERT_TRUE(SSL_write(client.get(), send_str.c_str(), send_str.length()));
+      int read = SSL_read(server.get(), buf, buf_cap);
+      ASSERT_TRUE(read);
+      ASSERT_TRUE((size_t)read == send_str.length());
+      std::string read_str(buf, read);
+      ASSERT_EQ(send_str, read_str);
+
+      // Assert server seal
+      ASSERT_TRUE(SSL_write(server.get(), send_str.c_str(), send_str.length()));
+      read = SSL_read(client.get(), buf, buf_cap);
+      ASSERT_TRUE(read);
+      ASSERT_TRUE((size_t)read == send_str.length());
+      read_str = std::string(buf, read);
+      ASSERT_EQ(send_str, read_str);
+    }
+    TransferSSL(&server, server_ctx.get(), &transfer_server);
+    server = std::move(transfer_server);
+  }
+}
+
 // ssl_test_ticket_aead_failure_mode enumerates the possible ways in which the
 // test |SSL_TICKET_AEAD_METHOD| can fail.
 enum ssl_test_ticket_aead_failure_mode {
@@ -5179,11 +5298,6 @@ TEST_P(TicketAEADMethodTest, Resume) {
   const ssl_test_ticket_aead_failure_mode failure_mode =
       testing::get<2>(GetParam());
   const bool transfer_ssl = testing::get<3>(GetParam());
-  if (transfer_ssl && (version == TLS1_3_VERSION)) {
-    // TODO: remove this condition when TLS1_3 is supported by SSL
-    // encode/decode.
-    return;
-  }
 
   ASSERT_TRUE(SSL_CTX_set_min_proto_version(client_ctx.get(), version));
   ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), version));
@@ -5931,34 +6045,96 @@ TEST(SSLTest, ApplyHandoffRemovesUnsupportedCurves) {
   EXPECT_EQ(1u, server->config->supported_group_list.size());
 }
 
-TEST(SSLTest, EncodeAndDecodeKAT) {
+struct EncodeDecodeKATTestParam {
+  const char *input;
+  const char *output;
+};
+
+static const EncodeDecodeKATTestParam kEncodeDecodeKATs[] = {
+    // V1 input round-trips as V2 output
+    {"308201173082011302010102020303020240003081fa0201010408000000000000000104"
+     "0800000000000000010420000004d29e62f41ded4bb33d0faa6ffada380e2c489dfbfb44"
+     "4f574e475244010420cf3926d1ec5a562a642935a8050222b0aed93ffd9d1cac682274d9"
+     "42e99e42a604020000020100020103040cb9b409f5129440622f87f84402010c040c1f49"
+     "e2e989c66a263e9c227502010c020100020100020100a05b3059020101020203030402cc"
+     "a80400043085668dcf9f0921094ebd7f91bf2a8c60d276e4c279fd85a989402f67868232"
+     "4fd8098dc19d900b856d0a77e048e3ced2a104020204d2a20402021c20a4020400b10301"
+     "01ffb20302011da206040474657374a7030101ff020108020100a0030101ff",
+     "308201173082011302010102020303020240003081fa0201020408000000000000000104"
+     "0800000000000000010420000004d29e62f41ded4bb33d0faa6ffada380e2c489dfbfb44"
+     "4f574e475244010420cf3926d1ec5a562a642935a8050222b0aed93ffd9d1cac682274d9"
+     "42e99e42a604020000020100020103040cb9b409f5129440622f87f84402010c040c1f49"
+     "e2e989c66a263e9c227502010c020100020100020100a05b3059020101020203030402cc"
+     "a80400043085668dcf9f0921094ebd7f91bf2a8c60d276e4c279fd85a989402f67868232"
+     "4fd8098dc19d900b856d0a77e048e3ced2a104020204d2a20402021c20a4020400b10301"
+     "01ffb20302011da206040474657374a7030101ff020108020100a0030101ff"},
+    // In runner.go, the test case "Basic-Server-TLS-Sync-SSL_Transfer" is used
+    // to generate below bytes by adding print statement on the output of
+    // |SSL_to_bytes| in bssl_shim.cc.
+    {"308201173082011302010102020303020240003081fa0201020408000000000000000104"
+     "0800000000000000010420000004d29e62f41ded4bb33d0faa6ffada380e2c489dfbfb44"
+     "4f574e475244010420cf3926d1ec5a562a642935a8050222b0aed93ffd9d1cac682274d9"
+     "42e99e42a604020000020100020103040cb9b409f5129440622f87f84402010c040c1f49"
+     "e2e989c66a263e9c227502010c020100020100020100a05b3059020101020203030402cc"
+     "a80400043085668dcf9f0921094ebd7f91bf2a8c60d276e4c279fd85a989402f67868232"
+     "4fd8098dc19d900b856d0a77e048e3ced2a104020204d2a20402021c20a4020400b10301"
+     "01ffb20302011da206040474657374a7030101ff020108020100a0030101ff",
+     nullptr},
+    // In runner.go, the test case
+    // "TLS-TLS13-AES_128_GCM_SHA256-server-SSL_Transfer" is used to generate
+    // below bytes by adding print statement on the output of |SSL_to_bytes| in
+    // bssl_shim.cc.
+    {"308203883082038402010102020304020240003082036a020102040800000000000000000"
+     "408000000000000000004206beca5c14aff6b92757545948b883c6c175327814bedcf38a6"
+     "b2e4c43bc02d180420a32aee5b7705a19e4bb2b47f4918199c76cee7245f1311bc4ba3888"
+     "3d33f236a04020000020100020101040c000000000000000000000000020100040c000000"
+     "000000000000000000020100020100020100020100a04e304c02010102020304040213010"
+     "40004200b66320d38c8fa1b0dfe9e37fcf2bf0bafb43077fa31ed2f1220dd245cef4c4da1"
+     "04020204d2a205020302a300a4020400b20302011db9050203093a80a206040474657374a"
+     "b03020100ac03010100ad03010100ae03010100af03020100b032043034c0893be938bade"
+     "e7029ca3cfea4c821dde48e03f0d07641cba33b247bc161c0000000000000000000000000"
+     "0000000b103020120b232043094b319ed2f41ee11aa73e141a238e5724c04f2aa8298c16b"
+     "43c910c40cc98d1500000000000000000000000000000000b303020120b432043015a178c"
+     "e69c0110ad36da8d58ca8428d9615ff07fc6a4e1bbab026c1bb0c02180000000000000000"
+     "0000000000000000b503020120b88201700482016c040000b20002a30056355452010000a"
+     "027abfd1f1aa28cee6e8e2396112e8285f150768898158dbce97a1aef0a63fa6dda1002a4"
+     "d75942a3739c11e4b25827f529ab59d22e34e0cf0b59b9336eb60edbb1f686c072ab33c30"
+     "e784f876da5b4c7fddd67f4a2ffa995f8c9ccf2128200ae9668d626866b1b7c6bb111867a"
+     "87ed2a96122736595374f8fe5343e6ca492b278b67b1571423f2c1bcb673922e9044e9094"
+     "9975ff72ab4a0eb659d8de664cac600042a2a0000040000b20002a3009e8c6738010100a0"
+     "27abfd1f1aa28cee6e8e2396112e82851f15c84668b2f1d717681d1a3c6d2ea52d3401d31"
+     "10a04498246480b96a7e5b3c39ea6cef3a2a86b81896f1621950472d858d18796c97e8320"
+     "4daf94c1f30dfe763cd282fbee718a679dca8bff3cc8e11724062232e573bcf0252dc4d39"
+     "0baa2b7f49a164b46d2d685e9fe826465cc135130f3e2e47838658af57173f864070fdce2"
+     "41be58ecbd60d18128dfa28f4b1a00042a2a0000ba2330210201010204030013013016020"
+     "101020117040e300c0201010201000201000101ffbb233021020101020403001301301602"
+     "0101020117040e300c0201010201000201000101ff020108020100a0030101ff",
+     nullptr}};
+
+class EncodeDecodeKATTest
+    : public testing::TestWithParam<EncodeDecodeKATTestParam> {};
+
+INSTANTIATE_TEST_SUITE_P(EncodeAndDecodeKATTests, EncodeDecodeKATTest,
+                         testing::ValuesIn(kEncodeDecodeKATs));
+
+TEST_P(EncodeDecodeKATTest, RoundTrips) {
+  std::string input(GetParam().input);
+  std::string output;
+  if (GetParam().output) {
+    output = std::string(GetParam().output);
+  } else {
+    output = std::string(GetParam().input);
+  }
+
+  std::vector<uint8_t> input_bytes;
+  ASSERT_TRUE(DecodeHex(&input_bytes, input));
+  std::vector<uint8_t> output_bytes;
+  ASSERT_TRUE(DecodeHex(&output_bytes, output));
+
   bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
-  // In runner.go, the test case "Basic-Server-TLS-Sync-SSL_Transfer" is used to
-  // generate below bytes by adding print statement on the output of
-  // |SSL_to_bytes| in bssl_shim.cc.
-  const std::string data =
-      "308201173082011302010102020303020240003081fa0201010408000000000000000104"
-      "08000000"
-      "00000000010420000004d29e62f41ded4bb33d0faa6ffada380e2c489dfbfb444f574e47"
-      "52440104"
-      "20cf3926d1ec5a562a642935a8050222b0aed93ffd9d1cac682274d942e99e42a6040200"
-      "00020100"
-      "020103040cb9b409f5129440622f87f84402010c040c1f49e2e989c66a263e9c22750201"
-      "0c020100"
-      "020100020100a05b3059020101020203030402cca80400043085668dcf9f0921094ebd7f"
-      "91bf2a8c"
-      "60d276e4c279fd85a989402f678682324fd8098dc19d900b856d0a77e048e3ced2a10402"
-      "0204d2a2"
-      "0402021c20a4020400b1030101ffb20302011da206040474657374a7030101ff02010802"
-      "0100a003"
-      "0101ff";
-
-  std::vector<uint8_t> bytes;
-  ASSERT_TRUE(DecodeHex(&bytes, data));
-
   // Check the bytes are decoded successfully.
   bssl::UniquePtr<SSL> ssl(
-      SSL_from_bytes(bytes.data(), bytes.size(), server_ctx.get()));
+      SSL_from_bytes(input_bytes.data(), input_bytes.size(), server_ctx.get()));
   ASSERT_TRUE(ssl);
   // Check the ssl can be encoded successfully.
   size_t encoded_len;
@@ -5967,8 +6143,8 @@ TEST(SSLTest, EncodeAndDecodeKAT) {
   bssl::UniquePtr<uint8_t> encoded_ptr;
   encoded_ptr.reset(encoded);
   // Check the encoded bytes are the same as the test input.
-  ASSERT_EQ(bytes.size(), encoded_len);
-  ASSERT_EQ(memcmp(bytes.data(), encoded, encoded_len), 0);
+  ASSERT_EQ(output_bytes.size(), encoded_len);
+  ASSERT_EQ(memcmp(output_bytes.data(), encoded, encoded_len), 0);
 }
 
 TEST(SSLTest, ZeroSizedWiteFlushesHandshakeMessages) {

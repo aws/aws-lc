@@ -23,12 +23,6 @@ typedef struct {
 } X25519_KEY;
 
 typedef struct {
-  uint8_t pub[800];
-  uint8_t priv[1632];
-  uint8_t has_private;
-} KYBER512_KEY;
-
-typedef struct {
   uint8_t pub[1952];
   uint8_t priv[4000];
   char has_private;

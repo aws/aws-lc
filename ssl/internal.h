@@ -195,7 +195,6 @@ template <typename T, typename... Args>
 T *New(Args &&...args) {
   void *t = OPENSSL_malloc(sizeof(T));
   if (t == nullptr) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return nullptr;
   }
   return new (t) T(std::forward<Args>(args)...);
@@ -323,7 +322,6 @@ class Array {
     }
     data_ = reinterpret_cast<T *>(OPENSSL_malloc(new_size * sizeof(T)));
     if (data_ == nullptr) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return false;
     }
     size_ = new_size;
@@ -877,6 +875,10 @@ class SSLAEADContext {
 
   bool GetIV(const uint8_t **out_iv, size_t *out_iv_len) const;
 
+  int SerializeState(CBB *cbb) const;
+
+  int DeserializeState(CBS *cbs) const;
+
  private:
   // GetAdditionalData returns the additional data, writing into |storage| if
   // necessary.
@@ -1084,14 +1086,6 @@ class SSLKeyShare {
   // Create returns a SSLKeyShare instance for use with group |group_id| or
   // nullptr on error.
   static UniquePtr<SSLKeyShare> Create(uint16_t group_id);
-
-  // Create deserializes an SSLKeyShare instance previously serialized by
-  // |Serialize|.
-  static UniquePtr<SSLKeyShare> Create(CBS *in);
-
-  // Serializes writes the group ID and private key, in a format that can be
-  // read by |Create|.
-  bool Serialize(CBB *out);
 
   // GroupID returns the group ID.
   virtual uint16_t GroupID() const PURE_VIRTUAL;

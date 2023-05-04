@@ -65,7 +65,6 @@
 extern "C" {
 #endif
 
-
 /* The nid library provides numbered values for ASN.1 object identifiers and
  * other symbols. These values are used by other libraries to identify
  * cryptographic primitives.
@@ -78,7 +77,6 @@ extern "C" {
  *
  * These values should not be used outside of a single process; they are not
  * stable identifiers. */
-
 
 #define SN_undef "UNDEF"
 #define LN_undef "undefined"
@@ -4302,7 +4300,6 @@ extern "C" {
 #define SN_DILITHIUM3 "DILITHIUM3"
 #define NID_DILITHIUM3 975
 #define OBJ_DILITHIUM3 1L, 3L, 6L, 1L, 4L, 1L, 2L, 267L, 7L, 6L, 5L
-
 
 #if defined(__cplusplus)
 } /* extern C */

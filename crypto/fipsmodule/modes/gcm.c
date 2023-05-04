@@ -155,7 +155,33 @@ static size_t hw_gcm_encrypt(const uint8_t *in, uint8_t *out, size_t len,
   if (!len_blocks) {
     return 0;
   }
-  aes_gcm_enc_kernel(in, len_blocks * 8, out, Xi, ivec, key);
+
+  // The 8x-unrolled assembly implementation starts outperforming
+  // the 4x-unrolled one starting around input length of 256 bytes
+  // in the case of the EVP API.
+  // In the case of the AEAD API, it can be used for all input lengths
+  // but we are not identifying which API calls the code below.
+  if (CRYPTO_is_ARMv8_GCM_8x_capable() && len >= 256) {
+    switch(key->rounds) {
+    case 10:
+      aesv8_gcm_8x_enc_128(in, len_blocks * 8, out, Xi, ivec, key);
+      break;
+    case 12:
+      aesv8_gcm_8x_enc_192(in, len_blocks * 8, out, Xi, ivec, key);
+      break;
+    case 14:
+      aesv8_gcm_8x_enc_256(in, len_blocks * 8, out, Xi, ivec, key);
+      break;
+    default:
+      // The subsequent logic after returning can process
+      // the input or return an error.
+      return 0;
+      break;
+    }
+  } else {
+    aes_gcm_enc_kernel(in, len_blocks * 8, out, Xi, ivec, key);
+  }
+
   return len_blocks;
 }
 
@@ -166,7 +192,33 @@ static size_t hw_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
   if (!len_blocks) {
     return 0;
   }
-  aes_gcm_dec_kernel(in, len_blocks * 8, out, Xi, ivec, key);
+
+  // The 8x-unrolled assembly implementation starts outperforming
+  // the 4x-unrolled one starting around input length of 256 bytes
+  // in the case of the EVP API.
+  // In the case of the AEAD API, it can be used for all input lengths
+  // but we are not identifying which API calls the code below.
+  if (CRYPTO_is_ARMv8_GCM_8x_capable() && len >= 256) {
+    switch(key->rounds) {
+    case 10:
+      aesv8_gcm_8x_dec_128(in, len_blocks * 8, out, Xi, ivec, key);
+      break;
+    case 12:
+      aesv8_gcm_8x_dec_192(in, len_blocks * 8, out, Xi, ivec, key);
+      break;
+    case 14:
+      aesv8_gcm_8x_dec_256(in, len_blocks * 8, out, Xi, ivec, key);
+      break;
+    default:
+      // The subsequent logic after returning can process
+      // the input or return an error.
+      return 0;
+      break;
+    }
+  } else {
+    aes_gcm_dec_kernel(in, len_blocks * 8, out, Xi, ivec, key);
+  }
+
   return len_blocks;
 }
 
@@ -184,6 +236,13 @@ void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
   out_key->lo = H[1];
 
 #if defined(GHASH_ASM_X86_64)
+  if (crypto_gcm_avx512_enabled()) {
+    gcm_init_avx512(out_table, H);
+    *out_mult = gcm_gmult_avx512;
+    *out_hash = gcm_ghash_avx512;
+    *out_is_avx = 1;
+    return;
+  }
   if (crypto_gcm_clmul_enabled()) {
     if (CRYPTO_is_AVX_capable() && CRYPTO_is_MOVBE_capable()) {
       gcm_init_avx(out_table, H);
@@ -280,6 +339,13 @@ void CRYPTO_gcm128_setiv(GCM128_CONTEXT *ctx, const AES_KEY *key,
   ctx->len.u[1] = 0;  // message length
   ctx->ares = 0;
   ctx->mres = 0;
+
+#if defined(GHASH_ASM_X86_64)
+  if (ctx->gcm_key.use_hw_gcm_crypt && crypto_gcm_avx512_enabled()) {
+    gcm_setiv_avx512(key, ctx, iv, len);
+    return;
+  }
+#endif
 
   uint32_t ctr;
   if (len == 12) {
@@ -574,6 +640,13 @@ int CRYPTO_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
     ctx->ares = 0;
   }
 
+#if defined(GHASH_ASM_X86_64)
+  if (ctx->gcm_key.use_hw_gcm_crypt && crypto_gcm_avx512_enabled() && len > 0) {
+    aes_gcm_encrypt_avx512(key, ctx, &ctx->mres, in, len, out);
+    return 1;
+  }
+#endif
+
   unsigned n = ctx->mres;
   if (n) {
     while (n && len) {
@@ -659,6 +732,13 @@ int CRYPTO_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
     GCM_MUL(ctx, Xi);
     ctx->ares = 0;
   }
+
+#if defined(GHASH_ASM_X86_64)
+  if (ctx->gcm_key.use_hw_gcm_crypt && crypto_gcm_avx512_enabled() && len > 0) {
+    aes_gcm_decrypt_avx512(key, ctx, &ctx->mres, in, len, out);
+    return 1;
+  }
+#endif
 
   unsigned n = ctx->mres;
   if (n) {
@@ -761,6 +841,19 @@ void CRYPTO_gcm128_tag(GCM128_CONTEXT *ctx, unsigned char *tag, size_t len) {
 int crypto_gcm_clmul_enabled(void) {
 #if defined(GHASH_ASM_X86) || defined(GHASH_ASM_X86_64)
   return CRYPTO_is_FXSR_capable() && CRYPTO_is_PCLMUL_capable();
+#else
+  return 0;
+#endif
+}
+
+int crypto_gcm_avx512_enabled(void) {
+#if defined(GHASH_ASM_X86_64) && \
+    !defined(OPENSSL_WINDOWS) && \
+    !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+    // TODO(awslc): remove the Windows guard once CryptoAlg-1701 is resolved.
+  return (CRYPTO_is_VAES_capable() &&
+          CRYPTO_is_AVX512_capable() &&
+          CRYPTO_is_VPCLMULQDQ_capable());
 #else
   return 0;
 #endif

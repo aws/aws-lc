@@ -2398,7 +2398,8 @@ OPENSSL_EXPORT const char *SSL_get_curve_name(uint16_t curve_id);
 // ownership of the buffer and must call |OPENSSL_free| when done. It returns
 // one on success and zero on error.
 //
-// WARNING: Currently only works with TLS 1.2 after handshake finished.
+// WARNING: Currently only works with TLS 1.2 or TLS 1.3 after handshake has
+// finished.
 // WARNING: Currently only supports |SSL| as server.
 // WARNING: CRYPTO_EX_DATA |ssl->ex_data| is not encoded. Remember set |ex_data|
 // back after decode. WARNING: BIO |ssl->rbio| and |ssl->wbio| are not encoded.
@@ -5350,6 +5351,7 @@ OPENSSL_EXPORT uint16_t SSL_CIPHER_get_value(const SSL_CIPHER *cipher);
 #define SSL_CTX_set1_curves SSL_CTX_set1_curves
 #define SSL_CTX_set_max_cert_list SSL_CTX_set_max_cert_list
 #define SSL_CTX_set_max_send_fragment SSL_CTX_set_max_send_fragment
+#define SSL_CTX_set_min_proto_version SSL_CTX_set_min_proto_version
 #define SSL_CTX_set_mode SSL_CTX_set_mode
 #define SSL_CTX_set_msg_callback_arg SSL_CTX_set_msg_callback_arg
 #define SSL_CTX_set_options SSL_CTX_set_options
@@ -5724,6 +5726,7 @@ BSSL_NAMESPACE_END
 #define SSL_R_SERIALIZATION_INVALID_SSL_CONFIG 502
 #define SSL_R_SERIALIZATION_INVALID_SSL3_STATE 503
 #define SSL_R_SERIALIZATION_INVALID_SSL_BUFFER 505
+#define SSL_R_SERIALIZATION_INVALID_SSL_AEAD_CONTEXT 506
 #define SSL_R_SSLV3_ALERT_CLOSE_NOTIFY 1000
 #define SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE 1010
 #define SSL_R_SSLV3_ALERT_BAD_RECORD_MAC 1020
