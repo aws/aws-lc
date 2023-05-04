@@ -22,11 +22,15 @@ typedef struct {
   char has_private;
 } X25519_KEY;
 
+#ifdef ENABLE_DILITHIUM
+
 typedef struct {
   uint8_t pub[1952];
   uint8_t priv[4000];
   char has_private;
 } DILITHIUM3_KEY;
+
+#endif
 
 extern const EVP_PKEY_ASN1_METHOD dsa_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD ec_asn1_meth;
@@ -34,7 +38,9 @@ extern const EVP_PKEY_ASN1_METHOD rsa_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD rsa_pss_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD ed25519_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD x25519_asn1_meth;
+#ifdef ENABLE_DILITHIUM
 extern const EVP_PKEY_ASN1_METHOD dilithium3_asn1_meth;
+#endif
 extern const EVP_PKEY_ASN1_METHOD kem_asn1_meth;
 
 extern const EVP_PKEY_METHOD ed25519_pkey_meth;

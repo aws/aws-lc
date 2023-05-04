@@ -696,6 +696,8 @@ static const uint8_t kInvalidPrivateKey[] = {
     0x48, 0x30, 0x01, 0xaa, 0x02, 0x86, 0xc0, 0x30, 0xdf, 0xe9, 0x80,
 };
 
+#ifdef ENABLE_DILITHIUM
+
 // kExampleDilithium3KeyDER is a Dilithium private key in ASN.1, DER format.
 // Of course, you should never use this key anywhere but in an example.
 static const uint8_t kExampleDilithium3KeyDER[] = {
@@ -1036,6 +1038,8 @@ static const uint8_t kExampleDilithium3KeyDER[] = {
     0x36, 0x30, 0x58, 0x6a, 0x49, 0xb3, 0x24, 0xe0, 0x73, 0x20, 0x0e, 0xaa,
     0x2c, 0xd4, 0xb8, 0x14, 0x91, 0xd5,
 };
+
+#endif
 
 static bssl::UniquePtr<EVP_PKEY> LoadExampleRSAKey() {
   bssl::UniquePtr<RSA> rsa(RSA_private_key_from_bytes(kExampleRSAKeyDER,
@@ -1509,8 +1513,10 @@ TEST(EVPExtraTest, d2i_PrivateKey) {
   EXPECT_TRUE(
       ParsePrivateKey(EVP_PKEY_EC, kExampleECKeyDER, sizeof(kExampleECKeyDER)));
 
+#ifdef ENABLE_DILITHIUM
   EXPECT_TRUE(ParsePrivateKey(EVP_PKEY_DILITHIUM3, kExampleDilithium3KeyDER,
                               sizeof(kExampleDilithium3KeyDER)));
+#endif
 
   EXPECT_FALSE(ParsePrivateKey(EVP_PKEY_EC, kExampleBadECKeyDER,
                                sizeof(kExampleBadECKeyDER)));

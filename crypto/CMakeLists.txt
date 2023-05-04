@@ -261,6 +261,18 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/rust_wrapper.c)
   list(APPEND CRYPTO_RUST_SOURCES rust_wrapper.c)
 endif()
 
+set(DILITHIUM_SOURCES)
+if(ENABLE_DILITHIUM)
+  set(
+    DILITHIUM_SOURCES
+
+    dilithium/dilithium3_ref.c
+    dilithium/p_dilithium3.c
+    dilithium/p_dilithium3_asn1.c
+    dilithium/sig_dilithium3.c
+  )
+endif()
+
 add_library(
   crypto_objects
   OBJECT
@@ -335,10 +347,7 @@ add_library(
   dh_extra/params.c
   dh_extra/dh_asn1.c
   digest_extra/digest_extra.c
-  dilithium/dilithium3_ref.c
-  dilithium/p_dilithium3.c
-  dilithium/p_dilithium3_asn1.c
-  dilithium/sig_dilithium3.c
+  ${DILITHIUM_SOURCES}
   dsa/dsa.c
   dsa/dsa_asn1.c
   ecdh_extra/ecdh_extra.c
@@ -662,6 +671,11 @@ if(BUILD_TESTING)
 
   add_dependencies(all_tests ${RANDOM_TEST_EXEC})
 
+  set(DILITHIUM_TEST_SOURCES)
+  if(ENABLE_DILITHIUM)
+    set(DILITHIUM_TEST_SOURCES dilithium/p_dilithium_test.cc)
+  endif()
+
   add_executable(
     ${CRYPTO_TEST_EXEC}
 
@@ -685,7 +699,7 @@ if(BUILD_TESTING)
     ecdh_extra/ecdh_test.cc
     dh_extra/dh_test.cc
     digest_extra/digest_test.cc
-    dilithium/p_dilithium_test.cc
+    ${DILITHIUM_TEST_SOURCES}
     dsa/dsa_test.cc
     err/err_test.cc
     evp_extra/evp_extra_test.cc

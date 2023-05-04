@@ -556,6 +556,8 @@ w1AH9efZBw==
 -----END CERTIFICATE-----
 )";
 
+#ifdef ENABLE_DILITHIUM
+
 static const char kDilithium3Cert[] = R"(
 -----BEGIN CERTIFICATE-----
 MIIVIDCCCCugAwIBAgIBADANBgsrBgEEAQKCCwcGBTAXMRUwEwYDVQQDDAxJbnRl
@@ -913,6 +915,8 @@ N2F4KXaoyGaTtaWk3bZ1Q4lFNbxZYjtX2UpSAzZRgYOdxBY6f5uhr+vzF5+jqtfl
 BSZbg8sKK0C3x88lLkVRYZ2zAAAAAAAAAAAAAAAAAAAAAAcPFRogJw==
 -----END CERTIFICATE-----
 )";
+
+#endif
 
 // kSANTypesLeaf is a leaf certificate (signed by |kSANTypesRoot|) which
 // contains SANS for example.com, test@example.com, 127.0.0.1, and
@@ -2661,6 +2665,8 @@ TEST(X509Test, Ed25519Sign) {
   ASSERT_TRUE(SignatureRoundTrips(md_ctx.get(), pub.get()));
 }
 
+#ifdef ENABLE_DILITHIUM
+
 TEST(X509Test, Dilithium3SignVerifyCert) {
   // This test generates a Dilithium3 keypair, generates and signs a
   // certificate, then verifies the certificate's signature.
@@ -2730,6 +2736,8 @@ TEST(X509Test, TestBadParamsDilithium3) {
   ASSERT_EQ(X509_R_INVALID_PARAMETER, ERR_GET_REASON(err));
   ERR_clear_error();
 }
+
+#endif
 
 static bool PEMToDER(bssl::UniquePtr<uint8_t> *out, size_t *out_len,
                      const char *pem) {
