@@ -1196,6 +1196,37 @@ static bool SpeedECDHCurve(const std::string &name, int nid,
   return true;
 }
 
+
+static bool SpeedECKeyGenerateKey(bool is_fips, const std::string &name,
+                                      int nid, const std::string &selected) {
+  if (!selected.empty() && name.find(selected) == std::string::npos) {
+    return true;
+  }
+  BM_NAMESPACE::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(nid));
+
+  TimeResults results;
+  if (is_fips) {
+#if !defined(OPENSSL_BENCHMARK)
+    if (!TimeFunction(&results, [&key]() -> bool {
+          return EC_KEY_generate_key_fips(key.get()) == 1;
+        })) {
+      return false;
+    }
+#else
+    return true;
+#endif
+  } else {
+    if (!TimeFunction(&results, [&key]() -> bool {
+          return EC_KEY_generate_key(key.get()) == 1;
+        })) {
+      return false;
+    }
+  }
+  results.Print(is_fips ? name + " with EC_KEY_generate_key_fips"
+                        : name + " with EC_KEY_generate_key");
+  return true;
+}
+
 static bool SpeedECKeyGenCurve(const std::string &name, int nid,
                             const std::string &selected) {
   if (!selected.empty() && name.find(selected) == std::string::npos) {
@@ -1224,7 +1255,7 @@ static bool SpeedECKeyGenCurve(const std::string &name, int nid,
       return false;
   }
   EVP_PKEY_free(key);
-  results.Print(name);
+  results.Print(name + " with EVP_PKEY_keygen");
   return true;
 }
 
@@ -1268,6 +1299,19 @@ static bool SpeedECDSACurve(const std::string &name, int nid,
   results.Print(name + " verify");
 
   return true;
+}
+
+static bool SpeedECKeyGenerateKey(bool is_fips, const std::string &selected) {
+  return SpeedECKeyGenerateKey(is_fips, "Generate P-224", NID_secp224r1,
+                               selected) &&
+         SpeedECKeyGenerateKey(is_fips, "Generate P-256",
+                               NID_X9_62_prime256v1, selected) &&
+         SpeedECKeyGenerateKey(is_fips, "Generate P-384", NID_secp384r1,
+                               selected) &&
+         SpeedECKeyGenerateKey(is_fips, "Generate P-521", NID_secp521r1,
+                               selected) &&
+         SpeedECKeyGenerateKey(is_fips, "Generate secp256k1",
+                               NID_secp256k1, selected);
 }
 
 static bool SpeedECDH(const std::string &selected) {
@@ -2287,6 +2331,7 @@ bool Speed(const std::vector<std::string> &args) {
      !SpeedECDH(selected) ||
      !SpeedECDSA(selected) ||
      !SpeedECKeyGen(selected) ||
+     !SpeedECKeyGenerateKey(false, selected) ||
 #if !defined(OPENSSL_1_0_BENCHMARK)
      !SpeedECMUL(selected) ||
      // OpenSSL 1.0 doesn't support Scrypt
@@ -2318,6 +2363,7 @@ bool Speed(const std::vector<std::string> &args) {
      !SpeedRSAKeyGen(true, selected) ||
      !SpeedHRSS(selected) ||
      !SpeedHash(EVP_blake2b256(), "BLAKE2b-256", selected) ||
+     !SpeedECKeyGenerateKey(true, selected) ||
 #if defined(INTERNAL_TOOL)
      !SpeedHashToCurve(selected) ||
      !SpeedTrustToken("TrustToken-Exp1-Batch1", TRUST_TOKEN_experiment_v1(), 1, selected) ||
