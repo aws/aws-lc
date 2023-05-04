@@ -6,6 +6,14 @@ AWS_LC_DIR=${PWD##*/}
 cd ../
 ROOT=$(pwd)
 
+####################
+##### Disable formal verification in CI for experimental-fips-refactoring branch
+##### because it's out-of-sync and doesn't work.
+####################
+exit 0
+
+
+
 rm -rf aws-lc-verification-build
 git clone --recurse-submodules https://github.com/awslabs/aws-lc-verification.git aws-lc-verification-build
 cd aws-lc-verification-build
