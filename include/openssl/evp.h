@@ -253,10 +253,11 @@ OPENSSL_EXPORT int EVP_marshal_private_key_v2(CBB *cbb, const EVP_PKEY *key);
 
 // Raw keys
 //
-// Some keys types support a "raw" serialization. For Ed25519 the public key
-// and private key formats are those specified in RFC 8032. Note the RFC 8032
-// private key format is the 32-byte prefix of |ED25519_sign|'s 64-byte private
-// key. For Dilithium the public key and private key formats are those specified
+// Some keys types support a "raw" serialization. Currently the only supported
+// raw formats are X25519 and Ed25519, where the formats are those specified in
+// RFC 7748 and RFC 8032, respectively. Note the RFC 8032 private key format
+// is the 32-byte prefix of |ED25519_sign|'s 64-byte private key.
+// For Dilithium the public key and private key formats are those specified
 // in draft-ietf-lamps-dilithium-certificates-00 and the Dilithium specification.
 
 // EVP_PKEY_new_raw_private_key returns a newly allocated |EVP_PKEY| wrapping a
