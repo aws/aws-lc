@@ -1,3 +1,6 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
+
 FROM public.ecr.aws/lambda/provided:al2 as build
 
 ENV CARGO_UNSTABLE_SPARSE_REGISTRY=true
