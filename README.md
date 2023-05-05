@@ -1,21 +1,13 @@
 # AWS libcrypto (AWS-LC)
 
-AWS-LC is a general-purpose cryptographic library maintained by the AWS Cryptography
-team for AWS and their customers. It іs based on code from the Google BoringSSL project
-and the OpenSSL project.
+AWS-LC AWS और उनके ग्राहकों के लिए AWS क्रिप्टोग्राफी टीम द्वारा अनुरक्षित एक सामान्य-उद्देश्य वाली क्रिप्टोग्राफ़िक लाइब्रेरी है। यह Google बोरिंगएसएसएल प्रोजेक्ट और ओपनएसएसएल प्रोजेक्ट के कोड पर आधारित है।
 
-AWS-LC contains portable C implementations of algorithms needed for TLS and common
-applications. For performance critical algorithms, optimized assembly versions are
-included for x86 and ARM.
+एडब्ल्यूएस-एलसी में टीएलएस और सामान्य अनुप्रयोगों के लिए आवश्यक एल्गोरिदम के पोर्टेबल सी कार्यान्वयन शामिल हैं। प्रदर्शन महत्वपूर्ण एल्गोरिदम के लिए, अनुकूलित विधानसभा संस्करण x86 और ARM के लिए शामिल किए गए हैं।
 
-## Quickstart for Amazon Linux 2
+Amazon Linux 2 के लिए क्विकस्टार्ट
+AWS-LC का libcrypto एक C लाइब्रेरी है और इसके लिए C कंपाइलर की जरूरत है। AWS-LC का libssl एक C++ लाइब्रेरी है और इसके लिए C++ कंपाइलर की आवश्यकता है।
 
-AWS-LC’s libcrypto is a C library and needs a C compiler. AWS-LC's libssl is a
-C++ library and needs a C++ compiler.
-
-Fork AWS-LC on GitHub and run the following commands to build AWS-LC with optimizations
-and debug info, run all tests, and install it:
-```bash
+गिटहब पर फोर्क एडब्ल्यूएस-एलसी और अनुकूलन और डीबग जानकारी के साथ एडब्ल्यूएस-एलसी बनाने के लिए निम्नलिखित आदेश चलाएं, सभी परीक्षण चलाएं, और इसे इंस्टॉल करें:
 sudo yum install cmake3 ninja-build clang perl golang
 git clone https://github.com/${YOUR_GITHUB_ACCOUNT_NAME}/aws-lc.git
 mkdir aws-lc-build && cd aws-lc-build
@@ -26,93 +18,44 @@ cmake3 -GNinja \
 ninja-build run_tests && ninja-build install
 cd ../aws-lc-install/
 ls *
-```
-See [Building.md](https://github.com/aws/aws-lc/blob/main/BUILDING.md) for more
-information about required dependencies and build options. If you’re interested in
-getting involved [open an issue](https://github.com/aws/aws-lc/issues/new/choose) to discuss your plan.
-[Contributing.md](https://github.com/aws/aws-lc/blob/main/CONTRIBUTING.md) has
-info for how to specifically make the change and get it reviewed by AWS-LC maintainers.
-If you just want to use AWS-LC see our existing documentation in the public header
-files, if you’re moving your application from OpenSSL see
-[Porting_to_AWS-LC.md](https://github.com/aws/aws-lc/blob/main/PORTING_TO_AWSLC.md)
-for more information.
 
-## Why AWS-LC?
+आवश्यक निर्भरताओं और निर्माण विकल्पों के बारे में अधिक जानकारी के लिए Building.md देखें। यदि आप शामिल होने में रुचि रखते हैं तो अपनी योजना पर चर्चा करने के लिए एक मुद्दा खोलें। Contributing.md में विशेष रूप से परिवर्तन करने और AWS-LC अनुरक्षकों द्वारा इसकी समीक्षा करने के बारे में जानकारी है। यदि आप केवल AWS-LC का उपयोग करना चाहते हैं, तो सार्वजनिक हेडर फ़ाइलों में हमारे मौजूदा दस्तावेज़ देखें, यदि आप OpenSSL से अपना एप्लिकेशन स्थानांतरित कर रहे हैं, तो अधिक जानकारी के लिए Porting_to_AWS-LC.md देखें।
 
-AWS-LC's goal is to maintain a secure libcrypto that is compatible with software and
-applications used at AWS. AWS-LC also serves as the new home for the AWS Cryptography
-team to publish open source contributions and enhancements that are submitted to
-other libcrypto projects.
+एडब्ल्यूएस-एलसी क्यों?
+AWS-LC का लक्ष्य एक सुरक्षित लिबक्रिप्टो को बनाए रखना है जो AWS में उपयोग किए जाने वाले सॉफ़्टवेयर और एप्लिकेशन के साथ संगत है। AWS-LC, AWS क्रिप्टोग्राफी टीम के लिए खुले स्रोत के योगदान और संवर्द्धन को प्रकाशित करने के लिए नए घर के रूप में भी कार्य करता है जो अन्य libcrypto परियोजनाओं के लिए प्रस्तुत किए जाते हैं।
 
-## AWS-LC features
+एडब्ल्यूएस-एलसी सुविधाएँ
+एपीआई संगतता
+एडब्ल्यूएस-एलसी ओपनएसएसएल के अधिकांश एपीआई के साथ संगत है ताकि मौजूदा अनुप्रयोगों के साथ इसका उपयोग करना आसान हो सके। हम अनुपलब्ध कार्यक्षमता जोड़ने और किसी समस्या में आपके उपयोग के मामले को समझने के लिए चर्चा करने के लिए तैयार हैं।
 
-### API Compatibility
+कंपाइलर, OS और CPU सपोर्ट
+AWS-LC शुद्धता का परीक्षण विभिन्न प्रकार के C/C++ कंपाइलर, OS और CPU संयोजनों पर किया जाता है। परीक्षण किए गए संयोजनों की पूरी सूची के लिए Tests/ci/Readme.md देखें। यदि आप एक अलग संयोजन का उपयोग करते हैं और यह सुनिश्चित करना चाहते हैं कि हम इसका परीक्षण करें, तो कृपया इसे हमारे सीआई में जोड़ने पर चर्चा करने के लिए एक मुद्दा खोलें।
 
-AWS-LC is compatible with the majority of OpenSSL’s APIs to make it easy to use with
-existing applications. We’re open to discussing adding missing functionality and
-understanding your use case in an [issue](https://github.com/aws/aws-lc/issues/new/choose).
+एल्गोरिथम अनुकूलन समर्थन
+सभी एल्गोरिदम का एक पोर्टेबल सी कार्यान्वयन शामिल है और कुछ x86 और आर्म सीपीयू के लिए चुनिंदा एल्गोरिदम के असेंबली कार्यान्वयन को शामिल किया गया है। हम ARMv8 ऑप्टिमाइज़ेशन का परीक्षण करने के लिए AWS Graviton प्रोसेसर का उपयोग करते हैं और x86 और x86-64 ऑप्टिमाइज़ेशन का परीक्षण करने के लिए Intel CPU का उपयोग करते हैं।
 
-### Compiler, OS, and CPU support
+Intel सॉफ़्टवेयर डेवलपमेंट एम्यूलेटर का उपयोग कई अलग-अलग x86 प्रोसेसर पर परीक्षण चलाने के लिए किया जाता है।
 
-AWS-LC correctness is tested on a variety of C/C++ compiler, OS, and CPU
-combinations. For a complete list of tested combinations see
-[tests/ci/Readme.md](https://github.com/aws/aws-lc/blob/main/tests/ci/README.md).
-If you use a different combination and would like to make sure we test it,
-please open an issue to discuss adding it to our CI.
+यदि आप किसी अन्य CPU का उपयोग करते हैं और यह सुनिश्चित करना चाहते हैं कि हम इसका परीक्षण करें या असेंबली अनुकूलित एल्गोरिथम कार्यान्वयन जोड़ने पर चर्चा करें, तो कृपया इसे हमारे CI में जोड़ने पर चर्चा करने के लिए एक समस्या खोलें।
 
-### Algorithm optimization support
+AWS-LC सुरक्षा तंत्र
+स्वचालित परीक्षण
+हमारे सीआई के साथ हर परिवर्तन का परीक्षण किया जाता है जिसमें सकारात्मक और नकारात्मक इकाई परीक्षण, फ़ज़ परीक्षण, सैनिटाइज़र (पता, मेमोरी, नियंत्रण प्रवाह अखंडता, थ्रेड और अपरिभाषित व्यवहार), वेलग्रिंड और औपचारिक सत्यापन शामिल हैं।
 
-A portable C implementation of all algorithms is included and optimized assembly
-implementations of select algorithms is included for some x86 and Arm CPUs. We
-use [AWS Graviton processors](https://aws.amazon.com/ec2/graviton/) to test
-ARMv8 optimizations and Intel CPUs to test x86 and x86-64 optimizations.
+औपचारिक सत्यापन
+AWS-LC औपचारिक सत्यापन में AWS-LC के अंशों को औपचारिक रूप से सत्यापित किया गया है, प्रत्येक परिवर्तन पर AWS-LC के CI में चेक चलाए जाते हैं। एल्गोरिदम जो कुछ प्लेटफार्मों पर चेतावनी के साथ सत्यापित किए गए हैं उनमें शामिल हैं:
 
-The [Intel Software Development Emulator](https://software.intel.com/content/www/us/en/develop/articles/intel-software-development-emulator.html)
-is used to run tests on many different x86 processors.
+एसएचए-2
+एचएमएसी
+एईएस GCM
+एईएस KWP
+वक्र P-384 के साथ ECDH और ECDSA
+एक सवाल है?
+हम फीचर अनुरोध, बग रिपोर्ट या एडब्ल्यूएस-एलसी एपीआई उपयोग के बारे में प्रश्नों के प्रबंधन के लिए गिटहब मुद्दों का उपयोग करते हैं।
 
-If you use another CPU and would like to make sure we test it or discuss adding
-an assembly optimized algorithm implementation, please open an issue to discuss
-adding it to our CI.
+अगर आपको लगता है कि आपको सुरक्षा को प्रभावित करने वाली कोई समस्या मिली है, तो कृपया इसके बजाय हमारी सुरक्षा अधिसूचना प्रक्रिया का पालन करें।
 
-## AWS-LC safety mechanisms
+सुरक्षा समस्या सूचनाएं
+यदि आपको AWS-LC में कोई संभावित सुरक्षा समस्या मिलती है, तो हम आपसे हमारे भेद्यता रिपोर्टिंग पृष्ठ के माध्यम से AWS सुरक्षा को सूचित करने के लिए कहते हैं। कृपया सार्वजनिक GitHub समस्या न बनाएँ।
 
-### Automated testing
-
-Every change is tested with our
-[CI](https://github.com/aws/aws-lc/blob/main/tests/ci/README.md) that includes
-positive and negative unit tests, fuzz tests, Sanitizers
-([Address](https://clang.llvm.org/docs/AddressSanitizer.html),
-[Memory](https://clang.llvm.org/docs/MemorySanitizer.html),
-[Control flow integrity](https://clang.llvm.org/docs/ControlFlowIntegrity.html),
-[Thread](https://clang.llvm.org/docs/ThreadSanitizer.html), and
-[Undefined behavior](https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html)),
-[Valgrind](https://valgrind.org/), and Formal Verification.
-
-### Formal Verification
-
-Portions of AWS-LC have been formally verified in
-[AWS-LC Formal Verification](https://github.com/awslabs/aws-lc-verification),
-the checks are run in AWS-LC’s CI on every change. The algorithms that have been
-verified on certain platforms with caveats include:
-* SHA-2
-* HMAC
-* AES-GCM
-* AES-KWP
-* ECDH & ECDSA with curve P-384
-
-## Have a Question?
-
-We use [GitHub Issues](https://github.com/aws/aws-lc/issues) for managing feature requests,
-bug reports, or questions about AWS-LC API usage.
-
-If you think you might have found a security impacting issue, please instead
-follow our [Security Notification Process](#security-issue-notifications).
-
-## Security issue notifications
-
-If you discover a potential security issue in AWS-LC, we ask that you notify AWS
-Security via our
-[vulnerability reporting page](https://aws.amazon.com/security/vulnerability-reporting/).
-Please do **not** create a public GitHub issue.
-
-If you package or distribute AWS-LC, or use AWS-LC as part of a large multi-user service, you may be eligible for pre-notification of future AWS-LC releases. Please contact aws-lc-pre-notifications@amazon.com.
+यदि आप एडब्ल्यूएस-एलसी को पैकेज या वितरित करते हैं, या एक बड़ी बहु-उपयोगकर्ता सेवा के हिस्से के रूप में एडब्ल्यूएस-एलसी का उपयोग करते हैं, तो आप भविष्य में एडब्ल्यूएस-एलसी रिलीज की पूर्व सूचना के पात्र हो सकते हैं। कृपया aws-lc-pre-notifications@amazon.com पर संपर्क करें।
