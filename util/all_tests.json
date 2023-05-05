@@ -15,17 +15,20 @@
   {
     "cmd": ["crypto/crypto_test"],
     "env": ["OPENSSL_armcap=0x0"],
-    "target_arch": "arm"
+    "target_arch": "arm",
+    "skip_valgrind": true
   },
   {
     "cmd": ["crypto/crypto_test"],
     "env": ["OPENSSL_armcap=0x1"],
-    "target_arch": "arm"
+    "target_arch": "arm",
+    "skip_valgrind": true
   },
   {
     "cmd": ["crypto/crypto_test"],
     "env": ["OPENSSL_armcap=0x3D"],
-    "target_arch": "arm"
+    "target_arch": "arm",
+    "skip_valgrind": true
   },
   {
     "comment": "Test OPENSSL_ia32cap on crypto_test for x86, as urandom_test is disabled for shared builds on x86",
