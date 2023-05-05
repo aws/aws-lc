@@ -1888,12 +1888,10 @@ TEST(ECTest, LargeXCoordinateVectors) {
 
     size_t len = BN_num_bytes(&group.get()->field); // Modulus byte-length
     ASSERT_TRUE(EC_KEY_set_group(key.get(), group.get()));
-    // The following call converts the point to Montgomery form for P-256/384.
-    // For P-224, when the functions from simple.c are used, i.e. when
-    // group->meth = EC_GFp_nistp224_method, the coordinate representation
-    // is not changed. This is determined based on compile flags in ec.c
-    // that are also used below in has_uint128_and_not_small().
-    // For P-521, the plain non-Motgomery representation is always used.
+
+    // |EC_POINT_set_affine_coordinates_GFp| sets given (x, y) according to the
+    // form the curve is using. If the curve is using Montgomery form, |x| and
+    // |y| will be converted to Montgomery form.
     ASSERT_TRUE(EC_POINT_set_affine_coordinates_GFp(
                     group.get(), pub_key.get(), x.get(), y.get(), nullptr));
     ASSERT_TRUE(EC_KEY_set_public_key(key.get(), pub_key.get()));
@@ -1908,12 +1906,10 @@ TEST(ECTest, LargeXCoordinateVectors) {
     OPENSSL_memset(key.get()->pub_key->raw.Z.bytes, 0, len);
     key.get()->pub_key->raw.Z.bytes[0] = 1;
 
-    // As mentioned, for P-224 and P-521, setting the raw point directly
-    // with the coordinates still passes |EC_KEY_check_fips|.
-    // For P-256 and 384, the failure is due to that the coordinates are
-    // not in Montgomery representation, hence the checks fail earlier in
-    // |EC_KEY_check_key| in the point-on-the-curve calculations, which use
-    // Montgomery arithmetic.
+    // |EC_KEY_check_fips| firs calls the |EC_KEY_check_key| function that
+    // checks if the key point is on the curve (among other checks). If the
+    // curve uses Montgomery form the point-on-curve check will fail because
+    // we set the raw point coordinates in regular form above.
     int curve_nid = group.get()->curve_name;
     if (!is_curve_using_mont_felem_impl(curve_nid)) {
       ASSERT_TRUE(EC_KEY_check_fips(key.get()));
@@ -1927,12 +1923,11 @@ TEST(ECTest, LargeXCoordinateVectors) {
     // Now replace the x-coordinate with the larger one, x+p.
     OPENSSL_memcpy(key.get()->pub_key->raw.X.bytes,
                    (const uint8_t *)xpp.get()->d, len);
+    // We expect |EC_KEY_check_fips| to always fail when given key with x > p.
     ASSERT_FALSE(EC_KEY_check_fips(key.get()));
 
-    // |EC_KEY_check_fips| check on coordinate range can only be exercised
-    // for P-224 and P-521 when the coordinates in the raw point are not
-    // in Montgomery representation. For the other curves, they fail
-    // for the same reason as above.
+    // But the failure is for different reasons in case of curves using the
+    // Montgomery form versus those that don't, as explained above.
     if (!is_curve_using_mont_felem_impl(curve_nid)) {
       EXPECT_EQ(EC_R_COORDINATES_OUT_OF_RANGE,
                 ERR_GET_REASON(ERR_peek_last_error_line(&file, &line)));
