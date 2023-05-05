@@ -692,14 +692,14 @@ static bool SpeedAEAD(const EVP_AEAD *aead, const std::string &name,
   }
 
   TimeResults results;
-  BM_NAMESPACE::ScopedEVP_AEAD_CTX ctx;
   const size_t key_len = EVP_AEAD_key_length(aead);
   std::unique_ptr<uint8_t[]> key(new uint8_t[key_len]);
 
   if (!TimeFunction(&results, [&]() -> bool {
-    return EVP_AEAD_CTX_init_with_direction(
-        ctx.get(), aead, key.get(), key_len, EVP_AEAD_DEFAULT_TAG_LENGTH,
-        evp_aead_seal);
+        BM_NAMESPACE::ScopedEVP_AEAD_CTX ctx;
+        return EVP_AEAD_CTX_init_with_direction(
+            ctx.get(), aead, key.get(), key_len, EVP_AEAD_DEFAULT_TAG_LENGTH,
+            evp_aead_seal);
   })) {
     fprintf(stderr, "EVP_AEAD_CTX_init_with_direction failed.\n");
     ERR_print_errors_fp(stderr);
@@ -737,7 +737,7 @@ static bool SpeedSingleKEM(const std::string &name, int nid, const std::string &
     return false;
   }
 
-  EVP_PKEY *key = NULL;
+  EVP_PKEY *key = EVP_PKEY_new();
   TimeResults results;
   if (!TimeFunction(&results, [&a_ctx, &key]() -> bool {
         return EVP_PKEY_keygen(a_ctx.get(), &key);
@@ -791,6 +791,8 @@ static bool SpeedSingleKEM(const std::string &name, int nid, const std::string &
     return false;
   }
   results.Print(name + " decaps");
+
+  EVP_PKEY_free(key);
 
   return true;
 }
@@ -1194,6 +1196,37 @@ static bool SpeedECDHCurve(const std::string &name, int nid,
   return true;
 }
 
+
+static bool SpeedECKeyGenerateKey(bool is_fips, const std::string &name,
+                                      int nid, const std::string &selected) {
+  if (!selected.empty() && name.find(selected) == std::string::npos) {
+    return true;
+  }
+  BM_NAMESPACE::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(nid));
+
+  TimeResults results;
+  if (is_fips) {
+#if !defined(OPENSSL_BENCHMARK)
+    if (!TimeFunction(&results, [&key]() -> bool {
+          return EC_KEY_generate_key_fips(key.get()) == 1;
+        })) {
+      return false;
+    }
+#else
+    return true;
+#endif
+  } else {
+    if (!TimeFunction(&results, [&key]() -> bool {
+          return EC_KEY_generate_key(key.get()) == 1;
+        })) {
+      return false;
+    }
+  }
+  results.Print(is_fips ? name + " with EC_KEY_generate_key_fips"
+                        : name + " with EC_KEY_generate_key");
+  return true;
+}
+
 static bool SpeedECKeyGenCurve(const std::string &name, int nid,
                             const std::string &selected) {
   if (!selected.empty() && name.find(selected) == std::string::npos) {
@@ -1213,7 +1246,7 @@ static bool SpeedECKeyGenCurve(const std::string &name, int nid,
     return false;
   }
 
-  EVP_PKEY *key = NULL;
+  EVP_PKEY *key = EVP_PKEY_new();
 
   TimeResults results;
   if (!TimeFunction(&results, [&pkey_ctx, &key]() -> bool {
@@ -1221,7 +1254,8 @@ static bool SpeedECKeyGenCurve(const std::string &name, int nid,
       })) {
       return false;
   }
-  results.Print(name);
+  EVP_PKEY_free(key);
+  results.Print(name + " with EVP_PKEY_keygen");
   return true;
 }
 
@@ -1267,6 +1301,19 @@ static bool SpeedECDSACurve(const std::string &name, int nid,
   return true;
 }
 
+static bool SpeedECKeyGenerateKey(bool is_fips, const std::string &selected) {
+  return SpeedECKeyGenerateKey(is_fips, "Generate P-224", NID_secp224r1,
+                               selected) &&
+         SpeedECKeyGenerateKey(is_fips, "Generate P-256",
+                               NID_X9_62_prime256v1, selected) &&
+         SpeedECKeyGenerateKey(is_fips, "Generate P-384", NID_secp384r1,
+                               selected) &&
+         SpeedECKeyGenerateKey(is_fips, "Generate P-521", NID_secp521r1,
+                               selected) &&
+         SpeedECKeyGenerateKey(is_fips, "Generate secp256k1",
+                               NID_secp256k1, selected);
+}
+
 static bool SpeedECDH(const std::string &selected) {
   return SpeedECDHCurve("ECDH P-224", NID_secp224r1, selected) &&
          SpeedECDHCurve("ECDH P-256", NID_X9_62_prime256v1, selected) &&
@@ -1299,29 +1346,28 @@ static bool SpeedECMULCurve(const std::string &name, int nid,
     return true;
   }
 
-  EC_GROUP *group = EC_GROUP_new_by_curve_name(nid);
-  BN_CTX   *ctx = BN_CTX_new();
+  BM_NAMESPACE::UniquePtr<EC_GROUP> group(EC_GROUP_new_by_curve_name(nid));
+  BM_NAMESPACE::UniquePtr<BN_CTX> ctx(BN_CTX_new());
+  BM_NAMESPACE::UniquePtr<BIGNUM> scalar0(BN_new());
+  BM_NAMESPACE::UniquePtr<BIGNUM> scalar1(BN_new());
+  BM_NAMESPACE::UniquePtr<EC_POINT> pin0(EC_POINT_new(group.get()));
+  BM_NAMESPACE::UniquePtr<EC_POINT> pout(EC_POINT_new(group.get()));
 
-  BIGNUM *scalar0 = BN_new();
-  BIGNUM *scalar1 = BN_new();
-
-  EC_POINT *pin0 = EC_POINT_new(group);
-  EC_POINT *pout = EC_POINT_new(group);
 
   // Generate two random scalars modulo the EC group order.
-  if (!BN_rand_range(scalar0, EC_GROUP_get0_order(group)) ||
-      !BN_rand_range(scalar1, EC_GROUP_get0_order(group))) {
+  if (!BN_rand_range(scalar0.get(), EC_GROUP_get0_order(group.get())) ||
+      !BN_rand_range(scalar1.get(), EC_GROUP_get0_order(group.get()))) {
       return false;
   }
 
   // Generate one random EC point.
-  EC_POINT_mul(group, pin0, scalar0, nullptr, nullptr, ctx);
+  EC_POINT_mul(group.get(), pin0.get(), scalar0.get(), nullptr, nullptr, ctx.get());
 
   TimeResults results;
 
   // Measure scalar multiplication of an arbitrary curve point.
-  if (!TimeFunction(&results, [group, pout, ctx, pin0, scalar0]() -> bool {
-        if (!EC_POINT_mul(group, pout, nullptr, pin0, scalar0, ctx)) {
+  if (!TimeFunction(&results, [&group, &pout, &ctx, &pin0, &scalar0]() -> bool {
+        if (!EC_POINT_mul(group.get(), pout.get(), nullptr, pin0.get(), scalar0.get(), ctx.get())) {
           return false;
         }
 
@@ -1332,8 +1378,8 @@ static bool SpeedECMULCurve(const std::string &name, int nid,
   results.Print(name + " mul");
 
   // Measure scalar multiplication of the curve based point.
-  if (!TimeFunction(&results, [group, pout, ctx, scalar0]() -> bool {
-        if (!EC_POINT_mul(group, pout, scalar0, nullptr, nullptr, ctx)) {
+  if (!TimeFunction(&results, [&group, &pout, &ctx, &scalar0]() -> bool {
+        if (!EC_POINT_mul(group.get(), pout.get(), scalar0.get(), nullptr, nullptr, ctx.get())) {
           return false;
         }
 
@@ -1344,8 +1390,8 @@ static bool SpeedECMULCurve(const std::string &name, int nid,
   results.Print(name + " mul base");
 
   // Measure scalar multiplication of based point and arbitrary point.
-  if (!TimeFunction(&results, [group, pout, pin0, ctx, scalar0, scalar1]() -> bool {
-        if (!EC_POINT_mul(group, pout, scalar1, pin0, scalar0, ctx)) {
+  if (!TimeFunction(&results, [&group, &pout, &pin0, &ctx, &scalar0, &scalar1]() -> bool {
+        if (!EC_POINT_mul(group.get(), pout.get(), scalar1.get(), pin0.get(), scalar0.get(), ctx.get())) {
           return false;
         }
 
@@ -2046,7 +2092,7 @@ static bool SpeedPKCS8(const std::string &selected) {
 
   ED25519_keypair(pubkey, privkey);
 
-  EVP_PKEY *key = EVP_PKEY_new_raw_private_key(EVP_PKEY_ED25519, nullptr, &privkey[0], ED25519_PRIVATE_KEY_SEED_LEN);
+  BM_NAMESPACE::UniquePtr<EVP_PKEY> key(EVP_PKEY_new_raw_private_key(EVP_PKEY_ED25519, nullptr, &privkey[0], ED25519_PRIVATE_KEY_SEED_LEN));
 
   if(!key) {
     return false;
@@ -2059,12 +2105,11 @@ static bool SpeedPKCS8(const std::string &selected) {
 
   TimeResults results;
   if (!TimeFunction(&results, [&out, &key]() -> bool {
-        if (!EVP_marshal_private_key(&out, key)) {
+        if (!EVP_marshal_private_key(&out, key.get())) {
           return false;
         }
         return true;
       })) {
-    EVP_PKEY_free(key);
     return false;
   }
   results.Print("Ed25519 PKCS#8 v1 encode");
@@ -2073,22 +2118,17 @@ static bool SpeedPKCS8(const std::string &selected) {
 
   CBS_init(&in, CBB_data(&out), CBB_len(&out));
 
-  EVP_PKEY *parsed = NULL;
 
-  if (!TimeFunction(&results, [&in, &parsed]() -> bool {
-        parsed = EVP_parse_private_key(&in);
-        if (!parsed) {
-          return false;
-        }
-        return true;
+  if (!TimeFunction(&results, [&in]() -> bool {
+        EVP_PKEY *parsed = EVP_parse_private_key(&in);
+        bool result = parsed != NULL;
+        EVP_PKEY_free(parsed);
+        return result;
       })) {
-    EVP_PKEY_free(key);
     return false;
   }
   results.Print("Ed25519 PKCS#8 v1 decode");
-
-  EVP_PKEY_free(parsed);
-
+  
   CBB_cleanup(&out);
 
   if (!CBB_init(&out, 1024)) {
@@ -2096,36 +2136,29 @@ static bool SpeedPKCS8(const std::string &selected) {
   }
 
   if (!TimeFunction(&results, [&out, &key]() -> bool {
-        if (!EVP_marshal_private_key_v2(&out, key)) {
+        if (!EVP_marshal_private_key_v2(&out, key.get())) {
           return false;
         }
         return true;
       })) {
     CBB_cleanup(&out);
-    EVP_PKEY_free(key);
     return false;
   }
   results.Print("Ed25519 PKCS#8 v2 encode");
 
   CBS_init(&in, CBB_data(&out), CBB_len(&out));
 
-  if (!TimeFunction(&results, [&in, &parsed]() -> bool {
-        parsed = EVP_parse_private_key(&in);
-        if (!parsed) {
-          return false;
-        }
-        return true;
+  if (!TimeFunction(&results, [&in]() -> bool {
+        EVP_PKEY *parsed = EVP_parse_private_key(&in);
+        bool result = parsed != NULL;
+        EVP_PKEY_free(parsed);
+        return result;
       })) {
     CBB_cleanup(&out);
-    EVP_PKEY_free(key);
     return false;
   }
   results.Print("Ed25519 PKCS#8 v2 decode");
-
-  EVP_PKEY_free(parsed);
   CBB_cleanup(&out);
-  EVP_PKEY_free(key);
-
   return true;
 }
 #endif
@@ -2298,6 +2331,7 @@ bool Speed(const std::vector<std::string> &args) {
      !SpeedECDH(selected) ||
      !SpeedECDSA(selected) ||
      !SpeedECKeyGen(selected) ||
+     !SpeedECKeyGenerateKey(false, selected) ||
 #if !defined(OPENSSL_1_0_BENCHMARK)
      !SpeedECMUL(selected) ||
      // OpenSSL 1.0 doesn't support Scrypt
@@ -2329,6 +2363,7 @@ bool Speed(const std::vector<std::string> &args) {
      !SpeedRSAKeyGen(true, selected) ||
      !SpeedHRSS(selected) ||
      !SpeedHash(EVP_blake2b256(), "BLAKE2b-256", selected) ||
+     !SpeedECKeyGenerateKey(true, selected) ||
 #if defined(INTERNAL_TOOL)
      !SpeedHashToCurve(selected) ||
      !SpeedTrustToken("TrustToken-Exp1-Batch1", TRUST_TOKEN_experiment_v1(), 1, selected) ||
