@@ -801,6 +801,8 @@ static bool SpeedKEM(std::string selected) {
          SpeedSingleKEM("Kyber1024_R3", NID_KYBER1024_R3, selected);
 }
 
+#if defined(ENABLE_DILITHIUM)
+
 static bool SpeedDigestSignNID(const std::string &name, int nid,
                             const std::string &selected) {
   if (!selected.empty() && name.find(selected) == std::string::npos) {
@@ -862,8 +864,10 @@ static bool SpeedDigestSignNID(const std::string &name, int nid,
 }
 
 static bool SpeedDigestSign(const std::string &selected) {
-  return SpeedDigestSignNID("Dilithium3", NID_DILITHIUM3, selected);
+  return SpeedDigestSignNID("Dilithium3", EVP_PKEY_DILITHIUM3, selected);
 }
+
+#endif
 
 #endif
 
@@ -2417,7 +2421,9 @@ bool Speed(const std::vector<std::string> &args) {
 #if !defined(OPENSSL_BENCHMARK)
      ||
      !SpeedKEM(selected) ||
+#if defined(ENABLE_DILITHIUM)
      !SpeedDigestSign(selected) ||
+#endif
      !SpeedAEADSeal(EVP_aead_aes_128_gcm(), "AEAD-AES-128-GCM", kTLSADLen, selected) ||
      !SpeedAEADOpen(EVP_aead_aes_128_gcm(), "AEAD-AES-128-GCM", kTLSADLen, selected) ||
      !SpeedAEADSeal(EVP_aead_aes_256_gcm(), "AEAD-AES-256-GCM", kTLSADLen, selected) ||
