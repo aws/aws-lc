@@ -202,7 +202,7 @@ TEST(ECDHTest, InvalidPubKeyLargeCoord) {
     peer_key.get()->pub_key->raw.Z.bytes[0] = 1;
 
     // |ECDH_compute_key_fips| calls |EC_KEY_check_fips| that calls
-    // |EC_KEY_check_key|function which checks if the computed key point is on
+    // |EC_KEY_check_key| function which checks if the computed key point is on
     // the curve (among other checks). If the curve uses Montgomery form then
     // the point-on-curve check will fail because we set the raw point
     // coordinates in regular form above.
