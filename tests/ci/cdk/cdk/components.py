@@ -4,7 +4,7 @@ from aws_cdk import aws_codebuild as codebuild, aws_lambda as lambda_, aws_ecr a
     aws_events as events, aws_events_targets as events_targets, aws_iam as iam, Duration
 
 from constructs import Construct
-from util.metadata import GITHUB_REPO_OWNER, GITHUB_TOKEN_SECRET_NAME, LINUX_X86_ECR_REPO
+from util.metadata import GITHUB_REPO_OWNER, GITHUB_TOKEN_SECRET_NAME
 
 
 class PruneStaleGitHubBuilds(Construct):
