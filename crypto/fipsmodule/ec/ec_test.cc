@@ -1906,7 +1906,7 @@ TEST(ECTest, LargeXCoordinateVectors) {
     OPENSSL_memset(key.get()->pub_key->raw.Z.bytes, 0, len);
     key.get()->pub_key->raw.Z.bytes[0] = 1;
 
-    // |EC_KEY_check_fips| firs calls the |EC_KEY_check_key| function that
+    // |EC_KEY_check_fips| first calls the |EC_KEY_check_key| function that
     // checks if the key point is on the curve (among other checks). If the
     // curve uses Montgomery form the point-on-curve check will fail because
     // we set the raw point coordinates in regular form above.
