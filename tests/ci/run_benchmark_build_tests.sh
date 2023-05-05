@@ -15,7 +15,11 @@ openssl_3_0_branch='openssl-3.0.5'
 
 function build_aws_lc_fips {
   echo "building aws-lc in FIPS mode"
-  run_build -DCMAKE_INSTALL_PREFIX="${install_dir}/aws-lc-fips" -DFIPS=1 -DCMAKE_BUILD_TYPE=Release
+  run_build \
+      -DCMAKE_INSTALL_PREFIX="${install_dir}/aws-lc-fips" \
+      -DFIPS=1 \
+      -DENABLE_DILITHIUM=ON \
+      -DCMAKE_BUILD_TYPE=Release
   pushd "$BUILD_ROOT"
   ninja install
   popd
