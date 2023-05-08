@@ -1,0 +1,17 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
+
+version: 0.2
+
+phases:
+  install:
+    run-as: root
+    commands:
+      # Let postgres user in docker image take ownership of codebuild artifacts.
+      - chown -R postgres:postgres /codebuild/output
+      # Go caches build objects in /root/.cache.
+      - chown -R postgres:postgres /root/
+  build:
+    run-as: postgres
+    commands:
+      - ./tests/ci/run_postgres_integration.sh
