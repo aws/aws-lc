@@ -299,14 +299,33 @@ let decode = new_definition `!w:int32. decode w =
       SOME (arm_EXT (QREG' Rd) (QREG' Rm) (QREG' Rn) pos)
     else NONE
 
-  | [0:1; q; 1:1; 0b0111100000:10; abc:3; cmode:4; 0b01:2; defgh:5; Rd:5] ->
-    // MOVI
-    if q then
-      let abcdefgh:(8)word = word_join abc defgh in
-      let imm = arm_adv_simd_expand_imm abcdefgh (word 1:(1)word) cmode in
-      match imm with
-      | SOME imm -> SOME (arm_MOVI (QREG' Rd) imm)
-      | NONE -> NONE
+  | [0:1; q; 1:1; 0b011110:6; immh:4; abc:3; cmode:4; 0b01:2; defgh:5; Rd:5] ->
+    // MOVI, USRA (Vector)
+    if val immh = 0 then
+      // MOVI
+      if q then
+        let abcdefgh:(8)word = word_join abc defgh in
+        let imm = arm_adv_simd_expand_imm abcdefgh (word 1:(1)word) cmode in
+        match imm with
+        | SOME imm -> SOME (arm_MOVI (QREG' Rd) imm)
+        | NONE -> NONE
+      else NONE
+    else if cmode = (word 0b0001:(4)word) then
+      // USRA
+      if bit 3 immh /\ ~q then NONE // "UNDEFINED"
+      else
+        let immb = abc in
+        let Rn = defgh in
+        let highest_set_bit =
+          if bit 3 immh then 3 else
+          if bit 2 immh then 2 else
+          if bit 1 immh then 1 else 0 in
+        let esize = 8 * (2 EXP highest_set_bit) in
+        let datasize = if q then 128 else 64 in
+        let elements = datasize DIV esize in
+        let shift = (esize * 2) - val(word_join immh immb:(7)word) in
+        // unsigned is true, round is false, accumulate is true
+        SOME (arm_USRA_VEC (QREG' Rd) (QREG' Rn) shift esize datasize)
     else NONE
 
   | [0:1; q; 0b001110:6; size:2; 0b1:1; Rm:5; 0b100111:6; Rn:5; Rd:5] ->
