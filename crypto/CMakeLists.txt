@@ -671,11 +671,6 @@ if(BUILD_TESTING)
 
   add_dependencies(all_tests ${RANDOM_TEST_EXEC})
 
-  set(DILITHIUM_TEST_SOURCES)
-  if(ENABLE_DILITHIUM)
-    set(DILITHIUM_TEST_SOURCES dilithium/p_dilithium_test.cc)
-  endif()
-
   add_executable(
     ${CRYPTO_TEST_EXEC}
 
@@ -699,7 +694,7 @@ if(BUILD_TESTING)
     ecdh_extra/ecdh_test.cc
     dh_extra/dh_test.cc
     digest_extra/digest_test.cc
-    ${DILITHIUM_TEST_SOURCES}
+    dilithium/p_dilithium_test.cc
     dsa/dsa_test.cc
     err/err_test.cc
     evp_extra/evp_extra_test.cc

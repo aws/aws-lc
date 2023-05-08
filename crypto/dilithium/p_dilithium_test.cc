@@ -13,8 +13,10 @@
 #include "../crypto/evp_extra/internal.h"
 #include "../fipsmodule/evp/internal.h"
 #include "../internal.h"
-#include "sig_dilithium.h"
 
+#ifdef ENABLE_DILITHIUM
+
+#include "sig_dilithium.h"
 
 static const uint8_t kPublicKey[] = { 0xBB, 0x0A, 0x41, 0x1A, 0x53, 0x91, 0x4E,
     0x67, 0x77, 0x78, 0xD0, 0xBC, 0xF0, 0xFD, 0x8A, 0x39, 0x65, 0x96, 0x48,
@@ -662,3 +664,15 @@ TEST(Dilithium3Test, SIGOperations) {
   EVP_PKEY_CTX_free(dilithium_pkey_ctx);
   md_ctx.Reset();
 }
+
+#else
+
+TEST(Dilithium3Test, EvpDisabled) {
+  ASSERT_EQ(nullptr, EVP_PKEY_CTX_new_id(NID_DILITHIUM3_R3, nullptr));
+
+  EVP_PKEY *pkey = EVP_PKEY_new();
+  ASSERT_FALSE(EVP_PKEY_set_type(pkey, NID_DILITHIUM3_R3));
+  EVP_PKEY_free(pkey);
+}
+
+#endif
