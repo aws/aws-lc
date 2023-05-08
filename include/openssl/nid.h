@@ -4297,9 +4297,9 @@ extern "C" {
 #define SN_KYBER1024_R3 "KYBER1024_R3"
 #define NID_KYBER1024_R3 974
 
-#define SN_DILITHIUM3 "DILITHIUM3"
-#define NID_DILITHIUM3 975
-#define OBJ_DILITHIUM3 1L, 3L, 6L, 1L, 4L, 1L, 2L, 267L, 7L, 6L, 5L
+#define SN_DILITHIUM3_R3 "DILITHIUM3_R3"
+#define NID_DILITHIUM3_R3 975
+#define OBJ_DILITHIUM3_R3 1L, 3L, 6L, 1L, 4L, 1L, 2L, 267L, 7L, 6L, 5L
 
 #if defined(__cplusplus)
 } /* extern C */

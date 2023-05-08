@@ -7176,7 +7176,7 @@ static const uint8_t kObjectData[] = {
     0x04,
     0x02,
     0x0a,
-    /* NID_DILITHIUM3 */
+    /* NID_DILITHIUM3_R3 */
     0x2b,
     0x06,
     0x01,
@@ -8846,7 +8846,8 @@ static const ASN1_OBJECT kObjects[NUM_NID] = {
     {"KYBER512_R3", "KYBER512_R3", NID_KYBER512_R3, 0, NULL, 0},
     {"KYBER768_R3", "KYBER768_R3", NID_KYBER768_R3, 0, NULL, 0},
     {"KYBER1024_R3", "KYBER1024_R3", NID_KYBER1024_R3, 0, NULL, 0},
-    {"DILITHIUM3", "DILITHIUM3", NID_DILITHIUM3, 11, &kObjectData[6232], 0},
+    {"DILITHIUM3_R3", "DILITHIUM3_R3", NID_DILITHIUM3_R3, 11,
+     &kObjectData[6232], 0},
 };
 
 static const uint16_t kNIDsInShortNameOrder[] = {
@@ -8936,7 +8937,7 @@ static const uint16_t kNIDsInShortNameOrder[] = {
     63 /* DES-EDE3-OFB */,
     45 /* DES-OFB */,
     80 /* DESX-CBC */,
-    975 /* DILITHIUM3 */,
+    975 /* DILITHIUM3_R3 */,
     380 /* DOD */,
     116 /* DSA */,
     66 /* DSA-SHA */,
@@ -9831,7 +9832,7 @@ static const uint16_t kNIDsInLongNameOrder[] = {
     785 /* CA Repository */,
     959 /* CECPQ2 */,
     131 /* Code Signing */,
-    975 /* DILITHIUM3 */,
+    975 /* DILITHIUM3_R3 */,
     783 /* Diffie-Hellman based MAC */,
     382 /* Directory */,
     392 /* Domain */,
@@ -10790,8 +10791,8 @@ static const uint16_t kNIDsInLongNameOrder[] = {
 static const uint16_t kNIDsInOIDOrder[] = {
     434 /* 0.9 (OBJ_data) */,
     182 /* 1.2 (OBJ_member_body) */,
-    676 /* 1.3 (OBJ_identified_organization) */,
     379 /* 1.3 (OBJ_org) */,
+    676 /* 1.3 (OBJ_identified_organization) */,
     11 /* 2.5 (OBJ_X500) */,
     647 /* 2.23 (OBJ_international_organizations) */,
     380 /* 1.3.6 (OBJ_dod) */,
@@ -11677,6 +11678,6 @@ static const uint16_t kNIDsInOIDOrder[] = {
     153 /* 1.2.840.113549.1.12.10.1.4 (OBJ_crlBag) */,
     154 /* 1.2.840.113549.1.12.10.1.5 (OBJ_secretBag) */,
     155 /* 1.2.840.113549.1.12.10.1.6 (OBJ_safeContentsBag) */,
-    975 /* 1.3.6.1.4.1.2.267.7.6.5 (OBJ_DILITHIUM3) */,
+    975 /* 1.3.6.1.4.1.2.267.7.6.5 (OBJ_DILITHIUM3_R3) */,
     34 /* 1.3.6.1.4.1.188.7.1.1.2 (OBJ_idea_cbc) */,
 };
