@@ -952,18 +952,18 @@ if(BUILD_TESTING)
 
       add_custom_target(
           run_tests
+          COMMAND ${GO_EXECUTABLE} test ${GO_TESTS}
           COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
                  ${PROJECT_BINARY_DIR}
-          COMMAND ${GO_EXECUTABLE} test ${GO_TESTS}
           WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
           DEPENDS all_tests run_ssl_runner_tests
           ${MAYBE_USES_TERMINAL})
     else()
       add_custom_target(
           run_tests
+          COMMAND ${GO_EXECUTABLE} test ${GO_TESTS}
           COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
                   ${PROJECT_BINARY_DIR} -ssl-tests=false
-          COMMAND ${GO_EXECUTABLE} test ${GO_TESTS}
           WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
           DEPENDS all_tests fips_specific_tests_if_any
           ${MAYBE_USES_TERMINAL}

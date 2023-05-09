@@ -3648,7 +3648,7 @@ $L$key_rcon1b:
 	DB	32,98,121,32,60,97,112,112,114,111,64,111,112,101,110,115
 	DB	115,108,46,111,114,103,62,0
 ALIGN	64
-section	.text code align=64
+section	.text
 
 EXTERN	__imp_RtlVirtualUnwind
 
