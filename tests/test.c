@@ -1256,6 +1256,36 @@ void reference_jadd
   bignum_montredc(k,p3+2*k,k,p3m+2*k,m,k);
 }
 
+// Reference version of modular exponentiation (for odd modulus).
+// For the sake of efficiency, this does use generic s2n-bignum primitives
+// but is otherwise quite naive and simple, and it is not constant-time.
+
+void reference_modexp(uint64_t k,uint64_t *res,
+                      uint64_t *a,uint64_t *p,uint64_t *m)
+{ uint64_t j;
+  uint64_t *x = alloca(8 * k), *y = alloca(8 * k), *z = alloca(8 * k);
+
+  // Let x = Mont(a) and initialize z = Mont(1)
+
+  bignum_montifier(k,z,m,y);
+  bignum_montmul(k,x,z,a,m);
+  bignum_demont(k,z,z,m);
+
+  // Main loop with invariant z = Mont(a^(p >> 2^j))
+
+  j = 64 * k;
+  while (j != 0)
+   { --j;
+     bignum_montsqr(k,y,z,m);
+     if (bignum_bitfield(k,p,j,1)) bignum_montmul(k,z,x,y,m);
+     else bignum_copy(k,z,k,y);
+   }
+
+  // Convert back from Montgomery representation
+
+  bignum_demont(k,res,z,m);
+}
+
 // ****************************************************************************
 // Testing functions
 // ****************************************************************************
@@ -4854,6 +4884,38 @@ int test_bignum_moddouble(void)
         printf("OK: [size %4"PRIu64"] "
          "(2 * ...0x%016"PRIx64") mod ...0x%016"PRIx64" = ...0x%016"PRIx64"\n",
         k,b0[0],b2[0],b4[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_bignum_modexp(void)
+{ uint64_t i, k;
+  printf("Testing bignum_modexp with %d cases\n",tests);
+  uint64_t c;
+  for (i = 0; i < tests; ++i)
+   { k = (unsigned) rand() % MAXSIZE;
+     random_bignum(k,b0);       // a
+     random_bignum(k,b1);       // p
+     random_bignum(k,b2);       // m
+     b2[0] |= 1;                // ...which is always odd
+
+     bignum_modexp(k,b3,b0,b1,b2,b5);
+     reference_modexp(k,b4,b0,b1,b2);
+     c = reference_compare(k,b4,k,b3);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "...0x%016"PRIx64" ^ ...0x%016"PRIx64" mod ...0x%016"PRIx64" = "
+               "...0x%016"PRIx64" not ...0x%016"PRIx64"\n",
+               k,b0[0],b1[0],b2[0],b3[0],b4[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { if (k == 0) printf("OK: [size %4"PRIu64"]\n",k);
+        else printf("OK: [size %4"PRIu64"] "
+               "...0x%016"PRIx64" ^ ...0x%016"PRIx64" mod ...0x%016"PRIx64" = ...0x%016"PRIx64"\n",
+               k,b0[0],b1[0],b2[0],b3[0]);
       }
    }
   printf("All OK\n");
@@ -10613,6 +10675,7 @@ int main(int argc, char *argv[])
   functionaltest(all,"bignum_mod_sm2_4",test_bignum_mod_sm2_4);
   functionaltest(all,"bignum_modadd",test_bignum_modadd);
   functionaltest(all,"bignum_moddouble",test_bignum_moddouble);
+  functionaltest(all,"bignum_modexp",test_bignum_modexp);
   functionaltest(all,"bignum_modifier",test_bignum_modifier);
   functionaltest(all,"bignum_modinv",test_bignum_modinv);
   functionaltest(all,"bignum_modoptneg",test_bignum_modoptneg);

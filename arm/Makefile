@@ -164,6 +164,7 @@ BIGNUM_OBJ = curve25519/bignum_add_p25519.o \
              generic/bignum_madd.o \
              generic/bignum_modadd.o \
              generic/bignum_moddouble.o \
+             generic/bignum_modexp.o \
              generic/bignum_modifier.o \
              generic/bignum_modinv.o \
              generic/bignum_modoptneg.o \
@@ -341,6 +342,8 @@ HOLLIGHT:=HOLLIGHT_DIR=$(HOLDIR) ocaml -init $(HOLDIR)/hol.ml
 
 PROOFS = $(OBJ:.o=.correct)
 
+# Cases where a proof uses other proofs for lemmas and/or subroutines
+
 curve25519/curve25519_x25519.correct: generic/bignum_modinv.o proofs/curve25519_x25519.ml curve25519/curve25519_x25519.o ; (cd ..; (echo 'loadt "arm/proofs/base.ml";;'; echo 'loadt "arm/proofs/curve25519_x25519.ml";;') | $(HOLLIGHT) 2>&1) >$@
 curve25519/curve25519_x25519_alt.correct: generic/bignum_modinv.o proofs/curve25519_x25519_alt.ml curve25519/curve25519_x25519_alt.o ; (cd ..; (echo 'loadt "arm/proofs/base.ml";;'; echo 'loadt "arm/proofs/curve25519_x25519_alt.ml";;') | $(HOLLIGHT) 2>&1) >$@
 curve25519/curve25519_x25519_byte.correct: generic/bignum_modinv.o proofs/curve25519_x25519_byte.ml curve25519/curve25519_x25519_byte.o ; (cd ..; (echo 'loadt "arm/proofs/base.ml";;'; echo 'loadt "arm/proofs/curve25519_x25519_byte.ml";;') | $(HOLLIGHT) 2>&1) >$@
@@ -349,6 +352,9 @@ curve25519/curve25519_x25519base.correct: generic/bignum_modinv.o proofs/curve25
 curve25519/curve25519_x25519base_alt.correct: generic/bignum_modinv.o proofs/curve25519_x25519base_alt.ml curve25519/curve25519_x25519base_alt.o ; (cd ..; (echo 'loadt "arm/proofs/base.ml";;'; echo 'loadt "arm/proofs/curve25519_x25519base_alt.ml";;') | $(HOLLIGHT) 2>&1) >$@
 curve25519/curve25519_x25519base_byte.correct: generic/bignum_modinv.o proofs/curve25519_x25519base_byte.ml curve25519/curve25519_x25519base_byte.o ; (cd ..; (echo 'loadt "arm/proofs/base.ml";;'; echo 'loadt "arm/proofs/curve25519_x25519base_byte.ml";;') | $(HOLLIGHT) 2>&1) >$@
 curve25519/curve25519_x25519base_byte_alt.correct: generic/bignum_modinv.o proofs/curve25519_x25519base_byte_alt.ml curve25519/curve25519_x25519base_byte_alt.o ; (cd ..; (echo 'loadt "arm/proofs/base.ml";;'; echo 'loadt "arm/proofs/curve25519_x25519base_byte_alt.ml";;') | $(HOLLIGHT) 2>&1) >$@
+generic/bignum_modexp.correct: generic/bignum_amontifier.correct generic/bignum_amontmul.correct generic/bignum_demont.correct generic/bignum_mux.correct proofs/bignum_modexp.ml generic/bignum_modexp.o ; (cd ..; (echo 'loadt "arm/proofs/base.ml";;'; echo 'loadt "arm/proofs/bignum_modexp.ml";;') | $(HOLLIGHT) 2>&1) >$@
+
+# All other other instances are standalone
 
 curve25519/%.correct: proofs/%.ml curve25519/%.o ; (cd ..; (echo 'loadt "arm/proofs/base.ml";;'; echo 'loadt "arm/proofs/$*.ml";;') | $(HOLLIGHT) 2>&1) >$@
 fastmul/%.correct: proofs/%.ml fastmul/%.o ; (cd ..; (echo 'loadt "arm/proofs/base.ml";;'; echo 'loadt "arm/proofs/$*.ml";;') | $(HOLLIGHT) 2>&1) >$@
@@ -361,4 +367,4 @@ sm2/%.correct: proofs/%.ml sm2/%.o ; (cd ..; (echo 'loadt "arm/proofs/base.ml";;
 
 run_proofs: $(PROOFS);
 
-proofs: run_proofs ; [ `grep SUBROUTINE_CORRECT proofs/*.ml | wc -l` -eq  `grep 'SUBROUTINE_CORRECT : thm' */*.correct  | cut -f2 -d' ' | sort | uniq | wc -l` ]
+proofs: run_proofs ; [ `grep 'let [A-Z_0-9]*_SUBROUTINE_CORRECT' proofs/*.ml | wc -l` -eq  `grep 'SUBROUTINE_CORRECT : thm' */*.correct  | cut -f2 -d' ' | sort | uniq | wc -l` ]

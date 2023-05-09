@@ -55,6 +55,7 @@ OBJ = bignum_add.o \
       bignum_madd.o \
       bignum_modadd.o \
       bignum_moddouble.o \
+      bignum_modexp.o \
       bignum_modifier.o \
       bignum_modinv.o \
       bignum_modoptneg.o \
