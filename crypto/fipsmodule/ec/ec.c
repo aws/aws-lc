@@ -251,7 +251,12 @@ DEFINE_METHOD_FUNCTION(struct built_in_curves, OPENSSL_built_in_curves) {
   out->curves[0].comment = "NIST P-521";
   out->curves[0].param_len = 66;
   out->curves[0].params = kP521Params;
-  out->curves[0].method = EC_GFp_nistp521_method();
+  out->curves[0].method =
+#if !defined(OPENSSL_SMALL)
+      EC_GFp_nistp521_method();
+#else
+      EC_GFp_mont_method();
+#endif
 
   // 1.3.132.0.34
   static const uint8_t kOIDP384[] = {0x2b, 0x81, 0x04, 0x00, 0x22};
@@ -261,7 +266,12 @@ DEFINE_METHOD_FUNCTION(struct built_in_curves, OPENSSL_built_in_curves) {
   out->curves[1].comment = "NIST P-384";
   out->curves[1].param_len = 48;
   out->curves[1].params = kP384Params;
-  out->curves[1].method = EC_GFp_nistp384_method();
+  out->curves[1].method =
+#if !defined(OPENSSL_SMALL)
+      EC_GFp_nistp384_method();
+#else
+      EC_GFp_mont_method();
+#endif
 
   // 1.2.840.10045.3.1.7
   static const uint8_t kOIDP256[] = {0x2a, 0x86, 0x48, 0xce,
