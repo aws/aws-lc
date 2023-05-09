@@ -70,6 +70,9 @@ extern "C" {
 // |EVP_MD_CTX_set_pkey_ctx|.
 #define EVP_MD_CTX_FLAG_KEEP_PKEY_CTX   0x0400
 
+typedef struct evp_pkey_asn1_method_st EVP_PKEY_ASN1_METHOD;
+typedef struct evp_pkey_method_st EVP_PKEY_METHOD;
+
 struct evp_pkey_asn1_method_st {
   int pkey_id;
   uint8_t oid[11];

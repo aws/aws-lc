@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
 #include <openssl/base.h>
+#include "../fipsmodule/evp/internal.h"
 
 typedef struct {
   // key is the concatenation of the private seed and public key. It is stored
