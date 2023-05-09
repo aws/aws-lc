@@ -112,6 +112,7 @@
 #include <stdio.h>
 
 #include <openssl/base.h>
+#include <openssl/crypto.h>
 
 #if defined(__cplusplus)
 extern "C" {
