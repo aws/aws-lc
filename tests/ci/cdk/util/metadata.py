@@ -22,6 +22,7 @@ WINDOWS_X86_ECR_REPO = EnvUtil.get("ECR_WINDOWS_X86_REPO_NAME", "aws-lc-docker-i
 GITHUB_REPO_OWNER = EnvUtil.get("GITHUB_REPO_OWNER", "aws")
 GITHUB_REPO_NAME = EnvUtil.get("GITHUB_REPO_NAME", "aws-lc")
 GITHUB_SOURCE_VERSION = EnvUtil.get("GITHUB_SOURCE_VERSION", "main")
+GITHUB_TOKEN_SECRET_NAME = EnvUtil.get("GITHUB_TOKEN_SECRET_NAME", "aws-lc/ci/github/token")
 
 # Used when AWS CDK defines resources for Windows docker image build.
 S3_BUCKET_NAME = EnvUtil.get("S3_FOR_WIN_DOCKER_IMG_BUILD", "aws-lc-windows-docker-image-build")
