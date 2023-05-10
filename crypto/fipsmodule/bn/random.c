@@ -158,8 +158,11 @@ int BN_rand(BIGNUM *rnd, int bits, int top, int bottom) {
   // |RAND_bytes| calls within the fipsmodule should be wrapped with state lock
   // functions to avoid updating the service indicator with the DRBG functions.
   FIPS_service_indicator_lock_state();
-  RAND_bytes((uint8_t *)rnd->d, words * sizeof(BN_ULONG));
+  int rand_success = RAND_bytes((uint8_t *)rnd->d, words * sizeof(BN_ULONG));
   FIPS_service_indicator_unlock_state();
+  if (!rand_success) {
+    return 0;
+  }
 
   rnd->d[words - 1] &= mask;
   if (top != BN_RAND_TOP_ANY) {
@@ -333,7 +336,9 @@ int bn_rand_secret_range(BIGNUM *r, int *out_is_uniform, BN_ULONG min_inclusive,
   }
 
   // Select a uniform random number with num_bits(max_exclusive) bits.
-  RAND_bytes((uint8_t *)r->d, words * sizeof(BN_ULONG));
+  if (!RAND_bytes((uint8_t *)r->d, words * sizeof(BN_ULONG))) {
+    goto end;
+  }
   r->d[words - 1] &= mask;
 
   // Check, in constant-time, if the value is in range.

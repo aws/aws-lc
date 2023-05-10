@@ -1419,7 +1419,7 @@ out:
   RSA_free(tmp);
 #if defined(AWSLC_FIPS)
   if (ret == 0) {
-    BORINGSSL_FIPS_abort();
+    return AWS_LC_FIPS_error("RSA_generate_key_ex_maybe_fips failed.", ERR_R_FIPS_TEST_FAILURE);
   }
 #endif
   return ret;

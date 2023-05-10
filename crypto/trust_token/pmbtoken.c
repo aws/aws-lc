@@ -346,7 +346,9 @@ static STACK_OF(TRUST_TOKEN_PRETOKEN) *pmbtoken_blind(
       goto err;
     }
 
-    RAND_bytes(pretoken->salt, sizeof(pretoken->salt));
+    if (!RAND_bytes(pretoken->salt, sizeof(pretoken->salt))) {
+      goto err;
+    }
     if (include_message) {
       assert(SHA512_DIGEST_LENGTH == TRUST_TOKEN_NONCE_SIZE);
       SHA512_Init(&hash_ctx);
@@ -854,7 +856,9 @@ static int pmbtoken_sign(const PMBTOKEN_METHOD *method,
     ec_scalar_select(group, &yb, mask, &key->y1, &key->y0);
 
     uint8_t s[TRUST_TOKEN_NONCE_SIZE];
-    RAND_bytes(s, TRUST_TOKEN_NONCE_SIZE);
+    if(!RAND_bytes(s, TRUST_TOKEN_NONCE_SIZE)) {
+      goto err;
+    }
     // The |jacobians| and |affines| contain Sp, Wp, and Wsp.
     EC_RAW_POINT jacobians[3];
     EC_AFFINE affines[3];
