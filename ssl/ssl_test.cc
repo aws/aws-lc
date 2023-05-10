@@ -1615,7 +1615,7 @@ static bssl::UniquePtr<EVP_PKEY> GetTestKey() {
 
 static bssl::UniquePtr<SSL_CTX> CreateContextWithTestCertificate(
     const SSL_METHOD *method) {
-  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(method));
   bssl::UniquePtr<X509> cert = GetTestCertificate();
   bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
   if (!ctx || !cert || !key ||
@@ -1629,7 +1629,7 @@ static bssl::UniquePtr<SSL_CTX> CreateContextWithTestCertificate(
 static bssl::UniquePtr<SSL_CTX> CreateContextWithCertificate(
     const SSL_METHOD *method, bssl::UniquePtr<X509> cert,
     bssl::UniquePtr<EVP_PKEY> key) {
-  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(method));
   if (!ctx || !cert || !key ||
       !SSL_CTX_use_certificate(ctx.get(), cert.get()) ||
       !SSL_CTX_use_PrivateKey(ctx.get(), key.get())) {
