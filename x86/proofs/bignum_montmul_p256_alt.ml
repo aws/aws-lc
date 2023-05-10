@@ -237,12 +237,10 @@ let BIGNUM_MONTMUL_P256_ALT_CORRECT = time prove
 
   (*** Simulate the core pre-reduced result accumulation ***)
 
-  MAP_EVERY (fun n ->
-    X86_STEPS_TAC BIGNUM_MONTMUL_P256_ALT_EXEC [n] THEN
-    RULE_ASSUM_TAC(REWRITE_RULE[WORD_RULE
-     `word_sub x (word_neg y):int64 = word_add x y`]) THEN
-    TRY(ACCUMULATE_ARITH_TAC("s"^string_of_int n)))
-   (1--149) THEN
+  X86_GEN_ACCSTEPS_TAC
+    (fun _ -> RULE_ASSUM_TAC(REWRITE_RULE[WORD_RULE
+                `word_sub x (word_neg y):int64 = word_add x y`]))
+    BIGNUM_MONTMUL_P256_ALT_EXEC (1--149) (1--149) THEN
   ABBREV_TAC
    `t = bignum_of_wordlist
           [sum_s133; sum_s141; sum_s147; sum_s148; sum_s149]` THEN
@@ -363,12 +361,10 @@ let BIGNUM_AMONTMUL_P256_ALT_CORRECT = time prove
 
   (*** Simulate the core pre-reduced result accumulation ***)
 
-  MAP_EVERY (fun n ->
-    X86_STEPS_TAC BIGNUM_MONTMUL_P256_ALT_EXEC [n] THEN
-    RULE_ASSUM_TAC(REWRITE_RULE[WORD_RULE
-     `word_sub x (word_neg y):int64 = word_add x y`]) THEN
-    TRY(ACCUMULATE_ARITH_TAC("s"^string_of_int n)))
-   (1--149) THEN
+  X86_GEN_ACCSTEPS_TAC
+    (fun _ -> RULE_ASSUM_TAC(REWRITE_RULE[WORD_RULE
+                `word_sub x (word_neg y):int64 = word_add x y`]))
+    BIGNUM_MONTMUL_P256_ALT_EXEC (1--149) (1--149) THEN
   ABBREV_TAC
    `t = bignum_of_wordlist
           [sum_s133; sum_s141; sum_s147; sum_s148; sum_s149]` THEN
