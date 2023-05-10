@@ -1820,6 +1820,9 @@ let bytes32 = define
 let bytes64 = define
  `bytes64 addr :((int64->byte),int64)component = bytes(addr,8) :> asword`;;
 
+let bytes128 = define
+ `bytes128 addr :((int64->byte),int128)component = bytes(addr,16) :> asword`;;
+
 let BYTES8_WBYTES = prove
  (`bytes8 = wbytes`,
   REWRITE_TAC[FUN_EQ_THM; wbytes; bytes8] THEN
@@ -1841,6 +1844,12 @@ let BYTES32_WBYTES = prove
 let BYTES64_WBYTES = prove
  (`bytes64 = wbytes`,
   REWRITE_TAC[FUN_EQ_THM; wbytes; bytes64] THEN
+  CONV_TAC(ONCE_DEPTH_CONV DIMINDEX_CONV) THEN
+  CONV_TAC NUM_REDUCE_CONV THEN REWRITE_TAC[]);;
+
+let BYTES128_WBYTES = prove
+ (`bytes128 = wbytes`,
+  REWRITE_TAC[FUN_EQ_THM; wbytes; bytes128] THEN
   CONV_TAC(ONCE_DEPTH_CONV DIMINDEX_CONV) THEN
   CONV_TAC NUM_REDUCE_CONV THEN REWRITE_TAC[]);;
 
@@ -1968,25 +1977,61 @@ let WEAKLY_VALID_COMPONENT_BYTES64 = prove
   SIMP_TAC[VALID_IMP_WEAKLY_VALID_COMPONENT;
            VALID_COMPONENT_BYTES64]);;
 
+let STRONGLY_VALID_COMPONENT_BYTES128 = prove
+ (`!a:int64. strongly_valid_component (bytes128 a)`,
+  GEN_TAC THEN
+  MP_TAC(ISPECL [`a:int64`; `16`] EXTENSIONALLY_VALID_COMPONENT_BYTES) THEN
+  MP_TAC(ISPECL [`a:int64`; `16`] READ_WRITE_BYTES) THEN
+  REWRITE_TAC[DIMINDEX_64] THEN CONV_TAC NUM_REDUCE_CONV THEN
+  REWRITE_TAC[strongly_valid_component; EXTENSIONALLY_VALID_COMPONENT] THEN
+  STRIP_TAC THEN STRIP_TAC THEN
+  ASM_REWRITE_TAC[bytes128; READ_COMPONENT_COMPOSE; WRITE_COMPONENT_COMPOSE] THEN
+  ASM_REWRITE_TAC[read; write; asword; through; VAL_WORD] THEN
+  REWRITE_TAC[DIMINDEX_128] THEN CONV_TAC NUM_REDUCE_CONV THEN
+  SUBST1_TAC(
+    ARITH_RULE `340282366920938463463374607431768211456 = 2 EXP (8 * 16)`) THEN
+  ASM_REWRITE_TAC[READ_BYTES_MOD] THEN
+  CONV_TAC(ONCE_DEPTH_CONV NUM_MULT_CONV) THEN
+  REWRITE_TAC[GSYM DIMINDEX_128; VAL_MOD_REFL; WORD_VAL]);;
+
+let EXTENSIONALLY_VALID_COMPONENT_BYTES128 = prove
+ (`!a:int64. extensionally_valid_component (bytes128 a)`,
+  SIMP_TAC[STRONGLY_VALID_IMP_EXTENSIONALLY_VALID_COMPONENT;
+           STRONGLY_VALID_COMPONENT_BYTES128]);;
+
+let VALID_COMPONENT_BYTES128 = prove
+ (`!a:int64. valid_component (bytes128 a)`,
+  SIMP_TAC[STRONGLY_VALID_IMP_VALID_COMPONENT;
+           STRONGLY_VALID_COMPONENT_BYTES128]);;
+
+let WEAKLY_VALID_COMPONENT_BYTES128 = prove
+ (`!a:int64. weakly_valid_component (bytes128 a)`,
+  SIMP_TAC[VALID_IMP_WEAKLY_VALID_COMPONENT;
+           VALID_COMPONENT_BYTES128]);;
+
 add_valid_component_thms
   [VALID_COMPONENT_BYTES8; VALID_COMPONENT_BYTES16;
-   VALID_COMPONENT_BYTES32; VALID_COMPONENT_BYTES64];;
+   VALID_COMPONENT_BYTES32; VALID_COMPONENT_BYTES64;
+   VALID_COMPONENT_BYTES128];;
 
 add_strongly_valid_component_thms
   [STRONGLY_VALID_COMPONENT_BYTES8; STRONGLY_VALID_COMPONENT_BYTES16;
-   STRONGLY_VALID_COMPONENT_BYTES32; STRONGLY_VALID_COMPONENT_BYTES64];;
+   STRONGLY_VALID_COMPONENT_BYTES32; STRONGLY_VALID_COMPONENT_BYTES64;
+   STRONGLY_VALID_COMPONENT_BYTES128];;
 
 add_extensionally_valid_component_thms
   [EXTENSIONALLY_VALID_COMPONENT_BYTES8;
    EXTENSIONALLY_VALID_COMPONENT_BYTES16;
    EXTENSIONALLY_VALID_COMPONENT_BYTES32;
-   EXTENSIONALLY_VALID_COMPONENT_BYTES64];;
+   EXTENSIONALLY_VALID_COMPONENT_BYTES64;
+   EXTENSIONALLY_VALID_COMPONENT_BYTES128];;
 
 add_weakly_valid_component_thms
   [WEAKLY_VALID_COMPONENT_BYTES8;
    WEAKLY_VALID_COMPONENT_BYTES16;
    WEAKLY_VALID_COMPONENT_BYTES32;
-   WEAKLY_VALID_COMPONENT_BYTES64];;
+   WEAKLY_VALID_COMPONENT_BYTES64;
+   WEAKLY_VALID_COMPONENT_BYTES128];;
 
 (*** NB: the composites are better-behaved than plain "bytes".
  *** So when proving "valid_component" theorems by chaining, it
@@ -1999,7 +2044,10 @@ add_weakly_valid_component_thms
  ***)
 
 let READ_MEMORY_BYTESIZED_SPLIT = prove
- (`(!m x s. read (m :> bytes64 x) s =
+ (`(!m x s. read (m :> bytes128 x) s =
+            word_join (read (m :> bytes64 (word_add x (word 8))) s)
+                      (read (m :> bytes64 x) s)) /\
+   (!m x s. read (m :> bytes64 x) s =
             word_join (read (m :> bytes32 (word_add x (word 4))) s)
                       (read (m :> bytes32 x) s)) /\
    (!m x s. read (m :> bytes32 x) s =
@@ -2009,21 +2057,27 @@ let READ_MEMORY_BYTESIZED_SPLIT = prove
             word_join (read (m :> bytes8 (word_add x (word 1))) s)
                       (read (m :> bytes8 x) s))`,
   REWRITE_TAC[GSYM VAL_EQ] THEN
-  SIMP_TAC[VAL_WORD_JOIN_SIMPLE; DIMINDEX_64; DIMINDEX_32;
+  SIMP_TAC[VAL_WORD_JOIN_SIMPLE; DIMINDEX_128; DIMINDEX_64; DIMINDEX_32;
            DIMINDEX_16; DIMINDEX_8; ARITH] THEN
-  REWRITE_TAC[bytes64; bytes32; bytes16; bytes8] THEN
+  REWRITE_TAC[bytes128; bytes64; bytes32; bytes16; bytes8] THEN
   REWRITE_TAC[asword; through; read; READ_COMPONENT_COMPOSE] THEN
-  REWRITE_TAC[VAL_WORD; DIMINDEX_64; DIMINDEX_32; DIMINDEX_16; DIMINDEX_8] THEN
+  REWRITE_TAC[VAL_WORD; DIMINDEX_128; DIMINDEX_64; DIMINDEX_32; DIMINDEX_16;
+              DIMINDEX_8] THEN
   REWRITE_TAC[ARITH_RULE
    `2 EXP 8 = 2 EXP (8 * 1) /\ 2 EXP 16 = 2 EXP (8 * 2) /\
-    2 EXP 32 = 2 EXP (8 * 4) /\ 2 EXP 64 = 2 EXP (8 * 8)`] THEN
+    2 EXP 32 = 2 EXP (8 * 4) /\ 2 EXP 64 = 2 EXP (8 * 8) /\
+    2 EXP 128 = 2 EXP (8 * 16)`] THEN
   SIMP_TAC[READ_BYTES_BOUND; MOD_LT] THEN
   REPEAT STRIP_TAC THEN GEN_REWRITE_TAC (LAND_CONV o ONCE_DEPTH_CONV)
-   [ARITH_RULE `8 = 4 + 4 /\ 4 = 2 + 2 /\ 2 = 1 + 1`] THEN
+   [ARITH_RULE `16 = 8 + 8 /\ 8 = 4 + 4 /\ 4 = 2 + 2 /\ 2 = 1 + 1`] THEN
   REWRITE_TAC[READ_BYTES_COMBINE] THEN ARITH_TAC);;
 
 let READ_MEMORY_BYTESIZED_UNSPLIT = prove
  (`(!m x s d.
+      read (m :> bytes128 x) s = d <=>
+      read (m :> bytes64 x) s = word_subword d (0,64) /\
+      read (m :> bytes64 (word_add x (word 8))) s = word_subword d (64,64)) /\
+   (!m x s d.
       read (m :> bytes64 x) s = d <=>
       read (m :> bytes32 x) s = word_subword d (0,32) /\
       read (m :> bytes32 (word_add x (word 4))) s = word_subword d (32,32)) /\
@@ -2504,7 +2558,11 @@ let (NONOVERLAPPING_TAC:tactic) =
     go (!cache, fun cs f -> f cs;
       let th =
         try snd (find ((=) t o concl o snd) asl)
-        with Failure _ -> TAC_PROOF (g, SIMPLE_ARITH_TAC) in
+        with Failure _ ->
+        try TAC_PROOF (g, SIMPLE_ARITH_TAC)
+        with Failure _ ->
+          failwith ("NONOVERLAPPING_TAC: cannot prove " ^ (string_of_term t))
+        in
       cache := th::!cache; th) in
 
   let num_ty = `:num`
@@ -2862,7 +2920,11 @@ let (NONOVERLAPPING_TAC:tactic) =
 
 let ORTHOGONAL_COMPONENTS_TAC =
   let pth = prove
-   (`((orthogonal_components (bytes(a,8)) c
+   (`((orthogonal_components (bytes(a,16)) c
+       ==> orthogonal_components (bytes128 a) c) /\
+      (orthogonal_components d (bytes(a,16))
+       ==> orthogonal_components d (bytes128 a)) /\
+      (orthogonal_components (bytes(a,8)) c
        ==> orthogonal_components (bytes64 a) c) /\
       (orthogonal_components d (bytes(a,8))
        ==> orthogonal_components d (bytes64 a)) /\
@@ -2886,7 +2948,7 @@ let ORTHOGONAL_COMPONENTS_TAC =
       ==> orthogonal_components
            (bytes(a1:int64,l1)) (bytes (a2:int64,l2)))`,
     CONJ_TAC THENL
-     [REWRITE_TAC[bytes64; bytes32; bytes16; bytes8; bytelist;
+     [REWRITE_TAC[bytes128; bytes64; bytes32; bytes16; bytes8; bytelist;
                   COMPONENT_COMPOSE_ASSOC] THEN
       REWRITE_TAC[ORTHOGONAL_COMPONENTS_SUB_LEFT;
                   ORTHOGONAL_COMPONENTS_SUB_RIGHT];
