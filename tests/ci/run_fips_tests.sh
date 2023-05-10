@@ -11,6 +11,11 @@ fips_build_and_test -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=1
 if [[ ("$(uname -s)" == 'Linux'*) && (("$(uname -p)" == 'x86_64'*) || ("$(uname -p)" == 'aarch64'*)) ]]; then
   echo "Testing AWS-LC static library in FIPS Release mode."
   fips_build_and_test -DCMAKE_BUILD_TYPE=Release
+
+  echo "Testing AWS-LC static breakable build"
+  run_build -DFIPS=1 -DCMAKE_C_FLAGS="-DBORINGSSL_FIPS_BREAK_TESTS"
+  cd $SRC_ROOT
+  ./util/fipstools/test-break-kat.sh
 fi
 
 # The AL2 version of Clang does not have all of the required artifacts for address sanitizer, see P45594051
