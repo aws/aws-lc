@@ -91,6 +91,7 @@ OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_cbc(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_ctr(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_ofb(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_xts(void);
+OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_wrap(void);
 
 // EVP_enc_null returns a 'cipher' that passes plaintext through as
 // ciphertext.
