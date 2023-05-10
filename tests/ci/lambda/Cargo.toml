@@ -1,0 +1,19 @@
+[package]
+name = "aws-lc-ci-lambda"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+aws-config = "0.55.1"
+aws-sdk-codebuild = "0.26.0"
+aws-sdk-secretsmanager = "0.26.0"
+lambda_runtime = "0.8.0"
+log = "0.4.17"
+env_logger = "0.10.0"
+octocrab = "0.19.0"
+serde_json = "1.0.96"
+tokio = { version = "1", features = ["full"] }
+tokio-stream = { version = "0.1.12" }
