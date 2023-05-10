@@ -447,5 +447,6 @@ int main(int argc, char **argv) {
 
 err:
   printf("FAIL\n");
+  fflush(stdout);
   abort();
 }
