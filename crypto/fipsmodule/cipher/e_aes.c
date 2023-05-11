@@ -138,6 +138,14 @@ typedef struct {
   ctr128_f ctr;
 } EVP_AES_GCM_CTX;
 
+typedef struct {
+  union {
+    double align;
+    AES_KEY ks;
+  } ks;
+  const uint8_t *iv; // Indicates if an IV has been set.
+} EVP_AES_WRAP_CTX;
+
 static int aes_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
                         const uint8_t *iv, int enc) {
   int ret;
@@ -715,15 +723,6 @@ static int aes_xts_ctrl(EVP_CIPHER_CTX *c, int type, int arg, void *ptr) {
   return 1;
 }
 
-typedef struct {
-  union {
-      double align;
-      AES_KEY ks;
-  } ks;
-  // Indicates if IV has been set.
-  const uint8_t *iv;
-} EVP_AES_WRAP_CTX;
-
 static int aes_wrap_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
                             const uint8_t *iv, int enc) {
   EVP_AES_WRAP_CTX *wctx = ctx->cipher_data;
@@ -743,7 +742,7 @@ static int aes_wrap_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
     }
   }
   if (iv != NULL) {
-    memcpy(ctx->iv, iv, ctx->cipher->iv_len);
+    OPENSSL_memcpy(ctx->iv, iv, ctx->cipher->iv_len);
     wctx->iv = ctx->iv;
   }
   return 1;

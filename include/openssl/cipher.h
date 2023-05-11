@@ -91,6 +91,11 @@ OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_cbc(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_ctr(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_ofb(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_xts(void);
+
+// EVP_aes_256_wrap implements AES-256 in Key Wrap mode. OpenSSL 1.1.1 required
+// |EVP_CIPHER_CTX_FLAG_WRAP_ALLOW| to be set with |EVP_CIPHER_CTX_set_flags|,
+// in order for |EVP_aes_256_wrap| to work. This is not required in AWS-LC and
+// they are no-op flags maintained for compatibility.
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_wrap(void);
 
 // EVP_enc_null returns a 'cipher' that passes plaintext through as
@@ -542,7 +547,7 @@ AWS_LC_DEPRECATED OPENSSL_EXPORT const EVP_CIPHER *EVP_cast5_ecb(void);
 AWS_LC_DEPRECATED OPENSSL_EXPORT const EVP_CIPHER *EVP_cast5_cbc(void);
 
 // The following flags do nothing and are included only to make it easier to
-// compile code with BoringSSL.
+// compile code with AWS-LC.
 #define EVP_CIPHER_CTX_FLAG_WRAP_ALLOW 0
 
 // EVP_CIPHER_CTX_set_flags does nothing.
