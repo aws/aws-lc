@@ -5552,6 +5552,52 @@ TEST_P(SSLVersionTest, SSLPending) {
   EXPECT_EQ(1, SSL_has_pending(client_.get()));
 }
 
+// Identical test to the |SSLPending| test suite above, but with
+// |SSL_(read/peek/write)_ex| operations instead.
+TEST_P(SSLVersionTest, SSLPendingEx) {
+  UniquePtr<SSL> ssl(SSL_new(client_ctx_.get()));
+  ASSERT_TRUE(ssl);
+  EXPECT_EQ(0, SSL_pending(ssl.get()));
+
+  ASSERT_TRUE(Connect());
+  EXPECT_EQ(0, SSL_pending(client_.get()));
+  EXPECT_EQ(0, SSL_has_pending(client_.get()));
+
+  size_t buf_len;
+  ASSERT_TRUE(SSL_write_ex(server_.get(), "hello", 5, &buf_len));
+  ASSERT_EQ(buf_len, (size_t)5);
+  ASSERT_TRUE(SSL_write_ex(server_.get(), "world", 5, &buf_len));
+  ASSERT_EQ(buf_len, (size_t)5);
+
+  EXPECT_EQ(0, SSL_pending(client_.get()));
+  EXPECT_EQ(0, SSL_has_pending(client_.get()));
+
+  char buf[10];
+  ASSERT_EQ(1, SSL_peek_ex(client_.get(), buf, 1, &buf_len));
+  ASSERT_EQ(buf_len, (size_t)1);
+  EXPECT_EQ(5, SSL_pending(client_.get()));
+  EXPECT_EQ(1, SSL_has_pending(client_.get()));
+
+  ASSERT_EQ(1, SSL_read_ex(client_.get(), buf, 1, &buf_len));
+  ASSERT_EQ(buf_len, (size_t)1);
+  EXPECT_EQ(4, SSL_pending(client_.get()));
+  EXPECT_EQ(1, SSL_has_pending(client_.get()));
+
+  ASSERT_EQ(1, SSL_read_ex(client_.get(), buf, 10, &buf_len));
+  ASSERT_EQ(buf_len, (size_t)4);
+  EXPECT_EQ(0, SSL_pending(client_.get()));
+  if (is_dtls()) {
+    EXPECT_EQ(1, SSL_has_pending(client_.get()));
+  } else {
+    EXPECT_EQ(0, SSL_has_pending(client_.get()));
+  }
+
+  ASSERT_EQ(1, SSL_read_ex(client_.get(), buf, 2, &buf_len));
+  ASSERT_EQ(buf_len, (size_t)2);
+  EXPECT_EQ(3, SSL_pending(client_.get()));
+  EXPECT_EQ(1, SSL_has_pending(client_.get()));
+}
+
 // Test that post-handshake tickets consumed by |SSL_shutdown| are ignored.
 TEST(SSLTest, ShutdownIgnoresTickets) {
   bssl::UniquePtr<SSL_CTX> ctx(CreateContextWithTestCertificate(TLS_method()));
