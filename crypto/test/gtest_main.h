@@ -55,6 +55,7 @@ class ErrorTestEventListener : public testing::EmptyTestEventListener {
 // testing::InitGoogleTest has been called and before RUN_ALL_TESTS.
 inline void SetupGoogleTest() {
   CRYPTO_library_init();
+  AWS_LC_TEST_enable_test_mode();
 
 #if defined(OPENSSL_WINDOWS)
   // Initialize Winsock.
