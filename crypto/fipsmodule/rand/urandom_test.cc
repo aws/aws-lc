@@ -34,6 +34,8 @@
 #include "fork_detect.h"
 #include "getrandom_fillin.h"
 
+#include "../../test/gtest_main.h"
+
 #if !defined(PTRACE_O_EXITKILL)
 #define PTRACE_O_EXITKILL (1 << 20)
 #endif
@@ -542,6 +544,7 @@ TEST(URandomTest, Test) {
 
 int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);
+  bssl::SetupGoogleTest();
 
   if (getenv("BORINGSSL_IGNORE_MADV_WIPEONFORK")) {
     CRYPTO_fork_detect_ignore_madv_wipeonfork_for_testing();
