@@ -152,6 +152,7 @@ uint64_t CRYPTO_get_fork_generation(void) {
 }
 
 void CRYPTO_fork_detect_ignore_madv_wipeonfork_for_testing(void) {
+  AWS_LC_TEST_ensure_test_mode_enabled();
   *g_ignore_madv_wipeonfork_bss_get() = 1;
 }
 

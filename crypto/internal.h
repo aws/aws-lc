@@ -118,6 +118,9 @@
 #include <assert.h>
 #include <string.h>
 
+#define AWS_LC_TEST_MODE_NOT_ENABLED 0
+#define AWS_LC_TEST_MODE_ENABLED 1
+
 #if defined(BORINGSSL_CONSTANT_TIME_VALIDATION)
 #include <valgrind/memcheck.h>
 #endif
@@ -155,6 +158,18 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #if defined(__cplusplus)
 extern "C" {
 #endif
+
+// AWS_LC_TEST_get_test_mode returns the current test mode state.
+int AWS_LC_TEST_get_test_mode(void);
+
+// AWS_LC_TEST_ensure_test_mode_enabled verifies that test mode is enabled. If
+// test mode is not enabled, it aborts.
+void AWS_LC_TEST_ensure_test_mode_enabled(void);
+
+// AWS_LC_TEST_enable_test_mode is used to put libcrypto and libssl into
+// "test mode". Currently, this is only used to ensure that testing-only
+// functions are only called in test mode.
+OPENSSL_EXPORT void AWS_LC_TEST_enable_test_mode(void);
 
 #if (!defined(_MSC_VER) || defined(__clang__)) && defined(OPENSSL_64_BIT)
 #define BORINGSSL_HAS_UINT128

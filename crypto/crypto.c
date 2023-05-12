@@ -21,6 +21,26 @@
 #include "internal.h"
 
 
+struct test_st {
+  char test_mode;
+};
+static struct test_st test_state = { AWS_LC_TEST_MODE_NOT_ENABLED };
+
+int AWS_LC_TEST_get_test_mode(void) {
+  return test_state.test_mode;
+}
+
+void AWS_LC_TEST_ensure_test_mode_enabled(void) {
+  if (AWS_LC_TEST_get_test_mode() != AWS_LC_TEST_MODE_ENABLED) {
+    abort();
+  }
+}
+
+void AWS_LC_TEST_enable_test_mode(void) {
+  test_state.test_mode = AWS_LC_TEST_MODE_ENABLED;
+}
+
+
 OPENSSL_STATIC_ASSERT(sizeof(ossl_ssize_t) == sizeof(size_t),
               ossl_ssize_t_should_be_the_same_size_as_size_t)
 

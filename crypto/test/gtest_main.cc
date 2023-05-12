@@ -28,6 +28,8 @@ int main(int argc, char **argv) {
   testing::InitGoogleTest(&argc, argv);
   bssl::SetupGoogleTest();
 
+  AWS_LC_TEST_enable_test_mode();
+
   bool unwind_tests = true;
   for (int i = 1; i < argc; i++) {
 #if !defined(OPENSSL_WINDOWS)
