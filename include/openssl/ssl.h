@@ -464,16 +464,29 @@ OPENSSL_EXPORT int SSL_write_ex(SSL *s, const void *buf, size_t num,
 // it's own KeyUpdate message.
 #define SSL_KEY_UPDATE_NOT_REQUESTED 0
 
+// SSL_KEY_UPDATE_NONE should not be set by the user and is only used to
+// indicate that there is a pending key operation. OpenSSL indicates that -1 is
+// used, so that it will be an invalid value for the on-the-wire protocol.
+#define SSL_KEY_UPDATE_NONE -1
+
 // SSL_key_update queues a TLS 1.3 KeyUpdate message to be sent on |ssl|
-// if one is not already queued. The |request_type| argument must one of the
-// |SSL_KEY_UPDATE_*| values. This function requires that |ssl| have completed a
-// TLS >= 1.3 handshake. It returns one on success or zero on error.
+// if one is not already queued. The |request_type| argument must be either be
+// |SSL_KEY_UPDATE_REQUESTED| or |SSL_KEY_UPDATE_NOT_REQUESTED|. This function
+// requires that |ssl| have completed a TLS >= 1.3 handshake. It returns one on
+// success or zero on error.
 //
 // Note that this function does not _send_ the message itself. The next call to
 // |SSL_write| will cause the message to be sent. |SSL_write| may be called with
 // a zero length to flush a KeyUpdate message when no application data is
 // pending.
 OPENSSL_EXPORT int SSL_key_update(SSL *ssl, int request_type);
+
+// SSL_get_key_update_type returns the internal |key_update_pending| status of
+// |ssl| and can be used to indicate whether a key update operation has been
+// scheduled but not yet performed. It will be of the values
+// |SSL_KEY_UPDATE_REQUESTED| or |SSL_KEY_UPDATE_NOT_REQUESTED| if there is one,
+// and |SSL_KEY_UPDATE_NONE| if otherwise.
+OPENSSL_EXPORT int SSL_get_key_update_type(const SSL *ssl);
 
 // SSL_shutdown shuts down |ssl|. It runs in two stages. First, it sends
 // close_notify and returns zero or one on success or -1 on failure. Zero

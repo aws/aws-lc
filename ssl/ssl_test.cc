@@ -6193,9 +6193,9 @@ TEST_P(EncodeDecodeKATTest, RoundTrips) {
   ASSERT_EQ(memcmp(output_bytes.data(), encoded, encoded_len), 0);
 }
 
-TEST(SSLTest, ZeroSizedWiteFlushesHandshakeMessages) {
-  // If there are pending handshake mesages, an |SSL_write| of zero bytes should
-  // flush them.
+TEST(SSLTest, ZeroSizedWriteFlushesHandshakeMessages) {
+  // If there are pending handshake messages, an |SSL_write| of zero bytes
+  // should flush them.
   bssl::UniquePtr<SSL_CTX> server_ctx(
       CreateContextWithTestCertificate(TLS_method()));
   ASSERT_TRUE(server_ctx);
@@ -6217,6 +6217,40 @@ TEST(SSLTest, ZeroSizedWiteFlushesHandshakeMessages) {
   EXPECT_EQ(0u, BIO_wpending(client_wbio));
   EXPECT_EQ(0, SSL_write(client.get(), nullptr, 0));
   EXPECT_NE(0u, BIO_wpending(client_wbio));
+}
+
+TEST(SSLTest, SSLGetKeyUpdate) {
+  bssl::UniquePtr<SSL_CTX> server_ctx(
+      CreateContextWithTestCertificate(TLS_method()));
+  ASSERT_TRUE(server_ctx);
+  EXPECT_TRUE(SSL_CTX_set_max_proto_version(server_ctx.get(), TLS1_3_VERSION));
+  EXPECT_TRUE(SSL_CTX_set_min_proto_version(server_ctx.get(), TLS1_3_VERSION));
+
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(client_ctx);
+  EXPECT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), TLS1_3_VERSION));
+  EXPECT_TRUE(SSL_CTX_set_min_proto_version(client_ctx.get(), TLS1_3_VERSION));
+
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                     server_ctx.get()));
+
+  // Test setting |SSL_key_update| with |SSL_KEY_UPDATE_REQUESTED|.
+  EXPECT_TRUE(SSL_key_update(client.get(), SSL_KEY_UPDATE_REQUESTED));
+  // |SSL_get_key_update_type| is used to determine whether a key update
+  // operation has been scheduled but not yet performed.
+  EXPECT_EQ(SSL_get_key_update_type(client.get()), SSL_KEY_UPDATE_REQUESTED);
+  EXPECT_EQ(0, SSL_write(client.get(), nullptr, 0));
+  // Key update operation should have been performed by now.
+  EXPECT_EQ(SSL_get_key_update_type(client.get()), SSL_KEY_UPDATE_NONE);
+
+  // Test setting |SSL_key_update| with |SSL_KEY_UPDATE_NOT_REQUESTED|.
+  EXPECT_TRUE(SSL_key_update(client.get(), SSL_KEY_UPDATE_NOT_REQUESTED));
+  EXPECT_EQ(SSL_get_key_update_type(client.get()),
+            SSL_KEY_UPDATE_NOT_REQUESTED);
+  EXPECT_EQ(0, SSL_write(client.get(), nullptr, 0));
+  // Key update operation should have been performed by now.
+  EXPECT_EQ(SSL_get_key_update_type(client.get()), SSL_KEY_UPDATE_NONE);
 }
 
 TEST_P(SSLVersionTest, VerifyBeforeCertRequest) {
