@@ -6610,3 +6610,20 @@ TEST(X509Test, SortRDN) {
       0x02, 0x41, 0x42};
   EXPECT_EQ(Bytes(kExpected), Bytes(der, der_len));
 }
+
+TEST(X509Test, TestDecode) {
+  bssl::UniquePtr<X509> cert(CertFromPEM(kExamplePSSCert));
+  ASSERT_TRUE(cert);
+
+  // |X509_get0_pubkey| directly returns a reference to the decoded |pkey|, so
+  // it can't be freed.
+  EVP_PKEY *pkey1 = X509_get0_pubkey(cert.get());
+  ASSERT_TRUE(pkey1);
+  ASSERT_TRUE(X509_verify(cert.get(), pkey1));
+
+  // |X509_get_pubkey| returns the decoded |pkey| with its reference count
+  // updated, so we must free it.
+  bssl::UniquePtr<EVP_PKEY> pkey2(X509_get_pubkey(cert.get()));
+  ASSERT_TRUE(pkey2);
+  ASSERT_TRUE(X509_verify(cert.get(), pkey2.get()));
+}
