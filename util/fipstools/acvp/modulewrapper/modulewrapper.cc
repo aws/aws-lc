@@ -231,28 +231,32 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
         "revision": "2.0",
         "messageLength": [{
           "min": 0, "max": 65536, "increment": 8
-        }]
+        }],
+        "performLargeDataTest": [1, 2, 4, 8]
       },
       {
         "algorithm": "SHA3-256",
         "revision": "2.0",
         "messageLength": [{
           "min": 0, "max": 65536, "increment": 8
-          }]
+          }],
+        "performLargeDataTest": [1, 2, 4, 8]
       },
       {
         "algorithm": "SHA3-384",
         "revision": "2.0",
         "messageLength": [{
           "min": 0, "max": 65536, "increment": 8
-        }]
+        }],
+        "performLargeDataTest": [1, 2, 4, 8]
       },
       {
         "algorithm": "SHA3-512",
         "revision": "2.0",
         "messageLength": [{
           "min": 0, "max": 65536, "increment": 8
-          }]
+          }],
+        "performLargeDataTest": [1, 2, 4, 8]
       },
       {
         "algorithm": "SHA-1",
@@ -1094,6 +1098,8 @@ static bool HashMCTSha3(const Span<const uint8_t> args[],
       {Span<const uint8_t>(md[1000])});
 }
 
+
+
 template <uint8_t *(*OneShotHash)(const uint8_t *, size_t, uint8_t *),
           size_t DigestLength>
 static bool HashLDT(const Span<const uint8_t> args[], ReplyCallback write_reply) {
@@ -1109,6 +1115,27 @@ static bool HashLDT(const Span<const uint8_t> args[], ReplyCallback write_reply)
   }
 
   OneShotHash(msg, msg_size, digest);
+  free(msg);
+  return write_reply({Span<const uint8_t>(digest)});
+}
+
+template <const EVP_MD *(MDFunc)(), size_t DigestLength>
+static bool HashLDTSha3(const Span<const uint8_t> args[], ReplyCallback write_reply) {
+  uint8_t digest[DigestLength];
+  const EVP_MD *md = MDFunc();
+  unsigned int md_out_size = DigestLength;
+
+  int times;
+  memcpy(&times, args[1].data(), sizeof(int));
+
+  unsigned char *msg;
+  size_t msg_size = args[0].size() * times;
+  msg = (unsigned char*) malloc (msg_size);
+  for(int i = 0; i < times; i++) {
+    memcpy(msg + i*args[0].size(), args[0].data(), args[0].size());
+  }
+
+  EVP_Digest(msg, msg_size, digest, &md_out_size, md, NULL);
   free(msg);
   return write_reply({Span<const uint8_t>(digest)});
 }
@@ -2369,6 +2396,10 @@ static struct {
     {"SHA2-384/LDT", 2, HashLDT<SHA384, SHA384_DIGEST_LENGTH>},
     {"SHA2-512/LDT", 2, HashLDT<SHA512, SHA512_DIGEST_LENGTH>},
     {"SHA2-512/256/LDT", 1, HashMCT<SHA512_256, SHA512_256_DIGEST_LENGTH>},
+    {"SHA3-224/LDT", 2, HashLDTSha3<EVP_sha3_224, SHA224_DIGEST_LENGTH>},
+    {"SHA3-256/LDT", 2, HashLDTSha3<EVP_sha3_256, SHA256_DIGEST_LENGTH>},
+    {"SHA3-384/LDT", 2, HashLDTSha3<EVP_sha3_384, SHA384_DIGEST_LENGTH>},
+    {"SHA3-512/LDT", 2, HashLDTSha3<EVP_sha3_512, SHA512_DIGEST_LENGTH>},
     {"AES/encrypt", 3, AES<AES_set_encrypt_key, AES_encrypt>},
     {"AES/decrypt", 3, AES<AES_set_decrypt_key, AES_decrypt>},
     {"AES-XTS/encrypt", 3, AES_XTS<true>},
