@@ -751,14 +751,10 @@ L$_main_loop_run_16_hEgxyDlCngwrfFe:
 	vmovdqu8	128(%rdi),%zmm3
 	vmovdqu8	192(%rdi),%zmm4
 	addq	$0x100,%rdi
-
-
 	vpxorq	%zmm9,%zmm1,%zmm1
 	vpxorq	%zmm10,%zmm2,%zmm2
 	vpxorq	%zmm11,%zmm3,%zmm3
 	vpxorq	%zmm12,%zmm4,%zmm4
-
-
 	vbroadcasti32x4	128(%rsp),%zmm0
 	vpxorq	%zmm0,%zmm1,%zmm1
 	vpxorq	%zmm0,%zmm2,%zmm2
@@ -768,47 +764,35 @@ L$_main_loop_run_16_hEgxyDlCngwrfFe:
 .byte	98,19,21,72,68,241,0
 	vpslldq	$0x1,%zmm11,%zmm15
 	vpxord	%zmm14,%zmm15,%zmm15
-
-
 	vbroadcasti32x4	144(%rsp),%zmm0
 .byte	98,242,117,72,220,200
 .byte	98,242,109,72,220,208
 .byte	98,242,101,72,220,216
 .byte	98,242,93,72,220,224
-
-
 	vbroadcasti32x4	160(%rsp),%zmm0
 .byte	98,242,117,72,220,200
 .byte	98,242,109,72,220,208
 .byte	98,242,101,72,220,216
 .byte	98,242,93,72,220,224
-
-
 	vbroadcasti32x4	176(%rsp),%zmm0
 .byte	98,242,117,72,220,200
 .byte	98,242,109,72,220,208
 .byte	98,242,101,72,220,216
 .byte	98,242,93,72,220,224
-
 	vpsrldq	$0xf,%zmm12,%zmm13
 .byte	98,19,21,72,68,241,0
 	vpslldq	$0x1,%zmm12,%zmm16
 	vpxord	%zmm14,%zmm16,%zmm16
-
 	vbroadcasti32x4	192(%rsp),%zmm0
 .byte	98,242,117,72,220,200
 .byte	98,242,109,72,220,208
 .byte	98,242,101,72,220,216
 .byte	98,242,93,72,220,224
-
-
 	vbroadcasti32x4	208(%rsp),%zmm0
 .byte	98,242,117,72,220,200
 .byte	98,242,109,72,220,208
 .byte	98,242,101,72,220,216
 .byte	98,242,93,72,220,224
-
-
 	vbroadcasti32x4	224(%rsp),%zmm0
 .byte	98,242,117,72,220,200
 .byte	98,242,109,72,220,208
@@ -818,22 +802,16 @@ L$_main_loop_run_16_hEgxyDlCngwrfFe:
 .byte	98,19,21,72,68,241,0
 	vpslldq	$0x1,%zmm15,%zmm17
 	vpxord	%zmm14,%zmm17,%zmm17
-
-
 	vbroadcasti32x4	240(%rsp),%zmm0
 .byte	98,242,117,72,220,200
 .byte	98,242,109,72,220,208
 .byte	98,242,101,72,220,216
 .byte	98,242,93,72,220,224
-
-
 	vbroadcasti32x4	256(%rsp),%zmm0
 .byte	98,242,117,72,220,200
 .byte	98,242,109,72,220,208
 .byte	98,242,101,72,220,216
 .byte	98,242,93,72,220,224
-
-
 	vbroadcasti32x4	272(%rsp),%zmm0
 .byte	98,242,117,72,220,200
 .byte	98,242,109,72,220,208
@@ -843,49 +821,35 @@ L$_main_loop_run_16_hEgxyDlCngwrfFe:
 .byte	98,19,21,72,68,241,0
 	vpslldq	$0x1,%zmm16,%zmm18
 	vpxord	%zmm14,%zmm18,%zmm18
-
-
 	vbroadcasti32x4	288(%rsp),%zmm0
 .byte	98,242,117,72,220,200
 .byte	98,242,109,72,220,208
 .byte	98,242,101,72,220,216
 .byte	98,242,93,72,220,224
-
-
 	vbroadcasti32x4	304(%rsp),%zmm0
 .byte	98,242,117,72,220,200
 .byte	98,242,109,72,220,208
 .byte	98,242,101,72,220,216
 .byte	98,242,93,72,220,224
-
-
 	vbroadcasti32x4	320(%rsp),%zmm0
 .byte	98,242,117,72,220,200
 .byte	98,242,109,72,220,208
 .byte	98,242,101,72,220,216
 .byte	98,242,93,72,220,224
-
-
 	vbroadcasti32x4	336(%rsp),%zmm0
 .byte	98,242,117,72,220,200
 .byte	98,242,109,72,220,208
 .byte	98,242,101,72,220,216
 .byte	98,242,93,72,220,224
-
-
 	vbroadcasti32x4	352(%rsp),%zmm0
 .byte	98,242,117,72,221,200
 .byte	98,242,109,72,221,208
 .byte	98,242,101,72,221,216
 .byte	98,242,93,72,221,224
-
-
-
 	vpxorq	%zmm9,%zmm1,%zmm1
 	vpxorq	%zmm10,%zmm2,%zmm2
 	vpxorq	%zmm11,%zmm3,%zmm3
 	vpxorq	%zmm12,%zmm4,%zmm4
-
 
 	vmovdqa32	%zmm15,%zmm9
 	vmovdqa32	%zmm16,%zmm10
@@ -3301,14 +3265,10 @@ L$_main_loop_run_16_amivrujEyduiFoi:
 	vmovdqu8	192(%rdi),%zmm4
 	vmovdqu8	240(%rdi),%zmm5
 	addq	$0x100,%rdi
-
-
 	vpxorq	%zmm9,%zmm1,%zmm1
 	vpxorq	%zmm10,%zmm2,%zmm2
 	vpxorq	%zmm11,%zmm3,%zmm3
 	vpxorq	%zmm12,%zmm4,%zmm4
-
-
 	vbroadcasti32x4	128(%rsp),%zmm0
 	vpxorq	%zmm0,%zmm1,%zmm1
 	vpxorq	%zmm0,%zmm2,%zmm2
@@ -3318,47 +3278,35 @@ L$_main_loop_run_16_amivrujEyduiFoi:
 .byte	98,19,21,72,68,241,0
 	vpslldq	$0x1,%zmm11,%zmm15
 	vpxord	%zmm14,%zmm15,%zmm15
-
-
 	vbroadcasti32x4	144(%rsp),%zmm0
 .byte	98,242,117,72,222,200
 .byte	98,242,109,72,222,208
 .byte	98,242,101,72,222,216
 .byte	98,242,93,72,222,224
-
-
 	vbroadcasti32x4	160(%rsp),%zmm0
 .byte	98,242,117,72,222,200
 .byte	98,242,109,72,222,208
 .byte	98,242,101,72,222,216
 .byte	98,242,93,72,222,224
-
-
 	vbroadcasti32x4	176(%rsp),%zmm0
 .byte	98,242,117,72,222,200
 .byte	98,242,109,72,222,208
 .byte	98,242,101,72,222,216
 .byte	98,242,93,72,222,224
-
 	vpsrldq	$0xf,%zmm12,%zmm13
 .byte	98,19,21,72,68,241,0
 	vpslldq	$0x1,%zmm12,%zmm16
 	vpxord	%zmm14,%zmm16,%zmm16
-
 	vbroadcasti32x4	192(%rsp),%zmm0
 .byte	98,242,117,72,222,200
 .byte	98,242,109,72,222,208
 .byte	98,242,101,72,222,216
 .byte	98,242,93,72,222,224
-
-
 	vbroadcasti32x4	208(%rsp),%zmm0
 .byte	98,242,117,72,222,200
 .byte	98,242,109,72,222,208
 .byte	98,242,101,72,222,216
 .byte	98,242,93,72,222,224
-
-
 	vbroadcasti32x4	224(%rsp),%zmm0
 .byte	98,242,117,72,222,200
 .byte	98,242,109,72,222,208
@@ -3368,22 +3316,16 @@ L$_main_loop_run_16_amivrujEyduiFoi:
 .byte	98,19,21,72,68,241,0
 	vpslldq	$0x1,%zmm15,%zmm17
 	vpxord	%zmm14,%zmm17,%zmm17
-
-
 	vbroadcasti32x4	240(%rsp),%zmm0
 .byte	98,242,117,72,222,200
 .byte	98,242,109,72,222,208
 .byte	98,242,101,72,222,216
 .byte	98,242,93,72,222,224
-
-
 	vbroadcasti32x4	256(%rsp),%zmm0
 .byte	98,242,117,72,222,200
 .byte	98,242,109,72,222,208
 .byte	98,242,101,72,222,216
 .byte	98,242,93,72,222,224
-
-
 	vbroadcasti32x4	272(%rsp),%zmm0
 .byte	98,242,117,72,222,200
 .byte	98,242,109,72,222,208
@@ -3393,49 +3335,35 @@ L$_main_loop_run_16_amivrujEyduiFoi:
 .byte	98,19,21,72,68,241,0
 	vpslldq	$0x1,%zmm16,%zmm18
 	vpxord	%zmm14,%zmm18,%zmm18
-
-
 	vbroadcasti32x4	288(%rsp),%zmm0
 .byte	98,242,117,72,222,200
 .byte	98,242,109,72,222,208
 .byte	98,242,101,72,222,216
 .byte	98,242,93,72,222,224
-
-
 	vbroadcasti32x4	304(%rsp),%zmm0
 .byte	98,242,117,72,222,200
 .byte	98,242,109,72,222,208
 .byte	98,242,101,72,222,216
 .byte	98,242,93,72,222,224
-
-
 	vbroadcasti32x4	320(%rsp),%zmm0
 .byte	98,242,117,72,222,200
 .byte	98,242,109,72,222,208
 .byte	98,242,101,72,222,216
 .byte	98,242,93,72,222,224
-
-
 	vbroadcasti32x4	336(%rsp),%zmm0
 .byte	98,242,117,72,222,200
 .byte	98,242,109,72,222,208
 .byte	98,242,101,72,222,216
 .byte	98,242,93,72,222,224
-
-
 	vbroadcasti32x4	352(%rsp),%zmm0
 .byte	98,242,117,72,223,200
 .byte	98,242,109,72,223,208
 .byte	98,242,101,72,223,216
 .byte	98,242,93,72,223,224
-
-
-
 	vpxorq	%zmm9,%zmm1,%zmm1
 	vpxorq	%zmm10,%zmm2,%zmm2
 	vpxorq	%zmm11,%zmm3,%zmm3
 	vpxorq	%zmm12,%zmm4,%zmm4
-
 
 	vmovdqa32	%zmm15,%zmm9
 	vmovdqa32	%zmm16,%zmm10

@@ -25,7 +25,7 @@ $output  = shift;
 $win64=0; $win64=1 if ($flavour =~ /[nm]asm|mingw64/ || $output =~ /\.asm$/);
 
 $avx512vaes = 1;
-for (@ARGV) { $avx512vaes = 0 if (/-DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX/); }
+for (@ARGV) { $avx512vaes = 0 if (/-DMY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX/); }
 
 $0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
 ( $xlate="${dir}x86_64-xlate.pl" and -f $xlate ) or
@@ -205,6 +205,16 @@ if ($avx512vaes) {
 ___
   }
 
+  sub init_block {
+    $code .= <<___;
+    xor      $ghash_poly_8b_temp, $ghash_poly_8b_temp
+    shl      \$1, $TWTEMPL
+    adc      $TWTEMPH, $TWTEMPH
+    cmovc    $ghash_poly_8b, $ghash_poly_8b_temp
+    xor      $ghash_poly_8b_temp, $TWTEMPL
+___
+  }
+
   sub initialize {
     my $st1 = $_[0];
     my $st2 = $_[1];
@@ -232,12 +242,8 @@ ___
 ___
 
     if ($num_initial_blocks >= 2) {
+      init_block();
       $code .= <<___;
-      xor      $ghash_poly_8b_temp, $ghash_poly_8b_temp
-      shl      \$1, $TWTEMPL
-      adc      $TWTEMPH, $TWTEMPH
-      cmovc    $ghash_poly_8b, $ghash_poly_8b_temp
-      xor      $ghash_poly_8b_temp, $TWTEMPL
       mov      $TWTEMPL, 0x10($TW)
       mov      $TWTEMPH, 0x18($TW);
       vmovdqa  0x10($TW), $tw2
@@ -246,12 +252,8 @@ ___
     }
 
     if ($num_initial_blocks >= 3) {
+      init_block();
       $code .= <<___;
-      xor      $ghash_poly_8b_temp, $ghash_poly_8b_temp
-      shl      \$1, $TWTEMPL
-      adc      $TWTEMPH, $TWTEMPH
-      cmovc    $ghash_poly_8b, $ghash_poly_8b_temp
-      xor      $ghash_poly_8b_temp, $TWTEMPL
       mov      $TWTEMPL, 0x20($TW)
       mov      $TWTEMPH, 0x28($TW)
       vmovdqa  0x20($TW), $tw3
@@ -260,12 +262,8 @@ ___
     }
 
     if ($num_initial_blocks >= 4) {
+      init_block();
       $code .= <<___;
-      xor      $ghash_poly_8b_temp, $ghash_poly_8b_temp
-      shl      \$1, $TWTEMPL
-      adc      $TWTEMPH, $TWTEMPH
-      cmovc    $ghash_poly_8b, $ghash_poly_8b_temp
-      xor      $ghash_poly_8b_temp, $TWTEMPL
       mov      $TWTEMPL, 0x30($TW)
       mov      $TWTEMPH, 0x38($TW)
       vmovdqa  0x30($TW), $tw4
@@ -274,12 +272,8 @@ ___
     }
 
     if ($num_initial_blocks >= 5) {
+      init_block();
       $code .= <<___;
-      xor      $ghash_poly_8b_temp, $ghash_poly_8b_temp
-      shl      \$1, $TWTEMPL
-      adc      $TWTEMPH, $TWTEMPH
-      cmovc    $ghash_poly_8b, $ghash_poly_8b_temp
-      xor      $ghash_poly_8b_temp, $TWTEMPL
       mov      $TWTEMPL, 0x40($TW)
       mov      $TWTEMPH, 0x48($TW)
       vmovdqa  0x40($TW), $tw5
@@ -288,12 +282,8 @@ ___
     }
 
     if ($num_initial_blocks >= 6) {
+      init_block();
       $code .= <<___;
-      xor      $ghash_poly_8b_temp, $ghash_poly_8b_temp
-      shl      \$1, $TWTEMPL
-      adc      $TWTEMPH, $TWTEMPH
-      cmovc    $ghash_poly_8b, $ghash_poly_8b_temp
-      xor      $ghash_poly_8b_temp, $TWTEMPL
       mov      $TWTEMPL, 0x50($TW)
       mov      $TWTEMPH, 0x58($TW)
       vmovdqa  0x50($TW), $tw6
@@ -302,12 +292,8 @@ ___
     }
 
     if ($num_initial_blocks >= 7) {
+      init_block();
       $code .= <<___;
-      xor      $ghash_poly_8b_temp, $ghash_poly_8b_temp
-      shl      \$1, $TWTEMPL
-      adc      $TWTEMPH, $TWTEMPH
-      cmovc    $ghash_poly_8b, $ghash_poly_8b_temp
-      xor      $ghash_poly_8b_temp, $TWTEMPL
       mov      $TWTEMPL, 0x60($TW)
       mov      $TWTEMPH, 0x68($TW)
       vmovdqa  0x60($TW), $tw7
@@ -320,22 +306,24 @@ ___
   # 1, 2, 3, 4, 5, 6 or 7 blocks are encrypted
   # next 8 Tweak values are generated
   sub encrypt_initial {
-    my $st1 = $_[0];
-    my $st2 = $_[1];
-    my $st3 = $_[2];
-    my $st4 = $_[3];
-    my $st5 = $_[4];
-    my $st6 = $_[5];
-    my $st7 = $_[6];
-    my $st8 = $_[7];
+    my @st;
+    $st[0] = $_[0];
+    $st[1] = $_[1];
+    $st[2] = $_[2];
+    $st[3] = $_[3];
+    $st[4] = $_[4];
+    $st[5] = $_[5];
+    $st[6] = $_[6];
+    $st[7] = $_[7];
 
-    my $tw1 = $_[8];
-    my $tw2 = $_[9];
-    my $tw3 = $_[10];
-    my $tw4 = $_[11];
-    my $tw5 = $_[12];
-    my $tw6 = $_[13];
-    my $tw7 = $_[14];
+    my @tw;
+    $tw[0] = $_[8];
+    $tw[1] = $_[9];
+    $tw[2] = $_[10];
+    $tw[3] = $_[11];
+    $tw[4] = $_[12];
+    $tw[5] = $_[13];
+    $tw[6] = $_[14];
     my $t0 = $_[15];
     my $num_blocks = $_[16];
     my $lt128 = $_[17];
@@ -344,48 +332,13 @@ ___
     # num_blocks can be 1, 2, 3, 4, 5, 6, 7
 
     # xor Tweak value
-    $code .= "vpxor    $tw1, $st1, $st1\n";
+    for (my $i = 0; $i < $num_blocks; $i++) {
+      $code .= "vpxor $tw[$i], $st[$i], $st[$i]\n";
+    }
+    $code .= "vmovdqa  0x80($TW), $t0\n";
 
-    if ($num_blocks >= 2) {
-      $code .= "vpxor $tw2, $st2, $st2\n";
-    }
-    if ($num_blocks >= 3) {
-      $code .= "vpxor $tw3, $st3, $st3\n";
-    }
-    if ($num_blocks >= 4) {
-      $code .= "vpxor $tw4, $st4, $st4\n";
-    }
-    if ($num_blocks >= 5) {
-      $code .= "vpxor $tw5, $st5, $st5\n";
-    }
-    if ($num_blocks >= 6) {
-      $code .= "vpxor $tw6, $st6, $st6\n";
-    }
-    if ($num_blocks >= 7) {
-      $code .= "vpxor $tw7, $st7, $st7\n";
-    }
-
-    $code .= <<___;
-    vmovdqa  0x80($TW), $t0
-    vpxor    $t0, $st1, $st1
-___
-    if ($num_blocks >= 2) {
-      $code .= "vpxor $t0, $st2, $st2\n";
-    }
-    if ($num_blocks >= 3) {
-      $code .= "vpxor $t0, $st3, $st3\n";
-    }
-    if ($num_blocks >= 4) {
-      $code .= "vpxor $t0, $st4, $st4\n";
-    }
-    if ($num_blocks >= 5) {
-      $code .= "vpxor $t0, $st5, $st5\n";
-    }
-    if ($num_blocks >= 6) {
-      $code .= "vpxor $t0, $st6, $st6\n";
-    }
-    if ($num_blocks >= 7) {
-      $code .= "vpxor $t0, $st7, $st7\n";
+    for (my $i = 0; $i < $num_blocks; $i++) {
+      $code .= "vpxor $t0, $st[$i], $st[$i]\n";
     }
 
     if (0 == $lt128) {
@@ -396,28 +349,10 @@ ___
 ___
     }
     # round 1
-    $code .= <<___;
-    vmovdqa 0x90($TW), $t0
-    vaesenc  $t0, $st1, $st1
-___
+    $code .= "vmovdqa 0x90($TW), $t0\n";
 
-    if ($num_blocks >= 2) {
-      $code .= "vaesenc  $t0, $st2, $st2\n";
-    }
-    if ($num_blocks >= 3) {
-      $code .= "vaesenc  $t0, $st3, $st3\n";
-    }
-    if ($num_blocks >= 4) {
-      $code .= "vaesenc $t0, $st4, $st4\n";
-    }
-    if ($num_blocks >= 5) {
-      $code .= "vaesenc $t0, $st5, $st5\n";
-    }
-    if ($num_blocks >= 6) {
-      $code .= "vaesenc $t0, $st6, $st6\n";
-    }
-    if ($num_blocks >= 7) {
-      $code .= "vaesenc $t0, $st7, $st7\n";
+    for (my $i = 0; $i < $num_blocks; $i++) {
+      $code .= "vaesenc $t0, $st[$i], $st[$i]\n";
     }
 
     if (0 == $lt128) {
@@ -431,28 +366,10 @@ ___
     }
 
     # round 2
-    $code .= <<___;
-    vmovdqa 0xa0($TW), $t0
-    vaesenc  $t0, $st1, $st1
-___
+    $code .= "vmovdqa 0xa0($TW), $t0\n";
 
-    if ($num_blocks >= 2) {
-      $code .= "vaesenc  $t0, $st2, $st2\n";
-    }
-    if ($num_blocks >= 3) {
-      $code .= "vaesenc  $t0, $st3, $st3\n";
-    }
-    if ($num_blocks >= 4) {
-      $code .= "vaesenc $t0, $st4, $st4\n";
-    }
-    if ($num_blocks >= 5) {
-      $code .= "vaesenc $t0, $st5, $st5\n";
-    }
-    if ($num_blocks >= 6) {
-      $code .= "vaesenc $t0, $st6, $st6\n";
-    }
-    if ($num_blocks >= 7) {
-      $code .= "vaesenc $t0, $st7, $st7\n";
+    for (my $i = 0; $i < $num_blocks; $i++) {
+      $code .= "vaesenc $t0, $st[$i], $st[$i]\n";
     }
 
     if (0 == $lt128) {
@@ -466,28 +383,10 @@ ___
     }
 
     # round 3
-    $code .= <<___;
-    vmovdqa 0xb0($TW), $t0
-    vaesenc  $t0, $st1, $st1
-___
+    $code .= "vmovdqa 0xb0($TW), $t0\n";
 
-    if ($num_blocks >= 2) {
-      $code .= "vaesenc  $t0, $st2, $st2\n";
-    }
-    if ($num_blocks >= 3) {
-      $code .= "vaesenc  $t0, $st3, $st3\n";
-    }
-    if ($num_blocks >= 4) {
-      $code .= "vaesenc $t0, $st4, $st4\n";
-    }
-    if ($num_blocks >= 5) {
-      $code .= "vaesenc $t0, $st5, $st5\n";
-    }
-    if ($num_blocks >= 6) {
-      $code .= "vaesenc $t0, $st6, $st6\n";
-    }
-    if ($num_blocks >= 7) {
-      $code .= "vaesenc $t0, $st7, $st7\n";
+    for (my $i = 0; $i < $num_blocks; $i++) {
+      $code .= "vaesenc $t0, $st[$i], $st[$i]\n";
     }
 
     if (0 == $lt128) {
@@ -501,28 +400,10 @@ ___
     }
 
     # round 4
-    $code .= <<___;
-    vmovdqa 0xc0($TW), $t0
-    vaesenc  $t0, $st1, $st1
-___
+    $code .= "vmovdqa 0xc0($TW), $t0\n";
 
-    if ($num_blocks >= 2) {
-      $code .= "vaesenc  $t0, $st2, $st2\n";
-    }
-    if ($num_blocks >= 3) {
-      $code .= "vaesenc  $t0, $st3, $st3\n";
-    }
-    if ($num_blocks >= 4) {
-      $code .= "vaesenc $t0, $st4, $st4\n";
-    }
-    if ($num_blocks >= 5) {
-      $code .= "vaesenc $t0, $st5, $st5\n";
-    }
-    if ($num_blocks >= 6) {
-      $code .= "vaesenc $t0, $st6, $st6\n";
-    }
-    if ($num_blocks >= 7) {
-      $code .= "vaesenc $t0, $st7, $st7\n";
+    for (my $i = 0; $i < $num_blocks; $i++) {
+      $code .= "vaesenc $t0, $st[$i], $st[$i]\n";
     }
 
     if (0 == $lt128) {
@@ -536,28 +417,10 @@ ___
     }
 
     # round 5
-    $code .= <<___;
-    vmovdqa 0xd0($TW), $t0
-    vaesenc  $t0, $st1, $st1
-___
+    $code .= "vmovdqa 0xd0($TW), $t0\n";
 
-    if ($num_blocks >= 2) {
-      $code .= "vaesenc  $t0, $st2, $st2\n";
-    }
-    if ($num_blocks >= 3) {
-      $code .= "vaesenc  $t0, $st3, $st3\n";
-    }
-    if ($num_blocks >= 4) {
-      $code .= "vaesenc $t0, $st4, $st4\n";
-    }
-    if ($num_blocks >= 5) {
-      $code .= "vaesenc $t0, $st5, $st5\n";
-    }
-    if ($num_blocks >= 6) {
-      $code .= "vaesenc $t0, $st6, $st6\n";
-    }
-    if ($num_blocks >= 7) {
-      $code .= "vaesenc $t0, $st7, $st7\n";
+    for (my $i = 0; $i < $num_blocks; $i++) {
+      $code .= "vaesenc $t0, $st[$i], $st[$i]\n";
     }
 
     if (0 == $lt128) {
@@ -571,28 +434,10 @@ ___
     }
 
     # round 6
-    $code .= <<___;
-    vmovdqa 0xe0($TW), $t0
-    vaesenc  $t0, $st1, $st1
-___
+    $code .= "vmovdqa 0xe0($TW), $t0\n";
 
-    if ($num_blocks >= 2) {
-      $code .= "vaesenc  $t0, $st2, $st2\n";
-    }
-    if ($num_blocks >= 3) {
-      $code .= "vaesenc  $t0, $st3, $st3\n";
-    }
-    if ($num_blocks >= 4) {
-      $code .= "vaesenc $t0, $st4, $st4\n";
-    }
-    if ($num_blocks >= 5) {
-      $code .= "vaesenc $t0, $st5, $st5\n";
-    }
-    if ($num_blocks >= 6) {
-      $code .= "vaesenc $t0, $st6, $st6\n";
-    }
-    if ($num_blocks >= 7) {
-      $code .= "vaesenc $t0, $st7, $st7\n";
+    for (my $i = 0; $i < $num_blocks; $i++) {
+      $code .= "vaesenc $t0, $st[$i], $st[$i]\n";
     }
 
     if (0 == $lt128) {
@@ -608,28 +453,10 @@ ___
     }
 
     # round 7
-    $code .= <<___;
-    vmovdqa 0xf0($TW), $t0
-    vaesenc  $t0, $st1, $st1
-___
+    $code .= "vmovdqa 0xf0($TW), $t0\n";
 
-    if ($num_blocks >= 2) {
-      $code .= "vaesenc  $t0, $st2, $st2\n";
-    }
-    if ($num_blocks >= 3) {
-      $code .= "vaesenc  $t0, $st3, $st3\n";
-    }
-    if ($num_blocks >= 4) {
-      $code .= "vaesenc $t0, $st4, $st4\n";
-    }
-    if ($num_blocks >= 5) {
-      $code .= "vaesenc $t0, $st5, $st5\n";
-    }
-    if ($num_blocks >= 6) {
-      $code .= "vaesenc $t0, $st6, $st6\n";
-    }
-    if ($num_blocks >= 7) {
-      $code .= "vaesenc $t0, $st7, $st7\n";
+    for (my $i = 0; $i < $num_blocks; $i++) {
+      $code .= "vaesenc $t0, $st[$i], $st[$i]\n";
     }
 
     if (0 == $lt128) {
@@ -645,28 +472,10 @@ ___
     }
 
     # round 8
-    $code .= <<___;
-    vmovdqa 0x100($TW), $t0
-    vaesenc  $t0, $st1, $st1
-___
+    $code .= "vmovdqa 0x100($TW), $t0\n";
 
-    if ($num_blocks >= 2) {
-      $code .= "vaesenc  $t0, $st2, $st2\n";
-    }
-    if ($num_blocks >= 3) {
-      $code .= "vaesenc  $t0, $st3, $st3\n";
-    }
-    if ($num_blocks >= 4) {
-      $code .= "vaesenc $t0, $st4, $st4\n";
-    }
-    if ($num_blocks >= 5) {
-      $code .= "vaesenc $t0, $st5, $st5\n";
-    }
-    if ($num_blocks >= 6) {
-      $code .= "vaesenc $t0, $st6, $st6\n";
-    }
-    if ($num_blocks >= 7) {
-      $code .= "vaesenc $t0, $st7, $st7\n";
+    for (my $i = 0; $i < $num_blocks; $i++) {
+      $code .= "vaesenc $t0, $st[$i], $st[$i]\n";
     }
 
     if (0 == $lt128) {
@@ -682,28 +491,10 @@ ___
     }
 
     # round 9
-    $code .= <<___;
-    vmovdqa 0x110($TW), $t0
-    vaesenc  $t0, $st1, $st1
-___
+    $code .= "vmovdqa 0x110($TW), $t0\n";
 
-    if ($num_blocks >= 2) {
-      $code .= "vaesenc  $t0, $st2, $st2\n";
-    }
-    if ($num_blocks >= 3) {
-      $code .= "vaesenc  $t0, $st3, $st3\n";
-    }
-    if ($num_blocks >= 4) {
-      $code .= "vaesenc $t0, $st4, $st4\n";
-    }
-    if ($num_blocks >= 5) {
-      $code .= "vaesenc $t0, $st5, $st5\n";
-    }
-    if ($num_blocks >= 6) {
-      $code .= "vaesenc $t0, $st6, $st6\n";
-    }
-    if ($num_blocks >= 7) {
-      $code .= "vaesenc $t0, $st7, $st7\n";
+    for (my $i = 0; $i < $num_blocks; $i++) {
+      $code .= "vaesenc $t0, $st[$i], $st[$i]\n";
     }
 
     if (0 == $lt128) {
@@ -719,163 +510,55 @@ ___
     }
 
     # round 10
-    $code .= <<___;
-    vmovdqa 0x120($TW), $t0
-    vaesenc  $t0, $st1, $st1
-___
+    $code .= "vmovdqa 0x120($TW), $t0\n";
 
-    if ($num_blocks >= 2) {
-      $code .= "vaesenc  $t0, $st2, $st2\n";
+    for (my $i = 0; $i < $num_blocks; $i++) {
+      $code .= "vaesenc $t0, $st[$i], $st[$i]\n";
     }
-    if ($num_blocks >= 3) {
-      $code .= "vaesenc  $t0, $st3, $st3\n";
-    }
-    if ($num_blocks >= 4) {
-      $code .= "vaesenc $t0, $st4, $st4\n";
-    }
-    if ($num_blocks >= 5) {
-      $code .= "vaesenc $t0, $st5, $st5\n";
-    }
-    if ($num_blocks >= 6) {
-      $code .= "vaesenc $t0, $st6, $st6\n";
-    }
-    if ($num_blocks >= 7) {
-      $code .= "vaesenc $t0, $st7, $st7\n";
-    }
-
 
     # round 11
-    $code .= <<___;
-    vmovdqa 0x130($TW), $t0
-    vaesenc  $t0, $st1, $st1
-___
+    $code .= "vmovdqa 0x130($TW), $t0\n";
 
-    if ($num_blocks >= 2) {
-      $code .= "vaesenc  $t0, $st2, $st2\n";
-    }
-    if ($num_blocks >= 3) {
-      $code .= "vaesenc  $t0, $st3, $st3\n";
-    }
-    if ($num_blocks >= 4) {
-      $code .= "vaesenc $t0, $st4, $st4\n";
-    }
-    if ($num_blocks >= 5) {
-      $code .= "vaesenc $t0, $st5, $st5\n";
-    }
-    if ($num_blocks >= 6) {
-      $code .= "vaesenc $t0, $st6, $st6\n";
-    }
-    if ($num_blocks >= 7) {
-      $code .= "vaesenc $t0, $st7, $st7\n";
+    for (my $i = 0; $i < $num_blocks; $i++) {
+      $code .= "vaesenc $t0, $st[$i], $st[$i]\n";
     }
 
     # round 12
-    $code .= <<___;
-    vmovdqa 0x140($TW), $t0
-    vaesenc  $t0, $st1, $st1
-___
+    $code .= "vmovdqa 0x140($TW), $t0\n";
 
-    if ($num_blocks >= 2) {
-      $code .= "vaesenc  $t0, $st2, $st2\n";
-    }
-    if ($num_blocks >= 3) {
-      $code .= "vaesenc  $t0, $st3, $st3\n";
-    }
-    if ($num_blocks >= 4) {
-      $code .= "vaesenc $t0, $st4, $st4\n";
-    }
-    if ($num_blocks >= 5) {
-      $code .= "vaesenc $t0, $st5, $st5\n";
-    }
-    if ($num_blocks >= 6) {
-      $code .= "vaesenc $t0, $st6, $st6\n";
-    }
-    if ($num_blocks >= 7) {
-      $code .= "vaesenc $t0, $st7, $st7\n";
+    for (my $i = 0; $i < $num_blocks; $i++) {
+      $code .= "vaesenc $t0, $st[$i], $st[$i]\n";
     }
 
     # round 13
-    $code .= <<___;
-    vmovdqa 0x150($TW), $t0
-    vaesenc  $t0, $st1, $st1
-___
+    $code .= "vmovdqa 0x150($TW), $t0\n";
 
-    if ($num_blocks >= 2) {
-      $code .= "vaesenc  $t0, $st2, $st2\n";
-    }
-    if ($num_blocks >= 3) {
-      $code .= "vaesenc  $t0, $st3, $st3\n";
-    }
-    if ($num_blocks >= 4) {
-      $code .= "vaesenc $t0, $st4, $st4\n";
-    }
-    if ($num_blocks >= 5) {
-      $code .= "vaesenc $t0, $st5, $st5\n";
-    }
-    if ($num_blocks >= 6) {
-      $code .= "vaesenc $t0, $st6, $st6\n";
-    }
-    if ($num_blocks >= 7) {
-      $code .= "vaesenc $t0, $st7, $st7\n";
+    for (my $i = 0; $i < $num_blocks; $i++) {
+      $code .= "vaesenc $t0, $st[$i], $st[$i]\n";
     }
 
     # round 14
-    $code .= <<___;
-    vmovdqa 0x160($TW), $t0
-    vaesenclast  $t0, $st1, $st1
-___
+    $code .= "vmovdqa 0x160($TW), $t0\n";
 
-    if ($num_blocks >= 2) {
-      $code .= "vaesenclast  $t0, $st2, $st2\n";
-    }
-    if ($num_blocks >= 3) {
-      $code .= "vaesenclast  $t0, $st3, $st3\n";
-    }
-    if ($num_blocks >= 4) {
-      $code .= "vaesenclast $t0, $st4, $st4\n";
-    }
-    if ($num_blocks >= 5) {
-      $code .= "vaesenclast $t0, $st5, $st5\n";
-    }
-    if ($num_blocks >= 6) {
-      $code .= "vaesenclast $t0, $st6, $st6\n";
-    }
-    if ($num_blocks >= 7) {
-      $code .= "vaesenclast $t0, $st7, $st7\n";
+    for (my $i = 0; $i < $num_blocks; $i++) {
+      $code .= "vaesenclast $t0, $st[$i], $st[$i]\n";
     }
 
     # xor Tweak values
-    $code .= "vpxor    $tw1, $st1, $st1\n";
-
-    if ($num_blocks >= 2) {
-      $code .= "vpxor    $tw2, $st2, $st2\n";
-    }
-    if ($num_blocks >= 3) {
-      $code .= "vpxor    $tw3, $st3, $st3\n";
-    }
-    if ($num_blocks >= 4) {
-      $code .= "vpxor    $tw4, $st4, $st4\n";
-    }
-    if ($num_blocks >= 5) {
-      $code .= "vpxor    $tw5, $st5, $st5\n";
-    }
-    if ($num_blocks >= 6) {
-      $code .= "vpxor    $tw6, $st6, $st6\n";
-    }
-    if ($num_blocks >= 7) {
-      $code .= "vpxor    $tw7, $st7, $st7\n";
+    for (my $i = 0; $i < $num_blocks; $i++) {
+      $code .= "vpxor $tw[$i], $st[$i], $st[$i]\n";
     }
 
     if (0 == $lt128) {
       # load next Tweak values
       $code .= <<___;
-      vmovdqa  0x0($TW), $tw1
-      vmovdqa  0x10($TW), $tw2
-      vmovdqa  0x20($TW), $tw3
-      vmovdqa  0x30($TW), $tw4
-      vmovdqa  0x40($TW), $tw5
-      vmovdqa  0x50($TW), $tw6
-      vmovdqa  0x60($TW), $tw7
+      vmovdqa  0x0($TW), $tw[0]
+      vmovdqa  0x10($TW), $tw[1]
+      vmovdqa  0x20($TW), $tw[2]
+      vmovdqa  0x30($TW), $tw[3]
+      vmovdqa  0x40($TW), $tw[4]
+      vmovdqa  0x50($TW), $tw[5]
+      vmovdqa  0x60($TW), $tw[6]
 ___
     }
   }
@@ -991,22 +674,24 @@ ___
   # 1, 2, 3, 4, 5, 6 or 7 blocks are encrypted
   # next 8 Tweak values are generated
   sub decrypt_initial {
-    my $st1 = $_[0];
-    my $st2 = $_[1];
-    my $st3 = $_[2];
-    my $st4 = $_[3];
-    my $st5 = $_[4];
-    my $st6 = $_[5];
-    my $st7 = $_[6];
-    my $st8 = $_[7];
+    my @st;
+    $st[0] = $_[0];
+    $st[1] = $_[1];
+    $st[2] = $_[2];
+    $st[3] = $_[3];
+    $st[4] = $_[4];
+    $st[5] = $_[5];
+    $st[6] = $_[6];
+    $st[7] = $_[7];
 
-    my $tw1 = $_[8];
-    my $tw2 = $_[9];
-    my $tw3 = $_[10];
-    my $tw4 = $_[11];
-    my $tw5 = $_[12];
-    my $tw6 = $_[13];
-    my $tw7 = $_[14];
+    my @tw;
+    $tw[0] = $_[8];
+    $tw[1] = $_[9];
+    $tw[2] = $_[10];
+    $tw[3] = $_[11];
+    $tw[4] = $_[12];
+    $tw[5] = $_[13];
+    $tw[6] = $_[14];
     my $t0 = $_[15];
     my $num_blocks = $_[16];
     my $lt128 = $_[17];
@@ -1015,48 +700,14 @@ ___
     # num_blocks can be 1, 2, 3, 4, 5, 6, 7
 
     #  xor Tweak value
-    $code .= "vpxor    $tw1, $st1, $st1\n";
-
-    if ($num_blocks >= 2) {
-      $code .= "vpxor $tw2, $st2, $st2\n";
-    }
-    if ($num_blocks >= 3) {
-      $code .= "vpxor $tw3, $st3, $st3\n";
-    }
-    if ($num_blocks >= 4) {
-      $code .= "vpxor $tw4, $st4, $st4\n";
-    }
-    if ($num_blocks >= 5) {
-      $code .= "vpxor $tw5, $st5, $st5\n";
-    }
-    if ($num_blocks >= 6) {
-      $code .= "vpxor $tw6, $st6, $st6\n";
-    }
-    if ($num_blocks >= 7) {
-      $code .= "vpxor $tw7, $st7, $st7\n";
+    for (my $i = 0; $i < $num_blocks; $i++) {
+      $code .= "vpxor $tw[$i], $st[$i], $st[$i]\n";
     }
 
-    $code .= <<___;
-    vmovdqa  0x80($TW), $t0
-    vpxor    $t0, $st1, $st1
-___
-    if ($num_blocks >= 2) {
-      $code .= "vpxor $t0, $st2, $st2\n";
-    }
-    if ($num_blocks >= 3) {
-      $code .= "vpxor $t0, $st3, $st3\n";
-    }
-    if ($num_blocks >= 4) {
-      $code .= "vpxor $t0, $st4, $st4\n";
-    }
-    if ($num_blocks >= 5) {
-      $code .= "vpxor $t0, $st5, $st5\n";
-    }
-    if ($num_blocks >= 6) {
-      $code .= "vpxor $t0, $st6, $st6\n";
-    }
-    if ($num_blocks >= 7) {
-      $code .= "vpxor $t0, $st7, $st7\n";
+    $code .= "vmovdqa  0x80($TW), $t0\n";
+
+    for (my $i = 0; $i < $num_blocks; $i++) {
+      $code .= "vpxor $t0, $st[$i], $st[$i]\n";
     }
 
     if (0 == $lt128) {
@@ -1067,28 +718,10 @@ ___
 ___
     }
     # round 1
-    $code .= <<___;
-    vmovdqa 0x90($TW), $t0
-    vaesdec  $t0, $st1, $st1
-___
+    $code .= "vmovdqa 0x90($TW), $t0\n";
 
-    if ($num_blocks >= 2) {
-      $code .= "vaesdec  $t0, $st2, $st2\n";
-    }
-    if ($num_blocks >= 3) {
-      $code .= "vaesdec  $t0, $st3, $st3\n";
-    }
-    if ($num_blocks >= 4) {
-      $code .= "vaesdec $t0, $st4, $st4\n";
-    }
-    if ($num_blocks >= 5) {
-      $code .= "vaesdec $t0, $st5, $st5\n";
-    }
-    if ($num_blocks >= 6) {
-      $code .= "vaesdec $t0, $st6, $st6\n";
-    }
-    if ($num_blocks >= 7) {
-      $code .= "vaesdec $t0, $st7, $st7\n";
+    for (my $i = 0; $i < $num_blocks; $i++) {
+      $code .= "vaesdec $t0, $st[$i], $st[$i]\n";
     }
 
     if (0 == $lt128) {
@@ -1102,28 +735,10 @@ ___
     }
 
     # round 2
-    $code .= <<___;
-    vmovdqa 0xa0($TW), $t0
-    vaesdec  $t0, $st1, $st1
-___
+    $code .= "vmovdqa 0xa0($TW), $t0\n";
 
-    if ($num_blocks >= 2) {
-      $code .= "vaesdec  $t0, $st2, $st2\n";
-    }
-    if ($num_blocks >= 3) {
-      $code .= "vaesdec  $t0, $st3, $st3\n";
-    }
-    if ($num_blocks >= 4) {
-      $code .= "vaesdec $t0, $st4, $st4\n";
-    }
-    if ($num_blocks >= 5) {
-      $code .= "vaesdec $t0, $st5, $st5\n";
-    }
-    if ($num_blocks >= 6) {
-      $code .= "vaesdec $t0, $st6, $st6\n";
-    }
-    if ($num_blocks >= 7) {
-      $code .= "vaesdec $t0, $st7, $st7\n";
+    for (my $i = 0; $i < $num_blocks; $i++) {
+      $code .= "vaesdec $t0, $st[$i], $st[$i]\n";
     }
 
     if (0 == $lt128) {
@@ -1137,28 +752,10 @@ ___
     }
 
     # round 3
-    $code .= <<___;
-    vmovdqa 0xb0($TW), $t0
-    vaesdec  $t0, $st1, $st1
-___
+    $code .= "vmovdqa 0xb0($TW), $t0\n";
 
-    if ($num_blocks >= 2) {
-      $code .= "vaesdec  $t0, $st2, $st2\n";
-    }
-    if ($num_blocks >= 3) {
-      $code .= "vaesdec  $t0, $st3, $st3\n";
-    }
-    if ($num_blocks >= 4) {
-      $code .= "vaesdec $t0, $st4, $st4\n";
-    }
-    if ($num_blocks >= 5) {
-      $code .= "vaesdec $t0, $st5, $st5\n";
-    }
-    if ($num_blocks >= 6) {
-      $code .= "vaesdec $t0, $st6, $st6\n";
-    }
-    if ($num_blocks >= 7) {
-      $code .= "vaesdec $t0, $st7, $st7\n";
+    for (my $i = 0; $i < $num_blocks; $i++) {
+      $code .= "vaesdec $t0, $st[$i], $st[$i]\n";
     }
 
     if (0 == $lt128) {
@@ -1172,28 +769,10 @@ ___
     }
 
     # round 4
-    $code .= <<___;
-    vmovdqa 0xc0($TW), $t0
-    vaesdec  $t0, $st1, $st1
-___
+    $code .= "vmovdqa 0xc0($TW), $t0\n";
 
-    if ($num_blocks >= 2) {
-      $code .= "vaesdec  $t0, $st2, $st2\n";
-    }
-    if ($num_blocks >= 3) {
-      $code .= "vaesdec  $t0, $st3, $st3\n";
-    }
-    if ($num_blocks >= 4) {
-      $code .= "vaesdec $t0, $st4, $st4\n";
-    }
-    if ($num_blocks >= 5) {
-      $code .= "vaesdec $t0, $st5, $st5\n";
-    }
-    if ($num_blocks >= 6) {
-      $code .= "vaesdec $t0, $st6, $st6\n";
-    }
-    if ($num_blocks >= 7) {
-      $code .= "vaesdec $t0, $st7, $st7\n";
+    for (my $i = 0; $i < $num_blocks; $i++) {
+      $code .= "vaesdec $t0, $st[$i], $st[$i]\n";
     }
 
     if (0 == $lt128) {
@@ -1207,28 +786,10 @@ ___
     }
 
     # round 5
-    $code .= <<___;
-    vmovdqa 0xd0($TW), $t0
-    vaesdec  $t0, $st1, $st1
-___
+    $code .= "vmovdqa 0xd0($TW), $t0\n";
 
-    if ($num_blocks >= 2) {
-      $code .= "vaesdec  $t0, $st2, $st2\n";
-    }
-    if ($num_blocks >= 3) {
-      $code .= "vaesdec  $t0, $st3, $st3\n";
-    }
-    if ($num_blocks >= 4) {
-      $code .= "vaesdec $t0, $st4, $st4\n";
-    }
-    if ($num_blocks >= 5) {
-      $code .= "vaesdec $t0, $st5, $st5\n";
-    }
-    if ($num_blocks >= 6) {
-      $code .= "vaesdec $t0, $st6, $st6\n";
-    }
-    if ($num_blocks >= 7) {
-      $code .= "vaesdec $t0, $st7, $st7\n";
+    for (my $i = 0; $i < $num_blocks; $i++) {
+      $code .= "vaesdec $t0, $st[$i], $st[$i]\n";
     }
 
     if (0 == $lt128) {
@@ -1242,28 +803,10 @@ ___
     }
 
     # round 6
-    $code .= <<___;
-    vmovdqa 0xe0($TW), $t0
-    vaesdec  $t0, $st1, $st1
-___
+    $code .= "vmovdqa 0xe0($TW), $t0\n";
 
-    if ($num_blocks >= 2) {
-      $code .= "vaesdec  $t0, $st2, $st2\n";
-    }
-    if ($num_blocks >= 3) {
-      $code .= "vaesdec  $t0, $st3, $st3\n";
-    }
-    if ($num_blocks >= 4) {
-      $code .= "vaesdec $t0, $st4, $st4\n";
-    }
-    if ($num_blocks >= 5) {
-      $code .= "vaesdec $t0, $st5, $st5\n";
-    }
-    if ($num_blocks >= 6) {
-      $code .= "vaesdec $t0, $st6, $st6\n";
-    }
-    if ($num_blocks >= 7) {
-      $code .= "vaesdec $t0, $st7, $st7\n";
+    for (my $i = 0; $i < $num_blocks; $i++) {
+      $code .= "vaesdec $t0, $st[$i], $st[$i]\n";
     }
 
     if (0 == $lt128) {
@@ -1279,28 +822,10 @@ ___
     }
 
     # round 7
-    $code .= <<___;
-    vmovdqa 0xf0($TW), $t0
-    vaesdec  $t0, $st1, $st1
-___
+    $code .= "vmovdqa 0xf0($TW), $t0\n";
 
-    if ($num_blocks >= 2) {
-      $code .= "vaesdec  $t0, $st2, $st2\n";
-    }
-    if ($num_blocks >= 3) {
-      $code .= "vaesdec  $t0, $st3, $st3\n";
-    }
-    if ($num_blocks >= 4) {
-      $code .= "vaesdec $t0, $st4, $st4\n";
-    }
-    if ($num_blocks >= 5) {
-      $code .= "vaesdec $t0, $st5, $st5\n";
-    }
-    if ($num_blocks >= 6) {
-      $code .= "vaesdec $t0, $st6, $st6\n";
-    }
-    if ($num_blocks >= 7) {
-      $code .= "vaesdec $t0, $st7, $st7\n";
+    for (my $i = 0; $i < $num_blocks; $i++) {
+      $code .= "vaesdec $t0, $st[$i], $st[$i]\n";
     }
 
     if (0 == $lt128) {
@@ -1316,28 +841,10 @@ ___
     }
 
     # round 8
-    $code .= <<___;
-    vmovdqa 0x100($TW), $t0
-    vaesdec  $t0, $st1, $st1
-___
+    $code .= "vmovdqa 0x100($TW), $t0\n";
 
-    if ($num_blocks >= 2) {
-      $code .= "vaesdec  $t0, $st2, $st2\n";
-    }
-    if ($num_blocks >= 3) {
-      $code .= "vaesdec  $t0, $st3, $st3\n";
-    }
-    if ($num_blocks >= 4) {
-      $code .= "vaesdec $t0, $st4, $st4\n";
-    }
-    if ($num_blocks >= 5) {
-      $code .= "vaesdec $t0, $st5, $st5\n";
-    }
-    if ($num_blocks >= 6) {
-      $code .= "vaesdec $t0, $st6, $st6\n";
-    }
-    if ($num_blocks >= 7) {
-      $code .= "vaesdec $t0, $st7, $st7\n";
+    for (my $i = 0; $i < $num_blocks; $i++) {
+      $code .= "vaesdec $t0, $st[$i], $st[$i]\n";
     }
 
     if (0 == $lt128) {
@@ -1353,28 +860,10 @@ ___
     }
 
     # round 9
-    $code .= <<___;
-    vmovdqa 0x110($TW), $t0
-    vaesdec  $t0, $st1, $st1
-___
+    $code .= "vmovdqa 0x110($TW), $t0\n";
 
-    if ($num_blocks >= 2) {
-      $code .= "vaesdec  $t0, $st2, $st2\n";
-    }
-    if ($num_blocks >= 3) {
-      $code .= "vaesdec  $t0, $st3, $st3\n";
-    }
-    if ($num_blocks >= 4) {
-      $code .= "vaesdec $t0, $st4, $st4\n";
-    }
-    if ($num_blocks >= 5) {
-      $code .= "vaesdec $t0, $st5, $st5\n";
-    }
-    if ($num_blocks >= 6) {
-      $code .= "vaesdec $t0, $st6, $st6\n";
-    }
-    if ($num_blocks >= 7) {
-      $code .= "vaesdec $t0, $st7, $st7\n";
+    for (my $i = 0; $i < $num_blocks; $i++) {
+      $code .= "vaesdec $t0, $st[$i], $st[$i]\n";
     }
 
     if (0 == $lt128) {
@@ -1390,151 +879,43 @@ ___
     }
 
     # round 10
-    $code .= <<___;
-    vmovdqa 0x120($TW), $t0
-    vaesdec  $t0, $st1, $st1
-___
+    $code .= "vmovdqa 0x120($TW), $t0\n";
 
-    if ($num_blocks >= 2) {
-      $code .= "vaesdec  $t0, $st2, $st2\n";
+    for (my $i = 0; $i < $num_blocks; $i++) {
+      $code .= "vaesdec $t0, $st[$i], $st[$i]\n";
     }
-    if ($num_blocks >= 3) {
-      $code .= "vaesdec  $t0, $st3, $st3\n";
-    }
-    if ($num_blocks >= 4) {
-      $code .= "vaesdec $t0, $st4, $st4\n";
-    }
-    if ($num_blocks >= 5) {
-      $code .= "vaesdec $t0, $st5, $st5\n";
-    }
-    if ($num_blocks >= 6) {
-      $code .= "vaesdec $t0, $st6, $st6\n";
-    }
-    if ($num_blocks >= 7) {
-      $code .= "vaesdec $t0, $st7, $st7\n";
-    }
-
 
     # round 11
-    $code .= <<___;
-    vmovdqa 0x130($TW), $t0
-    vaesdec  $t0, $st1, $st1
-___
+    $code .= "vmovdqa 0x130($TW), $t0\n";
 
-    if ($num_blocks >= 2) {
-      $code .= "vaesdec  $t0, $st2, $st2\n";
-    }
-    if ($num_blocks >= 3) {
-      $code .= "vaesdec  $t0, $st3, $st3\n";
-    }
-    if ($num_blocks >= 4) {
-      $code .= "vaesdec $t0, $st4, $st4\n";
-    }
-    if ($num_blocks >= 5) {
-      $code .= "vaesdec $t0, $st5, $st5\n";
-    }
-    if ($num_blocks >= 6) {
-      $code .= "vaesdec $t0, $st6, $st6\n";
-    }
-    if ($num_blocks >= 7) {
-      $code .= "vaesdec $t0, $st7, $st7\n";
+    for (my $i = 0; $i < $num_blocks; $i++) {
+      $code .= "vaesdec $t0, $st[$i], $st[$i]\n";
     }
 
     # round 12
-    $code .= <<___;
-    vmovdqa 0x140($TW), $t0
-    vaesdec  $t0, $st1, $st1
-___
+    $code .= "vmovdqa 0x140($TW), $t0\n";
 
-    if ($num_blocks >= 2) {
-      $code .= "vaesdec  $t0, $st2, $st2\n";
-    }
-    if ($num_blocks >= 3) {
-      $code .= "vaesdec  $t0, $st3, $st3\n";
-    }
-    if ($num_blocks >= 4) {
-      $code .= "vaesdec $t0, $st4, $st4\n";
-    }
-    if ($num_blocks >= 5) {
-      $code .= "vaesdec $t0, $st5, $st5\n";
-    }
-    if ($num_blocks >= 6) {
-      $code .= "vaesdec $t0, $st6, $st6\n";
-    }
-    if ($num_blocks >= 7) {
-      $code .= "vaesdec $t0, $st7, $st7\n";
+    for (my $i = 0; $i < $num_blocks; $i++) {
+      $code .= "vaesdec $t0, $st[$i], $st[$i]\n";
     }
 
     # round 13
-    $code .= <<___;
-    vmovdqa 0x150($TW), $t0
-    vaesdec  $t0, $st1, $st1
-___
+    $code .= "vmovdqa 0x150($TW), $t0\n";
 
-    if ($num_blocks >= 2) {
-      $code .= "vaesdec  $t0, $st2, $st2\n";
-    }
-    if ($num_blocks >= 3) {
-      $code .= "vaesdec  $t0, $st3, $st3\n";
-    }
-    if ($num_blocks >= 4) {
-      $code .= "vaesdec $t0, $st4, $st4\n";
-    }
-    if ($num_blocks >= 5) {
-      $code .= "vaesdec $t0, $st5, $st5\n";
-    }
-    if ($num_blocks >= 6) {
-      $code .= "vaesdec $t0, $st6, $st6\n";
-    }
-    if ($num_blocks >= 7) {
-      $code .= "vaesdec $t0, $st7, $st7\n";
+    for (my $i = 0; $i < $num_blocks; $i++) {
+      $code .= "vaesdec $t0, $st[$i], $st[$i]\n";
     }
 
     # round 14
-    $code .= <<___;
-    vmovdqa 0x160($TW), $t0
-    vaesdeclast  $t0, $st1, $st1
-___
+    $code .= "vmovdqa 0x160($TW), $t0\n";
 
-    if ($num_blocks >= 2) {
-      $code .= "vaesdeclast  $t0, $st2, $st2\n";
-    }
-    if ($num_blocks >= 3) {
-      $code .= "vaesdeclast  $t0, $st3, $st3\n";
-    }
-    if ($num_blocks >= 4) {
-      $code .= "vaesdeclast $t0, $st4, $st4\n";
-    }
-    if ($num_blocks >= 5) {
-      $code .= "vaesdeclast $t0, $st5, $st5\n";
-    }
-    if ($num_blocks >= 6) {
-      $code .= "vaesdeclast $t0, $st6, $st6\n";
-    }
-    if ($num_blocks >= 7) {
-      $code .= "vaesdeclast $t0, $st7, $st7\n";
+    for (my $i = 0; $i < $num_blocks; $i++) {
+      $code .= "vaesdeclast $t0, $st[$i], $st[$i]\n";
     }
 
     # xor Tweak values
-    $code .= "vpxor    $tw1, $st1, $st1\n";
-
-    if ($num_blocks >= 2) {
-      $code .= "vpxor    $tw2, $st2, $st2\n";
-    }
-    if ($num_blocks >= 3) {
-      $code .= "vpxor    $tw3, $st3, $st3\n";
-    }
-    if ($num_blocks >= 4) {
-      $code .= "vpxor    $tw4, $st4, $st4\n";
-    }
-    if ($num_blocks >= 5) {
-      $code .= "vpxor    $tw5, $st5, $st5\n";
-    }
-    if ($num_blocks >= 6) {
-      $code .= "vpxor    $tw6, $st6, $st6\n";
-    }
-    if ($num_blocks >= 7) {
-      $code .= "vpxor    $tw7, $st7, $st7\n";
+    for (my $i = 0; $i < $num_blocks; $i++) {
+      $code .= "vpxor $tw[$i], $st[$i], $st[$i]\n";
     }
 
     if (0 == $lt128) {
@@ -1796,99 +1177,84 @@ ___
   # Encrypt 16 blocks in parallel
   # generate next 8 tweak values
   sub encrypt_by_16_zmm {
-    my $st1 = $_[0];
-    my $st2 = $_[1];
-    my $st3 = $_[2];
-    my $st4 = $_[3];
+    my @st;
+    $st[0] = $_[0];
+    $st[1] = $_[1];
+    $st[2] = $_[2];
+    $st[3] = $_[3];
 
-    my $tw1 = $_[4];
-    my $tw2 = $_[5];
-    my $tw3 = $_[6];
-    my $tw4 = $_[7];
+    my @tw;
+    $tw[0] = $_[4];
+    $tw[1] = $_[5];
+    $tw[2] = $_[6];
+    $tw[3] = $_[7];
 
     my $t0 = $_[8];
     my $last_eight = $_[9];
 
-    $code .= <<___;
-
     # xor Tweak values
-    vpxorq    $tw1, $st1, $st1
-    vpxorq    $tw2, $st2, $st2
-    vpxorq    $tw3, $st3, $st3
-    vpxorq    $tw4, $st4, $st4
+    for (my $i = 0; $i < 4; $i++) {
+      $code .= "vpxorq    $tw[$i], $st[$i], $st[$i]\n";
+    }
 
     # ARK
-    vbroadcasti32x4 0x80($TW), $t0
-    vpxorq    $t0, $st1, $st1
-    vpxorq    $t0, $st2, $st2
-    vpxorq    $t0, $st3, $st3
-    vpxorq    $t0, $st4, $st4
-___
+    $code .= "vbroadcasti32x4 0x80($TW), $t0\n";
+    for (my $i = 0; $i < 4; $i++) {
+      $code .= "vpxorq $t0, $st[$i], $st[$i]\n";
+    }
 
     if (0 == $last_eight) {
       $code .= <<___;
-      vpsrldq		\$0xf, $tw3, %zmm13
+      vpsrldq		\$0xf, $tw[2], %zmm13
       vpclmulqdq	\$0x0,$ZPOLY, %zmm13, %zmm14
-      vpslldq		\$0x1, $tw3, %zmm15
+      vpslldq		\$0x1, $tw[2], %zmm15
       vpxord		%zmm14, %zmm15, %zmm15
 ___
     }
 
-    $code .= <<___;
-
     # round 1
-    vbroadcasti32x4 0x90($TW), $t0
-    vaesenc  $t0, $st1, $st1
-    vaesenc  $t0, $st2, $st2
-    vaesenc  $t0, $st3, $st3
-    vaesenc  $t0, $st4, $st4
+    $code .= "vbroadcasti32x4 0x90($TW), $t0\n";
+    for (my $i = 0; $i < 4; $i++) {
+      $code .= "vaesenc $t0, $st[$i], $st[$i]\n";
+    }
 
     # round 2
-    vbroadcasti32x4 0xa0($TW), $t0
-    vaesenc  $t0, $st1, $st1
-    vaesenc  $t0, $st2, $st2
-    vaesenc  $t0, $st3, $st3
-    vaesenc  $t0, $st4, $st4
+    $code .= "vbroadcasti32x4 0xa0($TW), $t0\n";
+    for (my $i = 0; $i < 4; $i++) {
+      $code .= "vaesenc $t0, $st[$i], $st[$i]\n";
+    }
 
     # round 3
-    vbroadcasti32x4 0xb0($TW), $t0
-    vaesenc  $t0, $st1, $st1
-    vaesenc  $t0, $st2, $st2
-    vaesenc  $t0, $st3, $st3
-    vaesenc  $t0, $st4, $st4
-
-___
+    $code .= "vbroadcasti32x4 0xb0($TW), $t0\n";
+    for (my $i = 0; $i < 4; $i++) {
+      $code .= "vaesenc $t0, $st[$i], $st[$i]\n";
+    }
 
     if (0 == $last_eight) {
       $code .= <<___;
-      vpsrldq		\$0xf, $tw4, %zmm13
+      vpsrldq		\$0xf, $tw[3], %zmm13
       vpclmulqdq	\$0x0,$ZPOLY, %zmm13, %zmm14
-      vpslldq		\$0x1, $tw4, %zmm16
+      vpslldq		\$0x1, $tw[3], %zmm16
       vpxord		%zmm14, %zmm16, %zmm16
 ___
     }
-    $code .= <<___;
     # round 4
-    vbroadcasti32x4 0xc0($TW), $t0
-    vaesenc  $t0, $st1, $st1
-    vaesenc  $t0, $st2, $st2
-    vaesenc  $t0, $st3, $st3
-    vaesenc  $t0, $st4, $st4
+    $code .= "vbroadcasti32x4 0xc0($TW), $t0\n";
+    for (my $i = 0; $i < 4; $i++) {
+      $code .= "vaesenc $t0, $st[$i], $st[$i]\n";
+    }
 
     # round 5
-    vbroadcasti32x4 0xd0($TW), $t0
-    vaesenc  $t0, $st1, $st1
-    vaesenc  $t0, $st2, $st2
-    vaesenc  $t0, $st3, $st3
-    vaesenc  $t0, $st4, $st4
+    $code .= "vbroadcasti32x4 0xd0($TW), $t0\n";
+    for (my $i = 0; $i < 4; $i++) {
+      $code .= "vaesenc $t0, $st[$i], $st[$i]\n";
+    }
 
     # round 6
-    vbroadcasti32x4 0xe0($TW), $t0
-    vaesenc  $t0, $st1, $st1
-    vaesenc  $t0, $st2, $st2
-    vaesenc  $t0, $st3, $st3
-    vaesenc  $t0, $st4, $st4
-___
+    $code .= "vbroadcasti32x4 0xe0($TW), $t0\n";
+    for (my $i = 0; $i < 4; $i++) {
+      $code .= "vaesenc $t0, $st[$i], $st[$i]\n";
+    }
 
     if (0 == $last_eight) {
       $code .= <<___;
@@ -1898,29 +1264,23 @@ ___
       vpxord		%zmm14, %zmm17, %zmm17
 ___
     }
-    $code .= <<___;
-
     # round 7
-    vbroadcasti32x4 0xf0($TW), $t0
-    vaesenc  $t0, $st1, $st1
-    vaesenc  $t0, $st2, $st2
-    vaesenc  $t0, $st3, $st3
-    vaesenc  $t0, $st4, $st4
+    $code .= "vbroadcasti32x4 0xf0($TW), $t0\n";
+    for (my $i = 0; $i < 4; $i++) {
+      $code .= "vaesenc $t0, $st[$i], $st[$i]\n";
+    }
 
     # round 8
-    vbroadcasti32x4 0x100($TW), $t0
-    vaesenc  $t0, $st1, $st1
-    vaesenc  $t0, $st2, $st2
-    vaesenc  $t0, $st3, $st3
-    vaesenc  $t0, $st4, $st4
+    $code .= "vbroadcasti32x4 0x100($TW), $t0\n";
+    for (my $i = 0; $i < 4; $i++) {
+      $code .= "vaesenc $t0, $st[$i], $st[$i]\n";
+    }
 
     # round 9
-    vbroadcasti32x4 0x110($TW), $t0
-    vaesenc  $t0, $st1, $st1
-    vaesenc  $t0, $st2, $st2
-    vaesenc  $t0, $st3, $st3
-    vaesenc  $t0, $st4, $st4
-___
+    $code .= "vbroadcasti32x4 0x110($TW), $t0\n";
+    for (my $i = 0; $i < 4; $i++) {
+      $code .= "vaesenc $t0, $st[$i], $st[$i]\n";
+    }
 
     if (0 == $last_eight) {
       $code .= <<___;
@@ -1930,154 +1290,132 @@ ___
       vpxord		%zmm14, %zmm18, %zmm18
 ___
     }
-    $code .= <<___;
-
     # round 10
-    vbroadcasti32x4 0x120($TW), $t0
-    vaesenc  $t0, $st1, $st1
-    vaesenc  $t0, $st2, $st2
-    vaesenc  $t0, $st3, $st3
-    vaesenc  $t0, $st4, $st4
+    $code .= "vbroadcasti32x4 0x120($TW), $t0\n";
+    for (my $i = 0; $i < 4; $i++) {
+      $code .= "vaesenc $t0, $st[$i], $st[$i]\n";
+    }
 
     # round 11
-    vbroadcasti32x4 0x130($TW), $t0
-    vaesenc  $t0, $st1, $st1
-    vaesenc  $t0, $st2, $st2
-    vaesenc  $t0, $st3, $st3
-    vaesenc  $t0, $st4, $st4
+    $code .= "vbroadcasti32x4 0x130($TW), $t0\n";
+    for (my $i = 0; $i < 4; $i++) {
+      $code .= "vaesenc $t0, $st[$i], $st[$i]\n";
+    }
 
     # round 12
-    vbroadcasti32x4 0x140($TW), $t0
-    vaesenc  $t0, $st1, $st1
-    vaesenc  $t0, $st2, $st2
-    vaesenc  $t0, $st3, $st3
-    vaesenc  $t0, $st4, $st4
+    $code .= "vbroadcasti32x4 0x140($TW), $t0\n";
+    for (my $i = 0; $i < 4; $i++) {
+      $code .= "vaesenc $t0, $st[$i], $st[$i]\n";
+    }
 
     # round 13
-    vbroadcasti32x4 0x150($TW), $t0
-    vaesenc  $t0, $st1, $st1
-    vaesenc  $t0, $st2, $st2
-    vaesenc  $t0, $st3, $st3
-    vaesenc  $t0, $st4, $st4
+    $code .= "vbroadcasti32x4 0x150($TW), $t0\n";
+    for (my $i = 0; $i < 4; $i++) {
+      $code .= "vaesenc $t0, $st[$i], $st[$i]\n";
+    }
 
     # round 14
-    vbroadcasti32x4 0x160($TW), $t0
-    vaesenclast  $t0, $st1, $st1
-    vaesenclast  $t0, $st2, $st2
-    vaesenclast  $t0, $st3, $st3
-    vaesenclast  $t0, $st4, $st4
+    $code .= "vbroadcasti32x4 0x160($TW), $t0\n";
+    for (my $i = 0; $i < 4; $i++) {
+      $code .= "vaesenclast $t0, $st[$i], $st[$i]\n";
+    }
 
 
     # xor Tweak values
-    vpxorq    $tw1, $st1, $st1
-    vpxorq    $tw2, $st2, $st2
-    vpxorq    $tw3, $st3, $st3
-    vpxorq    $tw4, $st4, $st4
+    for (my $i = 0; $i < 4; $i++) {
+      $code .= "vpxorq    $tw[$i], $st[$i], $st[$i]\n";
+    }
 
+    $code .= <<___;
     # load next Tweak values
-    vmovdqa32  %zmm15, $tw1
-    vmovdqa32  %zmm16, $tw2
-    vmovdqa32  %zmm17, $tw3
-    vmovdqa32  %zmm18, $tw4
+    vmovdqa32  %zmm15, $tw[0]
+    vmovdqa32  %zmm16, $tw[1]
+    vmovdqa32  %zmm17, $tw[2]
+    vmovdqa32  %zmm18, $tw[3]
 ___
   }
 
   # Decrypt 16 blocks in parallel
   # generate next 8 tweak values
   sub decrypt_by_16_zmm {
-    my $st1 = $_[0];
-    my $st2 = $_[1];
-    my $st3 = $_[2];
-    my $st4 = $_[3];
+    my @st;
+    $st[0] = $_[0];
+    $st[1] = $_[1];
+    $st[2] = $_[2];
+    $st[3] = $_[3];
 
-    my $tw1 = $_[4];
-    my $tw2 = $_[5];
-    my $tw3 = $_[6];
-    my $tw4 = $_[7];
+    my @tw;
+    $tw[0] = $_[4];
+    $tw[1] = $_[5];
+    $tw[2] = $_[6];
+    $tw[3] = $_[7];
 
     my $t0 = $_[8];
     my $last_eight = $_[9];
 
-    $code .= <<___;
-
     # xor Tweak values
-    vpxorq    $tw1, $st1, $st1
-    vpxorq    $tw2, $st2, $st2
-    vpxorq    $tw3, $st3, $st3
-    vpxorq    $tw4, $st4, $st4
+    for (my $i = 0; $i < 4; $i++) {
+      $code .= "vpxorq    $tw[$i], $st[$i], $st[$i]\n";
+    }
 
     # ARK
-    vbroadcasti32x4 0x80($TW), $t0
-    vpxorq    $t0, $st1, $st1
-    vpxorq    $t0, $st2, $st2
-    vpxorq    $t0, $st3, $st3
-    vpxorq    $t0, $st4, $st4
-___
+    $code .= "vbroadcasti32x4 0x80($TW), $t0\n";
+    for (my $i = 0; $i < 4; $i++) {
+      $code .= "vpxorq $t0, $st[$i], $st[$i]\n";
+    }
 
     if (0 == $last_eight) {
       $code .= <<___;
-      vpsrldq		\$0xf, $tw3, %zmm13
+      vpsrldq		\$0xf, $tw[2], %zmm13
       vpclmulqdq	\$0x0,$ZPOLY, %zmm13, %zmm14
-      vpslldq		\$0x1, $tw3, %zmm15
+      vpslldq		\$0x1, $tw[2], %zmm15
       vpxord		%zmm14, %zmm15, %zmm15
 ___
     }
 
-    $code .= <<___;
-
     # round 1
-    vbroadcasti32x4 0x90($TW), $t0
-    vaesdec  $t0, $st1, $st1
-    vaesdec  $t0, $st2, $st2
-    vaesdec  $t0, $st3, $st3
-    vaesdec  $t0, $st4, $st4
+    $code .= "vbroadcasti32x4 0x90($TW), $t0\n";
+    for (my $i = 0; $i < 4; $i++) {
+      $code .= "vaesdec $t0, $st[$i], $st[$i]\n";
+    }
 
     # round 2
-    vbroadcasti32x4 0xa0($TW), $t0
-    vaesdec  $t0, $st1, $st1
-    vaesdec  $t0, $st2, $st2
-    vaesdec  $t0, $st3, $st3
-    vaesdec  $t0, $st4, $st4
+    $code .= "vbroadcasti32x4 0xa0($TW), $t0\n";
+    for (my $i = 0; $i < 4; $i++) {
+      $code .= "vaesdec $t0, $st[$i], $st[$i]\n";
+    }
 
     # round 3
-    vbroadcasti32x4 0xb0($TW), $t0
-    vaesdec  $t0, $st1, $st1
-    vaesdec  $t0, $st2, $st2
-    vaesdec  $t0, $st3, $st3
-    vaesdec  $t0, $st4, $st4
-
-___
+    $code .= "vbroadcasti32x4 0xb0($TW), $t0\n";
+    for (my $i = 0; $i < 4; $i++) {
+      $code .= "vaesdec $t0, $st[$i], $st[$i]\n";
+    }
 
     if (0 == $last_eight) {
       $code .= <<___;
-      vpsrldq		\$0xf, $tw4, %zmm13
+      vpsrldq		\$0xf, $tw[3], %zmm13
       vpclmulqdq	\$0x0,$ZPOLY, %zmm13, %zmm14
-      vpslldq		\$0x1, $tw4, %zmm16
+      vpslldq		\$0x1, $tw[3], %zmm16
       vpxord		%zmm14, %zmm16, %zmm16
 ___
     }
-    $code .= <<___;
     # round 4
-    vbroadcasti32x4 0xc0($TW), $t0
-    vaesdec  $t0, $st1, $st1
-    vaesdec  $t0, $st2, $st2
-    vaesdec  $t0, $st3, $st3
-    vaesdec  $t0, $st4, $st4
+    $code .= "vbroadcasti32x4 0xc0($TW), $t0\n";
+    for (my $i = 0; $i < 4; $i++) {
+      $code .= "vaesdec $t0, $st[$i], $st[$i]\n";
+    }
 
     # round 5
-    vbroadcasti32x4 0xd0($TW), $t0
-    vaesdec  $t0, $st1, $st1
-    vaesdec  $t0, $st2, $st2
-    vaesdec  $t0, $st3, $st3
-    vaesdec  $t0, $st4, $st4
+    $code .= "vbroadcasti32x4 0xd0($TW), $t0\n";
+    for (my $i = 0; $i < 4; $i++) {
+      $code .= "vaesdec $t0, $st[$i], $st[$i]\n";
+    }
 
     # round 6
-    vbroadcasti32x4 0xe0($TW), $t0
-    vaesdec  $t0, $st1, $st1
-    vaesdec  $t0, $st2, $st2
-    vaesdec  $t0, $st3, $st3
-    vaesdec  $t0, $st4, $st4
-___
+    $code .= "vbroadcasti32x4 0xe0($TW), $t0\n";
+    for (my $i = 0; $i < 4; $i++) {
+      $code .= "vaesdec $t0, $st[$i], $st[$i]\n";
+    }
 
     if (0 == $last_eight) {
       $code .= <<___;
@@ -2087,29 +1425,23 @@ ___
       vpxord		%zmm14, %zmm17, %zmm17
 ___
     }
-    $code .= <<___;
-
     # round 7
-    vbroadcasti32x4 0xf0($TW), $t0
-    vaesdec  $t0, $st1, $st1
-    vaesdec  $t0, $st2, $st2
-    vaesdec  $t0, $st3, $st3
-    vaesdec  $t0, $st4, $st4
+    $code .= "vbroadcasti32x4 0xf0($TW), $t0\n";
+    for (my $i = 0; $i < 4; $i++) {
+      $code .= "vaesdec $t0, $st[$i], $st[$i]\n";
+    }
 
     # round 8
-    vbroadcasti32x4 0x100($TW), $t0
-    vaesdec  $t0, $st1, $st1
-    vaesdec  $t0, $st2, $st2
-    vaesdec  $t0, $st3, $st3
-    vaesdec  $t0, $st4, $st4
+    $code .= "vbroadcasti32x4 0x100($TW), $t0\n";
+    for (my $i = 0; $i < 4; $i++) {
+      $code .= "vaesdec $t0, $st[$i], $st[$i]\n";
+    }
 
     # round 9
-    vbroadcasti32x4 0x110($TW), $t0
-    vaesdec  $t0, $st1, $st1
-    vaesdec  $t0, $st2, $st2
-    vaesdec  $t0, $st3, $st3
-    vaesdec  $t0, $st4, $st4
-___
+    $code .= "vbroadcasti32x4 0x110($TW), $t0\n";
+    for (my $i = 0; $i < 4; $i++) {
+      $code .= "vaesdec $t0, $st[$i], $st[$i]\n";
+    }
 
     if (0 == $last_eight) {
       $code .= <<___;
@@ -2119,66 +1451,58 @@ ___
       vpxord		%zmm14, %zmm18, %zmm18
 ___
     }
-    $code .= <<___;
-
     # round 10
-    vbroadcasti32x4 0x120($TW), $t0
-    vaesdec  $t0, $st1, $st1
-    vaesdec  $t0, $st2, $st2
-    vaesdec  $t0, $st3, $st3
-    vaesdec  $t0, $st4, $st4
+    $code .= "vbroadcasti32x4 0x120($TW), $t0\n";
+    for (my $i = 0; $i < 4; $i++) {
+      $code .= "vaesdec $t0, $st[$i], $st[$i]\n";
+    }
 
     # round 11
-    vbroadcasti32x4 0x130($TW), $t0
-    vaesdec  $t0, $st1, $st1
-    vaesdec  $t0, $st2, $st2
-    vaesdec  $t0, $st3, $st3
-    vaesdec  $t0, $st4, $st4
+    $code .= "vbroadcasti32x4 0x130($TW), $t0\n";
+    for (my $i = 0; $i < 4; $i++) {
+      $code .= "vaesdec $t0, $st[$i], $st[$i]\n";
+    }
 
     # round 12
-    vbroadcasti32x4 0x140($TW), $t0
-    vaesdec  $t0, $st1, $st1
-    vaesdec  $t0, $st2, $st2
-    vaesdec  $t0, $st3, $st3
-    vaesdec  $t0, $st4, $st4
+    $code .= "vbroadcasti32x4 0x140($TW), $t0\n";
+    for (my $i = 0; $i < 4; $i++) {
+      $code .= "vaesdec $t0, $st[$i], $st[$i]\n";
+    }
 
     # round 13
-    vbroadcasti32x4 0x150($TW), $t0
-    vaesdec  $t0, $st1, $st1
-    vaesdec  $t0, $st2, $st2
-    vaesdec  $t0, $st3, $st3
-    vaesdec  $t0, $st4, $st4
+    $code .= "vbroadcasti32x4 0x150($TW), $t0\n";
+    for (my $i = 0; $i < 4; $i++) {
+      $code .= "vaesdec $t0, $st[$i], $st[$i]\n";
+    }
 
     # round 14
-    vbroadcasti32x4 0x160($TW), $t0
-    vaesdeclast  $t0, $st1, $st1
-    vaesdeclast  $t0, $st2, $st2
-    vaesdeclast  $t0, $st3, $st3
-    vaesdeclast  $t0, $st4, $st4
-
+    $code .= "vbroadcasti32x4 0x160($TW), $t0\n";
+    for (my $i = 0; $i < 4; $i++) {
+      $code .= "vaesdeclast $t0, $st[$i], $st[$i]\n";
+    }
 
     # xor Tweak values
-    vpxorq    $tw1, $st1, $st1
-    vpxorq    $tw2, $st2, $st2
-    vpxorq    $tw3, $st3, $st3
-    vpxorq    $tw4, $st4, $st4
+    for (my $i = 0; $i < 4; $i++) {
+      $code .= "vpxorq    $tw[$i], $st[$i], $st[$i]\n";
+    }
 
+    $code .= <<___;
     # load next Tweak values
-    vmovdqa32  %zmm15, $tw1
-    vmovdqa32  %zmm16, $tw2
-    vmovdqa32  %zmm17, $tw3
-    vmovdqa32  %zmm18, $tw4
+    vmovdqa32  %zmm15, $tw[0]
+    vmovdqa32  %zmm16, $tw[1]
+    vmovdqa32  %zmm17, $tw[2]
+    vmovdqa32  %zmm18, $tw[3]
 ___
   }
 
   # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   # ;void aes_hw_xts_encrypt_avx512(
-  # ;               UINT8 *k2,      // key used for tweaking, 16*2 bytes
-  # ;               UINT8 *k1,      // key used for "ECB" encryption, 16*2 bytes
-  # ;               UINT8 *TW_initial,      // initial tweak value, 16 bytes
-  # ;               UINT64 N,       // sector size, in bytes
-  # ;               const UINT8 *pt,        // plaintext sector input data
-  # ;               UINT8 *ct);     // ciphertext sector output data
+  # ;               const uint8_t *in,        // input data
+  # ;               uint8_t *out,             // output data
+  # ;               size_t length,            // sector size, in bytes
+  # ;               const AES_KEY *key1,      // key used for "ECB" encryption, 16*2 bytes
+  # ;               const AES_KEY *key2,      // key used for tweaking, 16*2 bytes
+  # ;               const uint8_t iv[16])      // initial tweak value, 16 bytes
   # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
   my $rndsuffix = &random_string();
@@ -2783,12 +2107,12 @@ ___
 
   # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   # ;void aes_hw_xts_decrypt_avx512(
-  # ;               UINT8 *k2,      // key used for tweaking, 16*2 bytes
-  # ;               UINT8 *k1,      // key used for "ECB" encryption, 16*2 bytes
-  # ;               UINT8 *TW_initial,      // initial tweak value, 16 bytes
-  # ;               UINT64 N,       // sector size, in bytes
-  # ;               const UINT8 *pt,        // plaintext sector input data
-  # ;               UINT8 *ct);     // ciphertext sector output data
+  # ;               const uint8_t *in,        // input data
+  # ;               uint8_t *out,             // output data
+  # ;               size_t length,            // sector size, in bytes
+  # ;               const AES_KEY *key1,      // key used for "ECB" encryption, 16*2 bytes
+  # ;               const AES_KEY *key2,      // key used for tweaking, 16*2 bytes
+  # ;               const uint8_t iv[16])      // initial tweak value, 16 bytes
   # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
   my $rndsuffix = &random_string();

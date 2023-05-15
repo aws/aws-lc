@@ -764,14 +764,10 @@ $L$_main_loop_run_16_hEgxyDlCngwrfFe:
 	vmovdqu8	zmm3,ZMMWORD[128+rcx]
 	vmovdqu8	zmm4,ZMMWORD[192+rcx]
 	add	rcx,0x100
-
-
 	vpxorq	zmm1,zmm1,zmm9
 	vpxorq	zmm2,zmm2,zmm10
 	vpxorq	zmm3,zmm3,zmm11
 	vpxorq	zmm4,zmm4,zmm12
-
-
 	vbroadcasti32x4	zmm0,ZMMWORD[128+rsp]
 	vpxorq	zmm1,zmm1,zmm0
 	vpxorq	zmm2,zmm2,zmm0
@@ -781,47 +777,35 @@ $L$_main_loop_run_16_hEgxyDlCngwrfFe:
 	DB	98,19,21,72,68,241,0
 	vpslldq	zmm15,zmm11,0x1
 	vpxord	zmm15,zmm15,zmm14
-
-
 	vbroadcasti32x4	zmm0,ZMMWORD[144+rsp]
 	DB	98,242,117,72,220,200
 	DB	98,242,109,72,220,208
 	DB	98,242,101,72,220,216
 	DB	98,242,93,72,220,224
-
-
 	vbroadcasti32x4	zmm0,ZMMWORD[160+rsp]
 	DB	98,242,117,72,220,200
 	DB	98,242,109,72,220,208
 	DB	98,242,101,72,220,216
 	DB	98,242,93,72,220,224
-
-
 	vbroadcasti32x4	zmm0,ZMMWORD[176+rsp]
 	DB	98,242,117,72,220,200
 	DB	98,242,109,72,220,208
 	DB	98,242,101,72,220,216
 	DB	98,242,93,72,220,224
-
 	vpsrldq	zmm13,zmm12,0xf
 	DB	98,19,21,72,68,241,0
 	vpslldq	zmm16,zmm12,0x1
 	vpxord	zmm16,zmm16,zmm14
-
 	vbroadcasti32x4	zmm0,ZMMWORD[192+rsp]
 	DB	98,242,117,72,220,200
 	DB	98,242,109,72,220,208
 	DB	98,242,101,72,220,216
 	DB	98,242,93,72,220,224
-
-
 	vbroadcasti32x4	zmm0,ZMMWORD[208+rsp]
 	DB	98,242,117,72,220,200
 	DB	98,242,109,72,220,208
 	DB	98,242,101,72,220,216
 	DB	98,242,93,72,220,224
-
-
 	vbroadcasti32x4	zmm0,ZMMWORD[224+rsp]
 	DB	98,242,117,72,220,200
 	DB	98,242,109,72,220,208
@@ -831,22 +815,16 @@ $L$_main_loop_run_16_hEgxyDlCngwrfFe:
 	DB	98,19,21,72,68,241,0
 	vpslldq	zmm17,zmm15,0x1
 	vpxord	zmm17,zmm17,zmm14
-
-
 	vbroadcasti32x4	zmm0,ZMMWORD[240+rsp]
 	DB	98,242,117,72,220,200
 	DB	98,242,109,72,220,208
 	DB	98,242,101,72,220,216
 	DB	98,242,93,72,220,224
-
-
 	vbroadcasti32x4	zmm0,ZMMWORD[256+rsp]
 	DB	98,242,117,72,220,200
 	DB	98,242,109,72,220,208
 	DB	98,242,101,72,220,216
 	DB	98,242,93,72,220,224
-
-
 	vbroadcasti32x4	zmm0,ZMMWORD[272+rsp]
 	DB	98,242,117,72,220,200
 	DB	98,242,109,72,220,208
@@ -856,49 +834,35 @@ $L$_main_loop_run_16_hEgxyDlCngwrfFe:
 	DB	98,19,21,72,68,241,0
 	vpslldq	zmm18,zmm16,0x1
 	vpxord	zmm18,zmm18,zmm14
-
-
 	vbroadcasti32x4	zmm0,ZMMWORD[288+rsp]
 	DB	98,242,117,72,220,200
 	DB	98,242,109,72,220,208
 	DB	98,242,101,72,220,216
 	DB	98,242,93,72,220,224
-
-
 	vbroadcasti32x4	zmm0,ZMMWORD[304+rsp]
 	DB	98,242,117,72,220,200
 	DB	98,242,109,72,220,208
 	DB	98,242,101,72,220,216
 	DB	98,242,93,72,220,224
-
-
 	vbroadcasti32x4	zmm0,ZMMWORD[320+rsp]
 	DB	98,242,117,72,220,200
 	DB	98,242,109,72,220,208
 	DB	98,242,101,72,220,216
 	DB	98,242,93,72,220,224
-
-
 	vbroadcasti32x4	zmm0,ZMMWORD[336+rsp]
 	DB	98,242,117,72,220,200
 	DB	98,242,109,72,220,208
 	DB	98,242,101,72,220,216
 	DB	98,242,93,72,220,224
-
-
 	vbroadcasti32x4	zmm0,ZMMWORD[352+rsp]
 	DB	98,242,117,72,221,200
 	DB	98,242,109,72,221,208
 	DB	98,242,101,72,221,216
 	DB	98,242,93,72,221,224
-
-
-
 	vpxorq	zmm1,zmm1,zmm9
 	vpxorq	zmm2,zmm2,zmm10
 	vpxorq	zmm3,zmm3,zmm11
 	vpxorq	zmm4,zmm4,zmm12
-
 
 	vmovdqa32	zmm9,zmm15
 	vmovdqa32	zmm10,zmm16
@@ -3339,14 +3303,10 @@ $L$_main_loop_run_16_amivrujEyduiFoi:
 	vmovdqu8	zmm4,ZMMWORD[192+rcx]
 	vmovdqu8	zmm5,ZMMWORD[240+rcx]
 	add	rcx,0x100
-
-
 	vpxorq	zmm1,zmm1,zmm9
 	vpxorq	zmm2,zmm2,zmm10
 	vpxorq	zmm3,zmm3,zmm11
 	vpxorq	zmm4,zmm4,zmm12
-
-
 	vbroadcasti32x4	zmm0,ZMMWORD[128+rsp]
 	vpxorq	zmm1,zmm1,zmm0
 	vpxorq	zmm2,zmm2,zmm0
@@ -3356,47 +3316,35 @@ $L$_main_loop_run_16_amivrujEyduiFoi:
 	DB	98,19,21,72,68,241,0
 	vpslldq	zmm15,zmm11,0x1
 	vpxord	zmm15,zmm15,zmm14
-
-
 	vbroadcasti32x4	zmm0,ZMMWORD[144+rsp]
 	DB	98,242,117,72,222,200
 	DB	98,242,109,72,222,208
 	DB	98,242,101,72,222,216
 	DB	98,242,93,72,222,224
-
-
 	vbroadcasti32x4	zmm0,ZMMWORD[160+rsp]
 	DB	98,242,117,72,222,200
 	DB	98,242,109,72,222,208
 	DB	98,242,101,72,222,216
 	DB	98,242,93,72,222,224
-
-
 	vbroadcasti32x4	zmm0,ZMMWORD[176+rsp]
 	DB	98,242,117,72,222,200
 	DB	98,242,109,72,222,208
 	DB	98,242,101,72,222,216
 	DB	98,242,93,72,222,224
-
 	vpsrldq	zmm13,zmm12,0xf
 	DB	98,19,21,72,68,241,0
 	vpslldq	zmm16,zmm12,0x1
 	vpxord	zmm16,zmm16,zmm14
-
 	vbroadcasti32x4	zmm0,ZMMWORD[192+rsp]
 	DB	98,242,117,72,222,200
 	DB	98,242,109,72,222,208
 	DB	98,242,101,72,222,216
 	DB	98,242,93,72,222,224
-
-
 	vbroadcasti32x4	zmm0,ZMMWORD[208+rsp]
 	DB	98,242,117,72,222,200
 	DB	98,242,109,72,222,208
 	DB	98,242,101,72,222,216
 	DB	98,242,93,72,222,224
-
-
 	vbroadcasti32x4	zmm0,ZMMWORD[224+rsp]
 	DB	98,242,117,72,222,200
 	DB	98,242,109,72,222,208
@@ -3406,22 +3354,16 @@ $L$_main_loop_run_16_amivrujEyduiFoi:
 	DB	98,19,21,72,68,241,0
 	vpslldq	zmm17,zmm15,0x1
 	vpxord	zmm17,zmm17,zmm14
-
-
 	vbroadcasti32x4	zmm0,ZMMWORD[240+rsp]
 	DB	98,242,117,72,222,200
 	DB	98,242,109,72,222,208
 	DB	98,242,101,72,222,216
 	DB	98,242,93,72,222,224
-
-
 	vbroadcasti32x4	zmm0,ZMMWORD[256+rsp]
 	DB	98,242,117,72,222,200
 	DB	98,242,109,72,222,208
 	DB	98,242,101,72,222,216
 	DB	98,242,93,72,222,224
-
-
 	vbroadcasti32x4	zmm0,ZMMWORD[272+rsp]
 	DB	98,242,117,72,222,200
 	DB	98,242,109,72,222,208
@@ -3431,49 +3373,35 @@ $L$_main_loop_run_16_amivrujEyduiFoi:
 	DB	98,19,21,72,68,241,0
 	vpslldq	zmm18,zmm16,0x1
 	vpxord	zmm18,zmm18,zmm14
-
-
 	vbroadcasti32x4	zmm0,ZMMWORD[288+rsp]
 	DB	98,242,117,72,222,200
 	DB	98,242,109,72,222,208
 	DB	98,242,101,72,222,216
 	DB	98,242,93,72,222,224
-
-
 	vbroadcasti32x4	zmm0,ZMMWORD[304+rsp]
 	DB	98,242,117,72,222,200
 	DB	98,242,109,72,222,208
 	DB	98,242,101,72,222,216
 	DB	98,242,93,72,222,224
-
-
 	vbroadcasti32x4	zmm0,ZMMWORD[320+rsp]
 	DB	98,242,117,72,222,200
 	DB	98,242,109,72,222,208
 	DB	98,242,101,72,222,216
 	DB	98,242,93,72,222,224
-
-
 	vbroadcasti32x4	zmm0,ZMMWORD[336+rsp]
 	DB	98,242,117,72,222,200
 	DB	98,242,109,72,222,208
 	DB	98,242,101,72,222,216
 	DB	98,242,93,72,222,224
-
-
 	vbroadcasti32x4	zmm0,ZMMWORD[352+rsp]
 	DB	98,242,117,72,223,200
 	DB	98,242,109,72,223,208
 	DB	98,242,101,72,223,216
 	DB	98,242,93,72,223,224
-
-
-
 	vpxorq	zmm1,zmm1,zmm9
 	vpxorq	zmm2,zmm2,zmm10
 	vpxorq	zmm3,zmm3,zmm11
 	vpxorq	zmm4,zmm4,zmm12
-
 
 	vmovdqa32	zmm9,zmm15
 	vmovdqa32	zmm10,zmm16
