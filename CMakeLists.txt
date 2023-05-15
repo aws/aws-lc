@@ -843,6 +843,8 @@ if(BUILD_TESTING)
     set(MEM_TEST_EXEC mem_test)
     set(MEM_SET_TEST_EXEC mem_set_test)
   endif()
+
+  add_subdirectory(util/fipstools/acvp/modulewrapper)
 endif()
 
 add_subdirectory(crypto)
@@ -851,7 +853,6 @@ if(BUILD_LIBSSL)
   add_subdirectory(tool)
 endif()
 add_subdirectory(util/fipstools)
-add_subdirectory(util/fipstools/acvp/modulewrapper)
 
 if(FUZZ)
   if(LIBFUZZER_FROM_DEPS)
