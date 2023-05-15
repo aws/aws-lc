@@ -193,6 +193,13 @@ OPENSSL_EXPORT X509_NAME *X509_get_subject_name(const X509 *x509);
 // object.
 OPENSSL_EXPORT X509_PUBKEY *X509_get_X509_PUBKEY(const X509 *x509);
 
+// X509_get0_pubkey returns |x509|'s public key as an |EVP_PKEY|, or NULL if the
+// public key was unsupported or could not be decoded. It is similar to
+// |X509_get_pubkey|, but it does not increment the reference count of the
+// returned |EVP_PKEY|. This means that the caller must not free the result after
+// use.
+OPENSSL_EXPORT EVP_PKEY *X509_get0_pubkey(const X509 *x);
+
 // X509_get_pubkey returns |x509|'s public key as an |EVP_PKEY|, or NULL if the
 // public key was unsupported or could not be decoded. This function returns a
 // reference to the |EVP_PKEY|. The caller must release the result with

@@ -36,7 +36,7 @@ class PruneStaleGitHubBuilds(Construct):
                                 actions=[
                                     "codebuild:BatchGetBuildBatches",
                                     "codebuild:ListBuildBatchesForProject",
-                                    "codebuild:StopBuild",
+                                    "codebuild:StopBuildBatch",
                                 ],
                                 resources=[project.project_arn]))
 
