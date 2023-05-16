@@ -86,6 +86,7 @@ OBJ = curve25519/bignum_add_p25519.o \
       generic/bignum_madd.o \
       generic/bignum_modadd.o \
       generic/bignum_moddouble.o \
+      generic/bignum_modexp.o \
       generic/bignum_modifier.o \
       generic/bignum_modinv.o \
       generic/bignum_modoptneg.o \

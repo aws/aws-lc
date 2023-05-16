@@ -26,8 +26,10 @@
 #define INNER_REPS UINT64_C(10000)
 #define OUTER_REPS 5
 
-// But we use an adjustable version defaulting to INNER_REPS
+// But we use an adjustable version inner_reps which defaults to
+// default_reps, in turn initialized to INNER_REPS or user input
 
+static uint64_t default_reps = INNER_REPS;
 static uint64_t inner_reps = INNER_REPS;
 
 // Big buffers for testing purposes
@@ -37,6 +39,7 @@ static uint64_t b0[BUFFERSIZE];
 static uint64_t b1[BUFFERSIZE];
 static uint64_t b2[BUFFERSIZE];
 static uint64_t b3[BUFFERSIZE];
+static uint64_t b4[BUFFERSIZE];
 
 static uint64_t bb[16][BUFFERSIZE];
 
@@ -73,9 +76,13 @@ void random_bignum(uint64_t k,uint64_t *a)
 
 // Core repetition of the function being benchmarked. The function
 // is recomputed on the same inputs each time without trying to
-// enforce serial dependency.
+// enforce serial dependency. The default is "repeat", but there
+// are variants doing either more or fewer reps by a given factor,
+// rounded up a bit in the latter case to at least 2.
 
-#define repeat(bod) {int i; for (i = 0; i < inner_reps; ++i) bod; }
+#define repeat(bod) {inner_reps = default_reps; int i; for (i = 0; i < inner_reps; ++i) bod; }
+#define repeatmore(n,bod) {inner_reps = n*default_reps; int i; for (i = 0; i < inner_reps; ++i) bod; }
+#define repeatfewer(n,bod) {inner_reps = (default_reps/n)+2; int i; for (i = 0; i < inner_reps; ++i) bod; }
 
 #define CORE_REPS (65 * OUTER_REPS)
 #define CORE_REPF ((double) CORE_REPS)
@@ -487,17 +494,17 @@ void call_bignum_sqr__16_32(void) repeat(bignum_sqr(32,b0,16,b1))
 
 void call_bignum_sqr__32_64(void) repeat(bignum_sqr(64,b0,32,b1))
 
-void call_word_bytereverse(void) repeat(word_bytereverse(b0[0]))
+void call_word_bytereverse(void) repeatmore(10,word_bytereverse(b0[0]))
 
-void call_word_clz(void) repeat(word_clz(b0[0]))
+void call_word_clz(void) repeatmore(10,word_clz(b0[0]))
 
-void call_word_ctz(void) repeat(word_ctz(b0[0]))
+void call_word_ctz(void) repeatmore(10,word_ctz(b0[0]))
 
-void call_word_max(void) repeat(word_max(b0[0],b1[0]))
+void call_word_max(void) repeatmore(10,word_max(b0[0],b1[0]))
 
-void call_word_min(void) repeat(word_min(b0[0],b1[0]))
+void call_word_min(void) repeatmore(10,word_min(b0[0],b1[0]))
 
-void call_word_negmodinv(void) repeat(word_negmodinv(b0[0]))
+void call_word_negmodinv(void) repeatmore(10,word_negmodinv(b0[0]))
 
 void call_word_recip(void) repeat(word_recip(b0[0]))
 
@@ -595,7 +602,7 @@ void call_bignum_emontredc_8n__32(void) repeat(bignum_emontredc_8n(32,b0,b1,b2[0
 
 void call_bignum_modoptneg__32(void) repeat(bignum_modoptneg(32,b0,b1[0],b2,b3))
 
-void call_bignum_amontifier__32(void) repeat(bignum_amontifier(32,b0,b1,b2))
+void call_bignum_amontifier__32(void) repeatfewer(10,bignum_amontifier(32,b0,b1,b2))
 
 void call_bignum_amontmul__32(void) repeat(bignum_amontmul(32,b0,b1,b2,b3))
 
@@ -611,7 +618,7 @@ void call_bignum_coprime__4_4(void) repeat(bignum_coprime(4,b1,4,b2,b3))
 
 void call_bignum_coprime__6_6(void) repeat(bignum_coprime(6,b1,6,b2,b3))
 
-void call_bignum_coprime__16_16(void) repeat(bignum_coprime(16,b1,16,b2,b3))
+void call_bignum_coprime__16_16(void) repeatfewer(10,bignum_coprime(16,b1,16,b2,b3))
 
 void call_bignum_copy__32_32(void) repeat(bignum_copy(32,b0,32,b1))
 
@@ -641,15 +648,21 @@ void call_bignum_modadd__32(void) repeat(bignum_modadd(32,b0,b1,b2,b3))
 
 void call_bignum_moddouble__32(void) repeat(bignum_moddouble(32,b0,b1,b2))
 
-void call_bignum_modifier__32(void) repeat(bignum_modifier(32,b0,b1,b2))
+void call_bignum_modexp__8(void) repeatfewer(100,bignum_modexp(8,b0,b1,b2,b3,b4))
+
+void call_bignum_modexp__16(void) repeatfewer(600,bignum_modexp(16,b0,b1,b2,b3,b4))
+
+void call_bignum_modexp__32(void) repeatfewer(2000,bignum_modexp(32,b0,b1,b2,b3,b4))
+
+void call_bignum_modifier__32(void) repeatfewer(5,bignum_modifier(32,b0,b1,b2))
 
 void call_bignum_modinv__4(void) repeat(bignum_modinv(4,b0,b1,b2,b3))
 
 void call_bignum_modinv__6(void) repeat(bignum_modinv(6,b0,b1,b2,b3))
 
-void call_bignum_modinv__9(void) repeat(bignum_modinv(9,b0,b1,b2,b3))
+void call_bignum_modinv__9(void) repeatfewer(10,bignum_modinv(9,b0,b1,b2,b3))
 
-void call_bignum_modinv__16(void) repeat(bignum_modinv(16,b0,b1,b2,b3))
+void call_bignum_modinv__16(void) repeatfewer(10,bignum_modinv(16,b0,b1,b2,b3))
 
 void call_bignum_modsub__32(void) repeat(bignum_modsub(32,b0,b1,b2,b3))
 
@@ -696,22 +709,22 @@ void call_bignum_mux16__32()
   repeat(bignum_mux16(32,b0,(uint64_t *)bb,b2[0]%16));
 }
 
-void call_curve25519_x25519(void) repeat(curve25519_x25519(b0,b1,b2))
-void call_curve25519_x25519_alt(void) repeat(curve25519_x25519_alt(b0,b1,b2))
+void call_curve25519_x25519(void) repeatfewer(10,curve25519_x25519(b0,b1,b2))
+void call_curve25519_x25519_alt(void) repeatfewer(10,curve25519_x25519_alt(b0,b1,b2))
 
-void call_curve25519_x25519_byte(void) repeat(curve25519_x25519_byte((unsigned char *) b0,(unsigned char *) b1,(unsigned char *) b2))
-void call_curve25519_x25519_byte_alt(void) repeat(curve25519_x25519_byte_alt((unsigned char *) b0,(unsigned char *) b1,(unsigned char *) b2))
+void call_curve25519_x25519_byte(void) repeatfewer(10,curve25519_x25519_byte((unsigned char *) b0,(unsigned char *) b1,(unsigned char *) b2))
+void call_curve25519_x25519_byte_alt(void) repeatfewer(10,curve25519_x25519_byte_alt((unsigned char *) b0,(unsigned char *) b1,(unsigned char *) b2))
 
-void call_curve25519_x25519base(void) repeat(curve25519_x25519base(b0,b1))
-void call_curve25519_x25519base_alt(void) repeat(curve25519_x25519base_alt(b0,b1))
+void call_curve25519_x25519base(void) repeatfewer(10,curve25519_x25519base(b0,b1))
+void call_curve25519_x25519base_alt(void) repeatfewer(10,curve25519_x25519base_alt(b0,b1))
 
-void call_curve25519_x25519base_byte(void) repeat(curve25519_x25519base_byte((unsigned char *) b0,(unsigned char *) b1))
-void call_curve25519_x25519base_byte_alt(void) repeat(curve25519_x25519base_byte_alt((unsigned char *) b0,(unsigned char *) b1))
+void call_curve25519_x25519base_byte(void) repeatfewer(10,curve25519_x25519base_byte((unsigned char *) b0,(unsigned char *) b1))
+void call_curve25519_x25519base_byte_alt(void) repeatfewer(10,curve25519_x25519base_byte_alt((unsigned char *) b0,(unsigned char *) b1))
 
 void call_curve25519_ladderstep(void) repeat(curve25519_ladderstep(b0,b1,b2,*b3))
 void call_curve25519_ladderstep_alt(void) repeat(curve25519_ladderstep_alt(b0,b1,b2,*b3))
-void call_curve25519_pxscalarmul(void) repeat(curve25519_pxscalarmul(b0,b1,b2))
-void call_curve25519_pxscalarmul_alt(void) repeat(curve25519_pxscalarmul_alt(b0,b1,b2))
+void call_curve25519_pxscalarmul(void) repeatfewer(10,curve25519_pxscalarmul(b0,b1,b2))
+void call_curve25519_pxscalarmul_alt(void) repeatfewer(10,curve25519_pxscalarmul_alt(b0,b1,b2))
 
 void call_edwards25519_epadd(void) repeat(edwards25519_epadd(b1,b2,b3))
 void call_edwards25519_epadd_alt(void) repeat(edwards25519_epadd_alt(b1,b2,b3))
@@ -725,8 +738,8 @@ void call_edwards25519_pdouble_alt(void) repeat(edwards25519_pdouble_alt(b1,b2))
 void call_edwards25519_pepadd(void) repeat(edwards25519_pepadd(b1,b2,b3))
 void call_edwards25519_pepadd_alt(void) repeat(edwards25519_pepadd_alt(b1,b2,b3))
 
-void call_edwards25519_scalarmulbase(void) repeat(edwards25519_scalarmulbase(b0,b1))
-void call_edwards25519_scalarmulbase_alt(void) repeat(edwards25519_scalarmulbase_alt(b0,b1))
+void call_edwards25519_scalarmulbase(void) repeatfewer(10,edwards25519_scalarmulbase(b0,b1))
+void call_edwards25519_scalarmulbase_alt(void) repeatfewer(10,edwards25519_scalarmulbase_alt(b0,b1))
 
 void call_p256_montjadd(void) repeat(p256_montjadd(b1,b2,b3))
 void call_p256_montjdouble(void) repeat(p256_montjdouble(b1,b2))
@@ -755,7 +768,7 @@ int main(int argc, char *argv[])
   char *argending;
   long negreps;
   function_to_test = "";
-  inner_reps = INNER_REPS;
+  default_reps = INNER_REPS;
 
   if (argc >= 2)
    { negreps = strtol(argv[1],&argending,10);
@@ -770,7 +783,7 @@ int main(int argc, char *argv[])
         else function_to_test = argv[1];
       }
      else
-      { inner_reps = -negreps;
+      { default_reps = -negreps;
         if (argc >= 3) function_to_test = argv[2];
       }
    }
@@ -785,8 +798,8 @@ int main(int argc, char *argv[])
   printf("ops/sec = average number of operations per second = 10^9 / average timing.\n");
   printf("ARITHMEAN = arithmetic mean of all average function times, in nanoseconds.\n");
   printf("GEOMEAN = geometric mean of all average function times, in nanoseconds.\n");
-  printf("Repetitions per function = %d (outer) * 65 (bit densities) * %"PRIu64" (inner) = %"PRIu64"\n",
-         OUTER_REPS,inner_reps,OUTER_REPS*65*inner_reps);
+  printf("Default repetitions per function = %d (outer) * 65 (bit densities) * %"PRIu64" (inner) = %"PRIu64"\n",
+         OUTER_REPS,default_reps,OUTER_REPS*65*inner_reps);
   printf("---------------------------------------------------------------------------------\n\n");
   #endif
 
@@ -937,6 +950,9 @@ int main(int argc, char *argv[])
   timingtest(all,"bignum_mod_sm2_4",call_bignum_mod_sm2_4);
   timingtest(all,"bignum_modadd (32 -> 32)" ,call_bignum_modadd__32);
   timingtest(all,"bignum_moddouble (32 -> 32)" ,call_bignum_moddouble__32);
+  timingtest(all,"bignum_modexp (8)",call_bignum_modexp__8);
+  timingtest(all,"bignum_modexp (16)",call_bignum_modexp__16);
+  timingtest(all,"bignum_modexp (32)",call_bignum_modexp__32);
   timingtest(all,"bignum_modifier (32)",call_bignum_modifier__32);
   timingtest(all,"bignum_modinv (4x4 -> 4)",call_bignum_modinv__4);
   timingtest(all,"bignum_modinv (6x6 -> 6)",call_bignum_modinv__6);

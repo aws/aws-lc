@@ -170,6 +170,7 @@ BIGNUM_OBJ = curve25519/bignum_add_p25519.o \
              generic/bignum_madd.o \
              generic/bignum_modadd.o \
              generic/bignum_moddouble.o \
+             generic/bignum_modexp.o \
              generic/bignum_modifier.o \
              generic/bignum_modinv.o \
              generic/bignum_modoptneg.o \
@@ -393,6 +394,8 @@ HOLLIGHT:=HOLLIGHT_DIR=$(HOLDIR) ocaml -init $(HOLDIR)/hol.ml
 
 PROOFS = $(OBJ:.o=.correct)
 
+# Cases where a proof uses other proofs for lemmas and/or subroutines
+
 curve25519/curve25519_x25519.correct: generic/bignum_modinv.o generic/bignum_modinv.obj proofs/curve25519_x25519.ml curve25519/curve25519_x25519.o curve25519/curve25519_x25519.obj ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/curve25519_x25519.ml";;') | $(HOLLIGHT) 2>&1) >$@
 curve25519/curve25519_x25519_alt.correct: generic/bignum_modinv.o generic/bignum_modinv.obj proofs/curve25519_x25519_alt.ml curve25519/curve25519_x25519_alt.o curve25519/curve25519_x25519_alt.obj ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/curve25519_x25519_alt.ml";;') | $(HOLLIGHT) 2>&1) >$@
 curve25519/curve25519_x25519_byte.correct: generic/bignum_modinv.o generic/bignum_modinv.obj proofs/curve25519_x25519_byte.ml curve25519/curve25519_x25519_byte.o curve25519/curve25519_x25519_byte.obj ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/curve25519_x25519_byte.ml";;') | $(HOLLIGHT) 2>&1) >$@
@@ -401,6 +404,9 @@ curve25519/curve25519_x25519base.correct: generic/bignum_modinv.o generic/bignum
 curve25519/curve25519_x25519base_alt.correct: generic/bignum_modinv.o generic/bignum_modinv.obj proofs/curve25519_x25519base_alt.ml curve25519/curve25519_x25519base_alt.o curve25519/curve25519_x25519base_alt.obj ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/curve25519_x25519base_alt.ml";;') | $(HOLLIGHT) 2>&1) >$@
 curve25519/curve25519_x25519base_byte.correct: generic/bignum_modinv.o generic/bignum_modinv.obj proofs/curve25519_x25519base_byte.ml curve25519/curve25519_x25519base_byte.o curve25519/curve25519_x25519base_byte.obj ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/curve25519_x25519base_byte.ml";;') | $(HOLLIGHT) 2>&1) >$@
 curve25519/curve25519_x25519base_byte_alt.correct: generic/bignum_modinv.o generic/bignum_modinv.obj proofs/curve25519_x25519base_byte_alt.ml curve25519/curve25519_x25519base_byte_alt.o curve25519/curve25519_x25519base_byte_alt.obj ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/curve25519_x25519base_byte_alt.ml";;') | $(HOLLIGHT) 2>&1) >$@
+generic/bignum_modexp.correct: generic/bignum_amontifier.correct generic/bignum_amontmul.correct generic/bignum_demont.correct generic/bignum_mux.correct proofs/bignum_modexp.ml generic/bignum_modexp.o generic/bignum_modexp.obj ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/bignum_modexp.ml";;') | $(HOLLIGHT) 2>&1) >$@
+
+# All other other instances are standalone
 
 curve25519/%.correct: proofs/%.ml curve25519/%.o curve25519/%.obj ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/$*.ml";;') | $(HOLLIGHT) 2>&1) >$@
 fastmul/%.correct: proofs/%.ml fastmul/%.o fastmul/%.obj ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/$*.ml";;') | $(HOLLIGHT) 2>&1) >$@
