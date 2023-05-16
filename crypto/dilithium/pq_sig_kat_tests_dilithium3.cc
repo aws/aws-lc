@@ -77,6 +77,6 @@
 }
 
 TEST(Dilithium3Test, KAT) {
-  FileTestGTest("crypto/evp_extra/pq_sig_kat_tests_dilithium3.txt", RunTest);
+  FileTestGTest("crypto/dilithium/kat/dilithium3_r3.txt", RunTest);
 }
 
