@@ -29,7 +29,7 @@ namespace acvp {
 // that an ACVP request can contain.
 constexpr size_t kMaxArgs = 9;
 // kMaxNameLength is the maximum length of a function name in an ACVP request.
-constexpr size_t kMaxNameLength = 30;
+constexpr size_t kMaxNameLength = 35;
 
 // RequestBuffer holds various buffers needed for parsing an ACVP request. It
 // can be reused between requests.

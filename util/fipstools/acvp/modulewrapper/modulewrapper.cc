@@ -2087,6 +2087,7 @@ static bool RSASigGen(const Span<const uint8_t> args[], ReplyCallback write_repl
   }
   sig.resize(sig_len);
   if (!EVP_DigestSign(ctx.get(), sig.data(), &sig_len, msg.data(), msg.size())) {
+    LOG_ERROR("EVP_DigestSign() failed\n");
     return false;
   }
 
@@ -2440,6 +2441,7 @@ static struct {
     {"RSA/sigGen/SHA2-256/pkcs1v1.5", 2, RSASigGen<EVP_sha256, false>},
     {"RSA/sigGen/SHA2-384/pkcs1v1.5", 2, RSASigGen<EVP_sha384, false>},
     {"RSA/sigGen/SHA2-512/pkcs1v1.5", 2, RSASigGen<EVP_sha512, false>},
+    {"RSA/sigGen/SHA2-512/256/pkcs1v1.5", 2, RSASigGen<EVP_sha512_256, false>},
     {"RSA/sigGen/SHA-1/pkcs1v1.5", 2, RSASigGen<EVP_sha1, false>},
     {"RSA/sigGen/SHA2-224/pss", 2, RSASigGen<EVP_sha224, true>},
     {"RSA/sigGen/SHA2-256/pss", 2, RSASigGen<EVP_sha256, true>},
