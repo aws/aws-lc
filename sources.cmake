@@ -49,6 +49,7 @@ set(
   crypto/cipher_extra/test/nist_cavp/tdes_cbc.txt
   crypto/cipher_extra/test/nist_cavp/tdes_ecb.txt
   crypto/curve25519/ed25519_tests.txt
+  crypto/dilithium/pq_sig_kat_tests_dilithium3.txt
   crypto/ecdh_extra/ecdh_tests.txt
   crypto/evp_extra/kbkdf_expand_tests.txt
   crypto/evp_extra/sshkdf_tests.txt
