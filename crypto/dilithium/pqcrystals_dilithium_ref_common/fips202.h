@@ -10,7 +10,7 @@
 #define SHA3_256_RATE 136
 #define SHA3_512_RATE 72
 
-#define FIPS202_PREFIX(s) pqcrystals_kyber_fips202_ref_ ## s
+#define FIPS202_PREFIX(s) pqcrystals_dilithium_fips202_ref_##s
 
 #ifdef BORINGSSL_PREFIX
 #define FIPS202_NAMESPACE(s) BORINGSSL_ADD_PREFIX(BORINGSSL_PREFIX, FIPS202_PREFIX(s))
@@ -22,6 +22,9 @@ typedef struct {
   uint64_t s[25];
   unsigned int pos;
 } keccak_state;
+
+#define KeccakF_RoundConstants FIPS202_NAMESPACE(KeccakF_RoundConstants)
+extern const uint64_t KeccakF_RoundConstants[];
 
 #define shake128_init FIPS202_NAMESPACE(shake128_init)
 void shake128_init(keccak_state *state);

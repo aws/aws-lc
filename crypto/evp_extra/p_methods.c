@@ -10,6 +10,9 @@
 static const EVP_PKEY_METHOD *const non_fips_pkey_evp_methods[] = {
   &ed25519_pkey_meth,
   &x25519_pkey_meth,
+#ifdef ENABLE_DILITHIUM
+  &dilithium3_pkey_meth,
+#endif
   &kem_pkey_meth,
 };
 
@@ -20,6 +23,9 @@ static const EVP_PKEY_ASN1_METHOD *const asn1_evp_pkey_methods[] = {
   &dsa_asn1_meth,
   &ed25519_asn1_meth,
   &x25519_asn1_meth,
+#ifdef ENABLE_DILITHIUM
+  &dilithium3_asn1_meth,
+#endif
   &kem_asn1_meth,
 };
 
