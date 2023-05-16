@@ -283,11 +283,11 @@ let decode = new_definition `!w:int32. decode w =
     SOME (arm_AND_VEC (QREG' Rd) (QREG' Rn) (QREG' Rm) (if q then 128 else 64))
 
   | [0:1; q; 0b001110000:9; imm5:5; 0b000011:6; Rn:5; Rd:5] ->
-    // DUP
+    // DUP (general)
     if q /\ word_subword imm5 (0,4) = (word 0b1000:4 word) then
       // DUP Vd.2d, Xn
       // TODO: support more cases of DUP
-      SOME (arm_DUP (QREG' Rd) (XREG' Rn))
+      SOME (arm_DUP_GEN (QREG' Rd) (XREG' Rn))
     else NONE
 
   | [0:1; q; 0b101110000:9; Rm:5; 0:1; imm4:4; 0:1; Rn:5; Rd:5] ->
@@ -296,11 +296,11 @@ let decode = new_definition `!w:int32. decode w =
     else if q then
       let pos = (val imm4) * 8 in
       // datasize is fixed to 128.
-      SOME (arm_EXT (QREG' Rd) (QREG' Rm) (QREG' Rn) pos)
+      SOME (arm_EXT (QREG' Rd) (QREG' Rn) (QREG' Rm) pos)
     else NONE
 
   | [0:1; q; 1:1; 0b011110:6; immh:4; abc:3; cmode:4; 0b01:2; defgh:5; Rd:5] ->
-    // MOVI, USRA (Vector)
+    // MOVI, USRA (Vector), SLI (Vector)
     if val immh = 0 then
       // MOVI
       if q then
@@ -326,6 +326,23 @@ let decode = new_definition `!w:int32. decode w =
         let shift = (esize * 2) - val(word_join immh immb:(7)word) in
         // unsigned is true, round is false, accumulate is true
         SOME (arm_USRA_VEC (QREG' Rd) (QREG' Rn) shift esize datasize)
+    else if cmode = (word 0b0101:(4)word) then
+      // SLI (vector)
+      let immb = abc in
+      let Rn = defgh in
+      // if immh = 0, this is MOVI
+      if bit 3 immh /\ ~q then NONE // "UNDEFINED"
+      else if ~q then NONE // 64-bit case is unsupported
+      else
+        let highest_set_bit =
+          if bit 3 immh then 3 else
+          if bit 2 immh then 2 else
+          if bit 1 immh then 1 else 0 in
+        let esize = 8 * (2 EXP highest_set_bit) in
+        let datasize = 128 in
+        let elements = datasize DIV esize in
+        let shift = val (word_join immh immb:(7)word) - esize in
+        SOME (arm_SLI_VEC (QREG' Rd) (QREG' Rn) shift esize)
     else NONE
 
   | [0:1; q; 0b001110:6; size:2; 0b1:1; Rm:5; 0b100111:6; Rn:5; Rd:5] ->
@@ -384,12 +401,12 @@ let decode = new_definition `!w:int32. decode w =
       SOME (arm_UADDLP (QREG' Rd) (QREG' Rn) (val esize))
 
   | [0:1; q; 0b101110:6; size:2; 0b1:1; Rm:5; 0b100000:6; Rn:5; Rd:5] ->
-    // UMLAL
+    // UMLAL (vector)
     if q then NONE // upper part is unsupported yet
     else if size = (word 0b11: (2)word) then NONE // "UNDEFINED"
     else
       let esize: (64)word = word_shl (word 8: (64)word) (val size) in
-      SOME (arm_UMLAL (QREG' Rd) (QREG' Rn) (QREG' Rm) (val esize))
+      SOME (arm_UMLAL_VEC (QREG' Rd) (QREG' Rn) (QREG' Rm) (val esize))
 
   | [0:1; q; 0b001110000:9; imm5:5; 0b001111:6; Rn:5; Rd:5] ->
     // UMOV
@@ -399,12 +416,20 @@ let decode = new_definition `!w:int32. decode w =
       SOME (arm_UMOV (WREG' Rd) (QREG' Rn) (val (word_subword imm5 (3,2): 2 word)) 4)
     else NONE // v.h, v.b are unsupported
 
+  | [0:1; 0:1; 0b101110:6; size:2; 1:1; Rm:5; 0b110000:6; Rn:5; Rd:5] ->
+    // UMULL (vector, Q = 0). UMULL2 (Q = 1) isn't implemented yet.
+    if size = (word 0b11:(2)word) then NONE // UNDEFINED
+    else
+      let esize = 8 * (2 EXP val size) in // the bitwidth of src elements
+      // datasize is 64. elements is datasize / esize.
+      SOME (arm_UMULL_VEC (QREG' Rd) (QREG' Rn) (QREG' Rm) esize)
+
   | [0:1; q; 0b001110:6; size:2; 0b0:1; Rm:5; 0b000110:6; Rn:5; Rd:5] ->
     // UZIP1
     if ~q then NONE // datasize = 64 is unsupported yet
     else
       let esize: (64)word = word_shl (word 8: (64)word) (val size) in
-      SOME (arm_UZIP1 (QREG' Rd) (QREG' Rn) (QREG' Rm) (val esize))
+      SOME (arm_UZP1 (QREG' Rd) (QREG' Rn) (QREG' Rm) (val esize))
 
   | [0:1; q; 0b001110:6; size:2; 0:1; Rm:5; 0b001110:6; Rn:5; Rd:5] ->
     // ZIP1
@@ -986,7 +1011,11 @@ let rec decode_all = function
   let th1 = READ_WORD_CONV (mk_comb (`read_int32`, tm)) in
   let a,next = dest_pair (rand (rhs (concl th1))) in
   let th = DECODE_CONV (mk_comb (`decode`, a)) in
-  rand (rhs (concl th)) :: decode_all next;;
+  let h = try rand (rhs (concl th))
+    with Failure msg ->
+      let msg' = "Term `" ^ (string_of_term (concl th)) ^ "`: " ^ msg in
+      failwith msg' in
+  h :: decode_all next;;
 
 let dest_cons4 =
   let assert_byte n = function
