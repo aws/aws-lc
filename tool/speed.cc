@@ -724,7 +724,7 @@ static bool SpeedAEADSeal(const EVP_AEAD *aead, const std::string &name,
                           size_t ad_len, const std::string &selected) {
   return SpeedAEAD(aead, name, ad_len, selected, evp_aead_seal);
 }
-
+#if AWSLC_API_VERSION > 16
 static bool SpeedSingleKEM(const std::string &name, int nid, const std::string &selected) {
   if (!selected.empty() && name.find(selected) == std::string::npos) {
     return true;
@@ -803,6 +803,7 @@ static bool SpeedKEM(std::string selected) {
          SpeedSingleKEM("Kyber768_R3", NID_KYBER768_R3, selected) &&
          SpeedSingleKEM("Kyber1024_R3", NID_KYBER1024_R3, selected);
 }
+#endif
 #endif
 
 static bool SpeedAESBlock(const std::string &name, unsigned bits,
@@ -2081,7 +2082,7 @@ static bool SpeedDHcheck(std::string selected) {
   return true;
 }
 
-#if !defined(OPENSSL_BENCHMARK) && !defined(BORINGSSL_BENCHMARK)
+#if !defined(OPENSSL_BENCHMARK) && !defined(BORINGSSL_BENCHMARK) && AWSLC_API_VERSION > 16
 static bool SpeedPKCS8(const std::string &selected) {
   if (!selected.empty() && selected.find("pkcs8") == std::string::npos) {
     return true;
@@ -2236,7 +2237,7 @@ static bool parseCommaArgumentToGlobalVector(std::vector<size_t> &vector,
 }
 
 bool Speed(const std::vector<std::string> &args) {
-#if defined(OPENSSL_IS_AWSLC)
+#if defined(OPENSSL_IS_AWSLC) && AWSLC_API_VERSION > 16
   // For mainline AWS-LC this is a no-op, however if speed.cc built with an old
   // branch of AWS-LC SHA3 might be disabled by default and fail the benchmark.
   EVP_MD_unstable_sha3_enable(true);
@@ -2311,7 +2312,7 @@ bool Speed(const std::vector<std::string> &args) {
      !SpeedHash(EVP_sha384(), "SHA-384", selected) ||
      !SpeedHash(EVP_sha512(), "SHA-512", selected) ||
      // OpenSSL 1.0 doesn't support SHA3.
-#if !defined(OPENSSL_1_0_BENCHMARK)
+#if !defined(OPENSSL_1_0_BENCHMARK) && AWSLC_API_VERSION > 16
      !SpeedHash(EVP_sha3_224(), "SHA3-224", selected) ||
      !SpeedHash(EVP_sha3_256(), "SHA3-256", selected) ||
      !SpeedHash(EVP_sha3_384(), "SHA3-384", selected) ||
@@ -2342,7 +2343,9 @@ bool Speed(const std::vector<std::string> &args) {
      !SpeedDHcheck(selected)
 #if !defined(OPENSSL_BENCHMARK)
      ||
+#if AWSLC_API_VERSION > 16
      !SpeedKEM(selected) ||
+#endif
      !SpeedAEADSeal(EVP_aead_aes_128_gcm(), "AEAD-AES-128-GCM", kTLSADLen, selected) ||
      !SpeedAEADOpen(EVP_aead_aes_128_gcm(), "AEAD-AES-128-GCM", kTLSADLen, selected) ||
      !SpeedAEADSeal(EVP_aead_aes_256_gcm(), "AEAD-AES-256-GCM", kTLSADLen, selected) ||
@@ -2373,7 +2376,7 @@ bool Speed(const std::vector<std::string> &args) {
      !SpeedTrustToken("TrustToken-Exp2PMB-Batch1", TRUST_TOKEN_experiment_v2_pmb(), 1, selected) ||
      !SpeedTrustToken("TrustToken-Exp2PMB-Batch10", TRUST_TOKEN_experiment_v2_pmb(), 10, selected) ||
 #endif
-#if !defined(OPENSSL_BENCHMARK) && !defined(BORINGSSL_BENCHMARK)
+#if !defined(OPENSSL_BENCHMARK) && !defined(BORINGSSL_BENCHMARK) && AWSLC_API_VERSION > 16
      !SpeedPKCS8(selected) ||
 #endif
      !SpeedBase64(selected) ||
