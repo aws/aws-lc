@@ -55,6 +55,7 @@
  * [including the GNU Public Licence.] */
 
 #include <openssl/rsa.h>
+#include <openssl/evp.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -477,6 +478,35 @@ TEST(RSATest, TestDecrypt) {
       rsa.get(), &out_len, out, sizeof(out), kTwoPrimeEncryptedMessage,
       sizeof(kTwoPrimeEncryptedMessage), RSA_PKCS1_PADDING));
   EXPECT_EQ(Bytes("hello world"), Bytes(out, out_len));
+}
+
+TEST(RSATest, CheckSigGen) {
+  char msg_str[] = "9AF8F9B2191A68753ACDA3EB3A4724DFA3D9EE6FE04D8849E7B476D2CF160B8987FD7C1F63120DA2C3E56D2AF4DC7865F9DD5E720C1ADD17185CC427BC2C5BA8F897C7B2AD1EBD024CFB8ABD64A0A6ACDB33FE2ABF04214EB0293D2015599E4DA3D2CB9B895498F8081E762D698D40567DDA805B7AFE7BC33250064517C620C2";
+  unsigned char* msg = (unsigned char*) msg_str;
+
+  RSA *rsa = RSA_new();
+  if (!RSA_generate_key_fips(rsa, 2048, NULL)) {
+    abort();
+  }
+
+  EVP_PKEY *evp_pkey = EVP_PKEY_new();
+  ASSERT_TRUE(evp_pkey && EVP_PKEY_set1_RSA(evp_pkey, rsa));
+
+  const EVP_MD *const md = EVP_sha512_256();
+
+  uint8_t sig;
+  size_t sig_len_siggen;
+  EVP_MD_CTX ctx;
+  EVP_MD_CTX_init(&ctx);
+  EVP_PKEY_CTX *pctx;
+
+  int padding = RSA_PKCS1_PADDING;
+
+  ASSERT_TRUE(EVP_DigestSignInit(&ctx, &pctx, md, NULL, evp_pkey) &&
+      EVP_PKEY_CTX_set_rsa_padding(pctx, padding) &&
+      EVP_DigestSign(&ctx, NULL, &sig_len_siggen, msg, 256));
+
+  ASSERT_TRUE(EVP_DigestSign(&ctx, &sig, &sig_len_siggen, msg, 256));
 }
 
 TEST(RSATest, CheckFIPS) {
