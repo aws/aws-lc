@@ -594,6 +594,8 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
               "hashAlg": "SHA2-384"
             }, {
               "hashAlg": "SHA2-512"
+            }, {
+              "hashAlg": "SHA2-512/256"
             }]
           }]
         },{
@@ -608,6 +610,8 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
               "hashAlg": "SHA2-384"
             }, {
               "hashAlg": "SHA2-512"
+            }, {
+              "hashAlg": "SHA2-512/256"
             }]
           }]
         },{
@@ -622,6 +626,8 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
               "hashAlg": "SHA2-384"
             }, {
               "hashAlg": "SHA2-512"
+            }, {
+              "hashAlg": "SHA2-512/256"
             }]
           }]
         },{
@@ -708,6 +714,8 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
             }, {
               "hashAlg": "SHA2-512"
             }, {
+              "hashAlg": "SHA2-512/256"
+            }, {
               "hashAlg": "SHA-1"
             }]
           }]
@@ -723,6 +731,8 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
               "hashAlg": "SHA2-384"
             }, {
               "hashAlg": "SHA2-512"
+            }, {
+              "hashAlg": "SHA2-512/256"
             }, {
               "hashAlg": "SHA-1"
             }]
@@ -740,6 +750,8 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
             }, {
               "hashAlg": "SHA2-512"
             }, {
+              "hashAlg": "SHA2-512/256"
+            }, {
               "hashAlg": "SHA-1"
             }]
           }]
@@ -755,6 +767,8 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
               "hashAlg": "SHA2-384"
             }, {
               "hashAlg": "SHA2-512"
+            }, {
+              "hashAlg": "SHA2-512/256"
             }, {
               "hashAlg": "SHA-1"
             }]
@@ -2375,6 +2389,7 @@ static struct {
     {"RSA/sigGen/SHA2-256/pkcs1v1.5", 2, RSASigGen<EVP_sha256, false>},
     {"RSA/sigGen/SHA2-384/pkcs1v1.5", 2, RSASigGen<EVP_sha384, false>},
     {"RSA/sigGen/SHA2-512/pkcs1v1.5", 2, RSASigGen<EVP_sha512, false>},
+    {"RSA/sigGen/SHA2-512/256/pkcs1v1.5", 2, RSASigGen<EVP_sha512_256, false>},
     {"RSA/sigGen/SHA-1/pkcs1v1.5", 2, RSASigGen<EVP_sha1, false>},
     {"RSA/sigGen/SHA2-224/pss", 2, RSASigGen<EVP_sha224, true>},
     {"RSA/sigGen/SHA2-256/pss", 2, RSASigGen<EVP_sha256, true>},
@@ -2386,6 +2401,7 @@ static struct {
     {"RSA/sigVer/SHA2-256/pkcs1v1.5", 4, RSASigVer<EVP_sha256, false>},
     {"RSA/sigVer/SHA2-384/pkcs1v1.5", 4, RSASigVer<EVP_sha384, false>},
     {"RSA/sigVer/SHA2-512/pkcs1v1.5", 4, RSASigVer<EVP_sha512, false>},
+    {"RSA/sigVer/SHA2-512/256/pkcs1v1.5", 4, RSASigVer<EVP_sha512_256, false>},
     {"RSA/sigVer/SHA-1/pkcs1v1.5", 4, RSASigVer<EVP_sha1, false>},
     {"RSA/sigVer/SHA2-224/pss", 4, RSASigVer<EVP_sha224, true>},
     {"RSA/sigVer/SHA2-256/pss", 4, RSASigVer<EVP_sha256, true>},
