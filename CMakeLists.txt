@@ -18,6 +18,7 @@ endif()
 
 option(BUILD_TESTING "Build all test targets for AWS-LC" ON)
 option(BUILD_LIBSSL "Build libssl for AWS-LC" ON)
+option(ENABLE_DILITHIUM "Enable Dilithium signatures in the EVP API" OFF)
 option(DISABLE_PERL "Disable Perl for AWS-LC" OFF)
 option(DISABLE_GO "Disable Go for AWS-LC" OFF)
 include(cmake/go.cmake)
@@ -84,6 +85,11 @@ endif()
 
 if(NOT PERL_EXECUTABLE OR NOT GO_EXECUTABLE)
   set(GENERATE_CODE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/generated-src")
+endif()
+
+
+if(ENABLE_DILITHIUM)
+  add_definitions(-DENABLE_DILITHIUM)
 endif()
 
 if(USE_CUSTOM_LIBCXX)
@@ -682,7 +688,14 @@ elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64|AMD64")
 elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "x86|i386|i686")
   set(ARCH "x86")
 elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64.*|ARM64|aarch64")
-  set(ARCH "aarch64")
+  # If ARCH is originally detected as 64-bit, perform an additional check
+  # to determine whether to build as 32-bit or 64-bit. This happens in some
+  # cases such as when building on an 64-bit CPU where the OS is 32-bit.
+  if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+    set(ARCH "aarch64")
+  else()
+    set(ARCH "arm")
+  endif()
 elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^arm*")
   set(ARCH "arm")
 elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "powerpc64le|ppc64le")
@@ -827,6 +840,8 @@ if(BUILD_TESTING)
     set(MEM_TEST_EXEC mem_test)
     set(MEM_SET_TEST_EXEC mem_set_test)
   endif()
+  
+  add_subdirectory(util/fipstools/acvp/modulewrapper)
 endif()
 
 add_subdirectory(crypto)
@@ -835,7 +850,6 @@ if(BUILD_LIBSSL)
   add_subdirectory(tool)
 endif()
 add_subdirectory(util/fipstools)
-add_subdirectory(util/fipstools/acvp/modulewrapper)
 
 if(FUZZ)
   if(LIBFUZZER_FROM_DEPS)
