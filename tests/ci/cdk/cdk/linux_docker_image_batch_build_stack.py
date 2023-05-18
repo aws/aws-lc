@@ -1,7 +1,8 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 
-from aws_cdk import core, aws_codebuild as codebuild, aws_iam as iam, aws_ec2 as ec2
+from aws_cdk import Duration, Stack, aws_codebuild as codebuild, aws_iam as iam, aws_ec2 as ec2
+from constructs import Construct
 
 from util.metadata import AWS_ACCOUNT, GITHUB_REPO_OWNER, GITHUB_REPO_NAME, GITHUB_SOURCE_VERSION, LINUX_AARCH_ECR_REPO, \
     LINUX_X86_ECR_REPO
@@ -9,10 +10,10 @@ from util.iam_policies import code_build_batch_policy_in_json, ecr_power_user_po
 from util.yml_loader import YmlLoader
 
 
-class LinuxDockerImageBatchBuildStack(core.Stack):
+class LinuxDockerImageBatchBuildStack(Stack):
     """Define a temporary stack used to batch build Linux Docker images. After build, this stack will be destroyed."""
 
-    def __init__(self, scope: core.Construct, id: str, **kwargs) -> None:
+    def __init__(self, scope: Construct, id: str, **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
 
         # Define CodeBuild resource.
@@ -61,6 +62,6 @@ class LinuxDockerImageBatchBuildStack(core.Stack):
                 build_image=codebuild.LinuxBuildImage.STANDARD_4_0),
             environment_variables=environment_variables,
             role=role,
-            timeout=core.Duration.minutes(180),
+            timeout=Duration.minutes(180),
             build_spec=codebuild.BuildSpec.from_object(build_spec_content))
         project.enable_batch_builds()

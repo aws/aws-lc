@@ -18,6 +18,7 @@
 #include "../delocate.h"
 #include "internal.h"
 
+#if !defined(OPENSSL_SMALL)
 // We have two implementations of the field arithmetic for P-521 curve:
 //   - Fiat-crypto
 //   - s2n-bignum
@@ -32,7 +33,6 @@
 // when Fiat-crypto is used, or as:
 //   #define p521_felem_add(out, in0, in1) bignum_add_p521(out, in0, in1)
 // when s2n-bignum is used.
-//
 #if !defined(OPENSSL_NO_ASM) && \
     (defined(OPENSSL_LINUX) ||  defined(OPENSSL_APPLE)) && \
     (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64)) && \
@@ -1095,3 +1095,4 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistp521_method) {
 // ----------------------------------------------------------------------------
 //  Analysis of the doubling case occurrence in the Joye-Tunstall recoding:
 //  see the analysis at the bottom of the |p384.c| file.
+#endif // !defined(OPENSSL_SMALL)

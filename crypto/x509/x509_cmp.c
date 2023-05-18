@@ -233,6 +233,13 @@ X509 *X509_find_by_subject(const STACK_OF(X509) *sk, X509_NAME *name) {
   return NULL;
 }
 
+EVP_PKEY *X509_get0_pubkey(const X509 *x) {
+    if ((x == NULL) || (x->cert_info == NULL)) {
+        return NULL;
+    }
+    return (X509_PUBKEY_get0(x->cert_info->key));
+}
+
 EVP_PKEY *X509_get_pubkey(X509 *x) {
   if ((x == NULL) || (x->cert_info == NULL)) {
     return NULL;
