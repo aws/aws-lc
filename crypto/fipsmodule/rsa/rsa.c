@@ -423,7 +423,8 @@ struct pkcs1_sig_prefix {
 };
 
 // kPKCS1SigPrefixes contains the ASN.1 prefixes for PKCS#1 signatures with
-// different hash functions.
+// different hash functions. These are defined in RFC-8017 Section 9.2
+// https://datatracker.ietf.org/doc/html/rfc8017#section-9.2
 static const struct pkcs1_sig_prefix kPKCS1SigPrefixes[] = {
     {
      NID_md5,
@@ -471,8 +472,8 @@ static const struct pkcs1_sig_prefix kPKCS1SigPrefixes[] = {
      NID_sha512_256,
      SHA512_256_DIGEST_LENGTH,
      19,
-     {0x30, 0x51, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03,
-      0x04, 0x02, 0x03, 0x05, 0x00, 0x04, 0x40}, //same as the sha512 one for the time being
+     {0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03,
+      0x04, 0x02, 0x06, 0x05, 0x00, 0x04, 0x20},
     },
     {
      NID_undef, 0, 0, {0},
