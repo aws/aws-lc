@@ -2253,7 +2253,8 @@ static const argument_t kArguments[] = {
     {
         "-filter",
         kOptionalArgument,
-        "A filter on the speed tests to run",
+        "A comma-separated list of filters on the speed tests to run. "
+        "Each filter is applied in independent runs.",
     },
     {
         "-timeout",
