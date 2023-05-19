@@ -18,6 +18,7 @@ endif()
 
 option(BUILD_TESTING "Build all test targets for AWS-LC" ON)
 option(BUILD_LIBSSL "Build libssl for AWS-LC" ON)
+option(ENABLE_DILITHIUM "Enable Dilithium signatures in the EVP API" OFF)
 option(DISABLE_PERL "Disable Perl for AWS-LC" OFF)
 option(DISABLE_GO "Disable Go for AWS-LC" OFF)
 include(cmake/go.cmake)
@@ -84,6 +85,11 @@ endif()
 
 if(NOT PERL_EXECUTABLE OR NOT GO_EXECUTABLE)
   set(GENERATE_CODE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/generated-src")
+endif()
+
+
+if(ENABLE_DILITHIUM)
+  add_definitions(-DENABLE_DILITHIUM)
 endif()
 
 if(USE_CUSTOM_LIBCXX)
