@@ -2283,6 +2283,11 @@ static const argument_t kArguments[] = {
         "the JSON field for bytesPerCall will be omitted.",
     },
     {
+        "-dryrun",
+        kBooleanArgument,
+        "Prints configuration only (includes parsed arguments) ",
+    },
+    {
         "",
         kOptionalArgument,
         "",
@@ -2342,6 +2347,28 @@ static bool parseCommaArgumentToGlobalVector(std::vector<std::string> &vector,
     return true;
 }
 
+static void printInputCommaSeparated(std::vector<size_t> vec) {
+  fprintf(stdout, "[");
+  for (size_t i = 0; i < vec.size(); i++) {
+    fprintf(stdout, "%zu", vec[i]);
+    if (i != vec.size() - 1) {
+      fprintf(stdout, ", ");
+    }
+  }
+  fprintf(stdout, "]\n");
+}
+
+static void printInputCommaSeparated(std::vector<std::string> vec) {
+  fprintf(stdout, "[");
+  for (size_t i = 0; i < vec.size(); i++) {
+    fprintf(stdout, "%s", vec[i].c_str());
+    if (i != vec.size() - 1) {
+      fprintf(stdout, ", ");
+    }
+  }
+  fprintf(stdout, "]\n");
+}
+
 bool Speed(const std::vector<std::string> &args) {
 #if defined(OPENSSL_IS_AWSLC) && AWSLC_API_VERSION > 16
   // For mainline AWS-LC this is a no-op, however if speed.cc built with an old
@@ -2380,6 +2407,24 @@ bool Speed(const std::vector<std::string> &args) {
         args_map, "-primes")) {
       return false;
     }
+  }
+
+  bool dryrun = false;
+  if (args_map.count("-dryrun") != 0) {
+    dryrun = true;
+  }
+
+  if (dryrun) {
+    fprintf(stdout, "dryrun: %s\n", dryrun ? "true" : "false");
+    fprintf(stdout, "json: %s\n", g_print_json ? "true" : "false");
+    fprintf(stdout, "timeout: %" PRIu64 "\n", g_timeout_seconds);
+    fprintf(stdout, "chunks: ");
+    printInputCommaSeparated(g_chunk_lengths);
+    fprintf(stdout, "primes: ");
+    printInputCommaSeparated(g_prime_bit_lengths);
+    fprintf(stdout, "filter: ");
+    printInputCommaSeparated(g_filters);
+    exit(0);
   }
 
   // kTLSADLen is the number of bytes of additional data that TLS passes to
