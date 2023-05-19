@@ -1098,7 +1098,15 @@ static bool HashMCTSha3(const Span<const uint8_t> args[],
       {Span<const uint8_t>(md[1000])});
 }
 
+static unsigned char* BuildLDTMessage(const bssl::Span<const uint8_t> part_msg, int times) {
+  size_t full_msg_size = part_msg.size() * times;
+  unsigned char* full_msg = (unsigned char*) malloc (full_msg_size);
+  for(int i = 0; i < times; i++) {
+    memcpy(full_msg + i * part_msg.size(), part_msg.data(), part_msg.size());
+  }
 
+  return full_msg;
+}
 
 template <uint8_t *(*OneShotHash)(const uint8_t *, size_t, uint8_t *),
           size_t DigestLength>
@@ -1107,14 +1115,9 @@ static bool HashLDT(const Span<const uint8_t> args[], ReplyCallback write_reply)
   int times;
   memcpy(&times, args[1].data(), sizeof(int));
 
-  unsigned char *msg;
-  size_t msg_size = args[0].size() * times;
-  msg = (unsigned char*) malloc (msg_size);
-  for(int i = 0; i < times; i++) {
-    memcpy(msg + i*args[0].size(), args[0].data(), args[0].size());
-  }
+  unsigned char *msg = BuildLDTMessage(args[0], times);
 
-  OneShotHash(msg, msg_size, digest);
+  OneShotHash(msg, args[0].size() * times, digest);
   free(msg);
   return write_reply({Span<const uint8_t>(digest)});
 }
@@ -1128,14 +1131,9 @@ static bool HashLDTSha3(const Span<const uint8_t> args[], ReplyCallback write_re
   int times;
   memcpy(&times, args[1].data(), sizeof(int));
 
-  unsigned char *msg;
-  size_t msg_size = args[0].size() * times;
-  msg = (unsigned char*) malloc (msg_size);
-  for(int i = 0; i < times; i++) {
-    memcpy(msg + i*args[0].size(), args[0].data(), args[0].size());
-  }
+  unsigned char *msg = BuildLDTMessage(args[0], times);
 
-  EVP_Digest(msg, msg_size, digest, &md_out_size, md, NULL);
+  EVP_Digest(msg, args[0].size() * times, digest, &md_out_size, md, NULL);
   free(msg);
   return write_reply({Span<const uint8_t>(digest)});
 }
