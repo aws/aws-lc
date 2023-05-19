@@ -2087,7 +2087,6 @@ static bool RSASigGen(const Span<const uint8_t> args[], ReplyCallback write_repl
   }
   sig.resize(sig_len);
   if (!EVP_DigestSign(ctx.get(), sig.data(), &sig_len, msg.data(), msg.size())) {
-    LOG_ERROR("EVP_DigestSign() failed\n");
     return false;
   }
 
