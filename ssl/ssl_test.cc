@@ -6235,6 +6235,9 @@ TEST(SSLTest, SSLGetKeyUpdate) {
   ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
                                      server_ctx.get()));
 
+  // Initial state should be |SSL_KEY_UPDATE_NONE|.
+  EXPECT_EQ(SSL_get_key_update_type(client.get()), SSL_KEY_UPDATE_NONE);
+
   // Test setting |SSL_key_update| with |SSL_KEY_UPDATE_REQUESTED|.
   EXPECT_TRUE(SSL_key_update(client.get(), SSL_KEY_UPDATE_REQUESTED));
   // |SSL_get_key_update_type| is used to determine whether a key update
