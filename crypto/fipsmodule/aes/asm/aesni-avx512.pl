@@ -108,8 +108,6 @@ if ($avx512vaes) {
     my $ptr_key1           = $_[6];
     my $ptr_expanded_keys  = $_[7];
 
-    my $base_index = 0x80;
-
     $code.=<<___;
     vmovdqu  ($ptr_key2), $key2
     vpxor    $key2, $state_tweak, $state_tweak  # ARK for tweak encryption
@@ -205,100 +203,48 @@ if ($avx512vaes) {
 ___
   }
 
-  sub init_block {
-    $code .= <<___;
-    xor      $ghash_poly_8b_temp, $ghash_poly_8b_temp
-    shl      \$1, $TWTEMPL
-    adc      $TWTEMPH, $TWTEMPH
-    cmovc    $ghash_poly_8b, $ghash_poly_8b_temp
-    xor      $ghash_poly_8b_temp, $TWTEMPL
-___
-  }
-
   sub initialize {
-    my $st1 = $_[0];
-    my $st2 = $_[1];
-    my $st3 = $_[2];
-    my $st4 = $_[3];
-    my $st5 = $_[4];
-    my $st6 = $_[5];
-    my $st7 = $_[6];
-    my $st8 = $_[7];
+    my @st;
+    $st[0] = $_[0];
+    $st[1] = $_[1];
+    $st[2] = $_[2];
+    $st[3] = $_[3];
+    $st[4] = $_[4];
+    $st[5] = $_[5];
+    $st[6] = $_[6];
+    $st[7] = $_[7];
 
-    my $tw1 = $_[8];
-    my $tw2 = $_[9];
-    my $tw3 = $_[10];
-    my $tw4 = $_[11];
-    my $tw5 = $_[12];
-    my $tw6 = $_[13];
-    my $tw7 = $_[14];
+    my @tw;
+    $tw[0] = $_[8];
+    $tw[1] = $_[9];
+    $tw[2] = $_[10];
+    $tw[3] = $_[11];
+    $tw[4] = $_[12];
+    $tw[5] = $_[13];
+    $tw[6] = $_[14];
     my $num_initial_blocks = $_[15];
 
     $code .= <<___;
-    vmovdqa  0x0($TW), $tw1
+    vmovdqa  0x0($TW), $tw[0]
     mov      0x0($TW), $TWTEMPL
     mov      0x08($TW), $TWTEMPH
-    vmovdqu  0x0($input), $st1
+    vmovdqu  0x0($input), $st[0]
 ___
 
     if ($num_initial_blocks >= 2) {
-      init_block();
-      $code .= <<___;
-      mov      $TWTEMPL, 0x10($TW)
-      mov      $TWTEMPH, 0x18($TW);
-      vmovdqa  0x10($TW), $tw2
-      vmovdqu  0x10($input), $st2
-___
-    }
+      for (my $i = 1; $i < $num_initial_blocks; $i++) {
+        $code .= "xor      $ghash_poly_8b_temp, $ghash_poly_8b_temp\n";
+        $code .= "shl      \$1, $TWTEMPL\n";
+        $code .= "adc      $TWTEMPH, $TWTEMPH\n";
+        $code .= "cmovc    $ghash_poly_8b, $ghash_poly_8b_temp\n";
+        $code .= "xor      $ghash_poly_8b_temp, $TWTEMPL\n";
 
-    if ($num_initial_blocks >= 3) {
-      init_block();
-      $code .= <<___;
-      mov      $TWTEMPL, 0x20($TW)
-      mov      $TWTEMPH, 0x28($TW)
-      vmovdqa  0x20($TW), $tw3
-      vmovdqu  0x20($input), $st3
-___
-    }
-
-    if ($num_initial_blocks >= 4) {
-      init_block();
-      $code .= <<___;
-      mov      $TWTEMPL, 0x30($TW)
-      mov      $TWTEMPH, 0x38($TW)
-      vmovdqa  0x30($TW), $tw4
-      vmovdqu  0x30($input), $st4
-___
-    }
-
-    if ($num_initial_blocks >= 5) {
-      init_block();
-      $code .= <<___;
-      mov      $TWTEMPL, 0x40($TW)
-      mov      $TWTEMPH, 0x48($TW)
-      vmovdqa  0x40($TW), $tw5
-      vmovdqu  0x40($input), $st5
-___
-    }
-
-    if ($num_initial_blocks >= 6) {
-      init_block();
-      $code .= <<___;
-      mov      $TWTEMPL, 0x50($TW)
-      mov      $TWTEMPH, 0x58($TW)
-      vmovdqa  0x50($TW), $tw6
-      vmovdqu  0x50($input), $st6
-___
-    }
-
-    if ($num_initial_blocks >= 7) {
-      init_block();
-      $code .= <<___;
-      mov      $TWTEMPL, 0x60($TW)
-      mov      $TWTEMPH, 0x68($TW)
-      vmovdqa  0x60($TW), $tw7
-      vmovdqu  0x60($input), $st7
-___
+        my $offset = $i * 16;
+        $code .= "mov      $TWTEMPL, $offset($TW)\n";
+        $code .= "mov      $TWTEMPH, `$offset + 8`($TW)\n";
+        $code .= "vmovdqa  $offset($TW), $tw[$i]\n";
+        $code .= "vmovdqu  $offset($input), $st[$i]\n";
+      }
     }
   }
 
@@ -572,8 +518,6 @@ ___
     my $ptr_key2           = $_[5];
     my $ptr_key1           = $_[6];
     my $ptr_expanded_keys  = $_[7];
-
-    my $base_index = 0x80;
 
     $code.=<<___;
     vmovdqu  ($ptr_key2), $key2
