@@ -14,6 +14,7 @@
 
 #include <algorithm>
 #include <functional>
+#include <iostream>
 #include <memory>
 #include <string>
 #include <vector>
@@ -2284,90 +2285,55 @@ static const argument_t kArguments[] = {
         "the JSON field for bytesPerCall will be omitted.",
     },
     {
-        "-dryrun",
-        kBooleanArgument,
-        "Prints configuration only (includes parsed arguments) ",
-    },
-    {
         "",
         kOptionalArgument,
         "",
     },
 };
 
-// parseCommaArgumentToGlobalVector clears |vector| and parses comma-separated
-// input for the argument |arg_name| in |args_map|.
-static bool parseCommaArgumentToGlobalVector(std::vector<size_t> &vector, 
+// parseCommaArgument clears |vector| and parses comma-separated input for the
+// argument |arg_name| in |args_map|.
+static bool parseCommaArgument(std::vector<std::string> &vector,
   std::map<std::string, std::string> &args_map, const std::string &arg_name) {
 
-    vector.clear();
-    const char *start = args_map[arg_name.c_str()].data();
-    const char *end = start + args_map[arg_name.c_str()].size();
-    while (start != end) {
-      errno = 0;
-      char *ptr;
-      unsigned long long val = strtoull(start, &ptr, 10);
-      if (ptr == start /* no numeric characters found */ ||
-          errno == ERANGE /* overflow */ ||
-          static_cast<size_t>(val) != val) {
-        fprintf(stderr, "Error parsing %s argument\n", arg_name.c_str());
-        return false;
-      }
-      vector.push_back(static_cast<size_t>(val));
-      start = ptr;
-      if (start != end) {
-        if (*start != ',') {
-          fprintf(stderr, "Error parsing %s argument\n", arg_name.c_str());
-          return false;
-        }
-        start++;
-      }
+  vector.clear();
+  const char *start = args_map[arg_name.c_str()].data();
+  const char *end = start + args_map[arg_name.c_str()].size();
+  const char* current = start;
+  while (current < end) {
+    const char* comma = std::find(current, end, ',');
+    if (comma == current) {
+      // Empty argument found e.g. arg1,arg2,,arg3
+      fprintf(stderr, "Error parsing %s argument\n", arg_name.c_str());
+      return false;
     }
-
-    return true;
-}
-
-static bool parseCommaArgumentToGlobalVector(std::vector<std::string> &vector,
-  std::map<std::string, std::string> &args_map, const std::string &arg_name) {
-
-    vector.clear();
-    const char *start = args_map[arg_name.c_str()].data();
-    const char *end = start + args_map[arg_name.c_str()].size();
-    const char* current = start;
-    while (current < end) {
-        const char* comma = std::find(current, end, ',');
-        if (comma == current) {
-          // Empty argument found e.g. arg1,arg2,,arg3
-          fprintf(stderr, "Error parsing %s argument\n", arg_name.c_str());
-          return false;
-        }
-        vector.emplace_back(current, comma);
-        current = (comma == end) ? end : comma + 1;
-    }
-
-    return true;
-}
-
-static void printInputCommaSeparated(std::vector<size_t> vec) {
-  fprintf(stdout, "[");
-  for (size_t i = 0; i < vec.size(); i++) {
-    fprintf(stdout, "%zu", vec[i]);
-    if (i != vec.size() - 1) {
-      fprintf(stdout, ", ");
-    }
+    vector.emplace_back(current, comma);
+    current = (comma == end) ? end : comma + 1;
   }
-  fprintf(stdout, "]\n");
+
+  return true;
 }
 
-static void printInputCommaSeparated(std::vector<std::string> vec) {
-  fprintf(stdout, "[");
-  for (size_t i = 0; i < vec.size(); i++) {
-    fprintf(stdout, "%s", vec[i].c_str());
-    if (i != vec.size() - 1) {
-      fprintf(stdout, ", ");
+// parseStringVectorToIntegerVector attempts to parse each element of 
+// |in_vector| as a size_t integer and adds the result to |out_vector|. Clears
+// |out_vector|.
+static bool parseStringVectorToIntegerVector(
+  std::vector<std::string> &in_vector, std::vector<size_t> &out_vector) {
+
+  out_vector.clear();
+  for (const std::string &str : in_vector) {
+    errno = 0;
+    char *ptr;
+    unsigned long long int integer_value = strtoull(str.data(), &ptr, 10);
+    if (ptr == str.data() /* no numeric characters found */ ||
+        errno == ERANGE /* overflow */ ||
+        static_cast<size_t>(integer_value) != integer_value) {
+      fprintf(stderr, "Error parsing %s argument\n", str.c_str());
+      return false;
     }
+    out_vector.push_back(static_cast<size_t>(integer_value));
   }
-  fprintf(stdout, "]\n");
+  return true;
 }
 
 bool Speed(const std::vector<std::string> &args) {
@@ -2383,7 +2349,7 @@ bool Speed(const std::vector<std::string> &args) {
   }
 
   if (args_map.count("-filter") != 0) {
-    if (!parseCommaArgumentToGlobalVector(g_filters, args_map, "-filter")) {
+    if (!parseCommaArgument(g_filters, args_map, "-filter")) {
       return false;
     }
   }
@@ -2397,35 +2363,25 @@ bool Speed(const std::vector<std::string> &args) {
   }
 
   if (args_map.count("-chunks") != 0) {
-    if (!parseCommaArgumentToGlobalVector(g_chunk_lengths,
+    std::vector<std::string> chunkVector;
+    if (!parseCommaArgument(chunkVector,
         args_map, "-chunks")) {
+      return false;
+    }
+    if (!parseStringVectorToIntegerVector(chunkVector, g_chunk_lengths)) {
       return false;
     }
   }
 
   if (args_map.count("-primes") != 0) {
-    if (!parseCommaArgumentToGlobalVector(g_prime_bit_lengths,
+    std::vector<std::string> primeVector;
+    if (!parseCommaArgument(primeVector,
         args_map, "-primes")) {
       return false;
     }
-  }
-
-  bool dryrun = false;
-  if (args_map.count("-dryrun") != 0) {
-    dryrun = true;
-  }
-
-  if (dryrun) {
-    fprintf(stdout, "dryrun: %s\n", dryrun ? "true" : "false");
-    fprintf(stdout, "json: %s\n", g_print_json ? "true" : "false");
-    fprintf(stdout, "timeout: %" PRIu64 "\n", g_timeout_seconds);
-    fprintf(stdout, "chunks: ");
-    printInputCommaSeparated(g_chunk_lengths);
-    fprintf(stdout, "primes: ");
-    printInputCommaSeparated(g_prime_bit_lengths);
-    fprintf(stdout, "filter: ");
-    printInputCommaSeparated(g_filters);
-    exit(0);
+    if (!parseStringVectorToIntegerVector(primeVector, g_prime_bit_lengths)) {
+      return false;
+    }
   }
 
   // kTLSADLen is the number of bytes of additional data that TLS passes to
