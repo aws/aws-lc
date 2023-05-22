@@ -5564,9 +5564,9 @@ TEST_P(SSLVersionTest, SSLPendingEx) {
   EXPECT_EQ(0, SSL_has_pending(client_.get()));
 
   size_t buf_len;
-  ASSERT_TRUE(SSL_write_ex(server_.get(), "hello", 5, &buf_len));
+  ASSERT_EQ(1, SSL_write_ex(server_.get(), "hello", 5, &buf_len));
   ASSERT_EQ(buf_len, (size_t)5);
-  ASSERT_TRUE(SSL_write_ex(server_.get(), "world", 5, &buf_len));
+  ASSERT_EQ(1, SSL_write_ex(server_.get(), "world", 5, &buf_len));
   ASSERT_EQ(buf_len, (size_t)5);
 
   EXPECT_EQ(0, SSL_pending(client_.get()));
