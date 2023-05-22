@@ -1675,6 +1675,16 @@ Digest = SHA256
 Input = "Hello world"
 Output = 304502204c66004635c267394bd6857c1e0b53b22a2bab1ca7dff9d5c1b42143858b3ea7022100ae81228510e03cd49a8863d2ebd1c05fe0c87eacd1150433132b909994cd0dbd
 
+SignMessage = P-256
+Digest = SHA512/256
+Input = "Hello world"
+Output = ""
+
+VerifyMessage = P-256
+Digest = SHA512/256
+Input = "Hello world"
+Output = 3046022100e410d8f0fac6d7ed59d1d447d7b87ad1b01d9b1d87232d40e5052267d4e9fdc4022100b59253fb9a8c1b963a65f26cfc413a1a65253d24147b8c647a6bbdbe4b5e6798
+
 # Digest can't be omitted in many algorithms.
 SignMessage = RSA-2048
 Input = "Hello world"

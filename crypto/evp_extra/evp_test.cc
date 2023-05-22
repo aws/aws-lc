@@ -371,6 +371,19 @@ static int EVP_marshal_private_key_version_two(CBB *cbb, const EVP_PKEY *key) {
   return EVP_marshal_private_key_v2(cbb, key);
 }
 
+static void VerifyEVPSignOut(std::string key_name, std::vector<uint8_t> input,
+                            std::vector<uint8_t> actual, std::vector<uint8_t> output,
+                            EVP_MD_CTX *ctx, size_t len) {
+
+  // Unless not compatible, verify EVP_DigestSign() with EVP_DigestVerify instead of comparing outputs
+  // This allows us to test the correctness of non-deterministic outputs (e.g. for ECDSA).
+  if (key_name.find("Ed25519") != std::string::npos) {
+    EXPECT_EQ(Bytes(output), Bytes(actual));
+  } else {
+    EXPECT_TRUE(!EVP_DigestVerify(ctx, actual.data(), len, input.data(), input.size()));
+  }
+}
+
 static bool TestEVP(FileTest *t, KeyMap *key_map) {
   if (t->GetType() == "PrivateKey") {
     int (*marshal_func)(CBB * cbb, const EVP_PKEY *key) =
@@ -474,7 +487,7 @@ static bool TestEVP(FileTest *t, KeyMap *key_map) {
       return false;
     }
     actual.resize(len);
-    EXPECT_EQ(Bytes(output), Bytes(actual));
+    VerifyEVPSignOut(key_name, input, actual, output, ctx.get(), len);
 
     // Repeat the test with |copy|, to check |EVP_MD_CTX_copy_ex| duplicated
     // everything.
@@ -489,7 +502,7 @@ static bool TestEVP(FileTest *t, KeyMap *key_map) {
       return false;
     }
     actual.resize(len);
-    EXPECT_EQ(Bytes(output), Bytes(actual));
+    VerifyEVPSignOut(key_name, input, actual, output, ctx.get(), len);
     return true;
   }
 
