@@ -456,7 +456,7 @@ static bool SpeedRSAKeyGen(bool is_fips, const std::string &selected) {
   return true;
 }
 
-static bool SpeedAESGCMChunk(const EVP_CIPHER *cipher, std::string name,
+static bool SpeedAESGenericChunk(const EVP_CIPHER *cipher, std::string name,
                              size_t chunk_byte_len, size_t ad_len, bool encrypt) {
   int len;
   int* len_ptr = &len;
@@ -485,6 +485,7 @@ static bool SpeedAESGCMChunk(const EVP_CIPHER *cipher, std::string name,
 
   BM_NAMESPACE::UniquePtr<EVP_CIPHER_CTX> ctx(EVP_CIPHER_CTX_new());
 
+  bool isGCM = cipher == EVP_aes_128_gcm() || cipher == EVP_aes_192_gcm() || cipher == EVP_aes_256_gcm();
   if (encrypt) {
     std::string encryptName = name + " encrypt";
     TimeResults encryptResults;
@@ -495,12 +496,17 @@ static bool SpeedAESGCMChunk(const EVP_CIPHER *cipher, std::string name,
       ERR_print_errors_fp(stderr);
       return false;
     }
-    if (!TimeFunction(&encryptResults, [&ctx, chunk_byte_len, plaintext, ciphertext, len_ptr, tag, &nonce, &ad, ad_len]() -> bool {
-      return EVP_EncryptInit_ex(ctx.get(), NULL, NULL, NULL, nonce.get()) &&
-        EVP_EncryptUpdate(ctx.get(), NULL, len_ptr, ad.get(), ad_len) &&
-        EVP_EncryptUpdate(ctx.get(), ciphertext, len_ptr, plaintext, chunk_byte_len) &&
-        EVP_EncryptFinal_ex(ctx.get(), ciphertext + *len_ptr, len_ptr) &&
-        EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_GET_TAG, 16, tag);
+    if (!TimeFunction(&encryptResults, [&ctx, chunk_byte_len, plaintext, ciphertext, len_ptr, tag, &nonce, &ad, ad_len, &isGCM]() -> bool {
+      int result =  EVP_EncryptInit_ex(ctx.get(), NULL, NULL, NULL, nonce.get());
+      if (isGCM) {
+        result &= EVP_EncryptUpdate(ctx.get(), NULL, len_ptr, ad.get(), ad_len);
+      }
+      result &= EVP_EncryptUpdate(ctx.get(), ciphertext, len_ptr, plaintext, chunk_byte_len);
+      result &= EVP_EncryptFinal_ex(ctx.get(), ciphertext + *len_ptr, len_ptr);
+      if (isGCM) {
+        result &= EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_GET_TAG, 16, tag);
+      }
+      return result;
     })) {
       fprintf(stderr, "%s failed.\n", encryptName.c_str());
       ERR_print_errors_fp(stderr);
@@ -510,11 +516,17 @@ static bool SpeedAESGCMChunk(const EVP_CIPHER *cipher, std::string name,
     encryptResults.PrintWithBytes(encryptName, chunk_byte_len);
   }
   else {
-    if (!(EVP_EncryptInit_ex(ctx.get(), cipher, NULL, key.get(), nonce.get()) &&
-          EVP_EncryptUpdate(ctx.get(), NULL, len_ptr, ad.get(), ad_len) &&
-          EVP_EncryptUpdate(ctx.get(), ciphertext, len_ptr, plaintext, chunk_byte_len) &&
-          EVP_EncryptFinal_ex(ctx.get(), ciphertext + *len_ptr, len_ptr) &&
-          EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_GET_TAG, 16, tag))) {
+    int result =  EVP_EncryptInit_ex(ctx.get(), cipher, NULL, key.get(), nonce.get());
+    if(isGCM){
+      result &= EVP_EncryptUpdate(ctx.get(), NULL, len_ptr, ad.get(), ad_len);
+    }
+    result &= EVP_EncryptUpdate(ctx.get(), ciphertext, len_ptr, plaintext, chunk_byte_len);
+    result &= EVP_EncryptFinal_ex(ctx.get(), ciphertext + *len_ptr, len_ptr);
+    if(isGCM) {
+      result &= EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_GET_TAG, 16, tag);
+    }
+
+    if (!result) {
       fprintf(stderr, "Failed to perform one encryption.\n");
       ERR_print_errors_fp(stderr);
       return false;
@@ -527,12 +539,17 @@ static bool SpeedAESGCMChunk(const EVP_CIPHER *cipher, std::string name,
       ERR_print_errors_fp(stderr);
       return false;
     }
-    if (!TimeFunction(&decryptResults, [&ctx, chunk_byte_len, plaintext, ciphertext, len_ptr, tag, &nonce, &ad, ad_len]() -> bool {
-      return EVP_DecryptInit_ex(ctx.get(), NULL, NULL, NULL, nonce.get()) &&
-        EVP_DecryptUpdate(ctx.get(), NULL, len_ptr, ad.get(), ad_len) &&
-        EVP_DecryptUpdate(ctx.get(), plaintext, len_ptr, ciphertext, chunk_byte_len) &&
-        EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_SET_TAG, 16, tag) &&
-        EVP_DecryptFinal_ex(ctx.get(), ciphertext + *len_ptr, len_ptr);
+    if (!TimeFunction(&decryptResults, [&ctx, chunk_byte_len, plaintext, ciphertext, len_ptr, tag, &nonce, &ad, ad_len, &isGCM]() -> bool {
+      int result = EVP_DecryptInit_ex(ctx.get(), NULL, NULL, NULL, nonce.get());
+      if(isGCM) {
+        result &= EVP_DecryptUpdate(ctx.get(), NULL, len_ptr, ad.get(), ad_len);
+      }
+      result &= EVP_DecryptUpdate(ctx.get(), plaintext, len_ptr, ciphertext, chunk_byte_len);
+      if (isGCM) {
+        result &= EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_SET_TAG, 16, tag);
+      }
+      result &= EVP_DecryptFinal_ex(ctx.get(), ciphertext + *len_ptr, len_ptr);
+      return result;
     })) {
       fprintf(stderr, "%s failed.\n", decryptName.c_str());
       ERR_print_errors_fp(stderr);
@@ -543,7 +560,7 @@ static bool SpeedAESGCMChunk(const EVP_CIPHER *cipher, std::string name,
 
   return true;
 }
-static bool SpeedAESGCM(const EVP_CIPHER *cipher, const std::string &name,
+static bool SpeedAESGeneric(const EVP_CIPHER *cipher, const std::string &name,
                         size_t ad_len, const std::string &selected) {
   if (!selected.empty() && name.find(selected) == std::string::npos) {
     return true;
@@ -564,8 +581,8 @@ static bool SpeedAESGCM(const EVP_CIPHER *cipher, const std::string &name,
   results.Print(name +  " encrypt init");
 
   for (size_t chunk_byte_len : g_chunk_lengths) {
-    if (!SpeedAESGCMChunk(cipher, name, chunk_byte_len, ad_len,
-                          /*encrypt*/ true)) {
+    if (!SpeedAESGenericChunk(cipher, name, chunk_byte_len, ad_len,
+                              /*encrypt*/ true)) {
       return false;
     }
   }
@@ -578,7 +595,7 @@ static bool SpeedAESGCM(const EVP_CIPHER *cipher, const std::string &name,
   }
   results.Print(name +  " decrypt init");
   for (size_t chunk_byte_len : g_chunk_lengths) {
-    if (!SpeedAESGCMChunk(cipher, name, chunk_byte_len, ad_len, false)) {
+    if (!SpeedAESGenericChunk(cipher, name, chunk_byte_len, ad_len, false)) {
       return false;
     }
   }
@@ -2363,9 +2380,12 @@ bool Speed(const std::vector<std::string> &args) {
   if(!SpeedAESBlock("AES-128", 128, selected) ||
      !SpeedAESBlock("AES-192", 192, selected) ||
      !SpeedAESBlock("AES-256", 256, selected) ||
-     !SpeedAESGCM(EVP_aes_128_gcm(), "EVP-AES-128-GCM", kTLSADLen, selected) ||
-     !SpeedAESGCM(EVP_aes_192_gcm(), "EVP-AES-192-GCM", kTLSADLen, selected) ||
-     !SpeedAESGCM(EVP_aes_256_gcm(), "EVP-AES-256-GCM", kTLSADLen, selected) ||
+     !SpeedAESGeneric(EVP_aes_128_gcm(), "EVP-AES-128-GCM", kTLSADLen, selected) ||
+     !SpeedAESGeneric(EVP_aes_192_gcm(), "EVP-AES-192-GCM", kTLSADLen, selected) ||
+     !SpeedAESGeneric(EVP_aes_256_gcm(), "EVP-AES-256-GCM", kTLSADLen, selected) ||
+     !SpeedAESGeneric(EVP_aes_128_ctr(), "EVP-AES-128-CTR", kTLSADLen, selected) ||
+     !SpeedAESGeneric(EVP_aes_192_ctr(), "EVP-AES-192-CTR", kTLSADLen, selected) ||
+     !SpeedAESGeneric(EVP_aes_256_ctr(), "EVP-AES-256-CTR", kTLSADLen, selected) ||
      !SpeedAES256XTS("AES-256-XTS", selected) ||
      // OpenSSL 3.0 doesn't allow MD4 calls
 #if !defined(OPENSSL_3_0_BENCHMARK)
