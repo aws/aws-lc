@@ -458,7 +458,7 @@ static bool SpeedRSAKeyGen(bool is_fips, const std::string &selected) {
 
 static bool SpeedAESGenericChunk(const EVP_CIPHER *cipher, std::string name,
                              size_t chunk_byte_len, size_t ad_len, bool encrypt) {
-  int len;
+  int len, result;
   int* len_ptr = &len;
   const size_t key_len = EVP_CIPHER_key_length(cipher);
   static const unsigned kAlignment = 16;
@@ -496,8 +496,8 @@ static bool SpeedAESGenericChunk(const EVP_CIPHER *cipher, std::string name,
       ERR_print_errors_fp(stderr);
       return false;
     }
-    if (!TimeFunction(&encryptResults, [&ctx, chunk_byte_len, plaintext, ciphertext, len_ptr, tag, &nonce, &ad, ad_len, &isGCM]() -> bool {
-      int result =  EVP_EncryptInit_ex(ctx.get(), NULL, NULL, NULL, nonce.get());
+    if (!TimeFunction(&encryptResults, [&ctx, chunk_byte_len, plaintext, ciphertext, len_ptr, tag, &nonce, &ad, ad_len, &isGCM, &result]() -> bool {
+      result = EVP_EncryptInit_ex(ctx.get(), NULL, NULL, NULL, nonce.get());
       if (isGCM) {
         result &= EVP_EncryptUpdate(ctx.get(), NULL, len_ptr, ad.get(), ad_len);
       }
@@ -516,8 +516,8 @@ static bool SpeedAESGenericChunk(const EVP_CIPHER *cipher, std::string name,
     encryptResults.PrintWithBytes(encryptName, chunk_byte_len);
   }
   else {
-    int result =  EVP_EncryptInit_ex(ctx.get(), cipher, NULL, key.get(), nonce.get());
-    if(isGCM){
+    result =  EVP_EncryptInit_ex(ctx.get(), cipher, NULL, key.get(), nonce.get());
+    if (isGCM) {
       result &= EVP_EncryptUpdate(ctx.get(), NULL, len_ptr, ad.get(), ad_len);
     }
     result &= EVP_EncryptUpdate(ctx.get(), ciphertext, len_ptr, plaintext, chunk_byte_len);
@@ -539,8 +539,8 @@ static bool SpeedAESGenericChunk(const EVP_CIPHER *cipher, std::string name,
       ERR_print_errors_fp(stderr);
       return false;
     }
-    if (!TimeFunction(&decryptResults, [&ctx, chunk_byte_len, plaintext, ciphertext, len_ptr, tag, &nonce, &ad, ad_len, &isGCM]() -> bool {
-      int result = EVP_DecryptInit_ex(ctx.get(), NULL, NULL, NULL, nonce.get());
+    if (!TimeFunction(&decryptResults, [&ctx, chunk_byte_len, plaintext, ciphertext, len_ptr, tag, &nonce, &ad, ad_len, &isGCM, &result]() -> bool {
+      result = EVP_DecryptInit_ex(ctx.get(), NULL, NULL, NULL, nonce.get());
       if(isGCM) {
         result &= EVP_DecryptUpdate(ctx.get(), NULL, len_ptr, ad.get(), ad_len);
       }
