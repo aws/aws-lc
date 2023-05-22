@@ -4886,6 +4886,24 @@ OPENSSL_EXPORT int SSL_CTX_set1_sigalgs_list(SSL_CTX *ctx, const char *str);
 // more convenient to codesearch for specific algorithm values.
 OPENSSL_EXPORT int SSL_set1_sigalgs_list(SSL *ssl, const char *str);
 
+// SSL_CTX_get_security_level returns 3. This is only to maintain compatibility
+// with OpenSSL and no security assumptions should be based on the number this
+// function returns.
+//
+// Per OpenSSL's definition of Level 3:
+// Level 3:
+// Security level set to 128 bits of security. As a result RSA, DSA and DH keys
+// shorter than 3072 bits and ECC keys shorter than 256 bits are prohibited. In
+// addition to the level 2 exclusions cipher suites not offering forward secrecy
+// are prohibited. TLS versions below 1.1 are not permitted. Session tickets are
+// disabled.
+//
+// AWS-LC only supports atl least 128 bits of security, but we don't directly
+// prohibit session tickets and TLS 1.0 like Level 3 in OpenSSL states. This
+// behavior may change if we're asked to support actual Security level setting
+// in AWS-LC.
+OPENSSL_EXPORT int SSL_CTX_get_security_level(const SSL_CTX *ctx);
+
 #define SSL_set_app_data(s, arg) (SSL_set_ex_data(s, 0, (char *)(arg)))
 #define SSL_get_app_data(s) (SSL_get_ex_data(s, 0))
 #define SSL_SESSION_set_app_data(s, a) \
