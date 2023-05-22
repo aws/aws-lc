@@ -96,6 +96,12 @@ int x509_digest_sign_algorithm(EVP_MD_CTX *ctx, X509_ALGOR *algor) {
     return X509_ALGOR_set0(algor, OBJ_nid2obj(NID_ED25519), V_ASN1_UNDEF, NULL);
   }
 
+#ifdef ENABLE_DILITHIUM
+  if (EVP_PKEY_id(pkey) == EVP_PKEY_DILITHIUM3) {
+    return X509_ALGOR_set0(algor, OBJ_nid2obj(NID_DILITHIUM3_R3), V_ASN1_UNDEF, NULL);
+  }
+#endif
+
   // Default behavior: look up the OID for the algorithm/hash pair and encode
   // that.
   const EVP_MD *digest = EVP_MD_CTX_md(ctx);
@@ -152,7 +158,11 @@ int x509_digest_verify_init(EVP_MD_CTX *ctx, const X509_ALGOR *sigalg,
     if (sigalg_nid == NID_rsassaPss) {
       return x509_rsa_pss_to_ctx(ctx, sigalg, pkey);
     }
+#ifdef ENABLE_DILITHIUM
+    if (sigalg_nid == NID_ED25519 || sigalg_nid == NID_DILITHIUM3_R3) {
+#else
     if (sigalg_nid == NID_ED25519) {
+#endif
       if (sigalg->parameter != NULL) {
         OPENSSL_PUT_ERROR(X509, X509_R_INVALID_PARAMETER);
         return 0;
