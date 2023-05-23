@@ -13,7 +13,14 @@ set -u
 # 2 minutes to build AWS-LC
 # 25 minutes (1500 seconds) for all fuzzing
 # 18 minutes for cleanup and merging files
-TOTAL_FUZZ_TEST_TIME=1500
+if [[ $PLATFORM == "aarch64" ]]; then
+  # Arm sanitizers are very slow which causes the clean up time to take longer per
+  # fuzz test, only run for 16 minutes
+  TOTAL_FUZZ_TEST_TIME=1000
+else
+  TOTAL_FUZZ_TEST_TIME=1500
+fi
+
 FUZZ_TEST_TIMEOUT=5
 
 FUZZ_TESTS=$(find "${BUILD_ROOT}/fuzz" -type f -executable)
