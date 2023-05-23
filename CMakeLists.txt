@@ -916,7 +916,7 @@ if(BUILD_TESTING)
       file(GLOB acvp_sha_tests "${CMAKE_CURRENT_SOURCE_DIR}/util/fipstools/acvp/acvptool/test/sha-tests/*.json")
       foreach(test ${acvp_sha_tests})
         list(APPEND acvp_sha_test_commands
-              COMMAND ${GO_EXECUTABLE} run check_expected.go
+              COMMAND ${GO_EXECUTABLE} run "${CMAKE_CURRENT_SOURCE_DIR}/util/fipstools/acvp/acvptool/test/check_expected.go"
                       -tool ${ACVP_TOOL}
                       -module-wrappers modulewrapper:$<TARGET_FILE:modulewrapper>,testmodulewrapper:${TEST_WRAPPER}
                       -tests ${acvp_sha_tests})
