@@ -919,7 +919,7 @@ if(BUILD_TESTING)
               COMMAND ${GO_EXECUTABLE} run "${CMAKE_CURRENT_SOURCE_DIR}/util/fipstools/acvp/acvptool/test/check_expected.go"
                       -tool ${ACVP_TOOL}
                       -module-wrappers modulewrapper:$<TARGET_FILE:modulewrapper>,testmodulewrapper:${TEST_WRAPPER}
-                      -tests ${acvp_sha_tests})
+                      -tests ${test})
       endforeach()
 
       add_custom_target(
