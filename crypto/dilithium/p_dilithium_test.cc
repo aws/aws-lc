@@ -738,10 +738,8 @@ TEST(Dilithium3Test, KAT) {
 
 TEST(Dilithium3Test, EvpDisabled) {
   ASSERT_EQ(nullptr, EVP_PKEY_CTX_new_id(NID_DILITHIUM3_R3, nullptr));
-
-  EVP_PKEY *pkey = EVP_PKEY_new();
-  ASSERT_FALSE(EVP_PKEY_set_type(pkey, NID_DILITHIUM3_R3));
-  EVP_PKEY_free(pkey);
+  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+  ASSERT_FALSE(EVP_PKEY_set_type(pkey.get(), NID_DILITHIUM3_R3));
 }
 
 #endif
