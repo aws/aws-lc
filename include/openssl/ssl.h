@@ -372,8 +372,26 @@ OPENSSL_EXPORT int SSL_accept(SSL *ssl);
 // https://crbug.com/466303.
 OPENSSL_EXPORT int SSL_read(SSL *ssl, void *buf, int num);
 
+// SSL_read_ex reads up to |num| bytes from |ssl| into |buf|. It is similar to
+// |SSL_read|, but instead of returning the number of bytes read, it returns
+// 1 on success or 0 for failure. The number of bytes actually read is stored in
+// |read_bytes|.
+//
+// This is only maintained for OpenSSL compatibility. Use |SSL_read| instead.
+OPENSSL_EXPORT int SSL_read_ex(SSL *ssl, void *buf, size_t num,
+                               size_t *read_bytes);
+
 // SSL_peek behaves like |SSL_read| but does not consume any bytes returned.
 OPENSSL_EXPORT int SSL_peek(SSL *ssl, void *buf, int num);
+
+// SSL_peek_ex reads up to |num| bytes from |ssl| into |buf|. It is similar to
+// |SSL_peek|, but instead of returning the number of bytes read, it returns
+// 1 on success or 0 for failure. The number of bytes actually read is stored in
+// |read_bytes|.
+//
+// This is only maintained for OpenSSL compatibility. Use |SSL_peek| instead.
+OPENSSL_EXPORT int SSL_peek_ex(SSL *ssl, void *buf, size_t num,
+                               size_t *read_bytes);
 
 // SSL_pending returns the number of buffered, decrypted bytes available for
 // read in |ssl|. It does not read from the transport.
@@ -427,6 +445,15 @@ OPENSSL_EXPORT int SSL_has_pending(const SSL *ssl);
 // TODO(davidben): Ensure 0 is only returned on transport EOF.
 // https://crbug.com/466303.
 OPENSSL_EXPORT int SSL_write(SSL *ssl, const void *buf, int num);
+
+// SSL_write_ex writes up to |num| bytes from |buf| into |ssl|. It is similar to
+// |SSL_write|, but instead of returning the number of bytes written, it returns
+// 1 on success or 0 for failure. The number bytes actually written is stored in
+// |written|.
+//
+// This is only maintained for OpenSSL compatibility. Use |SSL_write| instead.
+OPENSSL_EXPORT int SSL_write_ex(SSL *s, const void *buf, size_t num,
+                                size_t *written);
 
 // SSL_KEY_UPDATE_REQUESTED indicates that the peer should reply to a KeyUpdate
 // message with its own, thus updating traffic secrets for both directions on
