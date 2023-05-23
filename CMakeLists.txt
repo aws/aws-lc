@@ -913,13 +913,15 @@ if(BUILD_TESTING)
       endif()
 
       set(acvp_sha_test_commands)
+      list(APPEND acvp_sha_test_commands COMMAND pwd)
       file(GLOB acvp_sha_tests "${CMAKE_CURRENT_SOURCE_DIR}/util/fipstools/acvp/acvptool/test/sha-tests/*.json")
-      foreach(test ${acvp_sha_tests})
+      foreach(test_path ${acvp_sha_tests})
+        get_filename_component(test_name ${test_path} NAME)
         list(APPEND acvp_sha_test_commands
-              COMMAND ${GO_EXECUTABLE} run "${CMAKE_CURRENT_SOURCE_DIR}/util/fipstools/acvp/acvptool/test/check_expected.go"
-                      -tool ${ACVP_TOOL}
-                      -module-wrappers modulewrapper:$<TARGET_FILE:modulewrapper>,testmodulewrapper:${TEST_WRAPPER}
-                      -tests ${test})
+              COMMAND ${GO_EXECUTABLE} run check_expected.go
+                        -tool ${ACVP_TOOL}
+                        -module-wrappers modulewrapper:$<TARGET_FILE:modulewrapper>,testmodulewrapper:${TEST_WRAPPER}
+                        -tests "sha-tests/${test_name}")
       endforeach()
 
       add_custom_target(
