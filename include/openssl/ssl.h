@@ -476,13 +476,12 @@ OPENSSL_EXPORT int SSL_write_ex(SSL *s, const void *buf, size_t num,
 // requires that |ssl| have completed a TLS >= 1.3 handshake. It returns one on
 // success or zero on error.
 //
-// If the updatetype parameter is set to |SSL_KEY_UPDATE_NOT_REQUESTED|, then
-// the sending keys for this connection will be updated and the peer will be
-// informed of the change.
-// If the updatetype parameter is set to |SSL_KEY_UPDATE_REQUESTED|, then the
-// sending keys for this connection will be updated and the peer will be
-// informed of the change along with a request for the peer to additionally
-// update its sending keys.
+// If |request_type| is set to |SSL_KEY_UPDATE_NOT_REQUESTED|, then the sending
+// keys for this connection will be updated and the peer will be informed of the
+// change.
+// If |request_type| is set to |SSL_KEY_UPDATE_REQUESTED|, then the sending keys
+// for this connection will be updated and the peer will be informed of the change
+// along with a request for the peer to additionally update its sending keys.
 // RFC: https://datatracker.ietf.org/doc/html/rfc8446#section-4.6.3
 //
 // Note that this function does not _send_ the message itself. The next call to
@@ -494,7 +493,7 @@ OPENSSL_EXPORT int SSL_key_update(SSL *ssl, int request_type);
 // SSL_get_key_update_type returns the state of the pending key operation in
 // |ssl|. The type of pending key operation will be either
 // |SSL_KEY_UPDATE_REQUESTED| or |SSL_KEY_UPDATE_NOT_REQUESTED| if there is one,
-// and |SSL_KEY_UPDATE_NONE| if otherwise. This can be used to indicate whether
+// and |SSL_KEY_UPDATE_NONE| otherwise. This can be used to indicate whether
 // a key update operation has been scheduled but not yet performed.
 OPENSSL_EXPORT int SSL_get_key_update_type(const SSL *ssl);
 
