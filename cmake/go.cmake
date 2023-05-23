@@ -4,7 +4,7 @@ if(ANDROID)
   if(NOT DISABLE_GO AND NOT GO_EXECUTABLE)
     set(GO_EXECUTABLE "go")
   endif()
-else()
+else() look
   if(NOT DISABLE_GO)
     find_program(GO_EXECUTABLE go)
   endif()
