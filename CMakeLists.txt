@@ -930,19 +930,24 @@ if(BUILD_TESTING)
                 boringssl.googlesource.com/boringssl/util/fipstools/acvp/acvptool
         COMMAND ${GO_EXECUTABLE} build -o ${TEST_WRAPPER}
                 boringssl.googlesource.com/boringssl/util/fipstools/acvp/acvptool/testmodulewrapper
-        COMMAND cd util/fipstools/acvp/acvptool/test &&
-                ${GO_EXECUTABLE} run check_expected.go
-                -tool ${ACVP_TOOL}
-                -module-wrappers modulewrapper:$<TARGET_FILE:modulewrapper>,testmodulewrapper:${TEST_WRAPPER}
-                -tests tests.json
-        ${acvp_sha_test_commands}
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
         DEPENDS modulewrapper
         ${MAYBE_USES_TERMINAL})
 
+        add_custom_target(
+          acvp_tests_2
+          COMMAND ${GO_EXECUTABLE} run check_expected.go
+                    -tool ${ACVP_TOOL}
+                    -module-wrappers modulewrapper:$<TARGET_FILE:modulewrapper>,testmodulewrapper:${TEST_WRAPPER}
+                    -tests tests.json
+          ${acvp_sha_test_commands}
+          WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/util/fipstools/acvp/acvptool/test
+          DEPENDS modulewrapper
+          ${MAYBE_USES_TERMINAL})
+
       add_custom_target(
         fips_specific_tests_if_any
-        DEPENDS acvp_tests
+        DEPENDS acvp_tests acvp_tests_2
       )
     else()
       add_custom_target(fips_specific_tests_if_any)
