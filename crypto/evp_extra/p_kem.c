@@ -349,3 +349,64 @@ err:
   EVP_PKEY_free(ret);
   return NULL;
 }
+
+// EVP_PKEY_kem_check_key validates that the public key in |key| corresponds
+// to the secret key in |key| by performing encapsulation and decapsulation
+// and checking that the generated shared secrets are equal.
+int EVP_PKEY_kem_check_key(EVP_PKEY *key) {
+  if (key == NULL || key->pkey.kem_key == NULL ||
+      key->pkey.kem_key->public_key == NULL ||
+      key->pkey.kem_key->secret_key == NULL) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
+  EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new(key, NULL);
+  if (ctx == NULL) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
+    return 0;
+  }
+
+  int ret = 0;
+
+  // Get the required buffer lengths and allocate the buffers.
+  size_t ct_len, ss_len;
+  uint8_t *ct = NULL, *ss_a = NULL, *ss_b = NULL;
+  if (!EVP_PKEY_encapsulate(ctx, NULL, &ct_len, NULL, &ss_len)) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
+    goto end;
+  }
+  ct = OPENSSL_malloc(ct_len);
+  ss_a = OPENSSL_malloc(ss_len);
+  ss_b = OPENSSL_malloc(ss_len);
+  if (ct == NULL || ss_a == NULL || ss_b == NULL) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
+    goto end;
+  }
+
+  // Encapsulate and decapsulate.
+  if (!EVP_PKEY_encapsulate(ctx, ct, &ct_len, ss_b, &ss_len) ||
+      !EVP_PKEY_decapsulate(ctx, ss_a, &ss_len, ct, ct_len)) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_INTERNAL_ERROR);
+    goto end;
+  }
+
+  // Compare the shared secrets.
+  uint8_t res = 0;
+  for (size_t i = 0; i < ss_len; i++) {
+    res |= ss_a[i] ^ ss_b[i];
+  }
+
+  // If the shared secrets |ss_a| and |ss_b| are the same then |res| is equal
+  // to zero, otherwise it's not. |constant_time_is_zero_8| returns 0xff when
+  // |res| is equal to zero, and returns 0 otherwise. To be consistent with the
+  // rest of the library, we extract only the first bit so that |ret| is either
+  // 0 or 1.
+  ret = constant_time_is_zero_8(res) & 1;
+
+end:
+  OPENSSL_free(ct);
+  OPENSSL_free(ss_a);
+  OPENSSL_free(ss_b);
+  return ret;
+}
