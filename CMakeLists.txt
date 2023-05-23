@@ -912,6 +912,16 @@ if(BUILD_TESTING)
         string(REGEX REPLACE "./util/fipstools/delocate" "" GO_FIPS_TESTS "${GO_FIPS_TESTS}")
       endif()
 
+      set(acvp_sha_test_commands)
+      file(GLOB acvp_sha_tests "${CMAKE_CURRENT_SOURCE_DIR}/util/fipstools/acvp/acvptool/test/sha-tests/*.json")
+      foreach(test ${acvp_sha_tests})
+        list(APPEND acvp_sha_test_commands
+              COMMAND ${GO_EXECUTABLE} run check_expected.go
+                      -tool ${ACVP_TOOL}
+                      -module-wrappers modulewrapper:$<TARGET_FILE:modulewrapper>,testmodulewrapper:${TEST_WRAPPER}
+                      -tests ${acvp_sha_tests})
+      endforeach()
+
       add_custom_target(
         acvp_tests
         COMMAND ${GO_EXECUTABLE} build -o ${ACVP_TOOL}
@@ -923,6 +933,7 @@ if(BUILD_TESTING)
                 -tool ${ACVP_TOOL}
                 -module-wrappers modulewrapper:$<TARGET_FILE:modulewrapper>,testmodulewrapper:${TEST_WRAPPER}
                 -tests tests.json
+        ${acvp_sha_test_commands}
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
         DEPENDS modulewrapper
         ${MAYBE_USES_TERMINAL})
