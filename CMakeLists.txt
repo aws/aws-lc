@@ -913,7 +913,6 @@ if(BUILD_TESTING)
       endif()
 
       set(acvp_sha_test_commands)
-      list(APPEND acvp_sha_test_commands COMMAND pwd)
       file(GLOB acvp_sha_tests "${CMAKE_CURRENT_SOURCE_DIR}/util/fipstools/acvp/acvptool/test/sha-tests/*.json")
       foreach(test_path ${acvp_sha_tests})
         get_filename_component(test_name ${test_path} NAME)
