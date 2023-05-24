@@ -913,7 +913,7 @@ if(BUILD_TESTING)
       endif()
 
       set(acvp_sha_test_commands)
-      file(GLOB acvp_sha_tests "${CMAKE_CURRENT_SOURCE_DIR}/util/fipstools/acvp/acvptool/test/sha-tests/*.json")
+      file(GLOB acvp_sha_tests "${PROJECT_SOURCE_DIR}/util/fipstools/acvp/acvptool/test/sha-tests/*.json")
       foreach(test_path ${acvp_sha_tests})
         get_filename_component(test_name ${test_path} NAME)
         list(APPEND acvp_sha_test_commands
@@ -924,7 +924,7 @@ if(BUILD_TESTING)
       endforeach()
 
       add_custom_target(
-        acvp_go_install
+        build_acvp_tool
         COMMAND ${GO_EXECUTABLE} build -o ${ACVP_TOOL}
                 boringssl.googlesource.com/boringssl/util/fipstools/acvp/acvptool
         COMMAND ${GO_EXECUTABLE} build -o ${TEST_WRAPPER}
@@ -941,7 +941,7 @@ if(BUILD_TESTING)
                   -tests tests.json
         ${acvp_sha_test_commands}
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/util/fipstools/acvp/acvptool/test
-        DEPENDS acvp_go_install
+        DEPENDS build_acvp_tool
         ${MAYBE_USES_TERMINAL})
 
       add_custom_target(

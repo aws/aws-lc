@@ -1098,6 +1098,9 @@ static bool HashMCTSha3(const Span<const uint8_t> args[],
       {Span<const uint8_t>(md[1000])});
 }
 
+// The following logic conforms to the Large Data Tests described in
+// https://pages.nist.gov/ACVP/draft-celi-acvp-sha.html#name-large-data-tests-for-sha-1-
+// Which are the same for SHA-1, SHA2, and SHA3
 static unsigned char* BuildLDTMessage(const bssl::Span<const uint8_t> part_msg, int times) {
   size_t full_msg_size = part_msg.size() * times;
   unsigned char* full_msg = (unsigned char*) malloc (full_msg_size);
