@@ -408,5 +408,6 @@ end:
   OPENSSL_free(ct);
   OPENSSL_free(ss_a);
   OPENSSL_free(ss_b);
+  EVP_PKEY_CTX_free(ctx);
   return ret;
 }
