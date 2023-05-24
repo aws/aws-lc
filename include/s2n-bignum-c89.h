@@ -22,6 +22,7 @@
  *
  *      - On ARM, the "_alt" forms target machines with higher multiplier
  *        throughput, generally offering higher performance there.
+ *        The "_neon" forms target machines with NEON instructions.
  * ----------------------------------------------------------------------------
  */
 
@@ -254,6 +255,8 @@ extern uint64_t bignum_emontredc (uint64_t k, uint64_t *z, uint64_t *m, uint64_t
 /*  Extended Montgomery reduce in 8-digit blocks, results in input-output buffer */
 /*  Inputs z[2*k], m[k], w; outputs function return (extra result bit) and z[2*k] */
 extern uint64_t bignum_emontredc_8n (uint64_t k, uint64_t *z, uint64_t *m, uint64_t w);
+extern uint64_t bignum_emontredc_8n_neon (uint64_t k, uint64_t *z, uint64_t *m,
+                                          uint64_t w);
 
 /*  Test bignums for equality, x = y */
 /*  Inputs x[m], y[n]; output function return */
@@ -318,18 +321,24 @@ extern uint64_t bignum_iszero (uint64_t k, uint64_t *x);
 /*  Multiply z := x * y */
 /*  Inputs x[16], y[16]; output z[32]; temporary buffer t[>=32] */
 extern void bignum_kmul_16_32 (uint64_t z[32], uint64_t x[16], uint64_t y[16], uint64_t t[32]);
+extern void bignum_kmul_16_32_neon (uint64_t z[32], uint64_t x[16], uint64_t y[16],
+                                    uint64_t t[32]);
 
 /*  Multiply z := x * y */
 /*  Inputs x[32], y[32]; output z[64]; temporary buffer t[>=96] */
 extern void bignum_kmul_32_64 (uint64_t z[64], uint64_t x[32], uint64_t y[32], uint64_t t[96]);
+extern void bignum_kmul_32_64_neon (uint64_t z[64], uint64_t x[32], uint64_t y[32],
+                                    uint64_t t[96]);
 
 /*  Square, z := x^2 */
 /*  Input x[16]; output z[32]; temporary buffer t[>=24] */
 extern void bignum_ksqr_16_32 (uint64_t z[32], uint64_t x[16], uint64_t t[24]);
+extern void bignum_ksqr_16_32_neon (uint64_t z[32], uint64_t x[16], uint64_t t[24]);
 
 /*  Square, z := x^2 */
 /*  Input x[32]; output z[64]; temporary buffer t[>=72] */
 extern void bignum_ksqr_32_64 (uint64_t z[64], uint64_t x[32], uint64_t t[72]);
+extern void bignum_ksqr_32_64_neon (uint64_t z[64], uint64_t x[32], uint64_t t[72]);
 
 /*  Compare bignums, x <= y */
 /*  Inputs x[m], y[n]; output function return */
@@ -537,6 +546,7 @@ extern void bignum_mul_6_12_alt (uint64_t z[12], uint64_t x[6], uint64_t y[6]);
 /*  Inputs x[8], y[8]; output z[16] */
 extern void bignum_mul_8_16 (uint64_t z[16], uint64_t x[8], uint64_t y[8]);
 extern void bignum_mul_8_16_alt (uint64_t z[16], uint64_t x[8], uint64_t y[8]);
+extern void bignum_mul_8_16_neon (uint64_t z[16], uint64_t x[8], uint64_t y[8]);
 
 /*  Multiply modulo p_25519, z := (x * y) mod p_25519 */
 /*  Inputs x[4], y[4]; output z[4] */
@@ -695,6 +705,7 @@ extern void bignum_sqr_6_12_alt (uint64_t z[12], uint64_t x[6]);
 /*  Input x[8]; output z[16] */
 extern void bignum_sqr_8_16 (uint64_t z[16], uint64_t x[8]);
 extern void bignum_sqr_8_16_alt (uint64_t z[16], uint64_t x[8]);
+extern void bignum_sqr_8_16_neon (uint64_t z[16], uint64_t x[8]);
 
 /*  Square modulo p_25519, z := (x^2) mod p_25519 */
 /*  Input x[4]; output z[4] */
