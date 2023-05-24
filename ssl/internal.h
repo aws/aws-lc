@@ -2719,6 +2719,12 @@ struct SSL3_STATE {
   // needs re-doing when in SSL_accept or SSL_connect
   int rwstate = SSL_ERROR_NONE;
 
+  // key_update_pending will be either |SSL_KEY_UPDATE_REQUESTED| or
+  // |SSL_KEY_UPDATE_NOT_REQUESTED| if we have a KeyUpdate acknowledgment
+  // outstanding. |SSL_KEY_UPDATE_NONE| indicates that no KeyUpdates
+  // acknowledgements are pending.
+  int key_update_pending = SSL_KEY_UPDATE_NONE;
+
   enum ssl_encryption_level_t read_level = ssl_encryption_initial;
   enum ssl_encryption_level_t write_level = ssl_encryption_initial;
 
@@ -2772,10 +2778,6 @@ struct SSL3_STATE {
   // channel_id_valid is true if, on the server, the client has negotiated a
   // Channel ID and the |channel_id| field is filled in.
   bool channel_id_valid : 1;
-
-  // key_update_pending is true if we have a KeyUpdate acknowledgment
-  // outstanding.
-  bool key_update_pending : 1;
 
   // early_data_accepted is true if early data was accepted by the server.
   bool early_data_accepted : 1;
