@@ -369,7 +369,7 @@ TEST(Dilithium3Test, KeyGeneration) {
   ASSERT_NE(dilithium_pkey->pkey.ptr, nullptr);
 
   const DILITHIUM3_KEY *dilithium3Key = (DILITHIUM3_KEY *)(dilithium_pkey->pkey.ptr);
-  EXPECT_TRUE(dilithium3Key->has_private);
+  EXPECT_NE(dilithium3Key->priv, nullptr);
 
   // Extract public key and check it is of the correct size
   uint8_t *buf = nullptr;
@@ -452,6 +452,8 @@ TEST(Dilithium3Test, NewKeyFromBytes) {
   EXPECT_TRUE(EVP_PKEY_keygen(dilithium_pkey_ctx, &dilithium_pkey));
   ASSERT_NE(dilithium_pkey->pkey.ptr, nullptr);
   const DILITHIUM3_KEY *dilithium3Key = (DILITHIUM3_KEY *)(dilithium_pkey->pkey.ptr);
+  EXPECT_NE(dilithium3Key->pub, nullptr);
+  EXPECT_NE(dilithium3Key->priv, nullptr);
 
   // New raw public key
   EVP_PKEY *new_public = EVP_PKEY_new_raw_public_key(EVP_PKEY_DILITHIUM3,
@@ -459,6 +461,9 @@ TEST(Dilithium3Test, NewKeyFromBytes) {
                                                      dilithium3Key->pub,
                                                      DILITHIUM3_PUBLIC_KEY_BYTES);
   ASSERT_NE(new_public, nullptr);
+  const DILITHIUM3_KEY *newDilithium3Key = (DILITHIUM3_KEY *)(new_public->pkey.ptr);
+  EXPECT_NE(newDilithium3Key->pub, nullptr);
+  EXPECT_EQ(newDilithium3Key->priv, nullptr);
 
   uint8_t *buf = nullptr;
   size_t buf_size;
@@ -476,9 +481,11 @@ TEST(Dilithium3Test, NewKeyFromBytes) {
                                                        dilithium3Key->priv,
                                                        DILITHIUM3_PRIVATE_KEY_BYTES);
   ASSERT_NE(new_private, nullptr);
-  const DILITHIUM3_KEY *newDilithium3Key = (DILITHIUM3_KEY *)(new_private->pkey.ptr);
+  newDilithium3Key = (DILITHIUM3_KEY *)(new_private->pkey.ptr);
   EXPECT_EQ(0, OPENSSL_memcmp(dilithium3Key->priv, newDilithium3Key->priv,
                               DILITHIUM3_PRIVATE_KEY_BYTES));
+  EXPECT_EQ(newDilithium3Key->pub, nullptr);
+  EXPECT_NE(newDilithium3Key->priv, nullptr);
 
   EVP_PKEY_CTX_free(dilithium_pkey_ctx);
   EVP_PKEY_free(new_public);
@@ -573,6 +580,10 @@ TEST(Dilithium3Test, Encoding) {
   // The private key dilithium3Key_from_der must be equal to the original key
   EXPECT_EQ(Bytes(dilithium3Key->priv, DILITHIUM3_PRIVATE_KEY_BYTES),
             Bytes(dilithium3Key_from_der->priv, DILITHIUM3_PRIVATE_KEY_BYTES));
+
+  // Marshalling incorrect type should fail
+  ASSERT_FALSE(EVP_marshal_public_key(cbb.get(), privkey.get()));
+  ASSERT_FALSE(EVP_marshal_private_key(cbb.get(), pubkey.get()));
 
   EVP_PKEY_CTX_free(dilithium_pkey_ctx);
   EVP_PKEY_free(dilithium_pkey);

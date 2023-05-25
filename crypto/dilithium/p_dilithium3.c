@@ -5,6 +5,7 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
+#include "../crypto/internal.h"
 #include "../fipsmodule/evp/internal.h"
 #include "../evp_extra/internal.h"
 #include "sig_dilithium.h"
@@ -12,7 +13,14 @@
 static int pkey_dilithium3_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
   DILITHIUM3_KEY *key = OPENSSL_malloc(sizeof(DILITHIUM3_KEY));
   if (key == NULL) {
-    OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
+    goto err;
+  }
+  key->pub = OPENSSL_malloc(DILITHIUM3_PUBLIC_KEY_BYTES);
+  if (key->pub == NULL) {
+    goto err;
+  }
+  key->priv = OPENSSL_malloc(DILITHIUM3_PRIVATE_KEY_BYTES);
+  if (key->priv == NULL) {
     goto err;
   }
 
@@ -29,13 +37,15 @@ static int pkey_dilithium3_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
     goto err;
   }
 
-  key->has_private = 1;
-
   OPENSSL_free(pkey->pkey.ptr);
   pkey->pkey.ptr = key;
   return 1;
 
 err:
+  if (key != NULL) {
+    OPENSSL_free(key->pub);
+    OPENSSL_free(key->priv);
+  }
   OPENSSL_free(key);
   return 0;
 
@@ -51,7 +61,7 @@ static int pkey_dilithium3_sign_message(EVP_PKEY_CTX *ctx, uint8_t *sig,
 
   DILITHIUM3_KEY *key = ctx->pkey->pkey.ptr;
 
-  if (!key->has_private) {
+  if (!key->priv) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NOT_A_PRIVATE_KEY);
     return 0;
   }
