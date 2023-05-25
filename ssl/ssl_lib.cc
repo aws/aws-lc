@@ -1131,7 +1131,7 @@ int SSL_key_update(SSL *ssl, int request_type) {
     return 0;
   }
 
-  if (!ssl->s3->key_update_pending &&
+  if (ssl->s3->key_update_pending == SSL_KEY_UPDATE_NONE &&
       !tls13_add_key_update(ssl, request_type)) {
     return 0;
   }
@@ -1750,6 +1750,10 @@ int SSL_check_private_key(const SSL *ssl) {
 
 long SSL_get_default_timeout(const SSL *ssl) {
   return SSL_DEFAULT_SESSION_TIMEOUT;
+}
+
+int SSL_get_key_update_type(const SSL *ssl) {
+  return ssl->s3->key_update_pending;
 }
 
 int SSL_renegotiate(SSL *ssl) {
