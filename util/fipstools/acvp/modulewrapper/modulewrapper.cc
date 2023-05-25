@@ -15,7 +15,7 @@
 #include <map>
 #include <string>
 #include <vector>
-
+#include <memory>
 #include <sstream>
 
 #include <assert.h>
@@ -1118,10 +1118,9 @@ static bool HashLDT(const Span<const uint8_t> args[], ReplyCallback write_reply)
   int times;
   memcpy(&times, args[1].data(), sizeof(int));
 
-  unsigned char *msg = BuildLDTMessage(args[0], times);
+  std::unique_ptr<unsigned char> msg (BuildLDTMessage(args[0], times));
 
-  OneShotHash(msg, args[0].size() * times, digest);
-  free(msg);
+  OneShotHash(msg.get(), args[0].size() * times, digest);
   return write_reply({Span<const uint8_t>(digest)});
 }
 
@@ -1134,10 +1133,9 @@ static bool HashLDTSha3(const Span<const uint8_t> args[], ReplyCallback write_re
   int times;
   memcpy(&times, args[1].data(), sizeof(int));
 
-  unsigned char *msg = BuildLDTMessage(args[0], times);
+  std::unique_ptr<unsigned char> msg (BuildLDTMessage(args[0], times));
 
-  EVP_Digest(msg, args[0].size() * times, digest, &md_out_size, md, NULL);
-  free(msg);
+  EVP_Digest(msg.get(), args[0].size() * times, digest, &md_out_size, md, nullptr);
   return write_reply({Span<const uint8_t>(digest)});
 }
 

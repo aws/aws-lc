@@ -912,6 +912,9 @@ if(BUILD_TESTING)
         string(REGEX REPLACE "./util/fipstools/delocate" "" GO_FIPS_TESTS "${GO_FIPS_TESTS}")
       endif()
 
+      # We want to run the SHA tests iteratively because they contain Large Data Tests, which make
+      # us hash anywhere from 1-8 gigabytes of memory, so running multiple at the same time cause a
+      # failure on most machines due to a lack of memory.
       set(acvp_sha_test_commands)
       file(GLOB acvp_sha_tests "${PROJECT_SOURCE_DIR}/util/fipstools/acvp/acvptool/test/sha-tests/*.json")
       foreach(test_path ${acvp_sha_tests})
