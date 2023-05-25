@@ -5286,6 +5286,13 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_status_cb(SSL_CTX *ctx,
                                                 int (*callback)(SSL *ssl,
                                                                 void *arg));
 
+// SSL_CTX_get_tlsext_status_cb returns the legacy OpenSSL OCSP callback if set.
+OPENSSL_EXPORT int SSL_CTX_get_tlsext_status_cb(SSL_CTX *ctx, int (**callback)(SSL *, void *));
+// Provide a preprocessor macro for compatability with OpenSSL which uses a macro
+// to implement |SSL_CTX_get_tlsext_status_cb| and some callers expect to write
+// |#ifdef SSL_CTX_get_tlsext_status_cb|.
+#define SSL_CTX_get_tlsext_status_cb SSL_CTX_get_tlsext_status_cb
+
 // SSL_CTX_set_tlsext_status_arg sets additional data for
 // |SSL_CTX_set_tlsext_status_cb|'s callback and returns one.
 OPENSSL_EXPORT int SSL_CTX_set_tlsext_status_arg(SSL_CTX *ctx, void *arg);

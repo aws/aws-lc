@@ -1494,6 +1494,11 @@ bssl::UniquePtr<SSL_CTX> TestConfig::SetupCtx(SSL_CTX *old_ctx) const {
 
   if (use_ocsp_callback) {
     SSL_CTX_set_tlsext_status_cb(ssl_ctx.get(), LegacyOCSPCallback);
+    int (*cb)(SSL *, void *) = nullptr;
+    if(!SSL_CTX_get_tlsext_status_cb(ssl_ctx.get(), &cb) ||
+        cb != LegacyOCSPCallback){
+      return nullptr;
+    }
   }
 
   if (old_ctx) {

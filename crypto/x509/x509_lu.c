@@ -391,6 +391,13 @@ X509 *X509_OBJECT_get0_X509(const X509_OBJECT *a) {
   return a->data.x509;
 }
 
+X509_CRL *X509_OBJECT_get0_X509_CRL(const X509_OBJECT *a) {
+  if (a == NULL || a->type != X509_LU_CRL) {
+    return NULL;
+  }
+  return a->data.crl;
+}
+
 static int x509_object_idx_cnt(STACK_OF(X509_OBJECT) *h, int type,
                                X509_NAME *name, int *pnmatch) {
   X509_OBJECT stmp;
