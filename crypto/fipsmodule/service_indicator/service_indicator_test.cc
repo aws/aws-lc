@@ -31,7 +31,6 @@
 #include "../../test/test_util.h"
 #include "../bn/internal.h"
 #include "../rand/internal.h"
-#include "../tls/internal.h"
 
 static const uint8_t kAESKey[16] = {
     'A','W','S','-','L','C','C','r','y','p','t','o',' ','K', 'e','y'};
