@@ -120,6 +120,7 @@ OPENSSL_EXPORT int RAND_set_rand_method(const RAND_METHOD *);
 // RAND_keep_random_devices_open does nothing.
 OPENSSL_EXPORT void RAND_keep_random_devices_open(int a);
 
+
 #if defined(__cplusplus)
 }  // extern C
 #endif
