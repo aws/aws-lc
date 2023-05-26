@@ -116,6 +116,7 @@ OBJ = curve25519/bignum_add_p25519.o \
       generic/word_bytereverse.o \
       generic/word_clz.o \
       generic/word_ctz.o \
+      generic/word_divstep59.o \
       generic/word_max.o \
       generic/word_min.o \
       generic/word_negmodinv.o \

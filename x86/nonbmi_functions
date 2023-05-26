@@ -191,6 +191,7 @@ edwards25519_scalarmulbase_alt
 word_bytereverse
 word_clz
 word_ctz
+word_divstep59
 word_max
 word_min
 word_negmodinv
