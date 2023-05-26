@@ -912,19 +912,39 @@ if(BUILD_TESTING)
         string(REGEX REPLACE "./util/fipstools/delocate" "" GO_FIPS_TESTS "${GO_FIPS_TESTS}")
       endif()
 
+      # We want to run the SHA tests iteratively because they contain Large Data Tests, which make
+      # us hash anywhere from 1-8 gigabytes of memory, so running multiple at the same time cause a
+      # failure on most machines due to a lack of memory.
+      set(acvp_sha_test_commands)
+      file(GLOB acvp_sha_tests "${PROJECT_SOURCE_DIR}/util/fipstools/acvp/acvptool/test/sha-tests/*.json")
+      foreach(test_path ${acvp_sha_tests})
+        get_filename_component(test_name ${test_path} NAME)
+        list(APPEND acvp_sha_test_commands
+              COMMAND ${GO_EXECUTABLE} run check_expected.go
+                        -tool ${ACVP_TOOL}
+                        -module-wrappers modulewrapper:$<TARGET_FILE:modulewrapper>,testmodulewrapper:${TEST_WRAPPER}
+                        -tests "sha-tests/${test_name}")
+      endforeach()
+
       add_custom_target(
-        acvp_tests
+        build_acvp_tool
         COMMAND ${GO_EXECUTABLE} build -o ${ACVP_TOOL}
                 boringssl.googlesource.com/boringssl/util/fipstools/acvp/acvptool
         COMMAND ${GO_EXECUTABLE} build -o ${TEST_WRAPPER}
                 boringssl.googlesource.com/boringssl/util/fipstools/acvp/acvptool/testmodulewrapper
-        COMMAND cd util/fipstools/acvp/acvptool/test &&
-                ${GO_EXECUTABLE} run check_expected.go
-                -tool ${ACVP_TOOL}
-                -module-wrappers modulewrapper:$<TARGET_FILE:modulewrapper>,testmodulewrapper:${TEST_WRAPPER}
-                -tests tests.json
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
         DEPENDS modulewrapper
+        ${MAYBE_USES_TERMINAL})
+
+      add_custom_target(
+        acvp_tests
+        COMMAND ${GO_EXECUTABLE} run check_expected.go
+                  -tool ${ACVP_TOOL}
+                  -module-wrappers modulewrapper:$<TARGET_FILE:modulewrapper>,testmodulewrapper:${TEST_WRAPPER}
+                  -tests tests.json
+        ${acvp_sha_test_commands}
+        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/util/fipstools/acvp/acvptool/test
+        DEPENDS build_acvp_tool
         ${MAYBE_USES_TERMINAL})
 
       add_custom_target(
