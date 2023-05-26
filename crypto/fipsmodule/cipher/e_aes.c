@@ -138,6 +138,14 @@ typedef struct {
   ctr128_f ctr;
 } EVP_AES_GCM_CTX;
 
+typedef struct {
+  union {
+    double align;
+    AES_KEY ks;
+  } ks;
+  const uint8_t *iv; // Indicates if an IV has been set.
+} EVP_AES_WRAP_CTX;
+
 static int aes_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
                         const uint8_t *iv, int enc) {
   int ret;
@@ -715,6 +723,54 @@ static int aes_xts_ctrl(EVP_CIPHER_CTX *c, int type, int arg, void *ptr) {
   return 1;
 }
 
+static int aes_wrap_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
+                            const uint8_t *iv, int enc) {
+  EVP_AES_WRAP_CTX *wctx = ctx->cipher_data;
+  if (iv == NULL && key == NULL) {
+    return 1;
+  }
+  if (key != NULL) {
+    if (ctx->encrypt) {
+      AES_set_encrypt_key(key, EVP_CIPHER_CTX_key_length(ctx) * 8,
+                          &wctx->ks.ks);
+    } else {
+      AES_set_decrypt_key(key, EVP_CIPHER_CTX_key_length(ctx) * 8,
+                          &wctx->ks.ks);
+    }
+    if (iv == NULL) {
+      wctx->iv = NULL;
+    }
+  }
+  if (iv != NULL) {
+    OPENSSL_memcpy(ctx->iv, iv, ctx->cipher->iv_len);
+    wctx->iv = ctx->iv;
+  }
+  return 1;
+}
+
+static int aes_wrap_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
+                           size_t inlen) {
+  EVP_AES_WRAP_CTX *wctx = ctx->cipher_data;
+  // There is no final operation, so we always return zero length here.
+  if (in == NULL) {
+    return 0;
+  }
+
+  // Internal calls to |AES_wrap/unwrap_key| within the fipsmodule should be
+  // wrapped with state lock functions to avoid updating the service indicator.
+  // When consuming via |EVP_CIPHER|, |EVP_CipherFinal(_ex)| should be the
+  // function that indicates approval.
+  int ret;
+  FIPS_service_indicator_lock_state();
+  if (ctx->encrypt) {
+    ret = AES_wrap_key(&wctx->ks.ks, wctx->iv, out, in, inlen);
+  } else {
+    ret = AES_unwrap_key(&wctx->ks.ks, wctx->iv, out, in, inlen);
+  }
+  FIPS_service_indicator_unlock_state();
+  return ret;
+}
+
 DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_aes_128_cbc) {
   memset(out, 0, sizeof(EVP_CIPHER));
 
@@ -900,6 +956,20 @@ DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_aes_256_ofb) {
   out->flags = EVP_CIPH_OFB_MODE;
   out->init = aes_init_key;
   out->cipher = aes_ofb_cipher;
+}
+
+DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_aes_256_wrap) {
+  memset(out, 0, sizeof(EVP_CIPHER));
+
+  out->nid = NID_id_aes256_wrap;
+  out->block_size = 8;
+  out->key_len = 32;
+  out->iv_len = 8;
+  out->ctx_size = sizeof(EVP_AES_WRAP_CTX);
+  out->flags = EVP_CIPH_WRAP_MODE | EVP_CIPH_CUSTOM_IV |
+               EVP_CIPH_FLAG_CUSTOM_CIPHER | EVP_CIPH_ALWAYS_CALL_INIT;
+  out->init = aes_wrap_init_key;
+  out->cipher = aes_wrap_cipher;
 }
 
 DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_aes_256_gcm) {
