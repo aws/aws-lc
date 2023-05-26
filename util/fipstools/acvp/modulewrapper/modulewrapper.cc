@@ -15,7 +15,7 @@
 #include <map>
 #include <string>
 #include <vector>
-#include <memory>
+
 #include <sstream>
 
 #include <assert.h>
@@ -1103,7 +1103,7 @@ static bool HashMCTSha3(const Span<const uint8_t> args[],
 // Which are the same for SHA-1, SHA2, and SHA3
 static unsigned char* BuildLDTMessage(const bssl::Span<const uint8_t> part_msg, int times) {
   size_t full_msg_size = part_msg.size() * times;
-  unsigned char* full_msg = (unsigned char*) malloc(full_msg_size);
+  unsigned char* full_msg = (unsigned char*) malloc (full_msg_size);
   for(int i = 0; i < times; i++) {
     memcpy(full_msg + i * part_msg.size(), part_msg.data(), part_msg.size());
   }
@@ -1118,9 +1118,10 @@ static bool HashLDT(const Span<const uint8_t> args[], ReplyCallback write_reply)
   int times;
   memcpy(&times, args[1].data(), sizeof(int));
 
-  bssl::UniquePtr<unsigned char> msg(BuildLDTMessage(args[0], times));
+  unsigned char *msg = BuildLDTMessage(args[0], times);
 
-  OneShotHash(msg.get(), args[0].size() * times, digest);
+  OneShotHash(msg, args[0].size() * times, digest);
+  free(msg);
   return write_reply({Span<const uint8_t>(digest)});
 }
 
@@ -1133,9 +1134,10 @@ static bool HashLDTSha3(const Span<const uint8_t> args[], ReplyCallback write_re
   int times;
   memcpy(&times, args[1].data(), sizeof(int));
 
-  bssl::UniquePtr<unsigned char> msg(BuildLDTMessage(args[0], times));
+  unsigned char *msg = BuildLDTMessage(args[0], times);
 
-  EVP_Digest(msg.get(), args[0].size() * times, digest, &md_out_size, md, nullptr);
+  EVP_Digest(msg, args[0].size() * times, digest, &md_out_size, md, NULL);
+  free(msg);
   return write_reply({Span<const uint8_t>(digest)});
 }
 
