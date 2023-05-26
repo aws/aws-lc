@@ -10,4 +10,4 @@ env:
 phases:
   build:
     commands:
-      - ./tests/ci/run_openssh_integration.sh
+      - ./tests/ci/integration/run_openssh_integration.sh

@@ -18,4 +18,4 @@ phases:
   build:
     run-as: postgres
     commands:
-      - ./tests/ci/run_postgres_integration.sh
+      - ./tests/ci/integration/run_postgres_integration.sh
