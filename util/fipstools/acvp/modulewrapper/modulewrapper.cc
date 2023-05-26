@@ -606,6 +606,8 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
               "hashAlg": "SHA2-384"
             }, {
               "hashAlg": "SHA2-512"
+            }, {
+              "hashAlg": "SHA2-512/256"
             }]
           }]
         },{
@@ -620,6 +622,8 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
               "hashAlg": "SHA2-384"
             }, {
               "hashAlg": "SHA2-512"
+            }, {
+              "hashAlg": "SHA2-512/256"
             }]
           }]
         },{
@@ -634,6 +638,8 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
               "hashAlg": "SHA2-384"
             }, {
               "hashAlg": "SHA2-512"
+            }, {
+              "hashAlg": "SHA2-512/256"
             }]
           }]
         },{
@@ -720,6 +726,8 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
             }, {
               "hashAlg": "SHA2-512"
             }, {
+              "hashAlg": "SHA2-512/256"
+            }, {
               "hashAlg": "SHA-1"
             }]
           }]
@@ -735,6 +743,8 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
               "hashAlg": "SHA2-384"
             }, {
               "hashAlg": "SHA2-512"
+            }, {
+              "hashAlg": "SHA2-512/256"
             }, {
               "hashAlg": "SHA-1"
             }]
@@ -752,6 +762,8 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
             }, {
               "hashAlg": "SHA2-512"
             }, {
+              "hashAlg": "SHA2-512/256"
+            }, {
               "hashAlg": "SHA-1"
             }]
           }]
@@ -767,6 +779,8 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
               "hashAlg": "SHA2-384"
             }, {
               "hashAlg": "SHA2-512"
+            }, {
+              "hashAlg": "SHA2-512/256"
             }, {
               "hashAlg": "SHA-1"
             }]
