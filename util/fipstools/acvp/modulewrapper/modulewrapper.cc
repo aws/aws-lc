@@ -1136,7 +1136,7 @@ static bool HashLDTSha3(const Span<const uint8_t> args[], ReplyCallback write_re
 
   unsigned char *msg = BuildLDTMessage(args[0], times);
 
-  EVP_Digest(msg, args[0].size() * times, digest, &md_out_size, md, NULL);
+  EVP_Digest(msg, args[0].size() * times, digest, &md_out_size, md, nullptr);
   free(msg);
   return write_reply({Span<const uint8_t>(digest)});
 }
