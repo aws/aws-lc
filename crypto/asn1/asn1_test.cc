@@ -1105,6 +1105,8 @@ TEST(ASN1Test, ASN1_TIME_to_tm_default_behavior) {
   // Make date an unknown type
   date.get()->type = -100000000;
   EXPECT_EQ(ASN1_TIME_to_tm(date.get(), nullptr), 0);
+
+  EXPECT_EQ(ASN1_TIME_to_tm(nullptr, nullptr), 0);
 }
 
 TEST(ASN1Test, TimeSetString) {
