@@ -3164,6 +3164,11 @@ int SSL_CTX_set_tlsext_status_cb(SSL_CTX *ctx,
   return 1;
 }
 
+int SSL_CTX_get_tlsext_status_cb(SSL_CTX *ctx, int (**callback)(SSL *, void *)) {
+  *callback = ctx->legacy_ocsp_callback;
+  return 1;
+}
+
 int SSL_CTX_set_tlsext_status_arg(SSL_CTX *ctx, void *arg) {
   ctx->legacy_ocsp_callback_arg = arg;
   return 1;
