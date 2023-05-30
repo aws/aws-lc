@@ -999,11 +999,11 @@ TEST(ASN1Test, SetTime) {
       {-62167219200, "00000101000000Z", nullptr, "Jan  1 00:00:00 0 GMT",
        (struct tm){0, 0, 0, 1, 0, -1900, 0, 0, 0, 0, nullptr}},
       {-62167219201, nullptr, nullptr, nullptr,
-       (struct tm){}},
+       (struct tm){0, 0, 0, 0, 0, 0, 0, 0, 0, 0, nullptr}},
       {253402300799, "99991231235959Z", nullptr, "Dec 31 23:59:59 9999 GMT",
        (struct tm){59, 59, 23, 31, 11, 8099, 0, 0, 0, 0, nullptr}},
       {253402300800, nullptr, nullptr, nullptr,
-       (struct tm){}},
+       (struct tm){0, 0, 0, 0, 0, 0, 0, 0, 0, 0, nullptr}},
   };
   for (const auto &t : kTests) {
     int64_t tt;
