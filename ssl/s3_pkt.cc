@@ -290,7 +290,7 @@ static int do_tls_write(SSL *ssl, size_t *out_bytes_written, uint8_t type,
 
   // Now that we've made progress on the connection, uncork KeyUpdate
   // acknowledgments.
-  ssl->s3->key_update_pending = false;
+  ssl->s3->key_update_pending = SSL_KEY_UPDATE_NONE;
 
   // Flush the write buffer.
   ret = ssl_write_buffer_flush(ssl);
