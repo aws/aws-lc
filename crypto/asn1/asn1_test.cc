@@ -965,6 +965,27 @@ static std::string PrintStringToBIO(const ASN1_STRING *str,
   return std::string(data, data + len);
 }
 
+// MSVC 2015 does not support compound literals e.g. using (struct tm){0,0,...}}
+// in the list of test vectors below. Note: this returns  a copy of the stack
+// allocated value t.
+static struct tm make_tm(int sec, int min, int hour, int mday, int mon, int year, int wday, int yday, int isdst, long gmtoff, char* zone) {
+  struct tm t;
+  t.tm_sec = sec;
+  t.tm_min = min;
+  t.tm_hour = hour;
+  t.tm_mday = mday;
+  t.tm_mon = mon;
+  t.tm_year = year;
+  t.tm_wday = wday;
+  t.tm_yday = yday;
+  t.tm_isdst = isdst;
+#if defined(__GNUC__)
+  t.tm_gmtoff = gmtoff;
+  t.tm_zone = zone;
+#endif
+  return t;
+}
+
 TEST(ASN1Test, SetTime) {
   static const struct {
     int64_t time;
@@ -976,34 +997,34 @@ TEST(ASN1Test, SetTime) {
     // AWS-LC does not calculate or set year day, weekday, timezone, or daylight savings
   } kTests[] = {
       {-631152001, "19491231235959Z", nullptr, "Dec 31 23:59:59 1949 GMT",
-       (struct tm){59, 59, 23, 31, 11, 49, 0, 0, 0, 0, nullptr}},
+       make_tm(59, 59, 23, 31, 11, 49, 0, 0, 0, 0, nullptr)},
       {-631152000, "19500101000000Z", "500101000000Z", "Jan  1 00:00:00 1950 GMT",
-       (struct tm){0, 0, 0, 1, 0, 50, 0, 0, 0, 0, nullptr}},
+       make_tm(0, 0, 0, 1, 0, 50, 0, 0, 0, 0, nullptr)},
       {0, "19700101000000Z", "700101000000Z", "Jan  1 00:00:00 1970 GMT",
-       (struct tm){0, 0, 0, 1, 0, 70, 0, 0, 0, 0, nullptr}},
+       make_tm(0, 0, 0, 1, 0, 70, 0, 0, 0, 0, nullptr)},
       {981173106, "20010203040506Z", "010203040506Z", "Feb  3 04:05:06 2001 GMT",
-       (struct tm){6, 5, 4, 3, 1, 101, 0, 0, 0, 0, nullptr}},
+       make_tm(6, 5, 4, 3, 1, 101, 0, 0, 0, 0, nullptr)},
       {951804000, "20000229060000Z", "000229060000Z", "Feb 29 06:00:00 2000 GMT",
-       (struct tm){0, 0, 6, 29, 1, 100, 0, 0, 0, 0, nullptr}},
+       make_tm(0, 0, 6, 29, 1, 100, 0, 0, 0, 0, nullptr)},
       // NASA says this is the correct time for posterity.
       {-16751025, "19690621025615Z", "690621025615Z", "Jun 21 02:56:15 1969 GMT",
-       (struct tm){15, 56, 2, 21, 5, 69, 0, 0, 0, 0, nullptr}},
+       make_tm(15, 56, 2, 21, 5, 69, 0, 0, 0, 0, nullptr)},
       // -1 is sometimes used as an error value. Ensure we correctly handle it.
       {-1, "19691231235959Z", "691231235959Z", "Dec 31 23:59:59 1969 GMT",
-       (struct tm){59, 59, 23, 31, 11, 69, 0, 0, 0, 0, nullptr}},
+       make_tm(59, 59, 23, 31, 11, 69, 0, 0, 0, 0, nullptr)},
       {2524607999, "20491231235959Z", "491231235959Z", "Dec 31 23:59:59 2049 GMT",
-       (struct tm){59, 59, 23, 31, 11, 149, 0, 0, 0, 0, nullptr}},
+       make_tm(59, 59, 23, 31, 11, 149, 0, 0, 0, 0, nullptr)},
       {2524608000, "20500101000000Z", nullptr, "Jan  1 00:00:00 2050 GMT",
-       (struct tm){0, 0, 0, 1, 0, 150, 0, 0, 0, 0, nullptr}},
+       make_tm(0, 0, 0, 1, 0, 150, 0, 0, 0, 0, nullptr)},
       // Test boundary conditions.
       {-62167219200, "00000101000000Z", nullptr, "Jan  1 00:00:00 0 GMT",
-       (struct tm){0, 0, 0, 1, 0, -1900, 0, 0, 0, 0, nullptr}},
+       make_tm(0, 0, 0, 1, 0, -1900, 0, 0, 0, 0, nullptr)},
       {-62167219201, nullptr, nullptr, nullptr,
-       (struct tm){0, 0, 0, 0, 0, 0, 0, 0, 0, 0, nullptr}},
+       make_tm(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, nullptr)},
       {253402300799, "99991231235959Z", nullptr, "Dec 31 23:59:59 9999 GMT",
-       (struct tm){59, 59, 23, 31, 11, 8099, 0, 0, 0, 0, nullptr}},
+       make_tm(59, 59, 23, 31, 11, 8099, 0, 0, 0, 0, nullptr)},
       {253402300800, nullptr, nullptr, nullptr,
-       (struct tm){0, 0, 0, 0, 0, 0, 0, 0, 0, 0, nullptr}},
+       make_tm(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, nullptr)},
   };
   for (const auto &t : kTests) {
     int64_t tt;
