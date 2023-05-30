@@ -27,12 +27,12 @@
 #include <openssl/ecdsa.h>
 #include <openssl/ec_key.h>
 #include <openssl/hmac.h>
+#include <openssl/kdf.h>
 #include <openssl/nid.h>
 #include <openssl/rsa.h>
 #include <openssl/sha.h>
 
 #include "../../crypto/fipsmodule/rand/internal.h"
-#include "../../crypto/fipsmodule/tls/internal.h"
 #include "../../crypto/internal.h"
 
 
