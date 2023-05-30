@@ -21,8 +21,10 @@
 extern "C" {
 #endif
 
-// tls1_prf calculates |out_len| bytes of the TLS PDF, using |digest|, and
-// writes them to |out|. It returns one on success and zero on error.
+// CRYPTO_tls1_prf calculates |out_len| bytes of the TLS PRF, using |digest|,
+// and writes them to |out|. It returns one on success and zero on error.
+// TLS 1.2: https://datatracker.ietf.org/doc/html/rfc5246#section-5
+// TLS 1.{0,1}: https://datatracker.ietf.org/doc/html/rfc4346#section-5
 OPENSSL_EXPORT int CRYPTO_tls1_prf(const EVP_MD *digest,
                                    uint8_t *out, size_t out_len,
                                    const uint8_t *secret, size_t secret_len,
@@ -90,6 +92,7 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_set1_hkdf_salt(EVP_PKEY_CTX *ctx,
 OPENSSL_EXPORT int EVP_PKEY_CTX_add1_hkdf_info(EVP_PKEY_CTX *ctx,
                                                const uint8_t *info,
                                                size_t info_len);
+
 
 #if defined(__cplusplus)
 }  // extern C
