@@ -1931,6 +1931,17 @@ TEST(X509Test, TestCRL) {
 
   // Parsing kBadExtensionCRL should fail.
   EXPECT_FALSE(CRLFromPEM(kBadExtensionCRL));
+
+  // Ensure X509_OBJECT_get0_X509_CRL only returns a CRL if the X509 object is valid
+  X509_OBJECT validCRL;
+  validCRL.type = X509_LU_CRL;
+  validCRL.data.crl = basic_crl.get();
+  ASSERT_EQ(basic_crl.get(), X509_OBJECT_get0_X509_CRL(&validCRL));
+
+  X509_OBJECT invalidCRL;
+  invalidCRL.type = X509_LU_X509;
+  invalidCRL.data.x509 = leaf.get();
+  ASSERT_EQ(nullptr, X509_OBJECT_get0_X509_CRL(&invalidCRL));
 }
 
 TEST(X509Test, ManyNamesAndConstraints) {

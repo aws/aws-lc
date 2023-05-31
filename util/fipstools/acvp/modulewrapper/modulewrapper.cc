@@ -46,10 +46,10 @@
 #include <openssl/span.h>
 #include <openssl/hkdf.h>
 #include <openssl/sshkdf.h>
+#include <openssl/kdf.h>
 
 #include "../../../../crypto/fipsmodule/ec/internal.h"
 #include "../../../../crypto/fipsmodule/rand/internal.h"
-#include "../../../../crypto/fipsmodule/tls/internal.h"
 #include "modulewrapper.h"
 
 
