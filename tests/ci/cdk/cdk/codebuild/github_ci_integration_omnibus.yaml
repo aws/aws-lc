@@ -11,7 +11,7 @@ batch:
       env:
         type: LINUX_CONTAINER
         privileged-mode: false
-        compute-type: BUILD_GENERAL1_LARGE
+        compute-type: BUILD_GENERAL1_SMALL
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_clang-9x_latest
 
     - identifier: openssh_integration
@@ -19,7 +19,7 @@ batch:
       env:
         type: LINUX_CONTAINER
         privileged-mode: false
-        compute-type: BUILD_GENERAL1_LARGE
+        compute-type: BUILD_GENERAL1_SMALL
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:amazonlinux-2023_clang-15x_sanitizer_latest
 
     - identifier: postgres_integration
@@ -27,5 +27,5 @@ batch:
       env:
         type: LINUX_CONTAINER
         privileged-mode: false
-        compute-type: BUILD_GENERAL1_LARGE
+        compute-type: BUILD_GENERAL1_MEDIUM
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-22.04_gcc-12x_latest
