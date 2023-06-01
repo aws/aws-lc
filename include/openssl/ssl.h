@@ -5718,6 +5718,11 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_status_arg(SSL_CTX *ctx, void *arg);
   SSL_GROUP_SECP256R1_KYBER768_DRAFT00
 #define SSL_CURVE_X25519_KYBER768_DRAFT00 SSL_GROUP_X25519_KYBER768_DRAFT00
 
+// TLSEXT_nid_unknown is a constant used in OpenSSL for
+// |SSL_get_negotiated_group| to return an unrecognized group. AWS-LC never
+// returns this value, but we define this constant for compatibility.
+#define TLSEXT_nid_unknown 0x1000000
+
 // SSL_get_curve_id calls |SSL_get_group_id|.
 OPENSSL_EXPORT uint16_t SSL_get_curve_id(const SSL *ssl);
 
