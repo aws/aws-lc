@@ -438,7 +438,7 @@ int DH_up_ref(DH *dh) {
   return 1;
 }
 
-// All the curves in RFC 7919 are of the form:
+// All the groups in RFC 7919 are of the form:
 // q = (p-1)/2
 // g = 2
 static DH *calculate_rfc7919_DH_from_p(const BN_ULONG data[], size_t data_len) {
