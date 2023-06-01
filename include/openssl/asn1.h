@@ -1400,6 +1400,22 @@ OPENSSL_EXPORT ASN1_GENERALIZEDTIME *ASN1_TIME_to_generalizedtime(
 // GeneralizedTime. If |str| is neither, it returns zero.
 OPENSSL_EXPORT int ASN1_TIME_set_string(ASN1_TIME *s, const char *str);
 
+
+// ASN1_TIME conversion functions.
+//
+// |struct| |tm| represents a calendar date: year, month, day... it is not
+// necessarily a valid day, e.g. month 13. |time_t| is a typedef for the system's
+// type that represents the seconds since the UNIX epoch. Posix time is
+// a signed 64-bit integer which also represents the seconds since the UNIX
+// epoch.
+
+// ASN1_TIME_to_tm converts the ASN1 time |t| to the calendar day representation
+// and writes it to |out|. If |t| is NULL, then the current time is converted.
+// The output time is GMT. The tm_sec, tm_min, tm_hour, tm_mday, tm_mon and
+// tm_year fields of |out| are set to proper values, all other fields are set
+// to 0. If tm is NULL this function performs a format check on |t| only.
+OPENSSL_EXPORT int ASN1_TIME_to_tm(const ASN1_TIME *t, struct tm *out);
+
 // ASN1_TIME_to_time_t converts |t| to a time_t value in |out|. On
 // success, one is returned. On failure zero is returned. This function
 // will fail if the time can not be represented in a time_t.

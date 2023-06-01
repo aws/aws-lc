@@ -372,8 +372,26 @@ OPENSSL_EXPORT int SSL_accept(SSL *ssl);
 // https://crbug.com/466303.
 OPENSSL_EXPORT int SSL_read(SSL *ssl, void *buf, int num);
 
+// SSL_read_ex reads up to |num| bytes from |ssl| into |buf|. It is similar to
+// |SSL_read|, but instead of returning the number of bytes read, it returns
+// 1 on success or 0 for failure. The number of bytes actually read is stored in
+// |read_bytes|.
+//
+// This is only maintained for OpenSSL compatibility. Use |SSL_read| instead.
+OPENSSL_EXPORT int SSL_read_ex(SSL *ssl, void *buf, size_t num,
+                               size_t *read_bytes);
+
 // SSL_peek behaves like |SSL_read| but does not consume any bytes returned.
 OPENSSL_EXPORT int SSL_peek(SSL *ssl, void *buf, int num);
+
+// SSL_peek_ex reads up to |num| bytes from |ssl| into |buf|. It is similar to
+// |SSL_peek|, but instead of returning the number of bytes read, it returns
+// 1 on success or 0 for failure. The number of bytes actually read is stored in
+// |read_bytes|.
+//
+// This is only maintained for OpenSSL compatibility. Use |SSL_peek| instead.
+OPENSSL_EXPORT int SSL_peek_ex(SSL *ssl, void *buf, size_t num,
+                               size_t *read_bytes);
 
 // SSL_pending returns the number of buffered, decrypted bytes available for
 // read in |ssl|. It does not read from the transport.
@@ -428,25 +446,56 @@ OPENSSL_EXPORT int SSL_has_pending(const SSL *ssl);
 // https://crbug.com/466303.
 OPENSSL_EXPORT int SSL_write(SSL *ssl, const void *buf, int num);
 
+// SSL_write_ex writes up to |num| bytes from |buf| into |ssl|. It is similar to
+// |SSL_write|, but instead of returning the number of bytes written, it returns
+// 1 on success or 0 for failure. The number bytes actually written is stored in
+// |written|.
+//
+// This is only maintained for OpenSSL compatibility. Use |SSL_write| instead.
+OPENSSL_EXPORT int SSL_write_ex(SSL *s, const void *buf, size_t num,
+                                size_t *written);
+
 // SSL_KEY_UPDATE_REQUESTED indicates that the peer should reply to a KeyUpdate
 // message with its own, thus updating traffic secrets for both directions on
 // the connection.
 #define SSL_KEY_UPDATE_REQUESTED 1
 
 // SSL_KEY_UPDATE_NOT_REQUESTED indicates that the peer should not reply with
-// it's own KeyUpdate message.
+// its own KeyUpdate message.
 #define SSL_KEY_UPDATE_NOT_REQUESTED 0
 
+// SSL_KEY_UPDATE_NONE should not be set by the user and is only used to
+// indicate that there isn't a pending key operation. OpenSSL indicates that -1
+// is used, so that it will be an invalid value for the on-the-wire protocol
+// when calling |SSL_key_update|.
+#define SSL_KEY_UPDATE_NONE -1
+
 // SSL_key_update queues a TLS 1.3 KeyUpdate message to be sent on |ssl|
-// if one is not already queued. The |request_type| argument must one of the
-// |SSL_KEY_UPDATE_*| values. This function requires that |ssl| have completed a
-// TLS >= 1.3 handshake. It returns one on success or zero on error.
+// if one is not already queued. The |request_type| argument must be either
+// |SSL_KEY_UPDATE_REQUESTED| or |SSL_KEY_UPDATE_NOT_REQUESTED|. This function
+// requires that |ssl| have completed a TLS >= 1.3 handshake. It returns one on
+// success or zero on error.
+//
+// If |request_type| is set to |SSL_KEY_UPDATE_NOT_REQUESTED|, then the sending
+// keys for this connection will be updated and the peer will be informed of the
+// change.
+// If |request_type| is set to |SSL_KEY_UPDATE_REQUESTED|, then the sending keys
+// for this connection will be updated and the peer will be informed of the change
+// along with a request for the peer to additionally update its sending keys.
+// RFC: https://datatracker.ietf.org/doc/html/rfc8446#section-4.6.3
 //
 // Note that this function does not _send_ the message itself. The next call to
 // |SSL_write| will cause the message to be sent. |SSL_write| may be called with
 // a zero length to flush a KeyUpdate message when no application data is
 // pending.
 OPENSSL_EXPORT int SSL_key_update(SSL *ssl, int request_type);
+
+// SSL_get_key_update_type returns the state of the pending key operation in
+// |ssl|. The type of pending key operation will be either
+// |SSL_KEY_UPDATE_REQUESTED| or |SSL_KEY_UPDATE_NOT_REQUESTED| if there is one,
+// and |SSL_KEY_UPDATE_NONE| otherwise. This can be used to indicate whether
+// a key update operation has been scheduled but not yet performed.
+OPENSSL_EXPORT int SSL_get_key_update_type(const SSL *ssl);
 
 // SSL_shutdown shuts down |ssl|. It runs in two stages. First, it sends
 // close_notify and returns zero or one on success or -1 on failure. Zero
@@ -5237,6 +5286,9 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_status_cb(SSL_CTX *ctx,
                                                 int (*callback)(SSL *ssl,
                                                                 void *arg));
 
+// SSL_CTX_get_tlsext_status_cb returns the legacy OpenSSL OCSP callback if set.
+OPENSSL_EXPORT int SSL_CTX_get_tlsext_status_cb(SSL_CTX *ctx, int (**callback)(SSL *, void *));
+
 // SSL_CTX_set_tlsext_status_arg sets additional data for
 // |SSL_CTX_set_tlsext_status_cb|'s callback and returns one.
 OPENSSL_EXPORT int SSL_CTX_set_tlsext_status_arg(SSL_CTX *ctx, void *arg);
@@ -5359,6 +5411,7 @@ OPENSSL_EXPORT uint16_t SSL_CIPHER_get_value(const SSL_CIPHER *cipher);
 #define SSL_CTX_get_options SSL_CTX_get_options
 #define SSL_CTX_get_read_ahead SSL_CTX_get_read_ahead
 #define SSL_CTX_get_session_cache_mode SSL_CTX_get_session_cache_mode
+#define SSL_CTX_get_tlsext_status_cb SSL_CTX_get_tlsext_status_cb
 #define SSL_CTX_get_tlsext_ticket_keys SSL_CTX_get_tlsext_ticket_keys
 #define SSL_CTX_need_tmp_RSA SSL_CTX_need_tmp_RSA
 #define SSL_CTX_sess_get_cache_size SSL_CTX_sess_get_cache_size

@@ -14,6 +14,7 @@
 
 #include <algorithm>
 #include <functional>
+#include <iostream>
 #include <memory>
 #include <string>
 #include <vector>
@@ -208,6 +209,7 @@ static uint64_t time_now() {
 static uint64_t g_timeout_seconds = TIMEOUT_SECONDS_DEFAULT;
 static std::vector<size_t> g_chunk_lengths = {16, 256, 1350, 8192, 16384};
 static std::vector<size_t> g_prime_bit_lengths = {2048, 3072};
+static std::vector<std::string> g_filters = {""};
 
 static bool TimeFunction(TimeResults *results, std::function<bool()> func) {
   // The first time |func| is called an expensive self check might run that
@@ -456,9 +458,9 @@ static bool SpeedRSAKeyGen(bool is_fips, const std::string &selected) {
   return true;
 }
 
-static bool SpeedAESGCMChunk(const EVP_CIPHER *cipher, std::string name,
+static bool SpeedAESGenericChunk(const EVP_CIPHER *cipher, std::string name,
                              size_t chunk_byte_len, size_t ad_len, bool encrypt) {
-  int len;
+  int len, result;
   int* len_ptr = &len;
   const size_t key_len = EVP_CIPHER_key_length(cipher);
   static const unsigned kAlignment = 16;
@@ -485,6 +487,7 @@ static bool SpeedAESGCMChunk(const EVP_CIPHER *cipher, std::string name,
 
   BM_NAMESPACE::UniquePtr<EVP_CIPHER_CTX> ctx(EVP_CIPHER_CTX_new());
 
+  bool isGCM = cipher == EVP_aes_128_gcm() || cipher == EVP_aes_192_gcm() || cipher == EVP_aes_256_gcm();
   if (encrypt) {
     std::string encryptName = name + " encrypt";
     TimeResults encryptResults;
@@ -495,12 +498,17 @@ static bool SpeedAESGCMChunk(const EVP_CIPHER *cipher, std::string name,
       ERR_print_errors_fp(stderr);
       return false;
     }
-    if (!TimeFunction(&encryptResults, [&ctx, chunk_byte_len, plaintext, ciphertext, len_ptr, tag, &nonce, &ad, ad_len]() -> bool {
-      return EVP_EncryptInit_ex(ctx.get(), NULL, NULL, NULL, nonce.get()) &&
-        EVP_EncryptUpdate(ctx.get(), NULL, len_ptr, ad.get(), ad_len) &&
-        EVP_EncryptUpdate(ctx.get(), ciphertext, len_ptr, plaintext, chunk_byte_len) &&
-        EVP_EncryptFinal_ex(ctx.get(), ciphertext + *len_ptr, len_ptr) &&
-        EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_GET_TAG, 16, tag);
+    if (!TimeFunction(&encryptResults, [&ctx, chunk_byte_len, plaintext, ciphertext, len_ptr, tag, &nonce, &ad, ad_len, &isGCM, &result]() -> bool {
+      result = EVP_EncryptInit_ex(ctx.get(), NULL, NULL, NULL, nonce.get());
+      if (isGCM) {
+        result &= EVP_EncryptUpdate(ctx.get(), NULL, len_ptr, ad.get(), ad_len);
+      }
+      result &= EVP_EncryptUpdate(ctx.get(), ciphertext, len_ptr, plaintext, chunk_byte_len);
+      result &= EVP_EncryptFinal_ex(ctx.get(), ciphertext + *len_ptr, len_ptr);
+      if (isGCM) {
+        result &= EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_GET_TAG, 16, tag);
+      }
+      return result;
     })) {
       fprintf(stderr, "%s failed.\n", encryptName.c_str());
       ERR_print_errors_fp(stderr);
@@ -510,11 +518,17 @@ static bool SpeedAESGCMChunk(const EVP_CIPHER *cipher, std::string name,
     encryptResults.PrintWithBytes(encryptName, chunk_byte_len);
   }
   else {
-    if (!(EVP_EncryptInit_ex(ctx.get(), cipher, NULL, key.get(), nonce.get()) &&
-          EVP_EncryptUpdate(ctx.get(), NULL, len_ptr, ad.get(), ad_len) &&
-          EVP_EncryptUpdate(ctx.get(), ciphertext, len_ptr, plaintext, chunk_byte_len) &&
-          EVP_EncryptFinal_ex(ctx.get(), ciphertext + *len_ptr, len_ptr) &&
-          EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_GET_TAG, 16, tag))) {
+    result =  EVP_EncryptInit_ex(ctx.get(), cipher, NULL, key.get(), nonce.get());
+    if (isGCM) {
+      result &= EVP_EncryptUpdate(ctx.get(), NULL, len_ptr, ad.get(), ad_len);
+    }
+    result &= EVP_EncryptUpdate(ctx.get(), ciphertext, len_ptr, plaintext, chunk_byte_len);
+    result &= EVP_EncryptFinal_ex(ctx.get(), ciphertext + *len_ptr, len_ptr);
+    if(isGCM) {
+      result &= EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_GET_TAG, 16, tag);
+    }
+
+    if (!result) {
       fprintf(stderr, "Failed to perform one encryption.\n");
       ERR_print_errors_fp(stderr);
       return false;
@@ -527,12 +541,17 @@ static bool SpeedAESGCMChunk(const EVP_CIPHER *cipher, std::string name,
       ERR_print_errors_fp(stderr);
       return false;
     }
-    if (!TimeFunction(&decryptResults, [&ctx, chunk_byte_len, plaintext, ciphertext, len_ptr, tag, &nonce, &ad, ad_len]() -> bool {
-      return EVP_DecryptInit_ex(ctx.get(), NULL, NULL, NULL, nonce.get()) &&
-        EVP_DecryptUpdate(ctx.get(), NULL, len_ptr, ad.get(), ad_len) &&
-        EVP_DecryptUpdate(ctx.get(), plaintext, len_ptr, ciphertext, chunk_byte_len) &&
-        EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_SET_TAG, 16, tag) &&
-        EVP_DecryptFinal_ex(ctx.get(), ciphertext + *len_ptr, len_ptr);
+    if (!TimeFunction(&decryptResults, [&ctx, chunk_byte_len, plaintext, ciphertext, len_ptr, tag, &nonce, &ad, ad_len, &isGCM, &result]() -> bool {
+      result = EVP_DecryptInit_ex(ctx.get(), NULL, NULL, NULL, nonce.get());
+      if(isGCM) {
+        result &= EVP_DecryptUpdate(ctx.get(), NULL, len_ptr, ad.get(), ad_len);
+      }
+      result &= EVP_DecryptUpdate(ctx.get(), plaintext, len_ptr, ciphertext, chunk_byte_len);
+      if (isGCM) {
+        result &= EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_SET_TAG, 16, tag);
+      }
+      result &= EVP_DecryptFinal_ex(ctx.get(), ciphertext + *len_ptr, len_ptr);
+      return result;
     })) {
       fprintf(stderr, "%s failed.\n", decryptName.c_str());
       ERR_print_errors_fp(stderr);
@@ -543,7 +562,7 @@ static bool SpeedAESGCMChunk(const EVP_CIPHER *cipher, std::string name,
 
   return true;
 }
-static bool SpeedAESGCM(const EVP_CIPHER *cipher, const std::string &name,
+static bool SpeedAESGeneric(const EVP_CIPHER *cipher, const std::string &name,
                         size_t ad_len, const std::string &selected) {
   if (!selected.empty() && name.find(selected) == std::string::npos) {
     return true;
@@ -564,8 +583,8 @@ static bool SpeedAESGCM(const EVP_CIPHER *cipher, const std::string &name,
   results.Print(name +  " encrypt init");
 
   for (size_t chunk_byte_len : g_chunk_lengths) {
-    if (!SpeedAESGCMChunk(cipher, name, chunk_byte_len, ad_len,
-                          /*encrypt*/ true)) {
+    if (!SpeedAESGenericChunk(cipher, name, chunk_byte_len, ad_len,
+                              /*encrypt*/ true)) {
       return false;
     }
   }
@@ -578,7 +597,7 @@ static bool SpeedAESGCM(const EVP_CIPHER *cipher, const std::string &name,
   }
   results.Print(name +  " decrypt init");
   for (size_t chunk_byte_len : g_chunk_lengths) {
-    if (!SpeedAESGCMChunk(cipher, name, chunk_byte_len, ad_len, false)) {
+    if (!SpeedAESGenericChunk(cipher, name, chunk_byte_len, ad_len, false)) {
       return false;
     }
   }
@@ -2235,7 +2254,8 @@ static const argument_t kArguments[] = {
     {
         "-filter",
         kOptionalArgument,
-        "A filter on the speed tests to run",
+        "A comma-separated list of filters on the speed tests to run. "
+        "Each filter is applied in independent runs.",
     },
     {
         "-timeout",
@@ -2271,36 +2291,49 @@ static const argument_t kArguments[] = {
     },
 };
 
-// parseCommaArgumentToGlobalVector clears |vector| and parses comma-separated
-// input for the argument |arg_name| in |args_map|.
-static bool parseCommaArgumentToGlobalVector(std::vector<size_t> &vector, 
+// parseCommaArgument clears |vector| and parses comma-separated input for the
+// argument |arg_name| in |args_map|.
+static bool parseCommaArgument(std::vector<std::string> &vector,
   std::map<std::string, std::string> &args_map, const std::string &arg_name) {
 
-    vector.clear();
-    const char *start = args_map[arg_name.c_str()].data();
-    const char *end = start + args_map[arg_name.c_str()].size();
-    while (start != end) {
-      errno = 0;
-      char *ptr;
-      unsigned long long val = strtoull(start, &ptr, 10);
-      if (ptr == start /* no numeric characters found */ ||
-          errno == ERANGE /* overflow */ ||
-          static_cast<size_t>(val) != val) {
-        fprintf(stderr, "Error parsing %s argument\n", arg_name.c_str());
-        return false;
-      }
-      vector.push_back(static_cast<size_t>(val));
-      start = ptr;
-      if (start != end) {
-        if (*start != ',') {
-          fprintf(stderr, "Error parsing %s argument\n", arg_name.c_str());
-          return false;
-        }
-        start++;
-      }
+  vector.clear();
+  const char *start = args_map[arg_name.c_str()].data();
+  const char *end = start + args_map[arg_name.c_str()].size();
+  const char* current = start;
+  while (current < end) {
+    const char* comma = std::find(current, end, ',');
+    if (comma == current) {
+      // Empty argument found e.g. arg1,arg2,,arg3
+      fprintf(stderr, "Error parsing %s argument\n", arg_name.c_str());
+      return false;
     }
+    vector.emplace_back(current, comma);
+    current = (comma == end) ? end : comma + 1;
+  }
 
-    return true;
+  return true;
+}
+
+// parseStringVectorToIntegerVector attempts to parse each element of 
+// |in_vector| as a size_t integer and adds the result to |out_vector|. Clears
+// |out_vector|.
+static bool parseStringVectorToIntegerVector(
+  std::vector<std::string> &in_vector, std::vector<size_t> &out_vector) {
+
+  out_vector.clear();
+  for (const std::string &str : in_vector) {
+    errno = 0;
+    char *ptr;
+    unsigned long long int integer_value = strtoull(str.data(), &ptr, 10);
+    if (ptr == str.data() /* no numeric characters found */ ||
+        errno == ERANGE /* overflow */ ||
+        static_cast<size_t>(integer_value) != integer_value) {
+      fprintf(stderr, "Error parsing %s argument\n", str.c_str());
+      return false;
+    }
+    out_vector.push_back(static_cast<size_t>(integer_value));
+  }
+  return true;
 }
 
 bool Speed(const std::vector<std::string> &args) {
@@ -2315,9 +2348,10 @@ bool Speed(const std::vector<std::string> &args) {
     return false;
   }
 
-  std::string selected;
   if (args_map.count("-filter") != 0) {
-    selected = args_map["-filter"];
+    if (!parseCommaArgument(g_filters, args_map, "-filter")) {
+      return false;
+    }
   }
 
   if (args_map.count("-json") != 0) {
@@ -2329,15 +2363,23 @@ bool Speed(const std::vector<std::string> &args) {
   }
 
   if (args_map.count("-chunks") != 0) {
-    if (!parseCommaArgumentToGlobalVector(g_chunk_lengths,
+    std::vector<std::string> chunkVector;
+    if (!parseCommaArgument(chunkVector,
         args_map, "-chunks")) {
+      return false;
+    }
+    if (!parseStringVectorToIntegerVector(chunkVector, g_chunk_lengths)) {
       return false;
     }
   }
 
   if (args_map.count("-primes") != 0) {
-    if (!parseCommaArgumentToGlobalVector(g_prime_bit_lengths,
+    std::vector<std::string> primeVector;
+    if (!parseCommaArgument(primeVector,
         args_map, "-primes")) {
+      return false;
+    }
+    if (!parseStringVectorToIntegerVector(primeVector, g_prime_bit_lengths)) {
       return false;
     }
   }
@@ -2361,106 +2403,114 @@ bool Speed(const std::vector<std::string> &args) {
   if (g_print_json) {
     puts("[");
   }
-  if(!SpeedAESBlock("AES-128", 128, selected) ||
-     !SpeedAESBlock("AES-192", 192, selected) ||
-     !SpeedAESBlock("AES-256", 256, selected) ||
-     !SpeedAESGCM(EVP_aes_128_gcm(), "EVP-AES-128-GCM", kTLSADLen, selected) ||
-     !SpeedAESGCM(EVP_aes_192_gcm(), "EVP-AES-192-GCM", kTLSADLen, selected) ||
-     !SpeedAESGCM(EVP_aes_256_gcm(), "EVP-AES-256-GCM", kTLSADLen, selected) ||
-     !SpeedAES256XTS("AES-256-XTS", selected) ||
-     // OpenSSL 3.0 doesn't allow MD4 calls
+
+  for (std::string selected : g_filters) {
+    if(!SpeedAESBlock("AES-128", 128, selected) ||
+       !SpeedAESBlock("AES-192", 192, selected) ||
+       !SpeedAESBlock("AES-256", 256, selected) ||
+       !SpeedAESGeneric(EVP_aes_128_gcm(), "EVP-AES-128-GCM", kTLSADLen, selected) ||
+       !SpeedAESGeneric(EVP_aes_192_gcm(), "EVP-AES-192-GCM", kTLSADLen, selected) ||
+       !SpeedAESGeneric(EVP_aes_256_gcm(), "EVP-AES-256-GCM", kTLSADLen, selected) ||
+       !SpeedAESGeneric(EVP_aes_128_ctr(), "EVP-AES-128-CTR", kTLSADLen, selected) ||
+       !SpeedAESGeneric(EVP_aes_192_ctr(), "EVP-AES-192-CTR", kTLSADLen, selected) ||
+       !SpeedAESGeneric(EVP_aes_256_ctr(), "EVP-AES-256-CTR", kTLSADLen, selected) ||
+       !SpeedAES256XTS("AES-256-XTS", selected) ||
+       // OpenSSL 3.0 doesn't allow MD4 calls
 #if !defined(OPENSSL_3_0_BENCHMARK)
-     !SpeedHash(EVP_md4(), "MD4", selected) ||
+       !SpeedHash(EVP_md4(), "MD4", selected) ||
 #endif
-     !SpeedHash(EVP_md5(), "MD5", selected) ||
-     !SpeedHash(EVP_sha1(), "SHA-1", selected) ||
-     !SpeedHash(EVP_sha224(), "sha-224", selected) ||
-     !SpeedHash(EVP_sha256(), "SHA-256", selected) ||
-     !SpeedHash(EVP_sha384(), "SHA-384", selected) ||
-     !SpeedHash(EVP_sha512(), "SHA-512", selected) ||
-     // OpenSSL 1.0 doesn't support SHA3.
+       !SpeedHash(EVP_md5(), "MD5", selected) ||
+       !SpeedHash(EVP_sha1(), "SHA-1", selected) ||
+       !SpeedHash(EVP_sha224(), "sha-224", selected) ||
+       !SpeedHash(EVP_sha256(), "SHA-256", selected) ||
+       !SpeedHash(EVP_sha384(), "SHA-384", selected) ||
+       !SpeedHash(EVP_sha512(), "SHA-512", selected) ||
+       // OpenSSL 1.0 doesn't support SHA3.
 #if !defined(OPENSSL_1_0_BENCHMARK) && AWSLC_API_VERSION > 16
-     !SpeedHash(EVP_sha3_224(), "SHA3-224", selected) ||
-     !SpeedHash(EVP_sha3_256(), "SHA3-256", selected) ||
-     !SpeedHash(EVP_sha3_384(), "SHA3-384", selected) ||
-     !SpeedHash(EVP_sha3_512(), "SHA3-512", selected) ||
+       !SpeedHash(EVP_sha3_224(), "SHA3-224", selected) ||
+       !SpeedHash(EVP_sha3_256(), "SHA3-256", selected) ||
+       !SpeedHash(EVP_sha3_384(), "SHA3-384", selected) ||
+       !SpeedHash(EVP_sha3_512(), "SHA3-512", selected) ||
 #endif
-     !SpeedHmac(EVP_md5(), "HMAC-MD5", selected) ||
-     !SpeedHmac(EVP_sha1(), "HMAC-SHA1", selected) ||
-     !SpeedHmac(EVP_sha256(), "HMAC-SHA256", selected) ||
-     !SpeedHmac(EVP_sha384(), "HMAC-SHA384", selected) ||
-     !SpeedHmac(EVP_sha512(), "HMAC-SHA512", selected) ||
-     !SpeedHmacOneShot(EVP_md5(), "HMAC-MD5-OneShot", selected) ||
-     !SpeedHmacOneShot(EVP_sha1(), "HMAC-SHA1-OneShot", selected) ||
-     !SpeedHmacOneShot(EVP_sha256(), "HMAC-SHA256-OneShot", selected) ||
-     !SpeedHmacOneShot(EVP_sha384(), "HMAC-SHA384-OneShot", selected) ||
-     !SpeedHmacOneShot(EVP_sha512(), "HMAC-SHA512-OneShot", selected) ||
-     !SpeedRandom(selected) ||
-     !SpeedECDH(selected) ||
-     !SpeedECDSA(selected) ||
-     !SpeedECKeyGen(selected) ||
-     !SpeedECKeyGenerateKey(false, selected) ||
+       !SpeedHmac(EVP_md5(), "HMAC-MD5", selected) ||
+       !SpeedHmac(EVP_sha1(), "HMAC-SHA1", selected) ||
+       !SpeedHmac(EVP_sha256(), "HMAC-SHA256", selected) ||
+       !SpeedHmac(EVP_sha384(), "HMAC-SHA384", selected) ||
+       !SpeedHmac(EVP_sha512(), "HMAC-SHA512", selected) ||
+       !SpeedHmacOneShot(EVP_md5(), "HMAC-MD5-OneShot", selected) ||
+       !SpeedHmacOneShot(EVP_sha1(), "HMAC-SHA1-OneShot", selected) ||
+       !SpeedHmacOneShot(EVP_sha256(), "HMAC-SHA256-OneShot", selected) ||
+       !SpeedHmacOneShot(EVP_sha384(), "HMAC-SHA384-OneShot", selected) ||
+       !SpeedHmacOneShot(EVP_sha512(), "HMAC-SHA512-OneShot", selected) ||
+       !SpeedRandom(selected) ||
+       !SpeedECDH(selected) ||
+       !SpeedECDSA(selected) ||
+       !SpeedECKeyGen(selected) ||
+       !SpeedECKeyGenerateKey(false, selected) ||
 #if !defined(OPENSSL_1_0_BENCHMARK)
-     !SpeedECMUL(selected) ||
-     // OpenSSL 1.0 doesn't support Scrypt
-     !SpeedScrypt(selected) ||
+       !SpeedECMUL(selected) ||
+       // OpenSSL 1.0 doesn't support Scrypt
+       !SpeedScrypt(selected) ||
 #endif
-     !SpeedRSA(selected) ||
-     !SpeedRSAKeyGen(false, selected) ||
-     !SpeedDHcheck(selected)
+       !SpeedRSA(selected) ||
+       !SpeedRSAKeyGen(false, selected) ||
+       !SpeedDHcheck(selected)
 #if !defined(OPENSSL_BENCHMARK)
-     ||
+       ||
 #if AWSLC_API_VERSION > 16
-     !SpeedKEM(selected) ||
+       !SpeedKEM(selected) ||
 #endif
 #if defined(ENABLE_DILITHIUM) && AWSLC_API_VERSION > 20
-     !SpeedDigestSign(selected) ||
+       !SpeedDigestSign(selected) ||
 #endif
-     !SpeedAEADSeal(EVP_aead_aes_128_gcm(), "AEAD-AES-128-GCM", kTLSADLen, selected) ||
-     !SpeedAEADOpen(EVP_aead_aes_128_gcm(), "AEAD-AES-128-GCM", kTLSADLen, selected) ||
-     !SpeedAEADSeal(EVP_aead_aes_256_gcm(), "AEAD-AES-256-GCM", kTLSADLen, selected) ||
-     !SpeedAEADOpen(EVP_aead_aes_256_gcm(), "AEAD-AES-256-GCM", kTLSADLen, selected) ||
-     !SpeedAEADSeal(EVP_aead_chacha20_poly1305(), "AEAD-ChaCha20-Poly1305", kTLSADLen, selected) ||
-     !SpeedAEADSeal(EVP_aead_des_ede3_cbc_sha1_tls(), "AEAD-DES-EDE3-CBC-SHA1",kLegacyADLen, selected) ||
-     !SpeedAEADSeal(EVP_aead_aes_128_cbc_sha1_tls(), "AEAD-AES-128-CBC-SHA1",kLegacyADLen, selected) ||
-     !SpeedAEADSeal(EVP_aead_aes_256_cbc_sha1_tls(), "AEAD-AES-256-CBC-SHA1",kLegacyADLen, selected) ||
-     !SpeedAEADOpen(EVP_aead_aes_128_cbc_sha1_tls(), "AEAD-AES-128-CBC-SHA1", kLegacyADLen, selected) ||
-     !SpeedAEADOpen(EVP_aead_aes_256_cbc_sha1_tls(), "AEAD-AES-256-CBC-SHA1", kLegacyADLen, selected) ||
-     !SpeedAEADSeal(EVP_aead_aes_128_gcm_siv(), "AEAD-AES-128-GCM-SIV",kTLSADLen, selected) ||
-     !SpeedAEADSeal(EVP_aead_aes_256_gcm_siv(), "AEAD-AES-256-GCM-SIV",kTLSADLen, selected) ||
-     !SpeedAEADOpen(EVP_aead_aes_128_gcm_siv(), "AEAD-AES-128-GCM-SIV", kTLSADLen, selected) ||
-     !SpeedAEADOpen(EVP_aead_aes_256_gcm_siv(), "AEAD-AES-256-GCM-SIV", kTLSADLen, selected) ||
-     !SpeedAEADSeal(EVP_aead_aes_128_ccm_bluetooth(),"AEAD-AES-128-CCM-Bluetooth", kTLSADLen, selected) ||
-     !Speed25519(selected) ||
-     !SpeedSPAKE2(selected) ||
-     !SpeedRSAKeyGen(true, selected) ||
-     !SpeedHRSS(selected) ||
-     !SpeedHash(EVP_blake2b256(), "BLAKE2b-256", selected) ||
-     !SpeedECKeyGenerateKey(true, selected) ||
+       !SpeedAEADSeal(EVP_aead_aes_128_gcm(), "AEAD-AES-128-GCM", kTLSADLen, selected) ||
+       !SpeedAEADOpen(EVP_aead_aes_128_gcm(), "AEAD-AES-128-GCM", kTLSADLen, selected) ||
+       !SpeedAEADSeal(EVP_aead_aes_256_gcm(), "AEAD-AES-256-GCM", kTLSADLen, selected) ||
+       !SpeedAEADOpen(EVP_aead_aes_256_gcm(), "AEAD-AES-256-GCM", kTLSADLen, selected) ||
+       !SpeedAEADSeal(EVP_aead_chacha20_poly1305(), "AEAD-ChaCha20-Poly1305", kTLSADLen, selected) ||
+       !SpeedAEADSeal(EVP_aead_des_ede3_cbc_sha1_tls(), "AEAD-DES-EDE3-CBC-SHA1",kLegacyADLen, selected) ||
+       !SpeedAEADSeal(EVP_aead_aes_128_cbc_sha1_tls(), "AEAD-AES-128-CBC-SHA1",kLegacyADLen, selected) ||
+       !SpeedAEADSeal(EVP_aead_aes_256_cbc_sha1_tls(), "AEAD-AES-256-CBC-SHA1",kLegacyADLen, selected) ||
+       !SpeedAEADOpen(EVP_aead_aes_128_cbc_sha1_tls(), "AEAD-AES-128-CBC-SHA1", kLegacyADLen, selected) ||
+       !SpeedAEADOpen(EVP_aead_aes_256_cbc_sha1_tls(), "AEAD-AES-256-CBC-SHA1", kLegacyADLen, selected) ||
+       !SpeedAEADSeal(EVP_aead_aes_128_gcm_siv(), "AEAD-AES-128-GCM-SIV",kTLSADLen, selected) ||
+       !SpeedAEADSeal(EVP_aead_aes_256_gcm_siv(), "AEAD-AES-256-GCM-SIV",kTLSADLen, selected) ||
+       !SpeedAEADOpen(EVP_aead_aes_128_gcm_siv(), "AEAD-AES-128-GCM-SIV", kTLSADLen, selected) ||
+       !SpeedAEADOpen(EVP_aead_aes_256_gcm_siv(), "AEAD-AES-256-GCM-SIV", kTLSADLen, selected) ||
+       !SpeedAEADSeal(EVP_aead_aes_128_ccm_bluetooth(),"AEAD-AES-128-CCM-Bluetooth", kTLSADLen, selected) ||
+       !Speed25519(selected) ||
+       !SpeedSPAKE2(selected) ||
+       !SpeedRSAKeyGen(true, selected) ||
+       !SpeedHRSS(selected) ||
+       !SpeedHash(EVP_blake2b256(), "BLAKE2b-256", selected) ||
+       !SpeedECKeyGenerateKey(true, selected) ||
 #if defined(INTERNAL_TOOL)
-     !SpeedHashToCurve(selected) ||
-     !SpeedTrustToken("TrustToken-Exp1-Batch1", TRUST_TOKEN_experiment_v1(), 1, selected) ||
-     !SpeedTrustToken("TrustToken-Exp1-Batch10", TRUST_TOKEN_experiment_v1(), 10, selected) ||
-     !SpeedTrustToken("TrustToken-Exp2VOfPRF-Batch1", TRUST_TOKEN_experiment_v2_voprf(), 1, selected) ||
-     !SpeedTrustToken("TrustToken-Exp2VOPRF-Batch10", TRUST_TOKEN_experiment_v2_voprf(), 10, selected) ||
-     !SpeedTrustToken("TrustToken-Exp2PMB-Batch1", TRUST_TOKEN_experiment_v2_pmb(), 1, selected) ||
-     !SpeedTrustToken("TrustToken-Exp2PMB-Batch10", TRUST_TOKEN_experiment_v2_pmb(), 10, selected) ||
+       !SpeedHashToCurve(selected) ||
+       !SpeedTrustToken("TrustToken-Exp1-Batch1", TRUST_TOKEN_experiment_v1(), 1, selected) ||
+       !SpeedTrustToken("TrustToken-Exp1-Batch10", TRUST_TOKEN_experiment_v1(), 10, selected) ||
+       !SpeedTrustToken("TrustToken-Exp2VOfPRF-Batch1", TRUST_TOKEN_experiment_v2_voprf(), 1, selected) ||
+       !SpeedTrustToken("TrustToken-Exp2VOPRF-Batch10", TRUST_TOKEN_experiment_v2_voprf(), 10, selected) ||
+       !SpeedTrustToken("TrustToken-Exp2PMB-Batch1", TRUST_TOKEN_experiment_v2_pmb(), 1, selected) ||
+       !SpeedTrustToken("TrustToken-Exp2PMB-Batch10", TRUST_TOKEN_experiment_v2_pmb(), 10, selected) ||
 #endif
 #if !defined(OPENSSL_BENCHMARK) && !defined(BORINGSSL_BENCHMARK) && AWSLC_API_VERSION > 16
-     !SpeedPKCS8(selected) ||
+       !SpeedPKCS8(selected) ||
 #endif
-     !SpeedBase64(selected) ||
-     !SpeedSipHash(selected)
+       !SpeedBase64(selected) ||
+       !SpeedSipHash(selected)
 #endif
-     ) {
-    return false;
-  }
+       ) {
+      return false;
+    }
+
 #if defined(AWSLC_FIPS)
-  if (!SpeedSelfTest(selected) ||
-      !SpeedJitter(selected)) {
-    return false;
-  }
+    if (!SpeedSelfTest(selected) ||
+        !SpeedJitter(selected)) {
+      return false;
+    }
 #endif
+  }
+
   if (g_print_json) {
     puts("\n]");
   }

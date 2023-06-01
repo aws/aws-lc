@@ -30,6 +30,12 @@ if(NOT OPENSSL_NO_ASM)
     enable_language(ASM)
     set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -Wa,--noexecstack")
 
+    # Since "--Wa,--noexecstack" is not used during the preprocessor step of Android (because assembler is not invoked),
+    # Clang reports that argument as unused. We quiet the unused argument warning for Android as it's expected behavior.
+    if(ANDROID)
+      set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -Qunused-arguments")
+    endif()
+
     # Clang's integerated assembler does not support debug symbols.
     if (CMAKE_ASM_COMPILER_ID MATCHES "Clang" OR CMAKE_ASM_COMPILER MATCHES "clang")
       message(STATUS "Disabling debug symbols for Clang internal assembler")

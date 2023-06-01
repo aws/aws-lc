@@ -125,16 +125,12 @@ OPENSSL_EXPORT int EVP_PKEY_missing_parameters(const EVP_PKEY *pkey);
 // |pkey|. For an RSA key, this returns the number of bytes needed to represent
 // the modulus. For an EC key, this returns the maximum size of a DER-encoded
 // ECDSA signature. For a Dilithium key, this returns the signature byte size.
-// For a KEM key, this returns the sum of the size of the public key and the
-// secret key.
 OPENSSL_EXPORT int EVP_PKEY_size(const EVP_PKEY *pkey);
 
 // EVP_PKEY_bits returns the "size", in bits, of |pkey|. For an RSA key, this
 // returns the bit length of the modulus. For an EC key, this returns the bit
 // length of the group order. For a Dilithium key, this returns the bit length
-// of the public key. For a KEM, this returns the sum of the size
-// of the public key and the secret key.
-
+// of the public key.
 OPENSSL_EXPORT int EVP_PKEY_bits(const EVP_PKEY *pkey);
 
 // EVP_PKEY_id returns the type of |pkey|, which is one of the |EVP_PKEY_*|
@@ -183,9 +179,6 @@ OPENSSL_EXPORT EC_KEY *EVP_PKEY_get1_EC_KEY(const EVP_PKEY *pkey);
 #define EVP_PKEY_EC NID_X9_62_id_ecPublicKey
 #define EVP_PKEY_ED25519 NID_ED25519
 #define EVP_PKEY_X25519 NID_X25519
-// TODO(awslc): delete Kyber define
-
-#define EVP_PKEY_KYBER512 NID_KYBER512
 #define EVP_PKEY_HKDF NID_hkdf
 
 #ifdef ENABLE_DILITHIUM

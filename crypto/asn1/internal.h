@@ -71,7 +71,7 @@ extern "C" {
 
 // Wrapper functions for time functions.
 
-// OPENSSL_posix_to_tm converts a int64_t POSIX time value in |time| whuch must
+// OPENSSL_posix_to_tm converts a int64_t POSIX time value in |time| which must
 // be in the range of year 0000 to 9999 to a broken out time value in |tm|. It
 // returns one on success and zero on error.
 OPENSSL_EXPORT int OPENSSL_posix_to_tm(int64_t time, struct tm *out_tm);
