@@ -113,6 +113,9 @@ set(
   crypto/ocsp/test/aws/server_ecdsa_cert.pem
   crypto/ocsp/test/aws/server_ecdsa_key.pem
   crypto/ocsp/test/aws/server_key.pem
+  crypto/ocsp/test/integration-tests/AmazonRootCA1.pem
+  crypto/ocsp/test/integration-tests/AmazonRootCA2.pem
+  crypto/ocsp/test/integration-tests/AmazonRootCA3.pem
   crypto/ocsp/test/ND1.ors
   crypto/ocsp/test/ND2.ors
   crypto/ocsp/test/ND3.ors
