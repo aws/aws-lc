@@ -428,6 +428,56 @@ TEST(DHTest, RFC7919) {
   check_equal(ffdhe4096_q_string, DH_get0_q(ffdhe4096_dh.get()));
 }
 
+TEST(DHTest, RFC7919_kat) {
+  // KAT calucated with the following sage_math code:
+  // # the 2048-bit prime from RFC7919
+  // prime=int("0xFFFFFFFFFFFFFFFFADF85458A2BB4A9AAFDC5620273D3CF1D8B9C583CE2D3695A9E13641146433FBCC939DCE249B3EF97D2FE363630C75D8F681B202AEC4617AD3DF1ED5D5FD65612433F51F5F066ED0856365553DED1AF3B557135E7F57C935984F0C70E0E68B77E2A689DAF3EFE8721DF158A136ADE73530ACCA4F483A797ABC0AB182B324FB61D108A94BB2C8E3FBB96ADAB760D7F4681D4F42A3DE394DF4AE56EDE76372BB190B07A7C8EE0A6D709E02FCE1CDF7E2ECC03404CD28342F619172FE9CE98583FF8E4F1232EEF28183C3FE3B1B4C6FAD733BB5FCBC2EC22005C58EF1837D1683B2C6F34A26C1B2EFFA886B423861285C97FFFFFFFFFFFFFFFF", 16) R=Integers(prime) g = R(2)
+  //
+  // client_sk = int("0xABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890", 16) client_public = g^client_sk
+  //
+  // server_sk = int("0xAABBCCDDEEFF11223344556677889900AABBCCDDEEFF11223344556677889900", 16) shared_secret = client_public^server_sk
+  //
+  // print("client_public_string", format(int(client_public), '#x'))
+  // print("server_sk_string", format(server_sk, '#x'))
+  // print("expected_shared_secret_string", format(int(shared_secret), '#x'))
+
+  std::string client_public_string = R"(
+    50f2d9e890e290c60618a15fb314b71f9b24f4942db80ef29d1de007b5fc7a89
+    2f80d15b4b22a131e505beebc98d27d96eaade29d293b035f8b38b64d8927b16
+    ff3aebb887e14c56f889f5bf9fc248a2bf7e575fcc112c53f01048fa5127459c
+    e06ca98cd961a3a3aa075688da64c4983ee44668fdef1dcabc7791e4906f9301
+    eb0189b35c768c9c5b8e819f78c998a631ff9ded899080c4fb3cbd264689059e
+    6d8adca7df629fde5c2c73aeef7c39b464ebe833689e6dd85e08dbfaad89bbf9
+    140d15b5b2b31ec9b046a891fde9503234bf1c7818ec44ce00c103787e971b23
+    b7214a93cdf98b4f1920ec1f55ddb4507b5e80301d068ab76ec3df34d440089a)";
+  const std::vector<uint8_t> client_public_data = string_to_byte_array(client_public_string);
+  bssl::UniquePtr<BIGNUM> client_public(BN_bin2bn(client_public_data.data(), client_public_data.size(), nullptr));
+  EXPECT_TRUE(client_public);
+
+  std::string server_sk_string = R"(
+    aabbccddeeff11223344556677889900aabbccddeeff11223344556677889900)";
+  const std::vector<uint8_t> server_secret_data = string_to_byte_array(server_sk_string);
+  bssl::UniquePtr<BIGNUM> server_secret(BN_bin2bn(server_secret_data.data(), server_secret_data.size(), nullptr));
+  EXPECT_TRUE(server_secret);
+
+  bssl::UniquePtr<DH> ffdhe2048_dh(DH_new_by_nid(NID_ffdhe2048));
+  EXPECT_TRUE(DH_set0_key(ffdhe2048_dh.get(), nullptr, server_secret.release()));
+
+  uint8_t buffer[4096];
+  int size = DH_compute_key(buffer,client_public.get(), ffdhe2048_dh.get());
+  std::string expected_shared_secret_string = R"(
+    897396da313e171565c15595197c521862358a5071db94b50ac24952b5619c94
+    3e4fffdb56dcfcfae886709038553b1ec7e4b6f165454ff09250662f4ea65cd9
+    86b0040de370637e053495ba08cf649e6e53a5fcc58334496061f2cc8a375d32
+    293cd2979283bedd08a2eb9a53a0f106fa29c6775b4d45cdf6b8516afb41ebfa
+    3a487510d8f3c4d337a0af880271ebfa28b5551286cb3c3b2cb6a2cc35116816
+    5e0a3a1f930bc547149fd6dfe1dc7ad7945dd74a38d46a6bc7658ac953b43770
+    b5d9212737a3cef574796c50aaa4168f07ddabccf5d12d8f87808e526cf68e15
+    224b8eb822048df910fe36a84a752177dbfce76a90f1ae864543e721d7885ad7)";
+  const std::vector<uint8_t> shared_secret_data = string_to_byte_array(expected_shared_secret_string);
+  EXPECT_EQ(Bytes(buffer, size), Bytes(shared_secret_data));
+}
+
 TEST(DHTest, LeadingZeros) {
   bssl::UniquePtr<BIGNUM> p(BN_get_rfc3526_prime_1536(nullptr));
   ASSERT_TRUE(p);
