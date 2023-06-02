@@ -2485,9 +2485,15 @@ let X86_XACCSTEP_TAC th excs aflag s =
   (if aflag then TRY(ACCUMULATEX_ARITH_TAC excs s THEN CLARIFY_TAC)
    else ALL_TAC);;
 
-let X86_ACCSTEP_TAC th aflag s =
+(* X86_GEN_ACCSTEP_TAC runs acc_preproc before ACCUMULATE_ARITH_TAC. This is
+   useful when the output goal of ARM_SINGLE_STEP_TAC needs additional rewrites
+   for accumulator to recognize it. *)
+let X86_GEN_ACCSTEP_TAC acc_preproc th aflag s =
   X86_SINGLE_STEP_TAC th s THEN
-  (if aflag then TRY(ACCUMULATE_ARITH_TAC s THEN CLARIFY_TAC) else ALL_TAC);;
+  (if aflag then acc_preproc THEN TRY(ACCUMULATE_ARITH_TAC s THEN CLARIFY_TAC)
+   else ALL_TAC);;
+
+let X86_ACCSTEP_TAC th aflag s = X86_GEN_ACCSTEP_TAC ALL_TAC th aflag s;;
 
 let X86_VSTEPS_TAC th snums =
   MAP_EVERY (X86_VERBOSE_STEP_TAC th) (statenames "s" snums);;
@@ -2504,9 +2510,17 @@ let X86_XACCSTEPS_TAC th excs anums snums =
    (fun n -> X86_XACCSTEP_TAC th excs (mem n anums) ("s"^string_of_int n))
    snums;;
 
+(* X86_GEN_ACCSTEPS_TAC runs acc_preproc before ACCUMULATE_ARITH_TAC.
+   acc_preproc is a function from string (which is a state name) to tactic. *)
+let X86_GEN_ACCSTEPS_TAC acc_preproc th anums snums =
+  MAP_EVERY
+    (fun n ->
+      let state_name = "s"^string_of_int n in
+      X86_GEN_ACCSTEP_TAC (acc_preproc state_name) th (mem n anums) state_name)
+    snums;;
+
 let X86_ACCSTEPS_TAC th anums snums =
-  MAP_EVERY (fun n -> X86_ACCSTEP_TAC th (mem n anums) ("s"^string_of_int n))
-            snums;;
+  X86_GEN_ACCSTEPS_TAC (fun _ -> ALL_TAC) th anums snums;;
 
 (* ------------------------------------------------------------------------- *)
 (* More convenient wrappings of basic simulation flow.                       *)
