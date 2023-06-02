@@ -4301,6 +4301,12 @@ extern "C" {
 #define NID_DILITHIUM3_R3 975
 #define OBJ_DILITHIUM3_R3 1L, 3L, 6L, 1L, 4L, 1L, 2L, 267L, 7L, 6L, 5L
 
+#define SN_ffdhe2048 "ffdhe2048"
+#define NID_ffdhe2048 976
+
+#define SN_ffdhe4096 "ffdhe4096"
+#define NID_ffdhe4096 977
+
 #if defined(__cplusplus)
 } /* extern C */
 #endif
