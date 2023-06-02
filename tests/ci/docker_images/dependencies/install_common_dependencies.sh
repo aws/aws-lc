@@ -17,5 +17,4 @@ mv go/* "$GOROOT"
 rm $GO_ARCHIVE
 # Common Go configuration
 go env -w GO111MODULE=on
-go env -w GOPROXY=https://proxy.golang.org,direct
 go env -w GOFLAGS=-buildvcs=false
