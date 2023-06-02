@@ -10,6 +10,7 @@
 
 #include "../internal.h"
 #include "../../tool/transport_common.h"
+#include "../test/test_util.h"
 #include "internal.h"
 
 #define OCSP_VERIFYSTATUS_SUCCESS 1
@@ -17,6 +18,33 @@
 #define OCSP_VERIFYSTATUS_FATALERROR -1
 
 std::string GetTestData(const char *path);
+
+// Certificates always expire and that applies to the root certificates we're
+// using in our trust store too.
+static void isCertificateExpiring(X509 *cert) {
+  // Get the current time and add 1 year to it.
+  int64_t warning_time = time(nullptr) + 31536000;
+
+  if (X509_cmp_time_posix(X509_get_notAfter(cert), warning_time) < 0) {
+    fprintf(stdout, "\n\n\n\n");
+    X509_NAME_print_ex_fp(stdout, X509_get_subject_name(cert), 0, 0);
+    fprintf(stdout, " WILL EXPIRE IN A YEAR, PLEASE REPLACE ME WITH THE NEW"
+            " EXPECTED ROOT CERTIFICATE FROM THE ENDPOINT.\n\n\n\n");
+  }
+}
+
+static X509_STORE *SetupTrustStore() {
+  X509_STORE *trust_store = X509_STORE_new();
+  for (int i = 1; i <= 3; i++) {
+    std::ostringstream oss;
+    oss << "crypto/ocsp/test/integration-tests/AmazonRootCA" << i << ".pem";
+    bssl::UniquePtr<X509> ca_cert(
+        CertFromPEM(GetTestData(oss.str().c_str()).c_str()));
+    EXPECT_TRUE(X509_STORE_add_cert(trust_store, ca_cert.get()));
+    isCertificateExpiring(ca_cert.get());
+  }
+  return trust_store;
+}
 
 static OCSP_RESPONSE *GetOCSPResponse(const char *ocsp_responder_host,
                             X509 *certificate,
@@ -67,7 +95,9 @@ static OCSP_RESPONSE *GetOCSPResponse(const char *ocsp_responder_host,
 
 static void ValidateOCSPResponse(OCSP_RESPONSE *response,
                                  bool authorized_responder,
-                                 STACK_OF(X509) *chain,
+                                 X509 *certificate,
+                                 X509 *issuer,
+                                 X509_STORE *trust_store,
                                  OCSP_CERTID *cert_id,
                                  int expected_verify_status,
                                  int expected_cert_status) {
@@ -85,15 +115,14 @@ static void ValidateOCSPResponse(OCSP_RESPONSE *response,
   }
   ASSERT_TRUE(basic_response);
 
-  // Set up trust store. The CA certificate should be the last one in the chain.
-  bssl::UniquePtr<X509_STORE> trust_store(X509_STORE_new());
-  X509_STORE_add_cert(trust_store.get(),
-                      sk_X509_value(chain, sk_X509_num(chain) - 1));
+  bssl::UniquePtr<STACK_OF(X509)> untrusted_chain(sk_X509_new_null());
+  EXPECT_TRUE(sk_X509_push(untrusted_chain.get(), X509_dup(certificate)));
+  EXPECT_TRUE(sk_X509_push(untrusted_chain.get(), X509_dup(issuer)));
 
   // Verifies the OCSP responder's signature on the OCSP response data.
-  EXPECT_EQ(
-      OCSP_basic_verify(basic_response.get(), chain, trust_store.get(), 0),
-      expected_verify_status);
+  EXPECT_EQ(OCSP_basic_verify(basic_response.get(), untrusted_chain.get(),
+                              trust_store, 0),
+            expected_verify_status);
 
   // Checks revocation status of the response.
   int status;
@@ -124,44 +153,37 @@ struct IntegrationTestVector {
 // Services: https://www.amazontrust.com/repository/.
 // To avoid having timebomb failures when hard-coded certs expire, we do an
 // SSL connection with a specified URL and retrieve the certificate chain the
-// server uses. "good.*.amazontrust.com" endpoints rotate their certs
+// server uses. "valid.*.amazontrust.com" endpoints rotate their cert
 // periodically, so we can trust that doing OCSP verification with their
 // certificate chain will not result in any timebomb failures further down the
 // line. We also connect against the OCSP responder URI specified in the
 // cert, so that our tests aren't sensitive to changes in the endpoint's OCSP
 // responder URI.
 static const IntegrationTestVector kIntegrationTestVectors[] = {
-    {"good.sca1a.amazontrust.com", nullptr, true, true,
+    {"valid.rootca1.demo.amazontrust.com", nullptr, true, true,
      OCSP_VERIFYSTATUS_SUCCESS, V_OCSP_CERTSTATUS_GOOD},
-    {"good.sca2a.amazontrust.com", nullptr, true, true,
+    {"valid.rootca2.demo.amazontrust.com", nullptr, true, true,
      OCSP_VERIFYSTATUS_SUCCESS, V_OCSP_CERTSTATUS_GOOD},
-    {"good.sca3a.amazontrust.com", nullptr, true, true,
+    {"valid.rootca3.demo.amazontrust.com", nullptr, true, true,
      OCSP_VERIFYSTATUS_SUCCESS, V_OCSP_CERTSTATUS_GOOD},
     // A revoked cert will succeed OCSP cert verification, but the OCSP
     // responder will indicate it has been revoked.
-    {"revoked.sca1a.amazontrust.com", nullptr, true, true,
+    {"revoked.rootca1.demo.amazontrust.com", nullptr, true, true,
      OCSP_VERIFYSTATUS_SUCCESS, V_OCSP_CERTSTATUS_REVOKED},
-    {"revoked.sca2a.amazontrust.com", nullptr, true, true,
+    {"revoked.rootca2.demo.amazontrust.com", nullptr, true, true,
      OCSP_VERIFYSTATUS_SUCCESS, V_OCSP_CERTSTATUS_REVOKED},
-    {"revoked.sca3a.amazontrust.com", nullptr, true, true,
+    {"revoked.rootca3.demo.amazontrust.com", nullptr, true, true,
      OCSP_VERIFYSTATUS_SUCCESS, V_OCSP_CERTSTATUS_REVOKED},
-    // The expired cert fails OCSP cert verification, but the OCSP responder
-    // still recognizes the cert and hasn't explicitly revoked it.
-    {"expired.sca1a.amazontrust.com", nullptr, true, true,
-     OCSP_VERIFYSTATUS_ERROR, V_OCSP_CERTSTATUS_GOOD},
-    {"expired.sca2a.amazontrust.com", nullptr, true, true,
-     OCSP_VERIFYSTATUS_ERROR, V_OCSP_CERTSTATUS_GOOD},
-    {"expired.sca3a.amazontrust.com", nullptr, true, true,
-     OCSP_VERIFYSTATUS_ERROR, V_OCSP_CERTSTATUS_GOOD},
     // Connect to an unauthorized OCSP responder endpoint. This will
     // successfully get an OCSP response, but will only have the field
     // |OCSP_RESPONSE_STATUS_UNAUTHORIZED|.
-    {"good.sca1a.amazontrust.com", "ocsp.digicert.com", true, false, 0,
+    {"valid.rootca1.demo.amazontrust.com", "ocsp.comodoca.com", true, false, 0,
      0},
     // Connect to a non-OCSP responder endpoint. These should fail to get an
     // OCSP response, unless these hosts decide to become OCSP responders.
-    {"good.sca1a.amazontrust.com", "amazon.com", false, false, 0, 0},
-    {"good.sca2a.amazontrust.com", "www.example.com", false, false, 0, 0},
+    {"valid.rootca1.demo.amazontrust.com", "amazon.com", false, false, 0, 0},
+    {"valid.rootca2.demo.amazontrust.com", "www.example.com", false, false, 0,
+     0},
 };
 
 class OCSPIntegrationTest
@@ -181,18 +203,36 @@ TEST_P(OCSPIntegrationTest, AmazonTrustServices) {
   ASSERT_TRUE(SSL_library_init());
   bssl::UniquePtr<SSL_CTX> ssl_ctx(SSL_CTX_new(TLS_method()));
   ASSERT_TRUE(ssl_ctx);
+
+  // Set up trust store.
+  bssl::UniquePtr<X509_STORE> trust_store(SetupTrustStore());
+  ASSERT_TRUE(SSL_CTX_set1_verify_cert_store(ssl_ctx.get(), trust_store.get()));
   bssl::UniquePtr<BIO> bio(BIO_new_socket(sock, BIO_CLOSE));
   bssl::UniquePtr<SSL> ssl(SSL_new(ssl_ctx.get()));
+
+  // Let the endpoint know what we're trying to connect to since multiple
+  // websites can be served on one server.
+  SSL_set_tlsext_host_name(ssl.get(), t.url_host);
   SSL_set_bio(ssl.get(), bio.get(), bio.get());
   ASSERT_TRUE(SSL_connect(ssl.get()));
 
-  // Cert to be verified should be the first one in the chain, the Issuer of
-  // the Cert should be the one right after it.
-  STACK_OF(X509) *chain = SSL_get_peer_cert_chain(ssl.get());
+  STACK_OF(X509) *chain = SSL_get_peer_full_cert_chain(ssl.get());
+  EXPECT_EQ(SSL_get_verify_result(ssl.get()), X509_V_OK);
+  // Leaf to be verified should be the first one in the chain.
   X509 *certificate = sk_X509_value(chain, 0);
   ASSERT_TRUE(certificate);
-  X509 *issuer = sk_X509_value(chain, 1);
+  // find the issuer in the chain.
+  X509 *issuer = nullptr;
+  for (size_t i = 0; i < sk_X509_num(chain); ++i) {
+    X509 *issuer_candidate = sk_X509_value(chain, i);
+    const int issuer_value = X509_check_issued(issuer_candidate, certificate);
+    if (issuer_value == X509_V_OK) {
+      issuer = issuer_candidate;
+      break;
+    }
+  }
   ASSERT_TRUE(issuer);
+
   bssl::UniquePtr<OCSP_REQUEST> request(OCSP_REQUEST_new());
   bssl::UniquePtr<OCSP_CERTID> cert_id(
       OCSP_cert_to_id(EVP_sha1(), certificate, issuer));
@@ -203,9 +243,9 @@ TEST_P(OCSPIntegrationTest, AmazonTrustServices) {
 
   if (t.expected_conn_status) {
     EXPECT_TRUE(resp);
-    ValidateOCSPResponse(resp.get(), t.authorized_responder, chain,
-                         cert_id.get(), t.expected_verify_status,
-                         t.expected_cert_status);
+    ValidateOCSPResponse(resp.get(), t.authorized_responder, certificate,
+                         issuer, trust_store.get(), cert_id.get(),
+                         t.expected_verify_status, t.expected_cert_status);
   } else {
     EXPECT_FALSE(resp);
   }
