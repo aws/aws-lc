@@ -198,7 +198,9 @@ next_io:
         goto next_io;
       }
       rctx->state = OHS_ASN1_FLUSH;
-      (void)BIO_reset(rctx->mem);
+      if(!BIO_reset(rctx->mem)) {
+        return 0;
+      }
 
       OPENSSL_FALLTHROUGH;
     case OHS_ASN1_FLUSH:
