@@ -493,7 +493,7 @@ TEST(DHExpectedTestnputTest, CalculateSharedSecretMatches) {
           "d86cd020ff64b1774cd35e33e3696a98574cedb64534f8ca88e2690709718d66"
           "f4b88d759689819cde545d202b641b0529a02d588ff4c6b832c3f5a3d9bec9ec"
           "ce0fb9af978b76bf93eba919c5bef844b4b1e2bff3d3758b577c70fa78d89a1d"
-           "d5a1864a2d3795c3668562c67aa77265f38812f001d28b25f7965109481ec2c7")
+          "d5a1864a2d3795c3668562c67aa77265f38812f001d28b25f7965109481ec2c7")
       }
   };
   for (const testInput &test : testInputs ){
@@ -507,7 +507,7 @@ TEST(DHExpectedTestnputTest, CalculateSharedSecretMatches) {
     EXPECT_TRUE(DH_set0_key(ffdhe2048_dh.get(), nullptr, server_secret.release()));
     uint8_t buffer[4096];
     int size = DH_compute_key(buffer, client_public.get(), ffdhe2048_dh.get());
-    EXPECT_LE(size, 4096);
+    EXPECT_TRUE(size > 0 && size < 4096);
 
     EXPECT_EQ(Bytes(buffer, size), Bytes(test.expected_ss));
   }
