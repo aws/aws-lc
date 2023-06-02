@@ -339,13 +339,14 @@ TEST(DHTest, RFC3526) {
 }
 
 TEST(DHTest, RFC7919) {
-  struct {
+  // Primes taken from Appendix 1 and 3 of RFC 7919
+  struct testInput{
     int nid;
     std::string p;
     std::string q;
-  } dhExpectedSharedSecretTestInputs[] = {
-      {// Taken from Appendix A.1
-           .nid = NID_ffdhe2048,
+  };
+  testInput testInputs[] = {
+      {.nid = NID_ffdhe2048,
            .p = R"(
               FFFFFFFF FFFFFFFF ADF85458 A2BB4A9A AFDC5620 273D3CF1
               D8B9C583 CE2D3695 A9E13641 146433FB CC939DCE 249B3EF9
@@ -370,8 +371,7 @@ TEST(DHTest, RFC7919) {
               C8B97F4E 74C2C1FF C7278919 777940C1 E1FF1D8D A637D6B9
               9DDAFE5E 17611002 E2C778C1 BE8B41D9 6379A513 60D977FD
               4435A11C 30942E4B FFFFFFFF FFFFFFFF)"},
-      {// Taken from A.3
-           .nid = NID_ffdhe4096,
+      {.nid = NID_ffdhe4096,
            .p = R"(
                 FFFFFFFF FFFFFFFF ADF85458 A2BB4A9A AFDC5620 273D3CF1
                 D8B9C583 CE2D3695 A9E13641 146433FB CC939DCE 249B3EF9
@@ -419,11 +419,11 @@ TEST(DHTest, RFC7919) {
                 C764DAAD 3FC45235 A6DAD428 FA20C170 E345003F 2F32AFB5
                 7FFFFFFF FFFFFFFF)"}
   };
-  for (const auto &param : dhExpectedSharedSecretTestInputs ) {
-    bssl::UniquePtr<DH> dh(DH_new_by_nid(param.nid));
+  for (const auto &test : testInputs ) {
+    bssl::UniquePtr<DH> dh(DH_new_by_nid(test.nid));
     ASSERT_TRUE(dh);
-    check_equal(param.p, DH_get0_p(dh.get()));
-    check_equal(param.q, DH_get0_q(dh.get()));
+    check_equal(test.p, DH_get0_p(dh.get()));
+    check_equal(test.q, DH_get0_q(dh.get()));
   }
 }
 
@@ -435,12 +435,13 @@ TEST(DHExpectedTestnputTest, CalculateSharedSecretMatches) {
   // print("client_pk", format(int(client_pk), '#x'))
   // print("server_sk", format(server_sk, '#x'))
   // print("expected_ss", format(int(shared_secret), '#x'))
-  struct {
+  struct testInput {
     int nid;
     std::string client_pk;
     std::string server_sk;
     std::string expected_ss;
-  } dhExpectedSharedSecretTestInputs[] = {
+  };
+  testInput testInputs[] = {
       {.nid = NID_ffdhe2048,
        .client_pk = R"(
           50f2d9e890e290c60618a15fb314b71f9b24f4942db80ef29d1de007b5fc7a89
@@ -501,21 +502,21 @@ TEST(DHExpectedTestnputTest, CalculateSharedSecretMatches) {
           d5a1864a2d3795c3668562c67aa77265f38812f001d28b25f7965109481ec2c7)"
       }
   };
-  for (const auto &param : dhExpectedSharedSecretTestInputs ){
-    const std::vector<uint8_t> client_public_data = string_to_byte_array(param.client_pk);
+  for (const auto &test : testInputs ){
+    const std::vector<uint8_t> client_public_data = string_to_byte_array(test.client_pk);
     bssl::UniquePtr<BIGNUM> client_public(BN_bin2bn(client_public_data.data(), client_public_data.size(), nullptr));
     EXPECT_TRUE(client_public);
 
-    const std::vector<uint8_t> server_secret_data = string_to_byte_array(param.server_sk);
+    const std::vector<uint8_t> server_secret_data = string_to_byte_array(test.server_sk);
     bssl::UniquePtr<BIGNUM> server_secret(BN_bin2bn(server_secret_data.data(), server_secret_data.size(), nullptr));
     EXPECT_TRUE(server_secret);
 
-    bssl::UniquePtr<DH> ffdhe2048_dh(DH_new_by_nid(param.nid));
+    bssl::UniquePtr<DH> ffdhe2048_dh(DH_new_by_nid(test.nid));
     EXPECT_TRUE(DH_set0_key(ffdhe2048_dh.get(), nullptr, server_secret.release()));
     uint8_t buffer[4096];
     int size = DH_compute_key(buffer,client_public.get(), ffdhe2048_dh.get());
 
-    const std::vector<uint8_t> shared_secret_data = string_to_byte_array(param.expected_ss);
+    const std::vector<uint8_t> shared_secret_data = string_to_byte_array(test.expected_ss);
     EXPECT_EQ(Bytes(buffer, size), Bytes(shared_secret_data));
   }
 }
