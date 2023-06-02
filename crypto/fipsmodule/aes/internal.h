@@ -29,6 +29,15 @@ extern "C" {
 
 #if !defined(OPENSSL_NO_ASM)
 
+#if defined(OPENSSL_X86_64)
+OPENSSL_INLINE int avx512_xts_available(void) {
+  return (CRYPTO_is_VAES_capable() &&
+          CRYPTO_is_VBMI2_capable() &&
+          CRYPTO_is_AVX512_capable() &&
+          CRYPTO_is_VPCLMULQDQ_capable());
+}
+#endif
+
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
 #define HWAES
 #define HWAES_ECB

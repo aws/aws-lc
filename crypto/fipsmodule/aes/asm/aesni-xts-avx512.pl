@@ -11,9 +11,11 @@
 # (https://github.com/intel/isa-l_crypto).
 #
 ######################################################################
-# The main building block of the loop is code that encrypts/decrypts 16 blocks
-# of data stitching with generation of tweak for the next 16 blocks, utilizing
+# The main building block of the loop is code that encrypts/decrypts 8/16 blocks
+# of data stitching with generation of tweak for the next 8/16 blocks, utilizing
 # VAES and VPCLMULQDQ instructions with full width of ZMM registers.
+# This implementation mainly uses vpshrdq from AVX-512-VBMI2 family and vaesenc,
+# vaesdec, vpclmulqdq from AVX-512F family.
 
 # The first two arguments should always be the flavour and output file path.
 if ($#ARGV < 1) { die "Not enough arguments provided.
@@ -71,15 +73,15 @@ if ($avx512vaes) {
   }
 
   # arguments for temp parameters
-  my ($tmp1, $ghash_poly_8b, $ghash_poly_8b_temp);
+  my ($tmp1, $gf_poly_8b, $gf_poly_8b_temp);
   if ($win64) {
     $tmp1                = "%r10";
-    $ghash_poly_8b       = "%rdi";
-    $ghash_poly_8b_temp  = "%rsi";
+    $gf_poly_8b       = "%rdi";
+    $gf_poly_8b_temp  = "%rsi";
   } else {
     $tmp1                = "%r8";
-    $ghash_poly_8b       = "%r10";
-    $ghash_poly_8b_temp  = "%r11";
+    $gf_poly_8b       = "%r10";
+    $gf_poly_8b_temp  = "%r11";
   }
 
   # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -110,7 +112,7 @@ if ($avx512vaes) {
 
     $code.=<<___;
     vmovdqu  ($ptr_key2), $key2
-    vpxor    $key2, $state_tweak, $state_tweak  # ARK for tweak encryption
+    vpxor    $key2, $state_tweak, $state_tweak  # AddRoundKey(ARK) for tweak encryption
 
     vmovdqu  ($ptr_key1), $key1
     vmovdqa  $key1, 0x80($ptr_expanded_keys)    # store round keys in stack
@@ -233,11 +235,11 @@ ___
 
     if ($num_initial_blocks >= 2) {
       for (my $i = 1; $i < $num_initial_blocks; $i++) {
-        $code .= "xor      $ghash_poly_8b_temp, $ghash_poly_8b_temp\n";
+        $code .= "xor      $gf_poly_8b_temp, $gf_poly_8b_temp\n";
         $code .= "shl      \$1, $TWTEMPL\n";
         $code .= "adc      $TWTEMPH, $TWTEMPH\n";
-        $code .= "cmovc    $ghash_poly_8b, $ghash_poly_8b_temp\n";
-        $code .= "xor      $ghash_poly_8b_temp, $TWTEMPL\n";
+        $code .= "cmovc    $gf_poly_8b, $gf_poly_8b_temp\n";
+        $code .= "xor      $gf_poly_8b_temp, $TWTEMPL\n";
 
         my $offset = $i * 16;
         $code .= "mov      $TWTEMPL, $offset($TW)\n";
@@ -289,7 +291,7 @@ ___
 
     if (0 == $lt128) {
       $code .= <<___;
-      xor     $ghash_poly_8b_temp, $ghash_poly_8b_temp
+      xor     $gf_poly_8b_temp, $gf_poly_8b_temp
       shl     \$1, $TWTEMPL
       adc     $TWTEMPH, $TWTEMPH
 ___
@@ -303,11 +305,11 @@ ___
 
     if (0 == $lt128) {
     $code .= <<___;
-      cmovc   $ghash_poly_8b, $ghash_poly_8b_temp
-      xor     $ghash_poly_8b_temp, $TWTEMPL
+      cmovc   $gf_poly_8b, $gf_poly_8b_temp
+      xor     $gf_poly_8b_temp, $TWTEMPL
       mov     $TWTEMPL, 0x0($TW)     # next Tweak1 generated
       mov     $TWTEMPL, 0x08($TW)
-      xor     $ghash_poly_8b_temp, $ghash_poly_8b_temp
+      xor     $gf_poly_8b_temp, $gf_poly_8b_temp
 ___
     }
 
@@ -322,8 +324,8 @@ ___
       $code .= <<___;
       shl     \$1, $TWTEMPL
       adc     $TWTEMPH, $TWTEMPH
-      cmovc   $ghash_poly_8b, $ghash_poly_8b_temp
-      xor     $ghash_poly_8b_temp, $TWTEMPL
+      cmovc   $gf_poly_8b, $gf_poly_8b_temp
+      xor     $gf_poly_8b_temp, $TWTEMPL
       mov     $TWTEMPL, 0x10($TW) # next Tweak2 generated
 ___
     }
@@ -338,10 +340,10 @@ ___
     if (0 == $lt128) {
       $code .= <<___;
       mov     $TWTEMPH, 0x18($TW)
-      xor     $ghash_poly_8b_temp, $ghash_poly_8b_temp
+      xor     $gf_poly_8b_temp, $gf_poly_8b_temp
       shl     \$1, $TWTEMPL
       adc     $TWTEMPH, $TWTEMPH
-      cmovc   $ghash_poly_8b, $ghash_poly_8b_temp
+      cmovc   $gf_poly_8b, $gf_poly_8b_temp
 ___
     }
 
@@ -354,10 +356,10 @@ ___
 
     if (0 == $lt128) {
     $code .= <<___;
-    xor     $ghash_poly_8b_temp, $TWTEMPL
+    xor     $gf_poly_8b_temp, $TWTEMPL
     mov     $TWTEMPL, 0x20($TW) # next Tweak3 generated
     mov     $TWTEMPH, 0x28($TW)
-    xor     $ghash_poly_8b_temp, $ghash_poly_8b_temp
+    xor     $gf_poly_8b_temp, $gf_poly_8b_temp
     shl     \$1, $TWTEMPL
 ___
     }
@@ -372,8 +374,8 @@ ___
     if (0 == $lt128) {
     $code .= <<___;
       adc     $TWTEMPH, $TWTEMPH
-      cmovc   $ghash_poly_8b, $ghash_poly_8b_temp
-      xor     $ghash_poly_8b_temp, $TWTEMPL
+      cmovc   $gf_poly_8b, $gf_poly_8b_temp
+      xor     $gf_poly_8b_temp, $TWTEMPL
       mov     $TWTEMPL, 0x30($TW) # next Tweak4 generated
       mov     $TWTEMPH, 0x38($TW)
 ___
@@ -388,11 +390,11 @@ ___
 
     if (0 == $lt128) {
       $code .= <<___;
-      xor     $ghash_poly_8b_temp, $ghash_poly_8b_temp
+      xor     $gf_poly_8b_temp, $gf_poly_8b_temp
       shl     \$1, $TWTEMPL
       adc     $TWTEMPH, $TWTEMPH
-      cmovc   $ghash_poly_8b, $ghash_poly_8b_temp
-      xor     $ghash_poly_8b_temp, $TWTEMPL
+      cmovc   $gf_poly_8b, $gf_poly_8b_temp
+      xor     $gf_poly_8b_temp, $TWTEMPL
       mov     $TWTEMPL, 0x40($TW) # next Tweak5 generated
       mov     $TWTEMPH, 0x48($TW)
 ___
@@ -407,11 +409,11 @@ ___
 
     if (0 == $lt128) {
       $code .= <<___;
-      xor     $ghash_poly_8b_temp, $ghash_poly_8b_temp
+      xor     $gf_poly_8b_temp, $gf_poly_8b_temp
       shl     \$1, $TWTEMPL
       adc     $TWTEMPH, $TWTEMPH
-      cmovc   $ghash_poly_8b, $ghash_poly_8b_temp
-      xor     $ghash_poly_8b_temp, $TWTEMPL
+      cmovc   $gf_poly_8b, $gf_poly_8b_temp
+      xor     $gf_poly_8b_temp, $TWTEMPL
       mov     $TWTEMPL, 0x50($TW) # next Tweak6 generated
       mov     $TWTEMPH, 0x58($TW)
 ___
@@ -426,11 +428,11 @@ ___
 
     if (0 == $lt128) {
       $code .= <<___;
-      xor     $ghash_poly_8b_temp, $ghash_poly_8b_temp
+      xor     $gf_poly_8b_temp, $gf_poly_8b_temp
       shl     \$1, $TWTEMPL
       adc     $TWTEMPH, $TWTEMPH
-      cmovc   $ghash_poly_8b, $ghash_poly_8b_temp
-      xor     $ghash_poly_8b_temp, $TWTEMPL
+      cmovc   $gf_poly_8b, $gf_poly_8b_temp
+      xor     $gf_poly_8b_temp, $TWTEMPL
       mov     $TWTEMPL, 0x60($TW) # next Tweak7 generated
       mov     $TWTEMPH, 0x68($TW)
 ___
@@ -445,11 +447,11 @@ ___
 
     if (0 == $lt128) {
       $code .= <<___;
-      xor     $ghash_poly_8b_temp, $ghash_poly_8b_temp
+      xor     $gf_poly_8b_temp, $gf_poly_8b_temp
       shl     \$1, $TWTEMPL
       adc     $TWTEMPH, $TWTEMPH
-      cmovc   $ghash_poly_8b, $ghash_poly_8b_temp
-      xor     $ghash_poly_8b_temp, $TWTEMPL
+      cmovc   $gf_poly_8b, $gf_poly_8b_temp
+      xor     $gf_poly_8b_temp, $TWTEMPL
       mov     $TWTEMPL, 0x70($TW) # next Tweak8 generated
       mov     $TWTEMPH, 0x78($TW)
 ___
@@ -656,7 +658,7 @@ ___
 
     if (0 == $lt128) {
       $code .= <<___;
-      xor     $ghash_poly_8b_temp, $ghash_poly_8b_temp
+      xor     $gf_poly_8b_temp, $gf_poly_8b_temp
       shl     \$1, $TWTEMPL
       adc     $TWTEMPH, $TWTEMPH
 ___
@@ -670,11 +672,11 @@ ___
 
     if (0 == $lt128) {
     $code .= <<___;
-      cmovc   $ghash_poly_8b, $ghash_poly_8b_temp
-      xor     $ghash_poly_8b_temp, $TWTEMPL
+      cmovc   $gf_poly_8b, $gf_poly_8b_temp
+      xor     $gf_poly_8b_temp, $TWTEMPL
       mov     $TWTEMPL, ($TW)     # next Tweak1 generated
       mov     $TWTEMPL, 0x08($TW)
-      xor     $ghash_poly_8b_temp, $ghash_poly_8b_temp
+      xor     $gf_poly_8b_temp, $gf_poly_8b_temp
 ___
     }
 
@@ -689,8 +691,8 @@ ___
       $code .= <<___;
       shl     \$1, $TWTEMPL
       adc     $TWTEMPH, $TWTEMPH
-      cmovc   $ghash_poly_8b, $ghash_poly_8b_temp
-      xor     $ghash_poly_8b_temp, $TWTEMPL
+      cmovc   $gf_poly_8b, $gf_poly_8b_temp
+      xor     $gf_poly_8b_temp, $TWTEMPL
       mov     $TWTEMPL, 0x10($TW) # next Tweak2 generated
 ___
     }
@@ -705,10 +707,10 @@ ___
     if (0 == $lt128) {
       $code .= <<___;
       mov     $TWTEMPH, 0x18($TW)
-      xor     $ghash_poly_8b_temp, $ghash_poly_8b_temp
+      xor     $gf_poly_8b_temp, $gf_poly_8b_temp
       shl     \$1, $TWTEMPL
       adc     $TWTEMPH, $TWTEMPH
-      cmovc   $ghash_poly_8b, $ghash_poly_8b_temp
+      cmovc   $gf_poly_8b, $gf_poly_8b_temp
 ___
     }
 
@@ -721,10 +723,10 @@ ___
 
     if (0 == $lt128) {
     $code .= <<___;
-    xor     $ghash_poly_8b_temp, $TWTEMPL
+    xor     $gf_poly_8b_temp, $TWTEMPL
     mov     $TWTEMPL, 0x20($TW) # next Tweak3 generated
     mov     $TWTEMPH, 0x28($TW)
-    xor     $ghash_poly_8b_temp, $ghash_poly_8b_temp
+    xor     $gf_poly_8b_temp, $gf_poly_8b_temp
     shl     \$1, $TWTEMPL
 ___
     }
@@ -739,8 +741,8 @@ ___
     if (0 == $lt128) {
     $code .= <<___;
       adc     $TWTEMPH, $TWTEMPH
-      cmovc   $ghash_poly_8b, $ghash_poly_8b_temp
-      xor     $ghash_poly_8b_temp, $TWTEMPL
+      cmovc   $gf_poly_8b, $gf_poly_8b_temp
+      xor     $gf_poly_8b_temp, $TWTEMPL
       mov     $TWTEMPL, 0x30($TW) # next Tweak4 generated
       mov     $TWTEMPH, 0x38($TW)
 ___
@@ -755,11 +757,11 @@ ___
 
     if (0 == $lt128) {
       $code .= <<___;
-      xor     $ghash_poly_8b_temp, $ghash_poly_8b_temp
+      xor     $gf_poly_8b_temp, $gf_poly_8b_temp
       shl     \$1, $TWTEMPL
       adc     $TWTEMPH, $TWTEMPH
-      cmovc   $ghash_poly_8b, $ghash_poly_8b_temp
-      xor     $ghash_poly_8b_temp, $TWTEMPL
+      cmovc   $gf_poly_8b, $gf_poly_8b_temp
+      xor     $gf_poly_8b_temp, $TWTEMPL
       mov     $TWTEMPL, 0x40($TW) # next Tweak5 generated
       mov     $TWTEMPH, 0x48($TW)
 ___
@@ -774,11 +776,11 @@ ___
 
     if (0 == $lt128) {
       $code .= <<___;
-      xor     $ghash_poly_8b_temp, $ghash_poly_8b_temp
+      xor     $gf_poly_8b_temp, $gf_poly_8b_temp
       shl     \$1, $TWTEMPL
       adc     $TWTEMPH, $TWTEMPH
-      cmovc   $ghash_poly_8b, $ghash_poly_8b_temp
-      xor     $ghash_poly_8b_temp, $TWTEMPL
+      cmovc   $gf_poly_8b, $gf_poly_8b_temp
+      xor     $gf_poly_8b_temp, $TWTEMPL
       mov     $TWTEMPL, 0x50($TW) # next Tweak6 generated
       mov     $TWTEMPH, 0x58($TW)
 ___
@@ -793,11 +795,11 @@ ___
 
     if (0 == $lt128) {
       $code .= <<___;
-      xor     $ghash_poly_8b_temp, $ghash_poly_8b_temp
+      xor     $gf_poly_8b_temp, $gf_poly_8b_temp
       shl     \$1, $TWTEMPL
       adc     $TWTEMPH, $TWTEMPH
-      cmovc   $ghash_poly_8b, $ghash_poly_8b_temp
-      xor     $ghash_poly_8b_temp, $TWTEMPL
+      cmovc   $gf_poly_8b, $gf_poly_8b_temp
+      xor     $gf_poly_8b_temp, $TWTEMPL
       mov     $TWTEMPL, 0x60($TW) # next Tweak7 generated
       mov     $TWTEMPH, 0x68($TW)
 ___
@@ -812,11 +814,11 @@ ___
 
     if (0 == $lt128) {
       $code .= <<___;
-      xor     $ghash_poly_8b_temp, $ghash_poly_8b_temp
+      xor     $gf_poly_8b_temp, $gf_poly_8b_temp
       shl     \$1, $TWTEMPL
       adc     $TWTEMPH, $TWTEMPH
-      cmovc   $ghash_poly_8b, $ghash_poly_8b_temp
-      xor     $ghash_poly_8b_temp, $TWTEMPL
+      cmovc   $gf_poly_8b, $gf_poly_8b_temp
+      xor     $gf_poly_8b_temp, $TWTEMPL
       mov     $TWTEMPL, 0x70($TW) # next Tweak8 generated
       mov     $TWTEMPH, 0x78($TW)
 ___
@@ -1119,7 +1121,7 @@ ___
   }
 
   # Encrypt 16 blocks in parallel
-  # generate next 8 tweak values
+  # generate next 16 tweak values
   sub encrypt_by_16_zmm {
     my @st;
     $st[0] = $_[0];
@@ -1485,7 +1487,7 @@ ___
     $code .= "vmovdqa      %xmm15, $XMM_STORAGE + 16*9($TW)\n";
   }
 
-  $code .= "mov 	 \$0x87, $ghash_poly_8b\n";
+  $code .= "mov 	 \$0x87, $gf_poly_8b\n";
   $code .= "vmovdqu 	 ($tweak),%xmm1\n";      # read initial tweak values
   $code .= "vpxor 	 %xmm4,%xmm4,%xmm4\n";   # for key expansion
 
@@ -1502,7 +1504,7 @@ ___
 
   cmp 	 \$0x80,$length
   jl 	 .L_less_than_128_bytes_${rndsuffix}
-  vpbroadcastq 	 $ghash_poly_8b,$ZPOLY
+  vpbroadcastq 	 $gf_poly_8b,$ZPOLY
   cmp 	 \$0x100,$length
   jge 	 .L_start_by16_${rndsuffix}
   cmp 	 \$0x80,$length
@@ -1780,11 +1782,11 @@ ___
   jmp 	 .L_do_n_blocks_${rndsuffix}
 
   .L_steal_cipher_next_${rndsuffix}:
-  xor 	 $ghash_poly_8b_temp,$ghash_poly_8b_temp
+  xor 	 $gf_poly_8b_temp,$gf_poly_8b_temp
   shl 	 \$1, $TWTEMPL
   adc 	 $TWTEMPH,$TWTEMPH
-  cmovc  $ghash_poly_8b,$ghash_poly_8b_temp
-  xor 	 $ghash_poly_8b_temp,$TWTEMPL
+  cmovc  $gf_poly_8b,$gf_poly_8b_temp
+  xor 	 $gf_poly_8b_temp,$TWTEMPL
   mov 	 $TWTEMPL,($TW)
   mov 	 $TWTEMPH,0x8($TW)
   vmovdqa 	 ($TW),%xmm0
@@ -2093,7 +2095,7 @@ ___
     $code .= "vmovdqa      %xmm15, $XMM_STORAGE + 16*9($TW)\n";
   }
 
-  $code .= "mov 	 \$0x87, $ghash_poly_8b\n";
+  $code .= "mov 	 \$0x87, $gf_poly_8b\n";
   $code .= "vmovdqu 	 ($tweak),%xmm1\n";      # read initial tweak values
   $code .= "vpxor 	 %xmm4,%xmm4,%xmm4\n"; # for key expansion
 
@@ -2110,7 +2112,7 @@ ___
 
   cmp 	 \$0x80,$length
   jb 	 .L_less_than_128_bytes_${rndsuffix}
-  vpbroadcastq 	 $ghash_poly_8b,$ZPOLY
+  vpbroadcastq 	 $gf_poly_8b,$ZPOLY
   cmp 	 \$0x100,$length
   jge 	 .L_start_by16_${rndsuffix}
   jmp 	 .L_start_by8_${rndsuffix}
@@ -2155,7 +2157,7 @@ ___
   vpandq	%xmm25,%xmm14,%xmm5
   vpxorq        %xmm5,%xmm9,%xmm9{%k1}
   vpsrldq       \$0x8,%xmm9,%xmm10
-  .byte 98, 211, 181, 8, 115, 194, 1
+  .byte 98, 211, 181, 8, 115, 194, 1 #vpshrdq \$0x1,%xmm10,%xmm9,%xmm0
   vpslldq       \$0x8,%xmm13,%xmm13
   vpxorq        %xmm13,%xmm0,%xmm0
   jmp           .L_steal_cipher_${rndsuffix}
@@ -2620,11 +2622,11 @@ ___
   je      .L_done_7_${rndsuffix}
 
   .L_steal_cipher_7_${rndsuffix}:
-   xor         $ghash_poly_8b_temp, $ghash_poly_8b_temp
+   xor         $gf_poly_8b_temp, $gf_poly_8b_temp
    shl         \$1, $TWTEMPL
    adc         $TWTEMPH, $TWTEMPH
-   cmovc       $ghash_poly_8b, $ghash_poly_8b_temp
-   xor         $ghash_poly_8b_temp, $TWTEMPL
+   cmovc       $gf_poly_8b, $gf_poly_8b_temp
+   xor         $gf_poly_8b_temp, $TWTEMPL
    mov         $TWTEMPL,0x10($TW)
    mov         $TWTEMPH,0x18($TW)
    vmovdqa64   %xmm15,%xmm16
@@ -2682,11 +2684,11 @@ ___
   je      .L_done_6_${rndsuffix}
 
   .L_steal_cipher_6_${rndsuffix}:
-   xor         $ghash_poly_8b_temp, $ghash_poly_8b_temp
+   xor         $gf_poly_8b_temp, $gf_poly_8b_temp
    shl         \$1, $TWTEMPL
    adc         $TWTEMPH, $TWTEMPH
-   cmovc       $ghash_poly_8b, $ghash_poly_8b_temp
-   xor         $ghash_poly_8b_temp, $TWTEMPL
+   cmovc       $gf_poly_8b, $gf_poly_8b_temp
+   xor         $gf_poly_8b_temp, $TWTEMPL
    mov         $TWTEMPL,0x10($TW)
    mov         $TWTEMPH,0x18($TW)
    vmovdqa64   %xmm14,%xmm15
@@ -2741,11 +2743,11 @@ ___
   je      .L_done_5_${rndsuffix}
 
   .L_steal_cipher_5_${rndsuffix}:
-   xor         $ghash_poly_8b_temp, $ghash_poly_8b_temp
+   xor         $gf_poly_8b_temp, $gf_poly_8b_temp
    shl         \$1, $TWTEMPL
    adc         $TWTEMPH, $TWTEMPH
-   cmovc       $ghash_poly_8b, $ghash_poly_8b_temp
-   xor         $ghash_poly_8b_temp, $TWTEMPL
+   cmovc       $gf_poly_8b, $gf_poly_8b_temp
+   xor         $gf_poly_8b_temp, $TWTEMPL
    mov         $TWTEMPL,0x10($TW)
    mov         $TWTEMPH,0x18($TW)
    vmovdqa64   %xmm13,%xmm14
@@ -2800,11 +2802,11 @@ ___
   je      .L_done_4_${rndsuffix}
 
   .L_steal_cipher_4_${rndsuffix}:
-   xor         $ghash_poly_8b_temp, $ghash_poly_8b_temp
+   xor         $gf_poly_8b_temp, $gf_poly_8b_temp
    shl         \$1, $TWTEMPL
    adc         $TWTEMPH, $TWTEMPH
-   cmovc       $ghash_poly_8b, $ghash_poly_8b_temp
-   xor         $ghash_poly_8b_temp, $TWTEMPL
+   cmovc       $gf_poly_8b, $gf_poly_8b_temp
+   xor         $gf_poly_8b_temp, $TWTEMPL
    mov         $TWTEMPL,0x10($TW)
    mov         $TWTEMPH,0x18($TW)
    vmovdqa64   %xmm12,%xmm13
@@ -2857,11 +2859,11 @@ ___
   je      .L_done_3_${rndsuffix}
 
   .L_steal_cipher_3_${rndsuffix}:
-   xor         $ghash_poly_8b_temp, $ghash_poly_8b_temp
+   xor         $gf_poly_8b_temp, $gf_poly_8b_temp
    shl         \$1, $TWTEMPL
    adc         $TWTEMPH, $TWTEMPH
-   cmovc       $ghash_poly_8b, $ghash_poly_8b_temp
-   xor         $ghash_poly_8b_temp, $TWTEMPL
+   cmovc       $gf_poly_8b, $gf_poly_8b_temp
+   xor         $gf_poly_8b_temp, $TWTEMPL
    mov         $TWTEMPL,0x10($TW)
    mov         $TWTEMPH,0x18($TW)
    vmovdqa64   %xmm11,%xmm12
@@ -2911,11 +2913,11 @@ ___
   je      .L_done_2_${rndsuffix}
 
   .L_steal_cipher_2_${rndsuffix}:
-   xor         $ghash_poly_8b_temp, $ghash_poly_8b_temp
+   xor         $gf_poly_8b_temp, $gf_poly_8b_temp
    shl         \$1, $TWTEMPL
    adc         $TWTEMPH, $TWTEMPH
-   cmovc       $ghash_poly_8b, $ghash_poly_8b_temp
-   xor         $ghash_poly_8b_temp, $TWTEMPL
+   cmovc       $gf_poly_8b, $gf_poly_8b_temp
+   xor         $gf_poly_8b_temp, $TWTEMPL
    mov         $TWTEMPL,0x10($TW)
    mov         $TWTEMPH,0x18($TW)
    vmovdqa64   %xmm10,%xmm11
@@ -2964,11 +2966,11 @@ ___
   je      .L_done_1_${rndsuffix}
 
   .L_steal_cipher_1_${rndsuffix}:
-   xor         $ghash_poly_8b_temp, $ghash_poly_8b_temp
+   xor         $gf_poly_8b_temp, $gf_poly_8b_temp
    shl         \$1, $TWTEMPL
    adc         $TWTEMPH, $TWTEMPH
-   cmovc       $ghash_poly_8b, $ghash_poly_8b_temp
-   xor         $ghash_poly_8b_temp, $TWTEMPL
+   cmovc       $gf_poly_8b, $gf_poly_8b_temp
+   xor         $gf_poly_8b_temp, $TWTEMPL
    mov         $TWTEMPL,0x10($TW)
    mov         $TWTEMPH,0x18($TW)
    vmovdqa64   %xmm9,%xmm10

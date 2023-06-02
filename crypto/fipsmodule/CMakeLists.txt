@@ -17,7 +17,7 @@ if(ARCH STREQUAL "x86_64")
 
     aesni-gcm-avx512.${ASM_EXT}
     aesni-gcm-x86_64.${ASM_EXT}
-    aesni-avx512.${ASM_EXT}
+    aesni-xts-avx512.${ASM_EXT}
     aesni-x86_64.${ASM_EXT}
     ghash-ssse3-x86_64.${ASM_EXT}
     ghash-x86_64.${ASM_EXT}
@@ -104,7 +104,7 @@ endif()
 if(PERL_EXECUTABLE)
   perlasm(aesni-gcm-x86_64.${ASM_EXT} modes/asm/aesni-gcm-x86_64.pl)
   perlasm(aesni-gcm-avx512.${ASM_EXT} modes/asm/aesni-gcm-avx512.pl)
-  perlasm(aesni-avx512.${ASM_EXT} aes/asm/aesni-avx512.pl)
+  perlasm(aesni-xts-avx512.${ASM_EXT} aes/asm/aesni-xts-avx512.pl)
   perlasm(aesni-x86_64.${ASM_EXT} aes/asm/aesni-x86_64.pl)
   perlasm(aesni-x86.${ASM_EXT} aes/asm/aesni-x86.pl)
   perlasm(aesp8-ppc.${ASM_EXT} aes/asm/aesp8-ppc.pl)
@@ -162,7 +162,7 @@ endif()
 if ((CMAKE_ASM_COMPILER_ID MATCHES "Clang" OR CMAKE_ASM_COMPILER MATCHES "clang") AND
     (CMAKE_ASM_COMPILER_VERSION VERSION_LESS "7.0.0") AND (ARCH STREQUAL "x86_64"))
   set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/aesni-gcm-avx512.${ASM_EXT} PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512bw -mavx512dq -mavx512vl")
-  set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/aesni-avx512.${ASM_EXT} PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512bw -mavx512dq -mavx512vl -mavx512vbmi2")
+  set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/aesni-xts-avx512.${ASM_EXT} PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512bw -mavx512dq -mavx512vl -mavx512vbmi2")
 endif()
 
 # s2n-bignum files can be compiled on Unix platforms only (except Apple),
