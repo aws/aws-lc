@@ -64,6 +64,10 @@ std::ostream &operator<<(std::ostream &os, const Bytes &in);
 // string.
 bool DecodeHex(std::vector<uint8_t> *out, const std::string &in);
 
+// HexToBytes decodes |str| from hexadecimal and returns a new vector of bytes.
+// If |str| is invalid it aborts.
+std::vector<uint8_t> HexToBytes(const char *str);
+
 // EncodeHex returns |in| encoded in hexadecimal.
 std::string EncodeHex(bssl::Span<const uint8_t> in);
 
