@@ -2383,6 +2383,7 @@ TEST_P(PerKEMTest, RawKeyOperations) {
   ASSERT_TRUE(pkey_pk_new);
   ASSERT_TRUE(pkey_sk_new);
   ASSERT_TRUE(pkey_new);
+  ASSERT_TRUE(EVP_PKEY_kem_check_key(pkey_new.get()));
 
   // ---- 5. Test encaps/decaps with new keys ----
   // Create Alice's context with the new key that has both
@@ -2403,7 +2404,7 @@ TEST_P(PerKEMTest, RawKeyOperations) {
   // Bob encapsulates.
   ASSERT_TRUE(EVP_PKEY_encapsulate(b_ctx.get(), b_ct.data(), &ct_len, b_ss.data(), &ss_len));
 
-  // Alice decapsulates
+  // Alice decapsulates.
   std::vector<uint8_t> a_ss(ss_len); // The shared secret.
   ASSERT_TRUE(EVP_PKEY_decapsulate(a_ctx.get(), a_ss.data(), &ss_len, b_ct.data(), ct_len));
 
@@ -2536,6 +2537,26 @@ TEST_P(PerKEMTest, RawKeyOperations) {
   err = ERR_get_error();
   EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
   EXPECT_EQ(EVP_R_INVALID_BUFFER_SIZE, ERR_GET_REASON(err));
+
+  pk_len = GetParam().public_key_len;
+  sk_len = GetParam().secret_key_len;
+
+  //  Failures for key validation.
+  pkey_pk_new.reset(EVP_PKEY_kem_new_raw_public_key(nid, pk.data(), pk_len));
+  pkey_sk_new.reset(EVP_PKEY_kem_new_raw_secret_key(nid, sk.data(), sk_len));
+  pkey_new.reset(EVP_PKEY_kem_new_raw_key(nid, pk.data(), pk_len, sk.data(), sk_len));
+  ASSERT_TRUE(pkey_pk_new);
+  ASSERT_TRUE(pkey_sk_new);
+  ASSERT_TRUE(pkey_new);
+
+  //    Keys with one part missing should fail the check.
+  ASSERT_TRUE(EVP_PKEY_kem_check_key(pkey_new.get()));
+  ASSERT_FALSE(EVP_PKEY_kem_check_key(pkey_pk_new.get()));
+  ASSERT_FALSE(EVP_PKEY_kem_check_key(pkey_sk_new.get()));
+
+  //    Mismatched key pair should fail the check.
+  pkey_new->pkey.kem_key->public_key[0] ^= 1;
+  ASSERT_FALSE(EVP_PKEY_kem_check_key(pkey_new.get()));
 }
 
 TEST_P(PerKEMTest, KAT) {

@@ -921,6 +921,11 @@ OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_kem_new_raw_key(int nid,
                                                   size_t len_public,
                                                   const uint8_t *in_secret,
                                                   size_t len_secret);
+
+// EVP_PKEY_kem_check_key validates that the public key in |key| corresponds
+// to the secret key in |key|.
+OPENSSL_EXPORT int EVP_PKEY_kem_check_key(EVP_PKEY *key);
+
 // Deprecated functions.
 
 // EVP_PKEY_DH is defined for compatibility, but it is impossible to create an

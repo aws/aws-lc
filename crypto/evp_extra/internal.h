@@ -4,6 +4,8 @@
 #include <openssl/base.h>
 #include "../fipsmodule/evp/internal.h"
 
+#include "../dilithium/sig_dilithium.h"
+
 typedef struct {
   // key is the concatenation of the private seed and public key. It is stored
   // as a single 64-bit array to allow passing to |ED25519_sign|. If
@@ -26,9 +28,8 @@ typedef struct {
 #ifdef ENABLE_DILITHIUM
 
 typedef struct {
-  uint8_t pub[1952];
-  uint8_t priv[4000];
-  char has_private;
+  uint8_t *pub;
+  uint8_t *priv;
 } DILITHIUM3_KEY;
 
 #endif
