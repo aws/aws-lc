@@ -36,12 +36,10 @@ static void isCertificateExpiring(X509 *cert) {
 static X509_STORE *SetupTrustStore() {
   X509_STORE *trust_store = X509_STORE_new();
   for (int i = 1; i <= 3; i++) {
-    bssl::UniquePtr<X509> ca_cert(CertFromPEM(
-        GetTestData(
-            std::string("crypto/ocsp/test/integration-tests/AmazonRootCA" +
-                        std::to_string(i) + ".pem")
-                .c_str())
-            .c_str()));
+    std::ostringstream oss;
+    oss << "crypto/ocsp/test/integration-tests/AmazonRootCA" << i << ".pem";
+    bssl::UniquePtr<X509> ca_cert(
+        CertFromPEM(GetTestData(oss.str().c_str()).c_str()));
     EXPECT_TRUE(X509_STORE_add_cert(trust_store, ca_cert.get()));
     isCertificateExpiring(ca_cert.get());
   }
@@ -97,7 +95,7 @@ static OCSP_RESPONSE *GetOCSPResponse(const char *ocsp_responder_host,
 
 static void ValidateOCSPResponse(OCSP_RESPONSE *response,
                                  bool authorized_responder,
-                                 X509 *subject,
+                                 X509 *certificate,
                                  X509 *issuer,
                                  X509_STORE *trust_store,
                                  OCSP_CERTID *cert_id,
@@ -118,7 +116,7 @@ static void ValidateOCSPResponse(OCSP_RESPONSE *response,
   ASSERT_TRUE(basic_response);
 
   bssl::UniquePtr<STACK_OF(X509)> untrusted_chain(sk_X509_new_null());
-  EXPECT_TRUE(sk_X509_push(untrusted_chain.get(), X509_dup(subject)));
+  EXPECT_TRUE(sk_X509_push(untrusted_chain.get(), X509_dup(certificate)));
   EXPECT_TRUE(sk_X509_push(untrusted_chain.get(), X509_dup(issuer)));
 
   // Verifies the OCSP responder's signature on the OCSP response data.
@@ -211,8 +209,9 @@ TEST_P(OCSPIntegrationTest, AmazonTrustServices) {
   ASSERT_TRUE(SSL_CTX_set1_verify_cert_store(ssl_ctx.get(), trust_store.get()));
   bssl::UniquePtr<BIO> bio(BIO_new_socket(sock, BIO_CLOSE));
   bssl::UniquePtr<SSL> ssl(SSL_new(ssl_ctx.get()));
-  // Set the host name, so we don't retrieve the wrong intended certificate
-  // chain.
+
+  // Let the endpoint know what we're trying to connect to since multiple
+  // websites can be served on one server.
   SSL_set_tlsext_host_name(ssl.get(), t.url_host);
   SSL_set_bio(ssl.get(), bio.get(), bio.get());
   ASSERT_TRUE(SSL_connect(ssl.get()));
@@ -220,13 +219,13 @@ TEST_P(OCSPIntegrationTest, AmazonTrustServices) {
   STACK_OF(X509) *chain = SSL_get_peer_full_cert_chain(ssl.get());
   EXPECT_EQ(SSL_get_verify_result(ssl.get()), X509_V_OK);
   // Leaf to be verified should be the first one in the chain.
-  X509 *subject = sk_X509_value(chain, 0);
-  ASSERT_TRUE(subject);
+  X509 *certificate = sk_X509_value(chain, 0);
+  ASSERT_TRUE(certificate);
   // find the issuer in the chain.
   X509 *issuer = nullptr;
   for (size_t i = 0; i < sk_X509_num(chain); ++i) {
     X509 *issuer_candidate = sk_X509_value(chain, i);
-    const int issuer_value = X509_check_issued(issuer_candidate, subject);
+    const int issuer_value = X509_check_issued(issuer_candidate, certificate);
     if (issuer_value == X509_V_OK) {
       issuer = issuer_candidate;
       break;
@@ -236,16 +235,16 @@ TEST_P(OCSPIntegrationTest, AmazonTrustServices) {
 
   bssl::UniquePtr<OCSP_REQUEST> request(OCSP_REQUEST_new());
   bssl::UniquePtr<OCSP_CERTID> cert_id(
-      OCSP_cert_to_id(EVP_sha1(), subject, issuer));
+      OCSP_cert_to_id(EVP_sha1(), certificate, issuer));
   ASSERT_TRUE(OCSP_request_add0_id(request.get(), cert_id.get()));
 
   bssl::UniquePtr<OCSP_RESPONSE> resp(
-      GetOCSPResponse(t.ocsp_responder_host, subject, request.get()));
+      GetOCSPResponse(t.ocsp_responder_host, certificate, request.get()));
 
   if (t.expected_conn_status) {
     EXPECT_TRUE(resp);
-    ValidateOCSPResponse(resp.get(), t.authorized_responder, subject, issuer,
-                         trust_store.get(), cert_id.get(),
+    ValidateOCSPResponse(resp.get(), t.authorized_responder, certificate,
+                         issuer, trust_store.get(), cert_id.get(),
                          t.expected_verify_status, t.expected_cert_status);
   } else {
     EXPECT_FALSE(resp);
