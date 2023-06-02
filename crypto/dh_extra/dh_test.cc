@@ -514,7 +514,7 @@ TEST(DHExpectedTestnputTest, CalculateSharedSecretMatches) {
     bssl::UniquePtr<DH> ffdhe2048_dh(DH_new_by_nid(test.nid));
     EXPECT_TRUE(DH_set0_key(ffdhe2048_dh.get(), nullptr, server_secret.release()));
     uint8_t buffer[4096];
-    int size = DH_compute_key(buffer,client_public.get(), ffdhe2048_dh.get());
+    int size = DH_compute_key(buffer, client_public.get(), ffdhe2048_dh.get());
 
     const std::vector<uint8_t> shared_secret_data = string_to_byte_array(test.expected_ss);
     EXPECT_EQ(Bytes(buffer, size), Bytes(shared_secret_data));
