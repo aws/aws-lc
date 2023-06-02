@@ -340,8 +340,8 @@ TEST(DHTest, RFC7919) {
     std::vector<uint8_t> q;
   };
   testInput testInputs[] = {
-      {.nid = NID_ffdhe2048,
-           .p = rfc_string_to_bytes(
+      {NID_ffdhe2048,
+           rfc_string_to_bytes(
               "FFFFFFFF FFFFFFFF ADF85458 A2BB4A9A AFDC5620 273D3CF1"
               "D8B9C583 CE2D3695 A9E13641 146433FB CC939DCE 249B3EF9"
               "7D2FE363 630C75D8 F681B202 AEC4617A D3DF1ED5 D5FD6561"
@@ -353,7 +353,7 @@ TEST(DHTest, RFC7919) {
               "9172FE9C E98583FF 8E4F1232 EEF28183 C3FE3B1B 4C6FAD73"
               "3BB5FCBC 2EC22005 C58EF183 7D1683B2 C6F34A26 C1B2EFFA"
               "886B4238 61285C97 FFFFFFFF FFFFFFFF"),
-           .q = rfc_string_to_bytes(
+           rfc_string_to_bytes(
               "7FFFFFFF FFFFFFFF D6FC2A2C 515DA54D 57EE2B10 139E9E78"
               "EC5CE2C1 E7169B4A D4F09B20 8A3219FD E649CEE7 124D9F7C"
               "BE97F1B1 B1863AEC 7B40D901 576230BD 69EF8F6A EAFEB2B0"
@@ -365,8 +365,8 @@ TEST(DHTest, RFC7919) {
               "C8B97F4E 74C2C1FF C7278919 777940C1 E1FF1D8D A637D6B9"
               "9DDAFE5E 17611002 E2C778C1 BE8B41D9 6379A513 60D977FD"
               "4435A11C 30942E4B FFFFFFFF FFFFFFFF")},
-      {.nid = NID_ffdhe4096,
-           .p = rfc_string_to_bytes(
+      {NID_ffdhe4096,
+           rfc_string_to_bytes(
                 "FFFFFFFF FFFFFFFF ADF85458 A2BB4A9A AFDC5620 273D3CF1"
                 "D8B9C583 CE2D3695 A9E13641 146433FB CC939DCE 249B3EF9"
                 "7D2FE363 630C75D8 F681B202 AEC4617A D3DF1ED5 D5FD6561"
@@ -389,7 +389,7 @@ TEST(DHTest, RFC7919) {
                 "1A1DB93D 7140003C 2A4ECEA9 F98D0ACC 0A8291CD CEC97DCF"
                 "8EC9B55A 7F88A46B 4DB5A851 F44182E1 C68A007E 5E655F6A"
                 "FFFFFFFF FFFFFFFF"),
-           .q = rfc_string_to_bytes(
+           rfc_string_to_bytes(
                 "7FFFFFFF FFFFFFFF D6FC2A2C 515DA54D 57EE2B10 139E9E78"
                 "EC5CE2C1 E7169B4A D4F09B20 8A3219FD E649CEE7 124D9F7C"
                 "BE97F1B1 B1863AEC 7B40D901 576230BD 69EF8F6A EAFEB2B0"
@@ -436,8 +436,8 @@ TEST(DHExpectedTestnputTest, CalculateSharedSecretMatches) {
     std::vector<uint8_t> expected_ss;
   };
   testInput testInputs[] = {
-      {.nid = NID_ffdhe2048,
-       .client_pk = HexToBytes(
+      {NID_ffdhe2048,
+       HexToBytes(
           "50f2d9e890e290c60618a15fb314b71f9b24f4942db80ef29d1de007b5fc7a89"
           "2f80d15b4b22a131e505beebc98d27d96eaade29d293b035f8b38b64d8927b16"
           "ff3aebb887e14c56f889f5bf9fc248a2bf7e575fcc112c53f01048fa5127459c"
@@ -446,9 +446,9 @@ TEST(DHExpectedTestnputTest, CalculateSharedSecretMatches) {
           "6d8adca7df629fde5c2c73aeef7c39b464ebe833689e6dd85e08dbfaad89bbf9"
           "140d15b5b2b31ec9b046a891fde9503234bf1c7818ec44ce00c103787e971b23"
           "b7214a93cdf98b4f1920ec1f55ddb4507b5e80301d068ab76ec3df34d440089a"),
-       .server_sk = HexToBytes(
+       HexToBytes(
           "aabbccddeeff11223344556677889900aabbccddeeff11223344556677889900"),
-       .expected_ss = HexToBytes(
+       HexToBytes(
           "897396da313e171565c15595197c521862358a5071db94b50ac24952b5619c94"
           "3e4fffdb56dcfcfae886709038553b1ec7e4b6f165454ff09250662f4ea65cd9"
           "86b0040de370637e053495ba08cf649e6e53a5fcc58334496061f2cc8a375d32"
@@ -457,8 +457,8 @@ TEST(DHExpectedTestnputTest, CalculateSharedSecretMatches) {
           "5e0a3a1f930bc547149fd6dfe1dc7ad7945dd74a38d46a6bc7658ac953b43770"
           "b5d9212737a3cef574796c50aaa4168f07ddabccf5d12d8f87808e526cf68e15"
           "224b8eb822048df910fe36a84a752177dbfce76a90f1ae864543e721d7885ad7")},
-      {.nid = NID_ffdhe4096,
-       .client_pk = HexToBytes(
+      {NID_ffdhe4096,
+       HexToBytes(
           "525b74f0c4c3d942cd65f924cebd4f76a1ec2c866d48462e1c468f75070b18bc"
           "d6f4ce8d874895d6a9d2ad55781fcc1406b61526d1667954674cf6bb2d873ad4"
           "1128bb3f9412be3f452582bb9ea6091a39b05cd877a7774e52e44e9066a96cf2"
@@ -475,9 +475,9 @@ TEST(DHExpectedTestnputTest, CalculateSharedSecretMatches) {
           "898d32caf0131c323518ced384a9b7ae0c45c15edcb054dfe7044af3ec616ce8"
           "e5870ea2bef5aa40f4e65721d724ec68774638b13350abbb1f2ac22b0852c6e3"
           "4ab2608390ec3b971021c0c20e18e2cbcc89b1eea1c2ecb1db6eeaf4195ec7f2"),
-       .server_sk = HexToBytes(
+       HexToBytes(
           "aabbccddeeff11223344556677889900aabbccddeeff11223344556677889900"),
-       .expected_ss = HexToBytes(
+       HexToBytes(
           "ba7d5bb3682473327e80c07bcfd58a6af9bf0fa4662288291feb847cc8121ca6"
           "12ff09bc9d46e3a76f44bad0006e1babdafef5091aed25e53037a9077af93bc5"
           "76910dbc3e6d345174b36dbec2ab92e0744dc4f5d1d25596b9aa53bc10c22dfe"
