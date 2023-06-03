@@ -502,7 +502,7 @@ OPENSSL_EXPORT int RSA_verify_PKCS1_PSS_mgf1(const RSA *rsa,
 // output will be written to |EM|. The |mgf1Hash| argument specifies the hash
 // function for generating the mask. If NULL, |Hash| is used. The |sLen|
 // argument specifies the expected salt length in bytes.
-// If |sLen| is RSA_PSS_SALTLEN_DIGEST then the salt length is the same as 
+// If |sLen| is RSA_PSS_SALTLEN_DIGEST then the salt length is the same as
 // the hash length. If -2, then the salt length is maximal given the space in |EM|.
 //
 // It returns one on success or zero on error.
@@ -736,70 +736,6 @@ struct rsa_meth_st {
                            size_t len);
 
   int flags;
-};
-
-
-// Private functions.
-
-typedef struct bn_blinding_st BN_BLINDING;
-
-struct rsa_st {
-  RSA_METHOD *meth;
-
-  // Access to the following fields was historically allowed, but
-  // deprecated. Use |RSA_get0_*| and |RSA_set0_*| instead. Access to all other
-  // fields is forbidden and will cause threading errors.
-  BIGNUM *n;
-  BIGNUM *e;
-  BIGNUM *d;
-  BIGNUM *p;
-  BIGNUM *q;
-  BIGNUM *dmp1;
-  BIGNUM *dmq1;
-  BIGNUM *iqmp;
-
-  // If a PSS only key this contains the parameter restrictions.
-  RSASSA_PSS_PARAMS *pss;
-
-  // be careful using this if the RSA structure is shared
-  CRYPTO_EX_DATA ex_data;
-  CRYPTO_refcount_t references;
-  int flags;
-
-  CRYPTO_MUTEX lock;
-
-  // Used to cache montgomery values. The creation of these values is protected
-  // by |lock|.
-  BN_MONT_CTX *mont_n;
-  BN_MONT_CTX *mont_p;
-  BN_MONT_CTX *mont_q;
-
-  // The following fields are copies of |d|, |dmp1|, and |dmq1|, respectively,
-  // but with the correct widths to prevent side channels. These must use
-  // separate copies due to threading concerns caused by OpenSSL's API
-  // mistakes. See https://github.com/openssl/openssl/issues/5158 and
-  // the |freeze_private_key| implementation.
-  BIGNUM *d_fixed, *dmp1_fixed, *dmq1_fixed;
-
-  // inv_small_mod_large_mont is q^-1 mod p in Montgomery form, using |mont_p|,
-  // if |p| >= |q|. Otherwise, it is p^-1 mod q in Montgomery form, using
-  // |mont_q|.
-  BIGNUM *inv_small_mod_large_mont;
-
-  // num_blindings contains the size of the |blindings| and |blindings_inuse|
-  // arrays. This member and the |blindings_inuse| array are protected by
-  // |lock|.
-  size_t num_blindings;
-  // blindings is an array of BN_BLINDING structures that can be reserved by a
-  // thread by locking |lock| and changing the corresponding element in
-  // |blindings_inuse| from 0 to 1.
-  BN_BLINDING **blindings;
-  unsigned char *blindings_inuse;
-  uint64_t blinding_fork_generation;
-
-  // private_key_frozen is one if the key has been used for a private key
-  // operation and may no longer be mutated.
-  unsigned private_key_frozen:1;
 };
 
 
