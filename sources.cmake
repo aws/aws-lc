@@ -98,6 +98,7 @@ set(
   crypto/ocsp/test/aws/ocsp_response_no_nonce.der
   crypto/ocsp/test/aws/ocsp_response_revoked.der
   crypto/ocsp/test/aws/ocsp_response_unknown.der
+  crypto/ocsp/test/aws/ocsp_response_expired_signer.der
   crypto/ocsp/test/aws/ocsp_response_wrong_signer.der
   crypto/ocsp/test/aws/ocsp_response_sha256.der
   crypto/ocsp/test/aws/ocsp_response_revoked_sha256.der

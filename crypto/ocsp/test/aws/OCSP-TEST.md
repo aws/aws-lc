@@ -12,10 +12,18 @@ Since this is a test PKI, we do an intermediate for issuing leaf cert(s).
 
 ## OCSP
 * ocsp_cert.pem
+* ocsp_expired_cert.pem
 * ocsp_key.pem
 
 Cert/key for the test OCSP responder. OCSP responses will be signed by the key.
 The CN for this cert matches the URI in the Server Cert's "Authority Information Access" x509 extension.
+
+### Generating Expired OCSP Signing Cert
+`ocsp_expired_cert.pem` is an expired test certificate used to sign OCSP responses.
+```
+openssl req -new -key ocsp_key.pem -out ocsp.csr
+openssl x509 -req -in ocsp.csr -CA ca_cert.pem -CAkey ca_key.pem -days 0 -CAcreateserial -out expired_ocsp_cert.pem
+```
 
 ## Server Cert
 * server_cert.pem
@@ -156,6 +164,25 @@ openssl ocsp -CAfile ca_cert.pem \
       -sha1 -cert server_cert.pem -respout ocsp_response_wrong_signer.der
 ```
 
+## Recreate expired signer OCSP responses
+### Run the server
+```
+openssl ocsp -port 8890 -text -CA ca_cert.pem \
+      -index certs.txt \          
+      -rkey ocsp_key.pem \ 
+      -rsigner ocsp_expired_cert.pem \     
+      -nrequest 1 
+```
+
+
+### Run the client and save the result to file
+```
+openssl ocsp -CAfile ca_cert.pem \
+      -url http://127.0.0.1:8890 \
+      -issuer ca_cert.pem \
+      -verify_other ocsp_expired_cert.pem \
+      -sha1 -cert server_cert.pem -respout ocsp_response_expired_signer.der
+```
 
 ## For SHA-256 OCSP responses
 
