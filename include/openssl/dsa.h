@@ -62,9 +62,7 @@
 
 #include <openssl/base.h>
 
-#include <openssl/engine.h>
 #include <openssl/ex_data.h>
-#include <openssl/thread.h>
 
 #if defined(__cplusplus)
 extern "C" {
@@ -387,25 +385,6 @@ OPENSSL_EXPORT DSA *d2i_DSAparams(DSA **out, const uint8_t **inp, long len);
 //
 // Use |DSA_marshal_parameters| instead.
 OPENSSL_EXPORT int i2d_DSAparams(const DSA *in, uint8_t **outp);
-
-
-struct dsa_st {
-  long version;
-  BIGNUM *p;
-  BIGNUM *q;  // == 20
-  BIGNUM *g;
-
-  BIGNUM *pub_key;   // y public key
-  BIGNUM *priv_key;  // x private key
-
-  int flags;
-  // Normally used to cache montgomery values
-  CRYPTO_MUTEX method_mont_lock;
-  BN_MONT_CTX *method_mont_p;
-  BN_MONT_CTX *method_mont_q;
-  CRYPTO_refcount_t references;
-  CRYPTO_EX_DATA ex_data;
-};
 
 
 #if defined(__cplusplus)
