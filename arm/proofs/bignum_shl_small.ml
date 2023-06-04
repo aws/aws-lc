@@ -341,7 +341,6 @@ let BIGNUM_SHL_SMALL_SUBROUTINE_CORRECT = prove
                   (p = n
                    ==> C_RETURN s =
                        word(highdigits (2 EXP (val c MOD 64) * a) (val p))))
-             (MAYCHANGE [PC; X0; X2; X5; X6; X7; X8; X9; X10] ,,
-              MAYCHANGE SOME_FLAGS ,,
+             (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bignum(z,val p)])`,
   ARM_ADD_RETURN_NOSTACK_TAC BIGNUM_SHL_SMALL_EXEC BIGNUM_SHL_SMALL_CORRECT);;

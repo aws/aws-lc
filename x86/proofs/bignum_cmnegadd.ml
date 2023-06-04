@@ -483,8 +483,7 @@ let BIGNUM_CMNEGADD_SUBROUTINE_CORRECT = prove
                    ==> &(bignum_from_memory (z,val p) s) -
                        &2 pow (64 * val p) * &(val(C_RETURN s)):int =
                        &d - &(val c) * &a))
-             (MAYCHANGE [RIP; RSP; RAX; RDI; RCX; RDX; R9; R10; R11] ,,
-              MAYCHANGE SOME_FLAGS ,,
+             (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bignum(z,val p);
                        memory :> bytes(word_sub stackpointer (word 8),8)])`,
   X86_PROMOTE_RETURN_STACK_TAC bignum_cmnegadd_mc BIGNUM_CMNEGADD_CORRECT
@@ -520,8 +519,7 @@ let WINDOWS_BIGNUM_CMNEGADD_SUBROUTINE_CORRECT = prove
                    ==> &(bignum_from_memory (z,val p) s) -
                        &2 pow (64 * val p) * &(val(WINDOWS_C_RETURN s)):int =
                        &d - &(val c) * &a))
-             (MAYCHANGE [RIP; RSP; R8; RAX; RCX; RDX; R9; R10; R11] ,,
-              MAYCHANGE SOME_FLAGS ,,
+             (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bignum(z,val p);
                        memory :> bytes(word_sub stackpointer (word 24),24)])`,
   WINDOWS_X86_WRAP_STACK_TAC windows_bignum_cmnegadd_mc bignum_cmnegadd_mc

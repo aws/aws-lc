@@ -3221,8 +3221,7 @@ let CURVE25519_LADDERSTEP_SUBROUTINE_CORRECT = time prove
                ==> bignum_pairpair_from_memory(rr,4) s =
                    pairpaired curve25519_encode
                     (montgomery_ladderstep curve25519 (~(b = word 0)) Q Qm Qn))
-          (MAYCHANGE [RIP; RSP; RDI; RAX; RCX; RDX; R8; R9; R10; R11] ,,
-           MAYCHANGE SOME_FLAGS ,,
+          (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bytes(rr,128);
                       memory :> bytes(word_sub stackpointer (word 464),464)])`,
   X86_PROMOTE_RETURN_STACK_TAC
@@ -3259,8 +3258,7 @@ let WINDOWS_CURVE25519_LADDERSTEP_SUBROUTINE_CORRECT = time prove
                ==> bignum_pairpair_from_memory(rr,4) s =
                    pairpaired curve25519_encode
                     (montgomery_ladderstep curve25519 (~(b = word 0)) Q Qm Qn))
-          (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
-           MAYCHANGE SOME_FLAGS ,,
+          (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bytes(rr,128);
                       memory :> bytes(word_sub stackpointer (word 480),480)])`,
   WINDOWS_X86_WRAP_STACK_TAC

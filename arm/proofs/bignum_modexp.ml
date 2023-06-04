@@ -521,9 +521,8 @@ let BIGNUM_MODEXP_CORRECT = prove
                bignum_from_memory(m,val k) s = n)
           (\s. read PC s = word (pc + 0xf8) /\
                (ODD n ==> bignum_from_memory(z,val k) s = (x EXP y) MOD n))
-          (MAYCHANGE [PC; X0; X1; X2; X3; X4; X5; X6; X7; X8; X9;
-                      X10; X11; X12; X13; X14; X15; X16; X17;
-                      X19; X20; X21; X22; X23; X24; X25; X30] ,,
+          (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
+           MAYCHANGE [X19; X20; X21; X22; X23; X24; X25; X30] ,,
            MAYCHANGE SOME_FLAGS ,,
            MAYCHANGE [memory :> bignum(z,val k);
                       memory :> bytes(t,24 * val k)])`,
@@ -532,7 +531,8 @@ let BIGNUM_MODEXP_CORRECT = prove
    [`z:int64`; `a:int64`; `x:num`; `p:int64`; `y:num`;
     `m:int64`; `n:num`; `t:int64`; `pc:num`] THEN
   REWRITE_TAC[NONOVERLAPPING_CLAUSES; ALL] THEN
-  REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS] THEN
+  REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS;
+              MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI] THEN
   DISCH_THEN(REPEAT_TCL CONJUNCTS_THEN ASSUME_TAC) THEN
   MAP_EVERY (BIGNUM_TERMRANGE_TAC `k:num`) [`x:num`; `y:num`; `n:num`] THEN
 
@@ -687,11 +687,9 @@ let BIGNUM_MODEXP_SUBROUTINE_CORRECT = prove
                bignum_from_memory(m,val k) s = n)
           (\s. read PC s = returnaddress /\
                (ODD n ==> bignum_from_memory(z,val k) s = (x EXP y) MOD n))
-          (MAYCHANGE [PC; X0; X1; X2; X3; X4; X5; X6; X7; X8; X9;
-                      X10; X11; X12; X13; X14; X15; X16; X17] ,,
+          (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bignum(z,val k);
                       memory :> bytes(t,24 * val k);
-                      memory :> bytes(word_sub stackpointer (word 64),64)] ,,
-           MAYCHANGE SOME_FLAGS)`,
+                      memory :> bytes(word_sub stackpointer (word 64),64)])`,
   ARM_ADD_RETURN_STACK_TAC BIGNUM_MODEXP_EXEC BIGNUM_MODEXP_CORRECT
    `[X19;X20;X21;X22;X23;X24;X25;X30]` 64);;

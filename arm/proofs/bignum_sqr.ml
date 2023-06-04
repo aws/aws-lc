@@ -574,8 +574,6 @@ let BIGNUM_SQR_SUBROUTINE_CORRECT = prove
                bignum_from_memory (x,val n) s = a)
           (\s. read PC s = returnaddress /\
                bignum_from_memory (z,val p) s = lowdigits (a EXP 2) (val p))
-          (MAYCHANGE[PC; X4; X5; X6; X7; X8; X9;
-                     X10; X11; X12; X13; X14; X15] ,,
-           MAYCHANGE SOME_FLAGS ,,
+          (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bignum(z,val p)])`,
   ARM_ADD_RETURN_NOSTACK_TAC BIGNUM_SQR_EXEC BIGNUM_SQR_CORRECT);;

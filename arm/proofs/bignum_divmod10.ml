@@ -214,7 +214,6 @@ let BIGNUM_DIVMOD10_SUBROUTINE_CORRECT = time prove
            (\s. read PC s = returnaddress /\
                 bignum_from_memory (z,val k) s = n DIV 10 /\
                 C_RETURN s = word (n MOD 10))
-          (MAYCHANGE [PC; X0; X2; X3; X4; X5; X6] ,,
-           MAYCHANGE SOME_FLAGS ,,
+          (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bignum(z,val k)])`,
   ARM_ADD_RETURN_NOSTACK_TAC BIGNUM_DIVMOD10_EXEC BIGNUM_DIVMOD10_CORRECT);;

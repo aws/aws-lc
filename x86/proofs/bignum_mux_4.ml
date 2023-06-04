@@ -87,8 +87,7 @@ let BIGNUM_MUX_4_SUBROUTINE_CORRECT = prove
                 read RSP s = word_add stackpointer (word 8) /\
                 bignum_from_memory (z,4) s =
                   if ~(p = word 0) then m else n)
-          (MAYCHANGE [RIP; RSP; RAX; R8] ,,
-           MAYCHANGE SOME_FLAGS ,,
+          (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bignum(z,4)])`,
   X86_PROMOTE_RETURN_NOSTACK_TAC bignum_mux_4_mc BIGNUM_MUX_4_CORRECT);;
 
@@ -119,8 +118,7 @@ let WINDOWS_BIGNUM_MUX_4_SUBROUTINE_CORRECT = prove
                 read RSP s = word_add stackpointer (word 8) /\
                 bignum_from_memory (z,4) s =
                   if ~(p = word 0) then m else n)
-          (MAYCHANGE [RIP; RSP; RCX; RDX; RAX; R8] ,,
-           MAYCHANGE SOME_FLAGS ,,
+          (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bignum(z,4);
                       memory :> bytes(word_sub stackpointer (word 16),16)])`,
   WINDOWS_X86_WRAP_NOSTACK_TAC windows_bignum_mux_4_mc bignum_mux_4_mc

@@ -530,10 +530,9 @@ let BIGNUM_EMONTREDC_SUBROUTINE_CORRECT = time prove
                        (2 EXP (64 * val k) * val(C_RETURN s) +
                         bignum_from_memory
                           (word_add z (word(8 * val k)),val k) s)))
-             (MAYCHANGE [RIP; RSP; RSI; RAX; RDX; R8; R9; R10; R11] ,,
+             (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bytes(z,8 * 2 * val k);
-                      memory :> bytes(word_sub stackpointer (word 32),32)] ,,
-              MAYCHANGE SOME_FLAGS)`,
+                      memory :> bytes(word_sub stackpointer (word 32),32)])`,
   X86_PROMOTE_RETURN_STACK_TAC bignum_emontredc_mc BIGNUM_EMONTREDC_CORRECT
    `[RBX;  R12; R13; R14]` 32);;
 
@@ -568,9 +567,8 @@ let WINDOWS_BIGNUM_EMONTREDC_SUBROUTINE_CORRECT = time prove
                        (2 EXP (64 * val k) * val(WINDOWS_C_RETURN s) +
                         bignum_from_memory
                           (word_add z (word(8 * val k)),val k) s)))
-             (MAYCHANGE [RIP; RSP; RCX; RAX; RDX; R8; R9; R10; R11] ,,
+             (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bytes(z,8 * 2 * val k);
-                      memory :> bytes(word_sub stackpointer (word 48),48)] ,,
-              MAYCHANGE SOME_FLAGS)`,
+                      memory :> bytes(word_sub stackpointer (word 48),48)])`,
   WINDOWS_X86_WRAP_STACK_TAC windows_bignum_emontredc_mc bignum_emontredc_mc
     BIGNUM_EMONTREDC_CORRECT `[RBX;  R12; R13; R14]` 32);;

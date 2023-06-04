@@ -363,7 +363,6 @@ let BIGNUM_SHR_SMALL_SUBROUTINE_CORRECT = prove
                   bignum_from_memory (z,val p) s =
                   lowdigits (a DIV 2 EXP (val c MOD 64)) (val p) /\
                   C_RETURN s = word(a MOD 2 EXP (val c MOD 64)))
-             (MAYCHANGE [PC; X0; X5; X6; X7; X8; X9] ,,
-              MAYCHANGE SOME_FLAGS ,,
+             (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bignum(z,val p)])`,
   ARM_ADD_RETURN_NOSTACK_TAC BIGNUM_SHR_SMALL_EXEC BIGNUM_SHR_SMALL_CORRECT);;

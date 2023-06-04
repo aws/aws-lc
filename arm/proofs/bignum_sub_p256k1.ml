@@ -129,7 +129,6 @@ let BIGNUM_SUB_P256K1_SUBROUTINE_CORRECT = time prove
              (\s. read PC s = returnaddress /\
                   (m < p_256k1 /\ n < p_256k1
                    ==> &(bignum_from_memory (z,4) s) = (&m - &n) rem &p_256k1))
-          (MAYCHANGE [PC; X3; X4; X5; X6; X7; X8] ,,
-           MAYCHANGE SOME_FLAGS ,,
+          (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bignum(z,4)])`,
   ARM_ADD_RETURN_NOSTACK_TAC BIGNUM_SUB_P256K1_EXEC BIGNUM_SUB_P256K1_CORRECT);;

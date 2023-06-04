@@ -253,7 +253,6 @@ let BIGNUM_BITFIELD_SUBROUTINE_CORRECT = prove
               bignum_from_memory (x,val k) s = a)
          (\s. read PC s = returnaddress /\
               C_RETURN s = word((a DIV (2 EXP val n)) MOD (2 EXP val l)))
-         (MAYCHANGE [PC; X0; X2; X4; X5; X6; X7; X8] ,,
-          MAYCHANGE SOME_FLAGS)`,
+         (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI)`,
   ARM_ADD_RETURN_NOSTACK_TAC
     BIGNUM_BITFIELD_EXEC BIGNUM_BITFIELD_CORRECT);;

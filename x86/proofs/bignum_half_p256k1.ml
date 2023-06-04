@@ -144,8 +144,7 @@ let BIGNUM_HALF_P256K1_SUBROUTINE_CORRECT = time prove
                   (n < p_256k1
                    ==> bignum_from_memory (z,4) s =
                        (inverse_mod p_256k1 2 * n) MOD p_256k1))
-            (MAYCHANGE [RIP; RSP; RAX; RDX; RCX; R8; R9] ,,
-             MAYCHANGE SOME_FLAGS ,,
+            (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
              MAYCHANGE [memory :> bignum(z,4)])`,
   X86_PROMOTE_RETURN_NOSTACK_TAC bignum_half_p256k1_mc
       BIGNUM_HALF_P256K1_CORRECT);;
@@ -175,8 +174,7 @@ let WINDOWS_BIGNUM_HALF_P256K1_SUBROUTINE_CORRECT = time prove
                   (n < p_256k1
                    ==> bignum_from_memory (z,4) s =
                        (inverse_mod p_256k1 2 * n) MOD p_256k1))
-            (MAYCHANGE [RIP; RSP; RAX; RDX; RCX; R8; R9] ,,
-             MAYCHANGE SOME_FLAGS ,,
+            (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
              MAYCHANGE [memory :> bignum(z,4);
                         memory :> bytes(word_sub stackpointer (word 16),16)])`,
   WINDOWS_X86_WRAP_NOSTACK_TAC windows_bignum_half_p256k1_mc

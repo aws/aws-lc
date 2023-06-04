@@ -612,8 +612,7 @@ let BIGNUM_NEGMODINV_SUBROUTINE_CORRECT = prove
                   (ODD m
                    ==> (m * bignum_from_memory(z,val k) s + 1 == 0)
                        (mod (2 EXP (64 * val k)))))
-             (MAYCHANGE [PC; X0; X1; X3; X4; X5; X6; X7; X8; X9] ,,
-              MAYCHANGE [memory :> bytes(z,8 * val k)] ,,
-              MAYCHANGE SOME_FLAGS)`,
+             (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
+              MAYCHANGE [memory :> bytes(z,8 * val k)])`,
   ARM_ADD_RETURN_NOSTACK_TAC
     BIGNUM_NEGMODINV_EXEC BIGNUM_NEGMODINV_CORRECT);;

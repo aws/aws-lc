@@ -184,9 +184,8 @@ let BIGNUM_TRIPLE_P256K1_ALT_SUBROUTINE_CORRECT = time prove
              (\s. read RIP s = returnaddress /\
                   read RSP s = word_add stackpointer (word 8) /\
                   bignum_from_memory (z,4) s = (3 * a) MOD p_256k1)
-             (MAYCHANGE [RIP; RSP; RAX; RDX; RCX; R8; R9; R10; R11] ,,
-              MAYCHANGE [memory :> bytes(z,8 * 4)] ,,
-              MAYCHANGE SOME_FLAGS)`,
+             (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
+              MAYCHANGE [memory :> bytes(z,8 * 4)])`,
   X86_PROMOTE_RETURN_NOSTACK_TAC bignum_triple_p256k1_alt_mc
     BIGNUM_TRIPLE_P256K1_ALT_CORRECT);;
 
@@ -213,10 +212,9 @@ let WINDOWS_BIGNUM_TRIPLE_P256K1_ALT_SUBROUTINE_CORRECT = time prove
              (\s. read RIP s = returnaddress /\
                   read RSP s = word_add stackpointer (word 8) /\
                   bignum_from_memory (z,4) s = (3 * a) MOD p_256k1)
-             (MAYCHANGE [RIP; RSP; RAX; RDX; RCX; R8; R9; R10; R11] ,,
+             (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bytes(z,8 * 4);
-                         memory :> bytes(word_sub stackpointer (word 16),16)] ,,
-              MAYCHANGE SOME_FLAGS)`,
+                         memory :> bytes(word_sub stackpointer (word 16),16)])`,
   WINDOWS_X86_WRAP_NOSTACK_TAC
     windows_bignum_triple_p256k1_alt_mc bignum_triple_p256k1_alt_mc
     BIGNUM_TRIPLE_P256K1_ALT_CORRECT);;

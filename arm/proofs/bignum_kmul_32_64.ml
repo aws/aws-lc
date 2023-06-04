@@ -1791,12 +1791,11 @@ let BIGNUM_KMUL_32_64_SUBROUTINE_CORRECT = prove
                    bignum_from_memory (y,32) s = b)
               (\s. read PC s = returnaddress /\
                    bignum_from_memory (z,64) s = a * b)
-              (MAYCHANGE [PC; X0; X1; X2; X3; X4; X5; X6; X7; X8; X9; X10;
-                          X11; X12; X13; X14; X15; X16; X17] ,,
+              (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
                MAYCHANGE [memory :> bytes(z,8 * 64);
                           memory :> bytes(t,8 * 96);
-                     memory :> bytes(word_sub stackpointer (word 144),144)] ,,
-               MAYCHANGE SOME_FLAGS)`,
+                     memory :> bytes(word_sub stackpointer (word 144),144)])`,
+  REWRITE_TAC [MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI] THEN
   MAP_EVERY X_GEN_TAC
    [`z:int64`; `x:int64`; `y:int64`;
     `a:num`; `b:num`; `t:int64`; `pc:num`] THEN

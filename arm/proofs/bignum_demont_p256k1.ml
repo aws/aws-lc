@@ -142,8 +142,7 @@ let BIGNUM_DEMONT_P256K1_SUBROUTINE_CORRECT = time prove
                   (a < p_256k1
                    ==> bignum_from_memory (z,4) s =
                        (inverse_mod p_256k1 (2 EXP 256) * a) MOD p_256k1))
-             (MAYCHANGE [PC; X2; X3; X4; X5; X6; X7; X8] ,,
-              MAYCHANGE [memory :> bytes(z,8 * 4)] ,,
-              MAYCHANGE SOME_FLAGS)`,
+             (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
+              MAYCHANGE [memory :> bytes(z,8 * 4)])`,
   ARM_ADD_RETURN_NOSTACK_TAC
     BIGNUM_DEMONT_P256K1_EXEC BIGNUM_DEMONT_P256K1_CORRECT);;

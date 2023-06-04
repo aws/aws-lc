@@ -683,7 +683,6 @@ let BIGNUM_DEMONT_SUBROUTINE_CORRECT = time prove
                   (ODD n
                    ==> bignum_from_memory (z,val k) s =
                        (inverse_mod n (2 EXP (64 * val k)) * a) MOD n))
-             (MAYCHANGE [PC; X4; X5; X6; X7; X8; X9; X10; X11; X12; X13] ,,
-              MAYCHANGE [memory :> bytes(z,8 * val k)] ,,
-              MAYCHANGE SOME_FLAGS)`,
+             (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
+              MAYCHANGE [memory :> bytes(z,8 * val k)])`,
   ARM_ADD_RETURN_NOSTACK_TAC BIGNUM_DEMONT_EXEC BIGNUM_DEMONT_CORRECT);;

@@ -182,7 +182,6 @@ let BIGNUM_OPTNEG_SUBROUTINE_CORRECT = prove
                  bignum_from_memory(z,val k) s =
                  (if p = word 0 \/ a = 0 then a else 2 EXP (64 * val k) - a) /\
                  C_RETURN s = word(bitval(~(p = word 0) /\ ~(a = 0))))
-            (MAYCHANGE [PC; X0; X2; X4; X5] ,,
-             MAYCHANGE SOME_FLAGS ,,
+            (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
              MAYCHANGE [memory :> bignum(z,val k)])`,
   ARM_ADD_RETURN_NOSTACK_TAC BIGNUM_OPTNEG_EXEC BIGNUM_OPTNEG_CORRECT);;

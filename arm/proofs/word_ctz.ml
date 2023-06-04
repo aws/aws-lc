@@ -52,5 +52,5 @@ let WORD_CTZ_SUBROUTINE_CORRECT = prove
                C_ARGUMENTS [a] s)
           (\s. read PC s = returnaddress /\
                C_RETURN s = word(word_ctz a))
-          (MAYCHANGE [PC; X0; X1])`,
+          (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI)`,
   ARM_ADD_RETURN_NOSTACK_TAC WORD_CTZ_EXEC WORD_CTZ_CORRECT);;

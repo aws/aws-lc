@@ -398,11 +398,9 @@ let BIGNUM_MONTSQR_P384_ALT_SUBROUTINE_CORRECT = time prove
                 (a EXP 2 <= 2 EXP 384 * p_384
                  ==> bignum_from_memory (z,6) s =
                      (inverse_mod p_384 (2 EXP 384) * a EXP 2) MOD p_384))
-           (MAYCHANGE [PC; X2; X3; X4; X5; X6; X7; X8; X9;
-                       X10; X11; X12; X13; X14; X15; X16; X17] ,,
+           (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
             MAYCHANGE [memory :> bytes(z,8 * 6);
-                       memory :> bytes(word_sub stackpointer (word 16),16)] ,,
-            MAYCHANGE SOME_FLAGS)`,
+                       memory :> bytes(word_sub stackpointer (word 16),16)])`,
   ARM_ADD_RETURN_STACK_TAC
    BIGNUM_MONTSQR_P384_ALT_EXEC BIGNUM_MONTSQR_P384_ALT_CORRECT
    `[X19;X20]` 16);;
@@ -548,11 +546,9 @@ let BIGNUM_AMONTSQR_P384_ALT_SUBROUTINE_CORRECT = time prove
            (\s. read PC s = returnaddress /\
                 (bignum_from_memory (z,6) s ==
                  inverse_mod p_384 (2 EXP 384) * a EXP 2) (mod p_384))
-           (MAYCHANGE [PC; X2; X3; X4; X5; X6; X7; X8; X9;
-                       X10; X11; X12; X13; X14; X15; X16; X17] ,,
+           (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
             MAYCHANGE [memory :> bytes(z,8 * 6);
-                       memory :> bytes(word_sub stackpointer (word 16),16)] ,,
-            MAYCHANGE SOME_FLAGS)`,
+                       memory :> bytes(word_sub stackpointer (word 16),16)])`,
   ARM_ADD_RETURN_STACK_TAC
    BIGNUM_MONTSQR_P384_ALT_EXEC BIGNUM_AMONTSQR_P384_ALT_CORRECT
    `[X19;X20]` 16);;

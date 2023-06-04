@@ -135,7 +135,7 @@ let BIGNUM_FROMBEBYTES_4_SUBROUTINE_CORRECT = time prove
                 read (memory :> bytelist(x,32)) s = l)
            (\s. read PC s = returnaddress /\
                 bignum_from_memory (z,4) s = num_of_bytelist (REVERSE l))
-          (MAYCHANGE [PC; X2; X3; X4] ,,
+          (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bignum(z,4)])`,
   ARM_ADD_RETURN_NOSTACK_TAC BIGNUM_BIGENDIAN_4_EXEC
     BIGNUM_FROMBEBYTES_4_CORRECT);;
@@ -182,7 +182,7 @@ let BIGNUM_TOBEBYTES_4_SUBROUTINE_CORRECT = time prove
            (\s. read PC s = returnaddress /\
                 read (memory :> bytelist(z,32)) s =
                 REVERSE(bytelist_of_num 32 n))
-          (MAYCHANGE [PC; X2; X3; X4] ,,
+          (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bignum(z,4)])`,
   ARM_ADD_RETURN_NOSTACK_TAC BIGNUM_BIGENDIAN_4_EXEC
     BIGNUM_TOBEBYTES_4_CORRECT);;
@@ -229,7 +229,7 @@ let BIGNUM_BIGENDIAN_4_SUBROUTINE_CORRECT = time prove
            (\s. read PC s = returnaddress /\
                 bignum_from_memory(z,4) s =
                 num_of_bytelist(REVERSE(bytelist_of_num 32 n)))
-          (MAYCHANGE [PC; X2; X3; X4] ,,
+          (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bignum(z,4)])`,
   ARM_ADD_RETURN_NOSTACK_TAC BIGNUM_BIGENDIAN_4_EXEC
     BIGNUM_BIGENDIAN_4_CORRECT);;

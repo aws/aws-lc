@@ -217,6 +217,5 @@ let BIGNUM_CLZ_SUBROUTINE_CORRECT = prove
               bignum_from_memory(a,val k) s = x)
          (\s'. read PC s' = returnaddress /\
                C_RETURN s' = word(64 * val k - bitsize x))
-         (MAYCHANGE [PC; X0; X2; X3; X4; X5] ,,
-          MAYCHANGE SOME_FLAGS)`,
+         (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI)`,
   ARM_ADD_RETURN_NOSTACK_TAC BIGNUM_CLZ_EXEC BIGNUM_CLZ_CORRECT);;

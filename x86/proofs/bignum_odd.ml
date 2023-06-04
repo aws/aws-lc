@@ -61,7 +61,7 @@ let BIGNUM_ODD_SUBROUTINE_CORRECT = prove
           (\s. read RIP s = returnaddress /\
                read RSP s = word_add stackpointer (word 8) /\
                C_RETURN s = if ODD x then word 1 else word 0)
-          (MAYCHANGE [RAX; RSP; RIP] ,, MAYCHANGE SOME_FLAGS)`,
+          (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI)`,
   X86_PROMOTE_RETURN_NOSTACK_TAC bignum_odd_mc BIGNUM_ODD_CORRECT);;
 
 (* ------------------------------------------------------------------------- *)
@@ -85,7 +85,7 @@ let WINDOWS_BIGNUM_ODD_SUBROUTINE_CORRECT = prove
               (\s. read RIP s = returnaddress /\
                    read RSP s = word_add stackpointer (word 8) /\
                    WINDOWS_C_RETURN s = if ODD x then word 1 else word 0)
-              (MAYCHANGE [RAX; RSP; RIP] ,, MAYCHANGE SOME_FLAGS ,,
+              (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bytes(word_sub stackpointer (word 16),16)])`,
   WINDOWS_X86_WRAP_NOSTACK_TAC windows_bignum_odd_mc bignum_odd_mc
     BIGNUM_ODD_CORRECT);;

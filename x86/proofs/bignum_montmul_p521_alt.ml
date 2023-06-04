@@ -865,10 +865,9 @@ let BIGNUM_MONTMUL_P521_ALT_SUBROUTINE_CORRECT = prove
                   (a < p_521 /\ b < p_521
                    ==> bignum_from_memory (z,9) s =
                         (inverse_mod p_521 (2 EXP 576) * a * b) MOD p_521))
-             (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
+             (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bytes(z,8 * 9);
-                    memory :> bytes(word_sub stackpointer (word 104),104)] ,,
-              MAYCHANGE SOME_FLAGS)`,
+                    memory :> bytes(word_sub stackpointer (word 104),104)])`,
   X86_PROMOTE_RETURN_STACK_TAC
    bignum_montmul_p521_alt_mc BIGNUM_MONTMUL_P521_ALT_CORRECT
    `[R12; R13; R14; R15]` 104);;
@@ -899,10 +898,9 @@ let WINDOWS_BIGNUM_MONTMUL_P521_ALT_SUBROUTINE_CORRECT = prove
                   (a < p_521 /\ b < p_521
                    ==> bignum_from_memory (z,9) s =
                         (inverse_mod p_521 (2 EXP 576) * a * b) MOD p_521))
-             (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
+             (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bytes(z,8 * 9);
-                    memory :> bytes(word_sub stackpointer (word 120),120)] ,,
-              MAYCHANGE SOME_FLAGS)`,
+                    memory :> bytes(word_sub stackpointer (word 120),120)])`,
   WINDOWS_X86_WRAP_STACK_TAC
    windows_bignum_montmul_p521_alt_mc bignum_montmul_p521_alt_mc
    BIGNUM_MONTMUL_P521_ALT_CORRECT `[R12; R13; R14; R15]` 104);;

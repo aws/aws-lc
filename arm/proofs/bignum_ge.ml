@@ -353,6 +353,5 @@ let BIGNUM_GE_SUBROUTINE_CORRECT = prove
           (\s'. (read PC s' = returnaddress \/
                  read PC s' = returnaddress) /\
                 C_RETURN s' = if x >= y then word 1 else word 0)
-          (MAYCHANGE [PC; X0; X2; X4; X5; X6] ,,
-           MAYCHANGE SOME_FLAGS)`,
+          (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI)`,
   ARM_ADD_RETURN_NOSTACK_TAC BIGNUM_GE_EXEC BIGNUM_GE_CORRECT);;

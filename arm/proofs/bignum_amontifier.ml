@@ -2335,9 +2335,8 @@ let BIGNUM_AMONTIFIER_SUBROUTINE_CORRECT = time prove
                   (ODD n
                    ==> (bignum_from_memory (z,val k) s ==
                         2 EXP (128 * val k)) (mod n)))
-             (MAYCHANGE [PC; X4; X5; X6; X7; X8; X9; X10; X11] ,,
+             (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bytes(z,8 * val k);
-                         memory :> bytes(t,8 * val k)] ,,
-              MAYCHANGE SOME_FLAGS)`,
+                         memory :> bytes(t,8 * val k)])`,
   ARM_ADD_RETURN_NOSTACK_TAC
     BIGNUM_AMONTIFIER_EXEC BIGNUM_AMONTIFIER_CORRECT);;

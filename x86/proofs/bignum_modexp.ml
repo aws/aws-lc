@@ -725,8 +725,7 @@ let BIGNUM_MODEXP_CORRECT = prove
                bignum_from_memory(m,val k) s = n)
           (\s. read RIP s = word (pc + 0x14d) /\
                (ODD n ==> bignum_from_memory(z,val k) s = (x EXP y) MOD n))
-          (MAYCHANGE [RIP; RAX; RCX; RDX; RSI; RDI; R8; R9; R10; R11] ,,
-           MAYCHANGE SOME_FLAGS ,,
+          (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bignum(z,val k);
                       memory :> bytes(t,24 * val k);
                       memory :> bytes(word_sub stackpointer (word 64),136)])`,
@@ -736,7 +735,8 @@ let BIGNUM_MODEXP_CORRECT = prove
     `m:int64`; `n:num`; `t:int64`; `pc:num`] THEN
   WORD_FORALL_OFFSET_TAC 64 THEN X_GEN_TAC `stackpointer:int64` THEN
   REWRITE_TAC[NONOVERLAPPING_CLAUSES; ALL] THEN
-  REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS] THEN
+  REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS;
+              MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI] THEN
   DISCH_THEN(REPEAT_TCL CONJUNCTS_THEN ASSUME_TAC) THEN
   MAP_EVERY (BIGNUM_TERMRANGE_TAC `k:num`) [`x:num`; `y:num`; `n:num`] THEN
   ENSURES_EXISTING_PRESERVED_TAC `RSP` THEN
@@ -902,11 +902,10 @@ let BIGNUM_MODEXP_SUBROUTINE_CORRECT = prove
           (\s. read RIP s = returnaddress /\
                read RSP s = word_add stackpointer (word 8) /\
                (ODD n ==> bignum_from_memory(z,val k) s = (x EXP y) MOD n))
-          (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; RSI; RDI; R8; R9; R10; R11] ,,
+          (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bignum(z,val k);
                       memory :> bytes(t,24 * val k);
-                      memory :> bytes(word_sub stackpointer (word 136),136)] ,,
-           MAYCHANGE SOME_FLAGS)`,
+                      memory :> bytes(word_sub stackpointer (word 136),136)])`,
   MP_TAC BIGNUM_MODEXP_CORRECT THEN
   REPLICATE_TAC 10 (MATCH_MP_TAC MONO_FORALL THEN GEN_TAC) THEN
   DISCH_THEN(fun th -> WORD_FORALL_OFFSET_TAC 136 THEN
@@ -914,7 +913,8 @@ let BIGNUM_MODEXP_SUBROUTINE_CORRECT = prove
                        MP_TAC(SPEC `word_add sptr (word 64):int64` th)) THEN
   REWRITE_TAC[WORD_RULE `word_sub (word_add x y) y = x`] THEN
   REWRITE_TAC[NONOVERLAPPING_CLAUSES; ALLPAIRS; ALL] THEN
-  REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS] THEN
+  REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS;
+              MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI] THEN
   DISCH_THEN(fun th -> STRIP_TAC THEN MP_TAC th) THEN
   ASM_REWRITE_TAC[] THEN ANTS_TAC THENL
    [REPEAT CONJ_TAC THEN NONOVERLAPPING_TAC; ALL_TAC] THEN
@@ -954,15 +954,15 @@ let WINDOWS_BIGNUM_MODEXP_SUBROUTINE_CORRECT = prove
           (\s. read RIP s = returnaddress /\
                read RSP s = word_add stackpointer (word 8) /\
                (ODD n ==> bignum_from_memory(z,val k) s = (x EXP y) MOD n))
-          (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
+          (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bignum(z,val k);
                       memory :> bytes(t,24 * val k);
-                      memory :> bytes(word_sub stackpointer (word 160),160)] ,,
-           MAYCHANGE SOME_FLAGS)`,
+                      memory :> bytes(word_sub stackpointer (word 160),160)])`,
   let WINDOWS_BIGNUM_MODEXP_EXEC =
     X86_MK_EXEC_RULE windows_bignum_modexp_mc in
   REPLICATE_TAC 10 GEN_TAC THEN WORD_FORALL_OFFSET_TAC 160 THEN
-  REWRITE_TAC[ALL; WINDOWS_C_ARGUMENTS; SOME_FLAGS] THEN
+  REWRITE_TAC[ALL; WINDOWS_C_ARGUMENTS; SOME_FLAGS;
+              WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI] THEN
   REWRITE_TAC[NONOVERLAPPING_CLAUSES] THEN REPEAT STRIP_TAC THEN
   ENSURES_PRESERVED_TAC "rsi_init" `RSI` THEN
   ENSURES_PRESERVED_TAC "rdi_init" `RDI` THEN

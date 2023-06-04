@@ -394,7 +394,6 @@ let BIGNUM_CMUL_SUBROUTINE_CORRECT = prove
                   lowdigits (val c * a) (val p) /\
                   (p = n
                    ==> C_RETURN s = word(highdigits (val c * a) (val p))))
-             (MAYCHANGE [PC; X0; X3; X5; X6; X7; X8] ,,
-              MAYCHANGE SOME_FLAGS ,,
+             (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bignum(z,val p)])`,
   ARM_ADD_RETURN_NOSTACK_TAC BIGNUM_CMUL_EXEC BIGNUM_CMUL_CORRECT);;

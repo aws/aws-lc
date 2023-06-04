@@ -110,8 +110,7 @@ let BIGNUM_DIGIT_SUBROUTINE_CORRECT = prove
          (\s. read RIP s = returnaddress /\
               read RSP s = word_add stackpointer (word 8) /\
               C_RETURN s = word(bigdigit a (val n)))
-         (MAYCHANGE [RIP; RSP; RAX; RCX; R8] ,,
-          MAYCHANGE SOME_FLAGS)`,
+         (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI)`,
   X86_PROMOTE_RETURN_NOSTACK_TAC bignum_digit_mc BIGNUM_DIGIT_CORRECT);;
 
 (* ------------------------------------------------------------------------- *)
@@ -135,8 +134,7 @@ let WINDOWS_BIGNUM_DIGIT_SUBROUTINE_CORRECT = prove
              (\s. read RIP s = returnaddress /\
                   read RSP s = word_add stackpointer (word 8) /\
                   WINDOWS_C_RETURN s = word(bigdigit a (val n)))
-             (MAYCHANGE [RIP; RSP; RDX; RAX; RCX; R8] ,,
-              MAYCHANGE SOME_FLAGS ,,
+             (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bytes(word_sub stackpointer (word 16),16)])`,
   WINDOWS_X86_WRAP_NOSTACK_TAC windows_bignum_digit_mc bignum_digit_mc
     BIGNUM_DIGIT_CORRECT);;
