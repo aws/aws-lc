@@ -14,12 +14,12 @@
 # The main building block of the loop is code that encrypts/decrypts
 # 8/16 blocks of data stitching with generation of tweak for the next
 # 8/16 blocks, utilizing VAES and VPCLMULQDQ instructions with full width
-# of ZMM registers. The main loop is selected based on the input lenght.
+# of ZMM registers. The main loop is selected based on the input length.
 # main_loop_run_16 encrypts/decrypts 16 blocks in parallel and it's selected
-# when input lenght >= 256 bytes (16 blocks)
+# when input length >= 256 bytes (16 blocks)
 # main_loop_run_8 encrypts/decrypts 8 blocks in parallel and it's selected
-# when 128 bytes <= input lenght < 256 bytes (8-15 blocks)
-# Input lenght less than 128 bytes(8 blocks) would be handled by do_n_blocks.
+# when 128 bytes <= input length < 256 bytes (8-15 blocks)
+# Input length < 128 bytes (8 blocks) is handled by do_n_blocks.
 #
 # This implementation mainly uses vpshrdq from AVX-512-VBMI2 family and vaesenc,
 # vaesdec, vpclmulqdq from AVX-512F family.
