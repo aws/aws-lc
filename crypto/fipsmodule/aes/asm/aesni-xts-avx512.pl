@@ -19,6 +19,8 @@
 # when input lenght >= 256 bytes (16 blocks)
 # main_loop_run_8 encrypts/decrypts 8 blocks in parallel and it's selected
 # when 128 bytes <= input lenght < 256 bytes (8-15 blocks)
+# Input lenght less than 128 bytes(8 blocks) would be handled by do_n_blocks.
+#
 # This implementation mainly uses vpshrdq from AVX-512-VBMI2 family and vaesenc,
 # vaesdec, vpclmulqdq from AVX-512F family.
 
