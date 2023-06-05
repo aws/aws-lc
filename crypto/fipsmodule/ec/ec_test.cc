@@ -2049,14 +2049,6 @@ TEST(ECTest, DISABLED_ScalarBaseMultVectorsTwoPoint) {
   });
 }
 
-static std::vector<uint8_t> HexToBytes(const char *str) {
-  std::vector<uint8_t> ret;
-  if (!DecodeHex(&ret, str)) {
-    abort();
-  }
-  return ret;
-}
-
 TEST(ECTest, DeriveFromSecret) {
   struct DeriveTest {
     int curve;
