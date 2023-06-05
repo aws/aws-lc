@@ -1,6 +1,8 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
+#if defined(OPENSSL_AARCH64) && !defined(OPENSSL_STATIC_ARMCAP)
+
 #include "cpu_aarch64.h"
 
 void handle_cpu_env(uint32_t *out, const char *in) {
@@ -45,3 +47,5 @@ void handle_cpu_env(uint32_t *out, const char *in) {
     out[0] = v;
   }
 }
+
+#endif // OPENSSL_AARCH64 && !OPENSSL_STATIC_ARMCAP

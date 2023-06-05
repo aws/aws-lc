@@ -13,7 +13,6 @@
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
 #include "internal.h"
-#include "cpu_aarch64.h"
 
 #if defined(OPENSSL_AARCH64) && defined(OPENSSL_APPLE) && \
     !defined(OPENSSL_STATIC_ARMCAP)
@@ -23,6 +22,7 @@
 
 #include <openssl/arm_arch.h>
 
+#include "cpu_aarch64.h"
 
 extern uint32_t OPENSSL_armcap_P;
 extern uint8_t OPENSSL_cpucap_initialized;
