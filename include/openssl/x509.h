@@ -196,8 +196,8 @@ OPENSSL_EXPORT X509_PUBKEY *X509_get_X509_PUBKEY(const X509 *x509);
 // X509_get0_pubkey returns |x509|'s public key as an |EVP_PKEY|, or NULL if the
 // public key was unsupported or could not be decoded. It is similar to
 // |X509_get_pubkey|, but it does not increment the reference count of the
-// returned |EVP_PKEY|. This means that the caller must not free the result after
-// use.
+// returned |EVP_PKEY|. This means that the caller must not free the result
+// after use.
 OPENSSL_EXPORT EVP_PKEY *X509_get0_pubkey(const X509 *x);
 
 // X509_get_pubkey returns |x509|'s public key as an |EVP_PKEY|, or NULL if the
@@ -1924,6 +1924,17 @@ DECLARE_ASN1_FUNCTIONS_const(NETSCAPE_SPKAC)
 
 OPENSSL_EXPORT X509_INFO *X509_INFO_new(void);
 OPENSSL_EXPORT void X509_INFO_free(X509_INFO *a);
+
+// X509_NAME_oneline encodes a textual version of |a| into |buf|.
+// If |buf| is NULL then a dynamically allocated buffer is created and returned,
+// and |size| is ignored.
+//
+// Otherwise, at most |size| bytes will be written to |buf|, including null
+// terminator, and |buf| is returned.
+//
+// Returns NULL if |size| <= 0 && |buf| != NULL.
+//
+// Otherwise returns NULL on error and sets the OpenSSL reason code.
 OPENSSL_EXPORT char *X509_NAME_oneline(const X509_NAME *a, char *buf, int size);
 
 OPENSSL_EXPORT int ASN1_digest(i2d_of_void *i2d, const EVP_MD *type, char *data,
