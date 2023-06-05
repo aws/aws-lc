@@ -27,6 +27,7 @@ static const time_t invalid_after_ocsp_expire_time_sha256 = 1937505764;
 
 #define OCSP_RESPFINDSTATUS_SUCCESS 1
 #define OCSP_RESPFINDSTATUS_ERROR 0
+#define OCSP_RESPFINDSTATUS_UNDEFINED -1
 
 #define OCSP_REQUEST_PARSE_SUCCESS 1
 #define OCSP_REQUEST_PARSE_ERROR 0
@@ -234,20 +235,20 @@ static const OCSPAWSTestVector nTestVectors[] = {
     // for the requested certificate. (So this would be a completely valid
     // response to a different OCSP request for the other certificate.)
     {"ocsp_response", "ca_cert", "server_ecdsa_cert", EVP_sha1(),
-     OCSP_VERIFYSTATUS_SUCCESS, OCSP_RESPFINDSTATUS_ERROR, 0, nullptr},
+     OCSP_VERIFYSTATUS_SUCCESS, OCSP_RESPFINDSTATUS_ERROR, -1, nullptr},
     // Test OCSP response where the requested certificate was signed by the OCSP
     // responder, but signed by the wrong requested OCSP responder key
     // certificate.
     // However, this incorrect OCSP responder certificate may be a valid OCSP
     // responder for some other case and also chains to a trusted root.
     {"ocsp_response_wrong_signer", "ca_cert", "server_cert", EVP_sha1(),
-     OCSP_VERIFYSTATUS_ERROR, 0, 0, nullptr},
+     OCSP_VERIFYSTATUS_ERROR, OCSP_RESPFINDSTATUS_UNDEFINED, -1, nullptr},
     // Test OCSP response where the requested certificate was signed by an OCSP
     // responder with an expired certificate.
     // However, this incorrect OCSP responder certificate may be a valid OCSP
     // responder for some other case and also chains to a trusted root.
     {"ocsp_response_expired_signer", "ca_cert", "server_cert", EVP_sha1(),
-     OCSP_VERIFYSTATUS_ERROR, 0, 0, nullptr},
+     OCSP_VERIFYSTATUS_ERROR, OCSP_RESPFINDSTATUS_UNDEFINED, -1, nullptr},
 
     // === SHA256 OCSP RESPONSES ===
     // Test valid OCSP response signed by an OCSP responder.
@@ -266,21 +267,20 @@ static const OCSPAWSTestVector nTestVectors[] = {
     // but not for the requested certificate. (So this would be a completely
     // valid response to a different OCSP request for the other certificate.)
     {"ocsp_response_sha256", "ca_cert", "server_ecdsa_cert", EVP_sha256(),
-     OCSP_VERIFYSTATUS_SUCCESS, OCSP_RESPFINDSTATUS_ERROR, 0, nullptr},
+     OCSP_VERIFYSTATUS_SUCCESS, OCSP_RESPFINDSTATUS_ERROR, -1, nullptr},
     // Test a SHA-256 OCSP response signed by the wrong responder certificate,
     // but the requested certificate was signed. (however this incorrect OCSP
     // responder certificate is a valid OCSP responder for some other case and
     // chains to a trusted root). Thus, this response is not valid for any
     // request.
     {"ocsp_response_wrong_signer_sha256", "ca_cert", "server_cert",
-     EVP_sha256(), OCSP_VERIFYSTATUS_ERROR, 0, 0, nullptr},
+     EVP_sha256(), OCSP_VERIFYSTATUS_ERROR, OCSP_RESPFINDSTATUS_UNDEFINED, -1,
+     nullptr},
 };
 
-class OCSPTestAWS : public testing::TestWithParam<OCSPAWSTestVector> {
-};
+class OCSPTestAWS : public testing::TestWithParam<OCSPAWSTestVector> {};
 
-INSTANTIATE_TEST_SUITE_P(All, OCSPTestAWS,
-                         testing::ValuesIn(nTestVectors));
+INSTANTIATE_TEST_SUITE_P(All, OCSPTestAWS, testing::ValuesIn(nTestVectors));
 
 TEST_P(OCSPTestAWS, VerifyOCSPResponseExtended) {
   const OCSPAWSTestVector &t = GetParam();
