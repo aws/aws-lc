@@ -10,4 +10,4 @@ env:
 phases:
   build:
     commands:
-      - ./tests/ci/run_s2n_integration.sh
+      - ./tests/ci/integration/run_s2n_integration.sh
