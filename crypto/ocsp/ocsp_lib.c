@@ -129,7 +129,8 @@ int OCSP_id_cmp(const OCSP_CERTID *a, const OCSP_CERTID *b) {
 
 int OCSP_parse_url(const char *url, char **phost, char **pport, char **ppath,
                    int *pssl) {
-  if (url == NULL) {
+  if (url == NULL || phost == NULL || pport == NULL || ppath == NULL ||
+      pssl == NULL) {
     OPENSSL_PUT_ERROR(OCSP, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
   }
