@@ -2,3 +2,5 @@
 *.correct
 *.o
 *.obj
+tests/test
+benchmarks/benchmark
