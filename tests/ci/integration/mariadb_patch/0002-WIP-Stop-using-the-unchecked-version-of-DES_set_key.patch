@@ -1,0 +1,115 @@
+From e8efa757ab510b81e5f225e5d3736899600d1d86 Mon Sep 17 00:00:00 2001
+From: Otto Kekalainen <ottoke@amazon.com>
+Date: Mon, 28 Nov 2022 21:07:19 -0800
+Subject: [PATCH 2/4] WIP: Stop using the unchecked version of DES_set_key
+
+DES_set_key_unchecked  is deprecated since OpenSSL 3.0
+(https://www.openssl.org/docs/manmaster/man3/DES_set_key.html),
+the current long term support version.
+
+According to DES_set_key_unchecked documentation, it is functionally
+equivalent to DES_set_key, when the global variable DES_check_key is 0.
+In MariaDB the variable DES_check_key is used only in WolfSSL, which is
+not used when AWS-LC is used, so this change should be safe to do.
+
+Example error on CentOS 7:
+
+[ 83%] Building CXX object sql/CMakeFiles/sql.dir/des_key_file.cc.o
+/builds/CPACK_BUILD_SOURCE_DIRS_LONG_NAME_REQUIREMENT/sql/des_key_file.cc: In function 'bool load_des_key_file(const char*)':
+/builds/CPACK_BUILD_SOURCE_DIRS_LONG_NAME_REQUIREMENT/sql/des_key_file.cc:84:14: error: cannot convert 'DES_cblock' to 'uint8_t* {aka unsigned char*}' for argument '8' to 'int EVP_BytesToKey(const EVP_CIPHER*, const EVP_MD*, const uint8_t*, const uint8_t*, size_t, unsigned int, uint8_t*, uint8_t*)'
+          ivec);
+              ^
+/builds/CPACK_BUILD_SOURCE_DIRS_LONG_NAME_REQUIREMENT/sql/des_key_file.cc:85:74: error: 'DES_set_key_unchecked' was not declared in this scope
+  DES_set_key_unchecked(&keyblock.key1,&(des_keyschedule[(int)offset].ks1));
+                                                                          ^
+make[2]: *** [sql/CMakeFiles/sql.dir/des_key_file.cc.o] Error 1
+
+Example error on Fedora:
+
+[ 83%] Building CXX object sql/CMakeFiles/sql.dir/des_key_file.cc.o
+/builds/CPACK_BUILD_SOURCE_DIRS_LONG_NAME_REQUIREMENT/sql/des_key_file.cc: In function 'bool load_des_key_file(const char*)':
+/builds/CPACK_BUILD_SOURCE_DIRS_LONG_NAME_REQUIREMENT/sql/des_key_file.cc:84:10: error: cannot convert 'DES_cblock' {aka 'DES_cblock_st'} to 'uint8_t*' {aka 'unsigned char*'}
+   84 |          ivec);
+      |          ^~~~
+      |          |
+      |          DES_cblock {aka DES_cblock_st}
+In file included from /usr/local/include/openssl/pem.h:62,
+                 from /usr/local/include/openssl/ssl.h:149,
+                 from /builds/CPACK_BUILD_SOURCE_DIRS_LONG_NAME_REQUIREMENT/include/violite.h:152,
+                 from /builds/CPACK_BUILD_SOURCE_DIRS_LONG_NAME_REQUIREMENT/sql/des_key_file.h:22,
+                 from /builds/CPACK_BUILD_SOURCE_DIRS_LONG_NAME_REQUIREMENT/sql/des_key_file.cc:18:
+/usr/local/include/openssl/cipher.h:350:44: note:   initializing argument 8 of 'int EVP_BytesToKey(const EVP_CIPHER*, const EVP_MD*, const uint8_t*, const uint8_t*, size_t, unsigned int, uint8_t*, uint8_t*)'
+  350 |                                   uint8_t *iv);
+      |                                   ~~~~~~~~~^~
+/builds/CPACK_BUILD_SOURCE_DIRS_LONG_NAME_REQUIREMENT/sql/des_key_file.cc:85:2: error: 'DES_set_key_unchecked' was not declared in this scope
+   85 |  DES_set_key_unchecked(&keyblock.key1,&(des_keyschedule[(int)offset].ks1));
+      |  ^~~~~~~~~~~~~~~~~~~~~
+make[2]: *** [sql/CMakeFiles/sql.dir/build.make:177: sql/CMakeFiles/sql.dir/des_key_file.cc.o] Error 1
+---
+ sql/des_key_file.cc | 10 +++++-----
+ sql/item_strfunc.cc | 16 ++++++++--------
+ 2 files changed, 13 insertions(+), 13 deletions(-)
+
+diff --git a/sql/des_key_file.cc b/sql/des_key_file.cc
+index bfbe04f6015..084523a6d4f 100644
+--- a/sql/des_key_file.cc
++++ b/sql/des_key_file.cc
+@@ -78,13 +78,13 @@ load_des_key_file(const char *file_name)
+ 	DES_cblock ivec;
+ 	bzero((char*) &ivec,sizeof(ivec));
+ 	// We make good 24-byte (168 bit) key from given plaintext key with MD5
+-	EVP_BytesToKey(EVP_des_ede3_cbc(),EVP_md5(),NULL,
++	EVP_BytesToKey( EVP_des_ede3_cbc(),EVP_md5(),NULL,
+ 		       (uchar *) start, (int) (end-start),1,
+ 		       (uchar *) &keyblock,
+-		       ivec);
+-	DES_set_key_unchecked(&keyblock.key1,&(des_keyschedule[(int)offset].ks1));
+-	DES_set_key_unchecked(&keyblock.key2,&(des_keyschedule[(int)offset].ks2));
+-	DES_set_key_unchecked(&keyblock.key3,&(des_keyschedule[(int)offset].ks3));
++                       ivec.bytes);
++	DES_set_key(&keyblock.key1,&(des_keyschedule[(int)offset].ks1));
++	DES_set_key(&keyblock.key2,&(des_keyschedule[(int)offset].ks2));
++	DES_set_key(&keyblock.key3,&(des_keyschedule[(int)offset].ks3));
+ 	if (des_default_key == 15)
+ 	  des_default_key= (uint) offset;		// use first as def.
+       }
+diff --git a/sql/item_strfunc.cc b/sql/item_strfunc.cc
+index 7eee96b3a19..7b6ab0788d2 100644
+--- a/sql/item_strfunc.cc
++++ b/sql/item_strfunc.cc
+@@ -764,11 +764,11 @@ String *Item_func_des_encrypt::val_str(String *str)
+     bzero((char*) &ivec,sizeof(ivec));
+     if (!EVP_BytesToKey(EVP_des_ede3_cbc(),EVP_md5(),NULL,
+ 		   (uchar*) keystr->ptr(), (int) keystr->length(),
+-		   1, (uchar*) &keyblock,ivec))
++		   1, (uchar*) &keyblock,(uchar*) &ivec))
+       goto error;
+-    DES_set_key_unchecked(&keyblock.key1,&keyschedule.ks1);
+-    DES_set_key_unchecked(&keyblock.key2,&keyschedule.ks2);
+-    DES_set_key_unchecked(&keyblock.key3,&keyschedule.ks3);
++    DES_set_key(&keyblock.key1,&keyschedule.ks1);
++    DES_set_key(&keyblock.key2,&keyschedule.ks2);
++    DES_set_key(&keyblock.key3,&keyschedule.ks3);
+   }
+ 
+   /*
+@@ -859,12 +859,12 @@ String *Item_func_des_decrypt::val_str(String *str)
+     bzero((char*) &ivec,sizeof(ivec));
+     if (!EVP_BytesToKey(EVP_des_ede3_cbc(),EVP_md5(),NULL,
+ 		   (uchar*) keystr->ptr(),(int) keystr->length(),
+-		   1,(uchar*) &keyblock,ivec))
++		   1,(uchar*) &keyblock,(uchar *) &ivec))
+       goto error;
+     // Here we set all 64-bit keys (56 effective) one by one
+-    DES_set_key_unchecked(&keyblock.key1,&keyschedule.ks1);
+-    DES_set_key_unchecked(&keyblock.key2,&keyschedule.ks2);
+-    DES_set_key_unchecked(&keyblock.key3,&keyschedule.ks3);
++    DES_set_key(&keyblock.key1,&keyschedule.ks1);
++    DES_set_key(&keyblock.key2,&keyschedule.ks2);
++    DES_set_key(&keyblock.key3,&keyschedule.ks3);
+   }
+   code= ER_OUT_OF_RESOURCES;
+   if (str->alloc(length-1))
+-- 
+2.39.2
+
