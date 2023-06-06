@@ -199,11 +199,11 @@ function aws_lc_build() {
   BUILD_FOLDER=${2}
   INSTALL_FOLDER=${3}
 
-  echo "Building AWS-LC to ${BUILD_FOLDER} and installing to ${INSTALL_FOLDER}"
-  ${CMAKE_COMMAND} ${AWS_LC_DIR} -GNinja "-B${BUILD_FOLDER}" "-DCMAKE_INSTALL_PREFIX=${INSTALL_FOLDER}"
+  echo "Building AWS-LC to ${BUILD_FOLDER} and installing to ${INSTALL_FOLDER} with CFlags "${@:4}""
+  ${CMAKE_COMMAND} ${AWS_LC_DIR} -GNinja "-B${BUILD_FOLDER}" "-DCMAKE_INSTALL_PREFIX=${INSTALL_FOLDER}" "${@:4}"
   ninja -C ${BUILD_FOLDER} install
   ls -R ${INSTALL_FOLDER}
-  rm -rf ${BUILD_FOLDER}/*
+  rm -rf ${BUILD_FOLDER:?}/*
 }
 
 function print_executable_information {
