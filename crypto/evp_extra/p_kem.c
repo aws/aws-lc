@@ -203,7 +203,7 @@ int EVP_PKEY_CTX_kem_set_params(EVP_PKEY_CTX *ctx, int nid) {
   }
 
   // It's not allowed to change context parameters if
-  // a PKEY is already associated with the contex.
+  // a PKEY is already associated with the context.
   if (ctx->pkey != NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_OPERATION);
     return 0;
