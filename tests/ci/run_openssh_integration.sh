@@ -44,7 +44,6 @@ pushd "${SCRATCH_FOLDER}"
 # Test helper functions.
 
 function aws_lc_build() {
-  export GOPROXY=direct
   ${CMAKE_COMMAND} "${AWS_LC_DIR}" -GNinja "-B${AWS_LC_BUILD_FOLDER}" "-DCMAKE_INSTALL_PREFIX=${AWS_LC_INSTALL_FOLDER}" "$@"
   ${NINJA_COMMAND} -C "${AWS_LC_BUILD_FOLDER}" install
   ls -R "${AWS_LC_INSTALL_FOLDER}"

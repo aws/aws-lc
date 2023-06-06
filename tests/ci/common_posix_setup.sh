@@ -1,9 +1,6 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 
-# If having trouble reaching proxy.golang.org, uncomment the following:
-#go env -w GOPROXY=direct
-
 if [ -v CODEBUILD_SRC_DIR ]; then
   SRC_ROOT="$CODEBUILD_SRC_DIR"
 else
