@@ -129,6 +129,11 @@ int OCSP_id_cmp(const OCSP_CERTID *a, const OCSP_CERTID *b) {
 
 int OCSP_parse_url(const char *url, char **phost, char **pport, char **ppath,
                    int *pssl) {
+  if (url == NULL) {
+    OPENSSL_PUT_ERROR(OCSP, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
   char *parser, *buffer;
   char *host = NULL;
   char *port = NULL;
@@ -152,12 +157,12 @@ int OCSP_parse_url(const char *url, char **phost, char **pport, char **ppath,
 
   // Set default ports for http and https. If a port is specified later, this
   // will be overwritten. |pssl| will be set to true, if https is being used.
-  if (strcmp(buffer, "http") == 0) {
-    *pssl = 0;
-    port = (char *)"80";
-  } else if (strcmp(buffer, "https") == 0) {
+  if (strncmp(buffer, "https", 5) == 0) {
     *pssl = 1;
     port = (char *)"443";
+  } else if (strncmp(buffer, "http", 4) == 0) {
+    *pssl = 0;
+    port = (char *)"80";
   } else {
     goto parse_err;
   }
