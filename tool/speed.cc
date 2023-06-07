@@ -2425,7 +2425,7 @@ bool Speed(const std::vector<std::string> &args) {
        !SpeedHash(EVP_sha256(), "SHA-256", selected) ||
        !SpeedHash(EVP_sha384(), "SHA-384", selected) ||
        !SpeedHash(EVP_sha512(), "SHA-512", selected) ||
-       // OpenSSL 1.0 and BoringSSL doesn't support SHA3.
+       // OpenSSL 1.0 and BoringSSL don't support SHA3.
 #if !defined(OPENSSL_1_0_BENCHMARK) && !defined(BORINGSSL_BENCHMARK) || AWSLC_API_VERSION > 16
        !SpeedHash(EVP_sha3_224(), "SHA3-224", selected) ||
        !SpeedHash(EVP_sha3_256(), "SHA3-256", selected) ||
