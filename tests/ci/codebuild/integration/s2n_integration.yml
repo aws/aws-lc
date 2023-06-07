@@ -3,7 +3,11 @@
 
 version: 0.2
 
+env:
+  variables:
+    GOPROXY: https://proxy.golang.org,direct
+
 phases:
   build:
     commands:
-      - ./tests/ci/run_openssh_integration.sh
+      - ./tests/ci/integration/run_s2n_integration.sh

@@ -43,6 +43,14 @@ $ docker build -t ubuntu-18.04:base -f tests/ci/docker_images/linux-x86/ubuntu-1
 For more examples, see `build_images.sh` script in directories corresponding
 to different platforms (linux-x86, linux-aarch, windows, rust).
 
+### Issues with proxy.golang.org when running images locally
+
+If you are having issues contacting `proxy.golang.org` try running the image
+with the `GOPROXY=direct`. For example:
+```bash
+docker run -e GOPROXY=direct -v `pwd`:`pwd` -w `pwd` -it ubuntu-20.04:clang-9x
+```
+
 ## Test locations
 
 ### Unit tests
