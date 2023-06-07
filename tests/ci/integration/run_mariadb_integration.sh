@@ -45,13 +45,14 @@ function mariadb_build() {
 
 function mariadb_run_tests() {
   pushd ${MARIADB_BUILD_FOLDER}
-  # Basic tests
-  ninja test
-  # More complicated integration tests.
+  # More complicated integration tests. mtr expects to be launched in-place and with write access to it's own directories
+  pushd mysql-test
   echo "main.mysqldump : Field separator argument is not what is expected; check the manual when executing 'SELECT INTO OUTFILE'
 main.flush_logs_not_windows : query 'flush logs' succeeded - should have failed with error ER_CANT_CREATE_FILE (1004)
 main.mysql_upgrade_noengine : upgrade output order does not match the expected" > skiplist
-  ./mysql-test/mtr --suite=main --force --parallel=auto --skip-test-list=${MARIADB_BUILD_FOLDER}/skiplist
+  ./mtr --suite=main --force --parallel=auto --skip-test-list=${MARIADB_BUILD_FOLDER}/mysql-test/skiplist --force-restart
+  cat var/log
+  popd
   popd
 }
 
@@ -74,3 +75,4 @@ mariadb_patch
 mariadb_build
 mariadb_run_tests
 popd
+
