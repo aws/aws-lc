@@ -95,7 +95,7 @@ static int check_purpose_timestamp_sign(const X509_PURPOSE *xp, const X509 *x,
 static int no_check(const X509_PURPOSE *xp, const X509 *x, int ca);
 static int ocsp_helper(const X509_PURPOSE *xp, const X509 *x, int ca);
 
-static int xp_cmp(const X509_PURPOSE **a, const X509_PURPOSE **b);
+static int xp_cmp(const X509_PURPOSE *const *a, const X509_PURPOSE *const *b);
 static void xptable_free(X509_PURPOSE *p);
 
 static X509_PURPOSE xstandard[] = {
@@ -126,7 +126,7 @@ static X509_PURPOSE xstandard[] = {
 
 static STACK_OF(X509_PURPOSE) *xptable = NULL;
 
-static int xp_cmp(const X509_PURPOSE **a, const X509_PURPOSE **b) {
+static int xp_cmp(const X509_PURPOSE *const *a, const X509_PURPOSE *const *b) {
   return (*a)->purpose - (*b)->purpose;
 }
 
@@ -201,7 +201,6 @@ int X509_PURPOSE_get_by_id(int purpose) {
     return -1;
   }
 
-  sk_X509_PURPOSE_sort(xptable);
   if (!sk_X509_PURPOSE_find(xptable, &idx, &tmp)) {
     return -1;
   }
@@ -267,6 +266,10 @@ int X509_PURPOSE_add(int id, int trust, int flags,
 
   // If its a new entry manage the dynamic table
   if (idx == -1) {
+    // TODO(davidben): This should be locked. Alternatively, remove the dynamic
+    // registration mechanism entirely. The trouble is there no way to pass in
+    // the various parameters into an |X509_VERIFY_PARAM| directly. You can only
+    // register it in the global table and get an ID.
     if (!xptable && !(xptable = sk_X509_PURPOSE_new(xp_cmp))) {
       xptable_free(ptmp);
       return 0;
@@ -275,6 +278,7 @@ int X509_PURPOSE_add(int id, int trust, int flags,
       xptable_free(ptmp);
       return 0;
     }
+    sk_X509_PURPOSE_sort(xptable);
   }
   return 1;
 }

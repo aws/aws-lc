@@ -127,6 +127,11 @@ OPENSSL_INLINE int CRYPTO_is_VPCLMULQDQ_capable(void) {
   return (OPENSSL_ia32cap_get()[3] & (1u << (42 - 32))) != 0;
 }
 
+OPENSSL_INLINE int CRYPTO_is_VBMI2_capable(void) {
+  return (OPENSSL_ia32cap_get()[3] & (1 << 6)) != 0;
+}
+
+
 #endif  // OPENSSL_X86 || OPENSSL_X86_64
 
 #if defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)

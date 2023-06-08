@@ -18,7 +18,6 @@
 #define FIPS202_NAMESPACE(s) FIPS202_PREFIX(s)
 #endif
 
-
 typedef struct {
   uint64_t s[25];
   unsigned int pos;

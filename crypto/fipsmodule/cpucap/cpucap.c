@@ -66,11 +66,14 @@ HIDDEN uint32_t OPENSSL_armcap_P =
 #if defined(OPENSSL_STATIC_ARMCAP_SHA256) || defined(__ARM_FEATURE_SHA2)
     ARMV8_SHA256 |
 #endif
-#if defined(__ARM_FEATURE_SHA512)
+#if defined(OPENSSL_STATIC_ARMCAP_SHA512) || defined(__ARM_FEATURE_SHA512)
     ARMV8_SHA512 |
 #endif
-#if defined(__ARM_FEATURE_SHA3)
+#if defined(OPENSSL_STATIC_ARMCAP_SHA3) || defined(__ARM_FEATURE_SHA3)
     ARMV8_SHA3 |
+#endif
+#if defined(OPENSSL_STATIC_ARMCAP_NEOVERSE_V1) || defined(__ARM_FEATURE_NEOVERSE_V1)
+    ARMV8_NEOVERSE_V1 |
 #endif
     0;
 

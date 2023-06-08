@@ -1006,6 +1006,15 @@ static int ssl_read_impl(SSL *ssl) {
   return 1;
 }
 
+int SSL_read_ex(SSL *ssl, void *buf, size_t num, size_t *read_bytes) {
+  int ret = SSL_read(ssl, buf, (int)num);
+  if (ret <= 0) {
+    return 0;
+  }
+  *read_bytes = ret;
+  return 1;
+}
+
 int SSL_read(SSL *ssl, void *buf, int num) {
   int ret = SSL_peek(ssl, buf, num);
   if (ret <= 0) {
@@ -1038,6 +1047,15 @@ int SSL_peek(SSL *ssl, void *buf, int num) {
       std::min(ssl->s3->pending_app_data.size(), static_cast<size_t>(num));
   OPENSSL_memcpy(buf, ssl->s3->pending_app_data.data(), todo);
   return static_cast<int>(todo);
+}
+
+int SSL_peek_ex(SSL *ssl, void *buf, size_t num, size_t *read_bytes) {
+  int ret = SSL_peek(ssl, buf, (int)num);
+  if (ret <= 0) {
+    return 0;
+  }
+  *read_bytes = ret;
+  return 1;
 }
 
 int SSL_write(SSL *ssl, const void *buf, int num) {
@@ -1081,6 +1099,15 @@ int SSL_write(SSL *ssl, const void *buf, int num) {
   return ret <= 0 ? ret : static_cast<int>(bytes_written);
 }
 
+int SSL_write_ex(SSL *ssl, const void *buf, size_t num, size_t *written) {
+  int ret = SSL_write(ssl, buf, (int)num);
+  if (ret <= 0) {
+    return 0;
+  }
+  *written = ret;
+  return 1;
+}
+
 int SSL_key_update(SSL *ssl, int request_type) {
   ssl_reset_error_state(ssl);
 
@@ -1104,7 +1131,7 @@ int SSL_key_update(SSL *ssl, int request_type) {
     return 0;
   }
 
-  if (!ssl->s3->key_update_pending &&
+  if (ssl->s3->key_update_pending == SSL_KEY_UPDATE_NONE &&
       !tls13_add_key_update(ssl, request_type)) {
     return 0;
   }
@@ -1723,6 +1750,10 @@ int SSL_check_private_key(const SSL *ssl) {
 
 long SSL_get_default_timeout(const SSL *ssl) {
   return SSL_DEFAULT_SESSION_TIMEOUT;
+}
+
+int SSL_get_key_update_type(const SSL *ssl) {
+  return ssl->s3->key_update_pending;
 }
 
 int SSL_renegotiate(SSL *ssl) {
@@ -3130,6 +3161,11 @@ size_t SSL_get_tlsext_status_ocsp_resp(const SSL *ssl, const uint8_t **out) {
 int SSL_CTX_set_tlsext_status_cb(SSL_CTX *ctx,
                                  int (*callback)(SSL *ssl, void *arg)) {
   ctx->legacy_ocsp_callback = callback;
+  return 1;
+}
+
+int SSL_CTX_get_tlsext_status_cb(SSL_CTX *ctx, int (**callback)(SSL *, void *)) {
+  *callback = ctx->legacy_ocsp_callback;
   return 1;
 }
 

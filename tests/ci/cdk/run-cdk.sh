@@ -276,6 +276,7 @@ Options:
                                                 After image build, AWS resources are cleaned up.
                                    'diff': compares the specified stack with the deployed stack.
                                    'synth': synthesizes and prints the CloudFormation template for the stacks.
+                                   'bootstrap': Bootstraps the CDK stack. This is needed before deployment or updating the CI.
 EOF
 }
 
@@ -388,6 +389,9 @@ function main() {
     ;;
   diff)
     cdk diff aws-lc-ci-*
+    ;;
+  bootstrap)
+    cdk bootstrap
     ;;
   *)
     echo "--action is required. Use '--help' to see allowed actions."

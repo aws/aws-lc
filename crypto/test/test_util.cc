@@ -57,6 +57,14 @@ bool DecodeHex(std::vector<uint8_t> *out, const std::string &in) {
   return true;
 }
 
+std::vector<uint8_t> HexToBytes(const char *str) {
+  std::vector<uint8_t> ret;
+  if (!DecodeHex(&ret, str)) {
+    abort();
+  }
+  return ret;
+}
+
 std::string EncodeHex(bssl::Span<const uint8_t> in) {
   static const char kHexDigits[] = "0123456789abcdef";
   std::string ret;

@@ -365,6 +365,20 @@ static const XTSTestCase kXTSTestCases[] = {
         "8917567652e9b4ef3838baf35e400fe1aad32ff4d83b0af3f6a176025bd1321b"
         "ffe2f16c",
     },
+    // len = 126 bytes = 7 blocks + 14 bytes
+    {
+        "6df514f7b04518669d88dfe8e22683bc09081e7c6980ad768afc144bcb75263f"
+        "54176c5f69b1ebf5a3b116e2e77eb4f1b21d00cfc281e64bfe69e4f7714e312f",
+        "e3484c0248c9d1b18b51323838a883c2",
+        "a67f2bba6376b12ee8267d0e58bc3d3b04893d4c520efddd602f1698d7995a7d"
+        "1985387cfbe9abe31028f168e42ea3e9b8e1350aef33e84f62fee73a9741b7b0"
+        "c6ef2dc2d9d8a5e9009751e4c5f4cd7dd50388c5367014986efcd2053d8ab604"
+        "79e3c652bb6b3bbb028c9fc8816d455670cd1ba63d303eab2c11b1699b67",
+        "25d58c11702de5d39f73e4b651814272038b579df534ee096297d7cd0c95300a"
+        "d87ffe0d48fb4d8e6a1d01d3333c4e52113d921dcefca066a6b264ece99acdf1"
+        "283c56b49bfb42a1965080f06e5953d9414a432953d50784beec734cea1ae602"
+        "68fddc72e4c3f3613483bc15ab95ec62c9bc9edf48a2395dad69e4786f09"
+    },
     // len = 128 bytes = 8 blocks
     {
         "fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0efeeedecebeae9e8e7e6e5e4e3e2e1e0"
@@ -583,6 +597,372 @@ static const XTSTestCase kXTSTestCases[] = {
         "ea39991882130ee45e95a3c6bc508f09c990add0cd3f1ca3403c096f9277e785"
         "4cd6a885857fba751416febc2cc41f2e6ea0659808172173e234f7dfd6",
     },
+    // len = 257 bytes = 16 blocks + 1 bytes
+    {
+        "aff22ec6b186ffbd4140241576ced5ae70e0783b67c0d58d0ef6dbd27ace07d5"
+        "0a5bd89cc096142790e00ea06e7d6685a09fa62ac1667d16cd320c51a1507c78",
+        "1db517955b52bfc2148028e9fdb6000b",
+        "83f63d5f0210b07db17fcdb8fba230185747aeb29a6d75aeed9d97eb5397f6d7"
+        "8e34369044e60df565daad617cde79d3252786bf95fb6d8298056dec9c64c32a"
+        "98f9bbdcdfc8d145a37ea61f5c1ff382477941dc74af5e0cb4ccf85030bb7bc8"
+        "b436a494fe75d9a1f37fc1509eb4d2e52d13c1a1c220ad76eca6c71c6142e416"
+        "7888aa76fd8318f002d940a08d1286ba26475be867085f53ae266f10685326e0"
+        "dbd056d8536ec9554709f5d41c7b8e42c3e92a2af2897ea0afedb01741d6f71c"
+        "a64ef5f9bcbe4e04c744d8e3bf6725825050ad42d92be3891893a0596a987610"
+        "e66b0aa22958a6f09c7fd45ce6f9de36498b7923b65caccfef4c2859e49e6aca"
+        "09",
+        "c98f54b11d1210f845e6c0a68baa37a274677ccc405e2ff38cd4f41fbe7f65b4"
+        "4d36fa9792541e8bbbceb8ecedef84bbb4fdf850ca6b4a17b50dee390063b431"
+        "c5fd389b14a04a399b2e0055fbeb390852861947a4d0b613e10eb469ba86f5cf"
+        "8d303750cfa35942d7b5ec66a5bae9ed8db2a062fd60bec11b1abea241355f7f"
+        "7564a7ca901ada44cd61b6266d25c7cc6118ce6b1a901ce83385701a722582f0"
+        "e238bf7e2a9396cf07aa7200c2cbd146738782863792652707271d0868f58f2d"
+        "0c45b826f61f030972fe32c6a55a0e6b39f2012e827318d623d545bf90fc68c6"
+        "d8c48e8fff9445248b0016897269022420c51e8472b9aa1a2350699815f62a66"
+        "3f"
+    },
+    // len = 276 bytes = 17 blocks + 4 bytes
+    {
+        "6dcc2392c5f0af2f5d84b455cd7b04abb785e0d19049fc675d625eeff162ef67"
+        "321369f778a33a28e50973dd3a37857177da17a5c23f7859eb12b72b6af60da7",
+        "85ec816504530b941554d311cc3a6a29",
+        "25cc3b83832aaf7595116b841fd22ba4bfad09c300145715682a263464905e89"
+        "5c990cdfc4bb5459cdbfddec92099051b69914b6ae6bcb1695f14bf981a982dd"
+        "428ebc064a115f17d03d03624693b3fc2cc7b2da327df1c76e3cc0efe542cc27"
+        "d1882e1b998d326aca35cc10c8800cf447becf7a3bc041a9fc0298e144640815"
+        "ed363086c462f08e97bd9f5f3dab54846a23fea5e3404fdf42e7c0864cc89c39"
+        "ffccbfc32fb051c66df026aa9c7a2e069d2dab806dfa5fafe21f352ee7d167e6"
+        "9e26a9cdd6fb9343ebb9ed87331c8dd0493950b633af6515ce9a43b66caa9c0a"
+        "d146d7a7416aeb2c24d8b457f441283d7a78f3ae2858c3f6f307ac5fb1496982"
+        "8f402ad0aa15fcceedb026e2f24e1f6cc6131aee",
+        "5451cf03fe8ed79c73f43b8595a93e4e5704856c72ad8e0ae454e021f880b26a"
+        "4fc1634b8fdb143bcbbf28ece2d08b34ddbd04223c507ef54c013f85be416127"
+        "db2e4ec5873541185ee8d345a04be6fc8c7711d4185c6999ae15e3ceb020b5ba"
+        "036f3a29176b369723c5d162e2e3c1ec464809995facb03c40b35d22df23b1e0"
+        "b16ddf322f77e88dd51b35137aafc5d63e0c939e003ed5cebf644ddb425fdb53"
+        "3f1f127eb08d44cf95d024e36d888033653b6dab815a3ff8ec6536ba5cd51403"
+        "ab938dbd6e4e63e34e6754869105dd87b0f8e53b6fa4e68834a5b15a74dae604"
+        "cb8e120115d5b9c66f6a7e973bcf2f418f37e19a51713577182ea38c5493ff46"
+        "966b2f87f3dd957226a4823848f42d943898a8c7"
+    },
+    // len = 299 bytes = 18 blocks + 11 bytes
+    {
+        "de5e919626694311364505d8471a5fc5ed22e159d26efc6d5f19dab8367bdad3"
+        "e5e5bdda19663958dfe62753455a083d247fb908c3157f32b264f121d29640c8",
+        "64f64746afa04e8163bc96603c03929b",
+        "b5abff8f9db7b0d3892b69646c3d2cd0337316e21364637721f9d75dfc69f8b1"
+        "15f741b2aff185381def9c892cc8595f3b70414fd4a4c6f59d9d5299064a4a1b"
+        "428bcdf17d53299a42c6236e8e7ccdcaec0e19c1b2dfb64f7c09e88253329e95"
+        "be6b863bbeb0d50076f86e04743bce6149e722fbc6d84a42e132c5356563ca23"
+        "ce515e8d01338d772bfc7b9f374a008131227cf8fbc73adcf9ff115e62dc8131"
+        "2ddfbe2e124ba53d4720dd7f6add009c007c94fb43ced73dcee99b30c51d61f2"
+        "fc1f200f6bc54cb2e52931500731ec07ae8002f14ed92e1cc2ca4d87e7ae79e3"
+        "ce99f2395e3feb44681d946f4e8076fc0078ee4e521c6b14e6b89ccd6615b134"
+        "afa36d0de259514b76e5bac46531c165a9afb4fbcb1f10b2d7ac7f3dc1307270"
+        "d4df7eb638cf01aeb5bc73",
+        "292987d5a1c8cb8392c9cd1f9a9a4de5490d0284b91295cf4bbcd06376ef9513"
+        "d18753f1dc7ae7ed2b8f081d108de07c4752eeccfa6c1558da2a176ead5127a3"
+        "06d080ad4af63c13dffe291d65937b65ef370652a13e99d5e3e4698a80c04cd1"
+        "a78618c7b956f8422e286eae175c296d9a8aa687c9eb570cf7754b90346c5e3a"
+        "cfad6d073c7f85fe1b8d09dc06c6b6b2583441d6101b6c6e7520bb7ab1310c8f"
+        "1216cd270dd610e957e1c3d104a859ea5fe3bf11ef10a838905de4c5134bb02a"
+        "921a56103584f72008e1cd4f3482d399d7f029d79a27cfad399fb2c3b1bd6975"
+        "6af7d26ca822c239d948463e3451fb137e8274966924669ed1d6b9cab12034ff"
+        "ea30464b626f017e03a9b8d13efe0f1b589bfabc4eee2c38977e345ccb30d7ab"
+        "f7b541294e651a657663b1"
+    },
+    // len = 314 bytes = 19 blocks + 10 bytes
+    {
+        "ed80e39253604e671080b99bcda0589d47dc51d810ce196d0f0eebb9453b6ce3"
+        "349634aea22ae00fd9e4fef19c8213451d2a6ea4395e3529edc8a9b9599ed8b3",
+        "f5bfdd462db6ea3defb89b08ee0931fd",
+        "f63fc5e2e87e9b2ed8d6cc44afaff8a46fd5eb9c8bd5da7a8e75827c7eb47975"
+        "f33e57dcbcf20a94c8d6d97785d11cf4a6079132dc6bac6ae02fe65fe35fd4d6"
+        "9d2bb25a1dbceee592c75d1898790c3f809d715c081dc7e94cad482f0d1c06aa"
+        "47b8046475f34907baa61f531f2c929fc903fcd220c3bb6d70039c7d1fa22866"
+        "5b2ccad01f13d7dabaf72dd923bf79ecc275bee238794fa87cec269b8e4e01e9"
+        "7acbb99adf91749988a172ab60eb972260560498cf54414c4067e7ceb5e9b82f"
+        "b471c993023d2c8ade9f353e8acd60eb236583f2b9c43ef92b26c7e00f7f10c3"
+        "f1d957f317837ef522b334ad809498a3f91b96b2e0d4ab0bfa73ec09f2fccde3"
+        "d524d7eca755e2ca08167789aa0f2ca42ac2560a9702169175029b67fe684bd3"
+        "8c22c03377a2fd7fb8740862833506aef75db88e5fce20d4d0bb",
+        "7a93f2efebbe2557ebcb22d5972ba884696ab0651fc1cfa1c5b88f8a2bc9ab78"
+        "17a97c0c46ffa8ac531f360700c94cad12ae081c03cd508b22123fd5d0ba4f1d"
+        "027d0f150b314177f3b2d6074686a1c548eaa243fb49604db2dbb3c32ecf5585"
+        "fcd023a72492413acd5427e3fff16a1bfee13d0be5333bda8621fb5a0f5814f5"
+        "04118a8b3b5dd5f40108c2baeff9ae59b84f20bd13f50e052083dfeaa80ff8c8"
+        "7be86dcd19930877712e6fe3442e4b80ed69467b2e208152f4f76f3c78f75934"
+        "4ed558d2ba69a85bd7019c8ff7900abe277bfb0d27cb921266565bb7891c77a3"
+        "973e8d6836ad7b8a389b27ffe70c19806810fed62fe029bf4b1d173bd297db6e"
+        "4ab4a9738f30a46646d386e9ade5b4ea00a5456535f7972a54dcda19f8d26e43"
+        "30c3d760bc4e278fa5ab8481dadde7829fde7563ece4094588f9"
+    },
+    // len = 331 bytes = 20 blocks + 11 bytes
+    {
+        "ce86af621fe0bca7d825d43ee182ddf0604e1ff2b4de268e62843598d0cb5859"
+        "23a2a8e2049f541edc8682620db53dac770fb03fd27085feb336c3161badbcb9",
+        "33a7c85257ba910b8c6f7bb3f50ab157",
+        "bd368df3f92509c940d5769991d052c4771a16cfd5a8da611756140c60c6631d"
+        "fcf010f5161abe56ef34ef800441447c5c5a4b310225921a7ba726db6d8af969"
+        "7a095e90231ce71250d6925518d6d174311ca53341374dbdde74984bfe91b478"
+        "9b1209be2ef0d17fc663d4de3aa5526bc1f79e022fecbf0d6058595ee90dd684"
+        "20df434ecf14cd9677a174b146c71c07bebb0aeda7c9fb072154650b613b8f81"
+        "1bd2d0eae69d805e3ff50f85bc2c8d7ae797688e60639582b7fa8d18351c9a50"
+        "ef6a3bd507bb3346b043cc6c6f59e756f04fe450b279d269735f81a87c1bf96b"
+        "8534408def74d3a0b79f0c26f8f37ce8426039f4d90b5d4c6bdff4e7faed5280"
+        "21920d1106e0b1bd80bde378b15f61f3bf9ae898a545e41024d9f71fc6499fe8"
+        "dcacf9e28caaa00c67838518e3e60ca280f43b25391f365ef82d7dbf771ca753"
+        "c8a035544ad561b159e6ca",
+        "23a76bbecc4187fc27809e98d66f013c4713c42331fb74f81db7c6ce8d788abd"
+        "1451538cfe68bb29d82ff90427ef00c85b6f63cea97b31285ed0f0873b203ce8"
+        "e73d16252f7478d6e920bf079aa38fb0df55fbcf613d5f866fc70ca9bac43dd7"
+        "2feca0c2cc4b596e6b949e43252023504dbc543d61534435f8994efe79d00e39"
+        "7de079b72006bf2b3c289a5b3535af26d8ccabe239e4f0dcbb7f9dc893fc7279"
+        "055df2edd27bb997819e61654408d8028903cc31e350417271fe6e0128c3d6b3"
+        "951b58a0ea72a5101063b01397171c30e1df0eb255be3afd2ce2be2e30278d61"
+        "b93d7e97cc697180ea16d2bb9dfd76106d8db120e9ffafcb8182e2c869f57706"
+        "facfb9b53e0d80d330d7db057087251d2947a6746034b34b549ce47207334ccf"
+        "6c8df1492055d0464d3800df0278609ddd277e8ff1d12ee78d623e2e816fb5ec"
+        "9d6aa67116f98db59ede5b"
+    },
+    // len = 348 bytes = 21 blocks + 12 bytes
+    {
+        "ccdeca713961d5f0fa9f3717aa335e3fd37637a08fa1e0b0299d23e22cd012b4"
+        "d64c1903a731de4c97c2d4817803fd2a1d9de770026492db4f61b4cd158a0fe5",
+        "2d2a82641223d4a12575050507b5e031",
+        "047e92273274f55f8ac5e99cd59e8202c80466da273a7b4caf8052b73532e839"
+        "b07a61e3ee5642781b2b15f0c997f2929b586cc392e80f426861f99e94e1d744"
+        "5b3827498e69c2aa95d79a5e6e8df009e55dcc7845dcbaad3db34bd1942316ef"
+        "5b3d38eaa7fa943cd12e9a3fbb8b49a1e815192df1d3da2f8626001a491609a4"
+        "54418efb3c22370d51d14d0c5c96ad44abc6719d994ccc1f72cc39bbe3425f37"
+        "84ee32c01069cd613a1a6e97b01bdb5ce24df97b99c59b0b91d4c6741725ab9b"
+        "13dd5b244628858143f318f30ff34ff140486cd90d07e49fdcaa13f3d0bf8ee3"
+        "9ce907e3118d6454807c488f6f9780b0e0ed89edf46e8cd018a0c3e85f51ccfb"
+        "3ad3de4c6042a0e1bee8702e80f1de60de674dd2d5daa3ee7a66d6d9b8a2d4f2"
+        "76b33ed6f5dfb7b4c728e24719c0a7f727f5c9fdcf6ceb49d3c1228b64f67dda"
+        "a9bcb09f9b6853629035aaa9f551a01c46691915d6045ea9c680342a",
+        "b044e504905a2a68940aea8eec020eb5bc82faabba1374429efb6bfc4d84bd7c"
+        "e5caef9b87708dae91268d8b67909ac537067b86f5361acd33d70130c8c2c838"
+        "4401e833bb5fed395135f314294e1fb6db2434b4f276cd852e69f98c41487351"
+        "d3fc82eb9169802b2e1a1e714125cef2ebacf4d363296e3cfa6d8488b31b6f95"
+        "8b64c686221df4ff989b3fda3a220648c17c1bc5dc8d5ab8e76829cb7ca8f55a"
+        "6a8adbb75f475974ace8b53fe4360bf03c80acc25182f3ece25cb9d194bb93c8"
+        "304f7aebdcad9689fd8b505089046c9e2f7e558c6a22b7a05e9cbc13f039ae0f"
+        "91bf0dd2dda37ddc2a03267bad9de5a7c4a279eaeabe1a5b1222aad48b99e1c3"
+        "19117b280fb1841aeba7403ce6b99b79b40cef584838ab5284d78c87f640a6ff"
+        "7fefc0a1c37727269e3440d765e2e3d736003e6d0408d2ebcabffc0d275f61e5"
+        "2ebeb0c06962e11a3ff932a3f32f74eddb06f26b50f88d1b9741e53f"
+    },
+    // len = 359 bytes = 22 blocks + 7 bytes
+    {
+        "b120b40812ac153cf5ad7235213d12186b31f83ca4523e20e8928fd1a552757b"
+        "046dbf1c6b475566595fc277dea167c3391f390be8b98f33cd5ac7b00eb76ae0",
+        "a3ac009ce53ca78a24f9436288639670",
+        "3028cbc0f09c7095abc24d202dc801d074016c593d13e3610d27c4958a5a06bb"
+        "82d17b726deb0818ae5539db1d3aab913b18ea782bced938f59dce7ff7d43a7a"
+        "a5b5ec12a1f42b4f49642a669ed5f7d9ede25119b02a51a5c81f24bff35f3998"
+        "1426abb51ad604643a2ecad804c2b1f1a4020a542c5cf9f47b1db46f7ced0791"
+        "13b2462e884b92c2795c9a7d1e4b6fc24d79167ad50f6e512d22c0a910c73a23"
+        "7a815102cce3c545405fc35eab3221f8ab37728147e1d27403921d13595837d3"
+        "d988d6a56c9beaacfaad0aa5df2b9e8b63100caaf1de1ef5703b08c9933f9d6c"
+        "c87311340efce008a9eaae89164c14795c20234efe41436e7c4b37108bd47c53"
+        "478e87558a675e33510cbc6758d0e0b4f00302ee44455cc19194d11c684d6fb0"
+        "dbf605655d6399ae6f5516c726f67c16fa7e053ec461ff55f5d0715e1ee00ef9"
+        "d6135f3377f8e1e64df7ae73ee2a8ae8a88f266cf026c1e6f632441412520ee8"
+        "656d1bdc65fdc3",
+        "4100e99913513a39bd379f672ac3fa13e6bab8412d3373531a801f70ea9b5e25"
+        "603229eac8b0af2d0619c1859bb980ee08e1d43e4c3fa206ff0928eaac063978"
+        "0e1e25dea0a6e4e25c8d27793425e740c1bac1bcf98986125372c12198819028"
+        "40b7d612adc275de1a1bbeea216458e1010cf7019a949a4a3f016edbd0b09226"
+        "9295e7924a2d9267c1babb021b0f0e207de84460c55cdb4abc6b2dae0960d9af"
+        "1a95f1dfcc83ec625bd7c42b1e17d219b15d5cc0e3e69063889f1ab18008c309"
+        "14b549815822b844b279324cd7cf8f596445b1abbd87ee97c13242bd11958c0d"
+        "45986cd54247c307224568d557d42188f39f1ce6338cb3aa3c18501095ab5316"
+        "db18cb23698aa57fb12728a747b2f64878bc23e260cae1d597214a817d8b0229"
+        "fa449b6e55aad6260b230049b4a7708a9d72d06208033b40305bacd253ec4c5b"
+        "e85d813d4adbd69083bcb7bcda1667d30e0315753e1801c165b7f8a8be6a0717"
+        "c6d5e3ce942c57"
+    },
+    // len = 370 bytes = 23 blocks + 2 bytes
+    {
+        "f4269bca3fb01715a422ab9f9dedb7b4218e8a004af9216e687cc024d55fc239"
+        "71e2b043f12f710d59b63011ba02b0acdabc59c9b0610ec590131b5d128d14e4",
+        "eec7a07920a0426a503bcb724a3a37b2",
+        "cab3c58bceeae8a4fc4831be5c6aa24a3143c352e306bc344188a68bc2dd3d8c"
+        "9103175fed0003e94834a7a49e4aeed08db22270b8dea4f9664a852828c2b5b9"
+        "c5cc18b2cc1c9b145043b8ef8da7bf1a59e18a11bf2f0a26798f4ea152035a17"
+        "d073ca9c8f65b1dfa869ce35108d4f696eda7a2e0985548214a22466a67e7e76"
+        "f1481280adc360562d2e8b3dbcdba72ab52158bea6ac40bb4f6421f5e39f6bd4"
+        "e77d559541b5eb6ee376ab9f5152ca067422c41acf05d51e69f7134c967e217e"
+        "fb76133c2bfeaa0e7456aec6a878cc1c9a913769960c87ff039a4c9a186d1814"
+        "e32b500e29fb1c9d51ca63f9423016ddc14d465759ce565d68a2f7810f0f95f2"
+        "3ae50063e01d0031e7642b2a944107558e4dace71b024484a53b05b44a9aa784"
+        "7fa7e760c4e891ac4cbcd6e0fddd358b2ae17346e3b7ca88f3cf3d3d69e4c2e8"
+        "8ba9485091dafcdd96d2bd94aff21fd9d3921fb74ae93f3db87c7a21603c0aec"
+        "e6523c772c3855c30a1257b9057692d809b2",
+        "74468138b84656e4292b2855019566852232e2126ad7e062b9a9320027e4067a"
+        "a19d70f4a338bdd30c6e08a3d42e0c4b5d75d4bda6078df47469fec4dac80b49"
+        "c80e0076dd1bf773919d8699455bbc905c1ba7d8e968d15ad0525ad31d080335"
+        "15c4e85068fe0eede28ecd3fd434e0f8db6db3d99c0c9120d060b21490e15b4c"
+        "23a5db14c06a02d5677f64f2e861ad7333180417d6eae190a9f5fcfbb629795a"
+        "c9b8d5792767ec63f7d5146aaf3294c8924c951a0b95221dc821d8bc428a7670"
+        "cf4c900f7d844bd0b48dfbf70f18718fe404bdd476fbf366a01a1bf69d3178b1"
+        "0981388a1d51c05e97cc5ae6061ea57736b22989e772fa413eb89e25357827f5"
+        "89d41dfbf6dc6cfeb063a2cd3cf2da200b99b4a856a8aff15f27769f9d20ceee"
+        "12bf2b09391d9c75d27f69417a90b198240df02fb4abb351fbd0b753f50c9349"
+        "59ad6b5d74d0677c792a89c3c20f22285ae56aaea231b27fc0be998320cc395c"
+        "42d9a1b72c80603465ca9bdb3960f0f7a534"
+    },
+    // len = 399 bytes = 24 blocks + 15 bytes
+    {
+        "53cf540aac7f2dd4fef9161811619879af7b9378ccd7ca9eb78aa39c319e11b4"
+        "9b904b754798d2a40cc10ccf8fe913eb4803853ff8f9abc897cda2b4fec917c0",
+        "5f2fc3f2b53c328134097bfeb519c66c",
+        "b0503a54f3d60824d4a6eee6bda2a61cd26a0f87a64108da4a83d8ff9c9e6c4d"
+        "efa6a1e27ca9065150f4370d97dd2a694739f0ed7af8c7c47c9fc4183e30652d"
+        "d6060f52b015a3000ada0da1b8370aff70faedeaf2b4af6e54738792a3ecbf79"
+        "f3cecba3e36fa3ed49b08e01e898015892ee4385a2f2f3f6657a88086747815a"
+        "154cfdf9bba0e605507506380d0791a0f5d42598c6188e2b931733fa5eb45474"
+        "00516dbcf153c141c8c77ad6cf0b76c4df9b5ca5b3ebd04602034060b794d4b7"
+        "e54173d69534185dfc9233cb9da98f7c44ec21f8d7f13ed9f47f39ab130e62f9"
+        "4fd6cfe40ae742067975d1161f6192634db35b24a49afd981936432c44a62594"
+        "7cf57886dcba8d56305e6c4fbfffb20cb20e3057a82defc16433eda8d9133c55"
+        "08b5dbe46f683a9fc7a7ee86a6a19358afc3af57f19f1855d205fdab183a0020"
+        "efdb055e443ffe0be6ec918c8d24e53ce89493d933ab2e05b12bb0c965b0ea54"
+        "8cefb3d02eb1db159d6ca12b918667791bfb524ea6805457ab042111b50b6541"
+        "fa181128c9ec3d6758df92e965f962",
+        "89119ff52d0dd7274f6bef39e395541f9a7db5d4bbefefd73a3126bfc9dec2fe"
+        "9af741c5b70a3322aa84c88ddae92c7c48ce2685950139c644eb5faad8e0d823"
+        "9e65b272cb4bde4562294445249a0bccfd27f06074217b45344b4ec1c83d0024"
+        "244a300b8fe9e6e4266c75fc8bdf219cbfa0c0286fc772e34e1742c12732251c"
+        "3d3c2b5425535214abe1f0aeabdd86a28d562df5c8f851a54c3517bca02029c0"
+        "7229b6493297b8c5173b72d7ad3732bb100d5e92ca02a3d339a6838dc7744d44"
+        "bedfe9696e2ed6869277c406c3b64148e2dec18c28c0db1afd557285046a851e"
+        "5f95ca48117900e21ae7204a01122135f0b667e12dc81476547081507fdf506e"
+        "7a14107a9f172c61948b92d92c6337c77bdaf6ba07691d105518b5887c22f526"
+        "4f3b7838f3e8b56d568d8249d28cd62457aad01b8b90a1ff4548cc02e794a12c"
+        "c7d8af55204bffda04dd8f53041876a3468a4d5747f57b225b4feb1fbb523103"
+        "30145923a945c02b6d79acf69e0c6b41408deab6ecb2f4b7fbb760372d7bdb8a"
+        "26f1ca0f722b377f1f9b5b1dc246d4"
+    },
+    // len = 512 bytes = 32 blocks
+    {
+        "471f9a9ee92d06701e84d8ee35773e00939620dcfe7679b4aa6eb0d6c59bec8a"
+        "f51000afca6d6fafc3d7775468b59e86202d34090a05e79738825de54e049b7f",
+        "bb20acdc5589e553935c580c430ca3ed",
+        "451170f56e46da349475388011c2ffcce2aca837358e8bc8eae3d42df0771a35"
+        "888a2af7d1042b657a63e68b25e5570791003fc68eca8e78ad62a59dd9bfd262"
+        "4afc591b0184807be766060c4c5d13dd5d52a4eb1c3263ca9508676ec83ad012"
+        "36292d37adadb29414b8a06016b43d7306e15f2314c2eda9cb5417938ee8a5c5"
+        "11d2fcbf7faf539367f4f37da831f1ae1250d12612becfdd13e770a1cf1566e0"
+        "e7639f6712f3fa79e7eef78f1fe83d31380f584acd2728e00e9882ddaee8be95"
+        "4b5dfc5d50f7d737e5cec604b60435ee138d38e0b560c1c3f943a1a72b5f3c77"
+        "bc39d40d30ab4415790b192f0f4e1d22dc560291b6c354af06f556325493a911"
+        "cc7d1efc296211a26d2ad27c78ef9e5445a1e5fc643aab6b2f029d8495469561"
+        "c3b35dec156e8f839861ff10509e65963f4a92a3843d0eb43fab38d4f1cd35b5"
+        "8092a195003018989118a9e2b60e78f5580a98dd47a7918752c95b449691f916"
+        "239aab24cbc4bc5cdc653e9273b687ccc01fa908c63a8f1903ea5d997b56af9f"
+        "f05ac3bb1e7f18fae5568c580d1324cd33cdd5f90764120a4f6fa3cac55269b6"
+        "ad2c71cbac89c691e052e9ed660eba99db9092e3f4a5ed4314910edae3779090"
+        "a4015c508b22e16b74ca58dad81273b4a2069797ab84dabf15e899f960298904"
+        "2be554b60735217cff7956d88bca8c2ed023c57ba79f3abd88d4b6e8fd3fec28",
+        "4df3fa60e97ddd3d9890bfc71e75f43aa2951f8b9f1eafbc7d85dcd52587af30"
+        "4ddcd513d4608123d797d3b734dced7c7549d54a0d18f19b3a3d8a46f1c480b8"
+        "4a986f47610907e764d214ee2af6831aad11daa8c55a483d7c99cdd418cb06a5"
+        "ee1be3f5cccefc1c5200f4320399b7430c90cf00bc901df08a20e2fbeee38e0a"
+        "65b4a43038ecbdfd7ecd3a8d138e862e6313fafc39453b2e610577749a1e0d11"
+        "7c3ec5018d3b56495d03e639c46233752371bcefb276b9b7b0623a6bf533cb72"
+        "016238ecc3ac227717c3c6b69b5f74ac27b2c966e552b85b67739c3540930cc0"
+        "e3a62d4a7362bd825d13fe1a6b68d6152ac6615eca89b3c1b8571e57b55766fb"
+        "a3ac11df6161dd6e5110e9047a6637349b0e49738a4ca52ba7e0f84e01a2af01"
+        "db63fa36bafc6e212089196b20d30b346ce865f0c1412d196e56b328cd1c2399"
+        "59202aeabc56aa08c847360ea1d3a5521748e853869b7a783874424c62b5da33"
+        "1d95880aa77ec6d04aa59b6e2e85a75a3fcc9be9537c3cf065d69537e1454024"
+        "4398137ae4d6cc84c5323df0b9cccf5bc51ad873847369c92e0bed692bc03b47"
+        "94b20ac22f672a64ecd15a69665f21233f47e6904b6cd2972ffc6aeb2961f666"
+        "923c13d3ab532009211c784f6a8553201907cdbf1db8176684ec59280fa20b82"
+        "9cfc069b2fc61d0a4c7cdcb9d7bee655cdb56932ca319152849f37b0b396674a"
+    },
+    // len = 523 bytes = 32 blocks + 11 bytes
+    {
+        "471f9a9ee92d06701e84d8ee35773e00939620dcfe7679b4aa6eb0d6c59bec8a"
+        "f51000afca6d6fafc3d7775468b59e86202d34090a05e79738825de54e049b7f",
+        "bb20acdc5589e553935c580c430ca3ed",
+        "451170f56e46da349475388011c2ffcce2aca837358e8bc8eae3d42df0771a35"
+        "888a2af7d1042b657a63e68b25e5570791003fc68eca8e78ad62a59dd9bfd262"
+        "4afc591b0184807be766060c4c5d13dd5d52a4eb1c3263ca9508676ec83ad012"
+        "36292d37adadb29414b8a06016b43d7306e15f2314c2eda9cb5417938ee8a5c5"
+        "11d2fcbf7faf539367f4f37da831f1ae1250d12612becfdd13e770a1cf1566e0"
+        "e7639f6712f3fa79e7eef78f1fe83d31380f584acd2728e00e9882ddaee8be95"
+        "4b5dfc5d50f7d737e5cec604b60435ee138d38e0b560c1c3f943a1a72b5f3c77"
+        "bc39d40d30ab4415790b192f0f4e1d22dc560291b6c354af06f556325493a911"
+        "cc7d1efc296211a26d2ad27c78ef9e5445a1e5fc643aab6b2f029d8495469561"
+        "c3b35dec156e8f839861ff10509e65963f4a92a3843d0eb43fab38d4f1cd35b5"
+        "8092a195003018989118a9e2b60e78f5580a98dd47a7918752c95b449691f916"
+        "239aab24cbc4bc5cdc653e9273b687ccc01fa908c63a8f1903ea5d997b56af9f"
+        "f05ac3bb1e7f18fae5568c580d1324cd33cdd5f90764120a4f6fa3cac55269b6"
+        "ad2c71cbac89c691e052e9ed660eba99db9092e3f4a5ed4314910edae3779090"
+        "a4015c508b22e16b74ca58dad81273b4a2069797ab84dabf15e899f960298904"
+        "2be554b60735217cff7956d88bca8c2ed023c57ba79f3abd88d4b6e8fd3fec28"
+        "2540de2c75ffa87478ff4c",
+        "4df3fa60e97ddd3d9890bfc71e75f43aa2951f8b9f1eafbc7d85dcd52587af30"
+        "4ddcd513d4608123d797d3b734dced7c7549d54a0d18f19b3a3d8a46f1c480b8"
+        "4a986f47610907e764d214ee2af6831aad11daa8c55a483d7c99cdd418cb06a5"
+        "ee1be3f5cccefc1c5200f4320399b7430c90cf00bc901df08a20e2fbeee38e0a"
+        "65b4a43038ecbdfd7ecd3a8d138e862e6313fafc39453b2e610577749a1e0d11"
+        "7c3ec5018d3b56495d03e639c46233752371bcefb276b9b7b0623a6bf533cb72"
+        "016238ecc3ac227717c3c6b69b5f74ac27b2c966e552b85b67739c3540930cc0"
+        "e3a62d4a7362bd825d13fe1a6b68d6152ac6615eca89b3c1b8571e57b55766fb"
+        "a3ac11df6161dd6e5110e9047a6637349b0e49738a4ca52ba7e0f84e01a2af01"
+        "db63fa36bafc6e212089196b20d30b346ce865f0c1412d196e56b328cd1c2399"
+        "59202aeabc56aa08c847360ea1d3a5521748e853869b7a783874424c62b5da33"
+        "1d95880aa77ec6d04aa59b6e2e85a75a3fcc9be9537c3cf065d69537e1454024"
+        "4398137ae4d6cc84c5323df0b9cccf5bc51ad873847369c92e0bed692bc03b47"
+        "94b20ac22f672a64ecd15a69665f21233f47e6904b6cd2972ffc6aeb2961f666"
+        "923c13d3ab532009211c784f6a8553201907cdbf1db8176684ec59280fa20b82"
+        "9cfc069b2fc61d0a4c7cdcb9d7bee655df0f08137ed40076a293a450b4602009"
+        "cdb56932ca319152849f37"
+    },
+    // len = 544 bytes = 34 blocks
+    {
+        "b0f0dc151095ec58d407195199de7a769a755b2bda7c52a039474db388ee3b2d"
+        "f04af5b44f1091da6520a660f008aa2a66778a6cc0c6d426a75298e6910364d6",
+        "cba24d262d789207390ecd8be26db11b",
+        "14f86e6190214719b2351ced9949c364ec108b19891d20c22ced4d0e5afe2a6e"
+        "f798cf87b916a06b4bbc58e4061c49f22cd40bb5f12b771d18c42c72c356e0ba"
+        "eeaf41a7c5e212109e6af4a4863d96b311a16803cce020e4a44c5667a2362190"
+        "e56337aa4549bae3b4af883aec1eedfec056018c362171da6ec74210fe63a1e3"
+        "c6d88e0b2248efd6f77710e495fee25554e3e28a045364721aa683180a24fcd0"
+        "fc8adc1ed2cbf4ca4205aed703902d57730fe1776245ea7cec6d95f69191c68d"
+        "1ba2aced6da0b7afa56587a8f5b4ff68c3e0e02526caa112373608c8c7ce55e2"
+        "7101d0dea2878e47ed15f0e2c9ef4b8cd02bb1f6f552082c8910f450de49334f"
+        "4b032eed8abc3477d1245a9a14a526e4d0d7dac529e2f1b2f2e503d02e362079"
+        "394e66c30a9b3bdbbf9575d33a9bb70a7291cf9b73c04e65a55136d387564dc0"
+        "a4b383ae4ebe890e53fee18d9999970b2a66a69e26f403cb45399fcc8fec8c33"
+        "9f10e1eece6afc2268ddaf0176470ca1adb33fd4a7429fed7c3eb90b2a463fca"
+        "5620b8248bb446f391f6f5083d01a9eab4e8be5c2a5e49a69c02b2c748f1919e"
+        "1149c39cfd09908eff85963c863f273b27e5975243e0f8e0e2aaa72b9b38c9ad"
+        "818c497e96d90c955ea3d2e5e2f9200adeb75c2297540279ffa9a49ae16e4762"
+        "fa91e0906aec26c98ff8ae72f1ce7ccf85d8f11c2cf3952b9c3ac67da80ddfa2"
+        "9ebf3309ac59d23b5180ad424e2911d30103ef2ef6845993be1f10662df009cb",
+        "864f5741c3d048ae75b1f0186a8eb07542e099799539f1c5e47c0643ce4de614"
+        "6742e685051ab2911a29ed18872ffb317731cc55af9a2ed5da2d4902a1fee005"
+        "8a818c8d1fc508c1c303760fcd580c2ee21e65dd094a41cd4c9fe34dbb0d75cc"
+        "ee2816cab10cdc1f9ed3cc1d36d75795ec299ca9357e92a782d822298db2f601"
+        "7cbc376141aea92cc67b6dfa8108d5d9021780fd852d38f593a30274c41379dc"
+        "8a34ea4ae767f811f357bf5742c86c2b46b5c059cd3c7695c70f1aca2ca2a669"
+        "196aff6f192af27bbfc85c55c31a5a0ece0ecc55016589c58c17ef921620347e"
+        "4be4c29f3333506b3303dd1759f03733169ccf7a93e2a24e6dbeeacefc382d5c"
+        "b00398da4b5704430b5675b82064f9b5215b0757d440a5de9422121891129f39"
+        "276171d1ad42f21239c6d49e17ab5fc989048dce4ffb68131e8aa674817cbed9"
+        "91ab240aa629d4ac29dcf407f0911dff119f8c02441fc72a8987ed46d9cde314"
+        "bc11f4232351386f1612ba71c3d18d432802754ca738df69c60650f309fec629"
+        "c3727cc0a715f55a8b623554cbd08092b833b645acfb34216b02c822e13c79d4"
+        "e6835cc8b5e88639a1fee056cfa654a4fbd238ac59f4b2c70060a71e0954a6b0"
+        "045e53711ba7043c1e5c713d5ccec41975bb3114dcbd63ec08e90074191f515f"
+        "e0f83bbc6990d010d6a30674d69f3d8355ca1db1b3a294b233949f4f0dc423bb"
+        "f02abbc2306a6791749c97045db72ead783f2e8b90127b4c12a4ab6a329d3ecd"
+    },
     // Test vectors from NIST
     // https://csrc.nist.gov/projects/cryptographic-algorithm-validation-program
     // 256-bit key, 256-bit data (32 bytes, 2 blocks)
@@ -742,10 +1122,18 @@ TEST(XTSTest, InputTooLong) {
 
 static void encrypt_and_decrypt(bssl::ScopedEVP_CIPHER_CTX &ctx_encrypt,
   bssl::ScopedEVP_CIPHER_CTX &ctx_decrypt, std::vector<uint8_t> pt,
-  std::vector<uint8_t> ct_expected) {
+  std::vector<uint8_t> ct_expected, bool do_tweak,
+  std::vector<uint8_t> tweak) {
 
   int len = 0;
   std::vector<uint8_t> ct_actual(pt.size()), pt_actual(pt.size());
+
+  if (do_tweak) {
+      ASSERT_TRUE(EVP_EncryptInit_ex(ctx_encrypt.get(), nullptr,
+        nullptr, nullptr, tweak.data()));
+      ASSERT_TRUE(EVP_DecryptInit_ex(ctx_decrypt.get(), nullptr,
+        nullptr, nullptr, tweak.data()));
+  }
 
   ASSERT_TRUE(EVP_EncryptUpdate(ctx_encrypt.get(), ct_actual.data(), &len,
     pt.data(), pt.size()));
@@ -822,13 +1210,13 @@ TEST(XTSTest, SectorTweakAPIUsage) {
     nullptr, key.data(), sectorTweak1.data()));
   ASSERT_TRUE(EVP_DecryptInit_ex(ctx_decrypt.get(), EVP_aes_256_xts(),
     nullptr, key.data(), sectorTweak1.data()));
-  encrypt_and_decrypt(ctx_encrypt, ctx_decrypt, pt, ct1_expected);
+  encrypt_and_decrypt(ctx_encrypt, ctx_decrypt, pt, ct1_expected, false, {});
 
   ASSERT_TRUE(EVP_EncryptInit_ex(ctx_encrypt.get(), EVP_aes_256_xts(),
     nullptr, key.data(), sectorTweak2.data()));
   ASSERT_TRUE(EVP_DecryptInit_ex(ctx_decrypt.get(), EVP_aes_256_xts(),
     nullptr, key.data(), sectorTweak2.data()));
-  encrypt_and_decrypt(ctx_encrypt, ctx_decrypt, pt, ct2_expected);
+  encrypt_and_decrypt(ctx_encrypt, ctx_decrypt, pt, ct2_expected, false, {});
 
   ctx_encrypt.Reset();
   ctx_decrypt.Reset();
@@ -839,13 +1227,13 @@ TEST(XTSTest, SectorTweakAPIUsage) {
     nullptr, key.data(), sectorTweak1.data()));
   ASSERT_TRUE(EVP_DecryptInit_ex(ctx_decrypt.get(), EVP_aes_256_xts(),
     nullptr, key.data(), sectorTweak1.data()));
-  encrypt_and_decrypt(ctx_encrypt, ctx_decrypt, pt, ct1_expected);
+  encrypt_and_decrypt(ctx_encrypt, ctx_decrypt, pt, ct1_expected, false, {});
 
   ASSERT_TRUE(EVP_EncryptInit_ex(ctx_encrypt.get(), nullptr,
     nullptr, key.data(), sectorTweak2.data()));
   ASSERT_TRUE(EVP_DecryptInit_ex(ctx_decrypt.get(), nullptr,
     nullptr, key.data(), sectorTweak2.data()));
-  encrypt_and_decrypt(ctx_encrypt, ctx_decrypt, pt, ct2_expected);
+  encrypt_and_decrypt(ctx_encrypt, ctx_decrypt, pt, ct2_expected, false, {});
 
   ctx_encrypt.Reset();
   ctx_decrypt.Reset();
@@ -857,11 +1245,25 @@ TEST(XTSTest, SectorTweakAPIUsage) {
     nullptr, key.data(), sectorTweak1.data()));
   ASSERT_TRUE(EVP_DecryptInit_ex(ctx_decrypt.get(), EVP_aes_256_xts(),
     nullptr, key.data(), sectorTweak1.data()));
-  encrypt_and_decrypt(ctx_encrypt, ctx_decrypt, pt, ct1_expected);
+  encrypt_and_decrypt(ctx_encrypt, ctx_decrypt, pt, ct1_expected, false, {});
 
   ASSERT_TRUE(EVP_EncryptInit_ex(ctx_encrypt.get(), nullptr,
     nullptr, nullptr, sectorTweak2.data()));
   ASSERT_TRUE(EVP_DecryptInit_ex(ctx_decrypt.get(), nullptr,
     nullptr, nullptr, sectorTweak2.data()));
-  encrypt_and_decrypt(ctx_encrypt, ctx_decrypt, pt, ct2_expected);
+  encrypt_and_decrypt(ctx_encrypt, ctx_decrypt, pt, ct2_expected, false, {});
+
+  ctx_encrypt.Reset();
+  ctx_decrypt.Reset();
+
+  // Finally, encrypt and decrypt as in the previous case, but do the initial
+  // key init and sector tweak init separately in two different function calls.
+  // Expects this to work since the key context does not change, only the tweak.
+  // XTS is designed specifically to enable this kind of re-use.
+  ASSERT_TRUE(EVP_EncryptInit_ex(ctx_encrypt.get(), EVP_aes_256_xts(),
+    nullptr, key.data(), nullptr));
+  ASSERT_TRUE(EVP_DecryptInit_ex(ctx_decrypt.get(), EVP_aes_256_xts(),
+    nullptr, key.data(), nullptr));
+  encrypt_and_decrypt(ctx_encrypt, ctx_decrypt, pt, ct1_expected, true, sectorTweak1);
+  encrypt_and_decrypt(ctx_encrypt, ctx_decrypt, pt, ct2_expected, true, sectorTweak2);
 }

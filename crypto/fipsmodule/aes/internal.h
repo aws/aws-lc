@@ -29,6 +29,15 @@ extern "C" {
 
 #if !defined(OPENSSL_NO_ASM)
 
+#if defined(OPENSSL_X86_64)
+OPENSSL_INLINE int avx512_xts_available(void) {
+  return (CRYPTO_is_VAES_capable() &&
+          CRYPTO_is_VBMI2_capable() &&
+          CRYPTO_is_AVX512_capable() &&
+          CRYPTO_is_VPCLMULQDQ_capable());
+}
+#endif
+
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
 #define HWAES
 #define HWAES_ECB
@@ -151,6 +160,20 @@ void aes_hw_xts_decrypt(const uint8_t *in, uint8_t *out, size_t length,
 OPENSSL_EXPORT int aes_hw_xts_cipher(const uint8_t *in, uint8_t *out, size_t length,
                                       const AES_KEY *key1, const AES_KEY *key2,
                                       const uint8_t iv[16], int enc);
+
+#if defined(OPENSSL_X86_64) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+#define AES_XTS_X86_64_AVX512
+void aes_hw_xts_encrypt_avx512(const uint8_t *in, uint8_t *out, size_t length,
+                               const AES_KEY *key1, const AES_KEY *key2,
+                               const uint8_t iv[16]);
+void aes_hw_xts_decrypt_avx512(const uint8_t *in, uint8_t *out, size_t length,
+                               const AES_KEY *key1, const AES_KEY *key2,
+                               const uint8_t iv[16]);
+int crypto_xts_avx512_enabled(void);
+
+#endif //AES_XTS_X86_64_AVX512
+
+
 #else
 OPENSSL_INLINE int hwaes_xts_available(void) { return 0; }
 OPENSSL_INLINE void aes_hw_xts_encrypt(const uint8_t *in, uint8_t *out, size_t length,

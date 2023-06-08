@@ -14,6 +14,7 @@
 
 #include <algorithm>
 #include <functional>
+#include <iostream>
 #include <memory>
 #include <string>
 #include <vector>
@@ -80,6 +81,13 @@ static std::string ChunkLenSuffix(size_t chunk_len) {
   return buf;
 }
 
+static std::string PrimeLenSuffix(size_t prime_length) {
+  char buf[32];
+  snprintf(buf, sizeof(buf), " (%zu bit%s)", prime_length,
+           prime_length != 1 ? "s" : "");
+  return buf;
+}
+
 // TimeResults represents the results of benchmarking a function.
 struct TimeResults {
   // num_calls is the number of function calls done in the time period.
@@ -113,6 +121,19 @@ struct TimeResults {
     }
   }
 
+  void PrintWithPrimes(const std::string &description,
+                      size_t prime_size) const {
+    if (g_print_json) {
+      PrintJSON(description, "primeSizePerCall", prime_size);
+    } else {
+      printf(
+          "Did %" PRIu64 " %s operations in %" PRIu64
+          "us (%.3f ops/sec)\n",
+          num_calls, (description + PrimeLenSuffix(prime_size)).c_str(), us,
+          (static_cast<double>(num_calls) / static_cast<double>(us)) * 1000000);
+    }
+  }
+
  private:
   void PrintJSON(const std::string &description,
                  size_t bytes_per_call = 0) const {
@@ -126,6 +147,25 @@ struct TimeResults {
 
     if (bytes_per_call > 0) {
       printf(", \"bytesPerCall\": %zu", bytes_per_call);
+    }
+
+    printf("}");
+    first_json_printed = true;
+  }
+
+  void PrintJSON(const std::string &description,
+                 const std::string &size_label,
+                 size_t size = 0) const {
+    if (first_json_printed) {
+      puts(",");
+    }
+
+    printf("{\"description\": \"%s\", \"numCalls\": %" PRIu64
+           ", \"microseconds\": %" PRIu64,
+           description.c_str(), num_calls, us);
+
+    if (size > 0) {
+      printf(", \"%s\": %zu", size_label.c_str(), size);
     }
 
     printf("}");
@@ -165,8 +205,11 @@ static uint64_t time_now() {
 }
 #endif
 
-static uint64_t g_timeout_seconds = 1;
+#define TIMEOUT_SECONDS_DEFAULT 1
+static uint64_t g_timeout_seconds = TIMEOUT_SECONDS_DEFAULT;
 static std::vector<size_t> g_chunk_lengths = {16, 256, 1350, 8192, 16384};
+static std::vector<size_t> g_prime_bit_lengths = {2048, 3072};
+static std::vector<std::string> g_filters = {""};
 
 static bool TimeFunction(TimeResults *results, std::function<bool()> func) {
   // The first time |func| is called an expensive self check might run that
@@ -415,9 +458,9 @@ static bool SpeedRSAKeyGen(bool is_fips, const std::string &selected) {
   return true;
 }
 
-static bool SpeedAESGCMChunk(const EVP_CIPHER *cipher, std::string name,
+static bool SpeedAESGenericChunk(const EVP_CIPHER *cipher, std::string name,
                              size_t chunk_byte_len, size_t ad_len, bool encrypt) {
-  int len;
+  int len, result;
   int* len_ptr = &len;
   const size_t key_len = EVP_CIPHER_key_length(cipher);
   static const unsigned kAlignment = 16;
@@ -444,22 +487,28 @@ static bool SpeedAESGCMChunk(const EVP_CIPHER *cipher, std::string name,
 
   BM_NAMESPACE::UniquePtr<EVP_CIPHER_CTX> ctx(EVP_CIPHER_CTX_new());
 
+  bool isGCM = cipher == EVP_aes_128_gcm() || cipher == EVP_aes_192_gcm() || cipher == EVP_aes_256_gcm();
   if (encrypt) {
-    std::string encryptName = name + " Encrypt";
+    std::string encryptName = name + " encrypt";
     TimeResults encryptResults;
 
-    // Call EVP_EncryptInit_ex once with the cipher, in the benchmark loop reuse the cipher
+    // Call EVP_EncryptInit_ex once with the cipher and key, the benchmark loop will reuse both
     if (!EVP_EncryptInit_ex(ctx.get(), cipher, NULL, key.get(), nonce.get())){
       fprintf(stderr, "Failed to configure encryption context.\n");
       ERR_print_errors_fp(stderr);
       return false;
     }
-    if (!TimeFunction(&encryptResults, [&ctx, chunk_byte_len, plaintext, ciphertext, len_ptr, tag, &key, &nonce, &ad, ad_len]() -> bool {
-      return EVP_EncryptInit_ex(ctx.get(), NULL, NULL, key.get(), nonce.get()) &&
-        EVP_EncryptUpdate(ctx.get(), NULL, len_ptr, ad.get(), ad_len) &&
-        EVP_EncryptUpdate(ctx.get(), ciphertext, len_ptr, plaintext, chunk_byte_len) &&
-        EVP_EncryptFinal_ex(ctx.get(), ciphertext + *len_ptr, len_ptr) &&
-        EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_GET_TAG, 16, tag);
+    if (!TimeFunction(&encryptResults, [&ctx, chunk_byte_len, plaintext, ciphertext, len_ptr, tag, &nonce, &ad, ad_len, &isGCM, &result]() -> bool {
+      result = EVP_EncryptInit_ex(ctx.get(), NULL, NULL, NULL, nonce.get());
+      if (isGCM) {
+        result &= EVP_EncryptUpdate(ctx.get(), NULL, len_ptr, ad.get(), ad_len);
+      }
+      result &= EVP_EncryptUpdate(ctx.get(), ciphertext, len_ptr, plaintext, chunk_byte_len);
+      result &= EVP_EncryptFinal_ex(ctx.get(), ciphertext + *len_ptr, len_ptr);
+      if (isGCM) {
+        result &= EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_GET_TAG, 16, tag);
+      }
+      return result;
     })) {
       fprintf(stderr, "%s failed.\n", encryptName.c_str());
       ERR_print_errors_fp(stderr);
@@ -469,29 +518,40 @@ static bool SpeedAESGCMChunk(const EVP_CIPHER *cipher, std::string name,
     encryptResults.PrintWithBytes(encryptName, chunk_byte_len);
   }
   else {
-    if (!(EVP_EncryptInit_ex(ctx.get(), cipher, NULL, key.get(), nonce.get()) &&
-          EVP_EncryptUpdate(ctx.get(), NULL, len_ptr, ad.get(), ad_len) &&
-          EVP_EncryptUpdate(ctx.get(), ciphertext, len_ptr, plaintext, chunk_byte_len) &&
-          EVP_EncryptFinal_ex(ctx.get(), ciphertext + *len_ptr, len_ptr) &&
-          EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_GET_TAG, 16, tag))) {
+    result =  EVP_EncryptInit_ex(ctx.get(), cipher, NULL, key.get(), nonce.get());
+    if (isGCM) {
+      result &= EVP_EncryptUpdate(ctx.get(), NULL, len_ptr, ad.get(), ad_len);
+    }
+    result &= EVP_EncryptUpdate(ctx.get(), ciphertext, len_ptr, plaintext, chunk_byte_len);
+    result &= EVP_EncryptFinal_ex(ctx.get(), ciphertext + *len_ptr, len_ptr);
+    if(isGCM) {
+      result &= EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_GET_TAG, 16, tag);
+    }
+
+    if (!result) {
       fprintf(stderr, "Failed to perform one encryption.\n");
       ERR_print_errors_fp(stderr);
       return false;
     }
-    std::string decryptName = name + " Decrypt";
+    std::string decryptName = name + " decrypt";
     TimeResults decryptResults;
-    // Call EVP_DecryptInit_ex once with the cipher, in the benchmark loop reuse the cipher
+    // Call EVP_DecryptInit_ex once with the cipher and key, the benchmark loop will reuse both
     if (!EVP_DecryptInit_ex(ctx.get(), cipher, NULL, key.get(), nonce.get())){
       fprintf(stderr, "Failed to configure decryption context.\n");
       ERR_print_errors_fp(stderr);
       return false;
     }
-    if (!TimeFunction(&decryptResults, [&ctx, chunk_byte_len, plaintext, ciphertext, len_ptr, tag, &key, &nonce, &ad, ad_len]() -> bool {
-      return EVP_DecryptInit_ex(ctx.get(), NULL, NULL, key.get(), nonce.get()) &&
-        EVP_DecryptUpdate(ctx.get(), NULL, len_ptr, ad.get(), ad_len) &&
-        EVP_DecryptUpdate(ctx.get(), plaintext, len_ptr, ciphertext, chunk_byte_len) &&
-        EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_SET_TAG, 16, tag) &&
-        EVP_DecryptFinal_ex(ctx.get(), ciphertext + *len_ptr, len_ptr);
+    if (!TimeFunction(&decryptResults, [&ctx, chunk_byte_len, plaintext, ciphertext, len_ptr, tag, &nonce, &ad, ad_len, &isGCM, &result]() -> bool {
+      result = EVP_DecryptInit_ex(ctx.get(), NULL, NULL, NULL, nonce.get());
+      if(isGCM) {
+        result &= EVP_DecryptUpdate(ctx.get(), NULL, len_ptr, ad.get(), ad_len);
+      }
+      result &= EVP_DecryptUpdate(ctx.get(), plaintext, len_ptr, ciphertext, chunk_byte_len);
+      if (isGCM) {
+        result &= EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_SET_TAG, 16, tag);
+      }
+      result &= EVP_DecryptFinal_ex(ctx.get(), ciphertext + *len_ptr, len_ptr);
+      return result;
     })) {
       fprintf(stderr, "%s failed.\n", decryptName.c_str());
       ERR_print_errors_fp(stderr);
@@ -502,21 +562,42 @@ static bool SpeedAESGCMChunk(const EVP_CIPHER *cipher, std::string name,
 
   return true;
 }
-static bool SpeedAESGCM(const EVP_CIPHER *cipher, const std::string &name,
+static bool SpeedAESGeneric(const EVP_CIPHER *cipher, const std::string &name,
                         size_t ad_len, const std::string &selected) {
   if (!selected.empty() && name.find(selected) == std::string::npos) {
     return true;
   }
 
+  TimeResults results;
+  BM_NAMESPACE::UniquePtr<EVP_CIPHER_CTX> ctx(EVP_CIPHER_CTX_new());
+  const size_t key_len = EVP_CIPHER_key_length(cipher);
+  std::unique_ptr<uint8_t[]> key(new uint8_t[key_len]);
+  const size_t iv_len = EVP_CIPHER_iv_length(cipher);
+  std::unique_ptr<uint8_t[]> nonce(new uint8_t[iv_len]);
+  if (!TimeFunction(&results, [&]() -> bool {
+        return EVP_EncryptInit_ex(ctx.get(), cipher, NULL, key.get(), nonce.get());})) {
+    fprintf(stderr, "EVP_EncryptInit_ex failed.\n");
+    ERR_print_errors_fp(stderr);
+    return false;
+  }
+  results.Print(name +  " encrypt init");
+
   for (size_t chunk_byte_len : g_chunk_lengths) {
-    if (!SpeedAESGCMChunk(cipher, name, chunk_byte_len, ad_len,
-                          /*encrypt*/ true)) {
+    if (!SpeedAESGenericChunk(cipher, name, chunk_byte_len, ad_len,
+                              /*encrypt*/ true)) {
       return false;
     }
   }
 
+  if (!TimeFunction(&results, [&]() -> bool {
+        return EVP_DecryptInit_ex(ctx.get(), cipher, NULL, key.get(), nonce.get());})) {
+    fprintf(stderr, "EVP_DecryptInit_ex failed.\n");
+    ERR_print_errors_fp(stderr);
+    return false;
+  }
+  results.Print(name +  " decrypt init");
   for (size_t chunk_byte_len : g_chunk_lengths) {
-    if (!SpeedAESGCMChunk(cipher, name, chunk_byte_len, ad_len, false)) {
+    if (!SpeedAESGenericChunk(cipher, name, chunk_byte_len, ad_len, false)) {
       return false;
     }
   }
@@ -624,13 +705,29 @@ static bool SpeedAEADChunk(const EVP_AEAD *aead, std::string name,
 }
 
 static bool SpeedAEAD(const EVP_AEAD *aead, const std::string &name,
-                      size_t ad_len, const std::string &selected) {
+                      size_t ad_len, const std::string &selected, enum evp_aead_direction_t dir) {
   if (!selected.empty() && name.find(selected) == std::string::npos) {
     return true;
   }
 
+  TimeResults results;
+  const size_t key_len = EVP_AEAD_key_length(aead);
+  std::unique_ptr<uint8_t[]> key(new uint8_t[key_len]);
+
+  if (!TimeFunction(&results, [&]() -> bool {
+        BM_NAMESPACE::ScopedEVP_AEAD_CTX ctx;
+        return EVP_AEAD_CTX_init_with_direction(
+            ctx.get(), aead, key.get(), key_len, EVP_AEAD_DEFAULT_TAG_LENGTH,
+            evp_aead_seal);
+  })) {
+    fprintf(stderr, "EVP_AEAD_CTX_init_with_direction failed.\n");
+    ERR_print_errors_fp(stderr);
+    return false;
+  }
+  results.Print(name + (dir == evp_aead_seal ? " seal " : " open ") + "init");
+
   for (size_t chunk_len : g_chunk_lengths) {
-    if (!SpeedAEADChunk(aead, name, chunk_len, ad_len, evp_aead_seal)) {
+    if (!SpeedAEADChunk(aead, name, chunk_len, ad_len, dir)) {
       return false;
     }
   }
@@ -639,19 +736,14 @@ static bool SpeedAEAD(const EVP_AEAD *aead, const std::string &name,
 
 static bool SpeedAEADOpen(const EVP_AEAD *aead, const std::string &name,
                           size_t ad_len, const std::string &selected) {
-  if (!selected.empty() && name.find(selected) == std::string::npos) {
-    return true;
-  }
-
-  for (size_t chunk_len : g_chunk_lengths) {
-    if (!SpeedAEADChunk(aead, name, chunk_len, ad_len, evp_aead_open)) {
-      return false;
-    }
-  }
-
-  return true;
+  return SpeedAEAD(aead, name, ad_len, selected, evp_aead_open);
 }
 
+static bool SpeedAEADSeal(const EVP_AEAD *aead, const std::string &name,
+                          size_t ad_len, const std::string &selected) {
+  return SpeedAEAD(aead, name, ad_len, selected, evp_aead_seal);
+}
+#if AWSLC_API_VERSION > 16
 static bool SpeedSingleKEM(const std::string &name, int nid, const std::string &selected) {
   if (!selected.empty() && name.find(selected) == std::string::npos) {
     return true;
@@ -664,7 +756,7 @@ static bool SpeedSingleKEM(const std::string &name, int nid, const std::string &
     return false;
   }
 
-  EVP_PKEY *key = NULL;
+  EVP_PKEY *key = EVP_PKEY_new();
   TimeResults results;
   if (!TimeFunction(&results, [&a_ctx, &key]() -> bool {
         return EVP_PKEY_keygen(a_ctx.get(), &key);
@@ -719,15 +811,86 @@ static bool SpeedSingleKEM(const std::string &name, int nid, const std::string &
   }
   results.Print(name + " decaps");
 
+  EVP_PKEY_free(key);
+
   return true;
 }
-
 
 static bool SpeedKEM(std::string selected) {
   return SpeedSingleKEM("Kyber512_R3", NID_KYBER512_R3, selected) &&
          SpeedSingleKEM("Kyber768_R3", NID_KYBER768_R3, selected) &&
          SpeedSingleKEM("Kyber1024_R3", NID_KYBER1024_R3, selected);
 }
+
+#if defined(ENABLE_DILITHIUM)
+
+static bool SpeedDigestSignNID(const std::string &name, int nid,
+                            const std::string &selected) {
+  if (!selected.empty() && name.find(selected) == std::string::npos) {
+    return true;
+  }
+
+  // Setup CTX for Sign/Verify Operations
+  BM_NAMESPACE::UniquePtr<EVP_PKEY_CTX> pkey_ctx(EVP_PKEY_CTX_new_id(nid, nullptr));
+
+  // Setup CTX for Keygen Operations
+  if (!pkey_ctx || EVP_PKEY_keygen_init(pkey_ctx.get()) != 1) {
+    return false;
+  }
+
+  EVP_PKEY *key = NULL;
+
+  TimeResults results;
+  if (!TimeFunction(&results, [&pkey_ctx, &key]() -> bool {
+        return EVP_PKEY_keygen(pkey_ctx.get(), &key);
+      })) {
+    return false;
+  }
+  results.Print(name + " keygen");
+
+  // Setup CTX for Sign operations
+  bssl::ScopedEVP_MD_CTX md_ctx;
+
+  // message to be signed
+  static const uint8_t msg[32] = {0};
+  size_t msg_len = 32;
+
+  // to keep this function generic, we obtain the signature size (different for
+  // each algorithm) at run time by attempting a sign with a NULL signature.
+  // The sign algorithm must support calling NULL to obtain the signature length
+  size_t sig_len = 0;
+  EVP_DigestSignInit(md_ctx.get(), NULL, NULL, NULL, key);
+  EVP_DigestSign(md_ctx.get(), NULL, &sig_len, msg, msg_len);
+  std::unique_ptr<uint8_t[]> signature(new uint8_t[sig_len]);
+
+
+  if (!TimeFunction(&results, [&md_ctx, &signature, &sig_len, msg_len ]() -> bool {
+        return EVP_DigestSign(md_ctx.get(), signature.get(), &sig_len, msg, msg_len);
+      })) {
+    return false;
+  }
+  results.Print(name + " signing");
+
+  // Verify
+  if (!TimeFunction(&results, [&md_ctx, &signature, &sig_len, msg_len ]() -> bool {
+        return EVP_DigestVerify(md_ctx.get(), signature.get(), sig_len, msg, msg_len);
+      })) {
+    return false;
+  }
+  results.Print(name + " verify");
+
+  EVP_PKEY_free(key);
+  md_ctx.Reset();
+  return true;
+}
+
+static bool SpeedDigestSign(const std::string &selected) {
+  return SpeedDigestSignNID("Dilithium3", EVP_PKEY_DILITHIUM3, selected);
+}
+
+#endif
+
+#endif
 #endif
 
 static bool SpeedAESBlock(const std::string &name, unsigned bits,
@@ -820,15 +983,27 @@ static bool SpeedAES256XTS(const std::string &name, //const size_t in_len,
   });
 
   BM_NAMESPACE::UniquePtr<EVP_CIPHER_CTX> ctx(EVP_CIPHER_CTX_new());
+  TimeResults results;
+
+  // Benchmark just EVP_EncryptInit_ex with the cipher and key, the encrypt benchmark loop will reuse both
+  if (!TimeFunction(&results, [&]() -> bool {
+        return EVP_EncryptInit_ex(ctx.get(), cipher, nullptr, key.data(),
+                                  iv.data());
+      })) {
+    fprintf(stderr, "EVP_EncryptInit_ex failed.\n");
+    ERR_print_errors_fp(stderr);
+    return false;
+  }
+  results.Print(name + " encrypt init");
+
   // Benchmark initialisation and encryption
   for (size_t in_len : g_chunk_lengths) {
     in.resize(in_len);
     out.resize(in_len);
     std::fill(in.begin(), in.end(), 0x5a);
     int len;
-    TimeResults results;
     if (!TimeFunction(&results, [&]() -> bool {
-          if (!EVP_EncryptInit_ex(ctx.get(), cipher, nullptr, key.data(),
+          if (!EVP_EncryptInit_ex(ctx.get(), nullptr, nullptr, nullptr,
                                   iv.data()) ||
               !EVP_EncryptUpdate(ctx.get(), out.data(), &len, in.data(),
                                  in.size())) {
@@ -839,19 +1014,28 @@ static bool SpeedAES256XTS(const std::string &name, //const size_t in_len,
       fprintf(stderr, "AES-256-XTS initialisation or encryption failed.\n");
       return false;
     }
-    results.PrintWithBytes(name + " init and encrypt",
-                           in_len);
+    results.PrintWithBytes(name + " encrypt", in_len);
   }
 
   // Benchmark initialisation and decryption
+  // Benchmark just EVP_DecryptInit_ex with the cipher and key, the decrypt benchmark loop will reuse both
+  if (!TimeFunction(&results, [&]() -> bool {
+        return EVP_DecryptInit_ex(ctx.get(), cipher, nullptr, key.data(),
+                                  iv.data());
+      })) {
+    fprintf(stderr, "EVP_DecryptInit_ex failed.\n");
+    ERR_print_errors_fp(stderr);
+    return false;
+  }
+  results.Print(name + " decrypt init");
+
   for (size_t in_len : g_chunk_lengths) {
     in.resize(in_len);
     out.resize(in_len);
     std::fill(in.begin(), in.end(), 0x5a);
     int len;
-    TimeResults results;
     if (!TimeFunction(&results, [&]() -> bool {
-          if (!EVP_DecryptInit_ex(ctx.get(), cipher, nullptr, key.data(),
+          if (!EVP_DecryptInit_ex(ctx.get(), nullptr, nullptr, nullptr,
                                   iv.data()) ||
               !EVP_DecryptUpdate(ctx.get(), out.data(), &len, in.data(),
                                  in.size())) {
@@ -862,8 +1046,7 @@ static bool SpeedAES256XTS(const std::string &name, //const size_t in_len,
       fprintf(stderr, "AES-256-XTS initialisation or decryption failed.\n");
       return false;
     }
-    results.PrintWithBytes(name + " init and decrypt",
-                           in_len);
+    results.PrintWithBytes(name + " decrypt", in_len);
   }
 
   return true;
@@ -1101,6 +1284,37 @@ static bool SpeedECDHCurve(const std::string &name, int nid,
   return true;
 }
 
+
+static bool SpeedECKeyGenerateKey(bool is_fips, const std::string &name,
+                                      int nid, const std::string &selected) {
+  if (!selected.empty() && name.find(selected) == std::string::npos) {
+    return true;
+  }
+  BM_NAMESPACE::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(nid));
+
+  TimeResults results;
+  if (is_fips) {
+#if !defined(OPENSSL_BENCHMARK)
+    if (!TimeFunction(&results, [&key]() -> bool {
+          return EC_KEY_generate_key_fips(key.get()) == 1;
+        })) {
+      return false;
+    }
+#else
+    return true;
+#endif
+  } else {
+    if (!TimeFunction(&results, [&key]() -> bool {
+          return EC_KEY_generate_key(key.get()) == 1;
+        })) {
+      return false;
+    }
+  }
+  results.Print(is_fips ? name + " with EC_KEY_generate_key_fips"
+                        : name + " with EC_KEY_generate_key");
+  return true;
+}
+
 static bool SpeedECKeyGenCurve(const std::string &name, int nid,
                             const std::string &selected) {
   if (!selected.empty() && name.find(selected) == std::string::npos) {
@@ -1120,7 +1334,7 @@ static bool SpeedECKeyGenCurve(const std::string &name, int nid,
     return false;
   }
 
-  EVP_PKEY *key = NULL;
+  EVP_PKEY *key = EVP_PKEY_new();
 
   TimeResults results;
   if (!TimeFunction(&results, [&pkey_ctx, &key]() -> bool {
@@ -1128,7 +1342,8 @@ static bool SpeedECKeyGenCurve(const std::string &name, int nid,
       })) {
       return false;
   }
-  results.Print(name);
+  EVP_PKEY_free(key);
+  results.Print(name + " with EVP_PKEY_keygen");
   return true;
 }
 
@@ -1174,6 +1389,19 @@ static bool SpeedECDSACurve(const std::string &name, int nid,
   return true;
 }
 
+static bool SpeedECKeyGenerateKey(bool is_fips, const std::string &selected) {
+  return SpeedECKeyGenerateKey(is_fips, "Generate P-224", NID_secp224r1,
+                               selected) &&
+         SpeedECKeyGenerateKey(is_fips, "Generate P-256",
+                               NID_X9_62_prime256v1, selected) &&
+         SpeedECKeyGenerateKey(is_fips, "Generate P-384", NID_secp384r1,
+                               selected) &&
+         SpeedECKeyGenerateKey(is_fips, "Generate P-521", NID_secp521r1,
+                               selected) &&
+         SpeedECKeyGenerateKey(is_fips, "Generate secp256k1",
+                               NID_secp256k1, selected);
+}
+
 static bool SpeedECDH(const std::string &selected) {
   return SpeedECDHCurve("ECDH P-224", NID_secp224r1, selected) &&
          SpeedECDHCurve("ECDH P-256", NID_X9_62_prime256v1, selected) &&
@@ -1198,7 +1426,6 @@ static bool SpeedECDSA(const std::string &selected) {
          SpeedECDSACurve("ECDSA secp256k1", NID_secp256k1, selected);
 }
 
-
 #if !defined(OPENSSL_1_0_BENCHMARK)
 static bool SpeedECMULCurve(const std::string &name, int nid,
                        const std::string &selected) {
@@ -1206,29 +1433,28 @@ static bool SpeedECMULCurve(const std::string &name, int nid,
     return true;
   }
 
-  EC_GROUP *group = EC_GROUP_new_by_curve_name(nid);
-  BN_CTX   *ctx = BN_CTX_new();
+  BM_NAMESPACE::UniquePtr<EC_GROUP> group(EC_GROUP_new_by_curve_name(nid));
+  BM_NAMESPACE::UniquePtr<BN_CTX> ctx(BN_CTX_new());
+  BM_NAMESPACE::UniquePtr<BIGNUM> scalar0(BN_new());
+  BM_NAMESPACE::UniquePtr<BIGNUM> scalar1(BN_new());
+  BM_NAMESPACE::UniquePtr<EC_POINT> pin0(EC_POINT_new(group.get()));
+  BM_NAMESPACE::UniquePtr<EC_POINT> pout(EC_POINT_new(group.get()));
 
-  BIGNUM *scalar0 = BN_new();
-  BIGNUM *scalar1 = BN_new();
-
-  EC_POINT *pin0 = EC_POINT_new(group);
-  EC_POINT *pout = EC_POINT_new(group);
 
   // Generate two random scalars modulo the EC group order.
-  if (!BN_rand_range(scalar0, EC_GROUP_get0_order(group)) ||
-      !BN_rand_range(scalar1, EC_GROUP_get0_order(group))) {
+  if (!BN_rand_range(scalar0.get(), EC_GROUP_get0_order(group.get())) ||
+      !BN_rand_range(scalar1.get(), EC_GROUP_get0_order(group.get()))) {
       return false;
   }
 
   // Generate one random EC point.
-  EC_POINT_mul(group, pin0, scalar0, nullptr, nullptr, ctx);
+  EC_POINT_mul(group.get(), pin0.get(), scalar0.get(), nullptr, nullptr, ctx.get());
 
   TimeResults results;
 
   // Measure scalar multiplication of an arbitrary curve point.
-  if (!TimeFunction(&results, [group, pout, ctx, pin0, scalar0]() -> bool {
-        if (!EC_POINT_mul(group, pout, nullptr, pin0, scalar0, ctx)) {
+  if (!TimeFunction(&results, [&group, &pout, &ctx, &pin0, &scalar0]() -> bool {
+        if (!EC_POINT_mul(group.get(), pout.get(), nullptr, pin0.get(), scalar0.get(), ctx.get())) {
           return false;
         }
 
@@ -1239,8 +1465,8 @@ static bool SpeedECMULCurve(const std::string &name, int nid,
   results.Print(name + " mul");
 
   // Measure scalar multiplication of the curve based point.
-  if (!TimeFunction(&results, [group, pout, ctx, scalar0]() -> bool {
-        if (!EC_POINT_mul(group, pout, scalar0, nullptr, nullptr, ctx)) {
+  if (!TimeFunction(&results, [&group, &pout, &ctx, &scalar0]() -> bool {
+        if (!EC_POINT_mul(group.get(), pout.get(), scalar0.get(), nullptr, nullptr, ctx.get())) {
           return false;
         }
 
@@ -1251,8 +1477,8 @@ static bool SpeedECMULCurve(const std::string &name, int nid,
   results.Print(name + " mul base");
 
   // Measure scalar multiplication of based point and arbitrary point.
-  if (!TimeFunction(&results, [group, pout, pin0, ctx, scalar0, scalar1]() -> bool {
-        if (!EC_POINT_mul(group, pout, scalar1, pin0, scalar0, ctx)) {
+  if (!TimeFunction(&results, [&group, &pout, &pin0, &ctx, &scalar0, &scalar1]() -> bool {
+        if (!EC_POINT_mul(group.get(), pout.get(), scalar1.get(), pin0.get(), scalar0.get(), ctx.get())) {
           return false;
         }
 
@@ -1892,7 +2118,57 @@ static bool SpeedJitter(std::string selected) {
 }
 #endif
 
-#if !defined(OPENSSL_BENCHMARK) && !defined(BORINGSSL_BENCHMARK)
+static bool SpeedDHcheck(size_t prime_bit_length) {
+
+  TimeResults results;
+  BM_NAMESPACE::UniquePtr<DH> dh_params(DH_new());
+  if (dh_params == nullptr) {
+    return false;
+  }
+
+  // DH_generate_parameters_ex grows exponentially slower as prime length grows.
+  if (DH_generate_parameters_ex(dh_params.get(), prime_bit_length,
+    DH_GENERATOR_2, nullptr) != 1) {
+    return false;
+  }
+
+  if (!TimeFunction(&results, [&dh_params]() -> bool {
+        int result = 0;
+        if (DH_check(dh_params.get(), &result) != 1) {
+          return false;
+        }
+        return true;
+      })) {
+    return false;
+  }
+
+  results.PrintWithPrimes("DH check(s)", prime_bit_length);
+  return true;
+}
+
+static bool SpeedDHcheck(std::string selected) {
+  // Don't run this by default because it's so slow.
+  if (selected != "dhcheck") {
+    return true;
+  }
+
+  uint64_t maybe_reset_timeout = g_timeout_seconds;
+  if (g_timeout_seconds == TIMEOUT_SECONDS_DEFAULT) {
+    g_timeout_seconds = 10;
+  }
+
+  for (size_t prime_bit_length : g_prime_bit_lengths) {
+    if (!SpeedDHcheck(prime_bit_length)) {
+      return false;
+    }
+  }
+
+  g_timeout_seconds = maybe_reset_timeout;
+
+  return true;
+}
+
+#if AWSLC_API_VERSION > 16
 static bool SpeedPKCS8(const std::string &selected) {
   if (!selected.empty() && selected.find("pkcs8") == std::string::npos) {
     return true;
@@ -1903,7 +2179,7 @@ static bool SpeedPKCS8(const std::string &selected) {
 
   ED25519_keypair(pubkey, privkey);
 
-  EVP_PKEY *key = EVP_PKEY_new_raw_private_key(EVP_PKEY_ED25519, nullptr, &privkey[0], ED25519_PRIVATE_KEY_SEED_LEN);
+  BM_NAMESPACE::UniquePtr<EVP_PKEY> key(EVP_PKEY_new_raw_private_key(EVP_PKEY_ED25519, nullptr, &privkey[0], ED25519_PRIVATE_KEY_SEED_LEN));
 
   if(!key) {
     return false;
@@ -1916,12 +2192,11 @@ static bool SpeedPKCS8(const std::string &selected) {
 
   TimeResults results;
   if (!TimeFunction(&results, [&out, &key]() -> bool {
-        if (!EVP_marshal_private_key(&out, key)) {
+        if (!EVP_marshal_private_key(&out, key.get())) {
           return false;
         }
         return true;
       })) {
-    EVP_PKEY_free(key);
     return false;
   }
   results.Print("Ed25519 PKCS#8 v1 encode");
@@ -1930,22 +2205,17 @@ static bool SpeedPKCS8(const std::string &selected) {
 
   CBS_init(&in, CBB_data(&out), CBB_len(&out));
 
-  EVP_PKEY *parsed = NULL;
 
-  if (!TimeFunction(&results, [&in, &parsed]() -> bool {
-        parsed = EVP_parse_private_key(&in);
-        if (!parsed) {
-          return false;
-        }
-        return true;
+  if (!TimeFunction(&results, [&in]() -> bool {
+        EVP_PKEY *parsed = EVP_parse_private_key(&in);
+        bool result = parsed != NULL;
+        EVP_PKEY_free(parsed);
+        return result;
       })) {
-    EVP_PKEY_free(key);
     return false;
   }
   results.Print("Ed25519 PKCS#8 v1 decode");
-
-  EVP_PKEY_free(parsed);
-
+  
   CBB_cleanup(&out);
 
   if (!CBB_init(&out, 1024)) {
@@ -1953,36 +2223,29 @@ static bool SpeedPKCS8(const std::string &selected) {
   }
 
   if (!TimeFunction(&results, [&out, &key]() -> bool {
-        if (!EVP_marshal_private_key_v2(&out, key)) {
+        if (!EVP_marshal_private_key_v2(&out, key.get())) {
           return false;
         }
         return true;
       })) {
     CBB_cleanup(&out);
-    EVP_PKEY_free(key);
     return false;
   }
   results.Print("Ed25519 PKCS#8 v2 encode");
 
   CBS_init(&in, CBB_data(&out), CBB_len(&out));
 
-  if (!TimeFunction(&results, [&in, &parsed]() -> bool {
-        parsed = EVP_parse_private_key(&in);
-        if (!parsed) {
-          return false;
-        }
-        return true;
+  if (!TimeFunction(&results, [&in]() -> bool {
+        EVP_PKEY *parsed = EVP_parse_private_key(&in);
+        bool result = parsed != NULL;
+        EVP_PKEY_free(parsed);
+        return result;
       })) {
     CBB_cleanup(&out);
-    EVP_PKEY_free(key);
     return false;
   }
   results.Print("Ed25519 PKCS#8 v2 decode");
-
-  EVP_PKEY_free(parsed);
   CBB_cleanup(&out);
-  EVP_PKEY_free(key);
-
   return true;
 }
 #endif
@@ -1991,7 +2254,8 @@ static const argument_t kArguments[] = {
     {
         "-filter",
         kOptionalArgument,
-        "A filter on the speed tests to run",
+        "A comma-separated list of filters on the speed tests to run. "
+        "Each filter is applied in independent runs.",
     },
     {
         "-timeout",
@@ -2003,6 +2267,12 @@ static const argument_t kArguments[] = {
         kOptionalArgument,
         "A comma-separated list of input sizes to run tests at (default is "
         "16,256,1350,8192,16384)",
+    },
+    {
+        "-primes",
+        kOptionalArgument,
+        "A comma-separated list of prime input sizes (bits) to run tests at "
+        "(default is 2048,3072)",
     },
     {
         "-json",
@@ -2021,8 +2291,53 @@ static const argument_t kArguments[] = {
     },
 };
 
+// parseCommaArgument clears |vector| and parses comma-separated input for the
+// argument |arg_name| in |args_map|.
+static bool parseCommaArgument(std::vector<std::string> &vector,
+  std::map<std::string, std::string> &args_map, const std::string &arg_name) {
+
+  vector.clear();
+  const char *start = args_map[arg_name.c_str()].data();
+  const char *end = start + args_map[arg_name.c_str()].size();
+  const char* current = start;
+  while (current < end) {
+    const char* comma = std::find(current, end, ',');
+    if (comma == current) {
+      // Empty argument found e.g. arg1,arg2,,arg3
+      fprintf(stderr, "Error parsing %s argument\n", arg_name.c_str());
+      return false;
+    }
+    vector.emplace_back(current, comma);
+    current = (comma == end) ? end : comma + 1;
+  }
+
+  return true;
+}
+
+// parseStringVectorToIntegerVector attempts to parse each element of 
+// |in_vector| as a size_t integer and adds the result to |out_vector|. Clears
+// |out_vector|.
+static bool parseStringVectorToIntegerVector(
+  std::vector<std::string> &in_vector, std::vector<size_t> &out_vector) {
+
+  out_vector.clear();
+  for (const std::string &str : in_vector) {
+    errno = 0;
+    char *ptr;
+    unsigned long long int integer_value = strtoull(str.data(), &ptr, 10);
+    if (ptr == str.data() /* no numeric characters found */ ||
+        errno == ERANGE /* overflow */ ||
+        static_cast<size_t>(integer_value) != integer_value) {
+      fprintf(stderr, "Error parsing %s argument\n", str.c_str());
+      return false;
+    }
+    out_vector.push_back(static_cast<size_t>(integer_value));
+  }
+  return true;
+}
+
 bool Speed(const std::vector<std::string> &args) {
-#if defined(OPENSSL_IS_AWSLC)
+#if AWSLC_API_VERSION > 16
   // For mainline AWS-LC this is a no-op, however if speed.cc built with an old
   // branch of AWS-LC SHA3 might be disabled by default and fail the benchmark.
   EVP_MD_unstable_sha3_enable(true);
@@ -2033,9 +2348,10 @@ bool Speed(const std::vector<std::string> &args) {
     return false;
   }
 
-  std::string selected;
   if (args_map.count("-filter") != 0) {
-    selected = args_map["-filter"];
+    if (!parseCommaArgument(g_filters, args_map, "-filter")) {
+      return false;
+    }
   }
 
   if (args_map.count("-json") != 0) {
@@ -2047,28 +2363,24 @@ bool Speed(const std::vector<std::string> &args) {
   }
 
   if (args_map.count("-chunks") != 0) {
-    g_chunk_lengths.clear();
-    const char *start = args_map["-chunks"].data();
-    const char *end = start + args_map["-chunks"].size();
-    while (start != end) {
-      errno = 0;
-      char *ptr;
-      unsigned long long val = strtoull(start, &ptr, 10);
-      if (ptr == start /* no numeric characters found */ ||
-          errno == ERANGE /* overflow */ ||
-          static_cast<size_t>(val) != val) {
-        fprintf(stderr, "Error parsing -chunks argument\n");
-        return false;
-      }
-      g_chunk_lengths.push_back(static_cast<size_t>(val));
-      start = ptr;
-      if (start != end) {
-        if (*start != ',') {
-          fprintf(stderr, "Error parsing -chunks argument\n");
-          return false;
-        }
-        start++;
-      }
+    std::vector<std::string> chunkVector;
+    if (!parseCommaArgument(chunkVector,
+        args_map, "-chunks")) {
+      return false;
+    }
+    if (!parseStringVectorToIntegerVector(chunkVector, g_chunk_lengths)) {
+      return false;
+    }
+  }
+
+  if (args_map.count("-primes") != 0) {
+    std::vector<std::string> primeVector;
+    if (!parseCommaArgument(primeVector,
+        args_map, "-primes")) {
+      return false;
+    }
+    if (!parseStringVectorToIntegerVector(primeVector, g_prime_bit_lengths)) {
+      return false;
     }
   }
 
@@ -2091,98 +2403,114 @@ bool Speed(const std::vector<std::string> &args) {
   if (g_print_json) {
     puts("[");
   }
-  if(!SpeedAESBlock("AES-128", 128, selected) ||
-     !SpeedAESBlock("AES-192", 192, selected) ||
-     !SpeedAESBlock("AES-256", 256, selected) ||
-     !SpeedAESGCM(EVP_aes_128_gcm(), "EVP-AES-128-GCM", kTLSADLen, selected) ||
-     !SpeedAESGCM(EVP_aes_192_gcm(), "EVP-AES-192-GCM", kTLSADLen, selected) ||
-     !SpeedAESGCM(EVP_aes_256_gcm(), "EVP-AES-256-GCM", kTLSADLen, selected) ||
-     !SpeedAES256XTS("AES-256-XTS", selected) ||
-     // OpenSSL 3.0 doesn't allow MD4 calls
+
+  for (std::string selected : g_filters) {
+    if(!SpeedAESBlock("AES-128", 128, selected) ||
+       !SpeedAESBlock("AES-192", 192, selected) ||
+       !SpeedAESBlock("AES-256", 256, selected) ||
+       !SpeedAESGeneric(EVP_aes_128_gcm(), "EVP-AES-128-GCM", kTLSADLen, selected) ||
+       !SpeedAESGeneric(EVP_aes_192_gcm(), "EVP-AES-192-GCM", kTLSADLen, selected) ||
+       !SpeedAESGeneric(EVP_aes_256_gcm(), "EVP-AES-256-GCM", kTLSADLen, selected) ||
+       !SpeedAESGeneric(EVP_aes_128_ctr(), "EVP-AES-128-CTR", kTLSADLen, selected) ||
+       !SpeedAESGeneric(EVP_aes_192_ctr(), "EVP-AES-192-CTR", kTLSADLen, selected) ||
+       !SpeedAESGeneric(EVP_aes_256_ctr(), "EVP-AES-256-CTR", kTLSADLen, selected) ||
+       !SpeedAES256XTS("AES-256-XTS", selected) ||
+       // OpenSSL 3.0 doesn't allow MD4 calls
 #if !defined(OPENSSL_3_0_BENCHMARK)
-     !SpeedHash(EVP_md4(), "MD4", selected) ||
+       !SpeedHash(EVP_md4(), "MD4", selected) ||
 #endif
-     !SpeedHash(EVP_md5(), "MD5", selected) ||
-     !SpeedHash(EVP_sha1(), "SHA-1", selected) ||
-     !SpeedHash(EVP_sha224(), "sha-224", selected) ||
-     !SpeedHash(EVP_sha256(), "SHA-256", selected) ||
-     !SpeedHash(EVP_sha384(), "SHA-384", selected) ||
-     !SpeedHash(EVP_sha512(), "SHA-512", selected) ||
-     // OpenSSL 1.0 doesn't support SHA3.
+       !SpeedHash(EVP_md5(), "MD5", selected) ||
+       !SpeedHash(EVP_sha1(), "SHA-1", selected) ||
+       !SpeedHash(EVP_sha224(), "sha-224", selected) ||
+       !SpeedHash(EVP_sha256(), "SHA-256", selected) ||
+       !SpeedHash(EVP_sha384(), "SHA-384", selected) ||
+       !SpeedHash(EVP_sha512(), "SHA-512", selected) ||
+       // OpenSSL 1.0 and BoringSSL don't support SHA3.
+#if (!defined(OPENSSL_1_0_BENCHMARK) && !defined(BORINGSSL_BENCHMARK)) || AWSLC_API_VERSION > 16
+       !SpeedHash(EVP_sha3_224(), "SHA3-224", selected) ||
+       !SpeedHash(EVP_sha3_256(), "SHA3-256", selected) ||
+       !SpeedHash(EVP_sha3_384(), "SHA3-384", selected) ||
+       !SpeedHash(EVP_sha3_512(), "SHA3-512", selected) ||
+#endif
+       !SpeedHmac(EVP_md5(), "HMAC-MD5", selected) ||
+       !SpeedHmac(EVP_sha1(), "HMAC-SHA1", selected) ||
+       !SpeedHmac(EVP_sha256(), "HMAC-SHA256", selected) ||
+       !SpeedHmac(EVP_sha384(), "HMAC-SHA384", selected) ||
+       !SpeedHmac(EVP_sha512(), "HMAC-SHA512", selected) ||
+       !SpeedHmacOneShot(EVP_md5(), "HMAC-MD5-OneShot", selected) ||
+       !SpeedHmacOneShot(EVP_sha1(), "HMAC-SHA1-OneShot", selected) ||
+       !SpeedHmacOneShot(EVP_sha256(), "HMAC-SHA256-OneShot", selected) ||
+       !SpeedHmacOneShot(EVP_sha384(), "HMAC-SHA384-OneShot", selected) ||
+       !SpeedHmacOneShot(EVP_sha512(), "HMAC-SHA512-OneShot", selected) ||
+       !SpeedRandom(selected) ||
+       !SpeedECDH(selected) ||
+       !SpeedECDSA(selected) ||
+       !SpeedECKeyGen(selected) ||
+       !SpeedECKeyGenerateKey(false, selected) ||
 #if !defined(OPENSSL_1_0_BENCHMARK)
-     !SpeedHash(EVP_sha3_224(), "SHA3-224", selected) ||
-     !SpeedHash(EVP_sha3_256(), "SHA3-256", selected) ||
-     !SpeedHash(EVP_sha3_384(), "SHA3-384", selected) ||
-     !SpeedHash(EVP_sha3_512(), "SHA3-512", selected) ||
+       !SpeedECMUL(selected) ||
+       // OpenSSL 1.0 doesn't support Scrypt
+       !SpeedScrypt(selected) ||
 #endif
-     !SpeedHmac(EVP_md5(), "HMAC-MD5", selected) ||
-     !SpeedHmac(EVP_sha1(), "HMAC-SHA1", selected) ||
-     !SpeedHmac(EVP_sha256(), "HMAC-SHA256", selected) ||
-     !SpeedHmac(EVP_sha384(), "HMAC-SHA384", selected) ||
-     !SpeedHmac(EVP_sha512(), "HMAC-SHA512", selected) ||
-     !SpeedHmacOneShot(EVP_md5(), "HMAC-MD5-OneShot", selected) ||
-     !SpeedHmacOneShot(EVP_sha1(), "HMAC-SHA1-OneShot", selected) ||
-     !SpeedHmacOneShot(EVP_sha256(), "HMAC-SHA256-OneShot", selected) ||
-     !SpeedHmacOneShot(EVP_sha384(), "HMAC-SHA384-OneShot", selected) ||
-     !SpeedHmacOneShot(EVP_sha512(), "HMAC-SHA512-OneShot", selected) ||
-     !SpeedRandom(selected) ||
-     !SpeedECDH(selected) ||
-     !SpeedECDSA(selected) ||
-     !SpeedECKeyGen(selected) ||
-#if !defined(OPENSSL_1_0_BENCHMARK)
-     !SpeedECMUL(selected) ||
-     // OpenSSL 1.0 doesn't support Scrypt
-     !SpeedScrypt(selected) ||
-#endif
-     !SpeedRSA(selected) ||
-     !SpeedRSAKeyGen(false, selected)
+       !SpeedRSA(selected) ||
+       !SpeedRSAKeyGen(false, selected) ||
+       !SpeedDHcheck(selected)
 #if !defined(OPENSSL_BENCHMARK)
-     ||
-     !SpeedKEM(selected) ||
-     !SpeedAEAD(EVP_aead_aes_128_gcm(), "AEAD-AES-128-GCM", kTLSADLen, selected) ||
-     !SpeedAEADOpen(EVP_aead_aes_128_gcm(), "AEAD-AES-128-GCM", kTLSADLen, selected) ||
-     !SpeedAEAD(EVP_aead_aes_256_gcm(), "AEAD-AES-256-GCM", kTLSADLen, selected) ||
-     !SpeedAEADOpen(EVP_aead_aes_256_gcm(), "AEAD-AES-256-GCM", kTLSADLen, selected) ||
-     !SpeedAEAD(EVP_aead_chacha20_poly1305(), "AEAD-ChaCha20-Poly1305", kTLSADLen, selected) ||
-     !SpeedAEAD(EVP_aead_des_ede3_cbc_sha1_tls(), "AEAD-DES-EDE3-CBC-SHA1", kLegacyADLen, selected) ||
-     !SpeedAEAD(EVP_aead_aes_128_cbc_sha1_tls(), "AEAD-AES-128-CBC-SHA1", kLegacyADLen, selected) ||
-     !SpeedAEAD(EVP_aead_aes_256_cbc_sha1_tls(), "AEAD-AES-256-CBC-SHA1", kLegacyADLen, selected) ||
-     !SpeedAEADOpen(EVP_aead_aes_128_cbc_sha1_tls(), "AEAD-AES-128-CBC-SHA1", kLegacyADLen, selected) ||
-     !SpeedAEADOpen(EVP_aead_aes_256_cbc_sha1_tls(), "AEAD-AES-256-CBC-SHA1", kLegacyADLen, selected) ||
-     !SpeedAEAD(EVP_aead_aes_128_gcm_siv(), "AEAD-AES-128-GCM-SIV", kTLSADLen, selected) ||
-     !SpeedAEAD(EVP_aead_aes_256_gcm_siv(), "AEAD-AES-256-GCM-SIV", kTLSADLen, selected) ||
-     !SpeedAEADOpen(EVP_aead_aes_128_gcm_siv(), "AEAD-AES-128-GCM-SIV", kTLSADLen, selected) ||
-     !SpeedAEADOpen(EVP_aead_aes_256_gcm_siv(), "AEAD-AES-256-GCM-SIV", kTLSADLen, selected) ||
-     !SpeedAEAD(EVP_aead_aes_128_ccm_bluetooth(), "AEAD-AES-128-CCM-Bluetooth", kTLSADLen, selected) ||
-     !Speed25519(selected) ||
-     !SpeedSPAKE2(selected) ||
-     !SpeedRSAKeyGen(true, selected) ||
-     !SpeedHRSS(selected) ||
-     !SpeedHash(EVP_blake2b256(), "BLAKE2b-256", selected) ||
+       ||
+#if AWSLC_API_VERSION > 16
+       !SpeedKEM(selected) ||
+#endif
+#if defined(ENABLE_DILITHIUM) && AWSLC_API_VERSION > 20
+       !SpeedDigestSign(selected) ||
+#endif
+       !SpeedAEADSeal(EVP_aead_aes_128_gcm(), "AEAD-AES-128-GCM", kTLSADLen, selected) ||
+       !SpeedAEADOpen(EVP_aead_aes_128_gcm(), "AEAD-AES-128-GCM", kTLSADLen, selected) ||
+       !SpeedAEADSeal(EVP_aead_aes_256_gcm(), "AEAD-AES-256-GCM", kTLSADLen, selected) ||
+       !SpeedAEADOpen(EVP_aead_aes_256_gcm(), "AEAD-AES-256-GCM", kTLSADLen, selected) ||
+       !SpeedAEADSeal(EVP_aead_chacha20_poly1305(), "AEAD-ChaCha20-Poly1305", kTLSADLen, selected) ||
+       !SpeedAEADSeal(EVP_aead_des_ede3_cbc_sha1_tls(), "AEAD-DES-EDE3-CBC-SHA1",kLegacyADLen, selected) ||
+       !SpeedAEADSeal(EVP_aead_aes_128_cbc_sha1_tls(), "AEAD-AES-128-CBC-SHA1",kLegacyADLen, selected) ||
+       !SpeedAEADSeal(EVP_aead_aes_256_cbc_sha1_tls(), "AEAD-AES-256-CBC-SHA1",kLegacyADLen, selected) ||
+       !SpeedAEADOpen(EVP_aead_aes_128_cbc_sha1_tls(), "AEAD-AES-128-CBC-SHA1", kLegacyADLen, selected) ||
+       !SpeedAEADOpen(EVP_aead_aes_256_cbc_sha1_tls(), "AEAD-AES-256-CBC-SHA1", kLegacyADLen, selected) ||
+       !SpeedAEADSeal(EVP_aead_aes_128_gcm_siv(), "AEAD-AES-128-GCM-SIV",kTLSADLen, selected) ||
+       !SpeedAEADSeal(EVP_aead_aes_256_gcm_siv(), "AEAD-AES-256-GCM-SIV",kTLSADLen, selected) ||
+       !SpeedAEADOpen(EVP_aead_aes_128_gcm_siv(), "AEAD-AES-128-GCM-SIV", kTLSADLen, selected) ||
+       !SpeedAEADOpen(EVP_aead_aes_256_gcm_siv(), "AEAD-AES-256-GCM-SIV", kTLSADLen, selected) ||
+       !SpeedAEADSeal(EVP_aead_aes_128_ccm_bluetooth(),"AEAD-AES-128-CCM-Bluetooth", kTLSADLen, selected) ||
+       !Speed25519(selected) ||
+       !SpeedSPAKE2(selected) ||
+       !SpeedRSAKeyGen(true, selected) ||
+       !SpeedHRSS(selected) ||
+       !SpeedHash(EVP_blake2b256(), "BLAKE2b-256", selected) ||
+       !SpeedECKeyGenerateKey(true, selected) ||
 #if defined(INTERNAL_TOOL)
-     !SpeedHashToCurve(selected) ||
-     !SpeedTrustToken("TrustToken-Exp1-Batch1", TRUST_TOKEN_experiment_v1(), 1, selected) ||
-     !SpeedTrustToken("TrustToken-Exp1-Batch10", TRUST_TOKEN_experiment_v1(), 10, selected) ||
-     !SpeedTrustToken("TrustToken-Exp2VOfPRF-Batch1", TRUST_TOKEN_experiment_v2_voprf(), 1, selected) ||
-     !SpeedTrustToken("TrustToken-Exp2VOPRF-Batch10", TRUST_TOKEN_experiment_v2_voprf(), 10, selected) ||
-     !SpeedTrustToken("TrustToken-Exp2PMB-Batch1", TRUST_TOKEN_experiment_v2_pmb(), 1, selected) ||
-     !SpeedTrustToken("TrustToken-Exp2PMB-Batch10", TRUST_TOKEN_experiment_v2_pmb(), 10, selected) ||
+       !SpeedHashToCurve(selected) ||
+       !SpeedTrustToken("TrustToken-Exp1-Batch1", TRUST_TOKEN_experiment_v1(), 1, selected) ||
+       !SpeedTrustToken("TrustToken-Exp1-Batch10", TRUST_TOKEN_experiment_v1(), 10, selected) ||
+       !SpeedTrustToken("TrustToken-Exp2VOfPRF-Batch1", TRUST_TOKEN_experiment_v2_voprf(), 1, selected) ||
+       !SpeedTrustToken("TrustToken-Exp2VOPRF-Batch10", TRUST_TOKEN_experiment_v2_voprf(), 10, selected) ||
+       !SpeedTrustToken("TrustToken-Exp2PMB-Batch1", TRUST_TOKEN_experiment_v2_pmb(), 1, selected) ||
+       !SpeedTrustToken("TrustToken-Exp2PMB-Batch10", TRUST_TOKEN_experiment_v2_pmb(), 10, selected) ||
 #endif
-#if !defined(OPENSSL_BENCHMARK) && !defined(BORINGSSL_BENCHMARK)
-     !SpeedPKCS8(selected) ||
+#if AWSLC_API_VERSION > 16
+       !SpeedPKCS8(selected) ||
 #endif
-     !SpeedBase64(selected) ||
-     !SpeedSipHash(selected)
+       !SpeedBase64(selected) ||
+       !SpeedSipHash(selected)
 #endif
-     ) {
-    return false;
-  }
+       ) {
+      return false;
+    }
+
 #if defined(AWSLC_FIPS)
-  if (!SpeedSelfTest(selected) ||
-      !SpeedJitter(selected)) {
-    return false;
-  }
+    if (!SpeedSelfTest(selected) ||
+        !SpeedJitter(selected)) {
+      return false;
+    }
 #endif
+  }
+
   if (g_print_json) {
     puts("\n]");
   }
