@@ -30,6 +30,12 @@ if(NOT OPENSSL_NO_ASM)
     enable_language(ASM)
     set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -Wa,--noexecstack")
 
+    # Since "--Wa,--noexecstack" is not used during the preprocessor step of Android (because assembler is not invoked),
+    # Clang reports that argument as unused. We quiet the unused argument warning for Android as it's expected behavior.
+    if(ANDROID)
+      set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -Qunused-arguments")
+    endif()
+
     # Clang's integerated assembler does not support debug symbols.
     if (CMAKE_ASM_COMPILER_ID MATCHES "Clang" OR CMAKE_ASM_COMPILER MATCHES "clang")
       message(STATUS "Disabling debug symbols for Clang internal assembler")
@@ -157,7 +163,6 @@ if(ARCH STREQUAL "arm")
     CRYPTO_ARCH_SOURCES
 
     chacha/chacha-armv4.${ASM_EXT}
-    curve25519/asm/x25519-asm-arm.S
     poly1305/poly1305_arm_asm.S
     test/trampoline-armv4.${ASM_EXT}
   )
@@ -262,6 +267,18 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/rust_wrapper.c)
   list(APPEND CRYPTO_RUST_SOURCES rust_wrapper.c)
 endif()
 
+set(DILITHIUM_SOURCES)
+if(ENABLE_DILITHIUM)
+  set(
+    DILITHIUM_SOURCES
+
+    dilithium/dilithium3r3_ref.c
+    dilithium/p_dilithium3.c
+    dilithium/p_dilithium3_asn1.c
+    dilithium/sig_dilithium3.c
+  )
+endif()
+
 add_library(
   crypto_objects
   OBJECT
@@ -336,6 +353,7 @@ add_library(
   dh_extra/params.c
   dh_extra/dh_asn1.c
   digest_extra/digest_extra.c
+  ${DILITHIUM_SOURCES}
   dsa/dsa.c
   dsa/dsa_asn1.c
   ecdh_extra/ecdh_extra.c
@@ -494,6 +512,7 @@ add_library(
   x509v3/v3_utl.c
   decrepit/bio/base64_bio.c
   decrepit/blowfish/blowfish.c
+  decrepit/cast/cast.c
   decrepit/cast/cast_tables.c
   decrepit/cfb/cfb.c
   decrepit/dh/dh_decrepit.c
@@ -685,6 +704,7 @@ if(BUILD_TESTING)
     ecdh_extra/ecdh_test.cc
     dh_extra/dh_test.cc
     digest_extra/digest_test.cc
+    dilithium/p_dilithium_test.cc
     dsa/dsa_test.cc
     err/err_test.cc
     evp_extra/evp_extra_test.cc
@@ -736,6 +756,7 @@ if(BUILD_TESTING)
     x509/x509_time_test.cc
     x509v3/tab_test.cc
     decrepit/blowfish/blowfish_test.cc
+    decrepit/cast/cast_test.cc
     decrepit/cfb/cfb_test.cc
     decrepit/evp/evp_test.cc
     decrepit/ripemd/ripemd_test.cc

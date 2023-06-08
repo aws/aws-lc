@@ -70,6 +70,9 @@ extern "C" {
 // |EVP_MD_CTX_set_pkey_ctx|.
 #define EVP_MD_CTX_FLAG_KEEP_PKEY_CTX   0x0400
 
+typedef struct evp_pkey_asn1_method_st EVP_PKEY_ASN1_METHOD;
+typedef struct evp_pkey_method_st EVP_PKEY_METHOD;
+
 struct evp_pkey_asn1_method_st {
   int pkey_id;
   uint8_t oid[11];
@@ -281,8 +284,14 @@ struct evp_pkey_method_st {
 }; // EVP_PKEY_METHOD
 
 #define FIPS_EVP_PKEY_METHODS 4
+
+#ifdef ENABLE_DILITHIUM
+#define NON_FIPS_EVP_PKEY_METHODS 4
+#define ASN1_EVP_PKEY_METHODS 8
+#else
 #define NON_FIPS_EVP_PKEY_METHODS 3
 #define ASN1_EVP_PKEY_METHODS 7
+#endif
 
 struct fips_evp_pkey_methods {
   const EVP_PKEY_METHOD * methods[FIPS_EVP_PKEY_METHODS];

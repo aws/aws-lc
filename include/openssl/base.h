@@ -208,7 +208,7 @@ extern "C" {
 // against multiple revisions of BoringSSL at the same time. It is not
 // recommended to do so for longer than is necessary.
 
-#define AWSLC_API_VERSION 21
+#define AWSLC_API_VERSION 22
 
 // This string tracks the most current production release version on Github
 // https://github.com/aws/aws-lc/releases.
@@ -216,7 +216,7 @@ extern "C" {
 // ServiceIndicatorTest.AWSLCVersionString
 // Note: there are two versions of this test. Only one test is compiled
 // depending on FIPS mode.
-#define AWSLC_VERSION_NUMBER_STRING "1.9.0"
+#define AWSLC_VERSION_NUMBER_STRING "1.10.0"
 
 #if defined(BORINGSSL_SHARED_LIBRARY)
 
@@ -400,6 +400,7 @@ typedef struct blake2b_state_st BLAKE2B_CTX;
 typedef struct bn_gencb_st BN_GENCB;
 typedef struct bn_mont_ctx_st BN_MONT_CTX;
 typedef struct buf_mem_st BUF_MEM;
+typedef struct cast_key_st CAST_KEY;
 typedef struct cbb_st CBB;
 typedef struct cbs_st CBS;
 typedef struct cmac_ctx_st CMAC_CTX;
@@ -430,9 +431,7 @@ typedef struct evp_hpke_kem_st EVP_HPKE_KEM;
 typedef struct evp_hpke_key_st EVP_HPKE_KEY;
 typedef struct evp_kem_st EVP_KEM;
 typedef struct kem_key_st KEM_KEY;
-typedef struct evp_pkey_asn1_method_st EVP_PKEY_ASN1_METHOD;
 typedef struct evp_pkey_ctx_st EVP_PKEY_CTX;
-typedef struct evp_pkey_method_st EVP_PKEY_METHOD;
 typedef struct evp_pkey_st EVP_PKEY;
 typedef struct hmac_ctx_st HMAC_CTX;
 typedef struct md4_state_st MD4_CTX;

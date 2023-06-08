@@ -31,7 +31,6 @@
 #include "../../test/test_util.h"
 #include "../bn/internal.h"
 #include "../rand/internal.h"
-#include "../tls/internal.h"
 
 static const uint8_t kAESKey[16] = {
     'A','W','S','-','L','C','C','r','y','p','t','o',' ','K', 'e','y'};
@@ -252,6 +251,14 @@ static const uint8_t kAESKWCiphertext[72] = {
     0x11, 0x36, 0x5d, 0x49, 0x98, 0x1e, 0xbb, 0xd6, 0x0b, 0xf5, 0xb9, 0x64,
     0xa4, 0x30, 0x3e, 0x60, 0xf6, 0xc5, 0xff, 0x82, 0x30, 0x9a, 0xa7, 0x48,
     0x82, 0xe2, 0x00, 0xc1, 0xe9, 0xc2, 0x73, 0x6f, 0xbc, 0x89, 0x66, 0x9d};
+
+static const uint8_t kAESKWCiphertext_256[72] = {
+    0x27, 0x5b, 0x2b, 0x05, 0x32, 0xc9, 0xc3, 0x67, 0xde, 0x16, 0xce, 0xd7,
+    0xa8, 0x03, 0xc3, 0x58, 0x64, 0x8e, 0x8d, 0x53, 0x2c, 0x80, 0xac, 0x6f,
+    0xf7, 0x43, 0x2a, 0xfb, 0xb5, 0x1a, 0x53, 0xaf, 0x86, 0x3c, 0xce, 0x0d,
+    0x92, 0xd6, 0xce, 0x41, 0x78, 0x67, 0x8a, 0x67, 0x80, 0xbd, 0x0d, 0xa7,
+    0x00, 0xb6, 0xeb, 0x3c, 0x4c, 0x68, 0xb7, 0x03, 0x14, 0x89, 0xbf, 0xe7,
+    0x30, 0x41, 0x09, 0xb5, 0xe4, 0xf4, 0x91, 0x22, 0xc6, 0x2c, 0xee, 0x4a};
 
 static const uint8_t kAESKWPCiphertext[72] = {
     0x29, 0x5e, 0xb9, 0xea, 0x96, 0xa7, 0xa5, 0xca, 0xfa, 0xeb, 0xda, 0x78,
@@ -864,6 +871,18 @@ static const struct CipherTestVector {
         AWSLC_APPROVED,
     },
     {
+        EVP_aes_256_wrap(),
+        kAESKey_256,
+        sizeof(kAESKey_256),
+        nullptr,
+        0,
+        kPlaintext,
+        sizeof(kPlaintext),
+        kAESKWCiphertext_256,
+        sizeof(kAESKWCiphertext_256),
+        AWSLC_NOT_APPROVED,
+    },
+    {
         EVP_des_ede3(),
         kAESKey_192,
         sizeof(kAESKey_192),
@@ -923,7 +942,6 @@ static void TestOperation(const EVP_CIPHER *cipher, bool encrypt,
     ASSERT_LE(EVP_CIPHER_CTX_iv_length(ctx.get()), sizeof(kAESIV));
   }
 
-
   ASSERT_TRUE(EVP_CIPHER_CTX_set_key_length(ctx.get(), key.size()));
   CALL_SERVICE_AND_CHECK_APPROVED(approved,
     ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), cipher, nullptr, key.data(),
@@ -944,7 +962,7 @@ static void TestOperation(const EVP_CIPHER *cipher, bool encrypt,
   CALL_SERVICE_AND_CHECK_APPROVED(
       approved, EVP_Cipher(ctx2.get(), output, in.data(), in.size()));
   EXPECT_EQ(approved, expect_approved);
-  EXPECT_EQ(Bytes(out), Bytes(output, in.size()));
+  EXPECT_EQ(Bytes(out), Bytes(output, out.size()));
 }
 
 INSTANTIATE_TEST_SUITE_P(All, EVPServiceIndicatorTest,
@@ -1863,6 +1881,11 @@ struct RSATestVector kRSATestVectors[] = {
     { 3071, &EVP_sha512, true, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
     { 4096, &EVP_md5, false, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
 
+    // PKCS1v1.5 with SHA512/256 are not FIPS approved
+    { 2048, &EVP_sha512_256, false, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
+    { 3072, &EVP_sha512_256, false, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
+    { 4096, &EVP_sha512_256, false, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
+
     // RSA test cases that are approved.
     { 1024, &EVP_sha1, false, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
     { 1024, &EVP_sha256, false, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
@@ -1877,7 +1900,6 @@ struct RSATestVector kRSATestVectors[] = {
     { 2048, &EVP_sha256, false, AWSLC_APPROVED, AWSLC_APPROVED },
     { 2048, &EVP_sha384, false, AWSLC_APPROVED, AWSLC_APPROVED },
     { 2048, &EVP_sha512, false, AWSLC_APPROVED, AWSLC_APPROVED },
-    // SHA-512/256 is not supported for PKCS#1v1.5 in AWS-LC.
 
     { 2048, &EVP_sha1, true, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
     { 2048, &EVP_sha224, true, AWSLC_APPROVED, AWSLC_APPROVED },
@@ -1891,7 +1913,6 @@ struct RSATestVector kRSATestVectors[] = {
     { 3072, &EVP_sha256, false, AWSLC_APPROVED, AWSLC_APPROVED },
     { 3072, &EVP_sha384, false, AWSLC_APPROVED, AWSLC_APPROVED },
     { 3072, &EVP_sha512, false, AWSLC_APPROVED, AWSLC_APPROVED },
-    // SHA-512/256 is not supported for PKCS#1v1.5 in AWS-LC.
 
     { 3072, &EVP_sha1, true, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
     { 3072, &EVP_sha224, true, AWSLC_APPROVED, AWSLC_APPROVED },
@@ -1905,7 +1926,6 @@ struct RSATestVector kRSATestVectors[] = {
     { 4096, &EVP_sha256, false, AWSLC_APPROVED, AWSLC_APPROVED },
     { 4096, &EVP_sha384, false, AWSLC_APPROVED, AWSLC_APPROVED },
     { 4096, &EVP_sha512, false, AWSLC_APPROVED, AWSLC_APPROVED },
-    // SHA-512/256 is not supported for PKCS#1v1.5 in AWS-LC.
 
     { 4096, &EVP_sha1, true, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
     { 4096, &EVP_sha224, true, AWSLC_APPROVED, AWSLC_APPROVED },
@@ -2212,6 +2232,8 @@ static const struct ECDSATestVector kECDSATestVectors[] = {
      AWSLC_APPROVED},
     {NID_secp224r1, &EVP_sha512, AWSLC_APPROVED, AWSLC_APPROVED,
      AWSLC_APPROVED},
+    {NID_secp224r1, &EVP_sha512_256, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
+     AWSLC_NOT_APPROVED},
 
     {NID_X9_62_prime256v1, &EVP_sha1, AWSLC_APPROVED,
      AWSLC_NOT_APPROVED, AWSLC_APPROVED},
@@ -2223,6 +2245,8 @@ static const struct ECDSATestVector kECDSATestVectors[] = {
      AWSLC_APPROVED, AWSLC_APPROVED},
     {NID_X9_62_prime256v1, &EVP_sha512, AWSLC_APPROVED,
      AWSLC_APPROVED, AWSLC_APPROVED},
+    {NID_X9_62_prime256v1, &EVP_sha512_256, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
+     AWSLC_NOT_APPROVED},
 
     {NID_secp384r1, &EVP_sha1, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
      AWSLC_APPROVED},
@@ -2234,6 +2258,8 @@ static const struct ECDSATestVector kECDSATestVectors[] = {
      AWSLC_APPROVED},
     {NID_secp384r1, &EVP_sha512, AWSLC_APPROVED, AWSLC_APPROVED,
      AWSLC_APPROVED},
+    {NID_secp384r1, &EVP_sha512_256, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
+     AWSLC_NOT_APPROVED},
 
     {NID_secp521r1, &EVP_sha1, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
      AWSLC_APPROVED},
@@ -2245,6 +2271,8 @@ static const struct ECDSATestVector kECDSATestVectors[] = {
      AWSLC_APPROVED},
     {NID_secp521r1, &EVP_sha512, AWSLC_APPROVED, AWSLC_APPROVED,
      AWSLC_APPROVED},
+    {NID_secp521r1, &EVP_sha512_256, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
+     AWSLC_NOT_APPROVED},
 
     {NID_secp256k1, &EVP_sha1, AWSLC_NOT_APPROVED,
      AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED},
@@ -2255,6 +2283,8 @@ static const struct ECDSATestVector kECDSATestVectors[] = {
     {NID_secp256k1, &EVP_sha384, AWSLC_NOT_APPROVED,
      AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED},
     {NID_secp256k1, &EVP_sha512, AWSLC_NOT_APPROVED,
+     AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED},
+    {NID_secp256k1, &EVP_sha512_256, AWSLC_NOT_APPROVED,
      AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED},
 };
 
@@ -4006,7 +4036,7 @@ TEST(ServiceIndicatorTest, DRBG) {
 // Since this is running in FIPS mode it should end in FIPS
 // Update this when the AWS-LC version number is modified
 TEST(ServiceIndicatorTest, AWSLCVersionString) {
-  ASSERT_STREQ(awslc_version_string(), "AWS-LC FIPS 1.9.0");
+  ASSERT_STREQ(awslc_version_string(), "AWS-LC FIPS 1.10.0");
 }
 
 #else
@@ -4049,6 +4079,6 @@ TEST(ServiceIndicatorTest, BasicTest) {
 // Since this is not running in FIPS mode it shouldn't end in FIPS
 // Update this when the AWS-LC version number is modified
 TEST(ServiceIndicatorTest, AWSLCVersionString) {
-  ASSERT_STREQ(awslc_version_string(), "AWS-LC 1.9.0");
+  ASSERT_STREQ(awslc_version_string(), "AWS-LC 1.10.0");
 }
 #endif // AWSLC_FIPS

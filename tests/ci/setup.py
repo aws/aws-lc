@@ -16,14 +16,12 @@ setuptools.setup(
     author="AWS-LC",
 
     package_dir={"": "cdk"},
-    packages=setuptools.find_packages(where="cdk"),
+    packages=setuptools.find_namespace_packages(where="cdk"),
 
     install_requires=[
         # CDK dependencies.
-        "aws-cdk.core==1.190.0",
-        "aws-cdk.aws-codebuild==1.190.0",
-        "aws-cdk.aws-ecr==1.190.0",
-        "aws-cdk.aws-iam==1.190.0",
+        "aws-cdk-lib==2.74.0",
+        "constructs==10.1.314",
         # PyYAML is a YAML parser and emitter for Python. Used to read build_spec.yaml.
         "pyyaml==5.3.1",
         # A formatter for Python code.

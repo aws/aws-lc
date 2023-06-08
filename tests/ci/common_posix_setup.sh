@@ -1,9 +1,6 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 
-# If having trouble reaching proxy.golang.org, uncomment the following:
-#go env -w GOPROXY=direct
-
 if [ -v CODEBUILD_SRC_DIR ]; then
   SRC_ROOT="$CODEBUILD_SRC_DIR"
 else
@@ -14,6 +11,8 @@ echo "$SRC_ROOT"
 BUILD_ROOT="${SRC_ROOT}/test_build_dir"
 echo "$BUILD_ROOT"
 
+PLATFORM=$(uname -m)
+
 NUM_CPU_THREADS=''
 KERNEL_NAME=$(uname -s)
 if [[ "${KERNEL_NAME}" == "Darwin" ]]; then
@@ -22,9 +21,23 @@ if [[ "${KERNEL_NAME}" == "Darwin" ]]; then
 else
   # Assume KERNEL_NAME is Linux.
   NUM_CPU_THREADS=$(grep -c ^processor /proc/cpuinfo)
+  if [[ $PLATFORM == "aarch64" ]]; then
+    CPU_PART=$(grep -Po -m 1 'CPU part.*:\s\K.*' /proc/cpuinfo)
+    NUM_CPU_PART=$(grep -c $CPU_PART /proc/cpuinfo)
+    # Set capabilities via the static flags for valgrind tests.
+    # This is because valgrind reports the instruction
+    #   mrs %0, MIDR_EL1
+    # which fetches the CPU part number, as illegal.
+    # For some reason, valgrind also reports SHA512 instructions illegal,
+    # so the SHA512 capability is not included below.
+    VALGRIND_STATIC_CAP_FLAGS="-DOPENSSL_STATIC_ARMCAP -DOPENSSL_STATIC_ARMCAP_NEON"
+    VALGRIND_STATIC_CAP_FLAGS+=" -DOPENSSL_STATIC_ARMCAP_AES -DOPENSSL_STATIC_ARMCAP_PMULL "
+    VALGRIND_STATIC_CAP_FLAGS+=" -DOPENSSL_STATIC_ARMCAP_SHA1 -DOPENSSL_STATIC_ARMCAP_SHA256 "
+    if [[ $NUM_CPU_PART == $NUM_CPU_THREADS ]] && [[ ${CPU_PART} =~ 0x[dD]40 ]]; then
+      VALGRIND_STATIC_CAP_FLAGS+=" -DOPENSSL_STATIC_ARMCAP_SHA3 -DOPENSSL_STATIC_ARMCAP_NEOVERSE_V1"
+    fi
+  fi
 fi
-
-PLATFORM=$(uname -m)
 
 # Pick cmake3 if possible. We don't know of any OS that installs a cmake3
 # executable that is not at least version 3.0.
@@ -75,7 +88,6 @@ function generate_symbols_file {
   # read_symbols.go currently only support static libraries
   if [ ! -f  "$BUILD_ROOT"/crypto/libcrypto.a ]; then
     echo "Static library not found: ${BUILD_ROOT}/crypto/libcrypto.a"
-    print_system_and_dependency_information
     exit 1
   fi
 
@@ -140,8 +152,31 @@ function fips_build_and_test {
 }
 
 function build_and_test_valgrind {
-  run_build "$@"
-  run_cmake_custom_target 'run_tests_valgrind' && run_cmake_custom_target 'run_ssl_runner_tests_valgrind'
+  if [[ $PLATFORM == "aarch64" ]]; then
+    run_build "$@" -DCMAKE_C_FLAGS="$VALGRIND_STATIC_CAP_FLAGS"
+    run_cmake_custom_target 'run_tests_valgrind'
+
+    # Disable all capabilities and run again
+    # (We don't use the env. variable OPENSSL_armcap because it is currently
+    #  restricted to the case of runtime discovery of capabilities
+    #  in cpu_aarch64_linux.c)
+    run_build "$@" -DCMAKE_C_FLAGS="-DOPENSSL_STATIC_ARMCAP"
+    run_cmake_custom_target 'run_tests_valgrind'
+  else
+    run_build "$@"
+    run_cmake_custom_target 'run_tests_valgrind'
+  fi
+}
+
+function build_and_test_ssl_runner_valgrind {
+  export AWS_LC_GO_TEST_TIMEOUT="60m"
+
+  if [[ $PLATFORM == "aarch64" ]]; then
+    run_build "$@" -DCMAKE_C_FLAGS="$VALGRIND_STATIC_CAP_FLAGS"
+  else
+    run_build "$@"
+  fi
+    run_cmake_custom_target 'run_ssl_runner_tests_valgrind'
 }
 
 function build_and_test_with_sde {
@@ -169,26 +204,24 @@ function print_executable_information {
   fi
 }
 
-function print_system_and_dependency_information {
-  print_executable_information "cmake" "--version" "CMake version"
-  print_executable_information "cmake3" "--version" "CMake version (cmake3 executable)"
-  print_executable_information "go" "version" "Go version"
-  print_executable_information "perl" "--version" "Perl version"
-  # Ninja executable names are not uniform over operating systems
-  print_executable_information "ninja-build" "--version" "Ninja version (ninja-build executable)"
-  print_executable_information "ninja" "--version" "Ninja version (ninja executable)"
-  print_executable_information "gcc" "--version" "gcc version"
-  print_executable_information "g++" "--version" "g++ version"
-  print_executable_information "clang" "--version" "clang version"
-  print_executable_information "clang++" "--version" "clang++ version"
-  print_executable_information "cc" "--version" "cc version"
-  print_executable_information "c++" "--version" "c++ version"
-  print_executable_information "make" "--version" "Make version"
-  print_executable_information "rustup" "show" "Rust toolchain"
-  echo ""
-  echo "Operating system information:"
-  uname -a
-  echo ""
-  echo "Environment variables"
-  env
-}
+print_executable_information "cmake" "--version" "CMake version"
+print_executable_information "cmake3" "--version" "CMake version (cmake3 executable)"
+print_executable_information "go" "version" "Go version"
+print_executable_information "perl" "--version" "Perl version"
+# Ninja executable names are not uniform over operating systems
+print_executable_information "ninja-build" "--version" "Ninja version (ninja-build executable)"
+print_executable_information "ninja" "--version" "Ninja version (ninja executable)"
+print_executable_information "gcc" "--version" "gcc version"
+print_executable_information "g++" "--version" "g++ version"
+print_executable_information "clang" "--version" "clang version"
+print_executable_information "clang++" "--version" "clang++ version"
+print_executable_information "cc" "--version" "cc version"
+print_executable_information "c++" "--version" "c++ version"
+print_executable_information "make" "--version" "Make version"
+print_executable_information "rustup" "show" "Rust toolchain"
+echo ""
+echo "Operating system information:"
+uname -a
+echo ""
+echo "Environment variables:"
+env

@@ -193,6 +193,13 @@ OPENSSL_EXPORT X509_NAME *X509_get_subject_name(const X509 *x509);
 // object.
 OPENSSL_EXPORT X509_PUBKEY *X509_get_X509_PUBKEY(const X509 *x509);
 
+// X509_get0_pubkey returns |x509|'s public key as an |EVP_PKEY|, or NULL if the
+// public key was unsupported or could not be decoded. It is similar to
+// |X509_get_pubkey|, but it does not increment the reference count of the
+// returned |EVP_PKEY|. This means that the caller must not free the result
+// after use.
+OPENSSL_EXPORT EVP_PKEY *X509_get0_pubkey(const X509 *x);
+
 // X509_get_pubkey returns |x509|'s public key as an |EVP_PKEY|, or NULL if the
 // public key was unsupported or could not be decoded. This function returns a
 // reference to the |EVP_PKEY|. The caller must release the result with
@@ -1078,10 +1085,9 @@ OPENSSL_EXPORT X509_EXTENSION *d2i_X509_EXTENSION(X509_EXTENSION **out,
                                                   const uint8_t **inp,
                                                   long len);
 
-// i2d_X509_EXTENSION marshals |alg| as a DER-encoded X.509 Extension (RFC
+// i2d_X509_EXTENSION marshals |ex| as a DER-encoded X.509 Extension (RFC
 // 5280), as described in |i2d_SAMPLE|.
-OPENSSL_EXPORT int i2d_X509_EXTENSION(const X509_EXTENSION *alg,
-                                      uint8_t **outp);
+OPENSSL_EXPORT int i2d_X509_EXTENSION(const X509_EXTENSION *ex, uint8_t **outp);
 
 // X509_EXTENSION_dup returns a newly-allocated copy of |ex|, or NULL on error.
 // This function works by serializing the structure, so if |ex| is incomplete,
@@ -1918,6 +1924,17 @@ DECLARE_ASN1_FUNCTIONS_const(NETSCAPE_SPKAC)
 
 OPENSSL_EXPORT X509_INFO *X509_INFO_new(void);
 OPENSSL_EXPORT void X509_INFO_free(X509_INFO *a);
+
+// X509_NAME_oneline encodes a textual version of |a| into |buf|.
+// If |buf| is NULL then a dynamically allocated buffer is created and returned,
+// and |size| is ignored.
+//
+// Otherwise, at most |size| bytes will be written to |buf|, including null
+// terminator, and |buf| is returned.
+//
+// Returns NULL if |size| <= 0 && |buf| != NULL.
+//
+// Otherwise returns NULL on error and sets the OpenSSL reason code.
 OPENSSL_EXPORT char *X509_NAME_oneline(const X509_NAME *a, char *buf, int size);
 
 OPENSSL_EXPORT int ASN1_digest(i2d_of_void *i2d, const EVP_MD *type, char *data,
@@ -2619,6 +2636,8 @@ OPENSSL_EXPORT int X509_OBJECT_up_ref_count(X509_OBJECT *a);
 OPENSSL_EXPORT void X509_OBJECT_free_contents(X509_OBJECT *a);
 OPENSSL_EXPORT int X509_OBJECT_get_type(const X509_OBJECT *a);
 OPENSSL_EXPORT X509 *X509_OBJECT_get0_X509(const X509_OBJECT *a);
+// X509_OBJECT_get0_X509_CRL returns the |X509_CRL| associated with |a|
+OPENSSL_EXPORT X509_CRL *X509_OBJECT_get0_X509_CRL(const X509_OBJECT *a);
 OPENSSL_EXPORT X509_STORE *X509_STORE_new(void);
 OPENSSL_EXPORT int X509_STORE_up_ref(X509_STORE *store);
 OPENSSL_EXPORT void X509_STORE_free(X509_STORE *v);
@@ -2845,12 +2864,8 @@ OPENSSL_EXPORT int X509_VERIFY_PARAM_get_depth(const X509_VERIFY_PARAM *param);
 OPENSSL_EXPORT const char *X509_VERIFY_PARAM_get0_name(
     const X509_VERIFY_PARAM *param);
 
-OPENSSL_EXPORT int X509_VERIFY_PARAM_add0_table(X509_VERIFY_PARAM *param);
-OPENSSL_EXPORT int X509_VERIFY_PARAM_get_count(void);
-OPENSSL_EXPORT const X509_VERIFY_PARAM *X509_VERIFY_PARAM_get0(int id);
 OPENSSL_EXPORT const X509_VERIFY_PARAM *X509_VERIFY_PARAM_lookup(
     const char *name);
-OPENSSL_EXPORT void X509_VERIFY_PARAM_table_cleanup(void);
 
 
 #if defined(__cplusplus)
