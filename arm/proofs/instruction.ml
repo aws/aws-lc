@@ -1072,6 +1072,17 @@ let arm_SBCS = define
          CF := (&(val m) - (&(val n) + &c):int = &(val d)) ,,
          VF := ~(ival m - (ival n + &c) = ival d)) s`;;
 
+let arm_SBFM = define
+ `arm_SBFM Rd Rn immr imms =
+    \s. let x:N word = read Rn (s:armstate) in
+        let y:N word =
+          if imms >= immr then
+            word_sxfrom (imms - immr) (word_subword x (immr,(imms-immr)+1))
+          else
+            word_sxfrom (dimindex(:N) - (immr - imms))
+             (word_shl (word_subword x (0,imms+1)) (dimindex(:N) - immr)) in
+        (Rd := y) s`;;
+
 (* SLI (vector), Q = 1 case only (datasize = 128) *)
 let arm_SLI_VEC = define
  `arm_SLI_VEC Rd Rn shiftamnt esize =
@@ -1107,7 +1118,7 @@ let arm_SHRN = define
           else if esize = 16 then
             usimd4 (\(x:(32)word).
               word_subword (word_ushr x amnt) (0,16):(16)word) n
-          else // esize = 8 
+          else // esize = 8
             usimd8 (\(x:(16)word).
               word_subword (word_ushr x amnt) (0,8):(8)word) n in
         // equivalent to word_zx res:(128)word, but use word_subword instead
@@ -1515,15 +1526,21 @@ let ARM_INSTRUCTION_ALIASES =
   arm_UMNEGL; arm_UMULL];;
 
 (* ------------------------------------------------------------------------- *)
-(* These two are treated by ARM as aliases, but since they are such          *)
+(* These three are treated by ARM as aliases, but since they are such        *)
 (* natural top-level operations we define them a priori then prove           *)
-(* they are equivalent to their UBFM instances given some sideconditions.    *)
-(* The decoder will return them directly instead of expanding to UBFM.       *)
+(* they are equivalent to their xBFM instances given some sideconditions.    *)
+(* The decoder will return them directly instead of expanding to SBFM/UBFM.  *)
 (*                                                                           *)
 (* Note that you can't actually encode a left shift by zero bits; it         *)
 (* is instead interpreted as a right shift by zero bits. However the alias   *)
 (* arm_LSL with a zero shift does in fact mean the same thing anyway.        *)
 (* ------------------------------------------------------------------------- *)
+
+let arm_ASR = define
+ `arm_ASR Rd Rn imm =
+    \s. let x:N word = read Rn (s:armstate) in
+        let y = word_ishr x imm in
+        (Rd := y) s`;;
 
 let arm_LSL = define
  `arm_LSL Rd Rn imm =
@@ -1536,6 +1553,25 @@ let arm_LSR = define
        \s. let x:N word = read Rn (s:armstate) in
            let y = word_ushr x imm in
            (Rd := y) s`;;
+
+let arm_ASR_ALIAS = prove
+ (`immr < dimindex(:N) /\ imms = dimindex(:N) - 1
+   ==> arm_SBFM (Rd:(armstate,N word)component) Rn immr imms =
+       arm_ASR Rd Rn immr`,
+  REPEAT STRIP_TAC THEN GEN_REWRITE_TAC I [FUN_EQ_THM] THEN
+  X_GEN_TAC `s:armstate` THEN ASM_REWRITE_TAC[arm_ASR; arm_SBFM] THEN
+  LET_TAC THEN CONV_TAC(TOP_DEPTH_CONV let_CONV) THEN
+  AP_THM_TAC THEN AP_TERM_TAC THEN
+  ASM_SIMP_TAC[ARITH_RULE `r < n ==> n - 1 >= r`] THEN
+  REWRITE_TAC[word_sxfrom] THEN
+  ASM_SIMP_TAC[ARITH_RULE `r < n ==> n - 1 - (n - 1 - r) = r`] THEN
+  SIMP_TAC[WORD_EQ_BITS_ALT; BIT_WORD_ISHR; BIT_WORD_SHL;
+           BIT_WORD_SUBWORD] THEN
+  X_GEN_TAC `i:num` THEN DISCH_TAC THEN
+  REPEAT(COND_CASES_TAC THEN ASM_REWRITE_TAC[]) THEN
+  ASM_SIMP_TAC[ARITH_RULE `r < n ==> r + n - 1 - r = n - 1`] THEN
+  REWRITE_TAC[ARITH_RULE `r + (i + r) - r:num = i + r`] THEN
+  EQ_TAC THEN STRIP_TAC THEN ASM_REWRITE_TAC[] THEN ASM_ARITH_TAC);;
 
 let arm_LSL_ALIAS = prove
  (`immr < dimindex(:N) /\ imms + 1 = immr
@@ -1805,7 +1841,7 @@ let ARM_OPERATION_CLAUSES =
   map (CONV_RULE(TOP_DEPTH_CONV let_CONV) o SPEC_ALL)
     (*** Alphabetically sorted, new alphabet appears in the next line ***)
       [arm_ADC; arm_ADCS_ALT; arm_ADD; arm_ADD_VEC_ALT; arm_ADDS_ALT; arm_ADR;
-       arm_AND; arm_AND_VEC; arm_ANDS; arm_ASRV;
+       arm_AND; arm_AND_VEC; arm_ANDS; arm_ASR; arm_ASRV;
        arm_B; arm_BIC; arm_BICS; arm_BL; arm_BL_ABSOLUTE; arm_Bcond;
        arm_CBNZ_ALT; arm_CBZ_ALT; arm_CCMN; arm_CCMP; arm_CLZ; arm_CSEL;
        arm_CSINC; arm_CSINV; arm_CSNEG;
@@ -1816,7 +1852,7 @@ let ARM_OPERATION_CLAUSES =
        arm_MUL_VEC_ALT;
        arm_ORN; arm_ORR; arm_ORR_VEC;
        arm_RET; arm_REV64_VEC_ALT; arm_RORV;
-       arm_SBC; arm_SBCS_ALT; arm_SHL_VEC_ALT; arm_SHRN_ALT;
+       arm_SBC; arm_SBCS_ALT; arm_SBFM; arm_SHL_VEC_ALT; arm_SHRN_ALT;
        arm_SLI_VEC_ALT; arm_SUB; arm_SUBS_ALT;
        arm_UADDLP_ALT; arm_UBFM; arm_UMOV; arm_UMADDL; arm_UMLAL_VEC_ALT;
        arm_UMSUBL; arm_UMULL_VEC_ALT; arm_UMULH; arm_USRA_VEC_ALT; arm_UZP1_ALT;

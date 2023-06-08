@@ -60,6 +60,11 @@ let arm_lsvop = new_definition `arm_lsvop (op2:2 word)
   | [2:2] -> SOME (arm_ASRV Rd Rn Rm)
   | [3:2] -> SOME (arm_RORV Rd Rn Rm)`;;
 
+let arm_bfmop = new_definition `arm_bfmop (u:bool)
+    (Rd:(armstate,N word)component) Rn immr imms =
+  if u then SOME(arm_UBFM Rd Rn immr imms)
+  else SOME(arm_SBFM Rd Rn immr imms)`;;
+
 let arm_ldst = new_definition `arm_ldst ld x Rt =
   if x then (if ld then arm_LDR else arm_STR) (XREG' Rt)
        else (if ld then arm_LDR else arm_STR) (WREG' Rt)`;;
@@ -215,11 +220,11 @@ let decode = new_definition `!w:int32. decode w =
   | [sf; 0b0011010110:10; Rm:5; 0b0010:4; op2:2; Rn:5; Rd:5] ->
     if sf then arm_lsvop op2 (XREG' Rd) (XREG' Rn) (XREG' Rm)
           else arm_lsvop op2 (WREG' Rd) (WREG' Rn) (WREG' Rm)
-  | [sf; 0b10100110:8; N; immr:6; imms:6; Rn:5; Rd:5] ->
+  | [sf; uopc; 0b0100110:7; N; immr:6; imms:6; Rn:5; Rd:5] ->
     if ~(sf <=> N) then NONE
-    else if sf then SOME (arm_UBFM (XREG' Rd) (XREG' Rn) (val immr) (val imms))
+    else if sf then arm_bfmop uopc (XREG' Rd) (XREG' Rn) (val immr) (val imms)
     else if val immr >= 32 \/ val imms >= 32 then NONE
-    else SOME (arm_UBFM (WREG' Rd) (WREG' Rn) (val immr) (val imms))
+    else arm_bfmop uopc (WREG' Rd) (WREG' Rn) (val immr) (val imms)
   | [sf; 0b101101011000000000100:21; Rn:5; Rd:5] ->
     SOME (if sf then arm_CLZ (XREG' Rd) (XREG' Rn)
           else arm_CLZ (WREG' Rd) (WREG' Rn))
@@ -277,7 +282,7 @@ let decode = new_definition `!w:int32. decode w =
       let elements = datasize DIV esize in
       // sub_op is false
       SOME (arm_ADD_VEC (QREG' Rd) (QREG' Rn) (QREG' Rm) esize datasize)
-  
+
   | [0:1; q; 0b001110001:9; Rm:5; 0b000111:6; Rn:5; Rd:5] ->
     // AND
     SOME (arm_AND_VEC (QREG' Rd) (QREG' Rn) (QREG' Rm) (if q then 128 else 64))
@@ -643,6 +648,9 @@ let ALIAS_CONV =
   let MOVZ_CONV =
     (fun th -> MP th (EQT_ELIM (NUM_LT_CONV (lhand (concl th))))) o
     PART_MATCH (lhs o rand) (GSYM arm_MOVZ_ALT)
+  and ASR_CONV =
+    (fun th -> MP th (EQT_ELIM(arith_sideconv(lhand(concl th))))) o
+    PART_MATCH (lhs o rand) arm_ASR_ALIAS
   and LSR_CONV =
     (fun th -> MP th (EQT_ELIM(arith_sideconv(lhand(concl th))))) o
     PART_MATCH (lhs o rand) arm_LSR_ALIAS
@@ -652,6 +660,7 @@ let ALIAS_CONV =
     RAND_CONV arith_sideconv in
   let net = itlist (uncurry net_of_conv)
     [`arm_MOVZ (Rd:(armstate,N word)component) (word imm) 0`,MOVZ_CONV;
+     `arm_SBFM (Rd:(armstate,N word)component) Rn immr imms`,ASR_CONV;
      `arm_UBFM (Rd:(armstate,N word)component) Rn immr imms`,
      (LSR_CONV ORELSEC LSL_CONV)]
     net in
@@ -711,6 +720,7 @@ let PURE_DECODE_CONV =
   and pth_csop = mk_pth_split arm_csop
   and pth_ccop = mk_pth_split arm_ccop
   and pth_lsvop = mk_pth_split arm_lsvop
+  and pth_bfmop = mk_pth_split arm_bfmop
   and pth_ldst = mk_pth arm_ldst
   and pth_ldst_q = mk_pth arm_ldst_q
   and pth_ldstrb = mk_pth arm_ldstb
@@ -888,6 +898,9 @@ let PURE_DECODE_CONV =
   | Comb(Comb(Comb(Comb(Comb(Const("arm_ccop",_),_),rn),_),_),_) ->
     let N = dest_word_ty (snd (dest_component (type_of rn))) in
     eval_nary (pth_ccop N) t F
+  | Comb(Comb(Comb(Comb(Comb(Const("arm_bfmop",_),_),rn),_),_),_) ->
+    let N = dest_word_ty (snd (dest_component (type_of rn))) in
+    eval_nary (pth_bfmop N) t F
   | Comb(Comb(Comb(Const("arm_ldst",_),_),_),_) -> eval_nary pth_ldst t F
   | Comb(Comb(Const("arm_ldst_q",_),_),_) -> eval_nary pth_ldst_q t F
   | Comb(Comb(Const("arm_ldstb",_),_),_) -> eval_nary pth_ldstrb t F

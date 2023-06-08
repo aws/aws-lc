@@ -500,6 +500,8 @@ void call_word_clz(void) repeatmore(10,word_clz(b0[0]))
 
 void call_word_ctz(void) repeatmore(10,word_ctz(b0[0]))
 
+void call_word_divstep59(void) repeat(word_divstep59((void*)b0,b1[0],b2[0],b3[0]))
+
 void call_word_max(void) repeatmore(10,word_max(b0[0],b1[0]))
 
 void call_word_min(void) repeatmore(10,word_min(b0[0],b1[0]))
@@ -1122,6 +1124,7 @@ int main(int argc, char *argv[])
   timingtest(all,"word_bytereverse",call_word_bytereverse);
   timingtest(all,"word_clz",call_word_clz);
   timingtest(all,"word_ctz",call_word_ctz);
+  timingtest(all,"word_divstep59",call_word_divstep59);
   timingtest(all,"word_max",call_word_max);
   timingtest(all,"word_min",call_word_min);
   timingtest(all,"word_negmodinv",call_word_negmodinv);

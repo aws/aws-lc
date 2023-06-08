@@ -2451,6 +2451,11 @@ let DISCARD_MATCHING_ASSUMPTIONS pats =
   DISCARD_ASSUMPTIONS_TAC
    (fun th -> exists (fun ptm -> can (term_match [] ptm) (concl th)) pats);;
 
+let DISCARD_NONMATCHING_ASSUMPTIONS pats =
+  DISCARD_ASSUMPTIONS_TAC
+   (fun th ->
+      not(exists (fun ptm -> can (term_match [] ptm) (concl th)) pats));;
+
 let DISCARD_FLAGS_TAC =
   DISCARD_MATCHING_ASSUMPTIONS
    [`read CF s = y`; `read PF s = y`; `read AF s = y`;
@@ -2521,6 +2526,23 @@ let X86_GEN_ACCSTEPS_TAC acc_preproc th anums snums =
 
 let X86_ACCSTEPS_TAC th anums snums =
   X86_GEN_ACCSTEPS_TAC (fun _ -> ALL_TAC) th anums snums;;
+
+let X86_QUICKSTEP_TAC th pats =
+  let pats' =
+   [`nonoverlapping_modulo a b c`; `bytes_loaded a b c`;
+    `MAYCHANGE a b c`; `(a ,, b) c d`; `read RIP s = x`] @ pats in
+  fun s -> time (X86_VERBOSE_STEP_TAC th s) THEN
+           DISCARD_NONMATCHING_ASSUMPTIONS pats' THEN
+           DISCARD_OLDSTATE_TAC s;;
+
+let X86_QUICKSTEPS_TAC th pats snums =
+  MAP_EVERY (X86_QUICKSTEP_TAC th pats) (statenames "s" snums);;
+
+let X86_QUICKSIM_TAC execth pats snums =
+  REWRITE_TAC(!simulation_precanon_thms) THEN
+  ENSURES_INIT_TAC "s0" THEN X86_QUICKSTEPS_TAC execth pats snums THEN
+  ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
+  REWRITE_TAC[VAL_WORD_SUB_EQ_0] THEN ASM_REWRITE_TAC[];;
 
 (* ------------------------------------------------------------------------- *)
 (* More convenient wrappings of basic simulation flow.                       *)

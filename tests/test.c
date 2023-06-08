@@ -822,6 +822,38 @@ void reference_tolebytes(uint64_t k,uint8_t *z,uint64_t n,uint64_t *x)
     z[i] = x[i/8] >> (8*(i%8));
 }
 
+int64_t reference_divstep(int64_t m[2][2],int n,int64_t din,int64_t fin,int64_t gin)
+{ int64_t d, f, g, t;
+  int64_t u = 1, v = 0, r = 0, s = 1;
+  int i;
+
+  if (n > 61)
+   { printf("reference_divstep: parameter too big\n");
+     exit(1);
+   }
+
+  fin &= 0x1FFFFFFFFFFFFFFF;
+  gin &= 0x1FFFFFFFFFFFFFFF;
+  d = din; f = fin; g = gin;
+
+  for (i = 0; i < n; ++i)
+    if ((d > 0) && (g & 1))
+       d = 2 - d, t = g, g = (g - f) >> 1, f = t,
+                  t = r, r = (r - u), u = t << 1,
+                  t = s, s = (s - v), v = t << 1;
+     else if (g & 1)
+       d = 2 + d, g = (g + f) >> 1,
+                  r = (r + u), u = u << 1,
+                  s = (s + v), v = v << 1;
+     else d = 2 + d, g = g >> 1, u = u << 1, v = v << 1;
+
+  m[0][0] = u;
+  m[0][1] = v;
+  m[1][0] = r;
+  m[1][1] = s;
+  return d;
+}
+
 // ****************************************************************************
 // References for point operations (sometimes using generic bignum_xxx)
 // ****************************************************************************
@@ -9860,6 +9892,42 @@ int test_word_ctz(void)
   return 0;
 }
 
+int test_word_divstep59(void)
+{ uint64_t i;
+  printf("Testing word_divstep59 with %d cases\n",tests);
+  for (i = 0; i < tests; ++i)
+   { int64_t m1[2][2], m2[2][2];
+
+     int64_t d = random64(); d &= 0xFFFFFFFFFFFFFFF; d |= 1;
+     if ((rand() & 15) < 14) d &= 0xF;
+     if (rand() & 1) d = -d;
+     int64_t f = random64(); f |= 1;
+     int64_t g = random64();
+
+     int64_t d1 = word_divstep59(m1,d,f,g);
+     int64_t d2 = reference_divstep(m2,59,d,f,g);
+
+     if (!((d1 == d2) && (m1[0][0] == m2[0][0]) && (m1[0][1] == m2[0][1]) &&
+           (m1[1][0] == m2[1][0]) && (m1[1][1] == m2[1][1])))
+      { printf("### Inputs divstep59(0x%016"PRIx64",0x%016"PRIx64",0x%016"PRIx64"\n",d,f,g);
+        printf("### Disparity-d: d = 0x%016"PRIx64" not 0x%016"PRIx64"\n",d1,d2);
+        printf("### Disparity-m00: m1[0][0] = 0x%016"PRIx64" not 0x%016"PRIx64"\n",m1[0][0],m2[0][0]);
+        printf("### Disparity-m01: m1[0][1] = 0x%016"PRIx64" not 0x%016"PRIx64"\n",m1[0][1],m2[0][1]);
+        printf("### Disparity-m10: m1[1][0] = 0x%016"PRIx64" not 0x%016"PRIx64"\n",m1[1][0],m2[1][0]);
+        printf("### Disparity-m11: m1[1][1] = 0x%016"PRIx64" not 0x%016"PRIx64"\n",m1[1][1],m2[1][1]);
+        return 1;
+
+      }
+    else if (VERBOSE)
+      { printf("### OK: m1[0][0] * f + m1[0][1] * g = 0x%016"PRIx64" * 0x%016"PRIx64" + 0x%016"PRIx64" * 0x%016"PRIx64
+               " = 0x%016"PRIx64"\n",m1[0][0],f,m1[0][1],g,m1[0][0] * f + m1[0][1] * g);
+      }
+
+    }
+  printf("All OK\n");
+  return 0;
+}
+
 int test_word_max(void)
 { uint64_t i, a, b, x, y;
   printf("Testing word_max with %d cases\n",tests);
@@ -10831,6 +10899,7 @@ int main(int argc, char *argv[])
   functionaltest(all,"word_bytereverse",test_word_bytereverse);
   functionaltest(all,"word_clz",test_word_clz);
   functionaltest(all,"word_ctz",test_word_ctz);
+  functionaltest(all,"word_divstep59",test_word_divstep59);
   functionaltest(all,"word_max",test_word_max);
   functionaltest(all,"word_min",test_word_min);
   functionaltest(all,"word_negmodinv",test_word_negmodinv);

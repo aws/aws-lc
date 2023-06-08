@@ -932,6 +932,10 @@ extern uint64_t word_clz (uint64_t a);
 // Input a; output function return
 extern uint64_t word_ctz (uint64_t a);
 
+// Perform 59 "divstep" iterations and return signed matrix of updates
+// Inputs d, f, g; output m[2][2] and function return
+extern int64_t word_divstep59(int64_t m[2][2],int64_t d,uint64_t f,uint64_t g);
+
 // Return maximum of two unsigned 64-bit words
 // Inputs a, b; output function return
 extern uint64_t word_max (uint64_t a, uint64_t b);
