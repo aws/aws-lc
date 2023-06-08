@@ -488,6 +488,17 @@ static int ssl_read_counter(const SSL_CTX *ctx, int counter) {
   return counter;
 }
 
+void SSL_CTX_set_aes_hw_override_for_testing(SSL_CTX *ctx,
+                                             bool override_value) {
+  ctx->aes_hw_override = true;
+  ctx->aes_hw_override_value = override_value;
+}
+
+void SSL_set_aes_hw_override_for_testing(SSL *ssl, bool override_value) {
+  ssl->config->aes_hw_override = true;
+  ssl->config->aes_hw_override_value = override_value;
+}
+
 BSSL_NAMESPACE_END
 
 using namespace bssl;
@@ -528,7 +539,9 @@ ssl_ctx_st::ssl_ctx_st(const SSL_METHOD *ssl_method)
       allow_unknown_alpn_protos(false),
       false_start_allowed_without_alpn(false),
       handoff(false),
-      enable_early_data(false) {
+      enable_early_data(false),
+      aes_hw_override(false),
+      aes_hw_override_value(false) {
   CRYPTO_MUTEX_init(&lock);
   CRYPTO_new_ex_data(&ex_data);
 }
@@ -645,6 +658,8 @@ SSL *SSL_new(SSL_CTX *ctx) {
   ssl->config->retain_only_sha256_of_client_certs =
       ctx->retain_only_sha256_of_client_certs;
   ssl->config->permute_extensions = ctx->permute_extensions;
+  ssl->config->aes_hw_override = ctx->aes_hw_override;
+  ssl->config->aes_hw_override_value = ctx->aes_hw_override_value;
 
   if (!ssl->config->supported_group_list.CopyFrom(ctx->supported_group_list) ||
       !ssl->config->alpn_client_proto_list.CopyFrom(
@@ -2043,12 +2058,18 @@ const char *SSL_get_cipher_list(const SSL *ssl, int n) {
 }
 
 int SSL_CTX_set_cipher_list(SSL_CTX *ctx, const char *str) {
-  return ssl_create_cipher_list(&ctx->cipher_list, str, false /* not strict */,
+  const bool has_aes_hw = ctx->aes_hw_override ? ctx->aes_hw_override_value
+                                               : EVP_has_aes_hardware();
+  return ssl_create_cipher_list(&ctx->cipher_list, has_aes_hw, str,
+                                false /* not strict */,
                                 false /* don't configure TLSv1.3 ciphers */);
 }
 
 int SSL_CTX_set_strict_cipher_list(SSL_CTX *ctx, const char *str) {
-  return ssl_create_cipher_list(&ctx->cipher_list, str, true /* strict */,
+  const bool has_aes_hw = ctx->aes_hw_override ? ctx->aes_hw_override_value
+                                               : EVP_has_aes_hardware();
+  return ssl_create_cipher_list(&ctx->cipher_list, has_aes_hw, str,
+                                true /* strict */,
                                 false /* don't configure TLSv1.3 ciphers */);
 }
 
@@ -2056,13 +2077,18 @@ int SSL_set_cipher_list(SSL *ssl, const char *str) {
   if (!ssl->config) {
     return 0;
   }
-  return ssl_create_cipher_list(&ssl->config->cipher_list, str,
+  const bool has_aes_hw = ssl->config->aes_hw_override
+                              ? ssl->config->aes_hw_override_value
+                              : EVP_has_aes_hardware();
+  return ssl_create_cipher_list(&ssl->config->cipher_list, has_aes_hw, str,
                                 false /* not strict */,
                                 false /* don't configure TLSv1.3 ciphers */);
 }
 
 int SSL_CTX_set_ciphersuites(SSL_CTX *ctx, const char *str) {
-  return ssl_create_cipher_list(&ctx->tls13_cipher_list, str,
+  const bool has_aes_hw = ctx->aes_hw_override ? ctx->aes_hw_override_value
+                                               : EVP_has_aes_hardware();
+  return ssl_create_cipher_list(&ctx->tls13_cipher_list, has_aes_hw, str,
                                 false /* not strict */,
                                 true /* only configure TLSv1.3 ciphers */);
 }
@@ -2071,7 +2097,10 @@ int SSL_set_strict_cipher_list(SSL *ssl, const char *str) {
   if (!ssl->config) {
     return 0;
   }
-  return ssl_create_cipher_list(&ssl->config->cipher_list, str,
+  const bool has_aes_hw = ssl->config->aes_hw_override
+                              ? ssl->config->aes_hw_override_value
+                              : EVP_has_aes_hardware();
+  return ssl_create_cipher_list(&ssl->config->cipher_list, has_aes_hw, str,
                                 true /* strict */,
                                 false /* don't configure TLSv1.3 ciphers */);
 }
@@ -3164,7 +3193,8 @@ int SSL_CTX_set_tlsext_status_cb(SSL_CTX *ctx,
   return 1;
 }
 
-int SSL_CTX_get_tlsext_status_cb(SSL_CTX *ctx, int (**callback)(SSL *, void *)) {
+int SSL_CTX_get_tlsext_status_cb(SSL_CTX *ctx,
+                                 int (**callback)(SSL *, void *)) {
   *callback = ctx->legacy_ocsp_callback;
   return 1;
 }

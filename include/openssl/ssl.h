@@ -4656,13 +4656,6 @@ OPENSSL_EXPORT const char *SSL_CIPHER_description(const SSL_CIPHER *cipher,
 // SSL_CIPHER_get_version returns the string "TLSv1/SSLv3".
 OPENSSL_EXPORT const char *SSL_CIPHER_get_version(const SSL_CIPHER *cipher);
 
-// SSL_CIPHER_get_rfc_name returns a newly-allocated string containing the
-// result of |SSL_CIPHER_standard_name| or NULL on error. The caller is
-// responsible for calling |OPENSSL_free| on the result.
-//
-// Use |SSL_CIPHER_standard_name| instead.
-OPENSSL_EXPORT char *SSL_CIPHER_get_rfc_name(const SSL_CIPHER *cipher);
-
 typedef void COMP_METHOD;
 typedef struct ssl_comp_st SSL_COMP;
 
@@ -5543,6 +5536,18 @@ OPENSSL_EXPORT bool SSL_get_traffic_secrets(
     const SSL *ssl, Span<const uint8_t> *out_read_traffic_secret,
     Span<const uint8_t> *out_write_traffic_secret);
 
+// SSL_CTX_set_aes_hw_override_for_testing sets |override_value| to
+// override checking for aes hardware support for testing. If |override_value|
+// is set to true, the library will behave as if aes hardware support is
+// present. If it is set to false, the library will behave as if aes hardware
+// support is not present.
+OPENSSL_EXPORT void SSL_CTX_set_aes_hw_override_for_testing(
+    SSL_CTX *ctx, bool override_value);
+
+// SSL_set_aes_hw_override_for_testing acts the same as
+// |SSL_CTX_set_aes_override_for_testing| but only configures a single |SSL*|.
+OPENSSL_EXPORT void SSL_set_aes_hw_override_for_testing(SSL *ssl,
+                                                        bool override_value);
 
 BSSL_NAMESPACE_END
 

@@ -1213,7 +1213,8 @@ static bool is_known_default_alias_keyword_filter_rule(const char *rule,
 }
 
 bool ssl_create_cipher_list(UniquePtr<SSLCipherPreferenceList> *out_cipher_list,
-                            const char *rule_str, bool strict, bool config_tls13) {
+                            const bool has_aes_hw, const char *rule_str,
+                            bool strict, bool config_tls13) {
   // Return with error if nothing to do.
   if (rule_str == NULL || out_cipher_list == NULL) {
     return false;
@@ -1246,7 +1247,7 @@ bool ssl_create_cipher_list(UniquePtr<SSLCipherPreferenceList> *out_cipher_list,
   // CHACHA20 unless there is hardware support for fast and constant-time
   // AES_GCM. Of the two CHACHA20 variants, the new one is preferred over the
   // old one.
-  if (EVP_has_aes_hardware()) {
+  if (has_aes_hw) {
     ssl_cipher_apply_rule(0, ~0u, ~0u, SSL_AES128GCM, ~0u, 0, CIPHER_ADD, -1,
                           false, &head, &tail);
     ssl_cipher_apply_rule(0, ~0u, ~0u, SSL_AES256GCM, ~0u, 0, CIPHER_ADD, -1,
@@ -1600,14 +1601,6 @@ const char *SSL_CIPHER_get_kx_name(const SSL_CIPHER *cipher) {
       assert(0);
       return "UNKNOWN";
   }
-}
-
-char *SSL_CIPHER_get_rfc_name(const SSL_CIPHER *cipher) {
-  if (cipher == NULL) {
-    return NULL;
-  }
-
-  return OPENSSL_strdup(SSL_CIPHER_standard_name(cipher));
 }
 
 int SSL_CIPHER_get_bits(const SSL_CIPHER *cipher, int *out_alg_bits) {
