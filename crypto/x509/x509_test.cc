@@ -1442,14 +1442,6 @@ TXHOSQQD8Dl4BK0wOet+TP6LBEjHlRFjAqK4bu9xpxV2
 -----END CERTIFICATE-----
 )";
 
-// CertFromPEM parses the given, NUL-terminated PEM block and returns an
-// |X509*|.
-static bssl::UniquePtr<X509> CertFromPEM(const char *pem) {
-  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(pem, strlen(pem)));
-  return bssl::UniquePtr<X509>(
-      PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
-}
-
 // CRLFromPEM parses the given, NUL-terminated PEM block and returns an
 // |X509_CRL*|.
 static bssl::UniquePtr<X509_CRL> CRLFromPEM(const char *pem) {

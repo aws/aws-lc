@@ -1552,15 +1552,6 @@ TEST(SSLTest, Padding) {
   }
 }
 
-static bssl::UniquePtr<X509> CertFromPEM(const char *pem) {
-  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(pem, strlen(pem)));
-  if (!bio) {
-    return nullptr;
-  }
-  return bssl::UniquePtr<X509>(
-      PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
-}
-
 static bssl::UniquePtr<EVP_PKEY> KeyFromPEM(const char *pem) {
   bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(pem, strlen(pem)));
   if (!bio) {

@@ -116,12 +116,12 @@ When adding new functionality, adding new fuzz tests are important to provide ad
    crashes or sanitizer failures will be reported in the console and the particular corpus file that triggered the bug 
    will be written into the root directory (as `crash-<sha1>`, `leak-<sha1>`, or `timeout-<sha1>`).
    If any of these files appear, we should look into what is causing the failure.
-9. If no failures emerge, we can merge the generated corpus to minimize the amount of files, while still providing full coverage.
+8. If no failures emerge, we can merge the generated corpus to minimize the amount of files, while still providing full coverage.
     ```  
     mkdir fuzz/${NEW_FUNCTION}_corpus
-    ./test_build_dir/fuzz/${NEW_FUNCTION} -merge=1 fuzz/${NEW_FUNCTION}_corpus fuzz/${NEW_FUNCTION}_corpus_temp
+    ./test_build_dir/fuzz/${NEW_FUNCTION} -merge=1 fuzz/${NEW_FUNCTION}_corpus fuzz/${NEW_FUNCTION}_corpus_temp fuzz/${NEW_FUNCTION}_corpus_raw
     ```
-10. Remove original directories, files, and fuzz logs used to generate the orginal corpus. 
+9. Remove original directories, files, and fuzz logs used to generate the orginal corpus.
     ```
     rmdir fuzz/${NEW_FUNCTION}_corpus_temp
     rmdir fuzz/${NEW_FUNCTION}_corpus_raw
