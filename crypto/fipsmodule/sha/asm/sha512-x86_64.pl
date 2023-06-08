@@ -267,6 +267,7 @@ $code=<<___;
 .align	16
 $func:
 .cfi_startproc
+	_CET_ENDBR
 ___
 $code.=<<___ if ($SZ==4 || $avx);
 	leaq	OPENSSL_ia32cap_P(%rip),%r11
