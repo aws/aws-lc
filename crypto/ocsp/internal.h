@@ -151,6 +151,13 @@ struct ocsp_response_st {
 //   KeyHash ::= OCTET STRING --SHA-1 hash of responder's public key
 //                            --(excluding the tag and length fields)
 //
+// The RFC requires that the KeyHash value be of a SHA-1 hash. Even though this
+// is not being used cryptographically, there is the possibility of a response
+// being returned with a forced Responder KeyHash when using SHA-1 (assuming a
+// preimage attack, which is beyond the scope of how SHA-1 is currently
+// vulnerable). However, our hand are tied with what the RFC mandates.
+//
+// RFC 6960: https://datatracker.ietf.org/doc/html/rfc6960#appendix-B.2
 struct ocsp_responder_id_st {
   int type;
   union {
