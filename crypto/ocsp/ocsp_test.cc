@@ -1041,6 +1041,27 @@ static const char only_code_http_response_hdr[] =
     "200\r\n"
     "Content-Length: ";
 
+// This should fail. We're appending a negative content length.
+static const char negative_length_http_response_hdr[] =
+    "HTTP/1.0 200\r\n"
+    "Content-Length: -10";
+
+// This should fail. We're appending a non-numeric content length.
+static const char nonnumeric_length_http_response_hdr[] =
+    "HTTP/1.0 200\r\n"
+    "Content-Length: abcd";
+
+// This should fail. We're appending a non-numeric content length.
+static const char format_string_http_response_hdr[] =
+    "HTTP/1.0 200\r\n"
+    "Content-Length: %s%s%s%s%s";
+
+// This should fail. We're appending a value that will be beyond the default max
+// response length.
+static const char max_length_http_response_hdr[] =
+    "HTTP/1.0 200\r\n"
+    "Content-Length: 999999";
+
 struct OCSPHTTPTestVector {
   const char *http_header;
   bool response_attached;
@@ -1061,7 +1082,10 @@ static const OCSPHTTPTestVector kResponseHTTPVectors[] = {
     {good_http_response_hdr, false, OCSP_HTTP_PARSE_ERROR},
     {no_type_http_response_hdr, false, OCSP_HTTP_PARSE_ERROR},
     {no_info_http_response_hdr, false, OCSP_HTTP_PARSE_ERROR},
-};
+    {negative_length_http_response_hdr, false, OCSP_HTTP_PARSE_ERROR},
+    {nonnumeric_length_http_response_hdr, false, OCSP_HTTP_PARSE_ERROR},
+    {format_string_http_response_hdr, false, OCSP_HTTP_PARSE_ERROR},
+    {max_length_http_response_hdr, false, OCSP_HTTP_PARSE_ERROR}};
 
 class OCSPHTTPTest : public testing::TestWithParam<OCSPHTTPTestVector> {};
 
@@ -1141,10 +1165,19 @@ static const OCSPURLTestVector kOCSPURLVectors[] = {
      OCSP_URL_PARSE_SUCCESS},
     // Empty host component.
     {"http:///ocsp", "", "80", "/ocsp", 0, OCSP_URL_PARSE_SUCCESS},
+    // Potential Format String attacks.
+    {"http://%s%s%s%s%s/ocsp", "%s%s%s%s%s", "80", "/ocsp", 0,
+     OCSP_URL_PARSE_SUCCESS},
+    {"http://%s%s%s%s%s, argv[1]/ocsp", "%s%s%s%s%s, argv[1]", "80", "/ocsp", 0,
+     OCSP_URL_PARSE_SUCCESS},
+    {"http://ocsp/%s%s%s%s%s", "ocsp", "80", "/%s%s%s%s%s", 0,
+     OCSP_URL_PARSE_SUCCESS},
 
     // === INVALID URLs ===
     // Not http or https in front.
     {"htp://ocsp.example.com/", nullptr, nullptr, nullptr, 0,
+     OCSP_URL_PARSE_ERROR},
+    {"%s%s%s%s://%s%s%s%s%s/ocsp", nullptr, nullptr, nullptr, 0,
      OCSP_URL_PARSE_ERROR},
     // Double slash is mandatory.
     {"http:/ocsp.example.com/", nullptr, nullptr, nullptr, 0,
@@ -1174,7 +1207,6 @@ TEST_P(OCSPURLTest, OCSPParseURL) {
     EXPECT_EQ(ret, OCSP_URL_PARSE_SUCCESS);
     EXPECT_EQ(std::string(host), std::string(t.expected_host));
     EXPECT_EQ(std::string(port), std::string(t.expected_port));
-    EXPECT_EQ(std::string(path), std::string(t.expected_path));
     EXPECT_EQ(std::string(path), std::string(t.expected_path));
     OPENSSL_free(host);
     OPENSSL_free(path);
