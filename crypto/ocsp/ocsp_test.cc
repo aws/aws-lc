@@ -27,6 +27,7 @@ static const time_t invalid_after_ocsp_expire_time_sha256 = 1937505764;
 
 #define OCSP_RESPFINDSTATUS_SUCCESS 1
 #define OCSP_RESPFINDSTATUS_ERROR 0
+#define OCSP_RESPFINDSTATUS_UNDEFINED -1
 
 #define OCSP_REQUEST_PARSE_SUCCESS 1
 #define OCSP_REQUEST_PARSE_ERROR 0
@@ -128,10 +129,8 @@ static bssl::UniquePtr<OCSP_REQUEST> LoadOCSP_REQUEST(
 }
 
 static void ExtractAndVerifyBasicOCSP(
-    bssl::Span<const uint8_t> der, int expected_ocsp_status,
-    const std::string expected_ocsp_status_string,
-    const std::string ca_cert_file, const std::string server_cert_file,
-    int expected_ocsp_verify_status,
+    bssl::Span<const uint8_t> der, const std::string ca_cert_file,
+    const std::string server_cert_file, int expected_ocsp_verify_status,
     bssl::UniquePtr<OCSP_BASICRESP> *basic_response,
     bssl::UniquePtr<STACK_OF(X509)> *server_cert_chain) {
   bssl::UniquePtr<OCSP_RESPONSE> ocsp_response;
@@ -140,8 +139,6 @@ static void ExtractAndVerifyBasicOCSP(
   ASSERT_TRUE(ocsp_response);
 
   int ret = OCSP_response_status(ocsp_response.get());
-  ASSERT_EQ(expected_ocsp_status, ret);
-  ASSERT_EQ(expected_ocsp_status_string, OCSP_response_status_str(ret));
   if (ret != OCSP_RESPONSE_STATUS_SUCCESSFUL) {
     return;
   }
@@ -197,25 +194,23 @@ static void CheckOCSP_CERTSTATUS(
 // https://github.com/aws/s2n-tls/blob/main/tests/pems/ocsp
 // OCSP testing methods were taken from s2n's validation tests:
 // https://github.com/aws/s2n-tls/blob/main/tests/unit/s2n_x509_validator_test.c
-struct OCSPTestVectorExtended {
+struct OCSPAWSTestVector {
   const char *ocsp_response;
   const char *cafile;
   const char *server_cert;
   const EVP_MD *dgst;
-  int expected_ocsp_status;
-  const char *expected_ocsp_status_string;
   int expected_ocsp_verify_status;
   int expected_ocsp_resp_find_status;
   int expected_ocsp_cert_status;
   const char *expected_ocsp_cert_status_string;
 };
 
-static const OCSPTestVectorExtended nTestVectors[] = {
+static const OCSPAWSTestVector nTestVectors[] = {
     // === SHA1 OCSP RESPONSES ===
     // Test valid OCSP response signed by an OCSP responder.
     {"ocsp_response", "ca_cert", "server_cert", EVP_sha1(),
-     OCSP_RESPONSE_STATUS_SUCCESSFUL, "successful", OCSP_VERIFYSTATUS_SUCCESS,
-     OCSP_RESPFINDSTATUS_SUCCESS, V_OCSP_CERTSTATUS_GOOD, "good"},
+     OCSP_VERIFYSTATUS_SUCCESS, OCSP_RESPFINDSTATUS_SUCCESS,
+     V_OCSP_CERTSTATUS_GOOD, "good"},
     // Test against same good OCSP response, but checking behavior of not
     // specifying hash algorithm used for |OCSP_cert_to_id| this time (should
     // default to sha1). When |*dgst| is set to NULL, the default hash algorithm
@@ -223,90 +218,72 @@ static const OCSPTestVectorExtended nTestVectors[] = {
     // response should work if hash algorithm of |cert_id| has been set to sha1
     // successfully.
     {"ocsp_response", "ca_cert", "server_cert", nullptr,
-     OCSP_RESPONSE_STATUS_SUCCESSFUL, "successful", OCSP_VERIFYSTATUS_SUCCESS,
-     OCSP_RESPFINDSTATUS_SUCCESS, V_OCSP_CERTSTATUS_GOOD, "good"},
+     OCSP_VERIFYSTATUS_SUCCESS, OCSP_RESPFINDSTATUS_SUCCESS,
+     V_OCSP_CERTSTATUS_GOOD, "good"},
     // Test valid OCSP response directly signed by the CA certificate.
     {"ocsp_response_ca_signed", "ca_cert", "server_cert", EVP_sha1(),
-     OCSP_RESPONSE_STATUS_SUCCESSFUL, "successful", OCSP_VERIFYSTATUS_SUCCESS,
-     OCSP_RESPFINDSTATUS_SUCCESS, V_OCSP_CERTSTATUS_GOOD, "good"},
+     OCSP_VERIFYSTATUS_SUCCESS, OCSP_RESPFINDSTATUS_SUCCESS,
+     V_OCSP_CERTSTATUS_GOOD, "good"},
     // Test OCSP response status is revoked.
     {"ocsp_response_revoked", "ca_cert", "server_cert", EVP_sha1(),
-     OCSP_RESPONSE_STATUS_SUCCESSFUL, "successful", OCSP_VERIFYSTATUS_SUCCESS,
-     OCSP_RESPFINDSTATUS_SUCCESS, V_OCSP_CERTSTATUS_REVOKED, "revoked"},
+     OCSP_VERIFYSTATUS_SUCCESS, OCSP_RESPFINDSTATUS_SUCCESS,
+     V_OCSP_CERTSTATUS_REVOKED, "revoked"},
     // Test OCSP response status is unknown.
     {"ocsp_response_unknown", "ca_cert", "server_cert", EVP_sha1(),
-     OCSP_RESPONSE_STATUS_SUCCESSFUL, "successful", OCSP_VERIFYSTATUS_SUCCESS,
-     OCSP_RESPFINDSTATUS_SUCCESS, V_OCSP_CERTSTATUS_UNKNOWN, "unknown"},
+     OCSP_VERIFYSTATUS_SUCCESS, OCSP_RESPFINDSTATUS_SUCCESS,
+     V_OCSP_CERTSTATUS_UNKNOWN, "unknown"},
     // for the requested certificate. (So this would be a completely valid
     // response to a different OCSP request for the other certificate.)
     {"ocsp_response", "ca_cert", "server_ecdsa_cert", EVP_sha1(),
-     OCSP_RESPONSE_STATUS_SUCCESSFUL, "successful", OCSP_VERIFYSTATUS_SUCCESS,
-     OCSP_RESPFINDSTATUS_ERROR, 0, nullptr},
+     OCSP_VERIFYSTATUS_SUCCESS, OCSP_RESPFINDSTATUS_ERROR, -1, nullptr},
     // Test OCSP response where the requested certificate was signed by the OCSP
     // responder, but signed by the wrong requested OCSP responder key
     // certificate.
     // However, this incorrect OCSP responder certificate may be a valid OCSP
     // responder for some other case and also chains to a trusted root.
     {"ocsp_response_wrong_signer", "ca_cert", "server_cert", EVP_sha1(),
-     OCSP_RESPONSE_STATUS_SUCCESSFUL, "successful", OCSP_VERIFYSTATUS_ERROR, 0,
-     0, nullptr},
+     OCSP_VERIFYSTATUS_ERROR, OCSP_RESPFINDSTATUS_UNDEFINED, -1, nullptr},
+    // Test OCSP response where the requested certificate was signed by an OCSP
+    // responder with an expired certificate.
+    // However, this incorrect OCSP responder certificate may be a valid OCSP
+    // responder for some other case and also chains to a trusted root.
+    {"ocsp_response_expired_signer", "ca_cert", "server_cert", EVP_sha1(),
+     OCSP_VERIFYSTATUS_ERROR, OCSP_RESPFINDSTATUS_UNDEFINED, -1, nullptr},
 
     // === SHA256 OCSP RESPONSES ===
     // Test valid OCSP response signed by an OCSP responder.
     {"ocsp_response_sha256", "ca_cert", "server_cert", EVP_sha256(),
-     OCSP_RESPONSE_STATUS_SUCCESSFUL, "successful", OCSP_VERIFYSTATUS_SUCCESS,
-     OCSP_RESPFINDSTATUS_SUCCESS, V_OCSP_CERTSTATUS_GOOD, "good"},
+     OCSP_VERIFYSTATUS_SUCCESS, OCSP_RESPFINDSTATUS_SUCCESS,
+     V_OCSP_CERTSTATUS_GOOD, "good"},
     // Test a SHA-256 revoked OCSP response status.
     {"ocsp_response_revoked_sha256", "ca_cert", "server_cert", EVP_sha256(),
-     OCSP_RESPONSE_STATUS_SUCCESSFUL, "successful", OCSP_VERIFYSTATUS_SUCCESS,
-     OCSP_RESPFINDSTATUS_SUCCESS, V_OCSP_CERTSTATUS_REVOKED, "revoked"},
+     OCSP_VERIFYSTATUS_SUCCESS, OCSP_RESPFINDSTATUS_SUCCESS,
+     V_OCSP_CERTSTATUS_REVOKED, "revoked"},
     // Test a SHA-256 unknown OCSP response status.
     {"ocsp_response_unknown_sha256", "ca_cert", "server_cert", EVP_sha256(),
-     OCSP_RESPONSE_STATUS_SUCCESSFUL, "successful", OCSP_VERIFYSTATUS_SUCCESS,
-     OCSP_RESPFINDSTATUS_SUCCESS, V_OCSP_CERTSTATUS_UNKNOWN, "unknown"},
+     OCSP_VERIFYSTATUS_SUCCESS, OCSP_RESPFINDSTATUS_SUCCESS,
+     V_OCSP_CERTSTATUS_UNKNOWN, "unknown"},
     // Test a SHA-256 OCSP response signed by the correct responder certificate,
     // but not for the requested certificate. (So this would be a completely
     // valid response to a different OCSP request for the other certificate.)
     {"ocsp_response_sha256", "ca_cert", "server_ecdsa_cert", EVP_sha256(),
-     OCSP_RESPONSE_STATUS_SUCCESSFUL, "successful", OCSP_VERIFYSTATUS_SUCCESS,
-     OCSP_RESPFINDSTATUS_ERROR, 0, nullptr},
+     OCSP_VERIFYSTATUS_SUCCESS, OCSP_RESPFINDSTATUS_ERROR, -1, nullptr},
     // Test a SHA-256 OCSP response signed by the wrong responder certificate,
     // but the requested certificate was signed. (however this incorrect OCSP
     // responder certificate is a valid OCSP responder for some other case and
     // chains to a trusted root). Thus, this response is not valid for any
     // request.
     {"ocsp_response_wrong_signer_sha256", "ca_cert", "server_cert",
-     EVP_sha256(), OCSP_RESPONSE_STATUS_SUCCESSFUL, "successful",
-     OCSP_VERIFYSTATUS_ERROR, 0, 0, nullptr},
-
-    // === Invalid OCSP response requests sent back an OCSP responder ===
-    // https://datatracker.ietf.org/doc/html/rfc6960#section-4.2.1
-    // OCSPResponseStatus: malformedRequest
-    {"ocsp_response_malformedrequest", "", "", nullptr,
-     OCSP_RESPONSE_STATUS_MALFORMEDREQUEST, "malformedrequest", 0, 0, 0,
+     EVP_sha256(), OCSP_VERIFYSTATUS_ERROR, OCSP_RESPFINDSTATUS_UNDEFINED, -1,
      nullptr},
-    // OCSPResponseStatus: internalError
-    {"ocsp_response_internalerror", "", "", nullptr,
-     OCSP_RESPONSE_STATUS_INTERNALERROR, "internalerror", 0, 0, 0, nullptr},
-    // OCSPResponseStatus: tryLater
-    {"ocsp_response_trylater", "", "", nullptr, OCSP_RESPONSE_STATUS_TRYLATER,
-     "trylater", 0, 0, 0, nullptr},
-    // OCSPResponseStatus: sigRequired
-    {"ocsp_response_sigrequired", "", "", nullptr,
-     OCSP_RESPONSE_STATUS_SIGREQUIRED, "sigrequired", 0, 0, 0, nullptr},
-    // OCSPResponseStatus: unauthorized
-    {"ocsp_response_unauthorized", "", "", nullptr,
-     OCSP_RESPONSE_STATUS_UNAUTHORIZED, "unauthorized", 0, 0, 0, nullptr},
 };
 
-class OCSPTestExtended : public testing::TestWithParam<OCSPTestVectorExtended> {
-};
+class OCSPTestAWS : public testing::TestWithParam<OCSPAWSTestVector> {};
 
-INSTANTIATE_TEST_SUITE_P(All, OCSPTestExtended,
-                         testing::ValuesIn(nTestVectors));
+INSTANTIATE_TEST_SUITE_P(All, OCSPTestAWS, testing::ValuesIn(nTestVectors));
 
-TEST_P(OCSPTestExtended, VerifyOCSPResponseExtended) {
-  const OCSPTestVectorExtended &t = GetParam();
+TEST_P(OCSPTestAWS, VerifyOCSPResponseExtended) {
+  const OCSPAWSTestVector &t = GetParam();
 
   std::string data =
       GetTestData(std::string("crypto/ocsp/test/aws/" +
@@ -317,10 +294,9 @@ TEST_P(OCSPTestExtended, VerifyOCSPResponseExtended) {
   // OCSP response parsing and verification step.
   bssl::UniquePtr<OCSP_BASICRESP> basic_response;
   bssl::UniquePtr<STACK_OF(X509)> server_cert_chain;
-  ExtractAndVerifyBasicOCSP(ocsp_reponse_data, t.expected_ocsp_status,
-                            t.expected_ocsp_status_string, t.cafile,
-                            t.server_cert, t.expected_ocsp_verify_status,
-                            &basic_response, &server_cert_chain);
+  ExtractAndVerifyBasicOCSP(ocsp_reponse_data, t.cafile, t.server_cert,
+                            t.expected_ocsp_verify_status, &basic_response,
+                            &server_cert_chain);
 
   // If OCSP basic verify is successful, we check the OCSP response status.
   if (t.expected_ocsp_verify_status == OCSP_VERIFYSTATUS_SUCCESS) {
@@ -339,6 +315,59 @@ TEST_P(OCSPTestExtended, VerifyOCSPResponseExtended) {
   }
 }
 
+struct OCSPResponseStatusTestVector {
+  const char *ocsp_response;
+  int expected_ocsp_status;
+  const char *expected_ocsp_status_string;
+};
+
+static const OCSPResponseStatusTestVector respTestVectors[] = {
+    // === Invalid OCSP response requests sent back an OCSP responder ===
+    // https://datatracker.ietf.org/doc/html/rfc6960#section-4.2.1
+    // OCSPResponseStatus: successful
+    {"ocsp_response", OCSP_RESPONSE_STATUS_SUCCESSFUL, "successful"},
+    // OCSPResponseStatus: malformedRequest
+    {"ocsp_response_malformedrequest", OCSP_RESPONSE_STATUS_MALFORMEDREQUEST,
+     "malformedrequest"},
+    // OCSPResponseStatus: internalError
+    {"ocsp_response_internalerror", OCSP_RESPONSE_STATUS_INTERNALERROR,
+     "internalerror"},
+    // OCSPResponseStatus: tryLater
+    {"ocsp_response_trylater", OCSP_RESPONSE_STATUS_TRYLATER, "trylater"},
+    // OCSPResponseStatus: sigRequired
+    {"ocsp_response_sigrequired", OCSP_RESPONSE_STATUS_SIGREQUIRED,
+     "sigrequired"},
+    // OCSPResponseStatus: unauthorized
+    {"ocsp_response_unauthorized", OCSP_RESPONSE_STATUS_UNAUTHORIZED,
+     "unauthorized"},
+};
+
+class OCSPResponseStatusTest
+    : public testing::TestWithParam<OCSPResponseStatusTestVector> {};
+
+INSTANTIATE_TEST_SUITE_P(All, OCSPResponseStatusTest,
+                         testing::ValuesIn(respTestVectors));
+
+TEST_P(OCSPResponseStatusTest, VerifyOCSPResponseExtended) {
+  const OCSPResponseStatusTestVector &t = GetParam();
+
+  std::string data =
+      GetTestData(std::string("crypto/ocsp/test/aws/" +
+                              std::string(t.ocsp_response) + ".der")
+                      .c_str());
+  std::vector<uint8_t> ocsp_reponse_data(data.begin(), data.end());
+
+  bssl::UniquePtr<OCSP_RESPONSE> ocsp_response(
+      LoadOCSP_RESPONSE(ocsp_reponse_data));
+  ASSERT_TRUE(ocsp_response);
+
+  int ret = OCSP_response_status(ocsp_response.get());
+  ASSERT_EQ(t.expected_ocsp_status, ret);
+  ASSERT_EQ(std::string(t.expected_ocsp_status_string),
+            std::string(OCSP_response_status_str(ret)));
+}
+
+
 // === Specific test cases ===
 
 // Test valid OCSP response signed by an OCSP responder along with check for
@@ -350,8 +379,7 @@ TEST(OCSPTest, TestGoodOCSP) {
 
   bssl::UniquePtr<OCSP_BASICRESP> basic_response;
   bssl::UniquePtr<STACK_OF(X509)> server_cert_chain;
-  ExtractAndVerifyBasicOCSP(ocsp_reponse_data, OCSP_RESPONSE_STATUS_SUCCESSFUL,
-                            "successful", "ca_cert", "server_cert",
+  ExtractAndVerifyBasicOCSP(ocsp_reponse_data, "ca_cert", "server_cert",
                             OCSP_VERIFYSTATUS_SUCCESS, &basic_response,
                             &server_cert_chain);
 
@@ -437,8 +465,7 @@ TEST(OCSPTest, TestUntrustedDataOCSP) {
 
   bssl::UniquePtr<OCSP_BASICRESP> basic_response;
   bssl::UniquePtr<STACK_OF(X509)> server_cert_chain;
-  ExtractAndVerifyBasicOCSP(ocsp_reponse_data, OCSP_RESPONSE_STATUS_SUCCESSFUL,
-                            "successful", "ca_cert", "server_cert",
+  ExtractAndVerifyBasicOCSP(ocsp_reponse_data, "ca_cert", "server_cert",
                             OCSP_VERIFYSTATUS_ERROR, &basic_response,
                             &server_cert_chain);
 }
@@ -453,8 +480,7 @@ TEST(OCSPTest, TestGoodOCSP_SHA256) {
 
   bssl::UniquePtr<OCSP_BASICRESP> basic_response;
   bssl::UniquePtr<STACK_OF(X509)> server_cert_chain;
-  ExtractAndVerifyBasicOCSP(ocsp_reponse_data, OCSP_RESPONSE_STATUS_SUCCESSFUL,
-                            "successful", "ca_cert", "server_cert",
+  ExtractAndVerifyBasicOCSP(ocsp_reponse_data, "ca_cert", "server_cert",
                             OCSP_VERIFYSTATUS_SUCCESS, &basic_response,
                             &server_cert_chain);
 
@@ -1380,7 +1406,8 @@ TEST(OCSPTest, OCSPResponsePrint) {
       "    OCSP Response Status: successful (0x0)",
       "    Response Type: Basic OCSP Response",
       "    Version: 1 (0x0)",
-      "    Responder Id: C = US, ST = WA, O = s2n, OU = s2n Test OCSP, CN = ocsp.s2ntest.com",
+      "    Responder Id: C = US, ST = WA, O = s2n, OU = s2n Test OCSP, CN = "
+      "ocsp.s2ntest.com",
       "    Produced At: May 26 00:23:34 2021 GMT",
       "    Responses:",
       "    Certificate ID:",
