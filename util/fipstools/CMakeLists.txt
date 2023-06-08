@@ -1,4 +1,4 @@
-if(FIPS)
+if(FIPS AND BUILD_TESTING)
   add_executable(
     test_fips
 

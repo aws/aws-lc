@@ -18,6 +18,7 @@ endif()
 
 option(BUILD_TESTING "Build all test targets for AWS-LC" ON)
 option(BUILD_LIBSSL "Build libssl for AWS-LC" ON)
+option(ENABLE_DILITHIUM "Enable Dilithium signatures in the EVP API" OFF)
 option(DISABLE_PERL "Disable Perl for AWS-LC" OFF)
 option(DISABLE_GO "Disable Go for AWS-LC" OFF)
 include(cmake/go.cmake)
@@ -84,6 +85,11 @@ endif()
 
 if(NOT PERL_EXECUTABLE OR NOT GO_EXECUTABLE)
   set(GENERATE_CODE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/generated-src")
+endif()
+
+
+if(ENABLE_DILITHIUM)
+  add_definitions(-DENABLE_DILITHIUM)
 endif()
 
 if(USE_CUSTOM_LIBCXX)
@@ -682,7 +688,14 @@ elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64|AMD64")
 elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "x86|i386|i686")
   set(ARCH "x86")
 elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64.*|ARM64|aarch64")
-  set(ARCH "aarch64")
+  # If ARCH is originally detected as 64-bit, perform an additional check
+  # to determine whether to build as 32-bit or 64-bit. This happens in some
+  # cases such as when building on an 64-bit CPU where the OS is 32-bit.
+  if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+    set(ARCH "aarch64")
+  else()
+    set(ARCH "arm")
+  endif()
 elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^arm*")
   set(ARCH "arm")
 elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "powerpc64le|ppc64le")
@@ -829,6 +842,8 @@ if(BUILD_TESTING)
     set(MEM_SET_TEST_EXEC mem_set_test)
     set(INTEGRATION_TEST_EXEC integration_test)
   endif()
+  
+  add_subdirectory(util/fipstools/acvp/modulewrapper)
 endif()
 
 add_subdirectory(crypto)
@@ -837,7 +852,6 @@ if(BUILD_LIBSSL)
   add_subdirectory(tool)
 endif()
 add_subdirectory(util/fipstools)
-add_subdirectory(util/fipstools/acvp/modulewrapper)
 
 if(FUZZ)
   if(LIBFUZZER_FROM_DEPS)
@@ -887,19 +901,52 @@ if(BUILD_TESTING)
         set(ACVP_TOOL ${PROJECT_BINARY_DIR}/acvptool)
         set(TEST_WRAPPER ${PROJECT_BINARY_DIR}/testmodulewrapper)
       endif()
+
+      # Read util/go_fips_tests.txt into a CMake variable.
+      file(READ util/go_fips_tests.txt GO_FIPS_TESTS)
+      string(REPLACE "\n" ";" GO_FIPS_TESTS "${GO_FIPS_TESTS}")
+      list(REMOVE_ITEM GO_FIPS_TESTS "")
+      set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+        util/go_fips_tests.txt)
+
+      if(MSVC)
+        # Delocator doesn't support Windows. So, this test would fail.
+        string(REGEX REPLACE "./util/fipstools/delocate" "" GO_FIPS_TESTS "${GO_FIPS_TESTS}")
+      endif()
+
+      # We want to run the SHA tests iteratively because they contain Large Data Tests, which make
+      # us hash anywhere from 1-8 gigabytes of memory, so running multiple at the same time cause a
+      # failure on most machines due to a lack of memory.
+      set(acvp_sha_test_commands)
+      file(GLOB acvp_sha_tests "${PROJECT_SOURCE_DIR}/util/fipstools/acvp/acvptool/test/sha-tests/*.json")
+      foreach(test_path ${acvp_sha_tests})
+        get_filename_component(test_name ${test_path} NAME)
+        list(APPEND acvp_sha_test_commands
+              COMMAND ${GO_EXECUTABLE} run check_expected.go
+                        -tool ${ACVP_TOOL}
+                        -module-wrappers modulewrapper:$<TARGET_FILE:modulewrapper>,testmodulewrapper:${TEST_WRAPPER}
+                        -tests "sha-tests/${test_name}")
+      endforeach()
+
       add_custom_target(
-        acvp_tests
+        build_acvp_tool
         COMMAND ${GO_EXECUTABLE} build -o ${ACVP_TOOL}
                 boringssl.googlesource.com/boringssl/util/fipstools/acvp/acvptool
         COMMAND ${GO_EXECUTABLE} build -o ${TEST_WRAPPER}
                 boringssl.googlesource.com/boringssl/util/fipstools/acvp/acvptool/testmodulewrapper
-        COMMAND cd util/fipstools/acvp/acvptool/test &&
-                ${GO_EXECUTABLE} run check_expected.go
-                -tool ${ACVP_TOOL}
-                -module-wrappers modulewrapper:$<TARGET_FILE:modulewrapper>,testmodulewrapper:${TEST_WRAPPER}
-                -tests tests.json
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
         DEPENDS modulewrapper
+        ${MAYBE_USES_TERMINAL})
+
+      add_custom_target(
+        acvp_tests
+        COMMAND ${GO_EXECUTABLE} run check_expected.go
+                  -tool ${ACVP_TOOL}
+                  -module-wrappers modulewrapper:$<TARGET_FILE:modulewrapper>,testmodulewrapper:${TEST_WRAPPER}
+                  -tests tests.json
+        ${acvp_sha_test_commands}
+        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/util/fipstools/acvp/acvptool/test
+        DEPENDS build_acvp_tool
         ${MAYBE_USES_TERMINAL})
 
       add_custom_target(
@@ -909,6 +956,16 @@ if(BUILD_TESTING)
     else()
       add_custom_target(fips_specific_tests_if_any)
     endif()
+
+    # Read util/go_tests.txt into a CMake variable.
+    file(READ util/go_tests.txt GO_TESTS)
+    foreach(fips_specific_test ${GO_FIPS_TESTS})
+      set(GO_TESTS "${GO_TESTS}\n${fips_specific_test}")
+    endforeach()
+    string(REPLACE "\n" ";" GO_TESTS "${GO_TESTS}")
+    list(REMOVE_ITEM GO_TESTS "")
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+      util/go_tests.txt)
 
     if(BUILD_LIBSSL)
       add_custom_target(
@@ -931,14 +988,16 @@ if(BUILD_TESTING)
 
       add_custom_target(
           run_tests
+          COMMAND ${GO_EXECUTABLE} test ${GO_TESTS}
           COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
-                  ${PROJECT_BINARY_DIR}
+                 ${PROJECT_BINARY_DIR}
           WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
           DEPENDS all_tests run_ssl_runner_tests
           ${MAYBE_USES_TERMINAL})
     else()
       add_custom_target(
           run_tests
+          COMMAND ${GO_EXECUTABLE} test ${GO_TESTS}
           COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
                   ${PROJECT_BINARY_DIR} -ssl-tests=false
           WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}

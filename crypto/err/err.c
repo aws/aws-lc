@@ -703,6 +703,7 @@ static void err_add_error_vdata(unsigned num, va_list args) {
     }
     size_t substr_len = strlen(substr);
     if (SIZE_MAX - total_size < substr_len) {
+      va_end(args_copy);
       return; // Would overflow.
     }
     total_size += substr_len;
@@ -742,6 +743,7 @@ void ERR_add_error_dataf(const char *format, ...) {
 
   va_start(ap, format);
   if (OPENSSL_vasprintf_internal(&buf, format, ap, /*system_malloc=*/1) == -1) {
+    va_end(ap);
     return;
   }
   va_end(ap);

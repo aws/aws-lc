@@ -208,6 +208,10 @@ int ASN1_TIME_diff(int *out_days, int *out_seconds, const ASN1_TIME *from,
 // slightly different than the many other copies of X.509 time validation
 // sprinkled through the codebase. The custom checks in X509_cmp_time meant that
 // it did not allow four digit timezone offsets in UTC times.
+int ASN1_TIME_to_tm(const ASN1_TIME *s, struct tm *tm) {
+  return asn1_time_to_tm(tm, s, /*allow_timezone_offset=*/0);
+}
+
 int ASN1_TIME_to_time_t(const ASN1_TIME *t, time_t *out_time) {
   struct tm tm;
   if (!asn1_time_to_tm(&tm, t, /*allow_timezone_offset=*/0)) {
