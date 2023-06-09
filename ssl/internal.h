@@ -649,9 +649,11 @@ const EVP_MD *ssl_get_handshake_digest(uint16_t version,
 // true, only TLS 1.3 ciphers are considered in |ssl_cipher_collect_ciphers|. If
 // false, TLS 1.2 and below ciphers participate in |ssl_cipher_collect_ciphers|.
 // An empty result is considered an error regardless of |strict| or
-// |config_tls13|.
+// |config_tls13|. |has_aes_hw| indicates if the list should be ordered based on
+// having support for AES in hardware or not.
 bool ssl_create_cipher_list(UniquePtr<SSLCipherPreferenceList> *out_cipher_list,
-                            const char *rule_str, bool strict,
+                            const bool has_aes_hw, const char *rule_str,
+                            bool strict,
                             bool config_tls13);
 
 // ssl_cipher_auth_mask_for_key returns the mask of cipher |algorithm_auth|
@@ -677,9 +679,10 @@ size_t ssl_cipher_get_record_split_len(const SSL_CIPHER *cipher);
 // ssl_choose_tls13_cipher returns an |SSL_CIPHER| corresponding with the best
 // available from |cipher_suites| compatible with |version|, |group_id| and
 // configured |tls13_ciphers|. It returns NULL if there isn't a compatible
-// cipher.
+// cipher. |has_aes_hw| indicates if the choice should be made as if support for
+// AES in hardware is available.
 const SSL_CIPHER *ssl_choose_tls13_cipher(
-    CBS cipher_suites, uint16_t version, uint16_t group_id,
+    CBS cipher_suites, bool has_aes_hw, uint16_t version, uint16_t group_id,
     const STACK_OF(SSL_CIPHER) *tls13_ciphers);
 
 
@@ -3142,6 +3145,15 @@ struct SSL_CONFIG {
 
   // permute_extensions is whether to permute extensions when sending messages.
   bool permute_extensions : 1;
+
+  // aes_hw_override if set indicates we should override checking for aes
+  // hardware support, and use the value in aes_hw_override_value instead.
+  bool aes_hw_override : 1;
+
+  // aes_hw_override_value is used for testing to indicate the support or lack
+  // of support for AES hw. The value is only considered if |aes_hw_override| is
+  // true.
+  bool aes_hw_override_value : 1;
 };
 
 // From RFC 8446, used in determining PSK modes.
@@ -3786,6 +3798,14 @@ struct ssl_ctx_st {
   // If enable_early_data is true, early data can be sent and accepted.
   bool enable_early_data : 1;
 
+  // aes_hw_override if set indicates we should override checking for AES
+  // hardware support, and use the value in aes_hw_override_value instead.
+  bool aes_hw_override : 1;
+
+  // aes_hw_override_value is used for testing to indicate the support or lack
+  // of support for AES hardware. The value is only considered if
+  // |aes_hw_override| is true.
+  bool aes_hw_override_value : 1;
  private:
   ~ssl_ctx_st();
   friend OPENSSL_EXPORT void SSL_CTX_free(SSL_CTX *);
@@ -3902,11 +3922,11 @@ struct ssl_session_st {
   // session. In TLS 1.3 and up, it is the resumption PSK for sessions handed to
   // the caller, but it stores the resumption secret when stored on |SSL|
   // objects.
-  int secret_length = 0;
+  uint8_t secret_length = 0;
   uint8_t secret[SSL_MAX_MASTER_KEY_LENGTH] = {0};
 
   // session_id - valid?
-  unsigned session_id_length = 0;
+  uint8_t session_id_length = 0;
   uint8_t session_id[SSL_MAX_SSL_SESSION_ID_LENGTH] = {0};
   // this is used to determine whether the session is being reused in
   // the appropriate context. It is up to the application to set this,

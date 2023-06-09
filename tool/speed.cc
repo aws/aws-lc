@@ -2168,7 +2168,7 @@ static bool SpeedDHcheck(std::string selected) {
   return true;
 }
 
-#if !defined(OPENSSL_BENCHMARK) && !defined(BORINGSSL_BENCHMARK) && AWSLC_API_VERSION > 16
+#if AWSLC_API_VERSION > 16
 static bool SpeedPKCS8(const std::string &selected) {
   if (!selected.empty() && selected.find("pkcs8") == std::string::npos) {
     return true;
@@ -2337,7 +2337,7 @@ static bool parseStringVectorToIntegerVector(
 }
 
 bool Speed(const std::vector<std::string> &args) {
-#if defined(OPENSSL_IS_AWSLC) && AWSLC_API_VERSION > 16
+#if AWSLC_API_VERSION > 16
   // For mainline AWS-LC this is a no-op, however if speed.cc built with an old
   // branch of AWS-LC SHA3 might be disabled by default and fail the benchmark.
   EVP_MD_unstable_sha3_enable(true);
@@ -2425,8 +2425,8 @@ bool Speed(const std::vector<std::string> &args) {
        !SpeedHash(EVP_sha256(), "SHA-256", selected) ||
        !SpeedHash(EVP_sha384(), "SHA-384", selected) ||
        !SpeedHash(EVP_sha512(), "SHA-512", selected) ||
-       // OpenSSL 1.0 doesn't support SHA3.
-#if !defined(OPENSSL_1_0_BENCHMARK) && AWSLC_API_VERSION > 16
+       // OpenSSL 1.0 and BoringSSL don't support SHA3.
+#if (!defined(OPENSSL_1_0_BENCHMARK) && !defined(BORINGSSL_BENCHMARK)) || AWSLC_API_VERSION > 16
        !SpeedHash(EVP_sha3_224(), "SHA3-224", selected) ||
        !SpeedHash(EVP_sha3_256(), "SHA3-256", selected) ||
        !SpeedHash(EVP_sha3_384(), "SHA3-384", selected) ||
@@ -2493,7 +2493,7 @@ bool Speed(const std::vector<std::string> &args) {
        !SpeedTrustToken("TrustToken-Exp2PMB-Batch1", TRUST_TOKEN_experiment_v2_pmb(), 1, selected) ||
        !SpeedTrustToken("TrustToken-Exp2PMB-Batch10", TRUST_TOKEN_experiment_v2_pmb(), 10, selected) ||
 #endif
-#if !defined(OPENSSL_BENCHMARK) && !defined(BORINGSSL_BENCHMARK) && AWSLC_API_VERSION > 16
+#if AWSLC_API_VERSION > 16
        !SpeedPKCS8(selected) ||
 #endif
        !SpeedBase64(selected) ||

@@ -82,7 +82,7 @@ static int asn1_template_ex_d2i(ASN1_VALUE **pval, const unsigned char **in,
 static int asn1_template_noexp_d2i(ASN1_VALUE **val, const unsigned char **in,
                                    long len, const ASN1_TEMPLATE *tt, char opt,
                                    int depth);
-static int asn1_ex_c2i(ASN1_VALUE **pval, const unsigned char *cont, int len,
+static int asn1_ex_c2i(ASN1_VALUE **pval, const unsigned char *cont, long len,
                        int utype, const ASN1_ITEM *it);
 static int asn1_d2i_ex_primitive(ASN1_VALUE **pval, const unsigned char **in,
                                  long len, const ASN1_ITEM *it, int tag,
@@ -706,7 +706,7 @@ err:
 
 // Translate ASN1 content octets into a structure
 
-static int asn1_ex_c2i(ASN1_VALUE **pval, const unsigned char *cont, int len,
+static int asn1_ex_c2i(ASN1_VALUE **pval, const unsigned char *cont, long len,
                        int utype, const ASN1_ITEM *it) {
   ASN1_VALUE **opval = NULL;
   ASN1_STRING *stmp;
