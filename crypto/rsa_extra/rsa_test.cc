@@ -785,7 +785,7 @@ TEST(RSADeathTest, GenerateSmallKeyAndDie) {
   ASSERT_DEATH_IF_SUPPORTED(RSA_generate_key_ex(rsa.get(), 255, e.get(), nullptr), "");
 }
 #endif
-#endif 
+#endif
 
 // Attempting to generate an funny RSA key length should round down.
 TEST(RSATest, RoundKeyLengths) {
@@ -1072,7 +1072,7 @@ TEST(RSATest, KeygenFail) {
   EXPECT_FALSE(rsa->d_fixed);
   EXPECT_FALSE(rsa->dmp1_fixed);
   EXPECT_FALSE(rsa->dmq1_fixed);
-  EXPECT_FALSE(rsa->inv_small_mod_large_mont);
+  EXPECT_FALSE(rsa->iqmp_mont);
   EXPECT_FALSE(rsa->private_key_frozen);
 
   // Failed key generations leave the previous contents alone.
@@ -1166,7 +1166,7 @@ TEST(RSADeathTest, KeygenFailAndDie) {
   EXPECT_FALSE(rsa->d_fixed);
   EXPECT_FALSE(rsa->dmp1_fixed);
   EXPECT_FALSE(rsa->dmq1_fixed);
-  EXPECT_FALSE(rsa->inv_small_mod_large_mont);
+  EXPECT_FALSE(rsa->iqmp_mont);
   EXPECT_FALSE(rsa->private_key_frozen);
 
   // Failed key generations leave the previous contents alone.
