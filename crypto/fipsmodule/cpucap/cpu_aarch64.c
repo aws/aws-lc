@@ -26,7 +26,8 @@ void handle_cpu_env(uint32_t *out, const char *in) {
 
   // Detect if the user is trying to use the environment variable to set
   // a capability that is _not_ available on the CPU:
-  // If the runtime capability check (e.g via getauxval() on Linux) returned a non-zero hwcap in `armcap` (out)
+  // If the runtime capability check (e.g via getauxval() on Linux)
+  // returned a non-zero hwcap in `armcap` (out)
   // and a bit set in the requested `v` is not set in `armcap`,
   // abort instead of crashing later.
   // The case of invert cannot enable an unexisting capability;
