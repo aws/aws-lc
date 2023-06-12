@@ -196,6 +196,12 @@ func runTestOnce(test test, mallocNumToFail int64) (passed bool, err error) {
 		cmd.Env = append(cmd.Env, "_MALLOC_CHECK=1")
 	}
 
+	if test.SkipMissing != "" {
+		if _, err := os.Stat(prog); errors.Is(err, os.ErrNotExist) {
+			fmt.Printf("Skipping: %s - %s\n", prog, test.SkipMissing)
+			return false, errTestSkipped
+		}
+	}
 	if err := cmd.Start(); err != nil {
 		return false, err
 	}

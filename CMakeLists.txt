@@ -839,6 +839,7 @@ if(BUILD_TESTING)
     set(MEM_TEST_EXEC mem_test.so)
     set(MEM_SET_TEST_EXEC mem_set_test.so)
     set(INTEGRATION_TEST_EXEC integration_test.so)
+    set(DYNAMIC_LOADING_TEST_EXEC dynamic_loading_test.so)
   else()
     set(CRYPTO_TEST_EXEC crypto_test)
     set(RANDOM_TEST_EXEC urandom_test)
@@ -846,8 +847,9 @@ if(BUILD_TESTING)
     set(MEM_TEST_EXEC mem_test)
     set(MEM_SET_TEST_EXEC mem_set_test)
     set(INTEGRATION_TEST_EXEC integration_test)
+    set(DYNAMIC_LOADING_TEST_EXEC dynamic_loading_test)
   endif()
-  
+
   add_subdirectory(util/fipstools/acvp/modulewrapper)
 endif()
 

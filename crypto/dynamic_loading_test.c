@@ -1,0 +1,87 @@
+#include <dlfcn.h>
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+typedef void (*fp_lc_clear_error_t)(void);
+typedef int (*fp_lc_tl_func_t)(void);
+typedef int (*fp_rand_bytes_t)(u_int8_t *buf, size_t len);
+
+#define BUFFER_SIZE 16
+#define TEST_ITERS 10
+#define THREAD_COUNT 10
+
+static void *cycle_thread_local_setup(void *lc_so) {
+  u_int8_t buffer[BUFFER_SIZE];
+  fp_lc_clear_error_t lc_clear_error = dlsym(lc_so, "ERR_clear_error");
+  fp_rand_bytes_t lc_rand_bytes = dlsym(lc_so, "RAND_bytes");
+  fp_lc_tl_func_t lc_tl_clear = dlsym(lc_so, "AWSLC_thread_local_clear");
+
+  for (int i = 0; i < TEST_ITERS; i++) {
+    (*lc_clear_error)();
+    if (1 != (*lc_rand_bytes)(buffer, BUFFER_SIZE)) {
+      fprintf(stderr, "Call to RAND_bytes failed.");
+      exit(1);
+    }
+    if (1 != (*lc_tl_clear)()) {
+      fprintf(stderr, "Call to CRYPTO_thread_local_shutdown failed.");
+      exit(1);
+    }
+  }
+
+  return NULL;
+}
+
+static void *load_unload(void *ctx) {
+  const char* path = ctx;
+  void *lc_so = dlopen(path, RTLD_NOW);
+  fp_lc_tl_func_t lc_tl_shutdown = dlsym(lc_so, "AWSLC_thread_local_shutdown");
+
+  pthread_t thread_id[THREAD_COUNT];
+  for (int i = 0; i < THREAD_COUNT; i++) {
+    if (pthread_create(&thread_id[i], NULL, cycle_thread_local_setup, lc_so)) {
+      fprintf(stderr, "Call to pthread_create in load_unload failed.");
+      exit(1);
+    }
+  }
+
+  // Also cycle on the current thread
+  cycle_thread_local_setup(lc_so);
+
+  for (int i = 0; i < THREAD_COUNT; i++) {
+    if (pthread_join(thread_id[i], NULL)) {
+      fprintf(stderr, "Call to pthread_join in load_unload failed.");
+      exit(1);
+    }
+  }
+
+  if (1 != (*lc_tl_shutdown)()) {
+    fprintf(stderr, "Call to AWSLC_thread_local_shutdown failed.");
+    exit(1);
+  }
+  dlclose(lc_so);
+
+  return NULL;
+}
+
+#ifdef LIBCRYPTO_PATH
+#define xstr(s) str(s)
+#define str(s) #s
+#define DYNAMIC_LIBRARY_PATH xstr(LIBCRYPTO_PATH)
+#endif
+
+int main(int argc, char *argv[]) {
+  pthread_t thread_id;
+  if (pthread_create(&thread_id, NULL, load_unload, (void*)DYNAMIC_LIBRARY_PATH)) {
+    fprintf(stderr, "Call to pthread_create in main failed.");
+    exit(1);
+  }
+
+  if (pthread_join(thread_id, NULL)) {
+    fprintf(stderr, "Call to pthread_join in main failed.");
+    exit(1);
+  }
+
+  printf("PASS\n");
+  return 0;
+}
