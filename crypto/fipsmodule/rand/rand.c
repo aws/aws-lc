@@ -238,6 +238,13 @@ static void CRYPTO_get_fips_seed(uint8_t *out_entropy, size_t out_entropy_len,
                           out_entropy_len) == (ssize_t) out_entropy_len) {
         break;
     }
+    // If Jitter entropy failed to produce entropy we need to reset it.
+    jent_entropy_collector_free(state->jitter_ec);
+    state->jitter_ec = NULL;
+    jent_entropy_collector_alloc(0, JENT_FORCE_FIPS);
+    if (state->jitter_ec == NULL) {
+      abort();
+    }
   }
 
   if (num_tries == max_num_tries) {
