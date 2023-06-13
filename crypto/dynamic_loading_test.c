@@ -1,3 +1,23 @@
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0 OR ISC
+
+// This test verifies that AWS-LC's shared library can safely be
+// loaded/unloaded using `dlopen`/`dlclose`.
+//
+// Problem:
+// When a thread terminates, its thread-local data is destructed via a call to
+// our internal thread_local_destructor function. However, when our shared
+// library is unloaded (via `dlclose`) prior to the thread's termination, it may
+// result in a segmentation fault due to the destructor function no longer being
+// available.
+//
+// Building:
+// This binary should not be linked to `libcrypto` when built. Doing so would
+// result in the `dlclose` being no-op and invalidating the test.
+//
+// The path to the shared library must be passed as a compiler macro
+// `-DLIBCRYPTO_PATH=<<path to libcrypto.so>>` when built.
+
 #include <dlfcn.h>
 #include <pthread.h>
 #include <stdio.h>
@@ -68,6 +88,8 @@ static void *load_unload(void *ctx) {
 #define xstr(s) str(s)
 #define str(s) #s
 #define DYNAMIC_LIBRARY_PATH xstr(LIBCRYPTO_PATH)
+#else
+#error "LIBCRYPTO_PATH must be defined"
 #endif
 
 int main(int argc, char *argv[]) {
