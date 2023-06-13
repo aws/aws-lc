@@ -217,7 +217,7 @@ static int rdrand(uint8_t *buf, size_t len) {
 #if defined(BORINGSSL_FIPS)
 
 static void CRYPTO_get_fips_seed(uint8_t *out_entropy, size_t out_entropy_len,
-                             int *out_want_additional_input) {
+                                 int *out_want_additional_input) {
   *out_want_additional_input = 0;
   // Every thread has its own Jitter instance so we fetch the one assigned
   // to the current thread.
@@ -227,9 +227,20 @@ static void CRYPTO_get_fips_seed(uint8_t *out_entropy, size_t out_entropy_len,
     abort();
   }
 
-  // Generate the required number of bytes with Jitter.
-  if (jent_read_entropy_safe(&state->jitter_ec, (char *) out_entropy,
-                             out_entropy_len) != (ssize_t) out_entropy_len) {
+  // |jent_read_entropy| has a false positive health test failure rate of 2^-22.
+  // To avoid aborting so frequently, we retry 3 times.
+  size_t num_tries;
+  const size_t max_num_tries = 3;
+  for (num_tries = 0; num_tries < max_num_tries; num_tries++) {
+    // Try to generate the required number of bytes with Jitter.
+    // If successful break out from the loop, otherwise try again.
+    if (jent_read_entropy(state->jitter_ec, (char *) out_entropy,
+                          out_entropy_len) == (ssize_t) out_entropy_len) {
+        break;
+    }
+  }
+
+  if (num_tries == max_num_tries) {
     abort();
   }
 
