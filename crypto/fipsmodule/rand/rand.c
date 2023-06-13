@@ -230,8 +230,7 @@ static void CRYPTO_get_fips_seed(uint8_t *out_entropy, size_t out_entropy_len,
   // |jent_read_entropy| has a false positive health test failure rate of 2^-22.
   // To avoid aborting so frequently, we retry 3 times.
   size_t num_tries;
-  const size_t max_num_tries = 3;
-  for (num_tries = 0; num_tries < max_num_tries; num_tries++) {
+  for (num_tries = 1; num_tries <= JITTER_MAX_NUM_TRIES; num_tries++) {
     // Try to generate the required number of bytes with Jitter.
     // If successful break out from the loop, otherwise try again.
     if (jent_read_entropy(state->jitter_ec, (char *) out_entropy,
@@ -247,7 +246,7 @@ static void CRYPTO_get_fips_seed(uint8_t *out_entropy, size_t out_entropy_len,
     }
   }
 
-  if (num_tries == max_num_tries) {
+  if (num_tries > JITTER_MAX_NUM_TRIES) {
     abort();
   }
 
