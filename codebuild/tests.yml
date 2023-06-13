@@ -9,4 +9,6 @@ phases:
       - cd ${CODEBUILD_SRC_DIR}/tests
       - make complete
       - make ctCheck
+      - cd ${CODEBUILD_SRC_DIR}/benchmarks
+      - make
 
