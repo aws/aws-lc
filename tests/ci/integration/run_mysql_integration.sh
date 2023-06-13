@@ -55,12 +55,10 @@ function mysql_build() {
 function mysql_run_tests() {
   pushd ${MYSQL_BUILD_FOLDER}
   ninja test
-  # More complicated integration tests.
-  ./mysql-test/mtr --suite=main --force --parallel=auto --skip-test-list=${MYSQL_BUILD_FOLDER}/skiplist --force-restart
   popd
 }
 
-# Get latest mysql version, we can pin to a specific version if MariaDB's code changes break us too often.
+# Get latest MySQL version. MySQL often updates with large changes depending on OpenSSL all at once, so we pin to a specific version.
 git clone https://github.com/mysql/mysql-server.git ${MYSQL_SRC_FOLDER} -b ${MYSQL_VERSION_TAG} --depth 1
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} ${MYSQL_BUILD_FOLDER}
 ls

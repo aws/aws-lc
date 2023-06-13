@@ -8,6 +8,8 @@ SHELL ["/bin/bash", "-c"]
 ENV DEBIAN_FRONTEND=noninteractive
 
 ENV BOOST_PACKAGE_NAME=boost_1_77_0
+ENV BOOST_TARBALL="${BOOST_PACKAGE_NAME}.tar.bz2"
+ENV BOOST_SRC_URL="https://boostorg.jfrog.io/artifactory/main/release/1.77.0/source/${BOOST_TARBALL}"
 ENV DEPENDENCIES_DIR=/home/dependencies
 ENV LLVM_PROJECT_HOME=${DEPENDENCIES_DIR}/llvm-project
 ENV ASAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer
@@ -23,7 +25,6 @@ RUN set -ex && \
     apt-get -y --no-install-recommends install \
     software-properties-common \
     cmake \
-    cpp \
     make \
     ninja-build \
     perl \
@@ -53,9 +54,8 @@ RUN set -ex && \
     rm -rf awscliv2.zip aws/ && \
     mkdir -p ${DEPENDENCIES_DIR} && \
     cd ${DEPENDENCIES_DIR} && \
-    # Extract and install Boost, dependency needed for mySQL.
-    wget https://boostorg.jfrog.io/artifactory/main/release/1.77.0/source/${BOOST_PACKAGE_NAME}.tar.bz2 && \
-    tar xfj ${BOOST_PACKAGE_NAME}.tar.bz2 && mv ./${BOOST_PACKAGE_NAME} ./boost && \
+    # Extract and install Boost 1.77.0. mySQL 8.33 depends on this specific version.
+    wget ${BOOST_SRC_URL} && tar xfj ${BOOST_TARBALL} && mv ./${BOOST_PACKAGE_NAME} ./boost && \
     # Download a copy of LLVM's libcxx which is required for building and running with Memory Sanitizer
     git clone https://github.com/llvm/llvm-project.git --branch llvmorg-11.1.0  --depth 1 && \
     cd llvm-project && rm -rf $(ls -A | grep -Ev "(libcxx|libcxxabi)") && \
