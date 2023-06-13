@@ -105,6 +105,6 @@
     "cmd": [
       "crypto/dynamic_loading_test"
     ],
-    "skip_missing": "Requires shared build"
+    "skip_missing": "Requires shared build on a platform supporting 'dlfcn'"
   }
 ]

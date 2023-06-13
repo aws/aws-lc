@@ -772,16 +772,14 @@ if(BUILD_TESTING)
   endif()
   add_dependencies(all_tests ${CRYPTO_TEST_EXEC})
 
-  if (BUILD_SHARED_LIBS)
+  if (BUILD_SHARED_LIBS AND NOT WIN32)
     message(STATUS "Generating test executable ${DYNAMIC_LOADING_TEST_EXEC}.")
 
     add_executable(${DYNAMIC_LOADING_TEST_EXEC} dynamic_loading_test.c)
     add_dependencies(${DYNAMIC_LOADING_TEST_EXEC} crypto)
     target_compile_options(${DYNAMIC_LOADING_TEST_EXEC} PUBLIC "-DLIBCRYPTO_PATH=$<TARGET_FILE:crypto>")
     # Do not link to boringssl_gtest_main or any library that might be linked to libcrypto.so.
-    if(WIN32)
-      target_link_libraries(${DYNAMIC_LOADING_TEST_EXEC} PUBLIC boringssl_gtest ws2_32)
-    elseif(ANDROID)
+    if(ANDROID)
       target_link_libraries(${DYNAMIC_LOADING_TEST_EXEC} PUBLIC boringssl_gtest dl)
     else()
       target_link_libraries(${DYNAMIC_LOADING_TEST_EXEC} PUBLIC boringssl_gtest pthread dl)
