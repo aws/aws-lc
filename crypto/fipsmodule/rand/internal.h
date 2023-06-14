@@ -152,6 +152,10 @@ OPENSSL_INLINE int have_fast_rdrand(void) {
 #endif  // OPENSSL_X86_64 && !OPENSSL_NO_ASM
 
 
+#if defined(BORINGSSL_FIPS)
+#define JITTER_MAX_NUM_TRIES (3)
+#endif
+
 #if defined(__cplusplus)
 }  // extern C
 #endif
