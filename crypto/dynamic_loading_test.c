@@ -44,7 +44,7 @@ static void *cycle_thread_local_setup(void *lc_so) {
       exit(1);
     }
     if (1 != (*lc_tl_clear)()) {
-      fprintf(stderr, "Call to CRYPTO_thread_local_shutdown failed.");
+      fprintf(stderr, "Call to AWSLC_thread_local_clear failed.");
       exit(1);
     }
   }
