@@ -1085,6 +1085,35 @@ void reference_edwards25519scalarmulbase(uint64_t res[8],uint64_t scalar[4])
 { reference_edwards25519scalarmul(res,scalar,g_edwards25519);
 }
 
+// res = scalar * point + bscalar * basepoint
+
+void reference_edwards25519scalarmuldouble
+ (uint64_t res[8],uint64_t scalar[4],uint64_t point[8],uint64_t bscalar[4])
+{ uint64_t res1[16], res2[16], res3[16], zinv[4], tmpspace[12];
+
+  // res1 = scalar * point
+
+  reference_edwards25519scalarmul(res1,scalar,point);
+  bignum_of_word(4,res1+8,UINT64_C(1));
+  bignum_mul_p25519_alt(res1+12,res1,res1+4);
+
+  // res2 = bscalar * basepoint
+
+  reference_edwards25519scalarmul(res2,bscalar,g_edwards25519);
+  bignum_of_word(4,res2+8,UINT64_C(1));
+  bignum_mul_p25519_alt(res2+12,res2,res2+4);
+
+  // Add them, so res3 = scalar * point + bscalar * basepoint
+
+  reference_edwards25519epadd(res3,res1,res2);
+
+  // Map out of the projective representation into res
+
+  bignum_modinv(4,zinv,res3+8,p_25519,tmpspace);
+  bignum_mul_p25519_alt(res,res3,zinv);
+  bignum_mul_p25519_alt(res+4,res3+4,zinv);
+}
+
 void reference_montjdouble
   (uint64_t k,uint64_t *p3,uint64_t *p1,uint64_t *a,uint64_t *m)
 { uint64_t *xx = alloca(8 * k);
@@ -9318,6 +9347,82 @@ int test_edwards25519_scalarmulbase_alt(void)
   return 0;
 }
 
+int test_edwards25519_scalarmuldouble(void)
+{ uint64_t t, k;
+  printf("Testing edwards25519_scalarmuldouble with %d cases\n",tests);
+  k = 4;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   {
+     random_bignum(k,b0);
+     random_bignum(k,b3); reference_edwards25519scalarmulbase(b1,b3);
+     random_bignum(k,b2);
+
+     edwards25519_scalarmuldouble(b3,b0,b1,b2);
+     reference_edwards25519scalarmuldouble(b4,b0,b1,b2);
+
+     c = reference_compare(8,b3,8,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" * "
+               "<0x%016"PRIx64"...%016"PRIx64"> + "
+               "0x%016"PRIx64"...%016"PRIx64" * base = "
+               "<...0x%016"PRIx64"...%016"PRIx64"> not "
+               "<...0x%016"PRIx64"...%016"PRIx64">\n",
+               k,b0[3],b0[0],b1[3],b1[0],b2[3],b2[0],b3[3],b3[0],b4[3],b4[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" * "
+               "<0x%016"PRIx64"...%016"PRIx64"> + ... * ... = "
+               "<...0x%016"PRIx64"...%016"PRIx64">\n",
+               k,b0[3],b0[0],b1[3],b1[0],b3[3],b3[0]);
+     }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_edwards25519_scalarmuldouble_alt(void)
+{ uint64_t t, k;
+  printf("Testing edwards25519_scalarmuldouble_alt with %d cases\n",tests);
+  k = 4;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   {
+     random_bignum(k,b0);
+     random_bignum(k,b3); reference_edwards25519scalarmulbase(b1,b3);
+     random_bignum(k,b2);
+
+     edwards25519_scalarmuldouble_alt(b3,b0,b1,b2);
+     reference_edwards25519scalarmuldouble(b4,b0,b1,b2);
+
+     c = reference_compare(8,b3,8,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" * "
+               "<0x%016"PRIx64"...%016"PRIx64"> + "
+               "0x%016"PRIx64"...%016"PRIx64" * base = "
+               "<...0x%016"PRIx64"...%016"PRIx64"> not "
+               "<...0x%016"PRIx64"...%016"PRIx64">\n",
+               k,b0[3],b0[0],b1[3],b1[0],b2[3],b2[0],b3[3],b3[0],b4[3],b4[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" * "
+               "<0x%016"PRIx64"...%016"PRIx64"> + ... * ... = "
+               "<...0x%016"PRIx64"...%016"PRIx64">\n",
+               k,b0[3],b0[0],b1[3],b1[0],b3[3],b3[0]);
+     }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
 int test_p256_montjadd(void)
 { uint64_t t, k;
   printf("Testing p256_montjadd with %d cases\n",tests);
@@ -10881,6 +10986,8 @@ int main(int argc, char *argv[])
   functionaltest(all,"edwards25519_pepadd_alt",test_edwards25519_pepadd_alt);
   functionaltest(bmi,"edwards25519_scalarmulbase",test_edwards25519_scalarmulbase);
   functionaltest(all,"edwards25519_scalarmulbase_alt",test_edwards25519_scalarmulbase_alt);
+  functionaltest(bmi,"edwards25519_scalarmuldouble",test_edwards25519_scalarmuldouble);
+  functionaltest(all,"edwards25519_scalarmuldouble_alt",test_edwards25519_scalarmuldouble_alt);
   functionaltest(bmi,"p256_montjadd",test_p256_montjadd);
   functionaltest(bmi,"p256_montjdouble",test_p256_montjdouble);
   functionaltest(bmi,"p256_montjmixadd",test_p256_montjmixadd);

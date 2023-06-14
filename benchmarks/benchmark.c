@@ -743,6 +743,9 @@ void call_edwards25519_pepadd_alt(void) repeat(edwards25519_pepadd_alt(b1,b2,b3)
 void call_edwards25519_scalarmulbase(void) repeatfewer(10,edwards25519_scalarmulbase(b0,b1))
 void call_edwards25519_scalarmulbase_alt(void) repeatfewer(10,edwards25519_scalarmulbase_alt(b0,b1))
 
+void call_edwards25519_scalarmuldouble(void) repeatfewer(10,edwards25519_scalarmuldouble(b0,b1,b2,b3))
+void call_edwards25519_scalarmuldouble_alt(void) repeatfewer(10,edwards25519_scalarmuldouble_alt(b0,b1,b2,b3))
+
 void call_p256_montjadd(void) repeat(p256_montjadd(b1,b2,b3))
 void call_p256_montjdouble(void) repeat(p256_montjdouble(b1,b2))
 void call_p256_montjmixadd(void) repeat(p256_montjmixadd(b1,b2,b3))
@@ -1106,6 +1109,8 @@ int main(int argc, char *argv[])
   timingtest(all,"edwards25519_pepadd_alt",call_edwards25519_pepadd_alt);
   timingtest(bmi,"edwards25519_scalarmulbase",call_edwards25519_scalarmulbase);
   timingtest(all,"edwards25519_scalarmulbase_alt",call_edwards25519_scalarmulbase_alt);
+  timingtest(bmi,"edwards25519_scalarmuldouble",call_edwards25519_scalarmuldouble);
+  timingtest(all,"edwards25519_scalarmuldouble_alt",call_edwards25519_scalarmuldouble_alt);
   timingtest(bmi,"p256_montjadd",call_p256_montjadd);
   timingtest(bmi,"p256_montjdouble",call_p256_montjdouble);
   timingtest(bmi,"p256_montjmixadd",call_p256_montjmixadd);

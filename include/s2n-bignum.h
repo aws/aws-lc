@@ -860,6 +860,11 @@ extern void edwards25519_pepadd_alt(uint64_t p3[static 16],uint64_t p1[static 16
 extern void edwards25519_scalarmulbase(uint64_t res[static 8],uint64_t scalar[static 4]);
 extern void edwards25519_scalarmulbase_alt(uint64_t res[static 8],uint64_t scalar[static 4]);
 
+// Double scalar multiplication for edwards25519, fresh and base point
+// Input scalar[4], point[8], bscalar[4]; output res[8]
+extern void edwards25519_scalarmuldouble(uint64_t res[static 8],uint64_t scalar[static 4], uint64_t point[static 8],uint64_t bscalar[static 4]);
+extern void edwards25519_scalarmuldouble_alt(uint64_t res[static 8],uint64_t scalar[static 4], uint64_t point[static 8],uint64_t bscalar[static 4]);
+
 // Point addition on NIST curve P-256 in Montgomery-Jacobian coordinates
 // Inputs p1[12], p2[12]; output p3[12]
 extern void p256_montjadd(uint64_t p3[static 12],uint64_t p1[static 12],uint64_t p2[static 12]);
