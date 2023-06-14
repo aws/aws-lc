@@ -59,6 +59,13 @@ TEST(CPUJitterEntropyTest, Basic) {
 
   // Verify that the Jitter library version is v3.1.0.
   unsigned int jitter_version = 3010000;
+
+  // Test drawing entropy from the Jitter object that was reset.
+  EXPECT_EQ(jent_read_entropy(jitter_ec.instance,
+                              (char*) data0, data_len), data_len);
+  EXPECT_EQ(jent_read_entropy_safe(&jitter_ec.instance,
+                                   (char*) data1, data_len), data_len);
+
   EXPECT_EQ(jitter_version, jent_version());
 }
 
