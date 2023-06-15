@@ -14,4 +14,5 @@ phases:
       - CORE_COUNT=$(nproc --all)
       - cd ${CODEBUILD_SRC_DIR}/${S2N_BIGNUM_ARCH}
       - export HOLDIR=${CODEBUILD_SRC_DIR_hol_light}
+      - make sematest
       - make -j ${CORE_COUNT} proofs

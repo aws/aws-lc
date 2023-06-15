@@ -369,3 +369,8 @@ sm2/%.correct: proofs/%.ml sm2/%.o ; (cd ..; (echo 'loadt "arm/proofs/base.ml";;
 run_proofs: $(PROOFS);
 
 proofs: run_proofs ; ../tools/check-proofs.sh .
+
+# Always run sematest regardless of dependency check
+FORCE: ;
+# Dummy
+sematest: FORCE; echo "todo"
