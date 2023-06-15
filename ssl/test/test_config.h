@@ -26,6 +26,7 @@
 
 struct TestConfig {
   int port = 0;
+  bool ipv6 = false;
   bool is_server = false;
   bool is_dtls = false;
   bool is_quic = false;
@@ -215,8 +216,7 @@ struct TestConfig {
   // prioritized over certs defined with |cert_file| and |key_file|.
   std::vector<std::pair<std::string, std::string>> multiple_certs_slot;
 
-  int argc;
-  char **argv;
+  std::vector<const char*> handshaker_args;
 
   bssl::UniquePtr<SSL_CTX> SetupCtx(SSL_CTX *old_ctx) const;
 
