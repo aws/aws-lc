@@ -107,7 +107,6 @@ typedef uint32_t CRYPTO_refcount_t;
 // its termination, our internal thread-local destructor function will not be
 // invoked. If performed on all active threads, this may allow a shared
 // AWS-LC library to be unloaded safely via `dlclose`.
-// This function is similar in purpose to `OPENSSL_thread_stop`.
 OPENSSL_EXPORT int AWSLC_thread_local_clear(void);
 
 // AWSLC_thread_local_shutdown deletes the key used to track thread-local data.
@@ -115,7 +114,6 @@ OPENSSL_EXPORT int AWSLC_thread_local_clear(void);
 // consumers that use `dlopen`/`dlclose` to access the AWS-LC shared library.
 // It should be called prior to `dlclose` after all other threads have completed
 // calls to AWSLC_thread_local_clear.
-// This function is similar in purpose to `OPENSSL_cleanup`.
 OPENSSL_EXPORT int AWSLC_thread_local_shutdown(void);
 
 // Deprecated functions.
