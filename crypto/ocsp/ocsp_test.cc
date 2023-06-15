@@ -1434,26 +1434,19 @@ TEST(OCSPTest, CertIDDup) {
 
 TEST(OCSPTest, OCSPResponsePrint) {
   static const std::array<std::string, 19> kExpected{
-      "OCSP Response Data:",
-      "    OCSP Response Status: successful (0x0)",
-      "    Response Type: Basic OCSP Response",
-      "    Version: 1 (0x0)",
-      "    Responder Id: C = US, ST = WA, O = s2n, OU = s2n Test OCSP, CN = "
-      "ocsp.s2ntest.com",
-      "    Produced At: May 26 00:23:34 2021 GMT",
-      "    Responses:",
-      "    Certificate ID:",
-      "      Hash Algorithm: sha1",
-      "      Issuer Name Hash: DE7932B3217E48FB4E47AE0B9007A55376AE44CA",
-      "      Issuer Key Hash: 12DF817571CA92D3CE1B2C2B773B9E3377F3F76F",
-      "      Serial Number: 7778",
-      "    Cert Status: good",
-      "    This Update: May 26 00:23:34 2021 GMT",
-      "    Next Update: May 24 00:23:34 2031 GMT",
-      "",
-      "    Response Extensions:",
-      "        OCSP Nonce: ",
-      "            0410AFABD4EC6A172C4A98FB1A6D22FF2928"};
+      {"OCSP Response Data:", "    OCSP Response Status: successful (0x0)",
+       "    Response Type: Basic OCSP Response", "    Version: 1 (0x0)",
+       "    Responder Id: C = US, ST = WA, O = s2n, OU = s2n Test OCSP, CN = "
+       "ocsp.s2ntest.com",
+       "    Produced At: May 26 00:23:34 2021 GMT",
+       "    Responses:", "    Certificate ID:", "      Hash Algorithm: sha1",
+       "      Issuer Name Hash: DE7932B3217E48FB4E47AE0B9007A55376AE44CA",
+       "      Issuer Key Hash: 12DF817571CA92D3CE1B2C2B773B9E3377F3F76F",
+       "      Serial Number: 7778", "    Cert Status: good",
+       "    This Update: May 26 00:23:34 2021 GMT",
+       "    Next Update: May 24 00:23:34 2031 GMT", "",
+       "    Response Extensions:", "        OCSP Nonce: ",
+       "            0410AFABD4EC6A172C4A98FB1A6D22FF2928"}};
 
   std::string respData = GetTestData(
       std::string("crypto/ocsp/test/aws/ocsp_response.der").c_str());
@@ -1479,17 +1472,13 @@ TEST(OCSPTest, OCSPResponsePrint) {
 
 TEST(OCSPTest, OCSPRequestPrint) {
   static const std::array<std::string, 11> kExpected{
-      "OCSP Request Data:",
-      "    Version: 1 (0x0)",
-      "    Requestor List:",
-      "        Certificate ID:",
-      "          Hash Algorithm: sha1",
-      "          Issuer Name Hash: DE7932B3217E48FB4E47AE0B9007A55376AE44CA",
-      "          Issuer Key Hash: 12DF817571CA92D3CE1B2C2B773B9E3377F3F76F",
-      "          Serial Number: 7778",
-      "    Request Extensions:",
-      "        OCSP Nonce: ",
-      "            0410303F128CD824A2B465F4C846882B3E1F"};
+      {"OCSP Request Data:", "    Version: 1 (0x0)", "    Requestor List:",
+       "        Certificate ID:", "          Hash Algorithm: sha1",
+       "          Issuer Name Hash: DE7932B3217E48FB4E47AE0B9007A55376AE44CA",
+       "          Issuer Key Hash: 12DF817571CA92D3CE1B2C2B773B9E3377F3F76F",
+       "          Serial Number: 7778",
+       "    Request Extensions:", "        OCSP Nonce: ",
+       "            0410303F128CD824A2B465F4C846882B3E1F"}};
 
   std::string data =
       GetTestData(std::string("crypto/ocsp/test/aws/ocsp_request.der").c_str());

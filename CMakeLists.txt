@@ -324,6 +324,11 @@ if(GCC OR CLANG)
     # and declare that the code is trying to free a stack pointer. GCC 4.1.3 and lower
     # doesn't support this flag and can't use it.
     set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wno-free-nonheap-object")
+    # GCC (from at least 4.8) does not include -Wmissing-braces in -Wall due to Bug 25137.
+    # This warning is turned on everywhere internally however, so we have to define it here
+    # to check that our changes don't break the build.
+    # See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=25137
+    set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wmissing-braces")
   endif()
 
   # -Wstring-concatenation was added in Clang 12.0.0, which corresponds to
