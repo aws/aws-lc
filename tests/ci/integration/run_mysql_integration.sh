@@ -46,6 +46,13 @@ function aws_lc_build() {
   rm -rf "${AWS_LC_BUILD_FOLDER:?}"/*
 }
 
+function mysql_patch_reminder() {
+  LATEST_MYSQL_VERSION_TAG=mysql-`curl https://api.github.com/repos/mysql/mysql-server/tags | jq '.[].name' |grep '\-8.0' |sed -e 's/"mysql-cluster-\(.*\)"/\1/' |sort | tail -n 1`
+  if [[ "${LATEST_MYSQL_VERSION_TAG}" != "${MYSQL_VERSION_TAG}" ]]; then
+    echo -e '\n\nMYSQL HAS RELEASED A NEW VERSION. REMEMBER TO UPDATE MYSQL_VERSION_TAG SOON.\n\n'
+  fi
+}
+
 function mysql_build() {
   cmake ${MYSQL_SRC_FOLDER} -GNinja -DENABLED_PROFILING=OFF -DWITH_NDB_JAVA=OFF  -DWITH_BOOST=${BOOST_INSTALL_FOLDER} -DWITH_SSL=${AWS_LC_INSTALL_FOLDER} "-B${MYSQL_BUILD_FOLDER}"
   ninja -C ${MYSQL_BUILD_FOLDER}
@@ -59,6 +66,7 @@ function mysql_run_tests() {
 }
 
 # Get latest MySQL version. MySQL often updates with large changes depending on OpenSSL all at once, so we pin to a specific version.
+mysql_patch_reminder
 git clone https://github.com/mysql/mysql-server.git ${MYSQL_SRC_FOLDER} -b ${MYSQL_VERSION_TAG} --depth 1
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} ${MYSQL_BUILD_FOLDER}
 ls
