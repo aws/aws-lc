@@ -39,6 +39,7 @@ sha512_block_data_order_ov <- llvm_verify_x86 m "../../build/x86/crypto/crypto_t
     simplify (addsimps thms empty_ss);
     simplify (addsimp concat_assoc_thm empty_ss);
     goal_eval_unint ["S0", "S1", "s0", "s1", "Ch"];
+    simplify (addsimps thms empty_ss);
     w4_unint_z3 ["S0", "S1", "s0", "s1", "Ch"];
   });
 
@@ -59,6 +60,7 @@ sha512_block_data_order_array_ov <- llvm_verify_fixpoint_x86 m "../../build/x86/
     simplify (addsimps thms empty_ss);
     simplify (addsimp concat_assoc_thm empty_ss);
     goal_eval_unint ["processBlocksLoop", "S0", "S1", "s0", "s1", "Ch"];
+    simplify (addsimps thms empty_ss);
     w4_unint_z3 ["processBlocksLoop", "S0", "S1", "s0", "s1", "Ch"];
   });
 

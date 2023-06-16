@@ -109,7 +109,7 @@ llvm_verify m "HMAC_CTX_init"
   (w4_unint_z3 []);
 
 // Verify HMAC_Init_ex_array
-// 4 mins
+// 2 mins
 let verify_HMAC_Init_ex_array_spec = do {
   print "Verifying HMAC_Init_ex_array_spec with arbitrary key length.";
   llvm_verify m "HMAC_Init_ex"
@@ -144,9 +144,11 @@ let verify_HMAC_Init_ex_array_spec = do {
         w4_unint_z3 ["SHAFinal_Array", "SHAUpdate_Array"];
       } else if ar_goal then do {
         goal_eval_unint ["SHAUpdate_Array", "SHAFinal_Array", "SHAUpdate"];
-        simplify (addsimps [arrayRangeEq_ite_commute_thm, arrayCopy_zero_thm] empty_ss);
+        simplify (addsimps [arrayCopy_zero_thm] empty_ss);
+        goal_eval_unint ["SHAUpdate_Array", "SHAFinal_Array", "SHAUpdate"];
+        hoist_ifs_in_goal;
+        goal_eval_unint ["SHAUpdate_Array", "SHAFinal_Array", "SHAUpdate"];
         goal_insert arrayRangeEq_SHAFinal_Array_equivalence_thm;
-        goal_insert ite_of_arrayRangeEq_equivalence_thm;
         w4_unint_z3 ["SHAUpdate_Array", "SHAFinal_Array", "SHAUpdate"];
       } else do {
         goal_eval_unint ["SHAFinal_Array"];

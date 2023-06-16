@@ -8,6 +8,7 @@ import re
 import subprocess
 import sys
 import time
+import psutil
 
 LINEWIDTH = 80
 
@@ -62,8 +63,12 @@ def create_summary(output, error, exit_code, debug):
 
 # Run subprocesses in parallel
 def parallel_run (commands, debug):
+    mem = psutil.virtual_memory().available
+    # Assuming each process uses 7GB memory
+    pmem = 7*1024*1024*1024
+    pbound = int(mem/pmem)
     np = multiprocessing.cpu_count()
-    pool = multiprocessing.Pool(np)
+    pool = multiprocessing.Pool(min(np, pbound))
     with pool as p:
         results = p.map(run_process, commands)
         for res in results:

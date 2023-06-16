@@ -13,6 +13,7 @@ RUN apt-get install -y wget unzip git cmake clang llvm python3-pip libncurses5
 RUN wget "https://dl.google.com/go/${GO_ARCHIVE}" && tar -xvf $GO_ARCHIVE && \
    mkdir $GOROOT &&  mv go/* $GOROOT && rm $GO_ARCHIVE
 RUN pip3 install wllvm
+RUN pip3 install psutil
 
 ADD ./SAW/scripts /lc/scripts
 RUN /lc/scripts/docker_install.sh

@@ -6,15 +6,6 @@
 // -------------------------------------------------------
 //                 Array lemmas
 
-print "Proving arrayRangeEq_ite_commute_thm";
-arrayRangeEq_ite_commute_thm <- prove_print
-(w4_unint_z3 [])
-(rewrite (cryptol_ss ())
-{{ \x y p q c ->
-  (arrayRangeEq (if c then x else y) 0 (if c then p else q) 0 128) ==
-  (if c then (arrayRangeEq x 0 p 0 128) else (arrayRangeEq y 0 q 0 128))
-}});
-
 print "Proving ite_of_arrayRangeEq_equivalence_thm";
 ite_of_arrayRangeEq_equivalence_thm <- prove_print
 (w4_unint_z3 [])
