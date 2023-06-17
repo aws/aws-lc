@@ -199,10 +199,28 @@ static X509_EXTENSION *do_ext_nconf(const CONF *conf, const X509V3_CTX *ctx,
 static X509_EXTENSION *do_ext_i2d(const X509V3_EXT_METHOD *method, int ext_nid,
                                   int crit, void *ext_struc) {
   // Convert the extension's internal representation to DER.
-  unsigned char *ext_der = NULL;
-  int ext_len = ASN1_item_i2d(ext_struc, &ext_der, ASN1_ITEM_ptr(method->it));
-  if (ext_len < 0) {
-    return NULL;
+  unsigned char *ext_der;
+  int ext_len;
+  if (method->it) {
+    ext_der = NULL;
+    ext_len = ASN1_item_i2d(ext_struc, &ext_der, ASN1_ITEM_ptr(method->it));
+    if (ext_len < 0) {
+      return NULL;
+    }
+  } else {
+    // This is using the "old-style" ASN.1 callbacks. The only X509v3 extension
+    // that's still dependent on this code internally are OCSP nonce extensions.
+    // We can't easily migrate OCSP nonce extensions to use the "new" callbacks
+    // either, since OCSP nonces are handled differently in the code (according
+    // to OpenSSL and us having to maintain backwards compatibility with them).
+    // Every other |X509V3_EXT_METHOD|, both inside and outside the library, has
+    // and should have an |ASN1_ITEM|.
+    ext_len = method->i2d(ext_struc, NULL);
+    if (!(ext_der = OPENSSL_malloc(ext_len))) {
+      return NULL;
+    }
+    unsigned char *p = ext_der;
+    method->i2d(ext_struc, &p);
   }
 
   ASN1_OCTET_STRING *ext_oct = ASN1_OCTET_STRING_new();

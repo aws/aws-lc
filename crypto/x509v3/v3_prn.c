@@ -105,14 +105,20 @@ void X509V3_EXT_val_prn(BIO *out, const STACK_OF(CONF_VALUE) *val, int indent,
 
 int X509V3_EXT_print(BIO *out, const X509_EXTENSION *ext, unsigned long flag,
                      int indent) {
+  void *ext_str = NULL;
   const X509V3_EXT_METHOD *method = X509V3_EXT_get(ext);
   if (method == NULL) {
     return unknown_ext_print(out, ext, flag, indent, 0);
   }
   const ASN1_STRING *ext_data = X509_EXTENSION_get_data(ext);
   const unsigned char *p = ASN1_STRING_get0_data(ext_data);
-  void *ext_str = ASN1_item_d2i(NULL, &p, ASN1_STRING_length(ext_data),
-                                ASN1_ITEM_ptr(method->it));
+  if (method->it) {
+    ext_str = ASN1_item_d2i(NULL, &p, ASN1_STRING_length(ext_data),
+                            ASN1_ITEM_ptr(method->it));
+  } else {
+    ext_str = method->d2i(NULL, &p, ASN1_STRING_length(ext_data));
+  }
+
   if (!ext_str) {
     return unknown_ext_print(out, ext, flag, indent, 1);
   }
@@ -145,7 +151,11 @@ int X509V3_EXT_print(BIO *out, const X509_EXTENSION *ext, unsigned long flag,
 err:
   sk_CONF_VALUE_pop_free(nval, X509V3_conf_free);
   OPENSSL_free(value);
-  ASN1_item_free(ext_str, ASN1_ITEM_ptr(method->it));
+  if (method->it) {
+    ASN1_item_free(ext_str, ASN1_ITEM_ptr(method->it));
+  } else {
+    method->ext_free(ext_str);
+  }
   return ok;
 }
 

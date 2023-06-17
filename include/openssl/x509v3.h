@@ -111,6 +111,13 @@ struct v3_ext_method {
 
   // The following functions are ignored in favor of |it|. They are retained in
   // the struct only for source compatibility with existing struct definitions.
+  //
+  // Only OCSP nonce extensions currently rely on these functions with AWS-LC.
+  // This is to maintain backwards compatibility with how OCSP nonce extensions
+  // are handled in OpenSSL. This can't be easily removed because OpenSSL
+  // considers the OCSP nonce to be "special".
+  // |X509V3_EXT_add| enforces |it| to be non-NULL, so external users are not
+  // allowed to use the following functions.
   X509V3_EXT_NEW ext_new;
   X509V3_EXT_FREE ext_free;
   X509V3_EXT_D2I d2i;
