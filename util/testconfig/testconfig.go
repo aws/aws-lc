@@ -26,7 +26,6 @@ type Test struct {
 	SkipValgrind 	bool 	 `json:"skip_valgrind"`
 	ValgrindSupp  	[]string `json:"valgrind_supp"`
 	TargetArch  	string 	`json:"target_arch"`
-	SkipMissing     string  `json:"skip_missing"`
 }
 
 func ParseTestConfig(filename string) ([]Test, error) {
