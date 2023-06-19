@@ -178,4 +178,33 @@ int CRYPTO_set_thread_local(thread_local_data_t index, void *value,
   return 1;
 }
 
+int AWSLC_thread_local_clear(void) {
+  if (!g_thread_local_key_created) {
+    return 1;
+  }
+  void *pointers = pthread_getspecific(g_thread_local_key);
+  thread_local_destructor(pointers);
+  // By setting the value NULL, thread_local_destructor will not be called when
+  // this thread dies.
+  if (0 != pthread_setspecific(g_thread_local_key, NULL)) {
+    return 0;
+  }
+  return 1;
+}
+
+// This function is not thread-safe. It should only be called on a thread that
+// is prepared to also call `dlclose` to unload our shared library.
+int AWSLC_thread_local_shutdown(void) {
+  if (!g_thread_local_key_created) {
+    return 1;
+  }
+  // This deletes the thread local key
+  if (0 != pthread_key_delete(g_thread_local_key)) {
+    return 0;
+  }
+
+  g_thread_local_key_created = 0;
+  return 1;
+}
+
 #endif  // OPENSSL_PTHREADS
