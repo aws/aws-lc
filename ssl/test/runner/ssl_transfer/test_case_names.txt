@@ -80,7 +80,6 @@ Basic-Server-TLS-Sync
 Basic-Server-TLS-Sync-ImplicitHandshake
 Basic-Server-TLS-Sync-PackHandshake
 Basic-Server-TLS-Sync-SplitHandshakeRecords
-CECPQ2NotEnabledByDefaultForAServer
 CertCompressionExpands-TLS13
 CertCompressionIgnoredBefore13-TLS12
 CertCompressionNoCommonAlgs-TLS13
@@ -237,7 +236,6 @@ CorruptTicket-TLS-TLS12
 CorruptTicket-TLS-TLS13
 CurveID-Resume-Server
 CurveID-Resume-Server-TLS13
-CurveTest-Server-CECPQ2-TLS13
 CurveTest-Server-P-224-TLS12
 CurveTest-Server-P-224-TLS13
 CurveTest-Server-P-256-TLS12

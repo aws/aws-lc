@@ -102,6 +102,19 @@ typedef union crypto_mutex_st {
 // a plain uint32_t and an _Atomic uint32_t are equal in refcount_c11.c.
 typedef uint32_t CRYPTO_refcount_t;
 
+// AWSLC_thread_local_clear destructs AWS-LC-related thread-local data.
+// If no other AWS-LC function is subsequently called on this thread prior to
+// its termination, our internal thread-local destructor function will not be
+// invoked. If performed on all active threads, this may allow a shared
+// AWS-LC library to be unloaded safely via |dlclose|.
+OPENSSL_EXPORT int AWSLC_thread_local_clear(void);
+
+// AWSLC_thread_local_shutdown deletes the key used to track thread-local data.
+// This function is not thread-safe. It is needed to avoid leaking resources in
+// consumers that use |dlopen|/|dlclose| to access the AWS-LC shared library.
+// It should be called prior to |dlclose| after all other threads have completed
+// calls to |AWSLC_thread_local_clear|.
+OPENSSL_EXPORT int AWSLC_thread_local_shutdown(void);
 
 // Deprecated functions.
 //

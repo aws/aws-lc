@@ -551,11 +551,6 @@ static const CurveTest kCurveTests[] = {
         {SSL_CURVE_SECP256R1},
     },
     {
-        "P-256:CECPQ2",
-        {SSL_CURVE_SECP256R1, SSL_CURVE_CECPQ2},
-    },
-
-    {
         "P-256:P-384:P-521:X25519",
         {
             SSL_CURVE_SECP256R1,
@@ -1550,15 +1545,6 @@ TEST(SSLTest, Padding) {
           << "ClientHello was not padded to expected length";
     }
   }
-}
-
-static bssl::UniquePtr<X509> CertFromPEM(const char *pem) {
-  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(pem, strlen(pem)));
-  if (!bio) {
-    return nullptr;
-  }
-  return bssl::UniquePtr<X509>(
-      PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
 }
 
 static bssl::UniquePtr<EVP_PKEY> KeyFromPEM(const char *pem) {

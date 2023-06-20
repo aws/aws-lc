@@ -324,6 +324,11 @@ if(GCC OR CLANG)
     # and declare that the code is trying to free a stack pointer. GCC 4.1.3 and lower
     # doesn't support this flag and can't use it.
     set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wno-free-nonheap-object")
+    # GCC (from at least 4.8) does not include -Wmissing-braces in -Wall due to Bug 25137.
+    # This warning is turned on everywhere internally however, so we have to define it here
+    # to check that our changes don't break the build.
+    # See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=25137
+    set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wmissing-braces")
   endif()
 
   # -Wstring-concatenation was added in Clang 12.0.0, which corresponds to
@@ -833,14 +838,18 @@ if(BUILD_TESTING)
     set(SSL_TEST_EXEC ssl_test.so)
     set(MEM_TEST_EXEC mem_test.so)
     set(MEM_SET_TEST_EXEC mem_set_test.so)
+    set(INTEGRATION_TEST_EXEC integration_test.so)
+    set(DYNAMIC_LOADING_TEST_EXEC dynamic_loading_test.so)
   else()
     set(CRYPTO_TEST_EXEC crypto_test)
     set(RANDOM_TEST_EXEC urandom_test)
     set(SSL_TEST_EXEC ssl_test)
     set(MEM_TEST_EXEC mem_test)
     set(MEM_SET_TEST_EXEC mem_set_test)
+    set(INTEGRATION_TEST_EXEC integration_test)
+    set(DYNAMIC_LOADING_TEST_EXEC dynamic_loading_test)
   endif()
-  
+
   add_subdirectory(util/fipstools/acvp/modulewrapper)
 endif()
 

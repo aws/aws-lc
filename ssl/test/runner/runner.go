@@ -11488,13 +11488,12 @@ var testCurves = []struct {
 	{"P-384", CurveP384},
 	{"P-521", CurveP521},
 	{"X25519", CurveX25519},
-	{"CECPQ2", CurveCECPQ2},
 }
 
 const bogusCurve = 0x1234
 
 func isPqGroup(r CurveID) bool {
-	return r == CurveCECPQ2
+	return false
 }
 
 func addCurveTests() {
@@ -11955,131 +11954,6 @@ func addCurveTests() {
 			Bugs: ProtocolBugs{
 				SetX25519HighBit: true,
 			},
-		},
-	})
-
-	// CECPQ2 should not be offered by a TLS < 1.3 client.
-	testCases = append(testCases, testCase{
-		name: "CECPQ2NotInTLS12",
-		config: Config{
-			Bugs: ProtocolBugs{
-				FailIfCECPQ2Offered: true,
-			},
-		},
-		flags: []string{
-			"-max-version", strconv.Itoa(VersionTLS12),
-			"-curves", strconv.Itoa(int(CurveCECPQ2)),
-			"-curves", strconv.Itoa(int(CurveX25519)),
-		},
-	})
-
-	// CECPQ2 should not crash a TLS < 1.3 client if the server mistakenly
-	// selects it.
-	testCases = append(testCases, testCase{
-		name: "CECPQ2NotAcceptedByTLS12Client",
-		config: Config{
-			Bugs: ProtocolBugs{
-				SendCurve: CurveCECPQ2,
-			},
-		},
-		flags: []string{
-			"-max-version", strconv.Itoa(VersionTLS12),
-			"-curves", strconv.Itoa(int(CurveCECPQ2)),
-			"-curves", strconv.Itoa(int(CurveX25519)),
-		},
-		shouldFail:    true,
-		expectedError: ":WRONG_CURVE:",
-	})
-
-	// CECPQ2 should not be offered by default as a client.
-	testCases = append(testCases, testCase{
-		name: "CECPQ2NotEnabledByDefaultInClients",
-		config: Config{
-			MinVersion: VersionTLS13,
-			Bugs: ProtocolBugs{
-				FailIfCECPQ2Offered: true,
-			},
-		},
-	})
-
-	// If CECPQ2 is offered, both X25519 and CECPQ2 should have a key-share.
-	testCases = append(testCases, testCase{
-		name: "NotJustCECPQ2KeyShare",
-		config: Config{
-			MinVersion: VersionTLS13,
-			Bugs: ProtocolBugs{
-				ExpectedKeyShares: []CurveID{CurveCECPQ2, CurveX25519},
-			},
-		},
-		flags: []string{
-			"-curves", strconv.Itoa(int(CurveCECPQ2)),
-			"-curves", strconv.Itoa(int(CurveX25519)),
-			"-expect-curve-id", strconv.Itoa(int(CurveCECPQ2)),
-		},
-	})
-
-	// ... and the other way around
-	testCases = append(testCases, testCase{
-		name: "CECPQ2KeyShareIncludedSecond",
-		config: Config{
-			MinVersion: VersionTLS13,
-			Bugs: ProtocolBugs{
-				ExpectedKeyShares: []CurveID{CurveX25519, CurveCECPQ2},
-			},
-		},
-		flags: []string{
-			"-curves", strconv.Itoa(int(CurveX25519)),
-			"-curves", strconv.Itoa(int(CurveCECPQ2)),
-			"-expect-curve-id", strconv.Itoa(int(CurveX25519)),
-		},
-	})
-
-	// ... and even if there's another curve in the middle because it's the
-	// first classical and first post-quantum "curves" that get key shares
-	// included.
-	testCases = append(testCases, testCase{
-		name: "CECPQ2KeyShareIncludedThird",
-		config: Config{
-			MinVersion: VersionTLS13,
-			Bugs: ProtocolBugs{
-				ExpectedKeyShares: []CurveID{CurveX25519, CurveCECPQ2},
-			},
-		},
-		flags: []string{
-			"-curves", strconv.Itoa(int(CurveX25519)),
-			"-curves", strconv.Itoa(int(CurveP256)),
-			"-curves", strconv.Itoa(int(CurveCECPQ2)),
-			"-expect-curve-id", strconv.Itoa(int(CurveX25519)),
-		},
-	})
-
-	// If CECPQ2 is the only configured curve, the key share is sent.
-	testCases = append(testCases, testCase{
-		name: "JustConfiguringCECPQ2Works",
-		config: Config{
-			MinVersion: VersionTLS13,
-			Bugs: ProtocolBugs{
-				ExpectedKeyShares: []CurveID{CurveCECPQ2},
-			},
-		},
-		flags: []string{
-			"-curves", strconv.Itoa(int(CurveCECPQ2)),
-			"-expect-curve-id", strconv.Itoa(int(CurveCECPQ2)),
-		},
-	})
-
-	// As a server, CECPQ2 is not yet supported by default.
-	testCases = append(testCases, testCase{
-		testType: serverTest,
-		name:     "CECPQ2NotEnabledByDefaultForAServer",
-		config: Config{
-			MinVersion:       VersionTLS13,
-			CurvePreferences: []CurveID{CurveCECPQ2, CurveX25519},
-			DefaultCurves:    []CurveID{CurveCECPQ2},
-		},
-		flags: []string{
-			"-server-preference",
-			"-expect-curve-id", strconv.Itoa(int(CurveX25519)),
 		},
 	})
 }
