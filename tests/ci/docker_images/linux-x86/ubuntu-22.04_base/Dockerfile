@@ -45,6 +45,7 @@ RUN set -ex && \
     flex \
     bison \
     curl \
+    jq \
     unzip && \
     # Based on https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2-linux.html
     # The awscli is used to publish data to CloudWatch Metrics in some jobs. This requires additional IAM permission
@@ -59,7 +60,7 @@ RUN set -ex && \
     # Download a copy of LLVM's libcxx which is required for building and running with Memory Sanitizer
     git clone https://github.com/llvm/llvm-project.git --branch llvmorg-11.1.0  --depth 1 && \
     cd llvm-project && rm -rf $(ls -A | grep -Ev "(libcxx|libcxxabi)") && \
-    apt-get --purge remove -y curl unzip && \
+    apt-get --purge remove -y unzip && \
     apt-get autoremove --purge -y && \
     apt-get clean && \
     apt-get autoclean && \
