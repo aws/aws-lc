@@ -2148,6 +2148,9 @@ TEST_P(PerKEMTest, KeyGeneration) {
   tmp = (void*) ctx.get()->pkey;
   ctx.get()->pkey = nullptr;
   ASSERT_FALSE(EVP_PKEY_CTX_kem_set_params(ctx.get(), NID_secp521r1));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(EVP_R_UNSUPPORTED_ALGORITHM, ERR_GET_REASON(err));
   ctx.get()->pkey = (EVP_PKEY*) tmp;
 }
 
@@ -2256,6 +2259,9 @@ TEST_P(PerKEMTest, Encapsulation) {
   void *tmp = (void*) ctx.get()->pmeth;
   ctx.get()->pmeth = nullptr;
   ASSERT_FALSE(EVP_PKEY_encapsulate(ctx.get(), ct.data(), &ct_len, ss.data(), &ss_len));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE, ERR_GET_REASON(err));
   ctx.get()->pmeth = (EVP_PKEY_METHOD*) tmp;
 }
 
@@ -2310,6 +2316,9 @@ TEST_P(PerKEMTest, Decapsulation) {
   void *tmp = (void*) ctx.get()->pmeth;
   ctx.get()->pmeth = nullptr;
   ASSERT_FALSE(EVP_PKEY_decapsulate(ctx.get(), ss.data(), &ss_len, ct.data(), ct_len));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE, ERR_GET_REASON(err));
   ctx.get()->pmeth = (EVP_PKEY_METHOD*) tmp;
 }
 
