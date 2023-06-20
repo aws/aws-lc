@@ -100,5 +100,10 @@
   },
   {
     "cmd": ["crypto/mem_set_test"]
+  },
+  {
+    "cmd": [
+      "crypto/dynamic_loading_test"
+    ]
   }
 ]

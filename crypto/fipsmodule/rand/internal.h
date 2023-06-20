@@ -129,6 +129,10 @@ OPENSSL_INLINE int have_fast_rdrand(void) {
 #define MAX_BACKOFF_RETRIES 9
 OPENSSL_EXPORT void HAZMAT_set_urandom_test_mode_for_testing(void);
 
+#if defined(BORINGSSL_FIPS)
+#define JITTER_MAX_NUM_TRIES (3)
+#endif
+
 #if defined(__cplusplus)
 }  // extern C
 #endif

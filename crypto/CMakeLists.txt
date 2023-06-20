@@ -394,7 +394,11 @@ add_library(
   obj/obj_xref.c
   ocsp/ocsp_asn.c
   ocsp/ocsp_client.c
+  ocsp/ocsp_extension.c
+  ocsp/ocsp_http.c
   ocsp/ocsp_lib.c
+  ocsp/ocsp_print.c
+  ocsp/ocsp_server.c
   ocsp/ocsp_verify.c
   pem/pem_all.c
   pem/pem_info.c
@@ -767,6 +771,23 @@ if(BUILD_TESTING)
     target_compile_options(${CRYPTO_TEST_EXEC} PUBLIC -Wno-deprecated-declarations)
   endif()
   add_dependencies(all_tests ${CRYPTO_TEST_EXEC})
+
+  message(STATUS "Generating test executable ${DYNAMIC_LOADING_TEST_EXEC}.")
+
+  add_executable(${DYNAMIC_LOADING_TEST_EXEC} dynamic_loading_test.c)
+  add_dependencies(${DYNAMIC_LOADING_TEST_EXEC} crypto)
+
+  if (BUILD_SHARED_LIBS AND NOT WIN32)
+    target_compile_options(${DYNAMIC_LOADING_TEST_EXEC} PUBLIC "-DLIBCRYPTO_PATH=$<TARGET_FILE:crypto>")
+    # Do not link to boringssl_gtest_main or any library that might be linked to libcrypto.so.
+    if(ANDROID)
+      target_link_libraries(${DYNAMIC_LOADING_TEST_EXEC} PUBLIC boringssl_gtest dl)
+    else()
+      target_link_libraries(${DYNAMIC_LOADING_TEST_EXEC} PUBLIC boringssl_gtest pthread dl)
+    endif()
+  endif()
+
+  add_dependencies(all_tests ${DYNAMIC_LOADING_TEST_EXEC})
 endif()
 
 install(TARGETS crypto

@@ -17,10 +17,11 @@
 #include <ostream>
 
 #include "../internal.h"
+#include "openssl/pem.h"
 
 
 void hexdump(FILE *fp, const char *msg, const void *in, size_t len) {
-  const uint8_t *data = reinterpret_cast<const uint8_t*>(in);
+  const uint8_t *data = reinterpret_cast<const uint8_t *>(in);
 
   fputs(msg, fp);
   for (size_t i = 0; i < len; i++) {
@@ -75,3 +76,13 @@ std::string EncodeHex(bssl::Span<const uint8_t> in) {
   return ret;
 }
 
+// CertFromPEM parses the given, NUL-terminated pem block and returns an
+// |X509*|.
+bssl::UniquePtr<X509> CertFromPEM(const char *pem) {
+  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(pem, strlen(pem)));
+  if (!bio) {
+    return nullptr;
+  }
+  return bssl::UniquePtr<X509>(
+      PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
+}

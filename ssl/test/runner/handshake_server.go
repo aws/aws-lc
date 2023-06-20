@@ -280,14 +280,6 @@ func (hs *serverHandshakeState) readClientHello() error {
 		}
 	}
 
-	if config.Bugs.FailIfCECPQ2Offered {
-		for _, offeredCurve := range hs.clientHello.supportedCurves {
-			if isPqGroup(offeredCurve) {
-				return errors.New("tls: CECPQ2 was offered")
-			}
-		}
-	}
-
 	if expected := config.Bugs.ExpectedKeyShares; expected != nil {
 		if len(expected) != len(hs.clientHello.keyShares) {
 			return fmt.Errorf("tls: expected %d key shares, but found %d", len(expected), len(hs.clientHello.keyShares))
@@ -1467,7 +1459,7 @@ func (hs *serverHandshakeState) processClientHello() (isResume bool, err error) 
 Curves:
 	for _, curve := range hs.clientHello.supportedCurves {
 		if isPqGroup(curve) && c.vers < VersionTLS13 {
-			// CECPQ2 is TLS 1.3-only.
+			// Post-quantum is TLS 1.3 only.
 			continue
 		}
 

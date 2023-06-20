@@ -36,8 +36,7 @@ void hexdump(FILE *fp, const char *msg, const void *in, size_t len);
 // Bytes is a wrapper over a byte slice which may be compared for equality. This
 // allows it to be used in EXPECT_EQ macros.
 struct Bytes {
-  Bytes(const uint8_t *data_arg, size_t len_arg)
-      : span_(data_arg, len_arg) {}
+  Bytes(const uint8_t *data_arg, size_t len_arg) : span_(data_arg, len_arg) {}
   Bytes(const char *data_arg, size_t len_arg)
       : span_(reinterpret_cast<const uint8_t *>(data_arg), len_arg) {}
 
@@ -45,8 +44,7 @@ struct Bytes {
       : span_(reinterpret_cast<const uint8_t *>(str), strlen(str)) {}
   explicit Bytes(const std::string &str)
       : span_(reinterpret_cast<const uint8_t *>(str.data()), str.size()) {}
-  explicit Bytes(bssl::Span<const uint8_t> span)
-      : span_(span) {}
+  explicit Bytes(bssl::Span<const uint8_t> span) : span_(span) {}
 
   bssl::Span<const uint8_t> span_;
 };
@@ -71,5 +69,8 @@ std::vector<uint8_t> HexToBytes(const char *str);
 // EncodeHex returns |in| encoded in hexadecimal.
 std::string EncodeHex(bssl::Span<const uint8_t> in);
 
+// CertFromPEM parses the given, NUL-terminated pem block and returns an
+// |X509*|.
+bssl::UniquePtr<X509> CertFromPEM(const char *pem);
 
 #endif  // OPENSSL_HEADER_CRYPTO_TEST_TEST_UTIL_H
