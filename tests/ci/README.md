@@ -155,9 +155,10 @@ CodeBuild| clang 15.0.6 |aarch64|AL2023
 
 The following Valgrind tests are run for a subset of targets in `utils/all_tests.json` using the debug build of AWS-LC:
 
-CI Tool|Compiler|CPU platform| OS     | memcheck 
+CI Tool|Compiler|CPU platform| OS     | memcheck
 ------------ | -------------| -------------|--------|-------------
 CodeBuild|gcc 11|x86-64| AL2023 | X
+CodeBuild|gcc 11|aarch64| AL2023 | X
 
 ### Fuzz tests
 
