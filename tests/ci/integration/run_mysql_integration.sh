@@ -49,7 +49,9 @@ function aws_lc_build() {
 function mysql_patch_reminder() {
   LATEST_MYSQL_VERSION_TAG=mysql-`curl https://api.github.com/repos/mysql/mysql-server/tags | jq '.[].name' |grep '\-8.0' |sed -e 's/"mysql-cluster-\(.*\)"/\1/' |sort | tail -n 1`
   if [[ "${LATEST_MYSQL_VERSION_TAG}" != "${MYSQL_VERSION_TAG}" ]]; then
-    echo -e '\n\nMYSQL HAS RELEASED A NEW VERSION. REMEMBER TO UPDATE MYSQL_VERSION_TAG SOON.\n\n'
+    aws cloudwatch put-metric-data --namespace AWS-LC --metric-name MySQLVersionMismatch --value 1
+  else
+      aws cloudwatch put-metric-data --namespace AWS-LC --metric-name MySQLVersionMismatch --value 0
   fi
 }
 
