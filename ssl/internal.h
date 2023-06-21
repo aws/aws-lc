@@ -2581,8 +2581,8 @@ struct SSL_X509_METHOD {
   // session_clear frees any X509-related state from |session|.
   void (*session_clear)(SSL_SESSION *session);
   // session_verify_cert_chain verifies the certificate chain in |session|,
-  // sets |session->verify_result|, |session->x509_verified_chain| and returns
-  // true on success or false on error.
+  // and sets |session->verify_result| and |session->x509_verified_chain|. It
+  // returns true on success or false on error.
   bool (*session_verify_cert_chain)(SSL_SESSION *session, SSL_HANDSHAKE *ssl,
                                     uint8_t *out_alert);
 
