@@ -2121,6 +2121,37 @@ TEST_P(PerKEMTest, KeyGeneration) {
   ASSERT_TRUE(EVP_PKEY_get_raw_private_key(pkey.get(), sk_raw.data(), &sk_len));
   EXPECT_EQ(pk_len, GetParam().public_key_len);
   EXPECT_EQ(sk_len, GetParam().secret_key_len);
+
+  // ---- 4. Test failure modes for EVP_PKEY_CTX_kem_set_params. ----
+  // ctx is NULL.
+  ASSERT_FALSE(EVP_PKEY_CTX_kem_set_params(nullptr, kem_nid));
+  uint32_t err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(ERR_R_PASSED_NULL_PARAMETER, ERR_GET_REASON(err));
+
+  // ctx->data is NULL.
+  void *tmp = ctx.get()->data;
+  ctx.get()->data = nullptr;
+  ASSERT_FALSE(EVP_PKEY_CTX_kem_set_params(ctx.get(), kem_nid));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(ERR_R_PASSED_NULL_PARAMETER, ERR_GET_REASON(err));
+  ctx.get()->data = tmp;
+
+  // ctx->pkey is not NULL.
+  ASSERT_FALSE(EVP_PKEY_CTX_kem_set_params(ctx.get(), kem_nid));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(EVP_R_INVALID_OPERATION, ERR_GET_REASON(err));
+
+  // kem_nid is not a KEM.
+  tmp = (void*) ctx.get()->pkey;
+  ctx.get()->pkey = nullptr;
+  ASSERT_FALSE(EVP_PKEY_CTX_kem_set_params(ctx.get(), NID_secp521r1));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(EVP_R_UNSUPPORTED_ALGORITHM, ERR_GET_REASON(err));
+  ctx.get()->pkey = (EVP_PKEY*) tmp;
 }
 
 // Helper function that:
@@ -2160,7 +2191,7 @@ TEST_P(PerKEMTest, Encapsulation) {
   ASSERT_TRUE(ctx);
 
   // ---- 2. Test basic encapsulation flow ----
-  // Alloc ciphertext and shared secret with the expected lenghts.
+  // Alloc ciphertext and shared secret with the expected lengths.
   size_t ct_len = GetParam().ciphertext_len;
   size_t ss_len = GetParam().shared_secret_len;
   std::vector<uint8_t> ct(ct_len);
@@ -2221,6 +2252,17 @@ TEST_P(PerKEMTest, Encapsulation) {
   ss_len = GetParam().shared_secret_len + 1;
   ASSERT_TRUE(EVP_PKEY_encapsulate(ctx.get(), ct.data(), &ct_len, ss.data(), &ss_len));
   EXPECT_EQ(ss_len, GetParam().shared_secret_len);
+
+  // ---- 5. Test more failure modes for EVP_PKEY_encapsulate. ----
+  ASSERT_FALSE(EVP_PKEY_encapsulate(nullptr, ct.data(), &ct_len, ss.data(), &ss_len));
+
+  void *tmp = (void*) ctx.get()->pmeth;
+  ctx.get()->pmeth = nullptr;
+  ASSERT_FALSE(EVP_PKEY_encapsulate(ctx.get(), ct.data(), &ct_len, ss.data(), &ss_len));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE, ERR_GET_REASON(err));
+  ctx.get()->pmeth = (EVP_PKEY_METHOD*) tmp;
 }
 
 TEST_P(PerKEMTest, Decapsulation) {
@@ -2267,6 +2309,17 @@ TEST_P(PerKEMTest, Decapsulation) {
   ss_len = GetParam().shared_secret_len + 1;
   ASSERT_TRUE(EVP_PKEY_decapsulate(ctx.get(), nullptr, &ss_len, ct.data(), ct_len));
   EXPECT_EQ(ss_len, GetParam().shared_secret_len);
+
+  // ---- 5. Test more failure modes for EVP_PKEY_encapsulate. ----
+  ASSERT_FALSE(EVP_PKEY_decapsulate(nullptr, ss.data(), &ss_len, ct.data(), ct_len));
+
+  void *tmp = (void*) ctx.get()->pmeth;
+  ctx.get()->pmeth = nullptr;
+  ASSERT_FALSE(EVP_PKEY_decapsulate(ctx.get(), ss.data(), &ss_len, ct.data(), ct_len));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE, ERR_GET_REASON(err));
+  ctx.get()->pmeth = (EVP_PKEY_METHOD*) tmp;
 }
 
 TEST_P(PerKEMTest, EndToEnd) {
@@ -2426,6 +2479,18 @@ TEST_P(PerKEMTest, RawKeyOperations) {
   err = ERR_get_error();
   EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
   EXPECT_EQ(EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE, ERR_GET_REASON(err));
+
+  void *tmp = (void*) pkey.get()->ameth;
+  pkey.get()->ameth = nullptr;
+  ASSERT_FALSE(EVP_PKEY_get_raw_public_key(pkey.get(), pk.data(), &pk_len));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE, ERR_GET_REASON(err));
+  ASSERT_FALSE(EVP_PKEY_get_raw_private_key(pkey.get(), sk.data(), &sk_len));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE, ERR_GET_REASON(err));
+  pkey.get()->ameth = (const EVP_PKEY_ASN1_METHOD*)(tmp);
 
   //   Invalid lengths.
   pk_len = GetParam().public_key_len - 1;
