@@ -56,7 +56,7 @@ RUN set -ex && \
     mkdir -p ${DEPENDENCIES_DIR} && \
     cd ${DEPENDENCIES_DIR} && \
     # Extract and install Boost 1.77.0. mySQL 8.33 depends on this specific version.
-    wget ${BOOST_SRC_URL} && tar xfj ${BOOST_TARBALL} && mv ./${BOOST_PACKAGE_NAME} ./boost && \
+    wget ${BOOST_SRC_URL} && tar xfj ${BOOST_TARBALL} && mv ./${BOOST_PACKAGE_NAME} ./boost && rm ${BOOST_TARBALL} && \
     # Download a copy of LLVM's libcxx which is required for building and running with Memory Sanitizer
     git clone https://github.com/llvm/llvm-project.git --branch llvmorg-11.1.0  --depth 1 && \
     cd llvm-project && rm -rf $(ls -A | grep -Ev "(libcxx|libcxxabi)") && \

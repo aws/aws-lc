@@ -11,9 +11,9 @@ BOOST_INSTALL_FOLDER=/home/dependencies/boost
 
 # Set up environment.
 
-# ROOT
+# SYS_ROOT
 #  |
-#  - AWS_LC_DIR
+#  - SRC_ROOT
 #    |
 #    - aws-lc
 #  |
@@ -25,11 +25,7 @@ BOOST_INSTALL_FOLDER=/home/dependencies/boost
 #    - MYSQL_BUILD_FOLDER
 
 # Assumes script is executed from the root of aws-lc directory
-AWS_LC_DIR=$(pwd)
-cd ../
-ROOT=$(pwd)
-
-SCRATCH_FOLDER=${ROOT}/"MYSQL_BUILD_ROOT"
+SCRATCH_FOLDER=${SYS_ROOT}/"MYSQL_BUILD_ROOT"
 MYSQL_SRC_FOLDER="${SCRATCH_FOLDER}/mysql-server"
 MYSQL_BUILD_FOLDER="${SCRATCH_FOLDER}/server/mysql-aws-lc"
 AWS_LC_BUILD_FOLDER="${SCRATCH_FOLDER}/aws-lc-build"
@@ -40,7 +36,7 @@ rm -rf ${SCRATCH_FOLDER}/*
 cd ${SCRATCH_FOLDER}
 
 function aws_lc_build() {
-  ${CMAKE_COMMAND} "${AWS_LC_DIR}" -GNinja "-B${AWS_LC_BUILD_FOLDER}" "-DCMAKE_INSTALL_PREFIX=${AWS_LC_INSTALL_FOLDER}" "$@"
+  ${CMAKE_COMMAND} "${SRC_ROOT}" -GNinja "-B${AWS_LC_BUILD_FOLDER}" "-DCMAKE_INSTALL_PREFIX=${AWS_LC_INSTALL_FOLDER}" "$@"
   ninja -C "${AWS_LC_BUILD_FOLDER}" install
   ls -R "${AWS_LC_INSTALL_FOLDER}"
   rm -rf "${AWS_LC_BUILD_FOLDER:?}"/*
