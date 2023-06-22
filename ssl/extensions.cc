@@ -3452,6 +3452,7 @@ bool ssl_add_clienthello_tlsext(SSL_HANDSHAKE *hs, CBB *out, CBB *out_encoded,
   // 1.3 HelloRetryRequest. For the latter, the extensions may change, so it is
   // important to reset this value.
   hs->extensions.sent = 0;
+  hs->custom_extensions.sent = 0;
 
   // Add a fake empty extension. See RFC 8701.
   if (ssl->ctx->grease_enabled &&
@@ -3479,6 +3480,11 @@ bool ssl_add_clienthello_tlsext(SSL_HANDSHAKE *hs, CBB *out, CBB *out_encoded,
     // If the difference in lengths is only four bytes then the extension had
     // an empty body.
     last_was_empty = (bytes_written == 4);
+  }
+
+  if (!custom_ext_add_clienthello(hs, &extensions)) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return 0;
   }
 
   if (ssl->ctx->grease_enabled) {
@@ -3575,6 +3581,10 @@ bool ssl_add_serverhello_tlsext(SSL_HANDSHAKE *hs, CBB *out) {
     }
   }
 
+  if (!custom_ext_add_serverhello(hs, &extensions)) {
+    goto err;
+  }
+
   // Discard empty extensions blocks before TLS 1.3.
   if (ssl_protocol_version(ssl) < TLS1_3_VERSION &&
       CBB_len(&extensions) == 0) {
@@ -3592,6 +3602,7 @@ static bool ssl_scan_clienthello_tlsext(SSL_HANDSHAKE *hs,
                                         const SSL_CLIENT_HELLO *client_hello,
                                         int *out_alert) {
   hs->extensions.received = 0;
+  hs->custom_extensions.received = 0;
   CBS extensions;
   CBS_init(&extensions, client_hello->extensions, client_hello->extensions_len);
   while (CBS_len(&extensions) != 0) {
@@ -3609,6 +3620,10 @@ static bool ssl_scan_clienthello_tlsext(SSL_HANDSHAKE *hs,
     const struct tls_extension *const ext =
         tls_extension_find(&ext_index, type);
     if (ext == NULL) {
+      if (!custom_ext_parse_clienthello(hs, out_alert, type, &extension)) {
+        OPENSSL_PUT_ERROR(SSL, SSL_R_ERROR_PARSING_EXTENSION);
+        return 0;
+      }
       continue;
     }
 
@@ -3696,10 +3711,11 @@ static bool ssl_scan_serverhello_tlsext(SSL_HANDSHAKE *hs, const CBS *cbs,
         tls_extension_find(&ext_index, type);
 
     if (ext == NULL) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_EXTENSION);
-      ERR_add_error_dataf("extension %u", (unsigned)type);
-      *out_alert = SSL_AD_UNSUPPORTED_EXTENSION;
-      return false;
+      hs->received_custom_extension = true;
+      if (!custom_ext_parse_serverhello(hs, out_alert, type, &extension)) {
+        return 0;
+      }
+      continue;
     }
 
     static_assert(kNumExtensions <= sizeof(hs->extensions.sent) * 8,
@@ -4346,4 +4362,10 @@ int SSL_early_callback_ctx_extension_get(const SSL_CLIENT_HELLO *client_hello,
   *out_data = CBS_data(&cbs);
   *out_len = CBS_len(&cbs);
   return 1;
+}
+
+int SSL_extension_supported(unsigned extension_value) {
+  uint32_t index;
+  return extension_value == TLSEXT_TYPE_padding ||
+         tls_extension_find(&index, extension_value) != NULL;
 }

@@ -556,6 +556,10 @@ ssl_ctx_st::~ssl_ctx_st() {
 
   CRYPTO_MUTEX_cleanup(&lock);
   lh_SSL_SESSION_free(sessions);
+  sk_SSL_CUSTOM_EXTENSION_pop_free(client_custom_extensions,
+                                   SSL_CUSTOM_EXTENSION_free);
+  sk_SSL_CUSTOM_EXTENSION_pop_free(server_custom_extensions,
+                                   SSL_CUSTOM_EXTENSION_free);
   x509_method->ssl_ctx_free(this);
 }
 
@@ -1320,6 +1324,8 @@ const char *SSL_early_data_reason_string(enum ssl_early_data_reason_t reason) {
       return "quic_parameter_mismatch";
     case ssl_early_data_alps_mismatch:
       return "alps_mismatch";
+    case ssl_early_data_unsupported_with_custom_extension:
+      return "custom_extension_not_permitted";
   }
 
   return nullptr;
