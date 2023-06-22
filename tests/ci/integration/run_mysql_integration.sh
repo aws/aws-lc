@@ -13,9 +13,7 @@ BOOST_INSTALL_FOLDER=/home/dependencies/boost
 
 # SYS_ROOT
 #  |
-#  - SRC_ROOT
-#    |
-#    - aws-lc
+#  - SRC_ROOT(aws-lc)
 #  |
 #  - SCRATCH_FOLDER
 #    |
@@ -47,7 +45,7 @@ function mysql_patch_reminder() {
   if [[ "${LATEST_MYSQL_VERSION_TAG}" != "${MYSQL_VERSION_TAG}" ]]; then
     aws cloudwatch put-metric-data --namespace AWS-LC --metric-name MySQLVersionMismatch --value 1
   else
-      aws cloudwatch put-metric-data --namespace AWS-LC --metric-name MySQLVersionMismatch --value 0
+    aws cloudwatch put-metric-data --namespace AWS-LC --metric-name MySQLVersionMismatch --value 0
   fi
 }
 

@@ -8,9 +8,7 @@ source tests/ci/common_posix_setup.sh
 
 # SYS_ROOT
 #  |
-#  - SRC_ROOT
-#    |
-#    - aws-lc
+#  - SRC_ROOT(aws-lc)
 #  |
 #  - SCRATCH_FOLDER
 #    |
