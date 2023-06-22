@@ -185,6 +185,9 @@ int X509_REQ_get_attr_by_OBJ(const X509_REQ *req, const ASN1_OBJECT *obj,
   for (; lastpos < n; lastpos++) {
     const X509_ATTRIBUTE *attr =
         sk_X509_ATTRIBUTE_value(req->req_info->attributes, lastpos);
+    if (attr == NULL) {
+      return -1;
+    }
     if (OBJ_cmp(attr->object, obj) == 0) {
       return lastpos;
     }
