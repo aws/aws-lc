@@ -25,7 +25,7 @@
 #include "internal.h"
 
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 void SSL_CUSTOM_EXTENSION_free(SSL_CUSTOM_EXTENSION *custom_extension) {
   OPENSSL_free(custom_extension);
@@ -240,7 +240,7 @@ static int custom_ext_append(STACK_OF(SSL_CUSTOM_EXTENSION) **stack,
   return 1;
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 using namespace bssl;
 
