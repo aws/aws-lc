@@ -58,7 +58,7 @@ git clone https://github.com/postgres/postgres.git ${POSTGRES_SRC_FOLDER}
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} ${POSTGRES_BUILD_FOLDER}
 ls
 
-aws_lc_build ${AWS_LC_DIR} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER}
+aws_lc_build ${SRC_ROOT} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER}
 cd ${POSTGRES_SRC_FOLDER}
 postgres_patch
 postgres_build

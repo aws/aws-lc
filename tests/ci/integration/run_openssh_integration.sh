@@ -83,7 +83,7 @@ git clone https://github.com/openssh/openssh-portable.git
 ls
 
 # Buld AWS-LC as a shared library
-aws_lc_build ${AWS_LC_DIR} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} -DBUILD_SHARED_LIBS=1
+aws_lc_build ${SRC_ROOT} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} -DBUILD_SHARED_LIBS=1
 install_aws_lc
 
 CODEBUILD_SKIPPED_TESTS="agent-subprocess forwarding multiplex forward-control agent-restrict connection-timeout"

@@ -64,8 +64,8 @@ ls
 # (e.g. run_build()) because they make implicit assumptions about e.g. build
 # folders.
 
-aws_lc_build ${AWS_LC_DIR} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} -DBUILD_SHARED_LIBS=0
-aws_lc_build ${AWS_LC_DIR} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} -DBUILD_SHARED_LIBS=1
+aws_lc_build ${SRC_ROOT} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} -DBUILD_SHARED_LIBS=0
+aws_lc_build ${SRC_ROOT} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} -DBUILD_SHARED_LIBS=1
 
 # Build s2n-tls+aws-lc and run s2n-tls tests. First using static aws-lc
 # libcrypto and then shared aws-lc libcrypto.

@@ -8,11 +8,9 @@ trap dump_log EXIT
 
 # Set up environment.
 
-# ROOT
+# SYS_ROOT
 #  |
-#  - AWS_LC_DIR
-#    |
-#    - aws-lc
+#  - SRC_ROOT(aws-lc)
 #  |
 #  - SCRATCH_FOLDER
 #    |
@@ -24,14 +22,10 @@ trap dump_log EXIT
 # The CFlags, skipped test list, and patches were taken from the internal CI pipeline of our customer.
 
 # Assumes script is executed from the root of aws-lc directory
-AWS_LC_DIR=$(pwd)
-cd ../
-ROOT=$(pwd)
-
-SCRATCH_FOLDER=${ROOT}/"MARIADB_BUILD_ROOT"
+SCRATCH_FOLDER=${SYS_ROOT}/"MARIADB_BUILD_ROOT"
 MARIADB_SRC_FOLDER="${SCRATCH_FOLDER}/server"
 MARIADB_BUILD_FOLDER="${SCRATCH_FOLDER}/server/mariadb-aws-lc"
-MARIADB_PATCH_FOLDER=${AWS_LC_DIR}/"tests/ci/integration/mariadb_patch"
+MARIADB_PATCH_FOLDER=${SRC_ROOT}/"tests/ci/integration/mariadb_patch"
 AWS_LC_BUILD_FOLDER="${SCRATCH_FOLDER}/aws-lc-build"
 AWS_LC_INSTALL_FOLDER="${MARIADB_SRC_FOLDER}/aws-lc-install"
 
@@ -82,7 +76,7 @@ git clone https://github.com/MariaDB/server.git ${MARIADB_SRC_FOLDER} --depth 1
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} ${MARIADB_BUILD_FOLDER}
 ls
 
-aws_lc_build ${AWS_LC_DIR} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER}
+aws_lc_build ${SRC_ROOT} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER}
 pushd ${MARIADB_SRC_FOLDER}
 mariadb_patch
 mariadb_build
