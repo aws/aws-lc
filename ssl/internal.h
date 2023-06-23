@@ -3317,6 +3317,10 @@ struct SSL_CONFIG {
   // the default min version. callers can change the min version used by calling
   // |SSL_set_min_proto_version| with a non-zero value.
   bool conf_min_version_use_default : 1;
+
+  // alps_use_new_codepoint if set indicates we use new ALPS extension codepoint
+  // to negotiate and convey application settings.
+  bool alps_use_new_codepoint : 1;
 };
 
 // From RFC 8446, used in determining PSK modes.
