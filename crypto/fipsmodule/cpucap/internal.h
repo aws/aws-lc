@@ -167,33 +167,15 @@ extern uint32_t OPENSSL_armcap_P;
 // |CRYPTO_is_ARMv8_AES_capable| and |CRYPTO_is_ARMv8_PMULL_capable|
 // for checking the support for AES and PMULL instructions, respectively.
 OPENSSL_INLINE int CRYPTO_is_NEON_capable(void) {
-#if defined(OPENSSL_STATIC_ARMCAP_NEON)
-  return 1;
-#elif defined(OPENSSL_STATIC_ARMCAP)
-  return 0;
-#else
   return (OPENSSL_armcap_P & ARMV7_NEON) != 0;
-#endif
 }
 
 OPENSSL_INLINE int CRYPTO_is_ARMv8_AES_capable(void) {
-#if defined(OPENSSL_STATIC_ARMCAP_AES)
-  return 1;
-#elif defined(OPENSSL_STATIC_ARMCAP)
-  return 0;
-#else
   return (OPENSSL_armcap_P & ARMV8_AES) != 0;
-#endif
 }
 
 OPENSSL_INLINE int CRYPTO_is_ARMv8_PMULL_capable(void) {
-#if defined(OPENSSL_STATIC_ARMCAP_PMULL)
-  return 1;
-#elif defined(OPENSSL_STATIC_ARMCAP)
-  return 0;
-#else
   return (OPENSSL_armcap_P & ARMV8_PMULL) != 0;
-#endif
 }
 
 OPENSSL_INLINE int CRYPTO_is_ARMv8_GCM_8x_capable(void) {
