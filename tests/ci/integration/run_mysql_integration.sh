@@ -33,13 +33,6 @@ mkdir -p ${SCRATCH_FOLDER}
 rm -rf ${SCRATCH_FOLDER}/*
 cd ${SCRATCH_FOLDER}
 
-function aws_lc_build() {
-  ${CMAKE_COMMAND} "${SRC_ROOT}" -GNinja "-B${AWS_LC_BUILD_FOLDER}" "-DCMAKE_INSTALL_PREFIX=${AWS_LC_INSTALL_FOLDER}" "$@"
-  ninja -C "${AWS_LC_BUILD_FOLDER}" install
-  ls -R "${AWS_LC_INSTALL_FOLDER}"
-  rm -rf "${AWS_LC_BUILD_FOLDER:?}"/*
-}
-
 function mysql_patch_reminder() {
   LATEST_MYSQL_VERSION_TAG=mysql-`curl https://api.github.com/repos/mysql/mysql-server/tags | jq '.[].name' |grep '\-8.0' |sed -e 's/"mysql-cluster-\(.*\)"/\1/' |sort | tail -n 1`
   if [[ "${LATEST_MYSQL_VERSION_TAG}" != "${MYSQL_VERSION_TAG}" ]]; then
@@ -67,7 +60,7 @@ git clone https://github.com/mysql/mysql-server.git ${MYSQL_SRC_FOLDER} -b ${MYS
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} ${MYSQL_BUILD_FOLDER}
 ls
 
-aws_lc_build
+aws_lc_build ${SRC_ROOT} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER}
 pushd ${MYSQL_SRC_FOLDER}
 mysql_build
 # TODO: There are still pending test failures that need to be resolved. Turn this on once we resolve them.

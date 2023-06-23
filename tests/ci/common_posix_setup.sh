@@ -193,6 +193,19 @@ function build_and_run_minimal_test {
   run_cmake_custom_target 'run_minimal_tests'
 }
 
+# Install local build of AWS-LC for integration testing.
+function aws_lc_build() {
+  AWS_LC_DIR=${1}
+  BUILD_FOLDER=${2}
+  INSTALL_FOLDER=${3}
+
+  echo "Building AWS-LC to ${BUILD_FOLDER} and installing to ${INSTALL_FOLDER} with CFlags "${@:4}""
+  ${CMAKE_COMMAND} ${AWS_LC_DIR} -GNinja "-B${BUILD_FOLDER}" "-DCMAKE_INSTALL_PREFIX=${INSTALL_FOLDER}" "${@:4}"
+  ninja -C ${BUILD_FOLDER} install
+  ls -R ${INSTALL_FOLDER}
+  rm -rf ${BUILD_FOLDER:?}/*
+}
+
 function print_executable_information {
   EXE_NAME=${1}
   EXE_ARGUMENT=${2}
