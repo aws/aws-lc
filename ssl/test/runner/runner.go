@@ -11501,11 +11501,10 @@ func addCustomExtensionTests() {
 			},
 		},
 		resumeSession: true,
+		earlyData: true,
+		expectEarlyDataRejected: true,
 		flags: []string{
 			"-enable-client-custom-extension",
-			"-enable-early-data",
-			"-expect-ticket-supports-early-data",
-			"-expect-reject-early-data",
 		},
 	})
 
@@ -11520,11 +11519,9 @@ func addCustomExtensionTests() {
 			},
 		},
 		resumeSession: true,
+		earlyData: true,
 		flags: []string{
 			"-enable-client-custom-extension",
-			"-enable-early-data",
-			"-expect-ticket-supports-early-data",
-			"-expect-accept-early-data",
 		},
 	})
 
@@ -11541,11 +11538,10 @@ func addCustomExtensionTests() {
 			},
 		},
 		resumeSession: true,
+		earlyData: true,
+		expectEarlyDataRejected: true,
 		flags: []string{
 			"-enable-client-custom-extension",
-			"-enable-early-data",
-			"-expect-ticket-supports-early-data",
-			"-expect-reject-early-data",
 		},
 	})
 
@@ -11594,9 +11590,10 @@ func addCustomExtensionTests() {
 			},
 		},
 		resumeSession: true,
+		earlyData:     true,
+		expectEarlyDataRejected: true,
 		flags: []string{
 			"-enable-server-custom-extension",
-			"-enable-early-data",
 		},
 	})
 
