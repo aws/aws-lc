@@ -1,0 +1,26 @@
+version: 0.2
+phases:
+  install:
+    commands:
+      - yum -y install ocaml
+      - yum -y install perl-CPAN
+      - perl -MCPAN -e'install "IPC::System::Simple"
+      - perl -MCPAN -e'install "String::ShellQuote"'
+      - wget https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh
+      - chmod +x install.sh
+      - ./install.sh
+      - opam init
+      - opam switch create 4.05.0
+      - eval $(opam env)
+      - echo $(ocamlc -version)
+      - opam pin add camlp5 7.10
+      - opam install num
+      - cd ${CODEBUILD_SRC_DIR_hol_light}
+      - make
+  build:
+    commands:
+      - cd ${CODEBUILD_SRC_DIR}/${S2N_BIGNUM_ARCH}
+      - export HOLDIR=${CODEBUILD_SRC_DIR_hol_light}
+      - make sematest
+      - cd proofs
+      - echo 'loadt "arm/proofs/base.ml";;' | HOLLIGHT_DIR=$(HOLDIR) ocaml -init $(HOLDIR)/hol.ml
