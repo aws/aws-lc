@@ -8,6 +8,10 @@ else
 fi
 echo "$SRC_ROOT"
 
+cd ../
+SYS_ROOT=$(pwd)
+cd $SRC_ROOT
+
 BUILD_ROOT="${SRC_ROOT}/test_build_dir"
 echo "$BUILD_ROOT"
 

@@ -178,6 +178,10 @@ static int do_name_ex(BIO *out, const X509_NAME *n, int indent,
     } else {
       objbuf = OBJ_nid2sn(fn_nid);
     }
+    if (objbuf == NULL) {
+      return -1;
+    }
+
     int objlen = strlen(objbuf);
     if (!maybe_write(out, objbuf, objlen) ||
         !maybe_write(out, sep_eq, sep_eq_len)) {

@@ -6,11 +6,9 @@ source tests/ci/common_posix_setup.sh
 
 # Set up environment.
 
-# ROOT
+# SYS_ROOT
 #  |
-#  - AWS_LC_DIR
-#    |
-#    - aws-lc
+#  - SRC_ROOT(aws-lc)
 #  |
 #  - SCRATCH_FOLDER
 #    |
@@ -20,11 +18,7 @@ source tests/ci/common_posix_setup.sh
 #    - POSTGRES_BUILD_FOLDER
 
 # Assumes script is executed from the root of aws-lc directory
-AWS_LC_DIR=$(pwd)
-cd ../
-ROOT=$(pwd)
-
-SCRATCH_FOLDER=${ROOT}/"POSTGRES_BUILD_ROOT"
+SCRATCH_FOLDER=${SYS_ROOT}/"POSTGRES_BUILD_ROOT"
 POSTGRES_SRC_FOLDER="${SCRATCH_FOLDER}/postgres"
 POSTGRES_BUILD_FOLDER="${SCRATCH_FOLDER}/postgres/build"
 AWS_LC_BUILD_FOLDER="${SCRATCH_FOLDER}/aws-lc-build"
@@ -35,7 +29,7 @@ rm -rf ${SCRATCH_FOLDER}/*
 cd ${SCRATCH_FOLDER}
 
 function aws_lc_build() {
-  ${CMAKE_COMMAND} ${AWS_LC_DIR} -GNinja "-B${AWS_LC_BUILD_FOLDER}" "-DCMAKE_INSTALL_PREFIX=${AWS_LC_INSTALL_FOLDER}"
+  ${CMAKE_COMMAND} ${SRC_ROOT} -GNinja "-B${AWS_LC_BUILD_FOLDER}" "-DCMAKE_INSTALL_PREFIX=${AWS_LC_INSTALL_FOLDER}"
   ninja -C ${AWS_LC_BUILD_FOLDER} install
   ls -R ${AWS_LC_INSTALL_FOLDER}
   rm -rf ${AWS_LC_BUILD_FOLDER}/*
