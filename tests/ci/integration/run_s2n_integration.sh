@@ -6,11 +6,9 @@ source tests/ci/common_posix_setup.sh
 
 # Set up environment.
 
-# ROOT
+# SYS_ROOT
 #  |
-#  - AWS_LC_DIR
-#    |
-#    - aws-lc
+#  - SRC_ROOT(aws-lc)
 #  |
 #  - SCRATCH_FOLDER
 #    |
@@ -20,11 +18,7 @@ source tests/ci/common_posix_setup.sh
 #    - S2N_TLS_BUILD_FOLDER
 
 # Assumes script is executed from the root of aws-lc directory
-AWS_LC_DIR=$(pwd)
-cd ../
-ROOT=$(pwd)
-
-SCRATCH_FOLDER=${ROOT}/"SCRATCH_AWSLC_S2N_INTERN_TEST"
+SCRATCH_FOLDER=${SYS_ROOT}/"SCRATCH_AWSLC_S2N_INTERN_TEST"
 AWS_LC_BUILD_FOLDER="${SCRATCH_FOLDER}/aws-lc-build"
 AWS_LC_INSTALL_FOLDER="${SCRATCH_FOLDER}/aws-lc-install"
 S2N_TLS_BUILD_FOLDER="${SCRATCH_FOLDER}/s2n-tls-build"
@@ -44,7 +38,7 @@ function fail() {
 }
 
 function aws_lc_build() {
-	${CMAKE_COMMAND} ${AWS_LC_DIR} -GNinja "-B${AWS_LC_BUILD_FOLDER}" "-DCMAKE_INSTALL_PREFIX=${AWS_LC_INSTALL_FOLDER}" "$@"
+	${CMAKE_COMMAND} ${SRC_ROOT} -GNinja "-B${AWS_LC_BUILD_FOLDER}" "-DCMAKE_INSTALL_PREFIX=${AWS_LC_INSTALL_FOLDER}" "$@"
 	ninja -C ${AWS_LC_BUILD_FOLDER} install
 	ls -R ${AWS_LC_INSTALL_FOLDER}
 	rm -rf ${AWS_LC_BUILD_FOLDER}/*
