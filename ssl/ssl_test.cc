@@ -6537,8 +6537,15 @@ TEST_P(SSLVersionTest, SessionPropertiesThreads) {
 #endif  // OPENSSL_THREADS
 
 TEST_P(SSLVersionTest, SimpleVerifiedChain) {
-  ASSERT_TRUE(UseCertAndKey(client_ctx_.get()));
   ASSERT_TRUE(UseCertAndKey(server_ctx_.get()));
+  ASSERT_TRUE(X509_STORE_add_cert(SSL_CTX_get_cert_store(client_ctx_.get()),
+                                  cert_.get()));
+  SSL_CTX_set_verify(client_ctx_.get(),
+                     SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT,
+                     nullptr);
+  X509_VERIFY_PARAM_set_flags(SSL_CTX_get0_param(client_ctx_.get()),
+                              X509_V_FLAG_NO_CHECK_TIME);
+
 
   UniquePtr<SSL> client_ssl, server_ssl;
   ClientConfig config;
@@ -6546,9 +6553,10 @@ TEST_P(SSLVersionTest, SimpleVerifiedChain) {
                                      server_ctx_.get(), config));
 
   STACK_OF(X509) *client_chain = SSL_get_peer_full_cert_chain(client_ssl.get());
-  STACK_OF(X509) *verified_client_chain= SSL_get0_verified_chain(client_ssl.get());
+  STACK_OF(X509) *verified_client_chain = SSL_get0_verified_chain(client_ssl.get());
+  EXPECT_TRUE(verified_client_chain);
 
-  STACK_OF(X509) *verified_server_chain= SSL_get0_verified_chain(server_ssl.get());
+  STACK_OF(X509) *verified_server_chain = SSL_get0_verified_chain(server_ssl.get());
   // The client didn't send a certificate so the server shouldn't have anything
   EXPECT_FALSE(verified_server_chain);
 
@@ -6562,9 +6570,16 @@ TEST_P(SSLVersionTest, SimpleVerifiedChain) {
 }
 
 TEST_P(SSLVersionTest, VerifiedChain) {
+  ASSERT_TRUE(X509_STORE_add_cert(SSL_CTX_get_cert_store(client_ctx_.get()),
+                                  cert_.get()));
+  SSL_CTX_set_verify(client_ctx_.get(),
+                     SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT,
+                     nullptr);
+  X509_VERIFY_PARAM_set_flags(SSL_CTX_get0_param(client_ctx_.get()),
+                              X509_V_FLAG_NO_CHECK_TIME);
+
   // UseCertAndKey sets the leaf cert the server will use and ensures the client
   // trusts the server's cert
-  ASSERT_TRUE(UseCertAndKey(client_ctx_.get()));
   ASSERT_TRUE(UseCertAndKey(server_ctx_.get()));
 
   // Add two extra certs to the chain
@@ -6604,6 +6619,33 @@ TEST_P(SSLVersionTest, VerifiedChain) {
   EXPECT_EQ(X509_cmp(sk_X509_value(server_chain, 1), cert1.get()), 0);
   EXPECT_EQ(X509_cmp(sk_X509_value(server_chain, 2), cert2.get()), 0);
 }
+
+TEST_P(SSLVersionTest, FailedHandshakeVerifiedChain) {
+  SSL_CTX_set_verify(client_ctx_.get(),
+                     SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT,
+                     nullptr);
+  X509_VERIFY_PARAM_set_flags(SSL_CTX_get0_param(client_ctx_.get()),
+                              X509_V_FLAG_NO_CHECK_TIME);
+
+  ASSERT_TRUE(UseCertAndKey(server_ctx_.get()));
+  UniquePtr<SSL> client_ssl, server_ssl;
+  ClientConfig config;
+
+  ASSERT_TRUE(CreateClientAndServer(&client_ssl, &server_ssl, client_ctx_.get(), server_ctx_.get()));
+  ASSERT_FALSE(CompleteHandshakes(client_ssl.get(), server_ssl.get()));
+  EXPECT_NE(SSL_get_verify_result(client_ssl.get()), X509_V_OK);
+
+  STACK_OF(X509) *client_chain = SSL_get_peer_full_cert_chain(client_ssl.get());
+  ASSERT_TRUE(client_chain);
+  EXPECT_EQ(sk_X509_num(client_chain), 1UL);
+  EXPECT_EQ(X509_cmp(sk_X509_value(client_chain, 0), cert_.get()), 0);
+
+
+  // For a failed handshake SSL_get0_verified_chain will return null
+  STACK_OF(X509) *verified_client_chain = SSL_get0_verified_chain(client_ssl.get());
+  EXPECT_FALSE(verified_client_chain);
+}
+
 
 TEST_P(SSLVersionTest, SessionMissCache) {
   if (version() == TLS1_3_VERSION) {

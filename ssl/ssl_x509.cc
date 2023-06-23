@@ -586,9 +586,10 @@ STACK_OF(X509) *SSL_get_peer_full_cert_chain(const SSL *ssl) {
 STACK_OF(X509) *SSL_get0_verified_chain(const SSL *ssl) {
   check_ssl_x509_method(ssl);
   SSL_SESSION *session = SSL_get_session(ssl);
-  if (session == NULL) {
+  if (session == NULL || SSL_get_verify_result(ssl) != X509_V_OK) {
     return NULL;
   }
+  
   return session->x509_verified_chain;
 }
 
