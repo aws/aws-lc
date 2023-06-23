@@ -37,13 +37,6 @@ function fail() {
     exit 1
 }
 
-function aws_lc_build() {
-	${CMAKE_COMMAND} ${SRC_ROOT} -GNinja "-B${AWS_LC_BUILD_FOLDER}" "-DCMAKE_INSTALL_PREFIX=${AWS_LC_INSTALL_FOLDER}" "$@"
-	ninja -C ${AWS_LC_BUILD_FOLDER} install
-	ls -R ${AWS_LC_INSTALL_FOLDER}
-	rm -rf ${AWS_LC_BUILD_FOLDER}/*
-}
-
 function s2n_tls_build() {
 	${CMAKE_COMMAND} s2n-tls -GNinja "-B${S2N_TLS_BUILD_FOLDER}" "-DCMAKE_PREFIX_PATH=${AWS_LC_INSTALL_FOLDER}" "$@"
 	ninja -C ${S2N_TLS_BUILD_FOLDER}
@@ -71,8 +64,8 @@ ls
 # (e.g. run_build()) because they make implicit assumptions about e.g. build
 # folders.
 
-aws_lc_build -DBUILD_SHARED_LIBS=0
-aws_lc_build -DBUILD_SHARED_LIBS=1
+aws_lc_build ${SRC_ROOT} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} -DBUILD_SHARED_LIBS=0
+aws_lc_build ${SRC_ROOT} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} -DBUILD_SHARED_LIBS=1
 
 # Build s2n-tls+aws-lc and run s2n-tls tests. First using static aws-lc
 # libcrypto and then shared aws-lc libcrypto.

@@ -33,6 +33,7 @@ util/bot/sde-win32.tar.xz
 util/bot/win_toolchain.json
 util/bot/yasm-win32.exe
 
+tests/ci/.env
 tests/ci/cdk/cdk.context.json
 test_build_dir/
 cmake-build-debug/

@@ -27,6 +27,7 @@ RUN set -ex && \
     cmake \
     make \
     ninja-build \
+    patch \
     perl \
     libunwind-dev \
     pkg-config \

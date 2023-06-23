@@ -36,13 +36,6 @@ pushd "${SCRATCH_FOLDER}"
 
 # Test helper functions.
 
-function aws_lc_build() {
-  ${CMAKE_COMMAND} "${SRC_ROOT}" -GNinja "-B${AWS_LC_BUILD_FOLDER}" "-DCMAKE_INSTALL_PREFIX=${AWS_LC_INSTALL_FOLDER}" "$@"
-  ${NINJA_COMMAND} -C "${AWS_LC_BUILD_FOLDER}" install
-  ls -R "${AWS_LC_INSTALL_FOLDER}"
-  rm -rf "${AWS_LC_BUILD_FOLDER:?}"/*
-}
-
 function install_aws_lc() {
   AWS_LC_LIB_FOLDER=$(readlink -f "${AWS_LC_INSTALL_FOLDER}"/lib*)
   # This installs AWS-LC as the "libcrypto" for the system
@@ -90,7 +83,7 @@ git clone https://github.com/openssh/openssh-portable.git
 ls
 
 # Buld AWS-LC as a shared library
-aws_lc_build -DBUILD_SHARED_LIBS=1
+aws_lc_build ${SRC_ROOT} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} -DBUILD_SHARED_LIBS=1
 install_aws_lc
 
 CODEBUILD_SKIPPED_TESTS="agent-subprocess forwarding multiplex forward-control agent-restrict connection-timeout"

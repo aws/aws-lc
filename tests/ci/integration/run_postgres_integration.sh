@@ -28,13 +28,6 @@ mkdir -p ${SCRATCH_FOLDER}
 rm -rf ${SCRATCH_FOLDER}/*
 cd ${SCRATCH_FOLDER}
 
-function aws_lc_build() {
-  ${CMAKE_COMMAND} ${SRC_ROOT} -GNinja "-B${AWS_LC_BUILD_FOLDER}" "-DCMAKE_INSTALL_PREFIX=${AWS_LC_INSTALL_FOLDER}"
-  ninja -C ${AWS_LC_BUILD_FOLDER} install
-  ls -R ${AWS_LC_INSTALL_FOLDER}
-  rm -rf ${AWS_LC_BUILD_FOLDER}/*
-}
-
 function postgres_build() {
   ./configure --with-openssl --enable-tap-tests --with-includes=${AWS_LC_INSTALL_FOLDER}/include --with-libraries=${AWS_LC_INSTALL_FOLDER}/lib --prefix=$(pwd)/build
   make -j ${NUM_CPU_THREADS}
@@ -65,7 +58,7 @@ git clone https://github.com/postgres/postgres.git ${POSTGRES_SRC_FOLDER}
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} ${POSTGRES_BUILD_FOLDER}
 ls
 
-aws_lc_build
+aws_lc_build ${SRC_ROOT} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER}
 cd ${POSTGRES_SRC_FOLDER}
 postgres_patch
 postgres_build
