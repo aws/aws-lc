@@ -2849,8 +2849,18 @@ OPENSSL_EXPORT X509 *X509_STORE_CTX_get0_current_issuer(X509_STORE_CTX *ctx);
 OPENSSL_EXPORT X509_CRL *X509_STORE_CTX_get0_current_crl(X509_STORE_CTX *ctx);
 OPENSSL_EXPORT X509_STORE_CTX *X509_STORE_CTX_get0_parent_ctx(
     X509_STORE_CTX *ctx);
+
+// X509_STORE_CTX_get_chain returns the pointer to the verified chain if
+// verification was successful. If unsuccessful it may return null or a partial
+// chain. The reference count is not incremented and must not be freed.
 OPENSSL_EXPORT STACK_OF(X509) *X509_STORE_CTX_get_chain(X509_STORE_CTX *ctx);
+
+// X509_STORE_CTX_get0_chain behaves like |X509_STORE_CTX_get_chain|.
 OPENSSL_EXPORT STACK_OF(X509) *X509_STORE_CTX_get0_chain(X509_STORE_CTX *ctx);
+
+// X509_STORE_CTX_get1_chain behaves like |X509_STORE_CTX_get0_chain| and also
+// increments the reference counter. The |STACK_OF(X509)| must be freed with
+// |sk_X509_pop_free|
 OPENSSL_EXPORT STACK_OF(X509) *X509_STORE_CTX_get1_chain(X509_STORE_CTX *ctx);
 OPENSSL_EXPORT void X509_STORE_CTX_set_cert(X509_STORE_CTX *c, X509 *x);
 OPENSSL_EXPORT void X509_STORE_CTX_set_chain(X509_STORE_CTX *c,

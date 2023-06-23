@@ -1653,10 +1653,19 @@ OPENSSL_EXPORT STACK_OF(X509) *SSL_get_peer_cert_chain(const SSL *ssl);
 //
 // This is the same as |SSL_get_peer_cert_chain| except that this function
 // always returns the full chain, i.e. the first element of the return value
-// (if any) will be the leaf certificate. In constrast,
+// (if any) will be the leaf certificate. In contrast,
 // |SSL_get_peer_cert_chain| returns only the intermediate certificates if the
 // |ssl| is a server.
 OPENSSL_EXPORT STACK_OF(X509) *SSL_get_peer_full_cert_chain(const SSL *ssl);
+
+// SSL_get0_verified_chain returns the verified certificate chain of the peer
+// including the peer's end entity certificate. It must be called after a
+// session has been successfully established. If peer verification was not
+// successful (as indicated by |SSL_get_verify_result| not returning |X509_V_OK|)
+// the result will be null. If a verification callback was set with
+// |SSL_CTX_set_cert_verify_callback| or |SSL_set_custom_verify|
+// this function's behavior is undefined.
+OPENSSL_EXPORT STACK_OF(X509) *SSL_get0_verified_chain(const SSL *ssl);
 
 // SSL_get0_peer_certificates returns the peer's certificate chain, or NULL if
 // unavailable or the peer did not use certificates. This is the unverified list

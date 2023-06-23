@@ -2581,8 +2581,8 @@ struct SSL_X509_METHOD {
   // session_clear frees any X509-related state from |session|.
   void (*session_clear)(SSL_SESSION *session);
   // session_verify_cert_chain verifies the certificate chain in |session|,
-  // sets |session->verify_result| and returns true on success or false on
-  // error.
+  // and sets |session->verify_result| and |session->x509_verified_chain|. It
+  // returns true on success or false on error.
   bool (*session_verify_cert_chain)(SSL_SESSION *session, SSL_HANDSHAKE *ssl,
                                     uint8_t *out_alert);
 
@@ -3956,6 +3956,12 @@ struct ssl_session_st {
   // a client. The |x509_chain| always includes it and, if an API call requires
   // a chain without, it is stored here.
   STACK_OF(X509) *x509_chain_without_leaf = nullptr;
+
+  // x509_verified_chain is a lazily constructed copy of the chain that has
+  // been verified. This is not necessarily the same as |x509_chain| which
+  // may include additional certificates that were not used.
+  STACK_OF(X509) *x509_verified_chain = nullptr;
+
 
   // verify_result is the result of certificate verification in the case of
   // non-fatal certificate errors.
