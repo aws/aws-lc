@@ -1079,7 +1079,7 @@ bool ssl_public_key_verify(SSL *ssl, Span<const uint8_t> signature,
 
 // Custom extensions
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 // |SSL_CUSTOM_EXTENSION| is a structure that contains information about
 // custom-extension callbacks. It is defined unnamespaced for compatibility with
@@ -1095,7 +1095,7 @@ typedef struct ssl_custom_extension {
 
 DEFINE_STACK_OF(SSL_CUSTOM_EXTENSION)
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 void SSL_CUSTOM_EXTENSION_free(SSL_CUSTOM_EXTENSION *custom_extension);
 
