@@ -4783,6 +4783,7 @@ TEST(SSLTest, GetCertificate) {
 
   X509 *cert2 = SSL_CTX_get0_certificate(ctx.get());
   ASSERT_TRUE(cert2);
+
   X509 *cert3 = SSL_get_certificate(ssl.get());
   ASSERT_TRUE(cert3);
 
@@ -4808,6 +4809,37 @@ TEST(SSLTest, GetCertificate) {
   // They must also encode identically.
   EXPECT_EQ(Bytes(der, der_len), Bytes(der2, der2_len));
   EXPECT_EQ(Bytes(der, der_len), Bytes(der3, der3_len));
+}
+
+TEST(SSLTest, GetCertificateExData) {
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  bssl::UniquePtr<X509> cert = GetTestCertificate();
+  ASSERT_TRUE(cert);
+
+  int ex_data_index =
+      X509_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
+  const char ex_data[] = "AWS-LC external data";
+  ASSERT_TRUE(X509_set_ex_data(cert.get(), ex_data_index, (void *)ex_data));
+  ASSERT_TRUE(X509_get_ex_data(cert.get(), ex_data_index));
+
+  ASSERT_TRUE(SSL_CTX_use_certificate(ctx.get(), cert.get()));
+  bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
+  ASSERT_TRUE(ssl);
+
+  X509 *cert2 = SSL_CTX_get0_certificate(ctx.get());
+  ASSERT_TRUE(cert2);
+  const char *ex_data2 = (const char *)X509_get_ex_data(cert2, ex_data_index);
+  EXPECT_TRUE(ex_data2);
+
+  X509 *cert3 = SSL_get_certificate(ssl.get());
+  ASSERT_TRUE(cert3);
+  const char *ex_data3 = (const char *)X509_get_ex_data(cert3, ex_data_index);
+  EXPECT_TRUE(ex_data3);
+
+  // The external data extracted must be identical.
+  EXPECT_EQ(ex_data2, ex_data);
+  EXPECT_EQ(ex_data3, ex_data);
 }
 
 TEST(SSLTest, SetChainAndKeyMismatch) {

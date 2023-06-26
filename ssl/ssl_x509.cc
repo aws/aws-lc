@@ -234,7 +234,7 @@ static bool ssl_cert_set_chain(CERT *cert, STACK_OF(X509) *chain) {
   return true;
 }
 
-static void ssl_crypto_x509_cert_flush_cached_leaf(CERT *cert) {
+static void ssl_crypto_x509_cert_flush_leaf(CERT *cert) {
   X509_free(cert->x509_leaf);
   cert->x509_leaf = nullptr;
 }
@@ -260,7 +260,7 @@ static bool ssl_crypto_x509_check_client_CA_list(
 }
 
 static void ssl_crypto_x509_cert_clear(CERT *cert) {
-  ssl_crypto_x509_cert_flush_cached_leaf(cert);
+  ssl_crypto_x509_cert_flush_leaf(cert);
   ssl_crypto_x509_cert_flush_cached_chain(cert);
 
   X509_free(cert->x509_stash);
@@ -526,7 +526,7 @@ const SSL_X509_METHOD ssl_crypto_x509_method = {
   ssl_crypto_x509_cert_free,
   ssl_crypto_x509_cert_dup,
   ssl_crypto_x509_cert_flush_cached_chain,
-  ssl_crypto_x509_cert_flush_cached_leaf,
+  ssl_crypto_x509_cert_flush_leaf,
   ssl_crypto_x509_session_cache_objects,
   ssl_crypto_x509_session_dup,
   ssl_crypto_x509_session_clear,
@@ -758,6 +758,12 @@ static int ssl_use_certificate(CERT *cert, X509 *x) {
     return 0;
   }
 
+  // We set the |x509_leaf| here to prevent any external data set from being
+  // lost. The rest of the chain still uses |CRYPTO_BUFFER|s.
+  X509_free(cert->x509_leaf);
+  X509_up_ref(x);
+  cert->x509_leaf = x;
+
   UniquePtr<CRYPTO_BUFFER> buffer = x509_to_buffer(x);
   if (!buffer) {
     return 0;
@@ -779,29 +785,9 @@ int SSL_CTX_use_certificate(SSL_CTX *ctx, X509 *x) {
   return ssl_use_certificate(ctx->cert.get(), x);
 }
 
-// ssl_cert_cache_leaf_cert sets |cert->x509_leaf|, if currently NULL, from the
-// first element of |cert->chain|.
-static int ssl_cert_cache_leaf_cert(CERT *cert) {
-  assert(cert->x509_method);
-
-  if (cert->x509_leaf != NULL ||
-      cert->chain == NULL) {
-    return 1;
-  }
-
-  CRYPTO_BUFFER *leaf = sk_CRYPTO_BUFFER_value(cert->chain.get(), 0);
-  if (!leaf) {
-    return 1;
-  }
-
-  cert->x509_leaf = X509_parse_from_buffer(leaf);
-  return cert->x509_leaf != NULL;
-}
-
 static X509 *ssl_cert_get0_leaf(CERT *cert) {
-  if (cert->x509_leaf == NULL &&
-      !ssl_cert_cache_leaf_cert(cert)) {
-    return NULL;
+  if (cert->x509_leaf == nullptr) {
+    return nullptr;
   }
 
   return cert->x509_leaf;
