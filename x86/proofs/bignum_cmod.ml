@@ -1384,8 +1384,7 @@ let BIGNUM_CMOD_SUBROUTINE_CORRECT = prove
          (\s. read RIP s = returnaddress /\
               read RSP s = word_add stackpointer (word 8) /\
               (~(val m = 0) ==> C_RETURN s = word(a MOD val m)))
-         (MAYCHANGE [RIP; RSP; RDI; RAX; RCX; RDX; R8; R9; R10; R11] ,,
-          MAYCHANGE SOME_FLAGS)`,
+         (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI)`,
   X86_PROMOTE_RETURN_NOSTACK_TAC bignum_cmod_mc BIGNUM_CMOD_CORRECT);;
 
 (* ------------------------------------------------------------------------- *)
@@ -1409,8 +1408,7 @@ let WINDOWS_BIGNUM_CMOD_SUBROUTINE_CORRECT = prove
              (\s. read RIP s = returnaddress /\
                   read RSP s = word_add stackpointer (word 8) /\
                   (~(val m = 0) ==> WINDOWS_C_RETURN s = word(a MOD val m)))
-             (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
-              MAYCHANGE SOME_FLAGS ,,
+             (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bytes(word_sub stackpointer (word 16),16)])`,
   WINDOWS_X86_WRAP_NOSTACK_TAC windows_bignum_cmod_mc bignum_cmod_mc
     BIGNUM_CMOD_CORRECT);;

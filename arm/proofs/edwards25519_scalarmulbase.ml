@@ -7478,9 +7478,7 @@ let EDWARDS25519_SCALARMULBASE_SUBROUTINE_CORRECT = time prove
               bignum_pair_from_memory(res,4) s =
               paired (modular_encode (256,p_25519))
                      (group_pow edwards25519_group E_25519 n))
-          (MAYCHANGE [PC; X0; X1; X2; X3; X4; X5; X6; X7; X8; X9; X10;
-                      X11; X12; X13; X14; X15; X16; X17] ,,
-           MAYCHANGE SOME_FLAGS ,,
+          (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bytes(res,64);
                       memory :> bytes(word_sub stackpointer (word 496),496)])`,
   REWRITE_TAC[ALIGNED_BYTES_LOADED_APPEND_CLAUSE; BYTES_LOADED_DATA;

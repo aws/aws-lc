@@ -249,7 +249,6 @@ let BIGNUM_OPTSUBADD_SUBROUTINE_CORRECT = prove
                   C_RETURN s =
                   iword(int_sgn(ival p) *
                         (&a + int_sgn(ival p) * &b) div &2 pow (64 * val k)))
-             (MAYCHANGE [PC; X0; X3; X5; X6; X7; X8] ,,
-              MAYCHANGE SOME_FLAGS ,,
+             (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bignum(z,val k)])`,
   ARM_ADD_RETURN_NOSTACK_TAC BIGNUM_OPTSUBADD_EXEC BIGNUM_OPTSUBADD_CORRECT);;

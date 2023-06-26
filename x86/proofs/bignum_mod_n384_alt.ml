@@ -498,8 +498,7 @@ let BIGNUM_MOD_N384_ALT_SUBROUTINE_CORRECT = time prove
            (\s. read RIP s = returnaddress /\
                read RSP s = word_add stackpointer (word 8) /\
                 bignum_from_memory (z,6) s = n MOD n_384)
-          (MAYCHANGE [RIP; RSP; RSI; RAX; RDX; RCX; R8; R9; R10; R11] ,,
-           MAYCHANGE SOME_FLAGS ,,
+          (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bignum(z,6);
                 memory :> bytes(word_sub stackpointer (word 40),40)])`,
   X86_ADD_RETURN_STACK_TAC BIGNUM_MOD_N384_ALT_EXEC BIGNUM_MOD_N384_ALT_CORRECT
@@ -545,8 +544,7 @@ let WINDOWS_BIGNUM_MOD_N384_ALT_SUBROUTINE_CORRECT = time prove
            (\s. read RIP s = returnaddress /\
                read RSP s = word_add stackpointer (word 8) /\
                 bignum_from_memory (z,6) s = n MOD n_384)
-          (MAYCHANGE [RIP; RSP; RAX; RDX; RCX; R8; R9; R10; R11] ,,
-           MAYCHANGE SOME_FLAGS ,,
+          (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bignum(z,6);
                 memory :> bytes(word_sub stackpointer (word 56),56)])`,
   GEN_X86_ADD_RETURN_STACK_TAC (X86_MK_EXEC_RULE windows_bignum_mod_n384_alt_mc)

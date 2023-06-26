@@ -222,8 +222,7 @@ let BIGNUM_MODOPTNEG_SUBROUTINE_CORRECT = prove
                   (a <= n
                    ==> bignum_from_memory(z,val k) s =
                        if p = word 0 \/ a = 0 then a else n - a))
-             (MAYCHANGE [RIP; RSP; RAX; RDX; R9; R10; R11] ,,
-              MAYCHANGE SOME_FLAGS ,,
+             (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bignum(z,val k)])`,
   X86_PROMOTE_RETURN_NOSTACK_TAC bignum_modoptneg_mc BIGNUM_MODOPTNEG_CORRECT);;
 
@@ -255,8 +254,7 @@ let WINDOWS_BIGNUM_MODOPTNEG_SUBROUTINE_CORRECT = prove
                   (a <= n
                    ==> bignum_from_memory(z,val k) s =
                        if p = word 0 \/ a = 0 then a else n - a))
-             (MAYCHANGE [RIP; RSP; R8; RCX; RAX; RDX; R9; R10; R11] ,,
-              MAYCHANGE SOME_FLAGS ,,
+             (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bignum(z,val k);
                          memory :> bytes(word_sub stackpointer (word 16),16)])`,
   WINDOWS_X86_WRAP_NOSTACK_TAC windows_bignum_modoptneg_mc bignum_modoptneg_mc

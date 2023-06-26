@@ -182,7 +182,7 @@ let BIGNUM_OPTSUB_SUBROUTINE_CORRECT = prove
                    else (2 EXP (64 * val k) + m) - n) /\
                   (C_RETURN s =
                    if ~(p = word 0) /\ m < n then word 1 else word 0))
-          (MAYCHANGE [PC; X0; X3; X5; X6; X7] ,, MAYCHANGE SOME_FLAGS ,,
+          (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bignum(z,val k)])`,
   ARM_ADD_RETURN_NOSTACK_TAC BIGNUM_OPTSUB_EXEC
     BIGNUM_OPTSUB_CORRECT);;

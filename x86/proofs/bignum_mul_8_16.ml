@@ -485,10 +485,9 @@ let BIGNUM_MUL_8_16_SUBROUTINE_CORRECT = time prove
           (\s. read RIP s = returnaddress /\
                read RSP s = word_add stackpointer (word 8) /\
                bignum_from_memory (z,16) s = a * b)
-          (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
+          (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bytes(z,8 * 16);
-                memory :> bytes(word_sub stackpointer (word 48),48)] ,,
-           MAYCHANGE SOME_FLAGS)`,
+                memory :> bytes(word_sub stackpointer (word 48),48)])`,
   X86_PROMOTE_RETURN_STACK_TAC bignum_mul_8_16_mc BIGNUM_MUL_8_16_CORRECT
    `[RBX; RBP; R12; R13; R14; R15]` 48);;
 
@@ -518,9 +517,8 @@ let WINDOWS_BIGNUM_MUL_8_16_SUBROUTINE_CORRECT = time prove
           (\s. read RIP s = returnaddress /\
                read RSP s = word_add stackpointer (word 8) /\
                bignum_from_memory (z,16) s = a * b)
-          (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
+          (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bytes(z,8 * 16);
-                      memory :> bytes(word_sub stackpointer (word 64),64)] ,,
-           MAYCHANGE SOME_FLAGS)`,
+                      memory :> bytes(word_sub stackpointer (word 64),64)])`,
   WINDOWS_X86_WRAP_STACK_TAC windows_bignum_mul_8_16_mc bignum_mul_8_16_mc
     BIGNUM_MUL_8_16_CORRECT `[RBX; RBP; R12; R13; R14; R15]` 48);;

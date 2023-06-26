@@ -292,8 +292,7 @@ let BIGNUM_SHR_SMALL_SUBROUTINE_CORRECT = prove
                   bignum_from_memory (z,val p) s =
                   lowdigits (a DIV 2 EXP (val c MOD 64)) (val p) /\
                   C_RETURN s = word(a MOD 2 EXP (val c MOD 64)))
-             (MAYCHANGE [RIP; RSP; RDI; RAX; RCX; R8; R9; R10] ,,
-              MAYCHANGE SOME_FLAGS ,,
+             (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bignum(z,val p)])`,
   X86_PROMOTE_RETURN_NOSTACK_TAC bignum_shr_small_mc BIGNUM_SHR_SMALL_CORRECT);;
 
@@ -323,8 +322,7 @@ let WINDOWS_BIGNUM_SHR_SMALL_SUBROUTINE_CORRECT = prove
                   bignum_from_memory (z,val p) s =
                   lowdigits (a DIV 2 EXP (val c MOD 64)) (val p) /\
                   WINDOWS_C_RETURN s = word(a MOD 2 EXP (val c MOD 64)))
-             (MAYCHANGE [RIP; RSP; RDX; RAX; RCX; R8; R9; R10] ,,
-              MAYCHANGE SOME_FLAGS ,,
+             (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bignum(z,val p);
                          memory :> bytes(word_sub stackpointer (word 16),16)])`,
   WINDOWS_X86_WRAP_NOSTACK_TAC windows_bignum_shr_small_mc bignum_shr_small_mc

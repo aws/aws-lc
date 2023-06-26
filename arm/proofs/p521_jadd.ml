@@ -6452,9 +6452,7 @@ let P521_JADD_SUBROUTINE_CORRECT = time prove
                         ==> bignum_triple_from_memory(p3,9) s =
                             tripled nistp521_encode
                              (jacobian_add nistp521 (x1,y1,z1) (x2,y2,z2))))
-          (MAYCHANGE [PC; X0; X1; X2; X3; X4; X5; X6; X7; X8; X9; X10;
-                      X11; X12; X13; X14; X15; X16; X17] ,,
-           MAYCHANGE SOME_FLAGS ,,
+          (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bytes(p3,216);
                       memory :> bytes(word_sub stackpointer (word 592),592)])`,
   ARM_ADD_RETURN_STACK_TAC P521_JADD_EXEC

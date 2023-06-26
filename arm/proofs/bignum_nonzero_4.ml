@@ -60,6 +60,5 @@ let BIGNUM_NONZERO_4_SUBROUTINE_CORRECT = prove
                bignum_from_memory(x,4) s = n)
           (\s. read PC s = returnaddress /\
                C_RETURN s = if ~(n = 0) then word 1 else word 0)
-          (MAYCHANGE [PC; X0; X1; X2; X3] ,,
-           MAYCHANGE SOME_FLAGS)`,
+          (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI)`,
   ARM_ADD_RETURN_NOSTACK_TAC BIGNUM_NONZERO_4_EXEC BIGNUM_NONZERO_4_CORRECT);;

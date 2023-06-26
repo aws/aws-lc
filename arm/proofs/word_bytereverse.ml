@@ -66,5 +66,5 @@ let WORD_BYTEREVERSE_SUBROUTINE_CORRECT = prove
                !i. i < 8
                    ==> word_subword (C_RETURN s) (8 * i,8) :byte =
                        word_subword a (8 * (7 - i),8))
-          (MAYCHANGE [PC; X0; X1; X2])`,
+          (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI)`,
   ARM_ADD_RETURN_NOSTACK_TAC WORD_BYTEREVERSE_EXEC WORD_BYTEREVERSE_CORRECT);;

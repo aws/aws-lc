@@ -225,9 +225,8 @@ let BIGNUM_DEAMONT_P256K1_SUBROUTINE_CORRECT = time prove
                   read RSP s = word_add stackpointer (word 8) /\
                   bignum_from_memory (z,4) s =
                     (inverse_mod p_256k1 (2 EXP 256) * a) MOD p_256k1)
-             (MAYCHANGE [RIP; RSP; RSI; RAX; RCX; RDX; R8; R9; R10; R11] ,,
-              MAYCHANGE [memory :> bytes(z,8 * 4)] ,,
-              MAYCHANGE SOME_FLAGS)`,
+             (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
+              MAYCHANGE [memory :> bytes(z,8 * 4)])`,
   X86_PROMOTE_RETURN_NOSTACK_TAC
     bignum_deamont_p256k1_mc BIGNUM_DEAMONT_P256K1_CORRECT);;
 
@@ -255,10 +254,9 @@ let WINDOWS_BIGNUM_DEAMONT_P256K1_SUBROUTINE_CORRECT = time prove
                   read RSP s = word_add stackpointer (word 8) /\
                   bignum_from_memory (z,4) s =
                     (inverse_mod p_256k1 (2 EXP 256) * a) MOD p_256k1)
-             (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
+             (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bytes(z,8 * 4);
-                         memory :> bytes(word_sub stackpointer (word 16),16)] ,,
-              MAYCHANGE SOME_FLAGS)`,
+                         memory :> bytes(word_sub stackpointer (word 16),16)])`,
   WINDOWS_X86_WRAP_NOSTACK_TAC
     windows_bignum_deamont_p256k1_mc bignum_deamont_p256k1_mc
     BIGNUM_DEAMONT_P256K1_CORRECT);;

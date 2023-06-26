@@ -230,8 +230,7 @@ let BIGNUM_TRIPLE_P384_ALT_SUBROUTINE_CORRECT = time prove
              (\s. read RIP s = returnaddress /\
                   read RSP s = word_add stackpointer (word 8) /\
                   bignum_from_memory (z,6) s = (3 * n) MOD p_384)
-             (MAYCHANGE [RIP; RSP; RSI; RAX; RCX; RDX; R8; R9; R10; R11] ,,
-              MAYCHANGE SOME_FLAGS ,,
+             (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bignum(z,6);
                          memory :> bytes(word_sub stackpointer (word 8),8)])`,
   X86_PROMOTE_RETURN_STACK_TAC
@@ -261,8 +260,7 @@ let WINDOWS_BIGNUM_TRIPLE_P384_ALT_SUBROUTINE_CORRECT = time prove
              (\s. read RIP s = returnaddress /\
                   read RSP s = word_add stackpointer (word 8) /\
                   bignum_from_memory (z,6) s = (3 * n) MOD p_384)
-             (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
-              MAYCHANGE SOME_FLAGS ,,
+             (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bignum(z,6);
                          memory :> bytes(word_sub stackpointer (word 24),24)])`,
   WINDOWS_X86_WRAP_STACK_TAC

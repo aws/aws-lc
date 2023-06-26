@@ -2010,10 +2010,10 @@ let BIGNUM_KSQR_32_64_SUBROUTINE_CORRECT = time prove
           (\s. read RIP s = returnaddress /\
                read RSP s = word_add stackpointer (word 8) /\
                bignum_from_memory (z,64) s = a EXP 2)
-          (MAYCHANGE [RIP; RSP; RSI; RDI; RAX; RCX; RDX; R8; R9; R10; R11] ,,
+          (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bytes(z,8 * 64); memory :> bytes(t,8 * 72);
-                      memory :> bytes(word_sub stackpointer (word 56),56)] ,,
-           MAYCHANGE SOME_FLAGS)`,
+                      memory :> bytes(word_sub stackpointer (word 56),56)])`,
+  REWRITE_TAC [MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI] THEN
   MAP_EVERY X_GEN_TAC [`z:int64`; `x:int64`; `t:int64`; `a:num`; `pc:num`] THEN
   WORD_FORALL_OFFSET_TAC 56 THEN
   MAP_EVERY X_GEN_TAC [`stackpointer:int64`; `returnaddress:int64`] THEN
@@ -2085,10 +2085,10 @@ let WINDOWS_BIGNUM_KSQR_32_64_SUBROUTINE_CORRECT = time prove
           (\s. read RIP s = returnaddress /\
                read RSP s = word_add stackpointer (word 8) /\
                bignum_from_memory (z,64) s = a EXP 2)
-          (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
+          (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bytes(z,8 * 64); memory :> bytes(t,8 * 72);
-                      memory :> bytes(word_sub stackpointer (word 72),72)] ,,
-           MAYCHANGE SOME_FLAGS)`,
+                      memory :> bytes(word_sub stackpointer (word 72),72)])`,
+  REWRITE_TAC [WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI] THEN
   MAP_EVERY X_GEN_TAC [`z:int64`; `x:int64`; `t:int64`; `a:num`; `pc:num`] THEN
   WORD_FORALL_OFFSET_TAC 72 THEN
   MAP_EVERY X_GEN_TAC [`stackpointer:int64`; `returnaddress:int64`] THEN

@@ -50,8 +50,7 @@ let WORD_MAX_SUBROUTINE_CORRECT = prove
           (\s. read RIP s = returnaddress /\
                read RSP s = word_add stackpointer (word 8) /\
                C_RETURN s = word_umax a b)
-          (MAYCHANGE [RIP; RSP; RAX] ,,
-           MAYCHANGE SOME_FLAGS)`,
+          (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI)`,
   X86_PROMOTE_RETURN_NOSTACK_TAC word_max_mc WORD_MAX_CORRECT);;
 
 (* ------------------------------------------------------------------------- *)
@@ -73,8 +72,7 @@ let WINDOWS_WORD_MAX_SUBROUTINE_CORRECT = prove
               (\s. read RIP s = returnaddress /\
                    read RSP s = word_add stackpointer (word 8) /\
                    WINDOWS_C_RETURN s = word_umax a b)
-              (MAYCHANGE [RIP; RSP; RAX] ,,
-               MAYCHANGE SOME_FLAGS ,,
+              (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bytes(word_sub stackpointer (word 16),16)])`,
   WINDOWS_X86_WRAP_NOSTACK_TAC windows_word_max_mc word_max_mc
     WORD_MAX_CORRECT);;

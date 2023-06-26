@@ -200,8 +200,7 @@ let BIGNUM_OPTNEG_SUBROUTINE_CORRECT = prove
                  bignum_from_memory(z,val k) s =
                  (if p = word 0 \/ a = 0 then a else 2 EXP (64 * val k) - a) /\
                  C_RETURN s = word(bitval(~(p = word 0) /\ ~(a = 0))))
-            (MAYCHANGE [RIP; RSP; RAX; RDX; R8; R9] ,,
-             MAYCHANGE SOME_FLAGS ,,
+            (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
              MAYCHANGE [memory :> bignum(z,val k)])`,
   X86_PROMOTE_RETURN_NOSTACK_TAC bignum_optneg_mc BIGNUM_OPTNEG_CORRECT);;
 
@@ -231,8 +230,7 @@ let WINDOWS_BIGNUM_OPTNEG_SUBROUTINE_CORRECT = prove
                  bignum_from_memory(z,val k) s =
                  (if p = word 0 \/ a = 0 then a else 2 EXP (64 * val k) - a) /\
                  WINDOWS_C_RETURN s = word(bitval(~(p = word 0) /\ ~(a = 0))))
-            (MAYCHANGE [RIP; RSP; RCX; RAX; RDX; R8; R9] ,,
-             MAYCHANGE SOME_FLAGS ,,
+            (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
              MAYCHANGE [memory :> bignum(z,val k);
                         memory :> bytes(word_sub stackpointer (word 16),16)])`,
   WINDOWS_X86_WRAP_NOSTACK_TAC windows_bignum_optneg_mc bignum_optneg_mc

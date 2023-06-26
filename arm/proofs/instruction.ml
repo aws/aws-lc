@@ -623,8 +623,15 @@ let offset_writesback = define
   (offset_writesback (Postimmediate_Offset w) <=> T)`;;
 
 (* ------------------------------------------------------------------------- *)
-(* ABI things.                                                               *)
-(* infocenter.arm.com/help/topic/com.arm.doc.ihi0055b/IHI0055B_aapcs64.pdf   *)
+(* Shorthand for the set of all flags for modification lists.                *)
+(* ------------------------------------------------------------------------- *)
+
+let SOME_FLAGS = new_definition
+ `SOME_FLAGS = [NF; ZF; CF; VF]`;;
+
+(* ------------------------------------------------------------------------- *)
+(* ABI things: Procedure Call Standard for the Arm Architecture,             *)
+(*   https://github.com/ARM-software/abi-aa/releases                         *)
 (* "A subroutine invocation must preserve r19-r29 and SP. In all versions of *)
 (* the procedure call standard r16, r17, r29 and r30 have special roles".    *)
 (* There's also some stuff implying one should avoid r18. I'm conservative   *)
@@ -676,6 +683,24 @@ let MODIFIABLE_GPRS = define
  `MODIFIABLE_GPRS =
     [ X0;  X1;  X2;  X3;  X4;  X5;  X6;  X7;  X8;
       X9; X10; X11; X12; X13; X14; X15; X16; X17]`;;
+
+(* SIMD registers: "Registers v8-v15 must be preserved by a callee across
+    subroutine calls; the remaining registers (v0-v7, v16-v31) do not need to
+    be preserved (or should be preserved by the caller). Additionally, only
+    the bottom 64 bits of each value stored in v8-v15 need to be preserved"
+    - 2023. Jun. 2: there is no implementation that utilizes the high 64-bit
+      parts of v8-v15. If they are used, this definition need to be expanded to
+      include them. *)
+let MODIFIABLE_SIMD_REGS = define
+ `MODIFIABLE_SIMD_REGS =
+    [Q0; Q1; Q2; Q3; Q4; Q5; Q6; Q7; Q16; Q17; Q18; Q19; Q20; Q21;
+      Q22; Q23; Q24; Q25; Q26; Q27; Q28; Q29; Q30; Q31]`;;
+
+let MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI = REWRITE_RULE
+    [SOME_FLAGS; MODIFIABLE_GPRS; MODIFIABLE_SIMD_REGS]
+ (new_definition `MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI =
+    MAYCHANGE [PC] ,, MAYCHANGE MODIFIABLE_GPRS ,,
+    MAYCHANGE MODIFIABLE_SIMD_REGS ,, MAYCHANGE SOME_FLAGS`);;
 
 (* ------------------------------------------------------------------------- *)
 (* General register-register instructions.                                   *)

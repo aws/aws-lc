@@ -4909,9 +4909,7 @@ let BIGNUM_MODINV_SUBROUTINE_CORRECT = prove
                   (coprime(a,b) /\ ODD b /\ ~(b = 1)
                    ==> bignum_from_memory(z,val k) s < b /\
                        (a * bignum_from_memory(z,val k) s == 1) (mod b)))
-             (MAYCHANGE [PC; X2; X5; X6; X7; X8; X9; X10; X11; X12; X13; X14;
-                         X15; X16; X17] ,,
-              MAYCHANGE SOME_FLAGS ,,
+             (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bignum(z,val k);
                          memory :> bignum(w,3 * val k);
                        memory :> bytes(word_sub stackpointer (word 32),32)])`,

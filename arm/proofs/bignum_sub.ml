@@ -726,7 +726,6 @@ let BIGNUM_SUB_SUBROUTINE_CORRECT = prove
                   (&a - &b) rem &2 pow (64 * val p) /\
                   2 EXP (64 * val p) * val(C_RETURN s) + lowdigits a (val p) =
                   bignum_from_memory (z,val p) s + lowdigits b (val p))
-             (MAYCHANGE [PC; X0; X2; X4; X6; X7; X8] ,,
-              MAYCHANGE SOME_FLAGS ,,
+             (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bignum(z,val p)])`,
   ARM_ADD_RETURN_NOSTACK_TAC BIGNUM_SUB_EXEC BIGNUM_SUB_CORRECT);;

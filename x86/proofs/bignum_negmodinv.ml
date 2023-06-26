@@ -658,11 +658,9 @@ let BIGNUM_NEGMODINV_SUBROUTINE_CORRECT = prove
                   (ODD m
                    ==> (m * bignum_from_memory(z,val k) s + 1 == 0)
                        (mod (2 EXP (64 * val k)))))
-             (MAYCHANGE [RIP; RSP; RDI; RSI; RAX; RDX; RCX;
-                         R8; R9; R10; R11] ,,
+             (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bytes(z,8 * val k);
-                       memory :> bytes(word_sub stackpointer (word 16),16)] ,,
-              MAYCHANGE SOME_FLAGS)`,
+                       memory :> bytes(word_sub stackpointer (word 16),16)])`,
   X86_PROMOTE_RETURN_STACK_TAC bignum_negmodinv_mc BIGNUM_NEGMODINV_CORRECT
     `[RBX; R12]` 16);;
 
@@ -692,9 +690,8 @@ let WINDOWS_BIGNUM_NEGMODINV_SUBROUTINE_CORRECT = prove
                   (ODD m
                    ==> (m * bignum_from_memory(z,val k) s + 1 == 0)
                        (mod (2 EXP (64 * val k)))))
-             (MAYCHANGE [RIP; RSP; RAX; RDX; RCX; R8; R9; R10; R11] ,,
+             (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bytes(z,8 * val k);
-                       memory :> bytes(word_sub stackpointer (word 32),32)] ,,
-              MAYCHANGE SOME_FLAGS)`,
+                       memory :> bytes(word_sub stackpointer (word 32),32)])`,
   WINDOWS_X86_WRAP_STACK_TAC windows_bignum_negmodinv_mc bignum_negmodinv_mc
     BIGNUM_NEGMODINV_CORRECT `[RBX; R12]` 16);;

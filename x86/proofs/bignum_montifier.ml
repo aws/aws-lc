@@ -3100,11 +3100,10 @@ let BIGNUM_MONTIFIER_SUBROUTINE_CORRECT = time prove
                   (ODD n
                    ==> bignum_from_memory (z,val k) s =
                         2 EXP (128 * val k) MOD n))
-             (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
+             (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bytes(z,8 * val k);
                          memory :> bytes(t,8 * val k);
-                       memory :> bytes(word_sub stackpointer (word 32),32)] ,,
-              MAYCHANGE SOME_FLAGS)`,
+                       memory :> bytes(word_sub stackpointer (word 32),32)])`,
   X86_PROMOTE_RETURN_STACK_TAC bignum_montifier_mc BIGNUM_MONTIFIER_CORRECT
    `[RBX; RBP; R12; R13]` 32);;
 
@@ -3135,10 +3134,9 @@ let WINDOWS_BIGNUM_MONTIFIER_SUBROUTINE_CORRECT = time prove
                   (ODD n
                    ==> bignum_from_memory (z,val k) s =
                         2 EXP (128 * val k) MOD n))
-             (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
+             (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bytes(z,8 * val k);
                          memory :> bytes(t,8 * val k);
-                       memory :> bytes(word_sub stackpointer (word 48),48)] ,,
-              MAYCHANGE SOME_FLAGS)`,
+                       memory :> bytes(word_sub stackpointer (word 48),48)])`,
   WINDOWS_X86_WRAP_STACK_TAC windows_bignum_montifier_mc bignum_montifier_mc
    BIGNUM_MONTIFIER_CORRECT `[RBX; RBP; R12; R13]` 32);;

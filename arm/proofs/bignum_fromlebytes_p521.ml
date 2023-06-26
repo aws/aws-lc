@@ -210,7 +210,7 @@ let BIGNUM_FROMLEBYTES_P521_SUBROUTINE_CORRECT = time prove
                 read (memory :> bytelist(x,66)) s = l)
            (\s. read PC s = returnaddress /\
                 bignum_from_memory (z,9) s = num_of_bytelist l)
-          (MAYCHANGE [PC; X2; X3] ,,
+          (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bignum(z,9)])`,
   ARM_ADD_RETURN_NOSTACK_TAC BIGNUM_FROMLEBYTES_P521_EXEC
     BIGNUM_FROMLEBYTES_P521_CORRECT);;

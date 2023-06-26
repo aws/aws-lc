@@ -761,9 +761,7 @@ let BIGNUM_MUL_P25519_SUBROUTINE_CORRECT = time prove
                   bignum_from_memory(y,4) s = n)
              (\s. read PC s = returnaddress /\
                   bignum_from_memory(z,4) s = (m * n) MOD p_25519)
-             (MAYCHANGE [PC; X1; X2; X3; X4; X5; X6; X7; X8; X9;
-                         X10; X11; X12; X13; X14; X15; X16; X17] ,,
-              MAYCHANGE [memory :> bytes(z,8 * 4)] ,,
-              MAYCHANGE SOME_FLAGS)`,
+             (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
+              MAYCHANGE [memory :> bytes(z,8 * 4)])`,
   ARM_ADD_RETURN_NOSTACK_TAC
    BIGNUM_MUL_P25519_EXEC BIGNUM_MUL_P25519_CORRECT);;

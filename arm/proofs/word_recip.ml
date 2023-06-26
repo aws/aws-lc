@@ -664,6 +664,5 @@ let WORD_RECIP_SUBROUTINE_CORRECT = prove
            (bit 63 a
             ==> &2 pow 64 + &(val(C_RETURN s)) < &2 pow 128 / &(val a) /\
                 &2 pow 128 / &(val a) <= &2 pow 64 + &(val(C_RETURN s)) + &1))
-      (MAYCHANGE [PC; X0; X1; X2; X3; X4] ,,
-       MAYCHANGE SOME_FLAGS)`,
+      (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI)`,
   ARM_ADD_RETURN_NOSTACK_TAC WORD_RECIP_EXEC WORD_RECIP_CORRECT);;

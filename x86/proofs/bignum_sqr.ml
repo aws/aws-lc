@@ -586,8 +586,7 @@ let BIGNUM_SQR_SUBROUTINE_CORRECT = prove
           (\s. read RIP s = returnaddress /\
                read RSP s = word_add stackpointer (word 8) /\
                bignum_from_memory (z,val p) s = lowdigits (a EXP 2) (val p))
-          (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
-           MAYCHANGE SOME_FLAGS ,,
+          (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bignum(z,val p);
                       memory :> bytes(word_sub stackpointer (word 48),56)])`,
   X86_PROMOTE_RETURN_STACK_TAC bignum_sqr_mc BIGNUM_SQR_CORRECT
@@ -616,8 +615,7 @@ let WINDOWS_BIGNUM_SQR_SUBROUTINE_CORRECT = prove
           (\s. read RIP s = returnaddress /\
                read RSP s = word_add stackpointer (word 8) /\
                bignum_from_memory (z,val p) s = lowdigits (a EXP 2) (val p))
-          (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
-           MAYCHANGE SOME_FLAGS ,,
+          (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bignum(z,val p);
                       memory :> bytes(word_sub stackpointer (word 64),72)])`,
   WINDOWS_X86_WRAP_STACK_TAC windows_bignum_sqr_mc bignum_sqr_mc

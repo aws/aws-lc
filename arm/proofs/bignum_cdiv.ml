@@ -1864,8 +1864,6 @@ let BIGNUM_CDIV_SUBROUTINE_CORRECT = prove
                    ==> bignum_from_memory (z,val k) s =
                        lowdigits (a DIV val m) (val k) /\
                        C_RETURN s = word(a MOD val m)))
-             (MAYCHANGE [PC; X0; X2; X3; X4; X5; X6; X7; X8; X9;
-                         X10; X11; X12; X13; X14] ,,
-              MAYCHANGE SOME_FLAGS ,,
+             (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bignum(z,val k)])`,
   ARM_ADD_RETURN_NOSTACK_TAC BIGNUM_CDIV_EXEC BIGNUM_CDIV_CORRECT);;
