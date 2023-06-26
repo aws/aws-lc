@@ -1,0 +1,56 @@
+From 10318f2e70b2cab11537b4fcf10266de254d8452 Mon Sep 17 00:00:00 2001
+From: Otto Kekalainen <ottoke@amazon.com>
+Date: Mon, 28 Nov 2022 20:27:35 -0800
+Subject: [PATCH 1/4] WIP: Avoid '#define template _template' so AWS-LC builds
+ can run
+
+Disable the WolfSSL specific bug fix as it breaks AWS-LC builds with
+errors like:
+
+/builds/CPACK_BUILD_SOURCE_DIRS_LONG_NAME_REQUIREMENT/mysys_ssl/my_crypt.cc:21:18: error: '_template' does not name a type
+   21 | #define template _template /* bug in WolfSSL 4.4.0, see also violite.h */
+      |                  ^~~~~~~~~
+
+Also:
+
+In file included from /usr/local/include/openssl/evp.h:60,
+                 from /builds/CPACK_BUILD_SOURCE_DIRS_LONG_NAME_REQUIREMENT/mysys_ssl/my_crypt.cc:22:
+/usr/local/include/openssl/mem.h:257:1: error: 'DeleterImpl' is not a class template
+  257 | BORINGSSL_MAKE_DELETER(char, OPENSSL_free)
+      | ^~~~~~~~~~~~~~~~~~~~~~
+---
+ include/violite.h     | 3 ++-
+ mysys_ssl/my_crypt.cc | 3 ++-
+ 2 files changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/include/violite.h b/include/violite.h
+index b823e62b2e1..f9c8ee6b845 100644
+--- a/include/violite.h
++++ b/include/violite.h
+@@ -147,7 +147,8 @@ int vio_getnameinfo(const struct sockaddr *sa,
+ /* Set yaSSL to use same type as MySQL do for socket handles */
+ typedef my_socket YASSL_SOCKET_T;
+ #define YASSL_SOCKET_T_DEFINED
+-#define template _template /* bug in WolfSSL 4.4.0, see also my_crypt.cc */
++// This causes template parse errors in the c++ stdlib.
++// #define template _template /* bug in WolfSSL 4.4.0, see also my_crypt.cc */
+ #include <openssl/ssl.h>
+ #undef template
+ #include <openssl/err.h>
+diff --git a/mysys_ssl/my_crypt.cc b/mysys_ssl/my_crypt.cc
+index 4d7ebc7bd27..6fabb42f0cb 100644
+--- a/mysys_ssl/my_crypt.cc
++++ b/mysys_ssl/my_crypt.cc
+@@ -18,7 +18,8 @@
+ #include <my_global.h>
+ #include <string.h>
+ 
+-#define template _template /* bug in WolfSSL 4.4.0, see also violite.h */
++// This causes template parse errors in the c++ stdlib.
++// #define template _template /* bug in WolfSSL 4.4.0, see also violite.h */
+ #include <openssl/evp.h>
+ #undef template
+ #include <openssl/aes.h>
+-- 
+2.39.2
+
