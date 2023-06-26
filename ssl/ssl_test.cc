@@ -4658,6 +4658,17 @@ TEST_P(SSLVersionTest, GetServerName) {
                SSL_get_servername(server_.get(), TLSEXT_NAMETYPE_host_name));
 }
 
+TEST_P(SSLVersionTest, GetState) {
+  ClientConfig config;
+  ASSERT_TRUE(Connect(config));
+  int server_state = SSL_get_state(server_.get());
+  EXPECT_EQ(server_state, TLS_ST_OK);
+  EXPECT_EQ(server_state, SSL_ST_OK);
+  int client_state = SSL_state(client_.get());
+  EXPECT_EQ(client_state, TLS_ST_OK);
+  EXPECT_EQ(client_state, SSL_ST_OK);
+}
+
 // Test that session cache mode bits are honored in the client session callback.
 TEST_P(SSLVersionTest, ClientSessionCacheMode) {
   SSL_CTX_set_session_cache_mode(client_ctx_.get(), SSL_SESS_CACHE_OFF);

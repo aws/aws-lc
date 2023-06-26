@@ -4517,9 +4517,10 @@ OPENSSL_EXPORT int SSL_was_key_usage_invalid(const SSL *ssl);
 #define SSL_ST_RENEGOTIATE (0x04 | SSL_ST_INIT)
 #define SSL_ST_BEFORE (0x05 | SSL_ST_INIT)
 
-// TLS_ST_* are aliases for |SSL_ST_*| for OpenSSL 1.1.0 compatibility.
-#define TLS_ST_OK SSL_ST_OK
-#define TLS_ST_BEFORE SSL_ST_BEFORE
+// OSSL_HANDSHAKE_STATE enumerates possible TLS states returned from
+// |SSL_get_state| and |SSL_state|. TLS_ST_* are aliases for |SSL_ST_*| for
+// OpenSSL 1.1.0 compatibility.
+typedef enum {TLS_ST_OK = SSL_ST_OK, TLS_ST_BEFORE = SSL_ST_INIT} OSSL_HANDSHAKE_STATE;
 
 // SSL_CB_* are possible values for the |type| parameter in the info
 // callback and the bitmasks that make them up.
