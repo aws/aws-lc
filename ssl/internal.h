@@ -2029,7 +2029,7 @@ struct SSL_HANDSHAKE {
   // scts_requested is true if the SCT extension is in the ClientHello.
   bool scts_requested : 1;
 
-  bool received_custom_extension:1;
+  bool received_custom_extension : 1;
 
   // handshake_finalized is true once the handshake has completed, at which
   // point accessors should use the established state.
