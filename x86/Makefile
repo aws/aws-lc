@@ -427,3 +427,8 @@ sm2/%.correct: proofs/%.ml sm2/%.o sm2/%.obj ; (cd ..; (echo 'loadt "x86/proofs/
 run_proofs: $(PROOFS);
 
 proofs: run_proofs ; ../tools/check-proofs.sh .
+
+# Always run sematest regardless of dependency check
+FORCE: ;
+# Dummy
+sematest: FORCE; echo "todo"
