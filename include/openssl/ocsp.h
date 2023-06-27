@@ -27,26 +27,25 @@ extern "C" {
 #define OCSP_NOCERTS 0x1
 // OCSP_NOINTERN is for |OCSP_basic_verify|. Searches for certificates the
 // responder may have included in |bs| will be done, unless the flags contain
-// OCSP_NOINTERN.
+// |OCSP_NOINTERN|.
 #define OCSP_NOINTERN 0x2
 // OCSP_NOCHAIN is for |OCSP_basic_verify|. All certificates in |certs| and in
 // |bs| are considered as untrusted certificates for the construction of the
 // validation path for the signer certificate unless the OCSP_NOCHAIN flag is
 // set.
 #define OCSP_NOCHAIN 0x8
-// OCSP_NOVERIFY is for |OCSP_basic_verify|. This is a no-op flag in AWS-LC.
-// When setting this flag in OpenSSL, the |OCSP_BASICRESP|'s signature will
-// still be verified, but setting this flag skips verifying the signer's
-// certificate.
-#define OCSP_NOVERIFY 0
+// OCSP_NOVERIFY is for |OCSP_basic_verify|. When setting this flag, the
+// |OCSP_BASICRESP|'s signature will still be verified, but setting this flag
+// skips additionally verifying the signer's certificate.
+#define OCSP_NOVERIFY 0x10
 // OCSP_NOEXPLICIT is for |OCSP_basic_verify|. We will check for explicit trust
 // for OCSP signing in the root CA certificate, unless the flags contain
 // OCSP_NOEXPLICIT.
 #define OCSP_NOEXPLICIT 0x20
-// OCSP_TRUSTOTHER is for |OCSP_basic_verify|. This is a no-op flag in AWS-LC.
-// When setting this flag in OpenSSL, if the reponse signer's cert is one of
-// those in the |certs| stack then it is implicitly trusted.
-#define OCSP_TRUSTOTHER 0
+// OCSP_TRUSTOTHER is for |OCSP_basic_verify|. When setting this flag in OpenSSL,
+// if the reponse signer's cert is one of those in the |certs| stack then it is
+// implicitly trusted.
+#define OCSP_TRUSTOTHER 0x200
 
 typedef struct ocsp_cert_id_st OCSP_CERTID;
 typedef struct ocsp_one_request_st OCSP_ONEREQ;
