@@ -5,7 +5,7 @@ from aws_cdk import Duration, Stack, aws_codebuild as codebuild, aws_iam as iam,
 from constructs import Construct
 
 from cdk.components import PruneStaleGitHubBuilds
-from util.iam_policies import code_build_batch_policy_in_json
+from util.iam_policies import code_build_batch_policy_in_json, code_build_publish_metrics_in_json
 from util.metadata import CAN_AUTOLOAD, GITHUB_REPO_OWNER, GITHUB_REPO_NAME
 from util.build_spec_loader import BuildSpecLoader
 
@@ -37,7 +37,9 @@ class AwsLcGitHubCIStack(Stack):
         code_build_batch_policy = iam.PolicyDocument.from_json(
             code_build_batch_policy_in_json([id])
         )
-        inline_policies = {"code_build_batch_policy": code_build_batch_policy}
+        metrics_policy = iam.PolicyDocument.from_json(code_build_publish_metrics_in_json())
+        inline_policies = {"code_build_batch_policy": code_build_batch_policy,
+                           "metrics_policy": metrics_policy}
         role = iam.Role(scope=self,
                         id="{}-role".format(id),
                         assumed_by=iam.ServicePrincipal("codebuild.amazonaws.com"),

@@ -6,11 +6,9 @@ source tests/ci/common_posix_setup.sh
 
 # Set up environment.
 
-# ROOT
+# SYS_ROOT
 #  |
-#  - AWS_LC_DIR
-#    |
-#    - aws-lc
+#  - SRC_ROOT(aws-lc)
 #  |
 #  - SCRATCH_FOLDER
 #    |
@@ -20,11 +18,7 @@ source tests/ci/common_posix_setup.sh
 #    - POSTGRES_BUILD_FOLDER
 
 # Assumes script is executed from the root of aws-lc directory
-AWS_LC_DIR=$(pwd)
-cd ../
-ROOT=$(pwd)
-
-SCRATCH_FOLDER=${ROOT}/"POSTGRES_BUILD_ROOT"
+SCRATCH_FOLDER=${SYS_ROOT}/"POSTGRES_BUILD_ROOT"
 POSTGRES_SRC_FOLDER="${SCRATCH_FOLDER}/postgres"
 POSTGRES_BUILD_FOLDER="${SCRATCH_FOLDER}/postgres/build"
 AWS_LC_BUILD_FOLDER="${SCRATCH_FOLDER}/aws-lc-build"
@@ -33,13 +27,6 @@ AWS_LC_INSTALL_FOLDER="${POSTGRES_SRC_FOLDER}/aws-lc-install"
 mkdir -p ${SCRATCH_FOLDER}
 rm -rf ${SCRATCH_FOLDER}/*
 cd ${SCRATCH_FOLDER}
-
-function aws_lc_build() {
-  ${CMAKE_COMMAND} ${AWS_LC_DIR} -GNinja "-B${AWS_LC_BUILD_FOLDER}" "-DCMAKE_INSTALL_PREFIX=${AWS_LC_INSTALL_FOLDER}"
-  ninja -C ${AWS_LC_BUILD_FOLDER} install
-  ls -R ${AWS_LC_INSTALL_FOLDER}
-  rm -rf ${AWS_LC_BUILD_FOLDER}/*
-}
 
 function postgres_build() {
   ./configure --with-openssl --enable-tap-tests --with-includes=${AWS_LC_INSTALL_FOLDER}/include --with-libraries=${AWS_LC_INSTALL_FOLDER}/lib --prefix=$(pwd)/build
@@ -71,7 +58,7 @@ git clone https://github.com/postgres/postgres.git ${POSTGRES_SRC_FOLDER}
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} ${POSTGRES_BUILD_FOLDER}
 ls
 
-aws_lc_build
+aws_lc_build ${SRC_ROOT} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER}
 cd ${POSTGRES_SRC_FOLDER}
 postgres_patch
 postgres_build
