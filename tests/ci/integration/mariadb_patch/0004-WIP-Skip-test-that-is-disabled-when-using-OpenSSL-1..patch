@@ -1,0 +1,29 @@
+From 85cf96e689ef0df5ddefe12cfbcfb18a80e96210 Mon Sep 17 00:00:00 2001
+From: Robin Newhouse <robinnew@amazon.com>
+Date: Mon, 15 May 2023 22:37:36 +0000
+Subject: [PATCH 4/4] WIP: Skip test that is disabled when using OpenSSL 1.1.1
+
+OpenSSL 1.1.1 and AWS-LC use different cipher names than OpenSSL 1.0.2
+so we cannot reuse old tests with hardcoded cipher requirements.
+---
+ mysql-test/main/ssl_cipher.test | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/mysql-test/main/ssl_cipher.test b/mysql-test/main/ssl_cipher.test
+index 4671b085ce7..0f926bf3e64 100644
+--- a/mysql-test/main/ssl_cipher.test
++++ b/mysql-test/main/ssl_cipher.test
+@@ -4,8 +4,8 @@
+ #
+ --source include/have_ssl_communication.inc
+ 
+-if (`select @@version_ssl_library like 'OpenSSL 1.1.1%'`) {
+-  skip OpenSSL 1.1.1;
++if (`select @@version_ssl_library like 'OpenSSL 1.1.1%' OR @@version_ssl_library like 'AWS-LC%'`) {
++  skip OpenSSL 1.1.1 and AWS-LC use different cipher names so we cannot reuse old tests with hardcoded cipher requirements;
+ }
+ 
+ create user ssl_user1@localhost require SSL;
+-- 
+2.39.2
+
