@@ -1307,6 +1307,40 @@ let arm_UZP1 = define
           let meven:(64)word = usimd8 (\x. word_subword x (0,8): (8)word) m in
           (Rd := (word_join meven neven:(128)word)) s`;;
 
+let arm_UZP2 = define
+ `arm_UZP2 Rd Rn Rm esize =
+    \s. let n:(128)word = read Rn (s:armstate) in
+        let m:(128)word = read Rm (s:armstate) in
+        if esize = 64 then
+          let nodd:(64)word = word_subword n (64,64) in
+          let modd:(64)word = word_subword m (64,64) in
+          (Rd := (word_join modd nodd:(128)word)) s
+        else if esize = 32 then
+          let nodd:(64)word = usimd2 (\x. word_subword x (32,32): (32)word) n in
+          let modd:(64)word = usimd2 (\x. word_subword x (32,32): (32)word) m in
+          (Rd := (word_join modd nodd:(128)word)) s
+        else if esize = 16 then
+          let nodd:(64)word = usimd4 (\x. word_subword x (16,16): (16)word) n in
+          let modd:(64)word = usimd4 (\x. word_subword x (16,16): (16)word) m in
+          (Rd := (word_join modd nodd:(128)word)) s
+        else // esize=8
+          let nodd:(64)word = usimd8 (\x. word_subword x (8,8): (8)word) n in
+          let modd:(64)word = usimd8 (\x. word_subword x (8,8): (8)word) m in
+          (Rd := (word_join modd nodd:(128)word)) s`;;
+
+let arm_XTN = define
+ `arm_XTN Rd Rn esize =
+    \s. let n:(128)word = read Rn (s:armstate) in
+        if esize = 32 then
+          let nlow:(64)word = usimd2 (\x. word_subword x (0,32): (32)word) n in
+          (Rd := (word_zx nlow:(128)word)) s
+        else if esize = 16 then
+          let nlow:(64)word = usimd4 (\x. word_subword x (0,16): (16)word) n in
+          (Rd := (word_zx nlow:(128)word)) s
+        else // esize=8
+          let nlow:(64)word = usimd8 (\x. word_subword x (0,8): (8)word) n in
+          (Rd := (word_zx nlow:(128)word)) s`;;
+
 
 let word_split_lohi = new_definition
  `(word_split_lohi:(N tybit0)word->((N)word # (N)word)) x =
@@ -1855,6 +1889,8 @@ let arm_UMLAL_VEC_ALT = REWRITE_RULE all_simd_rules arm_UMLAL_VEC;;
 let arm_UMULL_VEC_ALT = REWRITE_RULE all_simd_rules arm_UMULL_VEC;;
 let arm_USRA_VEC_ALT =  REWRITE_RULE all_simd_rules arm_USRA_VEC;;
 let arm_UZP1_ALT =      REWRITE_RULE all_simd_rules arm_UZP1;;
+let arm_UZP2_ALT =      REWRITE_RULE all_simd_rules arm_UZP2;;
+let arm_XTN_ALT =       REWRITE_RULE all_simd_rules arm_XTN;;
 let arm_ZIP1_ALT =      REWRITE_RULE all_simd_rules arm_ZIP1;;
 
 (* ------------------------------------------------------------------------- *)
@@ -1881,6 +1917,8 @@ let ARM_OPERATION_CLAUSES =
        arm_SLI_VEC_ALT; arm_SUB; arm_SUBS_ALT;
        arm_UADDLP_ALT; arm_UBFM; arm_UMOV; arm_UMADDL; arm_UMLAL_VEC_ALT;
        arm_UMSUBL; arm_UMULL_VEC_ALT; arm_UMULH; arm_USRA_VEC_ALT; arm_UZP1_ALT;
+       arm_UZP2_ALT;
+       arm_XTN_ALT;
        arm_ZIP1_ALT;
     (*** 32-bit backups since the ALT forms are 64-bit only ***)
        INST_TYPE[`:32`,`:N`] arm_ADCS;
