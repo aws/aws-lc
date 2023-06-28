@@ -786,10 +786,6 @@ int SSL_CTX_use_certificate(SSL_CTX *ctx, X509 *x) {
 }
 
 static X509 *ssl_cert_get0_leaf(CERT *cert) {
-  if (cert->x509_leaf == nullptr) {
-    return nullptr;
-  }
-
   return cert->x509_leaf;
 }
 
