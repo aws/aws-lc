@@ -1772,7 +1772,7 @@ typedef int (*SSL_custom_ext_add_cb)(SSL *ssl, unsigned extension_value,
                                      const uint8_t **out, size_t *out_len,
                                      int *out_alert_value, void *add_arg);
 
-// SSL_custom_ext_free_cb is a callback function that is called by OpenSSL iff
+// SSL_custom_ext_free_cb is a callback function that is called by AWS-LC iff
 // an |SSL_custom_ext_add_cb| callback previously returned one. In that case,
 // this callback is called and passed the |out| pointer that was returned by
 // the add callback. This is to free any dynamically allocated data created by
@@ -1780,7 +1780,7 @@ typedef int (*SSL_custom_ext_add_cb)(SSL *ssl, unsigned extension_value,
 typedef void (*SSL_custom_ext_free_cb)(SSL *ssl, unsigned extension_value,
                                        const uint8_t *out, void *add_arg);
 
-// SSL_custom_ext_parse_cb is a callback function that is called by OpenSSL to
+// SSL_custom_ext_parse_cb is a callback function that is called by AWS-LC to
 // parse an extension from the peer: that is from the ServerHello for a client
 // and from the ClientHello for a server.
 //
@@ -1795,9 +1795,9 @@ typedef int (*SSL_custom_ext_parse_cb)(SSL *ssl, unsigned extension_value,
                                        size_t contents_len,
                                        int *out_alert_value, void *parse_arg);
 
-// SSL_extension_supported returns one iff OpenSSL internally handles
+// SSL_extension_supported returns one iff AWS-LC internally handles
 // extensions of type |extension_value|. This can be used to avoid registering
-// custom extension handlers for extensions that a future version of OpenSSL
+// custom extension handlers for extensions that a future version of AWS-LC
 // may handle internally.
 OPENSSL_EXPORT int SSL_extension_supported(unsigned extension_value);
 
@@ -1813,8 +1813,8 @@ OPENSSL_EXPORT int SSL_extension_supported(unsigned extension_value);
 //
 // It returns one on success or zero on error. It's always an error to register
 // callbacks for the same extension twice, or to register callbacks for an
-// extension that OpenSSL handles internally. See |SSL_extension_supported| to
-// discover, at runtime, which extensions OpenSSL handles internally.
+// extension that AWS-LC handles internally. See |SSL_extension_supported| to
+// discover, at runtime, which extensions AWS-LC handles internally.
 OPENSSL_EXPORT int SSL_CTX_add_client_custom_ext(
     SSL_CTX *ctx, unsigned extension_value, SSL_custom_ext_add_cb add_cb,
     SSL_custom_ext_free_cb free_cb, void *add_arg,
