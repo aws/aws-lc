@@ -333,7 +333,7 @@ static int int_x509_param_set1_email(char **pdest, size_t *pdestlen,
       srclen = strlen(src);
     }
 
-    tmp = OPENSSL_memdup(src, srclen);
+    tmp = OPENSSL_strndup(src, srclen);
     if (tmp == NULL) {
       return 0;
     }
