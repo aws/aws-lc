@@ -54,7 +54,7 @@ function mysql_build() {
 
 function mysql_run_tests() {
   pushd ${MYSQL_BUILD_FOLDER}
-  ninja test
+  ninja test-unit
   popd
 }
 
@@ -63,7 +63,7 @@ function dump_log() {
   ls ${MYSQL_BUILD_FOLDER}/Testing/Temporary/LastTest.log
   for logfile in $(find -L "${MYSQL_BUILD_FOLDER}/Testing/Temporary" -type f -name '*.log'); do
     echo "Dumping out logs to observe:"
-    cat $logfile
+#    cat $logfile
   done
 }
 

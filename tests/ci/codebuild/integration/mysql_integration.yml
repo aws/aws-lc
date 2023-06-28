@@ -8,6 +8,14 @@ env:
     GOPROXY: https://proxy.golang.org,direct
 
 phases:
+  install:
+    run-as: root
+    commands:
+      # Let postgres user in docker image take ownership of codebuild artifacts.
+      - chown -R postgres:postgres /codebuild/output
+      # Go caches build objects in /root/.cache.
+      - chown -R postgres:postgres /root/
   build:
+    run-as: postgres
     commands:
       - ./tests/ci/integration/run_mysql_integration.sh
