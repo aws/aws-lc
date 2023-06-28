@@ -2961,7 +2961,7 @@ OPENSSL_EXPORT int X509_VERIFY_PARAM_set1_email(X509_VERIFY_PARAM *param,
                                                 size_t emaillen);
 
 // X509_VERIFY_PARAM_set1_ip sets the expected IP address to |ip|. |iplen| MUST
-// be set to the length of |email|.
+// be set to the length of |ip|.
 OPENSSL_EXPORT int X509_VERIFY_PARAM_set1_ip(X509_VERIFY_PARAM *param,
                                              const unsigned char *ip,
                                              size_t iplen);
