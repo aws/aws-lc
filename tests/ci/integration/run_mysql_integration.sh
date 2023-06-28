@@ -25,9 +25,11 @@ BOOST_INSTALL_FOLDER=/home/dependencies/boost
 # Assumes script is executed from the root of aws-lc directory
 SCRATCH_FOLDER=${SYS_ROOT}/"MYSQL_BUILD_ROOT"
 MYSQL_SRC_FOLDER="${SCRATCH_FOLDER}/mysql-server"
-MYSQL_BUILD_FOLDER="${SCRATCH_FOLDER}/server/mysql-aws-lc"
+MYSQL_BUILD_FOLDER="${SCRATCH_FOLDER}/mysql-aws-lc"
+MYSQL_PATCH_FOLDER=${SRC_ROOT}/"tests/ci/integration/mysql_patch"
 AWS_LC_BUILD_FOLDER="${SCRATCH_FOLDER}/aws-lc-build"
 AWS_LC_INSTALL_FOLDER="${MYSQL_SRC_FOLDER}/aws-lc-install"
+
 
 mkdir -p ${SCRATCH_FOLDER}
 rm -rf ${SCRATCH_FOLDER}/*
@@ -54,6 +56,29 @@ function mysql_run_tests() {
   popd
 }
 
+# MySQL tests expect the OpenSSL style of error messages. We patch this to expect AWS-LC's style.
+# TODO: Remove this when we make an upstream contribution.
+function mysql_patch_error_strings() {
+  MYSQL_TEST_FILES=("test_routing_splicer.cc" "test_http_server.cc")
+  MYSQL_ERROR_STRING=("certificate verify failed" "no start line" "ee key too small")
+  AWS_LC_EXPECTED_ERROR_STRING=("CERTIFICATE_VERIFY_FAILED" "NO_START_LINE" "key-size too small")
+  for file in "${MYSQL_TEST_FILES[@]}"; do
+    for i in "${!MYSQL_ERROR_STRING[@]}"; do
+      find ./ -type f -name "$file" | xargs sed -i -e "s|${MYSQL_ERROR_STRING[$i]}|${AWS_LC_EXPECTED_ERROR_STRING[$i]}|g"
+    done
+  done
+}
+
+# MySQL relies on some behaviour that AWS-LC intentionally does not provide support for. Some of these known gaps are listed below:
+# * DH cipher suites in libssl
+# * Stateful session resumption
+function mysql_patch_tests() {
+  for patchfile in $(find -L "${MYSQL_PATCH_FOLDER}" -type f -name '*.patch'); do
+    echo "Apply patch $patchfile..."
+    patch -p1 --quiet -i "$patchfile"
+  done
+}
+
 # Get latest MySQL version. MySQL often updates with large changes depending on OpenSSL all at once, so we pin to a specific version.
 mysql_patch_reminder
 git clone https://github.com/mysql/mysql-server.git ${MYSQL_SRC_FOLDER} -b ${MYSQL_VERSION_TAG} --depth 1
@@ -62,7 +87,8 @@ ls
 
 aws_lc_build ${SRC_ROOT} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER}
 pushd ${MYSQL_SRC_FOLDER}
+mysql_patch_tests
+mysql_patch_error_strings
 mysql_build
-# TODO: There are still pending test failures that need to be resolved. Turn this on once we resolve them.
-# mysql_run_tests
+mysql_run_tests
 popd

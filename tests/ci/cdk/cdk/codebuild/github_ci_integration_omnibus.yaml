@@ -30,8 +30,7 @@ batch:
         compute-type: BUILD_GENERAL1_MEDIUM
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-22.04_gcc-12x_latest
 
-    # Only runs the build for now, tests are disabled. MySQL build is bloated without any obvious build configurations we can
-    # use to speed up the build, so we use a larger instance here.
+    # MySQL build is bloated without any obvious build configurations we can use to speed up the build, so we use a larger instance here.
     - identifier: mysql_integration
       buildspec: ./tests/ci/codebuild/integration/mysql_integration.yml
       env:

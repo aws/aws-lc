@@ -1,0 +1,20 @@
+diff --git a/router/tests/component/test_http_server.cc b/router/tests/component/test_http_server.cc
+index 65a04739..93545f52 100644
+--- a/router/tests/component/test_http_server.cc
++++ b/router/tests/component/test_http_server.cc
+@@ -1382,6 +1382,7 @@ const HttpServerSecureParams http_server_secure_params[]{
+      },
+      false,
+      "setting ssl_dh_params failed"},
++#if !defined (OPENSSL_IS_AWSLC)
+     {"dh ciphers, default dh-params",
+      "WL12524::TS_CR_09",
+      {
+@@ -1416,6 +1417,7 @@ const HttpServerSecureParams http_server_secure_params[]{
+      // success otherwise
+      is_with_ssl_support(),
+      is_with_ssl_support() ? "" : kSslSupportIsDisabled},
++#endif
+     {"non-dh-cipher, strong dh-params",
+      "WL12524::TS_SR4_01,WL12524::TS_SR3_01",
+      {

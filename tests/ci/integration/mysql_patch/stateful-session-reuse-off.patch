@@ -1,0 +1,22 @@
+diff --git a/router/tests/component/test_metadata_ttl.cc b/router/tests/component/test_metadata_ttl.cc
+index 1fbf8928..7aeacf33 100644
+--- a/router/tests/component/test_metadata_ttl.cc
++++ b/router/tests/component/test_metadata_ttl.cc
+@@ -2562,6 +2562,8 @@ INSTANTIATE_TEST_SUITE_P(
+                                             "GR_V1", ClusterType::GR_V1)),
+     get_test_description);
+ 
++#if !defined (OPENSSL_IS_AWSLC)
++
+ struct SessionReuseTestParams {
+   std::string router_ssl_mode;
+   bool server_ssl_enabled;
+@@ -2657,6 +2659,8 @@ INSTANTIATE_TEST_SUITE_P(
+                                /*server_ssl_enabled*/ true,
+                                /*expected_session_reuse*/ false}));
+ 
++#endif
++
+ int main(int argc, char *argv[]) {
+   init_windows_sockets();
+   ProcessManager::set_origin(Path(argv[0]).dirname());
