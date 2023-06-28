@@ -2923,21 +2923,53 @@ OPENSSL_EXPORT int X509_VERIFY_PARAM_add0_policy(X509_VERIFY_PARAM *param,
 OPENSSL_EXPORT int X509_VERIFY_PARAM_set1_policies(
     X509_VERIFY_PARAM *param, const STACK_OF(ASN1_OBJECT) *policies);
 
+
+// X509_VERIFY_PARAM_set1_host sets the expected DNS hostname to |name| and
+// clears any previously specified hostname. If |name| is NULL or empty, the
+// list of hostnames is cleared and name checks are not performed on the peer
+// certificate.
+// |namelen| should be set to the length of |name|. It may be zero if |name| is
+// NUL-terminated, but this is only maintained for backwards compatibility with
+// OpenSSL.
 OPENSSL_EXPORT int X509_VERIFY_PARAM_set1_host(X509_VERIFY_PARAM *param,
                                                const char *name,
                                                size_t namelen);
+
+// X509_VERIFY_PARAM_add1_host adds |name| as an additional DNS hostname
+// reference identifier that can match the peer's certificate.
+// Any previous names set via |X509_VERIFY_PARAM_set1_host| or
+// |X509_VERIFY_PARAM_add1_host| are retained, no change is made if |name| is
+// NULL or empty. When multiple names are configured, the peer is considered
+// verified when any name matches.
+// |namelen| should be set to the length of |name|. It may be zero if |name| is
+// NUL-terminated, but this is only maintained for backwards compatibility with
+// OpenSSL.
 OPENSSL_EXPORT int X509_VERIFY_PARAM_add1_host(X509_VERIFY_PARAM *param,
                                                const char *name,
                                                size_t namelen);
 OPENSSL_EXPORT void X509_VERIFY_PARAM_set_hostflags(X509_VERIFY_PARAM *param,
                                                     unsigned int flags);
 OPENSSL_EXPORT char *X509_VERIFY_PARAM_get0_peername(X509_VERIFY_PARAM *);
+
+// X509_VERIFY_PARAM_set1_email sets the expected RFC822 email address to
+// |email|.
+// |emaillen| should be set to the length of |email|. It may be zero if |email|
+// is NUL-terminated, but this is only maintained for backwards compatibility
+// with OpenSSL.
 OPENSSL_EXPORT int X509_VERIFY_PARAM_set1_email(X509_VERIFY_PARAM *param,
                                                 const char *email,
                                                 size_t emaillen);
+
+// X509_VERIFY_PARAM_set1_ip sets the expected IP address to |ip|. |iplen| MUST
+// be set to the length of |ip|.
 OPENSSL_EXPORT int X509_VERIFY_PARAM_set1_ip(X509_VERIFY_PARAM *param,
                                              const unsigned char *ip,
                                              size_t iplen);
+
+// X509_VERIFY_PARAM_set1_ip_asc sets the expected IP address to |ipasc|.
+// |ipasc| MUST be a NUL-terminal ASCII string: dotted decimal quad for IPv4 and
+// colon-separated hexadecimal for IPv6. The condensed "::" notation is
+// supported for IPv6 addresses.
 OPENSSL_EXPORT int X509_VERIFY_PARAM_set1_ip_asc(X509_VERIFY_PARAM *param,
                                                  const char *ipasc);
 
