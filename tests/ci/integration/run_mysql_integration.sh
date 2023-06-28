@@ -4,6 +4,8 @@
 
 source tests/ci/common_posix_setup.sh
 
+trap dump_log EXIT
+
 MYSQL_VERSION_TAG="mysql-8.0.33"
 # This directory is specific to the docker image used. Use -DDOWNLOAD_BOOST=1 -DWITH_BOOST=<directory>
 # with mySQL to download a compatible boost version locally.
@@ -56,6 +58,15 @@ function mysql_run_tests() {
   popd
 }
 
+# Used to access debugging logs.
+function dump_log() {
+  ls ${MYSQL_BUILD_FOLDER}/Testing/Temporary/LastTest.log
+  for logfile in $(find -L "${MYSQL_BUILD_FOLDER}/Testing/Temporary" -type f -name '*.log'); do
+    echo "Dumping out logs to observe:"
+    cat $logfile
+  done
+}
+
 # MySQL tests expect the OpenSSL style of error messages. We patch this to expect AWS-LC's style.
 # TODO: Remove this when we make an upstream contribution.
 function mysql_patch_error_strings() {
@@ -80,7 +91,7 @@ function mysql_patch_tests() {
 }
 
 # Get latest MySQL version. MySQL often updates with large changes depending on OpenSSL all at once, so we pin to a specific version.
-mysql_patch_reminder
+#mysql_patch_reminder
 git clone https://github.com/mysql/mysql-server.git ${MYSQL_SRC_FOLDER} -b ${MYSQL_VERSION_TAG} --depth 1
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} ${MYSQL_BUILD_FOLDER}
 ls
