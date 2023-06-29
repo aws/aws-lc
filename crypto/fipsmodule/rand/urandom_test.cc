@@ -495,10 +495,10 @@ static std::vector<Event> TestFunctionPRNGModel(unsigned flags) {
       }
     }
   }
-  // Now the the entropy for seeding.
+  // Now the entropy for seeding.
   if (kIsFIPS) {
-    // In FIPS mode we use Jitter Entropy which is not modeled for the seed and
-    // a blocking sysrand call for a personalization string.
+    // In FIPS mode we use Jitter Entropy for the seed but Jitter is not modeled
+    // A blocking system random call for a personalization string always follows.
     if (!sysrand(true, kPersonalizationStringLength)) {
       return ret;
     }
