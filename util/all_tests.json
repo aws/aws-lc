@@ -1,7 +1,8 @@
 [
   {
     "cmd": ["crypto/crypto_test"],
-    "valgrind_supp": ["valgrind_suppressions_crypto_test.supp"]
+    "valgrind_supp": ["valgrind_suppressions_crypto_test.supp"],
+    "shard": true
   },
   {
     "cmd": ["crypto/crypto_test", "--gtest_also_run_disabled_tests", "--gtest_filter=BNTest.DISABLED_WycheproofPrimality"],
@@ -16,19 +17,22 @@
     "cmd": ["crypto/crypto_test"],
     "env": ["OPENSSL_armcap=0x0"],
     "target_arch": "arm",
-    "skip_valgrind": true
+    "skip_valgrind": true,
+    "shard": true
   },
   {
     "cmd": ["crypto/crypto_test"],
     "env": ["OPENSSL_armcap=0x1"],
     "target_arch": "arm",
-    "skip_valgrind": true
+    "skip_valgrind": true,
+    "shard": true
   },
   {
     "cmd": ["crypto/crypto_test"],
     "env": ["OPENSSL_armcap=0x3D"],
     "target_arch": "arm",
-    "skip_valgrind": true
+    "skip_valgrind": true,
+    "shard": true
   },
   {
     "comment": "Test OPENSSL_ia32cap on crypto_test for x86, as urandom_test is disabled for shared builds on x86",
@@ -93,7 +97,8 @@
     "skip_valgrind": true
   },
   {
-    "cmd": ["ssl/ssl_test"]
+    "cmd": ["ssl/ssl_test"],
+    "shard": true
   },
   {
     "cmd": ["ssl/integration_test"]
