@@ -785,7 +785,32 @@ int SSL_CTX_use_certificate(SSL_CTX *ctx, X509 *x) {
   return ssl_use_certificate(ctx->cert.get(), x);
 }
 
+// ssl_cert_cache_leaf_cert sets |cert->x509_leaf|, if currently NULL, from the
+// first element of |cert->chain|. This is the case when certs are set with
+// |SSL_CTX_use_certificate_ASN1| or |SSL_use_certificate_ASN1| in AWS-LC.
+static int ssl_cert_cache_leaf_cert(CERT *cert) {
+  assert(cert->x509_method);
+
+  if (cert->x509_leaf != NULL ||
+      cert->chain == NULL) {
+    return 1;
+  }
+
+  CRYPTO_BUFFER *leaf = sk_CRYPTO_BUFFER_value(cert->chain.get(), 0);
+  if (!leaf) {
+    return 1;
+  }
+
+  cert->x509_leaf = X509_parse_from_buffer(leaf);
+  return cert->x509_leaf != NULL;
+}
+
 static X509 *ssl_cert_get0_leaf(CERT *cert) {
+  if (cert->x509_leaf == NULL &&
+      !ssl_cert_cache_leaf_cert(cert)) {
+    return NULL;
+  }
+
   return cert->x509_leaf;
 }
 
