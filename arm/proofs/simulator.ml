@@ -336,15 +336,25 @@ let run_random_simulation () =
 (* Keep running tests till a failure happens then return it.                 *)
 (* ------------------------------------------------------------------------- *)
 
-let rec run_random_simulations () =
+let time_limit_sec = 1800.0;;
+let tested_instances = ref 0;;
+
+let rec run_random_simulations start_t =
   let decoded,result = run_random_simulation() in
-  if result then
-   let fey = if is_numeral decoded
-             then " (fails correctly) instruction code " else " " in
-   (Format.print_string("OK:" ^ fey ^ string_of_term decoded);
-    Format.print_newline();
-    run_random_simulations())
-  else (decoded,result);;
+  if result then begin
+    tested_instances := !tested_instances + 1;
+    let fey = if is_numeral decoded
+              then " (fails correctly) instruction code " else " " in
+    let _ = Format.print_string("OK:" ^ fey ^ string_of_term decoded);
+            Format.print_newline() in
+    let now_t = Sys.time() in
+    if now_t -. start_t > time_limit_sec then
+      let _ = Printf.printf "Finished (time limit: %fs, tested instances: %d)\n"
+          time_limit_sec !tested_instances in
+      None
+    else run_random_simulations start_t
+  end
+  else Some (decoded,result);;
 
 (*** Depending on the degree of repeatability wanted.
  *** After a few experiments I'm now going full random.
@@ -354,4 +364,7 @@ let rec run_random_simulations () =
 
 Random.self_init();;
 
-run_random_simulations();;
+let start_t = Sys.time() (* unit is sec *) in
+  match run_random_simulations start_t with
+  | Some (t,_) -> Printf.printf "Error: term `%s`" (string_of_term t); exit 1
+  | None -> ();;
