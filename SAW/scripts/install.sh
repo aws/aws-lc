@@ -5,7 +5,7 @@
 
 set -ex
 
-SAW_URL='https://saw-builds-tmp.s3.us-west-2.amazonaws.com/saw-0.9.0.99-2023-06-08-ab46c76e0-Linux-x86_64.tar.gz'
+SAW_URL='https://saw-builds.s3.us-west-2.amazonaws.com/saw-0.9.0.99-2023-06-08-ab46c76e0-Linux-x86_64.tar.gz'
 
 mkdir -p /bin /deps
 
