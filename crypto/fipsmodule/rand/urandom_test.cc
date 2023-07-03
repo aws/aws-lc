@@ -524,6 +524,11 @@ static std::vector<Event> TestFunctionPRNGModel(unsigned flags) {
 
 // Tests that |TestFunctionPRNGModel| is a correct model for the code in
 // urandom.c, at least to the limits of the the |Event| type.
+//
+// |TestFunctionPRNGModel| creates the entropy function call model, for
+// various configs. |GetTrace| records the actual entropy function calls for
+// each config and compares it against the model.
+// Only system entropy function calls are modeled e.g. /dev/random and getrandom.
 TEST(URandomTest, Test) {
   char buf[256];
 
