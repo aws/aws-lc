@@ -1426,6 +1426,70 @@ static bool SpeedECDSA(const std::string &selected) {
          SpeedECDSACurve("ECDSA secp256k1", NID_secp256k1, selected);
 }
 
+static EVP_PKEY * evp_generate_key(const int curve_nid) {
+
+  // P NIST curves are abstracted under the same virtual function table which
+  // is configured using |EVP_PKEY_EC|.
+  int local_nid = EVP_PKEY_EC;
+  if (curve_nid == NID_X25519) {
+    local_nid = NID_X25519;
+  }
+
+  BM_NAMESPACE::UniquePtr<EVP_PKEY_CTX> evp_pkey_ctx(EVP_PKEY_CTX_new_id(local_nid, nullptr));
+
+  if (local_nid == EVP_PKEY_EC) {
+    // Since P NIST curves are abstracted under the same virtual function table,
+    // we haven't actually loaded the group yet. This must be done before we can
+    // generate the key.
+    EVP_PKEY *curve = nullptr;
+    if (!EVP_PKEY_paramgen_init(evp_pkey_ctx.get()) ||
+        !EVP_PKEY_CTX_set_ec_paramgen_curve_nid(evp_pkey_ctx.get(), curve_nid) ||
+        !EVP_PKEY_paramgen(evp_pkey_ctx.get(), &curve) ||
+        curve == nullptr) {
+      return nullptr;
+    }
+    evp_pkey_ctx.reset(EVP_PKEY_CTX_new(curve, NULL));
+    if (evp_pkey_ctx == nullptr) {
+      return nullptr;
+    }
+  }
+
+  EVP_PKEY *key = nullptr;
+  if (!EVP_PKEY_keygen_init(evp_pkey_ctx.get()) ||
+      !EVP_PKEY_keygen(evp_pkey_ctx.get(), &key)) {
+    return nullptr;
+  }
+
+  return key;
+}
+
+static bool SpeedEvpEcdhCurve(const std::string &name, int nid,
+                           const std::string &selected) {
+
+  // First we need a peer key that we are going to re-use for all iterations.
+  BM_NAMESPACE::UniquePtr<EVP_PKEY> peer_key(evp_generate_key(nid));
+  if (peer_key == nullptr) {
+    return false;
+  }
+
+  // Time below:
+  // keygen
+  // check public key
+  // derive
+
+  return true;
+}
+
+// Using EVP in name for now, but not in final version...
+static bool SpeedEvpEcdh(const std::string &selected) {
+  return SpeedEvpEcdhCurve("ECDH EVP P-224", NID_secp224r1, selected) &&
+         SpeedEvpEcdhCurve("ECDH EVP P-256", NID_X9_62_prime256v1, selected) &&
+         SpeedEvpEcdhCurve("ECDH EVP P-384", NID_secp384r1, selected) &&
+         SpeedEvpEcdhCurve("ECDH EVP P-521", NID_secp521r1, selected) &&
+         SpeedEvpEcdhCurve("ECDH EVP secp256k1", NID_secp256k1, selected) &&
+         SpeedEvpEcdhCurve("ECDH EVP X25519", NID_X25519, selected);
+}
+
 #if !defined(OPENSSL_1_0_BENCHMARK)
 static bool SpeedECMULCurve(const std::string &name, int nid,
                        const std::string &selected) {
@@ -2447,6 +2511,7 @@ bool Speed(const std::vector<std::string> &args) {
        !SpeedECDSA(selected) ||
        !SpeedECKeyGen(selected) ||
        !SpeedECKeyGenerateKey(false, selected) ||
+       !SpeedEvpEcdh(selected) ||
 #if !defined(OPENSSL_1_0_BENCHMARK)
        !SpeedECMUL(selected) ||
        // OpenSSL 1.0 doesn't support Scrypt
