@@ -371,6 +371,38 @@ let decode = new_definition `!w:int32. decode w =
       let esize:(64)word = word_shl (word 0b1000: (64)word) (val size) in
       SOME (arm_REV64_VEC (QREG' Rd) (QREG' Rn) (val esize))
 
+  | [0b01011110000:11; Rm:5; 0b010000:6; Rn:5; Rd:5] ->
+    // SHA256H
+    SOME (arm_SHA256H (QREG' Rd) (QREG' Rn) (QREG' Rm))
+
+  | [0b01011110000:11; Rm:5; 0b010100:6; Rn:5; Rd:5] ->
+    // SHA256H2
+    SOME (arm_SHA256H2 (QREG' Rd) (QREG' Rn) (QREG' Rm))
+
+  | [0b0101111000101000001010:22; Rn:5; Rd:5] ->
+    // SHA256SU0
+    SOME (arm_SHA256SU0 (QREG' Rd) (QREG' Rn))
+
+  | [0b01011110000:11; Rm:5; 0b011000:6; Rn:5; Rd:5] ->
+    // SHA256SU1
+    SOME (arm_SHA256SU1 (QREG' Rd) (QREG' Rn) (QREG' Rm))
+
+  | [0b11001110011:11; Rm:5; 0b100000:6; Rn:5; Rd:5] ->
+    // SHA512H
+    SOME (arm_SHA512H (QREG' Rd) (QREG' Rn) (QREG' Rm))
+
+  | [0b11001110011:11; Rm:5; 0b100001:6; Rn:5; Rd:5] ->
+    // SHA512H2
+    SOME (arm_SHA512H2 (QREG' Rd) (QREG' Rn) (QREG' Rm))
+
+  | [0b1100111011000000100000:22; Rn:5; Rd:5] ->
+    // SHA512SU0
+    SOME (arm_SHA512SU0 (QREG' Rd) (QREG' Rn))
+
+  | [0b11001110011:11; Rm:5; 0b100010:6; Rn:5; Rd:5] ->
+    // SHA512SU1
+    SOME (arm_SHA512SU1 (QREG' Rd) (QREG' Rn) (QREG' Rm))
+
   | [0:1; q; 0b0011110:7; immh:4; immb:3; 0b010101:6; Rn:5; Rd:5] ->
     // SHL
     if immh = (word 0b0: (4)word) then NONE // "asimdimm case"
@@ -446,7 +478,9 @@ let decode = new_definition `!w:int32. decode w =
       // part is 0, pairs is elements / 2
       SOME (arm_ZIP1 (QREG' Rd) (QREG' Rn) (QREG' Rm) esize datasize)
 
-  | _ -> NONE`;;
+ | _ -> NONE`;;
+
+
 
 (* ------------------------------------------------------------------------- *)
 (* Decode tactics.                                                           *)

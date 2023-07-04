@@ -178,6 +178,32 @@ let iclasses =
   "010011100x100000000010xxxxxxxxxx"; (* .h, .b *)
   "0100111010100000000010xxxxxxxxxx"; (* .s *)
 
+  (*** SHA256 Intrinsics ***)
+  (*** SHA256H ***)
+  "01011110000xxxxx010000xxxxxxxxxx"; 
+
+  (*** SHA256H2 ***)
+  "01011110000xxxxx010100xxxxxxxxxx";
+
+  (*** SHA256SU0 ***)
+  "0101111000101000001010xxxxxxxxxx";
+
+  (*** SHA256SU1 ***)
+  "01011110000xxxxx011000xxxxxxxxxx";
+
+  (*** SHA512 Intrinsics 
+  (*** SHA512H ***)
+  "11001110011xxxxx100000xxxxxxxxxx";
+
+  (*** SHA512H2 ***)
+  "11001110011xxxxx100001xxxxxxxxxx";
+
+  (*** SHA512SU0 ***)
+  "1100111011000000100000xxxxxxxxxx";
+
+  (*** SHA512SU1 ***)
+  "11001110011xxxxx100010xxxxxxxxxx";***)
+
   (*** SHL ***)
   "01001111001xxxxx010101xxxxxxxxxx"; (* .s *)
   "0100111101xxxxxx010101xxxxxxxxxx"; (* .d *)

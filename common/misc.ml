@@ -1081,6 +1081,12 @@ let (WORD_FORALL_OFFSET_TAC:int->tactic) =
 (* Do some limited simplification in association with symbolic execution.    *)
 (* ------------------------------------------------------------------------- *)
 
+(* Ocaml reference variable for platform specific conversions *)
+let extra_word_CONV = ref [NO_CONV];;
+
+(* Delay introduction of extra conversions *)
+let apply_extra_word_convs tm = FIRST_CONV (!extra_word_CONV) tm;;
+
 let ASSEMBLER_SIMPLIFY_TAC =
   let pth = prove
    (`!a b. a < a + bitval b <=> b`,
@@ -1096,6 +1102,7 @@ let ASSEMBLER_SIMPLIFY_TAC =
     DEPTH_CONV
      (GEN_REWRITE_CONV I [BITVAL_CLAUSES] ORELSEC
       WORD_RED_CONV ORELSEC
+      apply_extra_word_convs ORELSEC
       NORMALIZE_ADD_SUBTRACT_WORD_CONV ORELSEC
       NUM_RED_CONV ORELSEC
       INT_RED_CONV) THENC
