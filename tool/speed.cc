@@ -1448,7 +1448,8 @@ static EVP_PKEY * evp_generate_key(const int curve_nid) {
         curve == nullptr) {
       return nullptr;
     }
-    evp_pkey_ctx.reset(EVP_PKEY_CTX_new(curve, NULL));
+    BM_NAMESPACE::UniquePtr<EVP_PKEY> curve_uniqueptr(curve);
+    evp_pkey_ctx.reset(EVP_PKEY_CTX_new(curve_uniqueptr.get(), NULL));
     if (evp_pkey_ctx == nullptr) {
       return nullptr;
     }
