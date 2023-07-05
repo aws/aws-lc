@@ -1426,6 +1426,7 @@ static bool SpeedECDSA(const std::string &selected) {
          SpeedECDSACurve("ECDSA secp256k1", NID_secp256k1, selected);
 }
 
+#if !defined(OPENSSL_1_0_BENCHMARK)
 static EVP_PKEY * evp_generate_key(const int curve_nid) {
 
   // P NIST curves are abstracted under the same virtual function table which
@@ -1544,7 +1545,6 @@ static bool SpeedEvpEcdh(const std::string &selected) {
          SpeedEvpEcdhCurve("EVP ECDH X25519", NID_X25519, selected);
 }
 
-#if !defined(OPENSSL_1_0_BENCHMARK)
 static bool SpeedECMULCurve(const std::string &name, int nid,
                        const std::string &selected) {
   if (!selected.empty() && name.find(selected) == std::string::npos) {
@@ -2565,8 +2565,10 @@ bool Speed(const std::vector<std::string> &args) {
        !SpeedECDSA(selected) ||
        !SpeedECKeyGen(selected) ||
        !SpeedECKeyGenerateKey(false, selected) ||
-       !SpeedEvpEcdh(selected) ||
 #if !defined(OPENSSL_1_0_BENCHMARK)
+       // OpenSSL 1.0.2 is missing functions e.g. |EVP_PKEY_get0_EC_KEY| and
+       // doesn't implement X255519 either.
+       !SpeedEvpEcdh(selected) ||
        !SpeedECMUL(selected) ||
        // OpenSSL 1.0 doesn't support Scrypt
        !SpeedScrypt(selected) ||
