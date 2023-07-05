@@ -1464,6 +1464,10 @@ static EVP_PKEY * evp_generate_key(const int curve_nid) {
   return key;
 }
 
+// One could model serialisation as well using
+// |EVP_PKEY_{get,set}1_tls_encodedpoint|. But that pair of functions only
+// support a subset of curve types. |SpeedECDH| includes deserialisation of the
+// peer key.
 static bool SpeedEvpEcdhCurve(const std::string &name, int nid,
                            const std::string &selected) {
 
@@ -1471,6 +1475,22 @@ static bool SpeedEvpEcdhCurve(const std::string &name, int nid,
   BM_NAMESPACE::UniquePtr<EVP_PKEY> peer_key(evp_generate_key(nid));
   if (peer_key == nullptr) {
     return false;
+  }
+
+  if (nid != NID_X25519) {
+    // To model deriving a key, we need the peer key. But void the private key,
+    // to avoid biasing benchmarks. For example, when performing key validation.
+    // Currently, this is only a problem for the P NIST curve types.
+    EVP_PKEY *only_public_key_evp_pkey = EVP_PKEY_new();
+    EC_KEY *only_public_key_ec_key = EC_KEY_new_by_curve_name(nid);
+    if (only_public_key_ec_key == nullptr ||
+        only_public_key_evp_pkey == nullptr ||
+        !EC_KEY_set_public_key(only_public_key_ec_key,
+          EC_KEY_get0_public_key(EVP_PKEY_get0_EC_KEY(peer_key.get()))) ||
+        !EVP_PKEY_assign_EC_KEY(only_public_key_evp_pkey, only_public_key_ec_key)) {
+      return false;
+    }
+    peer_key.reset(only_public_key_evp_pkey);
   }
 
   // Time below:
