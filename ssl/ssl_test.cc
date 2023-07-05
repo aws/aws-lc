@@ -4848,7 +4848,7 @@ TEST(SSLTest, GetCertificateASN1) {
   bssl::UniquePtr<X509> cert = GetTestCertificate();
   ASSERT_TRUE(cert);
 
-  // Concert cert to ASN1 to pass in.
+  // Convert cert to ASN1 to pass in.
   uint8_t *der = nullptr;
   size_t der_len = i2d_X509(cert.get(), &der);
   bssl::UniquePtr<uint8_t> free_der(der);
