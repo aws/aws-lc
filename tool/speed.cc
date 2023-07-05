@@ -1430,9 +1430,9 @@ static EVP_PKEY * evp_generate_key(const int curve_nid) {
 
   // P NIST curves are abstracted under the same virtual function table which
   // is configured using |EVP_PKEY_EC|.
-  int local_nid = EVP_PKEY_EC;
-  if (curve_nid == NID_X25519) {
-    local_nid = NID_X25519;
+  int local_nid = curve_nid;
+  if (curve_nid != NID_X25519) {
+    local_nid = EVP_PKEY_EC;
   }
 
   BM_NAMESPACE::UniquePtr<EVP_PKEY_CTX> evp_pkey_ctx(EVP_PKEY_CTX_new_id(local_nid, nullptr));
@@ -1471,6 +1471,10 @@ static EVP_PKEY * evp_generate_key(const int curve_nid) {
 static bool SpeedEvpEcdhCurve(const std::string &name, int nid,
                            const std::string &selected) {
 
+  if (!selected.empty() && name.find(selected) == std::string::npos) {
+    return true;
+  }
+
   // First we need a peer key that we are going to re-use for all iterations.
   BM_NAMESPACE::UniquePtr<EVP_PKEY> peer_key(evp_generate_key(nid));
   if (peer_key == nullptr) {
@@ -1481,34 +1485,62 @@ static bool SpeedEvpEcdhCurve(const std::string &name, int nid,
     // To model deriving a key, we need the peer key. But void the private key,
     // to avoid biasing benchmarks. For example, when performing key validation.
     // Currently, this is only a problem for the P NIST curve types.
-    EVP_PKEY *only_public_key_evp_pkey = EVP_PKEY_new();
-    EC_KEY *only_public_key_ec_key = EC_KEY_new_by_curve_name(nid);
+    BM_NAMESPACE::UniquePtr<EVP_PKEY> only_public_key_evp_pkey(EVP_PKEY_new());
+    BM_NAMESPACE::UniquePtr<EC_KEY> only_public_key_ec_key(EC_KEY_new_by_curve_name(nid));
     if (only_public_key_ec_key == nullptr ||
         only_public_key_evp_pkey == nullptr ||
-        !EC_KEY_set_public_key(only_public_key_ec_key,
+        !EC_KEY_set_public_key(only_public_key_ec_key.get(),
           EC_KEY_get0_public_key(EVP_PKEY_get0_EC_KEY(peer_key.get()))) ||
-        !EVP_PKEY_assign_EC_KEY(only_public_key_evp_pkey, only_public_key_ec_key)) {
+        !EVP_PKEY_assign_EC_KEY(only_public_key_evp_pkey.get(), only_public_key_ec_key.release())) {
       return false;
     }
-    peer_key.reset(only_public_key_evp_pkey);
+    peer_key.reset(only_public_key_evp_pkey.release());
   }
 
-  // Time below:
-  // keygen
-  // check public key
-  // derive
+  TimeResults results;
+  if (!TimeFunction(&results, [nid, &peer_key]() -> bool {
+    BM_NAMESPACE::UniquePtr<EVP_PKEY> my_key(evp_generate_key(nid));
 
+    if (nid != NID_X25519) {
+      if (!EC_KEY_check_key(EVP_PKEY_get0_EC_KEY(peer_key.get()))) {
+        return false;
+      }
+    }
+
+    BM_NAMESPACE::UniquePtr<EVP_PKEY_CTX> derive_ctx(EVP_PKEY_CTX_new(my_key.get(), NULL));
+    if (derive_ctx == nullptr) {
+      return false;
+    }
+
+    size_t shared_secret_size = 0;
+    if (!EVP_PKEY_derive_init(derive_ctx.get()) ||
+        !EVP_PKEY_derive_set_peer(derive_ctx.get(), peer_key.get()) ||
+        !EVP_PKEY_derive(derive_ctx.get(), NULL, &shared_secret_size) ||
+        (shared_secret_size == 0)) {
+      return false;
+    }
+
+    std::unique_ptr<uint8_t[]> shared_secret(new uint8_t[shared_secret_size]);
+    if (!EVP_PKEY_derive(derive_ctx.get(), shared_secret.get(), &shared_secret_size)) {
+      return false;
+    }
+
+    return true;
+    })) {
+      return false;
+  }
+
+  results.Print(name);
   return true;
 }
 
-// Using EVP in name for now, but not in final version...
 static bool SpeedEvpEcdh(const std::string &selected) {
-  return SpeedEvpEcdhCurve("ECDH EVP P-224", NID_secp224r1, selected) &&
-         SpeedEvpEcdhCurve("ECDH EVP P-256", NID_X9_62_prime256v1, selected) &&
-         SpeedEvpEcdhCurve("ECDH EVP P-384", NID_secp384r1, selected) &&
-         SpeedEvpEcdhCurve("ECDH EVP P-521", NID_secp521r1, selected) &&
-         SpeedEvpEcdhCurve("ECDH EVP secp256k1", NID_secp256k1, selected) &&
-         SpeedEvpEcdhCurve("ECDH EVP X25519", NID_X25519, selected);
+  return SpeedEvpEcdhCurve("EVP ECDH P-224", NID_secp224r1, selected) &&
+         SpeedEvpEcdhCurve("EVP ECDH P-256", NID_X9_62_prime256v1, selected) &&
+         SpeedEvpEcdhCurve("EVP ECDH P-384", NID_secp384r1, selected) &&
+         SpeedEvpEcdhCurve("EVP ECDH P-521", NID_secp521r1, selected) &&
+         SpeedEvpEcdhCurve("EVP ECDH secp256k1", NID_secp256k1, selected) &&
+         SpeedEvpEcdhCurve("EVP ECDH X25519", NID_X25519, selected);
 }
 
 #if !defined(OPENSSL_1_0_BENCHMARK)
