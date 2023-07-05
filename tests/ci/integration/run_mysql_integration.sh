@@ -4,8 +4,6 @@
 
 source tests/ci/common_posix_setup.sh
 
-trap dump_log EXIT
-
 MYSQL_VERSION_TAG="mysql-8.0.33"
 # This directory is specific to the docker image used. Use -DDOWNLOAD_BOOST=1 -DWITH_BOOST=<directory>
 # with mySQL to download a compatible boost version locally.
@@ -47,27 +45,56 @@ function mysql_patch_reminder() {
 }
 
 function mysql_build() {
-  cmake ${MYSQL_SRC_FOLDER} -GNinja -DENABLED_PROFILING=OFF -DWITH_NDB_JAVA=OFF  -DWITH_BOOST=${BOOST_INSTALL_FOLDER} -DWITH_SSL=${AWS_LC_INSTALL_FOLDER} "-B${MYSQL_BUILD_FOLDER}"
+  cmake ${MYSQL_SRC_FOLDER} -GNinja -DWITH_BOOST=${BOOST_INSTALL_FOLDER} -DWITH_SSL=${AWS_LC_INSTALL_FOLDER} "-B${MYSQL_BUILD_FOLDER}"
   ninja -C ${MYSQL_BUILD_FOLDER}
   ls -R ${MYSQL_BUILD_FOLDER}
 }
 
 function mysql_run_tests() {
-  pushd ${MYSQL_BUILD_FOLDER}
-  ninja test-unit
+  pushd ${MYSQL_BUILD_FOLDER}/mysql-test
+  # More complicated integration tests. mtr expects to be launched in-place and with write access to it's own directories. This is
+  # what RDS runs interally.
+  #
+  # Tests marked with Bug#0000 are tests that have been disabled internally in RDS as well. These tests aren't exactly relevant
+  # to testing AWS-LC functionality.
+  # Tests marked with Bug#0001 use DHE cipher suites for the connection. AWS-LC has no intention of supporting DHE cipher suites.
+  # Tests marked with Bug#0002 use stateful session resumption, otherwise known as session caching. It is known that AWS-LC does not
+  # currently support this.
+  echo "main.mysqlpump_bugs : Bug#0000 Can't create/open a file ~/dump.sql'
+main.restart_server : Bug#0000 mysqld is not managed by supervisor process
+main.file_contents : Bug#0000 Cannot open 'INFO_SRC' in ''
+main.resource_group_thr_prio_unsupported : Bug#0000 Invalid thread priority value -5
+main.dd_upgrade_error : Bug#0000 running mysqld as root
+main.dd_upgrade_error_cs : Bug#0000 running mysqld as root
+main.basedir : Bug#0000 running mysqld as root
+main.lowercase_fs_off : Bug#0000 running mysqld as root
+main.upgrade : Bug#0000 running mysqld as root
+main.mysqld_cmdline_warnings : Bug#0000 running mysqld as root
+main.mysqld_daemon : Bug#0000 failed, error: 256, status: 1, errno: 2.
+main.mysqld_safe : Bug#0000 nonexistent: No such file or directory
+main.grant_user_lock : Bug#0000 Access denied for user root at localhost
+main.persisted_variables_bugs_fast : Bug#0000 Unsure
+main.mysqldump : Bug#0000 contains nonaggregated column
+main.func_math : Bug#0000 should have failed with errno 1690
+main.derived_condition_pushdown : Bug#0000 Fails with OpenSSL as well. Not relevant to AWS-LC.
+main.grant_alter_user_qa : Bug#0001 Uses DHE cipher suites in test, which AWS-LC does not support.
+main.grant_user_lock_qa : Bug#0001 Uses DHE cipher suites in test, which AWS-LC does not support.
+main.openssl_1 : Bug#0001 Uses DHE cipher suites in test, which AWS-LC does not support.
+main.ssl : Bug#0001 Uses DHE cipher suites in test, which AWS-LC does not support.
+main.ssl_cipher : Bug#0001 Uses DHE cipher suites in test, which AWS-LC does not support.
+main.ssl_dynamic : Bug#0001 Uses DHE cipher suites in test, which AWS-LC does not support.
+main.ssl-sha512 : Bug#0001 Uses DHE cipher suites in test, which AWS-LC does not support.
+main.ssl_cache : Bug#0002 AWS-LC does not support Stateful session resumption (Session Caching).
+main.ssl_cache_tls13 : Bug#0002 AWS-LC does not support Stateful session resumption (Session Caching).
+"> skiplist
+  ./mtr --suite=main --force --parallel=auto --skip-test-list=${MYSQL_BUILD_FOLDER}/mysql-test/skiplist --retry-failure=3
   popd
 }
 
-# Used to access debugging logs.
-function dump_log() {
-  ls ${MYSQL_BUILD_FOLDER}/Testing/Temporary/LastTest.log
-  for logfile in $(find -L "${MYSQL_BUILD_FOLDER}/Testing/Temporary" -type f -name '*.log'); do
-    echo "Dumping out logs to observe:"
-#    cat $logfile
-  done
-}
-
 # MySQL tests expect the OpenSSL style of error messages. We patch this to expect AWS-LC's style.
+# These are checked as part of mySQL's unit tests, but RDS and us don't actually run them in our CI. They are known to be
+# flaky within docker containers. The mtr tests are much more robust and run full server test suites that actually do TLS
+# connections end-to-end.
 # TODO: Remove this when we make an upstream contribution.
 function mysql_patch_error_strings() {
   MYSQL_TEST_FILES=("test_routing_splicer.cc" "test_http_server.cc")
@@ -91,7 +118,7 @@ function mysql_patch_tests() {
 }
 
 # Get latest MySQL version. MySQL often updates with large changes depending on OpenSSL all at once, so we pin to a specific version.
-#mysql_patch_reminder
+mysql_patch_reminder
 git clone https://github.com/mysql/mysql-server.git ${MYSQL_SRC_FOLDER} -b ${MYSQL_VERSION_TAG} --depth 1
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} ${MYSQL_BUILD_FOLDER}
 ls
