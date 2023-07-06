@@ -129,6 +129,7 @@ SSL_HANDSHAKE::SSL_HANDSHAKE(SSL *ssl_arg)
       ech_is_inner(false),
       ech_authenticated_reject(false),
       scts_requested(false),
+      received_custom_extension(false),
       handshake_finalized(false),
       accept_psk_mode(false),
       cert_request(false),

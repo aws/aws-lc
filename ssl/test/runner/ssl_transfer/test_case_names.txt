@@ -246,6 +246,13 @@ CurveTest-Server-P-521-TLS12
 CurveTest-Server-P-521-TLS13
 CurveTest-Server-X25519-TLS12
 CurveTest-Server-X25519-TLS13
+CustomExtensions-NotCalled-Server
+CustomExtensions-NotCalled-Server-TLS13
+CustomExtensions-Server
+CustomExtensions-Server-EarlyDataOffered
+CustomExtensions-Server-TLS13
+CustomExtensions-Skip-Server
+CustomExtensions-Skip-Server-TLS13
 DelegatedCredentials-Basic
 DelegatedCredentials-NoClientSupport
 DelegatedCredentials-SigAlgoMissing

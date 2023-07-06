@@ -1077,6 +1077,36 @@ bool ssl_public_key_verify(SSL *ssl, Span<const uint8_t> signature,
                            Span<const uint8_t> in);
 
 
+// Custom extensions
+
+BSSL_NAMESPACE_END
+
+// |SSL_CUSTOM_EXTENSION| is a structure that contains information about
+// custom-extension callbacks. It is defined unnamespaced for compatibility with
+// |STACK_OF(SSL_CUSTOM_EXTENSION)|.
+typedef struct ssl_custom_extension {
+  SSL_custom_ext_add_cb add_callback;
+  void *add_arg;
+  SSL_custom_ext_free_cb free_callback;
+  SSL_custom_ext_parse_cb parse_callback;
+  void *parse_arg;
+  uint16_t value;
+} SSL_CUSTOM_EXTENSION;
+
+DEFINE_STACK_OF(SSL_CUSTOM_EXTENSION)
+
+BSSL_NAMESPACE_BEGIN
+
+void SSL_CUSTOM_EXTENSION_free(SSL_CUSTOM_EXTENSION *custom_extension);
+
+int custom_ext_add_clienthello(SSL_HANDSHAKE *hs, CBB *extensions);
+int custom_ext_parse_serverhello(SSL_HANDSHAKE *hs, int *out_alert,
+                                 uint16_t value, const CBS *extension);
+int custom_ext_parse_clienthello(SSL_HANDSHAKE *hs, int *out_alert,
+                                 uint16_t value, const CBS *extension);
+int custom_ext_add_serverhello(SSL_HANDSHAKE *hs, CBB *extensions);
+
+
 // Key shares.
 
 // SSLKeyShare abstracts over Diffie-Hellman-like key exchanges.
@@ -1838,6 +1868,17 @@ struct SSL_HANDSHAKE {
   // the ClientHelloInner.
   uint32_t inner_extensions_sent = 0;
 
+  union {
+    // sent is a bitset where the bits correspond to elements of
+    // |client_custom_extensions| in the |SSL_CTX|. Each bit is set if that
+    // extension was sent in a ClientHello. It's not used by servers.
+    uint16_t sent = 0;
+    // received is a bitset, like |sent|, but is used by servers to record
+    // which custom extensions were received from a client. The bits here
+    // correspond to |server_custom_extensions|.
+    uint16_t received;
+  } custom_extensions;
+
   // error, if |wait| is |ssl_hs_error|, is the error the handshake failed on.
   UniquePtr<ERR_SAVE_STATE> error;
 
@@ -1987,6 +2028,8 @@ struct SSL_HANDSHAKE {
 
   // scts_requested is true if the SCT extension is in the ClientHello.
   bool scts_requested : 1;
+
+  bool received_custom_extension : 1;
 
   // handshake_finalized is true once the handshake has completed, at which
   // point accessors should use the established state.
@@ -2562,14 +2605,13 @@ struct SSL_X509_METHOD {
   void (*cert_clear)(CERT *cert);
   // cert_free frees all X509-related state.
   void (*cert_free)(CERT *cert);
-  // cert_flush_cached_chain drops any cached |X509|-based certificate chain
-  // from |cert|.
   // cert_dup duplicates any needed fields from |cert| to |new_cert|.
   void (*cert_dup)(CERT *new_cert, const CERT *cert);
-  void (*cert_flush_cached_chain)(CERT *cert);
-  // cert_flush_cached_chain drops any cached |X509|-based leaf certificate
+  // cert_flush_cached_chain drops any cached |X509|-based certificate chain
   // from |cert|.
-  void (*cert_flush_cached_leaf)(CERT *cert);
+  void (*cert_flush_cached_chain)(CERT *cert);
+  // cert_flush_leaf drops the |X509|-based leaf certificate from |cert|.
+  void (*cert_flush_leaf)(CERT *cert);
 
   // session_cache_objects fills out |sess->x509_peer| and |sess->x509_chain|
   // from |sess->certs| and erases |sess->x509_chain_without_leaf|. It returns
@@ -3594,6 +3636,11 @@ struct ssl_ctx_st {
                         EVP_PKEY **out_pkey) = nullptr;
 
   CRYPTO_EX_DATA ex_data;
+
+  // custom_*_extensions stores any callback sets for custom extensions. Note
+  // that these pointers will be NULL if the stack would otherwise be empty.
+  STACK_OF(SSL_CUSTOM_EXTENSION) *client_custom_extensions = nullptr;
+  STACK_OF(SSL_CUSTOM_EXTENSION) *server_custom_extensions = nullptr;
 
   // Default values used when no per-SSL value is defined follow
 

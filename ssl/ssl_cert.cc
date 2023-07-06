@@ -161,6 +161,11 @@ UniquePtr<CERT> ssl_cert_dup(CERT *cert) {
     }
   }
 
+  if (cert->x509_leaf != nullptr) {
+    X509_up_ref(cert->x509_leaf);
+    ret->x509_leaf = cert->x509_leaf;
+  }
+
   ret->privatekey = UpRef(cert->privatekey);
   ret->key_method = cert->key_method;
 
@@ -315,8 +320,6 @@ bool ssl_set_cert(CERT *cert, UniquePtr<CRYPTO_BUFFER> buffer) {
     case leaf_cert_and_privkey_ok:
       break;
   }
-
-  cert->x509_method->cert_flush_cached_leaf(cert);
 
   if (cert->chain != nullptr) {
     CRYPTO_BUFFER_free(sk_CRYPTO_BUFFER_value(cert->chain.get(), 0));

@@ -2,6 +2,7 @@ add_library(
   ssl
 
   bio_ssl.cc
+  custom_extensions.cc
   d1_both.cc
   d1_lib.cc
   d1_pkt.cc
