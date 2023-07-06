@@ -471,6 +471,8 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
     ssl->s3->early_data_reason = ssl_early_data_quic_parameter_mismatch;
   } else if (!found_key_share) {
     ssl->s3->early_data_reason = ssl_early_data_hello_retry_request;
+  } else if (hs->custom_extensions.received) {
+    ssl->s3->early_data_reason = ssl_early_data_unsupported_with_custom_extension;
   } else {
     // |ssl_session_is_resumable| forbids cross-cipher resumptions even if the
     // PRF hashes match.
