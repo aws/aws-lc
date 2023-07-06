@@ -79,7 +79,7 @@ function openssh_run_tests() {
 mkdir -p "${AWS_LC_BUILD_FOLDER}" "${AWS_LC_INSTALL_FOLDER}" "${OPENSSH_INSTALL_FOLDER}"
 
 # Get latest OpenSSH version.
-git clone https://github.com/openssh/openssh-portable.git
+git clone --depth 1 https://github.com/openssh/openssh-portable.git
 ls
 
 # Buld AWS-LC as a shared library
