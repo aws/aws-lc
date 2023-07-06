@@ -6640,7 +6640,6 @@ TEST_P(SSLVersionTest, FailedHandshakeVerifiedChain) {
 
   ASSERT_TRUE(UseCertAndKey(server_ctx_.get()));
   UniquePtr<SSL> client_ssl, server_ssl;
-  ClientConfig config;
 
   ASSERT_TRUE(CreateClientAndServer(&client_ssl, &server_ssl, client_ctx_.get(), server_ctx_.get()));
   ASSERT_FALSE(CompleteHandshakes(client_ssl.get(), server_ssl.get()));

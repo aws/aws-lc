@@ -80,9 +80,11 @@ static int int_x509_param_set_hosts(X509_VERIFY_PARAM *param, int mode,
                                     const char *name, size_t namelen) {
   char *copy;
 
-  if (name == NULL || namelen == 0) {
-    // Unlike OpenSSL, we reject trying to set or add an empty name.
-    return 0;
+  // Setting 0 to automatically detect the length of |name| is an OpenSSL quirk
+  // that AWS-LC isn't keen on supporting. However, consumers often assume
+  // OpenSSL semantics from AWS-LC, so it's supported in this case.
+  if (name != NULL && namelen == 0) {
+    namelen = strlen(name);
   }
 
   // Refuse names with embedded NUL bytes.
@@ -94,6 +96,12 @@ static int int_x509_param_set_hosts(X509_VERIFY_PARAM *param, int mode,
   if (mode == SET_HOST && param->hosts) {
     string_stack_free(param->hosts);
     param->hosts = NULL;
+  }
+  // OpenSSL returns 1 when trying to set or add an empty name. This is also a
+  // quirk that AWS-LC isn't keen on supporting, but we maintain for backwards
+  // compatibility.
+  if (name == NULL || namelen == 0) {
+    return 1;
   }
 
   copy = OPENSSL_strndup(name, namelen);
@@ -313,8 +321,50 @@ int X509_VERIFY_PARAM_set1(X509_VERIFY_PARAM *to,
   return ret;
 }
 
-static int int_x509_param_set1(char **pdest, size_t *pdestlen, const char *src,
-                               size_t srclen) {
+static int int_x509_param_set1_email(char **pdest, size_t *pdestlen,
+                                     const char *src, size_t srclen) {
+  void *tmp;
+  if (src != NULL) {
+    // Setting |srclen| to 0 to automatically detect the length of |src| is an
+    // OpenSSL quirk that AWS-LC isn't keen on supporting. However, consumers
+    // often assume OpenSSL semantics from AWS-LC, so it's supported in this
+    // case.
+    if (srclen == 0) {
+      srclen = strlen(src);
+    }
+
+    tmp = OPENSSL_strndup(src, srclen);
+    if (tmp == NULL) {
+      return 0;
+    }
+  } else {
+    // This allows an empty string to disable previously configured checks.
+    // This is an OpenSSL quirk that AWS-LC isn't keen on supporting. However,
+    // consumers often assume OpenSSL semantics from AWS-LC, so it's supported
+    // in this case.
+    tmp = NULL;
+    srclen = 0;
+  }
+
+  if (*pdest != NULL) {
+    OPENSSL_free(*pdest);
+  }
+  *pdest = tmp;
+  if (pdestlen != NULL) {
+    *pdestlen = srclen;
+  }
+  return 1;
+}
+
+// IP addresses work slightly differently, so we use another function to
+// differentiate from emails. |X509_VERIFY_PARAM_set1_ip| takes a const
+// unsigned char*, instead of a const char*, so the same strlen logic that was
+// being used is not quite suitable here.
+// We keep the original behavior that BoringSSL left, but only for IP addresses.
+// We can align the behavior with |int_x509_param_set1_email| like OpenSSL has
+// been doing if needed.
+static int int_x509_param_set1_ip(unsigned char **pdest, size_t *pdestlen,
+                                  const unsigned char *src, size_t srclen) {
   void *tmp;
   if (src == NULL || srclen == 0) {
     // Unlike OpenSSL, we do not allow an empty string to disable previously
@@ -455,7 +505,8 @@ char *X509_VERIFY_PARAM_get0_peername(X509_VERIFY_PARAM *param) {
 int X509_VERIFY_PARAM_set1_email(X509_VERIFY_PARAM *param, const char *email,
                                  size_t emaillen) {
   if (OPENSSL_memchr(email, '\0', emaillen) != NULL ||
-      !int_x509_param_set1(&param->email, &param->emaillen, email, emaillen)) {
+      !int_x509_param_set1_email(&param->email, &param->emaillen, email,
+                                 emaillen)) {
     param->poison = 1;
     return 0;
   }
@@ -465,9 +516,8 @@ int X509_VERIFY_PARAM_set1_email(X509_VERIFY_PARAM *param, const char *email,
 
 int X509_VERIFY_PARAM_set1_ip(X509_VERIFY_PARAM *param, const unsigned char *ip,
                               size_t iplen) {
-  if ((iplen != 4 && iplen != 16) ||
-      !int_x509_param_set1((char **)&param->ip, &param->iplen, (char *)ip,
-                           iplen)) {
+  if ((iplen != 0 && iplen != 4 && iplen != 16) ||
+      !int_x509_param_set1_ip(&param->ip, &param->iplen, ip, iplen)) {
     param->poison = 1;
     return 0;
   }

@@ -53,6 +53,7 @@
 #include <assert.h>
 
 #include <openssl/digest.h>
+#include <openssl/hkdf.h>
 #include <openssl/hmac.h>
 #include <openssl/mem.h>
 

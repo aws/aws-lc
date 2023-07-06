@@ -1730,21 +1730,20 @@ TEST(X509Test, ZeroLengthsWithX509PARAM) {
                                              test.incorrect_value_len));
                      }));
 
-    // Passing zero as the length, unlike OpenSSL, should trigger an error and
-    // should cause verification to fail.
-    ASSERT_EQ(X509_V_ERR_INVALID_CALL,
+    // AWS-LC supports passing zero as the length for host and email for
+    // backwards compatibility with OpenSSL.
+    ASSERT_EQ(X509_V_OK,
               Verify(leaf.get(), {root.get()}, {}, empty_crls, 0,
                      [&test](X509_VERIFY_PARAM *param) {
-                       ASSERT_FALSE(test.func(param, test.correct_value, 0));
+                       ASSERT_TRUE(test.func(param, test.correct_value, 0));
                      }));
 
-    // Passing an empty value should be an error when setting and should cause
-    // verification to fail.
-    ASSERT_EQ(X509_V_ERR_INVALID_CALL,
-              Verify(leaf.get(), {root.get()}, {}, empty_crls, 0,
-                     [&test](X509_VERIFY_PARAM *param) {
-                       ASSERT_FALSE(test.func(param, nullptr, 0));
-                     }));
+    // AWS-LC allows an empty value with zero as the length for backwards
+    // compatibility with OpenSSL.
+    ASSERT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()}, {}, empty_crls, 0,
+                                [&test](X509_VERIFY_PARAM *param) {
+                                  ASSERT_TRUE(test.func(param, nullptr, 0));
+                                }));
 
     // Passing a value with embedded NULs should also be an error and should
     // also cause verification to fail.
@@ -1754,6 +1753,16 @@ TEST(X509Test, ZeroLengthsWithX509PARAM) {
                        ASSERT_FALSE(test.func(param, "a", 2));
                      }));
   }
+
+  // |X509_VERIFY_PARAM_set1_host| has additional strange behavior.
+
+  // AWS-LC/OpenSSL allows an empty value with a non-zero length for backwards
+  // compatibility with OpenSSL. We do not recommend this behavior.
+  ASSERT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()}, {}, empty_crls, 0,
+                              [](X509_VERIFY_PARAM *param) {
+                                ASSERT_TRUE(X509_VERIFY_PARAM_set1_host(
+                                    param, nullptr, strlen(kHostname)));
+                              }));
 
   // IP addresses work slightly differently:
 
@@ -2436,7 +2445,12 @@ TEST(X509Test, SignCertificate) {
         ASSERT_TRUE(
             X509_set1_signature_value(cert.get(), sig.data(), sig.size()));
       } else {
-        ASSERT_TRUE(X509_sign(cert.get(), pkey.get(), EVP_sha384()));
+        int ret = X509_sign(cert.get(), pkey.get(), EVP_sha384());
+        ASSERT_GT(ret, 0);
+        // |X509_sign| returns the length of the signature on success.
+        const ASN1_BIT_STRING *sig;
+        X509_get0_signature(&sig, /*out_alg=*/nullptr, cert.get());
+        EXPECT_EQ(ret, ASN1_STRING_length(sig));
       }
 
       // Check the signature.

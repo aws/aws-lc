@@ -97,6 +97,8 @@ int ECDH_compute_shared_secret(uint8_t *buf, size_t *buflen, const EC_POINT *pub
 // be the largest fields anyone plausibly uses.
 #define EC_MAX_BYTES 66
 #define EC_MAX_WORDS ((EC_MAX_BYTES + BN_BYTES - 1) / BN_BYTES)
+#define EC_MAX_COMPRESSED (EC_MAX_BYTES + 1)
+#define EC_MAX_UNCOMPRESSED (2 * EC_MAX_BYTES + 1)
 
 OPENSSL_STATIC_ASSERT(EC_MAX_WORDS <= BN_SMALL_MAX_WORDS,
                       bn__small_functions_not_usable)
@@ -127,8 +129,8 @@ OPENSSL_EXPORT void ec_scalar_to_bytes(const EC_GROUP *group, uint8_t *out,
 // ec_scalar_from_bytes deserializes |in| and stores the resulting scalar over
 // group |group| to |out|. It returns one on success and zero if |in| is
 // invalid.
-int ec_scalar_from_bytes(const EC_GROUP *group, EC_SCALAR *out,
-                         const uint8_t *in, size_t len);
+OPENSSL_EXPORT int ec_scalar_from_bytes(const EC_GROUP *group, EC_SCALAR *out,
+                                        const uint8_t *in, size_t len);
 
 // ec_scalar_reduce sets |out| to |words|, reduced modulo the group order.
 // |words| must be less than order^2. |num| must be at most twice the width of
@@ -289,8 +291,8 @@ void ec_affine_to_jacobian(const EC_GROUP *group, EC_RAW_POINT *out,
 //
 // If only extracting the x-coordinate, use |ec_get_x_coordinate_*| which is
 // slightly faster.
-int ec_jacobian_to_affine(const EC_GROUP *group, EC_AFFINE *out,
-                          const EC_RAW_POINT *p);
+OPENSSL_EXPORT int ec_jacobian_to_affine(const EC_GROUP *group, EC_AFFINE *out,
+                                         const EC_RAW_POINT *p);
 
 // ec_jacobian_to_affine_batch converts |num| points in |in| from Jacobian
 // coordinates to affine coordinates and writes the results to |out|. It returns
