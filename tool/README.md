@@ -1,6 +1,15 @@
 # Tools for AWS-LC
 AWS-LC features enhanced benchmarking tools compatible with OpenSSL and BoringSSL in order to help facilitate 1-1 performance comparisons.
 
+## Speed tool
+
+|  Filter name  |  Description  | Function family |
+| ------------- | ------------- | -------------
+| EVP ECDH {P-224, P-256, P-384, P-521, secp256k1, X25519} | ECDHE key agreement for one party | EVP |
+| ECDH {P-224, P-256, P-384, P-521, secp256k1} | ECDHE key agreement for one party | EC |
+| Generate {P-224, P-256, P-384, P-521, secp256k1} | Elliptic curve key generation | EVP |
+| ECMUL {P-224, P-256, P-384, P-521, secp256k1} | Elliptic curve arbitrary scalar multiplication | EC |
+
 ## Benchmarking Tools
 When compiled, AWS-LC will generate separate benchmarking tools when provided with corresponding compiler flags. These tools take the same arguments as `bssl speed` tool.
 
