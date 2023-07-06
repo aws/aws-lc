@@ -553,7 +553,7 @@ function(build_libcrypto name module_source)
     target_link_libraries(${name} PUBLIC pthread)
   endif()
 
-  target_include_directories(${name} SYSTEM PUBLIC
+  target_include_directories(${name} PUBLIC
           $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
           $<INSTALL_INTERFACE:include>)
 endfunction()
