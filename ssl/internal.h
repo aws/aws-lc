@@ -2605,14 +2605,13 @@ struct SSL_X509_METHOD {
   void (*cert_clear)(CERT *cert);
   // cert_free frees all X509-related state.
   void (*cert_free)(CERT *cert);
-  // cert_flush_cached_chain drops any cached |X509|-based certificate chain
-  // from |cert|.
   // cert_dup duplicates any needed fields from |cert| to |new_cert|.
   void (*cert_dup)(CERT *new_cert, const CERT *cert);
-  void (*cert_flush_cached_chain)(CERT *cert);
-  // cert_flush_cached_chain drops any cached |X509|-based leaf certificate
+  // cert_flush_cached_chain drops any cached |X509|-based certificate chain
   // from |cert|.
-  void (*cert_flush_cached_leaf)(CERT *cert);
+  void (*cert_flush_cached_chain)(CERT *cert);
+  // cert_flush_leaf drops the |X509|-based leaf certificate from |cert|.
+  void (*cert_flush_leaf)(CERT *cert);
 
   // session_cache_objects fills out |sess->x509_peer| and |sess->x509_chain|
   // from |sess->certs| and erases |sess->x509_chain_without_leaf|. It returns
