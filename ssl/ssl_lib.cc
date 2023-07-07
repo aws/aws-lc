@@ -1757,16 +1757,21 @@ int SSL_has_pending(const SSL *ssl) {
 }
 
 int SSL_CTX_check_private_key(const SSL_CTX *ctx) {
-  return ssl_cert_check_private_key(ctx->cert.get(),
-                                    ctx->cert->privatekey.get());
+  return ssl_cert_check_private_key(
+      ctx->cert.get(),
+      ctx->cert->cert_privatekeys[ctx->cert->cert_privatekey_idx]
+          .privatekey.get());
 }
 
 int SSL_check_private_key(const SSL *ssl) {
   if (!ssl->config) {
     return 0;
   }
-  return ssl_cert_check_private_key(ssl->config->cert.get(),
-                                    ssl->config->cert->privatekey.get());
+  return ssl_cert_check_private_key(
+      ssl->config->cert.get(),
+      ssl->config->cert
+          ->cert_privatekeys[ssl->config->cert->cert_privatekey_idx]
+          .privatekey.get());
 }
 
 long SSL_get_default_timeout(const SSL *ssl) {
@@ -2477,7 +2482,9 @@ EVP_PKEY *SSL_get_privatekey(const SSL *ssl) {
     return NULL;
   }
   if (ssl->config->cert != NULL) {
-    return ssl->config->cert->privatekey.get();
+    return ssl->config->cert
+        ->cert_privatekeys[ssl->config->cert->cert_privatekey_idx]
+        .privatekey.get();
   }
 
   return NULL;
@@ -2485,7 +2492,8 @@ EVP_PKEY *SSL_get_privatekey(const SSL *ssl) {
 
 EVP_PKEY *SSL_CTX_get0_privatekey(const SSL_CTX *ctx) {
   if (ctx->cert != NULL) {
-    return ctx->cert->privatekey.get();
+    return ctx->cert->cert_privatekeys[ctx->cert->cert_privatekey_idx]
+        .privatekey.get();
   }
 
   return NULL;

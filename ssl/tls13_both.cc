@@ -404,7 +404,7 @@ bool tls13_add_certificate(SSL_HANDSHAKE *hs) {
     }
   }
 
-  if (// The request context is always empty in the handshake.
+  if (  // The request context is always empty in the handshake.
       !CBB_add_u8(body, 0) ||
       !CBB_add_u24_length_prefixed(body, &certificate_list)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
@@ -414,8 +414,9 @@ bool tls13_add_certificate(SSL_HANDSHAKE *hs) {
   if (!ssl_has_certificate(hs)) {
     return ssl_add_message_cbb(ssl, cbb.get());
   }
-
-  CRYPTO_BUFFER *leaf_buf = sk_CRYPTO_BUFFER_value(cert->chain.get(), 0);
+  UniquePtr<STACK_OF(CRYPTO_BUFFER)> &chain =
+      cert->cert_privatekeys[cert->cert_privatekey_idx].chain;
+  CRYPTO_BUFFER *leaf_buf = sk_CRYPTO_BUFFER_value(chain.get(), 0);
   CBB leaf, extensions;
   if (!CBB_add_u24_length_prefixed(&certificate_list, &leaf) ||
       !CBB_add_bytes(&leaf, CRYPTO_BUFFER_data(leaf_buf),
@@ -468,8 +469,8 @@ bool tls13_add_certificate(SSL_HANDSHAKE *hs) {
     ssl->s3->delegated_credential_used = true;
   }
 
-  for (size_t i = 1; i < sk_CRYPTO_BUFFER_num(cert->chain.get()); i++) {
-    CRYPTO_BUFFER *cert_buf = sk_CRYPTO_BUFFER_value(cert->chain.get(), i);
+  for (size_t i = 1; i < sk_CRYPTO_BUFFER_num(chain.get()); i++) {
+    CRYPTO_BUFFER *cert_buf = sk_CRYPTO_BUFFER_value(chain.get(), i);
     CBB child;
     if (!CBB_add_u24_length_prefixed(&certificate_list, &child) ||
         !CBB_add_bytes(&child, CRYPTO_BUFFER_data(cert_buf),

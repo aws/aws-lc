@@ -2425,12 +2425,14 @@ bool tls12_check_peer_sigalg(const SSL_HANDSHAKE *hs, uint8_t *out_alert,
 // From RFC 4492, used in encoding the curve type in ECParameters
 #define NAMED_CURVE_TYPE 3
 
-struct CERT {
-  static constexpr bool kAllowUniquePtr = true;
+// SSL_PKEY_* denote certificate types. These represent an index within
+// |CERT->cert_privatekeys|.
+#define SSL_PKEY_RSA 0
+#define SSL_PKEY_ECC 1
+#define SSL_PKEY_ED25519 2
+#define SSL_PKEY_NUM 3
 
-  explicit CERT(const SSL_X509_METHOD *x509_method);
-  ~CERT();
-
+struct CERT_PKEY {
   UniquePtr<EVP_PKEY> privatekey;
 
   // chain contains the certificate chain, with the leaf at the beginning. The
@@ -2450,6 +2452,22 @@ struct CERT {
   // is only used as a cache in order to implement “get0” functions that return
   // a non-owning pointer to the certificate chain.
   X509 *x509_leaf = nullptr;
+};
+
+struct CERT {
+  static constexpr bool kAllowUniquePtr = true;
+
+  explicit CERT(const SSL_X509_METHOD *x509_method);
+  ~CERT();
+
+  // cert_privatekey_idx ALWAYS points to an element of the |cert_pkeys|
+  // array. OpenSSL implements this as a pointer, but an index is more
+  // efficient.
+  int cert_privatekey_idx = SSL_PKEY_RSA;
+
+  Array<CERT_PKEY> cert_privatekeys;
+
+  /// We'lll see what we want to do about the |x509_stash| below later.
 
   // x509_stash contains the last |X509| object append to the chain. This is a
   // workaround for some third-party code that continue to use an |X509| object

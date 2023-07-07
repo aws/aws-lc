@@ -81,15 +81,17 @@ static bool ssl_set_pkey(CERT *cert, EVP_PKEY *pkey) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
     return false;
   }
+  UniquePtr<STACK_OF(CRYPTO_BUFFER)> &chain =
+      cert->cert_privatekeys[cert->cert_privatekey_idx].chain;
 
-  if (cert->chain != nullptr &&
-      sk_CRYPTO_BUFFER_value(cert->chain.get(), 0) != nullptr &&
+  if (chain != nullptr &&
+      sk_CRYPTO_BUFFER_value(chain.get(), 0) != nullptr &&
       // Sanity-check that the private key and the certificate match.
       !ssl_cert_check_private_key(cert, pkey)) {
     return false;
   }
 
-  cert->privatekey = UpRef(pkey);
+  cert->cert_privatekeys[cert->cert_privatekey_idx].privatekey = UpRef(pkey);
   return true;
 }
 
@@ -134,9 +136,9 @@ static const SSL_SIGNATURE_ALGORITHM *get_signature_algorithm(uint16_t sigalg) {
 }
 
 bool ssl_has_private_key(const SSL_HANDSHAKE *hs) {
-  if (hs->config->cert->privatekey != nullptr ||
-      hs->config->cert->key_method != nullptr ||
-      ssl_signing_with_dc(hs)) {
+  if (hs->config->cert->cert_privatekeys[hs->config->cert->cert_privatekey_idx]
+              .privatekey != nullptr ||
+      hs->config->cert->key_method != nullptr || ssl_signing_with_dc(hs)) {
     return true;
   }
 
@@ -241,7 +243,9 @@ enum ssl_private_key_result_t ssl_private_key_sign(
   }
 
   const SSL_PRIVATE_KEY_METHOD *key_method = hs->config->cert->key_method;
-  EVP_PKEY *privatekey = hs->config->cert->privatekey.get();
+  EVP_PKEY *privatekey =
+      hs->config->cert->cert_privatekeys[hs->config->cert->cert_privatekey_idx]
+          .privatekey.get();
   assert(!hs->can_release_private_key);
   if (ssl_signing_with_dc(hs)) {
     key_method = hs->config->cert->dc_key_method;
@@ -322,7 +326,9 @@ enum ssl_private_key_result_t ssl_private_key_decrypt(SSL_HANDSHAKE *hs,
     return ret;
   }
 
-  RSA *rsa = EVP_PKEY_get0_RSA(hs->config->cert->privatekey.get());
+  RSA *rsa = EVP_PKEY_get0_RSA(
+      hs->config->cert->cert_privatekeys[hs->config->cert->cert_privatekey_idx]
+          .privatekey.get());
   if (rsa == NULL) {
     // Decrypt operations are only supported for RSA keys.
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
