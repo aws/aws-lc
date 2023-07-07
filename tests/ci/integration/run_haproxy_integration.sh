@@ -12,7 +12,7 @@ source tests/ci/common_posix_setup.sh
 #  |
 #  - SCRATCH_FOLDER
 #    |
-#    - haproxy
+#    - HAPROXY_SRC
 #    - AWS_LC_BUILD_FOLDER
 #    - AWS_LC_INSTALL_FOLDER
 
@@ -20,6 +20,7 @@ source tests/ci/common_posix_setup.sh
 SCRATCH_FOLDER=${SYS_ROOT}/"scratch"
 AWS_LC_BUILD_FOLDER="${SCRATCH_FOLDER}/aws-lc-build"
 AWS_LC_INSTALL_FOLDER="${SCRATCH_FOLDER}/aws-lc-install"
+HAPROXY_SRC="${SCRATCH_FOLDER}/haproxy"
 
 # Make script execution idempotent.
 mkdir -p ${SCRATCH_FOLDER}
@@ -32,7 +33,7 @@ ls
 
 aws_lc_build ${SRC_ROOT} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER}
 
-cd haproxy
+cd ${HAPROXY_SRC}
 make CC="${CC}" -j ${NUM_CPU_THREADS} TARGET=generic USE_OPENSSL=1 SSL_INC="${AWS_LC_INSTALL_FOLDER}/include" SSL_LIB="${AWS_LC_INSTALL_FOLDER}/lib/"
 ./scripts/build-vtest.sh
 export VTEST_PROGRAM=$(realpath ../vtest/vtest)
