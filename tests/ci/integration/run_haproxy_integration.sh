@@ -33,7 +33,7 @@ ls
 aws_lc_build ${SRC_ROOT} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER}
 
 cd haproxy
-make -j ${NUM_CPU_THREADS} TARGET=generic USE_OPENSSL=1 SSL_INC="${AWS_LC_INSTALL_FOLDER}/include" SSL_LIB="${AWS_LC_INSTALL_FOLDER}/lib/"
+make CC="${CC}" -j ${NUM_CPU_THREADS} TARGET=generic USE_OPENSSL=1 SSL_INC="${AWS_LC_INSTALL_FOLDER}/include" SSL_LIB="${AWS_LC_INSTALL_FOLDER}/lib/"
 ./scripts/build-vtest.sh
-VTEST_PROGRAM=$(realpath ../vtest/vtest)
+export VTEST_PROGRAM=$(realpath ../vtest/vtest)
 ./scripts/run-regtests.sh
