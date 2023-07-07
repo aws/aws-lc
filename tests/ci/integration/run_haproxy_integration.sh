@@ -30,9 +30,8 @@ mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER}
 git clone --depth 1 https://github.com/haproxy/haproxy.git
 ls
 
-aws_lc_build ${SRC_ROOT} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} -DBUILD_SHARED_LIBS=1
+aws_lc_build ${SRC_ROOT} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER}
 
-export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib"
 cd haproxy
 make -j ${NUM_CPU_THREADS} TARGET=generic USE_OPENSSL=1 SSL_INC="${AWS_LC_INSTALL_FOLDER}/include" SSL_LIB="${AWS_LC_INSTALL_FOLDER}/lib/"
 ./scripts/build-vtest.sh
