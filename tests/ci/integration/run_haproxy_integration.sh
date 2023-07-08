@@ -37,4 +37,5 @@ cd ${HAPROXY_SRC}
 make CC="${CC}" -j ${NUM_CPU_THREADS} TARGET=generic USE_OPENSSL=1 SSL_INC="${AWS_LC_INSTALL_FOLDER}/include" SSL_LIB="${AWS_LC_INSTALL_FOLDER}/lib/"
 ./scripts/build-vtest.sh
 export VTEST_PROGRAM=$(realpath ../vtest/vtest)
+export HAPROXY_TEST_TIMEOUT=120
 ./scripts/run-regtests.sh
