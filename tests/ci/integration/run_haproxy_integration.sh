@@ -34,7 +34,19 @@ ls
 aws_lc_build ${SRC_ROOT} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER}
 
 cd ${HAPROXY_SRC}
+
 make CC="${CC}" -j ${NUM_CPU_THREADS} TARGET=generic USE_OPENSSL=1 SSL_INC="${AWS_LC_INSTALL_FOLDER}/include" SSL_LIB="${AWS_LC_INSTALL_FOLDER}/lib/"
 ./scripts/build-vtest.sh
 export VTEST_PROGRAM=$(realpath ../vtest/vtest)
-./scripts/run-regtests.sh
+
+# These tests pass when run local but are not supported in CodeBuild CryptoAlg-1965
+excluded_tests=("mcli_show_info.vtc" "mcli_start_progs.vtc" "tls_basic_sync.vtc" "tls_basic_sync_wo_stkt_backend.vtc" "acl_cli_spaces.vtc" "http_reuse_always.vtc")
+test_paths=""
+
+for test in reg-tests/**/*; do
+    if [[ "$test" == *.vtc ]] && [[ ! " ${excluded_tests[*]} " =~ $(basename "$test") ]]; then
+        test_paths+="$(realpath "$test") "
+    fi
+done
+
+./scripts/run-regtests.sh "$test_paths"
