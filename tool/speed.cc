@@ -1465,18 +1465,6 @@ static EVP_PKEY * evp_generate_key(const int curve_nid) {
   return key;
 }
 
-static int ec_key_check_peer(const EC_KEY *ec_key) {
-#if !defined(OPENSSL_BENCHMARK)
-  // If building against AWS-LC, use its specialised fips function if fips-mode
-  // is enabled.
-  if (FIPS_mode() == 1) {
-    return EC_KEY_check_fips(ec_key);
-  }
-#endif
-
-  return EC_KEY_check_key(ec_key);
-}
-
 // One could model serialisation as well using
 // |EVP_PKEY_{get,set}1_tls_encodedpoint|. But that pair of functions only
 // support a subset of curve types. |SpeedECDH| includes deserialisation of the
@@ -1515,14 +1503,18 @@ static bool SpeedEvpEcdhCurve(const std::string &name, int nid,
   if (!TimeFunction(&results, [nid, &peer_key]() -> bool {
     BM_NAMESPACE::UniquePtr<EVP_PKEY> my_key(evp_generate_key(nid));
 
+#if defined(OPENSSL_BENCHMARK)
+    // For AWS-LC EVP_PKEY_derive() calls ECDH_compute_shared_secret() that
+    // performs the public key check.
     if (nid != NID_X25519) {
       // For the supported P NIST curves, the peer public key must be validated
       // to ensure proper computation. FIPS has stronger requirements (cf.
       // SP 800-56Ar3 5.6.2.2), so flip between the non-fips and fips version.
-      if (!ec_key_check_peer(EVP_PKEY_get0_EC_KEY(peer_key.get()))) {
+      if (!EC_KEY_check_key(EVP_PKEY_get0_EC_KEY(peer_key.get()))) {
         return false;
       }
     }
+#endif
 
     BM_NAMESPACE::UniquePtr<EVP_PKEY_CTX> derive_ctx(EVP_PKEY_CTX_new(my_key.get(), NULL));
     if (derive_ctx == nullptr) {
