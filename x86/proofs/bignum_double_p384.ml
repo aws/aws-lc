@@ -158,8 +158,7 @@ let BIGNUM_DOUBLE_P384_SUBROUTINE_CORRECT = time prove
                   read RSP s = word_add stackpointer (word 8) /\
                   (n < p_384
                    ==> bignum_from_memory (z,6) s = (2 * n) MOD p_384))
-            (MAYCHANGE [RIP; RSP; RSI; RAX; RDX; RCX; R8; R9; R10; R11] ,,
-             MAYCHANGE SOME_FLAGS ,,
+            (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
              MAYCHANGE [memory :> bignum(z,6)])`,
   X86_PROMOTE_RETURN_NOSTACK_TAC
     bignum_double_p384_mc BIGNUM_DOUBLE_P384_CORRECT);;
@@ -188,8 +187,7 @@ let WINDOWS_BIGNUM_DOUBLE_P384_SUBROUTINE_CORRECT = time prove
                   read RSP s = word_add stackpointer (word 8) /\
                   (n < p_384
                    ==> bignum_from_memory (z,6) s = (2 * n) MOD p_384))
-            (MAYCHANGE [RIP; RSP; RAX; RDX; RCX; R8; R9; R10; R11] ,,
-             MAYCHANGE SOME_FLAGS ,,
+            (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
              MAYCHANGE [memory :> bignum(z,6);
                         memory :> bytes(word_sub stackpointer (word 16),16)])`,
   WINDOWS_X86_WRAP_NOSTACK_TAC

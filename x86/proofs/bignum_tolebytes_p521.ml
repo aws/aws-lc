@@ -103,7 +103,7 @@ let BIGNUM_TOLEBYTES_P521_SUBROUTINE_CORRECT = prove
            (\s. read RIP s = returnaddress /\
                 read RSP s = word_add stackpointer (word 8) /\
                 read (memory :> bytelist(z,66)) s = bytelist_of_num 66 n)
-           (MAYCHANGE [RIP; RSP; RAX] ,,
+           (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
             MAYCHANGE [memory :> bytes(z,66)])`,
   X86_PROMOTE_RETURN_NOSTACK_TAC bignum_tolebytes_p521_mc
     BIGNUM_TOLEBYTES_P521_CORRECT);;
@@ -132,7 +132,7 @@ let WINDOWS_BIGNUM_TOLEBYTES_P521_SUBROUTINE_CORRECT = prove
            (\s. read RIP s = returnaddress /\
                 read RSP s = word_add stackpointer (word 8) /\
                 read (memory :> bytelist(z,66)) s = bytelist_of_num 66 n)
-           (MAYCHANGE [RIP; RSP; RAX] ,,
+           (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
             MAYCHANGE [memory :> bytes(z,66);
                        memory :> bytes(word_sub stackpointer (word 16),16)])`,
   WINDOWS_X86_WRAP_NOSTACK_TAC

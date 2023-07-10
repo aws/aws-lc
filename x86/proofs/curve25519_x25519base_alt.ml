@@ -6981,8 +6981,7 @@ let CURVE25519_X25519BASE_ALT_SUBROUTINE_CORRECT = time prove
          (\s. read RIP s = returnaddress /\
               read RSP s = word_add stackpointer (word 8) /\
               bignum_from_memory (res,4) s = rfcx25519(n,9))
-         (MAYCHANGE [RIP; RSP; RDI; RSI; RAX; RCX; RDX; R8; R9; R10; R11] ,,
-          MAYCHANGE SOME_FLAGS ,,
+         (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
           MAYCHANGE [memory :> bytes(res,32);
                      memory :> bytes(word_sub stackpointer (word 536),536)])`,
   REWRITE_TAC[BYTES_LOADED_APPEND_CLAUSE; BYTES_LOADED_DATA;
@@ -7011,8 +7010,7 @@ let CURVE25519_X25519BASE_BYTE_ALT_SUBROUTINE_CORRECT = prove
          (\s. read RIP s = returnaddress /\
               read RSP s = word_add stackpointer (word 8) /\
               read (memory :> bytes(res,32)) s = rfcx25519(n,9))
-         (MAYCHANGE [RIP; RSP; RDI; RSI; RAX; RCX; RDX; R8; R9; R10; R11] ,,
-          MAYCHANGE SOME_FLAGS ,,
+         (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
           MAYCHANGE [memory :> bytes(res,32);
                      memory :> bytes(word_sub stackpointer (word 536),536)])`,
   REWRITE_TAC[GSYM(CONV_RULE NUM_REDUCE_CONV
@@ -7048,8 +7046,7 @@ let WINDOWS_CURVE25519_X25519BASE_ALT_SUBROUTINE_CORRECT = time prove
          (\s. read RIP s = returnaddress /\
               read RSP s = word_add stackpointer (word 8) /\
               bignum_from_memory (res,4) s = rfcx25519(n,9))
-         (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
-          MAYCHANGE SOME_FLAGS ,,
+         (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
           MAYCHANGE [memory :> bytes(res,32);
                      memory :> bytes(word_sub stackpointer (word 560),560)])`,
   let WINDOWS_CURVE25519_X25519BASE_ALT_EXEC =
@@ -7059,7 +7056,8 @@ let WINDOWS_CURVE25519_X25519BASE_ALT_SUBROUTINE_CORRECT = time prove
                 CONJUNCT1 CURVE25519_X25519BASE_ALT_EXEC]
              CURVE25519_X25519BASE_ALT_SUBROUTINE_CORRECT in
   REPLICATE_TAC 4 GEN_TAC THEN WORD_FORALL_OFFSET_TAC 560 THEN
-  REWRITE_TAC[ALL; WINDOWS_C_ARGUMENTS; SOME_FLAGS] THEN
+  REWRITE_TAC[ALL; WINDOWS_C_ARGUMENTS; SOME_FLAGS;
+              WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI] THEN
   REWRITE_TAC[NONOVERLAPPING_CLAUSES] THEN REPEAT STRIP_TAC THEN
   REWRITE_TAC[BYTES_LOADED_APPEND_CLAUSE] THEN
   REWRITE_TAC[CONJUNCT1 WINDOWS_CURVE25519_X25519BASE_ALT_EXEC] THEN
@@ -7106,8 +7104,7 @@ let WINDOWS_CURVE25519_X25519BASE_BYTE_ALT_SUBROUTINE_CORRECT = prove
          (\s. read RIP s = returnaddress /\
               read RSP s = word_add stackpointer (word 8) /\
               read (memory :> bytes(res,32)) s = rfcx25519(n,9))
-         (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
-          MAYCHANGE SOME_FLAGS ,,
+         (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
           MAYCHANGE [memory :> bytes(res,32);
                      memory :> bytes(word_sub stackpointer (word 560),560)])`,
   REWRITE_TAC[GSYM(CONV_RULE NUM_REDUCE_CONV

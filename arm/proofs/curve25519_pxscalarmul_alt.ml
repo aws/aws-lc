@@ -2627,9 +2627,7 @@ let CURVE25519_PXSCALARMUL_ALT_SUBROUTINE_CORRECT = time prove
                   ==> curve25519x_canonically_represents f
                         (group_pow (curve25519x_group f) P n)
                         (bignum_pair_from_memory(res,4) s))
-          (MAYCHANGE [PC; X0; X1; X2; X3; X4; X5; X6; X7; X8; X9; X10;
-                      X11; X12; X13; X14; X15; X16; X17] ,,
-           MAYCHANGE SOME_FLAGS ,,
+          (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bytes(res,64);
                       memory :> bytes(word_sub stackpointer (word 288),288)])`,
   ARM_ADD_RETURN_STACK_TAC CURVE25519_PXSCALARMUL_ALT_EXEC

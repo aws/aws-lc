@@ -162,8 +162,7 @@ let BIGNUM_MULADD10_SUBROUTINE_CORRECT = time prove
                   bignum_from_memory(z,val k) s =
                   lowdigits (10 * n + val d) (val k) /\
                   C_RETURN s = word(highdigits (10 * n + val d) (val k)))
-              (MAYCHANGE [RIP; RSP; RDI; RAX; RCX; RDX; R8; R9] ,,
-               MAYCHANGE SOME_FLAGS ,,
+              (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
                MAYCHANGE [memory :> bignum(z,val k)])`,
   X86_PROMOTE_RETURN_NOSTACK_TAC bignum_muladd10_mc BIGNUM_MULADD10_CORRECT);;
 
@@ -192,8 +191,7 @@ let WINDOWS_BIGNUM_MULADD10_SUBROUTINE_CORRECT = time prove
                 lowdigits (10 * n + val d) (val k) /\
                 WINDOWS_C_RETURN s =
                 word(highdigits (10 * n + val d) (val k)))
-            (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9] ,,
-             MAYCHANGE SOME_FLAGS ,,
+            (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
              MAYCHANGE [memory :> bignum(z,val k);
                         memory :> bytes(word_sub stackpointer (word 16),16)])`,
   WINDOWS_X86_WRAP_NOSTACK_TAC windows_bignum_muladd10_mc bignum_muladd10_mc

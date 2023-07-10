@@ -1204,11 +1204,9 @@ let BIGNUM_EMONTREDC_8N_SUBROUTINE_CORRECT = time prove
                        (2 EXP (64 * val k) * val(C_RETURN s) +
                         bignum_from_memory
                           (word_add z (word(8 * val k)),val k) s)))
-            (MAYCHANGE [PC; X0; X1; X2; X4; X5; X6; X7; X8; X9; X10; X11;
-                        X12; X13; X14; X15; X16; X17] ,,
+            (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI,,
              MAYCHANGE [memory :> bytes(z,8 * 2 * val k);
-                    memory :> bytes(word_sub stackpointer (word 80),80)] ,,
-             MAYCHANGE SOME_FLAGS)`,
+                    memory :> bytes(word_sub stackpointer (word 80),80)])`,
   ARM_ADD_RETURN_STACK_TAC
     BIGNUM_EMONTREDC_8N_EXEC BIGNUM_EMONTREDC_8N_CORRECT
    `[X19; X20; X21; X22; X23; X24; X25; X26; X27; X28]` 80);;

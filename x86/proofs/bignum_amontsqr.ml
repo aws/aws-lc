@@ -855,10 +855,9 @@ let BIGNUM_AMONTSQR_SUBROUTINE_CORRECT = time prove
                 (ODD n
                  ==> (bignum_from_memory (z,val k) s ==
                       inverse_mod n (2 EXP (64 * val k)) * a EXP 2) (mod n)))
-           (MAYCHANGE [RIP; RSP; RAX; RDX; R8; R9; R10; R11] ,,
+           (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
             MAYCHANGE [memory :> bytes(z,8 * val k);
-                       memory :> bytes(word_sub stackpointer (word 48),48)] ,,
-            MAYCHANGE SOME_FLAGS)`,
+                       memory :> bytes(word_sub stackpointer (word 48),48)])`,
   X86_PROMOTE_RETURN_STACK_TAC bignum_amontsqr_mc BIGNUM_AMONTSQR_CORRECT
    `[RBX; RBP; R12; R13; R14; R15]` 48);;
 
@@ -888,9 +887,8 @@ let WINDOWS_BIGNUM_AMONTSQR_SUBROUTINE_CORRECT = time prove
                 (ODD n
                  ==> (bignum_from_memory (z,val k) s ==
                       inverse_mod n (2 EXP (64 * val k)) * a EXP 2) (mod n)))
-           (MAYCHANGE [RIP; RSP; RCX; RAX; RDX; R8; R9; R10; R11] ,,
+           (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
             MAYCHANGE [memory :> bytes(z,8 * val k);
-                       memory :> bytes(word_sub stackpointer (word 64),64)] ,,
-            MAYCHANGE SOME_FLAGS)`,
+                       memory :> bytes(word_sub stackpointer (word 64),64)])`,
   WINDOWS_X86_WRAP_STACK_TAC windows_bignum_amontsqr_mc bignum_amontsqr_mc
    BIGNUM_AMONTSQR_CORRECT `[RBX; RBP; R12; R13; R14; R15]` 48);;

@@ -730,11 +730,9 @@ let BIGNUM_MONTMUL_P521_ALT_SUBROUTINE_CORRECT = prove
                   (a < p_521 /\ b < p_521
                    ==> bignum_from_memory (z,9) s =
                         (inverse_mod p_521 (2 EXP 576) * a * b) MOD p_521))
-             (MAYCHANGE [PC; X3; X4; X5; X6; X7; X8; X9;
-                         X10; X11; X12; X13; X14; X15; X16; X17] ,,
+             (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bytes(z,8 * 9);
-                       memory :> bytes(word_sub stackpointer (word 128),128)] ,,
-              MAYCHANGE SOME_FLAGS)`,
+                       memory :> bytes(word_sub stackpointer (word 128),128)])`,
   ARM_ADD_RETURN_STACK_TAC
    BIGNUM_MONTMUL_P521_ALT_EXEC BIGNUM_MONTMUL_P521_ALT_CORRECT
    `[X19;X20;X21;X22;X23;X24;X25;X26]` 128);;

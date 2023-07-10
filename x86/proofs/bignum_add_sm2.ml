@@ -141,8 +141,7 @@ let BIGNUM_ADD_SM2_SUBROUTINE_CORRECT = time prove
                   read RSP s = word_add stackpointer (word 8) /\
                   (m < p_sm2 /\ n < p_sm2
                    ==> bignum_from_memory (z,4) s = (m + n) MOD p_sm2))
-          (MAYCHANGE [RIP; RSP; RAX; RDX; RCX; R8; R9; R10; R11] ,,
-           MAYCHANGE SOME_FLAGS ,,
+          (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bignum(z,4)])`,
   X86_PROMOTE_RETURN_NOSTACK_TAC bignum_add_sm2_mc BIGNUM_ADD_SM2_CORRECT);;
 
@@ -171,8 +170,7 @@ let WINDOWS_BIGNUM_ADD_SM2_SUBROUTINE_CORRECT = time prove
                   read RSP s = word_add stackpointer (word 8) /\
                   (m < p_sm2 /\ n < p_sm2
                    ==> bignum_from_memory (z,4) s = (m + n) MOD p_sm2))
-          (MAYCHANGE [RIP; RSP; RAX; RDX; RCX; R8; R9; R10; R11] ,,
-           MAYCHANGE SOME_FLAGS ,,
+          (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bignum(z,4);
                       memory :> bytes(word_sub stackpointer (word 16),16)])`,
   WINDOWS_X86_WRAP_NOSTACK_TAC windows_bignum_add_sm2_mc bignum_add_sm2_mc

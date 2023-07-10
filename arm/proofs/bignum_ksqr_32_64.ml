@@ -1249,12 +1249,11 @@ let BIGNUM_KSQR_32_64_SUBROUTINE_CORRECT = prove
                    bignum_from_memory (x,32) s = a)
               (\s. read PC s = returnaddress /\
                    bignum_from_memory (z,64) s = a EXP 2)
-              (MAYCHANGE [PC; X0; X1; X2; X3; X4; X5; X6; X7; X8; X9; X10;
-                          X11; X12; X13; X14; X15; X16; X17] ,,
+              (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
                MAYCHANGE [memory :> bytes(z,8 * 64);
                           memory :> bytes(t,8 * 72);
-                     memory :> bytes(word_sub stackpointer (word 96),96)] ,,
-               MAYCHANGE SOME_FLAGS)`,
+                     memory :> bytes(word_sub stackpointer (word 96),96)])`,
+  REWRITE_TAC [MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI] THEN
   MAP_EVERY X_GEN_TAC [`z:int64`; `x:int64`; `t:int64`; `a:num`; `pc:num`] THEN
   WORD_FORALL_OFFSET_TAC 96 THEN
   MAP_EVERY X_GEN_TAC [`stackpointer:int64`; `returnaddress:int64`] THEN

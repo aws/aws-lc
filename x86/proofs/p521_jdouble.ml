@@ -6561,8 +6561,7 @@ let P521_JDOUBLE_SUBROUTINE_CORRECT = time prove
                         ==> bignum_triple_from_memory(p3,9) s =
                             tripled nistp521_encode
                              (jacobian_add nistp521 (x,y,z) (x,y,z))))
-          (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
-           MAYCHANGE SOME_FLAGS ,,
+          (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bytes(p3,216);
                       memory :> bytes(word_sub stackpointer (word 608),608)])`,
   X86_PROMOTE_RETURN_STACK_TAC p521_jdouble_mc P521_JDOUBLE_CORRECT
@@ -6596,8 +6595,7 @@ let WINDOWS_P521_JDOUBLE_SUBROUTINE_CORRECT = time prove
                         ==> bignum_triple_from_memory(p3,9) s =
                             tripled nistp521_encode
                              (jacobian_add nistp521 (x,y,z) (x,y,z))))
-          (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
-           MAYCHANGE SOME_FLAGS ,,
+          (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bytes(p3,216);
                       memory :> bytes(word_sub stackpointer (word 624),624)])`,
   WINDOWS_X86_WRAP_STACK_TAC

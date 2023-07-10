@@ -193,6 +193,5 @@ let BIGNUM_DIGITSIZE_SUBROUTINE_CORRECT = prove
               bignum_from_memory(a,val k) s = x)
          (\s'. read PC s' = returnaddress /\
                C_RETURN s' = word((bitsize x + 63) DIV 64))
-         (MAYCHANGE [PC; X0; X2; X3; X4] ,,
-          MAYCHANGE SOME_FLAGS)`,
+         (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI)`,
   ARM_ADD_RETURN_NOSTACK_TAC BIGNUM_DIGITSIZE_EXEC BIGNUM_DIGITSIZE_CORRECT);;

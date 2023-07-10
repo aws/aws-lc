@@ -92,7 +92,6 @@ let BIGNUM_MUX_6_SUBROUTINE_CORRECT = prove
            (\s. read PC s = returnaddress /\
                 bignum_from_memory (z,6) s =
                   if ~(p = word 0) then m else n)
-          (MAYCHANGE [PC; X0; X4] ,,
-           MAYCHANGE SOME_FLAGS ,,
+          (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bignum(z,6)])`,
   ARM_ADD_RETURN_NOSTACK_TAC BIGNUM_MUX_6_EXEC BIGNUM_MUX_6_CORRECT);;

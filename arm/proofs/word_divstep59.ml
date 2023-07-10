@@ -1285,8 +1285,6 @@ let WORD_DIVSTEP59_SUBROUTINE_CORRECT = prove
               read (memory :> bytes64(word_add m (word 8))) s = iword(M$1$2) /\
               read (memory :> bytes64(word_add m (word 16))) s = iword(M$2$1) /\
               read (memory :> bytes64(word_add m (word 24))) s = iword(M$2$2)))
-          (MAYCHANGE [PC; X0; X1; X2; X3; X4; X5; X6; X7; X7; X8; X9;
-                      X10; X11; X12; X13; X14; X15; X16] ,,
-           MAYCHANGE [memory :> bytes(m,32)] ,,
-           MAYCHANGE SOME_FLAGS)`,
+          (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
+           MAYCHANGE [memory :> bytes(m,32)])`,
   ARM_ADD_RETURN_NOSTACK_TAC WORD_DIVSTEP59_EXEC WORD_DIVSTEP59_CORRECT);;

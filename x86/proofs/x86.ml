@@ -1704,6 +1704,11 @@ let PRESERVED_GPRS = define
 let MODIFIABLE_GPRS = define
  `MODIFIABLE_GPRS = [RAX; RCX; RDX; RSI; RDI; R8; R9; R10; R11]`;;
 
+let MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI = REWRITE_RULE
+    [SOME_FLAGS; MODIFIABLE_GPRS]
+ (new_definition `MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI =
+    MAYCHANGE [RIP] ,, MAYCHANGE MODIFIABLE_GPRS ,, MAYCHANGE SOME_FLAGS`);;
+
 (* ------------------------------------------------------------------------- *)
 (* Microsoft x86 fastcall ABI (the return value is in fact the same).        *)
 (* ------------------------------------------------------------------------- *)
@@ -1738,6 +1743,11 @@ let WINDOWS_PRESERVED_GPRS = define
 
 let WINDOWS_MODIFIABLE_GPRS = define
  `WINDOWS_MODIFIABLE_GPRS = [RAX; RCX; RDX; R8; R9; R10; R11]`;;
+
+let WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI = REWRITE_RULE
+    [SOME_FLAGS; WINDOWS_MODIFIABLE_GPRS]
+ (new_definition `WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI =
+    MAYCHANGE [RIP] ,, MAYCHANGE WINDOWS_MODIFIABLE_GPRS ,, MAYCHANGE SOME_FLAGS`);;
 
 (* ------------------------------------------------------------------------- *)
 (* Clausal theorems and other execution assistance.                          *)
@@ -2622,7 +2632,9 @@ let X86_SUBROUTINE_SIM_TAC (machinecode,execth,offset,submachinecode,subth) =
     and svar0 = mk_var("s",`:x86state`) in
     let ilist = map (vsubst[svar,svar0]) ilist0 in
     MP_TAC(TWEAK_PC_OFFSET(SPECL ilist subth)) THEN
-    ASM_REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS] THEN
+    ASM_REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS;
+                    MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI;
+                    WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI] THEN
     REWRITE_TAC[ALLPAIRS; ALL; PAIRWISE; NONOVERLAPPING_CLAUSES] THEN
     ANTS_TAC THENL
      [CONV_TAC(ONCE_DEPTH_CONV NORMALIZE_RELATIVE_ADDRESS_CONV) THEN
@@ -2770,6 +2782,7 @@ let X86_ADD_RETURN_NOSTACK_TAC =
           ENSURES_PRECONDITION_THM)) THEN
     SIMP_TAC[]) in
   fun execth coreth ->
+    REWRITE_TAC [MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI] THEN
     MP_TAC coreth THEN
     REPEAT(MATCH_MP_TAC MONO_FORALL THEN GEN_TAC) THEN
     REWRITE_TAC[NONOVERLAPPING_CLAUSES; ALLPAIRS; ALL] THEN
@@ -2811,6 +2824,8 @@ let GEN_X86_ADD_RETURN_STACK_TAC =
   fun execth coreth reglist stackoff (n,m) ->
     let regs = dest_list reglist in
     MP_TAC coreth THEN
+    REWRITE_TAC [MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI;
+                 WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI] THEN
     REPEAT(MATCH_MP_TAC mono2lemma THEN GEN_TAC) THEN
     (if free_in `RSP` (concl coreth) then
       DISCH_THEN(fun th -> WORD_FORALL_OFFSET_TAC stackoff THEN MP_TAC th) THEN
@@ -2942,7 +2957,8 @@ let WINDOWS_X86_WRAP_NOSTACK_TAC =
              (SPEC_ALL (X86_TRIM_EXEC_RULE stdmc)) pcoff
              (rhs(concl winmc))))))
     and winexecth = X86_MK_EXEC_RULE winmc in
-   (PURE_REWRITE_TAC[WINDOWS_ABI_STACK_THM] THEN
+   (REWRITE_TAC [WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI] THEN
+    PURE_REWRITE_TAC[WINDOWS_ABI_STACK_THM] THEN
     MP_TAC coreth THEN
     REPEAT(MATCH_MP_TAC mono2lemma THEN GEN_TAC) THEN
     MATCH_MP_TAC pcofflemma THEN
@@ -3006,7 +3022,8 @@ let WINDOWS_X86_WRAP_STACK_TAC =
              (SPEC_ALL (X86_TRIM_EXEC_RULE stdmc)) pcoff
              (rhs(concl winmc))))))
     and winexecth = X86_MK_EXEC_RULE winmc in
-   (PURE_REWRITE_TAC[WINDOWS_ABI_STACK_THM] THEN
+   (REWRITE_TAC [WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI] THEN
+    PURE_REWRITE_TAC[WINDOWS_ABI_STACK_THM] THEN
     MP_TAC coreth THEN
     REPEAT(MATCH_MP_TAC monopsrlemma THEN GEN_TAC) THEN
     MATCH_MP_TAC pcofflemma THEN

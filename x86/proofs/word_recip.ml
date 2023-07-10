@@ -714,8 +714,7 @@ let WORD_RECIP_SUBROUTINE_CORRECT = prove
            (bit 63 a
             ==> &2 pow 64 + &(val(C_RETURN s)) < &2 pow 128 / &(val a) /\
                 &2 pow 128 / &(val a) <= &2 pow 64 + &(val(C_RETURN s)) + &1))
-      (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; RSI] ,,
-       MAYCHANGE SOME_FLAGS)`,
+      (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI)`,
   X86_PROMOTE_RETURN_NOSTACK_TAC word_recip_mc WORD_RECIP_CORRECT);;
 
 (* ------------------------------------------------------------------------- *)
@@ -740,8 +739,7 @@ let WINDOWS_WORD_RECIP_SUBROUTINE_CORRECT = prove
                        &2 pow 128 / &(val a) /\
                        &2 pow 128 / &(val a) <=
                        &2 pow 64 + &(val(WINDOWS_C_RETURN s)) + &1))
-             (MAYCHANGE [RIP; RSP; RAX; RCX; RDX] ,,
-              MAYCHANGE SOME_FLAGS ,,
+             (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bytes(word_sub stackpointer (word 16),16)])`,
   WINDOWS_X86_WRAP_NOSTACK_TAC windows_word_recip_mc word_recip_mc
     WORD_RECIP_CORRECT);;

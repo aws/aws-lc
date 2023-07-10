@@ -1895,11 +1895,11 @@ let BIGNUM_EMONTREDC_8N_SUBROUTINE_CORRECT = time prove
                      (2 EXP (64 * val k) * val(C_RETURN s) +
                       bignum_from_memory
                         (word_add z (word(8 * val k)),val k) s)))
-           (MAYCHANGE [RIP; RSP; RDI; RSI; RAX; RDX; R8; R9; R10; R11] ,,
+           (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
             MAYCHANGE [memory :> bytes(z,8 * 2 * val k);
-                       memory :> bytes(word_sub stackpointer (word 80),80)] ,,
-            MAYCHANGE SOME_FLAGS)`,
+                       memory :> bytes(word_sub stackpointer (word 80),80)])`,
   let BIGNUM_EMONTREDC_8N_EXEC = X86_MK_EXEC_RULE bignum_emontredc_8n_mc in
+  REWRITE_TAC [MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI] THEN
   MP_TAC (X86_CORE_PROMOTE BIGNUM_EMONTREDC_8N_CORRECT) THEN
   REPLICATE_TAC 7 (MATCH_MP_TAC MONO_FORALL THEN GEN_TAC) THEN
   DISCH_THEN(fun th -> WORD_FORALL_OFFSET_TAC 48 THEN MP_TAC th) THEN
@@ -1960,10 +1960,9 @@ let WINDOWS_BIGNUM_EMONTREDC_8N_SUBROUTINE_CORRECT = time prove
                      (2 EXP (64 * val k) * val(WINDOWS_C_RETURN s) +
                       bignum_from_memory
                         (word_add z (word(8 * val k)),val k) s)))
-           (MAYCHANGE [RIP; RSP; RCX; RAX; RDX; R8; R9; R10; R11] ,,
+           (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
             MAYCHANGE [memory :> bytes(z,8 * 2 * val k);
-                       memory :> bytes(word_sub stackpointer (word 96),96)] ,,
-            MAYCHANGE SOME_FLAGS)`,
+                       memory :> bytes(word_sub stackpointer (word 96),96)])`,
   let BIGNUM_EMONTREDC_8N_EXEC =
     X86_MK_EXEC_RULE windows_bignum_emontredc_8n_mc
   and pcofflemma = MESON[]
@@ -1974,6 +1973,7 @@ let WINDOWS_BIGNUM_EMONTREDC_8N_SUBROUTINE_CORRECT = time prove
           (TRANS windows_bignum_emontredc_8n_mc (N_SUBLIST_CONV
              (SPEC_ALL (X86_TRIM_EXEC_RULE bignum_emontredc_8n_mc)) 14
              (rhs(concl windows_bignum_emontredc_8n_mc)))))) in
+  REWRITE_TAC [WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI] THEN
   MP_TAC BIGNUM_EMONTREDC_8N_CORRECT THEN
   REPLICATE_TAC 6 (MATCH_MP_TAC MONO_FORALL THEN GEN_TAC) THEN
   MATCH_MP_TAC pcofflemma THEN EXISTS_TAC `0xe` THEN

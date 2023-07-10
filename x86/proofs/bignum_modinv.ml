@@ -4778,9 +4778,7 @@ let BIGNUM_MODINV_SUBROUTINE_CORRECT = prove
                   (coprime(a,b) /\ ODD b /\ ~(b = 1)
                    ==> bignum_from_memory(z,val k) s < b /\
                        (a * bignum_from_memory(z,val k) s == 1) (mod b)))
-             (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; RDI; RSI;
-                         R8; R9; R10; R11] ,,
-              MAYCHANGE SOME_FLAGS ,,
+             (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bignum(z,val k);
                          memory :> bignum(w,3 * val k);
                     memory :> bytes(word_sub stackpointer (word 128),128)])`,
@@ -4817,8 +4815,7 @@ let WINDOWS_BIGNUM_MODINV_SUBROUTINE_CORRECT = prove
                   (coprime(a,b) /\ ODD b /\ ~(b = 1)
                    ==> bignum_from_memory(z,val k) s < b /\
                        (a * bignum_from_memory(z,val k) s == 1) (mod b)))
-             (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
-              MAYCHANGE SOME_FLAGS ,,
+             (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bignum(z,val k);
                          memory :> bignum(w,3 * val k);
                     memory :> bytes(word_sub stackpointer (word 144),144)])`,

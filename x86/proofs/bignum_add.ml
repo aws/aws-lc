@@ -685,8 +685,7 @@ let BIGNUM_ADD_SUBROUTINE_CORRECT = prove
                 2 EXP (64 * val p) * val(C_RETURN s) +
                 bignum_from_memory (z,val p) s =
                 lowdigits a (val p) + lowdigits b (val p))
-           (MAYCHANGE [RIP; RSP; RAX; RDI; RDX; R8; R10] ,,
-            MAYCHANGE SOME_FLAGS ,,
+           (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
             MAYCHANGE [memory :> bignum(z,val p)])`,
   X86_ADD_RETURN_NOSTACK_TAC BIGNUM_ADD_EXEC BIGNUM_ADD_CORRECT);;
 
@@ -753,8 +752,7 @@ let WINDOWS_BIGNUM_ADD_SUBROUTINE_CORRECT = prove
                 2 EXP (64 * val p) * val(WINDOWS_C_RETURN s) +
                 bignum_from_memory (z,val p) s =
                 lowdigits a (val p) + lowdigits b (val p))
-           (MAYCHANGE [RIP; RSP; R9; RCX; RAX; RDX; R8; R10] ,,
-            MAYCHANGE SOME_FLAGS ,,
+           (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
             MAYCHANGE [memory :> bignum(z,val p);
                        memory :> bytes(word_sub stackpointer (word 16),16)])`,
   REWRITE_TAC[WINDOWS_ABI_STACK_THM] THEN

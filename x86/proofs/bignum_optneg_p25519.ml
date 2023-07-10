@@ -139,8 +139,7 @@ let BIGNUM_OPTNEG_P25519_SUBROUTINE_CORRECT = time prove
                   (n < p_25519
                    ==> (bignum_from_memory (z,4) s =
                         if ~(q = word 0) then (p_25519 - n) MOD p_25519 else n)))
-          (MAYCHANGE [RIP; RSP; RSI; RAX; RCX; R8; R9] ,,
-           MAYCHANGE SOME_FLAGS ,,
+          (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bignum(z,4)])`,
   X86_PROMOTE_RETURN_NOSTACK_TAC bignum_optneg_p25519_mc
       BIGNUM_OPTNEG_P25519_CORRECT);;
@@ -170,8 +169,7 @@ let WINDOWS_BIGNUM_OPTNEG_P25519_SUBROUTINE_CORRECT = time prove
                 (n < p_25519
                  ==> (bignum_from_memory (z,4) s =
                       if ~(q = word 0) then (p_25519 - n) MOD p_25519 else n)))
-        (MAYCHANGE [RIP; RSP; RDX; RAX; RCX; R8; R9] ,,
-         MAYCHANGE SOME_FLAGS ,,
+        (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
          MAYCHANGE [memory :> bignum(z,4);
                     memory :> bytes(word_sub stackpointer (word 16),16)])`,
   WINDOWS_X86_WRAP_NOSTACK_TAC

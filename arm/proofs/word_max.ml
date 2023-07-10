@@ -47,6 +47,5 @@ let WORD_MAX_SUBROUTINE_CORRECT = prove
                C_ARGUMENTS [a; b] s)
           (\s. read PC s = returnaddress /\
                C_RETURN s = word_umax a b)
-          (MAYCHANGE [PC; X0] ,,
-           MAYCHANGE SOME_FLAGS)`,
+          (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI)`,
   ARM_ADD_RETURN_NOSTACK_TAC WORD_MAX_EXEC WORD_MAX_CORRECT);;

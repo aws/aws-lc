@@ -174,7 +174,6 @@ let BIGNUM_OPTADD_SUBROUTINE_CORRECT = prove
                   lowdigits (a + bitval(~(p = word 0)) * b) (val k) /\
                   C_RETURN s =
                   word(highdigits (a + bitval(~(p = word 0)) * b) (val k)))
-             (MAYCHANGE [PC; X0; X3; X5; X6; X7] ,,
-              MAYCHANGE SOME_FLAGS ,,
+             (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bignum(z,val k)])`,
   ARM_ADD_RETURN_NOSTACK_TAC BIGNUM_OPTADD_EXEC BIGNUM_OPTADD_CORRECT);;

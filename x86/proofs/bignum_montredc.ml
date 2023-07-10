@@ -1078,10 +1078,9 @@ let BIGNUM_MONTREDC_SUBROUTINE_CORRECT = time prove
                    ==> bignum_from_memory (z,val k) s =
                        (inverse_mod n (2 EXP (64 * val p)) *
                         lowdigits a (val k + val p)) MOD n))
-             (MAYCHANGE [RIP; RSP; RAX; RDX; R10; R11] ,,
+             (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bytes(z,8 * val k);
-                      memory :> bytes(word_sub stackpointer (word 56),56)] ,,
-              MAYCHANGE SOME_FLAGS)`,
+                      memory :> bytes(word_sub stackpointer (word 56),56)])`,
   X86_PROMOTE_RETURN_STACK_TAC bignum_montredc_mc BIGNUM_MONTREDC_CORRECT
    `[RBX; RBP; R12; R13; R14; R15]` 56);;
 
@@ -1115,9 +1114,8 @@ let WINDOWS_BIGNUM_MONTREDC_SUBROUTINE_CORRECT = time prove
                    ==> bignum_from_memory (z,val k) s =
                        (inverse_mod n (2 EXP (64 * val p)) *
                         lowdigits a (val k + val p)) MOD n))
-             (MAYCHANGE [RIP; RSP; R9; R8; RCX; RAX; RDX; R10; R11] ,,
+             (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bytes(z,8 * val k);
-                      memory :> bytes(word_sub stackpointer (word 72),72)] ,,
-              MAYCHANGE SOME_FLAGS)`,
+                      memory :> bytes(word_sub stackpointer (word 72),72)])`,
   WINDOWS_X86_WRAP_STACK_TAC windows_bignum_montredc_mc bignum_montredc_mc
    BIGNUM_MONTREDC_CORRECT `[RBX; RBP; R12; R13; R14; R15]` 56);;

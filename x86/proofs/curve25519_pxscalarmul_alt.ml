@@ -3621,8 +3621,7 @@ let CURVE25519_PXSCALARMUL_ALT_SUBROUTINE_CORRECT = time prove
                   ==> curve25519x_canonically_represents f
                         (group_pow (curve25519x_group f) P n)
                         (bignum_pair_from_memory(res,4) s))
-          (MAYCHANGE [RIP; RSP; RDI; RSI; RAX; RCX; RDX; R8; R9; R10; R11] ,,
-           MAYCHANGE SOME_FLAGS ,,
+          (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bytes(res,64);
                       memory :> bytes(word_sub stackpointer (word 408),408)])`,
   X86_PROMOTE_RETURN_STACK_TAC
@@ -3660,8 +3659,7 @@ let WINDOWS_CURVE25519_PXSCALARMUL_ALT_SUBROUTINE_CORRECT = time prove
                   ==> curve25519x_canonically_represents f
                         (group_pow (curve25519x_group f) P n)
                         (bignum_pair_from_memory(res,4) s))
-          (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
-           MAYCHANGE SOME_FLAGS ,,
+          (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bytes(res,64);
                       memory :> bytes(word_sub stackpointer (word 424),424)])`,
   WINDOWS_X86_WRAP_STACK_TAC

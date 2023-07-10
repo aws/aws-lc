@@ -401,8 +401,7 @@ let BIGNUM_LT_SUBROUTINE_CORRECT = prove
           (\s'. read RIP s' = returnaddress /\
                 read RSP s' = word_add stackpointer (word 8) /\
                 C_RETURN s' = if x < y then word 1 else word 0)
-          (MAYCHANGE [RIP; RSP; RDI; RDX; RAX; R8] ,,
-           MAYCHANGE SOME_FLAGS)`,
+          (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI)`,
   X86_ADD_RETURN_NOSTACK_TAC BIGNUM_LT_EXEC BIGNUM_LT_CORRECT);;
 
 (* ------------------------------------------------------------------------- *)
@@ -444,8 +443,7 @@ let WINDOWS_BIGNUM_LT_SUBROUTINE_CORRECT = prove
               (\s'. read RIP s' = returnaddress /\
                     read RSP s' = word_add stackpointer (word 8) /\
                     WINDOWS_C_RETURN s' = if x < y then word 1 else word 0)
-              (MAYCHANGE [RIP; RSP; RCX; RDX; RAX; R8] ,,
-               MAYCHANGE SOME_FLAGS ,,
+              (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bytes(word_sub stackpointer (word 16),16)])`,
   GEN_X86_ADD_RETURN_STACK_TAC (X86_MK_EXEC_RULE windows_bignum_lt_mc)
     WINDOWS_BIGNUM_LT_CORRECT `[RDI; RSI]` 16 (6,3));;

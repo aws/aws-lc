@@ -3843,8 +3843,7 @@ let P256_MONTJADD_SUBROUTINE_CORRECT = time prove
                         ==> bignum_triple_from_memory(p3,4) s =
                             tripled nistp256_encode
                              (jacobian_add nistp256 (x1,y1,z1) (x2,y2,z2))))
-          (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
-           MAYCHANGE SOME_FLAGS ,,
+          (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bytes(p3,96);
                       memory :> bytes(word_sub stackpointer (word 280),280)])`,
   X86_PROMOTE_RETURN_STACK_TAC p256_montjadd_mc P256_MONTJADD_CORRECT
@@ -3885,8 +3884,7 @@ let WINDOWS_P256_MONTJADD_SUBROUTINE_CORRECT = time prove
                         ==> bignum_triple_from_memory(p3,4) s =
                             tripled nistp256_encode
                              (jacobian_add nistp256 (x1,y1,z1) (x2,y2,z2))))
-          (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
-           MAYCHANGE SOME_FLAGS ,,
+          (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bytes(p3,96);
                       memory :> bytes(word_sub stackpointer (word 296),296)])`,
   WINDOWS_X86_WRAP_STACK_TAC

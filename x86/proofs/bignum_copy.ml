@@ -176,7 +176,7 @@ let BIGNUM_COPY_SUBROUTINE_CORRECT = prove
            (\s. read RIP s = returnaddress /\
                 read RSP s = word_add stackpointer (word 8) /\
                 bignum_from_memory (z,val k) s =  lowdigits a (val k))
-          (MAYCHANGE [RIP; RSP; RAX; RDX; R8] ,, MAYCHANGE SOME_FLAGS ,,
+          (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bignum(z,val k)])`,
   X86_PROMOTE_RETURN_NOSTACK_TAC bignum_copy_mc BIGNUM_COPY_CORRECT);;
 
@@ -204,7 +204,7 @@ let WINDOWS_BIGNUM_COPY_SUBROUTINE_CORRECT = prove
            (\s. read RIP s = returnaddress /\
                 read RSP s = word_add stackpointer (word 8) /\
                 bignum_from_memory (z,val k) s =  lowdigits a (val k))
-          (MAYCHANGE [RIP; RSP; RCX; RAX; RDX; R8] ,, MAYCHANGE SOME_FLAGS ,,
+          (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bignum(z,val k);
                       memory :> bytes(word_sub stackpointer (word 16),16)])`,
   WINDOWS_X86_WRAP_NOSTACK_TAC windows_bignum_copy_mc bignum_copy_mc

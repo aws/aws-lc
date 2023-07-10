@@ -484,8 +484,7 @@ let BIGNUM_CDIV_EXACT_SUBROUTINE_CORRECT = prove
                   (~(val m = 0) /\ val m divides a
                    ==> bignum_from_memory (z,val k) s =
                        lowdigits (a DIV val m) (val k)))
-             (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
-              MAYCHANGE SOME_FLAGS ,,
+             (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bignum(z,val k);
                        memory :> bytes(word_sub stackpointer (word 32),32)])`,
   X86_PROMOTE_RETURN_STACK_TAC bignum_cdiv_exact_mc BIGNUM_CDIV_EXACT_CORRECT
@@ -517,8 +516,7 @@ let WINDOWS_BIGNUM_CDIV_EXACT_SUBROUTINE_CORRECT = prove
                   (~(val m = 0) /\ val m divides a
                    ==> bignum_from_memory (z,val k) s =
                        lowdigits (a DIV val m) (val k)))
-             (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
-              MAYCHANGE SOME_FLAGS ,,
+             (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bignum(z,val k);
                        memory :> bytes(word_sub stackpointer (word 48),48)])`,
   WINDOWS_X86_WRAP_STACK_TAC windows_bignum_cdiv_exact_mc bignum_cdiv_exact_mc

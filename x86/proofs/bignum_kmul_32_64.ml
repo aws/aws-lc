@@ -3086,10 +3086,10 @@ let BIGNUM_KMUL_32_64_SUBROUTINE_CORRECT = prove
             (\s. read RIP s = returnaddress /\
                  read RSP s = word_add stackpointer (word 8) /\
                  bignum_from_memory (z,64) s = a * b)
-            (MAYCHANGE [RIP; RSP; RSI; RDI; RAX; RCX; RDX; R8; R9; R10; R11] ,,
+            (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
              MAYCHANGE [memory :> bytes(z,8 * 64); memory :> bytes(t,8 * 96);
-                        memory :> bytes(word_sub stackpointer (word 64),64)] ,,
-             MAYCHANGE SOME_FLAGS)`,
+                        memory :> bytes(word_sub stackpointer (word 64),64)])`,
+  REWRITE_TAC [MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI] THEN
   MAP_EVERY X_GEN_TAC
    [`z:int64`; `x:int64`; `y:int64`;
     `a:num`; `b:num`; `t:int64`; `pc:num`] THEN
@@ -3167,10 +3167,10 @@ let WINDOWS_BIGNUM_KMUL_32_64_SUBROUTINE_CORRECT = prove
             (\s. read RIP s = returnaddress /\
                  read RSP s = word_add stackpointer (word 8) /\
                  bignum_from_memory (z,64) s = a * b)
-            (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
+            (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
              MAYCHANGE [memory :> bytes(z,8 * 64); memory :> bytes(t,8 * 96);
-                        memory :> bytes(word_sub stackpointer (word 80),80)] ,,
-             MAYCHANGE SOME_FLAGS)`,
+                        memory :> bytes(word_sub stackpointer (word 80),80)])`,
+  REWRITE_TAC[WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI] THEN
   MAP_EVERY X_GEN_TAC
    [`z:int64`; `x:int64`; `y:int64`;
     `a:num`; `b:num`; `t:int64`; `pc:num`] THEN

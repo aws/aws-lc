@@ -470,7 +470,6 @@ let BIGNUM_CMNEGADD_SUBROUTINE_CORRECT = prove
                    ==> &(bignum_from_memory (z,val p) s) -
                        &2 pow (64 * val p) * &(val(C_RETURN s)):int =
                        &d - &(val c) * &a))
-             (MAYCHANGE [PC; X0; X3; X5; X6; X7; X8; X9] ,,
-              MAYCHANGE SOME_FLAGS ,,
+             (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bignum(z,val p)])`,
   ARM_ADD_RETURN_NOSTACK_TAC BIGNUM_CMNEGADD_EXEC BIGNUM_CMNEGADD_CORRECT);;

@@ -462,7 +462,6 @@ let BIGNUM_NORMALIZE_SUBROUTINE_CORRECT = time prove
                   bignum_from_memory (z,val k) s =
                   2 EXP (64 * val k - bitsize n) * n /\
                   C_RETURN s = word(64 * val k - bitsize n))
-             (MAYCHANGE [PC; X0; X2; X3; X4; X5; X6; X7; X8; X9] ,,
-              MAYCHANGE [memory :> bytes(z,8 * val k)] ,,
-              MAYCHANGE SOME_FLAGS)`,
+             (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
+              MAYCHANGE [memory :> bytes(z,8 * val k)])`,
   ARM_ADD_RETURN_NOSTACK_TAC BIGNUM_NORMALIZE_EXEC BIGNUM_NORMALIZE_CORRECT);;

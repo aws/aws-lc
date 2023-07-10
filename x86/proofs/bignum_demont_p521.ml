@@ -176,8 +176,7 @@ let BIGNUM_DEMONT_P521_SUBROUTINE_CORRECT = time prove
                   (n < p_521
                    ==> bignum_from_memory (z,9) s =
                        (inverse_mod p_521 (2 EXP 576) * n) MOD p_521))
-          (MAYCHANGE [RIP; RSP; RAX; RDX; RCX] ,,
-           MAYCHANGE SOME_FLAGS ,,
+          (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bignum(z,9)])`,
   X86_PROMOTE_RETURN_NOSTACK_TAC bignum_demont_p521_mc
     BIGNUM_DEMONT_P521_CORRECT);;
@@ -208,8 +207,7 @@ let WINDOWS_BIGNUM_DEMONT_P521_SUBROUTINE_CORRECT = time prove
                   (n < p_521
                    ==> bignum_from_memory (z,9) s =
                        (inverse_mod p_521 (2 EXP 576) * n) MOD p_521))
-          (MAYCHANGE [RIP; RSP; RAX; RDX; RCX] ,,
-           MAYCHANGE SOME_FLAGS ,,
+          (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bignum(z,9);
                       memory :> bytes(word_sub stackpointer (word 16),16)])`,
   WINDOWS_X86_WRAP_NOSTACK_TAC windows_bignum_demont_p521_mc

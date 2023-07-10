@@ -507,9 +507,7 @@ let BIGNUM_TOMONT_P384_SUBROUTINE_CORRECT = time prove
                   bignum_from_memory (x,6) s = a)
              (\s. read PC s = returnaddress /\
                   bignum_from_memory (z,6) s = (2 EXP 384 * a) MOD p_384)
-             (MAYCHANGE [PC; X1; X2; X3; X4; X5; X6; X7; X8; X9;
-                         X10; X11; X12] ,,
-              MAYCHANGE [memory :> bytes(z,8 * 6)] ,,
-              MAYCHANGE SOME_FLAGS)`,
+             (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
+              MAYCHANGE [memory :> bytes(z,8 * 6)])`,
   ARM_ADD_RETURN_NOSTACK_TAC BIGNUM_TOMONT_P384_EXEC
     BIGNUM_TOMONT_P384_CORRECT);;

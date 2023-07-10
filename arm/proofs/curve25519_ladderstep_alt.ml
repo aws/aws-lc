@@ -2344,9 +2344,7 @@ let CURVE25519_LADDERSTEP_ALT_SUBROUTINE_CORRECT = time prove
                ==> bignum_pairpair_from_memory(rr,4) s =
                    pairpaired curve25519_encode
                     (montgomery_ladderstep curve25519 (~(b = word 0)) Q Qm Qn))
-      (MAYCHANGE [PC; X0; X1; X2; X3; X4; X5; X6; X7; X8; X9; X10;
-                  X11; X12; X13; X14; X15; X16; X17] ,,
-       MAYCHANGE SOME_FLAGS ,,
+      (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
        MAYCHANGE [memory :> bytes(rr,128);
                   memory :> bytes(word_sub stackpointer (word 320),320)])`,
   ARM_ADD_RETURN_STACK_TAC CURVE25519_LADDERSTEP_ALT_EXEC

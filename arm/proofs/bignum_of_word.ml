@@ -105,6 +105,6 @@ let BIGNUM_OF_WORD_SUBROUTINE_CORRECT = prove
              (\s. read PC s = returnaddress /\
                   bignum_from_memory (z,val k) s =
                   val n MOD (2 EXP (64 * val k)))
-             (MAYCHANGE [PC; X0; X2] ,, MAYCHANGE SOME_FLAGS ,,
+             (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bignum(z,val k)])`,
   ARM_ADD_RETURN_NOSTACK_TAC BIGNUM_OF_WORD_EXEC BIGNUM_OF_WORD_CORRECT);;

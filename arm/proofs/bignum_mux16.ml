@@ -266,7 +266,6 @@ let BIGNUM_MUX16_SUBROUTINE_CORRECT = prove
                           (word_add xs (word(8 * val k * j)),val k) s = n j))
            (\s. read PC s = returnaddress /\
                 (val i < 16 ==> bignum_from_memory (z,val k) s = n (val i)))
-          (MAYCHANGE [PC; X1; X2; X3; X4; X5; X6; X7] ,,
-           MAYCHANGE SOME_FLAGS ,,
+          (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bignum(z,val k)])`,
   ARM_ADD_RETURN_NOSTACK_TAC BIGNUM_MUX16_EXEC BIGNUM_MUX16_CORRECT);;

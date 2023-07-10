@@ -314,10 +314,9 @@ let BIGNUM_TOMONT_P256_ALT_SUBROUTINE_CORRECT = time prove
              (\s. read RIP s = returnaddress /\
                   read RSP s = word_add stackpointer (word 8) /\
                   bignum_from_memory (z,4) s = (2 EXP 256 * a) MOD p_256)
-             (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
+             (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bytes(z,8 * 4);
-                       memory :> bytes(word_sub stackpointer (word 32),32)] ,,
-              MAYCHANGE SOME_FLAGS)`,
+                       memory :> bytes(word_sub stackpointer (word 32),32)])`,
   X86_PROMOTE_RETURN_STACK_TAC
     bignum_tomont_p256_alt_mc BIGNUM_TOMONT_P256_ALT_CORRECT
     `[R12; R13; R14; R15]` 32);;
@@ -345,10 +344,9 @@ let WINDOWS_BIGNUM_TOMONT_P256_ALT_SUBROUTINE_CORRECT = time prove
              (\s. read RIP s = returnaddress /\
                   read RSP s = word_add stackpointer (word 8) /\
                   bignum_from_memory (z,4) s = (2 EXP 256 * a) MOD p_256)
-             (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
+             (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bytes(z,8 * 4);
-                       memory :> bytes(word_sub stackpointer (word 48),48)] ,,
-              MAYCHANGE SOME_FLAGS)`,
+                       memory :> bytes(word_sub stackpointer (word 48),48)])`,
   WINDOWS_X86_WRAP_STACK_TAC
     windows_bignum_tomont_p256_alt_mc bignum_tomont_p256_alt_mc
     BIGNUM_TOMONT_P256_ALT_CORRECT `[R12; R13; R14; R15]` 32);;

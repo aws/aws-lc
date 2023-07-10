@@ -554,8 +554,7 @@ let BIGNUM_MADD_SUBROUTINE_CORRECT = prove
                (val m + val n <= val p
                 ==> 2 EXP (64 * val p) * val(C_RETURN s) +
                     bignum_from_memory (z,val p) s = a * b + c))
-          (MAYCHANGE [RIP; RSP; R10; R11; RAX; RDI; RDX; RSI] ,,
-           MAYCHANGE SOME_FLAGS ,,
+          (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bignum(z,val p);
                       memory :> bytes(word_sub stackpointer (word 48),56)])`,
   X86_PROMOTE_RETURN_STACK_TAC bignum_madd_mc BIGNUM_MADD_CORRECT
@@ -590,8 +589,7 @@ let WINDOWS_BIGNUM_MADD_SUBROUTINE_CORRECT = prove
                (val m + val n <= val p
                 ==> 2 EXP (64 * val p) * val(WINDOWS_C_RETURN s) +
                     bignum_from_memory (z,val p) s = a * b + c))
-          (MAYCHANGE [RIP; RSP; R9; R8; RCX; R10; R11; RAX; RDX] ,,
-           MAYCHANGE SOME_FLAGS ,,
+          (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bignum(z,val p);
                       memory :> bytes(word_sub stackpointer (word 64),72)])`,
   WINDOWS_X86_WRAP_STACK_TAC windows_bignum_madd_mc bignum_madd_mc

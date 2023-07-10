@@ -497,11 +497,9 @@ let BIGNUM_SQR_P521_ALT_SUBROUTINE_CORRECT = time prove
            (\s. read PC s = returnaddress /\
                 (n < p_521
                  ==> bignum_from_memory (z,9) s = (n EXP 2) MOD p_521))
-           (MAYCHANGE [PC; X1; X2; X3; X4; X5; X6; X7; X8; X9;
-                       X10; X11; X12; X13; X14; X15; X16; X17] ,,
+           (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
             MAYCHANGE [memory :> bytes(z,8 * 9);
-                       memory :> bytes(word_sub stackpointer (word 64),64)] ,,
-            MAYCHANGE SOME_FLAGS)`,
+                       memory :> bytes(word_sub stackpointer (word 64),64)])`,
   ARM_ADD_RETURN_STACK_TAC
    BIGNUM_SQR_P521_ALT_EXEC BIGNUM_SQR_P521_ALT_CORRECT
    `[X19;X20;X21;X22;X23;X24;X25;X26]` 64);;

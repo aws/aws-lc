@@ -197,8 +197,7 @@ let BIGNUM_OPTSUB_SUBROUTINE_CORRECT = prove
                    else (2 EXP (64 * val k) + m) - n) /\
                   (C_RETURN s =
                    if ~(p = word 0) /\ m < n then word 1 else word 0))
-          (MAYCHANGE [RIP; RSP; RAX; RCX; R9; R10; R11] ,,
-           MAYCHANGE SOME_FLAGS ,,
+          (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bignum(z,val k)])`,
   X86_PROMOTE_RETURN_NOSTACK_TAC bignum_optsub_mc BIGNUM_OPTSUB_CORRECT);;
 
@@ -233,8 +232,7 @@ let WINDOWS_BIGNUM_OPTSUB_SUBROUTINE_CORRECT = prove
                    else (2 EXP (64 * val k) + m) - n) /\
                   (WINDOWS_C_RETURN s =
                    if ~(p = word 0) /\ m < n then word 1 else word 0))
-          (MAYCHANGE [RIP; RSP; R8; RDX; RAX; RCX; R9; R10; R11] ,,
-           MAYCHANGE SOME_FLAGS ,,
+          (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bignum(z,val k);
                       memory :> bytes(word_sub stackpointer (word 16),16)])`,
   WINDOWS_X86_WRAP_NOSTACK_TAC windows_bignum_optsub_mc bignum_optsub_mc

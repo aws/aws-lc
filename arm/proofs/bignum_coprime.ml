@@ -3446,9 +3446,7 @@ let BIGNUM_COPRIME_SUBROUTINE_CORRECT = prove
                   bignum_from_memory(y,val n) s = b)
              (\s. read PC s = returnaddress /\
                   C_RETURN s = if coprime(a,b) then word 1 else word 0)
-             (MAYCHANGE [PC; X0; X1; X2; X3; X5; X6; X7; X8; X9; X10; X11;
-                         X12; X13; X14; X15; X16; X17] ,,
-              MAYCHANGE SOME_FLAGS ,,
+             (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bignum(w,2 * MAX (val m) (val n));
                        memory :> bytes(word_sub stackpointer (word 16),16)])`,
   ARM_ADD_RETURN_STACK_TAC

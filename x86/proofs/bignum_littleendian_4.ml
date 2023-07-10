@@ -88,7 +88,7 @@ let BIGNUM_FROMLEBYTES_4_SUBROUTINE_CORRECT = time prove
            (\s. read RIP s = returnaddress /\
                 read RSP s = word_add stackpointer (word 8) /\
                 bignum_from_memory (z,4) s = num_of_bytelist l)
-          (MAYCHANGE [RIP; RSP; RAX] ,,
+          (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bignum(z,4)])`,
   X86_PROMOTE_RETURN_NOSTACK_TAC bignum_littleendian_4_mc
     BIGNUM_FROMLEBYTES_4_CORRECT);;
@@ -136,7 +136,7 @@ let BIGNUM_TOLEBYTES_4_SUBROUTINE_CORRECT = time prove
            (\s. read RIP s = returnaddress /\
                 read RSP s = word_add stackpointer (word 8) /\
                 read (memory :> bytelist(z,32)) s = bytelist_of_num 32 n)
-          (MAYCHANGE [RIP; RSP; RAX] ,,
+          (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bignum(z,4)])`,
   X86_PROMOTE_RETURN_NOSTACK_TAC bignum_littleendian_4_mc
     BIGNUM_TOLEBYTES_4_CORRECT);;
@@ -184,7 +184,7 @@ let BIGNUM_LITTLEENDIAN_4_SUBROUTINE_CORRECT = time prove
            (\s. read RIP s = returnaddress /\
                 read RSP s = word_add stackpointer (word 8) /\
                 bignum_from_memory(z,4) s = n)
-          (MAYCHANGE [RIP; RSP; RAX] ,,
+          (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bignum(z,4)])`,
   X86_PROMOTE_RETURN_NOSTACK_TAC bignum_littleendian_4_mc
     BIGNUM_LITTLEENDIAN_4_CORRECT);;
@@ -213,7 +213,7 @@ let WINDOWS_BIGNUM_FROMLEBYTES_4_SUBROUTINE_CORRECT = time prove
            (\s. read RIP s = returnaddress /\
                 read RSP s = word_add stackpointer (word 8) /\
                 bignum_from_memory (z,4) s = num_of_bytelist l)
-          (MAYCHANGE [RIP; RSP; RAX] ,,
+          (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bignum(z,4);
                       memory :> bytes(word_sub stackpointer (word 16),16)])`,
   WINDOWS_X86_WRAP_NOSTACK_TAC windows_bignum_littleendian_4_mc
@@ -236,7 +236,7 @@ let WINDOWS_BIGNUM_TOLEBYTES_4_SUBROUTINE_CORRECT = time prove
            (\s. read RIP s = returnaddress /\
                 read RSP s = word_add stackpointer (word 8) /\
                 read (memory :> bytelist(z,32)) s = bytelist_of_num 32 n)
-          (MAYCHANGE [RIP; RSP; RAX] ,,
+          (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bignum(z,4);
                       memory :> bytes(word_sub stackpointer (word 16),16)])`,
   WINDOWS_X86_WRAP_NOSTACK_TAC windows_bignum_littleendian_4_mc
@@ -259,7 +259,7 @@ let WINDOWS_BIGNUM_LITTLEENDIAN_4_SUBROUTINE_CORRECT = time prove
            (\s. read RIP s = returnaddress /\
                 read RSP s = word_add stackpointer (word 8) /\
                 bignum_from_memory(z,4) s = n)
-          (MAYCHANGE [RIP; RSP; RAX] ,,
+          (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bignum(z,4);
                       memory :> bytes(word_sub stackpointer (word 16),16)])`,
   WINDOWS_X86_WRAP_NOSTACK_TAC windows_bignum_littleendian_4_mc

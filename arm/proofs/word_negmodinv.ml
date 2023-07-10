@@ -93,5 +93,5 @@ let WORD_NEGMODINV_SUBROUTINE_CORRECT = prove
           (\s. read PC s = returnaddress /\
                (ODD(val a)
                 ==> (val a * val(C_RETURN s) + 1 == 0) (mod (2 EXP 64))))
-             (MAYCHANGE [PC; X0; X1; X2])`,
+             (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI)`,
   ARM_ADD_RETURN_NOSTACK_TAC WORD_NEGMODINV_EXEC WORD_NEGMODINV_CORRECT);;

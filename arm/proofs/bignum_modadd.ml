@@ -331,7 +331,6 @@ let BIGNUM_MODADD_SUBROUTINE_CORRECT = prove
                   bignum_from_memory (m,val k) s = n)
              (\s. read PC s = returnaddress /\
                   bignum_from_memory (z,val k) s = (a + b) MOD n)
-             (MAYCHANGE [PC; X5; X6; X7; X8; X9] ,,
-              MAYCHANGE SOME_FLAGS ,,
+             (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bignum(z,val k)])`,
   ARM_ADD_RETURN_NOSTACK_TAC BIGNUM_MODADD_EXEC BIGNUM_MODADD_CORRECT);;

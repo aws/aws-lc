@@ -313,10 +313,9 @@ let BIGNUM_MONTSQR_P256K1_ALT_SUBROUTINE_CORRECT = time prove
                   (a EXP 2 <= 2 EXP 256 * p_256k1
                    ==> bignum_from_memory (z,4) s =
                        (inverse_mod p_256k1 (2 EXP 256) * a EXP 2) MOD p_256k1))
-             (MAYCHANGE [RIP; RSP; RSI; RAX; RCX; RDX; R8; R9; R10; R11] ,,
+             (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bytes(z,8 * 4);
-                         memory :> bytes(word_sub stackpointer (word 40),40)] ,,
-              MAYCHANGE SOME_FLAGS)`,
+                         memory :> bytes(word_sub stackpointer (word 40),40)])`,
   X86_PROMOTE_RETURN_STACK_TAC
    bignum_montsqr_p256k1_alt_mc BIGNUM_MONTSQR_P256K1_ALT_CORRECT
    `[RBX; R12; R13; R14; R15]` 40);;
@@ -346,10 +345,9 @@ let WINDOWS_BIGNUM_MONTSQR_P256K1_ALT_SUBROUTINE_CORRECT = time prove
                   (a EXP 2 <= 2 EXP 256 * p_256k1
                    ==> bignum_from_memory (z,4) s =
                        (inverse_mod p_256k1 (2 EXP 256) * a EXP 2) MOD p_256k1))
-             (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
+             (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bytes(z,8 * 4);
-                         memory :> bytes(word_sub stackpointer (word 56),56)] ,,
-              MAYCHANGE SOME_FLAGS)`,
+                         memory :> bytes(word_sub stackpointer (word 56),56)])`,
   WINDOWS_X86_WRAP_STACK_TAC
    windows_bignum_montsqr_p256k1_alt_mc bignum_montsqr_p256k1_alt_mc
    BIGNUM_MONTSQR_P256K1_ALT_CORRECT `[RBX; R12; R13; R14; R15]` 40);;

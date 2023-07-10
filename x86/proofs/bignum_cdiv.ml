@@ -1946,8 +1946,7 @@ let BIGNUM_CDIV_SUBROUTINE_CORRECT = prove
                    ==> bignum_from_memory (z,val k) s =
                        lowdigits (a DIV val m) (val k) /\
                        C_RETURN s = word(a MOD val m)))
-             (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
-              MAYCHANGE SOME_FLAGS ,,
+             (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bignum(z,val k);
                        memory :> bytes(word_sub stackpointer (word 40),40)])`,
   X86_PROMOTE_RETURN_STACK_TAC bignum_cdiv_mc BIGNUM_CDIV_CORRECT
@@ -1980,8 +1979,7 @@ let WINDOWS_BIGNUM_CDIV_SUBROUTINE_CORRECT = prove
                    ==> bignum_from_memory (z,val k) s =
                        lowdigits (a DIV val m) (val k) /\
                        WINDOWS_C_RETURN s = word(a MOD val m)))
-             (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
-              MAYCHANGE SOME_FLAGS ,,
+             (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bignum(z,val k);
                        memory :> bytes(word_sub stackpointer (word 56),56)])`,
   WINDOWS_X86_WRAP_STACK_TAC windows_bignum_cdiv_mc bignum_cdiv_mc

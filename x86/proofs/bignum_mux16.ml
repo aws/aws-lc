@@ -277,8 +277,7 @@ let BIGNUM_MUX16_SUBROUTINE_CORRECT = prove
            (\s. read RIP s = returnaddress /\
                 read RSP s = word_add stackpointer (word 8) /\
                 (val i < 16 ==> bignum_from_memory (z,val k) s = n (val i)))
-          (MAYCHANGE [RIP; RSP; RSI; RCX; RAX; RDX; R8; R9; R10] ,,
-           MAYCHANGE SOME_FLAGS ,,
+          (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bignum(z,val k)])`,
   X86_PROMOTE_RETURN_NOSTACK_TAC bignum_mux16_mc BIGNUM_MUX16_CORRECT);;
 
@@ -308,8 +307,7 @@ let WINDOWS_BIGNUM_MUX16_SUBROUTINE_CORRECT = prove
            (\s. read RIP s = returnaddress /\
                 read RSP s = word_add stackpointer (word 8) /\
                 (val i < 16 ==> bignum_from_memory (z,val k) s = n (val i)))
-          (MAYCHANGE [RIP; RSP; RCX; RAX; RDX; R8; R9; R10] ,,
-           MAYCHANGE SOME_FLAGS ,,
+          (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bignum(z,val k);
                       memory :> bytes(word_sub stackpointer (word 16),16)])`,
   CONV_TAC(ONCE_DEPTH_CONV EXPAND_CASES_CONV) THEN

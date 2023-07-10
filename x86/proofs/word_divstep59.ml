@@ -1706,10 +1706,9 @@ let WORD_DIVSTEP59_SUBROUTINE_CORRECT = prove
               read (memory :> bytes64(word_add m (word 8))) s = iword(M$1$2) /\
               read (memory :> bytes64(word_add m (word 16))) s = iword(M$2$1) /\
               read (memory :> bytes64(word_add m (word 24))) s = iword(M$2$2)))
-        (MAYCHANGE [RIP; RSP; RDI; RSI; RAX; RCX; RDX; R8; R9; R10; R11] ,,
+        (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
          MAYCHANGE [memory :> bytes(m,32);
-                   memory :> bytes(word_sub stackpointer (word 32),32)] ,,
-         MAYCHANGE SOME_FLAGS)`,
+                   memory :> bytes(word_sub stackpointer (word 32),32)])`,
    X86_PROMOTE_RETURN_STACK_TAC word_divstep59_mc WORD_DIVSTEP59_CORRECT
     `[RBX; RBP; R12; R13]` 32);;
 
@@ -1742,10 +1741,9 @@ let WINDOWS_WORD_DIVSTEP59_SUBROUTINE_CORRECT = time prove
               read (memory :> bytes64(word_add m (word 8))) s = iword(M$1$2) /\
               read (memory :> bytes64(word_add m (word 16))) s = iword(M$2$1) /\
               read (memory :> bytes64(word_add m (word 24))) s = iword(M$2$2)))
-        (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
+        (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
          MAYCHANGE [memory :> bytes(m,32);
-                   memory :> bytes(word_sub stackpointer (word 48),48)] ,,
-         MAYCHANGE SOME_FLAGS)`,
+                   memory :> bytes(word_sub stackpointer (word 48),48)])`,
    WINDOWS_X86_WRAP_STACK_TAC
     windows_word_divstep59_mc word_divstep59_mc
     WORD_DIVSTEP59_CORRECT

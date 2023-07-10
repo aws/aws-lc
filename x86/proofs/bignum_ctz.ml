@@ -184,8 +184,7 @@ let BIGNUM_CTZ_SUBROUTINE_CORRECT = prove
                read RSP s' = word_add stackpointer (word 8) /\
                C_RETURN s' = if x = 0 then word(64 * val k)
                              else word(index 2 x))
-         (MAYCHANGE [RIP; RSP; RDI; RDX; RCX; RAX] ,,
-          MAYCHANGE SOME_FLAGS)`,
+         (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI)`,
   X86_PROMOTE_RETURN_NOSTACK_TAC bignum_ctz_mc BIGNUM_CTZ_CORRECT);;
 
 (* ------------------------------------------------------------------------- *)
@@ -210,8 +209,7 @@ let WINDOWS_BIGNUM_CTZ_SUBROUTINE_CORRECT = prove
                    read RSP s' = word_add stackpointer (word 8) /\
                    WINDOWS_C_RETURN s' = if x = 0 then word(64 * val k)
                                  else word(index 2 x))
-             (MAYCHANGE [RIP; RSP; RDX; RCX; RAX] ,,
-              MAYCHANGE SOME_FLAGS ,,
+             (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bytes(word_sub stackpointer (word 16),16)])`,
   WINDOWS_X86_WRAP_NOSTACK_TAC windows_bignum_ctz_mc bignum_ctz_mc
     BIGNUM_CTZ_CORRECT);;

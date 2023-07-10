@@ -322,8 +322,7 @@ let BIGNUM_TOMONT_P521_SUBROUTINE_CORRECT = prove
            (\s. read RIP s = returnaddress /\
                 read RSP s = word_add stackpointer (word 8) /\
                 bignum_from_memory (z,9) s = (2 EXP 576 * n) MOD p_521)
-          (MAYCHANGE [RIP; RSP; RSI; RAX; RDX; RCX; R8; R9; R10; R11] ,,
-           MAYCHANGE SOME_FLAGS ,,
+          (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bignum(z,9);
                       memory :> bytes(word_sub stackpointer (word 8),8)])`,
   X86_PROMOTE_RETURN_STACK_TAC bignum_tomont_p521_mc BIGNUM_TOMONT_P521_CORRECT
@@ -352,8 +351,7 @@ let WINDOWS_BIGNUM_TOMONT_P521_SUBROUTINE_CORRECT = prove
            (\s. read RIP s = returnaddress /\
                 read RSP s = word_add stackpointer (word 8) /\
                 bignum_from_memory (z,9) s = (2 EXP 576 * n) MOD p_521)
-          (MAYCHANGE [RIP; RSP; RAX; RDX; RCX; R8; R9; R10; R11] ,,
-           MAYCHANGE SOME_FLAGS ,,
+          (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bignum(z,9);
                       memory :> bytes(word_sub stackpointer (word 24),24)])`,
   WINDOWS_X86_WRAP_STACK_TAC

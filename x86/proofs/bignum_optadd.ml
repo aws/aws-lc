@@ -183,8 +183,7 @@ let BIGNUM_OPTADD_SUBROUTINE_CORRECT = prove
                   lowdigits (a + bitval(~(p = word 0)) * b) (val k) /\
                   C_RETURN s =
                   word(highdigits (a + bitval(~(p = word 0)) * b) (val k)))
-             (MAYCHANGE [RIP; RSP; RAX; RCX; R9; R10; R11] ,,
-              MAYCHANGE SOME_FLAGS ,,
+             (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bignum(z,val k)])`,
   X86_PROMOTE_RETURN_NOSTACK_TAC bignum_optadd_mc BIGNUM_OPTADD_CORRECT);;
 
@@ -217,8 +216,7 @@ let WINDOWS_BIGNUM_OPTADD_SUBROUTINE_CORRECT = prove
                   lowdigits (a + bitval(~(p = word 0)) * b) (val k) /\
                   WINDOWS_C_RETURN s =
                   word(highdigits (a + bitval(~(p = word 0)) * b) (val k)))
-             (MAYCHANGE [RIP; RSP; R8; RDX; RAX; RCX; R9; R10; R11] ,,
-              MAYCHANGE SOME_FLAGS ,,
+             (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bignum(z,val k);
                          memory :> bytes(word_sub stackpointer (word 16),16)])`,
   WINDOWS_X86_WRAP_NOSTACK_TAC windows_bignum_optadd_mc bignum_optadd_mc

@@ -85,6 +85,5 @@ let BIGNUM_ISZERO_SUBROUTINE_CORRECT = prove
                bignum_from_memory(a,val k) s = x)
           (\s'. read PC s' = returnaddress /\
                 C_RETURN s' = if x = 0 then word 1 else word 0)
-          (MAYCHANGE [PC; X0; X2; X3] ,,
-           MAYCHANGE SOME_FLAGS)`,
+          (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI)`,
   ARM_ADD_RETURN_NOSTACK_TAC BIGNUM_ISZERO_EXEC BIGNUM_ISZERO_CORRECT);;

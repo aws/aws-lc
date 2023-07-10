@@ -462,9 +462,8 @@ let BIGNUM_NORMALIZE_SUBROUTINE_CORRECT = time prove
                   bignum_from_memory (z,val k) s =
                   2 EXP (64 * val k - bitsize n) * n /\
                   C_RETURN s = word(64 * val k - bitsize n))
-             (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10] ,,
-              MAYCHANGE [memory :> bytes(z,8 * val k)] ,,
-              MAYCHANGE SOME_FLAGS)`,
+             (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
+              MAYCHANGE [memory :> bytes(z,8 * val k)])`,
   X86_PROMOTE_RETURN_NOSTACK_TAC bignum_normalize_mc BIGNUM_NORMALIZE_CORRECT);;
 
 (* ------------------------------------------------------------------------- *)
@@ -491,9 +490,8 @@ let WINDOWS_BIGNUM_NORMALIZE_SUBROUTINE_CORRECT = time prove
                   bignum_from_memory (z,val k) s =
                   2 EXP (64 * val k - bitsize n) * n /\
                   WINDOWS_C_RETURN s = word(64 * val k - bitsize n))
-             (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10] ,,
+             (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bytes(z,8 * val k);
-                         memory :> bytes(word_sub stackpointer (word 16),16)] ,,
-              MAYCHANGE SOME_FLAGS)`,
+                         memory :> bytes(word_sub stackpointer (word 16),16)])`,
   WINDOWS_X86_WRAP_NOSTACK_TAC windows_bignum_normalize_mc
     bignum_normalize_mc BIGNUM_NORMALIZE_CORRECT);;

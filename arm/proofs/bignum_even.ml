@@ -61,5 +61,5 @@ let BIGNUM_EVEN_SUBROUTINE_CORRECT = prove
                bignum_from_memory(a,val k) s = x)
           (\s. read PC s = returnaddress /\
                C_RETURN s = if EVEN x then word 1 else word 0)
-          (MAYCHANGE [PC; X0])`,
+          (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI)`,
   ARM_ADD_RETURN_NOSTACK_TAC BIGNUM_EVEN_EXEC BIGNUM_EVEN_CORRECT);;

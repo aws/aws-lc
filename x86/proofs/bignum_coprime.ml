@@ -3124,8 +3124,7 @@ let BIGNUM_COPRIME_SUBROUTINE_CORRECT = prove
              (\s. read RIP s = returnaddress /\
                   read RSP s = word_add stackpointer (word 8) /\
                   C_RETURN s = if coprime(a,b) then word 1 else word 0)
-             (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; RDI; RSI; R9; R10; R11] ,,
-              MAYCHANGE SOME_FLAGS ,,
+             (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bignum(w,2 * MAX (val m) (val n));
                        memory :> bytes(word_sub stackpointer (word 96),96)])`,
   X86_PROMOTE_RETURN_STACK_TAC bignum_coprime_mc BIGNUM_COPRIME_CORRECT
@@ -3158,8 +3157,7 @@ let WINDOWS_BIGNUM_COPRIME_SUBROUTINE_CORRECT = prove
              (\s. read RIP s = returnaddress /\
                   read RSP s = word_add stackpointer (word 8) /\
                   WINDOWS_C_RETURN s = if coprime(a,b) then word 1 else word 0)
-             (MAYCHANGE [RIP; RSP; R8; RAX; RCX; RDX; R9; R10; R11] ,,
-              MAYCHANGE SOME_FLAGS ,,
+             (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bignum(w,2 * MAX (val m) (val n));
                        memory :> bytes(word_sub stackpointer (word 112),112)])`,
   WINDOWS_X86_WRAP_STACK_TAC windows_bignum_coprime_mc bignum_coprime_mc

@@ -518,7 +518,6 @@ let BIGNUM_MADD_SUBROUTINE_CORRECT = prove
                (val m + val n <= val p
                 ==> 2 EXP (64 * val p) * val(C_RETURN s) +
                     bignum_from_memory (z,val p) s = a * b + c))
-          (MAYCHANGE [PC; X0; X6; X7; X8; X9; X10; X11; X12; X13; X14; X15] ,,
-           MAYCHANGE SOME_FLAGS ,,
+          (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bignum(z,val p)])`,
   ARM_ADD_RETURN_NOSTACK_TAC BIGNUM_MADD_EXEC BIGNUM_MADD_CORRECT);;

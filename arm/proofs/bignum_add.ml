@@ -640,7 +640,6 @@ let BIGNUM_ADD_SUBROUTINE_CORRECT = prove
                   2 EXP (64 * val p) * val(C_RETURN s) +
                   bignum_from_memory (z,val p) s =
                   lowdigits a (val p) + lowdigits b (val p))
-             (MAYCHANGE [PC; X0; X2; X4; X6; X7; X8] ,,
-              MAYCHANGE SOME_FLAGS ,,
+             (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bignum(z,val p)])`,
   ARM_ADD_RETURN_NOSTACK_TAC BIGNUM_ADD_EXEC BIGNUM_ADD_CORRECT);;

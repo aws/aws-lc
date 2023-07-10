@@ -7403,8 +7403,7 @@ let CURVE25519_X25519_SUBROUTINE_CORRECT = time prove
          (\s. read RIP s = returnaddress /\
               read RSP s = word_add stackpointer (word 8) /\
               bignum_from_memory (res,4) s = rfcx25519(n,X))
-         (MAYCHANGE [RIP; RSP; RDI; RSI; RAX; RCX; RDX; R8; R9; R10; R11] ,,
-          MAYCHANGE SOME_FLAGS ,,
+         (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
           MAYCHANGE [memory :> bytes(res,32);
                      memory :> bytes(word_sub stackpointer (word 464),464)])`,
   X86_PROMOTE_RETURN_STACK_TAC
@@ -7428,8 +7427,7 @@ let CURVE25519_X25519_BYTE_SUBROUTINE_CORRECT = prove
          (\s. read RIP s = returnaddress /\
               read RSP s = word_add stackpointer (word 8) /\
               read (memory :> bytes(res,32)) s = rfcx25519(n,X))
-         (MAYCHANGE [RIP; RSP; RDI; RSI; RAX; RCX; RDX; R8; R9; R10; R11] ,,
-          MAYCHANGE SOME_FLAGS ,,
+         (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
           MAYCHANGE [memory :> bytes(res,32);
                      memory :> bytes(word_sub stackpointer (word 464),464)])`,
   REWRITE_TAC[GSYM(CONV_RULE NUM_REDUCE_CONV
@@ -7461,8 +7459,7 @@ let WINDOWS_CURVE25519_X25519_SUBROUTINE_CORRECT = time prove
          (\s. read RIP s = returnaddress /\
               read RSP s = word_add stackpointer (word 8) /\
               bignum_from_memory (res,4) s = rfcx25519(n,X))
-         (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
-          MAYCHANGE SOME_FLAGS ,,
+         (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
           MAYCHANGE [memory :> bytes(res,32);
                      memory :> bytes(word_sub stackpointer (word 480),480)])`,
   WINDOWS_X86_WRAP_STACK_TAC
@@ -7487,8 +7484,7 @@ let WINDOWS_CURVE25519_X25519_BYTE_SUBROUTINE_CORRECT = prove
          (\s. read RIP s = returnaddress /\
               read RSP s = word_add stackpointer (word 8) /\
               read (memory :> bytes(res,32)) s = rfcx25519(n,X))
-         (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
-          MAYCHANGE SOME_FLAGS ,,
+         (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
           MAYCHANGE [memory :> bytes(res,32);
                      memory :> bytes(word_sub stackpointer (word 480),480)])`,
   REWRITE_TAC[GSYM(CONV_RULE NUM_REDUCE_CONV

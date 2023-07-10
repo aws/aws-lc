@@ -107,13 +107,6 @@ let arm = define
              arm_execute instr) s s'`;;
 
 (* ------------------------------------------------------------------------- *)
-(* Shorthand for the set of all flags for modification lists.                *)
-(* ------------------------------------------------------------------------- *)
-
-let SOME_FLAGS = new_definition
- `SOME_FLAGS = [NF; ZF; CF; VF]`;;
-
-(* ------------------------------------------------------------------------- *)
 (* Normalize an address in the same style as x86 bsid.                       *)
 (* ------------------------------------------------------------------------- *)
 
@@ -583,7 +576,8 @@ let ARM_SUBROUTINE_SIM_TAC (machinecode,execth,offset,submachinecode,subth) =
     and svar0 = mk_var("s",`:armstate`) in
     let ilist = map (vsubst[svar,svar0]) ilist0 in
     MP_TAC(TWEAK_PC_OFFSET(SPECL ilist subth)) THEN
-    ASM_REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS] THEN
+    ASM_REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS;
+                    MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI] THEN
     REWRITE_TAC[ALLPAIRS; ALL; PAIRWISE; NONOVERLAPPING_CLAUSES] THEN
     ANTS_TAC THENL
      [CONV_TAC(ONCE_DEPTH_CONV NORMALIZE_RELATIVE_ADDRESS_CONV) THEN
@@ -690,21 +684,28 @@ let ARM_ADD_RETURN_NOSTACK_TAC =
     ONCE_REWRITE_TAC[IMP_CONJ_ALT] THEN DISCH_TAC THEN
     MATCH_MP_TAC ENSURES_SUBLEMMA_THM THEN
     REWRITE_TAC[SUBSUMED_REFL] THEN ASM_MESON_TAC[]) in
+  let ENSURES_TRANS_SUBSUMED = prove(`!P Q R C C'.
+        C ,, C = C /\ C subsumed C' /\
+        ensures step P Q C /\ ensures step Q R C
+        ==> ensures step P R C'`,
+    REPEAT STRIP_TAC THEN
+    ASM_MESON_TAC[ENSURES_TRANS_SIMPLE; ENSURES_FRAME_SUBSUMED]) in
   let lemma2 = prove
-   (`C ,, C = C /\
+   (`C ,, C = C /\ C subsumed C' /\
      (!s s'. program_decodes s /\ pcdata s /\ returndata s /\ P s /\
              Q s' /\ C s s'
              ==> program_decodes s' /\ returndata s') /\
      ensures step (\s. program_decodes s /\ returndata s /\ Q s) R C
      ==> ensures step (\s. program_decodes s /\ pcdata s /\ P s) Q C
           ==> ensures step
-               (\s. program_decodes s /\ pcdata s /\ returndata s /\ P s) R C`,
+               (\s. program_decodes s /\ pcdata s /\ returndata s /\ P s) R C'`,
     ONCE_REWRITE_TAC[TAUT
-     `a /\ p /\ q ==> r ==> s <=> a ==> p ==> r ==> q ==> s`] THEN
-    DISCH_TAC THEN DISCH_TAC THEN DISCH_TAC THEN
+     `a /\ p /\ subsm /\ q ==> r ==> s <=>
+      a ==> p ==> subsm ==> r ==> q ==> s`] THEN
+    DISCH_TAC THEN DISCH_TAC THEN DISCH_TAC THEN DISCH_TAC THEN
     MATCH_MP_TAC(ONCE_REWRITE_RULE
-     [TAUT `p /\ q /\ r ==> s <=> p /\ q ==> r ==> s`]
-     ENSURES_TRANS_SIMPLE) THEN
+     [TAUT `p /\ q /\ r /\ r2 ==> s <=> p /\ q /\ r ==> r2 ==> s`]
+     ENSURES_TRANS_SUBSUMED) THEN
     ASM_REWRITE_TAC[] THEN
     GEN_REWRITE_TAC (LAND_CONV o BINDER_CONV)
      [TAUT `p /\ q /\ r <=> r /\ p /\ q`] THEN
@@ -714,10 +715,12 @@ let ARM_ADD_RETURN_NOSTACK_TAC =
           ENSURES_PRECONDITION_THM)) THEN
     SIMP_TAC[]) in
   fun execth coreth ->
+    REWRITE_TAC[MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI] THEN
     MP_TAC coreth THEN
     REPEAT(MATCH_MP_TAC MONO_FORALL THEN GEN_TAC) THEN
     REWRITE_TAC[NONOVERLAPPING_CLAUSES; ALLPAIRS; ALL] THEN
-    REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS] THEN
+    REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS;
+      MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI] THEN
     DISCH_THEN(fun th ->
       REPEAT GEN_TAC THEN
       TRY(DISCH_THEN(REPEAT_TCL CONJUNCTS_THEN ASSUME_TAC)) THEN
@@ -729,6 +732,7 @@ let ARM_ADD_RETURN_NOSTACK_TAC =
       ALL_TAC]) THEN
     MATCH_MP_TAC lemma2 THEN REWRITE_TAC[] THEN REPEAT CONJ_TAC THENL
      [MAYCHANGE_IDEMPOT_TAC;
+      SUBSUMED_MAYCHANGE_TAC;
       REPEAT GEN_TAC THEN REWRITE_TAC(!simulation_precanon_thms) THEN
       REPEAT(DISCH_THEN(CONJUNCTS_THEN2 STRIP_ASSUME_TAC MP_TAC)) THEN
       REWRITE_TAC[MAYCHANGE; SEQ_ID] THEN
@@ -758,6 +762,7 @@ let ARM_ADD_RETURN_STACK_TAC =
     let n = let n0 = length regs / 2 in
             if 16 * n0 = stackoff then n0 else n0 + 1 in
     MP_TAC coreth THEN
+    REWRITE_TAC [MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI] THEN
     REPEAT(MATCH_MP_TAC mono2lemma THEN GEN_TAC) THEN
     (if free_in sp_tm (concl coreth) then
       DISCH_THEN(fun th -> WORD_FORALL_OFFSET_TAC stackoff THEN MP_TAC th) THEN

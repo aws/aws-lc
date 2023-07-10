@@ -178,9 +178,8 @@ let BIGNUM_CMUL_P256K1_SUBROUTINE_CORRECT = time prove
                   read RSP s = word_add stackpointer (word 8) /\
                   (a < p_256k1
                    ==> bignum_from_memory (z,4) s = (val c * a) MOD p_256k1))
-             (MAYCHANGE [RIP; RSP; RSI; RAX; RDX; RCX; R8; R9; R10] ,,
-              MAYCHANGE [memory :> bytes(z,8 * 4)] ,,
-              MAYCHANGE SOME_FLAGS)`,
+             (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
+              MAYCHANGE [memory :> bytes(z,8 * 4)])`,
   X86_PROMOTE_RETURN_NOSTACK_TAC bignum_cmul_p256k1_mc
     BIGNUM_CMUL_P256K1_CORRECT);;
 
@@ -208,9 +207,8 @@ let WINDOWS_BIGNUM_CMUL_P256K1_SUBROUTINE_CORRECT = time prove
                   read RSP s = word_add stackpointer (word 8) /\
                   (a < p_256k1
                    ==> bignum_from_memory (z,4) s = (val c * a) MOD p_256k1))
-             (MAYCHANGE [RIP; RSP; RAX; RDX; RCX; R8; R9; R10] ,,
+             (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bytes(z,8 * 4);
-                         memory :> bytes(word_sub stackpointer (word 16),16)] ,,
-              MAYCHANGE SOME_FLAGS)`,
+                         memory :> bytes(word_sub stackpointer (word 16),16)])`,
   WINDOWS_X86_WRAP_NOSTACK_TAC windows_bignum_cmul_p256k1_mc
     bignum_cmul_p256k1_mc BIGNUM_CMUL_P256K1_CORRECT);;

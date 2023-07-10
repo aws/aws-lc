@@ -174,8 +174,7 @@ let BIGNUM_TRIPLE_P256K1_SUBROUTINE_CORRECT = time prove
                   bignum_from_memory (x,4) s = a)
              (\s. read PC s = returnaddress /\
                   bignum_from_memory (z,4) s = (3 * a) MOD p_256k1)
-             (MAYCHANGE [PC; X2; X3; X4; X5; X6; X7] ,,
-              MAYCHANGE [memory :> bytes(z,8 * 4)] ,,
-              MAYCHANGE SOME_FLAGS)`,
+             (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
+              MAYCHANGE [memory :> bytes(z,8 * 4)])`,
   ARM_ADD_RETURN_NOSTACK_TAC BIGNUM_TRIPLE_P256K1_EXEC
     BIGNUM_TRIPLE_P256K1_CORRECT);;

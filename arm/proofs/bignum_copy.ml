@@ -173,6 +173,6 @@ let BIGNUM_COPY_SUBROUTINE_CORRECT = prove
                 bignum_from_memory (x,val n) s = a)
            (\s. read PC s = returnaddress /\
                 bignum_from_memory (z,val k) s =  lowdigits a (val k))
-          (MAYCHANGE [PC; X2; X4; X5] ,, MAYCHANGE SOME_FLAGS ,,
+          (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bignum(z,val k)])`,
   ARM_ADD_RETURN_NOSTACK_TAC BIGNUM_COPY_EXEC BIGNUM_COPY_CORRECT);;

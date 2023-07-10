@@ -232,7 +232,7 @@ let BIGNUM_TOLEBYTES_P521_SUBROUTINE_CORRECT = time prove
                 bignum_from_memory(x,9) s = n)
            (\s. read PC s = returnaddress /\
                 read (memory :> bytelist(z,66)) s = bytelist_of_num 66 n)
-          (MAYCHANGE [PC; X2] ,,
+          (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bytes(z,66)])`,
   ARM_ADD_RETURN_NOSTACK_TAC BIGNUM_TOLEBYTES_P521_EXEC
     BIGNUM_TOLEBYTES_P521_CORRECT);;

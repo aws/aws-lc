@@ -2116,8 +2116,7 @@ let EDWARDS25519_EPDOUBLE_SUBROUTINE_CORRECT = time prove
                    ==> edwards25519_exprojective
                         (edwards_add edwards25519 P1 P1)
                         (bignum_quadruple_from_memory (p3,4) s))
-         (MAYCHANGE [RIP; RSP; RSI; RAX; RCX; RDX; R8; R9; R10; R11] ,,
-           MAYCHANGE SOME_FLAGS ,,
+         (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bytes(p3,128);
                       memory :> bytes(word_sub stackpointer (word 200),200)])`,
   X86_PROMOTE_RETURN_STACK_TAC
@@ -2152,8 +2151,7 @@ let WINDOWS_EDWARDS25519_EPDOUBLE_SUBROUTINE_CORRECT = prove
                    ==> edwards25519_exprojective
                         (edwards_add edwards25519 P1 P1)
                         (bignum_quadruple_from_memory (p3,4) s))
-         (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
-          MAYCHANGE SOME_FLAGS ,,
+         (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
           MAYCHANGE [memory :> bytes(p3,128);
                      memory :> bytes(word_sub stackpointer (word 216),216)])`,
   WINDOWS_X86_WRAP_STACK_TAC

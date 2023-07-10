@@ -207,7 +207,6 @@ let BIGNUM_MODOPTNEG_SUBROUTINE_CORRECT = prove
                   (a <= n
                    ==> bignum_from_memory(z,val k) s =
                        if p = word 0 \/ a = 0 then a else n - a))
-             (MAYCHANGE [PC; X2; X5; X6; X7] ,,
-              MAYCHANGE SOME_FLAGS ,,
+             (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bignum(z,val k)])`,
   ARM_ADD_RETURN_NOSTACK_TAC BIGNUM_MODOPTNEG_EXEC BIGNUM_MODOPTNEG_CORRECT);;

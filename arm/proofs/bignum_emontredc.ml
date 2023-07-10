@@ -487,7 +487,6 @@ let BIGNUM_EMONTREDC_SUBROUTINE_CORRECT = time prove
                        (2 EXP (64 * val k) * val(C_RETURN s) +
                         bignum_from_memory
                           (word_add z (word(8 * val k)),val k) s)))
-             (MAYCHANGE [PC; X0; X1; X4; X5; X6; X7; X8; X9; X10; X11] ,,
-              MAYCHANGE [memory :> bytes(z,8 * 2 * val k)] ,,
-              MAYCHANGE SOME_FLAGS)`,
+             (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
+              MAYCHANGE [memory :> bytes(z,8 * 2 * val k)])`,
   ARM_ADD_RETURN_NOSTACK_TAC BIGNUM_EMONTREDC_EXEC BIGNUM_EMONTREDC_CORRECT);;

@@ -265,8 +265,7 @@ let BIGNUM_OPTSUBADD_SUBROUTINE_CORRECT = prove
                   C_RETURN s =
                   iword(int_sgn(ival p) *
                         (&a + int_sgn(ival p) * &b) div &2 pow (64 * val k)))
-             (MAYCHANGE [RIP; RSP; RAX; RCX; R9; R10; R11] ,,
-              MAYCHANGE SOME_FLAGS ,,
+             (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bignum(z,val k)])`,
   X86_PROMOTE_RETURN_NOSTACK_TAC bignum_optsubadd_mc BIGNUM_OPTSUBADD_CORRECT);;
 
@@ -300,8 +299,7 @@ let WINDOWS_BIGNUM_OPTSUBADD_SUBROUTINE_CORRECT = prove
                   WINDOWS_C_RETURN s =
                   iword(int_sgn(ival p) *
                         (&a + int_sgn(ival p) * &b) div &2 pow (64 * val k)))
-             (MAYCHANGE [RIP; RSP; R8; RDX; RAX; RCX; R9; R10; R11] ,,
-              MAYCHANGE SOME_FLAGS ,,
+             (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bignum(z,val k);
                          memory :> bytes(word_sub stackpointer (word 16),16)])`,
   WINDOWS_X86_WRAP_NOSTACK_TAC windows_bignum_optsubadd_mc bignum_optsubadd_mc

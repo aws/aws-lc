@@ -280,8 +280,7 @@ let BIGNUM_MODSUB_SUBROUTINE_CORRECT = prove
              (\s. read RIP s = returnaddress /\
                   read RSP s = word_add stackpointer (word 8) /\
                   &(bignum_from_memory (z,val k) s) = (&a - &b) rem &n)
-             (MAYCHANGE [RIP; RSP; RAX; R9; R10; R11] ,,
-              MAYCHANGE SOME_FLAGS ,,
+             (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bignum(z,val k)])`,
   X86_PROMOTE_RETURN_NOSTACK_TAC bignum_modsub_mc BIGNUM_MODSUB_CORRECT);;
 
@@ -314,8 +313,7 @@ let WINDOWS_BIGNUM_MODSUB_SUBROUTINE_CORRECT = prove
              (\s. read RIP s = returnaddress /\
                   read RSP s = word_add stackpointer (word 8) /\
                   &(bignum_from_memory (z,val k) s) = (&a - &b) rem &n)
-             (MAYCHANGE [RIP; RSP; R8; RCX; RDX; RAX; R9; R10; R11] ,,
-              MAYCHANGE SOME_FLAGS ,,
+             (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bignum(z,val k);
                          memory :> bytes(word_sub stackpointer (word 16),16)])`,
   WINDOWS_X86_WRAP_NOSTACK_TAC windows_bignum_modsub_mc bignum_modsub_mc

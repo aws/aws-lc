@@ -855,7 +855,6 @@ let BIGNUM_MONTMUL_SUBROUTINE_CORRECT = time prove
                 (ODD n /\ a * b <= 2 EXP (64 * val k) * n
                  ==> bignum_from_memory (z,val k) s =
                      (inverse_mod n (2 EXP (64 * val k)) * a * b) MOD n))
-           (MAYCHANGE [PC; X5; X6; X7; X8; X9; X10; X11; X12; X13; X14] ,,
-            MAYCHANGE [memory :> bytes(z,8 * val k)] ,,
-            MAYCHANGE SOME_FLAGS)`,
+           (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
+            MAYCHANGE [memory :> bytes(z,8 * val k)])`,
   ARM_ADD_RETURN_NOSTACK_TAC BIGNUM_MONTMUL_EXEC BIGNUM_MONTMUL_CORRECT);;

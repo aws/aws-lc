@@ -897,8 +897,7 @@ let BIGNUM_AMONTREDC_SUBROUTINE_CORRECT = time prove
                    ==> (bignum_from_memory (z,val k) s ==
                         inverse_mod n (2 EXP (64 * val p)) *
                         lowdigits a (val k + val p)) (mod n)))
-             (MAYCHANGE [PC; X6; X7; X8; X9; X10; X11; X12; X13; X14] ,,
-              MAYCHANGE [memory :> bytes(z,8 * val k)] ,,
-              MAYCHANGE SOME_FLAGS)`,
+             (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
+              MAYCHANGE [memory :> bytes(z,8 * val k)])`,
   ARM_ADD_RETURN_NOSTACK_TAC
     BIGNUM_AMONTREDC_EXEC BIGNUM_AMONTREDC_CORRECT);;

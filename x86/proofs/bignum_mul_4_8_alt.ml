@@ -159,9 +159,8 @@ let BIGNUM_MUL_4_8_ALT_SUBROUTINE_CORRECT = time prove
           (\s. read RIP s = returnaddress /\
                read RSP s = word_add stackpointer (word 8) /\
                bignum_from_memory (z,8) s = a * b)
-          (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10] ,,
-           MAYCHANGE [memory :> bytes(z,8 * 8)] ,,
-           MAYCHANGE SOME_FLAGS)`,
+          (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
+           MAYCHANGE [memory :> bytes(z,8 * 8)])`,
   X86_PROMOTE_RETURN_NOSTACK_TAC bignum_mul_4_8_alt_mc
      BIGNUM_MUL_4_8_ALT_CORRECT);;
 
@@ -190,9 +189,8 @@ let WINDOWS_BIGNUM_MUL_4_8_ALT_SUBROUTINE_CORRECT = time prove
           (\s. read RIP s = returnaddress /\
                read RSP s = word_add stackpointer (word 8) /\
                bignum_from_memory (z,8) s = a * b)
-          (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10] ,,
+          (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bytes(z,8 * 8);
-                      memory :> bytes(word_sub stackpointer (word 16),16)] ,,
-           MAYCHANGE SOME_FLAGS)`,
+                      memory :> bytes(word_sub stackpointer (word 16),16)])`,
   WINDOWS_X86_WRAP_NOSTACK_TAC windows_bignum_mul_4_8_alt_mc
     bignum_mul_4_8_alt_mc  BIGNUM_MUL_4_8_ALT_CORRECT);;

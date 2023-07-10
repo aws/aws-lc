@@ -3,24 +3,29 @@ phases:
   install:
     commands:
       - yum -y install ocaml
+      # Perl dependencies for OPAM
       - yum -y install perl-CPAN
-      - perl -MCPAN -e'install "IPC::System::Simple"
-      - perl -MCPAN -e'install "String::ShellQuote"'
+      - SHELL=/bin/sh perl -MCPAN -e'install "IPC::System::Simple"'
+      - SHELL=/bin/sh perl -MCPAN -e'install "String::ShellQuote"'
+      # Install OPAM
       - wget https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh
       - chmod +x install.sh
-      - ./install.sh
-      - opam init
+      - echo "/usr/local/bin" | sh ./install.sh
+      - opam init --disable-sandboxing
       - opam switch create 4.05.0
-      - eval $(opam env)
+      - eval $(opam env --switch=4.05.0)
       - echo $(ocamlc -version)
-      - opam pin add camlp5 7.10
-      - opam install num
+      - opam pin -y add camlp5 7.10
+      - opam install -y num
+      - echo $(camlp5 -v)
+      # Build s2n-bignum
       - cd ${CODEBUILD_SRC_DIR_hol_light}
       - make
   build:
     commands:
       - cd ${CODEBUILD_SRC_DIR}/${S2N_BIGNUM_ARCH}
       - export HOLDIR=${CODEBUILD_SRC_DIR_hol_light}
-      - make sematest
-      - cd proofs
-      - echo 'loadt "arm/proofs/base.ml";;' | HOLLIGHT_DIR=$(HOLDIR) ocaml -init $(HOLDIR)/hol.ml
+      - echo $HOLDIR
+      - eval $(opam env --switch=4.05.0)
+      - echo "`camlp5 -where`"
+      - make sematest HOLLIGHT="HOLLIGHT_DIR=${HOLDIR} ocaml -I `camlp5 -where` -init ${HOLDIR}/hol.ml"

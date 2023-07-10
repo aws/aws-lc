@@ -505,8 +505,7 @@ let BIGNUM_CMADD_SUBROUTINE_CORRECT = prove
                   lowdigits (d + val c * a) (val p) /\
                   (val n <= val p
                    ==> C_RETURN s = word(highdigits (d + val c * a) (val p))))
-             (MAYCHANGE [RIP; RSP; RAX; RDI; RCX; RDX; R9; R10; R11] ,,
-              MAYCHANGE SOME_FLAGS ,,
+             (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bignum(z,val p);
                        memory :> bytes(word_sub stackpointer (word 8),8)])`,
   X86_PROMOTE_RETURN_STACK_TAC bignum_cmadd_mc BIGNUM_CMADD_CORRECT
@@ -541,8 +540,7 @@ let WINDOWS_BIGNUM_CMADD_SUBROUTINE_CORRECT = prove
                   (val n <= val p
                    ==> WINDOWS_C_RETURN s =
                        word(highdigits (d + val c * a) (val p))))
-             (MAYCHANGE [RIP; RSP; R8; RAX; RCX; RDX; R9; R10; R11] ,,
-              MAYCHANGE SOME_FLAGS ,,
+             (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bignum(z,val p);
                        memory :> bytes(word_sub stackpointer (word 24),24)])`,
   WINDOWS_X86_WRAP_STACK_TAC windows_bignum_cmadd_mc bignum_cmadd_mc

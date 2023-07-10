@@ -233,8 +233,7 @@ let BIGNUM_DIVMOD10_SUBROUTINE_CORRECT = time prove
                 read RSP s = word_add stackpointer (word 8) /\
                 bignum_from_memory (z,val k) s = n DIV 10 /\
                 C_RETURN s = word (n MOD 10))
-          (MAYCHANGE [RIP; RSP; RDI; RAX; RDX; RCX; R8; R9; R10] ,,
-           MAYCHANGE SOME_FLAGS ,,
+          (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bignum(z,val k)])`,
   X86_PROMOTE_RETURN_NOSTACK_TAC bignum_divmod10_mc BIGNUM_DIVMOD10_CORRECT);;
 
@@ -261,8 +260,7 @@ let WINDOWS_BIGNUM_DIVMOD10_SUBROUTINE_CORRECT = time prove
                 read RSP s = word_add stackpointer (word 8) /\
                 bignum_from_memory (z,val k) s = n DIV 10 /\
                 WINDOWS_C_RETURN s = word (n MOD 10))
-          (MAYCHANGE [RIP; RSP; RAX; RDX; RCX; R8; R9; R10] ,,
-           MAYCHANGE SOME_FLAGS ,,
+          (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bignum(z,val k);
                       memory :> bytes(word_sub stackpointer (word 16),16)])`,
   WINDOWS_X86_WRAP_NOSTACK_TAC windows_bignum_divmod10_mc bignum_divmod10_mc
