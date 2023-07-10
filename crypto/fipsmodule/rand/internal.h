@@ -31,7 +31,7 @@ extern "C" {
 #elif defined(OPENSSL_FUCHSIA)
 #define OPENSSL_RAND_FUCHSIA
 #elif defined(OPENSSL_TRUSTY)
-// Trusty's PRNG file is, for now, maintained outside the tree.
+#define OPENSSL_RAND_TRUSTY
 #elif defined(OPENSSL_WINDOWS)
 #define OPENSSL_RAND_WINDOWS
 #else
