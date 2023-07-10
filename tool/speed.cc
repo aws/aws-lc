@@ -1466,9 +1466,14 @@ static EVP_PKEY * evp_generate_key(const int curve_nid) {
 }
 
 static int ec_key_check_peer(const EC_KEY *ec_key) {
+#if !defined(OPENSSL_BENCHMARK)
+  // If building against AWS-LC, use its specialised fips function if fips-mode
+  // is enabled.
   if (FIPS_mode() == 1) {
     return EC_KEY_check_fips(ec_key);
   }
+#endif
+
   return EC_KEY_check_key(ec_key);
 }
 
