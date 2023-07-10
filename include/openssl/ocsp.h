@@ -25,25 +25,25 @@ extern "C" {
 // OCSP_NOCERTS is for |OCSP_request_sign| if no certificates are included
 // in the |OCSP_REQUEST|. Certificates are optional.
 #define OCSP_NOCERTS 0x1
-// OCSP_NOINTERN is for |OCSP_basic_verify|. Searches for certificates the
-// responder may have included in |bs| will be done, unless the flags contain
-// |OCSP_NOINTERN|.
+// OCSP_NOINTERN is for |OCSP_basic_verify|. Certificates included within |bs|
+// by the responder will be searched for the signer certificate, unless the
+// |OCSP_NOINTERN| flag is set.
 #define OCSP_NOINTERN 0x2
 // OCSP_NOCHAIN is for |OCSP_basic_verify|. All certificates in |certs| and in
 // |bs| are considered as untrusted certificates for the construction of the
-// validation path for the signer certificate unless the OCSP_NOCHAIN flag is
+// validation path for the signer certificate unless the |OCSP_NOCHAIN| flag is
 // set.
 #define OCSP_NOCHAIN 0x8
 // OCSP_NOVERIFY is for |OCSP_basic_verify|. When setting this flag, the
-// |OCSP_BASICRESP|'s signature will still be verified, but setting this flag
-// skips additionally verifying the signer's certificate.
+// |OCSP_BASICRESP|'s signature will still be verified, but skips additionally
+// verifying the signer's certificate.
 #define OCSP_NOVERIFY 0x10
 // OCSP_NOEXPLICIT is for |OCSP_basic_verify|. We will check for explicit trust
 // for OCSP signing in the root CA certificate, unless the flags contain
-// OCSP_NOEXPLICIT.
+// |OCSP_NOEXPLICIT|.
 #define OCSP_NOEXPLICIT 0x20
-// OCSP_TRUSTOTHER is for |OCSP_basic_verify|. When setting this flag in OpenSSL,
-// if the reponse signer's cert is one of those in the |certs| stack then it is
+// OCSP_TRUSTOTHER is for |OCSP_basic_verify|. When this flag is set, if the
+// response signer's cert is one of those in the |certs| stack then it is
 // implicitly trusted.
 #define OCSP_TRUSTOTHER 0x200
 
