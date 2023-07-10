@@ -25,6 +25,7 @@ RUN set -ex && \
     apt-get -y --no-install-recommends install \
     software-properties-common \
     cmake \
+    curl \
     make \
     ninja-build \
     patch \
@@ -39,6 +40,7 @@ RUN set -ex && \
     llvm-dev \
     libicu-dev \
     libipc-run-perl \
+    libpcre2-dev \
     libreadline-dev \
     libudev-dev \
     zlib1g-dev \
