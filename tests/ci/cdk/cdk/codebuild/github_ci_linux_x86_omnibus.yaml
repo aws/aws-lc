@@ -338,7 +338,7 @@ batch:
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:amazonlinux-2023_clang-15x_latest
 
     - identifier: amazonlinux2023_clang15x_x86_64_sanitizer
-      buildspec: ./tests/ci/codebuild/linux-x86/run_sanitizer_tests.yml
+      buildspec: ./tests/ci/codebuild/common/run_sanitizer_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true

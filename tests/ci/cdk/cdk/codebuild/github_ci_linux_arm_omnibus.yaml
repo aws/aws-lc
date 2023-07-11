@@ -230,13 +230,17 @@ batch:
         compute-type: BUILD_GENERAL1_LARGE
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-aarch:amazonlinux-2023_clang-15x_latest
 
+    # Sanitizer is very slow on ARM.
+    # https://github.com/google/sanitizers/issues/1331
     - identifier: amazonlinux_2023_clang_14x_sanitizer
-      buildspec: ./tests/ci/codebuild/linux-aarch/run_sanitizer_tests.yml
+      buildspec: ./tests/ci/codebuild/common/run_sanitizer_tests.yml
       env:
         type: ARM_CONTAINER
         privileged-mode: true
         compute-type: BUILD_GENERAL1_LARGE
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-aarch:amazonlinux-2023_clang-15x_sanitizer_latest
+        variables:
+          AWS_LC_GO_TEST_TIMEOUT: '60m'
 
     # BoringSSL has 7k+ ssl runner tests, and the total number of the runner tests keep increasing.
     # When ASAN enabled, the tests take more than 1 hour to finish. The cause relates to https://github.com/google/sanitizers/issues/1331,
