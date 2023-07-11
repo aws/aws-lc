@@ -52,10 +52,9 @@ function mysql_build() {
 
 function mysql_run_tests() {
   pushd ${MYSQL_BUILD_FOLDER}/mysql-test
-  # More complicated integration tests. mtr expects to be launched in-place and with write access to it's own directories. This is
-  # what RDS runs interally.
+  # More complicated integration tests. mtr expects to be launched in-place and with write access to it's own directories.
   #
-  # Tests marked with Bug#0000 are tests that have been disabled internally in RDS as well. These tests aren't exactly relevant
+  # Tests marked with Bug#0000 are tests that have are known to fail in containerized environments. These tests aren't exactly relevant
   # to testing AWS-LC functionality.
   # Tests marked with Bug#0001 use DHE cipher suites for the connection. AWS-LC has no intention of supporting DHE cipher suites.
   # Tests marked with Bug#0002 use stateful session resumption, otherwise known as session caching. It is known that AWS-LC does not
@@ -92,8 +91,8 @@ main.ssl_cache_tls13 : Bug#0002 AWS-LC does not support Stateful session resumpt
 }
 
 # MySQL tests expect the OpenSSL style of error messages. We patch this to expect AWS-LC's style.
-# These are checked as part of mySQL's unit tests, but RDS and us don't actually run them in our CI. They are known to be
-# flaky within docker containers. The mtr tests are much more robust and run full server test suites that actually do TLS
+# These are checked as part of mySQL's unit tests, but we don't actually run them in our CI. They are known to be flaky
+# within docker containers. The mtr tests are much more robust and run full server test suites that actually do TLS
 # connections end-to-end.
 # TODO: Remove this when we make an upstream contribution.
 function mysql_patch_error_strings() {

@@ -10,4 +10,4 @@ env:
 phases:
   build:
     commands:
-      - ./tests/ci/integration/run_mysql_integration.sh
+      - "./${AWS_LC_CI_TARGET}"
