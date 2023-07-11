@@ -62,6 +62,14 @@ class ImplDispatchTest : public ::testing::Test {
         false;
 #endif // MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 #endif  // X86 || X86_64
+
+#if defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
+    neon_ = CRYPTO_is_NEON_capable();
+    armv8_aes_ = CRYPTO_is_ARMv8_AES_capable();
+    armv8_gcm_pmull_ = CRYPTO_is_ARMv8_PMULL_capable();
+    armv8_gcm_8x_ = CRYPTO_is_ARMv8_GCM_8x_capable();
+    armv8_wide_mult_ = CRYPTO_is_ARMv8_wide_multiplier_capable();
+#endif // ARM || AARCH64
   }
 
  protected:
@@ -97,6 +105,12 @@ class ImplDispatchTest : public ::testing::Test {
   bool is_x86_64_ = false;
   bool is_assembler_too_old = false;
   bool is_assembler_too_old_avx512 = false;
+#elif defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
+  bool neon_ = false;  
+  bool armv8_aes_ = false;
+  bool armv8_gcm_pmull_ = false;
+  bool armv8_gcm_8x_ = false;
+  bool armv8_wide_mult_ = false;
 #endif
 };
 
@@ -188,5 +202,45 @@ TEST_F(ImplDispatchTest, SHA256) {
 }
 
 #endif  // X86 || X86_64
+
+#if !defined(OPENSSL_NO_ASM) && \
+    (defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64))
+
+constexpr size_t kFlag_aes_hw_encrypt = 0;
+constexpr size_t kFlag_vpaes_encrypt = 1;
+constexpr size_t kFlag_aes_hw_set_encrypt_key = 2;
+constexpr size_t kFlag_vpaes_set_encrypt_key = 3;
+
+TEST_F(ImplDispatchTest, AES_set_encrypt_key) {
+  AssertFunctionsHit(
+      {
+          {kFlag_aes_hw_set_encrypt_key, armv8_aes_},
+          {kFlag_vpaes_set_encrypt_key, neon_ && !armv8_aes_},
+      },
+      [] {
+        AES_KEY key;
+        static const uint8_t kZeros[16] = {0};
+        AES_set_encrypt_key(kZeros, sizeof(kZeros) * 8, &key);
+      });
+}
+
+TEST_F(ImplDispatchTest, AES_single_block) {
+  AES_KEY key;
+  static const uint8_t kZeros[16] = {0};
+  AES_set_encrypt_key(kZeros, sizeof(kZeros) * 8, &key);
+
+  AssertFunctionsHit(
+      {
+          {kFlag_aes_hw_encrypt, armv8_aes_},
+          {kFlag_vpaes_encrypt, neon_ && !armv8_aes_},
+      },
+      [&key] {
+        uint8_t in[AES_BLOCK_SIZE] = {0};
+        uint8_t out[AES_BLOCK_SIZE];
+        AES_encrypt(in, out, &key);
+      });
+}
+
+#endif // ARM || AARCH64
 
 #endif  // DISPATCH_TEST && !SHARED_LIBRARY

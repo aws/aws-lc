@@ -97,6 +97,13 @@ $code.=<<___;
 .align	5
 ${prefix}_set_encrypt_key:
 .Lenc_key:
+#ifdef BORINGSSL_DISPATCH_TEST
+.extern        BORINGSSL_function_hit
+    adrp	x6,:pg_hi21:BORINGSSL_function_hit
+    add x6, x6, :lo12:BORINGSSL_function_hit
+	mov x8, #1
+	str x8, [x6,#2]
+#endif
 ___
 $code.=<<___	if ($flavour =~ /64/);
 	// Armv8.3-A PAuth: even though x30 is pushed to stack it is not popped later.
@@ -343,6 +350,13 @@ $code.=<<___;
 .type	${prefix}_${dir}crypt,%function
 .align	5
 ${prefix}_${dir}crypt:
+#ifdef BORINGSSL_DISPATCH_TEST
+.extern        BORINGSSL_function_hit
+    adrp	x6,:pg_hi21:BORINGSSL_function_hit
+    add x6, x6, :lo12:BORINGSSL_function_hit
+	mov x8, #1
+	str x8, [x6]
+#endif
 	AARCH64_VALID_CALL_TARGET
 	ldr	$rounds,[$key,#240]
 	vld1.32	{$rndkey0},[$key],#16
