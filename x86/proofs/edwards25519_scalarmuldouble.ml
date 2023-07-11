@@ -10650,8 +10650,7 @@ let EDWARDS25519_SCALARMULDOUBLE_SUBROUTINE_CORRECT = time prove
                              (group_mul edwards25519_group
                                  (group_pow edwards25519_group P n)
                                  (group_pow edwards25519_group E_25519 m)))
-         (MAYCHANGE [RIP; RSP; RDI; RSI; RAX; RCX; RDX; R8; R9; R10; R11] ,,
-          MAYCHANGE SOME_FLAGS ,,
+         (MAYCHANGE [RSP] ,, MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
           MAYCHANGE [memory :> bytes(res,64);
                      memory :> bytes(word_sub stackpointer (word 1720),1720)])`,
   REWRITE_TAC[BYTES_LOADED_APPEND_CLAUSE; BYTES_LOADED_DATA;
@@ -10699,16 +10698,16 @@ let WINDOWS_EDWARDS25519_SCALARMULDOUBLE_SUBROUTINE_CORRECT = time prove
                              (group_mul edwards25519_group
                                  (group_pow edwards25519_group P n)
                                  (group_pow edwards25519_group E_25519 m)))
-         (MAYCHANGE [RIP; RSP; RAX; RCX; RDX; R8; R9; R10; R11] ,,
-          MAYCHANGE SOME_FLAGS ,,
-          MAYCHANGE [memory :> bytes(res,64);
-                     memory :> bytes(word_sub stackpointer (word 1744),1744)])`,
+       (MAYCHANGE [RSP] ,, WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
+        MAYCHANGE [memory :> bytes(res,64);
+                   memory :> bytes(word_sub stackpointer (word 1744),1744)])`,
   let WINDOWS_EDWARDS25519_SCALARMULDOUBLE_EXEC =
     X86_MK_EXEC_RULE windows_edwards25519_scalarmuldouble_mc in
   let subth =
    REWRITE_RULE[BYTES_LOADED_APPEND_CLAUSE; BYTES_LOADED_DATA;
                 CONJUNCT1 EDWARDS25519_SCALARMULDOUBLE_EXEC]
              EDWARDS25519_SCALARMULDOUBLE_SUBROUTINE_CORRECT in
+  REWRITE_TAC[WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI] THEN
   REPLICATE_TAC 8 GEN_TAC THEN WORD_FORALL_OFFSET_TAC 1744 THEN
   REWRITE_TAC[ALL; WINDOWS_C_ARGUMENTS; SOME_FLAGS] THEN
   REWRITE_TAC[NONOVERLAPPING_CLAUSES] THEN REPEAT STRIP_TAC THEN
