@@ -15,7 +15,7 @@ batch:
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_clang-8x_latest
 
     - identifier: ubuntu1604_gcc5x_x86
-      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
+      buildspec: ./tests/ci/codebuild/common/run_posix_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: false
@@ -25,7 +25,7 @@ batch:
           AWSLC_32BIT: 1
 
     - identifier: ubuntu1804_clang6x_x86_64
-      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
+      buildspec: ./tests/ci/codebuild/common/run_posix_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
@@ -33,7 +33,7 @@ batch:
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-18.04_clang-6x_latest
 
     - identifier: ubuntu1804_clang6x_x86_64_fips
-      buildspec: ./tests/ci/codebuild/linux-x86/run_fips_tests.yml
+      buildspec: ./tests/ci/codebuild/common/run_fips_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
@@ -41,7 +41,7 @@ batch:
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-18.04_clang-6x_latest
 
     - identifier: ubuntu1804_gcc7x_x86_64
-      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
+      buildspec: ./tests/ci/codebuild/common/run_posix_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
@@ -49,7 +49,7 @@ batch:
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-18.04_gcc-7x_latest
 
     - identifier: ubuntu1804_gcc7x_x86_64_fips
-      buildspec: ./tests/ci/codebuild/linux-x86/run_fips_tests.yml
+      buildspec: ./tests/ci/codebuild/common/run_fips_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
@@ -57,7 +57,7 @@ batch:
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-18.04_gcc-7x_latest
 
     - identifier: ubuntu2004_gcc7x_x86_64
-      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
+      buildspec: ./tests/ci/codebuild/common/run_posix_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
@@ -65,7 +65,7 @@ batch:
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_gcc-7x_latest
 
     - identifier: ubuntu2004_gcc7x_x86_64_fips
-      buildspec: ./tests/ci/codebuild/linux-x86/run_fips_tests.yml
+      buildspec: ./tests/ci/codebuild/common/run_fips_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
@@ -73,7 +73,7 @@ batch:
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_gcc-7x_latest
 
     - identifier: ubuntu2004_gcc8x_x86_64
-      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
+      buildspec: ./tests/ci/codebuild/common/run_posix_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
@@ -81,7 +81,7 @@ batch:
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_gcc-8x_latest
 
     - identifier: ubuntu2004_gcc8x_x86_64_fips
-      buildspec: ./tests/ci/codebuild/linux-x86/run_fips_tests.yml
+      buildspec: ./tests/ci/codebuild/common/run_fips_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
@@ -89,7 +89,7 @@ batch:
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_gcc-8x_latest
 
     - identifier: ubuntu2204_gcc11x_x86_64
-      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
+      buildspec: ./tests/ci/codebuild/common/run_posix_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
@@ -97,7 +97,7 @@ batch:
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-22.04_gcc-11x_latest
 
     - identifier: ubuntu2204_gcc11x_x86_64_fips
-      buildspec: ./tests/ci/codebuild/linux-x86/run_fips_tests.yml
+      buildspec: ./tests/ci/codebuild/common/run_fips_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
@@ -105,7 +105,7 @@ batch:
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-22.04_gcc-11x_latest
 
     - identifier: ubuntu2204_gcc11x_x86_64_prefix
-      buildspec: ./tests/ci/codebuild/linux-x86/run_prefix_tests.yml
+      buildspec: ./tests/ci/codebuild/common/run_prefix_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
@@ -113,7 +113,7 @@ batch:
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-22.04_gcc-11x_latest
 
     - identifier: ubuntu2204_gcc12x_x86_64
-      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
+      buildspec: ./tests/ci/codebuild/common/run_posix_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
@@ -121,7 +121,7 @@ batch:
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-22.04_gcc-12x_latest
 
     - identifier: ubuntu2204_gcc12x_x86_64_fips
-      buildspec: ./tests/ci/codebuild/linux-x86/run_fips_tests.yml
+      buildspec: ./tests/ci/codebuild/common/run_fips_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
@@ -129,7 +129,7 @@ batch:
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-22.04_gcc-12x_latest
 
     - identifier: ubuntu2004_clang7x_x86_64
-      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
+      buildspec: ./tests/ci/codebuild/common/run_posix_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
@@ -137,7 +137,7 @@ batch:
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_clang-7x_latest
 
     - identifier: ubuntu2004_clang7x_x86_64_fips
-      buildspec: ./tests/ci/codebuild/linux-x86/run_fips_tests.yml
+      buildspec: ./tests/ci/codebuild/common/run_fips_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
@@ -147,7 +147,7 @@ batch:
           AWSLC_NO_ASM_FIPS: 1
 
     - identifier: ubuntu2004_clang8x_x86_64
-      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
+      buildspec: ./tests/ci/codebuild/common/run_posix_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
@@ -155,7 +155,7 @@ batch:
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_clang-8x_latest
 
     - identifier: ubuntu2004_clang8x_x86_64_fips
-      buildspec: ./tests/ci/codebuild/linux-x86/run_fips_tests.yml
+      buildspec: ./tests/ci/codebuild/common/run_fips_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
@@ -163,7 +163,7 @@ batch:
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_clang-8x_latest
 
     - identifier: ubuntu2004_clang9x_x86_64
-      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
+      buildspec: ./tests/ci/codebuild/common/run_posix_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
@@ -171,7 +171,7 @@ batch:
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_clang-9x_latest
 
     - identifier: ubuntu2004_clang9x_x86_64_fips
-      buildspec: ./tests/ci/codebuild/linux-x86/run_fips_tests.yml
+      buildspec: ./tests/ci/codebuild/common/run_fips_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
@@ -179,7 +179,7 @@ batch:
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_clang-9x_latest
 
     - identifier: ubuntu2004_clang10x_x86_64
-      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
+      buildspec: ./tests/ci/codebuild/common/run_posix_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
@@ -187,7 +187,7 @@ batch:
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_clang-10x_latest
 
     - identifier: ubuntu2004_clang10x_x86_64_fips
-      buildspec: ./tests/ci/codebuild/linux-x86/run_fips_tests.yml
+      buildspec: ./tests/ci/codebuild/common/run_fips_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
@@ -195,7 +195,7 @@ batch:
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_clang-10x_latest
 
     - identifier: centos7_gcc4x_x86
-      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
+      buildspec: ./tests/ci/codebuild/common/run_posix_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: false
@@ -205,7 +205,7 @@ batch:
           AWSLC_32BIT: 1
 
     - identifier: centos7_gcc4x_x86_64
-      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
+      buildspec: ./tests/ci/codebuild/common/run_posix_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
@@ -213,7 +213,7 @@ batch:
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:centos-7_gcc-4x_latest
 
     - identifier: centos7_gcc4x_x86_64_fips
-      buildspec: ./tests/ci/codebuild/linux-x86/run_fips_tests.yml
+      buildspec: ./tests/ci/codebuild/common/run_fips_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
@@ -221,7 +221,7 @@ batch:
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:centos-7_gcc-4x_latest
 
     - identifier: centos8_gcc8x_x86_64
-      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
+      buildspec: ./tests/ci/codebuild/common/run_posix_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
@@ -229,7 +229,7 @@ batch:
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:centos-8_gcc-8x_latest
 
     - identifier: centos8_gcc8x_x86_64_fips
-      buildspec: ./tests/ci/codebuild/linux-x86/run_fips_tests.yml
+      buildspec: ./tests/ci/codebuild/common/run_fips_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
@@ -238,7 +238,7 @@ batch:
 
 
     - identifier: amazonlinux2_gcc7x_x86_64
-      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
+      buildspec: ./tests/ci/codebuild/common/run_posix_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
@@ -246,7 +246,7 @@ batch:
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:amazonlinux-2_gcc-7x_latest
 
     - identifier: amazonlinux2_gcc7x_x86_64_fips
-      buildspec: ./tests/ci/codebuild/linux-x86/run_fips_tests.yml
+      buildspec: ./tests/ci/codebuild/common/run_fips_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
@@ -254,7 +254,7 @@ batch:
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:amazonlinux-2_gcc-7x_latest
 
     - identifier: amazonlinux2_clang7x_x86_64
-      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
+      buildspec: ./tests/ci/codebuild/common/run_posix_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
@@ -262,7 +262,7 @@ batch:
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:amazonlinux-2_clang-7x_latest
 
     - identifier: amazonlinux2_clang7x_x86_64_fips
-      buildspec: ./tests/ci/codebuild/linux-x86/run_fips_tests.yml
+      buildspec: ./tests/ci/codebuild/common/run_fips_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
@@ -274,7 +274,7 @@ batch:
           AWSLC_NO_ASM_FIPS: 0
 
     - identifier: amazonlinux2_clang7x_x86_64_prefix
-      buildspec: ./tests/ci/codebuild/linux-x86/run_prefix_tests.yml
+      buildspec: ./tests/ci/codebuild/common/run_prefix_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
@@ -306,7 +306,7 @@ batch:
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:amazonlinux-2023_gcc-11x_latest
 
     - identifier: amazonlinux2023_gcc11x_x86_64
-      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
+      buildspec: ./tests/ci/codebuild/common/run_posix_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
@@ -314,7 +314,7 @@ batch:
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:amazonlinux-2023_gcc-11x_latest
 
     - identifier: amazonlinux2023_gcc11x_x86_64_fips
-      buildspec: ./tests/ci/codebuild/linux-x86/run_fips_tests.yml
+      buildspec: ./tests/ci/codebuild/common/run_fips_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
@@ -322,7 +322,7 @@ batch:
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:amazonlinux-2023_gcc-11x_latest
 
     - identifier: amazonlinux2023_clang15x_x86_64
-      buildspec: ./tests/ci/codebuild/linux-x86/run_posix_tests.yml
+      buildspec: ./tests/ci/codebuild/common/run_posix_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
@@ -330,7 +330,7 @@ batch:
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:amazonlinux-2023_clang-15x_latest
 
     - identifier: amazonlinux2023_clang15x_x86_64_fips
-      buildspec: ./tests/ci/codebuild/linux-x86/run_fips_tests.yml
+      buildspec: ./tests/ci/codebuild/common/run_fips_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
@@ -464,7 +464,7 @@ batch:
 
     # Build and test aws-lc without Perl/Go.
     - identifier: amazonlinux2_gcc7x_x86_64_minimal
-      buildspec: ./tests/ci/codebuild/linux-x86/run_minimal_tests.yml
+      buildspec: ./tests/ci/codebuild/common/run_minimal_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
@@ -472,7 +472,7 @@ batch:
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:amazonlinux-2_gcc-7x_latest
 
     - identifier: centos7_gcc4x_x86_64_minimal
-      buildspec: ./tests/ci/codebuild/linux-x86/run_minimal_tests.yml
+      buildspec: ./tests/ci/codebuild/common/run_minimal_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
@@ -480,7 +480,7 @@ batch:
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:centos-7_gcc-4x_latest
 
     - identifier: ubuntu1604_gcc5x_x86_minimal
-      buildspec: ./tests/ci/codebuild/linux-x86/run_minimal_tests.yml
+      buildspec: ./tests/ci/codebuild/common/run_minimal_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
@@ -488,7 +488,7 @@ batch:
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-16.04_gcc-5x_latest
 
     - identifier: ubuntu2004_gcc7x_x86_64_minimal
-      buildspec: ./tests/ci/codebuild/linux-x86/run_minimal_tests.yml
+      buildspec: ./tests/ci/codebuild/common/run_minimal_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
@@ -496,7 +496,7 @@ batch:
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_gcc-7x_latest
 
     - identifier: ubuntu2004_gcc8x_x86_64_minimal
-      buildspec: ./tests/ci/codebuild/linux-x86/run_minimal_tests.yml
+      buildspec: ./tests/ci/codebuild/common/run_minimal_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
@@ -504,7 +504,7 @@ batch:
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_gcc-8x_latest
 
     - identifier: ubuntu1804_clang6x_x86_64_minimal
-      buildspec: ./tests/ci/codebuild/linux-x86/run_minimal_tests.yml
+      buildspec: ./tests/ci/codebuild/common/run_minimal_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
@@ -512,7 +512,7 @@ batch:
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-18.04_clang-6x_latest
 
     - identifier: ubuntu2004_clang8x_x86_64_minimal
-      buildspec: ./tests/ci/codebuild/linux-x86/run_minimal_tests.yml
+      buildspec: ./tests/ci/codebuild/common/run_minimal_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
@@ -520,7 +520,7 @@ batch:
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_clang-8x_latest
 
     - identifier: ubuntu2004_clang9x_x86_64_minimal
-      buildspec: ./tests/ci/codebuild/linux-x86/run_minimal_tests.yml
+      buildspec: ./tests/ci/codebuild/common/run_minimal_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true

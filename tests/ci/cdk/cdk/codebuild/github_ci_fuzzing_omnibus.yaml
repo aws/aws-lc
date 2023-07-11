@@ -8,7 +8,7 @@ batch:
   build-list:
 
     - identifier: al2023_clang15_x86_64_fuzz
-      buildspec: ./tests/ci/codebuild/linux-x86/run_fuzz_tests.yml
+      buildspec: ./tests/ci/codebuild/common/run_fuzz_tests.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
@@ -16,7 +16,7 @@ batch:
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:amazonlinux-2023_clang-15x_sanitizer_latest
 
     - identifier: al2023_clang14_arm_fuzz
-      buildspec: ./tests/ci/codebuild/linux-x86/run_fuzz_tests.yml
+      buildspec: ./tests/ci/codebuild/common/run_fuzz_tests.yml
       env:
         type: ARM_CONTAINER
         privileged-mode: true
@@ -24,7 +24,7 @@ batch:
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-aarch:amazonlinux-2023_clang-15x_sanitizer_latest
 
     - identifier: al2023_clang15_x86_64_cryptofuzz
-      buildspec: ./tests/ci/codebuild/linux-x86/run_cryptofuzz.yml
+      buildspec: ./tests/ci/codebuild/common/run_cryptofuzz.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
@@ -32,7 +32,7 @@ batch:
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:amazonlinux-2023_clang-15x_cryptofuzz_latest
 
     - identifier: al2023_clang15_arm_cryptofuzz
-      buildspec: ./tests/ci/codebuild/linux-x86/run_cryptofuzz.yml
+      buildspec: ./tests/ci/codebuild/common/run_cryptofuzz.yml
       env:
         type: ARM_CONTAINER
         privileged-mode: true
