@@ -422,6 +422,7 @@ add_library(
   poly1305/poly1305_vec.c
   pool/pool.c
   rand_extra/deterministic.c
+  rand_extra/entropy_passive.c
   rand_extra/forkunsafe.c
   rand_extra/fuchsia.c
   rand_extra/rand_extra.c
@@ -726,6 +727,7 @@ if(BUILD_TESTING)
     fipsmodule/pbkdf/pbkdf_test.cc
     fipsmodule/rand/ctrdrbg_test.cc
     fipsmodule/rand/cpu_jitter_test.cc
+    fipsmodule/rand/entropy_pool_test.cc
     fipsmodule/rand/fork_detect_test.cc
     fipsmodule/service_indicator/service_indicator_test.cc
     fipsmodule/sha/sha_test.cc

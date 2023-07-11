@@ -69,10 +69,6 @@ static const unsigned kReseedInterval = 16777216;
 static const unsigned kReseedInterval = 4096;
 #endif
 
-// CRNGT_BLOCK_SIZE is the number of bytes in a “block” for the purposes of the
-// continuous random number generator test in FIPS 140-2, section 4.9.2.
-#define CRNGT_BLOCK_SIZE 16
-
 // rand_thread_state contains the per-thread state for the RNG.
 struct rand_thread_state {
   CTR_DRBG_STATE drbg;
@@ -95,6 +91,8 @@ struct rand_thread_state {
   // of Jitter to each thread. The instance is initialized/destroyed at the same
   // time as the thread state is created/destroyed.
   struct rand_data *jitter_ec;
+
+  struct entropy_pool *entropy_pool;
 #endif
 };
 
@@ -133,6 +131,16 @@ static void rand_thread_state_clear_all(void) {
   // The locks are deliberately left locked so that any threads that are still
   // running will hang if they try to call |RAND_bytes|.
 }
+
+void RAND_load_entropy(uint8_t load_entropy[ENTROPY_POOL_SIZE]) {
+  struct rand_thread_state *state =
+      CRYPTO_get_thread_local(OPENSSL_THREAD_LOCAL_RAND);
+  if (state == NULL) {
+    abort();
+  }
+  RAND_entropy_pool_add(state->entropy_pool, load_entropy);
+}
+
 #endif
 
 // rand_thread_state_free frees a |rand_thread_state|. This is called when a

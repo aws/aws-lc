@@ -133,6 +133,39 @@ OPENSSL_EXPORT void HAZMAT_set_urandom_test_mode_for_testing(void);
 #define JITTER_MAX_NUM_TRIES (3)
 #endif
 
+
+#if defined(AWSLC_FIPS)
+
+// CRNGT_BLOCK_SIZE is the number of bytes in a “block” for the purposes of the
+// continuous random number generator test in FIPS 140-2, section 4.9.2.
+#define CRNGT_BLOCK_SIZE 16
+
+#define FIPS_CRNGT_TEST_SIZE CRNGT_BLOCK_SIZE
+#define AWSLC_PASSIVE_ENTROPY_OVERREAD_MULTIPLER 10
+#define AWSLC_PASSIVE_ENTROPY_SOURCE_DRAW_SIZE (FIPS_CRNGT_TEST_SIZE + (CTR_DRBG_ENTROPY_LEN * AWSLC_PASSIVE_ENTROPY_OVERREAD_MULTIPLER))
+#define ENTROPY_POOL_SIZE AWSLC_PASSIVE_ENTROPY_SOURCE_DRAW_SIZE
+
+// Fixed-sized flat memory buffer definition used for passive entropy
+// implementation.
+struct entropy_pool {
+  size_t capacity;
+  size_t valid_available;
+  size_t index_read;
+  uint8_t pool[ENTROPY_POOL_SIZE];
+};
+
+void RAND_entropy_pool_init(struct entropy_pool *entropy_pool);
+void RAND_entropy_pool_zeroize(struct entropy_pool *entropy_pool);
+int RAND_entropy_pool_get(struct entropy_pool *entropy_pool,
+  uint8_t *get_buffer, size_t get_size);
+void RAND_entropy_pool_add(struct entropy_pool *entropy_pool,
+  uint8_t add_buffer[ENTROPY_POOL_SIZE]);
+
+void RAND_module_entropy_depleted(void);
+void RAND_load_entropy(uint8_t load_entropy[ENTROPY_POOL_SIZE]);
+
+#endif
+
 #if defined(__cplusplus)
 }  // extern C
 #endif

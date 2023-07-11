@@ -125,6 +125,7 @@
 #include "pbkdf/pbkdf.c"
 #include "rand/ctrdrbg.c"
 #include "rand/fork_detect.c"
+#include "rand/entropy_pool.c"
 #include "rand/rand.c"
 #include "rand/urandom.c"
 #include "rsa/blinding.c"
