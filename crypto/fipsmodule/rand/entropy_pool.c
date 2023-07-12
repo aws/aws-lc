@@ -56,13 +56,11 @@ static void entropy_pool_cannot_satisfy_request(void) {
 	// And then unlock struct here
 }
 
-// Add documentation in header file
 void RAND_entropy_pool_init(struct entropy_pool *entropy_pool) {
 	RAND_entropy_pool_zeroize(entropy_pool);
 	entropy_pool->capacity = ENTROPY_POOL_SIZE;
 }
 
-// Add documentation
 void RAND_entropy_pool_zeroize(struct entropy_pool *entropy_pool) {
 	if (entropy_pool == NULL) {
 		abort();
@@ -74,7 +72,6 @@ void RAND_entropy_pool_zeroize(struct entropy_pool *entropy_pool) {
 	OPENSSL_cleanse(entropy_pool->pool, ENTROPY_POOL_SIZE);
 }
 
-// Add documentation in header file
 void RAND_entropy_pool_add(struct entropy_pool *entropy_pool,
 	uint8_t add_buffer[ENTROPY_POOL_SIZE]) {
 
@@ -89,7 +86,6 @@ void RAND_entropy_pool_add(struct entropy_pool *entropy_pool,
 	entropy_pool->valid_available = ENTROPY_POOL_SIZE;
 }
 
-// Add documentation in header file
 int RAND_entropy_pool_get(struct entropy_pool *entropy_pool,
 	uint8_t *get_buffer, size_t get_size) {
 
