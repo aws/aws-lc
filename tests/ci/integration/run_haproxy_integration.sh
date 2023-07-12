@@ -21,6 +21,7 @@ SCRATCH_FOLDER=${SYS_ROOT}/"scratch"
 AWS_LC_BUILD_FOLDER="${SCRATCH_FOLDER}/aws-lc-build"
 AWS_LC_INSTALL_FOLDER="${SCRATCH_FOLDER}/aws-lc-install"
 HAPROXY_SRC="${SCRATCH_FOLDER}/haproxy"
+export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib"
 
 function build_and_test_haproxy() {
   cd ${HAPROXY_SRC}
@@ -54,8 +55,8 @@ export VTEST_PROGRAM=$(realpath ../vtest/vtest)
 aws_lc_build ${SRC_ROOT} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} -DBUILD_SHARED_LIBS=0
 build_and_test_haproxy $HAPROXY_SRC
 
-rm -rf "$AWS_LC_INSTALL_FOLDER/*"
-rm -rf "$AWS_LC_BUILD_FOLDER/*"
+rm -rf ${AWS_LC_INSTALL_FOLDER}/*
+rm -rf ${AWS_LC_BUILD_FOLDER}/*
 
 # Test with shared AWS-LC libraries
 aws_lc_build ${SRC_ROOT} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} -DBUILD_SHARED_LIBS=1
