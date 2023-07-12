@@ -36,8 +36,8 @@ class ImplDispatchTest : public ::testing::Test {
  public:
   void SetUp() override {
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
-    aesni_ = CRYPTO_is_AESNI_capable();
-    avx_movbe_ = CRYPTO_is_AVX_capable() && CRYPTO_is_MOVBE_capable();
+    aes_hw = CRYPTO_is_AESNI_capable();
+    aes_vpaes = CRYPTO_is_AVX_capable() && CRYPTO_is_MOVBE_capable();
     ssse3_ = CRYPTO_is_SSSE3_capable();
     sha_ext_ = CRYPTO_is_SHAEXT_capable();
     vaes_vpclmulqdq_ =
@@ -64,8 +64,8 @@ class ImplDispatchTest : public ::testing::Test {
 #endif  // X86 || X86_64
 
 #if defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
-    neon_ = CRYPTO_is_NEON_capable();
-    armv8_aes_ = CRYPTO_is_ARMv8_AES_capable();
+    aes_hw = CRYPTO_is_NEON_capable();
+    aes_vpaes = CRYPTO_is_ARMv8_AES_capable();
     armv8_gcm_pmull_ = CRYPTO_is_ARMv8_PMULL_capable();
     armv8_gcm_8x_ = CRYPTO_is_ARMv8_GCM_8x_capable();
 #endif // ARM || AARCH64
@@ -95,133 +95,64 @@ class ImplDispatchTest : public ::testing::Test {
     }
   }
 
+  bool aes_hw = false;
+  bool aes_vpaes = false;
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
   bool vaes_vpclmulqdq_ = false;
-  bool aesni_ = false;
   bool avx_movbe_ = false;
-  bool ssse3_ = false;
   bool sha_ext_ = false;
   bool is_x86_64_ = false;
   bool is_assembler_too_old = false;
   bool is_assembler_too_old_avx512 = false;
 #elif defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
-  bool neon_ = false;  
-  bool armv8_aes_ = false;
   bool armv8_gcm_pmull_ = false;
   bool armv8_gcm_8x_ = false;
 #endif
+
 };
 
-#if !defined(OPENSSL_NO_ASM) && \
-    (defined(OPENSSL_X86) || defined(OPENSSL_X86_64))
+#if !defined(OPENSSL_NO_ASM)
 
 constexpr size_t kFlag_aes_hw_ctr32_encrypt_blocks = 0;
 constexpr size_t kFlag_aes_hw_encrypt = 1;
-constexpr size_t kFlag_aesni_gcm_encrypt = 2;
 constexpr size_t kFlag_aes_hw_set_encrypt_key = 3;
 constexpr size_t kFlag_vpaes_encrypt = 4;
 constexpr size_t kFlag_vpaes_set_encrypt_key = 5;
-constexpr size_t kFlag_sha256_shaext = 6;
-constexpr size_t kFlag_aes_gcm_encrypt_avx512 = 7;
+#if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
+constexpr size_t kFlag_aesni_gcm_encrypt = 2; // unique to x86
+constexpr size_t kFlag_sha256_shaext = 6; //unique to x86
+constexpr size_t kFlag_aes_gcm_encrypt_avx512 = 7; // unique to x86
+#else // AARCH64
+constexpr size_t kFlag_aes_gcm_enc_kernel = 2; // unique to aarch64
+// Flag 6 is unused on aarch64.
+constexpr size_t kFlag_aesv8_gcm_8x_enc_128 = 7; // unique to aarch64
+#endif
 
 TEST_F(ImplDispatchTest, AEAD_AES_GCM) {
   AssertFunctionsHit(
       {
-          {kFlag_aes_hw_ctr32_encrypt_blocks, aesni_ &&
+          {kFlag_aes_hw_encrypt, aes_hw},
+          {kFlag_aes_hw_set_encrypt_key, aes_hw},
+          {kFlag_vpaes_encrypt, aes_vpaes && !aes_hw},
+          {kFlag_vpaes_set_encrypt_key, aes_vpaes && !aes_hw},
+#if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
+          {kFlag_aes_hw_ctr32_encrypt_blocks, aes_hw &&
            (is_assembler_too_old || !vaes_vpclmulqdq_)},
-          {kFlag_aes_hw_encrypt, aesni_},
-          {kFlag_aes_hw_set_encrypt_key, aesni_},
           {kFlag_aesni_gcm_encrypt,
-           is_x86_64_ && aesni_ && avx_movbe_ &&
+           is_x86_64_ && aes_hw && avx_movbe_ &&
            !is_assembler_too_old && !vaes_vpclmulqdq_},
-          {kFlag_vpaes_encrypt, ssse3_ && !aesni_},
-          {kFlag_vpaes_set_encrypt_key, ssse3_ && !aesni_},
           {kFlag_aes_gcm_encrypt_avx512,
-           is_x86_64_ && aesni_ &&
+           is_x86_64_ && aes_hw &&
            !is_assembler_too_old_avx512 &&
            vaes_vpclmulqdq_},
-      },
-      [] {
-        const uint8_t kZeros[16] = {0};
-        const uint8_t kPlaintext[40] = {1, 2, 3, 4, 0};
-        uint8_t ciphertext[sizeof(kPlaintext) + 16];
-        size_t ciphertext_len;
-        bssl::ScopedEVP_AEAD_CTX ctx;
-        ASSERT_TRUE(EVP_AEAD_CTX_init(ctx.get(), EVP_aead_aes_128_gcm(), kZeros,
-                                      sizeof(kZeros),
-                                      EVP_AEAD_DEFAULT_TAG_LENGTH, nullptr));
-        ASSERT_TRUE(EVP_AEAD_CTX_seal(
-            ctx.get(), ciphertext, &ciphertext_len, sizeof(ciphertext), kZeros,
-            EVP_AEAD_nonce_length(EVP_aead_aes_128_gcm()), kPlaintext,
-            sizeof(kPlaintext), nullptr, 0));
-      });
-}
-
-TEST_F(ImplDispatchTest, AES_set_encrypt_key) {
-  AssertFunctionsHit(
-      {
-          {kFlag_aes_hw_set_encrypt_key, aesni_},
-          {kFlag_vpaes_set_encrypt_key, ssse3_ && !aesni_},
-      },
-      [] {
-        AES_KEY key;
-        static const uint8_t kZeros[16] = {0};
-        AES_set_encrypt_key(kZeros, sizeof(kZeros) * 8, &key);
-      });
-}
-
-TEST_F(ImplDispatchTest, AES_single_block) {
-  AES_KEY key;
-  static const uint8_t kZeros[16] = {0};
-  AES_set_encrypt_key(kZeros, sizeof(kZeros) * 8, &key);
-
-  AssertFunctionsHit(
-      {
-          {kFlag_aes_hw_encrypt, aesni_},
-          {kFlag_vpaes_encrypt, ssse3_ && !aesni_},
-      },
-      [&key] {
-        uint8_t in[AES_BLOCK_SIZE] = {0};
-        uint8_t out[AES_BLOCK_SIZE];
-        AES_encrypt(in, out, &key);
-      });
-}
-
-TEST_F(ImplDispatchTest, SHA256) {
-  AssertFunctionsHit(
-      {
-          {kFlag_sha256_shaext, sha_ext_},
-      },
-      [] {
-        const uint8_t in[32] = {0};
-        uint8_t out[SHA256_DIGEST_LENGTH];
-        SHA256(in, 32, out);
-      });
-}
-
-#endif  // X86 || X86_64
-
-#if !defined(OPENSSL_NO_ASM) && \
-    (defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64))
-
-constexpr size_t kFlag_aes_hw_ctr32_encrypt_blocks = 0;
-constexpr size_t kFlag_aes_hw_encrypt = 1;
-constexpr size_t kFlag_aes_gcm_enc_kernel = 2; // unique to aarch64
-constexpr size_t kFlag_aes_hw_set_encrypt_key = 3;
-constexpr size_t kFlag_vpaes_encrypt = 4;
-constexpr size_t kFlag_vpaes_set_encrypt_key = 5;
-constexpr size_t kFlag_aesv8_gcm_8x_enc_128 = 7; // unique to aarch64
-
-TEST_F(ImplDispatchTest, AEAD_AES_GCM) {
-  AssertFunctionsHit(
-      {
-          {kFlag_aes_hw_ctr32_encrypt_blocks, armv8_aes_ && !armv8_gcm_pmull_ && !armv8_gcm_8x_},
-          {kFlag_aes_hw_encrypt, armv8_aes_},
-          {kFlag_aes_hw_set_encrypt_key, armv8_aes_},
-          {kFlag_aes_gcm_enc_kernel, armv8_aes_ && armv8_gcm_pmull_ && !armv8_gcm_8x_},
-          {kFlag_vpaes_encrypt, neon_ && !armv8_aes_},
-          {kFlag_vpaes_set_encrypt_key, neon_ && !armv8_aes_},
-          {kFlag_aesv8_gcm_8x_enc_128, armv8_aes_ && armv8_gcm_pmull_ && armv8_gcm_8x_}
+#else // AARCH64
+          {kFlag_aes_hw_ctr32_encrypt_blocks, aes_hw &&
+           !armv8_gcm_pmull_ && !armv8_gcm_8x_},
+          {kFlag_aes_gcm_enc_kernel, aes_hw &&
+           armv8_gcm_pmull_ && !armv8_gcm_8x_},
+          {kFlag_aesv8_gcm_8x_enc_128, aes_hw &&
+           armv8_gcm_pmull_ && armv8_gcm_8x_}
+#endif
       },
       [] {
         const uint8_t kZeros[16] = {0};
@@ -242,8 +173,8 @@ TEST_F(ImplDispatchTest, AEAD_AES_GCM) {
 TEST_F(ImplDispatchTest, AES_set_encrypt_key) {
   AssertFunctionsHit(
       {
-          {kFlag_aes_hw_set_encrypt_key, armv8_aes_},
-          {kFlag_vpaes_set_encrypt_key, neon_ && !armv8_aes_},
+          {kFlag_aes_hw_set_encrypt_key, aes_hw},
+          {kFlag_vpaes_set_encrypt_key, aes_vpaes && !aes_hw},
       },
       [] {
         AES_KEY key;
@@ -259,8 +190,8 @@ TEST_F(ImplDispatchTest, AES_single_block) {
 
   AssertFunctionsHit(
       {
-          {kFlag_aes_hw_encrypt, armv8_aes_},
-          {kFlag_vpaes_encrypt, neon_ && !armv8_aes_},
+          {kFlag_aes_hw_encrypt, aes_hw},
+          {kFlag_vpaes_encrypt, aes_vpaes && !aes_hw},
       },
       [&key] {
         uint8_t in[AES_BLOCK_SIZE] = {0};
@@ -269,6 +200,20 @@ TEST_F(ImplDispatchTest, AES_single_block) {
       });
 }
 
-#endif // ARM || AARCH64
+#if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
+TEST_F(ImplDispatchTest, SHA256) {
+  AssertFunctionsHit(
+      {
+          {kFlag_sha256_shaext, sha_ext_},
+      },
+      [] {
+        const uint8_t in[32] = {0};
+        uint8_t out[SHA256_DIGEST_LENGTH];
+        SHA256(in, 32, out);
+      });
+}
+#endif // OPENSSL_X86 || OPENSSL_X86_64
+
+#endif  // !OPENSSL_NO_ASM
 
 #endif  // DISPATCH_TEST && !SHARED_LIBRARY
