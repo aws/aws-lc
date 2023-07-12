@@ -101,8 +101,8 @@ ${prefix}_set_encrypt_key:
 .extern        BORINGSSL_function_hit
     adrp	x6,:pg_hi21:BORINGSSL_function_hit
     add x6, x6, :lo12:BORINGSSL_function_hit
-	mov x8, #1
-	str x8, [x6,#2]
+	mov w7, #1
+	strb w7, [x6,#2]
 #endif
 ___
 $code.=<<___	if ($flavour =~ /64/);
@@ -354,8 +354,8 @@ ${prefix}_${dir}crypt:
 .extern        BORINGSSL_function_hit
     adrp	x6,:pg_hi21:BORINGSSL_function_hit
     add x6, x6, :lo12:BORINGSSL_function_hit
-	mov x8, #1
-	str x8, [x6]
+	mov w7, #1
+	strb w7, [x6]
 #endif
 	AARCH64_VALID_CALL_TARGET
 	ldr	$rounds,[$key,#240]
