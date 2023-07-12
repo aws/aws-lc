@@ -68,7 +68,6 @@ class ImplDispatchTest : public ::testing::Test {
     armv8_aes_ = CRYPTO_is_ARMv8_AES_capable();
     armv8_gcm_pmull_ = CRYPTO_is_ARMv8_PMULL_capable();
     armv8_gcm_8x_ = CRYPTO_is_ARMv8_GCM_8x_capable();
-    armv8_wide_mult_ = CRYPTO_is_ARMv8_wide_multiplier_capable();
 #endif // ARM || AARCH64
   }
 
@@ -110,7 +109,6 @@ class ImplDispatchTest : public ::testing::Test {
   bool armv8_aes_ = false;
   bool armv8_gcm_pmull_ = false;
   bool armv8_gcm_8x_ = false;
-  bool armv8_wide_mult_ = false;
 #endif
 };
 
@@ -212,7 +210,6 @@ constexpr size_t kFlag_aes_gcm_enc_kernel = 2; // unique to aarch64
 constexpr size_t kFlag_aes_hw_set_encrypt_key = 3;
 constexpr size_t kFlag_vpaes_encrypt = 4;
 constexpr size_t kFlag_vpaes_set_encrypt_key = 5;
-// constexpr size_t kFlag_sha256_shaext = 6; // unimplemented for aarch64
 constexpr size_t kFlag_aesv8_gcm_8x_enc_128 = 7; // unique to aarch64
 
 TEST_F(ImplDispatchTest, AEAD_AES_GCM) {
