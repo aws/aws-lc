@@ -47,13 +47,15 @@ TEST(EntropyPool, BasicFlow) {
   EXPECT_EQ(entropy_pool.index_read, (size_t) 0);
   EXPECT_EQ(OPENSSL_memcmp(entropy_pool.pool, fake_entropy, ENTROPY_POOL_SIZE), 0);
 
-  // Consuming the entire pool. Expect the valid available bytes to be zero
-  // and read pointer to be incremented by the consumed amount.
+  // Consuming the entire pool. Expect the valid available bytes to be zero,
+  // read pointer to be incremented by the consumed amount, and output buffer
+  // contains the added entropy.
   EXPECT_TRUE(RAND_entropy_pool_get(&entropy_pool, entropy_buffer, ENTROPY_POOL_SIZE));
   EXPECT_EQ(entropy_pool.capacity, (size_t) ENTROPY_POOL_SIZE);
   EXPECT_EQ(entropy_pool.valid_available, (size_t) 0);
   EXPECT_EQ(entropy_pool.index_read, (size_t) ENTROPY_POOL_SIZE);
   EXPECT_EQ(OPENSSL_memcmp(entropy_pool.pool, zero_entropy_pool, ENTROPY_POOL_SIZE), 0);
+  EXPECT_EQ(OPENSSL_memcmp(entropy_buffer, fake_entropy, ENTROPY_POOL_SIZE), 0);
 
   RAND_entropy_pool_zeroize(&entropy_pool);
   EXPECT_EQ(entropy_pool.capacity, (size_t) 0);
@@ -66,19 +68,30 @@ TEST(EntropyPool, BasicFlow) {
   RAND_entropy_pool_init(&entropy_pool);
   RAND_entropy_pool_add(&entropy_pool, fake_entropy);
 
+  OPENSSL_cleanse(entropy_buffer, ENTROPY_POOL_SIZE);
   EXPECT_TRUE(RAND_entropy_pool_get(&entropy_pool, entropy_buffer, entropy_pool_size_halfed));
   EXPECT_EQ(entropy_pool.capacity, (size_t) ENTROPY_POOL_SIZE);
   EXPECT_EQ(entropy_pool.valid_available, (size_t) entropy_pool_size_halfed);
   EXPECT_EQ(entropy_pool.index_read, (size_t) entropy_pool_size_halfed);
-  // Should have zeroized first half of pool.
+  // Should have zeroized first half of pool. Second half should still contain
+  // the added entropy
   EXPECT_EQ(OPENSSL_memcmp(entropy_pool.pool, zero_entropy_pool, entropy_pool_size_halfed), 0);
+  EXPECT_EQ(OPENSSL_memcmp(entropy_pool.pool + entropy_pool_size_halfed,
+    fake_entropy + entropy_pool_size_halfed, entropy_pool_size_halfed), 0);
+  // The reverse should be true for the output buffer.
+  EXPECT_EQ(OPENSSL_memcmp(entropy_buffer,
+    fake_entropy, entropy_pool_size_halfed), 0);
+  EXPECT_EQ(OPENSSL_memcmp(entropy_buffer + entropy_pool_size_halfed,
+    zero_entropy_pool, entropy_pool_size_halfed), 0);
 
-  EXPECT_TRUE(RAND_entropy_pool_get(&entropy_pool, entropy_buffer, entropy_pool_size_halfed));
+  EXPECT_TRUE(RAND_entropy_pool_get(&entropy_pool,
+    entropy_buffer + entropy_pool_size_halfed, entropy_pool_size_halfed));
   EXPECT_EQ(entropy_pool.capacity, (size_t) ENTROPY_POOL_SIZE);
   EXPECT_EQ(entropy_pool.valid_available, (size_t) 0);
   EXPECT_EQ(entropy_pool.index_read, (size_t) ENTROPY_POOL_SIZE);
-  // Entire pool must now be zeroized.
+  // Entire pool must now be zeroized and output buffer full of entropy.
   EXPECT_EQ(OPENSSL_memcmp(entropy_pool.pool, zero_entropy_pool, ENTROPY_POOL_SIZE), 0);
+  EXPECT_EQ(OPENSSL_memcmp(entropy_buffer, fake_entropy, ENTROPY_POOL_SIZE), 0);
 }
 
 TEST(EntropyPool, BasicFailure) {
@@ -96,26 +109,36 @@ TEST(EntropyPool, BasicFailure) {
   //  * Use NULL as argument for entropy pool.
   //  * Use NULL as argument for output buffer.
   EXPECT_FALSE(RAND_entropy_pool_get(&entropy_pool, entropy_buffer, ENTROPY_POOL_SIZE+1));
+  EXPECT_EQ(OPENSSL_memcmp(entropy_buffer, zero_entropy_pool, ENTROPY_POOL_SIZE), 0);
   EXPECT_FALSE(RAND_entropy_pool_get(&entropy_pool, entropy_buffer, 0));
+  EXPECT_EQ(OPENSSL_memcmp(entropy_buffer, zero_entropy_pool, ENTROPY_POOL_SIZE), 0);
   EXPECT_FALSE(RAND_entropy_pool_get(NULL, entropy_buffer, ENTROPY_POOL_SIZE));
+  EXPECT_EQ(OPENSSL_memcmp(entropy_buffer, zero_entropy_pool, ENTROPY_POOL_SIZE), 0);
   EXPECT_FALSE(RAND_entropy_pool_get(&entropy_pool, NULL, ENTROPY_POOL_SIZE));
+  EXPECT_EQ(OPENSSL_memcmp(entropy_buffer, zero_entropy_pool, ENTROPY_POOL_SIZE), 0);
 
   // Modify internal state to capture validations
+  OPENSSL_cleanse(entropy_buffer, ENTROPY_POOL_SIZE);
   RAND_entropy_pool_add(&entropy_pool, fake_entropy);
   entropy_pool.capacity = ENTROPY_POOL_SIZE + 1;
   EXPECT_FALSE(RAND_entropy_pool_get(&entropy_pool, entropy_buffer, ENTROPY_POOL_SIZE));
+  EXPECT_EQ(OPENSSL_memcmp(entropy_buffer, zero_entropy_pool, ENTROPY_POOL_SIZE), 0);
   entropy_pool.capacity = ENTROPY_POOL_SIZE;
   EXPECT_TRUE(RAND_entropy_pool_get(&entropy_pool, entropy_buffer, ENTROPY_POOL_SIZE));
 
+  OPENSSL_cleanse(entropy_buffer, ENTROPY_POOL_SIZE);
   RAND_entropy_pool_add(&entropy_pool, fake_entropy);
   entropy_pool.valid_available = ENTROPY_POOL_SIZE + 1;
   EXPECT_FALSE(RAND_entropy_pool_get(&entropy_pool, entropy_buffer, ENTROPY_POOL_SIZE));
+  EXPECT_EQ(OPENSSL_memcmp(entropy_buffer, zero_entropy_pool, ENTROPY_POOL_SIZE), 0);
   entropy_pool.valid_available = ENTROPY_POOL_SIZE;
   EXPECT_TRUE(RAND_entropy_pool_get(&entropy_pool, entropy_buffer, ENTROPY_POOL_SIZE));
 
+  OPENSSL_cleanse(entropy_buffer, ENTROPY_POOL_SIZE);
   RAND_entropy_pool_add(&entropy_pool, fake_entropy);
   entropy_pool.index_read = ENTROPY_POOL_SIZE + 1;
   EXPECT_FALSE(RAND_entropy_pool_get(&entropy_pool, entropy_buffer, ENTROPY_POOL_SIZE));
+  EXPECT_EQ(OPENSSL_memcmp(entropy_buffer, zero_entropy_pool, ENTROPY_POOL_SIZE), 0);
   entropy_pool.index_read = 0;
   EXPECT_TRUE(RAND_entropy_pool_get(&entropy_pool, entropy_buffer, ENTROPY_POOL_SIZE));
 }
