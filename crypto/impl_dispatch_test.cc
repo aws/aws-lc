@@ -208,7 +208,7 @@ TEST_F(ImplDispatchTest, SHA256) {
 
 constexpr size_t kFlag_aes_hw_ctr32_encrypt_blocks = 0; // unimplemented for aarch64
 constexpr size_t kFlag_aes_hw_encrypt = 1;
-// constexpr size_t kFlag_aesni_gcm_encrypt = 2; // unimplemented for aarch64
+constexpr size_t kFlag_aes_gcm_enc_kernel = 2; // unique to aarch64
 constexpr size_t kFlag_aes_hw_set_encrypt_key = 3;
 constexpr size_t kFlag_vpaes_encrypt = 4;
 constexpr size_t kFlag_vpaes_set_encrypt_key = 5;
@@ -221,9 +221,7 @@ TEST_F(ImplDispatchTest, AEAD_AES_GCM) {
           {kFlag_aes_hw_ctr32_encrypt_blocks, armv8_aes_ && !armv8_gcm_pmull_ && !armv8_gcm_8x_}, // if hw aes supported but no gcm supported
           {kFlag_aes_hw_encrypt, armv8_aes_},
           {kFlag_aes_hw_set_encrypt_key, armv8_aes_},
-          // {kFlag_aesni_gcm_encrypt,
-          //  is_x86_64_ && armv8_aes_ && avx_movbe_ &&
-          //  !is_assembler_too_old && !vaes_vpclmulqdq_},
+          {kFlag_aes_gcm_enc_kernel, armv8_aes_ && armv8_gcm_pmull_ && !armv8_gcm_8x_},
           {kFlag_vpaes_encrypt, neon_ && !armv8_aes_},
           {kFlag_vpaes_set_encrypt_key, neon_ && !armv8_aes_},
           // {kFlag_aes_gcm_encrypt_avx512,
