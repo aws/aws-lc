@@ -262,6 +262,13 @@ $code.=<<___;
 .type   aesv8_gcm_8x_enc_128,%function
 .align  4
 aesv8_gcm_8x_enc_128:
+#ifdef BORINGSSL_DISPATCH_TEST
+.extern        BORINGSSL_function_hit
+    adrp	x6,:pg_hi21:BORINGSSL_function_hit
+    add x6, x6, :lo12:BORINGSSL_function_hit
+	mov w7, #1
+	strb w7, [x6,#7]
+#endif
 	AARCH64_VALID_CALL_TARGET
 	cbz	x1, .L128_enc_ret
 	stp	d8, d9, [sp, #-80]!
