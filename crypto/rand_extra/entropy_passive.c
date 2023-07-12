@@ -9,7 +9,7 @@ void RAND_module_entropy_depleted(void) {
   uint8_t entropy[ENTROPY_POOL_SIZE] = {0};
 
   // Next step: draw entropy from either CPU source of system source
-  // and put into |entropy|.
+  // and copy into |entropy|.
 
   RAND_load_entropy(entropy);
 }

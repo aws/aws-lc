@@ -154,14 +154,36 @@ struct entropy_pool {
   uint8_t pool[ENTROPY_POOL_SIZE];
 };
 
+// RAND_entropy_pool_init initializes the entropy pool |entropy_pool|.
 OPENSSL_EXPORT void RAND_entropy_pool_init(struct entropy_pool *entropy_pool);
+
+// RAND_entropy_pool_zeroize zeroes all data stored in the entropy pool
+// |entropy_pool| as well as zeroing all values.
 OPENSSL_EXPORT void RAND_entropy_pool_zeroize(struct entropy_pool *entropy_pool);
+
+// RAND_entropy_pool_get returns |get_size| bytes from the entropy pool
+// |entropy_pool| in |get_buffer|. |get_buffer| must be of size at least
+// |get_size|. The value of |get_size| must be in the
+// interval: (0, ENTROPY_POOL_SIZE]. If |entropy_pool| does not contain enough
+// bytes to satisfy a valid |get_size| request, fresh bytes are automatically
+// sourced into the entropy pool. The process of sourcing will abort if a
+// failure arises.
+// Returns 1 if |get_size| bytes of entropy is successfully filled into
+// |get_buffer|. Returns 0 otherwise.
 OPENSSL_EXPORT int RAND_entropy_pool_get(struct entropy_pool *entropy_pool,
   uint8_t *get_buffer, size_t get_size);
+
+// RAND_entropy_pool_add adds entropy from |add_buffer| to the entropy pool
+// |entropy_pool|. The capacity of |entropy_pool| must be exactly
+// |ENTROPY_POOL_SIZE| and the amount of (entropy) bytes in |add_buffer| must
+// also be exactly |ENTROPY_POOL_SIZE|.
 OPENSSL_EXPORT void RAND_entropy_pool_add(struct entropy_pool *entropy_pool,
   uint8_t add_buffer[ENTROPY_POOL_SIZE]);
 
+// TODO
 void RAND_module_entropy_depleted(void);
+
+// TODO
 void RAND_load_entropy(uint8_t load_entropy[ENTROPY_POOL_SIZE]);
 
 #endif
