@@ -22,6 +22,13 @@
 
 .align	4
 _aes_gcm_enc_kernel:
+#ifdef BORINGSSL_DISPATCH_TEST
+
+	adrp	x6,_BORINGSSL_function_hit@PAGE
+	add	x6, x6, _BORINGSSL_function_hit@PAGEOFF
+	mov	w7, #1
+	strb	w7, [x6,#5]
+#endif
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29, x30, [sp, #-128]!
 	mov	x29, sp

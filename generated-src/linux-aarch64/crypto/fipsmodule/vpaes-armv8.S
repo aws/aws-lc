@@ -216,6 +216,13 @@ _vpaes_encrypt_core:
 .type	vpaes_encrypt,%function
 .align	4
 vpaes_encrypt:
+#ifdef BORINGSSL_DISPATCH_TEST
+
+	adrp	x6,BORINGSSL_function_hit
+	add	x6, x6, :lo12:BORINGSSL_function_hit
+	mov	w7, #1
+	strb	w7, [x6,#4]
+#endif
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-16]!
 	add	x29,sp,#0
@@ -1019,6 +1026,13 @@ _vpaes_schedule_mangle:
 .type	vpaes_set_encrypt_key,%function
 .align	4
 vpaes_set_encrypt_key:
+#ifdef BORINGSSL_DISPATCH_TEST
+
+	adrp	x6,BORINGSSL_function_hit
+	add	x6, x6, :lo12:BORINGSSL_function_hit
+	mov	w7, #1
+	strb	w7, [x6,#5]
+#endif
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-16]!
 	add	x29,sp,#0
