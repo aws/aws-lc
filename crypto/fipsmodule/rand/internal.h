@@ -154,11 +154,11 @@ struct entropy_pool {
   uint8_t pool[ENTROPY_POOL_SIZE];
 };
 
-void RAND_entropy_pool_init(struct entropy_pool *entropy_pool);
-void RAND_entropy_pool_zeroize(struct entropy_pool *entropy_pool);
-int RAND_entropy_pool_get(struct entropy_pool *entropy_pool,
+OPENSSL_EXPORT void RAND_entropy_pool_init(struct entropy_pool *entropy_pool);
+OPENSSL_EXPORT void RAND_entropy_pool_zeroize(struct entropy_pool *entropy_pool);
+OPENSSL_EXPORT int RAND_entropy_pool_get(struct entropy_pool *entropy_pool,
   uint8_t *get_buffer, size_t get_size);
-void RAND_entropy_pool_add(struct entropy_pool *entropy_pool,
+OPENSSL_EXPORT void RAND_entropy_pool_add(struct entropy_pool *entropy_pool,
   uint8_t add_buffer[ENTROPY_POOL_SIZE]);
 
 void RAND_module_entropy_depleted(void);
