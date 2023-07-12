@@ -206,10 +206,46 @@ TEST_F(ImplDispatchTest, SHA256) {
 #if !defined(OPENSSL_NO_ASM) && \
     (defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64))
 
-constexpr size_t kFlag_aes_hw_encrypt = 0;
-constexpr size_t kFlag_vpaes_encrypt = 1;
-constexpr size_t kFlag_aes_hw_set_encrypt_key = 2;
-constexpr size_t kFlag_vpaes_set_encrypt_key = 3;
+constexpr size_t kFlag_aes_hw_ctr32_encrypt_blocks = 0; // unimplemented for aarch64
+constexpr size_t kFlag_aes_hw_encrypt = 1;
+// constexpr size_t kFlag_aesni_gcm_encrypt = 2; // unimplemented for aarch64
+constexpr size_t kFlag_aes_hw_set_encrypt_key = 3;
+constexpr size_t kFlag_vpaes_encrypt = 4;
+constexpr size_t kFlag_vpaes_set_encrypt_key = 5;
+// constexpr size_t kFlag_sha256_shaext = 6; // unimplemented for aarch64
+// constexpr size_t kFlag_aes_gcm_encrypt_avx512 = 7; // unimplemented for aarch64
+
+TEST_F(ImplDispatchTest, AEAD_AES_GCM) {
+  AssertFunctionsHit(
+      {
+          {kFlag_aes_hw_ctr32_encrypt_blocks, armv8_aes_ && !armv8_gcm_pmull_ && !armv8_gcm_8x_}, // if hw aes supported but no gcm supported
+          {kFlag_aes_hw_encrypt, armv8_aes_},
+          {kFlag_aes_hw_set_encrypt_key, armv8_aes_},
+          // {kFlag_aesni_gcm_encrypt,
+          //  is_x86_64_ && armv8_aes_ && avx_movbe_ &&
+          //  !is_assembler_too_old && !vaes_vpclmulqdq_},
+          {kFlag_vpaes_encrypt, neon_ && !armv8_aes_},
+          {kFlag_vpaes_set_encrypt_key, neon_ && !armv8_aes_},
+          // {kFlag_aes_gcm_encrypt_avx512,
+          //  is_x86_64_ && armv8_aes_ &&
+          //  !is_assembler_too_old_avx512 &&
+          //  vaes_vpclmulqdq_},
+      },
+      [] {
+        const uint8_t kZeros[16] = {0};
+        const uint8_t kPlaintext[40] = {1, 2, 3, 4, 0};
+        uint8_t ciphertext[sizeof(kPlaintext) + 16];
+        size_t ciphertext_len;
+        bssl::ScopedEVP_AEAD_CTX ctx;
+        ASSERT_TRUE(EVP_AEAD_CTX_init(ctx.get(), EVP_aead_aes_128_gcm(), kZeros,
+                                      sizeof(kZeros),
+                                      EVP_AEAD_DEFAULT_TAG_LENGTH, nullptr));
+        ASSERT_TRUE(EVP_AEAD_CTX_seal(
+            ctx.get(), ciphertext, &ciphertext_len, sizeof(ciphertext), kZeros,
+            EVP_AEAD_nonce_length(EVP_aead_aes_128_gcm()), kPlaintext,
+            sizeof(kPlaintext), nullptr, 0));
+      });
+}
 
 TEST_F(ImplDispatchTest, AES_set_encrypt_key) {
   AssertFunctionsHit(

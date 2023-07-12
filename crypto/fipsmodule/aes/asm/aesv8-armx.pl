@@ -102,7 +102,7 @@ ${prefix}_set_encrypt_key:
     adrp	x6,:pg_hi21:BORINGSSL_function_hit
     add x6, x6, :lo12:BORINGSSL_function_hit
 	mov w7, #1
-	strb w7, [x6,#2]
+	strb w7, [x6,#3]
 #endif
 ___
 $code.=<<___	if ($flavour =~ /64/);
@@ -355,7 +355,7 @@ ${prefix}_${dir}crypt:
     adrp	x6,:pg_hi21:BORINGSSL_function_hit
     add x6, x6, :lo12:BORINGSSL_function_hit
 	mov w7, #1
-	strb w7, [x6]
+	strb w7, [x6,#1]
 #endif
 	AARCH64_VALID_CALL_TARGET
 	ldr	$rounds,[$key,#240]
@@ -734,6 +734,13 @@ $code.=<<___;
 .type	${prefix}_ctr32_encrypt_blocks,%function
 .align	5
 ${prefix}_ctr32_encrypt_blocks:
+#ifdef BORINGSSL_DISPATCH_TEST
+.extern        BORINGSSL_function_hit
+    adrp	x6,:pg_hi21:BORINGSSL_function_hit
+    add x6, x6, :lo12:BORINGSSL_function_hit
+	mov w7, #1
+	strb w7, [x6]
+#endif
 ___
 $code.=<<___	if ($flavour =~ /64/);
 	// Armv8.3-A PAuth: even though x30 is pushed to stack it is not popped later.

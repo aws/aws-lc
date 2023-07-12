@@ -269,7 +269,7 @@ vpaes_encrypt:
     adrp	x6,:pg_hi21:BORINGSSL_function_hit
     add x6, x6, :lo12:BORINGSSL_function_hit
 	mov w7, #1
-	strb w7, [x6,#1]
+	strb w7, [x6,#4]
 #endif
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-16]!
@@ -1084,7 +1084,7 @@ vpaes_set_encrypt_key:
     adrp	x6,:pg_hi21:BORINGSSL_function_hit
     add x6, x6, :lo12:BORINGSSL_function_hit
 	mov w7, #1
-	strb w7, [x6,#3]
+	strb w7, [x6,#5]
 #endif
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-16]!
