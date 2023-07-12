@@ -119,13 +119,12 @@ constexpr size_t kFlag_aes_hw_set_encrypt_key = 3;
 constexpr size_t kFlag_vpaes_encrypt = 4;
 constexpr size_t kFlag_vpaes_set_encrypt_key = 5;
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
-constexpr size_t kFlag_aesni_gcm_encrypt = 2; // unique to x86
-constexpr size_t kFlag_sha256_shaext = 6; //unique to x86
-constexpr size_t kFlag_aes_gcm_encrypt_avx512 = 7; // unique to x86
+constexpr size_t kFlag_aesni_gcm_encrypt = 2;
+constexpr size_t kFlag_sha256_shaext = 6;
+constexpr size_t kFlag_aes_gcm_encrypt_avx512 = 7;
 #else // AARCH64
-constexpr size_t kFlag_aes_gcm_enc_kernel = 2; // unique to aarch64
-// Flag 6 is unused on aarch64.
-constexpr size_t kFlag_aesv8_gcm_8x_enc_128 = 7; // unique to aarch64
+constexpr size_t kFlag_aes_gcm_enc_kernel = 2;
+constexpr size_t kFlag_aesv8_gcm_8x_enc_128 = 6;
 #endif
 
 TEST_F(ImplDispatchTest, AEAD_AES_GCM) {
