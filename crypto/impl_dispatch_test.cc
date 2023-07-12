@@ -66,9 +66,7 @@ class ImplDispatchTest : public ::testing::Test {
 #else
         false;
 #endif // MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
-#endif  // X86 || X86_64
-
-#if defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
+#else // AARCH64
     aes_hw = CRYPTO_is_NEON_capable();
     aes_vpaes = CRYPTO_is_ARMv8_AES_capable();
     armv8_gcm_pmull_ = CRYPTO_is_ARMv8_PMULL_capable();
@@ -109,7 +107,7 @@ class ImplDispatchTest : public ::testing::Test {
   bool is_x86_64_ = false;
   bool is_assembler_too_old = false;
   bool is_assembler_too_old_avx512 = false;
-#elif defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
+#else // AARCH64
   bool armv8_gcm_pmull_ = false;
   bool armv8_gcm_8x_ = false;
 #endif
