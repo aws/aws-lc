@@ -31,14 +31,19 @@
 #include "fipsmodule/cpucap/internal.h"
 #include "fipsmodule/modes/internal.h"
 
-
+  // bool vaes_vpclmulqdq_ = false;
+  // bool avx_movbe_ = false;
+  // bool sha_ext_ = false;
+  // bool is_x86_64_ = false;
+  // bool is_assembler_too_old = false;
+  // bool is_assembler_too_old_avx512 = false;
 class ImplDispatchTest : public ::testing::Test {
  public:
   void SetUp() override {
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
     aes_hw = CRYPTO_is_AESNI_capable();
-    aes_vpaes = CRYPTO_is_AVX_capable() && CRYPTO_is_MOVBE_capable();
-    ssse3_ = CRYPTO_is_SSSE3_capable();
+    avx_movbe_ = CRYPTO_is_AVX_capable() && CRYPTO_is_MOVBE_capable();
+    aes_vpaes = CRYPTO_is_SSSE3_capable();
     sha_ext_ = CRYPTO_is_SHAEXT_capable();
     vaes_vpclmulqdq_ =
         (OPENSSL_ia32cap_P[2] & 0xC0030000) &&         // AVX512{F+DQ+BW+VL}
