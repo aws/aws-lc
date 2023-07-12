@@ -22,6 +22,26 @@ AWS_LC_BUILD_FOLDER="${SCRATCH_FOLDER}/aws-lc-build"
 AWS_LC_INSTALL_FOLDER="${SCRATCH_FOLDER}/aws-lc-install"
 HAPROXY_SRC="${SCRATCH_FOLDER}/haproxy"
 
+function build_and_test_haproxy() {
+  cd ${HAPROXY_SRC}
+
+  make CC="${CC}" -j ${NUM_CPU_THREADS} TARGET=generic USE_OPENSSL=1 SSL_INC="${AWS_LC_INSTALL_FOLDER}/include" SSL_LIB="${AWS_LC_INSTALL_FOLDER}/lib/"
+  ./scripts/build-vtest.sh
+  export VTEST_PROGRAM=$(realpath ../vtest/vtest)
+
+  # These tests pass when run local but are not supported in CodeBuild CryptoAlg-1965
+  excluded_tests=("mcli_show_info.vtc" "mcli_start_progs.vtc" "tls_basic_sync.vtc" "tls_basic_sync_wo_stkt_backend.vtc" "acl_cli_spaces.vtc" "http_reuse_always.vtc")
+  test_paths=""
+
+  for test in reg-tests/**/*; do
+      if [[ "$test" == *.vtc ]] && [[ ! " ${excluded_tests[*]} " =~ $(basename "$test") ]]; then
+          test_paths+="$(realpath "$test") "
+      fi
+  done
+
+  ./scripts/run-regtests.sh "$test_paths"
+}
+
 # Make script execution idempotent.
 mkdir -p ${SCRATCH_FOLDER}
 rm -rf ${SCRATCH_FOLDER}/*
@@ -31,22 +51,13 @@ mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER}
 git clone --depth 1 https://github.com/haproxy/haproxy.git
 ls
 
-aws_lc_build ${SRC_ROOT} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER}
+# Test with static AWS-LC libraries
+aws_lc_build ${SRC_ROOT} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} -DBUILD_SHARED_LIBS=0
+build_and_test_haproxy $HAPROXY_SRC
 
-cd ${HAPROXY_SRC}
+rm -rf "$AWS_LC_INSTALL_FOLDER/*"
+rm -rf "$AWS_LC_BUILD_FOLDER/*"
 
-make CC="${CC}" -j ${NUM_CPU_THREADS} TARGET=generic USE_OPENSSL=1 SSL_INC="${AWS_LC_INSTALL_FOLDER}/include" SSL_LIB="${AWS_LC_INSTALL_FOLDER}/lib/"
-./scripts/build-vtest.sh
-export VTEST_PROGRAM=$(realpath ../vtest/vtest)
-
-# These tests pass when run local but are not supported in CodeBuild CryptoAlg-1965
-excluded_tests=("mcli_show_info.vtc" "mcli_start_progs.vtc" "tls_basic_sync.vtc" "tls_basic_sync_wo_stkt_backend.vtc" "acl_cli_spaces.vtc" "http_reuse_always.vtc")
-test_paths=""
-
-for test in reg-tests/**/*; do
-    if [[ "$test" == *.vtc ]] && [[ ! " ${excluded_tests[*]} " =~ $(basename "$test") ]]; then
-        test_paths+="$(realpath "$test") "
-    fi
-done
-
-./scripts/run-regtests.sh "$test_paths"
+# Test with shared AWS-LC libraries
+aws_lc_build ${SRC_ROOT} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} -DBUILD_SHARED_LIBS=1
+build_and_test_haproxy $HAPROXY_SRC
