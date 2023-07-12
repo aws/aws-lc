@@ -107,6 +107,7 @@ TEST(EntropyPool, BasicFailure) {
   EXPECT_FALSE(RAND_entropy_pool_get(&entropy_pool, entropy_buffer, ENTROPY_POOL_SIZE+1));
   EXPECT_FALSE(RAND_entropy_pool_get(&entropy_pool, entropy_buffer, 0));
   EXPECT_FALSE(RAND_entropy_pool_get(NULL, entropy_buffer, ENTROPY_POOL_SIZE));
+  EXPECT_FALSE(RAND_entropy_pool_get(&entropy_pool, NULL, ENTROPY_POOL_SIZE));
 
   // Consuming zero bytes is not supported.
   EXPECT_FALSE(RAND_entropy_pool_get(&entropy_pool, entropy_buffer, ENTROPY_POOL_SIZE+1));
