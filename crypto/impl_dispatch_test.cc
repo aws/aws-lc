@@ -160,7 +160,11 @@ TEST_F(ImplDispatchTest, AEAD_AES_GCM) {
       },
       [] {
         const uint8_t kZeros[16] = {0};
+#if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
+        const uint8_t kPlaintext[40] = {1, 2, 3, 4, 0};
+#else
         const uint8_t kPlaintext[256] = {1, 2, 3, 4, 0};
+#endif
         uint8_t ciphertext[sizeof(kPlaintext) + 16];
         size_t ciphertext_len;
         bssl::ScopedEVP_AEAD_CTX ctx;
