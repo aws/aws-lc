@@ -66,12 +66,12 @@ class ImplDispatchTest : public ::testing::Test {
 #else
         false;
 #endif // MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
-#else // AARCH64
+#elif defined(OPENSSL_AARCH64)
     aes_hw = CRYPTO_is_NEON_capable();
     aes_vpaes = CRYPTO_is_ARMv8_AES_capable();
     armv8_gcm_pmull_ = CRYPTO_is_ARMv8_PMULL_capable();
     armv8_gcm_8x_ = CRYPTO_is_ARMv8_GCM_8x_capable();
-#endif // ARM || AARCH64
+#endif
   }
 
  protected:
@@ -114,7 +114,8 @@ class ImplDispatchTest : public ::testing::Test {
 
 };
 
-#if !defined(OPENSSL_NO_ASM)
+#if !defined(OPENSSL_NO_ASM) && (defined(OPENSSL_X86) || \
+    defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64))
 
 constexpr size_t kFlag_aes_hw_ctr32_encrypt_blocks = 0;
 constexpr size_t kFlag_aes_hw_encrypt = 1;
@@ -220,6 +221,6 @@ TEST_F(ImplDispatchTest, SHA256) {
 }
 #endif // OPENSSL_X86 || OPENSSL_X86_64
 
-#endif  // !OPENSSL_NO_ASM
+#endif  // !OPENSSL_NO_ASM && (OPENSSL_X86 || OPENSSL_X86_64 || OPENSSL_AARCH64)
 
 #endif  // DISPATCH_TEST && !SHARED_LIBRARY
