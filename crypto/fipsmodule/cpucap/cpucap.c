@@ -85,12 +85,12 @@ HIDDEN uint32_t OPENSSL_armcap_P = 0;
 
 #if defined(BORINGSSL_DISPATCH_TEST)
 // This value must be explicitly initialized to zero. See similar comment above.
-#if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
-HIDDEN uint8_t BORINGSSL_function_hit[8] = {0};
-#elif defined(OPENSSL_AARCH64)
+#if defined(OPENSSL_AARCH64)
 HIDDEN uint8_t BORINGSSL_function_hit[7] = {0};
+#else
+HIDDEN uint8_t BORINGSSL_function_hit[8] = {0};
 #endif
-#endif
+#endif // BORINGSSL_DISPATCH_TEST
 
 // This variable is used only for testing purposes to ensure that the library
 // constructor is executed and the capability variable is initialized.

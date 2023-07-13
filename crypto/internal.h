@@ -1013,7 +1013,6 @@ OPENSSL_INLINE int boringssl_fips_break_test(const char *test) {
 
 // BORINGSSL_function_hit is an array of flags. The following functions will
 // set these flags if BORINGSSL_DISPATCH_TEST is defined.
-#if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
 // On x86 and x86_64:
 //   0: aes_hw_ctr32_encrypt_blocks
 //   1: aes_hw_encrypt
@@ -1023,8 +1022,6 @@ OPENSSL_INLINE int boringssl_fips_break_test(const char *test) {
 //   5: vpaes_set_encrypt_key
 //   6: sha256_block_data_order_shaext
 //   7: aes_gcm_encrypt_avx512
-extern uint8_t BORINGSSL_function_hit[8];
-#elif defined(OPENSSL_AARCH64)
 // On AARCH64:
 //   0: aes_hw_ctr32_encrypt_blocks
 //   1: aes_hw_encrypt
@@ -1033,7 +1030,10 @@ extern uint8_t BORINGSSL_function_hit[8];
 //   4: vpaes_encrypt
 //   5: vpaes_set_encrypt_key
 //   6: aesv8_gcm_8x_enc_128
+#if defined(OPENSSL_AARCH64)
 extern uint8_t BORINGSSL_function_hit[7];
+#else
+extern uint8_t BORINGSSL_function_hit[8];
 #endif
 #endif  // BORINGSSL_DISPATCH_TEST
 
