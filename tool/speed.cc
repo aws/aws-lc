@@ -1508,8 +1508,7 @@ static bool SpeedEvpEcdhCurve(const std::string &name, int nid,
     // performs the public key check.
     if (nid != NID_X25519) {
       // For the supported P NIST curves, the peer public key must be validated
-      // to ensure proper computation. FIPS has stronger requirements (cf.
-      // SP 800-56Ar3 5.6.2.2), so flip between the non-fips and fips version.
+      // to ensure proper computation.
       if (!EC_KEY_check_key(EVP_PKEY_get0_EC_KEY(peer_key.get()))) {
         return false;
       }
