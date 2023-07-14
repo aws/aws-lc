@@ -290,8 +290,8 @@ $code.=<<___;
 aes_gcm_enc_kernel:
 #ifdef BORINGSSL_DISPATCH_TEST
 .extern        BORINGSSL_function_hit
-    adrp	x6,:pg_hi21:BORINGSSL_function_hit
-    add x6, x6, :lo12:BORINGSSL_function_hit
+	adrp	x6,:pg_hi21:BORINGSSL_function_hit
+	add x6, x6, :lo12:BORINGSSL_function_hit
 	mov w7, #1
 	strb w7, [x6,#2]
 #endif

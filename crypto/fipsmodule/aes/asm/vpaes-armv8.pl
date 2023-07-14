@@ -266,8 +266,8 @@ _vpaes_encrypt_core:
 vpaes_encrypt:
 #ifdef BORINGSSL_DISPATCH_TEST
 .extern        BORINGSSL_function_hit
-    adrp	x6,:pg_hi21:BORINGSSL_function_hit
-    add x6, x6, :lo12:BORINGSSL_function_hit
+	adrp	x6,:pg_hi21:BORINGSSL_function_hit
+	add x6, x6, :lo12:BORINGSSL_function_hit
 	mov w7, #1
 	strb w7, [x6,#4]
 #endif
@@ -1081,8 +1081,8 @@ _vpaes_schedule_mangle:
 vpaes_set_encrypt_key:
 #ifdef BORINGSSL_DISPATCH_TEST
 .extern        BORINGSSL_function_hit
-    adrp	x6,:pg_hi21:BORINGSSL_function_hit
-    add x6, x6, :lo12:BORINGSSL_function_hit
+	adrp	x6,:pg_hi21:BORINGSSL_function_hit
+	add x6, x6, :lo12:BORINGSSL_function_hit
 	mov w7, #1
 	strb w7, [x6,#5]
 #endif

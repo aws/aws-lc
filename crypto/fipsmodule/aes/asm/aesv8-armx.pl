@@ -101,10 +101,10 @@ ___
 $code.=<<___	if ($flavour =~ /64/);
 #ifdef BORINGSSL_DISPATCH_TEST
 .extern        BORINGSSL_function_hit
-    adrp	x6,:pg_hi21:BORINGSSL_function_hit
-    add x6, x6, :lo12:BORINGSSL_function_hit
-    mov w7, #1
-    strb w7, [x6,#3]
+	adrp	x6,:pg_hi21:BORINGSSL_function_hit
+	add x6, x6, :lo12:BORINGSSL_function_hit
+	mov w7, #1
+	strb w7, [x6,#3]
 #endif
 	// Armv8.3-A PAuth: even though x30 is pushed to stack it is not popped later.
 	AARCH64_VALID_CALL_TARGET
@@ -354,8 +354,8 @@ ___
 $code.=<<___	if ($flavour =~ /64/);
 #ifdef BORINGSSL_DISPATCH_TEST
 .extern        BORINGSSL_function_hit
-    adrp	x6,:pg_hi21:BORINGSSL_function_hit
-    add x6, x6, :lo12:BORINGSSL_function_hit
+	adrp	x6,:pg_hi21:BORINGSSL_function_hit
+	add x6, x6, :lo12:BORINGSSL_function_hit
 	mov w7, #1
 	strb w7, [x6,#1]
 #endif
@@ -742,8 +742,8 @@ ___
 $code.=<<___	if ($flavour =~ /64/);
 #ifdef BORINGSSL_DISPATCH_TEST
 .extern        BORINGSSL_function_hit
-    adrp	x6,:pg_hi21:BORINGSSL_function_hit
-    add x6, x6, :lo12:BORINGSSL_function_hit
+	adrp	x6,:pg_hi21:BORINGSSL_function_hit
+	add x6, x6, :lo12:BORINGSSL_function_hit
 	mov w7, #1
 	strb w7, [x6]
 #endif
