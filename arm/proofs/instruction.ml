@@ -1149,6 +1149,13 @@ let arm_SHRN = define
         // equivalent to word_zx res:(128)word, but use word_subword instead
         (Rd := word_subword res (0,128)) s`;;
 
+let arm_SMULH = define
+ `arm_SMULH Rd Rn Rm =
+    \s. let n:N word = read Rn (s:armstate)
+        and m:N word = read Rm s in
+        let d:N word = iword((ival n * ival m) div (&2 pow dimindex(:N))) in
+        (Rd := d) s`;;
+
 let arm_SUB = define
  `arm_SUB Rd Rm Rn =
     \s. let m = read Rm s
@@ -1878,7 +1885,7 @@ let ARM_OPERATION_CLAUSES =
        arm_ORN; arm_ORR; arm_ORR_VEC;
        arm_RET; arm_REV64_VEC_ALT; arm_RORV;
        arm_SBC; arm_SBCS_ALT; arm_SBFM; arm_SHL_VEC_ALT; arm_SHRN_ALT;
-       arm_SLI_VEC_ALT; arm_SUB; arm_SUBS_ALT;
+       arm_SLI_VEC_ALT; arm_SMULH; arm_SUB; arm_SUBS_ALT;
        arm_UADDLP_ALT; arm_UBFM; arm_UMOV; arm_UMADDL; arm_UMLAL_VEC_ALT;
        arm_UMSUBL; arm_UMULL_VEC_ALT; arm_UMULH; arm_USRA_VEC_ALT; arm_UZP1_ALT;
        arm_ZIP1_ALT;

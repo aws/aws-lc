@@ -145,6 +145,9 @@ let iclasses =
   (*** UMULH ***)
   "10011011110xxxxx011111xxxxxxxxxx";
 
+  (*** SMULH ***)
+  "10011011010xxxxx011111xxxxxxxxxx";
+
   (*** UMADDL, UMSUBL ***)
   "10011011101xxxxxxxxxxxxxxxxxxxxx";
 

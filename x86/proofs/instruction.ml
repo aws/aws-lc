@@ -313,21 +313,6 @@ let QWORD = define
 (* ------------------------------------------------------------------------- *)
 
 let IMUL = new_definition `IMUL dest src = IMUL3 dest (dest,src)`;;
-let IMUL1 = new_definition `IMUL1 = IMUL2 (%rdx,%rax)`;;
-
-(*** Note: these are for the 64-bit versions only. Otherwise %r -> %e etc. ***)
-(*** Also we call DIV -> DIV1 to avoid a clash with built-in constants     ***)
-(*** Should probably have some systematic short prefix for all these       ***)
-
-let MUL = define
- `MUL = MUL2 (%rdx,%rax)`;;
-
-let MULX = define
- `MULX hidest lodest exsrc =
-        MULX4 (hidest,lodest) (%rdx,exsrc)`;;
-
-let DIV1 = define
- `DIV1 = DIV2 (%rax,%rdx) (%rdx,%rax)`;;
 
 (* ------------------------------------------------------------------------- *)
 (* Standard opcodes for conditional combinations (not unique, i.e. there are *)
@@ -527,4 +512,4 @@ let X86_INSTRUCTION_ALIASES =
   SETBE; SETNA; SETL; SETNGE; SETLE; SETNG; SETNB; SETAE; SETNC;
   SETA; SETNBE; SETGE; SETNL; SETG; SETNLE; SETNO; SETNP; SETPO;
   SETNS; SETNE; SETNZ; SETO; SETP; SETPE; SETS; SETE; SETZ;
-  IMUL; IMUL1; MUL; MULX; DIV1];;
+  IMUL];;
