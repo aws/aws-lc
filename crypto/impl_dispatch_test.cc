@@ -67,8 +67,8 @@ class ImplDispatchTest : public ::testing::Test {
         false;
 #endif // MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 #elif defined(OPENSSL_AARCH64)
-    aes_hw = CRYPTO_is_NEON_capable();
-    aes_vpaes = CRYPTO_is_ARMv8_AES_capable();
+    aes_hw = CRYPTO_is_ARMv8_AES_capable();
+    aes_vpaes = CRYPTO_is_NEON_capable();
     armv8_gcm_pmull_ = CRYPTO_is_ARMv8_PMULL_capable();
     armv8_gcm_8x_ = CRYPTO_is_ARMv8_GCM_8x_capable();
 #endif
