@@ -22,7 +22,7 @@ static int entropy_pool_validate_static_assumptions(
 
 // entropy_pool_ensure_can_satisfy returns 1 if the entropy pool |entropy_pool|
 // contains enough entropy to satisfy a get request of size |get_size|.
-// Returns 0 otherwise.
+// Returns 0 otherwise - meaning that the entropy pool needs more entropy.
 static int entropy_pool_ensure_can_satisfy(struct entropy_pool *entropy_pool,
   size_t get_size) {
   if (entropy_pool->valid_available < get_size) {
@@ -46,13 +46,6 @@ static int entropy_pool_consume(struct entropy_pool *entropy_pool,
   entropy_pool->valid_available = entropy_pool->valid_available - get_size;
 
   return 1;
-}
-
-static void entropy_pool_cannot_satisfy_request(void) {
-  // Out-side module call
-  // Could create a soft-lock in the struct here
-  RAND_module_entropy_depleted();
-  // And then unlock struct here
 }
 
 void RAND_entropy_pool_init(struct entropy_pool *entropy_pool) {
@@ -102,7 +95,10 @@ int RAND_entropy_pool_get(struct entropy_pool *entropy_pool,
   }
 
   if (entropy_pool_ensure_can_satisfy(entropy_pool, get_size) != 1) {
-    entropy_pool_cannot_satisfy_request();
+    // Out-side module call
+    // Could create a soft-lock in the struct here
+    RAND_module_entropy_depleted();
+    // And then unlock struct here
     if (entropy_pool_ensure_can_satisfy(entropy_pool, get_size) != 1) {
       return 0;
     }
