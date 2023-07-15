@@ -115,4 +115,4 @@ int RAND_entropy_pool_get(struct entropy_pool *entropy_pool,
   return 1;
 }
 
-#endif
+#endif // defined(AWSLC_FIPS)
