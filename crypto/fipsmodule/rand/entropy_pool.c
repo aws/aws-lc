@@ -69,10 +69,12 @@ int RAND_entropy_pool_add(struct entropy_pool *entropy_pool,
   // written with fresh entropy, every time.
   if (entropy_pool == NULL ||
       entropy_pool->capacity != ENTROPY_POOL_SIZE) {
+    OPENSSL_cleanse(add_buffer, ENTROPY_POOL_SIZE);
     return 0;
   }
 
   OPENSSL_memcpy(entropy_pool->pool, add_buffer, ENTROPY_POOL_SIZE);
+  OPENSSL_cleanse(add_buffer, ENTROPY_POOL_SIZE);
   entropy_pool->index_read = 0;
   entropy_pool->valid_available = ENTROPY_POOL_SIZE;
 
