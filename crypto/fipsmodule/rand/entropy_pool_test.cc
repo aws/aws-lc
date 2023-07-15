@@ -108,6 +108,9 @@ TEST(EntropyPool, BasicFailure) {
   fill_fake_entropy(fake_entropy, 'A');
   EXPECT_TRUE(RAND_entropy_pool_add(&entropy_pool, fake_entropy));
 
+  // Shouldn't abort
+  RAND_entropy_pool_zeroize(NULL);
+
   // Input validation. Cannot:
   //  * Consume strictly more than |ENTROPY_POOL_SIZE| bytes per invocation.
   //  * Consume zero bytes.
