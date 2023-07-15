@@ -138,7 +138,10 @@ void RAND_load_entropy(uint8_t load_entropy[ENTROPY_POOL_SIZE]) {
   if (state == NULL) {
     abort();
   }
-  RAND_entropy_pool_add(state->entropy_pool, load_entropy);
+  
+  if (RAND_entropy_pool_add(state->entropy_pool, load_entropy) != 1) {
+    abort();
+  }
 }
 
 #endif
