@@ -65,10 +65,8 @@ void RAND_entropy_pool_zeroize(struct entropy_pool *entropy_pool) {
     return;
   }
 
-  entropy_pool->capacity = 0;
-  entropy_pool->valid_available = 0;
-  entropy_pool->index_read = 0;
   OPENSSL_cleanse(entropy_pool->pool, ENTROPY_POOL_SIZE);
+  OPENSSL_cleanse(entropy_pool, sizeof(struct entropy_pool));
 }
 
 void RAND_entropy_pool_add(struct entropy_pool *entropy_pool,
