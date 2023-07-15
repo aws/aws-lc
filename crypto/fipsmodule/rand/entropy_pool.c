@@ -69,19 +69,21 @@ void RAND_entropy_pool_zeroize(struct entropy_pool *entropy_pool) {
   OPENSSL_cleanse(entropy_pool, sizeof(struct entropy_pool));
 }
 
-void RAND_entropy_pool_add(struct entropy_pool *entropy_pool,
+int RAND_entropy_pool_add(struct entropy_pool *entropy_pool,
   uint8_t add_buffer[ENTROPY_POOL_SIZE]) {
 
   // An explicit (and simplifying) assumption is that the entire pool is
   // written with fresh entropy, every time.
   if (entropy_pool == NULL ||
       entropy_pool->capacity != ENTROPY_POOL_SIZE) {
-    abort();
+    return 0;
   }
 
   OPENSSL_memcpy(entropy_pool->pool, add_buffer, ENTROPY_POOL_SIZE);
   entropy_pool->index_read = 0;
   entropy_pool->valid_available = ENTROPY_POOL_SIZE;
+
+  return 1;
 }
 
 int RAND_entropy_pool_get(struct entropy_pool *entropy_pool,

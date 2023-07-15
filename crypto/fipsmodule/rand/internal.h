@@ -177,7 +177,9 @@ OPENSSL_EXPORT int RAND_entropy_pool_get(struct entropy_pool *entropy_pool,
 // |entropy_pool|. The capacity of |entropy_pool| must be exactly
 // |ENTROPY_POOL_SIZE| and the amount of (entropy) bytes in |add_buffer| must
 // also be exactly |ENTROPY_POOL_SIZE|.
-OPENSSL_EXPORT void RAND_entropy_pool_add(struct entropy_pool *entropy_pool,
+// Returns 1 if entropy is successfully added to the entropy pool and 0
+// otherwise.
+OPENSSL_EXPORT int RAND_entropy_pool_add(struct entropy_pool *entropy_pool,
   uint8_t add_buffer[ENTROPY_POOL_SIZE]);
 
 // TODO
