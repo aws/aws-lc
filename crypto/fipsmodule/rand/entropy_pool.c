@@ -12,13 +12,12 @@ static int entropy_pool_validate_static_assumptions(
   struct entropy_pool *entropy_pool) {
   // By transitivity, |valid_available| and |index_read| are verified to be at
   // most |ENTROPY_POOL_SIZE|.
-  if (entropy_pool != NULL &&
-    entropy_pool->capacity <= ENTROPY_POOL_SIZE &&
-    entropy_pool->valid_available <= entropy_pool->capacity &&
-    entropy_pool->index_read <= entropy_pool->capacity) {
-    return 1;
+  if (entropy_pool->capacity > ENTROPY_POOL_SIZE ||
+      entropy_pool->valid_available > entropy_pool->capacity ||
+      entropy_pool->index_read > entropy_pool->capacity) {
+    return 0;
   }
-  return 0;
+  return 1;
 }
 
 // entropy_pool_ensure_can_satisfy returns 1 if the entropy pool |entropy_pool|
@@ -26,10 +25,10 @@ static int entropy_pool_validate_static_assumptions(
 // Returns 0 otherwise.
 static int entropy_pool_ensure_can_satisfy(struct entropy_pool *entropy_pool,
   size_t get_size) {
-  if (entropy_pool->valid_available >= get_size) {
-    return 1;
+  if (entropy_pool->valid_available < get_size) {
+    return 0;
   }
-  return 0;
+  return 1;
 }
 
 static int entropy_pool_consume(struct entropy_pool *entropy_pool,
@@ -63,7 +62,7 @@ void RAND_entropy_pool_init(struct entropy_pool *entropy_pool) {
 
 void RAND_entropy_pool_zeroize(struct entropy_pool *entropy_pool) {
   if (entropy_pool == NULL) {
-    abort();
+    return;
   }
 
   entropy_pool->capacity = 0;
@@ -77,7 +76,8 @@ void RAND_entropy_pool_add(struct entropy_pool *entropy_pool,
 
   // An explicit (and simplifying) assumption is that the entire pool is
   // written with fresh entropy, every time.
-  if (entropy_pool == NULL || entropy_pool->capacity != ENTROPY_POOL_SIZE) {
+  if (entropy_pool == NULL ||
+      entropy_pool->capacity != ENTROPY_POOL_SIZE) {
     abort();
   }
 
@@ -91,9 +91,9 @@ int RAND_entropy_pool_get(struct entropy_pool *entropy_pool,
 
   // Doesn't support requests bigger than the total size of the pool or zero.
   if (entropy_pool == NULL ||
-    get_buffer == NULL ||
-    get_size == 0 ||
-    get_size > entropy_pool->capacity) {
+      get_buffer == NULL ||
+      get_size == 0 ||
+      get_size > entropy_pool->capacity) {
     return 0;
   }
 
