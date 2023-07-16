@@ -17,8 +17,6 @@ const size_t entropy_pool_size_halfed = ENTROPY_POOL_SIZE / 2;
 const uint8_t zero_entropy_pool[ENTROPY_POOL_SIZE] = {0};
 
 static void fill_fake_entropy(uint8_t fake_entropy_buffer[ENTROPY_POOL_SIZE],
-  char ch);
-static void fill_fake_entropy(uint8_t fake_entropy_buffer[ENTROPY_POOL_SIZE],
   char ch) {
   for (size_t i = 0; i < ENTROPY_POOL_SIZE; i++) {
     fake_entropy_buffer[i] = ch;
