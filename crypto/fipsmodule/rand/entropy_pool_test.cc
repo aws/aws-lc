@@ -122,6 +122,8 @@ TEST(EntropyPool, BasicFailure) {
   EXPECT_EQ(OPENSSL_memcmp(entropy_buffer, zero_entropy_pool, ENTROPY_POOL_SIZE), 0);
   EXPECT_FALSE(RAND_entropy_pool_get(&entropy_pool, NULL, ENTROPY_POOL_SIZE));
   EXPECT_EQ(OPENSSL_memcmp(entropy_buffer, zero_entropy_pool, ENTROPY_POOL_SIZE), 0);
+  // Nothing should have touched the entropy pool
+  EXPECT_EQ(OPENSSL_memcmp(entropy_pool.pool, fake_entropy_check_output, ENTROPY_POOL_SIZE), 0);
 
   // Modify internal state to capture validations
   OPENSSL_cleanse(entropy_buffer, ENTROPY_POOL_SIZE);
