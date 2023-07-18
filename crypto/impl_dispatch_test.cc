@@ -31,23 +31,18 @@
 #include "fipsmodule/cpucap/internal.h"
 #include "fipsmodule/modes/internal.h"
 
-  // bool vaes_vpclmulqdq_ = false;
-  // bool avx_movbe_ = false;
-  // bool sha_ext_ = false;
-  // bool is_x86_64_ = false;
-  // bool is_assembler_too_old = false;
-  // bool is_assembler_too_old_avx512 = false;
+
 class ImplDispatchTest : public ::testing::Test {
  public:
   void SetUp() override {
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
-    aes_hw = CRYPTO_is_AESNI_capable();
+    aes_hw_ = CRYPTO_is_AESNI_capable();
     avx_movbe_ = CRYPTO_is_AVX_capable() && CRYPTO_is_MOVBE_capable();
-    aes_vpaes = CRYPTO_is_SSSE3_capable();
+    aes_vpaes_ = CRYPTO_is_SSSE3_capable();
     sha_ext_ = CRYPTO_is_SHAEXT_capable();
-    vaes_vpclmulqdq_ =
-        (OPENSSL_ia32cap_P[2] & 0xC0030000) &&         // AVX512{F+DQ+BW+VL}
-        (((OPENSSL_ia32cap_P[3] >> 9) & 0x3) == 0x3);  // VAES + VPCLMULQDQ
+    vaes_vpclmulqdq_ = CRYPTO_is_AVX512_capable() && 
+                        CRYPTO_is_VAES_capable() &&
+                        CRYPTO_is_VPCLMULQDQ_capable();
     is_x86_64_ =
 #if defined(OPENSSL_X86_64)
         true;
@@ -67,10 +62,10 @@ class ImplDispatchTest : public ::testing::Test {
         false;
 #endif // MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
 #elif defined(OPENSSL_AARCH64)
-    aes_hw = CRYPTO_is_ARMv8_AES_capable();
-    aes_vpaes = CRYPTO_is_NEON_capable();
-    armv8_gcm_pmull_ = CRYPTO_is_ARMv8_PMULL_capable();
-    armv8_gcm_8x_ = CRYPTO_is_ARMv8_GCM_8x_capable();
+    aes_hw_ = CRYPTO_is_ARMv8_AES_capable();
+    aes_vpaes_ = CRYPTO_is_NEON_capable();
+    aes_gcm_pmull_ = CRYPTO_is_ARMv8_PMULL_capable();
+    aes_gcm_8x_ = CRYPTO_is_ARMv8_GCM_8x_capable();
 #endif
   }
 
@@ -98,8 +93,8 @@ class ImplDispatchTest : public ::testing::Test {
     }
   }
 
-  bool aes_hw = false;
-  bool aes_vpaes = false;
+  bool aes_hw_ = false;
+  bool aes_vpaes_ = false;
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
   bool vaes_vpclmulqdq_ = false;
   bool avx_movbe_ = false;
@@ -108,8 +103,8 @@ class ImplDispatchTest : public ::testing::Test {
   bool is_assembler_too_old = false;
   bool is_assembler_too_old_avx512 = false;
 #else // AARCH64
-  bool armv8_gcm_pmull_ = false;
-  bool armv8_gcm_8x_ = false;
+  bool aes_gcm_pmull_ = false;
+  bool aes_gcm_8x_ = false;
 #endif
 
 };
@@ -134,36 +129,32 @@ constexpr size_t kFlag_aesv8_gcm_8x_enc_128 = 6;
 TEST_F(ImplDispatchTest, AEAD_AES_GCM) {
   AssertFunctionsHit(
       {
-          {kFlag_aes_hw_encrypt, aes_hw},
-          {kFlag_aes_hw_set_encrypt_key, aes_hw},
-          {kFlag_vpaes_encrypt, aes_vpaes && !aes_hw},
-          {kFlag_vpaes_set_encrypt_key, aes_vpaes && !aes_hw},
+          {kFlag_aes_hw_encrypt, aes_hw_},
+          {kFlag_aes_hw_set_encrypt_key, aes_hw_},
+          {kFlag_vpaes_encrypt, aes_vpaes_ && !aes_hw_},
+          {kFlag_vpaes_set_encrypt_key, aes_vpaes_ && !aes_hw_},
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
-          {kFlag_aes_hw_ctr32_encrypt_blocks, aes_hw &&
+          {kFlag_aes_hw_ctr32_encrypt_blocks, aes_hw_ &&
            (is_assembler_too_old || !vaes_vpclmulqdq_)},
           {kFlag_aesni_gcm_encrypt,
-           is_x86_64_ && aes_hw && avx_movbe_ &&
+           is_x86_64_ && aes_hw_ && avx_movbe_ &&
            !is_assembler_too_old && !vaes_vpclmulqdq_},
           {kFlag_aes_gcm_encrypt_avx512,
-           is_x86_64_ && aes_hw &&
+           is_x86_64_ && aes_hw_ &&
            !is_assembler_too_old_avx512 &&
            vaes_vpclmulqdq_},
 #else // AARCH64
-          {kFlag_aes_hw_ctr32_encrypt_blocks, aes_hw &&
-           !armv8_gcm_pmull_ && !armv8_gcm_8x_},
-          {kFlag_aes_gcm_enc_kernel, aes_hw &&
-           armv8_gcm_pmull_ && !armv8_gcm_8x_},
-          {kFlag_aesv8_gcm_8x_enc_128, aes_hw &&
-           armv8_gcm_pmull_ && armv8_gcm_8x_}
+          {kFlag_aes_hw_ctr32_encrypt_blocks, aes_hw_ &&
+           !aes_gcm_pmull_ && !aes_gcm_8x_},
+          {kFlag_aes_gcm_enc_kernel, aes_hw_ &&
+           aes_gcm_pmull_ && !aes_gcm_8x_},
+          {kFlag_aesv8_gcm_8x_enc_128, aes_hw_ &&
+           aes_gcm_pmull_ && aes_gcm_8x_}
 #endif
       },
       [] {
         const uint8_t kZeros[16] = {0};
-#if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
-        const uint8_t kPlaintext[40] = {1, 2, 3, 4, 0};
-#else
         const uint8_t kPlaintext[256] = {1, 2, 3, 4, 0};
-#endif
         uint8_t ciphertext[sizeof(kPlaintext) + 16];
         size_t ciphertext_len;
         bssl::ScopedEVP_AEAD_CTX ctx;
@@ -180,8 +171,8 @@ TEST_F(ImplDispatchTest, AEAD_AES_GCM) {
 TEST_F(ImplDispatchTest, AES_set_encrypt_key) {
   AssertFunctionsHit(
       {
-          {kFlag_aes_hw_set_encrypt_key, aes_hw},
-          {kFlag_vpaes_set_encrypt_key, aes_vpaes && !aes_hw},
+          {kFlag_aes_hw_set_encrypt_key, aes_hw_},
+          {kFlag_vpaes_set_encrypt_key, aes_vpaes_ && !aes_hw_},
       },
       [] {
         AES_KEY key;
@@ -197,8 +188,8 @@ TEST_F(ImplDispatchTest, AES_single_block) {
 
   AssertFunctionsHit(
       {
-          {kFlag_aes_hw_encrypt, aes_hw},
-          {kFlag_vpaes_encrypt, aes_vpaes && !aes_hw},
+          {kFlag_aes_hw_encrypt, aes_hw_},
+          {kFlag_vpaes_encrypt, aes_vpaes_ && !aes_hw_},
       },
       [&key] {
         uint8_t in[AES_BLOCK_SIZE] = {0};
