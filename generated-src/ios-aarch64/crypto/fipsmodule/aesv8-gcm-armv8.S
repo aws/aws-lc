@@ -27,7 +27,7 @@ _aes_gcm_enc_kernel:
 	adrp	x6,_BORINGSSL_function_hit@PAGE
 	add	x6, x6, _BORINGSSL_function_hit@PAGEOFF
 	mov	w7, #1
-	strb	w7, [x6,#2]
+	strb	w7, [x6,#2] // kFlag_aes_gcm_enc_kernel
 #endif
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29, x30, [sp, #-128]!
