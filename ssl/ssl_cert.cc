@@ -136,7 +136,11 @@ BSSL_NAMESPACE_BEGIN
 
 CERT::CERT(const SSL_X509_METHOD *x509_method_arg)
     : x509_method(x509_method_arg) {
-  this->cert_privatekeys.Init(SSL_PKEY_NUM);
+  this->cert_privatekey_idx = SSL_PKEY_RSA;
+  if (!this->cert_privatekeys.Init(SSL_PKEY_SIZE)) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+    return;
+  }
 }
 
 CERT::~CERT() {
@@ -155,7 +159,11 @@ UniquePtr<CERT> ssl_cert_dup(CERT *cert) {
     return nullptr;
   }
 
-  for (int i = 0; i < SSL_PKEY_NUM; i++) {
+  if (cert->cert_privatekeys.size() != SSL_PKEY_SIZE ||
+      ret->cert_privatekeys.size() != SSL_PKEY_SIZE) {
+    return nullptr;
+  }
+  for (int i = 0; i < SSL_PKEY_SIZE; i++) {
     CERT_PKEY &cert_pkey = cert->cert_privatekeys[i];
     CERT_PKEY &ret_pkey = ret->cert_privatekeys[i];
 
@@ -174,6 +182,7 @@ UniquePtr<CERT> ssl_cert_dup(CERT *cert) {
 
     ret_pkey.privatekey = UpRef(cert_pkey.privatekey);
   }
+  ret->cert_privatekey_idx = cert->cert_privatekey_idx;
 
   ret->key_method = cert->key_method;
 
@@ -195,7 +204,7 @@ UniquePtr<CERT> ssl_cert_dup(CERT *cert) {
   if (cert->dc) {
     ret->dc = cert->dc->Dup();
     if (!ret->dc) {
-       return nullptr;
+      return nullptr;
     }
   }
 
@@ -213,7 +222,7 @@ void ssl_cert_clear_certs(CERT *cert) {
 
   cert->x509_method->cert_clear(cert);
 
-  for (int i = 0; i < SSL_PKEY_NUM; i++) {
+  for (int i = 0; i < SSL_PKEY_SIZE; i++) {
     cert->cert_privatekeys[i].chain.reset();
     cert->cert_privatekeys[i].privatekey.reset();
   }

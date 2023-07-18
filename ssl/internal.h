@@ -2430,7 +2430,7 @@ bool tls12_check_peer_sigalg(const SSL_HANDSHAKE *hs, uint8_t *out_alert,
 #define SSL_PKEY_RSA 0
 #define SSL_PKEY_ECC 1
 #define SSL_PKEY_ED25519 2
-#define SSL_PKEY_NUM 3
+#define SSL_PKEY_SIZE 3
 
 struct CERT_PKEY {
   UniquePtr<EVP_PKEY> privatekey;
@@ -2448,9 +2448,11 @@ struct CERT_PKEY {
   // pointer to the certificate chain.
   STACK_OF(X509) *x509_chain = nullptr;
 
-  // x509_leaf may contain a parsed copy of the first element of |chain|. This
-  // is only used as a cache in order to implement “get0” functions that return
-  // a non-owning pointer to the certificate chain.
+  // x509_leaf retains the |X509| structure of the first element of |chain|.
+  // However, if certs are set with |SSL_CTX_use_certificate_ASN1| or
+  // |SSL_use_certificate_ASN1|, this is only used as a cache in order to
+  // implement “get0” functions that return a non-owning pointer to the
+  // certificate chain.
   X509 *x509_leaf = nullptr;
 };
 
@@ -2463,7 +2465,7 @@ struct CERT {
   // cert_privatekey_idx ALWAYS points to an element of the |cert_pkeys|
   // array. OpenSSL implements this as a pointer, but an index is more
   // efficient.
-  int cert_privatekey_idx = SSL_PKEY_RSA;
+  int cert_privatekey_idx = -1;
 
   Array<CERT_PKEY> cert_privatekeys;
 
