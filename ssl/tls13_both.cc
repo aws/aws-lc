@@ -415,7 +415,7 @@ bool tls13_add_certificate(SSL_HANDSHAKE *hs) {
     return ssl_add_message_cbb(ssl, cbb.get());
   }
   UniquePtr<STACK_OF(CRYPTO_BUFFER)> &chain =
-      cert->cert_privatekeys[cert->cert_privatekey_idx].chain;
+      cert->cert_private_keys[cert->cert_private_key_idx].chain;
   CRYPTO_BUFFER *leaf_buf = sk_CRYPTO_BUFFER_value(chain.get(), 0);
   CBB leaf, extensions;
   if (!CBB_add_u24_length_prefixed(&certificate_list, &leaf) ||

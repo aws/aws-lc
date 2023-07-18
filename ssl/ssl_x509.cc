@@ -200,9 +200,13 @@ static UniquePtr<STACK_OF(CRYPTO_BUFFER)> new_leafless_chain(void) {
 // which case no change to |cert->chain| is made. It preverses the existing
 // leaf from |cert->chain|, if any.
 static bool ssl_cert_set_chain(CERT *cert, STACK_OF(X509) *chain) {
+  if(!ssl_cert_check_cert_private_keys_usage(cert)) {
+    return false;
+  }
+
   UniquePtr<STACK_OF(CRYPTO_BUFFER)> new_chain;
   UniquePtr<STACK_OF(CRYPTO_BUFFER)> &old_chain =
-      cert->cert_privatekeys[cert->cert_privatekey_idx].chain;
+      cert->cert_private_keys[cert->cert_private_key_idx].chain;
 
 
   if (old_chain != nullptr) {
@@ -237,14 +241,14 @@ static bool ssl_cert_set_chain(CERT *cert, STACK_OF(X509) *chain) {
 }
 
 static void ssl_crypto_x509_cert_flush_leaf(CERT *cert) {
-  for (auto & cert_privatekey : cert->cert_privatekeys) {
+  for (auto & cert_privatekey : cert->cert_private_keys) {
     X509_free(cert_privatekey.x509_leaf);
     cert_privatekey.x509_leaf = nullptr;
   }
 }
 
 static void ssl_crypto_x509_cert_flush_cached_chain(CERT *cert) {
-  for (auto & cert_privatekey : cert->cert_privatekeys) {
+  for (auto & cert_privatekey : cert->cert_private_keys) {
     sk_X509_pop_free(cert_privatekey.x509_chain, X509_free);
     cert_privatekey.x509_chain = nullptr;
   }
@@ -467,10 +471,14 @@ static void ssl_crypto_x509_ssl_config_free(SSL_CONFIG *cfg) {
 }
 
 static bool ssl_crypto_x509_ssl_auto_chain_if_needed(SSL_HANDSHAKE *hs) {
+  if(!ssl_cert_check_cert_private_keys_usage(hs->config->cert.get())) {
+    return false;
+  }
+
   // Only build a chain if there are no intermediates configured and the feature
   // isn't disabled.
   UniquePtr<STACK_OF(CRYPTO_BUFFER)> &cert_chain =
-      hs->config->cert->cert_privatekeys[hs->config->cert->cert_privatekey_idx]
+      hs->config->cert->cert_private_keys[hs->config->cert->cert_private_key_idx]
           .chain;
   if ((hs->ssl->mode & SSL_MODE_NO_AUTO_CHAIN) || !ssl_has_certificate(hs) ||
       cert_chain == nullptr || sk_CRYPTO_BUFFER_num(cert_chain.get()) > 1) {
@@ -766,10 +774,13 @@ static int ssl_use_certificate(CERT *cert, X509 *x) {
     return 0;
   }
 
+  if(!ssl_cert_check_cert_private_keys_usage(cert)) {
+    return 0;
+  }
   // We set the |x509_leaf| here to prevent any external data set from being
   // lost. The rest of the chain still uses |CRYPTO_BUFFER|s.
   X509 *&x509_leaf =
-      cert->cert_privatekeys[cert->cert_privatekey_idx].x509_leaf;
+      cert->cert_private_keys[cert->cert_private_key_idx].x509_leaf;
   X509_free(x509_leaf);
   X509_up_ref(x);
   x509_leaf = x;
@@ -800,10 +811,14 @@ int SSL_CTX_use_certificate(SSL_CTX *ctx, X509 *x) {
 // |SSL_CTX_use_certificate_ASN1| or |SSL_use_certificate_ASN1| in AWS-LC.
 static int ssl_cert_cache_leaf_cert(CERT *cert) {
   assert(cert->x509_method);
+  if(!ssl_cert_check_cert_private_keys_usage(cert)) {
+    return 0;
+  }
+
   X509 *&x509_leaf =
-      cert->cert_privatekeys[cert->cert_privatekey_idx].x509_leaf;
+      cert->cert_private_keys[cert->cert_private_key_idx].x509_leaf;
   UniquePtr<STACK_OF(CRYPTO_BUFFER)> &chain =
-      cert->cert_privatekeys[cert->cert_privatekey_idx].chain;
+      cert->cert_private_keys[cert->cert_private_key_idx].chain;
 
   if (x509_leaf != nullptr || chain == nullptr) {
     return 1;
@@ -819,8 +834,12 @@ static int ssl_cert_cache_leaf_cert(CERT *cert) {
 }
 
 static X509 *ssl_cert_get0_leaf(CERT *cert) {
+  if(!ssl_cert_check_cert_private_keys_usage(cert)) {
+    return nullptr;
+  }
+
   X509 *&x509_leaf =
-      cert->cert_privatekeys[cert->cert_privatekey_idx].x509_leaf;
+      cert->cert_private_keys[cert->cert_private_key_idx].x509_leaf;
   if (x509_leaf == nullptr && !ssl_cert_cache_leaf_cert(cert)) {
     return nullptr;
   }
@@ -864,6 +883,9 @@ static int ssl_cert_set1_chain(CERT *cert, STACK_OF(X509) *chain) {
 
 static int ssl_cert_append_cert(CERT *cert, X509 *x509) {
   assert(cert->x509_method);
+  if(!ssl_cert_check_cert_private_keys_usage(cert)) {
+    return 0;
+  }
 
   UniquePtr<CRYPTO_BUFFER> buffer = x509_to_buffer(x509);
   if (!buffer) {
@@ -871,7 +893,7 @@ static int ssl_cert_append_cert(CERT *cert, X509 *x509) {
   }
 
   UniquePtr<STACK_OF(CRYPTO_BUFFER)> &chain =
-      cert->cert_privatekeys[cert->cert_privatekey_idx].chain;
+      cert->cert_private_keys[cert->cert_private_key_idx].chain;
   if (chain != nullptr) {
     return PushToStack(chain.get(), std::move(buffer));
   }
@@ -981,11 +1003,14 @@ int SSL_clear_chain_certs(SSL *ssl) {
 // |cert->chain|.
 static int ssl_cert_cache_chain_certs(CERT *cert) {
   assert(cert->x509_method);
+  if(!ssl_cert_check_cert_private_keys_usage(cert)) {
+    return 0;
+  }
 
   STACK_OF(X509) *&x509_chain =
-      cert->cert_privatekeys[cert->cert_privatekey_idx].x509_chain;
+      cert->cert_private_keys[cert->cert_private_key_idx].x509_chain;
   UniquePtr<STACK_OF(CRYPTO_BUFFER)> &chain =
-      cert->cert_privatekeys[cert->cert_privatekey_idx].chain;
+      cert->cert_private_keys[cert->cert_private_key_idx].chain;
 
   if (x509_chain != nullptr || chain == nullptr ||
       sk_CRYPTO_BUFFER_num(chain.get()) < 2) {
@@ -1018,7 +1043,7 @@ int SSL_CTX_get0_chain_certs(const SSL_CTX *ctx, STACK_OF(X509) **out_chain) {
   }
 
   *out_chain =
-      ctx->cert->cert_privatekeys[ctx->cert->cert_privatekey_idx].x509_chain;
+      ctx->cert->cert_private_keys[ctx->cert->cert_private_key_idx].x509_chain;
   return 1;
 }
 
@@ -1039,7 +1064,7 @@ int SSL_get0_chain_certs(const SSL *ssl, STACK_OF(X509) **out_chain) {
   }
 
   *out_chain = ssl->config->cert
-                   ->cert_privatekeys[ssl->config->cert->cert_privatekey_idx]
+                   ->cert_private_keys[ssl->config->cert->cert_private_key_idx]
                    .x509_chain;
   return 1;
 }

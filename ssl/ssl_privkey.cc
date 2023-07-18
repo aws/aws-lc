@@ -65,8 +65,8 @@
 #include <openssl/evp.h>
 #include <openssl/mem.h>
 
-#include "internal.h"
 #include "../crypto/internal.h"
+#include "internal.h"
 
 
 BSSL_NAMESPACE_BEGIN
@@ -81,17 +81,19 @@ static bool ssl_set_pkey(CERT *cert, EVP_PKEY *pkey) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
     return false;
   }
+  if (!ssl_cert_check_cert_private_keys_usage(cert)) {
+    return false;
+  }
   UniquePtr<STACK_OF(CRYPTO_BUFFER)> &chain =
-      cert->cert_privatekeys[cert->cert_privatekey_idx].chain;
+      cert->cert_private_keys[cert->cert_private_key_idx].chain;
 
-  if (chain != nullptr &&
-      sk_CRYPTO_BUFFER_value(chain.get(), 0) != nullptr &&
+  if (chain != nullptr && sk_CRYPTO_BUFFER_value(chain.get(), 0) != nullptr &&
       // Sanity-check that the private key and the certificate match.
       !ssl_cert_check_private_key(cert, pkey)) {
     return false;
   }
 
-  cert->cert_privatekeys[cert->cert_privatekey_idx].privatekey = UpRef(pkey);
+  cert->cert_private_keys[cert->cert_private_key_idx].privatekey = UpRef(pkey);
   return true;
 }
 
@@ -136,7 +138,11 @@ static const SSL_SIGNATURE_ALGORITHM *get_signature_algorithm(uint16_t sigalg) {
 }
 
 bool ssl_has_private_key(const SSL_HANDSHAKE *hs) {
-  if (hs->config->cert->cert_privatekeys[hs->config->cert->cert_privatekey_idx]
+  if (!ssl_cert_check_cert_private_keys_usage(hs->config->cert.get())) {
+    return false;
+  }
+  if (hs->config->cert
+              ->cert_private_keys[hs->config->cert->cert_private_key_idx]
               .privatekey != nullptr ||
       hs->config->cert->key_method != nullptr || ssl_signing_with_dc(hs)) {
     return true;
@@ -148,8 +154,7 @@ bool ssl_has_private_key(const SSL_HANDSHAKE *hs) {
 static bool pkey_supports_algorithm(const SSL *ssl, EVP_PKEY *pkey,
                                     uint16_t sigalg) {
   const SSL_SIGNATURE_ALGORITHM *alg = get_signature_algorithm(sigalg);
-  if (alg == NULL ||
-      EVP_PKEY_id(pkey) != alg->pkey_type) {
+  if (alg == NULL || EVP_PKEY_id(pkey) != alg->pkey_type) {
     return false;
   }
 
@@ -243,8 +248,12 @@ enum ssl_private_key_result_t ssl_private_key_sign(
   }
 
   const SSL_PRIVATE_KEY_METHOD *key_method = hs->config->cert->key_method;
+  if (!ssl_cert_check_cert_private_keys_usage(hs->config->cert.get())) {
+    return ssl_private_key_failure;
+  }
   EVP_PKEY *privatekey =
-      hs->config->cert->cert_privatekeys[hs->config->cert->cert_privatekey_idx]
+      hs->config->cert
+          ->cert_private_keys[hs->config->cert->cert_private_key_idx]
           .privatekey.get();
   assert(!hs->can_release_private_key);
   if (ssl_signing_with_dc(hs)) {
@@ -326,8 +335,12 @@ enum ssl_private_key_result_t ssl_private_key_decrypt(SSL_HANDSHAKE *hs,
     return ret;
   }
 
+  if (!ssl_cert_check_cert_private_keys_usage(hs->config->cert.get())) {
+    return ssl_private_key_failure;
+  }
   RSA *rsa = EVP_PKEY_get0_RSA(
-      hs->config->cert->cert_privatekeys[hs->config->cert->cert_privatekey_idx]
+      hs->config->cert
+          ->cert_private_keys[hs->config->cert->cert_private_key_idx]
           .privatekey.get());
   if (rsa == NULL) {
     // Decrypt operations are only supported for RSA keys.
@@ -377,8 +390,7 @@ int SSL_use_RSAPrivateKey(SSL *ssl, RSA *rsa) {
   }
 
   UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
-  if (!pkey ||
-      !EVP_PKEY_set1_RSA(pkey.get(), rsa)) {
+  if (!pkey || !EVP_PKEY_set1_RSA(pkey.get(), rsa)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_EVP_LIB);
     return 0;
   }
@@ -429,8 +441,7 @@ int SSL_CTX_use_RSAPrivateKey(SSL_CTX *ctx, RSA *rsa) {
   }
 
   UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
-  if (!pkey ||
-      !EVP_PKEY_set1_RSA(pkey.get(), rsa)) {
+  if (!pkey || !EVP_PKEY_set1_RSA(pkey.get(), rsa)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_EVP_LIB);
     return 0;
   }
@@ -671,7 +682,7 @@ static bool parse_sigalg_pairs(Array<uint16_t> *out, const int *values,
 
   for (size_t i = 0; i < num_values; i += 2) {
     const int hash_nid = values[i];
-    const int pkey_type = values[i+1];
+    const int pkey_type = values[i + 1];
 
     bool found = false;
     for (const auto &candidate : kSignatureAlgorithmsMapping) {
@@ -759,7 +770,7 @@ static bool parse_sigalgs_list(Array<uint16_t> *out, const char *str) {
   int pkey_type = 0, hash_nid = 0;
 
   // Note that the loop runs to len+1, i.e. it'll process the terminating NUL.
-  for (size_t offset = 0; offset < len+1; offset++) {
+  for (size_t offset = 0; offset < len + 1; offset++) {
     const unsigned char c = str[offset];
 
     switch (c) {
@@ -778,8 +789,7 @@ static bool parse_sigalgs_list(Array<uint16_t> *out, const char *str) {
 
         if (strcmp(buf, "RSA") == 0) {
           pkey_type = EVP_PKEY_RSA;
-        } else if (strcmp(buf, "RSA-PSS") == 0 ||
-                   strcmp(buf, "PSS") == 0) {
+        } else if (strcmp(buf, "RSA-PSS") == 0 || strcmp(buf, "PSS") == 0) {
           pkey_type = EVP_PKEY_RSA_PSS;
         } else if (strcmp(buf, "ECDSA") == 0) {
           pkey_type = EVP_PKEY_EC;

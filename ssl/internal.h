@@ -2465,9 +2465,9 @@ struct CERT {
   // cert_privatekey_idx ALWAYS points to an element of the |cert_pkeys|
   // array. OpenSSL implements this as a pointer, but an index is more
   // efficient.
-  int cert_privatekey_idx = -1;
+  int cert_private_key_idx = -1;
 
-  Array<CERT_PKEY> cert_privatekeys;
+  Array<CERT_PKEY> cert_private_keys;
 
   /// We'lll see what we want to do about the |x509_stash| below later.
 
@@ -3236,6 +3236,11 @@ bool ssl_is_key_type_supported(int key_type);
 bool ssl_compare_public_and_private_key(const EVP_PKEY *pubkey,
                                         const EVP_PKEY *privkey);
 bool ssl_cert_check_private_key(const CERT *cert, const EVP_PKEY *privkey);
+
+// ssl_cert_check_cert_private_keys_usage returns true if |cert_private_keys|
+// in |cert| has a valid index and a sufficient amount of slots.
+bool ssl_cert_check_cert_private_keys_usage(const CERT *cert);
+
 bool ssl_get_new_session(SSL_HANDSHAKE *hs);
 bool ssl_encrypt_ticket(SSL_HANDSHAKE *hs, CBB *out,
                         const SSL_SESSION *session);
