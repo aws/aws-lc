@@ -531,9 +531,8 @@ let x86_BSR = new_definition
 
 let x86_BSWAP = new_definition
  `x86_BSWAP dest s =
-        let x:N word = read dest s in
-        let x' = word_of_bits
-                   (\i. bit (dimindex(:N) - 8 * (i DIV 8 + 1) + i MOD 8) x) in
+        let x:((((N)tybit0)tybit0)tybit0)word = read dest s in
+        let x' = word_bytereverse x in
         (dest := x') s`;;
 
 (*** These four amount to the core operations for BT, BTC, BTR and BTS.
@@ -1006,12 +1005,12 @@ let x86_SHLD = new_definition
       let h:N word = read dest s
       and l:N word = read src s in
       let concat:(N tybit0)word = word_join h l in
-      let z:N word = word_subword concat (64 - c,dimindex(:N)) in
+      let z:N word = word_subword concat (dimindex(:N) - c,dimindex(:N)) in
       (dest := (z:N word) ,,
        ZF := (if c = 0 then read ZF s else val z = 0) ,,
        SF := (if c = 0 then read SF s else ival z < &0) ,,
        PF := (if c = 0 then read PF s else word_evenparity(word_zx z:byte)) ,,
-       CF := (if c = 0 then read CF s else bit (64 - c) h) ,,
+       CF := (if c = 0 then read CF s else bit (dimindex(:N) - c) h) ,,
        (if c = 0 then
           OF := read OF s
         else if c = 1 then
@@ -1522,21 +1521,21 @@ let x86_execute = define
            64 -> x86_RCL (OPERAND64 dest s)
                          (val(read (OPERAND8 src s) s) MOD 64)
          | 32 -> x86_RCL (OPERAND32 dest s)
-                        (val(read (OPERAND8 src s) s) MOD 64)
+                        (val(read (OPERAND8 src s) s) MOD 32)
          | 16 -> x86_RCL (OPERAND16 dest s)
-                        (val(read (OPERAND8 src s) s) MOD 64)
+                        (val(read (OPERAND8 src s) s) MOD 32)
          | 8 -> x86_RCL (OPERAND8 dest s)
-                        (val(read (OPERAND8 src s) s) MOD 64)) s
+                        (val(read (OPERAND8 src s) s) MOD 32)) s
     | RCR dest src ->
         (match operand_size dest with
            64 -> x86_RCR (OPERAND64 dest s)
                         (val(read (OPERAND8 src s) s) MOD 64)
          | 32 -> x86_RCR (OPERAND32 dest s)
-                        (val(read (OPERAND8 src s) s) MOD 64)
+                        (val(read (OPERAND8 src s) s) MOD 32)
          | 16 -> x86_RCR (OPERAND16 dest s)
-                        (val(read (OPERAND8 src s) s) MOD 64)
+                        (val(read (OPERAND8 src s) s) MOD 32)
          | 8 -> x86_RCR (OPERAND8 dest s)
-                        (val(read (OPERAND8 src s) s) MOD 64)) s
+                        (val(read (OPERAND8 src s) s) MOD 32)) s
     | RET ->
         x86_RET s
     | ROL dest src ->
@@ -1544,31 +1543,31 @@ let x86_execute = define
            64 -> x86_ROL (OPERAND64 dest s)
                          (val(read (OPERAND8 src s) s) MOD 64)
          | 32 -> x86_ROL (OPERAND32 dest s)
-                        (val(read (OPERAND8 src s) s) MOD 64)
+                        (val(read (OPERAND8 src s) s) MOD 32)
          | 16 -> x86_ROL (OPERAND16 dest s)
-                        (val(read (OPERAND8 src s) s) MOD 64)
+                        (val(read (OPERAND8 src s) s) MOD 32)
          | 8 -> x86_ROL (OPERAND8 dest s)
-                        (val(read (OPERAND8 src s) s) MOD 64)) s
+                        (val(read (OPERAND8 src s) s) MOD 32)) s
     | ROR dest src ->
         (match operand_size dest with
            64 -> x86_ROR (OPERAND64 dest s)
                         (val(read (OPERAND8 src s) s) MOD 64)
          | 32 -> x86_ROR (OPERAND32 dest s)
-                        (val(read (OPERAND8 src s) s) MOD 64)
+                        (val(read (OPERAND8 src s) s) MOD 32)
          | 16 -> x86_ROR (OPERAND16 dest s)
-                        (val(read (OPERAND8 src s) s) MOD 64)
+                        (val(read (OPERAND8 src s) s) MOD 32)
          | 8 -> x86_ROR (OPERAND8 dest s)
-                        (val(read (OPERAND8 src s) s) MOD 64)) s
+                        (val(read (OPERAND8 src s) s) MOD 32)) s
     | SAR dest src ->
         (match operand_size dest with
            64 -> x86_SAR (OPERAND64 dest s)
                         (val(read (OPERAND8 src s) s) MOD 64)
          | 32 -> x86_SAR (OPERAND32 dest s)
-                        (val(read (OPERAND8 src s) s) MOD 64)
+                        (val(read (OPERAND8 src s) s) MOD 32)
          | 16 -> x86_SAR (OPERAND16 dest s)
-                        (val(read (OPERAND8 src s) s) MOD 64)
+                        (val(read (OPERAND8 src s) s) MOD 32)
          | 8 -> x86_SAR (OPERAND8 dest s)
-                        (val(read (OPERAND8 src s) s) MOD 64)) s
+                        (val(read (OPERAND8 src s) s) MOD 32)) s
     | SBB dest src ->
         (match operand_size dest with
            64 -> x86_SBB (OPERAND64 dest s) (OPERAND64 src s)
@@ -1584,41 +1583,41 @@ let x86_execute = define
            64 -> x86_SHL (OPERAND64 dest s)
                         (val(read (OPERAND8 src s) s) MOD 64)
          | 32 -> x86_SHL (OPERAND32 dest s)
-                        (val(read (OPERAND8 src s) s) MOD 64)
+                        (val(read (OPERAND8 src s) s) MOD 32)
          | 16 -> x86_SHL (OPERAND16 dest s)
-                        (val(read (OPERAND8 src s) s) MOD 64)
+                        (val(read (OPERAND8 src s) s) MOD 32)
          | 8 -> x86_SHL (OPERAND8 dest s)
-                        (val(read (OPERAND8 src s) s) MOD 64)) s
+                        (val(read (OPERAND8 src s) s) MOD 32)) s
     | SHLD dest src c ->
         (match operand_size dest with
            64 -> x86_SHLD (OPERAND64 dest s) (OPERAND64 src s)
                           (val(read (OPERAND8 c s) s) MOD 64)
          | 32 -> x86_SHLD (OPERAND32 dest s) (OPERAND32 src s)
-                          (val(read (OPERAND8 c s) s) MOD 64)
+                          (val(read (OPERAND8 c s) s) MOD 32)
          | 16 -> x86_SHLD (OPERAND16 dest s) (OPERAND16 src s)
-                          (val(read (OPERAND8 c s) s) MOD 64)
+                          (val(read (OPERAND8 c s) s) MOD 32)
          | 8 -> x86_SHLD (OPERAND8 dest s) (OPERAND8 src s)
-                         (val(read (OPERAND8 c s) s) MOD 64)) s
+                         (val(read (OPERAND8 c s) s) MOD 32)) s
     | SHR dest src ->
         (match operand_size dest with
            64 -> x86_SHR (OPERAND64 dest s)
                         (val(read (OPERAND8 src s) s) MOD 64)
          | 32 -> x86_SHR (OPERAND32 dest s)
-                        (val(read (OPERAND8 src s) s) MOD 64)
+                        (val(read (OPERAND8 src s) s) MOD 32)
          | 16 -> x86_SHR (OPERAND16 dest s)
-                        (val(read (OPERAND8 src s) s) MOD 64)
+                        (val(read (OPERAND8 src s) s) MOD 32)
          | 8 -> x86_SHR (OPERAND8 dest s)
-                        (val(read (OPERAND8 src s) s) MOD 64)) s
+                        (val(read (OPERAND8 src s) s) MOD 32)) s
     | SHRD dest src c ->
         (match operand_size dest with
            64 -> x86_SHRD (OPERAND64 dest s) (OPERAND64 src s)
                           (val(read (OPERAND8 c s) s) MOD 64)
          | 32 -> x86_SHRD (OPERAND32 dest s) (OPERAND32 src s)
-                          (val(read (OPERAND8 c s) s) MOD 64)
+                          (val(read (OPERAND8 c s) s) MOD 32)
          | 16 -> x86_SHRD (OPERAND16 dest s) (OPERAND16 src s)
-                          (val(read (OPERAND8 c s) s) MOD 64)
+                          (val(read (OPERAND8 c s) s) MOD 32)
          | 8 -> x86_SHRD (OPERAND8 dest s) (OPERAND8 src s)
-                         (val(read (OPERAND8 c s) s) MOD 64)) s
+                         (val(read (OPERAND8 c s) s) MOD 32)) s
     | STCF ->
         x86_STC s
     | SUB dest src ->
@@ -1758,6 +1757,11 @@ let OPERAND_SIZE_CASES = prove
    (match 32 with 64 -> a | 32 -> b | 16 -> c | 8 -> d) = b /\
    (match 16 with 64 -> a | 32 -> b | 16 -> c | 8 -> d) = c /\
    (match  8 with 64 -> a | 32 -> b | 16 -> c | 8 -> d) = d /\
+   (match 64 with 64 -> a | 32 -> b | 16 -> c) = a /\
+   (match 32 with 64 -> a | 32 -> b | 16 -> c) = b /\
+   (match 16 with 64 -> a | 32 -> b | 16 -> c) = c /\
+   (match 64 with 64 -> a | 32 -> b) = a /\
+   (match 32 with 64 -> a | 32 -> b) = b /\
    (match (64,32) with
       (64,32) -> a  | (64,16) -> b  | (64,8) -> c
     | (32,16) -> d | (32,8) -> e  | (16,8) -> f) = a /\
@@ -2286,7 +2290,12 @@ let X86_OPERATION_CLAUSES =
     x86_STC; x86_SUB_ALT; x86_TEST; x86_TZCNT; x86_XOR;
     (*** 32-bit backups since the ALT forms are 64-bit only ***)
     INST_TYPE[`:32`,`:N`] x86_ADC;
-    INST_TYPE[`:32`,`:N`] x86_SBB];;
+    INST_TYPE[`:32`,`:N`] x86_ADCX;
+    INST_TYPE[`:32`,`:N`] x86_ADOX;
+    INST_TYPE[`:32`,`:N`] x86_ADD;
+    INST_TYPE[`:32`,`:N`] x86_CMP;
+    INST_TYPE[`:32`,`:N`] x86_SBB;
+    INST_TYPE[`:32`,`:N`] x86_SUB];;
 
 (* ------------------------------------------------------------------------- *)
 (* Trivial reassociation and reduction of "word((pc + m) + n)"               *)
@@ -2362,6 +2371,13 @@ let X86_FORCE_CONDITIONAL_CONV =
      fun tm -> if trigger tm then (REPEATC chconv THENC TRY_CONV BETA_CONV) tm
                else REFL tm;;
 
+let ASSIGNS_PULL_ZEROTOP_THM = prove
+ (`(if P then ASSIGNS (c :> zerotop_32) else c := y) =
+   (\s s'. ?d:int32. (c := if P then word_zx d else y) s s')`,
+  COND_CASES_TAC THEN ASM_REWRITE_TAC[ETA_AX] THEN
+  REWRITE_TAC[ASSIGNS; ASSIGN_ZEROTOP_32; FUN_EQ_THM] THEN
+  MESON_TAC[]);;
+
 let X86_CONV execth2 ths tm =
   let th = tryfind (MATCH_MP execth2) ths in
   let eth = tryfind (fun th2 -> GEN_REWRITE_CONV I [X86_THM th th2] tm) ths in
@@ -2379,7 +2395,8 @@ let X86_CONV execth2 ths tm =
    REWRITE_CONV[SEQ; condition_semantics] THENC
    GEN_REWRITE_CONV TOP_DEPTH_CONV
     [UNDEFINED_VALUE; UNDEFINED_VALUES; SEQ_ID] THENC
-   GEN_REWRITE_CONV TOP_DEPTH_CONV [ASSIGNS_PULL_THM] THENC
+   GEN_REWRITE_CONV TOP_DEPTH_CONV
+    [ASSIGNS_PULL_ZEROTOP_THM; ASSIGNS_PULL_THM] THENC
    REWRITE_CONV[ASSIGNS_THM] THENC
    GEN_REWRITE_CONV TOP_DEPTH_CONV [SEQ_PULL_THM; BETA_THM] THENC
    GEN_REWRITE_CONV TOP_DEPTH_CONV[assign; seq; UNWIND_THM1; BETA_THM] THENC

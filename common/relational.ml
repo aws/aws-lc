@@ -134,7 +134,9 @@ let ASSIGNS_PULL_THM = prove
    ((if P then c := y else ASSIGNS c) =
     (\s s'. ?d. (c := if P then y else d) s s')) /\
    ((if P then c := y else \s s'. ?d. (c := f d s) s s') =
-    \s s'. ?d. (c := (if P then y else f d s)) s s')`,
+    \s s'. ?d. (c := (if P then y else f d s)) s s') /\
+   ((if P then \s s'. ?d. (c := f d s) s s' else c := y) =
+    \s s'. ?d. (c := (if P then f d s else y)) s s')`,
   REWRITE_TAC[ASSIGNS_THM; assign; FUN_EQ_THM] THEN MESON_TAC[]);;
 
 let SEQ_PULL_THM = prove
