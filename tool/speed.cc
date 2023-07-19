@@ -1494,7 +1494,7 @@ static bool SpeedEvpEcdhCurve(const std::string &name, int nid,
       return false;
     }
     // Non-owning reference.
-    EC_KEY *peer_key_ec_key = EVP_PKEY_get0_EC_KEY(peer_key.get());
+    const EC_KEY *peer_key_ec_key = EVP_PKEY_get0_EC_KEY(peer_key.get());
     if (peer_key_ec_key == nullptr ||
         !EC_KEY_set_public_key(only_public_key_ec_key.get(),
           EC_KEY_get0_public_key(peer_key_ec_key)) ||
