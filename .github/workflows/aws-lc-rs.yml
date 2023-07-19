@@ -5,7 +5,6 @@ on:
   pull_request:
     branches: [ '*' ]
 env:
-  CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
   GOPROXY: https://proxy.golang.org,direct
 jobs:
   standard:
@@ -19,7 +18,8 @@ jobs:
           submodules: false
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: stable
+          # Our aws-lc-sys generation scripts require nightly.
+          toolchain: nightly
           override: true
       - uses: actions-rs/cargo@v1
         with:
