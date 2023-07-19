@@ -160,7 +160,7 @@ UniquePtr<CERT> ssl_cert_dup(CERT *cert) {
   }
 
   ret->cert_private_key_idx = cert->cert_private_key_idx;
-  if (!ssl_cert_check_cert_private_keys_usage(cert) &&
+  if (!ssl_cert_check_cert_private_keys_usage(cert) ||
       !ssl_cert_check_cert_private_keys_usage(ret.get())) {
     return nullptr;
   }
