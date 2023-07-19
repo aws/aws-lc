@@ -1490,9 +1490,14 @@ static bool SpeedEvpEcdhCurve(const std::string &name, int nid,
     BM_NAMESPACE::UniquePtr<EVP_PKEY> only_public_key_evp_pkey(EVP_PKEY_new());
     BM_NAMESPACE::UniquePtr<EC_KEY> only_public_key_ec_key(EC_KEY_new_by_curve_name(nid));
     if (only_public_key_ec_key == nullptr ||
-        only_public_key_evp_pkey == nullptr ||
+        only_public_key_evp_pkey == nullptr) {
+      return false;
+    }
+    // Non-owning reference.
+    EC_KEY *peer_key_ec_key = EVP_PKEY_get0_EC_KEY(peer_key.get());
+    if (peer_key_ec_key == nullptr ||
         !EC_KEY_set_public_key(only_public_key_ec_key.get(),
-          EC_KEY_get0_public_key(EVP_PKEY_get0_EC_KEY(peer_key.get()))) ||
+          EC_KEY_get0_public_key(peer_key_ec_key)) ||
         !EVP_PKEY_assign_EC_KEY(only_public_key_evp_pkey.get(), only_public_key_ec_key.release())) {
       return false;
     }
