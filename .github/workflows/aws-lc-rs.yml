@@ -5,6 +5,8 @@ on:
   pull_request:
     branches: [ '*' ]
 env:
+  # sparse registries requires nightly toolchain.
+  RUST_NIGHTLY_TOOLCHAIN: nightly
   CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
   GOPROXY: https://proxy.golang.org,direct
 jobs:
@@ -19,7 +21,7 @@ jobs:
           submodules: false
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: stable
+          toolchain: ${{ env.RUST_NIGHTLY_TOOLCHAIN }}
           override: true
       - uses: actions-rs/cargo@v1
         with:
