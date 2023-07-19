@@ -2485,8 +2485,7 @@ EVP_PKEY *SSL_get_privatekey(const SSL *ssl) {
     assert(ssl->config);
     return NULL;
   }
-  if (ssl->config->cert != NULL &&
-      ssl_cert_check_cert_private_keys_usage(ssl->config->cert.get())) {
+  if (ssl_cert_check_cert_private_keys_usage(ssl->config->cert.get())) {
     return ssl->config->cert
         ->cert_private_keys[ssl->config->cert->cert_private_key_idx]
         .privatekey.get();
@@ -2496,8 +2495,7 @@ EVP_PKEY *SSL_get_privatekey(const SSL *ssl) {
 }
 
 EVP_PKEY *SSL_CTX_get0_privatekey(const SSL_CTX *ctx) {
-  if (ctx->cert != NULL &&
-      ssl_cert_check_cert_private_keys_usage(ctx->cert.get())) {
+  if (ssl_cert_check_cert_private_keys_usage(ctx->cert.get())) {
     return ctx->cert->cert_private_keys[ctx->cert->cert_private_key_idx]
         .privatekey.get();
   }

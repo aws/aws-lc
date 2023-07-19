@@ -154,6 +154,10 @@ static CRYPTO_BUFFER *buffer_up_ref(const CRYPTO_BUFFER *buffer) {
 }
 
 UniquePtr<CERT> ssl_cert_dup(CERT *cert) {
+  if(cert == nullptr) {
+    return nullptr;
+  }
+
   UniquePtr<CERT> ret = MakeUnique<CERT>(cert->x509_method);
   if (!ret) {
     return nullptr;
@@ -216,16 +220,16 @@ UniquePtr<CERT> ssl_cert_dup(CERT *cert) {
 
 // Free up and clear all certificates and chains
 void ssl_cert_clear_certs(CERT *cert) {
-  if (cert == NULL) {
+  if (cert == nullptr) {
     return;
   }
 
   cert->x509_method->cert_clear(cert);
 
   cert->cert_private_key_idx = -1;
-  for (int i = 0; i < SSL_PKEY_SIZE; i++) {
-    cert->cert_private_keys[i].chain.reset();
-    cert->cert_private_keys[i].privatekey.reset();
+  for (auto &cert_private_key : cert->cert_private_keys) {
+    cert_private_key.chain.reset();
+    cert_private_key.privatekey.reset();
   }
   cert->key_method = nullptr;
 
@@ -907,7 +911,7 @@ static int cert_set_dc(CERT *cert, CRYPTO_BUFFER *const raw, EVP_PKEY *privkey,
 }
 
 bool ssl_cert_check_cert_private_keys_usage(const CERT *cert) {
-  if (cert->cert_private_keys.size() != SSL_PKEY_SIZE ||
+  if (cert == nullptr || cert->cert_private_keys.size() != SSL_PKEY_SIZE ||
       cert->cert_private_key_idx < SSL_PKEY_RSA ||
       cert->cert_private_key_idx >= SSL_PKEY_SIZE) {
     return false;
