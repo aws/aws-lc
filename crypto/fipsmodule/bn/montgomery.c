@@ -108,7 +108,6 @@
 
 #include <openssl/bn.h>
 
-#include <alloca.h>
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -452,11 +451,12 @@ int BN_mod_mul_montgomery(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
 
     if (BN_MONTGOMERY_USE_S2N_BIGNUM && (num % 8 == 0) && BN_BITS2 == 64 &&
         (2 * (uint64_t)num + 96) <= BN_MONTGOMERY_MAX_WORDS) {
-      // l is the output buffer of big-int multiplication.
-      uint64_t *l = alloca(2 * num * sizeof(uint64_t));
       // t is the temporary buffer for big-int multiplication.
       // bignum_kmul_32_64 requires 96 words.
-      uint64_t *t = alloca(96 * sizeof(uint64_t));
+      uint64_t t[96];
+      // l is the output buffer of big-int multiplication.
+      uint64_t l[BN_MONTGOMERY_MAX_WORDS - 96];
+
       // BN_ULONG is uint64_t since BN_BITS2 is 64.
       uint64_t *m = (uint64_t *)mont->N.d;
       uint64_t w = (uint64_t)mont->n0[0];
