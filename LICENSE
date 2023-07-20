@@ -219,7 +219,7 @@ comments on top of the respective files.
 Licenses for support code
 -------------------------
  
-Parts of the TLS test suite are under the Go license. This code is not included
+Parts of the TLS test suite are under the Go license (BSD-3-Clause). This code is not included
 in BoringSSL (i.e. libcrypto and libssl) when compiled, however, so
 distributing code linked against BoringSSL does not trigger this license:
  
@@ -254,7 +254,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  
 BoringSSL uses the Chromium test infrastructure to run a continuous build,
 trybots etc. The scripts which manage this, and the script for generating build
-metadata, are under the Chromium license. Distributing code linked against
+metadata, are under the Chromium license (BSD-3-Clause). Distributing code linked against
 BoringSSL does not trigger this license.
  
 Copyright 2015 The Chromium Authors. All rights reserved.
