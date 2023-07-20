@@ -120,9 +120,13 @@
 
 #include "internal.h"
 #include "../../internal.h"
-#include "../../../third_party/s2n-bignum/include/s2n-bignum_aws-lc.h"
 
-#if defined(OPENSSL_BN_ASM_MONT) && defined(OPENSSL_AARCH64)
+#if !defined(OPENSSL_NO_ASM) &&                                                \
+    (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE)) &&                      \
+    defined(OPENSSL_AARCH64) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX) &&   \
+    defined(OPENSSL_BN_ASM_MONT)
+
+#include "../../../third_party/s2n-bignum/include/s2n-bignum_aws-lc.h"
 
 #  define BN_MONTGOMERY_USE_S2N_BIGNUM 1
 
