@@ -1029,8 +1029,10 @@ OPENSSL_INLINE int boringssl_fips_break_test(const char *test) {
 //   3: aes_hw_set_encrypt_key
 //   4: vpaes_encrypt
 //   5: vpaes_set_encrypt_key
-//   6: aesv8_gcm_8x_enc_128
-extern uint8_t BORINGSSL_function_hit[8];
+//   6: sha256_block_armv8
+//   7: aesv8_gcm_8x_enc_128
+//   8: sha512_block_armv8
+extern uint8_t BORINGSSL_function_hit[9];
 #endif  // BORINGSSL_DISPATCH_TEST
 
 #if !defined(AWSLC_FIPS) && !defined(BORINGSSL_SHARED_LIBRARY)
