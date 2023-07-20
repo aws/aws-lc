@@ -776,6 +776,8 @@ static int ssl_use_certificate(CERT *cert, X509 *x) {
   }
   // We set the |x509_leaf| here to prevent any external data set from being
   // lost. The rest of the chain still uses |CRYPTO_BUFFER|s.
+  UniquePtr<EVP_PKEY> pubkey(X509_get_pubkey(x));
+  cert->cert_private_key_idx = ssl_get_certificate_slot_index(pubkey.get());
   X509 *&x509_leaf =
       cert->cert_private_keys[cert->cert_private_key_idx].x509_leaf;
   X509_free(x509_leaf);

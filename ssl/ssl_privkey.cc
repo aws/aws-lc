@@ -77,6 +77,8 @@ bool ssl_is_key_type_supported(int key_type) {
 }
 
 static bool ssl_set_pkey(CERT *cert, EVP_PKEY *pkey) {
+  // This may be redundant to the certificate slot retrieval below, but it
+  // doesn't hurt to do an extra check here.
   if (!ssl_is_key_type_supported(EVP_PKEY_id(pkey))) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
     return false;
@@ -84,16 +86,23 @@ static bool ssl_set_pkey(CERT *cert, EVP_PKEY *pkey) {
   if (!ssl_cert_check_cert_private_keys_usage(cert)) {
     return false;
   }
-  UniquePtr<STACK_OF(CRYPTO_BUFFER)> &chain =
-      cert->cert_private_keys[cert->cert_private_key_idx].chain;
 
+  int idx = ssl_get_certificate_slot_index(pkey);
+  if (idx < 0) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
+    return false;
+  }
+
+  UniquePtr<STACK_OF(CRYPTO_BUFFER)> &chain =
+      cert->cert_private_keys[idx].chain;
   if (chain != nullptr && sk_CRYPTO_BUFFER_value(chain.get(), 0) != nullptr &&
       // Sanity-check that the private key and the certificate match.
       !ssl_cert_check_private_key(cert, pkey)) {
     return false;
   }
 
-  cert->cert_private_keys[cert->cert_private_key_idx].privatekey = UpRef(pkey);
+  cert->cert_private_keys[idx].privatekey = UpRef(pkey);
+  cert->cert_private_key_idx = idx;
   return true;
 }
 

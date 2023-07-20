@@ -1648,6 +1648,28 @@ static bssl::UniquePtr<EVP_PKEY> GetECDSATestKey() {
   return KeyFromPEM(kKeyPEM);
 }
 
+static bssl::UniquePtr<X509> GetED25519TestCertificate() {
+  static const char kCertPEM[] =
+      "-----BEGIN CERTIFICATE-----\n"
+      "MIIBRDCB9wIUKI+32tShPulvafJa3xZvj29Z9xgwBQYDK2VwMEUxCzAJBgNVBAYT\n"
+      "AkFVMRMwEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5ldCBXaWRn\n"
+      "aXRzIFB0eSBMdGQwHhcNMjMwNzE4MTg0NzU4WhcNMjMwNzE5MTg0NzU4WjBFMQsw\n"
+      "CQYDVQQGEwJBVTETMBEGA1UECAwKU29tZS1TdGF0ZTEhMB8GA1UECgwYSW50ZXJu\n"
+      "ZXQgV2lkZ2l0cyBQdHkgTHRkMCowBQYDK2VwAyEAprAzqgxux8R4ZXaxn5mM/5E9\n"
+      "0RNE59r47BJikdOoeUwwBQYDK2VwA0EAMELt0XRGFYo4qkWwOsoSYcdGYqlxVlf9\n"
+      "AhTPaJ6SSzjv3n4r60wfe8Z2OPn415tcj2IIm42T64itI4OAX0aTCg==\n"
+      "-----END CERTIFICATE-----\n";
+  return CertFromPEM(kCertPEM);
+}
+
+static bssl::UniquePtr<EVP_PKEY> GetED25519TestKey() {
+  static const char kKeyPEM[] =
+      "-----BEGIN PRIVATE KEY-----\n"
+      "MC4CAQAwBQYDK2VwBCIEIGPkz4xAobc5gtRidkHl+fxNLHfiWo3efRG2G8Z617yk\n"
+      "-----END PRIVATE KEY-----\n";
+  return KeyFromPEM(kKeyPEM);
+}
+
 static bssl::UniquePtr<CRYPTO_BUFFER> BufferFromPEM(const char *pem) {
   bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(pem, strlen(pem)));
   char *name, *header;
@@ -5094,6 +5116,87 @@ TEST(SSLTest, EmptyCipherList) {
 
   // But the cipher list is still updated to empty.
   EXPECT_EQ(0u, sk_SSL_CIPHER_num(SSL_CTX_get_ciphers(ctx.get())));
+}
+
+struct TLSVersionTestParams {
+  uint16_t version;
+};
+
+const TLSVersionTestParams kTLSVersionTests[] = {
+    {TLS1_VERSION},
+    {TLS1_1_VERSION},
+    {TLS1_2_VERSION},
+    {TLS1_3_VERSION},
+};
+
+struct CertificateKeyTestParams {
+  bssl::UniquePtr<X509> (*certificate)();
+  bssl::UniquePtr<EVP_PKEY> (*key)();
+  int slot_index;
+};
+
+const CertificateKeyTestParams kCertificateKeyTests[] = {
+    {GetTestCertificate, GetTestKey, SSL_PKEY_RSA},
+    {GetECDSATestCertificate, GetECDSATestKey, SSL_PKEY_ECC},
+    {GetED25519TestCertificate, GetED25519TestKey, SSL_PKEY_ED25519},
+};
+
+class MultipleCertificateSlotTest
+    : public testing::TestWithParam<
+          std::tuple<TLSVersionTestParams, CertificateKeyTestParams>> {
+ public:
+  static TLSVersionTestParams version_param() {
+    return std::get<0>(GetParam());
+  }
+  static CertificateKeyTestParams certificate_key_param() {
+    return std::get<1>(GetParam());
+  }
+};
+
+INSTANTIATE_TEST_SUITE_P(
+    MultipleCertificateSlotAllTest, MultipleCertificateSlotTest,
+    testing::Combine(testing::ValuesIn(kTLSVersionTests),
+                     testing::ValuesIn(kCertificateKeyTests)));
+
+TEST_P(MultipleCertificateSlotTest, CertificateSlotIndex) {
+  uint16_t version = version_param().version;
+  int slot_index = certificate_key_param().slot_index;
+  if ((version == TLS1_1_VERSION || version == TLS1_VERSION) &&
+      slot_index == SSL_PKEY_ED25519) {
+    // ED25519 is not supported in versions prior to TLS1.2.
+    return;
+  }
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx(CreateContextWithCertificate(
+      TLS_method(), certificate_key_param().certificate(),
+      certificate_key_param().key()));
+
+
+  static const uint16_t kPrefs[] = {SSL_SIGN_ED25519,
+                                    SSL_SIGN_ECDSA_SECP256R1_SHA256,
+                                    SSL_SIGN_RSA_PSS_RSAE_SHA256};
+  EXPECT_TRUE(SSL_CTX_set_signing_algorithm_prefs(client_ctx.get(), kPrefs,
+                                                  OPENSSL_ARRAY_SIZE(kPrefs)));
+  EXPECT_TRUE(SSL_CTX_set_verify_algorithm_prefs(client_ctx.get(), kPrefs,
+                                                 OPENSSL_ARRAY_SIZE(kPrefs)));
+
+
+  ASSERT_TRUE(SSL_CTX_set_min_proto_version(client_ctx.get(), version));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), version));
+  ASSERT_TRUE(SSL_CTX_set_min_proto_version(server_ctx.get(), version));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(server_ctx.get(), version));
+
+  ClientConfig config;
+  bssl::UniquePtr<SSL> client, server;
+
+  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                     server_ctx.get(), config, true));
+
+  ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
+
+  // Check the internal slot index to verify that the correct slot is used.
+  EXPECT_EQ(server_ctx->cert->cert_private_key_idx, slot_index);
+  EXPECT_EQ(server->ctx->cert->cert_private_key_idx, slot_index);
 }
 
 struct MultiTransferReadWriteTestParams {
