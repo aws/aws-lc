@@ -124,6 +124,16 @@
 #include "../../internal.h"
 #include "../../../third_party/s2n-bignum/include/s2n-bignum_aws-lc.h"
 
+#if defined(OPENSSL_BN_ASM_MONT)
+
+#  define BN_MONTGOMERY_USE_S2N_BIGNUM 1
+
+#else
+
+#  define BN_MONTGOMERY_USE_S2N_BIGNUM 0
+
+#endif
+
 
 BN_MONT_CTX *BN_MONT_CTX_new(void) {
   BN_MONT_CTX *ret = OPENSSL_malloc(sizeof(BN_MONT_CTX));
@@ -441,17 +451,21 @@ int BN_mod_mul_montgomery(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
     // allocates |num| words on the stack, so |num| cannot be too large.
     assert((size_t)num <= BN_MONTGOMERY_MAX_WORDS);
 
-    if ((num % 8 == 0) && BN_BITS2 == 64 &&
+    if (BN_MONTGOMERY_USE_S2N_BIGNUM && (num % 8 == 0) && BN_BITS2 == 64 &&
         (2 * (uint64_t)num + 96) <= BN_MONTGOMERY_MAX_WORDS) {
-      uint64_t *l = alloca(2 * num * sizeof(uint64_t)); // result buffer of big int mult.
-      uint64_t *t = alloca(96 * sizeof(uint64_t)); // temporary buffer for max. 32x32 big int mult.
-      uint64_t *m = mont->N.d;
-      uint64_t w = mont->n0[0];
-      uint64_t *src = a->d, *src2 = b->d;
-      uint64_t *dest = r->d;
+      // l is the output buffer of big-int multiplication.
+      uint64_t *l = alloca(2 * num * sizeof(uint64_t));
+      // t is the temporary buffer for big-int multiplication.
+      // bignum_kmul_32_64 requires 96 words.
+      uint64_t *t = alloca(96 * sizeof(uint64_t));
+      // BN_ULONG is uint64_t since BN_BITS2 is 64.
+      uint64_t *m = (uint64_t *)mont->N.d;
+      uint64_t w = (uint64_t)mont->n0[0];
+      uint64_t *src = (uint64_t *)a->d, *src2 = (uint64_t *)b->d;
+      uint64_t *dest = (uint64_t *)r->d;
       uint64_t c;
 
-#ifdef __ARM_NEON
+#if defined(__ARM_NEON)
       if (num == 32) {
         if (a->d == b->d)
           bignum_ksqr_32_64_neon(l, src, t);
