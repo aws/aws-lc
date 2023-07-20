@@ -119,6 +119,7 @@
 #include <openssl/type_check.h>
 
 #include "internal.h"
+#include "../cpucap/internal.h"
 #include "../../internal.h"
 
 #if !defined(OPENSSL_NO_ASM) &&                                                \
@@ -450,8 +451,9 @@ int BN_mod_mul_montgomery(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
     assert((size_t)num <= BN_MONTGOMERY_MAX_WORDS);
 
 #if defined(BN_MONTGOMERY_USE_S2N_BIGNUM)
-    if ((num % 8 == 0) && BN_BITS2 == 64 &&
-        (2 * (uint64_t)num + 96) <= BN_MONTGOMERY_MAX_WORDS) {
+    if (!CRYPTO_is_ARMv8_wide_multiplier_capable() &&
+        (num % 8 == 0) &&
+        BN_BITS2 == 64 && (2 * (uint64_t)num + 96) <= BN_MONTGOMERY_MAX_WORDS) {
       // t is the temporary buffer for big-int multiplication.
       // bignum_kmul_32_64 requires 96 words.
       uint64_t t[96];
