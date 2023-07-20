@@ -1361,7 +1361,8 @@ struct ssl_private_key_method_st {
 };
 
 // SSL_set_private_key_method configures a custom private key on |ssl|.
-// |key_method| must remain valid for the lifetime of |ssl|.
+// |key_method| must remain valid for the lifetime of |ssl|. Using custom
+// keys with the multiple certificate slots feature is not supported.
 OPENSSL_EXPORT void SSL_set_private_key_method(
     SSL *ssl, const SSL_PRIVATE_KEY_METHOD *key_method);
 
