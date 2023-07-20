@@ -130,10 +130,6 @@
 
 #  define BN_MONTGOMERY_USE_S2N_BIGNUM 1
 
-#else
-
-#  define BN_MONTGOMERY_USE_S2N_BIGNUM 0
-
 #endif
 
 
@@ -453,7 +449,8 @@ int BN_mod_mul_montgomery(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
     // allocates |num| words on the stack, so |num| cannot be too large.
     assert((size_t)num <= BN_MONTGOMERY_MAX_WORDS);
 
-    if (BN_MONTGOMERY_USE_S2N_BIGNUM && (num % 8 == 0) && BN_BITS2 == 64 &&
+#if defined(BN_MONTGOMERY_USE_S2N_BIGNUM)
+    if ((num % 8 == 0) && BN_BITS2 == 64 &&
         (2 * (uint64_t)num + 96) <= BN_MONTGOMERY_MAX_WORDS) {
       // t is the temporary buffer for big-int multiplication.
       // bignum_kmul_32_64 requires 96 words.
@@ -517,6 +514,14 @@ int BN_mod_mul_montgomery(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
         return 0;
       }
     }
+#else
+    if (!bn_mul_mont(r->d, a->d, b->d, mont->N.d, mont->n0, num)) {
+      // The check above ensures this won't happen.
+      assert(0);
+      OPENSSL_PUT_ERROR(BN, ERR_R_INTERNAL_ERROR);
+      return 0;
+    }
+#endif
     r->neg = 0;
     r->width = num;
     return 1;
