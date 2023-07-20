@@ -106,7 +106,6 @@
  * (eay@cryptsoft.com).  This product includes software written by Tim
  * Hudson (tjh@cryptsoft.com). */
 
-#include <bits/time.h>
 #include <openssl/bn.h>
 
 #include <alloca.h>
