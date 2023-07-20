@@ -150,8 +150,8 @@
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
-#include "internal.h"
 #include "../crypto/internal.h"
+#include "internal.h"
 
 
 BSSL_NAMESPACE_BEGIN
@@ -187,8 +187,7 @@ static UniquePtr<CRYPTO_BUFFER> x509_to_buffer(X509 *x509) {
 // new_leafless_chain returns a fresh stack of buffers set to {NULL}.
 static UniquePtr<STACK_OF(CRYPTO_BUFFER)> new_leafless_chain(void) {
   UniquePtr<STACK_OF(CRYPTO_BUFFER)> chain(sk_CRYPTO_BUFFER_new_null());
-  if (!chain ||
-      !sk_CRYPTO_BUFFER_push(chain.get(), nullptr)) {
+  if (!chain || !sk_CRYPTO_BUFFER_push(chain.get(), nullptr)) {
     return nullptr;
   }
 
@@ -200,7 +199,7 @@ static UniquePtr<STACK_OF(CRYPTO_BUFFER)> new_leafless_chain(void) {
 // which case no change to |cert->chain| is made. It preverses the existing
 // leaf from |cert->chain|, if any.
 static bool ssl_cert_set_chain(CERT *cert, STACK_OF(X509) *chain) {
-  if(!ssl_cert_check_cert_private_keys_usage(cert)) {
+  if (!ssl_cert_check_cert_private_keys_usage(cert)) {
     return false;
   }
 
@@ -241,14 +240,14 @@ static bool ssl_cert_set_chain(CERT *cert, STACK_OF(X509) *chain) {
 }
 
 static void ssl_crypto_x509_cert_flush_leaf(CERT *cert) {
-  for (auto & cert_privatekey : cert->cert_private_keys) {
+  for (auto &cert_privatekey : cert->cert_private_keys) {
     X509_free(cert_privatekey.x509_leaf);
     cert_privatekey.x509_leaf = nullptr;
   }
 }
 
 static void ssl_crypto_x509_cert_flush_cached_chain(CERT *cert) {
-  for (auto & cert_privatekey : cert->cert_private_keys) {
+  for (auto &cert_privatekey : cert->cert_private_keys) {
     sk_X509_pop_free(cert_privatekey.x509_chain, X509_free);
     cert_privatekey.x509_chain = nullptr;
   }
@@ -398,8 +397,7 @@ static bool ssl_crypto_x509_session_verify_cert_chain(SSL_SESSION *session,
   size_t name_len;
   SSL_get0_ech_name_override(ssl, &name, &name_len);
   UniquePtr<X509_STORE_CTX> ctx(X509_STORE_CTX_new());
-  if (!ctx ||
-      !X509_STORE_CTX_init(ctx.get(), verify_store, leaf, cert_chain) ||
+  if (!ctx || !X509_STORE_CTX_init(ctx.get(), verify_store, leaf, cert_chain) ||
       !X509_STORE_CTX_set_ex_data(ctx.get(),
                                   SSL_get_ex_data_X509_STORE_CTX_idx(), ssl) ||
       // We need to inherit the verify parameters. These can be determined by
@@ -471,14 +469,15 @@ static void ssl_crypto_x509_ssl_config_free(SSL_CONFIG *cfg) {
 }
 
 static bool ssl_crypto_x509_ssl_auto_chain_if_needed(SSL_HANDSHAKE *hs) {
-  if(!ssl_cert_check_cert_private_keys_usage(hs->config->cert.get())) {
+  if (!ssl_cert_check_cert_private_keys_usage(hs->config->cert.get())) {
     return false;
   }
 
   // Only build a chain if there are no intermediates configured and the feature
   // isn't disabled.
   UniquePtr<STACK_OF(CRYPTO_BUFFER)> &cert_chain =
-      hs->config->cert->cert_private_keys[hs->config->cert->cert_private_key_idx]
+      hs->config->cert
+          ->cert_private_keys[hs->config->cert->cert_private_key_idx]
           .chain;
   if ((hs->ssl->mode & SSL_MODE_NO_AUTO_CHAIN) || !ssl_has_certificate(hs) ||
       cert_chain == nullptr || sk_CRYPTO_BUFFER_num(cert_chain.get()) > 1) {
@@ -716,10 +715,8 @@ void SSL_set_verify_depth(SSL *ssl, int depth) {
   X509_VERIFY_PARAM_set_depth(ssl->config->param, depth);
 }
 
-void SSL_CTX_set_cert_verify_callback(SSL_CTX *ctx,
-                                      int (*cb)(X509_STORE_CTX *store_ctx,
-                                                void *arg),
-                                      void *arg) {
+void SSL_CTX_set_cert_verify_callback(
+    SSL_CTX *ctx, int (*cb)(X509_STORE_CTX *store_ctx, void *arg), void *arg) {
   check_ssl_ctx_x509_method(ctx);
   ctx->app_verify_callback = cb;
   ctx->app_verify_arg = arg;
@@ -774,7 +771,7 @@ static int ssl_use_certificate(CERT *cert, X509 *x) {
     return 0;
   }
 
-  if(!ssl_cert_check_cert_private_keys_usage(cert)) {
+  if (!ssl_cert_check_cert_private_keys_usage(cert)) {
     return 0;
   }
   // We set the |x509_leaf| here to prevent any external data set from being
@@ -811,7 +808,7 @@ int SSL_CTX_use_certificate(SSL_CTX *ctx, X509 *x) {
 // |SSL_CTX_use_certificate_ASN1| or |SSL_use_certificate_ASN1| in AWS-LC.
 static int ssl_cert_cache_leaf_cert(CERT *cert) {
   assert(cert->x509_method);
-  if(!ssl_cert_check_cert_private_keys_usage(cert)) {
+  if (!ssl_cert_check_cert_private_keys_usage(cert)) {
     return 0;
   }
 
@@ -834,7 +831,7 @@ static int ssl_cert_cache_leaf_cert(CERT *cert) {
 }
 
 static X509 *ssl_cert_get0_leaf(CERT *cert) {
-  if(!ssl_cert_check_cert_private_keys_usage(cert)) {
+  if (!ssl_cert_check_cert_private_keys_usage(cert)) {
     return nullptr;
   }
 
@@ -858,7 +855,7 @@ X509 *SSL_get_certificate(const SSL *ssl) {
 
 X509 *SSL_CTX_get0_certificate(const SSL_CTX *ctx) {
   check_ssl_ctx_x509_method(ctx);
-  MutexWriteLock lock(const_cast<CRYPTO_MUTEX*>(&ctx->lock));
+  MutexWriteLock lock(const_cast<CRYPTO_MUTEX *>(&ctx->lock));
   return ssl_cert_get0_leaf(ctx->cert.get());
 }
 
@@ -883,7 +880,7 @@ static int ssl_cert_set1_chain(CERT *cert, STACK_OF(X509) *chain) {
 
 static int ssl_cert_append_cert(CERT *cert, X509 *x509) {
   assert(cert->x509_method);
-  if(!ssl_cert_check_cert_private_keys_usage(cert)) {
+  if (!ssl_cert_check_cert_private_keys_usage(cert)) {
     return 0;
   }
 
@@ -1003,7 +1000,7 @@ int SSL_clear_chain_certs(SSL *ssl) {
 // |cert->chain|.
 static int ssl_cert_cache_chain_certs(CERT *cert) {
   assert(cert->x509_method);
-  if(!ssl_cert_check_cert_private_keys_usage(cert)) {
+  if (!ssl_cert_check_cert_private_keys_usage(cert)) {
     return 0;
   }
 
@@ -1017,20 +1014,20 @@ static int ssl_cert_cache_chain_certs(CERT *cert) {
     return 1;
   }
 
-  UniquePtr<STACK_OF(X509)> new_chain(sk_X509_new_null());
-  if (!new_chain) {
+  UniquePtr<STACK_OF(X509)> new_x509_chain(sk_X509_new_null());
+  if (!new_x509_chain) {
     return 0;
   }
 
   for (size_t i = 1; i < sk_CRYPTO_BUFFER_num(chain.get()); i++) {
     CRYPTO_BUFFER *buffer = sk_CRYPTO_BUFFER_value(chain.get(), i);
     UniquePtr<X509> x509(X509_parse_from_buffer(buffer));
-    if (!x509 || !PushToStack(new_chain.get(), std::move(x509))) {
+    if (!x509 || !PushToStack(new_x509_chain.get(), std::move(x509))) {
       return 0;
     }
   }
 
-  x509_chain = new_chain.release();
+  x509_chain = new_x509_chain.release();
   return 1;
 }
 
@@ -1042,6 +1039,7 @@ int SSL_CTX_get0_chain_certs(const SSL_CTX *ctx, STACK_OF(X509) **out_chain) {
     return 0;
   }
 
+  // |cert_private_keys| already checked above in |ssl_cert_cache_chain_certs|.
   *out_chain =
       ctx->cert->cert_private_keys[ctx->cert->cert_private_key_idx].x509_chain;
   return 1;
@@ -1063,6 +1061,7 @@ int SSL_get0_chain_certs(const SSL *ssl, STACK_OF(X509) **out_chain) {
     return 0;
   }
 
+  // |cert_private_keys| already checked above in |ssl_cert_cache_chain_certs|.
   *out_chain = ssl->config->cert
                    ->cert_private_keys[ssl->config->cert->cert_private_key_idx]
                    .x509_chain;
@@ -1140,8 +1139,7 @@ static void set_client_CA_list(UniquePtr<STACK_OF(CRYPTO_BUFFER)> *ca_list,
 
     UniquePtr<CRYPTO_BUFFER> buffer(CRYPTO_BUFFER_new(outp, len, pool));
     OPENSSL_free(outp);
-    if (!buffer ||
-        !PushToStack(buffers.get(), std::move(buffer))) {
+    if (!buffer || !PushToStack(buffers.get(), std::move(buffer))) {
       return;
     }
   }
@@ -1166,9 +1164,8 @@ void SSL_CTX_set_client_CA_list(SSL_CTX *ctx, STACK_OF(X509_NAME) *name_list) {
   sk_X509_NAME_pop_free(name_list, X509_NAME_free);
 }
 
-static STACK_OF(X509_NAME) *
-    buffer_names_to_x509(const STACK_OF(CRYPTO_BUFFER) *names,
-                         STACK_OF(X509_NAME) **cached) {
+static STACK_OF(X509_NAME) *buffer_names_to_x509(
+    const STACK_OF(CRYPTO_BUFFER) *names, STACK_OF(X509_NAME) **cached) {
   if (names == NULL) {
     return NULL;
   }
@@ -1318,8 +1315,7 @@ static int do_client_cert_cb(SSL *ssl, void *arg) {
   UniquePtr<EVP_PKEY> free_pkey(pkey);
 
   if (ret != 0) {
-    if (!SSL_use_certificate(ssl, x509) ||
-        !SSL_use_PrivateKey(ssl, pkey)) {
+    if (!SSL_use_certificate(ssl, x509) || !SSL_use_PrivateKey(ssl, pkey)) {
       return 0;
     }
   }
@@ -1327,9 +1323,9 @@ static int do_client_cert_cb(SSL *ssl, void *arg) {
   return 1;
 }
 
-void SSL_CTX_set_client_cert_cb(SSL_CTX *ctx, int (*cb)(SSL *ssl,
-                                                        X509 **out_x509,
-                                                        EVP_PKEY **out_pkey)) {
+void SSL_CTX_set_client_cert_cb(SSL_CTX *ctx,
+                                int (*cb)(SSL *ssl, X509 **out_x509,
+                                          EVP_PKEY **out_pkey)) {
   check_ssl_ctx_x509_method(ctx);
   // Emulate the old client certificate callback with the new one.
   SSL_CTX_set_cert_cb(ctx, do_client_cert_cb, NULL);

@@ -414,6 +414,7 @@ bool tls13_add_certificate(SSL_HANDSHAKE *hs) {
   if (!ssl_has_certificate(hs)) {
     return ssl_add_message_cbb(ssl, cbb.get());
   }
+  // |cert_private_keys| already checked above in |ssl_has_certificate|.
   UniquePtr<STACK_OF(CRYPTO_BUFFER)> &chain =
       cert->cert_private_keys[cert->cert_private_key_idx].chain;
   CRYPTO_BUFFER *leaf_buf = sk_CRYPTO_BUFFER_value(chain.get(), 0);

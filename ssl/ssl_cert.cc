@@ -154,7 +154,7 @@ static CRYPTO_BUFFER *buffer_up_ref(const CRYPTO_BUFFER *buffer) {
 }
 
 UniquePtr<CERT> ssl_cert_dup(CERT *cert) {
-  if(cert == nullptr) {
+  if (cert == nullptr) {
     return nullptr;
   }
 
@@ -459,6 +459,7 @@ bool ssl_add_cert_chain(SSL_HANDSHAKE *hs, CBB *cbb) {
     return false;
   }
 
+  // |cert_private_keys| already checked above in |ssl_has_certificate|.
   int idx = hs->config->cert->cert_private_key_idx;
   STACK_OF(CRYPTO_BUFFER) *chain =
       hs->config->cert->cert_private_keys[idx].chain.get();
@@ -563,6 +564,8 @@ bool ssl_cert_check_private_key(const CERT *cert, const EVP_PKEY *privkey) {
     return false;
   }
 
+  // |cert_private_keys| already checked before usages of
+  // |ssl_cert_check_private_key|.
   STACK_OF(CRYPTO_BUFFER) *chain =
       cert->cert_private_keys[cert->cert_private_key_idx].chain.get();
 
@@ -774,6 +777,7 @@ bool ssl_on_certificate_selected(SSL_HANDSHAKE *hs) {
     return false;
   }
 
+  // |cert_private_keys| already checked above in |ssl_has_certificate|.
   STACK_OF(CRYPTO_BUFFER) *chain =
       hs->config->cert
           ->cert_private_keys[hs->config->cert->cert_private_key_idx]
@@ -912,7 +916,7 @@ static int cert_set_dc(CERT *cert, CRYPTO_BUFFER *const raw, EVP_PKEY *privkey,
 
 bool ssl_cert_check_cert_private_keys_usage(const CERT *cert) {
   if (cert == nullptr || cert->cert_private_keys.size() != SSL_PKEY_SIZE ||
-      cert->cert_private_key_idx < SSL_PKEY_RSA ||
+      cert->cert_private_key_idx < 0 ||
       cert->cert_private_key_idx >= SSL_PKEY_SIZE) {
     return false;
   }
