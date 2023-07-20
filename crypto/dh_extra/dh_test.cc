@@ -117,7 +117,7 @@ TEST(DHTest, OversizedModulus) {
   bssl::UniquePtr<DH> a(DH_new());
   ASSERT_TRUE(a);
 
-  const size_t LARGE_MOD_P = 4097;  // OPENSSL_DH_CHECK_MAX_MODULUS_BITS + 1
+  const size_t LARGE_MOD_P = 4097;  // OPENSSL_DH_CHECK_MAX_MODULUS_BITS / 8 + 1
 
   // Create a BigNumber which will be interpreted as a big-endian value
   auto number = std::unique_ptr<uint8_t[], std::default_delete<uint8_t[]>>(
