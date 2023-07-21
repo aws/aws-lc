@@ -160,11 +160,14 @@ OPENSSL_INLINE int montgomery_use_s2n_bignum(unsigned int num) {
 #endif
 }
 
+#if defined(OPENSSL_BN_ASM_MONT)
+
 static void montgomery_s2n_bignum_mul_mont(BN_ULONG *rp, const BN_ULONG *ap,
                                            const BN_ULONG *bp, const BN_ULONG *np,
                                            const BN_ULONG *n0, size_t num) {
 
 #if defined(BN_MONTGOMERY_USE_S2N_BIGNUM)
+
   // t is the temporary buffer for big-int multiplication.
   // bignum_kmul_32_64 requires 96 words.
   uint64_t t[96];
@@ -179,6 +182,7 @@ static void montgomery_s2n_bignum_mul_mont(BN_ULONG *rp, const BN_ULONG *ap,
   uint64_t c;
 
 #if defined(__ARM_NEON)
+
   if (num == 32) {
     if (ap == bp)
       bignum_ksqr_32_64_neon(l, src, t);
@@ -197,7 +201,9 @@ static void montgomery_s2n_bignum_mul_mont(BN_ULONG *rp, const BN_ULONG *ap,
       bignum_mul(num * 2, l, num, src2, num, src);
   }
   c = bignum_emontredc_8n_neon(num, l, m, w);
+
 #else
+
   if (num == 32) {
     if (ap == bp)
       bignum_ksqr_32_64(l, src, t);
@@ -215,7 +221,9 @@ static void montgomery_s2n_bignum_mul_mont(BN_ULONG *rp, const BN_ULONG *ap,
       bignum_mul(num * 2, l, num, src2, num, src);
   }
   c = bignum_emontredc_8n(num, l, m, w);
+
 #endif
+
   c |= bignum_ge(num, l + num, num, m);
   // dest >= m ? dest - m : dest
   bignum_optsub(num, dest, l + num, c, m);
@@ -227,6 +235,9 @@ static void montgomery_s2n_bignum_mul_mont(BN_ULONG *rp, const BN_ULONG *ap,
 
 #endif
 }
+
+#endif
+
 
 BN_MONT_CTX *BN_MONT_CTX_new(void) {
   BN_MONT_CTX *ret = OPENSSL_malloc(sizeof(BN_MONT_CTX));
