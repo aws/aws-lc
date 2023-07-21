@@ -202,6 +202,33 @@ static bool RunBasicTests() {
   return true;
 }
 
+TEST(DHTest, OversizedModulus) {
+  bssl::UniquePtr<DH> a(DH_new());
+  ASSERT_TRUE(a);
+
+  const size_t LARGE_MOD_P = 4097;  // OPENSSL_DH_CHECK_MAX_MODULUS_BITS / 8 + 1
+
+  // Create a BigNumber which will be interpreted as a big-endian value
+  auto number = std::unique_ptr<uint8_t[], std::default_delete<uint8_t[]>>(
+      new uint8_t[LARGE_MOD_P]);
+  for (size_t i = 0; i < LARGE_MOD_P; i++) {
+    number[i] = 255;
+  }
+
+  bssl::UniquePtr<BIGNUM> p(BN_bin2bn(number.get(), LARGE_MOD_P, nullptr));
+  bssl::UniquePtr<BIGNUM> q(BN_new());
+  bssl::UniquePtr<BIGNUM> g(BN_new());
+
+  // Q and G don't matter for this test, they just can't be null
+  ASSERT_TRUE(DH_set0_pqg(a.get(), p.release(), q.release(), g.release()));
+
+  int check_result;
+  ASSERT_FALSE(DH_check(a.get(), &check_result));
+  uint32_t error = ERR_get_error();
+  ASSERT_EQ(ERR_LIB_DH, ERR_GET_LIB(error));
+  ASSERT_EQ(DH_R_MODULUS_TOO_LARGE, ERR_GET_REASON(error));
+}
+
 // The following parameters are taken from RFC 5114, section 2.2. This is not a
 // safe prime. Do not use these parameters.
 static const uint8_t kRFC5114_2048_224P[] = {
