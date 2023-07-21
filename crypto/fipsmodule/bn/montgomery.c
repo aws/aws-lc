@@ -135,9 +135,28 @@
 
 OPENSSL_INLINE int montgomery_s2n_bignum_capable(void) {
 #if defined(BN_MONTGOMERY_USE_S2N_BIGNUM)
+
   return 1;
+
 #else
+
   return 0;
+
+#endif
+}
+
+OPENSSL_INLINE int montgomery_use_s2n_bignum(unsigned int num) {
+#if defined(BN_MONTGOMERY_USE_S2N_BIGNUM)
+
+  // Use s2n-bignum's functions only if the ARM architecture has slow
+  // multipliers.
+  return !CRYPTO_is_ARMv8_wide_multiplier_capable() && (num % 8 == 0) &&
+         BN_BITS2 == 64 && (2 * (uint64_t)num + 96) <= BN_MONTGOMERY_MAX_WORDS;
+
+#else
+
+  return 0;
+
 #endif
 }
 
@@ -526,9 +545,7 @@ int BN_mod_mul_montgomery(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
     assert((size_t)num <= BN_MONTGOMERY_MAX_WORDS);
 
     if (montgomery_s2n_bignum_capable() &&
-        !CRYPTO_is_ARMv8_wide_multiplier_capable() &&
-        (num % 8 == 0) && BN_BITS2 == 64 &&
-        (2 * (uint64_t)num + 96) <= BN_MONTGOMERY_MAX_WORDS) {
+        montgomery_use_s2n_bignum(num)) {
       montgomery_s2n_bignum_mul_mont(r->d, a->d, b->d, mont->N.d, mont->n0, num);
     } else {
       if (!bn_mul_mont(r->d, a->d, b->d, mont->N.d, mont->n0, num)) {
