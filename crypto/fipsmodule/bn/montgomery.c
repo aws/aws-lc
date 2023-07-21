@@ -141,6 +141,74 @@ OPENSSL_INLINE int montgomery_s2n_bignum_capable(void) {
 #endif
 }
 
+static void montgomery_s2n_bignum_mul_mont(BN_ULONG *rp, const BN_ULONG *ap,
+                                           const BN_ULONG *bp, const BN_ULONG *np,
+                                           const BN_ULONG *n0, size_t num) {
+
+#if defined(BN_MONTGOMERY_USE_S2N_BIGNUM)
+  // t is the temporary buffer for big-int multiplication.
+  // bignum_kmul_32_64 requires 96 words.
+  uint64_t t[96];
+  // l is the output buffer of big-int multiplication.
+  uint64_t l[BN_MONTGOMERY_MAX_WORDS - 96];
+
+  // BN_ULONG is uint64_t since BN_BITS2 is 64.
+  uint64_t *m = (uint64_t *)np;
+  uint64_t w = (uint64_t)n0[0];
+  uint64_t *src = (uint64_t *)ap, *src2 = (uint64_t *)bp;
+  uint64_t *dest = (uint64_t *)rp;
+  uint64_t c;
+
+#if defined(__ARM_NEON)
+  if (num == 32) {
+    if (ap == bp)
+      bignum_ksqr_32_64_neon(l, src, t);
+    else
+      bignum_kmul_32_64_neon(l, src2, src, t);
+  } else if (num == 16) {
+    if (ap == bp)
+      bignum_ksqr_16_32_neon(l, src, t);
+    else
+      bignum_kmul_16_32_neon(l, src2, src, t);
+  } else {
+    // The general sqrs/muls have no NEON alternatives
+    if (ap == bp)
+      bignum_sqr(num * 2, l, num, src);
+    else
+      bignum_mul(num * 2, l, num, src2, num, src);
+  }
+  c = bignum_emontredc_8n_neon(num, l, m, w);
+#else
+  if (num == 32) {
+    if (ap == bp)
+      bignum_ksqr_32_64(l, src, t);
+    else
+      bignum_kmul_32_64(l, src2, src, t);
+  } else if (num == 16) {
+    if (ap == bp)
+      bignum_ksqr_16_32(l, src, t);
+    else
+      bignum_kmul_16_32(l, src2, src, t);
+  } else {
+    if (ap == bp)
+      bignum_sqr(num * 2, l, num, src);
+    else
+      bignum_mul(num * 2, l, num, src2, num, src);
+  }
+  c = bignum_emontredc_8n(num, l, m, w);
+#endif
+  c |= bignum_ge(num, l + num, num, m);
+  // dest >= m ? dest - m : dest
+  bignum_optsub(num, dest, l + num, c, m);
+
+#else
+
+  // Should not call this function unless s2n-bignum is supported.
+  abort();
+
+#endif
+}
+
 BN_MONT_CTX *BN_MONT_CTX_new(void) {
   BN_MONT_CTX *ret = OPENSSL_malloc(sizeof(BN_MONT_CTX));
 
@@ -461,60 +529,7 @@ int BN_mod_mul_montgomery(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
         !CRYPTO_is_ARMv8_wide_multiplier_capable() &&
         (num % 8 == 0) && BN_BITS2 == 64 &&
         (2 * (uint64_t)num + 96) <= BN_MONTGOMERY_MAX_WORDS) {
-      // t is the temporary buffer for big-int multiplication.
-      // bignum_kmul_32_64 requires 96 words.
-      uint64_t t[96];
-      // l is the output buffer of big-int multiplication.
-      uint64_t l[BN_MONTGOMERY_MAX_WORDS - 96];
-
-      // BN_ULONG is uint64_t since BN_BITS2 is 64.
-      uint64_t *m = (uint64_t *)mont->N.d;
-      uint64_t w = (uint64_t)mont->n0[0];
-      uint64_t *src = (uint64_t *)a->d, *src2 = (uint64_t *)b->d;
-      uint64_t *dest = (uint64_t *)r->d;
-      uint64_t c;
-
-#if defined(__ARM_NEON)
-      if (num == 32) {
-        if (a->d == b->d)
-          bignum_ksqr_32_64_neon(l, src, t);
-        else
-          bignum_kmul_32_64_neon(l, src2, src, t);
-      } else if (num == 16) {
-        if (a->d == b->d)
-          bignum_ksqr_16_32_neon(l, src, t);
-        else
-          bignum_kmul_16_32_neon(l, src2, src, t);
-      } else {
-        // The general sqrs/muls have no NEON alternatives
-        if (a->d == b->d)
-          bignum_sqr(num * 2, l, num, src);
-        else
-          bignum_mul(num * 2, l, num, src2, num, src);
-      }
-      c = bignum_emontredc_8n_neon(num, l, m, w);
-#else
-      if (num == 32) {
-        if (a->d == b->d)
-          bignum_ksqr_32_64(l, src, t);
-        else
-          bignum_kmul_32_64(l, src2, src, t);
-      } else if (num == 16) {
-        if (a->d == b->d)
-          bignum_ksqr_16_32(l, src, t);
-        else
-          bignum_kmul_16_32(l, src2, src, t);
-      } else {
-        if (a->d == b->d)
-          bignum_sqr(num * 2, l, num, src);
-        else
-          bignum_mul(num * 2, l, num, src2, num, src);
-      }
-      c = bignum_emontredc_8n(num, l, m, w);
-#endif
-      c |= bignum_ge(num, l + num, num, m);
-      // dest >= m ? dest - m : dest
-      bignum_optsub(num, dest, l + num, c, m);
+      montgomery_s2n_bignum_mul_mont(r->d, a->d, b->d, mont->N.d, mont->n0, num);
     } else {
       if (!bn_mul_mont(r->d, a->d, b->d, mont->N.d, mont->n0, num)) {
         // The check above ensures this won't happen.
