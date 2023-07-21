@@ -25,28 +25,27 @@ extern "C" {
 // OCSP_NOCERTS is for |OCSP_request_sign| if no certificates are included
 // in the |OCSP_REQUEST|. Certificates are optional.
 #define OCSP_NOCERTS 0x1
-// OCSP_NOINTERN is for |OCSP_basic_verify|. Searches for certificates the
-// responder may have included in |bs| will be done, unless the flags contain
-// OCSP_NOINTERN.
+// OCSP_NOINTERN is for |OCSP_basic_verify|. Certificates included within |bs|
+// by the responder will be searched for the signer certificate, unless the
+// |OCSP_NOINTERN| flag is set.
 #define OCSP_NOINTERN 0x2
 // OCSP_NOCHAIN is for |OCSP_basic_verify|. All certificates in |certs| and in
 // |bs| are considered as untrusted certificates for the construction of the
-// validation path for the signer certificate unless the OCSP_NOCHAIN flag is
+// validation path for the signer certificate unless the |OCSP_NOCHAIN| flag is
 // set.
 #define OCSP_NOCHAIN 0x8
-// OCSP_NOVERIFY is for |OCSP_basic_verify|. This is a no-op flag in AWS-LC.
-// When setting this flag in OpenSSL, the |OCSP_BASICRESP|'s signature will
-// still be verified, but setting this flag skips verifying the signer's
-// certificate.
-#define OCSP_NOVERIFY 0
+// OCSP_NOVERIFY is for |OCSP_basic_verify|. When setting this flag, the
+// |OCSP_BASICRESP|'s signature will still be verified, but skips additionally
+// verifying the signer's certificate.
+#define OCSP_NOVERIFY 0x10
 // OCSP_NOEXPLICIT is for |OCSP_basic_verify|. We will check for explicit trust
 // for OCSP signing in the root CA certificate, unless the flags contain
-// OCSP_NOEXPLICIT.
+// |OCSP_NOEXPLICIT|.
 #define OCSP_NOEXPLICIT 0x20
-// OCSP_TRUSTOTHER is for |OCSP_basic_verify|. This is a no-op flag in AWS-LC.
-// When setting this flag in OpenSSL, if the reponse signer's cert is one of
-// those in the |certs| stack then it is implicitly trusted.
-#define OCSP_TRUSTOTHER 0
+// OCSP_TRUSTOTHER is for |OCSP_basic_verify|. When this flag is set, if the
+// response signer's cert is one of those in the |certs| stack then it is
+// implicitly trusted.
+#define OCSP_TRUSTOTHER 0x200
 
 typedef struct ocsp_cert_id_st OCSP_CERTID;
 typedef struct ocsp_one_request_st OCSP_ONEREQ;
@@ -214,9 +213,8 @@ OPENSSL_EXPORT OCSP_BASICRESP *OCSP_response_get1_basic(OCSP_RESPONSE *resp);
 // in |bs|.
 OPENSSL_EXPORT int OCSP_resp_count(OCSP_BASICRESP *bs);
 
-// OCSP_resp_get0 returns the |OCSP_SINGLERESP| at the |idx| within
-// |bs|.
-OCSP_SINGLERESP *OCSP_resp_get0(OCSP_BASICRESP *bs, size_t idx);
+// OCSP_resp_get0 returns the |OCSP_SINGLERESP| at the |idx| within |bs|.
+OPENSSL_EXPORT OCSP_SINGLERESP *OCSP_resp_get0(OCSP_BASICRESP *bs, size_t idx);
 
 // OCSP_single_get0_status returns the status of |single|.
 //
@@ -225,10 +223,10 @@ OCSP_SINGLERESP *OCSP_resp_get0(OCSP_BASICRESP *bs, size_t idx);
 //          certificate fields are empty.
 //       3. |revtime| and |reason| values only set if the certificate status is
 //          revoked.
-int OCSP_single_get0_status(OCSP_SINGLERESP *single, int *reason,
-                            ASN1_GENERALIZEDTIME **revtime,
-                            ASN1_GENERALIZEDTIME **thisupd,
-                            ASN1_GENERALIZEDTIME **nextupd);
+OPENSSL_EXPORT int OCSP_single_get0_status(OCSP_SINGLERESP *single, int *reason,
+                                           ASN1_GENERALIZEDTIME **revtime,
+                                           ASN1_GENERALIZEDTIME **thisupd,
+                                           ASN1_GENERALIZEDTIME **nextupd);
 
 // OCSP_resp_find returns the index of the |OCSP_SINGLERESP| in |bs| which
 // matches |id| if found, or -1 if not found.
@@ -329,7 +327,7 @@ OPENSSL_EXPORT int OCSP_parse_url(const char *url, char **phost, char **pport,
                                   char **ppath, int *pssl);
 
 // OCSP_id_cmp compares the contents of |OCSP_CERTID|, returns 0 on equal.
-int OCSP_id_cmp(const OCSP_CERTID *a, const OCSP_CERTID *b);
+OPENSSL_EXPORT int OCSP_id_cmp(const OCSP_CERTID *a, const OCSP_CERTID *b);
 
 // OCSP_id_get0_info returns the issuer name hash, hash OID, issuer key hash,
 // and the serial number contained in |cid|. If any of the values are not

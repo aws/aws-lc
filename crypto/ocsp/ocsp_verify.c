@@ -4,12 +4,15 @@
 #include <string.h>
 #include "internal.h"
 
+#define SIGNER_IN_CERTSTACK 2
+#define SIGNER_IN_BASICRESP 1
+#define SIGNER_NOT_FOUND 0
+
 // Set up |X509_STORE_CTX| to verify signer and returns cert chain if verify is
 // OK. A |OCSP_RESPID| can be identified either by name or its keyhash.
 // https://datatracker.ietf.org/doc/html/rfc6960#section-4.2.2.3
 static X509 *ocsp_find_signer_sk(STACK_OF(X509) *certs, OCSP_RESPID *id) {
   if (certs == NULL || id == NULL) {
-    OPENSSL_PUT_ERROR(OCSP, ERR_R_PASSED_NULL_PARAMETER);
     return NULL;
   }
 
@@ -54,20 +57,20 @@ static int ocsp_find_signer(X509 **psigner, OCSP_BASICRESP *bs,
   signer = ocsp_find_signer_sk(certs, rid);
   if (signer != NULL) {
     *psigner = signer;
-    return 1;
+    return SIGNER_IN_CERTSTACK;
   }
 
   // look in certs stack the responder may have included in |OCSP_BASICRESP|,
-  // unless the flags contain OCSP_NOINTERN.
+  // unless the flags contain |OCSP_NOINTERN|.
   signer = ocsp_find_signer_sk(bs->certs, rid);
-  if (!IS_OCSP_FLAG_SET(flags, OCSP_NOINTERN) && signer) {
+  if (signer != NULL && !IS_OCSP_FLAG_SET(flags, OCSP_NOINTERN)) {
     *psigner = signer;
-    return 1;
+    return SIGNER_IN_BASICRESP;
   }
   // Maybe lookup from store if by subject name.
 
   *psigner = NULL;
-  return 0;
+  return SIGNER_NOT_FOUND;
 }
 
 // check if public key in signer matches key in |OCSP_BASICRESP|.
@@ -333,9 +336,13 @@ int OCSP_basic_verify(OCSP_BASICRESP *bs, STACK_OF(X509) *certs, X509_STORE *st,
 
   // Look for signer certificate.
   int ret = ocsp_find_signer(&signer, bs, certs, flags);
-  if (ret <= 0) {
+  if (ret <= SIGNER_NOT_FOUND) {
     OPENSSL_PUT_ERROR(OCSP, OCSP_R_SIGNER_CERTIFICATE_NOT_FOUND);
     goto end;
+  }
+  if ((ret == SIGNER_IN_CERTSTACK) &&
+      IS_OCSP_FLAG_SET(flags, OCSP_TRUSTOTHER)) {
+    flags |= OCSP_NOVERIFY;
   }
 
   // Check if public key in signer matches key in |OCSP_BASICRESP|.
@@ -343,38 +350,38 @@ int OCSP_basic_verify(OCSP_BASICRESP *bs, STACK_OF(X509) *certs, X509_STORE *st,
   if (ret <= 0) {
     goto end;
   }
-
-  // Verify signer and if valid, check the certificate chain.
-  ret = ocsp_setup_untrusted(bs, certs, &untrusted, flags);
-  if (ret <= 0) {
-    goto end;
-  }
-  ret = ocsp_verify_signer(signer, st, untrusted, &chain);
-  if (ret <= 0) {
-    goto end;
-  }
-
-  // At this point we have a valid certificate chain, need to verify it
-  // against the OCSP issuer criteria.
-  ret = ocsp_check_issuer(bs, chain);
-
-  // If a certificate chain is not verifiable against the OCSP issuer
-  // criteria, we try to check for explicit trust.
-  if (ret == 0) {
-    // Easy case: explicitly trusted. Get root CA and check for explicit
-    // trust.
-    if (IS_OCSP_FLAG_SET(flags, OCSP_NOEXPLICIT)) {
+  if (!IS_OCSP_FLAG_SET(flags, OCSP_NOVERIFY)) {
+    // Verify signer and if valid, check the certificate chain.
+    ret = ocsp_setup_untrusted(bs, certs, &untrusted, flags);
+    if (ret <= 0) {
       goto end;
     }
-    X509 *root_cert = sk_X509_value(chain, sk_X509_num(chain) - 1);
-    if (X509_check_trust(root_cert, NID_OCSP_sign, 0) != X509_TRUST_TRUSTED) {
-      OPENSSL_PUT_ERROR(OCSP, OCSP_R_ROOT_CA_NOT_TRUSTED);
-      ret = 0;
+    ret = ocsp_verify_signer(signer, st, untrusted, &chain);
+    if (ret <= 0) {
       goto end;
     }
-    ret = 1;
-  }
 
+    // At this point we have a valid certificate chain, need to verify it
+    // against the OCSP issuer criteria.
+    ret = ocsp_check_issuer(bs, chain);
+
+    // If a certificate chain is not verifiable against the OCSP issuer
+    // criteria, we try to check for explicit trust.
+    if (ret == 0) {
+      // Easy case: explicitly trusted. Get root CA and check for explicit
+      // trust.
+      if (IS_OCSP_FLAG_SET(flags, OCSP_NOEXPLICIT)) {
+        goto end;
+      }
+      X509 *root_cert = sk_X509_value(chain, sk_X509_num(chain) - 1);
+      if (X509_check_trust(root_cert, NID_OCSP_sign, 0) != X509_TRUST_TRUSTED) {
+        OPENSSL_PUT_ERROR(OCSP, OCSP_R_ROOT_CA_NOT_TRUSTED);
+        ret = 0;
+        goto end;
+      }
+      ret = 1;
+    }
+  }
 
 end:
   sk_X509_pop_free(chain, X509_free);
