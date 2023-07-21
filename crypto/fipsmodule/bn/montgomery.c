@@ -133,6 +133,13 @@
 
 #endif
 
+OPENSSL_INLINE int montgomery_s2n_bignum_capable(void) {
+#if defined(BN_MONTGOMERY_USE_S2N_BIGNUM)
+  return 1;
+#else
+  return 0;
+#endif
+}
 
 BN_MONT_CTX *BN_MONT_CTX_new(void) {
   BN_MONT_CTX *ret = OPENSSL_malloc(sizeof(BN_MONT_CTX));
@@ -450,10 +457,10 @@ int BN_mod_mul_montgomery(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
     // allocates |num| words on the stack, so |num| cannot be too large.
     assert((size_t)num <= BN_MONTGOMERY_MAX_WORDS);
 
-#if defined(BN_MONTGOMERY_USE_S2N_BIGNUM)
-    if (!CRYPTO_is_ARMv8_wide_multiplier_capable() &&
-        (num % 8 == 0) &&
-        BN_BITS2 == 64 && (2 * (uint64_t)num + 96) <= BN_MONTGOMERY_MAX_WORDS) {
+    if (montgomery_s2n_bignum_capable() &&
+        !CRYPTO_is_ARMv8_wide_multiplier_capable() &&
+        (num % 8 == 0) && BN_BITS2 == 64 &&
+        (2 * (uint64_t)num + 96) <= BN_MONTGOMERY_MAX_WORDS) {
       // t is the temporary buffer for big-int multiplication.
       // bignum_kmul_32_64 requires 96 words.
       uint64_t t[96];
@@ -516,14 +523,6 @@ int BN_mod_mul_montgomery(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
         return 0;
       }
     }
-#else
-    if (!bn_mul_mont(r->d, a->d, b->d, mont->N.d, mont->n0, num)) {
-      // The check above ensures this won't happen.
-      assert(0);
-      OPENSSL_PUT_ERROR(BN, ERR_R_INTERNAL_ERROR);
-      return 0;
-    }
-#endif
     r->neg = 0;
     r->width = num;
     return 1;
