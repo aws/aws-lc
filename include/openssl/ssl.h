@@ -1317,7 +1317,6 @@ OPENSSL_EXPORT int SSL_use_RSAPrivateKey_ASN1(SSL *ssl, const uint8_t *der,
 #define SSL_FILETYPE_PEM 1
 #define SSL_FILETYPE_ASN1 2
 
-#if !defined(OPENSSL_NO_FILESYSTEM)
 OPENSSL_EXPORT int SSL_CTX_use_RSAPrivateKey_file(SSL_CTX *ctx,
                                                   const char *file, int type);
 OPENSSL_EXPORT int SSL_use_RSAPrivateKey_file(SSL *ssl, const char *file,
@@ -1339,7 +1338,6 @@ OPENSSL_EXPORT int SSL_use_PrivateKey_file(SSL *ssl, const char *file,
 // success and zero on failure.
 OPENSSL_EXPORT int SSL_CTX_use_certificate_chain_file(SSL_CTX *ctx,
                                                       const char *file);
-#endif  // !OPENSSL_NO_FILESYSTEM
 
 // SSL_CTX_use_certificate_chain_file configures certificates for |ssl|. It
 // reads the contents of |file| as a PEM-encoded leaf certificate followed
@@ -2954,7 +2952,6 @@ OPENSSL_EXPORT void SSL_CTX_set_cert_store(SSL_CTX *ctx, X509_STORE *store);
 // SSL_CTX_get_cert_store returns |ctx|'s certificate store.
 OPENSSL_EXPORT X509_STORE *SSL_CTX_get_cert_store(const SSL_CTX *ctx);
 
-#if !defined(OPENSSL_NO_FILESYSTEM)
 // SSL_CTX_set_default_verify_paths loads the OpenSSL system-default trust
 // anchors into |ctx|'s store. It returns one on success and zero on failure.
 OPENSSL_EXPORT int SSL_CTX_set_default_verify_paths(SSL_CTX *ctx);
@@ -2971,7 +2968,6 @@ OPENSSL_EXPORT int SSL_CTX_set_default_verify_paths(SSL_CTX *ctx);
 OPENSSL_EXPORT int SSL_CTX_load_verify_locations(SSL_CTX *ctx,
                                                  const char *ca_file,
                                                  const char *ca_dir);
-#endif  // !OPENSSL_NO_FILESYSTEM
 
 // SSL_get_verify_result returns the result of certificate verification. It is
 // either |X509_V_OK| or a |X509_V_ERR_*| value.
@@ -3133,24 +3129,20 @@ OPENSSL_EXPORT int SSL_add_client_CA(SSL *ssl, X509 *x509);
 // ownership of |x509|.
 OPENSSL_EXPORT int SSL_CTX_add_client_CA(SSL_CTX *ctx, X509 *x509);
 
-#if !defined(OPENSSL_NO_FILESYSTEM)
 // SSL_load_client_CA_file opens |file| and reads PEM-encoded certificates from
 // it. It returns a newly-allocated stack of the certificate subjects or NULL
 // on error. Duplicates in |file| are ignored.
 OPENSSL_EXPORT STACK_OF(X509_NAME) *SSL_load_client_CA_file(const char *file);
-#endif
 
 // SSL_dup_CA_list makes a deep copy of |list|. It returns the new list on
 // success or NULL on allocation error.
 OPENSSL_EXPORT STACK_OF(X509_NAME) *SSL_dup_CA_list(STACK_OF(X509_NAME) *list);
 
-#if !defined(OPENSSL_NO_FILESYSTEM)
 // SSL_add_file_cert_subjects_to_stack behaves like |SSL_load_client_CA_file|
 // but appends the result to |out|. It returns one on success or zero on
 // error.
 OPENSSL_EXPORT int SSL_add_file_cert_subjects_to_stack(STACK_OF(X509_NAME) *out,
                                                        const char *file);
-#endif
 
 // SSL_add_bio_cert_subjects_to_stack behaves like
 // |SSL_add_file_cert_subjects_to_stack| but reads from |bio|.
