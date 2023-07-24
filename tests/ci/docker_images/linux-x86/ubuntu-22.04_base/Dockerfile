@@ -40,6 +40,7 @@ RUN set -ex && \
     llvm-dev \
     libicu-dev \
     libipc-run-perl \
+    libjson-perl \
     libpcre2-dev \
     libreadline-dev \
     libudev-dev \
@@ -64,7 +65,6 @@ RUN set -ex && \
     # Download a copy of LLVM's libcxx which is required for building and running with Memory Sanitizer
     git clone https://github.com/llvm/llvm-project.git --branch llvmorg-11.1.0  --depth 1 && \
     cd llvm-project && rm -rf $(ls -A | grep -Ev "(libcxx|libcxxabi)") && \
-    apt-get --purge remove -y unzip && \
     apt-get autoremove --purge -y && \
     apt-get clean && \
     apt-get autoclean && \
