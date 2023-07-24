@@ -1096,6 +1096,13 @@ LK512:
 .align	6
 sha512_block_armv8:
 Lv8_entry:
+#ifdef BORINGSSL_DISPATCH_TEST
+
+	adrp	x6,_BORINGSSL_function_hit@PAGE
+	add	x6, x6, _BORINGSSL_function_hit@PAGEOFF
+	mov	w7, #1
+	strb	w7, [x6,#8] // kFlag_sha512_hw
+#endif
 	stp	x29,x30,[sp,#-16]!
 	add	x29,sp,#0
 
