@@ -69,10 +69,6 @@ static const unsigned kReseedInterval = 16777216;
 static const unsigned kReseedInterval = 4096;
 #endif
 
-// CRNGT_BLOCK_SIZE is the number of bytes in a “block” for the purposes of the
-// continuous random number generator test in FIPS 140-2, section 4.9.2.
-#define CRNGT_BLOCK_SIZE 16
-
 // rand_thread_state contains the per-thread state for the RNG.
 struct rand_thread_state {
   CTR_DRBG_STATE drbg;
@@ -80,13 +76,8 @@ struct rand_thread_state {
   // calls is the number of generate calls made on |drbg| since it was last
   // (re)seeded. This is bound by |kReseedInterval|.
   unsigned calls;
-  // last_block_valid is non-zero iff |last_block| contains data from
-  // |get_seed_entropy|.
-  int last_block_valid;
 
 #if defined(BORINGSSL_FIPS)
-  // last_block contains the previous block from |get_seed_entropy|.
-  uint8_t last_block[CRNGT_BLOCK_SIZE];
   // next and prev form a NULL-terminated, double-linked list of all states in
   // a process.
   struct rand_thread_state *next, *prev;
@@ -126,7 +117,6 @@ static void rand_thread_state_clear_all(void) {
   for (struct rand_thread_state *cur = *thread_states_list_bss_get();
        cur != NULL; cur = cur->next) {
     CTR_DRBG_clear(&cur->drbg);
-    OPENSSL_cleanse(cur->last_block, sizeof(cur->last_block));
 
     jent_entropy_collector_free(cur->jitter_ec);
   }
@@ -160,7 +150,6 @@ static void rand_thread_state_free(void *state_in) {
   CRYPTO_STATIC_MUTEX_unlock_write(thread_states_list_lock_bss_get());
 
   CTR_DRBG_clear(&state->drbg);
-  OPENSSL_cleanse(state->last_block, sizeof(state->last_block));
 
   jent_entropy_collector_free(state->jitter_ec);
 #endif
@@ -249,58 +238,20 @@ static void CRYPTO_get_fips_seed(uint8_t *out_entropy, size_t out_entropy_len,
   if (num_tries > JITTER_MAX_NUM_TRIES) {
     abort();
   }
-
-  if (boringssl_fips_break_test("CRNG")) {
-    // This breaks the "continuous random number generator test" defined in FIPS
-    // 140-2, section 4.9.2, and implemented in |rand_get_seed|.
-    OPENSSL_memset(out_entropy, 0, out_entropy_len);
-  }
 }
 
 // rand_get_seed fills |seed| with entropy and sets |*out_want_additional_input|
 // to one if that entropy came directly from the CPU and zero otherwise.
-static void rand_get_seed(struct rand_thread_state *state,
-                          uint8_t seed[CTR_DRBG_ENTROPY_LEN],
+static void rand_get_seed(uint8_t seed[CTR_DRBG_ENTROPY_LEN],
                           int *out_want_additional_input) {
-  if (!state->last_block_valid) {
-    int unused;
-    CRYPTO_get_fips_seed(state->last_block, sizeof(state->last_block), &unused);
-    state->last_block_valid = 1;
-  }
-
-  uint8_t entropy[CTR_DRBG_ENTROPY_LEN];
-  CRYPTO_get_fips_seed(entropy, sizeof(entropy), out_want_additional_input);
-
-  // See FIPS 140-2, section 4.9.2. This is the “continuous random number
-  // generator test” which causes the program to randomly abort. Hopefully the
-  // rate of failure is small enough not to be a problem in practice.
-  if (CRYPTO_memcmp(state->last_block, entropy, CRNGT_BLOCK_SIZE) == 0) {
-    fprintf(stderr, "CRNGT failed.\n");
-    BORINGSSL_FIPS_abort();
-  }
-
-  OPENSSL_STATIC_ASSERT(sizeof(entropy) % CRNGT_BLOCK_SIZE == 0, _)
-  for (size_t i = CRNGT_BLOCK_SIZE; i < sizeof(entropy);
-       i += CRNGT_BLOCK_SIZE) {
-    if (CRYPTO_memcmp(entropy + i - CRNGT_BLOCK_SIZE, entropy + i,
-                      CRNGT_BLOCK_SIZE) == 0) {
-      fprintf(stderr, "CRNGT failed.\n");
-      BORINGSSL_FIPS_abort();
-    }
-  }
-  OPENSSL_memcpy(state->last_block,
-                 entropy + sizeof(entropy) - CRNGT_BLOCK_SIZE,
-                 CRNGT_BLOCK_SIZE);
-
-  OPENSSL_memcpy(seed, entropy, CTR_DRBG_ENTROPY_LEN);
+  CRYPTO_get_fips_seed(seed, CTR_DRBG_ENTROPY_LEN, out_want_additional_input);
 }
 
 #else // BORINGSSL_FIPS
 
 // rand_get_seed fills |seed| with entropy and sets |*out_want_additional_input|
 // to one if that entropy came directly from the CPU and zero otherwise.
-static void rand_get_seed(struct rand_thread_state *state,
-                          uint8_t seed[CTR_DRBG_ENTROPY_LEN],
+static void rand_get_seed(uint8_t seed[CTR_DRBG_ENTROPY_LEN],
                           int *out_want_additional_input) {
   // If not in FIPS mode, we don't overread from the system entropy source and
   // we don't depend only on the hardware RDRAND.
@@ -374,10 +325,9 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
     }
 #endif
 
-    state->last_block_valid = 0;
     uint8_t seed[CTR_DRBG_ENTROPY_LEN];
     int want_additional_input;
-    rand_get_seed(state, seed, &want_additional_input);
+    rand_get_seed(seed, &want_additional_input);
 
     uint8_t personalization[CTR_DRBG_ENTROPY_LEN] = {0};
     size_t personalization_len = 0;
@@ -417,7 +367,7 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
       state->fork_generation != fork_generation) {
     uint8_t seed[CTR_DRBG_ENTROPY_LEN];
     int want_additional_input;
-    rand_get_seed(state, seed, &want_additional_input);
+    rand_get_seed(seed, &want_additional_input);
 
     uint8_t add_data_for_reseed[CTR_DRBG_ENTROPY_LEN];
     size_t add_data_for_reseed_len = 0;
