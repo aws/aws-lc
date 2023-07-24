@@ -222,6 +222,13 @@ Lenc_entry:
 .endef
 .align	4
 vpaes_encrypt:
+#ifdef BORINGSSL_DISPATCH_TEST
+
+	adrp	x6,BORINGSSL_function_hit
+	add	x6, x6, :lo12:BORINGSSL_function_hit
+	mov	w7, #1
+	strb	w7, [x6,#4] // kFlag_vpaes_encrypt
+#endif
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-16]!
 	add	x29,sp,#0
@@ -1049,6 +1056,13 @@ Lschedule_mangle_both:
 .endef
 .align	4
 vpaes_set_encrypt_key:
+#ifdef BORINGSSL_DISPATCH_TEST
+
+	adrp	x6,BORINGSSL_function_hit
+	add	x6, x6, :lo12:BORINGSSL_function_hit
+	mov	w7, #1
+	strb	w7, [x6,#5] // kFlag_vpaes_set_encrypt_key
+#endif
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29,x30,[sp,#-16]!
 	add	x29,sp,#0

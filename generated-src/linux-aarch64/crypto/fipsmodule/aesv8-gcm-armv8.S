@@ -22,6 +22,13 @@
 .type	aes_gcm_enc_kernel,%function
 .align	4
 aes_gcm_enc_kernel:
+#ifdef BORINGSSL_DISPATCH_TEST
+
+	adrp	x6,BORINGSSL_function_hit
+	add	x6, x6, :lo12:BORINGSSL_function_hit
+	mov	w7, #1
+	strb	w7, [x6,#2] // kFlag_aes_gcm_enc_kernel
+#endif
 	AARCH64_SIGN_LINK_REGISTER
 	stp	x29, x30, [sp, #-128]!
 	mov	x29, sp

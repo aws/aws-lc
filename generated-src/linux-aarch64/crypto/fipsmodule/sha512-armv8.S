@@ -1096,6 +1096,13 @@ sha512_block_data_order:
 .align	6
 sha512_block_armv8:
 .Lv8_entry:
+#ifdef BORINGSSL_DISPATCH_TEST
+
+	adrp	x6,BORINGSSL_function_hit
+	add	x6, x6, :lo12:BORINGSSL_function_hit
+	mov	w7, #1
+	strb	w7, [x6,#8] // kFlag_sha512_hw
+#endif
 	stp	x29,x30,[sp,#-16]!
 	add	x29,sp,#0
 
