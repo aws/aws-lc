@@ -27,7 +27,6 @@ Some FIPS tests cannot be broken by replacing a known string in the binary. For 
 
 1. `RSA_PWCT`
 1. `ECDSA_PWCT`
-1. `CRNG`
 
 ## Breaking the integrity test
 
