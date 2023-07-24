@@ -48,7 +48,7 @@ S2N_BN_SYMBOL(bignum_ksqr_16_32_neon):
 
 // Compute L = x_lo * y_lo in bottom half of buffer (size 8 x 8 -> 16)
 
-        bl      local_sqr_8_16
+        bl      bignum_ksqr_16_32_neon_local_sqr_8_16
 
 // Compute absolute difference [t..] = |x_lo - x_hi|
 
@@ -95,42 +95,60 @@ S2N_BN_SYMBOL(bignum_ksqr_16_32_neon):
 
         add     x0, z, #128
         add     x1, x, #64
-        bl      local_sqr_8_16
+        bl      bignum_ksqr_16_32_neon_local_sqr_8_16
 
 // Compute H' = H + L_top in place of H (it cannot overflow)
 // First add 8-sized block then propagate carry through next 8
 
-        .set    I, 0
-
-        ldp     x10, x11, [z, #128+8*I]
-        ldp     x12, x13, [z, #64+8*I]
+        ldp     x10, x11, [z, #128]
+        ldp     x12, x13, [z, #64]
         adds    x10, x10, x12
         adcs    x11, x11, x13
-        stp     x10, x11, [z, #128+8*I]
-        .set    I, (I+2)
+        stp     x10, x11, [z, #128]
 
-.rep 3
-        ldp     x10, x11, [z, #128+8*I]
-        ldp     x12, x13, [z, #64+8*I]
+        ldp     x10, x11, [z, #128+16]
+        ldp     x12, x13, [z, #64+16]
         adcs    x10, x10, x12
         adcs    x11, x11, x13
-        stp     x10, x11, [z, #128+8*I]
-        .set    I, (I+2)
-.endr
+        stp     x10, x11, [z, #128+16]
 
-.rep 4
-        ldp     x10, x11, [z, #128+8*I]
+        ldp     x10, x11, [z, #128+32]
+        ldp     x12, x13, [z, #64+32]
+        adcs    x10, x10, x12
+        adcs    x11, x11, x13
+        stp     x10, x11, [z, #128+32]
+
+        ldp     x10, x11, [z, #128+48]
+        ldp     x12, x13, [z, #64+48]
+        adcs    x10, x10, x12
+        adcs    x11, x11, x13
+        stp     x10, x11, [z, #128+48]
+
+        ldp     x10, x11, [z, #128+64]
         adcs    x10, x10, xzr
         adcs    x11, x11, xzr
-        stp     x10, x11, [z, #128+8*I]
-        .set    I, (I+2)
-.endr
+        stp     x10, x11, [z, #128+64]
+
+        ldp     x10, x11, [z, #128+80]
+        adcs    x10, x10, xzr
+        adcs    x11, x11, xzr
+        stp     x10, x11, [z, #128+80]
+
+        ldp     x10, x11, [z, #128+96]
+        adcs    x10, x10, xzr
+        adcs    x11, x11, xzr
+        stp     x10, x11, [z, #128+96]
+
+        ldp     x10, x11, [z, #128+112]
+        adcs    x10, x10, xzr
+        adcs    x11, x11, xzr
+        stp     x10, x11, [z, #128+112]
 
 // Compute M = |x_lo - x_hi| * |y_hi - y_lo| in [t+8...], size 16
 
         add     x0, t, #64
         mov     x1, t
-        bl      local_sqr_8_16
+        bl      bignum_ksqr_16_32_neon_local_sqr_8_16
 
 // Add the interlocking H' and L_bot terms, storing in registers x15..x0
 // Intercept the carry at the 8 + 16 = 24 position and store it in x.
@@ -244,7 +262,7 @@ S2N_BN_SYMBOL(bignum_ksqr_16_32_neon):
 // the same as bignum_sqr_8_16 without the scratch register preservation.
 // -----------------------------------------------------------------------------
 
-local_sqr_8_16:
+bignum_ksqr_16_32_neon_local_sqr_8_16:
 // Load registers.
         ldp	x2, x3, [x1]
 ldr	q20, [x1]

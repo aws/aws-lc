@@ -22,7 +22,7 @@
         .balign 4
 
 #define K 16
-#define L (K/2)
+#define L 8 // this is (K/2)
 
 #define z x19
 #define x x20
@@ -49,7 +49,7 @@ S2N_BN_SYMBOL(bignum_kmul_32_64_neon):
 
 // Compute L = x_lo * y_lo in bottom half of buffer (size 16 x 16 -> 32)
 
-        bl      local_kmul_16_32
+        bl      bignum_kmul_32_64_neon_local_kmul_16_32
 
 // Compute H = x_hi * y_hi in top half of buffer (size 16 x 16 -> 32)
 
@@ -57,7 +57,7 @@ S2N_BN_SYMBOL(bignum_kmul_32_64_neon):
         add     x1, x, #8*K
         add     x2, y, #8*K
         mov     x3, t
-        bl      local_kmul_16_32
+        bl      bignum_kmul_32_64_neon_local_kmul_16_32
 
 // Compute absolute difference [t..] = |x_lo - x_hi|
 // and the sign x = sgn(x_lo - x_hi) as a bitmask (all 1s for negative)
@@ -208,82 +208,141 @@ S2N_BN_SYMBOL(bignum_kmul_32_64_neon):
         adcs    x0, x0, xzr
         eor     x1, x1, y
         adcs    x1, x1, xzr
-        stp     x0, x1, [t, #8*K]
+        stp     x0, x1, [t, #128]
 
         eor     x2, x2, y
         adcs    x2, x2, xzr
         eor     x3, x3, y
         adcs    x3, x3, xzr
-        stp     x2, x3, [t, #8*K+16]
+        stp     x2, x3, [t, #128+16]
 
         eor     x4, x4, y
         adcs    x4, x4, xzr
         eor     x5, x5, y
         adcs    x5, x5, xzr
-        stp     x4, x5, [t, #8*K+32]
+        stp     x4, x5, [t, #128+32]
 
         eor     x6, x6, y
         adcs    x6, x6, xzr
         eor     x7, x7, y
         adcs    x7, x7, xzr
-        stp     x6, x7, [t, #8*K+48]
+        stp     x6, x7, [t, #128+48]
 
         eor     x8, x8, y
         adcs    x8, x8, xzr
         eor     x9, x9, y
         adcs    x9, x9, xzr
-        stp     x8, x9, [t, #8*K+64]
+        stp     x8, x9, [t, #128+64]
 
         eor     x10, x10, y
         adcs    x10, x10, xzr
         eor     x11, x11, y
         adcs    x11, x11, xzr
-        stp     x10, x11, [t, #8*K+80]
+        stp     x10, x11, [t, #128+80]
 
         eor     x12, x12, y
         adcs    x12, x12, xzr
         eor     x13, x13, y
         adcs    x13, x13, xzr
-        stp     x12, x13, [t, #8*K+96]
+        stp     x12, x13, [t, #128+96]
 
         eor     x14, x14, y
         adcs    x14, x14, xzr
         eor     x15, x15, y
         adc     x15, x15, xzr
-        stp     x14, x15, [t, #8*K+112]
+        stp     x14, x15, [t, #128+112]
 
         eor     y, y, x
 
 // Compute H' = H + L_top in place of H (it cannot overflow)
 
-        ldp     x0, x1, [z, #16*K]
+        ldp     x0, x1, [z, #16*16]
         ldp     x2, x3, [z, #16*L]
         adds    x0, x0, x2
         adcs    x1, x1, x3
-        stp     x0, x1, [z, #16*K]
+        stp     x0, x1, [z, #16*16]
 
-        .set    I, 1
-        .rep (L-1)
-        ldp     x0, x1, [z, #16*(K+I)]
-        ldp     x2, x3, [z, #16*(L+I)]
+        ldp     x0, x1, [z, #16*17]
+        ldp     x2, x3, [z, #16*9]
         adcs    x0, x0, x2
         adcs    x1, x1, x3
-        stp     x0, x1, [z, #16*(K+I)]
-        .set    I, (I+1)
-        .endr
+        stp     x0, x1, [z, #16*17]
 
-        .rep    (L-1)
-        ldp     x0, x1, [z, #16*(K+I)]
+        ldp     x0, x1, [z, #16*18]
+        ldp     x2, x3, [z, #16*10]
+        adcs    x0, x0, x2
+        adcs    x1, x1, x3
+        stp     x0, x1, [z, #16*18]
+
+        ldp     x0, x1, [z, #16*19]
+        ldp     x2, x3, [z, #16*11]
+        adcs    x0, x0, x2
+        adcs    x1, x1, x3
+        stp     x0, x1, [z, #16*19]
+
+        ldp     x0, x1, [z, #16*20]
+        ldp     x2, x3, [z, #16*12]
+        adcs    x0, x0, x2
+        adcs    x1, x1, x3
+        stp     x0, x1, [z, #16*20]
+
+        ldp     x0, x1, [z, #16*21]
+        ldp     x2, x3, [z, #16*13]
+        adcs    x0, x0, x2
+        adcs    x1, x1, x3
+        stp     x0, x1, [z, #16*21]
+
+        ldp     x0, x1, [z, #16*22]
+        ldp     x2, x3, [z, #16*14]
+        adcs    x0, x0, x2
+        adcs    x1, x1, x3
+        stp     x0, x1, [z, #16*22]
+
+        ldp     x0, x1, [z, #16*23]
+        ldp     x2, x3, [z, #16*15]
+        adcs    x0, x0, x2
+        adcs    x1, x1, x3
+        stp     x0, x1, [z, #16*23]
+
+        ldp     x0, x1, [z, #16*24]
         adcs    x0, x0, xzr
         adcs    x1, x1, xzr
-        stp     x0, x1, [z, #16*(K+I)]
-        .set    I, (I+1)
-        .endr
+        stp     x0, x1, [z, #16*24]
 
-        ldp     x0, x1, [z, #16*(K+I)]
+        ldp     x0, x1, [z, #16*25]
+        adcs    x0, x0, xzr
+        adcs    x1, x1, xzr
+        stp     x0, x1, [z, #16*25]
+
+        ldp     x0, x1, [z, #16*26]
+        adcs    x0, x0, xzr
+        adcs    x1, x1, xzr
+        stp     x0, x1, [z, #16*26]
+
+        ldp     x0, x1, [z, #16*27]
+        adcs    x0, x0, xzr
+        adcs    x1, x1, xzr
+        stp     x0, x1, [z, #16*27]
+
+        ldp     x0, x1, [z, #16*28]
+        adcs    x0, x0, xzr
+        adcs    x1, x1, xzr
+        stp     x0, x1, [z, #16*28]
+
+        ldp     x0, x1, [z, #16*29]
+        adcs    x0, x0, xzr
+        adcs    x1, x1, xzr
+        stp     x0, x1, [z, #16*29]
+
+        ldp     x0, x1, [z, #16*30]
+        adcs    x0, x0, xzr
+        adcs    x1, x1, xzr
+        stp     x0, x1, [z, #16*30]
+
+        ldp     x0, x1, [z, #16*31]
         adcs    x0, x0, xzr
         adc     x1, x1, xzr
-        stp     x0, x1, [z, #16*(K+I)]
+        stp     x0, x1, [z, #16*31]
 
 // Compute M = |x_lo - x_hi| * |y_hi - y_lo|, size 32
 
@@ -291,37 +350,107 @@ S2N_BN_SYMBOL(bignum_kmul_32_64_neon):
         mov     x1, t
         add     x2, t, #8*K
         add     x3, t, #32*K
-        bl      local_kmul_16_32
+        bl      bignum_kmul_32_64_neon_local_kmul_16_32
 
 // Add the interlocking H' and L_bot terms
 // Intercept the carry at the 3k position and store it in x.
 // Again, we no longer need the input x was pointing at.
 
-        ldp     x0, x1, [z, #16*K]
+        ldp     x0, x1, [z, #16*16]
         ldp     x2, x3, [z]
         adds    x0, x0, x2
         adcs    x1, x1, x3
-        stp     x0, x1, [z, #16*L]
+        stp     x0, x1, [z, #16*8]
 
-        .set    I, 1
-        .rep (L-1)
-        ldp     x0, x1, [z, #16*(K+I)]
-        ldp     x2, x3, [z, #16*I]
+        ldp     x0, x1, [z, #16*17]
+        ldp     x2, x3, [z, #16*1]
         adcs    x0, x0, x2
         adcs    x1, x1, x3
-        stp     x0, x1, [z, #16*(L+I)]
-        .set    I, (I+1)
-        .endr
+        stp     x0, x1, [z, #16*9]
 
-        .set    I, 0
-        .rep    L
-        ldp     x0, x1, [z, #16*(K+I)]
-        ldp     x2, x3, [z, #16*(3*L+I)]
+        ldp     x0, x1, [z, #16*18]
+        ldp     x2, x3, [z, #16*2]
         adcs    x0, x0, x2
         adcs    x1, x1, x3
-        stp     x0, x1, [z, #16*(K+I)]
-        .set    I, (I+1)
-        .endr
+        stp     x0, x1, [z, #16*10]
+
+        ldp     x0, x1, [z, #16*19]
+        ldp     x2, x3, [z, #16*3]
+        adcs    x0, x0, x2
+        adcs    x1, x1, x3
+        stp     x0, x1, [z, #16*11]
+
+        ldp     x0, x1, [z, #16*20]
+        ldp     x2, x3, [z, #16*4]
+        adcs    x0, x0, x2
+        adcs    x1, x1, x3
+        stp     x0, x1, [z, #16*12]
+
+        ldp     x0, x1, [z, #16*21]
+        ldp     x2, x3, [z, #16*5]
+        adcs    x0, x0, x2
+        adcs    x1, x1, x3
+        stp     x0, x1, [z, #16*13]
+
+        ldp     x0, x1, [z, #16*22]
+        ldp     x2, x3, [z, #16*6]
+        adcs    x0, x0, x2
+        adcs    x1, x1, x3
+        stp     x0, x1, [z, #16*14]
+
+        ldp     x0, x1, [z, #16*23]
+        ldp     x2, x3, [z, #16*7]
+        adcs    x0, x0, x2
+        adcs    x1, x1, x3
+        stp     x0, x1, [z, #16*15]
+
+        ldp     x0, x1, [z, #16*16]
+        ldp     x2, x3, [z, #16*24]
+        adcs    x0, x0, x2
+        adcs    x1, x1, x3
+        stp     x0, x1, [z, #16*16]
+
+        ldp     x0, x1, [z, #16*17]
+        ldp     x2, x3, [z, #16*25]
+        adcs    x0, x0, x2
+        adcs    x1, x1, x3
+        stp     x0, x1, [z, #16*17]
+
+        ldp     x0, x1, [z, #16*18]
+        ldp     x2, x3, [z, #16*26]
+        adcs    x0, x0, x2
+        adcs    x1, x1, x3
+        stp     x0, x1, [z, #16*18]
+
+        ldp     x0, x1, [z, #16*19]
+        ldp     x2, x3, [z, #16*27]
+        adcs    x0, x0, x2
+        adcs    x1, x1, x3
+        stp     x0, x1, [z, #16*19]
+
+        ldp     x0, x1, [z, #16*20]
+        ldp     x2, x3, [z, #16*28]
+        adcs    x0, x0, x2
+        adcs    x1, x1, x3
+        stp     x0, x1, [z, #16*20]
+
+        ldp     x0, x1, [z, #16*21]
+        ldp     x2, x3, [z, #16*29]
+        adcs    x0, x0, x2
+        adcs    x1, x1, x3
+        stp     x0, x1, [z, #16*21]
+
+        ldp     x0, x1, [z, #16*22]
+        ldp     x2, x3, [z, #16*30]
+        adcs    x0, x0, x2
+        adcs    x1, x1, x3
+        stp     x0, x1, [z, #16*22]
+
+        ldp     x0, x1, [z, #16*23]
+        ldp     x2, x3, [z, #16*31]
+        adcs    x0, x0, x2
+        adcs    x1, x1, x3
+        stp     x0, x1, [z, #16*23]
 
         cset      x, cs
 
@@ -329,17 +458,133 @@ S2N_BN_SYMBOL(bignum_kmul_32_64_neon):
 
         cmn     y, y
 
-        .set    I, L
-        .rep K
-        ldp     x0, x1, [z, #16*I]
-        ldp     x2, x3, [t, #8*K+16*I]
+        ldp     x0, x1, [z, #128]
+        ldp     x2, x3, [t, #128+128]
         eor     x2, x2, y
         adcs    x0, x0, x2
         eor     x3, x3, y
         adcs    x1, x1, x3
-        stp     x0, x1, [z, #16*I]
-        .set    I, (I+1)
-        .endr
+        stp     x0, x1, [z, #128]
+
+        ldp     x0, x1, [z, #144]
+        ldp     x2, x3, [t, #128+144]
+        eor     x2, x2, y
+        adcs    x0, x0, x2
+        eor     x3, x3, y
+        adcs    x1, x1, x3
+        stp     x0, x1, [z, #144]
+
+        ldp     x0, x1, [z, #160]
+        ldp     x2, x3, [t, #128+160]
+        eor     x2, x2, y
+        adcs    x0, x0, x2
+        eor     x3, x3, y
+        adcs    x1, x1, x3
+        stp     x0, x1, [z, #160]
+
+        ldp     x0, x1, [z, #176]
+        ldp     x2, x3, [t, #128+176]
+        eor     x2, x2, y
+        adcs    x0, x0, x2
+        eor     x3, x3, y
+        adcs    x1, x1, x3
+        stp     x0, x1, [z, #176]
+
+        ldp     x0, x1, [z, #192]
+        ldp     x2, x3, [t, #128+192]
+        eor     x2, x2, y
+        adcs    x0, x0, x2
+        eor     x3, x3, y
+        adcs    x1, x1, x3
+        stp     x0, x1, [z, #192]
+
+        ldp     x0, x1, [z, #208]
+        ldp     x2, x3, [t, #128+208]
+        eor     x2, x2, y
+        adcs    x0, x0, x2
+        eor     x3, x3, y
+        adcs    x1, x1, x3
+        stp     x0, x1, [z, #208]
+
+        ldp     x0, x1, [z, #224]
+        ldp     x2, x3, [t, #128+224]
+        eor     x2, x2, y
+        adcs    x0, x0, x2
+        eor     x3, x3, y
+        adcs    x1, x1, x3
+        stp     x0, x1, [z, #224]
+
+        ldp     x0, x1, [z, #240]
+        ldp     x2, x3, [t, #128+240]
+        eor     x2, x2, y
+        adcs    x0, x0, x2
+        eor     x3, x3, y
+        adcs    x1, x1, x3
+        stp     x0, x1, [z, #240]
+
+        ldp     x0, x1, [z, #256]
+        ldp     x2, x3, [t, #128+256]
+        eor     x2, x2, y
+        adcs    x0, x0, x2
+        eor     x3, x3, y
+        adcs    x1, x1, x3
+        stp     x0, x1, [z, #256]
+
+        ldp     x0, x1, [z, #272]
+        ldp     x2, x3, [t, #128+272]
+        eor     x2, x2, y
+        adcs    x0, x0, x2
+        eor     x3, x3, y
+        adcs    x1, x1, x3
+        stp     x0, x1, [z, #272]
+
+        ldp     x0, x1, [z, #288]
+        ldp     x2, x3, [t, #128+288]
+        eor     x2, x2, y
+        adcs    x0, x0, x2
+        eor     x3, x3, y
+        adcs    x1, x1, x3
+        stp     x0, x1, [z, #288]
+
+        ldp     x0, x1, [z, #304]
+        ldp     x2, x3, [t, #128+304]
+        eor     x2, x2, y
+        adcs    x0, x0, x2
+        eor     x3, x3, y
+        adcs    x1, x1, x3
+        stp     x0, x1, [z, #304]
+
+        ldp     x0, x1, [z, #320]
+        ldp     x2, x3, [t, #128+320]
+        eor     x2, x2, y
+        adcs    x0, x0, x2
+        eor     x3, x3, y
+        adcs    x1, x1, x3
+        stp     x0, x1, [z, #320]
+
+        ldp     x0, x1, [z, #336]
+        ldp     x2, x3, [t, #128+336]
+        eor     x2, x2, y
+        adcs    x0, x0, x2
+        eor     x3, x3, y
+        adcs    x1, x1, x3
+        stp     x0, x1, [z, #336]
+
+        ldp     x0, x1, [z, #352]
+        ldp     x2, x3, [t, #128+352]
+        eor     x2, x2, y
+        adcs    x0, x0, x2
+        eor     x3, x3, y
+        adcs    x1, x1, x3
+        stp     x0, x1, [z, #352]
+
+        ldp     x0, x1, [z, #368]
+        ldp     x2, x3, [t, #128+368]
+        eor     x2, x2, y
+        adcs    x0, x0, x2
+        eor     x3, x3, y
+        adcs    x1, x1, x3
+        stp     x0, x1, [z, #368]
 
 // Get the next digits effectively resulting so far starting at 3k
 // [...,c,c,c,c,x]
@@ -349,24 +594,45 @@ S2N_BN_SYMBOL(bignum_kmul_32_64_neon):
 
 // Now propagate through the top quarter of the result
 
-        ldp     x0, x1, [z, #16*3*L]
+        ldp     x0, x1, [z, #16*24]
         adds    x0, x0, x
         adcs    x1, x1, c
-        stp     x0, x1, [z, #16*3*L]
+        stp     x0, x1, [z, #16*24]
 
-        .set    I, 3*L+1
-        .rep    (L-2)
-        ldp     x0, x1, [z, #16*I]
+        ldp     x0, x1, [z, #16*25]
         adcs    x0, x0, c
         adcs    x1, x1, c
-        stp     x0, x1, [z, #16*I]
-        .set    I, (I+1)
-        .endr
+        stp     x0, x1, [z, #16*25]
 
-        ldp     x0, x1, [z, #16*I]
+        ldp     x0, x1, [z, #16*26]
+        adcs    x0, x0, c
+        adcs    x1, x1, c
+        stp     x0, x1, [z, #16*26]
+
+        ldp     x0, x1, [z, #16*27]
+        adcs    x0, x0, c
+        adcs    x1, x1, c
+        stp     x0, x1, [z, #16*27]
+
+        ldp     x0, x1, [z, #16*28]
+        adcs    x0, x0, c
+        adcs    x1, x1, c
+        stp     x0, x1, [z, #16*28]
+
+        ldp     x0, x1, [z, #16*29]
+        adcs    x0, x0, c
+        adcs    x1, x1, c
+        stp     x0, x1, [z, #16*29]
+
+        ldp     x0, x1, [z, #16*30]
+        adcs    x0, x0, c
+        adcs    x1, x1, c
+        stp     x0, x1, [z, #16*30]
+
+        ldp     x0, x1, [z, #16*31]
         adcs    x0, x0, c
         adc     x1, x1, c
-        stp     x0, x1, [z, #16*I]
+        stp     x0, x1, [z, #16*31]
 
 // Restore and return
 
@@ -382,7 +648,7 @@ S2N_BN_SYMBOL(bignum_kmul_32_64_neon):
 // only preserves the key registers we need to be stable in the main code.
 // This includes in turn a copy of bignum_mul_8_16.
 
-local_kmul_16_32:
+bignum_kmul_32_64_neon_local_kmul_16_32:
         stp     x19, x20, [sp, -16]!
         stp     x21, x22, [sp, -16]!
         stp     x23, x30, [sp, -16]!
@@ -390,7 +656,7 @@ local_kmul_16_32:
         mov     x26, x1
         mov     x27, x2
         mov     x28, x3
-        bl      local_mul_8_16
+        bl      bignum_kmul_32_64_neon_local_mul_8_16
         ldp     x10, x11, [x26]
         ldp     x8, x9, [x26, #64]
         subs    x10, x10, x8
@@ -432,7 +698,7 @@ local_kmul_16_32:
         add     x0, x25, #0x80
         add     x1, x26, #0x40
         add     x2, x27, #0x40
-        bl      local_mul_8_16
+        bl      bignum_kmul_32_64_neon_local_mul_8_16
         ldp     x10, x11, [x27]
         ldp     x8, x9, [x27, #64]
         subs    x10, x8, x10
@@ -511,7 +777,7 @@ local_kmul_16_32:
         add     x0, x28, #0x80
         mov     x1, x28
         add     x2, x28, #0x40
-        bl      local_mul_8_16
+        bl      bignum_kmul_32_64_neon_local_mul_8_16
         ldp     x0, x1, [x25]
         ldp     x16, x17, [x25, #128]
         adds    x0, x0, x16
@@ -617,7 +883,7 @@ local_kmul_16_32:
         ldp     x19, x20, [sp], #16
         ret
 
-local_mul_8_16:
+bignum_kmul_32_64_neon_local_mul_8_16:
         ldp x3, x4, [x1]
         ldr q0, [x1]
         ldp x7, x8, [x2]
