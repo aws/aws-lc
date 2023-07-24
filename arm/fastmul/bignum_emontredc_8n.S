@@ -28,21 +28,20 @@
 // t,h should not overlap w,z
 // ---------------------------------------------------------------------------
 
-.macro muldiffnadd b,a, c,h,l,t, x,y, w,z
-        subs    \t, \x, \y
-        cneg    \t, \t, cc
-        csetm   \c, cc
-        subs    \h, \w, \z
-        cneg    \h, \h, cc
-        mul     \l, \t, \h
-        umulh   \h, \t, \h
-        cinv    \c, \c, cc
-        adds    xzr, \c, #1
-        eor     \l, \l, \c
-        adcs    \a, \a, \l
-        eor     \h, \h, \c
-        adcs    \b, \b, \h
-.endm
+#define muldiffnadd(b,a, c,h,l,t, x,y, w,z) \
+        subs    t, x, y ; \
+        cneg    t, t, cc ; \
+        csetm   c, cc ; \
+        subs    h, w, z ; \
+        cneg    h, h, cc ; \
+        mul     l, t, h ; \
+        umulh   h, t, h ; \
+        cinv    c, c, cc ; \
+        adds    xzr, c, #1 ; \
+        eor     l, l, c ; \
+        adcs    a, a, l ; \
+        eor     h, h, c ; \
+        adcs    b, b, h
 
 // The inputs, though k gets processed so we use a different name
 
@@ -159,31 +158,31 @@
 
 // Now add in all the "complicated" terms.
 
-        muldiffnadd u6,u5, c,h,l,t, a2,a3, b3,b2
+        muldiffnadd (u6,u5, c,h,l,t, a2,a3, b3,b2)
         adc     u7, u7, c
 
-        muldiffnadd u2,u1, c,h,l,t, a0,a1, b1,b0
+        muldiffnadd (u2,u1, c,h,l,t, a0,a1, b1,b0)
         adcs    u3, u3, c
         adcs    u4, u4, c
         adcs    u5, u5, c
         adcs    u6, u6, c
         adc     u7, u7, c
 
-        muldiffnadd u5,u4, c,h,l,t, a1,a3, b3,b1
+        muldiffnadd (u5,u4, c,h,l,t, a1,a3, b3,b1)
         adcs    u6, u6, c
         adc     u7, u7, c
 
-        muldiffnadd u3,u2, c,h,l,t, a0,a2, b2,b0
+        muldiffnadd (u3,u2, c,h,l,t, a0,a2, b2,b0)
         adcs    u4, u4, c
         adcs    u5, u5, c
         adcs    u6, u6, c
         adc     u7, u7, c
 
-        muldiffnadd u4,u3, c,h,l,t, a0,a3, b3,b0
+        muldiffnadd (u4,u3, c,h,l,t, a0,a3, b3,b0)
         adcs    u5, u5, c
         adcs    u6, u6, c
         adc     u7, u7, c
-        muldiffnadd u4,u3, c,h,l,t, a1,a2, b2,b1
+        muldiffnadd (u4,u3, c,h,l,t, a1,a2, b2,b1)
         adcs    c1, u5, c
         adcs    c2, u6, c
         adc     c3, u7, c
@@ -212,7 +211,7 @@ stp     x19, x20, [sp, #-16]!
         lsr     k4m1, x0, #2
         mov     i, k4m1
         subs    c, k4m1, #1
-        bcc     end
+        bcc     bignum_emontredc_8n_end
         mov     tc, xzr
         lsl     k4m1, c, #5
 
@@ -220,7 +219,7 @@ stp     x19, x20, [sp, #-16]!
 // Rather than propagating the carry to the end each time, we
 // stop at the "natural" end and store top carry in tc as a bitmask.
 
-outerloop:
+bignum_emontredc_8n_outerloop:
 
 // Load [u3;u2;u1;u0] = bottom 4 digits of the input at current window
 
@@ -326,9 +325,9 @@ outerloop:
 
 // Repeated multiply-add block to do the k/4-1 remaining 4-digit chunks
 
-        cbz     k4m1, madddone
+        cbz     k4m1, bignum_emontredc_8n_madddone
         mov     j, k4m1
-maddloop:
+bignum_emontredc_8n_maddloop:
         add     m, m, #32
         add     z, z, #32
 
@@ -336,8 +335,8 @@ maddloop:
         ldp     b2, b3, [m, #16]
         madd4
         subs    j, j, #32
-        bne     maddloop
-madddone:
+        bne     bignum_emontredc_8n_maddloop
+bignum_emontredc_8n_madddone:
 
 // Add the carry out to the existing z contents, propagating the
 // top carry tc up by 32 places as we move "leftwards".
@@ -362,13 +361,13 @@ madddone:
 
         add     z, z, #32
         subs    i, i, #1
-        bne     outerloop
+        bne     bignum_emontredc_8n_outerloop
 
 // Return the top carry as 0 or 1 (it's currently a bitmask)
 
         neg     x0, tc
 
-end:
+bignum_emontredc_8n_end:
         ldp     x27, x28, [sp], #16
         ldp     x25, x26, [sp], #16
         ldp     x23, x24, [sp], #16
