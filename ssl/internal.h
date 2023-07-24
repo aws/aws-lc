@@ -2425,12 +2425,14 @@ bool tls12_check_peer_sigalg(const SSL_HANDSHAKE *hs, uint8_t *out_alert,
 // From RFC 4492, used in encoding the curve type in ECParameters
 #define NAMED_CURVE_TYPE 3
 
-struct CERT {
-  static constexpr bool kAllowUniquePtr = true;
+// SSL_PKEY_* denote certificate types. These represent an index within
+// |CERT->cert_privatekeys|.
+#define SSL_PKEY_RSA 0
+#define SSL_PKEY_ECC 1
+#define SSL_PKEY_ED25519 2
+#define SSL_PKEY_SIZE 3
 
-  explicit CERT(const SSL_X509_METHOD *x509_method);
-  ~CERT();
-
+struct CERT_PKEY {
   UniquePtr<EVP_PKEY> privatekey;
 
   // chain contains the certificate chain, with the leaf at the beginning. The
@@ -2446,10 +2448,28 @@ struct CERT {
   // pointer to the certificate chain.
   STACK_OF(X509) *x509_chain = nullptr;
 
-  // x509_leaf may contain a parsed copy of the first element of |chain|. This
-  // is only used as a cache in order to implement “get0” functions that return
-  // a non-owning pointer to the certificate chain.
+  // x509_leaf retains the |X509| structure of the first element of |chain|.
+  // However, if certs are set with |SSL_CTX_use_certificate_ASN1| or
+  // |SSL_use_certificate_ASN1|, this is only used as a cache in order to
+  // implement “get0” functions that return a non-owning pointer to the
+  // certificate chain.
   X509 *x509_leaf = nullptr;
+};
+
+struct CERT {
+  static constexpr bool kAllowUniquePtr = true;
+
+  explicit CERT(const SSL_X509_METHOD *x509_method);
+  ~CERT();
+
+  // cert_privatekey_idx ALWAYS points to an element of the |cert_pkeys|
+  // array. OpenSSL implements this as a pointer, but an index is more
+  // efficient.
+  int cert_private_key_idx = -1;
+
+  Array<CERT_PKEY> cert_private_keys;
+
+  /// We'lll see what we want to do about the |x509_stash| below later.
 
   // x509_stash contains the last |X509| object append to the chain. This is a
   // workaround for some third-party code that continue to use an |X509| object
@@ -3216,6 +3236,11 @@ bool ssl_is_key_type_supported(int key_type);
 bool ssl_compare_public_and_private_key(const EVP_PKEY *pubkey,
                                         const EVP_PKEY *privkey);
 bool ssl_cert_check_private_key(const CERT *cert, const EVP_PKEY *privkey);
+
+// ssl_cert_check_cert_private_keys_usage returns true if |cert_private_keys|
+// in |cert| has a valid index and a sufficient amount of slots.
+bool ssl_cert_check_cert_private_keys_usage(const CERT *cert);
+
 bool ssl_get_new_session(SSL_HANDSHAKE *hs);
 bool ssl_encrypt_ticket(SSL_HANDSHAKE *hs, CBB *out,
                         const SSL_SESSION *session);

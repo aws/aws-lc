@@ -53,7 +53,7 @@ function mariadb_run_tests() {
   # More complicated integration tests. mtr expects to be launched in-place and with write access to it's own directories
   #
   # main.plugin_load passes, but is skipped over since it generates a warning when we run the script in Codebuild. Warnings will cause
-  # a failure in MariaDB's test runs, unless --nowarnings is turned on. The warning is not reproducable in Gitlab's CI or any local
+  # a failure in MariaDB's test runs, unless --nowarnings is turned on. The warning is not reproducible in Gitlab's CI or any local
   # container runs. This test isn't relevant to AWS-LC integration so we skip over the Codebuild specific issue for now.
   echo "main.mysqldump : Field separator argument is not what is expected; check the manual when executing 'SELECT INTO OUTFILE'
 main.flush_logs_not_windows : query 'flush logs' succeeded - should have failed with error ER_CANT_CREATE_FILE (1004)

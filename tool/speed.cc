@@ -1427,6 +1427,135 @@ static bool SpeedECDSA(const std::string &selected) {
 }
 
 #if !defined(OPENSSL_1_0_BENCHMARK)
+static EVP_PKEY * evp_generate_key(const int curve_nid) {
+
+  // P NIST curves are abstracted under the same virtual function table which
+  // is configured using |EVP_PKEY_EC|.
+  int local_nid = curve_nid;
+  if (curve_nid != NID_X25519) {
+    local_nid = EVP_PKEY_EC;
+  }
+
+  BM_NAMESPACE::UniquePtr<EVP_PKEY_CTX> evp_pkey_ctx(EVP_PKEY_CTX_new_id(local_nid, nullptr));
+
+  if (local_nid == EVP_PKEY_EC) {
+    // Since P NIST curves are abstracted under the same virtual function table,
+    // we haven't actually loaded the group yet. This must be done before we can
+    // generate the key.
+    EVP_PKEY *curve = nullptr;
+    if (!EVP_PKEY_paramgen_init(evp_pkey_ctx.get()) ||
+        !EVP_PKEY_CTX_set_ec_paramgen_curve_nid(evp_pkey_ctx.get(), curve_nid) ||
+        !EVP_PKEY_paramgen(evp_pkey_ctx.get(), &curve) ||
+        curve == nullptr) {
+      return nullptr;
+    }
+    BM_NAMESPACE::UniquePtr<EVP_PKEY> curve_uniqueptr(curve);
+    evp_pkey_ctx.reset(EVP_PKEY_CTX_new(curve_uniqueptr.get(), NULL));
+    if (evp_pkey_ctx == nullptr) {
+      return nullptr;
+    }
+  }
+
+  EVP_PKEY *key = nullptr;
+  if (!EVP_PKEY_keygen_init(evp_pkey_ctx.get()) ||
+      !EVP_PKEY_keygen(evp_pkey_ctx.get(), &key)) {
+    return nullptr;
+  }
+
+  return key;
+}
+
+// One could model serialisation as well using
+// |EVP_PKEY_{get,set}1_tls_encodedpoint|. But that pair of functions only
+// support a subset of curve types. |SpeedECDH| includes deserialisation of the
+// peer key. Leaving this out doesn't bias measurements though.
+static bool SpeedEvpEcdhCurve(const std::string &name, int nid,
+                           const std::string &selected) {
+
+  if (!selected.empty() && name.find(selected) == std::string::npos) {
+    return true;
+  }
+
+  // First we need a peer key that we are going to re-use for all iterations.
+  BM_NAMESPACE::UniquePtr<EVP_PKEY> peer_key(evp_generate_key(nid));
+  if (peer_key == nullptr) {
+    return false;
+  }
+
+  if (nid != NID_X25519) {
+    // To model deriving an ECDHE shared secret, we need the peer key. But void
+    // the private part, to avoid biasing measurements. For example, when
+    // performing key validation. Currently, this is only a problem for the
+    // P NIST curve types.
+    BM_NAMESPACE::UniquePtr<EVP_PKEY> only_public_key_evp_pkey(EVP_PKEY_new());
+    BM_NAMESPACE::UniquePtr<EC_KEY> only_public_key_ec_key(EC_KEY_new_by_curve_name(nid));
+    if (only_public_key_ec_key == nullptr ||
+        only_public_key_evp_pkey == nullptr) {
+      return false;
+    }
+    // Non-owning reference.
+    const EC_KEY *peer_key_ec_key = EVP_PKEY_get0_EC_KEY(peer_key.get());
+    if (peer_key_ec_key == nullptr ||
+        !EC_KEY_set_public_key(only_public_key_ec_key.get(),
+          EC_KEY_get0_public_key(peer_key_ec_key)) ||
+        !EVP_PKEY_assign_EC_KEY(only_public_key_evp_pkey.get(), only_public_key_ec_key.release())) {
+      return false;
+    }
+    peer_key.reset(only_public_key_evp_pkey.release());
+  }
+
+  TimeResults results;
+  if (!TimeFunction(&results, [nid, &peer_key]() -> bool {
+    BM_NAMESPACE::UniquePtr<EVP_PKEY> my_key(evp_generate_key(nid));
+
+#if defined(OPENSSL_BENCHMARK)
+    // For AWS-LC EVP_PKEY_derive() calls ECDH_compute_shared_secret() that
+    // performs the public key check.
+    if (nid != NID_X25519) {
+      // For the supported P NIST curves, the peer public key must be validated
+      // to ensure proper computation.
+      if (!EC_KEY_check_key(EVP_PKEY_get0_EC_KEY(peer_key.get()))) {
+        return false;
+      }
+    }
+#endif
+
+    BM_NAMESPACE::UniquePtr<EVP_PKEY_CTX> derive_ctx(EVP_PKEY_CTX_new(my_key.get(), NULL));
+    if (derive_ctx == nullptr) {
+      return false;
+    }
+
+    size_t shared_secret_size = 0;
+    if (!EVP_PKEY_derive_init(derive_ctx.get()) ||
+        !EVP_PKEY_derive_set_peer(derive_ctx.get(), peer_key.get()) ||
+        !EVP_PKEY_derive(derive_ctx.get(), NULL, &shared_secret_size) ||
+        (shared_secret_size == 0)) {
+      return false;
+    }
+
+    std::unique_ptr<uint8_t[]> shared_secret(new uint8_t[shared_secret_size]);
+    if (!EVP_PKEY_derive(derive_ctx.get(), shared_secret.get(), &shared_secret_size)) {
+      return false;
+    }
+
+    return true;
+    })) {
+      return false;
+  }
+
+  results.Print(name);
+  return true;
+}
+
+static bool SpeedEvpEcdh(const std::string &selected) {
+  return SpeedEvpEcdhCurve("EVP ECDH P-224", NID_secp224r1, selected) &&
+         SpeedEvpEcdhCurve("EVP ECDH P-256", NID_X9_62_prime256v1, selected) &&
+         SpeedEvpEcdhCurve("EVP ECDH P-384", NID_secp384r1, selected) &&
+         SpeedEvpEcdhCurve("EVP ECDH P-521", NID_secp521r1, selected) &&
+         SpeedEvpEcdhCurve("EVP ECDH secp256k1", NID_secp256k1, selected) &&
+         SpeedEvpEcdhCurve("EVP ECDH X25519", NID_X25519, selected);
+}
+
 static bool SpeedECMULCurve(const std::string &name, int nid,
                        const std::string &selected) {
   if (!selected.empty() && name.find(selected) == std::string::npos) {
@@ -2448,6 +2577,9 @@ bool Speed(const std::vector<std::string> &args) {
        !SpeedECKeyGen(selected) ||
        !SpeedECKeyGenerateKey(false, selected) ||
 #if !defined(OPENSSL_1_0_BENCHMARK)
+       // OpenSSL 1.0.2 is missing functions e.g. |EVP_PKEY_get0_EC_KEY| and
+       // doesn't implement X255519 either.
+       !SpeedEvpEcdh(selected) ||
        !SpeedECMUL(selected) ||
        // OpenSSL 1.0 doesn't support Scrypt
        !SpeedScrypt(selected) ||

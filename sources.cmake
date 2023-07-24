@@ -111,6 +111,7 @@ set(
   crypto/ocsp/test/aws/ocsp_response_sigrequired.der
   crypto/ocsp/test/aws/ocsp_response_unauthorized.der
   crypto/ocsp/test/aws/ca_cert.pem
+  crypto/ocsp/test/aws/ocsp_expired_cert.pem
   crypto/ocsp/test/aws/server_cert.pem
   crypto/ocsp/test/aws/server_ecdsa_cert.pem
   crypto/ocsp/test/aws/server_ecdsa_key.pem
