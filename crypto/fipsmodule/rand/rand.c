@@ -96,11 +96,13 @@ struct rand_thread_state {
   // a process.
   struct rand_thread_state *next, *prev;
 
+#if defined(FIPS_ENTROPY_SOURCE_JITTER_CPU)
   // In FIPS mode the entropy source is CPU Jitter so we assign an instance
   // of Jitter to each thread. The instance is initialized/destroyed at the same
   // time as the thread state is created/destroyed.
   struct rand_data *jitter_ec;
 #endif
+#endif // defined(BORINGSSL_FIPS)
 };
 
 #if defined(BORINGSSL_FIPS)
@@ -139,10 +141,7 @@ static void rand_state_fips_maybe_want_additional_input(
   uint8_t additional_input[CTR_DRBG_ENTROPY_LEN],
   size_t *additional_input_len) {
 
-*additional_input_len = 0;
-
-// Supporting system random for "urandom" cases only atm
-#if defined(OPENSSL_URANDOM)
+  *additional_input_len = 0;
 
 #if defined(FIPS_ENTROPY_SOURCE_JITTER_CPU)
   // In FIPS mode we get the entropy from CPU Jitter. In order to not rely
@@ -150,9 +149,7 @@ static void rand_state_fips_maybe_want_additional_input(
   // that we read from urandom.
   CRYPTO_sysrand(additional_input, CTR_DRBG_ENTROPY_LEN);
   *additional_input_len = CTR_DRBG_ENTROPY_LEN;
-#endif // defined(FIPS_ENTROPY_SOURCE_JITTER_CPU)
-
-#endif // defined(OPENSSL_URANDOM)
+#endif
 }
 
 // Caller must check that |state| is not null.
@@ -389,7 +386,7 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
 
     uint8_t personalization[CTR_DRBG_ENTROPY_LEN] = {0};
     size_t personalization_len = 0;
-#if defined(BORINGSSL_FIPS) && defined(OPENSSL_URANDOM)
+#if defined(BORINGSSL_FIPS)
     rand_state_fips_maybe_want_additional_input(personalization,
       &personalization_len);
 #endif
