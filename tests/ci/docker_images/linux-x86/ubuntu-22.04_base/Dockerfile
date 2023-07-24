@@ -44,11 +44,12 @@ RUN set -ex && \
     libpcre2-dev \
     libreadline-dev \
     libudev-dev \
+    liblua5.4-dev \
+    socat \
     zlib1g-dev \
     dpkg-dev \
     flex \
     bison \
-    curl \
     jq \
     unzip && \
     # Based on https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2-linux.html
