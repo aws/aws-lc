@@ -1855,6 +1855,7 @@ ___
   $code .= <<___;
   mov 	 %rbp,%rsp
   pop 	 %rbp
+  vzeroupper
   ret
 
   .L_less_than_128_bytes_${rndsuffix}:
@@ -2053,6 +2054,7 @@ ___
   and 	 \$0xf,$length
   je 	 .L_ret_${rndsuffix}
   jmp 	 .L_steal_cipher_next_${rndsuffix}
+  vzeroupper
   ret
   .cfi_endproc
 ___
@@ -2594,6 +2596,7 @@ ___
   $code .= <<___;
   mov 	 %rbp,%rsp
   pop 	 %rbp
+  vzeroupper
   ret
 
   .L_less_than_128_bytes_${rndsuffix}:
@@ -3006,6 +3009,7 @@ ___
   add 	         \$0x10,$output
   vmovdqa 	 %xmm1,%xmm8
   jmp 	         .L_done_${rndsuffix}
+  vzeroupper
   ret
   .cfi_endproc
 ___

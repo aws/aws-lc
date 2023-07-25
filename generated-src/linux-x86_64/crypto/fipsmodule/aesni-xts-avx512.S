@@ -1036,6 +1036,7 @@ aes_hw_xts_encrypt_avx512:
 	movq	368(%rsp),%rbx
 	movq	%rbp,%rsp
 	popq	%rbp
+	vzeroupper
 	.byte	0xf3,0xc3
 
 .L_less_than_128_bytes_hEgxyDlCngwrfFe:
@@ -1937,6 +1938,7 @@ aes_hw_xts_encrypt_avx512:
 	andq	$0xf,%rdx
 	je	.L_ret_hEgxyDlCngwrfFe
 	jmp	.L_steal_cipher_next_hEgxyDlCngwrfFe
+	vzeroupper
 	.byte	0xf3,0xc3
 .cfi_endproc	
 .globl	aes_hw_xts_decrypt_avx512
@@ -3562,6 +3564,7 @@ aes_hw_xts_decrypt_avx512:
 	movq	368(%rsp),%rbx
 	movq	%rbp,%rsp
 	popq	%rbp
+	vzeroupper
 	.byte	0xf3,0xc3
 
 .L_less_than_128_bytes_amivrujEyduiFoi:
@@ -5178,6 +5181,7 @@ aes_hw_xts_decrypt_avx512:
 	addq	$0x10,%rsi
 	vmovdqa	%xmm1,%xmm8
 	jmp	.L_done_amivrujEyduiFoi
+	vzeroupper
 	.byte	0xf3,0xc3
 .cfi_endproc	
 .section	.rodata
