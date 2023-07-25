@@ -4783,6 +4783,7 @@ TEST(SSLTest, GetCertificate) {
 
   X509 *cert2 = SSL_CTX_get0_certificate(ctx.get());
   ASSERT_TRUE(cert2);
+
   X509 *cert3 = SSL_get_certificate(ssl.get());
   ASSERT_TRUE(cert3);
 
@@ -4794,6 +4795,77 @@ TEST(SSLTest, GetCertificate) {
   long der_len = i2d_X509(cert.get(), &der);
   ASSERT_LT(0, der_len);
   bssl::UniquePtr<uint8_t> free_der(der);
+
+  uint8_t *der2 = nullptr;
+  long der2_len = i2d_X509(cert2, &der2);
+  ASSERT_LT(0, der2_len);
+  bssl::UniquePtr<uint8_t> free_der2(der2);
+
+  uint8_t *der3 = nullptr;
+  long der3_len = i2d_X509(cert3, &der3);
+  ASSERT_LT(0, der3_len);
+  bssl::UniquePtr<uint8_t> free_der3(der3);
+
+  // They must also encode identically.
+  EXPECT_EQ(Bytes(der, der_len), Bytes(der2, der2_len));
+  EXPECT_EQ(Bytes(der, der_len), Bytes(der3, der3_len));
+}
+
+TEST(SSLTest, GetCertificateExData) {
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  bssl::UniquePtr<X509> cert = GetTestCertificate();
+  ASSERT_TRUE(cert);
+
+  int ex_data_index =
+      X509_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
+  const char ex_data[] = "AWS-LC external data";
+  ASSERT_TRUE(X509_set_ex_data(cert.get(), ex_data_index, (void *)ex_data));
+  ASSERT_TRUE(X509_get_ex_data(cert.get(), ex_data_index));
+
+  ASSERT_TRUE(SSL_CTX_use_certificate(ctx.get(), cert.get()));
+  bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
+  ASSERT_TRUE(ssl);
+
+  X509 *cert2 = SSL_CTX_get0_certificate(ctx.get());
+  ASSERT_TRUE(cert2);
+  const char *ex_data2 = (const char *)X509_get_ex_data(cert2, ex_data_index);
+  EXPECT_TRUE(ex_data2);
+
+  X509 *cert3 = SSL_get_certificate(ssl.get());
+  ASSERT_TRUE(cert3);
+  const char *ex_data3 = (const char *)X509_get_ex_data(cert3, ex_data_index);
+  EXPECT_TRUE(ex_data3);
+
+  // The external data extracted must be identical.
+  EXPECT_EQ(ex_data2, ex_data);
+  EXPECT_EQ(ex_data3, ex_data);
+}
+
+TEST(SSLTest, GetCertificateASN1) {
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  bssl::UniquePtr<X509> cert = GetTestCertificate();
+  ASSERT_TRUE(cert);
+
+  // Convert cert to ASN1 to pass in.
+  uint8_t *der = nullptr;
+  size_t der_len = i2d_X509(cert.get(), &der);
+  bssl::UniquePtr<uint8_t> free_der(der);
+
+  ASSERT_TRUE(SSL_CTX_use_certificate_ASN1(ctx.get(), der_len, der));
+  bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
+  ASSERT_TRUE(ssl);
+
+  X509 *cert2 = SSL_CTX_get0_certificate(ctx.get());
+  ASSERT_TRUE(cert2);
+
+  X509 *cert3 = SSL_get_certificate(ssl.get());
+  ASSERT_TRUE(cert3);
+
+  // The old and new certificates must be identical.
+  EXPECT_EQ(0, X509_cmp(cert.get(), cert2));
+  EXPECT_EQ(0, X509_cmp(cert.get(), cert3));
 
   uint8_t *der2 = nullptr;
   long der2_len = i2d_X509(cert2, &der2);
@@ -6640,7 +6712,6 @@ TEST_P(SSLVersionTest, FailedHandshakeVerifiedChain) {
 
   ASSERT_TRUE(UseCertAndKey(server_ctx_.get()));
   UniquePtr<SSL> client_ssl, server_ssl;
-  ClientConfig config;
 
   ASSERT_TRUE(CreateClientAndServer(&client_ssl, &server_ssl, client_ctx_.get(), server_ctx_.get()));
   ASSERT_FALSE(CompleteHandshakes(client_ssl.get(), server_ssl.get()));

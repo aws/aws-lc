@@ -6,9 +6,7 @@ The standalone CMake build is primarily intended for developers. If embedding
 AWS-LC into another project with a pre-existing build system, see
 [INCORPORATING.md](/INCORPORATING.md).
 
-Unless otherwise noted, build tools must at most five years old, matching
-[Abseil guidelines](https://abseil.io/about/compatibility). If in doubt, use the
-most recent stable version of each tool.
+If in doubt, use the most recent stable version of each build tool.
 
   * [CMake](https://cmake.org/download/) 3.0 or later is required.
 
@@ -22,9 +20,9 @@ most recent stable version of each tool.
     `PERL_EXECUTABLE`.
     * To build without Perl (not recommended) see [this section.](#using-pre-generated-build-files)
 
-  * The most recent stable version of [Go](https://golang.org/dl/) is required.
-    Note Go is exempt from the five year support window. If not found by CMake,
-    the go executable may be configured explicitly by setting `GO_EXECUTABLE`. 
+  * [Go](https://golang.org/dl/) 1.18 or later is required. If not found by
+    CMake, the go executable may be configured explicitly by setting
+    `GO_EXECUTABLE`.
     * To build without Go (not recommended) see [this section.](#using-pre-generated-build-files)
 
   * Building with [Ninja](https://ninja-build.org/) instead of Make is
@@ -40,7 +38,7 @@ most recent stable version of each tool.
     (Visual Studio 2015) or later with Platform SDK 8.1 or later are supported,
     but newer versions are recommended. We will drop support for Visual Studio
     2015 in March 2022, five years after the release of Visual Studio 2017.
-    Recent versions of GCC (6.1+) and Clang should work on non-Windows
+    Recent versions of GCC (4.1.3+) and Clang should work on non-Windows
     platforms, and maybe on Windows too.
 
   * On x86_64 Linux, the tests have an optional

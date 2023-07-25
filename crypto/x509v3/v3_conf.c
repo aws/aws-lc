@@ -192,11 +192,7 @@ static X509_EXTENSION *do_ext_nconf(const CONF *conf, const X509V3_CTX *ctx,
   }
 
   ext = do_ext_i2d(method, ext_nid, crit, ext_struc);
-  if (method->it) {
-    ASN1_item_free(ext_struc, ASN1_ITEM_ptr(method->it));
-  } else {
-    method->ext_free(ext_struc);
-  }
+  ASN1_item_free(ext_struc, ASN1_ITEM_ptr(method->it));
   return ext;
 }
 
@@ -212,9 +208,13 @@ static X509_EXTENSION *do_ext_i2d(const X509V3_EXT_METHOD *method, int ext_nid,
       return NULL;
     }
   } else {
-    // TODO(davidben): Remove support for the "old-style" ASN.1 callbacks. Every
-    // |X509V3_EXT_METHOD|, both inside and outside the library, has an
-    // |ASN1_ITEM|, and this codepath is missing handling.
+    // This is using the "old-style" ASN.1 callbacks. The only X509v3 extension
+    // that's still dependent on this code internally are OCSP nonce extensions.
+    // We can't easily migrate OCSP nonce extensions to use the "new" callbacks
+    // either, since OCSP nonces are handled differently in the code (according
+    // to OpenSSL and us having to maintain backwards compatibility with them).
+    // Every other |X509V3_EXT_METHOD|, both inside and outside the library, has
+    // and should have an |ASN1_ITEM|.
     ext_len = method->i2d(ext_struc, NULL);
     if (!(ext_der = OPENSSL_malloc(ext_len))) {
       return NULL;

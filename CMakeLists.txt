@@ -449,6 +449,8 @@ elseif(MSVC)
       "C4191" # unsafe conversion from 'type of expression' to 'type required'
               # TODO remove once https://github.com/openssl/openssl/issues/18957 is resolved
       "C4996" # deprecated warnings using low level functions in OpenSSL 3.0
+      "C4746" # consider using __iso_volatile_load/store intrinsic functions
+      "C5264" # 'variable-name': 'const' variable is not used
           )
   set(MSVC_LEVEL4_WARNINGS_LIST
       # See https://connect.microsoft.com/VisualStudio/feedback/details/1217660/warning-c4265-when-using-functional-header

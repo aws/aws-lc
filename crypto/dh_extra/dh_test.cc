@@ -113,6 +113,33 @@ TEST(DHTest, Basic) {
   EXPECT_GE(key1.size(), 4u);
 }
 
+TEST(DHTest, OversizedModulus) {
+  bssl::UniquePtr<DH> a(DH_new());
+  ASSERT_TRUE(a);
+
+  const size_t LARGE_MOD_P = 4097;  // OPENSSL_DH_CHECK_MAX_MODULUS_BITS / 8 + 1
+
+  // Create a BigNumber which will be interpreted as a big-endian value
+  auto number = std::unique_ptr<uint8_t[], std::default_delete<uint8_t[]>>(
+      new uint8_t[LARGE_MOD_P]);
+  for (size_t i = 0; i < LARGE_MOD_P; i++) {
+    number[i] = 255;
+  }
+
+  bssl::UniquePtr<BIGNUM> p(BN_bin2bn(number.get(), LARGE_MOD_P, nullptr));
+  bssl::UniquePtr<BIGNUM> q(BN_new());
+  bssl::UniquePtr<BIGNUM> g(BN_new());
+
+  // Q and G don't matter for this test, they just can't be null
+  ASSERT_TRUE(DH_set0_pqg(a.get(), p.release(), q.release(), g.release()));
+
+  int check_result;
+  ASSERT_FALSE(DH_check(a.get(), &check_result));
+  uint32_t error = ERR_get_error();
+  ASSERT_EQ(ERR_LIB_DH, ERR_GET_LIB(error));
+  ASSERT_EQ(DH_R_MODULUS_TOO_LARGE, ERR_GET_REASON(error));
+}
+
 // The following parameters are taken from RFC 5114, section 2.2. This is not a
 // safe prime. Do not use these parameters.
 static const uint8_t kRFC5114_2048_224P[] = {
@@ -549,4 +576,65 @@ TEST(DHTest, LeadingZeros) {
   len = DH_compute_key_padded(buf.data(), peer_key.get(), dh.get());
   ASSERT_GT(len, 0);
   EXPECT_EQ(Bytes(buf.data(), len), Bytes(padded));
+}
+
+TEST(DHTest, Overwrite) {
+  // Generate a DH key with the 1536-bit MODP group.
+  bssl::UniquePtr<BIGNUM> p(BN_get_rfc3526_prime_1536(nullptr));
+  ASSERT_TRUE(p);
+  bssl::UniquePtr<BIGNUM> g(BN_new());
+  ASSERT_TRUE(g);
+  ASSERT_TRUE(BN_set_word(g.get(), 2));
+
+  bssl::UniquePtr<DH> key1(DH_new());
+  ASSERT_TRUE(key1);
+  ASSERT_TRUE(DH_set0_pqg(key1.get(), p.get(), /*q=*/nullptr, g.get()));
+  p.release();
+  g.release();
+  ASSERT_TRUE(DH_generate_key(key1.get()));
+
+  bssl::UniquePtr<BIGNUM> peer_key(BN_new());
+  ASSERT_TRUE(peer_key);
+  ASSERT_TRUE(BN_set_word(peer_key.get(), 42));
+
+  // Use the key to fill in cached values.
+  std::vector<uint8_t> buf1(DH_size(key1.get()));
+  ASSERT_GT(DH_compute_key_padded(buf1.data(), peer_key.get(), key1.get()), 0);
+
+  // Generate a different key with a different group.
+  p.reset(BN_get_rfc3526_prime_2048(nullptr));
+  ASSERT_TRUE(p);
+  g.reset(BN_new());
+  ASSERT_TRUE(g);
+  ASSERT_TRUE(BN_set_word(g.get(), 2));
+
+  bssl::UniquePtr<DH> key2(DH_new());
+  ASSERT_TRUE(key2);
+  ASSERT_TRUE(DH_set0_pqg(key2.get(), p.get(), /*q=*/nullptr, g.get()));
+  p.release();
+  g.release();
+  ASSERT_TRUE(DH_generate_key(key2.get()));
+
+  // Overwrite |key1|'s contents with |key2|.
+  p.reset(BN_dup(DH_get0_p(key2.get())));
+  ASSERT_TRUE(p);
+  g.reset(BN_dup(DH_get0_g(key2.get())));
+  ASSERT_TRUE(g);
+  bssl::UniquePtr<BIGNUM> pub(BN_dup(DH_get0_pub_key(key2.get())));
+  ASSERT_TRUE(pub);
+  bssl::UniquePtr<BIGNUM> priv(BN_dup(DH_get0_priv_key(key2.get())));
+  ASSERT_TRUE(priv);
+  ASSERT_TRUE(DH_set0_pqg(key1.get(), p.get(), /*q=*/nullptr, g.get()));
+  p.release();
+  g.release();
+  ASSERT_TRUE(DH_set0_key(key1.get(), pub.get(), priv.get()));
+  pub.release();
+  priv.release();
+
+  // Verify that |key1| and |key2| behave equivalently.
+  buf1.resize(DH_size(key1.get()));
+  ASSERT_GT(DH_compute_key_padded(buf1.data(), peer_key.get(), key1.get()), 0);
+  std::vector<uint8_t> buf2(DH_size(key2.get()));
+  ASSERT_GT(DH_compute_key_padded(buf2.data(), peer_key.get(), key2.get()), 0);
+  EXPECT_EQ(Bytes(buf1), Bytes(buf2));
 }
