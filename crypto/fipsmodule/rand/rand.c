@@ -65,6 +65,8 @@
 
 #if defined(BORINGSSL_FIPS)
 
+// In the future this will be demoted to a build-time option.
+// Another entropy source will be promoted to the default source.
 #define FIPS_ENTROPY_SOURCE_JITTER_CPU 1
 
 #if !defined(FIPS_ENTROPY_SOURCE_JITTER_CPU)
@@ -208,7 +210,8 @@ static void rand_thread_state_clear_all(void) {
   // The locks are deliberately left locked so that any threads that are still
   // running will hang if they try to call |RAND_bytes|.
 }
-#endif
+
+#endif // defined(BORINGSSL_FIPS)
 
 // rand_thread_state_free frees a |rand_thread_state|. This is called when a
 // thread exits.
