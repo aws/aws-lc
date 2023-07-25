@@ -336,7 +336,7 @@ static int cert_set_chain_and_key(
 
 // ssl_get_cert_index_from_buffer returns the proper certificate slot index
 // from |buffer|. It returns -1 on failure, or if unsupported.
-static int ssl_get_cert_index_from_buffer(CRYPTO_BUFFER *buffer) {
+static int ssl_get_certificate_slot_index_from_buffer(CRYPTO_BUFFER *buffer) {
   CBS cert_cbs;
   CRYPTO_BUFFER_init_CBS(buffer, &cert_cbs);
   UniquePtr<EVP_PKEY> pubkey = ssl_cert_parse_pubkey(&cert_cbs);
@@ -352,7 +352,11 @@ bool ssl_set_cert(CERT *cert, UniquePtr<CRYPTO_BUFFER> buffer) {
     return false;
   }
 
-  CERT_PKEY &cert_pkey = cert->cert_private_keys[cert->cert_private_key_idx];
+  int slot_index = ssl_get_certificate_slot_index_from_buffer(buffer.get());
+  if (slot_index < 0) {
+    return false;
+  }
+  CERT_PKEY &cert_pkey = cert->cert_private_keys[slot_index];
 
   switch (
       check_leaf_cert_and_privkey(buffer.get(), cert_pkey.privatekey.get())) {
@@ -371,6 +375,9 @@ bool ssl_set_cert(CERT *cert, UniquePtr<CRYPTO_BUFFER> buffer) {
   if (cert_pkey.chain != nullptr) {
     CRYPTO_BUFFER_free(sk_CRYPTO_BUFFER_value(cert_pkey.chain.get(), 0));
     sk_CRYPTO_BUFFER_set(cert_pkey.chain.get(), 0, buffer.release());
+
+    // Update certificate slot index if all checks have passed.
+    cert->cert_private_key_idx = slot_index;
     return true;
   }
 
@@ -384,6 +391,8 @@ bool ssl_set_cert(CERT *cert, UniquePtr<CRYPTO_BUFFER> buffer) {
     return false;
   }
 
+  // Update certificate slot index if all checks have passed.
+  cert->cert_private_key_idx = slot_index;
   return true;
 }
 
@@ -461,8 +470,6 @@ bool ssl_parse_cert_chain(uint8_t *out_alert,
   return true;
 }
 
-/// Might need to handle the |extra_certs| logic here as well. This handles the
-/// chosen index right now, so it might be needed.
 bool ssl_add_cert_chain(SSL_HANDSHAKE *hs, CBB *cbb) {
   if (!ssl_has_certificate(hs)) {
     return CBB_add_u24(cbb, 0);
@@ -973,11 +980,7 @@ int SSL_CTX_use_certificate_ASN1(SSL_CTX *ctx, size_t der_len,
   if (!buffer) {
     return 0;
   }
-  int cert_index = ssl_get_cert_index_from_buffer(buffer.get());
-  if (cert_index < 0) {
-    return 0;
-  }
-  ctx->cert.get()->cert_private_key_idx = cert_index;
+
   return ssl_set_cert(ctx->cert.get(), std::move(buffer));
 }
 
@@ -986,11 +989,7 @@ int SSL_use_certificate_ASN1(SSL *ssl, const uint8_t *der, size_t der_len) {
   if (!buffer || !ssl->config) {
     return 0;
   }
-  int cert_index = ssl_get_cert_index_from_buffer(buffer.get());
-  if (cert_index < 0) {
-    return 0;
-  }
-  ssl->config->cert.get()->cert_private_key_idx = cert_index;
+
   return ssl_set_cert(ssl->config->cert.get(), std::move(buffer));
 }
 

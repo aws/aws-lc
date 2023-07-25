@@ -5190,13 +5190,16 @@ TEST_P(MultipleCertificateSlotTest, CertificateSlotIndex) {
   bssl::UniquePtr<SSL> client, server;
 
   ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
-                                     server_ctx.get(), config, true));
+                                     server_ctx.get(), config, false));
 
   ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
 
-  // Check the internal slot index to verify that the correct slot is used.
+  // Check the internal slot index to verify that the correct slot had been set.
   EXPECT_EQ(server_ctx->cert->cert_private_key_idx, slot_index);
   EXPECT_EQ(server->ctx->cert->cert_private_key_idx, slot_index);
+
+  // Check the internal slot index to verify that the correct slot was used.
+  EXPECT_EQ(server->config->cert->cert_private_key_idx, slot_index);
 }
 
 struct MultiTransferReadWriteTestParams {

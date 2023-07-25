@@ -766,7 +766,7 @@ void SSL_CTX_set_cert_store(SSL_CTX *ctx, X509_STORE *store) {
 }
 
 static int ssl_use_certificate(CERT *cert, X509 *x) {
-  if (x == NULL) {
+  if (x == nullptr) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
   }
@@ -774,22 +774,20 @@ static int ssl_use_certificate(CERT *cert, X509 *x) {
   if (!ssl_cert_check_cert_private_keys_usage(cert)) {
     return 0;
   }
+
+  UniquePtr<CRYPTO_BUFFER> buffer = x509_to_buffer(x);
+  if (!buffer || !ssl_set_cert(cert, std::move(buffer))) {
+    return 0;
+  }
+
   // We set the |x509_leaf| here to prevent any external data set from being
   // lost. The rest of the chain still uses |CRYPTO_BUFFER|s.
-  UniquePtr<EVP_PKEY> pubkey(X509_get_pubkey(x));
-  cert->cert_private_key_idx = ssl_get_certificate_slot_index(pubkey.get());
   X509 *&x509_leaf =
       cert->cert_private_keys[cert->cert_private_key_idx].x509_leaf;
   X509_free(x509_leaf);
   X509_up_ref(x);
   x509_leaf = x;
-
-  UniquePtr<CRYPTO_BUFFER> buffer = x509_to_buffer(x);
-  if (!buffer) {
-    return 0;
-  }
-
-  return ssl_set_cert(cert, std::move(buffer));
+  return 1;
 }
 
 int SSL_use_certificate(SSL *ssl, X509 *x) {

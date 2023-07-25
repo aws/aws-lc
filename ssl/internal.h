@@ -658,7 +658,7 @@ bool ssl_create_cipher_list(UniquePtr<SSLCipherPreferenceList> *out_cipher_list,
 
 // ssl_get_certificate_slot_index returns the |SSL_PKEY_*| certificate slot
 // index corresponding to the private key type of |pkey|. It returns -1 if not
-// supported. This was |ssl_cert_type| in OpenSSL1.1.1.
+// supported. This was |ssl_cert_type| in OpenSSL 1.0.2.
 int ssl_get_certificate_slot_index(const EVP_PKEY *pkey);
 
 // ssl_cipher_auth_mask_for_key returns the mask of cipher |algorithm_auth|
@@ -3666,9 +3666,6 @@ struct ssl_ctx_st {
                         EVP_PKEY **out_pkey) = nullptr;
 
   CRYPTO_EX_DATA ex_data;
-
-  /// Handle and implement |extra_certs| later. These certs apply to all slots.
-  // STACK_OF(X509) *extra_certs;
 
   // custom_*_extensions stores any callback sets for custom extensions. Note
   // that these pointers will be NULL if the stack would otherwise be empty.

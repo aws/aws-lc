@@ -101,6 +101,7 @@ static bool ssl_set_pkey(CERT *cert, EVP_PKEY *pkey) {
     return false;
   }
 
+  // Update certificate slot index once all checks have passed.
   cert->cert_private_keys[idx].privatekey = UpRef(pkey);
   cert->cert_private_key_idx = idx;
   return true;
