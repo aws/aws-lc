@@ -78,7 +78,7 @@ static const unsigned kReseedInterval = 16777216;
 #else // defined(BORINGSSL_FIPS)
 
 #if defined(FIPS_ENTROPY_SOURCE_JITTER_CPU)
-#error "Jitter CPU must not be configured as the entropy source in FIPS mode"
+#error "Jitter CPU must not be configured as the entropy source in non-FIPS mode"
 #endif
 
 static const unsigned kReseedInterval = 4096;
