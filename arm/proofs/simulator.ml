@@ -227,6 +227,13 @@ let iclasses =
   (*** UZP1 ***)
   "01001110xx0xxxxx000110xxxxxxxxxx";
 
+  (*** UZP2 ***)
+  "01001110xx0xxxxx010110xxxxxxxxxx"; (* q=1 *)
+
+  (*** XTN ***)
+  "000011100x100001001010xxxxxxxxxx"; (* size!=11 *)
+  "0000111010100001001010xxxxxxxxxx"; (* size!=11 *)
+
   (*** ZIP1 ***)
   "01001110xx0xxxxx001110xxxxxxxxxx"; (* q=1 *)
   "000011100x0xxxxx001110xxxxxxxxxx"; (* q=0, size!=3 *)

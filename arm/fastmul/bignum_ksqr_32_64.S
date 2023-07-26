@@ -21,7 +21,7 @@
         .balign 4
 
 #define K 16
-#define L (K/2)
+#define L 8 // (K/2)
 
 #define z x19
 #define x x20
@@ -43,45 +43,104 @@ S2N_BN_SYMBOL(bignum_ksqr_32_64):
 
 // Compute L = x_lo * y_lo in bottom half of buffer (size 16 x 16 -> 32)
 
-        bl      local_ksqr_16_32
+        bl      bignum_ksqr_32_64_local_ksqr_16_32
 
 // Compute H = x_hi * y_hi in top half of buffer (size 16 x 16 -> 32)
 
         add     x0, z, #16*K
         add     x1, x, #8*K
         mov     x2, t
-        bl      local_ksqr_16_32
+        bl      bignum_ksqr_32_64_local_ksqr_16_32
 
 // Compute H' = H + L_top in place of H (it cannot overflow)
 
-        ldp     x0, x1, [z, #16*K]
-        ldp     x2, x3, [z, #16*L]
+        ldp     x0, x1, [z, #16*16]
+        ldp     x2, x3, [z, #16*8]
         adds    x0, x0, x2
         adcs    x1, x1, x3
-        stp     x0, x1, [z, #16*K]
+        stp     x0, x1, [z, #16*16]
 
-        .set    I, 1
-        .rep (L-1)
-        ldp     x0, x1, [z, #16*(K+I)]
-        ldp     x2, x3, [z, #16*(L+I)]
+        ldp     x0, x1, [z, #16*17]
+        ldp     x2, x3, [z, #16*9]
         adcs    x0, x0, x2
         adcs    x1, x1, x3
-        stp     x0, x1, [z, #16*(K+I)]
-        .set    I, (I+1)
-        .endr
+        stp     x0, x1, [z, #16*17]
 
-        .rep    (L-1)
-        ldp     x0, x1, [z, #16*(K+I)]
+        ldp     x0, x1, [z, #16*18]
+        ldp     x2, x3, [z, #16*10]
+        adcs    x0, x0, x2
+        adcs    x1, x1, x3
+        stp     x0, x1, [z, #16*18]
+
+        ldp     x0, x1, [z, #16*19]
+        ldp     x2, x3, [z, #16*11]
+        adcs    x0, x0, x2
+        adcs    x1, x1, x3
+        stp     x0, x1, [z, #16*19]
+
+        ldp     x0, x1, [z, #16*20]
+        ldp     x2, x3, [z, #16*12]
+        adcs    x0, x0, x2
+        adcs    x1, x1, x3
+        stp     x0, x1, [z, #16*20]
+
+        ldp     x0, x1, [z, #16*21]
+        ldp     x2, x3, [z, #16*13]
+        adcs    x0, x0, x2
+        adcs    x1, x1, x3
+        stp     x0, x1, [z, #16*21]
+
+        ldp     x0, x1, [z, #16*22]
+        ldp     x2, x3, [z, #16*14]
+        adcs    x0, x0, x2
+        adcs    x1, x1, x3
+        stp     x0, x1, [z, #16*22]
+
+        ldp     x0, x1, [z, #16*23]
+        ldp     x2, x3, [z, #16*15]
+        adcs    x0, x0, x2
+        adcs    x1, x1, x3
+        stp     x0, x1, [z, #16*23]
+
+        ldp     x0, x1, [z, #16*24]
         adcs    x0, x0, xzr
         adcs    x1, x1, xzr
-        stp     x0, x1, [z, #16*(K+I)]
-        .set    I, (I+1)
-        .endr
+        stp     x0, x1, [z, #16*24]
 
-        ldp     x0, x1, [z, #16*(K+I)]
+        ldp     x0, x1, [z, #16*25]
+        adcs    x0, x0, xzr
+        adcs    x1, x1, xzr
+        stp     x0, x1, [z, #16*25]
+
+        ldp     x0, x1, [z, #16*26]
+        adcs    x0, x0, xzr
+        adcs    x1, x1, xzr
+        stp     x0, x1, [z, #16*26]
+
+        ldp     x0, x1, [z, #16*27]
+        adcs    x0, x0, xzr
+        adcs    x1, x1, xzr
+        stp     x0, x1, [z, #16*27]
+
+        ldp     x0, x1, [z, #16*28]
+        adcs    x0, x0, xzr
+        adcs    x1, x1, xzr
+        stp     x0, x1, [z, #16*28]
+
+        ldp     x0, x1, [z, #16*29]
+        adcs    x0, x0, xzr
+        adcs    x1, x1, xzr
+        stp     x0, x1, [z, #16*29]
+
+        ldp     x0, x1, [z, #16*30]
+        adcs    x0, x0, xzr
+        adcs    x1, x1, xzr
+        stp     x0, x1, [z, #16*30]
+
+        ldp     x0, x1, [z, #16*31]
         adcs    x0, x0, xzr
         adc     x1, x1, xzr
-        stp     x0, x1, [z, #16*(K+I)]
+        stp     x0, x1, [z, #16*31]
 
 // Compute absolute difference [t..] = |x_lo - x_hi|
 
@@ -182,37 +241,107 @@ S2N_BN_SYMBOL(bignum_ksqr_32_64):
         add     x0, t, #8*K
         mov     x1, t
         add     x2, t, #24*K
-        bl      local_ksqr_16_32
+        bl      bignum_ksqr_32_64_local_ksqr_16_32
 
 // Add the interlocking H' and L_bot terms
 // Intercept the carry at the 3k position and store it in x.
 // (Note that we no longer need the input x was pointing at.)
 
-        ldp     x0, x1, [z, #16*K]
+        ldp     x0, x1, [z, #16*16]
         ldp     x2, x3, [z]
         adds    x0, x0, x2
         adcs    x1, x1, x3
-        stp     x0, x1, [z, #16*L]
+        stp     x0, x1, [z, #16*8]
 
-        .set    I, 1
-        .rep (L-1)
-        ldp     x0, x1, [z, #16*(K+I)]
-        ldp     x2, x3, [z, #16*I]
+        ldp     x0, x1, [z, #16*17]
+        ldp     x2, x3, [z, #16*1]
         adcs    x0, x0, x2
         adcs    x1, x1, x3
-        stp     x0, x1, [z, #16*(L+I)]
-        .set    I, (I+1)
-        .endr
+        stp     x0, x1, [z, #16*9]
 
-        .set    I, 0
-        .rep    L
-        ldp     x0, x1, [z, #16*(K+I)]
-        ldp     x2, x3, [z, #16*(3*L+I)]
+        ldp     x0, x1, [z, #16*18]
+        ldp     x2, x3, [z, #16*2]
         adcs    x0, x0, x2
         adcs    x1, x1, x3
-        stp     x0, x1, [z, #16*(K+I)]
-        .set    I, (I+1)
-        .endr
+        stp     x0, x1, [z, #16*10]
+
+        ldp     x0, x1, [z, #16*19]
+        ldp     x2, x3, [z, #16*3]
+        adcs    x0, x0, x2
+        adcs    x1, x1, x3
+        stp     x0, x1, [z, #16*11]
+
+        ldp     x0, x1, [z, #16*20]
+        ldp     x2, x3, [z, #16*4]
+        adcs    x0, x0, x2
+        adcs    x1, x1, x3
+        stp     x0, x1, [z, #16*12]
+
+        ldp     x0, x1, [z, #16*21]
+        ldp     x2, x3, [z, #16*5]
+        adcs    x0, x0, x2
+        adcs    x1, x1, x3
+        stp     x0, x1, [z, #16*13]
+
+        ldp     x0, x1, [z, #16*22]
+        ldp     x2, x3, [z, #16*6]
+        adcs    x0, x0, x2
+        adcs    x1, x1, x3
+        stp     x0, x1, [z, #16*14]
+
+        ldp     x0, x1, [z, #16*23]
+        ldp     x2, x3, [z, #16*7]
+        adcs    x0, x0, x2
+        adcs    x1, x1, x3
+        stp     x0, x1, [z, #16*15]
+
+        ldp     x0, x1, [z, #16*16]
+        ldp     x2, x3, [z, #16*24]
+        adcs    x0, x0, x2
+        adcs    x1, x1, x3
+        stp     x0, x1, [z, #16*16]
+
+        ldp     x0, x1, [z, #16*17]
+        ldp     x2, x3, [z, #16*25]
+        adcs    x0, x0, x2
+        adcs    x1, x1, x3
+        stp     x0, x1, [z, #16*17]
+
+        ldp     x0, x1, [z, #16*18]
+        ldp     x2, x3, [z, #16*26]
+        adcs    x0, x0, x2
+        adcs    x1, x1, x3
+        stp     x0, x1, [z, #16*18]
+
+        ldp     x0, x1, [z, #16*19]
+        ldp     x2, x3, [z, #16*27]
+        adcs    x0, x0, x2
+        adcs    x1, x1, x3
+        stp     x0, x1, [z, #16*19]
+
+        ldp     x0, x1, [z, #16*20]
+        ldp     x2, x3, [z, #16*28]
+        adcs    x0, x0, x2
+        adcs    x1, x1, x3
+        stp     x0, x1, [z, #16*20]
+
+        ldp     x0, x1, [z, #16*21]
+        ldp     x2, x3, [z, #16*29]
+        adcs    x0, x0, x2
+        adcs    x1, x1, x3
+        stp     x0, x1, [z, #16*21]
+
+        ldp     x0, x1, [z, #16*22]
+        ldp     x2, x3, [z, #16*30]
+        adcs    x0, x0, x2
+        adcs    x1, x1, x3
+        stp     x0, x1, [z, #16*22]
+
+        ldp     x0, x1, [z, #16*23]
+        ldp     x2, x3, [z, #16*31]
+        adcs    x0, x0, x2
+        adcs    x1, x1, x3
+        stp     x0, x1, [z, #16*23]
 
         cset      x, cs
 
@@ -224,15 +353,95 @@ S2N_BN_SYMBOL(bignum_ksqr_32_64):
         sbcs    x1, x1, x3
         stp     x0, x1, [z, #16*L]
 
-        .set    I, L+1
-        .rep (K-1)
-        ldp     x0, x1, [z, #16*I]
-        ldp     x2, x3, [t, #16*I]
+        ldp     x0, x1, [z, #16*9]
+        ldp     x2, x3, [t, #16*9]
         sbcs    x0, x0, x2
         sbcs    x1, x1, x3
-        stp     x0, x1, [z, #16*I]
-        .set    I, (I+1)
-        .endr
+        stp     x0, x1, [z, #16*9]
+
+        ldp     x0, x1, [z, #16*10]
+        ldp     x2, x3, [t, #16*10]
+        sbcs    x0, x0, x2
+        sbcs    x1, x1, x3
+        stp     x0, x1, [z, #16*10]
+
+        ldp     x0, x1, [z, #16*11]
+        ldp     x2, x3, [t, #16*11]
+        sbcs    x0, x0, x2
+        sbcs    x1, x1, x3
+        stp     x0, x1, [z, #16*11]
+
+        ldp     x0, x1, [z, #16*12]
+        ldp     x2, x3, [t, #16*12]
+        sbcs    x0, x0, x2
+        sbcs    x1, x1, x3
+        stp     x0, x1, [z, #16*12]
+
+        ldp     x0, x1, [z, #16*13]
+        ldp     x2, x3, [t, #16*13]
+        sbcs    x0, x0, x2
+        sbcs    x1, x1, x3
+        stp     x0, x1, [z, #16*13]
+
+        ldp     x0, x1, [z, #16*14]
+        ldp     x2, x3, [t, #16*14]
+        sbcs    x0, x0, x2
+        sbcs    x1, x1, x3
+        stp     x0, x1, [z, #16*14]
+
+        ldp     x0, x1, [z, #16*15]
+        ldp     x2, x3, [t, #16*15]
+        sbcs    x0, x0, x2
+        sbcs    x1, x1, x3
+        stp     x0, x1, [z, #16*15]
+
+        ldp     x0, x1, [z, #16*16]
+        ldp     x2, x3, [t, #16*16]
+        sbcs    x0, x0, x2
+        sbcs    x1, x1, x3
+        stp     x0, x1, [z, #16*16]
+
+        ldp     x0, x1, [z, #16*17]
+        ldp     x2, x3, [t, #16*17]
+        sbcs    x0, x0, x2
+        sbcs    x1, x1, x3
+        stp     x0, x1, [z, #16*17]
+
+        ldp     x0, x1, [z, #16*18]
+        ldp     x2, x3, [t, #16*18]
+        sbcs    x0, x0, x2
+        sbcs    x1, x1, x3
+        stp     x0, x1, [z, #16*18]
+
+        ldp     x0, x1, [z, #16*19]
+        ldp     x2, x3, [t, #16*19]
+        sbcs    x0, x0, x2
+        sbcs    x1, x1, x3
+        stp     x0, x1, [z, #16*19]
+
+        ldp     x0, x1, [z, #16*20]
+        ldp     x2, x3, [t, #16*20]
+        sbcs    x0, x0, x2
+        sbcs    x1, x1, x3
+        stp     x0, x1, [z, #16*20]
+
+        ldp     x0, x1, [z, #16*21]
+        ldp     x2, x3, [t, #16*21]
+        sbcs    x0, x0, x2
+        sbcs    x1, x1, x3
+        stp     x0, x1, [z, #16*21]
+
+        ldp     x0, x1, [z, #16*22]
+        ldp     x2, x3, [t, #16*22]
+        sbcs    x0, x0, x2
+        sbcs    x1, x1, x3
+        stp     x0, x1, [z, #16*22]
+
+        ldp     x0, x1, [z, #16*23]
+        ldp     x2, x3, [t, #16*23]
+        sbcs    x0, x0, x2
+        sbcs    x1, x1, x3
+        stp     x0, x1, [z, #16*23]
 
 // Get the next digits effectively resulting so far starting at 3k
 // [...,c,c,c,c,x]
@@ -242,24 +451,45 @@ S2N_BN_SYMBOL(bignum_ksqr_32_64):
 
 // Now propagate through the top quarter of the result
 
-        ldp     x0, x1, [z, #16*3*L]
+        ldp     x0, x1, [z, #16*24]
         adds    x0, x0, x
         adcs    x1, x1, c
-        stp     x0, x1, [z, #16*3*L]
+        stp     x0, x1, [z, #16*24]
 
-        .set    I, 3*L+1
-        .rep    (L-2)
-        ldp     x0, x1, [z, #16*I]
+        ldp     x0, x1, [z, #16*25]
         adcs    x0, x0, c
         adcs    x1, x1, c
-        stp     x0, x1, [z, #16*I]
-        .set    I, (I+1)
-        .endr
+        stp     x0, x1, [z, #16*25]
 
-        ldp     x0, x1, [z, #16*I]
+        ldp     x0, x1, [z, #16*26]
+        adcs    x0, x0, c
+        adcs    x1, x1, c
+        stp     x0, x1, [z, #16*26]
+
+        ldp     x0, x1, [z, #16*27]
+        adcs    x0, x0, c
+        adcs    x1, x1, c
+        stp     x0, x1, [z, #16*27]
+
+        ldp     x0, x1, [z, #16*28]
+        adcs    x0, x0, c
+        adcs    x1, x1, c
+        stp     x0, x1, [z, #16*28]
+
+        ldp     x0, x1, [z, #16*29]
+        adcs    x0, x0, c
+        adcs    x1, x1, c
+        stp     x0, x1, [z, #16*29]
+
+        ldp     x0, x1, [z, #16*30]
+        adcs    x0, x0, c
+        adcs    x1, x1, c
+        stp     x0, x1, [z, #16*30]
+
+        ldp     x0, x1, [z, #16*31]
         adcs    x0, x0, c
         adc     x1, x1, c
-        stp     x0, x1, [z, #16*I]
+        stp     x0, x1, [z, #16*31]
 
 // Restore
 
@@ -271,7 +501,7 @@ S2N_BN_SYMBOL(bignum_ksqr_32_64):
 // Local copy of bignum_ksqr_16_32, identical to main one.
 // This includes in turn a copy of bignum_sqr_8_16.
 
-local_ksqr_16_32:
+bignum_ksqr_32_64_local_ksqr_16_32:
         stp     x19, x20, [sp, #-16]!
         stp     x21, x22, [sp, #-16]!
         stp     x23, x24, [sp, #-16]!
@@ -279,7 +509,7 @@ local_ksqr_16_32:
         mov     x23, x0
         mov     x24, x1
         mov     x25, x2
-        bl      local_sqr_8_16
+        bl      bignum_ksqr_32_64_local_sqr_8_16
         ldp     x10, x11, [x24]
         ldp     x8, x9, [x24, #64]
         subs    x10, x10, x8
@@ -320,7 +550,7 @@ local_ksqr_16_32:
         stp     x16, x17, [x25, #48]
         add     x0, x23, #0x80
         add     x1, x24, #0x40
-        bl      local_sqr_8_16
+        bl      bignum_ksqr_32_64_local_sqr_8_16
         ldp     x10, x11, [x23, #128]
         ldp     x12, x13, [x23, #64]
         adds    x10, x10, x12
@@ -359,7 +589,7 @@ local_ksqr_16_32:
         stp     x10, x11, [x23, #240]
         add     x0, x25, #0x40
         mov     x1, x25
-        bl      local_sqr_8_16
+        bl      bignum_ksqr_32_64_local_sqr_8_16
         ldp     x0, x1, [x23]
         ldp     x16, x17, [x23, #128]
         adds    x0, x0, x16
@@ -449,7 +679,7 @@ local_ksqr_16_32:
         ldp     x19, x20, [sp], #16
         ret
 
-local_sqr_8_16:
+bignum_ksqr_32_64_local_sqr_8_16:
         ldp     x2, x3, [x1]
         ldp     x4, x5, [x1, #16]
         ldp     x6, x7, [x1, #32]

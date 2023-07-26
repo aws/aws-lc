@@ -42,7 +42,7 @@ S2N_BN_SYMBOL(bignum_sqr):
 
 // If p = 0 the result is trivial and nothing needs doing
 
-        cbz     p, end
+        cbz     p, bignum_sqr_end
 
 // initialize (hh,ll) = 0
 
@@ -52,7 +52,7 @@ S2N_BN_SYMBOL(bignum_sqr):
 // Iterate outer loop from k = 0 ... k = p - 1 producing result digits
 
         mov     k, xzr
-outerloop:
+bignum_sqr_outerloop:
 
 // First let bot = MAX 0 (k + 1 - n) and top = MIN (k + 1) n
 // We want to accumulate all x[i] * x[k - i] for bot <= i < top
@@ -76,7 +76,7 @@ outerloop:
 // If htop <= bot then main doubled part of the sum is empty
 
         cmp     htop, i
-        bls     nosumming
+        bls     bignum_sqr_nosumming
 
 // Use a moving pointer for [y] = x[k-i] for the cofactor
 
@@ -86,7 +86,7 @@ outerloop:
 
 // Do the main part of the sum x[i] * x[k - i] for 2 * i < k
 
-innerloop:
+bignum_sqr_innerloop:
         ldr     a, [x, i, lsl #3]
         ldr     b, [y], #-8
         mul     d, a, b
@@ -96,7 +96,7 @@ innerloop:
         adc     c, c, xzr
         add     i, i, #1
         cmp     i, htop
-        bne     innerloop
+        bne     bignum_sqr_innerloop
 
 // Now double it
 
@@ -106,12 +106,12 @@ innerloop:
 
 // If k is even (which means 2 * i = k) and i < n add the extra x[i]^2 term
 
-nosumming:
+bignum_sqr_nosumming:
 
         ands    xzr, k, #1
-        bne     innerend
+        bne     bignum_sqr_innerend
         cmp     i, n
-        bcs     innerend
+        bcs     bignum_sqr_innerend
 
         ldr     a, [x, i, lsl #3]
         mul     d, a, a
@@ -122,7 +122,7 @@ nosumming:
 
 // Now add the local sum into the global sum, store and shift
 
-innerend:
+bignum_sqr_innerend:
         adds    l, l, ll
         str     l, [z, k, lsl #3]
         adcs    ll, h, hh
@@ -130,9 +130,9 @@ innerend:
 
         add     k, k, #1
         cmp     k, p
-        bcc     outerloop
+        bcc     bignum_sqr_outerloop
 
-end:
+bignum_sqr_end:
         ret
 
 #if defined(__linux__) && defined(__ELF__)

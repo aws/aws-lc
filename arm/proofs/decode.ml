@@ -432,11 +432,25 @@ let decode = new_definition `!w:int32. decode w =
       SOME (arm_UMULL_VEC (QREG' Rd) (QREG' Rn) (QREG' Rm) esize)
 
   | [0:1; q; 0b001110:6; size:2; 0b0:1; Rm:5; 0b000110:6; Rn:5; Rd:5] ->
-    // UZIP1
+    // UZP1
     if ~q then NONE // datasize = 64 is unsupported yet
     else
       let esize: (64)word = word_shl (word 8: (64)word) (val size) in
       SOME (arm_UZP1 (QREG' Rd) (QREG' Rn) (QREG' Rm) (val esize))
+
+  | [0:1; q; 0b001110:6; size:2; 0b0:1; Rm:5; 0b010110:6; Rn:5; Rd:5] ->
+    // UZP2
+    if ~q then NONE // datasize = 64 is unsupported yet
+    else
+      let esize: (64)word = word_shl (word 8: (64)word) (val size) in
+      SOME (arm_UZP2 (QREG' Rd) (QREG' Rn) (QREG' Rm) (val esize))
+
+  | [0:1; 0:1; 0b001110:6; size:2; 0b100001001010:12; Rn:5; Rd:5] ->
+    // XTN
+    if size = (word 0b11: (2)word) then NONE // "UNDEFINED"
+    else
+      let esize: (64)word = word_shl (word 8: (64)word) (val size) in
+      SOME (arm_XTN (QREG' Rd) (QREG' Rn) (val esize))
 
   | [0:1; q; 0b001110:6; size:2; 0:1; Rm:5; 0b001110:6; Rn:5; Rd:5] ->
     // ZIP1
