@@ -250,6 +250,34 @@ enum leaf_cert_and_privkey_result_t {
   leaf_cert_and_privkey_mismatch,
 };
 
+// do_leaf_cert_and_privkey_checks does the necessary checks against |pubkey|
+// and |privkey|. It's  expected that the |pubkey| has been parsed from
+// |cert_cbs|.
+static enum leaf_cert_and_privkey_result_t do_leaf_cert_and_privkey_checks(
+    const CBS *cert_cbs, EVP_PKEY *pubkey, EVP_PKEY *privkey) {
+  if (!ssl_is_key_type_supported(EVP_PKEY_id(pubkey))) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
+    return leaf_cert_and_privkey_error;
+  }
+
+  // An ECC certificate may be usable for ECDH or ECDSA. We only support ECDSA
+  // certificates, so sanity-check the key usage extension.
+  if (EVP_PKEY_id(pubkey) == EVP_PKEY_EC &&
+      !ssl_cert_check_key_usage(cert_cbs, key_usage_digital_signature)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
+    return leaf_cert_and_privkey_error;
+  }
+
+  if (privkey != nullptr &&
+      // Sanity-check that the private key and the certificate match.
+      !ssl_compare_public_and_private_key(pubkey, privkey)) {
+    ERR_clear_error();
+    return leaf_cert_and_privkey_mismatch;
+  }
+
+  return leaf_cert_and_privkey_ok;
+}
+
 // check_leaf_cert_and_privkey checks whether the certificate in |leaf_buffer|
 // and the private key in |privkey| are suitable and coherent. It returns
 // |leaf_cert_and_privkey_error| and pushes to the error queue if a problem is
@@ -261,32 +289,11 @@ static enum leaf_cert_and_privkey_result_t check_leaf_cert_and_privkey(
   CBS cert_cbs;
   CRYPTO_BUFFER_init_CBS(leaf_buffer, &cert_cbs);
   UniquePtr<EVP_PKEY> pubkey = ssl_cert_parse_pubkey(&cert_cbs);
-  if (!pubkey) {
+  if (pubkey == nullptr) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     return leaf_cert_and_privkey_error;
   }
-
-  if (!ssl_is_key_type_supported(EVP_PKEY_id(pubkey.get()))) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
-    return leaf_cert_and_privkey_error;
-  }
-
-  // An ECC certificate may be usable for ECDH or ECDSA. We only support ECDSA
-  // certificates, so sanity-check the key usage extension.
-  if (EVP_PKEY_id(pubkey.get()) == EVP_PKEY_EC &&
-      !ssl_cert_check_key_usage(&cert_cbs, key_usage_digital_signature)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
-    return leaf_cert_and_privkey_error;
-  }
-
-  if (privkey != NULL &&
-      // Sanity-check that the private key and the certificate match.
-      !ssl_compare_public_and_private_key(pubkey.get(), privkey)) {
-    ERR_clear_error();
-    return leaf_cert_and_privkey_mismatch;
-  }
-
-  return leaf_cert_and_privkey_ok;
+   return do_leaf_cert_and_privkey_checks(&cert_cbs, pubkey.get(), privkey);
 }
 
 static int cert_set_chain_and_key(
@@ -326,25 +333,14 @@ static int cert_set_chain_and_key(
   if (!ssl_cert_check_cert_private_keys_usage(cert)) {
     return 0;
   }
-  int idx = cert->cert_private_key_idx;
+
+  // Update certificate slot index once all checks have passed.
+  int idx = ssl_get_certificate_slot_index(privkey);
   cert->cert_private_keys[idx].privatekey = UpRef(privkey);
   cert->key_method = privkey_method;
-
   cert->cert_private_keys[idx].chain = std::move(certs_sk);
+  cert->cert_private_key_idx = idx;
   return 1;
-}
-
-// ssl_get_cert_index_from_buffer returns the proper certificate slot index
-// from |buffer|. It returns -1 on failure, or if unsupported.
-static int ssl_get_certificate_slot_index_from_buffer(CRYPTO_BUFFER *buffer) {
-  CBS cert_cbs;
-  CRYPTO_BUFFER_init_CBS(buffer, &cert_cbs);
-  UniquePtr<EVP_PKEY> pubkey = ssl_cert_parse_pubkey(&cert_cbs);
-  if (!pubkey) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-    return -1;
-  }
-  return ssl_get_certificate_slot_index(pubkey.get());
 }
 
 bool ssl_set_cert(CERT *cert, UniquePtr<CRYPTO_BUFFER> buffer) {
@@ -352,14 +348,20 @@ bool ssl_set_cert(CERT *cert, UniquePtr<CRYPTO_BUFFER> buffer) {
     return false;
   }
 
-  int slot_index = ssl_get_certificate_slot_index_from_buffer(buffer.get());
-  if (slot_index < 0) {
+  // Parse the right certificate slot index from |buffer|.
+  CBS cert_cbs;
+  CRYPTO_BUFFER_init_CBS(buffer.get(), &cert_cbs);
+  UniquePtr<EVP_PKEY> pubkey = ssl_cert_parse_pubkey(&cert_cbs);
+  if (!pubkey) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     return false;
   }
+  int slot_index = ssl_get_certificate_slot_index(pubkey.get());
+
   CERT_PKEY &cert_pkey = cert->cert_private_keys[slot_index];
 
-  switch (
-      check_leaf_cert_and_privkey(buffer.get(), cert_pkey.privatekey.get())) {
+  switch (do_leaf_cert_and_privkey_checks(&cert_cbs, pubkey.get(),
+                                          cert_pkey.privatekey.get())) {
     case leaf_cert_and_privkey_error:
       return false;
     case leaf_cert_and_privkey_mismatch:

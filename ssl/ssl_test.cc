@@ -5145,11 +5145,48 @@ class MultipleCertificateSlotTest
     : public testing::TestWithParam<
           std::tuple<TLSVersionTestParams, CertificateKeyTestParams>> {
  public:
+  MultipleCertificateSlotTest() {
+    this->version = version_param().version;
+    this->slot_index = certificate_key_param().slot_index;
+  }
+
+  uint16_t version = 0;
+  int slot_index = -1;
+
   static TLSVersionTestParams version_param() {
     return std::get<0>(GetParam());
   }
   static CertificateKeyTestParams certificate_key_param() {
     return std::get<1>(GetParam());
+  }
+
+  void StandardCertificateSlotIndexTests(SSL_CTX *client_ctx,
+                                         SSL_CTX *server_ctx,
+                                         std::vector<uint16_t> sigalgs) {
+    EXPECT_TRUE(SSL_CTX_set_signing_algorithm_prefs(client_ctx, sigalgs.data(),
+                                                    sigalgs.size()));
+    EXPECT_TRUE(SSL_CTX_set_verify_algorithm_prefs(client_ctx, sigalgs.data(),
+                                                   sigalgs.size()));
+
+    ASSERT_TRUE(SSL_CTX_set_min_proto_version(client_ctx, version));
+    ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx, version));
+    ASSERT_TRUE(SSL_CTX_set_min_proto_version(server_ctx, version));
+    ASSERT_TRUE(SSL_CTX_set_max_proto_version(server_ctx, version));
+
+    ClientConfig config;
+    bssl::UniquePtr<SSL> client, server;
+
+    ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx, server_ctx,
+                                       config, false));
+
+    ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
+
+    // Check the internal slot index to verify that the correct slot was set.
+    EXPECT_EQ(server_ctx->cert->cert_private_key_idx, slot_index);
+    EXPECT_EQ(server->ctx->cert->cert_private_key_idx, slot_index);
+
+    // Check the internal slot index to verify that the correct slot was used.
+    EXPECT_EQ(server->config->cert->cert_private_key_idx, slot_index);
   }
 };
 
@@ -5158,9 +5195,8 @@ INSTANTIATE_TEST_SUITE_P(
     testing::Combine(testing::ValuesIn(kTLSVersionTests),
                      testing::ValuesIn(kCertificateKeyTests)));
 
+// Sets up the |SSL_CTX| with |SSL_CTX_use_certificate| & |SSL_use_PrivateKey|.
 TEST_P(MultipleCertificateSlotTest, CertificateSlotIndex) {
-  uint16_t version = version_param().version;
-  int slot_index = certificate_key_param().slot_index;
   if ((version == TLS1_1_VERSION || version == TLS1_VERSION) &&
       slot_index == SSL_PKEY_ED25519) {
     // ED25519 is not supported in versions prior to TLS1.2.
@@ -5171,35 +5207,39 @@ TEST_P(MultipleCertificateSlotTest, CertificateSlotIndex) {
       TLS_method(), certificate_key_param().certificate(),
       certificate_key_param().key()));
 
+  StandardCertificateSlotIndexTests(
+      client_ctx.get(), server_ctx.get(),
+      {SSL_SIGN_ED25519, SSL_SIGN_ECDSA_SECP256R1_SHA256,
+       SSL_SIGN_RSA_PSS_RSAE_SHA256});
+}
 
-  static const uint16_t kPrefs[] = {SSL_SIGN_ED25519,
-                                    SSL_SIGN_ECDSA_SECP256R1_SHA256,
-                                    SSL_SIGN_RSA_PSS_RSAE_SHA256};
-  EXPECT_TRUE(SSL_CTX_set_signing_algorithm_prefs(client_ctx.get(), kPrefs,
-                                                  OPENSSL_ARRAY_SIZE(kPrefs)));
-  EXPECT_TRUE(SSL_CTX_set_verify_algorithm_prefs(client_ctx.get(), kPrefs,
-                                                 OPENSSL_ARRAY_SIZE(kPrefs)));
+// Sets up the |SSL_CTX| with |SSL_CTX_set_chain_and_key|.
+TEST_P(MultipleCertificateSlotTest, SetChainAndKeyIndex) {
+  if ((version == TLS1_1_VERSION || version == TLS1_VERSION) &&
+      slot_index == SSL_PKEY_ED25519) {
+    // ED25519 is not supported in versions prior to TLS1.2.
+    return;
+  }
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
 
+  uint8_t *buf = nullptr;
+  int cert_len = i2d_X509(certificate_key_param().certificate().get(), &buf);
+  bssl::UniquePtr<uint8_t> free_buf(buf);
 
-  ASSERT_TRUE(SSL_CTX_set_min_proto_version(client_ctx.get(), version));
-  ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), version));
-  ASSERT_TRUE(SSL_CTX_set_min_proto_version(server_ctx.get(), version));
-  ASSERT_TRUE(SSL_CTX_set_max_proto_version(server_ctx.get(), version));
+  bssl::UniquePtr<CRYPTO_BUFFER> leaf(
+      CRYPTO_BUFFER_new(buf, cert_len, nullptr));
+  ASSERT_TRUE(leaf);
+  std::vector<CRYPTO_BUFFER *> chain = {leaf.get()};
 
-  ClientConfig config;
-  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(
+      SSL_CTX_set_chain_and_key(server_ctx.get(), &chain[0], chain.size(),
+                                certificate_key_param().key().get(), nullptr));
 
-  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
-                                     server_ctx.get(), config, false));
-
-  ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
-
-  // Check the internal slot index to verify that the correct slot had been set.
-  EXPECT_EQ(server_ctx->cert->cert_private_key_idx, slot_index);
-  EXPECT_EQ(server->ctx->cert->cert_private_key_idx, slot_index);
-
-  // Check the internal slot index to verify that the correct slot was used.
-  EXPECT_EQ(server->config->cert->cert_private_key_idx, slot_index);
+  StandardCertificateSlotIndexTests(
+      client_ctx.get(), server_ctx.get(),
+      {SSL_SIGN_ED25519, SSL_SIGN_ECDSA_SECP256R1_SHA256,
+       SSL_SIGN_RSA_PSS_RSAE_SHA256});
 }
 
 struct MultiTransferReadWriteTestParams {
