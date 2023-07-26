@@ -179,22 +179,14 @@ OPENSSL_INLINE int CRYPTO_is_ARMv8_PMULL_capable(void) {
 }
 
 OPENSSL_INLINE int CRYPTO_is_ARMv8_GCM_8x_capable(void) {
-#if defined(OPENSSL_STATIC_ARMCAP)
-  return 0;
-#else
   return ((OPENSSL_armcap_P & ARMV8_SHA3) != 0 &&
           ((OPENSSL_armcap_P & ARMV8_NEOVERSE_V1) != 0 ||
            (OPENSSL_armcap_P & ARMV8_APPLE_M1) != 0));
-#endif
 }
 
 OPENSSL_INLINE int CRYPTO_is_ARMv8_wide_multiplier_capable(void) {
-#if defined(OPENSSL_STATIC_ARMCAP)
-  return 0;
-#else
   return (OPENSSL_armcap_P & ARMV8_NEOVERSE_V1) != 0 ||
            (OPENSSL_armcap_P & ARMV8_APPLE_M1) != 0;
-#endif
 }
 
 #endif  // OPENSSL_ARM || OPENSSL_AARCH64
