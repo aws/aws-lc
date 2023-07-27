@@ -81,7 +81,7 @@ const uint32_t kOpenSSLReasonValues[] = {
     0x1033992f,
     0x10341942,
     0x10348fed,
-    0x10350d26,
+    0x10350d39,
     0x10359955,
     0x1036197f,
     0x10369992,
@@ -103,7 +103,7 @@ const uint32_t kOpenSSLReasonValues[] = {
     0x103e9b02,
     0x103f1b19,
     0x103f9b2c,
-    0x10400cde,
+    0x10400cfd,
     0x10409b3f,
     0x10411b5d,
     0x10419b70,
@@ -126,12 +126,13 @@ const uint32_t kOpenSSLReasonValues[] = {
     0x104a196a,
     0x107c0ffb,
     0x14320cc1,
-    0x14328ccf,
-    0x14330cde,
-    0x14338cf0,
+    0x14328cee,
+    0x14330cfd,
+    0x14338d0f,
     0x143400b9,
     0x143480f7,
-    0x14350d01,
+    0x14350ccf,
+    0x14358cdb,
     0x18320090,
     0x18329058,
     0x183300b9,
@@ -165,7 +166,7 @@ const uint32_t kOpenSSLReasonValues[] = {
     0x18411211,
     0x184191dc,
     0x184211fb,
-    0x18428d32,
+    0x18428cdb,
     0x18431179,
     0x18439223,
     0x18441097,
@@ -192,14 +193,14 @@ const uint32_t kOpenSSLReasonValues[] = {
     0x24389611,
     0x24391624,
     0x243995e1,
-    0x28320d1a,
+    0x28320d2d,
     0x28328d45,
-    0x28330cde,
+    0x28330cfd,
     0x28338d58,
-    0x28340d26,
+    0x28340d39,
     0x283480b9,
     0x283500f7,
-    0x28358d32,
+    0x28358cdb,
     0x2836099a,
     0x2c323667,
     0x2c32963b,
@@ -689,7 +690,7 @@ const uint32_t kOpenSSLReasonValues[] = {
     0x4c3c183d,
     0x4c3c984c,
     0x4c3d1865,
-    0x4c3d8d0d,
+    0x4c3d8d20,
     0x4c3e18d2,
     0x4c3e9874,
     0x4c3f18f4,
@@ -798,12 +799,12 @@ const uint32_t kOpenSSLReasonValues[] = {
     0x6835099a,
     0x68668ffb,
     0x6c320fb3,
-    0x6c328cf0,
+    0x6c328d0f,
     0x6c330fbe,
     0x6c338fd7,
     0x74320a83,
     0x743280b9,
-    0x74330d0d,
+    0x74330d20,
     0x783209cb,
     0x783289e0,
     0x783309ec,
@@ -1025,14 +1026,14 @@ const char kOpenSSLReasonStringData[] =
     "VARIABLE_EXPANSION_TOO_LONG\0"
     "VARIABLE_HAS_NO_VALUE\0"
     "BAD_GENERATOR\0"
+    "INVALID_NID\0"
+    "INVALID_PARAMETERS\0"
     "INVALID_PUBKEY\0"
     "MODULUS_TOO_LARGE\0"
     "NO_PRIVATE_VALUE\0"
-    "INVALID_NID\0"
     "UNKNOWN_HASH\0"
     "BAD_Q_VALUE\0"
     "BAD_VERSION\0"
-    "INVALID_PARAMETERS\0"
     "MISSING_PARAMETERS\0"
     "NEED_NEW_SETUP_VALUES\0"
     "BIGNUM_OUT_OF_RANGE\0"
