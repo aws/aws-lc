@@ -832,3 +832,4 @@ bignum_kmul_16_32_neon_local_mul_8_16:
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits
 #endif
+

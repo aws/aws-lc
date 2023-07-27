@@ -259,7 +259,7 @@ S2N_BN_SYMBOL(bignum_ksqr_16_32_neon):
 
 // -----------------------------------------------------------------------------
 // Local 8x8->16 squaring routine, shared to reduce code size. Effectively
-// the same as bignum_sqr_8_16 without the scratch register preservation.
+// the same as bignum_sqr_8_16_neon without the scratch register preservation.
 // -----------------------------------------------------------------------------
 
 bignum_ksqr_16_32_neon_local_sqr_8_16:

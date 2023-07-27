@@ -644,9 +644,9 @@ S2N_BN_SYMBOL(bignum_kmul_32_64_neon):
         ldp     x19, x20, [sp], #16
         ret
 
-// Local copy of bignum_kmul_16_32, identical to main one except that it
+// Local copy of bignum_kmul_16_32_neon, identical to main one except that it
 // only preserves the key registers we need to be stable in the main code.
-// This includes in turn a copy of bignum_mul_8_16.
+// This includes in turn a copy of bignum_mul_8_16_neon.
 
 bignum_kmul_32_64_neon_local_kmul_16_32:
         stp     x19, x20, [sp, -16]!
@@ -1384,3 +1384,4 @@ bignum_kmul_32_64_neon_local_mul_8_16:
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits
 #endif
+

@@ -1,3 +1,18 @@
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0 OR ISC
+
+// ----------------------------------------------------------------------------
+// Extend Montgomery reduce in 8-digit blocks, results in input-output buffer
+// Inputs z[2*k], m[k], w; outputs function return (extra result bit) and z[2*k]
+//
+//    extern uint64_t bignum_emontredc_8n_neon
+//     (uint64_t k, uint64_t *z, uint64_t *m, uint64_t w);
+//
+// Functionally equivalent to bignum_emontredc (see that file for more detail).
+// But in general assumes that the input k is a multiple of 8.
+//
+// Standard ARM ABI: X0 = k, X1 = z, X2 = m, X3 = w, returns X0
+// ----------------------------------------------------------------------------
 #include "_internal_s2n_bignum.h"
 
 					S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_emontredc_8n_neon)
@@ -16,25 +31,25 @@ S2N_BN_SYMBOL(bignum_emontredc_8n_neon):
            lsr x0, x0, #2
            mov x26, x0
            subs x12, x0, #1
-           bcc end
+           bcc bignum_emontredc_8n_neon_end
 
            stp x3, xzr, [sp]
            stp x26, xzr, [sp, #16]
            mov x28, xzr
            lsl x0, x12, #5
 
-outerloop:
+bignum_emontredc_8n_neon_outerloop:
           ldp x3, xzr, [sp]
           ldp x17, x19, [x1]
           ldp x20, x21, [x1, #16]
           ldp x8, x9, [x2]
-          //ldr q20, [x2]
           ldp x10, x11, [x2, #16]
           ldr q21, [x2, #16]
 
           // Montgomery step 0
 
           mul x4, x17, x3
+// NEON: Calculate x4 * (x10, x11) that does two 64x64->128-bit multiplications.
 dup v0.2d, x4
 uzp2    v3.4s, v21.4s, v0.4s
 xtn     v4.2s, v0.2d
@@ -75,6 +90,7 @@ mov x15, v1.d[1]
 
           // Montgomery step 1
 
+// NEON: Calculate x5 * (x10, x11) that does two 64x64->128-bit multiplications.
 dup v0.2d, x5
 uzp2    v3.4s, v21.4s, v0.4s
 xtn     v4.2s, v0.2d
@@ -112,7 +128,8 @@ mov x15, v1.d[1]
           adds x20, x20, x12
           mul	x6, x20, x3 // hoisted from step 2
 
-// for montgomery step 2
+// NEON: For montgomery step 2,
+// calculate x6 * (x10, x11) that does two 64x64->128-bit multiplications.
 dup v0.2d, x6
 #define in1  v21
 #define in2  v0
@@ -280,12 +297,12 @@ usra    out_hi.2d, v2.2d, #32
 #undef out_lo
 #undef out_hi
 
-          cbz x0, madddone
+          cbz x0, bignum_emontredc_8n_neon_madddone
           mov x27, x0
           cmp x0, #32
-          bne maddloop_neon_firstitr
+          bne bignum_emontredc_8n_neon_maddloop_neon_firstitr
 
-maddloop_x0one:
+bignum_emontredc_8n_neon_maddloop_x0one:
          	add	x2, x2, #0x20
          	add	x1, x1, #0x20
          	mul	x17, x4, x8
@@ -426,10 +443,10 @@ maddloop_x0one:
          	stp	x17, x19, [x1]
          	stp	x20, x21, [x1, #16]
          	sub	x27, x27, #0x20
-          b madddone
+          b bignum_emontredc_8n_neon_madddone
 
 
-maddloop_neon_firstitr:
+bignum_emontredc_8n_neon_maddloop_neon_firstitr:
 
 mov x16, v25.d[0] //umulh x16,x4,x8
 mov x22, v24.d[1] //mul x22, x5, x9
@@ -443,10 +460,6 @@ mov x24, v26.d[1] //mul x24, x7, x11
 mov x3, v27.d[1] //umulh x3,x7,x11
 mov x17, v24.d[0] //mul x17, x4, x8
 
-          //mul x23, x6, x10
-          //mul x24, x7, x11
-          //umulh x21,x6,x10
-          //umulh x3,x7,x11
           adds x22,x22,x16
           adcs x23,x23,x20
           adcs x24,x24,x21
@@ -672,10 +685,10 @@ mov x24, v26.d[1] // lo bits of (x7 * x11)
 
            sub x27, x27, #32
            cmp x27, #32
-           beq maddloop_neon_last
+           beq bignum_emontredc_8n_neon_maddloop_neon_last
 
 
-maddloop_neon:
+bignum_emontredc_8n_neon_maddloop_neon:
           ldp x8, x9, [x2, #32]
           ldp x10, x11, [x2, #48]
 
@@ -687,20 +700,6 @@ ldr q23, [x2, #80]
           add x2, x2, #32
           add x1, x1, #32
 
-/*
-          mul x17, x4, x8
-          mul x22, x5, x9
-          mul x23, x6, x10
-          mul x24, x7, x11
-          umulh x16,x4,x8
-          adds x22,x22,x16
-          umulh x16,x5,x9
-          adcs x23,x23,x26
-          umulh x16,x6,x10
-          adcs x24,x24,x16
-          umulh x16,x7,x11
-          adc x25,x16,xzr
-*/
           adds x22,x20,x16
           adcs x23,x21,x3
           adcs x24,x24,x26
@@ -919,10 +918,10 @@ mov x24, v26.d[1] // lo bits of (x7 * x11)
 
            sub x27, x27, #32
            cmp x27, #32
-           bne maddloop_neon
+           bne bignum_emontredc_8n_neon_maddloop_neon
 
 
-maddloop_neon_last:
+bignum_emontredc_8n_neon_maddloop_neon_last:
           ldp x8, x9, [x2, #32]
           ldp x10, x11, [x2, #48]
 
@@ -1062,7 +1061,7 @@ mov x17, v24.d[0] // lo bits of (x4 * x8)
           stp x20,x21,[x1,#16]
            subs x27, x27, #64
 
-madddone:
+bignum_emontredc_8n_neon_madddone:
            ldp x17, x19, [x1, #32]
            ldp x20, x21, [x1, #48]
            ldp x26, xzr, [sp, #16]
@@ -1079,10 +1078,10 @@ madddone:
            add x1, x1, #32
            subs x26, x26, #1
            stp x26, xzr, [sp, #16]
-           bne outerloop
+           bne bignum_emontredc_8n_neon_outerloop
            neg x0, x28
 
-end:
+bignum_emontredc_8n_neon_end:
            add sp, sp, #32
 
            ldp x27, x28, [sp], #16
