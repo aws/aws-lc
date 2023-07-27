@@ -13,6 +13,7 @@
 #include <string.h>
 
 #include "../include/s2n-bignum.h"
+#include "../tests/arch.h"
 
 // Controls whether an explanatory header goes on the output
 
@@ -170,31 +171,6 @@ void timingtest(int enabled,char *name,void (*f)(void))
   geomean += log(mean);
   ++tests;
 }
-
-// Decide whether machine supports BMI and ADX in the x86 case
-
-#ifdef __x86_64__
-
-int cpuid_extendedfeatures(void)
-{ int a = 7, b = 0, c = 0, d = 0;
-  asm ("cpuid\n\t"
-    : "=a" (a), "=b" (b), "=c" (c), "=d" (d)
-    : "0" (a), "2" (c));
-  return b;
-}
-
-int full_isa_support(void)
-{ int c = cpuid_extendedfeatures();
-  return (c & (1ul<<8)) && (c & (1ul<<19));
-}
-
-#else
-
-int full_isa_support(void)
-{ return 1;
-}
-
-#endif
 
 // Wrappers round the functions to call uniformly
 
@@ -763,10 +739,31 @@ void call_sm2_montjadd(void) repeat(sm2_montjadd(b1,b2,b3))
 void call_sm2_montjdouble(void) repeat(sm2_montjdouble(b1,b2))
 void call_sm2_montjmixadd(void) repeat(sm2_montjmixadd(b1,b2,b3))
 
+#ifdef __ARM_NEON
+void call_bignum_mul_8_16_neon(void) repeat(bignum_mul_8_16_neon(b0,b1,b2))
+void call_bignum_sqr_8_16_neon(void) repeat(bignum_sqr_8_16_neon(b0,b1))
+void call_bignum_kmul_16_32_neon(void) repeat(bignum_kmul_16_32_neon(b0,b1,b2,b3))
+void call_bignum_ksqr_16_32_neon(void) repeat(bignum_ksqr_16_32_neon(b0,b1,b2))
+void call_bignum_kmul_32_64_neon(void) repeat(bignum_kmul_32_64_neon(b0,b1,b2,b3))
+void call_bignum_ksqr_32_64_neon(void) repeat(bignum_ksqr_32_64_neon(b0,b1,b2))
+void call_bignum_emontredc_8n_neon__32(void) repeat(bignum_emontredc_8n_neon(32,b0,b1,b2[0]))
+
+#else
+void call_bignum_mul_8_16_neon(void) {}
+void call_bignum_sqr_8_16_neon(void) {}
+void call_bignum_kmul_16_32_neon(void) {}
+void call_bignum_ksqr_16_32_neon(void) {}
+void call_bignum_kmul_32_64_neon(void) {}
+void call_bignum_ksqr_32_64_neon(void) {}
+void call_bignum_emontredc_8n_neon__32(void) {}
+
+#endif
+
 int main(int argc, char *argv[])
 {
-  int bmi = full_isa_support();
+  int bmi = get_arch_name() == ARCH_AARCH64 || supports_bmi2_and_adx();
   int all = 1;
+  int neon = supports_neon();
   char *argending;
   long negreps;
   function_to_test = "";
@@ -899,6 +896,7 @@ int main(int argc, char *argv[])
   timingtest(all,"bignum_emontredc (12 -> 6)",call_bignum_emontredc__6);
   timingtest(all,"bignum_emontredc (64 -> 32)",call_bignum_emontredc__32);
   timingtest(bmi,"bignum_emontredc_8n (64 -> 32)",call_bignum_emontredc_8n__32);
+  timingtest(neon,"bignum_emontredc_8n_neon (64 -> 32)",call_bignum_emontredc_8n_neon__32);
   timingtest(all,"bignum_eq (32x32)" ,call_bignum_eq__32_32);
   timingtest(all,"bignum_even (32)" ,call_bignum_even__32);
   timingtest(all,"bignum_frombebytes_4",call_bignum_frombebytes_4);
@@ -915,9 +913,13 @@ int main(int argc, char *argv[])
   timingtest(all,"bignum_half_sm2",call_bignum_half_sm2);
   timingtest(all,"bignum_iszero (32)" ,call_bignum_iszero__32);
   timingtest(bmi,"bignum_kmul_16_32",call_bignum_kmul_16_32);
+  timingtest(neon,"bignum_kmul_16_32_neon",call_bignum_kmul_16_32_neon);
   timingtest(bmi,"bignum_kmul_32_64",call_bignum_kmul_32_64);
+  timingtest(neon,"bignum_kmul_32_64_neon",call_bignum_kmul_32_64_neon);
   timingtest(bmi,"bignum_ksqr_16_32",call_bignum_ksqr_16_32);
+  timingtest(neon,"bignum_ksqr_16_32_neon",call_bignum_ksqr_16_32_neon);
   timingtest(bmi,"bignum_ksqr_32_64",call_bignum_ksqr_32_64);
+  timingtest(neon,"bignum_ksqr_32_64_neon",call_bignum_ksqr_32_64_neon);
   timingtest(all,"bignum_le (32x32)" ,call_bignum_le__32_32);
   timingtest(all,"bignum_littleendian_4",call_bignum_littleendian_4);
   timingtest(all,"bignum_littleendian_6",call_bignum_littleendian_6);
@@ -997,6 +999,7 @@ int main(int argc, char *argv[])
   timingtest(all,"bignum_mul_6_12_alt",call_bignum_mul_6_12_alt);
   timingtest(bmi,"bignum_mul_8_16",call_bignum_mul_8_16);
   timingtest(all,"bignum_mul_8_16_alt",call_bignum_mul_8_16_alt);
+  timingtest(neon,"bignum_mul_8_16_neon",call_bignum_mul_8_16_neon);
   timingtest(bmi,"bignum_mul_p25519",call_bignum_mul_p25519);
   timingtest(all,"bignum_mul_p25519_alt",call_bignum_mul_p25519_alt);
   timingtest(bmi,"bignum_mul_p256k1",call_bignum_mul_p256k1);
@@ -1046,6 +1049,7 @@ int main(int argc, char *argv[])
   timingtest(all,"bignum_sqr_6_12_alt",call_bignum_sqr_6_12_alt);
   timingtest(bmi,"bignum_sqr_8_16",call_bignum_sqr_8_16);
   timingtest(all,"bignum_sqr_8_16_alt",call_bignum_sqr_8_16_alt);
+  timingtest(neon,"bignum_sqr_8_16_neon",call_bignum_sqr_8_16_neon);
   timingtest(bmi,"bignum_sqr_p25519",call_bignum_sqr_p25519);
   timingtest(all,"bignum_sqr_p25519_alt",call_bignum_sqr_p25519_alt);
   timingtest(bmi,"bignum_sqr_p256k1",call_bignum_sqr_p256k1);

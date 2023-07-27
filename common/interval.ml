@@ -31,7 +31,8 @@ let PURE_BOUNDER_RULE =
      fun tm -> let th = REAL_RAT_REDUCE_CONV tm in
                let tm' = rand(concl th) in
                if is_ratconst tm' then MP (SPECL [tm;tm'] pth) th
-               else failwith "BOUNDER_RULE: unhandled term"
+               else failwith ("BOUNDER_RULE: unhandled term: "
+                  ^ (string_of_term tm))
   and rule_div = GEN_REWRITE_CONV I [real_div]
   and rule_vid th = GEN_REWRITE_RULE
                      (fun c ->BINOP2_CONV (RAND_CONV c) (LAND_CONV c))
@@ -278,7 +279,9 @@ let PURE_BOUNDER_RULE =
         else if is_div tm then
           let eth = rule_div tm in rule_vid eth (bounder(rand(concl eth)))
         else try CONJ (basic_lowerbound true tm) (basic_upperbound true tm)
-             with Failure _ -> failwith "BOUNDER_RULE: unhandled term" in
+             with Failure _ -> failwith
+              ("BOUNDER_RULE: unhandled term: " ^
+                string_of_term tm) in
     bounder;;
 
 let BOUNDER_RULE ths =

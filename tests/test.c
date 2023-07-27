@@ -20,6 +20,10 @@
 
 #include "../include/s2n-bignum.h"
 
+// Functiosn for detecting architectures and instruction sets
+
+#include "arch.h"
+
 // Some big static buffers (need them big enough for largest test)
 
 #define BUFFERSIZE 65536
@@ -3362,86 +3366,74 @@ int test_bignum_double_sm2(void)
   return 0;
 }
 
-int test_bignum_emontredc(void)
-{ uint64_t t, k, w, tc;
-  printf("Testing bignum_emontredc with %d cases\n",tests);
+int test_bignum_emontredc_specific(const char *name, int is_8n,
+                                   uint64_t (*f)(uint64_t, uint64_t *,
+                                                 uint64_t *, uint64_t)) {
+  uint64_t t, k, w, tc;
+  printf("Testing %s with %d cases\n", name, tests);
 
   int c;
-  for (t = 0; t < tests; ++t)
-   { k = (unsigned) rand() % MAXSIZE;
+  for (t = 0; t < tests; ++t) {
+    k = (unsigned)rand() % MAXSIZE;
+    if (is_8n) {
+      k = (k >> 3) << 3;
+      if (k == 0)
+        k = 8;
+    }
 
-     random_bignum(k,b0); b0[0] |= 1;   // b0 = m
-     w = word_negmodinv(b0[0]);         // w = negated modular inverse
-     random_bignum(2*k,b4);             // b4 = initial z
+    random_bignum(k, b0);
+    b0[0] |= 1;                // b0 = m
+    w = word_negmodinv(b0[0]); // w = negated modular inverse
+    random_bignum(2 * k, b4);  // b4 = initial z
 
-     reference_copy(2*k+1,b1,2*k,b4);      // b1 = longer copy of z_0
-     reference_copy(2*k+1,b2,2*k,b4);      // b2 = also longer copy of z_0
+    reference_copy(2 * k + 1, b1, 2 * k, b4); // b1 = longer copy of z_0
+    reference_copy(2 * k + 1, b2, 2 * k, b4); // b2 = also longer copy of z_0
 
-     tc = bignum_emontredc(k,b4,b0,w);
+    tc = f(k, b4, b0, w);
 
-     reference_madd(2*k+1,b1,k,b4,k,b0);   // b1 = q * m + z_0
+    reference_madd(2 * k + 1, b1, k, b4, k, b0); // b1 = q * m + z_0
 
-     c = ((b1[2*k] == tc) &&
-          reference_eq_samelen(k,b4+k,b1+k) &&
-          reference_iszero(k,b1));
+    c = ((b1[2 * k] == tc) && reference_eq_samelen(k, b4 + k, b1 + k) &&
+         reference_iszero(k, b1));
 
-     if (!c)
-      { printf("### Disparity reducing modulo: [size %4"PRIu64" -> %4"PRIu64"] "
-               "...%016"PRIx64" / 2^%"PRIu64" mod ...%016"PRIx64" = ...%016"PRIx64"\n",
-               2*k,k,b2[0],64*k,b0[0],b4[k]);
-        return 1;
-      }
-     else if (VERBOSE)
-      { printf("OK: [size %4"PRIu64" -> %4"PRIu64"] "
-               "...%016"PRIx64" / 2^%"PRIu64" mod ...%016"PRIx64" = ...%016"PRIx64"\n",
-               2*k,k,b2[0],64*k,b0[0],b4[0]);
-      }
-   }
+    if (!c) {
+      printf("### Disparity reducing modulo: [size %4" PRIu64 " -> %4" PRIu64
+             "] "
+             "...%016" PRIx64 " / 2^%" PRIu64 " mod ...%016" PRIx64
+             " = ...%016" PRIx64 "\n",
+             2 * k, k, b2[0], 64 * k, b0[0], b4[k]);
+      return 1;
+    } else if (VERBOSE) {
+      printf("OK: [size %4" PRIu64 " -> %4" PRIu64 "] "
+             "...%016" PRIx64 " / 2^%" PRIu64 " mod ...%016" PRIx64
+             " = ...%016" PRIx64 "\n",
+             2 * k, k, b2[0], 64 * k, b0[0], b4[0]);
+    }
+  }
   printf("All OK\n");
   return 0;
+}
+
+int test_bignum_emontredc(void)
+{ return test_bignum_emontredc_specific("bignum_emontredc", 0,
+                                        bignum_emontredc);
 }
 
 int test_bignum_emontredc_8n(void)
-{ uint64_t t, k, w, tc;
-  printf("Testing bignum_emontredc_8n with %d cases\n",tests);
-
-  int c;
-  for (t = 0; t < tests; ++t)
-   { k = (unsigned) rand() % MAXSIZE;
-     k = (k>>3)<<3;
-     if (k == 0) k = 8;
-
-     random_bignum(k,b0); b0[0] |= 1;   // b0 = m
-     w = word_negmodinv(b0[0]);         // w = negated modular inverse
-     random_bignum(2*k,b4);             // b4 = initial z
-
-     reference_copy(2*k+1,b1,2*k,b4);      // b1 = longer copy of z_0
-     reference_copy(2*k+1,b2,2*k,b4);      // b2 = also longer copy of z_0
-
-     tc = bignum_emontredc_8n(k,b4,b0,w);
-
-     reference_madd(2*k+1,b1,k,b4,k,b0);   // b1 = q * m + z_0
-
-     c = ((b1[2*k] == tc) &&
-          reference_eq_samelen(k,b4+k,b1+k) &&
-          reference_iszero(k,b1));
-
-     if (!c)
-      { printf("### Disparity reducing modulo: [size %4"PRIu64" -> %4"PRIu64"] "
-               "...%016"PRIx64" / 2^%"PRIu64" mod ...%016"PRIx64" = ...%016"PRIx64"\n",
-               2*k,k,b2[0],64*k,b0[0],b4[k]);
-        return 1;
-      }
-     else if (VERBOSE)
-      { printf("OK: [size %4"PRIu64" -> %4"PRIu64"] "
-               "...%016"PRIx64" / 2^%"PRIu64" mod ...%016"PRIx64" = ...%016"PRIx64"\n",
-               2*k,k,b2[0],64*k,b0[0],b4[0]);
-      }
-   }
-  printf("All OK\n");
-  return 0;
+{ return test_bignum_emontredc_specific("bignum_emontredc_8n", 1,
+                                        bignum_emontredc_8n);
 }
 
+int test_bignum_emontredc_8n_neon(void)
+{
+#ifdef __ARM_NEON
+  return test_bignum_emontredc_specific("bignum_emontredc_8n_neon", 1,
+                                        bignum_emontredc_8n_neon);
+#else
+  // Do not call the neon function to avoid a linking failure error.
+  return 1;
+#endif
+}
 
 int test_bignum_eq(void)
 { uint64_t t, k1, k2;
@@ -3927,8 +3919,30 @@ int test_bignum_kmul_16_32(void)
 { return test_bignum_kmul_specific(32,16,16,"bignum_kmul_16_32",bignum_kmul_16_32);
 }
 
+int test_bignum_kmul_16_32_neon(void)
+{
+#ifdef __ARM_NEON
+  return test_bignum_kmul_specific(32,16,16,"bignum_kmul_16_32_neon",
+                                   bignum_kmul_16_32_neon);
+#else
+  // Do not call the neon function to avoid a linking failure error.
+  return 1;
+#endif
+}
+
 int test_bignum_kmul_32_64(void)
 { return test_bignum_kmul_specific(64,32,32,"bignum_kmul_32_64",bignum_kmul_32_64);
+}
+
+int test_bignum_kmul_32_64_neon(void)
+{
+#ifdef __ARM_NEON
+  return test_bignum_kmul_specific(64,32,32,"bignum_kmul_32_64_neon",
+                                   bignum_kmul_32_64_neon);
+#else
+  // Do not call the neon function to avoid a linking failure error.
+  return 1;
+#endif
 }
 
 int test_bignum_ksqr_specific
@@ -3965,8 +3979,30 @@ int test_bignum_ksqr_16_32(void)
 { return test_bignum_ksqr_specific(32,16,"bignum_ksqr_16_32",bignum_ksqr_16_32);
 }
 
+int test_bignum_ksqr_16_32_neon(void)
+{
+#ifdef __ARM_NEON
+  return test_bignum_ksqr_specific(32,16,"bignum_ksqr_16_32_neon",
+                                   bignum_ksqr_16_32_neon);
+#else
+  // Do not call the neon function to avoid a linking failure error.
+  return 1;
+#endif
+}
+
 int test_bignum_ksqr_32_64(void)
 { return test_bignum_ksqr_specific(64,32,"bignum_ksqr_32_64",bignum_ksqr_32_64);
+}
+
+int test_bignum_ksqr_32_64_neon(void)
+{
+#ifdef __ARM_NEON
+  return test_bignum_ksqr_specific(64,32,"bignum_ksqr_32_64_neon",
+                                   bignum_ksqr_32_64_neon);
+#else
+  // Do not call the neon function to avoid a linking failure error.
+  return 1;
+#endif
 }
 
 int test_bignum_le(void)
@@ -5964,8 +6000,19 @@ int test_bignum_mul_8_16_alt(void)
 { return test_bignum_mul_specific(16,8,8,"bignum_mul_8_16_alt",bignum_mul_8_16_alt);
 }
 
-int test_bignum_mul_p25519(void)
-{ uint64_t i, k;
+int test_bignum_mul_8_16_neon(void)
+{
+#ifdef __ARM_NEON
+  return test_bignum_mul_specific(16, 8, 8, "bignum_mul_8_16_neon",
+                                  bignum_mul_8_16_neon);
+#else
+  // Do not call the neon function to avoid a linking failure error.
+  return 1;
+#endif
+}
+
+int test_bignum_mul_p25519(void) {
+  uint64_t i, k;
   printf("Testing bignum_mul_p25519 with %d cases\n",tests);
   uint64_t c;
   for (i = 0; i < tests; ++i)
@@ -7277,6 +7324,16 @@ int test_bignum_sqr_8_16(void)
 
 int test_bignum_sqr_8_16_alt(void)
 { return test_bignum_sqr_specific(16,8,"bignum_sqr_8_16_alt",bignum_sqr_8_16_alt);
+}
+
+int test_bignum_sqr_8_16_neon(void)
+{
+#ifdef __ARM_NEON
+  return test_bignum_sqr_specific(16,8,"bignum_sqr_8_16_neon",bignum_sqr_8_16_neon);
+#else
+  // Do not call the neon function to avoid a linking failure error.
+  return 1;
+#endif
 }
 
 int test_bignum_sqr_p25519(void)
@@ -10525,32 +10582,6 @@ int test_edwards25519_scalarmulbase_alt_tweetnacl(void)
 // Main dispatching to appropriate test code
 // ****************************************************************************
 
-// On x86 machines, restrict the set of tested functions appropriately
-// if the machine does not seem to support the BMI2 and ADX extensions.
-
-#ifdef __x86_64__
-
-int cpuid_extendedfeatures(void)
-{ int a = 7, b = 0, c = 0, d = 0;
-  asm ("cpuid\n\t"
-    : "=a" (a), "=b" (b), "=c" (c), "=d" (d)
-    : "0" (a), "2" (c));
-  return b;
-}
-
-int full_isa_support(void)
-{ int c = cpuid_extendedfeatures();
-  return (c & (1ul<<8)) && (c & (1ul<<19));
-}
-
-#else
-
-int full_isa_support(void)
-{ return 1;
-}
-
-#endif
-
 static char *function_to_test;
 static int tested = 0;
 static int successes = 0;
@@ -10558,6 +10589,8 @@ static int failures = 0;
 static int skipped = 0;
 static int inapplicable = 0;
 
+// functionaltest runs f() if enabled is true and records the result.
+// If the return value is nonzero, the test has failed.
 void functionaltest(int enabled,char *name,int (*f)(void))
 { ++tested;
   // Only benchmark matching function name
@@ -10599,7 +10632,7 @@ void functionaltest(int enabled,char *name,int (*f)(void))
 // as a wildcard "*", e.g. "bignum_add_p_"
 
 int main(int argc, char *argv[])
-{ int bmi = full_isa_support();
+{ int bmi = get_arch_name() == ARCH_AARCH64 || supports_bmi2_and_adx();
   int all = 1;
   int extrastrigger = 1;
 
@@ -10710,7 +10743,7 @@ int main(int argc, char *argv[])
   functionaltest(all,"bignum_half_sm2",test_bignum_half_sm2);
   functionaltest(all,"bignum_iszero",test_bignum_iszero);
   functionaltest(bmi,"bignum_kmul_16_32",test_bignum_kmul_16_32);
-  functionaltest(bmi,"bignum_kmul_32_64",test_bignum_kmul_32_64);
+  functionaltest(bmi, "bignum_kmul_32_64", test_bignum_kmul_32_64);
   functionaltest(bmi,"bignum_ksqr_16_32",test_bignum_ksqr_16_32);
   functionaltest(bmi,"bignum_ksqr_32_64",test_bignum_ksqr_32_64);
   functionaltest(all,"bignum_le",test_bignum_le);
@@ -10904,6 +10937,17 @@ int main(int argc, char *argv[])
   functionaltest(all,"word_min",test_word_min);
   functionaltest(all,"word_negmodinv",test_word_negmodinv);
   functionaltest(all,"word_recip",test_word_recip);
+
+  if (get_arch_name() == ARCH_AARCH64) {
+    int neon = supports_neon();
+    functionaltest(neon,"bignum_emontredc_8n_neon",test_bignum_emontredc_8n_neon);
+    functionaltest(neon,"bignum_kmul_16_32_neon", test_bignum_kmul_16_32_neon);
+    functionaltest(neon,"bignum_kmul_32_64_neon", test_bignum_kmul_32_64_neon);
+    functionaltest(neon,"bignum_ksqr_16_32_neon",test_bignum_ksqr_16_32_neon);
+    functionaltest(neon,"bignum_ksqr_32_64_neon",test_bignum_ksqr_32_64_neon);
+    functionaltest(neon,"bignum_mul_8_16_neon",test_bignum_mul_8_16_neon);
+    functionaltest(neon,"bignum_sqr_8_16_neon",test_bignum_sqr_8_16_neon);
+  }
 
   if (extrastrigger) function_to_test = "_";
 

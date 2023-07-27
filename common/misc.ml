@@ -7,9 +7,12 @@
 (* Miscellaneous theorems that don't quite fit in the main libraries.        *)
 (* ========================================================================= *)
 
-needs "Library/iter.ml";;
-needs "Library/rstc.ml";;
+needs "Library/bitsize.ml";;
 needs "Library/floor.ml";;
+needs "Library/iter.ml";;
+needs "Library/pocklington.ml";;
+needs "Library/rstc.ml";;
+needs "Library/words.ml";;
 
 (* ------------------------------------------------------------------------- *)
 (* Additional list operations and conversions on them.                       *)
@@ -1185,3 +1188,152 @@ let cache f =
   let memo = ref [] in
   fun x -> try assoc x (!memo) with Failure _ ->
            (let y = f x in (memo := (x,y) :: (!memo); y));;
+
+(* ------------------------------------------------------------------------- *)
+(* A few more lemmas about words.                                            *)
+(* ------------------------------------------------------------------------- *)
+
+let WORD_BITMANIP_SIMP_LEMMAS = prove(
+  `!(x32:(32)word) (y32:(32)word) (x32_2:(32)word)
+        (x64:(64)word) (y64:(64)word) (x64_2:(64)word) (y64_2:(64)word)
+        (y128:(128)word).
+    // word_subword
+    word_subword (word_subword y128 (0,64):(64)word) (0,32):(32)word =
+      word_subword y128 (0,32):(32)word /\
+    word_subword (word_subword y128 (64,64):(64)word) (0,32):(32)word =
+      word_subword y128 (64,32):(32)word /\
+    word_subword (word_subword y128 (0,64):(64)word) (32,32):(32)word =
+      word_subword y128 (32,32):(32)word /\
+    word_subword (word_subword y128 (64,64):(64)word) (32,32):(32)word =
+      word_subword y128 (96,32):(32)word /\
+    word_subword
+        (word 79228162495817593524129366015:(128)word) (64,64):(64)word =
+      word 4294967295 /\
+    word_subword
+        (word 79228162495817593524129366015:(128)word) (0,64):(64)word =
+      word 4294967295 /\
+    // .. + word_join
+    word_subword (word_join x32 y32: (64)word) (0,32) = y32 /\
+    word_subword (word_join x32 y32: (64)word) (32,32) = x32 /\
+    word_subword (word_join x64 y64: (128)word) (0,64) = y64 /\
+    word_subword (word_join x64 y64: (128)word) (64,64) = x64 /\
+    word_subword (word_join x64 y64: (128)word) (0,32):(32)word =
+      word_subword y64 (0,32):(32)word /\
+    word_subword (word_join x64 y64: (128)word) (32,32):(32)word =
+      word_subword y64 (32,32):(32)word /\
+    word_subword (word_join x64 y64: (128)word) (64,32):(32)word =
+      word_subword x64 (0,32):(32)word /\
+    word_subword (word_join x64 y64: (128)word) (96,32):(32)word =
+      word_subword x64 (32,32):(32)word /\
+    word_subword
+      (word_join
+        (word_join x64_2 x64: (128)word)
+        (word_join y64_2 y64: (128)word): (256)word)
+      (64,128):(128)word = word_join x64 y64_2 /\
+    // .. + word_zx
+    word_subword (word_zx x64:(128)word) (0,32):(32)word = word_subword x64 (0,32) /\
+    word_subword (word_subword x64 (0,128):(128)word) (0,32):(32)word = word_subword x64 (0,32) /\
+    word_subword (word_zx x64:(128)word) (32,32):(32)word = word_subword x64 (32,32) /\
+    word_subword (word_subword x64 (0,128):(128)word) (32,32):(32)word = word_subword x64 (32,32) /\
+    // .. + word_and
+    word_subword (word_and y128 (word_join x64_2 x64:(128)word)) (64,64) =
+      word_and (word_subword y128 (64,64):(64)word) x64_2 /\
+    word_subword (word_and y128 (word_join x64_2 x64:(128)word)) (0,64) =
+      word_and (word_subword y128 (0,64):(64)word) x64 /\
+    // .. + word_ushr
+    word_zx (word_subword (word_ushr x64 32) (0,32):(32)word):(64)word = word_ushr x64 32 /\
+    word_ushr (word_join x32_2 x32:(64)word) 32 = word_zx x32_2`,
+  CONV_TAC WORD_BLAST);;
+
+let WORD_ADD_ASSOC_CONSTS = prove(
+  `!(x:(N)word) n m.
+    (word_add (word_add x (word n)) (word m)) = (word_add x (word (n+m)))`,
+  CONV_TAC WORD_RULE);;
+
+let WORD_OR_ADD_DISJ = prove(`! (x:(64)word) (y:(64)word).
+    word_or (word_shl x 32) (word_and y (word 4294967295)) =
+    word_add (word_shl x 32) (word_and y (word 4294967295))`,
+  REPEAT GEN_TAC THEN
+  IMP_REWRITE_TAC[WORD_ADD_OR] THEN
+  CONV_TAC WORD_BLAST);;
+
+let WORD_OF_BITS_32BITMASK = prove(
+  `word 4294967295 = word_of_bits {i | i < 32}`,
+  REWRITE_TAC [WORD_OF_BITS_MASK; ARITH_RULE `4294967295 = 2 EXP 32 - 1`]);;
+
+let WORD_MUL_EQ = prove(
+    `!(x:(64)word) (y:(64)word). word_mul x y = word ((val x * val y) MOD 2 EXP 64)`,
+    REWRITE_TAC[GSYM VAL_EQ; VAL_WORD_MUL; VAL_WORD; DIMINDEX_64; MOD_MOD_REFL; MOD_MOD_EXP_MIN]
+    THEN CONV_TAC(DEPTH_CONV NUM_MIN_CONV) THEN MESON_TAC[]);;
+
+(* ------------------------------------------------------------------------- *)
+(* A few more lemmas about natural numbers.                                  *)
+(* ------------------------------------------------------------------------- *)
+
+let ADD_MOD_MOD_REFL = prove(`!a b m.
+    (a + b MOD m) MOD m = (a + b) MOD m /\
+    (a MOD m + b) MOD m = (a + b) MOD m`,
+  REPEAT STRIP_TAC THEN
+  ONCE_REWRITE_TAC [GSYM (SPECL [`a:num`; `b:num`] MOD_ADD_MOD)] THEN
+  REWRITE_TAC [MOD_MOD_REFL]);;
+
+let ADD_DIV_MOD_SIMP_LEMMA = prove(`!x y m.
+    ~(m = 0) ==> (x MOD m + y) DIV m + x DIV m = (x + y) DIV m`,
+  REPEAT STRIP_TAC THEN
+  FIRST_ASSUM (fun thm -> ASSUME_TAC (MATCH_MP (SPECL [`x:num`; `m:num`] DIVMOD_EXIST) thm)) THEN
+  FIRST_X_ASSUM (fun thm -> CHOOSE_THEN (CHOOSE_THEN ASSUME_TAC) thm) THEN
+  ASM_REWRITE_TAC[] THEN
+  REWRITE_TAC[GSYM ADD_ASSOC] THEN
+  ASM_SIMP_TAC[MOD_MULT_ADD;DIV_MULT_ADD;MOD_LT;DIV_LT] THEN
+  ARITH_TAC);;
+
+let LT_MULT_ADD_MULT = prove(`!(a:num) (b:num) (c:num) (m:num).
+    0 < m /\ a < m /\ b < m /\ c <= m ==> c * a + b < m * m`,
+  REPEAT STRIP_TAC THEN
+  TRANS_TAC LET_TRANS `(m:num) * (a:num) + (b:num)` THEN
+  CONJ_TAC THENL [
+    IMP_REWRITE_TAC[LE_ADD2] THEN
+    CONJ_TAC THENL [
+      IMP_REWRITE_TAC[LE_MULT2] THEN
+      REWRITE_TAC[LE_REFL];
+      REWRITE_TAC[LE_REFL]];
+    REPEAT STRIP_TAC THEN
+    DISJ_CASES_THEN (LABEL_TAC "mcases") (SPECL [`m:num`] num_CASES) THENL [
+      (* m = 0 *) SUBST_ALL_TAC (ASSUME `m = 0`) THEN
+      RULE_ASSUM_TAC (REWRITE_RULE [GSYM ONE]) THEN
+      REWRITE_TAC [GSYM ONE] THEN
+      ASM_ARITH_TAC;
+      (* m = n + 1 *) REMOVE_THEN "mcases" (CHOOSE_THEN (LABEL_TAC "mcases'")) THEN
+      SUBST_ALL_TAC (ASSUME `m = SUC n`) THEN
+      RULE_ASSUM_TAC (REWRITE_RULE [ADD1]) THEN
+      REWRITE_TAC [ADD1] THEN
+      REWRITE_TAC [ARITH_RULE `(n + 1:num) * (n + 1:num) = (n + 1:num) * n + (n + 1:num)`] THEN
+      SUBGOAL_THEN `(a:num) <= (n:num)` ASSUME_TAC THENL [ASM_ARITH_TAC; ALL_TAC] THEN
+      MATCH_MP_TAC LET_ADD2 THEN
+      REWRITE_TAC [LE_MULT_LCANCEL] THEN
+      ASM_MESON_TAC[]
+    ]]);;
+
+let LT_ADD_MULT_MULT = prove(`!(a:num) (b:num) (c:num) (m:num).
+    0 < m /\ a < m /\ b < m /\ c <= m ==> b + c * a < m * m`,
+  REPEAT STRIP_TAC THEN
+  TRANS_TAC LET_TRANS `(c:num) * (a:num) + (b:num)` THEN
+  CONJ_TAC THENL
+    [ARITH_TAC; ASM_MESON_TAC[LT_MULT_ADD_MULT]]);;
+
+let ADD_DIV_MOD_SIMP2_LEMMA = prove(`!(x:num) (y:num) (m:num).
+    ~(m = 0) ==> x DIV m + (y + x MOD m) DIV m = (x + y) DIV m`,
+  REPEAT STRIP_TAC THEN
+  FIRST_ASSUM (fun thm -> ASSUME_TAC (MATCH_MP (SPECL [`x:num`; `m:num`] DIVMOD_EXIST) thm)) THEN
+  FIRST_X_ASSUM (fun thm -> CHOOSE_THEN (CHOOSE_THEN ASSUME_TAC) thm) THEN
+  ASM_REWRITE_TAC[] THEN
+  REWRITE_TAC[GSYM ADD_ASSOC] THEN
+  ASM_SIMP_TAC[MOD_MULT_ADD;DIV_MULT_ADD;MOD_LT;DIV_LT;ADD_SYM] THEN
+  ARITH_TAC);;
+
+(* ------------------------------------------------------------------------- *)
+(* A simple tactic that is helpful for debugging.                            *)
+(* ------------------------------------------------------------------------- *)
+
+let PRINT_GOAL_TAC (desc: string): tactic =
+  fun gl -> let _ = Printf.printf "<%s>\n" desc; print_goal gl in ALL_TAC gl;;
