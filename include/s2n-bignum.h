@@ -309,6 +309,10 @@ extern void bignum_half_p521 (uint64_t z[static 9], uint64_t x[static 9]);
 // Input x[4]; output z[4]
 extern void bignum_half_sm2 (uint64_t z[static 4], uint64_t x[static 4]);
 
+// Modular inverse modulo p_25519 = 2^255 - 19
+// Input x[4]; output z[4]
+extern void bignum_inv_p25519(uint64_t z[static 4],uint64_t x[static 4]);
+
 // Test bignum for zero-ness, x = 0
 // Input x[k]; output function return
 extern uint64_t bignum_iszero (uint64_t k, uint64_t *x);

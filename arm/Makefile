@@ -107,6 +107,7 @@ POINT_OBJ = curve25519/curve25519_ladderstep.o \
 BIGNUM_OBJ = curve25519/bignum_add_p25519.o \
              curve25519/bignum_cmul_p25519.o \
              curve25519/bignum_double_p25519.o \
+             curve25519/bignum_inv_p25519.o \
              curve25519/bignum_mod_p25519_4.o \
              curve25519/bignum_mul_p25519.o \
              curve25519/bignum_mul_p25519_alt.o \
