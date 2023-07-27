@@ -9683,19 +9683,18 @@ TEST(SSLTest, InvalidSignatureAlgorithm) {
       ctx.get(), kDuplicatePrefs, OPENSSL_ARRAY_SIZE(kDuplicatePrefs)));
 }
 
-TEST(SSLTest, ErrorStrings){
+TEST(SSLTest, ErrorStrings) {
   int warning_value = SSL3_AD_CLOSE_NOTIFY | (SSL3_AL_WARNING << 8);
   int fatal_value = SSL3_AD_UNEXPECTED_MESSAGE | (SSL3_AL_FATAL << 8);
   int unknown_value = 99999;
 
-  EXPECT_EQ(SSL_alert_desc_string(warning_value), "CN");
-  EXPECT_EQ(SSL_alert_desc_string(fatal_value), "UM");
-  EXPECT_EQ(SSL_alert_desc_string(unknown_value), "UK");
+  EXPECT_EQ(strncmp(SSL_alert_desc_string(warning_value), "CN", 2), 0);
+  EXPECT_EQ(strncmp(SSL_alert_desc_string(fatal_value), "UM", 2), 0);
+  EXPECT_EQ(strncmp(SSL_alert_desc_string(unknown_value), "UK", 2), 0);
 
-  EXPECT_EQ(SSL_alert_type_string(warning_value), "W");
-  EXPECT_EQ(SSL_alert_type_string(fatal_value), "F");
-  EXPECT_EQ(SSL_alert_type_string(unknown_value), "U");
-
+  EXPECT_EQ(strncmp(SSL_alert_type_string(warning_value), "W", 1), 0);
+  EXPECT_EQ(strncmp(SSL_alert_type_string(fatal_value), "F", 1), 0);
+  EXPECT_EQ(strncmp(SSL_alert_type_string(unknown_value), "U", 1), 0);
 }
 
 }  // namespace

@@ -102,6 +102,7 @@ const char *SSL_state_string(const SSL *ssl) {
 }
 
 const char *SSL_alert_type_string_long(int value) {
+  value &= 0x0f00;
   value >>= 8;
   if (value == SSL3_AL_WARNING) {
     return "warning";
@@ -113,6 +114,7 @@ const char *SSL_alert_type_string_long(int value) {
 }
 
 const char *SSL_alert_type_string(int value) {
+  value &= 0x0f00;
   value >>= 8;
   if (value == SSL3_AL_WARNING) {
     return "W";
