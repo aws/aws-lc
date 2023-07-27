@@ -24,9 +24,6 @@
 
 #include "cpu_aarch64.h"
 
-extern uint32_t OPENSSL_armcap_P;
-extern uint8_t OPENSSL_cpucap_initialized;
-
 static int has_hw_feature(const char *name) {
   int value;
   size_t len = sizeof(value);

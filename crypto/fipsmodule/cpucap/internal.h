@@ -159,6 +159,7 @@ OPENSSL_INLINE int CRYPTO_is_VBMI2_capable(void) {
 #include <openssl/arm_arch.h>
 
 extern uint32_t OPENSSL_armcap_P;
+extern uint8_t OPENSSL_cpucap_initialized;
 
 // CRYPTO_is_NEON_capable returns true if the current CPU has a NEON unit.
 // If this is known statically, it is a constant inline function.

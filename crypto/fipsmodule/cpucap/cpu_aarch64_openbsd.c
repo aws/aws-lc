@@ -26,7 +26,6 @@
 
 #include "internal.h"
 
-extern uint32_t OPENSSL_armcap_P;
 
 void OPENSSL_cpuid_setup(void) {
   // CTL_MACHDEP from sys/sysctl.h

@@ -95,9 +95,6 @@ err:
   return ret;
 }
 
-extern uint32_t OPENSSL_armcap_P;
-extern uint8_t OPENSSL_cpucap_initialized;
-
 static int g_needs_hwcap2_workaround;
 
 void OPENSSL_cpuid_setup(void) {
