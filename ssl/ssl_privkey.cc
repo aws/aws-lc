@@ -368,13 +368,7 @@ enum ssl_private_key_result_t ssl_private_key_decrypt(SSL_HANDSHAKE *hs,
   return ssl_private_key_success;
 }
 
-bool ssl_private_key_supports_signature_algorithm(SSL_HANDSHAKE *hs,
-                                                  uint16_t sigalg) {
-  SSL *const ssl = hs->ssl;
-  if (!pkey_supports_algorithm(ssl, hs->local_pubkey.get(), sigalg)) {
-    return false;
-  }
-
+static bool ssl_public_key_rsa_pss_check(EVP_PKEY *pubkey, uint16_t sigalg) {
   // Ensure the RSA key is large enough for the hash. RSASSA-PSS requires that
   // emLen be at least hLen + sLen + 2. Both hLen and sLen are the size of the
   // hash in TLS. Reasonable RSA key sizes are large enough for the largest
@@ -382,12 +376,57 @@ bool ssl_private_key_supports_signature_algorithm(SSL_HANDSHAKE *hs,
   // SHA-512. 1024-bit RSA is sometimes used for test credentials, so check the
   // size so that we can fall back to another algorithm in that case.
   const SSL_SIGNATURE_ALGORITHM *alg = get_signature_algorithm(sigalg);
-  if (alg->is_rsa_pss && (size_t)EVP_PKEY_size(hs->local_pubkey.get()) <
-                             2 * EVP_MD_size(alg->digest_func()) + 2) {
+  if (alg->is_rsa_pss &&
+      (size_t)EVP_PKEY_size(pubkey) < 2 * EVP_MD_size(alg->digest_func()) + 2) {
+    return false;
+  }
+  return true;
+}
+
+bool ssl_public_key_supports_signature_algorithm(SSL_HANDSHAKE *hs,
+                                                 uint16_t sigalg) {
+  SSL *const ssl = hs->ssl;
+  if (!pkey_supports_algorithm(ssl, hs->local_pubkey.get(), sigalg)) {
+    return false;
+  }
+
+  if (!ssl_public_key_rsa_pss_check(hs->local_pubkey.get(), sigalg)) {
     return false;
   }
 
   return true;
+}
+
+bool ssl_cert_private_keys_supports_signature_algorithm(SSL_HANDSHAKE *hs,
+                                                        uint16_t sigalg) {
+  SSL *const ssl = hs->ssl;
+  CERT *cert = hs->config->cert.get();
+  // Only the server without designated credentials has support for multiple
+  // certificate slots.
+  if (cert == nullptr || !ssl->server || ssl_signing_with_dc(hs)) {
+    return false;
+  }
+
+  for (size_t i = 0; i < cert->cert_private_keys.size(); i++) {
+    EVP_PKEY *private_key = cert->cert_private_keys[i].privatekey.get();
+    if (private_key != nullptr &&
+        pkey_supports_algorithm(ssl, private_key, sigalg)) {
+      STACK_OF(CRYPTO_BUFFER) *chain = cert->cert_private_keys[i].chain.get();
+      CBS leaf;
+      CRYPTO_BUFFER_init_CBS(sk_CRYPTO_BUFFER_value(chain, 0), &leaf);
+      UniquePtr<EVP_PKEY> pubkey = ssl_cert_parse_pubkey(&leaf);
+      if (!ssl_public_key_rsa_pss_check(pubkey.get(), sigalg)) {
+        return false;
+      }
+
+      // If the server has a valid private key available to use, we switch to
+      // using that certificate for the rest of the connection.
+      cert->cert_private_key_idx = (int)i;
+      hs->local_pubkey = std::move(pubkey);
+      return true;
+    }
+  }
+  return false;
 }
 
 BSSL_NAMESPACE_END

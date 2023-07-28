@@ -805,7 +805,14 @@ bool ssl_on_certificate_selected(SSL_HANDSHAKE *hs) {
     return false;
   }
 
-  // |cert_private_keys| already checked above in |ssl_has_certificate|.
+  return ssl_handshake_load_local_pubkey(hs);
+}
+
+bool ssl_handshake_load_local_pubkey(SSL_HANDSHAKE *hs) {
+  if (!ssl_cert_check_cert_private_keys_usage(hs->config->cert.get())) {
+    return false;
+  }
+
   STACK_OF(CRYPTO_BUFFER) *chain =
       hs->config->cert
           ->cert_private_keys[hs->config->cert->cert_private_key_idx]
