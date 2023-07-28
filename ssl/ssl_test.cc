@@ -9688,13 +9688,13 @@ TEST(SSLTest, ErrorStrings) {
   int fatal_value = SSL3_AD_UNEXPECTED_MESSAGE | (SSL3_AL_FATAL << 8);
   int unknown_value = 99999;
 
-  EXPECT_EQ(strncmp(SSL_alert_desc_string(warning_value), "CN", 2), 0);
-  EXPECT_EQ(strncmp(SSL_alert_desc_string(fatal_value), "UM", 2), 0);
-  EXPECT_EQ(strncmp(SSL_alert_desc_string(unknown_value), "UK", 2), 0);
+  EXPECT_EQ(Bytes(SSL_alert_desc_string(warning_value)), Bytes("CN"));
+  EXPECT_EQ(Bytes(SSL_alert_desc_string(fatal_value)), Bytes("UM"));
+  EXPECT_EQ(Bytes(SSL_alert_desc_string(unknown_value)), Bytes("UK"));
 
-  EXPECT_EQ(strncmp(SSL_alert_type_string(warning_value), "W", 1), 0);
-  EXPECT_EQ(strncmp(SSL_alert_type_string(fatal_value), "F", 1), 0);
-  EXPECT_EQ(strncmp(SSL_alert_type_string(unknown_value), "U", 1), 0);
+  EXPECT_EQ(Bytes(SSL_alert_type_string(warning_value)), Bytes("W"));
+  EXPECT_EQ(Bytes(SSL_alert_type_string(fatal_value)), Bytes("F"));
+  EXPECT_EQ(Bytes(SSL_alert_type_string(unknown_value)), Bytes("U"));
 }
 
 }  // namespace
