@@ -111,13 +111,13 @@ let points_to_EC_WRAPPED_SCALAR ptr scalar = do {
   crucible_points_to_untyped (crucible_field ptr "scalar") (crucible_term scalar);
 };
 
-let points_to_EC_RAW_POINT ptr point = do {
+let points_to_EC_JACOBIAN ptr point = do {
   crucible_points_to_untyped (crucible_field ptr "X") (crucible_term {{ point.X }});
   crucible_points_to_untyped (crucible_field ptr "Y") (crucible_term {{ point.Y }});
   crucible_points_to_untyped (crucible_field ptr "Z") (crucible_term {{ point.Z }});
 };
 
-let points_to_fresh_EC_RAW_POINT ptr = do {
+let points_to_fresh_EC_JACOBIAN ptr = do {
   X <- crucible_fresh_var "raw.X" i384;
   crucible_points_to_untyped (crucible_field ptr "X") (crucible_term X);
   Y <- crucible_fresh_var "raw.Y" i384;
@@ -129,12 +129,12 @@ let points_to_fresh_EC_RAW_POINT ptr = do {
 
 let points_to_ec_point_st ptr group_ptr point = do {
   crucible_points_to (crucible_field ptr "group") group_ptr;
-  points_to_EC_RAW_POINT (crucible_field ptr "raw") point;
+  points_to_EC_JACOBIAN (crucible_field ptr "raw") point;
 };
 
 let points_to_fresh_ec_point_st ptr group_ptr = do {
   crucible_points_to (crucible_field ptr "group") group_ptr;
-  points_to_fresh_EC_RAW_POINT (crucible_field ptr "raw");
+  points_to_fresh_EC_JACOBIAN (crucible_field ptr "raw");
 };
 
 let pointer_to_fresh_ec_group_st_with_curve_name curve_name = do {
@@ -616,28 +616,28 @@ let bn_rand_range_words_spec = do {
 
 let ec_point_mul_scalar_spec = do {
   group_ptr <- pointer_to_fresh_ec_group_st;
-  r_ptr <- crucible_alloc (llvm_struct "struct.EC_RAW_POINT");
-  p_ptr <- crucible_alloc_readonly (llvm_struct "struct.EC_RAW_POINT");
-  p <- points_to_fresh_EC_RAW_POINT p_ptr;
+  r_ptr <- crucible_alloc (llvm_struct "struct.EC_JACOBIAN");
+  p_ptr <- crucible_alloc_readonly (llvm_struct "struct.EC_JACOBIAN");
+  p <- points_to_fresh_EC_JACOBIAN p_ptr;
   (scalar, scalar_ptr) <- ptr_to_fresh_readonly "p_scalar" i384;
   crucible_precond {{ (scalarFromBV scalar) % `P384_n == scalarFromBV scalar }};
 
   crucible_execute_func [group_ptr, r_ptr, p_ptr, scalar_ptr];
 
-  points_to_EC_RAW_POINT r_ptr
+  points_to_EC_JACOBIAN r_ptr
     {{ jacobianToMontBV (ec_point_jacobian_scalar_mul (scalarFromBV scalar) (jacobianFromMontBV p)) }};
   crucible_return (crucible_term {{ 1 : [32] }});
 };
 
 let ec_GFp_mont_mul_base_spec = do {
   group_ptr <- pointer_to_fresh_ec_group_st;
-  r_ptr <- crucible_alloc (llvm_struct "struct.EC_RAW_POINT");
+  r_ptr <- crucible_alloc (llvm_struct "struct.EC_JACOBIAN");
   (scalar, scalar_ptr) <- ptr_to_fresh_readonly "scalar" i384;
   crucible_precond {{ (scalarFromBV scalar) % `P384_n == scalarFromBV scalar }};
 
   crucible_execute_func [group_ptr, r_ptr, scalar_ptr];
 
-  points_to_EC_RAW_POINT r_ptr {{ jacobianToMontBV (ec_point_jacobian_scalar_mul (scalarFromBV scalar) P384_G_Jacobian) }};
+  points_to_EC_JACOBIAN r_ptr {{ jacobianToMontBV (ec_point_jacobian_scalar_mul (scalarFromBV scalar) P384_G_Jacobian) }};
 };
 
 // This spec is very similar to that of ec_GFp_mont_mul_base, as this
@@ -651,17 +651,17 @@ let ec_point_mul_scalar_base_spec = do {
 
 let ec_point_mul_scalar_public_spec = do {
   group_ptr <- pointer_to_fresh_ec_group_st;
-  r_ptr <- crucible_alloc (llvm_struct "struct.EC_RAW_POINT");
+  r_ptr <- crucible_alloc (llvm_struct "struct.EC_JACOBIAN");
   (g_scalar, g_scalar_ptr) <- ptr_to_fresh_readonly "g_scalar" i384;
-  p_ptr <- crucible_alloc_readonly (llvm_struct "struct.EC_RAW_POINT");
-  p <- points_to_fresh_EC_RAW_POINT p_ptr;
+  p_ptr <- crucible_alloc_readonly (llvm_struct "struct.EC_JACOBIAN");
+  p <- points_to_fresh_EC_JACOBIAN p_ptr;
   (p_scalar, p_scalar_ptr) <- ptr_to_fresh_readonly "p_scalar" i384;
   crucible_precond {{ (scalarFromBV g_scalar) % `P384_n == scalarFromBV g_scalar }};
   crucible_precond {{ (scalarFromBV p_scalar) % `P384_n == scalarFromBV p_scalar }};
 
   crucible_execute_func [group_ptr, r_ptr, g_scalar_ptr, p_ptr, p_scalar_ptr];
 
-  points_to_EC_RAW_POINT r_ptr
+  points_to_EC_JACOBIAN r_ptr
     {{ jacobianToMontBV (ec_point_jacobian_add (ec_point_jacobian_scalar_mul (scalarFromBV g_scalar) P384_G_Jacobian) (ec_point_jacobian_scalar_mul (scalarFromBV p_scalar) (jacobianFromMontBV p))) }};
   crucible_return (crucible_term {{ 1 : [32] }});
 };
@@ -672,25 +672,25 @@ let ec_point_mul_scalar_public_spec = do {
 // call site to ec_GFp_mont_mul_public_batch.
 let ec_GFp_mont_mul_public_batch_spec = do {
   group_ptr <- pointer_to_fresh_ec_group_st;
-  r_ptr <- llvm_alloc (llvm_struct "struct.EC_RAW_POINT");
+  r_ptr <- llvm_alloc (llvm_struct "struct.EC_JACOBIAN");
   (g_scalar, g_scalar_ptr) <- ptr_to_fresh_readonly "g_scalar" i384;
-  p_ptr <- llvm_alloc_readonly (llvm_struct "struct.EC_RAW_POINT");
-  p <- points_to_fresh_EC_RAW_POINT p_ptr;
+  p_ptr <- llvm_alloc_readonly (llvm_struct "struct.EC_JACOBIAN");
+  p <- points_to_fresh_EC_JACOBIAN p_ptr;
   (p_scalar, p_scalar_ptr) <- ptr_to_fresh_readonly "p_scalar" i384;
   llvm_precond {{ (scalarFromBV g_scalar) % `P384_n == scalarFromBV g_scalar }};
   llvm_precond {{ (scalarFromBV p_scalar) % `P384_n == scalarFromBV p_scalar }};
 
   llvm_execute_func [group_ptr, r_ptr, g_scalar_ptr, p_ptr, p_scalar_ptr, llvm_term {{ 1 : [64] }}];
 
-  points_to_EC_RAW_POINT r_ptr
+  points_to_EC_JACOBIAN r_ptr
     {{ jacobianToMontBV (ec_point_jacobian_add (ec_point_jacobian_scalar_mul (scalarFromBV g_scalar) P384_G_Jacobian) (ec_point_jacobian_scalar_mul (scalarFromBV p_scalar) (jacobianFromMontBV p))) }};
   llvm_return (llvm_term {{ 1 : [32] }});
 };
 
 let ec_cmp_x_coordinate_spec = do {
   group_ptr <- pointer_to_fresh_ec_group_st;
-  p_ptr <- crucible_alloc_readonly (llvm_struct "struct.EC_RAW_POINT");
-  p <- points_to_fresh_EC_RAW_POINT p_ptr;
+  p_ptr <- crucible_alloc_readonly (llvm_struct "struct.EC_JACOBIAN");
+  p <- points_to_fresh_EC_JACOBIAN p_ptr;
   (r, r_ptr) <- ptr_to_fresh_readonly "r" i384;
 
   crucible_execute_func [group_ptr, p_ptr, r_ptr];
@@ -707,8 +707,8 @@ let ec_GFp_mont_cmp_x_coordinate_spec = ec_cmp_x_coordinate_spec;
 let ec_get_x_coordinate_as_scalar_spec = do {
   group_ptr <- pointer_to_fresh_ec_group_st;
   out_ptr <- crucible_alloc i384;
-  p_ptr <- crucible_alloc_readonly (llvm_struct "struct.EC_RAW_POINT");
-  p <- points_to_fresh_EC_RAW_POINT p_ptr;
+  p_ptr <- crucible_alloc_readonly (llvm_struct "struct.EC_JACOBIAN");
+  p <- points_to_fresh_EC_JACOBIAN p_ptr;
 
   crucible_execute_func [group_ptr, out_ptr, p_ptr];
 
@@ -720,8 +720,8 @@ let ec_get_x_coordinate_as_bytes_spec = do {
   group_ptr <- pointer_to_fresh_ec_group_st;
   out_ptr <- crucible_alloc (llvm_array EC_MAX_BYTES i8);
   out_len_ptr <- crucible_alloc i64;
-  p_ptr <- crucible_alloc_readonly (llvm_struct "struct.EC_RAW_POINT");
-  p <- points_to_fresh_EC_RAW_POINT p_ptr;
+  p_ptr <- crucible_alloc_readonly (llvm_struct "struct.EC_JACOBIAN");
+  p <- points_to_fresh_EC_JACOBIAN p_ptr;
 
   crucible_execute_func [group_ptr, out_ptr, out_len_ptr, (crucible_term {{ `EC_MAX_BYTES : [64] }}), p_ptr];
 
@@ -736,8 +736,8 @@ let ec_get_x_coordinate_as_bytes_spec = do {
 // unusually wrong.
 let ec_GFp_simple_is_on_curve_spec = do {
   group_ptr <- pointer_to_fresh_ec_group_st;
-  point_ptr <- llvm_alloc_readonly (llvm_struct "struct.EC_RAW_POINT");
-  _point <- points_to_fresh_EC_RAW_POINT point_ptr;
+  point_ptr <- llvm_alloc_readonly (llvm_struct "struct.EC_JACOBIAN");
+  _point <- points_to_fresh_EC_JACOBIAN point_ptr;
 
   llvm_execute_func [group_ptr, point_ptr];
 

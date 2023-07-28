@@ -10,7 +10,11 @@ set -ex
 # TODO: reenable proof on SHA-256 when resolved https://github.com/awslabs/aws-lc-verification/issues/32
 # If |*_SELECTCHECK| env variable exists, skip quick check of other algorithms.
 if [ -n "${AES_GCM_SELECTCHECK}" ]; then
-  (cd proof/AES && go run AES-GCM-check-entrypoint.go)
+  # The proof for aesni_gcm_en[de]crypt requires having more than 6 function arguments.
+  # Disabling the following proof due to lack of support of such a scenario in SAW.
+  # The existing proof works on AWS-LC commit 7bdae64
+  # (https://github.com/aws/aws-lc/commit/7bdae649ee6a723a5197e27ec3770c37f6a64e85) and before
+  # (cd proof/AES && go run AES-GCM-check-entrypoint.go)
   return
 fi
 
