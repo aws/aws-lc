@@ -1098,10 +1098,10 @@ sha512_block_armv8:
 Lv8_entry:
 #ifdef BORINGSSL_DISPATCH_TEST
 
-	adrp	x6,_BORINGSSL_function_hit@PAGE
-	add	x6, x6, _BORINGSSL_function_hit@PAGEOFF
-	mov	w7, #1
-	strb	w7, [x6,#2] // kFlag_sha512_hw
+	adrp	x9,_BORINGSSL_function_hit@PAGE
+	add	x9, x9, _BORINGSSL_function_hit@PAGEOFF
+	mov	w10, #1
+	strb	w10, [x9,#2] // kFlag_sha512_hw
 #endif
 	stp	x29,x30,[sp,#-16]!
 	add	x29,sp,#0

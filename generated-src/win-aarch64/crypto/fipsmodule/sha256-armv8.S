@@ -1079,10 +1079,10 @@ sha256_block_armv8:
 Lv8_entry:
 #ifdef BORINGSSL_DISPATCH_TEST
 
-	adrp	x6,BORINGSSL_function_hit
-	add	x6, x6, :lo12:BORINGSSL_function_hit
-	mov	w7, #1
-	strb	w7, [x6,#6] // kFlag_sha256_hw
+	adrp	x9,BORINGSSL_function_hit
+	add	x9, x9, :lo12:BORINGSSL_function_hit
+	mov	w10, #1
+	strb	w10, [x9,#6] // kFlag_sha256_hw
 #endif
 	// Armv8.3-A PAuth: even though x30 is pushed to stack it is not popped later.
 	stp	x29,x30,[sp,#-16]!
