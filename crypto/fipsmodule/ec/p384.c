@@ -474,7 +474,7 @@ static void p384_point_add(p384_felem x3, p384_felem y3, p384_felem z3,
 // Takes the Jacobian coordinates (X, Y, Z) of a point and returns:
 //   (X', Y') = (X/Z^2, Y/Z^3).
 static int ec_GFp_nistp384_point_get_affine_coordinates(
-    const EC_GROUP *group, const EC_RAW_POINT *point,
+    const EC_GROUP *group, const EC_JACOBIAN *point,
     EC_FELEM *x_out, EC_FELEM *y_out) {
 
   if (ec_GFp_simple_is_at_infinity(group, point)) {
@@ -505,8 +505,8 @@ static int ec_GFp_nistp384_point_get_affine_coordinates(
   return 1;
 }
 
-static void ec_GFp_nistp384_add(const EC_GROUP *group, EC_RAW_POINT *r,
-                                const EC_RAW_POINT *a, const EC_RAW_POINT *b) {
+static void ec_GFp_nistp384_add(const EC_GROUP *group, EC_JACOBIAN *r,
+                                const EC_JACOBIAN *a, const EC_JACOBIAN *b) {
   p384_felem x1, y1, z1, x2, y2, z2;
   p384_from_generic(x1, &a->X);
   p384_from_generic(y1, &a->Y);
@@ -520,8 +520,8 @@ static void ec_GFp_nistp384_add(const EC_GROUP *group, EC_RAW_POINT *r,
   p384_to_generic(&r->Z, z1);
 }
 
-static void ec_GFp_nistp384_dbl(const EC_GROUP *group, EC_RAW_POINT *r,
-                                const EC_RAW_POINT *a) {
+static void ec_GFp_nistp384_dbl(const EC_GROUP *group, EC_JACOBIAN *r,
+                                const EC_JACOBIAN *a) {
   p384_felem x, y, z;
   p384_from_generic(x, &a->X);
   p384_from_generic(y, &a->Y);
@@ -568,7 +568,7 @@ static int ec_GFp_nistp384_mont_felem_from_bytes(
 }
 
 static int ec_GFp_nistp384_cmp_x_coordinate(const EC_GROUP *group,
-                                            const EC_RAW_POINT *p,
+                                            const EC_JACOBIAN *p,
                                             const EC_SCALAR *r) {
   if (ec_GFp_simple_is_at_infinity(group, p)) {
     return 0;
@@ -667,7 +667,7 @@ OPENSSL_STATIC_ASSERT(P384_MUL_WSIZE == 5,
 #define P384_MUL_WSIZE_MASK   ((P384_MUL_TWO_TO_WSIZE << 1) - 1)
 
 // Number of |P384_MUL_WSIZE|-bit windows in a 384-bit value
-#define P384_MUL_NWINDOWS     ((384 + P384_MUL_WSIZE - 1)/P384_MUL_WSIZE) 
+#define P384_MUL_NWINDOWS     ((384 + P384_MUL_WSIZE - 1)/P384_MUL_WSIZE)
 
 // For the public point in |ec_GFp_nistp384_point_mul_public| function
 // we use window size w = 5.
@@ -756,8 +756,8 @@ static void p384_select_point_affine(p384_felem out[2],
 //          negate it if s_i is negative, and add it to the accumulator.
 //
 // Note: this function is constant-time.
-static void ec_GFp_nistp384_point_mul(const EC_GROUP *group, EC_RAW_POINT *r,
-                                      const EC_RAW_POINT *p,
+static void ec_GFp_nistp384_point_mul(const EC_GROUP *group, EC_JACOBIAN *r,
+                                      const EC_JACOBIAN *p,
                                       const EC_SCALAR *scalar) {
 
   p384_felem res[3] = {{0}, {0}, {0}}, tmp[3] = {{0}, {0}, {0}}, ftmp;
@@ -902,7 +902,7 @@ static void ec_GFp_nistp384_point_mul(const EC_GROUP *group, EC_RAW_POINT *r,
 //
 // Note: this function is constant-time.
 static void ec_GFp_nistp384_point_mul_base(const EC_GROUP *group,
-                                           EC_RAW_POINT *r,
+                                           EC_JACOBIAN *r,
                                            const EC_SCALAR *scalar) {
 
   p384_felem res[3] = {{0}, {0}, {0}}, tmp[3] = {{0}, {0}, {0}}, ftmp;
@@ -1009,9 +1009,9 @@ static void ec_GFp_nistp384_point_mul_base(const EC_GROUP *group,
 //
 // Note: this function is NOT constant-time.
 static void ec_GFp_nistp384_point_mul_public(const EC_GROUP *group,
-                                             EC_RAW_POINT *r,
+                                             EC_JACOBIAN *r,
                                              const EC_SCALAR *g_scalar,
-                                             const EC_RAW_POINT *p,
+                                             const EC_JACOBIAN *p,
                                              const EC_SCALAR *p_scalar) {
 
   p384_felem res[3] = {{0}, {0}, {0}}, two_p[3] = {{0}, {0}, {0}}, ftmp;

@@ -128,12 +128,10 @@ typedef void (*ghash_func)(uint64_t Xi[2], const u128 Htable[16],
                            const uint8_t *inp, size_t len);
 
 typedef struct gcm128_key_st {
-  // Note the MOVBE-based, x86-64, GHASH assembly requires |H| and |Htable| to
-  // be the first two elements of this struct. Additionally, some assembly
-  // routines require a 16-byte-aligned |Htable| when hashing data, but not
+  // |gcm_*_ssse3| require a 16-byte-aligned |Htable| when hashing data, but not
   // initialization. |GCM128_KEY| is not itself aligned to simplify embedding in
   // |EVP_AEAD_CTX|, but |Htable|'s offset must be a multiple of 16.
-  u128 H;
+  // TODO(crbug.com/boringssl/604): Revisit this.
   u128 Htable[16];
   gmult_func gmult;
   ghash_func ghash;
@@ -156,10 +154,8 @@ typedef struct {
     crypto_word_t t[16 / sizeof(crypto_word_t)];
   } Yi, EKi, EK0, len, Xi;
 
-  // Note that the order of |Xi| and |gcm_key| is fixed by the MOVBE-based,
-  // x86-64, GHASH assembly. Additionally, some assembly routines require
-  // |gcm_key| to be 16-byte aligned. |GCM128_KEY| is not itself aligned to
-  // simplify embedding in |EVP_AEAD_CTX|.
+  // |gcm_*_ssse3| require |Htable| to be 16-byte-aligned.
+  // TODO(crbug.com/boringssl/604): Revisit this.
   alignas(16) GCM128_KEY gcm_key;
 
   unsigned mres, ares;
@@ -192,7 +188,7 @@ int crypto_gcm_avx512_enabled(void);
 // accelerated) functions for performing operations in the GHASH field. If the
 // AVX implementation was used |*out_is_avx| will be true.
 void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
-                       u128 *out_key, u128 out_table[16], int *out_is_avx,
+                       u128 out_table[16], int *out_is_avx,
                        const uint8_t gcm_key[16]);
 
 // CRYPTO_gcm128_init_key initialises |gcm_key| to use |block| (typically AES)
@@ -292,9 +288,11 @@ void gcm_ghash_avx512(uint64_t Xi[2], const u128 Htable[16], const uint8_t *in,
                       size_t len);
 #define HW_GCM
 size_t aesni_gcm_encrypt(const uint8_t *in, uint8_t *out, size_t len,
-                         const AES_KEY *key, uint8_t ivec[16], uint64_t *Xi);
+                         const AES_KEY *key, uint8_t ivec[16],
+                         const u128 Htable[16], uint64_t *Xi);
 size_t aesni_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
-                         const AES_KEY *key, uint8_t ivec[16], uint64_t *Xi);
+                         const AES_KEY *key, uint8_t ivec[16],
+                         const u128 Htable[16], uint64_t *Xi);
 void gcm_setiv_avx512(const AES_KEY *key, const GCM128_CONTEXT *ctx,
                       const uint8_t *iv, size_t ivlen);
 void aes_gcm_encrypt_avx512(const AES_KEY *key, const GCM128_CONTEXT *ctx,
@@ -338,24 +336,32 @@ void gcm_ghash_neon(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
 
 // These functions are defined in aesv8-gcm-armv8.pl.
 void aes_gcm_enc_kernel(const uint8_t *in, uint64_t in_bits, void *out,
-                        void *Xi, uint8_t *ivec, const AES_KEY *key);
+                        void *Xi, uint8_t *ivec, const AES_KEY *key,
+                        const u128 Htable[16]);
 void aes_gcm_dec_kernel(const uint8_t *in, uint64_t in_bits, void *out,
-                        void *Xi, uint8_t *ivec, const AES_KEY *key);
+                        void *Xi, uint8_t *ivec, const AES_KEY *key,
+                        const u128 Htable[16]);
 
 // These functions are defined in aesv8-gcm-armv8-unroll8.pl.
 // They take input length in BITS and return number of BYTES processed.
 size_t aesv8_gcm_8x_enc_128(const uint8_t *in, size_t bit_len, uint8_t *out,
-                            uint64_t *Xi, uint8_t ivec[16], const AES_KEY *key);
+                            uint64_t *Xi, uint8_t ivec[16], const AES_KEY *key,
+                            const u128 Htable[16]);
 size_t aesv8_gcm_8x_dec_128(const uint8_t *in, size_t bit_len, uint8_t *out,
-                            uint64_t *Xi, uint8_t ivec[16], const AES_KEY *key);
+                            uint64_t *Xi, uint8_t ivec[16], const AES_KEY *key,
+                            const u128 Htable[16]);
 size_t aesv8_gcm_8x_enc_192(const uint8_t *in, size_t bit_len, uint8_t *out,
-                            uint64_t *Xi, uint8_t ivec[16], const AES_KEY *key);
+                            uint64_t *Xi, uint8_t ivec[16], const AES_KEY *key,
+                            const u128 Htable[16]);
 size_t aesv8_gcm_8x_dec_192(const uint8_t *in, size_t bit_len, uint8_t *out,
-                            uint64_t *Xi, uint8_t ivec[16], const AES_KEY *key);
+                            uint64_t *Xi, uint8_t ivec[16], const AES_KEY *key,
+                            const u128 Htable[16]);
 size_t aesv8_gcm_8x_enc_256(const uint8_t *in, size_t bit_len, uint8_t *out,
-                            uint64_t *Xi, uint8_t ivec[16], const AES_KEY *key);
+                            uint64_t *Xi, uint8_t ivec[16], const AES_KEY *key,
+                            const u128 Htable[16]);
 size_t aesv8_gcm_8x_dec_256(const uint8_t *in, size_t bit_len, uint8_t *out,
-                            uint64_t *Xi, uint8_t ivec[16], const AES_KEY *key);
+                            uint64_t *Xi, uint8_t ivec[16], const AES_KEY *key,
+                            const u128 Htable[16]);
 #endif
 
 #elif defined(OPENSSL_PPC64LE)
@@ -447,17 +453,10 @@ size_t CRYPTO_xts128_encrypt(const XTS128_CONTEXT *ctx,
 // similar to the one that GHASH uses. See
 // https://www.rfc-editor.org/rfc/rfc8452.html#section-3.
 
-typedef union {
-  uint64_t u[2];
-  uint8_t c[16];
-} polyval_block;
-
 struct polyval_ctx {
-  // Note that the order of |S|, |H| and |Htable| is fixed by the MOVBE-based,
-  // x86-64, GHASH assembly. Additionally, some assembly routines require
-  // |Htable| to be 16-byte aligned.
-  polyval_block S;
-  u128 H;
+  uint64_t S[2];
+  // |gcm_*_ssse3| require |Htable| to be 16-byte-aligned.
+  // TODO(crbug.com/boringssl/604): Revisit this.
   alignas(16) u128 Htable[16];
   gmult_func gmult;
   ghash_func ghash;

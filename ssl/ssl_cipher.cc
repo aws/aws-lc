@@ -1346,6 +1346,19 @@ bool ssl_create_cipher_list(UniquePtr<SSLCipherPreferenceList> *out_cipher_list,
   return true;
 }
 
+int ssl_get_certificate_slot_index(const EVP_PKEY *pkey) {
+  switch (EVP_PKEY_id(pkey)) {
+    case EVP_PKEY_RSA:
+      return SSL_PKEY_RSA;
+    case EVP_PKEY_EC:
+      return SSL_PKEY_ECC;
+    case EVP_PKEY_ED25519:
+      return SSL_PKEY_ED25519;
+    default:
+      return -1;
+  }
+}
+
 uint32_t ssl_cipher_auth_mask_for_key(const EVP_PKEY *key) {
   switch (EVP_PKEY_id(key)) {
     case EVP_PKEY_RSA:

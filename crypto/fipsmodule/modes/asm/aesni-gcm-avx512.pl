@@ -159,7 +159,7 @@ my $CTX_OFFSET_EK0       = (16 * 2);          #  ; (EK0) Encrypted Y0 counter (s
 my $CTX_OFFSET_AadLen    = (16 * 3);          #  ; (len.u[0]) Length of AAD which has been input
 my $CTX_OFFSET_InLen     = ((16 * 3) + 8);    #  ; (len.u[1]) Length of input data which will be encrypted or decrypted
 my $CTX_OFFSET_AadHash   = (16 * 4);          #  ; (Xi) Current hash
-my $CTX_OFFSET_HTable    = (16 * 6);          #  ; (Htable) Precomputed table (allows 16 values)
+my $CTX_OFFSET_HTable    = (16 * 5);          #  ; (Htable) Precomputed table (allows 16 values)
 
 # ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 # ;;; Helper functions
