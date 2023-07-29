@@ -1518,6 +1518,80 @@ let arm_STP = define
          else ASSIGNS entirety) s`;;
 
 (* ------------------------------------------------------------------------- *)
+(* SHA-related SIMD operations                                               *)
+(* ------------------------------------------------------------------------- *)
+
+let arm_SHA256H = define
+ `arm_SHA256H Rd Rn Rm =
+    \s:armstate.
+        let d = read Rd s
+        and n = read Rn s
+        and m = read Rm s in
+        let d' = sha256h d n m in
+        (Rd := d') s`;;
+
+let arm_SHA256H2 = define
+ `arm_SHA256H2 Rd Rn Rm =
+    \s:armstate.
+        let d = read Rd s
+        and n = read Rn s
+        and m = read Rm s in
+        let d' = sha256h2 d n m in
+        (Rd := d') s`;;
+
+let arm_SHA256SU0 = define
+ `arm_SHA256SU0 Rd Rm =
+    \s:armstate.
+        let d = read Rd s
+        and m = read Rm s in
+        let d' = sha256su0 d m in
+        (Rd := d') s`;;
+
+let arm_SHA256SU1 = define
+ `arm_SHA256SU1 Rd Rn Rm =
+    \s:armstate.
+        let d = read Rd s
+        and n = read Rn s
+        and m = read Rm s in
+        let d' = sha256su1 d n m in
+        (Rd := d') s`;;
+
+let arm_SHA512H = define
+ `arm_SHA512H Rd Rn Rm =
+    \s:armstate.
+        let d = read Rd s
+        and n = read Rn s
+        and m = read Rm s in
+        let d' = sha512h d n m in
+        (Rd := d') s`;;
+
+let arm_SHA512H2 = define
+ `arm_SHA512H2 Rd Rn Rm =
+    \s:armstate.
+        let d = read Rd s
+        and n = read Rn s
+        and m = read Rm s in
+        let d' = sha512h2 d n m in
+        (Rd := d') s`;;
+
+let arm_SHA512SU0 = define
+ `arm_SHA512SU0 Rd Rm =
+    \s:armstate.
+        let d = read Rd s
+        and m = read Rm s in
+        let d' = sha512su0 d m in
+        (Rd := d') s`;;
+
+let arm_SHA512SU1 = define
+ `arm_SHA512SU1 Rd Rn Rm =
+    \s:armstate.
+        let d = read Rd s
+        and n = read Rn s
+        and m = read Rm s in
+        let d' = sha512su1 d n m in
+        (Rd := d') s`;;
+
+(* ------------------------------------------------------------------------- *)
 (* Pseudo-instructions that are defined by ARM as aliases.                   *)
 (* ------------------------------------------------------------------------- *)
 
@@ -1931,7 +2005,16 @@ let ARM_OPERATION_CLAUSES =
        INST_TYPE[`:32`,`:N`] arm_ADCS;
        INST_TYPE[`:32`,`:N`] arm_ADDS;
        INST_TYPE[`:32`,`:N`] arm_SBCS;
-       INST_TYPE[`:32`,`:N`] arm_SUBS];;
+       INST_TYPE[`:32`,`:N`] arm_SUBS;
+    (*** SHA256 & SHA512 instructions from Carl Kwan ***)
+       arm_SHA256H;
+       arm_SHA256H2;
+       arm_SHA256SU0;
+       arm_SHA256SU1;
+       arm_SHA512H;
+       arm_SHA512H2;
+       arm_SHA512SU0;
+       arm_SHA512SU1 ];;
 
 let ARM_LOAD_STORE_CLAUSES =
   map (CONV_RULE(TOP_DEPTH_CONV let_CONV) o SPEC_ALL)

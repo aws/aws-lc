@@ -36,9 +36,35 @@ loadt "common/relational.ml";;
 loadt "common/interval.ml";;
 loadt "common/elf.ml";;
 
+(* ------------------------------------------------------------------------- *)
+(* Support for additional SHA instrinsics (from Carl Kwan)                   *)
+(* ------------------------------------------------------------------------- *)
+
+loadt "arm/proofs/sha256.ml";;
+loadt "arm/proofs/sha512.ml";;
+(* Adding extra conversions for SHA intrinsics *)
+extra_word_CONV :=
+        [SHA256H_REDUCE_CONV;
+         SHA256H2_REDUCE_CONV;
+         SHA256SU0_REDUCE_CONV;
+         SHA256SU1_REDUCE_CONV;
+         SHA512H_REDUCE_CONV;
+         SHA512H2_REDUCE_CONV;
+         SHA512SU0_REDUCE_CONV;
+         SHA512SU1_REDUCE_CONV]
+        @ (!extra_word_CONV);;
+
+(* ------------------------------------------------------------------------- *)
+(* The main ARM model.                                                       *)
+(* ------------------------------------------------------------------------- *)
+
 loadt "arm/proofs/instruction.ml";;
 loadt "arm/proofs/decode.ml";;
 loadt "arm/proofs/arm.ml";;
+
+(* ------------------------------------------------------------------------- *)
+(* Bignum material and standard overloading                                  *)
+(* ------------------------------------------------------------------------- *)
 
 prioritize_int();;
 prioritize_real();;
