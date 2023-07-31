@@ -64,10 +64,26 @@
 // reseeding.
 
 #if defined(BORINGSSL_FIPS)
-static const unsigned kReseedInterval = 16777216;
-#else
-static const unsigned kReseedInterval = 4096;
+
+// In the future this will be demoted to a build-time option.
+// Another entropy source will be promoted to the default source.
+#define FIPS_ENTROPY_SOURCE_JITTER_CPU 1
+
+#if !defined(FIPS_ENTROPY_SOURCE_JITTER_CPU)
+#error "Currently, Jitter CPU must be configured as the entropy source in FIPS mode"
 #endif
+
+static const unsigned kReseedInterval = 16777216;
+
+#else // defined(BORINGSSL_FIPS)
+
+#if defined(FIPS_ENTROPY_SOURCE_JITTER_CPU)
+#error "Jitter CPU must not be configured as the entropy source in non-FIPS mode"
+#endif
+
+static const unsigned kReseedInterval = 4096;
+
+#endif // defined(BORINGSSL_FIPS)
 
 // rand_thread_state contains the per-thread state for the RNG.
 struct rand_thread_state {
@@ -82,11 +98,13 @@ struct rand_thread_state {
   // a process.
   struct rand_thread_state *next, *prev;
 
+#if defined(FIPS_ENTROPY_SOURCE_JITTER_CPU)
   // In FIPS mode the entropy source is CPU Jitter so we assign an instance
   // of Jitter to each thread. The instance is initialized/destroyed at the same
   // time as the thread state is created/destroyed.
   struct rand_data *jitter_ec;
 #endif
+#endif // defined(BORINGSSL_FIPS)
 };
 
 #if defined(BORINGSSL_FIPS)
@@ -97,6 +115,78 @@ struct rand_thread_state {
 DEFINE_BSS_GET(struct rand_thread_state *, thread_states_list)
 DEFINE_STATIC_MUTEX(thread_states_list_lock)
 DEFINE_STATIC_MUTEX(state_clear_all_lock)
+
+static void rand_state_fips_clear(struct rand_thread_state *state) {
+  CTR_DRBG_clear(&state->drbg);
+
+#if defined(FIPS_ENTROPY_SOURCE_JITTER_CPU)
+  jent_entropy_collector_free(state->jitter_ec);
+#endif
+}
+
+static void rand_state_fips_init(struct rand_thread_state *state) {
+
+#if defined(FIPS_ENTROPY_SOURCE_JITTER_CPU)
+  // Initialize the thread-local Jitter instance.
+  state->jitter_ec = NULL;
+  // The first parameter passed to |jent_entropy_collector_alloc| function is
+  // the desired oversampling rate. Passing a 0 tells Jitter module to use
+  // the default rate (which is 3 in Jitter v3.1.0).
+  state->jitter_ec = jent_entropy_collector_alloc(0, JENT_FORCE_FIPS);
+  if (state->jitter_ec == NULL) {
+    abort();
+  }
+#endif
+}
+
+static void rand_state_fips_maybe_want_additional_input(
+  uint8_t additional_input[CTR_DRBG_ENTROPY_LEN],
+  size_t *additional_input_len) {
+
+  *additional_input_len = 0;
+
+#if defined(FIPS_ENTROPY_SOURCE_JITTER_CPU)
+  // In FIPS mode we get the entropy from CPU Jitter. In order to not rely
+  // completely on Jitter we add to |CTR_DRBG_init| additional data
+  // that we read from urandom.
+  CRYPTO_sysrand(additional_input, CTR_DRBG_ENTROPY_LEN);
+  *additional_input_len = CTR_DRBG_ENTROPY_LEN;
+#endif
+}
+
+// Caller must check that |state| is not null.
+static void CRYPTO_fips_get_from_entropy_source(struct rand_thread_state *state,
+  uint8_t *out_entropy, size_t out_entropy_len, int *out_want_additional_input) {
+
+#if defined(FIPS_ENTROPY_SOURCE_JITTER_CPU)
+  if (state->jitter_ec == NULL) {
+    abort();
+  }
+
+  // |jent_read_entropy| has a false positive health test failure rate of 2^-22.
+  // To avoid aborting so frequently, we retry 3 times.
+  size_t num_tries;
+  for (num_tries = 1; num_tries <= JITTER_MAX_NUM_TRIES; num_tries++) {
+    // Try to generate the required number of bytes with Jitter.
+    // If successful break out from the loop, otherwise try again.
+    if (jent_read_entropy(state->jitter_ec, (char *) out_entropy,
+                          out_entropy_len) == (ssize_t) out_entropy_len) {
+        break;
+    }
+    // If Jitter entropy failed to produce entropy we need to reset it.
+    jent_entropy_collector_free(state->jitter_ec);
+    state->jitter_ec = NULL;
+    state->jitter_ec = jent_entropy_collector_alloc(0, JENT_FORCE_FIPS);
+    if (state->jitter_ec == NULL) {
+      abort();
+    }
+  }
+
+  if (num_tries > JITTER_MAX_NUM_TRIES) {
+    abort();
+  }
+#endif
+}
 
 #if defined(_MSC_VER)
 #pragma section(".CRT$XCU", read)
@@ -110,20 +200,18 @@ __declspec(allocate(".CRT$XCU")) void(*fips_library_destructor)(void) =
 static void rand_thread_state_clear_all(void) __attribute__ ((destructor));
 #endif
 
-
 static void rand_thread_state_clear_all(void) {
   CRYPTO_STATIC_MUTEX_lock_write(thread_states_list_lock_bss_get());
   CRYPTO_STATIC_MUTEX_lock_write(state_clear_all_lock_bss_get());
   for (struct rand_thread_state *cur = *thread_states_list_bss_get();
        cur != NULL; cur = cur->next) {
-    CTR_DRBG_clear(&cur->drbg);
-
-    jent_entropy_collector_free(cur->jitter_ec);
+    rand_state_fips_clear(cur);
   }
   // The locks are deliberately left locked so that any threads that are still
   // running will hang if they try to call |RAND_bytes|.
 }
-#endif
+
+#endif // defined(BORINGSSL_FIPS)
 
 // rand_thread_state_free frees a |rand_thread_state|. This is called when a
 // thread exits.
@@ -149,9 +237,7 @@ static void rand_thread_state_free(void *state_in) {
 
   CRYPTO_STATIC_MUTEX_unlock_write(thread_states_list_lock_bss_get());
 
-  CTR_DRBG_clear(&state->drbg);
-
-  jent_entropy_collector_free(state->jitter_ec);
+  rand_state_fips_clear(state);
 #endif
 
   OPENSSL_free(state);
@@ -212,32 +298,12 @@ static void CRYPTO_get_fips_seed(uint8_t *out_entropy, size_t out_entropy_len,
   // to the current thread.
   struct rand_thread_state *state =
       CRYPTO_get_thread_local(OPENSSL_THREAD_LOCAL_RAND);
-  if (state == NULL || state->jitter_ec == NULL) {
+  if (state == NULL) {
     abort();
   }
 
-  // |jent_read_entropy| has a false positive health test failure rate of 2^-22.
-  // To avoid aborting so frequently, we retry 3 times.
-  size_t num_tries;
-  for (num_tries = 1; num_tries <= JITTER_MAX_NUM_TRIES; num_tries++) {
-    // Try to generate the required number of bytes with Jitter.
-    // If successful break out from the loop, otherwise try again.
-    if (jent_read_entropy(state->jitter_ec, (char *) out_entropy,
-                          out_entropy_len) == (ssize_t) out_entropy_len) {
-        break;
-    }
-    // If Jitter entropy failed to produce entropy we need to reset it.
-    jent_entropy_collector_free(state->jitter_ec);
-    state->jitter_ec = NULL;
-    state->jitter_ec = jent_entropy_collector_alloc(0, JENT_FORCE_FIPS);
-    if (state->jitter_ec == NULL) {
-      abort();
-    }
-  }
-
-  if (num_tries > JITTER_MAX_NUM_TRIES) {
-    abort();
-  }
+  CRYPTO_fips_get_from_entropy_source(state, out_entropy, out_entropy_len,
+    out_want_additional_input);
 }
 
 // rand_get_seed fills |seed| with entropy and sets |*out_want_additional_input|
@@ -314,15 +380,7 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
     }
 
 #if defined(BORINGSSL_FIPS)
-    // Initialize the thread-local Jitter instance.
-    state->jitter_ec = NULL;
-    // The first parameter passed to |jent_entropy_collector_alloc| function is
-    // the desired oversampling rate. Passing a 0 tells Jitter module to use
-    // the default rate (which is 3 in Jitter v3.1.0).
-    state->jitter_ec = jent_entropy_collector_alloc(0, JENT_FORCE_FIPS);
-    if (state->jitter_ec == NULL) {
-      abort();
-    }
+    rand_state_fips_init(state);
 #endif
 
     uint8_t seed[CTR_DRBG_ENTROPY_LEN];
@@ -331,12 +389,9 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
 
     uint8_t personalization[CTR_DRBG_ENTROPY_LEN] = {0};
     size_t personalization_len = 0;
-#if defined(BORINGSSL_FIPS) && defined(OPENSSL_URANDOM)
-    // In FIPS mode we get the entropy from CPU Jitter. In order to not rely
-    // completely on Jitter we add to |CTR_DRBG_init| a personalization string
-    // that we read from urandom.
-    CRYPTO_sysrand(personalization, sizeof(personalization));
-    personalization_len = sizeof(personalization);
+#if defined(BORINGSSL_FIPS)
+    rand_state_fips_maybe_want_additional_input(personalization,
+      &personalization_len);
 #endif
 
     if (!CTR_DRBG_init(&state->drbg, seed, personalization,
@@ -382,11 +437,8 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
     // kernel, syscalls made with |syscall| did not abort the transaction.
     CRYPTO_STATIC_MUTEX_lock_read(state_clear_all_lock_bss_get());
 
-    // In FIPS mode we get the entropy from CPU Jitter. In order to not rely
-    // completely on Jitter we add to |CTR_DRBG_reseed| additional data
-    // that we read from urandom.
-    CRYPTO_sysrand(add_data_for_reseed, sizeof(add_data_for_reseed));
-    add_data_for_reseed_len = sizeof(add_data_for_reseed);
+    rand_state_fips_maybe_want_additional_input(add_data_for_reseed,
+      &add_data_for_reseed_len);
 #endif
     if (!CTR_DRBG_reseed(&state->drbg, seed,
                          add_data_for_reseed, add_data_for_reseed_len)) {
