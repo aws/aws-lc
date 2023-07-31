@@ -1072,6 +1072,13 @@ LK256:
 .align	6
 sha256_block_armv8:
 Lv8_entry:
+#ifdef BORINGSSL_DISPATCH_TEST
+
+	adrp	x6,_BORINGSSL_function_hit@PAGE
+	add	x6, x6, _BORINGSSL_function_hit@PAGEOFF
+	mov	w7, #1
+	strb	w7, [x6,#6] // kFlag_sha256_hw
+#endif
 	// Armv8.3-A PAuth: even though x30 is pushed to stack it is not popped later.
 	stp	x29,x30,[sp,#-16]!
 	add	x29,sp,#0

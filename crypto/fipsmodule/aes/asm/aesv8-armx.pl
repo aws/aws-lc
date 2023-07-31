@@ -96,6 +96,13 @@ ${prefix}_set_encrypt_key:
 .Lenc_key:
 ___
 $code.=<<___	if ($flavour =~ /64/);
+#ifdef BORINGSSL_DISPATCH_TEST
+.extern        BORINGSSL_function_hit
+	adrp	x6,:pg_hi21:BORINGSSL_function_hit
+	add x6, x6, :lo12:BORINGSSL_function_hit
+	mov w7, #1
+	strb w7, [x6,#3] // kFlag_aes_hw_set_encrypt_key
+#endif
 	// Armv8.3-A PAuth: even though x30 is pushed to stack it is not popped later.
 	AARCH64_VALID_CALL_TARGET
 	stp	x29,x30,[sp,#-16]!
@@ -340,6 +347,17 @@ $code.=<<___;
 .type	${prefix}_${dir}crypt,%function
 .align	5
 ${prefix}_${dir}crypt:
+___
+$code.=<<___	if ($flavour =~ /64/);
+#ifdef BORINGSSL_DISPATCH_TEST
+.extern        BORINGSSL_function_hit
+	adrp	x6,:pg_hi21:BORINGSSL_function_hit
+	add x6, x6, :lo12:BORINGSSL_function_hit
+	mov w7, #1
+	strb w7, [x6,#1] // kFlag_aes_hw_encrypt
+#endif
+___
+$code.=<<___;
 	AARCH64_VALID_CALL_TARGET
 	ldr	$rounds,[$key,#240]
 	vld1.32	{$rndkey0},[$key],#16
@@ -719,6 +737,13 @@ $code.=<<___;
 ${prefix}_ctr32_encrypt_blocks:
 ___
 $code.=<<___	if ($flavour =~ /64/);
+#ifdef BORINGSSL_DISPATCH_TEST
+.extern        BORINGSSL_function_hit
+	adrp	x6,:pg_hi21:BORINGSSL_function_hit
+	add x6, x6, :lo12:BORINGSSL_function_hit
+	mov w7, #1
+	strb w7, [x6] // kFlag_aes_hw_ctr32_encrypt_blocks
+#endif
 	// Armv8.3-A PAuth: even though x30 is pushed to stack it is not popped later.
 	AARCH64_VALID_CALL_TARGET
 	stp		x29,x30,[sp,#-16]!
