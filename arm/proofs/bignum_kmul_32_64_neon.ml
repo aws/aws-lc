@@ -1250,130 +1250,14 @@ let lemma2 = prove
   ASM_SIMP_TAC[VAL_WORD_SUB_CASES; GSYM REAL_OF_NUM_SUB] THEN
   REAL_ARITH_TAC);;
 
-(* A lemma that is useful for extracting a 32-bit field from a 128-bit word. *)
-let WORD_128_SUBWORD_SUBWORD_32 = prove(`!y.
-      word_subword (word_subword (y:(128)word) (0,64):(64)word) (0,32):(32)word =
-        word_subword (y:(128)word) (0,32):(32)word /\
-      word_subword (word_subword (y:(128)word) (64,64):(64)word) (0,32):(32)word =
-        word_subword (y:(128)word) (64,32):(32)word /\
-      word_subword (word_subword (y:(128)word) (0,64):(64)word) (32,32):(32)word =
-        word_subword (y:(128)word) (32,32):(32)word /\
-      word_subword (word_subword (y:(128)word) (64,64):(64)word) (32,32):(32)word =
-        word_subword (y:(128)word) (96,32):(32)word`,
-  CONV_TAC WORD_BLAST);;
-
-(* A lemma that is useful for extracting a 32-bit field from a join of two 32-bit words. *)
-let WORD_SUBWORD_JOIN_64 = prove(`!(x:(32)word) (y:(32)word).
-    word_subword (word_join (x:(32)word) (y:(32)word): (64)word) (0,32) = y /\
-    word_subword (word_join (x:(32)word) (y:(32)word): (64)word) (32,32) = x`,
-  CONV_TAC WORD_BLAST);;
-
-(* A lemma that is useful for extracting a 64-bit field from a join of two 64-bit words. *)
-let WORD_SUBWORD_JOIN_128_64 = prove(`!(x:(64)word) (y:(64)word).
-    word_subword (word_join (x:(64)word) (y:(64)word): (128)word) (0,64) = y /\
-    word_subword (word_join (x:(64)word) (y:(64)word): (128)word) (64,64) = x`,
-  CONV_TAC WORD_BLAST);;
-
-(* A lemma that is useful for extracting a 32-bit field from a join of two 64-bit words. *)
-let WORD_SUBWORD_JOIN_128_32 = prove(`!(x:(64)word) (y:(64)word).
-    word_subword (word_join (x:(64)word) (y:(64)word): (128)word) (0,32):(32)word =
-      word_subword (y:(64)word) (0,32):(32)word /\
-    word_subword (word_join (x:(64)word) (y:(64)word): (128)word) (32,32):(32)word =
-      word_subword (y:(64)word) (32,32):(32)word /\
-    word_subword (word_join (x:(64)word) (y:(64)word): (128)word) (64,32):(32)word =
-      word_subword (x:(64)word) (0,32):(32)word /\
-    word_subword (word_join (x:(64)word) (y:(64)word): (128)word) (96,32):(32)word =
-      word_subword (x:(64)word) (32,32):(32)word`,
-  CONV_TAC WORD_BLAST);;
+needs "arm/proofs/neon_helper.ml";;
 
 let rewrite_assumptions t tac = SUBGOAL_THEN t
   (fun thm -> RULE_ASSUM_TAC (REWRITE_RULE [thm])) THENL
   [tac; ALL_TAC];;
 
-let lemma4 = prove(`!a b c.
-    ((a + 2 EXP 32 * (b MOD 2 EXP 32 + c MOD 2 EXP 32)) DIV 2 EXP 32) MOD 2 EXP 32 =
-    ((a + 2 EXP 32 * (b + c)) DIV 2 EXP 32) MOD 2 EXP 32`,
-  REPEAT STRIP_TAC THEN
-  MAP_EVERY (fun (thm, suffix) -> LABEL_TAC ("Ha_" ^ suffix) thm)
-    (zip (CONJUNCTS ((MP
-      (SPECL [`a:num`; `2 EXP 32:num`] DIVISION) (ARITH_RULE `~(2 EXP 32 = 0)`))))
-      ["eq";"lt"]) THEN
-  ABBREV_TAC `ahi = a DIV 2 EXP 32` THEN
-  ABBREV_TAC `alo = a MOD 2 EXP 32` THEN
-  ASM_REWRITE_TAC[] THEN
-  REWRITE_TAC[ARITH_RULE
-    `(ahi * 2 EXP 32 + alo) + 2 EXP 32 * (b MOD 2 EXP 32 + c MOD 2 EXP 32) =
-     (ahi + b MOD 2 EXP 32 + c MOD 2 EXP 32) * 2 EXP 32 + alo`] THEN
-  REWRITE_TAC[ARITH_RULE
-    `(ahi * 2 EXP 32 + alo) + 2 EXP 32 * (b + c) =
-     (ahi + b + c) * 2 EXP 32 + alo`] THEN
-  IMP_REWRITE_TAC[DIV_UNIQ] THEN (* (A * 2^32 + B) / 2^32 => A *)
-  EXISTS_TAC `(ahi + b MOD 2 EXP 32 + c MOD 2 EXP 32)` THEN SIMP_TAC[] THEN
-  EXISTS_TAC `(ahi + b + c)` THEN SIMP_TAC[] THEN
-  CONV_TAC MOD_DOWN_CONV THEN SIMP_TAC[]);;
-
-let WORD_MUL_64_DECOMPOSED_32 = prove(`!(x:(64)word) (y:(64)word).
-  word_add
-    (word_mul (word_zx (word_subword x (0,32):(32)word):(64)word)
-              (word_zx (word_subword y (0,32):(32)word):(64)word))
-    (word_shl
-      (word_add
-        (word_zx (word_mul (word_subword y (32,32):(32)word) (word_subword x (0,32):(32)word)))
-        (word_zx (word_mul (word_subword y (0,32):(32)word) (word_subword x (32,32):(32)word))))
-    32) =
-  word_mul x y`,
-  REPEAT GEN_TAC THEN
-  (* word to num: step 1. x = y to val x = val y *)
-  REWRITE_TAC[GSYM VAL_EQ] THEN
-  (* step 2. remove all word_* *)
-  REWRITE_TAC [VAL_WORD_ADD; VAL_WORD_MUL; VAL_WORD_ZX_GEN; VAL_WORD_SUBWORD;
-               VAL_WORD; VAL_WORD_SHL] THEN
-  (* step 3. add x, y < 2^64 *)
-  ASSUME_TAC (ISPECL [`x:(64)word`] VAL_BOUND) THEN
-  ASSUME_TAC (ISPECL [`y:(64)word`] VAL_BOUND) THEN
-  RULE_ASSUM_TAC (REWRITE_RULE [DIMINDEX_64]) THEN
-  (* step 4. eliminate dimindex (:N) and simplify *)
-  REWRITE_TAC[DIMINDEX_32;DIMINDEX_64;DIMINDEX_128;DIV_1;MOD_MOD_REFL;
-              MOD_MOD_EXP_MIN;ARITH_RULE `2 EXP 0 = 1`; DIV_1] THEN
-  CONV_TAC(DEPTH_CONV NUM_MIN_CONV) THEN
-  CONV_TAC MOD_DOWN_CONV THEN
-  (* split x into [x0h, x0l], and divide y as well *)
-  MAP_EVERY (fun (thm, suffix) -> LABEL_TAC ("Hx" ^ suffix) thm)
-    (zip (CONJUNCTS ((MP (SPECL [`(val (x:(64)word)):num`; `2 EXP 32:num`] DIVISION)
-      (ARITH_RULE `~(2 EXP 32 = 0)`)))) ["eq";"lt"]) THEN
-  ABBREV_TAC `xhi = (val (x:(64)word)) DIV 2 EXP 32` THEN
-  ABBREV_TAC `xlo = (val (x:(64)word)) MOD 2 EXP 32` THEN
-  ASM_REWRITE_TAC[] THEN
-  MAP_EVERY (fun (thm, suffix) -> LABEL_TAC ("Hy" ^ suffix) thm)
-    (zip (CONJUNCTS ((MP (SPECL [`(val (y:(64)word)):num`; `2 EXP 32:num`] DIVISION)
-      (ARITH_RULE `~(2 EXP 32 = 0)`)))) ["eq";"lt"]) THEN
-  ABBREV_TAC `yhi = (val (y:(64)word)) DIV 2 EXP 32` THEN
-  ABBREV_TAC `ylo = (val (y:(64)word)) MOD 2 EXP 32` THEN
-  ASM_REWRITE_TAC[] THEN
-  (* lhs *)
-  REWRITE_TAC[LEFT_ADD_DISTRIB; RIGHT_ADD_DISTRIB] THEN
-  REWRITE_TAC[
-    ARITH_RULE `y1hi * x1hi * 2 EXP 32 = 2 EXP 32 * y1hi * x1hi`;
-    ARITH_RULE `(y1hi * 2 EXP 32) * x1hi = 2 EXP 32 * y1hi * x1hi`] THEN
-  REWRITE_TAC[MOD_MULT_ADD] THEN
-  (* rhs *)
-  REWRITE_TAC[MULT_ASSOC; ARITH_RULE `2 EXP 32 * 2 EXP 32 = 2 EXP 64`] THEN
-  REWRITE_TAC[GSYM ADD_ASSOC; GSYM MULT_ASSOC] THEN
-  REWRITE_TAC[MOD_MULT_ADD] THEN
-  (* lhs = rhs *)
-  REWRITE_TAC[ARITH_RULE `2 EXP 64 = 2 EXP 32 * 2 EXP 32`] THEN
-  REWRITE_TAC[MOD_MULT_MOD] THEN
-  REWRITE_TAC[ARITH_RULE `2 EXP 32 * p + 2 EXP 32 * q = 2 EXP 32 * (p + q)`; MOD_MULT_ADD] THEN
-  REWRITE_TAC [lemma4] THEN
-  REWRITE_TAC [ARITH_RULE
-    `(xlo * ylo + 2 EXP 32 * (yhi * xlo + ylo * xhi)) DIV 2 EXP 32 =
-      (2 EXP 32 * xhi * ylo + 2 EXP 32 * xlo * yhi + xlo * ylo) DIV 2 EXP 32`]);;
-
 let simplify_128bit_words =
-  RULE_ASSUM_TAC (REWRITE_RULE [
-      WORD_128_SUBWORD_SUBWORD_32; WORD_SUBWORD_JOIN_64; 
-      WORD_SUBWORD_JOIN_128_64; WORD_SUBWORD_JOIN_128_32;
-      WORD_MUL_64_DECOMPOSED_32]);;
+  RULE_ASSUM_TAC (REWRITE_RULE [WORD_BITMANIP_SIMP_LEMMAS; WORD_MUL64_LO]);;
 
 let simplify_128bit_words_and_accumulate state_name =
   simplify_128bit_words THEN
@@ -1383,12 +1267,8 @@ let simplify_128bit_words_and_accumulate state_name =
        word (0 + val (a:(64)word) * val (b:(64)word))`]) THEN
   ACCUMULATE_ARITH_TAC state_name THEN CLARIFY_TAC;;
 
-let WORD_ADD_ASSOC_CONSTS = prove(
-  `!(x:(N)word) n m.
-    (word_add (word_add x (word n)) (word m)) = (word_add x (word (n+m)))`,
-  CONV_TAC WORD_RULE);;
-
 let ADK_48_TAC =
+  DISCARD_READ_QREGS THEN
   MATCH_MP_TAC EQUAL_FROM_CONGRUENT_REAL THEN
   MAP_EVERY EXISTS_TAC [`512`; `&0:real`] THEN
   REPLICATE_TAC 2 (CONJ_TAC THENL [BOUNDER_TAC[]; ALL_TAC]) THEN
@@ -2062,20 +1942,18 @@ let BIGNUM_KMUL_32_64_NEON_SUBROUTINE_CORRECT = prove(
                    bignum_from_memory (y,32) s = b)
               (\s. read PC s = returnaddress /\
                    bignum_from_memory (z,64) s = a * b)
-              (MAYCHANGE [PC; X0; X1; X2; X3; X4; X5; X6; X7; X8; X9; X10;
-                          X11; X12; X13; X14; X15; X16; X17] ,,
-               MAYCHANGE [Q0; Q1; Q2; Q3; Q4; Q5],,
+              (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI,,
                MAYCHANGE [memory :> bytes(z,8 * 64);
                           memory :> bytes(t,8 * 96);
-                     memory :> bytes(word_sub stackpointer (word 144),144)] ,,
-               MAYCHANGE SOME_FLAGS)`,
+                     memory :> bytes(word_sub stackpointer (word 144),144)])`,
   MAP_EVERY X_GEN_TAC
    [`z:int64`; `x:int64`; `y:int64`;
     `a:num`; `b:num`; `t:int64`; `pc:num`] THEN
   WORD_FORALL_OFFSET_TAC 144 THEN
   MAP_EVERY X_GEN_TAC [`stackpointer:int64`; `returnaddress:int64`] THEN
   REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS] THEN
-  REWRITE_TAC[ALL; PAIRWISE; ALLPAIRS; NONOVERLAPPING_CLAUSES] THEN
+  REWRITE_TAC[ALL; PAIRWISE; ALLPAIRS; NONOVERLAPPING_CLAUSES;
+              MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI] THEN
   STRIP_TAC THEN
 
   (*** Start and end boilerplate for save and restore of registers ***)
