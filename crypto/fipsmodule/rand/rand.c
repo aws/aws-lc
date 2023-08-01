@@ -65,25 +65,27 @@
 
 #if defined(BORINGSSL_FIPS)
 
-// In the future this will be demoted to a build-time option.
-// Another entropy source will be promoted to the default source.
-#define FIPS_ENTROPY_SOURCE_JITTER_CPU 1
-
-#if !defined(FIPS_ENTROPY_SOURCE_JITTER_CPU)
-#error "Currently, Jitter CPU must be configured as the entropy source in FIPS mode"
+#if defined(FIPS_ENTROPY_SOURCE_JITTER_CPU) && defined(FIPS_ENTROPY_SOURCE_PASSIVE)
+#error "Only one FIPS entropy source must not be defined"
 #endif
 
+#if defined(FIPS_ENTROPY_SOURCE_JITTER_CPU)
 static const unsigned kReseedInterval = 16777216;
+#elif defined(FIPS_ENTROPY_SOURCE_PASSIVE)
+static const unsigned kReseedInterval = 4096;
+#else
+#error "A FIPS entropy source must be explicitly defined"
+#endif
 
 #else // defined(BORINGSSL_FIPS)
 
-#if defined(FIPS_ENTROPY_SOURCE_JITTER_CPU)
-#error "Jitter CPU must not be configured as the entropy source in non-FIPS mode"
+#if defined(FIPS_ENTROPY_SOURCE_JITTER_CPU) || defined(FIPS_ENTROPY_SOURCE_PASSIVE)
+#error "A FIPS entropy source must not be defined for non-FIPS build"
 #endif
-
 static const unsigned kReseedInterval = 4096;
 
 #endif // defined(BORINGSSL_FIPS)
+
 
 // rand_thread_state contains the per-thread state for the RNG.
 struct rand_thread_state {
