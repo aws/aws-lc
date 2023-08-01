@@ -5198,16 +5198,16 @@ OPENSSL_EXPORT size_t SSL_get_finished(const SSL *ssl, void *buf, size_t count);
 OPENSSL_EXPORT size_t SSL_get_peer_finished(const SSL *ssl, void *buf,
                                             size_t count);
 
-// SSL_alert_type_string returns "!". Use |SSL_alert_type_string_long|
+// SSL_alert_type_string returns an unintelligible 1 letter string description
+// of |value| as an alert type (W or F). Use |SSL_alert_type_string_long|
 // instead.
 OPENSSL_EXPORT const char *SSL_alert_type_string(int value);
 
-// SSL_alert_desc_string returns "!!". Use |SSL_alert_desc_string_long|
-// instead.
+// SSL_alert_desc_string returns an unintelligible 2 letter string description
+// of |value|. Use |SSL_alert_desc_string_long| instead.
 OPENSSL_EXPORT const char *SSL_alert_desc_string(int value);
 
-// SSL_state_string returns "!!!!!!". Use |SSL_state_string_long| for a more
-// intelligible string.
+// SSL_state_string returns |SSL_state_string_long|.
 OPENSSL_EXPORT const char *SSL_state_string(const SSL *ssl);
 
 // SSL_TXT_* expand to strings.

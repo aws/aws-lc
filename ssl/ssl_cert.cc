@@ -335,6 +335,7 @@ static int cert_set_chain_and_key(
   }
 
   // Update certificate slot index once all checks have passed.
+  // Certificate slot validity already checked in |check_leaf_cert_and_privkey|.
   int idx = ssl_get_certificate_slot_index(privkey);
   cert->cert_private_keys[idx].privatekey = UpRef(privkey);
   cert->key_method = privkey_method;
@@ -357,9 +358,12 @@ bool ssl_set_cert(CERT *cert, UniquePtr<CRYPTO_BUFFER> buffer) {
     return false;
   }
   int slot_index = ssl_get_certificate_slot_index(pubkey.get());
+  if (slot_index < 0) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
+    return false;
+  }
 
   CERT_PKEY &cert_pkey = cert->cert_private_keys[slot_index];
-
   switch (do_leaf_cert_and_privkey_checks(&cert_cbs, pubkey.get(),
                                           cert_pkey.privatekey.get())) {
     case leaf_cert_and_privkey_error:
