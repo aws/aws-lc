@@ -1938,8 +1938,6 @@ L$_num_blocks_is_1_hEgxyDlCngwrfFe:
 	andq	$0xf,%rdx
 	je	L$_ret_hEgxyDlCngwrfFe
 	jmp	L$_steal_cipher_next_hEgxyDlCngwrfFe
-	vzeroupper
-	.byte	0xf3,0xc3
 
 .globl	_aes_hw_xts_decrypt_avx512
 .private_extern _aes_hw_xts_decrypt_avx512
@@ -5181,8 +5179,6 @@ L$_done_1_amivrujEyduiFoi:
 	addq	$0x10,%rsi
 	vmovdqa	%xmm1,%xmm8
 	jmp	L$_done_amivrujEyduiFoi
-	vzeroupper
-	.byte	0xf3,0xc3
 
 .section	__DATA,__const
 .p2align	4

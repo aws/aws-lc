@@ -1963,8 +1963,6 @@ $L$_num_blocks_is_1_hEgxyDlCngwrfFe:
 	and	r8,0xf
 	je	NEAR $L$_ret_hEgxyDlCngwrfFe
 	jmp	NEAR $L$_steal_cipher_next_hEgxyDlCngwrfFe
-	vzeroupper
-	DB	0F3h,0C3h		;repret
 
 global	aes_hw_xts_decrypt_avx512
 
@@ -5231,8 +5229,6 @@ $L$_done_1_amivrujEyduiFoi:
 	add	rdx,0x10
 	vmovdqa	xmm8,xmm1
 	jmp	NEAR $L$_done_amivrujEyduiFoi
-	vzeroupper
-	DB	0F3h,0C3h		;repret
 
 section	.rdata rdata align=8
 ALIGN	16
