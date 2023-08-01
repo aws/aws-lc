@@ -1055,6 +1055,7 @@ extern unsigned long OPENSSL_ppc64le_hwcap2;
 
 // BORINGSSL_function_hit is an array of flags. The following functions will
 // set these flags if BORINGSSL_DISPATCH_TEST is defined.
+// On x86 and x86_64:
 //   0: aes_hw_ctr32_encrypt_blocks
 //   1: aes_hw_encrypt
 //   2: aesni_gcm_encrypt
@@ -1062,6 +1063,14 @@ extern unsigned long OPENSSL_ppc64le_hwcap2;
 //   4: vpaes_encrypt
 //   5: vpaes_set_encrypt_key
 //   6: sha256_block_data_order_shaext
+// On AARCH64:
+//   0: aes_hw_ctr32_encrypt_blocks
+//   1: aes_hw_encrypt
+//   2: sha512_block_armv8
+//   3: aes_hw_set_encrypt_key
+//   4: vpaes_encrypt
+//   5: vpaes_set_encrypt_key
+//   6: sha256_block_armv8
 extern uint8_t BORINGSSL_function_hit[7];
 #endif  // BORINGSSL_DISPATCH_TEST
 

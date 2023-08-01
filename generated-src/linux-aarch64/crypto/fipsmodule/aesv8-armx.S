@@ -33,6 +33,13 @@
 .align	5
 aes_hw_set_encrypt_key:
 .Lenc_key:
+#ifdef BORINGSSL_DISPATCH_TEST
+
+	adrp	x9,BORINGSSL_function_hit
+	add	x9, x9, :lo12:BORINGSSL_function_hit
+	mov	w10, #1
+	strb	w10, [x9,#3] // kFlag_aes_hw_set_encrypt_key
+#endif
 	// Armv8.3-A PAuth: even though x30 is pushed to stack it is not popped later.
 	AARCH64_VALID_CALL_TARGET
 	stp	x29,x30,[sp,#-16]!
@@ -245,6 +252,13 @@ aes_hw_set_decrypt_key:
 .type	aes_hw_encrypt,%function
 .align	5
 aes_hw_encrypt:
+#ifdef BORINGSSL_DISPATCH_TEST
+
+	adrp	x9,BORINGSSL_function_hit
+	add	x9, x9, :lo12:BORINGSSL_function_hit
+	mov	w10, #1
+	strb	w10, [x9,#1] // kFlag_aes_hw_encrypt
+#endif
 	AARCH64_VALID_CALL_TARGET
 	ldr	w3,[x2,#240]
 	ld1	{v0.4s},[x2],#16
@@ -276,6 +290,13 @@ aes_hw_encrypt:
 .type	aes_hw_decrypt,%function
 .align	5
 aes_hw_decrypt:
+#ifdef BORINGSSL_DISPATCH_TEST
+
+	adrp	x9,BORINGSSL_function_hit
+	add	x9, x9, :lo12:BORINGSSL_function_hit
+	mov	w10, #1
+	strb	w10, [x9,#1] // kFlag_aes_hw_encrypt
+#endif
 	AARCH64_VALID_CALL_TARGET
 	ldr	w3,[x2,#240]
 	ld1	{v0.4s},[x2],#16
@@ -600,6 +621,13 @@ aes_hw_cbc_encrypt:
 .type	aes_hw_ctr32_encrypt_blocks,%function
 .align	5
 aes_hw_ctr32_encrypt_blocks:
+#ifdef BORINGSSL_DISPATCH_TEST
+
+	adrp	x9,BORINGSSL_function_hit
+	add	x9, x9, :lo12:BORINGSSL_function_hit
+	mov	w10, #1
+	strb	w10, [x9] // kFlag_aes_hw_ctr32_encrypt_blocks
+#endif
 	// Armv8.3-A PAuth: even though x30 is pushed to stack it is not popped later.
 	AARCH64_VALID_CALL_TARGET
 	stp	x29,x30,[sp,#-16]!

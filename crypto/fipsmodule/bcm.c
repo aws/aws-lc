@@ -41,6 +41,7 @@
 #include "../internal.h"
 
 #include "cpucap/cpucap.c"
+#include "cpucap/cpu_aarch64.c"
 #include "cpucap/cpu_aarch64_apple.c"
 #include "cpucap/cpu_aarch64_fuchsia.c"
 #include "cpucap/cpu_aarch64_linux.c"

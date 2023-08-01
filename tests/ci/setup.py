@@ -29,10 +29,11 @@ setuptools.setup(
         # A formatter for Python code.
         "yapf==0.30.0",
         # Introduced by benchmark framework.
-        "boto3==1.18.11",
+        "boto3==1.26.126",
         # Introduced by Android Device Farm CI.
         "requests",
-        "arnparse==0.0.2"
+        "arnparse==0.0.2",
+        "urllib3==1.25.4"
     ],
 
     python_requires=">=3.6",
