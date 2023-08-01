@@ -1,0 +1,12 @@
+diff --git a/crypto/fipsmodule/ec/p384.c b/crypto/fipsmodule/ec/p384.c
+index 72b93a063..a913e51a9 100644
+--- a/crypto/fipsmodule/ec/p384.c
++++ b/crypto/fipsmodule/ec/p384.c
+@@ -706,6 +706,7 @@ static void p384_felem_mul_scalar_rwnaf(int16_t *out, const unsigned char *in) {
+ 
+ // p384_select_point selects the |idx|-th projective point from the given
+ // precomputed table and copies it to |out| in constant time.
++__attribute__((noinline))
+ static void p384_select_point(p384_felem out[3],
+                               size_t idx,
+                               p384_felem table[][3],

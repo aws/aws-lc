@@ -12,8 +12,8 @@ on: [push, pull_request]
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
-  build:
+  
+  saw:
     # The type of runner that the job will run on
     runs-on: aws-lc-verification_ubuntu-latest_16-core
 
@@ -26,5 +26,26 @@ jobs:
         submodules: true
 
     # Runs the formal verification action
-    - name: Proofs
+    - name: SAW Proofs
       uses: ./
+  coq:
+    # The type of runner that the job will run on
+    runs-on: aws-lc-verification_ubuntu-latest_16-core
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+    # Checkout main repo and submodules
+    - uses: actions/checkout@v2
+      name: check out top-level repository
+      with:
+        submodules: true
+
+    # Check out fiat-crypto submodule recursively 
+    - name: recursively check out fiat-crypto submodule
+      run: |
+        git submodule update --init --recursive Coq/fiat-crypto
+
+    # Runs the formal verification action
+    - name: Coq Proofs
+      uses: ./Coq/
+

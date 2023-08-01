@@ -1,0 +1,101 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
+*/
+
+module EC_mul where
+
+import Common::EC::EC_P384
+import EC_primitives
+
+
+type wsize_max = 7
+
+parameter
+  type wsize : #
+
+  type constraint (wsize > 0, wsize <= wsize_max)
+  type constraint (bit_length%wsize!=0, bit_length/wsize>1)
+
+
+type tsize = 2^^(wsize - 1)
+
+type point_id = [16]
+
+
+pre_comp_table : point -> [tsize]point
+pre_comp_table p = scanl f p [1..(tsize-1)]
+  where
+    twoP = (point_double p)
+    f z i  = (point_add 0 twoP z)
+
+mul_scalar_rwnaf_odd_loop_body : 
+  scalar -> ([16], scalar)
+mul_scalar_rwnaf_odd_loop_body s = (drop d, s')
+  where
+    two_to_wsize = (1 << `wsize)
+    d = ((s % (2 * two_to_wsize)) - two_to_wsize)
+    s' = (s - d) >> `wsize
+
+mul_scalar_rwnaf_odd : scalar -> [(bit_length / wsize) + 1]point_id
+mul_scalar_rwnaf_odd in = out'
+  where
+    f (d, s) i = mul_scalar_rwnaf_odd_loop_body s
+    outls = scanl f (mul_scalar_rwnaf_odd_loop_body in) [0 .. ((bit_length/wsize) - 2)]
+    window' = (drop (outls!0).1)
+    out' = ((map (\p -> p.0) outls)#[window'])
+
+mul_scalar_rwnaf : scalar -> [(bit_length / wsize) + 1]point_id 
+mul_scalar_rwnaf in = mul_scalar_rwnaf_odd (in || 1)
+
+select_point_loop_body : [64] -> point -> [64] -> point -> point
+select_point_loop_body idx acc i p = [x, y, z]
+  where
+    mismatch = i ^ idx
+    x = (felem_cmovznz mismatch (p@0) (acc@0))
+    y = (felem_cmovznz mismatch (p@1) (acc@1))
+    z = (felem_cmovznz mismatch (p@2) (acc@2))
+
+select_point : [64] -> [tsize]point -> point
+select_point idx t = foldl f def (zip [0..(tsize-1)] t)
+    where
+      def = [zero_felem, zero_felem, zero_felem]
+      f acc (i, p) = select_point_loop_body idx acc i p
+
+point_id_to_limb : point_id -> limb
+point_id_to_limb x = (0:[48]) # (x)
+
+double_add_body : [tsize]point -> point -> point_id -> point
+double_add_body t p d = res
+  where
+    doubled = foldl (\x -> \y -> point_double x) p [0 .. (wsize - 1)]
+    // TODO: calculate the expression below from wsize
+    is_neg = (d >> 15)
+    // is_neg = (d >>$ 7) & 1
+    neg_is_neg = (d >>$ 15)
+    // neg_is_neg = - is_neg
+    abs_d = is_neg + (d ^ neg_is_neg)
+    idx = abs_d >>$ 1
+    tmp = (select_point (sign_extend_16_64 idx) t)
+    ftmp = felem_opp (tmp@1)
+    r = [tmp@0, (felem_cmovznz (point_id_to_limb is_neg) (tmp@1) ftmp), (tmp@2)]
+    res = point_add 0 doubled r
+
+point_mul : point -> scalar -> point
+point_mul p s = r
+  where
+    pre_comp = pre_comp_table p
+    rnaf = mul_scalar_rwnaf s
+    idx = ((rnaf@(`bit_length/`wsize)) >>$ 1)
+    acc = (select_point (sign_extend_16_64 idx) pre_comp)
+    res = foldl (double_add_body pre_comp) acc (drop `{1} (reverse rnaf))
+    r = conditional_subtract_if_even res s (pre_comp@0)
+
+point_mul_generic : JacobianBVPoint -> scalar -> JacobianBVPoint
+point_mul_generic p s = r_gen
+  where
+    px = felem_from_bytes p.X
+    py = felem_from_bytes p.Y
+    pz = felem_from_bytes p.Z
+    r = (point_mul [px, py, pz] s)
+    r_gen = {X = felem_to_bytes (r@0), Y = felem_to_bytes (r@1), Z = felem_to_bytes (r@2)}

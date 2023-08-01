@@ -1,0 +1,12 @@
+diff --git a/crypto/internal.h b/crypto/internal.h
+index 6b344d021..86e2e7d61 100644
+--- a/crypto/internal.h
++++ b/crypto/internal.h
+@@ -373,6 +373,7 @@ static inline uint8_t constant_time_ge_8(crypto_word_t a, crypto_word_t b) {
+ }
+ 
+ // constant_time_is_zero returns 0xff..f if a == 0 and 0 otherwise.
++__attribute__((noinline))
+ static inline crypto_word_t constant_time_is_zero_w(crypto_word_t a) {
+   // Here is an SMT-LIB verification of this formula:
+   //

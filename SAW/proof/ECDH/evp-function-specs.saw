@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
 */
 
+let {{ ia32cap = [0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff] : [4][32] }};
 
 let EVP_PKEY_CTX_new_id_spec = do {
   crucible_alloc_global "EVP_PKEY_rsa_pkey_meth_storage";
@@ -168,6 +169,9 @@ let EVP_PKEY_derive_set_peer_spec = do {
 };
 
 let EVP_PKEY_derive_spec = do {
+
+  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+
   ctx_ptr <- crucible_alloc_readonly (llvm_struct "struct.evp_pkey_ctx_st");
   pmeth_ptr <- pointer_to_evp_pkey_method_st;
   ec_group_ptr <- pointer_to_fresh_ec_group_st;
@@ -187,6 +191,8 @@ let EVP_PKEY_derive_spec = do {
   crucible_precond {{EC_KEY_check_fips peer_pub_key == 1}};
 
   crucible_execute_func [ctx_ptr, key_ptr, out_key_len_ptr];
+
+  global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
 
   crucible_points_to key_ptr (crucible_term {{ split`{each=8} (fieldElementToBV (ECDH_derive (scalarFromBV priv_key) (fromJacobian (jacobianFromMontBV peer_pub_key)))) }});
 

@@ -1,0 +1,64 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
+*/
+
+/*
+This file contains cryptol specs that closely resemble an implementation.
+They are only used to produce rewrite rules that are used to simplfy
+goals produced by SAW. For example, the actual spec uses function f, 
+but the code in the goal is an equivelent (but more complicated) function 
+f_impl. In SAW, we will prove f == f_impl, and use this rewrite rule to 
+replace f_impl with f in the goal. 
+*/
+
+import EC_primitives
+import EC_P384_5
+
+type wsize = 5
+
+/*
+testForDouble_ct is a constant time form of testForDouble, which 
+is used to test whether two points are equal. 
+*/
+testForDouble_ct : felem -> felem -> felem -> felem -> Bit
+testForDouble_ct p1z p2z h r = res
+  where
+    z1nz = (felem_nz p1z)
+    z2nz = (felem_nz p2z)
+    xneq = (felem_nz h)
+    yneq = (felem_nz r)
+
+    res = ((constant_time_is_zero_w (xneq || yneq)) &&
+            (~(constant_time_is_zero_w z1nz)) &&
+            (~(constant_time_is_zero_w z2nz))
+            ) != zero
+
+
+/*
+mul_scalar_rwnaf_ct is the constant time rwnaf scalar/point multiplication function and mul_scalar_rwnaf_loop_body_ct is the loop body. mul_scalar_rwnaf_ct
+is equivalent to mul_scalar_rwnaf.
+*/
+mul_scalar_rwnaf_loop_body_ct :
+  scalar -> [16] -> [64] -> ([16], [16])
+
+mul_scalar_rwnaf_loop_body_ct s window i = (d, window')
+  where
+    two_to_wsize = (1 << `wsize)
+    wsize_mask = (1 << (`wsize + 1)) - 1
+    d = ((window && (wsize_mask:[16])) - (two_to_wsize:[16]))
+    window_0 = drop (((sign_extend_16_32 window) - (sign_extend_16_32 d) >> (`wsize:[32]))) 
+    i_wsize = (drop`{32} (i&&0x00000000000000FF)) * (`wsize:[32])
+    window_5 = foldl f window_0 [1..5]
+    f x j = x + ((drop (scalar_get_bit s (i_wsize + ((`wsize:[32]) + j)))) << j)
+    window' = window_5
+
+mul_scalar_rwnaf_ct : scalar -> [(bit_length / wsize) + 1]point_id
+mul_scalar_rwnaf_ct in = out'
+  where
+    wsize_mask = (1 << (`wsize + 1)) - 1
+    window = zero # (((drop`{bit_length-8} in) && (drop`{8} (wsize_mask:[16]))) || 1)
+    f (d, w) = mul_scalar_rwnaf_loop_body_ct in w
+    outls = scanl f (0, window) [0 .. ((bit_length/wsize) - 1)]
+    window' = (outls!0).1
+    out' = (drop`{1} ((map (\p -> p.0) outls)#[window']))

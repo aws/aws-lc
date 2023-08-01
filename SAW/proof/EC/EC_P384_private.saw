@@ -1,0 +1,107 @@
+/*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
+*/
+
+import "../../spec/EC/EC_P384_5.cry";
+
+include "../common/helpers.saw";
+include "../common/internal.saw";
+include "EC_P384_primitives.saw";
+
+let limb_length = 64;
+let p384_felem_limbs = 6;
+let wsize = 5;
+let numWindows = 77;
+let tsize = 16;
+
+let {{ ia32cap = [0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff] : [4][32] }};
+
+let p384_select_point_spec = do {
+  outarg_ptr <- crucible_alloc (llvm_array 3 (llvm_array p384_felem_limbs (llvm_int limb_length)));
+  id <- crucible_fresh_var "id" (llvm_int 64);
+  (points, points_ptr) <- ptr_to_fresh_readonly "points" (llvm_array tsize (llvm_array 3 (llvm_array p384_felem_limbs (llvm_int limb_length))));
+ 
+  crucible_execute_func [outarg_ptr, (crucible_term id), points_ptr, (crucible_term {{`tsize}})];
+
+  crucible_points_to outarg_ptr (crucible_term {{ select_point id points }});
+};
+
+
+let p384_mul_scalar_rwnaf_spec = do {
+  rnaf_ptr <- crucible_alloc (llvm_array numWindows (llvm_int 16));
+  (scalar, scalar_ptr) <- ptr_to_fresh_readonly "scalar" i384;
+ 
+  crucible_execute_func [rnaf_ptr, scalar_ptr];
+
+  crucible_points_to rnaf_ptr (crucible_term {{ mul_scalar_rwnaf scalar}});
+};
+
+
+
+let p384_point_mul_spec = do {
+
+  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  group_ptr <- crucible_alloc_readonly (llvm_struct "struct.ec_group_st");
+  r_ptr <- crucible_alloc (llvm_struct "struct.EC_JACOBIAN");
+  p_ptr <- crucible_alloc_readonly (llvm_struct "struct.EC_JACOBIAN");
+  p <- points_to_fresh_EC_JACOBIAN p_ptr;
+  (scalar, scalar_ptr) <- ptr_to_fresh_readonly "p_scalar" i384;
+
+  crucible_execute_func [group_ptr, r_ptr, p_ptr, scalar_ptr];
+
+  global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  points_to_EC_JACOBIAN r_ptr 
+    {{ point_mul_generic p scalar }};
+};
+
+p384_select_point_ov <- llvm_verify m
+  "p384_select_point" [p384_felem_cmovznz_same_r_ov] true
+  p384_select_point_spec (w4_unint_z3 []);
+
+
+mul_scalar_rwnaf_ct_equiv <- prove_folding_theorem {{ \a -> (mul_scalar_rwnaf a) == (mul_scalar_rwnaf_ct a) }};
+
+p384_mul_scalar_rwnaf_ov <- llvm_verify m
+  "p384_felem_mul_scalar_rwnaf" 
+  [p384_get_bit_ov] 
+  true
+  p384_mul_scalar_rwnaf_spec
+  (do{
+  goal_eval_unint["scalar_get_bit", "mul_scalar_rwnaf"];
+  simplify (addsimps [mul_scalar_rwnaf_ct_equiv] basic_ss);
+  w4_unint_z3 ["scalar_get_bit"];
+  });
+
+
+p384_point_mul_ov <- llvm_verify m "ec_GFp_nistp384_point_mul"
+  [ p384_point_add_jac_ov
+  , p384_point_add_same_r_jac_ov
+  , p384_point_add_same_l_jac_ov
+  , p384_point_double_ov
+  , p384_point_double_same_ov
+  , bignum_fromlebytes_6_ov
+  , bignum_tolebytes_6_ov
+  , p384_felem_cmovznz_ov
+  , p384_felem_cmovznz_same_l_ov
+  , p384_felem_cmovznz_same_r_ov
+  , p384_select_point_ov
+  , p384_mul_scalar_rwnaf_ov
+  , bignum_neg_p384_ov
+  , p384_felem_copy_ov
+  ]
+  true
+  p384_point_mul_spec
+  (do{
+  w4_unint_z3 ["select_point", "felem_sqr", "felem_add", "felem_sub", 
+  "felem_mul",
+  "mul_scalar_rwnaf", "felem_opp",
+  "felem_cmovznz",
+  "felem_to_bytes", "felem_from_bytes"
+  ];
+  });
+
+
+

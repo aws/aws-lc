@@ -1,0 +1,9 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+name: 'AWS-LC Formal Verification Coq Proofs'
+description: 'Check Coq proofs to validate some specifications used in AWS-LC'
+runs:
+  using: 'docker'
+  image: '../Dockerfile'
+  entrypoint: 'Coq/docker_entrypoint.sh'

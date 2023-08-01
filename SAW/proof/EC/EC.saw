@@ -18,12 +18,13 @@ let EVP_PKEY_OP_UNDEFINED = 0;
 let EVP_PKEY_OP_KEYGEN = eval_int {{ (1 << 2) : [64] }};
 let EVP_PKEY_OP_PARAMGEN = eval_int {{ (1 << 9) : [64] }};
 
+let {{ ia32cap = [0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff] : [4][32] }};
 
 include "memory.saw";
 include "../common/goal-rewrites.saw";
 include "../EVP/EVP_CTX.saw";
 import "../../spec/EC/EC_FIPS.cry";
-
+include "EC_P384_private.saw";
 
 
 let points_to_p384_bignum_st ptr d_ptr flags = points_to_bignum_st ptr d_ptr ec_words ec_words flags;
@@ -46,7 +47,7 @@ let points_to_ec_method_st ptr = do {
   crucible_points_to (crucible_field ptr "jacobian_to_affine_batch") (crucible_global "ec_GFp_mont_jacobian_to_affine_batch");
   crucible_points_to (crucible_field ptr "add") (crucible_global "ec_GFp_mont_add");
   crucible_points_to (crucible_field ptr "dbl") (crucible_global "ec_GFp_mont_dbl");
-  crucible_points_to (crucible_field ptr "mul") (crucible_global "ec_GFp_mont_mul");
+  crucible_points_to (crucible_field ptr "mul") (crucible_global "ec_GFp_nistp384_point_mul");
   crucible_points_to (crucible_field ptr "mul_base") (crucible_global "ec_GFp_mont_mul_base");
   crucible_points_to (crucible_field ptr "mul_batch") (crucible_global "ec_GFp_mont_mul_batch");
   crucible_points_to (crucible_field ptr "mul_public") crucible_null;
@@ -615,6 +616,9 @@ let bn_rand_range_words_spec = do {
 
 
 let ec_point_mul_scalar_spec = do {
+
+  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+
   group_ptr <- pointer_to_fresh_ec_group_st;
   r_ptr <- crucible_alloc (llvm_struct "struct.EC_JACOBIAN");
   p_ptr <- crucible_alloc_readonly (llvm_struct "struct.EC_JACOBIAN");
@@ -624,8 +628,11 @@ let ec_point_mul_scalar_spec = do {
 
   crucible_execute_func [group_ptr, r_ptr, p_ptr, scalar_ptr];
 
-  points_to_EC_JACOBIAN r_ptr
-    {{ jacobianToMontBV (ec_point_jacobian_scalar_mul (scalarFromBV scalar) (jacobianFromMontBV p)) }};
+  global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  points_to_EC_JACOBIAN r_ptr 
+    {{ point_mul_generic p scalar }};
+
   crucible_return (crucible_term {{ 1 : [32] }});
 };
 
@@ -1170,11 +1177,21 @@ ec_random_nonzero_scalar_ov <- crucible_llvm_unsafe_assume_spec
   "ec_random_nonzero_scalar"
   ec_random_nonzero_scalar_spec;
 
-
-ec_point_mul_scalar_ov <- crucible_llvm_unsafe_assume_spec
+ec_GFp_simple_is_on_curve_ov <- llvm_unsafe_assume_spec
   m
-  "ec_point_mul_scalar"
-  ec_point_mul_scalar_spec;
+  "ec_GFp_simple_is_on_curve"
+  ec_GFp_simple_is_on_curve_spec;
+
+ec_point_mul_scalar_ov <- llvm_verify m "ec_point_mul_scalar"
+  [ p384_point_mul_ov 
+  , ec_GFp_simple_is_on_curve_ov
+  ]
+  true
+  ec_point_mul_scalar_spec
+  (do{
+  w4_unint_z3 ["point_mul"];
+  });
+
 
 ec_point_mul_scalar_base_ov <- crucible_llvm_unsafe_assume_spec
   m
@@ -1215,11 +1232,6 @@ ec_get_x_coordinate_as_bytes_ov <- crucible_llvm_unsafe_assume_spec
   m
   "ec_get_x_coordinate_as_bytes"
   ec_get_x_coordinate_as_bytes_spec;
-
-ec_GFp_simple_is_on_curve_ov <- llvm_unsafe_assume_spec
-  m
-  "ec_GFp_simple_is_on_curve"
-  ec_GFp_simple_is_on_curve_spec;
 
 llvm_verify m "AWSLC_fips_evp_pkey_methods_init"
   [ EVP_PKEY_rsa_pkey_meth_ov

@@ -2,3 +2,9 @@
 */build_src/*
 */deps/*
 */bin/*
+*.vo
+*.vos
+*.vok
+*.glob
+*.aux
+

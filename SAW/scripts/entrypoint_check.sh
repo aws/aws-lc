@@ -14,6 +14,8 @@ apply_patch() {
   (cd ../src; patch -p1 -r - --forward < "$PATCH"/"$PATCH_NAME".patch || true)
 }
 
+go env -w GOPROXY=direct
+
 # First, apply some patches (TODO: remove them)...
 
 apply_patch "rsa-encrypt"
@@ -29,6 +31,12 @@ apply_patch "noinline-ec_get_x_coordinate_as_bytes"
 apply_patch "noinline-ec_get_x_coordinate_as_scalar"
 apply_patch "noinline-value_barrier_w"
 apply_patch "noinline-GetInPlaceMethods"
+apply_patch "noinline-fiat_p384_sub"
+apply_patch "noinline-p384_get_bit"
+apply_patch "noinline-constant_time_is_zero_w"
+apply_patch "noinline-p384_felem_cmovznz"
+apply_patch "noinline-p384_select_point"
+apply_patch "noinline-p384_felem_copy"
 apply_patch "noinline-HMAC_Update"
 apply_patch "noinline-HMAC_Final"
 apply_patch "noinline-HKDF_extract"

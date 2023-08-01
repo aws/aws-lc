@@ -1,14 +1,5 @@
 # AWS libcrypto Verification using SAW
-This repository contains specifications and correctness proofs for some cryptographic operations functions in [AWS libcrypto](https://github.com/awslabs/aws-lc). All proofs are carried out in [SAW](https://saw.galois.com/) using [Cryptol](https://cryptol.net/) specifications stored in the [Galois Cryptol spec repository](https://github.com/GaloisInc/cryptol-specs).
-
-## Building and Running
-The easiest way to build the library and run the proofs is to use [Docker](https://docs.docker.com/get-docker/). To check the proofs, execute the following steps in the top-level directory of the repository.
-
-1. Clone the submodules: `git submodule update --init`
-2. Build a Docker image: `docker build -t awslc-saw .`
-3. Run the proofs inside the Docker container: ``docker run -v `pwd`:`pwd` -w `pwd` awslc-saw``
-
-Running ``docker run -it -v `pwd`:`pwd` -w `pwd` --entrypoint bash awslc-saw`` will enter an interactive shell within the container, which is often useful for debugging.
+This directory contains specifications and correctness proofs for some cryptographic operations functions in [AWS libcrypto](https://github.com/awslabs/aws-lc). All proofs are carried out in [SAW](https://saw.galois.com/) using [Cryptol](https://cryptol.net/) specifications stored in the [Galois Cryptol spec repository](https://github.com/GaloisInc/cryptol-specs).
 
 ## Specification
 

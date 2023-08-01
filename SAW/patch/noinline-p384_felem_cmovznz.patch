@@ -1,0 +1,12 @@
+diff --git a/crypto/fipsmodule/ec/p384.c b/crypto/fipsmodule/ec/p384.c
+index 72b93a063..243b0b1f5 100644
+--- a/crypto/fipsmodule/ec/p384.c
++++ b/crypto/fipsmodule/ec/p384.c
+@@ -154,6 +154,7 @@ static void p384_felem_copy(p384_limb_t out[P384_NLIMBS],
+   }
+ }
+ 
++__attribute__((noinline))
+ static void p384_felem_cmovznz(p384_limb_t out[P384_NLIMBS],
+                                p384_limb_t t,
+                                const p384_limb_t z[P384_NLIMBS],

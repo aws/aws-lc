@@ -1,0 +1,3 @@
+module EC_P384_5 = EC_mul where
+
+type wsize = 5
