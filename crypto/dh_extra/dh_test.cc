@@ -229,6 +229,27 @@ TEST(DHTest, OversizedModulus) {
   ASSERT_EQ(DH_R_MODULUS_TOO_LARGE, ERR_GET_REASON(error));
 }
 
+TEST(DHTest, LargeQ) {
+  bssl::UniquePtr<DH> a(DH_new());
+  ASSERT_TRUE(a);
+  ASSERT_TRUE(DH_generate_parameters_ex(a.get(), 64, DH_GENERATOR_5, nullptr));
+
+  bssl::UniquePtr<BIGNUM> q(BN_new());
+  ASSERT_TRUE(q);
+  BN_set_word(q.get(), 2039L);
+
+  a.get()->q = q.release();
+
+  ASSERT_TRUE(DH_generate_key(a.get()));
+
+  ASSERT_TRUE(BN_copy(a.get()->q, a.get()->p));
+  ASSERT_TRUE(BN_add(a.get()->q, a.get()->q, BN_value_one()));
+
+  int check_result;
+  ASSERT_TRUE(DH_check(a.get(), &check_result));
+  ASSERT_TRUE(check_result & DH_CHECK_INVALID_Q_VALUE);
+}
+
 // The following parameters are taken from RFC 5114, section 2.2. This is not a
 // safe prime. Do not use these parameters.
 static const uint8_t kRFC5114_2048_224P[] = {
