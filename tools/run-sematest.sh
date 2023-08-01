@@ -4,20 +4,21 @@ if [ "$#" -ne 3 ]; then
   echo "This script runs the simulator ('<dir>/proofs/simulator.ml') that tests the semantics "
   echo "of instructions. It launches N simulators in parallel, and uses the given "
   echo "HOL Light command to run them."
+  echo "The current directory where this script is run must be <dir>."
   exit 1
 fi
 
 s2n_bignum_arch=$1
 nproc=$2
 hol_light_cmd=$3
-cd $s2n_bignum_arch
+simulator_path=${s2n_bignum_arch}/proofs/simulator.ml
 
 log_paths=()
 children_pids=()
 for (( i = 1; i <= $nproc; i++ )) ; do
   log_path=`mktemp`
   log_paths[$i]=$log_path
-  (cd ..; (echo 'loadt "arm/proofs/simulator.ml";;') | eval "$hol_light_cmd" >$log_path 2>&1) &
+  (cd ..; (echo "loadt \"${simulator_path}\";;") | eval "$hol_light_cmd" >$log_path 2>&1) &
   background_pid=$!
   children_pids[$i]=$background_pid
   echo "- Child $i (pid $background_pid) has started (log path: $log_path)"

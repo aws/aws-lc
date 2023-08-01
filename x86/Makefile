@@ -424,5 +424,8 @@ proofs: run_proofs ; ../tools/check-proofs.sh .
 
 # Always run sematest regardless of dependency check
 FORCE: ;
-# Dummy
-sematest: FORCE; echo "todo"
+# Always use max. # of cores because in Makefile one cannot get the passed number of -j.
+# A portable way of getting the number of max. cores:
+# https://stackoverflow.com/a/23569003/1488216
+NUM_CORES_FOR_SEMATEST = $(shell getconf _NPROCESSORS_ONLN)
+sematest: FORCE; ../tools/run-sematest.sh x86 $(NUM_CORES_FOR_SEMATEST) "$(HOLLIGHT)"
