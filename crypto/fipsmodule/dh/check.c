@@ -120,7 +120,7 @@ int DH_check(const DH *dh, int *out_flags) {
   //   for 3, p mod 12 == 5
   //   for 5, p mod 10 == 3 or 7
   // should hold.
-  int ok = 0, r;
+  int ok = 0, r, q_good = 0;
   BN_CTX *ctx = NULL;
   BN_ULONG l;
   BIGNUM *t1 = NULL, *t2 = NULL;
@@ -148,6 +148,14 @@ int DH_check(const DH *dh, int *out_flags) {
   }
 
   if (dh->q) {
+    if (BN_ucmp(dh->p, dh->q) > 0) {
+      q_good = 1;
+    } else {
+      *out_flags |= DH_CHECK_INVALID_Q_VALUE;
+    }
+  }
+
+  if (q_good) {
     if (BN_cmp(dh->g, BN_value_one()) <= 0) {
       *out_flags |= DH_CHECK_NOT_SUITABLE_GENERATOR;
     } else if (BN_cmp(dh->g, dh->p) >= 0) {
