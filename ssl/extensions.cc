@@ -4119,17 +4119,16 @@ bool tls1_choose_signature_algorithm(SSL_HANDSHAKE *hs, uint16_t *out) {
   Span<const uint16_t> peer_sigalgs = tls1_get_peer_verify_algorithms(hs);
 
   for (uint16_t sigalg : sigalgs) {
-    if (!ssl_public_key_supports_signature_algorithm(hs, sigalg) &&
-        // We check the extracted public key for support first. If not, we go
-        // through our available private keys to check for support.
-        !ssl_cert_private_keys_supports_signature_algorithm(hs, sigalg)) {
-      continue;
-    }
-
-    for (uint16_t peer_sigalg : peer_sigalgs) {
-      if (sigalg == peer_sigalg) {
-        *out = sigalg;
-        return true;
+    // We check the extracted public key for support first. If not, we go
+    // through our available private keys to check for support.
+    if (ssl_public_key_supports_signature_algorithm(hs, sigalg) ||
+        ssl_cert_private_keys_supports_signature_algorithm(hs, sigalg)) {
+      // Check if peer supports negotiated signature algorithms.
+      for (uint16_t peer_sigalg : peer_sigalgs) {
+        if (sigalg == peer_sigalg) {
+          *out = sigalg;
+          return true;
+        }
       }
     }
   }

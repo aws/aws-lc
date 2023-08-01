@@ -1447,7 +1447,7 @@ bool ssl_check_leaf_certificate(SSL_HANDSHAKE *hs, EVP_PKEY *pkey,
 bool ssl_on_certificate_selected(SSL_HANDSHAKE *hs);
 
 // ssl_handshake_load_local_pubkey loads |local_pubkey| in |hs| based on the
-// the current designated certificate.
+// current designated certificate.
 bool ssl_handshake_load_local_pubkey(SSL_HANDSHAKE *hs);
 
 
@@ -2241,6 +2241,9 @@ bool tls13_add_certificate(SSL_HANDSHAKE *hs);
 // tls13_add_certificate_verify adds a TLS 1.3 CertificateVerify message to the
 // handshake. If it returns |ssl_private_key_retry|, it should be called again
 // to retry when the signing operation is completed.
+//
+// NOTE: |signature_algorithm| in |hs| should be initialized already before
+// this is called.
 enum ssl_private_key_result_t tls13_add_certificate_verify(SSL_HANDSHAKE *hs);
 
 bool tls13_add_finished(SSL_HANDSHAKE *hs);
