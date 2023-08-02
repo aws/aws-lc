@@ -60,6 +60,7 @@
 
 #include "internal.h"
 
+#define OPENSSL_DH_CHECK_MAX_MODULUS_BITS  32768
 
 int DH_check_pub_key(const DH *dh, const BIGNUM *pub_key, int *out_flags) {
   *out_flags = 0;
@@ -119,12 +120,19 @@ int DH_check(const DH *dh, int *out_flags) {
   //   for 3, p mod 12 == 5
   //   for 5, p mod 10 == 3 or 7
   // should hold.
-  int ok = 0, r;
+  int ok = 0, r, q_good = 0;
   BN_CTX *ctx = NULL;
   BN_ULONG l;
   BIGNUM *t1 = NULL, *t2 = NULL;
 
   *out_flags = 0;
+
+  /* Don't do any checks at all with an excessively large modulus */
+  if (BN_num_bits(dh->p) > OPENSSL_DH_CHECK_MAX_MODULUS_BITS) {
+    OPENSSL_PUT_ERROR(DH, DH_R_MODULUS_TOO_LARGE);
+    return 0;
+  }
+
   ctx = BN_CTX_new();
   if (ctx == NULL) {
     goto err;
@@ -140,6 +148,14 @@ int DH_check(const DH *dh, int *out_flags) {
   }
 
   if (dh->q) {
+    if (BN_ucmp(dh->p, dh->q) > 0) {
+      q_good = 1;
+    } else {
+      *out_flags |= DH_CHECK_INVALID_Q_VALUE;
+    }
+  }
+
+  if (q_good) {
     if (BN_cmp(dh->g, BN_value_one()) <= 0) {
       *out_flags |= DH_CHECK_NOT_SUITABLE_GENERATOR;
     } else if (BN_cmp(dh->g, dh->p) >= 0) {
