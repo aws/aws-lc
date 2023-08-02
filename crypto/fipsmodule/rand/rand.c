@@ -66,7 +66,7 @@
 #if defined(BORINGSSL_FIPS)
 
 #if defined(FIPS_ENTROPY_SOURCE_JITTER_CPU) && defined(FIPS_ENTROPY_SOURCE_PASSIVE)
-#error "Only one FIPS entropy source must not be defined"
+#error "Only one FIPS entropy source can be enabled at a time"
 #endif
 
 #if defined(FIPS_ENTROPY_SOURCE_JITTER_CPU)
