@@ -234,6 +234,7 @@ static void CompareDigest(const DigestTestVector *test,
 }
 
 static void TestDigest(const DigestTestVector *test) {
+    SCOPED_TRACE(test->md.name);
     bssl::ScopedEVP_MD_CTX ctx;
     // Test the input provided.
     ASSERT_TRUE(EVP_DigestInit_ex(ctx.get(), test->md.func(), nullptr));

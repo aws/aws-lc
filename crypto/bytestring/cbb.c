@@ -484,7 +484,7 @@ int CBB_add_asn1_uint64_with_tag(CBB *cbb, uint64_t value, CBS_ASN1_TAG tag) {
 
   int started = 0;
   for (size_t i = 0; i < 8; i++) {
-    uint8_t byte = (value >> 8*(7-i)) & 0xff;
+    uint8_t byte = (value >> 8 * (7 - i)) & 0xff;
     if (!started) {
       if (byte == 0) {
         // Don't encode leading zeros.
@@ -521,17 +521,27 @@ int CBB_add_asn1_int64_with_tag(CBB *cbb, int64_t value, CBS_ASN1_TAG tag) {
 
   uint8_t bytes[sizeof(int64_t)];
   memcpy(bytes, &value, sizeof(value));
-  int start = 7;
   // Skip leading sign-extension bytes unless they are necessary.
+#ifdef OPENSSL_BIG_ENDIAN
+  int start = 0;
+  while (start < 7 && (bytes[start] == 0xff && (bytes[start + 1] & 0x80))) {
+    start++;
+  }
+#else
+  int start = 7;
   while (start > 0 && (bytes[start] == 0xff && (bytes[start - 1] & 0x80))) {
     start--;
   }
-
+#endif
   CBB child;
   if (!CBB_add_asn1(cbb, &child, tag)) {
     return 0;
   }
+#ifdef OPENSSL_BIG_ENDIAN
+  for (int i = start; i <= 7; i++) {
+#else
   for (int i = start; i >= 0; i--) {
+#endif
     if (!CBB_add_u8(&child, bytes[i])) {
       return 0;
     }
