@@ -142,11 +142,11 @@ OPENSSL_EXPORT void HAZMAT_set_urandom_test_mode_for_testing(void);
 
 #elif defined(FIPS_ENTROPY_SOURCE_PASSIVE)
 
-void RAND_module_entropy_depleted(uint8_t out_entropy[CTR_DRBG_ENTROPY_LEN],
+OPENSSL_EXPORT void RAND_module_entropy_depleted(uint8_t out_entropy[CTR_DRBG_ENTROPY_LEN],
                                   int *out_want_additional_input);
 void CRYPTO_get_seed_entropy(uint8_t entropy[PASSIVE_ENTROPY_LOAD_LENGTH],
                              int *out_want_additional_input);
-void RAND_load_entropy(uint8_t out_entropy[CTR_DRBG_ENTROPY_LEN],
+OPENSSL_EXPORT void RAND_load_entropy(uint8_t out_entropy[CTR_DRBG_ENTROPY_LEN],
                        uint8_t entropy[PASSIVE_ENTROPY_LOAD_LENGTH]);
 
 #endif
