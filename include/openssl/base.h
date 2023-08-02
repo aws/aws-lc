@@ -84,7 +84,6 @@ extern "C" {
 #if defined(BORINGSSL_FIPS)
 #define AWSLC_FIPS
 #endif
-
 #if defined(__x86_64) || defined(_M_AMD64) || defined(_M_X64)
 #define OPENSSL_64_BIT
 #define OPENSSL_X86_64

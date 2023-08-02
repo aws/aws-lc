@@ -734,6 +734,15 @@ static inline uint32_t CRYPTO_bswap4(uint32_t x) {
 static inline uint64_t CRYPTO_bswap8(uint64_t x) {
   return __builtin_bswap64(x);
 }
+static inline uint64_t CRYPTO_bswap_word(uint64_t x) {
+#if defined(OPENSSL_64_BIT)
+  return CRYPTO_bswap8(x);
+#else
+  return CRYPTO_bswap4(x);
+#endif
+}
+
+
 #elif defined(_MSC_VER)
 OPENSSL_MSVC_PRAGMA(warning(push, 3))
 #include <stdlib.h>
@@ -855,58 +864,104 @@ static inline void *OPENSSL_memset(void *dst, int c, size_t n) {
 static inline uint32_t CRYPTO_load_u32_le(const void *in) {
   uint32_t v;
   OPENSSL_memcpy(&v, in, sizeof(v));
+#if defined(OPENSSL_BIG_ENDIAN)
+  return CRYPTO_bswap4(v);
+#else
   return v;
+#endif
 }
 
 static inline void CRYPTO_store_u32_le(void *out, uint32_t v) {
+#if defined(OPENSSL_BIG_ENDIAN)
+  v = CRYPTO_bswap4(v);
+#endif
   OPENSSL_memcpy(out, &v, sizeof(v));
+
 }
 
 static inline uint32_t CRYPTO_load_u32_be(const void *in) {
   uint32_t v;
   OPENSSL_memcpy(&v, in, sizeof(v));
+#if defined(OPENSSL_BIG_ENDIAN)
+  return v;
+#else
   return CRYPTO_bswap4(v);
+#endif
 }
 
 static inline void CRYPTO_store_u32_be(void *out, uint32_t v) {
+
+#if !defined(OPENSSL_BIG_ENDIAN)
   v = CRYPTO_bswap4(v);
+#endif
   OPENSSL_memcpy(out, &v, sizeof(v));
+
 }
 
 static inline uint64_t CRYPTO_load_u64_le(const void *in) {
   uint64_t v;
   OPENSSL_memcpy(&v, in, sizeof(v));
+#if defined(OPENSSL_BIG_ENDIAN)
+  return CRYPTO_bswap8(v);
+#else
   return v;
+#endif
 }
 
 static inline void CRYPTO_store_u64_le(void *out, uint64_t v) {
+#if defined(OPENSSL_BIG_ENDIAN)
+  v = CRYPTO_bswap8(v);
+#endif
   OPENSSL_memcpy(out, &v, sizeof(v));
+
 }
 
 static inline uint64_t CRYPTO_load_u64_be(const void *ptr) {
   uint64_t ret;
   OPENSSL_memcpy(&ret, ptr, sizeof(ret));
+#if defined(OPENSSL_BIG_ENDIAN)
+  return ret;
+#else
   return CRYPTO_bswap8(ret);
+#endif
 }
 
 static inline void CRYPTO_store_u64_be(void *out, uint64_t v) {
+#if defined(OPENSSL_BIG_ENDIAN)
+#else
   v = CRYPTO_bswap8(v);
+#endif
   OPENSSL_memcpy(out, &v, sizeof(v));
+
 }
 
 static inline crypto_word_t CRYPTO_load_word_le(const void *in) {
+
   crypto_word_t v;
   OPENSSL_memcpy(&v, in, sizeof(v));
+#if defined(OPENSSL_BIG_ENDIAN)
+  return CRYPTO_bswap_word(v);
+#else
   return v;
+#endif
 }
 
 static inline void CRYPTO_store_word_le(void *out, crypto_word_t v) {
+
+
+#if defined(OPENSSL_BIG_ENDIAN)
+  v = CRYPTO_bswap_word(v);
+#endif
   OPENSSL_memcpy(out, &v, sizeof(v));
+
 }
 
 static inline crypto_word_t CRYPTO_load_word_be(const void *in) {
   crypto_word_t v;
   OPENSSL_memcpy(&v, in, sizeof(v));
+#if defined(OPENSSL_BIG_ENDIAN)
+  return v;
+#else
 #if defined(OPENSSL_64_BIT)
   assert(sizeof(v) == 8);
   return CRYPTO_bswap8(v);
@@ -914,8 +969,8 @@ static inline crypto_word_t CRYPTO_load_word_be(const void *in) {
   assert(sizeof(v) == 4);
   return CRYPTO_bswap4(v);
 #endif
+#endif
 }
-
 
 // Bit rotation functions.
 //

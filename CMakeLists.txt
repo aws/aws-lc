@@ -701,7 +701,7 @@ endif()
 
 TEST_BIG_ENDIAN(BIG_ENDIAN)
 if(BIG_ENDIAN)
-  message(FATAL_ERROR "Big Endian is not supported.")
+  message(STATUS "Continuing with experimental support on big endian platform")
 endif()
 
 if(OPENSSL_NO_SSE2_FOR_TESTING)
@@ -741,7 +741,7 @@ elseif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "riscv64")
 elseif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "loongarch64")
   set(ARCH "loongarch64")
 else()
-  message(STATUS "Unknown processor found. Using generic implementations. Processor:" ${CMAKE_SYSTEM_PROCESSOR})
+  message(STATUS "Unknown processor found. Using generic implementations. Processor: " ${CMAKE_SYSTEM_PROCESSOR})
   set(ARCH "generic")
 endif()
 
