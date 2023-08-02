@@ -734,7 +734,7 @@ static inline uint32_t CRYPTO_bswap4(uint32_t x) {
 static inline uint64_t CRYPTO_bswap8(uint64_t x) {
   return __builtin_bswap64(x);
 }
-static inline uint64_t CRYPTO_bswap_word(uint64_t x) {
+static inline crypto_word_t CRYPTO_bswap_word(crypto_word_t x) {
 #if defined(OPENSSL_64_BIT)
   return CRYPTO_bswap8(x);
 #else

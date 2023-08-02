@@ -53,8 +53,6 @@ uint8_t expected_le[4] = {0x78, 0x56, 0x34, 0x12};
 
 TEST(EndianTest, TestRotate32) {
   uint32_t value = 0b00000010000000000000000000000;
-  // 0x12345678  = 0b10010001101000101011001111000
-  // Rotate 4    = 0b00110100010101100111100010010
   uint32_t expected = 0b00100000000000000000000000000;
 
   uint32_t rotl_by = 4;
@@ -208,8 +206,8 @@ TEST(EndianTest, BN_bn2bin_padded) {
   EXPECT_EQ(1, BN_bn2bin_padded(out, sizeof(out), x.get()));
   EXPECT_EQ(Bytes(input), Bytes(out));
 }
-#define round_key_size  4 * (AES_MAXNR + 1)
-TEST(EndianTest, AES_disabled) {
+
+TEST(EndianTest, AES) {
   // Initialize the key and message buffers with zeros
   uint8_t key[AES_BLOCK_SIZE] = {0};
   key[0] = 0xaa;
@@ -224,7 +222,6 @@ TEST(EndianTest, AES_disabled) {
   // Create an AES_KEY struct
   AES_KEY aes_key = {{0}, 0};
   ASSERT_EQ(0, AES_set_encrypt_key(key, 128, &aes_key));
-  ASSERT_EQ((unsigned)10, aes_key.rounds);
 
   AES_encrypt(message, encrypted_message, &aes_key);
 

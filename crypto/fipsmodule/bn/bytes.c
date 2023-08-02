@@ -243,7 +243,6 @@ int BN_bn2le_padded(uint8_t *out, size_t len, const BIGNUM *in) {
   return 1;
 }
 
-// Need to reverse the overall word order but not byte order
 int BN_bn2bin_padded(uint8_t *out, size_t len, const BIGNUM *in) {
   if (!fits_in_bytes(in->d, in->width, len)) {
     return 0;
