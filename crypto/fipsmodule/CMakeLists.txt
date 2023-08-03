@@ -229,6 +229,20 @@ if((ARCH STREQUAL "x86_64" OR ARCH STREQUAL "aarch64") AND
                 curve25519/curve25519_x25519base_byte.S
                 curve25519/curve25519_x25519base_byte_alt.S
                 )
+
+    # Big integer arithmetics using s2n-bignum
+    list(APPEND S2N_BIGNUM_ASM_SOURCES
+                fastmul/bignum_kmul_16_32.S
+                fastmul/bignum_kmul_32_64.S
+                fastmul/bignum_ksqr_16_32.S
+                fastmul/bignum_ksqr_32_64.S
+                fastmul/bignum_emontredc_8n.S
+
+                generic/bignum_ge.S
+                generic/bignum_mul.S
+                generic/bignum_optsub.S
+                generic/bignum_sqr.S
+                )
   endif()
 endif()
 

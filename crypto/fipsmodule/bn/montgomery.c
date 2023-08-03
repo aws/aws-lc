@@ -119,8 +119,47 @@
 #include <openssl/type_check.h>
 
 #include "internal.h"
+#include "../cpucap/internal.h"
 #include "../../internal.h"
 
+#if !defined(OPENSSL_NO_ASM) &&                                                \
+    (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE)) &&                      \
+    defined(OPENSSL_AARCH64) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX) &&   \
+    defined(OPENSSL_BN_ASM_MONT)
+
+#include "../../../third_party/s2n-bignum/include/s2n-bignum_aws-lc.h"
+
+#define BN_MONTGOMERY_USE_S2N_BIGNUM 1
+
+#endif
+
+OPENSSL_INLINE int montgomery_s2n_bignum_capable(void) {
+#if defined(BN_MONTGOMERY_USE_S2N_BIGNUM)
+
+  return 1;
+
+#else
+
+  return 0;
+
+#endif
+}
+
+OPENSSL_INLINE int montgomery_use_s2n_bignum(unsigned int num) {
+#if defined(BN_MONTGOMERY_USE_S2N_BIGNUM)
+
+  // Use s2n-bignum's functions only if (1) the ARM architecture has slow
+  // multipliers, and (2) temporary buffer's size does not exceed
+  // BN_MONTGOMERY_MAX_WORDS.
+  return !CRYPTO_is_ARMv8_wide_multiplier_capable() && (num % 8 == 0) &&
+         BN_BITS2 == 64 && (2 * (uint64_t)num + 96) <= BN_MONTGOMERY_MAX_WORDS;
+
+#else
+
+  return 0;
+
+#endif
+}
 
 BN_MONT_CTX *BN_MONT_CTX_new(void) {
   BN_MONT_CTX *ret = OPENSSL_malloc(sizeof(BN_MONT_CTX));
@@ -418,6 +457,77 @@ err:
   return ret;
 }
 
+
+#if defined(OPENSSL_BN_ASM_MONT)
+
+static void montgomery_s2n_bignum_mul_mont(BN_ULONG *rp, const BN_ULONG *ap,
+                                           const BN_ULONG *bp,
+                                           const BN_ULONG *np,
+                                           const BN_ULONG *n0, size_t num) {
+
+#if defined(BN_MONTGOMERY_USE_S2N_BIGNUM)
+
+  // t is a temporary buffer used by big-int multiplication.
+  // bignum_kmul_32_64 requires 96 words at maximum.
+  uint64_t t[96];
+  // l is the output buffer of big-int multiplication.
+  // Its low num*2 elements are used.
+  // It is montgomery_use_s2n_bignum() that checks whether num*2 fits in the
+  // size of mulres array.
+  uint64_t mulres[BN_MONTGOMERY_MAX_WORDS - 96];
+
+  // BN_ULONG is uint64_t since BN_BITS2 is 64.
+  // m is the prime number, and m * w = -1 mod 2^64.
+  uint64_t *m = (uint64_t *)np;
+  uint64_t w = (uint64_t)n0[0];
+  uint64_t *src = (uint64_t *)ap, *src2 = (uint64_t *)bp;
+  uint64_t *dest = (uint64_t *)rp;
+  uint64_t c;
+
+  if (num == 32) {
+    if (ap == bp)
+      bignum_ksqr_32_64(mulres, src, t);
+    else
+      bignum_kmul_32_64(mulres, src2, src, t);
+  } else if (num == 16) {
+    if (ap == bp)
+      bignum_ksqr_16_32(mulres, src, t);
+    else
+      bignum_kmul_16_32(mulres, src2, src, t);
+  } else {
+    if (ap == bp)
+      bignum_sqr(num * 2, mulres, num, src);
+    else
+      bignum_mul(num * 2, mulres, num, src2, num, src);
+  }
+
+  // Do montgomery reduction. We follow the definition of montgomery reduction
+  // which is:
+  // 1. Calculate (mulres + ((mulres mod R) * (-m^-1 mod R) mod R) * m) / R
+  // using
+  //    bignum_emontredc_8n, where R is 2^(64*num).
+  //    The calculated result is stored in the upper half elements of the mulres
+  //    buffer. If the result overflows num words, bignum_emontredc_8n
+  //    returns 1.
+  // 2. Optionally subtract the result if the (result of step 1) >= m.
+  //    The comparison is true if (1) there is an overflow (bignum_emontredc_8n
+  //    returns 1), or (2) the upper half mulres is larger than m.
+  c = bignum_emontredc_8n(num, mulres, m, w);
+  c |= bignum_ge(num, mulres + num, num, m);
+  // Do the step 2 and store the result at dest (which is rp)
+  bignum_optsub(num, dest, mulres + num, c, m);
+
+#else
+
+  // Should not call this function unless s2n-bignum is supported.
+  abort();
+
+#endif
+}
+
+#endif
+
+
 int BN_mod_mul_montgomery(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
                           const BN_MONT_CTX *mont, BN_CTX *ctx) {
   if (a->neg || b->neg) {
@@ -437,11 +547,18 @@ int BN_mod_mul_montgomery(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
     // This bound is implied by |bn_mont_ctx_set_N_and_n0|. |bn_mul_mont|
     // allocates |num| words on the stack, so |num| cannot be too large.
     assert((size_t)num <= BN_MONTGOMERY_MAX_WORDS);
-    if (!bn_mul_mont(r->d, a->d, b->d, mont->N.d, mont->n0, num)) {
-      // The check above ensures this won't happen.
-      assert(0);
-      OPENSSL_PUT_ERROR(BN, ERR_R_INTERNAL_ERROR);
-      return 0;
+
+    if (montgomery_s2n_bignum_capable() && montgomery_use_s2n_bignum(num)) {
+      // Do montgomery multiplication using s2n-bignum.
+      montgomery_s2n_bignum_mul_mont(r->d, a->d, b->d, mont->N.d, mont->n0,
+                                     num);
+    } else {
+      if (!bn_mul_mont(r->d, a->d, b->d, mont->N.d, mont->n0, num)) {
+        // The check above ensures this won't happen.
+        assert(0);
+        OPENSSL_PUT_ERROR(BN, ERR_R_INTERNAL_ERROR);
+        return 0;
+      }
     }
     r->neg = 0;
     r->width = num;

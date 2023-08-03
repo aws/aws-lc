@@ -130,3 +130,53 @@ extern void curve25519_x25519_byte_alt(uint8_t res[static 32], const uint8_t sca
 // another u-coordinate, is saved in |res|.
 extern void curve25519_x25519base_byte(uint8_t res[static 32], const uint8_t scalar[static 32]);
 extern void curve25519_x25519base_byte_alt(uint8_t res[static 32], const uint8_t scalar[static 32]);
+
+// Evaluate z := x^2 where x is a 2048-bit integer.
+// Input: x[32]; output: z[64]; temporary buffer: t[>=72]
+extern void bignum_ksqr_32_64(uint64_t z[static 64], uint64_t x[static 32],
+                              uint64_t t[static 72]);
+
+// Evaluate z := x^2 where x is a 1024-bit integer.
+// Input: x[16]; output: z[32]; temporary buffer: t[>=24]
+extern void bignum_ksqr_16_32(uint64_t z[static 32], uint64_t x[static 16],
+                              uint64_t t[static 24]);
+
+// Evaluate z := x * y where x and y are 2048-bit integers.
+// Inputs: x[32], y[32]; output: z[64]; temporary buffer t[>=96]
+extern void bignum_kmul_32_64(uint64_t z[static 64], uint64_t x[static 32],
+                              uint64_t y[static 32], uint64_t t[static 96]);
+
+// Evaluate z := x * y where x and y are 1024-bit integers.
+// Inputs: x[16], y[16]; output: z[32]; temporary buffer t[>=32]
+extern void bignum_kmul_16_32(uint64_t z[static 32], uint64_t x[static 16],
+                              uint64_t y[static 16], uint64_t t[static 32]);
+
+// Extended Montgomery reduce in 8-digit blocks.
+// Assumes that z initially holds a 2k-digit bignum z_0, m is a k-digit odd
+// bignum and m * w == -1 (mod 2^64). This function also uses z for the output
+// as well as returning a carry c of 0 or 1. This encodes two numbers: in the
+// lower half of the z buffer we have q = z[0..k-1], while the upper half
+// together with the carry gives r = 2^{64k}*c + z[k..2k-1]. These values
+// satisfy z_0 + q * m = 2^{64k} * r, i.e. r gives a raw (unreduced) Montgomery
+// reduction while q gives the multiplier that was used.
+// Inputs: z[2*k], m[k], w; outputs: function return (extra result bit) and z[2*k]
+extern uint64_t bignum_emontredc_8n(uint64_t k, uint64_t *z, uint64_t *m,
+                                    uint64_t w);
+
+// Optionally subtract, z := x - y (if p nonzero) or z := x (if p zero)
+// Inputs: x[k], p, y[k]; outputs: function return (carry-out) and z[k]
+extern uint64_t bignum_optsub(uint64_t k, uint64_t *z, uint64_t *x, uint64_t p,
+                              uint64_t *y);
+
+// Compare bignums, x >= y.
+// Inputs: x[m], y[n]; output: function return (1 if x >= y)
+extern uint64_t bignum_ge(uint64_t m, uint64_t *x, uint64_t n, uint64_t *y);
+
+// General big-integer multiplication (z := x * y).
+// Inputs: x[m], y[n]; output: z[k]. If k < m+n, the result is truncated.
+extern void bignum_mul(uint64_t k, uint64_t *z, uint64_t m, uint64_t *x,
+                       uint64_t n, uint64_t *y);
+
+// General big-integer squaring (z := x^2).
+// Inputs: x[m]; output: z[k]. If k < 2m, the result is truncated.
+extern void bignum_sqr(uint64_t k, uint64_t *z, uint64_t m, uint64_t *x);
