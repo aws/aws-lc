@@ -401,7 +401,7 @@ bool ssl_cert_private_keys_supports_signature_algorithm(SSL_HANDSHAKE *hs,
                                                         uint16_t sigalg) {
   SSL *const ssl = hs->ssl;
   CERT *cert = hs->config->cert.get();
-  // Only the server without designated credentials has support for multiple
+  // Only the server without delegated credentials has support for multiple
   // certificate slots.
   if (cert == nullptr || !ssl->server || ssl_signing_with_dc(hs)) {
     return false;
@@ -419,6 +419,8 @@ bool ssl_cert_private_keys_supports_signature_algorithm(SSL_HANDSHAKE *hs,
         return false;
       }
 
+      // Update certificate slot index if all checks have passed.
+      //
       // If the server has a valid private key available to use, we switch to
       // using that certificate for the rest of the connection.
       cert->cert_private_key_idx = (int)i;

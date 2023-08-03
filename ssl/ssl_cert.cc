@@ -801,11 +801,18 @@ bool ssl_on_certificate_selected(SSL_HANDSHAKE *hs) {
     return true;
   }
 
-  if (!ssl->ctx->x509_method->ssl_auto_chain_if_needed(hs)) {
+  if (!ssl->ctx->x509_method->ssl_auto_chain_if_needed(hs) ||
+      !ssl_handshake_load_local_pubkey(hs)) {
     return false;
   }
 
-  return ssl_handshake_load_local_pubkey(hs);
+  // Sanity check that cached certificate public key type matches the chosen
+  // certificate slot index type.
+  assert(ssl_signing_with_dc(hs) ||
+         (ssl_get_certificate_slot_index(hs->local_pubkey.get()) ==
+          hs->config->cert->cert_private_key_idx));
+
+  return true;
 }
 
 bool ssl_handshake_load_local_pubkey(SSL_HANDSHAKE *hs) {
