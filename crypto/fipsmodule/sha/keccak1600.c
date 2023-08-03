@@ -10,7 +10,7 @@
 #include <assert.h>
 
 #if defined(__x86_64__) || defined(__aarch64__) || \
-    defined(__mips64) || defined(__ia64) || \
+    defined(__mips64) || defined(__ia64) || defined(__loongarch_lp64) || \
     (defined(__VMS) && !defined(__vax))
 
  // These are available even in ILP32 flavours, but even then they are
@@ -60,7 +60,7 @@ static const uint64_t iotas[] = {
 
 #if defined(__i386) || defined(__i386__) || defined(_M_IX86) || \
     (defined(__x86_64) && !defined(__BMI__)) || defined(_M_X64) || \
-    defined(__mips) || defined(__riscv) || defined(__s390__) || \
+    defined(__mips) || defined(__riscv) || defined(__s390__) || defined(__loongarch__) || \
     defined(__EMSCRIPTEN__)
 
  // These platforms don't support "logical and with complement" instruction.
