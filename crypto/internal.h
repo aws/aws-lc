@@ -1009,33 +1009,15 @@ int CRYPTO_is_ARMv8_PMULL_capable_at_runtime(void);
 // CRYPTO_is_NEON_capable returns true if the current CPU has a NEON unit. If
 // this is known statically, it is a constant inline function.
 OPENSSL_INLINE int CRYPTO_is_NEON_capable(void) {
-#if defined(OPENSSL_STATIC_ARMCAP_NEON) || defined(__ARM_NEON)
-  return 1;
-#elif defined(OPENSSL_STATIC_ARMCAP)
-  return 0;
-#else
   return CRYPTO_is_NEON_capable_at_runtime();
-#endif
 }
 
 OPENSSL_INLINE int CRYPTO_is_ARMv8_AES_capable(void) {
-#if defined(OPENSSL_STATIC_ARMCAP_AES) || defined(__ARM_FEATURE_AES)
-  return 1;
-#elif defined(OPENSSL_STATIC_ARMCAP)
-  return 0;
-#else
   return CRYPTO_is_ARMv8_AES_capable_at_runtime();
-#endif
 }
 
 OPENSSL_INLINE int CRYPTO_is_ARMv8_PMULL_capable(void) {
-#if defined(OPENSSL_STATIC_ARMCAP_PMULL) || defined(__ARM_FEATURE_AES)
-  return 1;
-#elif defined(OPENSSL_STATIC_ARMCAP)
-  return 0;
-#else
   return CRYPTO_is_ARMv8_PMULL_capable_at_runtime();
-#endif
 }
 
 #endif  // OPENSSL_ARM || OPENSSL_AARCH64
