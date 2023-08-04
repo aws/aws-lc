@@ -542,7 +542,3 @@ void RAND_get_system_entropy_for_custom_prng(uint8_t *buf, size_t len) {
   }
   CRYPTO_sysrand_for_seed(buf, len);
 }
-
-int have_rdrand_for_testing(void) {
-  return have_rdrand();
-}

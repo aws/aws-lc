@@ -320,7 +320,7 @@ TEST(RandTest, PassiveEntropyDepletedObviouslyNotBroken) {
   RAND_module_entropy_depleted(buf1, &out_want_additional_input_false_default);
   RAND_module_entropy_depleted(buf2, &out_want_additional_input_true_default);
 
-  if (have_rdrand_for_testing()) {
+  if (have_rdrand()) {
     want_additional_input_expect = 1;
   }
 
