@@ -27,7 +27,7 @@ echo "Testing building shared lib."
 build_and_test -DBUILD_SHARED_LIBS=1 -DCMAKE_BUILD_TYPE=Release
 
 echo "Testing FIPS entropy source: Passive."
-fips_build_and_test -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DUSE_FIPS_ENTROPY_SOURCE_PASSIVE=1
+fips_build_and_test -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release -DUSE_FIPS_ENTROPY_SOURCE_PASSIVE=1
 
 if [[ "${AWSLC_C99_TEST}" == "1" ]]; then
     echo "Testing the C99 compatability of AWS-LC headers."
