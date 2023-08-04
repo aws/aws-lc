@@ -1567,13 +1567,15 @@ uint16_t SSL_CIPHER_get_max_version(const SSL_CIPHER *cipher) {
   return TLS1_2_VERSION;
 }
 
+static const char* kUnknownCipher = "(NONE)";
+
 // return the actual cipher being used
 const char *SSL_CIPHER_get_name(const SSL_CIPHER *cipher) {
   if (cipher != NULL) {
     return cipher->name;
   }
 
-  return "(NONE)";
+  return kUnknownCipher;
 }
 
 const char *SSL_CIPHER_standard_name(const SSL_CIPHER *cipher) {
@@ -1803,3 +1805,13 @@ const char *SSL_COMP_get0_name(const SSL_COMP *comp) { return comp->name; }
 int SSL_COMP_get_id(const SSL_COMP *comp) { return comp->id; }
 
 void SSL_COMP_free_compression_methods(void) {}
+
+size_t SSL_get_all_cipher_names(const char **out, size_t max_out) {
+  return GetAllNames(out, max_out, MakeConstSpan(&kUnknownCipher, 1),
+                     &SSL_CIPHER::name, MakeConstSpan(kCiphers));
+}
+
+size_t SSL_get_all_standard_cipher_names(const char **out, size_t max_out) {
+  return GetAllNames(out, max_out, Span<const char *>(),
+                     &SSL_CIPHER::standard_name, MakeConstSpan(kCiphers));
+}
