@@ -153,6 +153,8 @@ OPENSSL_EXPORT void RAND_load_entropy(uint8_t out_entropy[CTR_DRBG_ENTROPY_LEN],
 
 #endif // defined(BORINGSSL_FIPS)
 
+OPENSSL_EXPORT int have_rdrand_for_testing(void);
+
 #if defined(__cplusplus)
 }  // extern C
 #endif
