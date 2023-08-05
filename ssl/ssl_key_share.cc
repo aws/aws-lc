@@ -28,6 +28,7 @@
 #include <openssl/mem.h>
 #include <openssl/nid.h>
 #include <openssl/rand.h>
+#include <openssl/span.h>
 
 #include "internal.h"
 #include "../crypto/internal.h"
@@ -250,4 +251,9 @@ const char* SSL_get_curve_name(uint16_t group_id) {
     }
   }
   return nullptr;
+}
+
+size_t SSL_get_all_curve_names(const char **out, size_t max_out) {
+  return GetAllNames(out, max_out, Span<const char *>(), &NamedGroup::name,
+                     MakeConstSpan(kNamedGroups));
 }
