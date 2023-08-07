@@ -23,6 +23,15 @@ option(DISABLE_GO "Disable Go for AWS-LC" OFF)
 
 enable_language(C)
 
+# Configure entropy source in case of FIPS build
+if(FIPS)
+  if(USE_FIPS_ENTROPY_SOURCE_PASSIVE)
+    add_definitions(-DFIPS_ENTROPY_SOURCE_PASSIVE)
+  else()
+    add_definitions(-DFIPS_ENTROPY_SOURCE_JITTER_CPU)
+  endif()
+endif()
+
 # Tests and libssl both require the CXX language to be enabled. If a consumer
 # chooses to disable building the tests and libssl, do not enable CXX
 if(BUILD_TESTING OR BUILD_LIBSSL)

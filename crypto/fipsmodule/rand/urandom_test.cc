@@ -47,6 +47,17 @@ static const bool kIsFIPS = true;
 static const bool kIsFIPS = false;
 #endif
 
+#if defined(FIPS_ENTROPY_SOURCE_JITTER_CPU)
+static const bool kIsFipsSourceJitterCpu = true;
+#else
+static const bool kIsFipsSourceJitterCpu = false;
+#endif
+
+#if defined(FIPS_ENTROPY_SOURCE_PASSIVE)
+static const bool kIsFipsSourcePassive = true;
+#else
+static const bool kIsFipsSourcePassive = false;
+#endif
 
 // This test can be run with $OPENSSL_ia32cap=~0x4000000000000000 in order to
 // simulate the absence of RDRAND of machines that have it.
@@ -471,6 +482,7 @@ static std::vector<Event> TestFunctionPRNGModel(unsigned flags) {
   const size_t kSeedLength = CTR_DRBG_ENTROPY_LEN;
   const size_t kAdditionalDataLength = 32;
   const size_t kPersonalizationStringLength = CTR_DRBG_ENTROPY_LEN;
+  const size_t kPassiveEntropyWithWhitenFactor = PASSIVE_ENTROPY_LOAD_LENGTH;
   const bool kHaveRdrand = have_rdrand();
   const bool kHaveFastRdrand = have_fast_rdrand();
   const bool kHaveForkDetection = have_fork_detection();
@@ -492,11 +504,31 @@ static std::vector<Event> TestFunctionPRNGModel(unsigned flags) {
       }
     }
   }
+
   // Now the entropy for seeding.
   if (kIsFIPS) {
-    // In FIPS mode we use Jitter Entropy for the seed but Jitter is not modeled
-    // A blocking system random call for a personalization string always follows.
-    if (!sysrand(true, kPersonalizationStringLength)) {
+    if (kIsFipsSourceJitterCpu) {
+      // In FIPS mode we use Jitter Entropy by default for the seed but Jitter
+      // is not modeled. A blocking system random call for a personalization
+      // string always follows.
+      if (!sysrand(true, kPersonalizationStringLength)) {
+        return ret;
+      }
+    } else if (kIsFipsSourcePassive) {
+      // The Passive FIPS entropy source either gathers entropy from a CPU
+      // source or a system source. The former is not modeled.
+      if (!kHaveRdrand) {
+        if (!sysrand(true, kPassiveEntropyWithWhitenFactor)) {
+                return ret;
+        }
+      } else {
+        // If using the CPU source, also drawing additional data for diversity.
+        if (!sysrand(false, kPersonalizationStringLength)) {
+                return ret;
+        }
+      }
+    } else {
+      // This shouldn't really happen...
       return ret;
     }
   } else {
