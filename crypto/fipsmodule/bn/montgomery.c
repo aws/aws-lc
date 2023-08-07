@@ -148,9 +148,13 @@ OPENSSL_INLINE int montgomery_s2n_bignum_capable(void) {
 OPENSSL_INLINE int montgomery_use_s2n_bignum(unsigned int num) {
 #if defined(BN_MONTGOMERY_USE_S2N_BIGNUM)
 
-  // Use s2n-bignum's functions only if (1) the ARM architecture has slow
-  // multipliers, and (2) temporary buffer's size does not exceed
-  // BN_MONTGOMERY_MAX_WORDS.
+  // Use s2n-bignum's functions only if
+  // (1) The ARM architecture has slow multipliers, and
+  // (2) num (which is the number of words) is multiplie of 8, because
+  //     s2n-bignum's bignum_emontredc_8n requires it
+  // (3) The word size is 64 bits, and
+  // (4) Temporary buffer's size used in montgomery_s2n_bignum_mul_mont
+  //     does not exceed BN_MONTGOMERY_MAX_WORDS.
   return !CRYPTO_is_ARMv8_wide_multiplier_capable() && (num % 8 == 0) &&
          BN_BITS2 == 64 && (2 * (uint64_t)num + 96) <= BN_MONTGOMERY_MAX_WORDS;
 
@@ -468,10 +472,11 @@ static void montgomery_s2n_bignum_mul_mont(BN_ULONG *rp, const BN_ULONG *ap,
 #if defined(BN_MONTGOMERY_USE_S2N_BIGNUM)
 
   // t is a temporary buffer used by big-int multiplication.
-  // bignum_kmul_32_64 requires 96 words at maximum.
+  // bignum_kmul_32_64 requires 96 words.
   uint64_t t[96];
-  // l is the output buffer of big-int multiplication.
-  // Its low num*2 elements are used.
+  // mulres is the output buffer of big-int multiplication.
+  // If BN_MONTGOMERY_MAX_WORDS - 96 is larger than num*2, its low num*2
+  // elements are used.
   // It is montgomery_use_s2n_bignum() that checks whether num*2 fits in the
   // size of mulres array.
   uint64_t mulres[BN_MONTGOMERY_MAX_WORDS - 96];
