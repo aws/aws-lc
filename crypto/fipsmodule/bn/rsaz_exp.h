@@ -100,6 +100,22 @@ void rsaz_1024_gather5_avx2(BN_ULONG val[40], const BN_ULONG tbl[32 * 18],
 // |bn_reduce_once|.
 void rsaz_1024_red2norm_avx2(BN_ULONG norm[16], const BN_ULONG red[40]);
 
+int ossl_rsaz_avx512ifma_eligible(void);
+
+int ossl_rsaz_mod_exp_avx512_x2(BN_ULONG *res1,
+                                const BN_ULONG *base1,
+                                const BN_ULONG *exponent1,
+                                const BN_ULONG *m1,
+                                const BN_ULONG *RR1,
+                                BN_ULONG k0_1,
+                                BN_ULONG *res2,
+                                const BN_ULONG *base2,
+                                const BN_ULONG *exponent2,
+                                const BN_ULONG *m2,
+                                const BN_ULONG *RR2,
+                                BN_ULONG k0_2,
+                                int factor_size);
+
 
 #endif  // !OPENSSL_NO_ASM && OPENSSL_X86_64
 

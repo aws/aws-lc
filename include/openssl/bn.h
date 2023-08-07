@@ -1006,6 +1006,16 @@ OPENSSL_EXPORT BIGNUM *BN_secure_new(void);
 // BN_CTX_secure_new calls |BN_CTX_new|.
 OPENSSL_EXPORT BN_CTX *BN_CTX_secure_new(void);
 
+// BN_mod_exp_mont_consttime_x2 performs two montgomery
+// multiplications at once using AVX-512 SIMD. If AVX-512 is not
+// available, it falls back to two calls of
+// `BN_mod_exp_mont_consttime`.
+OPENSSL_EXPORT int BN_mod_exp_mont_consttime_x2(BIGNUM *rr1, const BIGNUM *a1, const BIGNUM *p1,
+                                                const BIGNUM *m1, const BN_MONT_CTX *in_mont1,
+                                                BIGNUM *rr2, const BIGNUM *a2, const BIGNUM *p2,
+                                                const BIGNUM *m2, const BN_MONT_CTX *in_mont2,
+                                                BN_CTX *ctx);
+
 // Private functions
 
 struct bignum_st {

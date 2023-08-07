@@ -26,6 +26,9 @@ if(ARCH STREQUAL "x86_64")
     p256_beeu-x86_64-asm.${ASM_EXT}
     rdrand-x86_64.${ASM_EXT}
     rsaz-avx2.${ASM_EXT}
+    rsaz-2k-avx512.${ASM_EXT}
+    rsaz-3k-avx512.${ASM_EXT}
+    rsaz-4k-avx512.${ASM_EXT}
     sha1-x86_64.${ASM_EXT}
     sha256-x86_64.${ASM_EXT}
     sha512-x86_64.${ASM_EXT}
@@ -135,6 +138,9 @@ if(PERL_EXECUTABLE)
   perlasm(p256_beeu-armv8-asm.${ASM_EXT} ec/asm/p256_beeu-armv8-asm.pl)
   perlasm(rdrand-x86_64.${ASM_EXT} rand/asm/rdrand-x86_64.pl)
   perlasm(rsaz-avx2.${ASM_EXT} bn/asm/rsaz-avx2.pl)
+  perlasm(rsaz-2k-avx512.${ASM_EXT} bn/asm/rsaz-2k-avx512.pl)
+  perlasm(rsaz-3k-avx512.${ASM_EXT} bn/asm/rsaz-3k-avx512.pl)
+  perlasm(rsaz-4k-avx512.${ASM_EXT} bn/asm/rsaz-4k-avx512.pl)
   perlasm(sha1-586.${ASM_EXT} sha/asm/sha1-586.pl)
   perlasm(sha1-armv4-large.${ASM_EXT} sha/asm/sha1-armv4-large.pl)
   perlasm(sha1-armv8.${ASM_EXT} sha/asm/sha1-armv8.pl)
