@@ -19614,9 +19614,8 @@ var testMultipleCertSlotsAlgorithms = []struct {
 	{"RSA_PSS_SHA512", TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA, signatureRSAPSSWithSHA512, testCertRSA, 0},
 	{"Ed25519", TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256, signatureEd25519, testCertEd25519, 0},
 	// Tests for key types prior to TLS 1.2.
-	// TODO: Add support for TLS1.0/1.1
-	//{"RSA", 0, testCertRSA, 0},
-	//{"ECDSA", 0, testCertECDSAP256, CurveP256},
+	{"RSA", TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA, 0, testCertRSA, 0},
+	{"ECDSA", TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA, 0, testCertECDSAP256, CurveP256},
 }
 
 // TODO: Add more failure test cases.
@@ -19693,7 +19692,7 @@ func addMultipleCertSlotTests() {
 				strictAlgTest.config.CipherSuites = []uint16{alg.cipher}
 			}
 
-			if ver.version >= VersionTLS12 && !shouldFail {
+			if !shouldFail {
 				testCases = append(testCases, strictAlgTest)
 			}
 		}
