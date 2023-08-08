@@ -5133,12 +5133,18 @@ struct CertificateKeyTestParams {
   bssl::UniquePtr<X509> (*certificate)();
   bssl::UniquePtr<EVP_PKEY> (*key)();
   int slot_index;
+  const char suite[50];
+  uint16_t corresponding_sigalg;
 };
 
 const CertificateKeyTestParams kCertificateKeyTests[] = {
-    {GetTestCertificate, GetTestKey, SSL_PKEY_RSA},
-    {GetECDSATestCertificate, GetECDSATestKey, SSL_PKEY_ECC},
-    {GetED25519TestCertificate, GetED25519TestKey, SSL_PKEY_ED25519},
+    {GetTestCertificate, GetTestKey, SSL_PKEY_RSA,
+     "TLS_RSA_WITH_AES_256_CBC_SHA:", SSL_SIGN_RSA_PSS_RSAE_SHA256},
+    {GetECDSATestCertificate, GetECDSATestKey, SSL_PKEY_ECC,
+     "TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA:",
+     SSL_SIGN_ECDSA_SECP256R1_SHA256},
+    {GetED25519TestCertificate, GetED25519TestKey, SSL_PKEY_ED25519,
+     "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256:", SSL_SIGN_ED25519},
 };
 
 class MultipleCertificateSlotTest
@@ -5160,9 +5166,10 @@ class MultipleCertificateSlotTest
     return std::get<1>(GetParam());
   }
 
-  void StandardCertificateSlotIndexTests(SSL_CTX *client_ctx,
-                                         SSL_CTX *server_ctx,
-                                         std::vector<uint16_t> sigalgs) {
+  const void StandardCertificateSlotIndexTests(SSL_CTX *client_ctx,
+                                               SSL_CTX *server_ctx,
+                                               std::vector<uint16_t> sigalgs,
+                                               int last_cert_type_set) {
     EXPECT_TRUE(SSL_CTX_set_signing_algorithm_prefs(client_ctx, sigalgs.data(),
                                                     sigalgs.size()));
     EXPECT_TRUE(SSL_CTX_set_verify_algorithm_prefs(client_ctx, sigalgs.data(),
@@ -5182,10 +5189,13 @@ class MultipleCertificateSlotTest
     ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
 
     // Check the internal slot index to verify that the correct slot was set.
-    EXPECT_EQ(server_ctx->cert->cert_private_key_idx, slot_index);
-    EXPECT_EQ(server->ctx->cert->cert_private_key_idx, slot_index);
+    // This should be the slot of the last certificate that was set in
+    // |server_ctx|.
+    EXPECT_EQ(server_ctx->cert->cert_private_key_idx, last_cert_type_set);
+    EXPECT_EQ(server->ctx->cert->cert_private_key_idx, last_cert_type_set);
 
-    // Check the internal slot index to verify that the correct slot was used.
+    // Check the internal slot index to verify that the correct slot was used
+    // during the handshake.
     EXPECT_EQ(server->config->cert->cert_private_key_idx, slot_index);
   }
 };
@@ -5210,7 +5220,8 @@ TEST_P(MultipleCertificateSlotTest, CertificateSlotIndex) {
   StandardCertificateSlotIndexTests(
       client_ctx.get(), server_ctx.get(),
       {SSL_SIGN_ED25519, SSL_SIGN_ECDSA_SECP256R1_SHA256,
-       SSL_SIGN_RSA_PSS_RSAE_SHA256});
+       SSL_SIGN_RSA_PSS_RSAE_SHA256},
+      slot_index);
 }
 
 // Sets up the |SSL_CTX| with |SSL_CTX_set_chain_and_key|.
@@ -5239,7 +5250,44 @@ TEST_P(MultipleCertificateSlotTest, SetChainAndKeyIndex) {
   StandardCertificateSlotIndexTests(
       client_ctx.get(), server_ctx.get(),
       {SSL_SIGN_ED25519, SSL_SIGN_ECDSA_SECP256R1_SHA256,
-       SSL_SIGN_RSA_PSS_RSAE_SHA256});
+       SSL_SIGN_RSA_PSS_RSAE_SHA256},
+      slot_index);
+}
+
+TEST_P(MultipleCertificateSlotTest, AutomaticSelection) {
+  if (version == TLS1_1_VERSION || version == TLS1_VERSION) {
+    // Automatic Multiple Certificate Selection is not supported for
+    // TLS1.0/1.1 yet.
+    // TODO: Add support for TLS1.0/1.1.
+    return;
+  }
+
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
+
+  ASSERT_TRUE(
+      SSL_CTX_use_certificate(server_ctx.get(), GetTestCertificate().get()));
+  ASSERT_TRUE(SSL_CTX_use_PrivateKey(server_ctx.get(), GetTestKey().get()));
+  ASSERT_TRUE(SSL_CTX_use_certificate(server_ctx.get(),
+                                      GetECDSATestCertificate().get()));
+  ASSERT_TRUE(
+      SSL_CTX_use_PrivateKey(server_ctx.get(), GetECDSATestKey().get()));
+  ASSERT_TRUE(SSL_CTX_use_certificate(server_ctx.get(),
+                                      GetED25519TestCertificate().get()));
+  ASSERT_TRUE(
+      SSL_CTX_use_PrivateKey(server_ctx.get(), GetED25519TestKey().get()));
+
+
+  // Versions prior to TLS1.3 need a valid authentication cipher suite to pair
+  // with the certificate.
+  if (version < TLS1_3_VERSION) {
+    ASSERT_TRUE(SSL_CTX_set_cipher_list(client_ctx.get(),
+                                        certificate_key_param().suite));
+  }
+
+  StandardCertificateSlotIndexTests(
+      client_ctx.get(), server_ctx.get(),
+      {certificate_key_param().corresponding_sigalg}, SSL_PKEY_ED25519);
 }
 
 struct MultiTransferReadWriteTestParams {

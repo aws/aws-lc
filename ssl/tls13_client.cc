@@ -872,6 +872,11 @@ static enum ssl_hs_wait_t do_send_client_certificate_verify(SSL_HANDSHAKE *hs) {
     return ssl_hs_ok;
   }
 
+  if (!tls1_choose_signature_algorithm(hs, &hs->signature_algorithm)) {
+    ssl_send_alert(hs->ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
+    return ssl_hs_error;
+  }
+
   switch (tls13_add_certificate_verify(hs)) {
     case ssl_private_key_success:
       hs->tls13_state = state_complete_second_flight;
