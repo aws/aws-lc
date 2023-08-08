@@ -4102,11 +4102,12 @@ bool tls1_choose_signature_algorithm(SSL_HANDSHAKE *hs, uint16_t *out) {
   // Before TLS 1.2, the signature algorithm isn't negotiated as part of the
   // handshake.
   if (ssl_protocol_version(ssl) < TLS1_2_VERSION) {
-    if (!tls1_get_legacy_signature_algorithm(out, hs->local_pubkey.get())) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_NO_COMMON_SIGNATURE_ALGORITHMS);
-      return false;
+    if (tls1_get_legacy_signature_algorithm(out, hs->local_pubkey.get()) ||
+        ssl_cert_private_keys_supports_legacy_signature_algorithm(out, hs)) {
+      return true;
     }
-    return true;
+    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_COMMON_SIGNATURE_ALGORITHMS);
+    return false;
   }
 
   Span<const uint16_t> sigalgs = kSignSignatureAlgorithms;

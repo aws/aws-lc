@@ -397,6 +397,45 @@ bool ssl_public_key_supports_signature_algorithm(SSL_HANDSHAKE *hs,
   return true;
 }
 
+static UniquePtr<EVP_PKEY> ssl_cert_parse_leaf_pubkey(
+    STACK_OF(CRYPTO_BUFFER) *chain) {
+  CBS leaf;
+  CRYPTO_BUFFER_init_CBS(sk_CRYPTO_BUFFER_value(chain, 0), &leaf);
+  return ssl_cert_parse_pubkey(&leaf);
+}
+
+bool ssl_cert_private_keys_supports_legacy_signature_algorithm(
+    uint16_t *out, SSL_HANDSHAKE *hs) {
+  SSL *const ssl = hs->ssl;
+  assert(ssl_protocol_version(ssl) < TLS1_2_VERSION);
+
+  CERT *cert = hs->config->cert.get();
+  if (cert == nullptr || !ssl->server) {
+    return false;
+  }
+
+  for (size_t i = 0; i < cert->cert_private_keys.size(); i++) {
+    EVP_PKEY *private_key = cert->cert_private_keys[i].privatekey.get();
+    if (private_key != nullptr &&
+        // We may have a private key that supports the signature algorithm,
+        // but we need to verify that the negotiated cipher allows it.
+        hs->new_cipher->algorithm_auth &
+            ssl_cipher_auth_mask_for_key(private_key) &&
+        tls1_get_legacy_signature_algorithm(out, private_key)) {
+      // Update certificate slot index if all checks have passed.
+      //
+      // If the server has a valid private key available to use, we switch to
+      // using that certificate for the rest of the connection.
+      cert->cert_private_key_idx = (int)i;
+      hs->local_pubkey =
+          ssl_cert_parse_leaf_pubkey(cert->cert_private_keys[i].chain.get());
+      return true;
+    }
+  }
+
+  return false;
+}
+
 bool ssl_cert_private_keys_supports_signature_algorithm(SSL_HANDSHAKE *hs,
                                                         uint16_t sigalg) {
   SSL *const ssl = hs->ssl;
@@ -411,10 +450,8 @@ bool ssl_cert_private_keys_supports_signature_algorithm(SSL_HANDSHAKE *hs,
     EVP_PKEY *private_key = cert->cert_private_keys[i].privatekey.get();
     if (private_key != nullptr &&
         pkey_supports_algorithm(ssl, private_key, sigalg)) {
-      STACK_OF(CRYPTO_BUFFER) *chain = cert->cert_private_keys[i].chain.get();
-      CBS leaf;
-      CRYPTO_BUFFER_init_CBS(sk_CRYPTO_BUFFER_value(chain, 0), &leaf);
-      UniquePtr<EVP_PKEY> pubkey = ssl_cert_parse_pubkey(&leaf);
+      UniquePtr<EVP_PKEY> pubkey =
+          ssl_cert_parse_leaf_pubkey(cert->cert_private_keys[i].chain.get());
       if (!ssl_public_key_rsa_pss_check(pubkey.get(), sigalg)) {
         return false;
       }
