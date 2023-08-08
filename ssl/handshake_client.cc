@@ -1579,14 +1579,13 @@ static enum ssl_hs_wait_t do_send_client_certificate_verify(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  uint16_t signature_algorithm;
-  if (!tls1_choose_signature_algorithm(hs, &signature_algorithm)) {
+  if (!tls1_choose_signature_algorithm(hs, &hs->signature_algorithm)) {
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
     return ssl_hs_error;
   }
   if (ssl_protocol_version(ssl) >= TLS1_2_VERSION) {
     // Write out the digest type in TLS 1.2.
-    if (!CBB_add_u16(&body, signature_algorithm)) {
+    if (!CBB_add_u16(&body, hs->signature_algorithm)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       return ssl_hs_error;
     }
@@ -1602,7 +1601,7 @@ static enum ssl_hs_wait_t do_send_client_certificate_verify(SSL_HANDSHAKE *hs) {
 
   size_t sig_len = max_sig_len;
   switch (ssl_private_key_sign(hs, ptr, &sig_len, max_sig_len,
-                               signature_algorithm,
+                               hs->signature_algorithm,
                                hs->transcript.buffer())) {
     case ssl_private_key_success:
       break;

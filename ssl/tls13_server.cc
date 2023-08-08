@@ -247,6 +247,20 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
+  // Negotiate the signature algorithms.
+  if (!tls1_choose_signature_algorithm(hs, &hs->signature_algorithm)) {
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
+    return ssl_hs_error;
+  }
+
+  if (!ssl_on_certificate_selected(hs)) {
+    return ssl_hs_error;
+  }
+
+  if (!tls1_call_ocsp_stapling_callback(hs)) {
+    return ssl_hs_error;
+  }
+
   // HTTP/2 negotiation depends on the cipher suite, so ALPN negotiation was
   // deferred. Complete it now.
   uint8_t alert = SSL_AD_DECODE_ERROR;
