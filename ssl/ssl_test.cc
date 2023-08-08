@@ -1648,6 +1648,28 @@ static bssl::UniquePtr<EVP_PKEY> GetECDSATestKey() {
   return KeyFromPEM(kKeyPEM);
 }
 
+static bssl::UniquePtr<X509> GetED25519TestCertificate() {
+  static const char kCertPEM[] =
+      "-----BEGIN CERTIFICATE-----\n"
+      "MIIBRDCB9wIUKI+32tShPulvafJa3xZvj29Z9xgwBQYDK2VwMEUxCzAJBgNVBAYT\n"
+      "AkFVMRMwEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5ldCBXaWRn\n"
+      "aXRzIFB0eSBMdGQwHhcNMjMwNzE4MTg0NzU4WhcNMjMwNzE5MTg0NzU4WjBFMQsw\n"
+      "CQYDVQQGEwJBVTETMBEGA1UECAwKU29tZS1TdGF0ZTEhMB8GA1UECgwYSW50ZXJu\n"
+      "ZXQgV2lkZ2l0cyBQdHkgTHRkMCowBQYDK2VwAyEAprAzqgxux8R4ZXaxn5mM/5E9\n"
+      "0RNE59r47BJikdOoeUwwBQYDK2VwA0EAMELt0XRGFYo4qkWwOsoSYcdGYqlxVlf9\n"
+      "AhTPaJ6SSzjv3n4r60wfe8Z2OPn415tcj2IIm42T64itI4OAX0aTCg==\n"
+      "-----END CERTIFICATE-----\n";
+  return CertFromPEM(kCertPEM);
+}
+
+static bssl::UniquePtr<EVP_PKEY> GetED25519TestKey() {
+  static const char kKeyPEM[] =
+      "-----BEGIN PRIVATE KEY-----\n"
+      "MC4CAQAwBQYDK2VwBCIEIGPkz4xAobc5gtRidkHl+fxNLHfiWo3efRG2G8Z617yk\n"
+      "-----END PRIVATE KEY-----\n";
+  return KeyFromPEM(kKeyPEM);
+}
+
 static bssl::UniquePtr<CRYPTO_BUFFER> BufferFromPEM(const char *pem) {
   bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(pem, strlen(pem)));
   char *name, *header;
@@ -5094,6 +5116,178 @@ TEST(SSLTest, EmptyCipherList) {
 
   // But the cipher list is still updated to empty.
   EXPECT_EQ(0u, sk_SSL_CIPHER_num(SSL_CTX_get_ciphers(ctx.get())));
+}
+
+struct TLSVersionTestParams {
+  uint16_t version;
+};
+
+const TLSVersionTestParams kTLSVersionTests[] = {
+    {TLS1_VERSION},
+    {TLS1_1_VERSION},
+    {TLS1_2_VERSION},
+    {TLS1_3_VERSION},
+};
+
+struct CertificateKeyTestParams {
+  bssl::UniquePtr<X509> (*certificate)();
+  bssl::UniquePtr<EVP_PKEY> (*key)();
+  int slot_index;
+  const char suite[50];
+  uint16_t corresponding_sigalg;
+};
+
+const CertificateKeyTestParams kCertificateKeyTests[] = {
+    {GetTestCertificate, GetTestKey, SSL_PKEY_RSA,
+     "TLS_RSA_WITH_AES_256_CBC_SHA:", SSL_SIGN_RSA_PSS_RSAE_SHA256},
+    {GetECDSATestCertificate, GetECDSATestKey, SSL_PKEY_ECC,
+     "TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA:",
+     SSL_SIGN_ECDSA_SECP256R1_SHA256},
+    {GetED25519TestCertificate, GetED25519TestKey, SSL_PKEY_ED25519,
+     "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256:", SSL_SIGN_ED25519},
+};
+
+class MultipleCertificateSlotTest
+    : public testing::TestWithParam<
+          std::tuple<TLSVersionTestParams, CertificateKeyTestParams>> {
+ public:
+  MultipleCertificateSlotTest() {
+    this->version = version_param().version;
+    this->slot_index = certificate_key_param().slot_index;
+  }
+
+  uint16_t version = 0;
+  int slot_index = -1;
+
+  static TLSVersionTestParams version_param() {
+    return std::get<0>(GetParam());
+  }
+  static CertificateKeyTestParams certificate_key_param() {
+    return std::get<1>(GetParam());
+  }
+
+  const void StandardCertificateSlotIndexTests(SSL_CTX *client_ctx,
+                                               SSL_CTX *server_ctx,
+                                               std::vector<uint16_t> sigalgs,
+                                               int last_cert_type_set) {
+    EXPECT_TRUE(SSL_CTX_set_signing_algorithm_prefs(client_ctx, sigalgs.data(),
+                                                    sigalgs.size()));
+    EXPECT_TRUE(SSL_CTX_set_verify_algorithm_prefs(client_ctx, sigalgs.data(),
+                                                   sigalgs.size()));
+
+    ASSERT_TRUE(SSL_CTX_set_min_proto_version(client_ctx, version));
+    ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx, version));
+    ASSERT_TRUE(SSL_CTX_set_min_proto_version(server_ctx, version));
+    ASSERT_TRUE(SSL_CTX_set_max_proto_version(server_ctx, version));
+
+    ClientConfig config;
+    bssl::UniquePtr<SSL> client, server;
+
+    ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx, server_ctx,
+                                       config, false));
+
+    ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
+
+    // Check the internal slot index to verify that the correct slot was set.
+    // This should be the slot of the last certificate that was set in
+    // |server_ctx|.
+    EXPECT_EQ(server_ctx->cert->cert_private_key_idx, last_cert_type_set);
+    EXPECT_EQ(server->ctx->cert->cert_private_key_idx, last_cert_type_set);
+
+    // Check the internal slot index to verify that the correct slot was used
+    // during the handshake.
+    EXPECT_EQ(server->config->cert->cert_private_key_idx, slot_index);
+  }
+};
+
+INSTANTIATE_TEST_SUITE_P(
+    MultipleCertificateSlotAllTest, MultipleCertificateSlotTest,
+    testing::Combine(testing::ValuesIn(kTLSVersionTests),
+                     testing::ValuesIn(kCertificateKeyTests)));
+
+// Sets up the |SSL_CTX| with |SSL_CTX_use_certificate| & |SSL_use_PrivateKey|.
+TEST_P(MultipleCertificateSlotTest, CertificateSlotIndex) {
+  if ((version == TLS1_1_VERSION || version == TLS1_VERSION) &&
+      slot_index == SSL_PKEY_ED25519) {
+    // ED25519 is not supported in versions prior to TLS1.2.
+    return;
+  }
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx(CreateContextWithCertificate(
+      TLS_method(), certificate_key_param().certificate(),
+      certificate_key_param().key()));
+
+  StandardCertificateSlotIndexTests(
+      client_ctx.get(), server_ctx.get(),
+      {SSL_SIGN_ED25519, SSL_SIGN_ECDSA_SECP256R1_SHA256,
+       SSL_SIGN_RSA_PSS_RSAE_SHA256},
+      slot_index);
+}
+
+// Sets up the |SSL_CTX| with |SSL_CTX_set_chain_and_key|.
+TEST_P(MultipleCertificateSlotTest, SetChainAndKeyIndex) {
+  if ((version == TLS1_1_VERSION || version == TLS1_VERSION) &&
+      slot_index == SSL_PKEY_ED25519) {
+    // ED25519 is not supported in versions prior to TLS1.2.
+    return;
+  }
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
+
+  uint8_t *buf = nullptr;
+  int cert_len = i2d_X509(certificate_key_param().certificate().get(), &buf);
+  bssl::UniquePtr<uint8_t> free_buf(buf);
+
+  bssl::UniquePtr<CRYPTO_BUFFER> leaf(
+      CRYPTO_BUFFER_new(buf, cert_len, nullptr));
+  ASSERT_TRUE(leaf);
+  std::vector<CRYPTO_BUFFER *> chain = {leaf.get()};
+
+  ASSERT_TRUE(
+      SSL_CTX_set_chain_and_key(server_ctx.get(), &chain[0], chain.size(),
+                                certificate_key_param().key().get(), nullptr));
+
+  StandardCertificateSlotIndexTests(
+      client_ctx.get(), server_ctx.get(),
+      {SSL_SIGN_ED25519, SSL_SIGN_ECDSA_SECP256R1_SHA256,
+       SSL_SIGN_RSA_PSS_RSAE_SHA256},
+      slot_index);
+}
+
+TEST_P(MultipleCertificateSlotTest, AutomaticSelection) {
+  if (version == TLS1_1_VERSION || version == TLS1_VERSION) {
+    // Automatic Multiple Certificate Selection is not supported for
+    // TLS1.0/1.1 yet.
+    // TODO: Add support for TLS1.0/1.1.
+    return;
+  }
+
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
+
+  ASSERT_TRUE(
+      SSL_CTX_use_certificate(server_ctx.get(), GetTestCertificate().get()));
+  ASSERT_TRUE(SSL_CTX_use_PrivateKey(server_ctx.get(), GetTestKey().get()));
+  ASSERT_TRUE(SSL_CTX_use_certificate(server_ctx.get(),
+                                      GetECDSATestCertificate().get()));
+  ASSERT_TRUE(
+      SSL_CTX_use_PrivateKey(server_ctx.get(), GetECDSATestKey().get()));
+  ASSERT_TRUE(SSL_CTX_use_certificate(server_ctx.get(),
+                                      GetED25519TestCertificate().get()));
+  ASSERT_TRUE(
+      SSL_CTX_use_PrivateKey(server_ctx.get(), GetED25519TestKey().get()));
+
+
+  // Versions prior to TLS1.3 need a valid authentication cipher suite to pair
+  // with the certificate.
+  if (version < TLS1_3_VERSION) {
+    ASSERT_TRUE(SSL_CTX_set_cipher_list(client_ctx.get(),
+                                        certificate_key_param().suite));
+  }
+
+  StandardCertificateSlotIndexTests(
+      client_ctx.get(), server_ctx.get(),
+      {certificate_key_param().corresponding_sigalg}, SSL_PKEY_ED25519);
 }
 
 struct MultiTransferReadWriteTestParams {
@@ -9535,6 +9729,67 @@ TEST(SSLTest, InvalidSignatureAlgorithm) {
       ctx.get(), kDuplicatePrefs, OPENSSL_ARRAY_SIZE(kDuplicatePrefs)));
   EXPECT_FALSE(SSL_CTX_set_verify_algorithm_prefs(
       ctx.get(), kDuplicatePrefs, OPENSSL_ARRAY_SIZE(kDuplicatePrefs)));
+}
+
+TEST(SSLTest, ErrorStrings) {
+  int warning_value = SSL3_AD_CLOSE_NOTIFY | (SSL3_AL_WARNING << 8);
+  int fatal_value = SSL3_AD_UNEXPECTED_MESSAGE | (SSL3_AL_FATAL << 8);
+  int unknown_value = 99999;
+
+  EXPECT_EQ(Bytes(SSL_alert_desc_string(warning_value)), Bytes("CN"));
+  EXPECT_EQ(Bytes(SSL_alert_desc_string(fatal_value)), Bytes("UM"));
+  EXPECT_EQ(Bytes(SSL_alert_desc_string(unknown_value)), Bytes("UK"));
+
+  EXPECT_EQ(Bytes(SSL_alert_type_string(warning_value)), Bytes("W"));
+  EXPECT_EQ(Bytes(SSL_alert_type_string(fatal_value)), Bytes("F"));
+  EXPECT_EQ(Bytes(SSL_alert_type_string(unknown_value)), Bytes("U"));
+}
+
+TEST(SSLTest, NameLists) {
+  struct {
+    size_t (*func)(const char **, size_t);
+    std::vector<std::string> expected;
+  } kTests[] = {
+      {SSL_get_all_version_names, {"TLSv1.3", "DTLSv1.2", "unknown"}},
+      {SSL_get_all_standard_cipher_names,
+       {"TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256", "TLS_AES_128_GCM_SHA256"}},
+      {SSL_get_all_cipher_names,
+       {"ECDHE-ECDSA-AES128-GCM-SHA256", "TLS_AES_128_GCM_SHA256", "(NONE)"}},
+      {SSL_get_all_curve_names, {"P-256", "X25519"}},
+      {SSL_get_all_signature_algorithm_names,
+       {"rsa_pkcs1_sha256", "ecdsa_secp256r1_sha256", "ecdsa_sha256"}},
+  };
+  for (const auto &t : kTests) {
+    size_t num = t.func(nullptr, 0);
+    EXPECT_GT(num, 0u);
+
+    std::vector<const char*> list(num);
+    EXPECT_EQ(num, t.func(list.data(), list.size()));
+
+    // Check the expected values are in the list.
+    for (const auto &s : t.expected) {
+      EXPECT_NE(list.end(), std::find(list.begin(), list.end(), s))
+          << "Could not find " << s;
+    }
+
+    // Passing in a larger buffer should leave excess space alone.
+    std::vector<const char *> list2(num + 1, "placeholder");
+    EXPECT_EQ(num, t.func(list2.data(), list2.size()));
+    for (size_t i = 0; i < num; i++) {
+      EXPECT_STREQ(list[i], list2[i]);
+    }
+    EXPECT_STREQ(list2.back(), "placeholder");
+
+    // Passing in a shorter buffer should truncate the list.
+    for (size_t l = 0; l < num; l++) {
+      SCOPED_TRACE(l);
+      list2.resize(l);
+      EXPECT_EQ(num, t.func(list2.data(), list2.size()));
+      for (size_t i = 0; i < l; i++) {
+        EXPECT_STREQ(list[i], list2[i]);
+      }
+    }
+  }
 }
 
 }  // namespace

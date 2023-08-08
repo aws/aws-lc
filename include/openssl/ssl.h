@@ -1152,6 +1152,21 @@ OPENSSL_EXPORT int SSL_set_ocsp_response(SSL *ssl, const uint8_t *response,
 OPENSSL_EXPORT const char *SSL_get_signature_algorithm_name(uint16_t sigalg,
                                                             int include_curve);
 
+// SSL_get_all_signature_algorithm_names outputs a list of possible strings
+// |SSL_get_signature_algorithm_name| may return in this version of BoringSSL.
+// It writes at most |max_out| entries to |out| and returns the total number it
+// would have written, if |max_out| had been large enough. |max_out| may be
+// initially set to zero to size the output.
+//
+// This function is only intended to help initialize tables in callers that want
+// possible strings pre-declared. This list would not be suitable to set a list
+// of supported features. It is in no particular order, and may contain
+// placeholder, experimental, or deprecated values that do not apply to every
+// caller. Future versions of BoringSSL may also return strings not in this
+// list, so this does not apply if, say, sending strings across services.
+OPENSSL_EXPORT size_t SSL_get_all_signature_algorithm_names(const char **out,
+                                                            size_t max_out);
+
 // SSL_get_signature_algorithm_key_type returns the key type associated with
 // |sigalg| as an |EVP_PKEY_*| constant or |EVP_PKEY_NONE| if unknown.
 OPENSSL_EXPORT int SSL_get_signature_algorithm_key_type(uint16_t sigalg);
@@ -1464,6 +1479,37 @@ OPENSSL_EXPORT const char *SSL_CIPHER_get_kx_name(const SSL_CIPHER *cipher);
 // symmetric algorithm to |*out_alg_bits|.
 OPENSSL_EXPORT int SSL_CIPHER_get_bits(const SSL_CIPHER *cipher,
                                        int *out_alg_bits);
+
+// SSL_get_all_cipher_names outputs a list of possible strings
+// |SSL_CIPHER_get_name| may return in this version of BoringSSL. It writes at
+// most |max_out| entries to |out| and returns the total number it would have
+// written, if |max_out| had been large enough. |max_out| may be initially set
+// to zero to size the output.
+//
+// This function is only intended to help initialize tables in callers that want
+// possible strings pre-declared. This list would not be suitable to set a list
+// of supported features. It is in no particular order, and may contain
+// placeholder, experimental, or deprecated values that do not apply to every
+// caller. Future versions of BoringSSL may also return strings not in this
+// list, so this does not apply if, say, sending strings across services.
+OPENSSL_EXPORT size_t SSL_get_all_cipher_names(const char **out,
+                                               size_t max_out);
+
+
+// SSL_get_all_standard_cipher_names outputs a list of possible strings
+// |SSL_CIPHER_standard_name| may return in this version of BoringSSL. It writes
+// at most |max_out| entries to |out| and returns the total number it would have
+// written, if |max_out| had been large enough. |max_out| may be initially set
+// to zero to size the output.
+//
+// This function is only intended to help initialize tables in callers that want
+// possible strings pre-declared. This list would not be suitable to set a list
+// of supported features. It is in no particular order, and may contain
+// placeholder, experimental, or deprecated values that do not apply to every
+// caller. Future versions of BoringSSL may also return strings not in this
+// list, so this does not apply if, say, sending strings across services.
+OPENSSL_EXPORT size_t SSL_get_all_standard_cipher_names(const char **out,
+                                                        size_t max_out);
 
 
 // Cipher suite configuration.
@@ -2567,6 +2613,20 @@ OPENSSL_EXPORT int SSL_to_bytes(const SSL *in, uint8_t **out_data,
 // Initial implementation of this API is made by Evgeny Potemkin.
 OPENSSL_EXPORT SSL *SSL_from_bytes(const uint8_t *in, size_t in_len,
                                    SSL_CTX *ctx);
+
+// SSL_get_all_curve_names outputs a list of possible strings
+// |SSL_get_curve_name| may return in this version of BoringSSL. It writes at
+// most |max_out| entries to |out| and returns the total number it would have
+// written, if |max_out| had been large enough. |max_out| may be initially set
+// to zero to size the output.
+//
+// This function is only intended to help initialize tables in callers that want
+// possible strings pre-declared. This list would not be suitable to set a list
+// of supported features. It is in no particular order, and may contain
+// placeholder, experimental, or deprecated values that do not apply to every
+// caller. Future versions of BoringSSL may also return strings not in this
+// list, so this does not apply if, say, sending strings across services.
+OPENSSL_EXPORT size_t SSL_get_all_curve_names(const char **out, size_t max_out);
 
 // SSL_CTX_set1_groups calls |SSL_CTX_set1_curves|.
 OPENSSL_EXPORT int SSL_CTX_set1_groups(SSL_CTX *ctx, const int *groups,
@@ -5150,6 +5210,21 @@ OPENSSL_EXPORT long SSL_get_default_timeout(const SSL *ssl);
 // For example, "TLSv1.2" or "DTLSv1".
 OPENSSL_EXPORT const char *SSL_get_version(const SSL *ssl);
 
+// SSL_get_all_version_names outputs a list of possible strings
+// |SSL_get_version| may return in this version of BoringSSL. It writes at most
+// |max_out| entries to |out| and returns the total number it would have
+// written, if |max_out| had been large enough. |max_out| may be initially set
+// to zero to size the output.
+//
+// This function is only intended to help initialize tables in callers that want
+// possible strings pre-declared. This list would not be suitable to set a list
+// of supported features. It is in no particular order, and may contain
+// placeholder, experimental, or deprecated values that do not apply to every
+// caller. Future versions of BoringSSL may also return strings not in this
+// list, so this does not apply if, say, sending strings across services.
+OPENSSL_EXPORT size_t SSL_get_all_version_names(const char **out,
+                                                size_t max_out);
+
 // SSL_get_cipher_list returns the name of the |n|th cipher in the output of
 // |SSL_get_ciphers| or NULL if out of range. Use |SSL_get_ciphers| instead.
 OPENSSL_EXPORT const char *SSL_get_cipher_list(const SSL *ssl, int n);
@@ -5198,16 +5273,16 @@ OPENSSL_EXPORT size_t SSL_get_finished(const SSL *ssl, void *buf, size_t count);
 OPENSSL_EXPORT size_t SSL_get_peer_finished(const SSL *ssl, void *buf,
                                             size_t count);
 
-// SSL_alert_type_string returns "!". Use |SSL_alert_type_string_long|
+// SSL_alert_type_string returns an unintelligible 1 letter string description
+// of |value| as an alert type (W or F). Use |SSL_alert_type_string_long|
 // instead.
 OPENSSL_EXPORT const char *SSL_alert_type_string(int value);
 
-// SSL_alert_desc_string returns "!!". Use |SSL_alert_desc_string_long|
-// instead.
+// SSL_alert_desc_string returns an unintelligible 2 letter string description
+// of |value|. Use |SSL_alert_desc_string_long| instead.
 OPENSSL_EXPORT const char *SSL_alert_desc_string(int value);
 
-// SSL_state_string returns "!!!!!!". Use |SSL_state_string_long| for a more
-// intelligible string.
+// SSL_state_string returns |SSL_state_string_long|.
 OPENSSL_EXPORT const char *SSL_state_string(const SSL *ssl);
 
 // SSL_TXT_* expand to strings.

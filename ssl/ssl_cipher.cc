@@ -1346,6 +1346,19 @@ bool ssl_create_cipher_list(UniquePtr<SSLCipherPreferenceList> *out_cipher_list,
   return true;
 }
 
+int ssl_get_certificate_slot_index(const EVP_PKEY *pkey) {
+  switch (EVP_PKEY_id(pkey)) {
+    case EVP_PKEY_RSA:
+      return SSL_PKEY_RSA;
+    case EVP_PKEY_EC:
+      return SSL_PKEY_ECC;
+    case EVP_PKEY_ED25519:
+      return SSL_PKEY_ED25519;
+    default:
+      return -1;
+  }
+}
+
 uint32_t ssl_cipher_auth_mask_for_key(const EVP_PKEY *key) {
   switch (EVP_PKEY_id(key)) {
     case EVP_PKEY_RSA:
@@ -1554,13 +1567,15 @@ uint16_t SSL_CIPHER_get_max_version(const SSL_CIPHER *cipher) {
   return TLS1_2_VERSION;
 }
 
+static const char* kUnknownCipher = "(NONE)";
+
 // return the actual cipher being used
 const char *SSL_CIPHER_get_name(const SSL_CIPHER *cipher) {
   if (cipher != NULL) {
     return cipher->name;
   }
 
-  return "(NONE)";
+  return kUnknownCipher;
 }
 
 const char *SSL_CIPHER_standard_name(const SSL_CIPHER *cipher) {
@@ -1790,3 +1805,13 @@ const char *SSL_COMP_get0_name(const SSL_COMP *comp) { return comp->name; }
 int SSL_COMP_get_id(const SSL_COMP *comp) { return comp->id; }
 
 void SSL_COMP_free_compression_methods(void) {}
+
+size_t SSL_get_all_cipher_names(const char **out, size_t max_out) {
+  return GetAllNames(out, max_out, MakeConstSpan(&kUnknownCipher, 1),
+                     &SSL_CIPHER::name, MakeConstSpan(kCiphers));
+}
+
+size_t SSL_get_all_standard_cipher_names(const char **out, size_t max_out) {
+  return GetAllNames(out, max_out, Span<const char *>(),
+                     &SSL_CIPHER::standard_name, MakeConstSpan(kCiphers));
+}

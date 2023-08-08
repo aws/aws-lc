@@ -22,6 +22,7 @@
 
 #include <openssl/arm_arch.h>
 
+#include "cpu_aarch64.h"
 
 extern uint32_t OPENSSL_armcap_P;
 extern uint8_t OPENSSL_cpucap_initialized;
@@ -96,6 +97,21 @@ void OPENSSL_cpuid_setup(void) {
 
   if (is_brand("Apple M1")) {
     OPENSSL_armcap_P |= ARMV8_APPLE_M1;
+  }
+
+  // OPENSSL_armcap is a 32-bit, unsigned value which may start with "0x" to
+  // indicate a hex value. Prior to the 32-bit value, a '~' or '|' may be given.
+  //
+  // If the '~' prefix is present:
+  //   the value is inverted and ANDed with the probed CPUID result
+  // If the '|' prefix is present:
+  //   the value is ORed with the probed CPUID result
+  // Otherwise:
+  //   the value is taken as the result of the CPUID
+  const char *env;
+  env = getenv("OPENSSL_armcap");
+  if (env != NULL) {
+    handle_cpu_env(&OPENSSL_armcap_P, env);
   }
 
   OPENSSL_cpucap_initialized = 1;

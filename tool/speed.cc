@@ -1875,7 +1875,7 @@ static bool SpeedHashToCurve(const std::string &selected) {
       return false;
     }
     if (!TimeFunction(&results, [&]() -> bool {
-          EC_RAW_POINT out;
+          EC_JACOBIAN out;
           return ec_hash_to_curve_p256_xmd_sha256_sswu(
               p256, &out, kLabel, sizeof(kLabel), input, sizeof(input));
         })) {
@@ -1889,7 +1889,7 @@ static bool SpeedHashToCurve(const std::string &selected) {
       return false;
     }
     if (!TimeFunction(&results, [&]() -> bool {
-          EC_RAW_POINT out;
+          EC_JACOBIAN out;
           return ec_hash_to_curve_p384_xmd_sha384_sswu(
               p384, &out, kLabel, sizeof(kLabel), input, sizeof(input));
         })) {

@@ -208,6 +208,10 @@ struct TestConfig {
   std::string ssl_fuzz_seed_path_prefix;
   // When not empty, the value is passed to |SSL_CTX_set_ciphersuites|.
   std::string tls13_ciphersuites;
+  // multiple_certs_slot is used to associate the server with the multiple
+  // certificate/private key slot configuration. The certificate comes first,
+  // then the private key.
+  std::vector<std::pair<std::string, std::string>> multiple_certs_slot;
 
   int argc;
   char **argv;
