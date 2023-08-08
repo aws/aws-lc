@@ -133,18 +133,6 @@
 
 #endif
 
-OPENSSL_INLINE int montgomery_s2n_bignum_capable(void) {
-#if defined(BN_MONTGOMERY_USE_S2N_BIGNUM)
-
-  return 1;
-
-#else
-
-  return 0;
-
-#endif
-}
-
 OPENSSL_INLINE int montgomery_use_s2n_bignum(unsigned int num) {
 #if defined(BN_MONTGOMERY_USE_S2N_BIGNUM)
 
@@ -153,8 +141,9 @@ OPENSSL_INLINE int montgomery_use_s2n_bignum(unsigned int num) {
   // (2) num (which is the number of words) is multiplie of 8, because
   //     s2n-bignum's bignum_emontredc_8n requires it
   // (3) The word size is 64 bits, and
-  // (4) Temporary buffer's size used in montgomery_s2n_bignum_mul_mont
-  //     does not exceed BN_MONTGOMERY_MAX_WORDS.
+  // (4) Temporary buffer's size (t and mulres) used in
+  //     montgomery_s2n_bignum_mul_mont does not exceed
+  //     BN_MONTGOMERY_MAX_WORDS.
   return !CRYPTO_is_ARMv8_wide_multiplier_capable() && (num % 8 == 0) &&
          BN_BITS2 == 64 && (2 * (uint64_t)num + 96) <= BN_MONTGOMERY_MAX_WORDS;
 
@@ -464,6 +453,14 @@ err:
 
 #if defined(OPENSSL_BN_ASM_MONT)
 
+// Perform montgomery multiplication using s2n-bignum functions. The arguments
+// are equivalent to the arguments of bn_mul_mont.
+// montgomery_s2n_bignum_mul_mont works only if num is a multiple of 8. For
+// num = 32 or num = 16, this uses faster primitives in s2n-bignum.
+// Additionally, montgomery_s2n_bignum_mul_mont allocates arrays at a stack, and
+// large num leads to out of bounds accesses of the arrays.
+// montgomery_use_s2n_bignum(num) must be called in advance to check these
+// conditions.
 static void montgomery_s2n_bignum_mul_mont(BN_ULONG *rp, const BN_ULONG *ap,
                                            const BN_ULONG *bp,
                                            const BN_ULONG *np,
@@ -481,29 +478,24 @@ static void montgomery_s2n_bignum_mul_mont(BN_ULONG *rp, const BN_ULONG *ap,
   // size of mulres array.
   uint64_t mulres[BN_MONTGOMERY_MAX_WORDS - 96];
 
-  // BN_ULONG is uint64_t since BN_BITS2 is 64.
-  // m is the prime number, and m * w = -1 mod 2^64.
-  uint64_t *m = (uint64_t *)np;
-  uint64_t w = (uint64_t)n0[0];
-  uint64_t *src = (uint64_t *)ap, *src2 = (uint64_t *)bp;
-  uint64_t *dest = (uint64_t *)rp;
-  uint64_t c;
+  // Given m the prime number stored at np, m * w = -1 mod 2^64.
+  uint64_t w = n0[0];
 
   if (num == 32) {
     if (ap == bp)
-      bignum_ksqr_32_64(mulres, src, t);
+      bignum_ksqr_32_64(mulres, ap, t);
     else
-      bignum_kmul_32_64(mulres, src2, src, t);
+      bignum_kmul_32_64(mulres, ap, bp, t);
   } else if (num == 16) {
     if (ap == bp)
-      bignum_ksqr_16_32(mulres, src, t);
+      bignum_ksqr_16_32(mulres, ap, t);
     else
-      bignum_kmul_16_32(mulres, src2, src, t);
+      bignum_kmul_16_32(mulres, ap, bp, t);
   } else {
     if (ap == bp)
-      bignum_sqr(num * 2, mulres, num, src);
+      bignum_sqr(num * 2, mulres, num, ap);
     else
-      bignum_mul(num * 2, mulres, num, src2, num, src);
+      bignum_mul(num * 2, mulres, num, ap, num, bp);
   }
 
   // Do montgomery reduction. We follow the definition of montgomery reduction
@@ -517,10 +509,11 @@ static void montgomery_s2n_bignum_mul_mont(BN_ULONG *rp, const BN_ULONG *ap,
   // 2. Optionally subtract the result if the (result of step 1) >= m.
   //    The comparison is true if (1) there is an overflow (bignum_emontredc_8n
   //    returns 1), or (2) the upper half mulres is larger than m.
-  c = bignum_emontredc_8n(num, mulres, m, w);
-  c |= bignum_ge(num, mulres + num, num, m);
-  // Do the step 2 and store the result at dest (which is rp)
-  bignum_optsub(num, dest, mulres + num, c, m);
+  uint64_t c;
+  c = bignum_emontredc_8n(num, mulres, np, w);
+  c |= bignum_ge(num, mulres + num, num, np);
+  // Do the step 2 and store the result at rp
+  bignum_optsub(num, rp, mulres + num, c, np);
 
 #else
 
@@ -553,7 +546,7 @@ int BN_mod_mul_montgomery(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
     // allocates |num| words on the stack, so |num| cannot be too large.
     assert((size_t)num <= BN_MONTGOMERY_MAX_WORDS);
 
-    if (montgomery_s2n_bignum_capable() && montgomery_use_s2n_bignum(num)) {
+    if (montgomery_use_s2n_bignum(num)) {
       // Do montgomery multiplication using s2n-bignum.
       montgomery_s2n_bignum_mul_mont(r->d, a->d, b->d, mont->N.d, mont->n0,
                                      num);
