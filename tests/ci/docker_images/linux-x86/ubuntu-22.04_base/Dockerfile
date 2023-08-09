@@ -24,6 +24,7 @@ RUN set -ex && \
     apt-get -y --no-install-recommends upgrade && \
     apt-get -y --no-install-recommends install \
     software-properties-common \
+    automake \
     cmake \
     curl \
     make \
@@ -43,6 +44,7 @@ RUN set -ex && \
     libjson-perl \
     libpcre2-dev \
     libreadline-dev \
+    libtool \
     libudev-dev \
     liblua5.4-dev \
     socat \

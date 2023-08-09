@@ -305,6 +305,9 @@ static bool CheckListContains(const char *type,
   std::vector<const char *> list(list_func(nullptr, 0));
   list_func(list.data(), list.size());
   for (const char *expected : list) {
+    if (str == nullptr) {
+      break;
+    }
     if (strcmp(expected, str) == 0) {
       return true;
     }
