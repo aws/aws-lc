@@ -501,18 +501,18 @@ static void montgomery_s2n_bignum_mul_mont(BN_ULONG *rp, const BN_ULONG *ap,
   // Do montgomery reduction. We follow the definition of montgomery reduction
   // which is:
   // 1. Calculate (mulres + ((mulres mod R) * (-m^-1 mod R) mod R) * m) / R
-  // using
-  //    bignum_emontredc_8n, where R is 2^(64*num).
-  //    The calculated result is stored in the upper half elements of the mulres
-  //    buffer. If the result overflows num words, bignum_emontredc_8n
-  //    returns 1.
+  //    using bignum_emontredc_8n, where R is 2^(64*num).
+  //    The calculated result is stored in [mulres+num ... mulres+2*num-1]. If
+  //    the result >= 2^(64*num), bignum_emontredc_8n returns 1.
   // 2. Optionally subtract the result if the (result of step 1) >= m.
-  //    The comparison is true if (1) there is an overflow (bignum_emontredc_8n
-  //    returns 1), or (2) the upper half mulres is larger than m.
+  //    The comparison is true if either A or B holds:
+  //    A. The result of step 1 >= 2^(64*num), meaning that bignum_emontredc_8n
+  //       returned 1. Since m is less than 2^(64*num), (result of step 1) >= m holds.
+  //    B. The result of step 1 fits in 2^(64*num), and the result >= m.
   uint64_t c;
-  c = bignum_emontredc_8n(num, mulres, np, w);
-  c |= bignum_ge(num, mulres + num, num, np);
-  // Do the step 2 and store the result at rp
+  c = bignum_emontredc_8n(num, mulres, np, w); // c: case A
+  c |= bignum_ge(num, mulres + num, num, np);  // c: case B
+  // Optionally subtract and store the result at rp
   bignum_optsub(num, rp, mulres + num, c, np);
 
 #else

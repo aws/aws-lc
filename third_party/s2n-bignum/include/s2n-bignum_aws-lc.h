@@ -159,6 +159,12 @@ extern void bignum_kmul_16_32(uint64_t z[static 32], const uint64_t x[static 16]
 // together with the carry gives r = 2^{64k}*c + z[k..2k-1]. These values
 // satisfy z_0 + q * m = 2^{64k} * r, i.e. r gives a raw (unreduced) Montgomery
 // reduction while q gives the multiplier that was used.
+// Note that q = (z_0 mod 2^{64k}) * (-m^-1 mod 2^{64k}) mod 2^{64k}.
+//    z_0 + q * m = 0           mod 2^{64k}
+//          q * m = -z_0        mod 2^{64k}
+//          q     = -z_0 * m^-1 mod 2^{64k}
+//                = (z_0 mod 2^{64k}) * (-m^-1 mod 2^{64k}) mod 2^{64k}
+// q is uniquely determined because q must be in the range of [0, 2^{64k}-1].
 // Inputs: z[2*k], m[k], w; outputs: function return (extra result bit) and z[2*k]
 extern uint64_t bignum_emontredc_8n(uint64_t k, uint64_t *z, const uint64_t *m,
                                     uint64_t w);
