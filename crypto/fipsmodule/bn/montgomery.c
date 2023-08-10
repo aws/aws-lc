@@ -124,18 +124,13 @@
 
 #if !defined(OPENSSL_NO_ASM) &&                                                \
     (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE)) &&                      \
-    defined(OPENSSL_AARCH64) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX) &&   \
-    defined(OPENSSL_BN_ASM_MONT)
+    defined(OPENSSL_AARCH64) && defined(OPENSSL_BN_ASM_MONT)
 
 #include "../../../third_party/s2n-bignum/include/s2n-bignum_aws-lc.h"
 
 #define BN_MONTGOMERY_USE_S2N_BIGNUM 1
 
-#endif
-
 OPENSSL_INLINE int montgomery_use_s2n_bignum(unsigned int num) {
-#if defined(BN_MONTGOMERY_USE_S2N_BIGNUM)
-
   // Use s2n-bignum's functions only if
   // (1) The ARM architecture has slow multipliers, and
   // (2) num (which is the number of words) is multiplie of 8, because
@@ -146,13 +141,15 @@ OPENSSL_INLINE int montgomery_use_s2n_bignum(unsigned int num) {
   //     BN_MONTGOMERY_MAX_WORDS.
   return !CRYPTO_is_ARMv8_wide_multiplier_capable() && (num % 8 == 0) &&
          BN_BITS2 == 64 && (2 * (uint64_t)num + 96) <= BN_MONTGOMERY_MAX_WORDS;
+}
 
 #else
 
+OPENSSL_INLINE int montgomery_use_s2n_bignum(unsigned int num) {
   return 0;
+}
 
 #endif
-}
 
 BN_MONT_CTX *BN_MONT_CTX_new(void) {
   BN_MONT_CTX *ret = OPENSSL_malloc(sizeof(BN_MONT_CTX));
@@ -451,8 +448,6 @@ err:
 }
 
 
-#if defined(OPENSSL_BN_ASM_MONT)
-
 // Perform montgomery multiplication using s2n-bignum functions. The arguments
 // are equivalent to the arguments of bn_mul_mont.
 // montgomery_s2n_bignum_mul_mont works only if num is a multiple of 8. For
@@ -522,8 +517,6 @@ static void montgomery_s2n_bignum_mul_mont(BN_ULONG *rp, const BN_ULONG *ap,
 
 #endif
 }
-
-#endif
 
 
 int BN_mod_mul_montgomery(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
