@@ -396,6 +396,7 @@ std::vector<Flag> SortedFlags() {
       BoolFlag("-do-ssl-transfer", &TestConfig::do_ssl_transfer),
       StringFlag("-ssl-fuzz-seed-path-prefix", &TestConfig::ssl_fuzz_seed_path_prefix),
       StringFlag("-tls13-ciphersuites", &TestConfig::tls13_ciphersuites),
+      StringPairVectorFlag("-multiple-certs-slot", &TestConfig::multiple_certs_slot),
   };
   std::sort(flags.begin(), flags.end(), [](const Flag &a, const Flag &b) {
     return strcmp(a.name, b.name) < 0;
@@ -1327,6 +1328,42 @@ static bool InstallCertificate(SSL *ssl) {
   return true;
 }
 
+static bool InstallMultipleCertificates(SSL *ssl) {
+  const TestConfig *config = GetTestConfig(ssl);
+  if (config->multiple_certs_slot.empty()) {
+    return false;
+  }
+
+  if (!config->signing_prefs.empty()) {
+    if (!SSL_set_signing_algorithm_prefs(ssl, config->signing_prefs.data(),
+                                         config->signing_prefs.size())) {
+      return false;
+    }
+  }
+
+  for (const auto &cert_key_pair : config->multiple_certs_slot) {
+    bssl::UniquePtr<X509> x509;
+    bssl::UniquePtr<STACK_OF(X509)> chain;
+    bssl::UniquePtr<EVP_PKEY> pkey;
+
+    if (!LoadCertificate(&x509, &chain, cert_key_pair.first)) {
+      return false;
+    }
+    pkey = LoadPrivateKey(cert_key_pair.second);
+    if (pkey && !SSL_use_PrivateKey(ssl, pkey.get())) {
+      return false;
+    }
+    if (x509 && !SSL_use_certificate(ssl, x509.get())) {
+      return false;
+    }
+    if (sk_X509_num(chain.get()) > 0 && !SSL_set1_chain(ssl, chain.get())) {
+      return false;
+    }
+  }
+  return true;
+}
+
+
 static enum ssl_select_cert_result_t SelectCertificateCallback(
     const SSL_CLIENT_HELLO *client_hello) {
   SSL *ssl = client_hello->ssl;
@@ -1787,7 +1824,9 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
     return nullptr;
   }
   // Install the certificate synchronously if nothing else will handle it.
+  // Multiple Certificates is only tested synchronously as of now.
   if (!use_early_callback && !use_old_client_cert_callback && !async &&
+      !InstallMultipleCertificates(ssl.get()) &&
       !InstallCertificate(ssl.get())) {
     return nullptr;
   }

@@ -4119,20 +4119,44 @@ bool tls1_choose_signature_algorithm(SSL_HANDSHAKE *hs, uint16_t *out) {
   Span<const uint16_t> peer_sigalgs = tls1_get_peer_verify_algorithms(hs);
 
   for (uint16_t sigalg : sigalgs) {
-    if (!ssl_private_key_supports_signature_algorithm(hs, sigalg)) {
-      continue;
-    }
-
-    for (uint16_t peer_sigalg : peer_sigalgs) {
-      if (sigalg == peer_sigalg) {
-        *out = sigalg;
-        return true;
+    // We check the extracted public key for support first. If not, we go
+    // through our available private keys to check for support.
+    if (ssl_public_key_supports_signature_algorithm(hs, sigalg) ||
+        ssl_cert_private_keys_supports_signature_algorithm(hs, sigalg)) {
+      // Check if peer supports negotiated signature algorithms.
+      for (uint16_t peer_sigalg : peer_sigalgs) {
+        if (sigalg == peer_sigalg) {
+          *out = sigalg;
+          return true;
+        }
       }
     }
   }
 
   OPENSSL_PUT_ERROR(SSL, SSL_R_NO_COMMON_SIGNATURE_ALGORITHMS);
   return false;
+}
+
+bool tls1_call_ocsp_stapling_callback(SSL_HANDSHAKE *hs) {
+  SSL *const ssl = hs->ssl;
+
+  if (hs->ocsp_stapling_requested &&
+      ssl->ctx->legacy_ocsp_callback != nullptr) {
+    switch (ssl->ctx->legacy_ocsp_callback(
+        ssl, ssl->ctx->legacy_ocsp_callback_arg)) {
+      case SSL_TLSEXT_ERR_OK:
+        break;
+      case SSL_TLSEXT_ERR_NOACK:
+        hs->ocsp_stapling_requested = false;
+        break;
+      default:
+        OPENSSL_PUT_ERROR(SSL, SSL_R_OCSP_CB_ERROR);
+        ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
+        return false;
+    }
+  }
+
+  return true;
 }
 
 Span<const uint16_t> tls1_get_peer_verify_algorithms(const SSL_HANDSHAKE *hs) {

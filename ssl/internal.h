@@ -1092,10 +1092,22 @@ enum ssl_private_key_result_t ssl_private_key_decrypt(SSL_HANDSHAKE *hs,
                                                       size_t max_out,
                                                       Span<const uint8_t> in);
 
-// ssl_private_key_supports_signature_algorithm returns whether |hs|'s private
-// key supports |sigalg|.
-bool ssl_private_key_supports_signature_algorithm(SSL_HANDSHAKE *hs,
-                                                  uint16_t sigalg);
+// ssl_public_key_supports_signature_algorithm returns whether |hs|'s extracted
+// public key supports |sigalg|.
+bool ssl_public_key_supports_signature_algorithm(SSL_HANDSHAKE *hs,
+                                                 uint16_t sigalg);
+
+// ssl_cert_private_keys_supports_signature_algorithm returns whether any of
+// |hs|'s available private keys supports |sigalg|. If one does, we switch to
+// using that private key and the corresponding certificate for the rest of the
+// connection. |hs->local_pubkey| is also updated correspondingly.
+//
+// NOTE: Multiple certificate slots is only supported on the server side, when
+// not using designated credentials.
+bool ssl_cert_private_keys_supports_signature_algorithm(SSL_HANDSHAKE *hs,
+                                                        uint16_t sigalg);
+
+
 
 // ssl_public_key_verify verifies that the |signature| is valid for the public
 // key |pkey| and input |in|, using the signature algorithm |sigalg|.
@@ -1433,6 +1445,10 @@ bool ssl_check_leaf_certificate(SSL_HANDSHAKE *hs, EVP_PKEY *pkey,
 // It finalizes the certificate and initializes |hs->local_pubkey|. It returns
 // true on success and false on error.
 bool ssl_on_certificate_selected(SSL_HANDSHAKE *hs);
+
+// ssl_handshake_load_local_pubkey loads |local_pubkey| in |hs| based on the
+// current designated certificate.
+bool ssl_handshake_load_local_pubkey(SSL_HANDSHAKE *hs);
 
 
 // TLS 1.3 key derivation.
@@ -1830,6 +1846,10 @@ struct SSL_HANDSHAKE {
   // |SSL_OP_NO_*| and |SSL_CTX_set_min_proto_version| APIs.
   uint16_t min_version = 0;
 
+  // signature_algorithm is the signature algorithm negotiated for this
+  // handshake.
+  uint16_t signature_algorithm = 0;
+
   // max_version is the maximum accepted protocol version, taking account both
   // |SSL_OP_NO_*| and |SSL_CTX_set_max_proto_version| APIs.
   uint16_t max_version = 0;
@@ -2221,6 +2241,9 @@ bool tls13_add_certificate(SSL_HANDSHAKE *hs);
 // tls13_add_certificate_verify adds a TLS 1.3 CertificateVerify message to the
 // handshake. If it returns |ssl_private_key_retry|, it should be called again
 // to retry when the signing operation is completed.
+//
+// NOTE: |signature_algorithm| in |hs| should be initialized already before
+// this is called.
 enum ssl_private_key_result_t tls13_add_certificate_verify(SSL_HANDSHAKE *hs);
 
 bool tls13_add_finished(SSL_HANDSHAKE *hs);
@@ -3462,6 +3485,11 @@ bool tls1_set_curves(Array<uint16_t> *out_group_ids, Span<const int> curves);
 // returns true and writes the array to |*out_group_ids|. Otherwise, it returns
 // false.
 bool tls1_set_curves_list(Array<uint16_t> *out_group_ids, const char *curves);
+
+// tls1_call_ocsp_stapling_callback calls the legacy OCSP logic for TLS
+// handshakes. This should be called right after the server certificate has been
+// finalized.
+bool tls1_call_ocsp_stapling_callback(SSL_HANDSHAKE *hs);
 
 // ssl_add_clienthello_tlsext writes ClientHello extensions to |out| for |type|.
 // It returns true on success and false on failure. The |header_len| argument is

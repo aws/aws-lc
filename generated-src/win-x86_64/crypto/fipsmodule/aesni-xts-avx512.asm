@@ -1061,6 +1061,7 @@ $L$_ret_hEgxyDlCngwrfFe:
 	vmovdqa	xmm15,XMMWORD[((368 + 144))+rsp]
 	mov	rsp,rbp
 	pop	rbp
+	vzeroupper
 	DB	0F3h,0C3h		;repret
 
 $L$_less_than_128_bytes_hEgxyDlCngwrfFe:
@@ -1962,7 +1963,6 @@ $L$_num_blocks_is_1_hEgxyDlCngwrfFe:
 	and	r8,0xf
 	je	NEAR $L$_ret_hEgxyDlCngwrfFe
 	jmp	NEAR $L$_steal_cipher_next_hEgxyDlCngwrfFe
-	DB	0F3h,0C3h		;repret
 
 global	aes_hw_xts_decrypt_avx512
 
@@ -3612,6 +3612,7 @@ $L$_ret_amivrujEyduiFoi:
 	vmovdqa	xmm15,XMMWORD[((368 + 144))+rsp]
 	mov	rsp,rbp
 	pop	rbp
+	vzeroupper
 	DB	0F3h,0C3h		;repret
 
 $L$_less_than_128_bytes_amivrujEyduiFoi:
@@ -5228,7 +5229,6 @@ $L$_done_1_amivrujEyduiFoi:
 	add	rdx,0x10
 	vmovdqa	xmm8,xmm1
 	jmp	NEAR $L$_done_amivrujEyduiFoi
-	DB	0F3h,0C3h		;repret
 
 section	.rdata rdata align=8
 ALIGN	16

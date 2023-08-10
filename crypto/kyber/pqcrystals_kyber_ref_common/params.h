@@ -28,12 +28,8 @@
 #error "KYBER_K must be in {2,3,4}"
 #endif
 
-#ifdef BORINGSSL_PREFIX
-#define KYBER_NAMESPACE(s) \
-  BORINGSSL_ADD_PREFIX(BORINGSSL_PREFIX, KYBER_VARIANT(s))
-#else
+
 #define KYBER_NAMESPACE(s) KYBER_VARIANT(s)
-#endif
 
 
 #define KYBER_N 256
