@@ -448,6 +448,8 @@ err:
 }
 
 
+#if defined(OPENSSL_BN_ASM_MONT)
+
 // Perform montgomery multiplication using s2n-bignum functions. The arguments
 // are equivalent to the arguments of bn_mul_mont.
 // montgomery_s2n_bignum_mul_mont works only if num is a multiple of 8. For
@@ -517,6 +519,8 @@ static void montgomery_s2n_bignum_mul_mont(BN_ULONG *rp, const BN_ULONG *ap,
 
 #endif
 }
+
+#endif
 
 
 int BN_mod_mul_montgomery(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
