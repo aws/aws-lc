@@ -31,9 +31,11 @@
 #include "../internal.h"
 #include "../fipsmodule/cpucap/internal.h"
 
-#if (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64)) && \
-    (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE)) && \
-    !defined(OPENSSL_NO_ASM) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+#if ((defined(OPENSSL_X86_64) &&                                               \
+          !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)) ||                        \
+      defined(OPENSSL_AARCH64)) &&                                             \
+     (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE)) &&                     \
+     !defined(OPENSSL_NO_ASM)
 #include "../../third_party/s2n-bignum/include/s2n-bignum_aws-lc.h"
 #define CURVE25519_S2N_BIGNUM_CAPABLE
 #endif
