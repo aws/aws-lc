@@ -70,6 +70,8 @@
 extern "C" {
 #endif
 
+OPENSSL_EXPORT int x86_64_assembly_implementation_FOR_TESTING(void);
+
 #if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && \
     !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX) && !defined(AWSLC_FIPS)
 #define AES_CBC_HMAC_SHA_STITCH
@@ -149,7 +151,7 @@ int EVP_tls_cbc_digest_record(const EVP_MD *md, uint8_t *md_out,
                               const uint8_t *mac_secret,
                               unsigned mac_secret_length);
 
-// EVP_tls_cbc_digest_record_sha256 performs the same functionality of 
+// EVP_tls_cbc_digest_record_sha256 performs the same functionality of
 // EVP_tls_cbc_digest_record except it internally calls SHA256 instead of SHA1.
 int EVP_tls_cbc_digest_record_sha256(const EVP_MD *md, uint8_t *md_out,
                               size_t *md_out_size, const uint8_t header[13],
