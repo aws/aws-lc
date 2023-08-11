@@ -245,6 +245,7 @@ OPENSSL_INLINE void chacha20_poly1305_seal(uint8_t *out_ciphertext,
 }
 #endif
 
+OPENSSL_EXPORT int x86_64_assembly_implementation_FOR_TESTING(void);
 
 #if defined(__cplusplus)
 }  // extern C

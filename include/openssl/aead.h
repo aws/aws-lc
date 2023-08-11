@@ -222,6 +222,7 @@ union evp_aead_ctx_st_state {
 struct evp_aead_ctx_st {
   const EVP_AEAD *aead;
   union evp_aead_ctx_st_state state;
+  uint8_t state_offset;
   // tag_len may contain the actual length of the authentication tag if it is
   // known at initialization time.
   uint8_t tag_len;
