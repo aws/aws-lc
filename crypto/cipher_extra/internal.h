@@ -68,6 +68,7 @@
 extern "C" {
 #endif
 
+OPENSSL_EXPORT int x86_64_assembly_implementation_FOR_TESTING(void);
 
 // EVP_tls_cbc_get_padding determines the padding from the decrypted, TLS, CBC
 // record in |in|. This decrypted record should not include any "decrypted"
