@@ -672,10 +672,6 @@ if(MALLOC_FAILURE_TESTING)
   add_definitions(-DBORINGSSL_MALLOC_FAILURE_TESTING)
 endif()
 
-if(OPENSSL_NO_ASM)
-  add_definitions(-DOPENSSL_NO_ASM)
-endif()
-
 TEST_BIG_ENDIAN(BIG_ENDIAN)
 if(BIG_ENDIAN)
   message(FATAL_ERROR "Big Endian is not supported.")
