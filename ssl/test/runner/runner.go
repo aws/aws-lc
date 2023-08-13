@@ -19618,7 +19618,6 @@ var testMultipleCertSlotsAlgorithms = []struct {
 	{"ECDSA", TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA, 0, testCertECDSAP256, CurveP256},
 }
 
-// TODO: Add more failure test cases.
 func addMultipleCertSlotTests() {
 	var allAlgorithms []signatureAlgorithm
 	for _, alg := range testMultipleCertSlotsAlgorithms {
@@ -19626,9 +19625,24 @@ func addMultipleCertSlotTests() {
 			allAlgorithms = append(allAlgorithms, alg.id)
 		}
 	}
+	multipleCertsFlag := "-multiple-certs-slot"
+	rsaCertSlot := []string{
+		multipleCertsFlag, path.Join(*resourceDir, getShimCertificate(testCertRSA)) + "," + path.Join(*resourceDir, getShimKey(testCertRSA)),
+	}
+	ecdsaCertSlot := []string{
+		multipleCertsFlag, path.Join(*resourceDir, getShimCertificate(testCertECDSAP256)) + "," + path.Join(*resourceDir, getShimKey(testCertECDSAP256)),
+	}
+	ed25519CertSlot := []string{
+		multipleCertsFlag, path.Join(*resourceDir, getShimCertificate(testCertEd25519)) + "," + path.Join(*resourceDir, getShimKey(testCertEd25519)),
+	}
+	certificateSlotFlags := []string{
+		rsaCertSlot[0], rsaCertSlot[1],
+		ecdsaCertSlot[0], ecdsaCertSlot[1],
+		ed25519CertSlot[0], ed25519CertSlot[1],
+	}
 
-	// TODO: add client tests to verify we don't support multiple certs on the client end.
-	prefix := "Server-"
+	signError := ":NO_COMMON_SIGNATURE_ALGORITHMS:"
+	signLocalError := "remote error: handshake failure"
 
 	// Make sure each signature algorithm works.
 	for _, alg := range testMultipleCertSlotsAlgorithms {
@@ -19637,6 +19651,7 @@ func addMultipleCertSlotTests() {
 				continue
 			}
 
+			prefix := "Server-"
 			var shouldFail bool
 			// ecdsa_sha1 does not exist in TLS 1.3.
 			if ver.version >= VersionTLS13 && alg.id == signatureECDSAWithSHA1 {
@@ -19672,17 +19687,14 @@ func addMultipleCertSlotTests() {
 					VerifySignatureAlgorithms: allAlgorithms,
 				},
 				flags: append(
-					[]string{
-						"-multiple-certs-slot", path.Join(*resourceDir, getShimCertificate(testCertRSA)) + "," + path.Join(*resourceDir, getShimKey(testCertRSA)),
-						"-multiple-certs-slot", path.Join(*resourceDir, getShimCertificate(testCertECDSAP256)) + "," + path.Join(*resourceDir, getShimKey(testCertECDSAP256)),
-						"-multiple-certs-slot", path.Join(*resourceDir, getShimCertificate(testCertEd25519)) + "," + path.Join(*resourceDir, getShimKey(testCertEd25519)),
-					},
+					certificateSlotFlags,
 					curveFlags...,
 				),
 				expectations: connectionExpectations{
 					peerSignatureAlgorithm: alg.id,
 				},
 			}
+
 			if alg.id != 0 {
 				strictAlgTest.flags = append(strictAlgTest.flags, "-signing-prefs", strconv.Itoa(int(alg.id)))
 			}
@@ -19692,8 +19704,41 @@ func addMultipleCertSlotTests() {
 				strictAlgTest.config.CipherSuites = []uint16{alg.cipher}
 			}
 
+			// Extend the original test, but force it to use the early certificate callback instead.
+			// Expected behavior should be the same.
+			strictAlgCallbackTest := strictAlgTest
+			strictAlgCallbackTest.name = prefix + "Multiple-Cert-Strict-Alg-Callback" + suffix
+			strictAlgCallbackTest.flags = append(strictAlgCallbackTest.flags, "-use-early-callback")
+
+			// Verify that we don't support multiple certificate slots on the client side. The client should be
+			// configured with the last certificate set (ED25519 in this case).
+			prefix = "Client-"
+			strictAlgClientTest := testCase{
+				testType: clientTest,
+				name:     prefix + "Multiple-Cert-Strict-Alg" + suffix,
+				config: Config{
+					MaxVersion:                ver.version,
+					VerifySignatureAlgorithms: []signatureAlgorithm{alg.id},
+					ClientAuth:                RequireAnyClientCert,
+					Certificates:              []Certificate{rsaCertificate, ecdsaP256Certificate, ed25519Certificate},
+				},
+				flags: append(
+					certificateSlotFlags,
+					curveFlags...,
+				),
+			}
+			if alg.id != signatureEd25519 {
+				// ED25519 is the last certificate set in |certificateSlotFlags|. We don't support multiple certificate
+				// slots on the client side, so the client should only be configured to use ED25519.
+				strictAlgClientTest.shouldFail = true
+				strictAlgClientTest.expectedError = signError
+				strictAlgClientTest.expectedLocalError = signLocalError
+			}
+
 			if !shouldFail {
 				testCases = append(testCases, strictAlgTest)
+				testCases = append(testCases, strictAlgCallbackTest)
+				testCases = append(testCases, strictAlgClientTest)
 			}
 		}
 	}
@@ -19704,17 +19749,13 @@ func addMultipleCertSlotTests() {
 		// ED25519 signature algorithm should be prioritized if supported.
 		ed25519PriorityTest := testCase{
 			testType: serverTest,
-			name:     prefix + "Multiple-Cert-ED25519-Priority" + suffix,
+			name:     "Server-Multiple-Cert-ED25519-Priority" + suffix,
 			config: Config{
 				MaxVersion:                ver.version,
 				VerifySignatureAlgorithms: allAlgorithms,
 			},
 			flags: append(
-				[]string{
-					"-multiple-certs-slot", path.Join(*resourceDir, getShimCertificate(testCertRSA)) + "," + path.Join(*resourceDir, getShimKey(testCertRSA)),
-					"-multiple-certs-slot", path.Join(*resourceDir, getShimCertificate(testCertECDSAP256)) + "," + path.Join(*resourceDir, getShimKey(testCertECDSAP256)),
-					"-multiple-certs-slot", path.Join(*resourceDir, getShimCertificate(testCertEd25519)) + "," + path.Join(*resourceDir, getShimKey(testCertEd25519)),
-				},
+				certificateSlotFlags,
 				flagInts("-curves", []int{int(CurveX25519), int(CurveP256)})...,
 			),
 			expectations: connectionExpectations{
@@ -19722,9 +19763,80 @@ func addMultipleCertSlotTests() {
 			},
 		}
 
+		// Below tests verify that multiple certificates only works because we have a valid cert.
+
+		// Connection shouldn't be accepted without RSA cert.
+		noRSACertTest := testCase{
+			testType: serverTest,
+			name:     "Server-Multiple-Cert-No-RSA" + suffix,
+			config: Config{
+				MaxVersion:                ver.version,
+				VerifySignatureAlgorithms: allAlgorithms,
+			},
+			flags: []string{
+				ecdsaCertSlot[0], ecdsaCertSlot[1],
+				ed25519CertSlot[0], ed25519CertSlot[1],
+				"-signing-prefs", strconv.Itoa(int(signatureRSAPKCS1WithSHA256)),
+			},
+			shouldFail:         true,
+			expectedError:      signError,
+			expectedLocalError: signLocalError,
+		}
+		// RSA support in TLS1.2 and lower is indicated with |mask_k| in |ssl_get_compatible_server_ciphers|.
+		// We do not have a valid public or private RSA key set up, so this fails early.
+		if ver.version <= VersionTLS12 {
+			noRSACertTest.expectedError = ":NO_SHARED_CIPHER:"
+		}
+
+		// Connection shouldn't be accepted without ECDSA cert.
+		noECDSACertTest := testCase{
+			testType: serverTest,
+			name:     "Server-Multiple-Cert-No-ECDSA" + suffix,
+			config: Config{
+				MaxVersion:                ver.version,
+				VerifySignatureAlgorithms: allAlgorithms,
+			},
+			flags: []string{
+				rsaCertSlot[0], rsaCertSlot[1],
+				ed25519CertSlot[0], ed25519CertSlot[1],
+				"-signing-prefs", strconv.Itoa(int(signatureECDSAWithP256AndSHA256)),
+			},
+			shouldFail:         true,
+			expectedError:      signError,
+			expectedLocalError: signLocalError,
+		}
+
+		// Connection shouldn't be accepted without ED25519 cert.
+		noED25519CertTest := testCase{
+			testType: serverTest,
+			name:     "Server-Multiple-Cert-No-ED25519" + suffix,
+			config: Config{
+				MaxVersion:                ver.version,
+				VerifySignatureAlgorithms: allAlgorithms,
+			},
+			flags: []string{
+				rsaCertSlot[0], rsaCertSlot[1],
+				ecdsaCertSlot[0], ecdsaCertSlot[1],
+				"-signing-prefs", strconv.Itoa(int(signatureEd25519)),
+			},
+			shouldFail:         true,
+			expectedError:      signError,
+			expectedLocalError: signLocalError,
+		}
+
+		if ver.version <= VersionTLS12 {
+			noRSACertTest.config.CipherSuites = []uint16{TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA}
+			noECDSACertTest.config.CipherSuites = []uint16{TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA}
+			noED25519CertTest.config.CipherSuites = []uint16{TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256}
+		}
+
+		// ED25519 is only supported in TLS1.2 and above.
 		if ver.version >= VersionTLS12 {
 			testCases = append(testCases, ed25519PriorityTest)
+			testCases = append(testCases, noED25519CertTest)
 		}
+		testCases = append(testCases, noRSACertTest)
+		testCases = append(testCases, noECDSACertTest)
 	}
 }
 
