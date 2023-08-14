@@ -155,6 +155,12 @@ TEST(BIOTest, Printf) {
 }
 
 TEST(BIOTest, TextFile) {
+#if defined(OPENSSL_ANDROID)
+    // On Android, when running from an APK, |tmpfile| does not work. See
+    // b/36991167#comment8.
+    GTEST_SKIP();
+#endif
+
   using TempFILE = std::unique_ptr<FILE, decltype(&fclose)>;
   TempFILE text_bio_file(tmpfile(), fclose);
 
@@ -170,6 +176,15 @@ TEST(BIOTest, TextFile) {
   OPENSSL_memset(contents, 0, sizeof(contents));
   int bytes_read = BIO_read(text_bio.get(), contents, sizeof(contents));
   EXPECT_GE(bytes_read, bytes_written);
+  EXPECT_EQ(test_str, std::string(contents));
+
+  // Windows should have translated '\n' to '\r\n', so validate that by opening
+  // the file in raw binary mode (i.e. no BIO_FP_TEXT).
+  bssl::UniquePtr<BIO> text_bio_raw(BIO_new_fp(text_bio_file.get(), BIO_CLOSE));
+  ASSERT_EQ(0, BIO_seek(text_bio.get(), 0));    // 0 indicates success here
+  OPENSSL_memset(contents, 0, sizeof(contents));
+  bytes_read = BIO_read(text_bio_raw.get(), contents, sizeof(contents));
+  EXPECT_GT(bytes_read, 0);
 #if defined(OPENSSL_WINDOWS)
   EXPECT_EQ("test\r\n", std::string(contents));
 #else
