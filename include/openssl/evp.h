@@ -976,7 +976,7 @@ OPENSSL_EXPORT void EVP_MD_do_all_sorted(void (*callback)(const EVP_MD *cipher,
                                                           void *arg),
                                          void *arg);
 
-// |EVP_MD_do_all| is the same as |EVP_MD_do_all_sorted|. We include both for
+// EVP_MD_do_all is the same as |EVP_MD_do_all_sorted|. We include both for
 // compatibility reasons.
 OPENSSL_EXPORT void EVP_MD_do_all(void (*callback)(const EVP_MD *cipher,
                                                    const char *name,
