@@ -395,10 +395,15 @@ OPENSSL_EXPORT int BIO_read_asn1(BIO *bio, uint8_t **out, size_t *out_len,
 //
 // |BIO_ctrl_pending| returns the number of bytes currently stored.
 
-// BIO_NOCLOSE and |BIO_CLOSE| can be used as symbolic arguments when a "close
-// flag" is passed to a BIO function.
+// |BIO_NOCLOSE|, |BIO_CLOSE|, and |BIO_FP_TEXT|  can be used as symbolic
+// arguments when a "close flag" is passed to a BIO function. |BIO_CLOSE| (on
+// by default) will free the backing buffer on BIO close, whereas |BIO_NOCLOSE|
+// will not. Setting |BIO_FP_TEXT| will cause the file to be opened as a text
+// file (this is only relevant on Windows due to CRLF endings) instead of the
+// default behavior of opening the file in binary mode.
 #define BIO_NOCLOSE 0
 #define BIO_CLOSE 1
+#define BIO_FP_TEXT 0x10
 
 // BIO_s_mem returns a |BIO_METHOD| that uses a in-memory buffer.
 OPENSSL_EXPORT const BIO_METHOD *BIO_s_mem(void);

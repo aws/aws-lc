@@ -152,6 +152,40 @@ TEST(BIOTest, Printf) {
 
     ASSERT_TRUE(BIO_reset(bio.get()));
   }
+
+  // Assert that we write CRLF line endings on Windows in text mode, and do not
+  // in (default) binary mode.
+  const char *test_str = "test\n";
+  FILE *text_bio_file = fmemopen(nullptr, 10, "r+");
+  ASSERT_TRUE(text_bio_file);
+  bssl::UniquePtr<BIO> text_bio(BIO_new_fp(text_bio_file, BIO_CLOSE | BIO_FP_TEXT));
+  int bytes_written = BIO_write(text_bio.get(), test_str, strlen(test_str));
+  ASSERT_GE(bytes_written, 0);
+  ASSERT_TRUE(BIO_flush(text_bio.get()));
+  ASSERT_EQ(0, BIO_seek(text_bio.get(), 0));    // 0 indicates success here
+  char contents[10];
+  int bytes_read = BIO_read(text_bio.get(), contents, sizeof(contents));
+  printf("FOOBAR :: %d :: %s\n", bytes_written, contents);
+  EXPECT_GE(bytes_read, bytes_written);
+#if defined(__WIN32)
+  EXPECT_EQ("test\r\n", std::string(contents));
+#else
+  EXPECT_EQ(test_str, std::string(contents));
+#endif
+  fclose(text_bio_file);
+
+  FILE *binary_bio_file = fmemopen(nullptr, 10, "r+b");
+  ASSERT_TRUE(binary_bio_file);
+  bssl::UniquePtr<BIO> binary_bio(BIO_new_fp(binary_bio_file, BIO_CLOSE));
+  bytes_written = BIO_write(binary_bio.get(), test_str, strlen(test_str));
+  EXPECT_EQ((int) strlen(test_str), bytes_written);
+  ASSERT_TRUE(BIO_flush(binary_bio.get()));
+  ASSERT_EQ(0, BIO_seek(binary_bio.get(), 0));    // 0 indicates success here
+  OPENSSL_memset(contents, 0, sizeof(contents));
+  bytes_read = BIO_read(binary_bio.get(), contents, sizeof(contents));
+  EXPECT_GE(bytes_read, bytes_written);
+  EXPECT_EQ(test_str, std::string(contents));
+  fclose(binary_bio_file);
 }
 
 TEST(BIOTest, ReadASN1) {

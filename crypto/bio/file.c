@@ -173,6 +173,7 @@ static long file_ctrl(BIO *b, int cmd, long num, void *ptr) {
   FILE *fp = (FILE *)b->ptr;
   FILE **fpp;
   char p[4];
+  OPENSSL_memset(p, 0, sizeof(p));
 
   switch (cmd) {
     case BIO_CTRL_RESET:
@@ -213,6 +214,11 @@ static long file_ctrl(BIO *b, int cmd, long num, void *ptr) {
         OPENSSL_PUT_ERROR(BIO, BIO_R_BAD_FOPEN_MODE);
         ret = 0;
         break;
+      }
+      // Per fopen's man page, this has no effect on Linux
+      // https://man7.org/linux/man-pages/man3/fopen.3.html
+      if ((num & BIO_FP_TEXT) == 0) {
+          p[strlen(p)] = 'b';
       }
       fp = fopen(ptr, p);
       if (fp == NULL) {
