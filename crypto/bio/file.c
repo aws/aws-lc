@@ -215,11 +215,12 @@ static long file_ctrl(BIO *b, int cmd, long num, void *ptr) {
         ret = 0;
         break;
       }
-      // Per fopen's man page, this has no effect on Linux
+      // The transaltion modifier is ignored on Linux:
       // https://man7.org/linux/man-pages/man3/fopen.3.html
-      if ((num & BIO_FP_TEXT) == 0) {
-          p[strlen(p)] = 'b';
-      }
+      // but is meaningful on Windows:
+      // https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/fopen-wfopen?view=msvc-170#generic-text-routine-mappings
+      const char translation_modifier = num & BIO_FP_TEXT ? 't' : 'b';
+      p[strlen(p)] = translation_modifier;
       fp = fopen(ptr, p);
       if (fp == NULL) {
         OPENSSL_PUT_SYSTEM_ERROR();
