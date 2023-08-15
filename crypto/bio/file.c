@@ -173,7 +173,6 @@ static long file_ctrl(BIO *b, int cmd, long num, void *ptr) {
   FILE *fp = (FILE *)b->ptr;
   FILE **fpp;
   char p[4];
-  OPENSSL_memset(p, 0, sizeof(p));
 
   switch (cmd) {
     case BIO_CTRL_RESET:
@@ -194,6 +193,13 @@ static long file_ctrl(BIO *b, int cmd, long num, void *ptr) {
       b->shutdown = (int)num & BIO_CLOSE;
       b->ptr = ptr;
       b->init = 1;
+#if defined(OPENSSL_WINDOWS)
+      // The transaltion modifier is ignored on Linux:
+      // https://man7.org/linux/man-pages/man3/fopen.3.html
+      // but is meaningful on Windows:
+      // https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/fopen-wfopen?view=msvc-170#generic-text-routine-mappings
+      _set_mode(b->ptr, num & BIO_FP_TEXT ? _O_TEXT : _O_BINARY);
+#endif
       break;
     case BIO_C_SET_FILENAME:
       file_free(b);
@@ -215,12 +221,6 @@ static long file_ctrl(BIO *b, int cmd, long num, void *ptr) {
         ret = 0;
         break;
       }
-      // The transaltion modifier is ignored on Linux:
-      // https://man7.org/linux/man-pages/man3/fopen.3.html
-      // but is meaningful on Windows:
-      // https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/fopen-wfopen?view=msvc-170#generic-text-routine-mappings
-      const char translation_modifier = num & BIO_FP_TEXT ? 't' : 'b';
-      p[strlen(p)] = translation_modifier;
       fp = fopen(ptr, p);
       if (fp == NULL) {
         OPENSSL_PUT_SYSTEM_ERROR();
