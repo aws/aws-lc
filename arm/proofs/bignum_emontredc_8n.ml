@@ -331,7 +331,8 @@ let lemma2 = prove
 let BIGNUM_EMONTREDC_8N_CORRECT = time prove
  (`!k z m w a n pc.
         nonoverlapping (word pc,0x400) (z,8 * 2 * val k) /\
-        nonoverlapping (m,8 * val k) (z,8 * 2 * val k)
+        nonoverlapping (m,8 * val k) (z,8 * 2 * val k) /\
+        8 divides val k
         ==> ensures arm
              (\s. aligned_bytes_loaded s (word pc) bignum_emontredc_8n_mc /\
                 read PC s = word(pc + 0x14) /\
@@ -339,8 +340,7 @@ let BIGNUM_EMONTREDC_8N_CORRECT = time prove
                 bignum_from_memory (z,2 * val k) s = a /\
                 bignum_from_memory (m,val k) s = n)
            (\s. read PC s = word(pc + 0x3e8) /\
-                (8 divides val k /\
-                 (n * val w + 1 == 0) (mod (2 EXP 64))
+                ((n * val w + 1 == 0) (mod (2 EXP 64))
                  ==> n * bignum_from_memory (z,val k) s + a =
                      2 EXP (64 * val k) *
                      (2 EXP (64 * val k) * val(C_RETURN s) +
@@ -367,6 +367,7 @@ let BIGNUM_EMONTREDC_8N_CORRECT = time prove
   ASM_CASES_TAC `k4 = 0` THENL
    [UNDISCH_THEN `k4 = 0` SUBST_ALL_TAC THEN
     ARM_SIM_TAC BIGNUM_EMONTREDC_8N_EXEC (1--4) THEN
+    UNDISCH_TAC `8 divides k` THEN
     ASM_REWRITE_TAC[VAL_WORD_USHR; NUM_REDUCE_CONV `2 EXP 2`] THEN
     ASM_REWRITE_TAC[DIVIDES_DIV_MULT; MULT_CLAUSES; ARITH_RULE `0 < 1`;
                     DIV_0; ARITH_RULE `k DIV 8 = k DIV 4 DIV 2`] THEN
@@ -413,6 +414,7 @@ let BIGNUM_EMONTREDC_8N_CORRECT = time prove
   CONJ_TAC THENL
    [ALL_TAC;
     ARM_SIM_TAC BIGNUM_EMONTREDC_8N_EXEC [] THEN REWRITE_TAC[IMP_CONJ] THEN
+    UNDISCH_TAC `8 divides k` THEN
     DISCH_THEN(MP_TAC o SPEC `4` o MATCH_MP (NUMBER_RULE
      `y divides a ==> !x:num. x divides y ==> x divides a`)) THEN
     ANTS_TAC THENL [CONV_TAC DIVIDES_CONV; ALL_TAC] THEN
@@ -1183,11 +1185,12 @@ let BIGNUM_EMONTREDC_8N_CORRECT = time prove
 let BIGNUM_EMONTREDC_8N_SUBROUTINE_CORRECT = time prove
  (`!k z m w a n pc stackpointer returnaddress.
         aligned 16 stackpointer /\
-        nonoverlapping (z,8 * 2 * val k)
-                       (word_sub stackpointer (word 80),80) /\
         ALLPAIRS nonoverlapping
          [(z,8 * 2 * val k); (word_sub stackpointer (word 80),80)]
-         [(word pc,0x400); (m,8 * val k)]
+         [(word pc,0x400); (m,8 * val k)] /\
+        nonoverlapping (z,8 * 2 * val k)
+                       (word_sub stackpointer (word 80),80) /\
+        8 divides val k
         ==> ensures arm
              (\s. aligned_bytes_loaded s (word pc) bignum_emontredc_8n_mc /\
                   read PC s = word pc /\
@@ -1197,8 +1200,7 @@ let BIGNUM_EMONTREDC_8N_SUBROUTINE_CORRECT = time prove
                   bignum_from_memory (z,2 * val k) s = a /\
                   bignum_from_memory (m,val k) s = n)
              (\s. read PC s = returnaddress /\
-                  (8 divides val k /\
-                   (n * val w + 1 == 0) (mod (2 EXP 64))
+                  ((n * val w + 1 == 0) (mod (2 EXP 64))
                    ==> n * bignum_from_memory (z,val k) s + a =
                        2 EXP (64 * val k) *
                        (2 EXP (64 * val k) * val(C_RETURN s) +

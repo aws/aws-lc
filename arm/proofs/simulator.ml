@@ -1,3 +1,8 @@
+(*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0 OR ISC
+ *)
+
 (* ------------------------------------------------------------------------- *)
 (* Encoding the registers and flags as a 32-element list of numbers.         *)
 (* ------------------------------------------------------------------------- *)

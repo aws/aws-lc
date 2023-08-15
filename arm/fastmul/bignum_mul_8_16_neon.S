@@ -1,3 +1,15 @@
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0 OR ISC
+
+// ----------------------------------------------------------------------------
+// Multiply z := x * y
+// Inputs x[8], y[8]; output z[16]
+//
+//    extern void bignum_mul_8_16_neon
+//     (uint64_t z[static 16], uint64_t x[static 8], uint64_t y[static 8]);
+//
+// Standard ARM ABI: X0 = z, X1 = x, X2 = y
+// ----------------------------------------------------------------------------
 #include "_internal_s2n_bignum.h"
 
         S2N_BN_SYM_VISIBILITY_DIRECTIVE(bignum_mul_8_16_neon)
