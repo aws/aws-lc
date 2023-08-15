@@ -194,11 +194,11 @@ static long file_ctrl(BIO *b, int cmd, long num, void *ptr) {
       b->ptr = ptr;
       b->init = 1;
 #if defined(OPENSSL_WINDOWS)
-      // The transaltion modifier is ignored on Linux:
-      // https://man7.org/linux/man-pages/man3/fopen.3.html
-      // but is meaningful on Windows:
-      // https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/fopen-wfopen?view=msvc-170#generic-text-routine-mappings
-      _set_mode(b->ptr, num & BIO_FP_TEXT ? _O_TEXT : _O_BINARY);
+      // Windows differentiates between "text" and "binary" file modes, so set
+      // the file to text mode if caller specifies BIO_FP_TEXT flag.
+      //
+      // https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/setmode?view=msvc-170#remarks
+      _setmode(_fileno(fp), num & BIO_FP_TEXT ? _O_TEXT : _O_BINARY);
 #endif
       break;
     case BIO_C_SET_FILENAME:
