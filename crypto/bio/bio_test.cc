@@ -156,18 +156,21 @@ TEST(BIOTest, Printf) {
 
 TEST(BIOTest, TextFile) {
 #if defined(OPENSSL_ANDROID)
-    // On Android, when running from an APK, |tmpfile| does not work. See
-    // b/36991167#comment8.
-    GTEST_SKIP();
+  // On Android, when running from an APK, |tmpfile| does not work. See
+  // b/36991167#comment8.
+  GTEST_SKIP();
 #endif
 
+  // unique_ptr will automatically call fclose on the file descriptior when the
+  // variable goes out of scope, so we need to specify BIO_NOCLOSE close flags
+  // to avoid a double-free condition.
   using TempFILE = std::unique_ptr<FILE, decltype(&fclose)>;
-  TempFILE text_bio_file(tmpfile(), fclose);
+  const char *test_str = "test\n";
 
   // Assert that we write CRLF line endings on Windows in text mode.
-  const char *test_str = "test\n";
+  TempFILE text_bio_file(tmpfile(), fclose);
   ASSERT_TRUE(text_bio_file);
-  bssl::UniquePtr<BIO> text_bio(BIO_new_fp(text_bio_file.get(), BIO_CLOSE | BIO_FP_TEXT));
+  bssl::UniquePtr<BIO> text_bio(BIO_new_fp(text_bio_file.get(), BIO_NOCLOSE | BIO_FP_TEXT));
   int bytes_written = BIO_write(text_bio.get(), test_str, strlen(test_str));
   ASSERT_GE(bytes_written, 0);
   ASSERT_TRUE(BIO_flush(text_bio.get()));
@@ -180,7 +183,7 @@ TEST(BIOTest, TextFile) {
 
   // Windows should have translated '\n' to '\r\n', so validate that by opening
   // the file in raw binary mode (i.e. no BIO_FP_TEXT).
-  bssl::UniquePtr<BIO> text_bio_raw(BIO_new_fp(text_bio_file.get(), BIO_CLOSE));
+  bssl::UniquePtr<BIO> text_bio_raw(BIO_new_fp(text_bio_file.get(), BIO_NOCLOSE));
   ASSERT_EQ(0, BIO_seek(text_bio.get(), 0));    // 0 indicates success here
   OPENSSL_memset(contents, 0, sizeof(contents));
   bytes_read = BIO_read(text_bio_raw.get(), contents, sizeof(contents));
@@ -194,7 +197,7 @@ TEST(BIOTest, TextFile) {
   // Assert that we do not write CRLF line endings in (default) binary mode.
   TempFILE binary_bio_file(tmpfile(), fclose);
   ASSERT_TRUE(binary_bio_file);
-  bssl::UniquePtr<BIO> binary_bio(BIO_new_fp(binary_bio_file.get(), BIO_CLOSE));
+  bssl::UniquePtr<BIO> binary_bio(BIO_new_fp(binary_bio_file.get(), BIO_NOCLOSE));
   bytes_written = BIO_write(binary_bio.get(), test_str, strlen(test_str));
   EXPECT_EQ((int) strlen(test_str), bytes_written);
   ASSERT_TRUE(BIO_flush(binary_bio.get()));
