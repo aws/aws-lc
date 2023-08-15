@@ -203,7 +203,7 @@ static long file_ctrl(BIO *b, int cmd, long num, void *ptr) {
       // the file to text mode if caller specifies BIO_FP_TEXT flag.
       //
       // https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/setmode?view=msvc-170#remarks
-      _setmode(_fileno(fp), num & BIO_FP_TEXT ? _O_TEXT : _O_BINARY);
+      _setmode(_fileno(b->ptr), num & BIO_FP_TEXT ? _O_TEXT : _O_BINARY);
 #endif
       break;
     case BIO_C_SET_FILENAME:
