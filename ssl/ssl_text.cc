@@ -26,19 +26,7 @@ int SSL_SESSION_print(BIO *bp, const SSL_SESSION *sess) {
     return 0;
   }
 
-  if (sess->cipher == nullptr) {
-    if (((sess->cipher->id) & 0xff000000) == 0x02000000) {
-      if (BIO_printf(bp, "    Cipher    : %06X\n",
-                     sess->cipher->id & 0xffffff) <= 0) {
-        return 0;
-      }
-    } else {
-      if (BIO_printf(bp, "    Cipher    : %04X\n", sess->cipher->id & 0xffff) <=
-          0) {
-        return 0;
-      }
-    }
-  } else {
+  if (sess->cipher != nullptr) {
     if (BIO_printf(bp, "    Cipher    : %s\n",
                    ((sess->cipher->name == nullptr) ? "unknown"
                                                     : sess->cipher->name)) <=
