@@ -162,26 +162,20 @@ TEST(BIOTest, TextFile) {
 #endif
 
 
-  // Test with CRLF line endings on windows, and standard line endings
-  // elsewhere.
-#if defined(OPENSSL_WINDOWS)
-  const char *test_str = "test\r\n";
-#else
-  const char *test_str = "test\n";
-#endif
-
   // unique_ptr will automatically call fclose on the file descriptior when the
   // variable goes out of scope, so we need to specify BIO_NOCLOSE close flags
   // to avoid a double-free condition.
   using TempFILE = std::unique_ptr<FILE, decltype(&fclose)>;
 
-  // Assert that CRLF line endings get translated out on write and back in on
+  const char *test_str = "test\n";
+
+  // Assert that CRLF line endings get inserted on write and translated back out on
   // read for text mode.
   TempFILE text_bio_file(tmpfile(), fclose);
   ASSERT_TRUE(text_bio_file);
   bssl::UniquePtr<BIO> text_bio(BIO_new_fp(text_bio_file.get(), BIO_NOCLOSE | BIO_FP_TEXT));
   int bytes_written = BIO_write(text_bio.get(), test_str, strlen(test_str));
-  ASSERT_GE(bytes_written, 0);
+  EXPECT_GE(bytes_written, 0);
   ASSERT_TRUE(BIO_flush(text_bio.get()));
   ASSERT_EQ(0, BIO_seek(text_bio.get(), 0));    // 0 indicates success here
   char contents[10];
@@ -190,16 +184,20 @@ TEST(BIOTest, TextFile) {
   EXPECT_GE(bytes_read, bytes_written);
   EXPECT_EQ(test_str, std::string(contents));
 
-  // Windows should have translated '\r\n' to '\n', so validate that by opening
-  // the file in raw binary mode (i.e. no BIO_FP_TEXT).
+  // Windows should have translated '\n' to '\r\n' on write, so validate that
+  // by opening the file in raw binary mode (i.e. no BIO_FP_TEXT).
   bssl::UniquePtr<BIO> text_bio_raw(BIO_new_fp(text_bio_file.get(), BIO_NOCLOSE));
   ASSERT_EQ(0, BIO_seek(text_bio.get(), 0));    // 0 indicates success here
   OPENSSL_memset(contents, 0, sizeof(contents));
   bytes_read = BIO_read(text_bio_raw.get(), contents, sizeof(contents));
   EXPECT_GT(bytes_read, 0);
-  EXPECT_EQ("test\n", std::string(contents));
+#if defined(OPENSSL_WINDOWS)
+  EXPECT_EQ("test\r\n", std::string(contents));
+#else
+  EXPECT_EQ(test_str, std::string(contents));
+#endif
 
-  // Assert that CRLF line endings don't get translated out on write for
+  // Assert that CRLF line endings don't get inserted on write for
   // (default) binary mode.
   TempFILE binary_bio_file(tmpfile(), fclose);
   ASSERT_TRUE(binary_bio_file);
