@@ -18,6 +18,7 @@
 #include <time.h>
 
 #include <algorithm>
+#include <array>
 #include <limits>
 #include <string>
 #include <utility>
@@ -9789,6 +9790,53 @@ TEST(SSLTest, NameLists) {
         EXPECT_STREQ(list[i], list2[i]);
       }
     }
+  }
+}
+
+TEST(SSLTest, SessionPrint) {
+ static const std::array<std::string, 15> kExpectedTLS13{
+      {"SSL-Session:", "    Protocol  :", "    Cipher    : ",
+       "    Session-ID: ", "    Session-ID-ctx:", "    Resumption PSK:",
+       "    PSK identity:", "    TLS session ticket lifetime hint:",
+       "    TLS session ticket:", "    61",
+       "    Start Time:", "    Timeout   :", "    Verify return code:",
+       "    Extended master secret:", "    Max Early Data:"}};
+
+  static const std::array<std::string, 14> kExpectedTLS12{
+      {"SSL-Session:", "    Protocol  :", "    Cipher    : ",
+       "    Session-ID: ", "    Session-ID-ctx:", "    Master-Key:",
+       "    PSK identity:", "    TLS session ticket lifetime hint:",
+       "    TLS session ticket:", "    61",
+       "    Start Time:", "    Timeout   :", "    Verify return code:",
+       "    Extended master secret:"}};
+
+  bssl::UniquePtr<SSL_SESSION> session(
+      CreateSessionWithTicket(TLS1_3_VERSION, 10));
+  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+  EXPECT_TRUE(SSL_SESSION_print(bio.get(), session.get()));
+  const uint8_t *out;
+  size_t outlen;
+  ASSERT_TRUE(BIO_mem_contents(bio.get(), &out, &outlen));
+
+  // Iterate through |kExpectedTLS13| and verify that |SSL_SESSION_print| has
+  // the expected format.
+  std::istringstream iss_tls13((std::string((char *)out, outlen)));
+  std::string line;
+  for (const auto &expected : kExpectedTLS13) {
+    std::getline(iss_tls13, line);
+    EXPECT_EQ(line.substr(0, expected.length()), expected);
+  }
+
+  session = CreateSessionWithTicket(TLS1_2_VERSION, 10);
+  bio.reset(BIO_new(BIO_s_mem()));
+  EXPECT_TRUE(SSL_SESSION_print(bio.get(), session.get()));
+  ASSERT_TRUE(BIO_mem_contents(bio.get(), &out, &outlen));
+  // Iterate through |kExpectedTLS12| and verify that |SSL_SESSION_print| has
+  // the expected format.
+  std::istringstream iss_tls12((std::string((char *)out, outlen)));
+  for (const auto &expected : kExpectedTLS12) {
+    std::getline(iss_tls12, line);
+    EXPECT_EQ(line.substr(0, expected.length()), expected);
   }
 }
 

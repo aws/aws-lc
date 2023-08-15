@@ -814,6 +814,8 @@ void CONF_modules_free(void) {}
 
 void CONF_modules_unload(int all) {}
 
+void CONF_modules_finish(void) {}
+
 void OPENSSL_config(const char *config_name) {}
 
 void OPENSSL_no_config(void) {}
