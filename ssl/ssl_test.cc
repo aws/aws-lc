@@ -5255,10 +5255,9 @@ TEST_P(MultipleCertificateSlotTest, SetChainAndKeyIndex) {
 }
 
 TEST_P(MultipleCertificateSlotTest, AutomaticSelection) {
-  if (version == TLS1_1_VERSION || version == TLS1_VERSION) {
-    // Automatic Multiple Certificate Selection is not supported for
-    // TLS1.0/1.1 yet.
-    // TODO: Add support for TLS1.0/1.1.
+  if ((version == TLS1_1_VERSION || version == TLS1_VERSION) &&
+      slot_index == SSL_PKEY_ED25519) {
+    // ED25519 is not supported in versions prior to TLS1.2.
     return;
   }
 

@@ -675,8 +675,7 @@ const EVP_MD *ssl_get_handshake_digest(uint16_t version,
 // having support for AES in hardware or not.
 bool ssl_create_cipher_list(UniquePtr<SSLCipherPreferenceList> *out_cipher_list,
                             const bool has_aes_hw, const char *rule_str,
-                            bool strict,
-                            bool config_tls13);
+                            bool strict, bool config_tls13);
 
 // ssl_get_certificate_slot_index returns the |SSL_PKEY_*| certificate slot
 // index corresponding to the private key type of |pkey|. It returns -1 if not
@@ -1107,7 +1106,10 @@ bool ssl_public_key_supports_signature_algorithm(SSL_HANDSHAKE *hs,
 bool ssl_cert_private_keys_supports_signature_algorithm(SSL_HANDSHAKE *hs,
                                                         uint16_t sigalg);
 
-
+// ssl_cert_private_keys_supports_legacy_signature_algorithm is the tls1.0/1.1
+// version of |ssl_cert_private_keys_supports_signature_algorithm|.
+bool ssl_cert_private_keys_supports_legacy_signature_algorithm(
+    uint16_t *out, SSL_HANDSHAKE *hs);
 
 // ssl_public_key_verify verifies that the |signature| is valid for the public
 // key |pkey| and input |in|, using the signature algorithm |sigalg|.
@@ -3933,6 +3935,7 @@ struct ssl_ctx_st {
   // of support for AES hardware. The value is only considered if
   // |aes_hw_override| is true.
   bool aes_hw_override_value : 1;
+
  private:
   ~ssl_ctx_st();
   friend OPENSSL_EXPORT void SSL_CTX_free(SSL_CTX *);
