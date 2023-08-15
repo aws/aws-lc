@@ -79,6 +79,11 @@
 #include <stdio.h>
 #include <string.h>
 
+#if defined(OPENSSL_WINDOWS)
+#include <fcntl.h>
+#include <io.h>
+#endif  // OPENSSL_WINDOWS
+
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
