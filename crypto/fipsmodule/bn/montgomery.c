@@ -134,19 +134,13 @@ OPENSSL_INLINE int montgomery_use_s2n_bignum(unsigned int num) {
   // Use s2n-bignum's functions only if
   // (1) The ARM architecture has slow multipliers, and
   // (2) num (which is the number of words) is multiplie of 8, because
-  //     s2n-bignum's bignum_emontredc_8n requires it
-  // (3) The word size is 64 bits, and
-  // (4) Temporary buffer's size (t and mulres) used in
-  //     montgomery_s2n_bignum_mul_mont does not exceed
-  //     BN_MONTGOMERY_MAX_WORDS.
+  //     s2n-bignum's bignum_emontredc_8n requires it, and
+  // (3) The word size is 64 bits.
   assert(S2NBIGNUM_KSQR_16_32_TEMP_NWORDS <= S2NBIGNUM_KMUL_32_64_TEMP_NWORDS &&
          S2NBIGNUM_KSQR_32_64_TEMP_NWORDS <= S2NBIGNUM_KMUL_32_64_TEMP_NWORDS &&
          S2NBIGNUM_KMUL_16_32_TEMP_NWORDS <= S2NBIGNUM_KMUL_32_64_TEMP_NWORDS);
   assert(BN_BITS2 == 64);
-  const uint64_t temp_buffer_nwords =
-      S2NBIGNUM_KMUL_32_64_TEMP_NWORDS + 2 * (uint64_t)num;
-  return !CRYPTO_is_ARMv8_wide_multiplier_capable() && (num % 8 == 0) &&
-          temp_buffer_nwords <= BN_MONTGOMERY_MAX_WORDS;
+  return !CRYPTO_is_ARMv8_wide_multiplier_capable() && (num % 8 == 0);
 }
 
 #else
@@ -472,14 +466,12 @@ static void montgomery_s2n_bignum_mul_mont(BN_ULONG *rp, const BN_ULONG *ap,
 #if defined(BN_MONTGOMERY_S2N_BIGNUM_CAPABLE)
 
   // t is a temporary buffer used by Karatsuba multiplication.
-  // bignum_kmul_32_64 requires 96 words.
+  // bignum_kmul_32_64 requires S2NBIGNUM_KMUL_32_64_TEMP_NWORDS words.
   uint64_t t[S2NBIGNUM_KMUL_32_64_TEMP_NWORDS];
-  // mulres is the output buffer of big-int multiplication.
-  // If BN_MONTGOMERY_MAX_WORDS - S2NBIGNUM_KMUL_32_64_TEMP_NWORDS is larger
-  // than num*2, its low num*2 elements are used.
-  // It is montgomery_use_s2n_bignum() that checks whether num*2 fits in the
-  // size of mulres array.
-  uint64_t mulres[BN_MONTGOMERY_MAX_WORDS - S2NBIGNUM_KMUL_32_64_TEMP_NWORDS];
+  // mulres is the output buffer of big-int multiplication which uses
+  // 2 * num elements of mulres. Note that num <= BN_MONTGOMERY_MAX_WORDS
+  // is guaranteed by the caller (BN_mod_mul_montgomery).
+  uint64_t mulres[2 * BN_MONTGOMERY_MAX_WORDS];
 
   // Given m the prime number stored at np, m * w = -1 mod 2^64.
   uint64_t w = n0[0];
