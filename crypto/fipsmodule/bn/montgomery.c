@@ -142,10 +142,11 @@ OPENSSL_INLINE int montgomery_use_s2n_bignum(unsigned int num) {
   assert(S2NBIGNUM_KSQR_16_32_TEMP_NWORDS <= S2NBIGNUM_KMUL_32_64_TEMP_NWORDS &&
          S2NBIGNUM_KSQR_32_64_TEMP_NWORDS <= S2NBIGNUM_KMUL_32_64_TEMP_NWORDS &&
          S2NBIGNUM_KMUL_16_32_TEMP_NWORDS <= S2NBIGNUM_KMUL_32_64_TEMP_NWORDS);
+  assert(BN_BITS2 == 64);
   const uint64_t temp_buffer_nwords =
       S2NBIGNUM_KMUL_32_64_TEMP_NWORDS + 2 * (uint64_t)num;
   return !CRYPTO_is_ARMv8_wide_multiplier_capable() && (num % 8 == 0) &&
-         BN_BITS2 == 64 && temp_buffer_nwords <= BN_MONTGOMERY_MAX_WORDS;
+          temp_buffer_nwords <= BN_MONTGOMERY_MAX_WORDS;
 }
 
 #else
