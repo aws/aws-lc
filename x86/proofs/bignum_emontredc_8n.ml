@@ -1008,7 +1008,8 @@ let BIGNUM_EMONTREDC_8N_CORRECT = time prove
       nonoverlapping (z,8 * 2 * val k) (word_sub stackpointer (word 32),32) /\
       ALLPAIRS nonoverlapping
          [(z,8 * 2 * val k); (word_sub stackpointer (word 32),32)]
-         [(word pc,0xb32); (m,8 * val k)]
+         [(word pc,0xb32); (m,8 * val k)] /\
+      8 divides val k
       ==> ensures x86
            (\s. bytes_loaded s (word pc) (BUTLAST bignum_emontredc_8n_mc) /\
                 read RIP s = word(pc + 0xa) /\
@@ -1017,8 +1018,7 @@ let BIGNUM_EMONTREDC_8N_CORRECT = time prove
                 bignum_from_memory (z,2 * val k) s = a /\
                 bignum_from_memory (m,val k) s = n)
            (\s. read RIP s = word(pc + 0xb27) /\
-                (8 divides val k /\
-                 (n * val w + 1 == 0) (mod (2 EXP 64))
+                ((n * val w + 1 == 0) (mod (2 EXP 64))
                  ==> n * bignum_from_memory (z,val k) s + a =
                      2 EXP (64 * val k) *
                      (2 EXP (64 * val k) * val(C_RETURN s) +
@@ -1049,6 +1049,7 @@ let BIGNUM_EMONTREDC_8N_CORRECT = time prove
      [ASM_REWRITE_TAC[VAL_WORD_USHR; NUM_REDUCE_CONV `2 EXP 3`];
       ALL_TAC] THEN
     X86_SIM_TAC BIGNUM_EMONTREDC_8N_EXEC (1--3) THEN
+    UNDISCH_TAC `8 divides k` THEN
     ASM_REWRITE_TAC[DIVIDES_DIV_MULT; MULT_CLAUSES] THEN
     ASM_CASES_TAC `k = 0` THEN ASM_REWRITE_TAC[] THEN
     EXPAND_TAC "a" THEN
@@ -1091,6 +1092,7 @@ let BIGNUM_EMONTREDC_8N_CORRECT = time prove
   CONJ_TAC THENL
    [ALL_TAC;
     X86_SIM_TAC BIGNUM_EMONTREDC_8N_EXEC [] THEN
+    UNDISCH_TAC `8 divides k` THEN
     ASM_REWRITE_TAC[ONCE_REWRITE_RULE[MULT_SYM] DIVIDES_DIV_MULT] THEN
     ASM_CASES_TAC `k':num = k` THEN ASM_REWRITE_TAC[] THEN
     UNDISCH_THEN `k':num = k` SUBST_ALL_TAC THEN
@@ -1877,7 +1879,8 @@ let BIGNUM_EMONTREDC_8N_SUBROUTINE_CORRECT = time prove
       nonoverlapping (z,8 * 2 * val k) (word_sub stackpointer (word 80),88) /\
       ALLPAIRS nonoverlapping
          [(z,8 * 2 * val k); (word_sub stackpointer (word 80),80)]
-         [(word pc,0xb32); (m,8 * val k)]
+         [(word pc,0xb32); (m,8 * val k)] /\
+      8 divides val k
       ==> ensures x86
            (\s. bytes_loaded s (word pc) bignum_emontredc_8n_mc /\
                 read RIP s = word pc /\
@@ -1888,8 +1891,7 @@ let BIGNUM_EMONTREDC_8N_SUBROUTINE_CORRECT = time prove
                 bignum_from_memory (m,val k) s = n)
            (\s. read RIP s = returnaddress /\
                 read RSP s = word_add stackpointer (word 8) /\
-                (8 divides val k /\
-                 (n * val w + 1 == 0) (mod (2 EXP 64))
+                ((n * val w + 1 == 0) (mod (2 EXP 64))
                  ==> n * bignum_from_memory (z,val k) s + a =
                      2 EXP (64 * val k) *
                      (2 EXP (64 * val k) * val(C_RETURN s) +
@@ -1942,7 +1944,8 @@ let WINDOWS_BIGNUM_EMONTREDC_8N_SUBROUTINE_CORRECT = time prove
       nonoverlapping (z,8 * 2 * val k) (word_sub stackpointer (word 96),104) /\
       ALLPAIRS nonoverlapping
          [(z,8 * 2 * val k); (word_sub stackpointer (word 96),96)]
-         [(word pc,0xb42); (m,8 * val k)]
+         [(word pc,0xb42); (m,8 * val k)] /\
+      8 divides val k
       ==> ensures x86
            (\s. bytes_loaded s (word pc) windows_bignum_emontredc_8n_mc /\
                 read RIP s = word pc /\
@@ -1953,8 +1956,7 @@ let WINDOWS_BIGNUM_EMONTREDC_8N_SUBROUTINE_CORRECT = time prove
                 bignum_from_memory (m,val k) s = n)
            (\s. read RIP s = returnaddress /\
                 read RSP s = word_add stackpointer (word 8) /\
-                (8 divides val k /\
-                 (n * val w + 1 == 0) (mod (2 EXP 64))
+                ((n * val w + 1 == 0) (mod (2 EXP 64))
                  ==> n * bignum_from_memory (z,val k) s + a =
                      2 EXP (64 * val k) *
                      (2 EXP (64 * val k) * val(WINDOWS_C_RETURN s) +

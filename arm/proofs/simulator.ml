@@ -1,3 +1,8 @@
+(*
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0 OR ISC
+ *)
+
 (* ------------------------------------------------------------------------- *)
 (* Encoding the registers and flags as a 32-element list of numbers.         *)
 (* ------------------------------------------------------------------------- *)
@@ -269,9 +274,6 @@ let iclasses =
 (* ------------------------------------------------------------------------- *)
 (* Run a random example.                                                     *)
 (* ------------------------------------------------------------------------- *)
-
-let PRINT_GOAL_TAC (desc: string): tactic =
-  fun gl -> let _ = printf "<%s>\n" desc; print_goal gl in ALL_TAC gl;;
 
 let template =
  `ensures arm
