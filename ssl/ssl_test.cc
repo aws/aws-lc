@@ -3504,7 +3504,7 @@ TEST_P(SSLVersionTest, GetPeerCertificate) {
   EXPECT_FALSE(SSL_get_client_ciphers(client_.get()));
   //  The server should register the ciphers sent to it by the client.
   EXPECT_EQ(
-      sk_SSL_CIPHER_num(SSL_get_ciphers(client_.get())),
+      sk_SSL_CIPHER_num(SSL_CTX_get_ciphers(client_.get()->ctx.get())),
       sk_SSL_CIPHER_num(SSL_get_client_ciphers(server_.get()))
   );
 
@@ -7558,14 +7558,6 @@ class QUICMethodTest : public testing::Test {
     // SSL_do_handshake is now idempotent.
     EXPECT_EQ(SSL_do_handshake(client_.get()), 1);
     EXPECT_EQ(SSL_do_handshake(server_.get()), 1);
-
-    //  The client should have no view of the server's preferences.
-    EXPECT_FALSE(SSL_get_client_ciphers(client_.get()));
-    //  The server should register the ciphers sent to it by the client.
-    EXPECT_EQ(
-        sk_SSL_CIPHER_num(SSL_get_ciphers(client_.get())),
-        sk_SSL_CIPHER_num(SSL_get_client_ciphers(server_.get()))
-    );
   }
 
   // Returns a default SSL_QUIC_METHOD. Individual methods may be overwritten by
@@ -7641,6 +7633,14 @@ TEST_F(QUICMethodTest, Basic) {
   ExpectHandshakeSuccess();
   EXPECT_FALSE(SSL_session_reused(client_.get()));
   EXPECT_FALSE(SSL_session_reused(server_.get()));
+
+  // The client should have no view of the server's preferences.
+  EXPECT_FALSE(SSL_get_client_ciphers(client_.get()));
+  // The server should register the ciphers sent to it by the client.
+  EXPECT_EQ(
+      sk_SSL_CIPHER_num(SSL_CTX_get_ciphers(client_.get()->ctx.get())),
+      sk_SSL_CIPHER_num(SSL_get_client_ciphers(server_.get()))
+  );
 
   // The server sent NewSessionTicket messages in the handshake.
   EXPECT_FALSE(g_last_session);
