@@ -368,6 +368,8 @@ static const SSL_CIPHER *choose_cipher(
     allow = server_pref->ciphers.get();
   }
 
+  ssl->ctx->peer_ciphers = std::move(client_pref);
+
   uint32_t mask_k, mask_a;
   ssl_get_compatible_server_ciphers(hs, &mask_k, &mask_a);
 

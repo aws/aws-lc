@@ -3500,6 +3500,14 @@ TEST_P(SSLVersionTest, GetPeerCertificate) {
 
   ASSERT_TRUE(Connect());
 
+  //  The client should have no view of the server's preferences.
+  EXPECT_FALSE(SSL_get_client_ciphers(client_.get()));
+  //  The server should register the ciphers sent to it by the client.
+  EXPECT_EQ(
+      sk_SSL_CIPHER_num(SSL_get_ciphers(client_.get())),
+      sk_SSL_CIPHER_num(SSL_get_client_ciphers(server_.get()))
+  );
+
   // Client and server should both see the leaf certificate.
   bssl::UniquePtr<X509> peer(SSL_get_peer_certificate(server_.get()));
   ASSERT_TRUE(peer);
@@ -7550,6 +7558,14 @@ class QUICMethodTest : public testing::Test {
     // SSL_do_handshake is now idempotent.
     EXPECT_EQ(SSL_do_handshake(client_.get()), 1);
     EXPECT_EQ(SSL_do_handshake(server_.get()), 1);
+
+    //  The client should have no view of the server's preferences.
+    EXPECT_FALSE(SSL_get_client_ciphers(client_.get()));
+    //  The server should register the ciphers sent to it by the client.
+    EXPECT_EQ(
+        sk_SSL_CIPHER_num(SSL_get_ciphers(client_.get())),
+        sk_SSL_CIPHER_num(SSL_get_client_ciphers(server_.get()))
+    );
   }
 
   // Returns a default SSL_QUIC_METHOD. Individual methods may be overwritten by

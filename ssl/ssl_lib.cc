@@ -2091,6 +2091,14 @@ STACK_OF(SSL_CIPHER) *SSL_get_ciphers(const SSL *ssl) {
                                   : ssl->ctx->cipher_list->ciphers.get();
 }
 
+STACK_OF(SSL_CIPHER) *SSL_get_client_ciphers(const SSL *ssl) {
+  if (ssl == NULL || !ssl->server || !ssl->ctx->peer_ciphers) {
+    return NULL;
+  }
+
+  return ssl->ctx->peer_ciphers.get();
+}
+
 const char *SSL_get_cipher_list(const SSL *ssl, int n) {
   if (ssl == NULL) {
     return NULL;

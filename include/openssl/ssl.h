@@ -1659,6 +1659,11 @@ OPENSSL_EXPORT int SSL_CTX_cipher_in_group(const SSL_CTX *ctx, size_t i);
 // SSL_get_ciphers returns the cipher list for |ssl|, in order of preference.
 OPENSSL_EXPORT STACK_OF(SSL_CIPHER) *SSL_get_ciphers(const SSL *ssl);
 
+// SSL_get_client_ciphers returns the stack of available SSL_CIPHERs matching
+// the list received from the client on |ssl|. If |ssl| is NULL, no ciphers are
+// available, or |ssl| is not operating in server mode, NULL is returned.
+OPENSSL_EXPORT STACK_OF(SSL_CIPHER) *SSL_get_client_ciphers(const SSL *ssl);
+
 
 // Connection information.
 

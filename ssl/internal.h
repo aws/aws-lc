@@ -3646,6 +3646,10 @@ struct ssl_ctx_st {
   // tls13_cipher_list holds the tls1.3 and above ciphersuites.
   bssl::UniquePtr<bssl::SSLCipherPreferenceList> tls13_cipher_list;
 
+  // peer_ciphers holds the peer's declared cipher preferences, in order.
+  // This field will be empty on the client side of a TLS connection.
+  bssl::UniquePtr<STACK_OF(SSL_CIPHER)> peer_ciphers;
+
   X509_STORE *cert_store = nullptr;
   LHASH_OF(SSL_SESSION) *sessions = nullptr;
   // Most session-ids that will be cached, default is
