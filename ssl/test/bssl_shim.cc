@@ -312,7 +312,7 @@ static bool CheckListContains(const char *type,
       return true;
     }
   }
-  fprintf(stderr, "Unexpected %s: %s\n", type, str);
+  fprintf(stderr, "Unexpected %s: %s\n", type, (str == nullptr) ? "<null>" : str);
   return false;
 }
 
