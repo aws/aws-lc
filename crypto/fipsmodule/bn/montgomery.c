@@ -128,7 +128,7 @@
 
 #include "../../../third_party/s2n-bignum/include/s2n-bignum_aws-lc.h"
 
-#define BN_MONTGOMERY_USE_S2N_BIGNUM 1
+#define BN_MONTGOMERY_S2N_BIGNUM_CAPABLE 1
 
 OPENSSL_INLINE int montgomery_use_s2n_bignum(unsigned int num) {
   // Use s2n-bignum's functions only if
@@ -469,7 +469,7 @@ static void montgomery_s2n_bignum_mul_mont(BN_ULONG *rp, const BN_ULONG *ap,
                                            const BN_ULONG *np,
                                            const BN_ULONG *n0, size_t num) {
 
-#if defined(BN_MONTGOMERY_USE_S2N_BIGNUM)
+#if defined(BN_MONTGOMERY_S2N_BIGNUM_CAPABLE)
 
   // t is a temporary buffer used by Karatsuba multiplication.
   // bignum_kmul_32_64 requires 96 words.
