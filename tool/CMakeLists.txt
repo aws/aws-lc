@@ -23,8 +23,6 @@ add_executable(
 target_include_directories(bssl PUBLIC ../include)
 target_compile_options(bssl PUBLIC -DINTERNAL_TOOL)
 
-add_dependencies(bssl global_target)
-
 if(WIN32)
   target_link_libraries(bssl ws2_32)
 endif()
@@ -44,7 +42,12 @@ else()
 endif()
 
 install(TARGETS bssl
-        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+if(MSVC AND CMAKE_BUILD_TYPE_LOWER MATCHES "relwithdebinfo" AND FIPS)
+  install (FILES $<TARGET_FILE_DIR:bssl>/bssl.pdb DESTINATION ${CMAKE_INSTALL_LIBDIR})
+endif()
 
 function(build_benchmark target_name install_path)
   find_library(libcrypto-${target_name} crypto PATHS ${install_path}/lib/ ${install_path}/lib64/ NO_DEFAULT_PATH)
@@ -71,7 +74,7 @@ if(AWSLC_INSTALL_DIR)
 endif()
 
 # This expects a directory which contains the includes in include/openssl/ and the OpenSSL artifacts in lib/
-# Currently this is the default OpenSSL build we target so the "OPENSSL_1_1_BENCHMARK" flag isn't used, 
+# Currently this is the default OpenSSL build we target so the "OPENSSL_1_1_BENCHMARK" flag isn't used,
 # but we include this to maintain uniformity across OpenSSL versions
 if(OPENSSL_1_1_INSTALL_DIR)
   build_benchmark(ossl_1_1_bm ${OPENSSL_1_1_INSTALL_DIR})
@@ -98,4 +101,5 @@ endif()
 
 if(BORINGSSL_INSTALL_DIR)
   build_benchmark(bssl_bm ${BORINGSSL_INSTALL_DIR})
+  target_compile_options(bssl_bm PUBLIC -DBORINGSSL_BENCHMARK)
 endif()

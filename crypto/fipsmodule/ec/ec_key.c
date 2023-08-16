@@ -88,7 +88,6 @@ DEFINE_STATIC_EX_DATA_CLASS(g_ec_ex_data_class)
 static EC_WRAPPED_SCALAR *ec_wrapped_scalar_new(const EC_GROUP *group) {
   EC_WRAPPED_SCALAR *wrapped = OPENSSL_malloc(sizeof(EC_WRAPPED_SCALAR));
   if (wrapped == NULL) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
 
@@ -109,7 +108,6 @@ EC_KEY *EC_KEY_new(void) { return EC_KEY_new_method(NULL); }
 EC_KEY *EC_KEY_new_method(const ENGINE *engine) {
   EC_KEY *ret = OPENSSL_malloc(sizeof(EC_KEY));
   if (ret == NULL) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
 
@@ -142,7 +140,6 @@ EC_KEY *EC_KEY_new_method(const ENGINE *engine) {
 EC_KEY *EC_KEY_new_by_curve_name(int nid) {
   EC_KEY *ret = EC_KEY_new();
   if (ret == NULL) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
   ret->group = EC_GROUP_new_by_curve_name(nid);
@@ -247,8 +244,9 @@ int EC_KEY_set_private_key(EC_KEY *key, const BIGNUM *priv_key) {
   if (scalar == NULL) {
     return 0;
   }
-  if (!ec_bignum_to_scalar(key->group, &scalar->scalar, priv_key)) {
-    OPENSSL_PUT_ERROR(EC, EC_R_WRONG_ORDER);
+  if (!ec_bignum_to_scalar(key->group, &scalar->scalar, priv_key) ||
+      ec_scalar_is_zero(key->group, &scalar->scalar)) {
+    OPENSSL_PUT_ERROR(EC, EC_R_INVALID_PRIVATE_KEY);
     ec_wrapped_scalar_free(scalar);
     return 0;
   }
@@ -313,7 +311,7 @@ int EC_KEY_check_key(const EC_KEY *eckey) {
   // NOTE: this is a FIPS pair-wise consistency check for the ECDH case. See SP
   // 800-56Ar3, page 36.
   if (eckey->priv_key != NULL) {
-    EC_RAW_POINT point;
+    EC_JACOBIAN point;
     if (!ec_point_mul_scalar_base(eckey->group, &point,
                                   &eckey->priv_key->scalar)) {
       OPENSSL_PUT_ERROR(EC, ERR_R_EC_LIB);
@@ -335,33 +333,33 @@ static int EVP_EC_KEY_check_fips(EC_KEY *key) {
   int ret = 0;
   uint8_t* sig_der = NULL;
   EVP_PKEY *evp_pkey = EVP_PKEY_new();
-  EVP_MD_CTX *ctx = EVP_MD_CTX_new();
+  EVP_MD_CTX ctx;
+  EVP_MD_CTX_init(&ctx);
   const EVP_MD *hash = EVP_sha256();
   size_t sign_len;
   if (!evp_pkey ||
-      !ctx ||
       !EVP_PKEY_set1_EC_KEY(evp_pkey, key) ||
-      !EVP_DigestSignInit(ctx, NULL, hash, NULL, evp_pkey) ||
-      !EVP_DigestSign(ctx, NULL, &sign_len, msg, msg_len)) {
+      !EVP_DigestSignInit(&ctx, NULL, hash, NULL, evp_pkey) ||
+      !EVP_DigestSign(&ctx, NULL, &sign_len, msg, msg_len)) {
     goto err;
   }
   sig_der = OPENSSL_malloc(sign_len);
   if (!sig_der ||
-      !EVP_DigestSign(ctx, sig_der, &sign_len, msg, msg_len)) {
+      !EVP_DigestSign(&ctx, sig_der, &sign_len, msg, msg_len)) {
     goto err;
   }
   if (boringssl_fips_break_test("ECDSA_PWCT")) {
     msg[0] = ~msg[0];
   }
-  if (!EVP_DigestVerifyInit(ctx, NULL, hash, NULL, evp_pkey) ||
-      !EVP_DigestVerify(ctx, sig_der, sign_len, msg, msg_len)) {
+  if (!EVP_DigestVerifyInit(&ctx, NULL, hash, NULL, evp_pkey) ||
+      !EVP_DigestVerify(&ctx, sig_der, sign_len, msg, msg_len)) {
     goto err;
   }
   ret = 1;
 err:
   EVP_PKEY_free(evp_pkey);
+  EVP_MD_CTX_cleanse(&ctx);
   OPENSSL_free(sig_der);
-  EVP_MD_CTX_free(ctx);
   return ret;
 }
 

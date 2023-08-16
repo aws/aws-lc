@@ -1,10 +1,11 @@
+//go:build ignore
+
 // doc generates HTML files from the comments in header files.
 //
 // doc expects to be given the path to a JSON file via the --config option.
 // From that JSON (which is defined by the Config struct) it reads a list of
 // header file locations and generates HTML files for each in the current
 // directory.
-
 package main
 
 import (
@@ -14,7 +15,6 @@ import (
 	"flag"
 	"fmt"
 	"html/template"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -412,7 +412,7 @@ func (config *Config) parseHeader(path string) (*HeaderFile, error) {
 				lines = lines[1:]
 				lineNo++
 				break
-		 	}
+			}
 			if line == cppGuard {
 				return nil, fmt.Errorf("hit ending C++ guard while in section on line %d (possibly missing two empty lines ahead of guard?)", lineNo)
 			}
@@ -610,7 +610,7 @@ func generate(outPath string, config *Config) (map[string]string, error) {
 	headerTmpl, err := headerTmpl.Parse(`<!DOCTYPE html>
 <html>
   <head>
-    <title>BoringSSL - {{.Name}}</title>
+    <title>AWS-LC - {{.Name}}</title>
     <meta charset="utf-8">
     <link rel="stylesheet" type="text/css" href="doc.css">
   </head>
@@ -706,7 +706,7 @@ func generateIndex(outPath string, config *Config, headerDescriptions map[string
 	indexTmpl, err := indexTmpl.Parse(`<!DOCTYPE html5>
 
   <head>
-    <title>BoringSSL - Headers</title>
+    <title>AWS-LC - Headers</title>
     <meta charset="utf-8">
     <link rel="stylesheet" type="text/css" href="doc.css">
   </head>
@@ -714,7 +714,7 @@ func generateIndex(outPath string, config *Config, headerDescriptions map[string
   <body>
     <div id="main">
       <div class="title">
-        <h2>BoringSSL Headers</h2>
+        <h2>AWS-LC Headers</h2>
       </div>
       <table>
         {{range .Sections}}
@@ -746,11 +746,11 @@ func generateIndex(outPath string, config *Config, headerDescriptions map[string
 }
 
 func copyFile(outPath string, inFilePath string) error {
-	bytes, err := ioutil.ReadFile(inFilePath)
+	bytes, err := os.ReadFile(inFilePath)
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(filepath.Join(outPath, filepath.Base(inFilePath)), bytes, 0666)
+	return os.WriteFile(filepath.Join(outPath, filepath.Base(inFilePath)), bytes, 0666)
 }
 
 func main() {
@@ -772,7 +772,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	configBytes, err := ioutil.ReadFile(*configFlag)
+	configBytes, err := os.ReadFile(*configFlag)
 	if err != nil {
 		fmt.Printf("Failed to open config file: %s\n", err)
 		os.Exit(1)

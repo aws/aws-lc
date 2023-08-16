@@ -9,23 +9,38 @@
 #include <openssl/base.h>
 #include <openssl/evp.h>
 
-// The values below are taken from the |api.h| file in the
-// |crypto/kyber/pqcrystals_kyber_ref_common| directory.
-#define KYBER512_PUBLIC_KEY_BYTES 800
-#define KYBER512_SECRET_KEY_BYTES 1632
-#define KYBER512_CIPHERTEXT_BYTES 768
-#define KYBER512_SHARED_SECRET_BYTES 32
-
-int kyber512_keypair(uint8_t *public_key /* OUT */,
+int kyber512r3_keypair(uint8_t *public_key /* OUT */,
                      uint8_t *secret_key /* OUT */);
 
-int kyber512_encapsulate(uint8_t *ciphertext       /* OUT */,
+int kyber512r3_encapsulate(uint8_t *ciphertext       /* OUT */,
                          uint8_t *shared_secret    /* OUT */,
                          const uint8_t *public_key /* IN  */);
 
-int kyber512_decapsulate(uint8_t *shared_secret    /* OUT */,
+int kyber512r3_decapsulate(uint8_t *shared_secret    /* OUT */,
                          const uint8_t *ciphertext /* IN  */,
                          const uint8_t *secret_key /* IN  */);
+
+int kyber768r3_keypair(uint8_t *public_key /* OUT */,
+                     uint8_t *secret_key /* OUT */);
+
+int kyber768r3_encapsulate(uint8_t *ciphertext       /* OUT */,
+                         uint8_t *shared_secret    /* OUT */,
+                         const uint8_t *public_key /* IN  */);
+
+int kyber768r3_decapsulate(uint8_t *shared_secret    /* OUT */,
+                         const uint8_t *ciphertext /* IN  */,
+                         const uint8_t *secret_key /* IN  */);
+
+int kyber1024r3_keypair(uint8_t *public_key /* OUT */,
+                      uint8_t *secret_key /* OUT */);
+
+int kyber1024r3_encapsulate(uint8_t *ciphertext       /* OUT */,
+                          uint8_t *shared_secret    /* OUT */,
+                          const uint8_t *public_key /* IN  */);
+
+int kyber1024r3_decapsulate(uint8_t *shared_secret    /* OUT */,
+                          const uint8_t *ciphertext /* IN  */,
+                          const uint8_t *secret_key /* IN  */);
 
 #endif
 

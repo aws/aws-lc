@@ -15,7 +15,11 @@ openssl_3_0_branch='openssl-3.0.5'
 
 function build_aws_lc_fips {
   echo "building aws-lc in FIPS mode"
-  run_build -DCMAKE_INSTALL_PREFIX="${install_dir}/aws-lc-fips" -DFIPS=1 -DCMAKE_BUILD_TYPE=Release
+  run_build \
+      -DCMAKE_INSTALL_PREFIX="${install_dir}/aws-lc-fips" \
+      -DFIPS=1 \
+      -DENABLE_DILITHIUM=ON \
+      -DCMAKE_BUILD_TYPE=RelWithDebInfo
   pushd "$BUILD_ROOT"
   ninja install
   popd
@@ -26,7 +30,7 @@ function build_openssl_1_0 {
     git clone --depth 1 --branch "${openssl_1_0_branch}" "${openssl_url}" "../openssl-1.0"
     pushd "../openssl-1.0"
     mkdir -p "${install_dir}/openssl-1.0"
-    ./config --prefix="${install_dir}/openssl-1.0" --openssldir="${install_dir}/openssl-1.0"
+    ./config --prefix="${install_dir}/openssl-1.0" --openssldir="${install_dir}/openssl-1.0" -d
     make "-j${NUM_CPU_THREADS}" > /dev/null
     make install_sw
     popd
@@ -38,7 +42,7 @@ function build_openssl_1_1 {
     git clone --depth 1 --branch "${openssl_1_1_branch}" "${openssl_url}" "../openssl-1.1"
     pushd "../openssl-1.1"
     mkdir -p "${install_dir}/openssl-1.1"
-    ./config --prefix="${install_dir}/openssl-1.1" --openssldir="${install_dir}/openssl-1.1"
+    ./config --prefix="${install_dir}/openssl-1.1" --openssldir="${install_dir}/openssl-1.1" -d
     make "-j${NUM_CPU_THREADS}" > /dev/null
     make install_sw
     popd
@@ -50,7 +54,7 @@ function build_openssl_3_0 {
     git clone --depth 1 --branch "${openssl_3_0_branch}" "${openssl_url}" "../openssl-3.0"
     pushd "../openssl-3.0"
     mkdir -p "${install_dir}/openssl-3.0"
-    ./Configure --prefix="${install_dir}/openssl-3.0" --openssldir="${install_dir}/openssl-3.0"
+    ./Configure --prefix="${install_dir}/openssl-3.0" --openssldir="${install_dir}/openssl-3.0" -d
     make "-j${NUM_CPU_THREADS}" > /dev/null
     make install_sw
     popd
@@ -66,20 +70,24 @@ function build_openssl_3_0 {
 # algorithms have been added to speed.cc
 build_aws_lc_fips
 echo "Testing awslc_bm with AWS-LC FIPS"
-run_build -DAWSLC_INSTALL_DIR="${install_dir}/aws-lc-fips"
+run_build -DAWSLC_INSTALL_DIR="${install_dir}/aws-lc-fips" -DASAN=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo
 "${BUILD_ROOT}/tool/awslc_bm"
+
+# Run the "local" benchmark that was built with the AWS-LC FIPS benchmark, only do this once because this tool
+# is always the same regardless of what additional external libcrypto is built
+"${BUILD_ROOT}/tool/bssl" speed
 
 build_openssl_1_0
 echo "Testing ossl_bm with OpenSSL 1.0"
-run_build -DOPENSSL_1_0_INSTALL_DIR="${install_dir}/openssl-1.0"
+run_build -DOPENSSL_1_0_INSTALL_DIR="${install_dir}/openssl-1.0" -DASAN=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo
 "${BUILD_ROOT}/tool/ossl_1_0_bm"
 
 build_openssl_1_1
 echo "Testing ossl_bm with OpenSSL 1.1"
-run_build -DOPENSSL_1_1_INSTALL_DIR="${install_dir}/openssl-1.1"
+run_build -DOPENSSL_1_1_INSTALL_DIR="${install_dir}/openssl-1.1" -DASAN=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo
 "${BUILD_ROOT}/tool/ossl_1_1_bm"
 
 build_openssl_3_0
 echo "Testing ossl_bm with OpenSSL 3.0"
-run_build -DOPENSSL_3_0_INSTALL_DIR="${install_dir}/openssl-3.0"
+run_build -DOPENSSL_3_0_INSTALL_DIR="${install_dir}/openssl-3.0" -DASAN=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo
 "${BUILD_ROOT}/tool/ossl_3_0_bm"

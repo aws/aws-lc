@@ -32,6 +32,13 @@ Lrcon:
 .align	5
 _aes_hw_set_encrypt_key:
 Lenc_key:
+#ifdef BORINGSSL_DISPATCH_TEST
+
+	adrp	x9,_BORINGSSL_function_hit@PAGE
+	add	x9, x9, _BORINGSSL_function_hit@PAGEOFF
+	mov	w10, #1
+	strb	w10, [x9,#3] // kFlag_aes_hw_set_encrypt_key
+#endif
 	// Armv8.3-A PAuth: even though x30 is pushed to stack it is not popped later.
 	AARCH64_VALID_CALL_TARGET
 	stp	x29,x30,[sp,#-16]!
@@ -244,6 +251,13 @@ Ldec_key_abort:
 
 .align	5
 _aes_hw_encrypt:
+#ifdef BORINGSSL_DISPATCH_TEST
+
+	adrp	x9,_BORINGSSL_function_hit@PAGE
+	add	x9, x9, _BORINGSSL_function_hit@PAGEOFF
+	mov	w10, #1
+	strb	w10, [x9,#1] // kFlag_aes_hw_encrypt
+#endif
 	AARCH64_VALID_CALL_TARGET
 	ldr	w3,[x2,#240]
 	ld1	{v0.4s},[x2],#16
@@ -275,6 +289,13 @@ Loop_enc:
 
 .align	5
 _aes_hw_decrypt:
+#ifdef BORINGSSL_DISPATCH_TEST
+
+	adrp	x9,_BORINGSSL_function_hit@PAGE
+	add	x9, x9, _BORINGSSL_function_hit@PAGEOFF
+	mov	w10, #1
+	strb	w10, [x9,#1] // kFlag_aes_hw_encrypt
+#endif
 	AARCH64_VALID_CALL_TARGET
 	ldr	w3,[x2,#240]
 	ld1	{v0.4s},[x2],#16
@@ -599,6 +620,13 @@ Lcbc_abort:
 
 .align	5
 _aes_hw_ctr32_encrypt_blocks:
+#ifdef BORINGSSL_DISPATCH_TEST
+
+	adrp	x9,_BORINGSSL_function_hit@PAGE
+	add	x9, x9, _BORINGSSL_function_hit@PAGEOFF
+	mov	w10, #1
+	strb	w10, [x9] // kFlag_aes_hw_ctr32_encrypt_blocks
+#endif
 	// Armv8.3-A PAuth: even though x30 is pushed to stack it is not popped later.
 	AARCH64_VALID_CALL_TARGET
 	stp	x29,x30,[sp,#-16]!
@@ -1872,7 +1900,7 @@ Loop5x_dec_after:
 .align	4
 Lxts_dec_tail4x:
 	add	x0,x0,#16
-	ld1	{v0.4s},[x0],#16
+	tst	x21,#0xf
 	eor	v5.16b,v1.16b,v4.16b
 	st1	{v5.16b},[x1],#16
 	eor	v17.16b,v24.16b,v17.16b
@@ -1881,6 +1909,8 @@ Lxts_dec_tail4x:
 	eor	v31.16b,v26.16b,v31.16b
 	st1	{v30.16b,v31.16b},[x1],#32
 
+	b.eq	Lxts_dec_abort
+	ld1	{v0.4s},[x0],#16
 	b	Lxts_done
 .align	4
 Lxts_outer_dec_tail:

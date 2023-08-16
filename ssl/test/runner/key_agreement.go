@@ -17,7 +17,6 @@ import (
 	"io"
 	"math/big"
 
-	"boringssl.googlesource.com/boringssl/ssl/test/runner/hrss"
 	"golang.org/x/crypto/curve25519"
 )
 
@@ -342,90 +341,6 @@ func (e *x25519ECDHCurve) finish(peerKey []byte) (preMasterSecret []byte, err er
 	return out[:], nil
 }
 
-// cecpq2Curve implements CECPQ2, which is HRSS+SXY combined with X25519.
-type cecpq2Curve struct {
-	x25519PrivateKey [32]byte
-	hrssPrivateKey   hrss.PrivateKey
-}
-
-func (e *cecpq2Curve) offer(rand io.Reader) (publicKey []byte, err error) {
-	if _, err := io.ReadFull(rand, e.x25519PrivateKey[:]); err != nil {
-		return nil, err
-	}
-
-	var x25519Public [32]byte
-	curve25519.ScalarBaseMult(&x25519Public, &e.x25519PrivateKey)
-
-	e.hrssPrivateKey = hrss.GenerateKey(rand)
-	hrssPublic := e.hrssPrivateKey.PublicKey.Marshal()
-
-	var ret []byte
-	ret = append(ret, x25519Public[:]...)
-	ret = append(ret, hrssPublic...)
-	return ret, nil
-}
-
-func (e *cecpq2Curve) accept(rand io.Reader, peerKey []byte) (publicKey []byte, preMasterSecret []byte, err error) {
-	if len(peerKey) != 32+hrss.PublicKeySize {
-		return nil, nil, errors.New("tls: bad length CECPQ2 offer")
-	}
-
-	if _, err := io.ReadFull(rand, e.x25519PrivateKey[:]); err != nil {
-		return nil, nil, err
-	}
-
-	var x25519Shared, x25519PeerKey, x25519Public [32]byte
-	copy(x25519PeerKey[:], peerKey)
-	curve25519.ScalarBaseMult(&x25519Public, &e.x25519PrivateKey)
-	curve25519.ScalarMult(&x25519Shared, &e.x25519PrivateKey, &x25519PeerKey)
-
-	// Per RFC 7748, reject the all-zero value in constant time.
-	var zeros [32]byte
-	if subtle.ConstantTimeCompare(zeros[:], x25519Shared[:]) == 1 {
-		return nil, nil, errors.New("tls: X25519 value with wrong order")
-	}
-
-	hrssPublicKey, ok := hrss.ParsePublicKey(peerKey[32:])
-	if !ok {
-		return nil, nil, errors.New("tls: bad CECPQ2 offer")
-	}
-
-	hrssCiphertext, hrssShared := hrssPublicKey.Encap(rand)
-
-	publicKey = append(publicKey, x25519Public[:]...)
-	publicKey = append(publicKey, hrssCiphertext...)
-	preMasterSecret = append(preMasterSecret, x25519Shared[:]...)
-	preMasterSecret = append(preMasterSecret, hrssShared...)
-
-	return publicKey, preMasterSecret, nil
-}
-
-func (e *cecpq2Curve) finish(peerKey []byte) (preMasterSecret []byte, err error) {
-	if len(peerKey) != 32+hrss.CiphertextSize {
-		return nil, errors.New("tls: bad length CECPQ2 reply")
-	}
-
-	var x25519Shared, x25519PeerKey [32]byte
-	copy(x25519PeerKey[:], peerKey)
-	curve25519.ScalarMult(&x25519Shared, &e.x25519PrivateKey, &x25519PeerKey)
-
-	// Per RFC 7748, reject the all-zero value in constant time.
-	var zeros [32]byte
-	if subtle.ConstantTimeCompare(zeros[:], x25519Shared[:]) == 1 {
-		return nil, errors.New("tls: X25519 value with wrong order")
-	}
-
-	hrssShared, ok := e.hrssPrivateKey.Decap(peerKey[32:])
-	if !ok {
-		return nil, errors.New("tls: invalid HRSS ciphertext")
-	}
-
-	preMasterSecret = append(preMasterSecret, x25519Shared[:]...)
-	preMasterSecret = append(preMasterSecret, hrssShared...)
-
-	return preMasterSecret, nil
-}
-
 func curveForCurveID(id CurveID, config *Config) (ecdhCurve, bool) {
 	switch id {
 	case CurveP224:
@@ -438,8 +353,6 @@ func curveForCurveID(id CurveID, config *Config) (ecdhCurve, bool) {
 		return &ellipticECDHCurve{curve: elliptic.P521(), sendCompressed: config.Bugs.SendCompressedCoordinates}, true
 	case CurveX25519:
 		return &x25519ECDHCurve{setHighBit: config.Bugs.SetX25519HighBit}, true
-	case CurveCECPQ2:
-		return &cecpq2Curve{}, true
 	default:
 		return nil, false
 	}
@@ -588,7 +501,7 @@ func (ka *ecdheKeyAgreement) generateServerKeyExchange(config *Config, cert *Cer
 NextCandidate:
 	for _, candidate := range preferredCurves {
 		if isPqGroup(candidate) && version < VersionTLS13 {
-			// CECPQ2 is TLS 1.3-only.
+			// Post-quantum "groups" require TLS 1.3.
 			continue
 		}
 

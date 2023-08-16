@@ -5,7 +5,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -21,7 +20,7 @@ func main() {
 		"|Intel" +
 		"|Marc Bevand" +
 		"|OpenSSL license|OpenSSL Project)")
-	filematcher, _ := regexp.Compile("(Dockerfile|\\.(ASM|c|cc|cmake|h|sh|go|pl|ps1|yml|s|S))$")
+	filematcher, _ := regexp.Compile("(Dockerfile|\\.(ASM|c|cc|h|sh|go|pl|ps1|yml|s|S))$")
 
 	var files []string
 	var unlicensed_files []string
@@ -53,7 +52,7 @@ func main() {
 	// Check that every file contains one of the known copyright headers,
 	// otherwise add it to |unlicensed_files|
 	for _, file := range files {
-		content, _ := ioutil.ReadFile(file)
+		content, _ := os.ReadFile(file)
 		if license_regex.MatchString(string(content)) != true {
 			unlicensed_files = append(unlicensed_files, file)
 		}

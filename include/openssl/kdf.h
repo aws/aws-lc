@@ -21,6 +21,16 @@
 extern "C" {
 #endif
 
+// CRYPTO_tls1_prf calculates |out_len| bytes of the TLS PRF, using |digest|,
+// and writes them to |out|. It returns one on success and zero on error.
+// TLS 1.2: https://datatracker.ietf.org/doc/html/rfc5246#section-5
+// TLS 1.{0,1}: https://datatracker.ietf.org/doc/html/rfc4346#section-5
+OPENSSL_EXPORT int CRYPTO_tls1_prf(const EVP_MD *digest,
+                                   uint8_t *out, size_t out_len,
+                                   const uint8_t *secret, size_t secret_len,
+                                   const char *label, size_t label_len,
+                                   const uint8_t *seed1, size_t seed1_len,
+                                   const uint8_t *seed2, size_t seed2_len);
 
 // KDF support for EVP.
 

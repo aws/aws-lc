@@ -522,8 +522,11 @@ typedef struct cipher_alias_st {
 } CIPHER_ALIAS;
 
 static const CIPHER_ALIAS kCipherAliases[] = {
-    // "ALL" doesn't include eNULL. It must be explicitly enabled.
-    {"ALL", ~0u, ~0u, ~0u, ~0u, 0},
+    // "ALL" is the default rule and includes everything except: SSL_3DES and
+    // SSL_eNULL, which must be explicitly configured.
+    // Several "known" keyword rules map to "ALL". See
+    // is_known_default_alias_keyword_filter_rule().
+    {"ALL", ~0u, ~0u, ~(SSL_3DES | SSL_eNULL), ~0u, 0},
 
     // The "COMPLEMENTOFDEFAULT" rule is omitted. It matches nothing.
 
@@ -565,13 +568,9 @@ static const CIPHER_ALIAS kCipherAliases[] = {
 
     // Legacy protocol minimum version aliases. "TLSv1" is intentionally the
     // same as "SSLv3".
-    {"SSLv3", ~0u, ~0u, ~0u, ~0u, SSL3_VERSION},
-    {"TLSv1", ~0u, ~0u, ~0u, ~0u, SSL3_VERSION},
-    {"TLSv1.2", ~0u, ~0u, ~0u, ~0u, TLS1_2_VERSION},
-
-    // Legacy strength classes.
-    {"HIGH", ~0u, ~0u, ~0u, ~0u, 0},
-    {"FIPS", ~0u, ~0u, ~0u, ~0u, 0},
+    {"SSLv3", ~0u, ~0u, ~SSL_3DES, ~0u, SSL3_VERSION},
+    {"TLSv1", ~0u, ~0u, ~SSL_3DES, ~0u, SSL3_VERSION},
+    {"TLSv1.2", ~0u, ~0u, ~SSL_3DES, ~0u, TLS1_2_VERSION},
 
     // Temporary no-op aliases corresponding to removed SHA-2 legacy CBC
     // ciphers. These should be removed after 2018-05-14.
@@ -1044,8 +1043,7 @@ static bool ssl_cipher_process_rulestr(const char *rule_str,
         rule = CIPHER_ADD;
         l++;
         continue;
-      } else if (!(ch >= 'a' && ch <= 'z') && !(ch >= 'A' && ch <= 'Z') &&
-                 !(ch >= '0' && ch <= '9')) {
+      } else if (!OPENSSL_isalnum(ch)) {
         OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_OPERATOR_IN_GROUP);
         return false;
       } else {
@@ -1098,8 +1096,7 @@ static bool ssl_cipher_process_rulestr(const char *rule_str,
       ch = *l;
       buf = l;
       buf_len = 0;
-      while ((ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') ||
-             (ch >= 'a' && ch <= 'z') || ch == '-' || ch == '.' || ch == '_') {
+      while (OPENSSL_isalnum(ch) || ch == '-' || ch == '.' || ch == '_') {
         ch = *(++l);
         buf_len++;
       }
@@ -1195,8 +1192,29 @@ static bool ssl_cipher_process_rulestr(const char *rule_str,
   return true;
 }
 
+static const char *kKnownKeywordFilterRulesMappingToDefault[] = {
+  "ALL",
+  "DEFAULT",
+  "FIPS",
+  "HIGH",
+};
+
+static bool is_known_default_alias_keyword_filter_rule(const char *rule,
+  size_t *matched_rule_length) {
+
+  for (auto known_rule : kKnownKeywordFilterRulesMappingToDefault) {
+    if (strncmp(rule, known_rule, strlen(known_rule)) == 0) {
+      *matched_rule_length = (size_t) strlen(known_rule);
+      return true;
+    }
+  }
+  *matched_rule_length = 0;
+  return false;
+}
+
 bool ssl_create_cipher_list(UniquePtr<SSLCipherPreferenceList> *out_cipher_list,
-                            const char *rule_str, bool strict, bool config_tls13) {
+                            const bool has_aes_hw, const char *rule_str,
+                            bool strict, bool config_tls13) {
   // Return with error if nothing to do.
   if (rule_str == NULL || out_cipher_list == NULL) {
     return false;
@@ -1229,7 +1247,7 @@ bool ssl_create_cipher_list(UniquePtr<SSLCipherPreferenceList> *out_cipher_list,
   // CHACHA20 unless there is hardware support for fast and constant-time
   // AES_GCM. Of the two CHACHA20 variants, the new one is preferred over the
   // old one.
-  if (EVP_has_aes_hardware()) {
+  if (has_aes_hw) {
     ssl_cipher_apply_rule(0, ~0u, ~0u, SSL_AES128GCM, ~0u, 0, CIPHER_ADD, -1,
                           false, &head, &tail);
     ssl_cipher_apply_rule(0, ~0u, ~0u, SSL_AES256GCM, ~0u, 0, CIPHER_ADD, -1,
@@ -1266,15 +1284,16 @@ bool ssl_create_cipher_list(UniquePtr<SSLCipherPreferenceList> *out_cipher_list,
   ssl_cipher_apply_rule(0, ~0u, ~0u, ~0u, ~0u, 0, CIPHER_DEL, -1, false, &head,
                         &tail);
 
-  // If the rule_string begins with DEFAULT, apply the default rule before
-  // using the (possibly available) additional rules.
+  // Check for keyword rules that map to the default "ALL" rule.
   const char *rule_p = rule_str;
-  if (strncmp(rule_str, "DEFAULT", 7) == 0) {
+  size_t matched_rule_length = 0;
+  if (is_known_default_alias_keyword_filter_rule(rule_str, &matched_rule_length)) {
     if (!ssl_cipher_process_rulestr(SSL_DEFAULT_CIPHER_LIST, &head, &tail,
                                     strict, config_tls13)) {
       return false;
     }
-    rule_p += 7;
+
+    rule_p += matched_rule_length;
     if (*rule_p == ':') {
       rule_p++;
     }
@@ -1325,6 +1344,19 @@ bool ssl_create_cipher_list(UniquePtr<SSLCipherPreferenceList> *out_cipher_list,
   }
 
   return true;
+}
+
+int ssl_get_certificate_slot_index(const EVP_PKEY *pkey) {
+  switch (EVP_PKEY_id(pkey)) {
+    case EVP_PKEY_RSA:
+      return SSL_PKEY_RSA;
+    case EVP_PKEY_EC:
+      return SSL_PKEY_ECC;
+    case EVP_PKEY_ED25519:
+      return SSL_PKEY_ED25519;
+    default:
+      return -1;
+  }
 }
 
 uint32_t ssl_cipher_auth_mask_for_key(const EVP_PKEY *key) {
@@ -1535,13 +1567,15 @@ uint16_t SSL_CIPHER_get_max_version(const SSL_CIPHER *cipher) {
   return TLS1_2_VERSION;
 }
 
+static const char* kUnknownCipher = "(NONE)";
+
 // return the actual cipher being used
 const char *SSL_CIPHER_get_name(const SSL_CIPHER *cipher) {
   if (cipher != NULL) {
     return cipher->name;
   }
 
-  return "(NONE)";
+  return kUnknownCipher;
 }
 
 const char *SSL_CIPHER_standard_name(const SSL_CIPHER *cipher) {
@@ -1582,14 +1616,6 @@ const char *SSL_CIPHER_get_kx_name(const SSL_CIPHER *cipher) {
       assert(0);
       return "UNKNOWN";
   }
-}
-
-char *SSL_CIPHER_get_rfc_name(const SSL_CIPHER *cipher) {
-  if (cipher == NULL) {
-    return NULL;
-  }
-
-  return OPENSSL_strdup(SSL_CIPHER_standard_name(cipher));
 }
 
 int SSL_CIPHER_get_bits(const SSL_CIPHER *cipher, int *out_alg_bits) {
@@ -1779,3 +1805,13 @@ const char *SSL_COMP_get0_name(const SSL_COMP *comp) { return comp->name; }
 int SSL_COMP_get_id(const SSL_COMP *comp) { return comp->id; }
 
 void SSL_COMP_free_compression_methods(void) {}
+
+size_t SSL_get_all_cipher_names(const char **out, size_t max_out) {
+  return GetAllNames(out, max_out, MakeConstSpan(&kUnknownCipher, 1),
+                     &SSL_CIPHER::name, MakeConstSpan(kCiphers));
+}
+
+size_t SSL_get_all_standard_cipher_names(const char **out, size_t max_out) {
+  return GetAllNames(out, max_out, Span<const char *>(),
+                     &SSL_CIPHER::standard_name, MakeConstSpan(kCiphers));
+}

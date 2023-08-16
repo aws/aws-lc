@@ -15,6 +15,7 @@
 package subprocess
 
 import (
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -31,10 +32,18 @@ type hashTestGroup struct {
 	ID    uint64 `json:"tgId"`
 	Type  string `json:"testType"`
 	Tests []struct {
-		ID        uint64 `json:"tcId"`
-		BitLength uint64 `json:"len"`
-		MsgHex    string `json:"msg"`
+		ID        uint64       `json:"tcId"`
+		BitLength uint64       `json:"len"`
+		MsgHex    string       `json:"msg"`
+		LargeMsg  hashLargeMsg `json:"largeMsg"`
 	} `json:"tests"`
+}
+
+type hashLargeMsg struct {
+	ContentHex    string `json:"content"`
+	ContentLength uint64 `json:"contentLength"`
+	FullLength    uint64 `json:"fullLength"`
+	ExpansionTech string `json:"expansionTechnique"`
 }
 
 type hashTestGroupResponse struct {
@@ -62,7 +71,7 @@ type hashPrimitive struct {
 	size int
 }
 
-func (h *hashPrimitive) Process(vectorSet []byte, m Transactable) (interface{}, error) {
+func (h *hashPrimitive) Process(vectorSet []byte, m Transactable) (any, error) {
 	var parsed hashTestVectorSet
 	if err := json.Unmarshal(vectorSet, &parsed); err != nil {
 		return nil, err
@@ -118,6 +127,31 @@ func (h *hashPrimitive) Process(vectorSet []byte, m Transactable) (interface{}, 
 				}
 
 				response.Tests = append(response.Tests, testResponse)
+
+			case "LDT":
+				if test.LargeMsg.ExpansionTech != "repeating" {
+					return nil, fmt.Errorf("test case %d has invalid expantion technique", test.ID)
+				}
+
+				// We will send this information over to the modulewrapper for handling b/c of the limit on argument lengths in the buffer.
+				times := test.LargeMsg.FullLength / test.LargeMsg.ContentLength
+
+				content, err := hex.DecodeString(test.LargeMsg.ContentHex)
+				if err != nil {
+					return nil, fmt.Errorf("failed to decode hex in test case %d/%d: %s", group.ID, test.ID, err)
+				}
+
+				timesByteArr := make([]byte, 8)
+				binary.LittleEndian.PutUint64(timesByteArr, times)
+				result, err := m.Transact(h.algo+"/LDT", 1, content, timesByteArr)
+				if err != nil {
+					panic(h.algo + " LDT hash operation failed: " + err.Error())
+				}
+
+				response.Tests = append(response.Tests, hashTestResponse{
+					ID:        test.ID,
+					DigestHex: hex.EncodeToString(result[0]),
+				})
 
 			default:
 				return nil, fmt.Errorf("test group %d has unknown type %q", group.ID, group.Type)

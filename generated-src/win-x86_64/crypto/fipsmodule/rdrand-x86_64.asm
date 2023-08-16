@@ -68,4 +68,7 @@ $L$err_multiple:
 	DB	0F3h,0C3h		;repret
 
 
+%else
+; Work around https://bugzilla.nasm.us/show_bug.cgi?id=3392738
+ret
 %endif

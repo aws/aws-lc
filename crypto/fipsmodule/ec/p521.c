@@ -14,9 +14,11 @@
 #include <openssl/mem.h>
 
 #include "../bn/internal.h"
+#include "../cpucap/internal.h"
 #include "../delocate.h"
 #include "internal.h"
 
+#if !defined(OPENSSL_SMALL)
 // We have two implementations of the field arithmetic for P-521 curve:
 //   - Fiat-crypto
 //   - s2n-bignum
@@ -31,7 +33,6 @@
 // when Fiat-crypto is used, or as:
 //   #define p521_felem_add(out, in0, in1) bignum_add_p521(out, in0, in1)
 // when s2n-bignum is used.
-//
 #if !defined(OPENSSL_NO_ASM) && \
     (defined(OPENSSL_LINUX) ||  defined(OPENSSL_APPLE)) && \
     (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64)) && \
@@ -80,8 +81,7 @@ static const p521_limb_t p521_felem_p[P521_NLIMBS] = {
 // every x86 CPU so we have to check if they are available and in case
 // they are not we fallback to slightly slower but generic implementation.
 static inline uint8_t p521_use_s2n_bignum_alt(void) {
-  return ((OPENSSL_ia32cap_P[2] & (1u <<  8)) == 0) || // bmi2
-         ((OPENSSL_ia32cap_P[2] & (1u << 19)) == 0);   // adx
+  return (!CRYPTO_is_BMI2_capable() || !CRYPTO_is_ADX_capable());
 }
 #else
 // On aarch64 platforms s2n-bignum has two implementations of certain
@@ -89,16 +89,8 @@ static inline uint8_t p521_use_s2n_bignum_alt(void) {
 // Depending on the architecture one version is faster than the other.
 // Generally, the "_alt" functions are faster on architectures with higher
 // multiplier throughput, for example, Graviton 3, Apple's M1 and iPhone chips.
-// Until we find a clear way to determine in runtime which architecture we
-// are running on we stick with the default s2n-bignum functions. Except in
-// the case of Apple, because we know that on Apple's Arm chips the "_alt"
-// functions are faster.
 static inline uint8_t p521_use_s2n_bignum_alt(void) {
-#if defined(OPENSSL_APPLE)
-  return 1;
-#else
-  return 0;
-#endif
+  return CRYPTO_is_ARMv8_wide_multiplier_capable();
 }
 #endif
 
@@ -498,7 +490,7 @@ static void p521_point_add(p521_felem x3, p521_felem y3, p521_felem z3,
 // Takes the Jacobian coordinates (X, Y, Z) of a point and returns:
 //   (X', Y') = (X/Z^2, Y/Z^3).
 static int ec_GFp_nistp521_point_get_affine_coordinates(
-    const EC_GROUP *group, const EC_RAW_POINT *point,
+    const EC_GROUP *group, const EC_JACOBIAN *point,
     EC_FELEM *x_out, EC_FELEM *y_out) {
 
   if (ec_GFp_simple_is_at_infinity(group, point)) {
@@ -530,8 +522,8 @@ static int ec_GFp_nistp521_point_get_affine_coordinates(
   return 1;
 }
 
-static void ec_GFp_nistp521_add(const EC_GROUP *group, EC_RAW_POINT *r,
-                                const EC_RAW_POINT *a, const EC_RAW_POINT *b) {
+static void ec_GFp_nistp521_add(const EC_GROUP *group, EC_JACOBIAN *r,
+                                const EC_JACOBIAN *a, const EC_JACOBIAN *b) {
   p521_felem x1, y1, z1, x2, y2, z2;
   p521_from_generic(x1, &a->X);
   p521_from_generic(y1, &a->Y);
@@ -545,8 +537,8 @@ static void ec_GFp_nistp521_add(const EC_GROUP *group, EC_RAW_POINT *r,
   p521_to_generic(&r->Z, z1);
 }
 
-static void ec_GFp_nistp521_dbl(const EC_GROUP *group, EC_RAW_POINT *r,
-                                const EC_RAW_POINT *a) {
+static void ec_GFp_nistp521_dbl(const EC_GROUP *group, EC_JACOBIAN *r,
+                                const EC_JACOBIAN *a) {
   p521_felem x, y, z;
   p521_from_generic(x, &a->X);
   p521_from_generic(y, &a->Y);
@@ -607,7 +599,7 @@ OPENSSL_STATIC_ASSERT(P521_MUL_WSIZE == 5,
 #define P521_MUL_WSIZE_MASK   ((P521_MUL_TWO_TO_WSIZE << 1) - 1)
 
 // Number of |P521_MUL_WSIZE|-bit windows in a 521-bit value
-#define P521_MUL_NWINDOWS     ((521 + P521_MUL_WSIZE - 1)/P521_MUL_WSIZE) 
+#define P521_MUL_NWINDOWS     ((521 + P521_MUL_WSIZE - 1)/P521_MUL_WSIZE)
 
 // For the public point in |ec_GFp_nistp521_point_mul_public| function
 // we use window size equal to 5.
@@ -696,8 +688,8 @@ static void p521_select_point_affine(p521_felem out[2],
 //          negate it if s_i is negative, and add it to the accumulator.
 //
 // Note: this function is constant-time.
-static void ec_GFp_nistp521_point_mul(const EC_GROUP *group, EC_RAW_POINT *r,
-                                      const EC_RAW_POINT *p,
+static void ec_GFp_nistp521_point_mul(const EC_GROUP *group, EC_JACOBIAN *r,
+                                      const EC_JACOBIAN *p,
                                       const EC_SCALAR *scalar) {
 
   p521_felem res[3] = {{0}, {0}, {0}}, tmp[3] = {{0}, {0}, {0}}, ftmp;
@@ -842,7 +834,7 @@ static void ec_GFp_nistp521_point_mul(const EC_GROUP *group, EC_RAW_POINT *r,
 //
 // Note: this function is constant-time.
 static void ec_GFp_nistp521_point_mul_base(const EC_GROUP *group,
-                                           EC_RAW_POINT *r,
+                                           EC_JACOBIAN *r,
                                            const EC_SCALAR *scalar) {
 
   p521_felem res[3] = {{0}, {0}, {0}}, tmp[3] = {{0}, {0}, {0}}, ftmp;
@@ -949,9 +941,9 @@ static void ec_GFp_nistp521_point_mul_base(const EC_GROUP *group,
 //
 // Note: this function is NOT constant-time.
 static void ec_GFp_nistp521_point_mul_public(const EC_GROUP *group,
-                                             EC_RAW_POINT *r,
+                                             EC_JACOBIAN *r,
                                              const EC_SCALAR *g_scalar,
-                                             const EC_RAW_POINT *p,
+                                             const EC_JACOBIAN *p,
                                              const EC_SCALAR *p_scalar) {
 
   p521_felem res[3] = {{0}, {0}, {0}}, two_p[3] = {{0}, {0}, {0}}, ftmp;
@@ -1103,3 +1095,4 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistp521_method) {
 // ----------------------------------------------------------------------------
 //  Analysis of the doubling case occurrence in the Joye-Tunstall recoding:
 //  see the analysis at the bottom of the |p384.c| file.
+#endif // !defined(OPENSSL_SMALL)

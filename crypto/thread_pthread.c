@@ -12,6 +12,8 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+// Ensure we can't call OPENSSL_malloc circularly.
+#define _BORINGSSL_PROHIBIT_OPENSSL_MALLOC
 #include "internal.h"
 
 #if defined(OPENSSL_PTHREADS)
@@ -20,7 +22,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <openssl/mem.h>
 #include <openssl/type_check.h>
 
 
@@ -118,7 +119,7 @@ static void thread_local_destructor(void *arg) {
     }
   }
 
-  OPENSSL_free(pointers);
+  free(pointers);
 }
 
 static pthread_once_t g_thread_local_init_once = PTHREAD_ONCE_INIT;
@@ -153,14 +154,14 @@ int CRYPTO_set_thread_local(thread_local_data_t index, void *value,
 
   void **pointers = pthread_getspecific(g_thread_local_key);
   if (pointers == NULL) {
-    pointers = OPENSSL_malloc(sizeof(void *) * NUM_OPENSSL_THREAD_LOCALS);
+    pointers = malloc(sizeof(void *) * NUM_OPENSSL_THREAD_LOCALS);
     if (pointers == NULL) {
       destructor(value);
       return 0;
     }
     OPENSSL_memset(pointers, 0, sizeof(void *) * NUM_OPENSSL_THREAD_LOCALS);
     if (pthread_setspecific(g_thread_local_key, pointers) != 0) {
-      OPENSSL_free(pointers);
+      free(pointers);
       destructor(value);
       return 0;
     }
@@ -174,6 +175,35 @@ int CRYPTO_set_thread_local(thread_local_data_t index, void *value,
   pthread_mutex_unlock(&g_destructors_lock);
 
   pointers[index] = value;
+  return 1;
+}
+
+int AWSLC_thread_local_clear(void) {
+  if (!g_thread_local_key_created) {
+    return 1;
+  }
+  void *pointers = pthread_getspecific(g_thread_local_key);
+  thread_local_destructor(pointers);
+  // By setting the value NULL, thread_local_destructor will not be called when
+  // this thread dies.
+  if (0 != pthread_setspecific(g_thread_local_key, NULL)) {
+    return 0;
+  }
+  return 1;
+}
+
+// This function is not thread-safe. It should only be called on a thread that
+// is prepared to also call `dlclose` to unload our shared library.
+int AWSLC_thread_local_shutdown(void) {
+  if (!g_thread_local_key_created) {
+    return 1;
+  }
+  // This deletes the thread local key
+  if (0 != pthread_key_delete(g_thread_local_key)) {
+    return 0;
+  }
+
+  g_thread_local_key_created = 0;
   return 1;
 }
 

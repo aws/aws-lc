@@ -18,10 +18,22 @@ endif()
 
 option(BUILD_TESTING "Build all test targets for AWS-LC" ON)
 option(BUILD_LIBSSL "Build libssl for AWS-LC" ON)
+option(BUILD_TOOL "Build bssl tool for AWS-LC" ON)
+option(ENABLE_DILITHIUM "Enable Dilithium signatures in the EVP API" OFF)
 option(DISABLE_PERL "Disable Perl for AWS-LC" OFF)
 option(DISABLE_GO "Disable Go for AWS-LC" OFF)
+include(cmake/go.cmake)
 
 enable_language(C)
+
+# Configure entropy source in case of FIPS build
+if(FIPS)
+  if(USE_FIPS_ENTROPY_SOURCE_PASSIVE)
+    add_definitions(-DFIPS_ENTROPY_SOURCE_PASSIVE)
+  else()
+    add_definitions(-DFIPS_ENTROPY_SOURCE_JITTER_CPU)
+  endif()
+endif()
 
 # Tests and libssl both require the CXX language to be enabled. If a consumer
 # chooses to disable building the tests and libssl, do not enable CXX
@@ -34,11 +46,6 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang")
 elseif(CMAKE_C_COMPILER_ID MATCHES "GNU")
   set(GCC 1)
 endif()
-
-# This is a dummy target which all other targets depend on (manually - see other
-# CMakeLists.txt files). This gives us a hook to add any targets which need to
-# run before all other targets.
-add_custom_target(global_target)
 
 if (UNIX AND NOT APPLE)
   include(GNUInstallDirs)
@@ -54,20 +61,14 @@ install(DIRECTORY include/openssl
 )
 
 if(ANDROID)
-  # Android-NDK CMake files reconfigure the path and so Go and Perl won't be
-  # found. However, ninja will still find them in $PATH if we just name them.
+  # Android-NDK CMake files reconfigure the path and so Perl won't be found.
+  # However, ninja will still find them in $PATH if we just name them.
   if(NOT DISABLE_PERL AND NOT PERL_EXECUTABLE)
     set(PERL_EXECUTABLE "perl")
-  endif()
-  if(NOT DISABLE_GO AND NOT GO_EXECUTABLE)
-    set(GO_EXECUTABLE "go")
   endif()
 else()
   if(NOT DISABLE_PERL)
     find_package(Perl)
-  endif()
-  if(NOT DISABLE_GO)
-    find_program(GO_EXECUTABLE go)
   endif()
 endif()
 
@@ -94,6 +95,11 @@ endif()
 
 if(NOT PERL_EXECUTABLE OR NOT GO_EXECUTABLE)
   set(GENERATE_CODE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/generated-src")
+endif()
+
+
+if(ENABLE_DILITHIUM)
+  add_definitions(-DENABLE_DILITHIUM)
 endif()
 
 if(USE_CUSTOM_LIBCXX)
@@ -140,7 +146,7 @@ if(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS AND GO_EXECUTABLE)
   if(IS_ABSOLUTE ${BORINGSSL_PREFIX_SYMBOLS})
     set(BORINGSSL_PREFIX_SYMBOLS_PATH ${BORINGSSL_PREFIX_SYMBOLS})
   else()
-    set(BORINGSSL_PREFIX_SYMBOLS_PATH ${CMAKE_BINARY_DIR}/${BORINGSSL_PREFIX_SYMBOLS})
+    set(BORINGSSL_PREFIX_SYMBOLS_PATH ${PROJECT_BINARY_DIR}/${BORINGSSL_PREFIX_SYMBOLS})
   endif()
 
   add_custom_command(
@@ -149,15 +155,14 @@ if(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS AND GO_EXECUTABLE)
            symbol_prefix_include/boringssl_prefix_symbols_nasm.inc
     COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include
     COMMAND ${GO_EXECUTABLE} run ${CMAKE_CURRENT_SOURCE_DIR}/util/make_prefix_headers.go -out ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include ${BORINGSSL_PREFIX_SYMBOLS_PATH}
-    # Temporary exclude all Kyber symbols.
-    # TODO(dkostic): fix the prefix build to work with Kyber source code.
-    COMMAND sed -i.bak '/pqcrystals/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/boringssl_prefix_symbols.h
     COMMAND sed -i.bak '/ bignum_/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/boringssl_prefix_symbols.h
     COMMAND sed -i.bak '/ bignum_/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/boringssl_prefix_symbols_asm.h
     COMMAND sed -i.bak '/ bignum_/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/boringssl_prefix_symbols_nasm.inc
+    COMMAND sed -i.bak '/ curve25519_x25519/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/boringssl_prefix_symbols.h
+    COMMAND sed -i.bak '/ curve25519_x25519/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/boringssl_prefix_symbols_asm.h
+    COMMAND sed -i.bak '/ curve25519_x25519/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/boringssl_prefix_symbols_nasm.inc
     DEPENDS util/make_prefix_headers.go
             ${BORINGSSL_PREFIX_SYMBOLS_PATH})
-
   # add_dependencies needs a target, not a file, so we add an intermediate
   # target.
   add_custom_target(
@@ -165,20 +170,23 @@ if(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS AND GO_EXECUTABLE)
     DEPENDS symbol_prefix_include/boringssl_prefix_symbols.h
             symbol_prefix_include/boringssl_prefix_symbols_asm.h
             symbol_prefix_include/boringssl_prefix_symbols_nasm.inc)
-  add_dependencies(global_target boringssl_prefix_symbols)
 elseif(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_HEADERS)
 
   if(IS_ABSOLUTE ${BORINGSSL_PREFIX_HEADERS})
     set(BORINGSSL_PREFIX_HEADERS_PATH ${BORINGSSL_PREFIX_HEADERS})
   else()
-    set(BORINGSSL_PREFIX_HEADERS_PATH ${CMAKE_BINARY_DIR}/${BORINGSSL_PREFIX_HEADERS})
+    set(BORINGSSL_PREFIX_HEADERS_PATH ${PROJECT_BINARY_DIR}/${BORINGSSL_PREFIX_HEADERS})
   endif()
 
   include_directories(${BORINGSSL_PREFIX_HEADERS_PATH})
+
+  add_custom_target(boringssl_prefix_symbols)
 elseif(BORINGSSL_PREFIX OR BORINGSSL_PREFIX_SYMBOLS)
   message(FATAL_ERROR "Must specify both or neither of BORINGSSL_PREFIX and BORINGSSL_PREFIX_SYMBOLS")
 elseif((BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS) AND NOT GO_EXECUTABLE)
   message(FATAL_ERROR "Must have Go installed when using BORINGSSL_PREFIX and BORINGSSL_PREFIX_SYMBOLS")
+else()
+  add_custom_target(boringssl_prefix_symbols)
 endif()
 
 if("${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
@@ -188,7 +196,7 @@ endif()
 macro(check_compiler file_to_test flag_to_set)
   try_compile(
           RESULT
-          ${CMAKE_BINARY_DIR}
+          ${PROJECT_BINARY_DIR}
           SOURCES "${CMAKE_CURRENT_LIST_DIR}/tests/compiler_features_tests/${file_to_test}"
           COMPILE_DEFINITIONS "-Werror"
           OUTPUT_VARIABLE ERROR_MESSAGE)
@@ -227,9 +235,24 @@ endmacro()
 # assumption we make for some of the assembly implementations. This flag
 # can be set to handle such cases.
 option(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX "Exclude AVX code from the build" OFF)
+
+# Some assemblers know about AVX but not AVX512 instructions, e.g. gcc 4.8.2.
+# This flag can be set to handle such cases.
+# Note that the flag's name has "512AVX" instead of "AVX512" so that it doesn't
+# include the entire flag -DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX and match it
+# in the Perl files checks.
+option(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX "Exclude AVX512 code from the build" OFF)
+
 if(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
   add_definitions(-DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+  add_definitions(-DMY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+  set(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX ON)
   message(STATUS "MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX selected, removing AVX optimisations")
+endif()
+
+if(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+  add_definitions(-DMY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+  message(STATUS "MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX selected, removing AVX512 optimisations")
 endif()
 
 # Detect if memcmp is wrongly stripped like strcmp.
@@ -245,7 +268,7 @@ if (GCC)
   # During the `try_run` commands invoked by `check_run` a test program is run for the threading library.
   # This test is run expecting two threads, and this variable isn't set, for some systems
   # (particularly for systems using cross-compilation) causing our test to run without 2 threads and fail.
-  # We set this variable here to allow these builds to succeed and keep these tests around to make sure 
+  # We set this variable here to allow these builds to succeed and keep these tests around to make sure
   # that we properly detect the compiler bugs that we are trying to test for with these `try_run` calls.
 
   set(THREADS_PTHREAD_ARG "2" CACHE STRING "Forcibly set by CMakeLists.txt." FORCE)
@@ -290,9 +313,6 @@ if(GCC OR CLANG)
     # as -Weverything, to match MSVC. Instead -W3 is the alias for -Wall.
     # See http://llvm.org/viewvc/llvm-project?view=revision&revision=319116
     set(C_CXX_FLAGS "${C_CXX_FLAGS} -W3 -Wno-unused-parameter -fmsc-version=1900")
-    # googletest suppresses warning C4996 via a pragma, but clang-cl does not
-    # honor it. Suppress it here to compensate. See https://crbug.com/772117.
-    set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wno-deprecated-declarations")
   else()
     if(EMSCRIPTEN)
       # emscripten's emcc/clang does not accept the "-ggdb" flag.
@@ -311,6 +331,11 @@ if(GCC OR CLANG)
     # and declare that the code is trying to free a stack pointer. GCC 4.1.3 and lower
     # doesn't support this flag and can't use it.
     set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wno-free-nonheap-object")
+    # GCC (from at least 4.8) does not include -Wmissing-braces in -Wall due to Bug 25137.
+    # This warning is turned on everywhere internally however, so we have to define it here
+    # to check that our changes don't break the build.
+    # See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=25137
+    set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wmissing-braces")
   endif()
 
   # -Wstring-concatenation was added in Clang 12.0.0, which corresponds to
@@ -338,7 +363,6 @@ if(GCC OR CLANG)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
     if(APPLE)
       set(CMAKE_MACOSX_RPATH 1)
-      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
     endif()
     if(NOT BORINGSSL_ALLOW_CXX_RUNTIME)
       set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-exceptions -fno-rtti")
@@ -376,6 +400,7 @@ elseif(MSVC)
               # Disable this because it flags even when there is a default.
       "C4100" # 'exarg' : unreferenced formal parameter
       "C4127" # conditional expression is constant
+      "C4146" # unary minus operator applied to unsigned type, result still unsigned
       "C4200" # nonstandard extension used : zero-sized array in
               # struct/union.
       "C4204" # nonstandard extension used: non-constant aggregate initializer
@@ -431,6 +456,8 @@ elseif(MSVC)
       "C4191" # unsafe conversion from 'type of expression' to 'type required'
               # TODO remove once https://github.com/openssl/openssl/issues/18957 is resolved
       "C4996" # deprecated warnings using low level functions in OpenSSL 3.0
+      "C4746" # consider using __iso_volatile_load/store intrinsic functions
+      "C5264" # 'variable-name': 'const' variable is not used
           )
   set(MSVC_LEVEL4_WARNINGS_LIST
       # See https://connect.microsoft.com/VisualStudio/feedback/details/1217660/warning-c4265-when-using-functional-header
@@ -442,6 +469,19 @@ elseif(MSVC)
                             ${MSVC_LEVEL4_WARNINGS_LIST})
   set(CMAKE_C_FLAGS   "-utf-8 -Wall -WX ${MSVC_DISABLED_WARNINGS_STR} ${MSVC_LEVEL4_WARNINGS_STR}")
   set(CMAKE_CXX_FLAGS "-utf-8 -Wall -WX ${MSVC_DISABLED_WARNINGS_STR} ${MSVC_LEVEL4_WARNINGS_STR}")
+
+  # If we're using MSVC on Windows in FIPS mode with RelWithDebInfo then we want to override some of the default RelWithDebInfo flags.
+  # This fixes the problem we run into with RelWithDebInfo and FIPS mode on Windows where the FIPS module wouldn't span the expected symbol.
+  if(CMAKE_BUILD_TYPE_LOWER MATCHES "relwithdebinfo" AND FIPS)
+    # /Zi requires the /debug flag for executables/libraries that we want .pdb files for.
+    # We want to replace the default /debug flag with /DEBUG:FULL, to explicitly make sure that the .pdb files can be used on machines other than one on which it's built.
+    string(REPLACE "/debug" "/DEBUG:FULL" CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO}")
+    string(REPLACE "/debug" "/DEBUG:FULL" CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO}")
+
+    # The /debug flag also turns off the /OPT linker flag so we want to turn them back on across the board.
+    set(CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO} /OPT:REF,ICF,LBR")
+    set(CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO} /OPT:REF,ICF,LBR")
+  endif()
 endif()
 
 if(WIN32)
@@ -615,42 +655,6 @@ if(CONSTANT_TIME_VALIDATION)
   add_definitions(-DNDEBUG)
 endif()
 
-function(go_executable dest package)
-  set(godeps "${CMAKE_SOURCE_DIR}/util/godeps.go")
-  if(CMAKE_VERSION VERSION_LESS "3.7" OR NOT CMAKE_GENERATOR STREQUAL "Ninja")
-    # The DEPFILE parameter to add_custom_command is new as of CMake 3.7 and
-    # only works with Ninja. Query the sources at configure time. Additionally,
-    # everything depends on go.mod. That affects what external packages to use.
-    execute_process(COMMAND ${GO_EXECUTABLE} run ${godeps} -format cmake
-                            -pkg ${package}
-                    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-                    OUTPUT_VARIABLE sources
-                    RESULT_VARIABLE godeps_result)
-    add_custom_command(OUTPUT ${dest}
-                       COMMAND ${GO_EXECUTABLE} build
-                               -o ${CMAKE_CURRENT_BINARY_DIR}/${dest} ${package}
-                       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-                       DEPENDS ${sources} ${CMAKE_SOURCE_DIR}/go.mod)
-  else()
-    # Ninja expects the target in the depfile to match the output. This is a
-    # relative path from the build directory.
-    string(LENGTH "${CMAKE_BINARY_DIR}" root_dir_length)
-    math(EXPR root_dir_length "${root_dir_length} + 1")
-    string(SUBSTRING "${CMAKE_CURRENT_BINARY_DIR}" ${root_dir_length} -1 target)
-    set(target "${target}/${dest}")
-
-    set(depfile "${CMAKE_CURRENT_BINARY_DIR}/${dest}.d")
-    add_custom_command(OUTPUT ${dest}
-                       COMMAND ${GO_EXECUTABLE} build
-                               -o ${CMAKE_CURRENT_BINARY_DIR}/${dest} ${package}
-                       COMMAND ${GO_EXECUTABLE} run ${godeps} -format depfile
-                               -target ${target} -pkg ${package} -out ${depfile}
-                       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-                       DEPENDS ${godeps} ${CMAKE_SOURCE_DIR}/go.mod
-                       DEPFILE ${depfile})
-  endif()
-endfunction()
-
 # CMake's iOS support uses Apple's multiple-architecture toolchain. It takes an
 # architecture list from CMAKE_OSX_ARCHITECTURES, leaves CMAKE_SYSTEM_PROCESSOR
 # alone, and expects all architecture-specific logic to be conditioned within
@@ -663,6 +667,10 @@ if(NOT OPENSSL_NO_ASM AND CMAKE_OSX_ARCHITECTURES)
     message(FATAL_ERROR "Universal binaries not supported.")
   endif()
   list(GET CMAKE_OSX_ARCHITECTURES 0 CMAKE_SYSTEM_PROCESSOR)
+endif()
+
+if(MALLOC_FAILURE_TESTING)
+  add_definitions(-DBORINGSSL_MALLOC_FAILURE_TESTING)
 endif()
 
 TEST_BIG_ENDIAN(BIG_ENDIAN)
@@ -690,7 +698,14 @@ elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64|AMD64")
 elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "x86|i386|i686")
   set(ARCH "x86")
 elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64.*|ARM64|aarch64")
-  set(ARCH "aarch64")
+  # If ARCH is originally detected as 64-bit, perform an additional check
+  # to determine whether to build as 32-bit or 64-bit. This happens in some
+  # cases such as when building on an 64-bit CPU where the OS is 32-bit.
+  if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+    set(ARCH "aarch64")
+  else()
+    set(ARCH "arm")
+  endif()
 elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^arm*")
   set(ARCH "arm")
 elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "powerpc64le|ppc64le")
@@ -781,13 +796,18 @@ if(BUILD_TESTING)
   # Add minimal googletest targets. The provided one has many side-effects, and
   # googletest has a very straightforward build.
   add_library(boringssl_gtest third_party/googletest/src/gtest-all.cc)
+  if(USE_CUSTOM_LIBCXX)
+    target_link_libraries(boringssl_gtest libcxx)
+  endif()
   if(BUILD_SHARED_LIBS)
     # This is needed for the Windows build to correctly annotate GTest's API with __declspec(dllexport)
     target_compile_options(boringssl_gtest PRIVATE -DGTEST_CREATE_SHARED_LIBRARY=1)
   endif()
-  target_include_directories(boringssl_gtest PRIVATE third_party/googletest)
-
-  include_directories(third_party/googletest/include)
+  target_include_directories(
+    boringssl_gtest
+    PUBLIC third_party/googletest/include
+    PRIVATE third_party/googletest
+  )
 
   # Declare a dummy target to build all unit tests. Test targets should inject
   # themselves as dependencies next to the target definition.
@@ -823,22 +843,29 @@ if(BUILD_TESTING)
     set(SSL_TEST_EXEC ssl_test.so)
     set(MEM_TEST_EXEC mem_test.so)
     set(MEM_SET_TEST_EXEC mem_set_test.so)
+    set(INTEGRATION_TEST_EXEC integration_test.so)
+    set(DYNAMIC_LOADING_TEST_EXEC dynamic_loading_test.so)
   else()
     set(CRYPTO_TEST_EXEC crypto_test)
     set(RANDOM_TEST_EXEC urandom_test)
     set(SSL_TEST_EXEC ssl_test)
     set(MEM_TEST_EXEC mem_test)
     set(MEM_SET_TEST_EXEC mem_set_test)
+    set(INTEGRATION_TEST_EXEC integration_test)
+    set(DYNAMIC_LOADING_TEST_EXEC dynamic_loading_test)
   endif()
+
+  add_subdirectory(util/fipstools/acvp/modulewrapper)
 endif()
 
 add_subdirectory(crypto)
 if(BUILD_LIBSSL)
   add_subdirectory(ssl)
-  add_subdirectory(tool)
+  if(BUILD_TOOL)
+    add_subdirectory(tool)
+  endif()
 endif()
 add_subdirectory(util/fipstools)
-add_subdirectory(util/fipstools/acvp/modulewrapper)
 
 if(FUZZ)
   if(LIBFUZZER_FROM_DEPS)
@@ -855,7 +882,7 @@ endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   set(HANDSHAKER_ARGS "-handshaker-path" $<TARGET_FILE:handshaker>)
-  set(SSL_TRANSFER_ARGS "-ssl-transfer-test-file" ${CMAKE_SOURCE_DIR}/ssl/test/runner/ssl_transfer/test_case_names.txt)
+  set(SSL_TRANSFER_ARGS "-ssl-transfer-test-file" ${PROJECT_SOURCE_DIR}/ssl/test/runner/ssl_transfer/test_case_names.txt)
   if(DEFINED ENV{AWS_LC_SSL_RUNNER_START_INDEX})
     set(AWS_LC_SSL_RUNNER_INDEX_FILTER "-test-case-start-index" $ENV{AWS_LC_SSL_RUNNER_START_INDEX})
   endif()
@@ -882,25 +909,58 @@ if(BUILD_TESTING)
   if(GO_EXECUTABLE)
     if(FIPS)
       if(MSVC)
-        set(ACVP_TOOL ${CMAKE_BINARY_DIR}/acvptool.exe)
-        set(TEST_WRAPPER ${CMAKE_BINARY_DIR}/testmodulewrapper.exe)
+        set(ACVP_TOOL ${PROJECT_BINARY_DIR}/acvptool.exe)
+        set(TEST_WRAPPER ${PROJECT_BINARY_DIR}/testmodulewrapper.exe)
       else()
-        set(ACVP_TOOL ${CMAKE_BINARY_DIR}/acvptool)
-        set(TEST_WRAPPER ${CMAKE_BINARY_DIR}/testmodulewrapper)
+        set(ACVP_TOOL ${PROJECT_BINARY_DIR}/acvptool)
+        set(TEST_WRAPPER ${PROJECT_BINARY_DIR}/testmodulewrapper)
       endif()
+
+      # Read util/go_fips_tests.txt into a CMake variable.
+      file(READ util/go_fips_tests.txt GO_FIPS_TESTS)
+      string(REPLACE "\n" ";" GO_FIPS_TESTS "${GO_FIPS_TESTS}")
+      list(REMOVE_ITEM GO_FIPS_TESTS "")
+      set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+        util/go_fips_tests.txt)
+
+      if(MSVC)
+        # Delocator doesn't support Windows. So, this test would fail.
+        string(REGEX REPLACE "./util/fipstools/delocate" "" GO_FIPS_TESTS "${GO_FIPS_TESTS}")
+      endif()
+
+      # We want to run the SHA tests iteratively because they contain Large Data Tests, which make
+      # us hash anywhere from 1-8 gigabytes of memory, so running multiple at the same time cause a
+      # failure on most machines due to a lack of memory.
+      set(acvp_sha_test_commands)
+      file(GLOB acvp_sha_tests "${PROJECT_SOURCE_DIR}/util/fipstools/acvp/acvptool/test/sha-tests/*.json")
+      foreach(test_path ${acvp_sha_tests})
+        get_filename_component(test_name ${test_path} NAME)
+        list(APPEND acvp_sha_test_commands
+              COMMAND ${GO_EXECUTABLE} run check_expected.go
+                        -tool ${ACVP_TOOL}
+                        -module-wrappers modulewrapper:$<TARGET_FILE:modulewrapper>,testmodulewrapper:${TEST_WRAPPER}
+                        -tests "sha-tests/${test_name}")
+      endforeach()
+
       add_custom_target(
-        acvp_tests
+        build_acvp_tool
         COMMAND ${GO_EXECUTABLE} build -o ${ACVP_TOOL}
                 boringssl.googlesource.com/boringssl/util/fipstools/acvp/acvptool
         COMMAND ${GO_EXECUTABLE} build -o ${TEST_WRAPPER}
                 boringssl.googlesource.com/boringssl/util/fipstools/acvp/acvptool/testmodulewrapper
-        COMMAND cd util/fipstools/acvp/acvptool/test &&
-                ${GO_EXECUTABLE} run check_expected.go
-                -tool ${ACVP_TOOL}
-                -module-wrappers modulewrapper:$<TARGET_FILE:modulewrapper>,testmodulewrapper:${TEST_WRAPPER}
-                -tests tests.json
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
         DEPENDS modulewrapper
+        ${MAYBE_USES_TERMINAL})
+
+      add_custom_target(
+        acvp_tests
+        COMMAND ${GO_EXECUTABLE} run check_expected.go
+                  -tool ${ACVP_TOOL}
+                  -module-wrappers modulewrapper:$<TARGET_FILE:modulewrapper>,testmodulewrapper:${TEST_WRAPPER}
+                  -tests tests.json
+        ${acvp_sha_test_commands}
+        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/util/fipstools/acvp/acvptool/test
+        DEPENDS build_acvp_tool
         ${MAYBE_USES_TERMINAL})
 
       add_custom_target(
@@ -911,29 +971,50 @@ if(BUILD_TESTING)
       add_custom_target(fips_specific_tests_if_any)
     endif()
 
+    # Read util/go_tests.txt into a CMake variable.
+    file(READ util/go_tests.txt GO_TESTS)
+    foreach(fips_specific_test ${GO_FIPS_TESTS})
+      set(GO_TESTS "${GO_TESTS}\n${fips_specific_test}")
+    endforeach()
+    string(REPLACE "\n" ";" GO_TESTS "${GO_TESTS}")
+    list(REMOVE_ITEM GO_TESTS "")
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+      util/go_tests.txt)
+
     if(BUILD_LIBSSL)
       add_custom_target(
           run_ssl_runner_tests
           COMMAND cd ssl/test/runner &&
                   ${GO_EXECUTABLE} test -timeout ${GO_TEST_TIMEOUT} -shim-path $<TARGET_FILE:bssl_shim>
                     ${HANDSHAKER_ARGS} ${RUNNER_ARGS} ${AWS_LC_SSL_RUNNER_INDEX_FILTER} ${SSL_TRANSFER_ARGS}
-          WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+          WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+          DEPENDS bssl_shim handshaker fips_specific_tests_if_any
+          ${MAYBE_USES_TERMINAL})
+
+      add_custom_target(
+          run_ssl_runner_tests_valgrind
+          COMMAND cd ssl/test/runner &&
+          ${GO_EXECUTABLE} test -timeout ${GO_TEST_TIMEOUT} -shim-path $<TARGET_FILE:bssl_shim> -valgrind
+          ${HANDSHAKER_ARGS} ${RUNNER_ARGS} ${AWS_LC_SSL_RUNNER_INDEX_FILTER} ${SSL_TRANSFER_ARGS}
+          WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
           DEPENDS bssl_shim handshaker fips_specific_tests_if_any
           ${MAYBE_USES_TERMINAL})
 
       add_custom_target(
           run_tests
+          COMMAND ${GO_EXECUTABLE} test ${GO_TESTS}
           COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
-                  ${CMAKE_BINARY_DIR}
-          WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+                 ${PROJECT_BINARY_DIR}
+          WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
           DEPENDS all_tests run_ssl_runner_tests
           ${MAYBE_USES_TERMINAL})
     else()
       add_custom_target(
           run_tests
+          COMMAND ${GO_EXECUTABLE} test ${GO_TESTS}
           COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
-                  ${CMAKE_BINARY_DIR} -ssl-tests=false
-          WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+                  ${PROJECT_BINARY_DIR} -ssl-tests=false
+          WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
           DEPENDS all_tests fips_specific_tests_if_any
           ${MAYBE_USES_TERMINAL}
       )
@@ -942,16 +1023,16 @@ if(BUILD_TESTING)
     add_custom_target(
         run_tests_valgrind
         COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
-                ${CMAKE_BINARY_DIR} -valgrind=true -valgrind-supp-dir "tests/ci"
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+                ${PROJECT_BINARY_DIR} -valgrind=true -valgrind-supp-dir "tests/ci"
+        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
         DEPENDS all_tests
         ${MAYBE_USES_TERMINAL})
 
     add_custom_target(
         run_tests_with_sde
         COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
-                ${CMAKE_BINARY_DIR} -sde true -sde-path "$ENV{SDEROOT}/sde"
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+                ${PROJECT_BINARY_DIR} -sde true -sde-path "$ENV{SDEROOT}/sde"
+        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
         DEPENDS all_tests
         ${MAYBE_USES_TERMINAL})
   else()
@@ -961,7 +1042,7 @@ if(BUILD_TESTING)
           COMMAND crypto_test
           COMMAND urandom_test
           COMMAND ssl_test
-          WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+          WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
           DEPENDS all_tests
           ${MAYBE_USES_TERMINAL})
     else()
@@ -969,7 +1050,7 @@ if(BUILD_TESTING)
           run_minimal_tests
           COMMAND crypto_test
           COMMAND urandom_test
-          WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+          WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
           DEPENDS all_tests
           ${MAYBE_USES_TERMINAL}
       )

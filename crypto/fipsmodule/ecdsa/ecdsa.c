@@ -185,7 +185,7 @@ int ecdsa_do_verify_no_self_test(const uint8_t *digest, size_t digest_len,
   ec_scalar_mul_montgomery(group, &u1, &m, &s_inv_mont);
   ec_scalar_mul_montgomery(group, &u2, &r, &s_inv_mont);
 
-  EC_RAW_POINT point;
+  EC_JACOBIAN point;
   if (!ec_point_mul_scalar_public(group, &point, &u1, &pub_key->raw, &u2)) {
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_EC_LIB);
     return 0;
@@ -220,7 +220,7 @@ static ECDSA_SIG *ecdsa_sign_impl(const EC_GROUP *group, int *out_retry,
   }
 
   // Compute r, the x-coordinate of k * generator.
-  EC_RAW_POINT tmp_point;
+  EC_JACOBIAN tmp_point;
   EC_SCALAR r;
   if (!ec_point_mul_scalar_base(group, &tmp_point, k) ||
       !ec_get_x_coordinate_as_scalar(group, &r, &tmp_point)) {
@@ -338,9 +338,16 @@ ECDSA_SIG *ECDSA_do_sign(const uint8_t *digest, size_t digest_len,
   SHA512_Final(additional_data, &sha);
 
   FIPS_service_indicator_unlock_state();
+  // Cap iterations so callers who supply invalid values as custom groups do not
+  // infinite loop. This does not impact valid parameters (e.g. those covered by
+  // FIPS) because the probability of requiring even one retry is negligible,
+  // let alone 32.
+  static const int kMaxIterations = 32;
+  int iters = 0;
   for (;;) {
     EC_SCALAR k;
     if (!ec_random_nonzero_scalar(group, &k, additional_data)) {
+      OPENSSL_cleanse(&k, sizeof(EC_SCALAR));
       return NULL;
     }
 
@@ -348,7 +355,15 @@ ECDSA_SIG *ECDSA_do_sign(const uint8_t *digest, size_t digest_len,
     ECDSA_SIG *sig =
         ecdsa_sign_impl(group, &retry, priv_key, &k, digest, digest_len);
     if (sig != NULL || !retry) {
+      OPENSSL_cleanse(&k, sizeof(EC_SCALAR));
       return sig;
+    }
+
+    iters++;
+    if (iters > kMaxIterations) {
+      OPENSSL_cleanse(&k, sizeof(EC_SCALAR));
+      OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_TOO_MANY_ITERATIONS);
+      return NULL;
     }
   }
 }
@@ -417,4 +432,30 @@ err:
   OPENSSL_free(der);
   ECDSA_SIG_free(s);
   return ret;
+}
+
+ECDSA_SIG *ecdsa_digestsign_no_self_test(const EVP_MD *md, const uint8_t *input,
+                                         size_t in_len, const EC_KEY *eckey,
+                                         const uint8_t *nonce,
+                                         size_t nonce_len) {
+  uint8_t digest[EVP_MAX_MD_SIZE];
+  unsigned int digest_len;
+  if (!EVP_Digest(input, in_len, digest, &digest_len, md, NULL)) {
+    return 0;
+  }
+
+  return ecdsa_sign_with_nonce_for_known_answer_test(digest, digest_len, eckey,
+                                                     nonce, nonce_len);
+}
+
+int ecdsa_digestverify_no_self_test(const EVP_MD *md, const uint8_t *input,
+                                    size_t in_len, const ECDSA_SIG *sig,
+                                    const EC_KEY *eckey){
+  uint8_t digest[EVP_MAX_MD_SIZE];
+  unsigned int digest_len;
+  if (!EVP_Digest(input, in_len, digest, &digest_len, md, NULL)) {
+    return 0;
+  }
+
+  return ecdsa_do_verify_no_self_test(digest, digest_len, sig, eckey);
 }

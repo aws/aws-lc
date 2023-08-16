@@ -1,20 +1,22 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 
-from aws_cdk import core, aws_codebuild as codebuild, aws_iam as iam, aws_ec2 as ec2, aws_efs as efs
+from aws_cdk import Duration, Size, Stack, aws_codebuild as codebuild, aws_iam as iam, aws_ec2 as ec2, aws_efs as efs
+from constructs import Construct
 
+from cdk.components import PruneStaleGitHubBuilds
 from util.ecr_util import ecr_arn
 from util.iam_policies import code_build_batch_policy_in_json, \
     code_build_publish_metrics_in_json
-from util.metadata import AWS_ACCOUNT, AWS_REGION, GITHUB_REPO_OWNER, GITHUB_REPO_NAME
+from util.metadata import AWS_ACCOUNT, AWS_REGION, GITHUB_PUSH_CI_BRANCH_TARGETS, GITHUB_REPO_OWNER, GITHUB_REPO_NAME
 from util.build_spec_loader import BuildSpecLoader
 
 
-class AwsLcGitHubFuzzCIStack(core.Stack):
+class AwsLcGitHubFuzzCIStack(Stack):
     """Define a stack used to batch execute AWS-LC tests in GitHub."""
 
     def __init__(self,
-                 scope: core.Construct,
+                 scope: Construct,
                  id: str,
                  spec_file_path: str,
                  **kwargs) -> None:
@@ -29,7 +31,9 @@ class AwsLcGitHubFuzzCIStack(core.Stack):
                 codebuild.FilterGroup.in_event_of(
                     codebuild.EventAction.PULL_REQUEST_CREATED,
                     codebuild.EventAction.PULL_REQUEST_UPDATED,
-                    codebuild.EventAction.PULL_REQUEST_REOPENED)
+                    codebuild.EventAction.PULL_REQUEST_REOPENED),
+                codebuild.FilterGroup.in_event_of(codebuild.EventAction.PUSH).and_branch_is(
+                    GITHUB_PUSH_CI_BRANCH_TARGETS),
             ],
             webhook_triggers_batch_build=True)
 
@@ -47,7 +51,7 @@ class AwsLcGitHubFuzzCIStack(core.Stack):
 
         # Create the VPC for EFS and CodeBuild
         public_subnet = ec2.SubnetConfiguration(name="PublicFuzzingSubnet", subnet_type=ec2.SubnetType.PUBLIC)
-        private_subnet = ec2.SubnetConfiguration(name="PrivateFuzzingSubnet", subnet_type=ec2.SubnetType.PRIVATE)
+        private_subnet = ec2.SubnetConfiguration(name="PrivateFuzzingSubnet", subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS)
 
         # Create a VPC with a single public and private subnet in a single AZ. This is to avoid the elastic IP limit
         # being used up by a bunch of idle NAT gateways
@@ -69,7 +73,7 @@ class AwsLcGitHubFuzzCIStack(core.Stack):
             description="Allow all traffic inside security group"
         )
 
-        efs_subnet_selection = ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE)
+        efs_subnet_selection = ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS)
 
         # Create the EFS to store the corpus and logs. EFS allows new filesystems to burst to 100 MB/s for the first 2
         # TB of data read/written, after that the rate is limited based on the size of the filesystem. As of late
@@ -90,7 +94,7 @@ class AwsLcGitHubFuzzCIStack(core.Stack):
             vpc_subnets=efs_subnet_selection,
             performance_mode=efs.PerformanceMode.GENERAL_PURPOSE,
             throughput_mode=efs.ThroughputMode.PROVISIONED,
-            provisioned_throughput_per_second=core.Size.mebibytes(100),
+            provisioned_throughput_per_second=Size.mebibytes(100),
         )
 
         # Define CodeBuild.
@@ -100,7 +104,7 @@ class AwsLcGitHubFuzzCIStack(core.Stack):
             project_name=id,
             source=git_hub_source,
             role=role,
-            timeout=core.Duration.minutes(120),
+            timeout=Duration.minutes(120),
             environment=codebuild.BuildEnvironment(compute_type=codebuild.ComputeType.LARGE,
                                                    privileged=True,
                                                    build_image=codebuild.LinuxBuildImage.STANDARD_4_0),
@@ -123,3 +127,5 @@ class AwsLcGitHubFuzzCIStack(core.Stack):
           "MountPoint": "/efs_fuzzing_root",
           "Type": "EFS"
         }])
+
+        PruneStaleGitHubBuilds(scope=self, id="PruneStaleGitHubBuilds", project=fuzz_codebuild)

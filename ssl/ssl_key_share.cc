@@ -28,6 +28,7 @@
 #include <openssl/mem.h>
 #include <openssl/nid.h>
 #include <openssl/rand.h>
+#include <openssl/span.h>
 
 #include "internal.h"
 #include "../crypto/internal.h"
@@ -38,35 +39,28 @@ namespace {
 
 class ECKeyShare : public SSLKeyShare {
  public:
-  ECKeyShare(int nid, uint16_t group_id) : nid_(nid), group_id_(group_id) {}
+  ECKeyShare(int nid, uint16_t group_id)
+      : group_(EC_GROUP_new_by_curve_name(nid)), group_id_(group_id) {}
 
   uint16_t GroupID() const override { return group_id_; }
 
   bool Offer(CBB *out) override {
     assert(!private_key_);
-    // Set up a shared |BN_CTX| for all operations.
-    UniquePtr<BN_CTX> bn_ctx(BN_CTX_new());
-    if (!bn_ctx) {
-      return false;
-    }
-    BN_CTXScope scope(bn_ctx.get());
-
     // Generate a private key.
-    UniquePtr<EC_GROUP> group(EC_GROUP_new_by_curve_name(nid_));
     private_key_.reset(BN_new());
-    if (!group || !private_key_ ||
+    if (!group_ || !private_key_ ||
         !BN_rand_range_ex(private_key_.get(), 1,
-                          EC_GROUP_get0_order(group.get()))) {
+                          EC_GROUP_get0_order(group_))) {
       return false;
     }
 
     // Compute the corresponding public key and serialize it.
-    UniquePtr<EC_POINT> public_key(EC_POINT_new(group.get()));
+    UniquePtr<EC_POINT> public_key(EC_POINT_new(group_));
     if (!public_key ||
-        !EC_POINT_mul(group.get(), public_key.get(), private_key_.get(), NULL,
-                      NULL, bn_ctx.get()) ||
-        !EC_POINT_point2cbb(out, group.get(), public_key.get(),
-                            POINT_CONVERSION_UNCOMPRESSED, bn_ctx.get())) {
+        !EC_POINT_mul(group_, public_key.get(), private_key_.get(),
+                      nullptr, nullptr, /*ctx=*/nullptr) ||
+        !EC_POINT_point2cbb(out, group_, public_key.get(),
+                            POINT_CONVERSION_UNCOMPRESSED, /*ctx=*/nullptr)) {
       return false;
     }
 
@@ -75,48 +69,38 @@ class ECKeyShare : public SSLKeyShare {
 
   bool Finish(Array<uint8_t> *out_secret, uint8_t *out_alert,
               Span<const uint8_t> peer_key) override {
+    assert(group_);
     assert(private_key_);
     *out_alert = SSL_AD_INTERNAL_ERROR;
 
-    // Set up a shared |BN_CTX| for all operations.
-    UniquePtr<BN_CTX> bn_ctx(BN_CTX_new());
-    if (!bn_ctx) {
-      return false;
-    }
-    BN_CTXScope scope(bn_ctx.get());
-
-    UniquePtr<EC_GROUP> group(EC_GROUP_new_by_curve_name(nid_));
-    if (!group) {
-      return false;
-    }
-
-    UniquePtr<EC_POINT> peer_point(EC_POINT_new(group.get()));
-    UniquePtr<EC_POINT> result(EC_POINT_new(group.get()));
-    BIGNUM *x = BN_CTX_get(bn_ctx.get());
+    UniquePtr<EC_POINT> peer_point(EC_POINT_new(group_));
+    UniquePtr<EC_POINT> result(EC_POINT_new(group_));
+    UniquePtr<BIGNUM> x(BN_new());
     if (!peer_point || !result || !x) {
       return false;
     }
 
     if (peer_key.empty() || peer_key[0] != POINT_CONVERSION_UNCOMPRESSED ||
-        !EC_POINT_oct2point(group.get(), peer_point.get(), peer_key.data(),
-                            peer_key.size(), bn_ctx.get())) {
+        !EC_POINT_oct2point(group_, peer_point.get(), peer_key.data(),
+                            peer_key.size(), /*ctx=*/nullptr)) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_ECPOINT);
       *out_alert = SSL_AD_DECODE_ERROR;
       return false;
     }
 
     // Compute the x-coordinate of |peer_key| * |private_key_|.
-    if (!EC_POINT_mul(group.get(), result.get(), NULL, peer_point.get(),
-                      private_key_.get(), bn_ctx.get()) ||
-        !EC_POINT_get_affine_coordinates_GFp(group.get(), result.get(), x, NULL,
-                                             bn_ctx.get())) {
+    if (!EC_POINT_mul(group_, result.get(), NULL, peer_point.get(),
+                      private_key_.get(), /*ctx=*/nullptr) ||
+        !EC_POINT_get_affine_coordinates_GFp(group_, result.get(), x.get(),
+                                             NULL,
+                                             /*ctx=*/nullptr)) {
       return false;
     }
 
     // Encode the x-coordinate left-padded with zeros.
     Array<uint8_t> secret;
-    if (!secret.Init((EC_GROUP_get_degree(group.get()) + 7) / 8) ||
-        !BN_bn2bin_padded(secret.data(), secret.size(), x)) {
+    if (!secret.Init((EC_GROUP_get_degree(group_) + 7) / 8) ||
+        !BN_bn2bin_padded(secret.data(), secret.size(), x.get())) {
       return false;
     }
 
@@ -125,10 +109,10 @@ class ECKeyShare : public SSLKeyShare {
   }
 
   bool SerializePrivateKey(CBB *out) override {
+    assert(group_);
     assert(private_key_);
-    UniquePtr<EC_GROUP> group(EC_GROUP_new_by_curve_name(nid_));
     // Padding is added to avoid leaking the length.
-    size_t len = BN_num_bytes(EC_GROUP_get0_order(group.get()));
+    size_t len = BN_num_bytes(EC_GROUP_get0_order(group_));
     return BN_bn2cbb_padded(out, len, private_key_.get());
   }
 
@@ -140,7 +124,7 @@ class ECKeyShare : public SSLKeyShare {
 
  private:
   UniquePtr<BIGNUM> private_key_;
-  int nid_;
+  const EC_GROUP *const group_ = nullptr;
   uint16_t group_id_;
 };
 
@@ -162,7 +146,6 @@ class X25519KeyShare : public SSLKeyShare {
 
     Array<uint8_t> secret;
     if (!secret.Init(32)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return false;
     }
 
@@ -193,119 +176,12 @@ class X25519KeyShare : public SSLKeyShare {
   uint8_t private_key_[32];
 };
 
-class CECPQ2KeyShare : public SSLKeyShare {
- public:
-  CECPQ2KeyShare() {}
-
-  uint16_t GroupID() const override { return SSL_CURVE_CECPQ2; }
-
-  bool Offer(CBB *out) override {
-    uint8_t x25519_public_key[32];
-    X25519_keypair(x25519_public_key, x25519_private_key_);
-
-    Array<uint8_t> hrss_entropy;
-    if (!hrss_entropy.Init(HRSS_GENERATE_KEY_BYTES)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-      return false;
-    }
-
-    HRSS_public_key hrss_public_key;
-    RAND_bytes(hrss_entropy.data(), hrss_entropy.size());
-    if (!HRSS_generate_key(&hrss_public_key, &hrss_private_key_,
-                           hrss_entropy.data())) {
-      return false;
-    }
-
-    uint8_t hrss_public_key_bytes[HRSS_PUBLIC_KEY_BYTES];
-    HRSS_marshal_public_key(hrss_public_key_bytes, &hrss_public_key);
-
-    if (!CBB_add_bytes(out, x25519_public_key, sizeof(x25519_public_key)) ||
-        !CBB_add_bytes(out, hrss_public_key_bytes,
-                       sizeof(hrss_public_key_bytes))) {
-      return false;
-    }
-
-    return true;
-  }
-
-  bool Accept(CBB *out_public_key, Array<uint8_t> *out_secret,
-              uint8_t *out_alert, Span<const uint8_t> peer_key) override {
-    Array<uint8_t> secret;
-    if (!secret.Init(32 + HRSS_KEY_BYTES)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-      return false;
-    }
-
-    uint8_t x25519_public_key[32];
-    X25519_keypair(x25519_public_key, x25519_private_key_);
-
-    HRSS_public_key peer_public_key;
-    if (peer_key.size() != 32 + HRSS_PUBLIC_KEY_BYTES ||
-        !HRSS_parse_public_key(&peer_public_key, peer_key.data() + 32) ||
-        !X25519(secret.data(), x25519_private_key_, peer_key.data())) {
-      *out_alert = SSL_AD_DECODE_ERROR;
-      OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_ECPOINT);
-      return false;
-    }
-
-    Array<uint8_t> entropy;
-    if (!entropy.Init(HRSS_ENCAP_BYTES)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-      return false;
-    }
-
-    uint8_t ciphertext[HRSS_CIPHERTEXT_BYTES];
-    RAND_bytes(entropy.data(), entropy.size());
-    if (!HRSS_encap(ciphertext, secret.data() + 32, &peer_public_key,
-                    entropy.data()) ||
-        !CBB_add_bytes(out_public_key, x25519_public_key,
-                       sizeof(x25519_public_key)) ||
-        !CBB_add_bytes(out_public_key, ciphertext, sizeof(ciphertext))) {
-      return false;
-    }
-
-    *out_secret = std::move(secret);
-    return true;
-  }
-
-  bool Finish(Array<uint8_t> *out_secret, uint8_t *out_alert,
-              Span<const uint8_t> peer_key) override {
-    *out_alert = SSL_AD_INTERNAL_ERROR;
-
-    Array<uint8_t> secret;
-    if (!secret.Init(32 + HRSS_KEY_BYTES)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-      return false;
-    }
-
-    if (peer_key.size() != 32 + HRSS_CIPHERTEXT_BYTES ||
-        !X25519(secret.data(), x25519_private_key_, peer_key.data())) {
-      *out_alert = SSL_AD_DECODE_ERROR;
-      OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_ECPOINT);
-      return false;
-    }
-
-    if (!HRSS_decap(secret.data() + 32, &hrss_private_key_,
-                    peer_key.data() + 32, peer_key.size() - 32)) {
-      return false;
-    }
-
-    *out_secret = std::move(secret);
-    return true;
-  }
-
- private:
-  uint8_t x25519_private_key_[32];
-  HRSS_private_key hrss_private_key_;
-};
-
 CONSTEXPR_ARRAY NamedGroup kNamedGroups[] = {
     {NID_secp224r1, SSL_CURVE_SECP224R1, "P-224", "secp224r1"},
     {NID_X9_62_prime256v1, SSL_CURVE_SECP256R1, "P-256", "prime256v1"},
     {NID_secp384r1, SSL_CURVE_SECP384R1, "P-384", "secp384r1"},
     {NID_secp521r1, SSL_CURVE_SECP521R1, "P-521", "secp521r1"},
     {NID_X25519, SSL_CURVE_X25519, "X25519", "x25519"},
-    {NID_CECPQ2, SSL_CURVE_CECPQ2, "CECPQ2", "CECPQ2"},
 };
 
 }  // namespace
@@ -317,49 +193,18 @@ Span<const NamedGroup> NamedGroups() {
 UniquePtr<SSLKeyShare> SSLKeyShare::Create(uint16_t group_id) {
   switch (group_id) {
     case SSL_CURVE_SECP224R1:
-      return UniquePtr<SSLKeyShare>(
-          New<ECKeyShare>(NID_secp224r1, SSL_CURVE_SECP224R1));
+      return MakeUnique<ECKeyShare>(NID_secp224r1, SSL_CURVE_SECP224R1);
     case SSL_CURVE_SECP256R1:
-      return UniquePtr<SSLKeyShare>(
-          New<ECKeyShare>(NID_X9_62_prime256v1, SSL_CURVE_SECP256R1));
+      return MakeUnique<ECKeyShare>(NID_X9_62_prime256v1, SSL_CURVE_SECP256R1);
     case SSL_CURVE_SECP384R1:
-      return UniquePtr<SSLKeyShare>(
-          New<ECKeyShare>(NID_secp384r1, SSL_CURVE_SECP384R1));
+      return MakeUnique<ECKeyShare>(NID_secp384r1, SSL_CURVE_SECP384R1);
     case SSL_CURVE_SECP521R1:
-      return UniquePtr<SSLKeyShare>(
-          New<ECKeyShare>(NID_secp521r1, SSL_CURVE_SECP521R1));
+      return MakeUnique<ECKeyShare>(NID_secp521r1, SSL_CURVE_SECP521R1);
     case SSL_CURVE_X25519:
-      return UniquePtr<SSLKeyShare>(New<X25519KeyShare>());
-    case SSL_CURVE_CECPQ2:
-      return UniquePtr<SSLKeyShare>(New<CECPQ2KeyShare>());
+      return MakeUnique<X25519KeyShare>();
     default:
       return nullptr;
   }
-}
-
-UniquePtr<SSLKeyShare> SSLKeyShare::Create(CBS *in) {
-  uint64_t group;
-  CBS private_key;
-  if (!CBS_get_asn1_uint64(in, &group) || group > 0xffff ||
-      !CBS_get_asn1(in, &private_key, CBS_ASN1_OCTETSTRING)) {
-    return nullptr;
-  }
-  UniquePtr<SSLKeyShare> key_share = Create(static_cast<uint16_t>(group));
-  if (!key_share || !key_share->DeserializePrivateKey(&private_key)) {
-    return nullptr;
-  }
-  return key_share;
-}
-
-bool SSLKeyShare::Serialize(CBB *out) {
-  CBB private_key;
-  if (!CBB_add_asn1_uint64(out, GroupID()) ||
-      !CBB_add_asn1(out, &private_key, CBS_ASN1_OCTETSTRING) ||
-      !SerializePrivateKey(&private_key) ||  //
-      !CBB_flush(out)) {
-    return false;
-  }
-  return true;
 }
 
 bool SSLKeyShare::Accept(CBB *out_public_key, Array<uint8_t> *out_secret,
@@ -406,4 +251,9 @@ const char* SSL_get_curve_name(uint16_t group_id) {
     }
   }
   return nullptr;
+}
+
+size_t SSL_get_all_curve_names(const char **out, size_t max_out) {
+  return GetAllNames(out, max_out, Span<const char *>(), &NamedGroup::name,
+                     MakeConstSpan(kNamedGroups));
 }

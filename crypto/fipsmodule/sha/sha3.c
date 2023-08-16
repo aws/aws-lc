@@ -109,10 +109,6 @@ void SHA3_Reset(KECCAK1600_CTX *ctx) {
 }
 
 int SHA3_Init(KECCAK1600_CTX *ctx, uint8_t pad, size_t bit_len) {
-  if (EVP_MD_unstable_sha3_is_enabled() == false) {
-    return 0;
-  }
-
   size_t block_size;
 
   // The block size is computed differently depending on which algorithm
@@ -140,10 +136,6 @@ int SHA3_Init(KECCAK1600_CTX *ctx, uint8_t pad, size_t bit_len) {
 }
 
 int SHA3_Update(KECCAK1600_CTX *ctx, const void *data, size_t len) {
-  if (EVP_MD_unstable_sha3_is_enabled() == false) {
-    return 0;
-  }
-
   uint8_t *data_ptr_copy = (uint8_t *) data;
   size_t block_size = ctx->block_size;
   size_t num, rem;
@@ -190,10 +182,6 @@ int SHA3_Update(KECCAK1600_CTX *ctx, const void *data, size_t len) {
 }
 
 int SHA3_Final(uint8_t *md, KECCAK1600_CTX *ctx) {
-  if (EVP_MD_unstable_sha3_is_enabled() == false) {
-    return 0;
-  }
-
   size_t block_size = ctx->block_size;
   size_t num = ctx->buf_load;
 

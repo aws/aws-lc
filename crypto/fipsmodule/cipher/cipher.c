@@ -115,7 +115,6 @@ int EVP_CIPHER_CTX_copy(EVP_CIPHER_CTX *out, const EVP_CIPHER_CTX *in) {
     out->cipher_data = OPENSSL_malloc(in->cipher->ctx_size);
     if (!out->cipher_data) {
       out->cipher = NULL;
-      OPENSSL_PUT_ERROR(CIPHER, ERR_R_MALLOC_FAILURE);
       return 0;
     }
     OPENSSL_memcpy(out->cipher_data, in->cipher_data, in->cipher->ctx_size);
@@ -164,7 +163,6 @@ int EVP_CipherInit_ex(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *cipher,
       ctx->cipher_data = OPENSSL_malloc(ctx->cipher->ctx_size);
       if (!ctx->cipher_data) {
         ctx->cipher = NULL;
-        OPENSSL_PUT_ERROR(CIPHER, ERR_R_MALLOC_FAILURE);
         return 0;
       }
     } else {
@@ -540,11 +538,12 @@ int EVP_Cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
   // |EVP_Cipher| because it's complicated whether the operation has completed
   // or not. E.g. AES-GCM with a non-NULL |in| argument hasn't completed an
   // operation. Callers should use the |EVP_AEAD| API or, at least,
-  // |EVP_CipherUpdate| etc.
+  // |EVP_CipherUpdate| etc. AES-KeyWrap users should use the |AES_wrap_key|
+  // API instead.
   //
   // This call can't be pushed into |EVP_Cipher_verify_service_indicator|
   // because whether |ret| indicates success or not depends on whether
-  // |EVP_CIPH_FLAG_CUSTOM_CIPHER| is set. (This unreasonable, but matches
+  // |EVP_CIPH_FLAG_CUSTOM_CIPHER| is set. (This is unreasonable, but matches
   // OpenSSL.)
   if (!(ctx->cipher->flags & EVP_CIPH_FLAG_CUSTOM_CIPHER) && ret) {
     EVP_Cipher_verify_service_indicator(ctx);

@@ -1,0 +1,18 @@
+version: 0.2
+
+env:
+  variables:
+    GOPROXY: https://proxy.golang.org,direct
+
+phases:
+  build:
+    commands:
+      - chmod +x ./tests/ci/android/AWSLCAndroidTestRunner/gradlew
+      - cd tests/ci/
+      - python3 -m venv .env && . .env/bin/activate && pip install -r requirements.txt
+      - >
+        ./kickoff_devicefarm_job.sh
+        --test-name "AWS-LC Android FIPS ${CODEBUILD_WEBHOOK_TRIGGER} ${CODEBUILD_RESOLVED_SOURCE_VERSION}"
+        --fips true
+        --shared true
+        --action start-job

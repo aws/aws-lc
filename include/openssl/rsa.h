@@ -152,8 +152,10 @@ OPENSSL_EXPORT void RSA_get0_crt_params(const RSA *rsa, const BIGNUM **out_dmp1,
 // |n|, |e|, and |d| respectively, if non-NULL. On success, it takes ownership
 // of each argument and returns one. Otherwise, it returns zero.
 //
-// |d| may be NULL, but |n| and |e| must either be non-NULL or already
-// configured on |rsa|.
+// For a public key, |d| may be NULL, but |n| and |e| must either be non-NULL
+// or already configured on |rsa|. For a private key, |e| may be NULL, but |n|
+// and |d| must either be non-NULL or already configured on |rsa|. Private keys
+// missing |e| are often used by the JCA.
 //
 // It is an error to call this function after |rsa| has been used for a
 // cryptographic operation. Construct a new |RSA| object instead.
@@ -278,7 +280,7 @@ OPENSSL_EXPORT int RSA_private_decrypt(size_t flen, const uint8_t *from,
                                        uint8_t *to, RSA *rsa, int padding);
 
 
-// Salt length matches digest
+// RSA_PSS_SALTLEN_DIGEST denotes the salt length matches the digest length
 #define RSA_PSS_SALTLEN_DIGEST -1
 
 // Signing / Verification
@@ -799,21 +801,6 @@ struct rsa_st {
   // operation and may no longer be mutated.
   unsigned private_key_frozen:1;
 };
-
-#if !defined(AWSLC_FIPS)
-#include <stdbool.h>
-
-// This function is DEPRECATED.
-//
-// Some RSA keys are inappropriately generated -- the private exponent |d|
-// is greater than the modulus |n|. Until such keys are eradicated, we
-// _temporarly_ add a way to relax the requirements for validating RSA keys
-// such that the condition |d < n| can be skipped. This "relaxed" behavior
-// has to be explicitly enabled by the user by calling the function
-// |allow_rsa_keys_d_gt_n()|. The default behavior is still to check
-// if |d < n| and fail if not true.
-OPENSSL_EXPORT void allow_rsa_keys_d_gt_n(void);
-#endif
 
 
 #if defined(__cplusplus)

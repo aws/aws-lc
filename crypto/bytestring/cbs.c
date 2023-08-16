@@ -52,13 +52,9 @@ int CBS_skip(CBS *cbs, size_t len) {
   return cbs_get(cbs, &dummy, len);
 }
 
-const uint8_t *CBS_data(const CBS *cbs) {
-  return cbs->data;
-}
+const uint8_t *CBS_data(const CBS *cbs) { return cbs->data; }
 
-size_t CBS_len(const CBS *cbs) {
-  return cbs->len;
-}
+size_t CBS_len(const CBS *cbs) { return cbs->len; }
 
 int CBS_stow(const CBS *cbs, uint8_t **out_ptr, size_t *out_len) {
   OPENSSL_free(*out_ptr);
@@ -80,7 +76,7 @@ int CBS_strdup(const CBS *cbs, char **out_ptr) {
   if (*out_ptr != NULL) {
     OPENSSL_free(*out_ptr);
   }
-  *out_ptr = OPENSSL_strndup((const char*)cbs->data, cbs->len);
+  *out_ptr = OPENSSL_strndup((const char *)cbs->data, cbs->len);
   return (*out_ptr != NULL);
 }
 
@@ -162,9 +158,7 @@ int CBS_get_u32le(CBS *cbs, uint32_t *out) {
   return 1;
 }
 
-int CBS_get_u64(CBS *cbs, uint64_t *out) {
-  return cbs_get_u(cbs, out, 8);
-}
+int CBS_get_u64(CBS *cbs, uint64_t *out) { return cbs_get_u(cbs, out, 8); }
 
 int CBS_get_u64le(CBS *cbs, uint64_t *out) {
   if (!cbs_get_u(cbs, out, 8)) {
@@ -230,6 +224,30 @@ int CBS_get_until_first(CBS *cbs, CBS *out, uint8_t c) {
     return 0;
   }
   return CBS_get_bytes(cbs, out, split - CBS_data(cbs));
+}
+
+int CBS_get_u64_decimal(CBS *cbs, uint64_t *out) {
+  uint64_t v = 0;
+  int seen_digit = 0;
+  while (CBS_len(cbs) != 0) {
+    uint8_t c = CBS_data(cbs)[0];
+    if (!OPENSSL_isdigit(c)) {
+      break;
+    }
+    CBS_skip(cbs, 1);
+    if (  // Forbid stray leading zeros.
+        (v == 0 && seen_digit) ||
+        // Check for overflow.
+        v > UINT64_MAX / 10 ||  //
+        v * 10 > UINT64_MAX - (c - '0')) {
+      return 0;
+    }
+    v = v * 10 + (c - '0');
+    seen_digit = 1;
+  }
+
+  *out = v;
+  return seen_digit;
 }
 
 // parse_base128_integer reads a big-endian base-128 integer from |cbs| and sets
@@ -335,7 +353,7 @@ static int cbs_get_any_asn1_element(CBS *cbs, CBS *out, CBS_ASN1_TAG *out_tag,
   // 8.1.3.
   if ((length_byte & 0x80) == 0) {
     // Short form length.
-    len = ((size_t) length_byte) + header_len;
+    len = ((size_t)length_byte) + header_len;
     if (out_header_len != NULL) {
       *out_header_len = header_len;
     }
@@ -414,7 +432,7 @@ int CBS_get_any_asn1(CBS *cbs, CBS *out, CBS_ASN1_TAG *out_tag) {
 }
 
 int CBS_get_any_asn1_element(CBS *cbs, CBS *out, CBS_ASN1_TAG *out_tag,
-                                    size_t *out_header_len) {
+                             size_t *out_header_len) {
   return cbs_get_any_asn1_element(cbs, out, out_tag, out_header_len, NULL, NULL,
                                   /*ber_ok=*/0);
 }
@@ -461,10 +479,6 @@ int CBS_get_asn1_element(CBS *cbs, CBS *out, CBS_ASN1_TAG tag_value) {
 }
 
 int CBS_peek_asn1_tag(const CBS *cbs, CBS_ASN1_TAG tag_value) {
-  if (CBS_len(cbs) < 1) {
-    return 0;
-  }
-
   CBS copy = *cbs;
   CBS_ASN1_TAG actual_tag;
   return parse_asn1_tag(&copy, &actual_tag) && tag_value == actual_tag;
@@ -515,8 +529,7 @@ int CBS_get_asn1_int64(CBS *cbs, int64_t *out) {
 
 int CBS_get_asn1_bool(CBS *cbs, int *out) {
   CBS bytes;
-  if (!CBS_get_asn1(cbs, &bytes, CBS_ASN1_BOOLEAN) ||
-      CBS_len(&bytes) != 1) {
+  if (!CBS_get_asn1(cbs, &bytes, CBS_ASN1_BOOLEAN) || CBS_len(&bytes) != 1) {
     return 0;
   }
 
@@ -529,7 +542,8 @@ int CBS_get_asn1_bool(CBS *cbs, int *out) {
   return 1;
 }
 
-int CBS_get_optional_asn1(CBS *cbs, CBS *out, int *out_present, CBS_ASN1_TAG tag) {
+int CBS_get_optional_asn1(CBS *cbs, CBS *out, int *out_present,
+                          CBS_ASN1_TAG tag) {
   int present = 0;
 
   if (CBS_peek_asn1_tag(cbs, tag)) {
@@ -576,8 +590,7 @@ int CBS_get_optional_asn1_uint64(CBS *cbs, uint64_t *out, CBS_ASN1_TAG tag,
     return 0;
   }
   if (present) {
-    if (!CBS_get_asn1_uint64(&child, out) ||
-        CBS_len(&child) != 0) {
+    if (!CBS_get_asn1_uint64(&child, out) || CBS_len(&child) != 0) {
       return 0;
     }
   } else {
@@ -597,8 +610,7 @@ int CBS_get_optional_asn1_bool(CBS *cbs, int *out, CBS_ASN1_TAG tag,
     uint8_t boolean;
 
     if (!CBS_get_asn1(&child, &child2, CBS_ASN1_BOOLEAN) ||
-        CBS_len(&child2) != 1 ||
-        CBS_len(&child) != 0) {
+        CBS_len(&child2) != 1 || CBS_len(&child) != 0) {
       return 0;
     }
 
@@ -619,8 +631,7 @@ int CBS_get_optional_asn1_bool(CBS *cbs, int *out, CBS_ASN1_TAG tag,
 int CBS_is_valid_asn1_bitstring(const CBS *cbs) {
   CBS in = *cbs;
   uint8_t num_unused_bits;
-  if (!CBS_get_u8(&in, &num_unused_bits) ||
-      num_unused_bits > 7) {
+  if (!CBS_get_u8(&in, &num_unused_bits) || num_unused_bits > 7) {
     return 0;
   }
 
@@ -683,6 +694,29 @@ static int add_decimal(CBB *out, uint64_t v) {
   return CBB_add_bytes(out, (const uint8_t *)buf, strlen(buf));
 }
 
+int CBS_is_valid_asn1_oid(const CBS *cbs) {
+  if (CBS_len(cbs) == 0) {
+    return 0;  // OID encodings cannot be empty.
+  }
+
+  CBS copy = *cbs;
+  uint8_t v, prev = 0;
+  while (CBS_get_u8(&copy, &v)) {
+    // OID encodings are a sequence of minimally-encoded base-128 integers (see
+    // |parse_base128_integer|). If |prev|'s MSB was clear, it was the last byte
+    // of an integer (or |v| is the first byte). |v| is then the first byte of
+    // the next integer. If first byte of an integer is 0x80, it is not
+    // minimally-encoded.
+    if ((prev & 0x80) == 0 && v == 0x80) {
+      return 0;
+    }
+    prev = v;
+  }
+
+  // The last byte should must end an integer encoding.
+  return (prev & 0x80) == 0;
+}
+
 char *CBS_asn1_oid_to_text(const CBS *cbs) {
   CBB cbb;
   if (!CBB_init(&cbb, 32)) {
@@ -701,15 +735,13 @@ char *CBS_asn1_oid_to_text(const CBS *cbs) {
         !add_decimal(&cbb, v - 80)) {
       goto err;
     }
-  } else if (!add_decimal(&cbb, v / 40) ||
-             !CBB_add_u8(&cbb, '.') ||
+  } else if (!add_decimal(&cbb, v / 40) || !CBB_add_u8(&cbb, '.') ||
              !add_decimal(&cbb, v % 40)) {
     goto err;
   }
 
   while (CBS_len(&copy) != 0) {
-    if (!parse_base128_integer(&copy, &v) ||
-        !CBB_add_u8(&cbb, '.') ||
+    if (!parse_base128_integer(&copy, &v) || !CBB_add_u8(&cbb, '.') ||
         !add_decimal(&cbb, v)) {
       goto err;
     }
@@ -717,8 +749,7 @@ char *CBS_asn1_oid_to_text(const CBS *cbs) {
 
   uint8_t *txt;
   size_t txt_len;
-  if (!CBB_add_u8(&cbb, '\0') ||
-      !CBB_finish(&cbb, &txt, &txt_len)) {
+  if (!CBB_add_u8(&cbb, '\0') || !CBB_finish(&cbb, &txt, &txt_len)) {
     goto err;
   }
 
@@ -734,13 +765,13 @@ static int cbs_get_two_digits(CBS *cbs, int *out) {
   if (!CBS_get_u8(cbs, &first_digit)) {
     return 0;
   }
-  if (!isdigit(first_digit)) {
+  if (!OPENSSL_isdigit(first_digit)) {
     return 0;
   }
   if (!CBS_get_u8(cbs, &second_digit)) {
     return 0;
   }
-  if (!isdigit(second_digit)) {
+  if (!OPENSSL_isdigit(second_digit)) {
     return 0;
   }
   *out = (first_digit - '0') * 10 + (second_digit - '0');
@@ -791,7 +822,7 @@ static int CBS_parse_rfc5280_time_internal(const CBS *cbs, int is_gentime,
     if (!cbs_get_two_digits(&copy, &tmp)) {
       return 0;
     }
-      year += tmp;
+    year += tmp;
   } else {
     year = 1900;
     if (!cbs_get_two_digits(&copy, &tmp)) {
@@ -885,4 +916,21 @@ int CBS_parse_generalized_time(const CBS *cbs, struct tm *out_tm,
 int CBS_parse_utc_time(const CBS *cbs, struct tm *out_tm,
                        int allow_timezone_offset) {
   return CBS_parse_rfc5280_time_internal(cbs, 0, allow_timezone_offset, out_tm);
+}
+
+int CBS_get_optional_asn1_int64(CBS *cbs, int64_t *out, CBS_ASN1_TAG tag,
+                                int64_t default_value) {
+  CBS child;
+  int present;
+  if (!CBS_get_optional_asn1(cbs, &child, &present, tag)) {
+    return 0;
+  }
+  if (present) {
+    if (!CBS_get_asn1_int64(&child, out) || CBS_len(&child) != 0) {
+      return 0;
+    }
+  } else {
+    *out = default_value;
+  }
+  return 1;
 }

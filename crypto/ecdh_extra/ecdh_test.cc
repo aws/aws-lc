@@ -130,12 +130,19 @@ TEST(ECDHTest, TestVectors) {
   });
 }
 
-static int has_uint128_and_not_small() {
+// Returns 1 if the curve defined by |nid| is using Montgomery representation
+// for field elements (based on the build configuration). Returns 0 otherwise.
+static int is_curve_using_mont_felem_impl(int nid) {
+  if (nid == NID_secp224r1) {
 #if defined(BORINGSSL_HAS_UINT128) && !defined(OPENSSL_SMALL)
-  return 1;
-#else
-  return 0;
+    return 0;
 #endif
+  } else if (nid == NID_secp521r1) {
+#if !defined(OPENSSL_SMALL)
+    return 0;
+#endif
+  }
+  return 1;
 }
 
 // The following test is adapted from ECTest.LargeXCoordinateVectors
@@ -170,12 +177,10 @@ TEST(ECDHTest, InvalidPubKeyLargeCoord) {
                                     SHA512_DIGEST_LENGTH : len);
 
     ASSERT_TRUE(EC_KEY_set_group(peer_key.get(), group.get()));
-    // The following call converts the point to Montgomery form for P-256/384.
-    // For P-224, when the functions from simple.c are used, i.e. when
-    // group->meth = EC_GFp_nistp224_method, the coordinate representation
-    // is not changed. This is determined based on compile flags in ec.c
-    // that are also used below in has_uint128_and_not_small().
-    // For P-521, the plain non-Motgomery representation is always used.
+
+    // |EC_POINT_set_affine_coordinates_GFp| sets given (x, y) according to the
+    // form the curve is using. If the curve is using Montgomery form, |x| and
+    // |y| will be converted to Montgomery form.
     ASSERT_TRUE(EC_POINT_set_affine_coordinates_GFp(
                   group.get(), pub_key.get(), x.get(), y.get(), nullptr));
     ASSERT_TRUE(EC_KEY_set_public_key(peer_key.get(), pub_key.get()));
@@ -196,19 +201,17 @@ TEST(ECDHTest, InvalidPubKeyLargeCoord) {
     OPENSSL_memset(peer_key.get()->pub_key->raw.Z.bytes, 0, len);
     peer_key.get()->pub_key->raw.Z.bytes[0] = 1;
 
-    // As mentioned, for P-224 and P-521, setting the raw point directly
-    // with the coordinates still passes |EC_KEY_check_fips|.
-    // For P-256 and 384, the failure is due to that the coordinates are
-    // not in Montgomery representation, hence the checks fail earlier in
-    // |EC_KEY_check_key| in the point-on-the-curve calculations, which use
-    // Montgomery arithmetic.
+    // |ECDH_compute_key_fips| calls |EC_KEY_check_fips| that calls
+    // |EC_KEY_check_key| function which checks if the computed key point is on
+    // the curve (among other checks). If the curve uses Montgomery form then
+    // the point-on-curve check will fail because we set the raw point
+    // coordinates in regular form above.
     ret = ECDH_compute_key_fips(shared_key.data(), shared_key.size(),
                                 EC_KEY_get0_public_key(peer_key.get()),
                                 priv_key.get());
 
     int curve_nid = group.get()->curve_name;
-    if ((has_uint128_and_not_small() && (curve_nid == NID_secp224r1)) ||
-        (curve_nid == NID_secp521r1)) {
+    if (!is_curve_using_mont_felem_impl(curve_nid)) {
       ASSERT_TRUE(ret);
     } else {
       ASSERT_FALSE(ret);
@@ -381,6 +384,7 @@ TEST(ECDHTest, GroupMismatch) {
       }
 
       bssl::UniquePtr<EC_KEY> key(EC_KEY_new());
+      ASSERT_TRUE(key);
       ASSERT_TRUE(EC_KEY_set_group(key.get(), a.get()));
       ASSERT_TRUE(EC_KEY_generate_key(key.get()));
 

@@ -174,7 +174,6 @@ SSL3_STATE::SSL3_STATE()
       delegated_credential_used(false),
       send_connection_binding(false),
       channel_id_valid(false),
-      key_update_pending(false),
       early_data_accepted(false),
       alert_dispatch(false),
       renegotiate_pending(false),

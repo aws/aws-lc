@@ -71,4 +71,6 @@ const RAND_METHOD *RAND_get_rand_method(void) { return RAND_SSLeay(); }
 
 int RAND_set_rand_method(const RAND_METHOD *method) { return 1; }
 
+void RAND_keep_random_devices_open(int a) { }
+
 void RAND_cleanup(void) {}

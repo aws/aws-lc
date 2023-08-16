@@ -1,4 +1,3 @@
-/* crypto/x509/x509_cmp.c */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -234,6 +233,13 @@ X509 *X509_find_by_subject(const STACK_OF(X509) *sk, X509_NAME *name) {
   return NULL;
 }
 
+EVP_PKEY *X509_get0_pubkey(const X509 *x) {
+    if ((x == NULL) || (x->cert_info == NULL)) {
+        return NULL;
+    }
+    return (X509_PUBKEY_get0(x->cert_info->key));
+}
+
 EVP_PKEY *X509_get_pubkey(X509 *x) {
   if ((x == NULL) || (x->cert_info == NULL)) {
     return NULL;
@@ -285,10 +291,11 @@ int X509_check_private_key(X509 *x, const EVP_PKEY *k) {
 // count but it has the same effect by duping the STACK and upping the ref of
 // each X509 structure.
 STACK_OF(X509) *X509_chain_up_ref(STACK_OF(X509) *chain) {
-  STACK_OF(X509) *ret;
-  size_t i;
-  ret = sk_X509_dup(chain);
-  for (i = 0; i < sk_X509_num(ret); i++) {
+  STACK_OF(X509) *ret = sk_X509_dup(chain);
+  if (ret == NULL) {
+    return NULL;
+  }
+  for (size_t i = 0; i < sk_X509_num(ret); i++) {
     X509_up_ref(sk_X509_value(ret, i));
   }
   return ret;

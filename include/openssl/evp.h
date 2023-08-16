@@ -124,14 +124,13 @@ OPENSSL_EXPORT int EVP_PKEY_missing_parameters(const EVP_PKEY *pkey);
 // EVP_PKEY_size returns the maximum size, in bytes, of a signature signed by
 // |pkey|. For an RSA key, this returns the number of bytes needed to represent
 // the modulus. For an EC key, this returns the maximum size of a DER-encoded
-// ECDSA signature. For a KEM key, this returns the sum of the size of the
-// public key and the secret key.
+// ECDSA signature. For a Dilithium key, this returns the signature byte size.
 OPENSSL_EXPORT int EVP_PKEY_size(const EVP_PKEY *pkey);
 
 // EVP_PKEY_bits returns the "size", in bits, of |pkey|. For an RSA key, this
 // returns the bit length of the modulus. For an EC key, this returns the bit
-// length of the group order. For a KEM, this returns the the sum of the size
-// of the public key and the secret key.
+// length of the group order. For a Dilithium key, this returns the bit length
+// of the public key.
 OPENSSL_EXPORT int EVP_PKEY_bits(const EVP_PKEY *pkey);
 
 // EVP_PKEY_id returns the type of |pkey|, which is one of the |EVP_PKEY_*|
@@ -180,9 +179,12 @@ OPENSSL_EXPORT EC_KEY *EVP_PKEY_get1_EC_KEY(const EVP_PKEY *pkey);
 #define EVP_PKEY_EC NID_X9_62_id_ecPublicKey
 #define EVP_PKEY_ED25519 NID_ED25519
 #define EVP_PKEY_X25519 NID_X25519
-// TODO(awslc): delete Kyber define
-#define EVP_PKEY_KYBER512 NID_KYBER512
 #define EVP_PKEY_HKDF NID_hkdf
+
+#ifdef ENABLE_DILITHIUM
+#define EVP_PKEY_DILITHIUM3 NID_DILITHIUM3_R3
+#endif
+
 #define EVP_PKEY_KEM NID_kem
 
 // EVP_PKEY_assign sets the underlying key of |pkey| to |key|, which must be of
@@ -240,13 +242,23 @@ OPENSSL_EXPORT EVP_PKEY *EVP_parse_private_key(CBS *cbs);
 // success and zero on error.
 OPENSSL_EXPORT int EVP_marshal_private_key(CBB *cbb, const EVP_PKEY *key);
 
+// EVP_marshal_private_key_v2 marshals |key| as a DER-encoded
+// OneAsymmetricKey (RFC 5958) and appends the result to |cbb|. It returns one
+// on success and zero on error.
+//
+// Ed25519 and x25119 are the only private key that supports marshaling as a v2
+// PKCS8 structure. All other private key types will return
+// UNSUPPORTED_ALGORITHM error.
+OPENSSL_EXPORT int EVP_marshal_private_key_v2(CBB *cbb, const EVP_PKEY *key);
 
 // Raw keys
 //
 // Some keys types support a "raw" serialization. Currently the only supported
-// raw format is Ed25519, where the public key and private key formats are those
-// specified in RFC 8032. Note the RFC 8032 private key format is the 32-byte
-// prefix of |ED25519_sign|'s 64-byte private key.
+// raw formats are X25519 and Ed25519, where the formats are those specified in
+// RFC 7748 and RFC 8032, respectively. Note the RFC 8032 private key format
+// is the 32-byte prefix of |ED25519_sign|'s 64-byte private key.
+// For Dilithium the public key and private key formats are those specified
+// in draft-ietf-lamps-dilithium-certificates-00 and the Dilithium specification.
 
 // EVP_PKEY_new_raw_private_key returns a newly allocated |EVP_PKEY| wrapping a
 // private key of the specified type. It returns NULL on error.
@@ -290,8 +302,8 @@ OPENSSL_EXPORT int EVP_PKEY_get_raw_public_key(const EVP_PKEY *pkey,
 // signing options.
 //
 // For single-shot signing algorithms which do not use a pre-hash, such as
-// Ed25519, |type| should be NULL. The |EVP_MD_CTX| itself is unused but is
-// present so the API is uniform. See |EVP_DigestSign|.
+// Ed25519 and Dilithium, |type| should be NULL. The |EVP_MD_CTX| itself is
+// unused but is present so the API is uniform. See |EVP_DigestSign|.
 //
 // This function does not mutate |pkey| for thread-safety purposes and may be
 // used concurrently with other non-mutating functions on |pkey|.
@@ -346,8 +358,8 @@ OPENSSL_EXPORT int EVP_DigestSign(EVP_MD_CTX *ctx, uint8_t *out_sig,
 // signing options.
 //
 // For single-shot signing algorithms which do not use a pre-hash, such as
-// Ed25519, |type| should be NULL. The |EVP_MD_CTX| itself is unused but is
-// present so the API is uniform. See |EVP_DigestVerify|.
+// Ed25519 and Dilithium, |type| should be NULL. The |EVP_MD_CTX| itself is
+// unused but is present so the API is uniform. See |EVP_DigestVerify|.
 //
 // This function does not mutate |pkey| for thread-safety purposes and may be
 // used concurrently with other non-mutating functions on |pkey|.
@@ -480,7 +492,9 @@ OPENSSL_EXPORT int EVP_PKEY_print_params(BIO *out, const EVP_PKEY *pkey,
 
 // PKCS5_PBKDF2_HMAC computes |iterations| iterations of PBKDF2 of |password|
 // and |salt|, using |digest|, and outputs |key_len| bytes to |out_key|. It
-// returns one on success and zero on allocation failure or if iterations is 0.
+// returns one on success and zero on allocation failure or if |iterations| is
+// 0. It's recommended that |iterations| be set to a much higher number (at
+// least hundreds of thousands).
 OPENSSL_EXPORT int PKCS5_PBKDF2_HMAC(const char *password, size_t password_len,
                                      const uint8_t *salt, size_t salt_len,
                                      unsigned iterations, const EVP_MD *digest,
@@ -553,7 +567,8 @@ OPENSSL_EXPORT int EVP_PKEY_sign_init(EVP_PKEY_CTX *ctx);
 // Otherwise, |*sig_len| must contain the number of bytes of space available at
 // |sig|. If sufficient, the signature will be written to |sig| and |*sig_len|
 // updated with the true length. This function will fail for signature
-// algorithms like Ed25519 that do not support signing pre-hashed inputs.
+// algorithms like Ed25519 and Dilithium that do not support signing pre-hashed
+// inputs.
 //
 // WARNING: |digest| must be the output of some hash function on the data to be
 // signed. Passing unhashed inputs will not result in a secure signature scheme.
@@ -576,7 +591,8 @@ OPENSSL_EXPORT int EVP_PKEY_verify_init(EVP_PKEY_CTX *ctx);
 
 // EVP_PKEY_verify verifies that |sig_len| bytes from |sig| are a valid
 // signature for |digest|. This function will fail for signature
-// algorithms like Ed25519 that do not support signing pre-hashed inputs.
+// algorithms like Ed25519 and Dilithium that do not support signing pre-hashed
+// inputs.
 //
 // WARNING: |digest| must be the output of some hash function on the data to be
 // verified. Passing unhashed inputs will not result in a secure signature
@@ -702,12 +718,18 @@ OPENSSL_EXPORT int EVP_PKEY_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY **out_pkey);
 //   3. writes the length of |ciphertext| and |shared_secret| to
 //      |ciphertext_len| and |shared_secret_len|.
 //
-// If the given |ciphertext| is NULL it is assumed that the caller is doing
-// a size check: the function will write the size of the ciphertext and the
-// shared secret in |ciphertext_len| and |shared_secret_len| and return 1.
-// If |ciphertext| is non-NULL it is assumed that the caller is performing
-// the actual operation, so it is checked if the lengths of the output buffers,
-// |ciphertext_len| and |shared_secret_len|, are large enough for the KEM.
+// The function requires that output buffers, |ciphertext| and |shared_secret|,
+// be either both NULL or both non-NULL. Otherwise, a failure is returned.
+//
+// If both |ciphertext| and |shared_secret| are NULL it is assumed that
+// the caller is doing a size check: the function will write the size of
+// the ciphertext and the shared secret in |ciphertext_len| and
+// |shared_secret_len| and return successfully.
+//
+// If both |ciphertext| and |shared_secret| are not NULL it is assumed that
+// the caller is performing the actual operation. The function will check
+// additionally if the lengths of the output buffers, |ciphertext_len| and
+// |shared_secret_len|, are large enough for the KEM.
 //
 // NOTE: no allocation is done in the function, the caller is expected to
 // provide large enough |ciphertext| and |shared_secret| buffers.
@@ -727,16 +749,17 @@ OPENSSL_EXPORT int EVP_PKEY_encapsulate(EVP_PKEY_CTX *ctx          /* IN  */,
 //
 // If the given |shared_secret| is NULL it is assumed that the caller is doing
 // a size check: the function will write the size of the shared secret in
-// |shared_secret_len| and return 1.
+// |shared_secret_len| and return successfully.
+//
 // If |shared_secret| is non-NULL it is assumed that the caller is performing
-// the actual operation, so it is checked if the length of the output buffer,
-// |shared_secret_len|, is large enough for the KEM.
+// the actual operation. The functions will check additionally if the length of
+// the output buffer |shared_secret_len| is large enough for the KEM.
 //
 // NOTE: no allocation is done in the function, the caller is expected to
 // provide large enough |shared_secret| buffer.
 //
 // It returns one on success or zero on error.
-OPENSSL_EXPORT int EVP_PKEY_decapsulate(EVP_PKEY_CTX *ctx          /* IN  */, 
+OPENSSL_EXPORT int EVP_PKEY_decapsulate(EVP_PKEY_CTX *ctx          /* IN  */,
                                         uint8_t *shared_secret     /* OUT */,
                                         size_t  *shared_secret_len /* OUT */,
                                         uint8_t *ciphertext        /* IN  */,
@@ -899,6 +922,11 @@ OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_kem_new_raw_key(int nid,
                                                   size_t len_public,
                                                   const uint8_t *in_secret,
                                                   size_t len_secret);
+
+// EVP_PKEY_kem_check_key validates that the public key in |key| corresponds
+// to the secret key in |key|.
+OPENSSL_EXPORT int EVP_PKEY_kem_check_key(EVP_PKEY *key);
+
 // Deprecated functions.
 
 // EVP_PKEY_DH is defined for compatibility, but it is impossible to create an
@@ -947,6 +975,15 @@ OPENSSL_EXPORT void EVP_MD_do_all_sorted(void (*callback)(const EVP_MD *cipher,
                                                           const char *unused,
                                                           void *arg),
                                          void *arg);
+
+// EVP_MD_do_all is the same as |EVP_MD_do_all_sorted|. We include both for
+// compatibility reasons.
+OPENSSL_EXPORT void EVP_MD_do_all(void (*callback)(const EVP_MD *cipher,
+                                                   const char *name,
+                                                   const char *unused,
+                                                   void *arg),
+                                         void *arg);
+
 
 // i2d_PrivateKey marshals a private key from |key| to type-specific format, as
 // described in |i2d_SAMPLE|.
@@ -1137,29 +1174,6 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_set_dsa_paramgen_q_bits(EVP_PKEY_CTX *ctx,
 #define EVPerr(function, reason) \
   ERR_put_error(ERR_LIB_EVP, 0, reason, __FILE__, __LINE__)
 
-
-// Private structures.
-
-struct evp_pkey_st {
-  CRYPTO_refcount_t references;
-
-  // type contains one of the EVP_PKEY_* values or NID_undef and determines
-  // which element (if any) of the |pkey| union is valid.
-  int type;
-
-  union {
-    void *ptr;
-    RSA *rsa;
-    DSA *dsa;
-    DH *dh;
-    EC_KEY *ec;
-    KEM_KEY *kem_key;
-  } pkey;
-
-  // ameth contains a pointer to a method table that contains many ASN.1
-  // methods for the key type.
-  const EVP_PKEY_ASN1_METHOD *ameth;
-}; // EVP_PKEY
 
 #if defined(__cplusplus)
 }  // extern C

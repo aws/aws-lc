@@ -23,7 +23,7 @@
 .p2align	4
 _gcm_gmult_ssse3:
 
-L$gmult_seh_begin:
+
 	movdqu	(%rdi),%xmm0
 	movdqa	L$reverse_bytes(%rip),%xmm10
 	movdqa	L$low4_mask(%rip),%xmm2
@@ -199,7 +199,7 @@ L$oop_row_3:
 	pxor	%xmm5,%xmm5
 	pxor	%xmm6,%xmm6
 	.byte	0xf3,0xc3
-L$gmult_seh_end:
+
 
 
 
@@ -212,7 +212,7 @@ L$gmult_seh_end:
 .private_extern _gcm_ghash_ssse3
 .p2align	4
 _gcm_ghash_ssse3:
-L$ghash_seh_begin:
+
 
 	movdqu	(%rdi),%xmm0
 	movdqa	L$reverse_bytes(%rip),%xmm10
@@ -411,10 +411,11 @@ L$oop_row_6:
 	pxor	%xmm5,%xmm5
 	pxor	%xmm6,%xmm6
 	.byte	0xf3,0xc3
-L$ghash_seh_end:
 
 
 
+
+.section	__DATA,__const
 .p2align	4
 
 
@@ -423,6 +424,7 @@ L$reverse_bytes:
 
 L$low4_mask:
 .quad	0x0f0f0f0f0f0f0f0f, 0x0f0f0f0f0f0f0f0f
+.text	
 #endif
 #if defined(__ELF__)
 // See https://www.airs.com/blog/archives/518.

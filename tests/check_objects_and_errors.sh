@@ -14,7 +14,7 @@ echo "Checking for any changes"
 git diff --exit-code HEAD
 
 echo "Running make_errors.go to update files"
-go run ./util/make_errors.go ssl evp ocsp
+go run ./util/make_errors.go ssl evp ocsp pem
 
 echo "Adding all changed files to the git tree"
 git add -A

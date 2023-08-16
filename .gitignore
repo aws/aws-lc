@@ -17,9 +17,7 @@ bindings/rust/generate/target
 
 util/bot/android_ndk
 util/bot/android_sdk/public
-util/bot/cmake-linux64
-util/bot/cmake-mac
-util/bot/cmake-win32
+util/bot/cmake
 util/bot/golang
 util/bot/libFuzzer
 util/bot/libcxx
@@ -28,7 +26,6 @@ util/bot/llvm-build
 util/bot/nasm-win32.exe
 util/bot/ninja
 util/bot/perl-win32
-util/bot/perl-win32.zip
 util/bot/sde-linux64
 util/bot/sde-linux64.tar.xz
 util/bot/sde-win32
@@ -36,6 +33,7 @@ util/bot/sde-win32.tar.xz
 util/bot/win_toolchain.json
 util/bot/yasm-win32.exe
 
+tests/ci/.env
 tests/ci/cdk/cdk.context.json
 test_build_dir/
 cmake-build-debug/

@@ -6,9 +6,7 @@ The standalone CMake build is primarily intended for developers. If embedding
 AWS-LC into another project with a pre-existing build system, see
 [INCORPORATING.md](/INCORPORATING.md).
 
-Unless otherwise noted, build tools must at most five years old, matching
-[Abseil guidelines](https://abseil.io/about/compatibility). If in doubt, use the
-most recent stable version of each tool.
+If in doubt, use the most recent stable version of each build tool.
 
   * [CMake](https://cmake.org/download/) 3.0 or later is required.
 
@@ -22,9 +20,9 @@ most recent stable version of each tool.
     `PERL_EXECUTABLE`.
     * To build without Perl (not recommended) see [this section.](#using-pre-generated-build-files)
 
-  * The most recent stable version of [Go](https://golang.org/dl/) is required.
-    Note Go is exempt from the five year support window. If not found by CMake,
-    the go executable may be configured explicitly by setting `GO_EXECUTABLE`. 
+  * [Go](https://golang.org/dl/) 1.18 or later is required. If not found by
+    CMake, the go executable may be configured explicitly by setting
+    `GO_EXECUTABLE`.
     * To build without Go (not recommended) see [this section.](#using-pre-generated-build-files)
 
   * Building with [Ninja](https://ninja-build.org/) instead of Make is
@@ -40,7 +38,7 @@ most recent stable version of each tool.
     (Visual Studio 2015) or later with Platform SDK 8.1 or later are supported,
     but newer versions are recommended. We will drop support for Visual Studio
     2015 in March 2022, five years after the release of Visual Studio 2017.
-    Recent versions of GCC (6.1+) and Clang should work on non-Windows
+    Recent versions of GCC (4.1.3+) and Clang should work on non-Windows
     platforms, and maybe on Windows too.
 
   * On x86_64 Linux, the tests have an optional
@@ -56,17 +54,13 @@ name is `cmake`. Modify command snippets below accordingly.
 
 Using Ninja (note the 'N' is capitalized in the cmake invocation):
 
-    mkdir build
-    cd build
-    cmake -GNinja ..
-    ninja
+    cmake -GNinja -B build
+    ninja -C build
 
 Using Make (does not work on Windows):
 
-    mkdir build
-    cd build
-    cmake ..
-    make
+    cmake -B build
+    make -C build
 
 You usually don't need to run `cmake` again after changing `CMakeLists.txt`
 files because the build scripts will detect changes to them and rebuild
@@ -77,10 +71,9 @@ debugging—optimisation isn't enabled. Pass `-DCMAKE_BUILD_TYPE=Release` to
 `cmake` to configure a release build.
 
 If you want to cross-compile then there is an example toolchain file for 32-bit
-Intel in `util/`. Wipe out the build directory, recreate it and run `cmake` like
-this:
+Intel in `util/`. Wipe out the build directory, run `cmake` like this:
 
-    cmake -DCMAKE_TOOLCHAIN_FILE=../util/32-bit-toolchain.cmake -GNinja ..
+    cmake -B build -DCMAKE_TOOLCHAIN_FILE=../util/32-bit-toolchain.cmake -GNinja
 
 If you want to build as a shared library, pass `-DBUILD_SHARED_LIBS=1`. On
 Windows, where functions need to be tagged with `dllimport` when coming from a
@@ -101,12 +94,12 @@ versions of the NDK include a CMake toolchain file which works with CMake 3.6.0
 or later. This has been tested with version r16b of the NDK.
 
 Unpack the Android NDK somewhere and export `ANDROID_NDK` to point to the
-directory. Then make a build directory as above and run CMake like this:
+directory. Then run CMake like this:
 
     cmake -DANDROID_ABI=armeabi-v7a \
+          -DANDROID_PLATFORM=android-19 \
           -DCMAKE_TOOLCHAIN_FILE=${ANDROID_NDK}/build/cmake/android.toolchain.cmake \
-          -DANDROID_NATIVE_API_LEVEL=16 \
-          -GNinja ..
+          -GNinja -B build
 
 Once you've run that, Ninja should produce Android-compatible binaries.  You
 can replace `armeabi-v7a` in the above with `arm64-v8a` and use API level 21 or
@@ -148,7 +141,7 @@ In order to build with prefixed symbols, the `BORINGSSL_PREFIX` CMake variable
 should specify the prefix to add to all symbols, and the
 `BORINGSSL_PREFIX_SYMBOLS` CMake variable should specify the path to a file
 which contains a list of symbols which should be prefixed (one per line;
-comments are supported with `#`). In other words, `cmake ..
+comments are supported with `#`). In other words, `cmake -B build
 -DBORINGSSL_PREFIX=MY_CUSTOM_PREFIX
 -DBORINGSSL_PREFIX_SYMBOLS=/path/to/symbols.txt` will configure the build to add
 the prefix `MY_CUSTOM_PREFIX` to all of the symbols listed in

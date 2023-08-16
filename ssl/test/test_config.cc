@@ -17,6 +17,7 @@
 #include <assert.h>
 #include <ctype.h>
 #include <errno.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -28,6 +29,7 @@
 #include <type_traits>
 
 #include <openssl/base64.h>
+#include <openssl/hmac.h>
 #include <openssl/hpke.h>
 #include <openssl/rand.h>
 #include <openssl/span.h>
@@ -59,10 +61,9 @@ template <typename T>
 bool StringToInt(T *out, const char *str) {
   static_assert(std::is_integral<T>::value, "not an integral type");
   static_assert(sizeof(T) <= sizeof(long long), "type too large for long long");
-
   // |strtoull| allows leading '-' with wraparound. Additionally, both
   // functions accept empty strings and leading whitespace.
-  if (!isdigit(static_cast<unsigned char>(*str)) &&
+  if (!OPENSSL_isdigit(static_cast<unsigned char>(*str)) &&
       (!std::is_signed<T>::value || *str != '-')) {
     return false;
   }
@@ -288,6 +289,10 @@ std::vector<Flag> SortedFlags() {
       BoolFlag("-use-ticket-callback", &TestConfig::use_ticket_callback),
       BoolFlag("-renew-ticket", &TestConfig::renew_ticket),
       BoolFlag("-enable-early-data", &TestConfig::enable_early_data),
+      BoolFlag("-enable-client-custom-extension", &TestConfig::enable_client_custom_extension),
+      BoolFlag("-enable-server-custom-extension", &TestConfig::enable_server_custom_extension),
+      BoolFlag("-custom-extension-skip", &TestConfig::custom_extension_skip),
+      BoolFlag("-custom-extension-fail-add", &TestConfig::custom_extension_fail_add),
       Base64Flag("-ocsp-response", &TestConfig::ocsp_response),
       Base64Flag("-expect-ocsp-response", &TestConfig::expect_ocsp_response),
       BoolFlag("-check-close-notify", &TestConfig::check_close_notify),
@@ -391,6 +396,7 @@ std::vector<Flag> SortedFlags() {
       BoolFlag("-do-ssl-transfer", &TestConfig::do_ssl_transfer),
       StringFlag("-ssl-fuzz-seed-path-prefix", &TestConfig::ssl_fuzz_seed_path_prefix),
       StringFlag("-tls13-ciphersuites", &TestConfig::tls13_ciphersuites),
+      StringPairVectorFlag("-multiple-certs-slot", &TestConfig::multiple_certs_slot),
   };
   std::sort(flags.begin(), flags.end(), [](const Flag &a, const Flag &b) {
     return strcmp(a.name, b.name) < 0;
@@ -539,6 +545,63 @@ static int LegacyOCSPCallback(SSL *ssl, void *arg) {
   return SSL_TLSEXT_ERR_OK;
 }
 
+// kCustomExtensionValue is the extension value that the custom extension
+// callbacks will add.
+static const uint16_t kCustomExtensionValue = 1234;
+static void *const kCustomExtensionAddArg =
+    reinterpret_cast<void *>(kCustomExtensionValue);
+static void *const kCustomExtensionParseArg =
+    reinterpret_cast<void *>(kCustomExtensionValue + 1);
+static const char kCustomExtensionContents[] = "custom extension";
+
+static int CustomExtensionAddCallback(SSL *ssl, unsigned extension_value,
+                                      const uint8_t **out, size_t *out_len,
+                                      int *out_alert_value, void *add_arg) {
+  if (extension_value != kCustomExtensionValue ||
+      add_arg != kCustomExtensionAddArg) {
+    abort();
+  }
+
+  if (GetTestConfig(ssl)->custom_extension_skip) {
+    return 0;
+  }
+  if (GetTestConfig(ssl)->custom_extension_fail_add) {
+    return -1;
+  }
+
+  *out = reinterpret_cast<const uint8_t *>(kCustomExtensionContents);
+  *out_len = sizeof(kCustomExtensionContents) - 1;
+
+  return 1;
+}
+
+static void CustomExtensionFreeCallback(SSL *ssl, unsigned extension_value,
+                                        const uint8_t *out, void *add_arg) {
+  if (extension_value != kCustomExtensionValue ||
+      add_arg != kCustomExtensionAddArg ||
+      out != reinterpret_cast<const uint8_t *>(kCustomExtensionContents)) {
+    abort();
+  }
+}
+
+static int CustomExtensionParseCallback(SSL *ssl, unsigned extension_value,
+                                        const uint8_t *contents,
+                                        size_t contents_len,
+                                        int *out_alert_value, void *parse_arg) {
+  if (extension_value != kCustomExtensionValue ||
+      parse_arg != kCustomExtensionParseArg) {
+    abort();
+  }
+
+  if (contents_len != sizeof(kCustomExtensionContents) - 1 ||
+      OPENSSL_memcmp(contents, kCustomExtensionContents, contents_len) != 0) {
+    *out_alert_value = SSL_AD_DECODE_ERROR;
+    return 0;
+  }
+
+  return 1;
+}
+
 static int ServerNameCallback(SSL *ssl, int *out_alert, void *arg) {
   // SNI must be accessible from the SNI callback.
   const TestConfig *config = GetTestConfig(ssl);
@@ -573,8 +636,13 @@ static int NextProtosAdvertisedCallback(SSL *ssl, const uint8_t **out,
     return SSL_TLSEXT_ERR_NOACK;
   }
 
-  *out = (const uint8_t *)config->advertise_npn.data();
-  *out_len = config->advertise_npn.size();
+  if (config->advertise_npn.size() > UINT_MAX) {
+    fprintf(stderr, "NPN value too large.\n");
+    return SSL_TLSEXT_ERR_ALERT_FATAL;
+  }
+
+  *out = reinterpret_cast<const uint8_t *>(config->advertise_npn.data());
+  *out_len = static_cast<unsigned>(config->advertise_npn.size());
   return SSL_TLSEXT_ERR_OK;
 }
 
@@ -926,22 +994,6 @@ static bool GetCertificate(SSL *ssl, bssl::UniquePtr<X509> *out_x509,
   return true;
 }
 
-static bool FromHexDigit(uint8_t *out, char c) {
-  if ('0' <= c && c <= '9') {
-    *out = c - '0';
-    return true;
-  }
-  if ('a' <= c && c <= 'f') {
-    *out = c - 'a' + 10;
-    return true;
-  }
-  if ('A' <= c && c <= 'F') {
-    *out = c - 'A' + 10;
-    return true;
-  }
-  return false;
-}
-
 static bool HexDecode(std::string *out, const std::string &in) {
   if ((in.size() & 1) != 0) {
     return false;
@@ -950,7 +1002,8 @@ static bool HexDecode(std::string *out, const std::string &in) {
   std::unique_ptr<uint8_t[]> buf(new uint8_t[in.size() / 2]);
   for (size_t i = 0; i < in.size() / 2; i++) {
     uint8_t high, low;
-    if (!FromHexDigit(&high, in[i * 2]) || !FromHexDigit(&low, in[i * 2 + 1])) {
+    if (!OPENSSL_fromxdigit(&high, in[i * 2]) ||
+        !OPENSSL_fromxdigit(&low, in[i * 2 + 1])) {
       return false;
     }
     buf[i] = (high << 4) | low;
@@ -1275,6 +1328,42 @@ static bool InstallCertificate(SSL *ssl) {
   return true;
 }
 
+static bool InstallMultipleCertificates(SSL *ssl) {
+  const TestConfig *config = GetTestConfig(ssl);
+  if (config->multiple_certs_slot.empty()) {
+    return false;
+  }
+
+  if (!config->signing_prefs.empty()) {
+    if (!SSL_set_signing_algorithm_prefs(ssl, config->signing_prefs.data(),
+                                         config->signing_prefs.size())) {
+      return false;
+    }
+  }
+
+  for (const auto &cert_key_pair : config->multiple_certs_slot) {
+    bssl::UniquePtr<X509> x509;
+    bssl::UniquePtr<STACK_OF(X509)> chain;
+    bssl::UniquePtr<EVP_PKEY> pkey;
+
+    if (!LoadCertificate(&x509, &chain, cert_key_pair.first)) {
+      return false;
+    }
+    pkey = LoadPrivateKey(cert_key_pair.second);
+    if (pkey && !SSL_use_PrivateKey(ssl, pkey.get())) {
+      return false;
+    }
+    if (x509 && !SSL_use_certificate(ssl, x509.get())) {
+      return false;
+    }
+    if (sk_X509_num(chain.get()) > 0 && !SSL_set1_chain(ssl, chain.get())) {
+      return false;
+    }
+  }
+  return true;
+}
+
+
 static enum ssl_select_cert_result_t SelectCertificateCallback(
     const SSL_CLIENT_HELLO *client_hello) {
   SSL *ssl = client_hello->ssl;
@@ -1449,6 +1538,22 @@ bssl::UniquePtr<SSL_CTX> TestConfig::SetupCtx(SSL_CTX *old_ctx) const {
     SSL_CTX_set_tlsext_ticket_key_cb(ssl_ctx.get(), TicketKeyCallback);
   }
 
+  if (enable_client_custom_extension &&
+      !SSL_CTX_add_client_custom_ext(
+          ssl_ctx.get(), kCustomExtensionValue, CustomExtensionAddCallback,
+          CustomExtensionFreeCallback, kCustomExtensionAddArg,
+          CustomExtensionParseCallback, kCustomExtensionParseArg)) {
+    return nullptr;
+  }
+
+  if (enable_server_custom_extension &&
+      !SSL_CTX_add_server_custom_ext(
+          ssl_ctx.get(), kCustomExtensionValue, CustomExtensionAddCallback,
+          CustomExtensionFreeCallback, kCustomExtensionAddArg,
+          CustomExtensionParseCallback, kCustomExtensionParseArg)) {
+    return nullptr;
+  }
+
   if (!use_custom_verify_callback) {
     SSL_CTX_set_cert_verify_callback(ssl_ctx.get(), CertVerifyCallback, NULL);
   }
@@ -1508,6 +1613,11 @@ bssl::UniquePtr<SSL_CTX> TestConfig::SetupCtx(SSL_CTX *old_ctx) const {
 
   if (use_ocsp_callback) {
     SSL_CTX_set_tlsext_status_cb(ssl_ctx.get(), LegacyOCSPCallback);
+    int (*cb)(SSL *, void *) = nullptr;
+    if(!SSL_CTX_get_tlsext_status_cb(ssl_ctx.get(), &cb) ||
+        cb != LegacyOCSPCallback){
+      return nullptr;
+    }
   }
 
   if (old_ctx) {
@@ -1714,7 +1824,9 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
     return nullptr;
   }
   // Install the certificate synchronously if nothing else will handle it.
+  // Multiple Certificates is only tested synchronously as of now.
   if (!use_early_callback && !use_old_client_cert_callback && !async &&
+      !InstallMultipleCertificates(ssl.get()) &&
       !InstallCertificate(ssl.get())) {
     return nullptr;
   }
@@ -1912,10 +2024,6 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
 
         case SSL_CURVE_X25519:
           nids.push_back(NID_X25519);
-          break;
-
-        case SSL_CURVE_CECPQ2:
-          nids.push_back(NID_CECPQ2);
           break;
       }
       if (!SSL_set1_curves(ssl.get(), &nids[0], nids.size())) {

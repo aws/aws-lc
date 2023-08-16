@@ -218,7 +218,7 @@ static void ssl_get_client_disabled(const SSL_HANDSHAKE *hs,
 // collect_cipher_protocol_ids uses |cbb| to collect IANA-assigned numbers
 // of |ciphers|. |mask_a|, |mask_k|, |max_version| and |min_version|
 // are used to filter the |ciphers|. |any_enabled| will be true if not all
-// ciphers are filtered out. 
+// ciphers are filtered out.
 // It returns true when success. It returns false otherwise.
 static bool collect_cipher_protocol_ids(STACK_OF(SSL_CIPHER) *ciphers,
   CBB *cbb, uint32_t mask_k, uint32_t mask_a, uint16_t max_version,
@@ -276,7 +276,11 @@ static bool ssl_write_client_cipher_list(const SSL_HANDSHAKE *hs, CBB *out,
   } else if (hs->max_version >= TLS1_3_VERSION) {
     // Use the built in TLSv1.3 ciphers. Order ChaCha20-Poly1305 relative to
     // AES-GCM based on hardware support.
-    if (!EVP_has_aes_hardware() &&
+    const bool has_aes_hw = ssl->config->aes_hw_override
+                                ? ssl->config->aes_hw_override_value
+                                : EVP_has_aes_hardware();
+
+    if (!has_aes_hw &&
         !CBB_add_u16(&child, TLS1_CK_CHACHA20_POLY1305_SHA256 & 0xffff)) {
       return false;
     }
@@ -284,7 +288,7 @@ static bool ssl_write_client_cipher_list(const SSL_HANDSHAKE *hs, CBB *out,
         !CBB_add_u16(&child, TLS1_CK_AES_256_GCM_SHA384 & 0xffff)) {
       return false;
     }
-    if (EVP_has_aes_hardware() &&
+    if (has_aes_hw &&
         !CBB_add_u16(&child, TLS1_CK_CHACHA20_POLY1305_SHA256 & 0xffff)) {
       return false;
     }
@@ -858,11 +862,18 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
       return ssl_hs_error;
     }
-    // Note: session_id could be empty.
-    hs->new_session->session_id_length = CBS_len(&server_hello.session_id);
+
+    // Save the session ID from the server. This may be empty if the session
+    // isn't resumable, or if we'll receive a session ticket later.
+    assert(CBS_len(&server_hello.session_id) <= SSL3_SESSION_ID_SIZE);
+    static_assert(SSL3_SESSION_ID_SIZE <= UINT8_MAX,
+                  "max session ID is too large");
+    hs->new_session->session_id_length =
+        static_cast<uint8_t>(CBS_len(&server_hello.session_id));
     OPENSSL_memcpy(hs->new_session->session_id,
                    CBS_data(&server_hello.session_id),
                    CBS_len(&server_hello.session_id));
+
     hs->new_session->cipher = hs->new_cipher;
   }
 
@@ -1123,7 +1134,6 @@ static enum ssl_hs_wait_t do_read_server_key_exchange(SSL_HANDSHAKE *hs) {
     char *raw = nullptr;
     if (CBS_len(&psk_identity_hint) != 0 &&
         !CBS_strdup(&psk_identity_hint, &raw)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
       return ssl_hs_error;
     }
@@ -1143,7 +1153,6 @@ static enum ssl_hs_wait_t do_read_server_key_exchange(SSL_HANDSHAKE *hs) {
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
       return ssl_hs_error;
     }
-    hs->new_session->group_id = group_id;
 
     // Ensure the group is consistent with preferences.
     if (!tls1_check_group_id(hs, group_id)) {
@@ -1152,10 +1161,9 @@ static enum ssl_hs_wait_t do_read_server_key_exchange(SSL_HANDSHAKE *hs) {
       return ssl_hs_error;
     }
 
-    // Initialize ECDH and save the peer public key for later.
-    hs->key_shares[0] = SSLKeyShare::Create(group_id);
-    if (!hs->key_shares[0] ||
-        !hs->peer_key.CopyFrom(point)) {
+    // Save the group and peer public key for later.
+    hs->new_session->group_id = group_id;
+    if (!hs->peer_key.CopyFrom(point)) {
       return ssl_hs_error;
     }
   } else if (!(alg_k & SSL_kPSK)) {
@@ -1448,7 +1456,6 @@ static enum ssl_hs_wait_t do_send_client_key_exchange(SSL_HANDSHAKE *hs) {
 
     hs->new_session->psk_identity.reset(OPENSSL_strdup(identity));
     if (hs->new_session->psk_identity == nullptr) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return ssl_hs_error;
     }
 
@@ -1492,15 +1499,16 @@ static enum ssl_hs_wait_t do_send_client_key_exchange(SSL_HANDSHAKE *hs) {
       return ssl_hs_error;
     }
   } else if (alg_k & SSL_kECDHE) {
-    // Generate a keypair and serialize the public half.
     CBB child;
     if (!CBB_add_u8_length_prefixed(&body, &child)) {
       return ssl_hs_error;
     }
 
-    // Compute the premaster.
+    // Generate the premaster secret.
+    bssl::UniquePtr<SSLKeyShare> key_share =
+        SSLKeyShare::Create(hs->new_session->group_id);
     uint8_t alert = SSL_AD_DECODE_ERROR;
-    if (!hs->key_shares[0]->Accept(&child, &pms, &alert, hs->peer_key)) {
+    if (!key_share || !key_share->Accept(&child, &pms, &alert, hs->peer_key)) {
       ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
       return ssl_hs_error;
     }
@@ -1508,9 +1516,7 @@ static enum ssl_hs_wait_t do_send_client_key_exchange(SSL_HANDSHAKE *hs) {
       return ssl_hs_error;
     }
 
-    // The key exchange state may now be discarded.
-    hs->key_shares[0].reset();
-    hs->key_shares[1].reset();
+    // The peer key can now be discarded.
     hs->peer_key.Reset();
   } else if (alg_k & SSL_kPSK) {
     // For plain PSK, other_secret is a block of 0s with the same length as
@@ -1536,7 +1542,6 @@ static enum ssl_hs_wait_t do_send_client_key_exchange(SSL_HANDSHAKE *hs) {
         !CBB_add_u16_length_prefixed(pms_cbb.get(), &child) ||
         !CBB_add_bytes(&child, psk, psk_len) ||
         !CBBFinishArray(pms_cbb.get(), &pms)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return ssl_hs_error;
     }
   }
@@ -1574,14 +1579,13 @@ static enum ssl_hs_wait_t do_send_client_certificate_verify(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  uint16_t signature_algorithm;
-  if (!tls1_choose_signature_algorithm(hs, &signature_algorithm)) {
+  if (!tls1_choose_signature_algorithm(hs, &hs->signature_algorithm)) {
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
     return ssl_hs_error;
   }
   if (ssl_protocol_version(ssl) >= TLS1_2_VERSION) {
     // Write out the digest type in TLS 1.2.
-    if (!CBB_add_u16(&body, signature_algorithm)) {
+    if (!CBB_add_u16(&body, hs->signature_algorithm)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       return ssl_hs_error;
     }
@@ -1597,7 +1601,7 @@ static enum ssl_hs_wait_t do_send_client_certificate_verify(SSL_HANDSHAKE *hs) {
 
   size_t sig_len = max_sig_len;
   switch (ssl_private_key_sign(hs, ptr, &sig_len, max_sig_len,
-                               signature_algorithm,
+                               hs->signature_algorithm,
                                hs->transcript.buffer())) {
     case ssl_private_key_success:
       break;

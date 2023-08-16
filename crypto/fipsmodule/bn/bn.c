@@ -75,7 +75,6 @@ BIGNUM *BN_new(void) {
   BIGNUM *bn = OPENSSL_malloc(sizeof(BIGNUM));
 
   if (bn == NULL) {
-    OPENSSL_PUT_ERROR(BN, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
 
@@ -363,7 +362,6 @@ int bn_wexpand(BIGNUM *bn, size_t words) {
 
   a = OPENSSL_malloc(sizeof(BN_ULONG) * words);
   if (a == NULL) {
-    OPENSSL_PUT_ERROR(BN, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 

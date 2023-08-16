@@ -103,6 +103,16 @@ static const EVP_MD *GetDigest(FileTest *t, const std::string &name) {
     return EVP_sha384();
   } else if (name == "SHA512") {
     return EVP_sha512();
+  } else if (name == "SHA512/256") {
+    return EVP_sha512_256();
+  } else if (name == "SHA3-224") {
+    return EVP_sha3_224();
+  } else if (name == "SHA3-256") {
+    return EVP_sha3_256();
+  } else if (name == "SHA3-384") {
+    return EVP_sha3_384();
+  } else if (name == "SHA3-512") {
+    return EVP_sha3_512();
   }
   ADD_FAILURE() << "Unknown digest: " << name;
   return nullptr;
@@ -361,10 +371,42 @@ static bool TestDerive(FileTest *t, KeyMap *key_map, EVP_PKEY *key) {
   return true;
 }
 
+static int EVP_marshal_private_key_version_one(CBB *cbb, const EVP_PKEY *key) {
+  return EVP_marshal_private_key(cbb, key);
+}
+
+static int EVP_marshal_private_key_version_two(CBB *cbb, const EVP_PKEY *key) {
+  return EVP_marshal_private_key_v2(cbb, key);
+}
+
+static void VerifyEVPSignOut(std::string key_name, std::vector<uint8_t> input,
+                            std::vector<uint8_t> actual, std::vector<uint8_t> output,
+                            EVP_MD_CTX *ctx, size_t len) {
+
+  // Unless not compatible, verify EVP_DigestSign() with EVP_DigestVerify instead of comparing outputs
+  // This allows us to test the correctness of non-deterministic outputs (e.g. for ECDSA).
+  if (key_name.find("Ed25519") != std::string::npos) {
+    EXPECT_EQ(Bytes(output), Bytes(actual));
+  } else {
+    EXPECT_TRUE(!EVP_DigestVerify(ctx, actual.data(), len, input.data(), input.size()));
+  }
+}
+
 static bool TestEVP(FileTest *t, KeyMap *key_map) {
   if (t->GetType() == "PrivateKey") {
-    return ImportKey(t, key_map, EVP_parse_private_key,
-                     EVP_marshal_private_key);
+    int (*marshal_func)(CBB * cbb, const EVP_PKEY *key) =
+        EVP_marshal_private_key;
+    std::string version;
+    if (t->HasAttribute("PKCS8VersionOut") && t->GetAttribute(&version, "PKCS8VersionOut")) {
+      if (version == "1") {
+        marshal_func = EVP_marshal_private_key_version_one;
+      } else if (version == "2") {
+        marshal_func = EVP_marshal_private_key_version_two;
+      } else {
+        return false;
+      }
+    }
+    return ImportKey(t, key_map, EVP_parse_private_key, marshal_func);
   }
 
   if (t->GetType() == "PublicKey") {
@@ -453,7 +495,7 @@ static bool TestEVP(FileTest *t, KeyMap *key_map) {
       return false;
     }
     actual.resize(len);
-    EXPECT_EQ(Bytes(output), Bytes(actual));
+    VerifyEVPSignOut(key_name, input, actual, output, ctx.get(), len);
 
     // Repeat the test with |copy|, to check |EVP_MD_CTX_copy_ex| duplicated
     // everything.
@@ -468,7 +510,7 @@ static bool TestEVP(FileTest *t, KeyMap *key_map) {
       return false;
     }
     actual.resize(len);
-    EXPECT_EQ(Bytes(output), Bytes(actual));
+    VerifyEVPSignOut(key_name, input, actual, output, ctx.get(), len);
     return true;
   }
 

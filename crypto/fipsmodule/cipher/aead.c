@@ -17,12 +17,13 @@
 #include <assert.h>
 #include <string.h>
 
+#include <openssl/bytestring.h>
 #include <openssl/cipher.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
-#include "internal.h"
 #include "../../internal.h"
+#include "internal.h"
 
 
 size_t EVP_AEAD_key_length(const EVP_AEAD *aead) { return aead->key_len; }
@@ -150,11 +151,13 @@ error:
   return 0;
 }
 
-int EVP_AEAD_CTX_seal_scatter(
-    const EVP_AEAD_CTX *ctx, uint8_t *out, uint8_t *out_tag, size_t
-    *out_tag_len, size_t max_out_tag_len, const uint8_t *nonce, size_t
-    nonce_len, const uint8_t *in, size_t in_len, const uint8_t *extra_in,
-    size_t extra_in_len, const uint8_t *ad, size_t ad_len) {
+int EVP_AEAD_CTX_seal_scatter(const EVP_AEAD_CTX *ctx, uint8_t *out,
+                              uint8_t *out_tag, size_t *out_tag_len,
+                              size_t max_out_tag_len, const uint8_t *nonce,
+                              size_t nonce_len, const uint8_t *in,
+                              size_t in_len, const uint8_t *extra_in,
+                              size_t extra_in_len, const uint8_t *ad,
+                              size_t ad_len) {
   // |in| and |out| may alias exactly, |out_tag| may not alias.
   if (!check_alias(in, in_len, out, in_len) ||
       buffers_alias(out, in_len, out_tag, max_out_tag_len) ||
@@ -194,7 +197,7 @@ int EVP_AEAD_CTX_open(const EVP_AEAD_CTX *ctx, uint8_t *out, size_t *out_len,
 
   if (ctx->aead->open) {
     if (!ctx->aead->open(ctx, out, out_len, max_out_len, nonce, nonce_len, in,
-                        in_len, ad, ad_len)) {
+                         in_len, ad, ad_len)) {
       goto error;
     }
     return 1;
@@ -286,19 +289,115 @@ int EVP_AEAD_CTX_tag_len(const EVP_AEAD_CTX *ctx, size_t *out_tag_len,
   return 1;
 }
 
-// EVP_AEAD_iv_from_ipv4_nanosecs computes a deterministic IV compliant with
-// NIST SP 800-38D, built from an IPv4 address and the number of nanoseconds
-// since boot, writing it to |out_iv|. It returns one on success or zero for
-// error.
-int EVP_AEAD_get_iv_from_ipv4_nanosecs(const uint32_t ipv4_address,
-    const uint64_t nanosecs, uint8_t out_iv[FIPS_AES_GCM_NONCE_LENGTH]) {
+int EVP_AEAD_get_iv_from_ipv4_nanosecs(
+    const uint32_t ipv4_address, const uint64_t nanosecs,
+    uint8_t out_iv[FIPS_AES_GCM_NONCE_LENGTH]) {
   if (out_iv == NULL) {
     return 0;
   }
 
   OPENSSL_memcpy(out_iv, &ipv4_address, sizeof(ipv4_address));
-  OPENSSL_memcpy(out_iv + sizeof(ipv4_address), &nanosecs,
-                 sizeof(nanosecs));
+  OPENSSL_memcpy(out_iv + sizeof(ipv4_address), &nanosecs, sizeof(nanosecs));
 
   return 1;
+}
+
+#define EVP_AEAD_CTX_SERDE_VERSION 1
+
+int EVP_AEAD_CTX_serialize_state(const EVP_AEAD_CTX *ctx, CBB *cbb) {
+  // EVP_AEAD_CTX must be initialized by EVP_AEAD_CTX_init first.
+  if (!ctx->aead) {
+    return 0;
+  }
+
+  size_t aead_id = EVP_AEAD_CTX_get_aead_id(ctx);
+
+  // We shouldn't serialize if we don't have a proper identifier
+  if (aead_id == AEAD_UNKNOWN_ID) {
+    OPENSSL_PUT_ERROR(CIPHER, ERR_R_MALLOC_FAILURE);
+    return 0;
+  }
+
+  CBB seq;
+
+  if (!CBB_add_asn1(cbb, &seq, CBS_ASN1_SEQUENCE) ||
+      !CBB_add_asn1_uint64(&seq, EVP_AEAD_CTX_SERDE_VERSION) ||
+      !CBB_add_asn1_uint64(&seq, aead_id)) {
+    OPENSSL_PUT_ERROR(CIPHER, ERR_R_MALLOC_FAILURE);
+    return 0;
+  }
+
+  CBB state;
+
+  // 50 here is just an initial capacity based on some estimated calculations
+  // of the AES GCM state structure encoding with headroom:
+  //
+  // -- 2 bytes for sequence tag+length
+  // AeadAesGCMTls13State ::= SEQUENCE {
+  //   -- 2 bytes for tag+length and 8 bytes if a full uint64
+  //   serializationVersion AeadAesGCMTls13StateSerializationVersion,
+  //   -- 2 bytes for tag+length and 8 bytes if a full uint64
+  //   minNextNonce   INTEGER,
+  //   -- 2 bytes for tag+length and 8 bytes if a full uint64
+  //   mask           INTEGER,
+  //   -- 2 bytes for tag+length and 1 byte
+  //   first          BOOLEAN
+  // }
+  if (!CBB_init(&state, 50)) {
+    OPENSSL_PUT_ERROR(CIPHER, ERR_R_MALLOC_FAILURE);
+    return 0;
+  }
+
+  if (ctx->aead->serialize_state) {
+    if (!ctx->aead->serialize_state(ctx, &state)) {
+      CBB_cleanup(&state);
+      OPENSSL_PUT_ERROR(CIPHER, ERR_R_MALLOC_FAILURE);
+      return 0;
+    }
+  }
+
+  if (!CBB_add_asn1_octet_string(&seq, CBB_data(&state), CBB_len(&state))) {
+    CBB_cleanup(&state);
+    OPENSSL_PUT_ERROR(CIPHER, ERR_R_MALLOC_FAILURE);
+    return 0;
+  }
+
+  CBB_cleanup(&state);
+  return CBB_flush(cbb);
+}
+
+int EVP_AEAD_CTX_deserialize_state(const EVP_AEAD_CTX *ctx, CBS *cbs) {
+  // EVP_AEAD_CTX must be initialized by EVP_AEAD_CTX_init first.
+  if (!ctx->aead) {
+    return 0;
+  }
+
+  CBS seq;
+  uint64_t version;
+  uint64_t aead_id;
+  CBS state;
+
+  if (!CBS_get_asn1(cbs, &seq, CBS_ASN1_SEQUENCE) ||
+      !CBS_get_asn1_uint64(&seq, &version) ||
+      version != EVP_AEAD_CTX_SERDE_VERSION ||
+      !CBS_get_asn1_uint64(&seq, &aead_id) || aead_id > UINT16_MAX ||
+      aead_id != EVP_AEAD_CTX_get_aead_id(ctx) ||
+      !CBS_get_asn1(&seq, &state, CBS_ASN1_OCTETSTRING)) {
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_SERIALIZATION_INVALID_EVP_AEAD_CTX);
+    return 0;
+  }
+
+  if (!ctx->aead->deserialize_state) {
+    return CBS_len(&state) == 0;
+  }
+
+  return ctx->aead->deserialize_state(ctx, &state);
+}
+
+uint16_t EVP_AEAD_CTX_get_aead_id(const EVP_AEAD_CTX *ctx) {
+  if (!ctx->aead) {
+    return AEAD_UNKNOWN_ID;
+  }
+
+  return ctx->aead->aead_id;
 }

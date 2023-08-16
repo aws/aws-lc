@@ -234,13 +234,6 @@ static void CompareDigest(const DigestTestVector *test,
 }
 
 static void TestDigest(const DigestTestVector *test) {
-    // Test SHA3 by enabling |unstable_sha3_enabled_flag|, then disable it
-    // |unstable_sha3_enabled_flag| is desabled by default
-    // SHA3 negative tests are implemented in /fipsmodule/sha/sha3_test.cc
-    if (strstr(test->md.name, "SHA3") != NULL) {
-      EVP_MD_unstable_sha3_enable(true);
-    }
-
     bssl::ScopedEVP_MD_CTX ctx;
     // Test the input provided.
     ASSERT_TRUE(EVP_DigestInit_ex(ctx.get(), test->md.func(), nullptr));
@@ -328,8 +321,6 @@ static void TestDigest(const DigestTestVector *test) {
     // One-shot functions return their supplied buffers.
     EXPECT_EQ(digest.get(), out);
     CompareDigest(test, digest.get(), EVP_MD_size(test->md.func()));
-
-    EVP_MD_unstable_sha3_enable(false);
   }
 }
 

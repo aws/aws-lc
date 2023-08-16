@@ -174,6 +174,22 @@ static int pkey_pss_init(EVP_PKEY_CTX *ctx) {
   return 1;
 }
 
+// |pkey_pss_init| was assigned to both the sign and verify operations
+// of the |EVP_PKEY_RSA_PSS| methods. This created an unwanted assembler
+// optimization for the gcc-8 FIPS static release build on Ubuntu x86_64.
+// The gcc-8 assembler will attempt to optimize function pointers used in
+// multiple places under a ".data.rel.ro.local" section, but "delocate.go"
+// does not have the ability to handle ".data" sections. Splitting
+// |pkey_pss_init| into two functions: |pkey_pss_init_sign| and
+// |pkey_pss_init_verify|, gets around this undesired behaviour.
+static int pkey_pss_init_sign(EVP_PKEY_CTX *ctx) {
+  return pkey_pss_init(ctx);
+}
+
+static int pkey_pss_init_verify(EVP_PKEY_CTX *ctx) {
+  return pkey_pss_init(ctx);
+}
+
 static int pkey_rsa_init(EVP_PKEY_CTX *ctx) {
   RSA_PKEY_CTX *rctx;
   rctx = OPENSSL_malloc(sizeof(RSA_PKEY_CTX));
@@ -697,10 +713,10 @@ DEFINE_METHOD_FUNCTION(EVP_PKEY_METHOD, EVP_PKEY_rsa_pss_pkey_meth) {
     out->copy = pkey_rsa_copy;
     out->cleanup = pkey_rsa_cleanup;
     out->keygen = pkey_rsa_keygen;
-    out->sign_init = pkey_pss_init; /* sign_init */
+    out->sign_init = pkey_pss_init_sign; /* sign_init */
     out->sign = pkey_rsa_sign;
     out->sign_message = NULL; /* sign_message */
-    out->verify_init = pkey_pss_init; /* verify_init */
+    out->verify_init = pkey_pss_init_verify; /* verify_init */
     out->verify = pkey_rsa_verify;
     out->verify_message = NULL; /* verify_message */
     out->verify_recover = NULL; /* verify_recover */

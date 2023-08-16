@@ -56,8 +56,8 @@
  *
  */
 
-#ifndef OPENSSL_HEADER_ASN1_ASN1_LOCL_H
-#define OPENSSL_HEADER_ASN1_ASN1_LOCL_H
+#ifndef OPENSSL_HEADER_ASN1_INTERNAL_H
+#define OPENSSL_HEADER_ASN1_INTERNAL_H
 
 #include <time.h>
 
@@ -71,7 +71,7 @@ extern "C" {
 
 // Wrapper functions for time functions.
 
-// OPENSSL_posix_to_tm converts a int64_t POSIX time value in |time| whuch must
+// OPENSSL_posix_to_tm converts a int64_t POSIX time value in |time| which must
 // be in the range of year 0000 to 9999 to a broken out time value in |tm|. It
 // returns one on success and zero on error.
 OPENSSL_EXPORT int OPENSSL_posix_to_tm(int64_t time, struct tm *out_tm);
@@ -218,6 +218,10 @@ void asn1_encoding_clear(ASN1_ENCODING *enc);
 // a pointer.
 const void *asn1_type_value_as_pointer(const ASN1_TYPE *a);
 
+// asn1_type_cleanup releases memory associated with |a|'s value, without
+// freeing |a| itself.
+void asn1_type_cleanup(ASN1_TYPE *a);
+
 // asn1_is_printable returns one if |value| is a valid Unicode codepoint for an
 // ASN.1 PrintableString, and zero otherwise.
 int asn1_is_printable(uint32_t value);
@@ -248,4 +252,4 @@ OPENSSL_EXPORT void asn1_get_string_table_for_testing(
 }  // extern C
 #endif
 
-#endif  // OPENSSL_HEADER_ASN1_ASN1_LOCL_H
+#endif  // OPENSSL_HEADER_ASN1_INTERNAL_H

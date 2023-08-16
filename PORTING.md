@@ -187,8 +187,8 @@ OpenSSL provides wrappers `OPENSSL_malloc` and `OPENSSL_free` over the standard
 implemented directly using `malloc` and `free`, so code which mixes them up
 usually works.
 
-In BoringSSL, these functions maintain additional book-keeping to zero memory
-on `OPENSSL_free`, so any mixups must be fixed.
+In BoringSSL, `OPENSSL_malloc` and `OPENSSL_free` maintain additional book-keeping to zero memory
+on `OPENSSL_free`. Allocated memory returned by this library *must* be freed using `OPENSSL_free`.
 
 ## Optional BoringSSL-specific simplifications
 

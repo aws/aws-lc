@@ -148,8 +148,20 @@ int aes_hw_xts_cipher(const uint8_t *in, uint8_t *out, size_t length,
   if (length < 16) return 0;
 
   if (enc) {
+#if defined(AES_XTS_X86_64_AVX512)
+    if (avx512_xts_available()) {
+      aes_hw_xts_encrypt_avx512(in, out, length, key1, key2, iv);
+      return 1;
+    }
+#endif
     aes_hw_xts_encrypt(in, out, length, key1, key2, iv);
   } else {
+#if defined(AES_XTS_X86_64_AVX512)
+    if (avx512_xts_available()) {
+      aes_hw_xts_decrypt_avx512(in, out, length, key1, key2, iv);
+      return 1;
+    }
+#endif
     aes_hw_xts_decrypt(in, out, length, key1, key2, iv);
   }
   return 1;

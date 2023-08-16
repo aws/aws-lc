@@ -143,12 +143,12 @@
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
+#include <openssl/kdf.h>
 #include <openssl/md5.h>
 #include <openssl/mem.h>
 #include <openssl/nid.h>
 #include <openssl/rand.h>
 
-#include "../crypto/fipsmodule/tls/internal.h"
 #include "../crypto/internal.h"
 #include "internal.h"
 
@@ -366,7 +366,6 @@ int SSL_export_keying_material(SSL *ssl, uint8_t *out, size_t out_len,
   }
   Array<uint8_t> seed;
   if (!seed.Init(seed_len)) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 

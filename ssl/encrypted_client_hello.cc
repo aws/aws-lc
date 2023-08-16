@@ -334,8 +334,7 @@ static bool is_hex_component(Span<const uint8_t> in) {
     return false;
   }
   for (uint8_t b : in.subspan(2)) {
-    if (!('0' <= b && b <= '9') && !('a' <= b && b <= 'f') &&
-        !('A' <= b && b <= 'F')) {
+    if (!OPENSSL_isxdigit(b)) {
       return false;
     }
   }
@@ -387,8 +386,7 @@ bool ssl_is_valid_ech_public_name(Span<const uint8_t> public_name) {
       return false;
     }
     for (uint8_t c : component) {
-      if (!('a' <= c && c <= 'z') && !('A' <= c && c <= 'Z') &&
-          !('0' <= c && c <= '9') && c != '-') {
+      if (!OPENSSL_isalnum(c) && c != '-') {
         return false;
       }
     }
@@ -573,7 +571,6 @@ bool ECHServerConfig::SetupContext(EVP_HPKE_CTX *ctx, uint16_t kdf_id,
                      sizeof(kInfoLabel) /* includes trailing NUL */) ||
       !CBB_add_bytes(info_cbb.get(), ech_config_.raw.data(),
                      ech_config_.raw.size())) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return false;
   }
 
@@ -604,8 +601,8 @@ bool ssl_is_valid_ech_config_list(Span<const uint8_t> ech_config_list) {
 
 static bool select_ech_cipher_suite(const EVP_HPKE_KDF **out_kdf,
                                     const EVP_HPKE_AEAD **out_aead,
-                                    Span<const uint8_t> cipher_suites) {
-  const bool has_aes_hardware = EVP_has_aes_hardware();
+                                    Span<const uint8_t> cipher_suites,
+                                    const bool has_aes_hardware) {
   const EVP_HPKE_AEAD *aead = nullptr;
   CBS cbs = cipher_suites;
   while (CBS_len(&cbs) != 0) {
@@ -663,14 +660,16 @@ bool ssl_select_ech_config(SSL_HANDSHAKE *hs, Span<uint8_t> out_enc,
       const EVP_HPKE_AEAD *aead;
       if (supported &&  //
           ech_config.kem_id == EVP_HPKE_DHKEM_X25519_HKDF_SHA256 &&
-          select_ech_cipher_suite(&kdf, &aead, ech_config.cipher_suites)) {
+          select_ech_cipher_suite(&kdf, &aead, ech_config.cipher_suites,
+                                  hs->ssl->config->aes_hw_override
+                                      ? hs->ssl->config->aes_hw_override_value
+                                      : EVP_has_aes_hardware())) {
         ScopedCBB info;
         static const uint8_t kInfoLabel[] = "tls ech";  // includes trailing NUL
         if (!CBB_init(info.get(), sizeof(kInfoLabel) + ech_config.raw.size()) ||
             !CBB_add_bytes(info.get(), kInfoLabel, sizeof(kInfoLabel)) ||
             !CBB_add_bytes(info.get(), ech_config.raw.data(),
                            ech_config.raw.size())) {
-          OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
           return false;
         }
 
@@ -718,9 +717,11 @@ static bool setup_ech_grease(SSL_HANDSHAKE *hs) {
   }
 
   const uint16_t kdf_id = EVP_HPKE_HKDF_SHA256;
-  const EVP_HPKE_AEAD *aead = EVP_has_aes_hardware()
-                                  ? EVP_hpke_aes_128_gcm()
-                                  : EVP_hpke_chacha20_poly1305();
+  const bool has_aes_hw = hs->ssl->config->aes_hw_override
+                              ? hs->ssl->config->aes_hw_override_value
+                              : EVP_has_aes_hardware();
+  const EVP_HPKE_AEAD *aead =
+      has_aes_hw ? EVP_hpke_aes_128_gcm() : EVP_hpke_chacha20_poly1305();
   static_assert(ssl_grease_ech_config_id < sizeof(hs->grease_seed),
                 "hs->grease_seed is too small");
   uint8_t config_id = hs->grease_seed[ssl_grease_ech_config_id];
@@ -1038,7 +1039,6 @@ int SSL_ECH_KEYS_add(SSL_ECH_KEYS *configs, int is_retry_config,
     return 0;
   }
   if (!configs->configs.Push(std::move(parsed_config))) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
   }
   return 1;
@@ -1061,14 +1061,12 @@ int SSL_ECH_KEYS_marshal_retry_configs(const SSL_ECH_KEYS *keys, uint8_t **out,
   CBB child;
   if (!CBB_init(cbb.get(), 128) ||
       !CBB_add_u16_length_prefixed(cbb.get(), &child)) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return false;
   }
   for (const auto &config : keys->configs) {
     if (config->is_retry_config() &&
         !CBB_add_bytes(&child, config->ech_config().raw.data(),
                        config->ech_config().raw.size())) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return false;
     }
   }

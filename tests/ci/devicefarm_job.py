@@ -20,7 +20,7 @@ config = {
     "poolArn": DEVICEFARM_DEVICE_POOL,
 }
 
-client = boto3.client('devicefarm')
+client = boto3.client('devicefarm', region_name=AWS_REGION)
 
 unique = config['namePrefix']
 aws_region = config['awsRegion']

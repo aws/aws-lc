@@ -72,9 +72,6 @@ extern "C" {
 
 // Internal structures.
 
-typedef struct X509_POLICY_CACHE_st X509_POLICY_CACHE;
-typedef struct X509_POLICY_TREE_st X509_POLICY_TREE;
-
 typedef struct X509_val_st {
   ASN1_TIME *notBefore;
   ASN1_TIME *notAfter;
@@ -150,14 +147,12 @@ struct x509_st {
   CRYPTO_EX_DATA ex_data;
   // These contain copies of various extension values
   long ex_pathlen;
-  long ex_pcpathlen;
   uint32_t ex_flags;
   uint32_t ex_kusage;
   uint32_t ex_xkusage;
   uint32_t ex_nscert;
   ASN1_OCTET_STRING *skid;
   AUTHORITY_KEYID *akid;
-  X509_POLICY_CACHE *policy_cache;
   STACK_OF(DIST_POINT) *crldp;
   STACK_OF(GENERAL_NAME) *altname;
   NAME_CONSTRAINTS *nc;
@@ -233,7 +228,7 @@ struct X509_crl_st {
 
 struct X509_VERIFY_PARAM_st {
   char *name;
-  time_t check_time;                // Time to use
+  int64_t check_time;               // POSIX time to use
   unsigned long inh_flags;          // Inheritance flags
   unsigned long flags;              // Various verify flags
   int purpose;                      // purpose to check untrusted certificates
@@ -350,9 +345,6 @@ struct x509_store_ctx_st {
   int valid;               // if 0, rebuild chain
   int last_untrusted;      // index of last untrusted cert
   STACK_OF(X509) *chain;   // chain of X509s - built up and trusted
-  X509_POLICY_TREE *tree;  // Valid policy tree
-
-  int explicit_policy;  // Require explicit policy value
 
   // When something goes wrong, this is why
   int error_depth;
@@ -369,10 +361,15 @@ struct x509_store_ctx_st {
   CRYPTO_EX_DATA ex_data;
 } /* X509_STORE_CTX */;
 
-ASN1_TYPE *ASN1_generate_v3(const char *str, X509V3_CTX *cnf);
+ASN1_TYPE *ASN1_generate_v3(const char *str, const X509V3_CTX *cnf);
 
 int X509_CERT_AUX_print(BIO *bp, X509_CERT_AUX *x, int indent);
 
+// X509_PUBKEY_get0 decodes the public key in |key| and returns an |EVP_PKEY|
+// on success, or NULL on error. It is similar to |X509_PUBKEY_get|, but it
+// directly returns the reference to |pkey| of |key|. This means that the
+// caller must not free the result after use.
+EVP_PKEY *X509_PUBKEY_get0(X509_PUBKEY *key);
 
 // RSA-PSS functions.
 
@@ -408,6 +405,19 @@ int x509_digest_sign_algorithm(EVP_MD_CTX *ctx, X509_ALGOR *algor);
 // zero on error.
 int x509_digest_verify_init(EVP_MD_CTX *ctx, const X509_ALGOR *sigalg,
                             EVP_PKEY *pkey);
+
+
+// Path-building functions.
+
+// X509_policy_check checks certificate policies in |certs|. |user_policies| is
+// the user-initial-policy-set. |flags| is a set of |X509_V_FLAG_*| values to
+// apply. It returns |X509_V_OK| on success and |X509_V_ERR_*| on error. It
+// additionally sets |*out_current_cert| to the certificate where the error
+// occurred. If the function succeeded, or the error applies to the entire
+// chain, it sets |*out_current_cert| to NULL.
+int X509_policy_check(const STACK_OF(X509) *certs,
+                      const STACK_OF(ASN1_OBJECT) *user_policies,
+                      unsigned long flags, X509 **out_current_cert);
 
 
 #if defined(__cplusplus)

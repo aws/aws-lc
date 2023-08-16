@@ -10,6 +10,7 @@
 #include <openssl/bn.h>
 #include <openssl/curve25519.h>
 #include <openssl/crypto.h>
+#include <openssl/dh.h>
 #include <openssl/digest.h>
 #include <openssl/err.h>
 #include <openssl/ec.h>
@@ -29,6 +30,7 @@
 #if defined(INTERNAL_TOOL)
 #include <../crypto/ec_extra/internal.h>
 #include <../crypto/trust_token/internal.h>
+#include "../third_party/jitterentropy/jitterentropy.h"
 #endif
 
 #define BM_NAMESPACE bssl

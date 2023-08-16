@@ -282,7 +282,7 @@ typedef uint32_t crypto_word_t;
 // always has the same output for a given input. This allows it to eliminate
 // dead code, move computations across loops, and vectorize.
 static inline crypto_word_t value_barrier_w(crypto_word_t a) {
-#if !defined(OPENSSL_NO_ASM) && (defined(__GNUC__) || defined(__clang__))
+#if defined(__GNUC__) || defined(__clang__)
   __asm__("" : "+r"(a) : /* no inputs */);
 #endif
   return a;
@@ -290,7 +290,7 @@ static inline crypto_word_t value_barrier_w(crypto_word_t a) {
 
 // value_barrier_u32 behaves like |value_barrier_w| but takes a |uint32_t|.
 static inline uint32_t value_barrier_u32(uint32_t a) {
-#if !defined(OPENSSL_NO_ASM) && (defined(__GNUC__) || defined(__clang__))
+#if defined(__GNUC__) || defined(__clang__)
   __asm__("" : "+r"(a) : /* no inputs */);
 #endif
   return a;
@@ -298,7 +298,7 @@ static inline uint32_t value_barrier_u32(uint32_t a) {
 
 // value_barrier_u64 behaves like |value_barrier_w| but takes a |uint64_t|.
 static inline uint64_t value_barrier_u64(uint64_t a) {
-#if !defined(OPENSSL_NO_ASM) && (defined(__GNUC__) || defined(__clang__))
+#if defined(__GNUC__) || defined(__clang__)
   __asm__("" : "+r"(a) : /* no inputs */);
 #endif
   return a;
@@ -1013,6 +1013,7 @@ OPENSSL_INLINE int boringssl_fips_break_test(const char *test) {
 
 // BORINGSSL_function_hit is an array of flags. The following functions will
 // set these flags if BORINGSSL_DISPATCH_TEST is defined.
+// On x86 and x86_64:
 //   0: aes_hw_ctr32_encrypt_blocks
 //   1: aes_hw_encrypt
 //   2: aesni_gcm_encrypt
@@ -1020,13 +1021,31 @@ OPENSSL_INLINE int boringssl_fips_break_test(const char *test) {
 //   4: vpaes_encrypt
 //   5: vpaes_set_encrypt_key
 //   6: sha256_block_data_order_shaext
-extern uint8_t BORINGSSL_function_hit[7];
+//   7: aes_gcm_encrypt_avx512
+// On AARCH64:
+//   0: aes_hw_ctr32_encrypt_blocks
+//   1: aes_hw_encrypt
+//   2: aes_gcm_enc_kernel
+//   3: aes_hw_set_encrypt_key
+//   4: vpaes_encrypt
+//   5: vpaes_set_encrypt_key
+//   6: sha256_block_armv8
+//   7: aesv8_gcm_8x_enc_128
+//   8: sha512_block_armv8
+extern uint8_t BORINGSSL_function_hit[9];
 #endif  // BORINGSSL_DISPATCH_TEST
 
 #if !defined(AWSLC_FIPS) && !defined(BORINGSSL_SHARED_LIBRARY)
 // This function is defined in |bcm.c|, see the comment therein for explanation.
 void dummy_func_for_constructor(void);
 #endif
+// OPENSSL_vasprintf_internal is just like |vasprintf(3)|. If |system_malloc| is
+// 0, memory will be allocated with |OPENSSL_malloc| and must be freed with
+// |OPENSSL_free|. Otherwise the system |malloc| function is used and the memory
+// must be freed with the system |free| function.
+OPENSSL_EXPORT int OPENSSL_vasprintf_internal(char **str, const char *format,
+                                              va_list args, int system_malloc)
+    OPENSSL_PRINTF_FORMAT_FUNC(2, 0);
 
 #if defined(__cplusplus)
 }  // extern C

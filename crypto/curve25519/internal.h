@@ -23,15 +23,6 @@ extern "C" {
 
 #include "../internal.h"
 
-
-#if defined(OPENSSL_ARM) && !defined(OPENSSL_NO_ASM) && !defined(OPENSSL_APPLE)
-#define BORINGSSL_X25519_NEON
-
-// x25519_NEON is defined in asm/x25519-arm.S.
-void x25519_NEON(uint8_t out[32], const uint8_t scalar[32],
-                 const uint8_t point[32]);
-#endif
-
 #if defined(BORINGSSL_HAS_UINT128)
 #define BORINGSSL_CURVE25519_64BIT
 #endif
@@ -118,6 +109,22 @@ void x25519_ge_scalarmult_base(ge_p3 *h, const uint8_t a[32]);
 void x25519_ge_scalarmult(ge_p2 *r, const uint8_t *scalar, const ge_p3 *A);
 void x25519_sc_reduce(uint8_t s[64]);
 
+void x25519_scalar_mult_generic_nohw(uint8_t out[32],
+                                      const uint8_t scalar[32],
+                                      const uint8_t point[32]);
+void x25519_public_from_private_nohw(uint8_t out_public_value[32],
+                                      const uint8_t private_key[32]);
+
+// Port to internal linkage in curve25519_nohw.c when adding implementation
+// from s2n-bignum ed25519
+void ge_p3_tobytes(uint8_t s[32], const ge_p3 *h);
+void sc_muladd(uint8_t *s, const uint8_t *a, const uint8_t *b,
+                      const uint8_t *c);
+void fe_neg(fe_loose *h, const fe *f);
+void fe_carry(fe *h, const fe_loose* f);
+void ge_double_scalarmult_vartime(ge_p2 *r, const uint8_t *a,
+                                         const ge_p3 *A, const uint8_t *b);
+
 enum spake2_state_t {
   spake2_state_init = 0,
   spake2_state_msg_generated,
@@ -137,7 +144,6 @@ struct spake2_ctx_st {
   enum spake2_state_t state;
   char disable_password_scalar_hack;
 };
-
 
 #if defined(__cplusplus)
 }  // extern C

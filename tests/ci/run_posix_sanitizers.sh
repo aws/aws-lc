@@ -31,7 +31,7 @@ build_and_test -DUBSAN=1 "${cflags[@]}"
 unset UBSAN_OPTIONS
 
 if [ $(uname -p) == "aarch64" ]; then
-  # ARM MSAN runs get stuck on PoolTest.Threads for over an hour https://github.com/awslabs/aws-lc/issues/13
+  # ARM MSAN runs get stuck on PoolTest.Threads for over an hour https://github.com/aws/aws-lc/issues/13
   echo "Building AWS-LC in ${build_type} mode with memory sanitizer."
   run_build -DMSAN=1 -DUSE_CUSTOM_LIBCXX=1 "${cflags[@]}"
 else
@@ -40,7 +40,7 @@ else
 fi
 
 if [ $(uname -p) == "x86_64" ]; then
-  # x86 TSAN runs get stuck on PoolTest.Threads for over an hour https://github.com/awslabs/aws-lc/issues/13
+  # x86 TSAN runs get stuck on PoolTest.Threads for over an hour https://github.com/aws/aws-lc/issues/13
   echo "Building AWS-LC in ${build_type} mode with thread sanitizer."
   run_build -DTSAN=1 -DUSE_CUSTOM_LIBCXX=1 "${cflags[@]}"
 else

@@ -1,18 +1,19 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 
-from aws_cdk import core, aws_ec2 as ec2, aws_s3 as s3, aws_iam as iam, aws_ssm as ssm
+from aws_cdk import Stack, Tags, aws_ec2 as ec2, aws_s3 as s3, aws_iam as iam, aws_ssm as ssm
+from constructs import Construct
 from util.iam_policies import ecr_power_user_policy_in_json, s3_read_write_policy_in_json
 from util.metadata import AWS_ACCOUNT, AWS_REGION, WINDOWS_X86_ECR_REPO, S3_BUCKET_NAME, GITHUB_REPO_OWNER, WIN_EC2_TAG_KEY, \
     WIN_EC2_TAG_VALUE, SSM_DOCUMENT_NAME, GITHUB_SOURCE_VERSION
 from util.yml_loader import YmlLoader
 
 
-class WindowsDockerImageBuildStack(core.Stack):
+class WindowsDockerImageBuildStack(Stack):
     """Define a temporary stack used to build Windows Docker images. After build, this stack will be destroyed."""
 
     def __init__(self,
-                 scope: core.Construct,
+                 scope: Construct,
                  id: str,
                  **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
@@ -59,4 +60,4 @@ class WindowsDockerImageBuildStack(core.Stack):
                                 vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PUBLIC),
                                 machine_image=machine_image)
 
-        core.Tags.of(instance).add(WIN_EC2_TAG_KEY, WIN_EC2_TAG_VALUE)
+        Tags.of(instance).add(WIN_EC2_TAG_KEY, WIN_EC2_TAG_VALUE)

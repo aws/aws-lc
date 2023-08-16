@@ -1,0 +1,65 @@
+name: aws-lc-rs sanity tests
+on:
+  push:
+    branches: [ '*' ]
+  pull_request:
+    branches: [ '*' ]
+env:
+  GOPROXY: https://proxy.golang.org,direct
+jobs:
+  standard:
+    runs-on: ubuntu-latest
+    steps:
+
+      - uses: actions/checkout@v3
+        with:
+          repository: awslabs/aws-lc-rs
+          path: ./aws-lc-rs
+          submodules: false
+      - uses: actions-rs/toolchain@v1
+        with:
+          # Our aws-lc-sys generation scripts require nightly.
+          toolchain: nightly
+          override: true
+      - uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: rust-script
+      - name: Install OS Dependencies
+        run: |
+          sudo apt-get -y --no-install-recommends install cmake gcc clang ninja-build golang
+      - name: Remove aws-lc submodule from crate directory
+        working-directory: ./aws-lc-rs/aws-lc-sys
+        run: |
+          rm -rf aws-lc
+      - uses: actions/checkout@v3
+        with:
+          path: ./aws-lc-rs/aws-lc-sys/aws-lc
+      - name: Regenerate aws-lc-sys crate
+        working-directory: ./aws-lc-rs/aws-lc-sys
+        run: |
+          rm -rf symbols/*
+          rm -rf generated-include/*
+          ../scripts/generate/_collect_symbols_build.sh -c aws-lc-sys
+          ../scripts/generate/_generate_prefix_headers.sh -c aws-lc-sys
+          ../scripts/generate/_generate_bindings.sh -c aws-lc-sys
+      - name: aws-lc-sys build
+        working-directory: ./aws-lc-rs/aws-lc-sys
+        run: |
+          cargo build
+      - name: aws-lc-sys test
+        working-directory: ./aws-lc-rs/aws-lc-sys
+        run: |
+          cargo test
+      - name: aws-lc-sys packaging
+        working-directory: ./aws-lc-rs/aws-lc-sys
+        run: |
+          cargo package --allow-dirty
+      - name: aws-lc-rs build
+        working-directory: ./aws-lc-rs/aws-lc-rs
+        run: |
+          cargo build
+      - name: aws-lc-rs test
+        working-directory: ./aws-lc-rs/aws-lc-rs
+        run: |
+          cargo test

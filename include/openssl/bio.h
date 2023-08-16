@@ -87,7 +87,6 @@ OPENSSL_EXPORT BIO *BIO_new(const BIO_METHOD *method);
 // drops to zero, it (optionally) calls the BIO's callback with |BIO_CB_FREE|,
 // calls the destroy callback, if present, on the method and frees |bio| itself.
 // It then repeats that for the next BIO in the chain, if any.
-
 //
 // It returns one on success or zero otherwise.
 OPENSSL_EXPORT int BIO_free(BIO *bio);
@@ -111,14 +110,14 @@ OPENSSL_EXPORT int BIO_up_ref(BIO *bio);
 // of bytes read, zero on EOF, or a negative number on error.
 OPENSSL_EXPORT int BIO_read(BIO *bio, void *data, int len);
 
-// BIO_gets "reads a line" from |bio| and puts at most |size| bytes into |buf|.
-// It returns the number of bytes read or a negative number on error. The
-// phrase "reads a line" is in quotes in the previous sentence because the
-// exact operation depends on the BIO's method. For example, a digest BIO will
-// return the digest in response to a |BIO_gets| call.
+// BIO_gets reads a line from |bio| and writes at most |size| bytes into |buf|.
+// It returns the number of bytes read or a negative number on error. This
+// function's output always includes a trailing NUL byte, so it will read at
+// most |size - 1| bytes.
 //
-// TODO(fork): audit the set of BIOs that we end up needing. If all actually
-// return a line for this call, remove the warning above.
+// If the function read a complete line, the output will include the newline
+// character, '\n'. If no newline was found before |size - 1| bytes or EOF, it
+// outputs the bytes which were available.
 OPENSSL_EXPORT int BIO_gets(BIO *bio, char *buf, int size);
 
 // BIO_write call the |bio| |callback_ex| if set with |BIO_CB_WRITE|, writes
@@ -934,7 +933,6 @@ struct bio_st {
 #define BIO_C_GET_FILE_PTR 107
 #define BIO_C_SET_FILENAME 108
 #define BIO_C_SET_SSL 109
-#define BIO_C_GET_SSL 110
 #define BIO_C_SET_MD 111
 #define BIO_C_GET_MD 112
 #define BIO_C_GET_CIPHER_STATUS 113
@@ -948,9 +946,6 @@ struct bio_st {
 #define BIO_C_GET_PROXY_PARAM 121
 #define BIO_C_SET_BUFF_READ_DATA 122  // data to read first
 #define BIO_C_GET_ACCEPT 124
-#define BIO_C_SET_SSL_RENEGOTIATE_BYTES 125
-#define BIO_C_GET_SSL_NUM_RENEGOTIATES 126
-#define BIO_C_SET_SSL_RENEGOTIATE_TIMEOUT 127
 #define BIO_C_FILE_SEEK 128
 #define BIO_C_GET_CIPHER_CTX 129
 #define BIO_C_SET_BUF_MEM_EOF_RETURN 130  // return end of input value

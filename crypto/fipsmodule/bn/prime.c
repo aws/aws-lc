@@ -362,7 +362,6 @@ static int probable_prime_dh_safe(BIGNUM *rnd, int bits, const BIGNUM *add,
 BN_GENCB *BN_GENCB_new(void) {
   BN_GENCB *callback = OPENSSL_malloc(sizeof(BN_GENCB));
   if (callback == NULL) {
-    OPENSSL_PUT_ERROR(BN, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
   OPENSSL_memset(callback, 0, sizeof(BN_GENCB));
@@ -374,7 +373,15 @@ void BN_GENCB_free(BN_GENCB *callback) { OPENSSL_free(callback); }
 void BN_GENCB_set(BN_GENCB *callback,
                   int (*f)(int event, int n, struct bn_gencb_st *),
                   void *arg) {
-  callback->callback = f;
+  callback->type = BN_GENCB_NEW_STYLE;
+  callback->callback.new_style = f;
+  callback->arg = arg;
+}
+
+void BN_GENCB_set_old(BN_GENCB *callback,
+                      void (*f)(int, int, void *), void *arg) {
+  callback->type = BN_GENCB_OLD_STYLE;
+  callback->callback.old_style = f;
   callback->arg = arg;
 }
 
@@ -383,7 +390,14 @@ int BN_GENCB_call(BN_GENCB *callback, int event, int n) {
     return 1;
   }
 
-  return callback->callback(event, n, callback);
+  if (callback->type == BN_GENCB_NEW_STYLE) {
+    return callback->callback.new_style(event, n, callback);
+  } else if (callback->type == BN_GENCB_OLD_STYLE) {
+    callback->callback.old_style(event, n, callback);
+    return 1;
+  } else {
+    return 0;
+  }
 }
 
 void *BN_GENCB_get_arg(const BN_GENCB *callback) { return callback->arg; }

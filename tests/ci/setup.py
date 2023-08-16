@@ -16,23 +16,22 @@ setuptools.setup(
     author="AWS-LC",
 
     package_dir={"": "cdk"},
-    packages=setuptools.find_packages(where="cdk"),
+    packages=setuptools.find_namespace_packages(where="cdk"),
 
     install_requires=[
         # CDK dependencies.
-        "aws-cdk.core==1.97.0",
-        "aws-cdk.aws-codebuild==1.97.0",
-        "aws-cdk.aws-ecr==1.97.0",
-        "aws-cdk.aws-iam==1.97.0",
+        "aws-cdk-lib==2.74.0",
+        "constructs==10.1.314",
         # PyYAML is a YAML parser and emitter for Python. Used to read build_spec.yaml.
         "pyyaml==5.3.1",
         # A formatter for Python code.
         "yapf==0.30.0",
         # Introduced by benchmark framework.
-        "boto3==1.18.11",
+        "boto3==1.26.126",
         # Introduced by Android Device Farm CI.
         "requests",
-        "arnparse==0.0.2"
+        "arnparse==0.0.2",
+        "urllib3==1.25.4"
     ],
 
     python_requires=">=3.6",

@@ -591,6 +591,10 @@ static enum ssl_hs_wait_t do_read_encrypted_extensions(SSL_HANDSHAKE *hs) {
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
       return ssl_hs_error;
     }
+    if (hs->received_custom_extension) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_EXTENSION_ON_EARLY_DATA);
+      return ssl_hs_error;
+    }
   }
 
   // Store the negotiated ALPN in the session.
@@ -667,7 +671,6 @@ static enum ssl_hs_wait_t do_read_certificate_request(SSL_HANDSHAKE *hs) {
   } else {
     hs->ca_names.reset(sk_CRYPTO_BUFFER_new_null());
     if (!hs->ca_names) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
       return ssl_hs_error;
     }
@@ -867,6 +870,11 @@ static enum ssl_hs_wait_t do_send_client_certificate_verify(SSL_HANDSHAKE *hs) {
   if (!ssl_has_certificate(hs)) {
     hs->tls13_state = state_complete_second_flight;
     return ssl_hs_ok;
+  }
+
+  if (!tls1_choose_signature_algorithm(hs, &hs->signature_algorithm)) {
+    ssl_send_alert(hs->ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
+    return ssl_hs_error;
   }
 
   switch (tls13_add_certificate_verify(hs)) {

@@ -217,6 +217,10 @@ extern "C" {
 #define Hw(t) ((BN_ULONG)((t) >> BN_BITS2))
 #endif
 
+#define BN_GENCB_UNSET 0
+#define BN_GENCB_NEW_STYLE 1
+#define BN_GENCB_OLD_STYLE 2
+
 // bn_minimal_width returns the minimal value of |bn->top| which fits the
 // value of |bn|.
 int bn_minimal_width(const BIGNUM *bn);
@@ -651,6 +655,15 @@ int bn_mod_inverse_prime(BIGNUM *out, const BIGNUM *a, const BIGNUM *p,
 // protecting the exponent.
 int bn_mod_inverse_secret_prime(BIGNUM *out, const BIGNUM *a, const BIGNUM *p,
                                 BN_CTX *ctx, const BN_MONT_CTX *mont_p);
+
+// BN_MONT_CTX_set_locked takes |lock| and checks whether |*pmont| is NULL. If
+// so, it creates a new |BN_MONT_CTX| and sets the modulus for it to |mod|. It
+// then stores it as |*pmont|. It returns one on success and zero on error. Note
+// this function assumes |mod| is public.
+//
+// If |*pmont| is already non-NULL then it does nothing and returns one.
+int BN_MONT_CTX_set_locked(BN_MONT_CTX **pmont, CRYPTO_MUTEX *lock,
+                           const BIGNUM *mod, BN_CTX *bn_ctx);
 
 
 // Low-level operations for small numbers.

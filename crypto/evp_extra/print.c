@@ -60,8 +60,14 @@
 #include <openssl/mem.h>
 #include <openssl/rsa.h>
 
+#include "internal.h"
 #include "../internal.h"
+#include "../fipsmodule/evp/internal.h"
 #include "../fipsmodule/rsa/internal.h"
+
+#ifdef ENABLE_DILITHIUM
+#include "../dilithium/sig_dilithium.h"
+#endif
 
 
 static int print_hex(BIO *bp, const uint8_t *data, size_t len, int off) {
@@ -117,7 +123,6 @@ static int bn_print(BIO *bp, const char *name, const BIGNUM *num, int off) {
   size_t len = BN_num_bytes(num);
   uint8_t *buf = OPENSSL_malloc(len + 1);
   if (buf == NULL) {
-    OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 
@@ -182,11 +187,11 @@ static int do_rsa_print(BIO *out, const RSA *rsa, int off,
 }
 
 static int rsa_pub_print(BIO *bp, const EVP_PKEY *pkey, int indent) {
-  return do_rsa_print(bp, pkey->pkey.rsa, indent, 0);
+  return do_rsa_print(bp, EVP_PKEY_get0_RSA(pkey), indent, 0);
 }
 
 static int rsa_priv_print(BIO *bp, const EVP_PKEY *pkey, int indent) {
-  return do_rsa_print(bp, pkey->pkey.rsa, indent, 1);
+  return do_rsa_print(bp, EVP_PKEY_get0_RSA(pkey), indent, 1);
 }
 
 
@@ -226,15 +231,15 @@ static int do_dsa_print(BIO *bp, const DSA *x, int off, int ptype) {
 }
 
 static int dsa_param_print(BIO *bp, const EVP_PKEY *pkey, int indent) {
-  return do_dsa_print(bp, pkey->pkey.dsa, indent, 0);
+  return do_dsa_print(bp, EVP_PKEY_get0_DSA(pkey), indent, 0);
 }
 
 static int dsa_pub_print(BIO *bp, const EVP_PKEY *pkey, int indent) {
-  return do_dsa_print(bp, pkey->pkey.dsa, indent, 1);
+  return do_dsa_print(bp, EVP_PKEY_get0_DSA(pkey), indent, 1);
 }
 
 static int dsa_priv_print(BIO *bp, const EVP_PKEY *pkey, int indent) {
-  return do_dsa_print(bp, pkey->pkey.dsa, indent, 2);
+  return do_dsa_print(bp, EVP_PKEY_get0_DSA(pkey), indent, 2);
 }
 
 
@@ -294,18 +299,64 @@ static int do_EC_KEY_print(BIO *bp, const EC_KEY *x, int off, int ktype) {
 }
 
 static int eckey_param_print(BIO *bp, const EVP_PKEY *pkey, int indent) {
-  return do_EC_KEY_print(bp, pkey->pkey.ec, indent, 0);
+  return do_EC_KEY_print(bp, EVP_PKEY_get0_EC_KEY(pkey), indent, 0);
 }
 
 static int eckey_pub_print(BIO *bp, const EVP_PKEY *pkey, int indent) {
-  return do_EC_KEY_print(bp, pkey->pkey.ec, indent, 1);
+  return do_EC_KEY_print(bp, EVP_PKEY_get0_EC_KEY(pkey), indent, 1);
 }
 
 
 static int eckey_priv_print(BIO *bp, const EVP_PKEY *pkey, int indent) {
-  return do_EC_KEY_print(bp, pkey->pkey.ec, indent, 2);
+  return do_EC_KEY_print(bp, EVP_PKEY_get0_EC_KEY(pkey), indent, 2);
 }
 
+#ifdef ENABLE_DILITHIUM
+
+// Dilithium keys.
+
+static int do_dilithium3_print(BIO *bp, const EVP_PKEY *pkey, int off, int ptype) {
+  if (pkey == NULL) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
+  if (!BIO_indent(bp, off, 128)) {
+    return 0;
+  }
+
+  const DILITHIUM3_KEY *key = pkey->pkey.ptr;
+  int bit_len = 0;
+
+  if (ptype == 2) {
+    bit_len = DILITHIUM3_PRIVATE_KEY_BYTES;
+    if (BIO_printf(bp, "Private-Key: (%d bit)\n", bit_len) <= 0) {
+      return 0;
+    }
+    print_hex(bp, key->priv, bit_len, off);
+  } else {
+    bit_len = DILITHIUM3_PUBLIC_KEY_BYTES;
+    if (BIO_printf(bp, "Public-Key: (%d bit)\n", bit_len) <= 0) {
+      return 0;
+    }
+    int ret = print_hex(bp, key->pub, bit_len, off);
+    if (!ret) {
+      return 0;
+    }
+  }
+
+  return 1;
+}
+
+static int dilithium3_pub_print(BIO *bp, const EVP_PKEY *pkey, int indent) {
+  return do_dilithium3_print(bp, pkey, indent, 1);
+}
+
+static int dilithium3_priv_print(BIO *bp, const EVP_PKEY *pkey, int indent) {
+  return do_dilithium3_print(bp, pkey, indent, 2);
+}
+
+#endif
 
 typedef struct {
   int type;
@@ -333,6 +384,14 @@ static EVP_PKEY_PRINT_METHOD kPrintMethods[] = {
         eckey_priv_print,
         eckey_param_print,
     },
+#ifdef ENABLE_DILITHIUM
+    {
+        EVP_PKEY_DILITHIUM3,
+        dilithium3_pub_print,
+        dilithium3_priv_print,
+        NULL /* param_print */,
+    },
+#endif
 };
 
 static size_t kPrintMethodsLen = OPENSSL_ARRAY_SIZE(kPrintMethods);
@@ -355,7 +414,7 @@ static int print_unsupported(BIO *out, const EVP_PKEY *pkey, int indent,
 
 int EVP_PKEY_print_public(BIO *out, const EVP_PKEY *pkey, int indent,
                           ASN1_PCTX *pctx) {
-  EVP_PKEY_PRINT_METHOD *method = find_method(pkey->type);
+  EVP_PKEY_PRINT_METHOD *method = find_method(EVP_PKEY_id(pkey));
   if (method != NULL && method->pub_print != NULL) {
     return method->pub_print(out, pkey, indent);
   }
@@ -364,7 +423,7 @@ int EVP_PKEY_print_public(BIO *out, const EVP_PKEY *pkey, int indent,
 
 int EVP_PKEY_print_private(BIO *out, const EVP_PKEY *pkey, int indent,
                            ASN1_PCTX *pctx) {
-  EVP_PKEY_PRINT_METHOD *method = find_method(pkey->type);
+  EVP_PKEY_PRINT_METHOD *method = find_method(EVP_PKEY_id(pkey));
   if (method != NULL && method->priv_print != NULL) {
     return method->priv_print(out, pkey, indent);
   }
@@ -373,7 +432,7 @@ int EVP_PKEY_print_private(BIO *out, const EVP_PKEY *pkey, int indent,
 
 int EVP_PKEY_print_params(BIO *out, const EVP_PKEY *pkey, int indent,
                           ASN1_PCTX *pctx) {
-  EVP_PKEY_PRINT_METHOD *method = find_method(pkey->type);
+  EVP_PKEY_PRINT_METHOD *method = find_method(EVP_PKEY_id(pkey));
   if (method != NULL && method->param_print != NULL) {
     return method->param_print(out, pkey, indent);
   }

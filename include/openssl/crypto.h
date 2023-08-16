@@ -16,6 +16,7 @@
 #define OPENSSL_HEADER_CRYPTO_H
 
 #include <openssl/base.h>
+#include <openssl/err.h>
 #include <openssl/sha.h>
 
 // Upstream OpenSSL defines |OPENSSL_malloc|, etc., in crypto.h rather than
@@ -75,8 +76,7 @@ OPENSSL_EXPORT void CRYPTO_pre_sandbox_init(void);
 
 #if defined(OPENSSL_ARM) && defined(OPENSSL_LINUX) && \
     !defined(OPENSSL_STATIC_ARMCAP)
-// CRYPTO_has_broken_NEON returns one if the current CPU is known to have a
-// broken NEON unit. See https://crbug.com/341598.
+// CRYPTO_has_broken_NEON returns zero.
 OPENSSL_EXPORT int CRYPTO_has_broken_NEON(void);
 
 // CRYPTO_needs_hwcap2_workaround returns one if the ARMv8 AArch32 AT_HWCAP2
@@ -160,6 +160,9 @@ OPENSSL_EXPORT int ENGINE_register_all_complete(void);
 // OPENSSL_load_builtin_modules does nothing.
 OPENSSL_EXPORT void OPENSSL_load_builtin_modules(void);
 
+// AWS-LC does not support custom flags when initializing the library, these
+// values are included to simplify building other software that expects them.
+
 #define OPENSSL_INIT_NO_LOAD_CRYPTO_STRINGS 0
 #define OPENSSL_INIT_LOAD_CRYPTO_STRINGS 0
 #define OPENSSL_INIT_ADD_ALL_CIPHERS 0
@@ -168,6 +171,7 @@ OPENSSL_EXPORT void OPENSSL_load_builtin_modules(void);
 #define OPENSSL_INIT_NO_ADD_ALL_DIGESTS 0
 #define OPENSSL_INIT_LOAD_CONFIG 0
 #define OPENSSL_INIT_NO_LOAD_CONFIG 0
+#define OPENSSL_INIT_ENGINE_ALL_BUILTIN 0
 
 // OPENSSL_init_crypto calls |CRYPTO_library_init| and returns one.
 OPENSSL_EXPORT int OPENSSL_init_crypto(uint64_t opts,
@@ -197,6 +201,7 @@ OPENSSL_EXPORT uint32_t FIPS_version(void);
 // the current BoringSSL and zero otherwise.
 OPENSSL_EXPORT int FIPS_query_algorithm_status(const char *algorithm);
 #endif //BORINGSSL_FIPS_140_3
+
 
 #if defined(__cplusplus)
 }  // extern C

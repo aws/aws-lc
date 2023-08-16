@@ -53,10 +53,10 @@
 #include <assert.h>
 
 #include <openssl/digest.h>
+#include <openssl/hkdf.h>
 #include <openssl/hmac.h>
 #include <openssl/mem.h>
 
-#include "internal.h"
 #include "../../internal.h"
 
 
@@ -172,7 +172,7 @@ int CRYPTO_tls1_prf(const EVP_MD *digest,
 end:
   FIPS_service_indicator_unlock_state();
   if(ret) {
-    TLSKDF_verify_service_indicator(original_digest);
+    TLSKDF_verify_service_indicator(original_digest, label, label_len);
   }
   return ret;
 }

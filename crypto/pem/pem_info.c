@@ -1,4 +1,3 @@
-/* crypto/pem/pem_info.c */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -140,7 +139,6 @@ STACK_OF(X509_INFO) *PEM_X509_INFO_read_bio(BIO *bp, STACK_OF(X509_INFO) *sk,
   if (sk == NULL) {
     ret = sk_X509_INFO_new_null();
     if (ret == NULL) {
-      OPENSSL_PUT_ERROR(PEM, ERR_R_MALLOC_FAILURE);
       return NULL;
     }
   } else {

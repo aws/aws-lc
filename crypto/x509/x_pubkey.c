@@ -130,22 +130,18 @@ error:
 // not.
 static struct CRYPTO_STATIC_MUTEX g_pubkey_lock = CRYPTO_STATIC_MUTEX_INIT;
 
-EVP_PKEY *X509_PUBKEY_get(X509_PUBKEY *key) {
-  EVP_PKEY *ret = NULL;
-  uint8_t *spki = NULL;
-
-  if (key == NULL) {
-    goto error;
-  }
-
+// x509_pubkey_decode decodes |key| into |pkey|. It returns one on success and
+// zero on error.
+static int x509_pubkey_decode(EVP_PKEY **pkey, X509_PUBKEY *key) {
   CRYPTO_STATIC_MUTEX_lock_read(&g_pubkey_lock);
   if (key->pkey != NULL) {
     CRYPTO_STATIC_MUTEX_unlock_read(&g_pubkey_lock);
-    EVP_PKEY_up_ref(key->pkey);
-    return key->pkey;
+    *pkey = key->pkey;
+    return 1;
   }
   CRYPTO_STATIC_MUTEX_unlock_read(&g_pubkey_lock);
 
+  uint8_t *spki = NULL;
   // Re-encode the |X509_PUBKEY| to DER and parse it.
   int spki_len = i2d_X509_PUBKEY(key, &spki);
   if (spki_len < 0) {
@@ -153,8 +149,8 @@ EVP_PKEY *X509_PUBKEY_get(X509_PUBKEY *key) {
   }
   CBS cbs;
   CBS_init(&cbs, spki, (size_t)spki_len);
-  ret = EVP_parse_public_key(&cbs);
-  if (ret == NULL || CBS_len(&cbs) != 0) {
+  *pkey = EVP_parse_public_key(&cbs);
+  if (*pkey == NULL || CBS_len(&cbs) != 0) {
     OPENSSL_PUT_ERROR(X509, X509_R_PUBLIC_KEY_DECODE_ERROR);
     goto error;
   }
@@ -163,21 +159,41 @@ EVP_PKEY *X509_PUBKEY_get(X509_PUBKEY *key) {
   CRYPTO_STATIC_MUTEX_lock_write(&g_pubkey_lock);
   if (key->pkey) {
     CRYPTO_STATIC_MUTEX_unlock_write(&g_pubkey_lock);
-    EVP_PKEY_free(ret);
-    ret = key->pkey;
+    EVP_PKEY_free(*pkey);
+    *pkey = key->pkey;
   } else {
-    key->pkey = ret;
+    key->pkey = *pkey;
     CRYPTO_STATIC_MUTEX_unlock_write(&g_pubkey_lock);
   }
-
   OPENSSL_free(spki);
-  EVP_PKEY_up_ref(ret);
-  return ret;
-
+  return 1;
 error:
   OPENSSL_free(spki);
-  EVP_PKEY_free(ret);
-  return NULL;
+  return 0;
+}
+
+EVP_PKEY *X509_PUBKEY_get0(X509_PUBKEY *key) {
+  if (key == NULL) {
+    OPENSSL_PUT_ERROR(X509, ERR_R_PASSED_NULL_PARAMETER);
+    return NULL;
+  }
+
+  EVP_PKEY *ret = NULL;
+  if (!x509_pubkey_decode(&ret, key)) {
+    EVP_PKEY_free(ret);
+    return NULL;
+  };
+  return ret;
+}
+
+EVP_PKEY *X509_PUBKEY_get(X509_PUBKEY *key) {
+  EVP_PKEY *ret = X509_PUBKEY_get0(key);
+
+  if (ret != NULL && !EVP_PKEY_up_ref(ret)) {
+    OPENSSL_PUT_ERROR(X509, ERR_R_INTERNAL_ERROR);
+    ret = NULL;
+  }
+  return ret;
 }
 
 int X509_PUBKEY_set0_param(X509_PUBKEY *pub, ASN1_OBJECT *obj, int param_type,

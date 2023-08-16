@@ -7,7 +7,7 @@
  * are met:
  *
  * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer. 
+ *    notice, this list of conditions and the following disclaimer.
  *
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in
@@ -504,7 +504,6 @@ EC_KEY *o2i_ECPublicKey(EC_KEY **keyp, const uint8_t **inp, long len) {
   ret = *keyp;
   if (ret->pub_key == NULL &&
       (ret->pub_key = EC_POINT_new(ret->group)) == NULL) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
   if (!EC_POINT_oct2point(ret->group, ret->pub_key, *inp, len, NULL)) {
@@ -532,4 +531,47 @@ int i2o_ECPublicKey(const EC_KEY *key, uint8_t **outp) {
   int ret = CBB_finish_i2d(&cbb, outp);
   // Historically, this function used the wrong return value on error.
   return ret > 0 ? ret : 0;
+}
+
+static size_t EC_POINT_point2buf(const EC_GROUP *group, const EC_POINT *point,
+                                 point_conversion_form_t form,
+                                 uint8_t **pbuf, BN_CTX *ctx) {
+  size_t len;
+  uint8_t *buf;
+
+  len = EC_POINT_point2oct(group, point, form, NULL, 0, NULL);
+  if (len == 0) {
+    return 0;
+  }
+  buf = OPENSSL_malloc(len);
+  if (buf == NULL) {
+    OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
+    return 0;
+  }
+  len = EC_POINT_point2oct(group, point, form, buf, len, ctx);
+  if (len == 0) {
+    OPENSSL_free(buf);
+    return 0;
+  }
+  *pbuf = buf;
+  return len;
+}
+
+BIGNUM *EC_POINT_point2bn(const EC_GROUP *group, const EC_POINT *point,
+                          point_conversion_form_t form, BIGNUM *ret,
+                          BN_CTX *ctx) {
+  size_t buf_len = 0;
+  uint8_t *buf;
+
+  buf_len = EC_POINT_point2buf(group, point, form, &buf, ctx);
+
+  if (buf_len == 0) {
+    return NULL;
+  }
+
+  ret = BN_bin2bn(buf, buf_len, ret);
+
+  OPENSSL_free(buf);
+
+  return ret;
 }

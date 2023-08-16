@@ -22,6 +22,7 @@
 #include <openssl/asn1.h>
 #include <openssl/bio.h>
 #include <openssl/bytestring.h>
+#include <openssl/conf.h>
 #include <openssl/crypto.h>
 #include <openssl/curve25519.h>
 #include <openssl/digest.h>
@@ -33,6 +34,7 @@
 #include <openssl/x509v3.h>
 
 #include "internal.h"
+#include "../evp_extra/internal.h"
 #include "../internal.h"
 #include "../test/test_util.h"
 #include "../x509v3/internal.h"
@@ -553,6 +555,368 @@ BgNVHQ4BAQAEFgQUmx9e7e0EM4Xk97xiPFl1uQvIuzswBQYDK2VwA0EAryMB/t3J5v
 w1AH9efZBw==
 -----END CERTIFICATE-----
 )";
+
+#ifdef ENABLE_DILITHIUM
+
+static const char kDilithium3Cert[] = R"(
+-----BEGIN CERTIFICATE-----
+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
+-----END CERTIFICATE-----
+)";
+
+// kDilithium3CertNull is an invalid self-signed Dilithium3 with an explicit
+// NULL in the signature algorithm.
+static const char kDilithium3CertNull[] = R"(
+-----BEGIN CERTIFICATE-----
+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
+-----END CERTIFICATE-----
+)";
+
+// kDilithium3CertParam is an invalid self-signed Dilithium3 with an explicit
+// NULL in the AlgorithmIdentifier parameters.
+static const char kDilithium3CertParam[] = R"(
+-----BEGIN CERTIFICATE-----
+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
+-----END CERTIFICATE-----
+)";
+
+#endif
 
 // kSANTypesLeaf is a leaf certificate (signed by |kSANTypesRoot|) which
 // contains SANS for example.com, test@example.com, 127.0.0.1, and
@@ -1078,14 +1442,6 @@ TXHOSQQD8Dl4BK0wOet+TP6LBEjHlRFjAqK4bu9xpxV2
 -----END CERTIFICATE-----
 )";
 
-// CertFromPEM parses the given, NUL-terminated PEM block and returns an
-// |X509*|.
-static bssl::UniquePtr<X509> CertFromPEM(const char *pem) {
-  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(pem, strlen(pem)));
-  return bssl::UniquePtr<X509>(
-      PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
-}
-
 // CRLFromPEM parses the given, NUL-terminated PEM block and returns an
 // |X509_CRL*|.
 static bssl::UniquePtr<X509_CRL> CRLFromPEM(const char *pem) {
@@ -1145,14 +1501,13 @@ static bssl::UniquePtr<STACK_OF(X509_CRL)> CRLsToStack(
   return stack;
 }
 
-static const time_t kReferenceTime = 1474934400 /* Sep 27th, 2016 */;
+static const int64_t kReferenceTime = 1474934400 /* Sep 27th, 2016 */;
 
 static int Verify(
     X509 *leaf, const std::vector<X509 *> &roots,
     const std::vector<X509 *> &intermediates,
     const std::vector<X509_CRL *> &crls, unsigned long flags = 0,
-    std::function<void(X509_VERIFY_PARAM *)> configure_callback = nullptr,
-    int (*verify_callback)(int, X509_STORE_CTX *) = nullptr) {
+    std::function<void(X509_VERIFY_PARAM *)> configure_callback = nullptr) {
   bssl::UniquePtr<STACK_OF(X509)> roots_stack(CertsToStack(roots));
   bssl::UniquePtr<STACK_OF(X509)> intermediates_stack(
       CertsToStack(intermediates));
@@ -1180,7 +1535,7 @@ static int Verify(
   X509_STORE_CTX_set0_crls(ctx.get(), crls_stack.get());
 
   X509_VERIFY_PARAM *param = X509_STORE_CTX_get0_param(ctx.get());
-  X509_VERIFY_PARAM_set_time(param, kReferenceTime);
+  X509_VERIFY_PARAM_set_time_posix(param, kReferenceTime);
   if (configure_callback) {
     configure_callback(param);
   }
@@ -1375,21 +1730,20 @@ TEST(X509Test, ZeroLengthsWithX509PARAM) {
                                              test.incorrect_value_len));
                      }));
 
-    // Passing zero as the length, unlike OpenSSL, should trigger an error and
-    // should cause verification to fail.
-    ASSERT_EQ(X509_V_ERR_INVALID_CALL,
+    // AWS-LC supports passing zero as the length for host and email for
+    // backwards compatibility with OpenSSL.
+    ASSERT_EQ(X509_V_OK,
               Verify(leaf.get(), {root.get()}, {}, empty_crls, 0,
                      [&test](X509_VERIFY_PARAM *param) {
-                       ASSERT_FALSE(test.func(param, test.correct_value, 0));
+                       ASSERT_TRUE(test.func(param, test.correct_value, 0));
                      }));
 
-    // Passing an empty value should be an error when setting and should cause
-    // verification to fail.
-    ASSERT_EQ(X509_V_ERR_INVALID_CALL,
-              Verify(leaf.get(), {root.get()}, {}, empty_crls, 0,
-                     [&test](X509_VERIFY_PARAM *param) {
-                       ASSERT_FALSE(test.func(param, nullptr, 0));
-                     }));
+    // AWS-LC allows an empty value with zero as the length for backwards
+    // compatibility with OpenSSL.
+    ASSERT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()}, {}, empty_crls, 0,
+                                [&test](X509_VERIFY_PARAM *param) {
+                                  ASSERT_TRUE(test.func(param, nullptr, 0));
+                                }));
 
     // Passing a value with embedded NULs should also be an error and should
     // also cause verification to fail.
@@ -1399,6 +1753,16 @@ TEST(X509Test, ZeroLengthsWithX509PARAM) {
                        ASSERT_FALSE(test.func(param, "a", 2));
                      }));
   }
+
+  // |X509_VERIFY_PARAM_set1_host| has additional strange behavior.
+
+  // AWS-LC/OpenSSL allows an empty value with a non-zero length for backwards
+  // compatibility with OpenSSL. We do not recommend this behavior.
+  ASSERT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()}, {}, empty_crls, 0,
+                              [](X509_VERIFY_PARAM *param) {
+                                ASSERT_TRUE(X509_VERIFY_PARAM_set1_host(
+                                    param, nullptr, strlen(kHostname)));
+                              }));
 
   // IP addresses work slightly differently:
 
@@ -1438,6 +1802,7 @@ TEST(X509Test, ZeroLengthsWithX509PARAM) {
 
 TEST(X509Test, ZeroLengthsWithCheckFunctions) {
   bssl::UniquePtr<X509> leaf(CertFromPEM(kSANTypesLeaf));
+  ASSERT_TRUE(leaf);
 
   EXPECT_EQ(
       1, X509_check_host(leaf.get(), kHostname, strlen(kHostname), 0, nullptr));
@@ -1552,7 +1917,7 @@ TEST(X509Test, TestCRL) {
   EXPECT_EQ(X509_V_ERR_CRL_HAS_EXPIRED,
             Verify(leaf.get(), {root.get()}, {root.get()}, {basic_crl.get()},
                    X509_V_FLAG_CRL_CHECK, [](X509_VERIFY_PARAM *param) {
-                     X509_VERIFY_PARAM_set_time(
+                     X509_VERIFY_PARAM_set_time_posix(
                          param, kReferenceTime + 2 * 30 * 24 * 3600);
                    }));
 
@@ -1561,12 +1926,23 @@ TEST(X509Test, TestCRL) {
             Verify(leaf.get(), {root.get()}, {root.get()}, {basic_crl.get()},
                    X509_V_FLAG_CRL_CHECK | X509_V_FLAG_NO_CHECK_TIME,
                    [](X509_VERIFY_PARAM *param) {
-                     X509_VERIFY_PARAM_set_time(
+                     X509_VERIFY_PARAM_set_time_posix(
                          param, kReferenceTime + 2 * 30 * 24 * 3600);
                    }));
 
   // Parsing kBadExtensionCRL should fail.
   EXPECT_FALSE(CRLFromPEM(kBadExtensionCRL));
+
+  // Ensure X509_OBJECT_get0_X509_CRL only returns a CRL if the X509 object is valid
+  X509_OBJECT validCRL;
+  validCRL.type = X509_LU_CRL;
+  validCRL.data.crl = basic_crl.get();
+  ASSERT_EQ(basic_crl.get(), X509_OBJECT_get0_X509_CRL(&validCRL));
+
+  X509_OBJECT invalidCRL;
+  invalidCRL.type = X509_LU_X509;
+  invalidCRL.data.x509 = leaf.get();
+  ASSERT_EQ(nullptr, X509_OBJECT_get0_X509_CRL(&invalidCRL));
 }
 
 TEST(X509Test, ManyNamesAndConstraints) {
@@ -2069,7 +2445,12 @@ TEST(X509Test, SignCertificate) {
         ASSERT_TRUE(
             X509_set1_signature_value(cert.get(), sig.data(), sig.size()));
       } else {
-        ASSERT_TRUE(X509_sign(cert.get(), pkey.get(), EVP_sha384()));
+        int ret = X509_sign(cert.get(), pkey.get(), EVP_sha384());
+        ASSERT_GT(ret, 0);
+        // |X509_sign| returns the length of the signature on success.
+        const ASN1_BIT_STRING *sig;
+        X509_get0_signature(&sig, /*out_alg=*/nullptr, cert.get());
+        EXPECT_EQ(ret, ASN1_STRING_length(sig));
       }
 
       // Check the signature.
@@ -2117,7 +2498,7 @@ TEST(X509Test, SignCRL) {
         ASSERT_TRUE(X509_CRL_set_version(crl.get(), X509_CRL_VERSION_2));
         bssl::UniquePtr<ASN1_TIME> last_update(ASN1_TIME_new());
         ASSERT_TRUE(last_update);
-        ASSERT_TRUE(ASN1_TIME_set(last_update.get(), kReferenceTime));
+        ASSERT_TRUE(ASN1_TIME_set_posix(last_update.get(), kReferenceTime));
         ASSERT_TRUE(X509_CRL_set1_lastUpdate(crl.get(), last_update.get()));
         bssl::UniquePtr<X509_NAME> issuer(X509_NAME_new());
         ASSERT_TRUE(issuer);
@@ -2300,6 +2681,80 @@ TEST(X509Test, Ed25519Sign) {
       EVP_DigestSignInit(md_ctx.get(), nullptr, nullptr, nullptr, priv.get()));
   ASSERT_TRUE(SignatureRoundTrips(md_ctx.get(), pub.get()));
 }
+
+#ifdef ENABLE_DILITHIUM
+
+TEST(X509Test, Dilithium3SignVerifyCert) {
+  // This test generates a Dilithium3 keypair, generates and signs a
+  // certificate, then verifies the certificate's signature.
+  EVP_PKEY_CTX *pkey_ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_DILITHIUM3, nullptr);
+  ASSERT_NE(pkey_ctx, nullptr);
+  EVP_PKEY *pkey = EVP_PKEY_new();
+  ASSERT_NE(pkey, nullptr);
+  EXPECT_TRUE(EVP_PKEY_keygen_init(pkey_ctx));
+  EXPECT_TRUE(EVP_PKEY_keygen(pkey_ctx, &pkey));
+
+  bssl::UniquePtr<X509> leaf =
+      MakeTestCert("Intermediate", "Leaf", pkey, /*is_ca=*/false);
+  ASSERT_TRUE(leaf);
+
+  bssl::ScopedEVP_MD_CTX md_ctx;
+  EVP_DigestSignInit(md_ctx.get(), nullptr, nullptr, nullptr, pkey);
+  ASSERT_TRUE(X509_sign_ctx(leaf.get(), md_ctx.get()));
+
+  ASSERT_TRUE(X509_verify(leaf.get(), pkey));
+
+  EVP_PKEY_CTX_free(pkey_ctx);
+  EVP_PKEY_free(pkey);
+}
+
+TEST(X509Test, TestDilithium3) {
+  // This test decodes a Dilithium3 certificate from the PEM encoding,
+  // extracts the public key, and then verifies the certificate.
+  bssl::UniquePtr<X509> cert(CertFromPEM(kDilithium3Cert));
+  ASSERT_TRUE(cert);
+
+  bssl::UniquePtr<EVP_PKEY> pkey(X509_get_pubkey(cert.get()));
+  ASSERT_TRUE(pkey);
+
+  ASSERT_TRUE(X509_verify(cert.get(), pkey.get()));
+}
+
+TEST(X509Test, TestBadSigAlgDilithium3) {
+  // This test generates a Dilithium3 certificate from the PEM encoding
+  // kDilithium3CertNull that has an explicit NULL in the signature algorithm.
+  // After extracting the public key, verification should fail.
+  bssl::UniquePtr<X509> cert(CertFromPEM(kDilithium3CertNull));
+  ASSERT_TRUE(cert);
+
+  bssl::UniquePtr<EVP_PKEY> pkey(X509_get_pubkey(cert.get()));
+  ASSERT_TRUE(pkey);
+
+  ASSERT_FALSE(X509_verify(cert.get(), pkey.get()));
+  uint32_t err = ERR_get_error();
+  ASSERT_EQ(ERR_LIB_X509, ERR_GET_LIB(err));
+  ASSERT_EQ(X509_R_SIGNATURE_ALGORITHM_MISMATCH, ERR_GET_REASON(err));
+  ERR_clear_error();
+}
+
+TEST(X509Test, TestBadParamsDilithium3) {
+  // This test generates a Dilithium3 certificate from the PEM encoding
+  // kDilithium3CertParam that has an explicit NULL in the signature algorithm.
+  // After extracting the public key, verification should fail.
+  bssl::UniquePtr<X509> cert(CertFromPEM(kDilithium3CertParam));
+  ASSERT_TRUE(cert);
+
+  bssl::UniquePtr<EVP_PKEY> pkey(X509_get_pubkey(cert.get()));
+  ASSERT_TRUE(pkey);
+
+  ASSERT_FALSE(X509_verify(cert.get(), pkey.get()));
+  uint32_t err = ERR_get_error();
+  ASSERT_EQ(ERR_LIB_X509, ERR_GET_LIB(err));
+  ASSERT_EQ(X509_R_INVALID_PARAMETER, ERR_GET_REASON(err));
+  ERR_clear_error();
+}
+
+#endif
 
 static bool PEMToDER(bssl::UniquePtr<uint8_t> *out, size_t *out_len,
                      const char *pem) {
@@ -2489,7 +2944,9 @@ TEST(X509Test, TestPrintUTCTIME) {
   for (auto t : asn1_utctime_tests) {
     SCOPED_TRACE(t.val);
     bssl::UniquePtr<ASN1_UTCTIME> tm(ASN1_UTCTIME_new());
+    ASSERT_TRUE(tm);
     bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+    ASSERT_TRUE(bio);
 
     // Use this instead of ASN1_UTCTIME_set() because some callers get
     // type-confused and pass ASN1_GENERALIZEDTIME to ASN1_UTCTIME_print().
@@ -2547,6 +3004,7 @@ TEST(X509Test, PrettyPrintIntegers) {
 
 TEST(X509Test, X509NameSet) {
   bssl::UniquePtr<X509_NAME> name(X509_NAME_new());
+  ASSERT_TRUE(name);
   EXPECT_TRUE(X509_NAME_add_entry_by_txt(
       name.get(), "C", MBSTRING_ASC, reinterpret_cast<const uint8_t *>("US"),
       -1, -1, 0));
@@ -2567,6 +3025,67 @@ TEST(X509Test, X509NameSet) {
   // Check that the correct entries get incremented when inserting new entry.
   EXPECT_EQ(X509_NAME_ENTRY_set(X509_NAME_get_entry(name.get(), 1)), 1);
   EXPECT_EQ(X509_NAME_ENTRY_set(X509_NAME_get_entry(name.get(), 2)), 2);
+}
+
+// Tests that |X509_NAME_hash| and |X509_NAME_hash_old|'s values never change.
+// These functions figure into |X509_LOOKUP_hash_dir|'s on-disk format, so they
+// must remain stable. In particular, if we ever remove name canonicalization,
+// we'll need to preserve it for |X509_NAME_hash|.
+TEST(X509Test, NameHash) {
+  struct {
+    std::vector<uint8_t> name_der;
+    unsigned long hash;
+    unsigned long hash_old;
+  } kTests[] = {
+      // SEQUENCE {
+      //   SET {
+      //     SEQUENCE {
+      //       # commonName
+      //       OBJECT_IDENTIFIER { 2.5.4.3 }
+      //       UTF8String { "Test Name" }
+      //     }
+      //   }
+      // }
+      {{0x30, 0x14, 0x31, 0x12, 0x30, 0x10, 0x06, 0x03, 0x55, 0x04, 0x03,
+        0x0c, 0x09, 0x54, 0x65, 0x73, 0x74, 0x20, 0x4e, 0x61, 0x6d, 0x65},
+       0xc90fba01,
+       0x8c0d4fea},
+
+      // This name canonicalizes to the same value, with OpenSSL's algorithm, as
+      // the above input, so |hash| matches. |hash_old| doesn't use
+      // canonicalization and does not match.
+      //
+      // SEQUENCE {
+      //   SET {
+      //     SEQUENCE {
+      //       # commonName
+      //       OBJECT_IDENTIFIER { 2.5.4.3 }
+      //       BMPString {
+      //         u"\x09\n\x0b\x0c\x0d tEST\x09\n\x0b\x0c\x0d "
+      //         u"\x09\n\x0b\x0c\x0d nAME\x09\n\x0b\x0c\x0d "
+      //       }
+      //     }
+      //   }
+      // }
+      {{0x30, 0x4b, 0x31, 0x49, 0x30, 0x47, 0x06, 0x03, 0x55, 0x04, 0x03,
+        0x1e, 0x40, 0x00, 0x09, 0x00, 0x0a, 0x00, 0x0b, 0x00, 0x0c, 0x00,
+        0x0d, 0x00, 0x20, 0x00, 0x74, 0x00, 0x45, 0x00, 0x53, 0x00, 0x54,
+        0x00, 0x09, 0x00, 0x0a, 0x00, 0x0b, 0x00, 0x0c, 0x00, 0x0d, 0x00,
+        0x20, 0x00, 0x09, 0x00, 0x0a, 0x00, 0x0b, 0x00, 0x0c, 0x00, 0x0d,
+        0x00, 0x20, 0x00, 0x6e, 0x00, 0x41, 0x00, 0x4d, 0x00, 0x45, 0x00,
+        0x09, 0x00, 0x0a, 0x00, 0x0b, 0x00, 0x0c, 0x00, 0x0d, 0x00, 0x20},
+       0xc90fba01,
+       0xbe2dd8c8},
+  };
+  for (const auto &t : kTests) {
+    SCOPED_TRACE(Bytes(t.name_der));
+    const uint8_t *der = t.name_der.data();
+    bssl::UniquePtr<X509_NAME> name(
+        d2i_X509_NAME(nullptr, &der, t.name_der.size()));
+    ASSERT_TRUE(name);
+    EXPECT_EQ(t.hash, X509_NAME_hash(name.get()));
+    EXPECT_EQ(t.hash_old, X509_NAME_hash_old(name.get()));
+  }
 }
 
 TEST(X509Test, NoBasicConstraintsCertSign) {
@@ -3548,6 +4067,8 @@ TEST(X509Test, GeneralName)  {
       {0x82, 0x01, 0x61},
       // [2 PRIMITIVE] { "b" }
       {0x82, 0x01, 0x62},
+      // [3] {}. Regression test for CVE-2023-0286.
+      {0xa3, 0x00},
       // [4] {
       //   SEQUENCE {
       //     SET {
@@ -3644,6 +4165,12 @@ TEST(X509Test, GeneralName)  {
         d2i_GENERAL_NAME(nullptr, &ptr, kNames[i].size()));
     ASSERT_TRUE(a);
     ASSERT_EQ(ptr, kNames[i].data() + kNames[i].size());
+
+    uint8_t *enc = nullptr;
+    int enc_len = i2d_GENERAL_NAME(a.get(), &enc);
+    ASSERT_GE(enc_len, 0);
+    bssl::UniquePtr<uint8_t> free_enc(enc);
+    EXPECT_EQ(Bytes(enc, enc_len), Bytes(kNames[i]));
 
     for (size_t j = 0; j < OPENSSL_ARRAY_SIZE(kNames); j++) {
       SCOPED_TRACE(Bytes(kNames[j]));
@@ -3915,13 +4442,13 @@ TEST(X509Test, Expiry) {
   // The following are measured in seconds relative to kReferenceTime. The
   // validity periods are staggered so we can independently test both leaf and
   // root time checks.
-  const time_t kSecondsInDay = 24 * 3600;
-  const time_t kRootStart = -30 * kSecondsInDay;
-  const time_t kIntermediateStart = -20 * kSecondsInDay;
-  const time_t kLeafStart = -10 * kSecondsInDay;
-  const time_t kIntermediateEnd = 10 * kSecondsInDay;
-  const time_t kLeafEnd = 20 * kSecondsInDay;
-  const time_t kRootEnd = 30 * kSecondsInDay;
+  const int64_t kSecondsInDay = 24 * 3600;
+  const int64_t kRootStart = -30 * kSecondsInDay;
+  const int64_t kIntermediateStart = -20 * kSecondsInDay;
+  const int64_t kLeafStart = -10 * kSecondsInDay;
+  const int64_t kIntermediateEnd = 10 * kSecondsInDay;
+  const int64_t kLeafEnd = 20 * kSecondsInDay;
+  const int64_t kRootEnd = 30 * kSecondsInDay;
 
   bssl::UniquePtr<X509> root =
       MakeTestCert("Root", "Root", key.get(), /*is_ca=*/true);
@@ -3959,9 +4486,9 @@ TEST(X509Test, Expiry) {
   ASSERT_TRUE(X509_sign(leaf.get(), key.get(), EVP_sha256()));
 
   struct VerifyAt {
-    time_t time;
+    int64_t time;
     void operator()(X509_VERIFY_PARAM *param) const {
-      X509_VERIFY_PARAM_set_time(param, time);
+      X509_VERIFY_PARAM_set_time_posix(param, time);
     }
   };
 
@@ -4590,50 +5117,35 @@ TEST(X509Test, NamePrint) {
        "CN = \"Common "
        "Name/CN=A/CN=B,CN=A,CN=B+CN=A+CN=B;CN=A;CN=B\\0ACN=A\\0A\", "
        "CN = \" spaces \""},
-      // |XN_FLAG_MULTILINE| is an OpenSSL-specific multi-line format that tries
-      // to vertically align the equal sizes. The vertical alignment doesn't
-      // quite handle multi-valued RDNs right and uses a non-RFC-2253 escaping.
+      // Callers can also customize the output, with both |XN_FLAG_*| and
+      // |ASN1_STRFLGS_*|. |XN_FLAG_SEP_SPLUS_SPC| uses semicolon separators.
       {/*indent=*/0,
-       /*flags=*/XN_FLAG_MULTILINE,
-       "countryName               = US\n"
-       "stateOrProvinceName       = Some State + "
-       "stateOrProvinceName       = Some Other State \\U2603 + "
-       "stateOrProvinceName       = Another State \\U2603 + "
-       "1.2.840.113554.4.1.72585.2 = \\U2603\n"
-       "1.2.840.113554.4.1.72585.3 = 0\\06\\02\\01\\01\\02\\01\\02\n"
-       "organizationName          = Org Name\n"
-       "commonName                = Common "
-       "Name/CN=A/CN=B,CN=A,CN=B+CN=A+CN=B;CN=A;CN=B\\0ACN=A\\0A\n"
-       "commonName                =  spaces "},
-      // The multiline format indents every line.
-      {/*indent=*/2,
-       /*flags=*/XN_FLAG_MULTILINE,
-       "  countryName               = US\n"
-       "  stateOrProvinceName       = Some State + "
-       "stateOrProvinceName       = Some Other State \\U2603 + "
-       "stateOrProvinceName       = Another State \\U2603 + "
-       "1.2.840.113554.4.1.72585.2 = \\U2603\n"
-       "  1.2.840.113554.4.1.72585.3 = 0\\06\\02\\01\\01\\02\\01\\02\n"
-       "  organizationName          = Org Name\n"
-       "  commonName                = Common "
-       "Name/CN=A/CN=B,CN=A,CN=B+CN=A+CN=B;CN=A;CN=B\\0ACN=A\\0A\n"
-       "  commonName                =  spaces "},
-      // Callers can also customize the output, wuith both |XN_FLAG_*| and
-      // |ASN1_STRFLGS_*|. |XN_FLAG_SEP_SPLUS_SPC| uses semicolon separators and
-      // |XN_FLAG_FN_OID| forces OIDs.
-      {/*indent=*/0,
-       /*flags=*/XN_FLAG_SEP_SPLUS_SPC | XN_FLAG_FN_OID | ASN1_STRFLGS_RFC2253 |
+       /*flags=*/XN_FLAG_SEP_SPLUS_SPC | ASN1_STRFLGS_RFC2253 |
            ASN1_STRFLGS_ESC_QUOTE,
-       "2.5.4.6=US; "
-       "2.5.4.8=Some State + "
-       "2.5.4.8=Some Other State \\E2\\98\\83 + "
-       "2.5.4.8=Another State \\E2\\98\\83 + "
+       "C=US; "
+       "ST=Some State + "
+       "ST=Some Other State \\E2\\98\\83 + "
+       "ST=Another State \\E2\\98\\83 + "
        "1.2.840.113554.4.1.72585.2=\\E2\\98\\83; "
        "1.2.840.113554.4.1.72585.3=#3006020101020102; "
-       "2.5.4.10=Org Name; "
-       "2.5.4.3=\"Common "
+       "O=Org Name; "
+       "CN=\"Common "
        "Name/CN=A/CN=B,CN=A,CN=B+CN=A+CN=B;CN=A;CN=B\\0ACN=A\\0A\"; "
-       "2.5.4.3=\" spaces \""},
+       "CN=\" spaces \""},
+      // Node uses these parameters.
+      {/*indent=*/0,
+       /*flags=*/ASN1_STRFLGS_ESC_2253 | ASN1_STRFLGS_ESC_CTRL |
+           ASN1_STRFLGS_UTF8_CONVERT | XN_FLAG_SEP_MULTILINE | XN_FLAG_FN_SN,
+       "C=US\n"
+       "ST=Some State + "
+       "ST=Some Other State \xE2\x98\x83 + "
+       "ST=Another State \xE2\x98\x83 + "
+       "1.2.840.113554.4.1.72585.2=\xE2\x98\x83\n"
+       "1.2.840.113554.4.1.72585.3=0\\06\\02\\01\\01\\02\\01\\02\n"
+       "O=Org Name\n"
+       "CN=Common "
+       "Name/CN=A/CN=B\\,CN=A\\,CN=B\\+CN=A\\+CN=B\\;CN=A\\;CN=B\\0ACN=A\\0A\n"
+       "CN=\\ spaces\\ "},
       // |XN_FLAG_COMPAT| matches |X509_NAME_print|, rather than
       // |X509_NAME_print_ex|.
       //
@@ -5227,4 +5739,893 @@ TEST(X509Test, Policy) {
                    [&](X509_VERIFY_PARAM *param) {
                      set_policies(param, {oid1.get()});
                    }));
+
+  // With just a trust anchor, policy checking silently succeeds.
+  EXPECT_EQ(X509_V_OK, Verify(root.get(), {root.get()}, {},
+                              /*crls=*/{}, X509_V_FLAG_EXPLICIT_POLICY,
+                              [&](X509_VERIFY_PARAM *param) {
+                                set_policies(param, {oid1.get()});
+                              }));
+}
+
+#if defined(OPENSSL_THREADS)
+// A similar test to the above, but ensures the various bits of intermediate
+// state are computed safely.
+TEST(X509Test, PolicyThreads) {
+  const size_t kNumThreads = 10;
+
+  bssl::UniquePtr<ASN1_OBJECT> oid1(
+      OBJ_txt2obj("1.2.840.113554.4.1.72585.2.1", /*dont_search_names=*/1));
+  ASSERT_TRUE(oid1);
+  bssl::UniquePtr<ASN1_OBJECT> oid2(
+      OBJ_txt2obj("1.2.840.113554.4.1.72585.2.2", /*dont_search_names=*/1));
+  ASSERT_TRUE(oid2);
+  bssl::UniquePtr<ASN1_OBJECT> oid3(
+      OBJ_txt2obj("1.2.840.113554.4.1.72585.2.3", /*dont_search_names=*/1));
+  ASSERT_TRUE(oid3);
+
+  auto set_policies = [](X509_VERIFY_PARAM *param,
+                         std::vector<const ASN1_OBJECT *> oids) {
+    for (const ASN1_OBJECT *oid : oids) {
+      bssl::UniquePtr<ASN1_OBJECT> copy(OBJ_dup(oid));
+      ASSERT_TRUE(copy);
+      ASSERT_TRUE(X509_VERIFY_PARAM_add0_policy(param, copy.get()));
+      copy.release();  // |X509_VERIFY_PARAM_add0_policy| takes ownership on
+                       // success.
+    }
+  };
+
+  {
+    bssl::UniquePtr<X509> root(
+        CertFromPEM(GetTestData("crypto/x509/test/policy_root.pem").c_str()));
+    ASSERT_TRUE(root);
+    bssl::UniquePtr<X509> intermediate(CertFromPEM(
+        GetTestData("crypto/x509/test/policy_intermediate.pem").c_str()));
+    ASSERT_TRUE(intermediate);
+    bssl::UniquePtr<X509> leaf(
+        CertFromPEM(GetTestData("crypto/x509/test/policy_leaf.pem").c_str()));
+    ASSERT_TRUE(leaf);
+
+    std::vector<std::thread> threads;
+    for (size_t i = 0; i < kNumThreads; i++) {
+      threads.emplace_back([&] {
+        EXPECT_EQ(
+            X509_V_OK,
+            Verify(leaf.get(), {root.get()}, {intermediate.get()}, /*crls=*/{},
+                   X509_V_FLAG_EXPLICIT_POLICY, [&](X509_VERIFY_PARAM *param) {
+                     set_policies(param, {oid1.get()});
+                   }));
+      });
+    }
+    for (auto &thread : threads) {
+      thread.join();
+    }
+  }
+
+  {
+    bssl::UniquePtr<X509> root(
+        CertFromPEM(GetTestData("crypto/x509/test/policy_root.pem").c_str()));
+    ASSERT_TRUE(root);
+    bssl::UniquePtr<X509> intermediate(CertFromPEM(
+        GetTestData("crypto/x509/test/policy_intermediate.pem").c_str()));
+    ASSERT_TRUE(intermediate);
+    bssl::UniquePtr<X509> leaf_invalid(CertFromPEM(
+        GetTestData("crypto/x509/test/policy_leaf_invalid.pem").c_str()));
+    ASSERT_TRUE(leaf_invalid);
+
+
+    std::vector<std::thread> threads;
+    for (size_t i = 0; i < kNumThreads; i++) {
+      threads.emplace_back([&] {
+        EXPECT_EQ(X509_V_ERR_INVALID_POLICY_EXTENSION,
+                  Verify(leaf_invalid.get(), {root.get()}, {intermediate.get()},
+                         /*crls=*/{}, X509_V_FLAG_EXPLICIT_POLICY,
+                         [&](X509_VERIFY_PARAM *param) {
+                           set_policies(param, {oid1.get()});
+                         }));
+      });
+    }
+    for (auto &thread : threads) {
+      thread.join();
+    }
+  }
+}
+#endif  // OPENSSL_THREADS
+
+TEST(X509Test, ExtensionFromConf) {
+  static const char kTestOID[] = "1.2.840.113554.4.1.72585.2";
+  const struct {
+    const char *name;
+    std::string value;
+    // conf is the serialized confdb, or nullptr if none is to be provided.
+    const char *conf;
+    // expected is the resulting extension, encoded in DER, or the empty string
+    // if an error is expected.
+    std::vector<uint8_t> expected;
+  } kTests[] = {
+      // Many extensions have built-in syntax.
+      {"basicConstraints",
+       "critical,CA:true",
+       nullptr,
+       {0x30, 0x0f, 0x06, 0x03, 0x55, 0x1d, 0x13, 0x01, 0x01, 0xff, 0x04, 0x05,
+        0x30, 0x03, 0x01, 0x01, 0xff}},
+
+      {"basicConstraints",
+       "critical,CA:true,pathlen:1",
+       nullptr,
+       {0x30, 0x12, 0x06, 0x03, 0x55, 0x1d, 0x13, 0x01, 0x01, 0xff,
+        0x04, 0x08, 0x30, 0x06, 0x01, 0x01, 0xff, 0x02, 0x01, 0x01}},
+
+      // key:value tuples can be repeated and just override the previous value.
+      {"basicConstraints",
+       "critical,CA:true,pathlen:100,pathlen:1",
+       nullptr,
+       {0x30, 0x12, 0x06, 0x03, 0x55, 0x1d, 0x13, 0x01, 0x01, 0xff,
+        0x04, 0x08, 0x30, 0x06, 0x01, 0x01, 0xff, 0x02, 0x01, 0x01}},
+
+      // Extension contents may be referenced from a config section.
+      {"basicConstraints",
+       "critical,@section",
+       "[section]\nCA = true\n",
+       {0x30, 0x0f, 0x06, 0x03, 0x55, 0x1d, 0x13, 0x01, 0x01, 0xff, 0x04, 0x05,
+        0x30, 0x03, 0x01, 0x01, 0xff}},
+
+      // If no config is provided, this should fail.
+      {"basicConstraints", "critical,@section", nullptr, {}},
+
+      // issuingDistributionPoint takes a list of name:value pairs. Omitting the
+      // value is not allowed.
+      {"issuingDistributionPoint", "fullname", nullptr, {}},
+
+      {"issuingDistributionPoint",
+       "relativename:name",
+       "[name]\nCN=Hello\n",
+       {0x30, 0x1b, 0x06, 0x03, 0x55, 0x1d, 0x1c, 0x04, 0x14, 0x30,
+        0x12, 0xa0, 0x10, 0xa1, 0x0e, 0x30, 0x0c, 0x06, 0x03, 0x55,
+        0x04, 0x03, 0x0c, 0x05, 0x48, 0x65, 0x6c, 0x6c, 0x6f}},
+
+      // relativename referencing a section which doesn't exist.
+      {"issuingDistributionPoint",
+       "relativename:wrong_section_name",
+       "[name]\nCN=Hello\n",
+       {}},
+
+      // relativename must be a single RDN. By default, the section-based name
+      // syntax puts each attribute into its own RDN.
+      {"issuingDistributionPoint",
+       "relativename:name",
+       "[name]\nCN=Hello\nC=US\n",
+       {}},
+
+      // A single RDN with multiple attributes is allowed.
+      {"issuingDistributionPoint",
+       "relativename:name",
+       "[name]\nCN=Hello\n+C=US\n",
+       {0x30, 0x26, 0x06, 0x03, 0x55, 0x1d, 0x1c, 0x04, 0x1f, 0x30,
+        0x1d, 0xa0, 0x1b, 0xa1, 0x19, 0x30, 0x09, 0x06, 0x03, 0x55,
+        0x04, 0x06, 0x13, 0x02, 0x55, 0x53, 0x30, 0x0c, 0x06, 0x03,
+        0x55, 0x04, 0x03, 0x0c, 0x05, 0x48, 0x65, 0x6c, 0x6c, 0x6f}},
+
+      // Duplicate reason keys are an error. Reaching this case is interesting.
+      // The value can a string like "key:value,key:value", or it can be
+      // "@section" and reference a config section. If using a string, duplicate
+      // keys are possible, but then it is impossible to put commas in the
+      // value, as onlysomereasons expects. If using a section reference, it is
+      // impossible to have a duplicate key because the config file parser
+      // overrides the old value.
+      {"issuingDistributionPoint",
+       "onlysomereasons:keyCompromise",
+       nullptr,
+       {0x30, 0x0d, 0x06, 0x03, 0x55, 0x1d, 0x1c, 0x04, 0x06, 0x30, 0x04, 0x83,
+        0x02, 0x06, 0x40}},
+      {"issuingDistributionPoint",
+       "onlysomereasons:keyCompromise,onlysomereasons:CACompromise\n",
+       nullptr,
+       {}},
+
+      // subjectAltName has a series of string-based inputs for each name type.
+      {"subjectAltName",
+       "email:foo@example.com, URI:https://example.com, DNS:example.com, "
+       "RID:1.2.3.4, IP:127.0.0.1, IP:::1, dirName:section, "
+       "otherName:1.2.3.4;BOOLEAN:TRUE",
+       "[section]\nCN=Test\n",
+       {0x30, 0x78, 0x06, 0x03, 0x55, 0x1d, 0x11, 0x04, 0x71, 0x30, 0x6f, 0x81,
+        0x0f, 0x66, 0x6f, 0x6f, 0x40, 0x65, 0x78, 0x61, 0x6d, 0x70, 0x6c, 0x65,
+        0x2e, 0x63, 0x6f, 0x6d, 0x86, 0x13, 0x68, 0x74, 0x74, 0x70, 0x73, 0x3a,
+        0x2f, 0x2f, 0x65, 0x78, 0x61, 0x6d, 0x70, 0x6c, 0x65, 0x2e, 0x63, 0x6f,
+        0x6d, 0x82, 0x0b, 0x65, 0x78, 0x61, 0x6d, 0x70, 0x6c, 0x65, 0x2e, 0x63,
+        0x6f, 0x6d, 0x88, 0x03, 0x2a, 0x03, 0x04, 0x87, 0x04, 0x7f, 0x00, 0x00,
+        0x01, 0x87, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xa4, 0x11, 0x30, 0x0f, 0x31,
+        0x0d, 0x30, 0x0b, 0x06, 0x03, 0x55, 0x04, 0x03, 0x0c, 0x04, 0x54, 0x65,
+        0x73, 0x74, 0xa0, 0x0a, 0x06, 0x03, 0x2a, 0x03, 0x04, 0xa0, 0x03, 0x01,
+        0x01, 0xff}},
+
+      // Syntax errors in each case, where they exist. (The string types just
+      // copy the string in as-is.)
+      {"subjectAltName", "RID:not_an_oid", nullptr, {}},
+      {"subjectAltName", "IP:not_an_ip", nullptr, {}},
+      {"subjectAltName", "dirName:no_conf_db", nullptr, {}},
+      {"subjectAltName", "dirName:missing_section", "[section]\nCN=Test\n", {}},
+      {"subjectAltName", "otherName:missing_semicolon", nullptr, {}},
+      {"subjectAltName", "otherName:1.2.3.4", nullptr, {}},
+      {"subjectAltName", "otherName:invalid_oid;BOOLEAN:TRUE", nullptr, {}},
+      {"subjectAltName", "otherName:1.2.3.4;invalid_value", nullptr, {}},
+
+      {"policyMappings",
+       "1.1.1.1:2.2.2.2",
+       nullptr,
+       {0x30, 0x15, 0x06, 0x03, 0x55, 0x1d, 0x21, 0x04, 0x0e, 0x30, 0x0c, 0x30,
+        0x0a, 0x06, 0x03, 0x29, 0x01, 0x01, 0x06, 0x03, 0x52, 0x02, 0x02}},
+      {"policyMappings", "invalid_oid:2.2.2.2", nullptr, {}},
+      {"policyMappings", "1.1.1.1:invalid_oid", nullptr, {}},
+
+      // The "DER:" prefix just specifies an arbitrary byte string. Colons
+      // separators are ignored.
+      {kTestOID, "DER:0001020304", nullptr, {0x30, 0x15, 0x06, 0x0c, 0x2a, 0x86,
+                                             0x48, 0x86, 0xf7, 0x12, 0x04, 0x01,
+                                             0x84, 0xb7, 0x09, 0x02, 0x04, 0x05,
+                                             0x00, 0x01, 0x02, 0x03, 0x04}},
+      {kTestOID,
+       "DER:00:01:02:03:04",
+       nullptr,
+       {0x30, 0x15, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04, 0x01,
+        0x84, 0xb7, 0x09, 0x02, 0x04, 0x05, 0x00, 0x01, 0x02, 0x03, 0x04}},
+      {kTestOID, "DER:invalid hex", nullptr, {}},
+
+      // The "ASN1:" prefix implements a complex language for describing ASN.1
+      // structures. See
+      // https://www.openssl.org/docs/man1.1.1/man3/ASN1_generate_nconf.html
+      {kTestOID, "ASN1:invalid", nullptr, {}},
+      {kTestOID,
+       "ASN1:BOOLEAN:TRUE",
+       nullptr,
+       {0x30, 0x13, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04,
+        0x01, 0x84, 0xb7, 0x09, 0x02, 0x04, 0x03, 0x01, 0x01, 0xff}},
+      {kTestOID, "ASN1:BOOL:yes", nullptr, {0x30, 0x13, 0x06, 0x0c, 0x2a, 0x86,
+                                            0x48, 0x86, 0xf7, 0x12, 0x04, 0x01,
+                                            0x84, 0xb7, 0x09, 0x02, 0x04, 0x03,
+                                            0x01, 0x01, 0xff}},
+      {kTestOID,
+       "ASN1:BOOLEAN:NO",
+       nullptr,
+       {0x30, 0x13, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04,
+        0x01, 0x84, 0xb7, 0x09, 0x02, 0x04, 0x03, 0x01, 0x01, 0x00}},
+      {kTestOID,
+       "ASN1:BOOLEAN",  // Missing value
+       nullptr,
+       {}},
+      {kTestOID, "ASN1:BOOLEAN:invalid", nullptr, {}},
+      {kTestOID, "ASN1:BOOLEAN:TRUE,invalid", nullptr, {}},
+
+      {kTestOID, "ASN1:NULL", nullptr, {0x30, 0x12, 0x06, 0x0c, 0x2a,
+                                        0x86, 0x48, 0x86, 0xf7, 0x12,
+                                        0x04, 0x01, 0x84, 0xb7, 0x09,
+                                        0x02, 0x04, 0x02, 0x05, 0x00}},
+      {kTestOID, "ASN1:NULL,invalid", nullptr, {}},
+      {kTestOID, "ASN1:NULL:invalid", nullptr, {}},
+
+      // Missing value.
+      {kTestOID, "ASN1:INTEGER", nullptr, {}},
+      {kTestOID, "ASN1:INTEGER:", nullptr, {}},
+      {kTestOID, "ASN1:INTEGER,invalid", nullptr, {}},
+
+      // INTEGER may be decimal or hexadecimal.
+      {kTestOID, "ASN1:INT:-0x10", nullptr, {0x30, 0x13, 0x06, 0x0c, 0x2a, 0x86,
+                                             0x48, 0x86, 0xf7, 0x12, 0x04, 0x01,
+                                             0x84, 0xb7, 0x09, 0x02, 0x04, 0x03,
+                                             0x02, 0x01, 0xf0}},
+      {kTestOID, "ASN1:INT:-10", nullptr, {0x30, 0x13, 0x06, 0x0c, 0x2a, 0x86,
+                                           0x48, 0x86, 0xf7, 0x12, 0x04, 0x01,
+                                           0x84, 0xb7, 0x09, 0x02, 0x04, 0x03,
+                                           0x02, 0x01, 0xf6}},
+      {kTestOID, "ASN1:INT:0", nullptr, {0x30, 0x13, 0x06, 0x0c, 0x2a, 0x86,
+                                         0x48, 0x86, 0xf7, 0x12, 0x04, 0x01,
+                                         0x84, 0xb7, 0x09, 0x02, 0x04, 0x03,
+                                         0x02, 0x01, 0x00}},
+      {kTestOID,
+       "ASN1:INTEGER:10",
+       nullptr,
+       {0x30, 0x13, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04,
+        0x01, 0x84, 0xb7, 0x09, 0x02, 0x04, 0x03, 0x02, 0x01, 0x0a}},
+      {kTestOID,
+       "ASN1:INTEGER:0x10",
+       nullptr,
+       {0x30, 0x13, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04,
+        0x01, 0x84, 0xb7, 0x09, 0x02, 0x04, 0x03, 0x02, 0x01, 0x10}},
+
+      {kTestOID, "ASN1:ENUM:0", nullptr, {0x30, 0x13, 0x06, 0x0c, 0x2a, 0x86,
+                                          0x48, 0x86, 0xf7, 0x12, 0x04, 0x01,
+                                          0x84, 0xb7, 0x09, 0x02, 0x04, 0x03,
+                                          0x0a, 0x01, 0x00}},
+      {kTestOID,
+       "ASN1:ENUMERATED:0",
+       nullptr,
+       {0x30, 0x13, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04,
+        0x01, 0x84, 0xb7, 0x09, 0x02, 0x04, 0x03, 0x0a, 0x01, 0x00}},
+
+      // OIDs may be spelled out or specified by name.
+      {kTestOID, "ASN1:OBJECT:invalid", nullptr, {}},
+      {kTestOID,
+       "ASN1:OBJECT:basicConstraints",
+       nullptr,
+       {0x30, 0x15, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04, 0x01,
+        0x84, 0xb7, 0x09, 0x02, 0x04, 0x05, 0x06, 0x03, 0x55, 0x1d, 0x13}},
+      {kTestOID,
+       "ASN1:OBJECT:2.5.29.19",
+       nullptr,
+       {0x30, 0x15, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04, 0x01,
+        0x84, 0xb7, 0x09, 0x02, 0x04, 0x05, 0x06, 0x03, 0x55, 0x1d, 0x13}},
+      {kTestOID,
+       "ASN1:OID:2.5.29.19",
+       nullptr,
+       {0x30, 0x15, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04, 0x01,
+        0x84, 0xb7, 0x09, 0x02, 0x04, 0x05, 0x06, 0x03, 0x55, 0x1d, 0x13}},
+
+      {kTestOID, "ASN1:UTC:invalid", nullptr, {}},
+      {kTestOID, "ASN1:UTC:20001231235959Z", nullptr, {}},
+      {kTestOID, "ASN1:UTCTIME:invalid", nullptr, {}},
+      {kTestOID,
+       "ASN1:UTC:001231235959Z",
+       nullptr,
+       {0x30, 0x1f, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04,
+        0x01, 0x84, 0xb7, 0x09, 0x02, 0x04, 0x0f, 0x17, 0x0d, 0x30, 0x30,
+        0x31, 0x32, 0x33, 0x31, 0x32, 0x33, 0x35, 0x39, 0x35, 0x39, 0x5a}},
+      {kTestOID,
+       "ASN1:UTCTIME:001231235959Z",
+       nullptr,
+       {0x30, 0x1f, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04,
+        0x01, 0x84, 0xb7, 0x09, 0x02, 0x04, 0x0f, 0x17, 0x0d, 0x30, 0x30,
+        0x31, 0x32, 0x33, 0x31, 0x32, 0x33, 0x35, 0x39, 0x35, 0x39, 0x5a}},
+
+      {kTestOID, "ASN1:GENTIME:invalid", nullptr, {}},
+      {kTestOID, "ASN1:GENTIME:001231235959Z", nullptr, {}},
+      {kTestOID, "ASN1:GENERALIZEDTIME:invalid", nullptr, {}},
+      {kTestOID,
+       "ASN1:GENTIME:20001231235959Z",
+       nullptr,
+       {0x30, 0x21, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04, 0x01,
+        0x84, 0xb7, 0x09, 0x02, 0x04, 0x11, 0x18, 0x0f, 0x32, 0x30, 0x30, 0x30,
+        0x31, 0x32, 0x33, 0x31, 0x32, 0x33, 0x35, 0x39, 0x35, 0x39, 0x5a}},
+      {kTestOID,
+       "ASN1:GENERALIZEDTIME:20001231235959Z",
+       nullptr,
+       {0x30, 0x21, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04, 0x01,
+        0x84, 0xb7, 0x09, 0x02, 0x04, 0x11, 0x18, 0x0f, 0x32, 0x30, 0x30, 0x30,
+        0x31, 0x32, 0x33, 0x31, 0x32, 0x33, 0x35, 0x39, 0x35, 0x39, 0x5a}},
+
+      // The default input format for string types is ASCII, which is then
+      // converted into the target string type.
+      {kTestOID, "ASN1:UTF8:hello", nullptr, {0x30, 0x17, 0x06, 0x0c, 0x2a,
+                                              0x86, 0x48, 0x86, 0xf7, 0x12,
+                                              0x04, 0x01, 0x84, 0xb7, 0x09,
+                                              0x02, 0x04, 0x07, 0x0c, 0x05,
+                                              0x68, 0x65, 0x6c, 0x6c, 0x6f}},
+      {kTestOID,
+       "ASN1:UTF8String:hello",
+       nullptr,
+       {0x30, 0x17, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7,
+        0x12, 0x04, 0x01, 0x84, 0xb7, 0x09, 0x02, 0x04, 0x07,
+        0x0c, 0x05, 0x68, 0x65, 0x6c, 0x6c, 0x6f}},
+      {kTestOID,
+       "ASN1:UNIV:hello",
+       nullptr,
+       {0x30, 0x26, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12,
+        0x04, 0x01, 0x84, 0xb7, 0x09, 0x02, 0x04, 0x16, 0x1c, 0x14,
+        0x00, 0x00, 0x00, 0x68, 0x00, 0x00, 0x00, 0x65, 0x00, 0x00,
+        0x00, 0x6c, 0x00, 0x00, 0x00, 0x6c, 0x00, 0x00, 0x00, 0x6f}},
+      {kTestOID,
+       "ASN1:UNIVERSALSTRING:hello",
+       nullptr,
+       {0x30, 0x26, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12,
+        0x04, 0x01, 0x84, 0xb7, 0x09, 0x02, 0x04, 0x16, 0x1c, 0x14,
+        0x00, 0x00, 0x00, 0x68, 0x00, 0x00, 0x00, 0x65, 0x00, 0x00,
+        0x00, 0x6c, 0x00, 0x00, 0x00, 0x6c, 0x00, 0x00, 0x00, 0x6f}},
+      {kTestOID,
+       "ASN1:BMP:hello",
+       nullptr,
+       {0x30, 0x1c, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12,
+        0x04, 0x01, 0x84, 0xb7, 0x09, 0x02, 0x04, 0x0c, 0x1e, 0x0a,
+        0x00, 0x68, 0x00, 0x65, 0x00, 0x6c, 0x00, 0x6c, 0x00, 0x6f}},
+      {kTestOID,
+       "ASN1:BMPSTRING:hello",
+       nullptr,
+       {0x30, 0x1c, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12,
+        0x04, 0x01, 0x84, 0xb7, 0x09, 0x02, 0x04, 0x0c, 0x1e, 0x0a,
+        0x00, 0x68, 0x00, 0x65, 0x00, 0x6c, 0x00, 0x6c, 0x00, 0x6f}},
+      {kTestOID, "ASN1:IA5:hello", nullptr, {0x30, 0x17, 0x06, 0x0c, 0x2a,
+                                             0x86, 0x48, 0x86, 0xf7, 0x12,
+                                             0x04, 0x01, 0x84, 0xb7, 0x09,
+                                             0x02, 0x04, 0x07, 0x16, 0x05,
+                                             0x68, 0x65, 0x6c, 0x6c, 0x6f}},
+      {kTestOID,
+       "ASN1:IA5STRING:hello",
+       nullptr,
+       {0x30, 0x17, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7,
+        0x12, 0x04, 0x01, 0x84, 0xb7, 0x09, 0x02, 0x04, 0x07,
+        0x16, 0x05, 0x68, 0x65, 0x6c, 0x6c, 0x6f}},
+      {kTestOID,
+       "ASN1:PRINTABLE:hello",
+       nullptr,
+       {0x30, 0x17, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7,
+        0x12, 0x04, 0x01, 0x84, 0xb7, 0x09, 0x02, 0x04, 0x07,
+        0x13, 0x05, 0x68, 0x65, 0x6c, 0x6c, 0x6f}},
+      {kTestOID,
+       "ASN1:PRINTABLESTRING:hello",
+       nullptr,
+       {0x30, 0x17, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7,
+        0x12, 0x04, 0x01, 0x84, 0xb7, 0x09, 0x02, 0x04, 0x07,
+        0x13, 0x05, 0x68, 0x65, 0x6c, 0x6c, 0x6f}},
+      {kTestOID, "ASN1:T61:hello", nullptr, {0x30, 0x17, 0x06, 0x0c, 0x2a,
+                                             0x86, 0x48, 0x86, 0xf7, 0x12,
+                                             0x04, 0x01, 0x84, 0xb7, 0x09,
+                                             0x02, 0x04, 0x07, 0x14, 0x05,
+                                             0x68, 0x65, 0x6c, 0x6c, 0x6f}},
+      {kTestOID,
+       "ASN1:T61STRING:hello",
+       nullptr,
+       {0x30, 0x17, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7,
+        0x12, 0x04, 0x01, 0x84, 0xb7, 0x09, 0x02, 0x04, 0x07,
+        0x14, 0x05, 0x68, 0x65, 0x6c, 0x6c, 0x6f}},
+      {kTestOID,
+       "ASN1:TELETEXSTRING:hello",
+       nullptr,
+       {0x30, 0x17, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7,
+        0x12, 0x04, 0x01, 0x84, 0xb7, 0x09, 0x02, 0x04, 0x07,
+        0x14, 0x05, 0x68, 0x65, 0x6c, 0x6c, 0x6f}},
+
+      // FORMAT:UTF8 switches the input format to UTF-8. This should be
+      // converted to the destination string, or rejected if invalid.
+      {kTestOID,
+       "ASN1:FORMAT:UTF8,UTF8:\xe2\x98\x83",
+       nullptr,
+       {0x30, 0x15, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04, 0x01,
+        0x84, 0xb7, 0x09, 0x02, 0x04, 0x05, 0x0c, 0x03, 0xe2, 0x98, 0x83}},
+      {kTestOID,
+       "ASN1:FORMAT:UTF8,UNIV:\xe2\x98\x83",
+       nullptr,
+       {0x30, 0x16, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86,
+        0xf7, 0x12, 0x04, 0x01, 0x84, 0xb7, 0x09, 0x02,
+        0x04, 0x06, 0x1c, 0x04, 0x00, 0x00, 0x26, 0x03}},
+      {kTestOID,
+       "ASN1:FORMAT:UTF8,BMP:\xe2\x98\x83",
+       nullptr,
+       {0x30, 0x14, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04,
+        0x01, 0x84, 0xb7, 0x09, 0x02, 0x04, 0x04, 0x1e, 0x02, 0x26, 0x03}},
+      {kTestOID, "ASN1:FORMAT:UTF8,IA5:\xe2\x98\x83", nullptr, {}},
+      {kTestOID,
+       "ASN1:FORMAT:UTF8,IA5:hello",
+       nullptr,
+       {0x30, 0x17, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7,
+        0x12, 0x04, 0x01, 0x84, 0xb7, 0x09, 0x02, 0x04, 0x07,
+        0x16, 0x05, 0x68, 0x65, 0x6c, 0x6c, 0x6f}},
+      {kTestOID, "ASN1:FORMAT:UTF8,PRINTABLE:\xe2\x98\x83", nullptr, {}},
+      {kTestOID,
+       "ASN1:FORMAT:UTF8,PRINTABLE:hello",
+       nullptr,
+       {0x30, 0x17, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7,
+        0x12, 0x04, 0x01, 0x84, 0xb7, 0x09, 0x02, 0x04, 0x07,
+        0x13, 0x05, 0x68, 0x65, 0x6c, 0x6c, 0x6f}},
+      {kTestOID, "ASN1:FORMAT:UTF8,T61:\xe2\x98\x83", nullptr, {}},
+      {kTestOID,
+       "ASN1:FORMAT:UTF8,T61:\xc3\xb7",
+       nullptr,
+       {0x30, 0x13, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04,
+        0x01, 0x84, 0xb7, 0x09, 0x02, 0x04, 0x03, 0x14, 0x01, 0xf7}},
+
+      // Invalid UTF-8.
+      {kTestOID, "ASN1:FORMAT:UTF8,UTF8:\xff", nullptr, {}},
+
+      // We don't support these string types.
+      {kTestOID, "ASN1:NUMERIC:0", nullptr, {}},
+      {kTestOID, "ASN1:NUMERICSTRING:0", nullptr, {}},
+      {kTestOID, "ASN1:VISIBLE:hello", nullptr, {}},
+      {kTestOID, "ASN1:VISIBLESTRING:hello", nullptr, {}},
+      {kTestOID, "ASN1:GeneralString:hello", nullptr, {}},
+
+      // OCTET STRING and BIT STRING also default to ASCII, but also accept HEX.
+      // BIT STRING interprets OCTET STRING formats by having zero unused bits.
+      {kTestOID, "ASN1:OCT:hello", nullptr, {0x30, 0x17, 0x06, 0x0c, 0x2a,
+                                             0x86, 0x48, 0x86, 0xf7, 0x12,
+                                             0x04, 0x01, 0x84, 0xb7, 0x09,
+                                             0x02, 0x04, 0x07, 0x04, 0x05,
+                                             0x68, 0x65, 0x6c, 0x6c, 0x6f}},
+      {kTestOID,
+       "ASN1:OCTETSTRING:hello",
+       nullptr,
+       {0x30, 0x17, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7,
+        0x12, 0x04, 0x01, 0x84, 0xb7, 0x09, 0x02, 0x04, 0x07,
+        0x04, 0x05, 0x68, 0x65, 0x6c, 0x6c, 0x6f}},
+      {kTestOID,
+       "ASN1:FORMAT:HEX,OCT:0123abcd",
+       nullptr,
+       {0x30, 0x16, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86,
+        0xf7, 0x12, 0x04, 0x01, 0x84, 0xb7, 0x09, 0x02,
+        0x04, 0x06, 0x04, 0x04, 0x01, 0x23, 0xab, 0xcd}},
+      {kTestOID,
+       "ASN1:BITSTR:hello",
+       nullptr,
+       {0x30, 0x18, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7,
+        0x12, 0x04, 0x01, 0x84, 0xb7, 0x09, 0x02, 0x04, 0x08,
+        0x03, 0x06, 0x00, 0x68, 0x65, 0x6c, 0x6c, 0x6f}},
+      {kTestOID,
+       "ASN1:BITSTRING:hello",
+       nullptr,
+       {0x30, 0x18, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7,
+        0x12, 0x04, 0x01, 0x84, 0xb7, 0x09, 0x02, 0x04, 0x08,
+        0x03, 0x06, 0x00, 0x68, 0x65, 0x6c, 0x6c, 0x6f}},
+      {kTestOID,
+       "ASN1:FORMAT:HEX,BITSTR:0123abcd",
+       nullptr,
+       {0x30, 0x17, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7,
+        0x12, 0x04, 0x01, 0x84, 0xb7, 0x09, 0x02, 0x04, 0x07,
+        0x03, 0x05, 0x00, 0x01, 0x23, 0xab, 0xcd}},
+
+      {kTestOID, "ASN1:FORMAT:HEX,OCT:invalid hex", nullptr, {}},
+
+      // BIT STRING additionally supports a BITLIST type, which specifies a
+      // list of bits to set.
+      {kTestOID,
+       "ASN1:FORMAT:BITLIST,BITSTR:1,5",
+       nullptr,
+       {0x30, 0x14, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04,
+        0x01, 0x84, 0xb7, 0x09, 0x02, 0x04, 0x04, 0x03, 0x02, 0x02, 0x44}},
+
+      {kTestOID, "ASN1:FORMAT:BITLIST,BITSTR:1,invalid,5", nullptr, {}},
+      // Negative bit inidices are not allowed.
+      {kTestOID, "ASN1:FORMAT:BITLIST,BITSTR:-1", nullptr, {}},
+      // We cap bit indices at 256.
+      {kTestOID, "ASN1:FORMAT:BITLIST,BITSTR:257", nullptr, {}},
+      {kTestOID,
+       "ASN1:FORMAT:BITLIST,BITSTR:256",
+       nullptr,
+       {0x30, 0x34, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04,
+        0x01, 0x84, 0xb7, 0x09, 0x02, 0x04, 0x24, 0x03, 0x22, 0x07, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80}},
+
+      // Unsupported formats for string types.
+      {kTestOID, "ASN1:FORMAT:BITLIST,IA5:abcd", nullptr, {}},
+      {kTestOID, "ASN1:FORMAT:BITLIST,UTF8:abcd", nullptr, {}},
+      {kTestOID, "ASN1:FORMAT:BITLIST,OCT:abcd", nullptr, {}},
+      {kTestOID, "ASN1:FORMAT:BITLIST,UTC:abcd", nullptr, {}},
+      {kTestOID, "ASN1:FORMAT:HEX,IA5:abcd", nullptr, {}},
+      {kTestOID, "ASN1:FORMAT:HEX,UTF8:abcd", nullptr, {}},
+      {kTestOID, "ASN1:FORMAT:HEX,UTC:abcd", nullptr, {}},
+      {kTestOID, "ASN1:FORMAT:UTF8,OCT:abcd", nullptr, {}},
+      {kTestOID, "ASN1:FORMAT:UTF8,UTC:abcd", nullptr, {}},
+
+      // Invalid format type.
+      {kTestOID, "ASN1:FORMAT:invalid,IA5:abcd", nullptr, {}},
+
+      // SEQUENCE and SET encode empty values when there is no value.
+      {kTestOID, "ASN1:SEQ", nullptr, {0x30, 0x12, 0x06, 0x0c, 0x2a, 0x86, 0x48,
+                                       0x86, 0xf7, 0x12, 0x04, 0x01, 0x84, 0xb7,
+                                       0x09, 0x02, 0x04, 0x02, 0x30, 0x00}},
+      {kTestOID, "ASN1:SET", nullptr, {0x30, 0x12, 0x06, 0x0c, 0x2a, 0x86, 0x48,
+                                       0x86, 0xf7, 0x12, 0x04, 0x01, 0x84, 0xb7,
+                                       0x09, 0x02, 0x04, 0x02, 0x31, 0x00}},
+      {kTestOID, "ASN1:SEQUENCE", nullptr, {0x30, 0x12, 0x06, 0x0c, 0x2a,
+                                            0x86, 0x48, 0x86, 0xf7, 0x12,
+                                            0x04, 0x01, 0x84, 0xb7, 0x09,
+                                            0x02, 0x04, 0x02, 0x30, 0x00}},
+
+      // Otherwise, they require a corresponding section in the config database
+      // to encode values. This can be nested recursively.
+      {kTestOID, "ASN1:SEQ:missing_confdb", nullptr, {}},
+      {kTestOID, "ASN1:SET:missing_confdb", nullptr, {}},
+      {kTestOID,
+       "ASN1:SEQ:seq",
+       R"(
+[seq]
+val1 = NULL
+val2 = IA5:a
+val3 = SET:set
+[set]
+# Config names do not matter, only the order.
+val4 = INT:1
+val3 = INT:2
+val2 = SEQ:empty
+val1 = INT:3
+[empty]
+)",
+       {0x30, 0x24, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12,
+        0x04, 0x01, 0x84, 0xb7, 0x09, 0x02, 0x04, 0x14, 0x30, 0x12,
+        0x05, 0x00, 0x16, 0x01, 0x61, 0x31, 0x0b, 0x02, 0x01, 0x01,
+        0x02, 0x01, 0x02, 0x02, 0x01, 0x03, 0x30, 0x00}},
+
+      // There is a recursion limit to stop infinite recursion.
+      {kTestOID,
+       "ASN1:SEQ:seq1",
+       R"(
+[seq1]
+val = SEQ:seq2
+[seq2]
+val = SEQ:seq1
+)",
+       {}},
+
+      // Various modifiers wrap with explicit tagging or universal types.
+      {kTestOID,
+       "ASN1:EXP:0,EXP:16U,EXP:100A,EXP:1000C,OCTWRAP,SEQWRAP,SETWRAP,BITWRAP,"
+       "NULL",
+       nullptr,
+       {0x30, 0x26, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12,
+        0x04, 0x01, 0x84, 0xb7, 0x09, 0x02, 0x04, 0x16, 0xa0, 0x14,
+        0x30, 0x12, 0x7f, 0x64, 0x0f, 0xbf, 0x87, 0x68, 0x0b, 0x04,
+        0x09, 0x30, 0x07, 0x31, 0x05, 0x03, 0x03, 0x00, 0x05, 0x00}},
+
+      // Invalid tag numbers.
+      {kTestOID, "ASN1:EXP:-1,NULL", nullptr, {}},
+      {kTestOID, "ASN1:EXP:1?,NULL", nullptr, {}},
+      // Fits in |uint32_t| but exceeds |CBS_ASN1_TAG_NUMBER_MASK|, the largest
+      // tag number we support.
+      {kTestOID, "ASN1:EXP:536870912,NULL", nullptr, {}},
+
+      // Implicit tagging may also be applied to the underlying type, or the
+      // wrapping modifiers.
+      {kTestOID,
+       "ASN1:IMP:1A,OCTWRAP,IMP:10,SEQWRAP,IMP:100,SETWRAP,IMP:1000,BITWRAP,"
+       "IMP:10000,NULL",
+       nullptr,
+       {0x30, 0x20, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04, 0x01,
+        0x84, 0xb7, 0x09, 0x02, 0x04, 0x10, 0x41, 0x0e, 0xaa, 0x0c, 0xbf, 0x64,
+        0x09, 0x9f, 0x87, 0x68, 0x05, 0x00, 0x9f, 0xce, 0x10, 0x00}},
+
+      // Implicit tagging may not be applied to explicit tagging or itself.
+      // There's no rule against this in ASN.1, but OpenSSL does not allow it
+      // here.
+      {kTestOID, "ASN1:IMP:1,EXP:1,NULL", nullptr, {}},
+      {kTestOID, "ASN1:IMP:1,IMP:1,NULL", nullptr, {}},
+
+      // [UNIVERSAL 0] is reserved.
+      {kTestOID, "ASN1:0U,NULL", nullptr, {}},
+
+      // Leading and trailing spaces on name:value pairs are removed. However,
+      // while these pairs are delimited by commas, a type will consumes
+      // everything after it, including commas, and spaces. So this is the
+      // string " a, b ".
+      {kTestOID,
+       "ASN1: EXP:0 , IA5: a, b ",
+       nullptr,
+       {0x30, 0x1a, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12,
+        0x04, 0x01, 0x84, 0xb7, 0x09, 0x02, 0x04, 0x0a, 0xa0, 0x08,
+        0x16, 0x06, 0x20, 0x61, 0x2c, 0x20, 0x62, 0x20}},
+
+      // Modifiers without a final type.
+      {kTestOID, "ASN1:EXP:1", nullptr, {}},
+
+      // Put it all together to describe a test Ed25519 key (wrapped inside an
+      // X.509 extension).
+      {kTestOID,
+       "ASN1:SEQUENCE:pkcs8",
+       R"(
+[pkcs8]
+vers = INT:0
+alg = SEQWRAP,OID:1.3.101.112
+key = FORMAT:HEX,OCTWRAP,OCT:9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60
+)",
+       {0x30, 0x40, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04,
+        0x01, 0x84, 0xb7, 0x09, 0x02, 0x04, 0x30, 0x30, 0x2e, 0x02, 0x01,
+        0x00, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x04, 0x22, 0x04,
+        0x20, 0x9d, 0x61, 0xb1, 0x9d, 0xef, 0xfd, 0x5a, 0x60, 0xba, 0x84,
+        0x4a, 0xf4, 0x92, 0xec, 0x2c, 0xc4, 0x44, 0x49, 0xc5, 0x69, 0x7b,
+        0x32, 0x69, 0x19, 0x70, 0x3b, 0xac, 0x03, 0x1c, 0xae, 0x7f, 0x60}},
+
+      // Sections can be referenced multiple times.
+      {kTestOID,
+       "ASN1:SEQUENCE:seq1",
+       R"(
+[seq1]
+val1 = SEQUENCE:seq2
+val2 = SEQUENCE:seq2
+[seq2]
+val1 = INT:1
+val2 = INT:2
+)",
+       {0x30, 0x22, 0x06, 0x0c, 0x2a, 0x86, 0x48, 0x86, 0xf7,
+        0x12, 0x04, 0x01, 0x84, 0xb7, 0x09, 0x02, 0x04, 0x12,
+        0x30, 0x10, 0x30, 0x06, 0x02, 0x01, 0x01, 0x02, 0x01,
+        0x02, 0x30, 0x06, 0x02, 0x01, 0x01, 0x02, 0x01, 0x02}},
+
+      // But we cap this before it blows up exponentially.
+      {kTestOID,
+       "ASN1:SEQ:seq1",
+       R"(
+[seq1]
+val1 = SEQ:seq2
+val2 = SEQ:seq2
+[seq2]
+val1 = SEQ:seq3
+val2 = SEQ:seq3
+[seq3]
+val1 = SEQ:seq4
+val2 = SEQ:seq4
+[seq4]
+val1 = SEQ:seq5
+val2 = SEQ:seq5
+[seq5]
+val1 = SEQ:seq6
+val2 = SEQ:seq6
+[seq6]
+val1 = SEQ:seq7
+val2 = SEQ:seq7
+[seq7]
+val1 = SEQ:seq8
+val2 = SEQ:seq8
+[seq8]
+val1 = SEQ:seq9
+val2 = SEQ:seq9
+[seq9]
+val1 = SEQ:seq10
+val2 = SEQ:seq10
+[seq10]
+val1 = SEQ:seq11
+val2 = SEQ:seq11
+[seq11]
+val1 = SEQ:seq12
+val2 = SEQ:seq12
+[seq12]
+val1 = IA5:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+val2 = IA5:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+)",
+       {}},
+
+      // Integer sizes are capped to mitigate quadratic behavior.
+      {kTestOID, "ASN1:INT:" + std::string(16384, '9'), nullptr, {}},
+  };
+  for (const auto &t : kTests) {
+    SCOPED_TRACE(t.name);
+    SCOPED_TRACE(t.value);
+    SCOPED_TRACE(t.conf);
+
+    bssl::UniquePtr<CONF> conf;
+    if (t.conf != nullptr) {
+      conf.reset(NCONF_new(nullptr));
+      ASSERT_TRUE(conf);
+      bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(t.conf, strlen(t.conf)));
+      ASSERT_TRUE(bio);
+      long error_line;
+      ASSERT_TRUE(NCONF_load_bio(conf.get(), bio.get(), &error_line))
+          << "Failed to load config at line " << error_line;
+    }
+
+    bssl::UniquePtr<X509_EXTENSION> ext(
+        X509V3_EXT_nconf(conf.get(), nullptr, t.name, t.value.c_str()));
+    if (t.expected.empty()) {
+      EXPECT_FALSE(ext);
+    } else {
+      ASSERT_TRUE(ext);
+      uint8_t *der = nullptr;
+      int len = i2d_X509_EXTENSION(ext.get(), &der);
+      ASSERT_GE(len, 0);
+      bssl::UniquePtr<uint8_t> free_der(der);
+      EXPECT_EQ(Bytes(t.expected), Bytes(der, len));
+    }
+
+    // Repeat the test with an explicit |X509V3_CTX|.
+    X509V3_CTX ctx;
+    X509V3_set_ctx(&ctx, nullptr, nullptr, nullptr, nullptr, 0);
+    X509V3_set_nconf(&ctx, conf.get());
+    ext.reset(X509V3_EXT_nconf(conf.get(), &ctx, t.name, t.value.c_str()));
+    if (t.expected.empty()) {
+      EXPECT_FALSE(ext);
+    } else {
+      ASSERT_TRUE(ext);
+      uint8_t *der = nullptr;
+      int len = i2d_X509_EXTENSION(ext.get(), &der);
+      ASSERT_GE(len, 0);
+      bssl::UniquePtr<uint8_t> free_der(der);
+      EXPECT_EQ(Bytes(t.expected), Bytes(der, len));
+    }
+  }
+}
+
+TEST(X509Test, AddUnserializableExtension) {
+  bssl::UniquePtr<EVP_PKEY> key = PrivateKeyFromPEM(kP256Key);
+  ASSERT_TRUE(key);
+  bssl::UniquePtr<X509> x509 =
+      MakeTestCert("Issuer", "Subject", key.get(), /*is_ca=*/true);
+  ASSERT_TRUE(x509);
+  bssl::UniquePtr<X509_EXTENSION> ext(X509_EXTENSION_new());
+  ASSERT_TRUE(X509_EXTENSION_set_object(ext.get(), OBJ_nid2obj(NID_undef)));
+  EXPECT_FALSE(X509_add_ext(x509.get(), ext.get(), /*loc=*/-1));
+}
+
+// Test that, when constructing an |X509_NAME|, names are sorted by DER order.
+TEST(X509Test, SortRDN) {
+  bssl::UniquePtr<X509_NAME> name(X509_NAME_new());
+  ASSERT_TRUE(name);
+
+  auto append_entry_new_rdn = [&](const char *str) {
+    return X509_NAME_add_entry_by_NID(name.get(), NID_commonName, MBSTRING_ASC,
+                                      reinterpret_cast<const uint8_t *>(str),
+                                      strlen(str), /*loc=*/-1, /*set=*/0);
+  };
+  auto append_entry_prev_rdn = [&](const char *str) {
+    return X509_NAME_add_entry_by_NID(name.get(), NID_commonName, MBSTRING_ASC,
+                                      reinterpret_cast<const uint8_t *>(str),
+                                      strlen(str), /*loc=*/-1, /*set=*/-1);
+  };
+
+  // This is the sort order to expect.
+  ASSERT_TRUE(append_entry_new_rdn("A"));
+  ASSERT_TRUE(append_entry_prev_rdn("B"));
+  ASSERT_TRUE(append_entry_prev_rdn("AA"));
+  ASSERT_TRUE(append_entry_prev_rdn("AB"));
+
+  // The same RDN, with entries added in a different order.
+  ASSERT_TRUE(append_entry_new_rdn("AB"));
+  ASSERT_TRUE(append_entry_prev_rdn("AA"));
+  ASSERT_TRUE(append_entry_prev_rdn("B"));
+  ASSERT_TRUE(append_entry_prev_rdn("A"));
+
+  // The same RDN, with entries added in a different order.
+  ASSERT_TRUE(append_entry_new_rdn("A"));
+  ASSERT_TRUE(append_entry_prev_rdn("AA"));
+  ASSERT_TRUE(append_entry_prev_rdn("B"));
+  ASSERT_TRUE(append_entry_prev_rdn("AB"));
+
+  uint8_t *der = nullptr;
+  int der_len = i2d_X509_NAME(name.get(), &der);
+  ASSERT_GT(der_len, 0);
+  bssl::UniquePtr<uint8_t> free_der(der);
+
+  // SEQUENCE {
+  //   SET {
+  //     SEQUENCE {
+  //       # commonName
+  //       OBJECT_IDENTIFIER { 2.5.4.3 }
+  //       UTF8String { "A" }
+  //     }
+  //     SEQUENCE {
+  //       # commonName
+  //       OBJECT_IDENTIFIER { 2.5.4.3 }
+  //       UTF8String { "B" }
+  //     }
+  //     SEQUENCE {
+  //       # commonName
+  //       OBJECT_IDENTIFIER { 2.5.4.3 }
+  //       UTF8String { "AA" }
+  //     }
+  //     SEQUENCE {
+  //       # commonName
+  //       OBJECT_IDENTIFIER { 2.5.4.3 }
+  //       UTF8String { "AB" }
+  //     }
+  //   }
+  //   ...two more copies of the above SET...
+  // }
+  static uint8_t kExpected[] = {
+      0x30, 0x81, 0x84, 0x31, 0x2a, 0x30, 0x08, 0x06, 0x03, 0x55, 0x04, 0x03,
+      0x0c, 0x01, 0x41, 0x30, 0x08, 0x06, 0x03, 0x55, 0x04, 0x03, 0x0c, 0x01,
+      0x42, 0x30, 0x09, 0x06, 0x03, 0x55, 0x04, 0x03, 0x0c, 0x02, 0x41, 0x41,
+      0x30, 0x09, 0x06, 0x03, 0x55, 0x04, 0x03, 0x0c, 0x02, 0x41, 0x42, 0x31,
+      0x2a, 0x30, 0x08, 0x06, 0x03, 0x55, 0x04, 0x03, 0x0c, 0x01, 0x41, 0x30,
+      0x08, 0x06, 0x03, 0x55, 0x04, 0x03, 0x0c, 0x01, 0x42, 0x30, 0x09, 0x06,
+      0x03, 0x55, 0x04, 0x03, 0x0c, 0x02, 0x41, 0x41, 0x30, 0x09, 0x06, 0x03,
+      0x55, 0x04, 0x03, 0x0c, 0x02, 0x41, 0x42, 0x31, 0x2a, 0x30, 0x08, 0x06,
+      0x03, 0x55, 0x04, 0x03, 0x0c, 0x01, 0x41, 0x30, 0x08, 0x06, 0x03, 0x55,
+      0x04, 0x03, 0x0c, 0x01, 0x42, 0x30, 0x09, 0x06, 0x03, 0x55, 0x04, 0x03,
+      0x0c, 0x02, 0x41, 0x41, 0x30, 0x09, 0x06, 0x03, 0x55, 0x04, 0x03, 0x0c,
+      0x02, 0x41, 0x42};
+  EXPECT_EQ(Bytes(kExpected), Bytes(der, der_len));
+}
+
+TEST(X509Test, TestDecode) {
+  bssl::UniquePtr<X509> cert(CertFromPEM(kExamplePSSCert));
+  ASSERT_TRUE(cert);
+
+  // |X509_get0_pubkey| directly returns a reference to the decoded |pkey|, so
+  // it can't be freed.
+  EVP_PKEY *pkey1 = X509_get0_pubkey(cert.get());
+  ASSERT_TRUE(pkey1);
+  ASSERT_TRUE(X509_verify(cert.get(), pkey1));
+
+  // |X509_get_pubkey| returns the decoded |pkey| with its reference count
+  // updated, so we must free it.
+  bssl::UniquePtr<EVP_PKEY> pkey2(X509_get_pubkey(cert.get()));
+  ASSERT_TRUE(pkey2);
+  ASSERT_TRUE(X509_verify(cert.get(), pkey2.get()));
 }

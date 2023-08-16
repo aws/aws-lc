@@ -23,7 +23,9 @@ extern "C" {
 // general-purpose KDF and is only Approved for FIPS 140-3 use specifically
 // in SSH.
 
-// |type| values for SSHKDF().
+
+// The following defines are the valid |type| values for SSHKDF().
+
 #define EVP_KDF_SSHKDF_TYPE_INITIAL_IV_CLI_TO_SRV     65
 #define EVP_KDF_SSHKDF_TYPE_INITIAL_IV_SRV_TO_CLI     66
 #define EVP_KDF_SSHKDF_TYPE_ENCRYPTION_KEY_CLI_TO_SRV 67

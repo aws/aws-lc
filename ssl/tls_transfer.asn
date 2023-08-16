@@ -1,0 +1,132 @@
+AwsLcTlsTransfer DEFINITIONS EXPLICIT TAGS ::= BEGIN
+
+TransferPackage ::= SEQUENCE {
+    ssl            SSL
+}
+
+SSLSerializationVersion ::= INTEGER {v1 (1)}
+
+SSL ::= SEQUENCE {
+    serializationVersion SSLSerializationVersion,
+    protocolVersionn INTEGER,
+    maxSendFragement INTEGER,
+    state          SSL3State,
+    mode           INTEGER,
+    options        INTEGER,
+    quietShutdown  [0] INTEGER OPTIONAL,
+    config         [1] SSLConfig OPTIONAL
+}
+
+SSL3StateSerializationVersion ::= INTEGER {
+                   v1 (1),
+                   v2 (2)  -- Added additional fields to support TLS 1.3
+               }
+
+SSL3State ::= SEQUENCE {
+    serializationVersion SSL3StateSerializationVersion,
+    readSequence   OCTET STRING,
+    writeSequence  OCTET STRING,
+    serverRandom   OCTET STRING,
+    clientRandom   OCTET STRING,
+    sendAlert      OCTET STRING,
+    rwstate        INTEGER,
+    earlyDataReason INTEGER,
+    previousClientFinished OCTET STRING,
+    previousClientFinishedLen INTEGER,
+    previousServerFinished OCTET STRING,
+    previousServerFinishedLen INTEGER,
+    emptyRecordCount INTEGER,
+    warningAlertCount INTEGER,
+    totalRenegotiations INTEGER,
+    -- Simplified to SEQUENCE here, uses SSL_SESSION_to_bytes_full
+    establishedSession [0] SEQUENCE {...},
+    sessionReused  [1] BOOLEAN OPTIONAL,
+    hostname       [2] OCTET STRING OPTIONAL,
+    alpnSelected   [3] OCTET STRING OPTIONAL,
+    nextProtoNegotiated [4] OCTET STRING OPTIONAL,
+    channelIdValid [5] BOOLEAN OPTIONAL,
+    channelId      [6] OCTET STRING OPTIONAL,
+    sendConnectionBinding [7] BOOLEAN OPTIONAL,
+    -- pending_app_data is a Span in the SS3_STATE that points into read_buffer
+    pendingAppData [8] Span OPTIONAL,
+    readBuffer     [9] SSLBuffer OPTIONAL,
+    -- An artifact of reusing the session ticket serialization, this is a member that is not included so we put it here.
+    -- This is used to indicate whether the session is actually resumable or not when reconstructing the established session
+    notResumable   [10] BOOLEAN OPTIONAL,
+    ...,
+    -- Extension describing v2 serialization format for TLS 1.3 support.
+    [[ 2:
+    earlyDataSkipped [11] INTEGER OPTIONAL,
+    delegatedCredentialUsed [12] BOOLEAN OPTIONAL,
+    earlyDataAccepted [13] BOOLEAN OPTIONAL,
+    usedHelloRetryRequest [14] BOOLEAN OPTIONAL,
+    ticketAgeSkew  [15] INTEGER OPTIONAL,
+    writeTrafficSecret [16] OCTET STRING OPTIONAL,
+    writeTrafficSecretLen [17] INTEGER OPTIONAL,
+    readTrafficSecret [18] OCTET STRING OPTIONAL,
+    readTrafficSecretLen [19] INTEGER OPTIONAL,
+    exporterSecret [20] OCTET STRING OPTIONAL,
+    exporterSecretLen [21] INTEGER OPTIONAL,
+    hsBuffer       [22] OCTET STRING OPTIONAL,
+    echStatus      [23] INTEGER OPTIONAL,
+    pendingHsData  [24] OCTET STRING OPTIONAL,
+    pendingFlight  [25] OCTET STRING OPTIONAL,
+    aeadReadCtx    [26] SSLAEADContext OPTIONAL,
+    aeadWriteCtx   [27] SSLAEADContext OPTIONAL
+    ]],
+    ...
+}
+
+SSLAEADContextVersion ::= INTEGER {v1 (1)}
+
+SSLAEADContext ::= SEQUENCE {
+    serializationVersion SSLAEADContextVersion,
+    cipher         INTEGER,
+    cipherState    EvpAeadCtxState
+}
+
+EvpAeadCtxStateSerializationVersion ::= INTEGER {v1 (1)}
+
+EvpAeadCtxState ::= SEQUENCE {
+    serializationVersion EvpAeadCtxStateSerializationVersion,
+    evpAeadCipherIdentifier INTEGER,
+    -- This OCTET STRING wraps whatever the underlying state encoding is, which is dependent on the configured cipher.
+    -- For example AeadAesGCMTls13State describe the state encoding for AES-GCM with TLS 1.3.
+    state          OCTET STRING
+}
+
+AeadAesGCMTls13StateSerializationVersion ::= INTEGER {v1 (1)}
+
+AeadAesGCMTls13State ::= SEQUENCE {
+    serializationVersion AeadAesGCMTls13StateSerializationVersion,
+    minNextNonce   INTEGER,
+    mask           INTEGER,
+    first          BOOLEAN
+}
+
+Span ::= SEQUENCE {
+    offset         INTEGER,
+    size           INTEGER
+}
+
+SSLBufferSerializationVersion ::= INTEGER {v1 (1)}
+
+SSLBuffer ::= SEQUENCE {
+    serializationVersion SSLBufferSerializationVersion,
+    bufferAllocated BOOLEAN,
+    offset         INTEGER,
+    size           INTEGER,
+    capacity       INTEGER
+}
+
+SSLConfigSerializationVersion ::= INTEGER {v1 (1)}
+
+SSLConfig ::= SEQUENCE {
+    serializationVersion SSLConfigSerializationVersion,
+    confMaxVersion INTEGER,
+    confMinVersion INTEGER,
+    ocspStaplingEnabled [0] BOOLEAN OPTIONAL,
+    jdk11Workaround [1] BOOLEAN OPTIONAL
+}
+
+END

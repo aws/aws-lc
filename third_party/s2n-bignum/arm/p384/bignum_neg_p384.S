@@ -1,17 +1,5 @@
-/*
- * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License").
- * You may not use this file except in compliance with the License.
- * A copy of the License is located at
- *
- *  http://aws.amazon.com/apache2.0
- *
- * or in the "LICENSE" file accompanying this file. This file is distributed
- * on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
- * express or implied. See the License for the specific language governing
- * permissions and limitations under the License.
- */
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0 OR ISC
 
 // ----------------------------------------------------------------------------
 // Negate modulo p_384, z := (-x) mod p_384, assuming x reduced
@@ -41,7 +29,6 @@
 #define d4 x8
 #define d5 x9
 
-
 S2N_BN_SYMBOL(bignum_neg_p384):
 
 // Load the 6 digits of x
@@ -61,21 +48,15 @@ S2N_BN_SYMBOL(bignum_neg_p384):
         cmp     p, #0
         csetm   p, ne
 
-// Load and mask the complicated lower three words of
-// p_384 = [-1;-1;-1;n2;n1;n0] and subtract, using mask itself for upper digits
+// Mask the complicated lower three words of p_384 = [-1;-1;-1;n2;n1;n0]
+// and subtract, using mask itself for upper digits
 
-        mov     t, #0x00000000ffffffff
-        and     t, t, p
+        and     t, p, #0x00000000ffffffff
         subs    d0, t, d0
-
-        mov     t, #0xffffffff00000000
-        and     t, t, p
+        and     t, p, #0xffffffff00000000
         sbcs    d1, t, d1
-
-        mov     t, #0xfffffffffffffffe
-        and     t, t, p
+        and     t, p, #0xfffffffffffffffe
         sbcs    d2, t, d2
-
         sbcs    d3, p, d3
         sbcs    d4, p, d4
         sbc     d5, p, d5

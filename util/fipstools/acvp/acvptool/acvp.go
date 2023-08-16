@@ -29,7 +29,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	neturl "net/url"
@@ -81,7 +80,7 @@ func isCommentLine(line []byte) bool {
 	return false
 }
 
-func jsonFromFile(out interface{}, filename string) error {
+func jsonFromFile(out any, filename string) error {
 	in, err := os.Open(filename)
 	if err != nil {
 		return err
@@ -132,7 +131,7 @@ func TOTP(secret []byte) string {
 type Middle interface {
 	Close()
 	Config() ([]byte, error)
-	Process(algorithm string, vectorSet []byte) (interface{}, error)
+	Process(algorithm string, vectorSet []byte) (any, error)
 }
 
 func loadCachedSessionTokens(server *acvp.Server, cachePath string) error {
@@ -158,7 +157,7 @@ func loadCachedSessionTokens(server *acvp.Server, cachePath string) error {
 			continue
 		}
 		path := filepath.Join(cachePath, name)
-		contents, err := ioutil.ReadFile(path)
+		contents, err := os.ReadFile(path)
 		if err != nil {
 			return fmt.Errorf("Failed to read session token cache entry %q: %s", path, err)
 		}
@@ -199,8 +198,8 @@ func looksLikeVectorSetHeader(element json.RawMessage) bool {
 
 // processFile reads a file containing vector sets, at least in the format
 // preferred by our lab, and writes the results to stdout.
-func processFile(filename string, supportedAlgos []map[string]interface{}, middle Middle) error {
-	jsonBytes, err := ioutil.ReadFile(filename)
+func processFile(filename string, supportedAlgos []map[string]any, middle Middle) error {
+	jsonBytes, err := os.ReadFile(filename)
 	if err != nil {
 		return err
 	}
@@ -268,7 +267,7 @@ func processFile(filename string, supportedAlgos []map[string]interface{}, middl
 			return fmt.Errorf("while processing vector set #%d: %s", i+1, err)
 		}
 
-		group := map[string]interface{}{
+		group := map[string]any{
 			"vsId":       commonFields.ID,
 			"testGroups": replyGroups,
 			"algorithm":  algo,
@@ -376,7 +375,7 @@ func connect(config *Config, sessionTokensCacheDir string) (*acvp.Server, error)
 	if len(config.CertPEMFile) == 0 {
 		return nil, errors.New("config file missing CertPEMFile")
 	}
-	certPEM, err := ioutil.ReadFile(config.CertPEMFile)
+	certPEM, err := os.ReadFile(config.CertPEMFile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read certificate from %q: %s", config.CertPEMFile, err)
 	}
@@ -394,7 +393,7 @@ func connect(config *Config, sessionTokensCacheDir string) (*acvp.Server, error)
 		privateKeyFile = config.PrivateKeyFile
 	}
 
-	keyBytes, err := ioutil.ReadFile(privateKeyFile)
+	keyBytes, err := os.ReadFile(privateKeyFile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read private key from %q: %s", privateKeyFile, err)
 	}
@@ -541,13 +540,13 @@ func main() {
 		log.Fatalf("failed to get config from middle: %s", err)
 	}
 
-	var supportedAlgos []map[string]interface{}
+	var supportedAlgos []map[string]any
 	if err := json.Unmarshal(configBytes, &supportedAlgos); err != nil {
 		log.Fatalf("failed to parse configuration from Middle: %s", err)
 	}
 
 	if *dumpRegcap {
-		nonTestAlgos := make([]map[string]interface{}, 0, len(supportedAlgos))
+		nonTestAlgos := make([]map[string]any, 0, len(supportedAlgos))
 		for _, algo := range supportedAlgos {
 			if value, ok := algo["acvptoolTestOnly"]; ok {
 				testOnly, ok := value.(bool)
@@ -561,9 +560,9 @@ func main() {
 			nonTestAlgos = append(nonTestAlgos, algo)
 		}
 
-		regcap := []map[string]interface{}{
-			map[string]interface{}{"acvVersion": "1.0"},
-			map[string]interface{}{"algorithms": nonTestAlgos},
+		regcap := []map[string]any{
+			{"acvVersion": "1.0"},
+			{"algorithms": nonTestAlgos},
 		}
 		regcapBytes, err := json.MarshalIndent(regcap, "", "    ")
 		if err != nil {
@@ -638,7 +637,7 @@ func main() {
 		}
 	}
 
-	var algorithms []map[string]interface{}
+	var algorithms []map[string]any
 	for _, supportedAlgo := range supportedAlgos {
 		algoInterface, ok := supportedAlgo["algorithm"]
 		if !ok {
@@ -699,7 +698,7 @@ func main() {
 	if token := result.AccessToken; len(token) > 0 {
 		server.PrefixTokens[url] = token
 		if len(sessionTokensCacheDir) > 0 {
-			ioutil.WriteFile(filepath.Join(sessionTokensCacheDir, neturl.PathEscape(url))+".token", []byte(token), 0600)
+			os.WriteFile(filepath.Join(sessionTokensCacheDir, neturl.PathEscape(url))+".token", []byte(token), 0600)
 		}
 	}
 

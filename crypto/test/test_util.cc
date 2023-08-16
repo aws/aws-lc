@@ -17,10 +17,11 @@
 #include <ostream>
 
 #include "../internal.h"
+#include "openssl/pem.h"
 
 
 void hexdump(FILE *fp, const char *msg, const void *in, size_t len) {
-  const uint8_t *data = reinterpret_cast<const uint8_t*>(in);
+  const uint8_t *data = reinterpret_cast<const uint8_t *>(in);
 
   fputs(msg, fp);
   for (size_t i = 0; i < len; i++) {
@@ -39,22 +40,6 @@ std::ostream &operator<<(std::ostream &os, const Bytes &in) {
   return os;
 }
 
-static bool FromHexDigit(uint8_t *out, char c) {
-  if ('0' <= c && c <= '9') {
-    *out = c - '0';
-    return true;
-  }
-  if ('a' <= c && c <= 'f') {
-    *out = c - 'a' + 10;
-    return true;
-  }
-  if ('A' <= c && c <= 'F') {
-    *out = c - 'A' + 10;
-    return true;
-  }
-  return false;
-}
-
 bool DecodeHex(std::vector<uint8_t> *out, const std::string &in) {
   out->clear();
   if (in.size() % 2 != 0) {
@@ -63,13 +48,21 @@ bool DecodeHex(std::vector<uint8_t> *out, const std::string &in) {
   out->reserve(in.size() / 2);
   for (size_t i = 0; i < in.size(); i += 2) {
     uint8_t hi, lo;
-    if (!FromHexDigit(&hi, in[i]) ||
-        !FromHexDigit(&lo, in[i + 1])) {
+    if (!OPENSSL_fromxdigit(&hi, in[i]) ||
+        !OPENSSL_fromxdigit(&lo, in[i + 1])) {
       return false;
     }
     out->push_back((hi << 4) | lo);
   }
   return true;
+}
+
+std::vector<uint8_t> HexToBytes(const char *str) {
+  std::vector<uint8_t> ret;
+  if (!DecodeHex(&ret, str)) {
+    abort();
+  }
+  return ret;
 }
 
 std::string EncodeHex(bssl::Span<const uint8_t> in) {
@@ -83,3 +76,13 @@ std::string EncodeHex(bssl::Span<const uint8_t> in) {
   return ret;
 }
 
+// CertFromPEM parses the given, NUL-terminated pem block and returns an
+// |X509*|.
+bssl::UniquePtr<X509> CertFromPEM(const char *pem) {
+  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(pem, strlen(pem)));
+  if (!bio) {
+    return nullptr;
+  }
+  return bssl::UniquePtr<X509>(
+      PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
+}

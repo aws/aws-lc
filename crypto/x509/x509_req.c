@@ -1,4 +1,3 @@
-/* crypto/x509/x509_req.c */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -100,13 +99,8 @@ int X509_REQ_check_private_key(X509_REQ *x, EVP_PKEY *k) {
       OPENSSL_PUT_ERROR(X509, X509_R_KEY_TYPE_MISMATCH);
       break;
     case -2:
-      if (k->type == EVP_PKEY_EC) {
+      if (EVP_PKEY_id(k) == EVP_PKEY_EC) {
         OPENSSL_PUT_ERROR(X509, ERR_R_EC_LIB);
-        break;
-      }
-      if (k->type == EVP_PKEY_DH) {
-        // No idea
-        OPENSSL_PUT_ERROR(X509, X509_R_CANT_CHECK_DH_KEY);
         break;
       }
       OPENSSL_PUT_ERROR(X509, X509_R_UNKNOWN_KEY_TYPE);
@@ -166,62 +160,114 @@ int X509_REQ_add_extensions(X509_REQ *req,
   return X509_REQ_add_extensions_nid(req, exts, NID_ext_req);
 }
 
-// Request attribute functions
-
 int X509_REQ_get_attr_count(const X509_REQ *req) {
-  return X509at_get_attr_count(req->req_info->attributes);
+  return sk_X509_ATTRIBUTE_num(req->req_info->attributes);
 }
 
 int X509_REQ_get_attr_by_NID(const X509_REQ *req, int nid, int lastpos) {
-  return X509at_get_attr_by_NID(req->req_info->attributes, nid, lastpos);
+  const ASN1_OBJECT *obj = OBJ_nid2obj(nid);
+  if (obj == NULL) {
+    return -1;
+  }
+  return X509_REQ_get_attr_by_OBJ(req, obj, lastpos);
 }
 
 int X509_REQ_get_attr_by_OBJ(const X509_REQ *req, const ASN1_OBJECT *obj,
                              int lastpos) {
-  return X509at_get_attr_by_OBJ(req->req_info->attributes, obj, lastpos);
+  if (req->req_info->attributes == NULL) {
+    return -1;
+  }
+  lastpos++;
+  if (lastpos < 0) {
+    lastpos = 0;
+  }
+  int n = sk_X509_ATTRIBUTE_num(req->req_info->attributes);
+  for (; lastpos < n; lastpos++) {
+    const X509_ATTRIBUTE *attr =
+        sk_X509_ATTRIBUTE_value(req->req_info->attributes, lastpos);
+    if (attr == NULL) {
+      return -1;
+    }
+    if (OBJ_cmp(attr->object, obj) == 0) {
+      return lastpos;
+    }
+  }
+  return -1;
 }
 
 X509_ATTRIBUTE *X509_REQ_get_attr(const X509_REQ *req, int loc) {
-  return X509at_get_attr(req->req_info->attributes, loc);
+  if (req->req_info->attributes == NULL || loc < 0 ||
+      sk_X509_ATTRIBUTE_num(req->req_info->attributes) <= (size_t)loc) {
+    return NULL;
+  }
+  return sk_X509_ATTRIBUTE_value(req->req_info->attributes, loc);
 }
 
 X509_ATTRIBUTE *X509_REQ_delete_attr(X509_REQ *req, int loc) {
-  return X509at_delete_attr(req->req_info->attributes, loc);
+  if (req->req_info->attributes == NULL || loc < 0 ||
+      sk_X509_ATTRIBUTE_num(req->req_info->attributes) <= (size_t)loc) {
+    return NULL;
+  }
+  return sk_X509_ATTRIBUTE_delete(req->req_info->attributes, loc);
 }
 
-int X509_REQ_add1_attr(X509_REQ *req, X509_ATTRIBUTE *attr) {
-  if (X509at_add1_attr(&req->req_info->attributes, attr)) {
-    return 1;
+static int X509_REQ_add0_attr(X509_REQ *req, X509_ATTRIBUTE *attr) {
+  if (req->req_info->attributes == NULL) {
+    req->req_info->attributes = sk_X509_ATTRIBUTE_new_null();
   }
-  return 0;
+  if (req->req_info->attributes == NULL ||
+      !sk_X509_ATTRIBUTE_push(req->req_info->attributes, attr)) {
+    return 0;
+  }
+
+  return 1;
+}
+
+int X509_REQ_add1_attr(X509_REQ *req, const X509_ATTRIBUTE *attr) {
+  X509_ATTRIBUTE *new_attr = X509_ATTRIBUTE_dup(attr);
+  if (new_attr == NULL || !X509_REQ_add0_attr(req, new_attr)) {
+    X509_ATTRIBUTE_free(new_attr);
+    return 0;
+  }
+
+  return 1;
 }
 
 int X509_REQ_add1_attr_by_OBJ(X509_REQ *req, const ASN1_OBJECT *obj,
                               int attrtype, const unsigned char *data,
                               int len) {
-  if (X509at_add1_attr_by_OBJ(&req->req_info->attributes, obj, attrtype, data,
-                              len)) {
-    return 1;
+  X509_ATTRIBUTE *attr =
+      X509_ATTRIBUTE_create_by_OBJ(NULL, obj, attrtype, data, len);
+  if (attr == NULL || !X509_REQ_add0_attr(req, attr)) {
+    X509_ATTRIBUTE_free(attr);
+    return 0;
   }
-  return 0;
+
+  return 1;
 }
 
 int X509_REQ_add1_attr_by_NID(X509_REQ *req, int nid, int attrtype,
                               const unsigned char *data, int len) {
-  if (X509at_add1_attr_by_NID(&req->req_info->attributes, nid, attrtype, data,
-                              len)) {
-    return 1;
+  X509_ATTRIBUTE *attr =
+      X509_ATTRIBUTE_create_by_NID(NULL, nid, attrtype, data, len);
+  if (attr == NULL || !X509_REQ_add0_attr(req, attr)) {
+    X509_ATTRIBUTE_free(attr);
+    return 0;
   }
-  return 0;
+
+  return 1;
 }
 
 int X509_REQ_add1_attr_by_txt(X509_REQ *req, const char *attrname, int attrtype,
                               const unsigned char *data, int len) {
-  if (X509at_add1_attr_by_txt(&req->req_info->attributes, attrname, attrtype,
-                              data, len)) {
-    return 1;
+  X509_ATTRIBUTE *attr =
+      X509_ATTRIBUTE_create_by_txt(NULL, attrname, attrtype, data, len);
+  if (attr == NULL || !X509_REQ_add0_attr(req, attr)) {
+    X509_ATTRIBUTE_free(attr);
+    return 0;
   }
-  return 0;
+
+  return 1;
 }
 
 void X509_REQ_get0_signature(const X509_REQ *req, const ASN1_BIT_STRING **psig,

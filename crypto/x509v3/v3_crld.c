@@ -1,4 +1,3 @@
-/* v3_crld.c */
 /*
  * Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL project
  * 1999.
@@ -70,8 +69,8 @@
 #include "internal.h"
 
 
-static void *v2i_crld(const X509V3_EXT_METHOD *method, X509V3_CTX *ctx,
-                      STACK_OF(CONF_VALUE) *nval);
+static void *v2i_crld(const X509V3_EXT_METHOD *method, const X509V3_CTX *ctx,
+                      const STACK_OF(CONF_VALUE) *nval);
 static int i2r_crldp(const X509V3_EXT_METHOD *method, void *pcrldp, BIO *out,
                      int indent);
 
@@ -109,59 +108,68 @@ const X509V3_EXT_METHOD v3_freshest_crl = {
     NULL,
 };
 
-static STACK_OF(GENERAL_NAME) *gnames_from_sectname(X509V3_CTX *ctx,
+static STACK_OF(GENERAL_NAME) *gnames_from_sectname(const X509V3_CTX *ctx,
                                                     char *sect) {
-  STACK_OF(CONF_VALUE) *gnsect;
-  STACK_OF(GENERAL_NAME) *gens;
+  const STACK_OF(CONF_VALUE) *gnsect;
+  STACK_OF(CONF_VALUE) *gnsect_owned = NULL;
   if (*sect == '@') {
     gnsect = X509V3_get_section(ctx, sect + 1);
   } else {
-    gnsect = X509V3_parse_list(sect);
+    gnsect_owned = X509V3_parse_list(sect);
+    gnsect = gnsect_owned;
   }
   if (!gnsect) {
     OPENSSL_PUT_ERROR(X509V3, X509V3_R_SECTION_NOT_FOUND);
     return NULL;
   }
-  gens = v2i_GENERAL_NAMES(NULL, ctx, gnsect);
-  if (*sect == '@') {
-    X509V3_section_free(ctx, gnsect);
-  } else {
-    sk_CONF_VALUE_pop_free(gnsect, X509V3_conf_free);
-  }
+  STACK_OF(GENERAL_NAME) *gens = v2i_GENERAL_NAMES(NULL, ctx, gnsect);
+  sk_CONF_VALUE_pop_free(gnsect_owned, X509V3_conf_free);
   return gens;
 }
 
-static int set_dist_point_name(DIST_POINT_NAME **pdp, X509V3_CTX *ctx,
-                               CONF_VALUE *cnf) {
+// set_dist_point_name decodes a DistributionPointName from |cnf| and writes the
+// result in |*pdp|. It returns 1 on success, -1 on error, and 0 if |cnf| used
+// an unrecognized input type. The zero return can be used by callers to support
+// additional syntax.
+static int set_dist_point_name(DIST_POINT_NAME **pdp, const X509V3_CTX *ctx,
+                               const CONF_VALUE *cnf) {
   STACK_OF(GENERAL_NAME) *fnm = NULL;
   STACK_OF(X509_NAME_ENTRY) *rnm = NULL;
   if (!strncmp(cnf->name, "fullname", 9)) {
+    // If |cnf| comes from |X509V3_parse_list|, which is possible for a v2i
+    // function, |cnf->value| may be NULL.
+    if (cnf->value == NULL) {
+      OPENSSL_PUT_ERROR(X509V3, X509V3_R_MISSING_VALUE);
+      return -1;
+    }
     fnm = gnames_from_sectname(ctx, cnf->value);
     if (!fnm) {
       goto err;
     }
   } else if (!strcmp(cnf->name, "relativename")) {
-    int ret;
-    STACK_OF(CONF_VALUE) *dnsect;
-    X509_NAME *nm;
-    nm = X509_NAME_new();
-    if (!nm) {
+    // If |cnf| comes from |X509V3_parse_list|, which is possible for a v2i
+    // function, |cnf->value| may be NULL.
+    if (cnf->value == NULL) {
+      OPENSSL_PUT_ERROR(X509V3, X509V3_R_MISSING_VALUE);
       return -1;
     }
-    dnsect = X509V3_get_section(ctx, cnf->value);
+    const STACK_OF(CONF_VALUE) *dnsect = X509V3_get_section(ctx, cnf->value);
     if (!dnsect) {
       OPENSSL_PUT_ERROR(X509V3, X509V3_R_SECTION_NOT_FOUND);
       return -1;
     }
-    ret = X509V3_NAME_from_section(nm, dnsect, MBSTRING_ASC);
-    X509V3_section_free(ctx, dnsect);
+    X509_NAME *nm = X509_NAME_new();
+    if (!nm) {
+      return -1;
+    }
+    int ret = X509V3_NAME_from_section(nm, dnsect, MBSTRING_ASC);
     rnm = nm->entries;
     nm->entries = NULL;
     X509_NAME_free(nm);
     if (!ret || sk_X509_NAME_ENTRY_num(rnm) <= 0) {
       goto err;
     }
-    // Since its a name fragment can't have more than one RDNSequence
+    // There can only be one RDN in nameRelativeToCRLIssuer.
     if (sk_X509_NAME_ENTRY_value(rnm, sk_X509_NAME_ENTRY_num(rnm) - 1)->set) {
       OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_MULTIPLE_RDNS);
       goto err;
@@ -207,27 +215,26 @@ static const BIT_STRING_BITNAME reason_flags[] = {
     {8, "AA Compromise", "AACompromise"},
     {-1, NULL, NULL}};
 
-static int set_reasons(ASN1_BIT_STRING **preas, char *value) {
-  STACK_OF(CONF_VALUE) *rsk = NULL;
-  const BIT_STRING_BITNAME *pbn;
-  const char *bnam;
-  size_t i;
+static int set_reasons(ASN1_BIT_STRING **preas, const char *value) {
+  if (*preas) {
+    // Duplicate "reasons" or "onlysomereasons" key.
+    OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_VALUE);
+    return 0;
+  }
   int ret = 0;
-  rsk = X509V3_parse_list(value);
+  STACK_OF(CONF_VALUE) *rsk = X509V3_parse_list(value);
   if (!rsk) {
     return 0;
   }
-  if (*preas) {
-    return 0;
-  }
-  for (i = 0; i < sk_CONF_VALUE_num(rsk); i++) {
-    bnam = sk_CONF_VALUE_value(rsk, i)->name;
+  for (size_t i = 0; i < sk_CONF_VALUE_num(rsk); i++) {
+    const char *bnam = sk_CONF_VALUE_value(rsk, i)->name;
     if (!*preas) {
       *preas = ASN1_BIT_STRING_new();
       if (!*preas) {
         goto err;
       }
     }
+    const BIT_STRING_BITNAME *pbn;
     for (pbn = reason_flags; pbn->lname; pbn++) {
       if (!strcmp(pbn->sname, bnam)) {
         if (!ASN1_BIT_STRING_set_bit(*preas, pbn->bitnum, 1)) {
@@ -270,19 +277,16 @@ static int print_reasons(BIO *out, const char *rname, ASN1_BIT_STRING *rflags,
   return 1;
 }
 
-static DIST_POINT *crldp_from_section(X509V3_CTX *ctx,
-                                      STACK_OF(CONF_VALUE) *nval) {
-  size_t i;
-  CONF_VALUE *cnf;
+static DIST_POINT *crldp_from_section(const X509V3_CTX *ctx,
+                                      const STACK_OF(CONF_VALUE) *nval) {
   DIST_POINT *point = NULL;
   point = DIST_POINT_new();
   if (!point) {
     goto err;
   }
-  for (i = 0; i < sk_CONF_VALUE_num(nval); i++) {
-    int ret;
-    cnf = sk_CONF_VALUE_value(nval, i);
-    ret = set_dist_point_name(&point->distpoint, ctx, cnf);
+  for (size_t i = 0; i < sk_CONF_VALUE_num(nval); i++) {
+    const CONF_VALUE *cnf = sk_CONF_VALUE_value(nval, i);
+    int ret = set_dist_point_name(&point->distpoint, ctx, cnf);
     if (ret > 0) {
       continue;
     }
@@ -294,6 +298,7 @@ static DIST_POINT *crldp_from_section(X509V3_CTX *ctx,
         goto err;
       }
     } else if (!strcmp(cnf->name, "CRLissuer")) {
+      GENERAL_NAMES_free(point->CRLissuer);
       point->CRLissuer = gnames_from_sectname(ctx, cnf->value);
       if (!point->CRLissuer) {
         goto err;
@@ -308,54 +313,50 @@ err:
   return NULL;
 }
 
-static void *v2i_crld(const X509V3_EXT_METHOD *method, X509V3_CTX *ctx,
-                      STACK_OF(CONF_VALUE) *nval) {
+static void *v2i_crld(const X509V3_EXT_METHOD *method, const X509V3_CTX *ctx,
+                      const STACK_OF(CONF_VALUE) *nval) {
   STACK_OF(DIST_POINT) *crld = NULL;
   GENERAL_NAMES *gens = NULL;
   GENERAL_NAME *gen = NULL;
-  CONF_VALUE *cnf;
-  size_t i;
   if (!(crld = sk_DIST_POINT_new_null())) {
-    goto merr;
+    goto err;
   }
-  for (i = 0; i < sk_CONF_VALUE_num(nval); i++) {
+  for (size_t i = 0; i < sk_CONF_VALUE_num(nval); i++) {
     DIST_POINT *point;
-    cnf = sk_CONF_VALUE_value(nval, i);
+    const CONF_VALUE *cnf = sk_CONF_VALUE_value(nval, i);
     if (!cnf->value) {
-      STACK_OF(CONF_VALUE) *dpsect;
-      dpsect = X509V3_get_section(ctx, cnf->name);
+      const STACK_OF(CONF_VALUE) *dpsect = X509V3_get_section(ctx, cnf->name);
       if (!dpsect) {
         goto err;
       }
       point = crldp_from_section(ctx, dpsect);
-      X509V3_section_free(ctx, dpsect);
       if (!point) {
         goto err;
       }
       if (!sk_DIST_POINT_push(crld, point)) {
         DIST_POINT_free(point);
-        goto merr;
+        goto err;
       }
     } else {
       if (!(gen = v2i_GENERAL_NAME(method, ctx, cnf))) {
         goto err;
       }
       if (!(gens = GENERAL_NAMES_new())) {
-        goto merr;
+        goto err;
       }
       if (!sk_GENERAL_NAME_push(gens, gen)) {
-        goto merr;
+        goto err;
       }
       gen = NULL;
       if (!(point = DIST_POINT_new())) {
-        goto merr;
+        goto err;
       }
       if (!sk_DIST_POINT_push(crld, point)) {
         DIST_POINT_free(point);
-        goto merr;
+        goto err;
       }
       if (!(point->distpoint = DIST_POINT_NAME_new())) {
-        goto merr;
+        goto err;
       }
       point->distpoint->name.fullname = gens;
       point->distpoint->type = 0;
@@ -364,8 +365,6 @@ static void *v2i_crld(const X509V3_EXT_METHOD *method, X509V3_CTX *ctx,
   }
   return crld;
 
-merr:
-  OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
 err:
   GENERAL_NAME_free(gen);
   GENERAL_NAMES_free(gens);
@@ -390,14 +389,12 @@ static int dpn_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
 }
 
 
-ASN1_CHOICE_cb(DIST_POINT_NAME, dpn_cb) =
-    {
-        ASN1_IMP_SEQUENCE_OF(DIST_POINT_NAME, name.fullname, GENERAL_NAME, 0),
-        ASN1_IMP_SET_OF(DIST_POINT_NAME, name.relativename, X509_NAME_ENTRY, 1),
+ASN1_CHOICE_cb(DIST_POINT_NAME, dpn_cb) = {
+    ASN1_IMP_SEQUENCE_OF(DIST_POINT_NAME, name.fullname, GENERAL_NAME, 0),
+    ASN1_IMP_SET_OF(DIST_POINT_NAME, name.relativename, X509_NAME_ENTRY, 1),
 } ASN1_CHOICE_END_cb(DIST_POINT_NAME, DIST_POINT_NAME, type)
 
-
-        IMPLEMENT_ASN1_FUNCTIONS(DIST_POINT_NAME)
+IMPLEMENT_ASN1_FUNCTIONS(DIST_POINT_NAME)
 
 ASN1_SEQUENCE(DIST_POINT) = {
     ASN1_EXP_OPT(DIST_POINT, distpoint, DIST_POINT_NAME, 0),
@@ -426,8 +423,8 @@ IMPLEMENT_ASN1_FUNCTIONS(ISSUING_DIST_POINT)
 
 static int i2r_idp(const X509V3_EXT_METHOD *method, void *pidp, BIO *out,
                    int indent);
-static void *v2i_idp(const X509V3_EXT_METHOD *method, X509V3_CTX *ctx,
-                     STACK_OF(CONF_VALUE) *nval);
+static void *v2i_idp(const X509V3_EXT_METHOD *method, const X509V3_CTX *ctx,
+                     const STACK_OF(CONF_VALUE) *nval);
 
 const X509V3_EXT_METHOD v3_idp = {
     NID_issuing_distribution_point,
@@ -446,22 +443,17 @@ const X509V3_EXT_METHOD v3_idp = {
     NULL,
 };
 
-static void *v2i_idp(const X509V3_EXT_METHOD *method, X509V3_CTX *ctx,
-                     STACK_OF(CONF_VALUE) *nval) {
-  ISSUING_DIST_POINT *idp = NULL;
-  CONF_VALUE *cnf;
-  char *name, *val;
-  size_t i;
-  int ret;
-  idp = ISSUING_DIST_POINT_new();
+static void *v2i_idp(const X509V3_EXT_METHOD *method, const X509V3_CTX *ctx,
+                     const STACK_OF(CONF_VALUE) *nval) {
+  ISSUING_DIST_POINT *idp = ISSUING_DIST_POINT_new();
   if (!idp) {
-    goto merr;
+    goto err;
   }
-  for (i = 0; i < sk_CONF_VALUE_num(nval); i++) {
-    cnf = sk_CONF_VALUE_value(nval, i);
-    name = cnf->name;
-    val = cnf->value;
-    ret = set_dist_point_name(&idp->distpoint, ctx, cnf);
+  for (size_t i = 0; i < sk_CONF_VALUE_num(nval); i++) {
+    const CONF_VALUE *cnf = sk_CONF_VALUE_value(nval, i);
+    const char *name = cnf->name;
+    const char *val = cnf->value;
+    int ret = set_dist_point_name(&idp->distpoint, ctx, cnf);
     if (ret > 0) {
       continue;
     }
@@ -496,8 +488,6 @@ static void *v2i_idp(const X509V3_EXT_METHOD *method, X509V3_CTX *ctx,
   }
   return idp;
 
-merr:
-  OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
 err:
   ISSUING_DIST_POINT_free(idp);
   return NULL;

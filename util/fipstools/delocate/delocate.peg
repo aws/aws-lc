@@ -16,6 +16,13 @@
 # https://github.com/pointlander/peg. delocate.go has a go:generate line for
 # rebuilding delocate.peg.go from this file.
 
+# To regenerate delocate.peg.go:
+#
+# go install github.com/pointlander/peg@latest
+# ~/go/bin/peg <path-to-this-file>
+#
+# this will generate delocate.peg.go next to delocate.peg.
+
 package main
 
 type Asm Peg {}
@@ -45,6 +52,7 @@ SymbolArg <- (OpenParen WS?)? (
                Offset /
                SymbolType /
                (Offset / LocalSymbol / SymbolName / Dot) (WS? Operator WS? (Offset / LocalSymbol / SymbolName))* /
+               LocalLabelRef WS? Operator WS? LocalLabelRef /
                LocalSymbol TCMarker? /
                SymbolName Offset /
                SymbolName TCMarker?)
@@ -62,7 +70,7 @@ SymbolName <- [[A-Z._]][[A-Z.0-9$_]]*
 LocalSymbol <- '.L' [[A-Za-z.0-9$_]]+
 LocalLabel <- [0-9][0-9$]*
 LocalLabelRef <- [0-9][0-9$]*[bf]
-Instruction <- InstructionName (WS InstructionArg ((WS? ',' WS?) InstructionArg)*)?
+Instruction <- InstructionName (WS InstructionArg ((WS? ','? WS?) InstructionArg)*)?
 InstructionName <- [[A-Z]][[A-Z.0-9]]* [.+\-]?
 InstructionArg <- IndirectionIndicator? (ARMConstantTweak / RegisterOrConstant / LocalLabelRef / TOCRefHigh / TOCRefLow / GOTLocation / GOTSymbolOffset / MemoryRef) AVX512Token*
 GOTLocation <- '$_GLOBAL_OFFSET_TABLE_-' LocalSymbol
@@ -72,10 +80,12 @@ TOCRefHigh <- '.TOC.-' ('0b' / ('.L' [a-zA-Z_0-9]+)) "@ha"
 TOCRefLow <- '.TOC.-' ('0b' / ('.L' [a-zA-Z_0-9]+)) "@l"
 IndirectionIndicator <- '*'
 RegisterOrConstant <- (('%'[[A-Z]][[A-Z0-9]]*) /
+                       ('$' [0-9]+ WS? '*' WS? '(' [0-9]+ WS? '-' WS? [0-9]+ ')' ) /
                        ('$'? ((Offset Offset) / Offset)) /
                        ('#' Offset ('*' [0-9]+ ('-' [0-9] [0-9]*)?)? ) /
                        ('#' '~'? '(' [0-9] WS? "<<" WS? [0-9] [0-9]? ')' ) /
-                       (('#' / '$') '~'? '0x' [[0-9A-F]]+ ) /
+                       (('#' / '$') '~'? '0x'? [[0-9A-F]]+ ) /
+                       ('$(-' [0-9]+ ')') /
                        ARMRegister)
                       ![fb:(+\-]
 ARMConstantTweak <- (([us] "xt" [xwhb]) / "lsl" / "lsr" / "ror" / "asr") (WS '#'? Offset)?
@@ -101,6 +111,15 @@ ARMPostincrement <- '!'
 BaseIndexScale <- '(' RegisterOrConstant? WS? (',' WS? RegisterOrConstant WS? (',' [0-9]+)? )? ')'
 Operator <- [+\-]
 OffsetOperator <- '+' / '-' / '*'
-Offset <- '+'? '-'? (("0b" [01]+) / ("0x" [[0-9A-F]]+) / [0-9]+ ( OffsetOperator '(' [0-9]+ OffsetOperator [0-9]+ ')' )? / [0-9]+ ( OffsetOperator [0-9]+ OffsetOperator [0-9]+ )? / [0-9]+ ( OffsetOperator [0-9]+ )? / '(' [0-9]+ WS? OffsetOperator WS? [0-9]+ ')')
+Offset <- '+'? '-'? (("0b" [01]+) /
+                     ("0x" [[0-9A-F]]+) /
+                     ([0-9]+ WS OffsetOperator [0-9]+ /
+                      [0-9]+ ( OffsetOperator '(' [0-9]+ OffsetOperator [0-9]+ ')' )? /
+                      [0-9]+ ( OffsetOperator [0-9]+ OffsetOperator [0-9]+ )? /
+                      [0-9]+ ( OffsetOperator [0-9]+ )? /
+                      '(' [0-9]+ WS? OffsetOperator WS? [0-9]+ ')' OffsetOperator [0-9]+ OffsetOperator [0-9]+ /
+                      '(' [0-9]+ WS? OffsetOperator WS? [0-9]+ ')' /
+                      '(' [0-9]+ WS? OffsetOperator WS? [0-9]+ WS? OffsetOperator WS? [0-9]+')')![[A-Z]]
+                    )
 Section <- [[A-Z@]]+
 SegmentRegister <- '%' [c-gs] 's:'

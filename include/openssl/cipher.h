@@ -92,6 +92,12 @@ OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_ctr(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_ofb(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_xts(void);
 
+// EVP_aes_256_wrap implements AES-256 in Key Wrap mode. OpenSSL 1.1.1 required
+// |EVP_CIPHER_CTX_FLAG_WRAP_ALLOW| to be set with |EVP_CIPHER_CTX_set_flags|,
+// in order for |EVP_aes_256_wrap| to work. This is not required in AWS-LC and
+// they are no-op flags maintained for compatibility.
+OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_wrap(void);
+
 // EVP_enc_null returns a 'cipher' that passes plaintext through as
 // ciphertext.
 OPENSSL_EXPORT const EVP_CIPHER *EVP_enc_null(void);
@@ -343,6 +349,11 @@ OPENSSL_EXPORT int EVP_BytesToKey(const EVP_CIPHER *type, const EVP_MD *md,
 
 // Buffer length in bits not bytes: CFB1 mode only.
 # define EVP_CIPH_FLAG_LENGTH_BITS 0x2000
+// The following values are never returned from |EVP_CIPHER_mode| and are
+// included only to make it easier to compile code with BoringSSL.
+#define EVP_CIPH_CCM_MODE 0x8
+#define EVP_CIPH_OCB_MODE 0x9
+#define EVP_CIPH_WRAP_MODE 0xa
 
 
 // Cipher flags (for |EVP_CIPHER_flags|).
@@ -384,19 +395,21 @@ OPENSSL_EXPORT int EVP_BytesToKey(const EVP_CIPHER *type, const EVP_MD *md,
 // their needs). Thus this exists only to allow code to compile.
 #define EVP_CIPH_FLAG_NON_FIPS_ALLOW 0
 
-// Legacy AEAD Functions. Deprecated. Don't take a dependency on these ciphers.
 
-// EVP_aes_128/256_cbc_hmac_sha1/256 are imported from OpenSSL to provide AES CBC
+// Deprecated functions
+
+// EVP_aes_128/256_cbc_hmac_sha1/256 return |EVP_CIPHER| objects that implement
+// the named cipher algorithm. They are imported from OpenSSL to provide AES CBC
 // HMAC SHA stitch implementation. These methods are TLS specific.
 //
 // WARNING: these APIs usage can get wrong easily. Below functions include details.
 //     |aesni_cbc_hmac_sha1_cipher| and |aesni_cbc_hmac_sha256_cipher|.
+
+
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_cbc_hmac_sha1(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_cbc_hmac_sha1(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_cbc_hmac_sha256(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_cbc_hmac_sha256(void);
-
-// Deprecated functions
 
 // EVP_CipherInit acts like EVP_CipherInit_ex except that |EVP_CIPHER_CTX_init|
 // is called on |cipher| first, if |cipher| is not NULL.
@@ -527,11 +540,14 @@ OPENSSL_EXPORT const EVP_CIPHER *EVP_bf_cbc(void);
 // EVP_bf_cfb is Blowfish in 64-bit CFB mode and is deprecated.
 OPENSSL_EXPORT const EVP_CIPHER *EVP_bf_cfb(void);
 
+// EVP_cast5_ecb is CAST5 in ECB mode and is deprecated.
+AWS_LC_DEPRECATED OPENSSL_EXPORT const EVP_CIPHER *EVP_cast5_ecb(void);
+
+// EVP_cast5_cbc is CAST5 in CBC mode and is deprecated.
+AWS_LC_DEPRECATED OPENSSL_EXPORT const EVP_CIPHER *EVP_cast5_cbc(void);
+
 // The following flags do nothing and are included only to make it easier to
-// compile code with BoringSSL.
-#define EVP_CIPH_CCM_MODE (-1)
-#define EVP_CIPH_OCB_MODE (-2)
-#define EVP_CIPH_WRAP_MODE (-3)
+// compile code with AWS-LC.
 #define EVP_CIPHER_CTX_FLAG_WRAP_ALLOW 0
 
 // EVP_CIPHER_CTX_set_flags does nothing.
@@ -630,13 +646,16 @@ typedef struct evp_cipher_info_st {
   unsigned char iv[EVP_MAX_IV_LENGTH];
 } EVP_CIPHER_INFO;
 
-// The following constants are used by AES-CBC stitch ctrl methods.
-// AEAD cipher deduces payload length and returns number of bytes required to
-// store MAC and eventual padding. Subsequent call to EVP_Cipher even
-// appends/verifies MAC.
+
+// AES-CBC stitch ctrl method constants
+
+// EVP_CTRL_AEAD_TLS1_AAD is a control command for |EVP_CIPHER_CTX_ctrl| to set
+// the length of the TLS additional authenticated data
 #define EVP_CTRL_AEAD_TLS1_AAD 0x16
-// RFC 5246 defines additional data to be 13 bytes in length.
+// EVP_AEAD_TLS1_AAD_LEN is the length of the additional authenticated data from
+// RFC 5246.
 #define EVP_AEAD_TLS1_AAD_LEN 13
+
 
 #if defined(__cplusplus)
 }  // extern C
@@ -689,5 +708,7 @@ BSSL_NAMESPACE_END
 #define CIPHER_R_XTS_DUPLICATED_KEYS 138
 #define CIPHER_R_XTS_DATA_UNIT_IS_TOO_LARGE 139
 #define CIPHER_R_CTRL_OPERATION_NOT_PERFORMED 140
+#define CIPHER_R_SERIALIZATION_INVALID_EVP_AEAD_CTX 141
+#define CIPHER_R_ALIGNMENT_CHANGED 142
 
 #endif  // OPENSSL_HEADER_CIPHER_H

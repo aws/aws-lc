@@ -1,7 +1,5 @@
 # AWS libcrypto (AWS-LC)
 
-[![Join the chat at https://gitter.im/awslabs/aws-lc](https://badges.gitter.im/awslabs/aws-lc.svg)](https://gitter.im/awslabs/aws-lc?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-
 AWS-LC is a general-purpose cryptographic library maintained by the AWS Cryptography
 team for AWS and their customers. It іs based on code from the Google BoringSSL project
 and the OpenSSL project.
@@ -29,14 +27,14 @@ ninja-build run_tests && ninja-build install
 cd ../aws-lc-install/
 ls *
 ```
-See [Building.md](https://github.com/awslabs/aws-lc/blob/main/BUILDING.md) for more
+See [Building.md](https://github.com/aws/aws-lc/blob/main/BUILDING.md) for more
 information about required dependencies and build options. If you’re interested in
-getting involved open an Issue to discuss your plan or talk to us on Gitter.
-[Contributing.md](https://github.com/awslabs/aws-lc/blob/main/CONTRIBUTING.md) has
+getting involved [open an issue](https://github.com/aws/aws-lc/issues/new/choose) to discuss your plan.
+[Contributing.md](https://github.com/aws/aws-lc/blob/main/CONTRIBUTING.md) has
 info for how to specifically make the change and get it reviewed by AWS-LC maintainers.
 If you just want to use AWS-LC see our existing documentation in the public header
 files, if you’re moving your application from OpenSSL see
-[Porting_to_AWS-LC.md](https://github.com/awslabs/aws-lc/blob/main/PORTING_TO_AWSLC.md)
+[Porting_to_AWS-LC.md](https://github.com/aws/aws-lc/blob/main/PORTING_TO_AWSLC.md)
 for more information.
 
 ## Why AWS-LC?
@@ -52,13 +50,13 @@ other libcrypto projects.
 
 AWS-LC is compatible with the majority of OpenSSL’s APIs to make it easy to use with
 existing applications. We’re open to discussing adding missing functionality and
-understanding your use case in an Issue or on Gitter.
+understanding your use case in an [issue](https://github.com/aws/aws-lc/issues/new/choose).
 
 ### Compiler, OS, and CPU support
 
 AWS-LC correctness is tested on a variety of C/C++ compiler, OS, and CPU
 combinations. For a complete list of tested combinations see
-[tests/ci/Readme.md](https://github.com/awslabs/aws-lc/blob/main/tests/ci/README.md).
+[tests/ci/Readme.md](https://github.com/aws/aws-lc/blob/main/tests/ci/README.md).
 If you use a different combination and would like to make sure we test it,
 please open an issue to discuss adding it to our CI.
 
@@ -81,7 +79,7 @@ adding it to our CI.
 ### Automated testing
 
 Every change is tested with our
-[CI](https://github.com/awslabs/aws-lc/blob/main/tests/ci/README.md) that includes
+[CI](https://github.com/aws/aws-lc/blob/main/tests/ci/README.md) that includes
 positive and negative unit tests, fuzz tests, Sanitizers
 ([Address](https://clang.llvm.org/docs/AddressSanitizer.html),
 [Memory](https://clang.llvm.org/docs/MemorySanitizer.html),
@@ -104,12 +102,11 @@ verified on certain platforms with caveats include:
 
 ## Have a Question?
 
-If you have any questions about Submitting PR's, Opening Issues, AWS-LC API usage or
-any similar topic, we have a public chatroom available here to answer your questions
-on [Gitter](https://gitter.im/awslabs/aws-lc).
+We use [GitHub Issues](https://github.com/aws/aws-lc/issues) for managing feature requests,
+bug reports, or questions about AWS-LC API usage.
 
-Otherwise, if you think you might have found a security impacting issue, please instead
-follow our Security Notification Process.
+If you think you might have found a security impacting issue, please instead
+follow our [Security Notification Process](#security-issue-notifications).
 
 ## Security issue notifications
 

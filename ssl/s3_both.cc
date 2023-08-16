@@ -439,7 +439,6 @@ static ssl_open_record_t read_v2_client_hello(SSL *ssl, size_t *out_consumed,
       // No session id.
       !CBB_add_u8(&hello_body, 0) ||
       !CBB_add_u16_length_prefixed(&hello_body, &cipher_suites)) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return ssl_open_record_error;
   }
 
@@ -664,42 +663,37 @@ void tls_next_message(SSL *ssl) {
 // the client.
 class CipherScorer {
  public:
-  CipherScorer(uint16_t group_id)
-      : aes_is_fine_(EVP_has_aes_hardware()),
-        security_128_is_fine_(group_id != SSL_CURVE_CECPQ2) {}
+  CipherScorer(bool has_aes_hw) : aes_is_fine_(has_aes_hw) {}
 
-  typedef std::tuple<bool, bool, bool> Score;
+  typedef std::tuple<bool, bool> Score;
 
   // MinScore returns a |Score| that will compare less than the score of all
   // cipher suites.
   Score MinScore() const {
-    return Score(false, false, false);
+    return Score(false, false);
   }
 
   Score Evaluate(const SSL_CIPHER *a) const {
     return Score(
         // Something is always preferable to nothing.
         true,
-        // Either 128-bit is fine, or 256-bit is preferred.
-        security_128_is_fine_ || a->algorithm_enc != SSL_AES128GCM,
         // Either AES is fine, or else ChaCha20 is preferred.
         aes_is_fine_ || a->algorithm_enc == SSL_CHACHA20POLY1305);
   }
 
  private:
   const bool aes_is_fine_;
-  const bool security_128_is_fine_;
 };
 
-const SSL_CIPHER *ssl_choose_tls13_cipher(CBS cipher_suites, uint16_t version,
-                                          uint16_t group_id,
-                                          const STACK_OF(SSL_CIPHER) *tls13_ciphers) {
+const SSL_CIPHER *ssl_choose_tls13_cipher(
+    CBS cipher_suites, bool has_aes_hw, uint16_t version, uint16_t group_id,
+    const STACK_OF(SSL_CIPHER) *tls13_ciphers) {
   if (CBS_len(&cipher_suites) % 2 != 0) {
     return nullptr;
   }
 
   const SSL_CIPHER *best = nullptr;
-  CipherScorer scorer(group_id);
+  CipherScorer scorer(has_aes_hw);
   CipherScorer::Score best_score = scorer.MinScore();
 
   while (CBS_len(&cipher_suites) > 0) {

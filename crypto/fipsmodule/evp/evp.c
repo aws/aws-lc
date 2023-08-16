@@ -86,7 +86,6 @@ EVP_PKEY *EVP_PKEY_new(void) {
 
   ret = OPENSSL_malloc(sizeof(EVP_PKEY));
   if (ret == NULL) {
-    OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
 
@@ -366,7 +365,7 @@ EVP_PKEY *EVP_PKEY_new_raw_private_key(int type, ENGINE *unused,
     goto err;
   }
 
-  if (!ret->ameth->set_priv_raw(ret, in, len)) {
+  if (!ret->ameth->set_priv_raw(ret, in, len, NULL, 0)) {
     goto err;
   }
 
@@ -709,7 +708,6 @@ static size_t evp_pkey_get1_tls_encodedpoint_x25519(const EVP_PKEY *pkey,
   out_len = X25519_SHARED_KEY_LEN;
   *out_ptr = OPENSSL_malloc(X25519_SHARED_KEY_LEN);
   if (NULL == *out_ptr) {
-    OPENSSL_PUT_ERROR(CRYPTO, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 

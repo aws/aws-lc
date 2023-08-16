@@ -70,6 +70,9 @@ extern "C" {
 // |EVP_MD_CTX_set_pkey_ctx|.
 #define EVP_MD_CTX_FLAG_KEEP_PKEY_CTX   0x0400
 
+typedef struct evp_pkey_asn1_method_st EVP_PKEY_ASN1_METHOD;
+typedef struct evp_pkey_method_st EVP_PKEY_METHOD;
+
 struct evp_pkey_asn1_method_st {
   int pkey_id;
   uint8_t oid[11];
@@ -94,13 +97,17 @@ struct evp_pkey_asn1_method_st {
   // result into |out|. It returns one on success and zero on error. |params| is
   // the AlgorithmIdentifier after the OBJECT IDENTIFIER type field, and |key|
   // is the contents of the OCTET STRING privateKey field.
-  int (*priv_decode)(EVP_PKEY *out, CBS *params, CBS *key);
+  int (*priv_decode)(EVP_PKEY *out, CBS *params, CBS *key, CBS *pubkey);
 
   // priv_encode encodes |key| as a PrivateKeyInfo and appends the result to
   // |out|. It returns one on success and zero on error.
   int (*priv_encode)(CBB *out, const EVP_PKEY *key);
 
-  int (*set_priv_raw)(EVP_PKEY *pkey, const uint8_t *in, size_t len);
+  // priv_encode_v2 encodes |key| as a OneAsymmetricKey (RFC 5958) and appends
+  // the result to |out|. It returns one on success and zero on error.
+  int (*priv_encode_v2)(CBB *out, const EVP_PKEY *key);
+
+  int (*set_priv_raw)(EVP_PKEY *pkey, const uint8_t *privkey, size_t privkey_len, const uint8_t *pubkey, size_t pubkey_len);
   int (*set_pub_raw)(EVP_PKEY *pkey, const uint8_t *in, size_t len);
   int (*get_priv_raw)(const EVP_PKEY *pkey, uint8_t *out, size_t *out_len);
   int (*get_pub_raw)(const EVP_PKEY *pkey, uint8_t *out, size_t *out_len);
@@ -119,6 +126,26 @@ struct evp_pkey_asn1_method_st {
   void (*pkey_free)(EVP_PKEY *pkey);
 }; // EVP_PKEY_ASN1_METHOD
 
+struct evp_pkey_st {
+  CRYPTO_refcount_t references;
+
+  // type contains one of the EVP_PKEY_* values or NID_undef and determines
+  // which element (if any) of the |pkey| union is valid.
+  int type;
+
+  union {
+    void *ptr;
+    RSA *rsa;
+    DSA *dsa;
+    DH *dh;
+    EC_KEY *ec;
+    KEM_KEY *kem_key;
+  } pkey;
+
+  // ameth contains a pointer to a method table that contains many ASN.1
+  // methods for the key type.
+  const EVP_PKEY_ASN1_METHOD *ameth;
+} /* EVP_PKEY */;
 
 #define EVP_PKEY_OP_UNDEFINED 0
 #define EVP_PKEY_OP_KEYGEN (1 << 2)
@@ -257,8 +284,14 @@ struct evp_pkey_method_st {
 }; // EVP_PKEY_METHOD
 
 #define FIPS_EVP_PKEY_METHODS 4
+
+#ifdef ENABLE_DILITHIUM
 #define NON_FIPS_EVP_PKEY_METHODS 4
 #define ASN1_EVP_PKEY_METHODS 8
+#else
+#define NON_FIPS_EVP_PKEY_METHODS 3
+#define ASN1_EVP_PKEY_METHODS 7
+#endif
 
 struct fips_evp_pkey_methods {
   const EVP_PKEY_METHOD * methods[FIPS_EVP_PKEY_METHODS];

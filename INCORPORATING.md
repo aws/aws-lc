@@ -1,4 +1,17 @@
 # Incorporating AWS-LC into a project
+## Which branch to use
+
+AWS-LC usage typically follows a
+["live at head"](https://abseil.io/about/philosophy#we-recommend-that-you-choose-to-live-at-head)
+model. Projects pin to whatever the current latest of AWS-LC is at the time
+of update, and regularly update it to pick up new changes.
+
+While the AWS-LC repository may contain project-specific branches, e.g.
+`integrate-pq`, those are _not_ supported release branches and must not as
+such. In rare cases, AWS-LC will temporarily maintain a short-lived branch on
+behalf of a project. Most such branches are no longer updated, because the
+corresponding project no longer needs them, and we do not create new ones to
+replace the ones that are no longer updated.
 
 ## Build support
 

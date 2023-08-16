@@ -12,13 +12,14 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+//go:build ignore
+
 package main
 
 import (
 	"errors"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net"
 	"os"
@@ -379,7 +380,7 @@ func main() {
 		}
 
 		outFile := path.Join(*outDir, fmt.Sprintf("ech-config-list-%d", echConfigListCount))
-		if err = ioutil.WriteFile(outFile, record.ech, 0644); err != nil {
+		if err = os.WriteFile(outFile, record.ech, 0644); err != nil {
 			log.Printf("Failed to write file: %s\n", err)
 			os.Exit(1)
 		}

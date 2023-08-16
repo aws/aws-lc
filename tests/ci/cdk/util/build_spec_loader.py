@@ -3,9 +3,9 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 
-from aws_cdk import aws_codebuild as codebuild
+from aws_cdk import aws_codebuild as codebuild, aws_s3_assets
 from util.metadata import CAN_AUTOLOAD, TEAM_ACCOUNT, AWS_ACCOUNT, DEFAULT_REGION, AWS_REGION
-import yaml
+import tempfile
 
 
 class BuildSpecLoader(object):
@@ -27,9 +27,10 @@ class BuildSpecLoader(object):
             TEAM_ACCOUNT: AWS_ACCOUNT,
             DEFAULT_REGION: AWS_REGION,
         }
-        with open(file_path) as file:
-            file_text = file.read()
+        with open(file_path) as original_file:
+            file_text = original_file.read()
             for key in placeholder_map.keys():
                 file_text = file_text.replace(key, placeholder_map[key])
-            build_spec_content = yaml.safe_load(file_text)
-            return codebuild.BuildSpec.from_object(build_spec_content)
+            with tempfile.NamedTemporaryFile(mode='w+', delete=False) as temp_file:
+                temp_file.write(file_text)
+                return codebuild.BuildSpec.from_asset(temp_file.name)

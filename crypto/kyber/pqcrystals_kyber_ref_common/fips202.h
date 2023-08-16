@@ -11,13 +11,7 @@
 #define SHA3_512_RATE 72
 
 #define FIPS202_PREFIX(s) pqcrystals_kyber_fips202_ref_ ## s
-
-#ifdef BORINGSSL_PREFIX
-#define FIPS202_NAMESPACE(s) BORINGSSL_ADD_PREFIX(BORINGSSL_PREFIX, FIPS202_PREFIX(s))
-#else
 #define FIPS202_NAMESPACE(s) FIPS202_PREFIX(s)
-#endif
-
 
 typedef struct {
   uint64_t s[25];

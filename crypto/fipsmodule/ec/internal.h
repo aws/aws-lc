@@ -97,6 +97,8 @@ int ECDH_compute_shared_secret(uint8_t *buf, size_t *buflen, const EC_POINT *pub
 // be the largest fields anyone plausibly uses.
 #define EC_MAX_BYTES 66
 #define EC_MAX_WORDS ((EC_MAX_BYTES + BN_BYTES - 1) / BN_BYTES)
+#define EC_MAX_COMPRESSED (EC_MAX_BYTES + 1)
+#define EC_MAX_UNCOMPRESSED (2 * EC_MAX_BYTES + 1)
 
 OPENSSL_STATIC_ASSERT(EC_MAX_WORDS <= BN_SMALL_MAX_WORDS,
                       bn__small_functions_not_usable)
@@ -127,8 +129,8 @@ OPENSSL_EXPORT void ec_scalar_to_bytes(const EC_GROUP *group, uint8_t *out,
 // ec_scalar_from_bytes deserializes |in| and stores the resulting scalar over
 // group |group| to |out|. It returns one on success and zero if |in| is
 // invalid.
-int ec_scalar_from_bytes(const EC_GROUP *group, EC_SCALAR *out,
-                         const uint8_t *in, size_t len);
+OPENSSL_EXPORT int ec_scalar_from_bytes(const EC_GROUP *group, EC_SCALAR *out,
+                                        const uint8_t *in, size_t len);
 
 // ec_scalar_reduce sets |out| to |words|, reduced modulo the group order.
 // |words| must be less than order^2. |num| must be at most twice the width of
@@ -251,16 +253,14 @@ int ec_felem_equal(const EC_GROUP *group, const EC_FELEM *a, const EC_FELEM *b);
 // Points.
 //
 // Points may represented in affine coordinates as |EC_AFFINE| or Jacobian
-// coordinates as |EC_RAW_POINT|. Affine coordinates directly represent a
+// coordinates as |EC_JACOBIAN|. Affine coordinates directly represent a
 // point on the curve, but point addition over affine coordinates requires
 // costly field inversions, so arithmetic is done in Jacobian coordinates.
 // Converting from affine to Jacobian is cheap, while converting from Jacobian
 // to affine costs a field inversion. (Jacobian coordinates amortize the field
 // inversions needed in a sequence of point operations.)
-//
-// TODO(davidben): Rename |EC_RAW_POINT| to |EC_JACOBIAN|.
 
-// An EC_RAW_POINT represents an elliptic curve point in Jacobian coordinates.
+// An EC_JACOBIAN represents an elliptic curve point in Jacobian coordinates.
 // Unlike |EC_POINT|, it is a plain struct which can be stack-allocated and
 // needs no cleanup. It is specific to an |EC_GROUP| and must not be mixed
 // between groups.
@@ -268,7 +268,7 @@ typedef struct {
   // X, Y, and Z are Jacobian projective coordinates. They represent
   // (X/Z^2, Y/Z^3) if Z != 0 and the point at infinity otherwise.
   EC_FELEM X, Y, Z;
-} EC_RAW_POINT;
+} EC_JACOBIAN;
 
 // An EC_AFFINE represents an elliptic curve point in affine coordinates.
 // coordinates. Note the point at infinity cannot be represented in affine
@@ -279,7 +279,7 @@ typedef struct {
 
 // ec_affine_to_jacobian converts |p| to Jacobian form and writes the result to
 // |*out|. This operation is very cheap and only costs a few copies.
-void ec_affine_to_jacobian(const EC_GROUP *group, EC_RAW_POINT *out,
+void ec_affine_to_jacobian(const EC_GROUP *group, EC_JACOBIAN *out,
                            const EC_AFFINE *p);
 
 // ec_jacobian_to_affine converts |p| to affine form and writes the result to
@@ -289,8 +289,8 @@ void ec_affine_to_jacobian(const EC_GROUP *group, EC_RAW_POINT *out,
 //
 // If only extracting the x-coordinate, use |ec_get_x_coordinate_*| which is
 // slightly faster.
-int ec_jacobian_to_affine(const EC_GROUP *group, EC_AFFINE *out,
-                          const EC_RAW_POINT *p);
+OPENSSL_EXPORT int ec_jacobian_to_affine(const EC_GROUP *group, EC_AFFINE *out,
+                                         const EC_JACOBIAN *p);
 
 // ec_jacobian_to_affine_batch converts |num| points in |in| from Jacobian
 // coordinates to affine coordinates and writes the results to |out|. It returns
@@ -299,7 +299,7 @@ int ec_jacobian_to_affine(const EC_GROUP *group, EC_AFFINE *out,
 // This function is not implemented for all curves. Add implementations as
 // needed.
 int ec_jacobian_to_affine_batch(const EC_GROUP *group, EC_AFFINE *out,
-                                const EC_RAW_POINT *in, size_t num);
+                                const EC_JACOBIAN *in, size_t num);
 
 // ec_point_set_affine_coordinates sets |out|'s to a point with affine
 // coordinates |x| and |y|. It returns one if the point is on the curve and
@@ -317,12 +317,12 @@ int ec_point_mul_no_self_test(const EC_GROUP *group, EC_POINT *r,
 
 // ec_point_mul_scalar sets |r| to |p| * |scalar|. Both inputs are considered
 // secret.
-int ec_point_mul_scalar(const EC_GROUP *group, EC_RAW_POINT *r,
-                        const EC_RAW_POINT *p, const EC_SCALAR *scalar);
+int ec_point_mul_scalar(const EC_GROUP *group, EC_JACOBIAN *r,
+                        const EC_JACOBIAN *p, const EC_SCALAR *scalar);
 
 // ec_point_mul_scalar_base sets |r| to generator * |scalar|. |scalar| is
 // treated as secret.
-int ec_point_mul_scalar_base(const EC_GROUP *group, EC_RAW_POINT *r,
+int ec_point_mul_scalar_base(const EC_GROUP *group, EC_JACOBIAN *r,
                              const EC_SCALAR *scalar);
 
 // ec_point_mul_scalar_batch sets |r| to |p0| * |scalar0| + |p1| * |scalar1| +
@@ -343,10 +343,10 @@ int ec_point_mul_scalar_base(const EC_GROUP *group, EC_RAW_POINT *r,
 // none. If generalizing to tuned curves, this may be useful. However, we still
 // must double up to the least efficient input, so precomputed tables can only
 // save table setup and allow a wider window size.
-int ec_point_mul_scalar_batch(const EC_GROUP *group, EC_RAW_POINT *r,
-                              const EC_RAW_POINT *p0, const EC_SCALAR *scalar0,
-                              const EC_RAW_POINT *p1, const EC_SCALAR *scalar1,
-                              const EC_RAW_POINT *p2, const EC_SCALAR *scalar2);
+int ec_point_mul_scalar_batch(const EC_GROUP *group, EC_JACOBIAN *r,
+                              const EC_JACOBIAN *p0, const EC_SCALAR *scalar0,
+                              const EC_JACOBIAN *p1, const EC_SCALAR *scalar1,
+                              const EC_JACOBIAN *p2, const EC_SCALAR *scalar2);
 
 #define EC_MONT_PRECOMP_COMB_SIZE 5
 
@@ -365,7 +365,7 @@ typedef union {
 // This function is not implemented for all curves. Add implementations as
 // needed.
 int ec_init_precomp(const EC_GROUP *group, EC_PRECOMP *out,
-                    const EC_RAW_POINT *p);
+                    const EC_JACOBIAN *p);
 
 // ec_point_mul_scalar_precomp sets |r| to |p0| * |scalar0| + |p1| * |scalar1| +
 // |p2| * |scalar2|. |p1| or |p2| may be NULL to skip the corresponding term.
@@ -389,7 +389,7 @@ int ec_init_precomp(const EC_GROUP *group, EC_PRECOMP *out,
 // none. If generalizing to tuned curves, we should add a parameter for the base
 // point and arrange for the generic implementation to have base point tables
 // available.
-int ec_point_mul_scalar_precomp(const EC_GROUP *group, EC_RAW_POINT *r,
+int ec_point_mul_scalar_precomp(const EC_GROUP *group, EC_JACOBIAN *r,
                                 const EC_PRECOMP *p0, const EC_SCALAR *scalar0,
                                 const EC_PRECOMP *p1, const EC_SCALAR *scalar1,
                                 const EC_PRECOMP *p2, const EC_SCALAR *scalar2);
@@ -398,9 +398,9 @@ int ec_point_mul_scalar_precomp(const EC_GROUP *group, EC_RAW_POINT *r,
 // generator * |g_scalar| + |p| * |p_scalar|. It assumes that the inputs are
 // public so there is no concern about leaking their values through timing.
 OPENSSL_EXPORT int ec_point_mul_scalar_public(const EC_GROUP *group,
-                                              EC_RAW_POINT *r,
+                                              EC_JACOBIAN *r,
                                               const EC_SCALAR *g_scalar,
-                                              const EC_RAW_POINT *p,
+                                              const EC_JACOBIAN *p,
                                               const EC_SCALAR *p_scalar);
 
 // ec_point_mul_scalar_public_batch sets |r| to the sum of generator *
@@ -411,15 +411,15 @@ OPENSSL_EXPORT int ec_point_mul_scalar_public(const EC_GROUP *group,
 //
 // This function is not implemented for all curves. Add implementations as
 // needed.
-int ec_point_mul_scalar_public_batch(const EC_GROUP *group, EC_RAW_POINT *r,
+int ec_point_mul_scalar_public_batch(const EC_GROUP *group, EC_JACOBIAN *r,
                                      const EC_SCALAR *g_scalar,
-                                     const EC_RAW_POINT *points,
+                                     const EC_JACOBIAN *points,
                                      const EC_SCALAR *scalars, size_t num);
 
 // ec_point_select, in constant time, sets |out| to |a| if |mask| is all ones
 // and |b| if |mask| is all zeros.
-void ec_point_select(const EC_GROUP *group, EC_RAW_POINT *out, BN_ULONG mask,
-                     const EC_RAW_POINT *a, const EC_RAW_POINT *b);
+void ec_point_select(const EC_GROUP *group, EC_JACOBIAN *out, BN_ULONG mask,
+                     const EC_JACOBIAN *a, const EC_JACOBIAN *b);
 
 // ec_affine_select behaves like |ec_point_select| but acts on affine points.
 void ec_affine_select(const EC_GROUP *group, EC_AFFINE *out, BN_ULONG mask,
@@ -432,14 +432,14 @@ void ec_precomp_select(const EC_GROUP *group, EC_PRECOMP *out, BN_ULONG mask,
 // ec_cmp_x_coordinate compares the x (affine) coordinate of |p|, mod the group
 // order, with |r|. It returns one if the values match and zero if |p| is the
 // point at infinity of the values do not match.
-int ec_cmp_x_coordinate(const EC_GROUP *group, const EC_RAW_POINT *p,
+int ec_cmp_x_coordinate(const EC_GROUP *group, const EC_JACOBIAN *p,
                         const EC_SCALAR *r);
 
 // ec_get_x_coordinate_as_scalar sets |*out| to |p|'s x-coordinate, modulo
 // |group->order|. It returns one on success and zero if |p| is the point at
 // infinity.
 int ec_get_x_coordinate_as_scalar(const EC_GROUP *group, EC_SCALAR *out,
-                                  const EC_RAW_POINT *p);
+                                  const EC_JACOBIAN *p);
 
 // ec_get_x_coordinate_as_bytes writes |p|'s affine x-coordinate to |out|, which
 // must have at must |max_out| bytes. It sets |*out_len| to the number of bytes
@@ -447,7 +447,7 @@ int ec_get_x_coordinate_as_scalar(const EC_GROUP *group, EC_SCALAR *out,
 // field. This function returns one on success and zero on failure.
 int ec_get_x_coordinate_as_bytes(const EC_GROUP *group, uint8_t *out,
                                  size_t *out_len, size_t max_out,
-                                 const EC_RAW_POINT *p);
+                                 const EC_JACOBIAN *p);
 
 // ec_point_byte_len returns the number of bytes in the byte representation of
 // a non-infinity point in |group|, encoded according to |form|, or zero if
@@ -471,12 +471,12 @@ int ec_point_from_uncompressed(const EC_GROUP *group, EC_AFFINE *out,
 // ec_set_to_safe_point sets |out| to an arbitrary point on |group|, either the
 // generator or the point at infinity. This is used to guard against callers of
 // external APIs not checking the return value.
-void ec_set_to_safe_point(const EC_GROUP *group, EC_RAW_POINT *out);
+void ec_set_to_safe_point(const EC_GROUP *group, EC_JACOBIAN *out);
 
 // ec_affine_jacobian_equal returns one if |a| and |b| represent the same point
 // and zero otherwise. It treats both inputs as secret.
 int ec_affine_jacobian_equal(const EC_GROUP *group, const EC_AFFINE *a,
-                             const EC_RAW_POINT *b);
+                             const EC_JACOBIAN *b);
 
 
 // Implementation details.
@@ -494,48 +494,48 @@ struct ec_method_st {
   // point_get_affine_coordinates sets |*x| and |*y| to the affine coordinates
   // of |p|. Either |x| or |y| may be NULL to omit it. It returns one on success
   // and zero if |p| is the point at infinity.
-  int (*point_get_affine_coordinates)(const EC_GROUP *, const EC_RAW_POINT *p,
+  int (*point_get_affine_coordinates)(const EC_GROUP *, const EC_JACOBIAN *p,
                                       EC_FELEM *x, EC_FELEM *y);
 
   // jacobian_to_affine_batch implements |ec_jacobian_to_affine_batch|.
   int (*jacobian_to_affine_batch)(const EC_GROUP *group, EC_AFFINE *out,
-                                  const EC_RAW_POINT *in, size_t num);
+                                  const EC_JACOBIAN *in, size_t num);
 
   // add sets |r| to |a| + |b|.
-  void (*add)(const EC_GROUP *group, EC_RAW_POINT *r, const EC_RAW_POINT *a,
-              const EC_RAW_POINT *b);
+  void (*add)(const EC_GROUP *group, EC_JACOBIAN *r, const EC_JACOBIAN *a,
+              const EC_JACOBIAN *b);
   // dbl sets |r| to |a| + |a|.
-  void (*dbl)(const EC_GROUP *group, EC_RAW_POINT *r, const EC_RAW_POINT *a);
+  void (*dbl)(const EC_GROUP *group, EC_JACOBIAN *r, const EC_JACOBIAN *a);
 
   // mul sets |r| to |scalar|*|p|.
-  void (*mul)(const EC_GROUP *group, EC_RAW_POINT *r, const EC_RAW_POINT *p,
+  void (*mul)(const EC_GROUP *group, EC_JACOBIAN *r, const EC_JACOBIAN *p,
               const EC_SCALAR *scalar);
   // mul_base sets |r| to |scalar|*generator.
-  void (*mul_base)(const EC_GROUP *group, EC_RAW_POINT *r,
+  void (*mul_base)(const EC_GROUP *group, EC_JACOBIAN *r,
                    const EC_SCALAR *scalar);
   // mul_batch implements |ec_mul_scalar_batch|.
-  void (*mul_batch)(const EC_GROUP *group, EC_RAW_POINT *r,
-                    const EC_RAW_POINT *p0, const EC_SCALAR *scalar0,
-                    const EC_RAW_POINT *p1, const EC_SCALAR *scalar1,
-                    const EC_RAW_POINT *p2, const EC_SCALAR *scalar2);
+  void (*mul_batch)(const EC_GROUP *group, EC_JACOBIAN *r,
+                    const EC_JACOBIAN *p0, const EC_SCALAR *scalar0,
+                    const EC_JACOBIAN *p1, const EC_SCALAR *scalar1,
+                    const EC_JACOBIAN *p2, const EC_SCALAR *scalar2);
   // mul_public sets |r| to |g_scalar|*generator + |p_scalar|*|p|. It assumes
   // that the inputs are public so there is no concern about leaking their
   // values through timing.
   //
   // This function may be omitted if |mul_public_batch| is provided.
-  void (*mul_public)(const EC_GROUP *group, EC_RAW_POINT *r,
-                     const EC_SCALAR *g_scalar, const EC_RAW_POINT *p,
+  void (*mul_public)(const EC_GROUP *group, EC_JACOBIAN *r,
+                     const EC_SCALAR *g_scalar, const EC_JACOBIAN *p,
                      const EC_SCALAR *p_scalar);
   // mul_public_batch implements |ec_point_mul_scalar_public_batch|.
-  int (*mul_public_batch)(const EC_GROUP *group, EC_RAW_POINT *r,
-                          const EC_SCALAR *g_scalar, const EC_RAW_POINT *points,
+  int (*mul_public_batch)(const EC_GROUP *group, EC_JACOBIAN *r,
+                          const EC_SCALAR *g_scalar, const EC_JACOBIAN *points,
                           const EC_SCALAR *scalars, size_t num);
 
   // init_precomp implements |ec_init_precomp|.
   int (*init_precomp)(const EC_GROUP *group, EC_PRECOMP *out,
-                      const EC_RAW_POINT *p);
+                      const EC_JACOBIAN *p);
   // mul_precomp implements |ec_point_mul_scalar_precomp|.
-  void (*mul_precomp)(const EC_GROUP *group, EC_RAW_POINT *r,
+  void (*mul_precomp)(const EC_GROUP *group, EC_JACOBIAN *r,
                       const EC_PRECOMP *p0, const EC_SCALAR *scalar0,
                       const EC_PRECOMP *p1, const EC_SCALAR *scalar1,
                       const EC_PRECOMP *p2, const EC_SCALAR *scalar2);
@@ -574,6 +574,12 @@ struct ec_method_st {
   //
   // This function is used in hash-to-curve and may be NULL in curves not used
   // with hash-to-curve.
+  //
+  // TODO(https://crbug.com/boringssl/567): hash-to-curve uses this as part of
+  // computing a square root, which is what compressed coordinates ultimately
+  // needs to avoid |BIGNUM|. Can we unify this a bit? By generalizing to
+  // arbitrary exponentiation, we also miss an opportunity to use a specialized
+  // addition chain.
   void (*felem_exp)(const EC_GROUP *group, EC_FELEM *out, const EC_FELEM *a,
                     const BN_ULONG *exp, size_t num_exp);
 
@@ -589,7 +595,7 @@ struct ec_method_st {
   // cmp_x_coordinate compares the x (affine) coordinate of |p|, mod the group
   // order, with |r|. It returns one if the values match and zero if |p| is the
   // point at infinity of the values do not match.
-  int (*cmp_x_coordinate)(const EC_GROUP *group, const EC_RAW_POINT *p,
+  int (*cmp_x_coordinate)(const EC_GROUP *group, const EC_JACOBIAN *p,
                           const EC_SCALAR *r);
 } /* EC_METHOD */;
 
@@ -643,27 +649,32 @@ struct ec_point_st {
   EC_GROUP *group;
   // raw is the group-specific point data. Functions that take |EC_POINT|
   // typically check consistency with |EC_GROUP| while functions that take
-  // |EC_RAW_POINT| do not. Thus accesses to this field should be externally
+  // |EC_JACOBIAN| do not. Thus accesses to this field should be externally
   // checked for consistency.
-  EC_RAW_POINT raw;
+  EC_JACOBIAN raw;
 } /* EC_POINT */;
 
 EC_GROUP *ec_group_new(const EC_METHOD *meth);
 
-void ec_GFp_mont_mul(const EC_GROUP *group, EC_RAW_POINT *r,
-                     const EC_RAW_POINT *p, const EC_SCALAR *scalar);
-void ec_GFp_mont_mul_base(const EC_GROUP *group, EC_RAW_POINT *r,
+void ec_GFp_mont_mul(const EC_GROUP *group, EC_JACOBIAN *r,
+                     const EC_JACOBIAN *p, const EC_SCALAR *scalar);
+void ec_GFp_mont_mul_base(const EC_GROUP *group, EC_JACOBIAN *r,
                           const EC_SCALAR *scalar);
-void ec_GFp_mont_mul_batch(const EC_GROUP *group, EC_RAW_POINT *r,
-                           const EC_RAW_POINT *p0, const EC_SCALAR *scalar0,
-                           const EC_RAW_POINT *p1, const EC_SCALAR *scalar1,
-                           const EC_RAW_POINT *p2, const EC_SCALAR *scalar2);
+void ec_GFp_mont_mul_batch(const EC_GROUP *group, EC_JACOBIAN *r,
+                           const EC_JACOBIAN *p0, const EC_SCALAR *scalar0,
+                           const EC_JACOBIAN *p1, const EC_SCALAR *scalar1,
+                           const EC_JACOBIAN *p2, const EC_SCALAR *scalar2);
 int ec_GFp_mont_init_precomp(const EC_GROUP *group, EC_PRECOMP *out,
-                             const EC_RAW_POINT *p);
-void ec_GFp_mont_mul_precomp(const EC_GROUP *group, EC_RAW_POINT *r,
+                             const EC_JACOBIAN *p);
+void ec_GFp_mont_mul_precomp(const EC_GROUP *group, EC_JACOBIAN *r,
                              const EC_PRECOMP *p0, const EC_SCALAR *scalar0,
                              const EC_PRECOMP *p1, const EC_SCALAR *scalar1,
                              const EC_PRECOMP *p2, const EC_SCALAR *scalar2);
+void ec_GFp_mont_felem_reduce(const EC_GROUP *group, EC_FELEM *out,
+                              const BN_ULONG *words, size_t num);
+void ec_GFp_mont_felem_exp(const EC_GROUP *group, EC_FELEM *out,
+                           const EC_FELEM *a, const BN_ULONG *exp,
+                           size_t num_exp);
 
 // ec_compute_wNAF writes the modified width-(w+1) Non-Adjacent Form (wNAF) of
 // |scalar| to |out|. |out| must have room for |bits| + 1 elements, each of
@@ -676,9 +687,9 @@ void ec_GFp_mont_mul_precomp(const EC_GROUP *group, EC_RAW_POINT *r,
 void ec_compute_wNAF(const EC_GROUP *group, int8_t *out,
                      const EC_SCALAR *scalar, size_t bits, int w);
 
-int ec_GFp_mont_mul_public_batch(const EC_GROUP *group, EC_RAW_POINT *r,
+int ec_GFp_mont_mul_public_batch(const EC_GROUP *group, EC_JACOBIAN *r,
                                  const EC_SCALAR *g_scalar,
-                                 const EC_RAW_POINT *points,
+                                 const EC_JACOBIAN *points,
                                  const EC_SCALAR *scalars, size_t num);
 
 // method functions in simple.c
@@ -688,17 +699,17 @@ int ec_GFp_simple_group_set_curve(EC_GROUP *, const BIGNUM *p, const BIGNUM *a,
                                   const BIGNUM *b, BN_CTX *);
 int ec_GFp_simple_group_get_curve(const EC_GROUP *, BIGNUM *p, BIGNUM *a,
                                   BIGNUM *b);
-void ec_GFp_simple_point_init(EC_RAW_POINT *);
-void ec_GFp_simple_point_copy(EC_RAW_POINT *, const EC_RAW_POINT *);
-void ec_GFp_simple_point_set_to_infinity(const EC_GROUP *, EC_RAW_POINT *);
-void ec_GFp_mont_add(const EC_GROUP *, EC_RAW_POINT *r, const EC_RAW_POINT *a,
-                     const EC_RAW_POINT *b);
-void ec_GFp_mont_dbl(const EC_GROUP *, EC_RAW_POINT *r, const EC_RAW_POINT *a);
-void ec_GFp_simple_invert(const EC_GROUP *, EC_RAW_POINT *);
-int ec_GFp_simple_is_at_infinity(const EC_GROUP *, const EC_RAW_POINT *);
-int ec_GFp_simple_is_on_curve(const EC_GROUP *, const EC_RAW_POINT *);
-int ec_GFp_simple_points_equal(const EC_GROUP *, const EC_RAW_POINT *a,
-                               const EC_RAW_POINT *b);
+void ec_GFp_simple_point_init(EC_JACOBIAN *);
+void ec_GFp_simple_point_copy(EC_JACOBIAN *, const EC_JACOBIAN *);
+void ec_GFp_simple_point_set_to_infinity(const EC_GROUP *, EC_JACOBIAN *);
+void ec_GFp_mont_add(const EC_GROUP *, EC_JACOBIAN *r, const EC_JACOBIAN *a,
+                     const EC_JACOBIAN *b);
+void ec_GFp_mont_dbl(const EC_GROUP *, EC_JACOBIAN *r, const EC_JACOBIAN *a);
+void ec_GFp_simple_invert(const EC_GROUP *, EC_JACOBIAN *);
+int ec_GFp_simple_is_at_infinity(const EC_GROUP *, const EC_JACOBIAN *);
+int ec_GFp_simple_is_on_curve(const EC_GROUP *, const EC_JACOBIAN *);
+int ec_GFp_simple_points_equal(const EC_GROUP *, const EC_JACOBIAN *a,
+                               const EC_JACOBIAN *b);
 void ec_simple_scalar_inv0_montgomery(const EC_GROUP *group, EC_SCALAR *r,
                                       const EC_SCALAR *a);
 
@@ -706,7 +717,7 @@ int ec_simple_scalar_to_montgomery_inv_vartime(const EC_GROUP *group,
                                                EC_SCALAR *r,
                                                const EC_SCALAR *a);
 
-int ec_GFp_simple_cmp_x_coordinate(const EC_GROUP *group, const EC_RAW_POINT *p,
+int ec_GFp_simple_cmp_x_coordinate(const EC_GROUP *group, const EC_JACOBIAN *p,
                                    const EC_SCALAR *r);
 
 void ec_GFp_simple_felem_to_bytes(const EC_GROUP *group, uint8_t *out,

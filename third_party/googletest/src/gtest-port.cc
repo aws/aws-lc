@@ -178,44 +178,6 @@ size_t GetThreadCount() {
   }
   return static_cast<size_t>(KP_NLWP(info));
 }
-#elif GTEST_OS_OPENBSD
-
-// Returns the number of threads running in the process, or 0 to indicate that
-// we cannot detect it.
-size_t GetThreadCount() {
-  int mib[] = {
-    CTL_KERN,
-    KERN_PROC,
-    KERN_PROC_PID | KERN_PROC_SHOW_THREADS,
-    getpid(),
-    sizeof(struct kinfo_proc),
-    0,
-  };
-  u_int miblen = sizeof(mib) / sizeof(mib[0]);
-
-  // get number of structs
-  size_t size;
-  if (sysctl(mib, miblen, NULL, &size, NULL, 0)) {
-    return 0;
-  }
-
-  mib[5] = static_cast<int>(size / static_cast<size_t>(mib[4]));
-
-  // populate array of structs
-  struct kinfo_proc info[mib[5]];
-  if (sysctl(mib, miblen, &info, &size, NULL, 0)) {
-    return 0;
-  }
-
-  // exclude empty members
-  size_t nthreads = 0;
-  for (size_t i = 0; i < size / static_cast<size_t>(mib[4]); i++) {
-    if (info[i].p_tid != -1)
-      nthreads++;
-  }
-  return nthreads;
-}
-
 #elif GTEST_OS_QNX
 
 // Returns the number of threads running in the process, or 0 to indicate that

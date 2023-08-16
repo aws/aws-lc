@@ -89,7 +89,6 @@ RSA *RSA_new(void) { return RSA_new_method(NULL); }
 RSA *RSA_new_method(const ENGINE *engine) {
   RSA *rsa = OPENSSL_malloc(sizeof(RSA));
   if (rsa == NULL) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
 
@@ -121,8 +120,6 @@ RSA *RSA_new_method(const ENGINE *engine) {
 }
 
 void RSA_free(RSA *rsa) {
-  unsigned u;
-
   if (rsa == NULL) {
     return;
   }
@@ -147,18 +144,7 @@ void RSA_free(RSA *rsa) {
   BN_free(rsa->dmq1);
   BN_free(rsa->iqmp);
   RSASSA_PSS_PARAMS_free(rsa->pss);
-  BN_MONT_CTX_free(rsa->mont_n);
-  BN_MONT_CTX_free(rsa->mont_p);
-  BN_MONT_CTX_free(rsa->mont_q);
-  BN_free(rsa->d_fixed);
-  BN_free(rsa->dmp1_fixed);
-  BN_free(rsa->dmq1_fixed);
-  BN_free(rsa->inv_small_mod_large_mont);
-  for (u = 0; u < rsa->num_blindings; u++) {
-    BN_BLINDING_free(rsa->blindings[u]);
-  }
-  OPENSSL_free(rsa->blindings);
-  OPENSSL_free(rsa->blindings_inuse);
+  rsa_invalidate_key(rsa);
   CRYPTO_MUTEX_cleanup(&rsa->lock);
   OPENSSL_free(rsa);
 }
@@ -230,7 +216,7 @@ void RSA_get0_crt_params(const RSA *rsa, const BIGNUM **out_dmp1,
 
 int RSA_set0_key(RSA *rsa, BIGNUM *n, BIGNUM *e, BIGNUM *d) {
   if ((rsa->n == NULL && n == NULL) ||
-      (rsa->e == NULL && e == NULL)) {
+      (rsa->e == NULL && e == NULL && rsa->d == NULL && d == NULL)) {
     return 0;
   }
 
@@ -247,6 +233,7 @@ int RSA_set0_key(RSA *rsa, BIGNUM *n, BIGNUM *e, BIGNUM *d) {
     rsa->d = d;
   }
 
+  rsa_invalidate_key(rsa);
   return 1;
 }
 
@@ -265,6 +252,7 @@ int RSA_set0_factors(RSA *rsa, BIGNUM *p, BIGNUM *q) {
     rsa->q = q;
   }
 
+  rsa_invalidate_key(rsa);
   return 1;
 }
 
@@ -288,6 +276,7 @@ int RSA_set0_crt_params(RSA *rsa, BIGNUM *dmp1, BIGNUM *dmq1, BIGNUM *iqmp) {
     rsa->iqmp = iqmp;
   }
 
+  rsa_invalidate_key(rsa);
   return 1;
 }
 
@@ -424,7 +413,8 @@ struct pkcs1_sig_prefix {
 };
 
 // kPKCS1SigPrefixes contains the ASN.1 prefixes for PKCS#1 signatures with
-// different hash functions.
+// different hash functions. These are defined in RFC-8017 Section 9.2
+// https://datatracker.ietf.org/doc/html/rfc8017#section-9.2
 static const struct pkcs1_sig_prefix kPKCS1SigPrefixes[] = {
     {
      NID_md5,
@@ -467,6 +457,13 @@ static const struct pkcs1_sig_prefix kPKCS1SigPrefixes[] = {
      19,
      {0x30, 0x51, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03,
       0x04, 0x02, 0x03, 0x05, 0x00, 0x04, 0x40},
+    },
+    {
+     NID_sha512_256,
+     SHA512_256_DIGEST_LENGTH,
+     19,
+     {0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03,
+      0x04, 0x02, 0x06, 0x05, 0x00, 0x04, 0x20},
     },
     {
      NID_undef, 0, 0, {0},
@@ -532,7 +529,6 @@ int RSA_add_pkcs1_prefix(uint8_t **out_msg, size_t *out_msg_len,
 
     uint8_t *signed_msg = OPENSSL_malloc(signed_msg_len);
     if (!signed_msg) {
-      OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
       return 0;
     }
 
@@ -612,7 +608,6 @@ int RSA_sign_pss_mgf1(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
   size_t padded_len = RSA_size(rsa);
   uint8_t *padded = OPENSSL_malloc(padded_len);
   if (padded == NULL) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 
@@ -622,6 +617,19 @@ int RSA_sign_pss_mgf1(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
                          RSA_NO_PADDING);
   OPENSSL_free(padded);
   return ret;
+}
+
+int rsa_digestsign_no_self_test(const EVP_MD *md, const uint8_t *input,
+                                size_t in_len, uint8_t *out, unsigned *out_len,
+                                RSA *rsa) {
+  uint8_t digest[EVP_MAX_MD_SIZE];
+  unsigned int digest_len;
+  if (!EVP_Digest(input, in_len, digest, &digest_len, md, NULL)) {
+    return 0;
+  }
+
+  return rsa_sign_no_self_test(EVP_MD_type(md), digest, digest_len, out,
+                               out_len, rsa);
 }
 
 int rsa_verify_no_self_test(int hash_nid, const uint8_t *digest,
@@ -646,7 +654,6 @@ int rsa_verify_no_self_test(int hash_nid, const uint8_t *digest,
 
   buf = OPENSSL_malloc(rsa_size);
   if (!buf) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 
@@ -680,6 +687,19 @@ out:
   return ret;
 }
 
+int rsa_digestverify_no_self_test(const EVP_MD *md, const uint8_t *input,
+                                  size_t in_len, const uint8_t *sig,
+                                  size_t sig_len, RSA *rsa) {
+  uint8_t digest[EVP_MAX_MD_SIZE];
+  unsigned int digest_len;
+  if (!EVP_Digest(input, in_len, digest, &digest_len, md, NULL)) {
+    return 0;
+  }
+
+  return rsa_verify_no_self_test(EVP_MD_type(md), digest, digest_len, sig,
+                                 sig_len, rsa);
+}
+
 int RSA_verify(int hash_nid, const uint8_t *digest, size_t digest_len,
                const uint8_t *sig, size_t sig_len, RSA *rsa) {
   boringssl_ensure_rsa_self_test();
@@ -698,7 +718,6 @@ int RSA_verify_pss_mgf1(RSA *rsa, const uint8_t *digest, size_t digest_len,
   size_t em_len = RSA_size(rsa);
   uint8_t *em = OPENSSL_malloc(em_len);
   if (em == NULL) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 
@@ -742,24 +761,6 @@ static int check_mod_inverse(int *out_ok, const BIGNUM *a, const BIGNUM *ainv,
   return ret;
 }
 
-#if !defined(AWSLC_FIPS)
-static bool allow_rsa_keys_d_gt_n_flag = false;
-
-void allow_rsa_keys_d_gt_n(void) {
-  allow_rsa_keys_d_gt_n_flag = true;
-}
-
-static bool are_rsa_keys_with_d_gt_n_allowed(void) {
-  return allow_rsa_keys_d_gt_n_flag;
-}
-
-#else
-
-static bool are_rsa_keys_with_d_gt_n_allowed(void) {
-  return false;
-}
-#endif
-
 int RSA_validate_key(const RSA *key, rsa_asn1_key_encoding_t key_enc_type) {
   // TODO(davidben): RSA key initialization is spread across
   // |rsa_check_public_key|, |RSA_check_key|, |freeze_private_key|, and
@@ -777,18 +778,16 @@ int RSA_validate_key(const RSA *key, rsa_asn1_key_encoding_t key_enc_type) {
     return 0;
   }
 
-  if (key->d != NULL && (BN_is_negative(key->d))) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_D_OUT_OF_RANGE);
-    return 0;
-  }
-
-  // |key->d| must be bounded by |key->n|. This ensures bounds on |RSA_bits|
-  // translate to bounds on the running time of private key operations.
-  // See above this functions the explanation for the exception when keys
-  // with |d > n| are allowed.
-  if (key->d != NULL &&
-      are_rsa_keys_with_d_gt_n_allowed() == false &&
-      BN_cmp(key->d, key->n) >= 0) {
+  // Previously, we ensured that |key->d| is bounded by |key->n|.
+  // This ensures bounds on |RSA_bits| translate to bounds on
+  // the running time of private key operations.
+  // However, due to some users (V804729436) having to deal with private keys
+  // that are valid but violate this condition we had to remove it.
+  // The main concern for keys that violate the condition (the potential
+  // DoS attack vector) is somewhat alleviated with the hard limit on
+  // the size of RSA keys we allow.
+  // This behavior is in line with OpenSSL that doesn't impose the condition.
+  if (key->d != NULL && BN_is_negative(key->d)) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_D_OUT_OF_RANGE);
     return 0;
   }
@@ -810,7 +809,6 @@ int RSA_validate_key(const RSA *key, rsa_asn1_key_encoding_t key_enc_type) {
 
   BN_CTX *ctx = BN_CTX_new();
   if (ctx == NULL) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 
@@ -825,7 +823,8 @@ int RSA_validate_key(const RSA *key, rsa_asn1_key_encoding_t key_enc_type) {
 
   // Check that p * q == n. Before we multiply, we check that p and q are in
   // bounds, to avoid a DoS vector in |bn_mul_consttime| below. Note that
-  // n was bound by |rsa_check_public_key|.
+  // n was bound by |rsa_check_public_key|. This also implicitly checks p and q
+  // are odd, which is a necessary condition for Montgomery reduction.
   if (BN_is_negative(key->p) || BN_cmp(key->p, key->n) >= 0 ||
       BN_is_negative(key->q) || BN_cmp(key->q, key->n) >= 0) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_N_NOT_EQUAL_P_Q);
@@ -928,6 +927,42 @@ DEFINE_LOCAL_DATA(BIGNUM, g_small_factors) {
   out->flags = BN_FLG_STATIC_DATA;
 }
 
+static int EVP_RSA_KEY_check_fips(RSA *key) {
+  uint8_t msg[1] = {0};
+  size_t msg_len = 1;
+  int ret = 0;
+  uint8_t* sig_der = NULL;
+  EVP_PKEY *evp_pkey = EVP_PKEY_new();
+  EVP_MD_CTX ctx;
+  EVP_MD_CTX_init(&ctx);
+  const EVP_MD *hash = EVP_sha256();
+  size_t sign_len;
+  if (!evp_pkey ||
+      !EVP_PKEY_set1_RSA(evp_pkey, key) ||
+      !EVP_DigestSignInit(&ctx, NULL, hash, NULL, evp_pkey) ||
+      !EVP_DigestSign(&ctx, NULL, &sign_len, msg, msg_len)) {
+    goto err;
+  }
+  sig_der = OPENSSL_malloc(sign_len);
+  if (!sig_der ||
+      !EVP_DigestSign(&ctx, sig_der, &sign_len, msg, msg_len)) {
+    goto err;
+  }
+  if (boringssl_fips_break_test("RSA_PWCT")) {
+    msg[0] = ~msg[0];
+  }
+  if (!EVP_DigestVerifyInit(&ctx, NULL, hash, NULL, evp_pkey) ||
+      !EVP_DigestVerify(&ctx, sig_der, sign_len, msg, msg_len)) {
+    goto err;
+  }
+  ret = 1;
+err:
+  EVP_PKEY_free(evp_pkey);
+  EVP_MD_CTX_cleanse(&ctx);
+  OPENSSL_free(sig_der);
+  return ret;
+}
+
 int RSA_check_fips(RSA *key) {
   if (RSA_is_opaque(key)) {
     // Opaque keys can't be checked.
@@ -941,7 +976,6 @@ int RSA_check_fips(RSA *key) {
 
   BN_CTX *ctx = BN_CTX_new();
   if (ctx == NULL) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 
@@ -984,29 +1018,10 @@ int RSA_check_fips(RSA *key) {
   // section 9.9, it is not known whether |rsa| will be used for signing or
   // encryption, so either pair-wise consistency self-test is acceptable. We
   // perform a signing test.
-  uint8_t data[32] = {0};
-  unsigned sig_len = RSA_size(key);
-  uint8_t *sig = OPENSSL_malloc(sig_len);
-  if (sig == NULL) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
-    return 0;
-  }
-
-  if (!RSA_sign(NID_sha256, data, sizeof(data), sig, &sig_len, key)) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
-    ret = 0;
-    goto cleanup;
-  }
-  if (boringssl_fips_break_test("RSA_PWCT")) {
-    data[0] = ~data[0];
-  }
-  if (!RSA_verify(NID_sha256, data, sizeof(data), sig, sig_len, key)) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
+  if (!EVP_RSA_KEY_check_fips(key)) {
+    OPENSSL_PUT_ERROR(EC, RSA_R_PUBLIC_KEY_VALIDATION_FAILED);
     ret = 0;
   }
-
-cleanup:
-  OPENSSL_free(sig);
 
   return ret;
 }

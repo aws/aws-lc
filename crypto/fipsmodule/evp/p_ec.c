@@ -193,7 +193,10 @@ static int pkey_ec_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
       int md_type = EVP_MD_type(md);
       if (md_type != NID_sha1 && md_type != NID_sha224 &&
           md_type != NID_sha256 && md_type != NID_sha384 &&
-          md_type != NID_sha512) {
+          md_type != NID_sha512 && md_type != NID_sha512_256 &&
+          md_type != NID_sha3_224 && md_type != NID_sha3_256 &&
+          md_type != NID_sha3_384 && md_type != NID_sha3_512
+      ) {
         OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_DIGEST_TYPE);
         return 0;
       }

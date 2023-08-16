@@ -69,6 +69,7 @@
 #include <openssl/dh.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
+#include <openssl/nid.h>
 
 #include "../fipsmodule/dh/internal.h"
 #include "../internal.h"
@@ -110,6 +111,54 @@ TEST(DHTest, Basic) {
   // small, 64-bit prime, so check for at least 32 bits of output after removing
   // leading zeros.
   EXPECT_GE(key1.size(), 4u);
+}
+
+TEST(DHTest, OversizedModulus) {
+  bssl::UniquePtr<DH> a(DH_new());
+  ASSERT_TRUE(a);
+
+  const size_t LARGE_MOD_P = 4097;  // OPENSSL_DH_CHECK_MAX_MODULUS_BITS / 8 + 1
+
+  // Create a BigNumber which will be interpreted as a big-endian value
+  auto number = std::unique_ptr<uint8_t[], std::default_delete<uint8_t[]>>(
+      new uint8_t[LARGE_MOD_P]);
+  for (size_t i = 0; i < LARGE_MOD_P; i++) {
+    number[i] = 255;
+  }
+
+  bssl::UniquePtr<BIGNUM> p(BN_bin2bn(number.get(), LARGE_MOD_P, nullptr));
+  bssl::UniquePtr<BIGNUM> q(BN_new());
+  bssl::UniquePtr<BIGNUM> g(BN_new());
+
+  // Q and G don't matter for this test, they just can't be null
+  ASSERT_TRUE(DH_set0_pqg(a.get(), p.release(), q.release(), g.release()));
+
+  int check_result;
+  ASSERT_FALSE(DH_check(a.get(), &check_result));
+  uint32_t error = ERR_get_error();
+  ASSERT_EQ(ERR_LIB_DH, ERR_GET_LIB(error));
+  ASSERT_EQ(DH_R_MODULUS_TOO_LARGE, ERR_GET_REASON(error));
+}
+
+TEST(DHTest, LargeQ) {
+  bssl::UniquePtr<DH> a(DH_new());
+  ASSERT_TRUE(a);
+  ASSERT_TRUE(DH_generate_parameters_ex(a.get(), 64, DH_GENERATOR_5, nullptr));
+
+  bssl::UniquePtr<BIGNUM> q(BN_new());
+  ASSERT_TRUE(q);
+  BN_set_word(q.get(), 2039L);
+
+  a.get()->q = q.release();
+
+  ASSERT_TRUE(DH_generate_key(a.get()));
+
+  ASSERT_TRUE(BN_copy(a.get()->q, a.get()->p));
+  ASSERT_TRUE(BN_add(a.get()->q, a.get()->q, BN_value_one()));
+
+  int check_result;
+  ASSERT_TRUE(DH_check(a.get(), &check_result));
+  ASSERT_TRUE(check_result & DH_CHECK_INVALID_Q_VALUE);
 }
 
 // The following parameters are taken from RFC 5114, section 2.2. This is not a
@@ -300,33 +349,216 @@ TEST(DHTest, ASN1) {
   EXPECT_EQ(Bytes(kParamsDSA), Bytes(der, der_len));
 }
 
+static void check_bn_matches_bytes(std::vector<uint8_t> bytes, const BIGNUM*bn) {
+  uint8_t buffer[4096];
+  ASSERT_EQ(BN_bn2bin(bn, buffer), bytes.size());
+  EXPECT_EQ(Bytes(buffer, bytes.size()), Bytes(bytes));
+}
+
+static std::vector<uint8_t> rfc_string_to_bytes(const char *str) {
+  std::string string(str);
+  string.erase(std::remove_if(string.begin(),string.end(), ::isspace),string.end());
+  return HexToBytes(string.c_str());
+
+}
+
 TEST(DHTest, RFC3526) {
   bssl::UniquePtr<BIGNUM> bn(BN_get_rfc3526_prime_1536(nullptr));
   ASSERT_TRUE(bn);
 
-  static const uint8_t kPrime1536[] = {
-      0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xc9, 0x0f, 0xda, 0xa2,
-      0x21, 0x68, 0xc2, 0x34, 0xc4, 0xc6, 0x62, 0x8b, 0x80, 0xdc, 0x1c, 0xd1,
-      0x29, 0x02, 0x4e, 0x08, 0x8a, 0x67, 0xcc, 0x74, 0x02, 0x0b, 0xbe, 0xa6,
-      0x3b, 0x13, 0x9b, 0x22, 0x51, 0x4a, 0x08, 0x79, 0x8e, 0x34, 0x04, 0xdd,
-      0xef, 0x95, 0x19, 0xb3, 0xcd, 0x3a, 0x43, 0x1b, 0x30, 0x2b, 0x0a, 0x6d,
-      0xf2, 0x5f, 0x14, 0x37, 0x4f, 0xe1, 0x35, 0x6d, 0x6d, 0x51, 0xc2, 0x45,
-      0xe4, 0x85, 0xb5, 0x76, 0x62, 0x5e, 0x7e, 0xc6, 0xf4, 0x4c, 0x42, 0xe9,
-      0xa6, 0x37, 0xed, 0x6b, 0x0b, 0xff, 0x5c, 0xb6, 0xf4, 0x06, 0xb7, 0xed,
-      0xee, 0x38, 0x6b, 0xfb, 0x5a, 0x89, 0x9f, 0xa5, 0xae, 0x9f, 0x24, 0x11,
-      0x7c, 0x4b, 0x1f, 0xe6, 0x49, 0x28, 0x66, 0x51, 0xec, 0xe4, 0x5b, 0x3d,
-      0xc2, 0x00, 0x7c, 0xb8, 0xa1, 0x63, 0xbf, 0x05, 0x98, 0xda, 0x48, 0x36,
-      0x1c, 0x55, 0xd3, 0x9a, 0x69, 0x16, 0x3f, 0xa8, 0xfd, 0x24, 0xcf, 0x5f,
-      0x83, 0x65, 0x5d, 0x23, 0xdc, 0xa3, 0xad, 0x96, 0x1c, 0x62, 0xf3, 0x56,
-      0x20, 0x85, 0x52, 0xbb, 0x9e, 0xd5, 0x29, 0x07, 0x70, 0x96, 0x96, 0x6d,
-      0x67, 0x0c, 0x35, 0x4e, 0x4a, 0xbc, 0x98, 0x04, 0xf1, 0x74, 0x6c, 0x08,
-      0xca, 0x23, 0x73, 0x27, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-  };
+  // Taken from section 2
+  std::vector<uint8_t> kPrime1536 = rfc_string_to_bytes(
+    "FFFFFFFF FFFFFFFF C90FDAA2 2168C234 C4C6628B 80DC1CD1"
+    "29024E08 8A67CC74 020BBEA6 3B139B22 514A0879 8E3404DD"
+    "EF9519B3 CD3A431B 302B0A6D F25F1437 4FE1356D 6D51C245"
+    "E485B576 625E7EC6 F44C42E9 A637ED6B 0BFF5CB6 F406B7ED"
+    "EE386BFB 5A899FA5 AE9F2411 7C4B1FE6 49286651 ECE45B3D"
+    "C2007CB8 A163BF05 98DA4836 1C55D39A 69163FA8 FD24CF5F"
+    "83655D23 DCA3AD96 1C62F356 208552BB 9ED52907 7096966D"
+    "670C354E 4ABC9804 F1746C08 CA237327 FFFFFFFF FFFFFFFF");
+  check_bn_matches_bytes(kPrime1536, bn.get());
+}
 
-  uint8_t buffer[sizeof(kPrime1536)];
-  ASSERT_EQ(BN_num_bytes(bn.get()), sizeof(kPrime1536));
-  ASSERT_EQ(BN_bn2bin(bn.get(), buffer), sizeof(kPrime1536));
-  EXPECT_EQ(Bytes(buffer), Bytes(kPrime1536));
+
+TEST(DHTest, RFC7919) {
+  // Primes taken from Appendix 1 and 3 of RFC 7919
+  struct testInput{
+    int nid;
+    std::vector<uint8_t> p;
+    std::vector<uint8_t> q;
+  };
+  testInput testInputs[] = {
+      {NID_ffdhe2048,
+           rfc_string_to_bytes(
+              "FFFFFFFF FFFFFFFF ADF85458 A2BB4A9A AFDC5620 273D3CF1"
+              "D8B9C583 CE2D3695 A9E13641 146433FB CC939DCE 249B3EF9"
+              "7D2FE363 630C75D8 F681B202 AEC4617A D3DF1ED5 D5FD6561"
+              "2433F51F 5F066ED0 85636555 3DED1AF3 B557135E 7F57C935"
+              "984F0C70 E0E68B77 E2A689DA F3EFE872 1DF158A1 36ADE735"
+              "30ACCA4F 483A797A BC0AB182 B324FB61 D108A94B B2C8E3FB"
+              "B96ADAB7 60D7F468 1D4F42A3 DE394DF4 AE56EDE7 6372BB19"
+              "0B07A7C8 EE0A6D70 9E02FCE1 CDF7E2EC C03404CD 28342F61"
+              "9172FE9C E98583FF 8E4F1232 EEF28183 C3FE3B1B 4C6FAD73"
+              "3BB5FCBC 2EC22005 C58EF183 7D1683B2 C6F34A26 C1B2EFFA"
+              "886B4238 61285C97 FFFFFFFF FFFFFFFF"),
+           rfc_string_to_bytes(
+              "7FFFFFFF FFFFFFFF D6FC2A2C 515DA54D 57EE2B10 139E9E78"
+              "EC5CE2C1 E7169B4A D4F09B20 8A3219FD E649CEE7 124D9F7C"
+              "BE97F1B1 B1863AEC 7B40D901 576230BD 69EF8F6A EAFEB2B0"
+              "9219FA8F AF833768 42B1B2AA 9EF68D79 DAAB89AF 3FABE49A"
+              "CC278638 707345BB F15344ED 79F7F439 0EF8AC50 9B56F39A"
+              "98566527 A41D3CBD 5E0558C1 59927DB0 E88454A5 D96471FD"
+              "DCB56D5B B06BFA34 0EA7A151 EF1CA6FA 572B76F3 B1B95D8C"
+              "8583D3E4 770536B8 4F017E70 E6FBF176 601A0266 941A17B0"
+              "C8B97F4E 74C2C1FF C7278919 777940C1 E1FF1D8D A637D6B9"
+              "9DDAFE5E 17611002 E2C778C1 BE8B41D9 6379A513 60D977FD"
+              "4435A11C 30942E4B FFFFFFFF FFFFFFFF")},
+      {NID_ffdhe4096,
+           rfc_string_to_bytes(
+                "FFFFFFFF FFFFFFFF ADF85458 A2BB4A9A AFDC5620 273D3CF1"
+                "D8B9C583 CE2D3695 A9E13641 146433FB CC939DCE 249B3EF9"
+                "7D2FE363 630C75D8 F681B202 AEC4617A D3DF1ED5 D5FD6561"
+                "2433F51F 5F066ED0 85636555 3DED1AF3 B557135E 7F57C935"
+                "984F0C70 E0E68B77 E2A689DA F3EFE872 1DF158A1 36ADE735"
+                "30ACCA4F 483A797A BC0AB182 B324FB61 D108A94B B2C8E3FB"
+                "B96ADAB7 60D7F468 1D4F42A3 DE394DF4 AE56EDE7 6372BB19"
+                "0B07A7C8 EE0A6D70 9E02FCE1 CDF7E2EC C03404CD 28342F61"
+                "9172FE9C E98583FF 8E4F1232 EEF28183 C3FE3B1B 4C6FAD73"
+                "3BB5FCBC 2EC22005 C58EF183 7D1683B2 C6F34A26 C1B2EFFA"
+                "886B4238 611FCFDC DE355B3B 6519035B BC34F4DE F99C0238"
+                "61B46FC9 D6E6C907 7AD91D26 91F7F7EE 598CB0FA C186D91C"
+                "AEFE1309 85139270 B4130C93 BC437944 F4FD4452 E2D74DD3"
+                "64F2E21E 71F54BFF 5CAE82AB 9C9DF69E E86D2BC5 22363A0D"
+                "ABC52197 9B0DEADA 1DBF9A42 D5C4484E 0ABCD06B FA53DDEF"
+                "3C1B20EE 3FD59D7C 25E41D2B 669E1EF1 6E6F52C3 164DF4FB"
+                "7930E9E4 E58857B6 AC7D5F42 D69F6D18 7763CF1D 55034004"
+                "87F55BA5 7E31CC7A 7135C886 EFB4318A ED6A1E01 2D9E6832"
+                "A907600A 918130C4 6DC778F9 71AD0038 092999A3 33CB8B7A"
+                "1A1DB93D 7140003C 2A4ECEA9 F98D0ACC 0A8291CD CEC97DCF"
+                "8EC9B55A 7F88A46B 4DB5A851 F44182E1 C68A007E 5E655F6A"
+                "FFFFFFFF FFFFFFFF"),
+           rfc_string_to_bytes(
+                "7FFFFFFF FFFFFFFF D6FC2A2C 515DA54D 57EE2B10 139E9E78"
+                "EC5CE2C1 E7169B4A D4F09B20 8A3219FD E649CEE7 124D9F7C"
+                "BE97F1B1 B1863AEC 7B40D901 576230BD 69EF8F6A EAFEB2B0"
+                "9219FA8F AF833768 42B1B2AA 9EF68D79 DAAB89AF 3FABE49A"
+                "CC278638 707345BB F15344ED 79F7F439 0EF8AC50 9B56F39A"
+                "98566527 A41D3CBD 5E0558C1 59927DB0 E88454A5 D96471FD"
+                "DCB56D5B B06BFA34 0EA7A151 EF1CA6FA 572B76F3 B1B95D8C"
+                "8583D3E4 770536B8 4F017E70 E6FBF176 601A0266 941A17B0"
+                "C8B97F4E 74C2C1FF C7278919 777940C1 E1FF1D8D A637D6B9"
+                "9DDAFE5E 17611002 E2C778C1 BE8B41D9 6379A513 60D977FD"
+                "4435A11C 308FE7EE 6F1AAD9D B28C81AD DE1A7A6F 7CCE011C"
+                "30DA37E4 EB736483 BD6C8E93 48FBFBF7 2CC6587D 60C36C8E"
+                "577F0984 C289C938 5A098649 DE21BCA2 7A7EA229 716BA6E9"
+                "B279710F 38FAA5FF AE574155 CE4EFB4F 743695E2 911B1D06"
+                "D5E290CB CD86F56D 0EDFCD21 6AE22427 055E6835 FD29EEF7"
+                "9E0D9077 1FEACEBE 12F20E95 B34F0F78 B737A961 8B26FA7D"
+                "BC9874F2 72C42BDB 563EAFA1 6B4FB68C 3BB1E78E AA81A002"
+                "43FAADD2 BF18E63D 389AE443 77DA18C5 76B50F00 96CF3419"
+                "5483B005 48C09862 36E3BC7C B8D6801C 0494CCD1 99E5C5BD"
+                "0D0EDC9E B8A0001E 15276754 FCC68566 054148E6 E764BEE7"
+                "C764DAAD 3FC45235 A6DAD428 FA20C170 E345003F 2F32AFB5"
+                "7FFFFFFF FFFFFFFF")}
+  };
+  for (const testInput &test : testInputs ) {
+    bssl::UniquePtr<DH> dh(DH_new_by_nid(test.nid));
+    ASSERT_TRUE(dh);
+    check_bn_matches_bytes(test.p, DH_get0_p(dh.get()));
+    check_bn_matches_bytes(test.q, DH_get0_q(dh.get()));
+  }
+}
+
+TEST(DHExpectedTestnputTest, CalculateSharedSecretMatches) {
+  // KAT calculated with the following sage math code:
+  // prime=int("0x[prime for 2048 or 4096]", 16) R=Integers(prime) g = R(2)
+  // client_sk = int("0xABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890", 16) client_pk = g^client_sk
+  // server_sk = int("0xAABBCCDDEEFF11223344556677889900AABBCCDDEEFF11223344556677889900", 16) shared_secret = client_pk^server_sk
+  // print("client_pk", format(int(client_pk), '#x'))
+  // print("server_sk", format(server_sk, '#x'))
+  // print("expected_ss", format(int(shared_secret), '#x'))
+  struct testInput {
+    int nid;
+    std::vector<uint8_t> client_pk;
+    std::vector<uint8_t> server_sk;
+    std::vector<uint8_t> expected_ss;
+  };
+  testInput testInputs[] = {
+      {NID_ffdhe2048,
+       HexToBytes(
+          "50f2d9e890e290c60618a15fb314b71f9b24f4942db80ef29d1de007b5fc7a89"
+          "2f80d15b4b22a131e505beebc98d27d96eaade29d293b035f8b38b64d8927b16"
+          "ff3aebb887e14c56f889f5bf9fc248a2bf7e575fcc112c53f01048fa5127459c"
+          "e06ca98cd961a3a3aa075688da64c4983ee44668fdef1dcabc7791e4906f9301"
+          "eb0189b35c768c9c5b8e819f78c998a631ff9ded899080c4fb3cbd264689059e"
+          "6d8adca7df629fde5c2c73aeef7c39b464ebe833689e6dd85e08dbfaad89bbf9"
+          "140d15b5b2b31ec9b046a891fde9503234bf1c7818ec44ce00c103787e971b23"
+          "b7214a93cdf98b4f1920ec1f55ddb4507b5e80301d068ab76ec3df34d440089a"),
+       HexToBytes(
+          "aabbccddeeff11223344556677889900aabbccddeeff11223344556677889900"),
+       HexToBytes(
+          "897396da313e171565c15595197c521862358a5071db94b50ac24952b5619c94"
+          "3e4fffdb56dcfcfae886709038553b1ec7e4b6f165454ff09250662f4ea65cd9"
+          "86b0040de370637e053495ba08cf649e6e53a5fcc58334496061f2cc8a375d32"
+          "293cd2979283bedd08a2eb9a53a0f106fa29c6775b4d45cdf6b8516afb41ebfa"
+          "3a487510d8f3c4d337a0af880271ebfa28b5551286cb3c3b2cb6a2cc35116816"
+          "5e0a3a1f930bc547149fd6dfe1dc7ad7945dd74a38d46a6bc7658ac953b43770"
+          "b5d9212737a3cef574796c50aaa4168f07ddabccf5d12d8f87808e526cf68e15"
+          "224b8eb822048df910fe36a84a752177dbfce76a90f1ae864543e721d7885ad7")},
+      {NID_ffdhe4096,
+       HexToBytes(
+          "525b74f0c4c3d942cd65f924cebd4f76a1ec2c866d48462e1c468f75070b18bc"
+          "d6f4ce8d874895d6a9d2ad55781fcc1406b61526d1667954674cf6bb2d873ad4"
+          "1128bb3f9412be3f452582bb9ea6091a39b05cd877a7774e52e44e9066a96cf2"
+          "f6829f96e6e26a892cca132ae31dc771b333f4f0e011a9c9c83b245865b24ff9"
+          "f6bda4adcdee17195518c58d6821f2819498631ab83a8a99e7f33bdd98d2821b"
+          "e01dbd8d83dcbee7d1302597354bef404f2f17cac5febfe7cc6c5860faa39ceb"
+          "236eceddf59c7d463071d2715612ed78c35d6e3783da3042862068cf206a08fe"
+          "ce83f60572db55c60f6f6811f359b6f1d504e33d3054c0fe083dc7e73030ed42"
+          "7f079ce60324e71e81fed25c11d2dc853a9fa9f2f64c33f92618d01b8b9bdde6"
+          "2792fbc353aeb97f370f0ef85bbbd0eccbfd7104f6c4e77c7b26ff380aedb4e4"
+          "f974706aa9b4c8eeb924c72d233aa90b8d0376f540ff4af63fa4a7baf47b035f"
+          "f2a1564080e2c31bfc4fad3834d021858e26e4710db3e37144332b909f3340a8"
+          "805b66a7cf042c37797bd46f784793e49cb16e3728e1fc6c98986d21027303ef"
+          "898d32caf0131c323518ced384a9b7ae0c45c15edcb054dfe7044af3ec616ce8"
+          "e5870ea2bef5aa40f4e65721d724ec68774638b13350abbb1f2ac22b0852c6e3"
+          "4ab2608390ec3b971021c0c20e18e2cbcc89b1eea1c2ecb1db6eeaf4195ec7f2"),
+       HexToBytes(
+          "aabbccddeeff11223344556677889900aabbccddeeff11223344556677889900"),
+       HexToBytes(
+          "ba7d5bb3682473327e80c07bcfd58a6af9bf0fa4662288291feb847cc8121ca6"
+          "12ff09bc9d46e3a76f44bad0006e1babdafef5091aed25e53037a9077af93bc5"
+          "76910dbc3e6d345174b36dbec2ab92e0744dc4f5d1d25596b9aa53bc10c22dfe"
+          "fec93c178b8ffd4388c07ffa9ad8a7f22c274066c92f8063b1665609aa224039"
+          "aff15fb5ac07b21f9c81aace529ad5c29688d6940996b5e3a47de1b8cd3b212a"
+          "3e534677df246375679cc014a77c3cc4e14aaa5eb4fc4d0f8a542a0e833a16f4"
+          "dc5c46f11c5ffe14152b9c7f9e504ae01ff84db158b9e48e9fbc46b99190cad2"
+          "e22113797dc7c81ad7c86bcd5e75405226459bb54b26fae179378e377ce5618e"
+          "65f04d2213e1991cefe991ec43272b6c7d93b51e2ccc3bf64486efd1e5c73b3b"
+          "f9344271ab9fbc43af41232ae7524c8213433ef39c64481e9cd06b9f9dc34226"
+          "85dfb2d69b8dc1af0f44d6f52d1d857ec28d93f459a23386ecfe5d97130e201d"
+          "90f159ff5995bbf766ceb38594b7a3192c99432e007b99f1ea7a828d15a1cba6"
+          "d86cd020ff64b1774cd35e33e3696a98574cedb64534f8ca88e2690709718d66"
+          "f4b88d759689819cde545d202b641b0529a02d588ff4c6b832c3f5a3d9bec9ec"
+          "ce0fb9af978b76bf93eba919c5bef844b4b1e2bff3d3758b577c70fa78d89a1d"
+          "d5a1864a2d3795c3668562c67aa77265f38812f001d28b25f7965109481ec2c7")
+      }
+  };
+  for (const testInput &test : testInputs ){
+    bssl::UniquePtr<BIGNUM> client_public(BN_bin2bn(test.client_pk.data(), test.client_pk.size(), nullptr));
+    EXPECT_TRUE(client_public);
+
+    bssl::UniquePtr<BIGNUM> server_secret(BN_bin2bn(test.server_sk.data(), test.server_sk.size(), nullptr));
+    EXPECT_TRUE(server_secret);
+
+    bssl::UniquePtr<DH> ffdhe2048_dh(DH_new_by_nid(test.nid));
+    EXPECT_TRUE(DH_set0_key(ffdhe2048_dh.get(), nullptr, server_secret.release()));
+    uint8_t buffer[4096];
+    int size = DH_compute_key(buffer, client_public.get(), ffdhe2048_dh.get());
+    EXPECT_TRUE(size > 0 && size < 4096);
+
+    EXPECT_EQ(Bytes(buffer, size), Bytes(test.expected_ss));
+  }
 }
 
 TEST(DHTest, LeadingZeros) {
@@ -365,4 +597,65 @@ TEST(DHTest, LeadingZeros) {
   len = DH_compute_key_padded(buf.data(), peer_key.get(), dh.get());
   ASSERT_GT(len, 0);
   EXPECT_EQ(Bytes(buf.data(), len), Bytes(padded));
+}
+
+TEST(DHTest, Overwrite) {
+  // Generate a DH key with the 1536-bit MODP group.
+  bssl::UniquePtr<BIGNUM> p(BN_get_rfc3526_prime_1536(nullptr));
+  ASSERT_TRUE(p);
+  bssl::UniquePtr<BIGNUM> g(BN_new());
+  ASSERT_TRUE(g);
+  ASSERT_TRUE(BN_set_word(g.get(), 2));
+
+  bssl::UniquePtr<DH> key1(DH_new());
+  ASSERT_TRUE(key1);
+  ASSERT_TRUE(DH_set0_pqg(key1.get(), p.get(), /*q=*/nullptr, g.get()));
+  p.release();
+  g.release();
+  ASSERT_TRUE(DH_generate_key(key1.get()));
+
+  bssl::UniquePtr<BIGNUM> peer_key(BN_new());
+  ASSERT_TRUE(peer_key);
+  ASSERT_TRUE(BN_set_word(peer_key.get(), 42));
+
+  // Use the key to fill in cached values.
+  std::vector<uint8_t> buf1(DH_size(key1.get()));
+  ASSERT_GT(DH_compute_key_padded(buf1.data(), peer_key.get(), key1.get()), 0);
+
+  // Generate a different key with a different group.
+  p.reset(BN_get_rfc3526_prime_2048(nullptr));
+  ASSERT_TRUE(p);
+  g.reset(BN_new());
+  ASSERT_TRUE(g);
+  ASSERT_TRUE(BN_set_word(g.get(), 2));
+
+  bssl::UniquePtr<DH> key2(DH_new());
+  ASSERT_TRUE(key2);
+  ASSERT_TRUE(DH_set0_pqg(key2.get(), p.get(), /*q=*/nullptr, g.get()));
+  p.release();
+  g.release();
+  ASSERT_TRUE(DH_generate_key(key2.get()));
+
+  // Overwrite |key1|'s contents with |key2|.
+  p.reset(BN_dup(DH_get0_p(key2.get())));
+  ASSERT_TRUE(p);
+  g.reset(BN_dup(DH_get0_g(key2.get())));
+  ASSERT_TRUE(g);
+  bssl::UniquePtr<BIGNUM> pub(BN_dup(DH_get0_pub_key(key2.get())));
+  ASSERT_TRUE(pub);
+  bssl::UniquePtr<BIGNUM> priv(BN_dup(DH_get0_priv_key(key2.get())));
+  ASSERT_TRUE(priv);
+  ASSERT_TRUE(DH_set0_pqg(key1.get(), p.get(), /*q=*/nullptr, g.get()));
+  p.release();
+  g.release();
+  ASSERT_TRUE(DH_set0_key(key1.get(), pub.get(), priv.get()));
+  pub.release();
+  priv.release();
+
+  // Verify that |key1| and |key2| behave equivalently.
+  buf1.resize(DH_size(key1.get()));
+  ASSERT_GT(DH_compute_key_padded(buf1.data(), peer_key.get(), key1.get()), 0);
+  std::vector<uint8_t> buf2(DH_size(key2.get()));
+  ASSERT_GT(DH_compute_key_padded(buf2.data(), peer_key.get(), key2.get()), 0);
+  EXPECT_EQ(Bytes(buf1), Bytes(buf2));
 }

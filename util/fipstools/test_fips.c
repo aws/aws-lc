@@ -27,12 +27,12 @@
 #include <openssl/ecdsa.h>
 #include <openssl/ec_key.h>
 #include <openssl/hmac.h>
+#include <openssl/kdf.h>
 #include <openssl/nid.h>
 #include <openssl/rsa.h>
 #include <openssl/sha.h>
 
 #include "../../crypto/fipsmodule/rand/internal.h"
-#include "../../crypto/fipsmodule/tls/internal.h"
 #include "../../crypto/internal.h"
 
 
@@ -80,7 +80,7 @@ int main(int argc, char **argv) {
   uint8_t output[256];
 
   /* AES-CBC Encryption */
-  memset(aes_iv, 0, sizeof(aes_iv));
+  OPENSSL_memset(aes_iv, 0, sizeof(aes_iv));
   if (AES_set_encrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key) != 0) {
     printf("AES_set_encrypt_key failed\n");
     goto err;
@@ -94,7 +94,7 @@ int main(int argc, char **argv) {
   hexdump(output, sizeof(kPlaintext));
 
   /* AES-CBC Decryption */
-  memset(aes_iv, 0, sizeof(aes_iv));
+  OPENSSL_memset(aes_iv, 0, sizeof(aes_iv));
   if (AES_set_decrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key) != 0) {
     printf("AES decrypt failed\n");
     goto err;
@@ -106,6 +106,9 @@ int main(int argc, char **argv) {
   printf("  got ");
   hexdump(output, sizeof(kPlaintext));
 
+  OPENSSL_cleanse(&aes_key, sizeof(aes_key));
+
+  /* AES-GCM */
   size_t out_len;
   uint8_t nonce[EVP_AEAD_MAX_NONCE_LENGTH];
   OPENSSL_memset(nonce, 0, sizeof(nonce));
@@ -117,6 +120,11 @@ int main(int argc, char **argv) {
   }
 
   /* AES-GCM Encryption */
+  OPENSSL_memset(aes_iv, 0, sizeof(aes_iv));
+  if (AES_set_encrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key) != 0) {
+    printf("AES_set_encrypt_key failed\n");
+    goto err;
+  }
   printf("About to AES-GCM seal ");
   hexdump(output, sizeof(kPlaintext));
   if (!EVP_AEAD_CTX_seal(&aead_ctx, output, &out_len, sizeof(output), nonce,
@@ -129,6 +137,7 @@ int main(int argc, char **argv) {
   hexdump(output, out_len);
 
   /* AES-GCM Decryption */
+  OPENSSL_memset(aes_iv, 0, sizeof(aes_iv));
   printf("About to AES-GCM open ");
   hexdump(output, out_len);
   if (!EVP_AEAD_CTX_open(&aead_ctx, output, &out_len, sizeof(output), nonce,
@@ -140,7 +149,130 @@ int main(int argc, char **argv) {
   printf("  got ");
   hexdump(output, out_len);
 
+  EVP_AEAD_CTX_zero(&aead_ctx);
   EVP_AEAD_CTX_cleanup(&aead_ctx);
+
+  /* AES-CCM */
+  OPENSSL_memset(nonce, 0, sizeof(nonce));
+  if (!EVP_AEAD_CTX_init(&aead_ctx, EVP_aead_aes_128_ccm_bluetooth(), kAESKey, sizeof(kAESKey), 0, NULL)) {
+    fprintf(stderr, "EVP_AED_CTX_init for AES-128-CCM failed.\n");
+    goto err;
+  }
+
+  /* AES-CCM Encryption */
+  OPENSSL_memset(aes_iv, 0, sizeof(aes_iv));
+  printf("About to AES-CCM seal ");
+  hexdump(kPlaintext, sizeof(kPlaintext));
+  if (!EVP_AEAD_CTX_seal(&aead_ctx, output, &out_len, sizeof(output), nonce,
+                        EVP_AEAD_nonce_length(EVP_aead_aes_128_ccm_bluetooth()),
+                        kPlaintext, sizeof(kPlaintext), NULL, 0)) {
+    fprintf(stderr, "EVP_AEAD_CTX_seal for AES-128-CCM failed.\n");
+    goto err;
+  }
+  printf("  got ");
+  hexdump(output, out_len);
+
+  /* AES-CCM Decryption */
+  OPENSSL_memset(aes_iv, 0, sizeof(aes_iv));
+  if (AES_set_decrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key) != 0) {
+    printf("AES decrypt failed\n");
+    goto err;
+  }
+  printf("About to AES-CCM open ");
+  hexdump(output, out_len);
+  if (!EVP_AEAD_CTX_open(&aead_ctx, output, &out_len, sizeof(output), nonce,
+                        EVP_AEAD_nonce_length(EVP_aead_aes_128_ccm_bluetooth()),
+                        output, out_len, NULL, 0)) {
+    fprintf(stderr, "EVP_AEAD_CTX_open for AES-128-CCM failed.\n");
+    goto err;
+  }
+  printf("  got ");
+  hexdump(output, out_len);
+  
+  OPENSSL_cleanse(&aes_key, sizeof(aes_key));
+  EVP_AEAD_CTX_zero(&aead_ctx);
+
+  /* AES-ECB */
+  /* AES-ECB Encryption */
+  OPENSSL_memset(aes_iv, 0, sizeof(aes_iv));
+  if (AES_set_encrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key) != 0) {
+    fprintf(stderr, "AES_set_encrypt_key failed.\n");
+    goto err;
+  }
+  printf("About to AES-ECB encrypt ");
+  hexdump(output, out_len);
+  for (size_t j = 0; j < sizeof(kPlaintext) / 16; j++) {
+    AES_ecb_encrypt(&kPlaintext[j * 128], & output[j * 128], &aes_key, AES_ENCRYPT);
+  }
+  printf("  got ");
+  hexdump(output, out_len);
+
+  /* AES-ECB Decryption */
+  OPENSSL_memset(aes_iv, 0, sizeof(aes_iv));
+  if (AES_set_decrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key) != 0) {
+    printf("AES decrypt failed\n");
+    goto err;
+  }
+  printf("About to AES-ECB decrypt ");
+  hexdump(output, out_len);
+  for (size_t j = 0; j < out_len / 16; j++) {
+    AES_ecb_encrypt(&output[j * 128], & output[j * 128], &aes_key, AES_DECRYPT);
+  }
+  printf("  got ");
+  hexdump(output, out_len);
+
+  OPENSSL_cleanse(&aes_key, sizeof(aes_key));
+
+  unsigned int num = 0;
+  uint8_t ecount_buf[128];
+
+  /* AES-CTR */
+  /* AES-CTR Encryption */
+  OPENSSL_memset(aes_iv, 0, sizeof(aes_iv));
+  if (AES_set_encrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key) != 0) {
+    fprintf(stderr, "AES_set_encrypt_key failed.\n");
+    goto err;
+  }
+  printf("About to AES-CTR Encrypt ");
+  hexdump(output, out_len);
+  AES_ctr128_encrypt(kPlaintext, output, sizeof(kPlaintext), &aes_key, aes_iv, ecount_buf, &num);
+  printf("  got ");
+  hexdump(output, out_len);
+
+
+  /* AES-CTR Decryption */
+  OPENSSL_memset(aes_iv, 0, sizeof(aes_iv));
+  printf("About to AES-CTR Decrypt ");
+  hexdump(output, out_len);
+  AES_ctr128_encrypt(output, output, out_len, &aes_key, aes_iv, ecount_buf, &num);
+  printf("  got ");
+  hexdump(output, out_len);
+
+  OPENSSL_cleanse(&aes_key, sizeof(aes_key));
+
+  /* AES-KW Wrap */
+  if (AES_set_encrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key) != 0) {
+    fprintf(stderr, "AES_set_encrypt_key failed.\n");
+    goto err;
+  }
+  printf("About to AES-KW Wrap ");
+  hexdump(output, out_len);
+  out_len = AES_wrap_key(&aes_key, NULL, output, kPlaintext, sizeof(kPlaintext));
+  printf("  got ");
+  hexdump(output, out_len);
+
+  /* AES-KW Unwrap */
+  if (AES_set_decrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key) != 0) {
+    fprintf(stderr, "AES decrypt failed.\n");
+    goto err;
+  }
+  printf("About to AES-KW Unwrap ");
+  hexdump(output, out_len);
+  out_len = AES_unwrap_key(&aes_key, NULL, output, output, out_len);
+  printf("  got ");
+  hexdump(output, out_len);
+
+  OPENSSL_cleanse(&aes_key, sizeof(aes_key));
 
   DES_key_schedule des1, des2, des3;
   DES_cblock des_iv;
@@ -315,5 +447,6 @@ int main(int argc, char **argv) {
 
 err:
   printf("FAIL\n");
+  fflush(stdout);
   abort();
 }

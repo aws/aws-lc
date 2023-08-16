@@ -221,7 +221,7 @@ L$resume_ctr32:
 	movbeq	0(%r14),%r12
 	vaesenc	%xmm1,%xmm14,%xmm14
 	vmovups	160-128(%rcx),%xmm1
-	cmpl	$11,%ebp
+	cmpl	$11,%r10d
 	jb	L$enc_tail
 
 	vaesenc	%xmm15,%xmm9,%xmm9
@@ -317,7 +317,7 @@ L$enc_tail:
 	vaesenclast	%xmm3,%xmm14,%xmm14
 	vpaddb	%xmm2,%xmm7,%xmm3
 
-	addq	$0x60,%r10
+	addq	$0x60,%rax
 	subq	$0x6,%rdx
 	jc	L$6x_done
 
@@ -349,41 +349,49 @@ L$6x_done:
 .p2align	5
 _aesni_gcm_decrypt:
 
-	xorq	%r10,%r10
+
+	xorq	%rax,%rax
 
 
 
 	cmpq	$0x60,%rdx
 	jb	L$gcm_dec_abort
 
-	leaq	(%rsp),%rax
+	pushq	%rbp
+
+
+	movq	%rsp,%rbp
 
 	pushq	%rbx
 
-	pushq	%rbp
 
 	pushq	%r12
 
+
 	pushq	%r13
+
 
 	pushq	%r14
 
+
 	pushq	%r15
+
 
 	vzeroupper
 
+	movq	16(%rbp),%r12
 	vmovdqu	(%r8),%xmm1
 	addq	$-128,%rsp
 	movl	12(%r8),%ebx
 	leaq	L$bswap_mask(%rip),%r11
 	leaq	-128(%rcx),%r14
 	movq	$0xf80,%r15
-	vmovdqu	(%r9),%xmm8
+	vmovdqu	(%r12),%xmm8
 	andq	$-128,%rsp
 	vmovdqu	(%r11),%xmm0
 	leaq	128(%rcx),%rcx
-	leaq	32+32(%r9),%r9
-	movl	240-128(%rcx),%ebp
+	leaq	32(%r9),%r9
+	movl	240-128(%rcx),%r10d
 	vpshufb	%xmm0,%xmm8,%xmm8
 
 	andq	%r15,%r14
@@ -396,7 +404,7 @@ _aesni_gcm_decrypt:
 L$dec_no_key_aliasing:
 
 	vmovdqu	80(%rdi),%xmm7
-	leaq	(%rdi),%r14
+	movq	%rdi,%r14
 	vmovdqu	64(%rdi),%xmm4
 
 
@@ -409,7 +417,7 @@ L$dec_no_key_aliasing:
 
 	vmovdqu	48(%rdi),%xmm5
 	shrq	$4,%rdx
-	xorq	%r10,%r10
+	xorq	%rax,%rax
 	vmovdqu	32(%rdi),%xmm6
 	vpshufb	%xmm0,%xmm7,%xmm7
 	vmovdqu	16(%rdi),%xmm2
@@ -427,6 +435,7 @@ L$dec_no_key_aliasing:
 
 	call	_aesni_ctr32_ghash_6x
 
+	movq	16(%rbp),%r12
 	vmovups	%xmm9,-96(%rsi)
 	vmovups	%xmm10,-80(%rsi)
 	vmovups	%xmm11,-64(%rsi)
@@ -435,26 +444,26 @@ L$dec_no_key_aliasing:
 	vmovups	%xmm14,-16(%rsi)
 
 	vpshufb	(%r11),%xmm8,%xmm8
-	vmovdqu	%xmm8,-64(%r9)
+	vmovdqu	%xmm8,(%r12)
 
 	vzeroupper
-	movq	-48(%rax),%r15
+	leaq	-40(%rbp),%rsp
 
-	movq	-40(%rax),%r14
+	popq	%r15
 
-	movq	-32(%rax),%r13
+	popq	%r14
 
-	movq	-24(%rax),%r12
+	popq	%r13
 
-	movq	-16(%rax),%rbp
+	popq	%r12
 
-	movq	-8(%rax),%rbx
+	popq	%rbx
 
-	leaq	(%rax),%rsp
+	popq	%rbp
 
 L$gcm_dec_abort:
-	movq	%r10,%rax
 	.byte	0xf3,0xc3
+
 
 
 
@@ -463,7 +472,7 @@ _aesni_ctr32_6x:
 
 	vmovdqu	0-128(%rcx),%xmm4
 	vmovdqu	32(%r11),%xmm2
-	leaq	-1(%rbp),%r13
+	leaq	-1(%r10),%r13
 	vmovups	16-128(%rcx),%xmm15
 	leaq	32-128(%rcx),%r12
 	vpxor	%xmm4,%xmm1,%xmm9
@@ -556,11 +565,12 @@ L$handle_ctr32_2:
 .p2align	5
 _aesni_gcm_encrypt:
 
+
 #ifdef BORINGSSL_DISPATCH_TEST
 
 	movb	$1,_BORINGSSL_function_hit+2(%rip)
 #endif
-	xorq	%r10,%r10
+	xorq	%rax,%rax
 
 
 
@@ -568,19 +578,25 @@ _aesni_gcm_encrypt:
 	cmpq	$288,%rdx
 	jb	L$gcm_enc_abort
 
-	leaq	(%rsp),%rax
+	pushq	%rbp
+
+
+	movq	%rsp,%rbp
 
 	pushq	%rbx
 
-	pushq	%rbp
 
 	pushq	%r12
 
+
 	pushq	%r13
+
 
 	pushq	%r14
 
+
 	pushq	%r15
+
 
 	vzeroupper
 
@@ -593,7 +609,7 @@ _aesni_gcm_encrypt:
 	leaq	128(%rcx),%rcx
 	vmovdqu	(%r11),%xmm0
 	andq	$-128,%rsp
-	movl	240-128(%rcx),%ebp
+	movl	240-128(%rcx),%r10d
 
 	andq	%r15,%r14
 	andq	%rsp,%r15
@@ -604,7 +620,7 @@ _aesni_gcm_encrypt:
 	subq	%r15,%rsp
 L$enc_no_key_aliasing:
 
-	leaq	(%rsi),%r14
+	movq	%rsi,%r14
 
 
 
@@ -632,10 +648,11 @@ L$enc_no_key_aliasing:
 
 	call	_aesni_ctr32_6x
 
-	vmovdqu	(%r9),%xmm8
-	leaq	32+32(%r9),%r9
+	movq	16(%rbp),%r12
+	leaq	32(%r9),%r9
+	vmovdqu	(%r12),%xmm8
 	subq	$12,%rdx
-	movq	$192,%r10
+	movq	$192,%rax
 	vpshufb	%xmm0,%xmm8,%xmm8
 
 	call	_aesni_ctr32_ghash_6x
@@ -811,29 +828,31 @@ L$enc_no_key_aliasing:
 	vpclmulqdq	$0x10,%xmm3,%xmm8,%xmm8
 	vpxor	%xmm7,%xmm2,%xmm2
 	vpxor	%xmm2,%xmm8,%xmm8
+	movq	16(%rbp),%r12
 	vpshufb	(%r11),%xmm8,%xmm8
-	vmovdqu	%xmm8,-64(%r9)
+	vmovdqu	%xmm8,(%r12)
 
 	vzeroupper
-	movq	-48(%rax),%r15
+	leaq	-40(%rbp),%rsp
 
-	movq	-40(%rax),%r14
+	popq	%r15
 
-	movq	-32(%rax),%r13
+	popq	%r14
 
-	movq	-24(%rax),%r12
+	popq	%r13
 
-	movq	-16(%rax),%rbp
+	popq	%r12
 
-	movq	-8(%rax),%rbx
+	popq	%rbx
 
-	leaq	(%rax),%rsp
+	popq	%rbp
 
 L$gcm_enc_abort:
-	movq	%r10,%rax
 	.byte	0xf3,0xc3
 
 
+
+.section	__DATA,__const
 .p2align	6
 L$bswap_mask:
 .byte	15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0
@@ -847,6 +866,7 @@ L$one_lsb:
 .byte	1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 .byte	65,69,83,45,78,73,32,71,67,77,32,109,111,100,117,108,101,32,102,111,114,32,120,56,54,95,54,52,44,32,67,82,89,80,84,79,71,65,77,83,32,98,121,32,60,97,112,112,114,111,64,111,112,101,110,115,115,108,46,111,114,103,62,0
 .p2align	6
+.text	
 #endif
 #if defined(__ELF__)
 // See https://www.airs.com/blog/archives/518.

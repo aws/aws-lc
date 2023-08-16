@@ -148,7 +148,6 @@ bool SSLBuffer::DoSerialization(CBB *cbb) {
       !CBB_add_asn1_uint64(&seq, cap_) ||
       (buf_allocated_ && !CBB_add_asn1_octet_string(&seq, buf_, buf_size_)) ||
       (!buf_allocated_ && !CBB_add_asn1_octet_string(&seq, inline_buf_, SSL3_RT_HEADER_LENGTH))) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return false;
   }
   return CBB_flush(cbb) == 1;
@@ -184,7 +183,6 @@ bool SSLBuffer::DoDeserialization(CBS *cbs) {
     }
     buf_ = (uint8_t *)malloc(CBS_len(&buf));
     if (buf_ == NULL) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return false;
     }
     buf_size_ = CBS_len(&buf);

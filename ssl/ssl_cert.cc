@@ -135,33 +135,59 @@
 BSSL_NAMESPACE_BEGIN
 
 CERT::CERT(const SSL_X509_METHOD *x509_method_arg)
-    : x509_method(x509_method_arg) {}
+    : x509_method(x509_method_arg) {
+  this->cert_private_key_idx = SSL_PKEY_RSA;
+  if (!this->cert_private_keys.Init(SSL_PKEY_SIZE)) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+    return;
+  }
+}
 
 CERT::~CERT() {
   ssl_cert_clear_certs(this);
   x509_method->cert_free(this);
 }
 
-static CRYPTO_BUFFER *buffer_up_ref(CRYPTO_BUFFER *buffer) {
-  CRYPTO_BUFFER_up_ref(buffer);
-  return buffer;
+static CRYPTO_BUFFER *buffer_up_ref(const CRYPTO_BUFFER *buffer) {
+  CRYPTO_BUFFER_up_ref(const_cast<CRYPTO_BUFFER *>(buffer));
+  return const_cast<CRYPTO_BUFFER *>(buffer);
 }
 
 UniquePtr<CERT> ssl_cert_dup(CERT *cert) {
+  if (cert == nullptr) {
+    return nullptr;
+  }
+
   UniquePtr<CERT> ret = MakeUnique<CERT>(cert->x509_method);
   if (!ret) {
     return nullptr;
   }
 
-  if (cert->chain) {
-    ret->chain.reset(sk_CRYPTO_BUFFER_deep_copy(
-        cert->chain.get(), buffer_up_ref, CRYPTO_BUFFER_free));
-    if (!ret->chain) {
-      return nullptr;
+  ret->cert_private_key_idx = cert->cert_private_key_idx;
+  if (!ssl_cert_check_cert_private_keys_usage(cert) ||
+      !ssl_cert_check_cert_private_keys_usage(ret.get())) {
+    return nullptr;
+  }
+  for (int i = 0; i < SSL_PKEY_SIZE; i++) {
+    CERT_PKEY &cert_pkey = cert->cert_private_keys[i];
+    CERT_PKEY &ret_pkey = ret->cert_private_keys[i];
+
+    if (cert_pkey.chain) {
+      ret_pkey.chain.reset(sk_CRYPTO_BUFFER_deep_copy(
+          cert_pkey.chain.get(), buffer_up_ref, CRYPTO_BUFFER_free));
+      if (!ret_pkey.chain) {
+        return nullptr;
+      }
     }
+
+    if (cert_pkey.x509_leaf != nullptr) {
+      X509_up_ref(cert_pkey.x509_leaf);
+      ret_pkey.x509_leaf = cert_pkey.x509_leaf;
+    }
+
+    ret_pkey.privatekey = UpRef(cert_pkey.privatekey);
   }
 
-  ret->privatekey = UpRef(cert->privatekey);
   ret->key_method = cert->key_method;
 
   if (!ret->sigalgs.CopyFrom(cert->sigalgs)) {
@@ -182,7 +208,7 @@ UniquePtr<CERT> ssl_cert_dup(CERT *cert) {
   if (cert->dc) {
     ret->dc = cert->dc->Dup();
     if (!ret->dc) {
-       return nullptr;
+      return nullptr;
     }
   }
 
@@ -194,14 +220,17 @@ UniquePtr<CERT> ssl_cert_dup(CERT *cert) {
 
 // Free up and clear all certificates and chains
 void ssl_cert_clear_certs(CERT *cert) {
-  if (cert == NULL) {
+  if (cert == nullptr) {
     return;
   }
 
   cert->x509_method->cert_clear(cert);
 
-  cert->chain.reset();
-  cert->privatekey.reset();
+  cert->cert_private_key_idx = -1;
+  for (auto &cert_private_key : cert->cert_private_keys) {
+    cert_private_key.chain.reset();
+    cert_private_key.privatekey.reset();
+  }
   cert->key_method = nullptr;
 
   cert->dc.reset();
@@ -221,6 +250,34 @@ enum leaf_cert_and_privkey_result_t {
   leaf_cert_and_privkey_mismatch,
 };
 
+// do_leaf_cert_and_privkey_checks does the necessary checks against |pubkey|
+// and |privkey|. It's  expected that the |pubkey| has been parsed from
+// |cert_cbs|.
+static enum leaf_cert_and_privkey_result_t do_leaf_cert_and_privkey_checks(
+    const CBS *cert_cbs, EVP_PKEY *pubkey, EVP_PKEY *privkey) {
+  if (!ssl_is_key_type_supported(EVP_PKEY_id(pubkey))) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
+    return leaf_cert_and_privkey_error;
+  }
+
+  // An ECC certificate may be usable for ECDH or ECDSA. We only support ECDSA
+  // certificates, so sanity-check the key usage extension.
+  if (EVP_PKEY_id(pubkey) == EVP_PKEY_EC &&
+      !ssl_cert_check_key_usage(cert_cbs, key_usage_digital_signature)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
+    return leaf_cert_and_privkey_error;
+  }
+
+  if (privkey != nullptr &&
+      // Sanity-check that the private key and the certificate match.
+      !ssl_compare_public_and_private_key(pubkey, privkey)) {
+    ERR_clear_error();
+    return leaf_cert_and_privkey_mismatch;
+  }
+
+  return leaf_cert_and_privkey_ok;
+}
+
 // check_leaf_cert_and_privkey checks whether the certificate in |leaf_buffer|
 // and the private key in |privkey| are suitable and coherent. It returns
 // |leaf_cert_and_privkey_error| and pushes to the error queue if a problem is
@@ -232,39 +289,17 @@ static enum leaf_cert_and_privkey_result_t check_leaf_cert_and_privkey(
   CBS cert_cbs;
   CRYPTO_BUFFER_init_CBS(leaf_buffer, &cert_cbs);
   UniquePtr<EVP_PKEY> pubkey = ssl_cert_parse_pubkey(&cert_cbs);
-  if (!pubkey) {
+  if (pubkey == nullptr) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     return leaf_cert_and_privkey_error;
   }
-
-  if (!ssl_is_key_type_supported(pubkey->type)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
-    return leaf_cert_and_privkey_error;
-  }
-
-  // An ECC certificate may be usable for ECDH or ECDSA. We only support ECDSA
-  // certificates, so sanity-check the key usage extension.
-  if (pubkey->type == EVP_PKEY_EC &&
-      !ssl_cert_check_key_usage(&cert_cbs, key_usage_digital_signature)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
-    return leaf_cert_and_privkey_error;
-  }
-
-  if (privkey != NULL &&
-      // Sanity-check that the private key and the certificate match.
-      !ssl_compare_public_and_private_key(pubkey.get(), privkey)) {
-    ERR_clear_error();
-    return leaf_cert_and_privkey_mismatch;
-  }
-
-  return leaf_cert_and_privkey_ok;
+   return do_leaf_cert_and_privkey_checks(&cert_cbs, pubkey.get(), privkey);
 }
 
 static int cert_set_chain_and_key(
     CERT *cert, CRYPTO_BUFFER *const *certs, size_t num_certs,
     EVP_PKEY *privkey, const SSL_PRIVATE_KEY_METHOD *privkey_method) {
-  if (num_certs == 0 ||
-      (privkey == NULL && privkey_method == NULL)) {
+  if (num_certs == 0 || (privkey == NULL && privkey_method == NULL)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
   }
@@ -295,51 +330,88 @@ static int cert_set_chain_and_key(
     }
   }
 
-  cert->privatekey = UpRef(privkey);
-  cert->key_method = privkey_method;
+  if (!ssl_cert_check_cert_private_keys_usage(cert)) {
+    return 0;
+  }
 
-  cert->chain = std::move(certs_sk);
+  // Update certificate slot index once all checks have passed.
+  // Certificate slot validity already checked in |check_leaf_cert_and_privkey|.
+  int idx = ssl_get_certificate_slot_index(privkey);
+  cert->cert_private_keys[idx].privatekey = UpRef(privkey);
+  cert->key_method = privkey_method;
+  cert->cert_private_keys[idx].chain = std::move(certs_sk);
+  cert->cert_private_key_idx = idx;
   return 1;
 }
 
 bool ssl_set_cert(CERT *cert, UniquePtr<CRYPTO_BUFFER> buffer) {
-  switch (check_leaf_cert_and_privkey(buffer.get(), cert->privatekey.get())) {
+  if (!ssl_cert_check_cert_private_keys_usage(cert)) {
+    return false;
+  }
+
+  // Parse the right certificate slot index from |buffer|.
+  CBS cert_cbs;
+  CRYPTO_BUFFER_init_CBS(buffer.get(), &cert_cbs);
+  UniquePtr<EVP_PKEY> pubkey = ssl_cert_parse_pubkey(&cert_cbs);
+  if (!pubkey) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+    return false;
+  }
+  int slot_index = ssl_get_certificate_slot_index(pubkey.get());
+  if (slot_index < 0) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
+    return false;
+  }
+
+  CERT_PKEY &cert_pkey = cert->cert_private_keys[slot_index];
+  switch (do_leaf_cert_and_privkey_checks(&cert_cbs, pubkey.get(),
+                                          cert_pkey.privatekey.get())) {
     case leaf_cert_and_privkey_error:
       return false;
     case leaf_cert_and_privkey_mismatch:
       // don't fail for a cert/key mismatch, just free current private key
       // (when switching to a different cert & key, first this function should
       // be used, then |ssl_set_pkey|.
-      cert->privatekey.reset();
+      cert_pkey.privatekey.reset();
       break;
     case leaf_cert_and_privkey_ok:
       break;
   }
 
-  cert->x509_method->cert_flush_cached_leaf(cert);
+  if (cert_pkey.chain != nullptr) {
+    CRYPTO_BUFFER_free(sk_CRYPTO_BUFFER_value(cert_pkey.chain.get(), 0));
+    sk_CRYPTO_BUFFER_set(cert_pkey.chain.get(), 0, buffer.release());
 
-  if (cert->chain != nullptr) {
-    CRYPTO_BUFFER_free(sk_CRYPTO_BUFFER_value(cert->chain.get(), 0));
-    sk_CRYPTO_BUFFER_set(cert->chain.get(), 0, buffer.release());
+    // Update certificate slot index if all checks have passed.
+    cert->cert_private_key_idx = slot_index;
     return true;
   }
 
-  cert->chain.reset(sk_CRYPTO_BUFFER_new_null());
-  if (cert->chain == nullptr) {
+  cert_pkey.chain.reset(sk_CRYPTO_BUFFER_new_null());
+  if (cert_pkey.chain == nullptr) {
     return false;
   }
 
-  if (!PushToStack(cert->chain.get(), std::move(buffer))) {
-    cert->chain.reset();
+  if (!PushToStack(cert_pkey.chain.get(), std::move(buffer))) {
+    cert_pkey.chain.reset();
     return false;
   }
 
+  // Update certificate slot index if all checks have passed.
+  cert->cert_private_key_idx = slot_index;
   return true;
 }
 
 bool ssl_has_certificate(const SSL_HANDSHAKE *hs) {
-  return hs->config->cert->chain != nullptr &&
-         sk_CRYPTO_BUFFER_value(hs->config->cert->chain.get(), 0) != nullptr &&
+  if (!ssl_cert_check_cert_private_keys_usage(hs->config->cert.get())) {
+    return false;
+  }
+
+  CERT_PKEY &cert_pkey =
+      hs->config->cert
+          ->cert_private_keys[hs->config->cert->cert_private_key_idx];
+  return cert_pkey.chain != nullptr &&
+         sk_CRYPTO_BUFFER_value(cert_pkey.chain.get(), 0) != nullptr &&
          ssl_has_private_key(hs);
 }
 
@@ -365,7 +437,6 @@ bool ssl_parse_cert_chain(uint8_t *out_alert,
   UniquePtr<STACK_OF(CRYPTO_BUFFER)> chain(sk_CRYPTO_BUFFER_new_null());
   if (!chain) {
     *out_alert = SSL_AD_INTERNAL_ERROR;
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return false;
   }
 
@@ -394,10 +465,8 @@ bool ssl_parse_cert_chain(uint8_t *out_alert,
 
     UniquePtr<CRYPTO_BUFFER> buf(
         CRYPTO_BUFFER_new_from_CBS(&certificate, pool));
-    if (!buf ||
-        !PushToStack(chain.get(), std::move(buf))) {
+    if (!buf || !PushToStack(chain.get(), std::move(buf))) {
       *out_alert = SSL_AD_INTERNAL_ERROR;
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return false;
     }
   }
@@ -418,7 +487,10 @@ bool ssl_add_cert_chain(SSL_HANDSHAKE *hs, CBB *cbb) {
     return false;
   }
 
-  STACK_OF(CRYPTO_BUFFER) *chain = hs->config->cert->chain.get();
+  // |cert_private_keys| already checked above in |ssl_has_certificate|.
+  int idx = hs->config->cert->cert_private_key_idx;
+  STACK_OF(CRYPTO_BUFFER) *chain =
+      hs->config->cert->cert_private_keys[idx].chain.get();
   for (size_t i = 0; i < sk_CRYPTO_BUFFER_num(chain); i++) {
     CRYPTO_BUFFER *buffer = sk_CRYPTO_BUFFER_value(chain, i);
     CBB child;
@@ -456,8 +528,7 @@ static bool ssl_cert_skip_to_spki(const CBS *in, CBS *out_tbs_cert) {
   CBS buf = *in;
 
   CBS toplevel;
-  if (!CBS_get_asn1(&buf, &toplevel, CBS_ASN1_SEQUENCE) ||
-      CBS_len(&buf) != 0 ||
+  if (!CBS_get_asn1(&buf, &toplevel, CBS_ASN1_SEQUENCE) || CBS_len(&buf) != 0 ||
       !CBS_get_asn1(&toplevel, out_tbs_cert, CBS_ASN1_SEQUENCE) ||
       // version
       !CBS_get_optional_asn1(
@@ -521,15 +592,18 @@ bool ssl_cert_check_private_key(const CERT *cert, const EVP_PKEY *privkey) {
     return false;
   }
 
-  if (cert->chain == nullptr ||
-      sk_CRYPTO_BUFFER_value(cert->chain.get(), 0) == nullptr) {
+  // |cert_private_keys| already checked before usages of
+  // |ssl_cert_check_private_key|.
+  STACK_OF(CRYPTO_BUFFER) *chain =
+      cert->cert_private_keys[cert->cert_private_key_idx].chain.get();
+
+  if (chain == nullptr || sk_CRYPTO_BUFFER_value(chain, 0) == nullptr) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CERTIFICATE_ASSIGNED);
     return false;
   }
 
   CBS cert_cbs;
-  CRYPTO_BUFFER_init_CBS(sk_CRYPTO_BUFFER_value(cert->chain.get(), 0),
-                         &cert_cbs);
+  CRYPTO_BUFFER_init_CBS(sk_CRYPTO_BUFFER_value(chain, 0), &cert_cbs);
   UniquePtr<EVP_PKEY> pubkey = ssl_cert_parse_pubkey(&cert_cbs);
   if (!pubkey) {
     OPENSSL_PUT_ERROR(X509, X509_R_UNKNOWN_KEY_TYPE);
@@ -623,7 +697,6 @@ UniquePtr<STACK_OF(CRYPTO_BUFFER)> ssl_parse_client_CA_list(SSL *ssl,
   UniquePtr<STACK_OF(CRYPTO_BUFFER)> ret(sk_CRYPTO_BUFFER_new_null());
   if (!ret) {
     *out_alert = SSL_AD_INTERNAL_ERROR;
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return nullptr;
   }
 
@@ -644,10 +717,8 @@ UniquePtr<STACK_OF(CRYPTO_BUFFER)> ssl_parse_client_CA_list(SSL *ssl,
 
     UniquePtr<CRYPTO_BUFFER> buffer(
         CRYPTO_BUFFER_new_from_CBS(&distinguished_name, pool));
-    if (!buffer ||
-        !PushToStack(ret.get(), std::move(buffer))) {
+    if (!buffer || !PushToStack(ret.get(), std::move(buffer))) {
       *out_alert = SSL_AD_INTERNAL_ERROR;
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return nullptr;
     }
   }
@@ -730,13 +801,31 @@ bool ssl_on_certificate_selected(SSL_HANDSHAKE *hs) {
     return true;
   }
 
-  if (!ssl->ctx->x509_method->ssl_auto_chain_if_needed(hs)) {
+  if (!ssl->ctx->x509_method->ssl_auto_chain_if_needed(hs) ||
+      !ssl_handshake_load_local_pubkey(hs)) {
     return false;
   }
 
+  // Sanity check that cached certificate public key type matches the chosen
+  // certificate slot index type.
+  assert(ssl_signing_with_dc(hs) ||
+         (ssl_get_certificate_slot_index(hs->local_pubkey.get()) ==
+          hs->config->cert->cert_private_key_idx));
+
+  return true;
+}
+
+bool ssl_handshake_load_local_pubkey(SSL_HANDSHAKE *hs) {
+  if (!ssl_cert_check_cert_private_keys_usage(hs->config->cert.get())) {
+    return false;
+  }
+
+  STACK_OF(CRYPTO_BUFFER) *chain =
+      hs->config->cert
+          ->cert_private_keys[hs->config->cert->cert_private_key_idx]
+          .chain.get();
   CBS leaf;
-  CRYPTO_BUFFER_init_CBS(
-      sk_CRYPTO_BUFFER_value(hs->config->cert->chain.get(), 0), &leaf);
+  CRYPTO_BUFFER_init_CBS(sk_CRYPTO_BUFFER_value(chain, 0), &leaf);
 
   if (ssl_signing_with_dc(hs)) {
     hs->local_pubkey = UpRef(hs->config->cert->dc->pkey);
@@ -782,8 +871,7 @@ UniquePtr<DC> DC::Parse(CRYPTO_BUFFER *in, uint8_t *out_alert) {
       !CBS_get_u16(&deleg, &dc->expected_cert_verify_algorithm) ||
       !CBS_get_u24_length_prefixed(&deleg, &pubkey) ||
       !CBS_get_u16(&deleg, &algorithm) ||
-      !CBS_get_u16_length_prefixed(&deleg, &sig) ||
-      CBS_len(&deleg) != 0) {
+      !CBS_get_u16_length_prefixed(&deleg, &sig) || CBS_len(&deleg) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     *out_alert = SSL_AD_DECODE_ERROR;
     return nullptr;
@@ -805,8 +893,7 @@ UniquePtr<DC> DC::Parse(CRYPTO_BUFFER *in, uint8_t *out_alert) {
 static bool ssl_can_serve_dc(const SSL_HANDSHAKE *hs) {
   // Check that a DC has been configured.
   const CERT *cert = hs->config->cert.get();
-  if (cert->dc == nullptr ||
-      cert->dc->raw == nullptr ||
+  if (cert->dc == nullptr || cert->dc->raw == nullptr ||
       (cert->dc_privatekey == nullptr && cert->dc_key_method == nullptr)) {
     return false;
   }
@@ -831,8 +918,7 @@ static bool ssl_can_serve_dc(const SSL_HANDSHAKE *hs) {
 bool ssl_signing_with_dc(const SSL_HANDSHAKE *hs) {
   // As of draft-ietf-tls-subcert-03, only the server may use delegated
   // credentials to authenticate itself.
-  return hs->ssl->server &&
-         hs->delegated_credential_requested &&
+  return hs->ssl->server && hs->delegated_credential_requested &&
          ssl_can_serve_dc(hs);
 }
 
@@ -870,6 +956,15 @@ static int cert_set_dc(CERT *cert, CRYPTO_BUFFER *const raw, EVP_PKEY *privkey,
   return 1;
 }
 
+bool ssl_cert_check_cert_private_keys_usage(const CERT *cert) {
+  if (cert == nullptr || cert->cert_private_keys.size() != SSL_PKEY_SIZE ||
+      cert->cert_private_key_idx < 0 ||
+      cert->cert_private_key_idx >= SSL_PKEY_SIZE) {
+    return false;
+  }
+  return true;
+}
+
 BSSL_NAMESPACE_END
 
 using namespace bssl;
@@ -891,8 +986,12 @@ int SSL_CTX_set_chain_and_key(SSL_CTX *ctx, CRYPTO_BUFFER *const *certs,
                                 privkey_method);
 }
 
-const STACK_OF(CRYPTO_BUFFER)* SSL_CTX_get0_chain(const SSL_CTX *ctx) {
-  return ctx->cert->chain.get();
+const STACK_OF(CRYPTO_BUFFER) *SSL_CTX_get0_chain(const SSL_CTX *ctx) {
+  if (!ssl_cert_check_cert_private_keys_usage(ctx->cert.get())) {
+    return nullptr;
+  }
+  return ctx->cert->cert_private_keys[ctx->cert->cert_private_key_idx]
+      .chain.get();
 }
 
 int SSL_CTX_use_certificate_ASN1(SSL_CTX *ctx, size_t der_len,
@@ -1012,3 +1111,5 @@ int SSL_set1_delegated_credential(SSL *ssl, CRYPTO_BUFFER *dc, EVP_PKEY *pkey,
 int SSL_delegated_credential_used(const SSL *ssl) {
   return ssl->s3->delegated_credential_used;
 }
+
+int SSL_CTX_get_security_level(const SSL_CTX *ctx) { return 3; }

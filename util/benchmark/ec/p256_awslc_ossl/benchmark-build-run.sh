@@ -45,7 +45,7 @@ then
 ## checkout AWS-LC if it doesn't exist already
 #     echo "Checkout AWS-LC main tip" && \
 #         cd .. && \
-#         git clone https://github.com/awslabs/aws-lc.git && \
+#         git clone https://github.com/aws/aws-lc.git && \
 #         cd ${BENCH_DIR}
 fi
 

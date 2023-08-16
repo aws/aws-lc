@@ -32,6 +32,7 @@
 #include <sys/user.h>
 
 #include "fork_detect.h"
+#include "getrandom_fillin.h"
 
 #if !defined(PTRACE_O_EXITKILL)
 #define PTRACE_O_EXITKILL (1 << 20)
@@ -39,6 +40,24 @@
 
 #if !defined(PTRACE_O_TRACESYSGOOD)
 #define PTRACE_O_TRACESYSGOOD (1)
+#endif
+
+#if defined(AWSLC_FIPS)
+static const bool kIsFIPS = true;
+#else
+static const bool kIsFIPS = false;
+#endif
+
+#if defined(FIPS_ENTROPY_SOURCE_JITTER_CPU)
+static const bool kIsFipsSourceJitterCpu = true;
+#else
+static const bool kIsFipsSourceJitterCpu = false;
+#endif
+
+#if defined(FIPS_ENTROPY_SOURCE_PASSIVE)
+static const bool kIsFipsSourcePassive = true;
+#else
+static const bool kIsFipsSourcePassive = false;
 #endif
 
 // This test can be run with $OPENSSL_ia32cap=~0x4000000000000000 in order to
@@ -185,7 +204,8 @@ static void GetTrace(std::vector<Event> *out_trace, unsigned flags,
   // Parent process
   int status;
   ASSERT_EQ(child_pid, waitpid(child_pid, &status, 0));
-  ASSERT_TRUE(WIFSTOPPED(status) && WSTOPSIG(status) == SIGSTOP);
+  ASSERT_TRUE(WIFSTOPPED(status) && WSTOPSIG(status) == SIGSTOP)
+      << "Child was not stopped with SIGSTOP: " << status;
 
   // Set options so that:
   //   a) the child process is killed once this process dies.
@@ -213,7 +233,8 @@ static void GetTrace(std::vector<Event> *out_trace, unsigned flags,
     }
 
     // Otherwise the only valid ptrace event is a system call stop.
-    ASSERT_TRUE(WIFSTOPPED(status) && WSTOPSIG(status) == (SIGTRAP | 0x80));
+    ASSERT_TRUE(WIFSTOPPED(status) && WSTOPSIG(status) == (SIGTRAP | 0x80))
+        << "Child was not stopped with a syscall stop: " << status;
 
     struct user_regs_struct regs;
     ASSERT_EQ(0, ptrace(PTRACE_GETREGS, child_pid, nullptr, &regs));
@@ -387,11 +408,6 @@ static bool have_fork_detection() {
 // |TestFunction| is run. It should return the same trace of events that
 // |GetTrace| will observe the real code making.
 static std::vector<Event> TestFunctionPRNGModel(unsigned flags) {
-#if defined(BORINGSSL_FIPS)
-  static const bool is_fips = true;
-#else
-  static const bool is_fips = false;
-#endif
 
   std::vector<Event> ret;
   bool urandom_probed = false;
@@ -410,7 +426,7 @@ static std::vector<Event> TestFunctionPRNGModel(unsigned flags) {
     }
 
     wait_for_entropy = [&ret, &urandom_probed, flags] {
-      if (!is_fips || urandom_probed) {
+      if (!kIsFIPS || urandom_probed) {
         return;
       }
 
@@ -468,32 +484,71 @@ static std::vector<Event> TestFunctionPRNGModel(unsigned flags) {
 
   const size_t kSeedLength = CTR_DRBG_ENTROPY_LEN;
   const size_t kAdditionalDataLength = 32;
+  const size_t kPersonalizationStringLength = CTR_DRBG_ENTROPY_LEN;
+  const size_t kPassiveEntropyWithWhitenFactor = PASSIVE_ENTROPY_LOAD_LENGTH;
+  const bool kHaveRdrand = have_rdrand();
+  const bool kHaveFastRdrand = have_fast_rdrand();
+  const bool kHaveForkDetection = have_fork_detection();
 
-  if (!have_rdrand()) {
-    if ((!have_fork_detection() && !sysrand(true, kAdditionalDataLength)) ||
-        // Initialise CRNGT. In FIPS mode we use a blocking sysrand call for
-        // a personalization string, while in non-FIPS mode the same call is
-        // used for generating entropy for a seed. Note that the length
-        // of the personalization string is the same as that of the seed.
-        !sysrand(true, kSeedLength) ||
-        // Second entropy draw.
-        (!have_fork_detection() && !sysrand(true, kAdditionalDataLength))) {
+  // Additional data might be drawn on each invocation of RAND_bytes(). In case
+  // it is and there is no rdrand at all, the call is blocking. In the case
+  // where there is at least a "slow" rdrand, first a non-blocking call to
+  // system random is performed followed by an rdrand call.
+
+  // First call to RAND_bytes() will do two things:
+  // * maybe draw for additional data
+  // * seed the CTR-DRBG
+  // First is deciding on additional data.
+  if (!kHaveRdrand || !kHaveFastRdrand) {
+    if (!kHaveForkDetection) {
+      // If no rdrand, we use additional data if fork detection is not enabled.
+      if (!sysrand(!kHaveRdrand, kAdditionalDataLength)) {
+        return ret;
+      }
+    }
+  }
+
+  // Now the entropy for seeding.
+  if (kIsFIPS) {
+    if (kIsFipsSourceJitterCpu) {
+      // In FIPS mode we use Jitter Entropy by default for the seed but Jitter
+      // is not modeled. A blocking system random call for a personalization
+      // string always follows.
+      if (!sysrand(true, kPersonalizationStringLength)) {
+        return ret;
+      }
+    } else if (kIsFipsSourcePassive) {
+      // The Passive FIPS entropy source either gathers entropy from a CPU
+      // source or a system source. The former is not modeled.
+      if (!kHaveRdrand) {
+        if (!sysrand(true, kPassiveEntropyWithWhitenFactor)) {
+                return ret;
+        }
+      } else {
+        // If using the CPU source, also drawing additional data for diversity.
+        if (!sysrand(false, kPersonalizationStringLength)) {
+                return ret;
+        }
+      }
+    } else {
+      // This shouldn't really happen...
       return ret;
     }
-  } else if (
-      // First additional data. If fast RDRAND isn't available then a
-      // non-blocking OS entropy draw will be tried.
-      (!have_fast_rdrand() && !have_fork_detection() &&
-       !sysrand(false, kAdditionalDataLength)) ||
-      // Initialise CRNGT. In FIPS mode we use a blocking sysrand call for
-      // a personalization string, while in non-FIPS mode the same call is
-      // used for generating entropy for a seed. Note that the length
-      // of the personalization string is the same as that of the seed.
-      !sysrand(true, kSeedLength) ||
-      // Second entropy draw's additional data.
-      (!have_fast_rdrand() && !have_fork_detection() &&
-       !sysrand(false, kAdditionalDataLength))) {
-    return ret;
+  } else {
+    // In non-FIPS mode entropy for the seed is drawn from system random.
+    if (!sysrand(true, kSeedLength)) {
+      return ret;
+    }
+  }
+
+  // Second RAND_bytes() call. No seeding or re-seeding, but in some cases
+  // entropy is drawn for additional data as in the first call to RAND_bytes().
+  if (!kHaveRdrand || !kHaveFastRdrand) {
+    if (!kHaveForkDetection) {
+      if (!sysrand(!kHaveRdrand, kAdditionalDataLength)) {
+        return ret;
+      }
+    }
   }
 
   return ret;
@@ -501,14 +556,29 @@ static std::vector<Event> TestFunctionPRNGModel(unsigned flags) {
 
 // Tests that |TestFunctionPRNGModel| is a correct model for the code in
 // urandom.c, at least to the limits of the the |Event| type.
+//
+// |TestFunctionPRNGModel| creates the entropy function call model, for
+// various configs. |GetTrace| records the actual entropy function calls for
+// each config and compares it against the model.
+// Only system entropy function calls are modeled e.g. /dev/random and getrandom.
 TEST(URandomTest, Test) {
   char buf[256];
+
+  // Some Android systems lack getrandom.
+  uint8_t scratch[1];
+  const bool has_getrandom =
+      (syscall(__NR_getrandom, scratch, sizeof(scratch), GRND_NONBLOCK) != -1 ||
+       errno != ENOSYS);
 
 #define TRACE_FLAG(flag)                                         \
   snprintf(buf, sizeof(buf), #flag ": %d", (flags & flag) != 0); \
   SCOPED_TRACE(buf);
 
   for (unsigned flags = 0; flags < NEXT_FLAG; flags++) {
+    if (!has_getrandom && !(flags & NO_GETRANDOM)) {
+        continue;
+    }
+
     TRACE_FLAG(NO_GETRANDOM);
     TRACE_FLAG(NO_URANDOM);
     TRACE_FLAG(GETRANDOM_NOT_READY);

@@ -13,6 +13,7 @@ BoringCrypto has undergone the following validations:
 1. 2019-08-08: certificate [#3678](https://csrc.nist.gov/Projects/Cryptographic-Module-Validation-Program/Certificate/3678), [security policy](/crypto/fipsmodule/policydocs/BoringCrypto-Security-Policy-20190808.docx) (in docx format).
 1. 2019-10-20: certificate [#3753](https://csrc.nist.gov/Projects/Cryptographic-Module-Validation-Program/Certificate/3753), [security policy](/crypto/fipsmodule/policydocs/BoringCrypto-Android-Security-Policy-20191020.docx) (in docx format).
 1. 2021-01-28: certificate [#4156](https://csrc.nist.gov/Projects/Cryptographic-Module-Validation-Program/Certificate/4156), [security policy](/crypto/fipsmodule/policydocs/BoringCrypto-Android-Security-Policy-20210319.docx) (in docx format).
+1. 2021-04-29: certificate [#4407](https://csrc.nist.gov/projects/cryptographic-module-validation-program/certificate/4407).
 
 ## Running ACVP tests
 
@@ -26,7 +27,6 @@ Some FIPS tests cannot be broken by replacing a known string in the binary. For 
 
 1. `RSA_PWCT`
 1. `ECDSA_PWCT`
-1. `CRNG`
 
 ## Breaking the integrity test
 
@@ -80,7 +80,7 @@ The Shared Windows FIPS integrity test differs in two key ways:
 1. How the start and end of the module are marked
 2. How the correct integrity hash is calculated
 
-Microsoft Visual C compiler (MSVC) does not support linker scripts which add symbols to mark the start and end of the text and rodata sections on Linux. Instead, fips_shared_library_marker.c is compiled twice to generate two object files that contain start/end functions and variables. MSVC `pragma` segment definitions are used to place the markers in specific sections (e.g. `.fipstx$a`). This particular name format uses Portable Executable Grouped Sections to control what section the code is placed in and the order within the section. With the start and end markers placed at `$a` and `$z` respectively, BCM puts everything in the `$b` section. When the final crypto.dll is built all the code is in the `.fipstx` section, all data and constants is in `.fipsda`, and everything is in the correct order.
+Microsoft Visual C compiler (MSVC) does not support linker scripts which add symbols to mark the start and end of the text and rodata sections on Linux. Instead, fips_shared_library_marker.c is compiled twice to generate two object files that contain start/end functions and variables. MSVC `pragma` segment definitions are used to place the markers in specific sections (e.g. `.fipstx$a`). This particular name format uses Portable Executable Grouped Sections to control what section the code is placed in and the order within the section. With the start and end markers placed at `$a` and `$z` respectively, BCM puts everything in the `$b` section. When the final crypto.dll is built all the code is in the `.fipstx` section, all data is in `.fipsda`, all constants are in `.fipsco`, all unitialized items in `.fipsbs`, and everything is in the correct order.
 
 The process to generate the expected integrity fingerprint is also different from Linux:
 1. Build the required object files once: `bcm.obj` from `bcm.c` and the start/end object files

@@ -23,16 +23,24 @@
 #include <gtest/gtest.h>
 
 #include <openssl/aes.h>
+#include <openssl/cipher.h>
 #include <openssl/rand.h>
 
-#include "internal.h"
-#include "../cpucap/internal.h"
 #include "../../internal.h"
 #include "../../test/abi_test.h"
 #include "../../test/file_test.h"
 #include "../../test/test_util.h"
 #include "../../test/wycheproof_util.h"
+#include "../cpucap/internal.h"
+#include "internal.h"
 
+// All test vectors use the default IV, so test both with implicit and
+// explicit IV.
+//
+// TODO(davidben): Find test vectors that use a different IV.
+static const uint8_t kDefaultIV[] = {
+    0xa6, 0xa6, 0xa6, 0xa6, 0xa6, 0xa6, 0xa6, 0xa6,
+};
 
 static void TestRaw(FileTest *t) {
   std::vector<uint8_t> key, plaintext, ciphertext;
@@ -69,14 +77,6 @@ static void TestRaw(FileTest *t) {
 }
 
 static void TestKeyWrap(FileTest *t) {
-  // All test vectors use the default IV, so test both with implicit and
-  // explicit IV.
-  //
-  // TODO(davidben): Find test vectors that use a different IV.
-  static const uint8_t kDefaultIV[] = {
-      0xa6, 0xa6, 0xa6, 0xa6, 0xa6, 0xa6, 0xa6, 0xa6,
-  };
-
   std::vector<uint8_t> key, plaintext, ciphertext;
   ASSERT_TRUE(t->GetBytes(&key, "Key"));
   ASSERT_TRUE(t->GetBytes(&plaintext, "Plaintext"));
@@ -125,6 +125,77 @@ static void TestKeyWrap(FileTest *t) {
                                ciphertext.data(), ciphertext.size()));
 }
 
+static void TestEVPKeyWrap(FileTest *t) {
+  std::vector<uint8_t> key, plaintext, ciphertext;
+  ASSERT_TRUE(t->GetBytes(&key, "Key"));
+  ASSERT_TRUE(t->GetBytes(&plaintext, "Plaintext"));
+  ASSERT_TRUE(t->GetBytes(&ciphertext, "Ciphertext"));
+
+  // Only 256 bit keys are supported for key wrap from EVP_CIPHER at the moment.
+  if (key.size() != 32) {
+    return;
+  }
+
+  const EVP_CIPHER *cipher = EVP_aes_256_wrap();
+
+  ASSERT_EQ(plaintext.size() + 8, ciphertext.size())
+      << "Invalid Plaintext and Ciphertext lengths.";
+
+  // Test encryption.
+  std::vector<uint8_t> out(ciphertext.size());
+  int len;
+  // Test with implicit IV.
+  bssl::ScopedEVP_CIPHER_CTX ctx;
+  ASSERT_TRUE(
+      EVP_EncryptInit_ex(ctx.get(), cipher, nullptr, key.data(), nullptr));
+  ASSERT_TRUE(EVP_EncryptUpdate(ctx.get(), out.data(), &len, plaintext.data(),
+                                plaintext.size()));
+  ASSERT_GE(len, 0);
+  ASSERT_TRUE(EVP_EncryptFinal(ctx.get(), out.data(), &len));
+  EXPECT_EQ(Bytes(ciphertext), Bytes(out));
+
+  // Test with explicit IV.
+  ctx.Reset();
+  ASSERT_TRUE(
+      EVP_EncryptInit_ex(ctx.get(), cipher, nullptr, key.data(), kDefaultIV));
+  ASSERT_TRUE(EVP_EncryptUpdate(ctx.get(), out.data(), &len, plaintext.data(),
+                                plaintext.size()));
+  ASSERT_GE(len, 0);
+  ASSERT_TRUE(EVP_EncryptFinal(ctx.get(), out.data(), &len));
+  EXPECT_EQ(Bytes(ciphertext), Bytes(out));
+
+  // Test decryption.
+  out.clear();
+  out.resize(plaintext.size());
+  ctx.Reset();
+  // Test with implicit IV.
+  ASSERT_TRUE(
+      EVP_DecryptInit_ex(ctx.get(), cipher, nullptr, key.data(), nullptr));
+  ASSERT_TRUE(EVP_DecryptUpdate(ctx.get(), out.data(), &len, ciphertext.data(),
+                                ciphertext.size()));
+  out.resize(len);
+  ASSERT_TRUE(EVP_EncryptFinal(ctx.get(), out.data(), &len));
+  EXPECT_EQ(Bytes(plaintext), Bytes(out));
+
+  // Test with explicit IV.
+  ctx.Reset();
+  ASSERT_TRUE(
+      EVP_DecryptInit_ex(ctx.get(), cipher, nullptr, key.data(), kDefaultIV));
+  ASSERT_TRUE(EVP_DecryptUpdate(ctx.get(), out.data(), &len, ciphertext.data(),
+                                ciphertext.size()));
+  out.resize(len);
+  ASSERT_TRUE(EVP_EncryptFinal(ctx.get(), out.data(), &len));
+  EXPECT_EQ(Bytes(plaintext), Bytes(out));
+
+  // Test corrupted ciphertext.
+  ctx.Reset();
+  ciphertext[0] ^= 1;
+  ASSERT_TRUE(
+      EVP_DecryptInit_ex(ctx.get(), cipher, nullptr, key.data(), nullptr));
+  EXPECT_FALSE(EVP_DecryptUpdate(ctx.get(), out.data(), &len, ciphertext.data(),
+                                 ciphertext.size()));
+}
+
 static void TestKeyWrapWithPadding(FileTest *t) {
   std::vector<uint8_t> key, plaintext, ciphertext;
   ASSERT_TRUE(t->GetBytes(&key, "Key"));
@@ -157,6 +228,7 @@ TEST(AESTest, TestVectors) {
       TestRaw(t);
     } else if (t->GetParameter() == "KeyWrap") {
       TestKeyWrap(t);
+      TestEVPKeyWrap(t);
     } else if (t->GetParameter() == "KeyWrapWithPadding") {
       TestKeyWrapWithPadding(t);
     } else {
@@ -199,6 +271,73 @@ TEST(AESTest, WycheproofKeyWrap) {
       std::vector<uint8_t> out(ct.size() < 8 ? 0 : ct.size() - 8);
       int len = AES_unwrap_key(&aes, nullptr, out.data(), ct.data(), ct.size());
       EXPECT_EQ(-1, len);
+    }
+  });
+}
+
+TEST(AESTest, WycheproofEVPKeyWrap) {
+  FileTestGTest("third_party/wycheproof_testvectors/kw_test.txt",
+                [](FileTest *t) {
+    std::string key_size;
+    ASSERT_TRUE(t->GetInstruction(&key_size, "keySize"));
+    std::vector<uint8_t> ct, key, msg;
+    ASSERT_TRUE(t->GetBytes(&ct, "ct"));
+    ASSERT_TRUE(t->GetBytes(&key, "key"));
+    ASSERT_TRUE(t->GetBytes(&msg, "msg"));
+    ASSERT_EQ(static_cast<unsigned>(atoi(key_size.c_str())), key.size() * 8);
+    WycheproofResult result;
+    ASSERT_TRUE(GetWycheproofResult(t, &result));
+
+    // Only 256 bit keys are supported for key wrap from EVP_CIPHER at the
+    // moment.
+    if (key.size() != 32) {
+      return;
+    }
+
+    const EVP_CIPHER *cipher = EVP_aes_256_wrap();
+
+    if (result.IsValid()) {
+      ASSERT_GE(ct.size(), 8u);
+
+      bssl::ScopedEVP_CIPHER_CTX ctx;
+      std::vector<uint8_t> out(ct.size() - 8);
+      int len;
+      ASSERT_TRUE(
+        EVP_DecryptInit_ex(ctx.get(), cipher, nullptr, key.data(), nullptr));
+      ASSERT_TRUE(EVP_DecryptUpdate(ctx.get(), out.data(), &len, ct.data(),
+                                ct.size()));
+      ASSERT_EQ(static_cast<int>(out.size()), len);
+      ASSERT_TRUE(EVP_EncryptFinal(ctx.get(), out.data(), &len));
+      EXPECT_EQ(Bytes(msg), Bytes(out));
+
+      ctx.Reset();
+      out.resize(msg.size() + 8);
+      ASSERT_TRUE(
+        EVP_EncryptInit_ex(ctx.get(), cipher, nullptr, key.data(), nullptr));
+      ASSERT_TRUE(EVP_EncryptUpdate(ctx.get(), out.data(), &len, msg.data(),
+                                msg.size()));
+      ASSERT_EQ(static_cast<int>(out.size()), len);
+      ASSERT_TRUE(EVP_EncryptFinal(ctx.get(), out.data(), &len));
+      EXPECT_EQ(Bytes(ct), Bytes(out));
+    } else {
+      bssl::ScopedEVP_CIPHER_CTX ctx;
+      std::vector<uint8_t> out(ct.size() < 8 ? 0 : ct.size() - 8);
+      int len;
+      ASSERT_TRUE(
+        EVP_DecryptInit_ex(ctx.get(), cipher, nullptr, key.data(), nullptr));
+      if (!ct.empty()) {
+        EXPECT_FALSE(EVP_DecryptUpdate(ctx.get(), out.data(), &len, ct.data(),
+                                       ct.size()));
+        // There is no "Final" function for |EVP_aes_256_wrap|, so this will
+        // always return 1.
+        EXPECT_TRUE(EVP_EncryptFinal(ctx.get(), out.data(), &len));
+      } else {
+        // The EVP version of AES-KEY Wrap will return 1 if the ciphertext is
+        // NULL. This is consistent with OpenSSL behaviour.
+        EXPECT_EQ(EVP_DecryptUpdate(ctx.get(), out.data(), &len, ct.data(),
+                                       ct.size()), 1);
+        EXPECT_TRUE(EVP_EncryptFinal(ctx.get(), out.data(), &len));
+      }
     }
   });
 }

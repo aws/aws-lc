@@ -186,7 +186,6 @@ static int asn1_item_ex_combine_new(ASN1_VALUE **pval, const ASN1_ITEM *it,
 memerr2:
   asn1_item_combine_free(pval, it, combine);
 memerr:
-  OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
   return 0;
 
 auxerr2:
@@ -246,7 +245,6 @@ static int ASN1_template_new(ASN1_VALUE **pval, const ASN1_TEMPLATE *tt) {
     STACK_OF(ASN1_VALUE) *skval;
     skval = sk_ASN1_VALUE_new_null();
     if (!skval) {
-      OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
       ret = 0;
       goto done;
     }

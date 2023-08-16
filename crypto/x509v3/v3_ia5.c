@@ -1,4 +1,3 @@
-/* v3_ia5.c */
 /*
  * Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL project
  * 1999.
@@ -77,7 +76,6 @@ static char *i2s_ASN1_IA5STRING(const X509V3_EXT_METHOD *method, void *ext) {
     return NULL;
   }
   if (!(tmp = OPENSSL_malloc(ia5->length + 1))) {
-    OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
   OPENSSL_memcpy(tmp, ia5->data, ia5->length);
@@ -86,7 +84,7 @@ static char *i2s_ASN1_IA5STRING(const X509V3_EXT_METHOD *method, void *ext) {
 }
 
 static void *s2i_ASN1_IA5STRING(const X509V3_EXT_METHOD *method,
-                                X509V3_CTX *ctx, const char *str) {
+                                const X509V3_CTX *ctx, const char *str) {
   ASN1_IA5STRING *ia5;
   if (!str) {
     OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_NULL_ARGUMENT);
@@ -101,7 +99,6 @@ static void *s2i_ASN1_IA5STRING(const X509V3_EXT_METHOD *method,
   }
   return ia5;
 err:
-  OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
   return NULL;
 }
 

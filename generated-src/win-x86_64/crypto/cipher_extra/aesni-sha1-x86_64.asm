@@ -131,7 +131,7 @@ $L$oop_ssse3:
 	xorps	xmm14,xmm15
 	xorps	xmm2,xmm14
 	movups	xmm1,XMMWORD[((-80))+r15]
-DB	102,15,56,220,208
+	DB	102,15,56,220,208
 	pshufd	xmm8,xmm4,238
 	xor	esi,edx
 	movdqa	xmm12,xmm7
@@ -158,7 +158,7 @@ DB	102,15,56,220,208
 	movdqa	XMMWORD[48+rsp],xmm13
 	add	edx,edi
 	movups	xmm0,XMMWORD[((-64))+r15]
-DB	102,15,56,220,209
+	DB	102,15,56,220,209
 	and	esi,eax
 	movdqa	xmm3,xmm8
 	xor	eax,ebx
@@ -185,7 +185,7 @@ DB	102,15,56,220,209
 	mov	esi,ecx
 	add	ebx,DWORD[12+rsp]
 	movups	xmm1,XMMWORD[((-48))+r15]
-DB	102,15,56,220,208
+	DB	102,15,56,220,208
 	pslld	xmm13,2
 	pxor	xmm8,xmm3
 	xor	edx,ebp
@@ -214,7 +214,7 @@ DB	102,15,56,220,208
 	add	eax,ebx
 	ror	ebx,7
 	movups	xmm0,XMMWORD[((-32))+r15]
-DB	102,15,56,220,209
+	DB	102,15,56,220,209
 	pxor	xmm13,xmm7
 	xor	edi,edx
 	mov	esi,eax
@@ -240,7 +240,7 @@ DB	102,15,56,220,209
 	rol	ebp,5
 	add	edx,esi
 	movups	xmm1,XMMWORD[((-16))+r15]
-DB	102,15,56,220,208
+	DB	102,15,56,220,208
 	movdqa	xmm3,xmm12
 	and	edi,eax
 	xor	eax,ebx
@@ -269,7 +269,7 @@ DB	102,15,56,220,208
 	mov	edi,ecx
 	add	ebx,DWORD[32+rsp]
 	movups	xmm0,XMMWORD[r15]
-DB	102,15,56,220,209
+	DB	102,15,56,220,209
 	punpcklqdq	xmm10,xmm7
 	xor	edx,ebp
 	rol	ecx,5
@@ -295,7 +295,7 @@ DB	102,15,56,220,209
 	add	eax,ebx
 	ror	ebx,7
 	movups	xmm1,XMMWORD[16+r15]
-DB	102,15,56,220,208
+	DB	102,15,56,220,208
 	movdqa	xmm3,xmm10
 	xor	esi,edx
 	pslldq	xmm13,12
@@ -323,7 +323,7 @@ DB	102,15,56,220,208
 	rol	ebp,5
 	add	edx,edi
 	movups	xmm0,XMMWORD[32+r15]
-DB	102,15,56,220,209
+	DB	102,15,56,220,209
 	and	esi,eax
 	pxor	xmm10,xmm12
 	xor	eax,ebx
@@ -350,7 +350,7 @@ DB	102,15,56,220,209
 	mov	esi,ecx
 	add	ebx,DWORD[52+rsp]
 	movups	xmm1,XMMWORD[48+r15]
-DB	102,15,56,220,208
+	DB	102,15,56,220,208
 	pxor	xmm11,xmm12
 	xor	edx,ebp
 	rol	ecx,5
@@ -380,16 +380,16 @@ DB	102,15,56,220,208
 	cmp	r8d,11
 	jb	NEAR $L$aesenclast1
 	movups	xmm0,XMMWORD[64+r15]
-DB	102,15,56,220,209
+	DB	102,15,56,220,209
 	movups	xmm1,XMMWORD[80+r15]
-DB	102,15,56,220,208
+	DB	102,15,56,220,208
 	je	NEAR $L$aesenclast1
 	movups	xmm0,XMMWORD[96+r15]
-DB	102,15,56,220,209
+	DB	102,15,56,220,209
 	movups	xmm1,XMMWORD[112+r15]
-DB	102,15,56,220,208
+	DB	102,15,56,220,208
 $L$aesenclast1:
-DB	102,15,56,221,209
+	DB	102,15,56,221,209
 	movups	xmm0,XMMWORD[((16-112))+r15]
 	por	xmm11,xmm12
 	xor	edi,edx
@@ -421,7 +421,7 @@ DB	102,15,56,221,209
 	movups	XMMWORD[r13*1+r12],xmm2
 	xorps	xmm2,xmm14
 	movups	xmm1,XMMWORD[((-80))+r15]
-DB	102,15,56,220,208
+	DB	102,15,56,220,208
 	and	edi,eax
 	movdqa	xmm12,xmm3
 	xor	eax,ebx
@@ -447,7 +447,7 @@ DB	102,15,56,220,208
 	mov	edi,ecx
 	add	ebx,DWORD[8+rsp]
 	movups	xmm0,XMMWORD[((-64))+r15]
-DB	102,15,56,220,209
+	DB	102,15,56,220,209
 	por	xmm4,xmm13
 	xor	edx,ebp
 	rol	ecx,5
@@ -467,7 +467,7 @@ DB	102,15,56,220,209
 	pxor	xmm5,xmm9
 	add	ebp,DWORD[16+rsp]
 	movups	xmm1,XMMWORD[((-48))+r15]
-DB	102,15,56,220,208
+	DB	102,15,56,220,208
 	xor	esi,ecx
 	punpcklqdq	xmm3,xmm4
 	mov	edi,eax
@@ -498,7 +498,7 @@ DB	102,15,56,220,208
 	rol	edx,5
 	add	ecx,esi
 	movups	xmm0,XMMWORD[((-32))+r15]
-DB	102,15,56,220,209
+	DB	102,15,56,220,209
 	xor	edi,eax
 	ror	ebp,7
 	por	xmm5,xmm3
@@ -528,7 +528,7 @@ DB	102,15,56,220,209
 	pxor	xmm6,xmm12
 	add	ebp,DWORD[36+rsp]
 	movups	xmm1,XMMWORD[((-16))+r15]
-DB	102,15,56,220,208
+	DB	102,15,56,220,208
 	xor	edi,ecx
 	mov	esi,eax
 	rol	eax,5
@@ -556,7 +556,7 @@ DB	102,15,56,220,208
 	rol	edx,5
 	add	ecx,edi
 	movups	xmm0,XMMWORD[r15]
-DB	102,15,56,220,209
+	DB	102,15,56,220,209
 	xor	esi,eax
 	ror	ebp,7
 	add	ecx,edx
@@ -586,7 +586,7 @@ DB	102,15,56,220,209
 	add	eax,ebx
 	add	ebp,DWORD[56+rsp]
 	movups	xmm1,XMMWORD[16+r15]
-DB	102,15,56,220,208
+	DB	102,15,56,220,208
 	pslld	xmm7,2
 	xor	esi,ecx
 	mov	edi,eax
@@ -615,7 +615,7 @@ DB	102,15,56,220,208
 	pxor	xmm8,xmm9
 	add	ecx,esi
 	movups	xmm0,XMMWORD[32+r15]
-DB	102,15,56,220,209
+	DB	102,15,56,220,209
 	xor	edi,eax
 	movdqa	xmm13,xmm12
 	ror	ebp,7
@@ -645,7 +645,7 @@ DB	102,15,56,220,209
 	add	eax,ebx
 	add	ebp,DWORD[12+rsp]
 	movups	xmm1,XMMWORD[48+r15]
-DB	102,15,56,220,208
+	DB	102,15,56,220,208
 	pshufd	xmm12,xmm7,238
 	xor	edi,ecx
 	mov	esi,eax
@@ -677,16 +677,16 @@ DB	102,15,56,220,208
 	cmp	r8d,11
 	jb	NEAR $L$aesenclast2
 	movups	xmm0,XMMWORD[64+r15]
-DB	102,15,56,220,209
+	DB	102,15,56,220,209
 	movups	xmm1,XMMWORD[80+r15]
-DB	102,15,56,220,208
+	DB	102,15,56,220,208
 	je	NEAR $L$aesenclast2
 	movups	xmm0,XMMWORD[96+r15]
-DB	102,15,56,220,209
+	DB	102,15,56,220,209
 	movups	xmm1,XMMWORD[112+r15]
-DB	102,15,56,220,208
+	DB	102,15,56,220,208
 $L$aesenclast2:
-DB	102,15,56,221,209
+	DB	102,15,56,221,209
 	movups	xmm0,XMMWORD[((16-112))+r15]
 	xor	esi,eax
 	movdqa	XMMWORD[rsp],xmm13
@@ -720,7 +720,7 @@ DB	102,15,56,221,209
 	movups	XMMWORD[16+r12*1+r13],xmm2
 	xorps	xmm2,xmm14
 	movups	xmm1,XMMWORD[((-80))+r15]
-DB	102,15,56,220,208
+	DB	102,15,56,220,208
 	and	esi,ecx
 	xor	ecx,edx
 	ror	ebx,7
@@ -747,7 +747,7 @@ DB	102,15,56,220,208
 	rol	ebp,5
 	add	edx,edi
 	movups	xmm0,XMMWORD[((-64))+r15]
-DB	102,15,56,220,209
+	DB	102,15,56,220,209
 	xor	esi,eax
 	pslld	xmm10,2
 	xor	eax,ebx
@@ -771,7 +771,7 @@ DB	102,15,56,220,209
 	xor	ebp,eax
 	ror	edx,7
 	movups	xmm1,XMMWORD[((-48))+r15]
-DB	102,15,56,220,208
+	DB	102,15,56,220,208
 	mov	esi,ecx
 	xor	edi,ebp
 	rol	ecx,5
@@ -798,7 +798,7 @@ DB	102,15,56,220,208
 	add	eax,ebx
 	add	ebp,DWORD[52+rsp]
 	movups	xmm0,XMMWORD[((-32))+r15]
-DB	102,15,56,220,209
+	DB	102,15,56,220,209
 	and	edi,ecx
 	xor	ecx,edx
 	ror	ebx,7
@@ -824,7 +824,7 @@ DB	102,15,56,220,209
 	pshufd	xmm12,xmm10,238
 	add	edx,esi
 	movups	xmm1,XMMWORD[((-16))+r15]
-DB	102,15,56,220,208
+	DB	102,15,56,220,208
 	xor	edi,eax
 	xor	eax,ebx
 	add	edx,ebp
@@ -845,7 +845,7 @@ DB	102,15,56,220,208
 	xor	ebp,eax
 	ror	edx,7
 	movups	xmm0,XMMWORD[r15]
-DB	102,15,56,220,209
+	DB	102,15,56,220,209
 	punpcklqdq	xmm12,xmm11
 	mov	edi,ecx
 	xor	esi,ebp
@@ -875,7 +875,7 @@ DB	102,15,56,220,209
 	psrld	xmm12,30
 	add	ebp,DWORD[8+rsp]
 	movups	xmm1,XMMWORD[16+r15]
-DB	102,15,56,220,208
+	DB	102,15,56,220,208
 	and	esi,ecx
 	xor	ecx,edx
 	por	xmm4,xmm12
@@ -897,7 +897,7 @@ DB	102,15,56,220,208
 	rol	ebp,5
 	add	edx,edi
 	movups	xmm0,XMMWORD[32+r15]
-DB	102,15,56,220,209
+	DB	102,15,56,220,209
 	xor	esi,eax
 	xor	eax,ebx
 	add	edx,ebp
@@ -923,7 +923,7 @@ DB	102,15,56,220,209
 	xor	ebp,eax
 	ror	edx,7
 	movups	xmm1,XMMWORD[48+r15]
-DB	102,15,56,220,208
+	DB	102,15,56,220,208
 	movdqa	xmm13,xmm5
 	mov	esi,ecx
 	xor	edi,ebp
@@ -952,16 +952,16 @@ DB	102,15,56,220,208
 	cmp	r8d,11
 	jb	NEAR $L$aesenclast3
 	movups	xmm0,XMMWORD[64+r15]
-DB	102,15,56,220,209
+	DB	102,15,56,220,209
 	movups	xmm1,XMMWORD[80+r15]
-DB	102,15,56,220,208
+	DB	102,15,56,220,208
 	je	NEAR $L$aesenclast3
 	movups	xmm0,XMMWORD[96+r15]
-DB	102,15,56,220,209
+	DB	102,15,56,220,209
 	movups	xmm1,XMMWORD[112+r15]
-DB	102,15,56,220,208
+	DB	102,15,56,220,208
 $L$aesenclast3:
-DB	102,15,56,221,209
+	DB	102,15,56,221,209
 	movups	xmm0,XMMWORD[((16-112))+r15]
 	and	edi,ecx
 	xor	ecx,edx
@@ -989,7 +989,7 @@ DB	102,15,56,221,209
 	movups	XMMWORD[32+r12*1+r13],xmm2
 	xorps	xmm2,xmm14
 	movups	xmm1,XMMWORD[((-80))+r15]
-DB	102,15,56,220,208
+	DB	102,15,56,220,208
 	movdqa	xmm13,xmm12
 	xor	edi,eax
 	paddd	xmm12,xmm5
@@ -1017,7 +1017,7 @@ DB	102,15,56,220,208
 	por	xmm6,xmm3
 	ror	edx,7
 	movups	xmm0,XMMWORD[((-64))+r15]
-DB	102,15,56,220,209
+	DB	102,15,56,220,209
 	mov	edi,ecx
 	xor	esi,ebp
 	rol	ecx,5
@@ -1039,7 +1039,7 @@ DB	102,15,56,220,209
 	pxor	xmm7,xmm11
 	add	ebp,DWORD[48+rsp]
 	movups	xmm1,XMMWORD[((-48))+r15]
-DB	102,15,56,220,208
+	DB	102,15,56,220,208
 	xor	esi,ecx
 	punpcklqdq	xmm12,xmm6
 	mov	edi,eax
@@ -1070,7 +1070,7 @@ DB	102,15,56,220,208
 	rol	edx,5
 	add	ecx,esi
 	movups	xmm0,XMMWORD[((-32))+r15]
-DB	102,15,56,220,209
+	DB	102,15,56,220,209
 	xor	edi,eax
 	ror	ebp,7
 	por	xmm7,xmm12
@@ -1095,7 +1095,7 @@ DB	102,15,56,220,209
 	add	eax,ebx
 	add	ebp,DWORD[4+rsp]
 	movups	xmm1,XMMWORD[((-16))+r15]
-DB	102,15,56,220,208
+	DB	102,15,56,220,208
 	xor	edi,ecx
 	mov	esi,eax
 	rol	eax,5
@@ -1117,7 +1117,7 @@ DB	102,15,56,220,208
 	rol	edx,5
 	add	ecx,edi
 	movups	xmm0,XMMWORD[r15]
-DB	102,15,56,220,209
+	DB	102,15,56,220,209
 	xor	esi,eax
 	ror	ebp,7
 	add	ecx,edx
@@ -1153,7 +1153,7 @@ DB	102,15,56,0,235
 	add	eax,ebx
 	add	ebp,DWORD[24+rsp]
 	movups	xmm1,XMMWORD[16+r15]
-DB	102,15,56,220,208
+	DB	102,15,56,220,208
 	xor	esi,ecx
 	mov	edi,eax
 	rol	eax,5
@@ -1176,7 +1176,7 @@ DB	102,15,56,0,243
 	rol	edx,5
 	add	ecx,esi
 	movups	xmm0,XMMWORD[32+r15]
-DB	102,15,56,220,209
+	DB	102,15,56,220,209
 	xor	edi,eax
 	ror	ebp,7
 	paddd	xmm5,xmm13
@@ -1201,7 +1201,7 @@ DB	102,15,56,220,209
 	add	eax,ebx
 	add	ebp,DWORD[44+rsp]
 	movups	xmm1,XMMWORD[48+r15]
-DB	102,15,56,220,208
+	DB	102,15,56,220,208
 	xor	edi,ecx
 	mov	esi,eax
 	rol	eax,5
@@ -1228,16 +1228,16 @@ DB	102,15,56,0,251
 	cmp	r8d,11
 	jb	NEAR $L$aesenclast4
 	movups	xmm0,XMMWORD[64+r15]
-DB	102,15,56,220,209
+	DB	102,15,56,220,209
 	movups	xmm1,XMMWORD[80+r15]
-DB	102,15,56,220,208
+	DB	102,15,56,220,208
 	je	NEAR $L$aesenclast4
 	movups	xmm0,XMMWORD[96+r15]
-DB	102,15,56,220,209
+	DB	102,15,56,220,209
 	movups	xmm1,XMMWORD[112+r15]
-DB	102,15,56,220,208
+	DB	102,15,56,220,208
 $L$aesenclast4:
-DB	102,15,56,221,209
+	DB	102,15,56,221,209
 	movups	xmm0,XMMWORD[((16-112))+r15]
 	xor	esi,eax
 	ror	ebp,7
@@ -1296,7 +1296,7 @@ $L$done_ssse3:
 	add	eax,ebx
 	add	ebp,DWORD[24+rsp]
 	movups	xmm1,XMMWORD[16+r15]
-DB	102,15,56,220,208
+	DB	102,15,56,220,208
 	xor	esi,ecx
 	mov	edi,eax
 	rol	eax,5
@@ -1318,7 +1318,7 @@ DB	102,15,56,220,208
 	rol	edx,5
 	add	ecx,esi
 	movups	xmm0,XMMWORD[32+r15]
-DB	102,15,56,220,209
+	DB	102,15,56,220,209
 	xor	edi,eax
 	ror	ebp,7
 	add	ecx,edx
@@ -1340,7 +1340,7 @@ DB	102,15,56,220,209
 	add	eax,ebx
 	add	ebp,DWORD[44+rsp]
 	movups	xmm1,XMMWORD[48+r15]
-DB	102,15,56,220,208
+	DB	102,15,56,220,208
 	xor	edi,ecx
 	mov	esi,eax
 	rol	eax,5
@@ -1364,16 +1364,16 @@ DB	102,15,56,220,208
 	cmp	r8d,11
 	jb	NEAR $L$aesenclast5
 	movups	xmm0,XMMWORD[64+r15]
-DB	102,15,56,220,209
+	DB	102,15,56,220,209
 	movups	xmm1,XMMWORD[80+r15]
-DB	102,15,56,220,208
+	DB	102,15,56,220,208
 	je	NEAR $L$aesenclast5
 	movups	xmm0,XMMWORD[96+r15]
-DB	102,15,56,220,209
+	DB	102,15,56,220,209
 	movups	xmm1,XMMWORD[112+r15]
-DB	102,15,56,220,208
+	DB	102,15,56,220,208
 $L$aesenclast5:
-DB	102,15,56,221,209
+	DB	102,15,56,221,209
 	movups	xmm0,XMMWORD[((16-112))+r15]
 	xor	esi,eax
 	ror	ebp,7
@@ -2796,13 +2796,13 @@ K_XX_XX:
 	DD	0x8f1bbcdc,0x8f1bbcdc,0x8f1bbcdc,0x8f1bbcdc
 	DD	0xca62c1d6,0xca62c1d6,0xca62c1d6,0xca62c1d6
 	DD	0x00010203,0x04050607,0x08090a0b,0x0c0d0e0f
-DB	0xf,0xe,0xd,0xc,0xb,0xa,0x9,0x8,0x7,0x6,0x5,0x4,0x3,0x2,0x1,0x0
+	DB	0xf,0xe,0xd,0xc,0xb,0xa,0x9,0x8,0x7,0x6,0x5,0x4,0x3,0x2,0x1,0x0
 
-DB	65,69,83,78,73,45,67,66,67,43,83,72,65,49,32,115
-DB	116,105,116,99,104,32,102,111,114,32,120,56,54,95,54,52
-DB	44,32,67,82,89,80,84,79,71,65,77,83,32,98,121,32
-DB	60,97,112,112,114,111,64,111,112,101,110,115,115,108,46,111
-DB	114,103,62,0
+	DB	65,69,83,78,73,45,67,66,67,43,83,72,65,49,32,115
+	DB	116,105,116,99,104,32,102,111,114,32,120,56,54,95,54,52
+	DB	44,32,67,82,89,80,84,79,71,65,77,83,32,98,121,32
+	DB	60,97,112,112,114,111,64,111,112,101,110,115,115,108,46,111
+	DB	114,103,62,0
 ALIGN	64
 
 ALIGN	32
@@ -2854,14 +2854,14 @@ $L$oop_shaext:
 	xorps	xmm14,xmm15
 	xorps	xmm2,xmm14
 	movups	xmm1,XMMWORD[((-80))+rcx]
-DB	102,15,56,220,208
+	DB	102,15,56,220,208
 	movdqu	xmm3,XMMWORD[r10]
 	movdqa	xmm12,xmm9
 DB	102,15,56,0,223
 	movdqu	xmm4,XMMWORD[16+r10]
 	movdqa	xmm11,xmm8
 	movups	xmm0,XMMWORD[((-64))+rcx]
-DB	102,15,56,220,209
+	DB	102,15,56,220,209
 DB	102,15,56,0,231
 
 	paddd	xmm9,xmm3
@@ -2869,253 +2869,253 @@ DB	102,15,56,0,231
 	lea	r10,[64+r10]
 	pxor	xmm3,xmm12
 	movups	xmm1,XMMWORD[((-48))+rcx]
-DB	102,15,56,220,208
+	DB	102,15,56,220,208
 	pxor	xmm3,xmm12
 	movdqa	xmm10,xmm8
 DB	102,15,56,0,239
-DB	69,15,58,204,193,0
-DB	68,15,56,200,212
+	DB	69,15,58,204,193,0
+	DB	68,15,56,200,212
 	movups	xmm0,XMMWORD[((-32))+rcx]
-DB	102,15,56,220,209
-DB	15,56,201,220
+	DB	102,15,56,220,209
+	DB	15,56,201,220
 	movdqu	xmm6,XMMWORD[((-16))+r10]
 	movdqa	xmm9,xmm8
 DB	102,15,56,0,247
 	movups	xmm1,XMMWORD[((-16))+rcx]
-DB	102,15,56,220,208
-DB	69,15,58,204,194,0
-DB	68,15,56,200,205
+	DB	102,15,56,220,208
+	DB	69,15,58,204,194,0
+	DB	68,15,56,200,205
 	pxor	xmm3,xmm5
-DB	15,56,201,229
+	DB	15,56,201,229
 	movups	xmm0,XMMWORD[rcx]
-DB	102,15,56,220,209
+	DB	102,15,56,220,209
 	movdqa	xmm10,xmm8
-DB	69,15,58,204,193,0
-DB	68,15,56,200,214
+	DB	69,15,58,204,193,0
+	DB	68,15,56,200,214
 	movups	xmm1,XMMWORD[16+rcx]
-DB	102,15,56,220,208
-DB	15,56,202,222
+	DB	102,15,56,220,208
+	DB	15,56,202,222
 	pxor	xmm4,xmm6
-DB	15,56,201,238
+	DB	15,56,201,238
 	movups	xmm0,XMMWORD[32+rcx]
-DB	102,15,56,220,209
+	DB	102,15,56,220,209
 	movdqa	xmm9,xmm8
-DB	69,15,58,204,194,0
-DB	68,15,56,200,203
+	DB	69,15,58,204,194,0
+	DB	68,15,56,200,203
 	movups	xmm1,XMMWORD[48+rcx]
-DB	102,15,56,220,208
-DB	15,56,202,227
+	DB	102,15,56,220,208
+	DB	15,56,202,227
 	pxor	xmm5,xmm3
-DB	15,56,201,243
+	DB	15,56,201,243
 	cmp	r11d,11
 	jb	NEAR $L$aesenclast11
 	movups	xmm0,XMMWORD[64+rcx]
-DB	102,15,56,220,209
+	DB	102,15,56,220,209
 	movups	xmm1,XMMWORD[80+rcx]
-DB	102,15,56,220,208
+	DB	102,15,56,220,208
 	je	NEAR $L$aesenclast11
 	movups	xmm0,XMMWORD[96+rcx]
-DB	102,15,56,220,209
+	DB	102,15,56,220,209
 	movups	xmm1,XMMWORD[112+rcx]
-DB	102,15,56,220,208
+	DB	102,15,56,220,208
 $L$aesenclast11:
-DB	102,15,56,221,209
+	DB	102,15,56,221,209
 	movups	xmm0,XMMWORD[((16-112))+rcx]
 	movdqa	xmm10,xmm8
-DB	69,15,58,204,193,0
-DB	68,15,56,200,212
+	DB	69,15,58,204,193,0
+	DB	68,15,56,200,212
 	movups	xmm14,XMMWORD[16+rdi]
 	xorps	xmm14,xmm15
 	movups	XMMWORD[rdi*1+rsi],xmm2
 	xorps	xmm2,xmm14
 	movups	xmm1,XMMWORD[((-80))+rcx]
-DB	102,15,56,220,208
-DB	15,56,202,236
+	DB	102,15,56,220,208
+	DB	15,56,202,236
 	pxor	xmm6,xmm4
-DB	15,56,201,220
+	DB	15,56,201,220
 	movups	xmm0,XMMWORD[((-64))+rcx]
-DB	102,15,56,220,209
+	DB	102,15,56,220,209
 	movdqa	xmm9,xmm8
-DB	69,15,58,204,194,1
-DB	68,15,56,200,205
+	DB	69,15,58,204,194,1
+	DB	68,15,56,200,205
 	movups	xmm1,XMMWORD[((-48))+rcx]
-DB	102,15,56,220,208
-DB	15,56,202,245
+	DB	102,15,56,220,208
+	DB	15,56,202,245
 	pxor	xmm3,xmm5
-DB	15,56,201,229
+	DB	15,56,201,229
 	movups	xmm0,XMMWORD[((-32))+rcx]
-DB	102,15,56,220,209
+	DB	102,15,56,220,209
 	movdqa	xmm10,xmm8
-DB	69,15,58,204,193,1
-DB	68,15,56,200,214
+	DB	69,15,58,204,193,1
+	DB	68,15,56,200,214
 	movups	xmm1,XMMWORD[((-16))+rcx]
-DB	102,15,56,220,208
-DB	15,56,202,222
+	DB	102,15,56,220,208
+	DB	15,56,202,222
 	pxor	xmm4,xmm6
-DB	15,56,201,238
+	DB	15,56,201,238
 	movups	xmm0,XMMWORD[rcx]
-DB	102,15,56,220,209
+	DB	102,15,56,220,209
 	movdqa	xmm9,xmm8
-DB	69,15,58,204,194,1
-DB	68,15,56,200,203
+	DB	69,15,58,204,194,1
+	DB	68,15,56,200,203
 	movups	xmm1,XMMWORD[16+rcx]
-DB	102,15,56,220,208
-DB	15,56,202,227
+	DB	102,15,56,220,208
+	DB	15,56,202,227
 	pxor	xmm5,xmm3
-DB	15,56,201,243
+	DB	15,56,201,243
 	movups	xmm0,XMMWORD[32+rcx]
-DB	102,15,56,220,209
+	DB	102,15,56,220,209
 	movdqa	xmm10,xmm8
-DB	69,15,58,204,193,1
-DB	68,15,56,200,212
+	DB	69,15,58,204,193,1
+	DB	68,15,56,200,212
 	movups	xmm1,XMMWORD[48+rcx]
-DB	102,15,56,220,208
-DB	15,56,202,236
+	DB	102,15,56,220,208
+	DB	15,56,202,236
 	pxor	xmm6,xmm4
-DB	15,56,201,220
+	DB	15,56,201,220
 	cmp	r11d,11
 	jb	NEAR $L$aesenclast12
 	movups	xmm0,XMMWORD[64+rcx]
-DB	102,15,56,220,209
+	DB	102,15,56,220,209
 	movups	xmm1,XMMWORD[80+rcx]
-DB	102,15,56,220,208
+	DB	102,15,56,220,208
 	je	NEAR $L$aesenclast12
 	movups	xmm0,XMMWORD[96+rcx]
-DB	102,15,56,220,209
+	DB	102,15,56,220,209
 	movups	xmm1,XMMWORD[112+rcx]
-DB	102,15,56,220,208
+	DB	102,15,56,220,208
 $L$aesenclast12:
-DB	102,15,56,221,209
+	DB	102,15,56,221,209
 	movups	xmm0,XMMWORD[((16-112))+rcx]
 	movdqa	xmm9,xmm8
-DB	69,15,58,204,194,1
-DB	68,15,56,200,205
+	DB	69,15,58,204,194,1
+	DB	68,15,56,200,205
 	movups	xmm14,XMMWORD[32+rdi]
 	xorps	xmm14,xmm15
 	movups	XMMWORD[16+rdi*1+rsi],xmm2
 	xorps	xmm2,xmm14
 	movups	xmm1,XMMWORD[((-80))+rcx]
-DB	102,15,56,220,208
-DB	15,56,202,245
+	DB	102,15,56,220,208
+	DB	15,56,202,245
 	pxor	xmm3,xmm5
-DB	15,56,201,229
+	DB	15,56,201,229
 	movups	xmm0,XMMWORD[((-64))+rcx]
-DB	102,15,56,220,209
+	DB	102,15,56,220,209
 	movdqa	xmm10,xmm8
-DB	69,15,58,204,193,2
-DB	68,15,56,200,214
+	DB	69,15,58,204,193,2
+	DB	68,15,56,200,214
 	movups	xmm1,XMMWORD[((-48))+rcx]
-DB	102,15,56,220,208
-DB	15,56,202,222
+	DB	102,15,56,220,208
+	DB	15,56,202,222
 	pxor	xmm4,xmm6
-DB	15,56,201,238
+	DB	15,56,201,238
 	movups	xmm0,XMMWORD[((-32))+rcx]
-DB	102,15,56,220,209
+	DB	102,15,56,220,209
 	movdqa	xmm9,xmm8
-DB	69,15,58,204,194,2
-DB	68,15,56,200,203
+	DB	69,15,58,204,194,2
+	DB	68,15,56,200,203
 	movups	xmm1,XMMWORD[((-16))+rcx]
-DB	102,15,56,220,208
-DB	15,56,202,227
+	DB	102,15,56,220,208
+	DB	15,56,202,227
 	pxor	xmm5,xmm3
-DB	15,56,201,243
+	DB	15,56,201,243
 	movups	xmm0,XMMWORD[rcx]
-DB	102,15,56,220,209
+	DB	102,15,56,220,209
 	movdqa	xmm10,xmm8
-DB	69,15,58,204,193,2
-DB	68,15,56,200,212
+	DB	69,15,58,204,193,2
+	DB	68,15,56,200,212
 	movups	xmm1,XMMWORD[16+rcx]
-DB	102,15,56,220,208
-DB	15,56,202,236
+	DB	102,15,56,220,208
+	DB	15,56,202,236
 	pxor	xmm6,xmm4
-DB	15,56,201,220
+	DB	15,56,201,220
 	movups	xmm0,XMMWORD[32+rcx]
-DB	102,15,56,220,209
+	DB	102,15,56,220,209
 	movdqa	xmm9,xmm8
-DB	69,15,58,204,194,2
-DB	68,15,56,200,205
+	DB	69,15,58,204,194,2
+	DB	68,15,56,200,205
 	movups	xmm1,XMMWORD[48+rcx]
-DB	102,15,56,220,208
-DB	15,56,202,245
+	DB	102,15,56,220,208
+	DB	15,56,202,245
 	pxor	xmm3,xmm5
-DB	15,56,201,229
+	DB	15,56,201,229
 	cmp	r11d,11
 	jb	NEAR $L$aesenclast13
 	movups	xmm0,XMMWORD[64+rcx]
-DB	102,15,56,220,209
+	DB	102,15,56,220,209
 	movups	xmm1,XMMWORD[80+rcx]
-DB	102,15,56,220,208
+	DB	102,15,56,220,208
 	je	NEAR $L$aesenclast13
 	movups	xmm0,XMMWORD[96+rcx]
-DB	102,15,56,220,209
+	DB	102,15,56,220,209
 	movups	xmm1,XMMWORD[112+rcx]
-DB	102,15,56,220,208
+	DB	102,15,56,220,208
 $L$aesenclast13:
-DB	102,15,56,221,209
+	DB	102,15,56,221,209
 	movups	xmm0,XMMWORD[((16-112))+rcx]
 	movdqa	xmm10,xmm8
-DB	69,15,58,204,193,2
-DB	68,15,56,200,214
+	DB	69,15,58,204,193,2
+	DB	68,15,56,200,214
 	movups	xmm14,XMMWORD[48+rdi]
 	xorps	xmm14,xmm15
 	movups	XMMWORD[32+rdi*1+rsi],xmm2
 	xorps	xmm2,xmm14
 	movups	xmm1,XMMWORD[((-80))+rcx]
-DB	102,15,56,220,208
-DB	15,56,202,222
+	DB	102,15,56,220,208
+	DB	15,56,202,222
 	pxor	xmm4,xmm6
-DB	15,56,201,238
+	DB	15,56,201,238
 	movups	xmm0,XMMWORD[((-64))+rcx]
-DB	102,15,56,220,209
+	DB	102,15,56,220,209
 	movdqa	xmm9,xmm8
-DB	69,15,58,204,194,3
-DB	68,15,56,200,203
+	DB	69,15,58,204,194,3
+	DB	68,15,56,200,203
 	movups	xmm1,XMMWORD[((-48))+rcx]
-DB	102,15,56,220,208
-DB	15,56,202,227
+	DB	102,15,56,220,208
+	DB	15,56,202,227
 	pxor	xmm5,xmm3
-DB	15,56,201,243
+	DB	15,56,201,243
 	movups	xmm0,XMMWORD[((-32))+rcx]
-DB	102,15,56,220,209
+	DB	102,15,56,220,209
 	movdqa	xmm10,xmm8
-DB	69,15,58,204,193,3
-DB	68,15,56,200,212
-DB	15,56,202,236
+	DB	69,15,58,204,193,3
+	DB	68,15,56,200,212
+	DB	15,56,202,236
 	pxor	xmm6,xmm4
 	movups	xmm1,XMMWORD[((-16))+rcx]
-DB	102,15,56,220,208
+	DB	102,15,56,220,208
 	movdqa	xmm9,xmm8
-DB	69,15,58,204,194,3
-DB	68,15,56,200,205
-DB	15,56,202,245
+	DB	69,15,58,204,194,3
+	DB	68,15,56,200,205
+	DB	15,56,202,245
 	movups	xmm0,XMMWORD[rcx]
-DB	102,15,56,220,209
+	DB	102,15,56,220,209
 	movdqa	xmm5,xmm12
 	movdqa	xmm10,xmm8
-DB	69,15,58,204,193,3
-DB	68,15,56,200,214
+	DB	69,15,58,204,193,3
+	DB	68,15,56,200,214
 	movups	xmm1,XMMWORD[16+rcx]
-DB	102,15,56,220,208
+	DB	102,15,56,220,208
 	movdqa	xmm9,xmm8
-DB	69,15,58,204,194,3
-DB	68,15,56,200,205
+	DB	69,15,58,204,194,3
+	DB	68,15,56,200,205
 	movups	xmm0,XMMWORD[32+rcx]
-DB	102,15,56,220,209
+	DB	102,15,56,220,209
 	movups	xmm1,XMMWORD[48+rcx]
-DB	102,15,56,220,208
+	DB	102,15,56,220,208
 	cmp	r11d,11
 	jb	NEAR $L$aesenclast14
 	movups	xmm0,XMMWORD[64+rcx]
-DB	102,15,56,220,209
+	DB	102,15,56,220,209
 	movups	xmm1,XMMWORD[80+rcx]
-DB	102,15,56,220,208
+	DB	102,15,56,220,208
 	je	NEAR $L$aesenclast14
 	movups	xmm0,XMMWORD[96+rcx]
-DB	102,15,56,220,209
+	DB	102,15,56,220,209
 	movups	xmm1,XMMWORD[112+rcx]
-DB	102,15,56,220,208
+	DB	102,15,56,220,208
 $L$aesenclast14:
-DB	102,15,56,221,209
+	DB	102,15,56,221,209
 	movups	xmm0,XMMWORD[((16-112))+rcx]
 	dec	rdx
 
@@ -3263,15 +3263,18 @@ ALIGN	4
 section	.xdata rdata align=8
 ALIGN	8
 $L$SEH_info_aesni_cbc_sha1_enc_ssse3:
-DB	9,0,0,0
+	DB	9,0,0,0
 	DD	ssse3_handler wrt ..imagebase
 	DD	$L$prologue_ssse3 wrt ..imagebase,$L$epilogue_ssse3 wrt ..imagebase
 $L$SEH_info_aesni_cbc_sha1_enc_avx:
-DB	9,0,0,0
+	DB	9,0,0,0
 	DD	ssse3_handler wrt ..imagebase
 	DD	$L$prologue_avx wrt ..imagebase,$L$epilogue_avx wrt ..imagebase
 $L$SEH_info_aesni_cbc_sha1_enc_shaext:
-DB	9,0,0,0
+	DB	9,0,0,0
 	DD	ssse3_handler wrt ..imagebase
 	DD	$L$prologue_shaext wrt ..imagebase,$L$epilogue_shaext wrt ..imagebase
+%else
+; Work around https://bugzilla.nasm.us/show_bug.cgi?id=3392738
+ret
 %endif

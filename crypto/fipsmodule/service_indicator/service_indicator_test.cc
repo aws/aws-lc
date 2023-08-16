@@ -31,7 +31,6 @@
 #include "../../test/test_util.h"
 #include "../bn/internal.h"
 #include "../rand/internal.h"
-#include "../tls/internal.h"
 
 static const uint8_t kAESKey[16] = {
     'A','W','S','-','L','C','C','r','y','p','t','o',' ','K', 'e','y'};
@@ -253,6 +252,14 @@ static const uint8_t kAESKWCiphertext[72] = {
     0xa4, 0x30, 0x3e, 0x60, 0xf6, 0xc5, 0xff, 0x82, 0x30, 0x9a, 0xa7, 0x48,
     0x82, 0xe2, 0x00, 0xc1, 0xe9, 0xc2, 0x73, 0x6f, 0xbc, 0x89, 0x66, 0x9d};
 
+static const uint8_t kAESKWCiphertext_256[72] = {
+    0x27, 0x5b, 0x2b, 0x05, 0x32, 0xc9, 0xc3, 0x67, 0xde, 0x16, 0xce, 0xd7,
+    0xa8, 0x03, 0xc3, 0x58, 0x64, 0x8e, 0x8d, 0x53, 0x2c, 0x80, 0xac, 0x6f,
+    0xf7, 0x43, 0x2a, 0xfb, 0xb5, 0x1a, 0x53, 0xaf, 0x86, 0x3c, 0xce, 0x0d,
+    0x92, 0xd6, 0xce, 0x41, 0x78, 0x67, 0x8a, 0x67, 0x80, 0xbd, 0x0d, 0xa7,
+    0x00, 0xb6, 0xeb, 0x3c, 0x4c, 0x68, 0xb7, 0x03, 0x14, 0x89, 0xbf, 0xe7,
+    0x30, 0x41, 0x09, 0xb5, 0xe4, 0xf4, 0x91, 0x22, 0xc6, 0x2c, 0xee, 0x4a};
+
 static const uint8_t kAESKWPCiphertext[72] = {
     0x29, 0x5e, 0xb9, 0xea, 0x96, 0xa7, 0xa5, 0xca, 0xfa, 0xeb, 0xda, 0x78,
     0x13, 0xea, 0x83, 0xca, 0x41, 0xdb, 0x4d, 0x36, 0x7d, 0x39, 0x8a, 0xd6,
@@ -434,6 +441,8 @@ static const uint8_t kTLSSecret[32] = {
     0x5f, 0x64, 0x55, 0xcd, 0xd5, 0x77, 0xa4, 0xc7, 0x09, 0x61,
 };
 static const char kTLSLabel[] = "FIPS self test";
+static const char extendedMasterSecretLabel[] = "extended master secret";
+
 static const uint8_t kTLSSeed1[16] = {
     0x8f, 0x0d, 0xe8, 0xb6, 0x90, 0x8f, 0xb1, 0xd2,
     0x6d, 0x51, 0xf4, 0x79, 0x18, 0x63, 0x51, 0x65,
@@ -443,7 +452,7 @@ static const uint8_t kTLSSeed2[16] = {
     0x31, 0x1e, 0x2b, 0x21, 0x41, 0x8d, 0x32, 0x81,
 };
 
-static const uint8_t kTLSOutput_mdsha1[32] = {
+static const uint8_t kTLSOutput1_mdsha1[32] = {
     0x36, 0xa9, 0x31, 0xb0, 0x43, 0xe3, 0x64, 0x72, 0xb9, 0x47, 0x54,
     0x0d, 0x8a, 0xfc, 0xe3, 0x5c, 0x1c, 0x15, 0x67, 0x7e, 0xa3, 0x5d,
     0xf2, 0x3a, 0x57, 0xfd, 0x50, 0x16, 0xe1, 0xa4, 0xa6, 0x37,
@@ -467,22 +476,46 @@ static const uint8_t kTLSOutput_sha224[32] = {
     0x5e, 0x39, 0x12, 0xc0, 0xd4, 0x30, 0xdf, 0x0c, 0xdf, 0x6b,
 };
 
-static const uint8_t kTLSOutput_sha256[32] = {
+static const uint8_t kTLSOutput1_sha256[32] = {
     0x67, 0x85, 0xde, 0x60, 0xfc, 0x0a, 0x83, 0xe9, 0xa2, 0x2a, 0xb3,
     0xf0, 0x27, 0x0c, 0xba, 0xf7, 0xfa, 0x82, 0x3d, 0x14, 0x77, 0x1d,
     0x86, 0x29, 0x79, 0x39, 0x77, 0x8a, 0xd5, 0x0e, 0x9d, 0x32,
 };
 
-static const uint8_t kTLSOutput_sha384[32] = {
+static const uint8_t kTLSOutput1_sha384[32] = {
     0x75, 0x15, 0x3f, 0x44, 0x7a, 0xfd, 0x34, 0xed, 0x2b, 0x67, 0xbc,
     0xd8, 0x57, 0x96, 0xab, 0xff, 0xf4, 0x0c, 0x05, 0x94, 0x02, 0x23,
     0x81, 0xbf, 0x0e, 0xd2, 0xec, 0x7c, 0xe0, 0xa7, 0xc3, 0x7d,
 };
 
-static const uint8_t kTLSOutput_sha512[32] = {
+static const uint8_t kTLSOutput1_sha512[32] = {
     0x68, 0xb9, 0xc8, 0x4c, 0xf5, 0x51, 0xfc, 0x7a, 0x1f, 0x6c, 0xe5,
     0x43, 0x73, 0x80, 0x53, 0x7c, 0xae, 0x76, 0x55, 0x67, 0xe0, 0x79,
     0xbf, 0x3a, 0x53, 0x71, 0xb7, 0x9c, 0xb5, 0x03, 0x15, 0x3f,
+};
+
+static const uint8_t kTLSOutput2_mdsha1[32] = {
+    0x21, 0x72, 0x18, 0xbe, 0x5a, 0xdc, 0xf7, 0x29, 0x1e, 0x81, 0x15,
+    0x46, 0x8d, 0x7f, 0x7e, 0x93, 0xac, 0xe5, 0x45, 0x26, 0x1a, 0x17,
+    0x7c, 0x3a, 0xd4, 0x17, 0xaa, 0xe6, 0xfc, 0x15, 0x55, 0x69
+};
+
+static const uint8_t kTLSOutput2_sha256[32] = {
+    0xfc, 0xa0, 0x34, 0x55, 0x73, 0x01, 0x22, 0x19, 0x93, 0x40, 0x56,
+    0x09, 0xfc, 0x8e, 0x42, 0xe4, 0x1a, 0x0c, 0xfa, 0x55, 0xaf, 0x19,
+    0xbb, 0x38, 0x64, 0x63, 0x4b, 0xfb, 0x79, 0x19, 0x8a, 0xfc
+};
+
+static const uint8_t kTLSOutput2_sha384[32] = {
+    0xc5, 0x37, 0xd2, 0x5e, 0x6d, 0xaf, 0x50, 0xd2, 0x1e, 0xe6, 0xd6,
+    0x26, 0x50, 0xbc, 0x36, 0xb3, 0xc5, 0xf9, 0x1c, 0x8f, 0x59, 0xfd,
+    0xf9, 0x0e, 0xcb, 0xe4, 0x0b, 0xa9, 0xaf, 0xa5, 0x48, 0x01
+};
+
+static const uint8_t kTLSOutput2_sha512[32] = {
+    0x12, 0xfe, 0x4f, 0xd9, 0x98, 0x64, 0x27, 0x3f, 0x82, 0xbb, 0xde,
+    0x87, 0x1b, 0x43, 0x01, 0xc2, 0x6c, 0x9b, 0xaa, 0x89, 0xd0, 0x47,
+    0x3d, 0x56, 0xa8, 0xf5, 0x9f, 0x2e, 0x8d, 0xbb, 0x77, 0x57
 };
 
 static const uint8_t kAESGCMCiphertext_128[64 + 16] = {
@@ -838,6 +871,18 @@ static const struct CipherTestVector {
         AWSLC_APPROVED,
     },
     {
+        EVP_aes_256_wrap(),
+        kAESKey_256,
+        sizeof(kAESKey_256),
+        nullptr,
+        0,
+        kPlaintext,
+        sizeof(kPlaintext),
+        kAESKWCiphertext_256,
+        sizeof(kAESKWCiphertext_256),
+        AWSLC_NOT_APPROVED,
+    },
+    {
         EVP_des_ede3(),
         kAESKey_192,
         sizeof(kAESKey_192),
@@ -897,7 +942,6 @@ static void TestOperation(const EVP_CIPHER *cipher, bool encrypt,
     ASSERT_LE(EVP_CIPHER_CTX_iv_length(ctx.get()), sizeof(kAESIV));
   }
 
-
   ASSERT_TRUE(EVP_CIPHER_CTX_set_key_length(ctx.get(), key.size()));
   CALL_SERVICE_AND_CHECK_APPROVED(approved,
     ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), cipher, nullptr, key.data(),
@@ -918,7 +962,7 @@ static void TestOperation(const EVP_CIPHER *cipher, bool encrypt,
   CALL_SERVICE_AND_CHECK_APPROVED(
       approved, EVP_Cipher(ctx2.get(), output, in.data(), in.size()));
   EXPECT_EQ(approved, expect_approved);
-  EXPECT_EQ(Bytes(out), Bytes(output, in.size()));
+  EXPECT_EQ(Bytes(out), Bytes(output, out.size()));
 }
 
 INSTANTIATE_TEST_SUITE_P(All, EVPServiceIndicatorTest,
@@ -1837,6 +1881,11 @@ struct RSATestVector kRSATestVectors[] = {
     { 3071, &EVP_sha512, true, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
     { 4096, &EVP_md5, false, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
 
+    // PKCS1v1.5 with SHA512/256 are not FIPS approved
+    { 2048, &EVP_sha512_256, false, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
+    { 3072, &EVP_sha512_256, false, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
+    { 4096, &EVP_sha512_256, false, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
+
     // RSA test cases that are approved.
     { 1024, &EVP_sha1, false, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
     { 1024, &EVP_sha256, false, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
@@ -1851,7 +1900,6 @@ struct RSATestVector kRSATestVectors[] = {
     { 2048, &EVP_sha256, false, AWSLC_APPROVED, AWSLC_APPROVED },
     { 2048, &EVP_sha384, false, AWSLC_APPROVED, AWSLC_APPROVED },
     { 2048, &EVP_sha512, false, AWSLC_APPROVED, AWSLC_APPROVED },
-    // SHA-512/256 is not supported for PKCS#1v1.5 in AWS-LC.
 
     { 2048, &EVP_sha1, true, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
     { 2048, &EVP_sha224, true, AWSLC_APPROVED, AWSLC_APPROVED },
@@ -1865,7 +1913,6 @@ struct RSATestVector kRSATestVectors[] = {
     { 3072, &EVP_sha256, false, AWSLC_APPROVED, AWSLC_APPROVED },
     { 3072, &EVP_sha384, false, AWSLC_APPROVED, AWSLC_APPROVED },
     { 3072, &EVP_sha512, false, AWSLC_APPROVED, AWSLC_APPROVED },
-    // SHA-512/256 is not supported for PKCS#1v1.5 in AWS-LC.
 
     { 3072, &EVP_sha1, true, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
     { 3072, &EVP_sha224, true, AWSLC_APPROVED, AWSLC_APPROVED },
@@ -1879,7 +1926,6 @@ struct RSATestVector kRSATestVectors[] = {
     { 4096, &EVP_sha256, false, AWSLC_APPROVED, AWSLC_APPROVED },
     { 4096, &EVP_sha384, false, AWSLC_APPROVED, AWSLC_APPROVED },
     { 4096, &EVP_sha512, false, AWSLC_APPROVED, AWSLC_APPROVED },
-    // SHA-512/256 is not supported for PKCS#1v1.5 in AWS-LC.
 
     { 4096, &EVP_sha1, true, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
     { 4096, &EVP_sha224, true, AWSLC_APPROVED, AWSLC_APPROVED },
@@ -2186,17 +2232,37 @@ static const struct ECDSATestVector kECDSATestVectors[] = {
      AWSLC_APPROVED},
     {NID_secp224r1, &EVP_sha512, AWSLC_APPROVED, AWSLC_APPROVED,
      AWSLC_APPROVED},
+    {NID_secp224r1, &EVP_sha512_256, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
+     AWSLC_NOT_APPROVED},
+    {NID_secp224r1, &EVP_sha3_224, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
+     AWSLC_NOT_APPROVED},
+    {NID_secp224r1, &EVP_sha3_256, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
+     AWSLC_NOT_APPROVED},
+    {NID_secp224r1, &EVP_sha3_384, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
+     AWSLC_NOT_APPROVED},
+    {NID_secp224r1, &EVP_sha3_512, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
+     AWSLC_NOT_APPROVED},
 
-    {NID_X9_62_prime256v1, &EVP_sha1, AWSLC_APPROVED,
-     AWSLC_NOT_APPROVED, AWSLC_APPROVED},
-    {NID_X9_62_prime256v1, &EVP_sha224, AWSLC_APPROVED,
-     AWSLC_APPROVED, AWSLC_APPROVED},
-    {NID_X9_62_prime256v1, &EVP_sha256, AWSLC_APPROVED,
-     AWSLC_APPROVED, AWSLC_APPROVED},
-    {NID_X9_62_prime256v1, &EVP_sha384, AWSLC_APPROVED,
-     AWSLC_APPROVED, AWSLC_APPROVED},
-    {NID_X9_62_prime256v1, &EVP_sha512, AWSLC_APPROVED,
-     AWSLC_APPROVED, AWSLC_APPROVED},
+    {NID_X9_62_prime256v1, &EVP_sha1, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
+     AWSLC_APPROVED},
+    {NID_X9_62_prime256v1, &EVP_sha224, AWSLC_APPROVED, AWSLC_APPROVED,
+     AWSLC_APPROVED},
+    {NID_X9_62_prime256v1, &EVP_sha256, AWSLC_APPROVED, AWSLC_APPROVED,
+     AWSLC_APPROVED},
+    {NID_X9_62_prime256v1, &EVP_sha384, AWSLC_APPROVED, AWSLC_APPROVED,
+     AWSLC_APPROVED},
+    {NID_X9_62_prime256v1, &EVP_sha512, AWSLC_APPROVED, AWSLC_APPROVED,
+     AWSLC_APPROVED},
+    {NID_X9_62_prime256v1, &EVP_sha512_256, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
+     AWSLC_NOT_APPROVED},
+    {NID_X9_62_prime256v1, &EVP_sha3_224, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
+     AWSLC_NOT_APPROVED},
+    {NID_X9_62_prime256v1, &EVP_sha3_256, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
+     AWSLC_NOT_APPROVED},
+    {NID_X9_62_prime256v1, &EVP_sha3_384, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
+     AWSLC_NOT_APPROVED},
+    {NID_X9_62_prime256v1, &EVP_sha3_512, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
+     AWSLC_NOT_APPROVED},
 
     {NID_secp384r1, &EVP_sha1, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
      AWSLC_APPROVED},
@@ -2208,6 +2274,16 @@ static const struct ECDSATestVector kECDSATestVectors[] = {
      AWSLC_APPROVED},
     {NID_secp384r1, &EVP_sha512, AWSLC_APPROVED, AWSLC_APPROVED,
      AWSLC_APPROVED},
+    {NID_secp384r1, &EVP_sha512_256, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
+     AWSLC_NOT_APPROVED},
+    {NID_secp384r1, &EVP_sha3_224, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
+     AWSLC_NOT_APPROVED},
+    {NID_secp384r1, &EVP_sha3_256, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
+     AWSLC_NOT_APPROVED},
+    {NID_secp384r1, &EVP_sha3_384, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
+     AWSLC_NOT_APPROVED},
+    {NID_secp384r1, &EVP_sha3_512, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
+     AWSLC_NOT_APPROVED},
 
     {NID_secp521r1, &EVP_sha1, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
      AWSLC_APPROVED},
@@ -2219,17 +2295,37 @@ static const struct ECDSATestVector kECDSATestVectors[] = {
      AWSLC_APPROVED},
     {NID_secp521r1, &EVP_sha512, AWSLC_APPROVED, AWSLC_APPROVED,
      AWSLC_APPROVED},
+    {NID_secp521r1, &EVP_sha512_256, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
+     AWSLC_NOT_APPROVED},
+    {NID_secp521r1, &EVP_sha3_224, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
+     AWSLC_NOT_APPROVED},
+    {NID_secp521r1, &EVP_sha3_256, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
+     AWSLC_NOT_APPROVED},
+    {NID_secp521r1, &EVP_sha3_384, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
+     AWSLC_NOT_APPROVED},
+    {NID_secp521r1, &EVP_sha3_512, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
+     AWSLC_NOT_APPROVED},
 
-    {NID_secp256k1, &EVP_sha1, AWSLC_NOT_APPROVED,
-     AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED},
-    {NID_secp256k1, &EVP_sha224, AWSLC_NOT_APPROVED,
-     AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED},
-    {NID_secp256k1, &EVP_sha256, AWSLC_NOT_APPROVED,
-     AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED},
-    {NID_secp256k1, &EVP_sha384, AWSLC_NOT_APPROVED,
-     AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED},
-    {NID_secp256k1, &EVP_sha512, AWSLC_NOT_APPROVED,
-     AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED},
+    {NID_secp256k1, &EVP_sha1, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED,
+     AWSLC_NOT_APPROVED},
+    {NID_secp256k1, &EVP_sha224, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED,
+     AWSLC_NOT_APPROVED},
+    {NID_secp256k1, &EVP_sha256, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED,
+     AWSLC_NOT_APPROVED},
+    {NID_secp256k1, &EVP_sha384, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED,
+     AWSLC_NOT_APPROVED},
+    {NID_secp256k1, &EVP_sha512, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED,
+     AWSLC_NOT_APPROVED},
+    {NID_secp256k1, &EVP_sha512_256, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED,
+     AWSLC_NOT_APPROVED},
+    {NID_secp256k1, &EVP_sha3_224, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED,
+     AWSLC_NOT_APPROVED},
+    {NID_secp256k1, &EVP_sha3_256, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED,
+     AWSLC_NOT_APPROVED},
+    {NID_secp256k1, &EVP_sha3_384, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED,
+     AWSLC_NOT_APPROVED},
+    {NID_secp256k1, &EVP_sha3_512, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED,
+     AWSLC_NOT_APPROVED},
 };
 
 class ECDSAServiceIndicatorTest : public TestWithNoErrors<ECDSATestVector> {};
@@ -2569,16 +2665,32 @@ TEST_P(ECDH_ServiceIndicatorTest, ECDH) {
 static const struct KDFTestVector {
   // func is the hash function for KDF to test.
   const EVP_MD *(*func)();
+  const char *label;
+  const size_t label_len;
   const uint8_t *expected_output;
   const FIPSStatus expect_approved;
 } kKDFTestVectors[] = {
-    {EVP_md5, kTLSOutput_md, AWSLC_APPROVED},
-    {EVP_sha1, kTLSOutput_sha1, AWSLC_APPROVED},
-    {EVP_md5_sha1, kTLSOutput_mdsha1, AWSLC_APPROVED},
-    {EVP_sha224, kTLSOutput_sha224, AWSLC_NOT_APPROVED},
-    {EVP_sha256, kTLSOutput_sha256, AWSLC_APPROVED},
-    {EVP_sha384, kTLSOutput_sha384, AWSLC_APPROVED},
-    {EVP_sha512, kTLSOutput_sha512, AWSLC_APPROVED},
+    {EVP_md5, kTLSLabel, sizeof(kTLSLabel), kTLSOutput_md, AWSLC_NOT_APPROVED},
+    {EVP_sha1, kTLSLabel, sizeof(kTLSLabel), kTLSOutput_sha1,
+     AWSLC_NOT_APPROVED},
+    {EVP_md5_sha1, kTLSLabel, sizeof(kTLSLabel), kTLSOutput1_mdsha1,
+     AWSLC_APPROVED},
+    {EVP_md5_sha1, extendedMasterSecretLabel, sizeof(extendedMasterSecretLabel),
+     kTLSOutput2_mdsha1, AWSLC_APPROVED},
+    {EVP_sha224, kTLSLabel, sizeof(kTLSLabel), kTLSOutput_sha224,
+     AWSLC_NOT_APPROVED},
+    {EVP_sha256, kTLSLabel, sizeof(kTLSLabel), kTLSOutput1_sha256,
+     AWSLC_NOT_APPROVED},
+    {EVP_sha256, extendedMasterSecretLabel, sizeof(extendedMasterSecretLabel),
+     kTLSOutput2_sha256, AWSLC_APPROVED},
+    {EVP_sha384, kTLSLabel, sizeof(kTLSLabel), kTLSOutput1_sha384,
+     AWSLC_NOT_APPROVED},
+    {EVP_sha384, extendedMasterSecretLabel, sizeof(extendedMasterSecretLabel),
+     kTLSOutput2_sha384, AWSLC_APPROVED},
+    {EVP_sha512, kTLSLabel, sizeof(kTLSLabel), kTLSOutput1_sha512,
+     AWSLC_NOT_APPROVED},
+    {EVP_sha512, extendedMasterSecretLabel, sizeof(extendedMasterSecretLabel),
+     kTLSOutput2_sha512, AWSLC_APPROVED}
 };
 
 class KDF_ServiceIndicatorTest : public TestWithNoErrors<KDFTestVector> {};
@@ -2594,8 +2706,8 @@ TEST_P(KDF_ServiceIndicatorTest, TLSKDF) {
   uint8_t output[32];
   CALL_SERVICE_AND_CHECK_APPROVED(
       approved, ASSERT_TRUE(CRYPTO_tls1_prf(test.func(), output, sizeof(output),
-                                kTLSSecret, sizeof(kTLSSecret), kTLSLabel,
-                                sizeof(kTLSLabel), kTLSSeed1, sizeof(kTLSSeed1),
+                                kTLSSecret, sizeof(kTLSSecret), test.label,
+                                test.label_len, kTLSSeed1, sizeof(kTLSSeed1),
                                 kTLSSeed2, sizeof(kTLSSeed2))));
   EXPECT_EQ(Bytes(test.expected_output, sizeof(output)),
             Bytes(output, sizeof(output)));
@@ -2644,6 +2756,11 @@ static const uint8_t kPBKDF2DerivedKey5SHA1[] = {
     0x62, 0xc0, 0xe4, 0x4a, 0x8b, 0x29, 0x1a, 0x96, 0x4c, 0xf2, 0xf0, 0x70,
     0x38    // 25 bytes
 };
+static const uint8_t kPBKDF2DerivedKey6SHA1[] = {
+    0xac, 0xf8, 0xb4, 0x67, 0x41, 0xc7, 0xf3, 0xd1, 0xa0, 0xc0, 0x08, 0xbe,
+    0x9b, 0x23, 0x96, 0x78, 0xbd, 0x93, 0xda, 0x4a, 0x30, 0xd4, 0xfb, 0xf0,
+    0x33    // 25 bytes
+};
 
 static const uint8_t kPBKDF2DerivedKey1SHA224[] = {
     0x3c, 0x19, 0x8c, 0xbd, 0xb9, 0x46, 0x4b, 0x78, 0x57, 0x96, 0x6b, 0xd0,
@@ -2665,6 +2782,11 @@ static const uint8_t kPBKDF2DerivedKey5SHA224[] = {
     0x05, 0x6c, 0x4b, 0xa4, 0x38, 0xde, 0xd9, 0x1f, 0xc1, 0x4e, 0x05, 0x94,
     0xe6, 0xf5, 0x2b, 0x87, 0xe1, 0xf3, 0x69, 0x0c, 0x0d, 0xc0, 0xfb, 0xc0,
     0x57    // 25 bytes
+};
+static const uint8_t kPBKDF2DerivedKey6SHA224[] = {
+    0x0f, 0x51, 0xe7, 0x77, 0x07, 0x88, 0x5e, 0x09, 0x20, 0xd7, 0x46, 0x6c,
+    0x8f, 0xdf, 0xd6, 0x07, 0x38, 0x31, 0xde, 0xfe, 0x01, 0x29, 0x22, 0xbf,
+    0x47    // 25 bytes
 };
 
 static const uint8_t kPBKDF2DerivedKey1SHA256[] = {
@@ -2688,6 +2810,11 @@ static const uint8_t kPBKDF2DerivedKey5SHA256[] = {
     0x11, 0x6e, 0x84, 0xcf, 0x2b, 0x17, 0x34, 0x7e, 0xbc, 0x18, 0x00, 0x18,
     0x1c    // 25 bytes
 };
+static const uint8_t kPBKDF2DerivedKey6SHA256[] = {
+    0x09, 0x3e, 0x1a, 0xd8, 0x63, 0x30, 0x71, 0x9c, 0x17, 0xcf, 0xb0, 0x53,
+    0x3e, 0x1f, 0xc8, 0x51, 0x29, 0x71, 0x54, 0x28, 0x5d, 0xf7, 0x8e, 0x41,
+    0xaa    // 25 bytes
+};
 
 static const uint8_t kPBKDF2DerivedKey1SHA384[] = {
     0xc0, 0xe1, 0x4f, 0x06, 0xe4, 0x9e, 0x32, 0xd7, 0x3f, 0x9f, 0x52, 0xdd,
@@ -2710,6 +2837,11 @@ static const uint8_t kPBKDF2DerivedKey5SHA384[] = {
     0x31, 0xc5, 0x2a, 0xe6, 0xc5, 0xc1, 0xb0, 0xee, 0xd1, 0x8f, 0x4d, 0x28,
     0x3b    // 25 bytes
 };
+static const uint8_t kPBKDF2DerivedKey6SHA384[] = {
+    0xd6, 0xb7, 0x36, 0x38, 0xe3, 0x59, 0xee, 0x39, 0xae, 0x1b, 0x5c, 0x24,
+    0xb2, 0x5c, 0x56, 0x14, 0x5b, 0x57, 0xb1, 0x75, 0xdc, 0x6f, 0x75, 0xb8,
+    0x12    // 25 bytes
+};
 
 static const uint8_t kPBKDF2DerivedKey1SHA512[] = {
     0x86, 0x7f, 0x70, 0xcf, 0x1a, 0xde, 0x02, 0xcf, 0xf3, 0x75, 0x25, 0x99,
@@ -2731,6 +2863,11 @@ static const uint8_t kPBKDF2DerivedKey5SHA512[] = {
     0x8c, 0x05, 0x11, 0xf4, 0xc6, 0xe5, 0x97, 0xc6, 0xac, 0x63, 0x15, 0xd8,
     0xf0, 0x36, 0x2e, 0x22, 0x5f, 0x3c, 0x50, 0x14, 0x95, 0xba, 0x23, 0xb8,
     0x68    // 25 bytes
+};
+static const uint8_t kPBKDF2DerivedKey6SHA512[] = {
+    0x14, 0xe8, 0xb0, 0x63, 0x43, 0xf9, 0x04, 0xc6, 0xa8, 0x55, 0xcb, 0xe0,
+    0x7b, 0xaf, 0xe6, 0xf8, 0xac, 0x13, 0x8f, 0xcb, 0x91, 0x2d, 0xbd, 0x33,
+    0x49   // 25 bytes
 };
 
 static const struct PBKDF2TestVector {
@@ -2786,6 +2923,14 @@ static const struct PBKDF2TestVector {
         sizeof(kPBKDF2DerivedKey5SHA1), kPBKDF2DerivedKey5SHA1,
         AWSLC_APPROVED
     },
+    {
+        EVP_sha1,
+        kPBKDF2Password2, sizeof(kPBKDF2Password2),
+        kPBKDF2Salt2, sizeof(kPBKDF2Salt2),
+        999,
+        sizeof(kPBKDF2DerivedKey6SHA1), kPBKDF2DerivedKey6SHA1,
+        AWSLC_NOT_APPROVED
+    },
 
     // SHA224 outputs from
     // https://github.com/brycx/Test-Vector-Generation/pull/1
@@ -2828,6 +2973,14 @@ static const struct PBKDF2TestVector {
         4096,
         sizeof(kPBKDF2DerivedKey5SHA224), kPBKDF2DerivedKey5SHA224,
         AWSLC_APPROVED
+    },
+    {
+        EVP_sha224,
+        kPBKDF2Password2, sizeof(kPBKDF2Password2),
+        kPBKDF2Salt2, sizeof(kPBKDF2Salt2),
+        999,
+        sizeof(kPBKDF2DerivedKey6SHA224), kPBKDF2DerivedKey6SHA224,
+        AWSLC_NOT_APPROVED
     },
 
     // SHA256 outputs from
@@ -2872,6 +3025,14 @@ static const struct PBKDF2TestVector {
         sizeof(kPBKDF2DerivedKey5SHA256), kPBKDF2DerivedKey5SHA256,
         AWSLC_APPROVED
     },
+    {
+        EVP_sha256,
+        kPBKDF2Password2, sizeof(kPBKDF2Password2),
+        kPBKDF2Salt2, sizeof(kPBKDF2Salt2),
+        999,
+        sizeof(kPBKDF2DerivedKey6SHA256), kPBKDF2DerivedKey6SHA256,
+        AWSLC_NOT_APPROVED
+    },
 
     // SHA384 outputs from
     // https://github.com/brycx/Test-Vector-Generation/blob/master/PBKDF2/pbkdf2-hmac-sha2-test-vectors.md
@@ -2915,6 +3076,14 @@ static const struct PBKDF2TestVector {
         sizeof(kPBKDF2DerivedKey5SHA384), kPBKDF2DerivedKey5SHA384,
         AWSLC_APPROVED
     },
+    {
+        EVP_sha384,
+        kPBKDF2Password2, sizeof(kPBKDF2Password2),
+        kPBKDF2Salt2, sizeof(kPBKDF2Salt2),
+        999,
+        sizeof(kPBKDF2DerivedKey6SHA384), kPBKDF2DerivedKey6SHA384,
+        AWSLC_NOT_APPROVED
+    },
 
     // SHA512 outputs from
     // https://github.com/brycx/Test-Vector-Generation/blob/master/PBKDF2/pbkdf2-hmac-sha2-test-vectors.md
@@ -2957,6 +3126,14 @@ static const struct PBKDF2TestVector {
         4096,
         sizeof(kPBKDF2DerivedKey5SHA512), kPBKDF2DerivedKey5SHA512,
         AWSLC_APPROVED
+    },
+    {
+        EVP_sha512,
+        kPBKDF2Password2, sizeof(kPBKDF2Password2),
+        kPBKDF2Salt2, sizeof(kPBKDF2Salt2),
+        999,
+        sizeof(kPBKDF2DerivedKey6SHA512), kPBKDF2DerivedKey6SHA512,
+        AWSLC_NOT_APPROVED
     },
 };
 
@@ -3899,7 +4076,7 @@ TEST(ServiceIndicatorTest, DRBG) {
 // Since this is running in FIPS mode it should end in FIPS
 // Update this when the AWS-LC version number is modified
 TEST(ServiceIndicatorTest, AWSLCVersionString) {
-  ASSERT_STREQ(awslc_version_string(), "AWS-LC FIPS 1.3.0");
+  ASSERT_STREQ(awslc_version_string(), "AWS-LC FIPS 1.14.0");
 }
 
 #else
@@ -3942,6 +4119,6 @@ TEST(ServiceIndicatorTest, BasicTest) {
 // Since this is not running in FIPS mode it shouldn't end in FIPS
 // Update this when the AWS-LC version number is modified
 TEST(ServiceIndicatorTest, AWSLCVersionString) {
-  ASSERT_STREQ(awslc_version_string(), "AWS-LC 1.3.0");
+  ASSERT_STREQ(awslc_version_string(), "AWS-LC 1.14.0");
 }
 #endif // AWSLC_FIPS

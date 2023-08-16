@@ -37,6 +37,23 @@ ECDSA_SIG *ecdsa_sign_with_nonce_for_known_answer_test(const uint8_t *digest,
 int ecdsa_do_verify_no_self_test(const uint8_t *digest, size_t digest_len,
                                  const ECDSA_SIG *sig, const EC_KEY *eckey);
 
+// ecdsa_digestsign_no_self_test calculates the digest and calls
+// |ecdsa_sign_with_nonce_for_known_answer_test|, which doesn't try to run the
+// self-test first. This is for use in the self tests themselves, to prevent
+// an infinite loop.
+ECDSA_SIG *ecdsa_digestsign_no_self_test(const EVP_MD *md, const uint8_t *input,
+                                         size_t in_len, const EC_KEY *eckey,
+                                         const uint8_t *nonce,
+                                         size_t nonce_len);
+
+// ecdsa_digestverify_no_self_test calculates the digest and calls
+// |ecdsa_do_verify_no_self_test|, which doesn't try to run the self-test
+// first. This is for use in the self tests themselves, to prevent an infinite
+// loop.
+int ecdsa_digestverify_no_self_test(const EVP_MD *md, const uint8_t *input,
+                                    size_t in_len, const ECDSA_SIG *sig,
+                                    const EC_KEY *eckey);
+
 
 #if defined(__cplusplus)
 }

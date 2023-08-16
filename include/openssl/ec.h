@@ -310,6 +310,31 @@ OPENSSL_EXPORT int EC_POINT_mul(const EC_GROUP *group, EC_POINT *r,
                                 const BIGNUM *m, BN_CTX *ctx);
 
 
+// Hash-to-curve.
+//
+// The following functions implement primitives from
+// draft-irtf-cfrg-hash-to-curve-16. The |dst| parameter in each function is the
+// domain separation tag and must be unique for each protocol and between the
+// |hash_to_curve| and |hash_to_scalar| variants. See section 3.1 of the spec
+// for additional guidance on this parameter.
+
+// EC_hash_to_curve_p256_xmd_sha256_sswu hashes |msg| to a point on |group| and
+// writes the result to |out|, implementing the P256_XMD:SHA-256_SSWU_RO_ suite
+// from draft-irtf-cfrg-hash-to-curve-16. It returns one on success and zero on
+// error.
+OPENSSL_EXPORT int EC_hash_to_curve_p256_xmd_sha256_sswu(
+    const EC_GROUP *group, EC_POINT *out, const uint8_t *dst, size_t dst_len,
+    const uint8_t *msg, size_t msg_len);
+
+// EC_hash_to_curve_p384_xmd_sha384_sswu hashes |msg| to a point on |group| and
+// writes the result to |out|, implementing the P384_XMD:SHA-384_SSWU_RO_ suite
+// from draft-irtf-cfrg-hash-to-curve-16. It returns one on success and zero on
+// error.
+OPENSSL_EXPORT int EC_hash_to_curve_p384_xmd_sha384_sswu(
+    const EC_GROUP *group, EC_POINT *out, const uint8_t *dst, size_t dst_len,
+    const uint8_t *msg, size_t msg_len);
+
+
 // Deprecated functions.
 
 // EC_GROUP_new_curve_GFp creates a new, arbitrary elliptic curve group based
@@ -345,6 +370,16 @@ OPENSSL_EXPORT int EC_GROUP_set_generator(EC_GROUP *group,
                                           const EC_POINT *generator,
                                           const BIGNUM *order,
                                           const BIGNUM *cofactor);
+
+
+// EC_POINT_point2bn converts an |EC_POINT| to a |BIGNUM| by serializing the
+// point into the X9.62 form given by |form| then interpretting it as a BIGNUM.
+// On success, it returns the BIGNUM pointer supplied or, if |ret| is NULL,
+// allocates and returns a fresh |BIGNUM|. On error, it returns NULL. The |ctx|
+// argument may be used if not NULL.
+AWS_LC_DEPRECATED OPENSSL_EXPORT BIGNUM *EC_POINT_point2bn(
+    const EC_GROUP *group, const EC_POINT *point, point_conversion_form_t form,
+    BIGNUM *ret, BN_CTX *ctx);
 
 // EC_GROUP_get_order sets |*order| to the order of |group|, if it's not
 // NULL. It returns one on success and zero otherwise. |ctx| is ignored. Use

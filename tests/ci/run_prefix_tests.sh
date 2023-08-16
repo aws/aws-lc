@@ -5,8 +5,6 @@ set -exo pipefail
 
 source tests/ci/common_posix_setup.sh
 
-print_system_and_dependency_information
-
 echo "Testing a prefix build of AWS-LC in debug mode."
 build_prefix_and_test
 

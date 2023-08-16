@@ -87,6 +87,13 @@ int rsa_check_public_key(const RSA *rsa, rsa_asn1_key_encoding_t key_enc_type) {
     return 0;
   }
 
+  // RSA moduli must be odd. In addition to being necessary for RSA in general,
+  // we cannot setup Montgomery reduction with even moduli.
+  if (!BN_is_odd(rsa->n)) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_RSA_PARAMETERS);
+    return 0;
+  }
+
   // Verify |n > e|. Comparing |n_bits| to |kMaxExponentBits| is a small
   // shortcut to comparing |n| and |e| directly. In reality, |kMaxExponentBits|
   // is much smaller than the minimum RSA key size that any application should
@@ -264,6 +271,36 @@ err:
   return ret;
 }
 
+void rsa_invalidate_key(RSA *rsa) {
+  rsa->private_key_frozen = 0;
+
+  BN_MONT_CTX_free(rsa->mont_n);
+  rsa->mont_n = NULL;
+  BN_MONT_CTX_free(rsa->mont_p);
+  rsa->mont_p = NULL;
+  BN_MONT_CTX_free(rsa->mont_q);
+  rsa->mont_q = NULL;
+
+  BN_free(rsa->d_fixed);
+  rsa->d_fixed = NULL;
+  BN_free(rsa->dmp1_fixed);
+  rsa->dmp1_fixed = NULL;
+  BN_free(rsa->dmq1_fixed);
+  rsa->dmq1_fixed = NULL;
+  BN_free(rsa->inv_small_mod_large_mont);
+  rsa->inv_small_mod_large_mont = NULL;
+
+  for (size_t i = 0; i < rsa->num_blindings; i++) {
+    BN_BLINDING_free(rsa->blindings[i]);
+  }
+  OPENSSL_free(rsa->blindings);
+  rsa->blindings = NULL;
+  rsa->num_blindings = 0;
+  OPENSSL_free(rsa->blindings_inuse);
+  rsa->blindings_inuse = NULL;
+  rsa->blinding_fork_generation = 0;
+}
+
 size_t rsa_default_size(const RSA *rsa) {
   return BN_num_bytes(rsa->n);
 }
@@ -297,7 +334,6 @@ int RSA_encrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
   result = BN_CTX_get(ctx);
   buf = OPENSSL_malloc(rsa_size);
   if (!f || !result || !buf) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
     goto err;
   }
 
@@ -501,7 +537,6 @@ int rsa_default_sign_raw(RSA *rsa, size_t *out_len, uint8_t *out,
 
   buf = OPENSSL_malloc(rsa_size);
   if (buf == NULL) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
     goto err;
   }
 
@@ -554,7 +589,6 @@ int rsa_default_decrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
     // Allocate a temporary buffer to hold the padded plaintext.
     buf = OPENSSL_malloc(rsa_size);
     if (buf == NULL) {
-      OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
       goto err;
     }
   }
@@ -636,7 +670,6 @@ int rsa_verify_raw_no_self_test(RSA *rsa, size_t *out_len, uint8_t *out,
   f = BN_CTX_get(ctx);
   result = BN_CTX_get(ctx);
   if (f == NULL || result == NULL) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
     goto err;
   }
 
@@ -646,7 +679,6 @@ int rsa_verify_raw_no_self_test(RSA *rsa, size_t *out_len, uint8_t *out,
     // Allocate a temporary buffer to hold the padded plaintext.
     buf = OPENSSL_malloc(rsa_size);
     if (buf == NULL) {
-      OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
       goto err;
     }
   }
@@ -728,7 +760,6 @@ int rsa_default_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
   result = BN_CTX_get(ctx);
 
   if (f == NULL || result == NULL) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
     goto err;
   }
 
@@ -1396,6 +1427,7 @@ static int RSA_generate_key_ex_maybe_fips(RSA *rsa, int bits,
     goto out;
   }
 
+  rsa_invalidate_key(rsa);
   replace_bignum(&rsa->n, &tmp->n);
   replace_bignum(&rsa->e, &tmp->e);
   replace_bignum(&rsa->d, &tmp->d);

@@ -127,6 +127,10 @@ secg-ellipticCurve 37		: sect409r1
 secg-ellipticCurve 38		: sect571k1
 secg-ellipticCurve 39		: sect571r1
 
+# Finite field diffie hellman groups
+ : ffdhe2048
+ : ffdhe4096
+
 # WAP/TLS curve OIDs (http://www.wapforum.org/)
 !Alias wap-wsg-idm-ecid wap-wsg 4
 wap-wsg-idm-ecid 1	: wap-wsg-idm-ecid-wtls1
@@ -1334,9 +1338,6 @@ secg-scheme 14 3 : dhSinglePass-cofactorDH-sha512kdf-scheme
                  : dh-std-kdf
                  : dh-cofactor-kdf
 
-# NID for CECPQ2 (no corresponding OID).
- : CECPQ2
-
 # See RFC 8410.
 1 3 101 110 : X25519
 1 3 101 111 : X448
@@ -1374,3 +1375,10 @@ nist_sha3hashalgs 10		: SHA3-512		: sha3-512
  : KEM : kem
  : KYBER512
  : KYBER512_R3
+ : KYBER768_R3
+ : KYBER1024_R3
+
+# OID for DILITHIUM3 SIG Round-3. These are temp values from
+# https://github.com/IETF-Hackathon/pqc-certificates/blob/master/docs/oid_mapping.md
+# as we await NIST to release official OIDs.
+1 3 6 1 4 1 2 267 7 6 5 : DILITHIUM3_R3

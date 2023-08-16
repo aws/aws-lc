@@ -170,6 +170,10 @@ extern "C" {
 #define OPENSSL_FREEBSD
 #endif
 
+#if defined(__OpenBSD__)
+#define OPENSSL_OPENBSD
+#endif
+
 // BoringSSL requires platform's locking APIs to make internal global state
 // thread-safe, including the PRNG. On some single-threaded embedded platforms,
 // locking APIs may not exist, so this dependency may be disabled with the
@@ -204,15 +208,15 @@ extern "C" {
 // against multiple revisions of BoringSSL at the same time. It is not
 // recommended to do so for longer than is necessary.
 
-#define AWSLC_API_VERSION 20
+#define AWSLC_API_VERSION 22
 
 // This string tracks the most current production release version on Github
-// https://github.com/awslabs/aws-lc/releases.
+// https://github.com/aws/aws-lc/releases.
 // When bumping the encoded version number, also update the test fixture:
 // ServiceIndicatorTest.AWSLCVersionString
 // Note: there are two versions of this test. Only one test is compiled
 // depending on FIPS mode.
-#define AWSLC_VERSION_NUMBER_STRING "1.3.0"
+#define AWSLC_VERSION_NUMBER_STRING "1.14.0"
 
 #if defined(BORINGSSL_SHARED_LIBRARY)
 
@@ -396,6 +400,7 @@ typedef struct blake2b_state_st BLAKE2B_CTX;
 typedef struct bn_gencb_st BN_GENCB;
 typedef struct bn_mont_ctx_st BN_MONT_CTX;
 typedef struct buf_mem_st BUF_MEM;
+typedef struct cast_key_st CAST_KEY;
 typedef struct cbb_st CBB;
 typedef struct cbs_st CBS;
 typedef struct cmac_ctx_st CMAC_CTX;
@@ -426,9 +431,7 @@ typedef struct evp_hpke_kem_st EVP_HPKE_KEM;
 typedef struct evp_hpke_key_st EVP_HPKE_KEY;
 typedef struct evp_kem_st EVP_KEM;
 typedef struct kem_key_st KEM_KEY;
-typedef struct evp_pkey_asn1_method_st EVP_PKEY_ASN1_METHOD;
 typedef struct evp_pkey_ctx_st EVP_PKEY_CTX;
-typedef struct evp_pkey_method_st EVP_PKEY_METHOD;
 typedef struct evp_pkey_st EVP_PKEY;
 typedef struct hmac_ctx_st HMAC_CTX;
 typedef struct md4_state_st MD4_CTX;
@@ -475,6 +478,17 @@ typedef struct x509_store_st X509_STORE;
 typedef struct x509_trust_st X509_TRUST;
 
 typedef void *OPENSSL_BLOCK;
+
+#ifndef __has_attribute
+#define __has_attribute(x) 0
+#endif
+#if __STDC_VERSION__ > 202300L
+#define AWS_LC_DEPRECATED [[deprecated]]
+#elif __has_attribute(deprecated)
+#define AWS_LC_DEPRECATED __attribute__((deprecated))
+#else
+#define AWS_LC_DEPRECATED /* deprecated */
+#endif
 
 #if defined(__cplusplus)
 }  // extern C
@@ -533,8 +547,8 @@ namespace internal {
 template <typename T, typename Enable = void>
 struct DeleterImpl {};
 
-template <typename T>
 struct Deleter {
+  template <typename T>
   void operator()(T *ptr) {
     // Rather than specialize Deleter for each type, we specialize
     // DeleterImpl. This allows bssl::UniquePtr<T> to be used while only
@@ -618,7 +632,7 @@ class StackAllocatedMovable {
 //   bssl::UniquePtr<RSA> rsa(RSA_new());
 //   bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
 template <typename T>
-using UniquePtr = std::unique_ptr<T, internal::Deleter<T>>;
+using UniquePtr = std::unique_ptr<T, internal::Deleter>;
 
 #define BORINGSSL_MAKE_UP_REF(type, up_ref_func)             \
   inline UniquePtr<type> UpRef(type *v) {                    \

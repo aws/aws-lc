@@ -87,11 +87,11 @@ K256:
 	DD	0x00010203,0x04050607,0x08090a0b,0x0c0d0e0f
 	DD	0,0,0,0,0,0,0,0,-1,-1,-1,-1
 	DD	0,0,0,0,0,0,0,0
-DB	65,69,83,78,73,45,67,66,67,43,83,72,65,50,53,54
-DB	32,115,116,105,116,99,104,32,102,111,114,32,120,56,54,95
-DB	54,52,44,32,67,82,89,80,84,79,71,65,77,83,32,98
-DB	121,32,60,97,112,112,114,111,64,111,112,101,110,115,115,108
-DB	46,111,114,103,62,0
+	DB	65,69,83,78,73,45,67,66,67,43,83,72,65,50,53,54
+	DB	32,115,116,105,116,99,104,32,102,111,114,32,120,56,54,95
+	DB	54,52,44,32,67,82,89,80,84,79,71,65,77,83,32,98
+	DB	121,32,60,97,112,112,114,111,64,111,112,101,110,115,115,108
+	DB	46,111,114,103,62,0
 ALIGN	64
 
 ALIGN	64
@@ -4245,11 +4245,11 @@ DB	102,68,15,56,0,219
 	xorps	xmm6,xmm14
 	movups	xmm5,XMMWORD[((-80))+rcx]
 	aesenc	xmm6,xmm4
-DB	15,56,203,209
+	DB	15,56,203,209
 	pshufd	xmm0,xmm0,0x0e
 	movups	xmm4,XMMWORD[((-64))+rcx]
 	aesenc	xmm6,xmm5
-DB	15,56,203,202
+	DB	15,56,203,202
 
 	movdqa	xmm0,XMMWORD[((32-128))+rax]
 	paddd	xmm0,xmm11
@@ -4257,48 +4257,48 @@ DB	102,68,15,56,0,227
 	lea	r10,[64+r10]
 	movups	xmm5,XMMWORD[((-48))+rcx]
 	aesenc	xmm6,xmm4
-DB	15,56,203,209
+	DB	15,56,203,209
 	pshufd	xmm0,xmm0,0x0e
 	movups	xmm4,XMMWORD[((-32))+rcx]
 	aesenc	xmm6,xmm5
-DB	15,56,203,202
+	DB	15,56,203,202
 
 	movdqa	xmm0,XMMWORD[((64-128))+rax]
 	paddd	xmm0,xmm12
 DB	102,68,15,56,0,235
-DB	69,15,56,204,211
+	DB	69,15,56,204,211
 	movups	xmm5,XMMWORD[((-16))+rcx]
 	aesenc	xmm6,xmm4
-DB	15,56,203,209
+	DB	15,56,203,209
 	pshufd	xmm0,xmm0,0x0e
 	movdqa	xmm3,xmm13
 DB	102,65,15,58,15,220,4
 	paddd	xmm10,xmm3
 	movups	xmm4,XMMWORD[rcx]
 	aesenc	xmm6,xmm5
-DB	15,56,203,202
+	DB	15,56,203,202
 
 	movdqa	xmm0,XMMWORD[((96-128))+rax]
 	paddd	xmm0,xmm13
-DB	69,15,56,205,213
-DB	69,15,56,204,220
+	DB	69,15,56,205,213
+	DB	69,15,56,204,220
 	movups	xmm5,XMMWORD[16+rcx]
 	aesenc	xmm6,xmm4
-DB	15,56,203,209
+	DB	15,56,203,209
 	pshufd	xmm0,xmm0,0x0e
 	movups	xmm4,XMMWORD[32+rcx]
 	aesenc	xmm6,xmm5
 	movdqa	xmm3,xmm10
 DB	102,65,15,58,15,221,4
 	paddd	xmm11,xmm3
-DB	15,56,203,202
+	DB	15,56,203,202
 	movdqa	xmm0,XMMWORD[((128-128))+rax]
 	paddd	xmm0,xmm10
-DB	69,15,56,205,218
-DB	69,15,56,204,229
+	DB	69,15,56,205,218
+	DB	69,15,56,204,229
 	movups	xmm5,XMMWORD[48+rcx]
 	aesenc	xmm6,xmm4
-DB	15,56,203,209
+	DB	15,56,203,209
 	pshufd	xmm0,xmm0,0x0e
 	movdqa	xmm3,xmm11
 DB	102,65,15,58,15,218,4
@@ -4318,7 +4318,7 @@ $L$aesenclast1:
 	aesenclast	xmm6,xmm5
 	movups	xmm4,XMMWORD[((16-112))+rcx]
 	nop
-DB	15,56,203,202
+	DB	15,56,203,202
 	movups	xmm14,XMMWORD[16+rdi]
 	xorps	xmm14,xmm15
 	movups	XMMWORD[rdi*1+rsi],xmm6
@@ -4327,53 +4327,53 @@ DB	15,56,203,202
 	aesenc	xmm6,xmm4
 	movdqa	xmm0,XMMWORD[((160-128))+rax]
 	paddd	xmm0,xmm11
-DB	69,15,56,205,227
-DB	69,15,56,204,234
+	DB	69,15,56,205,227
+	DB	69,15,56,204,234
 	movups	xmm4,XMMWORD[((-64))+rcx]
 	aesenc	xmm6,xmm5
-DB	15,56,203,209
+	DB	15,56,203,209
 	pshufd	xmm0,xmm0,0x0e
 	movdqa	xmm3,xmm12
 DB	102,65,15,58,15,219,4
 	paddd	xmm13,xmm3
 	movups	xmm5,XMMWORD[((-48))+rcx]
 	aesenc	xmm6,xmm4
-DB	15,56,203,202
+	DB	15,56,203,202
 	movdqa	xmm0,XMMWORD[((192-128))+rax]
 	paddd	xmm0,xmm12
-DB	69,15,56,205,236
-DB	69,15,56,204,211
+	DB	69,15,56,205,236
+	DB	69,15,56,204,211
 	movups	xmm4,XMMWORD[((-32))+rcx]
 	aesenc	xmm6,xmm5
-DB	15,56,203,209
+	DB	15,56,203,209
 	pshufd	xmm0,xmm0,0x0e
 	movdqa	xmm3,xmm13
 DB	102,65,15,58,15,220,4
 	paddd	xmm10,xmm3
 	movups	xmm5,XMMWORD[((-16))+rcx]
 	aesenc	xmm6,xmm4
-DB	15,56,203,202
+	DB	15,56,203,202
 	movdqa	xmm0,XMMWORD[((224-128))+rax]
 	paddd	xmm0,xmm13
-DB	69,15,56,205,213
-DB	69,15,56,204,220
+	DB	69,15,56,205,213
+	DB	69,15,56,204,220
 	movups	xmm4,XMMWORD[rcx]
 	aesenc	xmm6,xmm5
-DB	15,56,203,209
+	DB	15,56,203,209
 	pshufd	xmm0,xmm0,0x0e
 	movdqa	xmm3,xmm10
 DB	102,65,15,58,15,221,4
 	paddd	xmm11,xmm3
 	movups	xmm5,XMMWORD[16+rcx]
 	aesenc	xmm6,xmm4
-DB	15,56,203,202
+	DB	15,56,203,202
 	movdqa	xmm0,XMMWORD[((256-128))+rax]
 	paddd	xmm0,xmm10
-DB	69,15,56,205,218
-DB	69,15,56,204,229
+	DB	69,15,56,205,218
+	DB	69,15,56,204,229
 	movups	xmm4,XMMWORD[32+rcx]
 	aesenc	xmm6,xmm5
-DB	15,56,203,209
+	DB	15,56,203,209
 	pshufd	xmm0,xmm0,0x0e
 	movdqa	xmm3,xmm11
 DB	102,65,15,58,15,218,4
@@ -4395,7 +4395,7 @@ $L$aesenclast2:
 	aesenclast	xmm6,xmm5
 	movups	xmm4,XMMWORD[((16-112))+rcx]
 	nop
-DB	15,56,203,202
+	DB	15,56,203,202
 	movups	xmm14,XMMWORD[32+rdi]
 	xorps	xmm14,xmm15
 	movups	XMMWORD[16+rdi*1+rsi],xmm6
@@ -4404,64 +4404,64 @@ DB	15,56,203,202
 	aesenc	xmm6,xmm4
 	movdqa	xmm0,XMMWORD[((288-128))+rax]
 	paddd	xmm0,xmm11
-DB	69,15,56,205,227
-DB	69,15,56,204,234
+	DB	69,15,56,205,227
+	DB	69,15,56,204,234
 	movups	xmm4,XMMWORD[((-64))+rcx]
 	aesenc	xmm6,xmm5
-DB	15,56,203,209
+	DB	15,56,203,209
 	pshufd	xmm0,xmm0,0x0e
 	movdqa	xmm3,xmm12
 DB	102,65,15,58,15,219,4
 	paddd	xmm13,xmm3
 	movups	xmm5,XMMWORD[((-48))+rcx]
 	aesenc	xmm6,xmm4
-DB	15,56,203,202
+	DB	15,56,203,202
 	movdqa	xmm0,XMMWORD[((320-128))+rax]
 	paddd	xmm0,xmm12
-DB	69,15,56,205,236
-DB	69,15,56,204,211
+	DB	69,15,56,205,236
+	DB	69,15,56,204,211
 	movups	xmm4,XMMWORD[((-32))+rcx]
 	aesenc	xmm6,xmm5
-DB	15,56,203,209
+	DB	15,56,203,209
 	pshufd	xmm0,xmm0,0x0e
 	movdqa	xmm3,xmm13
 DB	102,65,15,58,15,220,4
 	paddd	xmm10,xmm3
 	movups	xmm5,XMMWORD[((-16))+rcx]
 	aesenc	xmm6,xmm4
-DB	15,56,203,202
+	DB	15,56,203,202
 	movdqa	xmm0,XMMWORD[((352-128))+rax]
 	paddd	xmm0,xmm13
-DB	69,15,56,205,213
-DB	69,15,56,204,220
+	DB	69,15,56,205,213
+	DB	69,15,56,204,220
 	movups	xmm4,XMMWORD[rcx]
 	aesenc	xmm6,xmm5
-DB	15,56,203,209
+	DB	15,56,203,209
 	pshufd	xmm0,xmm0,0x0e
 	movdqa	xmm3,xmm10
 DB	102,65,15,58,15,221,4
 	paddd	xmm11,xmm3
 	movups	xmm5,XMMWORD[16+rcx]
 	aesenc	xmm6,xmm4
-DB	15,56,203,202
+	DB	15,56,203,202
 	movdqa	xmm0,XMMWORD[((384-128))+rax]
 	paddd	xmm0,xmm10
-DB	69,15,56,205,218
-DB	69,15,56,204,229
+	DB	69,15,56,205,218
+	DB	69,15,56,204,229
 	movups	xmm4,XMMWORD[32+rcx]
 	aesenc	xmm6,xmm5
-DB	15,56,203,209
+	DB	15,56,203,209
 	pshufd	xmm0,xmm0,0x0e
 	movdqa	xmm3,xmm11
 DB	102,65,15,58,15,218,4
 	paddd	xmm12,xmm3
 	movups	xmm5,XMMWORD[48+rcx]
 	aesenc	xmm6,xmm4
-DB	15,56,203,202
+	DB	15,56,203,202
 	movdqa	xmm0,XMMWORD[((416-128))+rax]
 	paddd	xmm0,xmm11
-DB	69,15,56,205,227
-DB	69,15,56,204,234
+	DB	69,15,56,205,227
+	DB	69,15,56,204,234
 	cmp	r11d,11
 	jb	NEAR $L$aesenclast3
 	movups	xmm4,XMMWORD[64+rcx]
@@ -4477,7 +4477,7 @@ $L$aesenclast3:
 	aesenclast	xmm6,xmm5
 	movups	xmm4,XMMWORD[((16-112))+rcx]
 	nop
-DB	15,56,203,209
+	DB	15,56,203,209
 	pshufd	xmm0,xmm0,0x0e
 	movdqa	xmm3,xmm12
 DB	102,65,15,58,15,219,4
@@ -4490,19 +4490,19 @@ DB	102,65,15,58,15,219,4
 	aesenc	xmm6,xmm4
 	movups	xmm4,XMMWORD[((-64))+rcx]
 	aesenc	xmm6,xmm5
-DB	15,56,203,202
+	DB	15,56,203,202
 
 	movdqa	xmm0,XMMWORD[((448-128))+rax]
 	paddd	xmm0,xmm12
-DB	69,15,56,205,236
+	DB	69,15,56,205,236
 	movdqa	xmm3,xmm7
 	movups	xmm5,XMMWORD[((-48))+rcx]
 	aesenc	xmm6,xmm4
-DB	15,56,203,209
+	DB	15,56,203,209
 	pshufd	xmm0,xmm0,0x0e
 	movups	xmm4,XMMWORD[((-32))+rcx]
 	aesenc	xmm6,xmm5
-DB	15,56,203,202
+	DB	15,56,203,202
 
 	movdqa	xmm0,XMMWORD[((480-128))+rax]
 	paddd	xmm0,xmm13
@@ -4510,11 +4510,11 @@ DB	15,56,203,202
 	aesenc	xmm6,xmm4
 	movups	xmm4,XMMWORD[rcx]
 	aesenc	xmm6,xmm5
-DB	15,56,203,209
+	DB	15,56,203,209
 	pshufd	xmm0,xmm0,0x0e
 	movups	xmm5,XMMWORD[16+rcx]
 	aesenc	xmm6,xmm4
-DB	15,56,203,202
+	DB	15,56,203,202
 
 	movups	xmm4,XMMWORD[32+rcx]
 	aesenc	xmm6,xmm5
@@ -4698,20 +4698,23 @@ section	.pdata rdata align=4
 section	.xdata rdata align=8
 ALIGN	8
 $L$SEH_info_aesni_cbc_sha256_enc_xop:
-DB	9,0,0,0
+	DB	9,0,0,0
 	DD	se_handler wrt ..imagebase
 	DD	$L$prologue_xop wrt ..imagebase,$L$epilogue_xop wrt ..imagebase
 
 $L$SEH_info_aesni_cbc_sha256_enc_avx:
-DB	9,0,0,0
+	DB	9,0,0,0
 	DD	se_handler wrt ..imagebase
 	DD	$L$prologue_avx wrt ..imagebase,$L$epilogue_avx wrt ..imagebase
 $L$SEH_info_aesni_cbc_sha256_enc_avx2:
-DB	9,0,0,0
+	DB	9,0,0,0
 	DD	se_handler wrt ..imagebase
 	DD	$L$prologue_avx2 wrt ..imagebase,$L$epilogue_avx2 wrt ..imagebase
 $L$SEH_info_aesni_cbc_sha256_enc_shaext:
-DB	9,0,0,0
+	DB	9,0,0,0
 	DD	se_handler wrt ..imagebase
 	DD	$L$prologue_shaext wrt ..imagebase,$L$epilogue_shaext wrt ..imagebase
+%else
+; Work around https://bugzilla.nasm.us/show_bug.cgi?id=3392738
+ret
 %endif

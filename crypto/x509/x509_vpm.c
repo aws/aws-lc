@@ -72,8 +72,6 @@
 #define SET_HOST 0
 #define ADD_HOST 1
 
-static char *str_copy(char *s) { return OPENSSL_strdup(s); }
-
 static void str_free(char *s) { OPENSSL_free(s); }
 
 #define string_stack_free(sk) sk_OPENSSL_STRING_pop_free(sk, str_free)
@@ -82,9 +80,11 @@ static int int_x509_param_set_hosts(X509_VERIFY_PARAM *param, int mode,
                                     const char *name, size_t namelen) {
   char *copy;
 
-  if (name == NULL || namelen == 0) {
-    // Unlike OpenSSL, we reject trying to set or add an empty name.
-    return 0;
+  // Setting 0 to automatically detect the length of |name| is an OpenSSL quirk
+  // that AWS-LC isn't keen on supporting. However, consumers often assume
+  // OpenSSL semantics from AWS-LC, so it's supported in this case.
+  if (name != NULL && namelen == 0) {
+    namelen = strlen(name);
   }
 
   // Refuse names with embedded NUL bytes.
@@ -96,6 +96,12 @@ static int int_x509_param_set_hosts(X509_VERIFY_PARAM *param, int mode,
   if (mode == SET_HOST && param->hosts) {
     string_stack_free(param->hosts);
     param->hosts = NULL;
+  }
+  // OpenSSL returns 1 when trying to set or add an empty name. This is also a
+  // quirk that AWS-LC isn't keen on supporting, but we maintain for backwards
+  // compatibility.
+  if (name == NULL || namelen == 0) {
+    return 1;
   }
 
   copy = OPENSSL_strndup(name, namelen);
@@ -279,7 +285,8 @@ int X509_VERIFY_PARAM_inherit(X509_VERIFY_PARAM *dest,
       dest->hosts = NULL;
     }
     if (src->hosts) {
-      dest->hosts = sk_OPENSSL_STRING_deep_copy(src->hosts, str_copy, str_free);
+      dest->hosts =
+          sk_OPENSSL_STRING_deep_copy(src->hosts, OPENSSL_strdup, str_free);
       if (dest->hosts == NULL) {
         return 0;
       }
@@ -314,8 +321,50 @@ int X509_VERIFY_PARAM_set1(X509_VERIFY_PARAM *to,
   return ret;
 }
 
-static int int_x509_param_set1(char **pdest, size_t *pdestlen, const char *src,
-                               size_t srclen) {
+static int int_x509_param_set1_email(char **pdest, size_t *pdestlen,
+                                     const char *src, size_t srclen) {
+  void *tmp;
+  if (src != NULL) {
+    // Setting |srclen| to 0 to automatically detect the length of |src| is an
+    // OpenSSL quirk that AWS-LC isn't keen on supporting. However, consumers
+    // often assume OpenSSL semantics from AWS-LC, so it's supported in this
+    // case.
+    if (srclen == 0) {
+      srclen = strlen(src);
+    }
+
+    tmp = OPENSSL_strndup(src, srclen);
+    if (tmp == NULL) {
+      return 0;
+    }
+  } else {
+    // This allows an empty string to disable previously configured checks.
+    // This is an OpenSSL quirk that AWS-LC isn't keen on supporting. However,
+    // consumers often assume OpenSSL semantics from AWS-LC, so it's supported
+    // in this case.
+    tmp = NULL;
+    srclen = 0;
+  }
+
+  if (*pdest != NULL) {
+    OPENSSL_free(*pdest);
+  }
+  *pdest = tmp;
+  if (pdestlen != NULL) {
+    *pdestlen = srclen;
+  }
+  return 1;
+}
+
+// IP addresses work slightly differently, so we use another function to
+// differentiate from emails. |X509_VERIFY_PARAM_set1_ip| takes a const
+// unsigned char*, instead of a const char*, so the same strlen logic that was
+// being used is not quite suitable here.
+// We keep the original behavior that BoringSSL left, but only for IP addresses.
+// We can align the behavior with |int_x509_param_set1_email| like OpenSSL has
+// been doing if needed.
+static int int_x509_param_set1_ip(unsigned char **pdest, size_t *pdestlen,
+                                  const unsigned char *src, size_t srclen) {
   void *tmp;
   if (src == NULL || srclen == 0) {
     // Unlike OpenSSL, we do not allow an empty string to disable previously
@@ -379,9 +428,13 @@ void X509_VERIFY_PARAM_set_depth(X509_VERIFY_PARAM *param, int depth) {
   param->depth = depth;
 }
 
-void X509_VERIFY_PARAM_set_time(X509_VERIFY_PARAM *param, time_t t) {
+void X509_VERIFY_PARAM_set_time_posix(X509_VERIFY_PARAM *param, int64_t t) {
   param->check_time = t;
   param->flags |= X509_V_FLAG_USE_CHECK_TIME;
+}
+
+void X509_VERIFY_PARAM_set_time(X509_VERIFY_PARAM *param, time_t t) {
+  X509_VERIFY_PARAM_set_time_posix(param, t);
 }
 
 int X509_VERIFY_PARAM_add0_policy(X509_VERIFY_PARAM *param,
@@ -400,8 +453,6 @@ int X509_VERIFY_PARAM_add0_policy(X509_VERIFY_PARAM *param,
   return 1;
 }
 
-static ASN1_OBJECT *dup_object(ASN1_OBJECT *obj) { return OBJ_dup(obj); }
-
 int X509_VERIFY_PARAM_set1_policies(X509_VERIFY_PARAM *param,
                                     const STACK_OF(ASN1_OBJECT) *policies) {
   if (!param) {
@@ -415,7 +466,7 @@ int X509_VERIFY_PARAM_set1_policies(X509_VERIFY_PARAM *param,
   }
 
   param->policies =
-      sk_ASN1_OBJECT_deep_copy(policies, dup_object, ASN1_OBJECT_free);
+      sk_ASN1_OBJECT_deep_copy(policies, OBJ_dup, ASN1_OBJECT_free);
   if (!param->policies) {
     return 0;
   }
@@ -454,7 +505,8 @@ char *X509_VERIFY_PARAM_get0_peername(X509_VERIFY_PARAM *param) {
 int X509_VERIFY_PARAM_set1_email(X509_VERIFY_PARAM *param, const char *email,
                                  size_t emaillen) {
   if (OPENSSL_memchr(email, '\0', emaillen) != NULL ||
-      !int_x509_param_set1(&param->email, &param->emaillen, email, emaillen)) {
+      !int_x509_param_set1_email(&param->email, &param->emaillen, email,
+                                 emaillen)) {
     param->poison = 1;
     return 0;
   }
@@ -464,9 +516,8 @@ int X509_VERIFY_PARAM_set1_email(X509_VERIFY_PARAM *param, const char *email,
 
 int X509_VERIFY_PARAM_set1_ip(X509_VERIFY_PARAM *param, const unsigned char *ip,
                               size_t iplen) {
-  if ((iplen != 4 && iplen != 16) ||
-      !int_x509_param_set1((char **)&param->ip, &param->iplen, (char *)ip,
-                           iplen)) {
+  if ((iplen != 0 && iplen != 4 && iplen != 16) ||
+      !int_x509_param_set1_ip(&param->ip, &param->iplen, ip, iplen)) {
     param->poison = 1;
     return 0;
   }
@@ -546,76 +597,11 @@ static const X509_VERIFY_PARAM default_table[] = {
      NULL,                     // policies
      vpm_empty_id}};
 
-static STACK_OF(X509_VERIFY_PARAM) *param_table = NULL;
-
-static int param_cmp(const X509_VERIFY_PARAM **a, const X509_VERIFY_PARAM **b) {
-  return strcmp((*a)->name, (*b)->name);
-}
-
-int X509_VERIFY_PARAM_add0_table(X509_VERIFY_PARAM *param) {
-  X509_VERIFY_PARAM *ptmp;
-  if (!param_table) {
-    param_table = sk_X509_VERIFY_PARAM_new(param_cmp);
-    if (!param_table) {
-      return 0;
-    }
-  } else {
-    size_t idx;
-
-    sk_X509_VERIFY_PARAM_sort(param_table);
-    if (sk_X509_VERIFY_PARAM_find(param_table, &idx, param)) {
-      ptmp = sk_X509_VERIFY_PARAM_value(param_table, idx);
-      X509_VERIFY_PARAM_free(ptmp);
-      (void)sk_X509_VERIFY_PARAM_delete(param_table, idx);
-    }
-  }
-  if (!sk_X509_VERIFY_PARAM_push(param_table, param)) {
-    return 0;
-  }
-  return 1;
-}
-
-int X509_VERIFY_PARAM_get_count(void) {
-  int num = sizeof(default_table) / sizeof(X509_VERIFY_PARAM);
-  if (param_table) {
-    num += sk_X509_VERIFY_PARAM_num(param_table);
-  }
-  return num;
-}
-
-const X509_VERIFY_PARAM *X509_VERIFY_PARAM_get0(int id) {
-  int num = sizeof(default_table) / sizeof(X509_VERIFY_PARAM);
-  if (id < num) {
-    return default_table + id;
-  }
-  return sk_X509_VERIFY_PARAM_value(param_table, id - num);
-}
-
 const X509_VERIFY_PARAM *X509_VERIFY_PARAM_lookup(const char *name) {
-  X509_VERIFY_PARAM pm;
-  unsigned i, limit;
-
-  pm.name = (char *)name;
-  if (param_table) {
-    size_t idx;
-    sk_X509_VERIFY_PARAM_sort(param_table);
-    if (sk_X509_VERIFY_PARAM_find(param_table, &idx, &pm)) {
-      return sk_X509_VERIFY_PARAM_value(param_table, idx);
-    }
-  }
-
-  limit = sizeof(default_table) / sizeof(X509_VERIFY_PARAM);
-  for (i = 0; i < limit; i++) {
+  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(default_table); i++) {
     if (strcmp(default_table[i].name, name) == 0) {
       return &default_table[i];
     }
   }
   return NULL;
-}
-
-void X509_VERIFY_PARAM_table_cleanup(void) {
-  if (param_table) {
-    sk_X509_VERIFY_PARAM_pop_free(param_table, X509_VERIFY_PARAM_free);
-  }
-  param_table = NULL;
 }

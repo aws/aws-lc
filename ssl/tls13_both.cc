@@ -53,13 +53,11 @@ bool tls13_get_cert_verify_signature_input(
     enum ssl_cert_verify_context_t cert_verify_context) {
   ScopedCBB cbb;
   if (!CBB_init(cbb.get(), 64 + 33 + 1 + 2 * EVP_MAX_MD_SIZE)) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return false;
   }
 
   for (size_t i = 0; i < 64; i++) {
     if (!CBB_add_u8(cbb.get(), 0x20)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return false;
     }
   }
@@ -75,7 +73,6 @@ bool tls13_get_cert_verify_signature_input(
     static const char kContext[] = "TLS 1.3, Channel ID";
     context = kContext;
   } else {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return false;
   }
 
@@ -83,7 +80,6 @@ bool tls13_get_cert_verify_signature_input(
   if (!CBB_add_bytes(cbb.get(),
                      reinterpret_cast<const uint8_t *>(context.data()),
                      context.size())) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return false;
   }
 
@@ -92,7 +88,6 @@ bool tls13_get_cert_verify_signature_input(
   if (!hs->transcript.GetHash(context_hash, &context_hash_len) ||
       !CBB_add_bytes(cbb.get(), context_hash, context_hash_len) ||
       !CBBFinishArray(cbb.get(), out)) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return false;
   }
 
@@ -181,7 +176,6 @@ bool tls13_process_certificate(SSL_HANDSHAKE *hs, const SSLMessage &msg,
   UniquePtr<STACK_OF(CRYPTO_BUFFER)> certs(sk_CRYPTO_BUFFER_new_null());
   if (!certs) {
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return false;
   }
 
@@ -225,7 +219,6 @@ bool tls13_process_certificate(SSL_HANDSHAKE *hs, const SSLMessage &msg,
     if (!buf ||
         !PushToStack(certs.get(), std::move(buf))) {
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return false;
     }
 
@@ -411,7 +404,7 @@ bool tls13_add_certificate(SSL_HANDSHAKE *hs) {
     }
   }
 
-  if (// The request context is always empty in the handshake.
+  if (  // The request context is always empty in the handshake.
       !CBB_add_u8(body, 0) ||
       !CBB_add_u24_length_prefixed(body, &certificate_list)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
@@ -421,8 +414,10 @@ bool tls13_add_certificate(SSL_HANDSHAKE *hs) {
   if (!ssl_has_certificate(hs)) {
     return ssl_add_message_cbb(ssl, cbb.get());
   }
-
-  CRYPTO_BUFFER *leaf_buf = sk_CRYPTO_BUFFER_value(cert->chain.get(), 0);
+  // |cert_private_keys| already checked above in |ssl_has_certificate|.
+  UniquePtr<STACK_OF(CRYPTO_BUFFER)> &chain =
+      cert->cert_private_keys[cert->cert_private_key_idx].chain;
+  CRYPTO_BUFFER *leaf_buf = sk_CRYPTO_BUFFER_value(chain.get(), 0);
   CBB leaf, extensions;
   if (!CBB_add_u24_length_prefixed(&certificate_list, &leaf) ||
       !CBB_add_bytes(&leaf, CRYPTO_BUFFER_data(leaf_buf),
@@ -475,8 +470,8 @@ bool tls13_add_certificate(SSL_HANDSHAKE *hs) {
     ssl->s3->delegated_credential_used = true;
   }
 
-  for (size_t i = 1; i < sk_CRYPTO_BUFFER_num(cert->chain.get()); i++) {
-    CRYPTO_BUFFER *cert_buf = sk_CRYPTO_BUFFER_value(cert->chain.get(), i);
+  for (size_t i = 1; i < sk_CRYPTO_BUFFER_num(chain.get()); i++) {
+    CRYPTO_BUFFER *cert_buf = sk_CRYPTO_BUFFER_value(chain.get(), i);
     CBB child;
     if (!CBB_add_u24_length_prefixed(&certificate_list, &child) ||
         !CBB_add_bytes(&child, CRYPTO_BUFFER_data(cert_buf),
@@ -515,7 +510,8 @@ bool tls13_add_certificate(SSL_HANDSHAKE *hs) {
   if (!ssl->method->init_message(ssl, cbb.get(), body,
                                  SSL3_MT_COMPRESSED_CERTIFICATE) ||
       !CBB_add_u16(body, hs->cert_compression_alg_id) ||
-      !CBB_add_u24(body, msg.size()) ||
+      msg.size() > (1u << 24) - 1 ||  //
+      !CBB_add_u24(body, static_cast<uint32_t>(msg.size())) ||
       !CBB_add_u24_length_prefixed(body, &compressed)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return false;
@@ -556,17 +552,12 @@ bool tls13_add_certificate(SSL_HANDSHAKE *hs) {
 
 enum ssl_private_key_result_t tls13_add_certificate_verify(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  uint16_t signature_algorithm;
-  if (!tls1_choose_signature_algorithm(hs, &signature_algorithm)) {
-    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
-    return ssl_private_key_failure;
-  }
 
   ScopedCBB cbb;
   CBB body;
   if (!ssl->method->init_message(ssl, cbb.get(), &body,
                                  SSL3_MT_CERTIFICATE_VERIFY) ||
-      !CBB_add_u16(&body, signature_algorithm)) {
+      !CBB_add_u16(&body, hs->signature_algorithm)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return ssl_private_key_failure;
   }
@@ -590,7 +581,7 @@ enum ssl_private_key_result_t tls13_add_certificate_verify(SSL_HANDSHAKE *hs) {
   }
 
   enum ssl_private_key_result_t sign_result = ssl_private_key_sign(
-      hs, sig, &sig_len, max_sig_len, signature_algorithm, msg);
+      hs, sig, &sig_len, max_sig_len, hs->signature_algorithm, msg);
   if (sign_result != ssl_private_key_success) {
     return sign_result;
   }
@@ -630,6 +621,8 @@ bool tls13_add_key_update(SSL *ssl, int update_requested) {
   CBB body_cbb;
   if (!ssl->method->init_message(ssl, cbb.get(), &body_cbb,
                                  SSL3_MT_KEY_UPDATE) ||
+      (update_requested != SSL_KEY_UPDATE_NOT_REQUESTED &&
+       update_requested != SSL_KEY_UPDATE_REQUESTED) ||
       !CBB_add_u8(&body_cbb, update_requested) ||
       !ssl_add_message_cbb(ssl, cbb.get()) ||
       !tls13_rotate_traffic_key(ssl, evp_aead_seal)) {
@@ -639,7 +632,7 @@ bool tls13_add_key_update(SSL *ssl, int update_requested) {
   // Suppress KeyUpdate acknowledgments until this change is written to the
   // wire. This prevents us from accumulating write obligations when read and
   // write progress at different rates. See RFC 8446, section 4.6.3.
-  ssl->s3->key_update_pending = true;
+  ssl->s3->key_update_pending = update_requested;
 
   return true;
 }
@@ -662,7 +655,7 @@ static bool tls13_receive_key_update(SSL *ssl, const SSLMessage &msg) {
 
   // Acknowledge the KeyUpdate
   if (key_update_request == SSL_KEY_UPDATE_REQUESTED &&
-      !ssl->s3->key_update_pending &&
+      ssl->s3->key_update_pending == SSL_KEY_UPDATE_NONE &&
       !tls13_add_key_update(ssl, SSL_KEY_UPDATE_NOT_REQUESTED)) {
     return false;
   }

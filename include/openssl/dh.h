@@ -79,6 +79,10 @@ extern "C" {
 // DH_new returns a new, empty DH object or NULL on error.
 OPENSSL_EXPORT DH *DH_new(void);
 
+// DH_new_by_nid returns the DH specified by |nid|, only NID_ffdhe2048, and
+// NID_ffdhe4096 are supported. All other values will return null.
+OPENSSL_EXPORT DH *DH_new_by_nid(int nid);
+
 // DH_free decrements the reference count of |dh| and frees it if the reference
 // count drops to zero.
 OPENSSL_EXPORT void DH_free(DH *dh);
@@ -141,6 +145,11 @@ OPENSSL_EXPORT int DH_set_length(DH *dh, unsigned priv_length);
 // https://tools.ietf.org/html/rfc7919#appendix-A.1. It returns NULL if out
 // of memory.
 OPENSSL_EXPORT DH *DH_get_rfc7919_2048(void);
+
+// DH_get_rfc7919_4096 returns the group `ffdhe4096` from
+// https://tools.ietf.org/html/rfc7919#appendix-A.3. It returns NULL if out
+// of memory.
+OPENSSL_EXPORT DH *DH_get_rfc7919_4096(void);
 
 // BN_get_rfc3526_prime_1536 sets |*ret| to the 1536-bit MODP group from RFC
 // 3526 and returns |ret|. If |ret| is NULL then a fresh |BIGNUM| is allocated
@@ -328,14 +337,26 @@ OPENSSL_EXPORT int i2d_DHparams(const DH *in, unsigned char **outp);
 OPENSSL_EXPORT int DH_compute_key(uint8_t *out, const BIGNUM *peers_key,
                                   DH *dh);
 
-// Standard parameters. These parameters are taken from RFC 5114.
-// This function returns a new DH object with standard parameters. It returns
-// NULL on allocation failure.
+// DH_get_2048_256 returns the 2048-bit MODP Group with 256-bit Prime Order
+// Subgroup from RFC 5114. This function returns a new DH object with standard
+// parameters. It returns NULL on allocation failure.
 //
 // Warning: 2048-256 is no longer an optimal parameter for Diffie-Hellman. No
 // one should use finite field Diffie-Hellman anymore.
 // This function has been deprecated with no replacement.
 OPENSSL_EXPORT DH *DH_get_2048_256(void);
+
+// DH_clear_flags does nothing and is included to simplify compiling code that
+// expects it.
+OPENSSL_EXPORT void DH_clear_flags(DH *dh, int flags);
+
+// DH_FLAG_CACHE_MONT_P is not supported by AWS-LC and is included to simplify
+// compiling code that expects it. This flag controls if the DH APIs should
+// cache the montgomery form of the prime to speed up multiplication at the cost
+// of increasing memory storage. AWS-LC always does this and does not support
+// turning this option off.
+#define DH_FLAG_CACHE_MONT_P 0
+
 
 #if defined(__cplusplus)
 }  // extern C
@@ -359,5 +380,6 @@ BSSL_NAMESPACE_END
 #define DH_R_NO_PRIVATE_VALUE 103
 #define DH_R_DECODE_ERROR 104
 #define DH_R_ENCODE_ERROR 105
+#define DH_R_INVALID_NID 106
 
 #endif  // OPENSSL_HEADER_DH_H

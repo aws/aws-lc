@@ -3,6 +3,10 @@
 
 version: 0.2
 
+env:
+  variables:
+    GOPROXY: https://proxy.golang.org,direct
+
 phases:
   build:
     commands:
@@ -10,3 +14,4 @@ phases:
       - go run ./tests/check_licenses.go
       - ./tests/check_generated_src.sh
       - ./tests/coding_guidelines/coding_guidelines_test.sh
+      - (cd util && go run ./doc.go)

@@ -18,6 +18,7 @@
 #if !defined(OPENSSL_BENCHMARK)
 #include <openssl/base.h>
 #include <openssl/span.h>
+#include <openssl/bytestring.h>
 #endif
 
 #include <string>
@@ -155,6 +156,8 @@ extern const uint8_t kDERRSAPrivate2048[];
 extern const size_t kDERRSAPrivate2048Len;
 extern const uint8_t kDERRSAPrivate4096[];
 extern const size_t kDERRSAPrivate4096Len;
+extern const uint8_t kDERRSAPrivate3072[];
+extern const size_t kDERRSAPrivate3072Len;
 extern const uint8_t kDERRSAPrivate8192[];
 extern const size_t kDERRSAPrivate8192Len;
 

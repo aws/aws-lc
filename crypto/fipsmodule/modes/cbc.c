@@ -68,10 +68,7 @@ void CRYPTO_cbc128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
   size_t n;
   const uint8_t *iv = ivec;
   while (len >= 16) {
-    for (n = 0; n < 16; n += sizeof(crypto_word_t)) {
-      CRYPTO_store_word_le(
-          out + n, CRYPTO_load_word_le(in + n) ^ CRYPTO_load_word_le(iv + n));
-    }
+    CRYPTO_xor16(out, in, iv);
     (*block)(out, out, key);
     iv = out;
     len -= 16;
@@ -120,15 +117,10 @@ void CRYPTO_cbc128_decrypt(const uint8_t *in, uint8_t *out, size_t len,
   if ((inptr >= 32 && outptr <= inptr - 32) || inptr < outptr) {
     // If |out| is at least two blocks behind |in| or completely disjoint, there
     // is no need to decrypt to a temporary block.
-    OPENSSL_STATIC_ASSERT(16 % sizeof(crypto_word_t) == 0,
-                          block_cannot_be_evenly_divided_into_crypto_word_t)
     const uint8_t *iv = ivec;
     while (len >= 16) {
       (*block)(in, out, key);
-      for (n = 0; n < 16; n += sizeof(crypto_word_t)) {
-        CRYPTO_store_word_le(out + n, CRYPTO_load_word_le(out + n) ^
-                                          CRYPTO_load_word_le(iv + n));
-      }
+      CRYPTO_xor16(out, out, iv);
       iv = in;
       len -= 16;
       in += 16;

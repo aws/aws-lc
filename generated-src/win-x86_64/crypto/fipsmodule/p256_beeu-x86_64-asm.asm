@@ -338,4 +338,7 @@ $L$beeu_finish:
 
 
 $L$SEH_end_beeu_mod_inverse_vartime:
+%else
+; Work around https://bugzilla.nasm.us/show_bug.cgi?id=3392738
+ret
 %endif

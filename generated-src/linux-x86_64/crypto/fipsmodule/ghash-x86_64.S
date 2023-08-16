@@ -20,6 +20,7 @@
 .align	16
 gcm_init_clmul:
 .cfi_startproc	
+
 .L_init_clmul:
 	movdqu	(%rsi),%xmm2
 	pshufd	$78,%xmm2,%xmm2
@@ -172,6 +173,7 @@ gcm_init_clmul:
 	movdqu	%xmm4,80(%rdi)
 	.byte	0xf3,0xc3
 .cfi_endproc	
+
 .size	gcm_init_clmul,.-gcm_init_clmul
 .globl	gcm_gmult_clmul
 .hidden gcm_gmult_clmul
@@ -233,6 +235,7 @@ gcm_gmult_clmul:
 .align	32
 gcm_ghash_clmul:
 .cfi_startproc	
+
 .L_ghash_clmul:
 	movdqa	.Lbswap_mask(%rip),%xmm10
 
@@ -613,6 +616,7 @@ gcm_ghash_clmul:
 	movdqu	%xmm0,(%rdi)
 	.byte	0xf3,0xc3
 .cfi_endproc	
+
 .size	gcm_ghash_clmul,.-gcm_ghash_clmul
 .globl	gcm_init_avx
 .hidden gcm_init_avx
@@ -722,6 +726,7 @@ gcm_init_avx:
 
 	vzeroupper
 	.byte	0xf3,0xc3
+
 .cfi_endproc	
 .size	gcm_init_avx,.-gcm_init_avx
 .globl	gcm_gmult_avx
@@ -1111,7 +1116,9 @@ gcm_ghash_avx:
 	vzeroupper
 	.byte	0xf3,0xc3
 .cfi_endproc	
+
 .size	gcm_ghash_avx,.-gcm_ghash_avx
+.section	.rodata
 .align	64
 .Lbswap_mask:
 .byte	15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0
@@ -1123,6 +1130,7 @@ gcm_ghash_avx:
 
 .byte	71,72,65,83,72,32,102,111,114,32,120,56,54,95,54,52,44,32,67,82,89,80,84,79,71,65,77,83,32,98,121,32,60,97,112,112,114,111,64,111,112,101,110,115,115,108,46,111,114,103,62,0
 .align	64
+.text	
 #endif
 #if defined(__ELF__)
 // See https://www.airs.com/blog/archives/518.

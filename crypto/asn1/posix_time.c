@@ -21,6 +21,7 @@
 #include <string.h>
 #include <time.h>
 
+#include "../internal.h"
 #include "internal.h"
 
 #define SECS_PER_HOUR (60 * 60)
@@ -146,7 +147,11 @@ int OPENSSL_tm_to_posix(const struct tm *tm, int64_t *out) {
 }
 
 int OPENSSL_posix_to_tm(int64_t time, struct tm *out_tm) {
-  memset(out_tm, 0, sizeof(struct tm));
+  if (out_tm == NULL) {
+    OPENSSL_PUT_ERROR(ASN1, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+  OPENSSL_memset(out_tm, 0, sizeof(struct tm));
   if (!utc_from_posix_time(time, &out_tm->tm_year, &out_tm->tm_mon,
                            &out_tm->tm_mday, &out_tm->tm_hour, &out_tm->tm_min,
                            &out_tm->tm_sec)) {

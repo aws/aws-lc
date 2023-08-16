@@ -21,6 +21,7 @@
 #include <openssl/err.h>
 #include <openssl/rand.h>
 
+#include "../crypto/fipsmodule/cipher/internal.h"
 #include "../crypto/internal.h"
 #include "internal.h"
 
@@ -91,7 +92,6 @@ UniquePtr<SSLAEADContext> SSLAEADContext::Create(
   UniquePtr<SSLAEADContext> aead_ctx =
       MakeUnique<SSLAEADContext>(version, is_dtls, cipher);
   if (!aead_ctx) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return nullptr;
   }
 
@@ -159,7 +159,7 @@ void SSLAEADContext::SetVersionIfNullCipher(uint16_t version) {
 
 uint16_t SSLAEADContext::ProtocolVersion() const {
   uint16_t protocol_version;
-  if(!ssl_protocol_version_from_wire(&protocol_version, version_)) {
+  if (!ssl_protocol_version_from_wire(&protocol_version, version_)) {
     assert(false);
     return 0;
   }
@@ -376,8 +376,7 @@ bool SSLAEADContext::SealScatter(uint8_t *out_prefix, uint8_t *out,
       OPENSSL_PUT_ERROR(SSL, SSL_R_OUTPUT_ALIASES_INPUT);
       return false;
     }
-    OPENSSL_memcpy(out_prefix, nonce + fixed_nonce_len_,
-                   variable_nonce_len_);
+    OPENSSL_memcpy(out_prefix, nonce + fixed_nonce_len_, variable_nonce_len_);
   }
 
   // XOR the fixed nonce, if necessary.
@@ -427,6 +426,62 @@ bool SSLAEADContext::Seal(uint8_t *out, size_t *out_len, size_t max_out_len,
 bool SSLAEADContext::GetIV(const uint8_t **out_iv, size_t *out_iv_len) const {
   return !is_null_cipher() &&
          EVP_AEAD_CTX_get_iv(ctx_.get(), out_iv, out_iv_len);
+}
+
+#define SSLAEADCONTEXT_SERDE_VERSION 1
+
+/*
+ * SSLAEADContextVersion ::= INTEGER {v1 (1)}
+ *
+ * SSLAEADContext ::= SEQUENCE {
+ *   serializationVersion SSLAEADContextVersion,
+ *   cipher         INTEGER,
+ *   cipherState    EvpAeadCtxState
+ * }
+ */
+int SSLAEADContext::SerializeState(CBB *cbb) const {
+  uint32_t cipher_id = SSL_CIPHER_get_id(cipher_);
+
+  CBB seq;
+
+  if (!CBB_add_asn1(cbb, &seq, CBS_ASN1_SEQUENCE) ||
+      !CBB_add_asn1_uint64(&seq, SSLAEADCONTEXT_SERDE_VERSION) ||
+      !CBB_add_asn1_uint64(&seq, cipher_id)) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+    return 0;
+  }
+
+  if (!EVP_AEAD_CTX_serialize_state(ctx_.get(), &seq)) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+    return 0;
+  }
+
+  return CBB_flush(cbb);
+}
+
+// See |SSLAEADContext::SerializeState| for a description of the serialization
+// format.
+int SSLAEADContext::DeserializeState(CBS *cbs) const {
+  CBS seq;
+
+  uint64_t serde_version;
+  uint64_t cipher_id;
+
+  if (!CBS_get_asn1(cbs, &seq, CBS_ASN1_SEQUENCE) ||
+      !CBS_get_asn1_uint64(&seq, &serde_version) ||
+      serde_version != SSLAEADCONTEXT_SERDE_VERSION ||
+      !CBS_get_asn1_uint64(&seq, &cipher_id) || cipher_id > UINT32_MAX ||
+      cipher_id != SSL_CIPHER_get_id(cipher_)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL_AEAD_CONTEXT);
+    return 0;
+  }
+
+  if (!EVP_AEAD_CTX_deserialize_state(ctx_.get(), &seq)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL_AEAD_CONTEXT);
+    return 0;
+  }
+
+  return 1;
 }
 
 BSSL_NAMESPACE_END

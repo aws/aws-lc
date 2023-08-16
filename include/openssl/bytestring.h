@@ -160,6 +160,13 @@ OPENSSL_EXPORT int CBS_get_u24_length_prefixed(CBS *cbs, CBS *out);
 // one. Otherwise, it returns zero and leaves |cbs| unmodified.
 OPENSSL_EXPORT int CBS_get_until_first(CBS *cbs, CBS *out, uint8_t c);
 
+// CBS_get_u64_decimal reads a decimal integer from |cbs| and writes it to
+// |*out|. It stops reading at the end of the string, or the first non-digit
+// character. It returns one on success and zero on error. This function behaves
+// analogously to |strtoul| except it does not accept empty inputs, leading
+// zeros, or negative values.
+OPENSSL_EXPORT int CBS_get_u64_decimal(CBS *cbs, uint64_t *out);
+
 
 // Parsing ASN.1
 //
@@ -229,8 +236,11 @@ OPENSSL_EXPORT int CBS_get_until_first(CBS *cbs, CBS *out, uint8_t c);
 
 // CBS_get_asn1 sets |*out| to the contents of DER-encoded, ASN.1 element (not
 // including tag and length bytes) and advances |cbs| over it. The ASN.1
-// element must match |tag_value|. It returns one on success and zero
-// on error.
+// element must match |tag_value|.
+//
+// If |*out| is NULL, then the contents will be discarded.
+//
+// It returns one on success and zero on error.
 OPENSSL_EXPORT int CBS_get_asn1(CBS *cbs, CBS *out, CBS_ASN1_TAG tag_value);
 
 // CBS_get_asn1_element acts like |CBS_get_asn1| but |out| will include the
@@ -249,8 +259,7 @@ OPENSSL_EXPORT int CBS_peek_asn1_tag(const CBS *cbs, CBS_ASN1_TAG tag_value);
 // (not including tag and length bytes), sets |*out_tag| to the tag number, and
 // advances |*cbs|. It returns one on success and zero on error. Either of |out|
 // and |out_tag| may be NULL to ignore the value.
-OPENSSL_EXPORT int CBS_get_any_asn1(CBS *cbs, CBS *out,
-                                    CBS_ASN1_TAG *out_tag);
+OPENSSL_EXPORT int CBS_get_any_asn1(CBS *cbs, CBS *out, CBS_ASN1_TAG *out_tag);
 
 // CBS_get_any_asn1_element sets |*out| to contain the next ASN.1 element from
 // |*cbs| (including header bytes) and advances |*cbs|. It sets |*out_tag| to
@@ -349,11 +358,19 @@ OPENSSL_EXPORT int CBS_is_valid_asn1_integer(const CBS *cbs,
 // ASN.1 INTEGER body and zero otherwise.
 OPENSSL_EXPORT int CBS_is_unsigned_asn1_integer(const CBS *cbs);
 
+// CBS_is_valid_asn1_oid returns one if |cbs| is a valid DER-encoded ASN.1
+// OBJECT IDENTIFIER contents (not including the element framing) and zero
+// otherwise. This function tolerates arbitrarily large OID components.
+OPENSSL_EXPORT int CBS_is_valid_asn1_oid(const CBS *cbs);
+
 // CBS_asn1_oid_to_text interprets |cbs| as DER-encoded ASN.1 OBJECT IDENTIFIER
 // contents (not including the element framing) and returns the ASCII
 // representation (e.g., "1.2.840.113554.4.1.72585") in a newly-allocated
 // string, or NULL on failure. The caller must release the result with
 // |OPENSSL_free|.
+//
+// This function may fail if |cbs| is an invalid OBJECT IDENTIFIER, or if any
+// OID components are too large.
 OPENSSL_EXPORT char *CBS_asn1_oid_to_text(const CBS *cbs);
 
 
@@ -376,6 +393,14 @@ OPENSSL_EXPORT int CBS_parse_generalized_time(const CBS *cbs, struct tm *out_tm,
 // |out_tm->tm_yday|.
 OPENSSL_EXPORT int CBS_parse_utc_time(const CBS *cbs, struct tm *out_tm,
                                       int allow_timezone_offset);
+
+// CBS_get_optional_asn1_int64 gets an optional, explicitly-tagged INTEGER from
+// |cbs|. If present, it sets |*out| to the value. Otherwise, it sets |*out| to
+// |default_value|. It returns one on success and zero on error, where error
+// includes the integer being too large to represent in 64 bits.
+OPENSSL_EXPORT int CBS_get_optional_asn1_int64(CBS *cbs, int64_t *out,
+                                               CBS_ASN1_TAG tag,
+                                               int64_t default_value);
 
 // CRYPTO ByteBuilder.
 //

@@ -286,8 +286,8 @@ int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
   FIPS_service_indicator_lock_state();
   int result = 0;
 
-  uint64_t pad[EVP_MAX_MD_BLOCK_SIZE / 8] = {0};
-  uint64_t key_block[EVP_MAX_MD_BLOCK_SIZE / 8] = {0};
+  uint64_t pad[EVP_MAX_MD_BLOCK_SIZE_BYTES] = {0};
+  uint64_t key_block[EVP_MAX_MD_BLOCK_SIZE_BYTES] = {0};
   if (block_size < key_len) {
     // Long keys are hashed.
     if (!methods->init(&ctx->md_ctx) ||
@@ -319,6 +319,8 @@ int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
 
   result = 1;
 end:
+  OPENSSL_cleanse(pad, EVP_MAX_MD_BLOCK_SIZE_BYTES);
+  OPENSSL_cleanse(key_block, EVP_MAX_MD_BLOCK_SIZE_BYTES);
   FIPS_service_indicator_unlock_state();
   if (result != 1) {
     // We're in some error state, so return our context to a known and well defined zero state.

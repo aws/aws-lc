@@ -154,7 +154,6 @@ static int x509_name_ex_new(ASN1_VALUE **val, const ASN1_ITEM *it) {
   return 1;
 
 memerr:
-  OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
   if (ret) {
     if (ret->entries) {
       sk_X509_NAME_ENTRY_free(ret->entries);
@@ -281,23 +280,23 @@ static int x509_name_encode(X509_NAME *a) {
   STACK_OF(STACK_OF_X509_NAME_ENTRY) *intname =
       sk_STACK_OF_X509_NAME_ENTRY_new_null();
   if (!intname) {
-    goto memerr;
+    goto err;
   }
   for (i = 0; i < sk_X509_NAME_ENTRY_num(a->entries); i++) {
     entry = sk_X509_NAME_ENTRY_value(a->entries, i);
     if (entry->set != set) {
       entries = sk_X509_NAME_ENTRY_new_null();
       if (!entries) {
-        goto memerr;
+        goto err;
       }
       if (!sk_STACK_OF_X509_NAME_ENTRY_push(intname, entries)) {
         sk_X509_NAME_ENTRY_free(entries);
-        goto memerr;
+        goto err;
       }
       set = entry->set;
     }
     if (!sk_X509_NAME_ENTRY_push(entries, entry)) {
-      goto memerr;
+      goto err;
     }
   }
   ASN1_VALUE *intname_val = (ASN1_VALUE *)intname;
@@ -307,7 +306,7 @@ static int x509_name_encode(X509_NAME *a) {
     goto err;
   }
   if (!BUF_MEM_grow(a->bytes, len)) {
-    goto memerr;
+    goto err;
   }
   p = (unsigned char *)a->bytes->data;
   if (ASN1_item_ex_i2d(&intname_val, &p, ASN1_ITEM_rptr(X509_NAME_INTERNAL),
@@ -317,8 +316,6 @@ static int x509_name_encode(X509_NAME *a) {
   sk_STACK_OF_X509_NAME_ENTRY_pop_free(intname, local_sk_X509_NAME_ENTRY_free);
   a->modified = 0;
   return 1;
-memerr:
-  OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
 err:
   sk_STACK_OF_X509_NAME_ENTRY_pop_free(intname, local_sk_X509_NAME_ENTRY_free);
   return 0;
@@ -443,12 +440,10 @@ static int asn1_string_canon(ASN1_STRING *out, ASN1_STRING *in) {
 
   len = out->length;
 
-  // Convert string in place to canonical form. Ultimately we may need to
-  // handle a wider range of characters but for now ignore anything with
-  // MSB set and rely on the isspace() and tolower() functions.
+  // Convert string in place to canonical form.
 
   // Ignore leading spaces
-  while ((len > 0) && !(*from & 0x80) && isspace(*from)) {
+  while ((len > 0) && OPENSSL_isspace(*from)) {
     from++;
     len--;
   }
@@ -456,7 +451,7 @@ static int asn1_string_canon(ASN1_STRING *out, ASN1_STRING *in) {
   to = from + len;
 
   // Ignore trailing spaces
-  while ((len > 0) && !(to[-1] & 0x80) && isspace(to[-1])) {
+  while ((len > 0) && OPENSSL_isspace(to[-1])) {
     to--;
     len--;
   }
@@ -465,13 +460,8 @@ static int asn1_string_canon(ASN1_STRING *out, ASN1_STRING *in) {
 
   i = 0;
   while (i < len) {
-    // If MSB set just copy across
-    if (*from & 0x80) {
-      *to++ = *from++;
-      i++;
-    }
     // Collapse multiple spaces
-    else if (isspace(*from)) {
+    if (OPENSSL_isspace(*from)) {
       // Copy one space across
       *to++ = ' ';
       // Ignore subsequent spaces. Note: don't need to check len here
@@ -480,7 +470,7 @@ static int asn1_string_canon(ASN1_STRING *out, ASN1_STRING *in) {
       do {
         from++;
         i++;
-      } while (!(*from & 0x80) && isspace(*from));
+      } while (OPENSSL_isspace(*from));
     } else {
       *to++ = OPENSSL_tolower(*from);
       from++;

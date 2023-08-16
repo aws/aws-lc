@@ -155,4 +155,7 @@ _abi_test_clobber_xmm7:
 L$_abi_test_clobber_xmm7_begin:
 	pxor	xmm7,xmm7
 	ret
+%else
+; Work around https://bugzilla.nasm.us/show_bug.cgi?id=3392738
+ret
 %endif

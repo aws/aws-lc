@@ -1,5 +1,3 @@
-include_directories(../include)
-
 if(NOT OPENSSL_NO_ASM)
   if(UNIX)
     if(ARCH STREQUAL "aarch64")
@@ -32,6 +30,12 @@ if(NOT OPENSSL_NO_ASM)
     enable_language(ASM)
     set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -Wa,--noexecstack")
 
+    # Since "--Wa,--noexecstack" is not used during the preprocessor step of Android (because assembler is not invoked),
+    # Clang reports that argument as unused. We quiet the unused argument warning for Android as it's expected behavior.
+    if(ANDROID)
+      set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -Qunused-arguments")
+    endif()
+
     # Clang's integerated assembler does not support debug symbols.
     if (CMAKE_ASM_COMPILER_ID MATCHES "Clang" OR CMAKE_ASM_COMPILER MATCHES "clang")
       message(STATUS "Disabling debug symbols for Clang internal assembler")
@@ -39,8 +43,9 @@ if(NOT OPENSSL_NO_ASM)
       set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -Wa,-g")
     endif()
 
-    # CMake does not add -isysroot and -arch flags to assembly.
-    if(APPLE)
+    # Work around https://gitlab.kitware.com/cmake/cmake/-/issues/20771 in older
+    # CMake versions.
+    if(APPLE AND CMAKE_VERSION VERSION_LESS 3.19)
       if(CMAKE_OSX_SYSROOT)
         set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -isysroot \"${CMAKE_OSX_SYSROOT}\"")
       endif()
@@ -78,6 +83,10 @@ if(PERL_EXECUTABLE)
 
     if(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
       set(PERLASM_FLAGS "${PERLASM_FLAGS} -DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX")
+    endif()
+
+    if(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+      set(PERLASM_FLAGS "${PERLASM_FLAGS} -DMY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX")
     endif()
 
     add_custom_command(
@@ -131,8 +140,12 @@ else()
   endif()
 
   if(DEFINED ASSEMBLY_SOURCE)
-    message("Copying platform assembly files from ${ASSEMBLY_SOURCE} to ${CMAKE_CURRENT_BINARY_DIR}")
-    file(COPY ${ASSEMBLY_SOURCE}/ DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+    if(EXISTS ${ASSEMBLY_SOURCE})
+      message("Copying platform assembly files from ${ASSEMBLY_SOURCE} to ${CMAKE_CURRENT_BINARY_DIR}")
+      file(COPY ${ASSEMBLY_SOURCE}/ DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+    else()
+      message(STATUS "${ASSEMBLY_SOURCE} assembly files do not exist.")
+    endif()
   endif()
 
 endif()
@@ -154,7 +167,6 @@ if(ARCH STREQUAL "arm")
     CRYPTO_ARCH_SOURCES
 
     chacha/chacha-armv4.${ASM_EXT}
-    curve25519/asm/x25519-asm-arm.S
     poly1305/poly1305_arm_asm.S
     test/trampoline-armv4.${ASM_EXT}
   )
@@ -259,6 +271,18 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/rust_wrapper.c)
   list(APPEND CRYPTO_RUST_SOURCES rust_wrapper.c)
 endif()
 
+set(DILITHIUM_SOURCES)
+if(ENABLE_DILITHIUM)
+  set(
+    DILITHIUM_SOURCES
+
+    dilithium/dilithium3r3_ref.c
+    dilithium/p_dilithium3.c
+    dilithium/p_dilithium3_asn1.c
+    dilithium/sig_dilithium3.c
+  )
+endif()
+
 add_library(
   crypto_objects
   OBJECT
@@ -327,11 +351,13 @@ add_library(
   conf/conf.c
   crypto.c
   curve25519/curve25519.c
+  curve25519/curve25519_nohw.c
   curve25519/spake25519.c
   des/des.c
   dh_extra/params.c
   dh_extra/dh_asn1.c
   digest_extra/digest_extra.c
+  ${DILITHIUM_SOURCES}
   dsa/dsa.c
   dsa/dsa_asn1.c
   ecdh_extra/ecdh_extra.c
@@ -360,19 +386,23 @@ add_library(
   hpke/hpke.c
   hrss/hrss.c
   kem/kem.c
-  kem/kyber_methods_placeholder.c
-  kyber/kyber512_ref.c
+  kem/kem_methods.c
+  kyber/kyber512r3_ref.c
+  kyber/kyber768r3_ref.c
+  kyber/kyber1024r3_ref.c
   kyber/pqcrystals_kyber_ref_common/fips202.c
-  kyber/kem_kyber512.c
-  kyber/p_kyber.c
-  kyber/p_kyber512_asn1.c
+  kyber/kem_kyber.c
   lhash/lhash.c
   mem.c
   obj/obj.c
   obj/obj_xref.c
   ocsp/ocsp_asn.c
   ocsp/ocsp_client.c
+  ocsp/ocsp_extension.c
+  ocsp/ocsp_http.c
   ocsp/ocsp_lib.c
+  ocsp/ocsp_print.c
+  ocsp/ocsp_server.c
   ocsp/ocsp_verify.c
   pem/pem_all.c
   pem/pem_info.c
@@ -392,6 +422,7 @@ add_library(
   poly1305/poly1305_vec.c
   pool/pool.c
   rand_extra/deterministic.c
+  rand_extra/entropy_passive.c
   rand_extra/forkunsafe.c
   rand_extra/fuchsia.c
   rand_extra/rand_extra.c
@@ -421,6 +452,7 @@ add_library(
   x509/by_file.c
   x509/i2d_pr.c
   x509/name_print.c
+  x509/policy.c
   x509/rsa_pss.c
   x509/t_crl.c
   x509/t_req.c
@@ -460,11 +492,6 @@ add_library(
   x509/x_val.c
   x509/x_x509.c
   x509/x_x509a.c
-  x509v3/pcy_cache.c
-  x509v3/pcy_data.c
-  x509v3/pcy_map.c
-  x509v3/pcy_node.c
-  x509v3/pcy_tree.c
   x509v3/v3_akey.c
   x509v3/v3_akeya.c
   x509v3/v3_alt.c
@@ -482,8 +509,6 @@ add_library(
   x509v3/v3_lib.c
   x509v3/v3_ncons.c
   x509v3/v3_ocsp.c
-  x509v3/v3_pci.c
-  x509v3/v3_pcia.c
   x509v3/v3_pcons.c
   x509v3/v3_pmaps.c
   x509v3/v3_prn.c
@@ -492,6 +517,7 @@ add_library(
   x509v3/v3_utl.c
   decrepit/bio/base64_bio.c
   decrepit/blowfish/blowfish.c
+  decrepit/cast/cast.c
   decrepit/cast/cast_tables.c
   decrepit/cfb/cfb.c
   decrepit/dh/dh_decrepit.c
@@ -505,9 +531,10 @@ add_library(
 )
 
 target_compile_definitions(crypto_objects PRIVATE BORINGSSL_IMPLEMENTATION)
+target_include_directories(crypto_objects PRIVATE ../include)
 
 # For the prefix build, the object files need the prefix header files to build.
-add_dependencies(crypto_objects global_target)
+add_dependencies(crypto_objects boringssl_prefix_symbols)
 
 function(build_libcrypto name module_source)
   if(FIPS)
@@ -515,8 +542,6 @@ function(build_libcrypto name module_source)
   else()
     add_library(${name} $<TARGET_OBJECTS:crypto_objects> ${CRYPTO_FIPS_OBJECTS} ${module_source})
   endif()
-
-  add_dependencies(${name}  global_target)
 
   if(FIPS_DELOCATE OR FIPS_SHARED)
     add_dependencies(${name} bcm_o_target)
@@ -529,7 +554,7 @@ function(build_libcrypto name module_source)
     target_link_libraries(${name} PUBLIC pthread)
   endif()
 
-  target_include_directories(${name} SYSTEM PUBLIC
+  target_include_directories(${name} PUBLIC
           $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
           $<INSTALL_INTERFACE:include>)
 endfunction()
@@ -558,6 +583,8 @@ if(FIPS_SHARED)
       generated_fips_shared_support.c
       ${PROJECT_SOURCE_DIR}/crypto/fipsmodule/cpucap/cpucap.c
     )
+    target_include_directories(generated_fipsmodule PRIVATE ../include)
+
     build_libcrypto(crypto $<TARGET_OBJECTS:generated_fipsmodule>)
   else()
     # On Apple and Linux platforms inject_hash.go can parse libcrypto and inject
@@ -628,10 +655,9 @@ if(BUILD_TESTING)
 
   macro(add_test_executable executable_name test_file)
     message(STATUS "Generating test executable ${executable_name}.")
-    add_executable(${executable_name} ${test_file} $<TARGET_OBJECTS:boringssl_gtest_main>)
+    add_executable(${executable_name} ${test_file})
     target_compile_definitions(${executable_name} PRIVATE BORINGSSL_IMPLEMENTATION)
-    add_dependencies(${executable_name} global_target)
-    target_link_libraries(${executable_name} test_support_lib boringssl_gtest crypto)
+    target_link_libraries(${executable_name} test_support_lib boringssl_gtest_main crypto)
     add_dependencies(all_tests ${executable_name})
   endmacro()
 
@@ -646,7 +672,6 @@ if(BUILD_TESTING)
   # it does.
   add_executable(
     ${RANDOM_TEST_EXEC}
-
     fipsmodule/rand/urandom_test.cc
   )
 
@@ -659,7 +684,6 @@ if(BUILD_TESTING)
 
   target_link_libraries(${RANDOM_TEST_EXEC} test_support_lib boringssl_gtest crypto)
 
-  add_dependencies(${RANDOM_TEST_EXEC} global_target)
   add_dependencies(all_tests ${RANDOM_TEST_EXEC})
 
   add_executable(
@@ -685,11 +709,11 @@ if(BUILD_TESTING)
     ecdh_extra/ecdh_test.cc
     dh_extra/dh_test.cc
     digest_extra/digest_test.cc
+    dilithium/p_dilithium_test.cc
     dsa/dsa_test.cc
     err/err_test.cc
     evp_extra/evp_extra_test.cc
     evp_extra/evp_test.cc
-    evp_extra/pq_kem_kat_tests_kyber512.cc
     evp_extra/scrypt_test.cc
     fipsmodule/aes/aes_test.cc
     fipsmodule/bn/bn_test.cc
@@ -714,7 +738,6 @@ if(BUILD_TESTING)
     hmac_extra/hmac_test.cc
     hrss/hrss_test.cc
     impl_dispatch_test.cc
-    kyber/p_kyber_test.cc
     lhash/lhash_test.cc
     obj/obj_test.cc
     ocsp/ocsp_test.cc
@@ -738,28 +761,48 @@ if(BUILD_TESTING)
     x509/x509_time_test.cc
     x509v3/tab_test.cc
     decrepit/blowfish/blowfish_test.cc
+    decrepit/cast/cast_test.cc
     decrepit/cfb/cfb_test.cc
     decrepit/evp/evp_test.cc
     decrepit/ripemd/ripemd_test.cc
 
     $<TARGET_OBJECTS:crypto_test_data>
-    $<TARGET_OBJECTS:boringssl_gtest_main>
-
   )
 
-  add_dependencies(${CRYPTO_TEST_EXEC} global_target)
-
-  target_link_libraries(${CRYPTO_TEST_EXEC} test_support_lib boringssl_gtest crypto)
+  target_link_libraries(${CRYPTO_TEST_EXEC} test_support_lib boringssl_gtest_main crypto)
   if(WIN32)
     target_link_libraries(${CRYPTO_TEST_EXEC} ws2_32)
+  else()
+    target_compile_options(${CRYPTO_TEST_EXEC} PUBLIC -Wno-deprecated-declarations)
   endif()
   add_dependencies(all_tests ${CRYPTO_TEST_EXEC})
+
+  message(STATUS "Generating test executable ${DYNAMIC_LOADING_TEST_EXEC}.")
+
+  add_executable(${DYNAMIC_LOADING_TEST_EXEC} dynamic_loading_test.c)
+  add_dependencies(${DYNAMIC_LOADING_TEST_EXEC} crypto)
+
+  if (BUILD_SHARED_LIBS AND NOT WIN32)
+    target_compile_options(${DYNAMIC_LOADING_TEST_EXEC} PUBLIC "-DLIBCRYPTO_PATH=$<TARGET_FILE:crypto>")
+    # Do not link to boringssl_gtest_main or any library that might be linked to libcrypto.so.
+    if(ANDROID)
+      target_link_libraries(${DYNAMIC_LOADING_TEST_EXEC} PUBLIC boringssl_gtest dl)
+    else()
+      target_link_libraries(${DYNAMIC_LOADING_TEST_EXEC} PUBLIC boringssl_gtest pthread dl)
+    endif()
+  endif()
+
+  add_dependencies(all_tests ${DYNAMIC_LOADING_TEST_EXEC})
 endif()
 
 install(TARGETS crypto
         EXPORT crypto-targets
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
+
+if(MSVC AND CMAKE_BUILD_TYPE_LOWER MATCHES "relwithdebinfo" AND FIPS)
+  install (FILES $<TARGET_FILE_DIR:crypto>/crypto.pdb DESTINATION ${CMAKE_INSTALL_LIBDIR})
+endif()
 
 configure_file("cmake/crypto-config.cmake"
     "${CMAKE_CURRENT_BINARY_DIR}/crypto-config.cmake"

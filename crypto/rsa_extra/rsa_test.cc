@@ -513,6 +513,7 @@ TEST(RSATest, GenerateFIPS) {
     SCOPED_TRACE(bits);
 
     rsa.reset(RSA_new());
+    ASSERT_TRUE(rsa);
     ASSERT_TRUE(RSA_generate_key_fips(rsa.get(), bits, nullptr));
     EXPECT_EQ(bits, BN_num_bits(rsa->n));
   }
@@ -646,6 +647,57 @@ TEST(RSATest, OnlyDGiven) {
 
   EXPECT_TRUE(RSA_verify(NID_sha256, kDummyHash, sizeof(kDummyHash), buf,
                          buf_len, key.get()));
+}
+
+TEST(RSATest, Set0Key) {
+  const int hash_nid = NID_sha256;
+  const uint8_t kDummyHash[32] = {0};
+  uint8_t sig[256];
+  unsigned sig_len = sizeof(sig);
+
+  // Reference RSA key that needs to be reset before each case as
+  // RSA_set0_key takes ownership of its parameters
+  bssl::UniquePtr<RSA> rsa;
+
+  // Allocate an empty key to imitate JCA keys via calls to RSA_set0_key
+  bssl::UniquePtr<RSA> jcaKey(RSA_new());
+  ASSERT_TRUE(jcaKey);
+
+  // FULL KEY, BLINDING => OK
+  rsa.reset(RSA_private_key_from_bytes(kKey1, sizeof(kKey1) - 1));
+  ASSERT_TRUE(rsa);
+  jcaKey.reset(RSA_new());
+  ASSERT_TRUE(jcaKey);
+  EXPECT_TRUE(RSA_set0_key(jcaKey.get(), BN_dup(rsa->n), BN_dup(rsa->e), BN_dup(rsa->d)));
+  EXPECT_TRUE(RSA_sign(hash_nid, kDummyHash, sizeof(kDummyHash), sig,
+                       &sig_len, jcaKey.get()));
+  EXPECT_TRUE(RSA_verify(hash_nid, kDummyHash, sizeof(kDummyHash), sig,
+                         sig_len, rsa.get()));
+
+  // NO |e|, BLINDNG => ERR
+  rsa.reset(RSA_private_key_from_bytes(kKey1, sizeof(kKey1) - 1));
+  ASSERT_TRUE(rsa);
+  jcaKey.reset(RSA_new());
+  ASSERT_TRUE(jcaKey);
+  EXPECT_TRUE(RSA_set0_key(jcaKey.get(), BN_dup(rsa->n), NULL, BN_dup(rsa->d)));
+  EXPECT_FALSE(RSA_sign(hash_nid, kDummyHash, sizeof(kDummyHash), sig,
+                        &sig_len, jcaKey.get()));
+  uint32_t err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_RSA, ERR_GET_LIB(err));
+  EXPECT_EQ(RSA_R_NO_PUBLIC_EXPONENT, ERR_GET_REASON(err));
+  ERR_clear_error();
+
+  // NO |e|, NO BLINDNG => OK
+  rsa.reset(RSA_private_key_from_bytes(kKey1, sizeof(kKey1) - 1));
+  ASSERT_TRUE(rsa);
+  jcaKey.reset(RSA_new());
+  ASSERT_TRUE(jcaKey);
+  EXPECT_TRUE(RSA_set0_key(jcaKey.get(), BN_dup(rsa->n), NULL, BN_dup(rsa->d)));
+  jcaKey->flags |= RSA_FLAG_NO_BLINDING;
+  EXPECT_TRUE(RSA_sign(hash_nid, kDummyHash, sizeof(kDummyHash), sig,
+                       &sig_len, jcaKey.get()));
+  EXPECT_TRUE(RSA_verify(hash_nid, kDummyHash, sizeof(kDummyHash), sig,
+                         sig_len, rsa.get()));
 }
 
 TEST(RSATest, ASN1) {
@@ -916,8 +968,8 @@ TEST(RSATest, CheckKey) {
   ASSERT_TRUE(BN_hex2bn(&rsa->d, kDEuler));
   EXPECT_TRUE(RSA_check_key(rsa.get()));
 
-  // If d is completely out of range but otherwise valid, it is rejected.
-  static const char kDTooLarge[] =
+  // If d is out of range, d > n,  but otherwise valid, it is accepted.
+  static const char kDgtN[] =
       "f2c885128cf04101c283553617c210d8ffd14cde98dc420c3c9892b55606cbedcda24298"
       "7655b3f7b9433c2c316293a1cf1a2b034f197aeec1de8d81a67d94cc902b9fce1712d5a4"
       "9c257ff705725cd77338d23535d3b87c8f4cecc15a6b72641ffd81aea106839d216b5fcd"
@@ -926,18 +978,8 @@ TEST(RSATest, CheckKey) {
       "1601fe843c79cc3efbcb8eafd79262bdd25e2bdf21440f774e26d88ed7df938c5cf6982d"
       "e9fa635b8ca36ce5c5fbd579a53cbb0348ceae752d4bc5621c5acc922ca2082494633337"
       "42e770c1";
-  ASSERT_TRUE(BN_hex2bn(&rsa->d, kDTooLarge));
-  EXPECT_FALSE(RSA_check_key(rsa.get()));
-  ERR_clear_error();
-
-  // Unless, the user explicitly allowed keys with d > n to be parsed.
-  // which is possible only in non-FIPS mode.
-#if !defined(AWSLC_FIPS)
-  allow_rsa_keys_d_gt_n();
-  ASSERT_TRUE(BN_hex2bn(&rsa->d, kDTooLarge));
+  ASSERT_TRUE(BN_hex2bn(&rsa->d, kDgtN));
   EXPECT_TRUE(RSA_check_key(rsa.get()));
-#endif
-
   ASSERT_TRUE(BN_hex2bn(&rsa->d, kD));
 
   // CRT value must either all be provided or all missing.
@@ -1217,6 +1259,139 @@ TEST(RSATest, KeygenInternalRetry) {
   EXPECT_TRUE(RSA_generate_key_ex(rsa.get(), 2048, e.get(), &cb));
 }
 
+TEST(RSATest, OldCallback) {
+  bssl::UniquePtr<RSA> rsa(RSA_new());
+  ASSERT_TRUE(rsa);
+  BN_GENCB cb;
+
+  int old_callback_call_count = 0;
+  void (*old_style_callback)(int, int, void *) = [](int event, int n,
+                                                   void *ptr) -> void {
+    BN_GENCB *cb_ptr = static_cast<BN_GENCB *>(ptr);
+    int *count_ptr = static_cast<int *>(cb_ptr->arg);
+    *count_ptr += 1;
+  };
+
+  int new_callback_call_count = 0;
+  int (*new_style_callback)(int, int, BN_GENCB *cb_ptr) = [](int event, int n,
+                                                    BN_GENCB *cb_ptr) -> int {
+    int *count_ptr = static_cast<int *>(cb_ptr->arg);
+    *count_ptr += 1;
+    return 1;
+  };
+
+  // Set the new style first, setting the old should overwrite the new callback
+  BN_GENCB_set(&cb, new_style_callback, &new_callback_call_count);
+  BN_GENCB_set_old(&cb, old_style_callback, &old_callback_call_count);
+
+  bssl::UniquePtr<BIGNUM> e(BN_new());
+  ASSERT_TRUE(e);
+  ASSERT_TRUE(BN_set_word(e.get(), RSA_F4));
+  EXPECT_TRUE(RSA_generate_key_ex(rsa.get(), 2048, e.get(), &cb));
+  // The old callback should have been called at least once
+  EXPECT_NE(old_callback_call_count, 0);
+  // The new callback shouldn't have been called
+  EXPECT_EQ(new_callback_call_count, 0);
+  int previous_count = old_callback_call_count;
+
+  // Set the new style again and overwrite the old style
+  BN_GENCB_set(&cb, new_style_callback, &new_callback_call_count);
+  EXPECT_TRUE(RSA_generate_key_ex(rsa.get(), 2048, e.get(), &cb));
+  // The old callback should have been overwritten and not called
+  EXPECT_EQ(previous_count, old_callback_call_count);
+  // The new callback should have been called at least once
+  EXPECT_NE(new_callback_call_count, 0);
+}
+
+// Test that, after a key has been used, it can still be modified into another
+// key.
+TEST(RSATest, OverwriteKey) {
+  // Make a key and perform public and private key operations with it, so that
+  // all derived values are filled in.
+  bssl::UniquePtr<RSA> key1(
+      RSA_private_key_from_bytes(kKey1, sizeof(kKey1) - 1));
+  ASSERT_TRUE(key1);
+
+  ASSERT_TRUE(RSA_check_key(key1.get()));
+  size_t len;
+  std::vector<uint8_t> ciphertext(RSA_size(key1.get()));
+  ASSERT_TRUE(RSA_encrypt(key1.get(), &len, ciphertext.data(),
+                          ciphertext.size(), kPlaintext, kPlaintextLen,
+                          RSA_PKCS1_OAEP_PADDING));
+  ciphertext.resize(len);
+
+  std::vector<uint8_t> plaintext(RSA_size(key1.get()));
+  ASSERT_TRUE(RSA_decrypt(key1.get(), &len, plaintext.data(),
+                          plaintext.size(), ciphertext.data(), ciphertext.size(),
+                          RSA_PKCS1_OAEP_PADDING));
+  plaintext.resize(len);
+  EXPECT_EQ(Bytes(plaintext), Bytes(kPlaintext, kPlaintextLen));
+
+  // Overwrite |key1| with the contents of |key2|.
+  bssl::UniquePtr<RSA> key2(
+      RSA_private_key_from_bytes(kKey2, sizeof(kKey2) - 1));
+  ASSERT_TRUE(key2);
+
+  auto copy_rsa_fields = [](RSA *dst, const RSA *src) {
+    bssl::UniquePtr<BIGNUM> n(BN_dup(RSA_get0_n(src)));
+    ASSERT_TRUE(n);
+    bssl::UniquePtr<BIGNUM> e(BN_dup(RSA_get0_e(src)));
+    ASSERT_TRUE(e);
+    bssl::UniquePtr<BIGNUM> d(BN_dup(RSA_get0_d(src)));
+    ASSERT_TRUE(d);
+    bssl::UniquePtr<BIGNUM> p(BN_dup(RSA_get0_p(src)));
+    ASSERT_TRUE(p);
+    bssl::UniquePtr<BIGNUM> q(BN_dup(RSA_get0_q(src)));
+    ASSERT_TRUE(q);
+    bssl::UniquePtr<BIGNUM> dmp1(BN_dup(RSA_get0_dmp1(src)));
+    ASSERT_TRUE(dmp1);
+    bssl::UniquePtr<BIGNUM> dmq1(BN_dup(RSA_get0_dmq1(src)));
+    ASSERT_TRUE(dmq1);
+    bssl::UniquePtr<BIGNUM> iqmp(BN_dup(RSA_get0_iqmp(src)));
+    ASSERT_TRUE(iqmp);
+    ASSERT_TRUE(RSA_set0_key(dst, n.release(), e.release(), d.release()));
+    ASSERT_TRUE(RSA_set0_factors(dst, p.release(), q.release()));
+    ASSERT_TRUE(RSA_set0_crt_params(dst, dmp1.release(), dmq1.release(),
+                                    iqmp.release()));
+  };
+  ASSERT_NO_FATAL_FAILURE(copy_rsa_fields(key1.get(), key2.get()));
+
+  auto check_rsa_compatible = [&](RSA *enc, RSA *dec) {
+    ciphertext.resize(RSA_size(enc));
+    ASSERT_TRUE(RSA_encrypt(enc, &len, ciphertext.data(),
+                            ciphertext.size(), kPlaintext, kPlaintextLen,
+                            RSA_PKCS1_OAEP_PADDING));
+    ciphertext.resize(len);
+
+    plaintext.resize(RSA_size(dec));
+    ASSERT_TRUE(RSA_decrypt(dec, &len, plaintext.data(),
+                            plaintext.size(), ciphertext.data(),
+                            ciphertext.size(), RSA_PKCS1_OAEP_PADDING));
+    plaintext.resize(len);
+    EXPECT_EQ(Bytes(plaintext), Bytes(kPlaintext, kPlaintextLen));
+  };
+
+  ASSERT_NO_FATAL_FAILURE(
+      check_rsa_compatible(/*enc=*/key1.get(), /*dec=*/key2.get()));
+  ASSERT_NO_FATAL_FAILURE(
+      check_rsa_compatible(/*enc=*/key2.get(), /*dec=*/key1.get()));
+
+  // If we generate a new key on top of |key1|, it should be usable and
+  // self-consistent. We test this by making a new key with the same parameters
+  // and checking they behave the same.
+  ASSERT_TRUE(
+      RSA_generate_key_ex(key1.get(), 1024, RSA_get0_e(key2.get()), nullptr));
+  EXPECT_NE(0, BN_cmp(RSA_get0_n(key1.get()), RSA_get0_n(key2.get())));
+
+  key2.reset(RSA_new());
+  ASSERT_TRUE(key2);
+  ASSERT_NO_FATAL_FAILURE(copy_rsa_fields(key2.get(), key1.get()));
+  ASSERT_NO_FATAL_FAILURE(
+      check_rsa_compatible(/*enc=*/key1.get(), /*dec=*/key2.get()));
+  ASSERT_NO_FATAL_FAILURE(
+      check_rsa_compatible(/*enc=*/key2.get(), /*dec=*/key1.get()));
+}
+
 #if !defined(BORINGSSL_SHARED_LIBRARY)
 TEST(RSATest, SqrtTwo) {
   bssl::UniquePtr<BIGNUM> sqrt(BN_new()), pow2(BN_new());
@@ -1321,8 +1496,10 @@ TEST(RSATest, Threads) {
 // platforms when running tests standalone via all_tests.go.
 //
 // Additionally, even when running disabled tests standalone, limit this to
-// x86_64. On other platforms, this test hits resource limits or is too slow.
-#if defined(OPENSSL_X86_64)
+// x86_64. On other platforms, this test hits resource limits or is too slow. We
+// also disable on FreeBSD. See https://crbug.com/boringssl/603.
+#if defined(OPENSSL_TSAN) || \
+    (defined(OPENSSL_X86_64) && !defined(OPENSSL_FREEBSD))
 TEST(RSATest, DISABLED_BlindingCacheConcurrency) {
   bssl::UniquePtr<RSA> rsa(
       RSA_private_key_from_bytes(kKey1, sizeof(kKey1) - 1));
@@ -1363,7 +1540,6 @@ TEST(RSATest, DISABLED_BlindingCacheConcurrency) {
     thread.join();
   }
 }
-#endif  // X86_64
+#endif  // TSAN || (X86_64 && !FREEBSD)
 
 #endif  // THREADS
-
