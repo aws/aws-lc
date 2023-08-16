@@ -19635,11 +19635,9 @@ func addMultipleCertSlotTests() {
 	ed25519CertSlot := []string{
 		multipleCertsFlag, path.Join(*resourceDir, getShimCertificate(testCertEd25519)) + "," + path.Join(*resourceDir, getShimKey(testCertEd25519)),
 	}
-	certificateSlotFlags := []string{
-		rsaCertSlot[0], rsaCertSlot[1],
-		ecdsaCertSlot[0], ecdsaCertSlot[1],
-		ed25519CertSlot[0], ed25519CertSlot[1],
-	}
+	certificateSlotFlags := append([]string{}, rsaCertSlot...)
+	certificateSlotFlags = append(certificateSlotFlags, ecdsaCertSlot...)
+	certificateSlotFlags = append(certificateSlotFlags, ed25519CertSlot...)
 
 	signError := ":NO_COMMON_SIGNATURE_ALGORITHMS:"
 	signLocalError := "remote error: handshake failure"
@@ -19686,10 +19684,11 @@ func addMultipleCertSlotTests() {
 					MaxVersion:                ver.version,
 					VerifySignatureAlgorithms: allAlgorithms,
 				},
-				flags: append(
-					certificateSlotFlags,
-					curveFlags...,
-				),
+				flags: func() []string {
+				   flags := append([]string{}, certificateSlotFlags...)
+				   flags = append(flags, curveFlags...)
+				   return flags
+				}(),
 				expectations: connectionExpectations{
 					peerSignatureAlgorithm: alg.id,
 				},
@@ -19722,10 +19721,11 @@ func addMultipleCertSlotTests() {
 					ClientAuth:                RequireAnyClientCert,
 					Certificates:              []Certificate{rsaCertificate, ecdsaP256Certificate, ed25519Certificate},
 				},
-				flags: append(
-					certificateSlotFlags,
-					curveFlags...,
-				),
+				flags: func() []string {
+				   flags := append([]string{}, certificateSlotFlags...)
+				   flags = append(flags, curveFlags...)
+				   return flags
+				}(),
 			}
 			if alg.id != signatureEd25519 {
 				// ED25519 is the last certificate set in |certificateSlotFlags|. We don't support multiple certificate
