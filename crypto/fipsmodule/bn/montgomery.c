@@ -452,12 +452,12 @@ err:
 
 // Perform montgomery multiplication using s2n-bignum functions. The arguments
 // are equivalent to the arguments of bn_mul_mont.
-// montgomery_s2n_bignum_mul_mont works only if num is a multiple of 8. For
-// num = 32 or num = 16, this uses faster primitives in s2n-bignum.
-// Additionally, montgomery_s2n_bignum_mul_mont allocates arrays at a stack, and
-// large num leads to out of bounds accesses of the arrays.
-// montgomery_use_s2n_bignum(num) must be called in advance to check these
-// conditions.
+// montgomery_s2n_bignum_mul_mont works only if num is a multiple of 8.
+// montgomery_use_s2n_bignum(num) must be called in advance to check this
+// condition.
+// For num = 32 or num = 16, this uses faster primitives in s2n-bignum.
+// montgomery_s2n_bignum_mul_mont allocates S2NBIGNUM_KMUL_32_64_TEMP_NWORDS +
+// 2 * BN_MONTGOMERY_MAX_WORDS uint64_t words at the stack.
 static void montgomery_s2n_bignum_mul_mont(BN_ULONG *rp, const BN_ULONG *ap,
                                            const BN_ULONG *bp,
                                            const BN_ULONG *np,
