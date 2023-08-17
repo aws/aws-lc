@@ -1113,3 +1113,5 @@ int SSL_delegated_credential_used(const SSL *ssl) {
 }
 
 int SSL_CTX_get_security_level(const SSL_CTX *ctx) { return 3; }
+
+void SSL_CTX_set_security_level(const SSL_CTX *ctx, int level) {}

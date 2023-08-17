@@ -23,12 +23,14 @@ add_library(
   ssl_buffer.cc
   ssl_cert.cc
   ssl_cipher.cc
+  ssl_decrepit.c
   ssl_file.cc
   ssl_key_share.cc
   ssl_lib.cc
   ssl_privkey.cc
   ssl_session.cc
   ssl_stat.cc
+  ssl_text.cc
   ssl_transcript.cc
   ssl_transfer_asn1.cc
   ssl_versions.cc
@@ -40,7 +42,6 @@ add_library(
   tls13_client.cc
   tls13_enc.cc
   tls13_server.cc
-  ssl_decrepit.c
 )
 target_compile_definitions(ssl PRIVATE BORINGSSL_IMPLEMENTATION)
 

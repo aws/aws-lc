@@ -140,6 +140,9 @@ OPENSSL_EXPORT void CONF_modules_free(void);
 // CONF_modules_unload does nothing.
 OPENSSL_EXPORT void CONF_modules_unload(int all);
 
+// CONF_modules_finish does nothing.
+OPENSSL_EXPORT void CONF_modules_finish(void);
+
 // OPENSSL_config does nothing.
 OPENSSL_EXPORT void OPENSSL_config(const char *config_name);
 
