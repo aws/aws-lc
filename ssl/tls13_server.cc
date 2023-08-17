@@ -114,7 +114,20 @@ static const SSL_CIPHER *choose_tls13_cipher(
   CBS_init(&cipher_suites, client_hello->cipher_suites,
            client_hello->cipher_suites_len);
 
-  const uint16_t version = ssl_protocol_version(ssl);
+  // TODO [childw] factor this out into common routine
+  ssl->ctx->peer_ciphers = UniquePtr<STACK_OF(SSL_CIPHER)>(sk_SSL_CIPHER_new_null());
+  while (CBS_len(&cipher_suites) > 0) {
+    uint16_t cipher_suite;
+    if (!CBS_get_u16(&cipher_suites, &cipher_suite)) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_ERROR_IN_RECEIVED_CIPHER_LIST);
+      return nullptr;
+    }
+    const SSL_CIPHER *c = SSL_get_cipher_by_value(cipher_suite);
+    *(ssl->ctx);
+    if (c == NULL || !sk_SSL_CIPHER_push(ssl->ctx->peer_ciphers.get(), c)) {
+      return nullptr;
+    }
+  }
 
   STACK_OF(SSL_CIPHER) *tls13_ciphers = nullptr;
   if (ssl->ctx->tls13_cipher_list &&
@@ -123,11 +136,15 @@ static const SSL_CIPHER *choose_tls13_cipher(
     tls13_ciphers = ssl->ctx->tls13_cipher_list.get()->ciphers.get();
   }
 
+  // Reset |cipher_suites| before passing
+  CBS_init(&cipher_suites, client_hello->cipher_suites,
+           client_hello->cipher_suites_len);
+
   return ssl_choose_tls13_cipher(cipher_suites,
                                  ssl->config->aes_hw_override
                                      ? ssl->config->aes_hw_override_value
                                      : EVP_has_aes_hardware(),
-                                 version, group_id, tls13_ciphers);
+                                 ssl_protocol_version(ssl), group_id, tls13_ciphers);
 }
 
 static bool add_new_session_tickets(SSL_HANDSHAKE *hs, bool *out_sent_tickets) {

@@ -275,6 +275,7 @@ static UniquePtr<STACK_OF(SSL_CIPHER)> ssl_parse_client_cipher_list(
     return nullptr;
   }
 
+  // TODO [childw] factor this out into common routine
   while (CBS_len(&cipher_suites) > 0) {
     uint16_t cipher_suite;
 
@@ -366,9 +367,6 @@ static const SSL_CIPHER *choose_cipher(
     in_group_flags = NULL;
     allow = server_pref->ciphers.get();
   }
-
-  //bssl::UniquePtr<STACK_OF(SSL_CIPHER)> peer_ciphers(sk_SSL_CIPHER_dup(client_pref.get()));
-  //ssl->ctx->peer_ciphers = std::move(peer_ciphers);
 
   uint32_t mask_k, mask_a;
   ssl_get_compatible_server_ciphers(hs, &mask_k, &mask_a);
