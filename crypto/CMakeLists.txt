@@ -431,7 +431,6 @@ add_library(
   rc4/rc4.c
   refcount_c11.c
   refcount_lock.c
-  refcount_win.c
   rsa_extra/rsa_asn1.c
   rsa_extra/rsassa_pss_asn1.c
   rsa_extra/rsa_print.c
