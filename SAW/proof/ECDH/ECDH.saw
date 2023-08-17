@@ -47,13 +47,6 @@ include "evp-function-specs.saw";
 
 ////////////////////////////////////////////////////////////////////////////////
 // Proof commands
-
-jacobian_affine_0_thm <- prove_print
-  (do {
-    assume_unsat;
-  })
-  (rewrite (cryptol_ss ()) {{ \k -> fromJacobian { x = ((ec_point_jacobian_scalar_mul (k % `P384_n) P384_G_Jacobian).x % `P384_p), y = ((ec_point_jacobian_scalar_mul (k % `P384_n) P384_G_Jacobian).y % `P384_p), z = ((ec_point_jacobian_scalar_mul (k % `P384_n) P384_G_Jacobian).z % `P384_p) } == ec_point_affine_scalar_mul (k % `P384_n) P384_G }});
-
 /*
 ec_point_affine_scalar_mul is an undefined Cryptol function that is used as a variable.
 The following theorem is an assumption about the behavior of this function. We assume 
@@ -69,6 +62,13 @@ jacobian_affine_mul_thm <- prove_print
       fromJacobian (jacobianFromMontBV (point_mul_generic p s))
   }});
 
+jacobian_affine_mul_base_thm <- prove_print
+  (do {
+    assume_unsat;
+  })
+  (rewrite (cryptol_ss ()) {{
+  \s -> ec_point_affine_scalar_mul s G == fromJacobian (jacobianFromMontBV (point_mul_base_generic (scalarToBV s)))
+  }});
 
 llvm_verify m "EVP_PKEY_CTX_new_id"
   [ AWSLC_fips_evp_pkey_methods_ov
@@ -117,22 +117,19 @@ llvm_verify m "EVP_PKEY_keygen_init"
 llvm_verify m "EVP_PKEY_keygen"
   [ OPENSSL_malloc_ov
   , bn_rand_range_words_ov
-  , ec_GFp_mont_mul_base_ov
+  , ec_point_mul_scalar_base_ov
   , ec_GFp_simple_is_on_curve_ov
   ]
   true
   EVP_PKEY_keygen_spec
   (do {
-    unfolding ["jacobianToMontBV", "jacobianFromMontBV", "jacobianToMont", "jacobianFromMont", "jacobianToBV", "jacobianFromBV"];
+    unfolding ["EC_keyPrivateToPublic"];
     simplify (cryptol_ss ());
+    simplify (addsimp jacobian_affine_mul_base_thm empty_ss);
     simplify (addsimp scalarBV_thm empty_ss);
-    simplify (addsimp fieldElementBV_thm empty_ss);
-    simplify (addsimps mont_thms empty_ss);
-    simplify (addsimp jacobian_affine_0_thm empty_ss);
-    goal_eval_unint ["ec_point_affine_scalar_mul", "fromJacobian"];
-    w4_unint_z3 ["ec_point_affine_scalar_mul", "fromJacobian"];
+    goal_eval_unint ["point_mul_base_generic", "fromJacobian", "jacobianFromMontBV"];
+    w4_unint_z3 ["point_mul_base_generic", "fromJacobian", "jacobianFromMontBV"];
   });
-
 
 llvm_verify m "EVP_PKEY_derive_init"
   []

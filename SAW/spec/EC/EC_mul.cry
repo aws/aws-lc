@@ -99,3 +99,104 @@ point_mul_generic p s = r_gen
     pz = felem_from_bytes p.Z
     r = (point_mul [px, py, pz] s)
     r_gen = {X = felem_to_bytes (r@0), Y = felem_to_bytes (r@1), Z = felem_to_bytes (r@2)}
+
+
+// ---------------------------------------------------------------
+// point_mul_base
+
+type ngroups = 4
+type csize = ngroups*wsize
+
+type subtable_size = 2^^(wsize-1)
+type table_size = (bit_length+csize-1)/csize
+
+type nwindows = (bit_length+wsize-1)/wsize
+
+p384_felem_one : felem
+p384_felem_one = [0xffffffff00000001, 0x00000000ffffffff,
+                  0x0000000000000001, 0x0000000000000000,
+                  0x0000000000000000, 0x0000000000000000]
+
+parameter
+  p384_g_pre_comp : [table_size][subtable_size][2]felem
+
+// The following definition is almost the same as the one in EC_primitives.cry
+// TODO: Generalize the one in EC_primitives.cry when we start working on the Coq part
+conditional_subtract_if_even_mixed : point -> scalar -> point -> point
+conditional_subtract_if_even_mixed p1 t p2 = r where
+  t_limb = (byte_to_limb ((drop`{bit_length-8} t) && 1))
+  tmp1 = [p2@0, (felem_opp (p2@1)), p2@2]
+  tmp2 = point_add 1 p1 tmp1
+  r = [(felem_cmovznz t_limb (tmp2@0) (p1@0)),
+       (felem_cmovznz t_limb (tmp2@1) (p1@1)),
+       (felem_cmovznz t_limb (tmp2@2) (p1@2))]
+
+select_point_affine_loop_body : [64] -> [2]felem -> [64] -> [2]felem -> [2]felem
+select_point_affine_loop_body idx acc i p = [x, y]
+  where
+    mismatch = i ^ idx
+    x = felem_cmovznz mismatch (p@0) (acc@0)
+    y = felem_cmovznz mismatch (p@1) (acc@1)
+
+// select_point_affine
+// Note: using [64] for idx instead of [16] in the C code
+select_point_affine : [64] -> [subtable_size][2]felem -> [2]felem
+select_point_affine idx subtable = foldl f init (zip [0..(subtable_size-1)] subtable)
+  where
+    init = [zero_felem, zero_felem]
+    f acc (i, p) = select_point_affine_loop_body idx acc i p
+
+// select point and add it onto accumulator
+add_base : [nwindows]point_id  -> point -> [64] -> point
+add_base rnaf p j = res
+  where
+    d = rnaf@j
+    // is_neg = (d < 0) ? 1 : 0
+    is_neg = (d >> 15)
+    // neg_is_neg = -is_neg
+    neg_is_neg = (d >>$ 15)
+    // abs_d = abs(d)
+    abs_d = is_neg + (d ^ neg_is_neg)
+    idx = abs_d >>$ 1
+    tmp = select_point_affine (sign_extend_16_64 idx) (p384_g_pre_comp@(j/4))
+    ftmp = felem_opp (tmp@1)
+    r = [tmp@0, (felem_cmovznz (point_id_to_limb is_neg) (tmp@1) ftmp), p384_felem_one]
+    res = point_add 1 p r
+
+// double accumulator and add all points in the ith group
+double_add_base : [nwindows]point_id  -> point -> [64]-> point
+double_add_base rnaf p i = res
+  where
+    doubled = if i == ((`(ngroups) - 1):[64])
+              then p
+              else foldl (\x -> \y -> point_double x) p [0 .. (wsize-1)]
+    // In Cryptol, only type variables can be in the expression of sequence bounds.
+    // Therefore, i as a value variable, could not be used in sequence bounds.
+    // We enumerate all possible bounds to accomodate this problem.
+    res = (if i == ((`(ngroups) - 1):[64])
+          then foldl (add_base rnaf) doubled [(nwindows-4)/4*4+3, ((nwindows-4)/4*4-1) .. 0 : [64]]
+          else if i == ((`(ngroups) - 2):[64])
+          then foldl (add_base rnaf) doubled [(nwindows-3)/4*4+2, ((nwindows-3)/4*4-2) .. 0 : [64]]
+          else if i == ((`(ngroups) - 3):[64])
+          then foldl (add_base rnaf) doubled [(nwindows-2)/4*4+1, ((nwindows-2)/4*4-3) .. 0 : [64]]
+          else if i == ((`(ngroups) - 4):[64])
+          then foldl (add_base rnaf) doubled [(nwindows-1)/4*4, ((nwindows-1)/4*4-4) .. 0 : [64]]
+          else error "Unreachable branch reached.")
+
+// point_mul_base
+point_mul_base : scalar -> point
+point_mul_base s = r
+  where
+    pre_comp = p384_g_pre_comp
+    rnaf = mul_scalar_rwnaf s
+    acc = zero : [3]felem
+    res = foldl (double_add_base rnaf) acc [(ngroups - 1), (ngroups - 2) .. 0]
+    g = ((p384_g_pre_comp@0)@0) # [p384_felem_one]
+    r = conditional_subtract_if_even_mixed res s g
+
+// point_mul_base_generic
+point_mul_base_generic : scalar -> JacobianBVPoint
+point_mul_base_generic s = r_gen
+  where
+    r = (point_mul_base s)
+    r_gen = {X = felem_to_bytes (r@0), Y = felem_to_bytes (r@1), Z = felem_to_bytes (r@2)}

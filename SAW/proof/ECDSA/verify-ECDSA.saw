@@ -44,11 +44,13 @@ BN_num_bits_ec_bits_ov <- llvm_verify m "BN_num_bits"
 
 // assume (without proving) the equivalence of point operations in affine and
 // jacobian coordinates
-jacobian_affine_0_thm <- prove_print
+jacobian_affine_mul_base_thm <- prove_print
   (do {
     assume_unsat;
   })
-  (rewrite (cryptol_ss ()) {{ \k -> fromJacobian { x = ((ec_point_jacobian_scalar_mul (k % `P384_n) P384_G_Jacobian).x % `P384_p), y = ((ec_point_jacobian_scalar_mul (k % `P384_n) P384_G_Jacobian).y % `P384_p), z = ((ec_point_jacobian_scalar_mul (k % `P384_n) P384_G_Jacobian).z % `P384_p) } == ec_point_affine_scalar_mul (k % `P384_n) P384_G }});
+  (rewrite (cryptol_ss ()) {{
+    \s -> ec_point_affine_scalar_mul s G == fromJacobian (jacobianFromMontBV (point_mul_base_generic (scalarToBV s)))
+  }});
 jacobian_affine_1_thm <- prove_print
   (do {
     assume_unsat;
@@ -76,7 +78,7 @@ ECDSA_do_sign_ov <- llvm_verify m "ECDSA_do_sign"
   , bn_mod_mul_montgomery_small_RR_d_same_ov
   , bn_mod_add_words_ov
   , bn_mod_add_words_same_l_ov
-  , ec_GFp_mont_mul_base_ov
+  , ec_point_mul_scalar_base_ov
   , ec_GFp_simple_is_on_curve_ov
   , ec_GFp_mont_mul_public_batch_ov
   , ec_GFp_mont_cmp_x_coordinate_ov
@@ -91,9 +93,9 @@ ECDSA_do_sign_ov <- llvm_verify m "ECDSA_do_sign"
     simplify (addsimp scalarBV_thm empty_ss);
     simplify (addsimp fieldElementBV_thm empty_ss);
     simplify (addsimps mont_thms empty_ss);
-    simplify (addsimp jacobian_affine_0_thm empty_ss);
+    simplify (addsimp jacobian_affine_mul_base_thm empty_ss);
     simplify (addsimps mod_thms empty_ss);
-    goal_eval_unint ["inv0", "ec_point_affine_scalar_mul"];
+    goal_eval_unint ["inv0", "point_mul_base_generic", "fromJacobian"];
     simplify (addsimps [append_assoc_thm_1, append_at_thm] empty_ss);
     simplify (addsimps [append_assoc_thm_2, append_slice_64_thm, append_assoc_64_thm] empty_ss);
     hoist_ifs_in_goal;
@@ -107,7 +109,7 @@ ECDSA_do_sign_ov <- llvm_verify m "ECDSA_do_sign"
     hoist_ifs_in_goal;
     simplify (addsimps minor_touchup_thms empty_ss);
     simplify (addsimp eq_modulo_arith_thm empty_ss);
-    w4_unint_z3 ["inv0", "ec_point_affine_scalar_mul"];
+    w4_unint_z3 ["inv0", "point_mul_base_generic", "fromJacobian"];
   });
 
 ecdsa_do_verify_no_self_test_ov <- llvm_verify m "ecdsa_do_verify_no_self_test"
@@ -125,7 +127,6 @@ ecdsa_do_verify_no_self_test_ov <- llvm_verify m "ecdsa_do_verify_no_self_test"
   , bn_mod_mul_montgomery_small_RR_d_same_ov
   , bn_mod_add_words_ov
   , ERR_put_error_ov
-  , ec_GFp_mont_mul_base_ov
   , ec_GFp_simple_is_on_curve_ov
   , ec_GFp_mont_mul_public_batch_ov
   , ec_GFp_mont_cmp_x_coordinate_ov

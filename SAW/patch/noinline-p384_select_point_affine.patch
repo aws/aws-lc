@@ -1,0 +1,12 @@
+diff --git a/crypto/fipsmodule/ec/p384.c b/crypto/fipsmodule/ec/p384.c
+index 6941f2626..4cd58c6a4 100644
+--- a/crypto/fipsmodule/ec/p384.c
++++ b/crypto/fipsmodule/ec/p384.c
+@@ -715,6 +715,7 @@ static void p384_select_point(p384_felem out[3],
+ 
+ // p384_select_point_affine selects the |idx|-th affine point from
+ // the given precomputed table and copies it to |out| in constant-time.
++__attribute__((noinline))
+ static void p384_select_point_affine(p384_felem out[2],
+                                      size_t idx,
+                                      const p384_felem table[][2],

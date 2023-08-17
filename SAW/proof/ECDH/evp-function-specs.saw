@@ -113,6 +113,9 @@ let EVP_PKEY_paramgen_spec = do {
 
 
 let EVP_PKEY_keygen_spec = do {
+
+  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+
   d <- crucible_fresh_cryptol_var "d" {| Integer |};
   crucible_ghost_value ec_random_nonzero_scalar_out d;
   crucible_ghost_value bn_rand_range_words_out      d;
@@ -130,6 +133,8 @@ let EVP_PKEY_keygen_spec = do {
   crucible_points_to out_pkey_ptr_ptr crucible_null;
 
   crucible_execute_func [ctx_ptr, out_pkey_ptr_ptr];
+
+  global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
 
   out_key_ptr <- crucible_alloc (llvm_struct "struct.evp_pkey_st");
   ec_key_ptr <- crucible_alloc (llvm_struct "struct.ec_key_st");

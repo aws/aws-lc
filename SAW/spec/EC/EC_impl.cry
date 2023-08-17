@@ -17,6 +17,12 @@ import EC_P384_5
 
 type wsize = 5
 
+/* The felem_opp_wrapper introduces an extra input to felem_opp
+ to stop the concrete evaluation of felem_opp when applied onto concrete values.
+*/
+felem_opp_wrapper : () -> felem -> felem
+felem_opp_wrapper _ n = felem_opp n
+
 /*
 testForDouble_ct is a constant time form of testForDouble, which 
 is used to test whether two points are equal. 

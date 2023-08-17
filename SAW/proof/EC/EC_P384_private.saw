@@ -27,6 +27,17 @@ let p384_select_point_spec = do {
   crucible_points_to outarg_ptr (crucible_term {{ select_point id points }});
 };
 
+let p384_select_point_affine_spec = do {
+  outarg_ptr <- crucible_alloc (llvm_array 2 (llvm_array p384_felem_limbs (llvm_int limb_length)));
+  id <- crucible_fresh_var "id" (llvm_int 64);
+  (points, points_ptr) <- ptr_to_fresh_readonly "points" (llvm_array tsize (llvm_array 2 (llvm_array p384_felem_limbs (llvm_int limb_length))));
+
+  crucible_execute_func [outarg_ptr, (crucible_term id), points_ptr, (crucible_term {{`tsize}})];
+
+  crucible_points_to outarg_ptr (crucible_term {{ select_point_affine id points }});
+};
+
+
 
 let p384_mul_scalar_rwnaf_spec = do {
   rnaf_ptr <- crucible_alloc (llvm_array numWindows (llvm_int 16));
@@ -61,6 +72,9 @@ p384_select_point_ov <- llvm_verify m
   "p384_select_point" [p384_felem_cmovznz_same_r_ov] true
   p384_select_point_spec (w4_unint_z3 []);
 
+p384_select_point_affine_ov <- llvm_verify m
+  "p384_select_point_affine" [p384_felem_cmovznz_same_r_ov] true
+  p384_select_point_affine_spec (w4_unint_z3 []);
 
 mul_scalar_rwnaf_ct_equiv <- prove_folding_theorem {{ \a -> (mul_scalar_rwnaf a) == (mul_scalar_rwnaf_ct a) }};
 
@@ -74,7 +88,6 @@ p384_mul_scalar_rwnaf_ov <- llvm_verify m
   simplify (addsimps [mul_scalar_rwnaf_ct_equiv] basic_ss);
   w4_unint_z3 ["scalar_get_bit"];
   });
-
 
 p384_point_mul_ov <- llvm_verify m "ec_GFp_nistp384_point_mul"
   [ p384_point_add_jac_ov
@@ -103,5 +116,58 @@ p384_point_mul_ov <- llvm_verify m "ec_GFp_nistp384_point_mul"
   ];
   });
 
+// ---------------------------------------------------------------
+// point_mul_base
 
+// Establishing the equivalence between felem_opp_wrapper and felem_opp.
+// This will rewrite the felem_opp_wrapper in point_mul_base into felem_opp.
+felem_opp_wrapper_felem_opp_equiv <-
+  prove_print
+  (w4_unint_z3 ["felem_opp"])
+  (rewrite (cryptol_ss ()) {{ \x y -> (felem_opp_wrapper x y) == (felem_opp y) }});
 
+let p384_point_mul_base_spec = do {
+
+  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  group_ptr <- crucible_alloc_readonly (llvm_struct "struct.ec_group_st");
+  r_ptr <- crucible_alloc (llvm_struct "struct.EC_JACOBIAN");
+  (scalar, scalar_ptr) <- ptr_to_fresh_readonly "p_scalar" i384;
+
+  crucible_execute_func [group_ptr, r_ptr, scalar_ptr];
+
+  global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
+
+  points_to_EC_JACOBIAN r_ptr {{ point_mul_base_generic scalar }};
+};
+
+// SAW eagerly do concrete evaluation when inputs to a function are concrete values.
+// This happens in the override matching step, causing concrete evaluation of
+// user-defined primitive function `felem_opp` to fail.
+// To work around this issue, we define a function called `felem_opp_wrapper`
+// that takes an additional input, which we assign it to be a fresh symbolic value.
+// This prohibits SAW from performing concrete evaluation over the term
+// `felem_opp_wrapper u x`. In the proof script, we rewrite `felem_opp_wrapper u x`
+// to be `felem_opp x` and then perform SMT proofs treating felem_opp as uninterpreted.
+// For more context, see discussion in https://github.com/GaloisInc/saw-script/pull/1903
+p384_point_mul_base_ov <- llvm_verify m "ec_GFp_nistp384_point_mul_base"
+  [ p384_point_add_same_r_mixed_ov
+  , p384_point_add_same_l_mixed_ov
+  , p384_point_double_same_ov
+  , bignum_tolebytes_6_ov
+  , p384_felem_cmovznz_ov
+  , p384_felem_cmovznz_same_l_ov
+  , p384_felem_cmovznz_same_r_ov
+  , p384_select_point_affine_ov
+  , p384_mul_scalar_rwnaf_ov
+  , bignum_neg_p384_wrapper_ov
+  , p384_felem_copy_ov
+  ]
+  true
+  p384_point_mul_base_spec
+  (do {
+    simplify (addsimps [felem_opp_wrapper_felem_opp_equiv] empty_ss);
+    w4_unint_z3 ["select_point_affine", "felem_sqr", "felem_add", "felem_sub",
+                 "felem_mul", "mul_scalar_rwnaf", "felem_opp", "felem_cmovznz",
+                 "felem_to_bytes", "felem_from_bytes"];
+  });
