@@ -52,14 +52,14 @@
 // This might be a bit of a leap of faith, esp on Windows, but there's nothing
 // that we can do about it.)
 
-// When in FIPS mode we use the CPU Jitter entropy source to seed our DRBG.
+// When in FIPS mode we use the CPU Jitter entropy source to seed our DRBG.  
 // This entropy source is very slow and can incur a cost anywhere between 10-60ms
-// depending on configuration and CPU.  Increasing to 2^24 will amortize the
-// penalty over more requests.  This is the same value used in OpenSSL 3.0
+// depending on configuration and CPU.  Increasing to 2^24 will amortize the 
+// penalty over more requests.  This is the same value used in OpenSSL 3.0  
 // and meets the requirements defined in SP 800-90B for a max reseed of interval (2^48)
 //
 // CPU Jitter:  https://www.chronox.de/jent/doc/CPU-Jitter-NPTRNG.html
-//
+// 
 // kReseedInterval is the number of generate calls made to CTR-DRBG before
 // reseeding.
 
@@ -94,9 +94,6 @@ struct rand_thread_state {
   // calls is the number of generate calls made on |drbg| since it was last
   // (re)seeded. This is bound by |kReseedInterval|.
   unsigned calls;
-  // fork_unsafe_buffering is non-zero iff, when |drbg| was last (re)seeded,
-  // fork-unsafe buffering was enabled.
-  int fork_unsafe_buffering;
 
 #if defined(BORINGSSL_FIPS)
   // next and prev form a NULL-terminated, double-linked list of all states in
@@ -378,7 +375,6 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
   }
 
   const uint64_t fork_generation = CRYPTO_get_fork_generation();
-  const int fork_unsafe_buffering = rand_fork_unsafe_buffering_enabled();
 
   // Additional data is mixed into every CTR-DRBG call to protect, as best we
   // can, against forks & VM clones. We do not over-read this information and
@@ -393,7 +389,7 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
     // entropy is used. This can be expensive (one read per |RAND_bytes| call)
     // and so is disabled when we have fork detection, or if the application has
     // promised not to fork.
-    if (fork_generation != 0 || fork_unsafe_buffering) {
+    if (fork_generation != 0 || rand_fork_unsafe_buffering_enabled()) {
       OPENSSL_memset(additional_data, 0, sizeof(additional_data));
     } else if (!have_rdrand()) {
       // No alternative so block for OS entropy.
@@ -445,7 +441,6 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
     }
     state->calls = 0;
     state->fork_generation = fork_generation;
-    state->fork_unsafe_buffering = fork_unsafe_buffering;
 
 #if defined(BORINGSSL_FIPS)
     if (state != &stack_state) {
@@ -465,14 +460,7 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
   }
 
   if (state->calls >= kReseedInterval ||
-      // If we've forked since |state| was last seeded, reseed.
-      state->fork_generation != fork_generation ||
-      // If |state| was seeded from a state with different fork-safety
-      // preferences, reseed. Suppose |state| was fork-safe, then forked into
-      // two children, but each of the children never fork and disable fork
-      // safety. The children must reseed to avoid working from the same PRNG
-      // state.
-      state->fork_unsafe_buffering != fork_unsafe_buffering) {
+      state->fork_generation != fork_generation) {
     uint8_t seed[CTR_DRBG_ENTROPY_LEN];
     int want_additional_input;
     rand_get_seed(state, seed, &want_additional_input);
@@ -499,7 +487,6 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
     }
     state->calls = 0;
     state->fork_generation = fork_generation;
-    state->fork_unsafe_buffering = fork_unsafe_buffering;
     OPENSSL_cleanse(seed, CTR_DRBG_ENTROPY_LEN);
     OPENSSL_cleanse(add_data_for_reseed, CTR_DRBG_ENTROPY_LEN);
   } else {

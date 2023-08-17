@@ -570,14 +570,14 @@ func main() {
 		}
 		os.Stdout.Write(regcapBytes)
 		os.Stdout.WriteString("\n")
-		return
+		os.Exit(0)
 	}
 
 	if len(*jsonInputFile) > 0 {
 		if err := processFile(*jsonInputFile, supportedAlgos, middle); err != nil {
 			log.Fatalf("failed to process input file: %s", err)
 		}
-		return
+		os.Exit(0)
 	}
 
 	var config Config
@@ -783,7 +783,7 @@ func main() {
 
 	if len(*fetchFlag) > 0 {
 		io.WriteString(fetchOutputTee, "]\n")
-		return
+		os.Exit(0)
 	}
 
 	if ok, err := getResultsWithRetry(server, url); err != nil {
