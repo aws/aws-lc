@@ -352,23 +352,23 @@ static const SSL_CIPHER *choose_cipher(
   // such value exists yet.
   int group_min = -1;
 
-  UniquePtr<STACK_OF(SSL_CIPHER)> client_pref =
-      ssl_parse_client_cipher_list(client_hello);
-  if (!client_pref) {
+  ssl->ctx->peer_ciphers = ssl_parse_client_cipher_list(client_hello);
+  if (!ssl->ctx->peer_ciphers) {
     return nullptr;
   }
 
   if (ssl->options & SSL_OP_CIPHER_SERVER_PREFERENCE) {
     prio = server_pref->ciphers.get();
     in_group_flags = server_pref->in_group_flags;
-    allow = client_pref.get();
+    allow = ssl->ctx->peer_ciphers.get();
   } else {
-    prio = client_pref.get();
+    prio = ssl->ctx->peer_ciphers.get();
     in_group_flags = NULL;
     allow = server_pref->ciphers.get();
   }
 
-  ssl->ctx->peer_ciphers = std::move(client_pref);
+  //bssl::UniquePtr<STACK_OF(SSL_CIPHER)> peer_ciphers(sk_SSL_CIPHER_dup(client_pref.get()));
+  //ssl->ctx->peer_ciphers = std::move(peer_ciphers);
 
   uint32_t mask_k, mask_a;
   ssl_get_compatible_server_ciphers(hs, &mask_k, &mask_a);
