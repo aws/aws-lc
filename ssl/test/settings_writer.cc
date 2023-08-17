@@ -75,11 +75,10 @@ bool SettingsWriter::Commit() {
   }
   bssl::UniquePtr<uint8_t> free_settings(settings);
 
-  struct fclose_deleter {
+  struct FileCloser {
     void operator()(FILE *f) const { fclose(f); }
   };
-
-  using ScopedFILE = std::unique_ptr<FILE, fclose_deleter>;
+  using ScopedFILE = std::unique_ptr<FILE, FileCloser>;
   ScopedFILE file(fopen(path_.c_str(), "w"));
   if (!file) {
     return false;

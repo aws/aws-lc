@@ -11951,11 +11951,11 @@ TEST(SSLTest, SSLFileTests) {
   GTEST_SKIP();
 #endif
 
-  struct fclose_deleter {
+  struct FileCloser {
     void operator()(FILE *f) const { fclose(f); }
   };
 
-  using ScopedFILE = std::unique_ptr<FILE, fclose_deleter>;
+  using ScopedFILE = std::unique_ptr<FILE, FileCloser>;
 
 #if defined(OPENSSL_WINDOWS)
   char rsa_pem_filename[L_tmpnam];
