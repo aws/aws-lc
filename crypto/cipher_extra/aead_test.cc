@@ -1304,6 +1304,7 @@ TEST(AEADTest, TestGCMSIV128Change16Alignment) {
   uint8_t pt[16] = {0};
   uint8_t ct[32] = {0};
   EVP_AEAD_CTX* encrypt_ctx_128 = (EVP_AEAD_CTX*)malloc(sizeof(EVP_AEAD_CTX) + 8);
+  ASSERT_TRUE(encrypt_ctx_128);
 
   const EVP_AEAD *cipher_128 = EVP_aead_aes_128_gcm_siv();
 
@@ -1343,6 +1344,7 @@ TEST(AEADTest, TestGCMSIV256Change16Alignment) {
   uint8_t pt[16] = {0};
   uint8_t ct[32] = {0};
   EVP_AEAD_CTX* encrypt_ctx_256 = (EVP_AEAD_CTX*)malloc(sizeof(EVP_AEAD_CTX) + 8);
+  ASSERT_TRUE(encrypt_ctx_256);
 
   const EVP_AEAD *cipher_256 = EVP_aead_aes_256_gcm_siv();
 
