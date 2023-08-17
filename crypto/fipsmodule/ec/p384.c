@@ -32,7 +32,7 @@
 //   #define p384_felem_add(out, in0, in1) bignum_add_p384(out, in0, in1)
 // when s2n-bignum is used.
 //
-// If (1) x86 or aarch64, (2) linux or apple, and (3) OPENSSL_NO_ASM is not
+// If (1) x86_64 or aarch64, (2) linux or apple, and (3) OPENSSL_NO_ASM is not
 // set, s2n-bignum path is capable.
 #if !defined(OPENSSL_NO_ASM) &&                                                \
     (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE)) &&                      \

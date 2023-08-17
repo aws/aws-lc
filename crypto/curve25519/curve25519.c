@@ -31,7 +31,7 @@
 #include "../internal.h"
 #include "../fipsmodule/cpucap/internal.h"
 
-// If (1) x86 or aarch64, (2) linux or apple, and (3) OPENSSL_NO_ASM is not
+// If (1) x86_64 or aarch64, (2) linux or apple, and (3) OPENSSL_NO_ASM is not
 // set, s2n-bignum path is capable.
 #if ((defined(OPENSSL_X86_64) &&                                               \
           !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)) ||                        \
