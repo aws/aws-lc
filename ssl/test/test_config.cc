@@ -1398,7 +1398,9 @@ static enum ssl_select_cert_result_t SelectCertificateCallback(
     return ssl_select_cert_error;
   }
 
-  if (config->use_early_callback && !InstallCertificate(ssl)) {
+  if (config->use_early_callback &&
+      !InstallMultipleCertificates(ssl) &&
+      !InstallCertificate(ssl)) {
     return ssl_select_cert_error;
   }
 
@@ -1824,7 +1826,6 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
     return nullptr;
   }
   // Install the certificate synchronously if nothing else will handle it.
-  // Multiple Certificates is only tested synchronously as of now.
   if (!use_early_callback && !use_old_client_cert_callback && !async &&
       !InstallMultipleCertificates(ssl.get()) &&
       !InstallCertificate(ssl.get())) {

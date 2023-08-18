@@ -211,6 +211,8 @@ struct TestConfig {
   // multiple_certs_slot is used to associate the server with the multiple
   // certificate/private key slot configuration. The certificate comes first,
   // then the private key.
+  // When |multiple_certs_slot| is defined, the certificates defined are
+  // prioritized over certs defined with |cert_file| and |key_file|.
   std::vector<std::pair<std::string, std::string>> multiple_certs_slot;
 
   int argc;
