@@ -477,29 +477,29 @@ static void montgomery_s2n_bignum_mul_mont(BN_ULONG *rp, const BN_ULONG *ap,
   uint64_t w = n0[0];
 
   if (num == 32) {
-#if defined(__ARM_NEON)
-    if (ap == bp)
-      bignum_ksqr_32_64_neon(mulres, ap, t);
-    else
-      bignum_kmul_32_64_neon(mulres, ap, bp, t);
-#else
-    if (ap == bp)
-      bignum_ksqr_32_64(mulres, ap, t);
-    else
-      bignum_kmul_32_64(mulres, ap, bp, t);
-#endif
+    if (CRYPTO_is_NEON_capable()) {
+      if (ap == bp)
+        bignum_ksqr_32_64_neon(mulres, ap, t);
+      else
+        bignum_kmul_32_64_neon(mulres, ap, bp, t);
+    } else {
+      if (ap == bp)
+        bignum_ksqr_32_64(mulres, ap, t);
+      else
+        bignum_kmul_32_64(mulres, ap, bp, t);
+    }
   } else if (num == 16) {
-#if defined(__ARM_NEON)
-    if (ap == bp)
-      bignum_ksqr_16_32_neon(mulres, ap, t);
-    else
-      bignum_kmul_16_32_neon(mulres, ap, bp, t);
-#else
-    if (ap == bp)
-      bignum_ksqr_16_32(mulres, ap, t);
-    else
-      bignum_kmul_16_32(mulres, ap, bp, t);
-#endif
+    if (CRYPTO_is_NEON_capable()) {
+      if (ap == bp)
+        bignum_ksqr_16_32_neon(mulres, ap, t);
+      else
+        bignum_kmul_16_32_neon(mulres, ap, bp, t);
+    } else {
+      if (ap == bp)
+        bignum_ksqr_16_32(mulres, ap, t);
+      else
+        bignum_kmul_16_32(mulres, ap, bp, t);
+    }
   } else {
     if (ap == bp)
       bignum_sqr(num * 2, mulres, num, ap);
@@ -518,13 +518,9 @@ static void montgomery_s2n_bignum_mul_mont(BN_ULONG *rp, const BN_ULONG *ap,
   //    A. The result of step 1 >= 2^(64*num), meaning that bignum_emontredc_8n
   //       returned 1. Since m is less than 2^(64*num), (result of step 1) >= m holds.
   //    B. The result of step 1 fits in 2^(64*num), and the result >= m.
-  uint64_t c;
-
-#if defined(__ARM_NEON)
-  c = bignum_emontredc_8n_neon(num, mulres, np, w); // c: case A
-#else
-  c = bignum_emontredc_8n(num, mulres, np, w); // c: case A
-#endif
+  uint64_t c = CRYPTO_is_NEON_capable() ? 
+               bignum_emontredc_8n_neon(num, mulres, np, w) :
+               bignum_emontredc_8n(num, mulres, np, w); // c: case A
   c |= bignum_ge(num, mulres + num, num, np);  // c: case B
   // Optionally subtract and store the result at rp
   bignum_optsub(num, rp, mulres + num, c, np);
