@@ -110,7 +110,7 @@ func (st *stringList) Add(key uint32, value string) error {
 
 	for _, existing := range st.entries {
 		if existing>>15 == key>>15 {
-			panic("duplicate entry")
+            panic(value)
 		}
 	}
 	st.entries = append(st.entries, key|offset)
