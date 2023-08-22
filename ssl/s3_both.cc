@@ -686,9 +686,9 @@ class CipherScorer {
 };
 
 const SSL_CIPHER *ssl_choose_tls13_cipher(
-    const STACK_OF(SSL_CIPHER) *client_ciphers, bool has_aes_hw, uint16_t version, uint16_t group_id,
+    CBS cipher_suites, bool has_aes_hw, uint16_t version, uint16_t group_id,
     const STACK_OF(SSL_CIPHER) *tls13_ciphers) {
-  if (sk_SSL_CIPHER_num(client_ciphers) % 2 != 0) {
+  if (CBS_len(&cipher_suites) % 2 != 0) {
     return nullptr;
   }
 
@@ -696,21 +696,26 @@ const SSL_CIPHER *ssl_choose_tls13_cipher(
   CipherScorer scorer(has_aes_hw);
   CipherScorer::Score best_score = scorer.MinScore();
 
-  for (size_t i = 0; i < sk_SSL_CIPHER_num(client_ciphers); i++) {
-    const SSL_CIPHER *client_cipher = sk_SSL_CIPHER_value(client_ciphers, i);
-    const SSL_CIPHER *candidate = nullptr;
+  while (CBS_len(&cipher_suites) > 0) {
+    uint16_t cipher_suite;
+    if (!CBS_get_u16(&cipher_suites, &cipher_suite)) {
+      return nullptr;
+    }
+
+    SSL_CIPHER *candidate = nullptr;
     if (tls13_ciphers != nullptr) {
       // Limit to customized TLS 1.3 ciphers if configured.
-      for (size_t j = 0; j < sk_SSL_CIPHER_num(tls13_ciphers); j++) {
-        const SSL_CIPHER *cipher = sk_SSL_CIPHER_value(tls13_ciphers, j);
-        if (cipher != nullptr && cipher->id == client_cipher->id) {
+      uint32_t cipher_suite_id = 0x03000000L | cipher_suite;
+      for (size_t i = 0; i < sk_SSL_CIPHER_num(tls13_ciphers); i++) {
+        const SSL_CIPHER *cipher = sk_SSL_CIPHER_value(tls13_ciphers, i);
+        if (cipher != nullptr && cipher->id == cipher_suite_id) {
           candidate = (SSL_CIPHER *)cipher;
           break;
         }
       }
     } else {
       // Limit to TLS 1.3 ciphers we know about.
-      candidate = client_cipher;
+      candidate = (SSL_CIPHER *)SSL_get_cipher_by_value(cipher_suite);
     }
     if (candidate == nullptr ||
         SSL_CIPHER_get_min_version(candidate) > version ||
