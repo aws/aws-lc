@@ -264,7 +264,7 @@ static bool negotiate_version(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   return true;
 }
 
-static UniquePtr<STACK_OF(SSL_CIPHER)> ssl_parse_client_cipher_list(
+UniquePtr<STACK_OF(SSL_CIPHER)> ssl_parse_client_cipher_list(
     const SSL_CLIENT_HELLO *client_hello) {
   CBS cipher_suites;
   CBS_init(&cipher_suites, client_hello->cipher_suites,
@@ -275,7 +275,6 @@ static UniquePtr<STACK_OF(SSL_CIPHER)> ssl_parse_client_cipher_list(
     return nullptr;
   }
 
-  // TODO [childw] factor this out into common routine
   while (CBS_len(&cipher_suites) > 0) {
     uint16_t cipher_suite;
 

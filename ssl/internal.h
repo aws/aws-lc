@@ -703,13 +703,13 @@ bool ssl_cipher_requires_server_key_exchange(const SSL_CIPHER *cipher);
 size_t ssl_cipher_get_record_split_len(const SSL_CIPHER *cipher);
 
 // ssl_choose_tls13_cipher returns an |SSL_CIPHER| corresponding with the best
-// available from |cipher_suites| compatible with |version|, |group_id| and
+// available from |client_ciphers| compatible with |version|, |group_id| and
 // configured |tls13_ciphers|. It returns NULL if there isn't a compatible
 // cipher. |has_aes_hw| indicates if the choice should be made as if support for
 // AES in hardware is available.
 const SSL_CIPHER *ssl_choose_tls13_cipher(
-    CBS cipher_suites, bool has_aes_hw, uint16_t version, uint16_t group_id,
-    const STACK_OF(SSL_CIPHER) *tls13_ciphers);
+    const STACK_OF(SSL_CIPHER) *client_ciphers, bool has_aes_hw, uint16_t version,
+    uint16_t group_id, const STACK_OF(SSL_CIPHER) *tls13_ciphers);
 
 
 // Transcript layer.
@@ -2424,6 +2424,10 @@ bool ssl_client_hello_get_extension(const SSL_CLIENT_HELLO *client_hello,
 
 bool ssl_client_cipher_list_contains_cipher(
     const SSL_CLIENT_HELLO *client_hello, uint16_t id);
+
+// ssl_parse_client_cipher_list TODO [childw]
+UniquePtr<STACK_OF(SSL_CIPHER)> ssl_parse_client_cipher_list(
+    const SSL_CLIENT_HELLO *client_hello);
 
 
 // GREASE.
