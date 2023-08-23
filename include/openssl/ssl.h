@@ -1664,7 +1664,6 @@ OPENSSL_EXPORT STACK_OF(SSL_CIPHER) *SSL_get_ciphers(const SSL *ssl);
 // available, or |ssl| is not operating in server mode, NULL is returned.
 OPENSSL_EXPORT STACK_OF(SSL_CIPHER) *SSL_get_client_ciphers(const SSL *ssl);
 
-
 // Connection information.
 
 // SSL_is_init_finished returns one if |ssl| has completed its initial handshake
