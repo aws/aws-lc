@@ -872,8 +872,8 @@ static int copy_from_prebuf(BIGNUM *b, int top, const BN_ULONG *table, int idx,
 // lines with a cache-line-dependent constant-time mitigation. They can probably
 // be revised now that our implementation is no longer cache-time-dependent.
 #define BN_window_bits_for_ctime_exponent_size(b) \
-  ((b) > 937 ? 6 : (b) > 306 ? 5 : (b) > 89 ? 4 : (b) > 22 ? 3 : 1)
-#define BN_MAX_MOD_EXP_CTIME_WINDOW (6)
+  ((b) > 306 ? 5 : (b) > 89 ? 4 : (b) > 22 ? 3 : 1)
+#define BN_MAX_MOD_EXP_CTIME_WINDOW (5)
 
 // This variant of |BN_mod_exp_mont| uses fixed windows and fixed memory access
 // patterns to protect secret exponents (cf. the hyper-threading timing attacks
