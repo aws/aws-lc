@@ -867,10 +867,6 @@ static int copy_from_prebuf(BIGNUM *b, int top, const BN_ULONG *table, int idx,
 
 // Window sizes optimized for fixed window size modular exponentiation
 // algorithm (BN_mod_exp_mont_consttime).
-//
-// TODO(davidben): These window sizes were originally set for 64-byte cache
-// lines with a cache-line-dependent constant-time mitigation. They can probably
-// be revised now that our implementation is no longer cache-time-dependent.
 #define BN_window_bits_for_ctime_exponent_size(b) \
   ((b) > 306 ? 5 : (b) > 89 ? 4 : (b) > 22 ? 3 : 1)
 #define BN_MAX_MOD_EXP_CTIME_WINDOW (5)
@@ -966,8 +962,7 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
       powerbuf_len_may_overflow);
 
 #if defined(OPENSSL_BN_ASM_MONT5)
-  if (window >= 5) {
-    window = 5;  // ~5% improvement for RSA2048 sign, and even for RSA4096
+  if (window == 5) {
     // Reserve space for the |mont->N| copy.
     powerbuf_len += top * sizeof(mont->N.d[0]);
   }
