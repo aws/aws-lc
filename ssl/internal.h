@@ -2982,6 +2982,9 @@ struct SSL3_STATE {
   // immutable.
   UniquePtr<SSL_SESSION> established_session;
 
+  // peer_ciphers TODO [childw]
+  bssl::UniquePtr<STACK_OF(SSL_CIPHER)> peer_ciphers;
+
   // Next protocol negotiation. For the client, this is the protocol that we
   // sent in NextProtocol and is set when handling ServerHello extensions.
   //

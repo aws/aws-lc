@@ -1858,6 +1858,8 @@ static enum ssl_hs_wait_t do_finish_server_handshake(SSL_HANDSHAKE *hs) {
     ssl->s3->established_session = UpRef(ssl->session);
   }
 
+  ssl->s3->peer_ciphers.reset(hs->peer_ciphers.release());
+
   hs->handshake_finalized = true;
   ssl->s3->initial_handshake_complete = true;
   if (has_new_session) {

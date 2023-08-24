@@ -2091,17 +2091,6 @@ STACK_OF(SSL_CIPHER) *SSL_get_ciphers(const SSL *ssl) {
                                   : ssl->ctx->cipher_list->ciphers.get();
 }
 
-STACK_OF(SSL_CIPHER) *SSL_get_client_ciphers(const SSL *ssl) {
-  if (ssl == NULL || !ssl->s3 || !ssl->server) {
-      return NULL;
-  }
-  const SSL_HANDSHAKE *hs = ssl->s3->hs.get();
-  if (!hs || !hs->peer_ciphers) {
-    return NULL;
-  }
-  return hs->peer_ciphers.get();
-}
-
 const char *SSL_get_cipher_list(const SSL *ssl, int n) {
   if (ssl == NULL) {
     return NULL;
@@ -2554,6 +2543,17 @@ EVP_PKEY *SSL_CTX_get0_privatekey(const SSL_CTX *ctx) {
 const SSL_CIPHER *SSL_get_current_cipher(const SSL *ssl) {
   const SSL_SESSION *session = SSL_get_session(ssl);
   return session == nullptr ? nullptr : session->cipher;
+}
+
+STACK_OF(SSL_CIPHER) *SSL_get_client_ciphers(const SSL *ssl) {
+  if (ssl->s3->hs != nullptr) {
+    return ssl->s3->hs->peer_ciphers.get();
+  }
+  // TODO [childw] go all in on ssl->s3->peer_ciphers?
+  if (ssl->s3 != nullptr) {
+    return ssl->s3->peer_ciphers.get();
+  }
+  return nullptr;
 }
 
 int SSL_session_reused(const SSL *ssl) {

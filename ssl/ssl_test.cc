@@ -3500,11 +3500,6 @@ TEST_P(SSLVersionTest, GetPeerCertificate) {
 
   ASSERT_TRUE(Connect());
 
-  //  The client should have no view of the server's preferences.
-  EXPECT_FALSE(SSL_get_client_ciphers(client_.get()));
-  //  TODO [childw]
-  //EXPECT_GT(sk_SSL_CIPHER_num(SSL_get_client_ciphers(server_.get())), (size_t) 0);
-
   // Client and server should both see the leaf certificate.
   bssl::UniquePtr<X509> peer(SSL_get_peer_certificate(server_.get()));
   ASSERT_TRUE(peer);
@@ -4331,6 +4326,20 @@ TEST_P(SSLVersionTest, SSLClearFailsWithShedding) {
   // |SSL_clear| should now fail.
   ASSERT_FALSE(SSL_clear(client_.get()));
   ASSERT_FALSE(SSL_clear(server_.get()));
+}
+
+TEST_P(SSLVersionTest, SSLClientCiphers) {
+  if (GetParam().transfer_ssl) {
+      GTEST_SKIP();
+  }
+
+  shed_handshake_config_ = false;
+  ASSERT_TRUE(Connect());
+
+  //  The client should have no view of the server's preferences.
+  EXPECT_FALSE(SSL_get_client_ciphers(client_.get()));
+  //  TODO [childw]
+  EXPECT_GT(sk_SSL_CIPHER_num(SSL_get_client_ciphers(server_.get())), (size_t) 0);
 }
 
 static bool ChainsEqual(STACK_OF(X509) *chain,
@@ -7630,11 +7639,6 @@ TEST_F(QUICMethodTest, Basic) {
   ExpectHandshakeSuccess();
   EXPECT_FALSE(SSL_session_reused(client_.get()));
   EXPECT_FALSE(SSL_session_reused(server_.get()));
-
-  // The client should have no view of the server's preferences.
-  EXPECT_FALSE(SSL_get_client_ciphers(client_.get()));
-  // TODO [childw]
-  //EXPECT_GT(sk_SSL_CIPHER_num(SSL_get_client_ciphers(server_.get())), (size_t) 0);
 
   // The server sent NewSessionTicket messages in the handshake.
   EXPECT_FALSE(g_last_session);
