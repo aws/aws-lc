@@ -2041,9 +2041,6 @@ struct SSL_HANDSHAKE {
   // peer_pubkey is the public key parsed from the peer's leaf certificate.
   UniquePtr<EVP_PKEY> peer_pubkey;
 
-  // peer_ciphers holds the peer's declared cipher preferences, in order.
-  bssl::UniquePtr<STACK_OF(SSL_CIPHER)> peer_ciphers;
-
   // new_session is the new mutable session being established by the current
   // handshake. It should not be cached.
   UniquePtr<SSL_SESSION> new_session;
@@ -2982,7 +2979,7 @@ struct SSL3_STATE {
   // immutable.
   UniquePtr<SSL_SESSION> established_session;
 
-  // peer_ciphers TODO [childw]
+  // peer_ciphers holds the peer's declared cipher preferences, in order.
   bssl::UniquePtr<STACK_OF(SSL_CIPHER)> peer_ciphers;
 
   // Next protocol negotiation. For the client, this is the protocol that we

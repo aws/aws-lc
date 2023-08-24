@@ -363,9 +363,9 @@ static const SSL_CIPHER *choose_cipher(SSL_HANDSHAKE *hs,
   if (ssl->options & SSL_OP_CIPHER_SERVER_PREFERENCE) {
     prio = server_pref->ciphers.get();
     in_group_flags = server_pref->in_group_flags;
-    allow = hs->peer_ciphers.get();
+    allow = ssl->s3->peer_ciphers.get();
   } else {
-    prio = hs->peer_ciphers.get();
+    prio = ssl->s3->peer_ciphers.get();
     in_group_flags = NULL;
     allow = server_pref->ciphers.get();
   }
@@ -813,7 +813,7 @@ static enum ssl_hs_wait_t do_select_certificate(SSL_HANDSHAKE *hs) {
   }
 
   // TODO [childw] return alert/set error here?
-  if (!ssl_parse_client_cipher_list(&client_hello, &hs->peer_ciphers)) {
+  if (!ssl_parse_client_cipher_list(&client_hello, &ssl->s3->peer_ciphers)) {
     return ssl_hs_error;
   }
 
@@ -1857,8 +1857,6 @@ static enum ssl_hs_wait_t do_finish_server_handshake(SSL_HANDSHAKE *hs) {
     assert(ssl->session != nullptr);
     ssl->s3->established_session = UpRef(ssl->session);
   }
-
-  ssl->s3->peer_ciphers.reset(hs->peer_ciphers.release());
 
   hs->handshake_finalized = true;
   ssl->s3->initial_handshake_complete = true;

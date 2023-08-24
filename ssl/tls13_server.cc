@@ -118,7 +118,7 @@ static const SSL_CIPHER *choose_tls13_cipher(const SSL_HANDSHAKE *hs,
     tls13_ciphers = ssl->ctx->tls13_cipher_list.get()->ciphers.get();
   }
 
-  return ssl_choose_tls13_cipher(hs->peer_ciphers.get(),
+  return ssl_choose_tls13_cipher(ssl->s3->peer_ciphers.get(),
                                  ssl->config->aes_hw_override
                                      ? ssl->config->aes_hw_override_value
                                      : EVP_has_aes_hardware(),
@@ -235,7 +235,7 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
   }
 
   // TODO [childw]
-  if (!ssl_parse_client_cipher_list(&client_hello, &hs->peer_ciphers)) {
+  if (!ssl_parse_client_cipher_list(&client_hello, &ssl->s3->peer_ciphers)) {
     return ssl_hs_error;
   }
 

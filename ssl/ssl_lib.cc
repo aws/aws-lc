@@ -2546,10 +2546,6 @@ const SSL_CIPHER *SSL_get_current_cipher(const SSL *ssl) {
 }
 
 STACK_OF(SSL_CIPHER) *SSL_get_client_ciphers(const SSL *ssl) {
-  if (ssl->s3->hs != nullptr) {
-    return ssl->s3->hs->peer_ciphers.get();
-  }
-  // TODO [childw] go all in on ssl->s3->peer_ciphers?
   if (ssl->s3 != nullptr) {
     return ssl->s3->peer_ciphers.get();
   }
