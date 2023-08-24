@@ -2425,7 +2425,9 @@ bool ssl_client_hello_get_extension(const SSL_CLIENT_HELLO *client_hello,
 bool ssl_client_cipher_list_contains_cipher(
     const SSL_CLIENT_HELLO *client_hello, uint16_t id);
 
-// ssl_parse_client_cipher_list TODO [childw]
+// ssl_parse_client_cipher_list returns the ciphers offered by the client
+// during handshake, or null if the handshake hasn't occurred or there was an
+// error.
 bool ssl_parse_client_cipher_list(const SSL_CLIENT_HELLO *client_hello,
                                   UniquePtr<STACK_OF(SSL_CIPHER)> *ciphers_out);
 
@@ -2979,7 +2981,8 @@ struct SSL3_STATE {
   // immutable.
   UniquePtr<SSL_SESSION> established_session;
 
-  // peer_ciphers holds the peer's declared cipher preferences, in order.
+  // peer_ciphers holds the peer's declared cipher preferences, in order. This
+  // field is NOT serialized.
   bssl::UniquePtr<STACK_OF(SSL_CIPHER)> peer_ciphers;
 
   // Next protocol negotiation. For the client, this is the protocol that we

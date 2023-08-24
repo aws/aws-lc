@@ -812,8 +812,8 @@ static enum ssl_hs_wait_t do_select_certificate(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  // TODO [childw] return alert/set error here?
   if (!ssl_parse_client_cipher_list(&client_hello, &ssl->s3->peer_ciphers)) {
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
     return ssl_hs_error;
   }
 
