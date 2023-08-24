@@ -385,9 +385,9 @@ size_t aesv8_gcm_8x_dec_256(const uint8_t *in, size_t bit_len, uint8_t *out,
 #define GHASH_ASM_PPC64LE
 #define GCM_FUNCREF
 void gcm_init_p8(u128 Htable[16], const uint64_t Xi[2]);
-void gcm_gmult_p8(uint64_t Xi[2], const u128 Htable[16]);
-void gcm_ghash_p8(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
-                  size_t len);
+void gcm_gmult_p8(uint8_t Xi[16], const u128 Htable[16]);
+void gcm_ghash_p8(uint8_t Xi[16], const u128 Htable[16],
+                  const uint8_t *inp, size_t len);
 #endif
 #endif  // OPENSSL_NO_ASM
 
