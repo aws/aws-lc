@@ -2041,6 +2041,9 @@ struct SSL_HANDSHAKE {
   // peer_pubkey is the public key parsed from the peer's leaf certificate.
   UniquePtr<EVP_PKEY> peer_pubkey;
 
+  // peer_ciphers holds the peer's declared cipher preferences, in order.
+  bssl::UniquePtr<STACK_OF(SSL_CIPHER)> peer_ciphers;
+
   // new_session is the new mutable session being established by the current
   // handshake. It should not be cached.
   UniquePtr<SSL_SESSION> new_session;
@@ -2426,8 +2429,8 @@ bool ssl_client_cipher_list_contains_cipher(
     const SSL_CLIENT_HELLO *client_hello, uint16_t id);
 
 // ssl_parse_client_cipher_list TODO [childw]
-UniquePtr<STACK_OF(SSL_CIPHER)> ssl_parse_client_cipher_list(
-    const SSL_CLIENT_HELLO *client_hello);
+bool ssl_parse_client_cipher_list(const SSL_CLIENT_HELLO *client_hello,
+                                  UniquePtr<STACK_OF(SSL_CIPHER)> *ciphers_out);
 
 
 // GREASE.
@@ -3649,10 +3652,6 @@ struct ssl_ctx_st {
 
   // tls13_cipher_list holds the tls1.3 and above ciphersuites.
   bssl::UniquePtr<bssl::SSLCipherPreferenceList> tls13_cipher_list;
-
-  // peer_ciphers holds the peer's declared cipher preferences, in order.
-  // This field will be empty on the client side of a TLS connection.
-  bssl::UniquePtr<STACK_OF(SSL_CIPHER)> peer_ciphers;
 
   X509_STORE *cert_store = nullptr;
   LHASH_OF(SSL_SESSION) *sessions = nullptr;

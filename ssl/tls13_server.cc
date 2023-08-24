@@ -108,13 +108,9 @@ static int ssl_ext_supported_versions_add_serverhello(SSL_HANDSHAKE *hs,
   return 1;
 }
 
-static const SSL_CIPHER *choose_tls13_cipher(
-    const SSL *ssl, const SSL_CLIENT_HELLO *client_hello, uint16_t group_id) {
-  ssl->ctx->peer_ciphers = ssl_parse_client_cipher_list(client_hello);
-  if (!ssl->ctx->peer_ciphers) {
-    return nullptr;
-  }
-
+static const SSL_CIPHER *choose_tls13_cipher(const SSL_HANDSHAKE *hs,
+        uint16_t group_id) {
+  SSL *const ssl = hs->ssl;
   STACK_OF(SSL_CIPHER) *tls13_ciphers = nullptr;
   if (ssl->ctx->tls13_cipher_list &&
       ssl->ctx->tls13_cipher_list.get()->ciphers &&
@@ -122,7 +118,7 @@ static const SSL_CIPHER *choose_tls13_cipher(
     tls13_ciphers = ssl->ctx->tls13_cipher_list.get()->ciphers.get();
   }
 
-  return ssl_choose_tls13_cipher(ssl->ctx->peer_ciphers.get(),
+  return ssl_choose_tls13_cipher(hs->peer_ciphers.get(),
                                  ssl->config->aes_hw_override
                                      ? ssl->config->aes_hw_override_value
                                      : EVP_has_aes_hardware(),
@@ -238,8 +234,13 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
+  // TODO [childw]
+  if (!ssl_parse_client_cipher_list(&client_hello, &hs->peer_ciphers)) {
+    return ssl_hs_error;
+  }
+
   // Negotiate the cipher suite.
-  hs->new_cipher = choose_tls13_cipher(ssl, &client_hello, group_id);
+  hs->new_cipher = choose_tls13_cipher(hs, group_id);
   if (hs->new_cipher == NULL) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_NO_SHARED_CIPHER);
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);

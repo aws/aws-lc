@@ -2092,11 +2092,14 @@ STACK_OF(SSL_CIPHER) *SSL_get_ciphers(const SSL *ssl) {
 }
 
 STACK_OF(SSL_CIPHER) *SSL_get_client_ciphers(const SSL *ssl) {
-  if (ssl == NULL || !ssl->server || !ssl->ctx->peer_ciphers) {
+  if (ssl == NULL || !ssl->s3 || !ssl->server) {
+      return NULL;
+  }
+  const SSL_HANDSHAKE *hs = ssl->s3->hs.get();
+  if (!hs || !hs->peer_ciphers) {
     return NULL;
   }
-
-  return ssl->ctx->peer_ciphers.get();
+  return hs->peer_ciphers.get();
 }
 
 const char *SSL_get_cipher_list(const SSL *ssl, int n) {

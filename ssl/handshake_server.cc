@@ -264,15 +264,22 @@ static bool negotiate_version(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   return true;
 }
 
-UniquePtr<STACK_OF(SSL_CIPHER)> ssl_parse_client_cipher_list(
-    const SSL_CLIENT_HELLO *client_hello) {
+bool ssl_parse_client_cipher_list(
+    const SSL_CLIENT_HELLO *client_hello, UniquePtr<STACK_OF(SSL_CIPHER)> *ciphers_out) {
+  ciphers_out->reset();
+
   CBS cipher_suites;
   CBS_init(&cipher_suites, client_hello->cipher_suites,
            client_hello->cipher_suites_len);
 
+  // Cipher suites are encoded as 2-byte unsigned integers
+  if (CBS_len(&cipher_suites) % 2 != 0) {
+    return false;
+  }
+
   UniquePtr<STACK_OF(SSL_CIPHER)> sk(sk_SSL_CIPHER_new_null());
   if (!sk) {
-    return nullptr;
+    return false;
   }
 
   while (CBS_len(&cipher_suites) > 0) {
@@ -280,16 +287,18 @@ UniquePtr<STACK_OF(SSL_CIPHER)> ssl_parse_client_cipher_list(
 
     if (!CBS_get_u16(&cipher_suites, &cipher_suite)) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_ERROR_IN_RECEIVED_CIPHER_LIST);
-      return nullptr;
+      return false;
     }
 
     const SSL_CIPHER *c = SSL_get_cipher_by_value(cipher_suite);
     if (c != NULL && !sk_SSL_CIPHER_push(sk.get(), c)) {
-      return nullptr;
+      return false;
     }
   }
 
-  return sk;
+  *ciphers_out = std::move(sk);
+
+  return true;
 }
 
 // ssl_get_compatible_server_ciphers determines the key exchange and
@@ -338,9 +347,8 @@ static void ssl_get_compatible_server_ciphers(SSL_HANDSHAKE *hs,
   *out_mask_a = mask_a;
 }
 
-static const SSL_CIPHER *choose_cipher(
-    SSL_HANDSHAKE *hs, const SSL_CLIENT_HELLO *client_hello,
-    const SSLCipherPreferenceList *server_pref) {
+static const SSL_CIPHER *choose_cipher(SSL_HANDSHAKE *hs,
+        const SSLCipherPreferenceList *server_pref) {
   SSL *const ssl = hs->ssl;
   const STACK_OF(SSL_CIPHER) *prio, *allow;
   // in_group_flags will either be NULL, or will point to an array of bytes
@@ -352,17 +360,12 @@ static const SSL_CIPHER *choose_cipher(
   // such value exists yet.
   int group_min = -1;
 
-  ssl->ctx->peer_ciphers = ssl_parse_client_cipher_list(client_hello);
-  if (!ssl->ctx->peer_ciphers) {
-    return nullptr;
-  }
-
   if (ssl->options & SSL_OP_CIPHER_SERVER_PREFERENCE) {
     prio = server_pref->ciphers.get();
     in_group_flags = server_pref->in_group_flags;
-    allow = ssl->ctx->peer_ciphers.get();
+    allow = hs->peer_ciphers.get();
   } else {
-    prio = ssl->ctx->peer_ciphers.get();
+    prio = hs->peer_ciphers.get();
     in_group_flags = NULL;
     allow = server_pref->ciphers.get();
   }
@@ -809,12 +812,17 @@ static enum ssl_hs_wait_t do_select_certificate(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
+  // TODO [childw] return alert/set error here?
+  if (!ssl_parse_client_cipher_list(&client_hello, &hs->peer_ciphers)) {
+    return ssl_hs_error;
+  }
+
   // Negotiate the cipher suite. This must be done after |cert_cb| so the
   // certificate is finalized.
   SSLCipherPreferenceList *prefs = hs->config->cipher_list
                                        ? hs->config->cipher_list.get()
                                        : ssl->ctx->cipher_list.get();
-  hs->new_cipher = choose_cipher(hs, &client_hello, prefs);
+  hs->new_cipher = choose_cipher(hs, prefs);
   if (hs->new_cipher == NULL) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_NO_SHARED_CIPHER);
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
@@ -1328,7 +1336,7 @@ static enum ssl_hs_wait_t do_read_client_certificate(SSL_HANDSHAKE *hs) {
 
   CBS certificate_msg = msg.body;
   uint8_t alert = SSL_AD_DECODE_ERROR;
-  if (!ssl_parse_cert_chain(&alert, &hs->new_session->certs, &hs->peer_pubkey,
+  if (!ssl_parse_cert_chain(&alert, &hs->new_session.get()->certs, &hs->peer_pubkey,
                             hs->config->retain_only_sha256_of_client_certs
                                 ? hs->new_session->peer_sha256
                                 : nullptr,
