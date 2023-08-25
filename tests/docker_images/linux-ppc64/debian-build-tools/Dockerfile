@@ -1,7 +1,7 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 
-FROM --platform=x86_64 multiarch/qemu-user-static:x86_64-ppc64 AS multiarch
+FROM --platform=$BUILDPLATFORM multiarch/qemu-user-static:x86_64-ppc64 AS multiarch
 
 FROM debian:unstable-20230814 AS debian
 
@@ -28,6 +28,7 @@ RUN apt-get update && apt-get install -y  \
     python3 \
      && apt-get clean
 
+ENV GOCACHE=/tmp
 ENV PATH="/usr/lib/go-1.21/bin:$PATH"
 
 CMD ["/bin/bash"]

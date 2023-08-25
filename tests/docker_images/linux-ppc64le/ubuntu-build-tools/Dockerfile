@@ -1,7 +1,7 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 
-FROM ppc64le/ubuntu:latest
+FROM --platform=$BUILDPLATFORM ppc64le/ubuntu:latest
 
 SHELL ["/bin/bash", "-c"]
 
@@ -16,5 +16,8 @@ RUN apt-get update && apt-get install -y  \
 	&& apt-get clean \
     && mkdir -p /.cache \
     && chmod 777 /.cache
+
+ENV GOCACHE=/tmp
+ENV PATH="/usr/lib/go/bin:$PATH"
 
 CMD ["/bin/bash"]

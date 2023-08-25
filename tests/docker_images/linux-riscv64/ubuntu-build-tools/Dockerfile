@@ -1,7 +1,7 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 
-FROM riscv64/ubuntu
+FROM --platform=$BUILDPLATFORM riscv64/ubuntu
 
 SHELL ["/bin/bash", "-c"]
 
@@ -15,5 +15,8 @@ RUN apt-get update && apt-get install -y  \
     tar \
     python3 \
      && apt-get clean
+
+ENV GOCACHE=/tmp
+ENV PATH="/usr/lib/go/bin:$PATH"
 
 CMD ["/bin/bash"]
