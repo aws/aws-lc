@@ -15,3 +15,19 @@ COPY --from=multiarch /usr/bin/qemu-ppc64-static /usr/bin/qemu-ppc64
 COPY --from=debian rootfs /
 
 RUN /debootstrap/debootstrap --second-stage
+
+SHELL ["/bin/bash", "-c"]
+
+RUN apt-get update && apt-get install -y  \
+    gcc g++ cmake golang-1.21 gdb valgrind \
+    clang libclang1 \
+    build-essential \
+    ssh \
+    rsync \
+    tar \
+    python3 \
+     && apt-get clean
+
+ENV PATH="/usr/lib/go-1.21/bin:$PATH"
+
+CMD ["/bin/bash"]
