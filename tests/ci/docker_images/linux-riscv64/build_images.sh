@@ -21,4 +21,4 @@ SCRIPT_DIR=$(dirname "$(readlink -f "${0}")")
 docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
 
 docker buildx create --use
-docker buildx build --platform linux/amd64 -t ubuntu-riscv64:build-tools "${SCRIPT_DIR}"/ubuntu-build-tools --load
+docker buildx build -t ubuntu-riscv64:build-tools "${SCRIPT_DIR}"/ubuntu-build-tools --load
