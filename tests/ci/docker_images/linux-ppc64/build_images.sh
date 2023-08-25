@@ -23,5 +23,5 @@ docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
 docker context use default
 docker buildx build -t debian-ppc64:base "${SCRIPT_DIR}"/debian-base --load
 docker buildx build -t debian-ppc64:build-tools "${SCRIPT_DIR}"/debian-build-tools --load
-docker buildx build -t debian-ppc64:e6500 "${SCRIPT_DIR}"/debian-e6500 --load
-docker buildx build -t debian-ppc64:POWER8 "${SCRIPT_DIR}"/debian-POWER8 --load
+#docker buildx build -t debian-ppc64:e6500 "${SCRIPT_DIR}"/debian-e6500 --load
+#docker buildx build -t debian-ppc64:POWER8 "${SCRIPT_DIR}"/debian-POWER8 --load
