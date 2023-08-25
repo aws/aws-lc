@@ -2549,7 +2549,7 @@ STACK_OF(SSL_CIPHER) *SSL_get_client_ciphers(const SSL *ssl) {
   if (ssl == NULL || ssl->s3 == NULL) {
     return NULL;
   }
-  return ssl->s3->peer_ciphers.get();
+  return ssl->s3->client_ciphers.get();
 }
 
 int SSL_session_reused(const SSL *ssl) {
@@ -3069,7 +3069,7 @@ int SSL_clear(SSL *ssl) {
     return 0;  // SSL_clear may not be used after shedding config.
   }
 
-  ssl->s3->peer_ciphers.reset();
+  ssl->s3->client_ciphers.reset();
 
   // In OpenSSL, reusing a client |SSL| with |SSL_clear| causes the previously
   // established session to be offered the next time around. wpa_supplicant

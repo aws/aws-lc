@@ -2981,9 +2981,9 @@ struct SSL3_STATE {
   // immutable.
   UniquePtr<SSL_SESSION> established_session;
 
-  // peer_ciphers holds the peer's declared cipher preferences, in order. This
-  // field is NOT serialized.
-  bssl::UniquePtr<STACK_OF(SSL_CIPHER)> peer_ciphers;
+  // client_ciphers holds the peer's declared cipher preferences, in order. This
+  // field is NOT serialized and is only populated if used in a server context.
+  bssl::UniquePtr<STACK_OF(SSL_CIPHER)> client_ciphers;
 
   // Next protocol negotiation. For the client, this is the protocol that we
   // sent in NextProtocol and is set when handling ServerHello extensions.

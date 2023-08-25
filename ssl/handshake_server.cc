@@ -363,9 +363,9 @@ static const SSL_CIPHER *choose_cipher(SSL_HANDSHAKE *hs,
   if (ssl->options & SSL_OP_CIPHER_SERVER_PREFERENCE) {
     prio = server_pref->ciphers.get();
     in_group_flags = server_pref->in_group_flags;
-    allow = ssl->s3->peer_ciphers.get();
+    allow = ssl->s3->client_ciphers.get();
   } else {
-    prio = ssl->s3->peer_ciphers.get();
+    prio = ssl->s3->client_ciphers.get();
     in_group_flags = NULL;
     allow = server_pref->ciphers.get();
   }
@@ -812,7 +812,7 @@ static enum ssl_hs_wait_t do_select_certificate(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  if (!ssl_parse_client_cipher_list(&client_hello, &ssl->s3->peer_ciphers)) {
+  if (!ssl_parse_client_cipher_list(&client_hello, &ssl->s3->client_ciphers)) {
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
     return ssl_hs_error;
   }
@@ -1336,7 +1336,7 @@ static enum ssl_hs_wait_t do_read_client_certificate(SSL_HANDSHAKE *hs) {
 
   CBS certificate_msg = msg.body;
   uint8_t alert = SSL_AD_DECODE_ERROR;
-  if (!ssl_parse_cert_chain(&alert, &hs->new_session.get()->certs, &hs->peer_pubkey,
+  if (!ssl_parse_cert_chain(&alert, &hs->new_session->certs, &hs->peer_pubkey,
                             hs->config->retain_only_sha256_of_client_certs
                                 ? hs->new_session->peer_sha256
                                 : nullptr,

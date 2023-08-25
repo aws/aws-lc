@@ -4329,8 +4329,8 @@ TEST_P(SSLVersionTest, SSLClearFailsWithShedding) {
 }
 
 TEST_P(SSLVersionTest, SSLClientCiphers) {
-  // Client ciphers ARE NOT SERIALIZED, so skip tests that rely on
-  // transport/serialization of the |ssl| objects under test.
+  // Client ciphers ARE NOT SERIALIZED, so skip tests that rely on transfer or
+  // serialization of |ssl| and accompanying objects under test.
   if (GetParam().transfer_ssl) {
       return;
   }
@@ -4341,12 +4341,12 @@ TEST_P(SSLVersionTest, SSLClientCiphers) {
   shed_handshake_config_ = false;
   ASSERT_TRUE(Connect());
 
-  //  The client should still have no view of the server's preferences, but the
-  //  server should have seen at least one cipher from the client.
+  // The client should still have no view of the server's preferences, but the
+  // server should have seen at least one cipher from the client.
   EXPECT_FALSE(SSL_get_client_ciphers(client_.get()));
   EXPECT_GT(sk_SSL_CIPHER_num(SSL_get_client_ciphers(server_.get())), (size_t) 0);
 
-  // With shedding has been disabled, clearing |server| shouldn't error and
+  // With config shedding disabled, clearing |server| shouldn't error and
   // should reset server's client ciphers
   ASSERT_TRUE(SSL_clear(server_.get()));
   EXPECT_FALSE(SSL_get_client_ciphers(server_.get()));
