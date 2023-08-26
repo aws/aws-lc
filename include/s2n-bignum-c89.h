@@ -364,6 +364,10 @@ extern uint64_t bignum_lt (uint64_t m, uint64_t *x, uint64_t n, uint64_t *y);
 /*  Inputs x[m], y[n]; outputs function return (carry-out) and z[k] */
 extern uint64_t bignum_madd (uint64_t k, uint64_t *z, uint64_t m, uint64_t *x, uint64_t n, uint64_t *y);
 
+/*  Reduce modulo group order, z := x mod m_25519 */
+/*  Input x[4]; output z[4] */
+extern void bignum_mod_m25519_4 (uint64_t z[4], uint64_t x[4]);
+
 /*  Reduce modulo group order, z := x mod n_256 */
 /*  Input x[k]; output z[4] */
 extern void bignum_mod_n256 (uint64_t z[4], uint64_t k, uint64_t *x);

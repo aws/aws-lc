@@ -114,6 +114,7 @@ BIGNUM_OBJ = curve25519/bignum_add_p25519.o \
              curve25519/bignum_cmul_p25519_alt.o \
              curve25519/bignum_double_p25519.o \
              curve25519/bignum_inv_p25519.o \
+             curve25519/bignum_mod_m25519_4.o \
              curve25519/bignum_mod_p25519_4.o \
              curve25519/bignum_mul_p25519.o \
              curve25519/bignum_mul_p25519_alt.o \
@@ -368,7 +369,7 @@ clean:; rm -f libs2nbignum.a */*.o */*.obj */*.correct
 yesbmi_functions: $(OBJ) ; for i in */*.o; do objdump -d $$i | (egrep -qi '(mulx|adcx|adox)' && grep 'S2N_BN_SYMBOL' `echo $$i | sed -e 's/o$$/S/'`) ; done | sed -e 's/S2N_BN_SYMBOL(//; s/)://' | sort >yesbmi_functions
 nonbmi_functions: $(OBJ) ; for i in */*.o; do objdump -d $$i | (egrep -qi '(mulx|adcx|adox)' || grep 'S2N_BN_SYMBOL' `echo $$i | sed -e 's/o$$/S/'`) ; done | sed -e 's/S2N_BN_SYMBOL(//; s/)://' | sort >nonbmi_functions
 
-bmi: yesbmi_functions nonbmi_functions ; [ `cat ???bmi_functions | sort | uniq | wc -l` -eq `grep '^extern' ../include/s2n-bignum.h | wc -l` ]
+bmi: yesbmi_functions nonbmi_functions ; [ `cat ???bmi_functions | sort | uniq | wc -l` -eq `grep '^extern' ../include/s2n-bignum.h | grep -v _neon | wc -l` ]
 
 clobber: clean ; rm -f yesbmi_functions nonbmi_functions
 

@@ -10,6 +10,7 @@ OBJ = bignum_add_p25519.o \
       bignum_cmul_p25519_alt.o \
       bignum_double_p25519.o \
       bignum_inv_p25519.o \
+      bignum_mod_m25519_4.o \
       bignum_mod_p25519_4.o \
       bignum_mul_p25519.o \
       bignum_mul_p25519_alt.o \

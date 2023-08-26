@@ -252,6 +252,26 @@ uint64_t p_25519[4] =
    UINT64_C(0x7fffffffffffffff)
  };
 
+// Basepoint order for curve25519/edwards25519
+
+uint64_t n_25519[4] =
+{
+  UINT64_C(0x5812631a5cf5d3ed),
+  UINT64_C(0x14def9dea2f79cd6),
+  UINT64_C(0x0000000000000000),
+  UINT64_C(0x1000000000000000)
+};
+
+// Full group order for curve25519/edwards25519 = 8 * n_25519
+
+uint64_t m_25519[4] =
+{
+  UINT64_C(0xc09318d2e7ae9f68),
+  UINT64_C(0xa6f7cef517bce6b2),
+  UINT64_C(0x0000000000000000),
+  UINT64_C(0x8000000000000000)
+};
+
 // k_25519 = 2 * d for edwards25519
 
 uint64_t k_25519[4] =
@@ -273,16 +293,6 @@ uint64_t g_edwards25519[8] =
   UINT64_C(0x6666666666666666),
   UINT64_C(0x6666666666666666),
   UINT64_C(0x6666666666666666)
-};
-
-// Basepoint order for edwards25519
-
-uint64_t m_edwards25519[4] =
-{
-  UINT64_C(0x5812631a5cf5d3ed),
-  UINT64_C(0x14def9dea2f79cd6),
-  UINT64_C(0x0000000000000000),
-  UINT64_C(0x1000000000000000)
 };
 
 // Parameters for sm2
@@ -4236,6 +4246,40 @@ int test_bignum_madd(void)
       { if (k0 == 0 || k1 == 0 || k2 == 0) printf("OK: [sizes %4"PRIu64" + %4"PRIu64" * %4"PRIu64"]\n",k2,k0,k1);
         else printf("OK: [sizes %4"PRIu64" + %4"PRIu64" * %4"PRIu64"] ... + ...0x%016"PRIx64" * ...0x%016"PRIx64" = ...0x%016"PRIx64"\n",
                     k2,k0,k1,b0[0],b1[0],b2[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_bignum_mod_m25519_4(void)
+{ uint64_t t;
+  printf("Testing bignum_mod_m25519_4 with %d cases\n",tests);
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(4,b0);
+     if ((rand() & 0xF) == 0) b0[3] |= UINT64_C(0xFFFFFFF000000000);
+     else if ((rand() & 0xF) == 0)
+      { b0[3] = m_25519[3];
+        b0[2] = m_25519[2];
+        b0[1] = m_25519[1];
+        b0[0] = (m_25519[0] - UINT64_C(3)) + (rand() & UINT64_C(7));
+      }
+
+     reference_mod(4,b3,b0,m_25519);
+     bignum_mod_m25519_4(b4,b0);
+     c = reference_compare(4,b3,4,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" mod m_25519 = "
+               "0x%016"PRIx64"...%016"PRIx64" not 0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(4),b0[3],b0[0],b4[3],b4[0],b3[3],b3[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] 0x%016"PRIx64"...%016"PRIx64" mod m_25519 = "
+               "0x%016"PRIx64"...%016"PRIx64"\n",
+               UINT64_C(4),b0[3],b0[0],b4[3],b4[0]);
       }
    }
   printf("All OK\n");
@@ -9373,7 +9417,7 @@ int test_edwards25519_scalarmulbase(void)
      // the basepoint element order
 
      if ((rand() & 0xF) == 0)
-      { bignum_cmul(4,b1,(rand() & 0xF),4,m_edwards25519);
+      { bignum_cmul(4,b1,(rand() & 0xF),4,n_25519);
         if ((rand() & 0x3) == 0) b1[0] += (rand() & 0x3);
       }
 
@@ -9425,7 +9469,7 @@ int test_edwards25519_scalarmulbase_alt(void)
      // the basepoint element order
 
      if ((rand() & 0xF) == 0)
-      { bignum_cmul(4,b1,(rand() & 0xF),4,m_edwards25519);
+      { bignum_cmul(4,b1,(rand() & 0xF),4,n_25519);
         if ((rand() & 0x3) == 0) b1[0] += (rand() & 0x3);
       }
 
@@ -10652,7 +10696,7 @@ int test_edwards25519_scalarmulbase_tweetnacl(void)
      // the basepoint element order
 
      if ((rand() & 0xF) == 0)
-      { bignum_cmul(4,b1,(rand() & 0xF),4,m_edwards25519);
+      { bignum_cmul(4,b1,(rand() & 0xF),4,n_25519);
         if ((rand() & 0x3) == 0) b1[0] += (rand() & 0x3);
       }
 
@@ -10704,7 +10748,7 @@ int test_edwards25519_scalarmulbase_alt_tweetnacl(void)
      // the basepoint element order
 
      if ((rand() & 0xF) == 0)
-      { bignum_cmul(4,b1,(rand() & 0xF),4,m_edwards25519);
+      { bignum_cmul(4,b1,(rand() & 0xF),4,n_25519);
         if ((rand() & 0x3) == 0) b1[0] += (rand() & 0x3);
       }
 
@@ -10917,6 +10961,7 @@ int main(int argc, char *argv[])
   functionaltest(all,"bignum_littleendian_6",test_bignum_littleendian_6);
   functionaltest(all,"bignum_lt",test_bignum_lt);
   functionaltest(all,"bignum_madd",test_bignum_madd);
+  functionaltest(all,"bignum_mod_m25519_4",test_bignum_mod_m25519_4);
   functionaltest(bmi,"bignum_mod_n256",test_bignum_mod_n256);
   functionaltest(all,"bignum_mod_n256_4",test_bignum_mod_n256_4);
   functionaltest(all,"bignum_mod_n256_alt",test_bignum_mod_n256_alt);
