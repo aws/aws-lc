@@ -686,15 +686,15 @@ class CipherScorer {
 };
 
 const SSL_CIPHER *ssl_choose_tls13_cipher(
-    const STACK_OF(SSL_CIPHER) *client_ciphers, bool has_aes_hw, uint16_t version, uint16_t group_id,
-    const STACK_OF(SSL_CIPHER) *tls13_ciphers) {
+    const STACK_OF(SSL_CIPHER) *client_cipher_suites, bool has_aes_hw, uint16_t version,
+    uint16_t group_id, const STACK_OF(SSL_CIPHER) *tls13_ciphers) {
 
   const SSL_CIPHER *best = nullptr;
   CipherScorer scorer(has_aes_hw);
   CipherScorer::Score best_score = scorer.MinScore();
 
-  for (size_t i = 0; i < sk_SSL_CIPHER_num(client_ciphers); i++) {
-    const SSL_CIPHER *client_cipher = sk_SSL_CIPHER_value(client_ciphers, i);
+  for (size_t i = 0; i < sk_SSL_CIPHER_num(client_cipher_suites); i++) {
+    const SSL_CIPHER *client_cipher = sk_SSL_CIPHER_value(client_cipher_suites, i);
     const SSL_CIPHER *candidate = nullptr;
     if (tls13_ciphers != nullptr) {
       // Limit to customized TLS 1.3 ciphers if configured.

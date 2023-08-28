@@ -116,7 +116,7 @@ static const SSL_CIPHER *choose_tls13_cipher(const SSL *ssl, uint16_t group_id) 
     tls13_ciphers = ssl->ctx->tls13_cipher_list.get()->ciphers.get();
   }
 
-  return ssl_choose_tls13_cipher(ssl->s3->client_ciphers.get(),
+  return ssl_choose_tls13_cipher(ssl->s3->client_cipher_suites.get(),
                                  ssl->config->aes_hw_override
                                      ? ssl->config->aes_hw_override_value
                                      : EVP_has_aes_hardware(),
@@ -232,7 +232,7 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  if (!ssl_parse_client_cipher_list(&client_hello, &ssl->s3->client_ciphers)) {
+  if (!ssl_parse_client_cipher_list(&client_hello, &ssl->s3->client_cipher_suites)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_ERROR_IN_RECEIVED_CIPHER_LIST);
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
     return ssl_hs_error;

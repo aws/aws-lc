@@ -363,9 +363,9 @@ static const SSL_CIPHER *choose_cipher(SSL_HANDSHAKE *hs,
   if (ssl->options & SSL_OP_CIPHER_SERVER_PREFERENCE) {
     prio = server_pref->ciphers.get();
     in_group_flags = server_pref->in_group_flags;
-    allow = ssl->s3->client_ciphers.get();
+    allow = ssl->s3->client_cipher_suites.get();
   } else {
-    prio = ssl->s3->client_ciphers.get();
+    prio = ssl->s3->client_cipher_suites.get();
     in_group_flags = NULL;
     allow = server_pref->ciphers.get();
   }
@@ -812,7 +812,7 @@ static enum ssl_hs_wait_t do_select_certificate(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  if (!ssl_parse_client_cipher_list(&client_hello, &ssl->s3->client_ciphers)) {
+  if (!ssl_parse_client_cipher_list(&client_hello, &ssl->s3->client_cipher_suites)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_ERROR_IN_RECEIVED_CIPHER_LIST);
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
     return ssl_hs_error;
