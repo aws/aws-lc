@@ -219,6 +219,14 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
         "performLargeDataTest": [1, 2, 4, 8]
       },
       {
+        "algorithm": "SHA2-512/224",
+        "revision": "1.0",
+        "messageLength": [{
+          "min": 0, "max": 65528, "increment": 8
+        }],
+        "performLargeDataTest": [1, 2, 4, 8]
+      },
+      {
         "algorithm": "SHA2-512/256",
         "revision": "1.0",
         "messageLength": [{
@@ -426,6 +434,16 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
         }]
       },
       {
+        "algorithm": "HMAC-SHA2-512/224",
+        "revision": "1.0",
+        "keyLen": [{
+          "min": 8, "max": 524288, "increment": 8
+        }],
+        "macLen": [{
+          "min": 32, "max": 224, "increment": 8
+        }]
+      },
+      {
         "algorithm": "HMAC-SHA2-512/256",
         "revision": "1.0",
         "keyLen": [{
@@ -537,6 +555,7 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
             "SHA2-256",
             "SHA2-384",
             "SHA2-512",
+            "SHA2-512/224",
             "SHA2-512/256"
           ]
         }]
@@ -558,6 +577,7 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
             "SHA2-256",
             "SHA2-384",
             "SHA2-512",
+            "SHA2-512/224",
             "SHA2-512/256"
           ]
         }]
@@ -607,6 +627,8 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
             }, {
               "hashAlg": "SHA2-512"
             }, {
+              "hashAlg": "SHA2-512/224"
+            }, {
               "hashAlg": "SHA2-512/256"
             }]
           }]
@@ -623,6 +645,8 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
             }, {
               "hashAlg": "SHA2-512"
             }, {
+              "hashAlg": "SHA2-512/224"
+            }, {
               "hashAlg": "SHA2-512/256"
             }]
           }]
@@ -638,6 +662,8 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
               "hashAlg": "SHA2-384"
             }, {
               "hashAlg": "SHA2-512"
+            }, {
+              "hashAlg": "SHA2-512/224"
             }, {
               "hashAlg": "SHA2-512/256"
             }]
@@ -659,6 +685,9 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
               "hashAlg": "SHA2-512",
               "saltLen": 64
             }, {
+              "hashAlg": "SHA2-512/224",
+              "saltLen": 28
+            }, {
               "hashAlg": "SHA2-512/256",
               "saltLen": 32
             }]
@@ -680,6 +709,9 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
               "hashAlg": "SHA2-512",
               "saltLen": 64
             }, {
+              "hashAlg": "SHA2-512/224",
+              "saltLen": 28
+            }, {
               "hashAlg": "SHA2-512/256",
               "saltLen": 32
             }]
@@ -700,6 +732,9 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
             }, {
               "hashAlg": "SHA2-512",
               "saltLen": 64
+            }, {
+              "hashAlg": "SHA2-512/224",
+              "saltLen": 28
             }, {
               "hashAlg": "SHA2-512/256",
               "saltLen": 32
@@ -726,6 +761,8 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
             }, {
               "hashAlg": "SHA2-512"
             }, {
+              "hashAlg": "SHA2-512/224"
+            }, {
               "hashAlg": "SHA2-512/256"
             }, {
               "hashAlg": "SHA-1"
@@ -743,6 +780,8 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
               "hashAlg": "SHA2-384"
             }, {
               "hashAlg": "SHA2-512"
+            }, {
+              "hashAlg": "SHA2-512/224"
             }, {
               "hashAlg": "SHA2-512/256"
             }, {
@@ -762,6 +801,8 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
             }, {
               "hashAlg": "SHA2-512"
             }, {
+              "hashAlg": "SHA2-512/224"
+            }, {
               "hashAlg": "SHA2-512/256"
             }, {
               "hashAlg": "SHA-1"
@@ -779,6 +820,8 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
               "hashAlg": "SHA2-384"
             }, {
               "hashAlg": "SHA2-512"
+            }, {
+              "hashAlg": "SHA2-512/224"
             }, {
               "hashAlg": "SHA2-512/256"
             }, {
@@ -799,6 +842,9 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
               "hashAlg": "SHA2-384",
               "saltLen": 48
             }, {
+              "hashAlg": "SHA2-512/224",
+              "saltLen": 28
+            }, {
               "hashAlg": "SHA2-512/256",
               "saltLen": 32
             }, {
@@ -822,6 +868,9 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
             }, {
               "hashAlg": "SHA2-512",
               "saltLen": 64
+            }, {
+              "hashAlg": "SHA2-512/224",
+              "saltLen": 28
             }, {
               "hashAlg": "SHA2-512/256",
               "saltLen": 32
@@ -847,6 +896,9 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
               "hashAlg": "SHA2-512",
               "saltLen": 64
             }, {
+              "hashAlg": "SHA2-512/224",
+              "saltLen": 28
+            }, {
               "hashAlg": "SHA2-512/256",
               "saltLen": 32
             }, {
@@ -870,6 +922,9 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
             }, {
               "hashAlg": "SHA2-512",
               "saltLen": 64
+            }, {
+              "hashAlg": "SHA2-512/224",
+              "saltLen": 28
             }, {
               "hashAlg": "SHA2-512/256",
               "saltLen": 32
@@ -910,6 +965,7 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
             "HMAC-SHA2-256",
             "HMAC-SHA2-384",
             "HMAC-SHA2-512",
+            "HMAC-SHA2-512/224",
             "HMAC-SHA2-512/256"
           ],
           "customKeyInLength": 0,
@@ -1893,6 +1949,8 @@ static const EVP_MD *HashFromName(Span<const uint8_t> name) {
     return EVP_sha384();
   } else if (StringEq(name, "SHA2-512")) {
     return EVP_sha512();
+  } else if (StringEq(name, "SHA2-512/224")) {
+    return EVP_sha512_224();
   } else if (StringEq(name, "SHA2-512/256")) {
     return EVP_sha512_256();
   } else {
@@ -2390,6 +2448,7 @@ static struct {
     {"SHA2-256", 1, Hash<SHA256, SHA256_DIGEST_LENGTH>},
     {"SHA2-384", 1, Hash<SHA384, SHA384_DIGEST_LENGTH>},
     {"SHA2-512", 1, Hash<SHA512, SHA512_DIGEST_LENGTH>},
+    {"SHA2-512/224", 1, Hash<SHA512_224, SHA512_224_DIGEST_LENGTH>},
     {"SHA2-512/256", 1, Hash<SHA512_256, SHA512_256_DIGEST_LENGTH>},
     {"SHA3-224", 1, HashSha3<EVP_sha3_224, SHA224_DIGEST_LENGTH>},
     {"SHA3-256", 1, HashSha3<EVP_sha3_256, SHA256_DIGEST_LENGTH>},
@@ -2440,6 +2499,7 @@ static struct {
     {"HMAC-SHA2-256", 2, HMAC<EVP_sha256>},
     {"HMAC-SHA2-384", 2, HMAC<EVP_sha384>},
     {"HMAC-SHA2-512", 2, HMAC<EVP_sha512>},
+    {"HMAC-SHA2-512/224", 2, HMAC<EVP_sha512_224>},
     {"HMAC-SHA2-512/256", 2, HMAC<EVP_sha512_256>},
     {"ctrDRBG/AES-256", 6, DRBG<false>},
     {"ctrDRBG-reseed/AES-256", 8, DRBG<true>},

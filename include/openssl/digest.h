@@ -85,6 +85,7 @@ OPENSSL_EXPORT const EVP_MD *EVP_sha224(void);
 OPENSSL_EXPORT const EVP_MD *EVP_sha256(void);
 OPENSSL_EXPORT const EVP_MD *EVP_sha384(void);
 OPENSSL_EXPORT const EVP_MD *EVP_sha512(void);
+OPENSSL_EXPORT const EVP_MD *EVP_sha512_224(void);
 OPENSSL_EXPORT const EVP_MD *EVP_sha512_256(void);
 OPENSSL_EXPORT const EVP_MD *EVP_sha3_224(void);
 OPENSSL_EXPORT const EVP_MD *EVP_sha3_256(void);

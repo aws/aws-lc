@@ -246,9 +246,30 @@ struct sha512_state_st {
 };
 
 
-// SHA-512-256
+// SHA-512-224 and SHA-512-256
 //
 // See https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf section 5.3.6
+
+#define SHA512_224_DIGEST_LENGTH 28
+
+// SHA512_224_Init initialises |sha| and returns 1.
+OPENSSL_EXPORT int SHA512_224_Init(SHA512_CTX *sha);
+
+// SHA512_224_Update adds |len| bytes from |data| to |sha| and returns 1.
+OPENSSL_EXPORT int SHA512_224_Update(SHA512_CTX *sha, const void *data,
+                                     size_t len);
+
+// SHA512_224_Final adds the final padding to |sha| and writes the resulting
+// digest to |out|, which must have at least |SHA512_224_DIGEST_LENGTH| bytes of
+// space. It returns one on success and zero on programmer error.
+OPENSSL_EXPORT int SHA512_224_Final(uint8_t out[SHA512_224_DIGEST_LENGTH],
+                                    SHA512_CTX *sha);
+
+// SHA512_224 writes the digest of |len| bytes from |data| to |out| and returns
+// |out|. There must be at least |SHA512_224_DIGEST_LENGTH| bytes of space in
+// |out|.
+OPENSSL_EXPORT uint8_t *SHA512_224(const uint8_t *data, size_t len,
+                                   uint8_t out[SHA512_224_DIGEST_LENGTH]);
 
 #define SHA512_256_DIGEST_LENGTH 32
 

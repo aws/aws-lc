@@ -57,6 +57,7 @@ static const MD sha256 = { "SHA256", &EVP_sha256, &SHA256 };
 static const MD sha384 = { "SHA384", &EVP_sha384, &SHA384 };
 static const MD sha512 = { "SHA512", &EVP_sha512, &SHA512 };
 static const MD sha512_256 = { "SHA512-256", &EVP_sha512_256, &SHA512_256 };
+static const MD sha512_224 = { "SHA512-224", &EVP_sha512_224, &SHA512_224 };
 static const MD sha3_224 = { "SHA3-224", &EVP_sha3_224, &SHA3_224 };
 static const MD sha3_256 = { "SHA3-256", &EVP_sha3_256, &SHA3_256 };
 static const MD sha3_384 = { "SHA3-384", &EVP_sha3_384, &SHA3_384 };
@@ -152,6 +153,15 @@ static const DigestTestVector kTestVectors[] = {
      1,
      "8e959b75dae313da8cf4f72814fc143f8f7779c6eb9f7fa17299aeadb6889018"
      "501d289e4900f7e4331b99dec4b5433ac7d329eeb6dd26545e96e55b874be909"},
+
+    // SHA-512-224 tests, from
+    // https://csrc.nist.gov/csrc/media/projects/cryptographic-standards-and-guidelines/documents/examples/sha512_224.pdf
+    {sha512_224, "abc", 1,
+     "4634270f707b6a54daae7530460842e20e37ed265ceee9a43e8924aa"},
+    {sha512_224,
+     "abcdefghbcdefghicdefghijdefghijkefghijklfghijklmghijklmnhijklmnoijklmnopj"
+     "klmnopqklmnopqrlmnopqrsmnopqrstnopqrstu",
+     1, "23fec5bb94d60b23308192640b0c453335d664734fe40e7268674af9"},
 
     // SHA-512-256 tests, from
     // https://csrc.nist.gov/csrc/media/projects/cryptographic-standards-and-guidelines/documents/examples/sha512_256.pdf
