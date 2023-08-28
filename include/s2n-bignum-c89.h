@@ -156,6 +156,40 @@ extern uint64_t bignum_coprime (uint64_t m, uint64_t *x, uint64_t n, uint64_t *y
 /*  Input x[n]; output z[k] */
 extern void bignum_copy (uint64_t k, uint64_t *z, uint64_t n, uint64_t *x);
 
+/* Given table: uint64_t[height*width], copy table[idx*width...(idx+1)*width-1] */
+/* into z[0..width-1]. */
+/* This function is constant-time with respect to the value of `idx`. This is */
+/* achieved by reading the whole table and using the bit-masking to get the */
+/* `idx`-th row. */
+/* Input table[height*width]; output z[width] */
+extern void bignum_copy_row_from_table (uint64_t *z, uint64_t *table, uint64_t height,
+        uint64_t width, uint64_t idx);
+
+/* Given table: uint64_t[height*width], copy table[idx*width...(idx+1)*width-1] */
+/* into z[0..width-1]. width must be a multiple of 8. */
+/* This function is constant-time with respect to the value of `idx`. This is */
+/* achieved by reading the whole table and using the bit-masking to get the */
+/* `idx`-th row. */
+/* Input table[height*width]; output z[width] */
+extern void bignum_copy_row_from_table_8n_neon (uint64_t *z, uint64_t *table,
+        uint64_t height, uint64_t width, uint64_t idx);
+
+/* Given table: uint64_t[height*16], copy table[idx*16...(idx+1)*16-1] into z[0..row-1]. */
+/* This function is constant-time with respect to the value of `idx`. This is */
+/* achieved by reading the whole table and using the bit-masking to get the */
+/* `idx`-th row. */
+/* Input table[height*16]; output z[16] */
+extern void bignum_copy_row_from_table_16_neon (uint64_t *z, uint64_t *table,
+        uint64_t height, uint64_t idx);
+
+/* Given table: uint64_t[height*32], copy table[idx*32...(idx+1)*32-1] into z[0..row-1]. */
+/* This function is constant-time with respect to the value of `idx`. This is */
+/* achieved by reading the whole table and using the bit-masking to get the */
+/* `idx`-th row. */
+/* Input table[height*32]; output z[32] */
+extern void bignum_copy_row_from_table_32_neon (uint64_t *z, uint64_t *table,
+        uint64_t height, uint64_t idx);
+
 /*  Count trailing zero digits (64-bit words) */
 /*  Input x[k]; output function return */
 extern uint64_t bignum_ctd (uint64_t k, uint64_t *x);
