@@ -2454,6 +2454,7 @@ static struct {
     {"SHA3-256", 1, HashSha3<EVP_sha3_256, SHA256_DIGEST_LENGTH>},
     {"SHA3-384", 1, HashSha3<EVP_sha3_384, SHA384_DIGEST_LENGTH>},
     {"SHA3-512", 1, HashSha3<EVP_sha3_512, SHA512_DIGEST_LENGTH>},
+    // TODO [childw] what to do about MCT/LDT/PSSetc ?
     {"SHA-1/MCT", 1, HashMCT<SHA1, SHA_DIGEST_LENGTH>},
     {"SHA2-224/MCT", 1, HashMCT<SHA224, SHA224_DIGEST_LENGTH>},
     {"SHA2-256/MCT", 1, HashMCT<SHA256, SHA256_DIGEST_LENGTH>},

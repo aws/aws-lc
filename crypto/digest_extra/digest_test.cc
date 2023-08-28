@@ -156,21 +156,20 @@ static const DigestTestVector kTestVectors[] = {
 
     // SHA-512-224 tests, from
     // https://csrc.nist.gov/csrc/media/projects/cryptographic-standards-and-guidelines/documents/examples/sha512_224.pdf
-    {sha512_224, "abc", 1,
-     "4634270f707b6a54daae7530460842e20e37ed265ceee9a43e8924aa"},
+    // TODO [childw] for some reason, the last 4 bytes of digest/test vector are off...
+    {sha512_224, "abc",
+        1, "4634270f707b6a54daae7530460842e20e37ed265ceee9a43e8924aa"},
     {sha512_224,
-     "abcdefghbcdefghicdefghijdefghijkefghijklfghijklmghijklmnhijklmnoijklmnopj"
-     "klmnopqklmnopqrlmnopqrsmnopqrstnopqrstu",
-     1, "23fec5bb94d60b23308192640b0c453335d664734fe40e7268674af9"},
+     "abcdefghbcdefghicdefghijdefghijkefghijklfghijklmghijklmnhijklmnoijklmnopjklmnopqklmnopqrlmnopqrsmnopqrstnopqrstu",
+        1, "23fec5bb94d60b23308192640b0c453335d664734fe40e7268674af9"},
 
     // SHA-512-256 tests, from
     // https://csrc.nist.gov/csrc/media/projects/cryptographic-standards-and-guidelines/documents/examples/sha512_256.pdf
-    {sha512_256, "abc", 1,
-     "53048e2681941ef99b2e29b76b4c7dabe4c2d0c634fc6d46e0e2f13107e7af23"},
+    {sha512_256, "abc",
+        1, "53048e2681941ef99b2e29b76b4c7dabe4c2d0c634fc6d46e0e2f13107e7af23"},
     {sha512_256,
-     "abcdefghbcdefghicdefghijdefghijkefghijklfghijklmghijklmnhijklmnoijklmnopj"
-     "klmnopqklmnopqrlmnopqrsmnopqrstnopqrstu",
-     1, "3928e184fb8690f840da3988121d31be65cb9d3ef83ee6146feac861e19b563a"},
+     "abcdefghbcdefghicdefghijdefghijkefghijklfghijklmghijklmnhijklmnoijklmnopjklmnopqklmnopqrlmnopqrsmnopqrstnopqrstu",
+        1, "3928e184fb8690f840da3988121d31be65cb9d3ef83ee6146feac861e19b563a"},
 
      // SHA3-224 tests, from NIST.
     // http://csrc.nist.gov/groups/STM/cavp/secure-hashing.html
