@@ -5109,6 +5109,7 @@ OPENSSL_EXPORT int SSL_set1_sigalgs_list(SSL *ssl, const char *str);
 // function returns.
 //
 // Per OpenSSL's definition of Level 0, 1, and 2:
+//
 // Level 0:
 // Everything is permitted. This retains compatibility with previous versions of
 // OpenSSL.
@@ -5127,11 +5128,11 @@ OPENSSL_EXPORT int SSL_set1_sigalgs_list(SSL *ssl, const char *str);
 // addition to the level 1 exclusions any cipher suite using RC4 is also
 // prohibited. SSL version 3 is also not allowed. Compression is disabled.
 //
-// AWS-LC's libssl doesn't support SSL version 2 or 3, and we have no support
-// for MD5 or RC4 related cipher suites. However, we don't directly prohibit 512
-// bit RSA keys like Level 1 in OpenSSL states. Since this function is only
-// retained for OpenSSL compatibility, we set the returned value to 0. This may
-// change if we're asked to support actual Security level setting in AWS-LC.
+// AWS-LC's libssl doesn't support SSLv2 or SSLv3, and we have no support for MD5
+// or RC4 related cipher suites. However, we don't directly prohibit 512 bit RSA
+// keys like Level 1 in OpenSSL states. Since this function is only retained for
+// OpenSSL compatibility, we set the returned value to 0. This may change if
+// we're asked to support actual Security level setting in AWS-LC.
 OPENSSL_EXPORT int SSL_CTX_get_security_level(const SSL_CTX *ctx);
 
 // SSL_CTX_set_security_level does nothing. See documentation in
