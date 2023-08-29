@@ -333,11 +333,17 @@ static int sha512_final_impl(uint8_t *out, size_t md_len, SHA512_CTX *sha) {
     return 0;
   }
 
-  assert(md_len % 8 == 0);
   const size_t out_words = md_len / 8;
+  const size_t remainder = md_len % 8;
+  assert(remainder == 0 || (remainder == 4 && out_words * 8 + remainder == md_len));
   for (size_t i = 0; i < out_words; i++) {
     CRYPTO_store_u64_be(out, sha->h[i]);
     out += 8;
+  }
+
+  if (remainder == 4) {
+    const uint64_t trailer = CRYPTO_bswap8(sha->h[out_words]);
+    OPENSSL_memcpy(out, (uint8_t*) &trailer, remainder);
   }
 
   FIPS_service_indicator_update_state();
