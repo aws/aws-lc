@@ -2981,11 +2981,6 @@ struct SSL3_STATE {
   // immutable.
   UniquePtr<SSL_SESSION> established_session;
 
-  // client_cipher_suites contains cipher suites offered by the client during
-  // the handshake, with preference order maintained. This field is NOT
-  // serialized and is only populated if used in a server context.
-  bssl::UniquePtr<STACK_OF(SSL_CIPHER)> client_cipher_suites;
-
   // Next protocol negotiation. For the client, this is the protocol that we
   // sent in NextProtocol and is set when handling ServerHello extensions.
   //
@@ -4010,6 +4005,11 @@ struct ssl_st {
   // session is the configured session to be offered by the client. This session
   // is immutable.
   bssl::UniquePtr<SSL_SESSION> session;
+
+  // client_cipher_suites contains cipher suites offered by the client during
+  // the handshake, with preference order maintained. This field is NOT
+  // serialized and is only populated if used in a server context.
+  bssl::UniquePtr<STACK_OF(SSL_CIPHER)> client_cipher_suites;
 
   void (*info_callback)(const SSL *ssl, int type, int value) = nullptr;
 
