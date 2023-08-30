@@ -106,7 +106,7 @@ struct hmac_methods_st {
       HASH_NAME##_has_overlarge_context_t)
 
 // The maximum number of HMAC implementations
-#define HMAC_METHOD_MAX 7
+#define HMAC_METHOD_MAX 8
 
 MD_TRAMPOLINES_EXPLICIT(MD5, MD5_CTX, MD5_CBLOCK);
 MD_TRAMPOLINES_EXPLICIT(SHA1, SHA_CTX, SHA_CBLOCK);
