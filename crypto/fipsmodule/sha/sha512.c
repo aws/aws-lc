@@ -333,6 +333,7 @@ static int sha512_final_impl(uint8_t *out, size_t md_len, SHA512_CTX *sha) {
     return 0;
   }
 
+  // TODO [childw] explain this
   const size_t out_words = md_len / 8;
   const size_t remainder = md_len % 8;
   assert(remainder == 0 || (remainder == 4 && out_words * 8 + remainder == md_len));
@@ -341,6 +342,7 @@ static int sha512_final_impl(uint8_t *out, size_t md_len, SHA512_CTX *sha) {
     out += 8;
   }
 
+  // TODO [childw] explain this
   if (remainder == 4) {
     const uint64_t trailer = CRYPTO_bswap8(sha->h[out_words]);
     OPENSSL_memcpy(out, (uint8_t*) &trailer, remainder);
