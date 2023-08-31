@@ -156,7 +156,6 @@ static const DigestTestVector kTestVectors[] = {
 
     // SHA-512-224 tests, from
     // https://csrc.nist.gov/csrc/media/projects/cryptographic-standards-and-guidelines/documents/examples/sha512_224.pdf
-    // TODO [childw] for some reason, the last 4 bytes of digest/test vector are off...
     {sha512_224, "abc",
         1, "4634270f707b6a54daae7530460842e20e37ed265ceee9a43e8924aa"},
     {sha512_224,
