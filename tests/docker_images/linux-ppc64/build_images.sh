@@ -1,11 +1,13 @@
-#!/bin/bash -ex
+#!/usr/bin/env bash
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 
-# Requires:
-# * Install qemu-user-static
+set -ex
 
 # Note:
+# After host reboot, qemu registration may need to be performed.
+# `docker run --rm --privileged multiarch/qemu-user-static --reset -p yes`
+
 # On Linux, you can see which architectures that qemu is registered for by looking
 # under `/proc/sys/fs/binfmt_misc`.
 
@@ -20,8 +22,26 @@ SCRIPT_DIR=$(dirname "$(readlink -f "${0}")")
 
 docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
 
-docker buildx create --use
-docker buildx build -t debian-ppc64:build-tools "${SCRIPT_DIR}"/debian-build-tools --load
+ARCH_NAME=ppc64
+
+X_TOOLS_FILE=${ARCH_NAME}-x-tools
+if [ ! -f "./ubuntu-x-tools/${X_TOOLS_FILE}.tar.xz" ]; then
+  if ! aws sts get-caller-identity &> /dev/null; then
+      echo "AWS credentials are invalid. Please verify AWS credentials and try again."
+      exit 1
+  fi
+  aws s3 cp "s3://aws-libcrypto/cross-compile-toolchains/host-x86_64-pc-linux-gnu/${X_TOOLS_FILE}.tar.xz" ./ubuntu-x-tools/
+fi
+
+BUILDER_NAME=${ARCH_NAME}-builder
+if ! docker buildx inspect ${BUILDER_NAME}; then
+    docker buildx create --name ${BUILDER_NAME} --use
+fi
+
+docker buildx build -t debian-${ARCH_NAME}:test "${SCRIPT_DIR}"/debian-test --load
+docker buildx build -t ubuntu-${ARCH_NAME}:x-tools "${SCRIPT_DIR}"/ubuntu-x-tools --load
 #docker context use default
-#docker buildx build -t debian-ppc64:e6500 "${SCRIPT_DIR}"/debian-e6500 --load
-#docker buildx build -t debian-ppc64:POWER8 "${SCRIPT_DIR}"/debian-POWER8 --load
+#docker buildx build -t debian-${ARCH_NAME}:e6500 "${SCRIPT_DIR}"/debian-e6500 --load
+#docker buildx build -t debian-${ARCH_NAME}:POWER8 "${SCRIPT_DIR}"/debian-POWER8 --load
+
+docker buildx rm ${BUILDER_NAME}

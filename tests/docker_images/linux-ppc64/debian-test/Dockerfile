@@ -19,7 +19,7 @@ RUN /debootstrap/debootstrap --second-stage
 SHELL ["/bin/bash", "-c"]
 
 RUN apt-get update && apt-get install -y  \
-    gcc g++ cmake golang-1.21 gdb valgrind \
+    git gcc g++ cmake golang-1.21 gdb gdbserver valgrind \
     clang libclang1 \
     build-essential \
     ssh \
@@ -27,6 +27,8 @@ RUN apt-get update && apt-get install -y  \
     tar \
     python3 \
      && apt-get clean
+
+EXPOSE 7777
 
 ENV GOCACHE=/tmp
 ENV PATH="/usr/lib/go-1.21/bin:$PATH"
