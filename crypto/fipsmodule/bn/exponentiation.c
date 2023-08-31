@@ -960,10 +960,8 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
       powerbuf_len_may_overflow);
 
 #if defined(OPENSSL_BN_ASM_MONT5)
-  if (window == 5) {
-    // Reserve space for the |mont->N| copy.
-    powerbuf_len += top * sizeof(mont->N.d[0]);
-  }
+  // Reserve space for the |mont->N| copy.
+  powerbuf_len += top * sizeof(mont->N.d[0]);
 #endif
 
   // Allocate a buffer large enough to hold all of the pre-computed
@@ -1028,7 +1026,8 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
   // TODO(davidben): Using "almost" reduction complicates analysis of this code,
   // and its interaction with other parts of the project. Determine whether this
   // is actually necessary for performance.
-  if (window == 5 && top > 1) {
+  if (top > 1) {
+    assert(window == 5);
     // Copy |mont->N| to improve cache locality.
     BN_ULONG *np = am.d + top;
     for (i = 0; i < top; i++) {
