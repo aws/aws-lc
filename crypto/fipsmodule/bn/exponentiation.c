@@ -867,9 +867,7 @@ static int copy_from_prebuf(BIGNUM *b, int top, const BN_ULONG *table, int idx,
 
 // Window sizes optimized for fixed window size modular exponentiation
 // algorithm (BN_mod_exp_mont_consttime).
-#define BN_window_bits_for_ctime_exponent_size(b) \
-  ((b) > 306 ? 5 : (b) > 89 ? 4 : (b) > 22 ? 3 : 1)
-#define BN_MAX_MOD_EXP_CTIME_WINDOW (5)
+#define BN_window_bits_for_ctime_exponent_size 5
 
 // This variant of |BN_mod_exp_mont| uses fixed windows and fixed memory access
 // patterns to protect secret exponents (cf. the hyper-threading timing attacks
@@ -950,15 +948,15 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
 #endif
 
   // Get the window size to use with size of p.
-  int window = BN_window_bits_for_ctime_exponent_size(bits);
-  assert(window <= BN_MAX_MOD_EXP_CTIME_WINDOW);
+  int window = BN_window_bits_for_ctime_exponent_size;
 
   // Calculating |powerbuf_len| below cannot overflow because of the bound on
   // Montgomery reduction.
   assert((size_t)top <= BN_MONTGOMERY_MAX_WORDS);
   OPENSSL_STATIC_ASSERT(
       BN_MONTGOMERY_MAX_WORDS <=
-          INT_MAX / sizeof(BN_ULONG) / ((1 << BN_MAX_MOD_EXP_CTIME_WINDOW) + 3),
+          INT_MAX / sizeof(BN_ULONG) / ((1 <<
+              BN_window_bits_for_ctime_exponent_size) + 3),
       powerbuf_len_may_overflow);
 
 #if defined(OPENSSL_BN_ASM_MONT5)
