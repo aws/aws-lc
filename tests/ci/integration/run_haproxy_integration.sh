@@ -25,10 +25,24 @@ export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib"
 
 function build_and_test_haproxy() {
   cd ${HAPROXY_SRC}
-  make CC="${CC}" -j ${NUM_CPU_THREADS} TARGET=generic USE_OPENSSL_AWSLC=1 SSL_INC="${AWS_LC_INSTALL_FOLDER}/include" \
+  make CC="${CC}" -j ${NUM_CPU_THREADS} TARGET=linux-glibc USE_OPENSSL_AWSLC=1 SSL_INC="${AWS_LC_INSTALL_FOLDER}/include" \
       SSL_LIB="${AWS_LC_INSTALL_FOLDER}/lib/" USE_LUA=1  LUA_LIB_NAME=lua5.4
 
+  set +e
   make reg-tests VTEST_PROGRAM=../vtest/vtest REGTESTS_TYPES=default,bug,devel
+  make_exit_status=$?
+  set -e
+  if [ $make_exit_status -ne 0 ]; then
+      echo "Regression tests failed with ${make_exit_status}"
+      for folder in /tmp/haregtests-*/vtc.*; do
+        echo $folder
+        cat $folder/INFO
+        cat $folder/LOG
+      done
+      exit 1
+    else
+      echo "Regression tests passed"
+    fi
 }
 
 # Make script execution idempotent.
