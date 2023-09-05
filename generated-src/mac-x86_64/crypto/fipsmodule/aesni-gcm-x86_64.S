@@ -305,6 +305,9 @@ L$enc_tail:
 	vpaddb	%xmm2,%xmm1,%xmm0
 	movq	%r13,112+8(%rsp)
 	leaq	96(%rdi),%rdi
+
+	prefetcht0	512(%rdi)
+	prefetcht0	576(%rdi)
 	vaesenclast	%xmm5,%xmm11,%xmm11
 	vpaddb	%xmm2,%xmm0,%xmm5
 	movq	%r12,120+8(%rsp)
