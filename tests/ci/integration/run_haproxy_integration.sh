@@ -25,23 +25,10 @@ export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib"
 
 function build_and_test_haproxy() {
   cd ${HAPROXY_SRC}
-  make CC="${CC}" -j ${NUM_CPU_THREADS} TARGET=generic USE_OPENSSL=1 SSL_INC="${AWS_LC_INSTALL_FOLDER}/include" \
+  make CC="${CC}" -j ${NUM_CPU_THREADS} TARGET=generic USE_OPENSSL_AWSLC=1 SSL_INC="${AWS_LC_INSTALL_FOLDER}/include" \
       SSL_LIB="${AWS_LC_INSTALL_FOLDER}/lib/" USE_LUA=1  LUA_LIB_NAME=lua5.4
 
-  # These tests are marked as SLOW and should be skipped.
-  # TODO: update this to: make reg-tests VTEST_PROGRAM=../vtest/vtest REGTESTS_TYPES=default,bug,devel
-  # ssl_dh.vtc expects to use libssl with a FFDH ciphersuite which is unsupported, it will be gracefully turned off in
-  # ssl_dh.vtc with the change in https://github.com/andrewhop/haproxy/pull/1
-  excluded_tests=("mcli_show_info.vtc" "mcli_start_progs.vtc" "tls_basic_sync.vtc" "tls_basic_sync_wo_stkt_backend.vtc" "acl_cli_spaces.vtc" "http_reuse_always.vtc" "ocsp_auto_update.vtc" "ssl_dh.vtc")
-  test_paths=""
-
-  for test in reg-tests/**/*; do
-      if [[ "$test" == *.vtc ]] && [[ ! " ${excluded_tests[*]} " =~ $(basename "$test") ]]; then
-          test_paths+="$(realpath "$test") "
-      fi
-  done
-
-  make reg-tests VTEST_PROGRAM=../vtest/vtest REG_TEST_FILES="$test_paths"
+  make reg-tests VTEST_PROGRAM=../vtest/vtest REGTESTS_TYPES=default,bug,devel
 }
 
 # Make script execution idempotent.
