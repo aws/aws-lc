@@ -210,6 +210,16 @@ TEST(BIOTest, TextFile) {
   bytes_read = BIO_read(binary_bio.get(), contents, sizeof(contents));
   EXPECT_GE(bytes_read, bytes_written);
   EXPECT_EQ(test_str, std::string(contents));
+
+  // This test is meant to ensure that we're correctly handling a ftell/fseek
+  // bug on Windows documented here:
+  // https://developercommunity.visualstudio.com/t/fseek-ftell-fail-in-text-mode-for-unix-style-text/425878
+  bssl::UniquePtr<BIO> text_bio_seek(BIO_new_fp(text_bio_file.get(), BIO_NOCLOSE | BIO_FP_TEXT));
+  const long nseeks = (long) strlen(test_str) * 5L;
+  for (long i = 0L; i < nseeks; i++) {
+    EXPECT_EQ(0, BIO_seek(text_bio_seek.get(), i)); // 0 indicates success here
+    EXPECT_EQ(i, BIO_tell(text_bio_seek.get()));
+  }
 }
 
 TEST(BIOTest, ReadASN1) {
