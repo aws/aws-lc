@@ -175,6 +175,7 @@ static int is_md_fips_approved_for_signing(int md_type, int pkey_type) {
     case NID_sha256:
     case NID_sha384:
     case NID_sha512:
+    case NID_sha512_224:
       return 1;
     case NID_sha512_256:
       // TODO [childw] what to do here?
@@ -197,6 +198,7 @@ static int is_md_fips_approved_for_verifying(int md_type, int pkey_type) {
     case NID_sha256:
     case NID_sha384:
     case NID_sha512:
+    case NID_sha512_224:
       return 1;
     case NID_sha512_256:
       // TODO [childw] what to do here?
