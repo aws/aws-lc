@@ -2449,7 +2449,6 @@ static struct {
     {"SHA2-384", 1, Hash<SHA384, SHA384_DIGEST_LENGTH>},
     {"SHA2-512", 1, Hash<SHA512, SHA512_DIGEST_LENGTH>},
     {"SHA2-512/224", 1, Hash<SHA512_224, SHA512_224_DIGEST_LENGTH>},
-    // TODO [childw] what to do about MCT/LDT/PSSetc ?
     {"SHA2-512/256", 1, Hash<SHA512_256, SHA512_256_DIGEST_LENGTH>},
     {"SHA3-224", 1, HashSha3<EVP_sha3_224, SHA224_DIGEST_LENGTH>},
     {"SHA3-256", 1, HashSha3<EVP_sha3_256, SHA256_DIGEST_LENGTH>},
@@ -2460,7 +2459,7 @@ static struct {
     {"SHA2-256/MCT", 1, HashMCT<SHA256, SHA256_DIGEST_LENGTH>},
     {"SHA2-384/MCT", 1, HashMCT<SHA384, SHA384_DIGEST_LENGTH>},
     {"SHA2-512/MCT", 1, HashMCT<SHA512, SHA512_DIGEST_LENGTH>},
-    // TODO [childw] what to do about MCT/LDT/PSSetc ?
+    {"SHA2-512/224/MCT", 1, HashMCT<SHA512_224, SHA512_224_DIGEST_LENGTH>},
     {"SHA2-512/256/MCT", 1, HashMCT<SHA512_256, SHA512_256_DIGEST_LENGTH>},
     {"SHA3-224/MCT", 1, HashMCTSha3<EVP_sha3_224, SHA224_DIGEST_LENGTH>},
     {"SHA3-256/MCT", 1, HashMCTSha3<EVP_sha3_256, SHA256_DIGEST_LENGTH>},
@@ -2471,7 +2470,7 @@ static struct {
     {"SHA2-256/LDT", 2, HashLDT<SHA256, SHA256_DIGEST_LENGTH>},
     {"SHA2-384/LDT", 2, HashLDT<SHA384, SHA384_DIGEST_LENGTH>},
     {"SHA2-512/LDT", 2, HashLDT<SHA512, SHA512_DIGEST_LENGTH>},
-    // TODO [childw] what to do about MCT/LDT/PSSetc ?
+    {"SHA2-512/224/LDT", 2, HashLDT<SHA512_224, SHA512_224_DIGEST_LENGTH>},
     {"SHA2-512/256/LDT", 2, HashLDT<SHA512_256, SHA512_256_DIGEST_LENGTH>},
     {"SHA3-224/LDT", 2, HashLDTSha3<EVP_sha3_224, SHA224_DIGEST_LENGTH>},
     {"SHA3-256/LDT", 2, HashLDTSha3<EVP_sha3_256, SHA256_DIGEST_LENGTH>},
@@ -2503,7 +2502,6 @@ static struct {
     {"HMAC-SHA2-384", 2, HMAC<EVP_sha384>},
     {"HMAC-SHA2-512", 2, HMAC<EVP_sha512>},
     {"HMAC-SHA2-512/224", 2, HMAC<EVP_sha512_224>},
-    // TODO [childw] what to do about MCT/LDT/PSSetc ?
     {"HMAC-SHA2-512/256", 2, HMAC<EVP_sha512_256>},
     {"ctrDRBG/AES-256", 6, DRBG<false>},
     {"ctrDRBG-reseed/AES-256", 8, DRBG<true>},
@@ -2518,28 +2516,28 @@ static struct {
     {"RSA/sigGen/SHA2-256/pkcs1v1.5", 2, RSASigGen<EVP_sha256, false>},
     {"RSA/sigGen/SHA2-384/pkcs1v1.5", 2, RSASigGen<EVP_sha384, false>},
     {"RSA/sigGen/SHA2-512/pkcs1v1.5", 2, RSASigGen<EVP_sha512, false>},
-    // TODO [childw] what to do about MCT/LDT/PSSetc ?
+    {"RSA/sigGen/SHA2-512/224/pkcs1v1.5", 2, RSASigGen<EVP_sha512_224, false>},
     {"RSA/sigGen/SHA2-512/256/pkcs1v1.5", 2, RSASigGen<EVP_sha512_256, false>},
     {"RSA/sigGen/SHA-1/pkcs1v1.5", 2, RSASigGen<EVP_sha1, false>},
     {"RSA/sigGen/SHA2-224/pss", 2, RSASigGen<EVP_sha224, true>},
     {"RSA/sigGen/SHA2-256/pss", 2, RSASigGen<EVP_sha256, true>},
     {"RSA/sigGen/SHA2-384/pss", 2, RSASigGen<EVP_sha384, true>},
     {"RSA/sigGen/SHA2-512/pss", 2, RSASigGen<EVP_sha512, true>},
-    // TODO [childw] what to do about MCT/LDT/PSSetc ?
+    {"RSA/sigGen/SHA2-512/224/pss", 2, RSASigGen<EVP_sha512_224, true>},
     {"RSA/sigGen/SHA2-512/256/pss", 2, RSASigGen<EVP_sha512_256, true>},
     {"RSA/sigGen/SHA-1/pss", 2, RSASigGen<EVP_sha1, true>},
     {"RSA/sigVer/SHA2-224/pkcs1v1.5", 4, RSASigVer<EVP_sha224, false>},
     {"RSA/sigVer/SHA2-256/pkcs1v1.5", 4, RSASigVer<EVP_sha256, false>},
     {"RSA/sigVer/SHA2-384/pkcs1v1.5", 4, RSASigVer<EVP_sha384, false>},
     {"RSA/sigVer/SHA2-512/pkcs1v1.5", 4, RSASigVer<EVP_sha512, false>},
-    // TODO [childw] what to do about MCT/LDT/PSSetc ?
+    {"RSA/sigVer/SHA2-512/224/pkcs1v1.5", 4, RSASigVer<EVP_sha512_224, false>},
     {"RSA/sigVer/SHA2-512/256/pkcs1v1.5", 4, RSASigVer<EVP_sha512_256, false>},
     {"RSA/sigVer/SHA-1/pkcs1v1.5", 4, RSASigVer<EVP_sha1, false>},
     {"RSA/sigVer/SHA2-224/pss", 4, RSASigVer<EVP_sha224, true>},
     {"RSA/sigVer/SHA2-256/pss", 4, RSASigVer<EVP_sha256, true>},
     {"RSA/sigVer/SHA2-384/pss", 4, RSASigVer<EVP_sha384, true>},
     {"RSA/sigVer/SHA2-512/pss", 4, RSASigVer<EVP_sha512, true>},
-    // TODO [childw] what to do about MCT/LDT/PSSetc ?
+    {"RSA/sigVer/SHA2-512/224/pss", 4, RSASigVer<EVP_sha512_224, true>},
     {"RSA/sigVer/SHA2-512/256/pss", 4, RSASigVer<EVP_sha512_256, true>},
     {"RSA/sigVer/SHA-1/pss", 4, RSASigVer<EVP_sha1, true>},
     {"TLSKDF/1.0/SHA-1", 5, TLSKDF<EVP_md5_sha1>},
@@ -2592,7 +2590,7 @@ static struct {
     {"KDF/Feedback/HMAC-SHA2-256", 3, HKDF_expand<EVP_sha256>},
     {"KDF/Feedback/HMAC-SHA2-384", 3, HKDF_expand<EVP_sha384>},
     {"KDF/Feedback/HMAC-SHA2-512", 3, HKDF_expand<EVP_sha512>},
-    // TODO [childw] what to do about MCT/LDT/PSSetc ?
+    {"KDF/Feedback/HMAC-SHA2-512/224", 3, HKDF_expand<EVP_sha512_224>},
     {"KDF/Feedback/HMAC-SHA2-512/256", 3, HKDF_expand<EVP_sha512_256>},
 };
 
