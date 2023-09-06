@@ -167,7 +167,7 @@ TEST(BIOTest, TextFile) {
   // to avoid a double-free condition.
   using TempFILE = std::unique_ptr<FILE, decltype(&fclose)>;
 
-  const char *test_str = "test\n";
+  const char *test_str = "test\ntest\ntest\n";
 
   // Assert that CRLF line endings get inserted on write and translated back out on
   // read for text mode.
@@ -178,7 +178,7 @@ TEST(BIOTest, TextFile) {
   EXPECT_GE(bytes_written, 0);
   ASSERT_TRUE(BIO_flush(text_bio.get()));
   ASSERT_EQ(0, BIO_seek(text_bio.get(), 0));    // 0 indicates success here
-  char contents[10];
+  char contents[256];
   OPENSSL_memset(contents, 0, sizeof(contents));
   int bytes_read = BIO_read(text_bio.get(), contents, sizeof(contents));
   EXPECT_GE(bytes_read, bytes_written);
@@ -192,7 +192,7 @@ TEST(BIOTest, TextFile) {
   bytes_read = BIO_read(text_bio_raw.get(), contents, sizeof(contents));
   EXPECT_GT(bytes_read, 0);
 #if defined(OPENSSL_WINDOWS)
-  EXPECT_EQ("test\r\n", std::string(contents));
+  EXPECT_EQ("test\r\ntest\r\ntest\r\n", std::string(contents));
 #else
   EXPECT_EQ(test_str, std::string(contents));
 #endif
@@ -212,14 +212,18 @@ TEST(BIOTest, TextFile) {
   EXPECT_EQ(test_str, std::string(contents));
 
   // This test is meant to ensure that we're correctly handling a ftell/fseek
-  // bug on Windows documented here:
+  // bug on Windows documented and reproduced here:
   // https://developercommunity.visualstudio.com/t/fseek-ftell-fail-in-text-mode-for-unix-style-text/425878
-  bssl::UniquePtr<BIO> text_bio_seek(BIO_new_fp(text_bio_file.get(), BIO_NOCLOSE | BIO_FP_TEXT));
-  const long nseeks = (long) strlen(test_str) * 5L;
-  for (long i = 0L; i < nseeks; i++) {
-    EXPECT_EQ(0, BIO_seek(text_bio_seek.get(), i)); // 0 indicates success here
-    EXPECT_EQ(i, BIO_tell(text_bio_seek.get()));
-  }
+  long pos;
+  char b1[256], b2[256];
+  binary_bio.reset(BIO_new_fp(binary_bio_file.get(), BIO_NOCLOSE));
+  ASSERT_EQ(0, BIO_seek(binary_bio.get(), 0));    // 0 indicates success here
+  BIO_gets(binary_bio.get(), b1, sizeof(b1));
+  pos = BIO_tell(binary_bio.get());
+  BIO_gets(binary_bio.get(), b1, sizeof(b1));
+  BIO_seek(binary_bio.get(), pos);
+  BIO_gets(binary_bio.get(), b2, sizeof(b2));
+  EXPECT_EQ(std::string(b1), std::string(b2));
 }
 
 TEST(BIOTest, ReadASN1) {
