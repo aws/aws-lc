@@ -1659,6 +1659,7 @@ OPENSSL_EXPORT int SSL_CTX_cipher_in_group(const SSL_CTX *ctx, size_t i);
 // SSL_get_ciphers returns the cipher list for |ssl|, in order of preference.
 OPENSSL_EXPORT STACK_OF(SSL_CIPHER) *SSL_get_ciphers(const SSL *ssl);
 
+
 // Connection information.
 
 // SSL_is_init_finished returns one if |ssl| has completed its initial handshake
@@ -2601,7 +2602,9 @@ OPENSSL_EXPORT const char *SSL_get_group_name(uint16_t group_id);
 // finished.
 // WARNING: Currently only supports |SSL| as server.
 // WARNING: CRYPTO_EX_DATA |ssl->ex_data| is not encoded. Remember set |ex_data|
-// back after decode. WARNING: BIO |ssl->rbio| and |ssl->wbio| are not encoded.
+// back after decode.
+// WARNING: BIO |ssl->rbio| and |ssl->wbio| are not encoded.
+// WARNING: STACK_OF(SSL_CIPHER) |ssl->client_cipher_suites| is not encoded.
 //
 // Initial implementation of this API is made by Evgeny Potemkin.
 OPENSSL_EXPORT int SSL_to_bytes(const SSL *in, uint8_t **out_data,
@@ -2617,6 +2620,8 @@ OPENSSL_EXPORT int SSL_to_bytes(const SSL *in, uint8_t **out_data,
 //          Otherwise, the connections use the same key material.
 // WARNING: Remember set |ssl->rbio| and |ssl->wbio| before using |ssl|.
 // WARNING: Remember set callback functions and |ex_data| back if needed.
+// WARNING: STACK_OF(SSL_CIPHER) |ssl->client_cipher_suites| is not encoded and
+//          will be repopulated on next handshake.
 // WARNING: To ensure behavior unchange, |ctx| setting should be the same.
 //
 // Initial implementation of this API is made by Evgeny Potemkin.
