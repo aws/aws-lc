@@ -4,7 +4,8 @@ on:
     branches: [ '*' ]
   pull_request:
     branches: [ '*' ]
-
+env:
+  CC: gcc
 jobs:
   haproxy:
     runs-on: ubuntu-latest
