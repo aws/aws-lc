@@ -14,10 +14,6 @@ jobs:
         run: |
           sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make
       - uses: actions/checkout@v3
-      - uses: actions/checkout@v3
-        with:
-          repository: haproxy/haproxy
-          path: ./scratch/haproxy
       - name: Run integration build
         run: |
           ./tests/ci/integration/run_haproxy_integration.sh
