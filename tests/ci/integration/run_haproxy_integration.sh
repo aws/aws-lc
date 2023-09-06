@@ -6,12 +6,8 @@ source tests/ci/common_posix_setup.sh
 
 # Set up environment.
 
-# SYS_ROOT
-#  |
-#  - SRC_ROOT(aws-lc)
-#  |
+# SRC_ROOT(aws-lc)
 #  - SCRATCH_FOLDER
-#    |
 #    - HAPROXY_SRC
 #    - AWS_LC_BUILD_FOLDER
 #    - AWS_LC_INSTALL_FOLDER
