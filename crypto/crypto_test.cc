@@ -38,7 +38,7 @@ TEST(CryptoTest, Version) {
 
   std::string full_expected = "OpenSSL 1.1.1 (compatible; AWS-LC ";
   full_expected += AWSLC_VERSION_NUMBER_STRING;
-  full_expected+= ")";
+  full_expected += ")";
   EXPECT_EQ(OPENSSL_VERSION_TEXT, full_expected);
 
   full_expected = "AWS-LC ";
