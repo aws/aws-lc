@@ -26,7 +26,7 @@ export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib"
 function build_and_test_haproxy() {
   cd ${HAPROXY_SRC}
   make CC="${CC}" -j ${NUM_CPU_THREADS} TARGET=linux-glibc USE_OPENSSL_AWSLC=1 SSL_INC="${AWS_LC_INSTALL_FOLDER}/include" \
-      SSL_LIB="${AWS_LC_INSTALL_FOLDER}/lib/" USE_LUA=1  LUA_LIB_NAME=lua5.4
+      SSL_LIB="${AWS_LC_INSTALL_FOLDER}/lib/"
 
   set +e
   make reg-tests VTEST_PROGRAM=../vtest/vtest REGTESTS_TYPES=default,bug,devel
