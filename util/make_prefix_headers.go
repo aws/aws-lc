@@ -248,6 +248,7 @@ func main() {
 
 	if len(*prefix) == 0 {
 		fmt.Fprint(os.Stderr, "-prefix must be non-zero length")
+		os.Exit(1)
 	}
 
 	symbols, err := readSymbols(flag.Arg(0))
