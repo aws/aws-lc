@@ -39,6 +39,7 @@ import (
 )
 
 var out = flag.String("out", ".", "Path to a directory where the outputs will be written")
+var prefix = flag.String("prefix", "awslc", "The BORINGSSL_PREFIX value to define guard")
 
 // Read newline-separated symbols from a file, ignoring any comments started
 // with '#'.
@@ -87,7 +88,19 @@ func writeCHeader(symbols []string, path string) error {
 // WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+`); err != nil {
+		return err
+	}
 
+	if _, err := fmt.Fprintf(f, `
+#ifndef BORINGSSL_PREFIX
+#define BORINGSSL_PREFIX %s
+#endif
+`, *prefix); err != nil {
+		return err
+	}
+
+	if _, err := f.WriteString(`
 // BORINGSSL_ADD_PREFIX pastes two identifiers into one. It performs one
 // iteration of macro expansion on its arguments before pasting.
 #define BORINGSSL_ADD_PREFIX(a, b) BORINGSSL_ADD_PREFIX_INNER(a, b)
@@ -126,9 +139,21 @@ func writeASMHeader(symbols []string, path string) error {
 // WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+`); err != nil {
+		return err
+	}
 
+	if _, err := fmt.Fprintf(f, `
+#ifndef BORINGSSL_PREFIX
+#define BORINGSSL_PREFIX %s
+#endif
+    `, *prefix); err != nil {
+		return err
+	}
+
+	if _, err := f.WriteString(`
 #if !defined(__APPLE__)
-#include <boringssl_prefix_symbols.h>
+#include <openssl/boringssl_prefix_symbols.h>
 #else
 // On iOS and macOS, we need to treat assembly symbols differently from other
 // symbols. The linker expects symbols to be prefixed with an underscore.
@@ -172,7 +197,19 @@ func writeNASMHeader(symbols []string, path string) error {
 ; WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
 ; OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 ; CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+`); err != nil {
+		return err
+	}
 
+	if _, err := fmt.Fprintf(f, `
+%%ifndef BORINGSSL_PREFIX
+%%define BORINGSSL_PREFIX %s
+%%endif
+`, *prefix); err != nil {
+		return err
+	}
+
+	if _, err := f.WriteString(`
 ; 32-bit Windows adds underscores to C functions, while 64-bit Windows does not.
 %ifidn __OUTPUT_FORMAT__, win32
 `); err != nil {
@@ -207,6 +244,10 @@ func main() {
 	if flag.NArg() != 1 {
 		fmt.Fprintf(os.Stderr, "Usage: %s [-out OUT] SYMBOLS\n", os.Args[0])
 		os.Exit(1)
+	}
+
+	if len(*prefix) == 0 {
+		fmt.Fprint(os.Stderr, "-prefix must be non-zero length")
 	}
 
 	symbols, err := readSymbols(flag.Arg(0))
