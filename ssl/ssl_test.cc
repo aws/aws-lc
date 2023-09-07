@@ -7761,6 +7761,9 @@ TEST_F(QUICMethodTest, ZeroRTTAccept) {
   ASSERT_TRUE(CreateClientAndServer());
   SSL_set_session(client_.get(), session.get());
 
+  EXPECT_FALSE(SSL_get_client_ciphers(client_.get()));
+  EXPECT_FALSE(SSL_get_client_ciphers(server_.get()));
+
   // The client handshake should return immediately into the early data state.
   ASSERT_EQ(SSL_do_handshake(client_.get()), 1);
   EXPECT_TRUE(SSL_in_early_data(client_.get()));
@@ -7777,6 +7780,10 @@ TEST_F(QUICMethodTest, ZeroRTTAccept) {
   // 1-RTT read keys until client Finished.
   EXPECT_TRUE(transport_->server()->HasWriteSecret(ssl_encryption_application));
   EXPECT_FALSE(transport_->server()->HasReadSecret(ssl_encryption_application));
+  // The client should still have no view of the server's preferences, but the
+  // server should have seen at least one cipher from the client.
+  EXPECT_FALSE(SSL_get_client_ciphers(client_.get()));
+  EXPECT_GT(sk_SSL_CIPHER_num(SSL_get_client_ciphers(server_.get())), (size_t) 0);
 
   // Finish up the client and server handshakes.
   ASSERT_TRUE(CompleteHandshakesForQUIC());
