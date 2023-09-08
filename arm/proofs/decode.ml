@@ -268,9 +268,9 @@ let decode = new_definition `!w:int32. decode w =
       (Immediate_Offset (iword (ival imm7 * &(if x then 8 else 4)))))
 
   // SIMD ld,st operations
-  | [0b00:2; 0b111101:6; 0b11:2; imm12:12; Rn:5; Rt:5] ->
-    // LDR (immediate, SIMD&FP), Unsigned offset. Q registers only
-    SOME (arm_ldst_q T Rt (XREG_SP Rn) (Immediate_Offset (word (val imm12 * 16))))
+  | [0b00:2; 0b111101:6; 0b1:1; is_ld; imm12:12; Rn:5; Rt:5] ->
+    // LDR/STR (immediate, SIMD&FP), Unsigned offset, no writeback. Q registers only
+    SOME (arm_ldst_q is_ld Rt (XREG_SP Rn) (Immediate_Offset (word (val imm12 * 16))))
 
   // SIMD operations
   | [0:1; q; 0b001110:6; size:2; 1:1; Rm:5; 0b100001:6; Rn:5; Rd:5] ->
@@ -286,6 +286,10 @@ let decode = new_definition `!w:int32. decode w =
   | [0:1; q; 0b001110001:9; Rm:5; 0b000111:6; Rn:5; Rd:5] ->
     // AND
     SOME (arm_AND_VEC (QREG' Rd) (QREG' Rn) (QREG' Rm) (if q then 128 else 64))
+
+  | [0:1; q; 0b101110101:9; Rm:5; 0b000111:6; Rn:5; Rd:5] ->
+    // BIT
+    SOME (arm_BIT (QREG' Rd) (QREG' Rn) (QREG' Rm) (if q then 128 else 64))
 
   | [0:1; q; 0b001110000:9; imm5:5; 0b000011:6; Rn:5; Rd:5] ->
     // DUP (general)
@@ -1082,7 +1086,7 @@ let dest_cons4 =
   let assert_byte n = function
   | Comb(Const("word",_),a) -> dest_numeral a = Int n
   | _ -> false in
-  fun n -> function
+  fun n t -> match t with
   | Comb(Comb(Const("CONS",_),a1), Comb(Comb(Const("CONS",_),a2),
       Comb(Comb(Const("CONS",_),a3), Comb(Comb(Const("CONS",_),a4),tm)))) when
     0 <= n && n <= 0xffffffff &&
@@ -1090,7 +1094,8 @@ let dest_cons4 =
     assert_byte ((n lsr 8) land 0xff) a2 &&
     assert_byte ((n lsr 16) land 0xff) a3 &&
     assert_byte ((n lsr 24) land 0xff) a4 -> tm
-  | _ -> failwith "dest_cons4";;
+  | _ -> failwith ("dest_cons4: 4-byte inst code " ^ string_of_int n ^
+                   " != first 4 bytes of " ^ string_of_term t);;
 
 (* Asserts that the input term is the given list of words, and returns it. *)
 let assert_word_list tm ls =

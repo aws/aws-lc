@@ -831,6 +831,18 @@ let arm_BICS = define
          CF := F ,,
          VF := F) s`;;
 
+let arm_BIT = define
+ `arm_BIT Rd Rn Rm datasize =
+    \s. let m = read Rm s
+        and n = read Rn s
+        and d = read Rd s in
+        let out:(128)word = word_or (word_and d (word_not m)) (word_and n m) in
+        if datasize = 128 then
+          (Rd := out) s
+        else
+          let out':(64)word = word_subword out (0,64) in
+          (Rd := word_zx out':(128)word) s`;;
+
 (*** As with x86, we have relative and absolute versions of branch & link ***)
 (*** The absolute one gives a natural way of handling linker-insertions.  ***)
 
@@ -1977,7 +1989,7 @@ let ARM_OPERATION_CLAUSES =
     (*** Alphabetically sorted, new alphabet appears in the next line ***)
       [arm_ADC; arm_ADCS_ALT; arm_ADD; arm_ADD_VEC_ALT; arm_ADDS_ALT; arm_ADR;
        arm_AND; arm_AND_VEC; arm_ANDS; arm_ASR; arm_ASRV;
-       arm_B; arm_BIC; arm_BICS; arm_BL; arm_BL_ABSOLUTE; arm_Bcond;
+       arm_B; arm_BIC; arm_BICS; arm_BIT; arm_BL; arm_BL_ABSOLUTE; arm_Bcond;
        arm_CBNZ_ALT; arm_CBZ_ALT; arm_CCMN; arm_CCMP; arm_CLZ; arm_CSEL;
        arm_CSINC; arm_CSINV; arm_CSNEG;
        arm_DUP_GEN;
