@@ -7,18 +7,14 @@ source tests/ci/common_posix_setup.sh
 # Set up environment.
 
 # SYS_ROOT
-#  |
-#  - SRC_ROOT(aws-lc)
-#  |
 #  - SCRATCH_FOLDER
-#    |
-#    - postgres
-#    - AWS_LC_BUILD_FOLDER
-#    - AWS_LC_INSTALL_FOLDER
-#    - POSTGRES_BUILD_FOLDER
+#     - postgres
+#     - AWS_LC_BUILD_FOLDER
+#     - AWS_LC_INSTALL_FOLDER
+#     - POSTGRES_BUILD_FOLDER
 
 # Assumes script is executed from the root of aws-lc directory
-SCRATCH_FOLDER=${SYS_ROOT}/"POSTGRES_BUILD_ROOT"
+SCRATCH_FOLDER=${SRC_ROOT}/"POSTGRES_BUILD_ROOT"
 POSTGRES_SRC_FOLDER="${SCRATCH_FOLDER}/postgres"
 POSTGRES_BUILD_FOLDER="${SCRATCH_FOLDER}/postgres/build"
 AWS_LC_BUILD_FOLDER="${SCRATCH_FOLDER}/aws-lc-build"

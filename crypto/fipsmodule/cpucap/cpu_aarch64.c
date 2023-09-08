@@ -37,7 +37,7 @@ void handle_cpu_env(uint32_t *out, const char *in) {
     fprintf(stderr,
             "Fatal Error: HW capability found: 0x%02X, but HW capability requested: 0x%02X.\n",
             armcap, v);
-    exit(1);
+    abort();
   }
 
   if (invert) {
