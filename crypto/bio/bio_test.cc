@@ -154,13 +154,12 @@ TEST(BIOTest, Printf) {
   }
 }
 
-TEST(BIOTest, TextFile) {
+TEST(BIOTest, CloseFlags) {
 #if defined(OPENSSL_ANDROID)
   // On Android, when running from an APK, |tmpfile| does not work. See
   // b/36991167#comment8.
   GTEST_SKIP();
 #endif
-
 
   // unique_ptr will automatically call fclose on the file descriptior when the
   // variable goes out of scope, so we need to specify BIO_NOCLOSE close flags
@@ -224,6 +223,24 @@ TEST(BIOTest, TextFile) {
   BIO_seek(binary_bio.get(), pos);
   BIO_gets(binary_bio.get(), b2, sizeof(b2));
   EXPECT_EQ(std::string(b1), std::string(b2));
+
+  // Assert that BIO_CLOSE causes the underlying file to be closed on BIO free
+  // (ftell will return < 0)
+  FILE *tmp = tmpfile();
+  ASSERT_TRUE(tmp);
+  BIO *bio = BIO_new_fp(tmp, BIO_CLOSE);
+  EXPECT_EQ(0, BIO_tell(bio));
+  BIO_free(bio);
+  EXPECT_GT(0, ftell(tmp));
+
+  // Assert that BIO_NOCLOSE does not closethe underlying file on BIO free
+  tmp = tmpfile();
+  ASSERT_TRUE(tmp);
+  bio = BIO_new_fp(tmp, BIO_NOCLOSE);
+  EXPECT_EQ(0, BIO_tell(bio));
+  BIO_free(bio);
+  EXPECT_EQ(0, ftell(tmp));
+  fclose(tmp);
 }
 
 TEST(BIOTest, ReadASN1) {

@@ -451,10 +451,10 @@ OPENSSL_EXPORT int BIO_set_mem_eof_return(BIO *bio, int eof_value);
 // These can be used as symbolic arguments when a "close flag" is passed to a
 // BIO function.
 
-// BIO_NOCLOSE will not free the backing buffer on BIO close
+// BIO_NOCLOSE will not close the underlying file on BIO free
 #define BIO_NOCLOSE 0
 
-// BIO_CLOSE (default) will free the backing buffer on BIO close, whereas
+// BIO_CLOSE will close the underlying file on BIO free
 #define BIO_CLOSE 1
 
 // BIO_FP_TEXT will cause the file to be opened as a text file (this is only
