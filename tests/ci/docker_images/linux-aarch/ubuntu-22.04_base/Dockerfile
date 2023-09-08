@@ -22,6 +22,7 @@ RUN set -ex && \
     apt-get -y --no-install-recommends install \
     software-properties-common \
     cmake \
+    make \
     ninja-build \
     perl \
     libunwind-dev \
@@ -32,6 +33,12 @@ RUN set -ex && \
     lld \
     llvm \
     llvm-dev \
+    libicu-dev \
+    libipc-run-perl \
+    libreadline-dev \
+    zlib1g-dev \
+    flex \
+    bison \
     curl \
     unzip && \
     # Based on https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2-linux.html

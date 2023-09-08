@@ -16,5 +16,11 @@ RUN set -ex && \
     rm -rf /var/lib/apt/lists/* && \
     rm -rf /tmp/*
 
+# Postgres's integration tests cannot be run as root, so we have to define
+# a non-root user here to use in Codebuild.
+RUN adduser --disabled-password --gecos '' postgres && \
+    adduser postgres sudo && \
+    echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+
 ENV CC=gcc-12
 ENV CXX=g++-12
