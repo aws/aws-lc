@@ -397,10 +397,14 @@ bool ssl_public_key_supports_signature_algorithm(SSL_HANDSHAKE *hs,
   return true;
 }
 
-static UniquePtr<EVP_PKEY> ssl_cert_parse_leaf_pubkey(
+UniquePtr<EVP_PKEY> ssl_cert_parse_leaf_pubkey(
     STACK_OF(CRYPTO_BUFFER) *chain) {
+  const CRYPTO_BUFFER *buf = sk_CRYPTO_BUFFER_value(chain, 0);
+  if (buf == nullptr) {
+    return nullptr;
+  }
   CBS leaf;
-  CRYPTO_BUFFER_init_CBS(sk_CRYPTO_BUFFER_value(chain, 0), &leaf);
+  CRYPTO_BUFFER_init_CBS(buf, &leaf);
   return ssl_cert_parse_pubkey(&leaf);
 }
 
@@ -416,7 +420,10 @@ bool ssl_cert_private_keys_supports_legacy_signature_algorithm(
 
   for (size_t i = 0; i < cert->cert_private_keys.size(); i++) {
     EVP_PKEY *private_key = cert->cert_private_keys[i].privatekey.get();
-    if (private_key != nullptr &&
+    UniquePtr<EVP_PKEY> public_key =
+        ssl_cert_parse_leaf_pubkey(cert->cert_private_keys[i].chain.get());
+
+    if (private_key != nullptr && public_key != nullptr &&
         // We may have a private key that supports the signature algorithm,
         // but we need to verify that the negotiated cipher allows it.
         hs->new_cipher->algorithm_auth &
@@ -427,8 +434,7 @@ bool ssl_cert_private_keys_supports_legacy_signature_algorithm(
       // If the server has a valid private key available to use, we switch to
       // using that certificate for the rest of the connection.
       cert->cert_private_key_idx = (int)i;
-      hs->local_pubkey =
-          ssl_cert_parse_leaf_pubkey(cert->cert_private_keys[i].chain.get());
+      hs->local_pubkey = std::move(public_key);
       return true;
     }
   }
@@ -448,11 +454,11 @@ bool ssl_cert_private_keys_supports_signature_algorithm(SSL_HANDSHAKE *hs,
 
   for (size_t i = 0; i < cert->cert_private_keys.size(); i++) {
     EVP_PKEY *private_key = cert->cert_private_keys[i].privatekey.get();
-    if (private_key != nullptr &&
-        pkey_supports_algorithm(ssl, private_key, sigalg)) {
-      UniquePtr<EVP_PKEY> pubkey =
+    UniquePtr<EVP_PKEY> public_key =
           ssl_cert_parse_leaf_pubkey(cert->cert_private_keys[i].chain.get());
-      if (!ssl_public_key_rsa_pss_check(pubkey.get(), sigalg)) {
+    if (private_key != nullptr && public_key != nullptr &&
+        pkey_supports_algorithm(ssl, private_key, sigalg)) {
+      if (!ssl_public_key_rsa_pss_check(public_key.get(), sigalg)) {
         return false;
       }
 
@@ -461,7 +467,7 @@ bool ssl_cert_private_keys_supports_signature_algorithm(SSL_HANDSHAKE *hs,
       // If the server has a valid private key available to use, we switch to
       // using that certificate for the rest of the connection.
       cert->cert_private_key_idx = (int)i;
-      hs->local_pubkey = std::move(pubkey);
+      hs->local_pubkey = std::move(public_key);
       return true;
     }
   }
