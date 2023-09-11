@@ -334,8 +334,7 @@ static int sha512_final_impl(uint8_t *out, size_t md_len, SHA512_CTX *sha) {
   }
 
   const size_t out_words = md_len / 8;
-  assert(md_len == SHA512_DIGEST_LENGTH || md_len == SHA512_224_DIGEST_LENGTH
-          || md_len == SHA512_256_DIGEST_LENGTH);
+  assert(md_len % 8 == 0 || md_len == SHA512_224_DIGEST_LENGTH);
   for (size_t i = 0; i < out_words; i++) {
     CRYPTO_store_u64_be(out, sha->h[i]);
     out += 8;
