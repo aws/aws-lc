@@ -1,3 +1,28 @@
+diff --git a/h3_ssl_early_data.t b/h3_ssl_early_data.t
+index 064ffad..b06acd1 100644
+--- a/h3_ssl_early_data.t
++++ b/h3_ssl_early_data.t
+@@ -89,6 +89,7 @@ $s = Test::Nginx::HTTP3->new(8980, psk_list => $psk_list, early_data => {});
+ TODO: {
+ local $TODO = 'no 0-RTT in OpenSSL compat layer'
+ 	unless $t->has_module('OpenSSL [.0-9]+\+quic')
++	or $t->has_module('AWS-LC')
+ 	or $t->has_module('BoringSSL')
+ 	or $t->has_module('LibreSSL');
+ 
+diff --git a/h3_ssl_session_reuse.t b/h3_ssl_session_reuse.t
+index e9ef846..eaac4de 100644
+--- a/h3_ssl_session_reuse.t
++++ b/h3_ssl_session_reuse.t
+@@ -139,6 +139,8 @@ is(test_reuse(8944), 1, 'tickets and cache reused');
+ 
+ local $TODO = 'no TLSv1.3 session cache in BoringSSL'
+ 	if $t->has_module('BoringSSL');
++local $TODO = 'no TLSv1.3 session cache in AWS-LC'
++    if $t->has_module('AWS-LC');
+ 
+ is(test_reuse(8945), 1, 'cache shared reused');
+ is(test_reuse(8946), 1, 'cache builtin reused');
 diff --git a/mail_ssl_conf_command.t b/mail_ssl_conf_command.t
 index 7686eca..cdb7df0 100644
 --- a/mail_ssl_conf_command.t

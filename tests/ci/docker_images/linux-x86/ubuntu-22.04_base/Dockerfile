@@ -39,13 +39,13 @@ RUN set -ex && \
     lld \
     llvm \
     llvm-dev \
+    libcryptx-perl \
     libicu-dev \
     libio-socket-ssl-perl \
     libipc-run-perl \
     libjson-perl \
     libnet-ssleay-perl \
     libperl-dev \
-    net-tools \
     libpcre2-dev \
     libreadline-dev \
     libtool \
