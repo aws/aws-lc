@@ -29,6 +29,10 @@ extern "C" {
 // event that sufficient random data can not be obtained, |abort| is called.
 OPENSSL_EXPORT int RAND_bytes(uint8_t *buf, size_t len);
 
+// RAND_priv_bytes is a wrapper around |RAND_bytes| provided for compatibility.
+// Consumers should call |RAND_bytes| directly.
+OPENSSL_EXPORT int RAND_priv_bytes(uint8_t *buf, size_t len);
+
 // RAND_get_system_entropy_for_custom_prng writes |len| bytes of random data
 // from a system entropy source to |buf|. The maximum length of entropy which
 // may be requested is 256 bytes. If more than 256 bytes of data is requested,
