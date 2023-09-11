@@ -230,17 +230,23 @@ TEST(BIOTest, CloseFlags) {
   ASSERT_TRUE(tmp);
   BIO *bio = BIO_new_fp(tmp, BIO_CLOSE);
   EXPECT_EQ(0, BIO_tell(bio));
-  BIO_free(bio);
-  EXPECT_GT(0, ftell(tmp));
+  // save off fd to avoid referencing |tmp| after free and angering valgrind
+  int tmp_fd = fileno(tmp);
+  EXPECT_LT(0, tmp_fd);
+  EXPECT_TRUE(BIO_free(bio));
+  EXPECT_EQ(-1, lseek(tmp_fd, 0, SEEK_CUR));
+  EXPECT_EQ(errno, EBADF);  // EBADF indicates taht |BIO_free| closed the file
 
   // Assert that BIO_NOCLOSE does not closethe underlying file on BIO free
   tmp = tmpfile();
   ASSERT_TRUE(tmp);
   bio = BIO_new_fp(tmp, BIO_NOCLOSE);
   EXPECT_EQ(0, BIO_tell(bio));
-  BIO_free(bio);
-  EXPECT_EQ(0, ftell(tmp));
-  fclose(tmp);
+  EXPECT_TRUE(BIO_free(bio));
+  EXPECT_TRUE(tmp);
+  EXPECT_EQ(0, ftell(tmp));     // 0 indicates file is still open
+  EXPECT_LT(0, tmp_fd);
+  EXPECT_EQ(0, fclose(tmp));    // 0 indicates success for fclose
 }
 
 TEST(BIOTest, ReadASN1) {
