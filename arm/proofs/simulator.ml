@@ -162,6 +162,9 @@ let iclasses =
   (*** AND ***)
   "0x001110001xxxxx000111xxxxxxxxxx";
 
+  (*** BIT ***)
+  "0x101110101xxxxx000111xxxxxxxxxx";
+
   (*** DUP ***)
   "01001110000x1000000011xxxxxxxxxx"; (* DUP Vd.2d, xn *)
 
