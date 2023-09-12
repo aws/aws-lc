@@ -126,6 +126,9 @@ OPENSSL_EXPORT uint8_t *SHAKE128(const uint8_t *data, const size_t in_len,
 OPENSSL_EXPORT uint8_t *SHAKE256(const uint8_t *data, const size_t in_len, 
                                  uint8_t *out, size_t out_len);
 
+// TODO [childw]
+OPENSSL_EXPORT int SHAKE_Final(uint8_t *md, KECCAK1600_CTX *ctx, size_t len);
+
 // SHA3_Reset zeros the bitstate and the amount of processed input.
 OPENSSL_EXPORT void SHA3_Reset(KECCAK1600_CTX *ctx);
 

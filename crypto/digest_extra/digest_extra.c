@@ -262,6 +262,7 @@ static const EVP_MD evp_md_blake2b256 = {
   blake2b256_init,
   blake2b256_update,
   blake2b256_final,
+  /*finalXOf*/ NULL,
   BLAKE2B_CBLOCK,
   sizeof(BLAKE2B_CTX),
 };
