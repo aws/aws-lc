@@ -289,6 +289,14 @@ batch:
         variables:
           AWS_LC_SSL_RUNNER_START_INDEX: 7001
 
+    - identifier: postgres_integration_aarch
+      buildspec: ./tests/ci/codebuild/linux-x86/postgres_integration.yml
+      env:
+        type: ARM_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_LARGE
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-aarch:ubuntu-22.04_gcc-12x_latest
+
 #   - identifier: amazonlinux2023_gcc11x_aarch_valgrind
 #     buildspec: ./tests/ci/codebuild/common/run_valgrind_tests.yml
 #     env:
