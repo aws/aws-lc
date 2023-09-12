@@ -25,6 +25,7 @@ RUN set -ex && \
     apt-get -y --no-install-recommends install \
     software-properties-common \
     automake \
+    check \
     cmake \
     curl \
     make \
@@ -42,11 +43,14 @@ RUN set -ex && \
     libicu-dev \
     libipc-run-perl \
     libjson-perl \
+    liblua5.4-dev \
+    libnet-dev \
+    libpcap-dev \
     libpcre2-dev \
     libreadline-dev \
+    libsqlite3-dev \
     libtool \
     libudev-dev \
-    liblua5.4-dev \
     socat \
     zlib1g-dev \
     dpkg-dev \
