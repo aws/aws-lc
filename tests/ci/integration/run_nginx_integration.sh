@@ -42,7 +42,6 @@ function nginx_build() {
     --with-mail_ssl_module \
     --with-cc-opt="-I${AWS_LC_INSTALL_FOLDER}/include" \
     --with-ld-opt="-L${AWS_LC_INSTALL_FOLDER}/lib"
-  make -j
   make -j install
   ls -R ${NGINX_BUILD_FOLDER}
 }
