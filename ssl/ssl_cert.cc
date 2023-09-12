@@ -1112,6 +1112,6 @@ int SSL_delegated_credential_used(const SSL *ssl) {
   return ssl->s3->delegated_credential_used;
 }
 
-int SSL_CTX_get_security_level(const SSL_CTX *ctx) { return 3; }
+int SSL_CTX_get_security_level(const SSL_CTX *ctx) { return 0; }
 
 void SSL_CTX_set_security_level(const SSL_CTX *ctx, int level) {}
