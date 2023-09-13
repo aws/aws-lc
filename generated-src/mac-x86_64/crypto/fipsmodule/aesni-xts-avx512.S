@@ -8,9 +8,7 @@
 #endif
 
 #if defined(__x86_64__) && !defined(OPENSSL_NO_ASM) && defined(__APPLE__)
-#if defined(BORINGSSL_PREFIX)
-#include <boringssl_prefix_symbols_asm.h>
-#endif
+#include <openssl/boringssl_prefix_symbols_asm.h>
 .text	
 .globl	_aes_hw_xts_encrypt_avx512
 .private_extern _aes_hw_xts_encrypt_avx512
