@@ -423,19 +423,21 @@ bool ssl_cert_private_keys_supports_legacy_signature_algorithm(
     UniquePtr<EVP_PKEY> public_key =
         ssl_cert_parse_leaf_pubkey(cert->cert_private_keys[i].chain.get());
 
-    if (private_key != nullptr && public_key != nullptr &&
-        // We may have a private key that supports the signature algorithm,
-        // but we need to verify that the negotiated cipher allows it.
-        hs->new_cipher->algorithm_auth &
-            ssl_cipher_auth_mask_for_key(private_key) &&
-        tls1_get_legacy_signature_algorithm(out, private_key)) {
-      // Update certificate slot index if all checks have passed.
-      //
-      // If the server has a valid private key available to use, we switch to
-      // using that certificate for the rest of the connection.
-      cert->cert_private_key_idx = (int)i;
-      hs->local_pubkey = std::move(public_key);
-      return true;
+    if (private_key != nullptr && public_key != nullptr) {
+      // We may have a private key that supports the signature algorithm,
+      // but we need to verify that the negotiated cipher allows it.
+      const uint32_t auth_allowed = hs->new_cipher->algorithm_auth &
+                                    ssl_cipher_auth_mask_for_key(private_key);
+      if (auth_allowed &&
+          tls1_get_legacy_signature_algorithm(out, private_key)) {
+        // Update certificate slot index if all checks have passed.
+        //
+        // If the server has a valid private key available to use, we switch to
+        // using that certificate for the rest of the connection.
+        cert->cert_private_key_idx = (int)i;
+        hs->local_pubkey = std::move(public_key);
+        return true;
+      }
     }
   }
 
