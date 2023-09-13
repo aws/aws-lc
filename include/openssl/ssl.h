@@ -2641,6 +2641,14 @@ OPENSSL_EXPORT const char *SSL_get_group_name(uint16_t group_id);
 // ownership of the buffer and must call |OPENSSL_free| when done. It returns
 // one on success and zero on error.
 //
+// CAUTION: This function will serialize an established TLS 1.2/1.3
+// connection, which includes sensitive security parameters established during
+// the connection handshake, and memory buffers that may contain
+// sensitive in-flight application data. It is the callers responsibility for
+// ensuring the confidentiality and data integrity of the serialized encoding.
+// Minimally a caller must encrypt the returned bytes using an AEAD cipher, such
+// as AES-128-GCM before persisting the bytes to storage.
+//
 // WARNING: Currently only works with TLS 1.2 or TLS 1.3 after handshake has
 // finished.
 // WARNING: Currently only supports |SSL| as server.
@@ -2658,6 +2666,13 @@ OPENSSL_EXPORT int SSL_to_bytes(const SSL *in, uint8_t **out_data,
 // The |SSL| is marked with handshake finished. |in| and |in_len| should
 // come from |out_data| and |out_len| of |SSL_to_bytes|. In other words,
 // |SSL_from_bytes| should be called after |SSL_to_bytes|.
+//
+// CAUTION: This function deserializes an encoded TLS 1.2/1.3 established
+// connection so that the communication may continue on the previously
+// established channel. It is the callers responsibility for maintaining
+// confidentiality and integrity of serialized bytes between the time of
+// serialization and invoking this function.
+// See |SSL_to_bytes| for more details.
 //
 // WARNING: Do not decode the same bytes |in| for different connections.
 //          Otherwise, the connections use the same key material.
