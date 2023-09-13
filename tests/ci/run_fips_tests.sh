@@ -7,6 +7,9 @@ source tests/ci/common_posix_setup.sh
 echo "Testing AWS-LC shared library in FIPS Release mode."
 fips_build_and_test -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=1
 
+echo "Testing AWS-LC shared library in FIPS Release mode with FIPS entropy source method CPU Jitter."
+fips_build_and_test -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=1 -DENABLE_FIPS_ENTROPY_CPU_JITTER=ON
+
 # Static FIPS build works only on Linux platforms.
 if [[ ("$(uname -s)" == 'Linux'*) && (("$(uname -p)" == 'x86_64'*) || ("$(uname -p)" == 'aarch64'*)) ]]; then
   echo "Testing AWS-LC static library in FIPS Release mode."
@@ -20,8 +23,8 @@ if [[ ("$(uname -s)" == 'Linux'*) && (("$(uname -p)" == 'x86_64'*) || ("$(uname 
   # These build parameters may be needed by our aws-lc-fips-sys Rust package
   run_build -DFIPS=1 -DBUILD_LIBSSL=OFF -DBUILD_TESTING=OFF
 
-  echo "Testing FIPS entropy source method: CPU Jitter."
-  fips_build_and_test -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DENABLE_FIPS_ENTROPY_CPU_JITTER=ON
+  echo "Testing AWS-LC static library in FIPS Release mode with FIPS entropy source method CPU Jitter."
+  fips_build_and_test -DCMAKE_BUILD_TYPE=Release -DENABLE_FIPS_ENTROPY_CPU_JITTER=ON
 fi
 
 # The AL2 version of Clang does not have all of the required artifacts for address sanitizer, see P45594051
