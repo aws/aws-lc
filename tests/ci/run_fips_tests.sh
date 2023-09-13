@@ -21,7 +21,7 @@ if [[ ("$(uname -s)" == 'Linux'*) && (("$(uname -p)" == 'x86_64'*) || ("$(uname 
   run_build -DFIPS=1 -DBUILD_LIBSSL=OFF -DBUILD_TESTING=OFF
 
   echo "Testing FIPS entropy source: Passive."
-  fips_build_and_test -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DUSE_FIPS_ENTROPY_SOURCE_PASSIVE=1
+  fips_build_and_test -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DENABLE_FIPS_ENTROPY_CPU_JITTER=ON
 fi
 
 # The AL2 version of Clang does not have all of the required artifacts for address sanitizer, see P45594051
