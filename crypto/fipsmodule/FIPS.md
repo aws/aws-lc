@@ -58,7 +58,7 @@ Modifying the entropy source can invalidate your validation status. Changing the
 
 It is possible to modify the entropy method at build-time. Using `ENABLE_FIPS_ENTROPY_CPU_JITTER=ON`, the entropy source is switched to [CPU Jitter](https://github.com/smuellerDD/jitterentropy-library).
 
-CPU Jitter is less performant than the default method and can incur up to a 2-digit millisecond latency when queried.
+CPU Jitter is less performant than the default method and can incur up to a 2-digit millisecond latency when queried. You can test CPU Jitter entropy on your system using `bssl speed -filter Jitter`.
 
 ## Integrity Test
 
