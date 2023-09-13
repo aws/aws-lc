@@ -75,9 +75,7 @@
 #include <openssl/is_awslc.h>
 #include <openssl/opensslconf.h>
 
-#if defined(BORINGSSL_PREFIX)
-#include <boringssl_prefix_symbols.h>
-#endif
+#include <openssl/boringssl_prefix_symbols.h>
 
 #if defined(__cplusplus)
 extern "C" {

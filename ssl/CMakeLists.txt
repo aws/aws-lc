@@ -48,8 +48,10 @@ add_dependencies(ssl global_target)
 
 target_link_libraries(ssl crypto)
 
+target_include_directories(ssl BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
+
 target_include_directories(ssl PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
+  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
 
 if(BUILD_TESTING)
@@ -66,6 +68,8 @@ if(BUILD_TESTING)
   add_dependencies(${SSL_TEST_EXEC} global_target)
 
   target_link_libraries(${SSL_TEST_EXEC} test_support_lib boringssl_gtest ssl crypto)
+
+  target_include_directories(${SSL_TEST_EXEC} BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
   if(WIN32)
     target_link_libraries(${SSL_TEST_EXEC} ws2_32)
   endif()
