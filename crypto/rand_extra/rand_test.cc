@@ -327,20 +327,26 @@ TEST(RandTest, PassiveEntropyDepletedObviouslyNotBroken) {
   uint8_t buf2[CTR_DRBG_ENTROPY_LEN] = {0};
   int out_want_additional_input_false_default = 0;
   int out_want_additional_input_true_default = 1;
-  int want_additional_input_expect = 0;
 
   RAND_module_entropy_depleted(buf1, &out_want_additional_input_false_default);
   RAND_module_entropy_depleted(buf2, &out_want_additional_input_true_default);
+  EXPECT_TRUE(out_want_additional_input_false_default == 0 || out_want_additional_input_false_default == 1);
+  EXPECT_TRUE(out_want_additional_input_true_default == 0 || out_want_additional_input_true_default == 1);
 
+// |have_rdrand| inlines the cpu capability vector ending up with an undefined
+// reference because the variable has internal linkage in the shared build. So,
+// we can only validate the correct value is set on the static build type.
+#if !defined(BORINGSSL_SHARED_LIBRARY)
+  int want_additional_input_expect = 0;
   if (have_rdrand()) {
     want_additional_input_expect = 1;
   }
-
   EXPECT_EQ(out_want_additional_input_false_default, want_additional_input_expect);
   EXPECT_EQ(out_want_additional_input_true_default, want_additional_input_expect);
+#endif
+
   EXPECT_NE(Bytes(buf1), Bytes(buf2));
   EXPECT_NE(Bytes(buf1), Bytes(kZeros));
   EXPECT_NE(Bytes(buf2), Bytes(kZeros));
-
 }
 #endif
