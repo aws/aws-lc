@@ -20,7 +20,7 @@ if [[ ("$(uname -s)" == 'Linux'*) && (("$(uname -p)" == 'x86_64'*) || ("$(uname 
   # These build parameters may be needed by our aws-lc-fips-sys Rust package
   run_build -DFIPS=1 -DBUILD_LIBSSL=OFF -DBUILD_TESTING=OFF
 
-  echo "Testing FIPS entropy source: Passive."
+  echo "Testing FIPS entropy source method: CPU Jitter."
   fips_build_and_test -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DENABLE_FIPS_ENTROPY_CPU_JITTER=ON
 fi
 
