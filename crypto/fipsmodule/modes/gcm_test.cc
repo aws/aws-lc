@@ -240,13 +240,15 @@ TEST(GCMTest, ABI) {
 #if defined(OPENSSL_AARCH64) && defined(HW_GCM)
   if (hwaes_capable() && gcm_pmull_capable()) {
     static const uint8_t kKey[16] = {0};
-    uint8_t iv[16] = {0};
+    uint8_t iv[16];
 
     for (size_t key_bits = 128; key_bits <= 256; key_bits += 64) {
       AES_KEY aes_key;
       aes_hw_set_encrypt_key(kKey, key_bits, &aes_key);
+      OPENSSL_memset(iv, 0, 16);
       CHECK_ABI(aes_gcm_enc_kernel, buf, sizeof(buf) * 8, buf, X, iv, &aes_key,
                 Htable);
+      OPENSSL_memset(iv, 0, 16);
       CHECK_ABI(aes_gcm_dec_kernel, buf, sizeof(buf) * 8, buf, X, iv, &aes_key,
                 Htable);
     }
