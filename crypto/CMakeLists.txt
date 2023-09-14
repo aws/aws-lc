@@ -572,6 +572,8 @@ if(FIPS_SHARED)
     build_libcrypto(precrypto $<TARGET_OBJECTS:fipsmodule>)
     add_executable(fips_empty_main fipsmodule/fips_empty_main.c)
     target_link_libraries(fips_empty_main PUBLIC precrypto)
+    target_include_directories(fips_empty_main PRIVATE ${PROJECT_SOURCE_DIR}/include)
+    target_include_directories(fips_empty_main BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
     add_custom_command(OUTPUT generated_fips_shared_support.c
             COMMAND ${GO_EXECUTABLE} run
             ${PROJECT_SOURCE_DIR}/util/fipstools/capture_hash/capture_hash.go
@@ -587,7 +589,9 @@ if(FIPS_SHARED)
       generated_fips_shared_support.c
       ${PROJECT_SOURCE_DIR}/crypto/fipsmodule/cpucap/cpucap.c
     )
+    add_dependencies(generated_fipsmodule boringssl_prefix_symbols)
     target_include_directories(generated_fipsmodule PRIVATE ${PROJECT_SOURCE_DIR}/include)
+    target_include_directories(generated_fipsmodule BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
 
     build_libcrypto(crypto $<TARGET_OBJECTS:generated_fipsmodule>)
   else()
