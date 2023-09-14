@@ -24,6 +24,7 @@ RUN set -ex && \
     cmake \
     make \
     ninja-build \
+    patch \
     perl \
     libunwind-dev \
     pkg-config \
@@ -33,8 +34,13 @@ RUN set -ex && \
     lld \
     llvm \
     llvm-dev \
+    libcryptx-perl \
     libicu-dev \
+    libio-socket-ssl-perl \
     libipc-run-perl \
+    libnet-ssleay-perl \
+    libperl-dev \
+    libpcre2-dev \
     libreadline-dev \
     zlib1g-dev \
     flex \

@@ -187,9 +187,7 @@ print <<___;
 #if !defined(OPENSSL_NO_ASM) && $arch_defines && $target_defines
 ___
 
-print "#if defined(BORINGSSL_PREFIX)\n";
-print "#include <boringssl_prefix_symbols_asm.h>\n";
-print "#endif\n";
+print "#include <openssl/boringssl_prefix_symbols_asm.h>\n";
 
 while(my $line=<>) {
 

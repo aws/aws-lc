@@ -120,6 +120,8 @@ BN_CTX *BN_CTX_new(void) {
   return ret;
 }
 
+BN_CTX *BN_CTX_secure_new(void) { return BN_CTX_new(); }
+
 void BN_CTX_free(BN_CTX *ctx) {
   if (ctx == NULL) {
     return;

@@ -21,9 +21,14 @@ static bool WriteData(std::string prefix, const uint8_t *input, size_t len) {
     // WriteData is not needed because related config is not enabled.
     return true;
   }
-  using ScopedFILE = std::unique_ptr<FILE, decltype(&fclose)>;
+
+  struct fclose_deleter {
+    void operator()(FILE *f) const { fclose(f); }
+  };
+
+  using ScopedFILE = std::unique_ptr<FILE, fclose_deleter>;
   std::string path = prefix + "-" + std::to_string(rand());
-  ScopedFILE file(fopen(path.c_str(), "w"), fclose);
+  ScopedFILE file(fopen(path.c_str(), "w"));
   if (!file) {
     return false;
   }

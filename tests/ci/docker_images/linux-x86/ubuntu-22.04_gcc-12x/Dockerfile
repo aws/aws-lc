@@ -21,7 +21,7 @@ RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-12 100 \
                         --slave /usr/bin/g++ g++ /usr/bin/g++-12 \
                         --slave /usr/bin/cpp cpp-bin /usr/bin/cpp-12
 
-# Postgres's integration tests cannot be ran as root, so we have to define
+# Postgres and NGINXs integration tests cannot be ran as root, so we have to define
 # a non-root user here to use in Codebuild.
 RUN adduser --disabled-password --gecos '' postgres && \
     adduser postgres sudo && \

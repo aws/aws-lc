@@ -1,0 +1,180 @@
+diff --git a/h3_ssl_early_data.t b/h3_ssl_early_data.t
+index 064ffad..b06acd1 100644
+--- a/h3_ssl_early_data.t
++++ b/h3_ssl_early_data.t
+@@ -89,6 +89,7 @@ $s = Test::Nginx::HTTP3->new(8980, psk_list => $psk_list, early_data => {});
+ TODO: {
+ local $TODO = 'no 0-RTT in OpenSSL compat layer'
+ 	unless $t->has_module('OpenSSL [.0-9]+\+quic')
++	or $t->has_module('AWS-LC')
+ 	or $t->has_module('BoringSSL')
+ 	or $t->has_module('LibreSSL');
+ 
+diff --git a/h3_ssl_session_reuse.t b/h3_ssl_session_reuse.t
+index e9ef846..eaac4de 100644
+--- a/h3_ssl_session_reuse.t
++++ b/h3_ssl_session_reuse.t
+@@ -139,6 +139,8 @@ is(test_reuse(8944), 1, 'tickets and cache reused');
+ 
+ local $TODO = 'no TLSv1.3 session cache in BoringSSL'
+ 	if $t->has_module('BoringSSL');
++local $TODO = 'no TLSv1.3 session cache in AWS-LC'
++    if $t->has_module('AWS-LC');
+ 
+ is(test_reuse(8945), 1, 'cache shared reused');
+ is(test_reuse(8946), 1, 'cache builtin reused');
+diff --git a/mail_ssl_conf_command.t b/mail_ssl_conf_command.t
+index 7686eca..cdb7df0 100644
+--- a/mail_ssl_conf_command.t
++++ b/mail_ssl_conf_command.t
+@@ -30,6 +30,7 @@ my $t = Test::Nginx->new()
+ 	->has_daemon('openssl');
+ 
+ plan(skip_all => 'no ssl_conf_command') if $t->has_module('BoringSSL');
++plan(skip_all => 'no ssl_conf_command') if $t->has_module('AWS-LC');
+ 
+ $t->write_file_expand('nginx.conf', <<'EOF');
+ 
+diff --git a/mail_ssl_session_reuse.t b/mail_ssl_session_reuse.t
+index 96330cc..30ed758 100644
+--- a/mail_ssl_session_reuse.t
++++ b/mail_ssl_session_reuse.t
+@@ -147,6 +147,8 @@ is(test_reuse(8994), 1, 'tickets and cache reused');
+ TODO: {
+ local $TODO = 'no TLSv1.3 session cache in BoringSSL'
+ 	if $t->has_module('BoringSSL') && test_tls13();
++local $TODO = 'no TLSv1.3 session cache in AWS-LC'
++    if $t->has_module('AWS-LC') && test_tls13();
+ 
+ is(test_reuse(8995), 1, 'cache shared reused');
+ is(test_reuse(8996), 1, 'cache builtin reused');
+diff --git a/proxy_ssl_conf_command.t b/proxy_ssl_conf_command.t
+index c06cbec..0d3aa65 100644
+--- a/proxy_ssl_conf_command.t
++++ b/proxy_ssl_conf_command.t
+@@ -27,6 +27,7 @@ my $t = Test::Nginx->new()
+ 	->has_daemon('openssl');
+ 
+ plan(skip_all => 'no ssl_conf_command') if $t->has_module('BoringSSL');
++plan(skip_all => 'no ssl_conf_command') if $t->has_module('AWS-LC');
+ 
+ $t->write_file_expand('nginx.conf', <<'EOF')->plan(3);
+ 
+diff --git a/ssl.t b/ssl.t
+index 13d3dae..2378602 100644
+--- a/ssl.t
++++ b/ssl.t
+@@ -215,6 +215,8 @@ local $TODO = 'no TLSv1.3 sessions in LibreSSL'
+ 	if $t->has_module('LibreSSL') && test_tls13();
+ local $TODO = 'no TLSv1.3 sessions ids in BoringSSL'
+ 	if $t->has_module('BoringSSL') && test_tls13();
++local $TODO = 'no TLSv1.3 sessions ids in AWS-LC'
++	if $t->has_module('AWS-LC') && test_tls13();
+ 
+ like(get('/id', 8085, $ctx), qr/^body \w{64}$/m, 'session id reused');
+ 
+@@ -226,6 +228,7 @@ like(get('/cipher', 8085), qr/^body [\w-]+$/m, 'cipher');
+ 
+ SKIP: {
+ skip 'BoringSSL', 1 if $t->has_module('BoringSSL');
++skip 'AWS-LC', 1 if $t->has_module('AWS-LC');
+ 
+ like(get('/ciphers', 8085), qr/^body [:\w-]+$/m, 'ciphers');
+ 
+diff --git a/ssl_conf_command.t b/ssl_conf_command.t
+index d4ae398..ef9836e 100644
+--- a/ssl_conf_command.t
++++ b/ssl_conf_command.t
+@@ -27,6 +27,7 @@ my $t = Test::Nginx->new()
+ 	->has_daemon('openssl');
+ 
+ plan(skip_all => 'no ssl_conf_command') if $t->has_module('BoringSSL');
++plan(skip_all => 'no ssl_conf_command') if $t->has_module('AWS-LC');
+ 
+ $t->write_file_expand('nginx.conf', <<'EOF');
+ 
+diff --git a/ssl_ocsp.t b/ssl_ocsp.t
+index 3bc9af4..8504204 100644
+--- a/ssl_ocsp.t
++++ b/ssl_ocsp.t
+@@ -358,6 +358,8 @@ local $TODO = 'no TLSv1.3 sessions, old IO::Socket::SSL'
+ 	if $IO::Socket::SSL::VERSION < 2.061 && test_tls13();
+ local $TODO = 'no TLSv1.3 sessions in LibreSSL'
+ 	if $t->has_module('LibreSSL') && test_tls13();
++local $TODO = 'no TLSv1.3 session cache in AWS-LC'
++	if $t->has_module('AWS-LC') && test_tls13();
+ 
+ like(get('ec-end', ses => $s),
+ 	qr/200 OK.*SUCCESS:r/s, 'session reused');
+@@ -390,6 +392,8 @@ local $TODO = 'no TLSv1.3 sessions, old IO::Socket::SSL'
+ 	if $IO::Socket::SSL::VERSION < 2.061 && test_tls13();
+ local $TODO = 'no TLSv1.3 sessions in LibreSSL'
+ 	if $t->has_module('LibreSSL') && test_tls13();
++local $TODO = 'no TLSv1.3 session cache in AWS-LC'
++	if $t->has_module('AWS-LC') && test_tls13();
+ 
+ like(get('ec-end', ses => $s),
+ 	qr/400 Bad.*FAILED:certificate revoked:r/s, 'session reused - revoked');
+diff --git a/ssl_session_reuse.t b/ssl_session_reuse.t
+index 163de3d..d22282b 100644
+--- a/ssl_session_reuse.t
++++ b/ssl_session_reuse.t
+@@ -174,6 +174,8 @@ is(test_reuse(8444), 1, 'tickets and cache reused');
+ TODO: {
+ local $TODO = 'no TLSv1.3 session cache in BoringSSL'
+ 	if $t->has_module('BoringSSL') && test_tls13();
++local $TODO = 'no TLSv1.3 session cache in AWS-LC'
++    if $t->has_module('AWS-LC') && test_tls13();
+ 
+ is(test_reuse(8445), 1, 'cache shared reused');
+ is(test_reuse(8446), 1, 'cache builtin reused');
+diff --git a/ssl_sni_sessions.t b/ssl_sni_sessions.t
+index 7ff5fa0..958bfaa 100644
+--- a/ssl_sni_sessions.t
++++ b/ssl_sni_sessions.t
+@@ -118,6 +118,8 @@ plan(skip_all => 'no TLSv1.3 sessions in LibreSSL')
+         if $t->has_module('LibreSSL') && test_tls13();
+ plan(skip_all => 'no TLS 1.3 session cache in BoringSSL')
+ 	if $t->has_module('BoringSSL') && test_tls13();
++plan(skip_all => 'no TLS 1.3 session cache in AWS-LC')
++    if $t->has_module('AWS-LC') && test_tls13();
+ 
+ $t->plan(6);
+ 
+diff --git a/stream_proxy_ssl_conf_command.t b/stream_proxy_ssl_conf_command.t
+index d9b3807..a70fd6d 100644
+--- a/stream_proxy_ssl_conf_command.t
++++ b/stream_proxy_ssl_conf_command.t
+@@ -27,6 +27,7 @@ my $t = Test::Nginx->new()
+ 	->has_daemon('openssl');
+ 
+ plan(skip_all => 'no ssl_conf_command') if $t->has_module('BoringSSL');
++plan(skip_all => 'no ssl_conf_command') if $t->has_module('AWS-LC');
+ 
+ $t->write_file_expand('nginx.conf', <<'EOF');
+ 
+diff --git a/stream_ssl_conf_command.t b/stream_ssl_conf_command.t
+index 2b8c8a3..3db9c2b 100644
+--- a/stream_ssl_conf_command.t
++++ b/stream_ssl_conf_command.t
+@@ -29,6 +29,7 @@ my $t = Test::Nginx->new()
+ 	->has_daemon('openssl');
+ 
+ plan(skip_all => 'no ssl_conf_command') if $t->has_module('BoringSSL');
++plan(skip_all => 'no ssl_conf_command') if $t->has_module('AWS-LC');
+ 
+ $t->write_file_expand('nginx.conf', <<'EOF');
+ 
+diff --git a/stream_ssl_session_reuse.t b/stream_ssl_session_reuse.t
+index 53f24d2..39b7d62 100644
+--- a/stream_ssl_session_reuse.t
++++ b/stream_ssl_session_reuse.t
+@@ -151,6 +151,8 @@ is(test_reuse(8444), 1, 'tickets and cache reused');
+ TODO: {
+ local $TODO = 'no TLSv1.3 session cache in BoringSSL'
+ 	if $t->has_module('BoringSSL') && test_tls13();
++local $TODO = 'no TLSv1.3 session cache in AWS-LC'
++    if $t->has_module('AWS-LC') && test_tls13();
+ 
+ is(test_reuse(8445), 1, 'cache shared reused');
+ is(test_reuse(8446), 1, 'cache builtin reused');
