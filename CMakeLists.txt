@@ -612,6 +612,10 @@ if(FIPS)
     message(FATAL_ERROR "Static FIPS build of AWS-LC is suported only on Linux")
   endif()
 
+  if(WIN32 AND CMAKE_BUILD_TYPE_LOWER STREQUAL "debug")
+    message(FATAL_ERROR "Windows Debug build is not supported with FIPS, use Release or RelWithDebInfo")
+  endif()
+
   add_subdirectory(third_party/jitterentropy)
 
   add_definitions(-DBORINGSSL_FIPS)
