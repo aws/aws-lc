@@ -8,6 +8,7 @@
 #endif
 
 #if !defined(OPENSSL_NO_ASM) && defined(__powerpc64__) && defined(__ELF__)
+#include <openssl/boringssl_prefix_symbols_asm.h>
 .machine	"any"
 
 .abiversion	2

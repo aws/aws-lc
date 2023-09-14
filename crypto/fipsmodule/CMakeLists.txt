@@ -207,15 +207,14 @@ function(cpreprocess dest src)
     set(TARGET "--target=${CMAKE_ASM_COMPILER_TARGET}")
   endif()
 
-  set(PREFIX_INCLUDE "")
   if(BORINGSSL_PREFIX)
-    set(PREFIX_INCLUDE "-I${BORINGSSL_PREFIX_HEADERS_PATH}")
+    set(PREFIX_INCLUDE "-I${PROJECT_BINARY_DIR}/symbol_prefix_include")
   endif()
 
   string(REGEX REPLACE "[ ]+" ";" CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS}")
   add_custom_command(
     OUTPUT ${dest}
-    COMMAND ${CMAKE_ASM_COMPILER} ${TARGET} ${CMAKE_ASM_FLAGS} -E ${src} -I${PROJECT_SOURCE_DIR}/include ${PREFIX_INCLUDE} > ${dest}
+    COMMAND ${CMAKE_ASM_COMPILER} ${TARGET} ${CMAKE_ASM_FLAGS} -E ${src} ${PREFIX_INCLUDE} -I${PROJECT_SOURCE_DIR}/include > ${dest}
     DEPENDS
     ${src}
     ${PROJECT_SOURCE_DIR}/include/openssl/arm_arch.h
@@ -290,7 +289,9 @@ if(FIPS_DELOCATE)
   endif()
 
   add_dependencies(bcm_c_generated_asm global_target)
-
+  add_dependencies(bcm_c_generated_asm boringssl_prefix_symbols)
+  target_include_directories(bcm_c_generated_asm BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
+  target_include_directories(bcm_c_generated_asm PRIVATE ${PROJECT_SOURCE_DIR}/include)
   set_target_properties(bcm_c_generated_asm PROPERTIES COMPILE_OPTIONS "-S")
   set_target_properties(bcm_c_generated_asm PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
@@ -312,6 +313,8 @@ if(FIPS_DELOCATE)
   target_compile_definitions(bcm_hashunset PRIVATE BORINGSSL_IMPLEMENTATION)
 
   add_dependencies(bcm_hashunset global_target)
+  target_include_directories(bcm_hashunset BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
+  target_include_directories(bcm_hashunset PRIVATE ${PROJECT_SOURCE_DIR}/include)
 
   set_target_properties(bcm_hashunset PROPERTIES POSITION_INDEPENDENT_CODE ON)
   set_target_properties(bcm_hashunset PROPERTIES LINKER_LANGUAGE C)
@@ -342,6 +345,9 @@ if(FIPS_DELOCATE)
   target_compile_definitions(fipsmodule PRIVATE BORINGSSL_IMPLEMENTATION)
 
   add_dependencies(fipsmodule global_target)
+  add_dependencies(fipsmodule boringssl_prefix_symbols)
+  target_include_directories(fipsmodule BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
+  target_include_directories(fipsmodule PRIVATE ${PROJECT_SOURCE_DIR}/include)
 
   set_target_properties(fipsmodule PROPERTIES LINKER_LANGUAGE C)
 elseif(FIPS_SHARED)
@@ -360,6 +366,9 @@ elseif(FIPS_SHARED)
   target_compile_definitions(fipsmodule PRIVATE BORINGSSL_IMPLEMENTATION)
 
   add_dependencies(fipsmodule global_target)
+  add_dependencies(fipsmodule boringssl_prefix_symbols)
+  target_include_directories(fipsmodule BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
+  target_include_directories(fipsmodule PRIVATE ${PROJECT_SOURCE_DIR}/include)
 
   add_library(
     bcm_library
@@ -371,9 +380,12 @@ elseif(FIPS_SHARED)
     ${BCM_ASM_SOURCES}
   )
   target_compile_definitions(bcm_library PRIVATE BORINGSSL_IMPLEMENTATION)
-  target_include_directories(bcm_library PRIVATE ../../include)
+  target_include_directories(bcm_library PRIVATE ${PROJECT_SOURCE_DIR}/include)
 
   add_dependencies(bcm_library global_target)
+  add_dependencies(bcm_library boringssl_prefix_symbols)
+  target_include_directories(bcm_library BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
+  target_include_directories(bcm_library PRIVATE ${PROJECT_SOURCE_DIR}/include)
   if (APPLE)
     set(BCM_NAME bcm.o)
     # The linker on macOS doesn't have the ability to process linker scripts,
@@ -468,4 +480,7 @@ else()
   target_compile_definitions(fipsmodule PRIVATE BORINGSSL_IMPLEMENTATION)
 
   add_dependencies(fipsmodule global_target)
+  add_dependencies(fipsmodule boringssl_prefix_symbols)
+  target_include_directories(fipsmodule BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
+  target_include_directories(fipsmodule PRIVATE ${PROJECT_SOURCE_DIR}/include)
 endif()
