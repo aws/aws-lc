@@ -287,14 +287,19 @@ static bool DoFinal(const DigestTestVector *test, EVP_MD_CTX *ctx, uint8_t *md_o
 static void TestDigest(const DigestTestVector *test) {
     SCOPED_TRACE(test->md.name);
     const size_t repeat = test->md.one_shot_xof_func != nullptr ? 1 : test->repeat;
+    const bool is_xof = EVP_MD_flags(test->md.func()) & EVP_MD_FLAG_XOF;
+    const size_t repeat = is_xof ? 1 : test->repeat;
+    const size_t expected_output_size = is_xof
+        ? test->repeat
+        : EVP_MD_size(test->md.func());
+
     bssl::ScopedEVP_MD_CTX ctx;
     // Test the input provided.
     ASSERT_TRUE(EVP_DigestInit_ex(ctx.get(), test->md.func(), nullptr));
     for (size_t i = 0; i < repeat; i++) {
       ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), test->input, strlen(test->input)));
     }
-    const bool is_xof = EVP_MD_flags(ctx->digest) & EVP_MD_FLAG_XOF;
-    std::unique_ptr<uint8_t[]> digest(new uint8_t[is_xof ? test->repeat : EVP_MD_size(test->md.func())]);
+    std::unique_ptr<uint8_t[]> digest(new uint8_t[expected_output_size]);
     unsigned digest_len;
     ASSERT_TRUE(DoFinal(test, ctx.get(), digest.get(), &digest_len));
     CompareDigest(test, digest.get(), digest_len);
@@ -308,10 +313,7 @@ static void TestDigest(const DigestTestVector *test) {
       }
     }
     ASSERT_TRUE(DoFinal(test, ctx.get(), digest.get(), &digest_len));
-    const size_t expected_size = is_xof
-        ? test->repeat
-        : EVP_MD_size(test->md.func());
-    EXPECT_EQ(expected_size, digest_len);
+    EXPECT_EQ(expected_output_size, digest_len);
     CompareDigest(test, digest.get(), digest_len);
 
     // Test with unaligned input.
@@ -335,7 +337,7 @@ static void TestDigest(const DigestTestVector *test) {
     for (size_t i = 0; i < repeat; i++) {
       ASSERT_TRUE(EVP_DigestUpdate(copy.get(), test->input, strlen(test->input)));
     }
-    ASSERT_TRUE(DoFinal(test, ctx.get(), digest.get(), &digest_len));
+    ASSERT_TRUE(DoFinal(test, copy.get(), digest.get(), &digest_len));
     CompareDigest(test, digest.get(), digest_len);
 
     // Make a copy of the digest with half the input provided.
@@ -347,7 +349,7 @@ static void TestDigest(const DigestTestVector *test) {
     for (size_t i = 1; i < repeat; i++) {
       ASSERT_TRUE(EVP_DigestUpdate(copy.get(), test->input, strlen(test->input)));
     }
-    ASSERT_TRUE(DoFinal(test, ctx.get(), digest.get(), &digest_len));
+    ASSERT_TRUE(DoFinal(test, copy.get(), digest.get(), &digest_len));
     CompareDigest(test, digest.get(), digest_len);
 
     // Move the digest from the initial state.
@@ -356,7 +358,7 @@ static void TestDigest(const DigestTestVector *test) {
     for (size_t i = 0; i < repeat; i++) {
       ASSERT_TRUE(EVP_DigestUpdate(copy.get(), test->input, strlen(test->input)));
     }
-    ASSERT_TRUE(DoFinal(test, ctx.get(), digest.get(), &digest_len));
+    ASSERT_TRUE(DoFinal(test, copy.get(), digest.get(), &digest_len));
     CompareDigest(test, digest.get(), digest_len);
 
     // Move the digest with half the input provided.
@@ -368,17 +370,17 @@ static void TestDigest(const DigestTestVector *test) {
     for (size_t i = 1; i < repeat; i++) {
       ASSERT_TRUE(EVP_DigestUpdate(copy.get(), test->input, strlen(test->input)));
     }
-    ASSERT_TRUE(DoFinal(test, ctx.get(), digest.get(), &digest_len));
+    ASSERT_TRUE(DoFinal(test, copy.get(), digest.get(), &digest_len));
     CompareDigest(test, digest.get(), digest_len);
 
     // Test the one-shot function.
-    if (test->md.one_shot_xof_func || (test->md.one_shot_func && test->repeat == 1)) {
-      uint8_t *out = test->md.one_shot_xof_func
+    if (is_xof || (test->md.one_shot_func && test->repeat == 1)) {
+      uint8_t *out = is_xof
           ? test->md.one_shot_xof_func((const uint8_t *)test->input, strlen(test->input), digest.get(), test->repeat)
           : test->md.one_shot_func((const uint8_t *)test->input, strlen(test->input), digest.get());
       // One-shot functions return their supplied buffers.
       EXPECT_EQ(digest.get(), out);
-      CompareDigest(test, digest.get(), EVP_MD_size(test->md.func()));
+      CompareDigest(test, digest.get(), expected_output_size);
     }
 }
 

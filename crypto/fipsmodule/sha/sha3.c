@@ -69,12 +69,8 @@ uint8_t *SHA3_512(const uint8_t *data, size_t len,
 
 uint8_t *SHAKE128(const uint8_t *data, const size_t in_len, uint8_t *out, size_t out_len) {
   KECCAK1600_CTX ctx;
-  
-  // The SHAKE block size depends on the security level of the algorithm only
-  // It is independent of the output size
-  ctx.block_size = SHAKE128_BLOCKSIZE;
 
-  int ok = (SHA3_Init(&ctx, SHAKE_PAD_CHAR, out_len) && 
+  int ok = (SHAKE_Init(&ctx, SHAKE128_BLOCKSIZE) &&
             SHA3_Update(&ctx, data, in_len) &&
             SHAKE_Final(out, &ctx, out_len));
 
@@ -87,12 +83,8 @@ uint8_t *SHAKE128(const uint8_t *data, const size_t in_len, uint8_t *out, size_t
 
 uint8_t *SHAKE256(const uint8_t *data, const size_t in_len, uint8_t *out, size_t out_len) {
   KECCAK1600_CTX ctx;
-  
-  // The SHAKE block size depends on the security level of the algorithm only
-  // It is independent of the output size
-  ctx.block_size = SHAKE256_BLOCKSIZE;
 
-  int ok = (SHA3_Init(&ctx, SHAKE_PAD_CHAR, out_len) && 
+  int ok = (SHAKE_Init(&ctx, SHAKE256_BLOCKSIZE) &&
             SHA3_Update(&ctx, data, in_len) &&
             SHAKE_Final(out, &ctx, out_len));
 
@@ -104,6 +96,8 @@ uint8_t *SHAKE256(const uint8_t *data, const size_t in_len, uint8_t *out, size_t
 }
 
 int SHAKE_Init(KECCAK1600_CTX *ctx, size_t block_size) {
+  // The SHAKE block size depends on the security level of the algorithm only
+  // It is independent of the output size
   ctx->block_size = block_size;
   return SHA3_Init(ctx, SHAKE_PAD_CHAR, 0);
 }
