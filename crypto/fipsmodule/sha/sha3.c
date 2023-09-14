@@ -103,6 +103,12 @@ uint8_t *SHAKE256(const uint8_t *data, const size_t in_len, uint8_t *out, size_t
   return out;
 }
 
+int SHAKE_Init(KECCAK1600_CTX *ctx, size_t block_size) {
+  ctx->block_size = block_size;
+  return SHA3_Init(ctx, SHAKE_PAD_CHAR, 0);
+}
+
+
 int SHAKE_Final(uint8_t *md, KECCAK1600_CTX *ctx, size_t len) {
   ctx->md_size = len;
   return SHA3_Final(md, ctx);

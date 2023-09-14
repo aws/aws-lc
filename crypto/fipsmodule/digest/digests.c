@@ -426,7 +426,7 @@ DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha3_512) {
 
 
 static void shake128_init(EVP_MD_CTX *ctx) {
-  CHECK(SHA3_Init(ctx->md_data, SHAKE_PAD_CHAR, 0));
+  CHECK(SHAKE_Init(ctx->md_data, SHAKE128_BLOCKSIZE));
 }
 
 static void shake128_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
@@ -446,6 +446,31 @@ DEFINE_METHOD_FUNCTION(EVP_MD, EVP_shake128) {
   out->final = NULL;
   out->finalXOF = shake128_final;
   out->block_size = SHAKE128_BLOCKSIZE;
+  out->ctx_size = sizeof(KECCAK1600_CTX);
+}
+
+
+static void shake256_init(EVP_MD_CTX *ctx) {
+  CHECK(SHAKE_Init(ctx->md_data, SHAKE256_BLOCKSIZE));
+}
+
+static void shake256_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
+  CHECK(SHA3_Update(ctx->md_data, data, count));
+}
+
+static void shake256_finalXOF(EVP_MD_CTX *ctx, uint8_t *md, size_t len) {
+  CHECK(SHAKE_Final(md, ctx->md_data, len));
+}
+
+DEFINE_METHOD_FUNCTION(EVP_MD, EVP_shake256) {
+  out->type = NID_shake256;
+  out->md_size = 0;
+  out->flags = EVP_MD_FLAG_XOF;
+  out->init = shake256_init;
+  out->update = shake256_update;
+  out->final = NULL;
+  out->finalXOF = shake256_finalXOF;
+  out->block_size = SHAKE256_BLOCKSIZE;
   out->ctx_size = sizeof(KECCAK1600_CTX);
 }
 
@@ -484,5 +509,4 @@ DEFINE_METHOD_FUNCTION(EVP_MD, EVP_md5_sha1) {
   out->block_size = 64;
   out->ctx_size = sizeof(MD5_SHA1_CTX);
 }
-
 #undef CHECK

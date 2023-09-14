@@ -135,9 +135,13 @@ int EVP_DigestFinalXOF(EVP_MD_CTX *ctx, uint8_t *out, size_t len) {
       OPENSSL_PUT_ERROR(DIGEST, DIGEST_R_UNKNOWN_HASH);
       return 0;
   }
+  if ((EVP_MD_flags(ctx->digest) & EVP_MD_FLAG_XOF) == 0) {
+    OPENSSL_PUT_ERROR(DIGEST, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+    return 0;
+  }
   ctx->digest->finalXOF(ctx, out, len);
-  EVP_MD_CTX_cleanup(ctx);
   OPENSSL_cleanse(ctx->md_data, ctx->digest->ctx_size);
+  EVP_MD_CTX_cleanup(ctx);
   return 1;
 }
 
@@ -251,6 +255,10 @@ int EVP_DigestFinal_ex(EVP_MD_CTX *ctx, uint8_t *md_out, unsigned int *size) {
   if (ctx->digest == NULL) {
     return 0;
   }
+  if (EVP_MD_flags(ctx->digest) & EVP_MD_FLAG_XOF) {
+    OPENSSL_PUT_ERROR(DIGEST, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+    return 0;
+  }
 
   assert(ctx->digest->md_size <= EVP_MAX_MD_SIZE);
   ctx->digest->final(ctx, md_out);
@@ -262,7 +270,6 @@ int EVP_DigestFinal_ex(EVP_MD_CTX *ctx, uint8_t *md_out, unsigned int *size) {
 }
 
 int EVP_DigestFinal(EVP_MD_CTX *ctx, uint8_t *md, unsigned int *size) {
-  
   int ok = EVP_DigestFinal_ex(ctx, md, size);
   EVP_MD_CTX_cleanup(ctx);
   return ok;
