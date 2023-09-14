@@ -1421,6 +1421,11 @@ OPENSSL_EXPORT bool ssl_cert_check_key_usage(const CBS *in,
 // nullptr and pushes to the error queue.
 UniquePtr<EVP_PKEY> ssl_cert_parse_pubkey(const CBS *in);
 
+// ssl_cert_parse_leaf_pubkey calls |ssl_cert_parse_pubkey| and extracts the
+// public key from the first element of |chain|. It's expected that the first
+// element of |chain| is the leaf certificate.
+UniquePtr<EVP_PKEY> ssl_cert_parse_leaf_pubkey(STACK_OF(CRYPTO_BUFFER) *chain);
+
 // ssl_parse_client_CA_list parses a CA list from |cbs| in the format used by a
 // TLS CertificateRequest message. On success, it returns a newly-allocated
 // |CRYPTO_BUFFER| list and advances |cbs|. Otherwise, it returns nullptr and
