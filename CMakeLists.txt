@@ -473,6 +473,8 @@ elseif(MSVC)
       "C4996" # deprecated warnings using low level functions in OpenSSL 3.0
       "C4746" # consider using __iso_volatile_load/store intrinsic functions
       "C5264" # 'variable-name': 'const' variable is not used
+      "C5266" # 'const' qualifier on return type has no effect
+      "C5267" # definition of implicit copy constructor for '...' is deprecated because it has a user-provided destructor
           )
   set(MSVC_LEVEL4_WARNINGS_LIST
       # See https://connect.microsoft.com/VisualStudio/feedback/details/1217660/warning-c4265-when-using-functional-header
@@ -634,6 +636,10 @@ if(FIPS)
 
   if(NOT BUILD_SHARED_LIBS AND NOT (UNIX AND NOT APPLE))
     message(FATAL_ERROR "Static FIPS build of AWS-LC is suported only on Linux")
+  endif()
+
+  if(WIN32 AND CMAKE_BUILD_TYPE_LOWER STREQUAL "debug")
+    message(FATAL_ERROR "Windows Debug build is not supported with FIPS, use Release or RelWithDebInfo")
   endif()
 
   add_subdirectory(third_party/jitterentropy)
