@@ -1,5 +1,5 @@
 cmake-build-debug/
-.vscode/settings.json
+.vscode/
 build/
 build32/
 build64/
