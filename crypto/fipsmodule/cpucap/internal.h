@@ -116,7 +116,7 @@ OPENSSL_INLINE int CRYPTO_is_SHAEXT_capable(void) {
 }
 
 OPENSSL_INLINE int CRYPTO_is_AVX512_capable(void) {
-  return (OPENSSL_ia32cap_get()[2] & 0xC0030000) != 0;
+  return (OPENSSL_ia32cap_get()[2] & 0xC0030000) == 0xC0030000;
 }
 
 OPENSSL_INLINE int CRYPTO_is_VAES_capable(void) {
