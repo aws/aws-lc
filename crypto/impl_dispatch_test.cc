@@ -40,9 +40,16 @@ class ImplDispatchTest : public ::testing::Test {
     avx_movbe_ = CRYPTO_is_AVX_capable() && CRYPTO_is_MOVBE_capable();
     aes_vpaes_ = CRYPTO_is_SSSE3_capable();
     sha_ext_ = CRYPTO_is_SHAEXT_capable();
-    vaes_vpclmulqdq_ = CRYPTO_is_AVX512_capable() && 
-                        CRYPTO_is_VAES_capable() &&
-                        CRYPTO_is_VPCLMULQDQ_capable();
+    vaes_vpclmulqdq_ =
+#if !defined(OPENSSL_WINDOWS)
+  // crypto_gcm_avx512_enabled excludes Windows
+        CRYPTO_is_AVX512_capable() &&
+        CRYPTO_is_VAES_capable() &&
+        CRYPTO_is_VPCLMULQDQ_capable();
+#else
+        false;
+#endif
+
     is_x86_64_ =
 #if defined(OPENSSL_X86_64)
         true;
