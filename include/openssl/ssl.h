@@ -980,6 +980,40 @@ OPENSSL_EXPORT int SSL_CTX_add_extra_chain_cert(SSL_CTX *ctx, X509 *x509);
 // and may release it freely.
 OPENSSL_EXPORT int SSL_add1_chain_cert(SSL *ssl, X509 *x509);
 
+
+// The following flags are used for configuring |SSL_CTX_build_cert_chain| and
+// |SSL_build_cert_chain|.
+
+// SSL_BUILD_CHAIN_FLAG_UNTRUSTED treats any existing certificates as untrusted
+// CAs.
+#define SSL_BUILD_CHAIN_FLAG_UNTRUSTED 0x1
+
+// SSL_BUILD_CHAIN_FLAG_NO_ROOT omits the root CA from the built chain.
+#define SSL_BUILD_CHAIN_FLAG_NO_ROOT 0x2
+
+// SSL_BUILD_CHAIN_FLAG_CHECK uses only existing chain certificates to build the
+// chain (effectively sanity checking and rearranging them if necessary).
+#define SSL_BUILD_CHAIN_FLAG_CHECK 0x4
+
+// SSL_BUILD_CHAIN_FLAG_IGNORE_ERROR ignores errors during certificate
+// verification, but still pushes the error onto the error queue.
+#define SSL_BUILD_CHAIN_FLAG_IGNORE_ERROR 0x8
+
+// SSL_BUILD_CHAIN_FLAG_CLEAR_ERROR is only used when
+// |SSL_BUILD_CHAIN_FLAG_IGNORE_ERROR| is defined. It clears the error from the
+// error queue if certificate verification has failed.
+#define SSL_BUILD_CHAIN_FLAG_CLEAR_ERROR 0x10
+
+// SSL_CTX_build_cert_chain builds the certificate chain for |ctx|.
+// Normally this uses the chain store or the verify store if the chain store is
+// not set. If the function is successful, the built chain will replace any
+// existing chain in |ctx|.
+OPENSSL_EXPORT int SSL_CTX_build_cert_chain(SSL_CTX *ctx, int flags);
+
+// SSL_build_cert_chain is similar to |SSL_CTX_build_cert_chain|, but the
+// certificate chain is built for |ssl| instead.
+OPENSSL_EXPORT int SSL_build_cert_chain(SSL *ssl, int flags);
+
 // SSL_CTX_clear_chain_certs clears |ctx|'s certificate chain and returns
 // one.
 OPENSSL_EXPORT int SSL_CTX_clear_chain_certs(SSL_CTX *ctx);
@@ -5628,6 +5662,7 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_status_arg(SSL_CTX *ctx, void *arg);
 #define SSL_CTX_add0_chain_cert SSL_CTX_add0_chain_cert
 #define SSL_CTX_add1_chain_cert SSL_CTX_add1_chain_cert
 #define SSL_CTX_add_extra_chain_cert SSL_CTX_add_extra_chain_cert
+#define SSL_CTX_build_cert_chain SSL_CTX_build_cert_chain
 #define SSL_CTX_clear_extra_chain_certs SSL_CTX_clear_extra_chain_certs
 #define SSL_CTX_clear_chain_certs SSL_CTX_clear_chain_certs
 #define SSL_CTX_clear_mode SSL_CTX_clear_mode
@@ -5666,6 +5701,7 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_status_arg(SSL_CTX *ctx, void *arg);
 #define SSL_CTX_set_tmp_rsa SSL_CTX_set_tmp_rsa
 #define SSL_add0_chain_cert SSL_add0_chain_cert
 #define SSL_add1_chain_cert SSL_add1_chain_cert
+#define SSL_build_cert_chain SSL_build_cert_chain
 #define SSL_clear_chain_certs SSL_clear_chain_certs
 #define SSL_clear_mode SSL_clear_mode
 #define SSL_clear_options SSL_clear_options
