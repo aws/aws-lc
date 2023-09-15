@@ -25,10 +25,7 @@ AWS_LC_BUILD_FOLDER="${SCRATCH_FOLDER}/aws-lc-build"
 AWS_LC_INSTALL_FOLDER="${SCRATCH_FOLDER}/aws-lc-install"
 LIBEVENT_SRC_FOLDER="${SCRATCH_FOLDER}/libevent"
 LIBEVENT_INSTALL_FOLDER="${SCRATCH_FOLDER}/libevent-install"
-
-mkdir -p ${SCRATCH_FOLDER}
-rm -rf ${SCRATCH_FOLDER}/*
-cd ${SCRATCH_FOLDER}
+EXPECTED_AWSLC_API_VERSION="22"
 
 function libevent_install() {
   git clone https://github.com/libevent/libevent.git ${LIBEVENT_SRC_FOLDER} --depth 1
@@ -36,6 +33,24 @@ function libevent_install() {
   cmake -DOPENSSL_ROOT_DIR="${AWS_LC_INSTALL_FOLDER}" -DCMAKE_INSTALL_PREFIX="${LIBEVENT_INSTALL_FOLDER}"
   make install
   popd
+}
+
+function sslproxy_patch_reminder() {
+  # If the test file in SSLProxy needs to be updated, simply run the following code
+  # against a valid SSL_SESSION from AWS-LC to generate a new file. This might occur
+  # whenever we update the expected contents of SSL_SESSION.
+  #
+  # ```
+  #  FILE *f;
+  #  f = fopen("session-aws-lc.pem", "wr");
+  #  PEM_write_SSL_SESSION(f, session.get());
+  # ```
+  AWSLC_API_VERSION=`grep -Po -oP '#define AWSLC_API_VERSION \K\d+' include/openssl/base.h`
+  if [[ "${AWSLC_API_VERSION}" != "${EXPECTED_AWSLC_API_VERSION}" ]]; then
+    aws cloudwatch put-metric-data --namespace AWS-LC --metric-name SSLProxyAPIVersionBump --value 1
+  else
+    aws cloudwatch put-metric-data --namespace AWS-LC --metric-name SSLProxyAPIVersionBump --value 0
+  fi
 }
 
 function sslproxy_build() {
@@ -57,6 +72,12 @@ function sslproxy_patch_tests() {
 function sslproxy_run_tests() {
   LD_LIBRARY_PATH="${LIBEVENT_INSTALL_FOLDER}/lib" make OPENSSL=openssl OPENSSL_BASE="${AWS_LC_INSTALL_FOLDER}" LIBEVENT_BASE="${LIBEVENT_INSTALL_FOLDER}" travisunittest
 }
+
+sslproxy_patch_reminder
+
+mkdir -p ${SCRATCH_FOLDER}
+rm -rf ${SCRATCH_FOLDER}/*
+cd ${SCRATCH_FOLDER}
 
 git clone https://github.com/sonertari/SSLproxy.git ${SSLPROXY_SRC_FOLDER} --depth 1
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} ${SSLPROXY_BUILD_FOLDER}
