@@ -829,6 +829,7 @@ int crypto_gcm_clmul_enabled(void) {
 }
 
 int crypto_gcm_avx512_enabled(void) {
+  // This must align with ImplDispatchTest.AEAD_AES_GCM
 #if defined(GHASH_ASM_X86_64) && \
     !defined(OPENSSL_WINDOWS) && \
     !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
