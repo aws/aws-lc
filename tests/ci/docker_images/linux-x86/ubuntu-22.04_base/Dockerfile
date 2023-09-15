@@ -40,12 +40,16 @@ RUN set -ex && \
     lld \
     llvm \
     llvm-dev \
+    libcryptx-perl \
     libicu-dev \
+    libio-socket-ssl-perl \
     libipc-run-perl \
     libjson-perl \
     liblua5.4-dev \
     libnet-dev \
+    libnet-ssleay-perl \
     libpcap-dev \
+    libperl-dev \
     libpcre2-dev \
     libreadline-dev \
     libsqlite3-dev \

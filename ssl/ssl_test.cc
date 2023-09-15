@@ -5170,7 +5170,8 @@ class MultipleCertificateSlotTest
   const void StandardCertificateSlotIndexTests(SSL_CTX *client_ctx,
                                                SSL_CTX *server_ctx,
                                                std::vector<uint16_t> sigalgs,
-                                               int last_cert_type_set) {
+                                               int last_cert_type_set,
+                                               int should_fail) {
     EXPECT_TRUE(SSL_CTX_set_signing_algorithm_prefs(client_ctx, sigalgs.data(),
                                                     sigalgs.size()));
     EXPECT_TRUE(SSL_CTX_set_verify_algorithm_prefs(client_ctx, sigalgs.data(),
@@ -5184,8 +5185,12 @@ class MultipleCertificateSlotTest
     ClientConfig config;
     bssl::UniquePtr<SSL> client, server;
 
-    ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx, server_ctx,
-                                       config, false));
+    EXPECT_EQ(ConnectClientAndServer(&client, &server, client_ctx, server_ctx,
+                                     config, false),
+              should_fail);
+    if (!should_fail) {
+      return;
+    }
 
     ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
 
@@ -5222,7 +5227,7 @@ TEST_P(MultipleCertificateSlotTest, CertificateSlotIndex) {
       client_ctx.get(), server_ctx.get(),
       {SSL_SIGN_ED25519, SSL_SIGN_ECDSA_SECP256R1_SHA256,
        SSL_SIGN_RSA_PSS_RSAE_SHA256},
-      slot_index);
+      slot_index, true);
 }
 
 // Sets up the |SSL_CTX| with |SSL_CTX_set_chain_and_key|.
@@ -5252,7 +5257,7 @@ TEST_P(MultipleCertificateSlotTest, SetChainAndKeyIndex) {
       client_ctx.get(), server_ctx.get(),
       {SSL_SIGN_ED25519, SSL_SIGN_ECDSA_SECP256R1_SHA256,
        SSL_SIGN_RSA_PSS_RSAE_SHA256},
-      slot_index);
+      slot_index, true);
 }
 
 TEST_P(MultipleCertificateSlotTest, AutomaticSelection) {
@@ -5287,8 +5292,66 @@ TEST_P(MultipleCertificateSlotTest, AutomaticSelection) {
 
   StandardCertificateSlotIndexTests(
       client_ctx.get(), server_ctx.get(),
-      {certificate_key_param().corresponding_sigalg}, SSL_PKEY_ED25519);
+      {certificate_key_param().corresponding_sigalg}, SSL_PKEY_ED25519, true);
 }
+
+TEST_P(MultipleCertificateSlotTest, MissingCertificate) {
+  if ((version == TLS1_1_VERSION || version == TLS1_VERSION) &&
+      slot_index == SSL_PKEY_ED25519) {
+    // ED25519 is not supported in versions prior to TLS1.2.
+    return;
+  }
+
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
+
+  ASSERT_TRUE(SSL_CTX_use_PrivateKey(server_ctx.get(), GetTestKey().get()));
+  ASSERT_TRUE(
+      SSL_CTX_use_PrivateKey(server_ctx.get(), GetECDSATestKey().get()));
+  ASSERT_TRUE(
+      SSL_CTX_use_PrivateKey(server_ctx.get(), GetED25519TestKey().get()));
+
+  // Versions prior to TLS1.3 need a valid authentication cipher suite to pair
+  // with the certificate.
+  if (version < TLS1_3_VERSION) {
+    ASSERT_TRUE(SSL_CTX_set_cipher_list(client_ctx.get(),
+                                        certificate_key_param().suite));
+  }
+
+  StandardCertificateSlotIndexTests(
+      client_ctx.get(), server_ctx.get(),
+      {certificate_key_param().corresponding_sigalg}, -1, false);
+}
+
+TEST_P(MultipleCertificateSlotTest, MissingPrivateKey) {
+  if ((version == TLS1_1_VERSION || version == TLS1_VERSION) &&
+      slot_index == SSL_PKEY_ED25519) {
+    // ED25519 is not supported in versions prior to TLS1.2.
+    return;
+  }
+
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
+
+  ASSERT_TRUE(
+      SSL_CTX_use_certificate(server_ctx.get(), GetTestCertificate().get()));
+  ASSERT_TRUE(SSL_CTX_use_certificate(server_ctx.get(),
+                                      GetECDSATestCertificate().get()));
+  ASSERT_TRUE(SSL_CTX_use_certificate(server_ctx.get(),
+                                      GetED25519TestCertificate().get()));
+
+  // Versions prior to TLS1.3 need a valid authentication cipher suite to pair
+  // with the certificate.
+  if (version < TLS1_3_VERSION) {
+    ASSERT_TRUE(SSL_CTX_set_cipher_list(client_ctx.get(),
+                                        certificate_key_param().suite));
+  }
+
+  StandardCertificateSlotIndexTests(
+      client_ctx.get(), server_ctx.get(),
+      {certificate_key_param().corresponding_sigalg}, -1, false);
+}
+
 
 struct MultiTransferReadWriteTestParams {
   const char suite[50];
