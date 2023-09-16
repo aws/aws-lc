@@ -38,6 +38,10 @@ OBJ = bignum_add.o \
       bignum_cmul.o \
       bignum_coprime.o \
       bignum_copy.o \
+      bignum_copy_row_from_table.o \
+      bignum_copy_row_from_table_8n_neon.o \
+      bignum_copy_row_from_table_16_neon.o \
+      bignum_copy_row_from_table_32_neon.o \
       bignum_ctd.o \
       bignum_ctz.o \
       bignum_demont.o \

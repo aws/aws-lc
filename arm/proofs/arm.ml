@@ -310,8 +310,6 @@ let ARM_ENSURES_SUBSUBLEMMA_TAC =
   ENSURES_SUBSUBLEMMA_TAC o
   map (MATCH_MP aligned_bytes_loaded_update o CONJUNCT1);;
 
-let WORD_SUB_ADD = WORD_RULE `word_sub (word (a + b)) (word b) = word a`;;
-
 let ARM_CONV execth2 ths tm =
   let th = tryfind (MATCH_MP execth2) ths in
   let eth = tryfind (fun th2 -> GEN_REWRITE_CONV I [ARM_THM th th2] tm) ths in
