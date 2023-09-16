@@ -1197,6 +1197,44 @@ let cache f =
            (let y = f x in (memo := (x,y) :: (!memo); y));;
 
 (* ------------------------------------------------------------------------- *)
+(* Extensions of REPEAT tactic                                               *)
+(* ------------------------------------------------------------------------- *)
+
+let rec REPEAT_N (n:int) (t:tactic):tactic =
+  if n = 0 then ALL_TAC
+  else t THEN (REPEAT_N (n-1) t);;
+
+let rec REPEAT_I_N (i:int) (n:int) (t:int->tactic):tactic =
+  if i = n then ALL_TAC
+  else (t i) THEN (REPEAT_I_N (i+1) n t);;
+
+(* ------------------------------------------------------------------------- *)
+(* Tactics that break a conjunction/disjunction in assumptions               *)
+(* ------------------------------------------------------------------------- *)
+
+let SPLIT_FIRST_CONJ_ASSUM_TAC =
+    FIRST_X_ASSUM (fun thm ->
+      let t1,t2 = CONJ_PAIR thm in MAP_EVERY ASSUME_TAC [t1;t2]);;
+
+let CASES_FIRST_DISJ_ASSUM_TAC =
+    FIRST_X_ASSUM (fun thm ->
+      if is_disj (concl thm) then DISJ_CASES_TAC thm else failwith "");;
+
+(* ------------------------------------------------------------------------- *)
+(* Tactics that prove a subgoal using {ASM_}ARITH_TAC.                       *)
+(* ------------------------------------------------------------------------- *)
+
+(* ASSERT_USING_UNDISCH_AND_ARITH_TAC t1 t0 proves t1 using t0 and
+   assumes t1 *)
+let ASSERT_USING_UNDISCH_AND_ARITH_TAC t t' =
+  SUBGOAL_THEN t ASSUME_TAC THENL [UNDISCH_TAC t' THEN ARITH_TAC; ALL_TAC];;
+
+(* ASSERT_USING_ASM_ARITH_TAC t proves t using ASM_ARITH_TAC and
+   assumes t *)
+let ASSERT_USING_ASM_ARITH_TAC t =
+  SUBGOAL_THEN t ASSUME_TAC THENL [ASM_ARITH_TAC; ALL_TAC];;
+
+(* ------------------------------------------------------------------------- *)
 (* A few more lemmas about words.                                            *)
 (* ------------------------------------------------------------------------- *)
 
@@ -1273,9 +1311,13 @@ let WORD_MUL_EQ = prove(
     REWRITE_TAC[GSYM VAL_EQ; VAL_WORD_MUL; VAL_WORD; DIMINDEX_64; MOD_MOD_REFL; MOD_MOD_EXP_MIN]
     THEN CONV_TAC(DEPTH_CONV NUM_MIN_CONV) THEN MESON_TAC[]);;
 
+let WORD_SUB_ADD = WORD_RULE `word_sub (word (a + b)) (word b) = word a`;;
+
 (* ------------------------------------------------------------------------- *)
 (* A few more lemmas about natural numbers.                                  *)
 (* ------------------------------------------------------------------------- *)
+
+let GT_REFL = prove(`!(x:num). ~(x > x)`, ARITH_TAC);;
 
 let ADD_MOD_MOD_REFL = prove(`!a b m.
     (a + b MOD m) MOD m = (a + b) MOD m /\
@@ -1336,6 +1378,14 @@ let ADD_DIV_MOD_SIMP2_LEMMA = prove(`!(x:num) (y:num) (m:num).
   ASM_REWRITE_TAC[] THEN
   REWRITE_TAC[GSYM ADD_ASSOC] THEN
   ASM_SIMP_TAC[MOD_MULT_ADD;DIV_MULT_ADD;MOD_LT;DIV_LT;ADD_SYM] THEN
+  ARITH_TAC);;
+
+let LE_MULT_ADD = prove(`!(x:num) (x2:num) (y:num). x < x2 ==> x * y + y <= x2 * y`,
+    REPEAT STRIP_TAC THEN REWRITE_TAC[ARITH_RULE `x * y + y= (x + 1)*y`] THEN
+    REWRITE_TAC[LE_MULT_RCANCEL] THEN
+    ASM_ARITH_TAC);;
+
+let ADD_SUB_SWAP = prove(`!(x:num) (y:num) (z:num). y >= z /\ x >= z ==> x + (y - z) = y + (x - z)`,
   ARITH_TAC);;
 
 (* ------------------------------------------------------------------------- *)

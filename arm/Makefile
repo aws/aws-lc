@@ -154,6 +154,10 @@ BIGNUM_OBJ = curve25519/bignum_add_p25519.o \
              generic/bignum_cmul.o \
              generic/bignum_coprime.o \
              generic/bignum_copy.o \
+             generic/bignum_copy_row_from_table.o \
+             generic/bignum_copy_row_from_table_8n_neon.o \
+             generic/bignum_copy_row_from_table_16_neon.o \
+             generic/bignum_copy_row_from_table_32_neon.o \
              generic/bignum_ctd.o \
              generic/bignum_ctz.o \
              generic/bignum_demont.o \
