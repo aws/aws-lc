@@ -16,3 +16,6 @@ build_prefix_and_test -DOPENSSL_SMALL=1 -DCMAKE_BUILD_TYPE=Release
 
 echo "Testing a prefix build of AWS-LC in no asm mode."
 build_prefix_and_test -DOPENSSL_NO_ASM=1 -DCMAKE_BUILD_TYPE=Release
+
+echo "Testing a prefix build of AWS-LC in FIPS mode."
+build_prefix_and_test -DFIPS=1 -DCMAKE_BUILD_TYPE=Release
