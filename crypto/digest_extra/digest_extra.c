@@ -86,6 +86,8 @@ static const struct nid_to_digest nid_to_digest_mapping[] = {
     {NID_sha512, EVP_sha512, SN_sha512, LN_sha512},
     {NID_sha512_224, EVP_sha512_224, SN_sha512_224, LN_sha512_224},
     {NID_sha512_256, EVP_sha512_256, SN_sha512_256, LN_sha512_256},
+    {NID_shake128, EVP_shake128, SN_shake128, LN_shake128},
+    {NID_shake256, EVP_shake256, SN_shake256, LN_shake256},
     {NID_md5_sha1, EVP_md5_sha1, SN_md5_sha1, LN_md5_sha1},
     // As a remnant of signing |EVP_MD|s, OpenSSL returned the corresponding
     // hash function when given a signature OID. To avoid unintended lax parsing

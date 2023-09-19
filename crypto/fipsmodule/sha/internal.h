@@ -126,10 +126,12 @@ OPENSSL_EXPORT uint8_t *SHAKE128(const uint8_t *data, const size_t in_len,
 OPENSSL_EXPORT uint8_t *SHAKE256(const uint8_t *data, const size_t in_len, 
                                  uint8_t *out, size_t out_len);
 
-// TODO [childw]
+// SHAKE_Init initializes |ctx| with specified |block_size|, returns 1 on
+// success and 0 on failure. Calls SHA3_Init under the hood.
 OPENSSL_EXPORT int SHAKE_Init(KECCAK1600_CTX *ctx, size_t block_size);
 
-// TODO [childw]
+// SHAKE_Init writes |len| bytes of finalized digest to |md|, returns 1 on
+// success and 0 on failure. Calls SHA3_Final under the hood.
 OPENSSL_EXPORT int SHAKE_Final(uint8_t *md, KECCAK1600_CTX *ctx, size_t len);
 
 // SHA3_Reset zeros the bitstate and the amount of processed input.
