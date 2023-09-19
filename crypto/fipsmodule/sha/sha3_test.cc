@@ -56,20 +56,20 @@ class SHA3TestVector {
     uint32_t digest_length = out_len_ / 8;
     std::unique_ptr<uint8_t[]> digest(new uint8_t[digest_length]);
 
-    ASSERT_TRUE(SHAKE128(msg_.data(), msg_.size() , digest.get(), out_len_));
+    ASSERT_TRUE(SHAKE128(msg_.data(), msg_.size() , digest.get(), digest_length));
 
-    ASSERT_EQ(Bytes(digest.get(), out_len_ / 8),
-            Bytes(digest_.data(), out_len_ / 8));
+    ASSERT_EQ(Bytes(digest.get(), digest_length),
+            Bytes(digest_.data(), digest_length));
   }
 
   void NISTTestVectors_SHAKE256() const {
     uint32_t digest_length = out_len_ / 8;
     std::unique_ptr<uint8_t[]> digest(new uint8_t[digest_length]);
 
-    ASSERT_TRUE(SHAKE256(msg_.data(), msg_.size() , digest.get(), out_len_));
+    ASSERT_TRUE(SHAKE256(msg_.data(), msg_.size() , digest.get(), digest_length));
 
-    ASSERT_EQ(Bytes(digest.get(), out_len_ / 8),
-            Bytes(digest_.data(), out_len_ / 8));
+    ASSERT_EQ(Bytes(digest.get(), digest_length),
+            Bytes(digest_.data(), digest_length));
   }
 
  private:

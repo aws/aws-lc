@@ -131,10 +131,6 @@ void EVP_MD_CTX_free(EVP_MD_CTX *ctx) {
 void EVP_MD_CTX_destroy(EVP_MD_CTX *ctx) { EVP_MD_CTX_free(ctx); }
 
 int EVP_DigestFinalXOF(EVP_MD_CTX *ctx, uint8_t *out, size_t len) {
-  if (ctx->digest->type != NID_shake128 && ctx->digest->type != NID_shake256) {
-      OPENSSL_PUT_ERROR(DIGEST, DIGEST_R_UNKNOWN_HASH);
-      return 0;
-  }
   if ((EVP_MD_flags(ctx->digest) & EVP_MD_FLAG_XOF) == 0) {
     OPENSSL_PUT_ERROR(DIGEST, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     return 0;

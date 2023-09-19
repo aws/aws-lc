@@ -509,4 +509,5 @@ DEFINE_METHOD_FUNCTION(EVP_MD, EVP_md5_sha1) {
   out->block_size = 64;
   out->ctx_size = sizeof(MD5_SHA1_CTX);
 }
+
 #undef CHECK
