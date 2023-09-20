@@ -1289,6 +1289,35 @@ static bool SpeedECDHCurve(const std::string &name, int nid,
   return true;
 }
 
+static bool SpeedFFDHGroup(const std::string &name, int nid,
+                           const std::string &selected) {
+  if (!selected.empty() && name.find(selected) == std::string::npos) {
+    return true;
+  }
+
+  bssl::UniquePtr<DH> sever_dh(DH_new_by_nid(nid));
+  if(!DH_generate_key(sever_dh.get())) {
+        return false;
+  }
+  const BIGNUM *sever_pub = DH_get0_pub_key(sever_dh.get());
+
+  int dh_size = DH_size(sever_dh.get());
+  std::unique_ptr<uint8_t[]> shared_secret(new uint8_t[dh_size]);
+
+  TimeResults results;
+  if (!TimeFunction(&results, [&shared_secret, &sever_pub, &dh_size, &nid]() -> bool {
+        bssl::UniquePtr<DH> client_dh(DH_new_by_nid(nid));
+        return DH_generate_key(client_dh.get()) &&
+               dh_size == DH_compute_key_padded(shared_secret.get(), sever_pub, client_dh.get());
+      })) {
+    return false;
+  }
+
+  results.Print(name);
+  return true;
+}
+
+
 
 static bool SpeedECKeyGenerateKey(bool is_fips, const std::string &name,
                                       int nid, const std::string &selected) {
@@ -1413,6 +1442,11 @@ static bool SpeedECDH(const std::string &selected) {
          SpeedECDHCurve("ECDH P-384", NID_secp384r1, selected) &&
          SpeedECDHCurve("ECDH P-521", NID_secp521r1, selected) &&
          SpeedECDHCurve("ECDH secp256k1", NID_secp256k1, selected);
+}
+
+static bool SpeedFFDH(const std::string &selected) {
+  return SpeedFFDHGroup("FFDH 2048", NID_ffdhe2048, selected) &&
+         SpeedFFDHGroup("FFDH 4096", NID_ffdhe4096, selected);
 }
 
 static bool SpeedECKeyGen(const std::string &selected) {
@@ -2577,6 +2611,7 @@ bool Speed(const std::vector<std::string> &args) {
        !SpeedHmacOneShot(EVP_sha384(), "HMAC-SHA384-OneShot", selected) ||
        !SpeedHmacOneShot(EVP_sha512(), "HMAC-SHA512-OneShot", selected) ||
        !SpeedRandom(selected) ||
+       !SpeedFFDH(selected) ||
        !SpeedECDH(selected) ||
        !SpeedECDSA(selected) ||
        !SpeedECKeyGen(selected) ||
