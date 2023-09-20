@@ -27,7 +27,6 @@ Some FIPS tests cannot be broken by replacing a known string in the binary. For 
 
 1. `RSA_PWCT`
 1. `ECDSA_PWCT`
-1. `CRNG`
 
 ## Breaking the integrity test
 
@@ -37,13 +36,7 @@ The utility in `util/fipstools/break-hash.go` can be used to corrupt the FIPS mo
 
 FIPS 140-2 requires that one of its PRNGs be used (which they call DRBGs). In BoringCrypto, we use CTR-DRBG with AES-256 exclusively and `RAND_bytes` (the primary interface for the rest of the system to get random data) takes its output from there.
 
-The DRBG state is kept in a thread-local structure and is seeded from one of the following entropy sources in preference order: RDRAND (on Intel chips), `getrandom`, and `/dev/urandom`. In the case of `/dev/urandom`, in order to ensure that the system has a minimum level of entropy, BoringCrypto polls the kernel until the estimated entropy is at least 256 bits. This is a poor man's version of `getrandom` and we strongly recommend using a kernel recent enough to support the real thing.
-
-In FIPS mode, each of those entropy sources is subject to a 10× overread. That is, when *n* bytes of entropy are needed, *10n* bytes will be read from the entropy source and XORed down to *n* bytes. Reads from the entropy source are also processed in blocks of 16 bytes and if two consecutive chunks are equal the process will abort.
-
-In the case that the seed is taken from RDRAND, getrandom will also be queried with `GRND_NONBLOCK` to attempt to obtain additional entropy from the operating system. If available, that extra entropy will be XORed into the whitened seed.
-
-On Android, only `getrandom` is supported and, when seeding for the first time, the system property `ro.boringcrypto.hwrand` is queried. If set to `true` then `getrandom` will be called with the `GRND_RANDOM` flag. Only entropy draws destined for DRBG seeds are affected by this. We are not suggesting that there is any security advantage at all to doing this, and thus recommend that Android vendors do _not_ set this flag.
+The DRBG state is kept in a thread-local structure and is seeded using the configured entropy source.
 
 The CTR-DRBG is reseeded every 4096 calls to `RAND_bytes`. Thus the process will randomly crash about every 2¹³⁵ calls.
 
@@ -52,6 +45,20 @@ The FIPS PRNGs allow “additional input” to be fed into a given call. We use 
 There is a second interface to the RNG which allows the caller to supply bytes that will be XORed into the generated additional data (`RAND_bytes_with_additional_data`). This is used in the ECDSA code to include the message and private key in the generation of *k*, the ECDSA nonce. This allows ECDSA to be robust to entropy failures while still following the FIPS rules.
 
 FIPS requires that RNG state be zeroed when the process exits. In order to implement this, all per-thread RNG states are tracked in a linked list and a destructor function is included which clears them. In order for this to be safe in the presence of threads, a lock is used to stop all other threads from using the RNG once this process has begun. Thus the main thread exiting may cause other threads to deadlock, and drawing on entropy in a destructor function may also deadlock.
+
+## Entropy sources
+
+By default, entropy is sourced using a "Passive" method where the specific entropy source depends on the OE. Seeding and reseeding material for the DRBG is sourced from the specific entropy source.
+
+In FIPS mode, each of the entropy sources is subject to a 10× overread. That is, when *n* bytes of entropy are needed, *10n* bytes will be read from the entropy source and XORed down to *n* bytes.
+
+### Modify entropy source - not recommended
+
+Modifying the entropy source can invalidate your validation status. Changing the entropy is **not** recommended.
+
+It is possible to modify the entropy method at build-time. Using `ENABLE_FIPS_ENTROPY_CPU_JITTER=ON`, the entropy source is switched to [CPU Jitter](https://github.com/smuellerDD/jitterentropy-library).
+
+CPU Jitter is less performant than the default method and can incur up to a 2-digit millisecond latency when queried. You can test CPU Jitter entropy on your system using `bssl speed -filter Jitter`.
 
 ## Integrity Test
 

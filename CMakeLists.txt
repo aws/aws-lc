@@ -20,8 +20,22 @@ option(BUILD_TESTING "Build all test targets for AWS-LC" ON)
 option(BUILD_LIBSSL "Build libssl for AWS-LC" ON)
 option(DISABLE_PERL "Disable Perl for AWS-LC" OFF)
 option(DISABLE_GO "Disable Go for AWS-LC" OFF)
+option(ENABLE_FIPS_ENTROPY_CPU_JITTER "Enable FIPS entropy source: CPU Jitter" OFF)
 
 enable_language(C)
+
+# Configure entropy source in case of FIPS build
+if(FIPS)
+  message(STATUS "FIPS build mode configured")
+
+  if(ENABLE_FIPS_ENTROPY_CPU_JITTER)
+    add_definitions(-DFIPS_ENTROPY_SOURCE_JITTER_CPU)
+    message(STATUS "FIPS entropy source method configured: CPU Jitter")
+  else()
+    add_definitions(-DFIPS_ENTROPY_SOURCE_PASSIVE)
+    message(STATUS "FIPS entropy source method configured: Passive")
+  endif()
+endif()
 
 # Tests and libssl both require the CXX language to be enabled. If a consumer
 # chooses to disable building the tests and libssl, do not enable CXX
