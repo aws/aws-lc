@@ -205,6 +205,11 @@ static bool tls1_check_duplicate_extensions(const CBS *cbs) {
 }
 
 static bool is_post_quantum_group(uint16_t id) {
+  for (const uint16_t pq_group_id : PQGroups()) {
+    if (id == pq_group_id) {
+      return true;
+    }
+  }
   return false;
 }
 
@@ -339,13 +344,13 @@ bool tls1_get_shared_group(SSL_HANDSHAKE *hs, uint16_t *out_group_id) {
 
   for (uint16_t pref_group : pref) {
     for (uint16_t supp_group : supp) {
-      if (pref_group == supp_group &&
-          // CECPQ2(b) doesn't fit in the u8-length-prefixed ECPoint field in
-          // TLS 1.2 and below.
-          (ssl_protocol_version(ssl) >= TLS1_3_VERSION ||
-           !is_post_quantum_group(pref_group))) {
-        *out_group_id = pref_group;
-        return true;
+      if (pref_group == supp_group) {
+        // PQ groups require TLS 1.3 or later
+        if (!is_post_quantum_group(pref_group) ||
+            ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
+          *out_group_id = pref_group;
+          return true;
+        }
       }
     }
   }
