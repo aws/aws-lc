@@ -119,6 +119,56 @@
 #include "internal.h"
 #include "rsaz_exp.h"
 
+#if !defined(OPENSSL_NO_ASM) &&                                                \
+    (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE)) &&                      \
+    defined(OPENSSL_AARCH64) && defined(OPENSSL_BN_ASM_MONT)
+
+#include "../../../third_party/s2n-bignum/include/s2n-bignum_aws-lc.h"
+
+#define BN_EXPONENTIATION_S2N_BIGNUM_CAPABLE 1
+
+OPENSSL_INLINE int exponentiation_use_s2n_bignum(void) { return 1; }
+
+#else
+
+OPENSSL_INLINE int exponentiation_use_s2n_bignum(void) { return 0; }
+
+#endif
+
+#if defined(OPENSSL_BN_ASM_MONT)
+
+static void exponentiation_s2n_bignum_copy_from_prebuf(BN_ULONG *dest, int width,
+                                        const BN_ULONG *table, int rowidx,
+                                        int window) {
+
+#if defined(BN_EXPONENTIATION_S2N_BIGNUM_CAPABLE)
+
+  int table_height = 1 << window;
+  if (CRYPTO_is_NEON_capable()) {
+    if (width == 32) {
+      bignum_copy_row_from_table_32_neon(dest, table, table_height, rowidx);
+    } else if (width == 16) {
+      bignum_copy_row_from_table_16_neon(dest, table, table_height, rowidx);
+    } else if (width % 8 == 0) {
+      bignum_copy_row_from_table_8n_neon(dest, table, table_height, width,
+                                         rowidx);
+    } else {
+      bignum_copy_row_from_table(dest, table, table_height, width, rowidx);
+    }
+  } else {
+    bignum_copy_row_from_table(dest, table, table_height, width, rowidx);
+  }
+
+#else
+
+  // Should not call this function unless s2n-bignum is supported.
+  abort();
+
+#endif
+}
+
+#endif
+
 
 int BN_exp(BIGNUM *r, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx) {
   int i, bits, ret = 0;
@@ -847,6 +897,14 @@ static int copy_from_prebuf(BIGNUM *b, int top, const BN_ULONG *table, int idx,
   if (!bn_wexpand(b, top)) {
     return 0;
   }
+
+#if defined(OPENSSL_BN_ASM_MONT)
+  if (exponentiation_use_s2n_bignum()) {
+    exponentiation_s2n_bignum_copy_from_prebuf(b->d, top, table, idx, window);
+    b->width = top;
+    return 1;
+  }
+#endif
 
   OPENSSL_memset(b->d, 0, sizeof(BN_ULONG) * top);
   const int width = 1 << window;

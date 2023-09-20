@@ -249,6 +249,11 @@ if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX) OR
                 fastmul/bignum_ksqr_16_32_neon.S
                 fastmul/bignum_ksqr_32_64_neon.S
                 fastmul/bignum_emontredc_8n_neon.S
+
+                generic/bignum_copy_row_from_table.S
+                generic/bignum_copy_row_from_table_8n_neon.S
+                generic/bignum_copy_row_from_table_16_neon.S
+                generic/bignum_copy_row_from_table_32_neon.S
                 )
   endif()
 endif()
