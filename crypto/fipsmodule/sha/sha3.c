@@ -13,85 +13,100 @@
 
 uint8_t *SHA3_224(const uint8_t *data, size_t len,
                   uint8_t out[SHA3_224_DIGEST_LENGTH]) {
+  FIPS_service_indicator_lock_state();
   KECCAK1600_CTX ctx;
   int ok = (SHA3_Init(&ctx, SHA3_PAD_CHAR, SHA3_224_DIGEST_BITLENGTH) && 
             SHA3_Update(&ctx, data, len) &&
             SHA3_Final(out, &ctx));
 
   OPENSSL_cleanse(&ctx, sizeof(ctx));
+  FIPS_service_indicator_unlock_state();
   if (ok == 0) {
     return NULL;
   }
+  FIPS_service_indicator_update_state();
   return out;
 }
 
 uint8_t *SHA3_256(const uint8_t *data, size_t len,
                   uint8_t out[SHA3_256_DIGEST_LENGTH]) {
+  FIPS_service_indicator_lock_state();
   KECCAK1600_CTX ctx;
   int ok = (SHA3_Init(&ctx, SHA3_PAD_CHAR, SHA3_256_DIGEST_BITLENGTH) && 
             SHA3_Update(&ctx, data, len) &&
             SHA3_Final(out, &ctx));
 
   OPENSSL_cleanse(&ctx, sizeof(ctx));
+  FIPS_service_indicator_unlock_state();
   if (ok == 0) {
     return NULL;
   }
+  FIPS_service_indicator_update_state();
   return out;
 }
 
 uint8_t *SHA3_384(const uint8_t *data, size_t len,
                   uint8_t out[SHA3_384_DIGEST_LENGTH]) {
+  FIPS_service_indicator_lock_state();
   KECCAK1600_CTX ctx;
   int ok = (SHA3_Init(&ctx, SHA3_PAD_CHAR, SHA3_384_DIGEST_BITLENGTH) && 
             SHA3_Update(&ctx, data, len) &&
             SHA3_Final(out, &ctx));
 
   OPENSSL_cleanse(&ctx, sizeof(ctx));
+  FIPS_service_indicator_unlock_state();
   if (ok == 0) {
     return NULL;
   }
+  FIPS_service_indicator_update_state();
   return out;
 }
 
 uint8_t *SHA3_512(const uint8_t *data, size_t len,
                   uint8_t out[SHA3_512_DIGEST_LENGTH]) {
+  FIPS_service_indicator_lock_state();
   KECCAK1600_CTX ctx;
   int ok = (SHA3_Init(&ctx, SHA3_PAD_CHAR, SHA3_512_DIGEST_BITLENGTH) && 
             SHA3_Update(&ctx, data, len) &&
             SHA3_Final(out, &ctx));
 
   OPENSSL_cleanse(&ctx, sizeof(ctx));
+  FIPS_service_indicator_unlock_state();
   if (ok == 0) {
     return NULL;
   }
+  FIPS_service_indicator_update_state();
   return out;
 }
 
 uint8_t *SHAKE128(const uint8_t *data, const size_t in_len, uint8_t *out, size_t out_len) {
+  FIPS_service_indicator_lock_state();
   KECCAK1600_CTX ctx;
-
   int ok = (SHAKE_Init(&ctx, SHAKE128_BLOCKSIZE) &&
             SHA3_Update(&ctx, data, in_len) &&
             SHAKE_Final(out, &ctx, out_len));
 
   OPENSSL_cleanse(&ctx, sizeof(ctx));
+  FIPS_service_indicator_unlock_state();
   if (ok == 0) {
     return NULL;
   }
+  FIPS_service_indicator_update_state();
   return out;
 }
 
 uint8_t *SHAKE256(const uint8_t *data, const size_t in_len, uint8_t *out, size_t out_len) {
+  FIPS_service_indicator_lock_state();
   KECCAK1600_CTX ctx;
-
   int ok = (SHAKE_Init(&ctx, SHAKE256_BLOCKSIZE) &&
             SHA3_Update(&ctx, data, in_len) &&
             SHAKE_Final(out, &ctx, out_len));
-
   OPENSSL_cleanse(&ctx, sizeof(ctx));
+  FIPS_service_indicator_unlock_state();
   if (ok == 0) {
     return NULL;
   }
+  FIPS_service_indicator_update_state();
   return out;
 }
 
@@ -206,6 +221,8 @@ int SHA3_Final(uint8_t *md, KECCAK1600_CTX *ctx) {
   }
 
   SHA3_Squeeze(ctx->A, md, ctx->md_size, block_size);
+
+  FIPS_service_indicator_update_state();
 
   return 1;
 }
