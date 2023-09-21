@@ -1642,7 +1642,7 @@ static bool SpeedFFDHGroup(const std::string &name, int nid,
     return true;
   }
 
-  bssl::UniquePtr<DH> server_dh(DH_new_by_nid(nid));
+  BM_NAMESPACE::UniquePtr<DH> server_dh(DH_new_by_nid(nid));
   if(!DH_generate_key(server_dh.get())) {
     return false;
   }
@@ -1653,7 +1653,7 @@ static bool SpeedFFDHGroup(const std::string &name, int nid,
 
   TimeResults results;
   if (!TimeFunction(&results, [&shared_secret, &server_pub, &dh_size, &nid]() -> bool {
-        bssl::UniquePtr<DH> client_dh(DH_new_by_nid(nid));
+        BM_NAMESPACE::UniquePtr<DH> client_dh(DH_new_by_nid(nid));
         return DH_generate_key(client_dh.get()) &&
                dh_size == DH_compute_key_padded(shared_secret.get(), server_pub, client_dh.get());
       })) {
