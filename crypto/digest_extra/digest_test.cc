@@ -233,6 +233,7 @@ static const DigestTestVector kTestVectors[] = {
 
     // SHAKE128 XOF tests, from NIST.
     // http://csrc.nist.gov/groups/STM/cavp/secure-hashing.html
+    // NOTE: the |repeat| field in this struct denotes output length for XOF digests.
     {shake128, "\x84\xe9\x50\x05\x18\x76\x05\x0d\xc8\x51\xfb\xd9\x9e\x62\x47\xb8", 16, "8599bd89f63a848c49ca593ec37a12c6"},
     {shake128, "\xf1\x67\x51\x1e\xc8\x86\x49\x79\x30\x22\x37\xab\xea\x4c\xf7\xef", 17, "20f8938daa54b260860a104f8556278bac"},
     {shake128, "\x96\xdb\xe1\x83\xec\x72\x90\x57\x0b\x82\x54\x6a\xf7\x92\xeb\x90", 18, "762b421dc6374055a061caeddcf50f5dfbb6"},
@@ -242,6 +243,7 @@ static const DigestTestVector kTestVectors[] = {
 
     // SHAKE256 XOF tests, from NIST.
     // http://csrc.nist.gov/groups/STM/cavp/secure-hashing.html
+    // NOTE: the |repeat| field in this struct denotes output length for XOF digests.
     {shake256, "\xdc\x88\x6d\xf3\xf6\x9c\x49\x51\x3d\xe3\x62\x7e\x94\x81\xdb\x58\x71\xe8\xee\x88\xeb\x9f\x99\x61\x15\x41\x93\x0a\x8b\xc8\x85\xe0", 16, "00648afbc5e651649db1fd82936b00db"},
     {shake256, "\x8d\x80\x01\xe2\xc0\x96\xf1\xb8\x8e\x7c\x92\x24\xa0\x86\xef\xd4\x79\x7f\xbf\x74\xa8\x03\x3a\x2d\x42\x2a\x2b\x6b\x8f\x67\x47\xe4", 17, "2e975f6a8a14f0704d51b13667d8195c21"},
     {shake256, "\xe3\xef\x12\x7e\xad\xfa\xfa\xf4\x04\x08\xce\xbb\x28\x70\x5d\xf3\x0b\x68\xd9\x9d\xfa\x18\x93\x50\x7e\xf3\x06\x2d\x85\x46\x17\x15", 18, "7314002948c057006d4fc21e3e19c258fb5b"},
