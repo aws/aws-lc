@@ -1642,13 +1642,13 @@ static bool SpeedFFDHGroup(const std::string &name, int nid,
     return true;
   }
 
-  bssl::UniquePtr<DH> sever_dh(DH_new_by_nid(nid));
-  if(!DH_generate_key(sever_dh.get())) {
+  bssl::UniquePtr<DH> server_dh(DH_new_by_nid(nid));
+  if(!DH_generate_key(server_dh.get())) {
     return false;
   }
-  const BIGNUM *server_pub = DH_get0_pub_key(sever_dh.get());
+  const BIGNUM *server_pub = DH_get0_pub_key(server_dh.get());
 
-  int dh_size = DH_size(sever_dh.get());
+  int dh_size = DH_size(server_dh.get());
   std::unique_ptr<uint8_t[]> shared_secret(new uint8_t[dh_size]);
 
   TimeResults results;
