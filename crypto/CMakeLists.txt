@@ -266,11 +266,6 @@ else()
   file(COPY ${GENERATE_CODE_ROOT}/err_data.c DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
 endif()
 
-set(CRYPTO_RUST_SOURCES )
-if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/rust_wrapper.c)
-  list(APPEND CRYPTO_RUST_SOURCES rust_wrapper.c)
-endif()
-
 set(DILITHIUM_SOURCES)
 if(ENABLE_DILITHIUM)
   set(
@@ -526,7 +521,6 @@ add_library(
   decrepit/ripemd/ripemd.c
   decrepit/rsa/rsa_decrepit.c
   decrepit/x509/x509_decrepit.c
-  ${CRYPTO_RUST_SOURCES}
 
   ${CRYPTO_ARCH_SOURCES}
 )
