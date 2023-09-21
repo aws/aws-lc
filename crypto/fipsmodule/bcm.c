@@ -228,7 +228,8 @@ static void BORINGSSL_bcm_power_on_self_test(void) __attribute__ ((constructor))
 #endif
 
 static void BORINGSSL_bcm_power_on_self_test(void) {
-#if !defined(OPENSSL_NO_ASM) && !defined(OPENSSL_PPC32BE)
+#if !defined(OPENSSL_NO_ASM) && !defined(OPENSSL_PPC32BE) && !defined(OPENSSL_PPC64BE)
+// TODO: Do we need to implement this for PPC BE architectures?
   OPENSSL_cpuid_setup();
 #endif
 
@@ -273,7 +274,7 @@ int BORINGSSL_integrity_test(void) {
   assert_not_within(start, OPENSSL_ia32cap_P, end);
 #elif defined(OPENSSL_AARCH64)
   assert_not_within(start, &OPENSSL_armcap_P, end);
-#endif  
+#endif
 
 #if defined(BORINGSSL_SHARED_LIBRARY)
   const uint8_t *const rodata_start = BORINGSSL_bcm_rodata_start;
