@@ -101,6 +101,7 @@ ECDSA_do_sign_ov <- llvm_verify m "ECDSA_do_sign"
     hoist_ifs_in_goal;
     simplify (addsimps minor_touchup_thms empty_ss);
     simplify (addsimps append_slice_384_thms empty_ss);
+    simplify (addsimp append_slice_384_thm empty_ss);
     simplify (addsimps [add_negate_thm, toInteger_sub_384_thm_1] empty_ss);
     hoist_ifs_in_goal;
     simplify (addsimps minor_touchup_thms empty_ss);

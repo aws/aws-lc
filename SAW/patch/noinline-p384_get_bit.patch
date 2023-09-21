@@ -1,12 +1,12 @@
 diff --git a/crypto/fipsmodule/ec/p384.c b/crypto/fipsmodule/ec/p384.c
-index 72b93a063..9908e98b5 100644
+index b4c784bb6..e78ab1dad 100644
 --- a/crypto/fipsmodule/ec/p384.c
 +++ b/crypto/fipsmodule/ec/p384.c
-@@ -655,6 +655,7 @@ static int ec_GFp_nistp384_cmp_x_coordinate(const EC_GROUP *group,
+@@ -649,6 +649,7 @@ static int ec_GFp_nistp384_cmp_x_coordinate(const EC_GROUP *group,
  
  
  // p384_get_bit returns the |i|-th bit in |in|
 +__attribute__((noinline))
- static crypto_word_t p384_get_bit(const uint8_t *in, int i) {
+ static crypto_word_t p384_get_bit(const EC_SCALAR *in, int i) {
    if (i < 0 || i >= 384) {
      return 0;
