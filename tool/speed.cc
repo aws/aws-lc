@@ -1633,6 +1633,9 @@ static bool SpeedECMUL(const std::string &selected) {
          SpeedECMULCurve("ECMUL secp256k1", NID_secp256k1, selected);
 }
 
+#endif // !defined(OPENSSL_1_0_BENCHMARK)
+
+#if (!defined(OPENSSL_1_0_BENCHMARK) && !defined(BORINGSSL_BENCHMARK)) || AWSLC_API_VERSION >= 22
 static bool SpeedFFDHGroup(const std::string &name, int nid,
                            const std::string &selected) {
   if (!selected.empty() && name.find(selected) == std::string::npos) {
@@ -1665,7 +1668,7 @@ static bool SpeedFFDH(const std::string &selected) {
   return SpeedFFDHGroup("FFDH 2048", NID_ffdhe2048, selected) &&
          SpeedFFDHGroup("FFDH 4096", NID_ffdhe4096, selected);
 }
-#endif // OPENSSL_1_0_BENCHMARK
+#endif //(!defined(OPENSSL_1_0_BENCHMARK) && !defined(BORINGSSL_BENCHMARK)) || AWSLC_API_VERSION >= 22
 
 #if !defined(OPENSSL_BENCHMARK)
 static bool Speed25519(const std::string &selected) {
@@ -2621,7 +2624,9 @@ bool Speed(const std::vector<std::string> &args) {
        !SpeedECMUL(selected) ||
        // OpenSSL 1.0 doesn't support Scrypt
        !SpeedScrypt(selected) ||
-       // OpenSSL 1.0 doesn't support DH_new_by_nid, NID_ffdhe2048, or NID_ffdhe4096
+#endif
+#if (!defined(OPENSSL_1_0_BENCHMARK) && !defined(BORINGSSL_BENCHMARK)) || AWSLC_API_VERSION >= 22
+       // OpenSSL 1.0 and BoringSSL don't support DH_new_by_nid, NID_ffdhe2048, or NID_ffdhe4096
        !SpeedFFDH(selected) ||
 #endif
        !SpeedRSA(selected) ||
