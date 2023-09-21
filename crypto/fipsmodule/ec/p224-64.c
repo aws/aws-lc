@@ -178,10 +178,6 @@ static const p224_felem g_p224_pre_comp[2][16][3] = {
 
 // Helper functions to convert field elements to/from internal representation
 
-#if defined(AWSLC_FIPS)
-// Related to delocate issue with gcc-11
-__attribute__((noinline))
-#endif
 static void p224_generic_to_felem(p224_felem out, const EC_FELEM *in) {
   // |p224_felem|'s minimal representation uses four 56-bit words. |EC_FELEM|
   // uses four 64-bit words. (The top-most word only has 32 bits.)
