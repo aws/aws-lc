@@ -22,16 +22,21 @@ option(BUILD_TOOL "Build bssl tool for AWS-LC" ON)
 option(ENABLE_DILITHIUM "Enable Dilithium signatures in the EVP API" OFF)
 option(DISABLE_PERL "Disable Perl for AWS-LC" OFF)
 option(DISABLE_GO "Disable Go for AWS-LC" OFF)
+option(ENABLE_FIPS_ENTROPY_CPU_JITTER "Enable FIPS entropy source: CPU Jitter" OFF)
 include(cmake/go.cmake)
 
 enable_language(C)
 
 # Configure entropy source in case of FIPS build
 if(FIPS)
-  if(USE_FIPS_ENTROPY_SOURCE_PASSIVE)
-    add_definitions(-DFIPS_ENTROPY_SOURCE_PASSIVE)
-  else()
+  message(STATUS "FIPS build mode configured")
+
+  if(ENABLE_FIPS_ENTROPY_CPU_JITTER)
     add_definitions(-DFIPS_ENTROPY_SOURCE_JITTER_CPU)
+    message(STATUS "FIPS entropy source method configured: CPU Jitter")
+  else()
+    add_definitions(-DFIPS_ENTROPY_SOURCE_PASSIVE)
+    message(STATUS "FIPS entropy source method configured: Passive")
   endif()
 endif()
 
@@ -58,6 +63,9 @@ endif()
 install(DIRECTORY include/openssl
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
         COMPONENT Development
+        PATTERN boringssl_prefix_symbols.h EXCLUDE
+        PATTERN boringssl_prefix_symbols_asm.h EXCLUDE
+        PATTERN boringssl_prefix_symbols_nasm.inc EXCLUDE
 )
 
 if(ANDROID)
@@ -130,19 +138,7 @@ foreach(VAR CMAKE_C_FLAGS CMAKE_CXX_FLAGS CMAKE_ASM_FLAGS)
          "${${VAR}_RELEASE}")
 endforeach()
 
-if(BORINGSSL_PREFIX)
-  add_definitions(-DBORINGSSL_PREFIX=${BORINGSSL_PREFIX})
-  # CMake automatically connects include_directories to the NASM command-line,
-  # but not add_definitions.
-  set(CMAKE_ASM_NASM_FLAGS "${CMAKE_ASM_NASM_FLAGS} -DBORINGSSL_PREFIX=${BORINGSSL_PREFIX}")
-  set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -DBORINGSSL_PREFIX=${BORINGSSL_PREFIX}")
-endif()
-
 if(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS AND GO_EXECUTABLE)
-
-  # Use "symbol_prefix_include" to store generated header files
-  include_directories(${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include)
-
   if(IS_ABSOLUTE ${BORINGSSL_PREFIX_SYMBOLS})
     set(BORINGSSL_PREFIX_SYMBOLS_PATH ${BORINGSSL_PREFIX_SYMBOLS})
   else()
@@ -150,26 +146,35 @@ if(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS AND GO_EXECUTABLE)
   endif()
 
   add_custom_command(
-    OUTPUT symbol_prefix_include/boringssl_prefix_symbols.h
-           symbol_prefix_include/boringssl_prefix_symbols_asm.h
-           symbol_prefix_include/boringssl_prefix_symbols_nasm.inc
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include
-    COMMAND ${GO_EXECUTABLE} run ${CMAKE_CURRENT_SOURCE_DIR}/util/make_prefix_headers.go -out ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include ${BORINGSSL_PREFIX_SYMBOLS_PATH}
-    COMMAND sed -i.bak '/ bignum_/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/boringssl_prefix_symbols.h
-    COMMAND sed -i.bak '/ bignum_/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/boringssl_prefix_symbols_asm.h
-    COMMAND sed -i.bak '/ bignum_/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/boringssl_prefix_symbols_nasm.inc
-    COMMAND sed -i.bak '/ curve25519_x25519/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/boringssl_prefix_symbols.h
-    COMMAND sed -i.bak '/ curve25519_x25519/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/boringssl_prefix_symbols_asm.h
-    COMMAND sed -i.bak '/ curve25519_x25519/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/boringssl_prefix_symbols_nasm.inc
+    OUTPUT symbol_prefix_include/openssl/boringssl_prefix_symbols.h
+           symbol_prefix_include/openssl/boringssl_prefix_symbols_asm.h
+           symbol_prefix_include/openssl/boringssl_prefix_symbols_nasm.inc
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl
+    COMMAND ${GO_EXECUTABLE} run ${CMAKE_CURRENT_SOURCE_DIR}/util/make_prefix_headers.go -out ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl -prefix ${BORINGSSL_PREFIX} ${BORINGSSL_PREFIX_SYMBOLS_PATH}
+    COMMAND sed -i.bak '/ bignum_/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols.h
+    COMMAND sed -i.bak '/ bignum_/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols_asm.h
+    COMMAND sed -i.bak '/ bignum_/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols_nasm.inc
+    COMMAND sed -i.bak '/ curve25519_x25519/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols.h
+    COMMAND sed -i.bak '/ curve25519_x25519/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols_asm.h
+    COMMAND sed -i.bak '/ curve25519_x25519/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols_nasm.inc
+    COMMAND ${CMAKE_COMMAND} -E remove
+          ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols.h.bak
+          ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols_asm.h.bak
+          ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols_nasm.inc.bak
     DEPENDS util/make_prefix_headers.go
             ${BORINGSSL_PREFIX_SYMBOLS_PATH})
   # add_dependencies needs a target, not a file, so we add an intermediate
   # target.
   add_custom_target(
     boringssl_prefix_symbols
-    DEPENDS symbol_prefix_include/boringssl_prefix_symbols.h
-            symbol_prefix_include/boringssl_prefix_symbols_asm.h
-            symbol_prefix_include/boringssl_prefix_symbols_nasm.inc)
+    DEPENDS symbol_prefix_include/openssl/boringssl_prefix_symbols.h
+            symbol_prefix_include/openssl/boringssl_prefix_symbols_asm.h
+            symbol_prefix_include/openssl/boringssl_prefix_symbols_nasm.inc)
+
+  install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl
+          DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+          COMPONENT Development
+  )
 elseif(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_HEADERS)
 
   if(IS_ABSOLUTE ${BORINGSSL_PREFIX_HEADERS})
@@ -178,15 +183,30 @@ elseif(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_HEADERS)
     set(BORINGSSL_PREFIX_HEADERS_PATH ${PROJECT_BINARY_DIR}/${BORINGSSL_PREFIX_HEADERS})
   endif()
 
-  include_directories(${BORINGSSL_PREFIX_HEADERS_PATH})
+  file(COPY ${BORINGSSL_PREFIX_HEADERS_PATH}/openssl/boringssl_prefix_symbols.h DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl)
+  file(COPY ${BORINGSSL_PREFIX_HEADERS_PATH}/openssl/boringssl_prefix_symbols_asm.h DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl)
+  file(COPY ${BORINGSSL_PREFIX_HEADERS_PATH}/openssl/boringssl_prefix_symbols_nasm.inc DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl)
 
   add_custom_target(boringssl_prefix_symbols)
+
+  install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl
+          DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+          COMPONENT Development
+  )
 elseif(BORINGSSL_PREFIX OR BORINGSSL_PREFIX_SYMBOLS)
   message(FATAL_ERROR "Must specify both or neither of BORINGSSL_PREFIX and BORINGSSL_PREFIX_SYMBOLS")
 elseif((BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS) AND NOT GO_EXECUTABLE)
   message(FATAL_ERROR "Must have Go installed when using BORINGSSL_PREFIX and BORINGSSL_PREFIX_SYMBOLS")
 else()
   add_custom_target(boringssl_prefix_symbols)
+
+  install(DIRECTORY include/openssl
+          DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+          COMPONENT Development
+          PATTERN boringssl_prefix_symbols.h
+          PATTERN boringssl_prefix_symbols_asm.h
+          PATTERN boringssl_prefix_symbols_nasm.inc
+  )
 endif()
 
 if("${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
@@ -458,6 +478,8 @@ elseif(MSVC)
       "C4996" # deprecated warnings using low level functions in OpenSSL 3.0
       "C4746" # consider using __iso_volatile_load/store intrinsic functions
       "C5264" # 'variable-name': 'const' variable is not used
+      "C5266" # 'const' qualifier on return type has no effect
+      "C5267" # definition of implicit copy constructor for '...' is deprecated because it has a user-provided destructor
           )
   set(MSVC_LEVEL4_WARNINGS_LIST
       # See https://connect.microsoft.com/VisualStudio/feedback/details/1217660/warning-c4265-when-using-functional-header
@@ -619,6 +641,10 @@ if(FIPS)
 
   if(NOT BUILD_SHARED_LIBS AND NOT (UNIX AND NOT APPLE))
     message(FATAL_ERROR "Static FIPS build of AWS-LC is suported only on Linux")
+  endif()
+
+  if(WIN32 AND CMAKE_BUILD_TYPE_LOWER STREQUAL "debug")
+    message(FATAL_ERROR "Windows Debug build is not supported with FIPS, use Release or RelWithDebInfo")
   endif()
 
   add_subdirectory(third_party/jitterentropy)

@@ -20,7 +20,7 @@ add_executable(
   transport_common.cc
 )
 
-target_include_directories(bssl PUBLIC ../include)
+target_include_directories(bssl PUBLIC ${PROJECT_SOURCE_DIR}/include)
 target_compile_options(bssl PUBLIC -DINTERNAL_TOOL)
 
 if(WIN32)
@@ -40,6 +40,8 @@ else()
     set(LIBRT_FLAG "")
   endif()
 endif()
+
+target_include_directories(bssl BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
 
 install(TARGETS bssl
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}

@@ -532,10 +532,10 @@ add_library(
 )
 
 target_compile_definitions(crypto_objects PRIVATE BORINGSSL_IMPLEMENTATION)
-target_include_directories(crypto_objects PRIVATE ../include)
-
 # For the prefix build, the object files need the prefix header files to build.
 add_dependencies(crypto_objects boringssl_prefix_symbols)
+target_include_directories(crypto_objects BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
+target_include_directories(crypto_objects PRIVATE ${PROJECT_SOURCE_DIR}/include)
 
 function(build_libcrypto name module_source)
   if(FIPS)
@@ -555,8 +555,11 @@ function(build_libcrypto name module_source)
     target_link_libraries(${name} PUBLIC pthread)
   endif()
 
+  add_dependencies(${name} boringssl_prefix_symbols)
+  target_include_directories(${name} BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
+
   target_include_directories(${name} PUBLIC
-          $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
+          $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
           $<INSTALL_INTERFACE:include>)
 endfunction()
 
@@ -569,6 +572,8 @@ if(FIPS_SHARED)
     build_libcrypto(precrypto $<TARGET_OBJECTS:fipsmodule>)
     add_executable(fips_empty_main fipsmodule/fips_empty_main.c)
     target_link_libraries(fips_empty_main PUBLIC precrypto)
+    target_include_directories(fips_empty_main PRIVATE ${PROJECT_SOURCE_DIR}/include)
+    target_include_directories(fips_empty_main BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
     add_custom_command(OUTPUT generated_fips_shared_support.c
             COMMAND ${GO_EXECUTABLE} run
             ${PROJECT_SOURCE_DIR}/util/fipstools/capture_hash/capture_hash.go
@@ -584,7 +589,9 @@ if(FIPS_SHARED)
       generated_fips_shared_support.c
       ${PROJECT_SOURCE_DIR}/crypto/fipsmodule/cpucap/cpucap.c
     )
-    target_include_directories(generated_fipsmodule PRIVATE ../include)
+    add_dependencies(generated_fipsmodule boringssl_prefix_symbols)
+    target_include_directories(generated_fipsmodule PRIVATE ${PROJECT_SOURCE_DIR}/include)
+    target_include_directories(generated_fipsmodule BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
 
     build_libcrypto(crypto $<TARGET_OBJECTS:generated_fipsmodule>)
   else()
@@ -659,6 +666,8 @@ if(BUILD_TESTING)
     add_executable(${executable_name} ${test_file})
     target_compile_definitions(${executable_name} PRIVATE BORINGSSL_IMPLEMENTATION)
     target_link_libraries(${executable_name} test_support_lib boringssl_gtest_main crypto)
+    add_dependencies(${executable_name} boringssl_prefix_symbols)
+    target_include_directories(${executable_name} BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
     add_dependencies(all_tests ${executable_name})
   endmacro()
 
@@ -683,7 +692,9 @@ if(BUILD_TESTING)
     target_compile_options(${RANDOM_TEST_EXEC} PUBLIC -DJITTER_ENTROPY)
   endif()
 
+  add_dependencies(${RANDOM_TEST_EXEC} boringssl_prefix_symbols)
   target_link_libraries(${RANDOM_TEST_EXEC} test_support_lib boringssl_gtest crypto)
+  target_include_directories(${RANDOM_TEST_EXEC} BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
 
   add_dependencies(all_tests ${RANDOM_TEST_EXEC})
 
@@ -770,7 +781,9 @@ if(BUILD_TESTING)
     $<TARGET_OBJECTS:crypto_test_data>
   )
 
+  add_dependencies(${CRYPTO_TEST_EXEC} boringssl_prefix_symbols)
   target_link_libraries(${CRYPTO_TEST_EXEC} test_support_lib boringssl_gtest_main crypto)
+  target_include_directories(${CRYPTO_TEST_EXEC} BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
   if(WIN32)
     target_link_libraries(${CRYPTO_TEST_EXEC} ws2_32)
   else()
@@ -782,6 +795,9 @@ if(BUILD_TESTING)
 
   add_executable(${DYNAMIC_LOADING_TEST_EXEC} dynamic_loading_test.c)
   add_dependencies(${DYNAMIC_LOADING_TEST_EXEC} crypto)
+
+  add_dependencies(${DYNAMIC_LOADING_TEST_EXEC} boringssl_prefix_symbols)
+  target_include_directories(${DYNAMIC_LOADING_TEST_EXEC} BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
 
   if (BUILD_SHARED_LIBS AND NOT WIN32)
     target_compile_options(${DYNAMIC_LOADING_TEST_EXEC} PUBLIC "-DLIBCRYPTO_PATH=$<TARGET_FILE:crypto>")

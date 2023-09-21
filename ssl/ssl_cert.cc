@@ -824,15 +824,13 @@ bool ssl_handshake_load_local_pubkey(SSL_HANDSHAKE *hs) {
       hs->config->cert
           ->cert_private_keys[hs->config->cert->cert_private_key_idx]
           .chain.get();
-  CBS leaf;
-  CRYPTO_BUFFER_init_CBS(sk_CRYPTO_BUFFER_value(chain, 0), &leaf);
 
   if (ssl_signing_with_dc(hs)) {
     hs->local_pubkey = UpRef(hs->config->cert->dc->pkey);
   } else {
-    hs->local_pubkey = ssl_cert_parse_pubkey(&leaf);
+    hs->local_pubkey = ssl_cert_parse_leaf_pubkey(chain);
   }
-  return hs->local_pubkey != NULL;
+  return hs->local_pubkey != nullptr;
 }
 
 

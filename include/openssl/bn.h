@@ -1005,6 +1005,8 @@ OPENSSL_EXPORT int BN_bn2binpad(const BIGNUM *in, uint8_t *out, int len);
 // BN_secure_new calls |BN_new|.
 OPENSSL_EXPORT BIGNUM *BN_secure_new(void);
 
+// BN_CTX_secure_new calls |BN_CTX_new|.
+OPENSSL_EXPORT BN_CTX *BN_CTX_secure_new(void);
 
 // Private functions
 
