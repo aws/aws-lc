@@ -64,6 +64,17 @@ foo:
 // WAS ldr w2, [x1, :lo12:OPENSSL_armcap_P]
 	ldr	w2, [x1]
 
+	// armcap to x30
+// WAS adrp x30, OPENSSL_armcap_P
+	sub sp, sp, 128
+	stp x0, lr, [sp, #-16]!
+	bl .LOPENSSL_armcap_P_addr
+	mov x30, x0
+	ldp x0, xzr, [sp], #16
+	add sp, sp, 128
+// WAS ldr w2, [x30, :lo12:OPENSSL_armcap_P]
+	ldr	w2, [x30]
+
 	// armcap to w0
 // WAS adrp x0, OPENSSL_armcap_P
 	sub sp, sp, 128
