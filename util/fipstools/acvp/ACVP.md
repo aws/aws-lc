@@ -100,6 +100,7 @@ The other commands are as follows. (Note that you only need to implement the com
 | SHA2-512             | Value to hash             | Digest  |
 | SHA2-512/224         | Value to hash             | Digest  |
 | SHA2-512/256         | Value to hash             | Digest  |
+| SHAKE-128            | Value to hash, output len | Digest  |
 | SHA-1/MCT            | Initial seed¹             | Digest  |
 | SHA2-224/MCT         | Initial seed¹             | Digest  |
 | SHA2-256/MCT         | Initial seed¹             | Digest  |

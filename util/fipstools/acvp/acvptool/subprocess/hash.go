@@ -32,10 +32,11 @@ type hashTestGroup struct {
 	ID    uint64 `json:"tgId"`
 	Type  string `json:"testType"`
 	Tests []struct {
-		ID        uint64       `json:"tcId"`
-		BitLength uint64       `json:"len"`
-		MsgHex    string       `json:"msg"`
-		LargeMsg  hashLargeMsg `json:"largeMsg"`
+		ID           uint64       `json:"tcId"`
+		BitLength    uint64       `json:"len"`
+		MsgHex       string       `json:"msg"`
+		OutputLength *uint64      `json:"outLen,omitempty"`
+		LargeMsg     hashLargeMsg `json:"largeMsg"`
 	} `json:"tests"`
 }
 
