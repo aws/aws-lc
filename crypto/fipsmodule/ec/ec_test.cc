@@ -1899,12 +1899,12 @@ TEST(ECTest, LargeXCoordinateVectors) {
 
     // Set the raw point directly with the BIGNUM coordinates.
     // Note that both are in little-endian byte order.
-    OPENSSL_memcpy(key.get()->pub_key->raw.X.bytes,
-                   (const uint8_t *)x.get()->d, len);
-    OPENSSL_memcpy(key.get()->pub_key->raw.Y.bytes,
-                   (const uint8_t *)y.get()->d, len);
-    OPENSSL_memset(key.get()->pub_key->raw.Z.bytes, 0, len);
-    key.get()->pub_key->raw.Z.bytes[0] = 1;
+    OPENSSL_memcpy(key.get()->pub_key->raw.X.words,
+                   x.get()->d, len);
+    OPENSSL_memcpy(key.get()->pub_key->raw.Y.words,
+                   y.get()->d, len);
+    OPENSSL_memset(key.get()->pub_key->raw.Z.words, 0, len);
+    key.get()->pub_key->raw.Z.words[0] = 1;
 
     // |EC_KEY_check_fips| first calls the |EC_KEY_check_key| function that
     // checks if the key point is on the curve (among other checks). If the
@@ -1921,8 +1921,8 @@ TEST(ECTest, LargeXCoordinateVectors) {
     }
 
     // Now replace the x-coordinate with the larger one, x+p.
-    OPENSSL_memcpy(key.get()->pub_key->raw.X.bytes,
-                   (const uint8_t *)xpp.get()->d, len);
+    OPENSSL_memcpy(key.get()->pub_key->raw.X.words,
+                   xpp.get()->d, len);
     // We expect |EC_KEY_check_fips| to always fail when given key with x > p.
     ASSERT_FALSE(EC_KEY_check_fips(key.get()));
 

@@ -110,8 +110,7 @@ OPENSSL_STATIC_ASSERT(EC_MAX_WORDS <= BN_SMALL_MAX_WORDS,
 // |order->width| words are used. An |EC_SCALAR| is specific to an |EC_GROUP|
 // and must not be mixed between groups.
 typedef union {
-  // bytes is the representation of the scalar in little-endian order.
-  uint8_t bytes[EC_MAX_BYTES];
+  // words is the representation of the scalar in little-endian order.
   BN_ULONG words[EC_MAX_WORDS];
 } EC_SCALAR;
 
@@ -201,9 +200,8 @@ void ec_scalar_select(const EC_GROUP *group, EC_SCALAR *out, BN_ULONG mask,
 // are used. An |EC_FELEM| is specific to an |EC_GROUP| and must not be mixed
 // between groups. Additionally, the representation (whether or not elements are
 // represented in Montgomery-form) may vary between |EC_METHOD|s.
-typedef union {
-  // bytes is the representation of the field element in little-endian order.
-  uint8_t bytes[EC_MAX_BYTES];
+typedef struct {
+  // words is the representation of the field element in little-endian order.
   BN_ULONG words[EC_MAX_WORDS];
 } EC_FELEM;
 

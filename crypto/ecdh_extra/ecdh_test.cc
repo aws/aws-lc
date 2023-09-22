@@ -194,12 +194,12 @@ TEST(ECDHTest, InvalidPubKeyLargeCoord) {
 
     // Set the raw point directly with the BIGNUM coordinates.
     // Note that both are in little-endian byte order.
-    OPENSSL_memcpy(peer_key.get()->pub_key->raw.X.bytes,
-                   (const uint8_t *)x.get()->d, len);
-    OPENSSL_memcpy(peer_key.get()->pub_key->raw.Y.bytes,
-                   (const uint8_t *)y.get()->d, len);
-    OPENSSL_memset(peer_key.get()->pub_key->raw.Z.bytes, 0, len);
-    peer_key.get()->pub_key->raw.Z.bytes[0] = 1;
+    OPENSSL_memcpy(peer_key.get()->pub_key->raw.X.words,
+                   x.get()->d, len);
+    OPENSSL_memcpy(peer_key.get()->pub_key->raw.Y.words,
+                   y.get()->d, len);
+    OPENSSL_memset(peer_key.get()->pub_key->raw.Z.words, 0, len);
+    peer_key.get()->pub_key->raw.Z.words[0] = 1;
 
     // |ECDH_compute_key_fips| calls |EC_KEY_check_fips| that calls
     // |EC_KEY_check_key| function which checks if the computed key point is on
@@ -223,8 +223,8 @@ TEST(ECDHTest, InvalidPubKeyLargeCoord) {
     ASSERT_TRUE(pub_key.get());
 
     // Now replace the x-coordinate with the larger one, x+p;
-    OPENSSL_memcpy(peer_key.get()->pub_key->raw.X.bytes,
-                   (const uint8_t *)xpp.get()->d, len);
+    OPENSSL_memcpy(peer_key.get()->pub_key->raw.X.words,
+                   xpp.get()->d, len);
     ret = ECDH_compute_key_fips(shared_key.data(), shared_key.size(),
                                 EC_KEY_get0_public_key(peer_key.get()),
                                 priv_key.get());
