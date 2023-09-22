@@ -1118,6 +1118,22 @@ static bool HashSha3(const Span<const uint8_t> args[], ReplyCallback write_reply
   return write_reply({Span<const uint8_t>(digest)});
 }
 
+template <const EVP_MD *(MDFunc)()>
+static bool HashXof(const Span<const uint8_t> args[], ReplyCallback write_reply) {
+  const EVP_MD *md = MDFunc();
+  uint8_t[] outlen_bytes = args[1].data();
+  size_t md_out_size = 0;
+  md_out_size |= outlen_bytes[3] << 24;
+  md_out_size |= outlen_bytes[2] << 16;
+  md_out_size |= outlen_bytes[1] << 8;
+  md_out_size |= outlen_bytes[0] << 0;
+  uint8_t digest = malloc(md_out_size);
+
+  EVP_Digest(args[0].data(), args[0].size(), digest, &md_out_size, md, NULL);
+
+  return write_reply({Span<const uint8_t>(digest)});
+}
+
 template <uint8_t *(*OneShotHash)(const uint8_t *, size_t, uint8_t *),
           size_t DigestLength>
 static bool HashMCT(const Span<const uint8_t> args[],
@@ -1953,6 +1969,10 @@ static const EVP_MD *HashFromName(Span<const uint8_t> name) {
     return EVP_sha512_224();
   } else if (StringEq(name, "SHA2-512/256")) {
     return EVP_sha512_256();
+  } else if  (StringEq(name, "SHAKE128")) {
+    return EVP_shake128();
+  } else if  (StringEq(name, "SHAKE256")) {
+    return EVP_shake256();
   } else {
     return nullptr;
   }
@@ -2454,6 +2474,8 @@ static struct {
     {"SHA3-256", 1, HashSha3<EVP_sha3_256, SHA256_DIGEST_LENGTH>},
     {"SHA3-384", 1, HashSha3<EVP_sha3_384, SHA384_DIGEST_LENGTH>},
     {"SHA3-512", 1, HashSha3<EVP_sha3_512, SHA512_DIGEST_LENGTH>},
+    {"SHAKE128", 1, HashXof<EVP_shake128>},
+    {"SHAKE256", 1, HashXof<EVP_shake256>},
     {"SHA-1/MCT", 1, HashMCT<SHA1, SHA_DIGEST_LENGTH>},
     {"SHA2-224/MCT", 1, HashMCT<SHA224, SHA224_DIGEST_LENGTH>},
     {"SHA2-256/MCT", 1, HashMCT<SHA256, SHA256_DIGEST_LENGTH>},

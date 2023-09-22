@@ -99,7 +99,11 @@ func (h *hashPrimitive) Process(vectorSet []byte, m Transactable) (any, error) {
 			// http://usnistgov.github.io/ACVP/artifacts/draft-celi-acvp-sha-00.html#rfc.section.3
 			switch group.Type {
 			case "AFT":
-				result, err := m.Transact(h.algo, 1, msg)
+				var outLenBytes []byte
+				if test.OutputLength != nil {
+					outLenBytes = uint32le(uint32(*test.OutputLength))
+				}
+				result, err := m.Transact(h.algo, 1, msg, outLenBytes)
 				if err != nil {
 					panic(h.algo + " hash operation failed: " + err.Error())
 				}

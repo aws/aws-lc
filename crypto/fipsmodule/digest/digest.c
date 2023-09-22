@@ -281,8 +281,12 @@ int EVP_Digest(const void *data, size_t count, uint8_t *out_md,
 
   EVP_MD_CTX_init(&ctx);
   ret = EVP_DigestInit_ex(&ctx, type, impl) &&
-        EVP_DigestUpdate(&ctx, data, count) &&
-        EVP_DigestFinal_ex(&ctx, out_md, out_size);
+        EVP_DigestUpdate(&ctx, data, count);
+  if (EVP_MD_flags(type) & EVP_MD_FLAG_XOF) {
+    ret &= EVP_DigestFinalXOF(&ctx, out_md, *out_size);
+  } else {
+    ret &= EVP_DigestFinal_ex(&ctx, out_md, out_size);
+  }
   EVP_MD_CTX_cleanup(&ctx);
 
   return ret;

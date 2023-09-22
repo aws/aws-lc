@@ -52,24 +52,24 @@ class SHA3TestVector {
     OPENSSL_free(ctx);
   }
 
-  void NISTTestVectors_SHAKE128() const {
+  void NISTTestVectors_SHAKE(const EVP_MD *algorithm) const {
     uint32_t digest_length = out_len_ / 8;
     std::unique_ptr<uint8_t[]> digest(new uint8_t[digest_length]);
+    EVP_MD_CTX* ctx = EVP_MD_CTX_new();
 
-    ASSERT_TRUE(SHAKE128(msg_.data(), msg_.size() , digest.get(), digest_length));
+    // Test the incremental EVP API
+    ASSERT_TRUE(EVP_DigestInit(ctx, algorithm));
+    ASSERT_TRUE(EVP_DigestUpdate(ctx, msg_.data(), msg_.size()));
+    ASSERT_TRUE(EVP_DigestFinalXOF(ctx, digest.get(), digest_length));
+    EXPECT_EQ(Bytes(digest.get(), digest_length),
+              Bytes(digest_.data(), digest_length));
 
-    ASSERT_EQ(Bytes(digest.get(), digest_length),
-            Bytes(digest_.data(), digest_length));
-  }
+    // Test the one-shot
+    ASSERT_TRUE(EVP_Digest(msg_.data(), msg_.size(), digest.get(), &digest_length, algorithm, NULL));
+    EXPECT_EQ(Bytes(digest.get(), digest_length),
+              Bytes(digest_.data(), digest_length));
 
-  void NISTTestVectors_SHAKE256() const {
-    uint32_t digest_length = out_len_ / 8;
-    std::unique_ptr<uint8_t[]> digest(new uint8_t[digest_length]);
-
-    ASSERT_TRUE(SHAKE256(msg_.data(), msg_.size() , digest.get(), digest_length));
-
-    ASSERT_EQ(Bytes(digest.get(), digest_length),
-            Bytes(digest_.data(), digest_length));
+    OPENSSL_free(ctx);
   }
 
  private:
@@ -183,18 +183,15 @@ TEST(KeccakInternalTest, SqueezeOutputBufferOverflow) {
     EVP_MD_unstable_sha3_enable(false);
 }
 
-TEST(SHAKE128Test, NISTTestVectors) {
+TEST(SHAKETest, NISTTestVectors) {
   FileTestGTest("crypto/fipsmodule/sha/testvectors/SHAKE128VariableOut.txt", [](FileTest *t) {
     SHA3TestVector test_vec;
     EXPECT_TRUE(test_vec.ReadFromFileTest(t));
-    test_vec.NISTTestVectors_SHAKE128();
+    test_vec.NISTTestVectors_SHAKE(EVP_shake128());
   });
-}
-
-TEST(SHAKE256Test, NISTTestVectors) {
   FileTestGTest("crypto/fipsmodule/sha/testvectors/SHAKE256VariableOut.txt", [](FileTest *t) {
     SHA3TestVector test_vec;
     EXPECT_TRUE(test_vec.ReadFromFileTest(t));
-    test_vec.NISTTestVectors_SHAKE256();
+    test_vec.NISTTestVectors_SHAKE(EVP_shake256());
   });
 }
