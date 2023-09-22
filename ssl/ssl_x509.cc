@@ -984,6 +984,7 @@ int SSL_add1_chain_cert(SSL *ssl, X509 *x509) {
 #define is_flag_set(flags, query) (flags & query)
 
 static int ssl_build_cert_chain(CERT *cert, X509_STORE *cert_store, int flags) {
+  assert(cert_store);
   if (!ssl_cert_check_cert_private_keys_usage(cert)) {
     return 0;
   }
