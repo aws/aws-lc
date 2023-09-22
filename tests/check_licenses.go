@@ -34,7 +34,6 @@ func main() {
 		"ssl",
 		"util",
 		"sources.cmake",
-		"rust/wrapper.h",
 	}
 
 	// Collect all non-excluded source files into |files|

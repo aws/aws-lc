@@ -925,13 +925,7 @@ static int copy_from_prebuf(BIGNUM *b, int top, const BN_ULONG *table, int idx,
 
 // Window sizes optimized for fixed window size modular exponentiation
 // algorithm (BN_mod_exp_mont_consttime).
-//
-// TODO(davidben): These window sizes were originally set for 64-byte cache
-// lines with a cache-line-dependent constant-time mitigation. They can probably
-// be revised now that our implementation is no longer cache-time-dependent.
-#define BN_window_bits_for_ctime_exponent_size(b) \
-  ((b) > 937 ? 6 : (b) > 306 ? 5 : (b) > 89 ? 4 : (b) > 22 ? 3 : 1)
-#define BN_MAX_MOD_EXP_CTIME_WINDOW (6)
+#define BN_window_bits_for_ctime_exponent_size 5
 
 // This variant of |BN_mod_exp_mont| uses fixed windows and fixed memory access
 // patterns to protect secret exponents (cf. the hyper-threading timing attacks
@@ -1012,23 +1006,20 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
 #endif
 
   // Get the window size to use with size of p.
-  int window = BN_window_bits_for_ctime_exponent_size(bits);
-  assert(window <= BN_MAX_MOD_EXP_CTIME_WINDOW);
+  int window = BN_window_bits_for_ctime_exponent_size;
 
   // Calculating |powerbuf_len| below cannot overflow because of the bound on
   // Montgomery reduction.
   assert((size_t)top <= BN_MONTGOMERY_MAX_WORDS);
   OPENSSL_STATIC_ASSERT(
       BN_MONTGOMERY_MAX_WORDS <=
-          INT_MAX / sizeof(BN_ULONG) / ((1 << BN_MAX_MOD_EXP_CTIME_WINDOW) + 3),
+          INT_MAX / sizeof(BN_ULONG) / ((1 <<
+              BN_window_bits_for_ctime_exponent_size) + 3),
       powerbuf_len_may_overflow);
 
 #if defined(OPENSSL_BN_ASM_MONT5)
-  if (window >= 5) {
-    window = 5;  // ~5% improvement for RSA2048 sign, and even for RSA4096
-    // Reserve space for the |mont->N| copy.
-    powerbuf_len += top * sizeof(mont->N.d[0]);
-  }
+  // Reserve space for the |mont->N| copy.
+  powerbuf_len += top * sizeof(mont->N.d[0]);
 #endif
 
   // Allocate a buffer large enough to hold all of the pre-computed
@@ -1093,7 +1084,8 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
   // TODO(davidben): Using "almost" reduction complicates analysis of this code,
   // and its interaction with other parts of the project. Determine whether this
   // is actually necessary for performance.
-  if (window == 5 && top > 1) {
+  if (top > 1) {
+    assert(window == 5);
     // Copy |mont->N| to improve cache locality.
     BN_ULONG *np = am.d + top;
     for (i = 0; i < top; i++) {

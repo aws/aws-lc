@@ -202,7 +202,7 @@ static void ecp_nistz256_windowed_mul(const EC_GROUP *group, P256_POINT *r,
   stack_align_type table_buffer[64 + (sizeof(P256_POINT) * 16)];
   P256_POINT *aligned_table = (P256_POINT *) align_pointer(table_buffer, 64);
   uint8_t p_str[33];
-  OPENSSL_memcpy(p_str, p_scalar->bytes, 32);
+  OPENSSL_memcpy(p_str, p_scalar->words, 32);
   p_str[32] = 0;
 
   // table[0] is implicitly (0,0,0) (the point at infinity), therefore it is
@@ -323,7 +323,7 @@ static void ecp_nistz256_point_mul_base(const EC_GROUP *group, EC_JACOBIAN *r,
   P256_POINT *aligned_p = (P256_POINT *) align_pointer(buffer_p, 32);
 
   uint8_t p_str[33];
-  OPENSSL_memcpy(p_str, scalar->bytes, 32);
+  OPENSSL_memcpy(p_str, scalar->words, 32);
   p_str[32] = 0;
 
   // First window
@@ -374,7 +374,7 @@ static void ecp_nistz256_points_mul_public(const EC_GROUP *group,
   P256_POINT *aligned_p = (P256_POINT *) align_pointer(buffer_p, 32);
 
   uint8_t p_str[33];
-  OPENSSL_memcpy(p_str, g_scalar->bytes, 32);
+  OPENSSL_memcpy(p_str, g_scalar->words, 32);
   p_str[32] = 0;
 
   // First window
