@@ -81,6 +81,8 @@ static const EVP_MD *GetDigest(const std::string &name) {
     return EVP_sha384();
   } else if (name == "SHA512") {
     return EVP_sha512();
+  } else if (name == "SHA512/224") {
+    return EVP_sha512_224();
   } else if (name == "SHA512/256") {
     return EVP_sha512_256();
   }
@@ -201,4 +203,14 @@ TEST(HMACTest, WycheproofSHA384) {
 TEST(HMACTest, WycheproofSHA512) {
   RunWycheproofTest("third_party/wycheproof_testvectors/hmac_sha512_test.txt",
                     EVP_sha512());
+}
+
+TEST(HMACTest, WycheproofSHA512_224) {
+  RunWycheproofTest("third_party/wycheproof_testvectors/hmac_sha512_224_test.txt",
+                    EVP_sha512_224());
+}
+
+TEST(HMACTest, WycheproofSHA512_256) {
+  RunWycheproofTest("third_party/wycheproof_testvectors/hmac_sha512_256_test.txt",
+                    EVP_sha512_256());
 }

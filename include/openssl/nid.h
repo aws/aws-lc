@@ -4304,6 +4304,11 @@ extern "C" {
 #define SN_ffdhe4096 "ffdhe4096"
 #define NID_ffdhe4096 977
 
+#define SN_sha512_224 "SHA512-224"
+#define LN_sha512_224 "sha512-224"
+#define NID_sha512_224 979
+#define OBJ_sha512_224 2L, 16L, 840L, 1L, 101L, 3L, 4L, 2L, 5L
+
 #if defined(__cplusplus)
 } /* extern C */
 #endif

@@ -107,6 +107,23 @@ int SHA512_Init(SHA512_CTX *sha) {
   return 1;
 }
 
+int SHA512_224_Init(SHA512_CTX *sha) {
+  sha->h[0] = UINT64_C(0x8c3d37c819544da2);
+  sha->h[1] = UINT64_C(0x73e1996689dcd4d6);
+  sha->h[2] = UINT64_C(0x1dfab7ae32ff9c82);
+  sha->h[3] = UINT64_C(0x679dd514582f9fcf);
+  sha->h[4] = UINT64_C(0x0f6d2b697bd44da8);
+  sha->h[5] = UINT64_C(0x77e36f7304c48942);
+  sha->h[6] = UINT64_C(0x3f9d85a86a1d36c8);
+  sha->h[7] = UINT64_C(0x1112e6ad91d692a1);
+
+  sha->Nl = 0;
+  sha->Nh = 0;
+  sha->num = 0;
+  sha->md_len = SHA512_224_DIGEST_LENGTH;
+  return 1;
+}
+
 int SHA512_256_Init(SHA512_CTX *sha) {
   sha->h[0] = UINT64_C(0x22312194fc2bf72c);
   sha->h[1] = UINT64_C(0x9f555fa3c84c64c2);
@@ -158,6 +175,23 @@ uint8_t *SHA512(const uint8_t *data, size_t len,
   return out;
 }
 
+uint8_t *SHA512_224(const uint8_t *data, size_t len,
+                    uint8_t out[SHA512_224_DIGEST_LENGTH]) {
+  // We have to verify that all the SHA services actually succeed before
+  // updating the indicator state, so we lock the state here.
+  FIPS_service_indicator_lock_state();
+  SHA512_CTX ctx;
+  const int ok = SHA512_224_Init(&ctx) &&
+                 SHA512_224_Update(&ctx, data, len) &&
+                 SHA512_224_Final(out, &ctx);
+  FIPS_service_indicator_unlock_state();
+  if(ok) {
+    FIPS_service_indicator_update_state();
+  }
+  OPENSSL_cleanse(&ctx, sizeof(ctx));
+  return out;
+}
+
 uint8_t *SHA512_256(const uint8_t *data, size_t len,
                     uint8_t out[SHA512_256_DIGEST_LENGTH]) {
   // We have to verify that all the SHA services actually succeed before
@@ -190,6 +224,17 @@ int SHA384_Final(uint8_t out[SHA384_DIGEST_LENGTH], SHA512_CTX *sha) {
 
 int SHA384_Update(SHA512_CTX *sha, const void *data, size_t len) {
   return SHA512_Update(sha, data, len);
+}
+
+int SHA512_224_Update(SHA512_CTX *sha, const void *data, size_t len) {
+  return SHA512_Update(sha, data, len);
+}
+
+int SHA512_224_Final(uint8_t out[SHA512_224_DIGEST_LENGTH], SHA512_CTX *sha) {
+  // This function must be paired with |SHA512_224_Init|, which sets
+  // |sha->md_len| to |SHA512_224_DIGEST_LENGTH|.
+  assert(sha->md_len == SHA512_224_DIGEST_LENGTH);
+  return sha512_final_impl(out, SHA512_224_DIGEST_LENGTH, sha);
 }
 
 int SHA512_256_Update(SHA512_CTX *sha, const void *data, size_t len) {
@@ -288,11 +333,20 @@ static int sha512_final_impl(uint8_t *out, size_t md_len, SHA512_CTX *sha) {
     return 0;
   }
 
-  assert(md_len % 8 == 0);
   const size_t out_words = md_len / 8;
+  assert(md_len % 8 == 0 || md_len == SHA512_224_DIGEST_LENGTH);
   for (size_t i = 0; i < out_words; i++) {
     CRYPTO_store_u64_be(out, sha->h[i]);
     out += 8;
+  }
+
+  // SHA-512 and SHA-512/256 are aligned to 8-byte words, SHA-512/224 is not.
+  // If the digest size is not aligned to 8-byte words, we need to process the
+  // non-word-aligned "trailer".
+  if (md_len == SHA512_224_DIGEST_LENGTH) {
+    uint64_t trailer;
+    CRYPTO_store_u64_be(&trailer, sha->h[out_words]);
+    OPENSSL_memcpy(out, &trailer, SHA512_224_DIGEST_LENGTH % 8);
   }
 
   FIPS_service_indicator_update_state();

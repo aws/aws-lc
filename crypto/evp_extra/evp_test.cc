@@ -103,6 +103,8 @@ static const EVP_MD *GetDigest(FileTest *t, const std::string &name) {
     return EVP_sha384();
   } else if (name == "SHA512") {
     return EVP_sha512();
+  } else if (name == "SHA512/224") {
+    return EVP_sha512_224();
   } else if (name == "SHA512/256") {
     return EVP_sha512_256();
   } else if (name == "SHA3-224") {
