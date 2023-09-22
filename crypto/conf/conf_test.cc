@@ -57,6 +57,7 @@ static void ExpectConfEquals(const CONF *conf, const ConfModel &model) {
       const std::string &value = pair.second[i].second;
 
       const CONF_VALUE *v = sk_CONF_VALUE_value(values, i);
+      ASSERT_NE(v, nullptr);
       EXPECT_EQ(v->section, section);
       EXPECT_EQ(v->name, name);
       EXPECT_EQ(v->value, value);
