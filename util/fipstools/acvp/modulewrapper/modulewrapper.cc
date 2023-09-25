@@ -267,6 +267,22 @@ static bool GetConfig(const Span<const uint8_t> args[], ReplyCallback write_repl
         "performLargeDataTest": [1, 2, 4, 8]
       },
       {
+        "algorithm": "SHAKE-128",
+        "revision": "2.0",
+        "messageLength": [{
+          "min": 0, "max": 65536, "increment": 8
+          }],
+        "performLargeDataTest": [1, 2, 4, 8]
+      },
+      {
+        "algorithm": "SHAKE-256",
+        "revision": "2.0",
+        "messageLength": [{
+          "min": 0, "max": 65536, "increment": 8
+          }],
+        "performLargeDataTest": [1, 2, 4, 8]
+      },
+      {
         "algorithm": "SHA-1",
         "revision": "1.0",
         "messageLength": [{
@@ -1171,7 +1187,6 @@ static bool HashMCTSha3(const Span<const uint8_t> args[],
   const EVP_MD *evp_md = MDFunc();
   unsigned int md_out_size = DigestLength;
 
-
   // The following logic conforms to the Monte Carlo tests described in
   // https://pages.nist.gov/ACVP/draft-celi-acvp-sha3.html#name-monte-carlo-tests-for-sha3-
   unsigned char md[1001][DigestLength];
@@ -1186,6 +1201,59 @@ static bool HashMCTSha3(const Span<const uint8_t> args[],
 
   return write_reply(
       {Span<const uint8_t>(md[1000])});
+}
+
+template <const EVP_MD *(MDFunc)()>
+static bool HashMCTXof(const Span<const uint8_t> args[], ReplyCallback write_reply) {
+  // Range = maxOutBytes - minOutBytes + 1
+  // OutputLen = maxOutBytes
+  // For j = 0 to 99
+  //     MD[0] = SEED
+  //     For i = 1 to 1000
+  //         MSG[i] = 128 leftmost bits of MD[i-1]
+  //         if (MSG[i] < 128 bits)
+  //             Append 0 bits on rightmost side of MSG[i] til MSG[i] is 128 bits
+  //         MD[i] = SHAKE(MSG[i], OutputLen * 8)
+  //
+  //         RightmostOutputBits = 16 rightmost bits of MD[i] as an integer
+  //         OutputLen = minOutBytes + (RightmostOutputBits % Range)
+  //
+  //     Output MD[1000], OutputLen
+  //     SEED = MD[1000]
+
+  // TODO [childw] parse min/max uint32's, this will require allocating |md|
+  // and |msg| dynamically.
+  const unsigned minOutBytes = 1024;
+  const unsigned maxOutBytes = 1024;
+  const unsigned range = maxOutBytes - minOutBytes + 1;
+
+  const EVP_MD *evp_md = MDFunc();
+  const unsigned md_out_size = 1024;
+  const unsigned msg_size = 128/8;
+
+  // The following logic conforms to the Monte Carlo tests described in
+  // https://pages.nist.gov/ACVP/draft-celi-acvp-sha3.html#name-monte-carlo-tests-for-sha3-
+  unsigned char md[1001][md_out_size];
+  unsigned char msg[1001][msg_size];
+
+  OPENSSL_cleanse(md, sizeof(md) * sizeof(md[0]) * sizeof(unsigned char));
+  OPENSSL_cleanse(msg, sizeof(msg) * sizeof(msg[0]) * sizeof(unsigned char));
+
+  memcpy(md[0], args[0].data(), md_out_size);
+
+  unsigned outputLen = maxOutBytes;
+  for (size_t i = 1; i <= 1000; i++) {
+    memcpy(msg[i], md[i-1], msg_size);
+    unsigned currOutLen = outputLen * 8;
+    EVP_Digest(msg[i], sizeof(msg[i]), md[i], &currOutLen, evp_md, NULL);
+    // TODO [childw] explain this
+    //         RightmostOutputBits = 16 rightmost bits of MD[i] as an integer
+    //         OutputLen = minOutBytes + (RightmostOutputBits % Range)
+    unsigned rightmostOutputBits = (unsigned) md[i][md_out_size-1] & 0x10;
+    outputLen = minOutBytes + (rightmostOutputBits % range);
+  }
+
+  return write_reply({Span<const uint8_t>(md[1000])});
 }
 
 // The following logic conforms to the Large Data Tests described in
@@ -1973,9 +2041,9 @@ static const EVP_MD *HashFromName(Span<const uint8_t> name) {
     return EVP_sha512_224();
   } else if (StringEq(name, "SHA2-512/256")) {
     return EVP_sha512_256();
-  } else if  (StringEq(name, "SHAKE128")) {
+  } else if  (StringEq(name, "SHAKE-128")) {
     return EVP_shake128();
-  } else if  (StringEq(name, "SHAKE256")) {
+  } else if  (StringEq(name, "SHAKE-256")) {
     return EVP_shake256();
   } else {
     return nullptr;
@@ -2478,8 +2546,8 @@ static struct {
     {"SHA3-256", 1, HashSha3<EVP_sha3_256, SHA256_DIGEST_LENGTH>},
     {"SHA3-384", 1, HashSha3<EVP_sha3_384, SHA384_DIGEST_LENGTH>},
     {"SHA3-512", 1, HashSha3<EVP_sha3_512, SHA512_DIGEST_LENGTH>},
-    {"SHAKE128", 1, HashXof<EVP_shake128>},
-    {"SHAKE256", 1, HashXof<EVP_shake256>},
+    {"SHAKE-128", 2, HashXof<EVP_shake128>},
+    {"SHAKE-256", 2, HashXof<EVP_shake256>},
     {"SHA-1/MCT", 1, HashMCT<SHA1, SHA_DIGEST_LENGTH>},
     {"SHA2-224/MCT", 1, HashMCT<SHA224, SHA224_DIGEST_LENGTH>},
     {"SHA2-256/MCT", 1, HashMCT<SHA256, SHA256_DIGEST_LENGTH>},
@@ -2491,6 +2559,8 @@ static struct {
     {"SHA3-256/MCT", 1, HashMCTSha3<EVP_sha3_256, SHA256_DIGEST_LENGTH>},
     {"SHA3-384/MCT", 1, HashMCTSha3<EVP_sha3_384, SHA384_DIGEST_LENGTH>},
     {"SHA3-512/MCT", 1, HashMCTSha3<EVP_sha3_512, SHA512_DIGEST_LENGTH>},
+    {"SHAKE-128/MCT", 1, HashMCTXof<EVP_shake128>}, // TODO [childw] bump args to 3 and pass over min/max
+    {"SHAKE-256/MCT", 1, HashMCTXof<EVP_shake256>},
     {"SHA-1/LDT", 2, HashLDT<SHA1, SHA_DIGEST_LENGTH>},
     {"SHA2-224/LDT", 2, HashLDT<SHA224, SHA224_DIGEST_LENGTH>},
     {"SHA2-256/LDT", 2, HashLDT<SHA256, SHA256_DIGEST_LENGTH>},

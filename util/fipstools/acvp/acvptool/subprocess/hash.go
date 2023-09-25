@@ -29,9 +29,11 @@ type hashTestVectorSet struct {
 }
 
 type hashTestGroup struct {
-	ID    uint64 `json:"tgId"`
-	Type  string `json:"testType"`
-	Tests []struct {
+	ID        uint64  `json:"tgId"`
+	Type      string  `json:"testType"`
+	MaxOutLen *uint64 `json:"maxOutLen,omitempty"`
+	MinOutLen *uint64 `json:"minxOutLen,omitempty"`
+	Tests     []struct {
 		ID           uint64       `json:"tcId"`
 		BitLength    uint64       `json:"len"`
 		MsgHex       string       `json:"msg"`
@@ -53,13 +55,15 @@ type hashTestGroupResponse struct {
 }
 
 type hashTestResponse struct {
-	ID         uint64          `json:"tcId"`
-	DigestHex  string          `json:"md,omitempty"`
-	MCTResults []hashMCTResult `json:"resultsArray,omitempty"`
+	ID           uint64          `json:"tcId"`
+	DigestHex    string          `json:"md,omitempty"`
+	OutputLength *uint64         `json:"outLen,omitempty"`
+	MCTResults   []hashMCTResult `json:"resultsArray,omitempty"`
 }
 
 type hashMCTResult struct {
-	DigestHex string `json:"md"`
+	DigestHex    string  `json:"md"`
+	OutputLength *uint64 `json:"outLen,omitempty"`
 }
 
 // hashPrimitive implements an ACVP algorithm by making requests to the
@@ -99,11 +103,13 @@ func (h *hashPrimitive) Process(vectorSet []byte, m Transactable) (any, error) {
 			// http://usnistgov.github.io/ACVP/artifacts/draft-celi-acvp-sha-00.html#rfc.section.3
 			switch group.Type {
 			case "AFT":
-				var outLenBytes []byte
+			case "VOT":
+				args := [][]byte{}
+				args = append(args, msg)
 				if test.OutputLength != nil {
-					outLenBytes = uint32le(uint32(*test.OutputLength))
+					args = append(args, uint32le(uint32(*test.OutputLength)))
 				}
-				result, err := m.Transact(h.algo, 1, msg, outLenBytes)
+				result, err := m.Transact(h.algo, 1, args...)
 				if err != nil {
 					panic(h.algo + " hash operation failed: " + err.Error())
 				}
@@ -128,7 +134,7 @@ func (h *hashPrimitive) Process(vectorSet []byte, m Transactable) (any, error) {
 					}
 
 					digest = result[0]
-					testResponse.MCTResults = append(testResponse.MCTResults, hashMCTResult{hex.EncodeToString(digest)})
+					testResponse.MCTResults = append(testResponse.MCTResults, hashMCTResult{hex.EncodeToString(digest), nil})
 				}
 
 				response.Tests = append(response.Tests, testResponse)
