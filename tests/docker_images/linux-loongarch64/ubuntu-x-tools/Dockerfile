@@ -14,8 +14,11 @@ RUN apt-get update && apt-get install -y  \
     xz-utils \
     ninja-build
 
+RUN apt-get install -y \
+    qemu-user \
+    qemu-user-binfmt \
+    qemu-user-status
 # Not yet available
-#RUN apt-get install -y \
 #    qemu-system-loongarch64
 
 RUN apt-get clean

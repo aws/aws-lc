@@ -15,7 +15,9 @@ RUN apt-get update && apt-get install -y  \
     ninja-build
 
 RUN apt-get install -y \
-    qemu-system-ppc
+    qemu-system-ppc \
+    qemu-user \
+    qemu-user-binfmt
 
 RUN apt-get clean
 
