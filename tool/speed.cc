@@ -1632,7 +1632,43 @@ static bool SpeedECMUL(const std::string &selected) {
          SpeedECMULCurve("ECMUL P-521", NID_secp521r1, selected) &&
          SpeedECMULCurve("ECMUL secp256k1", NID_secp256k1, selected);
 }
-#endif
+
+#endif // !defined(OPENSSL_1_0_BENCHMARK)
+
+#if (!defined(OPENSSL_1_0_BENCHMARK) && !defined(BORINGSSL_BENCHMARK)) || AWSLC_API_VERSION >= 22
+static bool SpeedFFDHGroup(const std::string &name, int nid,
+                           const std::string &selected) {
+  if (!selected.empty() && name.find(selected) == std::string::npos) {
+    return true;
+  }
+
+  BM_NAMESPACE::UniquePtr<DH> server_dh(DH_new_by_nid(nid));
+  if(!DH_generate_key(server_dh.get())) {
+    return false;
+  }
+  const BIGNUM *server_pub = DH_get0_pub_key(server_dh.get());
+
+  int dh_size = DH_size(server_dh.get());
+  std::unique_ptr<uint8_t[]> shared_secret(new uint8_t[dh_size]);
+
+  TimeResults results;
+  if (!TimeFunction(&results, [&shared_secret, &server_pub, &dh_size, &nid]() -> bool {
+        BM_NAMESPACE::UniquePtr<DH> client_dh(DH_new_by_nid(nid));
+        return DH_generate_key(client_dh.get()) &&
+               dh_size == DH_compute_key_padded(shared_secret.get(), server_pub, client_dh.get());
+      })) {
+    return false;
+  }
+
+  results.Print(name);
+  return true;
+}
+
+static bool SpeedFFDH(const std::string &selected) {
+  return SpeedFFDHGroup("FFDH 2048", NID_ffdhe2048, selected) &&
+         SpeedFFDHGroup("FFDH 4096", NID_ffdhe4096, selected);
+}
+#endif //(!defined(OPENSSL_1_0_BENCHMARK) && !defined(BORINGSSL_BENCHMARK)) || AWSLC_API_VERSION >= 22
 
 #if !defined(OPENSSL_BENCHMARK)
 static bool Speed25519(const std::string &selected) {
@@ -2588,6 +2624,10 @@ bool Speed(const std::vector<std::string> &args) {
        !SpeedECMUL(selected) ||
        // OpenSSL 1.0 doesn't support Scrypt
        !SpeedScrypt(selected) ||
+#endif
+#if (!defined(OPENSSL_1_0_BENCHMARK) && !defined(BORINGSSL_BENCHMARK)) || AWSLC_API_VERSION >= 22
+       // OpenSSL 1.0 and BoringSSL don't support DH_new_by_nid, NID_ffdhe2048, or NID_ffdhe4096
+       !SpeedFFDH(selected) ||
 #endif
        !SpeedRSA(selected) ||
        !SpeedRSAKeyGen(false, selected) ||

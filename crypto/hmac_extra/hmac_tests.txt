@@ -124,6 +124,16 @@ Input = "My test data"
 Key = "12345"
 Output = 7dbe8c764c068e3bcd6e6b0fbcd5e6fc197b15bb
 
+HMAC = SHA512/224
+Input = "My test data"
+Key =
+Output = fc993d20088ed6028478b8356aa818b82c6131f04292f97d86e77620
+
+HMAC = SHA512/224
+Input = "My test data"
+Key = "123456"
+Output = 49d08109c1766ce6386d7b8bdaf5d014667083677096b82f56a73531
+
 HMAC = SHA512/256
 Input = "My test data"
 Key =

@@ -361,6 +361,11 @@ static const uint8_t kOutput_sha512[SHA512_DIGEST_LENGTH] = {
     0x46, 0x30, 0x18, 0xc2, 0x05, 0x88, 0x8a, 0x3c, 0x25, 0xcc, 0x06,
     0xf8, 0x73, 0xb9, 0xe4, 0x18, 0xa8, 0xc2, 0xf0, 0xe5};
 
+static const uint8_t kOutput_sha512_224[SHA512_224_DIGEST_LENGTH] = {
+    0xbf, 0xee, 0x89, 0x08, 0x8c, 0x9a, 0x4e, 0xa4, 0x79, 0x22, 0x6e,
+    0x17, 0x9f, 0x41, 0x53, 0x06, 0xc9, 0x1e, 0x58, 0x75, 0x22, 0xfd,
+    0x89, 0x0a, 0xe2, 0xbf, 0x35, 0x8e};
+
 static const uint8_t kOutput_sha512_256[SHA512_256_DIGEST_LENGTH] = {
     0x1a, 0x78, 0x68, 0x6b, 0x69, 0x6d, 0x28, 0x14, 0x6b, 0x37, 0x11,
     0x2d, 0xfb, 0x72, 0x35, 0xfa, 0xc1, 0xc4, 0x5f, 0x5c, 0x49, 0x91,
@@ -393,6 +398,11 @@ static const uint8_t kHMACOutput_sha512[SHA512_DIGEST_LENGTH] = {
     0x92, 0xe3, 0xf9, 0x13, 0xa7, 0xe6, 0xfc, 0x1a, 0x2e, 0x50, 0xda,
     0xf6, 0x8f, 0xb2, 0xd5, 0xb2, 0x6e, 0x97, 0x82, 0x25, 0x5a, 0x1e,
     0xbf, 0x9b, 0x99, 0x8c, 0xf0, 0x37, 0xe6, 0x3d, 0x40};
+
+static const uint8_t kHMACOutput_sha512_224[SHA512_224_DIGEST_LENGTH] = {
+    0xb7, 0x55, 0xfb, 0x59, 0x58, 0xa0, 0xf9, 0xa8, 0x94, 0xc2, 0x91,
+    0x6b, 0xd3, 0xfc, 0xa2, 0xbc, 0xd2, 0x91, 0x09, 0xcb, 0x22, 0x0c,
+    0x04, 0xc9, 0x21, 0xc1, 0x96, 0x62};
 
 static const uint8_t kHMACOutput_sha512_256[SHA512_256_DIGEST_LENGTH] = {
     0x9c, 0x95, 0x9c, 0x03, 0xc9, 0x8c, 0x90, 0xee, 0x7a, 0xff, 0xed,
@@ -1057,6 +1067,14 @@ static const struct DigestTestVector {
         AWSLC_APPROVED,
     },
     {
+        "SHA-512/224",
+        SHA512_224_DIGEST_LENGTH,
+        &EVP_sha512_224,
+        &SHA512_224,
+        kOutput_sha512_224,
+        AWSLC_APPROVED,
+    },
+    {
         "SHA-512/256",
         SHA512_256_DIGEST_LENGTH,
         &EVP_sha512_256,
@@ -1123,6 +1141,7 @@ static const struct HMACTestVector {
     { EVP_sha256, kHMACOutput_sha256, AWSLC_APPROVED },
     { EVP_sha384, kHMACOutput_sha384, AWSLC_APPROVED },
     { EVP_sha512, kHMACOutput_sha512, AWSLC_APPROVED },
+    { EVP_sha512_224, kHMACOutput_sha512_224, AWSLC_APPROVED },
     { EVP_sha512_256, kHMACOutput_sha512_256, AWSLC_APPROVED }
 };
 
@@ -1881,7 +1900,10 @@ struct RSATestVector kRSATestVectors[] = {
     { 3071, &EVP_sha512, true, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
     { 4096, &EVP_md5, false, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
 
-    // PKCS1v1.5 with SHA512/256 are not FIPS approved
+    // PKCS1v1.5 with truncated SHA512 are not FIPS approved
+    { 2048, &EVP_sha512_224, false, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
+    { 3072, &EVP_sha512_224, false, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
+    { 4096, &EVP_sha512_224, false, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
     { 2048, &EVP_sha512_256, false, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
     { 3072, &EVP_sha512_256, false, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
     { 4096, &EVP_sha512_256, false, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED },
@@ -1906,6 +1928,7 @@ struct RSATestVector kRSATestVectors[] = {
     { 2048, &EVP_sha256, true, AWSLC_APPROVED, AWSLC_APPROVED },
     { 2048, &EVP_sha384, true, AWSLC_APPROVED, AWSLC_APPROVED },
     { 2048, &EVP_sha512, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 2048, &EVP_sha512_224, true, AWSLC_APPROVED, AWSLC_APPROVED },
     { 2048, &EVP_sha512_256, true, AWSLC_APPROVED, AWSLC_APPROVED },
 
     { 3072, &EVP_sha1, false, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
@@ -1919,6 +1942,7 @@ struct RSATestVector kRSATestVectors[] = {
     { 3072, &EVP_sha256, true, AWSLC_APPROVED, AWSLC_APPROVED },
     { 3072, &EVP_sha384, true, AWSLC_APPROVED, AWSLC_APPROVED },
     { 3072, &EVP_sha512, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 3072, &EVP_sha512_224, true, AWSLC_APPROVED, AWSLC_APPROVED },
     { 3072, &EVP_sha512_256, true, AWSLC_APPROVED, AWSLC_APPROVED },
 
     { 4096, &EVP_sha1, false, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
@@ -1932,6 +1956,7 @@ struct RSATestVector kRSATestVectors[] = {
     { 4096, &EVP_sha256, true, AWSLC_APPROVED, AWSLC_APPROVED },
     { 4096, &EVP_sha384, true, AWSLC_APPROVED, AWSLC_APPROVED },
     { 4096, &EVP_sha512, true, AWSLC_APPROVED, AWSLC_APPROVED },
+    { 4096, &EVP_sha512_224, true, AWSLC_APPROVED, AWSLC_APPROVED },
     { 4096, &EVP_sha512_256, true, AWSLC_APPROVED, AWSLC_APPROVED },
 };
 
@@ -2232,6 +2257,8 @@ static const struct ECDSATestVector kECDSATestVectors[] = {
      AWSLC_APPROVED},
     {NID_secp224r1, &EVP_sha512, AWSLC_APPROVED, AWSLC_APPROVED,
      AWSLC_APPROVED},
+    {NID_secp224r1, &EVP_sha512_224, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
+     AWSLC_NOT_APPROVED},
     {NID_secp224r1, &EVP_sha512_256, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
      AWSLC_NOT_APPROVED},
     {NID_secp224r1, &EVP_sha3_224, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
@@ -2253,6 +2280,8 @@ static const struct ECDSATestVector kECDSATestVectors[] = {
      AWSLC_APPROVED},
     {NID_X9_62_prime256v1, &EVP_sha512, AWSLC_APPROVED, AWSLC_APPROVED,
      AWSLC_APPROVED},
+    {NID_X9_62_prime256v1, &EVP_sha512_224, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
+     AWSLC_NOT_APPROVED},
     {NID_X9_62_prime256v1, &EVP_sha512_256, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
      AWSLC_NOT_APPROVED},
     {NID_X9_62_prime256v1, &EVP_sha3_224, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
@@ -2274,6 +2303,8 @@ static const struct ECDSATestVector kECDSATestVectors[] = {
      AWSLC_APPROVED},
     {NID_secp384r1, &EVP_sha512, AWSLC_APPROVED, AWSLC_APPROVED,
      AWSLC_APPROVED},
+    {NID_secp384r1, &EVP_sha512_224, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
+     AWSLC_NOT_APPROVED},
     {NID_secp384r1, &EVP_sha512_256, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
      AWSLC_NOT_APPROVED},
     {NID_secp384r1, &EVP_sha3_224, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
@@ -2295,6 +2326,8 @@ static const struct ECDSATestVector kECDSATestVectors[] = {
      AWSLC_APPROVED},
     {NID_secp521r1, &EVP_sha512, AWSLC_APPROVED, AWSLC_APPROVED,
      AWSLC_APPROVED},
+    {NID_secp521r1, &EVP_sha512_224, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
+     AWSLC_NOT_APPROVED},
     {NID_secp521r1, &EVP_sha512_256, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
      AWSLC_NOT_APPROVED},
     {NID_secp521r1, &EVP_sha3_224, AWSLC_APPROVED, AWSLC_NOT_APPROVED,
@@ -2315,6 +2348,8 @@ static const struct ECDSATestVector kECDSATestVectors[] = {
     {NID_secp256k1, &EVP_sha384, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED,
      AWSLC_NOT_APPROVED},
     {NID_secp256k1, &EVP_sha512, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED,
+     AWSLC_NOT_APPROVED},
+    {NID_secp256k1, &EVP_sha512_224, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED,
      AWSLC_NOT_APPROVED},
     {NID_secp256k1, &EVP_sha512_256, AWSLC_NOT_APPROVED, AWSLC_NOT_APPROVED,
      AWSLC_NOT_APPROVED},
@@ -3631,6 +3666,20 @@ TEST(ServiceIndicatorTest, SHA) {
   EXPECT_EQ(Bytes(kOutput_sha512), Bytes(digest));
   EXPECT_EQ(approved, AWSLC_APPROVED);
 
+  digest.resize(SHA512_224_DIGEST_LENGTH);
+  SHA512_CTX sha512_224_ctx;
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(SHA512_224_Init(&sha512_224_ctx)));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(SHA512_224_Update(&sha512_224_ctx, kPlaintext,
+                                    sizeof(kPlaintext))));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(SHA512_224_Final(digest.data(), &sha512_224_ctx)));
+  EXPECT_EQ(Bytes(kOutput_sha512_224), Bytes(digest));
+  EXPECT_EQ(approved, AWSLC_APPROVED);
+
   digest.resize(SHA512_256_DIGEST_LENGTH);
   SHA512_CTX sha512_256_ctx;
   CALL_SERVICE_AND_CHECK_APPROVED(approved,
@@ -4076,7 +4125,7 @@ TEST(ServiceIndicatorTest, DRBG) {
 // Since this is running in FIPS mode it should end in FIPS
 // Update this when the AWS-LC version number is modified
 TEST(ServiceIndicatorTest, AWSLCVersionString) {
-  ASSERT_STREQ(awslc_version_string(), "AWS-LC FIPS 1.15.0");
+  ASSERT_STREQ(awslc_version_string(), "AWS-LC FIPS 1.16.0");
 }
 
 #else
@@ -4119,6 +4168,6 @@ TEST(ServiceIndicatorTest, BasicTest) {
 // Since this is not running in FIPS mode it shouldn't end in FIPS
 // Update this when the AWS-LC version number is modified
 TEST(ServiceIndicatorTest, AWSLCVersionString) {
-  ASSERT_STREQ(awslc_version_string(), "AWS-LC 1.15.0");
+  ASSERT_STREQ(awslc_version_string(), "AWS-LC 1.16.0");
 }
 #endif // AWSLC_FIPS

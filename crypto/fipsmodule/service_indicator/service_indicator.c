@@ -176,8 +176,9 @@ static int is_md_fips_approved_for_signing(int md_type, int pkey_type) {
     case NID_sha384:
     case NID_sha512:
       return 1;
+    case NID_sha512_224:
     case NID_sha512_256:
-      // SHA512/256 is only approved for signing with RSA PSS
+      // Truncated SHA512 is only approved for signing with RSA PSS
       if (pkey_type == EVP_PKEY_RSA_PSS) {
         return 1;
       }
@@ -197,8 +198,9 @@ static int is_md_fips_approved_for_verifying(int md_type, int pkey_type) {
     case NID_sha384:
     case NID_sha512:
       return 1;
+    case NID_sha512_224:
     case NID_sha512_256:
-      // SHA512/256 is only approved for verifying with RSA PSS
+      // Truncated SHA512 is only approved for verifying with RSA PSS
       if (pkey_type == EVP_PKEY_RSA_PSS) {
         return 1;
       }
@@ -348,6 +350,7 @@ void HMAC_verify_service_indicator(const EVP_MD *evp_md) {
     case NID_sha256:
     case NID_sha384:
     case NID_sha512:
+    case NID_sha512_224:
     case NID_sha512_256:
       FIPS_service_indicator_update_state();
       break;

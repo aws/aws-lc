@@ -1969,6 +1969,8 @@ struct RsassaPssParamsMatchTestInput {
      EVP_sha384(), 0},
     {kExampleRSAPSSKeyPKCS8, sizeof(kExampleRSAPSSKeyPKCS8), EVP_sha512(),
      EVP_sha512(), 0},
+    {kExampleRSAPSSKeyPKCS8, sizeof(kExampleRSAPSSKeyPKCS8), EVP_sha512_224(),
+     EVP_sha512_224(), 0},
     {kExampleRSAPSSKeyPKCS8, sizeof(kExampleRSAPSSKeyPKCS8), EVP_sha512_256(),
      EVP_sha512_256(), 0},
     // This test expects success when setting |signature_md| and |rsa_mgf1_md|
