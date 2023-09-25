@@ -108,7 +108,8 @@ func (h *hashPrimitive) Process(vectorSet []byte, m Transactable) (any, error) {
 				args := [][]byte{}
 				args = append(args, msg)
 				if test.OutputLength != nil {
-					args = append(args, uint32le(uint32(*test.OutputLength)))
+					outLenBytes := *test.OutputLength / 8
+					args = append(args, uint32le(uint32(outLenBytes)))
 				}
 				result, err := m.Transact(h.algo, 1, args...)
 				if err != nil {

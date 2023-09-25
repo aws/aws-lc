@@ -1151,7 +1151,7 @@ static bool HashXof(const Span<const uint8_t> args[], ReplyCallback write_reply)
 
   EVP_Digest(args[0].data(), args[0].size(), digest, &md_out_size, md, NULL);
 
-  return write_reply({Span<const uint8_t>(digest)});
+  return write_reply({Span<const uint8_t>(digest, md_out_size)});
 }
 
 template <uint8_t *(*OneShotHash)(const uint8_t *, size_t, uint8_t *),
@@ -1205,51 +1205,33 @@ static bool HashMCTSha3(const Span<const uint8_t> args[],
 
 template <const EVP_MD *(MDFunc)()>
 static bool HashMCTXof(const Span<const uint8_t> args[], ReplyCallback write_reply) {
-  // Range = maxOutBytes - minOutBytes + 1
-  // OutputLen = maxOutBytes
-  // For j = 0 to 99
-  //     MD[0] = SEED
-  //     For i = 1 to 1000
-  //         MSG[i] = 128 leftmost bits of MD[i-1]
-  //         if (MSG[i] < 128 bits)
-  //             Append 0 bits on rightmost side of MSG[i] til MSG[i] is 128 bits
-  //         MD[i] = SHAKE(MSG[i], OutputLen * 8)
-  //
-  //         RightmostOutputBits = 16 rightmost bits of MD[i] as an integer
-  //         OutputLen = minOutBytes + (RightmostOutputBits % Range)
-  //
-  //     Output MD[1000], OutputLen
-  //     SEED = MD[1000]
+  // The following logic conforms to the Monte Carlo tests described in
+  // https://pages.nist.gov/ACVP/draft-celi-acvp-sha3.html#name-shake-monte-carlo-test
 
   // TODO [childw] parse min/max uint32's, this will require allocating |md|
   // and |msg| dynamically.
-  const unsigned minOutBytes = 1024;
-  const unsigned maxOutBytes = 1024;
+  const unsigned minOutBytes = 1024/8;
+  const unsigned maxOutBytes = 1024/8;
   const unsigned range = maxOutBytes - minOutBytes + 1;
-
-  const EVP_MD *evp_md = MDFunc();
-  const unsigned md_out_size = 1024;
+  const unsigned md_out_size = 1024/8;
   const unsigned msg_size = 128/8;
 
-  // The following logic conforms to the Monte Carlo tests described in
-  // https://pages.nist.gov/ACVP/draft-celi-acvp-sha3.html#name-monte-carlo-tests-for-sha3-
-  unsigned char md[1001][md_out_size];
-  unsigned char msg[1001][msg_size];
+  const size_t array_len = 1001;
+  unsigned char md[array_len][md_out_size];
+  unsigned char msg[array_len][msg_size];
 
-  OPENSSL_cleanse(md, sizeof(md) * sizeof(md[0]) * sizeof(unsigned char));
-  OPENSSL_cleanse(msg, sizeof(msg) * sizeof(msg[0]) * sizeof(unsigned char));
+  for (size_t i = 0; i < array_len; i++) {
+    OPENSSL_cleanse(md[i], sizeof(md[0]) * sizeof(unsigned char));
+    OPENSSL_cleanse(msg[i], sizeof(msg[0]) * sizeof(unsigned char));
+  }
 
-  memcpy(md[0], args[0].data(), md_out_size);
+  memcpy(md[0], args[0].data(), msg_size);
 
   unsigned outputLen = maxOutBytes;
-  for (size_t i = 1; i <= 1000; i++) {
+  for (size_t i = 1; i < array_len; i++) {
     memcpy(msg[i], md[i-1], msg_size);
-    unsigned currOutLen = outputLen * 8;
-    EVP_Digest(msg[i], sizeof(msg[i]), md[i], &currOutLen, evp_md, NULL);
-    // TODO [childw] explain this
-    //         RightmostOutputBits = 16 rightmost bits of MD[i] as an integer
-    //         OutputLen = minOutBytes + (RightmostOutputBits % Range)
-    unsigned rightmostOutputBits = (unsigned) md[i][md_out_size-1] & 0x10;
+    EVP_Digest(msg[i], sizeof(msg[i]), md[i], &outputLen, MDFunc(), NULL);
+    const unsigned rightmostOutputBits = (unsigned) md[i][md_out_size-1] & 0xffff;
     outputLen = minOutBytes + (rightmostOutputBits % range);
   }
 
