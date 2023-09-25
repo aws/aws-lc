@@ -268,6 +268,7 @@ static void CompareDigest(const DigestTestVector *test,
 
 static bool DoFinal(const DigestTestVector *test, EVP_MD_CTX *ctx, uint8_t *md_out, unsigned int *out_size) {
     if (ctx->digest && (EVP_MD_flags(ctx->digest) & EVP_MD_FLAG_XOF)) {
+        // For XOF digests, DigestTestVector.repeat is the desired output length
         *out_size = test->repeat;
         return EVP_DigestFinalXOF(ctx, md_out, *out_size);
     }
@@ -366,7 +367,8 @@ static void TestDigest(const DigestTestVector *test) {
     // Test the one-shot function.
     if (is_xof || (test->md.one_shot_func && test->repeat == 1)) {
       uint8_t *out = is_xof
-          ? test->md.one_shot_xof_func((const uint8_t *)test->input, strlen(test->input), digest.get(), test->repeat)
+          ? test->md.one_shot_xof_func((const uint8_t *)test->input, strlen(test->input),
+                  digest.get(), expected_output_size)
           : test->md.one_shot_func((const uint8_t *)test->input, strlen(test->input), digest.get());
       // One-shot functions return their supplied buffers.
       EXPECT_EQ(digest.get(), out);

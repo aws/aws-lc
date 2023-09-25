@@ -1125,7 +1125,9 @@ static bool HashXof(const Span<const uint8_t> args[], ReplyCallback write_reply)
   uint8_t digest[128];
   const EVP_MD *md = MDFunc();
   const uint8_t *outlen_bytes = args[1].data();
-  unsigned md_out_size = 0;
+  // MD outLen is passed to modulewrapper as a length-4 byte array representing
+  // a little-endian unsigned 32-bit integer.
+  uint32_t md_out_size = 0;
   md_out_size |= outlen_bytes[3] << 24;
   md_out_size |= outlen_bytes[2] << 16;
   md_out_size |= outlen_bytes[1] << 8;
