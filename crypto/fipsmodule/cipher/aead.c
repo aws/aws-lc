@@ -296,8 +296,8 @@ int EVP_AEAD_get_iv_from_ipv4_nanosecs(
     return 0;
   }
 
-  OPENSSL_memcpy(out_iv, &ipv4_address, sizeof(ipv4_address));
-  OPENSSL_memcpy(out_iv + sizeof(ipv4_address), &nanosecs, sizeof(nanosecs));
+  CRYPTO_store_u32_le(&out_iv[0], ipv4_address);
+  CRYPTO_store_u64_le(&out_iv[sizeof(ipv4_address)], nanosecs);
 
   return 1;
 }

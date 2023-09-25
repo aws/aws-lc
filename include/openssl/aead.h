@@ -466,8 +466,8 @@ OPENSSL_EXPORT int EVP_AEAD_CTX_tag_len(const EVP_AEAD_CTX *ctx,
 
 // EVP_AEAD_get_iv_from_ipv4_nanosecs computes a deterministic IV compliant with
 // NIST SP 800-38D, built from an IPv4 address and the number of nanoseconds
-// since boot, writing it to |out_iv|. It returns one on success or zero for
-// error.
+// since boot, writing it to |out_iv| (in little endian).
+// It returns one on success or zero for error.
 //
 // This is not a general-purpose API, you should not be using it unless you
 // specifically know you need to use this.
