@@ -1121,13 +1121,13 @@ static bool HashSha3(const Span<const uint8_t> args[], ReplyCallback write_reply
 template <const EVP_MD *(MDFunc)()>
 static bool HashXof(const Span<const uint8_t> args[], ReplyCallback write_reply) {
   const EVP_MD *md = MDFunc();
-  uint8_t[] outlen_bytes = args[1].data();
-  size_t md_out_size = 0;
+  const uint8_t *outlen_bytes = args[1].data();
+  unsigned md_out_size = 0;
   md_out_size |= outlen_bytes[3] << 24;
   md_out_size |= outlen_bytes[2] << 16;
   md_out_size |= outlen_bytes[1] << 8;
   md_out_size |= outlen_bytes[0] << 0;
-  uint8_t digest = malloc(md_out_size);
+  uint8_t digest[128];  // TODO [childw]: explain that this is max outLen size in the test vectors
 
   EVP_Digest(args[0].data(), args[0].size(), digest, &md_out_size, md, NULL);
 
