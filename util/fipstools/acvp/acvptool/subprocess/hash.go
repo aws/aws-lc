@@ -102,8 +102,9 @@ func (h *hashPrimitive) Process(vectorSet []byte, m Transactable) (any, error) {
 
 			// http://usnistgov.github.io/ACVP/artifacts/draft-celi-acvp-sha-00.html#rfc.section.3
 			switch group.Type {
-			case "AFT":
 			case "VOT":
+				fallthrough
+			case "AFT":
 				args := [][]byte{}
 				args = append(args, msg)
 				if test.OutputLength != nil {
