@@ -1922,7 +1922,7 @@ TEST(ECTest, LargeXCoordinateVectors) {
 
     // Now replace the x-coordinate with the larger one, x+p.
     OPENSSL_memcpy(key.get()->pub_key->raw.X.words,
-                   xpp.get()->d, len);
+                   xpp.get()->d, BN_BYTES * group->field.width);
     // We expect |EC_KEY_check_fips| to always fail when given key with x > p.
     ASSERT_FALSE(EC_KEY_check_fips(key.get()));
 
