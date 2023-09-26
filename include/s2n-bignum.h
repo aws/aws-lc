@@ -769,6 +769,11 @@ extern void bignum_sqr_p256k1_alt (uint64_t z[static 4], uint64_t x[static 4]);
 extern void bignum_sqr_p521 (uint64_t z[static 9], uint64_t x[static 9]);
 extern void bignum_sqr_p521_alt (uint64_t z[static 9], uint64_t x[static 9]);
 
+// Square root modulo p_25519
+// Input x[4]; output function return (Legendre symbol) and z[4]
+extern int64_t bignum_sqrt_p25519(uint64_t z[static 4],uint64_t x[static 4]);
+extern int64_t bignum_sqrt_p25519_alt(uint64_t z[static 4],uint64_t x[static 4]);
+
 // Subtract, z := x - y
 // Inputs x[m], y[n]; outputs function return (carry-out) and z[p]
 extern uint64_t bignum_sub (uint64_t p, uint64_t *z, uint64_t m, uint64_t *x, uint64_t n, uint64_t *y);

@@ -41,6 +41,7 @@ bignum_sqr_8_16
 bignum_sqr_p25519
 bignum_sqr_p256k1
 bignum_sqr_p521
+bignum_sqrt_p25519
 bignum_tomont_p256
 bignum_tomont_p256k1
 bignum_tomont_p384

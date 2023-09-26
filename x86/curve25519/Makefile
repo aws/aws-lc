@@ -19,6 +19,8 @@ OBJ = bignum_add_p25519.o \
       bignum_optneg_p25519.o \
       bignum_sqr_p25519.o \
       bignum_sqr_p25519_alt.o \
+      bignum_sqrt_p25519.o \
+      bignum_sqrt_p25519_alt.o \
       bignum_sub_p25519.o \
       curve25519_ladderstep.o \
       curve25519_ladderstep_alt.o \

@@ -123,6 +123,8 @@ BIGNUM_OBJ = curve25519/bignum_add_p25519.o \
              curve25519/bignum_optneg_p25519.o \
              curve25519/bignum_sqr_p25519.o \
              curve25519/bignum_sqr_p25519_alt.o \
+             curve25519/bignum_sqrt_p25519.o \
+             curve25519/bignum_sqrt_p25519_alt.o \
              curve25519/bignum_sub_p25519.o \
              fastmul/bignum_emontredc_8n.o \
              fastmul/bignum_kmul_16_32.o \

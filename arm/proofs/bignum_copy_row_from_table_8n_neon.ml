@@ -216,7 +216,7 @@ let ABBREV_Z_READ_128BITS_TAC name stname ofs =
     if ofs = 0 then
       `read (memory :> bytes128 (word_add z (word (8 * (val (width:int64) - 8 * (i' + 1)))):int64)) s0`
     else
-      let templ0 = `read (memory :> bytes128 (word_add z (word (8 * (val (width:int64) - 8 * (i' + 1)) + ofs)):int64)) s0` in 
+      let templ0 = `read (memory :> bytes128 (word_add z (word (8 * (val (width:int64) - 8 * (i' + 1)) + ofs)):int64)) s0` in
       let newofs = mk_numeral (Int ofs) in
       subst [(newofs,`ofs:num`)] templ0 in
   let rhs = subst [(mk_var(stname, `:armstate`),`st0:armstate`)] templ in
@@ -230,7 +230,7 @@ let ABBREV_TABLE_READ_128BITS_TAC name stname ofs =
             (word (8 * (i * val (width:int64) + val (width:int64) - 8 * (i' + 1)))):int64)) s0`
     else
       let templ0 = `read (memory :> bytes128 (word_add table
-            (word (8 * (i * val (width:int64) + val (width:int64) - 8 * (i' + 1)) + ofs)):int64)) s0` in 
+            (word (8 * (i * val (width:int64) + val (width:int64) - 8 * (i' + 1)) + ofs)):int64)) s0` in
       let newofs = mk_numeral (Int ofs) in
       subst [(newofs,`ofs:num`)] templ0 in
   let rhs = subst [(mk_var(stname, `:armstate`),`st0:armstate`)] templ in
@@ -554,7 +554,7 @@ let BIGNUM_COPY_ROW_FROM_TABLE_8N_NEON_SUBROUTINE_CORRECT = prove(
       DISJ2_TAC THEN
       ASM_SIMP_TAC[ARITH_RULE `x > y ==> x + 1 > y`; ASSUME `i > val (idx:int64)`]
     ]]
-  
+
   ] THEN
 
 
@@ -628,7 +628,7 @@ let BIGNUM_COPY_ROW_FROM_TABLE_8N_NEON_SUBROUTINE_CORRECT = prove(
       REWRITE_TAC[ARITH_RULE `16=8*2`] THEN
       REPEAT CONJ_TAC THEN MATCH_MP_TAC READ_MEMORY_BYTES_SLICE THEN EXISTS_TAC `8 * (i' + 1)` THEN
       ASM_REWRITE_TAC[] THEN ASM_ARITH_TAC];
-  
+
     ALL_TAC] THEN
   SUBGOAL_THEN `read (memory :>
       bytes (word_add (word_add (z:int64) (word (8 * (val (width:int64) - 8 * (i' + 1))))) (word (8 * 8)),
@@ -685,7 +685,7 @@ let BIGNUM_COPY_ROW_FROM_TABLE_8N_NEON_SUBROUTINE_CORRECT = prove(
       REWRITE_TAC [WORD_ADD_ASSOC_CONSTS; LEFT_ADD_DISTRIB;MULT_ASSOC;GSYM EXP_ADD;GSYM ADD_ASSOC] THEN
       ARITH_TAC;
 
-      UNDISCH_TAC `i' < val (width:int64) DIV 8` THEN ARITH_TAC      
+      UNDISCH_TAC `i' < val (width:int64) DIV 8` THEN ARITH_TAC
     ];
 
     IMP_REWRITE_TAC[VAL_WORD_8_EQ_0]
@@ -716,7 +716,7 @@ let BIGNUM_COPY_ROW_FROM_TABLE_8N_NEON_SUBROUTINE_CORRECT = prove(
         REWRITE_TAC[ARITH_RULE `16=8*2`] THEN
         REPEAT CONJ_TAC THEN MATCH_MP_TAC READ_MEMORY_BYTES_SLICE THEN EXISTS_TAC `8 * (i' + 1)` THEN
         ASM_REWRITE_TAC[] THEN ASM_ARITH_TAC];
-    
+
       ALL_TAC] THEN
     SUBGOAL_THEN `read (memory :>
         bytes (word_add (word_add (z:int64) (word (8 * (val (width:int64) - 8 * (i' + 1))))) (word (8 * 8)),
@@ -769,7 +769,7 @@ let BIGNUM_COPY_ROW_FROM_TABLE_8N_NEON_SUBROUTINE_CORRECT = prove(
 
   ABBREV_TAC `i'' = val (width:int64) - 8 * (i'+1)` THEN
   SUBGOAL_THEN `read (memory :> bytes (z, 8 * val (width:int64))) s0 = m` ASSUME_TAC THENL [
-    MATCH_MP_TAC READ_MEMORY_BYTES_MERGE THEN 
+    MATCH_MP_TAC READ_MEMORY_BYTES_MERGE THEN
     MAP_EVERY EXISTS_TAC [`i'':num`; `8*((i':num)+1)`] THEN
     ASM_REWRITE_TAC[] THEN EXPAND_TAC "i''" THEN ASM_ARITH_TAC;
     ALL_TAC
@@ -787,17 +787,17 @@ let BIGNUM_COPY_ROW_FROM_TABLE_8N_NEON_SUBROUTINE_CORRECT = prove(
       MATCH_MP_TAC READ_MEMORY_BYTES_FIRSTELEM128 THEN EXISTS_TAC `8 * (i' + 1)` THEN ASM_REWRITE_TAC[] THEN ARITH_TAC;
 
       REWRITE_TAC[GSYM READ_MEMORY_BYTES_BYTES128] THEN
-      REWRITE_TAC[ARITH_RULE `16=8*2`; WORD_ADD_ASSOC_CONSTS; GSYM LEFT_ADD_DISTRIB] THEN 
+      REWRITE_TAC[ARITH_RULE `16=8*2`; WORD_ADD_ASSOC_CONSTS; GSYM LEFT_ADD_DISTRIB] THEN
       MATCH_MP_TAC READ_MEMORY_BYTES_SLICE THEN EXISTS_TAC `val (width:int64)` THEN
       ASM_REWRITE_TAC[] THEN ASM_ARITH_TAC;
 
       REWRITE_TAC[GSYM READ_MEMORY_BYTES_BYTES128] THEN
-      REWRITE_TAC[ARITH_RULE `16=8*2`; WORD_ADD_ASSOC_CONSTS; GSYM LEFT_ADD_DISTRIB] THEN 
+      REWRITE_TAC[ARITH_RULE `16=8*2`; WORD_ADD_ASSOC_CONSTS; GSYM LEFT_ADD_DISTRIB] THEN
       MATCH_MP_TAC READ_MEMORY_BYTES_SLICE THEN EXISTS_TAC `val (width:int64)` THEN
       ASM_REWRITE_TAC[] THEN ASM_ARITH_TAC;
 
       REWRITE_TAC[GSYM READ_MEMORY_BYTES_BYTES128] THEN
-      REWRITE_TAC[ARITH_RULE `16=8*2`; WORD_ADD_ASSOC_CONSTS; GSYM LEFT_ADD_DISTRIB] THEN 
+      REWRITE_TAC[ARITH_RULE `16=8*2`; WORD_ADD_ASSOC_CONSTS; GSYM LEFT_ADD_DISTRIB] THEN
       MATCH_MP_TAC READ_MEMORY_BYTES_SLICE THEN EXISTS_TAC `val (width:int64)` THEN
       ASM_REWRITE_TAC[] THEN ASM_ARITH_TAC;
     ];

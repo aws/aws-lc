@@ -158,6 +158,7 @@ bignum_sqr_8_16_alt
 bignum_sqr_p25519_alt
 bignum_sqr_p256k1_alt
 bignum_sqr_p521_alt
+bignum_sqrt_p25519_alt
 bignum_sub
 bignum_sub_p25519
 bignum_sub_p256

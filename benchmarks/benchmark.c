@@ -398,6 +398,10 @@ void call_bignum_sqr_p521(void) repeat(bignum_sqr_p521(b0,b1))
 
 void call_bignum_sqr_p521_alt(void) repeat(bignum_sqr_p521_alt(b0,b1))
 
+void call_bignum_sqrt_p25519(void) repeatfewer(10,bignum_sqrt_p25519(b0,b1))
+
+void call_bignum_sqrt_p25519_alt(void) repeatfewer(10,bignum_sqrt_p25519_alt(b0,b1))
+
 void call_bignum_mul_p25519(void) repeat(bignum_mul_p25519(b0,b1,b2))
 
 void call_bignum_mul_p25519_alt(void) repeat(bignum_mul_p25519_alt(b0,b1,b2))
@@ -1100,6 +1104,8 @@ int main(int argc, char *argv[])
   timingtest(all,"bignum_sqr_p256k1_alt",call_bignum_sqr_p256k1_alt);
   timingtest(bmi,"bignum_sqr_p521",call_bignum_sqr_p521);
   timingtest(all,"bignum_sqr_p521_alt",call_bignum_sqr_p521_alt);
+  timingtest(bmi,"bignum_sqrt_p25519",call_bignum_sqrt_p25519);
+  timingtest(all,"bignum_sqrt_p25519_alt",call_bignum_sqrt_p25519_alt);
   timingtest(all,"bignum_sub (4x4->4)",call_bignum_sub__4_4);
   timingtest(all,"bignum_sub (6x6->6)",call_bignum_sub__6_6);
   timingtest(all,"bignum_sub (32x32->32)",call_bignum_sub__32_32);
