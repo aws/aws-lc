@@ -1771,6 +1771,13 @@ OPENSSL_EXPORT int SSL_get_extms_support(const SSL *ssl);
 // not been negotiated yet.
 OPENSSL_EXPORT const SSL_CIPHER *SSL_get_current_cipher(const SSL *ssl);
 
+// SSL_get_client_ciphers returns stack of ciphers offered by the client during
+// a handshake. If the |ssl| is a client or the handshake hasn't occurred yet,
+// NULL is returned. The stack of ciphers IS NOT de/serialized, so NULL will
+// also be returned for deserialized or transported |ssl|'s that haven't yet
+// performed a new handshake.
+OPENSSL_EXPORT STACK_OF(SSL_CIPHER) *SSL_get_client_ciphers(const SSL *ssl);
+
 // SSL_session_reused returns one if |ssl| performed an abbreviated handshake
 // and zero otherwise.
 //
@@ -2595,7 +2602,9 @@ OPENSSL_EXPORT const char *SSL_get_group_name(uint16_t group_id);
 // finished.
 // WARNING: Currently only supports |SSL| as server.
 // WARNING: CRYPTO_EX_DATA |ssl->ex_data| is not encoded. Remember set |ex_data|
-// back after decode. WARNING: BIO |ssl->rbio| and |ssl->wbio| are not encoded.
+// back after decode.
+// WARNING: BIO |ssl->rbio| and |ssl->wbio| are not encoded.
+// WARNING: STACK_OF(SSL_CIPHER) |ssl->client_cipher_suites| is not encoded.
 //
 // Initial implementation of this API is made by Evgeny Potemkin.
 OPENSSL_EXPORT int SSL_to_bytes(const SSL *in, uint8_t **out_data,
@@ -2611,6 +2620,8 @@ OPENSSL_EXPORT int SSL_to_bytes(const SSL *in, uint8_t **out_data,
 //          Otherwise, the connections use the same key material.
 // WARNING: Remember set |ssl->rbio| and |ssl->wbio| before using |ssl|.
 // WARNING: Remember set callback functions and |ex_data| back if needed.
+// WARNING: STACK_OF(SSL_CIPHER) |ssl->client_cipher_suites| is not encoded and
+//          will be repopulated on next handshake.
 // WARNING: To ensure behavior unchange, |ctx| setting should be the same.
 //
 // Initial implementation of this API is made by Evgeny Potemkin.
