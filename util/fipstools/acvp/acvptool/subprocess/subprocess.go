@@ -97,19 +97,20 @@ func NewWithIO(cmd *exec.Cmd, in io.WriteCloser, out io.ReadCloser) *Subprocess 
 	}
 
 	m.primitives = map[string]primitive{
-		"SHA-1":             &hashPrimitive{"SHA-1", 20},
-		"SHA2-224":          &hashPrimitive{"SHA2-224", 28},
-		"SHA2-256":          &hashPrimitive{"SHA2-256", 32},
-		"SHA2-384":          &hashPrimitive{"SHA2-384", 48},
-		"SHA2-512":          &hashPrimitive{"SHA2-512", 64},
-		"SHA2-512/224":      &hashPrimitive{"SHA2-512/224", 28},
-		"SHA2-512/256":      &hashPrimitive{"SHA2-512/256", 32},
-		"SHA3-224":          &hashPrimitive{"SHA3-224", 28},
-		"SHA3-256":          &hashPrimitive{"SHA3-256", 32},
-		"SHA3-384":          &hashPrimitive{"SHA3-384", 48},
-		"SHA3-512":          &hashPrimitive{"SHA3-512", 64},
-		"SHAKE-128":         &hashPrimitive{"SHAKE-128", 16}, // TODO [childw] explain why 16 -- msg len for MCT
-		"SHAKE-256":         &hashPrimitive{"SHAKE-256", 16},
+		"SHA-1":        &hashPrimitive{"SHA-1", 20},
+		"SHA2-224":     &hashPrimitive{"SHA2-224", 28},
+		"SHA2-256":     &hashPrimitive{"SHA2-256", 32},
+		"SHA2-384":     &hashPrimitive{"SHA2-384", 48},
+		"SHA2-512":     &hashPrimitive{"SHA2-512", 64},
+		"SHA2-512/224": &hashPrimitive{"SHA2-512/224", 28},
+		"SHA2-512/256": &hashPrimitive{"SHA2-512/256", 32},
+		"SHA3-224":     &hashPrimitive{"SHA3-224", 28},
+		"SHA3-256":     &hashPrimitive{"SHA3-256", 32},
+		"SHA3-384":     &hashPrimitive{"SHA3-384", 48},
+		"SHA3-512":     &hashPrimitive{"SHA3-512", 64},
+		// NOTE: SHAKE does not have a predifined digest output size
+		"SHAKE-128":         &hashPrimitive{"SHAKE-128", -1},
+		"SHAKE-256":         &hashPrimitive{"SHAKE-256", -1},
 		"ACVP-AES-ECB":      &blockCipher{"AES", 16, 2, true, false, iterateAES},
 		"ACVP-AES-CBC":      &blockCipher{"AES-CBC", 16, 2, true, true, iterateAESCBC},
 		"ACVP-AES-CBC-CS3":  &blockCipher{"AES-CBC-CS3", 16, 1, false, true, iterateAESCBC},

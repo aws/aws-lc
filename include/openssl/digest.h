@@ -193,9 +193,10 @@ OPENSSL_EXPORT int EVP_DigestFinal(EVP_MD_CTX *ctx, uint8_t *md_out,
 // bytes from |data| and writes the digest to |md_out|. |EVP_MD_CTX_size| bytes
 // are written, which is at most |EVP_MAX_MD_SIZE|. If |out_size| is not NULL
 // then |*out_size| is set to the number of bytes written. It returns one on
-// success and zero otherwise.
+// success and zero otherwise. If |type| is an XOF, |out_size| must be set to
+// the desired output length.
 OPENSSL_EXPORT int EVP_Digest(const void *data, size_t len, uint8_t *md_out,
-                              unsigned int *md_out_size, const EVP_MD *type,
+                              unsigned int *out_size, const EVP_MD *type,
                               ENGINE *impl);
 
 

@@ -19,6 +19,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"strings"
 )
 
 // The following structures reflect the JSON of ACVP hash tests. See
@@ -55,15 +56,13 @@ type hashTestGroupResponse struct {
 }
 
 type hashTestResponse struct {
-	ID           uint64          `json:"tcId"`
-	DigestHex    string          `json:"md,omitempty"`
-	OutputLength *uint64         `json:"outLen,omitempty"`
-	MCTResults   []hashMCTResult `json:"resultsArray,omitempty"`
+	ID         uint64          `json:"tcId"`
+	DigestHex  string          `json:"md,omitempty"`
+	MCTResults []hashMCTResult `json:"resultsArray,omitempty"`
 }
 
 type hashMCTResult struct {
-	DigestHex    string  `json:"md"`
-	OutputLength *uint64 `json:"outLen,omitempty"`
+	DigestHex string `json:"md"`
 }
 
 // hashPrimitive implements an ACVP algorithm by making requests to the
@@ -122,7 +121,10 @@ func (h *hashPrimitive) Process(vectorSet []byte, m Transactable) (any, error) {
 				})
 
 			case "MCT":
-				if len(msg) != h.size {
+				// MCT tests for conventional digest functions expect message
+				// and digest output lengths to be equivalent, however SHAKE
+				// does not have a predefined output length.
+				if len(msg) != h.size && !strings.HasPrefix(h.algo, "SHAKE") {
 					return nil, fmt.Errorf("MCT test case %d/%d contains message of length %d but the digest length is %d", group.ID, test.ID, len(msg), h.size)
 				}
 
@@ -136,7 +138,7 @@ func (h *hashPrimitive) Process(vectorSet []byte, m Transactable) (any, error) {
 					}
 
 					digest = result[0]
-					testResponse.MCTResults = append(testResponse.MCTResults, hashMCTResult{hex.EncodeToString(digest), nil})
+					testResponse.MCTResults = append(testResponse.MCTResults, hashMCTResult{hex.EncodeToString(digest)})
 				}
 
 				response.Tests = append(response.Tests, testResponse)

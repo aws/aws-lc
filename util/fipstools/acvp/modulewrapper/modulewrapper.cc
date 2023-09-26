@@ -1205,21 +1205,21 @@ static bool HashMCTSha3(const Span<const uint8_t> args[],
 
 template <const EVP_MD *(MDFunc)()>
 static bool HashMCTXof(const Span<const uint8_t> args[], ReplyCallback write_reply) {
-  // The following logic conforms to the Monte Carlo tests described in
+  // The spec for SHAKE monte carlo tests is written to be generic between a
+  // minimum and maximum output length, but the vectors obtained from ACVP
+  // allow only 1024 bits. Supporting dynamically sized MCTs would require
+  // passing the min/max output lengths to the modulewrapper, parsing ibid.,
+  // and dynamically allocating and freeing appropriately sized bufffers. To
+  // keep things simple, we defer that complexity until/if needed.
+  //
   // https://pages.nist.gov/ACVP/draft-celi-acvp-sha3.html#name-shake-monte-carlo-test
-
-  // TODO [childw] parse min/max uint32's, this will require allocating |md|
-  // and |msg| dynamically.
-  const unsigned minOutBytes = 1024/8;
-  const unsigned maxOutBytes = 1024/8;
-  const unsigned range = maxOutBytes - minOutBytes + 1;
-  const unsigned md_out_size = 1024/8;
+  const unsigned output_len = 1024/8;
   const unsigned msg_size = 128/8;
-
   const size_t array_len = 1001;
-  unsigned char md[array_len][md_out_size];
+  unsigned char md[array_len][output_len];
   unsigned char msg[array_len][msg_size];
 
+  // Zero out |md| and |msg| to clear any residual stack garbage before XOF computation
   for (size_t i = 0; i < array_len; i++) {
     OPENSSL_cleanse(md[i], sizeof(md[0]) * sizeof(unsigned char));
     OPENSSL_cleanse(msg[i], sizeof(msg[0]) * sizeof(unsigned char));
@@ -1227,12 +1227,10 @@ static bool HashMCTXof(const Span<const uint8_t> args[], ReplyCallback write_rep
 
   memcpy(md[0], args[0].data(), msg_size);
 
-  unsigned outputLen = maxOutBytes;
+  unsigned output_len_mut = output_len;
   for (size_t i = 1; i < array_len; i++) {
     memcpy(msg[i], md[i-1], msg_size);
-    EVP_Digest(msg[i], sizeof(msg[i]), md[i], &outputLen, MDFunc(), NULL);
-    const unsigned rightmostOutputBits = (unsigned) md[i][md_out_size-1] & 0xffff;
-    outputLen = minOutBytes + (rightmostOutputBits % range);
+    EVP_Digest(msg[i], sizeof(msg[i]), md[i], &output_len_mut, MDFunc(), NULL);
   }
 
   return write_reply({Span<const uint8_t>(md[1000])});
@@ -2541,7 +2539,7 @@ static struct {
     {"SHA3-256/MCT", 1, HashMCTSha3<EVP_sha3_256, SHA256_DIGEST_LENGTH>},
     {"SHA3-384/MCT", 1, HashMCTSha3<EVP_sha3_384, SHA384_DIGEST_LENGTH>},
     {"SHA3-512/MCT", 1, HashMCTSha3<EVP_sha3_512, SHA512_DIGEST_LENGTH>},
-    {"SHAKE-128/MCT", 1, HashMCTXof<EVP_shake128>}, // TODO [childw] bump args to 3 and pass over min/max
+    {"SHAKE-128/MCT", 1, HashMCTXof<EVP_shake128>},
     {"SHAKE-256/MCT", 1, HashMCTXof<EVP_shake256>},
     {"SHA-1/LDT", 2, HashLDT<SHA1, SHA_DIGEST_LENGTH>},
     {"SHA2-224/LDT", 2, HashLDT<SHA224, SHA224_DIGEST_LENGTH>},
