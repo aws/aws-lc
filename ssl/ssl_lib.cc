@@ -2545,6 +2545,13 @@ const SSL_CIPHER *SSL_get_current_cipher(const SSL *ssl) {
   return session == nullptr ? nullptr : session->cipher;
 }
 
+STACK_OF(SSL_CIPHER) *SSL_get_client_ciphers(const SSL *ssl) {
+  if (ssl == NULL || ssl->s3 == NULL) {
+    return NULL;
+  }
+  return ssl->client_cipher_suites.get();
+}
+
 int SSL_session_reused(const SSL *ssl) {
   return ssl->s3->session_reused || SSL_in_early_data(ssl);
 }
@@ -3061,6 +3068,8 @@ int SSL_clear(SSL *ssl) {
   if (!ssl->config) {
     return 0;  // SSL_clear may not be used after shedding config.
   }
+
+  ssl->client_cipher_suites.reset();
 
   // In OpenSSL, reusing a client |SSL| with |SSL_clear| causes the previously
   // established session to be offered the next time around. wpa_supplicant
