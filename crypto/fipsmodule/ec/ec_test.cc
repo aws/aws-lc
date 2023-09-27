@@ -1886,7 +1886,6 @@ TEST(ECTest, LargeXCoordinateVectors) {
     bssl::UniquePtr<EC_POINT> pub_key(EC_POINT_new(group.get()));
     ASSERT_TRUE(pub_key);
 
-    size_t len = BN_num_bytes(&group.get()->field); // Modulus byte-length
     ASSERT_TRUE(EC_KEY_set_group(key.get(), group.get()));
 
     // |EC_POINT_set_affine_coordinates_GFp| sets given (x, y) according to the
@@ -1900,10 +1899,10 @@ TEST(ECTest, LargeXCoordinateVectors) {
     // Set the raw point directly with the BIGNUM coordinates.
     // Note that both are in little-endian byte order.
     OPENSSL_memcpy(key.get()->pub_key->raw.X.words,
-                   x.get()->d, len);
+                   x.get()->d, BN_BYTES * group->field.width);
     OPENSSL_memcpy(key.get()->pub_key->raw.Y.words,
-                   y.get()->d, len);
-    OPENSSL_memset(key.get()->pub_key->raw.Z.words, 0, len);
+                   y.get()->d, BN_BYTES * group->field.width);
+    OPENSSL_memset(key.get()->pub_key->raw.Z.words, 0, BN_BYTES * group->field.width);
     key.get()->pub_key->raw.Z.words[0] = 1;
 
     // |EC_KEY_check_fips| first calls the |EC_KEY_check_key| function that
