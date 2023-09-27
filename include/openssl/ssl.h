@@ -985,14 +985,18 @@ OPENSSL_EXPORT int SSL_add1_chain_cert(SSL *ssl, X509 *x509);
 // |SSL_build_cert_chain|.
 
 // SSL_BUILD_CHAIN_FLAG_UNTRUSTED treats any existing certificates as untrusted
-// CAs.
+// CAs. This is mutually exclusive to |SSL_BUILD_CHAIN_FLAG_CHECK| and
+// |SSL_BUILD_CHAIN_FLAG_CHECK| will be prioritized to use the existing chain
+// certificates instead.
 #define SSL_BUILD_CHAIN_FLAG_UNTRUSTED 0x1
 
 // SSL_BUILD_CHAIN_FLAG_NO_ROOT omits the root CA from the built chain.
 #define SSL_BUILD_CHAIN_FLAG_NO_ROOT 0x2
 
 // SSL_BUILD_CHAIN_FLAG_CHECK uses only existing chain certificates to build the
-// chain (effectively sanity checking and rearranging them if necessary).
+// chain (effectively sanity checking and rearranging them if necessary). This
+// is mutually exclusive to |SSL_BUILD_CHAIN_FLAG_UNTRUSTED| and
+// |SSL_BUILD_CHAIN_FLAG_CHECK| will be prioritized.
 #define SSL_BUILD_CHAIN_FLAG_CHECK 0x4
 
 // SSL_BUILD_CHAIN_FLAG_IGNORE_ERROR ignores errors during certificate
@@ -1008,6 +1012,11 @@ OPENSSL_EXPORT int SSL_add1_chain_cert(SSL *ssl, X509 *x509);
 // Normally this uses the chain store or the verify store if the chain store is
 // not set. If the function is successful, the built chain will replace any
 // existing chain in |ctx|.
+// This function returns 1 on success and -1 on failure, unless
+// |SSL_BUILD_CHAIN_FLAG_IGNORE_ERROR| is set. If
+// |SSL_BUILD_CHAIN_FLAG_IGNORE_ERROR| is set, then this function returns 1 on
+// success, 2 if certificate verification has failed, and -1 on all other types
+// of failures.
 OPENSSL_EXPORT int SSL_CTX_build_cert_chain(SSL_CTX *ctx, int flags);
 
 // SSL_build_cert_chain is similar to |SSL_CTX_build_cert_chain|, but the

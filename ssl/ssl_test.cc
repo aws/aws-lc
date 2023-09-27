@@ -2571,7 +2571,7 @@ func main() {
 }
 clang-format on */
 static bssl::UniquePtr<X509> GetLeafRoot() {
-  return CertFromPEM(R"(
+  bssl::UniquePtr<X509> root = CertFromPEM(R"(
 -----BEGIN CERTIFICATE-----
 MIIBRzCB7aADAgECAgEBMAoGCCqGSM49BAMCMBIxEDAOBgNVBAMTB1Rlc3QgQ0Ew
 IBcNMDAwMTAxMDAwMDAwWhgPMjA5OTAxMDEwMDAwMDBaMBIxEDAOBgNVBAMTB1Rl
@@ -2582,20 +2582,24 @@ GU5F4zAKBggqhkjOPQQDAgNJADBGAiEAiiNowddQeHZaZFIygwe6RW5/WG4sUXWC
 dkyl9CQzRaYCIQCFS1EvwZbZtMny27fYm1eeYciY0TkJTEi34H1KwyzzIA==
 -----END CERTIFICATE-----
 )");
+  EXPECT_TRUE(root);
+  return root;
 }
 
 static bssl::UniquePtr<EVP_PKEY> GetLeafKey() {
-  return KeyFromPEM(R"(
+  bssl::UniquePtr<EVP_PKEY> leaf_key = KeyFromPEM(R"(
 -----BEGIN PRIVATE KEY-----
 MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgj5WKHwHnziiyPauf
 7QukxTwtTyGZkk8qNdms4puJfxqhRANCAARNrkhxabALDlJrHtvkuDwvCWUF/oVC
 hr6PDITHi1lDlJzvVT4aXBH87sH2n2UV5zpx13NHkq1bIC8eRT8eOIe0
 -----END PRIVATE KEY-----
 )");
+  EXPECT_TRUE(leaf_key);
+  return leaf_key;
 }
 
 static bssl::UniquePtr<X509> GetLeafPublic() {
-  return CertFromPEM(R"(
+  bssl::UniquePtr<X509> leaf_public = CertFromPEM(R"(
 -----BEGIN CERTIFICATE-----
 MIIBaDCCAQ6gAwIBAgIBAjAKBggqhkjOPQQDAjASMRAwDgYDVQQDEwdUZXN0IENB
 MCAXDTAwMDEwMTAwMDAwMFoYDzIwOTkwMTAxMDAwMDAwWjAZMRcwFQYDVQQDEw5w
@@ -2607,10 +2611,12 @@ AwIDSAAwRQIhANqZRhDR/+QL05hsWXMYEwaiHifd9iakKoFEhKFchcF3AiBRAeXw
 wRGGT6+iPmTYM6N5/IDyAb5B9Ke38O6lLEsUwA==
 -----END CERTIFICATE-----
 )");
+  EXPECT_TRUE(leaf_public);
+  return leaf_public;
 }
 
 static bssl::UniquePtr<X509> GetLeafSecret() {
-  return CertFromPEM(R"(
+  bssl::UniquePtr<X509> leaf_secret = CertFromPEM(R"(
 -----BEGIN CERTIFICATE-----
 MIIBaTCCAQ6gAwIBAgIBAzAKBggqhkjOPQQDAjASMRAwDgYDVQQDEwdUZXN0IENB
 MCAXDTAwMDEwMTAwMDAwMFoYDzIwOTkwMTAxMDAwMDAwWjAZMRcwFQYDVQQDEw5z
@@ -2622,6 +2628,8 @@ AwIDSQAwRgIhAPQdIz1xCFkc9WuSkxOxJDpywZiEp9SnKcxJ9nwrlRp3AiEA+O3+
 XRqE7XFhHL+7TNC2a9OOAjQsEF137YPWo+rhgko=
 -----END CERTIFICATE-----
 )");
+  EXPECT_TRUE(leaf_secret);
+  return leaf_secret;
 }
 
 // When using the built-in verifier, test that |SSL_get0_ech_name_override| is
@@ -4514,6 +4522,23 @@ TEST(SSLTest, BuildCertChain) {
   ASSERT_TRUE(SSL_CTX_clear_chain_certs(ctx.get()));
   EXPECT_FALSE(SSL_CTX_build_cert_chain(ctx.get(), SSL_BUILD_CHAIN_FLAG_CHECK));
   EXPECT_TRUE(ExpectSingleError(ERR_LIB_SSL, SSL_R_CERTIFICATE_VERIFY_FAILED));
+
+  // |SSL_BUILD_CHAIN_FLAG_CHECK| and |SSL_BUILD_CHAIN_FLAG_UNTRUSTED| are
+  // mutually exclusive, with |SSL_BUILD_CHAIN_FLAG_CHECK| taking priority.
+  // The result with both set should be the same as only
+  // |SSL_BUILD_CHAIN_FLAG_CHECK| being set.
+  ASSERT_TRUE(SSL_CTX_clear_chain_certs(ctx.get()));
+  EXPECT_FALSE(SSL_CTX_build_cert_chain(
+      ctx.get(), SSL_BUILD_CHAIN_FLAG_CHECK | SSL_BUILD_CHAIN_FLAG_UNTRUSTED));
+  EXPECT_FALSE(SSL_CTX_build_cert_chain(ctx.get(), SSL_BUILD_CHAIN_FLAG_CHECK));
+  // First call with |SSL_BUILD_CHAIN_FLAG_CHECK| existing will fail, second
+  // call with |SSL_BUILD_CHAIN_FLAG_UNTRUSTED| will succeed.
+  EXPECT_FALSE(SSL_CTX_build_cert_chain(
+      ctx.get(), SSL_BUILD_CHAIN_FLAG_CHECK | SSL_BUILD_CHAIN_FLAG_UNTRUSTED));
+  EXPECT_EQ(SSL_CTX_build_cert_chain(ctx.get(), SSL_BUILD_CHAIN_FLAG_UNTRUSTED),
+            1);
+  // |SSL_BUILD_CHAIN_FLAG_CHECK| will succeed since we have a built chain now.
+  EXPECT_EQ(SSL_CTX_build_cert_chain(ctx.get(), SSL_BUILD_CHAIN_FLAG_CHECK), 1);
 
   // Test that successful verification with |SSL_BUILD_CHAIN_FLAG_IGNORE_ERROR|
   // does not return 2.

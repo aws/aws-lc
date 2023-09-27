@@ -1020,7 +1020,7 @@ static int ssl_build_cert_chain(CERT *cert, X509_STORE *cert_store, int flags) {
         return 0;
       }
     }
-    // Add EE cert too: it might be self signed.
+    // Add end-entity certificate too: it might be self-signed.
     if (!X509_STORE_add_cert(store.get(), leaf.get())) {
       return 0;
     }
