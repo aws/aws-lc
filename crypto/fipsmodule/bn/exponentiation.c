@@ -121,7 +121,7 @@
 
 #if !defined(OPENSSL_NO_ASM) &&                                                \
     (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE)) &&                      \
-    defined(OPENSSL_AARCH64) && defined(OPENSSL_BN_ASM_MONT)
+    defined(OPENSSL_AARCH64)
 
 #include "../../../third_party/s2n-bignum/include/s2n-bignum_aws-lc.h"
 
@@ -134,8 +134,6 @@ OPENSSL_INLINE int exponentiation_use_s2n_bignum(void) { return 1; }
 OPENSSL_INLINE int exponentiation_use_s2n_bignum(void) { return 0; }
 
 #endif
-
-#if defined(OPENSSL_BN_ASM_MONT)
 
 static void exponentiation_s2n_bignum_copy_from_prebuf(BN_ULONG *dest, int width,
                                         const BN_ULONG *table, int rowidx,
@@ -166,8 +164,6 @@ static void exponentiation_s2n_bignum_copy_from_prebuf(BN_ULONG *dest, int width
 
 #endif
 }
-
-#endif
 
 
 int BN_exp(BIGNUM *r, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx) {
@@ -898,13 +894,11 @@ static int copy_from_prebuf(BIGNUM *b, int top, const BN_ULONG *table, int idx,
     return 0;
   }
 
-#if defined(OPENSSL_BN_ASM_MONT)
   if (exponentiation_use_s2n_bignum()) {
     exponentiation_s2n_bignum_copy_from_prebuf(b->d, top, table, idx, window);
     b->width = top;
     return 1;
   }
-#endif
 
   OPENSSL_memset(b->d, 0, sizeof(BN_ULONG) * top);
   const int width = 1 << window;
