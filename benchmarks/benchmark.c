@@ -402,6 +402,10 @@ void call_bignum_sqrt_p25519(void) repeatfewer(10,bignum_sqrt_p25519(b0,b1))
 
 void call_bignum_sqrt_p25519_alt(void) repeatfewer(10,bignum_sqrt_p25519_alt(b0,b1))
 
+void call_bignum_invsqrt_p25519(void) repeatfewer(10,bignum_invsqrt_p25519(b0,b1))
+
+void call_bignum_invsqrt_p25519_alt(void) repeatfewer(10,bignum_invsqrt_p25519_alt(b0,b1))
+
 void call_bignum_mul_p25519(void) repeat(bignum_mul_p25519(b0,b1,b2))
 
 void call_bignum_mul_p25519_alt(void) repeat(bignum_mul_p25519_alt(b0,b1,b2))
@@ -957,6 +961,8 @@ int main(int argc, char *argv[])
   timingtest(all,"bignum_half_p521",call_bignum_half_p521);
   timingtest(all,"bignum_half_sm2",call_bignum_half_sm2);
   timingtest(all,"bignum_inv_p25519",call_bignum_inv_p25519);
+  timingtest(bmi,"bignum_invsqrt_p25519",call_bignum_invsqrt_p25519);
+  timingtest(all,"bignum_invsqrt_p25519_alt",call_bignum_invsqrt_p25519_alt);
   timingtest(all,"bignum_iszero (32)" ,call_bignum_iszero__32);
   timingtest(bmi,"bignum_kmul_16_32",call_bignum_kmul_16_32);
   timingtest(neon,"bignum_kmul_16_32_neon",call_bignum_kmul_16_32_neon);
