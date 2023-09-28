@@ -20,9 +20,13 @@ RUN set -ex && \
     git \
     ca-certificates \
     tar \
+    automake \
+    autoconf \
+    diffutils \
     wget \
     valgrind \
-    unzip && \
+    unzip \
+    zlib-devel && \
     # Based on https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html \
     curl "https://awscli.amazonaws.com/awscli-exe-linux-aarch64.zip" -o "awscliv2.zip" && \
     unzip awscliv2.zip && \
