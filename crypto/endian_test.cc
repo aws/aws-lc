@@ -133,7 +133,7 @@ TEST(EndianTest, BN_bin2bn) {
   input[255] = 0x02;
   ASSERT_NE(nullptr, BN_bin2bn(input, sizeof(input), x.get()));
   EXPECT_FALSE(BN_is_zero(x.get()));
-  for (int i = 1; i < (256*8/BN_BITS2) - 1; i++) {
+  for (size_t i = 1; i < (sizeof(input)*8/BN_BITS2) - 1; i++) {
     SCOPED_TRACE(i);
     EXPECT_EQ((uint64_t)0, x.get()->d[i]);
   }
@@ -211,7 +211,7 @@ TEST(EndianTest, AES) {
   // Initialize the key and message buffers with zeros
   uint8_t key[AES_BLOCK_SIZE] = {0};
   key[0] = 0xaa;
-  key[0] = 0xbb;
+  key[1] = 0xbb;
   uint8_t message[AES_BLOCK_SIZE] = {0};
   message[0] = 0xcc;
   message[1] = 0xdd;
@@ -226,7 +226,7 @@ TEST(EndianTest, AES) {
   AES_encrypt(message, encrypted_message, &aes_key);
 
   const uint8_t known_value_bytes[AES_BLOCK_SIZE] = {
-      0x15, 0x81, 0x0f, 0xf3, 0x0d, 0x23, 0x08, 0x71, 0x96, 0x05, 0x94, 0x12, 0x14, 0xb7, 0xd6, 0x69
+      0xf6, 0x8a, 0x88, 0x76, 0x05, 0x23, 0xd4, 0x14, 0x7e, 0x5a, 0xb8, 0x52, 0x8f, 0x56, 0x62, 0x3e
   };
   EXPECT_EQ(Bytes(known_value_bytes), Bytes(encrypted_message));
 }

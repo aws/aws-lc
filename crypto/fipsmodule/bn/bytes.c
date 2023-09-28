@@ -148,6 +148,7 @@ BIGNUM *BN_le2bn(const uint8_t *in, size_t len, BIGNUM *ret) {
   unsigned m;
 
   m = (len - 1) % BN_BYTES;
+  // size_t is unsigned so i >= 0 is always true
   for (size_t i = len - 1; i < len; i--) {
     word = (word << 8) | in[i];
     if (m-- == 0) {

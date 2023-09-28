@@ -701,9 +701,11 @@ endif()
 
 TEST_BIG_ENDIAN(BIG_ENDIAN)
 if(BIG_ENDIAN)
-  message(FATAL_ERROR "Big Endian is not supported.")
-# TODO: Enable BIG_ENDIAN once we have better support
-#  message(STATUS "Continuing with experimental support on big endian platform")
+  if(ENABLE_EXPERIMENTAL_BIG_ENDIAN_SUPPORT)
+    message(STATUS "Continuing with experimental support on big endian platform")
+  else()
+    message(FATAL_ERROR "Big Endian is not supported.")
+  endif()
 endif()
 
 if(OPENSSL_NO_SSE2_FOR_TESTING)
