@@ -84,7 +84,6 @@ extern "C" {
 #if defined(BORINGSSL_FIPS)
 #define AWSLC_FIPS
 #endif
-
 #if defined(__x86_64) || defined(_M_AMD64) || defined(_M_X64)
 #define OPENSSL_64_BIT
 #define OPENSSL_X86_64
@@ -100,6 +99,14 @@ extern "C" {
 #elif (defined(__PPC64__) || defined(__powerpc64__)) && defined(_LITTLE_ENDIAN)
 #define OPENSSL_64_BIT
 #define OPENSSL_PPC64LE
+#elif (defined(__PPC64__) || defined(__powerpc64__)) && defined(_BIG_ENDIAN)
+#define OPENSSL_64_BIT
+#define OPENSSL_PPC64BE
+#define OPENSSL_BIG_ENDIAN
+#elif (defined(__PPC__) || defined(__powerpc__)) && defined(_BIG_ENDIAN)
+#define OPENSSL_32_BIT
+#define OPENSSL_PPC32BE
+#define OPENSSL_BIG_ENDIAN
 #elif defined(__MIPSEL__) && !defined(__LP64__)
 #define OPENSSL_32_BIT
 #define OPENSSL_MIPS
@@ -113,7 +120,7 @@ extern "C" {
 #define OPENSSL_32_BIT
 #elif defined(__loongarch_lp64)
 #define OPENSSL_64_BIT
-#define OPENSSL_LOONGARCH64	
+#define OPENSSL_LOONGARCH64
 #elif defined(__pnacl__)
 #define OPENSSL_32_BIT
 #define OPENSSL_PNACL
