@@ -2536,10 +2536,7 @@ TEST(SSLTest, ECHPublicName) {
   EXPECT_FALSE(ssl_is_valid_ech_public_name(str_to_span("0X01.")));
 }
 
-// When using the built-in verifier, test that |SSL_get0_ech_name_override| is
-// applied automatically.
-TEST(SSLTest, ECHBuiltinVerifier) {
-  // These test certificates generated with the following Go program.
+// These test certificates generated with the following Go program.
   /* clang-format off
 func main() {
   notBefore := time.Date(2000, time.January, 1, 0, 0, 0, 0, time.UTC)
@@ -2573,6 +2570,7 @@ func main() {
   }
 }
 clang-format on */
+static bssl::UniquePtr<X509> GetLeafRoot() {
   bssl::UniquePtr<X509> root = CertFromPEM(R"(
 -----BEGIN CERTIFICATE-----
 MIIBRzCB7aADAgECAgEBMAoGCCqGSM49BAMCMBIxEDAOBgNVBAMTB1Rlc3QgQ0Ew
@@ -2584,7 +2582,11 @@ GU5F4zAKBggqhkjOPQQDAgNJADBGAiEAiiNowddQeHZaZFIygwe6RW5/WG4sUXWC
 dkyl9CQzRaYCIQCFS1EvwZbZtMny27fYm1eeYciY0TkJTEi34H1KwyzzIA==
 -----END CERTIFICATE-----
 )");
-  ASSERT_TRUE(root);
+  EXPECT_TRUE(root);
+  return root;
+}
+
+static bssl::UniquePtr<EVP_PKEY> GetLeafKey() {
   bssl::UniquePtr<EVP_PKEY> leaf_key = KeyFromPEM(R"(
 -----BEGIN PRIVATE KEY-----
 MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgj5WKHwHnziiyPauf
@@ -2592,7 +2594,11 @@ MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgj5WKHwHnziiyPauf
 hr6PDITHi1lDlJzvVT4aXBH87sH2n2UV5zpx13NHkq1bIC8eRT8eOIe0
 -----END PRIVATE KEY-----
 )");
-  ASSERT_TRUE(leaf_key);
+  EXPECT_TRUE(leaf_key);
+  return leaf_key;
+}
+
+static bssl::UniquePtr<X509> GetLeafPublic() {
   bssl::UniquePtr<X509> leaf_public = CertFromPEM(R"(
 -----BEGIN CERTIFICATE-----
 MIIBaDCCAQ6gAwIBAgIBAjAKBggqhkjOPQQDAjASMRAwDgYDVQQDEwdUZXN0IENB
@@ -2605,7 +2611,11 @@ AwIDSAAwRQIhANqZRhDR/+QL05hsWXMYEwaiHifd9iakKoFEhKFchcF3AiBRAeXw
 wRGGT6+iPmTYM6N5/IDyAb5B9Ke38O6lLEsUwA==
 -----END CERTIFICATE-----
 )");
-  ASSERT_TRUE(leaf_public);
+  EXPECT_TRUE(leaf_public);
+  return leaf_public;
+}
+
+static bssl::UniquePtr<X509> GetLeafSecret() {
   bssl::UniquePtr<X509> leaf_secret = CertFromPEM(R"(
 -----BEGIN CERTIFICATE-----
 MIIBaTCCAQ6gAwIBAgIBAzAKBggqhkjOPQQDAjASMRAwDgYDVQQDEwdUZXN0IENB
@@ -2618,8 +2628,13 @@ AwIDSQAwRgIhAPQdIz1xCFkc9WuSkxOxJDpywZiEp9SnKcxJ9nwrlRp3AiEA+O3+
 XRqE7XFhHL+7TNC2a9OOAjQsEF137YPWo+rhgko=
 -----END CERTIFICATE-----
 )");
-  ASSERT_TRUE(leaf_secret);
+  EXPECT_TRUE(leaf_secret);
+  return leaf_secret;
+}
 
+// When using the built-in verifier, test that |SSL_get0_ech_name_override| is
+// applied automatically.
+TEST(SSLTest, ECHBuiltinVerifier) {
   // Use different config IDs so that fuzzer mode, which breaks trial
   // decryption, will observe the key mismatch.
   bssl::UniquePtr<SSL_ECH_KEYS> keys = MakeTestECHKeys(/*config_id=*/1);
@@ -2637,7 +2652,7 @@ XRqE7XFhHL+7TNC2a9OOAjQsEF137YPWo+rhgko=
   // BoringSSL will internally override this setting with the public name.
   bssl::UniquePtr<X509_STORE> store(X509_STORE_new());
   ASSERT_TRUE(store);
-  ASSERT_TRUE(X509_STORE_add_cert(store.get(), root.get()));
+  ASSERT_TRUE(X509_STORE_add_cert(store.get(), GetLeafRoot().get()));
   SSL_CTX_set_cert_store(client_ctx.get(), store.release());
   SSL_CTX_set_verify(client_ctx.get(), SSL_VERIFY_PEER, nullptr);
   X509_VERIFY_PARAM_set_flags(SSL_CTX_get0_param(client_ctx.get()),
@@ -2664,10 +2679,10 @@ XRqE7XFhHL+7TNC2a9OOAjQsEF137YPWo+rhgko=
       ASSERT_TRUE(InstallECHConfigList(client.get(), keys.get()));
 
       // Configure the server with the selected certificate.
-      ASSERT_TRUE(SSL_use_certificate(server.get(), use_leaf_secret
-                                                        ? leaf_secret.get()
-                                                        : leaf_public.get()));
-      ASSERT_TRUE(SSL_use_PrivateKey(server.get(), leaf_key.get()));
+      ASSERT_TRUE(SSL_use_certificate(
+          server.get(),
+          use_leaf_secret ? GetLeafSecret().get() : GetLeafPublic().get()));
+      ASSERT_TRUE(SSL_use_PrivateKey(server.get(), GetLeafKey().get()));
 
       // The handshake may fail due to name mismatch or ECH reject. We check
       // |SSL_get_verify_result| to confirm the handshake got far enough.
@@ -4451,6 +4466,94 @@ static bool ExpectSingleError(int lib, int reason) {
   }
 
   return true;
+}
+
+TEST(SSLTest, BuildCertChain) {
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+
+  // No certificate set, so this should fail.
+  EXPECT_FALSE(SSL_CTX_build_cert_chain(ctx.get(), 0));
+  EXPECT_TRUE(ExpectSingleError(ERR_LIB_SSL, SSL_R_NO_CERTIFICATE_SET));
+
+  ASSERT_TRUE(SSL_CTX_use_certificate(ctx.get(), GetLeafPublic().get()));
+  ASSERT_TRUE(SSL_CTX_use_PrivateKey(ctx.get(), GetLeafKey().get()));
+
+  // Verification will fail because there is no valid root cert available.
+  EXPECT_FALSE(SSL_CTX_build_cert_chain(ctx.get(), 0));
+
+  // Should return 2 when |SSL_BUILD_CHAIN_FLAG_IGNORE_ERROR| is set.
+  EXPECT_EQ(
+      SSL_CTX_build_cert_chain(ctx.get(), SSL_BUILD_CHAIN_FLAG_IGNORE_ERROR),
+      2);
+  EXPECT_TRUE(ExpectSingleError(ERR_LIB_SSL, SSL_R_CERTIFICATE_VERIFY_FAILED));
+
+  // Should return 2, but with no error on the stack when
+  // |SSL_BUILD_CHAIN_FLAG_IGNORE_ERROR| and |SSL_BUILD_CHAIN_FLAG_CLEAR_ERROR|
+  // are set.
+  EXPECT_EQ(
+      SSL_CTX_build_cert_chain(ctx.get(), SSL_BUILD_CHAIN_FLAG_IGNORE_ERROR |
+                                              SSL_BUILD_CHAIN_FLAG_CLEAR_ERROR),
+      2);
+  EXPECT_FALSE(ERR_get_error());
+
+  // Pass in the trust store. |SSL_CTX_build_cert_chain| should succeed now.
+  ASSERT_TRUE(X509_STORE_add_cert(SSL_CTX_get_cert_store(ctx.get()),
+                                  GetLeafRoot().get()));
+  X509_VERIFY_PARAM_set_flags(SSL_CTX_get0_param(ctx.get()),
+                              X509_V_FLAG_NO_CHECK_TIME);
+  EXPECT_EQ(SSL_CTX_build_cert_chain(ctx.get(), 0), 1);
+  STACK_OF(X509) *chain;
+  ASSERT_TRUE(SSL_CTX_get0_chain_certs(ctx.get(), &chain));
+  EXPECT_TRUE(ChainsEqual(chain, {GetLeafRoot().get()}));
+
+  // Root cert is self-signed, so |SSL_BUILD_CHAIN_FLAG_UNTRUSTED| will
+  // still pass.
+  ASSERT_TRUE(SSL_CTX_clear_chain_certs(ctx.get()));
+  EXPECT_TRUE(
+      SSL_CTX_build_cert_chain(ctx.get(), SSL_BUILD_CHAIN_FLAG_UNTRUSTED));
+  ASSERT_TRUE(SSL_CTX_get0_chain_certs(ctx.get(), &chain));
+  EXPECT_TRUE(ChainsEqual(chain, {GetLeafRoot().get()}));
+
+  // |SSL_BUILD_CHAIN_FLAG_CHECK| uses the already built cert chain as the trust
+  // store and verifies against it. If we clear the cert chain, there should be
+  // no trust store to compare against if |SSL_BUILD_CHAIN_FLAG_CHECK| is still
+  // set.
+  EXPECT_EQ(SSL_CTX_build_cert_chain(ctx.get(), SSL_BUILD_CHAIN_FLAG_CHECK), 1);
+  ASSERT_TRUE(SSL_CTX_clear_chain_certs(ctx.get()));
+  EXPECT_FALSE(SSL_CTX_build_cert_chain(ctx.get(), SSL_BUILD_CHAIN_FLAG_CHECK));
+  EXPECT_TRUE(ExpectSingleError(ERR_LIB_SSL, SSL_R_CERTIFICATE_VERIFY_FAILED));
+
+  // |SSL_BUILD_CHAIN_FLAG_CHECK| and |SSL_BUILD_CHAIN_FLAG_UNTRUSTED| are
+  // mutually exclusive, with |SSL_BUILD_CHAIN_FLAG_CHECK| taking priority.
+  // The result with both set should be the same as only
+  // |SSL_BUILD_CHAIN_FLAG_CHECK| being set.
+  ASSERT_TRUE(SSL_CTX_clear_chain_certs(ctx.get()));
+  EXPECT_FALSE(SSL_CTX_build_cert_chain(
+      ctx.get(), SSL_BUILD_CHAIN_FLAG_CHECK | SSL_BUILD_CHAIN_FLAG_UNTRUSTED));
+  EXPECT_FALSE(SSL_CTX_build_cert_chain(ctx.get(), SSL_BUILD_CHAIN_FLAG_CHECK));
+  // First call with |SSL_BUILD_CHAIN_FLAG_CHECK| existing will fail, second
+  // call with |SSL_BUILD_CHAIN_FLAG_UNTRUSTED| will succeed.
+  EXPECT_FALSE(SSL_CTX_build_cert_chain(
+      ctx.get(), SSL_BUILD_CHAIN_FLAG_CHECK | SSL_BUILD_CHAIN_FLAG_UNTRUSTED));
+  EXPECT_EQ(SSL_CTX_build_cert_chain(ctx.get(), SSL_BUILD_CHAIN_FLAG_UNTRUSTED),
+            1);
+  // |SSL_BUILD_CHAIN_FLAG_CHECK| will succeed since we have a built chain now.
+  EXPECT_EQ(SSL_CTX_build_cert_chain(ctx.get(), SSL_BUILD_CHAIN_FLAG_CHECK), 1);
+
+  // Test that successful verification with |SSL_BUILD_CHAIN_FLAG_IGNORE_ERROR|
+  // does not return 2.
+  ASSERT_TRUE(SSL_CTX_clear_chain_certs(ctx.get()));
+  EXPECT_EQ(
+      SSL_CTX_build_cert_chain(ctx.get(), SSL_BUILD_CHAIN_FLAG_IGNORE_ERROR),
+      1);
+
+  // Test that successful verification with |SSL_BUILD_CHAIN_FLAG_NO_ROOT|
+  // does include the root cert.
+  ASSERT_TRUE(SSL_CTX_clear_chain_certs(ctx.get()));
+  EXPECT_EQ(SSL_CTX_build_cert_chain(ctx.get(), SSL_BUILD_CHAIN_FLAG_NO_ROOT),
+            1);
+  ASSERT_TRUE(SSL_CTX_get0_chain_certs(ctx.get(), &chain));
+  EXPECT_TRUE(ChainsEqual(chain, {}));
 }
 
 TEST_P(SSLVersionTest, SSLWriteRetry) {
