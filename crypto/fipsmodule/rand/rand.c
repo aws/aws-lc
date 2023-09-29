@@ -318,16 +318,7 @@ static int rdrand(uint8_t *buf, size_t len) {
 #if defined(FIPS_ENTROPY_SOURCE_PASSIVE)
 void RAND_load_entropy(uint8_t out_entropy[CTR_DRBG_ENTROPY_LEN],
                        uint8_t entropy[PASSIVE_ENTROPY_LOAD_LENGTH]) {
-
   OPENSSL_memcpy(out_entropy, entropy, CTR_DRBG_ENTROPY_LEN);
-
-  // Whiten the resulting entropy
-  OPENSSL_STATIC_ASSERT(PASSIVE_ENTROPY_LOAD_LENGTH == (PASSIVE_ENTROPY_WHITEN_FACTOR * CTR_DRBG_ENTROPY_LEN), PASSIVE_ENTROPY_LOAD_LENGTH_wrong_size);
-  for (size_t i = 1; i < PASSIVE_ENTROPY_WHITEN_FACTOR; i++) {
-    for (size_t j = 0; j < CTR_DRBG_ENTROPY_LEN; j++) {
-      out_entropy[j] ^= entropy[CTR_DRBG_ENTROPY_LEN * i + j];
-    }
-  }
 }
 
 void CRYPTO_get_seed_entropy(uint8_t entropy[PASSIVE_ENTROPY_LOAD_LENGTH],
