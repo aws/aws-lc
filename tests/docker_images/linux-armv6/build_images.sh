@@ -22,7 +22,7 @@ SCRIPT_DIR=$(dirname "$(readlink -f "${0}")")
 
 docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
 
-ARCH_NAME=ppc
+ARCH_NAME=armv6
 
 X_TOOLS_FILE=${ARCH_NAME}-x-tools
 if [ ! -f "./ubuntu-x-tools/${X_TOOLS_FILE}.tar.xz" ]; then
@@ -35,6 +35,7 @@ if ! docker buildx inspect ${BUILDER_NAME}; then
     docker buildx create --name ${BUILDER_NAME} --use
 fi
 
+#docker buildx build -t ubuntu-${ARCH_NAME}:test "${SCRIPT_DIR}"/ubuntu-test --load
 docker buildx build -t ubuntu-${ARCH_NAME}:x-tools "${SCRIPT_DIR}"/ubuntu-x-tools --load
 
 docker buildx rm ${BUILDER_NAME}

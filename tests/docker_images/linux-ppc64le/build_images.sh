@@ -26,11 +26,8 @@ ARCH_NAME=ppc64le
 
 X_TOOLS_FILE=${ARCH_NAME}-x-tools
 if [ ! -f "./ubuntu-x-tools/${X_TOOLS_FILE}.tar.xz" ]; then
-  if ! aws sts get-caller-identity &> /dev/null; then
-      echo "AWS credentials are invalid. Please verify AWS credentials and try again."
-      exit 1
-  fi
-  aws s3 cp "s3://aws-libcrypto/cross-compile-toolchains/host-x86_64-pc-linux-gnu/${X_TOOLS_FILE}.tar.xz" ./ubuntu-x-tools/
+  wget "https://aws-libcrypto.s3.us-west-2.amazonaws.com/cross-compile-toolchains/host-x86_64-pc-linux-gnu/${X_TOOLS_FILE}.tar.xz"
+  mv ${X_TOOLS_FILE}.tar.xz ./ubuntu-x-tools/
 fi
 
 BUILDER_NAME=${ARCH_NAME}-builder
