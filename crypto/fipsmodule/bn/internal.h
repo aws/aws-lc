@@ -767,7 +767,7 @@ void bn_words_to_big_endian(uint8_t *out, size_t out_len, const BN_ULONG *in,
 // is in little-endian word order with |out[0]| being the least-significant word.
 // |out_len| must be large enough to represent any |in_len|-byte value. That is,
 // |out_len| must be at least |BN_BYTES * in_len|.
-void bn_little_endian_to_words(BN_ULONG *out, size_t out_len, const uint8_t *in, size_t in_len);
+void bn_little_endian_to_words(BN_ULONG *out, size_t out_len, const uint8_t *in, const size_t in_len);
 
 // bn_words_to_little_endian represents |in_len| words from |in| (in little-endian
 // word order) as a little-endian, unsigned integer in |out_len| bytes. It
@@ -776,7 +776,7 @@ void bn_little_endian_to_words(BN_ULONG *out, size_t out_len, const uint8_t *in,
 //
 // Note |out_len| may be less than |BN_BYTES * in_len| if |in| is known to have
 // leading zeros.
-void bn_words_to_little_endian(uint8_t *out, size_t out_len, const BN_ULONG *in, size_t in_len);
+void bn_words_to_little_endian(uint8_t *out, size_t out_len, const BN_ULONG *in, const size_t in_len);
 
 #if defined(__cplusplus)
 }  // extern C

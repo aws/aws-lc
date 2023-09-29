@@ -235,7 +235,7 @@ size_t BN_bn2bin(const BIGNUM *in, uint8_t *out) {
   return n;
 }
 
-void bn_words_to_little_endian(uint8_t *out, size_t out_len, const BN_ULONG *in, size_t in_len) {
+void bn_words_to_little_endian(uint8_t *out, size_t out_len, const BN_ULONG *in, const size_t in_len) {
   // The caller should have selected an output length without truncation.
   assert(fits_in_bytes(in, in_len, out_len));
   size_t num_bytes = in_len * sizeof(BN_ULONG);
