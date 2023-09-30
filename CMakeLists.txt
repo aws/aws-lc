@@ -308,7 +308,9 @@ if (GCC)
   endif ()
 endif ()
 
+# Private build configuration. Subject to deprecation at any time.
 if(AWS_LC_WARNINGS_ARE_NOT_ERRORS)
+  message(WARNING "Compiler warning-diagnostics will not fail the build")
   set(AWS_LC_WERROR "")
 else()
   set(AWS_LC_WERROR "-Werror")
