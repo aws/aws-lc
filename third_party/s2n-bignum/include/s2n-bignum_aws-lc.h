@@ -192,8 +192,11 @@ bignum_kmul_16_32_neon(uint64_t z[static 32], const uint64_t x[static 16],
 // Inputs: z[2*k], m[k], w; outputs: function return (extra result bit) and z[2*k]
 extern uint64_t bignum_emontredc_8n(uint64_t k, uint64_t *z, const uint64_t *m,
                                     uint64_t w);
+// Neon version of bignum_emontredc_8n.
+// Takes an additional temporary buffer to hold differences used in ADK.
+// temp is uint64_t[12*(k/4-1)].
 extern uint64_t bignum_emontredc_8n_neon(uint64_t k, uint64_t *z, const uint64_t *m,
-                                         uint64_t w);
+                                         uint64_t w, uint64_t *temp);
 
 // Optionally subtract, z := x - y (if p nonzero) or z := x (if p zero)
 // Inputs: x[k], p, y[k]; outputs: function return (carry-out) and z[k]

@@ -518,8 +518,13 @@ static void montgomery_s2n_bignum_mul_mont(BN_ULONG *rp, const BN_ULONG *ap,
   //    A. The result of step 1 >= 2^(64*num), meaning that bignum_emontredc_8n
   //       returned 1. Since m is less than 2^(64*num), (result of step 1) >= m holds.
   //    B. The result of step 1 fits in 2^(64*num), and the result >= m.
+
+  // temp's size is 12 * (num / 4 - 1) where num's upperbound is
+  // BN_MONTGOMERY_MAX_WORDS (caller's assertion), and num is divisible by 8
+  // by montgomery_use_s2n_bignum(num).
+  uint64_t temp[12 * (BN_MONTGOMERY_MAX_WORDS / 4 - 1)];
   uint64_t c = CRYPTO_is_NEON_capable() ? 
-               bignum_emontredc_8n_neon(num, mulres, np, w) :
+               bignum_emontredc_8n_neon(num, mulres, np, w, temp) :
                bignum_emontredc_8n(num, mulres, np, w); // c: case A
   c |= bignum_ge(num, mulres + num, num, np);  // c: case B
   // Optionally subtract and store the result at rp
