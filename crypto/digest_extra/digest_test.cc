@@ -277,7 +277,6 @@ static bool DoFinal(const DigestTestVector *test, EVP_MD_CTX *ctx, uint8_t *md_o
 
 static void TestDigest(const DigestTestVector *test) {
     SCOPED_TRACE(test->md.name);
-    const size_t repeat = test->md.one_shot_xof_func != nullptr ? 1 : test->repeat;
     const bool is_xof = EVP_MD_flags(test->md.func()) & EVP_MD_FLAG_XOF;
     const size_t repeat = is_xof ? 1 : test->repeat;
     const size_t expected_output_size = is_xof
