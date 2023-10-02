@@ -272,7 +272,7 @@ static bool DoFinal(const DigestTestVector *test, EVP_MD_CTX *ctx, uint8_t *md_o
         *out_size = test->repeat;
         return EVP_DigestFinalXOF(ctx, md_out, *out_size);
     }
-    return EVP_DigestFinal_ex(ctx, md_out, out_size);
+    return EVP_DigestFinal(ctx, md_out, out_size);
 }
 
 static void TestDigest(const DigestTestVector *test) {
@@ -362,6 +362,9 @@ static void TestDigest(const DigestTestVector *test) {
     }
     ASSERT_TRUE(DoFinal(test, copy.get(), digest.get(), &digest_len));
     CompareDigest(test, digest.get(), digest_len);
+
+    // Digest context should be cleared by finalization
+    EXPECT_FALSE(DoFinal(test, copy.get(), digest.get(), &digest_len));
 
     // Test the one-shot function.
     if (is_xof || (test->md.one_shot_func && test->repeat == 1)) {
