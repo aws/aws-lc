@@ -284,7 +284,7 @@ int EVP_Digest(const void *data, size_t count, uint8_t *out_md,
         EVP_DigestUpdate(&ctx, data, count);
   if (EVP_MD_flags(type) & EVP_MD_FLAG_XOF) {
     if (out_size == NULL) {
-      OPENSSL_PUT_ERROR(DIGEST, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+      OPENSSL_PUT_ERROR(DIGEST, ERR_R_PASSED_NULL_PARAMETER);
       return 0;
     }
     ret &= EVP_DigestFinalXOF(&ctx, out_md, *out_size);
