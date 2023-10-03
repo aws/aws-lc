@@ -159,6 +159,22 @@ TEST(EndianTest, BN_le2bn) {
   EXPECT_EQ((uint64_t)0x0201 << (BN_BITS2-16), x.get()->d[(256*8/BN_BITS2)-1]);
 }
 
+TEST(EndianTest, BN_le2bn_255) {
+  bssl::UniquePtr<BIGNUM> x(BN_new());
+  uint8_t input[255];
+  OPENSSL_memset(input, 0, sizeof(input));
+  input[0] = 0xaa;
+  input[1] = 0x01;
+  input[254] = 0x01;
+  ASSERT_NE(nullptr, BN_le2bn(input, sizeof(input), x.get()));
+  EXPECT_FALSE(BN_is_zero(x.get()));
+  for (size_t i = 1; i <= (255/sizeof(BN_ULONG)) - 1; i++) {
+    EXPECT_EQ((BN_ULONG)0, x.get()->d[i]);
+  }
+  EXPECT_EQ((BN_ULONG)0x01aa, x.get()->d[0]);
+  EXPECT_EQ((BN_ULONG)0x01 << (BN_BITS2-16), x.get()->d[255/sizeof(BN_ULONG)]);
+}
+
 TEST(EndianTest, BN_bn2bin) {
   bssl::UniquePtr<BIGNUM> x(BN_new());
   uint8_t input[256];
@@ -186,6 +202,22 @@ TEST(EndianTest, BN_bn2le_padded) {
   ASSERT_NE(nullptr, BN_le2bn(input, sizeof(input), x.get()));
 
   uint8_t out[256];
+  OPENSSL_memset(out, 0, sizeof(out));
+  EXPECT_EQ(1, BN_bn2le_padded(out, sizeof(out), x.get()));
+  EXPECT_EQ(Bytes(input), Bytes(out));
+}
+
+TEST(EndianTest, BN_bn2le_padded_255) {
+  bssl::UniquePtr<BIGNUM> x(BN_new());
+  uint8_t input[255];
+  OPENSSL_memset(input, 0, sizeof(input));
+  input[0] = 0xaa;
+  input[1] = 0x01;
+  input[253] = 0x01;
+  input[254] = 0x01;
+  ASSERT_NE(nullptr, BN_le2bn(input, sizeof(input), x.get()));
+
+  uint8_t out[255];
   OPENSSL_memset(out, 0, sizeof(out));
   EXPECT_EQ(1, BN_bn2le_padded(out, sizeof(out), x.get()));
   EXPECT_EQ(Bytes(input), Bytes(out));

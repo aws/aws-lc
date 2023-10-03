@@ -176,6 +176,8 @@ static const p521_limb_t p521_felem_p[P521_NLIMBS] = {
 
 #endif // P521_USE_S2N_BIGNUM_FIELD_ARITH
 
+#define P521_FELEM_BYTES (66)
+
 static p521_limb_t p521_felem_nz(const p521_limb_t in1[P521_NLIMBS]) {
   p521_limb_t is_not_zero = 0;
   for (int i = 0; i < P521_NLIMBS; i++) {
@@ -217,8 +219,8 @@ static void p521_felem_cmovznz(p521_limb_t out[P521_NLIMBS],
 // NOTE: the input and output are in little-endian representation.
 static void p521_from_generic(p521_felem out, const EC_FELEM *in) {
 #ifdef OPENSSL_BIG_ENDIAN
-  uint8_t tmp[66];
-  bn_words_to_little_endian(tmp, 66, in->words, EC_MAX_WORDS);
+  uint8_t tmp[P521_FELEM_BYTES];
+  bn_words_to_little_endian(tmp, P521_FELEM_BYTES, in->words, EC_MAX_WORDS);
   p521_felem_from_bytes(out, tmp);
 #else
   p521_felem_from_bytes(out, (const uint8_t *)in->words);
@@ -236,9 +238,9 @@ static void p521_to_generic(EC_FELEM *out, const p521_felem in) {
   // extra 6 bytes are zeroed out. To avoid confusion over 32 vs. 64 bit
   // systems and Fiat's vs. ours representation we zero out the whole element.
 #ifdef OPENSSL_BIG_ENDIAN
-  uint8_t tmp[66];
+  uint8_t tmp[P521_FELEM_BYTES];
   p521_felem_to_bytes(tmp, in);
-  bn_little_endian_to_words(out->words, EC_MAX_WORDS, tmp, 66);
+  bn_little_endian_to_words(out->words, EC_MAX_WORDS, tmp, P521_FELEM_BYTES);
 #else
   OPENSSL_memset((uint8_t*)out->words, 0, sizeof(out->words));
   // Convert the element to bytes.
