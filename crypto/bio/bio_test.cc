@@ -696,4 +696,23 @@ TEST_P(BIOPairTest, TestCallbacks) {
   ASSERT_EQ(param_len_ex[0], 0u);
 }
 
+static long callback(BIO *b, int state, int res) {
+  EXPECT_EQ(state, 0);
+  EXPECT_EQ(res, -1);
+  return 0;
+}
+
+TEST(BIOTest, InvokeConnectCallback) {
+  BIO *bio = BIO_new(BIO_s_connect());
+  ASSERT_NE(bio, nullptr);
+
+  ASSERT_TRUE(BIO_set_conn_hostname(bio, "localhost"));
+  ASSERT_TRUE(BIO_set_conn_port(bio, "8080"));
+  ASSERT_TRUE(BIO_callback_ctrl(bio, BIO_CTRL_SET_CALLBACK, callback));
+
+  ASSERT_EQ(BIO_do_connect(bio), 0);
+
+  ASSERT_TRUE(BIO_free(bio));
+}
+
 INSTANTIATE_TEST_SUITE_P(All, BIOPairTest, testing::Values(false, true));
