@@ -1207,19 +1207,14 @@ Span<const NamedGroup> NamedGroups();
 // Hybrid groups adhere to the draft specification:
 // https://datatracker.ietf.org/doc/html/draft-ietf-tls-hybrid-design
 #define NUM_HYBRID_COMPONENTS 2
-  struct HybridGroup {
-    // Just like regular groups, each hybrid group has a group ID that
-    // identifies the group as a whole unit...
-    uint16_t group_id;
+struct HybridGroup {
+  // Just like regular groups, each hybrid group has a group ID that
+  // identifies the group as a whole unit...
+  uint16_t group_id;
 
-    // ...and each component of the hybrid group has its own group ID
-    uint16_t component_group_ids[NUM_HYBRID_COMPONENTS];
-
-    // The sizes, in bytes, of the key shares that are output by each
-    // component's SSLKeyShare::Offer() and SSLKeyShare::Accept() fucntions
-    size_t offer_share_sizes[NUM_HYBRID_COMPONENTS];
-    size_t accept_share_sizes[NUM_HYBRID_COMPONENTS];
-  };
+  // ...and each component of the hybrid group has its own group ID
+  uint16_t component_group_ids[NUM_HYBRID_COMPONENTS];
+};
 
 // HybridGroups returns all supported hybrid groups. A hybrid group will likely
 // (but not necessarily) contain at least one PQ group. Marked with

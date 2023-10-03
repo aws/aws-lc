@@ -164,6 +164,16 @@ struct GroupTest {
   size_t shared_secret_size;
 };
 
+struct HybridGroupTest {
+  int nid;
+  uint16_t group_id;
+  size_t offer_key_share_size;
+  size_t accept_key_share_size;
+  size_t shared_secret_size;
+  size_t offer_share_sizes[NUM_HYBRID_COMPONENTS];
+  size_t accept_share_sizes[NUM_HYBRID_COMPONENTS];
+};
+
 struct HybridHandshakeTest {
   // The curves rule string to apply to the client
   const char *client_rule;
@@ -632,7 +642,7 @@ static const CurveTest kCurveTests[] = {
 
 // SECP256R1:     https://datatracker.ietf.org/doc/html/rfc8446#section-4.2.8.2
 // X25519:        https://datatracker.ietf.org/doc/html/rfc8446#section-4.2.8.2
-static const size_t secp256r1_key_share_size = ((32 * 2) + 1);
+static const size_t p256_uncompressed_share_size = ((32 * 2) + 1);
 static const size_t secp256r1_secret_size = 32;
 
 static const size_t x25519_key_share_size = 32;
@@ -655,13 +665,21 @@ static const GroupTest kKemGroupTests[] = {
   },
 };
 
-static const GroupTest kHybridGroupTests[] = {
+static const HybridGroupTest kHybridGroupTests[] = {
   {
     NID_SecP256r1Kyber768Draft00,
     SSL_GROUP_SECP256R1_KYBER768_DRAFT00,
-    secp256r1_key_share_size + kyber768_r3_offer_key_share_size,
-    secp256r1_key_share_size + kyber768_r3_accept_key_share_size,
+    p256_uncompressed_share_size + kyber768_r3_offer_key_share_size,
+    p256_uncompressed_share_size + kyber768_r3_accept_key_share_size,
     secp256r1_secret_size + kyber768_r3_secret_size,
+    {
+      p256_uncompressed_share_size,       // offer_share_sizes[0]
+      kyber768_r3_offer_key_share_size,   // offer_share_sizes[1]
+    },
+    {
+      p256_uncompressed_share_size,       // accept_share_sizes[0]
+      kyber768_r3_accept_key_share_size,  // accept_share_sizes[1]
+    },
   },
   {
     NID_X25519Kyber768Draft00,
@@ -669,6 +687,14 @@ static const GroupTest kHybridGroupTests[] = {
     x25519_key_share_size + kyber768_r3_offer_key_share_size,
     x25519_key_share_size + kyber768_r3_accept_key_share_size,
     x25519_secret_size + kyber768_r3_secret_size,
+    {
+      x25519_key_share_size,              // offer_share_sizes[0]
+      kyber768_r3_offer_key_share_size,   // offer_share_sizes[1]
+    },
+    {
+      x25519_key_share_size,              // accept_share_sizes[0]
+      kyber768_r3_accept_key_share_size,  // accept_share_sizes[1]
+    },
   },
 };
 
@@ -11060,7 +11086,7 @@ TEST(SSLTest, BadKemKeyShareFinish) {
 
 // Test a successful round-trip for HybridKeyShare
 TEST(SSLTest, HybridKeyShare) {
-  for (const GroupTest &t : kHybridGroupTests) {
+  for (const HybridGroupTest &t : kHybridGroupTests) {
     // Set up client and server with test case parameters
     bssl::UniquePtr<SSLKeyShare> client_key_share = SSLKeyShare::Create(t.group_id);
     bssl::UniquePtr<SSLKeyShare> server_key_share = SSLKeyShare::Create(t.group_id);
@@ -11117,7 +11143,7 @@ TEST(SSLTest, HybridKeyShare) {
 
 // Test failure cases for HybridKeyShare::Offer()
 TEST(SSLTest, BadHybridKeyShareOffer) {
-  for (const GroupTest &t : kHybridGroupTests) {
+  for (const HybridGroupTest &t : kHybridGroupTests) {
     // Basic nullptr check
     {
       bssl::UniquePtr<SSLKeyShare> client_key_share = SSLKeyShare::Create(t.group_id);
@@ -11185,7 +11211,7 @@ TEST(SSLTest, BadHybridKeyShareOffer) {
 
 // Test failure cases for HybridKeyShare::Accept()
 TEST(SSLTest, BadHybridKeyShareAccept) {
-  for (const GroupTest &t : kHybridGroupTests) {
+  for (const HybridGroupTest &t : kHybridGroupTests) {
     // Basic nullptr checks
     {
       bssl::UniquePtr<SSLKeyShare> server_key_share = SSLKeyShare::Create(t.group_id);
@@ -11412,7 +11438,8 @@ TEST(SSLTest, BadHybridKeyShareAccept) {
         uint8_t *buffer = (uint8_t *)OPENSSL_malloc(client_out_public_key_len);
         ASSERT_TRUE(buffer);
         OPENSSL_memcpy(buffer, client_out_public_key_data, client_out_public_key_len);
-        for (size_t j = client_public_key_index; j < hybrid_group->offer_share_sizes[i]; j++) {
+
+        for (size_t j = client_public_key_index; j < t.offer_share_sizes[i]; j++) {
           buffer[j] = 7; // 7 is arbitrary
         }
         Span<const uint8_t> client_public_key =
@@ -11455,7 +11482,7 @@ TEST(SSLTest, BadHybridKeyShareAccept) {
           EXPECT_EQ(server_alert, SSL_AD_DECODE_ERROR);
         }
 
-        client_public_key_index += hybrid_group->offer_share_sizes[i];
+        client_public_key_index += t.offer_share_sizes[i];
         CBB_cleanup(&client_out_public_key);
         CBB_cleanup(&server_out_public_key);
         OPENSSL_free(buffer);
@@ -11466,7 +11493,7 @@ TEST(SSLTest, BadHybridKeyShareAccept) {
 
 // Test failure cases for HybridKeyShare::Finish()
 TEST(SSLTest, BadHybridKeyShareFinish) {
-  for (const GroupTest &t : kHybridGroupTests) {
+  for (const HybridGroupTest &t : kHybridGroupTests) {
     // Basic nullptr checks
     {
       bssl::UniquePtr<SSLKeyShare> client_key_share = SSLKeyShare::Create(t.group_id);
@@ -11676,7 +11703,7 @@ TEST(SSLTest, BadHybridKeyShareFinish) {
         uint8_t *buffer = (uint8_t *)OPENSSL_malloc(server_out_public_key_len);
         ASSERT_TRUE(buffer);
         OPENSSL_memcpy(buffer, server_out_public_key_data, server_out_public_key_len);
-        for (size_t j = server_public_key_index; j < hybrid_group->accept_share_sizes[i]; j++) {
+        for (size_t j = server_public_key_index; j < t.accept_share_sizes[i]; j++) {
           buffer[j] = 7; // 7 is arbitrary
         }
         Span<const uint8_t> server_public_key =
@@ -11713,7 +11740,7 @@ TEST(SSLTest, BadHybridKeyShareFinish) {
           EXPECT_EQ(client_alert, SSL_AD_DECODE_ERROR);
         }
 
-        server_public_key_index += hybrid_group->accept_share_sizes[i];
+        server_public_key_index += t.accept_share_sizes[i];
         CBB_cleanup(&client_out_public_key);
         CBB_cleanup(&server_out_public_key);
         OPENSSL_free(buffer);

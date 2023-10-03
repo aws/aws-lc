@@ -227,18 +227,12 @@ class KEMKeyShare : public SSLKeyShare {
       return false;
     }
 
-    // Write the public key to |out|
-    Array<uint8_t> public_key;
-    if (!public_key.Init(public_key_len)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-      return false;
-    }
-
+    uint8_t *public_key = NULL;
     size_t public_key_bytes_written = public_key_len;
-    if (!EVP_PKEY_get_raw_public_key(pkey.get(), public_key.data(),
+    if (!CBB_add_space(out, &public_key, public_key_len) ||
+        !EVP_PKEY_get_raw_public_key(pkey.get(), public_key,
                                      &public_key_bytes_written) ||
-                                     public_key_bytes_written != public_key_len ||
-                                     !CBB_add_bytes(out, public_key.data(), public_key_len)) {
+                                     public_key_bytes_written != public_key_len) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       return false;
     }
@@ -316,21 +310,22 @@ class KEMKeyShare : public SSLKeyShare {
     // EVP_PKEY_encapsulate() will generate a shared secret, then encrypt it
     // with the peer's public key. We send the resultant ciphertext to the
     // peer by writing it to |out_public_key|, then...
-    Array<uint8_t> ciphertext;
     Array<uint8_t> shared_secret;
-    if (!ciphertext.Init(ciphertext_len) || !shared_secret.Init(secret_len)) {
+    if (!shared_secret.Init(secret_len)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return false;
     }
 
+    uint8_t *ciphertext = NULL;
     size_t ciphertext_bytes_written = ciphertext_len;
     size_t secret_bytes_written = secret_len;
-    if (!EVP_PKEY_encapsulate(ctx_.get(), ciphertext.data(),
+
+    if (!CBB_add_space(out_public_key, &ciphertext, ciphertext_len) ||
+        !EVP_PKEY_encapsulate(ctx_.get(), ciphertext,
                               &ciphertext_bytes_written, shared_secret.data(),
                               &secret_bytes_written) ||
                               ciphertext_bytes_written != ciphertext_len ||
-                              secret_bytes_written != secret_len ||
-                              !CBB_add_bytes(out_public_key, ciphertext.data(), ciphertext_len)) {
+                              secret_bytes_written != secret_len) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       return false;
     }
@@ -390,19 +385,22 @@ class KEMKeyShare : public SSLKeyShare {
     // key to decapsulate it, and retain the shared secret by writing
     // it to |out_secret|.
     uint8_t *ciphertext = (uint8_t *)peer_key.begin();
-    if (!out_secret->Init(secret_len)) {
+    Array<uint8_t> shared_secret;
+    if (!shared_secret.Init(secret_len)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return false;
     }
 
     size_t secret_bytes_written = secret_len;
-    if (!EVP_PKEY_decapsulate(ctx_.get(), out_secret->data(),
+    if (!EVP_PKEY_decapsulate(ctx_.get(), shared_secret.data(),
                               &secret_bytes_written, ciphertext,
                               ciphertext_len) ||
                               secret_bytes_written != secret_len) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       return false;
     }
+
+    *out_secret = std::move(shared_secret);
 
     // Success; clear the alert
     *out_alert = 0;
@@ -415,15 +413,35 @@ class KEMKeyShare : public SSLKeyShare {
   UniquePtr<EVP_PKEY_CTX> ctx_;
 };
 
+// The key share sizes are taken from the corresponding specification.
+//
+// Kyber Round 3: https://pq-crystals.org/kyber/data/kyber-specification-round3-20210804.pdf
+// SECP256R1:     https://datatracker.ietf.org/doc/html/rfc8446#section-4.2.8.2
+// X25519:        https://datatracker.ietf.org/doc/html/rfc8446#section-4.2.8.2
+static const size_t p256_uncompressed_share_size = ((32 * 2) + 1);
+static const size_t x25519_share_size = 32;
+
+// Kyber Round 3: https://pq-crystals.org/kyber/data/kyber-specification-round3-20210804.pdf
+static const size_t kyber768_r3_public_key_size = 1184;
+static const size_t kyber768_r3_ciphertext_size = 1088;
+
 // A HybridKeyShare consists of key shares from two or more component groups,
 // all of which are used to generate a hybrid shared secret.
 // See https://datatracker.ietf.org/doc/html/draft-ietf-tls-hybrid-design.
   class HybridKeyShare : public SSLKeyShare {
   public:
-    HybridKeyShare(uint16_t group_id) : group_id_(group_id), hybrid_group_(nullptr) {
-      for (UniquePtr<SSLKeyShare> &key_share : key_shares_) {
-        key_share = nullptr;
+    HybridKeyShare(uint16_t group_id) : group_id_(group_id),
+    exchange_performed(false), hybrid_group_(nullptr) {
+      for (const HybridGroup &hybrid_group : HybridGroups()) {
+         if (group_id_ == hybrid_group.group_id) {
+           hybrid_group_ = &hybrid_group;
+           for (size_t i = 0; i < NUM_HYBRID_COMPONENTS; i++) {
+             key_shares_[i] = SSLKeyShare::Create(hybrid_group.component_group_ids[i]);
+           }
+           return;
+         }
       }
+      hybrid_group_ = nullptr;
     }
 
     uint16_t GroupID() const override { return group_id_; }
@@ -437,7 +455,8 @@ class KEMKeyShare : public SSLKeyShare {
         return false;
       }
 
-      if (!init_component_key_shares()) {
+      if (!hybrid_group_ || this->exchange_performed) {
+        OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
         return false;
       }
 
@@ -449,6 +468,7 @@ class KEMKeyShare : public SSLKeyShare {
           return false;
         }
       }
+      this->exchange_performed = true;
       return true;
     }
 
@@ -476,7 +496,8 @@ class KEMKeyShare : public SSLKeyShare {
         return false;
       }
 
-      if (!init_component_key_shares()) {
+      if (!hybrid_group_ || this->exchange_performed) {
+        OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
         return false;
       }
 
@@ -495,7 +516,11 @@ class KEMKeyShare : public SSLKeyShare {
       // component shared secrets.
       size_t peer_key_index = 0;
       for (size_t i = 0; i < NUM_HYBRID_COMPONENTS; i++) {
-        size_t component_key_size = hybrid_group_->offer_share_sizes[i];
+        size_t component_key_size = 0;
+        if (!get_component_offer_key_share_size(&component_key_size, hybrid_group_->component_group_ids[i])) {
+          OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+          return false;
+        }
 
         // Verify that |peer_key| contains enough data
         if (peer_key_index + component_key_size > peer_key.size()) {
@@ -537,6 +562,8 @@ class KEMKeyShare : public SSLKeyShare {
 
       // Success; clear the alert
       *out_alert = 0;
+
+      this->exchange_performed = true;
       return true;
     }
 
@@ -555,9 +582,7 @@ class KEMKeyShare : public SSLKeyShare {
         return false;
       }
 
-      // hybrid_group_ should have been initialized
-      // in a previous call to Offer()
-      if (!hybrid_group_) {
+      if (!hybrid_group_ || !this->exchange_performed) {
         OPENSSL_PUT_ERROR(SSL, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
         return false;
       }
@@ -575,7 +600,12 @@ class KEMKeyShare : public SSLKeyShare {
       // concatenation of all component shared secrets.
       size_t peer_key_index = 0;
       for (size_t i = 0; i < NUM_HYBRID_COMPONENTS; i++) {
-        size_t component_key_size = hybrid_group_->accept_share_sizes[i];
+
+        size_t component_key_size = 0;
+        if (!get_component_accept_key_share_size(&component_key_size, hybrid_group_->component_group_ids[i])) {
+          OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+          return false;
+        }
 
         // Verify that |peer_key| contains enough data
         if (peer_key_index + component_key_size > peer_key.size()) {
@@ -621,25 +651,42 @@ class KEMKeyShare : public SSLKeyShare {
     }
 
   private:
-   bool init_component_key_shares() {
-      // The component key shares should only be initialized once
-      if (hybrid_group_) {
-        return false;
-      }
-
-     for (const HybridGroup &hybrid_group : HybridGroups()) {
-       if (group_id_ == hybrid_group.group_id) {
-         hybrid_group_ = &hybrid_group;
-         for (size_t i = 0; i < NUM_HYBRID_COMPONENTS; i++) {
-           key_shares_[i] = SSLKeyShare::Create(hybrid_group.component_group_ids[i]);
-         }
-         return true;
-       }
+   // Only need to support SSL Groups that are a component of a supported HybridKeyShare
+   bool get_component_offer_key_share_size(size_t *out, uint16_t component_group_id) {
+     switch (component_group_id) {
+     case SSL_GROUP_SECP256R1:
+       *out = p256_uncompressed_share_size;
+       return true;
+     case SSL_GROUP_KYBER768_R3:
+       *out = kyber768_r3_public_key_size;
+       return true;
+     case SSL_GROUP_X25519:
+       *out = x25519_share_size;
+       return true;
+     default:
+       return false;
      }
-      return false;
+   }
+
+   // Only need to support SSL Groups that are a component of a supported HybridKeyShare
+   bool get_component_accept_key_share_size(size_t *out, uint16_t component_group_id) {
+     switch (component_group_id) {
+     case SSL_GROUP_SECP256R1:
+       *out = p256_uncompressed_share_size;
+       return true;
+     case SSL_GROUP_KYBER768_R3:
+       *out = kyber768_r3_ciphertext_size;
+       return true;
+     case SSL_GROUP_X25519:
+       *out = x25519_share_size;
+       return true;
+     default:
+       return false;
+     }
    }
 
    uint16_t group_id_;
+   bool exchange_performed;
    const HybridGroup *hybrid_group_;
    UniquePtr<SSLKeyShare> key_shares_[NUM_HYBRID_COMPONENTS];
 };
@@ -662,32 +709,12 @@ CONSTEXPR_ARRAY uint16_t kPQGroups[] = {
     SSL_GROUP_X25519_KYBER768_DRAFT00
 };
 
-// The key share sizes are taken from the corresponding specification.
-//
-// Kyber Round 3: https://pq-crystals.org/kyber/data/kyber-specification-round3-20210804.pdf
-// SECP256R1:     https://datatracker.ietf.org/doc/html/rfc8446#section-4.2.8.2
-// X25519:        https://datatracker.ietf.org/doc/html/rfc8446#section-4.2.8.2
-static const size_t p256_share_size = ((32 * 2) + 1);
-static const size_t x25519_share_size = 32;
-
-// Kyber Round 3: https://pq-crystals.org/kyber/data/kyber-specification-round3-20210804.pdf
-static const size_t kyber768_r3_public_key_size = 1184;
-static const size_t kyber768_r3_ciphertext_size = 1088;
-
 CONSTEXPR_ARRAY HybridGroup kHybridGroups[] = {
   {
     SSL_GROUP_SECP256R1_KYBER768_DRAFT00,  // group_id
     {
       SSL_GROUP_SECP256R1,            // component_group_ids[0]
       SSL_GROUP_KYBER768_R3,          // component_group_ids[1]
-    },
-    {
-      p256_share_size,                // offer_share_sizes[0]
-      kyber768_r3_public_key_size,    // offer_share_sizes[1]
-    },
-    {
-      p256_share_size,                // accept_share_sizes[0]
-      kyber768_r3_ciphertext_size,    // accept_share_sizes[1]
     },
   },
 
@@ -696,14 +723,6 @@ CONSTEXPR_ARRAY HybridGroup kHybridGroups[] = {
     {
       SSL_GROUP_X25519,               // component_group_ids[0]
       SSL_GROUP_KYBER768_R3,          // component_group_ids[1]
-    },
-    {
-      x25519_share_size,              // offer_share_sizes[0]
-      kyber768_r3_public_key_size,    // offer_share_sizes[1]
-    },
-    {
-      x25519_share_size,              // accept_share_sizes[0]
-      kyber768_r3_ciphertext_size,    // accept_share_sizes[1]
     },
   }
 };

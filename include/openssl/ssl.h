@@ -2616,12 +2616,16 @@ OPENSSL_EXPORT int SSL_set1_groups_list(SSL *ssl, const char *groups);
 #define SSL_GROUP_SECP384R1 24
 #define SSL_GROUP_SECP521R1 25
 #define SSL_GROUP_X25519 29
+
+// https://datatracker.ietf.org/doc/html/draft-kwiatkowski-tls-ecdhe-kyber
 #define SSL_GROUP_SECP256R1_KYBER768_DRAFT00 0x639A
+
+// https://datatracker.ietf.org/doc/html/draft-tls-westerbaan-xyber768d00
 #define SSL_GROUP_X25519_KYBER768_DRAFT00 0x6399
 
 // PQ and hybrid group IDs are not yet standardized. Current IDs are driven by
 // community consensus and are defined at
-// https://github.com/open-quantum-safe/openssl/blob/OQS-OpenSSL_1_1_1-stable/oqs-template/oqs-kem-info.md
+// https://github.com/open-quantum-safe/oqs-provider/blob/main/oqs-template/oqs-kem-info.md
 #define SSL_GROUP_KYBER512_R3 0x023A
 #define SSL_GROUP_KYBER768_R3 0x023C
 #define SSL_GROUP_KYBER1024_R3 0x023D
