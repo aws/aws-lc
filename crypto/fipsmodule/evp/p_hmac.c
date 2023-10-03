@@ -64,11 +64,10 @@
 
 static int hmac_init(EVP_PKEY_CTX *ctx) {
   HMAC_PKEY_CTX *hctx;
-  hctx = OPENSSL_malloc(sizeof(HMAC_PKEY_CTX));
+  hctx = OPENSSL_zalloc(sizeof(HMAC_PKEY_CTX));
   if (hctx == NULL) {
     return 0;
   }
-  OPENSSL_memset(hctx, 0, sizeof(HMAC_PKEY_CTX));
   HMAC_CTX_init(&hctx->ctx);
   ctx->data = hctx;
   return 1;
@@ -132,10 +131,9 @@ int used_for_hmac(EVP_MD_CTX *ctx) {
 }
 
 HMAC_KEY *HMAC_KEY_new(void) {
-  HMAC_KEY *key = OPENSSL_malloc(sizeof(HMAC_KEY));
+  HMAC_KEY *key = OPENSSL_zalloc(sizeof(HMAC_KEY));
   if (key == NULL) {
     return NULL;
   }
-  OPENSSL_memset(key, 0, sizeof(HMAC_KEY));
   return key;
 }

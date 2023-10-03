@@ -135,11 +135,10 @@ static int asn1_item_ex_combine_new(ASN1_VALUE **pval, const ASN1_ITEM *it,
         }
       }
       if (!combine) {
-        *pval = OPENSSL_malloc(it->size);
+        *pval = OPENSSL_zalloc(it->size);
         if (!*pval) {
           goto memerr;
         }
-        OPENSSL_memset(*pval, 0, it->size);
       }
       asn1_set_choice_selector(pval, -1, it);
       if (asn1_cb && !asn1_cb(ASN1_OP_NEW_POST, pval, it, NULL)) {
@@ -161,11 +160,10 @@ static int asn1_item_ex_combine_new(ASN1_VALUE **pval, const ASN1_ITEM *it,
         }
       }
       if (!combine) {
-        *pval = OPENSSL_malloc(it->size);
+        *pval = OPENSSL_zalloc(it->size);
         if (!*pval) {
           goto memerr;
         }
-        OPENSSL_memset(*pval, 0, it->size);
         asn1_refcount_set_one(pval, it);
         asn1_enc_init(pval, it);
       }
