@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -exo pipefail
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 OR ISC
@@ -22,6 +22,7 @@ generate_ssm_document_file() {
     -e "s,{PR_NUM},${CODEBUILD_WEBHOOK_TRIGGER},g" \
     -e "s,{COMMIT_ID},${CODEBUILD_SOURCE_VERSION},g" \
     -e "s,{GITHUB_REPO},${CODEBUILD_SOURCE_REPO_URL},g" \
+    -e "s,{ECR_DOCKER_TAG},${ecr_docker_tag},g" \
     tests/ci/cdk/cdk/ssm/general_test_run_ssm_document.yaml \
     > "tests/ci/cdk/cdk/ssm/${ec2_ami_id}_ssm_document.yaml"
 }
@@ -48,6 +49,7 @@ echo AWS Account ID: "${AWS_ACCOUNT_ID}"
 echo GitHub Repo Link: "${CODEBUILD_SOURCE_REPO_URL}"
 export ec2_ami_id="$1"
 export ec2_instance_type="$2"
+export ecr_docker_tag="$3"
 export s3_bucket_name="aws-lc-codebuild"
 
 # Get resources for ec2 instances. These were created with the cdk script.

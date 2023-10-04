@@ -28,3 +28,4 @@ batch:
         variables:
           EC2_AMI: "ami-0c79a55dda52434da"
           EC2_INSTANCE_TYPE: "c7g.2xlarge"
+          ECR_DOCKER_TAG: "amazonlinux-2023_clang-15x_sanitizer"
