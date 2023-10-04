@@ -36,4 +36,6 @@ cmake-build-debug/
 symbols.txt
 
 .DS_Store
-.idea
+.idea/
+.fleet/
+.cache/
