@@ -159,6 +159,10 @@ TEST(EndianTest, BN_le2bn) {
   EXPECT_EQ((uint64_t)0x0201 << (BN_BITS2-16), x.get()->d[(256*8/BN_BITS2)-1]);
 }
 
+// This test creates a BIGNUM, where 255 bytes are significant.
+// Notice that 255 = 7 (mod 8) and 255 = 3 (mod 4), so the most significant
+// bytes do not fill an entire word in the output BIGNUM, requiring special
+// handling in the underlying logic.
 TEST(EndianTest, BN_le2bn_255) {
   bssl::UniquePtr<BIGNUM> x(BN_new());
   uint8_t input[255];
@@ -166,7 +170,7 @@ TEST(EndianTest, BN_le2bn_255) {
   input[0] = 0xaa;
   input[1] = 0x01;
   input[254] = 0x01;
-  ASSERT_NE(nullptr, BN_le2bn(input, sizeof(input), x.get()));
+  ASSERT_TRUE(BN_le2bn(input, sizeof(input), x.get()));
   EXPECT_FALSE(BN_is_zero(x.get()));
   for (size_t i = 1; i <= (255/sizeof(BN_ULONG)) - 1; i++) {
     EXPECT_EQ((BN_ULONG)0, x.get()->d[i]);
@@ -207,6 +211,12 @@ TEST(EndianTest, BN_bn2le_padded) {
   EXPECT_EQ(Bytes(input), Bytes(out));
 }
 
+// This test creates a BIGNUM, where 255 bytes are significant.
+// It then calls |BN_bn2le_padded| to write the number into a 255-byte array
+// in little-endian byte-order.
+// Notice that 255 = 7 (mod 8) and 255 = 3 (mod 4), so the output array does not
+// have room to hold every word of the input, requiring special handling
+// in the underlying logic.
 TEST(EndianTest, BN_bn2le_padded_255) {
   bssl::UniquePtr<BIGNUM> x(BN_new());
   uint8_t input[255];
@@ -215,13 +225,31 @@ TEST(EndianTest, BN_bn2le_padded_255) {
   input[1] = 0x01;
   input[253] = 0x01;
   input[254] = 0x01;
-  ASSERT_NE(nullptr, BN_le2bn(input, sizeof(input), x.get()));
+  ASSERT_TRUE(BN_le2bn(input, sizeof(input), x.get()));
 
   uint8_t out[255];
   OPENSSL_memset(out, 0, sizeof(out));
   EXPECT_EQ(1, BN_bn2le_padded(out, sizeof(out), x.get()));
   EXPECT_EQ(Bytes(input), Bytes(out));
 }
+
+// This test creates a 256-byte BIGNUM, where only 2 bytes are significant.
+// It then calls |BN_bn2le_padded| to write the number into a 2-byte array
+// in little-endian byte-order.
+TEST(EndianTest, BN_bn2le_padded_much) {
+  bssl::UniquePtr<BIGNUM> x(BN_new());
+  uint8_t input[256];
+  OPENSSL_memset(input, 0, sizeof(input));
+  input[0] = 0xaa;
+  input[1] = 0x01;
+  ASSERT_TRUE(BN_le2bn(input, sizeof(input), x.get()));
+
+  uint8_t out[2];
+  OPENSSL_memset(out, 0, sizeof(out));
+  EXPECT_EQ(1, BN_bn2le_padded(out, sizeof(out), x.get()));
+  EXPECT_EQ(Bytes(input, 2), Bytes(out, 2));
+}
+
 
 TEST(EndianTest, BN_bn2bin_padded) {
   bssl::UniquePtr<BIGNUM> x(BN_new());
