@@ -182,7 +182,7 @@ static void p384_to_generic(EC_FELEM *out, const p384_felem in) {
 #ifdef OPENSSL_BIG_ENDIAN
   uint8_t tmp[P384_FELEM_BYTES];
   p384_felem_to_bytes(tmp, in);
-  bn_little_endian_to_words(out->words, EC_MAX_WORDS, tmp, P384_FELEM_BYTES);
+  bn_little_endian_to_words(out->words, P384_NLIMBS, tmp, P384_FELEM_BYTES);
 #else
   p384_felem_to_bytes((uint8_t *)out->words, in);
 #endif

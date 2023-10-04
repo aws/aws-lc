@@ -220,7 +220,7 @@ static void p521_felem_cmovznz(p521_limb_t out[P521_NLIMBS],
 static void p521_from_generic(p521_felem out, const EC_FELEM *in) {
 #ifdef OPENSSL_BIG_ENDIAN
   uint8_t tmp[P521_FELEM_BYTES];
-  bn_words_to_little_endian(tmp, P521_FELEM_BYTES, in->words, EC_MAX_WORDS);
+  bn_words_to_little_endian(tmp, P521_FELEM_BYTES, in->words, P521_NLIMBS);
   p521_felem_from_bytes(out, tmp);
 #else
   p521_felem_from_bytes(out, (const uint8_t *)in->words);
@@ -240,7 +240,7 @@ static void p521_to_generic(EC_FELEM *out, const p521_felem in) {
 #ifdef OPENSSL_BIG_ENDIAN
   uint8_t tmp[P521_FELEM_BYTES];
   p521_felem_to_bytes(tmp, in);
-  bn_little_endian_to_words(out->words, EC_MAX_WORDS, tmp, P521_FELEM_BYTES);
+  bn_little_endian_to_words(out->words, P521_NLIMBS, tmp, P521_FELEM_BYTES);
 #else
   OPENSSL_memset((uint8_t*)out->words, 0, sizeof(out->words));
   // Convert the element to bytes.
