@@ -183,7 +183,7 @@ int EVP_PBE_scrypt(const char *password, size_t password_len,
 
   // Allocate and divide up the scratch space. |max_mem| fits in a size_t, which
   // is no bigger than uint64_t, so none of these operations may overflow.
-  OPENSSL_STATIC_ASSERT(UINT64_MAX >= ((size_t)-1), size_t_exceeds_uint64_t)
+  OPENSSL_STATIC_ASSERT(UINT64_MAX >= SIZE_MAX, size_t_exceeds_uint64_t)
   size_t B_blocks = p * 2 * r;
   size_t B_bytes = B_blocks * sizeof(block_t);
   size_t T_blocks = 2 * r;
