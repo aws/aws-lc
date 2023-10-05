@@ -168,7 +168,6 @@ func doLinux(objectBytes []byte, isStatic bool) ([]byte, []byte, error) {
 	return moduleText, moduleROData, nil
 }
 
-
 func doAppleOS(objectBytes []byte) ([]byte, []byte, error) {
 
 	object, err := macho.NewFile(bytes.NewReader(objectBytes))
@@ -219,6 +218,19 @@ func doAppleOS(objectBytes []byte) ([]byte, []byte, error) {
 
 		if symbol.Name != "" && symbol.Name != " " && symbol.Value < base {
 			return nil, nil, fmt.Errorf("symbol %q at %x, which is below base of %x\n", symbol.Name, symbol.Value, base)
+		}
+
+		// Skip debugging symbols
+		//
+		// #define	N_STAB	0xe0  /* if any of these bits set, a symbolic debugging entry */
+		//
+		// "Only symbolic debugging entries have some of the N_STAB bits set and if any of these bits are set then it is
+		// a symbolic debugging entry (a stab).  In which case then the values of the n_type field (the entire field)
+		// are given in <mach-o/stab.h>"
+		//
+		// https://github.com/apple-oss-distributions/xnu/blob/main/EXTERNAL_HEADERS/mach-o/nlist.h
+		if symbol.Type&0xe0 != 0 {
+			continue
 		}
 
 		value := symbol.Value - base
@@ -296,8 +308,6 @@ func doAppleOS(objectBytes []byte) ([]byte, []byte, error) {
 	return moduleText, moduleROData, nil
 }
 
-
-
 func do(outPath, oInput string, arInput string, appleOS bool) error {
 	var objectBytes []byte
 	var isStatic bool
@@ -364,7 +374,6 @@ func do(outPath, oInput string, arInput string, appleOS bool) error {
 	if err != nil {
 		return err
 	}
-
 
 	var zeroKey [64]byte
 	mac := hmac.New(sha256.New, zeroKey[:])
