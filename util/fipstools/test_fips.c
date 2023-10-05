@@ -33,7 +33,6 @@
 #include <openssl/sha.h>
 
 #include "../../crypto/fipsmodule/rand/internal.h"
-#include "../../crypto/fipsmodule/sha/internal.h"
 #include "../../crypto/internal.h"
 
 
@@ -319,13 +318,6 @@ int main(int argc, char **argv) {
   SHA512(kPlaintext, sizeof(kPlaintext), output);
   printf("  got ");
   hexdump(output, SHA512_DIGEST_LENGTH);
-
-  /* SHA3-512 */
-  printf("About to SHA3-512 hash ");
-  hexdump(kPlaintext, sizeof(kPlaintext));
-  SHA3_512(kPlaintext, sizeof(kPlaintext), output);
-  printf("  got ");
-  hexdump(output, SHA3_512_DIGEST_LENGTH);
 
   RSA *rsa_key = RSA_new();
   printf("About to generate RSA key\n");

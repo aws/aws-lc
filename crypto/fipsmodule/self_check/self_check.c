@@ -39,7 +39,6 @@
 #include "../ecdsa/internal.h"
 #include "../rand/internal.h"
 #include "../rsa/internal.h"
-#include "../sha/internal.h"
 
 static void hexdump(const uint8_t *in, size_t len) {
   for (size_t i = 0; i < len; i++) {
@@ -1089,8 +1088,8 @@ static int boringssl_self_test_fast(void) {
   }
 
   if (!boringssl_self_test_sha512() ||
-      !boringssl_self_test_sha3() ||
-      !boringssl_self_test_hkdf_sha256()) {
+      !boringssl_self_test_hkdf_sha256() ||
+      !boringssl_self_test_sha3()) {
     goto err;
   }
 
