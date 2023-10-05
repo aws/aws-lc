@@ -156,7 +156,7 @@ S2N_BN_SYMBOL(bignum_invsqrt_p25519_alt):
         nsqr(s,2,b)
         mulp(s,s,a)
 
-// s = a^{2^252-3} is now one candidate inverse square root. 
+// s = a^{2^252-3} is now one candidate inverse square root.
 // Generate the other one t = s * j_25519 where j_25519 = sqrt(-1)
 
         movbig(x0, #0xc4ee, #0x1b27, #0x4a0e, #0xa0b0)

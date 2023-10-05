@@ -1253,6 +1253,15 @@ void reference_edwards25519scalarmuldouble
   bignum_mul_p25519_alt(res+4,res3+4,zinv);
 }
 
+void reference_edwards25519encode(uint8_t z[32], uint64_t p[8])
+{ uint64_t q[4];
+  q[0] = p[4];
+  q[1] = p[5];
+  q[2] = p[6];
+  q[3] = (p[7] & 0x7FFFFFFFFFFFFFFF) | (p[0]<<63);
+  reference_tolebytes(32,z,4,q);
+}
+
 void reference_montjdouble
   (uint64_t k,uint64_t *p3,uint64_t *p1,uint64_t *a,uint64_t *m)
 { uint64_t *xx = alloca(8 * k);
@@ -9631,6 +9640,41 @@ int test_curve25519_x25519base_byte_alt(void)
   return 0;
 }
 
+int test_edwards25519_encode(void)
+{ uint64_t t, k;
+  printf("Testing edwards25519_encode with %d cases\n",tests);
+  k = 4;
+
+  int c;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(2*k,b1);
+     b1[3] &= UINT64_C(0x7FFFFFFFFFFFFFFF);
+     b1[7] &= UINT64_C(0x7FFFFFFFFFFFFFFF);
+
+     edwards25519_encode((uint8_t*)b3,b1);
+     reference_edwards25519encode((uint8_t*)b4,b1);
+
+     c = reference_compare(k,b3,k,b4);
+     if (c != 0)
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "encode <...0x%016"PRIx64",...%016"PRIx64"> = "
+               "0x%016"PRIx64"...%016"PRIx64" not "
+               "0x%016"PRIx64"...%016"PRIx64"\n",
+               k,b1[0],b1[4],b3[3],b3[0],b4[3],b4[0]);
+        return 1;
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+              "encode <...0x%016"PRIx64",...%016"PRIx64"> = "
+               "0x%016"PRIx64"...%016"PRIx64"\n",
+               k,b1[0],b1[4],b3[3],b3[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+
 int test_edwards25519_epadd(void)
 { uint64_t t, k;
   printf("Testing edwards25519_epadd with %d cases\n",tests);
@@ -11621,6 +11665,7 @@ int main(int argc, char *argv[])
   functionaltest(all,"curve25519_x25519base_alt",test_curve25519_x25519base_alt);
   functionaltest(bmi,"curve25519_x25519base_byte",test_curve25519_x25519base_byte);
   functionaltest(all,"curve25519_x25519base_byte_alt",test_curve25519_x25519base_byte_alt);
+  functionaltest(all,"edwards25519_encode",test_edwards25519_encode);
   functionaltest(bmi,"edwards25519_epadd",test_edwards25519_epadd);
   functionaltest(all,"edwards25519_epadd_alt",test_edwards25519_epadd_alt);
   functionaltest(bmi,"edwards25519_epdouble",test_edwards25519_epdouble);

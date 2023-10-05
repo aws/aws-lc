@@ -905,6 +905,10 @@ extern void curve25519_x25519base_alt(uint64_t res[static 4],uint64_t scalar[sta
 extern void curve25519_x25519base_byte(uint8_t res[static 32],uint8_t scalar[static 32]);
 extern void curve25519_x25519base_byte_alt(uint8_t res[static 32],uint8_t scalar[static 32]);
 
+// Encode edwards25519 point into compressed form as 256-bit number
+// Input p[8]; output z[32] (bytes)
+extern void edwards25519_encode(uint8_t z[static 32], uint64_t p[static 8]);
+
 // Extended projective addition for edwards25519
 // Inputs p1[16], p2[16]; output p3[16]
 extern void edwards25519_epadd(uint64_t p3[static 16],uint64_t p1[static 16],uint64_t p2[static 16]);

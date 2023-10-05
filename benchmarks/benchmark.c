@@ -716,6 +716,8 @@ void call_curve25519_ladderstep_alt(void) repeat(curve25519_ladderstep_alt(b0,b1
 void call_curve25519_pxscalarmul(void) repeatfewer(10,curve25519_pxscalarmul(b0,b1,b2))
 void call_curve25519_pxscalarmul_alt(void) repeatfewer(10,curve25519_pxscalarmul_alt(b0,b1,b2))
 
+void call_edwards25519_encode(void) repeat(edwards25519_encode((unsigned char *)b1,b2))
+
 void call_edwards25519_epadd(void) repeat(edwards25519_epadd(b1,b2,b3))
 void call_edwards25519_epadd_alt(void) repeat(edwards25519_epadd_alt(b1,b2,b3))
 
@@ -1156,6 +1158,7 @@ int main(int argc, char *argv[])
   timingtest(all,"curve25519_x25519base_alt",call_curve25519_x25519base_alt);
   timingtest(bmi,"curve25519_x25519base_byte",call_curve25519_x25519base_byte);
   timingtest(all,"curve25519_x25519base_byte_alt",call_curve25519_x25519base_byte_alt);
+  timingtest(all,"edwards25519_encode",call_edwards25519_encode);
   timingtest(bmi,"edwards25519_epadd",call_edwards25519_epadd);
   timingtest(all,"edwards25519_epadd_alt",call_edwards25519_epadd_alt);
   timingtest(bmi,"edwards25519_epdouble",call_edwards25519_epdouble);
