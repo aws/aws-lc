@@ -35,7 +35,7 @@ if ! docker buildx inspect ${BUILDER_NAME}; then
     docker buildx create --name ${BUILDER_NAME} --use
 fi
 
-#docker buildx build -t ubuntu-${ARCH_NAME}:test "${SCRIPT_DIR}"/ubuntu-test --load
+docker buildx build -t ubuntu-${ARCH_NAME}:test "${SCRIPT_DIR}"/ubuntu-test --load
 docker buildx build -t ubuntu-${ARCH_NAME}:x-tools "${SCRIPT_DIR}"/ubuntu-x-tools --load
 
 docker buildx rm ${BUILDER_NAME}
