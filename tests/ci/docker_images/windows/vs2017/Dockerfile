@@ -6,6 +6,9 @@
 # Keep parity with the upstream tags at https://hub.docker.com/_/microsoft-windows-servercore
 FROM aws-lc/windows_base:2019
 
+ENV SDE_VERSION_TAG=sde-external-9.21.1-2023-04-24-win
+ENV SDE_MIRROR_URL="https://downloadmirror.intel.com/777395/sde-external-9.21.1-2023-04-24-win.tar.xz"
+
 SHELL ["cmd", "/S", "/C"]
 RUN `
     # Download the Build Tools bootstrapper.
@@ -22,7 +25,18 @@ RUN `
     # Cleanup
     && del /q vs_buildtools.exe
 
+RUN `
+    # Install Windows Intel SDE.
+    curl -SL --output temp.tar.xz %SDE_MIRROR_URL% `
+    `
+    && 7z x temp.tar.xz `
+    && 7z x temp.tar `
+    && ren %SDE_VERSION_TAG% windows-sde `
+    && del temp.tar.xz `
+    && del temp.tar
 
 RUN setx /M PATH "%PATH%;C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\MSBuild\15.0\Bin"
+
+RUN setx /M SDEROOT C:/windows-sde
 
 CMD [ "cmd.exe" ]
