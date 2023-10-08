@@ -139,8 +139,7 @@ int EVP_DigestFinalXOF(EVP_MD_CTX *ctx, uint8_t *out, size_t len) {
     return 0;
   }
   ctx->digest->finalXOF(ctx, out, len);
-  OPENSSL_cleanse(ctx->md_data, ctx->digest->ctx_size);
-  EVP_MD_CTX_cleanup(ctx);
+  EVP_MD_CTX_cleanse(ctx);
   return 1;
 }
 
