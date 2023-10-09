@@ -74,6 +74,69 @@ If you use another CPU and would like to make sure we test it or discuss adding
 an assembly optimized algorithm implementation, please open an issue to discuss
 adding it to our CI.
 
+## Platform Support
+
+AWS-LC actively supports many common CPU architectures and is working to expand
+this further. The following is a descriptive overview of the platforms we support.
+This provides some indication of how we prioritize our efforts regarding platform
+support. Regardless of the tier, our goal is to properly support all of the
+platforms listed. We gladly accept contributions that improve AWS-LC's
+compatibility or performance on these targets.
+
+### Tier 1
+
+Tier 1 platforms are ones that we actively test with our CI.
+For every pull request we accept, we verify that AWS-LC successfully builds
+and all tests pass for Tier 1 platforms. A more complete description
+of our test setup can be found in the
+[CI README](https://github.com/aws/aws-lc/blob/main/tests/ci/README.md#test-locations).
+
+Many of these platforms also support a specialized FIPS build process.
+(A FIPS build process is required for FIPS certification,
+but it does imply that the library is approved for use in your FIPS environment.
+See [this document](./crypto/fipsmodule/FIPS.md) for more information.
+
+| OS      | CPU     | FIPS<br/>static | FIPS<br/>shared |
+|---------|---------|-----------------|-----------------|
+| Linux   | x86     |                 | X               |
+| Linux   | x86-64  | X               | X               |
+| Linux   | aarch64 | X               | X               |
+| Windows | x86-64  |                 | X               |
+| macOS   | x86-64  |                 | X               |
+| macOS   | aarch64 |                 | X               |
+| Android | aarch64 |                 |                 |
+
+### Tier 2
+
+Tier 2 platforms are those that are built and tested on a regular basis, but
+possibly not as part of the AWS-LC CI. These targets are built
+and/or tested in the
+[CI for aws-lc-rs](https://github.com/aws/aws-lc-rs/blob/main/.github/workflows/ci.yml).
+If the build or tests for one of these targets is found to
+be broken, we quickly prioritize the fix.
+
+| OS      | CPU     | Notes |
+|---------|---------|-------|
+| Linux   | arm32   | [1]   |
+| Linux   | ppc64le | [1]   |
+| Linux   | riscv64 | [1]   |
+| iOS     | aarch64 | [2]   |
+| Android | arm32   | [1]   |
+
+(1) Tested in aws-lc-rs CI.<br>
+(2) Built in aws-lc-rs CI.
+
+### Tier 3
+
+Tier 3 platforms are those that our team or our community have put in effort to support.
+The build and/or tests for these platforms will possibly fail. Contributions
+that improve our support for these platforms are appreciated.
+
+| OS      | CPU         | Notes                                                     |
+|---------|-------------|-----------------------------------------------------------|
+| Linux   | Loongarch64 | Build succeeds. crypt_test and ssl_test succeed.          |
+| Windows | aarch64     |                                                           |
+
 ## AWS-LC safety mechanisms
 
 ### Automated testing
