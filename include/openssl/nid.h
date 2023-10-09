@@ -4306,8 +4306,18 @@ extern "C" {
 
 #define SN_sha512_224 "SHA512-224"
 #define LN_sha512_224 "sha512-224"
-#define NID_sha512_224 979
+#define NID_sha512_224 978
 #define OBJ_sha512_224 2L, 16L, 840L, 1L, 101L, 3L, 4L, 2L, 5L
+
+#define SN_shake128 "SHAKE128"
+#define LN_shake128 "shake128"
+#define NID_shake128 979
+#define OBJ_shake128 2L, 16L, 840L, 1L, 101L, 3L, 4L, 2L, 11L
+
+#define SN_shake256 "SHAKE256"
+#define LN_shake256 "shake256"
+#define NID_shake256 980
+#define OBJ_shake256 2L, 16L, 840L, 1L, 101L, 3L, 4L, 2L, 12L
 
 #if defined(__cplusplus)
 } /* extern C */

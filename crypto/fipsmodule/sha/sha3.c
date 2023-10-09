@@ -13,94 +13,114 @@
 
 uint8_t *SHA3_224(const uint8_t *data, size_t len,
                   uint8_t out[SHA3_224_DIGEST_LENGTH]) {
+  FIPS_service_indicator_lock_state();
   KECCAK1600_CTX ctx;
   int ok = (SHA3_Init(&ctx, SHA3_PAD_CHAR, SHA3_224_DIGEST_BITLENGTH) && 
             SHA3_Update(&ctx, data, len) &&
             SHA3_Final(out, &ctx));
 
   OPENSSL_cleanse(&ctx, sizeof(ctx));
+  FIPS_service_indicator_unlock_state();
   if (ok == 0) {
     return NULL;
   }
+  FIPS_service_indicator_update_state();
   return out;
 }
 
 uint8_t *SHA3_256(const uint8_t *data, size_t len,
                   uint8_t out[SHA3_256_DIGEST_LENGTH]) {
+  FIPS_service_indicator_lock_state();
   KECCAK1600_CTX ctx;
   int ok = (SHA3_Init(&ctx, SHA3_PAD_CHAR, SHA3_256_DIGEST_BITLENGTH) && 
             SHA3_Update(&ctx, data, len) &&
             SHA3_Final(out, &ctx));
 
   OPENSSL_cleanse(&ctx, sizeof(ctx));
+  FIPS_service_indicator_unlock_state();
   if (ok == 0) {
     return NULL;
   }
+  FIPS_service_indicator_update_state();
   return out;
 }
 
 uint8_t *SHA3_384(const uint8_t *data, size_t len,
                   uint8_t out[SHA3_384_DIGEST_LENGTH]) {
+  FIPS_service_indicator_lock_state();
   KECCAK1600_CTX ctx;
   int ok = (SHA3_Init(&ctx, SHA3_PAD_CHAR, SHA3_384_DIGEST_BITLENGTH) && 
             SHA3_Update(&ctx, data, len) &&
             SHA3_Final(out, &ctx));
 
   OPENSSL_cleanse(&ctx, sizeof(ctx));
+  FIPS_service_indicator_unlock_state();
   if (ok == 0) {
     return NULL;
   }
+  FIPS_service_indicator_update_state();
   return out;
 }
 
 uint8_t *SHA3_512(const uint8_t *data, size_t len,
                   uint8_t out[SHA3_512_DIGEST_LENGTH]) {
+  FIPS_service_indicator_lock_state();
   KECCAK1600_CTX ctx;
   int ok = (SHA3_Init(&ctx, SHA3_PAD_CHAR, SHA3_512_DIGEST_BITLENGTH) && 
             SHA3_Update(&ctx, data, len) &&
             SHA3_Final(out, &ctx));
 
   OPENSSL_cleanse(&ctx, sizeof(ctx));
+  FIPS_service_indicator_unlock_state();
   if (ok == 0) {
     return NULL;
   }
+  FIPS_service_indicator_update_state();
   return out;
 }
 
 uint8_t *SHAKE128(const uint8_t *data, const size_t in_len, uint8_t *out, size_t out_len) {
+  FIPS_service_indicator_lock_state();
   KECCAK1600_CTX ctx;
-  
-  // The SHAKE block size depends on the security level of the algorithm only
-  // It is independent of the output size
-  ctx.block_size = SHAKE128_BLOCKSIZE;
-
-  int ok = (SHA3_Init(&ctx, SHAKE_PAD_CHAR, out_len) && 
+  int ok = (SHAKE_Init(&ctx, SHAKE128_BLOCKSIZE) &&
             SHA3_Update(&ctx, data, in_len) &&
-            SHA3_Final(out, &ctx));
+            SHAKE_Final(out, &ctx, out_len));
 
   OPENSSL_cleanse(&ctx, sizeof(ctx));
+  FIPS_service_indicator_unlock_state();
   if (ok == 0) {
     return NULL;
   }
+  FIPS_service_indicator_update_state();
   return out;
 }
 
 uint8_t *SHAKE256(const uint8_t *data, const size_t in_len, uint8_t *out, size_t out_len) {
+  FIPS_service_indicator_lock_state();
   KECCAK1600_CTX ctx;
-  
-  // The SHAKE block size depends on the security level of the algorithm only
-  // It is independent of the output size
-  ctx.block_size = SHAKE256_BLOCKSIZE;
-
-  int ok = (SHA3_Init(&ctx, SHAKE_PAD_CHAR, out_len) && 
+  int ok = (SHAKE_Init(&ctx, SHAKE256_BLOCKSIZE) &&
             SHA3_Update(&ctx, data, in_len) &&
-            SHA3_Final(out, &ctx));
-
+            SHAKE_Final(out, &ctx, out_len));
   OPENSSL_cleanse(&ctx, sizeof(ctx));
+  FIPS_service_indicator_unlock_state();
   if (ok == 0) {
     return NULL;
   }
+  FIPS_service_indicator_update_state();
   return out;
+}
+
+int SHAKE_Init(KECCAK1600_CTX *ctx, size_t block_size) {
+  // The SHAKE block size depends on the security level of the algorithm only
+  // It is independent of the output size
+  ctx->block_size = block_size;
+  return SHA3_Init(ctx, SHAKE_PAD_CHAR, 0);
+}
+
+
+int SHAKE_Final(uint8_t *md, KECCAK1600_CTX *ctx, size_t len) {
+  ctx->md_size = len;
+  return SHA3_Final(md, ctx);
 }
 
 void SHA3_Reset(KECCAK1600_CTX *ctx) {
@@ -201,6 +221,8 @@ int SHA3_Final(uint8_t *md, KECCAK1600_CTX *ctx) {
   }
 
   SHA3_Squeeze(ctx->A, md, ctx->md_size, block_size);
+
+  FIPS_service_indicator_update_state();
 
   return 1;
 }

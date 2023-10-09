@@ -31,6 +31,7 @@
 #include "../../test/test_util.h"
 #include "../bn/internal.h"
 #include "../rand/internal.h"
+#include "../sha/internal.h"
 
 static const uint8_t kAESKey[16] = {
     'A','W','S','-','L','C','C','r','y','p','t','o',' ','K', 'e','y'};
@@ -370,6 +371,50 @@ static const uint8_t kOutput_sha512_256[SHA512_256_DIGEST_LENGTH] = {
     0x1a, 0x78, 0x68, 0x6b, 0x69, 0x6d, 0x28, 0x14, 0x6b, 0x37, 0x11,
     0x2d, 0xfb, 0x72, 0x35, 0xfa, 0xc1, 0xc4, 0x5f, 0x5c, 0x49, 0x91,
     0x08, 0x95, 0x0b, 0x0f, 0xc9, 0x88, 0x44, 0x12, 0x01, 0x6a};
+
+static const uint8_t kOutput_sha3_224[SHA3_224_DIGEST_LENGTH] = {
+    0xd4, 0x7e, 0x2d, 0xca, 0xf9, 0x36, 0x7a, 0x73, 0x2f, 0x9b, 0x42, 0x46,
+    0x25, 0x49, 0x29, 0x68, 0xfa, 0x2c, 0xc7, 0xd0, 0xb0, 0x11, 0x1c, 0x86,
+    0xa6, 0xc0, 0xa1, 0x29};
+
+static const uint8_t kOutput_sha3_256[SHA3_256_DIGEST_LENGTH] = {
+    0x4a, 0x95, 0x1c, 0x1e, 0xd1, 0x58, 0x5f, 0xa3, 0xcf, 0x77, 0x24, 0x73,
+    0x7b, 0xd2, 0x28, 0x55, 0x9f, 0xa5, 0xe8, 0xc6, 0x58, 0x99, 0xe3, 0xb1,
+    0x88, 0x17, 0xd6, 0xc4, 0x1d, 0x3e, 0xa8, 0x4c};
+
+static const uint8_t kOutput_sha3_384[SHA3_384_DIGEST_LENGTH] = {
+    0x19, 0x97, 0xad, 0xa6, 0x45, 0x40, 0x3d, 0x10, 0xda, 0xe6, 0xd4, 0xfd,
+    0xe1, 0xd3, 0x2b, 0x1b, 0xd6, 0xdb, 0x0c, 0xdb, 0xca, 0x6f, 0xae, 0x58,
+    0xbf, 0x75, 0x9a, 0xf6, 0x97, 0xc6, 0xb4, 0xb4, 0xbf, 0xef, 0x3c, 0x2d,
+    0xb1, 0xb3, 0x4a, 0x1d, 0xd9, 0x69, 0x58, 0x25, 0x5b, 0xd0, 0xb6, 0xad};
+
+static const uint8_t kOutput_sha3_512[SHA3_512_DIGEST_LENGTH] = {
+    0x36, 0xe5, 0xa2, 0x70, 0xa4, 0xd1, 0xc3, 0x76, 0xc6, 0x44, 0xe6, 0x00,
+    0x49, 0xae, 0x7d, 0x83, 0x21, 0xdc, 0xab, 0x2e, 0xa2, 0xe3, 0x96, 0xc2,
+    0xeb, 0xe6, 0x61, 0x14, 0x95, 0xd6, 0x6a, 0xf2, 0xf0, 0xa0, 0x4e, 0x93,
+    0x14, 0x2f, 0x02, 0x6a, 0xdb, 0xae, 0xbd, 0x76, 0x4e, 0xb9, 0x52, 0x88,
+    0x85, 0x3c, 0x64, 0xa1, 0x56, 0x6f, 0xeb, 0x76, 0x25, 0x9a, 0x4a, 0x44,
+    0x23, 0xf7, 0xcf, 0x46};
+
+// NOTE: SHAKE is a variable-length XOF; this number is chosen somewhat
+//       arbitrarily for testing.
+static const size_t SHAKE_OUTPUT_LENGTH = 64;
+
+static const uint8_t kOutput_shake128[SHAKE_OUTPUT_LENGTH] = {
+    0x22, 0xfe, 0x51, 0xb7, 0x9c, 0x28, 0x1c, 0x0e, 0xfc, 0x66, 0x58, 0x6a,
+    0xa1, 0x60, 0x85, 0x0b, 0xe6, 0xeb, 0x20, 0x0b, 0xdb, 0x0c, 0xe7, 0xfe,
+    0x49, 0x51, 0xcd, 0xc2, 0x92, 0x3f, 0xfc, 0xf8, 0xcb, 0x4b, 0x19, 0xce,
+    0x80, 0x9f, 0x1f, 0xbf, 0x10, 0xf1, 0x74, 0x38, 0x7a, 0x19, 0xd0, 0xca,
+    0x52, 0xf2, 0xf3, 0xd0, 0x77, 0x08, 0xe2, 0x1e, 0x20, 0x2d, 0x57, 0x25,
+    0x8b, 0xd5, 0xca, 0x66};
+
+static const uint8_t kOutput_shake256[SHAKE_OUTPUT_LENGTH] = {
+    0xfc, 0xd1, 0x32, 0xd0, 0x02, 0x43, 0x7c, 0x31, 0xb2, 0x78, 0xdf, 0x34,
+    0x74, 0xc8, 0x9b, 0x77, 0x08, 0x14, 0x9d, 0xde, 0x69, 0x79, 0xb5, 0x58,
+    0x98, 0x01, 0x69, 0xaa, 0x64, 0x11, 0x04, 0xbe, 0xa2, 0x5f, 0xf1, 0x29,
+    0x9b, 0x94, 0x03, 0x4a, 0x1e, 0x82, 0xf0, 0x9e, 0xee, 0x9b, 0xa0, 0xe3,
+    0xe1, 0x5f, 0x9c, 0x13, 0xb7, 0x52, 0xef, 0x3c, 0x96, 0xf3, 0xf8, 0xf3,
+    0x1f, 0x59, 0x7e, 0x41};
 
 static const uint8_t kHMACOutput_sha1[SHA_DIGEST_LENGTH] = {
     0x34, 0xac, 0x50, 0x9b, 0xa9, 0x4c, 0x39, 0xef, 0x45, 0xa0,
@@ -1082,6 +1127,38 @@ static const struct DigestTestVector {
         kOutput_sha512_256,
         AWSLC_APPROVED,
     },
+    {
+        "SHA3-224",
+        SHA3_224_DIGEST_LENGTH,
+        &EVP_sha3_224,
+        &SHA3_224,
+        kOutput_sha3_224,
+        AWSLC_APPROVED,
+    },
+    {
+        "SHA3-256",
+        SHA3_256_DIGEST_LENGTH,
+        &EVP_sha3_256,
+        &SHA3_256,
+        kOutput_sha3_256,
+        AWSLC_APPROVED,
+    },
+    {
+        "SHA3-384",
+        SHA3_384_DIGEST_LENGTH,
+        &EVP_sha3_384,
+        &SHA3_384,
+        kOutput_sha3_384,
+        AWSLC_APPROVED,
+    },
+    {
+        "SHA3-512",
+        SHA3_512_DIGEST_LENGTH,
+        &EVP_sha3_512,
+        &SHA3_512,
+        kOutput_sha3_512,
+        AWSLC_APPROVED,
+    },
 };
 
 class EVPMDServiceIndicatorTest : public TestWithNoErrors<DigestTestVector> {};
@@ -1124,6 +1201,75 @@ TEST_P(EVPMDServiceIndicatorTest, EVP_Digests) {
   CALL_SERVICE_AND_CHECK_APPROVED(
       approved,
       test.one_shot_func(kPlaintext, sizeof(kPlaintext), digest.data()));
+  EXPECT_EQ(approved, test.expect_approved);
+  EXPECT_EQ(Bytes(test.expected_digest, test.length), Bytes(digest));
+}
+
+static const struct XofTestVector {
+  // name is the name of the digest test.
+  const char *name;
+  // output length to specify in XOF finalization
+  const int length;
+  // func is the digest to test.
+  const EVP_MD *(*func)();
+  // one_shot_func is the convenience one-shot version of the digest.
+  uint8_t *(*one_shot_func)(const uint8_t *, size_t, uint8_t *, size_t);
+  // expected_digest is the expected digest.
+  const uint8_t *expected_digest;
+  // expected to be approved or not.
+  const FIPSStatus expect_approved;
+} kXofTestVectors[] = {
+    {
+        "SHAKE128",
+        SHAKE_OUTPUT_LENGTH,
+        &EVP_shake128,
+        &SHAKE128,
+        kOutput_shake128,
+        AWSLC_APPROVED,
+    },
+    {
+        "SHAKE256",
+        SHAKE_OUTPUT_LENGTH,
+        &EVP_shake256,
+        &SHAKE256,
+        kOutput_shake256,
+        AWSLC_APPROVED,
+    },
+};
+
+class EVPXOFServiceIndicatorTest : public TestWithNoErrors<XofTestVector> {};
+
+INSTANTIATE_TEST_SUITE_P(All, EVPXOFServiceIndicatorTest,
+                         testing::ValuesIn(kXofTestVectors));
+
+TEST_P(EVPXOFServiceIndicatorTest, EVP_Xofs) {
+  const XofTestVector &test = GetParam();
+  SCOPED_TRACE(test.name);
+
+  FIPSStatus approved = AWSLC_NOT_APPROVED;
+  bssl::ScopedEVP_MD_CTX ctx;
+  std::vector<uint8_t> digest(test.length);
+
+  // Test running the EVP_Digest interfaces one by one directly, and check
+  // |EVP_DigestFinalXOF| for approval at the end. |EVP_DigestInit_ex| and
+  // |EVP_DigestUpdate| should not be approved, because the functions do not
+  // indicate that a service has been fully completed yet.
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(EVP_DigestInit_ex(ctx.get(), test.func(), nullptr)));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), kPlaintext, sizeof(kPlaintext))));
+  EXPECT_EQ(approved, AWSLC_NOT_APPROVED);
+  EXPECT_TRUE(EVP_MD_flags(ctx->digest) & EVP_MD_FLAG_XOF);
+  CALL_SERVICE_AND_CHECK_APPROVED(approved,
+      ASSERT_TRUE(EVP_DigestFinalXOF(ctx.get(), digest.data(), test.length)));
+  EXPECT_EQ(approved, test.expect_approved);
+  EXPECT_EQ(Bytes(test.expected_digest, test.length), Bytes(digest));
+
+  // Test using the one-shot API for approval.
+  CALL_SERVICE_AND_CHECK_APPROVED(
+      approved,
+      test.one_shot_func(kPlaintext, sizeof(kPlaintext), digest.data(), test.length));
   EXPECT_EQ(approved, test.expect_approved);
   EXPECT_EQ(Bytes(test.expected_digest, test.length), Bytes(digest));
 }
