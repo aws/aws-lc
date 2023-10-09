@@ -745,21 +745,38 @@ void bn_mod_inverse0_prime_mont_small(BN_ULONG *r, const BN_ULONG *a,
 // Word-based byte conversion functions.
 
 // bn_big_endian_to_words interprets |in_len| bytes from |in| as a big-endian,
-// unsigned integer and writes the result to |out_len| words in |out|. |out_len|
-// must be large enough to represent any |in_len|-byte value. That is, |out_len|
-// must be at least |BN_BYTES * in_len|.
+// unsigned integer and writes the result to |out_len| words in |out|. The output
+// is in little-endian word order with |out[0]| being the least-significant word.
+// |out_len| must be large enough to represent any |in_len|-byte value. That is,
+// |out_len| must be at least |BN_BYTES * in_len|.
 void bn_big_endian_to_words(BN_ULONG *out, size_t out_len, const uint8_t *in,
                             size_t in_len);
 
-// bn_words_to_big_endian represents |in_len| words from |in| as a big-endian,
-// unsigned integer in |out_len| bytes. It writes the result to |out|. |out_len|
-// must be large enough to represent |in| without truncation.
+// bn_words_to_big_endian represents |in_len| words from |in| (in little-endian
+// word order) as a big-endian, unsigned integer in |out_len| bytes. It writes
+// the result to |out|. |out_len| must be large enough to represent |in| without
+// truncation.
 //
 // Note |out_len| may be less than |BN_BYTES * in_len| if |in| is known to have
 // leading zeros.
 void bn_words_to_big_endian(uint8_t *out, size_t out_len, const BN_ULONG *in,
                             size_t in_len);
 
+// bn_little_endian_to_words interprets |in_len| bytes from |in| as a little-endian,
+// unsigned integer and writes the result to |out_len| words in |out|.  The output
+// is in little-endian word order with |out[0]| being the least-significant word.
+// |out_len| must be large enough to represent any |in_len|-byte value. That is,
+// |out_len| must be at least |BN_BYTES * in_len|.
+void bn_little_endian_to_words(BN_ULONG *out, size_t out_len, const uint8_t *in, const size_t in_len);
+
+// bn_words_to_little_endian represents |in_len| words from |in| (in little-endian
+// word order) as a little-endian, unsigned integer in |out_len| bytes. It
+// writes the result to |out|. |out_len| must be large enough to represent |in|
+// without truncation.
+//
+// Note |out_len| may be less than |BN_BYTES * in_len| if |in| is known to have
+// leading zeros.
+void bn_words_to_little_endian(uint8_t *out, size_t out_len, const BN_ULONG *in, const size_t in_len);
 
 #if defined(__cplusplus)
 }  // extern C

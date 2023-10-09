@@ -98,9 +98,7 @@ static inline uint8_t p384_use_s2n_bignum_alt(void) {
 #define p384_felem_add(out, in0, in1)   bignum_add_p384(out, in0, in1)
 #define p384_felem_sub(out, in0, in1)   bignum_sub_p384(out, in0, in1)
 #define p384_felem_opp(out, in0)        bignum_neg_p384(out, in0)
-// TODO: convert to p384_felem_to_words
 #define p384_felem_to_bytes(out, in0)   bignum_tolebytes_6(out, in0)
-// TODO: convert to p384_felem_from_words
 #define p384_felem_from_bytes(out, in0) bignum_fromlebytes_6(out, in0)
 
 // The following four functions need bmi2 and adx support.
@@ -134,9 +132,7 @@ static p384_limb_t p384_felem_nz(const p384_limb_t in1[P384_NLIMBS]) {
 #define p384_felem_sqr(out, in0)        fiat_p384_square(out, in0)
 #define p384_felem_to_mont(out, in0)    fiat_p384_to_montgomery(out, in0)
 #define p384_felem_from_mont(out, in0)  fiat_p384_from_montgomery(out, in0)
-// TODO: convert to p384_felem_to_words
 #define p384_felem_to_bytes(out, in0)   fiat_p384_to_bytes(out, in0)
-// TODO: convert to p384_felem_from_words
 #define p384_felem_from_bytes(out, in0) fiat_p384_from_bytes(out, in0)
 
 static p384_limb_t p384_felem_nz(const p384_limb_t in1[P384_NLIMBS]) {
@@ -146,6 +142,8 @@ static p384_limb_t p384_felem_nz(const p384_limb_t in1[P384_NLIMBS]) {
 }
 
 #endif // P384_USE_S2N_BIGNUM_FIELD_ARITH
+
+#define P384_FELEM_BYTES (48)
 
 static void p384_felem_copy(p384_limb_t out[P384_NLIMBS],
                            const p384_limb_t in1[P384_NLIMBS]) {
@@ -164,19 +162,40 @@ static void p384_felem_cmovznz(p384_limb_t out[P384_NLIMBS],
   }
 }
 
-// NOTE: the input and output are in little-endian representation.
 static void p384_from_generic(p384_felem out, const EC_FELEM *in) {
+#ifdef OPENSSL_BIG_ENDIAN
+  uint8_t tmp[P384_FELEM_BYTES];
+  bn_words_to_little_endian(tmp, P384_FELEM_BYTES, in->words, P384_NLIMBS);
+  p384_felem_from_bytes(out, tmp);
+#else
   p384_felem_from_bytes(out, (const uint8_t *)in->words);
+#endif
 }
 
-// NOTE: the input and output are in little-endian representation.
 static void p384_to_generic(EC_FELEM *out, const p384_felem in) {
   // This works because 384 is a multiple of 64, so there are no excess bytes to
   // zero when rounding up to |BN_ULONG|s.
   OPENSSL_STATIC_ASSERT(
       384 / 8 == sizeof(BN_ULONG) * ((384 + BN_BITS2 - 1) / BN_BITS2),
       p384_felem_to_bytes_leaves_bytes_uninitialized);
+
+#ifdef OPENSSL_BIG_ENDIAN
+  uint8_t tmp[P384_FELEM_BYTES];
+  p384_felem_to_bytes(tmp, in);
+  bn_little_endian_to_words(out->words, P384_NLIMBS, tmp, P384_FELEM_BYTES);
+#else
   p384_felem_to_bytes((uint8_t *)out->words, in);
+#endif
+}
+
+static void p384_from_scalar(p384_felem out, const EC_SCALAR *in) {
+#ifdef OPENSSL_BIG_ENDIAN
+  uint8_t tmp[P384_FELEM_BYTES];
+  bn_words_to_little_endian(tmp, P384_FELEM_BYTES, in->words, P384_NLIMBS);
+  p384_felem_from_bytes(out, tmp);
+#else
+  p384_felem_from_bytes(out, (const uint8_t *)in->words);
+#endif
 }
 
 // p384_inv_square calculates |out| = |in|^{-2}
@@ -586,7 +605,7 @@ static int ec_GFp_nistp384_cmp_x_coordinate(const EC_GROUP *group,
   p384_felem_mul(Z2_mont, Z2_mont, Z2_mont);
 
   p384_felem r_Z2;
-  p384_felem_from_bytes(r_Z2, (const uint8_t*)r->words);  // r < order < p, so this is valid.
+  p384_from_scalar(r_Z2, r);  // r < order < p, so this is valid.
   p384_felem_mul(r_Z2, r_Z2, Z2_mont);
 
   p384_felem X;
