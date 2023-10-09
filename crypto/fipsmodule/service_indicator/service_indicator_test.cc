@@ -1865,12 +1865,17 @@ struct RSATestVector kRSATestVectors[] = {
 
     // RSA test cases that are approved.
     { 1024, &EVP_sha1, false, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { 1024, &EVP_sha224, false, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
     { 1024, &EVP_sha256, false, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { 1024, &EVP_sha384, false, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
     { 1024, &EVP_sha512, false, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
     { 1024, &EVP_sha1, true, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { 1024, &EVP_sha224, true, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
     { 1024, &EVP_sha256, true, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { 1024, &EVP_sha384, true, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
+    { 1024, &EVP_sha512_256, true, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
     // PSS with hashLen == saltLen is not possible for 1024-bit modulus and
-    // SHA-512.
+    // SHA-512. This means we can't test it here because the API won't work.
 
     { 2048, &EVP_sha1, false, AWSLC_NOT_APPROVED, AWSLC_APPROVED },
     { 2048, &EVP_sha224, false, AWSLC_APPROVED, AWSLC_APPROVED },
