@@ -30,18 +30,18 @@
 
 // Some immediate offsets for cached differences+carry used
 // in the inner ADK multiplications
-#define cache_a01 (32+0*16)
-#define cache_a02 (32+1*16)
-#define cache_a03 (32+2*16)
-#define cache_a12 (32+3*16)
-#define cache_a13 (32+4*16)
-#define cache_a23 (32+5*16)
-#define cache_m10 (0*16)
-#define cache_m20 (1*16)
-#define cache_m30 (2*16)
-#define cache_m21 (3*16)
-#define cache_m31 (4*16)
-#define cache_m32 (5*16)
+#define cache_a01 32
+#define cache_a02 48
+#define cache_a03 64
+#define cache_a12 80
+#define cache_a13 96
+#define cache_a23 112
+#define cache_m10 0
+#define cache_m20 16
+#define cache_m30 32
+#define cache_m21 48
+#define cache_m31 64
+#define cache_m32 80
 
 #define a0 x4
 #define a1 x5
@@ -63,24 +63,24 @@ S2N_BN_SYMBOL(bignum_emontredc_8n_neon):
         cmp x0, #12
         ble bignum_emontredc_8n_neon_bignum_emontredc_8n
 
-        sub sp, sp, #(14*16)
-        stp x19, x20, [sp, #(13*16)]
-        stp x21, x22, [sp, #(12*16)]
-        stp x23, x24, [sp, #(11*16)]
-        stp x25, x26, [sp, #(10*16)]
-        stp x27, x28, [sp, #(9*16)]
-        stp x29, x30, [sp, #(8*16)]
-        str q8, [sp, #16*0]
-        str q9, [sp, #16*1]
-        str q10, [sp, #16*2]
-        str q11, [sp, #16*3]
-        str q12, [sp, #16*4]
-        str q13, [sp, #16*5]
-        str q14, [sp, #16*6]
-        str q15, [sp, #16*7]
+        sub sp, sp, #224
+        stp x19, x20, [sp, #208]
+        stp x21, x22, [sp, #192]
+        stp x23, x24, [sp, #176]
+        stp x25, x26, [sp, #160]
+        stp x27, x28, [sp, #144]
+        stp x29, x30, [sp, #128]
+        str q8, [sp]
+        str q9, [sp, #16]
+        str q10, [sp, #32]
+        str q11, [sp, #48]
+        str q12, [sp, #64]
+        str q13, [sp, #80]
+        str q14, [sp, #96]
+        str q15, [sp, #112]
 
         // Leave space for cached differences of words of a in inner loop
-        sub sp, sp, #(6*16)
+        sub sp, sp, #96
 
         sub sp, sp, #32
         lsr x0, x0, #2
@@ -658,12 +658,12 @@ bignum_emontredc_8n_neon_end:
         ldr q13, [sp, #16*5]
         ldr q14, [sp, #16*6]
         ldr q15, [sp, #16*7]
-        ldp x29, x30, [sp, #(8*16)]
-        ldp x27, x28, [sp, #(9*16)]
-        ldp x25, x26, [sp, #(10*16)]
-        ldp x23, x24, [sp, #(11*16)]
-        ldp x21, x22, [sp, #(12*16)]
-        ldp x19, x20, [sp, #(13*16)]
+        ldp x29, x30, [sp, #8*16]
+        ldp x27, x28, [sp, #9*16]
+        ldp x25, x26, [sp, #10*16]
+        ldp x23, x24, [sp, #11*16]
+        ldp x21, x22, [sp, #12*16]
+        ldp x19, x20, [sp, #13*16]
         add sp, sp, #(14*16)
 
         ret
