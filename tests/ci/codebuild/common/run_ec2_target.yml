@@ -1,0 +1,13 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC
+
+version: 0.2
+
+env:
+  variables:
+    GOPROXY: https://proxy.golang.org,direct
+
+phases:
+  build:
+    commands:
+      - ./tests/ci/run_ec2_test_framework.sh "${EC2_AMI}" "${EC2_INSTANCE_TYPE}" "${ECR_DOCKER_TAG}"

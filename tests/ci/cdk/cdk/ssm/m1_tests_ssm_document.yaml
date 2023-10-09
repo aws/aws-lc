@@ -10,12 +10,12 @@ mainSteps:
     inputs:
       timeoutSeconds: '7200'
       runCommand:
+        - export HOME="/var/root"
+        - export SOURCE={SOURCE}
         - eval $(/opt/homebrew/bin/brew shellenv)
         - sudo su
         - BUILD_ROOT=$(mktemp -d)
         - cd ${BUILD_ROOT}
-        - export HOME="/var/root"
-        - export SOURCE={SOURCE}
         - trap "rm -rf ${BUILD_ROOT}" EXIT
         # Check if the source code is on S3, otherwise treat the source as a PR.
         - >

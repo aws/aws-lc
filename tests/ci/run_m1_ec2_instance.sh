@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -exo pipefail
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 OR ISC
@@ -25,7 +25,7 @@ echo GitHub Branch Name: "${CODEBUILD_WEBHOOK_HEAD_REF}"
 AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 echo AWS Account ID: "${AWS_ACCOUNT_ID}"
 echo GitHub Repo Link: "${CODEBUILD_SOURCE_REPO_URL}"
-export cloudwatch_group_name="aws-lc-ci-macos-arm-cw-logs"
+export cloudwatch_group_name="aws-lc-ci-ec2-test-framework-cw-logs"
 export s3_bucket_name="aws-lc-codebuild"
 
 # get information for ec2 instances
