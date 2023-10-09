@@ -39,7 +39,7 @@ jobs:
         working-directory: ./aws-lc-rs/aws-lc-sys
         run: |
           rm -rf symbols/*
-          rm -rf generated-include/*
+          rm -rf generated-include/openssl/*
           ../scripts/generate/_collect_symbols_build.sh -c aws-lc-sys
           ../scripts/generate/_generate_prefix_headers.sh -c aws-lc-sys
           ../scripts/generate/_generate_bindings.sh -c aws-lc-sys
