@@ -58,84 +58,84 @@ docker run -e GOPROXY=direct -v `pwd`:`pwd` -w `pwd` -it ubuntu-20.04:clang-9x
 General test suite with a varying set of build options (FIPS (shared-build), non-FIPS, debug,
 shared, static, etc.) is executed on the following combinations:
 
-CI Tool| Compiler                          |CPU|OS
------------- |-----------------------------------| -------------|-------------
-CodeBuild| gcc 4.1.3                         |x86|Ubuntu 10.04
-CodeBuild| gcc 4.8.5                         |x86|Centos 7
-CodeBuild| gcc 4.8.5                         |x86-64|Centos 7
-CodeBuild| gcc 5.4.0                         |x86|Ubuntu 16.04
-CodeBuild| gcc 7.3.1                         |x86-64|AL2
-CodeBuild| gcc 7.3.1                         |aarch64|AL2
-CodeBuild| gcc 7.5.0                         |x86-64|Ubuntu 18.04
-CodeBuild| gcc 7.5.0                         |x86-64|Ubuntu 20.04
-CodeBuild| gcc 7.5.0                         |aarch64|Ubuntu 20.04
-CodeBuild| gcc 8.4.0                         |x86-64|Ubuntu 20.04
-CodeBuild| gcc 8.4.0                         |aarch64|Ubuntu 20.04
-CodeBuild| gcc 11                            |x86-64|AL2023
-CodeBuild| gcc 11                            |aarch64|AL2023
-CodeBuild| gcc 11                            |x86-64|Ubuntu 22.04
-CodeBuild| gcc 11                            |aarch64|Ubuntu 22.04
-CodeBuild| gcc 12                            |x86-64|Ubuntu 22.04
-CodeBuild| gcc 12                            |aarch64|Ubuntu 22.04
-CodeBuild| clang 7.0.1                       |x86-64|AL2
-CodeBuild| clang 7.0.1                       |aarch64|AL2
-CodeBuild| clang 6.0.0                       |x86-64|Ubuntu 18.04
-CodeBuild| clang 9.0.1                       |x86-64|Fedora 31
-CodeBuild| clang 7.0.1                       |x86-64|Ubuntu 20.04
-CodeBuild| clang 7.0.1                       |aarch64|Ubuntu 20.04
-CodeBuild| clang 8.0.1                       |x86-64|Ubuntu 20.04
-CodeBuild| clang 8.0.1                       |aarch64|Ubuntu 20.04
-CodeBuild| clang 9.0.1                       |x86-64|Ubuntu 20.04
-CodeBuild| clang 9.0.1                       |aarch64|Ubuntu 20.04
-CodeBuild| clang 10.0.0                      |x86-64|Ubuntu 20.04
-CodeBuild| clang 10.0.0                      |aarch64|Ubuntu 20.04
-CodeBuild| clang 15.0.6                      |x86-64|AL2023
-CodeBuild| clang 15.0.6                      |aarch64|AL2023
-CodeBuild| Visual Studio 2015                |x86-64|Windows Server 19
-CodeBuild| Visual Studio 2017                |x86-64|Windows Server 19
-GitHub Workflow| AppleClang 13.0.0                 |x86-64|macOS 11
-SSM->EC2 Instance| AppleClang 14.0.0                 |aarch64|macOS 12
-AWS Device Farm| Android ndkVersion "21.0.6113669" |aarch64|Android 10
-AWS Device Farm| Android ndkVersion "21.0.6113669" |aarch64|Android 11
-AWS Device Farm| Android ndkVersion "21.0.6113669" |aarch64|Android 12
+ CI Tool           | Compiler                          | CPU     | OS                
+-------------------|-----------------------------------|---------|-------------------
+ CodeBuild         | gcc 4.1.3                         | x86     | Ubuntu 10.04      
+ CodeBuild         | gcc 4.8.5                         | x86     | Centos 7          
+ CodeBuild         | gcc 4.8.5                         | x86-64  | Centos 7          
+ CodeBuild         | gcc 5.4.0                         | x86     | Ubuntu 16.04      
+ CodeBuild         | gcc 7.3.1                         | x86-64  | AL2               
+ CodeBuild         | gcc 7.3.1                         | aarch64 | AL2               
+ CodeBuild         | gcc 7.5.0                         | x86-64  | Ubuntu 18.04      
+ CodeBuild         | gcc 7.5.0                         | x86-64  | Ubuntu 20.04      
+ CodeBuild         | gcc 7.5.0                         | aarch64 | Ubuntu 20.04      
+ CodeBuild         | gcc 8.4.0                         | x86-64  | Ubuntu 20.04      
+ CodeBuild         | gcc 8.4.0                         | aarch64 | Ubuntu 20.04      
+ CodeBuild         | gcc 11                            | x86-64  | AL2023            
+ CodeBuild         | gcc 11                            | aarch64 | AL2023            
+ CodeBuild         | gcc 11                            | x86-64  | Ubuntu 22.04      
+ CodeBuild         | gcc 11                            | aarch64 | Ubuntu 22.04      
+ CodeBuild         | gcc 12                            | x86-64  | Ubuntu 22.04      
+ CodeBuild         | gcc 12                            | aarch64 | Ubuntu 22.04      
+ CodeBuild         | clang 7.0.1                       | x86-64  | AL2               
+ CodeBuild         | clang 7.0.1                       | aarch64 | AL2               
+ CodeBuild         | clang 6.0.0                       | x86-64  | Ubuntu 18.04      
+ CodeBuild         | clang 9.0.1                       | x86-64  | Fedora 31         
+ CodeBuild         | clang 7.0.1                       | x86-64  | Ubuntu 20.04      
+ CodeBuild         | clang 7.0.1                       | aarch64 | Ubuntu 20.04      
+ CodeBuild         | clang 8.0.1                       | x86-64  | Ubuntu 20.04      
+ CodeBuild         | clang 8.0.1                       | aarch64 | Ubuntu 20.04      
+ CodeBuild         | clang 9.0.1                       | x86-64  | Ubuntu 20.04      
+ CodeBuild         | clang 9.0.1                       | aarch64 | Ubuntu 20.04      
+ CodeBuild         | clang 10.0.0                      | x86-64  | Ubuntu 20.04      
+ CodeBuild         | clang 10.0.0                      | aarch64 | Ubuntu 20.04      
+ CodeBuild         | clang 15.0.6                      | x86-64  | AL2023            
+ CodeBuild         | clang 15.0.6                      | aarch64 | AL2023            
+ CodeBuild         | Visual Studio 2015                | x86-64  | Windows Server 19 
+ CodeBuild         | Visual Studio 2017                | x86-64  | Windows Server 19 
+ GitHub Workflow   | AppleClang 13.0.0                 | x86-64  | macOS 11          
+ SSM->EC2 Instance | AppleClang 14.0.0                 | aarch64 | macOS 12          
+ AWS Device Farm   | Android ndkVersion "21.0.6113669" | aarch64 | Android 10        
+ AWS Device Farm   | Android ndkVersion "21.0.6113669" | aarch64 | Android 11        
+ AWS Device Farm   | Android ndkVersion "21.0.6113669" | aarch64 | Android 12        
 
 ### FIPS static build tests
 
 Unfortunately, it's a known issue that the FIPS build has limited support when producing a static library. The static AWS-LC FIPS build is only supported on Linux based platforms for x86_64 and aarch64.
 
-CI Tool| Compiler                          |CPU|OS
------------- |-----------------------------------| -------------|-------------
-CodeBuild| gcc 4.8.5                         |x86-64|Centos 7
-CodeBuild| gcc 7.3.1                         |x86-64|AL2
-CodeBuild| gcc 7.3.1                         |aarch64|AL2
-CodeBuild| gcc 7.5.0                         |x86-64|Ubuntu 18.04
-CodeBuild| gcc 7.5.0                         |x86-64|Ubuntu 20.04
-CodeBuild| gcc 7.5.0                         |aarch64|Ubuntu 20.04
-CodeBuild| gcc 8.4.0                         |x86-64|Ubuntu 20.04
-CodeBuild| gcc 8.4.0                         |aarch64|Ubuntu 20.04
-CodeBuild| gcc 11                            |x86-64|AL2023
-CodeBuild| gcc 11                            |aarch64|AL2023
-CodeBuild| gcc 11                            |x86-64|Ubuntu 22.04
-CodeBuild| gcc 11                            |aarch64|Ubuntu 22.04
-CodeBuild| gcc 12                            |x86-64|Ubuntu 22.04
-CodeBuild| gcc 12                            |aarch64|Ubuntu 22.04
-CodeBuild| clang 7.0.1                       |x86-64|AL2
-CodeBuild| clang 7.0.1                       |aarch64|AL2
-CodeBuild| clang 6.0.0                       |x86-64|Ubuntu 18.04
-CodeBuild| clang 9.0.1                       |x86-64|Fedora 31
-CodeBuild| clang 7.0.1                       |x86-64|Ubuntu 20.04
-CodeBuild| clang 7.0.1                       |aarch64|Ubuntu 20.04
-CodeBuild| clang 8.0.1                       |x86-64|Ubuntu 20.04
-CodeBuild| clang 8.0.1                       |aarch64|Ubuntu 20.04
-CodeBuild| clang 9.0.1                       |x86-64|Ubuntu 20.04
-CodeBuild| clang 9.0.1                       |aarch64|Ubuntu 20.04
-CodeBuild| clang 10.0.0                      |x86-64|Ubuntu 20.04
-CodeBuild| clang 10.0.0                      |aarch64|Ubuntu 20.04
-CodeBuild| clang 15.0.6                      |x86-64|AL2023
-CodeBuild| clang 15.0.6                      |aarch64|AL2023
-AWS Device Farm| Android ndkVersion "21.0.6113669" |aarch64|Android 10
-AWS Device Farm| Android ndkVersion "21.0.6113669" |aarch64|Android 11
-AWS Device Farm| Android ndkVersion "21.0.6113669" |aarch64|Android 12
+ CI Tool         | Compiler                          | CPU     | OS           
+-----------------|-----------------------------------|---------|--------------
+ CodeBuild       | gcc 4.8.5                         | x86-64  | Centos 7     
+ CodeBuild       | gcc 7.3.1                         | x86-64  | AL2          
+ CodeBuild       | gcc 7.3.1                         | aarch64 | AL2          
+ CodeBuild       | gcc 7.5.0                         | x86-64  | Ubuntu 18.04 
+ CodeBuild       | gcc 7.5.0                         | x86-64  | Ubuntu 20.04 
+ CodeBuild       | gcc 7.5.0                         | aarch64 | Ubuntu 20.04 
+ CodeBuild       | gcc 8.4.0                         | x86-64  | Ubuntu 20.04 
+ CodeBuild       | gcc 8.4.0                         | aarch64 | Ubuntu 20.04 
+ CodeBuild       | gcc 11                            | x86-64  | AL2023       
+ CodeBuild       | gcc 11                            | aarch64 | AL2023       
+ CodeBuild       | gcc 11                            | x86-64  | Ubuntu 22.04 
+ CodeBuild       | gcc 11                            | aarch64 | Ubuntu 22.04 
+ CodeBuild       | gcc 12                            | x86-64  | Ubuntu 22.04 
+ CodeBuild       | gcc 12                            | aarch64 | Ubuntu 22.04 
+ CodeBuild       | clang 7.0.1                       | x86-64  | AL2          
+ CodeBuild       | clang 7.0.1                       | aarch64 | AL2          
+ CodeBuild       | clang 6.0.0                       | x86-64  | Ubuntu 18.04 
+ CodeBuild       | clang 9.0.1                       | x86-64  | Fedora 31    
+ CodeBuild       | clang 7.0.1                       | x86-64  | Ubuntu 20.04 
+ CodeBuild       | clang 7.0.1                       | aarch64 | Ubuntu 20.04 
+ CodeBuild       | clang 8.0.1                       | x86-64  | Ubuntu 20.04 
+ CodeBuild       | clang 8.0.1                       | aarch64 | Ubuntu 20.04 
+ CodeBuild       | clang 9.0.1                       | x86-64  | Ubuntu 20.04 
+ CodeBuild       | clang 9.0.1                       | aarch64 | Ubuntu 20.04 
+ CodeBuild       | clang 10.0.0                      | x86-64  | Ubuntu 20.04 
+ CodeBuild       | clang 10.0.0                      | aarch64 | Ubuntu 20.04 
+ CodeBuild       | clang 15.0.6                      | x86-64  | AL2023       
+ CodeBuild       | clang 15.0.6                      | aarch64 | AL2023       
+ AWS Device Farm | Android ndkVersion "21.0.6113669" | aarch64 | Android 10   
+ AWS Device Farm | Android ndkVersion "21.0.6113669" | aarch64 | Android 11   
+ AWS Device Farm | Android ndkVersion "21.0.6113669" | aarch64 | Android 12   
 
 ### Sanitizer tests
 
@@ -146,28 +146,28 @@ Runs all tests with:
 * Thread sanitizer
 * Undefined behavior sanitizer
 
-CI Tool| Compiler     |CPU platform|OS
------------- |--------------| -------------|-------------
-CodeBuild| clang 15.0.6 |x86-64|AL2023
-CodeBuild| clang 15.0.6 |aarch64|AL2023
+ CI Tool   | Compiler     | CPU platform | OS     
+-----------|--------------|--------------|--------
+ CodeBuild | clang 15.0.6 | x86-64       | AL2023 
+ CodeBuild | clang 15.0.6 | aarch64      | AL2023 
 
 ### Valgrind tests
 
 The following Valgrind tests are run for a subset of targets in `utils/all_tests.json` using the debug build of AWS-LC:
 
-CI Tool|Compiler|CPU platform| OS     | memcheck
------------- | -------------| -------------|--------|-------------
-CodeBuild|gcc 11|x86-64| AL2023 | X
-CodeBuild|gcc 11|aarch64| AL2023 | X
+ CI Tool   | Compiler | CPU platform | OS     | memcheck 
+-----------|----------|--------------|--------|----------
+ CodeBuild | gcc 11   | x86-64       | AL2023 | X        
+ CodeBuild | gcc 11   | aarch64      | AL2023 | X        
 
 ### Fuzz tests
 
 All Fuzz tests under /fuzz are run in CodeBuild for an hour total.
 
-CI Tool|Compiler|CPU platform|OS|Flags
-------------|-------------|-------------|-------------|-------------
-CodeBuild|clang 10.0.0|x86-64|Ubuntu 20.04|ASAN=1
-CodeBuild|clang 10.0.0|aarch64|ubuntu 20.04|ASAN=1
+ CI Tool   | Compiler     | CPU platform | OS           | Flags  
+-----------|--------------|--------------|--------------|--------
+ CodeBuild | clang 10.0.0 | x86-64       | Ubuntu 20.04 | ASAN=1 
+ CodeBuild | clang 10.0.0 | aarch64      | ubuntu 20.04 | ASAN=1 
 
 To add a new fuzz test create a new executable follow [libFuzzer's](https://llvm.org/docs/LibFuzzer.html) documentation
 and existing tests. Generate a seed corpus and check it into a folder with the same name as the executable. The CI will
@@ -183,7 +183,7 @@ runs in AWS EFS. Cryptofuzz is built with 3 modules:
 * Botan
 * Crypto++
 
-CI Tool|Compiler|CPU platform|OS|Flags
-------------|-------------|-------------|-------------|-------------
-CodeBuild|clang 10.0.0|x86-64|Ubuntu 20.04|ASAN=1
-CodeBuild|clang 10.0.0|aarch64|Ubuntu 20.04|ASAN=1
+ CI Tool   | Compiler     | CPU platform | OS           | Flags  
+-----------|--------------|--------------|--------------|--------
+ CodeBuild | clang 10.0.0 | x86-64       | Ubuntu 20.04 | ASAN=1 
+ CodeBuild | clang 10.0.0 | aarch64      | Ubuntu 20.04 | ASAN=1 
