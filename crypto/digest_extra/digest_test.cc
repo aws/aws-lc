@@ -403,6 +403,17 @@ TEST(DigestTest, Getters) {
   EXPECT_EQ(EVP_sha1(), EVP_get_digestbyobj(OBJ_nid2obj(NID_sha1)));
 }
 
+TEST(DigestTest, TestXOF) {
+  // Assert that passing null outsize pointer for EVP XOF results in error.
+  // Use same buffer for input/output; contents don't matter.
+  const size_t out_size = 16;
+  std::unique_ptr<uint8_t[]> digest(new uint8_t[out_size]);
+  EXPECT_FALSE(EVP_Digest(digest.get(), out_size, digest.get(),
+              /*out_len*/nullptr, EVP_shake128(), /*engine*/nullptr));
+  EXPECT_EQ(ERR_R_PASSED_NULL_PARAMETER, ERR_GET_REASON(ERR_peek_last_error()));
+  ERR_clear_error();
+}
+
 TEST(DigestTest, ASN1) {
   bssl::ScopedCBB cbb;
   ASSERT_TRUE(CBB_init(cbb.get(), 0));
