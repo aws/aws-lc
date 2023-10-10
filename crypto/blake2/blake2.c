@@ -171,7 +171,7 @@ void BLAKE2B256_Final(uint8_t out[BLAKE2B256_DIGEST_LENGTH], BLAKE2B_CTX *b2b) {
   blake2b_transform(b2b, b2b->block, b2b->block_used,
                     /*is_final_block=*/1);
   OPENSSL_STATIC_ASSERT(BLAKE2B256_DIGEST_LENGTH <= sizeof(b2b->h), _)
-  copy_digest_words_to_dest(out, b2b->h, 4);
+  copy_digest_words_to_dest(out, b2b->h, BLAKE2B256_DIGEST_LENGTH / 8);
 }
 
 void BLAKE2B256(const uint8_t *data, size_t len,
