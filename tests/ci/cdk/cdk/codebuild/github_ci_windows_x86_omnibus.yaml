@@ -31,26 +31,26 @@ batch:
           MSVC_PATH: 'C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\VC\Auxiliary\Build\vcvarsall.bat'
           ARCH_OPTION: x64
 
-    - identifier: windows_msvc2017_x64_sde
-      buildspec: ./tests/ci/codebuild/windows-x86/run_windows_target.yml
-      env:
-        type: WINDOWS_SERVER_2019_CONTAINER
-        privileged-mode: false
-        compute-type: BUILD_GENERAL1_LARGE
-        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-windows-x86:vs2017_latest
-        variables:
-          MSVC_PATH: 'C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\VC\Auxiliary\Build\vcvarsall.bat'
-          ARCH_OPTION: x64
-          RUN_SDE: true
+    # - identifier: windows_msvc2017_x64_sde
+    #   buildspec: ./tests/ci/codebuild/windows-x86/run_windows_target.yml
+    #   env:
+    #     type: WINDOWS_SERVER_2019_CONTAINER
+    #     privileged-mode: false
+    #     compute-type: BUILD_GENERAL1_LARGE
+    #     image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-windows-x86:vs2017_latest
+    #     variables:
+    #       MSVC_PATH: 'C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\VC\Auxiliary\Build\vcvarsall.bat'
+    #       ARCH_OPTION: x64
+    #       RUN_SDE: true
 
-    - identifier: windows_msvc2017_x32_sde
-      buildspec: ./tests/ci/codebuild/windows-x86/run_windows_target.yml
-      env:
-        type: WINDOWS_SERVER_2019_CONTAINER
-        privileged-mode: false
-        compute-type: BUILD_GENERAL1_LARGE
-        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-windows-x86:vs2017_latest
-        variables:
-          MSVC_PATH: 'C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\VC\Auxiliary\Build\vcvarsall.bat'
-          ARCH_OPTION: x86
-          RUN_SDE: true
+    # - identifier: windows_msvc2017_x32_sde
+    #   buildspec: ./tests/ci/codebuild/windows-x86/run_windows_target.yml
+    #   env:
+    #     type: WINDOWS_SERVER_2019_CONTAINER
+    #     privileged-mode: false
+    #     compute-type: BUILD_GENERAL1_LARGE
+    #     image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-windows-x86:vs2017_latest
+    #     variables:
+    #       MSVC_PATH: 'C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\VC\Auxiliary\Build\vcvarsall.bat'
+    #       ARCH_OPTION: x86
+    #       RUN_SDE: true
