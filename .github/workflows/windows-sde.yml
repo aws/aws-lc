@@ -1,0 +1,66 @@
+name: Windows SDE Tests
+on:
+  pull_request:
+    branches: [ '*' ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  GOPROXY: https://proxy.golang.org,direct
+  SDE_MIRROR_URL: "https://downloadmirror.intel.com/777395/sde-external-9.21.1-2023-04-24-win.tar.xz"
+  SDE_VERSION_TAG: sde-external-9.21.1-2023-04-24-win
+
+jobs:
+  SDE-64-bit:
+    runs-on: temporary-performance-testing_windows-latest_64-core
+    steps:
+      - name: Git clone the repository
+        uses: actions/checkout@v3
+
+      - name: Build Windows Dependencies
+        run: |
+          choco install ninja --version 1.9.0.20190208 -y &&
+          choco install nasm --version 2.14.02 -y
+
+      - name: Install SDE simulator
+        run: |
+          curl -SL --output temp.tar.xz ${{ env.SDE_MIRROR_URL }}
+          7z x temp.tar.xz
+          7z x temp.tar
+          ren ${{ env.SDE_VERSION_TAG }} windows-sde
+          del temp.tar.xz
+          del temp.tar
+
+      - name: Run Windows SDE Tests for 64 bit
+        run: |
+          $env:SDEROOT = "${PWD}\windows-sde"
+          echo ${env:SDEROOT}
+          .\tests\ci\run_windows_tests.bat "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64 true
+
+  SDE-32-bit:
+    runs-on: temporary-performance-testing_windows-latest_64-core
+    steps:
+      - name: Git clone the repository
+        uses: actions/checkout@v3
+
+      - name: Build Windows Dependencies
+        run: |
+          choco install ninja --version 1.9.0.20190208 -y &&
+          choco install nasm --version 2.14.02 -y
+
+      - name: Install SDE simulator
+        run: |
+          curl -SL --output temp.tar.xz ${{ env.SDE_MIRROR_URL }}
+          7z x temp.tar.xz
+          7z x temp.tar
+          ren ${{ env.SDE_VERSION_TAG }} windows-sde
+          del temp.tar.xz
+          del temp.tar
+
+      - name: Run Windows SDE Tests for 32 bit
+        run: |
+          $env:SDEROOT = "${PWD}\windows-sde"
+          echo ${env:SDEROOT}
+          .\tests\ci\run_windows_tests.bat "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x86 true
