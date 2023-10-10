@@ -83,6 +83,7 @@ ECDSA_do_sign_ov <- llvm_verify m "ECDSA_do_sign"
   , ec_GFp_mont_mul_public_batch_ov
   , ec_GFp_mont_cmp_x_coordinate_ov
   , value_barrier_w_ov
+  , value_barrier_u32_ov
   ]
   true
   ECDSA_do_sign_spec

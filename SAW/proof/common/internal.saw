@@ -18,6 +18,13 @@ let value_barrier_w_spec = do {
   crucible_return (crucible_term a);
 };
 
+let value_barrier_u32_spec = do {
+
+  a <- crucible_fresh_var "a" (llvm_int 32);
+  crucible_execute_func [crucible_term a];
+  crucible_return (crucible_term a);
+};
+
 
 let CRYPTO_REFCOUNT_MAX = 0xffffffff;
 
@@ -78,6 +85,14 @@ value_barrier_w_ov <- llvm_verify_x86 m "../../build/x86/crypto/crypto_test" "va
   []
   true
   value_barrier_w_spec
+  (do {
+    w4_unint_yices [];
+  });
+
+value_barrier_u32_ov <- llvm_verify_x86 m "../../build/x86/crypto/crypto_test" "value_barrier_u32"
+  []
+  true
+  value_barrier_u32_spec
   (do {
     w4_unint_yices [];
   });

@@ -1,0 +1,14 @@
+diff --git a/crypto/internal.h b/crypto/internal.h
+index 295f1dd97..a5470c17a 100644
+--- a/crypto/internal.h
++++ b/crypto/internal.h
+@@ -289,7 +289,8 @@ static inline crypto_word_t value_barrier_w(crypto_word_t a) {
+ }
+ 
+ // value_barrier_u32 behaves like |value_barrier_w| but takes a |uint32_t|.
+-static inline uint32_t value_barrier_u32(uint32_t a) {
++__attribute__((noinline))
++static uint32_t value_barrier_u32(uint32_t a) {
+ #if defined(__GNUC__) || defined(__clang__)
+   __asm__("" : "+r"(a) : /* no inputs */);
+ #endif

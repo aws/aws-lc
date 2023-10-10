@@ -1191,7 +1191,8 @@ ec_point_mul_scalar_ov <- llvm_verify m "ec_point_mul_scalar"
 
 ec_point_mul_scalar_base_ov <- llvm_verify m "ec_point_mul_scalar_base"
   [ p384_point_mul_base_ov
-  , ec_GFp_simple_is_on_curve_ov]
+  , ec_GFp_simple_is_on_curve_ov
+  , value_barrier_u32_ov ]
   true
   ec_point_mul_scalar_base_spec
   (do {

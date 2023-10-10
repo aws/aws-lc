@@ -1,7 +1,7 @@
 [submodule "src"]
 	path = src
-	branch = main
-	url = https://github.com/aws/aws-lc.git
+	branch = upstream-merge-2023-10-02
+	url = https://github.com/dkostic/aws-lc.git
 [submodule "cryptol-specs"]
 	path = cryptol-specs
 	branch = sha-imperative

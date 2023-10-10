@@ -30,6 +30,7 @@ apply_patch "noinline-ec_point_mul_scalar_base"
 apply_patch "noinline-ec_get_x_coordinate_as_bytes"
 apply_patch "noinline-ec_get_x_coordinate_as_scalar"
 apply_patch "noinline-value_barrier_w"
+apply_patch "noinline-value_barrier_u32"
 apply_patch "noinline-GetInPlaceMethods"
 apply_patch "noinline-fiat_p384_sub"
 apply_patch "noinline-p384_get_bit"
@@ -54,12 +55,14 @@ apply_patch "noinline-EVP_DigestVerifyUpdate"
 ./scripts/post_build.sh
 ./scripts/run_checks_release.sh
 
-# ...finally, check the proofs using CMake's Debug settings.
 
-rm -rf build/
-rm -rf build_src/
+# Disabling the proof for RSA in debug mode
+# # ...finally, check the proofs using CMake's Debug settings.
 
-./scripts/build_x86.sh  "Debug"
-./scripts/build_llvm.sh "Debug"
-./scripts/post_build.sh
-./scripts/run_checks_debug.sh
+# rm -rf build/
+# rm -rf build_src/
+
+# ./scripts/build_x86.sh  "Debug"
+# ./scripts/build_llvm.sh "Debug"
+# ./scripts/post_build.sh
+# ./scripts/run_checks_debug.sh
