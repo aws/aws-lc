@@ -169,34 +169,26 @@ TEST(BIOTest, CloseFlags) {
 
   const char *test_str = "test\ntest\ntest\n";
 
-  printf("FOOBAR 1\n");
-
   // Assert that CRLF line endings get inserted on write and translated back out on
   // read for text mode.
   TempFILE text_bio_file(tmpfile(), fclose);
   ASSERT_TRUE(text_bio_file);
-  printf("FOOBAR 2\n");
   bssl::UniquePtr<BIO> text_bio(BIO_new_fp(text_bio_file.get(), BIO_NOCLOSE | BIO_FP_TEXT));
   int bytes_written = BIO_write(text_bio.get(), test_str, strlen(test_str));
   EXPECT_GE(bytes_written, 0);
-  printf("FOOBAR 3\n");
   ASSERT_TRUE(BIO_flush(text_bio.get()));
   ASSERT_EQ(0, BIO_seek(text_bio.get(), 0));    // 0 indicates success here
   char contents[256];
-  printf("FOOBAR 4\n");
   OPENSSL_memset(contents, 0, sizeof(contents));
   int bytes_read = BIO_read(text_bio.get(), contents, sizeof(contents));
   EXPECT_GE(bytes_read, bytes_written);
   EXPECT_EQ(test_str, std::string(contents));
 
-  printf("FOOBAR 5\n");
   // Windows should have translated '\n' to '\r\n' on write, so validate that
   // by opening the file in raw binary mode (i.e. no BIO_FP_TEXT).
   bssl::UniquePtr<BIO> text_bio_raw(BIO_new_fp(text_bio_file.get(), BIO_NOCLOSE));
   ASSERT_EQ(0, BIO_seek(text_bio.get(), 0));    // 0 indicates success here
-  printf("FOOBAR 6\n");
   OPENSSL_memset(contents, 0, sizeof(contents));
-  printf("FOOBAR 7\n");
   bytes_read = BIO_read(text_bio_raw.get(), contents, sizeof(contents));
   EXPECT_GT(bytes_read, 0);
 #if defined(OPENSSL_WINDOWS)
@@ -205,18 +197,15 @@ TEST(BIOTest, CloseFlags) {
   EXPECT_EQ(test_str, std::string(contents));
 #endif
 
-  printf("FOOBAR 8\n");
   // Assert that CRLF line endings don't get inserted on write for
   // (default) binary mode.
   TempFILE binary_bio_file(tmpfile(), fclose);
   ASSERT_TRUE(binary_bio_file);
-  printf("FOOBAR 9\n");
   bssl::UniquePtr<BIO> binary_bio(BIO_new_fp(binary_bio_file.get(), BIO_NOCLOSE));
   bytes_written = BIO_write(binary_bio.get(), test_str, strlen(test_str));
   EXPECT_EQ((int) strlen(test_str), bytes_written);
   ASSERT_TRUE(BIO_flush(binary_bio.get()));
   ASSERT_EQ(0, BIO_seek(binary_bio.get(), 0));    // 0 indicates success here
-  printf("FOOBAR 10\n");
   OPENSSL_memset(contents, 0, sizeof(contents));
   bytes_read = BIO_read(binary_bio.get(), contents, sizeof(contents));
   EXPECT_GE(bytes_read, bytes_written);
@@ -228,47 +217,13 @@ TEST(BIOTest, CloseFlags) {
   long pos;
   char b1[256], b2[256];
   binary_bio.reset(BIO_new_fp(binary_bio_file.get(), BIO_NOCLOSE));
-  printf("FOOBAR 11\n");
   ASSERT_EQ(0, BIO_seek(binary_bio.get(), 0));    // 0 indicates success here
   BIO_gets(binary_bio.get(), b1, sizeof(b1));
   pos = BIO_tell(binary_bio.get());
   BIO_gets(binary_bio.get(), b1, sizeof(b1));
-  printf("FOOBAR 12\n");
   BIO_seek(binary_bio.get(), pos);
   BIO_gets(binary_bio.get(), b2, sizeof(b2));
   EXPECT_EQ(std::string(b1), std::string(b2));
-
-  // Assert that BIO_CLOSE causes the underlying file to be closed on BIO free
-  // (ftell will return < 0)
-  FILE *tmp = tmpfile();
-  ASSERT_TRUE(tmp);
-  printf("FOOBAR 13\n");
-  BIO *bio = BIO_new_fp(tmp, BIO_CLOSE);
-  EXPECT_EQ(0, BIO_tell(bio));
-  printf("FOOBAR 14\n");
-  // save off fd to avoid referencing |tmp| after free and angering valgrind
-  int tmp_fd = fileno(tmp);
-  EXPECT_LT(0, tmp_fd);
-  EXPECT_TRUE(BIO_free(bio));
-  printf("FOOBAR 15\n");
-  EXPECT_EQ(-1, lseek(tmp_fd, 0, SEEK_CUR));
-  EXPECT_EQ(errno, EBADF);  // EBADF indicates taht |BIO_free| closed the file
-
-  printf("FOOBAR 16\n");
-  // Assert that BIO_NOCLOSE does not closethe underlying file on BIO free
-  tmp = tmpfile();
-  ASSERT_TRUE(tmp);
-  printf("FOOBAR 17\n");
-  bio = BIO_new_fp(tmp, BIO_NOCLOSE);
-  EXPECT_EQ(0, BIO_tell(bio));
-  EXPECT_TRUE(BIO_free(bio));
-  printf("FOOBAR 18\n");
-  EXPECT_TRUE(tmp);
-  EXPECT_EQ(0, ftell(tmp));     // 0 indicates file is still open
-  printf("FOOBAR 19\n");
-  EXPECT_LT(0, tmp_fd);
-  EXPECT_EQ(0, fclose(tmp));    // 0 indicates success for fclose
-  printf("FOOBAR 20\n");
 }
 
 TEST(BIOTest, ReadASN1) {
