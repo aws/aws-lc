@@ -76,27 +76,26 @@ adding it to our CI.
 
 ## Platform Support
 
-AWS-LC actively supports many common CPU architectures and is working to expand
-this further. The following is a descriptive overview of the platforms we support.
-This provides some indication of how we prioritize our efforts regarding platform
-support. Regardless of the tier, our goal is to properly support all of the
-platforms listed. We gladly accept contributions that improve AWS-LC's
-compatibility or performance on these targets.
+AWS-LC supports a number of commonly used CPU architectures. The following is a descriptive
+overview of the platforms available. Tiers are used to indicate how we prioritize our efforts
+for each platform. Regardless of a platform's tier, our goal is to properly support all of the
+available platforms we offer. We gladly accept contributions that improve compatibility or
+performance on these targets.
 
 ### Tier 1
 
-Tier 1 platforms are ones that we actively test with our CI.
-For every pull request we accept, we verify that AWS-LC successfully builds
-and all tests pass for Tier 1 platforms. A more complete description
+Tier 1 platforms are those that are actively tested in our CI pipeline.
+For every pull request, the proposed change is validated to confirm that it successfully builds,
+and all tests pass for each Tier 1 platform. A more complete description
 of our test setup can be found in the
 [CI README](https://github.com/aws/aws-lc/blob/main/tests/ci/README.md#test-locations).
 
-Many of these platforms also support a specialized FIPS build process.
-(A FIPS build process is required for FIPS certification,
-but it does imply that the library is approved for use in your FIPS environment.
+A subset of platforms support building a FIPS variant of the library.
+We do not make any representation or statements regarding such build variants in relation to the
+FIPS 140 standards.
 See [this document](./crypto/fipsmodule/FIPS.md) for more information.
 
-| OS      | CPU     | FIPS<br/>static | FIPS<br/>shared |
+| OS      | CPU     | FIPS<br/>Static | FIPS<br/>Shared |
 |---------|---------|-----------------|-----------------|
 | Linux   | x86     |                 | X               |
 | Linux   | x86-64  | X               | X               |
