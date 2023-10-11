@@ -2391,9 +2391,21 @@ let ORTHOGONAL_COMPONENTS_BYTES64_TAC =
      (orthogonal_components
        (bytes64 (word_add a (word n))) (bytes64 a) <=>
       orthogonal_components
-       (bytes64 (word_add a (word n))) (bytes64 (word_add a (word 0))))` in
+       (bytes64 (word_add a (word n))) (bytes64 (word_add a (word 0))))`
+  (* rth deals with the case when (m, n) in pth is of a form (x + y, x),
+     (x, x + y) or (x + y, x + z). This helps ORTHOGONAL_COMPONENTS_BYTES64_TAC
+     solve the case when the address given to ARM STP is an expression
+     `word_add (word x0) (word x1)`, and the STP offset +8 is combined with
+     x1, meaning that (m, n) = (x1, x1 + 8). If x1 = x1' + const, '+8' is
+     again combined with '+ const', making
+     (m, n) = (x' + const, x' + (const+8)). *)
+  and rth = WORD_RULE
+     `word_sub (word (x + y)) (word x):int64 = word y /\
+      word_sub (word x) (word (x + y)):int64 = word_neg (word y) /\
+      word_sub (word (x + y)) (word (x + z)):int64 = word_sub (word y) (word z)` in
   GEN_REWRITE_TAC TRY_CONV [qth] THEN
-  MATCH_MP_TAC pth THEN CONV_TAC WORD_REDUCE_CONV THEN
+  MATCH_MP_TAC pth THEN REWRITE_TAC[rth] THEN
+  CONV_TAC WORD_REDUCE_CONV THEN
   CONV_TAC NUM_REDUCE_CONV THEN NO_TAC;;
 
 let SIMPLE_ORTHOGONAL_COMPONENTS_TAC =
@@ -2440,11 +2452,25 @@ let COMPONENT_READ_OVER_WRITE_CONV =
   let rule_same = PART_MATCH (lhand o rand) pth_same
   and rule_orth = PART_MATCH (lhand o rand) pth_orth in
   fun tm ->
+   let rule_same_matched, rule_orth_matched = ref false, ref false in
    (try let th = rule_same tm in
+        rule_same_matched := true;
         MP th (VALID_COMPONENT_CONV(lhand(concl th)))
     with _ ->
-        let th = rule_orth tm in
-        MP th (ORTHOGONAL_COMPONENTS_CONV(lhand(concl th))));;
+      try let th = rule_orth tm in
+          rule_orth_matched := true;
+          MP th (ORTHOGONAL_COMPONENTS_CONV(lhand(concl th)))
+      with _ ->
+        (* If tm was of the form `read _ (write _ _ _)`, this failure is from
+           *_COMPONENT{S}_CONV which were supposed to prove either fully
+           overlapping or orthogonal aliasing relation between the reads and
+           writes in tm. This fact might be helpful to the user. *)
+        (if !components_print_log && (!rule_same_matched || !rule_orth_matched) then
+          Printf.printf
+            "Info: could not prove whether the reads and writes of `%s` are fully overlapping or orthogonal.\n"
+            (string_of_term tm)
+        else ());
+        failwith "COMPONENT_READ_OVER_WRITE_CONV");;
 
 (* ------------------------------------------------------------------------- *)
 (* Similar tool for "write c y (write c z s)"                                *)
