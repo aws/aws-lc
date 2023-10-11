@@ -109,7 +109,7 @@ OPENSSL_STATIC_ASSERT(EC_MAX_WORDS <= BN_SMALL_MAX_WORDS,
 // An EC_SCALAR is an integer fully reduced modulo the order. Only the first
 // |order->width| words are used. An |EC_SCALAR| is specific to an |EC_GROUP|
 // and must not be mixed between groups.
-typedef union {
+typedef struct {
   // words is the representation of the scalar in little-endian order.
   BN_ULONG words[EC_MAX_WORDS];
 } EC_SCALAR;
