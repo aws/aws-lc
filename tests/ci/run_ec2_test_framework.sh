@@ -36,6 +36,7 @@ create_ec2_instances() {
     --tag-specifications 'ResourceType="instance",Tags=[{Key="aws-lc",Value="aws-lc-ci-ec2-test-framework-ec2-x86-instance"}]' \
     --iam-instance-profile Name=aws-lc-ci-ec2-test-framework-ec2-profile \
     --placement 'AvailabilityZone=us-west-2a' \
+    --instance-initiated-shutdown-behavior terminate \
     --query Instances[*].InstanceId --output text)"
   echo "${instance_id}"
 }
