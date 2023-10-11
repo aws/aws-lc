@@ -461,7 +461,7 @@ static void p521_point_add(p521_felem x3, p521_felem y3, p521_felem z3,
   p521_limb_t is_nontrivial_double = constant_time_is_zero_w(xneq | yneq) &
                                     ~constant_time_is_zero_w(z1nz) &
                                     ~constant_time_is_zero_w(z2nz);
-  if (is_nontrivial_double) {
+  if (constant_time_declassify_w(is_nontrivial_double)) {
     p521_point_double(x3, y3, z3, x1, y1, z1);
     return;
   }
@@ -509,7 +509,7 @@ static int ec_GFp_nistp521_point_get_affine_coordinates(
     const EC_GROUP *group, const EC_JACOBIAN *point,
     EC_FELEM *x_out, EC_FELEM *y_out) {
 
-  if (ec_GFp_simple_is_at_infinity(group, point)) {
+  if (constant_time_declassify_w(ec_GFp_simple_is_at_infinity(group, point))) {
     OPENSSL_PUT_ERROR(EC, EC_R_POINT_AT_INFINITY);
     return 0;
   }

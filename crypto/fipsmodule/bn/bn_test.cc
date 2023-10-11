@@ -74,6 +74,7 @@
 #include <string.h>
 
 #include <algorithm>
+#include <limits>
 #include <utility>
 
 #include <gtest/gtest.h>
@@ -908,6 +909,14 @@ static void TestModInv(BIGNUMFileTest *t, BN_CTX *ctx) {
       bn_mod_inverse_consttime(ret.get(), &no_inverse, a.get(), m.get(), ctx));
   EXPECT_BIGNUMS_EQUAL("inv(A) (mod M) (constant-time)", mod_inv.get(),
                        ret.get());
+
+  ASSERT_TRUE(BN_copy(ret.get(), m.get()));
+  ASSERT_TRUE(BN_mod_inverse(ret.get(), a.get(), ret.get(), ctx));
+  EXPECT_BIGNUMS_EQUAL("inv(A) (mod M) (ret == m)", mod_inv.get(), ret.get());
+
+  ASSERT_TRUE(BN_copy(ret.get(), a.get()));
+  ASSERT_TRUE(BN_mod_inverse(ret.get(), ret.get(), m.get(), ctx));
+  EXPECT_BIGNUMS_EQUAL("inv(A) (mod M) (ret == a)", mod_inv.get(), ret.get());
 }
 
 static void TestGCD(BIGNUMFileTest *t, BN_CTX *ctx) {
@@ -2794,6 +2803,27 @@ TEST_F(BNTest, MontgomeryLarge) {
   EXPECT_FALSE(BN_mod_exp_mont_consttime(r.get(), BN_value_one(),
                                          large_bignum.get(), large_bignum.get(),
                                          ctx(), nullptr));
+}
+
+TEST_F(BNTest, FormatWord) {
+  char buf[32];
+  snprintf(buf, sizeof(buf), BN_DEC_FMT1, BN_ULONG{1234});
+  EXPECT_STREQ(buf, "1234");
+  snprintf(buf, sizeof(buf), BN_HEX_FMT1, BN_ULONG{1234});
+  EXPECT_STREQ(buf, "4d2");
+
+  // |BN_HEX_FMT2| is zero-padded up to the maximum value.
+#if defined(OPENSSL_64_BIT)
+  snprintf(buf, sizeof(buf), BN_HEX_FMT2, BN_ULONG{1234});
+  EXPECT_STREQ(buf, "00000000000004d2");
+  snprintf(buf, sizeof(buf), BN_HEX_FMT2, std::numeric_limits<BN_ULONG>::max());
+  EXPECT_STREQ(buf, "ffffffffffffffff");
+#else
+  snprintf(buf, sizeof(buf), BN_HEX_FMT2, BN_ULONG{1234});
+  EXPECT_STREQ(buf, "000004d2");
+  snprintf(buf, sizeof(buf), BN_HEX_FMT2, std::numeric_limits<BN_ULONG>::max());
+  EXPECT_STREQ(buf, "ffffffff");
+#endif
 }
 
 #if defined(OPENSSL_BN_ASM_MONT) && defined(SUPPORTS_ABI_TEST)

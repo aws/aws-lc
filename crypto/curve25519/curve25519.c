@@ -406,6 +406,6 @@ int X25519(uint8_t out_shared_key[32], const uint8_t private_key[32],
   }
 
   // The all-zero output results when the input is a point of small order.
-  // See https://www.rfc-editor.org/rfc/rfc7748#section-6.1.
-  return CRYPTO_memcmp(kZeros, out_shared_key, 32) != 0;
+  return constant_time_declassify_int(
+             CRYPTO_memcmp(kZeros, out_shared_key, 32)) != 0;
 }
