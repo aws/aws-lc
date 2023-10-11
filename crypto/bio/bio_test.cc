@@ -239,7 +239,8 @@ TEST(BIOTest, CloseFlags) {
   // lseek on a closed fd causes an assertion error on windows, so we use the
   // platform-specific _tell there and lseek on *nix.
 #if defined(OPENSSL_WINDOWS)
-  EXPECT_EQ(-1, _tell(tmp_fd));
+  #undef _DEBUG
+  EXPECT_EQ(-1, _lseek(tmp_fd, 0, SEEK_CUR));
 #else
   EXPECT_EQ(-1, lseek(tmp_fd, 0, SEEK_CUR));
 #endif
