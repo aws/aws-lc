@@ -224,7 +224,6 @@ TEST(BIOTest, CloseFlags) {
   BIO_gets(binary_bio.get(), b2, sizeof(b2));
   EXPECT_EQ(std::string(b1), std::string(b2));
 
-  /*
   // Assert that BIO_CLOSE causes the underlying file to be closed on BIO free
   // (ftell will return < 0)
   FILE *tmp = tmpfile();
@@ -235,14 +234,13 @@ TEST(BIOTest, CloseFlags) {
   int tmp_fd = fileno(tmp);
   EXPECT_LT(0, tmp_fd);
   EXPECT_TRUE(BIO_free(bio));
-  EXPECT_EQ(-1, lseek(tmp_fd, 0, SEEK_CUR));
-  EXPECT_EQ(errno, EBADF);  // EBADF indicates taht |BIO_free| closed the file
-  */
+  //EXPECT_EQ(-1, lseek(tmp_fd, 0, SEEK_CUR));
+  //EXPECT_EQ(errno, EBADF);  // EBADF indicates taht |BIO_free| closed the file
 
   // Assert that BIO_NOCLOSE does not closethe underlying file on BIO free
-  FILE *tmp = tmpfile();
+  tmp = tmpfile();
   ASSERT_TRUE(tmp);
-  BIO *bio = BIO_new_fp(tmp, BIO_NOCLOSE);
+  bio = BIO_new_fp(tmp, BIO_NOCLOSE);
   EXPECT_EQ(0, BIO_tell(bio));
   EXPECT_TRUE(BIO_free(bio));
   EXPECT_TRUE(tmp);
