@@ -17,7 +17,7 @@ jobs:
     # We have to run against windows-2019 due to an assembly intruction bug in MSVC2022's msvcrt.dll.
     # The dll library tries to call vinsertf128 with memset, but this isn't available when testing
     # against older processors with SDE.
-    runs-on: temporary-performance-testing_windows-2019_32-core
+    runs-on: temporary-performance-testing_windows-2019_64-core
     steps:
       - name: Git clone the repository
         uses: actions/checkout@v3
@@ -43,7 +43,7 @@ jobs:
           .\tests\ci\run_windows_tests.bat "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x64 true
 
   SDE-32-bit:
-    runs-on: temporary-performance-testing_windows-2019_32-core
+    runs-on: temporary-performance-testing_windows-2019_64-core
     steps:
       - name: Git clone the repository
         uses: actions/checkout@v3
