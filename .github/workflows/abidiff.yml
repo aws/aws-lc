@@ -2,6 +2,9 @@ name: AWS-LC ABI Diff
 on:
   pull_request:
     branches: [ '*' ]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 env:
   DOCKER_BUILDKIT: 1
   GOPROXY: https://proxy.golang.org,direct
