@@ -234,17 +234,10 @@ TEST(BIOTest, CloseFlags) {
   int tmp_fd = fileno(tmp);
   EXPECT_LT(0, tmp_fd);
   EXPECT_TRUE(BIO_free(bio));
-  // ideally, we'd use ftell, but |tmp| gets free'd in the line above. we work
-  // around this by referencing the file via file descriptor (fd). calling
-  // lseek on a closed fd causes an assertion error on windows, so we use the
-  // platform-specific _tell there and lseek on *nix.
-#if defined(OPENSSL_WINDOWS)
-  #undef _DEBUG
-  EXPECT_EQ(-1, _lseek(tmp_fd, 0, SEEK_CUR));
-#else
-  EXPECT_EQ(-1, lseek(tmp_fd, 0, SEEK_CUR));
-#endif
-  EXPECT_EQ(errno, EBADF);  // EBADF indicates that |BIO_free| closed the file
+  // use fcntl here because Windows CRT fails an assertion when lseek or _ftell
+  // is called on a closed file descriptor
+  EXPECT_EQ(-1, fcntl(tmp_fd, F_GETFD));
+  EXPECT_EQ(EBADF, errno);  // EBADF indicates that |BIO_free| closed the file
 
   // Assert that BIO_NOCLOSE does not close the underlying file on BIO free
   tmp = tmpfile();
