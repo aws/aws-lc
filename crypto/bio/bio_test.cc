@@ -235,7 +235,7 @@ TEST(BIOTest, CloseFlags) {
   EXPECT_LT(0, tmp_fd);
   EXPECT_TRUE(BIO_free(bio));
   // Windows CRT hits an assertion error and stack overflow (exception code
-  // 0xc0000409) when calling ftell or lseek on an already-closed file
+  // 0xc0000409) when calling _tell or lseek on an already-closed file
   // descriptor, so only consider the non-Windows case here.
 #if !defined(OPENSSL_WINDOWS)
   EXPECT_EQ(-1, lseek(tmp_fd, 0, SEEK_CUR));

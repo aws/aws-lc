@@ -457,9 +457,9 @@ OPENSSL_EXPORT int BIO_set_mem_eof_return(BIO *bio, int eof_value);
 // BIO_CLOSE will close the underlying file on BIO free
 #define BIO_CLOSE 1
 
-// BIO_FP_TEXT will cause the file to be opened as a text file (this is only
-// relevant on Windows due to CRLF endings) instead of the default behavior of
-// opening the file in binary mode.
+// BIO_FP_TEXT will cause the file to be treated as a text file instead of the
+// default behavior of treating it as a raw binary file. This is only relevant
+// on Windows due to CRLF endings.
 #define BIO_FP_TEXT 0x10
 
 
@@ -517,7 +517,8 @@ OPENSSL_EXPORT BIO *BIO_new_file(const char *filename, const char *mode);
 
 // BIO_new_fp creates a new file BIO that wraps the given |FILE|. If
 // |close_flag| is |BIO_CLOSE|, then |fclose| will be called on |stream| when
-// the BIO is closed.
+// the BIO is closed. If |close_flag| is |BIO_FP_TEXT|, the file will be set as
+// a text file after opening (only on Windows).
 OPENSSL_EXPORT BIO *BIO_new_fp(FILE *stream, int close_flag);
 
 // BIO_get_fp sets |*out_file| to the current |FILE| for |bio|. It returns one
@@ -525,8 +526,9 @@ OPENSSL_EXPORT BIO *BIO_new_fp(FILE *stream, int close_flag);
 OPENSSL_EXPORT int BIO_get_fp(BIO *bio, FILE **out_file);
 
 // BIO_set_fp sets the |FILE| for |bio|. If |close_flag| is |BIO_CLOSE| then
-// |fclose| will be called on |file| when |bio| is closed. It returns one on
-// success and zero otherwise.
+// |fclose| will be called on |file| when |bio| is closed. If |close_flag| is
+// |BIO_FP_TEXT|, the file will be set as a text file (only on Windows). It
+// returns one on success and zero otherwise.
 OPENSSL_EXPORT int BIO_set_fp(BIO *bio, FILE *file, int close_flag);
 
 // BIO_read_filename opens |filename| for reading and sets the result as the
