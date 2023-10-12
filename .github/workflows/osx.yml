@@ -32,3 +32,20 @@ jobs:
     - name: Build ${{ env.PACKAGE_NAME }} with FIPS mode
       run: |
         ./tests/ci/run_fips_tests.sh
+
+  macOS-ARM:
+    runs-on: macos-latest-xlarge
+    steps:
+    - uses: actions/checkout@v2
+    - name: Build ${{ env.PACKAGE_NAME }}
+      run: |
+        ./tests/ci/run_posix_tests.sh
+
+  macOS-ARM-FIPS:
+    runs-on: macos-latest-xlarge
+    steps:
+    - uses: actions/checkout@v2
+    - name: Build ${{ env.PACKAGE_NAME }} with FIPS mode
+      run: |
+        ./tests/ci/run_fips_tests.sh
+
