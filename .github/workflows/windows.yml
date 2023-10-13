@@ -4,7 +4,7 @@ on:
     branches: [ '*' ]
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 env:
@@ -14,7 +14,7 @@ env:
 
 jobs:
   MSVC-2019:
-    runs-on: windows-2019
+    runs-on: temporary-performance-testing_windows-2019_8-core
     steps:
       - name: Git clone the repository
         uses: actions/checkout@v3
@@ -27,7 +27,7 @@ jobs:
           .\tests\ci\run_windows_tests.bat "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x64
 
   MSVC-2022:
-    runs-on: windows-2022
+    runs-on: temporary-performance-testing_windows-latest_8-core
     steps:
       - name: Git clone the repository
         uses: actions/checkout@v3

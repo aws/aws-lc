@@ -7,7 +7,7 @@ version: 0.2
 batch:
   build-list:
     - identifier: windows_msvc2015_x64
-      buildspec: ./tests/ci/codebuild/windows-x86/run_windows_target.yml
+      buildspec: ./tests/ci/codebuild/windows/run_windows_target.yml
       env:
         # https://docs.aws.amazon.com/codebuild/latest/userguide/build-env-ref-compute-types.html
         type: WINDOWS_SERVER_2019_CONTAINER
@@ -20,7 +20,7 @@ batch:
           ARCH_OPTION: x64
 
     - identifier: windows_msvc2017_x64
-      buildspec: ./tests/ci/codebuild/windows-x86/run_windows_target.yml
+      buildspec: ./tests/ci/codebuild/windows/run_windows_target.yml
       env:
         type: WINDOWS_SERVER_2019_CONTAINER
         privileged-mode: false
