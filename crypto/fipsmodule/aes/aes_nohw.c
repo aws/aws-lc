@@ -242,8 +242,6 @@ static inline void aes_nohw_batch_set(AES_NOHW_BATCH *batch,
 #elif defined(OPENSSL_64_BIT)
   batch->w[i] = in[0];
   batch->w[i + 4] = in[1];
-  //batch->w[i] = CRYPTO_load_u64_le(&in[0]);
-  //batch->w[i + 4] = CRYPTO_load_u64_le(&in[1]);
 #else
   batch->w[i] = in[0];
   batch->w[i + 2] = in[1];
@@ -355,8 +353,6 @@ static inline void aes_nohw_compact_block(aes_word_t out[AES_NOHW_BLOCK_WORDS],
   uint64_t a1 = aes_nohw_compact_word(CRYPTO_load_u64_le(&out[1]));
   out[0] = (a0 & UINT64_C(0x00000000ffffffff)) | (a1 << 32);
   out[1] = (a1 & UINT64_C(0xffffffff00000000)) | (a0 >> 32);
-  //CRYPTO_store_u64_le(&out[0], (a0 & UINT64_C(0x00000000ffffffff)) | (a1 << 32));
-  //CRYPTO_store_u64_le(&out[1], (a1 & UINT64_C(0xffffffff00000000)) | (a0 >> 32));
 #else
   uint32_t a0 = aes_nohw_compact_word(out[0]);
   uint32_t a1 = aes_nohw_compact_word(out[1]);
@@ -951,20 +947,7 @@ static void aes_nohw_setup_key_128(AES_KEY *key, const uint8_t in[16]) {
 
   aes_word_t block[AES_NOHW_BLOCK_WORDS];
   aes_nohw_compact_block(block, in);
-#if 0 //defined(OPENSSL_64_BIT) && defined(OPENSSL_BIG_ENDIAN)
-  // |block|'s 2 64-bit words are in big-endian representation
-  // Copying them to the 32-bit |rd_key|'s:
-  memcpy(&key->rd_key[0], &((uint8_t *)block)[4], 4); // LS 4 bytes of 64-bit block[0]
-  memcpy(&key->rd_key[1], &((uint8_t *)block)[0], 4); // MS 4 bytes of 64-bit block[0]
-  memcpy(&key->rd_key[2], &((uint8_t *)block)[12], 4);// LS 4 bytes of 64-bit block[1]
-  memcpy(&key->rd_key[3], &((uint8_t *)block)[8], 4); // MS 4 bytes of 64-bit block[1]
-//  key->rd_key[0] = CRYPTO_load_u32_le(&((const uint8_t *)block)[0]);
-//  key->rd_key[1] = CRYPTO_load_u32_le(&((const uint8_t *)block)[4]);
-//  key->rd_key[2] = CRYPTO_load_u32_le(&((const uint8_t *)block)[8]);
-//  key->rd_key[3] = CRYPTO_load_u32_le(&((const uint8_t *)block)[12]);
-#else
   memcpy(key->rd_key, block, 16);
-#endif
 
   for (size_t i = 1; i <= 10; i++) {
     aes_word_t sub[AES_NOHW_BLOCK_WORDS];
@@ -983,16 +966,7 @@ static void aes_nohw_setup_key_128(AES_KEY *key, const uint8_t in[16]) {
       block[j] = aes_nohw_xor(block[j], aes_nohw_shift_left(v, 8));
       block[j] = aes_nohw_xor(block[j], aes_nohw_shift_left(v, 12));
     }
-#if 0 //defined(OPENSSL_64_BIT) && defined(OPENSSL_BIG_ENDIAN)
-  // |block|'s 2 64-bit words are in big-endian representation
-  // Copying them to the 32-bit |rd_key|'s:
-  memcpy(&key->rd_key[4*i], &((uint8_t *)block)[4], 4); // LS 4 bytes of 64-bit block[0]
-  memcpy(&key->rd_key[4*i+1], &((uint8_t *)block)[0], 4); // MS 4 bytes of 64-bit block[0]
-  memcpy(&key->rd_key[4*i+2], &((uint8_t *)block)[12], 4);// LS 4 bytes of 64-bit block[1]
-  memcpy(&key->rd_key[4*i+3], &((uint8_t *)block)[8], 4); // MS 4 bytes of 64-bit block[1]    
-#else
     memcpy(key->rd_key + 4 * i, block, 16);
-#endif
   }
 }
 
