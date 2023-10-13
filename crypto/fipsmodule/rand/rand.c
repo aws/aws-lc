@@ -316,6 +316,12 @@ static int rdrand(uint8_t *buf, size_t len) {
 #if defined(BORINGSSL_FIPS)
 
 #if defined(FIPS_ENTROPY_SOURCE_PASSIVE)
+
+// Currently, we assume that the length of externally loaded entropy has the
+// same length as the seed used in the ctr-drbg.
+OPENSSL_STATIC_ASSERT(CTR_DRBG_ENTROPY_LEN == PASSIVE_ENTROPY_LOAD_LENGTH,
+  passive_entropy_load_length_different_from_ctr_drbg_seed_length)
+
 void RAND_load_entropy(uint8_t out_entropy[CTR_DRBG_ENTROPY_LEN],
                        uint8_t entropy[PASSIVE_ENTROPY_LOAD_LENGTH]) {
   OPENSSL_memcpy(out_entropy, entropy, CTR_DRBG_ENTROPY_LEN);
