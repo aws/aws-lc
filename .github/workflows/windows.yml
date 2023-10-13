@@ -1,4 +1,4 @@
-name: Windows SDE Tests
+name: Windows Tests
 on:
   pull_request:
     branches: [ '*' ]
@@ -13,6 +13,32 @@ env:
   SDE_VERSION_TAG: sde-external-9.21.1-2023-04-24-win
 
 jobs:
+  MSVC-2019:
+    runs-on: windows-2019
+    steps:
+      - name: Git clone the repository
+        uses: actions/checkout@v3
+      - name: Build Windows Dependencies
+        run: |
+          choco install ninja --version 1.9.0.20190208 -y &&
+          choco install nasm --version 2.14.02 -y
+      - name: Run Windows Tests on MSVC-2019
+        run: |
+          .\tests\ci\run_windows_tests.bat "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x64
+
+  MSVC-2022:
+    runs-on: windows-2022
+    steps:
+      - name: Git clone the repository
+        uses: actions/checkout@v3
+      - name: Build Windows Dependencies
+        run: |
+          choco install ninja --version 1.9.0.20190208 -y &&
+          choco install nasm --version 2.14.02 -y
+      - name: Run Windows Tests on MSVC-2022
+        run: |
+          .\tests\ci\run_windows_tests.bat "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
+
   SDE-64-bit:
     # We have to run against windows-2019 due to an assembly intruction bug in MSVC2022's msvcrt.dll.
     # The dll library tries to call vinsertf128 with memset, but this isn't available when testing
