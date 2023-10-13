@@ -62,7 +62,6 @@ size_t CRYPTO_xts128_encrypt(const XTS128_CONTEXT *ctx,
                              uint8_t *out, size_t len, int enc) {
   union {
     uint64_t u[2];
-    uint32_t d[4];
     uint8_t c[16];
   } tweak, scratch;
   unsigned int i;
@@ -91,10 +90,22 @@ size_t CRYPTO_xts128_encrypt(const XTS128_CONTEXT *ctx,
 
     unsigned int carry, res;
 
-    res = 0x87 & (((int)tweak.d[3]) >> 31);
+#if defined(OPENSSL_BIG_ENDIAN)
+    uint64_t tweak_u0, tweak_u1;
+    tweak_u0 = CRYPTO_load_u64_le(&tweak.u[0]);
+    tweak_u1 = CRYPTO_load_u64_le(&tweak.u[1]);
+    res = 0x87 & (((int64_t)tweak_u1) >> 63);
+    carry = (unsigned int)(tweak_u0 >> 63);
+    tweak_u0 = (tweak_u0 << 1) ^ res;
+    tweak_u1 = (tweak_u1 << 1) | carry;    
+    CRYPTO_store_u64_le(&tweak.u[0], tweak_u0);
+    CRYPTO_store_u64_le(&tweak.u[1], tweak_u1);
+#else
+    res = 0x87 & (((int64_t)tweak.u[1]) >> 63);
     carry = (unsigned int)(tweak.u[0] >> 63);
     tweak.u[0] = (tweak.u[0] << 1) ^ res;
     tweak.u[1] = (tweak.u[1] << 1) | carry;
+#endif
   }
   if (enc) {
     for (i = 0; i < len; ++i) {
@@ -116,10 +127,22 @@ size_t CRYPTO_xts128_encrypt(const XTS128_CONTEXT *ctx,
 
     unsigned int carry, res;
 
-    res = 0x87 & (((int)tweak.d[3]) >> 31);
+#if defined(OPENSSL_BIG_ENDIAN)
+    uint64_t tweak_u0, tweak_u1;
+    tweak_u0 = CRYPTO_load_u64_le(&tweak.u[0]);
+    tweak_u1 = CRYPTO_load_u64_le(&tweak.u[1]);
+    res = 0x87 & (((int64_t)tweak_u1) >> 63);
+    carry = (unsigned int)(tweak_u0 >> 63);
+    tweak_u0 = (tweak_u0 << 1) ^ res;
+    tweak_u1 = (tweak_u1 << 1) | carry;    
+    CRYPTO_store_u64_le(&tweak1.u[0], tweak_u0);
+    CRYPTO_store_u64_le(&tweak1.u[1], tweak_u1);
+#else
+    res = 0x87 & (((int64_t)tweak.u[1]) >> 63);
     carry = (unsigned int)(tweak.u[0] >> 63);
     tweak1.u[0] = (tweak.u[0] << 1) ^ res;
     tweak1.u[1] = (tweak.u[1] << 1) | carry;
+#endif
     OPENSSL_memcpy(scratch.c, inp, 16);
     scratch.u[0] ^= tweak1.u[0];
     scratch.u[1] ^= tweak1.u[1];

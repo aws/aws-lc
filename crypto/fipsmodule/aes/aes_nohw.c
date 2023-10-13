@@ -391,7 +391,7 @@ static inline void aes_nohw_uncompact_block(
 #else
   memcpy(out, &b0, 8);
   memcpy(out + 8, &b1, 8);
-#endif // !OPENSSL_BIG_ENDIAN
+#endif // OPENSSL_BIG_ENDIAN
 #else
   uint32_t a0 = in[0];
   uint32_t a1 = in[1];
