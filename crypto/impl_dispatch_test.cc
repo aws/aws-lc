@@ -210,7 +210,7 @@ TEST_F(ImplDispatchTest, AES_single_block) {
 }
 
 // TODO(CryptoAlg-2137): Fix SHA256 dispatch test failure on newer 32-bit Intel
-// processors that happens only on Debug Builds.
+// processors that happens only on Windows Debug Builds.
 #if !(defined(OPENSSL_WINDOWS) && defined(OPENSSL_X86) && !defined(NDEBUG))
 TEST_F(ImplDispatchTest, SHA256) {
   AssertFunctionsHit(
