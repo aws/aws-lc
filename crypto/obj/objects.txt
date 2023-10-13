@@ -1369,6 +1369,8 @@ nist_sha3hashalgs 7		: SHA3-224		: sha3-224
 nist_sha3hashalgs 8		: SHA3-256		: sha3-256
 nist_sha3hashalgs 9		: SHA3-384		: sha3-384
 nist_sha3hashalgs 10		: SHA3-512		: sha3-512
+nist_sha3hashalgs 11		: SHAKE128		: shake128
+nist_sha3hashalgs 12		: SHAKE256		: shake256
 
  : HKDF : hkdf
 

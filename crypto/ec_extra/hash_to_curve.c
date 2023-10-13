@@ -158,19 +158,6 @@ static int num_bytes_to_derive(size_t *out, const BIGNUM *modulus, unsigned k) {
   return 1;
 }
 
-// big_endian_to_words decodes |in| as a big-endian integer and writes the
-// result to |out|. |num_words| must be large enough to contain the output.
-static void big_endian_to_words(BN_ULONG *out, size_t num_words,
-                                const uint8_t *in, size_t len) {
-  assert(len <= num_words * sizeof(BN_ULONG));
-  // Ensure any excess bytes are zeroed.
-  OPENSSL_memset(out, 0, num_words * sizeof(BN_ULONG));
-  uint8_t *out_u8 = (uint8_t *)out;
-  for (size_t i = 0; i < len; i++) {
-    out_u8[len - 1 - i] = in[i];
-  }
-}
-
 // hash_to_field implements the operation described in section 5.2
 // of draft-irtf-cfrg-hash-to-curve-16, with count = 2. |k| is the security
 // factor.
@@ -186,9 +173,9 @@ static int hash_to_field2(const EC_GROUP *group, const EVP_MD *md,
   }
   BN_ULONG words[2 * EC_MAX_WORDS];
   size_t num_words = 2 * group->field.width;
-  big_endian_to_words(words, num_words, buf, L);
+  bn_big_endian_to_words(words, num_words, buf, L);
   group->meth->felem_reduce(group, out1, words, num_words);
-  big_endian_to_words(words, num_words, buf + L, L);
+  bn_big_endian_to_words(words, num_words, buf + L, L);
   group->meth->felem_reduce(group, out2, words, num_words);
   return 1;
 }
@@ -207,7 +194,7 @@ static int hash_to_scalar(const EC_GROUP *group, const EVP_MD *md,
 
   BN_ULONG words[2 * EC_MAX_WORDS];
   size_t num_words = 2 * group->order.width;
-  big_endian_to_words(words, num_words, buf, L);
+  bn_big_endian_to_words(words, num_words, buf, L);
   ec_scalar_reduce(group, out, words, num_words);
   return 1;
 }

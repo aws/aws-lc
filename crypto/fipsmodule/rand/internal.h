@@ -129,13 +129,10 @@ OPENSSL_INLINE int have_fast_rdrand(void) {
 #define MAX_BACKOFF_RETRIES 9
 OPENSSL_EXPORT void HAZMAT_set_urandom_test_mode_for_testing(void);
 
-// Whiten factor.
-// Uses XOR as a mixing function to concentrate entropy. Logically, considers
-// the total sourced bytes as chunks of |CTR_DRBG_ENTROPY_LEN| bytes and XORs
-// them together. The mixing function is implemented in |RAND_load_entropy|.
-#define PASSIVE_ENTROPY_WHITEN_FACTOR 10
-// Total number of bytes of entropy to load into FIPS module
-#define PASSIVE_ENTROPY_LOAD_LENGTH (CTR_DRBG_ENTROPY_LEN * PASSIVE_ENTROPY_WHITEN_FACTOR)
+// Total number of bytes of entropy to load into FIPS module. Separate constants
+// that separate the logically distinct operations (1) loading entropy, and (2)
+// invoking DRBG.
+#define PASSIVE_ENTROPY_LOAD_LENGTH CTR_DRBG_ENTROPY_LEN
 
 #if defined(BORINGSSL_FIPS)
 

@@ -100,9 +100,7 @@ static inline uint8_t p521_use_s2n_bignum_alt(void) {
 #define p521_felem_add(out, in0, in1)   bignum_add_p521(out, in0, in1)
 #define p521_felem_sub(out, in0, in1)   bignum_sub_p521(out, in0, in1)
 #define p521_felem_opp(out, in0)        bignum_neg_p521(out, in0)
-// TODO: Convert to p521_felem_to_words
 #define p521_felem_to_bytes(out, in0)   bignum_tolebytes_p521(out, in0)
-// TODO: Convert to p521_felem_from_words
 #define p521_felem_from_bytes(out, in0) bignum_fromlebytes_p521(out, in0)
 
 // The following two functions need bmi2 and adx support.
@@ -173,12 +171,12 @@ static const p521_limb_t p521_felem_p[P521_NLIMBS] = {
 #define p521_felem_opp(out, in0)        fiat_secp521r1_carry_opp(out, in0)
 #define p521_felem_mul(out, in0, in1)   fiat_secp521r1_carry_mul(out, in0, in1)
 #define p521_felem_sqr(out, in0)        fiat_secp521r1_carry_square(out, in0)
-// TODO: Convert to p521_felem_to_words
 #define p521_felem_to_bytes(out, in0)   fiat_secp521r1_to_bytes(out, in0)
-// TODO: Convert to p521_felem_from_words
 #define p521_felem_from_bytes(out, in0) fiat_secp521r1_from_bytes(out, in0)
 
 #endif // P521_USE_S2N_BIGNUM_FIELD_ARITH
+
+#define P521_FELEM_BYTES (66)
 
 static p521_limb_t p521_felem_nz(const p521_limb_t in1[P521_NLIMBS]) {
   p521_limb_t is_not_zero = 0;
@@ -220,7 +218,13 @@ static void p521_felem_cmovznz(p521_limb_t out[P521_NLIMBS],
 
 // NOTE: the input and output are in little-endian representation.
 static void p521_from_generic(p521_felem out, const EC_FELEM *in) {
+#ifdef OPENSSL_BIG_ENDIAN
+  uint8_t tmp[P521_FELEM_BYTES];
+  bn_words_to_little_endian(tmp, P521_FELEM_BYTES, in->words, P521_NLIMBS);
+  p521_felem_from_bytes(out, tmp);
+#else
   p521_felem_from_bytes(out, (const uint8_t *)in->words);
+#endif
 }
 
 // NOTE: the input and output are in little-endian representation.
@@ -233,9 +237,15 @@ static void p521_to_generic(EC_FELEM *out, const p521_felem in) {
   // translate to 72 bytes, which means that we have to make sure that the
   // extra 6 bytes are zeroed out. To avoid confusion over 32 vs. 64 bit
   // systems and Fiat's vs. ours representation we zero out the whole element.
+#ifdef OPENSSL_BIG_ENDIAN
+  uint8_t tmp[P521_FELEM_BYTES];
+  p521_felem_to_bytes(tmp, in);
+  bn_little_endian_to_words(out->words, P521_NLIMBS, tmp, P521_FELEM_BYTES);
+#else
   OPENSSL_memset((uint8_t*)out->words, 0, sizeof(out->words));
   // Convert the element to bytes.
   p521_felem_to_bytes((uint8_t *)out->words, in);
+#endif
 }
 
 // Finite field inversion using Fermat Little Theorem.
@@ -451,7 +461,7 @@ static void p521_point_add(p521_felem x3, p521_felem y3, p521_felem z3,
   p521_limb_t is_nontrivial_double = constant_time_is_zero_w(xneq | yneq) &
                                     ~constant_time_is_zero_w(z1nz) &
                                     ~constant_time_is_zero_w(z2nz);
-  if (is_nontrivial_double) {
+  if (constant_time_declassify_w(is_nontrivial_double)) {
     p521_point_double(x3, y3, z3, x1, y1, z1);
     return;
   }
@@ -499,7 +509,7 @@ static int ec_GFp_nistp521_point_get_affine_coordinates(
     const EC_GROUP *group, const EC_JACOBIAN *point,
     EC_FELEM *x_out, EC_FELEM *y_out) {
 
-  if (ec_GFp_simple_is_at_infinity(group, point)) {
+  if (constant_time_declassify_w(ec_GFp_simple_is_at_infinity(group, point))) {
     OPENSSL_PUT_ERROR(EC, EC_R_POINT_AT_INFINITY);
     return 0;
   }

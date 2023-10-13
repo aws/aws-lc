@@ -9,13 +9,14 @@ from aws_cdk import CfnTag, Duration, Stack, Tags, aws_ec2 as ec2, aws_codebuild
 from constructs import Construct
 
 from cdk.components import PruneStaleGitHubBuilds
-from util.metadata import AWS_ACCOUNT, AWS_REGION, GITHUB_PUSH_CI_BRANCH_TARGETS, GITHUB_REPO_OWNER, GITHUB_REPO_NAME
-from util.iam_policies import code_build_batch_policy_in_json, ec2_policies_in_json, ssm_policies_in_json, s3_read_write_policy_in_json
+from util.metadata import AWS_ACCOUNT, AWS_REGION, GITHUB_PUSH_CI_BRANCH_TARGETS, GITHUB_REPO_OWNER, GITHUB_REPO_NAME, LINUX_AARCH_ECR_REPO, \
+    LINUX_X86_ECR_REPO
+from util.iam_policies import code_build_batch_policy_in_json, ec2_policies_in_json, ssm_policies_in_json, s3_read_write_policy_in_json, ecr_power_user_policy_in_json
 from util.build_spec_loader import BuildSpecLoader
 
 # detailed documentation can be found here: https://docs.aws.amazon.com/cdk/api/latest/docs/aws-ec2-readme.html
 
-class AwsLcMacArmCIStack(Stack):
+class AwsLcEC2TestingCIStack(Stack):
     """Define a stack used to create a CodeBuild instance on which to execute the AWS-LC m1 ci ec2 instance"""
 
     def __init__(self,
@@ -24,9 +25,6 @@ class AwsLcMacArmCIStack(Stack):
                  spec_file_path: str,
                  **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
-
-        # Define some variables that will be commonly used
-        CLOUDWATCH_LOGS = "{}-cw-logs".format(id)
 
         # Define CodeBuild resource.
         git_hub_source = codebuild.Source.git_hub(
@@ -76,7 +74,8 @@ class AwsLcMacArmCIStack(Stack):
 
         # S3 bucket for testing internal fixes.
         s3_read_write_policy = iam.PolicyDocument.from_json(s3_read_write_policy_in_json("aws-lc-codebuild"))
-        ec2_inline_policies = {"s3_read_write_policy": s3_read_write_policy}
+        ecr_power_user_policy = iam.PolicyDocument.from_json(ecr_power_user_policy_in_json([LINUX_X86_ECR_REPO, LINUX_AARCH_ECR_REPO]))
+        ec2_inline_policies = {"s3_read_write_policy": s3_read_write_policy, "ecr_power_user_policy": ecr_power_user_policy}
         ec2_role = iam.Role(scope=self, id="{}-ec2-role".format(id),
                             role_name="{}-ec2-role".format(id),
                             assumed_by=iam.ServicePrincipal("ec2.amazonaws.com"),
@@ -97,18 +96,18 @@ class AwsLcMacArmCIStack(Stack):
         security_group = ec2.SecurityGroup(self, id="{}-ec2-sg".format(id),
                           allow_all_outbound=True,
                           vpc=vpc,
-                          security_group_name='macos_arm_ec2_sg')
+                          security_group_name='codebuild_ec2_sg')
 
+        # MacOS EC2 tag names must be specific for use in general tests/ci/run_m1_ec2_instance.sh script.
         # Dedicated Hosts are required for Mac ec2 instances.
         cfn_host = ec2.CfnHost(self, id="{}-dedicated-host".format(id),
                                 availability_zone="us-west-2a",
                                 auto_placement="off",
                                 instance_type="mac2.metal")
         Tags.of(cfn_host).add("Name", "{}-dedicated-host".format(id))
-
         # AMI is for M1 MacOS Monterey.
         ami_id="ami-084c6ab9d03ad4d46"
-        cfn_instance = ec2.CfnInstance(self, "{}-ec2-instance".format(id),
+        macos_arm_instance = ec2.CfnInstance(self, "aws-lc-ci-macos-arm-ec2-instance",
                         availability_zone="us-west-2a",
                         tenancy="host",
                         host_id=cfn_host.attr_host_id,
@@ -120,4 +119,9 @@ class AwsLcMacArmCIStack(Stack):
                         tags=[CfnTag(key="Name",value="aws-lc-ci-macos-arm-ec2-instance")])
 
         # Define logs for SSM.
-        logs.LogGroup(self, "{}-cw-logs".format(id), log_group_name=CLOUDWATCH_LOGS)
+        log_group_name = "{}-cw-logs".format(id)
+        log_group = logs.CfnLogGroup(self, log_group_name,
+            log_group_name=log_group_name,
+            retention_in_days=365,
+        )
+

@@ -19,6 +19,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"strings"
 )
 
 // The following structures reflect the JSON of ACVP hash tests. See
@@ -29,13 +30,16 @@ type hashTestVectorSet struct {
 }
 
 type hashTestGroup struct {
-	ID    uint64 `json:"tgId"`
-	Type  string `json:"testType"`
-	Tests []struct {
-		ID        uint64       `json:"tcId"`
-		BitLength uint64       `json:"len"`
-		MsgHex    string       `json:"msg"`
-		LargeMsg  hashLargeMsg `json:"largeMsg"`
+	ID        uint64  `json:"tgId"`
+	Type      string  `json:"testType"`
+	MaxOutLen *uint64 `json:"maxOutLen,omitempty"`
+	MinOutLen *uint64 `json:"minxOutLen,omitempty"`
+	Tests     []struct {
+		ID           uint64       `json:"tcId"`
+		BitLength    uint64       `json:"len"`
+		MsgHex       string       `json:"msg"`
+		OutputLength *uint64      `json:"outLen,omitempty"`
+		LargeMsg     hashLargeMsg `json:"largeMsg"`
 	} `json:"tests"`
 }
 
@@ -97,8 +101,16 @@ func (h *hashPrimitive) Process(vectorSet []byte, m Transactable) (any, error) {
 
 			// http://usnistgov.github.io/ACVP/artifacts/draft-celi-acvp-sha-00.html#rfc.section.3
 			switch group.Type {
+			case "VOT":
+				fallthrough
 			case "AFT":
-				result, err := m.Transact(h.algo, 1, msg)
+				args := [][]byte{}
+				args = append(args, msg)
+				if test.OutputLength != nil {
+					outLenBytes := *test.OutputLength / 8
+					args = append(args, uint32le(uint32(outLenBytes)))
+				}
+				result, err := m.Transact(h.algo, 1, args...)
 				if err != nil {
 					panic(h.algo + " hash operation failed: " + err.Error())
 				}
@@ -109,7 +121,10 @@ func (h *hashPrimitive) Process(vectorSet []byte, m Transactable) (any, error) {
 				})
 
 			case "MCT":
-				if len(msg) != h.size {
+				// MCT tests for conventional digest functions expect message
+				// and digest output lengths to be equivalent, however SHAKE
+				// does not have a predefined output length.
+				if len(msg) != h.size && !strings.HasPrefix(h.algo, "SHAKE") {
 					return nil, fmt.Errorf("MCT test case %d/%d contains message of length %d but the digest length is %d", group.ID, test.ID, len(msg), h.size)
 				}
 

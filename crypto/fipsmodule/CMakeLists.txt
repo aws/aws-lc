@@ -249,6 +249,11 @@ if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX) OR
                 fastmul/bignum_ksqr_16_32_neon.S
                 fastmul/bignum_ksqr_32_64_neon.S
                 fastmul/bignum_emontredc_8n_neon.S
+
+                generic/bignum_copy_row_from_table.S
+                generic/bignum_copy_row_from_table_8n_neon.S
+                generic/bignum_copy_row_from_table_16_neon.S
+                generic/bignum_copy_row_from_table_32_neon.S
                 )
   endif()
 endif()
@@ -455,12 +460,12 @@ elseif(FIPS_SHARED)
     # respective start and end markers.
     add_custom_command(
       OUTPUT fips_apple_start.o
-      COMMAND ${CMAKE_C_COMPILER} -arch ${CMAKE_SYSTEM_PROCESSOR} -isysroot ${CMAKE_OSX_SYSROOT} -c ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c -DAWSLC_FIPS_SHARED_START -o fips_apple_start.o
+      COMMAND ${CMAKE_C_COMPILER} -arch ${CMAKE_SYSTEM_PROCESSOR} -isysroot ${CMAKE_OSX_SYSROOT} -mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET} -c ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c -DAWSLC_FIPS_SHARED_START -o fips_apple_start.o
       DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
     )
     add_custom_command(
       OUTPUT fips_apple_end.o
-      COMMAND ${CMAKE_C_COMPILER} -arch ${CMAKE_SYSTEM_PROCESSOR} -isysroot ${CMAKE_OSX_SYSROOT} -c ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c -DAWSLC_FIPS_SHARED_END -o fips_apple_end.o
+      COMMAND ${CMAKE_C_COMPILER} -arch ${CMAKE_SYSTEM_PROCESSOR} -isysroot ${CMAKE_OSX_SYSROOT} -mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET} -c ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c -DAWSLC_FIPS_SHARED_END -o fips_apple_end.o
       DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared_library_marker.c
     )
 

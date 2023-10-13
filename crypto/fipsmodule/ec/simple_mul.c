@@ -120,6 +120,9 @@ static void ec_GFp_mont_batch_get_window(const EC_GROUP *group,
 
   // Negate if necessary.
   EC_FELEM neg_Y;
+  // Initialize |out| to avoid "may be used uninitialized" warning below.
+  // https://github.com/aws/aws-lc/issues/1185
+  OPENSSL_memset(&neg_Y, 0, sizeof(EC_FELEM));
   ec_felem_neg(group, &neg_Y, &out->Y);
   crypto_word_t sign_mask = sign;
   sign_mask = 0u - sign_mask;
