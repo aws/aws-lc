@@ -81,6 +81,8 @@ POINT_OBJ = curve25519/curve25519_ladderstep.o \
             curve25519/curve25519_x25519_alt.o \
             curve25519/curve25519_x25519base.o \
             curve25519/curve25519_x25519base_alt.o \
+            curve25519/edwards25519_decode.o \
+            curve25519/edwards25519_decode_alt.o \
             curve25519/edwards25519_encode.o \
             curve25519/edwards25519_epadd.o \
             curve25519/edwards25519_epadd_alt.o \

@@ -283,6 +283,15 @@ uint64_t m_25519[4] =
   UINT64_C(0x8000000000000000)
 };
 
+// d_25519 = d constant for edwards25519
+
+uint64_t d_25519[4] =
+ { UINT64_C(0x75eb4dca135978a3),
+   UINT64_C(0x00700a4d4141d8ab),
+   UINT64_C(0x8cc740797779e898),
+   UINT64_C(0x52036cee2b6ffe73)
+ };
+
 // k_25519 = 2 * d for edwards25519
 
 uint64_t k_25519[4] =
@@ -1260,6 +1269,60 @@ void reference_edwards25519encode(uint8_t z[32], uint64_t p[8])
   q[2] = p[6];
   q[3] = (p[7] & 0x7FFFFFFFFFFFFFFF) | (p[0]<<63);
   reference_tolebytes(32,z,4,q);
+}
+
+uint64_t reference_edwards25519decode(uint64_t z[8],uint8_t c[32])
+{ uint64_t y[4], s[4], t[4], u[4], v[4], w[4];
+  uint64_t sgnbit, zerox, flip;
+  int64_t j;
+
+  // This tracks the invalidity of the input.
+  // It is set if any of three different conditions holds:
+  //
+  //   * y >= p_25519 (initial y coordinate not reduced)
+  //   * (y^2 - 1) * (1 + d * y^2) is a nonzero quadratic nonresidue
+  //   * x = 0 (equivalently y^2 = 1) and negative sign is requested
+
+  uint64_t badun;
+
+  // Let y be the lowest 255 bits of input and sgnbit the desired parity
+  // If y >= p_25519 then already flag the input as invalid
+
+  reference_fromlebytes(4,y,32,c);
+  sgnbit = y[3] >> 63;
+  y[3] &= 0x7FFFFFFFFFFFFFFF;
+  badun = reference_ge_samelen(4,y,p_25519);
+
+  // u = y^2 - 1
+  // v = 1 + d * y^2
+  // w = u * v
+
+  bignum_sqr_p25519_alt(v,y);
+  bignum_of_word(4,t,1);
+  bignum_sub_p25519(u,v,t);
+  bignum_mul_p25519_alt(v,d_25519,v);
+  bignum_add_p25519(v,v,t);
+  bignum_mul_p25519_alt(w,u,v);
+
+  // s = sqrt(u / v) with j the Jacobi symbol for (u * v,p_25519)
+  // If j indicates no square root (not even zero), flag as invalid.
+
+  j = bignum_invsqrt_p25519_alt(s,w);
+  badun |= (j < 0);
+  bignum_mul_p25519_alt(s,u,s);
+
+  // zerox = (x = 0)
+  // flip = (x_0 <=> sgnbit)
+
+  zerox = bignum_iszero(4,s);
+  flip = ((s[0] & 1) != sgnbit);
+  badun |= (flip && zerox);
+
+  // Return sign-adjusted square root
+
+  bignum_optneg_p25519(z,(flip && !zerox),s);
+  bignum_copy(4,z+4,4,y);
+  return badun;
 }
 
 void reference_montjdouble
@@ -9640,6 +9703,129 @@ int test_curve25519_x25519base_byte_alt(void)
   return 0;
 }
 
+int test_edwards25519_decode(void)
+{ uint64_t t, k;
+  printf("Testing edwards25519_decode with %d cases\n",tests);
+  k = 4;
+
+  uint64_t b, b_ref;
+  int c, d;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(4,b0);
+
+     b = edwards25519_decode(b1,(uint8_t*)b0);
+     b_ref = reference_edwards25519decode(b3,(uint8_t*)b0);
+
+     if (b != b_ref)
+      { printf("Disparity: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" should be %s but isn't\n",
+               k,b0[3],b0[0],
+               (b_ref ? "invalid" : "valid"));
+
+        return 1;
+      }
+
+     reference_edwards25519encode((uint8_t*)b2,b1);
+     c = reference_compare(k,b2,k,b0);
+     d = reference_compare(2*k,b3,2*k,b1);
+
+     if ((b == 0) && (c != 0))
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "encode <...0x%016"PRIx64",...%016"PRIx64"> = "
+               "0x%016"PRIx64"...%016"PRIx64", input = "
+               "0x%016"PRIx64"...%016"PRIx64"\n",
+               k,b1[0],b1[4],b2[3],b2[0],b0[3],b0[0]);
+        return 1;
+      }
+
+     if ((b == 0) && (d != 0))
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "decode 0x%016"PRIx64"...%016"PRIx64" = "
+              "<...0x%016"PRIx64",...0x%016"PRIx64"> not "
+              "<...0x%016"PRIx64",...0x%016"PRIx64">\n",
+              k,b0[3],b0[0],b1[0],b1[4],b3[0],b3[4]);
+        return 1;
+      }
+
+     else if (VERBOSE && (b != 0))
+      { printf("OK: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64
+               " is correctly flagged as invalid\n",
+               k,b0[3],b0[0]);
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+              "encode <...0x%016"PRIx64",...%016"PRIx64"> = "
+               "0x%016"PRIx64"...%016"PRIx64"\n",
+               k,b1[0],b1[4],b0[3],b0[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+int test_edwards25519_decode_alt(void)
+{ uint64_t t, k;
+  printf("Testing edwards25519_decode_alt with %d cases\n",tests);
+  k = 4;
+
+  uint64_t b, b_ref;
+  int c, d;
+  for (t = 0; t < tests; ++t)
+   { random_bignum(4,b0);
+
+     b = edwards25519_decode_alt(b1,(uint8_t*)b0);
+     b_ref = reference_edwards25519decode(b3,(uint8_t*)b0);
+
+     if (b != b_ref)
+      { printf("Disparity: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64" should be %s but isn't\n",
+               k,b0[3],b0[0],
+               (b_ref ? "invalid" : "valid"));
+
+        return 1;
+      }
+
+     reference_edwards25519encode((uint8_t*)b2,b1);
+     c = reference_compare(k,b2,k,b0);
+     d = reference_compare(2*k,b3,2*k,b1);
+
+     if ((b == 0) && (c != 0))
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "encode <...0x%016"PRIx64",...%016"PRIx64"> = "
+               "0x%016"PRIx64"...%016"PRIx64", input = "
+               "0x%016"PRIx64"...%016"PRIx64"\n",
+               k,b1[0],b1[4],b2[3],b2[0],b0[3],b0[0]);
+        return 1;
+      }
+
+     if ((b == 0) && (d != 0))
+      { printf("### Disparity: [size %4"PRIu64"] "
+               "decode 0x%016"PRIx64"...%016"PRIx64" = "
+              "<...0x%016"PRIx64",...0x%016"PRIx64"> not "
+              "<...0x%016"PRIx64",...0x%016"PRIx64">\n",
+              k,b0[3],b0[0],b1[0],b1[4],b3[0],b3[4]);
+        return 1;
+      }
+
+     else if (VERBOSE && (b != 0))
+      { printf("OK: [size %4"PRIu64"] "
+               "0x%016"PRIx64"...%016"PRIx64
+               " is correctly flagged as invalid\n",
+               k,b0[3],b0[0]);
+      }
+     else if (VERBOSE)
+      { printf("OK: [size %4"PRIu64"] "
+              "encode <...0x%016"PRIx64",...%016"PRIx64"> = "
+               "0x%016"PRIx64"...%016"PRIx64"\n",
+               k,b1[0],b1[4],b0[3],b0[0]);
+      }
+   }
+  printf("All OK\n");
+  return 0;
+}
+
+
 int test_edwards25519_encode(void)
 { uint64_t t, k;
   printf("Testing edwards25519_encode with %d cases\n",tests);
@@ -11665,6 +11851,8 @@ int main(int argc, char *argv[])
   functionaltest(all,"curve25519_x25519base_alt",test_curve25519_x25519base_alt);
   functionaltest(bmi,"curve25519_x25519base_byte",test_curve25519_x25519base_byte);
   functionaltest(all,"curve25519_x25519base_byte_alt",test_curve25519_x25519base_byte_alt);
+  functionaltest(bmi,"edwards25519_decode",test_edwards25519_decode);
+  functionaltest(all,"edwards25519_decode_alt",test_edwards25519_decode_alt);
   functionaltest(all,"edwards25519_encode",test_edwards25519_encode);
   functionaltest(bmi,"edwards25519_epadd",test_edwards25519_epadd);
   functionaltest(all,"edwards25519_epadd_alt",test_edwards25519_epadd_alt);

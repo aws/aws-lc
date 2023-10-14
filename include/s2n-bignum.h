@@ -905,6 +905,11 @@ extern void curve25519_x25519base_alt(uint64_t res[static 4],uint64_t scalar[sta
 extern void curve25519_x25519base_byte(uint8_t res[static 32],uint8_t scalar[static 32]);
 extern void curve25519_x25519base_byte_alt(uint8_t res[static 32],uint8_t scalar[static 32]);
 
+// Decode compressed 256-bit form of edwards25519 point
+// Input c[32] (bytes); output function return and z[8]
+extern uint64_t edwards25519_decode(uint64_t z[static 8],uint8_t c[static 32]);
+extern uint64_t edwards25519_decode_alt(uint64_t z[static 8],uint8_t c[static 32]);
+
 // Encode edwards25519 point into compressed form as 256-bit number
 // Input p[8]; output z[32] (bytes)
 extern void edwards25519_encode(uint8_t z[static 32], uint64_t p[static 8]);

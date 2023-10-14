@@ -188,6 +188,7 @@ curve25519_x25519_alt
 curve25519_x25519_byte_alt
 curve25519_x25519base_alt
 curve25519_x25519base_byte_alt
+edwards25519_decode_alt
 edwards25519_encode
 edwards25519_epadd_alt
 edwards25519_epdouble_alt
