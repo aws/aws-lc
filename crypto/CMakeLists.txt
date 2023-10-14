@@ -532,7 +532,9 @@ target_include_directories(crypto_objects BEFORE PRIVATE ${PROJECT_BINARY_DIR}/s
 target_include_directories(crypto_objects PRIVATE ${PROJECT_SOURCE_DIR}/include)
 
 function(build_libcrypto name module_source)
-  if(FIPS)
+  if(FIPS AND ENABLE_FIPS_ENTROPY_CPU_JITTER)
+    # If the jitter cpu entropy source is enabled add an object dependency to
+    # the libcrypto target.
     add_library(${name} $<TARGET_OBJECTS:crypto_objects> ${CRYPTO_FIPS_OBJECTS} ${module_source} $<TARGET_OBJECTS:jitterentropy>)
   else()
     add_library(${name} $<TARGET_OBJECTS:crypto_objects> ${CRYPTO_FIPS_OBJECTS} ${module_source})
@@ -678,13 +680,6 @@ if(BUILD_TESTING)
     ${RANDOM_TEST_EXEC}
     fipsmodule/rand/urandom_test.cc
   )
-
-  # When using CPU Jitter as the entropy source (only in FIPS build)
-  # urandom_test should not be performed so we pass the compilation flag
-  # and handle it in urandom_test.cc
-  if(JITTER_ENTROPY)
-    target_compile_options(${RANDOM_TEST_EXEC} PUBLIC -DJITTER_ENTROPY)
-  endif()
 
   add_dependencies(${RANDOM_TEST_EXEC} boringssl_prefix_symbols)
   target_link_libraries(${RANDOM_TEST_EXEC} test_support_lib boringssl_gtest crypto)
