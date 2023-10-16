@@ -34,8 +34,8 @@ TEST(SipHash, Basic) {
   for (unsigned i = 0; i < sizeof(input); i++) {
     input[i] = i;
   }
-
-  EXPECT_EQ(UINT64_C(0xa129ca6149be45e5),
+  uint64_t expected = UINT64_C(0xa129ca6149be45e5);
+  EXPECT_EQ(CRYPTO_load_u64_le(&expected),
             SIPHASH_24(key, input, sizeof(input)));
 }
 
