@@ -34,6 +34,8 @@
 #include "internal.h"
 #include "../crypto/internal.h"
 #include "../crypto/kem/internal.h"
+#include "../crypto/fipsmodule/ec/internal.h"
+#include "../crypto/kyber/kem_kyber.h"
 
 BSSL_NAMESPACE_BEGIN
 
@@ -376,7 +378,7 @@ class KEMKeyShare : public SSLKeyShare {
     // Ensure that peer_key is valid
     if (!peer_key.data() || peer_key.size() != ciphertext_len) {
       *out_alert = SSL_AD_DECODE_ERROR;
-      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_KEM_CIPHERTEXT);
       return false;
     }
 
@@ -396,7 +398,7 @@ class KEMKeyShare : public SSLKeyShare {
                               &secret_bytes_written, ciphertext,
                               ciphertext_len) ||
                               secret_bytes_written != secret_len) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_KEM_CIPHERTEXT);
       return false;
     }
 
@@ -412,18 +414,6 @@ class KEMKeyShare : public SSLKeyShare {
   uint16_t group_id_;
   UniquePtr<EVP_PKEY_CTX> ctx_;
 };
-
-// The key share sizes are taken from the corresponding specification.
-//
-// Kyber Round 3: https://pq-crystals.org/kyber/data/kyber-specification-round3-20210804.pdf
-// SECP256R1:     https://datatracker.ietf.org/doc/html/rfc8446#section-4.2.8.2
-// X25519:        https://datatracker.ietf.org/doc/html/rfc8446#section-4.2.8.2
-static const size_t p256_uncompressed_share_size = ((32 * 2) + 1);
-static const size_t x25519_share_size = 32;
-
-// Kyber Round 3: https://pq-crystals.org/kyber/data/kyber-specification-round3-20210804.pdf
-static const size_t kyber768_r3_public_key_size = 1184;
-static const size_t kyber768_r3_ciphertext_size = 1088;
 
 // A HybridKeyShare consists of key shares from two or more component groups,
 // all of which are used to generate a hybrid shared secret.
@@ -526,7 +516,7 @@ static const size_t kyber768_r3_ciphertext_size = 1088;
         if (peer_key_index + component_key_size > peer_key.size()) {
           CBB_cleanup(&hybrid_shared_secret);
           *out_alert = SSL_AD_DECODE_ERROR;
-          OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+          OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_HYBRID_KEYSHARE);
           return false;
         }
 
@@ -655,13 +645,13 @@ static const size_t kyber768_r3_ciphertext_size = 1088;
    bool get_component_offer_key_share_size(size_t *out, uint16_t component_group_id) {
      switch (component_group_id) {
      case SSL_GROUP_SECP256R1:
-       *out = p256_uncompressed_share_size;
+       *out = 1 + (2 * EC_P256R1_FIELD_ELEM_BYTES);
        return true;
      case SSL_GROUP_KYBER768_R3:
-       *out = kyber768_r3_public_key_size;
+       *out = KYBER768_R3_PUBLIC_KEY_BYTES;
        return true;
      case SSL_GROUP_X25519:
-       *out = x25519_share_size;
+       *out = 32;
        return true;
      default:
        return false;
@@ -672,13 +662,13 @@ static const size_t kyber768_r3_ciphertext_size = 1088;
    bool get_component_accept_key_share_size(size_t *out, uint16_t component_group_id) {
      switch (component_group_id) {
      case SSL_GROUP_SECP256R1:
-       *out = p256_uncompressed_share_size;
+       *out = 1 + (2 * EC_P256R1_FIELD_ELEM_BYTES);
        return true;
      case SSL_GROUP_KYBER768_R3:
-       *out = kyber768_r3_ciphertext_size;
+       *out = KYBER768_R3_CIPHERTEXT_BYTES;
        return true;
      case SSL_GROUP_X25519:
-       *out = x25519_share_size;
+       *out = 32;
        return true;
      default:
        return false;

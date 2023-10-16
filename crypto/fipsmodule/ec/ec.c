@@ -249,7 +249,7 @@ DEFINE_METHOD_FUNCTION(struct built_in_curves, OPENSSL_built_in_curves) {
   out->curves[0].oid = kOIDP521;
   out->curves[0].oid_len = sizeof(kOIDP521);
   out->curves[0].comment = "NIST P-521";
-  out->curves[0].param_len = 66;
+  out->curves[0].param_len = EC_P521R1_FIELD_ELEM_BYTES;
   out->curves[0].params = kP521Params;
   out->curves[0].method =
 #if !defined(OPENSSL_SMALL)
@@ -264,7 +264,7 @@ DEFINE_METHOD_FUNCTION(struct built_in_curves, OPENSSL_built_in_curves) {
   out->curves[1].oid = kOIDP384;
   out->curves[1].oid_len = sizeof(kOIDP384);
   out->curves[1].comment = "NIST P-384";
-  out->curves[1].param_len = 48;
+  out->curves[1].param_len = EC_P384R1_FIELD_ELEM_BYTES;
   out->curves[1].params = kP384Params;
   out->curves[1].method =
 #if !defined(OPENSSL_SMALL)
@@ -280,7 +280,7 @@ DEFINE_METHOD_FUNCTION(struct built_in_curves, OPENSSL_built_in_curves) {
   out->curves[2].oid = kOIDP256;
   out->curves[2].oid_len = sizeof(kOIDP256);
   out->curves[2].comment = "NIST P-256";
-  out->curves[2].param_len = 32;
+  out->curves[2].param_len = EC_P256R1_FIELD_ELEM_BYTES;
   out->curves[2].params = kP256Params;
   out->curves[2].method =
 #if !defined(OPENSSL_NO_ASM) && \
@@ -297,7 +297,7 @@ DEFINE_METHOD_FUNCTION(struct built_in_curves, OPENSSL_built_in_curves) {
   out->curves[3].oid = kOIDP224;
   out->curves[3].oid_len = sizeof(kOIDP224);
   out->curves[3].comment = "NIST P-224";
-  out->curves[3].param_len = 28;
+  out->curves[3].param_len = EC_P224R1_FIELD_ELEM_BYTES;
   out->curves[3].params = kP224Params;
   out->curves[3].method =
 #if defined(BORINGSSL_HAS_UINT128) && !defined(OPENSSL_SMALL)
@@ -312,7 +312,7 @@ DEFINE_METHOD_FUNCTION(struct built_in_curves, OPENSSL_built_in_curves) {
   out->curves[4].oid = kOIDP256K1;
   out->curves[4].oid_len = sizeof(kOIDP256K1);
   out->curves[4].comment = "SEC/ANSI P-256 K1";
-  out->curves[4].param_len = 32;
+  out->curves[4].param_len = EC_P256K1_FIELD_ELEM_BYTES;
   out->curves[4].params = kP256K1Params;
   out->curves[4].method = EC_GFp_mont_method();
 }
