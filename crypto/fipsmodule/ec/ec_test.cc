@@ -2331,18 +2331,29 @@ TEST(ECTest, HashToScalar) {
       p224.get(), &scalar, kDST, sizeof(kDST), kMessage, sizeof(kMessage)));
 }
 
-TEST(ECTest, Macros) {
+TEST(ECTest, FelemBytes) {
   EC_FELEM test_felem;
+  EC_FELEM test2_felem;
   size_t out_len = 0;
   uint8_t buffer[EC_MAX_BYTES];
-  std::pair<int,int>  test_cases[2] = {
-          std::make_pair(NID_secp384r1, P384_EC_FELEM_BYTES),
-          std::make_pair(NID_secp521r1, P521_EC_FELEM_BYTES)
+  std::tuple<int,int, int>  test_cases[2] = {
+          std::make_tuple(NID_secp384r1, P384_EC_FELEM_BYTES, P384_EC_FELEM_WORDS),
+          std::make_tuple(NID_secp521r1, P521_EC_FELEM_BYTES, P521_EC_FELEM_WORDS)
   };
 
-  for(size_t i = 0; i < sizeof(test_cases)/sizeof(std::pair<int,int>); i++) {
-    int nid = test_cases[i].first;
-    int expected_felem_bytes = test_cases[i].second;
+  for(size_t i = 0; i < sizeof(test_cases)/sizeof(std::tuple<int,int,int>); i++) {
+    int nid = std::get<0>(test_cases[i]);
+    int expected_felem_bytes = std::get<1>(test_cases[i]);
+    int expected_felem_words = std::get<2>(test_cases[i]);
+
+    ASSERT_TRUE(expected_felem_bytes <= EC_MAX_BYTES);
+    ASSERT_TRUE(expected_felem_words <= EC_MAX_WORDS);
+    if( 0 == (expected_felem_bytes % BN_BYTES)) {
+      ASSERT_EQ(expected_felem_words, expected_felem_bytes / BN_BYTES);
+    } else {
+      ASSERT_EQ(expected_felem_words, 1 + (expected_felem_bytes / BN_BYTES));
+    }
+
     bssl::UniquePtr<EC_GROUP> test_group(EC_GROUP_new_by_curve_name(nid));
     ASSERT_TRUE(test_group);
 
@@ -2354,5 +2365,8 @@ TEST(ECTest, Macros) {
     out_len = 0;
     ec_felem_to_bytes(test_group.get(), buffer, &out_len, &test_felem);
     ASSERT_EQ((size_t)expected_felem_bytes, out_len);
+
+    ASSERT_TRUE(ec_felem_from_bytes(test_group.get(), &test2_felem, buffer, expected_felem_bytes));
+    ASSERT_TRUE(ec_felem_equal(test_group.get(), &test_felem, &test2_felem));
   }
 }
