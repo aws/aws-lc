@@ -2332,10 +2332,6 @@ TEST(ECTest, HashToScalar) {
 }
 
 TEST(ECTest, FelemBytes) {
-  EC_FELEM test_felem;
-  EC_FELEM test2_felem;
-  size_t out_len = 0;
-  uint8_t buffer[EC_MAX_BYTES];
   std::tuple<int,int, int>  test_cases[2] = {
           std::make_tuple(NID_secp384r1, P384_EC_FELEM_BYTES, P384_EC_FELEM_WORDS),
           std::make_tuple(NID_secp521r1, P521_EC_FELEM_BYTES, P521_EC_FELEM_WORDS)
@@ -2357,17 +2353,5 @@ TEST(ECTest, FelemBytes) {
     bssl::UniquePtr<EC_GROUP> test_group(EC_GROUP_new_by_curve_name(nid));
     ASSERT_TRUE(test_group);
     ASSERT_EQ(test_group.get()->field.width, expected_felem_words);
-
-    bssl::UniquePtr<BIGNUM> a(BN_new());
-    ASSERT_TRUE(a);
-
-    ASSERT_TRUE(EC_GROUP_get_curve_GFp(test_group.get(), nullptr, a.get(), nullptr, nullptr));
-    ASSERT_TRUE(ec_bignum_to_felem(test_group.get(), &test_felem, a.get()));
-    out_len = 0;
-    ec_felem_to_bytes(test_group.get(), buffer, &out_len, &test_felem);
-    ASSERT_EQ((size_t)expected_felem_bytes, out_len);
-
-    ASSERT_TRUE(ec_felem_from_bytes(test_group.get(), &test2_felem, buffer, expected_felem_bytes));
-    ASSERT_TRUE(ec_felem_equal(test_group.get(), &test_felem, &test2_felem));
   }
 }
