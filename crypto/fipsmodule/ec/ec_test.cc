@@ -2356,6 +2356,7 @@ TEST(ECTest, FelemBytes) {
 
     bssl::UniquePtr<EC_GROUP> test_group(EC_GROUP_new_by_curve_name(nid));
     ASSERT_TRUE(test_group);
+    ASSERT_EQ(test_group.get()->field.width, expected_felem_words);
 
     bssl::UniquePtr<BIGNUM> a(BN_new());
     ASSERT_TRUE(a);
