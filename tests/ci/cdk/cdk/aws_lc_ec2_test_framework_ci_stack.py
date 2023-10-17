@@ -98,26 +98,6 @@ class AwsLcEC2TestingCIStack(Stack):
                           vpc=vpc,
                           security_group_name='codebuild_ec2_sg')
 
-        # MacOS EC2 tag names must be specific for use in general tests/ci/run_m1_ec2_instance.sh script.
-        # Dedicated Hosts are required for Mac ec2 instances.
-        cfn_host = ec2.CfnHost(self, id="{}-dedicated-host".format(id),
-                                availability_zone="us-west-2a",
-                                auto_placement="off",
-                                instance_type="mac2.metal")
-        Tags.of(cfn_host).add("Name", "{}-dedicated-host".format(id))
-        # AMI is for M1 MacOS Monterey.
-        ami_id="ami-084c6ab9d03ad4d46"
-        macos_arm_instance = ec2.CfnInstance(self, "aws-lc-ci-macos-arm-ec2-instance",
-                        availability_zone="us-west-2a",
-                        tenancy="host",
-                        host_id=cfn_host.attr_host_id,
-                        iam_instance_profile="{}-ec2-profile".format(id),
-                        image_id=ami_id,
-                        instance_type="mac2.metal",
-                        security_group_ids=[security_group.security_group_id],
-                        subnet_id=selection.subnet_ids[0],
-                        tags=[CfnTag(key="Name",value="aws-lc-ci-macos-arm-ec2-instance")])
-
         # Define logs for SSM.
         log_group_name = "{}-cw-logs".format(id)
         log_group = logs.CfnLogGroup(self, log_group_name,
