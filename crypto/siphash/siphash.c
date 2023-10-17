@@ -77,6 +77,5 @@ uint64_t SIPHASH_24(const uint64_t key[2], const uint8_t *input,
   siphash_round(v);
   siphash_round(v);
 
-  uint64_t b = v[0] ^ v[1] ^ v[2] ^ v[3];
-  return CRYPTO_load_u64_le(&b);
+  return v[0] ^ v[1] ^ v[2] ^ v[3];
 }
