@@ -196,6 +196,12 @@ void ec_scalar_select(const EC_GROUP *group, EC_SCALAR *out, BN_ULONG mask,
 
 // Field elements.
 
+#define P384_EC_FELEM_BYTES (48)
+#define P384_EC_FELEM_WORDS ((P384_EC_FELEM_BYTES + BN_BYTES - 1) / BN_BYTES)
+
+#define P521_EC_FELEM_BYTES (66)
+#define P521_EC_FELEM_WORDS ((P521_EC_FELEM_BYTES + BN_BYTES - 1) / BN_BYTES)
+
 // An EC_FELEM represents a field element. Only the first |field->width| words
 // are used. An |EC_FELEM| is specific to an |EC_GROUP| and must not be mixed
 // between groups. Additionally, the representation (whether or not elements are

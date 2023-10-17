@@ -143,8 +143,6 @@ static p384_limb_t p384_felem_nz(const p384_limb_t in1[P384_NLIMBS]) {
 
 #endif // P384_USE_S2N_BIGNUM_FIELD_ARITH
 
-#define P384_FELEM_BYTES (48)
-#define P384_FELEM_WORDS ((P384_FELEM_BYTES + BN_BYTES - 1) / BN_BYTES)
 
 static void p384_felem_copy(p384_limb_t out[P384_NLIMBS],
                            const p384_limb_t in1[P384_NLIMBS]) {
@@ -164,10 +162,9 @@ static void p384_felem_cmovznz(p384_limb_t out[P384_NLIMBS],
 }
 
 static void p384_from_generic(p384_felem out, const EC_FELEM *in) {
-  assert(P384_FELEM_WORDS <= EC_MAX_WORDS);
 #ifdef OPENSSL_BIG_ENDIAN
-  uint8_t tmp[P384_FELEM_BYTES];
-  bn_words_to_little_endian(tmp, P384_FELEM_BYTES, in->words, P384_FELEM_WORDS);
+  uint8_t tmp[P384_EC_FELEM_BYTES];
+  bn_words_to_little_endian(tmp, P384_EC_FELEM_BYTES, in->words, P384_EC_FELEM_WORDS);
   p384_felem_from_bytes(out, tmp);
 #else
   p384_felem_from_bytes(out, (const uint8_t *)in->words);
@@ -180,21 +177,19 @@ static void p384_to_generic(EC_FELEM *out, const p384_felem in) {
   OPENSSL_STATIC_ASSERT(
       384 / 8 == sizeof(BN_ULONG) * ((384 + BN_BITS2 - 1) / BN_BITS2),
       p384_felem_to_bytes_leaves_bytes_uninitialized);
-  assert(P384_FELEM_WORDS <= EC_MAX_WORDS);
 #ifdef OPENSSL_BIG_ENDIAN
-  uint8_t tmp[P384_FELEM_BYTES];
+  uint8_t tmp[P384_EC_FELEM_BYTES];
   p384_felem_to_bytes(tmp, in);
-  bn_little_endian_to_words(out->words, P384_FELEM_WORDS, tmp, P384_FELEM_BYTES);
+  bn_little_endian_to_words(out->words, P384_EC_FELEM_WORDS, tmp, P384_EC_FELEM_BYTES);
 #else
   p384_felem_to_bytes((uint8_t *)out->words, in);
 #endif
 }
 
 static void p384_from_scalar(p384_felem out, const EC_SCALAR *in) {
-  assert(P384_FELEM_WORDS <= EC_MAX_WORDS);
 #ifdef OPENSSL_BIG_ENDIAN
-  uint8_t tmp[P384_FELEM_BYTES];
-  bn_words_to_little_endian(tmp, P384_FELEM_BYTES, in->words, P384_FELEM_WORDS);
+  uint8_t tmp[P384_EC_FELEM_BYTES];
+  bn_words_to_little_endian(tmp, P384_EC_FELEM_BYTES, in->words, P384_EC_FELEM_WORDS);
   p384_felem_from_bytes(out, tmp);
 #else
   p384_felem_from_bytes(out, (const uint8_t *)in->words);
