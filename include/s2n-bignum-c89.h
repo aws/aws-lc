@@ -407,6 +407,10 @@ extern uint64_t bignum_madd (uint64_t k, uint64_t *z, uint64_t m, uint64_t *x, u
 /*  Input x[4]; output z[4] */
 extern void bignum_mod_m25519_4 (uint64_t z[4], uint64_t x[4]);
 
+/* Reduce modulo basepoint order, z := x mod n_25519 */
+/* Input x[k]; output z[4] */
+extern void bignum_mod_n25519 (uint64_t z[4], uint64_t k, uint64_t *x);
+
 /*  Reduce modulo basepoint order, z := x mod n_25519 */
 /*  Input x[4]; output z[4] */
 extern void bignum_mod_n25519_4 (uint64_t z[4], uint64_t x[4]);
