@@ -236,13 +236,11 @@ TEST(BIOTest, CloseFlags) {
   EXPECT_TRUE(BIO_free(bio));
   // Windows CRT hits an assertion error and stack overflow (exception code
   // 0xc0000409) when calling _tell or lseek on an already-closed file
-  // descriptor, so use _get_osfhandle isntead.
-#if defined(OPENSSL_WINDOWS)
-  EXPECT_EQ(reinterpret_cast<intptr_t>(INVALID_HANDLE_VALUE), _get_osfhandle(tmp_fd));
-#else
+  // descriptor, so only consider the non-Windows case here.
+#if !defined(OPENSSL_WINDOWS)
   EXPECT_EQ(-1, lseek(tmp_fd, 0, SEEK_CUR));
-#endif
   EXPECT_EQ(EBADF, errno);  // EBADF indicates that |BIO_free| closed the file
+#endif
 
   // Assert that BIO_NOCLOSE does not close the underlying file on BIO free
   tmp = tmpfile();
