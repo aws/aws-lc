@@ -41,9 +41,21 @@ static const uint8_t sigma[16] = { 'e', 'x', 'p', 'a', 'n', 'd', ' ', '3',
 void CRYPTO_hchacha20(uint8_t out[32], const uint8_t key[32],
                       const uint8_t nonce[16]) {
   uint32_t x[16];
+#ifdef OPENSSL_BIG_ENDIAN
+  for(size_t i = 0; i < 4; i++) {
+    x[i] = CRYPTO_load_u32_le(sigma + i * sizeof(uint32_t));
+  }
+  for(size_t i = 4; i < 12; i++) {
+    x[i] = CRYPTO_load_u32_le(key + (i-4) * sizeof(uint32_t));
+  }
+  for(size_t i = 12; i < 16; i++) {
+    x[i] = CRYPTO_load_u32_le(nonce + (i-12) * sizeof(uint32_t));
+  }
+#else
   OPENSSL_memcpy(x, sigma, sizeof(sigma));
   OPENSSL_memcpy(&x[4], key, 32);
   OPENSSL_memcpy(&x[12], nonce, 16);
+#endif
 
   for (size_t i = 0; i < 20; i += 2) {
     QUARTERROUND(0, 4, 8, 12)
@@ -56,8 +68,17 @@ void CRYPTO_hchacha20(uint8_t out[32], const uint8_t key[32],
     QUARTERROUND(3, 4, 9, 14)
   }
 
+#ifdef OPENSSL_BIG_ENDIAN
+  for(size_t i = 0; i < 4; i++) {
+    CRYPTO_store_u32_le(out + i*sizeof(uint32_t), x[i]);
+  }
+  for(size_t i = 12; i < 16; i++) {
+    CRYPTO_store_u32_le(out + (i-8) * sizeof(uint32_t), x[i]);
+  }
+#else
   OPENSSL_memcpy(out, &x[0], sizeof(uint32_t) * 4);
   OPENSSL_memcpy(&out[16], &x[12], sizeof(uint32_t) * 4);
+#endif
 }
 
 #if defined(CHACHA20_ASM)
