@@ -301,29 +301,23 @@ int ED25519_sign(uint8_t out_sig[64], const uint8_t *message,
 
 int ED25519_verify(const uint8_t *message, size_t message_len,
                    const uint8_t signature[64], const uint8_t public_key[32]) {
-  ge_p3 A;
-  if ((signature[63] & 224) != 0 ||
-      !x25519_ge_frombytes_vartime(&A, public_key)) {
+
+  // Ed25519 verify: rfc8032 5.1.7
+
+  // Step: rfc90832 5.1.7.1
+  // Decode signature as:
+  //  - signature[0:31]: encoded point R, aliased to R_expected.
+  //  - signature[32:61]: integer S.
+  if ((signature[63] & 224) != 0) {
     return 0;
   }
+  uint8_t R_expected[32];
+  OPENSSL_memcpy(R_expected, signature, 32);
+  uint8_t S[32];
+  OPENSSL_memcpy(S, signature + 32, 32);
 
-  fe_loose t;
-  fe_neg(&t, &A.X);
-  fe_carry(&A.X, &t);
-  fe_neg(&t, &A.T);
-  fe_carry(&A.T, &t);
-
-  uint8_t pkcopy[32];
-  OPENSSL_memcpy(pkcopy, public_key, 32);
-  uint8_t rcopy[32];
-  OPENSSL_memcpy(rcopy, signature, 32);
-  uint8_t scopy[32];
-  OPENSSL_memcpy(scopy, signature + 32, 32);
-
-  // https://tools.ietf.org/html/rfc8032#section-5.1.7 requires that s be in
-  // the range [0, order) in order to prevent signature malleability.
-
-  // kOrder is the order of Curve25519 in little-endian form.
+  // S must be in the range [0, order) in order to prevent signature
+  // malleability. kOrder is the order of curve25519 in little-endian form.
   static const uint64_t kOrder[4] = {
     UINT64_C(0x5812631a5cf5d3ed),
     UINT64_C(0x14def9dea2f79cd6),
@@ -331,7 +325,7 @@ int ED25519_verify(const uint8_t *message, size_t message_len,
     UINT64_C(0x1000000000000000),
   };
   for (size_t i = 3;; i--) {
-    uint64_t word = CRYPTO_load_u64_le(scopy + i * 8);
+    uint64_t word = CRYPTO_load_u64_le(S + i * 8);
     if (word > kOrder[i]) {
       return 0;
     } else if (word < kOrder[i]) {
@@ -341,23 +335,51 @@ int ED25519_verify(const uint8_t *message, size_t message_len,
     }
   }
 
+  // Decode public key as A'.
+  ge_p3 A;
+  if (!x25519_ge_frombytes_vartime(&A, public_key)) {
+    return 0;
+  }
+  uint8_t pkcopy[32];
+  OPENSSL_memcpy(pkcopy, public_key, 32);
+
+  // Step: rfc8032 5.1.7.2
+  // Compute SHA512(dom2(F,C) || R || public_key || PH(message)).
+  // For Ed25519, dom2(F,C) is the empty string, cf. rfc8032 5.1.
   SHA512_CTX hash_ctx;
   SHA512_Init(&hash_ctx);
   SHA512_Update(&hash_ctx, signature, 32);
   SHA512_Update(&hash_ctx, public_key, 32);
   SHA512_Update(&hash_ctx, message, message_len);
-  uint8_t h[SHA512_DIGEST_LENGTH];
-  SHA512_Final(h, &hash_ctx);
+  uint8_t k[SHA512_DIGEST_LENGTH];
+  SHA512_Final(k, &hash_ctx);
 
-  x25519_sc_reduce(h);
+  // Reduce k modulo the order of the base-point B. Saves compute in the
+  // subsequent scalar multiplication.
+  x25519_sc_reduce(k);
 
-  ge_p2 R;
-  ge_double_scalarmult_vartime(&R, h, &A, scopy);
+  // Step: rfc8032 5.1.7.3
+  // We will check [S]B - [k]A' =? R_expected.
 
-  uint8_t rcheck[32];
-  x25519_ge_tobytes(rcheck, &R);
+  // First negate A'. Point negation for the twisted edwards curve when points
+  // are represented in the extended coordinate system is simply:
+  //   -(X,Y,Z,T) = (-X,Y,Z,-T).
+  // See "Twisted Edwards curves revisited" http://eprint.iacr.org/2008/522.
+  fe_loose t;
+  fe_neg(&t, &A.X);
+  fe_carry(&A.X, &t);
+  fe_neg(&t, &A.T);
+  fe_carry(&A.T, &t);
 
-  return CRYPTO_memcmp(rcheck, rcopy, sizeof(rcheck)) == 0;
+  // Compute R_have <- [S]B - [k]A'.
+  ge_p2 R_have;
+  ge_double_scalarmult_vartime(&R_have, k, &A, S);
+
+  uint8_t R_have_enc[32];
+  x25519_ge_tobytes(R_have_enc, &R_have);
+
+  // Comparison [S]B - [k]A' =? R_expected.
+  return CRYPTO_memcmp(R_have_enc, R_expected, sizeof(R_have_enc)) == 0;
 }
 
 
