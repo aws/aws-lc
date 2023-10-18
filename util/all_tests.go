@@ -29,6 +29,10 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"context"
+	// "io"
+	// "log"
+	"time"
 
 	"boringssl.googlesource.com/boringssl/util/testconfig"
 	"boringssl.googlesource.com/boringssl/util/testresult"
@@ -135,7 +139,7 @@ func gdbOf(path string, args ...string) *exec.Cmd {
 	return exec.Command("xterm", xtermArgs...)
 }
 
-func sdeOf(cpu, path string, args ...string) *exec.Cmd {
+func sdeOf(cpu, path string, args ...string) (*exec.Cmd, context.CancelFunc) {
 	sdeArgs := []string{"-" + cpu}
 	// The kernel's vdso code for gettimeofday sometimes uses the RDTSCP
 	// instruction. Although SDE has a -chip_check_vsyscall flag that
@@ -147,7 +151,13 @@ func sdeOf(cpu, path string, args ...string) *exec.Cmd {
 	}
 	sdeArgs = append(sdeArgs, "--", path)
 	sdeArgs = append(sdeArgs, args...)
-	return exec.Command(*sdePath, sdeArgs...)
+
+	// return exec.Command(*sdePath, sdeArgs...)
+
+	// Defer 15 minutes
+	ctx, cancel := context.WithTimeout(context.Background(), 900*time.Second)
+
+	return exec.CommandContext(ctx, *sdePath, sdeArgs...), cancel
 }
 
 var (
@@ -164,6 +174,7 @@ func runTestOnce(test test, mallocNumToFail int64) (passed bool, err error) {
 		args = append(args, "--no_unwind_tests")
 	}
 	var cmd *exec.Cmd
+	var cancel context.CancelFunc
 	if *useValgrind {
 		cmd = valgrindOf(false, test.ValgrindSupp, prog, args...)
 	} else if *useCallgrind {
@@ -171,7 +182,8 @@ func runTestOnce(test test, mallocNumToFail int64) (passed bool, err error) {
 	} else if *useGDB {
 		cmd = gdbOf(prog, args...)
 	} else if *useSDE {
-		cmd = sdeOf(test.cpu, prog, args...)
+		cmd, cancel = sdeOf(test.cpu, prog, args...)
+		defer cancel()
 	} else {
 		cmd = exec.Command(prog, args...)
 	}
@@ -198,9 +210,50 @@ func runTestOnce(test test, mallocNumToFail int64) (passed bool, err error) {
 		cmd.Env = append(cmd.Env, "_MALLOC_CHECK=1")
 	}
 
+	// var stdBuffer bytes.Buffer
+	// mw := io.MultiWriter(os.Stdout, &stdBuffer)
+
+	// cmd.Stdout = mw
+	// cmd.Stderr = mw
+
 	if err := cmd.Start(); err != nil {
 		return false, err
 	}
+
+	// 1 hour
+	// timer1 := time.NewTimer(10 * time.Second)
+	// fmt.Print(string(outBuf.Bytes()))
+	// start := time.Now()
+	// for {
+	// 	if(time.Since(start) > 600 * time.Second ) {
+
+	// 		// Wait for 20 minutes amount of time and then check process.
+
+	// 		// Account for Windows line-endings.
+	// 		stdout := bytes.Replace(outBuf.Bytes(), []byte("\r\n"), []byte("\n"), -1)
+
+	// 		if bytes.HasSuffix(stdout, []byte("PASS\n")) &&
+	// 			(len(stdout) == 5 || stdout[len(stdout)-6] == '\n') {
+	// 			return true, nil
+	// 		}
+
+	// 		// Also accept a googletest-style pass line. This is left here in
+	// 		// transition until the tests are all converted and this script made
+	// 		// unnecessary.
+	// 		if bytes.Contains(stdout, []byte("\n[  PASSED  ]")) {
+	// 			return true, nil
+	// 		}
+
+	// 		// if err := cmd.Wait(); err != nil {
+	// 			// Test should have finished running, if not print output?
+	// 			log.Println(string(outBuf.Bytes()))
+	// 			cmd.
+	// 			return false, nil
+	// 		// }
+	// 	}
+	// }
+	// log.Println(stdBuffer.String())
+
 	if err := cmd.Wait(); err != nil {
 		if exitError, ok := err.(*exec.ExitError); ok {
 			switch exitError.Sys().(syscall.WaitStatus).ExitStatus() {
