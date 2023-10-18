@@ -96,17 +96,14 @@
     "cmd": ["ssl/ssl_test"]
   },
   {
-    "cmd": ["crypto/mem_test"],
-    "skip_sde": true
+    "cmd": ["crypto/mem_test"]
   },
   {
-    "cmd": ["crypto/mem_set_test"],
-    "skip_sde": true
+    "cmd": ["crypto/mem_set_test"]
   },
   {
     "cmd": [
       "crypto/dynamic_loading_test"
-    ],
-    "skip_sde": true
+    ]
   }
 ]
