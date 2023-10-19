@@ -79,6 +79,11 @@
 #include <stdio.h>
 #include <string.h>
 
+#if defined(OPENSSL_WINDOWS)
+#include <fcntl.h>
+#include <io.h>
+#endif  // OPENSSL_WINDOWS
+
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
@@ -193,6 +198,13 @@ static long file_ctrl(BIO *b, int cmd, long num, void *ptr) {
       b->shutdown = (int)num & BIO_CLOSE;
       b->ptr = ptr;
       b->init = 1;
+#if defined(OPENSSL_WINDOWS)
+      // Windows differentiates between "text" and "binary" file modes, so set
+      // the file to text mode if caller specifies BIO_FP_TEXT flag.
+      //
+      // https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/setmode?view=msvc-170#remarks
+      _setmode(_fileno(b->ptr), num & BIO_FP_TEXT ? _O_TEXT : _O_BINARY);
+#endif
       break;
     case BIO_C_SET_FILENAME:
       file_free(b);
