@@ -33,6 +33,7 @@ if(FIPS)
 
   if(ENABLE_FIPS_ENTROPY_CPU_JITTER)
     add_definitions(-DFIPS_ENTROPY_SOURCE_JITTER_CPU)
+    add_subdirectory(third_party/jitterentropy)
     message(STATUS "FIPS entropy source method configured: CPU Jitter")
   else()
     add_definitions(-DFIPS_ENTROPY_SOURCE_PASSIVE)
@@ -650,8 +651,6 @@ if(FIPS)
   if(WIN32 AND CMAKE_BUILD_TYPE_LOWER STREQUAL "debug")
     message(FATAL_ERROR "Windows Debug build is not supported with FIPS, use Release or RelWithDebInfo")
   endif()
-
-  add_subdirectory(third_party/jitterentropy)
 
   add_definitions(-DBORINGSSL_FIPS)
   if(FIPS_BREAK_TEST)
