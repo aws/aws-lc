@@ -16,14 +16,14 @@ if [[ ("$(uname -s)" == 'Linux'*) && (("$(uname -p)" == 'x86_64'*) || ("$(uname 
   fips_build_and_test -DCMAKE_BUILD_TYPE=Release
 
   echo "Testing AWS-LC static breakable release build"
-  run_build -DFIPS=1 -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS="-DBORINGSSL_FIPS_BREAK_TESTS"
+  run_build -DFIPS=1 -DCMAKE_C_FLAGS="-DBORINGSSL_FIPS_BREAK_TESTS"
   cd $SRC_ROOT
   MODULE_HASH=$(./util/fipstools/test-break-kat.sh |\
                     (egrep "Hash of module was:.* ([a-f0-9]*)" || true))
 
   echo "Testing AWS-LC static breakable release build while keeping local symbols"
   echo "to check that module hash didn't change."
-  run_build -DFIPS=1 -DCMAKE_BUILD_TYPE=Release -DKEEP_ASM_LOCAL_SYMBOLS=1 -DCMAKE_C_FLAGS="-DBORINGSSL_FIPS_BREAK_TESTS"
+  run_build -DFIPS=1 -DKEEP_ASM_LOCAL_SYMBOLS=1 -DCMAKE_C_FLAGS="-DBORINGSSL_FIPS_BREAK_TESTS"
   cd $SRC_ROOT
   ./util/fipstools/test-break-kat.sh || grep -i hash
   MODULE_HASH_LOCALSYMS=$(./util/fipstools/test-break-kat.sh |\
