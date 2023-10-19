@@ -15,10 +15,22 @@ if [[ ("$(uname -s)" == 'Linux'*) && (("$(uname -p)" == 'x86_64'*) || ("$(uname 
   echo "Testing AWS-LC static library in FIPS Release mode."
   fips_build_and_test -DCMAKE_BUILD_TYPE=Release
 
-  echo "Testing AWS-LC static breakable build"
-  run_build -DFIPS=1 -DCMAKE_C_FLAGS="-DBORINGSSL_FIPS_BREAK_TESTS"
+  echo "Testing AWS-LC static breakable release build"
+  run_build -DFIPS=1 -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS="-DBORINGSSL_FIPS_BREAK_TESTS"
   cd $SRC_ROOT
-  ./util/fipstools/test-break-kat.sh
+  MODULE_HASH=$(./util/fipstools/test-break-kat.sh |\
+                    (egrep "Hash of module was:.* ([a-f0-9]*)" || true))
+
+  echo "Testing AWS-LC static breakable release build while keeping local symbols"
+  echo "to check that module hash didn't change."
+  run_build -DFIPS=1 -DCMAKE_BUILD_TYPE=Release -DKEEP_ASM_LOCAL_SYMBOLS=1 -DCMAKE_C_FLAGS="-DBORINGSSL_FIPS_BREAK_TESTS"
+  cd $SRC_ROOT
+  ./util/fipstools/test-break-kat.sh || grep -i hash
+  MODULE_HASH_LOCALSYMS=$(./util/fipstools/test-break-kat.sh |\
+                              (egrep "Hash of module was:.* ([a-f0-9]*)" || true))
+  if [ "$MODULE_HASH" == "$MODULE_HASH_LOCALSYMS" ]; then
+    echo "Module hash didn't change"
+  fi
 
   # These build parameters may be needed by our aws-lc-fips-sys Rust package
   run_build -DFIPS=1 -DBUILD_LIBSSL=OFF -DBUILD_TESTING=OFF
