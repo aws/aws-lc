@@ -164,13 +164,16 @@ TEST(BIOTest, CloseFlags) {
   // unique_ptr will automatically call fclose on the file descriptior when the
   // variable goes out of scope, so we need to specify BIO_NOCLOSE close flags
   // to avoid a double-free condition.
-  using TempFILE = std::unique_ptr<FILE, decltype(&fclose)>;
+  struct fclose_deleter {
+      void operator()(FILE *f) const { fclose(f); }
+  };
+  using TempFILE = std::unique_ptr<FILE, fclose_deleter>;
 
   const char *test_str = "test\ntest\ntest\n";
 
   // Assert that CRLF line endings get inserted on write and translated back out on
   // read for text mode.
-  TempFILE text_bio_file(tmpfile(), fclose);
+  TempFILE text_bio_file(tmpfile());
   ASSERT_TRUE(text_bio_file);
   bssl::UniquePtr<BIO> text_bio(BIO_new_fp(text_bio_file.get(), BIO_NOCLOSE | BIO_FP_TEXT));
   int bytes_written = BIO_write(text_bio.get(), test_str, strlen(test_str));
@@ -198,7 +201,7 @@ TEST(BIOTest, CloseFlags) {
 
   // Assert that CRLF line endings don't get inserted on write for
   // (default) binary mode.
-  TempFILE binary_bio_file(tmpfile(), fclose);
+  TempFILE binary_bio_file(tmpfile());
   ASSERT_TRUE(binary_bio_file);
   bssl::UniquePtr<BIO> binary_bio(BIO_new_fp(binary_bio_file.get(), BIO_NOCLOSE));
   bytes_written = BIO_write(binary_bio.get(), test_str, strlen(test_str));
