@@ -162,7 +162,7 @@ func sdeOf(cpu, path string, args ...string) (*exec.Cmd, context.CancelFunc) {
 var (
 	errMoreMallocs = errors.New("child process did not exhaust all allocation calls")
 	errTestSkipped = errors.New("test was skipped")
-	errTestHangButPass = errors.New("test hangs without exiting, but actually passes")
+	errTestHanging = errors.New("test hangs without exiting")
 )
 
 func runTestOnce(test test, mallocNumToFail int64) (passed bool, err error) {
@@ -230,7 +230,7 @@ func runTestOnce(test test, mallocNumToFail int64) (passed bool, err error) {
 				return false, errTestSkipped
 			}
 			if cancelled {
-				return testPass(outBuf), errTestHangButPass
+				return testPass(outBuf), errTestHanging
 			}
 		}
 		fmt.Print(string(outBuf.Bytes()))
@@ -439,10 +439,17 @@ func main() {
 			fmt.Printf("%s was skipped\n", args[0])
 			skipped = append(skipped, test)
 			testOutput.AddSkip(test.longName())
-		} else if testResult.Error == errTestHangButPass {
-			fmt.Printf("%s\n", test.shortName())
-			fmt.Printf("%s was left hanging, but actually passed\n", args[0])
-			testOutput.AddResult(test.longName(), "PASS")
+		} else if testResult.Error == errTestHanging {
+			if !testResult.Passed {
+				fmt.Printf("%s\n", test.longName())
+				fmt.Printf("%s was left hanging finishing.\n", args[0])
+				failed = append(failed, test)
+				testOutput.AddResult(test.longName(), "FAIL")
+			} else {
+				fmt.Printf("%s\n", test.shortName())
+				fmt.Printf("%s was left hanging, but actually passed\n", args[0])
+				testOutput.AddResult(test.longName(), "PASS")
+			}
 		} else if testResult.Error != nil {
 			fmt.Printf("%s\n", test.longName())
 			fmt.Printf("%s failed to complete: %s\n", args[0], testResult.Error)

@@ -20,6 +20,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #ifdef LIBCRYPTO_PATH
 
@@ -105,6 +106,8 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
+  sleep(900);
+
   fprintf(stdout, "PASS\n");
   fflush(stdout);
   return 0;
@@ -112,6 +115,8 @@ int main(int argc, char *argv[]) {
 #else
 
 int main(int argc, char **argv) {
+  sleep(900);
+
   fprintf(stdout, "PASS\n");
   fflush(stdout);
   return 0;
