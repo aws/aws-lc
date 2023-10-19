@@ -105,13 +105,15 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
-  printf("PASS\n");
+  fprintf(stdout, "PASS\n");
+  fflush(stdout);
   return 0;
 }
 #else
 
 int main(int argc, char **argv) {
-  printf("PASS\n");
+  fprintf(stdout, "PASS\n");
+  fflush(stdout);
   return 0;
 }
 

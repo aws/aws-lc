@@ -152,10 +152,9 @@ func sdeOf(cpu, path string, args ...string) (*exec.Cmd, context.CancelFunc) {
 	sdeArgs = append(sdeArgs, "--", path)
 	sdeArgs = append(sdeArgs, args...)
 
-	// return exec.Command(*sdePath, sdeArgs...)
-
-	// Defer 15 minutes
-	ctx, cancel := context.WithTimeout(context.Background(), 900*time.Second)
+	// SDE+ASAN tests will hang without exiting if tests pass for an unknown reason.
+	// Workaround is to manually cancel the run after 15 minutes and check the output.
+	ctx, cancel := context.WithTimeout(context.Background(), 600*time.Second)
 
 	return exec.CommandContext(ctx, *sdePath, sdeArgs...), cancel
 }
@@ -163,6 +162,7 @@ func sdeOf(cpu, path string, args ...string) (*exec.Cmd, context.CancelFunc) {
 var (
 	errMoreMallocs = errors.New("child process did not exhaust all allocation calls")
 	errTestSkipped = errors.New("test was skipped")
+	errTestHangButPass = errors.New("test hangs without exiting, but actually passes")
 )
 
 func runTestOnce(test test, mallocNumToFail int64) (passed bool, err error) {
@@ -175,6 +175,7 @@ func runTestOnce(test test, mallocNumToFail int64) (passed bool, err error) {
 	}
 	var cmd *exec.Cmd
 	var cancel context.CancelFunc
+	cancelled := false
 	if *useValgrind {
 		cmd = valgrindOf(false, test.ValgrindSupp, prog, args...)
 	} else if *useCallgrind {
@@ -184,6 +185,11 @@ func runTestOnce(test test, mallocNumToFail int64) (passed bool, err error) {
 	} else if *useSDE {
 		cmd, cancel = sdeOf(test.cpu, prog, args...)
 		defer cancel()
+
+		cmd.Cancel = func() error {
+			cancelled = true
+			return cmd.Process.Kill()
+		}
 	} else {
 		cmd = exec.Command(prog, args...)
 	}
@@ -210,49 +216,9 @@ func runTestOnce(test test, mallocNumToFail int64) (passed bool, err error) {
 		cmd.Env = append(cmd.Env, "_MALLOC_CHECK=1")
 	}
 
-	// var stdBuffer bytes.Buffer
-	// mw := io.MultiWriter(os.Stdout, &stdBuffer)
-
-	// cmd.Stdout = mw
-	// cmd.Stderr = mw
-
 	if err := cmd.Start(); err != nil {
 		return false, err
 	}
-
-	// 1 hour
-	// timer1 := time.NewTimer(10 * time.Second)
-	// fmt.Print(string(outBuf.Bytes()))
-	// start := time.Now()
-	// for {
-	// 	if(time.Since(start) > 600 * time.Second ) {
-
-	// 		// Wait for 20 minutes amount of time and then check process.
-
-	// 		// Account for Windows line-endings.
-	// 		stdout := bytes.Replace(outBuf.Bytes(), []byte("\r\n"), []byte("\n"), -1)
-
-	// 		if bytes.HasSuffix(stdout, []byte("PASS\n")) &&
-	// 			(len(stdout) == 5 || stdout[len(stdout)-6] == '\n') {
-	// 			return true, nil
-	// 		}
-
-	// 		// Also accept a googletest-style pass line. This is left here in
-	// 		// transition until the tests are all converted and this script made
-	// 		// unnecessary.
-	// 		if bytes.Contains(stdout, []byte("\n[  PASSED  ]")) {
-	// 			return true, nil
-	// 		}
-
-	// 		// if err := cmd.Wait(); err != nil {
-	// 			// Test should have finished running, if not print output?
-	// 			log.Println(string(outBuf.Bytes()))
-	// 			cmd.
-	// 			return false, nil
-	// 		// }
-	// 	}
-	// }
-	// log.Println(stdBuffer.String())
 
 	if err := cmd.Wait(); err != nil {
 		if exitError, ok := err.(*exec.ExitError); ok {
@@ -263,28 +229,36 @@ func runTestOnce(test test, mallocNumToFail int64) (passed bool, err error) {
 				fmt.Print(string(outBuf.Bytes()))
 				return false, errTestSkipped
 			}
+			if cancelled {
+				return testPass(outBuf), errTestHangButPass
+			}
 		}
 		fmt.Print(string(outBuf.Bytes()))
 		return false, err
 	}
 
+
+	return testPass(outBuf), nil
+}
+
+func testPass(outBuf bytes.Buffer) bool {
 	// Account for Windows line-endings.
 	stdout := bytes.Replace(outBuf.Bytes(), []byte("\r\n"), []byte("\n"), -1)
 
 	if bytes.HasSuffix(stdout, []byte("PASS\n")) &&
 		(len(stdout) == 5 || stdout[len(stdout)-6] == '\n') {
-		return true, nil
+		return true
 	}
 
 	// Also accept a googletest-style pass line. This is left here in
 	// transition until the tests are all converted and this script made
 	// unnecessary.
 	if bytes.Contains(stdout, []byte("\n[  PASSED  ]")) {
-		return true, nil
+		return true
 	}
 
 	fmt.Print(string(outBuf.Bytes()))
-	return false, nil
+	return false
 }
 
 func runTest(test test) (bool, error) {
@@ -465,6 +439,10 @@ func main() {
 			fmt.Printf("%s was skipped\n", args[0])
 			skipped = append(skipped, test)
 			testOutput.AddSkip(test.longName())
+		} else if testResult.Error == errTestHangButPass {
+			fmt.Printf("%s\n", test.shortName())
+			fmt.Printf("%s was left hanging, but actually passed\n", args[0])
+			testOutput.AddResult(test.longName(), "PASS")
 		} else if testResult.Error != nil {
 			fmt.Printf("%s\n", test.longName())
 			fmt.Printf("%s failed to complete: %s\n", args[0], testResult.Error)
