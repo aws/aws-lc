@@ -105,5 +105,11 @@
     "cmd": [
       "crypto/dynamic_loading_test"
     ]
+  },
+  {
+    "cmd": ["crypto/windows_memset_test"]
+  },
+  {
+    "cmd": ["crypto/regular_mem_test"]
   }
 ]

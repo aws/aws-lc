@@ -673,6 +673,9 @@ if(BUILD_TESTING)
   # mem_set_test.cc tests memory overrides via |CRYPTO_set_mem_functions|.
   add_test_executable(${MEM_SET_TEST_EXEC} mem_set_test.cc)
 
+  add_test_executable(windows_memset_test windows_mem_test.cc)
+  add_test_executable(regular_mem_test regular_mem_test.cc)
+
   # urandom_test is a separate binary because it needs to be able to observe the
   # PRNG initialisation, which means that it can't have other tests running before
   # it does.
