@@ -403,6 +403,11 @@ extern uint64_t bignum_lt (uint64_t m, uint64_t *x, uint64_t n, uint64_t *y);
 // Inputs x[m], y[n]; outputs function return (carry-out) and z[k]
 extern uint64_t bignum_madd (uint64_t k, uint64_t *z, uint64_t m, uint64_t *x, uint64_t n, uint64_t *y);
 
+// Multiply-add modulo the order of the curve25519/edwards25519 basepoint
+// Inputs x[4], y[4], c[4]; output z[4]
+extern void bignum_madd_n25519 (uint64_t z[static 4], uint64_t x[static 4], uint64_t y[static 4], uint64_t c[static 4]);
+extern void bignum_madd_n25519_alt (uint64_t z[static 4], uint64_t x[static 4], uint64_t y[static 4], uint64_t c[static 4]);
+
 // Reduce modulo group order, z := x mod m_25519
 // Input x[4]; output z[4]
 extern void bignum_mod_m25519_4 (uint64_t z[static 4], uint64_t x[static 4]);

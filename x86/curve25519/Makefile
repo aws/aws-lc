@@ -12,6 +12,8 @@ OBJ = bignum_add_p25519.o \
       bignum_inv_p25519.o \
       bignum_invsqrt_p25519.o \
       bignum_invsqrt_p25519_alt.o \
+      bignum_madd_n25519.o \
+      bignum_madd_n25519_alt.o \
       bignum_mod_m25519_4.o \
       bignum_mod_n25519.o \
       bignum_mod_n25519_4.o \

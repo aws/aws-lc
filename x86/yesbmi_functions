@@ -14,6 +14,7 @@ bignum_kmul_16_32
 bignum_kmul_32_64
 bignum_ksqr_16_32
 bignum_ksqr_32_64
+bignum_madd_n25519
 bignum_mod_n256
 bignum_mod_n384
 bignum_mod_n521_9

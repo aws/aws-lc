@@ -470,6 +470,10 @@ void call_bignum_madd__16_32(void) repeat(bignum_madd(32,b0,16,b1,16,b2))
 
 void call_bignum_madd__32_64(void) repeat(bignum_madd(64,b0,32,b1,32,b2))
 
+void call_bignum_madd_n25519(void) repeat(bignum_madd_n25519(b0,b1,b2,b3))
+
+void call_bignum_madd_n25519_alt(void) repeat(bignum_madd_n25519_alt(b0,b1,b2,b3))
+
 void call_bignum_sqr__4_8(void) repeat(bignum_sqr(8,b0,4,b1))
 
 void call_bignum_sqr__6_12(void) repeat(bignum_sqr(12,b0,6,b1))
@@ -986,6 +990,8 @@ int main(int argc, char *argv[])
   timingtest(all,"bignum_madd (8x8 -> 16)",call_bignum_madd__8_16);
   timingtest(all,"bignum_madd (16x16 -> 32)",call_bignum_madd__16_32);
   timingtest(all,"bignum_madd (32x32 -> 64)",call_bignum_madd__32_64);
+  timingtest(bmi,"bignum_madd_n25519",call_bignum_madd_n25519);
+  timingtest(all,"bignum_madd_n25519_alt",call_bignum_madd_n25519_alt);
   timingtest(all,"bignum_mod_m25519_4",call_bignum_mod_m25519_4);
   timingtest(all,"bignum_mod_n25519 (8 -> 4)",call_bignum_mod_n25519__8);
   timingtest(all,"bignum_mod_n25519_4",call_bignum_mod_n25519_4);

@@ -74,6 +74,7 @@ bignum_littleendian_4
 bignum_littleendian_6
 bignum_lt
 bignum_madd
+bignum_madd_n25519_alt
 bignum_mod_m25519_4
 bignum_mod_n25519
 bignum_mod_n25519_4
