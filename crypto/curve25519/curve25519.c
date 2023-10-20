@@ -364,7 +364,7 @@ int ED25519_verify(const uint8_t *message, size_t message_len,
   // First negate A'. Point negation for the twisted edwards curve when points
   // are represented in the extended coordinate system is simply:
   //   -(X,Y,Z,T) = (-X,Y,Z,-T).
-  // See "Twisted Edwards curves revisited" http://eprint.iacr.org/2008/522.
+  // See "Twisted Edwards curves revisited" https://ia.cr/2008/522.
   fe_loose t;
   fe_neg(&t, &A.X);
   fe_carry(&A.X, &t);
