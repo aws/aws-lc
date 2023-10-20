@@ -6,7 +6,7 @@ index 7dbac6e..58a47d5 100644
  
  #if defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER < 0x20501000L
  #define TMP_SESS_FILE "pki/session-libressl-2.5.0.pem"
-+#elif defined(AWSLC_API_VERSION) && AWSLC_API_VERSION == 22
++#elif defined(OPENSSL_IS_AWSLC)
 +#define TMP_SESS_FILE "pki/session-aws-lc-1.15.0.pem"
  #else
  #define TMP_SESS_FILE "pki/session.pem"
@@ -19,7 +19,7 @@ index 754b7d3..1cd3294 100644
  
  #if defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER < 0x20501000L
  #define TMP_SESS_FILE "pki/session-libressl-2.5.0.pem"
-+#elif defined(AWSLC_API_VERSION) && AWSLC_API_VERSION == 22
++#elif defined(OPENSSL_IS_AWSLC)
 +#define TMP_SESS_FILE "pki/session-aws-lc-1.15.0.pem"
  #else
  #define TMP_SESS_FILE "pki/session.pem"
