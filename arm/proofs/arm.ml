@@ -394,18 +394,6 @@ let ARM_VERBOSE_SUBSTEP_TAC exths sname g =
 (* Throw away assumptions according to patterns.                             *)
 (* ------------------------------------------------------------------------- *)
 
-let DISCARD_ASSUMPTIONS_TAC P =
-  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check P));;
-
-let DISCARD_MATCHING_ASSUMPTIONS pats =
-  DISCARD_ASSUMPTIONS_TAC
-   (fun th -> exists (fun ptm -> can (term_match [] ptm) (concl th)) pats);;
-
-let DISCARD_NONMATCHING_ASSUMPTIONS pats =
-  DISCARD_ASSUMPTIONS_TAC
-   (fun th ->
-      not(exists (fun ptm -> can (term_match [] ptm) (concl th)) pats));;
-
 let DISCARD_FLAGS_TAC =
   DISCARD_MATCHING_ASSUMPTIONS
    [`read CF s = y`; `read ZF s = y`;

@@ -2431,8 +2431,30 @@ let SIMPLE_ORTHOGONAL_COMPONENTS_TAC =
        tac ORELSE
        ORTHOGONAL_COMPONENTS_BYTES64_TAC)) g;;
 
+(* A cache that stores `orthogonal_components x y` theorems.
+   `assoc y !(assoc x !orthogonal_components_conv_cache)` must return the
+   theorem, if the entry exists. *)
+let orthogonal_components_conv_cache:
+    (term * ((term * thm) list ref)) list ref = ref [];;
+
 let ORTHOGONAL_COMPONENTS_CONV tm =
-  prove(tm,SIMPLE_ORTHOGONAL_COMPONENTS_TAC);;
+  try
+    let lhs,rhs = dest_binary "orthogonal_components" tm in
+    (* Use cache if lhs and rhs are constants, e.g., `PC` or `X1`. *)
+    if is_const lhs && is_const rhs then
+      try
+        let lref = assoc lhs !orthogonal_components_conv_cache in
+        try assoc rhs !lref
+        with _ ->
+          let newth = prove(tm,SIMPLE_ORTHOGONAL_COMPONENTS_TAC) in
+          lref := (rhs, newth)::!lref;
+          newth
+      with _ ->
+        let newth = prove(tm,SIMPLE_ORTHOGONAL_COMPONENTS_TAC) in
+        orthogonal_components_conv_cache := (lhs, ref [(rhs,newth)])::!orthogonal_components_conv_cache;
+        newth
+    else prove(tm,SIMPLE_ORTHOGONAL_COMPONENTS_TAC)
+  with _ -> failwith "ORTHOGONAL_COMPONENTS_CONV: unknown term";;
 
 let ORTHOGONAL_COMPONENTS_RULE tm1 tm2 =
   ORTHOGONAL_COMPONENTS_CONV(list_mk_icomb "orthogonal_components" [tm1;tm2]);;
@@ -2574,11 +2596,11 @@ let NONOVERLAPPING_MODULO_64_OFFSET_BOTH = prove
 let (NONOVERLAPPING_TAC:tactic) =
   let cache = ref ([]:thm list) in
 
-  let fallback (((asl,t) as g):goal) =
+  let prove_le_fallback (((asl,t) as g):goal) =
     let rec go = function
     | c::cs, e ->
       if concl c = t then
-        match catch TAC_PROOF (g, VALID (ACCEPT_TAC c)) with
+        match catch TAC_PROOF (g, ACCEPT_TAC c) with
         | Some th -> th
         | None -> e [] (fun cs -> cache := cs)
       else go (cs, fun cs' -> e (c::cs'))
@@ -2666,7 +2688,7 @@ let (NONOVERLAPPING_TAC:tactic) =
         if t = true_tm then TRUTH else
         AFTER (FACTOR_CONV t) (fun t ->
         try PART_MATCH I LE_REFL t with Failure _ ->
-        AFTER (ADD_1_LE_CONV t) (curry fallback asl))))
+        AFTER (ADD_1_LE_CONV t) (curry prove_le_fallback asl))))
       | _ -> failwith "prove_le") in
 
   let normalize =
@@ -2813,6 +2835,10 @@ let (NONOVERLAPPING_TAC:tactic) =
   and dth_gt = PROVE_HYP (UNDISCH_ALL (ARITH_RULE
     `i1 + n1 <= nx ==> nx <= 2 EXP 64 ==> i1 + n1 <= 2 EXP 64`)) dth_gt2 in
 
+  let eq_or_numeral_lt (t1:term) (t2:term) =
+    t1 = t2 || (try let n1 = dest_numeral t1 and n2 = dest_numeral t2 in
+      n1 < n2 with Failure _ -> false) in
+
   let rec cmp v1 v2 = match v1,v2 with
   | Comb(Const("val",_),v1),Comb(Const("val",_),v2) -> cmp v1 v2
   | Comb(Const("word",_),v1),Comb(Const("word",_),v2) -> cmp v1 v2
@@ -2822,14 +2848,16 @@ let (NONOVERLAPPING_TAC:tactic) =
   | a1,Comb(Comb(Const("word_add",_),a2),b2) when a1 = a2 -> true
   | Comb(Comb(Const("+",_),a1),b1),
     Comb(Comb(Const("+",_),a2),b2) when a1 = a2 -> cmp b1 b2
-  | Comb(Comb(Const("+",_),a1),b1),a2 when a1 = a2 -> false
-  | a1,Comb(Comb(Const("+",_),a2),b2) when a1 = a2 -> true
+  | Comb(Comb(Const("+",_),a1),b1),a2 when eq_or_numeral_lt a2 a1 ||
+    eq_or_numeral_lt a2 b1 -> false
+  | a1,Comb(Comb(Const("+",_),a2),b2) when eq_or_numeral_lt a1 a2 ||
+    eq_or_numeral_lt a1 b2 -> true
   | Comb(Comb(Const("-",_),a1),b1),
     Comb(Comb(Const("-",_),a2),b2) when a1 = a2 -> cmp b2 b1
   | Comb(Comb(Const("-",_),a1),b1),
     Comb(Comb(Const("-",_),a2),b2) when b1 = b2 -> cmp a1 a2
-  | Comb(Comb(Const("-",_),a1),b1),a2 when a1 = a2 -> true
-  | a1,Comb(Comb(Const("-",_),a2),b2) when a1 = a2 -> false
+  | Comb(Comb(Const("-",_),a1),b1),a2 when eq_or_numeral_lt a1 a2 -> true
+  | a1,Comb(Comb(Const("-",_),a2),b2) when eq_or_numeral_lt a2 a1 -> false
   | Comb(Comb(Const("word_mul",_),a1),b1),
     Comb(Comb(Const("word_mul",_),a2),b2) when a1 = a2 -> cmp b1 b2
   | Comb(Comb(Const("*",_),a1),b1),
@@ -2840,7 +2868,10 @@ let (NONOVERLAPPING_TAC:tactic) =
   | _,Comb(_,Const("_0",_)) -> false
   | e1,e2 ->
     try let n1 = dest_numeral e1 and n2 = dest_numeral e2 in n1 < n2
-    with Failure _ -> failwith "NONOVERLAPPING_TAC: cmp" in
+    with Failure _ ->
+      failwith (let s1, s2 = string_of_term e1, string_of_term e2 in
+        "NONOVERLAPPING_TAC: cmp: `" ^ s1 ^ "` and `" ^ s2 ^ "`")
+      in
 
   let LE_TRANS' = UNDISCH_ALL (REWRITE_RULE [IMP_CONJ]
     (SPECL [m_tm; n_tm; `2 EXP 64`] LE_TRANS))
@@ -2927,6 +2958,7 @@ let (NONOVERLAPPING_TAC:tactic) =
   let OVERRIDDEN_NONOVERLAPPING_TAC =
     let twfn = GEN_REWRITE_RULE I [NONOVERLAPPING_MODULO_SYM] in
     fun ((asl,w) as gl) ->
+      let _ = cache := [] in
       match w with
         Comb(Comb(Comb(Const("nonoverlapping_modulo",_),_) as ntm,p1),p2) ->
           (try let w' = mk_comb(mk_comb(ntm,p2),p1) in
