@@ -42,8 +42,13 @@ uint64_t SIPHASH_24(const uint64_t key[2], const uint8_t *input,
   const size_t orig_input_len = input_len;
 
   uint64_t v[4], k0, k1;
-  CRYPTO_store_u64_le(&k0, key[0]);
-  CRYPTO_store_u64_le(&k1, key[1]);
+#ifdef OPENSSL_BIG_ENDIAN
+  k0 = CRYPTO_bswap8(key[0]);
+  k1 = CRYPTO_bswap8(key[1]);
+#else
+  k0 = key[0];
+  k1 = key[1];
+#endif
   v[0] = k0 ^ UINT64_C(0x736f6d6570736575);
   v[1] = k1 ^ UINT64_C(0x646f72616e646f6d);
   v[2] = k0 ^ UINT64_C(0x6c7967656e657261);
