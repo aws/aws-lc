@@ -670,13 +670,33 @@ let ASSIGNS_SWAP_TAC =
         toptac THEN maintac])) g in
   toptac THEN maintac;;
 
+(* A cache that stores `ASSIGNS x ,, ASSIGNS y` theorems.
+   `assoc y !(assoc x !assigns_swap_conv_cache)` must return the
+   theorem, if the entry exists. *)
+let assigns_swap_conv_cache:
+    (term * ((term * thm) list ref)) list ref = ref [];;
+
 let ASSIGNS_SWAP_CONV tm =
   match tm with
     Comb(Comb((Const(",,",_) as stm),
-              (Comb(Const("ASSIGNS",_),_) as ctm)),
-         (Comb(Const("ASSIGNS",_),_) as dtm)) ->
+              (Comb(Const("ASSIGNS",_),x) as ctm)),
+         (Comb(Const("ASSIGNS",_),y) as dtm)) ->
       if ctm = dtm then REFL tm else
-      prove(mk_eq(tm,mk_comb(mk_comb(stm,dtm),ctm)),ASSIGNS_SWAP_TAC)
+      let the_goal:term = mk_eq(tm,mk_comb(mk_comb(stm,dtm),ctm)) in
+      if is_const(x) && is_const(y) then
+        (* Use cache if x and y are constants, e.g., `PC` and `X1`. *)
+        try
+          let lref = assoc x !assigns_swap_conv_cache in
+          try assoc y !lref
+          with _ ->
+            let newth = prove(the_goal,ASSIGNS_SWAP_TAC) in
+            lref := (y, newth)::!lref; newth
+        with _ ->
+          let newth = prove(the_goal,ASSIGNS_SWAP_TAC) in
+          assigns_swap_conv_cache := (x, ref [(y,newth)])::!assigns_swap_conv_cache;
+          newth
+      else
+        prove(the_goal,ASSIGNS_SWAP_TAC)
   | _ -> failwith "ASSIGNS_SWAP_CONV";;
 
 (*** Examples:

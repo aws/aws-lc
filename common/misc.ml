@@ -1151,11 +1151,25 @@ let W64_GEN_TAC =
   fun w -> tac THEN X_GEN_TAC w THEN STRIP_TAC;;
 
 (* ------------------------------------------------------------------------- *)
-(* Handy to pick out matching assumptions.                                   *)
+(* Handy to pick out or discard matching assumptions.                        *)
 (* ------------------------------------------------------------------------- *)
 
 let FIND_ASM_THEN part pat ttac =
   FIRST_X_ASSUM (ttac o check (fun th -> part(concl th) = pat));;
+
+let DISCARD_ASSUMPTIONS_TAC (P:thm -> bool):tactic =
+  fun (asl,w) ->
+    let asl' = filter (fun (_,th) -> not (P th)) asl in
+    ALL_TAC (asl',w);;
+
+let DISCARD_MATCHING_ASSUMPTIONS pats =
+  DISCARD_ASSUMPTIONS_TAC
+   (fun th -> exists (fun ptm -> can (term_match [] ptm) (concl th)) pats);;
+
+let DISCARD_NONMATCHING_ASSUMPTIONS pats =
+  DISCARD_ASSUMPTIONS_TAC
+   (fun th ->
+      not(exists (fun ptm -> can (term_match [] ptm) (concl th)) pats));;
 
 (* ------------------------------------------------------------------------- *)
 (* Re-abbreviating a state component, replacing existing expansion.          *)
