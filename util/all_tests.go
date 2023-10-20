@@ -18,6 +18,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -29,9 +30,6 @@ import (
 	"strings"
 	"sync"
 	"syscall"
-	"context"
-	// "io"
-	// "log"
 	"time"
 
 	"boringssl.googlesource.com/boringssl/util/testconfig"
@@ -152,9 +150,9 @@ func sdeOf(cpu, path string, args ...string) (*exec.Cmd, context.CancelFunc) {
 	sdeArgs = append(sdeArgs, "--", path)
 	sdeArgs = append(sdeArgs, args...)
 
-	// SDE+ASAN tests will hang without exiting if tests pass for an unknown reason.
-	// Workaround is to manually cancel the run after 15 minutes and check the output.
-	ctx, cancel := context.WithTimeout(context.Background(), 600*time.Second)
+	// TODO(CryptoAlg-2154):SDE+ASAN tests will hang without exiting if tests pass for an unknown reason.
+	// Current workaround is to manually cancel the run after 20 minutes and check the output.
+	ctx, cancel := context.WithTimeout(context.Background(), 1200*time.Second)
 
 	return exec.CommandContext(ctx, *sdePath, sdeArgs...), cancel
 }
@@ -442,7 +440,7 @@ func main() {
 		} else if testResult.Error == errTestHanging {
 			if !testResult.Passed {
 				fmt.Printf("%s\n", test.longName())
-				fmt.Printf("%s was left hanging finishing.\n", args[0])
+				fmt.Printf("%s was left hanging without finishing.\n", args[0])
 				failed = append(failed, test)
 				testOutput.AddResult(test.longName(), "FAIL")
 			} else {

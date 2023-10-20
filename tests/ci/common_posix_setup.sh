@@ -221,6 +221,16 @@ function print_executable_information {
   fi
 }
 
+function sde_getenforce_check {
+  # Based on Intel SDE README, SELinux should be turned off to allow pin to work.
+  # https://software.intel.com/content/www/us/en/develop/articles/intel-software-development-emulator.html#system-configuration
+  if [[ "$(getenforce)" == 'Disabled' ]]; then
+    echo "SELinux is disabled. Disabling SELinux is needed by sde to allow pin work.";
+  else
+    echo "SELinux should be turned off to allow sde pin to work." && exit 1;
+  fi
+}
+
 print_executable_information "cmake" "--version" "CMake version"
 print_executable_information "cmake3" "--version" "CMake version (cmake3 executable)"
 print_executable_information "go" "version" "Go version"
