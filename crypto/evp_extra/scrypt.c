@@ -28,7 +28,8 @@
 // scrypt blocks, respectively.
 
 // A block_t is a Salsa20 block.
-typedef struct { uint32_t words[16]; } block_t;
+#define SCRYPT_BLOCK_WORD_CNT 16
+typedef struct { uint32_t words[SCRYPT_BLOCK_WORD_CNT]; } block_t;
 
 OPENSSL_STATIC_ASSERT(sizeof(block_t) == 64, block_t_has_padding)
 
@@ -111,7 +112,13 @@ static void scryptBlockMix(block_t *out, const block_t *B, uint64_t r) {
 static void scryptROMix(block_t *B, uint64_t r, uint64_t N, block_t *T,
                         block_t *V) {
   // Steps 1 and 2.
+#ifdef OPENSSL_BIG_ENDIAN
+  for(size_t i = 0; i < (2 * r * SCRYPT_BLOCK_WORD_CNT); i++) {
+    CRYPTO_store_u32_le(&V->words[i], B->words[i]);
+  }
+#else
   OPENSSL_memcpy(V, B, 2 * r * sizeof(block_t));
+#endif
   for (uint64_t i = 1; i < N; i++) {
     scryptBlockMix(&V[2 * r * i /* scrypt block i */],
                    &V[2 * r * (i - 1) /* scrypt block i-1 */], r);
@@ -127,6 +134,11 @@ static void scryptROMix(block_t *B, uint64_t r, uint64_t N, block_t *T,
     }
     scryptBlockMix(B, T, r);
   }
+#ifdef OPENSSL_BIG_ENDIAN
+  for(size_t i = 0; i < (2 * r * SCRYPT_BLOCK_WORD_CNT); i++) {
+    CRYPTO_store_u32_le(&B->words[i], B->words[i]);
+  }
+#endif
 }
 
 // SCRYPT_PR_MAX is the maximum value of p * r. This is equivalent to the
