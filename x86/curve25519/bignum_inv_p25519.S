@@ -948,20 +948,20 @@
         lea     r14, [rcx+rax];                                         \
         sar     r10, 0x2b;                                              \
         sar     r14, 0x2b;                                              \
-        mov     rax, r9;                                         \
+        mov     rax, r9;                                                \
         imul    rax, r8;                                                \
-        mov     rdx, r13;                                    \
+        mov     rdx, r13;                                               \
         imul    rdx, r10;                                               \
         imul    r8, r15;                                                \
-        imul    r10, r11;                                    \
+        imul    r10, r11;                                               \
         add     r10, r8;                                                \
         lea     r8, [rax+rdx];                                          \
-        mov     rax, r9;                                         \
+        mov     rax, r9;                                                \
         imul    rax, r12;                                               \
-        mov     rdx, r13;                                    \
+        mov     rdx, r13;                                               \
         imul    rdx, r14;                                               \
         imul    r12, r15;                                               \
-        imul    r14, r11;                                    \
+        imul    r14, r11;                                               \
         add     r14, r12;                                               \
         lea     r12, [rax+rdx]
 
@@ -1058,24 +1058,24 @@ loop:
 // Separate out the matrix into sign-magnitude pairs
 
         mov     r9, r8
-        neg     r8
-        cmovs   r8, r9
         sar     r9, 63
+        xor     r8, r9
+        sub     r8, r9
 
         mov     r11, r10
-        neg     r10
-        cmovs   r10, r11
         sar     r11, 63
+        xor     r10, r11
+        sub     r10, r11
 
         mov     r13, r12
-        neg     r12
-        cmovs   r12, r13
         sar     r13, 63
+        xor     r12, r13
+        sub     r12, r13
 
         mov     r15, r14
-        neg     r14
-        cmovs   r14, r15
         sar     r15, 63
+        xor     r14, r15
+        sub     r14, r15
 
 // Adjust the initial values to allow for complement instead of negation
 // This initial offset is the same for [f,g] and [u,v] compositions.
@@ -1443,118 +1443,110 @@ midloop:
 // we want to flip the sign of u according to that of f.
 
         mov     r9, r8
-        neg     r8
-        cmovs   r8, r9
         sar     r9, 63
+        xor     r8, r9
+        sub     r8, r9
         xor     r9, rax
 
         mov     r11, r10
-        neg     r10
-        cmovs   r10, r11
         sar     r11, 63
+        xor     r10, r11
+        sub     r10, r11
         xor     r11, rax
 
         mov     r13, r12
-        neg     r12
-        cmovs   r12, r13
         sar     r13, 63
+        xor     r12, r13
+        sub     r12, r13
         xor     r13, rax
 
         mov     r15, r14
-        neg     r14
-        cmovs   r14, r15
         sar     r15, 63
+        xor     r14, r15
+        sub     r14, r15
         xor     r15, rax
 
 // Adjust the initial value to allow for complement instead of negation
 
         mov     rax, r8
         and     rax, r9
-        mov     rbx, r10
-        and     rbx, r11
-        add     rbx, rax
+        mov     r12, r10
+        and     r12, r11
+        add     r12, rax
 
 // Digit 0 of [u]
 
-        xor     ecx, ecx
+        xor     r13d, r13d
         mov     rax, [rsp+U]
         xor     rax, r9
         mul     r8
-        add     rbx, rax
-        adc     rcx, rdx
+        add     r12, rax
+        adc     r13, rdx
         mov     rax, [rsp+V]
         xor     rax, r11
         mul     r10
-        add     rbx, rax
-        adc     rcx, rdx
-        mov     r12, rbx
-        mov     rbx, rcx
+        add     r12, rax
+        adc     r13, rdx
 
 // Digit 1 of [u]
 
-        xor     ecx, ecx
+        xor     r14d, r14d
         mov     rax, [rsp+U+N]
         xor     rax, r9
         mul     r8
-        add     rbx, rax
-        adc     rcx, rdx
+        add     r13, rax
+        adc     r14, rdx
         mov     rax, [rsp+V+N]
         xor     rax, r11
         mul     r10
-        add     rbx, rax
-        adc     rcx, rdx
-        mov     r13, rbx
-        mov     rbx, rcx
+        add     r13, rax
+        adc     r14, rdx
 
 // Digit 2 of [u]
 
-        xor     ecx, ecx
+        xor     r15d, r15d
         mov     rax, [rsp+U+2*N]
         xor     rax, r9
         mul     r8
-        add     rbx, rax
-        adc     rcx, rdx
+        add     r14, rax
+        adc     r15, rdx
         mov     rax, [rsp+V+2*N]
         xor     rax, r11
         mul     r10
-        add     rbx, rax
-        adc     rcx, rdx
-        mov     r14, rbx
-        mov     rbx, rcx
+        add     r14, rax
+        adc     r15, rdx
 
 // Digits 3 and 4 of u (top is unsigned)
 
         mov     rax, [rsp+U+3*N]
         xor     rax, r9
-        mov     rcx, r9
-        and     rcx, r8
-        neg     rcx
+        and     r9, r8
+        neg     r9
         mul     r8
-        add     rbx, rax
-        adc     rcx, rdx
+        add     r15, rax
+        adc     r9, rdx
         mov     rax, [rsp+V+3*N]
         xor     rax, r11
         mov     rdx, r11
         and     rdx, r10
-        sub     rcx, rdx
+        sub     r9, rdx
         mul     r10
-        add     rbx, rax
-        adc     rcx, rdx
-        mov     r15, rbx
+        add     r15, rax
+        adc     r9, rdx
 
 // Modular reduction of u, this time strictly 2^255-19.
 
-        mov     rax, rcx
+        mov     rax, r9
         shld    rax, r15, 1
-        sar     rcx, 63
+        sar     r9, 63
         mov     ebx, 19
-        lea     rax, [rax+rcx+1]
+        lea     rax, [rax+r9+1]
         imul    rbx
         xor     ebp, ebp
         add     r12, rax
         adc     r13, rdx
-        adc     r14, rcx
-        adc     r15, rcx
+        adc     r14, r9
+        adc     r15, r9
         shl     rax, 63
         add     r15, rax
         cmovns  rbx, rbp

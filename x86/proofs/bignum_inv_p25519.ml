@@ -102,24 +102,24 @@ let bignum_inv_p25519_mc = define_assert_from_elf "bignum_inv_p25519_mc" "x86/cu
                            (* MOV (Memop Quadword (%% (rsp,144))) (Imm32 (word 10)) *)
   0x48; 0xc7; 0x84; 0x24; 0x98; 0x00; 0x00; 0x00; 0x01; 0x00; 0x00; 0x00;
                            (* MOV (Memop Quadword (%% (rsp,152))) (Imm32 (word 1)) *)
-  0xe9; 0x0b; 0x04; 0x00; 0x00;
-                           (* JMP (Imm32 (word 1035)) *)
+  0xe9; 0x07; 0x04; 0x00; 0x00;
+                           (* JMP (Imm32 (word 1031)) *)
   0x4d; 0x89; 0xc1;        (* MOV (% r9) (% r8) *)
-  0x49; 0xf7; 0xd8;        (* NEG (% r8) *)
-  0x4d; 0x0f; 0x48; 0xc1;  (* CMOVS (% r8) (% r9) *)
   0x49; 0xc1; 0xf9; 0x3f;  (* SAR (% r9) (Imm8 (word 63)) *)
+  0x4d; 0x31; 0xc8;        (* XOR (% r8) (% r9) *)
+  0x4d; 0x29; 0xc8;        (* SUB (% r8) (% r9) *)
   0x4d; 0x89; 0xd3;        (* MOV (% r11) (% r10) *)
-  0x49; 0xf7; 0xda;        (* NEG (% r10) *)
-  0x4d; 0x0f; 0x48; 0xd3;  (* CMOVS (% r10) (% r11) *)
   0x49; 0xc1; 0xfb; 0x3f;  (* SAR (% r11) (Imm8 (word 63)) *)
+  0x4d; 0x31; 0xda;        (* XOR (% r10) (% r11) *)
+  0x4d; 0x29; 0xda;        (* SUB (% r10) (% r11) *)
   0x4d; 0x89; 0xe5;        (* MOV (% r13) (% r12) *)
-  0x49; 0xf7; 0xdc;        (* NEG (% r12) *)
-  0x4d; 0x0f; 0x48; 0xe5;  (* CMOVS (% r12) (% r13) *)
   0x49; 0xc1; 0xfd; 0x3f;  (* SAR (% r13) (Imm8 (word 63)) *)
+  0x4d; 0x31; 0xec;        (* XOR (% r12) (% r13) *)
+  0x4d; 0x29; 0xec;        (* SUB (% r12) (% r13) *)
   0x4d; 0x89; 0xf7;        (* MOV (% r15) (% r14) *)
-  0x49; 0xf7; 0xde;        (* NEG (% r14) *)
-  0x4d; 0x0f; 0x48; 0xf7;  (* CMOVS (% r14) (% r15) *)
   0x49; 0xc1; 0xff; 0x3f;  (* SAR (% r15) (Imm8 (word 63)) *)
+  0x4d; 0x31; 0xfe;        (* XOR (% r14) (% r15) *)
+  0x4d; 0x29; 0xfe;        (* SUB (% r14) (% r15) *)
   0x4c; 0x89; 0xc0;        (* MOV (% rax) (% r8) *)
   0x4c; 0x21; 0xc8;        (* AND (% rax) (% r9) *)
   0x4c; 0x89; 0xd7;        (* MOV (% rdi) (% r10) *)
@@ -1470,8 +1470,8 @@ let bignum_inv_p25519_mc = define_assert_from_elf "bignum_inv_p25519_mc" "x86/cu
                            (* MOV (Memop Quadword (%% (rsp,152))) (% rsi) *)
   0x48; 0xff; 0x8c; 0x24; 0x90; 0x00; 0x00; 0x00;
                            (* DEC (Memop Quadword (%% (rsp,144))) *)
-  0x0f; 0x85; 0xbd; 0xee; 0xff; 0xff;
-                           (* JNE (Imm32 (word 4294962877)) *)
+  0x0f; 0x85; 0xc1; 0xee; 0xff; 0xff;
+                           (* JNE (Imm32 (word 4294962881)) *)
   0x48; 0x8b; 0x04; 0x24;  (* MOV (% rax) (Memop Quadword (%% (rsp,0))) *)
   0x48; 0x8b; 0x4c; 0x24; 0x20;
                            (* MOV (% rcx) (Memop Quadword (%% (rsp,32))) *)
@@ -1480,108 +1480,100 @@ let bignum_inv_p25519_mc = define_assert_from_elf "bignum_inv_p25519_mc" "x86/cu
   0x48; 0x01; 0xc8;        (* ADD (% rax) (% rcx) *)
   0x48; 0xc1; 0xf8; 0x3f;  (* SAR (% rax) (Imm8 (word 63)) *)
   0x4d; 0x89; 0xc1;        (* MOV (% r9) (% r8) *)
-  0x49; 0xf7; 0xd8;        (* NEG (% r8) *)
-  0x4d; 0x0f; 0x48; 0xc1;  (* CMOVS (% r8) (% r9) *)
   0x49; 0xc1; 0xf9; 0x3f;  (* SAR (% r9) (Imm8 (word 63)) *)
+  0x4d; 0x31; 0xc8;        (* XOR (% r8) (% r9) *)
+  0x4d; 0x29; 0xc8;        (* SUB (% r8) (% r9) *)
   0x49; 0x31; 0xc1;        (* XOR (% r9) (% rax) *)
   0x4d; 0x89; 0xd3;        (* MOV (% r11) (% r10) *)
-  0x49; 0xf7; 0xda;        (* NEG (% r10) *)
-  0x4d; 0x0f; 0x48; 0xd3;  (* CMOVS (% r10) (% r11) *)
   0x49; 0xc1; 0xfb; 0x3f;  (* SAR (% r11) (Imm8 (word 63)) *)
+  0x4d; 0x31; 0xda;        (* XOR (% r10) (% r11) *)
+  0x4d; 0x29; 0xda;        (* SUB (% r10) (% r11) *)
   0x49; 0x31; 0xc3;        (* XOR (% r11) (% rax) *)
   0x4d; 0x89; 0xe5;        (* MOV (% r13) (% r12) *)
-  0x49; 0xf7; 0xdc;        (* NEG (% r12) *)
-  0x4d; 0x0f; 0x48; 0xe5;  (* CMOVS (% r12) (% r13) *)
   0x49; 0xc1; 0xfd; 0x3f;  (* SAR (% r13) (Imm8 (word 63)) *)
+  0x4d; 0x31; 0xec;        (* XOR (% r12) (% r13) *)
+  0x4d; 0x29; 0xec;        (* SUB (% r12) (% r13) *)
   0x49; 0x31; 0xc5;        (* XOR (% r13) (% rax) *)
   0x4d; 0x89; 0xf7;        (* MOV (% r15) (% r14) *)
-  0x49; 0xf7; 0xde;        (* NEG (% r14) *)
-  0x4d; 0x0f; 0x48; 0xf7;  (* CMOVS (% r14) (% r15) *)
   0x49; 0xc1; 0xff; 0x3f;  (* SAR (% r15) (Imm8 (word 63)) *)
+  0x4d; 0x31; 0xfe;        (* XOR (% r14) (% r15) *)
+  0x4d; 0x29; 0xfe;        (* SUB (% r14) (% r15) *)
   0x49; 0x31; 0xc7;        (* XOR (% r15) (% rax) *)
   0x4c; 0x89; 0xc0;        (* MOV (% rax) (% r8) *)
   0x4c; 0x21; 0xc8;        (* AND (% rax) (% r9) *)
-  0x4c; 0x89; 0xd3;        (* MOV (% rbx) (% r10) *)
-  0x4c; 0x21; 0xdb;        (* AND (% rbx) (% r11) *)
-  0x48; 0x01; 0xc3;        (* ADD (% rbx) (% rax) *)
-  0x31; 0xc9;              (* XOR (% ecx) (% ecx) *)
+  0x4d; 0x89; 0xd4;        (* MOV (% r12) (% r10) *)
+  0x4d; 0x21; 0xdc;        (* AND (% r12) (% r11) *)
+  0x49; 0x01; 0xc4;        (* ADD (% r12) (% rax) *)
+  0x45; 0x31; 0xed;        (* XOR (% r13d) (% r13d) *)
   0x48; 0x8b; 0x44; 0x24; 0x40;
                            (* MOV (% rax) (Memop Quadword (%% (rsp,64))) *)
   0x4c; 0x31; 0xc8;        (* XOR (% rax) (% r9) *)
   0x49; 0xf7; 0xe0;        (* MUL2 (% rdx,% rax) (% r8) *)
-  0x48; 0x01; 0xc3;        (* ADD (% rbx) (% rax) *)
-  0x48; 0x11; 0xd1;        (* ADC (% rcx) (% rdx) *)
+  0x49; 0x01; 0xc4;        (* ADD (% r12) (% rax) *)
+  0x49; 0x11; 0xd5;        (* ADC (% r13) (% rdx) *)
   0x48; 0x8b; 0x44; 0x24; 0x60;
                            (* MOV (% rax) (Memop Quadword (%% (rsp,96))) *)
   0x4c; 0x31; 0xd8;        (* XOR (% rax) (% r11) *)
   0x49; 0xf7; 0xe2;        (* MUL2 (% rdx,% rax) (% r10) *)
-  0x48; 0x01; 0xc3;        (* ADD (% rbx) (% rax) *)
-  0x48; 0x11; 0xd1;        (* ADC (% rcx) (% rdx) *)
-  0x49; 0x89; 0xdc;        (* MOV (% r12) (% rbx) *)
-  0x48; 0x89; 0xcb;        (* MOV (% rbx) (% rcx) *)
-  0x31; 0xc9;              (* XOR (% ecx) (% ecx) *)
+  0x49; 0x01; 0xc4;        (* ADD (% r12) (% rax) *)
+  0x49; 0x11; 0xd5;        (* ADC (% r13) (% rdx) *)
+  0x45; 0x31; 0xf6;        (* XOR (% r14d) (% r14d) *)
   0x48; 0x8b; 0x44; 0x24; 0x48;
                            (* MOV (% rax) (Memop Quadword (%% (rsp,72))) *)
   0x4c; 0x31; 0xc8;        (* XOR (% rax) (% r9) *)
   0x49; 0xf7; 0xe0;        (* MUL2 (% rdx,% rax) (% r8) *)
-  0x48; 0x01; 0xc3;        (* ADD (% rbx) (% rax) *)
-  0x48; 0x11; 0xd1;        (* ADC (% rcx) (% rdx) *)
+  0x49; 0x01; 0xc5;        (* ADD (% r13) (% rax) *)
+  0x49; 0x11; 0xd6;        (* ADC (% r14) (% rdx) *)
   0x48; 0x8b; 0x44; 0x24; 0x68;
                            (* MOV (% rax) (Memop Quadword (%% (rsp,104))) *)
   0x4c; 0x31; 0xd8;        (* XOR (% rax) (% r11) *)
   0x49; 0xf7; 0xe2;        (* MUL2 (% rdx,% rax) (% r10) *)
-  0x48; 0x01; 0xc3;        (* ADD (% rbx) (% rax) *)
-  0x48; 0x11; 0xd1;        (* ADC (% rcx) (% rdx) *)
-  0x49; 0x89; 0xdd;        (* MOV (% r13) (% rbx) *)
-  0x48; 0x89; 0xcb;        (* MOV (% rbx) (% rcx) *)
-  0x31; 0xc9;              (* XOR (% ecx) (% ecx) *)
+  0x49; 0x01; 0xc5;        (* ADD (% r13) (% rax) *)
+  0x49; 0x11; 0xd6;        (* ADC (% r14) (% rdx) *)
+  0x45; 0x31; 0xff;        (* XOR (% r15d) (% r15d) *)
   0x48; 0x8b; 0x44; 0x24; 0x50;
                            (* MOV (% rax) (Memop Quadword (%% (rsp,80))) *)
   0x4c; 0x31; 0xc8;        (* XOR (% rax) (% r9) *)
   0x49; 0xf7; 0xe0;        (* MUL2 (% rdx,% rax) (% r8) *)
-  0x48; 0x01; 0xc3;        (* ADD (% rbx) (% rax) *)
-  0x48; 0x11; 0xd1;        (* ADC (% rcx) (% rdx) *)
+  0x49; 0x01; 0xc6;        (* ADD (% r14) (% rax) *)
+  0x49; 0x11; 0xd7;        (* ADC (% r15) (% rdx) *)
   0x48; 0x8b; 0x44; 0x24; 0x70;
                            (* MOV (% rax) (Memop Quadword (%% (rsp,112))) *)
   0x4c; 0x31; 0xd8;        (* XOR (% rax) (% r11) *)
   0x49; 0xf7; 0xe2;        (* MUL2 (% rdx,% rax) (% r10) *)
-  0x48; 0x01; 0xc3;        (* ADD (% rbx) (% rax) *)
-  0x48; 0x11; 0xd1;        (* ADC (% rcx) (% rdx) *)
-  0x49; 0x89; 0xde;        (* MOV (% r14) (% rbx) *)
-  0x48; 0x89; 0xcb;        (* MOV (% rbx) (% rcx) *)
+  0x49; 0x01; 0xc6;        (* ADD (% r14) (% rax) *)
+  0x49; 0x11; 0xd7;        (* ADC (% r15) (% rdx) *)
   0x48; 0x8b; 0x44; 0x24; 0x58;
                            (* MOV (% rax) (Memop Quadword (%% (rsp,88))) *)
   0x4c; 0x31; 0xc8;        (* XOR (% rax) (% r9) *)
-  0x4c; 0x89; 0xc9;        (* MOV (% rcx) (% r9) *)
-  0x4c; 0x21; 0xc1;        (* AND (% rcx) (% r8) *)
-  0x48; 0xf7; 0xd9;        (* NEG (% rcx) *)
+  0x4d; 0x21; 0xc1;        (* AND (% r9) (% r8) *)
+  0x49; 0xf7; 0xd9;        (* NEG (% r9) *)
   0x49; 0xf7; 0xe0;        (* MUL2 (% rdx,% rax) (% r8) *)
-  0x48; 0x01; 0xc3;        (* ADD (% rbx) (% rax) *)
-  0x48; 0x11; 0xd1;        (* ADC (% rcx) (% rdx) *)
+  0x49; 0x01; 0xc7;        (* ADD (% r15) (% rax) *)
+  0x49; 0x11; 0xd1;        (* ADC (% r9) (% rdx) *)
   0x48; 0x8b; 0x44; 0x24; 0x78;
                            (* MOV (% rax) (Memop Quadword (%% (rsp,120))) *)
   0x4c; 0x31; 0xd8;        (* XOR (% rax) (% r11) *)
   0x4c; 0x89; 0xda;        (* MOV (% rdx) (% r11) *)
   0x4c; 0x21; 0xd2;        (* AND (% rdx) (% r10) *)
-  0x48; 0x29; 0xd1;        (* SUB (% rcx) (% rdx) *)
+  0x49; 0x29; 0xd1;        (* SUB (% r9) (% rdx) *)
   0x49; 0xf7; 0xe2;        (* MUL2 (% rdx,% rax) (% r10) *)
-  0x48; 0x01; 0xc3;        (* ADD (% rbx) (% rax) *)
-  0x48; 0x11; 0xd1;        (* ADC (% rcx) (% rdx) *)
-  0x49; 0x89; 0xdf;        (* MOV (% r15) (% rbx) *)
-  0x48; 0x89; 0xc8;        (* MOV (% rax) (% rcx) *)
+  0x49; 0x01; 0xc7;        (* ADD (% r15) (% rax) *)
+  0x49; 0x11; 0xd1;        (* ADC (% r9) (% rdx) *)
+  0x4c; 0x89; 0xc8;        (* MOV (% rax) (% r9) *)
   0x4c; 0x0f; 0xa4; 0xf8; 0x01;
                            (* SHLD (% rax) (% r15) (Imm8 (word 1)) *)
-  0x48; 0xc1; 0xf9; 0x3f;  (* SAR (% rcx) (Imm8 (word 63)) *)
+  0x49; 0xc1; 0xf9; 0x3f;  (* SAR (% r9) (Imm8 (word 63)) *)
   0xbb; 0x13; 0x00; 0x00; 0x00;
                            (* MOV (% ebx) (Imm32 (word 19)) *)
-  0x48; 0x8d; 0x44; 0x08; 0x01;
-                           (* LEA (% rax) (%%%% (rax,0,rcx,&1)) *)
+  0x4a; 0x8d; 0x44; 0x08; 0x01;
+                           (* LEA (% rax) (%%%% (rax,0,r9,&1)) *)
   0x48; 0xf7; 0xeb;        (* IMUL2 (% rdx,% rax) (% rbx) *)
   0x31; 0xed;              (* XOR (% ebp) (% ebp) *)
   0x49; 0x01; 0xc4;        (* ADD (% r12) (% rax) *)
   0x49; 0x11; 0xd5;        (* ADC (% r13) (% rdx) *)
-  0x49; 0x11; 0xce;        (* ADC (% r14) (% rcx) *)
-  0x49; 0x11; 0xcf;        (* ADC (% r15) (% rcx) *)
+  0x4d; 0x11; 0xce;        (* ADC (% r14) (% r9) *)
+  0x4d; 0x11; 0xcf;        (* ADC (% r15) (% r9) *)
   0x48; 0xc1; 0xe0; 0x3f;  (* SHL (% rax) (Imm8 (word 63)) *)
   0x49; 0x01; 0xc7;        (* ADD (% r15) (% rax) *)
   0x48; 0x0f; 0x49; 0xdd;  (* CMOVNS (% rbx) (% rbp) *)
@@ -1990,16 +1982,16 @@ let DIVSTEP_MAT_UNPACK_19 = prove
 
 let LOCAL_WORD_DIVSTEP59_CORRECT = prove
  (`!d f g stackpointer pc.
-   nonoverlapping (stackpointer,208) (word pc,0x13d5)
+   nonoverlapping (stackpointer,208) (word pc,0x13b8)
    ==> ensures x86
         (\s. bytes_loaded s (word pc) (BUTLAST bignum_inv_p25519_mc) /\
-             read RIP s = word(pc + 0x511) /\
+             read RIP s = word(pc + 0x50d) /\
              read RSP s = stackpointer /\
              read (memory :> bytes64(word_add stackpointer (word 152))) s =
              d /\
              read (memory :> bytes64 stackpointer) s = f /\
              read (memory :> bytes64(word_add stackpointer (word 32))) s = g)
-        (\s. read RIP s = word(pc + 0x1233) /\
+        (\s. read RIP s = word(pc + 0x122f) /\
              (ival d rem &2 = &1 /\
               ival f rem &2 = &1 /\
               abs(ival d) < &2 pow 62
@@ -2264,8 +2256,18 @@ let LOCAL_WORD_DIVSTEP59_CORRECT = prove
 
 let p_25519 = new_definition `p_25519 = 57896044618658097711785492504343953926634992332820282019728792003956564819949`;;
 
+let IWORD_CASES_LEMMA = prove
+ (`!m:int64.
+        word_sub (word_xor m (word_ishr m 63)) (word_ishr m 63) =
+        if ival m < &0 then word_neg m else m`,
+  GEN_TAC THEN MP_TAC(ISPEC `m:int64` WORD_ISHR_MSB) THEN
+  REWRITE_TAC[DIMINDEX_64; GSYM MSB_IVAL] THEN CONV_TAC NUM_REDUCE_CONV THEN
+  DISCH_THEN SUBST1_TAC THEN REWRITE_TAC[WORD_XOR_MASK] THEN
+  COND_CASES_TAC THEN ASM_REWRITE_TAC[BITVAL_CLAUSES] THEN
+  CONV_TAC WORD_RULE);;
+
 let IWORD_CASES_ABS_ALT = prove
- (`!m. (if --m < &0 then iword m else word_neg(iword m)) = iword(abs m)`,
+ (`!m. (if m < &0 then word_neg(iword m) else iword m) = iword(abs m)`,
   GEN_TAC THEN REWRITE_TAC[GSYM IWORD_INT_NEG] THEN
   COND_CASES_TAC THEN ASM_REWRITE_TAC[] THEN AP_TERM_TAC THEN
   ASM_INT_ARITH_TAC);;
@@ -2308,15 +2310,15 @@ let p25519signedredlemma = prove
 let BIGNUM_INV_P25519_CORRECT = time prove
  (`!z x n pc stackpointer.
         ALL (nonoverlapping (stackpointer,208))
-            [(word pc,0x13d5); (z,8 * 4); (x,8 * 4)] /\
-        nonoverlapping (word pc,0x13d5) (z,8 * 4)
+            [(word pc,0x13b8); (z,8 * 4); (x,8 * 4)] /\
+        nonoverlapping (word pc,0x13b8) (z,8 * 4)
         ==> ensures x86
              (\s. bytes_loaded s (word pc) (BUTLAST bignum_inv_p25519_mc) /\
                   read RIP s = word(pc + 0x11) /\
                   read RSP s = stackpointer /\
                   C_ARGUMENTS [z; x] s /\
                   bignum_from_memory (x,4) s = n)
-             (\s. read RIP s = word (pc + 0x13c3) /\
+             (\s. read RIP s = word (pc + 0x13a6) /\
                   (coprime(p_25519,n)
                    ==> bignum_from_memory (z,4) s = inverse_mod p_25519 n))
           (MAYCHANGE [RIP; RDI; RSI; RAX; RBX; RCX; RDX; RBP;
@@ -2336,7 +2338,7 @@ let BIGNUM_INV_P25519_CORRECT = time prove
 
   (*** Set up the main loop invariant ***)
 
-  ENSURES_WHILE_UP_TAC `9` `pc + 0x511` `pc + 0x511`
+  ENSURES_WHILE_UP_TAC `9` `pc + 0x050d` `pc + 0x050d`
    `\i s.
       read RSP s = stackpointer /\
       read (memory :> bytes64(word_add stackpointer (word 192))) s = z /\
@@ -2597,6 +2599,8 @@ let BIGNUM_INV_P25519_CORRECT = time prove
     (*** Sign-magnitude breakdown of matrix entries ***)
 
     X86_STEPS_TAC BIGNUM_INV_P25519_EXEC (5--20) THEN
+    RULE_ASSUM_TAC(REWRITE_RULE[IWORD_CASES_LEMMA]) THEN
+
     SUBGOAL_THEN
      `abs(m00:int) <= &2 pow 59 /\
       abs(m01:int) <= &2 pow 59 /\
@@ -3413,10 +3417,10 @@ let BIGNUM_INV_P25519_CORRECT = time prove
   (*** Complete all the simulation first ***)
 
   X86_ACCSTEPS_TAC BIGNUM_INV_P25519_EXEC
-   [35;39;40;41;44;45;46;52;53;54;57;58;59;65;66;67;
-    70;71;72;80;81;82;87;88;89;90;99;100;101;102;104;
-    106;107;108;109]
-   (2--115) THEN
+   [35;39;40;41;44;45;46;50;51;52;55;56;57;
+    61;62;63;66;67;68;73;74;75;80;81;82;83;91;92;93;94;
+    96;98;99;100;101]
+   (2--107) THEN
   ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN DISCH_TAC THEN
   CONV_TAC(LAND_CONV(ONCE_DEPTH_CONV BIGNUM_LEXPAND_CONV)) THEN
   ASM_REWRITE_TAC[] THEN DISCARD_STATE_TAC "s115" THEN
@@ -3441,6 +3445,7 @@ let BIGNUM_INV_P25519_CORRECT = time prove
 
   (*** Sign-magnitude breakdown of matrix entries ***)
 
+  RULE_ASSUM_TAC(REWRITE_RULE[IWORD_CASES_LEMMA]) THEN
   SUBGOAL_THEN
    `abs(m00:int) <= &2 pow 59 /\
     abs(m01:int) <= &2 pow 59 /\
@@ -3606,7 +3611,7 @@ let BIGNUM_INV_P25519_CORRECT = time prove
   (*** Accumulation of final u ***)
 
   ABBREV_TAC
-   `uup = bignum_of_wordlist [sum_s45;sum_s58;sum_s71;sum_s89;sum_s90]` THEN
+   `uup = bignum_of_wordlist [sum_s45;sum_s56;sum_s67;sum_s82;sum_s83]` THEN
 
   SUBGOAL_THEN
    `(&uup:int ==
@@ -3679,7 +3684,7 @@ let BIGNUM_INV_P25519_CORRECT = time prove
   STRIP_TAC THEN
 
   SUBGOAL_THEN
-   `word_subword ((word_join:int64->int64->int128) sum_s90 sum_s89)
+   `word_subword ((word_join:int64->int64->int128) sum_s83 sum_s82)
                  (63,64):int64 =
     word(uup DIV 2 EXP 255)`
   SUBST_ALL_TAC THENL
@@ -3693,7 +3698,7 @@ let BIGNUM_INV_P25519_CORRECT = time prove
     REWRITE_TAC[bignum_of_wordlist] THEN ARITH_TAC;
     ALL_TAC] THEN
 
-  SUBGOAL_THEN `bit 63 (sum_s90:int64) <=> usgn` SUBST_ALL_TAC THENL
+  SUBGOAL_THEN `bit 63 (sum_s83:int64) <=> usgn` SUBST_ALL_TAC THENL
    [REWRITE_TAC[GSYM DIMINDEX_64; ARITH_RULE `63 = 64 - 1`; MSB_VAL] THEN
     REWRITE_TAC[DIMINDEX_64; ARITH_RULE `64 - 1 = 63`] THEN
     MP_TAC(SPECL [`320`; `uup:num`; `fsgn * (m00 * &u + m01 * &v):int`]
@@ -3827,7 +3832,7 @@ let BIGNUM_INV_P25519_CORRECT = time prove
   CONV_TAC NUM_REDUCE_CONV THEN DISCH_TAC THEN
 
   SUBGOAL_THEN
-   `(&(bignum_of_wordlist [sum_s99; sum_s100; sum_s101; sum_s104]):int ==
+   `(&(bignum_of_wordlist [sum_s91; sum_s92; sum_s93; sum_s96]):int ==
      fsgn * (m00 * &u + m01 * &v) -
      ival(qu:int64) * &p_25519) (mod (&2 pow 256))`
   MP_TAC THENL
@@ -3856,7 +3861,7 @@ let BIGNUM_INV_P25519_CORRECT = time prove
     ALL_TAC] THEN
 
   SUBGOAL_THEN
-   `word_add sum_s102 (word_shl qu 63):int64 = sum_s104`
+   `word_add sum_s94 (word_shl qu 63):int64 = sum_s96`
   SUBST_ALL_TAC THENL
    [ACCUMULATOR_POP_ASSUM_LIST(MP_TAC o el 4) THEN
     REWRITE_TAC[REAL_OF_NUM_CLAUSES; GSYM VAL_CONG; DIMINDEX_64] THEN
@@ -3941,7 +3946,7 @@ let BIGNUM_INV_P25519_CORRECT = time prove
   GEN_REWRITE_TAC I [IMP_CONJ] THEN DISCH_THEN(SUBST1_TAC o SYM) THEN
   DISCH_THEN(SUBST1_TAC o SYM o CONJUNCT2) THEN
 
-  ABBREV_TAC `topc <=> ival(sum_s104:int64) < &0` THEN
+  ABBREV_TAC `topc <=> ival(sum_s96:int64) < &0` THEN
   REWRITE_TAC[REAL_INT_CONGRUENCE; INT_OF_NUM_EQ;
               INT_POW_EQ_0; ARITH_EQ] THEN
   ONCE_REWRITE_TAC[COND_RAND] THEN REWRITE_TAC[GSYM REAL_OF_INT_CLAUSES] THEN
@@ -3958,9 +3963,9 @@ let BIGNUM_INV_P25519_CORRECT = time prove
 let BIGNUM_INV_P25519_SUBROUTINE_CORRECT = time prove
  (`!z x n pc stackpointer returnaddress.
         ALL (nonoverlapping (word_sub stackpointer (word 256),256))
-            [(word pc,0x13d5); (x,8 * 4)] /\
+            [(word pc,0x13b8); (x,8 * 4)] /\
         ALL (nonoverlapping (z,8 * 4))
-            [(word_sub stackpointer (word 256),264); (word pc,0x13d5)]
+            [(word_sub stackpointer (word 256),264); (word pc,0x13b8)]
         ==> ensures x86
              (\s. bytes_loaded s (word pc) bignum_inv_p25519_mc /\
                   read RIP s = word pc /\
@@ -3989,9 +3994,9 @@ let windows_bignum_inv_p25519_mc = define_from_elf "windows_bignum_inv_p25519_mc
 let WINDOWS_BIGNUM_INV_P25519_SUBROUTINE_CORRECT = time prove
  (`!z x n pc stackpointer returnaddress.
         ALL (nonoverlapping (word_sub stackpointer (word 272),272))
-            [(word pc,0x13df); (x,8 * 4)] /\
+            [(word pc,0x13c2); (x,8 * 4)] /\
         ALL (nonoverlapping (z,8 * 4))
-            [(word_sub stackpointer (word 272),280); (word pc,0x13df)]
+            [(word_sub stackpointer (word 272),280); (word pc,0x13c2)]
         ==> ensures x86
              (\s. bytes_loaded s (word pc) windows_bignum_inv_p25519_mc /\
                   read RIP s = word pc /\

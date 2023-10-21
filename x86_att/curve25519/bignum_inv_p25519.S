@@ -948,20 +948,20 @@
         leaq    (%rcx,%rax), %r14 ;                                         \
         sarq    $0x2b, %r10 ;                                              \
         sarq    $0x2b, %r14 ;                                              \
-        movq    %r9, %rax ;                                         \
+        movq    %r9, %rax ;                                                \
         imulq   %r8, %rax ;                                                \
-        movq    %r13, %rdx ;                                    \
+        movq    %r13, %rdx ;                                               \
         imulq   %r10, %rdx ;                                               \
         imulq   %r15, %r8 ;                                                \
-        imulq   %r11, %r10 ;                                    \
+        imulq   %r11, %r10 ;                                               \
         addq    %r8, %r10 ;                                                \
         leaq    (%rax,%rdx), %r8 ;                                          \
-        movq    %r9, %rax ;                                         \
+        movq    %r9, %rax ;                                                \
         imulq   %r12, %rax ;                                               \
-        movq    %r13, %rdx ;                                    \
+        movq    %r13, %rdx ;                                               \
         imulq   %r14, %rdx ;                                               \
         imulq   %r15, %r12 ;                                               \
-        imulq   %r11, %r14 ;                                    \
+        imulq   %r11, %r14 ;                                               \
         addq    %r12, %r14 ;                                               \
         leaq    (%rax,%rdx), %r12
 
@@ -1058,24 +1058,24 @@ loop:
 // Separate out the matrix into sign-magnitude pairs
 
         movq    %r8, %r9
-        negq    %r8
-        cmovs   %r9, %r8
         sarq    $63, %r9
+        xorq    %r9, %r8
+        subq    %r9, %r8
 
         movq    %r10, %r11
-        negq    %r10
-        cmovs   %r11, %r10
         sarq    $63, %r11
+        xorq    %r11, %r10
+        subq    %r11, %r10
 
         movq    %r12, %r13
-        negq    %r12
-        cmovs   %r13, %r12
         sarq    $63, %r13
+        xorq    %r13, %r12
+        subq    %r13, %r12
 
         movq    %r14, %r15
-        negq    %r14
-        cmovs   %r15, %r14
         sarq    $63, %r15
+        xorq    %r15, %r14
+        subq    %r15, %r14
 
 // Adjust the initial values to allow for complement instead of negation
 // This initial offset is the same for [f,g] and [u,v] compositions.
@@ -1443,118 +1443,110 @@ midloop:
 // we want to flip the sign of u according to that of f.
 
         movq    %r8, %r9
-        negq    %r8
-        cmovs   %r9, %r8
         sarq    $63, %r9
+        xorq    %r9, %r8
+        subq    %r9, %r8
         xorq    %rax, %r9
 
         movq    %r10, %r11
-        negq    %r10
-        cmovs   %r11, %r10
         sarq    $63, %r11
+        xorq    %r11, %r10
+        subq    %r11, %r10
         xorq    %rax, %r11
 
         movq    %r12, %r13
-        negq    %r12
-        cmovs   %r13, %r12
         sarq    $63, %r13
+        xorq    %r13, %r12
+        subq    %r13, %r12
         xorq    %rax, %r13
 
         movq    %r14, %r15
-        negq    %r14
-        cmovs   %r15, %r14
         sarq    $63, %r15
+        xorq    %r15, %r14
+        subq    %r15, %r14
         xorq    %rax, %r15
 
 // Adjust the initial value to allow for complement instead of negation
 
         movq    %r8, %rax
         andq    %r9, %rax
-        movq    %r10, %rbx
-        andq    %r11, %rbx
-        addq    %rax, %rbx
+        movq    %r10, %r12
+        andq    %r11, %r12
+        addq    %rax, %r12
 
 // Digit 0 of [u]
 
-        xorl    %ecx, %ecx
+        xorl    %r13d, %r13d
         movq    U(%rsp), %rax
         xorq    %r9, %rax
         mulq    %r8
-        addq    %rax, %rbx
-        adcq    %rdx, %rcx
+        addq    %rax, %r12
+        adcq    %rdx, %r13
         movq    V(%rsp), %rax
         xorq    %r11, %rax
         mulq    %r10
-        addq    %rax, %rbx
-        adcq    %rdx, %rcx
-        movq    %rbx, %r12
-        movq    %rcx, %rbx
+        addq    %rax, %r12
+        adcq    %rdx, %r13
 
 // Digit 1 of [u]
 
-        xorl    %ecx, %ecx
+        xorl    %r14d, %r14d
         movq    U+N(%rsp), %rax
         xorq    %r9, %rax
         mulq    %r8
-        addq    %rax, %rbx
-        adcq    %rdx, %rcx
+        addq    %rax, %r13
+        adcq    %rdx, %r14
         movq    V+N(%rsp), %rax
         xorq    %r11, %rax
         mulq    %r10
-        addq    %rax, %rbx
-        adcq    %rdx, %rcx
-        movq    %rbx, %r13
-        movq    %rcx, %rbx
+        addq    %rax, %r13
+        adcq    %rdx, %r14
 
 // Digit 2 of [u]
 
-        xorl    %ecx, %ecx
+        xorl    %r15d, %r15d
         movq    U+2*N(%rsp), %rax
         xorq    %r9, %rax
         mulq    %r8
-        addq    %rax, %rbx
-        adcq    %rdx, %rcx
+        addq    %rax, %r14
+        adcq    %rdx, %r15
         movq    V+2*N(%rsp), %rax
         xorq    %r11, %rax
         mulq    %r10
-        addq    %rax, %rbx
-        adcq    %rdx, %rcx
-        movq    %rbx, %r14
-        movq    %rcx, %rbx
+        addq    %rax, %r14
+        adcq    %rdx, %r15
 
 // Digits 3 and 4 of u (top is unsigned)
 
         movq    U+3*N(%rsp), %rax
         xorq    %r9, %rax
-        movq    %r9, %rcx
-        andq    %r8, %rcx
-        negq    %rcx
+        andq    %r8, %r9
+        negq    %r9
         mulq    %r8
-        addq    %rax, %rbx
-        adcq    %rdx, %rcx
+        addq    %rax, %r15
+        adcq    %rdx, %r9
         movq    V+3*N(%rsp), %rax
         xorq    %r11, %rax
         movq    %r11, %rdx
         andq    %r10, %rdx
-        subq    %rdx, %rcx
+        subq    %rdx, %r9
         mulq    %r10
-        addq    %rax, %rbx
-        adcq    %rdx, %rcx
-        movq    %rbx, %r15
+        addq    %rax, %r15
+        adcq    %rdx, %r9
 
 // Modular reduction of u, this time strictly 2^255-19.
 
-        movq    %rcx, %rax
+        movq    %r9, %rax
         shldq   $1, %r15, %rax
-        sarq    $63, %rcx
+        sarq    $63, %r9
         movl    $19, %ebx
-        leaq    1(%rax,%rcx,1), %rax
+        leaq    1(%rax,%r9,1), %rax
         imulq   %rbx
         xorl    %ebp, %ebp
         addq    %rax, %r12
         adcq    %rdx, %r13
-        adcq    %rcx, %r14
-        adcq    %rcx, %r15
+        adcq    %r9, %r14
+        adcq    %r9, %r15
         shlq    $63, %rax
         addq    %rax, %r15
         cmovns  %rbp, %rbx
