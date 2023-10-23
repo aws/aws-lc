@@ -831,6 +831,41 @@ static void TestModExp(BIGNUMFileTest *t, BN_CTX *ctx) {
   }
 }
 
+static void TestModExp2(BIGNUMFileTest *t, BN_CTX *ctx) {
+  bssl::UniquePtr<BIGNUM> a1 = t->GetBIGNUM("A1");
+  bssl::UniquePtr<BIGNUM> e1 = t->GetBIGNUM("E1");
+  bssl::UniquePtr<BIGNUM> m1 = t->GetBIGNUM("M1");
+  bssl::UniquePtr<BIGNUM> mod_exp1 = t->GetBIGNUM("ModExp1");
+  ASSERT_TRUE(a1);
+  ASSERT_TRUE(e1);
+  ASSERT_TRUE(m1);
+  ASSERT_TRUE(mod_exp1);
+
+  bssl::UniquePtr<BIGNUM> a2 = t->GetBIGNUM("A2");
+  bssl::UniquePtr<BIGNUM> e2 = t->GetBIGNUM("E2");
+  bssl::UniquePtr<BIGNUM> m2 = t->GetBIGNUM("M2");
+  bssl::UniquePtr<BIGNUM> mod_exp2 = t->GetBIGNUM("ModExp2");
+  ASSERT_TRUE(a2);
+  ASSERT_TRUE(e2);
+  ASSERT_TRUE(m2);
+  ASSERT_TRUE(mod_exp2);
+
+  bssl::UniquePtr<BIGNUM> ret1(BN_new());
+  ASSERT_TRUE(ret1);
+
+  bssl::UniquePtr<BIGNUM> ret2(BN_new());
+  ASSERT_TRUE(ret2);
+
+  ASSERT_TRUE(BN_mod_exp_mont_consttime_x2(ret1.get(), a1.get(), e1.get(), m1.get(), NULL,
+                                           ret2.get(), a2.get(), e2.get(), m2.get(), NULL,
+					   ctx));
+
+  EXPECT_BIGNUMS_EQUAL("A1 ^ E1 (mod M1) (constant-time)", mod_exp1.get(),
+		       ret1.get());
+  EXPECT_BIGNUMS_EQUAL("A2 ^ E2 (mod M2) (constant-time)", mod_exp2.get(),
+		       ret2.get());
+}
+
 static void TestExp(BIGNUMFileTest *t, BN_CTX *ctx) {
   bssl::UniquePtr<BIGNUM> a = t->GetBIGNUM("A");
   bssl::UniquePtr<BIGNUM> e = t->GetBIGNUM("E");
@@ -1002,6 +1037,7 @@ static void RunBNFileTest(FileTest *t, BN_CTX *ctx) {
       {"ModMul", TestModMul},
       {"ModSquare", TestModSquare},
       {"ModExp", TestModExp},
+      {"ModExp2", TestModExp2},
       {"Exp", TestExp},
       {"ModSqrt", TestModSqrt},
       {"NotModSquare", TestNotModSquare},
@@ -1050,6 +1086,11 @@ TEST_F(BNTest, GCDTestVectors) {
 
 TEST_F(BNTest, ModExpTestVectors) {
   FileTestGTest("crypto/fipsmodule/bn/test/mod_exp_tests.txt",
+                [&](FileTest *t) { RunBNFileTest(t, ctx()); });
+}
+
+TEST_F(BNTest, ModExp2TestVectors) {
+  FileTestGTest("crypto/fipsmodule/bn/test/mod_exp_x2_tests.txt",
                 [&](FileTest *t) { RunBNFileTest(t, ctx()); });
 }
 
