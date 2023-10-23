@@ -856,6 +856,9 @@ static void TestModExp2(BIGNUMFileTest *t, BN_CTX *ctx) {
   bssl::UniquePtr<BIGNUM> ret2(BN_new());
   ASSERT_TRUE(ret2);
 
+  ASSERT_TRUE(BN_nnmod(a1.get(), a1.get(), m1.get(), ctx));
+  ASSERT_TRUE(BN_nnmod(a2.get(), a2.get(), m2.get(), ctx));
+
   ASSERT_TRUE(BN_mod_exp_mont_consttime_x2(ret1.get(), a1.get(), e1.get(), m1.get(), NULL,
                                            ret2.get(), a2.get(), e2.get(), m2.get(), NULL,
 					   ctx));
