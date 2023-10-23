@@ -105,13 +105,13 @@ batch:
         variables:
           AWS_LC_CI_TARGET: "tests/ci/run_fips_tests.sh"
 
-    - identifier: ubuntu2204_clang14x_sde_x86_64
+    - identifier: amazonlinux2_gcc7x_intel_sde_x86_64
       buildspec: ./tests/ci/codebuild/common/run_simple_target.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
         compute-type: BUILD_GENERAL1_2XLARGE
-        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-22.04_clang-14x-sde_latest
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:amazonlinux-2_gcc-7x_intel-sde_latest
         variables:
           AWS_LC_CI_TARGET: "tests/ci/run_tests_with_sde.sh"
 
