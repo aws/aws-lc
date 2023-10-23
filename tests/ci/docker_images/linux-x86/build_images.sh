@@ -25,6 +25,7 @@ docker build -t ubuntu-20.04:clang-10x ubuntu-20.04_clang-10x
 docker build -t ubuntu-20.04:android -f ubuntu-20.04_android/Dockerfile ../
 docker build -t ubuntu-20.04:clang-7x-bm-framework ubuntu-20.04_clang-7x-bm-framework
 docker build -t ubuntu-22.04:base -f ubuntu-22.04_base/Dockerfile ../dependencies
+docker build -t ubuntu-22.04:clang-14x-sde ubuntu-22.04_clang-14x-sde
 docker build -t ubuntu-22.04:gcc-11x ubuntu-22.04_gcc-11x
 docker build -t ubuntu-22.04:gcc-12x ubuntu-22.04_gcc-12x
 docker build -t amazonlinux-2:base -f amazonlinux-2_base/Dockerfile ../dependencies
