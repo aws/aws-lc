@@ -1603,6 +1603,15 @@ let bignum_inv_p25519_mc = define_assert_from_elf "bignum_inv_p25519_mc" "x86/cu
 let BIGNUM_INV_P25519_EXEC = X86_MK_CORE_EXEC_RULE bignum_inv_p25519_mc;;
 
 (* ------------------------------------------------------------------------- *)
+(* Do the main proof for the core that is sometimes inlined elsewhere        *)
+(* ------------------------------------------------------------------------- *)
+
+let CORE_INV_P25519_EXEC =
+    X86_MK_EXEC_RULE
+     ((GEN_REWRITE_CONV RAND_CONV [bignum_inv_p25519_mc] THENC TRIM_LIST_CONV)
+      `TRIM_LIST (17,18) bignum_inv_p25519_mc`);;
+
+(* ------------------------------------------------------------------------- *)
 (* A localized form of the word_divstep59 proof, very similar but differing  *)
 (* both in negation of the output and small register/memory details.         *)
 (* ------------------------------------------------------------------------- *)
@@ -1815,7 +1824,7 @@ let DIVSTEP_FVEC_BOUNDS,DIVSTEP_GVEC_BOUNDS = (CONJ_PAIR o prove)
 
 let PACKED_DIVSTEP_TAC n shf s =
   let s' = if mem n shf then s+7 else s+12 in
-  X86_STEPS_TAC BIGNUM_INV_P25519_EXEC (s--s') THEN
+  X86_STEPS_TAC CORE_INV_P25519_EXEC (s--s') THEN
   SUBGOAL_THEN
    (subst [mk_small_numeral(n-1),`n:num`;
            mk_var("s"^string_of_int s',`:x86state`),`s:x86state`]
@@ -1982,16 +1991,17 @@ let DIVSTEP_MAT_UNPACK_19 = prove
 
 let LOCAL_WORD_DIVSTEP59_CORRECT = prove
  (`!d f g stackpointer pc.
-   nonoverlapping (stackpointer,208) (word pc,0x13b8)
+   nonoverlapping (stackpointer,208) (word pc,0x1395)
    ==> ensures x86
-        (\s. bytes_loaded s (word pc) (BUTLAST bignum_inv_p25519_mc) /\
-             read RIP s = word(pc + 0x50d) /\
+        (\s. bytes_loaded s (word pc)
+                  (TRIM_LIST (17,18) bignum_inv_p25519_mc) /\
+             read RIP s = word(pc + 0x4fc) /\
              read RSP s = stackpointer /\
              read (memory :> bytes64(word_add stackpointer (word 152))) s =
              d /\
              read (memory :> bytes64 stackpointer) s = f /\
              read (memory :> bytes64(word_add stackpointer (word 32))) s = g)
-        (\s. read RIP s = word(pc + 0x122f) /\
+        (\s. read RIP s = word(pc + 0x121e) /\
              (ival d rem &2 = &1 /\
               ival f rem &2 = &1 /\
               abs(ival d) < &2 pow 62
@@ -2018,12 +2028,12 @@ let LOCAL_WORD_DIVSTEP59_CORRECT = prove
 
   ASM_CASES_TAC `d rem &2 = &1 /\ f rem &2 = &1 /\ abs(d:int) < &2 pow 62` THENL
    [FIRST_X_ASSUM(CONJUNCTS_THEN STRIP_ASSUME_TAC) THEN ASM_REWRITE_TAC[];
-    X86_QUICKSIM_TAC BIGNUM_INV_P25519_EXEC [`read RSP s = x`] (1--898)] THEN
+    X86_QUICKSIM_TAC CORE_INV_P25519_EXEC [`read RSP s = x`] (1--898)] THEN
 
   (*** The first packing ***)
 
   ENSURES_INIT_TAC "s0" THEN
-  X86_STEPS_TAC BIGNUM_INV_P25519_EXEC (1--10) THEN
+  X86_STEPS_TAC CORE_INV_P25519_EXEC (1--10) THEN
   RULE_ASSUM_TAC(REWRITE_RULE[DIVSTEP_FGVEC_PACK]) THEN
   FIRST_X_ASSUM(MP_TAC o SPEC `iword(divstep_dvec 0 (d,f,g)):int64` o
     MATCH_MP(MESON[] `read RSI s = a ==> !x. a = x ==> read RSI s = x`)) THEN
@@ -2031,19 +2041,19 @@ let LOCAL_WORD_DIVSTEP59_CORRECT = prove
 
   (*** The first block of 20 divsteps ***)
 
-  X86_STEPS_TAC BIGNUM_INV_P25519_EXEC (11--20) THEN
+  X86_STEPS_TAC CORE_INV_P25519_EXEC (11--20) THEN
   MAP_EVERY (fun n -> PACKED_DIVSTEP_TAC n [20] (13*n+8)) (1--20) THEN
 
   (*** The unpacking of the first block ***)
 
-  X86_STEPS_TAC BIGNUM_INV_P25519_EXEC (276--291) THEN
+  X86_STEPS_TAC CORE_INV_P25519_EXEC (276--291) THEN
   RULE_ASSUM_TAC(REWRITE_RULE[DIVSTEP_MAT_UNPACK_20]) THEN
   RULE_ASSUM_TAC(SIMP_RULE
    [DIVSTEP_MAT_MOD; divstep_dvec; DIVSTEP_D_MOD; ARITH_LE; ARITH_LT]) THEN
 
   (*** Application of first update matrix to f and g ***)
 
-  X86_STEPS_TAC BIGNUM_INV_P25519_EXEC (292--301) THEN
+  X86_STEPS_TAC CORE_INV_P25519_EXEC (292--301) THEN
   RULE_ASSUM_TAC(REWRITE_RULE[word_ishr]) THEN
 
   (*** Renaming new values and checking d bound ***)
@@ -2096,7 +2106,7 @@ let LOCAL_WORD_DIVSTEP59_CORRECT = prove
 
   (*** The second packing ***)
 
-  X86_STEPS_TAC BIGNUM_INV_P25519_EXEC (302--309) THEN
+  X86_STEPS_TAC CORE_INV_P25519_EXEC (302--309) THEN
   RULE_ASSUM_TAC(REWRITE_RULE[DIVSTEP_FGVEC_PACK]) THEN
   FIRST_X_ASSUM(MP_TAC o SPEC `iword(divstep_dvec 0 (d,f,g)):int64` o
     MATCH_MP(MESON[] `read RSI s = a ==> !x. a = x ==> read RSI s = x`)) THEN
@@ -2104,19 +2114,19 @@ let LOCAL_WORD_DIVSTEP59_CORRECT = prove
 
   (*** The second block of 20 divsteps ***)
 
-  X86_STEPS_TAC BIGNUM_INV_P25519_EXEC (310--318) THEN
+  X86_STEPS_TAC CORE_INV_P25519_EXEC (310--318) THEN
   MAP_EVERY (fun n -> PACKED_DIVSTEP_TAC n [20] (13*n+306)) (1--20) THEN
 
   (*** The unpacking of the second block ***)
 
-  X86_STEPS_TAC BIGNUM_INV_P25519_EXEC (574--585) THEN
+  X86_STEPS_TAC CORE_INV_P25519_EXEC (574--585) THEN
   RULE_ASSUM_TAC(REWRITE_RULE[DIVSTEP_MAT_UNPACK_20]) THEN
   RULE_ASSUM_TAC(SIMP_RULE
    [DIVSTEP_MAT_MOD; divstep_dvec; DIVSTEP_D_MOD; ARITH_LE; ARITH_LT]) THEN
 
   (*** Application of second update matrix to f and g ***)
 
-  X86_STEPS_TAC BIGNUM_INV_P25519_EXEC (586--595) THEN
+  X86_STEPS_TAC CORE_INV_P25519_EXEC (586--595) THEN
   RULE_ASSUM_TAC(REWRITE_RULE[word_ishr]) THEN
 
   (*** Renaming new values and checking d bound ***)
@@ -2169,7 +2179,7 @@ let LOCAL_WORD_DIVSTEP59_CORRECT = prove
 
   (*** The third and final packing ***)
 
-  X86_STEPS_TAC BIGNUM_INV_P25519_EXEC (596--603) THEN
+  X86_STEPS_TAC CORE_INV_P25519_EXEC (596--603) THEN
   RULE_ASSUM_TAC(REWRITE_RULE[DIVSTEP_FGVEC_PACK]) THEN
   FIRST_X_ASSUM(MP_TAC o SPEC `iword(divstep_dvec 0 (d,f,g)):int64` o
     MATCH_MP(MESON[] `read RSI s = a ==> !x. a = x ==> read RSI s = x`)) THEN
@@ -2177,23 +2187,23 @@ let LOCAL_WORD_DIVSTEP59_CORRECT = prove
 
   (*** The multiplication of the first two matrices ***)
 
-  X86_STEPS_TAC BIGNUM_INV_P25519_EXEC (604--619) THEN
+  X86_STEPS_TAC CORE_INV_P25519_EXEC (604--619) THEN
 
   (*** The last 19 divsteps ***)
 
-  X86_STEPS_TAC BIGNUM_INV_P25519_EXEC (620--628) THEN
+  X86_STEPS_TAC CORE_INV_P25519_EXEC (620--628) THEN
   MAP_EVERY (fun n -> PACKED_DIVSTEP_TAC n [19] (13*n+616)) (1--19) THEN
 
   (*** The final unpacking is a little different as it's 19 not 20 ***)
 
-  X86_STEPS_TAC BIGNUM_INV_P25519_EXEC (871--882) THEN
+  X86_STEPS_TAC CORE_INV_P25519_EXEC (871--882) THEN
   RULE_ASSUM_TAC(REWRITE_RULE[DIVSTEP_MAT_UNPACK_19]) THEN
   RULE_ASSUM_TAC(SIMP_RULE
    [DIVSTEP_MAT_MOD; divstep_dvec; DIVSTEP_D_MOD; ARITH_LE; ARITH_LT]) THEN
 
   (*** The final matrix multiplication and writeback ***)
 
-  X86_STEPS_TAC BIGNUM_INV_P25519_EXEC (883--898) THEN
+  X86_STEPS_TAC CORE_INV_P25519_EXEC (883--898) THEN
   ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
   DISCARD_STATE_TAC "s898" THEN
 
@@ -2307,18 +2317,19 @@ let p25519signedredlemma = prove
   SPEC_TAC(`n rem &2 pow 255`,`r:int`) THEN
   REWRITE_TAC[p_25519] THEN ASM_INT_ARITH_TAC);;
 
-let BIGNUM_INV_P25519_CORRECT = time prove
+let CORE_INV_P25519_CORRECT = time prove
  (`!z x n pc stackpointer.
         ALL (nonoverlapping (stackpointer,208))
-            [(word pc,0x13b8); (z,8 * 4); (x,8 * 4)] /\
-        nonoverlapping (word pc,0x13b8) (z,8 * 4)
+            [(word pc,0x1395); (z,8 * 4); (x,8 * 4)] /\
+        nonoverlapping (word pc,0x1395) (z,8 * 4)
         ==> ensures x86
-             (\s. bytes_loaded s (word pc) (BUTLAST bignum_inv_p25519_mc) /\
-                  read RIP s = word(pc + 0x11) /\
+             (\s. bytes_loaded s (word pc)
+                    (TRIM_LIST (17,18) bignum_inv_p25519_mc) /\
+                  read RIP s = word pc /\
                   read RSP s = stackpointer /\
                   C_ARGUMENTS [z; x] s /\
                   bignum_from_memory (x,4) s = n)
-             (\s. read RIP s = word (pc + 0x13a6) /\
+             (\s. read RIP s = word (pc + 0x1395) /\
                   (coprime(p_25519,n)
                    ==> bignum_from_memory (z,4) s = inverse_mod p_25519 n))
           (MAYCHANGE [RIP; RDI; RSI; RAX; RBX; RCX; RDX; RBP;
@@ -2338,7 +2349,7 @@ let BIGNUM_INV_P25519_CORRECT = time prove
 
   (*** Set up the main loop invariant ***)
 
-  ENSURES_WHILE_UP_TAC `9` `pc + 0x050d` `pc + 0x050d`
+  ENSURES_WHILE_UP_TAC `9` `pc + 0x4fc` `pc + 0x4fc`
    `\i s.
       read RSP s = stackpointer /\
       read (memory :> bytes64(word_add stackpointer (word 192))) s = z /\
@@ -2371,7 +2382,7 @@ let BIGNUM_INV_P25519_CORRECT = time prove
     BIGNUM_TERMRANGE_TAC `4` `n:num` THEN
     REWRITE_TAC[BIGNUM_FROM_MEMORY_BYTES] THEN ENSURES_INIT_TAC "s0" THEN
     BIGNUM_LDIGITIZE_TAC "n_" `read (memory :> bytes (x,8 * 4)) s0` THEN
-    X86_ACCSTEPS_TAC BIGNUM_INV_P25519_EXEC
+    X86_ACCSTEPS_TAC CORE_INV_P25519_EXEC
       [19;20;21;22;25;26;27;28] (1--49) THEN
     ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
     REWRITE_TAC[MULT_CLAUSES; SUB_0] THEN EXPAND_TAC "t" THEN
@@ -2487,7 +2498,7 @@ let BIGNUM_INV_P25519_CORRECT = time prove
       `f_0:int64`; `g_0:int64`; `stackpointer:int64`; `pc:num`]
      LOCAL_WORD_DIVSTEP59_CORRECT) THEN
     ASM_REWRITE_TAC[SOME_FLAGS; NONOVERLAPPING_CLAUSES] THEN
-    X86_BIGSTEP_TAC BIGNUM_INV_P25519_EXEC "s1" THEN
+    X86_BIGSTEP_TAC CORE_INV_P25519_EXEC "s1" THEN
     FIRST_X_ASSUM(MP_TAC o check (is_imp o concl)) THEN
 
     SUBGOAL_THEN `ival(f_0:int64) rem &2 = &1` ASSUME_TAC THENL
@@ -2581,7 +2592,7 @@ let BIGNUM_INV_P25519_CORRECT = time prove
 
     (*** The trivial fact that we loop back ***)
 
-    X86_STEPS_TAC BIGNUM_INV_P25519_EXEC (2--4) THEN
+    X86_STEPS_TAC CORE_INV_P25519_EXEC (2--4) THEN
     SUBGOAL_THEN
      `word_sub (word (10 - i)) (word 1):int64 = word(10 - (i + 1))`
     SUBST_ALL_TAC THENL
@@ -2598,7 +2609,7 @@ let BIGNUM_INV_P25519_CORRECT = time prove
 
     (*** Sign-magnitude breakdown of matrix entries ***)
 
-    X86_STEPS_TAC BIGNUM_INV_P25519_EXEC (5--20) THEN
+    X86_STEPS_TAC CORE_INV_P25519_EXEC (5--20) THEN
     RULE_ASSUM_TAC(REWRITE_RULE[IWORD_CASES_LEMMA]) THEN
 
     SUBGOAL_THEN
@@ -2682,11 +2693,11 @@ let BIGNUM_INV_P25519_CORRECT = time prove
 
     (*** Starting offset, common to both accumulations ***)
 
-    X86_ACCSTEPS_TAC BIGNUM_INV_P25519_EXEC [25;31] (21--32) THEN
+    X86_ACCSTEPS_TAC CORE_INV_P25519_EXEC [25;31] (21--32) THEN
 
     (*** Accumulation of new f and g (then keep 2 accumulations above) ***)
 
-    X86_ACCSTEPS_TAC BIGNUM_INV_P25519_EXEC
+    X86_ACCSTEPS_TAC CORE_INV_P25519_EXEC
      [36;37;38;41;42;43;47;48;49;52;53;54;58;59;60;
       63;64;65;71;72;73;76;77;78;84;85;86;89;90;91;
       97;98;99;102;103;104;113;114;115;121;122;123;
@@ -2766,7 +2777,7 @@ let BIGNUM_INV_P25519_CORRECT = time prove
     (*** Accumulation of new u and v values before reduction ***)
     (*** Keep all the accumulations for the modular reductions ***)
 
-    X86_ACCSTEPS_TAC BIGNUM_INV_P25519_EXEC
+    X86_ACCSTEPS_TAC CORE_INV_P25519_EXEC
      [156;157;158;161;162;163;167;169;170;173;174;175;
       180;181;182;185;186;187;191;193;194;197;198;199;
       204;205;206;209;210;211;215;217;218;221;222;223;
@@ -3291,7 +3302,7 @@ let BIGNUM_INV_P25519_CORRECT = time prove
     (*** because of the peculiar loop structure, completely trivial ***)
 
     X_GEN_TAC `i:num` THEN STRIP_TAC THEN
-    X86_SIM_TAC BIGNUM_INV_P25519_EXEC [] THEN ASM_REWRITE_TAC[];
+    X86_SIM_TAC CORE_INV_P25519_EXEC [] THEN ASM_REWRITE_TAC[];
 
     ALL_TAC] THEN
 
@@ -3322,7 +3333,7 @@ let BIGNUM_INV_P25519_CORRECT = time prove
     `f_0:int64`; `g_0:int64`; `stackpointer:int64`; `pc:num`]
    LOCAL_WORD_DIVSTEP59_CORRECT) THEN
   ASM_REWRITE_TAC[SOME_FLAGS; NONOVERLAPPING_CLAUSES] THEN
-  X86_BIGSTEP_TAC BIGNUM_INV_P25519_EXEC "s1" THEN
+  X86_BIGSTEP_TAC CORE_INV_P25519_EXEC "s1" THEN
   FIRST_X_ASSUM(MP_TAC o check (is_imp o concl)) THEN
 
   SUBGOAL_THEN `ival(f_0:int64) rem &2 = &1` ASSUME_TAC THENL
@@ -3416,7 +3427,7 @@ let BIGNUM_INV_P25519_CORRECT = time prove
 
   (*** Complete all the simulation first ***)
 
-  X86_ACCSTEPS_TAC BIGNUM_INV_P25519_EXEC
+  X86_ACCSTEPS_TAC CORE_INV_P25519_EXEC
    [35;39;40;41;44;45;46;50;51;52;55;56;57;
     61;62;63;66;67;68;73;74;75;80;81;82;83;91;92;93;94;
     96;98;99;100;101]
@@ -3959,6 +3970,45 @@ let BIGNUM_INV_P25519_CORRECT = time prove
   CONV_TAC(DEPTH_CONV WORD_NUM_RED_CONV) THEN
   DISCH_THEN(MP_TAC o end_itlist CONJ o DESUM_RULE o CONJUNCTS) THEN
   DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN REAL_INTEGER_TAC);;
+
+let BIGNUM_INV_P25519_CORRECT = time prove
+ (`!z x n pc stackpointer.
+        ALL (nonoverlapping (stackpointer,208))
+            [(word pc,0x13b8); (z,8 * 4); (x,8 * 4)] /\
+        nonoverlapping (word pc,0x13b8) (z,8 * 4)
+        ==> ensures x86
+             (\s. bytes_loaded s (word pc) (BUTLAST bignum_inv_p25519_mc) /\
+                  read RIP s = word(pc + 0x11) /\
+                  read RSP s = stackpointer /\
+                  C_ARGUMENTS [z; x] s /\
+                  bignum_from_memory (x,4) s = n)
+             (\s. read RIP s = word (pc + 0x13a6) /\
+                  (coprime(p_25519,n)
+                   ==> bignum_from_memory (z,4) s = inverse_mod p_25519 n))
+          (MAYCHANGE [RIP; RDI; RSI; RAX; RBX; RCX; RDX; RBP;
+                      R8; R9; R10; R11; R12; R13; R14; R15] ,,
+           MAYCHANGE SOME_FLAGS ,,
+           MAYCHANGE [memory :> bytes(z,8 * 4);
+                      memory :> bytes(stackpointer,208)])`,
+  MAP_EVERY X_GEN_TAC
+   [`z:int64`; `x:int64`; `n:num`; `pc:num`; `stackpointer:int64`] THEN
+  REWRITE_TAC[ALLPAIRS; ALL; NONOVERLAPPING_CLAUSES] THEN
+  REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS] THEN
+  DISCH_THEN(REPEAT_TCL CONJUNCTS_THEN ASSUME_TAC) THEN
+  REWRITE_TAC(!simulation_precanon_thms) THEN ENSURES_INIT_TAC "s0" THEN
+  X86_SUBROUTINE_SIM_TAC
+      ((GEN_REWRITE_CONV RAND_CONV [bignum_inv_p25519_mc] THENC
+        REWRITE_CONV[BUTLAST_CLAUSES])
+       `BUTLAST bignum_inv_p25519_mc`,
+       BIGNUM_INV_P25519_EXEC,
+       0x11,
+       (GEN_REWRITE_CONV RAND_CONV [bignum_inv_p25519_mc] THENC TRIM_LIST_CONV)
+       `TRIM_LIST (17,18) bignum_inv_p25519_mc`,
+       CORE_INV_P25519_CORRECT)
+      [`read RDI s`; `read RSI s`;
+       `read (memory :> bytes(read RSI s,8 * 4)) s`;
+       `pc + 0x11`; `stackpointer:int64`] 1 THEN
+  ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[]);;
 
 let BIGNUM_INV_P25519_SUBROUTINE_CORRECT = time prove
  (`!z x n pc stackpointer returnaddress.
