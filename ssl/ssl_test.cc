@@ -1392,8 +1392,8 @@ TEST(SSLTest, CipherProperties) {
     EXPECT_EQ(t.digest_nid, SSL_CIPHER_get_digest_nid(cipher));
     EXPECT_EQ(t.kx_nid, SSL_CIPHER_get_kx_nid(cipher));
     EXPECT_EQ(t.auth_nid, SSL_CIPHER_get_auth_nid(cipher));
-	const EVP_MD *md = SSL_CIPHER_get_handshake_digest(cipher);
-	ASSERT_TRUE(md);
+    const EVP_MD *md = SSL_CIPHER_get_handshake_digest(cipher);
+    ASSERT_TRUE(md);
     EXPECT_EQ(t.prf_nid, EVP_MD_nid(md));
     EXPECT_EQ(t.prf_nid, SSL_CIPHER_get_prf_nid(cipher));
   }
