@@ -222,7 +222,7 @@ TEST(BIOTest, CloseFlags) {
   ASSERT_EQ(0, BIO_seek(binary_bio.get(), 0));    // 0 indicates success here
   BIO_gets(binary_bio.get(), b1, sizeof(b1));
   pos = BIO_tell(binary_bio.get());
-  BIO_gets(binary_bio.get(), b1, sizeof(b1));
+  ASSERT_GT(BIO_gets(binary_bio.get(), b1, sizeof(b1)), 0);
   BIO_seek(binary_bio.get(), pos);
   BIO_gets(binary_bio.get(), b2, sizeof(b2));
   EXPECT_EQ(std::string(b1), std::string(b2));
