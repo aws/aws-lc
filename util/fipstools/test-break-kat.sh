@@ -40,3 +40,5 @@ for kat in $KATS; do
   rm ./break-kat-bin
 done
 echo "All tests broken as expected"
+
+go run util/fipstools/break-hash.go $TEST_FIPS_BIN ./libcrypto.so

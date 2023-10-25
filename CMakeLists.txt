@@ -634,6 +634,10 @@ if(GCOV)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-arcs -ftest-coverage")
 endif()
 
+if(KEEP_ASM_LOCAL_SYMBOLS)
+  set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -Wa,-L")
+endif()
+
 if(FIPS)
 
   if(NOT GO_EXECUTABLE OR NOT PERL_EXECUTABLE)
