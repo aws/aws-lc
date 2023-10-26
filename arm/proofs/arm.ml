@@ -429,7 +429,9 @@ let DISCARD_OLDSTATE_TAC s =
 (* ------------------------------------------------------------------------- *)
 
 let ARM_SINGLE_STEP_TAC th s =
-  time (ARM_VERBOSE_STEP_TAC th s) THEN DISCARD_OLDSTATE_TAC s;;
+  time (ARM_VERBOSE_STEP_TAC th s) THEN
+  DISCARD_OLDSTATE_TAC s THEN
+  CLARIFY_TAC;;
 
 let ARM_VACCSTEP_TAC th aflag s =
   ARM_VERBOSE_STEP_TAC th s THEN
@@ -483,7 +485,7 @@ let ARM_QUICKSTEP_TAC th pats =
     `MAYCHANGE a b c`; `(a ,, b) c d`; `read PC s = x`] @ pats in
   fun s -> time (ARM_VERBOSE_STEP_TAC th s) THEN
            DISCARD_NONMATCHING_ASSUMPTIONS pats' THEN
-           DISCARD_OLDSTATE_TAC s;;
+           DISCARD_OLDSTATE_TAC s THEN CLARIFY_TAC;;
 
 let ARM_QUICKSTEPS_TAC th pats snums =
   MAP_EVERY (ARM_QUICKSTEP_TAC th pats) (statenames "s" snums);;
