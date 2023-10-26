@@ -162,7 +162,7 @@ endif()
 if ((CMAKE_ASM_COMPILER_ID MATCHES "Clang" OR CMAKE_ASM_COMPILER MATCHES "clang") AND
     (CMAKE_ASM_COMPILER_VERSION VERSION_LESS "7.0.0") AND (ARCH STREQUAL "x86_64"))
   set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/aesni-gcm-avx512.${ASM_EXT} PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512bw -mavx512dq -mavx512vl")
-  set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/aesni-xts-avx512.${ASM_EXT} PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512bw -mavx512dq -mavx512vl -mavx512vbmi2")
+  set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/aesni-xts-avx512.${ASM_EXT} PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512bw -mavx512dq -mavx512vl")
 endif()
 
 # s2n-bignum files can be compiled on Unix platforms only (except Apple),
