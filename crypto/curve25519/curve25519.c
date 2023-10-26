@@ -304,17 +304,22 @@ int ED25519_verify(const uint8_t *message, size_t message_len,
 
   // Ed25519 verify: rfc8032 5.1.7
 
-  // Step: rfc90832 5.1.7.1
+  // Step: rfc8032 5.1.7.1
   // Decode signature as:
   //  - signature[0:31]: encoded point R, aliased to R_expected.
   //  - signature[32:61]: integer S.
-  if ((signature[63] & 224) != 0) {
-    return 0;
-  }
+  //
   uint8_t R_expected[32];
   OPENSSL_memcpy(R_expected, signature, 32);
   uint8_t S[32];
   OPENSSL_memcpy(S, signature + 32, 32);
+
+  // Per rfc8032 5.1.6.6
+  // "the three most significant bits of the final octet are always zero"
+  // 224 = 0xE0_16 = 11100000_2
+  if ((signature[63] & 224) != 0) {
+    return 0;
+  }
 
   // S must be in the range [0, order) in order to prevent signature
   // malleability. kOrder is the order of curve25519 in little-endian form.
@@ -375,11 +380,11 @@ int ED25519_verify(const uint8_t *message, size_t message_len,
   ge_p2 R_have;
   ge_double_scalarmult_vartime(&R_have, k, &A, S);
 
-  uint8_t R_have_enc[32];
-  x25519_ge_tobytes(R_have_enc, &R_have);
+  uint8_t R_have_encoded[32];
+  x25519_ge_tobytes(R_have_encoded, &R_have);
 
   // Comparison [S]B - [k]A' =? R_expected.
-  return CRYPTO_memcmp(R_have_enc, R_expected, sizeof(R_have_enc)) == 0;
+  return CRYPTO_memcmp(R_have_encoded, R_expected, sizeof(R_have_encoded)) == 0;
 }
 
 
