@@ -1,0 +1,22 @@
+name: aws-lc integration tests
+on:
+  push:
+    branches: [ '*' ]
+  pull_request:
+    branches: [ '*' ]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+env:
+  CC: gcc
+jobs:
+  haproxy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install OS Dependencies
+        run: |
+          sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make
+      - uses: actions/checkout@v3
+      - name: Run integration build
+        run: |
+          ./tests/ci/integration/run_haproxy_integration.sh

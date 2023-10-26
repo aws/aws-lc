@@ -90,6 +90,10 @@ struct env_md_st {
 
   // ctx_size contains the size, in bytes, of the state of the hash function.
   unsigned ctx_size;
+
+  // finalXOF completes the hash and writes |len| bytes of digest extended output
+  // to |out|.
+  void (*finalXOF)(EVP_MD_CTX *ctx, uint8_t *out, size_t len);
 };
 
 // evp_md_pctx_ops contains function pointers to allow the |pctx| member of

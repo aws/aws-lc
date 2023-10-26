@@ -11520,8 +11520,8 @@ func addCustomExtensionTests() {
 				AlwaysRejectEarlyData:   true,
 			},
 		},
-		resumeSession: true,
-		earlyData: true,
+		resumeSession:           true,
+		earlyData:               true,
 		expectEarlyDataRejected: true,
 		flags: []string{
 			"-enable-client-custom-extension",
@@ -11539,7 +11539,7 @@ func addCustomExtensionTests() {
 			},
 		},
 		resumeSession: true,
-		earlyData: true,
+		earlyData:     true,
 		flags: []string{
 			"-enable-client-custom-extension",
 		},
@@ -11557,8 +11557,8 @@ func addCustomExtensionTests() {
 				ExpectedCustomExtension: &expectedContents,
 			},
 		},
-		resumeSession: true,
-		earlyData: true,
+		resumeSession:           true,
+		earlyData:               true,
 		expectEarlyDataRejected: true,
 		flags: []string{
 			"-enable-client-custom-extension",
@@ -11609,8 +11609,8 @@ func addCustomExtensionTests() {
 				ExpectEarlyDataAccepted: false,
 			},
 		},
-		resumeSession: true,
-		earlyData:     true,
+		resumeSession:           true,
+		earlyData:               true,
 		expectEarlyDataRejected: true,
 		flags: []string{
 			"-enable-server-custom-extension",
@@ -19590,6 +19590,256 @@ func addHintMismatchTests() {
 	}
 }
 
+var testMultipleCertSlotsAlgorithms = []struct {
+	name   string
+	cipher uint16
+	id     signatureAlgorithm
+	cert   testCert
+	// If non-zero, the curve that must be supported in TLS 1.2 for cert to be
+	// accepted.
+	curve CurveID
+}{
+	{"RSA_PKCS1_SHA1", TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA, signatureRSAPKCS1WithSHA1, testCertRSA, 0},
+	{"RSA_PKCS1_SHA256", TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA, signatureRSAPKCS1WithSHA256, testCertRSA, 0},
+	{"RSA_PKCS1_SHA384", TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA, signatureRSAPKCS1WithSHA384, testCertRSA, 0},
+	{"RSA_PKCS1_SHA512", TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA, signatureRSAPKCS1WithSHA512, testCertRSA, 0},
+	{"ECDSA_SHA1", TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA, signatureECDSAWithSHA1, testCertECDSAP256, CurveP256},
+	// The “P256” in the following line is not a mistake. In TLS 1.2 the
+	// hash function doesn't have to match the curve and so the same
+	// signature algorithm works with P-224.
+	{"ECDSA_P224_SHA256", TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA, signatureECDSAWithP256AndSHA256, testCertECDSAP224, CurveP224},
+	{"ECDSA_P256_SHA256", TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA, signatureECDSAWithP256AndSHA256, testCertECDSAP256, CurveP256},
+	{"RSA_PSS_SHA256", TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA, signatureRSAPSSWithSHA256, testCertRSA, 0},
+	{"RSA_PSS_SHA384", TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA, signatureRSAPSSWithSHA384, testCertRSA, 0},
+	{"RSA_PSS_SHA512", TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA, signatureRSAPSSWithSHA512, testCertRSA, 0},
+	{"Ed25519", TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256, signatureEd25519, testCertEd25519, 0},
+	// Tests for key types prior to TLS 1.2.
+	{"RSA", TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA, 0, testCertRSA, 0},
+	{"ECDSA", TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA, 0, testCertECDSAP256, CurveP256},
+}
+
+func addMultipleCertSlotTests() {
+	var allAlgorithms []signatureAlgorithm
+	for _, alg := range testMultipleCertSlotsAlgorithms {
+		if alg.id != 0 {
+			allAlgorithms = append(allAlgorithms, alg.id)
+		}
+	}
+	multipleCertsFlag := "-multiple-certs-slot"
+	rsaCertSlot := []string{
+		multipleCertsFlag, path.Join(*resourceDir, getShimCertificate(testCertRSA)) + "," + path.Join(*resourceDir, getShimKey(testCertRSA)),
+	}
+	ecdsaCertSlot := []string{
+		multipleCertsFlag, path.Join(*resourceDir, getShimCertificate(testCertECDSAP256)) + "," + path.Join(*resourceDir, getShimKey(testCertECDSAP256)),
+	}
+	ed25519CertSlot := []string{
+		multipleCertsFlag, path.Join(*resourceDir, getShimCertificate(testCertEd25519)) + "," + path.Join(*resourceDir, getShimKey(testCertEd25519)),
+	}
+	certificateSlotFlags := append([]string{}, rsaCertSlot...)
+	certificateSlotFlags = append(certificateSlotFlags, ecdsaCertSlot...)
+	certificateSlotFlags = append(certificateSlotFlags, ed25519CertSlot...)
+
+	signError := ":NO_COMMON_SIGNATURE_ALGORITHMS:"
+	signLocalError := "remote error: handshake failure"
+
+	// Make sure each signature algorithm works.
+	for _, alg := range testMultipleCertSlotsAlgorithms {
+		for _, ver := range tlsVersions {
+			if (ver.version < VersionTLS12) != (alg.id == 0) {
+				continue
+			}
+
+			prefix := "Server-"
+			var shouldFail bool
+			// ecdsa_sha1 does not exist in TLS 1.3.
+			if ver.version >= VersionTLS13 && alg.id == signatureECDSAWithSHA1 {
+				shouldFail = true
+			}
+			// RSA-PKCS1 does not exist in TLS 1.3.
+			if ver.version >= VersionTLS13 && hasComponent(alg.name, "PKCS1") {
+				shouldFail = true
+			}
+			// SHA-224 has been removed from TLS 1.3 and, in 1.3,
+			// the curve has to match the hash size.
+			if ver.version >= VersionTLS13 && alg.cert == testCertECDSAP224 {
+				shouldFail = true
+			}
+
+			var curveFlags []string
+			if alg.curve != 0 && ver.version <= VersionTLS12 {
+				// In TLS 1.2, the ECDH curve list also constrains ECDSA keys. Ensure the
+				// corresponding curve is enabled on the shim. Also include X25519 to
+				// ensure the shim and runner have something in common for ECDH.
+				curveFlags = flagInts("-curves", []int{int(CurveX25519), int(alg.curve)})
+			}
+
+			suffix := "-" + alg.name + "-" + ver.name
+
+			// Test that the shim will select the algorithm when configured to only
+			// support it.
+			strictAlgTest := testCase{
+				testType: serverTest,
+				name:     prefix + "Multiple-Cert-Strict-Alg" + suffix,
+				config: Config{
+					MaxVersion:                ver.version,
+					VerifySignatureAlgorithms: allAlgorithms,
+				},
+				flags: func() []string {
+				   flags := append([]string{}, certificateSlotFlags...)
+				   flags = append(flags, curveFlags...)
+				   return flags
+				}(),
+				expectations: connectionExpectations{
+					peerSignatureAlgorithm: alg.id,
+				},
+			}
+
+			if alg.id != 0 {
+				strictAlgTest.flags = append(strictAlgTest.flags, "-signing-prefs", strconv.Itoa(int(alg.id)))
+			}
+
+			// TLS 1.2 servers only sign on some cipher suites.
+			if ver.version <= VersionTLS12 {
+				strictAlgTest.config.CipherSuites = []uint16{alg.cipher}
+			}
+
+			// Extend the original test, but force it to use the early certificate callback instead.
+			// Expected behavior should be the same.
+			strictAlgCallbackTest := strictAlgTest
+			strictAlgCallbackTest.name = prefix + "Multiple-Cert-Strict-Alg-Callback" + suffix
+			strictAlgCallbackTest.flags = append(strictAlgCallbackTest.flags, "-use-early-callback")
+
+			// Verify that we don't support multiple certificate slots on the client side. The client should be
+			// configured with the last certificate set (ED25519 in this case).
+			prefix = "Client-"
+			strictAlgClientTest := testCase{
+				testType: clientTest,
+				name:     prefix + "Multiple-Cert-Strict-Alg" + suffix,
+				config: Config{
+					MaxVersion:                ver.version,
+					VerifySignatureAlgorithms: []signatureAlgorithm{alg.id},
+					ClientAuth:                RequireAnyClientCert,
+					Certificates:              []Certificate{rsaCertificate, ecdsaP256Certificate, ed25519Certificate},
+				},
+				flags: func() []string {
+				   flags := append([]string{}, certificateSlotFlags...)
+				   flags = append(flags, curveFlags...)
+				   return flags
+				}(),
+			}
+			if alg.id != signatureEd25519 {
+				// ED25519 is the last certificate set in |certificateSlotFlags|. We don't support multiple certificate
+				// slots on the client side, so the client should only be configured to use ED25519.
+				strictAlgClientTest.shouldFail = true
+				strictAlgClientTest.expectedError = signError
+				strictAlgClientTest.expectedLocalError = signLocalError
+			}
+
+			if !shouldFail {
+				testCases = append(testCases, strictAlgTest)
+				testCases = append(testCases, strictAlgCallbackTest)
+				testCases = append(testCases, strictAlgClientTest)
+			}
+		}
+	}
+
+	for _, ver := range tlsVersions {
+		suffix := "-" + ver.name
+
+		// ED25519 signature algorithm should be prioritized if supported.
+		ed25519PriorityTest := testCase{
+			testType: serverTest,
+			name:     "Server-Multiple-Cert-ED25519-Priority" + suffix,
+			config: Config{
+				MaxVersion:                ver.version,
+				VerifySignatureAlgorithms: allAlgorithms,
+			},
+			flags: append(
+				certificateSlotFlags,
+				flagInts("-curves", []int{int(CurveX25519), int(CurveP256)})...,
+			),
+			expectations: connectionExpectations{
+				peerSignatureAlgorithm: signatureEd25519,
+			},
+		}
+
+		// Below tests verify that multiple certificates only works because we have a valid cert.
+
+		// Connection shouldn't be accepted without RSA cert.
+		noRSACertTest := testCase{
+			testType: serverTest,
+			name:     "Server-Multiple-Cert-No-RSA" + suffix,
+			config: Config{
+				MaxVersion:                ver.version,
+				VerifySignatureAlgorithms: allAlgorithms,
+			},
+			flags: []string{
+				ecdsaCertSlot[0], ecdsaCertSlot[1],
+				ed25519CertSlot[0], ed25519CertSlot[1],
+				"-signing-prefs", strconv.Itoa(int(signatureRSAPKCS1WithSHA256)),
+			},
+			shouldFail:         true,
+			expectedError:      signError,
+			expectedLocalError: signLocalError,
+		}
+		// RSA support in TLS1.2 and lower is indicated with |mask_k| in |ssl_get_compatible_server_ciphers|.
+		// We do not have a valid public or private RSA key set up, so this fails early.
+		if ver.version <= VersionTLS12 {
+			noRSACertTest.expectedError = ":NO_SHARED_CIPHER:"
+		}
+
+		// Connection shouldn't be accepted without ECDSA cert.
+		noECDSACertTest := testCase{
+			testType: serverTest,
+			name:     "Server-Multiple-Cert-No-ECDSA" + suffix,
+			config: Config{
+				MaxVersion:                ver.version,
+				VerifySignatureAlgorithms: allAlgorithms,
+			},
+			flags: []string{
+				rsaCertSlot[0], rsaCertSlot[1],
+				ed25519CertSlot[0], ed25519CertSlot[1],
+				"-signing-prefs", strconv.Itoa(int(signatureECDSAWithP256AndSHA256)),
+			},
+			shouldFail:         true,
+			expectedError:      signError,
+			expectedLocalError: signLocalError,
+		}
+
+		// Connection shouldn't be accepted without ED25519 cert.
+		noED25519CertTest := testCase{
+			testType: serverTest,
+			name:     "Server-Multiple-Cert-No-ED25519" + suffix,
+			config: Config{
+				MaxVersion:                ver.version,
+				VerifySignatureAlgorithms: allAlgorithms,
+			},
+			flags: []string{
+				rsaCertSlot[0], rsaCertSlot[1],
+				ecdsaCertSlot[0], ecdsaCertSlot[1],
+				"-signing-prefs", strconv.Itoa(int(signatureEd25519)),
+			},
+			shouldFail:         true,
+			expectedError:      signError,
+			expectedLocalError: signLocalError,
+		}
+
+		if ver.version <= VersionTLS12 {
+			noRSACertTest.config.CipherSuites = []uint16{TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA}
+			noECDSACertTest.config.CipherSuites = []uint16{TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA}
+			noED25519CertTest.config.CipherSuites = []uint16{TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256}
+		}
+
+		// ED25519 is only supported in TLS1.2 and above.
+		if ver.version >= VersionTLS12 {
+			testCases = append(testCases, ed25519PriorityTest)
+			testCases = append(testCases, noED25519CertTest)
+		}
+		testCases = append(testCases, noRSACertTest)
+		testCases = append(testCases, noECDSACertTest)
+	}
+}
+
 func worker(statusChan chan statusMsg, c chan *testCase, shimPath string, wg *sync.WaitGroup) {
 	defer wg.Done()
 
@@ -19806,7 +20056,7 @@ func fixUpCipherSuites() {
 		}
 
 		if add_disabld_cipher_suite {
-			test_case.flags = append(test_case.flags, "-cipher", "DEFAULT" + disabled_ciphers)
+			test_case.flags = append(test_case.flags, "-cipher", "DEFAULT"+disabled_ciphers)
 			testCases[index] = test_case
 		}
 	}
@@ -19911,6 +20161,7 @@ func main() {
 	addDelegatedCredentialTests()
 	addEncryptedClientHelloTests()
 	addHintMismatchTests()
+	addMultipleCertSlotTests()
 
 	toAppend, err := convertToSplitHandshakeTests(testCases)
 	if err != nil {

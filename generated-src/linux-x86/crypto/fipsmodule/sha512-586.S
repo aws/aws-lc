@@ -8,9 +8,7 @@
 #endif
 
 #if !defined(OPENSSL_NO_ASM) && defined(__i386__) && defined(__ELF__)
-#if defined(BORINGSSL_PREFIX)
-#include <boringssl_prefix_symbols_asm.h>
-#endif
+#include <openssl/boringssl_prefix_symbols_asm.h>
 .text
 .globl	sha512_block_data_order
 .hidden	sha512_block_data_order

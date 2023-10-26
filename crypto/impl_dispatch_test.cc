@@ -36,13 +36,28 @@ class ImplDispatchTest : public ::testing::Test {
  public:
   void SetUp() override {
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
-    aesni_ = CRYPTO_is_AESNI_capable();
+    aes_hw_ = CRYPTO_is_AESNI_capable();
     avx_movbe_ = CRYPTO_is_AVX_capable() && CRYPTO_is_MOVBE_capable();
-    ssse3_ = CRYPTO_is_SSSE3_capable();
-    sha_ext_ = CRYPTO_is_SHAEXT_capable();
+    aes_vpaes_ = CRYPTO_is_SSSE3_capable();
+    sha_ext_ =
+// TODO(CryptoAlg-2137): sha_ext_ isn't enabled on Windows Debug Builds with newer
+// 32-bit Intel processors.
+#if !(defined(OPENSSL_WINDOWS) && defined(OPENSSL_X86) && !defined(NDEBUG))
+    CRYPTO_is_SHAEXT_capable();
+#else
+    false;
+#endif
+
     vaes_vpclmulqdq_ =
-        (OPENSSL_ia32cap_P[2] & 0xC0030000) &&         // AVX512{F+DQ+BW+VL}
-        (((OPENSSL_ia32cap_P[3] >> 9) & 0x3) == 0x3);  // VAES + VPCLMULQDQ
+#if !defined(OPENSSL_WINDOWS)
+  // crypto_gcm_avx512_enabled excludes Windows
+        CRYPTO_is_AVX512_capable() &&
+        CRYPTO_is_VAES_capable() &&
+        CRYPTO_is_VPCLMULQDQ_capable();
+#else
+        false;
+#endif
+
     is_x86_64_ =
 #if defined(OPENSSL_X86_64)
         true;
@@ -61,7 +76,14 @@ class ImplDispatchTest : public ::testing::Test {
 #else
         false;
 #endif // MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX
-#endif  // X86 || X86_64
+#elif defined(OPENSSL_AARCH64)
+    aes_hw_ = CRYPTO_is_ARMv8_AES_capable();
+    aes_vpaes_ = CRYPTO_is_NEON_capable();
+    aes_gcm_pmull_ = CRYPTO_is_ARMv8_PMULL_capable();
+    aes_gcm_8x_ = CRYPTO_is_ARMv8_GCM_8x_capable();
+    sha_ext_ = OPENSSL_armcap_P & ARMV8_SHA256;
+    sha_512_ext_ = OPENSSL_armcap_P & ARMV8_SHA512;
+#endif
   }
 
  protected:
@@ -88,50 +110,70 @@ class ImplDispatchTest : public ::testing::Test {
     }
   }
 
+  bool aes_hw_ = false;
+  bool aes_vpaes_ = false;
+  bool sha_ext_ = false;
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
   bool vaes_vpclmulqdq_ = false;
-  bool aesni_ = false;
   bool avx_movbe_ = false;
-  bool ssse3_ = false;
-  bool sha_ext_ = false;
   bool is_x86_64_ = false;
   bool is_assembler_too_old = false;
   bool is_assembler_too_old_avx512 = false;
+#else // AARCH64
+  bool aes_gcm_pmull_ = false;
+  bool aes_gcm_8x_ = false;
+  bool sha_512_ext_ = false;
 #endif
+
 };
 
-#if !defined(OPENSSL_NO_ASM) && \
-    (defined(OPENSSL_X86) || defined(OPENSSL_X86_64))
+#if !defined(OPENSSL_NO_ASM) && (defined(OPENSSL_X86) || \
+    defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64))
 
 constexpr size_t kFlag_aes_hw_ctr32_encrypt_blocks = 0;
 constexpr size_t kFlag_aes_hw_encrypt = 1;
-constexpr size_t kFlag_aesni_gcm_encrypt = 2;
 constexpr size_t kFlag_aes_hw_set_encrypt_key = 3;
 constexpr size_t kFlag_vpaes_encrypt = 4;
 constexpr size_t kFlag_vpaes_set_encrypt_key = 5;
-constexpr size_t kFlag_sha256_shaext = 6;
+constexpr size_t kFlag_sha256_hw = 6;
+#if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
+constexpr size_t kFlag_aesni_gcm_encrypt = 2;
 constexpr size_t kFlag_aes_gcm_encrypt_avx512 = 7;
+#else // AARCH64
+constexpr size_t kFlag_aes_gcm_enc_kernel = 2;
+constexpr size_t kFlag_aesv8_gcm_8x_enc_128 = 7;
+constexpr size_t kFlag_sha512_hw = 8;
+#endif
 
 TEST_F(ImplDispatchTest, AEAD_AES_GCM) {
   AssertFunctionsHit(
       {
-          {kFlag_aes_hw_ctr32_encrypt_blocks, aesni_ &&
+          {kFlag_aes_hw_encrypt, aes_hw_},
+          {kFlag_aes_hw_set_encrypt_key, aes_hw_},
+          {kFlag_vpaes_encrypt, aes_vpaes_ && !aes_hw_},
+          {kFlag_vpaes_set_encrypt_key, aes_vpaes_ && !aes_hw_},
+#if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
+          {kFlag_aes_hw_ctr32_encrypt_blocks, aes_hw_ &&
            (is_assembler_too_old || !vaes_vpclmulqdq_)},
-          {kFlag_aes_hw_encrypt, aesni_},
-          {kFlag_aes_hw_set_encrypt_key, aesni_},
           {kFlag_aesni_gcm_encrypt,
-           is_x86_64_ && aesni_ && avx_movbe_ &&
+           is_x86_64_ && aes_hw_ && avx_movbe_ &&
            !is_assembler_too_old && !vaes_vpclmulqdq_},
-          {kFlag_vpaes_encrypt, ssse3_ && !aesni_},
-          {kFlag_vpaes_set_encrypt_key, ssse3_ && !aesni_},
           {kFlag_aes_gcm_encrypt_avx512,
-           is_x86_64_ && aesni_ &&
+           is_x86_64_ && aes_hw_ &&
            !is_assembler_too_old_avx512 &&
            vaes_vpclmulqdq_},
+#else // AARCH64
+          {kFlag_aes_hw_ctr32_encrypt_blocks, aes_hw_ &&
+           !aes_gcm_pmull_ && !aes_gcm_8x_},
+          {kFlag_aes_gcm_enc_kernel, aes_hw_ &&
+           aes_gcm_pmull_ && !aes_gcm_8x_},
+          {kFlag_aesv8_gcm_8x_enc_128, aes_hw_ &&
+           aes_gcm_pmull_ && aes_gcm_8x_}
+#endif
       },
       [] {
         const uint8_t kZeros[16] = {0};
-        const uint8_t kPlaintext[40] = {1, 2, 3, 4, 0};
+        const uint8_t kPlaintext[256] = {1, 2, 3, 4, 0};
         uint8_t ciphertext[sizeof(kPlaintext) + 16];
         size_t ciphertext_len;
         bssl::ScopedEVP_AEAD_CTX ctx;
@@ -148,8 +190,8 @@ TEST_F(ImplDispatchTest, AEAD_AES_GCM) {
 TEST_F(ImplDispatchTest, AES_set_encrypt_key) {
   AssertFunctionsHit(
       {
-          {kFlag_aes_hw_set_encrypt_key, aesni_},
-          {kFlag_vpaes_set_encrypt_key, ssse3_ && !aesni_},
+          {kFlag_aes_hw_set_encrypt_key, aes_hw_},
+          {kFlag_vpaes_set_encrypt_key, aes_vpaes_ && !aes_hw_},
       },
       [] {
         AES_KEY key;
@@ -165,8 +207,8 @@ TEST_F(ImplDispatchTest, AES_single_block) {
 
   AssertFunctionsHit(
       {
-          {kFlag_aes_hw_encrypt, aesni_},
-          {kFlag_vpaes_encrypt, ssse3_ && !aesni_},
+          {kFlag_aes_hw_encrypt, aes_hw_},
+          {kFlag_vpaes_encrypt, aes_vpaes_ && !aes_hw_},
       },
       [&key] {
         uint8_t in[AES_BLOCK_SIZE] = {0};
@@ -178,7 +220,7 @@ TEST_F(ImplDispatchTest, AES_single_block) {
 TEST_F(ImplDispatchTest, SHA256) {
   AssertFunctionsHit(
       {
-          {kFlag_sha256_shaext, sha_ext_},
+          {kFlag_sha256_hw, sha_ext_},
       },
       [] {
         const uint8_t in[32] = {0};
@@ -187,6 +229,20 @@ TEST_F(ImplDispatchTest, SHA256) {
       });
 }
 
-#endif  // X86 || X86_64
+#ifdef OPENSSL_AARCH64
+TEST_F(ImplDispatchTest, SHA512) {
+  AssertFunctionsHit(
+      {
+          {kFlag_sha512_hw, sha_512_ext_},
+      },
+      [] {
+        const uint8_t in[32] = {0};
+        uint8_t out[SHA512_DIGEST_LENGTH];
+        SHA512(in, 32, out);
+      });
+}
+#endif // OPENSSL_AARCH64
+
+#endif  // !OPENSSL_NO_ASM && (OPENSSL_X86 || OPENSSL_X86_64 || OPENSSL_AARCH64)
 
 #endif  // DISPATCH_TEST && !SHARED_LIBRARY

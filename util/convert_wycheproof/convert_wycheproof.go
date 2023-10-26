@@ -26,11 +26,11 @@ import (
 )
 
 type wycheproofTest struct {
-	Algorithm        string            `json:"algorithm"`
-	GeneratorVersion string            `json:"generatorVersion"`
-	NumberOfTests    int               `json:"numberOfTests"`
-	Notes            map[string]string `json:"notes"`
-	Header           []string          `json:"header"`
+	Algorithm        string         `json:"algorithm"`
+	GeneratorVersion string         `json:"generatorVersion"`
+	NumberOfTests    int            `json:"numberOfTests"`
+	Notes            map[string]any `json:"notes"`
+	Header           []string       `json:"header"`
 	// encoding/json does not support collecting unused keys, so we leave
 	// everything past this point as generic.
 	TestGroups []map[string]any `json:"testGroups"`
@@ -224,6 +224,8 @@ var defaultInputs = []string{
 	"hmac_sha256_test.json",
 	"hmac_sha384_test.json",
 	"hmac_sha512_test.json",
+	"hmac_sha512_224_test.json",
+	"hmac_sha512_256_test.json",
 	"kw_test.json",
 	"kwp_test.json",
 	"primality_test.json",

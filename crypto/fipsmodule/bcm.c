@@ -71,6 +71,7 @@
 #include "cipher/e_aesccm.c"
 
 #include "cpucap/internal.h"
+#include "cpucap/cpu_aarch64.c"
 #include "cpucap/cpu_aarch64_apple.c"
 #include "cpucap/cpu_aarch64_freebsd.c"
 #include "cpucap/cpu_aarch64_fuchsia.c"
@@ -227,14 +228,19 @@ static void BORINGSSL_bcm_power_on_self_test(void) __attribute__ ((constructor))
 #endif
 
 static void BORINGSSL_bcm_power_on_self_test(void) {
-#if !defined(OPENSSL_NO_ASM)
+// TODO: remove !defined(OPENSSL_PPC64BE) from the check below when starting to support
+// PPC64BE that has VCRYPTO capability. In that case, add `|| defined(OPENSSL_PPC64BE)`
+// to `#if defined(OPENSSL_PPC64LE)` wherever it occurs.
+#if !defined(OPENSSL_NO_ASM) && !defined(OPENSSL_PPC32BE) && !defined(OPENSSL_PPC64BE)
   OPENSSL_cpuid_setup();
 #endif
 
+#if defined(FIPS_ENTROPY_SOURCE_JITTER_CPU)
   if (jent_entropy_init()) {
     fprintf(stderr, "CPU Jitter entropy RNG initialization failed.\n");
     goto err;
   }
+#endif
 
 #if !defined(OPENSSL_ASAN)
   // Integrity tests cannot run under ASAN because it involves reading the full
@@ -272,7 +278,7 @@ int BORINGSSL_integrity_test(void) {
   assert_not_within(start, OPENSSL_ia32cap_P, end);
 #elif defined(OPENSSL_AARCH64)
   assert_not_within(start, &OPENSSL_armcap_P, end);
-#endif  
+#endif
 
 #if defined(BORINGSSL_SHARED_LIBRARY)
   const uint8_t *const rodata_start = BORINGSSL_bcm_rodata_start;

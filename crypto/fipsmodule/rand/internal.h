@@ -129,9 +129,29 @@ OPENSSL_INLINE int have_fast_rdrand(void) {
 #define MAX_BACKOFF_RETRIES 9
 OPENSSL_EXPORT void HAZMAT_set_urandom_test_mode_for_testing(void);
 
+// Total number of bytes of entropy to load into FIPS module. Separate constants
+// that separate the logically distinct operations (1) loading entropy, and (2)
+// invoking DRBG.
+#define PASSIVE_ENTROPY_LOAD_LENGTH CTR_DRBG_ENTROPY_LEN
+
 #if defined(BORINGSSL_FIPS)
+
+#if defined(FIPS_ENTROPY_SOURCE_JITTER_CPU)
+
 #define JITTER_MAX_NUM_TRIES (3)
+
+#elif defined(FIPS_ENTROPY_SOURCE_PASSIVE)
+
+OPENSSL_EXPORT void RAND_module_entropy_depleted(uint8_t out_entropy[CTR_DRBG_ENTROPY_LEN],
+                                  int *out_want_additional_input);
+void CRYPTO_get_seed_entropy(uint8_t entropy[PASSIVE_ENTROPY_LOAD_LENGTH],
+                             int *out_want_additional_input);
+OPENSSL_EXPORT void RAND_load_entropy(uint8_t out_entropy[CTR_DRBG_ENTROPY_LEN],
+                       uint8_t entropy[PASSIVE_ENTROPY_LOAD_LENGTH]);
+
 #endif
+
+#endif // defined(BORINGSSL_FIPS)
 
 #if defined(__cplusplus)
 }  // extern C

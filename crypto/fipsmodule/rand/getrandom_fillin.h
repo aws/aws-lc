@@ -34,6 +34,8 @@
 #define EXPECTED_NR_getrandom 359
 #elif defined(OPENSSL_RISCV64)
 #define EXPECTED_NR_getrandom 278
+#elif defined(OPENSSL_LOONGARCH64)
+#define EXPECTED_NR_getrandom 278
 #endif
 
 #if defined(EXPECTED_NR_getrandom)

@@ -8,9 +8,7 @@
 #endif
 
 #if defined(__x86_64__) && !defined(OPENSSL_NO_ASM) && defined(__ELF__)
-#if defined(BORINGSSL_PREFIX)
-#include <boringssl_prefix_symbols_asm.h>
-#endif
+#include <openssl/boringssl_prefix_symbols_asm.h>
 .text	
 
 .type	_aesni_ctr32_ghash_6x,@function
@@ -305,6 +303,9 @@ _aesni_ctr32_ghash_6x:
 	vpaddb	%xmm2,%xmm1,%xmm0
 	movq	%r13,112+8(%rsp)
 	leaq	96(%rdi),%rdi
+
+	prefetcht0	512(%rdi)
+	prefetcht0	576(%rdi)
 	vaesenclast	%xmm5,%xmm11,%xmm11
 	vpaddb	%xmm2,%xmm0,%xmm5
 	movq	%r12,120+8(%rsp)
@@ -380,17 +381,18 @@ aesni_gcm_decrypt:
 
 	vzeroupper
 
+	movq	16(%rbp),%r12
 	vmovdqu	(%r8),%xmm1
 	addq	$-128,%rsp
 	movl	12(%r8),%ebx
 	leaq	.Lbswap_mask(%rip),%r11
 	leaq	-128(%rcx),%r14
 	movq	$0xf80,%r15
-	vmovdqu	(%r9),%xmm8
+	vmovdqu	(%r12),%xmm8
 	andq	$-128,%rsp
 	vmovdqu	(%r11),%xmm0
 	leaq	128(%rcx),%rcx
-	leaq	32+32(%r9),%r9
+	leaq	32(%r9),%r9
 	movl	240-128(%rcx),%r10d
 	vpshufb	%xmm0,%xmm8,%xmm8
 
@@ -435,6 +437,7 @@ aesni_gcm_decrypt:
 
 	call	_aesni_ctr32_ghash_6x
 
+	movq	16(%rbp),%r12
 	vmovups	%xmm9,-96(%rsi)
 	vmovups	%xmm10,-80(%rsi)
 	vmovups	%xmm11,-64(%rsi)
@@ -443,7 +446,7 @@ aesni_gcm_decrypt:
 	vmovups	%xmm14,-16(%rsi)
 
 	vpshufb	(%r11),%xmm8,%xmm8
-	vmovdqu	%xmm8,-64(%r9)
+	vmovdqu	%xmm8,(%r12)
 
 	vzeroupper
 	leaq	-40(%rbp),%rsp
@@ -655,8 +658,9 @@ aesni_gcm_encrypt:
 
 	call	_aesni_ctr32_6x
 
-	vmovdqu	(%r9),%xmm8
-	leaq	32+32(%r9),%r9
+	movq	16(%rbp),%r12
+	leaq	32(%r9),%r9
+	vmovdqu	(%r12),%xmm8
 	subq	$12,%rdx
 	movq	$192,%rax
 	vpshufb	%xmm0,%xmm8,%xmm8
@@ -834,8 +838,9 @@ aesni_gcm_encrypt:
 	vpclmulqdq	$0x10,%xmm3,%xmm8,%xmm8
 	vpxor	%xmm7,%xmm2,%xmm2
 	vpxor	%xmm2,%xmm8,%xmm8
+	movq	16(%rbp),%r12
 	vpshufb	(%r11),%xmm8,%xmm8
-	vmovdqu	%xmm8,-64(%r9)
+	vmovdqu	%xmm8,(%r12)
 
 	vzeroupper
 	leaq	-40(%rbp),%rsp

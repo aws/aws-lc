@@ -1,0 +1,115 @@
+diff --git a/tests/check/cachedsess.t.c b/tests/check/cachedsess.t.c
+index 7dbac6e..58a47d5 100644
+--- a/tests/check/cachedsess.t.c
++++ b/tests/check/cachedsess.t.c
+@@ -40,6 +40,8 @@
+ 
+ #if defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER < 0x20501000L
+ #define TMP_SESS_FILE "pki/session-libressl-2.5.0.pem"
++#elif defined(OPENSSL_IS_AWSLC)
++#define TMP_SESS_FILE "pki/session-aws-lc-1.15.0.pem"
+ #else
+ #define TMP_SESS_FILE "pki/session.pem"
+ #endif
+diff --git a/tests/check/cachessess.t.c b/tests/check/cachessess.t.c
+index 754b7d3..1cd3294 100644
+--- a/tests/check/cachessess.t.c
++++ b/tests/check/cachessess.t.c
+@@ -39,6 +39,8 @@
+ 
+ #if defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER < 0x20501000L
+ #define TMP_SESS_FILE "pki/session-libressl-2.5.0.pem"
++#elif defined(OPENSSL_IS_AWSLC)
++#define TMP_SESS_FILE "pki/session-aws-lc-1.15.0.pem"
+ #else
+ #define TMP_SESS_FILE "pki/session.pem"
+ #endif
+diff --git a/tests/check/filterstruct.t.c b/tests/check/filterstruct.t.c
+index 47ef6f2..c2d8b85 100644
+--- a/tests/check/filterstruct.t.c
++++ b/tests/check/filterstruct.t.c
+@@ -59,7 +59,7 @@
+ 
+ #ifndef OPENSSL_NO_ECDH
+ #define	ECDHCURVE "no ecdhcurve|"
+-#define	ECDH_PRIME2 "prime192v1|"
++#define	ECDH_PRIME2 "secp224r1|"
+ #else
+ #define	ECDHCURVE ""
+ #define	ECDH_PRIME2 ""
+@@ -4255,7 +4255,7 @@ START_TEST(set_filter_struct_16)
+ 		"LeafCRLURL http://example1.com/example1.crl\n"
+ 		//"DHGroupParams /etc/sslproxy/dh.pem\n"
+ #ifndef OPENSSL_NO_ECDH
+-		"ECDHCurve prime192v1\n"
++		"ECDHCurve secp224r1\n"
+ #endif /* !OPENSSL_NO_ECDH */
+ #ifdef SSL_OP_NO_COMPRESSION
+ 		"SSLCompression yes\n"
+@@ -4378,7 +4378,7 @@ START_TEST(set_filter_struct_17)
+ 		"LeafCRLURL http://example1.com/example1.crl\n"
+ 		//"DHGroupParams /etc/sslproxy/dh.pem\n"
+ #ifndef OPENSSL_NO_ECDH
+-		"ECDHCurve prime192v1\n"
++		"ECDHCurve secp224r1\n"
+ #endif /* !OPENSSL_NO_ECDH */
+ #ifdef SSL_OP_NO_COMPRESSION
+ 		"SSLCompression yes\n"
+diff --git a/tests/check/opts.t.c b/tests/check/opts.t.c
+index 0ea2810..19c5885 100644
+--- a/tests/check/opts.t.c
++++ b/tests/check/opts.t.c
+@@ -128,7 +128,7 @@ static char *argv14[] = {
+ 
+ #ifndef OPENSSL_NO_ECDH
+ #define	ECDH_PRIME1 "prime256v1|"
+-#define	ECDH_PRIME2 "prime192v1|"
++#define	ECDH_PRIME2 "secp224r1|"
+ #else
+ #define	ECDH_PRIME1 ""
+ #define	ECDH_PRIME2 ""
+@@ -750,7 +750,7 @@ START_TEST(proxyspec_struct_parse_01)
+ 			"LeafCRLURL http://example1.com/example1.crl\n"
+ 			"#DHGroupParams /etc/sslproxy/dh.pem\n"
+ #ifndef OPENSSL_NO_ECDH
+-			"ECDHCurve prime192v1\n"
++			"ECDHCurve secp224r1\n"
+ #endif /* !OPENSSL_NO_ECDH */
+ #ifdef SSL_OP_NO_COMPRESSION
+ 			"SSLCompression yes\n"
+diff --git a/tests/check/pki/session-aws-lc-1.15.0.pem b/tests/check/pki/session-aws-lc-1.15.0.pem
+new file mode 100644
+index 0000000..cb2b27d
+--- /dev/null
++++ b/tests/check/pki/session-aws-lc-1.15.0.pem
+@@ -0,0 +1,30 @@
++-----BEGIN SSL SESSION PARAMETERS-----
++MIIFDgIBAQICAwMEAsAvBCAG5Q1ndq4Yfmbeo1zwLkNRKmCXGdNgWvGT3cskV0yQ
++kAQwJlrlzkAWBOWiLj/jJ76D7l+UXoizP2KI2C7I2FccqMmIfFmmkUy32nIJ0mZH
++IWoJoQYCBGT/pz2iBAICASyjggR6MIIEdjCCA16gAwIBAgIIK9dUvsPWSlUwDQYJ
++KoZIhvcNAQEFBQAwSTELMAkGA1UEBhMCVVMxEzARBgNVBAoTCkdvb2dsZSBJbmMx
++JTAjBgNVBAMTHEdvb2dsZSBJbnRlcm5ldCBBdXRob3JpdHkgRzIwHhcNMTQxMDA4
++MTIwNzU3WhcNMTUwMTA2MDAwMDAwWjBoMQswCQYDVQQGEwJVUzETMBEGA1UECAwK
++Q2FsaWZvcm5pYTEWMBQGA1UEBwwNTW91bnRhaW4gVmlldzETMBEGA1UECgwKR29v
++Z2xlIEluYzEXMBUGA1UEAwwOd3d3Lmdvb2dsZS5jb20wggEiMA0GCSqGSIb3DQEB
++AQUAA4IBDwAwggEKAoIBAQCcKeLrplAC+Lofy8t/wDwtB6eu72CVp0cJ4V3lknN6
++huH9ct6FFk70oRIh/VBNBBz900jYy+7111Jm1b8iqOTQ9aT5C7SEhNcQFJvqzH3e
++MPkb6ZSWGm1yGF7MCQTGQXF20Sk/O16FSjAynU/b3oJmOctcycWYkY0ytS/k3LBu
++Id45PJaoMqjB0WypqvNeJHC3q5JjCB4RP7Nfx5jjHSrCMhw8lUMW4EaDxjaR9KDh
++PLgjsk+LDIySRSRDaCQGhEOWLJZVLzLo4N6/UlctCHEllpBUSvEOyFga52qroGjg
++rf3WOQ925MFwzd6AK+Ich0gDRg8sQfdLH5OuP1cfLfU1AgMBAAGjggFBMIIBPTAd
++BgNVHSUEFjAUBggrBgEFBQcDAQYIKwYBBQUHAwIwGQYDVR0RBBIwEIIOd3d3Lmdv
++b2dsZS5jb20waAYIKwYBBQUHAQEEXDBaMCsGCCsGAQUFBzAChh9odHRwOi8vcGtp
++Lmdvb2dsZS5jb20vR0lBRzIuY3J0MCsGCCsGAQUFBzABhh9odHRwOi8vY2xpZW50
++czEuZ29vZ2xlLmNvbS9vY3NwMB0GA1UdDgQWBBQ7a+CcxsZByOpc+xpYFcIbnUMZ
++hTAMBgNVHRMBAf8EAjAAMB8GA1UdIwQYMBaAFErdBhYbvPZotXb1gba7Yhq6WoEv
++MBcGA1UdIAQQMA4wDAYKKwYBBAHWeQIFATAwBgNVHR8EKTAnMCWgI6Ahhh9odHRw
++Oi8vcGtpLmdvb2dsZS5jb20vR0lBRzIuY3JsMA0GCSqGSIb3DQEBBQUAA4IBAQCa
++OXCBdoqUy5bxyq+Wrh1zsyyCFim1PH5VU2+yvDSWrgDY8ibRGJmfff3r4Lud5kal
++dKs9k8YlKD3ITG7P0YT/Rk8hLgfEuLcq5cc0xqmE42xJ+Eo2uzq9rYorc5emMCxf
++5L0TJOXZqHQpOEcuptZQ4OjdYMfSxk5UzueUhA3ogZKRcRkdB3WeWRp+nYRhx4St
++o2rt2A0MKmY9165GHUqMK9YaaXHDXqBu7Sefr1uSoAP9gyIJKeihMivsGqJ1TD6Z
++cc6LMe+dN2P8cZEQHtD1y296ul4Mivqk3jatUVL8/hCwgch9A8O4PGZq9WqBfEWm
++IyHh1dPtbg1lOXdYCWtjpAIEAKUDAgEUqQUCAwGJwKoMBAphYWFhYWFhYWFhtgMB
++AQA=
++-----END SSL SESSION PARAMETERS-----

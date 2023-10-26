@@ -8,9 +8,7 @@
 #endif
 
 #if defined(__x86_64__) && !defined(OPENSSL_NO_ASM) && defined(__ELF__)
-#if defined(BORINGSSL_PREFIX)
-#include <boringssl_prefix_symbols_asm.h>
-#endif
+#include <openssl/boringssl_prefix_symbols_asm.h>
 .text	
 .extern	OPENSSL_ia32cap_P
 .hidden OPENSSL_ia32cap_P
@@ -1262,6 +1260,8 @@ aes_hw_ctr32_encrypt_blocks:
 	pxor	%xmm0,%xmm13
 	movdqu	80(%rdi),%xmm15
 	pxor	%xmm0,%xmm14
+	prefetcht0	448(%rdi)
+	prefetcht0	512(%rdi)
 	pxor	%xmm0,%xmm15
 .byte	102,15,56,220,209
 .byte	102,15,56,220,217

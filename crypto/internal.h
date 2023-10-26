@@ -445,19 +445,43 @@ static inline int constant_time_select_int(crypto_word_t mask, int a, int b) {
 // of memory as secret. Secret data is tracked as it flows to registers and
 // other parts of a memory. If secret data is used as a condition for a branch,
 // or as a memory index, it will trigger warnings in valgrind.
-#define CONSTTIME_SECRET(x, y) VALGRIND_MAKE_MEM_UNDEFINED(x, y)
+#define CONSTTIME_SECRET(ptr, len) VALGRIND_MAKE_MEM_UNDEFINED(ptr, len)
 
 // CONSTTIME_DECLASSIFY takes a pointer and a number of bytes and marks that
 // region of memory as public. Public data is not subject to constant-time
 // rules.
-#define CONSTTIME_DECLASSIFY(x, y) VALGRIND_MAKE_MEM_DEFINED(x, y)
+#define CONSTTIME_DECLASSIFY(ptr, len) VALGRIND_MAKE_MEM_DEFINED(ptr, len)
 
 #else
 
-#define CONSTTIME_SECRET(x, y)
-#define CONSTTIME_DECLASSIFY(x, y)
+#define CONSTTIME_SECRET(ptr, len)
+#define CONSTTIME_DECLASSIFY(ptr, len)
 
 #endif  // BORINGSSL_CONSTANT_TIME_VALIDATION
+
+static inline crypto_word_t constant_time_declassify_w(crypto_word_t v) {
+  // Return |v| through a value barrier to be safe. Valgrind-based constant-time
+  // validation is partly to check the compiler has not undone any constant-time
+  // work. Any place |BORINGSSL_CONSTANT_TIME_VALIDATION| influences
+  // optimizations, this validation is inaccurate.
+  //
+  // However, by sending pointers through valgrind, we likely inhibit escape
+  // analysis. On local variables, particularly booleans, we likely
+  // significantly impact optimizations.
+  //
+  // Thus, to be safe, stick a value barrier, in hopes of comparably inhibiting
+  // compiler analysis.
+  CONSTTIME_DECLASSIFY(&v, sizeof(v));
+  return value_barrier_w(v);
+}
+
+static inline int constant_time_declassify_int(int v) {
+  OPENSSL_STATIC_ASSERT(sizeof(uint32_t) == sizeof(int),
+                int_is_not_the_same_size_as_uint32_t);
+  // See comment above.
+  CONSTTIME_DECLASSIFY(&v, sizeof(v));
+  return value_barrier_u32(v);
+}
 
 
 // Thread-safe initialisation.
@@ -492,6 +516,14 @@ OPENSSL_EXPORT void CRYPTO_once(CRYPTO_once_t *once, void (*init)(void));
     !defined(__STDC_NO_ATOMICS__) && defined(__STDC_VERSION__) && \
     __STDC_VERSION__ >= 201112L
 #define OPENSSL_C11_ATOMIC
+#endif
+
+// Older MSVC does not support C11 atomics, so we fallback to the Windows APIs.
+// This can be removed once we can rely on
+// https://devblogs.microsoft.com/cppblog/c11-atomics-in-visual-studio-2022-version-17-5-preview-2/
+#if !defined(OPENSSL_C11_ATOMIC) && defined(OPENSSL_THREADS) && \
+    defined(OPENSSL_WINDOWS)
+#define OPENSSL_WINDOWS_ATOMIC
 #endif
 
 // CRYPTO_REFCOUNT_MAX is the value at which the reference count saturates.
@@ -726,6 +758,15 @@ static inline uint32_t CRYPTO_bswap4(uint32_t x) {
 static inline uint64_t CRYPTO_bswap8(uint64_t x) {
   return __builtin_bswap64(x);
 }
+static inline crypto_word_t CRYPTO_bswap_word(crypto_word_t x) {
+#if defined(OPENSSL_64_BIT)
+  return CRYPTO_bswap8(x);
+#else
+  return CRYPTO_bswap4(x);
+#endif
+}
+
+
 #elif defined(_MSC_VER)
 OPENSSL_MSVC_PRAGMA(warning(push, 3))
 #include <stdlib.h>
@@ -847,55 +888,113 @@ static inline void *OPENSSL_memset(void *dst, int c, size_t n) {
 static inline uint32_t CRYPTO_load_u32_le(const void *in) {
   uint32_t v;
   OPENSSL_memcpy(&v, in, sizeof(v));
+#if defined(OPENSSL_BIG_ENDIAN)
+  return CRYPTO_bswap4(v);
+#else
   return v;
+#endif
 }
 
 static inline void CRYPTO_store_u32_le(void *out, uint32_t v) {
+#if defined(OPENSSL_BIG_ENDIAN)
+  v = CRYPTO_bswap4(v);
+#endif
   OPENSSL_memcpy(out, &v, sizeof(v));
+
 }
 
 static inline uint32_t CRYPTO_load_u32_be(const void *in) {
   uint32_t v;
   OPENSSL_memcpy(&v, in, sizeof(v));
+#if defined(OPENSSL_BIG_ENDIAN)
+  return v;
+#else
   return CRYPTO_bswap4(v);
+#endif
 }
 
 static inline void CRYPTO_store_u32_be(void *out, uint32_t v) {
+
+#if !defined(OPENSSL_BIG_ENDIAN)
   v = CRYPTO_bswap4(v);
+#endif
   OPENSSL_memcpy(out, &v, sizeof(v));
+
 }
 
 static inline uint64_t CRYPTO_load_u64_le(const void *in) {
   uint64_t v;
   OPENSSL_memcpy(&v, in, sizeof(v));
+#if defined(OPENSSL_BIG_ENDIAN)
+  return CRYPTO_bswap8(v);
+#else
   return v;
+#endif
 }
 
 static inline void CRYPTO_store_u64_le(void *out, uint64_t v) {
+#if defined(OPENSSL_BIG_ENDIAN)
+  v = CRYPTO_bswap8(v);
+#endif
   OPENSSL_memcpy(out, &v, sizeof(v));
+
 }
 
 static inline uint64_t CRYPTO_load_u64_be(const void *ptr) {
   uint64_t ret;
   OPENSSL_memcpy(&ret, ptr, sizeof(ret));
+#if defined(OPENSSL_BIG_ENDIAN)
+  return ret;
+#else
   return CRYPTO_bswap8(ret);
+#endif
 }
 
 static inline void CRYPTO_store_u64_be(void *out, uint64_t v) {
+#if defined(OPENSSL_BIG_ENDIAN)
+#else
   v = CRYPTO_bswap8(v);
+#endif
   OPENSSL_memcpy(out, &v, sizeof(v));
+
 }
 
 static inline crypto_word_t CRYPTO_load_word_le(const void *in) {
+
   crypto_word_t v;
   OPENSSL_memcpy(&v, in, sizeof(v));
+#if defined(OPENSSL_BIG_ENDIAN)
+  return CRYPTO_bswap_word(v);
+#else
   return v;
+#endif
 }
 
 static inline void CRYPTO_store_word_le(void *out, crypto_word_t v) {
+
+
+#if defined(OPENSSL_BIG_ENDIAN)
+  v = CRYPTO_bswap_word(v);
+#endif
   OPENSSL_memcpy(out, &v, sizeof(v));
+
 }
 
+static inline crypto_word_t CRYPTO_load_word_be(const void *in) {
+  crypto_word_t v;
+  OPENSSL_memcpy(&v, in, sizeof(v));
+#if defined(OPENSSL_BIG_ENDIAN)
+  return v;
+#else
+#if defined(OPENSSL_64_BIT)
+  assert(sizeof(v) == 8);
+  return CRYPTO_bswap8(v);
+#else
+  assert(sizeof(v) == 4);
+  return CRYPTO_bswap4(v);
+#endif
+#endif
+}
 
 // Bit rotation functions.
 //
@@ -1013,6 +1112,7 @@ OPENSSL_INLINE int boringssl_fips_break_test(const char *test) {
 
 // BORINGSSL_function_hit is an array of flags. The following functions will
 // set these flags if BORINGSSL_DISPATCH_TEST is defined.
+// On x86 and x86_64:
 //   0: aes_hw_ctr32_encrypt_blocks
 //   1: aes_hw_encrypt
 //   2: aesni_gcm_encrypt
@@ -1021,7 +1121,17 @@ OPENSSL_INLINE int boringssl_fips_break_test(const char *test) {
 //   5: vpaes_set_encrypt_key
 //   6: sha256_block_data_order_shaext
 //   7: aes_gcm_encrypt_avx512
-extern uint8_t BORINGSSL_function_hit[8];
+// On AARCH64:
+//   0: aes_hw_ctr32_encrypt_blocks
+//   1: aes_hw_encrypt
+//   2: aes_gcm_enc_kernel
+//   3: aes_hw_set_encrypt_key
+//   4: vpaes_encrypt
+//   5: vpaes_set_encrypt_key
+//   6: sha256_block_armv8
+//   7: aesv8_gcm_8x_enc_128
+//   8: sha512_block_armv8
+extern uint8_t BORINGSSL_function_hit[9];
 #endif  // BORINGSSL_DISPATCH_TEST
 
 #if !defined(AWSLC_FIPS) && !defined(BORINGSSL_SHARED_LIBRARY)

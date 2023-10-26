@@ -7,18 +7,36 @@ source tests/ci/common_posix_setup.sh
 echo "Testing AWS-LC shared library in FIPS Release mode."
 fips_build_and_test -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=1
 
+echo "Testing AWS-LC shared library in FIPS Release mode with FIPS entropy source method CPU Jitter."
+fips_build_and_test -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=1 -DENABLE_FIPS_ENTROPY_CPU_JITTER=ON
+
 # Static FIPS build works only on Linux platforms.
 if [[ ("$(uname -s)" == 'Linux'*) && (("$(uname -p)" == 'x86_64'*) || ("$(uname -p)" == 'aarch64'*)) ]]; then
   echo "Testing AWS-LC static library in FIPS Release mode."
   fips_build_and_test -DCMAKE_BUILD_TYPE=Release
 
-  echo "Testing AWS-LC static breakable build"
+  echo "Testing AWS-LC static breakable release build"
   run_build -DFIPS=1 -DCMAKE_C_FLAGS="-DBORINGSSL_FIPS_BREAK_TESTS"
   cd $SRC_ROOT
-  ./util/fipstools/test-break-kat.sh
+  MODULE_HASH=$(./util/fipstools/test-break-kat.sh |\
+                    (egrep "Hash of module was:.* ([a-f0-9]*)" || true))
+
+  echo "Testing AWS-LC static breakable release build while keeping local symbols"
+  echo "to check that module hash didn't change."
+  run_build -DFIPS=1 -DKEEP_ASM_LOCAL_SYMBOLS=1 -DCMAKE_C_FLAGS="-DBORINGSSL_FIPS_BREAK_TESTS"
+  cd $SRC_ROOT
+  ./util/fipstools/test-break-kat.sh || grep -i hash
+  MODULE_HASH_LOCALSYMS=$(./util/fipstools/test-break-kat.sh |\
+                              (egrep "Hash of module was:.* ([a-f0-9]*)" || true))
+  if [ "$MODULE_HASH" == "$MODULE_HASH_LOCALSYMS" ]; then
+    echo "Module hash didn't change"
+  fi
 
   # These build parameters may be needed by our aws-lc-fips-sys Rust package
   run_build -DFIPS=1 -DBUILD_LIBSSL=OFF -DBUILD_TESTING=OFF
+
+  echo "Testing AWS-LC static library in FIPS Release mode with FIPS entropy source method CPU Jitter."
+  fips_build_and_test -DCMAKE_BUILD_TYPE=Release -DENABLE_FIPS_ENTROPY_CPU_JITTER=ON
 fi
 
 # The AL2 version of Clang does not have all of the required artifacts for address sanitizer, see P45594051

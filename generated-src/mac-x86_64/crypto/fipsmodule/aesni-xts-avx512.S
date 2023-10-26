@@ -8,9 +8,7 @@
 #endif
 
 #if defined(__x86_64__) && !defined(OPENSSL_NO_ASM) && defined(__APPLE__)
-#if defined(BORINGSSL_PREFIX)
-#include <boringssl_prefix_symbols_asm.h>
-#endif
+#include <openssl/boringssl_prefix_symbols_asm.h>
 .text	
 .globl	_aes_hw_xts_encrypt_avx512
 .private_extern _aes_hw_xts_encrypt_avx512
@@ -1036,6 +1034,7 @@ L$_ret_hEgxyDlCngwrfFe:
 	movq	368(%rsp),%rbx
 	movq	%rbp,%rsp
 	popq	%rbp
+	vzeroupper
 	.byte	0xf3,0xc3
 
 L$_less_than_128_bytes_hEgxyDlCngwrfFe:
@@ -1937,7 +1936,6 @@ L$_num_blocks_is_1_hEgxyDlCngwrfFe:
 	andq	$0xf,%rdx
 	je	L$_ret_hEgxyDlCngwrfFe
 	jmp	L$_steal_cipher_next_hEgxyDlCngwrfFe
-	.byte	0xf3,0xc3
 
 .globl	_aes_hw_xts_decrypt_avx512
 .private_extern _aes_hw_xts_decrypt_avx512
@@ -3562,6 +3560,7 @@ L$_ret_amivrujEyduiFoi:
 	movq	368(%rsp),%rbx
 	movq	%rbp,%rsp
 	popq	%rbp
+	vzeroupper
 	.byte	0xf3,0xc3
 
 L$_less_than_128_bytes_amivrujEyduiFoi:
@@ -5178,7 +5177,6 @@ L$_done_1_amivrujEyduiFoi:
 	addq	$0x10,%rsi
 	vmovdqa	%xmm1,%xmm8
 	jmp	L$_done_amivrujEyduiFoi
-	.byte	0xf3,0xc3
 
 .section	__DATA,__const
 .p2align	4

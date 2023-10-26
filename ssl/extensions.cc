@@ -302,9 +302,9 @@ bool ssl_client_hello_get_extension(const SSL_CLIENT_HELLO *client_hello,
 }
 
 static const uint16_t kDefaultGroups[] = {
-    SSL_CURVE_X25519,
-    SSL_CURVE_SECP256R1,
-    SSL_CURVE_SECP384R1,
+    SSL_GROUP_X25519,
+    SSL_GROUP_SECP256R1,
+    SSL_GROUP_SECP384R1,
 };
 
 Span<const uint16_t> tls1_get_grouplist(const SSL_HANDSHAKE *hs) {
@@ -351,57 +351,6 @@ bool tls1_get_shared_group(SSL_HANDSHAKE *hs, uint16_t *out_group_id) {
   }
 
   return false;
-}
-
-bool tls1_set_curves(Array<uint16_t> *out_group_ids, Span<const int> curves) {
-  Array<uint16_t> group_ids;
-  if (!group_ids.Init(curves.size())) {
-    return false;
-  }
-
-  for (size_t i = 0; i < curves.size(); i++) {
-    if (!ssl_nid_to_group_id(&group_ids[i], curves[i])) {
-      return false;
-    }
-  }
-
-  *out_group_ids = std::move(group_ids);
-  return true;
-}
-
-bool tls1_set_curves_list(Array<uint16_t> *out_group_ids, const char *curves) {
-  // Count the number of curves in the list.
-  size_t count = 0;
-  const char *ptr = curves, *col;
-  do {
-    col = strchr(ptr, ':');
-    count++;
-    if (col) {
-      ptr = col + 1;
-    }
-  } while (col);
-
-  Array<uint16_t> group_ids;
-  if (!group_ids.Init(count)) {
-    return false;
-  }
-
-  size_t i = 0;
-  ptr = curves;
-  do {
-    col = strchr(ptr, ':');
-    if (!ssl_name_to_group_id(&group_ids[i++], ptr,
-                              col ? (size_t)(col - ptr) : strlen(ptr))) {
-      return false;
-    }
-    if (col) {
-      ptr = col + 1;
-    }
-  } while (col);
-
-  assert(i == count);
-  *out_group_ids = std::move(group_ids);
-  return true;
 }
 
 bool tls1_check_group_id(const SSL_HANDSHAKE *hs, uint16_t group_id) {
@@ -4102,11 +4051,12 @@ bool tls1_choose_signature_algorithm(SSL_HANDSHAKE *hs, uint16_t *out) {
   // Before TLS 1.2, the signature algorithm isn't negotiated as part of the
   // handshake.
   if (ssl_protocol_version(ssl) < TLS1_2_VERSION) {
-    if (!tls1_get_legacy_signature_algorithm(out, hs->local_pubkey.get())) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_NO_COMMON_SIGNATURE_ALGORITHMS);
-      return false;
+    if (tls1_get_legacy_signature_algorithm(out, hs->local_pubkey.get()) ||
+        ssl_cert_private_keys_supports_legacy_signature_algorithm(out, hs)) {
+      return true;
     }
-    return true;
+    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_COMMON_SIGNATURE_ALGORITHMS);
+    return false;
   }
 
   Span<const uint16_t> sigalgs = kSignSignatureAlgorithms;
@@ -4119,20 +4069,44 @@ bool tls1_choose_signature_algorithm(SSL_HANDSHAKE *hs, uint16_t *out) {
   Span<const uint16_t> peer_sigalgs = tls1_get_peer_verify_algorithms(hs);
 
   for (uint16_t sigalg : sigalgs) {
-    if (!ssl_private_key_supports_signature_algorithm(hs, sigalg)) {
-      continue;
-    }
-
-    for (uint16_t peer_sigalg : peer_sigalgs) {
-      if (sigalg == peer_sigalg) {
-        *out = sigalg;
-        return true;
+    // We check the extracted public key for support first. If not, we go
+    // through our available private keys to check for support.
+    if (ssl_public_key_supports_signature_algorithm(hs, sigalg) ||
+        ssl_cert_private_keys_supports_signature_algorithm(hs, sigalg)) {
+      // Check if peer supports negotiated signature algorithms.
+      for (uint16_t peer_sigalg : peer_sigalgs) {
+        if (sigalg == peer_sigalg) {
+          *out = sigalg;
+          return true;
+        }
       }
     }
   }
 
   OPENSSL_PUT_ERROR(SSL, SSL_R_NO_COMMON_SIGNATURE_ALGORITHMS);
   return false;
+}
+
+bool tls1_call_ocsp_stapling_callback(SSL_HANDSHAKE *hs) {
+  SSL *const ssl = hs->ssl;
+
+  if (hs->ocsp_stapling_requested &&
+      ssl->ctx->legacy_ocsp_callback != nullptr) {
+    switch (ssl->ctx->legacy_ocsp_callback(
+        ssl, ssl->ctx->legacy_ocsp_callback_arg)) {
+      case SSL_TLSEXT_ERR_OK:
+        break;
+      case SSL_TLSEXT_ERR_NOACK:
+        hs->ocsp_stapling_requested = false;
+        break;
+      default:
+        OPENSSL_PUT_ERROR(SSL, SSL_R_OCSP_CB_ERROR);
+        ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
+        return false;
+    }
+  }
+
+  return true;
 }
 
 Span<const uint16_t> tls1_get_peer_verify_algorithms(const SSL_HANDSHAKE *hs) {

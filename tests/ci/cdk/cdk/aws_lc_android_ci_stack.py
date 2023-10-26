@@ -6,7 +6,7 @@ from constructs import Construct
 
 from cdk.components import PruneStaleGitHubBuilds
 from util.iam_policies import code_build_batch_policy_in_json, device_farm_access_policy_in_json
-from util.metadata import GITHUB_REPO_OWNER, GITHUB_REPO_NAME
+from util.metadata import GITHUB_REPO_OWNER, GITHUB_REPO_NAME, GITHUB_PUSH_CI_BRANCH_TARGETS
 from util.build_spec_loader import BuildSpecLoader
 
 
@@ -32,7 +32,9 @@ class AwsLcAndroidCIStack(Stack):
                 codebuild.FilterGroup.in_event_of(
                     codebuild.EventAction.PULL_REQUEST_CREATED,
                     codebuild.EventAction.PULL_REQUEST_UPDATED,
-                    codebuild.EventAction.PULL_REQUEST_REOPENED)
+                    codebuild.EventAction.PULL_REQUEST_REOPENED),
+                codebuild.FilterGroup.in_event_of(codebuild.EventAction.PUSH).and_branch_is(
+                    GITHUB_PUSH_CI_BRANCH_TARGETS),
             ],
             webhook_triggers_batch_build=True)
 

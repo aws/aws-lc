@@ -119,6 +119,52 @@
 #include "internal.h"
 #include "rsaz_exp.h"
 
+#if !defined(OPENSSL_NO_ASM) &&                                                \
+    (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE)) &&                      \
+    defined(OPENSSL_AARCH64)
+
+#include "../../../third_party/s2n-bignum/include/s2n-bignum_aws-lc.h"
+
+#define BN_EXPONENTIATION_S2N_BIGNUM_CAPABLE 1
+
+OPENSSL_INLINE int exponentiation_use_s2n_bignum(void) { return 1; }
+
+#else
+
+OPENSSL_INLINE int exponentiation_use_s2n_bignum(void) { return 0; }
+
+#endif
+
+static void exponentiation_s2n_bignum_copy_from_prebuf(BN_ULONG *dest, int width,
+                                        const BN_ULONG *table, int rowidx,
+                                        int window) {
+
+#if defined(BN_EXPONENTIATION_S2N_BIGNUM_CAPABLE)
+
+  int table_height = 1 << window;
+  if (CRYPTO_is_NEON_capable()) {
+    if (width == 32) {
+      bignum_copy_row_from_table_32_neon(dest, table, table_height, rowidx);
+    } else if (width == 16) {
+      bignum_copy_row_from_table_16_neon(dest, table, table_height, rowidx);
+    } else if (width % 8 == 0) {
+      bignum_copy_row_from_table_8n_neon(dest, table, table_height, width,
+                                         rowidx);
+    } else {
+      bignum_copy_row_from_table(dest, table, table_height, width, rowidx);
+    }
+  } else {
+    bignum_copy_row_from_table(dest, table, table_height, width, rowidx);
+  }
+
+#else
+
+  // Should not call this function unless s2n-bignum is supported.
+  abort();
+
+#endif
+}
+
 
 int BN_exp(BIGNUM *r, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx) {
   int i, bits, ret = 0;
@@ -594,7 +640,8 @@ int BN_mod_exp_mont(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
     OPENSSL_PUT_ERROR(BN, BN_R_NEGATIVE_NUMBER);
     return 0;
   }
-  if (a->neg || BN_ucmp(a, m) >= 0) {
+  // |a| is secret, but |a < m| is not.
+  if (a->neg || constant_time_declassify_int(BN_ucmp(a, m)) >= 0) {
     OPENSSL_PUT_ERROR(BN, BN_R_INPUT_NOT_REDUCED);
     return 0;
   }
@@ -848,6 +895,12 @@ static int copy_from_prebuf(BIGNUM *b, int top, const BN_ULONG *table, int idx,
     return 0;
   }
 
+  if (exponentiation_use_s2n_bignum()) {
+    exponentiation_s2n_bignum_copy_from_prebuf(b->d, top, table, idx, window);
+    b->width = top;
+    return 1;
+  }
+
   OPENSSL_memset(b->d, 0, sizeof(BN_ULONG) * top);
   const int width = 1 << window;
   for (int i = 0; i < width; i++, table += top) {
@@ -867,13 +920,7 @@ static int copy_from_prebuf(BIGNUM *b, int top, const BN_ULONG *table, int idx,
 
 // Window sizes optimized for fixed window size modular exponentiation
 // algorithm (BN_mod_exp_mont_consttime).
-//
-// TODO(davidben): These window sizes were originally set for 64-byte cache
-// lines with a cache-line-dependent constant-time mitigation. They can probably
-// be revised now that our implementation is no longer cache-time-dependent.
-#define BN_window_bits_for_ctime_exponent_size(b) \
-  ((b) > 937 ? 6 : (b) > 306 ? 5 : (b) > 89 ? 4 : (b) > 22 ? 3 : 1)
-#define BN_MAX_MOD_EXP_CTIME_WINDOW (6)
+#define BN_window_bits_for_ctime_exponent_size 5
 
 // This variant of |BN_mod_exp_mont| uses fixed windows and fixed memory access
 // patterns to protect secret exponents (cf. the hyper-threading timing attacks
@@ -954,23 +1001,20 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
 #endif
 
   // Get the window size to use with size of p.
-  int window = BN_window_bits_for_ctime_exponent_size(bits);
-  assert(window <= BN_MAX_MOD_EXP_CTIME_WINDOW);
+  int window = BN_window_bits_for_ctime_exponent_size;
 
   // Calculating |powerbuf_len| below cannot overflow because of the bound on
   // Montgomery reduction.
   assert((size_t)top <= BN_MONTGOMERY_MAX_WORDS);
   OPENSSL_STATIC_ASSERT(
       BN_MONTGOMERY_MAX_WORDS <=
-          INT_MAX / sizeof(BN_ULONG) / ((1 << BN_MAX_MOD_EXP_CTIME_WINDOW) + 3),
+          INT_MAX / sizeof(BN_ULONG) / ((1 <<
+              BN_window_bits_for_ctime_exponent_size) + 3),
       powerbuf_len_may_overflow);
 
 #if defined(OPENSSL_BN_ASM_MONT5)
-  if (window >= 5) {
-    window = 5;  // ~5% improvement for RSA2048 sign, and even for RSA4096
-    // Reserve space for the |mont->N| copy.
-    powerbuf_len += top * sizeof(mont->N.d[0]);
-  }
+  // Reserve space for the |mont->N| copy.
+  powerbuf_len += top * sizeof(mont->N.d[0]);
 #endif
 
   // Allocate a buffer large enough to hold all of the pre-computed
@@ -1035,7 +1079,8 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
   // TODO(davidben): Using "almost" reduction complicates analysis of this code,
   // and its interaction with other parts of the project. Determine whether this
   // is actually necessary for performance.
-  if (window == 5 && top > 1) {
+  if (top > 1) {
+    assert(window == 5);
     // Copy |mont->N| to improve cache locality.
     BN_ULONG *np = am.d + top;
     for (i = 0; i < top; i++) {

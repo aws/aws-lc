@@ -31,9 +31,13 @@
 #include "../internal.h"
 #include "../fipsmodule/cpucap/internal.h"
 
-#if (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64)) && \
-    (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE)) && \
-    !defined(OPENSSL_NO_ASM) && !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+// If (1) x86_64 or aarch64, (2) linux or apple, and (3) OPENSSL_NO_ASM is not
+// set, s2n-bignum path is capable.
+#if ((defined(OPENSSL_X86_64) &&                                               \
+          !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)) ||                        \
+      defined(OPENSSL_AARCH64)) &&                                             \
+     (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE)) &&                     \
+     !defined(OPENSSL_NO_ASM)
 #include "../../third_party/s2n-bignum/include/s2n-bignum_aws-lc.h"
 #define CURVE25519_S2N_BIGNUM_CAPABLE
 #endif
@@ -402,6 +406,6 @@ int X25519(uint8_t out_shared_key[32], const uint8_t private_key[32],
   }
 
   // The all-zero output results when the input is a point of small order.
-  // See https://www.rfc-editor.org/rfc/rfc7748#section-6.1.
-  return CRYPTO_memcmp(kZeros, out_shared_key, 32) != 0;
+  return constant_time_declassify_int(
+             CRYPTO_memcmp(kZeros, out_shared_key, 32)) != 0;
 }

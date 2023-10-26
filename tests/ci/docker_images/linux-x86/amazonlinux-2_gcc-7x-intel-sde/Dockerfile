@@ -5,6 +5,9 @@ FROM amazonlinux-2:gcc-7x
 
 SHELL ["/bin/bash", "-c"]
 
+ENV SDE_VERSION_TAG=sde-external-9.21.1-2023-04-24-lin
+ENV SDE_MIRROR_URL="https://downloadmirror.intel.com/777395/sde-external-9.21.1-2023-04-24-lin.tar.xz"
+
 # Enable the EPEL repository on Amazon Linux 2 before installing packages
 # https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/add-repositories.html
 
@@ -23,9 +26,7 @@ RUN set -ex && \
     # Install Intel® Software Development Emulator
     # This emulator is needed when running BoringSSL/AWS-LC code under Intel's SDE for each supported chip (like ice lake).
     # https://software.intel.com/content/www/us/en/develop/articles/intel-software-development-emulator.html#system-configuration
-    wget https://downloadmirror.intel.com/684899/sde-external-9.0.0-2021-11-07-lin.tar.xz && \
-    tar -xf sde-external-9.0.0-2021-11-07-lin.tar.xz && \
-    rm sde-external-9.0.0-2021-11-07-lin.tar.xz && \
+    wget ${SDE_MIRROR_URL} && tar -xf "${SDE_VERSION_TAG}.tar.xz" && rm "${SDE_VERSION_TAG}.tar.xz" && \
     yum clean packages && \
     yum clean metadata && \
     yum clean all && \
@@ -34,5 +35,5 @@ RUN set -ex && \
 
 ENV CC=gcc
 ENV CXX=g++
-ENV SDEROOT=/sde-external-9.0.0-2021-11-07-lin
+ENV SDEROOT="/${SDE_VERSION_TAG}"
 ENV PATH="$SDEROOT:$PATH"

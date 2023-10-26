@@ -85,11 +85,14 @@ OPENSSL_EXPORT const EVP_MD *EVP_sha224(void);
 OPENSSL_EXPORT const EVP_MD *EVP_sha256(void);
 OPENSSL_EXPORT const EVP_MD *EVP_sha384(void);
 OPENSSL_EXPORT const EVP_MD *EVP_sha512(void);
+OPENSSL_EXPORT const EVP_MD *EVP_sha512_224(void);
 OPENSSL_EXPORT const EVP_MD *EVP_sha512_256(void);
 OPENSSL_EXPORT const EVP_MD *EVP_sha3_224(void);
 OPENSSL_EXPORT const EVP_MD *EVP_sha3_256(void);
 OPENSSL_EXPORT const EVP_MD *EVP_sha3_384(void);
 OPENSSL_EXPORT const EVP_MD *EVP_sha3_512(void);
+OPENSSL_EXPORT const EVP_MD *EVP_shake128(void);
+OPENSSL_EXPORT const EVP_MD *EVP_shake256(void);
 OPENSSL_EXPORT const EVP_MD *EVP_blake2b256(void);
 
 // EVP_md5_sha1 is a TLS-specific |EVP_MD| which computes the concatenation of
@@ -190,9 +193,10 @@ OPENSSL_EXPORT int EVP_DigestFinal(EVP_MD_CTX *ctx, uint8_t *md_out,
 // bytes from |data| and writes the digest to |md_out|. |EVP_MD_CTX_size| bytes
 // are written, which is at most |EVP_MAX_MD_SIZE|. If |out_size| is not NULL
 // then |*out_size| is set to the number of bytes written. It returns one on
-// success and zero otherwise.
+// success and zero otherwise. If |type| is an XOF, |out_size| must be set to
+// the desired output length.
 OPENSSL_EXPORT int EVP_Digest(const void *data, size_t len, uint8_t *md_out,
-                              unsigned int *md_out_size, const EVP_MD *type,
+                              unsigned int *out_size, const EVP_MD *type,
                               ENGINE *impl);
 
 
@@ -220,8 +224,7 @@ OPENSSL_EXPORT size_t EVP_MD_block_size(const EVP_MD *md);
 #define EVP_MD_FLAG_DIGALGID_ABSENT 2
 
 // EVP_MD_FLAG_XOF indicates that the digest is an extensible-output function
-// (XOF). This flag is defined for compatibility and will never be set in any
-// |EVP_MD| in BoringSSL.
+// (XOF).
 #define EVP_MD_FLAG_XOF 4
 
 
@@ -289,8 +292,8 @@ OPENSSL_EXPORT EVP_MD_CTX *EVP_MD_CTX_create(void);
 // EVP_MD_CTX_destroy calls |EVP_MD_CTX_free|.
 OPENSSL_EXPORT void EVP_MD_CTX_destroy(EVP_MD_CTX *ctx);
 
-// EVP_DigestFinalXOF returns zero and adds an error to the error queue.
-// BoringSSL does not support any XOF digests.
+// EVP_DigestFinalXOF behaves like |EVP_DigestFinal| for XOF digests, writing
+// |len| bytes of extended output to |out|.
 OPENSSL_EXPORT int EVP_DigestFinalXOF(EVP_MD_CTX *ctx, uint8_t *out,
                                       size_t len);
 

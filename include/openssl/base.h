@@ -75,9 +75,7 @@
 #include <openssl/is_awslc.h>
 #include <openssl/opensslconf.h>
 
-#if defined(BORINGSSL_PREFIX)
-#include <boringssl_prefix_symbols.h>
-#endif
+#include <openssl/boringssl_prefix_symbols.h>
 
 #if defined(__cplusplus)
 extern "C" {
@@ -86,7 +84,6 @@ extern "C" {
 #if defined(BORINGSSL_FIPS)
 #define AWSLC_FIPS
 #endif
-
 #if defined(__x86_64) || defined(_M_AMD64) || defined(_M_X64)
 #define OPENSSL_64_BIT
 #define OPENSSL_X86_64
@@ -102,6 +99,14 @@ extern "C" {
 #elif (defined(__PPC64__) || defined(__powerpc64__)) && defined(_LITTLE_ENDIAN)
 #define OPENSSL_64_BIT
 #define OPENSSL_PPC64LE
+#elif (defined(__PPC64__) || defined(__powerpc64__)) && defined(_BIG_ENDIAN)
+#define OPENSSL_64_BIT
+#define OPENSSL_PPC64BE
+#define OPENSSL_BIG_ENDIAN
+#elif (defined(__PPC__) || defined(__powerpc__)) && defined(_BIG_ENDIAN)
+#define OPENSSL_32_BIT
+#define OPENSSL_PPC32BE
+#define OPENSSL_BIG_ENDIAN
 #elif defined(__MIPSEL__) && !defined(__LP64__)
 #define OPENSSL_32_BIT
 #define OPENSSL_MIPS
@@ -113,6 +118,9 @@ extern "C" {
 #define OPENSSL_RISCV64
 #elif defined(__riscv) && __SIZEOF_POINTER__ == 4
 #define OPENSSL_32_BIT
+#elif defined(__loongarch_lp64)
+#define OPENSSL_64_BIT
+#define OPENSSL_LOONGARCH64
 #elif defined(__pnacl__)
 #define OPENSSL_32_BIT
 #define OPENSSL_PNACL
@@ -208,7 +216,7 @@ extern "C" {
 // against multiple revisions of BoringSSL at the same time. It is not
 // recommended to do so for longer than is necessary.
 
-#define AWSLC_API_VERSION 22
+#define AWSLC_API_VERSION 23
 
 // This string tracks the most current production release version on Github
 // https://github.com/aws/aws-lc/releases.
@@ -216,7 +224,7 @@ extern "C" {
 // ServiceIndicatorTest.AWSLCVersionString
 // Note: there are two versions of this test. Only one test is compiled
 // depending on FIPS mode.
-#define AWSLC_VERSION_NUMBER_STRING "1.12.1"
+#define AWSLC_VERSION_NUMBER_STRING "1.16.0"
 
 #if defined(BORINGSSL_SHARED_LIBRARY)
 

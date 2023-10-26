@@ -2189,12 +2189,14 @@ DEFINE_STACK_OF(X509_TRUST)
 #define X509_TRUST_OCSP_REQUEST 7
 #define X509_TRUST_TSA 8
 
-// Keep these up to date!
+// Keep these up to date! (hidden)
+
 #define X509_TRUST_MIN 1
 #define X509_TRUST_MAX 8
 
 
 // trust_flags values
+
 #define X509_TRUST_DYNAMIC 1
 #define X509_TRUST_DYNAMIC_NAME 2
 
@@ -2480,6 +2482,24 @@ OPENSSL_EXPORT int X509_REVOKED_add1_ext_i2d(X509_REVOKED *x, int nid,
                                              void *value, int crit,
                                              unsigned long flags);
 
+// X509_verify_cert attempts to discover and validate a certificate chain based
+// on parameters in |ctx|. |ctx| usually includes a target certificate to be
+// verified, a set of certificates serving as trust anchors, a list of
+// non-trusted certificates that may be helpful for chain construction, flags,
+// and various other optional components such as callback functions. A
+// certificate chain is built up starting from the target certificate and ending
+// in a trust anchor. The chain is built up iteratively, looking up in turn a
+// certificate with suitable key usage that matches as an issuer of the current
+// "subject" certificate.
+//
+// NOTE:
+//   1. Applications rarely call this function directly, but it is used
+//      internally for certificate validation.
+//   2. When looking for the issuer of a certificate, if the current candidate
+//      issuer matches the subject certificate, but is expired, AWS-LC will fail
+//      verification and reject the expired cert. This is inherently different
+//      from OpenSSL 1.1.1, where they will continue searching until they find a
+//      non-expired cert to use.
 OPENSSL_EXPORT int X509_verify_cert(X509_STORE_CTX *ctx);
 
 // PKCS#8 utilities
@@ -2537,7 +2557,7 @@ OPENSSL_EXPORT X509_TRUST *X509_TRUST_get0(int idx);
 OPENSSL_EXPORT int X509_TRUST_get_by_id(int id);
 OPENSSL_EXPORT int X509_TRUST_add(int id, int flags,
                                   int (*ck)(X509_TRUST *, X509 *, int),
-                                  char *name, int arg1, void *arg2);
+                                  const char *name, int arg1, void *arg2);
 OPENSSL_EXPORT void X509_TRUST_cleanup(void);
 OPENSSL_EXPORT int X509_TRUST_get_flags(const X509_TRUST *xp);
 OPENSSL_EXPORT char *X509_TRUST_get0_name(const X509_TRUST *xp);
@@ -2680,59 +2700,66 @@ OPENSSL_EXPORT void X509_STORE_CTX_set_depth(X509_STORE_CTX *ctx, int depth);
 #define X509_V_ERR_UNSUPPORTED_NAME_SYNTAX 53
 #define X509_V_ERR_CRL_PATH_VALIDATION_ERROR 54
 
-// Host, email and IP check errors
+// The following indicate Host, email and IP check errors
 #define X509_V_ERR_HOSTNAME_MISMATCH 62
 #define X509_V_ERR_EMAIL_MISMATCH 63
 #define X509_V_ERR_IP_ADDRESS_MISMATCH 64
 
-// Caller error
+// X509_V_ERR_INVALID_CALL indicates a caller error.
 #define X509_V_ERR_INVALID_CALL 65
-// Issuer lookup error
+// X509_V_ERR_STORE_LOOKUP indicates an issuer lookup error.
 #define X509_V_ERR_STORE_LOOKUP 66
 
 #define X509_V_ERR_NAME_CONSTRAINTS_WITHOUT_SANS 67
 
 // Certificate verify flags
 
-// Send issuer+subject checks to verify_cb
+// X509_V_FLAG_CB_ISSUER_CHECK sends issuer+subject checks to |verify_cb|.
 #define X509_V_FLAG_CB_ISSUER_CHECK 0x1
-// Use check time instead of current time
+// X509_V_FLAG_USE_CHECK_TIME uses check time instead of current time.
 #define X509_V_FLAG_USE_CHECK_TIME 0x2
-// Lookup CRLs
+// X509_V_FLAG_CRL_CHECK enables lookup CRLs for the leaf certificate.
 #define X509_V_FLAG_CRL_CHECK 0x4
-// Lookup CRLs for whole chain
+// X509_V_FLAG_CRL_CHECK_ALL enables lookup CRLs for whole chain.
 #define X509_V_FLAG_CRL_CHECK_ALL 0x8
-// Ignore unhandled critical extensions
+// X509_V_FLAG_IGNORE_CRITICAL ignores unhandled critical extensions.
 #define X509_V_FLAG_IGNORE_CRITICAL 0x10
-// Does nothing as its functionality has been enabled by default.
+// X509_V_FLAG_X509_STRICT does nothing as its functionality has been enabled by
+// default.
 #define X509_V_FLAG_X509_STRICT 0x00
-// This flag does nothing as proxy certificate support has been removed.
+// X509_V_FLAG_ALLOW_PROXY_CERTS does nothing as proxy certificate support has
+// been removed.
 #define X509_V_FLAG_ALLOW_PROXY_CERTS 0x40
-// Enable policy checking
+// X509_V_FLAG_POLICY_CHECK enables policy checking.
 #define X509_V_FLAG_POLICY_CHECK 0x80
-// Policy variable require-explicit-policy
+// X509_V_FLAG_EXPLICIT_POLICY enables the policy variable:
+// require-explicit-policy
 #define X509_V_FLAG_EXPLICIT_POLICY 0x100
-// Policy variable inhibit-any-policy
+// X509_V_FLAG_INHIBIT_ANY enables the policy variable: inhibit-any-policy
 #define X509_V_FLAG_INHIBIT_ANY 0x200
-// Policy variable inhibit-policy-mapping
+// X509_V_FLAG_INHIBIT_MAP enables the policy variable: inhibit-policy-mapping
 #define X509_V_FLAG_INHIBIT_MAP 0x400
-// Notify callback that policy is OK
+// X509_V_FLAG_NOTIFY_POLICY notifies the callback that the policy is OK
 #define X509_V_FLAG_NOTIFY_POLICY 0x800
-// Extended CRL features such as indirect CRLs, alternate CRL signing keys
+// X509_V_FLAG_EXTENDED_CRL_SUPPORT enables extended CRL features such as
+// indirect CRLs, alternate CRL signing keys.
 #define X509_V_FLAG_EXTENDED_CRL_SUPPORT 0x1000
-// Delta CRL support
+// X509_V_FLAG_USE_DELTAS enables Delta CRL support.
 #define X509_V_FLAG_USE_DELTAS 0x2000
-// Check selfsigned CA signature
+// X509_V_FLAG_CHECK_SS_SIGNATURE enables checking the self signed CA signature.
 #define X509_V_FLAG_CHECK_SS_SIGNATURE 0x4000
-// Use trusted store first
+// X509_V_FLAG_TRUSTED_FIRST flag causes chain construction to look for issuers
+// in the trust store before looking at the untrusted certificates provided.
 #define X509_V_FLAG_TRUSTED_FIRST 0x8000
 
-// Allow partial chains if at least one certificate is in trusted store
+// X509_V_FLAG_PARTIAL_CHAIN allows partial chains if at least one certificate
+// is in the trusted store.
 #define X509_V_FLAG_PARTIAL_CHAIN 0x80000
 
-// If the initial chain is not trusted, do not attempt to build an alternative
-// chain. Alternate chain checking was introduced in 1.0.2b. Setting this flag
-// will force the behaviour to match that of previous versions.
+// X509_V_FLAG_NO_ALT_CHAINS suppresses checking for alternative chains. If the
+// initial chain is not trusted, do not attempt to build an alternative chain.
+// Alternate chain checking was introduced in 1.0.2b. Setting this flag will
+// force the behaviour to match that of previous versions.
 #define X509_V_FLAG_NO_ALT_CHAINS 0x100000
 
 // X509_V_FLAG_NO_CHECK_TIME disables all time checks in certificate
@@ -2745,7 +2772,8 @@ OPENSSL_EXPORT void X509_STORE_CTX_set_depth(X509_STORE_CTX *ctx, int depth);
 #define X509_VP_FLAG_LOCKED 0x8
 #define X509_VP_FLAG_ONCE 0x10
 
-// Internal use: mask of policy related options
+// Internal use: mask of policy related options (hidden)
+
 #define X509_V_FLAG_POLICY_MASK                             \
   (X509_V_FLAG_POLICY_CHECK | X509_V_FLAG_EXPLICIT_POLICY | \
    X509_V_FLAG_INHIBIT_ANY | X509_V_FLAG_INHIBIT_MAP)
@@ -2785,6 +2813,11 @@ OPENSSL_EXPORT void X509_STORE_set_verify(X509_STORE *ctx,
 OPENSSL_EXPORT void X509_STORE_CTX_set_verify(X509_STORE_CTX *ctx,
                                               X509_STORE_CTX_verify_fn verify);
 OPENSSL_EXPORT X509_STORE_CTX_verify_fn X509_STORE_get_verify(X509_STORE *ctx);
+
+// X509_STORE_set_verify_cb acts like |X509_STORE_CTX_set_verify_cb| but sets
+// the verify callback for any |X509_STORE_CTX| created from this |X509_STORE|
+//
+// Do not use this funciton. see |X509_STORE_CTX_set_verify_cb|.
 OPENSSL_EXPORT void X509_STORE_set_verify_cb(
     X509_STORE *ctx, X509_STORE_CTX_verify_cb verify_cb);
 #define X509_STORE_set_verify_cb_func(ctx, func) \
@@ -2935,8 +2968,27 @@ OPENSSL_EXPORT void X509_STORE_CTX_set_time(X509_STORE_CTX *ctx,
 OPENSSL_EXPORT void X509_STORE_CTX_set_time_posix(X509_STORE_CTX *ctx,
                                                   unsigned long flags,
                                                   int64_t t);
+
+// X509_STORE_CTX_set_verify_cb configures a callback function for |ctx| that is
+// called multiple times during |X509_verify_cert|. The callback returns zero to
+// fail verification and non-zero to proceed. Typically, it will return |ok|,
+// which preserves the default behavior. Returning one when |ok| is zero will
+// proceed past some error. The callback may inspect |ctx| and the error queue
+// to attempt to determine the current stage of certificate verification, but
+// this is often unreliable.
+//
+// WARNING: Do not use this function. It is extremely fragile and unpredictable.
+// This callback exposes implementation details of certificate verification,
+// which change as the library evolves. Attempting to use it for security checks
+// can introduce vulnerabilities if making incorrect assumptions about when the
+// callback is called. Additionally, overriding |ok| may leave |ctx| in an
+// inconsistent state and break invariants.
+//
+// Instead, customize certificate verification by configuring options on the
+// |X509_STORE_CTX| before verification, or applying additional checks after
+// |X509_verify_cert| completes successfully.
 OPENSSL_EXPORT void X509_STORE_CTX_set_verify_cb(
-    X509_STORE_CTX *ctx, int (*verify_cb)(int, X509_STORE_CTX *));
+    X509_STORE_CTX *ctx, int (*verify_cb)(int ok, X509_STORE_CTX *ctx));
 
 OPENSSL_EXPORT X509_VERIFY_PARAM *X509_STORE_CTX_get0_param(
     X509_STORE_CTX *ctx);

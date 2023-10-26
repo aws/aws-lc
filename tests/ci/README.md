@@ -41,7 +41,7 @@ would look like this:
 $ docker build -t ubuntu-18.04:base -f tests/ci/docker_images/linux-x86/ubuntu-18.04_base/Dockerfile tests/ci/docker_images/dependencies
 ```
 For more examples, see `build_images.sh` script in directories corresponding
-to different platforms (linux-x86, linux-aarch, windows, rust).
+to different platforms (linux-x86, linux-aarch, windows).
 
 ### Issues with proxy.golang.org when running images locally
 

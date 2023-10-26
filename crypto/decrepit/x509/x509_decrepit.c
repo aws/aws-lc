@@ -25,3 +25,9 @@ X509_EXTENSION *X509V3_EXT_conf_nid(LHASH_OF(CONF_VALUE) *conf,
   assert(conf == NULL);
   return X509V3_EXT_nconf_nid(NULL, ctx, ext_nid, value);
 }
+
+X509_EXTENSION *X509V3_EXT_conf(LHASH_OF(CONF_VALUE) *conf, X509V3_CTX *ctx,
+                                const char *name, const char *value) {
+  assert(conf == NULL);
+  return X509V3_EXT_nconf(NULL, ctx, name, value);
+}

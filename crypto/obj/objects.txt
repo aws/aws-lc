@@ -909,6 +909,7 @@ nist_hashalgs 1		: SHA256		: sha256
 nist_hashalgs 2		: SHA384		: sha384
 nist_hashalgs 3		: SHA512		: sha512
 nist_hashalgs 4		: SHA224		: sha224
+nist_hashalgs 5		: SHA512-224		: sha512-224
 nist_hashalgs 6		: SHA512-256		: sha512-256
 
 # OIDs for dsa-with-sha224 and dsa-with-sha256
@@ -1368,6 +1369,8 @@ nist_sha3hashalgs 7		: SHA3-224		: sha3-224
 nist_sha3hashalgs 8		: SHA3-256		: sha3-256
 nist_sha3hashalgs 9		: SHA3-384		: sha3-384
 nist_sha3hashalgs 10		: SHA3-512		: sha3-512
+nist_sha3hashalgs 11		: SHAKE128		: shake128
+nist_sha3hashalgs 12		: SHAKE256		: shake256
 
  : HKDF : hkdf
 

@@ -57,13 +57,39 @@
 #include <openssl/dh.h>
 
 #include <openssl/bn.h>
+#include <openssl/err.h>
 
 #include "internal.h"
 
-#define OPENSSL_DH_CHECK_MAX_MODULUS_BITS  32768
+int dh_check_params_fast(const DH *dh) {
+  // Most operations scale with p and q.
+  if (BN_is_negative(dh->p) || !BN_is_odd(dh->p) ||
+      BN_num_bits(dh->p) > OPENSSL_DH_MAX_MODULUS_BITS) {
+    OPENSSL_PUT_ERROR(DH, DH_R_INVALID_PARAMETERS);
+    return 0;
+  }
+
+  // q must be bounded by p.
+  if (dh->q != NULL && (BN_is_negative(dh->q) || BN_ucmp(dh->q, dh->p) > 0)) {
+    OPENSSL_PUT_ERROR(DH, DH_R_INVALID_PARAMETERS);
+    return 0;
+  }
+
+  // g must be an element of p's multiplicative group.
+  if (BN_is_negative(dh->g) || BN_is_zero(dh->g) ||
+      BN_ucmp(dh->g, dh->p) >= 0) {
+    OPENSSL_PUT_ERROR(DH, DH_R_INVALID_PARAMETERS);
+    return 0;
+  }
+
+  return 1;
+}
 
 int DH_check_pub_key(const DH *dh, const BIGNUM *pub_key, int *out_flags) {
   *out_flags = 0;
+  if (!dh_check_params_fast(dh)) {
+    return 0;
+  }
 
   BN_CTX *ctx = BN_CTX_new();
   if (ctx == NULL) {
@@ -74,17 +100,14 @@ int DH_check_pub_key(const DH *dh, const BIGNUM *pub_key, int *out_flags) {
   int ok = 0;
 
   // Check |pub_key| is greater than 1.
-  BIGNUM *tmp = BN_CTX_get(ctx);
-  if (tmp == NULL ||
-      !BN_set_word(tmp, 1)) {
-    goto err;
-  }
-  if (BN_cmp(pub_key, tmp) <= 0) {
+  if (BN_cmp(pub_key, BN_value_one()) <= 0) {
     *out_flags |= DH_CHECK_PUBKEY_TOO_SMALL;
   }
 
   // Check |pub_key| is less than |dh->p| - 1.
-  if (!BN_copy(tmp, dh->p) ||
+  BIGNUM *tmp = BN_CTX_get(ctx);
+  if (tmp == NULL ||
+      !BN_copy(tmp, dh->p) ||
       !BN_sub_word(tmp, 1)) {
     goto err;
   }
@@ -114,24 +137,21 @@ err:
 
 
 int DH_check(const DH *dh, int *out_flags) {
+  *out_flags = 0;
+  if (!dh_check_params_fast(dh)) {
+    return 0;
+  }
+
   // Check that p is a safe prime and if g is 2, 3 or 5, check that it is a
   // suitable generator where:
   //   for 2, p mod 24 == 11
   //   for 3, p mod 12 == 5
   //   for 5, p mod 10 == 3 or 7
   // should hold.
-  int ok = 0, r;
+  int ok = 0, r, q_good = 0;
   BN_CTX *ctx = NULL;
   BN_ULONG l;
   BIGNUM *t1 = NULL, *t2 = NULL;
-
-  *out_flags = 0;
-
-  /* Don't do any checks at all with an excessively large modulus */
-  if (BN_num_bits(dh->p) > OPENSSL_DH_CHECK_MAX_MODULUS_BITS) {
-    OPENSSL_PUT_ERROR(DH, DH_R_MODULUS_TOO_LARGE);
-    return 0;
-  }
 
   ctx = BN_CTX_new();
   if (ctx == NULL) {
@@ -148,6 +168,14 @@ int DH_check(const DH *dh, int *out_flags) {
   }
 
   if (dh->q) {
+    if (BN_ucmp(dh->p, dh->q) > 0) {
+      q_good = 1;
+    } else {
+      *out_flags |= DH_CHECK_INVALID_Q_VALUE;
+    }
+  }
+
+  if (q_good) {
     if (BN_cmp(dh->g, BN_value_one()) <= 0) {
       *out_flags |= DH_CHECK_NOT_SUITABLE_GENERATOR;
     } else if (BN_cmp(dh->g, dh->p) >= 0) {

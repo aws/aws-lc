@@ -16,8 +16,27 @@ batch:
         variables:
           AWS_LC_CI_TARGET: "tests/ci/integration/run_s2n_integration.sh"
 
+    - identifier: crt_integration_x86_64
+      buildspec: tests/ci/codebuild/common/run_simple_target.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_SMALL
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:amazonlinux-2023_gcc-11x_latest
+        variables:
+          AWS_LC_CI_TARGET: "tests/ci/integration/run_crt_integration.sh"
 
-    - identifier: openssh_integration
+    - identifier: crt_integration_aarch64
+      buildspec: tests/ci/codebuild/common/run_simple_target.yml
+      env:
+        type: ARM_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_SMALL
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-aarch:amazonlinux-2023_gcc-11x_latest
+        variables:
+          AWS_LC_CI_TARGET: "tests/ci/integration/run_crt_integration.sh"
+
+    - identifier: openssh_integration_x86_64
       buildspec: tests/ci/codebuild/common/run_simple_target.yml
       env:
         type: LINUX_CONTAINER
@@ -27,16 +46,38 @@ batch:
         variables:
           AWS_LC_CI_TARGET: "tests/ci/integration/run_openssh_integration.sh"
 
-    - identifier: postgres_integration
-      buildspec: ./tests/ci/codebuild/integration/postgres_integration.yml
+    - identifier: openssh_integration_aarch
+      buildspec: tests/ci/codebuild/common/run_simple_target.yml
+      env:
+        type: ARM_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_SMALL
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-aarch:amazonlinux-2023_clang-15x_sanitizer_latest
+        variables:
+          AWS_LC_CI_TARGET: "tests/ci/integration/run_openssh_integration.sh"
+
+    - identifier: postgres_integration_x86_64
+      buildspec: tests/ci/codebuild/common/run_nonroot_target.yml
       env:
         type: LINUX_CONTAINER
         privileged-mode: false
         compute-type: BUILD_GENERAL1_MEDIUM
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-22.04_gcc-12x_latest
+        variables:
+          AWS_LC_CI_TARGET: "tests/ci/integration/run_postgres_integration.sh"
+
+    - identifier: postgres_integration_aarch
+      buildspec: tests/ci/codebuild/common/run_nonroot_target.yml
+      env:
+        type: ARM_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_LARGE
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-aarch:ubuntu-22.04_gcc-12x_latest
+        variables:
+          AWS_LC_CI_TARGET: "tests/ci/integration/run_postgres_integration.sh"
 
     # MySQL build is bloated without any obvious build configurations we can use to speed up the build, so we use a larger instance here.
-    - identifier: mysql_integration
+    - identifier: mysql_integration_x86_64
       buildspec: tests/ci/codebuild/common/run_simple_target.yml
       env:
         type: LINUX_CONTAINER
@@ -46,8 +87,17 @@ batch:
         variables:
           AWS_LC_CI_TARGET: "tests/ci/integration/run_mysql_integration.sh"
 
+    - identifier: mysql_integration_aarch
+      buildspec: tests/ci/codebuild/common/run_simple_target.yml
+      env:
+        type: ARM_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_LARGE
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-aarch:ubuntu-22.04_gcc-12x_latest
+        variables:
+          AWS_LC_CI_TARGET: "tests/ci/integration/run_mysql_integration.sh"
 
-    - identifier: mariadb_integration
+    - identifier: mariadb_integration_x86_64
       buildspec: tests/ci/codebuild/common/run_simple_target.yml
       env:
         type: LINUX_CONTAINER
@@ -57,7 +107,17 @@ batch:
         variables:
           AWS_LC_CI_TARGET: "tests/ci/integration/run_mariadb_integration.sh"
 
-    - identifier: haproxy_integration
+    - identifier: mariadb_integration_aarch
+      buildspec: tests/ci/codebuild/common/run_simple_target.yml
+      env:
+        type: ARM_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_LARGE
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-aarch:ubuntu-22.04_gcc-12x_latest
+        variables:
+          AWS_LC_CI_TARGET: "tests/ci/integration/run_mariadb_integration.sh"
+
+    - identifier: curl_integration_x86_64
       buildspec: tests/ci/codebuild/common/run_simple_target.yml
       env:
         type: LINUX_CONTAINER
@@ -65,4 +125,54 @@ batch:
         compute-type: BUILD_GENERAL1_MEDIUM
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-22.04_gcc-12x_latest
         variables:
-          AWS_LC_CI_TARGET: "tests/ci/integration/run_haproxy_integration.sh"
+          AWS_LC_CI_TARGET: "tests/ci/integration/run_curl_integration.sh"
+
+    - identifier: curl_integration_aarch
+      buildspec: tests/ci/codebuild/common/run_simple_target.yml
+      env:
+        type: ARM_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_LARGE
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-aarch:ubuntu-22.04_gcc-12x_latest
+        variables:
+          AWS_LC_CI_TARGET: "tests/ci/integration/run_curl_integration.sh"
+
+    - identifier: nginx_integration_x86_64
+      buildspec: tests/ci/codebuild/common/run_nonroot_target.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_MEDIUM
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-22.04_gcc-12x_latest
+        variables:
+          AWS_LC_CI_TARGET: "tests/ci/integration/run_nginx_integration.sh"
+
+    - identifier: nginx_integration_aarch
+      buildspec: tests/ci/codebuild/common/run_nonroot_target.yml
+      env:
+        type: ARM_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_LARGE
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-aarch:ubuntu-22.04_gcc-12x_latest
+        variables:
+          AWS_LC_CI_TARGET: "tests/ci/integration/run_nginx_integration.sh"
+
+    - identifier: sslproxy_integration_x86_64
+      buildspec: tests/ci/codebuild/common/run_simple_target.yml
+      env:
+        type: LINUX_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_MEDIUM
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-22.04_gcc-12x_latest
+        variables:
+          AWS_LC_CI_TARGET: "tests/ci/integration/run_sslproxy_integration.sh"
+
+    - identifier: sslproxy_integration_aarch
+      buildspec: tests/ci/codebuild/common/run_simple_target.yml
+      env:
+        type: ARM_CONTAINER
+        privileged-mode: false
+        compute-type: BUILD_GENERAL1_LARGE
+        image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-aarch:ubuntu-22.04_gcc-12x_latest
+        variables:
+          AWS_LC_CI_TARGET: "tests/ci/integration/run_sslproxy_integration.sh"

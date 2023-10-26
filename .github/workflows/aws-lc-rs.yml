@@ -4,6 +4,9 @@ on:
     branches: [ '*' ]
   pull_request:
     branches: [ '*' ]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 env:
   GOPROXY: https://proxy.golang.org,direct
 jobs:
@@ -39,7 +42,7 @@ jobs:
         working-directory: ./aws-lc-rs/aws-lc-sys
         run: |
           rm -rf symbols/*
-          rm -rf generated-include/*
+          rm -rf generated-include/openssl/*
           ../scripts/generate/_collect_symbols_build.sh -c aws-lc-sys
           ../scripts/generate/_generate_prefix_headers.sh -c aws-lc-sys
           ../scripts/generate/_generate_bindings.sh -c aws-lc-sys

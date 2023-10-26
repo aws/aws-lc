@@ -9,9 +9,7 @@
 #endif
 
 #if !defined(OPENSSL_NO_ASM) && defined(__AARCH64EL__) && defined(__APPLE__)
-#if defined(BORINGSSL_PREFIX)
-#include <boringssl_prefix_symbols_asm.h>
-#endif
+#include <openssl/boringssl_prefix_symbols_asm.h>
 // Copyright 2014-2020 The OpenSSL Project Authors. All Rights Reserved.
 //
 // Licensed under the OpenSSL license (the "License").  You may not use
@@ -1096,6 +1094,13 @@ LK512:
 .align	6
 sha512_block_armv8:
 Lv8_entry:
+#ifdef BORINGSSL_DISPATCH_TEST
+
+	adrp	x9,_BORINGSSL_function_hit@PAGE
+	add	x9, x9, _BORINGSSL_function_hit@PAGEOFF
+	mov	w10, #1
+	strb	w10, [x9,#8] // kFlag_sha512_hw
+#endif
 	stp	x29,x30,[sp,#-16]!
 	add	x29,sp,#0
 

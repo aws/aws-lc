@@ -9,9 +9,7 @@
 #endif
 
 #if !defined(OPENSSL_NO_ASM) && defined(__AARCH64EL__) && defined(_WIN32)
-#if defined(BORINGSSL_PREFIX)
-#include <boringssl_prefix_symbols_asm.h>
-#endif
+#include <openssl/boringssl_prefix_symbols_asm.h>
 #include "openssl/arm_arch.h"
 
 #if __ARM_MAX_ARCH__>=8
@@ -24,12 +22,19 @@
 .endef
 .align	4
 aesv8_gcm_8x_enc_128:
+#ifdef BORINGSSL_DISPATCH_TEST
+
+	adrp	x9,BORINGSSL_function_hit
+	add	x9, x9, :lo12:BORINGSSL_function_hit
+	mov	w10, #1
+	strb	w10, [x9,#7] // kFlag_aesv8_gcm_8x_enc_128
+#endif
 	AARCH64_VALID_CALL_TARGET
 	cbz	x1, L128_enc_ret
 	stp	d8, d9, [sp, #-80]!
 	lsr	x9, x1, #3
 	mov	x16, x4
-	mov	x8, x5
+	mov	x11, x5
 	stp	d10, d11, [sp, #16]
 	stp	d12, d13, [sp, #32]
 	stp	d14, d15, [sp, #48]
@@ -65,7 +70,7 @@ aesv8_gcm_8x_enc_128:
 
 	rev32	v5.16b, v30.16b				//CTR block 5
 	add	v30.4s, v30.4s, v31.4s		//CTR block 5
-	ldp	q26, q27, [x8, #0]				  	//load rk0, rk1
+	ldp	q26, q27, [x11, #0]				  	//load rk0, rk1
 
 	rev32	v6.16b, v30.16b				//CTR block 6
 	add	v30.4s, v30.4s, v31.4s		//CTR block 6
@@ -91,7 +96,7 @@ aesv8_gcm_8x_enc_128:
 	aesmc	v7.16b, v7.16b			//AES block 7 - round 0
 	aese	v5.16b, v26.16b
 	aesmc	v5.16b, v5.16b			//AES block 5 - round 0
-	ldp	q28, q26, [x8, #32]				//load rk2, rk3
+	ldp	q28, q26, [x11, #32]				//load rk2, rk3
 
 	aese	v3.16b, v27.16b
 	aesmc	v3.16b, v3.16b			//AES block 3 - round 1
@@ -134,7 +139,7 @@ aesv8_gcm_8x_enc_128:
 	aese	v2.16b, v26.16b
 	aesmc	v2.16b, v2.16b			//AES block 2 - round 3
 
-	ldp	q27, q28, [x8, #64]				//load rk4, rk5
+	ldp	q27, q28, [x11, #64]				//load rk4, rk5
 	aese	v5.16b, v26.16b
 	aesmc	v5.16b, v5.16b			//AES block 5 - round 3
 	aese	v0.16b, v26.16b
@@ -175,7 +180,7 @@ aesv8_gcm_8x_enc_128:
 	aesmc	v7.16b, v7.16b			//AES block 7 - round 5
 	aese	v0.16b, v28.16b
 	aesmc	v0.16b, v0.16b			//AES block 0 - round 5
-	ldp	q26, q27, [x8, #96]				//load rk6, rk7
+	ldp	q26, q27, [x11, #96]				//load rk6, rk7
 
 	aese	v1.16b, v28.16b
 	aesmc	v1.16b, v1.16b			//AES block 1 - round 5
@@ -209,7 +214,7 @@ aesv8_gcm_8x_enc_128:
 	aesmc	v0.16b, v0.16b			//AES block 0 - round 6
 	aese	v1.16b, v26.16b
 	aesmc	v1.16b, v1.16b			//AES block 1 - round 6
-	ldp	q28, q26, [x8, #128]				//load rk8, rk9
+	ldp	q28, q26, [x11, #128]				//load rk8, rk9
 
 	aese	v5.16b, v27.16b
 	aesmc	v5.16b, v5.16b			//AES block 5 - round 7
@@ -246,7 +251,7 @@ aesv8_gcm_8x_enc_128:
 	aesmc	v7.16b, v7.16b			//AES block 8k+15 - round 8
 	aese	v0.16b, v28.16b
 	aesmc	v0.16b, v0.16b			//AES block 8k+8 - round 8
-	ldr	q27, [x8, #160]					//load rk10
+	ldr	q27, [x11, #160]					//load rk10
 
 	aese	v3.16b, v26.16b						//AES block 8k+11 - round 9
 	aese	v4.16b, v28.16b
@@ -314,29 +319,29 @@ aesv8_gcm_8x_enc_128:
 
 L128_enc_main_loop:	//main	loop start
 	rev32	v5.16b, v30.16b				//CTR block 8k+13
-	ldr	q20, [x3, #128]				//load h5l | h5h
+	ldr	q20, [x6, #96]				//load h5l | h5h
 	ext	v20.16b, v20.16b, v20.16b, #8
-	ldr	q22, [x3, #160]				//load h6l | h6h
+	ldr	q22, [x6, #128]				//load h6l | h6h
 	ext	v22.16b, v22.16b, v22.16b, #8
 	add	v30.4s, v30.4s, v31.4s		//CTR block 8k+13
 
 	rev64	v9.16b, v9.16b						//GHASH block 8k+1
 	rev64	v8.16b, v8.16b						//GHASH block 8k
-	ldr	q23, [x3, #176]				//load h7l | h7h
+	ldr	q23, [x6, #144]				//load h7l | h7h
 	ext	v23.16b, v23.16b, v23.16b, #8
-	ldr	q25, [x3, #208]				//load h8l | h8h
+	ldr	q25, [x6, #176]				//load h8l | h8h
 	ext	v25.16b, v25.16b, v25.16b, #8
 
 	rev32	v6.16b, v30.16b				//CTR block 8k+14
 	add	v30.4s, v30.4s, v31.4s		//CTR block 8k+14
 	ext	v19.16b, v19.16b, v19.16b, #8				//PRE 0
 
-	ldr	q21, [x3, #144]				//load h6k | h5k
-	ldr	q24, [x3, #192]				//load h8k | h7k
+	ldr	q21, [x6, #112]				//load h6k | h5k
+	ldr	q24, [x6, #160]				//load h8k | h7k
 	rev64	v13.16b, v13.16b						//GHASH block 8k+5 (t0, t1, t2 and t3 free)
 	rev64	v11.16b, v11.16b						//GHASH block 8k+3
 
-	ldp	q26, q27, [x8, #0]				 	//load rk0, rk1
+	ldp	q26, q27, [x11, #0]				 	//load rk0, rk1
 	eor	v8.16b, v8.16b, v19.16b				 	//PRE 1
 	rev32	v7.16b, v30.16b				//CTR block 8k+15
 
@@ -355,9 +360,9 @@ L128_enc_main_loop:	//main	loop start
 	pmull2	v9.1q, v11.2d, v20.2d				//GHASH block 8k+3 - high
 
 	eor	v19.16b, v19.16b, v23.16b				//GHASH block 8k+1 - low
-	ldr	q23, [x3, #80]				//load h3l | h3h
+	ldr	q23, [x6, #48]				//load h3l | h3h
 	ext	v23.16b, v23.16b, v23.16b, #8
-	ldr	q25, [x3, #112]				//load h3l | h3h
+	ldr	q25, [x6, #80]				//load h3l | h3h
 	ext	v25.16b, v25.16b, v25.16b, #8
 	aese	v5.16b, v26.16b
 	aesmc	v5.16b, v5.16b			//AES block 8k+13 - round 0
@@ -397,7 +402,7 @@ L128_enc_main_loop:	//main	loop start
 	trn1	v29.2d, v11.2d, v10.2d				//GHASH block 8k+2, 8k+3 - mid
 	trn2	v10.2d, v11.2d, v10.2d				//GHASH block 8k+2, 8k+3 - mid
 
-	ldp	q28, q26, [x8, #32]				//load rk2, rk3
+	ldp	q28, q26, [x11, #32]				//load rk2, rk3
 	aese	v4.16b, v27.16b
 	aesmc	v4.16b, v4.16b			//AES block 8k+12 - round 1
 	aese	v3.16b, v27.16b
@@ -442,19 +447,19 @@ L128_enc_main_loop:	//main	loop start
 
 	aese	v6.16b, v26.16b
 	aesmc	v6.16b, v6.16b			//AES block 8k+14 - round 3
-	ldr	q21, [x3, #48]				//load h2k | h1k
-	ldr	q24, [x3, #96]				//load h4k | h3k
+	ldr	q21, [x6, #16]				//load h2k | h1k
+	ldr	q24, [x6, #64]				//load h4k | h3k
 	rev64	v12.16b, v12.16b						//GHASH block 8k+4 (t0, t1, and t2 free)
 
-	ldp	q27, q28, [x8, #64]				//load rk4, rk5
+	ldp	q27, q28, [x11, #64]				//load rk4, rk5
 	aese	v2.16b, v26.16b
 	aesmc	v2.16b, v2.16b			//AES block 8k+10 - round 3
 	aese	v1.16b, v26.16b
 	aesmc	v1.16b, v1.16b			//AES block 8k+9 - round 3
 
-	ldr	q20, [x3, #32]				//load h1l | h1h
+	ldr	q20, [x6]				//load h1l | h1h
 	ext	v20.16b, v20.16b, v20.16b, #8
-	ldr	q22, [x3, #64]				//load h1l | h1h
+	ldr	q22, [x6, #32]				//load h1l | h1h
 	ext	v22.16b, v22.16b, v22.16b, #8
 	pmull2	v8.1q, v12.2d, v25.2d				//GHASH block 8k+4 - high
 	pmull	v25.1q, v12.1d, v25.1d				//GHASH block 8k+4 - low
@@ -497,7 +502,7 @@ L128_enc_main_loop:	//main	loop start
 
 	aese	v2.16b, v27.16b
 	aesmc	v2.16b, v2.16b			//AES block 8k+10 - round 4
-	ldp	q26, q27, [x8, #96]				//load rk6, rk7
+	ldp	q26, q27, [x11, #96]				//load rk6, rk7
 	trn1	v13.2d, v15.2d, v14.2d				//GHASH block 8k+6, 8k+7 - mid
 
 	pmull2	v16.1q, v12.2d, v24.2d				//GHASH block 8k+4 - mid
@@ -563,7 +568,7 @@ L128_enc_main_loop:	//main	loop start
 	aesmc	v6.16b, v6.16b			//AES block 8k+14 - round 6
 
 .long	0xce153652	//eor3 v18.16b, v18.16b, v21.16b, v13.16b			//GHASH block 8k+6, 8k+7 - mid
-	ldp	q28, q26, [x8, #128]				//load rk8, rk9
+	ldp	q28, q26, [x11, #128]				//load rk8, rk9
 .long	0xce0b3231	//eor3 v17.16b, v17.16b, v11.16b, v12.16b			//GHASH block 8k+6, 8k+7 - high
 
 	aese	v2.16b, v27.16b
@@ -604,7 +609,7 @@ L128_enc_main_loop:	//main	loop start
 	aese	v4.16b, v28.16b
 	aesmc	v4.16b, v4.16b			//AES block 8k+12 - round 8
 .long	0xce114e52	//eor3 v18.16b, v18.16b, v17.16b, v19.16b		 	//MODULO - karatsuba tidy up
-	ldr	q27, [x8, #160]					//load rk10
+	ldr	q27, [x11, #160]					//load rk10
 
 	ext	v29.16b, v17.16b, v17.16b, #8				//MODULO - other top alignment
 	rev32	v23.16b, v30.16b					//CTR block 8k+18
@@ -668,21 +673,21 @@ L128_enc_main_loop:	//main	loop start
 
 L128_enc_prepretail:	//PREPRETAIL
 	rev32	v5.16b, v30.16b				//CTR block 8k+13
-	ldr	q23, [x3, #176]				//load h7l | h7h
+	ldr	q23, [x6, #144]				//load h7l | h7h
 	ext	v23.16b, v23.16b, v23.16b, #8
-	ldr	q25, [x3, #208]				//load h8l | h8h
+	ldr	q25, [x6, #176]				//load h8l | h8h
 	ext	v25.16b, v25.16b, v25.16b, #8
 	ext	v19.16b, v19.16b, v19.16b, #8				//PRE 0
 
-	ldr	q20, [x3, #128]				//load h5l | h5h
+	ldr	q20, [x6, #96]				//load h5l | h5h
 	ext	v20.16b, v20.16b, v20.16b, #8
-	ldr	q22, [x3, #160]				//load h6l | h6h
+	ldr	q22, [x6, #128]				//load h6l | h6h
 	ext	v22.16b, v22.16b, v22.16b, #8
 	rev64	v8.16b, v8.16b						//GHASH block 8k
 	rev64	v9.16b, v9.16b						//GHASH block 8k+1
 
-	ldr	q21, [x3, #144]				//load h6k | h5k
-	ldr	q24, [x3, #192]				//load h6k | h5k
+	ldr	q21, [x6, #112]				//load h6k | h5k
+	ldr	q24, [x6, #160]				//load h6k | h5k
 	add	v30.4s, v30.4s, v31.4s		//CTR block 8k+13
 	rev64	v11.16b, v11.16b						//GHASH block 8k+3
 
@@ -705,7 +710,7 @@ L128_enc_prepretail:	//PREPRETAIL
 	eor	v19.16b, v19.16b, v23.16b				//GHASH block 8k+1 - low
 	eor	v8.16b, v8.16b, v18.16b			//GHASH block 8k, 8k+1 - mid
 
-	ldp	q26, q27, [x8, #0]				 	//load rk0, rk1
+	ldp	q26, q27, [x11, #0]				 	//load rk0, rk1
 	add	v30.4s, v30.4s, v31.4s		//CTR block 8k+14
 
 	pmull2	v18.1q, v8.2d, v24.2d				//GHASH block 8k	- mid
@@ -754,12 +759,12 @@ L128_enc_prepretail:	//PREPRETAIL
 	aesmc	v3.16b, v3.16b			//AES block 8k+11 - round 1
 	pmull	v20.1q, v11.1d, v20.1d				//GHASH block 8k+3 - low
 
-	ldr	q23, [x3, #80]				//load h3l | h3h
+	ldr	q23, [x6, #48]				//load h3l | h3h
 	ext	v23.16b, v23.16b, v23.16b, #8
-	ldr	q25, [x3, #112]				//load h4l | h4h
+	ldr	q25, [x6, #80]				//load h4l | h4h
 	ext	v25.16b, v25.16b, v25.16b, #8
 
-	ldp	q28, q26, [x8, #32]				//load rk2, rk3
+	ldp	q28, q26, [x11, #32]				//load rk2, rk3
 	aese	v5.16b, v27.16b
 	aesmc	v5.16b, v5.16b			//AES block 8k+13 - round 1
 	pmull2	v29.1q, v10.2d, v21.2d				//GHASH block 8k+2 - mid
@@ -773,8 +778,8 @@ L128_enc_prepretail:	//PREPRETAIL
 	aesmc	v0.16b, v0.16b			//AES block 8k+8 - round 1
 
 .long	0xce157652	//eor3 v18.16b, v18.16b, v21.16b, v29.16b			//GHASH block 8k+2, 8k+3 - mid
-	ldr	q21, [x3, #48]				//load h2k | h1k
-	ldr	q24, [x3, #96]				//load h4k | h3k
+	ldr	q21, [x6, #16]				//load h2k | h1k
+	ldr	q24, [x6, #64]				//load h4k | h3k
 	aese	v2.16b, v27.16b
 	aesmc	v2.16b, v2.16b			//AES block 8k+10 - round 1
 
@@ -806,11 +811,11 @@ L128_enc_prepretail:	//PREPRETAIL
 	aesmc	v6.16b, v6.16b			//AES block 8k+14 - round 2
 	aese	v7.16b, v28.16b
 	aesmc	v7.16b, v7.16b			//AES block 8k+15 - round 2
-	ldp	q27, q28, [x8, #64]				//load rk4, rk5
+	ldp	q27, q28, [x11, #64]				//load rk4, rk5
 
-	ldr	q20, [x3, #32]				//load h1l | h1h
+	ldr	q20, [x6]				//load h1l | h1h
 	ext	v20.16b, v20.16b, v20.16b, #8
-	ldr	q22, [x3, #64]				//load h1l | h1h
+	ldr	q22, [x6, #32]				//load h1l | h1h
 	ext	v22.16b, v22.16b, v22.16b, #8
 	trn1	v16.2d, v13.2d, v12.2d				//GHASH block 8k+4, 8k+5 - mid
 	aese	v0.16b, v26.16b
@@ -874,7 +879,7 @@ L128_enc_prepretail:	//PREPRETAIL
 	aesmc	v5.16b, v5.16b			//AES block 8k+13 - round 4
 
 	pmull2	v12.1q, v15.2d, v20.2d				//GHASH block 8k+7 - high
-	ldp	q26, q27, [x8, #96]				//load rk6, rk7
+	ldp	q26, q27, [x11, #96]				//load rk6, rk7
 	pmull	v20.1q, v15.1d, v20.1d				//GHASH block 8k+7 - low
 
 .long	0xce184252	//eor3 v18.16b, v18.16b, v24.16b, v16.16b			//GHASH block 8k+4, 8k+5 - mid
@@ -924,7 +929,7 @@ L128_enc_prepretail:	//PREPRETAIL
 
 	pmull	v21.1q, v17.1d, v16.1d		 	//MODULO - top 64b align with mid
 .long	0xce114e52	//eor3 v18.16b, v18.16b, v17.16b, v19.16b		 	//MODULO - karatsuba tidy up
-	ldp	q28, q26, [x8, #128]				//load rk8, rk9
+	ldp	q28, q26, [x11, #128]				//load rk8, rk9
 
 	aese	v3.16b, v27.16b
 	aesmc	v3.16b, v3.16b			//AES block 8k+11 - round 7
@@ -970,7 +975,7 @@ L128_enc_prepretail:	//PREPRETAIL
 	aese	v5.16b, v28.16b
 	aesmc	v5.16b, v5.16b			//AES block 8k+13 - round 8
 
-	ldr	q27, [x8, #160]					//load rk10
+	ldr	q27, [x11, #160]					//load rk10
 	aese	v6.16b, v26.16b						//AES block 8k+14 - round 9
 	aese	v2.16b, v26.16b						//AES block 8k+10 - round 9
 
@@ -988,16 +993,16 @@ L128_enc_tail:	//TAIL
 	ldr	q8, [x0], #16				//AES block 8k+8 - load plaintext
 
 	mov	v29.16b, v27.16b
-	ldp	q20, q21, [x3, #128]			//load h5l | h5h
+	ldp	q20, q21, [x6, #96]			//load h5l | h5h
 	ext	v20.16b, v20.16b, v20.16b, #8
 
 .long	0xce007509	//eor3 v9.16b, v8.16b, v0.16b, v29.16b			//AES block 8k+8 - result
 	ext	v16.16b, v19.16b, v19.16b, #8				//prepare final partial tag
-	ldp	q22, q23, [x3, #160]			//load h6l | h6h
+	ldp	q22, q23, [x6, #128]			//load h6l | h6h
 	ext	v22.16b, v22.16b, v22.16b, #8
 	ext	v23.16b, v23.16b, v23.16b, #8
 
-	ldp	q24, q25, [x3, #192]			//load h8k | h7k
+	ldp	q24, q25, [x6, #160]			//load h8k | h7k
 	ext	v25.16b, v25.16b, v25.16b, #8
 	cmp	x5, #112
 	b.gt	L128_enc_blocks_more_than_7
@@ -1052,7 +1057,7 @@ L128_enc_tail:	//TAIL
 	mov	v6.16b, v1.16b
 
 	cmp	x5, #32
-	ldr	q24, [x3, #96]					//load h4k | h3k
+	ldr	q24, [x6, #64]					//load h4k | h3k
 	b.gt	L128_enc_blocks_more_than_2
 
 	cmp	x5, #16
@@ -1061,7 +1066,7 @@ L128_enc_tail:	//TAIL
 	mov	v7.16b, v1.16b
 	b.gt	L128_enc_blocks_more_than_1
 
-	ldr	q21, [x3, #48]					//load h2k | h1k
+	ldr	q21, [x6, #16]					//load h2k | h1k
 	sub	v30.4s, v30.4s, v31.4s
 	b	L128_enc_blocks_less_than_1
 L128_enc_blocks_more_than_7:	//blocks	left >  7
@@ -1164,7 +1169,7 @@ L128_enc_blocks_more_than_3:	//blocks	left >  3
 
 	st1	{ v9.16b}, [x2], #16			  	//AES final-3 block - store result
 
-	ldr	q25, [x3, #112]				//load h4l | h4h
+	ldr	q25, [x6, #80]				//load h4l | h4h
 	ext	v25.16b, v25.16b, v25.16b, #8
 
 	rev64	v8.16b, v9.16b						//GHASH final-3 block
@@ -1173,7 +1178,7 @@ L128_enc_blocks_more_than_3:	//blocks	left >  3
 	movi	v16.8b, #0						//supress further partial tag feed in
 
 	ins	v27.d[0], v8.d[1]					//GHASH final-3 block - mid
-	ldr	q24, [x3, #96]				//load h4k | h3k
+	ldr	q24, [x6, #64]				//load h4k | h3k
 	pmull	v26.1q, v8.1d, v25.1d				//GHASH final-3 block - low
 
 	ldr	q9, [x0], #16				//AES final-2 block - load plaintext
@@ -1201,7 +1206,7 @@ L128_enc_blocks_more_than_2:	//blocks	left >  2
 	ldr	q9, [x0], #16				//AES final-1 block - load plaintext
 
 	ins	v27.d[0], v8.d[1]					//GHASH final-2 block - mid
-	ldr	q23, [x3, #80]				//load h3l | h3h
+	ldr	q23, [x6, #48]				//load h3l | h3h
 	ext	v23.16b, v23.16b, v23.16b, #8
 	movi	v16.8b, #0						//supress further partial tag feed in
 
@@ -1221,7 +1226,7 @@ L128_enc_blocks_more_than_1:	//blocks	left >  1
 
 	st1	{ v9.16b}, [x2], #16			  	//AES final-1 block - store result
 
-	ldr	q22, [x3, #64]				//load h2l | h2h
+	ldr	q22, [x6, #32]				//load h2l | h2h
 	ext	v22.16b, v22.16b, v22.16b, #8
 	rev64	v8.16b, v9.16b						//GHASH final-1 block
 	ldr	q9, [x0], #16				//AES final block - load plaintext
@@ -1236,7 +1241,7 @@ L128_enc_blocks_more_than_1:	//blocks	left >  1
 
 	eor	v27.8b, v27.8b, v8.8b				//GHASH final-1 block - mid
 
-	ldr	q21, [x3, #48]				//load h2k | h1k
+	ldr	q21, [x6, #16]				//load h2k | h1k
 
 	ins	v27.d[1], v27.d[0]					//GHASH final-1 block - mid
 
@@ -1257,16 +1262,16 @@ L128_enc_blocks_less_than_1:	//blocks	left <= 1
 
 	neg	x1, x1				//bit_length = 128 - #bits in input (in range [1,128])
 
-	mvn	x6, xzr						//temp0_x = 0xffffffffffffffff
+	mvn	x7, xzr						//temp0_x = 0xffffffffffffffff
 	ld1	{ v26.16b}, [x2]					//load existing bytes where the possibly partial last block is to be stored
 	and	x1, x1, #127			 	//bit_length %= 128
 
-	lsr	x6, x6, x1				//temp0_x is mask for top 64b of last block
-	mvn	x7, xzr						//temp1_x = 0xffffffffffffffff
+	lsr	x7, x7, x1				//temp0_x is mask for top 64b of last block
+	mvn	x8, xzr						//temp1_x = 0xffffffffffffffff
 	cmp	x1, #64
 
-	csel	x13, x7, x6, lt
-	csel	x14, x6, xzr, lt
+	csel	x13, x8, x7, lt
+	csel	x14, x7, xzr, lt
 
 	mov	v0.d[1], x14
 	mov	v0.d[0], x13					//ctr0b is mask for last block
@@ -1283,7 +1288,7 @@ L128_enc_blocks_less_than_1:	//blocks	left <= 1
 	ins	v16.d[0], v8.d[1]					//GHASH final block - mid
 
 	eor	v16.8b, v16.8b, v8.8b				//GHASH final block - mid
-	ldr	q20, [x3, #32]				//load h1l | h1h
+	ldr	q20, [x6]				//load h1l | h1h
 	ext	v20.16b, v20.16b, v20.16b, #8
 
 	pmull	v16.1q, v16.1d, v21.1d				//GHASH final block - mid
@@ -1336,7 +1341,7 @@ aesv8_gcm_8x_dec_128:
 	stp	d8, d9, [sp, #-80]!
 	lsr	x9, x1, #3
 	mov	x16, x4
-	mov	x8, x5
+	mov	x11, x5
 	stp	d10, d11, [sp, #16]
 	stp	d12, d13, [sp, #32]
 	stp	d14, d15, [sp, #48]
@@ -1347,7 +1352,7 @@ aesv8_gcm_8x_dec_128:
 	mov	x5, x9
 	ld1	{ v0.16b}, [x16]					//CTR block 0
 
-	ldp	q26, q27, [x8, #0]				 	//load rk0, rk1
+	ldp	q26, q27, [x11, #0]				 	//load rk0, rk1
 	sub	x5, x5, #1		//byte_len - 1
 
 	mov	x15, #0x100000000				//set up counter increment
@@ -1411,7 +1416,7 @@ aesv8_gcm_8x_dec_128:
 	aese	v7.16b, v26.16b
 	aesmc	v7.16b, v7.16b			//AES block 7 - round 0
 
-	ldp	q28, q26, [x8, #32]				//load rk2, rk3
+	ldp	q28, q26, [x11, #32]				//load rk2, rk3
 
 	aese	v6.16b, v27.16b
 	aesmc	v6.16b, v6.16b			//AES block 6 - round 1
@@ -1449,7 +1454,7 @@ aesv8_gcm_8x_dec_128:
 	aese	v2.16b, v26.16b
 	aesmc	v2.16b, v2.16b			//AES block 2 - round 3
 
-	ldp	q27, q28, [x8, #64]				//load rk4, rk5
+	ldp	q27, q28, [x11, #64]				//load rk4, rk5
 	aese	v5.16b, v26.16b
 	aesmc	v5.16b, v5.16b			//AES block 5 - round 3
 
@@ -1484,7 +1489,7 @@ aesv8_gcm_8x_dec_128:
 	aese	v2.16b, v27.16b
 	aesmc	v2.16b, v2.16b			//AES block 2 - round 4
 
-	ldp	q26, q27, [x8, #96]				//load rk6, rk7
+	ldp	q26, q27, [x11, #96]				//load rk6, rk7
 	aese	v2.16b, v28.16b
 	aesmc	v2.16b, v2.16b			//AES block 2 - round 5
 	aese	v3.16b, v28.16b
@@ -1535,7 +1540,7 @@ aesv8_gcm_8x_dec_128:
 	aesmc	v7.16b, v7.16b			//AES block 7 - round 7
 	aese	v5.16b, v27.16b
 	aesmc	v5.16b, v5.16b			//AES block 5 - round 7
-	ldp	q28, q26, [x8, #128]				//load rk8, rk9
+	ldp	q28, q26, [x11, #128]				//load rk8, rk9
 
 	aese	v6.16b, v27.16b
 	aesmc	v6.16b, v6.16b			//AES block 6 - round 7
@@ -1570,7 +1575,7 @@ aesv8_gcm_8x_dec_128:
 	aese	v1.16b, v26.16b						//AES block 1 - round 9
 	aese	v6.16b, v26.16b						//AES block 6 - round 9
 
-	ldr	q27, [x8, #160]					//load rk10
+	ldr	q27, [x11, #160]					//load rk10
 	aese	v4.16b, v26.16b						//AES block 4 - round 9
 	aese	v3.16b, v26.16b						//AES block 3 - round 9
 
@@ -1623,9 +1628,9 @@ aesv8_gcm_8x_dec_128:
 	b.ge	L128_dec_prepretail					//do prepretail
 
 L128_dec_main_loop:	//main	loop start
-	ldr	q23, [x3, #176]				//load h7l | h7h
+	ldr	q23, [x6, #144]				//load h7l | h7h
 	ext	v23.16b, v23.16b, v23.16b, #8
-	ldr	q25, [x3, #208]				//load h8l | h8h
+	ldr	q25, [x6, #176]				//load h8l | h8h
 	ext	v25.16b, v25.16b, v25.16b, #8
 
 	rev64	v9.16b, v9.16b						//GHASH block 8k+1
@@ -1633,9 +1638,9 @@ L128_dec_main_loop:	//main	loop start
 	ext	v19.16b, v19.16b, v19.16b, #8				//PRE 0
 
 	rev64	v14.16b, v14.16b						//GHASH block 8k+6
-	ldr	q20, [x3, #128]				//load h5l | h5h
+	ldr	q20, [x6, #96]				//load h5l | h5h
 	ext	v20.16b, v20.16b, v20.16b, #8
-	ldr	q22, [x3, #160]				//load h6l | h6h
+	ldr	q22, [x6, #128]				//load h6l | h6h
 	ext	v22.16b, v22.16b, v22.16b, #8
 
 	eor	v8.16b, v8.16b, v19.16b				 	//PRE 1
@@ -1644,12 +1649,12 @@ L128_dec_main_loop:	//main	loop start
 
 	rev64	v10.16b, v10.16b						//GHASH block 8k+2
 	rev64	v12.16b, v12.16b						//GHASH block 8k+4
-	ldp	q26, q27, [x8, #0]				 	//load rk0, rk1
+	ldp	q26, q27, [x11, #0]				 	//load rk0, rk1
 
 	rev32	v6.16b, v30.16b				//CTR block 8k+14
 	add	v30.4s, v30.4s, v31.4s		//CTR block 8k+14
-	ldr	q21, [x3, #144]				//load h6k | h5k
-	ldr	q24, [x3, #192]				//load h8k | h7k
+	ldr	q21, [x6, #112]				//load h6k | h5k
+	ldr	q24, [x6, #160]				//load h8k | h7k
 
 	pmull2	v16.1q, v9.2d, v23.2d				//GHASH block 8k+1 - high
 	pmull2	v17.1q, v8.2d, v25.2d				//GHASH block 8k - high
@@ -1692,7 +1697,7 @@ L128_dec_main_loop:	//main	loop start
 	eor	v19.16b, v19.16b, v23.16b				//GHASH block 8k+1 - low
 .long	0xce1d2631	//eor3 v17.16b, v17.16b, v29.16b, v9.16b			//GHASH block 8k+2, 8k+3 - high
 
-	ldp	q28, q26, [x8, #32]				//load rk2, rk3
+	ldp	q28, q26, [x11, #32]				//load rk2, rk3
 	trn1	v29.2d, v11.2d, v10.2d				//GHASH block 8k+2, 8k+3 - mid
 	aese	v7.16b, v27.16b
 	aesmc	v7.16b, v7.16b			//AES block 8k+15 - round 1
@@ -1701,9 +1706,9 @@ L128_dec_main_loop:	//main	loop start
 	trn2	v10.2d, v11.2d, v10.2d				//GHASH block 8k+2, 8k+3 - mid
 	pmull2	v18.1q, v8.2d, v24.2d				//GHASH block 8k	- mid
 
-	ldr	q23, [x3, #80]				//load h3l | h3h
+	ldr	q23, [x6, #48]				//load h3l | h3h
 	ext	v23.16b, v23.16b, v23.16b, #8
-	ldr	q25, [x3, #112]				//load h4l | h4h
+	ldr	q25, [x6, #80]				//load h4l | h4h
 	ext	v25.16b, v25.16b, v25.16b, #8
 	pmull	v24.1q, v8.1d, v24.1d				//GHASH block 8k+1 - mid
 	aese	v6.16b, v27.16b
@@ -1731,9 +1736,9 @@ L128_dec_main_loop:	//main	loop start
 	aese	v4.16b, v28.16b
 	aesmc	v4.16b, v4.16b			//AES block 8k+12 - round 2
 	eor	v10.16b, v10.16b, v29.16b				//GHASH block 8k+2, 8k+3 - mid
-	ldr	q20, [x3, #32]				//load h1l | h1h
+	ldr	q20, [x6]				//load h1l | h1h
 	ext	v20.16b, v20.16b, v20.16b, #8
-	ldr	q22, [x3, #64]				//load h2l | h2h
+	ldr	q22, [x6, #32]				//load h2l | h2h
 	ext	v22.16b, v22.16b, v22.16b, #8
 
 	eor	v18.16b, v18.16b, v24.16b				//GHASH block 8k+1 - mid
@@ -1758,12 +1763,12 @@ L128_dec_main_loop:	//main	loop start
 	rev64	v15.16b, v15.16b						//GHASH block 8k+7
 	pmull2	v8.1q, v12.2d, v25.2d				//GHASH block 8k+4 - high
 
-	ldp	q27, q28, [x8, #64]				//load rk4, rk5
+	ldp	q27, q28, [x11, #64]				//load rk4, rk5
 	pmull	v25.1q, v12.1d, v25.1d				//GHASH block 8k+4 - low
 .long	0xce157652	//eor3 v18.16b, v18.16b, v21.16b, v29.16b			//GHASH block 8k+2, 8k+3 - mid
 
-	ldr	q21, [x3, #48]				//load h2k | h1k
-	ldr	q24, [x3, #96]				//load h4k | h3k
+	ldr	q21, [x6, #16]				//load h2k | h1k
+	ldr	q24, [x6, #64]				//load h4k | h3k
 	aese	v2.16b, v26.16b
 	aesmc	v2.16b, v2.16b			//AES block 8k+10 - round 3
 	trn2	v12.2d, v13.2d, v12.2d				//GHASH block 8k+4, 8k+5 - mid
@@ -1810,7 +1815,7 @@ L128_dec_main_loop:	//main	loop start
 	aesmc	v4.16b, v4.16b			//AES block 8k+12 - round 4
 	trn2	v14.2d, v15.2d, v14.2d				//GHASH block 8k+6, 8k+7 - mid
 
-	ldp	q26, q27, [x8, #96]				//load rk6, rk7
+	ldp	q26, q27, [x11, #96]				//load rk6, rk7
 	aese	v0.16b, v28.16b
 	aesmc	v0.16b, v0.16b			//AES block 8k+8 - round 5
 	pmull2	v16.1q, v12.2d, v24.2d				//GHASH block 8k+4 - mid
@@ -1864,7 +1869,7 @@ L128_dec_main_loop:	//main	loop start
 .long	0xce0b3231	//eor3 v17.16b, v17.16b, v11.16b, v12.16b			//GHASH block 8k+6, 8k+7 - high
 	aese	v4.16b, v26.16b
 	aesmc	v4.16b, v4.16b			//AES block 8k+12 - round 6
-	ldp	q28, q26, [x8, #128]				//load rk8, rk9
+	ldp	q28, q26, [x11, #128]				//load rk8, rk9
 
 	ldr	d16, [x10]			//MODULO - load modulo constant
 .long	0xce165273	//eor3 v19.16b, v19.16b, v22.16b, v20.16b			//GHASH block 8k+6, 8k+7 - low
@@ -1928,7 +1933,7 @@ L128_dec_main_loop:	//main	loop start
 
 	aese	v0.16b, v26.16b						//AES block 8k+8 - round 9
 	aese	v1.16b, v26.16b						//AES block 8k+9 - round 9
-	ldr	q27, [x8, #160]					//load rk10
+	ldr	q27, [x11, #160]					//load rk10
 
 	aese	v6.16b, v26.16b						//AES block 8k+14 - round 9
 	pmull	v17.1q, v18.1d, v16.1d			//MODULO - mid 64b align with low
@@ -1979,19 +1984,19 @@ L128_dec_prepretail:	//PREPRETAIL
 
 	rev64	v10.16b, v10.16b						//GHASH block 8k+2
 	rev32	v5.16b, v30.16b				//CTR block 8k+13
-	ldp	q26, q27, [x8, #0]				 	//load rk0, rk1
+	ldp	q26, q27, [x11, #0]				 	//load rk0, rk1
 
-	ldr	q23, [x3, #176]				//load h7l | h7h
+	ldr	q23, [x6, #144]				//load h7l | h7h
 	ext	v23.16b, v23.16b, v23.16b, #8
-	ldr	q25, [x3, #208]				//load h8l | h8h
+	ldr	q25, [x6, #176]				//load h8l | h8h
 	ext	v25.16b, v25.16b, v25.16b, #8
 	eor	v8.16b, v8.16b, v19.16b				 	//PRE 1
 	rev64	v9.16b, v9.16b						//GHASH block 8k+1
 
 	add	v30.4s, v30.4s, v31.4s		//CTR block 8k+13
-	ldr	q20, [x3, #128]				//load h5l | h5h
+	ldr	q20, [x6, #96]				//load h5l | h5h
 	ext	v20.16b, v20.16b, v20.16b, #8
-	ldr	q22, [x3, #160]				//load h6l | h6h
+	ldr	q22, [x6, #128]				//load h6l | h6h
 	ext	v22.16b, v22.16b, v22.16b, #8
 	rev64	v13.16b, v13.16b						//GHASH block 8k+5
 
@@ -1999,8 +2004,8 @@ L128_dec_prepretail:	//PREPRETAIL
 
 	rev64	v14.16b, v14.16b						//GHASH block 8k+6
 
-	ldr	q21, [x3, #144]				//load h6k | h5k
-	ldr	q24, [x3, #192]				//load h8k | h7k
+	ldr	q21, [x6, #112]				//load h6k | h5k
+	ldr	q24, [x6, #160]				//load h8k | h7k
 	rev32	v6.16b, v30.16b				//CTR block 8k+14
 	add	v30.4s, v30.4s, v31.4s		//CTR block 8k+14
 
@@ -2060,13 +2065,13 @@ L128_dec_prepretail:	//PREPRETAIL
 	aese	v5.16b, v27.16b
 	aesmc	v5.16b, v5.16b			//AES block 8k+13 - round 1
 
-	ldp	q28, q26, [x8, #32]				//load rk2, rk3
+	ldp	q28, q26, [x11, #32]				//load rk2, rk3
 .long	0xce165273	//eor3 v19.16b, v19.16b, v22.16b, v20.16b			//GHASH block 8k+2, 8k+3 - low
 	pmull2	v29.1q, v10.2d, v21.2d				//GHASH block 8k+2 - mid
 
-	ldr	q23, [x3, #80]				//load h3l | h3h
+	ldr	q23, [x6, #48]				//load h3l | h3h
 	ext	v23.16b, v23.16b, v23.16b, #8
-	ldr	q25, [x3, #112]				//load h4l | h4h
+	ldr	q25, [x6, #80]				//load h4l | h4h
 	ext	v25.16b, v25.16b, v25.16b, #8
 	aese	v1.16b, v27.16b
 	aesmc	v1.16b, v1.16b			//AES block 8k+9 - round 1
@@ -2079,9 +2084,9 @@ L128_dec_prepretail:	//PREPRETAIL
 	aese	v0.16b, v27.16b
 	aesmc	v0.16b, v0.16b			//AES block 8k+8 - round 1
 
-	ldr	q20, [x3, #32]				//load h1l | h1h
+	ldr	q20, [x6]				//load h1l | h1h
 	ext	v20.16b, v20.16b, v20.16b, #8
-	ldr	q22, [x3, #64]				//load h2l | h2h
+	ldr	q22, [x6, #32]				//load h2l | h2h
 	ext	v22.16b, v22.16b, v22.16b, #8
 .long	0xce157652	//eor3 v18.16b, v18.16b, v21.16b, v29.16b			//GHASH block 8k+2, 8k+3 - mid
 
@@ -2109,13 +2114,13 @@ L128_dec_prepretail:	//PREPRETAIL
 	pmull	v25.1q, v12.1d, v25.1d				//GHASH block 8k+4 - low
 	trn2	v12.2d, v13.2d, v12.2d				//GHASH block 8k+4, 8k+5 - mid
 
-	ldp	q27, q28, [x8, #64]				//load rk4, rk5
+	ldp	q27, q28, [x11, #64]				//load rk4, rk5
 	rev64	v15.16b, v15.16b						//GHASH block 8k+7
 	aese	v6.16b, v26.16b
 	aesmc	v6.16b, v6.16b			//AES block 8k+14 - round 3
 
-	ldr	q21, [x3, #48]				//load h2k | h1k
-	ldr	q24, [x3, #96]				//load h4k | h3k
+	ldr	q21, [x6, #16]				//load h2k | h1k
+	ldr	q24, [x6, #64]				//load h4k | h3k
 	pmull2	v10.1q, v13.2d, v23.2d				//GHASH block 8k+5 - high
 	pmull	v23.1q, v13.1d, v23.1d				//GHASH block 8k+5 - low
 
@@ -2170,7 +2175,7 @@ L128_dec_prepretail:	//PREPRETAIL
 	pmull2	v13.1q, v14.2d, v21.2d				//GHASH block 8k+6 - mid
 	pmull	v21.1q, v14.1d, v21.1d				//GHASH block 8k+7 - mid
 
-	ldp	q26, q27, [x8, #96]				//load rk6, rk7
+	ldp	q26, q27, [x11, #96]				//load rk6, rk7
 .long	0xce184252	//eor3 v18.16b, v18.16b, v24.16b, v16.16b			//GHASH block 8k+4, 8k+5 - mid
 	aese	v6.16b, v28.16b
 	aesmc	v6.16b, v6.16b			//AES block 8k+14 - round 5
@@ -2221,7 +2226,7 @@ L128_dec_prepretail:	//PREPRETAIL
 	aese	v4.16b, v27.16b
 	aesmc	v4.16b, v4.16b			//AES block 8k+12 - round 7
 .long	0xce114e52	//eor3 v18.16b, v18.16b, v17.16b, v19.16b		 	//MODULO - karatsuba tidy up
-	ldp	q28, q26, [x8, #128]				//load rk8, rk9
+	ldp	q28, q26, [x11, #128]				//load rk8, rk9
 
 	pmull	v29.1q, v17.1d, v16.1d		 	//MODULO - top 64b align with mid
 	aese	v3.16b, v27.16b
@@ -2243,7 +2248,7 @@ L128_dec_prepretail:	//PREPRETAIL
 	aesmc	v2.16b, v2.16b			//AES block 8k+10 - round 7
 
 .long	0xce1d5652	//eor3 v18.16b, v18.16b, v29.16b, v21.16b			//MODULO - fold into mid
-	ldr	q27, [x8, #160]					//load rk10
+	ldr	q27, [x11, #160]					//load rk10
 
 	aese	v3.16b, v28.16b
 	aesmc	v3.16b, v3.16b			//AES block 8k+11 - round 8
@@ -2287,15 +2292,15 @@ L128_dec_tail:	//TAIL
 
 	cmp	x5, #112
 
-	ldp	q24, q25, [x3, #192]			//load h8k | h7k
+	ldp	q24, q25, [x6, #160]			//load h8k | h7k
 	ext	v25.16b, v25.16b, v25.16b, #8
 	ldr	q9, [x0], #16				//AES block 8k+8 - load ciphertext
 
-	ldp	q20, q21, [x3, #128]			//load h5l | h5h
+	ldp	q20, q21, [x6, #96]			//load h5l | h5h
 	ext	v20.16b, v20.16b, v20.16b, #8
 	ext	v16.16b, v19.16b, v19.16b, #8				//prepare final partial tag
 
-	ldp	q22, q23, [x3, #160]			//load h6l | h6h
+	ldp	q22, q23, [x6, #128]			//load h6l | h6h
 	ext	v22.16b, v22.16b, v22.16b, #8
 	ext	v23.16b, v23.16b, v23.16b, #8
 
@@ -2351,7 +2356,7 @@ L128_dec_tail:	//TAIL
 	mov	v7.16b, v6.16b
 	cmp	x5, #32
 
-	ldr	q24, [x3, #96]				//load h4k | h3k
+	ldr	q24, [x6, #64]				//load h4k | h3k
 	mov	v6.16b, v1.16b
 	b.gt	L128_dec_blocks_more_than_2
 
@@ -2362,7 +2367,7 @@ L128_dec_tail:	//TAIL
 	b.gt	L128_dec_blocks_more_than_1
 
 	sub	v30.4s, v30.4s, v31.4s
-	ldr	q21, [x3, #48]				//load h2k | h1k
+	ldr	q21, [x6, #16]				//load h2k | h1k
 	b	L128_dec_blocks_less_than_1
 L128_dec_blocks_more_than_7:	//blocks	left >  7
 	rev64	v8.16b, v9.16b						//GHASH final-7 block
@@ -2465,9 +2470,9 @@ L128_dec_blocks_more_than_3:	//blocks	left >  3
 
 	ins	v27.d[0], v8.d[1]					//GHASH final-3 block - mid
 
-	ldr	q25, [x3, #112]				//load h4l | h4h
+	ldr	q25, [x6, #80]				//load h4l | h4h
 	ext	v25.16b, v25.16b, v25.16b, #8
-	ldr	q24, [x3, #96]				//load h4k | h3k
+	ldr	q24, [x6, #64]				//load h4k | h3k
 
 	eor	v27.8b, v27.8b, v8.8b				//GHASH final-3 block - mid
 
@@ -2492,7 +2497,7 @@ L128_dec_blocks_more_than_2:	//blocks	left >  2
 	st1	{ v12.16b}, [x2], #16			 	//AES final-2 block - store result
 
 	eor	v8.16b, v8.16b, v16.16b					//feed in partial tag
-	ldr	q23, [x3, #80]				//load h3l | h3h
+	ldr	q23, [x6, #48]				//load h3l | h3h
 	ext	v23.16b, v23.16b, v23.16b, #8
 	movi	v16.8b, #0						//supress further partial tag feed in
 
@@ -2517,7 +2522,7 @@ L128_dec_blocks_more_than_1:	//blocks	left >  1
 	st1	{ v12.16b}, [x2], #16			 	//AES final-1 block - store result
 	rev64	v8.16b, v9.16b						//GHASH final-1 block
 
-	ldr	q22, [x3, #64]				//load h2l | h2h
+	ldr	q22, [x6, #32]				//load h2l | h2h
 	ext	v22.16b, v22.16b, v22.16b, #8
 
 	eor	v8.16b, v8.16b, v16.16b					//feed in partial tag
@@ -2531,7 +2536,7 @@ L128_dec_blocks_more_than_1:	//blocks	left >  1
 
 	eor	v27.8b, v27.8b, v8.8b				//GHASH final-1 block - mid
 	eor	v17.16b, v17.16b, v28.16b					//GHASH final-1 block - high
-	ldr	q21, [x3, #48]				//load h2k | h1k
+	ldr	q21, [x6, #16]				//load h2k | h1k
 
 	ins	v27.d[1], v27.d[0]					//GHASH final-1 block - mid
 .long	0xce07752c	//eor3 v12.16b, v9.16b, v7.16b, v29.16b				//AES final block - result
@@ -2551,20 +2556,20 @@ L128_dec_blocks_less_than_1:	//blocks	left <= 1
 
 	neg	x1, x1				//bit_length = 128 - #bits in input (in range [1,128])
 
-	mvn	x6, xzr						//temp0_x = 0xffffffffffffffff
+	mvn	x7, xzr						//temp0_x = 0xffffffffffffffff
 	and	x1, x1, #127				//bit_length %= 128
 
-	lsr	x6, x6, x1				//temp0_x is mask for top 64b of last block
+	lsr	x7, x7, x1				//temp0_x is mask for top 64b of last block
 	cmp	x1, #64
-	mvn	x7, xzr						//temp1_x = 0xffffffffffffffff
+	mvn	x8, xzr						//temp1_x = 0xffffffffffffffff
 
-	csel	x13, x7, x6, lt
-	csel	x14, x6, xzr, lt
+	csel	x13, x8, x7, lt
+	csel	x14, x7, xzr, lt
 
 	mov	v0.d[1], x14
 	mov	v0.d[0], x13					//ctr0b is mask for last block
 
-	ldr	q20, [x3, #32]				//load h1l | h1h
+	ldr	q20, [x6]				//load h1l | h1h
 	ext	v20.16b, v20.16b, v20.16b, #8
 	ld1	{ v26.16b}, [x2]					//load existing bytes where the possibly partial last block is to be stored
 
@@ -2635,7 +2640,7 @@ aesv8_gcm_8x_enc_192:
 	stp	d8, d9, [sp, #-80]!
 	lsr	x9, x1, #3
 	mov	x16, x4
-	mov	x8, x5
+	mov	x11, x5
 	stp	d10, d11, [sp, #16]
 	stp	d12, d13, [sp, #32]
 	stp	d14, d15, [sp, #48]
@@ -2671,7 +2676,7 @@ aesv8_gcm_8x_enc_192:
 
 	rev32	v5.16b, v30.16b				//CTR block 5
 	add	v30.4s, v30.4s, v31.4s		//CTR block 5
-	ldp	q26, q27, [x8, #0]				 	//load rk0, rk1
+	ldp	q26, q27, [x11, #0]				 	//load rk0, rk1
 
 	add	x5, x5, x0
 
@@ -2698,7 +2703,7 @@ aesv8_gcm_8x_enc_192:
 	aesmc	v6.16b, v6.16b			//AES block 6 - round 0
 	aese	v2.16b, v26.16b
 	aesmc	v2.16b, v2.16b			//AES block 2 - round 0
-	ldp	q28, q26, [x8, #32]				//load rk2, rk3
+	ldp	q28, q26, [x11, #32]				//load rk2, rk3
 
 	aese	v5.16b, v27.16b
 	aesmc	v5.16b, v5.16b			//AES block 5 - round 1
@@ -2738,7 +2743,7 @@ aesv8_gcm_8x_enc_192:
 	aese	v6.16b, v28.16b
 	aesmc	v6.16b, v6.16b			//AES block 6 - round 2
 
-	ldp	q27, q28, [x8, #64]				//load rk4, rk5
+	ldp	q27, q28, [x11, #64]				//load rk4, rk5
 	aese	v4.16b, v26.16b
 	aesmc	v4.16b, v4.16b			//AES block 4 - round 3
 
@@ -2781,7 +2786,7 @@ aesv8_gcm_8x_enc_192:
 
 	aese	v1.16b, v28.16b
 	aesmc	v1.16b, v1.16b			//AES block 1 - round 5
-	ldp	q26, q27, [x8, #96]				//load rk6, rk7
+	ldp	q26, q27, [x11, #96]				//load rk6, rk7
 	aese	v2.16b, v28.16b
 	aesmc	v2.16b, v2.16b			//AES block 2 - round 5
 
@@ -2819,7 +2824,7 @@ aesv8_gcm_8x_enc_192:
 	aesmc	v0.16b, v0.16b			//AES block 0 - round 6
 	aese	v7.16b, v26.16b
 	aesmc	v7.16b, v7.16b			//AES block 7 - round 6
-	ldp	q28, q26, [x8, #128]				//load rk8, rk9
+	ldp	q28, q26, [x11, #128]				//load rk8, rk9
 
 	aese	v6.16b, v27.16b
 	aesmc	v6.16b, v6.16b			//AES block 6 - round 7
@@ -2868,7 +2873,7 @@ aesv8_gcm_8x_enc_192:
 	ld1	{ v19.16b}, [x3]
 	ext	v19.16b, v19.16b, v19.16b, #8
 	rev64	v19.16b, v19.16b
-	ldp	q27, q28, [x8, #160]				//load rk10, rk11
+	ldp	q27, q28, [x11, #160]				//load rk10, rk11
 
 	aese	v6.16b, v26.16b
 	aesmc	v6.16b, v6.16b			//AES block 6 - round 9
@@ -2911,7 +2916,7 @@ aesv8_gcm_8x_enc_192:
 
 	aese	v4.16b, v28.16b						//AES block 12 - round 11
 	aese	v7.16b, v28.16b						//AES block 15 - round 11
-	ldr	q26, [x8, #192]					//load rk12
+	ldr	q26, [x11, #192]					//load rk12
 
 	aese	v1.16b, v28.16b						//AES block 9 - round 11
 	aese	v5.16b, v28.16b						//AES block 13 - round 11
@@ -2964,21 +2969,21 @@ aesv8_gcm_8x_enc_192:
 
 L192_enc_main_loop:	//main	loop start
 	rev64	v12.16b, v12.16b						//GHASH block 8k+4 (t0, t1, and t2 free)
-	ldp	q26, q27, [x8, #0]				 	//load rk0, rk1
+	ldp	q26, q27, [x11, #0]				 	//load rk0, rk1
 	rev64	v10.16b, v10.16b						//GHASH block 8k+2
 
 	rev32	v5.16b, v30.16b				//CTR block 8k+13
 	add	v30.4s, v30.4s, v31.4s		//CTR block 8k+13
-	ldr	q23, [x3, #176]				//load h7l | h7h
+	ldr	q23, [x6, #144]				//load h7l | h7h
 	ext	v23.16b, v23.16b, v23.16b, #8
-	ldr	q25, [x3, #208]				//load h8l | h8h
+	ldr	q25, [x6, #176]				//load h8l | h8h
 	ext	v25.16b, v25.16b, v25.16b, #8
 
 	ext	v19.16b, v19.16b, v19.16b, #8				//PRE 0
 	rev64	v8.16b, v8.16b						//GHASH block 8k
-	ldr	q20, [x3, #128]				//load h5l | h5h
+	ldr	q20, [x6, #96]				//load h5l | h5h
 	ext	v20.16b, v20.16b, v20.16b, #8
-	ldr	q22, [x3, #160]				//load h6l | h6h
+	ldr	q22, [x6, #128]				//load h6l | h6h
 	ext	v22.16b, v22.16b, v22.16b, #8
 
 	rev64	v9.16b, v9.16b						//GHASH block 8k+1
@@ -3009,7 +3014,7 @@ L192_enc_main_loop:	//main	loop start
 	aese	v6.16b, v26.16b
 	aesmc	v6.16b, v6.16b			//AES block 8k+14 - round 0
 
-	ldp	q28, q26, [x8, #32]				//load rk2, rk3
+	ldp	q28, q26, [x11, #32]				//load rk2, rk3
 	pmull2	v17.1q, v8.2d, v25.2d				//GHASH block 8k - high
 	aese	v0.16b, v27.16b
 	aesmc	v0.16b, v0.16b			//AES block 8k+8 - round 1
@@ -3022,8 +3027,8 @@ L192_enc_main_loop:	//main	loop start
 	trn1	v18.2d, v9.2d, v8.2d				//GHASH block 8k, 8k+1 - mid
 	aese	v3.16b, v27.16b
 	aesmc	v3.16b, v3.16b			//AES block 8k+11 - round 1
-	ldr	q21, [x3, #144]				//load h6k | h5k
-	ldr	q24, [x3, #192]				//load h8k | h7k
+	ldr	q21, [x6, #112]				//load h6k | h5k
+	ldr	q24, [x6, #160]				//load h8k | h7k
 
 	pmull2	v29.1q, v10.2d, v22.2d				//GHASH block 8k+2 - high
 	pmull	v19.1q, v8.1d, v25.1d				//GHASH block 8k - low
@@ -3075,14 +3080,14 @@ L192_enc_main_loop:	//main	loop start
 	trn2	v10.2d, v11.2d, v10.2d				//GHASH block 8k+2, 8k+3 - mid
 	aese	v3.16b, v26.16b
 	aesmc	v3.16b, v3.16b			//AES block 8k+11 - round 3
-	ldp	q27, q28, [x8, #64]				//load rk4, rk5
+	ldp	q27, q28, [x11, #64]				//load rk4, rk5
 
 	aese	v0.16b, v26.16b
 	aesmc	v0.16b, v0.16b			//AES block 8k+8 - round 3
 	eor	v19.16b, v19.16b, v23.16b				//GHASH block 8k+1 - low
-	ldr	q23, [x3, #80]				//load h3l | h3h
+	ldr	q23, [x6, #48]				//load h3l | h3h
 	ext	v23.16b, v23.16b, v23.16b, #8
-	ldr	q25, [x3, #112]				//load h4l | h4h
+	ldr	q25, [x6, #80]				//load h4l | h4h
 	ext	v25.16b, v25.16b, v25.16b, #8
 
 	pmull2	v18.1q, v8.2d, v24.2d				//GHASH block 8k - mid
@@ -3128,12 +3133,12 @@ L192_enc_main_loop:	//main	loop start
 .long	0xce157652	//eor3 v18.16b, v18.16b, v21.16b, v29.16b			//GHASH block 8k+2, 8k+3 - mid
 	aese	v4.16b, v28.16b
 	aesmc	v4.16b, v4.16b			//AES block 8k+12 - round 5
-	ldr	q20, [x3, #32]				//load h1l | h1h
+	ldr	q20, [x6]				//load h1l | h1h
 	ext	v20.16b, v20.16b, v20.16b, #8
-	ldr	q22, [x3, #64]				//load h2l | h2h
+	ldr	q22, [x6, #32]				//load h2l | h2h
 	ext	v22.16b, v22.16b, v22.16b, #8
 
-	ldp	q26, q27, [x8, #96]				//load rk6, rk7
+	ldp	q26, q27, [x11, #96]				//load rk6, rk7
 	aese	v2.16b, v28.16b
 	aesmc	v2.16b, v2.16b			//AES block 8k+10 - round 5
 	rev64	v15.16b, v15.16b						//GHASH block 8k+7 (t0, t1, t2 and t3 free)
@@ -3148,8 +3153,8 @@ L192_enc_main_loop:	//main	loop start
 
 	aese	v6.16b, v28.16b
 	aesmc	v6.16b, v6.16b			//AES block 8k+14 - round 5
-	ldr	q21, [x3, #48]				//load h2k | h1k
-	ldr	q24, [x3, #96]				//load h4k | h3k
+	ldr	q21, [x6, #16]				//load h2k | h1k
+	ldr	q24, [x6, #64]				//load h4k | h3k
 
 	aese	v1.16b, v28.16b
 	aesmc	v1.16b, v1.16b			//AES block 8k+9 - round 5
@@ -3196,7 +3201,7 @@ L192_enc_main_loop:	//main	loop start
 	eor	v14.16b, v14.16b, v13.16b				//GHASH block 8k+6, 8k+7 - mid
 
 	pmull2	v16.1q, v12.2d, v24.2d				//GHASH block 8k+4 - mid
-	ldp	q28, q26, [x8, #128]				//load rk8, rk9
+	ldp	q28, q26, [x11, #128]				//load rk8, rk9
 	pmull	v24.1q, v12.1d, v24.1d				//GHASH block 8k+5 - mid
 
 	aese	v4.16b, v27.16b
@@ -3243,7 +3248,7 @@ L192_enc_main_loop:	//main	loop start
 	aesmc	v1.16b, v1.16b			//AES block 8k+9 - round 8
 	aese	v3.16b, v28.16b
 	aesmc	v3.16b, v3.16b			//AES block 8k+11 - round 8
-	ldp	q27, q28, [x8, #160]				//load rk10, rk11
+	ldp	q27, q28, [x11, #160]				//load rk10, rk11
 
 .long	0xce165273	//eor3 v19.16b, v19.16b, v22.16b, v20.16b			//GHASH block 8k+6, 8k+7 - low
 	rev32	v20.16b, v30.16b					//CTR block 8k+16
@@ -3281,7 +3286,7 @@ L192_enc_main_loop:	//main	loop start
 	aesmc	v2.16b, v2.16b			//AES block 8k+10 - round 10
 	aese	v4.16b, v27.16b
 	aesmc	v4.16b, v4.16b			//AES block 8k+12 - round 10
-	ldr	q26, [x8, #192]					//load rk12
+	ldr	q26, [x11, #192]					//load rk12
 	ext	v29.16b, v17.16b, v17.16b, #8				//MODULO - other top alignment
 
 	aese	v0.16b, v27.16b
@@ -3354,26 +3359,26 @@ L192_enc_main_loop:	//main	loop start
 
 L192_enc_prepretail:	//PREPRETAIL
 	rev32	v5.16b, v30.16b				//CTR block 8k+13
-	ldp	q26, q27, [x8, #0]				 	//load rk0, rk1
+	ldp	q26, q27, [x11, #0]				 	//load rk0, rk1
 	add	v30.4s, v30.4s, v31.4s		//CTR block 8k+13
 
-	ldr	q23, [x3, #176]				//load h7l | h7h
+	ldr	q23, [x6, #144]				//load h7l | h7h
 	ext	v23.16b, v23.16b, v23.16b, #8
-	ldr	q25, [x3, #208]				//load h8l | h8h
+	ldr	q25, [x6, #176]				//load h8l | h8h
 	ext	v25.16b, v25.16b, v25.16b, #8
 	rev64	v8.16b, v8.16b						//GHASH block 8k
 	ext	v19.16b, v19.16b, v19.16b, #8				//PRE 0
 
 	rev32	v6.16b, v30.16b				//CTR block 8k+14
 	add	v30.4s, v30.4s, v31.4s		//CTR block 8k+14
-	ldr	q21, [x3, #144]				//load h6k | h5k
-	ldr	q24, [x3, #192]				//load h8k | h7k
+	ldr	q21, [x6, #112]				//load h6k | h5k
+	ldr	q24, [x6, #160]				//load h8k | h7k
 
 	rev64	v11.16b, v11.16b						//GHASH block 8k+3
 	rev64	v10.16b, v10.16b						//GHASH block 8k+2
-	ldr	q20, [x3, #128]				//load h5l | h5h
+	ldr	q20, [x6, #96]				//load h5l | h5h
 	ext	v20.16b, v20.16b, v20.16b, #8
-	ldr	q22, [x3, #160]				//load h6l | h6h
+	ldr	q22, [x6, #128]				//load h6l | h6h
 	ext	v22.16b, v22.16b, v22.16b, #8
 
 	eor	v8.16b, v8.16b, v19.16b				 	//PRE 1
@@ -3407,7 +3412,7 @@ L192_enc_prepretail:	//PREPRETAIL
 	trn2	v8.2d, v9.2d, v8.2d				//GHASH block 8k, 8k+1 - mid
 	aese	v7.16b, v26.16b
 	aesmc	v7.16b, v7.16b			//AES block 8k+15 - round 0
-	ldp	q28, q26, [x8, #32]				//load rk2, rk3
+	ldp	q28, q26, [x11, #32]				//load rk2, rk3
 
 	pmull	v23.1q, v9.1d, v23.1d				//GHASH block 8k+1 - low
 	eor	v17.16b, v17.16b, v16.16b				//GHASH block 8k+1 - high
@@ -3467,7 +3472,7 @@ L192_enc_prepretail:	//PREPRETAIL
 
 	eor	v10.16b, v10.16b, v29.16b				//GHASH block 8k+2, 8k+3 - mid
 	pmull	v24.1q, v8.1d, v24.1d				//GHASH block 8k+1 - mid
-	ldp	q27, q28, [x8, #64]				//load rk4, rk5
+	ldp	q27, q28, [x11, #64]				//load rk4, rk5
 
 	aese	v1.16b, v26.16b
 	aesmc	v1.16b, v1.16b			//AES block 8k+9 - round 3
@@ -3481,17 +3486,17 @@ L192_enc_prepretail:	//PREPRETAIL
 	aese	v7.16b, v26.16b
 	aesmc	v7.16b, v7.16b			//AES block 8k+15 - round 3
 
-	ldr	q23, [x3, #80]				//load h3l | h3h
+	ldr	q23, [x6, #48]				//load h3l | h3h
 	ext	v23.16b, v23.16b, v23.16b, #8
-	ldr	q25, [x3, #112]				//load h4l | h4h
+	ldr	q25, [x6, #80]				//load h4l | h4h
 	ext	v25.16b, v25.16b, v25.16b, #8
 	aese	v3.16b, v26.16b
 	aesmc	v3.16b, v3.16b			//AES block 8k+11 - round 3
 	pmull2	v29.1q, v10.2d, v21.2d				//GHASH block 8k+2 - mid
 
-	ldr	q20, [x3, #32]				//load h1l | h1h
+	ldr	q20, [x6]				//load h1l | h1h
 	ext	v20.16b, v20.16b, v20.16b, #8
-	ldr	q22, [x3, #64]				//load h2l | h2h
+	ldr	q22, [x6, #32]				//load h2l | h2h
 	ext	v22.16b, v22.16b, v22.16b, #8
 	aese	v4.16b, v26.16b
 	aesmc	v4.16b, v4.16b			//AES block 8k+12 - round 3
@@ -3525,14 +3530,14 @@ L192_enc_prepretail:	//PREPRETAIL
 	aese	v0.16b, v28.16b
 	aesmc	v0.16b, v0.16b			//AES block 8k+8 - round 5
 	rev64	v15.16b, v15.16b						//GHASH block 8k+7 (t0, t1, t2 and t3 free)
-	ldr	q21, [x3, #48]				//load h2k | h1k
-	ldr	q24, [x3, #96]				//load h4k | h3k
+	ldr	q21, [x6, #16]				//load h2k | h1k
+	ldr	q24, [x6, #64]				//load h4k | h3k
 
 	aese	v1.16b, v28.16b
 	aesmc	v1.16b, v1.16b			//AES block 8k+9 - round 5
 	aese	v2.16b, v28.16b
 	aesmc	v2.16b, v2.16b			//AES block 8k+10 - round 5
-	ldp	q26, q27, [x8, #96]				//load rk6, rk7
+	ldp	q26, q27, [x11, #96]				//load rk6, rk7
 
 	pmull2	v11.1q, v14.2d, v22.2d				//GHASH block 8k+6 - high
 	pmull2	v8.1q, v12.2d, v25.2d				//GHASH block 8k+4 - high
@@ -3604,7 +3609,7 @@ L192_enc_prepretail:	//PREPRETAIL
 	aesmc	v4.16b, v4.16b			//AES block 8k+12 - round 7
 	aese	v2.16b, v27.16b
 	aesmc	v2.16b, v2.16b			//AES block 8k+10 - round 7
-	ldp	q28, q26, [x8, #128]				//load rk8, rk9
+	ldp	q28, q26, [x11, #128]				//load rk8, rk9
 
 	aese	v3.16b, v27.16b
 	aesmc	v3.16b, v3.16b			//AES block 8k+11 - round 7
@@ -3646,7 +3651,7 @@ L192_enc_prepretail:	//PREPRETAIL
 
 	aese	v3.16b, v26.16b
 	aesmc	v3.16b, v3.16b			//AES block 8k+11 - round 9
-	ldp	q27, q28, [x8, #160]				//load rk10, rk11
+	ldp	q27, q28, [x11, #160]				//load rk10, rk11
 	aese	v4.16b, v26.16b
 	aesmc	v4.16b, v4.16b			//AES block 8k+12 - round 9
 
@@ -3664,7 +3669,7 @@ L192_enc_prepretail:	//PREPRETAIL
 	aesmc	v1.16b, v1.16b			//AES block 8k+9 - round 9
 
 	pmull	v17.1q, v18.1d, v16.1d			//MODULO - mid 64b align with low
-	ldr	q26, [x8, #192]					//load rk12
+	ldr	q26, [x11, #192]					//load rk12
 
 	aese	v7.16b, v27.16b
 	aesmc	v7.16b, v7.16b			//AES block 8k+15 - round 10
@@ -3701,18 +3706,18 @@ L192_enc_prepretail:	//PREPRETAIL
 
 L192_enc_tail:	//TAIL
 
-	ldp	q20, q21, [x3, #128]			//load h5l | h5h
+	ldp	q20, q21, [x6, #96]			//load h5l | h5h
 	ext	v20.16b, v20.16b, v20.16b, #8
 	sub	x5, x4, x0 	//main_end_input_ptr is number of bytes left to process
 
 	ldr	q8, [x0], #16				//AES block 8k+8 - l3ad plaintext
 
-	ldp	q24, q25, [x3, #192]			//load h8k | h7k
+	ldp	q24, q25, [x6, #160]			//load h8k | h7k
 	ext	v25.16b, v25.16b, v25.16b, #8
 
 	mov	v29.16b, v26.16b
 
-	ldp	q22, q23, [x3, #160]			//load h6l | h6h
+	ldp	q22, q23, [x6, #128]			//load h6l | h6h
 	ext	v22.16b, v22.16b, v22.16b, #8
 	ext	v23.16b, v23.16b, v23.16b, #8
 	cmp	x5, #112
@@ -3770,7 +3775,7 @@ L192_enc_tail:	//TAIL
 	mov	v6.16b, v1.16b
 	sub	v30.4s, v30.4s, v31.4s
 
-	ldr	q24, [x3, #96]				//load h4k | h3k
+	ldr	q24, [x6, #64]				//load h4k | h3k
 	cmp	x5, #32
 	b.gt	L192_enc_blocks_more_than_2
 
@@ -3781,7 +3786,7 @@ L192_enc_tail:	//TAIL
 	b.gt	L192_enc_blocks_more_than_1
 
 	sub	v30.4s, v30.4s, v31.4s
-	ldr	q21, [x3, #48]				//load h2k | h1k
+	ldr	q21, [x6, #16]				//load h2k | h1k
 	b	L192_enc_blocks_less_than_1
 L192_enc_blocks_more_than_7:	//blocks	left >  7
 	st1	{ v9.16b}, [x2], #16			 	//AES final-7 block  - store result
@@ -3880,7 +3885,7 @@ L192_enc_blocks_more_than_4:	//blocks	left >  4
 .long	0xce047529	//eor3 v9.16b, v9.16b, v4.16b, v29.16b			//AES final-3 block - result
 L192_enc_blocks_more_than_3:	//blocks	left >  3
 
-	ldr	q24, [x3, #96]				//load h4k | h3k
+	ldr	q24, [x6, #64]				//load h4k | h3k
 	st1	{ v9.16b}, [x2], #16			 	//AES final-3 block - store result
 
 	rev64	v8.16b, v9.16b						//GHASH final-3 block
@@ -3889,7 +3894,7 @@ L192_enc_blocks_more_than_3:	//blocks	left >  3
 	movi	v16.8b, #0						//supress further partial tag feed in
 
 	ldr	q9, [x0], #16				//AES final-2 block - load plaintext
-	ldr	q25, [x3, #112]				//load h4l | h4h
+	ldr	q25, [x6, #80]				//load h4l | h4h
 	ext	v25.16b, v25.16b, v25.16b, #8
 
 	ins	v27.d[0], v8.d[1]					//GHASH final-3 block - mid
@@ -3912,7 +3917,7 @@ L192_enc_blocks_more_than_2:	//blocks	left >  2
 	st1	{ v9.16b}, [x2], #16			 	//AES final-2 block - store result
 
 	rev64	v8.16b, v9.16b						//GHASH final-2 block
-	ldr	q23, [x3, #80]				//load h3l | h3h
+	ldr	q23, [x6, #48]				//load h3l | h3h
 	ext	v23.16b, v23.16b, v23.16b, #8
 
 	eor	v8.16b, v8.16b, v16.16b					//feed in partial tag
@@ -3935,7 +3940,7 @@ L192_enc_blocks_more_than_2:	//blocks	left >  2
 .long	0xce067529	//eor3 v9.16b, v9.16b, v6.16b, v29.16b			//AES final-1 block - result
 L192_enc_blocks_more_than_1:	//blocks	left >  1
 
-	ldr	q22, [x3, #64]				//load h1l | h1h
+	ldr	q22, [x6, #32]				//load h1l | h1h
 	ext	v22.16b, v22.16b, v22.16b, #8
 	st1	{ v9.16b}, [x2], #16			 	//AES final-1 block - store result
 
@@ -3951,7 +3956,7 @@ L192_enc_blocks_more_than_1:	//blocks	left >  1
 	eor	v27.8b, v27.8b, v8.8b				//GHASH final-1 block - mid
 
 	ldr	q9, [x0], #16				//AES final block - load plaintext
-	ldr	q21, [x3, #48]				//load h2k | h1k
+	ldr	q21, [x6, #16]				//load h2k | h1k
 
 	ins	v27.d[1], v27.d[0]					//GHASH final-1 block - mid
 
@@ -3964,7 +3969,7 @@ L192_enc_blocks_more_than_1:	//blocks	left >  1
 	eor	v17.16b, v17.16b, v28.16b					//GHASH final-1 block - high
 L192_enc_blocks_less_than_1:	//blocks	left <= 1
 
-	mvn	x6, xzr						//temp0_x = 0xffffffffffffffff
+	mvn	x7, xzr						//temp0_x = 0xffffffffffffffff
 	and	x1, x1, #127				//bit_length %= 128
 
 	sub	x1, x1, #128				//bit_length -= 128
@@ -3973,15 +3978,15 @@ L192_enc_blocks_less_than_1:	//blocks	left <= 1
 
 	and	x1, x1, #127				//bit_length %= 128
 
-	lsr	x6, x6, x1				//temp0_x is mask for top 64b of last block
+	lsr	x7, x7, x1				//temp0_x is mask for top 64b of last block
 	cmp	x1, #64
-	mvn	x7, xzr						//temp1_x = 0xffffffffffffffff
+	mvn	x8, xzr						//temp1_x = 0xffffffffffffffff
 
-	csel	x13, x7, x6, lt
-	csel	x14, x6, xzr, lt
+	csel	x13, x8, x7, lt
+	csel	x14, x7, xzr, lt
 
 	mov	v0.d[1], x14
-	ldr	q20, [x3, #32]				//load h1l | h1h
+	ldr	q20, [x6]				//load h1l | h1h
 	ext	v20.16b, v20.16b, v20.16b, #8
 
 	ld1	{ v26.16b}, [x2]					//load existing bytes where the possibly partial last block is to be stored
@@ -4053,7 +4058,7 @@ aesv8_gcm_8x_dec_192:
 	stp	d8, d9, [sp, #-80]!
 	lsr	x9, x1, #3
 	mov	x16, x4
-	mov	x8, x5
+	mov	x11, x5
 	stp	d10, d11, [sp, #16]
 	stp	d12, d13, [sp, #32]
 	stp	d14, d15, [sp, #48]
@@ -4087,7 +4092,7 @@ aesv8_gcm_8x_dec_192:
 
 	rev32	v5.16b, v30.16b				//CTR block 5
 	add	v30.4s, v30.4s, v31.4s		//CTR block 5
-	ldp	q26, q27, [x8, #0]				 	//load rk0, rk1
+	ldp	q26, q27, [x11, #0]				 	//load rk0, rk1
 
 	rev32	v6.16b, v30.16b				//CTR block 6
 	add	v30.4s, v30.4s, v31.4s		//CTR block 6
@@ -4112,7 +4117,7 @@ aesv8_gcm_8x_dec_192:
 	aesmc	v2.16b, v2.16b			//AES block 2 - round 0
 	aese	v4.16b, v26.16b
 	aesmc	v4.16b, v4.16b			//AES block 4 - round 0
-	ldp	q28, q26, [x8, #32]				//load rk2, rk3
+	ldp	q28, q26, [x11, #32]				//load rk2, rk3
 
 	aese	v1.16b, v27.16b
 	aesmc	v1.16b, v1.16b			//AES block 1 - round 1
@@ -4156,7 +4161,7 @@ aesv8_gcm_8x_dec_192:
 	aese	v7.16b, v26.16b
 	aesmc	v7.16b, v7.16b			//AES block 7 - round 3
 
-	ldp	q27, q28, [x8, #64]				//load rk4, rk5
+	ldp	q27, q28, [x11, #64]				//load rk4, rk5
 	aese	v2.16b, v26.16b
 	aesmc	v2.16b, v2.16b			//AES block 2 - round 3
 	aese	v5.16b, v26.16b
@@ -4197,7 +4202,7 @@ aesv8_gcm_8x_dec_192:
 
 	aese	v6.16b, v28.16b
 	aesmc	v6.16b, v6.16b			//AES block 6 - round 5
-	ldp	q26, q27, [x8, #96]				//load rk6, rk7
+	ldp	q26, q27, [x11, #96]				//load rk6, rk7
 
 	aese	v0.16b, v28.16b
 	aesmc	v0.16b, v0.16b			//AES block 0 - round 5
@@ -4233,7 +4238,7 @@ aesv8_gcm_8x_dec_192:
 	aesmc	v7.16b, v7.16b			//AES block 7 - round 6
 	aese	v2.16b, v26.16b
 	aesmc	v2.16b, v2.16b			//AES block 2 - round 6
-	ldp	q28, q26, [x8, #128]				//load rk8, rk9
+	ldp	q28, q26, [x11, #128]				//load rk8, rk9
 
 	add	v30.4s, v30.4s, v31.4s		//CTR block 7
 
@@ -4284,7 +4289,7 @@ aesv8_gcm_8x_dec_192:
 	ext	v19.16b, v19.16b, v19.16b, #8
 	rev64	v19.16b, v19.16b
 
-	ldp	q27, q28, [x8, #160]				//load rk10, rk11
+	ldp	q27, q28, [x11, #160]				//load rk10, rk11
 
 	aese	v0.16b, v26.16b
 	aesmc	v0.16b, v0.16b			//AES block 0 - round 9
@@ -4324,7 +4329,7 @@ aesv8_gcm_8x_dec_192:
 	aesmc	v6.16b, v6.16b			//AES block 6 - round 10
 	aese	v5.16b, v27.16b
 	aesmc	v5.16b, v5.16b			//AES block 5 - round 10
-	ldr	q26, [x8, #192]					//load rk12
+	ldr	q26, [x11, #192]					//load rk12
 
 	aese	v0.16b, v28.16b						//AES block 0 - round 11
 	aese	v1.16b, v28.16b						//AES block 1 - round 11
@@ -4381,16 +4386,16 @@ aesv8_gcm_8x_dec_192:
 
 L192_dec_main_loop:	//main	loop start
 	rev64	v9.16b, v9.16b						//GHASH block 8k+1
-	ldp	q26, q27, [x8, #0]				 	//load rk0, rk1
+	ldp	q26, q27, [x11, #0]				 	//load rk0, rk1
 	ext	v19.16b, v19.16b, v19.16b, #8				//PRE 0
 
 	rev64	v8.16b, v8.16b						//GHASH block 8k
 	rev32	v5.16b, v30.16b				//CTR block 8k+13
 	add	v30.4s, v30.4s, v31.4s		//CTR block 8k+13
 
-	ldr	q23, [x3, #176]				//load h7l | h7h
+	ldr	q23, [x6, #144]				//load h7l | h7h
 	ext	v23.16b, v23.16b, v23.16b, #8
-	ldr	q25, [x3, #208]				//load h8l | h8h
+	ldr	q25, [x6, #176]				//load h8l | h8h
 	ext	v25.16b, v25.16b, v25.16b, #8
 	rev64	v12.16b, v12.16b						//GHASH block 8k+4
 	rev64	v11.16b, v11.16b						//GHASH block 8k+3
@@ -4423,14 +4428,14 @@ L192_dec_main_loop:	//main	loop start
 
 	pmull	v19.1q, v8.1d, v25.1d				//GHASH block 8k - low
 	pmull2	v16.1q, v9.2d, v23.2d				//GHASH block 8k+1 - high
-	ldp	q28, q26, [x8, #32]				//load rk2, rk3
+	ldp	q28, q26, [x11, #32]				//load rk2, rk3
 
 	aese	v6.16b, v27.16b
 	aesmc	v6.16b, v6.16b			//AES block 8k+14 - round 1
 	pmull	v23.1q, v9.1d, v23.1d				//GHASH block 8k+1 - low
-	ldr	q20, [x3, #128]				//load h5l | h5h
+	ldr	q20, [x6, #96]				//load h5l | h5h
 	ext	v20.16b, v20.16b, v20.16b, #8
-	ldr	q22, [x3, #160]				//load h6l | h6h
+	ldr	q22, [x6, #128]				//load h6l | h6h
 	ext	v22.16b, v22.16b, v22.16b, #8
 
 	aese	v0.16b, v27.16b
@@ -4453,8 +4458,8 @@ L192_dec_main_loop:	//main	loop start
 
 	aese	v5.16b, v27.16b
 	aesmc	v5.16b, v5.16b			//AES block 8k+13 - round 1
-	ldr	q21, [x3, #144]				//load h6k | h5k
-	ldr	q24, [x3, #192]				//load h8k | h7k
+	ldr	q21, [x6, #112]				//load h6k | h5k
+	ldr	q24, [x6, #160]				//load h8k | h7k
 	trn2	v8.2d, v9.2d, v8.2d				//GHASH block 8k, 8k+1 - mid
 
 	eor	v17.16b, v17.16b, v16.16b				//GHASH block 8k+1 - high
@@ -4485,9 +4490,9 @@ L192_dec_main_loop:	//main	loop start
 	aese	v3.16b, v28.16b
 	aesmc	v3.16b, v3.16b			//AES block 8k+11 - round 2
 
-	ldr	q23, [x3, #80]				//load h3l | h3h
+	ldr	q23, [x6, #48]				//load h3l | h3h
 	ext	v23.16b, v23.16b, v23.16b, #8
-	ldr	q25, [x3, #112]				//load h4l | h4h
+	ldr	q25, [x6, #80]				//load h4l | h4h
 	ext	v25.16b, v25.16b, v25.16b, #8
 	aese	v5.16b, v28.16b
 	aesmc	v5.16b, v5.16b			//AES block 8k+13 - round 2
@@ -4507,7 +4512,7 @@ L192_dec_main_loop:	//main	loop start
 	aesmc	v0.16b, v0.16b			//AES block 8k+8 - round 3
 	aese	v7.16b, v26.16b
 	aesmc	v7.16b, v7.16b			//AES block 8k+15 - round 3
-	ldp	q27, q28, [x8, #64]				//load rk4, rk5
+	ldp	q27, q28, [x11, #64]				//load rk4, rk5
 
 	eor	v10.16b, v10.16b, v29.16b				//GHASH block 8k+2, 8k+3 - mid
 .long	0xce165273	//eor3 v19.16b, v19.16b, v22.16b, v20.16b			//GHASH block 8k+2, 8k+3 - low
@@ -4546,16 +4551,16 @@ L192_dec_main_loop:	//main	loop start
 	aese	v7.16b, v27.16b
 	aesmc	v7.16b, v7.16b			//AES block 8k+15 - round 4
 
-	ldr	q20, [x3, #32]				//load h1l | h1h
+	ldr	q20, [x6]				//load h1l | h1h
 	ext	v20.16b, v20.16b, v20.16b, #8
-	ldr	q22, [x3, #64]				//load h2l | h2h
+	ldr	q22, [x6, #32]				//load h2l | h2h
 	ext	v22.16b, v22.16b, v22.16b, #8
 	aese	v3.16b, v28.16b
 	aesmc	v3.16b, v3.16b			//AES block 8k+11 - round 5
 	aese	v5.16b, v28.16b
 	aesmc	v5.16b, v5.16b			//AES block 8k+13 - round 5
 
-	ldp	q26, q27, [x8, #96]				//load rk6, rk7
+	ldp	q26, q27, [x11, #96]				//load rk6, rk7
 	aese	v7.16b, v28.16b
 	aesmc	v7.16b, v7.16b			//AES block 8k+15 - round 5
 	rev64	v15.16b, v15.16b						//GHASH block 8k+7
@@ -4577,8 +4582,8 @@ L192_dec_main_loop:	//main	loop start
 	aesmc	v0.16b, v0.16b			//AES block 8k+8 - round 5
 	rev64	v14.16b, v14.16b						//GHASH block 8k+6
 
-	ldr	q21, [x3, #48]				//load h2k | h1k
-	ldr	q24, [x3, #96]				//load h4k | h3k
+	ldr	q21, [x6, #16]				//load h2k | h1k
+	ldr	q24, [x6, #64]				//load h4k | h3k
 	pmull2	v10.1q, v13.2d, v23.2d				//GHASH block 8k+5 - high
 	pmull	v23.1q, v13.1d, v23.1d				//GHASH block 8k+5 - low
 
@@ -4618,7 +4623,7 @@ L192_dec_main_loop:	//main	loop start
 
 	aese	v5.16b, v27.16b
 	aesmc	v5.16b, v5.16b			//AES block 8k+13 - round 7
-	ldp	q28, q26, [x8, #128]				//load rk8, rk9
+	ldp	q28, q26, [x11, #128]				//load rk8, rk9
 	aese	v3.16b, v27.16b
 	aesmc	v3.16b, v3.16b			//AES block 8k+11 - round 7
 
@@ -4676,7 +4681,7 @@ L192_dec_main_loop:	//main	loop start
 	aesmc	v3.16b, v3.16b			//AES block 8k+11 - round 9
 	aese	v7.16b, v26.16b
 	aesmc	v7.16b, v7.16b			//AES block 8k+15 - round 9
-	ldp	q27, q28, [x8, #160]				//load rk10, rk11
+	ldp	q27, q28, [x11, #160]				//load rk10, rk11
 
 .long	0xce114e52	//eor3 v18.16b, v18.16b, v17.16b, v19.16b		 	//MODULO - karatsuba tidy up
 	ldp	q8, q9, [x0], #32			//AES block 8k+8, 8k+9 - load ciphertext
@@ -4711,7 +4716,7 @@ L192_dec_main_loop:	//main	loop start
 	aesmc	v0.16b, v0.16b			//AES block 8k+8 - round 10
 	aese	v1.16b, v27.16b
 	aesmc	v1.16b, v1.16b			//AES block 8k+9 - round 10
-	ldr	q26, [x8, #192]					//load rk12
+	ldr	q26, [x11, #192]					//load rk12
 
 	ldp	q14, q15, [x0], #32			//AES block 8k+14, 8k+15 - load ciphertext
 	aese	v4.16b, v27.16b
@@ -4769,13 +4774,13 @@ L192_dec_main_loop:	//main	loop start
 	b.lt	L192_dec_main_loop
 
 L192_dec_prepretail:	//PREPRETAIL
-	ldp	q26, q27, [x8, #0]				 	//load rk0, rk1
+	ldp	q26, q27, [x11, #0]				 	//load rk0, rk1
 	rev32	v5.16b, v30.16b				//CTR block 8k+13
 	add	v30.4s, v30.4s, v31.4s		//CTR block 8k+13
 
-	ldr	q23, [x3, #176]				//load h7l | h7h
+	ldr	q23, [x6, #144]				//load h7l | h7h
 	ext	v23.16b, v23.16b, v23.16b, #8
-	ldr	q25, [x3, #208]				//load h8l | h8h
+	ldr	q25, [x6, #176]				//load h8l | h8h
 	ext	v25.16b, v25.16b, v25.16b, #8
 	rev64	v8.16b, v8.16b						//GHASH block 8k
 	ext	v19.16b, v19.16b, v19.16b, #8				//PRE 0
@@ -4788,9 +4793,9 @@ L192_dec_prepretail:	//PREPRETAIL
 	rev64	v10.16b, v10.16b						//GHASH block 8k+2
 	rev64	v9.16b, v9.16b						//GHASH block 8k+1
 
-	ldr	q20, [x3, #128]				//load h5l | h5h
+	ldr	q20, [x6, #96]				//load h5l | h5h
 	ext	v20.16b, v20.16b, v20.16b, #8
-	ldr	q22, [x3, #160]				//load h6l | h6h
+	ldr	q22, [x6, #128]				//load h6l | h6h
 	ext	v22.16b, v22.16b, v22.16b, #8
 	rev32	v7.16b, v30.16b				//CTR block 8k+15
 
@@ -4817,7 +4822,7 @@ L192_dec_prepretail:	//PREPRETAIL
 	aesmc	v6.16b, v6.16b			//AES block 8k+14 - round 1
 	aese	v7.16b, v26.16b
 	aesmc	v7.16b, v7.16b			//AES block 8k+15 - round 0
-	ldp	q28, q26, [x8, #32]				//load rk2, rk3
+	ldp	q28, q26, [x11, #32]				//load rk2, rk3
 
 	aese	v4.16b, v27.16b
 	aesmc	v4.16b, v4.16b			//AES block 8k+12 - round 1
@@ -4846,8 +4851,8 @@ L192_dec_prepretail:	//PREPRETAIL
 	aese	v5.16b, v27.16b
 	aesmc	v5.16b, v5.16b			//AES block 8k+13 - round 1
 
-	ldr	q21, [x3, #144]				//load h6k | h5k
-	ldr	q24, [x3, #192]				//load h8k | h7k
+	ldr	q21, [x6, #112]				//load h6k | h5k
+	ldr	q24, [x6, #160]				//load h8k | h7k
 	aese	v3.16b, v28.16b
 	aesmc	v3.16b, v3.16b			//AES block 8k+11 - round 2
 	eor	v8.16b, v8.16b, v18.16b			//GHASH block 8k, 8k+1 - mid
@@ -4893,20 +4898,20 @@ L192_dec_prepretail:	//PREPRETAIL
 	aesmc	v4.16b, v4.16b			//AES block 8k+12 - round 3
 
 .long	0xce165273	//eor3 v19.16b, v19.16b, v22.16b, v20.16b			//GHASH block 8k+2, 8k+3 - low
-	ldp	q27, q28, [x8, #64]				//load rk4, rk5
+	ldp	q27, q28, [x11, #64]				//load rk4, rk5
 	aese	v0.16b, v26.16b
 	aesmc	v0.16b, v0.16b			//AES block 8k+8 - round 3
 
-	ldr	q23, [x3, #80]				//load h3l | h3h
+	ldr	q23, [x6, #48]				//load h3l | h3h
 	ext	v23.16b, v23.16b, v23.16b, #8
-	ldr	q25, [x3, #112]				//load h4l | h4h
+	ldr	q25, [x6, #80]				//load h4l | h4h
 	ext	v25.16b, v25.16b, v25.16b, #8
 	pmull2	v29.1q, v10.2d, v21.2d				//GHASH block 8k+2 - mid
 	pmull	v21.1q, v10.1d, v21.1d				//GHASH block 8k+3 - mid
 
-	ldr	q20, [x3, #32]				//load h1l | h1h
+	ldr	q20, [x6]				//load h1l | h1h
 	ext	v20.16b, v20.16b, v20.16b, #8
-	ldr	q22, [x3, #64]				//load h2l | h2h
+	ldr	q22, [x6, #32]				//load h2l | h2h
 	ext	v22.16b, v22.16b, v22.16b, #8
 	eor	v18.16b, v18.16b, v24.16b				//GHASH block 8k+1 - mid
 	aese	v2.16b, v26.16b
@@ -4939,8 +4944,8 @@ L192_dec_prepretail:	//PREPRETAIL
 	aesmc	v7.16b, v7.16b			//AES block 8k+15 - round 4
 
 	rev64	v14.16b, v14.16b						//GHASH block 8k+6
-	ldr	q21, [x3, #48]				//load h2k | h1k
-	ldr	q24, [x3, #96]				//load h4k | h3k
+	ldr	q21, [x6, #16]				//load h2k | h1k
+	ldr	q24, [x6, #64]				//load h4k | h3k
 	trn1	v16.2d, v13.2d, v12.2d				//GHASH block 8k+4, 8k+5 - mid
 
 	aese	v7.16b, v28.16b
@@ -4950,7 +4955,7 @@ L192_dec_prepretail:	//PREPRETAIL
 	aese	v2.16b, v28.16b
 	aesmc	v2.16b, v2.16b			//AES block 8k+10 - round 5
 
-	ldp	q26, q27, [x8, #96]				//load rk6, rk7
+	ldp	q26, q27, [x11, #96]				//load rk6, rk7
 	aese	v6.16b, v28.16b
 	aesmc	v6.16b, v6.16b			//AES block 8k+14 - round 5
 	aese	v5.16b, v28.16b
@@ -5010,7 +5015,7 @@ L192_dec_prepretail:	//PREPRETAIL
 	aese	v5.16b, v27.16b
 	aesmc	v5.16b, v5.16b			//AES block 8k+13 - round 7
 
-	ldp	q28, q26, [x8, #128]				//load rk8, rk9
+	ldp	q28, q26, [x11, #128]				//load rk8, rk9
 	pmull	v21.1q, v14.1d, v21.1d				//GHASH block 8k+7 - mid
 	aese	v2.16b, v27.16b
 	aesmc	v2.16b, v2.16b			//AES block 8k+10 - round 7
@@ -5057,7 +5062,7 @@ L192_dec_prepretail:	//PREPRETAIL
 	aesmc	v5.16b, v5.16b			//AES block 8k+13 - round 8
 	aese	v4.16b, v28.16b
 	aesmc	v4.16b, v4.16b			//AES block 8k+12 - round 8
-	ldp	q27, q28, [x8, #160]				//load rk10, rk11
+	ldp	q27, q28, [x11, #160]				//load rk10, rk11
 
 .long	0xce1d5652	//eor3 v18.16b, v18.16b, v29.16b, v21.16b			//MODULO - fold into mid
 	aese	v7.16b, v26.16b
@@ -5080,7 +5085,7 @@ L192_dec_prepretail:	//PREPRETAIL
 	aesmc	v4.16b, v4.16b			//AES block 8k+12 - round 9
 
 	pmull	v17.1q, v18.1d, v16.1d			//MODULO - mid 64b align with low
-	ldr	q26, [x8, #192]					//load rk12
+	ldr	q26, [x11, #192]					//load rk12
 	ext	v21.16b, v18.16b, v18.16b, #8			 	//MODULO - other mid alignment
 
 	aese	v2.16b, v27.16b
@@ -5119,16 +5124,16 @@ L192_dec_tail:	//TAIL
 
 	sub	x5, x4, x0 	//main_end_input_ptr is number of bytes left to process
 
-	ldp	q20, q21, [x3, #128]			//load h5l | h5h
+	ldp	q20, q21, [x6, #96]			//load h5l | h5h
 	ext	v20.16b, v20.16b, v20.16b, #8
 	ldr	q9, [x0], #16				//AES block 8k+8 - load ciphertext
 
-	ldp	q24, q25, [x3, #192]			//load h8k | h7k
+	ldp	q24, q25, [x6, #160]			//load h8k | h7k
 	ext	v25.16b, v25.16b, v25.16b, #8
 
 	mov	v29.16b, v26.16b
 
-	ldp	q22, q23, [x3, #160]			//load h6l | h6h
+	ldp	q22, q23, [x6, #128]			//load h6l | h6h
 	ext	v22.16b, v22.16b, v22.16b, #8
 	ext	v23.16b, v23.16b, v23.16b, #8
 	ext	v16.16b, v19.16b, v19.16b, #8				//prepare final partial tag
@@ -5187,7 +5192,7 @@ L192_dec_tail:	//TAIL
 	cmp	x5, #32
 
 	mov	v6.16b, v1.16b
-	ldr	q24, [x3, #96]				//load h4k | h3k
+	ldr	q24, [x6, #64]				//load h4k | h3k
 	b.gt	L192_dec_blocks_more_than_2
 
 	sub	v30.4s, v30.4s, v31.4s
@@ -5197,7 +5202,7 @@ L192_dec_tail:	//TAIL
 	b.gt	L192_dec_blocks_more_than_1
 
 	sub	v30.4s, v30.4s, v31.4s
-	ldr	q21, [x3, #48]				//load h2k | h1k
+	ldr	q21, [x6, #16]				//load h2k | h1k
 	b	L192_dec_blocks_less_than_1
 L192_dec_blocks_more_than_7:	//blocks	left >  7
 	rev64	v8.16b, v9.16b						//GHASH final-7 block
@@ -5291,7 +5296,7 @@ L192_dec_blocks_more_than_4:	//blocks	left >  4
 	eor	v17.16b, v17.16b, v28.16b					//GHASH final-4 block - high
 L192_dec_blocks_more_than_3:	//blocks	left >  3
 
-	ldr	q25, [x3, #112]				//load h4l | h4h
+	ldr	q25, [x6, #80]				//load h4l | h4h
 	ext	v25.16b, v25.16b, v25.16b, #8
 	rev64	v8.16b, v9.16b						//GHASH final-3 block
 	ldr	q9, [x0], #16				//AES final-2 block - load ciphertext
@@ -5310,7 +5315,7 @@ L192_dec_blocks_more_than_3:	//blocks	left >  3
 .long	0xce05752c	//eor3 v12.16b, v9.16b, v5.16b, v29.16b				//AES final-2 block - result
 
 	eor	v19.16b, v19.16b, v26.16b					//GHASH final-3 block - low
-	ldr	q24, [x3, #96]				//load h4k | h3k
+	ldr	q24, [x6, #64]				//load h4k | h3k
 
 	ins	v27.d[1], v27.d[0]					//GHASH final-3 block - mid
 
@@ -5320,7 +5325,7 @@ L192_dec_blocks_more_than_3:	//blocks	left >  3
 L192_dec_blocks_more_than_2:	//blocks	left >  2
 
 	rev64	v8.16b, v9.16b						//GHASH final-2 block
-	ldr	q23, [x3, #80]				//load h3l | h3h
+	ldr	q23, [x6, #48]				//load h3l | h3h
 	ext	v23.16b, v23.16b, v23.16b, #8
 
 	eor	v8.16b, v8.16b, v16.16b					//feed in partial tag
@@ -5347,12 +5352,12 @@ L192_dec_blocks_more_than_1:	//blocks	left >  1
 
 	rev64	v8.16b, v9.16b						//GHASH final-1 block
 	ldr	q9, [x0], #16				//AES final block - load ciphertext
-	ldr	q22, [x3, #64]				//load h1l | h1h
+	ldr	q22, [x6, #32]				//load h1l | h1h
 	ext	v22.16b, v22.16b, v22.16b, #8
 
 	eor	v8.16b, v8.16b, v16.16b					//feed in partial tag
 	movi	v16.8b, #0						//supress further partial tag feed in
-	ldr	q21, [x3, #48]				//load h2k | h1k
+	ldr	q21, [x6, #16]				//load h2k | h1k
 
 	pmull	v26.1q, v8.1d, v22.1d				//GHASH final-1 block - low
 	ins	v27.d[0], v8.d[1]					//GHASH final-1 block - mid
@@ -5381,17 +5386,17 @@ L192_dec_blocks_less_than_1:	//blocks	left <= 1
 	str	q30, [x16]					//store the updated counter
 
 	neg	x1, x1				//bit_length = 128 - #bits in input (in range [1,128])
-	mvn	x6, xzr						//temp0_x = 0xffffffffffffffff
+	mvn	x7, xzr						//temp0_x = 0xffffffffffffffff
 
 	and	x1, x1, #127				//bit_length %= 128
 
-	mvn	x7, xzr						//temp1_x = 0xffffffffffffffff
-	lsr	x6, x6, x1				//temp0_x is mask for top 64b of last block
+	mvn	x8, xzr						//temp1_x = 0xffffffffffffffff
+	lsr	x7, x7, x1				//temp0_x is mask for top 64b of last block
 	cmp	x1, #64
 
-	csel	x13, x7, x6, lt
-	csel	x14, x6, xzr, lt
-	ldr	q20, [x3, #32]				//load h1l | h1h
+	csel	x13, x8, x7, lt
+	csel	x14, x7, xzr, lt
+	ldr	q20, [x6]				//load h1l | h1h
 	ext	v20.16b, v20.16b, v20.16b, #8
 
 	mov	v0.d[1], x14
@@ -5461,7 +5466,7 @@ aesv8_gcm_8x_enc_256:
 	stp	d8, d9, [sp, #-80]!
 	lsr	x9, x1, #3
 	mov	x16, x4
-	mov	x8, x5
+	mov	x11, x5
 	stp	d10, d11, [sp, #16]
 	stp	d12, d13, [sp, #32]
 	stp	d14, d15, [sp, #48]
@@ -5500,7 +5505,7 @@ aesv8_gcm_8x_enc_256:
 
 	rev32	v5.16b, v30.16b				//CTR block 5
 	add	v30.4s, v30.4s, v31.4s		//CTR block 5
-	ldp	q26, q27, [x8, #0]				 	//load rk0, rk1
+	ldp	q26, q27, [x11, #0]				 	//load rk0, rk1
 
 	rev32	v6.16b, v30.16b				//CTR block 6
 	add	v30.4s, v30.4s, v31.4s		//CTR block 6
@@ -5525,7 +5530,7 @@ aesv8_gcm_8x_enc_256:
 	aesmc	v5.16b, v5.16b			//AES block 5 - round 0
 	aese	v7.16b, v26.16b
 	aesmc	v7.16b, v7.16b			//AES block 7 - round 0
-	ldp	q28, q26, [x8, #32]				//load rk2, rk3
+	ldp	q28, q26, [x11, #32]				//load rk2, rk3
 
 	aese	v4.16b, v27.16b
 	aesmc	v4.16b, v4.16b			//AES block 4 - round 1
@@ -5570,7 +5575,7 @@ aesv8_gcm_8x_enc_256:
 	aesmc	v5.16b, v5.16b			//AES block 5 - round 3
 	aese	v3.16b, v26.16b
 	aesmc	v3.16b, v3.16b			//AES block 3 - round 3
-	ldp	q27, q28, [x8, #64]				//load rk4, rk5
+	ldp	q27, q28, [x11, #64]				//load rk4, rk5
 
 	aese	v4.16b, v26.16b
 	aesmc	v4.16b, v4.16b			//AES block 4 - round 3
@@ -5610,7 +5615,7 @@ aesv8_gcm_8x_enc_256:
 	aesmc	v0.16b, v0.16b			//AES block 0 - round 5
 	aese	v2.16b, v28.16b
 	aesmc	v2.16b, v2.16b			//AES block 2 - round 5
-	ldp	q26, q27, [x8, #96]				//load rk6, rk7
+	ldp	q26, q27, [x11, #96]				//load rk6, rk7
 
 	aese	v1.16b, v28.16b
 	aesmc	v1.16b, v1.16b			//AES block 1 - round 5
@@ -5644,7 +5649,7 @@ aesv8_gcm_8x_enc_256:
 	aesmc	v7.16b, v7.16b			//AES block 7 - round 6
 	aese	v3.16b, v26.16b
 	aesmc	v3.16b, v3.16b			//AES block 3 - round 6
-	ldp	q28, q26, [x8, #128]				//load rk8, rk9
+	ldp	q28, q26, [x11, #128]				//load rk8, rk9
 
 	aese	v2.16b, v27.16b
 	aesmc	v2.16b, v2.16b			//AES block 2 - round 7
@@ -5688,7 +5693,7 @@ aesv8_gcm_8x_enc_256:
 	ld1	{ v19.16b}, [x3]
 	ext	v19.16b, v19.16b, v19.16b, #8
 	rev64	v19.16b, v19.16b
-	ldp	q27, q28, [x8, #160]				//load rk10, rk11
+	ldp	q27, q28, [x11, #160]				//load rk10, rk11
 
 	aese	v6.16b, v26.16b
 	aesmc	v6.16b, v6.16b			//AES block 6 - round 9
@@ -5730,7 +5735,7 @@ aesv8_gcm_8x_enc_256:
 
 	aese	v4.16b, v28.16b
 	aesmc	v4.16b, v4.16b			//AES block 4 - round 11
-	ldp	q26, q27, [x8, #192]				//load rk12, rk13
+	ldp	q26, q27, [x11, #192]				//load rk12, rk13
 	aese	v5.16b, v28.16b
 	aesmc	v5.16b, v5.16b			//AES block 5 - round 11
 
@@ -5749,7 +5754,7 @@ aesv8_gcm_8x_enc_256:
 	aesmc	v7.16b, v7.16b			//AES block 7 - round 11
 
 	add	v30.4s, v30.4s, v31.4s		//CTR block 7
-	ldr	q28, [x8, #224]					//load rk14
+	ldr	q28, [x11, #224]					//load rk14
 
 	aese	v4.16b, v26.16b
 	aesmc	v4.16b, v4.16b			//AES block 4 - round 12
@@ -5827,17 +5832,17 @@ aesv8_gcm_8x_enc_256:
 	b.ge	L256_enc_prepretail					//do prepretail
 
 L256_enc_main_loop:	//main	loop start
-	ldp	q26, q27, [x8, #0]					//load rk0, rk1
+	ldp	q26, q27, [x11, #0]					//load rk0, rk1
 
 	rev32	v5.16b, v30.16b				//CTR block 8k+13
 	add	v30.4s, v30.4s, v31.4s		//CTR block 8k+13
-	ldr	q21, [x3, #144]				//load h6k | h5k
-	ldr	q24, [x3, #192]				//load h8k | h7k
+	ldr	q21, [x6, #112]				//load h6k | h5k
+	ldr	q24, [x6, #160]				//load h8k | h7k
 
 	rev64	v11.16b, v11.16b						//GHASH block 8k+3
-	ldr	q20, [x3, #128]				//load h5l | h5h
+	ldr	q20, [x6, #96]				//load h5l | h5h
 	ext	v20.16b, v20.16b, v20.16b, #8
-	ldr	q22, [x3, #160]				//load h6l | h6h
+	ldr	q22, [x6, #128]				//load h6l | h6h
 	ext	v22.16b, v22.16b, v22.16b, #8
 	rev64	v9.16b, v9.16b						//GHASH block 8k+1
 
@@ -5847,9 +5852,9 @@ L256_enc_main_loop:	//main	loop start
 
 	rev64	v12.16b, v12.16b						//GHASH block 8k+4
 	ext	v19.16b, v19.16b, v19.16b, #8				//PRE 0
-	ldr	q23, [x3, #176]				//load h7l | h7h
+	ldr	q23, [x6, #144]				//load h7l | h7h
 	ext	v23.16b, v23.16b, v23.16b, #8
-	ldr	q25, [x3, #208]				//load h8l | h8h
+	ldr	q25, [x6, #176]				//load h8l | h8h
 	ext	v25.16b, v25.16b, v25.16b, #8
 
 	aese	v3.16b, v26.16b
@@ -5872,7 +5877,7 @@ L256_enc_main_loop:	//main	loop start
 	aese	v4.16b, v26.16b
 	aesmc	v4.16b, v4.16b			//AES block 8k+12 - round 0
 
-	ldp	q28, q26, [x8, #32]				//load rk2, rk3
+	ldp	q28, q26, [x11, #32]				//load rk2, rk3
 	eor	v8.16b, v8.16b, v19.16b				 	//PRE 1
 	aese	v6.16b, v27.16b
 	aesmc	v6.16b, v6.16b			//AES block 8k+14 - round 1
@@ -5934,7 +5939,7 @@ L256_enc_main_loop:	//main	loop start
 
 	aese	v3.16b, v26.16b
 	aesmc	v3.16b, v3.16b			//AES block 8k+11 - round 3
-	ldp	q27, q28, [x8, #64]				//load rk4, rk5
+	ldp	q27, q28, [x11, #64]				//load rk4, rk5
 	rev64	v10.16b, v10.16b						//GHASH block 8k+2
 
 	aese	v2.16b, v26.16b
@@ -5950,9 +5955,9 @@ L256_enc_main_loop:	//main	loop start
 
 	pmull	v20.1q, v11.1d, v20.1d				//GHASH block 8k+3 - low
 	eor	v19.16b, v19.16b, v23.16b				//GHASH block 8k+1 - low
-	ldr	q23, [x3, #80]				//load h3l | h3h
+	ldr	q23, [x6, #48]				//load h3l | h3h
 	ext	v23.16b, v23.16b, v23.16b, #8
-	ldr	q25, [x3, #112]				//load h4l | h4h
+	ldr	q25, [x6, #80]				//load h4l | h4h
 	ext	v25.16b, v25.16b, v25.16b, #8
 
 	trn1	v16.2d, v13.2d, v12.2d				//GHASH block 8k+4, 8k+5 - mid
@@ -5981,7 +5986,7 @@ L256_enc_main_loop:	//main	loop start
 
 	trn2	v10.2d, v11.2d, v10.2d				//GHASH block 8k+2, 8k+3 - mid
 	eor	v8.16b, v8.16b, v18.16b			//GHASH block 8k, 8k+1 - mid
-	ldp	q26, q27, [x8, #96]				//load rk6, rk7
+	ldp	q26, q27, [x11, #96]				//load rk6, rk7
 
 	aese	v5.16b, v28.16b
 	aesmc	v5.16b, v5.16b			//AES block 8k+13 - round 5
@@ -6031,21 +6036,21 @@ L256_enc_main_loop:	//main	loop start
 	aese	v0.16b, v26.16b
 	aesmc	v0.16b, v0.16b			//AES block 8k+8 - round 6
 
-	ldp	q28, q26, [x8, #128]				//load rk8, rk9
+	ldp	q28, q26, [x11, #128]				//load rk8, rk9
 	pmull2	v8.1q, v12.2d, v25.2d				//GHASH block 8k+4 - high
 	aese	v5.16b, v27.16b
 	aesmc	v5.16b, v5.16b			//AES block 8k+13 - round 7
 
-	ldr	q20, [x3, #32]				//load h1l | h1h
+	ldr	q20, [x6]				//load h1l | h1h
 	ext	v20.16b, v20.16b, v20.16b, #8
-	ldr	q22, [x3, #64]				//load h2l | h2h
+	ldr	q22, [x6, #32]				//load h2l | h2h
 	ext	v22.16b, v22.16b, v22.16b, #8
 	aese	v2.16b, v27.16b
 	aesmc	v2.16b, v2.16b			//AES block 8k+10 - round 7
 .long	0xce157652	//eor3 v18.16b, v18.16b, v21.16b, v29.16b			//GHASH block 8k+2, 8k+3 - mid
 
-	ldr	q21, [x3, #48]				//load h2k | h1k
-	ldr	q24, [x3, #96]				//load h4k | h3k
+	ldr	q21, [x6, #16]				//load h2k | h1k
+	ldr	q24, [x6, #64]				//load h4k | h3k
 	aese	v6.16b, v27.16b
 	aesmc	v6.16b, v6.16b			//AES block 8k+14 - round 7
 	aese	v3.16b, v27.16b
@@ -6108,7 +6113,7 @@ L256_enc_main_loop:	//main	loop start
 	aese	v4.16b, v26.16b
 	aesmc	v4.16b, v4.16b			//AES block 8k+12 - round 9
 
-	ldp	q27, q28, [x8, #160]				//load rk10, rk11
+	ldp	q27, q28, [x11, #160]				//load rk10, rk11
 	aese	v2.16b, v26.16b
 	aesmc	v2.16b, v2.16b			//AES block 8k+10 - round 9
 	aese	v3.16b, v26.16b
@@ -6151,7 +6156,7 @@ L256_enc_main_loop:	//main	loop start
 
 .long	0xce0b3231	//eor3 v17.16b, v17.16b, v11.16b, v12.16b			//GHASH block 8k+6, 8k+7 - high
 
-	ldp	q26, q27, [x8, #192]				//load rk12, rk13
+	ldp	q26, q27, [x11, #192]				//load rk12, rk13
 	rev32	v20.16b, v30.16b					//CTR block 8k+16
 
 	ext	v21.16b, v17.16b, v17.16b, #8			 	//MODULO - other top alignment
@@ -6192,7 +6197,7 @@ L256_enc_main_loop:	//main	loop start
 
 	aese	v5.16b, v26.16b
 	aesmc	v5.16b, v5.16b			//AES block 8k+13 - round 12
-	ldr	q28, [x8, #224]					//load rk14
+	ldr	q28, [x11, #224]					//load rk14
 	aese	v7.16b, v27.16b						//AES block 8k+15 - round 13
 
 	ldp	q10, q11, [x0], #32			//AES block 8k+10, 8k+11 - load plaintext
@@ -6257,7 +6262,7 @@ L256_enc_main_loop:	//main	loop start
 
 L256_enc_prepretail:	//PREPRETAIL
 	rev32	v5.16b, v30.16b				//CTR block 8k+13
-	ldp	q26, q27, [x8, #0]					//load rk0, rk1
+	ldp	q26, q27, [x11, #0]					//load rk0, rk1
 	add	v30.4s, v30.4s, v31.4s		//CTR block 8k+13
 
 	rev64	v10.16b, v10.16b						//GHASH block 8k+2
@@ -6266,8 +6271,8 @@ L256_enc_prepretail:	//PREPRETAIL
 	add	v30.4s, v30.4s, v31.4s		//CTR block 8k+14
 
 	rev64	v13.16b, v13.16b						//GHASH block 8k+5
-	ldr	q21, [x3, #144]				//load h6k | h5k
-	ldr	q24, [x3, #192]				//load h8k | h7k
+	ldr	q21, [x6, #112]				//load h6k | h5k
+	ldr	q24, [x6, #160]				//load h8k | h7k
 
 	rev32	v7.16b, v30.16b				//CTR block 8k+15
 
@@ -6296,20 +6301,20 @@ L256_enc_prepretail:	//PREPRETAIL
 	aesmc	v1.16b, v1.16b			//AES block 8k+9 - round 1
 
 	rev64	v9.16b, v9.16b						//GHASH block 8k+1
-	ldp	q28, q26, [x8, #32]				//load rk2, rk3
+	ldp	q28, q26, [x11, #32]				//load rk2, rk3
 	aese	v3.16b, v27.16b
 	aesmc	v3.16b, v3.16b			//AES block 8k+11 - round 1
 
-	ldr	q23, [x3, #176]				//load h7l | h7h
+	ldr	q23, [x6, #144]				//load h7l | h7h
 	ext	v23.16b, v23.16b, v23.16b, #8
-	ldr	q25, [x3, #208]				//load h8l | h8h
+	ldr	q25, [x6, #176]				//load h8l | h8h
 	ext	v25.16b, v25.16b, v25.16b, #8
 	aese	v2.16b, v27.16b
 	aesmc	v2.16b, v2.16b			//AES block 8k+10 - round 1
 
-	ldr	q20, [x3, #128]				//load h5l | h5h
+	ldr	q20, [x6, #96]				//load h5l | h5h
 	ext	v20.16b, v20.16b, v20.16b, #8
-	ldr	q22, [x3, #160]				//load h6l | h6h
+	ldr	q22, [x6, #128]				//load h6l | h6h
 	ext	v22.16b, v22.16b, v22.16b, #8
 	aese	v0.16b, v27.16b
 	aesmc	v0.16b, v0.16b			//AES block 8k+8 - round 1
@@ -6345,7 +6350,7 @@ L256_enc_prepretail:	//PREPRETAIL
 	aese	v3.16b, v28.16b
 	aesmc	v3.16b, v3.16b			//AES block 8k+11 - round 2
 
-	ldp	q27, q28, [x8, #64]				//load rk4, rk5
+	ldp	q27, q28, [x11, #64]				//load rk4, rk5
 	trn1	v18.2d, v9.2d, v8.2d				//GHASH block 8k, 8k+1 - mid
 	pmull2	v17.1q, v8.2d, v25.2d				//GHASH block 8k - high
 
@@ -6423,11 +6428,11 @@ L256_enc_prepretail:	//PREPRETAIL
 	aesmc	v7.16b, v7.16b			//AES block 8k+15 - round 5
 	aese	v4.16b, v28.16b
 	aesmc	v4.16b, v4.16b			//AES block 8k+12 - round 5
-	ldp	q26, q27, [x8, #96]				//load rk6, rk7
+	ldp	q26, q27, [x11, #96]				//load rk6, rk7
 
-	ldr	q23, [x3, #80]				//load h3l | h3h
+	ldr	q23, [x6, #48]				//load h3l | h3h
 	ext	v23.16b, v23.16b, v23.16b, #8
-	ldr	q25, [x3, #112]				//load h4l | h4h
+	ldr	q25, [x6, #80]				//load h4l | h4h
 	ext	v25.16b, v25.16b, v25.16b, #8
 	pmull2	v29.1q, v10.2d, v21.2d				//GHASH block 8k+2 - mid
 	pmull	v21.1q, v10.1d, v21.1d				//GHASH block 8k+3 - mid
@@ -6453,8 +6458,8 @@ L256_enc_prepretail:	//PREPRETAIL
 	aese	v6.16b, v26.16b
 	aesmc	v6.16b, v6.16b			//AES block 8k+14 - round 6
 
-	ldr	q21, [x3, #48]				//load h2k | h1k
-	ldr	q24, [x3, #96]				//load h4k | h3k
+	ldr	q21, [x6, #16]				//load h2k | h1k
+	ldr	q24, [x6, #64]				//load h4k | h3k
 	aese	v5.16b, v26.16b
 	aesmc	v5.16b, v5.16b			//AES block 8k+13 - round 6
 	aese	v3.16b, v26.16b
@@ -6469,12 +6474,12 @@ L256_enc_prepretail:	//PREPRETAIL
 
 	pmull2	v8.1q, v12.2d, v25.2d				//GHASH block 8k+4 - high
 	pmull	v25.1q, v12.1d, v25.1d				//GHASH block 8k+4 - low
-	ldr	q20, [x3, #32]				//load h1l | h1h
+	ldr	q20, [x6]				//load h1l | h1h
 	ext	v20.16b, v20.16b, v20.16b, #8
-	ldr	q22, [x3, #64]				//load h2l | h2h
+	ldr	q22, [x6, #32]				//load h2l | h2h
 	ext	v22.16b, v22.16b, v22.16b, #8
 
-	ldp	q28, q26, [x8, #128]				//load rk8, rk9
+	ldp	q28, q26, [x11, #128]				//load rk8, rk9
 	aese	v1.16b, v27.16b
 	aesmc	v1.16b, v1.16b			//AES block 8k+9 - round 7
 	aese	v4.16b, v27.16b
@@ -6537,7 +6542,7 @@ L256_enc_prepretail:	//PREPRETAIL
 .long	0xce184252	//eor3 v18.16b, v18.16b, v24.16b, v16.16b			//GHASH block 8k+4, 8k+5 - mid
 .long	0xce082a31	//eor3 v17.16b, v17.16b, v8.16b, v10.16b			//GHASH block 8k+4, 8k+5 - high
 
-	ldp	q27, q28, [x8, #160]				//load rk10, rk11
+	ldp	q27, q28, [x11, #160]				//load rk10, rk11
 	aese	v1.16b, v26.16b
 	aesmc	v1.16b, v1.16b			//AES block 8k+9 - round 9
 	aese	v0.16b, v26.16b
@@ -6587,7 +6592,7 @@ L256_enc_prepretail:	//PREPRETAIL
 	aese	v7.16b, v28.16b
 	aesmc	v7.16b, v7.16b			//AES block 8k+15 - round 11
 
-	ldp	q26, q27, [x8, #192]				//load rk12, rk13
+	ldp	q26, q27, [x11, #192]				//load rk12, rk13
 	ext	v21.16b, v17.16b, v17.16b, #8			 	//MODULO - other top alignment
 	aese	v2.16b, v28.16b
 	aesmc	v2.16b, v2.16b			//AES block 8k+10 - round 11
@@ -6608,7 +6613,7 @@ L256_enc_prepretail:	//PREPRETAIL
 	pmull	v17.1q, v18.1d, v16.1d			//MODULO - mid 64b align with low
 	aese	v3.16b, v28.16b
 	aesmc	v3.16b, v3.16b			//AES block 8k+11 - round 11
-	ldr	q28, [x8, #224]					//load rk14
+	ldr	q28, [x11, #224]					//load rk14
 
 	aese	v1.16b, v26.16b
 	aesmc	v1.16b, v1.16b			//AES block 8k+9 - round 12
@@ -6645,17 +6650,17 @@ L256_enc_prepretail:	//PREPRETAIL
 	aese	v6.16b, v27.16b						//AES block 8k+14 - round 13
 L256_enc_tail:	//TAIL
 
-	ldp	q24, q25, [x3, #192]			//load h8l | h8h
+	ldp	q24, q25, [x6, #160]			//load h8l | h8h
 	ext	v25.16b, v25.16b, v25.16b, #8
 	sub	x5, x4, x0		//main_end_input_ptr is number of bytes left to process
 
 	ldr	q8, [x0], #16				//AES block 8k+8 - load plaintext
 
-	ldp	q20, q21, [x3, #128]			//load h5l | h5h
+	ldp	q20, q21, [x6, #96]			//load h5l | h5h
 	ext	v20.16b, v20.16b, v20.16b, #8
 
 	ext	v16.16b, v19.16b, v19.16b, #8				//prepare final partial tag
-	ldp	q22, q23, [x3, #160]			//load h6l | h6h
+	ldp	q22, q23, [x6, #128]			//load h6l | h6h
 	ext	v22.16b, v22.16b, v22.16b, #8
 	ext	v23.16b, v23.16b, v23.16b, #8
 	mov	v29.16b, v28.16b
@@ -6711,7 +6716,7 @@ L256_enc_tail:	//TAIL
 
 	cmp	x5, #32
 	mov	v7.16b, v6.16b
-	ldr	q24, [x3, #96]				//load h4k | h3k
+	ldr	q24, [x6, #64]				//load h4k | h3k
 
 	mov	v6.16b, v1.16b
 	sub	v30.4s, v30.4s, v31.4s
@@ -6724,7 +6729,7 @@ L256_enc_tail:	//TAIL
 	b.gt	L256_enc_blocks_more_than_1
 
 	sub	v30.4s, v30.4s, v31.4s
-	ldr	q21, [x3, #48]				//load h2k | h1k
+	ldr	q21, [x6, #16]				//load h2k | h1k
 	b	L256_enc_blocks_less_than_1
 L256_enc_blocks_more_than_7:	//blocks	left >  7
 	st1	{ v9.16b}, [x2], #16				//AES final-7 block  - store result
@@ -6826,7 +6831,7 @@ L256_enc_blocks_more_than_3:	//blocks	left >  3
 
 	st1	{ v9.16b}, [x2], #16				//AES final-3 block - store result
 
-	ldr	q25, [x3, #112]				//load h4l | h4h
+	ldr	q25, [x6, #80]				//load h4l | h4h
 	ext	v25.16b, v25.16b, v25.16b, #8
 	rev64	v8.16b, v9.16b						//GHASH final-3 block
 
@@ -6837,7 +6842,7 @@ L256_enc_blocks_more_than_3:	//blocks	left >  3
 
 	eor	v17.16b, v17.16b, v28.16b					//GHASH final-3 block - high
 	eor	v27.8b, v27.8b, v8.8b				//GHASH final-3 block - mid
-	ldr	q24, [x3, #96]				//load h4k | h3k
+	ldr	q24, [x6, #64]				//load h4k | h3k
 
 	ins	v27.d[1], v27.d[0]					//GHASH final-3 block - mid
 	ldr	q9, [x0], #16				//AES final-2 block - load plaintext
@@ -6852,7 +6857,7 @@ L256_enc_blocks_more_than_3:	//blocks	left >  3
 	eor	v19.16b, v19.16b, v26.16b					//GHASH final-3 block - low
 L256_enc_blocks_more_than_2:	//blocks	left >  2
 
-	ldr	q23, [x3, #80]				//load h3l | h3h
+	ldr	q23, [x6, #48]				//load h3l | h3h
 	ext	v23.16b, v23.16b, v23.16b, #8
 
 	st1	{ v9.16b}, [x2], #16			 	//AES final-2 block - store result
@@ -6882,7 +6887,7 @@ L256_enc_blocks_more_than_1:	//blocks	left >  1
 
 	st1	{ v9.16b}, [x2], #16				//AES final-1 block - store result
 
-	ldr	q22, [x3, #64]				//load h2l | h2h
+	ldr	q22, [x6, #32]				//load h2l | h2h
 	ext	v22.16b, v22.16b, v22.16b, #8
 	rev64	v8.16b, v9.16b						//GHASH final-1 block
 	ldr	q9, [x0], #16				//AES final block - load plaintext
@@ -6899,7 +6904,7 @@ L256_enc_blocks_more_than_1:	//blocks	left >  1
 	pmull	v26.1q, v8.1d, v22.1d				//GHASH final-1 block - low
 	eor	v27.8b, v27.8b, v8.8b				//GHASH final-1 block - mid
 
-	ldr	q21, [x3, #48]				//load h2k | h1k
+	ldr	q21, [x6, #16]				//load h2k | h1k
 
 	eor	v19.16b, v19.16b, v26.16b					//GHASH final-1 block - low
 	ins	v27.d[1], v27.d[0]					//GHASH final-1 block - mid
@@ -6915,18 +6920,18 @@ L256_enc_blocks_less_than_1:	//blocks	left <= 1
 
 	neg	x1, x1				//bit_length = 128 - #bits in input (in range [1,128])
 
-	mvn	x6, xzr						//temp0_x = 0xffffffffffffffff
+	mvn	x7, xzr						//temp0_x = 0xffffffffffffffff
 	and	x1, x1, #127				//bit_length %= 128
 
-	lsr	x6, x6, x1				//temp0_x is mask for top 64b of last block
+	lsr	x7, x7, x1				//temp0_x is mask for top 64b of last block
 	cmp	x1, #64
-	mvn	x7, xzr						//temp1_x = 0xffffffffffffffff
+	mvn	x8, xzr						//temp1_x = 0xffffffffffffffff
 
-	csel	x14, x6, xzr, lt
-	csel	x13, x7, x6, lt
+	csel	x14, x7, xzr, lt
+	csel	x13, x8, x7, lt
 
 	mov	v0.d[0], x13					//ctr0b is mask for last block
-	ldr	q20, [x3, #32]				//load h1l | h1h
+	ldr	q20, [x6]				//load h1l | h1h
 	ext	v20.16b, v20.16b, v20.16b, #8
 
 	ld1	{ v26.16b}, [x2]					//load existing bytes where the possibly partial last block is to be stored
@@ -6995,7 +7000,7 @@ aesv8_gcm_8x_dec_256:
 	stp	d8, d9, [sp, #-80]!
 	lsr	x9, x1, #3
 	mov	x16, x4
-	mov	x8, x5
+	mov	x11, x5
 	stp	d10, d11, [sp, #16]
 	stp	d12, d13, [sp, #32]
 	stp	d14, d15, [sp, #48]
@@ -7021,7 +7026,7 @@ aesv8_gcm_8x_dec_256:
 
 	rev32	v2.16b, v30.16b				//CTR block 2
 	add	v30.4s, v30.4s, v31.4s		//CTR block 2
-	ldp	q26, q27, [x8, #0]				  	//load rk0, rk1
+	ldp	q26, q27, [x11, #0]				  	//load rk0, rk1
 
 	rev32	v3.16b, v30.16b				//CTR block 3
 	add	v30.4s, v30.4s, v31.4s		//CTR block 3
@@ -7056,7 +7061,7 @@ aesv8_gcm_8x_dec_256:
 	aesmc	v3.16b, v3.16b			//AES block 3 - round 0
 	aese	v7.16b, v26.16b
 	aesmc	v7.16b, v7.16b		        //AES block 7 - round 0
-	ldp	q28, q26, [x8, #32]				//load rk2, rk3
+	ldp	q28, q26, [x11, #32]				//load rk2, rk3
 
 	aese	v6.16b, v27.16b
 	aesmc	v6.16b, v6.16b		        //AES block 6 - round 1
@@ -7095,7 +7100,7 @@ aesv8_gcm_8x_dec_256:
 	aesmc	v0.16b, v0.16b			//AES block 0 - round 2
 	aese	v4.16b, v28.16b
 	aesmc	v4.16b, v4.16b			//AES block 4 - round 2
-	ldp	q27, q28, [x8, #64]				//load rk4, rk5
+	ldp	q27, q28, [x11, #64]				//load rk4, rk5
 
 	aese	v1.16b, v26.16b
 	aesmc	v1.16b, v1.16b			//AES block 1 - round 3
@@ -7141,7 +7146,7 @@ aesv8_gcm_8x_dec_256:
 	aese	v6.16b, v28.16b
 	aesmc	v6.16b, v6.16b			//AES block 6 - round 5
 
-	ldp	q26, q27, [x8, #96]				//load rk6, rk7
+	ldp	q26, q27, [x11, #96]				//load rk6, rk7
 	aese	v4.16b, v28.16b
 	aesmc	v4.16b, v4.16b			//AES block 4 - round 5
 	aese	v7.16b, v28.16b
@@ -7176,7 +7181,7 @@ aesv8_gcm_8x_dec_256:
 	aesmc	v2.16b, v2.16b			//AES block 2 - round 6
 	aese	v1.16b, v26.16b
 	aesmc	v1.16b, v1.16b			//AES block 1 - round 6
-	ldp	q28, q26, [x8, #128]				//load rk8, rk9
+	ldp	q28, q26, [x11, #128]				//load rk8, rk9
 
 	aese	v5.16b, v27.16b
 	aesmc	v5.16b, v5.16b			//AES block 5 - round 7
@@ -7223,7 +7228,7 @@ aesv8_gcm_8x_dec_256:
 	ld1	{ v19.16b}, [x3]
 	ext	v19.16b, v19.16b, v19.16b, #8
 	rev64	v19.16b, v19.16b
-	ldp	q27, q28, [x8, #160]				//load rk10, rk11
+	ldp	q27, q28, [x11, #160]				//load rk10, rk11
 	add	x4, x0, x1, lsr #3 //end_input_ptr
 	add	x5, x5, x0
 
@@ -7263,7 +7268,7 @@ aesv8_gcm_8x_dec_256:
 	aesmc	v6.16b, v6.16b			//AES block 6 - round 10
 	aese	v3.16b, v27.16b
 	aesmc	v3.16b, v3.16b			//AES block 3 - round 10
-	ldp	q26, q27, [x8, #192]				//load rk12, rk13
+	ldp	q26, q27, [x11, #192]				//load rk12, rk13
 
 	aese	v0.16b, v28.16b
 	aesmc	v0.16b, v0.16b			//AES block 0 - round 11
@@ -7285,7 +7290,7 @@ aesv8_gcm_8x_dec_256:
 
 	aese	v6.16b, v28.16b
 	aesmc	v6.16b, v6.16b			//AES block 6 - round 11
-	ldr	q28, [x8, #224]					//load rk14
+	ldr	q28, [x11, #224]					//load rk14
 
 	aese	v1.16b, v26.16b
 	aesmc	v1.16b, v1.16b			//AES block 1 - round 12
@@ -7363,13 +7368,13 @@ aesv8_gcm_8x_dec_256:
 
 L256_dec_main_loop:	//main	loop start
 	rev32	v5.16b, v30.16b				//CTR block 8k+13
-	ldp	q26, q27, [x8, #0]					//load rk0, rk1
+	ldp	q26, q27, [x11, #0]					//load rk0, rk1
 	add	v30.4s, v30.4s, v31.4s		//CTR block 8k+13
 
 	rev64	v9.16b, v9.16b						//GHASH block 8k+1
-	ldr	q23, [x3, #176]				//load h7l | h7h
+	ldr	q23, [x6, #144]				//load h7l | h7h
 	ext	v23.16b, v23.16b, v23.16b, #8
-	ldr	q25, [x3, #208]				//load h8l | h8h
+	ldr	q25, [x6, #176]				//load h8l | h8h
 	ext	v25.16b, v25.16b, v25.16b, #8
 
 	rev32	v6.16b, v30.16b				//CTR block 8k+14
@@ -7401,12 +7406,12 @@ L256_dec_main_loop:	//main	loop start
 	aesmc	v4.16b, v4.16b			//AES block 8k+12 - round 0
 	aese	v1.16b, v26.16b
 	aesmc	v1.16b, v1.16b			//AES block 8k+9 - round 0
-	ldp	q28, q26, [x8, #32]				//load rk2, rk3
+	ldp	q28, q26, [x11, #32]				//load rk2, rk3
 
 	eor	v8.16b, v8.16b, v19.16b					//PRE 1
-	ldr	q20, [x3, #128]				//load h5l | h5h
+	ldr	q20, [x6, #96]				//load h5l | h5h
 	ext	v20.16b, v20.16b, v20.16b, #8
-	ldr	q22, [x3, #160]				//load h6l | h6h
+	ldr	q22, [x6, #128]				//load h6l | h6h
 	ext	v22.16b, v22.16b, v22.16b, #8
 	aese	v6.16b, v27.16b
 	aesmc	v6.16b, v6.16b			//AES block 8k+14 - round 1
@@ -7450,7 +7455,7 @@ L256_dec_main_loop:	//main	loop start
 	aese	v1.16b, v28.16b
 	aesmc	v1.16b, v1.16b			//AES block 8k+9 - round 2
 
-	ldp	q27, q28, [x8, #64]				//load rk4, rk5
+	ldp	q27, q28, [x11, #64]				//load rk4, rk5
 	pmull2	v29.1q, v10.2d, v22.2d				//GHASH block 8k+2 - high
 	aese	v3.16b, v26.16b
 	aesmc	v3.16b, v3.16b			//AES block 8k+11 - round 3
@@ -7498,12 +7503,12 @@ L256_dec_main_loop:	//main	loop start
 	aese	v4.16b, v27.16b
 	aesmc	v4.16b, v4.16b			//AES block 8k+12 - round 4
 
-	ldr	q21, [x3, #144]				//load h6k | h5k
-	ldr	q24, [x3, #192]				//load h8k | h7k
+	ldr	q21, [x6, #112]				//load h6k | h5k
+	ldr	q24, [x6, #160]				//load h8k | h7k
 	eor	v8.16b, v8.16b, v18.16b			//GHASH block 8k, 8k+1 - mid
 	pmull	v22.1q, v10.1d, v22.1d				//GHASH block 8k+2 - low
 
-	ldp	q26, q27, [x8, #96]				//load rk6, rk7
+	ldp	q26, q27, [x11, #96]				//load rk6, rk7
 	aese	v5.16b, v28.16b
 	aesmc	v5.16b, v5.16b			//AES block 8k+13 - round 5
 	eor	v19.16b, v19.16b, v23.16b				//GHASH block 8k+1 - low
@@ -7559,9 +7564,9 @@ L256_dec_main_loop:	//main	loop start
 	pmull	v21.1q, v10.1d, v21.1d				//GHASH block 8k+3 - mid
 .long	0xce165273	//eor3 v19.16b, v19.16b, v22.16b, v20.16b			//GHASH block 8k+2, 8k+3 - low
 
-	ldr	q23, [x3, #80]				//load h3l | h3h
+	ldr	q23, [x6, #48]				//load h3l | h3h
 	ext	v23.16b, v23.16b, v23.16b, #8
-	ldr	q25, [x3, #112]				//load h4l | h4h
+	ldr	q25, [x6, #80]				//load h4l | h4h
 	ext	v25.16b, v25.16b, v25.16b, #8
 	rev64	v14.16b, v14.16b						//GHASH block 8k+6
 	eor	v18.16b, v18.16b, v24.16b				//GHASH block 8k+1 - mid
@@ -7570,11 +7575,11 @@ L256_dec_main_loop:	//main	loop start
 	aesmc	v2.16b, v2.16b			//AES block 8k+10 - round 7
 	aese	v5.16b, v27.16b
 	aesmc	v5.16b, v5.16b			//AES block 8k+13 - round 7
-	ldp	q28, q26, [x8, #128]				//load rk8, rk9
+	ldp	q28, q26, [x11, #128]				//load rk8, rk9
 
-	ldr	q20, [x3, #32]				//load h1l | h1h
+	ldr	q20, [x6]				//load h1l | h1h
 	ext	v20.16b, v20.16b, v20.16b, #8
-	ldr	q22, [x3, #64]				//load h2l | h2h
+	ldr	q22, [x6, #32]				//load h2l | h2h
 	ext	v22.16b, v22.16b, v22.16b, #8
 .long	0xce157652	//eor3 v18.16b, v18.16b, v21.16b, v29.16b			//GHASH block 8k+2, 8k+3 - mid
 	aese	v7.16b, v27.16b
@@ -7587,8 +7592,8 @@ L256_dec_main_loop:	//main	loop start
 	aese	v6.16b, v27.16b
 	aesmc	v6.16b, v6.16b			//AES block 8k+14 - round 7
 
-	ldr	q21, [x3, #48]				//load h2k | h1k
-	ldr	q24, [x3, #96]				//load h4k | h3k
+	ldr	q21, [x6, #16]				//load h2k | h1k
+	ldr	q24, [x6, #64]				//load h4k | h3k
 	aese	v0.16b, v27.16b
 	aesmc	v0.16b, v0.16b			//AES block 8k+8 - round 7
 	aese	v4.16b, v27.16b
@@ -7622,7 +7627,7 @@ L256_dec_main_loop:	//main	loop start
 	aese	v7.16b, v28.16b
 	aesmc	v7.16b, v7.16b			//AES block 8k+15 - round 8
 
-	ldp	q27, q28, [x8, #160]				//load rk10, rk11
+	ldp	q27, q28, [x11, #160]				//load rk10, rk11
 	pmull	v22.1q, v14.1d, v22.1d				//GHASH block 8k+6 - low
 	trn2	v14.2d, v15.2d, v14.2d				//GHASH block 8k+6, 8k+7 - mid
 
@@ -7689,7 +7694,7 @@ L256_dec_main_loop:	//main	loop start
 	add	v30.4s, v30.4s, v31.4s		//CTR block 8k+16
 	aese	v1.16b, v28.16b
 	aesmc	v1.16b, v1.16b			//AES block 8k+9 - round 11
-	ldp	q26, q27, [x8, #192]				//load rk12, rk13
+	ldp	q26, q27, [x11, #192]				//load rk12, rk13
 
 	aese	v0.16b, v28.16b
 	aesmc	v0.16b, v0.16b			//AES block 8k+8 - round 11
@@ -7729,7 +7734,7 @@ L256_dec_main_loop:	//main	loop start
 	aese	v4.16b, v28.16b
 	aesmc	v4.16b, v4.16b			//AES block 8k+12 - round 11
 
-	ldr	q28, [x8, #224]					//load rk14
+	ldr	q28, [x11, #224]					//load rk14
 	aese	v5.16b, v26.16b
 	aesmc	v5.16b, v5.16b			//AES block 8k+13 - round 12
 	aese	v3.16b, v26.16b
@@ -7789,30 +7794,30 @@ L256_dec_main_loop:	//main	loop start
 	b.lt	L256_dec_main_loop
 
 L256_dec_prepretail:	//PREPRETAIL
-	ldp	q26, q27, [x8, #0]					//load rk0, rk1
+	ldp	q26, q27, [x11, #0]					//load rk0, rk1
 	rev32	v5.16b, v30.16b				//CTR block 8k+13
 	add	v30.4s, v30.4s, v31.4s		//CTR block 8k+13
 
 	rev64	v12.16b, v12.16b						//GHASH block 8k+4
-	ldr	q21, [x3, #144]				//load h6k | h5k
-	ldr	q24, [x3, #192]				//load h8k | h7k
+	ldr	q21, [x6, #112]				//load h6k | h5k
+	ldr	q24, [x6, #160]				//load h8k | h7k
 
 	rev32	v6.16b, v30.16b				//CTR block 8k+14
 	rev64	v8.16b, v8.16b						//GHASH block 8k
 	add	v30.4s, v30.4s, v31.4s		//CTR block 8k+14
 
 	ext	v19.16b, v19.16b, v19.16b, #8				//PRE 0
-	ldr	q23, [x3, #176]				//load h7l | h7h
+	ldr	q23, [x6, #144]				//load h7l | h7h
 	ext	v23.16b, v23.16b, v23.16b, #8
-	ldr	q25, [x3, #208]				//load h8l | h8h
+	ldr	q25, [x6, #176]				//load h8l | h8h
 	ext	v25.16b, v25.16b, v25.16b, #8
 	rev64	v9.16b, v9.16b						//GHASH block 8k+1
 
 	rev32	v7.16b, v30.16b				//CTR block 8k+15
 	rev64	v10.16b, v10.16b						//GHASH block 8k+2
-	ldr	q20, [x3, #128]				//load h5l | h5h
+	ldr	q20, [x6, #96]				//load h5l | h5h
 	ext	v20.16b, v20.16b, v20.16b, #8
-	ldr	q22, [x3, #160]				//load h6l | h6h
+	ldr	q22, [x6, #128]				//load h6l | h6h
 	ext	v22.16b, v22.16b, v22.16b, #8
 
 	aese	v0.16b, v26.16b
@@ -7836,7 +7841,7 @@ L256_dec_prepretail:	//PREPRETAIL
 	aese	v2.16b, v26.16b
 	aesmc	v2.16b, v2.16b			//AES block 8k+10 - round 0
 
-	ldp	q28, q26, [x8, #32]				//load rk2, rk3
+	ldp	q28, q26, [x11, #32]				//load rk2, rk3
 	aese	v0.16b, v27.16b
 	aesmc	v0.16b, v0.16b			//AES block 8k+8 - round 1
 	eor	v8.16b, v8.16b, v19.16b					//PRE 1
@@ -7896,7 +7901,7 @@ L256_dec_prepretail:	//PREPRETAIL
 	aese	v4.16b, v28.16b
 	aesmc	v4.16b, v4.16b			//AES block 8k+12 - round 2
 
-	ldp	q27, q28, [x8, #64]				//load rk4, rk5
+	ldp	q27, q28, [x11, #64]				//load rk4, rk5
 	aese	v1.16b, v26.16b
 	aesmc	v1.16b, v1.16b			//AES block 8k+9 - round 3
 	pmull2	v9.1q, v11.2d, v20.2d				//GHASH block 8k+3 - high
@@ -7927,9 +7932,9 @@ L256_dec_prepretail:	//PREPRETAIL
 	aesmc	v0.16b, v0.16b			//AES block 8k+8 - round 4
 
 .long	0xce165273	//eor3 v19.16b, v19.16b, v22.16b, v20.16b			//GHASH block 8k+2, 8k+3 - low
-	ldr	q20, [x3, #32]				//load h1l | h1h
+	ldr	q20, [x6]				//load h1l | h1h
 	ext	v20.16b, v20.16b, v20.16b, #8
-	ldr	q22, [x3, #64]				//load h2l | h2h
+	ldr	q22, [x6, #32]				//load h2l | h2h
 	ext	v22.16b, v22.16b, v22.16b, #8
 	aese	v7.16b, v27.16b
 	aesmc	v7.16b, v7.16b			//AES block 8k+15 - round 4
@@ -7969,11 +7974,11 @@ L256_dec_prepretail:	//PREPRETAIL
 	aesmc	v0.16b, v0.16b			//AES block 8k+8 - round 5
 	aese	v5.16b, v28.16b
 	aesmc	v5.16b, v5.16b			//AES block 8k+13 - round 5
-	ldp	q26, q27, [x8, #96]				//load rk6, rk7
+	ldp	q26, q27, [x11, #96]				//load rk6, rk7
 
-	ldr	q23, [x3, #80]				//load h3l | h3h
+	ldr	q23, [x6, #48]				//load h3l | h3h
 	ext	v23.16b, v23.16b, v23.16b, #8
-	ldr	q25, [x3, #112]				//load h4l | h4h
+	ldr	q25, [x6, #80]				//load h4l | h4h
 	ext	v25.16b, v25.16b, v25.16b, #8
 	rev64	v15.16b, v15.16b						//GHASH block 8k+7
 	rev64	v13.16b, v13.16b						//GHASH block 8k+5
@@ -7984,8 +7989,8 @@ L256_dec_prepretail:	//PREPRETAIL
 
 	aese	v0.16b, v26.16b
 	aesmc	v0.16b, v0.16b			//AES block 8k+8 - round 6
-	ldr	q21, [x3, #48]				//load h2k | h1k
-	ldr	q24, [x3, #96]				//load h4k | h3k
+	ldr	q21, [x6, #16]				//load h2k | h1k
+	ldr	q24, [x6, #64]				//load h4k | h3k
 	aese	v6.16b, v26.16b
 	aesmc	v6.16b, v6.16b			//AES block 8k+14 - round 6
 
@@ -8015,7 +8020,7 @@ L256_dec_prepretail:	//PREPRETAIL
 	aese	v4.16b, v26.16b
 	aesmc	v4.16b, v4.16b			//AES block 8k+12 - round 6
 
-	ldp	q28, q26, [x8, #128]				//load rk8, rk9
+	ldp	q28, q26, [x11, #128]				//load rk8, rk9
 	pmull	v22.1q, v14.1d, v22.1d				//GHASH block 8k+6 - low
 	aese	v5.16b, v27.16b
 	aesmc	v5.16b, v5.16b			//AES block 8k+13 - round 7
@@ -8078,7 +8083,7 @@ L256_dec_prepretail:	//PREPRETAIL
 	pmull	v21.1q, v14.1d, v21.1d				//GHASH block 8k+7 - mid
 	pmull	v20.1q, v15.1d, v20.1d				//GHASH block 8k+7 - low
 
-	ldp	q27, q28, [x8, #160]				//load rk10, rk11
+	ldp	q27, q28, [x11, #160]				//load rk10, rk11
 .long	0xce195e73	//eor3 v19.16b, v19.16b, v25.16b, v23.16b			//GHASH block 8k+4, 8k+5 - low
 .long	0xce184252	//eor3 v18.16b, v18.16b, v24.16b, v16.16b			//GHASH block 8k+4, 8k+5 - mid
 
@@ -8115,7 +8120,7 @@ L256_dec_prepretail:	//PREPRETAIL
 	aesmc	v7.16b, v7.16b			//AES block 8k+15 - round 10
 	aese	v1.16b, v27.16b
 	aesmc	v1.16b, v1.16b			//AES block 8k+9 - round 10
-	ldp	q26, q27, [x8, #192]				//load rk12, rk13
+	ldp	q26, q27, [x11, #192]				//load rk12, rk13
 
 	ext	v21.16b, v17.16b, v17.16b, #8				//MODULO - other top alignment
 
@@ -8158,7 +8163,7 @@ L256_dec_prepretail:	//PREPRETAIL
 
 	aese	v0.16b, v26.16b
 	aesmc	v0.16b, v0.16b			//AES block 8k+8 - round 12
-	ldr	q28, [x8, #224]					//load rk14
+	ldr	q28, [x11, #224]					//load rk14
 	aese	v1.16b, v26.16b
 	aesmc	v1.16b, v1.16b	        	//AES block 8k+9 - round 12
 
@@ -8185,15 +8190,15 @@ L256_dec_tail:	//TAIL
 
 	ldr	q9, [x0], #16				//AES block 8k+8 - load ciphertext
 
-	ldp	q24, q25, [x3, #192]			//load h8k | h7k
+	ldp	q24, q25, [x6, #160]			//load h8k | h7k
 	ext	v25.16b, v25.16b, v25.16b, #8
 	mov	v29.16b, v28.16b
 
-	ldp	q20, q21, [x3, #128]			//load h5l | h5h
+	ldp	q20, q21, [x6, #96]			//load h5l | h5h
 	ext	v20.16b, v20.16b, v20.16b, #8
 
 .long	0xce00752c	//eor3 v12.16b, v9.16b, v0.16b, v29.16b				//AES block 8k+8 - result
-	ldp	q22, q23, [x3, #160]			//load h6l | h6h
+	ldp	q22, q23, [x6, #128]			//load h6l | h6h
 	ext	v22.16b, v22.16b, v22.16b, #8
 	ext	v23.16b, v23.16b, v23.16b, #8
 	b.gt	L256_dec_blocks_more_than_7
@@ -8243,7 +8248,7 @@ L256_dec_tail:	//TAIL
 	mov	v5.16b, v1.16b
 	b.gt	L256_dec_blocks_more_than_3
 
-	ldr	q24, [x3, #96]				//load h4k | h3k
+	ldr	q24, [x6, #64]				//load h4k | h3k
 	sub	v30.4s, v30.4s, v31.4s
 	mov	v7.16b, v6.16b
 
@@ -8258,7 +8263,7 @@ L256_dec_tail:	//TAIL
 	b.gt	L256_dec_blocks_more_than_1
 
 	sub	v30.4s, v30.4s, v31.4s
-	ldr	q21, [x3, #48]				//load h2k | h1k
+	ldr	q21, [x6, #16]				//load h2k | h1k
 	b	L256_dec_blocks_less_than_1
 L256_dec_blocks_more_than_7:	//blocks	left >  7
 	rev64	v8.16b, v9.16b						//GHASH final-7 block
@@ -8353,13 +8358,13 @@ L256_dec_blocks_more_than_4:	//blocks	left >  4
 .long	0xce04752c	//eor3 v12.16b, v9.16b, v4.16b, v29.16b				//AES final-3 block - result
 L256_dec_blocks_more_than_3:	//blocks	left >  3
 
-	ldr	q25, [x3, #112]				//load h4l | h4h
+	ldr	q25, [x6, #80]				//load h4l | h4h
 	ext	v25.16b, v25.16b, v25.16b, #8
 	rev64	v8.16b, v9.16b						//GHASH final-3 block
 
 	eor	v8.16b, v8.16b, v16.16b					//feed in partial tag
 	ldr	q9, [x0], #16				//AES final-2 block - load ciphertext
-	ldr	q24, [x3, #96]				//load h4k | h3k
+	ldr	q24, [x6, #64]				//load h4k | h3k
 
 	ins	v27.d[0], v8.d[1]					//GHASH final-3 block - mid
 	st1	{ v12.16b}, [x2], #16			 	//AES final-3 block - store result
@@ -8383,7 +8388,7 @@ L256_dec_blocks_more_than_2:	//blocks	left >  2
 
 	rev64	v8.16b, v9.16b						//GHASH final-2 block
 
-	ldr	q23, [x3, #80]				//load h3l | h3h
+	ldr	q23, [x6, #48]				//load h3l | h3h
 	ext	v23.16b, v23.16b, v23.16b, #8
 	ldr	q9, [x0], #16				//AES final-1 block - load ciphertext
 
@@ -8411,14 +8416,14 @@ L256_dec_blocks_more_than_1:	//blocks	left >  1
 	eor	v8.16b, v8.16b, v16.16b					//feed in partial tag
 
 	ins	v27.d[0], v8.d[1]					//GHASH final-1 block - mid
-	ldr	q22, [x3, #64]				//load h2l | h2h
+	ldr	q22, [x6, #32]				//load h2l | h2h
 	ext	v22.16b, v22.16b, v22.16b, #8
 
 	eor	v27.8b, v27.8b, v8.8b				//GHASH final-1 block - mid
 	ldr	q9, [x0], #16				//AES final block - load ciphertext
 	st1	{ v12.16b}, [x2], #16			 	//AES final-1 block - store result
 
-	ldr	q21, [x3, #48]				//load h2k | h1k
+	ldr	q21, [x6, #16]				//load h2k | h1k
 	pmull	v26.1q, v8.1d, v22.1d				//GHASH final-1 block - low
 
 	ins	v27.d[1], v27.d[0]					//GHASH final-1 block - mid
@@ -8437,7 +8442,7 @@ L256_dec_blocks_more_than_1:	//blocks	left >  1
 L256_dec_blocks_less_than_1:	//blocks	left <= 1
 
 	ld1	{ v26.16b}, [x2]					//load existing bytes where the possibly partial last block is to be stored
-	mvn	x6, xzr						//temp0_x = 0xffffffffffffffff
+	mvn	x7, xzr						//temp0_x = 0xffffffffffffffff
 	and	x1, x1, #127				//bit_length %= 128
 
 	sub	x1, x1, #128				//bit_length -= 128
@@ -8448,18 +8453,18 @@ L256_dec_blocks_less_than_1:	//blocks	left <= 1
 
 	and	x1, x1, #127			 	//bit_length %= 128
 
-	lsr	x6, x6, x1				//temp0_x is mask for top 64b of last block
+	lsr	x7, x7, x1				//temp0_x is mask for top 64b of last block
 	cmp	x1, #64
-	mvn	x7, xzr						//temp1_x = 0xffffffffffffffff
+	mvn	x8, xzr						//temp1_x = 0xffffffffffffffff
 
-	csel	x14, x6, xzr, lt
-	csel	x13, x7, x6, lt
+	csel	x14, x7, xzr, lt
+	csel	x13, x8, x7, lt
 
 	mov	v0.d[0], x13					//ctr0b is mask for last block
 	mov	v0.d[1], x14
 
 	and	v9.16b, v9.16b, v0.16b					//possibly partial last block has zeroes in highest bits
-	ldr	q20, [x3, #32]				//load h1l | h1h
+	ldr	q20, [x6]				//load h1l | h1h
 	ext	v20.16b, v20.16b, v20.16b, #8
 	bif	v12.16b, v26.16b, v0.16b					//insert existing bytes in top end of result before storing
 

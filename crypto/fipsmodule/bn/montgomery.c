@@ -119,8 +119,37 @@
 #include <openssl/type_check.h>
 
 #include "internal.h"
+#include "../cpucap/internal.h"
 #include "../../internal.h"
 
+#if !defined(OPENSSL_NO_ASM) &&                                                \
+    (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE)) &&                      \
+    defined(OPENSSL_AARCH64) && defined(OPENSSL_BN_ASM_MONT)
+
+#include "../../../third_party/s2n-bignum/include/s2n-bignum_aws-lc.h"
+
+#define BN_MONTGOMERY_S2N_BIGNUM_CAPABLE 1
+
+OPENSSL_INLINE int montgomery_use_s2n_bignum(unsigned int num) {
+  // Use s2n-bignum's functions only if
+  // (1) The ARM architecture has slow multipliers, and
+  // (2) num (which is the number of words) is multiplie of 8, because
+  //     s2n-bignum's bignum_emontredc_8n requires it, and
+  // (3) The word size is 64 bits.
+  assert(S2NBIGNUM_KSQR_16_32_TEMP_NWORDS <= S2NBIGNUM_KMUL_32_64_TEMP_NWORDS &&
+         S2NBIGNUM_KSQR_32_64_TEMP_NWORDS <= S2NBIGNUM_KMUL_32_64_TEMP_NWORDS &&
+         S2NBIGNUM_KMUL_16_32_TEMP_NWORDS <= S2NBIGNUM_KMUL_32_64_TEMP_NWORDS);
+  assert(BN_BITS2 == 64);
+  return !CRYPTO_is_ARMv8_wide_multiplier_capable() && (num % 8 == 0);
+}
+
+#else
+
+OPENSSL_INLINE int montgomery_use_s2n_bignum(unsigned int num) {
+  return 0;
+}
+
+#endif
 
 BN_MONT_CTX *BN_MONT_CTX_new(void) {
   BN_MONT_CTX *ret = OPENSSL_malloc(sizeof(BN_MONT_CTX));
@@ -418,6 +447,95 @@ err:
   return ret;
 }
 
+
+#if defined(OPENSSL_BN_ASM_MONT)
+
+// Perform montgomery multiplication using s2n-bignum functions. The arguments
+// are equivalent to the arguments of bn_mul_mont.
+// montgomery_s2n_bignum_mul_mont works only if num is a multiple of 8.
+// montgomery_use_s2n_bignum(num) must be called in advance to check this
+// condition.
+// For num = 32 or num = 16, this uses faster primitives in s2n-bignum.
+// montgomery_s2n_bignum_mul_mont allocates S2NBIGNUM_KMUL_32_64_TEMP_NWORDS +
+// 2 * BN_MONTGOMERY_MAX_WORDS uint64_t words at the stack.
+static void montgomery_s2n_bignum_mul_mont(BN_ULONG *rp, const BN_ULONG *ap,
+                                           const BN_ULONG *bp,
+                                           const BN_ULONG *np,
+                                           const BN_ULONG *n0, size_t num) {
+
+#if defined(BN_MONTGOMERY_S2N_BIGNUM_CAPABLE)
+
+  // t is a temporary buffer used by Karatsuba multiplication.
+  // bignum_kmul_32_64 requires S2NBIGNUM_KMUL_32_64_TEMP_NWORDS words.
+  uint64_t t[S2NBIGNUM_KMUL_32_64_TEMP_NWORDS];
+  // mulres is the output buffer of big-int multiplication which uses
+  // 2 * num elements of mulres. Note that num <= BN_MONTGOMERY_MAX_WORDS
+  // is guaranteed by the caller (BN_mod_mul_montgomery).
+  uint64_t mulres[2 * BN_MONTGOMERY_MAX_WORDS];
+
+  // Given m the prime number stored at np, m * w = -1 mod 2^64.
+  uint64_t w = n0[0];
+
+  if (num == 32) {
+    if (CRYPTO_is_NEON_capable()) {
+      if (ap == bp)
+        bignum_ksqr_32_64_neon(mulres, ap, t);
+      else
+        bignum_kmul_32_64_neon(mulres, ap, bp, t);
+    } else {
+      if (ap == bp)
+        bignum_ksqr_32_64(mulres, ap, t);
+      else
+        bignum_kmul_32_64(mulres, ap, bp, t);
+    }
+  } else if (num == 16) {
+    if (CRYPTO_is_NEON_capable()) {
+      if (ap == bp)
+        bignum_ksqr_16_32_neon(mulres, ap, t);
+      else
+        bignum_kmul_16_32_neon(mulres, ap, bp, t);
+    } else {
+      if (ap == bp)
+        bignum_ksqr_16_32(mulres, ap, t);
+      else
+        bignum_kmul_16_32(mulres, ap, bp, t);
+    }
+  } else {
+    if (ap == bp)
+      bignum_sqr(num * 2, mulres, num, ap);
+    else
+      bignum_mul(num * 2, mulres, num, ap, num, bp);
+  }
+
+  // Do montgomery reduction. We follow the definition of montgomery reduction
+  // which is:
+  // 1. Calculate (mulres + ((mulres mod R) * (-m^-1 mod R) mod R) * m) / R
+  //    using bignum_emontredc_8n, where R is 2^(64*num).
+  //    The calculated result is stored in [mulres+num ... mulres+2*num-1]. If
+  //    the result >= 2^(64*num), bignum_emontredc_8n returns 1.
+  // 2. Optionally subtract the result if the (result of step 1) >= m.
+  //    The comparison is true if either A or B holds:
+  //    A. The result of step 1 >= 2^(64*num), meaning that bignum_emontredc_8n
+  //       returned 1. Since m is less than 2^(64*num), (result of step 1) >= m holds.
+  //    B. The result of step 1 fits in 2^(64*num), and the result >= m.
+  uint64_t c = CRYPTO_is_NEON_capable() ? 
+               bignum_emontredc_8n_neon(num, mulres, np, w) :
+               bignum_emontredc_8n(num, mulres, np, w); // c: case A
+  c |= bignum_ge(num, mulres + num, num, np);  // c: case B
+  // Optionally subtract and store the result at rp
+  bignum_optsub(num, rp, mulres + num, c, np);
+
+#else
+
+  // Should not call this function unless s2n-bignum is supported.
+  abort();
+
+#endif
+}
+
+#endif
+
+
 int BN_mod_mul_montgomery(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
                           const BN_MONT_CTX *mont, BN_CTX *ctx) {
   if (a->neg || b->neg) {
@@ -437,11 +555,18 @@ int BN_mod_mul_montgomery(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
     // This bound is implied by |bn_mont_ctx_set_N_and_n0|. |bn_mul_mont|
     // allocates |num| words on the stack, so |num| cannot be too large.
     assert((size_t)num <= BN_MONTGOMERY_MAX_WORDS);
-    if (!bn_mul_mont(r->d, a->d, b->d, mont->N.d, mont->n0, num)) {
-      // The check above ensures this won't happen.
-      assert(0);
-      OPENSSL_PUT_ERROR(BN, ERR_R_INTERNAL_ERROR);
-      return 0;
+
+    if (montgomery_use_s2n_bignum(num)) {
+      // Do montgomery multiplication using s2n-bignum.
+      montgomery_s2n_bignum_mul_mont(r->d, a->d, b->d, mont->N.d, mont->n0,
+                                     num);
+    } else {
+      if (!bn_mul_mont(r->d, a->d, b->d, mont->N.d, mont->n0, num)) {
+        // The check above ensures this won't happen.
+        assert(0);
+        OPENSSL_PUT_ERROR(BN, ERR_R_INTERNAL_ERROR);
+        return 0;
+      }
     }
     r->neg = 0;
     r->width = num;

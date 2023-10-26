@@ -46,30 +46,37 @@ struct MD {
   // one_shot_func is the convenience one-shot version of the
   // digest.
   uint8_t *(*one_shot_func)(const uint8_t *, size_t, uint8_t *);
+  // one_shot_xof_func is the convenience one-shot version of the
+  // digest.
+  uint8_t *(*one_shot_xof_func)(const uint8_t *, const size_t in_len, uint8_t *, size_t);
 };
 
-static const MD md4 = { "MD4", &EVP_md4, nullptr };
-static const MD md5 = { "MD5", &EVP_md5, &MD5 };
-static const MD ripemd160 = { "RIPEMD160", &EVP_ripemd160, &RIPEMD160 };
-static const MD sha1 = { "SHA1", &EVP_sha1, &SHA1 };
-static const MD sha224 = { "SHA224", &EVP_sha224, &SHA224 };
-static const MD sha256 = { "SHA256", &EVP_sha256, &SHA256 };
-static const MD sha384 = { "SHA384", &EVP_sha384, &SHA384 };
-static const MD sha512 = { "SHA512", &EVP_sha512, &SHA512 };
-static const MD sha512_256 = { "SHA512-256", &EVP_sha512_256, &SHA512_256 };
-static const MD sha3_224 = { "SHA3-224", &EVP_sha3_224, &SHA3_224 };
-static const MD sha3_256 = { "SHA3-256", &EVP_sha3_256, &SHA3_256 };
-static const MD sha3_384 = { "SHA3-384", &EVP_sha3_384, &SHA3_384 };
-static const MD sha3_512 = { "SHA3-512", &EVP_sha3_512, &SHA3_512 };
-static const MD md5_sha1 = { "MD5-SHA1", &EVP_md5_sha1, nullptr };
-static const MD blake2b256 = { "BLAKE2b-256", &EVP_blake2b256, nullptr };
+static const MD md4 = { "MD4", &EVP_md4, nullptr, nullptr };
+static const MD md5 = { "MD5", &EVP_md5, &MD5, nullptr };
+static const MD ripemd160 = { "RIPEMD160", &EVP_ripemd160, &RIPEMD160, nullptr };
+static const MD sha1 = { "SHA1", &EVP_sha1, &SHA1, nullptr };
+static const MD sha224 = { "SHA224", &EVP_sha224, &SHA224, nullptr };
+static const MD sha256 = { "SHA256", &EVP_sha256, &SHA256, nullptr };
+static const MD sha384 = { "SHA384", &EVP_sha384, &SHA384, nullptr };
+static const MD sha512 = { "SHA512", &EVP_sha512, &SHA512, nullptr };
+static const MD sha512_224 = { "SHA512-224", &EVP_sha512_224, &SHA512_224, nullptr };
+static const MD sha512_256 = { "SHA512-256", &EVP_sha512_256, &SHA512_256, nullptr };
+static const MD sha3_224 = { "SHA3-224", &EVP_sha3_224, &SHA3_224, nullptr };
+static const MD sha3_256 = { "SHA3-256", &EVP_sha3_256, &SHA3_256, nullptr };
+static const MD sha3_384 = { "SHA3-384", &EVP_sha3_384, &SHA3_384, nullptr };
+static const MD sha3_512 = { "SHA3-512", &EVP_sha3_512, &SHA3_512, nullptr };
+static const MD shake128 = { "shake128", &EVP_shake128, nullptr, &SHAKE128};
+static const MD shake256 = { "shake256", &EVP_shake256, nullptr, &SHAKE256};
+static const MD md5_sha1 = { "MD5-SHA1", &EVP_md5_sha1, nullptr, nullptr };
+static const MD blake2b256 = { "BLAKE2b-256", &EVP_blake2b256, nullptr, nullptr };
 
 struct DigestTestVector {
   // md is the digest to test.
   const MD &md;
   // input is a NUL-terminated string to hash.
   const char *input;
-  // repeat is the number of times to repeat input.
+  // for regular digest, repeat is the number of times to repeat input. for
+  // XOF, it is the requested output size.
   size_t repeat;
   // expected_hex is the expected digest in hexadecimal.
   const char *expected_hex;
@@ -153,14 +160,21 @@ static const DigestTestVector kTestVectors[] = {
      "8e959b75dae313da8cf4f72814fc143f8f7779c6eb9f7fa17299aeadb6889018"
      "501d289e4900f7e4331b99dec4b5433ac7d329eeb6dd26545e96e55b874be909"},
 
+    // SHA-512-224 tests, from
+    // https://csrc.nist.gov/csrc/media/projects/cryptographic-standards-and-guidelines/documents/examples/sha512_224.pdf
+    {sha512_224, "abc",
+        1, "4634270f707b6a54daae7530460842e20e37ed265ceee9a43e8924aa"},
+    {sha512_224,
+     "abcdefghbcdefghicdefghijdefghijkefghijklfghijklmghijklmnhijklmnoijklmnopjklmnopqklmnopqrlmnopqrsmnopqrstnopqrstu",
+        1, "23fec5bb94d60b23308192640b0c453335d664734fe40e7268674af9"},
+
     // SHA-512-256 tests, from
     // https://csrc.nist.gov/csrc/media/projects/cryptographic-standards-and-guidelines/documents/examples/sha512_256.pdf
-    {sha512_256, "abc", 1,
-     "53048e2681941ef99b2e29b76b4c7dabe4c2d0c634fc6d46e0e2f13107e7af23"},
+    {sha512_256, "abc",
+        1, "53048e2681941ef99b2e29b76b4c7dabe4c2d0c634fc6d46e0e2f13107e7af23"},
     {sha512_256,
-     "abcdefghbcdefghicdefghijdefghijkefghijklfghijklmghijklmnhijklmnoijklmnopj"
-     "klmnopqklmnopqrlmnopqrsmnopqrstnopqrstu",
-     1, "3928e184fb8690f840da3988121d31be65cb9d3ef83ee6146feac861e19b563a"},
+     "abcdefghbcdefghicdefghijdefghijkefghijklfghijklmghijklmnhijklmnoijklmnopjklmnopqklmnopqrlmnopqrsmnopqrstnopqrstu",
+        1, "3928e184fb8690f840da3988121d31be65cb9d3ef83ee6146feac861e19b563a"},
 
      // SHA3-224 tests, from NIST.
     // http://csrc.nist.gov/groups/STM/cavp/secure-hashing.html
@@ -216,7 +230,26 @@ static const DigestTestVector kTestVectors[] = {
     {sha3_512, "\xec\x83\xd7\x07\xa1\x41\x4a", 1, "84fd3775bac5b87e550d03ec6fe4905cc60e851a4c33a61858d4e7d8a34d471f05008b9a1d63044445df5a9fce958cb012a6ac778ecf45104b0fcb979aa4692d"},
     {sha3_512, "\x0c\xe9\xf8\xc3\xa9\x90\xc2\x68\xf3\x4e\xfd\x9b\xef\xdb\x0f\x7c\x4e\xf8\x46\x6c\xfd\xb0\x11\x71\xf8\xde\x70\xdc\x5f\xef\xa9\x2a\xcb\xe9\x3d\x29\xe2\xac\x1a\x5c\x29\x79\x12\x9f\x1a\xb0\x8c\x0e\x77\xde\x79\x24\xdd\xf6\x8a\x20\x9c\xdf\xa0\xad\xc6\x2f\x85\xc1\x86\x37\xd9\xc6\xb3\x3f\x4f\xf8",
     1, "b018a20fcf831dde290e4fb18c56342efe138472cbe142da6b77eea4fce52588c04c808eb32912faa345245a850346faec46c3a16d39bd2e1ddb1816bc57d2da"},
-    
+
+    // SHAKE128 XOF tests, from NIST.
+    // http://csrc.nist.gov/groups/STM/cavp/secure-hashing.html
+    // NOTE: the |repeat| field in this struct denotes output length for XOF digests.
+    {shake128, "\x84\xe9\x50\x05\x18\x76\x05\x0d\xc8\x51\xfb\xd9\x9e\x62\x47\xb8", 16, "8599bd89f63a848c49ca593ec37a12c6"},
+    {shake128, "\xf1\x67\x51\x1e\xc8\x86\x49\x79\x30\x22\x37\xab\xea\x4c\xf7\xef", 17, "20f8938daa54b260860a104f8556278bac"},
+    {shake128, "\x96\xdb\xe1\x83\xec\x72\x90\x57\x0b\x82\x54\x6a\xf7\x92\xeb\x90", 18, "762b421dc6374055a061caeddcf50f5dfbb6"},
+    {shake128, "\x9b\xd2\xbd\x3a\x38\x4b\x9e\xf1\x41\xea\xd2\x63\x04\x96\x35\x49", 36, "3cdecb09f1673d8c823da2e02a2eeb28f32095e7c0ce8ab391811c626c472511a433845b"},
+    {shake128, "\x5b\x2f\x2f\x2a\xf8\x3e\x86\xd4\x2c\x4e\x98\x15\x3f\xce\x27\x79", 37, "b6e0361dbce6d4a809a2e982f1dcffa4a49781c989402bf9c603cdacbc15484261a47b050d"},
+
+
+    // SHAKE256 XOF tests, from NIST.
+    // http://csrc.nist.gov/groups/STM/cavp/secure-hashing.html
+    // NOTE: the |repeat| field in this struct denotes output length for XOF digests.
+    {shake256, "\xdc\x88\x6d\xf3\xf6\x9c\x49\x51\x3d\xe3\x62\x7e\x94\x81\xdb\x58\x71\xe8\xee\x88\xeb\x9f\x99\x61\x15\x41\x93\x0a\x8b\xc8\x85\xe0", 16, "00648afbc5e651649db1fd82936b00db"},
+    {shake256, "\x8d\x80\x01\xe2\xc0\x96\xf1\xb8\x8e\x7c\x92\x24\xa0\x86\xef\xd4\x79\x7f\xbf\x74\xa8\x03\x3a\x2d\x42\x2a\x2b\x6b\x8f\x67\x47\xe4", 17, "2e975f6a8a14f0704d51b13667d8195c21"},
+    {shake256, "\xe3\xef\x12\x7e\xad\xfa\xfa\xf4\x04\x08\xce\xbb\x28\x70\x5d\xf3\x0b\x68\xd9\x9d\xfa\x18\x93\x50\x7e\xf3\x06\x2d\x85\x46\x17\x15", 18, "7314002948c057006d4fc21e3e19c258fb5b"},
+    {shake256, "\xdc\x88\x6d\xf3\xf6\x9c\x49\x51\x3d\xe3\x62\x7e\x94\x81\xdb\x58\x71\xe8\xee\x88\xeb\x9f\x99\x61\x15\x41\x93\x0a\x8b\xc8\x85\xe0", 36, "00648afbc5e651649db1fd82936b00dbbc122fb4c877860d385c4950d56de7e096d613d7"},
+    {shake256, "\x79\x35\xb6\x8b\xb3\x34\xf3\x5d\xdc\x15\x7a\x8c\x47\x33\x49\xeb\x03\xad\x0e\x41\x53\x0d\x3c\x04\x5e\x2c\x5f\x64\x28\x50\xad\x8c", 37, "b44d25998e5cf77a83a4c0b2aae3061785adc7507d76fe07f4dcf299e04c991c922b51570f"},
+
     // MD5-SHA1 tests.
     {md5_sha1, "abc", 1,
      "900150983cd24fb0d6963f7d28e17f72a9993e364706816aba3e25717850c26c9cd0d89d"},
@@ -233,28 +266,44 @@ static void CompareDigest(const DigestTestVector *test,
             EncodeHex(bssl::MakeConstSpan(digest, digest_len)));
 }
 
+static bool DoFinal(const DigestTestVector *test, EVP_MD_CTX *ctx, uint8_t *md_out, unsigned int *out_size) {
+    if (ctx->digest && (EVP_MD_flags(ctx->digest) & EVP_MD_FLAG_XOF)) {
+        // For XOF digests, DigestTestVector.repeat is the desired output length
+        *out_size = test->repeat;
+        return EVP_DigestFinalXOF(ctx, md_out, *out_size);
+    }
+    return EVP_DigestFinal(ctx, md_out, out_size);
+}
+
 static void TestDigest(const DigestTestVector *test) {
+    SCOPED_TRACE(test->md.name);
+    const bool is_xof = EVP_MD_flags(test->md.func()) & EVP_MD_FLAG_XOF;
+    const size_t repeat = is_xof ? 1 : test->repeat;
+    const size_t expected_output_size = is_xof
+        ? test->repeat
+        : EVP_MD_size(test->md.func());
+
     bssl::ScopedEVP_MD_CTX ctx;
     // Test the input provided.
     ASSERT_TRUE(EVP_DigestInit_ex(ctx.get(), test->md.func(), nullptr));
-    for (size_t i = 0; i < test->repeat; i++) {
+    for (size_t i = 0; i < repeat; i++) {
       ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), test->input, strlen(test->input)));
     }
-    std::unique_ptr<uint8_t[]> digest(new uint8_t[EVP_MD_size(test->md.func())]);
+    std::unique_ptr<uint8_t[]> digest(new uint8_t[expected_output_size]);
     unsigned digest_len;
-    ASSERT_TRUE(EVP_DigestFinal_ex(ctx.get(), digest.get(), &digest_len));
+    ASSERT_TRUE(DoFinal(test, ctx.get(), digest.get(), &digest_len));
     CompareDigest(test, digest.get(), digest_len);
 
     // Test the input one character at a time.
     ASSERT_TRUE(EVP_DigestInit_ex(ctx.get(), test->md.func(), nullptr));
     ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), nullptr, 0));
-    for (size_t i = 0; i < test->repeat; i++) {
+    for (size_t i = 0; i < repeat; i++) {
       for (const char *p = test->input; *p; p++) {
         ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), p, 1));
       }
     }
-    ASSERT_TRUE(EVP_DigestFinal_ex(ctx.get(), digest.get(), &digest_len));
-    EXPECT_EQ(EVP_MD_size(test->md.func()), digest_len);
+    ASSERT_TRUE(DoFinal(test, ctx.get(), digest.get(), &digest_len));
+    EXPECT_EQ(expected_output_size, digest_len);
     CompareDigest(test, digest.get(), digest_len);
 
     // Test with unaligned input.
@@ -265,20 +314,20 @@ static void TestDigest(const DigestTestVector *test) {
       ptr++;
     }
     OPENSSL_memcpy(ptr, test->input, strlen(test->input));
-    for (size_t i = 0; i < test->repeat; i++) {
+    for (size_t i = 0; i < repeat; i++) {
       ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), ptr, strlen(test->input)));
     }
-    ASSERT_TRUE(EVP_DigestFinal_ex(ctx.get(), digest.get(), &digest_len));
+    ASSERT_TRUE(DoFinal(test, ctx.get(), digest.get(), &digest_len));
     CompareDigest(test, digest.get(), digest_len);
 
     // Make a copy of the digest in the initial state.
     ASSERT_TRUE(EVP_DigestInit_ex(ctx.get(), test->md.func(), nullptr));
     bssl::ScopedEVP_MD_CTX copy;
     ASSERT_TRUE(EVP_MD_CTX_copy_ex(copy.get(), ctx.get()));
-    for (size_t i = 0; i < test->repeat; i++) {
+    for (size_t i = 0; i < repeat; i++) {
       ASSERT_TRUE(EVP_DigestUpdate(copy.get(), test->input, strlen(test->input)));
     }
-    ASSERT_TRUE(EVP_DigestFinal_ex(copy.get(), digest.get(), &digest_len));
+    ASSERT_TRUE(DoFinal(test, copy.get(), digest.get(), &digest_len));
     CompareDigest(test, digest.get(), digest_len);
 
     // Make a copy of the digest with half the input provided.
@@ -287,19 +336,19 @@ static void TestDigest(const DigestTestVector *test) {
     ASSERT_TRUE(EVP_MD_CTX_copy_ex(copy.get(), ctx.get()));
     ASSERT_TRUE(EVP_DigestUpdate(copy.get(), test->input + half,
                                 strlen(test->input) - half));
-    for (size_t i = 1; i < test->repeat; i++) {
+    for (size_t i = 1; i < repeat; i++) {
       ASSERT_TRUE(EVP_DigestUpdate(copy.get(), test->input, strlen(test->input)));
     }
-    ASSERT_TRUE(EVP_DigestFinal_ex(copy.get(), digest.get(), &digest_len));
+    ASSERT_TRUE(DoFinal(test, copy.get(), digest.get(), &digest_len));
     CompareDigest(test, digest.get(), digest_len);
 
     // Move the digest from the initial state.
     ASSERT_TRUE(EVP_DigestInit_ex(ctx.get(), test->md.func(), nullptr));
     copy = std::move(ctx);
-    for (size_t i = 0; i < test->repeat; i++) {
+    for (size_t i = 0; i < repeat; i++) {
       ASSERT_TRUE(EVP_DigestUpdate(copy.get(), test->input, strlen(test->input)));
     }
-    ASSERT_TRUE(EVP_DigestFinal_ex(copy.get(), digest.get(), &digest_len));
+    ASSERT_TRUE(DoFinal(test, copy.get(), digest.get(), &digest_len));
     CompareDigest(test, digest.get(), digest_len);
 
     // Move the digest with half the input provided.
@@ -308,20 +357,25 @@ static void TestDigest(const DigestTestVector *test) {
     copy = std::move(ctx);
     ASSERT_TRUE(EVP_DigestUpdate(copy.get(), test->input + half,
                                 strlen(test->input) - half));
-    for (size_t i = 1; i < test->repeat; i++) {
+    for (size_t i = 1; i < repeat; i++) {
       ASSERT_TRUE(EVP_DigestUpdate(copy.get(), test->input, strlen(test->input)));
     }
-    ASSERT_TRUE(EVP_DigestFinal_ex(copy.get(), digest.get(), &digest_len));
+    ASSERT_TRUE(DoFinal(test, copy.get(), digest.get(), &digest_len));
     CompareDigest(test, digest.get(), digest_len);
 
+    // Digest context should be cleared by finalization
+    EXPECT_FALSE(DoFinal(test, copy.get(), digest.get(), &digest_len));
+
     // Test the one-shot function.
-    if (test->md.one_shot_func && test->repeat == 1) {
-      uint8_t *out = test->md.one_shot_func((const uint8_t *)test->input,
-                                            strlen(test->input), digest.get());
-    // One-shot functions return their supplied buffers.
-    EXPECT_EQ(digest.get(), out);
-    CompareDigest(test, digest.get(), EVP_MD_size(test->md.func()));
-  }
+    if (is_xof || (test->md.one_shot_func && test->repeat == 1)) {
+      uint8_t *out = is_xof
+          ? test->md.one_shot_xof_func((const uint8_t *)test->input, strlen(test->input),
+                  digest.get(), expected_output_size)
+          : test->md.one_shot_func((const uint8_t *)test->input, strlen(test->input), digest.get());
+      // One-shot functions return their supplied buffers.
+      EXPECT_EQ(digest.get(), out);
+      CompareDigest(test, digest.get(), expected_output_size);
+    }
 }
 
 TEST(DigestTest, TestVectors) {
@@ -347,6 +401,17 @@ TEST(DigestTest, Getters) {
   EXPECT_EQ(EVP_sha1(), EVP_get_digestbyobj(obj.get()));
   EXPECT_EQ(EVP_md5_sha1(), EVP_get_digestbyobj(OBJ_nid2obj(NID_md5_sha1)));
   EXPECT_EQ(EVP_sha1(), EVP_get_digestbyobj(OBJ_nid2obj(NID_sha1)));
+}
+
+TEST(DigestTest, TestXOF) {
+  // Assert that passing null outsize pointer for EVP XOF results in error.
+  // Use same buffer for input/output; contents don't matter.
+  const size_t out_size = 16;
+  std::unique_ptr<uint8_t[]> digest(new uint8_t[out_size]);
+  EXPECT_FALSE(EVP_Digest(digest.get(), out_size, digest.get(),
+              /*out_len*/nullptr, EVP_shake128(), /*engine*/nullptr));
+  EXPECT_EQ(ERR_R_PASSED_NULL_PARAMETER, ERR_GET_REASON(ERR_peek_last_error()));
+  ERR_clear_error();
 }
 
 TEST(DigestTest, ASN1) {

@@ -21,7 +21,12 @@
 
 #include <assert.h>
 #include <errno.h>
+
+#ifndef __STDC_FORMAT_MACROS
+#define __STDC_FORMAT_MACROS
+#endif
 #include <inttypes.h>
+
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1627,7 +1632,44 @@ static bool SpeedECMUL(const std::string &selected) {
          SpeedECMULCurve("ECMUL P-521", NID_secp521r1, selected) &&
          SpeedECMULCurve("ECMUL secp256k1", NID_secp256k1, selected);
 }
-#endif
+
+#endif // !defined(OPENSSL_1_0_BENCHMARK)
+
+// Only new AWS-LC (>= 22) and new OpenSSL (>= 1.1.1) support FFDH
+#if (!defined(OPENSSL_1_0_BENCHMARK) && !defined(BORINGSSL_BENCHMARK) && !defined(OPENSSL_IS_AWSLC)) || AWSLC_API_VERSION >= 22
+static bool SpeedFFDHGroup(const std::string &name, int nid,
+                           const std::string &selected) {
+  if (!selected.empty() && name.find(selected) == std::string::npos) {
+    return true;
+  }
+
+  BM_NAMESPACE::UniquePtr<DH> server_dh(DH_new_by_nid(nid));
+  if(!DH_generate_key(server_dh.get())) {
+    return false;
+  }
+  const BIGNUM *server_pub = DH_get0_pub_key(server_dh.get());
+
+  int dh_size = DH_size(server_dh.get());
+  std::unique_ptr<uint8_t[]> shared_secret(new uint8_t[dh_size]);
+
+  TimeResults results;
+  if (!TimeFunction(&results, [&shared_secret, &server_pub, &dh_size, &nid]() -> bool {
+        BM_NAMESPACE::UniquePtr<DH> client_dh(DH_new_by_nid(nid));
+        return DH_generate_key(client_dh.get()) &&
+               dh_size == DH_compute_key_padded(shared_secret.get(), server_pub, client_dh.get());
+      })) {
+    return false;
+  }
+
+  results.Print(name);
+  return true;
+}
+
+static bool SpeedFFDH(const std::string &selected) {
+  return SpeedFFDHGroup("FFDH 2048", NID_ffdhe2048, selected) &&
+         SpeedFFDHGroup("FFDH 4096", NID_ffdhe4096, selected);
+}
+#endif //(!defined(OPENSSL_1_0_BENCHMARK) && !defined(BORINGSSL_BENCHMARK) && !defined(OPENSSL_IS_AWSLC)) || AWSLC_API_VERSION >= 22
 
 #if !defined(OPENSSL_BENCHMARK)
 static bool Speed25519(const std::string &selected) {
@@ -1875,7 +1917,7 @@ static bool SpeedHashToCurve(const std::string &selected) {
       return false;
     }
     if (!TimeFunction(&results, [&]() -> bool {
-          EC_RAW_POINT out;
+          EC_JACOBIAN out;
           return ec_hash_to_curve_p256_xmd_sha256_sswu(
               p256, &out, kLabel, sizeof(kLabel), input, sizeof(input));
         })) {
@@ -1889,7 +1931,7 @@ static bool SpeedHashToCurve(const std::string &selected) {
       return false;
     }
     if (!TimeFunction(&results, [&]() -> bool {
-          EC_RAW_POINT out;
+          EC_JACOBIAN out;
           return ec_hash_to_curve_p384_xmd_sha384_sswu(
               p384, &out, kLabel, sizeof(kLabel), input, sizeof(input));
         })) {
@@ -2210,6 +2252,7 @@ static bool SpeedSelfTest(const std::string &selected) {
   return true;
 }
 
+#if defined(FIPS_ENTROPY_SOURCE_JITTER_CPU)
 static bool SpeedJitter(size_t chunk_size) {
   struct rand_data *jitter_ec = jent_entropy_collector_alloc(0, JENT_FORCE_FIPS);
 
@@ -2245,6 +2288,7 @@ static bool SpeedJitter(std::string selected) {
   }
   return true;
 }
+#endif
 #endif
 
 static bool SpeedDHcheck(size_t prime_bit_length) {
@@ -2584,6 +2628,10 @@ bool Speed(const std::vector<std::string> &args) {
        // OpenSSL 1.0 doesn't support Scrypt
        !SpeedScrypt(selected) ||
 #endif
+#if (!defined(OPENSSL_1_0_BENCHMARK) && !defined(BORINGSSL_BENCHMARK) && !defined(OPENSSL_IS_AWSLC)) || AWSLC_API_VERSION >= 22
+       // OpenSSL 1.0 and BoringSSL don't support DH_new_by_nid, NID_ffdhe2048, or NID_ffdhe4096
+       !SpeedFFDH(selected) ||
+#endif
        !SpeedRSA(selected) ||
        !SpeedRSAKeyGen(false, selected) ||
        !SpeedDHcheck(selected)
@@ -2636,10 +2684,14 @@ bool Speed(const std::vector<std::string> &args) {
     }
 
 #if defined(AWSLC_FIPS)
-    if (!SpeedSelfTest(selected) ||
-        !SpeedJitter(selected)) {
+    if (!SpeedSelfTest(selected)) {
       return false;
     }
+#if defined(FIPS_ENTROPY_SOURCE_JITTER_CPU)
+    if (!SpeedJitter(selected)) {
+      return false;
+    }
+#endif
 #endif
   }
 

@@ -1,0 +1,13 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 OR ISC.
+
+version: 0.2
+
+env:
+  variables:
+    GOPROXY: https://proxy.golang.org,direct
+
+phases:
+  build:
+    commands:
+      - .\tests\ci\run_windows_tests.bat "${MSVC_PATH}" "${ARCH_OPTION}" "${RUN_SDE}"

@@ -384,7 +384,8 @@ int SPAKE2_generate_msg(SPAKE2_CTX *ctx, uint8_t *out, size_t *out_len,
   // bit and so one for all the bottom three bits.
 
   scalar password_scalar;
-  OPENSSL_memcpy(&password_scalar, password_tmp, sizeof(password_scalar));
+  bn_little_endian_to_words(password_scalar.words, sizeof(password_scalar) / BN_BYTES,
+                            password_tmp, sizeof(password_scalar));
 
   // |password_scalar| is the result of |x25519_sc_reduce| and thus is, at
   // most, $l-1$ (where $l$ is |kOrder|, the order of the prime-order subgroup
@@ -414,9 +415,8 @@ int SPAKE2_generate_msg(SPAKE2_CTX *ctx, uint8_t *out, size_t *out_len,
 
     assert((password_scalar.words[0] & 7) == 0);
   }
-
-  OPENSSL_memcpy(ctx->password_scalar, password_scalar.words,
-                 sizeof(ctx->password_scalar));
+  bn_words_to_little_endian(ctx->password_scalar, sizeof(ctx->password_scalar),
+                            password_scalar.words, sizeof(password_scalar) / BN_BYTES);
 
   ge_p3 mask;
   x25519_ge_scalarmult_small_precomp(&mask, ctx->password_scalar,

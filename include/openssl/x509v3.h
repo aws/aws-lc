@@ -556,9 +556,11 @@ OPENSSL_EXPORT void X509V3_conf_free(CONF_VALUE *val);
 //
 // These functions are not safe to use with untrusted inputs. The string formats
 // may implicitly reference context information and, in OpenSSL (though not
-// BoringSSL), one even allows reading arbitrary files. They additionally see
-// much less testing and review than most of the library and may have bugs
-// including memory leaks or crashes.
+// BoringSSL), one even allows reading arbitrary files. Many formats can also
+// produce far larger outputs than their inputs, so untrusted inputs may lead to
+// denial-of-service attacks. Finally, the parsers see much less testing and
+// review than most of the library and may have bugs including memory leaks or
+// crashes.
 
 // v3_ext_ctx, aka |X509V3_CTX|, contains additional context information for
 // constructing extensions. Some string formats reference additional values in
@@ -630,13 +632,23 @@ OPENSSL_EXPORT X509_EXTENSION *X509V3_EXT_nconf_nid(const CONF *conf,
 
 // X509V3_EXT_conf_nid calls |X509V3_EXT_nconf_nid|. |conf| must be NULL.
 //
-// TODO(davidben): This is the only exposed instance of an LHASH in our public
-// headers. cryptography.io wraps this function so we cannot, yet, replace the
-// type with a dummy struct.
+// TODO(davidben): This and |X509V3_EXT_conf| are the only exposed instance of
+// |LHASH| in our public headers. cryptography.io wraps this function so we
+// cannot replace the type with a dummy struct.
 OPENSSL_EXPORT X509_EXTENSION *X509V3_EXT_conf_nid(LHASH_OF(CONF_VALUE) *conf,
                                                    const X509V3_CTX *ctx,
                                                    int ext_nid,
                                                    const char *value);
+
+// X509V3_EXT_conf calls |X509V3_EXT_nconf|. |conf| must be NULL.
+//
+// NOTE: This is only provided for compatibility. See |X509V3_EXT_nconf|
+// instead.
+OPENSSL_EXPORT X509_EXTENSION *X509V3_EXT_conf(LHASH_OF(CONF_VALUE) *conf,
+                                               X509V3_CTX *ctx,
+                                               const char *name,
+                                               const char *value);
+
 
 // X509V3_EXT_add_nconf_sk looks up the section named |section| in |conf|. For
 // each |CONF_VALUE| in the section, it constructs an extension as in
@@ -930,12 +942,13 @@ OPENSSL_EXPORT const ASN1_INTEGER *X509_get0_authority_serial(X509 *x509);
 
 OPENSSL_EXPORT int X509_PURPOSE_get_count(void);
 OPENSSL_EXPORT X509_PURPOSE *X509_PURPOSE_get0(int idx);
-OPENSSL_EXPORT int X509_PURPOSE_get_by_sname(char *sname);
+OPENSSL_EXPORT int X509_PURPOSE_get_by_sname(const char *sname);
 OPENSSL_EXPORT int X509_PURPOSE_get_by_id(int id);
 OPENSSL_EXPORT int X509_PURPOSE_add(int id, int trust, int flags,
                                     int (*ck)(const X509_PURPOSE *,
                                               const X509 *, int),
-                                    char *name, char *sname, void *arg);
+                                    const char *name, const char *sname,
+                                    void *arg);
 OPENSSL_EXPORT char *X509_PURPOSE_get0_name(const X509_PURPOSE *xp);
 OPENSSL_EXPORT char *X509_PURPOSE_get0_sname(const X509_PURPOSE *xp);
 OPENSSL_EXPORT int X509_PURPOSE_get_trust(const X509_PURPOSE *xp);

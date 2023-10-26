@@ -105,7 +105,7 @@ typedef struct bio_connect_st {
   // info_callback is called when the connection is initially made
   // callback(BIO,state,ret);  The callback should return 'ret', state is for
   // compatibility with the SSL info_callback.
-  int (*info_callback)(const BIO *bio, int state, int ret);
+  bio_info_cb info_callback;
 } BIO_CONNECT;
 
 #if !defined(OPENSSL_WINDOWS)
@@ -168,7 +168,7 @@ static int split_host_and_port(char **out_host, char **out_port,
 
 static int conn_state(BIO *bio, BIO_CONNECT *c) {
   int ret = -1, i;
-  int (*cb)(const BIO *, int, int) = NULL;
+  bio_info_cb cb = NULL;
 
   if (c->info_callback != NULL) {
     cb = c->info_callback;
@@ -467,7 +467,7 @@ static long conn_ctrl(BIO *bio, int cmd, long num, void *ptr) {
     case BIO_CTRL_FLUSH:
       break;
     case BIO_CTRL_GET_CALLBACK: {
-      int (**fptr)(const BIO *bio, int state, int xret) = ptr;
+      bio_info_cb *fptr = ptr;
       *fptr = data->info_callback;
     } break;
     default:
@@ -485,13 +485,7 @@ static long conn_callback_ctrl(BIO *bio, int cmd, bio_info_cb fp) {
 
   switch (cmd) {
     case BIO_CTRL_SET_CALLBACK:
-      // This is the actual type signature of |fp|. The caller is expected to
-      // cast it to |bio_info_cb| due to the |BIO_callback_ctrl| calling
-      // convention.
-      OPENSSL_MSVC_PRAGMA(warning(push))
-      OPENSSL_MSVC_PRAGMA(warning(disable : 4191))
-      data->info_callback = (int (*)(const struct bio_st *, int, int))fp;
-      OPENSSL_MSVC_PRAGMA(warning(pop))
+      data->info_callback = fp;
       break;
     default:
       ret = 0;

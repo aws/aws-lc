@@ -276,9 +276,9 @@ static constexpr SSL_CIPHER kCiphers[] = {
 
     // Cipher 1301
     {
-      TLS1_TXT_AES_128_GCM_SHA256,
+      TLS1_3_RFC_AES_128_GCM_SHA256,
       "TLS_AES_128_GCM_SHA256",
-      TLS1_CK_AES_128_GCM_SHA256,
+      TLS1_3_CK_AES_128_GCM_SHA256,
       SSL_kGENERIC,
       SSL_aGENERIC,
       SSL_AES128GCM,
@@ -288,9 +288,9 @@ static constexpr SSL_CIPHER kCiphers[] = {
 
     // Cipher 1302
     {
-      TLS1_TXT_AES_256_GCM_SHA384,
+      TLS1_3_RFC_AES_256_GCM_SHA384,
       "TLS_AES_256_GCM_SHA384",
-      TLS1_CK_AES_256_GCM_SHA384,
+      TLS1_3_CK_AES_256_GCM_SHA384,
       SSL_kGENERIC,
       SSL_aGENERIC,
       SSL_AES256GCM,
@@ -300,9 +300,9 @@ static constexpr SSL_CIPHER kCiphers[] = {
 
     // Cipher 1303
     {
-      TLS1_TXT_CHACHA20_POLY1305_SHA256,
+      TLS1_3_RFC_CHACHA20_POLY1305_SHA256,
       "TLS_CHACHA20_POLY1305_SHA256",
-      TLS1_CK_CHACHA20_POLY1305_SHA256,
+      TLS1_3_CK_CHACHA20_POLY1305_SHA256,
       SSL_kGENERIC,
       SSL_aGENERIC,
       SSL_CHACHA20POLY1305,
@@ -1346,6 +1346,19 @@ bool ssl_create_cipher_list(UniquePtr<SSLCipherPreferenceList> *out_cipher_list,
   return true;
 }
 
+int ssl_get_certificate_slot_index(const EVP_PKEY *pkey) {
+  switch (EVP_PKEY_id(pkey)) {
+    case EVP_PKEY_RSA:
+      return SSL_PKEY_RSA;
+    case EVP_PKEY_EC:
+      return SSL_PKEY_ECC;
+    case EVP_PKEY_ED25519:
+      return SSL_PKEY_ED25519;
+    default:
+      return -1;
+  }
+}
+
 uint32_t ssl_cipher_auth_mask_for_key(const EVP_PKEY *key) {
   switch (EVP_PKEY_id(key)) {
     case EVP_PKEY_RSA:
@@ -1442,10 +1455,6 @@ uint16_t SSL_CIPHER_get_protocol_id(const SSL_CIPHER *cipher) {
   return static_cast<uint16_t>(cipher->id);
 }
 
-uint16_t SSL_CIPHER_get_value(const SSL_CIPHER *cipher) {
-  return SSL_CIPHER_get_protocol_id(cipher);
-}
-
 int SSL_CIPHER_is_aead(const SSL_CIPHER *cipher) {
   return (cipher->algorithm_mac & SSL_AEAD) != 0;
 }
@@ -1514,17 +1523,25 @@ int SSL_CIPHER_get_auth_nid(const SSL_CIPHER *cipher) {
   return NID_undef;
 }
 
-int SSL_CIPHER_get_prf_nid(const SSL_CIPHER *cipher) {
+const EVP_MD *SSL_CIPHER_get_handshake_digest(const SSL_CIPHER *cipher) {
   switch (cipher->algorithm_prf) {
     case SSL_HANDSHAKE_MAC_DEFAULT:
-      return NID_md5_sha1;
+      return EVP_md5_sha1();
     case SSL_HANDSHAKE_MAC_SHA256:
-      return NID_sha256;
+      return EVP_sha256();
     case SSL_HANDSHAKE_MAC_SHA384:
-      return NID_sha384;
+      return EVP_sha384();
   }
   assert(0);
-  return NID_undef;
+  return NULL;
+}
+
+int SSL_CIPHER_get_prf_nid(const SSL_CIPHER *cipher) {
+  const EVP_MD *md = SSL_CIPHER_get_handshake_digest(cipher);
+  if (md == NULL) {
+    return NID_undef;
+  }
+  return EVP_MD_nid(md);
 }
 
 int SSL_CIPHER_is_block_cipher(const SSL_CIPHER *cipher) {
@@ -1554,13 +1571,15 @@ uint16_t SSL_CIPHER_get_max_version(const SSL_CIPHER *cipher) {
   return TLS1_2_VERSION;
 }
 
+static const char* kUnknownCipher = "(NONE)";
+
 // return the actual cipher being used
 const char *SSL_CIPHER_get_name(const SSL_CIPHER *cipher) {
   if (cipher != NULL) {
     return cipher->name;
   }
 
-  return "(NONE)";
+  return kUnknownCipher;
 }
 
 const char *SSL_CIPHER_standard_name(const SSL_CIPHER *cipher) {
@@ -1790,3 +1809,13 @@ const char *SSL_COMP_get0_name(const SSL_COMP *comp) { return comp->name; }
 int SSL_COMP_get_id(const SSL_COMP *comp) { return comp->id; }
 
 void SSL_COMP_free_compression_methods(void) {}
+
+size_t SSL_get_all_cipher_names(const char **out, size_t max_out) {
+  return GetAllNames(out, max_out, MakeConstSpan(&kUnknownCipher, 1),
+                     &SSL_CIPHER::name, MakeConstSpan(kCiphers));
+}
+
+size_t SSL_get_all_standard_cipher_names(const char **out, size_t max_out) {
+  return GetAllNames(out, max_out, Span<const char *>(),
+                     &SSL_CIPHER::standard_name, MakeConstSpan(kCiphers));
+}

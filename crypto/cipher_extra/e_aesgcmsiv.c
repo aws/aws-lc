@@ -22,6 +22,7 @@
 
 #include "../fipsmodule/cipher/internal.h"
 #include "../internal.h"
+#include "./internal.h"
 
 
 #define EVP_AEAD_AES_GCM_SIV_NONCE_LEN 12
@@ -53,8 +54,11 @@ static struct aead_aes_gcm_siv_asm_ctx *asm_ctx_from_ctx(
     const EVP_AEAD_CTX *ctx) {
   // ctx->state must already be 8-byte aligned. Thus, at most, we may need to
   // add eight to align it to 16 bytes.
-  const uintptr_t offset = ((uintptr_t)&ctx->state) & 8;
-  return (struct aead_aes_gcm_siv_asm_ctx *)(&ctx->state.opaque[offset]);
+  const uintptr_t actual_offset = ((uintptr_t)&ctx->state) & 8;
+  if(ctx->state_offset != actual_offset) {
+    return NULL;
+  }
+  return (struct aead_aes_gcm_siv_asm_ctx *)(&ctx->state.opaque[actual_offset]);
 }
 
 // aes128gcmsiv_aes_ks writes an AES-128 key schedule for |key| to
@@ -85,7 +89,12 @@ static int aead_aes_gcm_siv_asm_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
     return 0;
   }
 
+  ctx->state_offset = ((uintptr_t)&ctx->state) & 8;
   struct aead_aes_gcm_siv_asm_ctx *gcm_siv_ctx = asm_ctx_from_ctx(ctx);
+  if(gcm_siv_ctx == NULL) {
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INITIALIZATION_ERROR);
+    return 0;
+  }
   assert((((uintptr_t)gcm_siv_ctx) & 15) == 0);
 
   if (key_bits == 128) {
@@ -332,6 +341,10 @@ static int aead_aes_gcm_siv_asm_seal_scatter(
     size_t nonce_len, const uint8_t *in, size_t in_len, const uint8_t *extra_in,
     size_t extra_in_len, const uint8_t *ad, size_t ad_len) {
   const struct aead_aes_gcm_siv_asm_ctx *gcm_siv_ctx = asm_ctx_from_ctx(ctx);
+  if(gcm_siv_ctx == NULL) {
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_ALIGNMENT_CHANGED);
+    return 0;
+  }
   const uint64_t in_len_64 = in_len;
   const uint64_t ad_len_64 = ad_len;
 
@@ -419,6 +432,10 @@ static int aead_aes_gcm_siv_asm_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
   }
 
   const struct aead_aes_gcm_siv_asm_ctx *gcm_siv_ctx = asm_ctx_from_ctx(ctx);
+  if(gcm_siv_ctx == NULL) {
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_ALIGNMENT_CHANGED);
+    return 0;
+  }
   const size_t plaintext_len = in_len - EVP_AEAD_AES_GCM_SIV_TAG_LEN;
   const uint8_t *const given_tag = in + plaintext_len;
 
@@ -849,10 +866,21 @@ const EVP_AEAD *EVP_aead_aes_256_gcm_siv(void) {
   return &aead_aes_256_gcm_siv;
 }
 
+int x86_64_assembly_implementation_FOR_TESTING(void) {
+  if (CRYPTO_is_AVX_capable() && CRYPTO_is_AESNI_capable()) {
+    return 1;
+  }
+  return 0;
+}
+
 #else
 
 const EVP_AEAD *EVP_aead_aes_128_gcm_siv(void) { return &aead_aes_128_gcm_siv; }
 
 const EVP_AEAD *EVP_aead_aes_256_gcm_siv(void) { return &aead_aes_256_gcm_siv; }
+
+int x86_64_assembly_implementation_FOR_TESTING(void) {
+  return 0;
+}
 
 #endif  // AES_GCM_SIV_ASM

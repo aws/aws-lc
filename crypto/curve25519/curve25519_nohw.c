@@ -1946,7 +1946,7 @@ void x25519_scalar_mult_generic_nohw(uint8_t out[32],
 }
 
 void x25519_public_from_private_nohw(uint8_t out_public_value[32],
-                                      const uint8_t private_key[32]) {
+                                     const uint8_t private_key[32]) {
 
   uint8_t e[32];
   OPENSSL_memcpy(e, private_key, 32);
@@ -1966,4 +1966,5 @@ void x25519_public_from_private_nohw(uint8_t out_public_value[32],
   fe_loose_invert(&zminusy_inv, &zminusy);
   fe_mul_tlt(&zminusy_inv, &zplusy, &zminusy_inv);
   fe_tobytes(out_public_value, &zminusy_inv);
+  CONSTTIME_DECLASSIFY(out_public_value, 32);
 }

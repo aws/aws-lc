@@ -23,12 +23,14 @@ add_library(
   ssl_buffer.cc
   ssl_cert.cc
   ssl_cipher.cc
+  ssl_decrepit.c
   ssl_file.cc
   ssl_key_share.cc
   ssl_lib.cc
   ssl_privkey.cc
   ssl_session.cc
   ssl_stat.cc
+  ssl_text.cc
   ssl_transcript.cc
   ssl_transfer_asn1.cc
   ssl_versions.cc
@@ -40,14 +42,15 @@ add_library(
   tls13_client.cc
   tls13_enc.cc
   tls13_server.cc
-  ssl_decrepit.c
 )
 target_compile_definitions(ssl PRIVATE BORINGSSL_IMPLEMENTATION)
 
 target_link_libraries(ssl crypto)
 
+target_include_directories(ssl BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
+
 target_include_directories(ssl PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
+  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
 
 if(BUILD_TESTING)
@@ -68,6 +71,7 @@ if(BUILD_TESTING)
   )
   target_link_libraries(${INTEGRATION_TEST_EXEC} test_support_lib
           boringssl_gtest_main ssl crypto)
+  target_include_directories(${INTEGRATION_TEST_EXEC} BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
   add_dependencies(all_tests ${INTEGRATION_TEST_EXEC})
 
   add_executable(
@@ -79,6 +83,9 @@ if(BUILD_TESTING)
  )
 
   target_link_libraries(${SSL_TEST_EXEC} test_support_lib boringssl_gtest_main ssl crypto)
+
+  target_include_directories(${SSL_TEST_EXEC} BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
+
   if(WIN32)
     target_link_libraries(${SSL_TEST_EXEC} ws2_32)
   endif()

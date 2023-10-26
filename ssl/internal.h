@@ -459,6 +459,28 @@ class GrowableArray {
 // CBBFinishArray behaves like |CBB_finish| but stores the result in an Array.
 OPENSSL_EXPORT bool CBBFinishArray(CBB *cbb, Array<uint8_t> *out);
 
+// GetAllNames helps to implement |*_get_all_*_names| style functions. It
+// writes at most |max_out| string pointers to |out| and returns the number that
+// it would have liked to have written. The strings written consist of
+// |fixed_names_len| strings from |fixed_names| followed by |objects_len|
+// strings taken by projecting |objects| through |name|.
+template <typename T, typename Name>
+inline size_t GetAllNames(const char **out, size_t max_out,
+                          Span<const char *const> fixed_names, Name(T::*name),
+                          Span<const T> objects) {
+  auto span = bssl::MakeSpan(out, max_out);
+  for (size_t i = 0; !span.empty() && i < fixed_names.size(); i++) {
+    span[0] = fixed_names[i];
+    span = span.subspan(1);
+  }
+  span = span.subspan(0, objects.size());
+  for (size_t i = 0; i < span.size(); i++) {
+    span[i] = objects[i].*name;
+  }
+  return fixed_names.size() + objects.size();
+}
+
+
 // Protocol versions.
 //
 // Due to DTLS's historical wire version differences, we maintain two notions of
@@ -653,8 +675,12 @@ const EVP_MD *ssl_get_handshake_digest(uint16_t version,
 // having support for AES in hardware or not.
 bool ssl_create_cipher_list(UniquePtr<SSLCipherPreferenceList> *out_cipher_list,
                             const bool has_aes_hw, const char *rule_str,
-                            bool strict,
-                            bool config_tls13);
+                            bool strict, bool config_tls13);
+
+// ssl_get_certificate_slot_index returns the |SSL_PKEY_*| certificate slot
+// index corresponding to the private key type of |pkey|. It returns -1 if not
+// supported. This was |ssl_cert_type| in OpenSSL 1.0.2.
+int ssl_get_certificate_slot_index(const EVP_PKEY *pkey);
 
 // ssl_cipher_auth_mask_for_key returns the mask of cipher |algorithm_auth|
 // values suitable for use with |key| in TLS 1.2 and below.
@@ -677,13 +703,13 @@ bool ssl_cipher_requires_server_key_exchange(const SSL_CIPHER *cipher);
 size_t ssl_cipher_get_record_split_len(const SSL_CIPHER *cipher);
 
 // ssl_choose_tls13_cipher returns an |SSL_CIPHER| corresponding with the best
-// available from |cipher_suites| compatible with |version|, |group_id| and
+// available from |client_cipher_suites| compatible with |version|, |group_id| and
 // configured |tls13_ciphers|. It returns NULL if there isn't a compatible
 // cipher. |has_aes_hw| indicates if the choice should be made as if support for
 // AES in hardware is available.
 const SSL_CIPHER *ssl_choose_tls13_cipher(
-    CBS cipher_suites, bool has_aes_hw, uint16_t version, uint16_t group_id,
-    const STACK_OF(SSL_CIPHER) *tls13_ciphers);
+    const STACK_OF(SSL_CIPHER) *client_cipher_suites, bool has_aes_hw, uint16_t version,
+    uint16_t group_id, const STACK_OF(SSL_CIPHER) *tls13_ciphers);
 
 
 // Transcript layer.
@@ -1065,10 +1091,25 @@ enum ssl_private_key_result_t ssl_private_key_decrypt(SSL_HANDSHAKE *hs,
                                                       size_t max_out,
                                                       Span<const uint8_t> in);
 
-// ssl_private_key_supports_signature_algorithm returns whether |hs|'s private
-// key supports |sigalg|.
-bool ssl_private_key_supports_signature_algorithm(SSL_HANDSHAKE *hs,
-                                                  uint16_t sigalg);
+// ssl_public_key_supports_signature_algorithm returns whether |hs|'s extracted
+// public key supports |sigalg|.
+bool ssl_public_key_supports_signature_algorithm(SSL_HANDSHAKE *hs,
+                                                 uint16_t sigalg);
+
+// ssl_cert_private_keys_supports_signature_algorithm returns whether any of
+// |hs|'s available private keys supports |sigalg|. If one does, we switch to
+// using that private key and the corresponding certificate for the rest of the
+// connection. |hs->local_pubkey| is also updated correspondingly.
+//
+// NOTE: Multiple certificate slots is only supported on the server side, when
+// not using designated credentials.
+bool ssl_cert_private_keys_supports_signature_algorithm(SSL_HANDSHAKE *hs,
+                                                        uint16_t sigalg);
+
+// ssl_cert_private_keys_supports_legacy_signature_algorithm is the tls1.0/1.1
+// version of |ssl_cert_private_keys_supports_signature_algorithm|.
+bool ssl_cert_private_keys_supports_legacy_signature_algorithm(
+    uint16_t *out, SSL_HANDSHAKE *hs);
 
 // ssl_public_key_verify verifies that the |signature| is valid for the public
 // key |pkey| and input |in|, using the signature algorithm |sigalg|.
@@ -1380,6 +1421,11 @@ OPENSSL_EXPORT bool ssl_cert_check_key_usage(const CBS *in,
 // nullptr and pushes to the error queue.
 UniquePtr<EVP_PKEY> ssl_cert_parse_pubkey(const CBS *in);
 
+// ssl_cert_parse_leaf_pubkey calls |ssl_cert_parse_pubkey| and extracts the
+// public key from the first element of |chain|. It's expected that the first
+// element of |chain| is the leaf certificate.
+UniquePtr<EVP_PKEY> ssl_cert_parse_leaf_pubkey(STACK_OF(CRYPTO_BUFFER) *chain);
+
 // ssl_parse_client_CA_list parses a CA list from |cbs| in the format used by a
 // TLS CertificateRequest message. On success, it returns a newly-allocated
 // |CRYPTO_BUFFER| list and advances |cbs|. Otherwise, it returns nullptr and
@@ -1406,6 +1452,10 @@ bool ssl_check_leaf_certificate(SSL_HANDSHAKE *hs, EVP_PKEY *pkey,
 // It finalizes the certificate and initializes |hs->local_pubkey|. It returns
 // true on success and false on error.
 bool ssl_on_certificate_selected(SSL_HANDSHAKE *hs);
+
+// ssl_handshake_load_local_pubkey loads |local_pubkey| in |hs| based on the
+// current designated certificate.
+bool ssl_handshake_load_local_pubkey(SSL_HANDSHAKE *hs);
 
 
 // TLS 1.3 key derivation.
@@ -1803,6 +1853,10 @@ struct SSL_HANDSHAKE {
   // |SSL_OP_NO_*| and |SSL_CTX_set_min_proto_version| APIs.
   uint16_t min_version = 0;
 
+  // signature_algorithm is the signature algorithm negotiated for this
+  // handshake.
+  uint16_t signature_algorithm = 0;
+
   // max_version is the maximum accepted protocol version, taking account both
   // |SSL_OP_NO_*| and |SSL_CTX_set_max_proto_version| APIs.
   uint16_t max_version = 0;
@@ -2194,6 +2248,9 @@ bool tls13_add_certificate(SSL_HANDSHAKE *hs);
 // tls13_add_certificate_verify adds a TLS 1.3 CertificateVerify message to the
 // handshake. If it returns |ssl_private_key_retry|, it should be called again
 // to retry when the signing operation is completed.
+//
+// NOTE: |signature_algorithm| in |hs| should be initialized already before
+// this is called.
 enum ssl_private_key_result_t tls13_add_certificate_verify(SSL_HANDSHAKE *hs);
 
 bool tls13_add_finished(SSL_HANDSHAKE *hs);
@@ -2367,6 +2424,12 @@ bool ssl_client_hello_get_extension(const SSL_CLIENT_HELLO *client_hello,
 
 bool ssl_client_cipher_list_contains_cipher(
     const SSL_CLIENT_HELLO *client_hello, uint16_t id);
+
+// ssl_parse_client_cipher_list returns the ciphers offered by the client
+// during handshake, or null if the handshake hasn't occurred or there was an
+// error.
+bool ssl_parse_client_cipher_list(const SSL_CLIENT_HELLO *client_hello,
+                                  UniquePtr<STACK_OF(SSL_CIPHER)> *ciphers_out);
 
 
 // GREASE.
@@ -3436,6 +3499,11 @@ bool tls1_set_curves(Array<uint16_t> *out_group_ids, Span<const int> curves);
 // false.
 bool tls1_set_curves_list(Array<uint16_t> *out_group_ids, const char *curves);
 
+// tls1_call_ocsp_stapling_callback calls the legacy OCSP logic for TLS
+// handshakes. This should be called right after the server certificate has been
+// finalized.
+bool tls1_call_ocsp_stapling_callback(SSL_HANDSHAKE *hs);
+
 // ssl_add_clienthello_tlsext writes ClientHello extensions to |out| for |type|.
 // It returns true on success and false on failure. The |header_len| argument is
 // the length of the ClientHello written so far and is used to compute the
@@ -3878,6 +3946,7 @@ struct ssl_ctx_st {
   // of support for AES hardware. The value is only considered if
   // |aes_hw_override| is true.
   bool aes_hw_override_value : 1;
+
  private:
   ~ssl_ctx_st();
   friend OPENSSL_EXPORT void SSL_CTX_free(SSL_CTX *);
@@ -3936,6 +4005,11 @@ struct ssl_st {
   // session is the configured session to be offered by the client. This session
   // is immutable.
   bssl::UniquePtr<SSL_SESSION> session;
+
+  // client_cipher_suites contains cipher suites offered by the client during
+  // the handshake, with preference order maintained. This field is NOT
+  // serialized and is only populated if used in a server context.
+  bssl::UniquePtr<STACK_OF(SSL_CIPHER)> client_cipher_suites;
 
   void (*info_callback)(const SSL *ssl, int type, int value) = nullptr;
 

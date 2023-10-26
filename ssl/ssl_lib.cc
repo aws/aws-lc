@@ -1977,47 +1977,84 @@ int SSL_CTX_set_tlsext_ticket_key_cb(
   return 1;
 }
 
-int SSL_CTX_set1_curves(SSL_CTX *ctx, const int *curves, size_t curves_len) {
-  return tls1_set_curves(&ctx->supported_group_list,
-                         MakeConstSpan(curves, curves_len));
+static bool ssl_nids_to_group_ids(Array<uint16_t> *out_group_ids,
+                                  Span<const int> nids) {
+  Array<uint16_t> group_ids;
+  if (!group_ids.Init(nids.size())) {
+    return false;
+  }
+
+  for (size_t i = 0; i < nids.size(); i++) {
+    if (!ssl_nid_to_group_id(&group_ids[i], nids[i])) {
+      return false;
+    }
+  }
+
+  *out_group_ids = std::move(group_ids);
+  return true;
 }
 
-int SSL_set1_curves(SSL *ssl, const int *curves, size_t curves_len) {
+int SSL_CTX_set1_groups(SSL_CTX *ctx, const int *groups, size_t num_groups) {
+  return ssl_nids_to_group_ids(&ctx->supported_group_list,
+                               MakeConstSpan(groups, num_groups));
+}
+
+int SSL_set1_groups(SSL *ssl, const int *groups, size_t num_groups) {
   if (!ssl->config) {
     return 0;
   }
-  return tls1_set_curves(&ssl->config->supported_group_list,
-                         MakeConstSpan(curves, curves_len));
+  return ssl_nids_to_group_ids(&ssl->config->supported_group_list,
+                               MakeConstSpan(groups, num_groups));
 }
 
-int SSL_CTX_set1_curves_list(SSL_CTX *ctx, const char *curves) {
-  return tls1_set_curves_list(&ctx->supported_group_list, curves);
-}
+static bool ssl_str_to_group_ids(Array<uint16_t> *out_group_ids,
+                                 const char *str) {
+  // Count the number of groups in the list.
+  size_t count = 0;
+  const char *ptr = str, *col;
+  do {
+    col = strchr(ptr, ':');
+    count++;
+    if (col) {
+      ptr = col + 1;
+    }
+  } while (col);
 
-int SSL_set1_curves_list(SSL *ssl, const char *curves) {
-  if (!ssl->config) {
-    return 0;
+  Array<uint16_t> group_ids;
+  if (!group_ids.Init(count)) {
+    return false;
   }
-  return tls1_set_curves_list(&ssl->config->supported_group_list, curves);
-}
 
-int SSL_CTX_set1_groups(SSL_CTX *ctx, const int *groups, size_t groups_len) {
-  return SSL_CTX_set1_curves(ctx, groups, groups_len);
-}
+  size_t i = 0;
+  ptr = str;
+  do {
+    col = strchr(ptr, ':');
+    if (!ssl_name_to_group_id(&group_ids[i++], ptr,
+                              col ? (size_t)(col - ptr) : strlen(ptr))) {
+      return false;
+    }
+    if (col) {
+      ptr = col + 1;
+    }
+  } while (col);
 
-int SSL_set1_groups(SSL *ssl, const int *groups, size_t groups_len) {
-  return SSL_set1_curves(ssl, groups, groups_len);
+  assert(i == count);
+  *out_group_ids = std::move(group_ids);
+  return true;
 }
 
 int SSL_CTX_set1_groups_list(SSL_CTX *ctx, const char *groups) {
-  return SSL_CTX_set1_curves_list(ctx, groups);
+  return ssl_str_to_group_ids(&ctx->supported_group_list, groups);
 }
 
 int SSL_set1_groups_list(SSL *ssl, const char *groups) {
-  return SSL_set1_curves_list(ssl, groups);
+  if (!ssl->config) {
+    return 0;
+  }
+  return ssl_str_to_group_ids(&ssl->config->supported_group_list, groups);
 }
 
-uint16_t SSL_get_curve_id(const SSL *ssl) {
+uint16_t SSL_get_group_id(const SSL *ssl) {
   SSL_SESSION *session = SSL_get_session(ssl);
   if (session == NULL) {
     return 0;
@@ -2506,6 +2543,13 @@ EVP_PKEY *SSL_CTX_get0_privatekey(const SSL_CTX *ctx) {
 const SSL_CIPHER *SSL_get_current_cipher(const SSL *ssl) {
   const SSL_SESSION *session = SSL_get_session(ssl);
   return session == nullptr ? nullptr : session->cipher;
+}
+
+STACK_OF(SSL_CIPHER) *SSL_get_client_ciphers(const SSL *ssl) {
+  if (ssl == NULL || ssl->s3 == NULL) {
+    return NULL;
+  }
+  return ssl->client_cipher_suites.get();
 }
 
 int SSL_session_reused(const SSL *ssl) {
@@ -3025,6 +3069,8 @@ int SSL_clear(SSL *ssl) {
     return 0;  // SSL_clear may not be used after shedding config.
   }
 
+  ssl->client_cipher_suites.reset();
+
   // In OpenSSL, reusing a client |SSL| with |SSL_clear| causes the previously
   // established session to be offered the next time around. wpa_supplicant
   // depends on this behavior, so emulate it.
@@ -3118,7 +3164,7 @@ int SSL_CTX_set_tmp_ecdh(SSL_CTX *ctx, const EC_KEY *ec_key) {
     return 0;
   }
   int nid = EC_GROUP_get_curve_name(EC_KEY_get0_group(ec_key));
-  return SSL_CTX_set1_curves(ctx, &nid, 1);
+  return SSL_CTX_set1_groups(ctx, &nid, 1);
 }
 
 int SSL_set_tmp_ecdh(SSL *ssl, const EC_KEY *ec_key) {
@@ -3127,7 +3173,7 @@ int SSL_set_tmp_ecdh(SSL *ssl, const EC_KEY *ec_key) {
     return 0;
   }
   int nid = EC_GROUP_get_curve_name(EC_KEY_get0_group(ec_key));
-  return SSL_set1_curves(ssl, &nid, 1);
+  return SSL_set1_groups(ssl, &nid, 1);
 }
 
 void SSL_CTX_set_ticket_aead_method(SSL_CTX *ctx,

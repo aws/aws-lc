@@ -1886,7 +1886,6 @@ TEST(ECTest, LargeXCoordinateVectors) {
     bssl::UniquePtr<EC_POINT> pub_key(EC_POINT_new(group.get()));
     ASSERT_TRUE(pub_key);
 
-    size_t len = BN_num_bytes(&group.get()->field); // Modulus byte-length
     ASSERT_TRUE(EC_KEY_set_group(key.get(), group.get()));
 
     // |EC_POINT_set_affine_coordinates_GFp| sets given (x, y) according to the
@@ -1899,12 +1898,12 @@ TEST(ECTest, LargeXCoordinateVectors) {
 
     // Set the raw point directly with the BIGNUM coordinates.
     // Note that both are in little-endian byte order.
-    OPENSSL_memcpy(key.get()->pub_key->raw.X.bytes,
-                   (const uint8_t *)x.get()->d, len);
-    OPENSSL_memcpy(key.get()->pub_key->raw.Y.bytes,
-                   (const uint8_t *)y.get()->d, len);
-    OPENSSL_memset(key.get()->pub_key->raw.Z.bytes, 0, len);
-    key.get()->pub_key->raw.Z.bytes[0] = 1;
+    OPENSSL_memcpy(key.get()->pub_key->raw.X.words,
+                   x.get()->d, BN_BYTES * group->field.width);
+    OPENSSL_memcpy(key.get()->pub_key->raw.Y.words,
+                   y.get()->d, BN_BYTES * group->field.width);
+    OPENSSL_memset(key.get()->pub_key->raw.Z.words, 0, BN_BYTES * group->field.width);
+    key.get()->pub_key->raw.Z.words[0] = 1;
 
     // |EC_KEY_check_fips| first calls the |EC_KEY_check_key| function that
     // checks if the key point is on the curve (among other checks). If the
@@ -1921,8 +1920,8 @@ TEST(ECTest, LargeXCoordinateVectors) {
     }
 
     // Now replace the x-coordinate with the larger one, x+p.
-    OPENSSL_memcpy(key.get()->pub_key->raw.X.bytes,
-                   (const uint8_t *)xpp.get()->d, len);
+    OPENSSL_memcpy(key.get()->pub_key->raw.X.words,
+                   xpp.get()->d, BN_BYTES * group->field.width);
     // We expect |EC_KEY_check_fips| to always fail when given key with x > p.
     ASSERT_FALSE(EC_KEY_check_fips(key.get()));
 
@@ -2246,7 +2245,7 @@ TEST(ECTest, HashToCurve) {
   ASSERT_TRUE(p224);
   bssl::UniquePtr<EC_GROUP> p384(EC_GROUP_new_by_curve_name(NID_secp384r1));
   ASSERT_TRUE(p384);
-  EC_RAW_POINT raw;
+  EC_JACOBIAN raw;
   bssl::UniquePtr<EC_POINT> p_p384(EC_POINT_new(p384.get()));
   ASSERT_TRUE(p_p384);
   bssl::UniquePtr<EC_POINT> p_p224(EC_POINT_new(p224.get()));
@@ -2330,4 +2329,29 @@ TEST(ECTest, HashToScalar) {
   static const uint8_t kMessage[] = {4, 5, 6, 7};
   EXPECT_FALSE(ec_hash_to_scalar_p384_xmd_sha512_draft07(
       p224.get(), &scalar, kDST, sizeof(kDST), kMessage, sizeof(kMessage)));
+}
+
+TEST(ECTest, FelemBytes) {
+  std::tuple<int,int, int>  test_cases[2] = {
+          std::make_tuple(NID_secp384r1, P384_EC_FELEM_BYTES, P384_EC_FELEM_WORDS),
+          std::make_tuple(NID_secp521r1, P521_EC_FELEM_BYTES, P521_EC_FELEM_WORDS)
+  };
+
+  for(size_t i = 0; i < sizeof(test_cases)/sizeof(std::tuple<int,int,int>); i++) {
+    int nid = std::get<0>(test_cases[i]);
+    int expected_felem_bytes = std::get<1>(test_cases[i]);
+    int expected_felem_words = std::get<2>(test_cases[i]);
+
+    ASSERT_TRUE(expected_felem_bytes <= EC_MAX_BYTES);
+    ASSERT_TRUE(expected_felem_words <= EC_MAX_WORDS);
+    if( 0 == (expected_felem_bytes % BN_BYTES)) {
+      ASSERT_EQ(expected_felem_words, expected_felem_bytes / BN_BYTES);
+    } else {
+      ASSERT_EQ(expected_felem_words, 1 + (expected_felem_bytes / BN_BYTES));
+    }
+
+    bssl::UniquePtr<EC_GROUP> test_group(EC_GROUP_new_by_curve_name(nid));
+    ASSERT_TRUE(test_group);
+    ASSERT_EQ(test_group.get()->field.width, expected_felem_words);
+  }
 }

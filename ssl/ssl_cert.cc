@@ -250,6 +250,34 @@ enum leaf_cert_and_privkey_result_t {
   leaf_cert_and_privkey_mismatch,
 };
 
+// do_leaf_cert_and_privkey_checks does the necessary checks against |pubkey|
+// and |privkey|. It's  expected that the |pubkey| has been parsed from
+// |cert_cbs|.
+static enum leaf_cert_and_privkey_result_t do_leaf_cert_and_privkey_checks(
+    const CBS *cert_cbs, EVP_PKEY *pubkey, EVP_PKEY *privkey) {
+  if (!ssl_is_key_type_supported(EVP_PKEY_id(pubkey))) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
+    return leaf_cert_and_privkey_error;
+  }
+
+  // An ECC certificate may be usable for ECDH or ECDSA. We only support ECDSA
+  // certificates, so sanity-check the key usage extension.
+  if (EVP_PKEY_id(pubkey) == EVP_PKEY_EC &&
+      !ssl_cert_check_key_usage(cert_cbs, key_usage_digital_signature)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
+    return leaf_cert_and_privkey_error;
+  }
+
+  if (privkey != nullptr &&
+      // Sanity-check that the private key and the certificate match.
+      !ssl_compare_public_and_private_key(pubkey, privkey)) {
+    ERR_clear_error();
+    return leaf_cert_and_privkey_mismatch;
+  }
+
+  return leaf_cert_and_privkey_ok;
+}
+
 // check_leaf_cert_and_privkey checks whether the certificate in |leaf_buffer|
 // and the private key in |privkey| are suitable and coherent. It returns
 // |leaf_cert_and_privkey_error| and pushes to the error queue if a problem is
@@ -261,32 +289,11 @@ static enum leaf_cert_and_privkey_result_t check_leaf_cert_and_privkey(
   CBS cert_cbs;
   CRYPTO_BUFFER_init_CBS(leaf_buffer, &cert_cbs);
   UniquePtr<EVP_PKEY> pubkey = ssl_cert_parse_pubkey(&cert_cbs);
-  if (!pubkey) {
+  if (pubkey == nullptr) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     return leaf_cert_and_privkey_error;
   }
-
-  if (!ssl_is_key_type_supported(EVP_PKEY_id(pubkey.get()))) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
-    return leaf_cert_and_privkey_error;
-  }
-
-  // An ECC certificate may be usable for ECDH or ECDSA. We only support ECDSA
-  // certificates, so sanity-check the key usage extension.
-  if (EVP_PKEY_id(pubkey.get()) == EVP_PKEY_EC &&
-      !ssl_cert_check_key_usage(&cert_cbs, key_usage_digital_signature)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
-    return leaf_cert_and_privkey_error;
-  }
-
-  if (privkey != NULL &&
-      // Sanity-check that the private key and the certificate match.
-      !ssl_compare_public_and_private_key(pubkey.get(), privkey)) {
-    ERR_clear_error();
-    return leaf_cert_and_privkey_mismatch;
-  }
-
-  return leaf_cert_and_privkey_ok;
+   return do_leaf_cert_and_privkey_checks(&cert_cbs, pubkey.get(), privkey);
 }
 
 static int cert_set_chain_and_key(
@@ -326,11 +333,14 @@ static int cert_set_chain_and_key(
   if (!ssl_cert_check_cert_private_keys_usage(cert)) {
     return 0;
   }
-  int idx = cert->cert_private_key_idx;
+
+  // Update certificate slot index once all checks have passed.
+  // Certificate slot validity already checked in |check_leaf_cert_and_privkey|.
+  int idx = ssl_get_certificate_slot_index(privkey);
   cert->cert_private_keys[idx].privatekey = UpRef(privkey);
   cert->key_method = privkey_method;
-
   cert->cert_private_keys[idx].chain = std::move(certs_sk);
+  cert->cert_private_key_idx = idx;
   return 1;
 }
 
@@ -339,10 +349,23 @@ bool ssl_set_cert(CERT *cert, UniquePtr<CRYPTO_BUFFER> buffer) {
     return false;
   }
 
-  CERT_PKEY &cert_pkey = cert->cert_private_keys[cert->cert_private_key_idx];
+  // Parse the right certificate slot index from |buffer|.
+  CBS cert_cbs;
+  CRYPTO_BUFFER_init_CBS(buffer.get(), &cert_cbs);
+  UniquePtr<EVP_PKEY> pubkey = ssl_cert_parse_pubkey(&cert_cbs);
+  if (!pubkey) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+    return false;
+  }
+  int slot_index = ssl_get_certificate_slot_index(pubkey.get());
+  if (slot_index < 0) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
+    return false;
+  }
 
-  switch (
-      check_leaf_cert_and_privkey(buffer.get(), cert_pkey.privatekey.get())) {
+  CERT_PKEY &cert_pkey = cert->cert_private_keys[slot_index];
+  switch (do_leaf_cert_and_privkey_checks(&cert_cbs, pubkey.get(),
+                                          cert_pkey.privatekey.get())) {
     case leaf_cert_and_privkey_error:
       return false;
     case leaf_cert_and_privkey_mismatch:
@@ -358,6 +381,9 @@ bool ssl_set_cert(CERT *cert, UniquePtr<CRYPTO_BUFFER> buffer) {
   if (cert_pkey.chain != nullptr) {
     CRYPTO_BUFFER_free(sk_CRYPTO_BUFFER_value(cert_pkey.chain.get(), 0));
     sk_CRYPTO_BUFFER_set(cert_pkey.chain.get(), 0, buffer.release());
+
+    // Update certificate slot index if all checks have passed.
+    cert->cert_private_key_idx = slot_index;
     return true;
   }
 
@@ -371,6 +397,8 @@ bool ssl_set_cert(CERT *cert, UniquePtr<CRYPTO_BUFFER> buffer) {
     return false;
   }
 
+  // Update certificate slot index if all checks have passed.
+  cert->cert_private_key_idx = slot_index;
   return true;
 }
 
@@ -773,24 +801,36 @@ bool ssl_on_certificate_selected(SSL_HANDSHAKE *hs) {
     return true;
   }
 
-  if (!ssl->ctx->x509_method->ssl_auto_chain_if_needed(hs)) {
+  if (!ssl->ctx->x509_method->ssl_auto_chain_if_needed(hs) ||
+      !ssl_handshake_load_local_pubkey(hs)) {
     return false;
   }
 
-  // |cert_private_keys| already checked above in |ssl_has_certificate|.
+  // Sanity check that cached certificate public key type matches the chosen
+  // certificate slot index type.
+  assert(ssl_signing_with_dc(hs) ||
+         (ssl_get_certificate_slot_index(hs->local_pubkey.get()) ==
+          hs->config->cert->cert_private_key_idx));
+
+  return true;
+}
+
+bool ssl_handshake_load_local_pubkey(SSL_HANDSHAKE *hs) {
+  if (!ssl_cert_check_cert_private_keys_usage(hs->config->cert.get())) {
+    return false;
+  }
+
   STACK_OF(CRYPTO_BUFFER) *chain =
       hs->config->cert
           ->cert_private_keys[hs->config->cert->cert_private_key_idx]
           .chain.get();
-  CBS leaf;
-  CRYPTO_BUFFER_init_CBS(sk_CRYPTO_BUFFER_value(chain, 0), &leaf);
 
   if (ssl_signing_with_dc(hs)) {
     hs->local_pubkey = UpRef(hs->config->cert->dc->pkey);
   } else {
-    hs->local_pubkey = ssl_cert_parse_pubkey(&leaf);
+    hs->local_pubkey = ssl_cert_parse_leaf_pubkey(chain);
   }
-  return hs->local_pubkey != NULL;
+  return hs->local_pubkey != nullptr;
 }
 
 
@@ -1070,4 +1110,6 @@ int SSL_delegated_credential_used(const SSL *ssl) {
   return ssl->s3->delegated_credential_used;
 }
 
-int SSL_CTX_get_security_level(const SSL_CTX *ctx) { return 3; }
+int SSL_CTX_get_security_level(const SSL_CTX *ctx) { return 0; }
+
+void SSL_CTX_set_security_level(const SSL_CTX *ctx, int level) {}

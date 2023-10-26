@@ -131,8 +131,16 @@ void EVP_MD_CTX_free(EVP_MD_CTX *ctx) {
 void EVP_MD_CTX_destroy(EVP_MD_CTX *ctx) { EVP_MD_CTX_free(ctx); }
 
 int EVP_DigestFinalXOF(EVP_MD_CTX *ctx, uint8_t *out, size_t len) {
-  OPENSSL_PUT_ERROR(DIGEST, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
-  return 0;
+  if (ctx->digest == NULL) {
+    return 0;
+  }
+  if ((EVP_MD_flags(ctx->digest) & EVP_MD_FLAG_XOF) == 0) {
+    OPENSSL_PUT_ERROR(DIGEST, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+    return 0;
+  }
+  ctx->digest->finalXOF(ctx, out, len);
+  EVP_MD_CTX_cleanse(ctx);
+  return 1;
 }
 
 uint32_t EVP_MD_meth_get_flags(const EVP_MD *md) { return EVP_MD_flags(md); }
@@ -245,6 +253,10 @@ int EVP_DigestFinal_ex(EVP_MD_CTX *ctx, uint8_t *md_out, unsigned int *size) {
   if (ctx->digest == NULL) {
     return 0;
   }
+  if (EVP_MD_flags(ctx->digest) & EVP_MD_FLAG_XOF) {
+    OPENSSL_PUT_ERROR(DIGEST, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+    return 0;
+  }
 
   assert(ctx->digest->md_size <= EVP_MAX_MD_SIZE);
   ctx->digest->final(ctx, md_out);
@@ -256,7 +268,6 @@ int EVP_DigestFinal_ex(EVP_MD_CTX *ctx, uint8_t *md_out, unsigned int *size) {
 }
 
 int EVP_DigestFinal(EVP_MD_CTX *ctx, uint8_t *md, unsigned int *size) {
-  
   int ok = EVP_DigestFinal_ex(ctx, md, size);
   EVP_MD_CTX_cleanup(ctx);
   return ok;
@@ -267,11 +278,23 @@ int EVP_Digest(const void *data, size_t count, uint8_t *out_md,
   EVP_MD_CTX ctx;
   int ret;
 
+  if ((EVP_MD_flags(type) & EVP_MD_FLAG_XOF) && out_size == NULL) {
+    OPENSSL_PUT_ERROR(DIGEST, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
   EVP_MD_CTX_init(&ctx);
   ret = EVP_DigestInit_ex(&ctx, type, impl) &&
-        EVP_DigestUpdate(&ctx, data, count) &&
-        EVP_DigestFinal_ex(&ctx, out_md, out_size);
-  EVP_MD_CTX_cleanup(&ctx);
+        EVP_DigestUpdate(&ctx, data, count);
+  if (ret == 0) {
+      return 0;
+  }
+
+  if (EVP_MD_flags(type) & EVP_MD_FLAG_XOF) {
+    ret &= EVP_DigestFinalXOF(&ctx, out_md, *out_size);
+  } else {
+    ret &= EVP_DigestFinal(&ctx, out_md, out_size);
+  }
 
   return ret;
 }

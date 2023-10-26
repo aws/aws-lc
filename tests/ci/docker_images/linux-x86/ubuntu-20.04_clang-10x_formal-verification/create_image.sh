@@ -10,6 +10,6 @@ fi
 rm -rf aws-lc-verification
 git clone https://github.com/awslabs/aws-lc-verification.git
 cd aws-lc-verification
-docker build -t ${docker_tag} .
+docker build --pull --no-cache -t ${docker_tag} .
 cd ..
 rm -rf aws-lc-verification

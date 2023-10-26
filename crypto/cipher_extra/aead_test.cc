@@ -25,6 +25,7 @@
 
 #include "../fipsmodule/cipher/internal.h"
 #include "../internal.h"
+#include "./internal.h"
 #include "../test/abi_test.h"
 #include "../test/file_test.h"
 #include "../test/test_util.h"
@@ -1262,4 +1263,117 @@ TEST(AEADTest, AEADAES256GCMDetIVGen) {
 
   EXPECT_TRUE(EVP_AEAD_get_iv_from_ipv4_nanosecs(ip_address, fake_time, out));
   EXPECT_EQ(Bytes(out, sizeof(out)), Bytes(expected, sizeof(expected)));
+}
+
+static int awslc_encrypt(EVP_AEAD_CTX *ctx, uint8_t *nonce,
+                                       uint8_t *ct, uint8_t *pt) {
+  size_t ct_len = 0;
+  GTEST_LOG_(INFO) << "awslc_encrypt: Ctx.State Location: "
+                   << &ctx->state;
+  if (EVP_AEAD_CTX_seal(ctx, ct, &ct_len, 32, nonce, 12, pt, 16, NULL, 0) !=
+      1) {
+    return 1;
+  }
+
+  return 0;
+}
+
+static int awslc_decrypt(const EVP_AEAD *cipher, uint8_t ct[32], uint8_t *key,
+                         size_t key_len, uint8_t nonce[12], uint8_t pt[16]) {
+
+  EVP_AEAD_CTX ctx;
+  size_t pt_len = 0;
+
+  EVP_AEAD_CTX_zero(&ctx);
+  if (EVP_AEAD_CTX_init(&ctx, cipher, key, key_len, 16, NULL) != 1) {
+    return 1;
+  }
+  GTEST_LOG_(INFO) << "awslc_decrypt: Ctx.State Location: " << &ctx.state;
+
+  if (EVP_AEAD_CTX_open(&ctx, pt, &pt_len, 16, nonce, 12, ct, 32, NULL, 0) !=
+      1) {
+    return 1;
+  }
+
+  return 0;
+}
+
+TEST(AEADTest, TestGCMSIV128Change16Alignment) {
+  uint8_t key[16] = {0};
+  uint8_t nonce[12] = {0};
+  uint8_t pt[16] = {0};
+  uint8_t ct[32] = {0};
+  EVP_AEAD_CTX* encrypt_ctx_128 = (EVP_AEAD_CTX*)malloc(sizeof(EVP_AEAD_CTX) + 8);
+  ASSERT_TRUE(encrypt_ctx_128);
+
+  const EVP_AEAD *cipher_128 = EVP_aead_aes_128_gcm_siv();
+
+  EVP_AEAD_CTX_zero(encrypt_ctx_128);
+  ASSERT_TRUE(EVP_AEAD_CTX_init(encrypt_ctx_128, cipher_128, key, 16, 16, NULL))
+      << ERR_error_string(ERR_get_error(), NULL);
+  ASSERT_FALSE(awslc_encrypt(encrypt_ctx_128, nonce, ct, pt))
+      << ERR_error_string(ERR_get_error(), NULL);
+  ASSERT_FALSE(awslc_decrypt(cipher_128, ct, key, 16, nonce, pt))
+      << ERR_error_string(ERR_get_error(), NULL);
+
+  GTEST_LOG_(INFO) << "Orig. Ctx.State Location: " << &encrypt_ctx_128->state;
+  EVP_AEAD_CTX *moved_encrypt_ctx_128 =
+      (EVP_AEAD_CTX *)(((uint8_t *)encrypt_ctx_128) + 8);
+  memmove(moved_encrypt_ctx_128, encrypt_ctx_128, sizeof(EVP_AEAD_CTX));
+  GTEST_LOG_(INFO) << "Moved Ctx.State Location: "
+                   << &moved_encrypt_ctx_128->state;
+
+  if (awslc_encrypt(moved_encrypt_ctx_128, nonce, ct, pt) != 1) {
+    if (x86_64_assembly_implementation_FOR_TESTING()) {
+      FAIL() << "Expected failure in awslc_encrypt";
+    }
+  } else {
+    if (!x86_64_assembly_implementation_FOR_TESTING()) {
+      FAIL() << "Failure in awslc_encrypt";
+    }
+    uint32_t err = ERR_get_error();
+    EXPECT_EQ(ERR_R_CIPHER_LIB, ERR_GET_LIB(err));
+    EXPECT_EQ(CIPHER_R_ALIGNMENT_CHANGED, ERR_GET_REASON(err));
+  }
+  free(encrypt_ctx_128);
+}
+
+TEST(AEADTest, TestGCMSIV256Change16Alignment) {
+  uint8_t nonce[12] = {0};
+  uint8_t key[32] = {0};
+  uint8_t pt[16] = {0};
+  uint8_t ct[32] = {0};
+  EVP_AEAD_CTX* encrypt_ctx_256 = (EVP_AEAD_CTX*)malloc(sizeof(EVP_AEAD_CTX) + 8);
+  ASSERT_TRUE(encrypt_ctx_256);
+
+  const EVP_AEAD *cipher_256 = EVP_aead_aes_256_gcm_siv();
+
+  EVP_AEAD_CTX_zero(encrypt_ctx_256);
+  ASSERT_TRUE(EVP_AEAD_CTX_init(encrypt_ctx_256, cipher_256, key, 32, 16, NULL))
+      << ERR_error_string(ERR_get_error(), NULL);
+  ASSERT_FALSE(awslc_encrypt(encrypt_ctx_256, nonce, ct, pt))
+      << ERR_error_string(ERR_get_error(), NULL);
+  ASSERT_FALSE(awslc_decrypt(cipher_256, ct, key, 32, nonce, pt))
+      << ERR_error_string(ERR_get_error(), NULL);
+
+  GTEST_LOG_(INFO) << "Orig. Ctx.State Location: " << &encrypt_ctx_256->state;
+  EVP_AEAD_CTX *moved_encrypt_ctx_256 =
+      (EVP_AEAD_CTX *)(((uint8_t *)encrypt_ctx_256) + 8);
+  memmove(moved_encrypt_ctx_256, encrypt_ctx_256, sizeof(EVP_AEAD_CTX));
+  GTEST_LOG_(INFO) << "Moved Ctx.State Location: "
+                   << &moved_encrypt_ctx_256->state;
+
+  if (awslc_encrypt(moved_encrypt_ctx_256, nonce, ct, pt) != 1) {
+    if (x86_64_assembly_implementation_FOR_TESTING()) {
+      FAIL() << "Expected failure in awslc_encrypt";
+    }
+  } else {
+    if (!x86_64_assembly_implementation_FOR_TESTING()) {
+      FAIL() << "Failure in awslc_encrypt";
+    }
+    uint32_t err = ERR_get_error();
+    EXPECT_EQ(ERR_R_CIPHER_LIB, ERR_GET_LIB(err));
+    EXPECT_EQ(CIPHER_R_ALIGNMENT_CHANGED, ERR_GET_REASON(err));
+  }
+  free(encrypt_ctx_256);
 }

@@ -115,10 +115,11 @@ void CRYPTO_pre_sandbox_init(void) {
 
 const char *SSLeay_version(int which) { return OpenSSL_version(which); }
 
+#define AWS_LC_VERSION_TEXT AWSLC_VERSION_NAME " " AWSLC_VERSION_NUMBER_STRING
 const char *OpenSSL_version(int which) {
   switch (which) {
     case OPENSSL_VERSION:
-      return AWSLC_VERSION_NAME;
+      return AWS_LC_VERSION_TEXT;
     case OPENSSL_CFLAGS:
       return "compiler: n/a";
     case OPENSSL_BUILT_ON:

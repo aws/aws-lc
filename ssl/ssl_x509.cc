@@ -766,7 +766,7 @@ void SSL_CTX_set_cert_store(SSL_CTX *ctx, X509_STORE *store) {
 }
 
 static int ssl_use_certificate(CERT *cert, X509 *x) {
-  if (x == NULL) {
+  if (x == nullptr) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
   }
@@ -774,6 +774,12 @@ static int ssl_use_certificate(CERT *cert, X509 *x) {
   if (!ssl_cert_check_cert_private_keys_usage(cert)) {
     return 0;
   }
+
+  UniquePtr<CRYPTO_BUFFER> buffer = x509_to_buffer(x);
+  if (!buffer || !ssl_set_cert(cert, std::move(buffer))) {
+    return 0;
+  }
+
   // We set the |x509_leaf| here to prevent any external data set from being
   // lost. The rest of the chain still uses |CRYPTO_BUFFER|s.
   X509 *&x509_leaf =
@@ -781,13 +787,7 @@ static int ssl_use_certificate(CERT *cert, X509 *x) {
   X509_free(x509_leaf);
   X509_up_ref(x);
   x509_leaf = x;
-
-  UniquePtr<CRYPTO_BUFFER> buffer = x509_to_buffer(x);
-  if (!buffer) {
-    return 0;
-  }
-
-  return ssl_set_cert(cert, std::move(buffer));
+  return 1;
 }
 
 int SSL_use_certificate(SSL *ssl, X509 *x) {
@@ -979,6 +979,134 @@ int SSL_add1_chain_cert(SSL *ssl, X509 *x509) {
     return 0;
   }
   return ssl_cert_add1_chain_cert(ssl->config->cert.get(), x509);
+}
+
+#define is_flag_set(flags, query) (flags & query)
+
+static int ssl_build_cert_chain(CERT *cert, X509_STORE *cert_store, int flags) {
+  assert(cert_store);
+  if (!ssl_cert_check_cert_private_keys_usage(cert)) {
+    return 0;
+  }
+
+  CERT_PKEY *cert_pkey = &cert->cert_private_keys[cert->cert_private_key_idx];
+  CRYPTO_BUFFER *leaf_buffer =
+      sk_CRYPTO_BUFFER_value(cert_pkey->chain.get(), 0);
+  if (leaf_buffer == nullptr) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CERTIFICATE_SET);
+    return 0;
+  }
+  UniquePtr<X509> leaf(X509_parse_from_buffer(leaf_buffer));
+  if (leaf == nullptr) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_X509_LIB);
+    return 0;
+  }
+
+  UniquePtr<X509_STORE> store(X509_STORE_new());
+  UniquePtr<X509_STORE_CTX> store_ctx(X509_STORE_CTX_new());
+  if (store == nullptr || store_ctx == nullptr) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+    return 0;
+  }
+
+  // Rearranging and check the chain: add everything to a store
+  UniquePtr<STACK_OF(X509)> untrusted(sk_X509_new_null());
+  if (is_flag_set(flags, SSL_BUILD_CHAIN_FLAG_CHECK)) {
+    // Push certs onto |X509_STORE|.
+    for (size_t i = 1; i < sk_CRYPTO_BUFFER_num(cert_pkey->chain.get()); i++) {
+      CRYPTO_BUFFER *buffer = sk_CRYPTO_BUFFER_value(cert_pkey->chain.get(), i);
+      UniquePtr<X509> x509(X509_parse_from_buffer(buffer));
+      if (!x509 || !X509_STORE_add_cert(store.get(), x509.get())) {
+        return 0;
+      }
+    }
+    // Add end-entity certificate too: it might be self-signed.
+    if (!X509_STORE_add_cert(store.get(), leaf.get())) {
+      return 0;
+    }
+  } else {
+    // Use associated |cert_store| from |SSL_CTX|. Reference count added to
+    // avoid double freeing of |X509_STORE|.
+    store.reset(cert_store);
+    X509_STORE_up_ref(cert_store);
+
+    if (is_flag_set(flags, SSL_BUILD_CHAIN_FLAG_UNTRUSTED)) {
+      // Push certs onto untrusted stack.
+      for (size_t i = 1; i < sk_CRYPTO_BUFFER_num(cert_pkey->chain.get());
+           i++) {
+        CRYPTO_BUFFER *buffer =
+            sk_CRYPTO_BUFFER_value(cert_pkey->chain.get(), i);
+        UniquePtr<X509> x509(X509_parse_from_buffer(buffer));
+        if (!x509 || !PushToStack(untrusted.get(), std::move(x509))) {
+          return 0;
+        }
+      }
+    }
+  }
+
+  if (!X509_STORE_CTX_init(store_ctx.get(), store.get(), leaf.get(),
+                           untrusted.get())) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_X509_LIB);
+    return 0;
+  }
+
+  bool ignore_error = false;
+  if (X509_verify_cert(store_ctx.get()) <= 0) {
+    // Fail if |SSL_BUILD_CHAIN_FLAG_IGNORE_ERROR| is not set.
+    if(!is_flag_set(flags, SSL_BUILD_CHAIN_FLAG_IGNORE_ERROR)) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_CERTIFICATE_VERIFY_FAILED);
+      ERR_add_error_data(2, "Verify error:",
+                         X509_verify_cert_error_string(
+                             X509_STORE_CTX_get_error(store_ctx.get())));
+      return 0;
+    }
+
+    if (is_flag_set(flags, SSL_BUILD_CHAIN_FLAG_CLEAR_ERROR)) {
+      ERR_clear_error();
+    }
+    ignore_error = true;
+  }
+
+  UniquePtr<STACK_OF(X509)> built_chain(
+      X509_STORE_CTX_get1_chain(store_ctx.get()));
+  // Remove EE certificate from chain.
+  X509_free(sk_X509_shift(built_chain.get()));
+
+  if (is_flag_set(flags, SSL_BUILD_CHAIN_FLAG_NO_ROOT)) {
+    if (sk_X509_num(built_chain.get()) > 0) {
+      // See if last cert is self-signed.
+      if (X509_get_extension_flags(sk_X509_value(
+              built_chain.get(), sk_X509_num(built_chain.get()) - 1)) &
+          EXFLAG_SS) {
+        X509_free(sk_X509_pop(built_chain.get()));
+      }
+    }
+  }
+  if (!ssl_cert_set_chain(cert, built_chain.get())) {
+    return 0;
+  }
+
+  // Anything that has passed successfully up to here is valid.
+  // 2 is used to indicate a verification error has happened, but was ignored
+  // because |SSL_BUILD_CHAIN_FLAG_IGNORE_ERROR| was set.
+  if(ignore_error) {
+    return 2;
+  }
+  return 1;
+}
+
+int SSL_CTX_build_cert_chain(SSL_CTX *ctx, int flags) {
+  check_ssl_ctx_x509_method(ctx);
+  return ssl_build_cert_chain(ctx->cert.get(), ctx->cert_store, flags);
+}
+
+int SSL_build_cert_chain(SSL *ssl, int flags) {
+  check_ssl_x509_method(ssl);
+  if (!ssl->config) {
+    return 0;
+  }
+  return ssl_build_cert_chain(ssl->config->cert.get(), ssl->ctx->cert_store,
+                              flags);
 }
 
 int SSL_CTX_clear_chain_certs(SSL_CTX *ctx) {

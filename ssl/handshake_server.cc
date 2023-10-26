@@ -264,15 +264,23 @@ static bool negotiate_version(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   return true;
 }
 
-static UniquePtr<STACK_OF(SSL_CIPHER)> ssl_parse_client_cipher_list(
-    const SSL_CLIENT_HELLO *client_hello) {
+bool ssl_parse_client_cipher_list(
+    const SSL_CLIENT_HELLO *client_hello, UniquePtr<STACK_OF(SSL_CIPHER)> *ciphers_out) {
+  ciphers_out->reset();
+
   CBS cipher_suites;
   CBS_init(&cipher_suites, client_hello->cipher_suites,
            client_hello->cipher_suites_len);
 
+  // Cipher suites are encoded as 2-byte unsigned integers
+  if (CBS_len(&cipher_suites) % 2 != 0) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_ERROR_IN_RECEIVED_CIPHER_LIST);
+    return false;
+  }
+
   UniquePtr<STACK_OF(SSL_CIPHER)> sk(sk_SSL_CIPHER_new_null());
   if (!sk) {
-    return nullptr;
+    return false;
   }
 
   while (CBS_len(&cipher_suites) > 0) {
@@ -280,16 +288,19 @@ static UniquePtr<STACK_OF(SSL_CIPHER)> ssl_parse_client_cipher_list(
 
     if (!CBS_get_u16(&cipher_suites, &cipher_suite)) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_ERROR_IN_RECEIVED_CIPHER_LIST);
-      return nullptr;
+      return false;
     }
 
     const SSL_CIPHER *c = SSL_get_cipher_by_value(cipher_suite);
     if (c != NULL && !sk_SSL_CIPHER_push(sk.get(), c)) {
-      return nullptr;
+      OPENSSL_PUT_ERROR(SSL, SSL_R_ERROR_IN_RECEIVED_CIPHER_LIST);
+      return false;
     }
   }
 
-  return sk;
+  *ciphers_out = std::move(sk);
+
+  return true;
 }
 
 // ssl_get_compatible_server_ciphers determines the key exchange and
@@ -303,9 +314,22 @@ static void ssl_get_compatible_server_ciphers(SSL_HANDSHAKE *hs,
   uint32_t mask_a = 0;
 
   if (ssl_has_certificate(hs)) {
+    CERT *cert = hs->config->cert.get();
     mask_a |= ssl_cipher_auth_mask_for_key(hs->local_pubkey.get());
     if (EVP_PKEY_id(hs->local_pubkey.get()) == EVP_PKEY_RSA) {
       mask_k |= SSL_kRSA;
+    }
+    // Also loop through all available private keys and set authentication masks
+    // accordingly to indicate support.
+    // |cert_private_keys| is already checked above in |ssl_has_certificate|.
+    for (auto & cert_private_key : cert->cert_private_keys) {
+      EVP_PKEY *private_key = cert_private_key.privatekey.get();
+      if(private_key != nullptr) {
+        mask_a |= ssl_cipher_auth_mask_for_key(private_key);
+        if (EVP_PKEY_id(private_key) == EVP_PKEY_RSA) {
+          mask_k |= SSL_kRSA;
+        }
+      }
     }
   }
 
@@ -325,9 +349,8 @@ static void ssl_get_compatible_server_ciphers(SSL_HANDSHAKE *hs,
   *out_mask_a = mask_a;
 }
 
-static const SSL_CIPHER *choose_cipher(
-    SSL_HANDSHAKE *hs, const SSL_CLIENT_HELLO *client_hello,
-    const SSLCipherPreferenceList *server_pref) {
+static const SSL_CIPHER *choose_cipher(SSL_HANDSHAKE *hs,
+        const SSLCipherPreferenceList *server_pref) {
   SSL *const ssl = hs->ssl;
   const STACK_OF(SSL_CIPHER) *prio, *allow;
   // in_group_flags will either be NULL, or will point to an array of bytes
@@ -339,18 +362,12 @@ static const SSL_CIPHER *choose_cipher(
   // such value exists yet.
   int group_min = -1;
 
-  UniquePtr<STACK_OF(SSL_CIPHER)> client_pref =
-      ssl_parse_client_cipher_list(client_hello);
-  if (!client_pref) {
-    return nullptr;
-  }
-
   if (ssl->options & SSL_OP_CIPHER_SERVER_PREFERENCE) {
     prio = server_pref->ciphers.get();
     in_group_flags = server_pref->in_group_flags;
-    allow = client_pref.get();
+    allow = ssl->client_cipher_suites.get();
   } else {
-    prio = client_pref.get();
+    prio = ssl->client_cipher_suites.get();
     in_group_flags = NULL;
     allow = server_pref->ciphers.get();
   }
@@ -411,7 +428,7 @@ static bool is_probably_jdk11_with_tls13(const SSL_CLIENT_HELLO *client_hello) {
   // JDK 11 does not support ChaCha20-Poly1305. This is unusual: many modern
   // clients implement ChaCha20-Poly1305.
   if (ssl_client_cipher_list_contains_cipher(
-          client_hello, TLS1_CK_CHACHA20_POLY1305_SHA256 & 0xffff)) {
+          client_hello, TLS1_3_CK_CHACHA20_POLY1305_SHA256 & 0xffff)) {
     return false;
   }
 
@@ -485,7 +502,7 @@ static bool is_probably_jdk11_with_tls13(const SSL_CLIENT_HELLO *client_hello) {
   while (CBS_len(&supported_groups) > 0) {
     uint16_t group;
     if (!CBS_get_u16(&supported_groups, &group) ||
-        group == SSL_CURVE_X25519) {
+        group == SSL_GROUP_X25519) {
       return false;
     }
   }
@@ -770,24 +787,12 @@ static enum ssl_hs_wait_t do_select_certificate(SSL_HANDSHAKE *hs) {
     }
   }
 
-  if (!ssl_on_certificate_selected(hs)) {
+  // Load |hs->local_pubkey| from the cert prematurely. The certificate could be
+  // subject to change once we negotiate signature algorithms later. If it
+  // changes to another leaf certificate the server and client has support for,
+  // we reload it.
+  if (!ssl_handshake_load_local_pubkey(hs)) {
     return ssl_hs_error;
-  }
-
-  if (hs->ocsp_stapling_requested &&
-      ssl->ctx->legacy_ocsp_callback != nullptr) {
-    switch (ssl->ctx->legacy_ocsp_callback(
-        ssl, ssl->ctx->legacy_ocsp_callback_arg)) {
-      case SSL_TLSEXT_ERR_OK:
-        break;
-      case SSL_TLSEXT_ERR_NOACK:
-        hs->ocsp_stapling_requested = false;
-        break;
-      default:
-        OPENSSL_PUT_ERROR(SSL, SSL_R_OCSP_CB_ERROR);
-        ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
-        return ssl_hs_error;
-    }
   }
 
   if (ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
@@ -809,15 +814,44 @@ static enum ssl_hs_wait_t do_select_certificate(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
+  if (!ssl_parse_client_cipher_list(&client_hello, &ssl->client_cipher_suites)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_SHARED_CIPHER);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
+    return ssl_hs_error;
+  }
+
   // Negotiate the cipher suite. This must be done after |cert_cb| so the
   // certificate is finalized.
   SSLCipherPreferenceList *prefs = hs->config->cipher_list
                                        ? hs->config->cipher_list.get()
                                        : ssl->ctx->cipher_list.get();
-  hs->new_cipher = choose_cipher(hs, &client_hello, prefs);
+  hs->new_cipher = choose_cipher(hs, prefs);
   if (hs->new_cipher == NULL) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_NO_SHARED_CIPHER);
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
+    return ssl_hs_error;
+  }
+
+  // Determine the signature algorithm.
+  if (ssl_cipher_uses_certificate_auth(hs->new_cipher)) {
+    if (!ssl_has_private_key(hs)) {
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
+      return ssl_hs_error;
+    }
+
+    if (!tls1_choose_signature_algorithm(hs, &hs->signature_algorithm)) {
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
+      return ssl_hs_error;
+    }
+  }
+
+  // Certificate is finalized here since it's subject to change based on the
+  // negotiated signature algorithms.
+  if (!ssl_on_certificate_selected(hs)) {
+    return ssl_hs_error;
+  }
+
+  if (!tls1_call_ocsp_stapling_callback(hs)) {
     return ssl_hs_error;
   }
 
@@ -1197,21 +1231,11 @@ static enum ssl_hs_wait_t do_send_server_key_exchange(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  // Add a signature.
+  // Add a signature. The signature algorithm is determined earlier during
+  // certificate selection.
   if (ssl_cipher_uses_certificate_auth(hs->new_cipher)) {
-    if (!ssl_has_private_key(hs)) {
-      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
-      return ssl_hs_error;
-    }
-
-    // Determine the signature algorithm.
-    uint16_t signature_algorithm;
-    if (!tls1_choose_signature_algorithm(hs, &signature_algorithm)) {
-      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
-      return ssl_hs_error;
-    }
     if (ssl_protocol_version(ssl) >= TLS1_2_VERSION) {
-      if (!CBB_add_u16(&body, signature_algorithm)) {
+      if (!CBB_add_u16(&body, hs->signature_algorithm)) {
         OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
         ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
         return ssl_hs_error;
@@ -1228,7 +1252,7 @@ static enum ssl_hs_wait_t do_send_server_key_exchange(SSL_HANDSHAKE *hs) {
 
     size_t sig_len;
     switch (ssl_private_key_sign(hs, ptr, &sig_len, max_sig_len,
-                                 signature_algorithm, hs->server_params)) {
+                                 hs->signature_algorithm, hs->server_params)) {
       case ssl_private_key_success:
         if (!CBB_did_write(&child, sig_len)) {
           return ssl_hs_error;

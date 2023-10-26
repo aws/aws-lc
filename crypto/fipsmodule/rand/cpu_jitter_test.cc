@@ -1,7 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
-#if defined(BORINGSSL_FIPS)
+#if defined(BORINGSSL_FIPS) && defined(FIPS_ENTROPY_SOURCE_JITTER_CPU)
 
 #include <gtest/gtest.h>
 

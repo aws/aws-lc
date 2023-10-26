@@ -64,6 +64,7 @@
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/mem.h>
+#include <openssl/span.h>
 
 #include "../crypto/internal.h"
 #include "internal.h"
@@ -77,6 +78,8 @@ bool ssl_is_key_type_supported(int key_type) {
 }
 
 static bool ssl_set_pkey(CERT *cert, EVP_PKEY *pkey) {
+  // This may be redundant to the certificate slot retrieval below, but it
+  // doesn't hurt to do an extra check here.
   if (!ssl_is_key_type_supported(EVP_PKEY_id(pkey))) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
     return false;
@@ -84,16 +87,24 @@ static bool ssl_set_pkey(CERT *cert, EVP_PKEY *pkey) {
   if (!ssl_cert_check_cert_private_keys_usage(cert)) {
     return false;
   }
-  UniquePtr<STACK_OF(CRYPTO_BUFFER)> &chain =
-      cert->cert_private_keys[cert->cert_private_key_idx].chain;
 
+  int idx = ssl_get_certificate_slot_index(pkey);
+  if (idx < 0) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
+    return false;
+  }
+
+  UniquePtr<STACK_OF(CRYPTO_BUFFER)> &chain =
+      cert->cert_private_keys[idx].chain;
   if (chain != nullptr && sk_CRYPTO_BUFFER_value(chain.get(), 0) != nullptr &&
       // Sanity-check that the private key and the certificate match.
       !ssl_cert_check_private_key(cert, pkey)) {
     return false;
   }
 
-  cert->cert_private_keys[cert->cert_private_key_idx].privatekey = UpRef(pkey);
+  // Update certificate slot index once all checks have passed.
+  cert->cert_private_keys[idx].privatekey = UpRef(pkey);
+  cert->cert_private_key_idx = idx;
   return true;
 }
 
@@ -357,13 +368,7 @@ enum ssl_private_key_result_t ssl_private_key_decrypt(SSL_HANDSHAKE *hs,
   return ssl_private_key_success;
 }
 
-bool ssl_private_key_supports_signature_algorithm(SSL_HANDSHAKE *hs,
-                                                  uint16_t sigalg) {
-  SSL *const ssl = hs->ssl;
-  if (!pkey_supports_algorithm(ssl, hs->local_pubkey.get(), sigalg)) {
-    return false;
-  }
-
+static bool ssl_public_key_rsa_pss_check(EVP_PKEY *pubkey, uint16_t sigalg) {
   // Ensure the RSA key is large enough for the hash. RSASSA-PSS requires that
   // emLen be at least hLen + sLen + 2. Both hLen and sLen are the size of the
   // hash in TLS. Reasonable RSA key sizes are large enough for the largest
@@ -371,12 +376,104 @@ bool ssl_private_key_supports_signature_algorithm(SSL_HANDSHAKE *hs,
   // SHA-512. 1024-bit RSA is sometimes used for test credentials, so check the
   // size so that we can fall back to another algorithm in that case.
   const SSL_SIGNATURE_ALGORITHM *alg = get_signature_algorithm(sigalg);
-  if (alg->is_rsa_pss && (size_t)EVP_PKEY_size(hs->local_pubkey.get()) <
-                             2 * EVP_MD_size(alg->digest_func()) + 2) {
+  if (alg->is_rsa_pss &&
+      (size_t)EVP_PKEY_size(pubkey) < 2 * EVP_MD_size(alg->digest_func()) + 2) {
+    return false;
+  }
+  return true;
+}
+
+bool ssl_public_key_supports_signature_algorithm(SSL_HANDSHAKE *hs,
+                                                 uint16_t sigalg) {
+  SSL *const ssl = hs->ssl;
+  if (!pkey_supports_algorithm(ssl, hs->local_pubkey.get(), sigalg)) {
+    return false;
+  }
+
+  if (!ssl_public_key_rsa_pss_check(hs->local_pubkey.get(), sigalg)) {
     return false;
   }
 
   return true;
+}
+
+UniquePtr<EVP_PKEY> ssl_cert_parse_leaf_pubkey(
+    STACK_OF(CRYPTO_BUFFER) *chain) {
+  const CRYPTO_BUFFER *buf = sk_CRYPTO_BUFFER_value(chain, 0);
+  if (buf == nullptr) {
+    return nullptr;
+  }
+  CBS leaf;
+  CRYPTO_BUFFER_init_CBS(buf, &leaf);
+  return ssl_cert_parse_pubkey(&leaf);
+}
+
+bool ssl_cert_private_keys_supports_legacy_signature_algorithm(
+    uint16_t *out, SSL_HANDSHAKE *hs) {
+  SSL *const ssl = hs->ssl;
+  assert(ssl_protocol_version(ssl) < TLS1_2_VERSION);
+
+  CERT *cert = hs->config->cert.get();
+  if (cert == nullptr || !ssl->server) {
+    return false;
+  }
+
+  for (size_t i = 0; i < cert->cert_private_keys.size(); i++) {
+    EVP_PKEY *private_key = cert->cert_private_keys[i].privatekey.get();
+    UniquePtr<EVP_PKEY> public_key =
+        ssl_cert_parse_leaf_pubkey(cert->cert_private_keys[i].chain.get());
+
+    if (private_key != nullptr && public_key != nullptr) {
+      // We may have a private key that supports the signature algorithm,
+      // but we need to verify that the negotiated cipher allows it.
+      const uint32_t auth_allowed = hs->new_cipher->algorithm_auth &
+                                    ssl_cipher_auth_mask_for_key(private_key);
+      if (auth_allowed &&
+          tls1_get_legacy_signature_algorithm(out, private_key)) {
+        // Update certificate slot index if all checks have passed.
+        //
+        // If the server has a valid private key available to use, we switch to
+        // using that certificate for the rest of the connection.
+        cert->cert_private_key_idx = (int)i;
+        hs->local_pubkey = std::move(public_key);
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+bool ssl_cert_private_keys_supports_signature_algorithm(SSL_HANDSHAKE *hs,
+                                                        uint16_t sigalg) {
+  SSL *const ssl = hs->ssl;
+  CERT *cert = hs->config->cert.get();
+  // Only the server without delegated credentials has support for multiple
+  // certificate slots.
+  if (cert == nullptr || !ssl->server || ssl_signing_with_dc(hs)) {
+    return false;
+  }
+
+  for (size_t i = 0; i < cert->cert_private_keys.size(); i++) {
+    EVP_PKEY *private_key = cert->cert_private_keys[i].privatekey.get();
+    UniquePtr<EVP_PKEY> public_key =
+          ssl_cert_parse_leaf_pubkey(cert->cert_private_keys[i].chain.get());
+    if (private_key != nullptr && public_key != nullptr &&
+        pkey_supports_algorithm(ssl, private_key, sigalg)) {
+      if (!ssl_public_key_rsa_pss_check(public_key.get(), sigalg)) {
+        return false;
+      }
+
+      // Update certificate slot index if all checks have passed.
+      //
+      // If the server has a valid private key available to use, we switch to
+      // using that certificate for the rest of the connection.
+      cert->cert_private_key_idx = (int)i;
+      hs->local_pubkey = std::move(public_key);
+      return true;
+    }
+  }
+  return false;
 }
 
 BSSL_NAMESPACE_END
@@ -501,12 +598,14 @@ void SSL_CTX_set_private_key_method(SSL_CTX *ctx,
 
 static constexpr size_t kMaxSignatureAlgorithmNameLen = 23;
 
-// This was "constexpr" rather than "const", but that triggered a bug in MSVC
-// where it didn't pad the strings to the correct length.
-static const struct {
+struct SignatureAlgorithmName {
   uint16_t signature_algorithm;
   const char name[kMaxSignatureAlgorithmNameLen];
-} kSignatureAlgorithmNames[] = {
+};
+
+// This was "constexpr" rather than "const", but that triggered a bug in MSVC
+// where it didn't pad the strings to the correct length.
+static const SignatureAlgorithmName kSignatureAlgorithmNames[] = {
     {SSL_SIGN_RSA_PKCS1_MD5_SHA1, "rsa_pkcs1_md5_sha1"},
     {SSL_SIGN_RSA_PKCS1_SHA1, "rsa_pkcs1_sha1"},
     {SSL_SIGN_RSA_PKCS1_SHA256, "rsa_pkcs1_sha256"},
@@ -532,6 +631,8 @@ const char *SSL_get_signature_algorithm_name(uint16_t sigalg,
         return "ecdsa_sha384";
       case SSL_SIGN_ECDSA_SECP521R1_SHA512:
         return "ecdsa_sha512";
+        // If adding more here, also update
+        // |SSL_get_all_signature_algorithm_names|.
     }
   }
 
@@ -542,6 +643,14 @@ const char *SSL_get_signature_algorithm_name(uint16_t sigalg,
   }
 
   return NULL;
+}
+
+size_t SSL_get_all_signature_algorithm_names(const char **out, size_t max_out) {
+  const char *kPredefinedNames[] = {"ecdsa_sha256", "ecdsa_sha384",
+                                    "ecdsa_sha512"};
+  return GetAllNames(out, max_out, MakeConstSpan(kPredefinedNames),
+                     &SignatureAlgorithmName::name,
+                     MakeConstSpan(kSignatureAlgorithmNames));
 }
 
 int SSL_get_signature_algorithm_key_type(uint16_t sigalg) {

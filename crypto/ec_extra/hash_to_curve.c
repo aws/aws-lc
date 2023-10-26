@@ -158,19 +158,6 @@ static int num_bytes_to_derive(size_t *out, const BIGNUM *modulus, unsigned k) {
   return 1;
 }
 
-// big_endian_to_words decodes |in| as a big-endian integer and writes the
-// result to |out|. |num_words| must be large enough to contain the output.
-static void big_endian_to_words(BN_ULONG *out, size_t num_words,
-                                const uint8_t *in, size_t len) {
-  assert(len <= num_words * sizeof(BN_ULONG));
-  // Ensure any excess bytes are zeroed.
-  OPENSSL_memset(out, 0, num_words * sizeof(BN_ULONG));
-  uint8_t *out_u8 = (uint8_t *)out;
-  for (size_t i = 0; i < len; i++) {
-    out_u8[len - 1 - i] = in[i];
-  }
-}
-
 // hash_to_field implements the operation described in section 5.2
 // of draft-irtf-cfrg-hash-to-curve-16, with count = 2. |k| is the security
 // factor.
@@ -186,9 +173,9 @@ static int hash_to_field2(const EC_GROUP *group, const EVP_MD *md,
   }
   BN_ULONG words[2 * EC_MAX_WORDS];
   size_t num_words = 2 * group->field.width;
-  big_endian_to_words(words, num_words, buf, L);
+  bn_big_endian_to_words(words, num_words, buf, L);
   group->meth->felem_reduce(group, out1, words, num_words);
-  big_endian_to_words(words, num_words, buf + L, L);
+  bn_big_endian_to_words(words, num_words, buf + L, L);
   group->meth->felem_reduce(group, out2, words, num_words);
   return 1;
 }
@@ -207,7 +194,7 @@ static int hash_to_scalar(const EC_GROUP *group, const EVP_MD *md,
 
   BN_ULONG words[2 * EC_MAX_WORDS];
   size_t num_words = 2 * group->order.width;
-  big_endian_to_words(words, num_words, buf, L);
+  bn_big_endian_to_words(words, num_words, buf, L);
   ec_scalar_reduce(group, out, words, num_words);
   return 1;
 }
@@ -274,7 +261,7 @@ static BN_ULONG sqrt_ratio_3mod4(const EC_GROUP *group, const EC_FELEM *Z,
 // in appendix F.2.
 static void map_to_curve_simple_swu(const EC_GROUP *group, const EC_FELEM *Z,
                                     const BN_ULONG *c1, size_t num_c1,
-                                    const EC_FELEM *c2, EC_RAW_POINT *out,
+                                    const EC_FELEM *c2, EC_JACOBIAN *out,
                                     const EC_FELEM *u) {
   // This function requires the prime be 3 mod 4, and that A = -3.
   assert(is_3mod4(group));
@@ -345,7 +332,7 @@ static void map_to_curve_simple_swu(const EC_GROUP *group, const EC_FELEM *Z,
 
 static int hash_to_curve(const EC_GROUP *group, const EVP_MD *md,
                          const EC_FELEM *Z, const EC_FELEM *c2, unsigned k,
-                         EC_RAW_POINT *out, const uint8_t *dst, size_t dst_len,
+                         EC_JACOBIAN *out, const uint8_t *dst, size_t dst_len,
                          const uint8_t *msg, size_t msg_len) {
   EC_FELEM u0, u1;
   if (!hash_to_field2(group, md, &u0, &u1, dst, dst_len, k, msg, msg_len)) {
@@ -360,7 +347,7 @@ static int hash_to_curve(const EC_GROUP *group, const EVP_MD *md,
   }
   bn_rshift_words(c1, c1, /*shift=*/2, /*num=*/num_c1);
 
-  EC_RAW_POINT Q0, Q1;
+  EC_JACOBIAN Q0, Q1;
   map_to_curve_simple_swu(group, Z, c1, num_c1, c2, &Q0, &u0);
   map_to_curve_simple_swu(group, Z, c1, num_c1, c2, &Q1, &u1);
 
@@ -402,7 +389,7 @@ static const uint8_t kP384Sqrt12[] = {
     0xa8, 0x0f, 0x7e, 0x19, 0x14, 0xe2, 0xec, 0x69, 0xf5, 0xa6, 0x26, 0xb3};
 
 int ec_hash_to_curve_p256_xmd_sha256_sswu(const EC_GROUP *group,
-                                          EC_RAW_POINT *out, const uint8_t *dst,
+                                          EC_JACOBIAN *out, const uint8_t *dst,
                                           size_t dst_len, const uint8_t *msg,
                                           size_t msg_len) {
   // See section 8.3 of draft-irtf-cfrg-hash-to-curve-16.
@@ -435,7 +422,7 @@ int EC_hash_to_curve_p256_xmd_sha256_sswu(const EC_GROUP *group, EC_POINT *out,
 }
 
 int ec_hash_to_curve_p384_xmd_sha384_sswu(const EC_GROUP *group,
-                                          EC_RAW_POINT *out, const uint8_t *dst,
+                                          EC_JACOBIAN *out, const uint8_t *dst,
                                           size_t dst_len, const uint8_t *msg,
                                           size_t msg_len) {
   // See section 8.3 of draft-irtf-cfrg-hash-to-curve-16.
@@ -480,7 +467,7 @@ int ec_hash_to_scalar_p384_xmd_sha384(
 }
 
 int ec_hash_to_curve_p384_xmd_sha512_sswu_draft07(
-    const EC_GROUP *group, EC_RAW_POINT *out, const uint8_t *dst,
+    const EC_GROUP *group, EC_JACOBIAN *out, const uint8_t *dst,
     size_t dst_len, const uint8_t *msg, size_t msg_len) {
   // See section 8.3 of draft-irtf-cfrg-hash-to-curve-07.
   if (EC_GROUP_get_curve_name(group) != NID_secp384r1) {
