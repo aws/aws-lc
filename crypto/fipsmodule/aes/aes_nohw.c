@@ -349,15 +349,27 @@ static inline void aes_nohw_compact_block(aes_word_t out[AES_NOHW_BLOCK_WORDS],
 #if defined(OPENSSL_SSE2)
   // No conversions needed.
 #elif defined(OPENSSL_64_BIT)
+#if defined(OPENSSL_BIG_ENDIAN)
+  uint64_t a0 = aes_nohw_compact_word(CRYPTO_load_u64_le(&out[0]));
+  uint64_t a1 = aes_nohw_compact_word(CRYPTO_load_u64_le(&out[1]));
+#else
   uint64_t a0 = aes_nohw_compact_word(out[0]);
   uint64_t a1 = aes_nohw_compact_word(out[1]);
+#endif
   out[0] = (a0 & UINT64_C(0x00000000ffffffff)) | (a1 << 32);
   out[1] = (a1 & UINT64_C(0xffffffff00000000)) | (a0 >> 32);
+#else
+#if defined(OPENSSL_BIG_ENDIAN)
+  uint32_t a0 = aes_nohw_compact_word(CRYPTO_load_u32_le(&out[0]));
+  uint32_t a1 = aes_nohw_compact_word(CRYPTO_load_u32_le(&out[1]));
+  uint32_t a2 = aes_nohw_compact_word(CRYPTO_load_u32_le(&out[2]));
+  uint32_t a3 = aes_nohw_compact_word(CRYPTO_load_u32_le(&out[3]));
 #else
   uint32_t a0 = aes_nohw_compact_word(out[0]);
   uint32_t a1 = aes_nohw_compact_word(out[1]);
   uint32_t a2 = aes_nohw_compact_word(out[2]);
   uint32_t a3 = aes_nohw_compact_word(out[3]);
+#endif
   // Note clang, when building for ARM Thumb2, will sometimes miscompile
   // expressions such as (a0 & 0x0000ff00) << 8, particularly when building
   // without optimizations. This bug was introduced in
@@ -381,8 +393,8 @@ static inline void aes_nohw_uncompact_block(
       aes_nohw_uncompact_word((a0 & UINT64_C(0x00000000ffffffff)) | (a1 << 32));
   uint64_t b1 =
       aes_nohw_uncompact_word((a1 & UINT64_C(0xffffffff00000000)) | (a0 >> 32));
-  memcpy(out, &b0, 8);
-  memcpy(out + 8, &b1, 8);
+  CRYPTO_store_u64_le(&out[0], b0);
+  CRYPTO_store_u64_le(&out[8], b1);
 #else
   uint32_t a0 = in[0];
   uint32_t a1 = in[1];
@@ -403,10 +415,10 @@ static inline void aes_nohw_uncompact_block(
   b1 = aes_nohw_uncompact_word(b1);
   b2 = aes_nohw_uncompact_word(b2);
   b3 = aes_nohw_uncompact_word(b3);
-  memcpy(out, &b0, 4);
-  memcpy(out + 4, &b1, 4);
-  memcpy(out + 8, &b2, 4);
-  memcpy(out + 12, &b3, 4);
+  CRYPTO_store_u32_le(&out[0], b0);
+  CRYPTO_store_u32_le(&out[4], b1);
+  CRYPTO_store_u32_le(&out[8], b2);
+  CRYPTO_store_u32_le(&out[12], b3);
 #endif
 }
 
