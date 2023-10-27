@@ -2778,6 +2778,12 @@ OPENSSL_EXPORT void X509_STORE_CTX_set_depth(X509_STORE_CTX *ctx, int depth);
   (X509_V_FLAG_POLICY_CHECK | X509_V_FLAG_EXPLICIT_POLICY | \
    X509_V_FLAG_INHIBIT_ANY | X509_V_FLAG_INHIBIT_MAP)
 
+// X509_OBJECT_new allocates an |X509_OBJECT| on the heap.
+OPENSSL_EXPORT X509_OBJECT *X509_OBJECT_new(void);
+
+// X509_OBJECT_new frees an |X509_OBJECT| from the heap.
+OPENSSL_EXPORT void X509_OBJECT_free(X509_OBJECT *a);
+
 OPENSSL_EXPORT int X509_OBJECT_idx_by_subject(STACK_OF(X509_OBJECT) *h,
                                               int type, X509_NAME *name);
 OPENSSL_EXPORT X509_OBJECT *X509_OBJECT_retrieve_by_subject(
@@ -2785,7 +2791,6 @@ OPENSSL_EXPORT X509_OBJECT *X509_OBJECT_retrieve_by_subject(
 OPENSSL_EXPORT X509_OBJECT *X509_OBJECT_retrieve_match(STACK_OF(X509_OBJECT) *h,
                                                        X509_OBJECT *x);
 OPENSSL_EXPORT int X509_OBJECT_up_ref_count(X509_OBJECT *a);
-OPENSSL_EXPORT void X509_OBJECT_free_contents(X509_OBJECT *a);
 OPENSSL_EXPORT int X509_OBJECT_get_type(const X509_OBJECT *a);
 OPENSSL_EXPORT X509 *X509_OBJECT_get0_X509(const X509_OBJECT *a);
 // X509_OBJECT_get0_X509_CRL returns the |X509_CRL| associated with |a|

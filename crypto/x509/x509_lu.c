@@ -359,6 +359,15 @@ int X509_STORE_add_crl(X509_STORE *ctx, X509_CRL *x) {
   return x509_store_add(ctx, x, /*is_crl=*/1);
 }
 
+X509_OBJECT *X509_OBJECT_new(void) {
+  X509_OBJECT *ret = OPENSSL_malloc(sizeof(X509_OBJECT));
+  if (ret == NULL) {
+    return NULL;
+  }
+  OPENSSL_memset(ret, 0, sizeof(X509_OBJECT));
+  return ret;
+}
+
 int X509_OBJECT_up_ref_count(X509_OBJECT *a) {
   switch (a->type) {
     case X509_LU_X509:
@@ -380,6 +389,11 @@ void X509_OBJECT_free_contents(X509_OBJECT *a) {
       X509_CRL_free(a->data.crl);
       break;
   }
+}
+
+void X509_OBJECT_free(X509_OBJECT *a) {
+  X509_OBJECT_free_contents(a);
+  OPENSSL_free(a);
 }
 
 int X509_OBJECT_get_type(const X509_OBJECT *a) { return a->type; }

@@ -6629,3 +6629,9 @@ TEST(X509Test, TestDecode) {
   ASSERT_TRUE(pkey2);
   ASSERT_TRUE(X509_verify(cert.get(), pkey2.get()));
 }
+
+TEST(X509Test, X509_OBJECT_heap) {
+  X509_OBJECT *x509_object = X509_OBJECT_new();
+  ASSERT_TRUE(x509_object);
+  X509_OBJECT_free(x509_object);
+}
