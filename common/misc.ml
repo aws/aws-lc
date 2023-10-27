@@ -1197,9 +1197,17 @@ let DEABBREV_TAC tm =
 (* A slight help for efficiency of justification in some cases.              *)
 (* ------------------------------------------------------------------------- *)
 
-let CLARIFY_TAC =
-  POP_ASSUM_LIST(MP_TAC o end_itlist CONJ o rev) THEN
-  DISCH_THEN(REPEAT_TCL CONJUNCTS_THEN ASSUME_TAC);;
+let (CLARIFY_TAC:tactic) =
+  let rec REASSUME oldasms th =
+    match oldasms with
+     [(l,oth)] -> LABEL_TAC l th
+    | (l,oth)::oasms ->
+        CONJUNCTS_THEN2 (LABEL_TAC l) (REASSUME oasms) th
+    | [] -> failwith "CLARIFY_TAC: sanity check" in
+  fun ((asl,w) as gl) ->
+    if asl = [] then ALL_TAC gl else
+    (POP_ASSUM_LIST(MP_TAC o end_itlist CONJ o rev) THEN
+     DISCH_THEN(REASSUME (rev asl))) gl;;
 
 (* ------------------------------------------------------------------------- *)
 (* Apply cacheing (memoization) to arbitrary function with naive assoc list. *)
