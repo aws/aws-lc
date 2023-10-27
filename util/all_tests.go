@@ -18,6 +18,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -29,6 +30,7 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"boringssl.googlesource.com/boringssl/util/testconfig"
 	"boringssl.googlesource.com/boringssl/util/testresult"
@@ -135,7 +137,7 @@ func gdbOf(path string, args ...string) *exec.Cmd {
 	return exec.Command("xterm", xtermArgs...)
 }
 
-func sdeOf(cpu, path string, args ...string) *exec.Cmd {
+func sdeOf(cpu, path string, args ...string) (*exec.Cmd, context.CancelFunc) {
 	sdeArgs := []string{"-" + cpu}
 	// The kernel's vdso code for gettimeofday sometimes uses the RDTSCP
 	// instruction. Although SDE has a -chip_check_vsyscall flag that
@@ -147,12 +149,18 @@ func sdeOf(cpu, path string, args ...string) *exec.Cmd {
 	}
 	sdeArgs = append(sdeArgs, "--", path)
 	sdeArgs = append(sdeArgs, args...)
-	return exec.Command(*sdePath, sdeArgs...)
+
+	// TODO(CryptoAlg-2154):SDE+ASAN tests will hang without exiting if tests pass for an unknown reason.
+	// Current workaround is to manually cancel the run after 20 minutes and check the output.
+	ctx, cancel := context.WithTimeout(context.Background(), 1200*time.Second)
+
+	return exec.CommandContext(ctx, *sdePath, sdeArgs...), cancel
 }
 
 var (
 	errMoreMallocs = errors.New("child process did not exhaust all allocation calls")
 	errTestSkipped = errors.New("test was skipped")
+	errTestHanging = errors.New("test hangs without exiting")
 )
 
 func runTestOnce(test test, mallocNumToFail int64) (passed bool, err error) {
@@ -164,6 +172,8 @@ func runTestOnce(test test, mallocNumToFail int64) (passed bool, err error) {
 		args = append(args, "--no_unwind_tests")
 	}
 	var cmd *exec.Cmd
+	var cancel context.CancelFunc
+	cancelled := false
 	if *useValgrind {
 		cmd = valgrindOf(false, test.ValgrindSupp, prog, args...)
 	} else if *useCallgrind {
@@ -171,7 +181,13 @@ func runTestOnce(test test, mallocNumToFail int64) (passed bool, err error) {
 	} else if *useGDB {
 		cmd = gdbOf(prog, args...)
 	} else if *useSDE {
-		cmd = sdeOf(test.cpu, prog, args...)
+		cmd, cancel = sdeOf(test.cpu, prog, args...)
+		defer cancel()
+
+		cmd.Cancel = func() error {
+			cancelled = true
+			return cmd.Process.Kill()
+		}
 	} else {
 		cmd = exec.Command(prog, args...)
 	}
@@ -201,6 +217,7 @@ func runTestOnce(test test, mallocNumToFail int64) (passed bool, err error) {
 	if err := cmd.Start(); err != nil {
 		return false, err
 	}
+
 	if err := cmd.Wait(); err != nil {
 		if exitError, ok := err.(*exec.ExitError); ok {
 			switch exitError.Sys().(syscall.WaitStatus).ExitStatus() {
@@ -210,28 +227,36 @@ func runTestOnce(test test, mallocNumToFail int64) (passed bool, err error) {
 				fmt.Print(string(outBuf.Bytes()))
 				return false, errTestSkipped
 			}
+			if cancelled {
+				return testPass(outBuf), errTestHanging
+			}
 		}
 		fmt.Print(string(outBuf.Bytes()))
 		return false, err
 	}
 
+
+	return testPass(outBuf), nil
+}
+
+func testPass(outBuf bytes.Buffer) bool {
 	// Account for Windows line-endings.
 	stdout := bytes.Replace(outBuf.Bytes(), []byte("\r\n"), []byte("\n"), -1)
 
 	if bytes.HasSuffix(stdout, []byte("PASS\n")) &&
 		(len(stdout) == 5 || stdout[len(stdout)-6] == '\n') {
-		return true, nil
+		return true
 	}
 
 	// Also accept a googletest-style pass line. This is left here in
 	// transition until the tests are all converted and this script made
 	// unnecessary.
 	if bytes.Contains(stdout, []byte("\n[  PASSED  ]")) {
-		return true, nil
+		return true
 	}
 
 	fmt.Print(string(outBuf.Bytes()))
-	return false, nil
+	return false
 }
 
 func runTest(test test) (bool, error) {
@@ -412,6 +437,17 @@ func main() {
 			fmt.Printf("%s was skipped\n", args[0])
 			skipped = append(skipped, test)
 			testOutput.AddSkip(test.longName())
+		} else if testResult.Error == errTestHanging {
+			if !testResult.Passed {
+				fmt.Printf("%s\n", test.longName())
+				fmt.Printf("%s was left hanging without finishing.\n", args[0])
+				failed = append(failed, test)
+				testOutput.AddResult(test.longName(), "FAIL")
+			} else {
+				fmt.Printf("%s\n", test.shortName())
+				fmt.Printf("%s was left hanging, but actually passed\n", args[0])
+				testOutput.AddResult(test.longName(), "PASS")
+			}
 		} else if testResult.Error != nil {
 			fmt.Printf("%s\n", test.longName())
 			fmt.Printf("%s failed to complete: %s\n", args[0], testResult.Error)

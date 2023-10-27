@@ -634,6 +634,10 @@ if(GCOV)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-arcs -ftest-coverage")
 endif()
 
+if(KEEP_ASM_LOCAL_SYMBOLS)
+  set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -Wa,-L")
+endif()
+
 if(FIPS)
 
   if(NOT GO_EXECUTABLE OR NOT PERL_EXECUTABLE)
@@ -1054,7 +1058,7 @@ if(BUILD_TESTING)
     add_custom_target(
         run_tests_valgrind
         COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
-                ${PROJECT_BINARY_DIR} -valgrind=true -valgrind-supp-dir "tests/ci"
+                ${PROJECT_BINARY_DIR} -valgrind=true -valgrind-supp-dir="tests/ci"
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
         DEPENDS all_tests
         ${MAYBE_USES_TERMINAL})
@@ -1062,7 +1066,7 @@ if(BUILD_TESTING)
     add_custom_target(
         run_tests_with_sde
         COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
-                ${PROJECT_BINARY_DIR} -sde true -sde-path "$ENV{SDEROOT}/sde"
+                ${PROJECT_BINARY_DIR} -sde=true -sde-path="$ENV{SDEROOT}/sde"
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
         DEPENDS all_tests
         ${MAYBE_USES_TERMINAL})

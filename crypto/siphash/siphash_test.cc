@@ -41,17 +41,17 @@ TEST(SipHash, Basic) {
 
 TEST(SipHash, Vectors) {
   FileTestGTest("crypto/siphash/siphash_tests.txt", [](FileTest *t) {
-    std::vector<uint8_t> key, msg, hash;
+    std::vector<uint8_t> key, msg, hash_bytes;
     ASSERT_TRUE(t->GetBytes(&key, "KEY"));
     ASSERT_TRUE(t->GetBytes(&msg, "IN"));
-    ASSERT_TRUE(t->GetBytes(&hash, "HASH"));
+    ASSERT_TRUE(t->GetBytes(&hash_bytes, "HASH"));
     ASSERT_EQ(16u, key.size());
-    ASSERT_EQ(8u, hash.size());
+    ASSERT_EQ(8u, hash_bytes.size());
+    uint64_t hash = CRYPTO_load_u64_le(hash_bytes.data());
 
     uint64_t key_words[2];
     memcpy(key_words, key.data(), key.size());
     uint64_t result = SIPHASH_24(key_words, msg.data(), msg.size());
-    EXPECT_EQ(Bytes(reinterpret_cast<uint8_t *>(&result), sizeof(result)),
-              Bytes(hash));
+    EXPECT_EQ(result, hash);
   });
 }

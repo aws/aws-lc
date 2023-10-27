@@ -39,7 +39,15 @@ class ImplDispatchTest : public ::testing::Test {
     aes_hw_ = CRYPTO_is_AESNI_capable();
     avx_movbe_ = CRYPTO_is_AVX_capable() && CRYPTO_is_MOVBE_capable();
     aes_vpaes_ = CRYPTO_is_SSSE3_capable();
-    sha_ext_ = CRYPTO_is_SHAEXT_capable();
+    sha_ext_ =
+// TODO(CryptoAlg-2137): sha_ext_ isn't enabled on Windows Debug Builds with newer
+// 32-bit Intel processors.
+#if !(defined(OPENSSL_WINDOWS) && defined(OPENSSL_X86) && !defined(NDEBUG))
+    CRYPTO_is_SHAEXT_capable();
+#else
+    false;
+#endif
+
     vaes_vpclmulqdq_ =
 #if !defined(OPENSSL_WINDOWS)
   // crypto_gcm_avx512_enabled excludes Windows
