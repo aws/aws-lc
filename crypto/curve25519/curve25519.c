@@ -51,6 +51,11 @@ OPENSSL_INLINE int x25519_s2n_bignum_capable(void) {
 #endif
 }
 
+// Return 0 until ED25519 lands in s2n-bignum
+OPENSSL_INLINE int ed25519_s2n_bignum_capable(void) {
+  return 0;
+}
+
 // Stub functions if implementations are not compiled.
 // These functions have to abort, otherwise we risk applications assuming they
 // did work without actually doing anything.
@@ -234,10 +239,15 @@ static void x25519_s2n_bignum_public_from_private(
 #endif
 }
 
+// Stub function until ED25519 lands in s2n-bignum
+static void ed25519_keypair_from_seed_s2n_bignum(uint8_t out_public_key[32],
+  uint8_t az[SHA512_DIGEST_LENGTH]) {
+  abort();
+}
 
 void ED25519_keypair_from_seed(uint8_t out_public_key[32],
-                               uint8_t out_private_key[64],
-                               const uint8_t seed[ED25519_SEED_LEN]) {
+  uint8_t out_private_key[64], const uint8_t seed[ED25519_SEED_LEN]) {
+
   uint8_t az[SHA512_DIGEST_LENGTH];
   SHA512(seed, ED25519_SEED_LEN, az);
 
@@ -245,10 +255,13 @@ void ED25519_keypair_from_seed(uint8_t out_public_key[32],
   az[31] &= 127;
   az[31] |= 64;
 
-  ge_p3 A;
-  x25519_ge_scalarmult_base(&A, az);
-  ge_p3_tobytes(out_public_key, &A);
+  if (ed25519_s2n_bignum_capable() == 1) {
+    ed25519_keypair_from_seed_s2n_bignum(out_public_key, az);
+  } else {
+    ed25519_keypair_from_seed_nohw(out_public_key, az);
+  }
 
+  OPENSSL_STATIC_ASSERT(64 == (ED25519_SEED_LEN + 32), ed25519_parameter_length_mismatch)
   OPENSSL_memcpy(out_private_key, seed, ED25519_SEED_LEN);
   OPENSSL_memcpy(out_private_key + ED25519_SEED_LEN, out_public_key, 32);
 }
