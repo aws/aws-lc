@@ -254,14 +254,9 @@ void ED25519_keypair_from_seed(uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
   SHA512(seed, ED25519_SEED_LEN, az);
 
   // Step: rfc8032 5.1.5.2
-  // 248 = 11111000_2 clears lowest 3 bits.
-  // For last octet: clear highest highest bit and set second highest bit,
-  // respectively.
-  // 127 = 01111111_2
-  // 64 = 01000000_2
-  az[0] &= 248;
-  az[31] &= 127;
-  az[31] |= 64;
+  az[0] &= 248; // 11111000_2
+  az[31] &= 127; // 01111111_2
+  az[31] |= 64; // 01000000_2
 
   // Step: rfc8032 5.1.5.[3,4]
   // Compute [az]B and encode public key to a 32 byte octet.
