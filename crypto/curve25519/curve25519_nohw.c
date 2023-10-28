@@ -1969,7 +1969,7 @@ void x25519_public_from_private_nohw(uint8_t out_public_value[32],
   CONSTTIME_DECLASSIFY(out_public_value, 32);
 }
 
-void ed25519_keypair_from_seed_nohw(uint8_t out_public_key[32],
+void ed25519_public_key_from_hashed_seed_nohw(uint8_t out_public_key[32],
     uint8_t az[SHA512_DIGEST_LENGTH]) {
   ge_p3 A;
   x25519_ge_scalarmult_base(&A, az);

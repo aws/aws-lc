@@ -240,35 +240,54 @@ static void x25519_s2n_bignum_public_from_private(
 }
 
 // Stub function until ED25519 lands in s2n-bignum
-static void ed25519_keypair_from_seed_s2n_bignum(uint8_t out_public_key[32],
-  uint8_t az[SHA512_DIGEST_LENGTH]) {
+static void ed25519_public_key_from_hashed_seed_s2n_bignum(
+  uint8_t out_public_key[32], uint8_t az[SHA512_DIGEST_LENGTH]) {
   abort();
 }
 
-void ED25519_keypair_from_seed(uint8_t out_public_key[32],
+void ED25519_keypair_from_seed(uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
   uint8_t out_private_key[64], const uint8_t seed[ED25519_SEED_LEN]) {
 
+  // Step: rfc8032 5.1.5.1
+  // Compute SHA512(seed).
   uint8_t az[SHA512_DIGEST_LENGTH];
   SHA512(seed, ED25519_SEED_LEN, az);
 
+  // Step: rfc8032 5.1.5.2
+  // 248 = 11111000_2 clears lowest 3 bits.
+  // For last octet: clear highest highest bit and set second highest bit,
+  // respectively.
+  // 127 = 01111111_2
+  // 64 = 01000000_2
   az[0] &= 248;
   az[31] &= 127;
   az[31] |= 64;
 
+  // Step: rfc8032 5.1.5.[3,4]
+  // Compute [az]B and encode public key to a 32 byte octet.
   if (ed25519_s2n_bignum_capable() == 1) {
-    ed25519_keypair_from_seed_s2n_bignum(out_public_key, az);
+    ed25519_public_key_from_hashed_seed_s2n_bignum(out_public_key, az);
   } else {
-    ed25519_keypair_from_seed_nohw(out_public_key, az);
+    ed25519_public_key_from_hashed_seed_nohw(out_public_key, az);
   }
 
-  OPENSSL_STATIC_ASSERT(64 == (ED25519_SEED_LEN + 32), ed25519_parameter_length_mismatch)
+  // Encoded public key is a suffix in the private key. Avoids having to
+  // generate the public key from the private key when signing. 
+  OPENSSL_STATIC_ASSERT(64 == (ED25519_SEED_LEN + ED25519_PUBLIC_KEY_LEN), ed25519_parameter_length_mismatch)
   OPENSSL_memcpy(out_private_key, seed, ED25519_SEED_LEN);
-  OPENSSL_memcpy(out_private_key + ED25519_SEED_LEN, out_public_key, 32);
+  OPENSSL_memcpy(out_private_key + ED25519_SEED_LEN, out_public_key,
+    ED25519_PUBLIC_KEY_LEN);
 }
 
 void ED25519_keypair(uint8_t out_public_key[32], uint8_t out_private_key[64]) {
+
+  // Ed25519 key generation: rfc8032 5.1.5
+  // Private key is 32 octets of random data.
   uint8_t seed[ED25519_SEED_LEN];
   RAND_bytes(seed, ED25519_SEED_LEN);
+
+  // Public key generation is handled in a separate function. See function
+  // description why this is useful.
   ED25519_keypair_from_seed(out_public_key, out_private_key, seed);
   OPENSSL_cleanse(seed, ED25519_SEED_LEN);
 }
