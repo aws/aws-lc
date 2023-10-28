@@ -241,12 +241,14 @@ static void x25519_s2n_bignum_public_from_private(
 
 // Stub function until ED25519 lands in s2n-bignum
 static void ed25519_public_key_from_hashed_seed_s2n_bignum(
-  uint8_t out_public_key[32], uint8_t az[SHA512_DIGEST_LENGTH]) {
+  uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
+  uint8_t az[SHA512_DIGEST_LENGTH]) {
   abort();
 }
 
 void ED25519_keypair_from_seed(uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
-  uint8_t out_private_key[64], const uint8_t seed[ED25519_SEED_LEN]) {
+  uint8_t out_private_key[ED25519_PRIVATE_KEY_LEN],
+  const uint8_t seed[ED25519_SEED_LEN]) {
 
   // Step: rfc8032 5.1.5.1
   // Compute SHA512(seed).
@@ -268,13 +270,14 @@ void ED25519_keypair_from_seed(uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
 
   // Encoded public key is a suffix in the private key. Avoids having to
   // generate the public key from the private key when signing. 
-  OPENSSL_STATIC_ASSERT(64 == (ED25519_SEED_LEN + ED25519_PUBLIC_KEY_LEN), ed25519_parameter_length_mismatch)
+  OPENSSL_STATIC_ASSERT(ED25519_PRIVATE_KEY_LEN == (ED25519_SEED_LEN + ED25519_PUBLIC_KEY_LEN), ed25519_parameter_length_mismatch)
   OPENSSL_memcpy(out_private_key, seed, ED25519_SEED_LEN);
   OPENSSL_memcpy(out_private_key + ED25519_SEED_LEN, out_public_key,
     ED25519_PUBLIC_KEY_LEN);
 }
 
-void ED25519_keypair(uint8_t out_public_key[32], uint8_t out_private_key[64]) {
+void ED25519_keypair(uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
+  uint8_t out_private_key[ED25519_PRIVATE_KEY_LEN]) {
 
   // Ed25519 key generation: rfc8032 5.1.5
   // Private key is 32 octets of random data.
