@@ -31,6 +31,25 @@
 #include "../internal.h"
 #include "../fipsmodule/cpucap/internal.h"
 
+// X25519 [1] and Ed25519 [2] is an ECDHE protocol and signature scheme,
+// respectively. This file contains an implementation of both using two
+// different backends:
+// 1) One backed is a pure C backend that should work on any platform.
+// 2) The other backend is machine-optimized using s2n-bignum [3] as backend.
+//
+// [1]: https://datatracker.ietf.org/doc/html/rfc7748
+// [2]: https://datatracker.ietf.org/doc/html/rfc8032
+// [3]: https://github.com/awslabs/s2n-bignum
+//
+// "Clamping":
+// Both X25519 and Ed25519 contain "clamping" steps; bit-twiddling, masking or
+// setting specific bits. Generally, the bit-twiddling is to avoid common
+// implementation errors and weak instances. Details can be found through the
+// following two references:
+// * https://mailarchive.ietf.org/arch/msg/cfrg/pt2bt3fGQbNF8qdEcorp-rJSJrc/
+// * https://neilmadden.blog/2020/05/28/whats-the-curve25519-clamping-all-about
+
+
 // If (1) x86_64 or aarch64, (2) linux or apple, and (3) OPENSSL_NO_ASM is not
 // set, s2n-bignum path is capable.
 #if ((defined(OPENSSL_X86_64) &&                                               \
