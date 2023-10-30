@@ -19,7 +19,18 @@
 #include "rsaz_exp.h"
 
 #ifndef RSAZ_ENABLED
-NON_EMPTY_TRANSLATION_UNIT
+/*
+ * This appears in openssl as just:
+ *
+ *   NON_EMPTY_TRANSLATION_UNIT
+ *
+ * This macro is defined in include/openssl/macros.h like so:
+ *
+ *   // Sometimes OPENSSL_NO_xxx ends up with an empty file and some
+ *   // compilers don't like that.  This will hopefully silence them.
+ *   # define NON_EMPTY_TRANSLATION_UNIT static void *dummy = &dummy;
+ */
+static void *dummy = &dummy;
 #else
 # include <assert.h>
 # include <string.h>
