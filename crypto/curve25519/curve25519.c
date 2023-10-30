@@ -34,7 +34,7 @@
 // X25519 [1] and Ed25519 [2] is an ECDHE protocol and signature scheme,
 // respectively. This file contains an implementation of both using two
 // different backends:
-// 1) One backed is a pure C backend that should work on any platform.
+// 1) One backend is a pure C backend that should work on any platform.
 // 2) The other backend is machine-optimized using s2n-bignum [3] as backend.
 //
 // [1]: https://datatracker.ietf.org/doc/html/rfc7748
