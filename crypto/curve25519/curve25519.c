@@ -261,7 +261,6 @@ static void x25519_s2n_bignum_public_from_private(
 #endif
 }
 
-
 // Stub function until ED25519 lands in s2n-bignum
 static void ed25519_public_key_from_hashed_seed_s2n_bignum(
   uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
@@ -276,6 +275,12 @@ static void ed25519_sign_s2n_bignum(
   uint8_t out_sig[ED25519_SIGNATURE_LEN],
   uint8_t r[SHA512_DIGEST_LENGTH], const uint8_t *s, const uint8_t *A,
   const void *message, size_t message_len) {
+  abort();
+}
+
+static int ed25519_verify_s2n_bignum(uint8_t R_have_encoded[32],
+  const uint8_t public_key[32], uint8_t R_expected[32],
+  uint8_t S[32], const uint8_t *message, size_t message_len) {
   abort();
 }
 
@@ -379,15 +384,15 @@ int ED25519_sign(uint8_t out_sig[ED25519_SIGNATURE_LEN],
 }
 
 int ED25519_verify(const uint8_t *message, size_t message_len,
-                   const uint8_t signature[64], const uint8_t public_key[32]) {
+                   const uint8_t signature[ED25519_SIGNATURE_LEN],
+                   const uint8_t public_key[ED25519_PUBLIC_KEY_LEN]) {
 
   // Ed25519 verify: rfc8032 5.1.7
 
-  // Step: rfc8032 5.1.7.1
+  // Step: rfc8032 5.1.7.1 (up to decoding the public key)
   // Decode signature as:
   //  - signature[0:31]: encoded point R, aliased to R_expected.
   //  - signature[32:61]: integer S.
-  //
   uint8_t R_expected[32];
   OPENSSL_memcpy(R_expected, signature, 32);
   uint8_t S[32];
@@ -395,7 +400,7 @@ int ED25519_verify(const uint8_t *message, size_t message_len,
 
   // Per rfc8032 5.1.6.6
   // "the three most significant bits of the final octet are always zero"
-  // 224 = 0xE0_16 = 11100000_2
+  // 224 = 11100000_2
   if ((signature[63] & 224) != 0) {
     return 0;
   }
@@ -419,51 +424,21 @@ int ED25519_verify(const uint8_t *message, size_t message_len,
     }
   }
 
-  // Decode public key as A'.
-  ge_p3 A;
-  if (!x25519_ge_frombytes_vartime(&A, public_key)) {
-    return 0;
-  }
-  uint8_t pkcopy[32];
-  OPENSSL_memcpy(pkcopy, public_key, 32);
-
-  // Step: rfc8032 5.1.7.2
-  // Compute SHA512(dom2(F,C) || R || public_key || PH(message)).
-  // For Ed25519, dom2(F,C) is the empty string, cf. rfc8032 5.1.
-  SHA512_CTX hash_ctx;
-  SHA512_Init(&hash_ctx);
-  SHA512_Update(&hash_ctx, signature, 32);
-  SHA512_Update(&hash_ctx, public_key, 32);
-  SHA512_Update(&hash_ctx, message, message_len);
-  uint8_t k[SHA512_DIGEST_LENGTH];
-  SHA512_Final(k, &hash_ctx);
-
-  // Reduce k modulo the order of the base-point B. Saves compute in the
-  // subsequent scalar multiplication.
-  x25519_sc_reduce(k);
-
-  // Step: rfc8032 5.1.7.3
-  // We will check [S]B - [k]A' =? R_expected.
-
-  // First negate A'. Point negation for the twisted edwards curve when points
-  // are represented in the extended coordinate system is simply:
-  //   -(X,Y,Z,T) = (-X,Y,Z,-T).
-  // See "Twisted Edwards curves revisited" https://ia.cr/2008/522.
-  fe_loose t;
-  fe_neg(&t, &A.X);
-  fe_carry(&A.X, &t);
-  fe_neg(&t, &A.T);
-  fe_carry(&A.T, &t);
-
-  // Compute R_have <- [S]B - [k]A'.
-  ge_p2 R_have;
-  ge_double_scalarmult_vartime(&R_have, k, &A, S);
-
+  // Step: rfc8032 5.1.7.[1,2,3]
+  // Verification works by computing [S]B - [k]A' and comparing against R_expected.
+  int res = 0;
   uint8_t R_have_encoded[32];
-  x25519_ge_tobytes(R_have_encoded, &R_have);
+  if (ed25519_s2n_bignum_capable() == 1) {
+    res = ed25519_verify_s2n_bignum(R_have_encoded, public_key, R_expected, S,
+      message, message_len);
+  } else {
+    res = ed25519_verify_nohw(R_have_encoded, public_key, R_expected, S,
+      message, message_len);
+  }
 
-  // Comparison [S]B - [k]A' =? R_expected.
-  return CRYPTO_memcmp(R_have_encoded, R_expected, sizeof(R_have_encoded)) == 0;
+  // Comparison [S]B - [k]A' =? R_expected. Short-circuits if decoding failed.
+  return (res == 1) &&
+         CRYPTO_memcmp(R_have_encoded, R_expected, sizeof(R_have_encoded)) == 0;
 }
 
 
