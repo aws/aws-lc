@@ -28,8 +28,11 @@
 
 # $output is the last argument if it looks like a file (it has an extension)
 # $flavour is the first argument if it doesn't look like a file
-$output = $#ARGV >= 0 && $ARGV[$#ARGV] =~ m|\.\w+$| ? pop : undef;
-$flavour = $#ARGV >= 0 && $ARGV[0] !~ m|\.| ? shift : undef;
+if ($#ARGV < 1) { die "Not enough arguments provided.
+  Two arguments are necessary: the flavour and the output file path."; }
+
+$flavour = shift;
+$output  = shift;
 
 $win64=0; $win64=1 if ($flavour =~ /[nm]asm|mingw64/ || $output =~ /\.asm$/);
 $avx512ifma=1;
@@ -61,6 +64,11 @@ if (!$avx512ifma && `$ENV{CC} -v 2>&1`
         $avx512ifma = ($ver>=7.0);
     }
 }
+
+# In upstream, this is controlled by shelling out to the compiler to check
+# versions, but BoringSSL is intended to be used with pre-generated perlasm
+# output, so this isn't useful anyway.
+for (@ARGV) { $avx512ifma = 0 if (/-DMY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX/); }
 
 open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\""
     or die "can't call $xlate: $!";

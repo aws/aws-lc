@@ -1268,7 +1268,7 @@ int BN_mod_exp_mont_consttime_x2(BIGNUM *rr1, const BIGNUM *a1, const BIGNUM *p1
 {
     int ret = 0;
 
-#ifdef RSAZ_ENABLED
+#ifdef RSAZ_512_ENABLED
     BN_MONT_CTX *mont1 = NULL;
     BN_MONT_CTX *mont2 = NULL;
 
@@ -1329,7 +1329,7 @@ int BN_mod_exp_mont_consttime_x2(BIGNUM *rr1, const BIGNUM *a1, const BIGNUM *p1
     /* rr2 = a2^p2 mod m2 */
     ret &= BN_mod_exp_mont_consttime(rr2, a2, p2, m2, ctx, in_mont2);
 
-#ifdef RSAZ_ENABLED
+#ifdef RSAZ_512_ENABLED
 err:
     if (mont2)
         BN_MONT_CTX_free(mont2);

@@ -13,12 +13,7 @@
  * Intel Corporation
  *
  */
-
-#include <openssl/opensslconf.h>
-#include <openssl/crypto.h>
-#include "rsaz_exp.h"
-
-#ifndef RSAZ_ENABLED
+#ifndef RSAZ_512_ENABLED
 /*
  * This appears in openssl as just:
  *
@@ -30,10 +25,14 @@
  *   // compilers don't like that.  This will hopefully silence them.
  *   # define NON_EMPTY_TRANSLATION_UNIT static void *dummy = &dummy;
  */
-static void *dummy = &dummy;
+static void *__dummy = &__dummy;
 #else
-# include <assert.h>
-# include <string.h>
+
+#include <openssl/opensslconf.h>
+#include <openssl/crypto.h>
+#include <assert.h>
+#include <string.h>
+#include "rsaz_exp.h"
 
 # define ALIGN_OF(ptr, boundary) \
     ((unsigned char *)(ptr) + (boundary - (((size_t)(ptr)) & (boundary - 1))))
