@@ -337,7 +337,7 @@ static bool SpeedRSA(const std::string &selected) {
           // RSA key, with a new |BN_MONT_CTX| for the public modulus. If we
           // were to use |key| directly instead, then these costs wouldn't be
           // accounted for.
-          BM_NAMESPACE::UniquePtr<RSA> verify_key(RSA_new());
+		  BM_NAMESPACE::UniquePtr<RSA> verify_key(RSA_new());
           if (!verify_key) {
             return false;
           }
@@ -2388,7 +2388,7 @@ static bool SpeedPKCS8(const std::string &selected) {
     return false;
   }
   results.Print("Ed25519 PKCS#8 v1 decode");
-  
+
   CBB_cleanup(&out);
 
   if (!CBB_init(&out, 1024)) {
@@ -2487,7 +2487,7 @@ static bool parseCommaArgument(std::vector<std::string> &vector,
   return true;
 }
 
-// parseStringVectorToIntegerVector attempts to parse each element of 
+// parseStringVectorToIntegerVector attempts to parse each element of
 // |in_vector| as a size_t integer and adds the result to |out_vector|. Clears
 // |out_vector|.
 static bool parseStringVectorToIntegerVector(

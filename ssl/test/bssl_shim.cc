@@ -72,14 +72,82 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 
 
 #if !defined(OPENSSL_WINDOWS)
-static int closesocket(int sock) { return close(sock); }
+using Socket = int;
+#define INVALID_SOCKET (-1)
 
+static int closesocket(int sock) { return close(sock); }
 static void PrintSocketError(const char *func) { perror(func); }
 #else
+using Socket = SOCKET;
+
 static void PrintSocketError(const char *func) {
-  fprintf(stderr, "%s: %d\n", func, WSAGetLastError());
+  int error = WSAGetLastError();
+  char *buffer;
+  DWORD len = FormatMessageA(
+      FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER, 0, error, 0,
+      reinterpret_cast<char *>(&buffer), 0, nullptr);
+  std::string msg = "unknown error";
+  if (len > 0) {
+    msg.assign(buffer, len);
+    while (!msg.empty() && (msg.back() == '\r' || msg.back() == '\n')) {
+      msg.resize(msg.size() - 1);
+    }
+  }
+  LocalFree(buffer);
+  fprintf(stderr, "%s: %s (%d)\n", func, msg.c_str(), error);
 }
 #endif
+
+class OwnedSocket {
+ public:
+  OwnedSocket() = default;
+  explicit OwnedSocket(Socket sock) : sock_(sock) {}
+  OwnedSocket(OwnedSocket &&other) { *this = std::move(other); }
+  ~OwnedSocket() { reset(); }
+  OwnedSocket &operator=(OwnedSocket &&other) {
+    drain_on_close_ = other.drain_on_close_;
+    reset(other.release());
+    return *this;
+  }
+
+  bool is_valid() const { return sock_ != INVALID_SOCKET; }
+  void set_drain_on_close(bool drain) { drain_on_close_ = drain; }
+
+  void reset(Socket sock = INVALID_SOCKET) {
+    if (is_valid()) {
+      if (drain_on_close_) {
+#if defined(OPENSSL_WINDOWS)
+        shutdown(sock_, SD_SEND);
+#else
+        shutdown(sock_, SHUT_WR);
+#endif
+        while (true) {
+          char buf[1024];
+          if (recv(sock_, buf, sizeof(buf), 0) <= 0) {
+            break;
+          }
+        }
+        closesocket(sock_);
+      }
+    }
+
+    drain_on_close_ = false;
+    sock_ = sock;
+  }
+
+  Socket get() const { return sock_; }
+
+  Socket release() {
+    Socket sock = sock_;
+    sock_ = INVALID_SOCKET;
+    drain_on_close_ = false;
+    return sock;
+  }
+
+ private:
+  Socket sock_ = INVALID_SOCKET;
+  bool drain_on_close_ = false;
+};
 
 static int Usage(const char *program) {
   fprintf(stderr, "Usage: %s [flags...]\n", program);
@@ -91,83 +159,55 @@ struct Free {
   void operator()(T *buf) { free(buf); }
 };
 
-// Connect returns a new socket connected to localhost on |port| or -1 on
-// error.
-static int Connect(uint16_t port) {
-  for (int af : {AF_INET6, AF_INET}) {
-    int sock = socket(af, SOCK_STREAM, 0);
-    if (sock == -1) {
-      PrintSocketError("socket");
-      return -1;
+// Connect returns a new socket connected to the runner, or -1 on error.
+static OwnedSocket Connect(const TestConfig *config) {
+  sockaddr_storage addr;
+  socklen_t addr_len = 0;
+  if (config->ipv6) {
+    sockaddr_in6 sin6;
+    OPENSSL_memset(&sin6, 0, sizeof(sin6));
+    sin6.sin6_family = AF_INET6;
+    sin6.sin6_port = htons(config->port);
+    if (!inet_pton(AF_INET6, "::1", &sin6.sin6_addr)) {
+      PrintSocketError("inet_pton");
+      return OwnedSocket();
     }
-    int nodelay = 1;
-    if (setsockopt(sock, IPPROTO_TCP, TCP_NODELAY,
-                   reinterpret_cast<const char *>(&nodelay),
-                   sizeof(nodelay)) != 0) {
-      PrintSocketError("setsockopt");
-      closesocket(sock);
-      return -1;
+    addr_len = sizeof(sin6);
+    memcpy(&addr, &sin6, addr_len);
+  } else {
+    sockaddr_in sin;
+    OPENSSL_memset(&sin, 0, sizeof(sin));
+    sin.sin_family = AF_INET;
+    sin.sin_port = htons(config->port);
+    if (!inet_pton(AF_INET, "127.0.0.1", &sin.sin_addr)) {
+      PrintSocketError("inet_pton");
+      return OwnedSocket();
     }
-
-    sockaddr_storage ss;
-    OPENSSL_memset(&ss, 0, sizeof(ss));
-    ss.ss_family = af;
-    socklen_t len = 0;
-
-    if (af == AF_INET6) {
-      sockaddr_in6 *sin6 = (sockaddr_in6 *)&ss;
-      len = sizeof(*sin6);
-      sin6->sin6_port = htons(port);
-      if (!inet_pton(AF_INET6, "::1", &sin6->sin6_addr)) {
-        PrintSocketError("inet_pton");
-        closesocket(sock);
-        return -1;
-      }
-    } else if (af == AF_INET) {
-      sockaddr_in *sin = (sockaddr_in *)&ss;
-      len = sizeof(*sin);
-      sin->sin_port = htons(port);
-      if (!inet_pton(AF_INET, "127.0.0.1", &sin->sin_addr)) {
-        PrintSocketError("inet_pton");
-        closesocket(sock);
-        return -1;
-      }
-    }
-
-    if (connect(sock, reinterpret_cast<const sockaddr *>(&ss), len) == 0) {
-      return sock;
-    }
-    closesocket(sock);
+    addr_len = sizeof(sin);
+    memcpy(&addr, &sin, addr_len);
   }
 
-  PrintSocketError("connect");
-  return -1;
+  OwnedSocket sock(socket(addr.ss_family, SOCK_STREAM, 0));
+  if (!sock.is_valid()) {
+    PrintSocketError("socket");
+    return OwnedSocket();
+  }
+  int nodelay = 1;
+  if (setsockopt(sock.get(), IPPROTO_TCP, TCP_NODELAY,
+                 reinterpret_cast<const char *>(&nodelay),
+                 sizeof(nodelay)) != 0) {
+    PrintSocketError("setsockopt");
+    return OwnedSocket();
+  }
+
+  if (connect(sock.get(), reinterpret_cast<const sockaddr *>(&addr),
+              addr_len) != 0) {
+    PrintSocketError("connect");
+    return OwnedSocket();
+  }
+
+  return sock;
 }
-
-class SocketCloser {
- public:
-  explicit SocketCloser(int sock) : sock_(sock) {}
-  ~SocketCloser() {
-    // Half-close and drain the socket before releasing it. This seems to be
-    // necessary for graceful shutdown on Windows. It will also avoid write
-    // failures in the test runner.
-#if defined(OPENSSL_WINDOWS)
-    shutdown(sock_, SD_SEND);
-#else
-    shutdown(sock_, SHUT_WR);
-#endif
-    while (true) {
-      char buf[1024];
-      if (recv(sock_, buf, sizeof(buf), 0) <= 0) {
-        break;
-      }
-    }
-    closesocket(sock_);
-  }
-
- private:
-  const int sock_;
-};
 
 static bool TransferSSL(const TestConfig *config, bssl::UniquePtr<SSL> *in,
                         SSL **ssl) {
@@ -801,13 +841,20 @@ static bool DoConnection(bssl::UniquePtr<SSL_SESSION> *out_session,
 #endif
   }
 
-  int sock = Connect(config->port);
-  if (sock == -1) {
+  OwnedSocket sock = Connect(config);
+  if (!sock.is_valid()) {
     return false;
   }
-  SocketCloser closer(sock);
 
-  bssl::UniquePtr<BIO> bio(BIO_new_socket(sock, BIO_NOCLOSE));
+  // Half-close and drain the socket before releasing it. This seems to be
+  // necessary for graceful shutdown on Windows. It will also avoid write
+  // failures in the test runner.
+  sock.set_drain_on_close(true);
+
+  // Windows uses |SOCKET| for socket types, but OpenSSL's API requires casting
+  // them to |int|.
+  bssl::UniquePtr<BIO> bio(
+      BIO_new_socket(static_cast<int>(sock.get()), BIO_NOCLOSE));
   if (!bio) {
     return false;
   }

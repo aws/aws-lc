@@ -1289,8 +1289,11 @@ var (
 )
 
 type shimProcess struct {
-	cmd            *exec.Cmd
-	waitChan       chan error
+	cmd *exec.Cmd
+	// done is closed when the process has exited. At that point, childErr may be
+	// read for the result.
+	done           chan struct{}
+	childErr       error
 	listener       *net.TCPListener
 	stdout, stderr bytes.Buffer
 	// default value is false.
@@ -1304,25 +1307,32 @@ type shimProcess struct {
 func newShimProcess(shimPath string, flags []string, env []string) (*shimProcess, error) {
 	shim := new(shimProcess)
 	var err error
+	useIPv6 := true
 	shim.listener, err = net.ListenTCP("tcp", &net.TCPAddr{IP: net.IPv6loopback})
 	if err != nil {
+		useIPv6 = false
 		shim.listener, err = net.ListenTCP("tcp4", &net.TCPAddr{IP: net.IP{127, 0, 0, 1}})
 	}
 	if err != nil {
 		return nil, err
 	}
 
-	flags = append([]string{"-port", strconv.Itoa(shim.listener.Addr().(*net.TCPAddr).Port)}, flags...)
+	cmdFlags := []string{"-port", strconv.Itoa(shim.listener.Addr().(*net.TCPAddr).Port)}
+	if useIPv6 {
+		cmdFlags = append(cmdFlags, "-ipv6")
+	}
+	cmdFlags = append(cmdFlags, flags...)
+
 	if *useValgrind {
-		shim.cmd = valgrindOf(false, shimPath, flags...)
+		shim.cmd = valgrindOf(false, shimPath, cmdFlags...)
 	} else if *useGDB {
-		shim.cmd = gdbOf(shimPath, flags...)
+		shim.cmd = gdbOf(shimPath, cmdFlags...)
 	} else if *useLLDB {
-		shim.cmd = lldbOf(shimPath, flags...)
+		shim.cmd = lldbOf(shimPath, cmdFlags...)
 	} else if *useRR {
-		shim.cmd = rrOf(shimPath, flags...)
+		shim.cmd = rrOf(shimPath, cmdFlags...)
 	} else {
-		shim.cmd = exec.Command(shimPath, flags...)
+		shim.cmd = exec.Command(shimPath, cmdFlags...)
 	}
 	shim.cmd.Stdin = os.Stdin
 	shim.cmd.Stdout = &shim.stdout
@@ -1334,37 +1344,23 @@ func newShimProcess(shimPath string, flags []string, env []string) (*shimProcess
 		return nil, err
 	}
 	shim.idled = false
-	shim.waitChan = make(chan error, 1)
-	go func() { shim.waitChan <- shim.cmd.Wait() }()
+
+	shim.done = make(chan struct{})
+	go func() {
+		shim.childErr = shim.cmd.Wait()
+		shim.listener.Close()
+		close(shim.done)
+	}()
 	return shim, nil
 }
 
 // accept returns a new TCP connection with the shim process, or returns an
 // error on timeout or shim exit.
 func (s *shimProcess) accept() (net.Conn, error) {
-	type connOrError struct {
-		conn net.Conn
-		err  error
+	if !useDebugger() {
+		s.listener.SetDeadline(time.Now().Add(*idleTimeout))
 	}
-	connChan := make(chan connOrError, 1)
-	go func() {
-		if !useDebugger() {
-			s.listener.SetDeadline(time.Now().Add(*idleTimeout))
-		}
-		conn, err := s.listener.Accept()
-		connChan <- connOrError{conn, err}
-		close(connChan)
-	}()
-	select {
-	case result := <-connChan:
-		return result.conn, result.err
-	case childErr := <-s.waitChan:
-		s.waitChan <- childErr
-		if childErr == nil {
-			return nil, fmt.Errorf("child exited early with no error")
-		}
-		return nil, fmt.Errorf("child exited early: %s", childErr)
-	}
+	return s.listener.Accept()
 }
 
 // wait finishes the test and waits for the shim process to exit.
@@ -1387,9 +1383,8 @@ func (s *shimProcess) wait() error {
 		defer waitTimeout.Stop()
 	}
 
-	err := <-s.waitChan
-	s.waitChan <- err
-	return err
+	<-s.done
+	return s.childErr
 }
 
 // close releases resources associated with the shimProcess. This is safe to

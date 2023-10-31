@@ -1978,7 +1978,7 @@ TEST(ServiceIndicatorTest, RSAKeyGen) {
     CALL_SERVICE_AND_CHECK_APPROVED(approved,
         EXPECT_TRUE( RSA_generate_key_fips(rsa.get(), bits, nullptr)));
     EXPECT_EQ(approved, AWSLC_APPROVED);
-    EXPECT_EQ(bits, BN_num_bits(rsa->n));
+    EXPECT_EQ(bits, RSA_bits(rsa.get()));
   }
 
   // Test running the EVP_PKEY_keygen interfaces one by one directly, and check
