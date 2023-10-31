@@ -63,6 +63,7 @@
 
 #include "../rsa_extra/internal.h"
 #include "../fipsmodule/evp/internal.h"
+#include "../fipsmodule/rsa/internal.h"
 #include "internal.h"
 
 static int rsa_pub_encode(CBB *out, const EVP_PKEY *key) {
