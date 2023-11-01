@@ -5396,9 +5396,9 @@ let CURVE25519_X25519_ALT_CORRECT = time prove
     ALL_TAC] THEN
 
   REPEAT(FIRST_X_ASSUM(K ALL_TAC o
-   check (free_in `n_input:num`) o concl)) THEN
+   check (vfree_in `n_input:num`) o concl)) THEN
   REPEAT(FIRST_X_ASSUM(K ALL_TAC o
-   check (free_in `X_input:num`) o concl)) THEN
+   check (vfree_in `X_input:num`) o concl)) THEN
 
   (*** The inlining of modular inverse ***)
 

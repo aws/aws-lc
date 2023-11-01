@@ -3747,9 +3747,9 @@ let LOCAL_CMSUBC9_P521_TAC =
     REWRITE_TAC[REAL_VAL_WORD_NOT; DIMINDEX_64] THEN
     DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN REAL_INTEGER_TAC;
     ACCUMULATOR_POP_ASSUM_LIST(K ALL_TAC) THEN
-    REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `m:num` o concl))) THEN
-    REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `n:num` o concl))) THEN
-    REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `n':num` o concl)))] THEN
+    REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `m:num` o concl))) THEN
+    REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `n:num` o concl))) THEN
+    REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `n':num` o concl)))] THEN
 
   (*** Breaking the problem down to (h + l) MOD p_521 ***)
 
@@ -4053,9 +4053,9 @@ let LOCAL_CMSUB41_P521_TAC =
     REWRITE_TAC[REAL_VAL_WORD_NOT; DIMINDEX_64] THEN
     DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN REAL_INTEGER_TAC;
     ACCUMULATOR_POP_ASSUM_LIST(K ALL_TAC) THEN
-    REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `m:num` o concl))) THEN
-    REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `n:num` o concl))) THEN
-    REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `n':num` o concl)))] THEN
+    REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `m:num` o concl))) THEN
+    REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `n:num` o concl))) THEN
+    REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `n':num` o concl)))] THEN
 
   (*** Breaking the problem down to (h + l) MOD p_521 ***)
 
@@ -4377,9 +4377,9 @@ let LOCAL_CMSUB38_P521_TAC =
     REWRITE_TAC[REAL_VAL_WORD_NOT; DIMINDEX_64] THEN
     DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN REAL_INTEGER_TAC;
     ACCUMULATOR_POP_ASSUM_LIST(K ALL_TAC) THEN
-    REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `m:num` o concl))) THEN
-    REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `n:num` o concl))) THEN
-    REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `n':num` o concl)))] THEN
+    REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `m:num` o concl))) THEN
+    REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `n:num` o concl))) THEN
+    REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `n':num` o concl)))] THEN
 
   (*** Breaking the problem down to (h + l) MOD p_521 ***)
 

@@ -1888,7 +1888,7 @@ let BSID_NORMALIZE_TAC =
             let th = rule tm in
             MP th (siderule_1 asl (lhand(concl th)))) rules in
   let fullconv(asl,w) tm =
-    if not(free_in tm w) then failwith "rule" else
+    if not(vfree_in tm w) then failwith "rule" else
     let th = rule_spc tm in
     MP th (siderule (map snd asl) (lhand(concl th))) in
   GEN_REWRITE_TAC ONCE_DEPTH_CONV [pth_gen] THEN
@@ -2477,7 +2477,7 @@ let DISCARD_FLAGS_TAC =
     `read ZF s = y`; `read SF s = y`; `read OF s = y`];;
 
 let DISCARD_STATE_TAC s =
-  DISCARD_ASSUMPTIONS_TAC (free_in (mk_var(s,`:x86state`)) o concl);;
+  DISCARD_ASSUMPTIONS_TAC (vfree_in (mk_var(s,`:x86state`)) o concl);;
 
 let DISCARD_OLDSTATE_TAC s =
   let v = mk_var(s,`:x86state`) in
@@ -2837,7 +2837,7 @@ let GEN_X86_ADD_RETURN_STACK_TAC =
     REWRITE_TAC [MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI;
                  WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI] THEN
     REPEAT(MATCH_MP_TAC mono2lemma THEN GEN_TAC) THEN
-    (if free_in `RSP` (concl coreth) then
+    (if vfree_in `RSP` (concl coreth) then
       DISCH_THEN(fun th -> WORD_FORALL_OFFSET_TAC stackoff THEN MP_TAC th) THEN
       MATCH_MP_TAC MONO_FORALL THEN GEN_TAC
      else
@@ -3039,7 +3039,7 @@ let WINDOWS_X86_WRAP_STACK_TAC =
     MATCH_MP_TAC pcofflemma THEN
     EXISTS_TAC (mk_small_numeral pcoff) THEN GEN_TAC THEN
     CONV_TAC(LAND_CONV(ONCE_DEPTH_CONV pcplusplus_conv)) THEN
-    (if free_in `RSP` (concl coreth) then
+    (if vfree_in `RSP` (concl coreth) then
      DISCH_THEN(fun th -> WORD_FORALL_OFFSET_TAC stackoff THEN MP_TAC th) THEN
      MATCH_MP_TAC MONO_FORALL THEN GEN_TAC
     else

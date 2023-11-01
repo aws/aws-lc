@@ -377,8 +377,8 @@ let modstep384_tac regs topw n =
     DISCH_THEN(MP_TAC o end_itlist CONJ o DESUM_RULE o CONJUNCTS) THEN
     DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN REAL_INTEGER_TAC;
     ACCUMULATOR_POP_ASSUM_LIST(K ALL_TAC) THEN ASM_REWRITE_TAC[]] THEN
-  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `q:num` o concl))) THEN
-  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `a:num` o concl))) THEN
+  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `q:num` o concl))) THEN
+  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `a:num` o concl))) THEN
   DISCARD_MATCHING_ASSUMPTIONS [`read (rvalue y) s = x`] THEN
   DISCARD_FLAGS_TAC THEN
   SUBGOAL_THEN `(2 EXP 64 * a) MOD p_384 < p_384` MP_TAC THENL
@@ -451,7 +451,7 @@ let BIGNUM_TOMONT_P384_CORRECT = time prove
     MAP_EVERY UNDISCH_TAC
      [`read X0 s18 = z`; `read PC s18 = word (pc + 72)`] THEN
     DISCARD_MATCHING_ASSUMPTIONS [`read Xnn s = y`] THEN
-    REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `a:num` o concl))) THEN
+    REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `a:num` o concl))) THEN
     DISCH_TAC THEN DISCH_TAC] THEN
 
   SUBGOAL_THEN

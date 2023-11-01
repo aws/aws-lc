@@ -230,7 +230,7 @@ let BIGNUM_DEMONT_CORRECT = time prove
 
   (*** Forget everything about x, no longer used (for efficiency only) ***)
 
-  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `x:int64` o concl))) THEN
+  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `x:int64` o concl))) THEN
 
   (*** Setup of the main loop with corrective part at the end included ***)
 

@@ -1773,8 +1773,8 @@ let BIGNUM_AMONTIFIER_CORRECT = time prove
 
   (*** A bit of cleanup ***)
 
-  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `h:num` o concl))) THEN
-  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `l:num` o concl))) THEN
+  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `h:num` o concl))) THEN
+  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `l:num` o concl))) THEN
   REWRITE_TAC[TAUT `p ==> q /\ r <=> (p ==> q) /\ (p ==> r)`] THEN
   GHOST_INTRO_TAC `r:num` `bignum_from_memory (z,k)` THEN
   BIGNUM_TERMRANGE_TAC `k:num` `r:num` THEN GLOBALIZE_PRECONDITION_TAC THEN
@@ -2141,7 +2141,7 @@ let BIGNUM_AMONTIFIER_CORRECT = time prove
 
   (*** More cleanup and setup of Montgomery multiplier ***)
 
-  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `n:num` o concl))) THEN
+  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `n:num` o concl))) THEN
   GHOST_INTRO_TAC `h:num` `\s. val(read R11 s)` THEN
   REWRITE_TAC[VAL_WORD_GALOIS; DIMINDEX_64] THEN
   GHOST_INTRO_TAC `z1:num` `bignum_from_memory (t,k)` THEN
@@ -2488,7 +2488,7 @@ let BIGNUM_AMONTIFIER_CORRECT = time prove
     REWRITE_TAC[REAL_OF_NUM_CLAUSES; GSYM BIGNUM_FROM_MEMORY_BYTES] THEN
     REWRITE_TAC[BIGNUM_FROM_MEMORY_BOUND; LE_0];
     ALL_TAC] THEN
-  REPEAT(FIRST_X_ASSUM(MP_TAC o check (free_in `cf:bool` o concl))) THEN
+  REPEAT(FIRST_X_ASSUM(MP_TAC o check (vfree_in `cf:bool` o concl))) THEN
   REWRITE_TAC[GSYM int_of_num_th; GSYM int_pow_th; GSYM int_mul_th;
               GSYM int_add_th; GSYM int_sub_th; GSYM int_eq] THEN
   SIMP_TAC[num_congruent; GSYM INT_OF_NUM_CLAUSES] THEN

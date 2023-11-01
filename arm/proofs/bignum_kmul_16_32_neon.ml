@@ -1403,7 +1403,7 @@ let BIGNUM_KMUL_16_32_NEON_CORRECT = prove
   DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN
   CONV_TAC(RAND_CONV REAL_POLY_CONV) THEN
   POP_ASSUM_LIST(MP_TAC o end_itlist CONJ o
-    filter (free_in `carry_s212:bool` o concl))
+    filter (vfree_in `carry_s212:bool` o concl))
   THENL
    [ASM_CASES_TAC `carry_s212:bool` THEN ASM_REWRITE_TAC[BITVAL_CLAUSES];
     ALL_TAC] THEN

@@ -1122,9 +1122,9 @@ let BIGNUM_EMONTREDC_8N_CORRECT = time prove
     MAP_EVERY EXPAND_TAC ["k'"; "k8"] THEN SUBSUMED_MAYCHANGE_TAC;
     ALL_TAC] THEN
 
-  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `a:num`) o concl)) THEN
-  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `n:num`) o concl)) THEN
-  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `k:num`) o concl)) THEN
+  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `a:num`) o concl)) THEN
+  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `n:num`) o concl)) THEN
+  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `k:num`) o concl)) THEN
   POP_ASSUM_LIST(MP_TAC o end_itlist CONJ o rev) THEN
   MAP_EVERY SPEC_TAC
     [(`a':num`,`a:num`); (`n':num`,`n:num`); (`k':num`,`k:num`)] THEN
@@ -1393,10 +1393,10 @@ let BIGNUM_EMONTREDC_8N_CORRECT = time prove
 
   (*** Now forget more things; back up a few steps and forget i as well ***)
 
-  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `a:num`) o concl)) THEN
-  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `z:int64`) o concl)) THEN
-  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `q1:num`) o concl)) THEN
-  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `r1:num`) o concl)) THEN
+  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `a:num`) o concl)) THEN
+  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `z:int64`) o concl)) THEN
+  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `q1:num`) o concl)) THEN
+  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `r1:num`) o concl)) THEN
 
   ENSURES_SEQUENCE_TAC `pc + 0xb0e`
    `\s. read RSP s = stackpointer /\
@@ -1426,7 +1426,7 @@ let BIGNUM_EMONTREDC_8N_CORRECT = time prove
       CONV_TAC WORD_RULE]] THEN
 
   ABBREV_TAC `wouter:int64 = word (k8 - i)` THEN
-  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `i:num`) o concl)) THEN
+  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `i:num`) o concl)) THEN
   POP_ASSUM_LIST(MP_TAC o end_itlist CONJ o rev) THEN
   MAP_EVERY SPEC_TAC
     [(`z1:num`,`a:num`); (`z':int64`,`z:int64`)] THEN

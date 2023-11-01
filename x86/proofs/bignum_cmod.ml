@@ -664,7 +664,7 @@ let BIGNUM_CMOD_CORRECT = prove
      REWRITE_TAC[REAL_ARITH
       `(c * (b + x)) * z:real = c * (b * z + x * z)`] THEN
      CONJ_TAC THEN ASM PURE_BOUNDER_TAC[];
-     REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `b:int64` o concl)))] THEN
+     REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `b:int64` o concl)))] THEN
 
     (*** Observe this, which implies in particular the result is not exact ***)
 
