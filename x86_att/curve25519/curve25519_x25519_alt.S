@@ -20,7 +20,8 @@
 // this returns the X coordinate of n * P = (X, Y), or 0 when n * P is the
 // point at infinity. Both n and X inputs are first slightly modified/mangled
 // as specified in the relevant RFC (https://www.rfc-editor.org/rfc/rfc7748);
-// in particular the lower three bits of n are set to zero.
+// in particular the lower three bits of n are set to zero. Does not implement
+// the zero-check specified in Section 6.1.
 //
 // Standard x86-64 ABI: RDI = res, RSI = scalar, RDX = point
 // Microsoft x64 ABI:   RCX = res, RDX = scalar, R8 = point
