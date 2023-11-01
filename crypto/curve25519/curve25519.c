@@ -31,6 +31,25 @@
 #include "../internal.h"
 #include "../fipsmodule/cpucap/internal.h"
 
+// X25519 [1] and Ed25519 [2] is an ECDHE protocol and signature scheme,
+// respectively. This file contains an implementation of both using two
+// different backends:
+// 1) One backend is a pure C backend that should work on any platform.
+// 2) The other backend is machine-optimized using s2n-bignum [3] as backend.
+//
+// [1]: https://datatracker.ietf.org/doc/html/rfc7748
+// [2]: https://datatracker.ietf.org/doc/html/rfc8032
+// [3]: https://github.com/awslabs/s2n-bignum
+//
+// "Clamping":
+// Both X25519 and Ed25519 contain "clamping" steps; bit-twiddling, masking or
+// setting specific bits. Generally, the bit-twiddling is to avoid common
+// implementation errors and weak instances. Details can be found through the
+// following two references:
+// * https://mailarchive.ietf.org/arch/msg/cfrg/pt2bt3fGQbNF8qdEcorp-rJSJrc/
+// * https://neilmadden.blog/2020/05/28/whats-the-curve25519-clamping-all-about
+
+
 // If (1) x86_64 or aarch64, (2) linux or apple, and (3) OPENSSL_NO_ASM is not
 // set, s2n-bignum path is capable.
 #if ((defined(OPENSSL_X86_64) &&                                               \
@@ -49,6 +68,11 @@ OPENSSL_INLINE int x25519_s2n_bignum_capable(void) {
 #else
   return 0;
 #endif
+}
+
+// Return 0 until ED25519 lands in s2n-bignum
+OPENSSL_INLINE int ed25519_s2n_bignum_capable(void) {
+  return 0;
 }
 
 // Stub functions if implementations are not compiled.
@@ -234,28 +258,53 @@ static void x25519_s2n_bignum_public_from_private(
 #endif
 }
 
+// Stub function until ED25519 lands in s2n-bignum
+static void ed25519_public_key_from_hashed_seed_s2n_bignum(
+  uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
+  uint8_t az[SHA512_DIGEST_LENGTH]) {
+  abort();
+}
 
-void ED25519_keypair_from_seed(uint8_t out_public_key[32],
-                               uint8_t out_private_key[64],
-                               const uint8_t seed[ED25519_SEED_LEN]) {
+void ED25519_keypair_from_seed(uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
+  uint8_t out_private_key[ED25519_PRIVATE_KEY_LEN],
+  const uint8_t seed[ED25519_SEED_LEN]) {
+
+  // Step: rfc8032 5.1.5.1
+  // Compute SHA512(seed).
   uint8_t az[SHA512_DIGEST_LENGTH];
   SHA512(seed, ED25519_SEED_LEN, az);
 
-  az[0] &= 248;
-  az[31] &= 127;
-  az[31] |= 64;
+  // Step: rfc8032 5.1.5.2
+  az[0] &= 248; // 11111000_2
+  az[31] &= 127; // 01111111_2
+  az[31] |= 64; // 01000000_2
 
-  ge_p3 A;
-  x25519_ge_scalarmult_base(&A, az);
-  ge_p3_tobytes(out_public_key, &A);
+  // Step: rfc8032 5.1.5.[3,4]
+  // Compute [az]B and encode public key to a 32 byte octet.
+  if (ed25519_s2n_bignum_capable() == 1) {
+    ed25519_public_key_from_hashed_seed_s2n_bignum(out_public_key, az);
+  } else {
+    ed25519_public_key_from_hashed_seed_nohw(out_public_key, az);
+  }
 
+  // Encoded public key is a suffix in the private key. Avoids having to
+  // generate the public key from the private key when signing. 
+  OPENSSL_STATIC_ASSERT(ED25519_PRIVATE_KEY_LEN == (ED25519_SEED_LEN + ED25519_PUBLIC_KEY_LEN), ed25519_parameter_length_mismatch)
   OPENSSL_memcpy(out_private_key, seed, ED25519_SEED_LEN);
-  OPENSSL_memcpy(out_private_key + ED25519_SEED_LEN, out_public_key, 32);
+  OPENSSL_memcpy(out_private_key + ED25519_SEED_LEN, out_public_key,
+    ED25519_PUBLIC_KEY_LEN);
 }
 
-void ED25519_keypair(uint8_t out_public_key[32], uint8_t out_private_key[64]) {
+void ED25519_keypair(uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
+  uint8_t out_private_key[ED25519_PRIVATE_KEY_LEN]) {
+
+  // Ed25519 key generation: rfc8032 5.1.5
+  // Private key is 32 octets of random data.
   uint8_t seed[ED25519_SEED_LEN];
   RAND_bytes(seed, ED25519_SEED_LEN);
+
+  // Public key generation is handled in a separate function. See function
+  // description why this is useful.
   ED25519_keypair_from_seed(out_public_key, out_private_key, seed);
   OPENSSL_cleanse(seed, ED25519_SEED_LEN);
 }
