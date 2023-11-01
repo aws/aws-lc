@@ -5,4 +5,4 @@ name: 'AWS-LC Formal Verification SAW Proofs'
 description: 'Check SAW proofs to verify AWS-LC against Cryptol specs'
 runs:
   using: 'docker'
-  image: 'Dockerfile'
+  image: '../../../Dockerfile.saw'

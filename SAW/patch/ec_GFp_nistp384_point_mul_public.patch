@@ -1,0 +1,37 @@
+diff --git a/crypto/fipsmodule/ec/p384.c b/crypto/fipsmodule/ec/p384.c
+index 42f1ee439..5730db719 100644
+--- a/crypto/fipsmodule/ec/p384.c
++++ b/crypto/fipsmodule/ec/p384.c
+@@ -1037,6 +1037,19 @@ static void ec_GFp_nistp384_point_mul_base(const EC_GROUP *group,
+ //          accumulator.
+ //
+ // Note: this function is NOT constant-time.
++
++// input: p_wnaf, g_wnaf, p_pre_comp, i, res_is_inf, d, is_neg, idx, ftmp,
++//        two_p, group, g_scalar, p_scalar, res, r
++extern void __breakpoint__inv(  int8_t (*)[385] , int8_t (*)[385]
++                              , p384_felem (*)[P384_MUL_PUB_TABLE_SIZE][3]
++                              , int*, int16_t*, int16_t*, int16_t*, int16_t*
++                              , p384_felem*, p384_felem (*)[3]
++                              , const EC_GROUP**, const EC_SCALAR**
++                              , const EC_SCALAR**
++                              , p384_felem (*)[3], EC_JACOBIAN**
++                              ) __attribute__((noduplicate));
++
++__attribute__((optnone))
+ static void ec_GFp_nistp384_point_mul_public(const EC_GROUP *group,
+                                              EC_JACOBIAN *r,
+                                              const EC_SCALAR *g_scalar,
+@@ -1075,7 +1088,11 @@ static void ec_GFp_nistp384_point_mul_public(const EC_GROUP *group,
+   int16_t res_is_inf = 1;
+   int16_t d, is_neg, idx;
+ 
+-  for (int i = 384; i >= 0; i--) {
++  for (int i = 384; __breakpoint__inv(  &p_wnaf, &g_wnaf, &p_pre_comp, &i
++                                      , &res_is_inf, &d, &is_neg, &idx
++                                      , &ftmp, &two_p, &group, &g_scalar
++                                      , &p_scalar, &res, &r
++                                      ), i >= 0; i--) {
+ 
+     // If |res| is point-at-infinity there is no point in doubling so skip it.
+     if (!res_is_inf) {

@@ -22,7 +22,7 @@ RUN opam init --auto-setup --yes --disable-sandboxing \
    && opam install -y coq-bits \
    && opam pin -y entree-specs https://github.com/GaloisInc/entree-specs.git#52c4868f1f65c7ce74e90000214de27e23ba98fb
 
-ADD ./SAW/scripts /lc/scripts
+ADD SAW/scripts /lc/scripts
 RUN /lc/scripts/docker_install.sh
 ENV CRYPTOLPATH="../../../cryptol-specs:../../spec"
 
@@ -30,4 +30,4 @@ ENV CRYPTOLPATH="../../../cryptol-specs:../../spec"
 # The GitHub action will mount the workspace and set the working directory of the container.
 # Another way to mount the files is: docker run -v `pwd`:`pwd` -w `pwd` <name>
 
-ENTRYPOINT ["./SAW/scripts/docker_entrypoint.sh"]
+ENTRYPOINT ["./Coq/docker_entrypoint.sh"]

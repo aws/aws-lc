@@ -50,7 +50,7 @@ let points_to_ec_method_st ptr = do {
   crucible_points_to (crucible_field ptr "mul") (crucible_global "ec_GFp_nistp384_point_mul");
   crucible_points_to (crucible_field ptr "mul_base") (crucible_global "ec_GFp_nistp384_point_mul_base");
   crucible_points_to (crucible_field ptr "mul_batch") (crucible_global "ec_GFp_mont_mul_batch");
-  crucible_points_to (crucible_field ptr "mul_public") crucible_null;
+  crucible_points_to (crucible_field ptr "mul_public") (crucible_global "ec_GFp_nistp384_point_mul_public");
   crucible_points_to (crucible_field ptr "mul_public_batch") (crucible_global "ec_GFp_mont_mul_public_batch");
   crucible_points_to (crucible_field ptr "init_precomp") (crucible_global "ec_GFp_mont_init_precomp");
   crucible_points_to (crucible_field ptr "mul_precomp") (crucible_global "ec_GFp_mont_mul_precomp");

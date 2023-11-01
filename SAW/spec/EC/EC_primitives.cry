@@ -147,6 +147,9 @@ scalar_get_bit s i = (drop (s >> i)) && (1 : [64])
 sign_extend_16_64 : [16] -> [64]
 sign_extend_16_64 x = (if (x@0) then (~zero:[48]) else (zero:[48])) # x
 
+sign_extend_32_64 : [32] -> [64]
+sign_extend_32_64 x = (if (x@0) then (~zero:[32]) else (zero:[32])) # x
+
 sign_extend_16_32 : [16] -> [32]
 sign_extend_16_32 x = (if (x@0) then (~zero:[16]) else (zero:[16])) # x
 

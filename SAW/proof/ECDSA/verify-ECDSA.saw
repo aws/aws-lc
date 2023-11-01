@@ -51,11 +51,16 @@ jacobian_affine_mul_base_thm <- prove_print
   (rewrite (cryptol_ss ()) {{
     \s -> ec_point_affine_scalar_mul s G == fromJacobian (jacobianFromMontBV (point_mul_base_generic (scalarToBV s)))
   }});
-jacobian_affine_1_thm <- prove_print
+jacobian_affine_mul_public_thm <- prove_print
   (do {
     assume_unsat;
   })
-  (rewrite (cryptol_ss ()) {{ \u1 u2 Q -> fromJacobian { x = ((ec_point_jacobian_add (ec_point_jacobian_scalar_mul (u1 % `P384_n) P384_G_Jacobian) (ec_point_jacobian_scalar_mul (u2 % `P384_n) Q)).x % `P384_p), y = ((ec_point_jacobian_add (ec_point_jacobian_scalar_mul (u1 % `P384_n) P384_G_Jacobian) (ec_point_jacobian_scalar_mul (u2 % `P384_n) Q)).y % `P384_p), z = ((ec_point_jacobian_add (ec_point_jacobian_scalar_mul (u1 % `P384_n) P384_G_Jacobian) (ec_point_jacobian_scalar_mul (u2 % `P384_n) Q)).z % `P384_p) } == ec_point_affine_add (ec_point_affine_scalar_mul (u1 % `P384_n) P384_G) (ec_point_affine_scalar_mul (u2 % `P384_n) (fromJacobian Q)) }});
+  (rewrite (cryptol_ss ())
+  {{ \u1 P u2 -> (((fromJacobian (jacobianFromMontBV {X = res.X, Y = res.Y, Z = res.Z})) ==
+                   (ec_point_affine_add (ec_point_affine_scalar_mul u1 G)
+                                        (ec_point_affine_scalar_mul u2 (fromJacobian (jacobianFromMontBV P)))))
+                  where res = (point_mul_public_generic (scalarToBV u1) P (scalarToBV u2)))
+  }});
 
 
 ECDSA_do_sign_ov <- llvm_verify m "ECDSA_do_sign"
@@ -130,19 +135,19 @@ ecdsa_do_verify_no_self_test_ov <- llvm_verify m "ecdsa_do_verify_no_self_test"
   , bn_mod_add_words_ov
   , ERR_put_error_ov
   , ec_GFp_simple_is_on_curve_ov
-  , ec_GFp_mont_mul_public_batch_ov
+  , p384_point_mul_public_ov
   , ec_GFp_mont_cmp_x_coordinate_ov
   ]
   true
   ecdsa_do_verify_no_self_test_spec
   (do {
     unfolding ["ECDSA_verify"];
-    unfolding ["jacobianToMontBV", "jacobianFromMontBV", "jacobianToMont", "jacobianFromMont", "jacobianToBV", "jacobianFromBV"];
+    unfolding ["jacobianToMontBV", "jacobianToMont", "jacobianFromMont", "jacobianToBV", "jacobianFromBV"];
     simplify (cryptol_ss ());
     simplify (addsimp scalarBV_thm empty_ss);
     simplify (addsimp fieldElementBV_thm empty_ss);
     simplify (addsimps mont_thms empty_ss);
-    simplify (addsimp jacobian_affine_1_thm empty_ss);
+    simplify (addsimp jacobian_affine_mul_public_thm empty_ss);
     simplify (addsimps mod_thms empty_ss);
     goal_eval_unint ["inv0", "ec_point_affine_add", "ec_point_affine_scalar_mul", "fromJacobian"];
     simplify (addsimp mod_2_384_thm empty_ss);

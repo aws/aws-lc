@@ -164,7 +164,7 @@ add_base rnaf p j = res
     res = point_add 1 p r
 
 // double accumulator and add all points in the ith group
-double_add_base : [nwindows]point_id  -> point -> [64]-> point
+double_add_base : [nwindows]point_id  -> point -> [64] -> point
 double_add_base rnaf p i = res
   where
     doubled = if i == ((`(ngroups) - 1):[64])
@@ -198,5 +198,110 @@ point_mul_base s = r
 point_mul_base_generic : scalar -> JacobianBVPoint
 point_mul_base_generic s = r_gen
   where
-    r = (point_mul_base s)
+    r = point_mul_base s
     r_gen = {X = felem_to_bytes (r@0), Y = felem_to_bytes (r@1), Z = felem_to_bytes (r@2)}
+
+
+// ---------------------------------------------------------------
+// point_mul_public
+
+type digit_width = 8
+
+bn_is_bit_set_words : scalar -> [64] -> [32]
+bn_is_bit_set_words s ind = (drop (s >> ind)) && (1 : [32])
+
+ec_compute_wNAF_loop_body : [32] -> [32] -> [32] -> scalar -> ([digit_width], [32])
+                         -> [64] -> ([digit_width], [32])
+ec_compute_wNAF_loop_body bit next_bit mask s (digit, window_val) i =
+  (drop`{back=digit_width} di, (wv >>$ 1) + ((bn_is_bit_set_words s (i+`wsize+1)) << `wsize))
+  where
+    (di, wv) = (if (window_val && 1) != zero
+                then ((d, window_val-d)
+                      where d = (if (window_val && bit) != zero
+                                 then (if i + `wsize + 1 >= `bit_length
+                                       then window_val && (mask >> 1)
+                                       else window_val - next_bit)
+                                 else window_val))
+                else (zero, window_val))
+
+// Given a 384 bit scalar, ec_compute_wNAF produces a 385-digit representation of the scalar.
+// Each digit is either zero or an odd integer in range [-(2^^w-1), (2^^w-1)].
+// It is guaranteed that there are at least w zeros between any two non-zero digits.
+// Therefore the density of non-zeros must at least be 1/(w+1).
+// See: http://www.bmoeller.de/pdf/TI-01-08.multiexp.pdf Section 3.2
+ec_compute_wNAF : scalar -> [bit_length+1][digit_width]
+ec_compute_wNAF s = r
+  where
+    bit = (1 << `wsize):[32]
+    next_bit = (bit << 1):[32]
+    mask = (next_bit - 1):[32]
+    window_val = (drop`{back=32} s) && mask
+    acc = ((zero:[digit_width]), window_val)
+    f (ds, wv) i = ec_compute_wNAF_loop_body bit next_bit mask s (ds, wv) i
+    resl = scanl f acc [0 .. bit_length]
+    r = (map (\p -> p.0) (drop`{1} resl))
+
+add_table : [32] -> [tsize]point -> [16] -> point -> Bit -> ([16], point)
+add_table d ptable res_is_inf res isg =
+  if res_is_inf == 0 then (res_is_inf, point_add isg res p) else (zero, ptmp)
+  where
+    is_neg = drop`{16} (if d <$ zero then 1:[32] else 0)
+    idx = drop`{16} (if (zero#is_neg) == (0:[32]) then (d-1) >>$ 1 else (-d-1) >>$ 1)
+    idx_extend = sign_extend_16_64 idx
+    tmp = p384_g_pre_comp@0@idx_extend
+    ptmp = if isg then [tmp@0, tmp@1, p384_felem_one] else lookup_table ptable idx_extend
+    ftmp = if is_neg == 0 then ptmp@1 else felem_opp (ptmp@1)
+    p = [ptmp@0, ftmp, ptmp@2]
+
+// double_add loop body for point_mul_public
+double_add_public : [tsize]point -> ([16], point) -> ([digit_width], [digit_width]) -> ([16], point)
+double_add_public p_table (res_is_inf, res) (dp, dg) = (res_is_inf3, p3)
+  where
+    dp_extend = sign_extend_8_32 dp
+    dg_extend = sign_extend_8_32 dg
+    p1 = if res_is_inf == 0 then point_double res else res
+    (res_is_inf2, p2) =
+      if dp_extend == 0 then (res_is_inf, p1) else add_table dp_extend p_table res_is_inf p1 0
+    (res_is_inf3, p3) =
+      if dg_extend == 0 then (res_is_inf2, p2) else add_table dg_extend p_table res_is_inf2 p2 1
+
+point_mul_public_breakpoint_foldl : [bit_length+1][digit_width] -> [bit_length+1][digit_width] -> [tsize]point -> [16] -> point -> [32] -> point
+point_mul_public_breakpoint_foldl p_wnaf g_wnaf p_pre_comp res_is_inf res i =
+  if i <$ 0 then res else r
+  where
+    (_, r) = foldl (double_add_public p_pre_comp) (res_is_inf, res) (zip (reverse p_wnaf) (reverse g_wnaf))
+
+point_mul_public_breakpoint_foldl_top : [bit_length+1][digit_width] -> [bit_length+1][digit_width] -> [tsize]point -> [16] -> point -> [32] -> JacobianBVPoint
+point_mul_public_breakpoint_foldl_top p_wnaf g_wnaf p_pre_comp res_is_inf res i = r_gen
+  where
+    r = point_mul_public_breakpoint_foldl p_wnaf g_wnaf p_pre_comp res_is_inf res i
+    r_gen = {X = felem_to_bytes (r@0), Y = felem_to_bytes (r@1), Z = felem_to_bytes (r@2)}
+
+point_mul_public_generic : scalar -> JacobianBVPoint -> scalar -> JacobianBVPoint
+point_mul_public_generic g_scalar p p_scalar = r
+  where
+    px = felem_from_bytes p.X
+    py = felem_from_bytes p.Y
+    pz = felem_from_bytes p.Z
+    p2 = [px, py, pz]
+    p_pre_comp = pre_comp_table p2
+    p_wnaf = ec_compute_wNAF p_scalar
+    g_wnaf = ec_compute_wNAF g_scalar
+    r = point_mul_public_breakpoint_foldl_top p_wnaf g_wnaf p_pre_comp 1 [zero, zero, zero] 384
+
+ec_compute_wNAF_in_range : [bit_length+1][digit_width] -> Bit
+ec_compute_wNAF_in_range digits = foldl f True [0 .. bit_length]
+  where
+    f acc i = acc && (digits@i >=$ (-31:[8])) && (digits@i <=$ 31)
+
+lookup_fn : [bit_length+1][digit_width] -> [32] -> [digit_width] -> [64] -> [digit_width]
+lookup_fn wnaf i acc j = if sign_extend_32_64 i == j then (wnaf@j) else acc
+
+lookup : [bit_length+1][digit_width] -> [32] -> [digit_width]
+lookup wnaf i = foldl (lookup_fn wnaf i) (wnaf@384) [383, 382 .. 0]
+
+lookup_table_fn : [tsize]point -> [64] -> point -> [64] -> point
+lookup_table_fn p_table i acc j = if i == j then (p_table@j) else acc
+
+lookup_table : [tsize]point -> [64] -> point
+lookup_table p_table i = foldl (lookup_table_fn p_table i) (p_table@15) [14, 13 .. 0]

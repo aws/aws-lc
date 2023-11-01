@@ -12,6 +12,7 @@ f_impl. In SAW, we will prove f == f_impl, and use this rewrite rule to
 replace f_impl with f in the goal. 
 */
 
+import Common::EC::EC_P384
 import EC_primitives
 import EC_P384_5
 
@@ -68,3 +69,39 @@ mul_scalar_rwnaf_ct in = out'
     outls = scanl f (0, window) [0 .. ((bit_length/wsize) - 1)]
     window' = (outls!0).1
     out' = (drop`{1} ((map (\p -> p.0) outls)#[window']))
+
+/*
+  Note that the breakpoint feature requires that the specification be written
+  as a recursive function. However, we need the all functions to be written
+  in folds or scans to be able to translate into Coq.
+  Therefore we define another version of point_mul_public_breakpoint using foldl.
+  We prove the equivalence between the recursive version and the foldl version.
+  */
+point_mul_public_breakpoint : [bit_length+1][digit_width] -> [bit_length+1][digit_width]
+                          ->  [tsize]point -> [16] -> point -> [32] -> JacobianBVPoint
+point_mul_public_breakpoint p_wnaf g_wnaf p_pre_comp res_is_inf res i =
+  if i <$ 0
+  then {X = felem_to_bytes (res@0), Y = felem_to_bytes (res@1), Z = felem_to_bytes (res@2)}
+  else point_mul_public_breakpoint p_wnaf g_wnaf p_pre_comp res_is_inf2 res2 (i-1)
+  where
+    (res_is_inf2, res2) =
+      double_add_public p_pre_comp (res_is_inf, res) (lookup p_wnaf i, lookup g_wnaf i)
+
+/*
+  Say we want to expand just the left-hand side of the following term:
+    (point_mul_public_breakpoint p_wnaf g_wnaf p_pre_comp res_is_inf res i).X == A
+  where A could also contain calls to `point_mul_public_breakpoint`
+  We define a function `point_mul_public_breakpoint_unfold` that has the exact same body
+  as `point_mul_public_breakpoint`.
+  Then we use this lemma to replace the call with `point_mul_public_breakpoint_unfold`.
+  Now we can safely use unfolding hint to expand just that call.
+  */
+point_mul_public_breakpoint_unfold : [bit_length+1][digit_width] -> [bit_length+1][digit_width]
+                                  -> [tsize]point -> [16] -> point -> [32] -> JacobianBVPoint
+point_mul_public_breakpoint_unfold p_wnaf g_wnaf p_pre_comp res_is_inf res i =
+  if i <$ 0
+  then {X = felem_to_bytes (res@0), Y = felem_to_bytes (res@1), Z = felem_to_bytes (res@2)}
+  else point_mul_public_breakpoint p_wnaf g_wnaf p_pre_comp res_is_inf2 res2 (i-1)
+  where
+    (res_is_inf2, res2) =
+      double_add_public p_pre_comp (res_is_inf, res) (lookup p_wnaf i, lookup g_wnaf i)

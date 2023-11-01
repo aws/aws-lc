@@ -287,9 +287,7 @@ p384_sub_same_l_ov <- crucible_llvm_unsafe_assume_spec
   "bignum_sub_p384"
   p384_field_sub_same_l_spec;
 
-p384_get_bit_ov <- llvm_verify
-  m
-  "p384_get_bit"
+p384_get_bit_ov <- llvm_verify m "p384_get_bit"
   []
   true
   p384_get_bit_spec

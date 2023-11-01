@@ -1,0 +1,12 @@
+diff --git a/crypto/fipsmodule/ec/wnaf.c b/crypto/fipsmodule/ec/wnaf.c
+index beb929543..fbb7145dd 100644
+--- a/crypto/fipsmodule/ec/wnaf.c
++++ b/crypto/fipsmodule/ec/wnaf.c
+@@ -85,6 +85,7 @@
+ //   http://link.springer.com/chapter/10.1007%2F3-540-45537-X_13
+ //   http://www.bmoeller.de/pdf/TI-01-08.multiexp.pdf
+ 
++__attribute__((noinline))
+ void ec_compute_wNAF(const EC_GROUP *group, int8_t *out,
+                      const EC_SCALAR *scalar, size_t bits, int w) {
+   // 'int8_t' can represent integers with absolute values less than 2^7.

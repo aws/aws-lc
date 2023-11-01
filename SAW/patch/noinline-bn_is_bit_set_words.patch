@@ -1,0 +1,12 @@
+diff --git a/crypto/fipsmodule/bn/shift.c b/crypto/fipsmodule/bn/shift.c
+index 85a62784d..ea9cad216 100644
+--- a/crypto/fipsmodule/bn/shift.c
++++ b/crypto/fipsmodule/bn/shift.c
+@@ -258,6 +258,7 @@ int BN_clear_bit(BIGNUM *a, int n) {
+   return 1;
+ }
+ 
++__attribute__((noinline))
+ int bn_is_bit_set_words(const BN_ULONG *a, size_t num, size_t bit) {
+   size_t i = bit / BN_BITS2;
+   size_t j = bit % BN_BITS2;

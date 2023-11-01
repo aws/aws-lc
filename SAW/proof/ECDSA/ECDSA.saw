@@ -131,6 +131,7 @@ let ECDSA_do_sign_spec = do {
 };
 
 let ecdsa_do_verify_no_self_test_spec = do {
+  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
   (digest, digest_ptr) <- ptr_to_fresh_readonly "digest" (llvm_array SHA_DIGEST_LENGTH i8);
 
   sig_ptr <- crucible_alloc_readonly (llvm_struct ecdsa_sig_st);
@@ -146,6 +147,8 @@ let ecdsa_do_verify_no_self_test_spec = do {
   (ec_key_ptr, pub_key, _priv_key) <- pointer_to_fresh_ec_key_st ec_group_ptr false;
 
   crucible_execute_func [digest_ptr, (crucible_term {{ `SHA_DIGEST_LENGTH : [64] }}), sig_ptr, ec_key_ptr];
+
+  global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
 
   let ret = {{ ECDSA_verify (fromJacobian (jacobianFromMontBV pub_key)) (scalarFromBV (join digest)) { r = (scalarFromBV r), s = (scalarFromBV s) } }};
   crucible_return (crucible_term {{ if ret then 1 : [32] else 0 }});
