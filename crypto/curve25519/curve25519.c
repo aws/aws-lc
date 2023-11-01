@@ -48,7 +48,10 @@
 // following two references:
 // * https://mailarchive.ietf.org/arch/msg/cfrg/pt2bt3fGQbNF8qdEcorp-rJSJrc/
 // * https://neilmadden.blog/2020/05/28/whats-the-curve25519-clamping-all-about
-
+//
+// Ed25519 domain and pre-hash functions:
+// For Ed25519, dom2(F,C) is the empty string and PH the identify function,
+// cf. rfc8032 5.1.
 
 // If (1) x86_64 or aarch64, (2) linux or apple, and (3) OPENSSL_NO_ASM is not
 // set, s2n-bignum path is capable.
@@ -258,11 +261,36 @@ static void x25519_s2n_bignum_public_from_private(
 #endif
 }
 
+
 // Stub function until ED25519 lands in s2n-bignum
 static void ed25519_public_key_from_hashed_seed_s2n_bignum(
   uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
   uint8_t az[SHA512_DIGEST_LENGTH]) {
   abort();
+}
+
+// Stub function until Ed25519 lands in s2n-bignum
+// |s| is of length |ED25519_PRIVATE_KEY_SEED_LEN|
+// |public_key| is of length |ED25519_PUBLIC_KEY_LEN|.
+static void ed25519_sign_s2n_bignum(
+  uint8_t out_sig[ED25519_SIGNATURE_LEN],
+  uint8_t r[SHA512_DIGEST_LENGTH], const uint8_t *s, const uint8_t *A,
+  const void *message, size_t message_len) {
+  abort();
+}
+
+void ed25519_sha512(uint8_t out[SHA512_DIGEST_LENGTH],
+  const void *input1, size_t len1, const void *input2, size_t len2,
+  const void *input3, size_t len3) {
+
+  SHA512_CTX hash_ctx;
+  SHA512_Init(&hash_ctx);
+  SHA512_Update(&hash_ctx, input1, len1);
+  SHA512_Update(&hash_ctx, input2, len2);
+  if (len3 != 0) {
+    SHA512_Update(&hash_ctx, input3, len3);
+  }
+  SHA512_Final(out, &hash_ctx);
 }
 
 void ED25519_keypair_from_seed(uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
@@ -309,41 +337,43 @@ void ED25519_keypair(uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
   OPENSSL_cleanse(seed, ED25519_SEED_LEN);
 }
 
-int ED25519_sign(uint8_t out_sig[64], const uint8_t *message,
-                 size_t message_len, const uint8_t private_key[64]) {
+int ED25519_sign(uint8_t out_sig[ED25519_SIGNATURE_LEN],
+                 const uint8_t *message, size_t message_len,
+                 const uint8_t private_key[ED25519_PRIVATE_KEY_LEN]) {
   // NOTE: The documentation on this function says that it returns zero on
   // allocation failure. While that can't happen with the current
   // implementation, we want to reserve the ability to allocate in this
   // implementation in the future.
 
+  // Ed25519 sign: rfc8032 5.1.6
+  //
+  // Step: rfc8032 5.1.6.1
+  // This step is a repeat of rfc8032 5.1.5.[1,2].
+  // seed = private_key[0:31]
+  // A = private_key[32:61] (per 5.1.5.4)
+  // Compute az = SHA512(seed).
   uint8_t az[SHA512_DIGEST_LENGTH];
-  SHA512(private_key, 32, az);
+  SHA512(private_key, ED25519_PRIVATE_KEY_SEED_LEN, az);
+  // s = az[0:31]
+  // prefix = az[32:61]
+  az[0] &= 248; // 11111000_2
+  az[31] &= 63; // 00111111_2
+  az[31] |= 64; // 01000000_2
 
-  az[0] &= 248;
-  az[31] &= 63;
-  az[31] |= 64;
+  // Step: rfc8032 5.1.6.2
+  // Compute r = SHA512(prefix || message).
+  uint8_t r[SHA512_DIGEST_LENGTH];
+  ed25519_sha512(r, az + ED25519_PRIVATE_KEY_SEED_LEN,
+    ED25519_PRIVATE_KEY_SEED_LEN, message, message_len, NULL, 0);
 
-  SHA512_CTX hash_ctx;
-  SHA512_Init(&hash_ctx);
-  SHA512_Update(&hash_ctx, az + 32, 32);
-  SHA512_Update(&hash_ctx, message, message_len);
-  uint8_t nonce[SHA512_DIGEST_LENGTH];
-  SHA512_Final(nonce, &hash_ctx);
-
-  x25519_sc_reduce(nonce);
-  ge_p3 R;
-  x25519_ge_scalarmult_base(&R, nonce);
-  ge_p3_tobytes(out_sig, &R);
-
-  SHA512_Init(&hash_ctx);
-  SHA512_Update(&hash_ctx, out_sig, 32);
-  SHA512_Update(&hash_ctx, private_key + 32, 32);
-  SHA512_Update(&hash_ctx, message, message_len);
-  uint8_t hram[SHA512_DIGEST_LENGTH];
-  SHA512_Final(hram, &hash_ctx);
-
-  x25519_sc_reduce(hram);
-  sc_muladd(out_sig + 32, hram, az, nonce);
+  // Step: rfc8032 5.1.6.[3,5,6,7]
+  if (ed25519_s2n_bignum_capable() == 1) {
+    ed25519_sign_s2n_bignum(out_sig, r, az,
+      private_key + ED25519_PRIVATE_KEY_SEED_LEN, message, message_len);
+  } else {
+    ed25519_sign_nohw(out_sig, r, az,
+      private_key + ED25519_PRIVATE_KEY_SEED_LEN, message, message_len);
+  }
 
   return 1;
 }
