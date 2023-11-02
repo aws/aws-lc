@@ -105,8 +105,10 @@ class OwnedSocket {
   OwnedSocket(OwnedSocket &&other) { *this = std::move(other); }
   ~OwnedSocket() { reset(); }
   OwnedSocket &operator=(OwnedSocket &&other) {
-    drain_on_close_ = other.drain_on_close_;
-    reset(other.release());
+    if (this != &other) {
+      drain_on_close_ = other.drain_on_close_;
+      reset(other.release());
+    }
     return *this;
   }
 

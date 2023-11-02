@@ -251,7 +251,9 @@ int EVP_PKEY_set1_RSA(EVP_PKEY *pkey, RSA *key) {
 }
 
 int EVP_PKEY_assign_RSA(EVP_PKEY *pkey, RSA *key) {
-  evp_pkey_set_method(pkey, evp_pkey_asn1_find(EVP_PKEY_RSA));
+  const EVP_PKEY_ASN1_METHOD *meth = evp_pkey_asn1_find(EVP_PKEY_RSA);
+  assert(meth != NULL);
+  evp_pkey_set_method(pkey, meth);
   pkey->pkey.ptr = key;
   return key != NULL;
 }
@@ -281,7 +283,9 @@ int EVP_PKEY_set1_DSA(EVP_PKEY *pkey, DSA *key) {
 }
 
 int EVP_PKEY_assign_DSA(EVP_PKEY *pkey, DSA *key) {
-  evp_pkey_set_method(pkey, evp_pkey_asn1_find(EVP_PKEY_DSA));
+  const EVP_PKEY_ASN1_METHOD *meth = evp_pkey_asn1_find(EVP_PKEY_DSA);
+  assert(meth != NULL);
+  evp_pkey_set_method(pkey, meth);
   pkey->pkey.ptr = key;
   return key != NULL;
 }
@@ -311,7 +315,9 @@ int EVP_PKEY_set1_EC_KEY(EVP_PKEY *pkey, EC_KEY *key) {
 }
 
 int EVP_PKEY_assign_EC_KEY(EVP_PKEY *pkey, EC_KEY *key) {
-  evp_pkey_set_method(pkey, evp_pkey_asn1_find(EVP_PKEY_EC));
+  const EVP_PKEY_ASN1_METHOD *meth = evp_pkey_asn1_find(EVP_PKEY_EC);
+  assert(meth != NULL);
+  evp_pkey_set_method(pkey, meth);
   pkey->pkey.ptr = key;
   return key != NULL;
 }
