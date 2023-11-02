@@ -719,6 +719,7 @@ if(BUILD_TESTING)
     evp_extra/scrypt_test.cc
     fipsmodule/aes/aes_test.cc
     fipsmodule/bn/bn_test.cc
+    fipsmodule/bn/bn_assert_test.cc
     fipsmodule/cmac/cmac_test.cc
     fipsmodule/ec/ec_test.cc
     fipsmodule/ec/p256-nistz_test.cc
