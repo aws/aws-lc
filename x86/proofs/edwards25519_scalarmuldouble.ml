@@ -8,7 +8,7 @@
 (* ========================================================================= *)
 
 needs "x86/proofs/base.ml";;
-needs "x86/proofs/bignum_modinv.ml";;
+needs "x86/proofs/bignum_inv_p25519.ml";;
 needs "common/ecencoding.ml";;
 
 needs "EC/edwards25519.ml";;
@@ -39,8 +39,8 @@ let edwards25519_scalarmuldouble_mc,edwards25519_scalarmuldouble_data =
   0x41; 0x57;              (* PUSH (% r15) *)
   0x48; 0x81; 0xec; 0xc0; 0x05; 0x00; 0x00;
                            (* SUB (% rsp) (Imm32 (word 1472)) *)
-  0x48; 0x89; 0x7c; 0x24; 0x58;
-                           (* MOV (Memop Quadword (%% (rsp,88))) (% rdi) *)
+  0x48; 0x89; 0xbc; 0x24; 0xb8; 0x05; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,1464))) (% rdi) *)
   0x4c; 0x8b; 0x01;        (* MOV (% r8) (Memop Quadword (%% (rcx,0))) *)
   0x4c; 0x8b; 0x49; 0x08;  (* MOV (% r9) (Memop Quadword (%% (rcx,8))) *)
   0x4c; 0x8b; 0x51; 0x10;  (* MOV (% r10) (Memop Quadword (%% (rcx,16))) *)
@@ -120,17 +120,17 @@ let edwards25519_scalarmuldouble_mc,edwards25519_scalarmuldouble_data =
   0x4c; 0x11; 0xd1;        (* ADC (% rcx) (% r10) *)
   0x4c; 0x11; 0xde;        (* ADC (% rsi) (% r11) *)
   0x49; 0x0f; 0x43; 0xc0;  (* CMOVAE (% rax) (% r8) *)
-  0x48; 0x89; 0x84; 0x24; 0xc0; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,448))) (% rax) *)
+  0x48; 0x89; 0x84; 0x24; 0xa0; 0x01; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,416))) (% rax) *)
   0x49; 0x0f; 0x43; 0xd9;  (* CMOVAE (% rbx) (% r9) *)
-  0x48; 0x89; 0x9c; 0x24; 0xc8; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,456))) (% rbx) *)
+  0x48; 0x89; 0x9c; 0x24; 0xa8; 0x01; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,424))) (% rbx) *)
   0x49; 0x0f; 0x43; 0xca;  (* CMOVAE (% rcx) (% r10) *)
-  0x48; 0x89; 0x8c; 0x24; 0xd0; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,464))) (% rcx) *)
+  0x48; 0x89; 0x8c; 0x24; 0xb0; 0x01; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,432))) (% rcx) *)
   0x49; 0x0f; 0x43; 0xf3;  (* CMOVAE (% rsi) (% r11) *)
-  0x48; 0x89; 0xb4; 0x24; 0xd8; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,472))) (% rsi) *)
+  0x48; 0x89; 0xb4; 0x24; 0xb8; 0x01; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,440))) (% rsi) *)
   0xb8; 0x26; 0x00; 0x00; 0x00;
                            (* MOV (% eax) (Imm32 (word 38)) *)
   0x4c; 0x8b; 0x42; 0x20;  (* MOV (% r8) (Memop Quadword (%% (rdx,32))) *)
@@ -145,34 +145,34 @@ let edwards25519_scalarmuldouble_mc,edwards25519_scalarmuldouble_data =
   0x4c; 0x11; 0xd1;        (* ADC (% rcx) (% r10) *)
   0x4c; 0x11; 0xde;        (* ADC (% rsi) (% r11) *)
   0x49; 0x0f; 0x43; 0xc0;  (* CMOVAE (% rax) (% r8) *)
-  0x48; 0x89; 0x84; 0x24; 0xe0; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,480))) (% rax) *)
+  0x48; 0x89; 0x84; 0x24; 0xc0; 0x01; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,448))) (% rax) *)
   0x49; 0x0f; 0x43; 0xd9;  (* CMOVAE (% rbx) (% r9) *)
-  0x48; 0x89; 0x9c; 0x24; 0xe8; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,488))) (% rbx) *)
+  0x48; 0x89; 0x9c; 0x24; 0xc8; 0x01; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,456))) (% rbx) *)
   0x49; 0x0f; 0x43; 0xca;  (* CMOVAE (% rcx) (% r10) *)
-  0x48; 0x89; 0x8c; 0x24; 0xf0; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,496))) (% rcx) *)
+  0x48; 0x89; 0x8c; 0x24; 0xd0; 0x01; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,464))) (% rcx) *)
   0x49; 0x0f; 0x43; 0xf3;  (* CMOVAE (% rsi) (% r11) *)
-  0x48; 0x89; 0xb4; 0x24; 0xf8; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,504))) (% rsi) *)
+  0x48; 0x89; 0xb4; 0x24; 0xd8; 0x01; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,472))) (% rsi) *)
   0xb8; 0x01; 0x00; 0x00; 0x00;
                            (* MOV (% eax) (Imm32 (word 1)) *)
-  0x48; 0x89; 0x84; 0x24; 0x00; 0x02; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,512))) (% rax) *)
+  0x48; 0x89; 0x84; 0x24; 0xe0; 0x01; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,480))) (% rax) *)
   0x31; 0xc0;              (* XOR (% eax) (% eax) *)
-  0x48; 0x89; 0x84; 0x24; 0x08; 0x02; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,520))) (% rax) *)
-  0x48; 0x89; 0x84; 0x24; 0x10; 0x02; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,528))) (% rax) *)
-  0x48; 0x89; 0x84; 0x24; 0x18; 0x02; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,536))) (% rax) *)
-  0x48; 0x8d; 0xbc; 0x24; 0x20; 0x02; 0x00; 0x00;
-                           (* LEA (% rdi) (%% (rsp,544)) *)
-  0x48; 0x8d; 0xb4; 0x24; 0xc0; 0x01; 0x00; 0x00;
-                           (* LEA (% rsi) (%% (rsp,448)) *)
-  0x48; 0x8d; 0xac; 0x24; 0xe0; 0x01; 0x00; 0x00;
-                           (* LEA (% rbp) (%% (rsp,480)) *)
+  0x48; 0x89; 0x84; 0x24; 0xe8; 0x01; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,488))) (% rax) *)
+  0x48; 0x89; 0x84; 0x24; 0xf0; 0x01; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,496))) (% rax) *)
+  0x48; 0x89; 0x84; 0x24; 0xf8; 0x01; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,504))) (% rax) *)
+  0x48; 0x8d; 0xbc; 0x24; 0x00; 0x02; 0x00; 0x00;
+                           (* LEA (% rdi) (%% (rsp,512)) *)
+  0x48; 0x8d; 0xb4; 0x24; 0xa0; 0x01; 0x00; 0x00;
+                           (* LEA (% rsi) (%% (rsp,416)) *)
+  0x48; 0x8d; 0xac; 0x24; 0xc0; 0x01; 0x00; 0x00;
+                           (* LEA (% rbp) (%% (rsp,448)) *)
   0x31; 0xc9;              (* XOR (% ecx) (% ecx) *)
   0x48; 0x8b; 0x55; 0x00;  (* MOV (% rdx) (Memop Quadword (%% (rbp,0))) *)
   0xc4; 0x62; 0xbb; 0xf6; 0x0e;
@@ -315,63 +315,63 @@ let edwards25519_scalarmuldouble_mc,edwards25519_scalarmuldouble_data =
   0x4c; 0x89; 0x4f; 0x08;  (* MOV (Memop Quadword (%% (rdi,8))) (% r9) *)
   0x4c; 0x89; 0x57; 0x10;  (* MOV (Memop Quadword (%% (rdi,16))) (% r10) *)
   0x4c; 0x89; 0x5f; 0x18;  (* MOV (Memop Quadword (%% (rdi,24))) (% r11) *)
-  0x48; 0x8d; 0xbc; 0x24; 0x40; 0x02; 0x00; 0x00;
-                           (* LEA (% rdi) (%% (rsp,576)) *)
-  0x48; 0x8d; 0xb4; 0x24; 0xc0; 0x01; 0x00; 0x00;
-                           (* LEA (% rsi) (%% (rsp,448)) *)
-  0xe8; 0x10; 0x1e; 0x00; 0x00;
-                           (* CALL (Imm32 (word 7696)) *)
-  0x48; 0x8d; 0xbc; 0x24; 0xc0; 0x02; 0x00; 0x00;
-                           (* LEA (% rdi) (%% (rsp,704)) *)
-  0x48; 0x8d; 0xb4; 0x24; 0xc0; 0x01; 0x00; 0x00;
-                           (* LEA (% rsi) (%% (rsp,448)) *)
-  0x48; 0x8d; 0xac; 0x24; 0x40; 0x02; 0x00; 0x00;
-                           (* LEA (% rbp) (%% (rsp,576)) *)
-  0xe8; 0x3d; 0x39; 0x00; 0x00;
-                           (* CALL (Imm32 (word 14653)) *)
-  0x48; 0x8d; 0xbc; 0x24; 0x40; 0x03; 0x00; 0x00;
-                           (* LEA (% rdi) (%% (rsp,832)) *)
-  0x48; 0x8d; 0xb4; 0x24; 0x40; 0x02; 0x00; 0x00;
-                           (* LEA (% rsi) (%% (rsp,576)) *)
-  0xe8; 0xde; 0x1d; 0x00; 0x00;
-                           (* CALL (Imm32 (word 7646)) *)
-  0x48; 0x8d; 0xbc; 0x24; 0xc0; 0x03; 0x00; 0x00;
-                           (* LEA (% rdi) (%% (rsp,960)) *)
-  0x48; 0x8d; 0xb4; 0x24; 0xc0; 0x01; 0x00; 0x00;
-                           (* LEA (% rsi) (%% (rsp,448)) *)
-  0x48; 0x8d; 0xac; 0x24; 0x40; 0x03; 0x00; 0x00;
-                           (* LEA (% rbp) (%% (rsp,832)) *)
-  0xe8; 0x0b; 0x39; 0x00; 0x00;
-                           (* CALL (Imm32 (word 14603)) *)
-  0x48; 0x8d; 0xbc; 0x24; 0x40; 0x04; 0x00; 0x00;
-                           (* LEA (% rdi) (%% (rsp,1088)) *)
-  0x48; 0x8d; 0xb4; 0x24; 0xc0; 0x02; 0x00; 0x00;
-                           (* LEA (% rsi) (%% (rsp,704)) *)
-  0xe8; 0xac; 0x1d; 0x00; 0x00;
-                           (* CALL (Imm32 (word 7596)) *)
-  0x48; 0x8d; 0xbc; 0x24; 0xc0; 0x04; 0x00; 0x00;
-                           (* LEA (% rdi) (%% (rsp,1216)) *)
-  0x48; 0x8d; 0xb4; 0x24; 0xc0; 0x01; 0x00; 0x00;
-                           (* LEA (% rsi) (%% (rsp,448)) *)
-  0x48; 0x8d; 0xac; 0x24; 0x40; 0x04; 0x00; 0x00;
-                           (* LEA (% rbp) (%% (rsp,1088)) *)
-  0xe8; 0xd9; 0x38; 0x00; 0x00;
-                           (* CALL (Imm32 (word 14553)) *)
-  0x48; 0x8d; 0xbc; 0x24; 0x40; 0x05; 0x00; 0x00;
-                           (* LEA (% rdi) (%% (rsp,1344)) *)
-  0x48; 0x8d; 0xb4; 0x24; 0x40; 0x03; 0x00; 0x00;
-                           (* LEA (% rsi) (%% (rsp,832)) *)
-  0xe8; 0x7a; 0x1d; 0x00; 0x00;
-                           (* CALL (Imm32 (word 7546)) *)
+  0x48; 0x8d; 0xbc; 0x24; 0x20; 0x02; 0x00; 0x00;
+                           (* LEA (% rdi) (%% (rsp,544)) *)
+  0x48; 0x8d; 0xb4; 0x24; 0xa0; 0x01; 0x00; 0x00;
+                           (* LEA (% rsi) (%% (rsp,416)) *)
+  0xe8; 0x0d; 0x2d; 0x00; 0x00;
+                           (* CALL (Imm32 (word 11533)) *)
+  0x48; 0x8d; 0xbc; 0x24; 0xa0; 0x02; 0x00; 0x00;
+                           (* LEA (% rdi) (%% (rsp,672)) *)
+  0x48; 0x8d; 0xb4; 0x24; 0xa0; 0x01; 0x00; 0x00;
+                           (* LEA (% rsi) (%% (rsp,416)) *)
+  0x48; 0x8d; 0xac; 0x24; 0x20; 0x02; 0x00; 0x00;
+                           (* LEA (% rbp) (%% (rsp,544)) *)
+  0xe8; 0x3a; 0x48; 0x00; 0x00;
+                           (* CALL (Imm32 (word 18490)) *)
+  0x48; 0x8d; 0xbc; 0x24; 0x20; 0x03; 0x00; 0x00;
+                           (* LEA (% rdi) (%% (rsp,800)) *)
+  0x48; 0x8d; 0xb4; 0x24; 0x20; 0x02; 0x00; 0x00;
+                           (* LEA (% rsi) (%% (rsp,544)) *)
+  0xe8; 0xdb; 0x2c; 0x00; 0x00;
+                           (* CALL (Imm32 (word 11483)) *)
+  0x48; 0x8d; 0xbc; 0x24; 0xa0; 0x03; 0x00; 0x00;
+                           (* LEA (% rdi) (%% (rsp,928)) *)
+  0x48; 0x8d; 0xb4; 0x24; 0xa0; 0x01; 0x00; 0x00;
+                           (* LEA (% rsi) (%% (rsp,416)) *)
+  0x48; 0x8d; 0xac; 0x24; 0x20; 0x03; 0x00; 0x00;
+                           (* LEA (% rbp) (%% (rsp,800)) *)
+  0xe8; 0x08; 0x48; 0x00; 0x00;
+                           (* CALL (Imm32 (word 18440)) *)
+  0x48; 0x8d; 0xbc; 0x24; 0x20; 0x04; 0x00; 0x00;
+                           (* LEA (% rdi) (%% (rsp,1056)) *)
+  0x48; 0x8d; 0xb4; 0x24; 0xa0; 0x02; 0x00; 0x00;
+                           (* LEA (% rsi) (%% (rsp,672)) *)
+  0xe8; 0xa9; 0x2c; 0x00; 0x00;
+                           (* CALL (Imm32 (word 11433)) *)
+  0x48; 0x8d; 0xbc; 0x24; 0xa0; 0x04; 0x00; 0x00;
+                           (* LEA (% rdi) (%% (rsp,1184)) *)
+  0x48; 0x8d; 0xb4; 0x24; 0xa0; 0x01; 0x00; 0x00;
+                           (* LEA (% rsi) (%% (rsp,416)) *)
+  0x48; 0x8d; 0xac; 0x24; 0x20; 0x04; 0x00; 0x00;
+                           (* LEA (% rbp) (%% (rsp,1056)) *)
+  0xe8; 0xd6; 0x47; 0x00; 0x00;
+                           (* CALL (Imm32 (word 18390)) *)
+  0x48; 0x8d; 0xbc; 0x24; 0x20; 0x05; 0x00; 0x00;
+                           (* LEA (% rdi) (%% (rsp,1312)) *)
+  0x48; 0x8d; 0xb4; 0x24; 0x20; 0x03; 0x00; 0x00;
+                           (* LEA (% rsi) (%% (rsp,800)) *)
+  0xe8; 0x77; 0x2c; 0x00; 0x00;
+                           (* CALL (Imm32 (word 11383)) *)
   0x48; 0xc7; 0xc0; 0xfc; 0x00; 0x00; 0x00;
                            (* MOV (% rax) (Imm32 (word 252)) *)
-  0x48; 0x89; 0x44; 0x24; 0x50;
-                           (* MOV (Memop Quadword (%% (rsp,80))) (% rax) *)
+  0x48; 0x89; 0x84; 0x24; 0xb0; 0x05; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,1456))) (% rax) *)
   0x48; 0x8b; 0x44; 0x24; 0x38;
                            (* MOV (% rax) (Memop Quadword (%% (rsp,56))) *)
   0x48; 0xc1; 0xe8; 0x3c;  (* SHR (% rax) (Imm8 (word 60)) *)
-  0x48; 0x89; 0x44; 0x24; 0x40;
-                           (* MOV (Memop Quadword (%% (rsp,64))) (% rax) *)
+  0x48; 0x89; 0x84; 0x24; 0xa0; 0x05; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,1440))) (% rax) *)
   0xb8; 0x01; 0x00; 0x00; 0x00;
                            (* MOV (% eax) (Imm32 (word 1)) *)
   0x31; 0xdb;              (* XOR (% ebx) (% ebx) *)
@@ -386,10 +386,10 @@ let edwards25519_scalarmuldouble_mc,edwards25519_scalarmuldouble_data =
   0x45; 0x31; 0xed;        (* XOR (% r13d) (% r13d) *)
   0x45; 0x31; 0xf6;        (* XOR (% r14d) (% r14d) *)
   0x45; 0x31; 0xff;        (* XOR (% r15d) (% r15d) *)
-  0x48; 0x8d; 0x2d; 0x71; 0x5a; 0x00; 0x00;
-                           (* LEA (% rbp) (Riprel (word 23153)) *)
-  0x48; 0x83; 0x7c; 0x24; 0x40; 0x01;
-                           (* CMP (Memop Quadword (%% (rsp,64))) (Imm8 (word 1)) *)
+  0x48; 0x8d; 0x2d; 0x48; 0x69; 0x00; 0x00;
+                           (* LEA (% rbp) (Riprel (word 26952)) *)
+  0x48; 0x83; 0xbc; 0x24; 0xa0; 0x05; 0x00; 0x00; 0x01;
+                           (* CMP (Memop Quadword (%% (rsp,1440))) (Imm8 (word 1)) *)
   0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
   0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
   0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
@@ -415,8 +415,8 @@ let edwards25519_scalarmuldouble_mc,edwards25519_scalarmuldouble_data =
   0x48; 0x8b; 0x75; 0x58;  (* MOV (% rsi) (Memop Quadword (%% (rbp,88))) *)
   0x4c; 0x0f; 0x44; 0xfe;  (* CMOVE (% r15) (% rsi) *)
   0x48; 0x83; 0xc5; 0x60;  (* ADD (% rbp) (Imm8 (word 96)) *)
-  0x48; 0x83; 0x7c; 0x24; 0x40; 0x02;
-                           (* CMP (Memop Quadword (%% (rsp,64))) (Imm8 (word 2)) *)
+  0x48; 0x83; 0xbc; 0x24; 0xa0; 0x05; 0x00; 0x00; 0x02;
+                           (* CMP (Memop Quadword (%% (rsp,1440))) (Imm8 (word 2)) *)
   0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
   0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
   0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
@@ -442,8 +442,8 @@ let edwards25519_scalarmuldouble_mc,edwards25519_scalarmuldouble_data =
   0x48; 0x8b; 0x75; 0x58;  (* MOV (% rsi) (Memop Quadword (%% (rbp,88))) *)
   0x4c; 0x0f; 0x44; 0xfe;  (* CMOVE (% r15) (% rsi) *)
   0x48; 0x83; 0xc5; 0x60;  (* ADD (% rbp) (Imm8 (word 96)) *)
-  0x48; 0x83; 0x7c; 0x24; 0x40; 0x03;
-                           (* CMP (Memop Quadword (%% (rsp,64))) (Imm8 (word 3)) *)
+  0x48; 0x83; 0xbc; 0x24; 0xa0; 0x05; 0x00; 0x00; 0x03;
+                           (* CMP (Memop Quadword (%% (rsp,1440))) (Imm8 (word 3)) *)
   0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
   0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
   0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
@@ -469,8 +469,8 @@ let edwards25519_scalarmuldouble_mc,edwards25519_scalarmuldouble_data =
   0x48; 0x8b; 0x75; 0x58;  (* MOV (% rsi) (Memop Quadword (%% (rbp,88))) *)
   0x4c; 0x0f; 0x44; 0xfe;  (* CMOVE (% r15) (% rsi) *)
   0x48; 0x83; 0xc5; 0x60;  (* ADD (% rbp) (Imm8 (word 96)) *)
-  0x48; 0x83; 0x7c; 0x24; 0x40; 0x04;
-                           (* CMP (Memop Quadword (%% (rsp,64))) (Imm8 (word 4)) *)
+  0x48; 0x83; 0xbc; 0x24; 0xa0; 0x05; 0x00; 0x00; 0x04;
+                           (* CMP (Memop Quadword (%% (rsp,1440))) (Imm8 (word 4)) *)
   0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
   0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
   0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
@@ -496,8 +496,8 @@ let edwards25519_scalarmuldouble_mc,edwards25519_scalarmuldouble_data =
   0x48; 0x8b; 0x75; 0x58;  (* MOV (% rsi) (Memop Quadword (%% (rbp,88))) *)
   0x4c; 0x0f; 0x44; 0xfe;  (* CMOVE (% r15) (% rsi) *)
   0x48; 0x83; 0xc5; 0x60;  (* ADD (% rbp) (Imm8 (word 96)) *)
-  0x48; 0x83; 0x7c; 0x24; 0x40; 0x05;
-                           (* CMP (Memop Quadword (%% (rsp,64))) (Imm8 (word 5)) *)
+  0x48; 0x83; 0xbc; 0x24; 0xa0; 0x05; 0x00; 0x00; 0x05;
+                           (* CMP (Memop Quadword (%% (rsp,1440))) (Imm8 (word 5)) *)
   0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
   0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
   0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
@@ -523,8 +523,8 @@ let edwards25519_scalarmuldouble_mc,edwards25519_scalarmuldouble_data =
   0x48; 0x8b; 0x75; 0x58;  (* MOV (% rsi) (Memop Quadword (%% (rbp,88))) *)
   0x4c; 0x0f; 0x44; 0xfe;  (* CMOVE (% r15) (% rsi) *)
   0x48; 0x83; 0xc5; 0x60;  (* ADD (% rbp) (Imm8 (word 96)) *)
-  0x48; 0x83; 0x7c; 0x24; 0x40; 0x06;
-                           (* CMP (Memop Quadword (%% (rsp,64))) (Imm8 (word 6)) *)
+  0x48; 0x83; 0xbc; 0x24; 0xa0; 0x05; 0x00; 0x00; 0x06;
+                           (* CMP (Memop Quadword (%% (rsp,1440))) (Imm8 (word 6)) *)
   0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
   0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
   0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
@@ -550,8 +550,8 @@ let edwards25519_scalarmuldouble_mc,edwards25519_scalarmuldouble_data =
   0x48; 0x8b; 0x75; 0x58;  (* MOV (% rsi) (Memop Quadword (%% (rbp,88))) *)
   0x4c; 0x0f; 0x44; 0xfe;  (* CMOVE (% r15) (% rsi) *)
   0x48; 0x83; 0xc5; 0x60;  (* ADD (% rbp) (Imm8 (word 96)) *)
-  0x48; 0x83; 0x7c; 0x24; 0x40; 0x07;
-                           (* CMP (Memop Quadword (%% (rsp,64))) (Imm8 (word 7)) *)
+  0x48; 0x83; 0xbc; 0x24; 0xa0; 0x05; 0x00; 0x00; 0x07;
+                           (* CMP (Memop Quadword (%% (rsp,1440))) (Imm8 (word 7)) *)
   0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
   0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
   0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
@@ -577,8 +577,8 @@ let edwards25519_scalarmuldouble_mc,edwards25519_scalarmuldouble_data =
   0x48; 0x8b; 0x75; 0x58;  (* MOV (% rsi) (Memop Quadword (%% (rbp,88))) *)
   0x4c; 0x0f; 0x44; 0xfe;  (* CMOVE (% r15) (% rsi) *)
   0x48; 0x83; 0xc5; 0x60;  (* ADD (% rbp) (Imm8 (word 96)) *)
-  0x48; 0x83; 0x7c; 0x24; 0x40; 0x08;
-                           (* CMP (Memop Quadword (%% (rsp,64))) (Imm8 (word 8)) *)
+  0x48; 0x83; 0xbc; 0x24; 0xa0; 0x05; 0x00; 0x00; 0x08;
+                           (* CMP (Memop Quadword (%% (rsp,1440))) (Imm8 (word 8)) *)
   0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
   0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
   0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
@@ -603,35 +603,35 @@ let edwards25519_scalarmuldouble_mc,edwards25519_scalarmuldouble_data =
   0x4c; 0x0f; 0x44; 0xf6;  (* CMOVE (% r14) (% rsi) *)
   0x48; 0x8b; 0x75; 0x58;  (* MOV (% rsi) (Memop Quadword (%% (rbp,88))) *)
   0x4c; 0x0f; 0x44; 0xfe;  (* CMOVE (% r15) (% rsi) *)
-  0x48; 0x89; 0x84; 0x24; 0x60; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,352))) (% rax) *)
-  0x48; 0x89; 0x9c; 0x24; 0x68; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,360))) (% rbx) *)
-  0x48; 0x89; 0x8c; 0x24; 0x70; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,368))) (% rcx) *)
-  0x48; 0x89; 0x94; 0x24; 0x78; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,376))) (% rdx) *)
-  0x4c; 0x89; 0x84; 0x24; 0x80; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,384))) (% r8) *)
-  0x4c; 0x89; 0x8c; 0x24; 0x88; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,392))) (% r9) *)
-  0x4c; 0x89; 0x94; 0x24; 0x90; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,400))) (% r10) *)
-  0x4c; 0x89; 0x9c; 0x24; 0x98; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,408))) (% r11) *)
-  0x4c; 0x89; 0xa4; 0x24; 0xa0; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,416))) (% r12) *)
-  0x4c; 0x89; 0xac; 0x24; 0xa8; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,424))) (% r13) *)
-  0x4c; 0x89; 0xb4; 0x24; 0xb0; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,432))) (% r14) *)
-  0x4c; 0x89; 0xbc; 0x24; 0xb8; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,440))) (% r15) *)
+  0x48; 0x89; 0x84; 0x24; 0xc0; 0x00; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,192))) (% rax) *)
+  0x48; 0x89; 0x9c; 0x24; 0xc8; 0x00; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,200))) (% rbx) *)
+  0x48; 0x89; 0x8c; 0x24; 0xd0; 0x00; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,208))) (% rcx) *)
+  0x48; 0x89; 0x94; 0x24; 0xd8; 0x00; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,216))) (% rdx) *)
+  0x4c; 0x89; 0x84; 0x24; 0xe0; 0x00; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,224))) (% r8) *)
+  0x4c; 0x89; 0x8c; 0x24; 0xe8; 0x00; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,232))) (% r9) *)
+  0x4c; 0x89; 0x94; 0x24; 0xf0; 0x00; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,240))) (% r10) *)
+  0x4c; 0x89; 0x9c; 0x24; 0xf8; 0x00; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,248))) (% r11) *)
+  0x4c; 0x89; 0xa4; 0x24; 0x00; 0x01; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,256))) (% r12) *)
+  0x4c; 0x89; 0xac; 0x24; 0x08; 0x01; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,264))) (% r13) *)
+  0x4c; 0x89; 0xb4; 0x24; 0x10; 0x01; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,272))) (% r14) *)
+  0x4c; 0x89; 0xbc; 0x24; 0x18; 0x01; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,280))) (% r15) *)
   0x48; 0x8b; 0x44; 0x24; 0x18;
                            (* MOV (% rax) (Memop Quadword (%% (rsp,24))) *)
   0x48; 0xc1; 0xe8; 0x3c;  (* SHR (% rax) (Imm8 (word 60)) *)
-  0x48; 0x89; 0x44; 0x24; 0x40;
-                           (* MOV (Memop Quadword (%% (rsp,64))) (% rax) *)
+  0x48; 0x89; 0x84; 0x24; 0xa0; 0x05; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,1440))) (% rax) *)
   0xb8; 0x01; 0x00; 0x00; 0x00;
                            (* MOV (% eax) (Imm32 (word 1)) *)
   0x31; 0xdb;              (* XOR (% ebx) (% ebx) *)
@@ -642,184 +642,184 @@ let edwards25519_scalarmuldouble_mc,edwards25519_scalarmuldouble_data =
   0x45; 0x31; 0xc9;        (* XOR (% r9d) (% r9d) *)
   0x45; 0x31; 0xd2;        (* XOR (% r10d) (% r10d) *)
   0x45; 0x31; 0xdb;        (* XOR (% r11d) (% r11d) *)
-  0x48; 0x8d; 0xac; 0x24; 0xe0; 0x01; 0x00; 0x00;
-                           (* LEA (% rbp) (%% (rsp,480)) *)
-  0x48; 0x83; 0x7c; 0x24; 0x40; 0x01;
-                           (* CMP (Memop Quadword (%% (rsp,64))) (Imm8 (word 1)) *)
-  0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
-  0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
-  0x48; 0x0f; 0x44; 0xde;  (* CMOVE (% rbx) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x10;  (* MOV (% rsi) (Memop Quadword (%% (rbp,16))) *)
-  0x48; 0x0f; 0x44; 0xce;  (* CMOVE (% rcx) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x18;  (* MOV (% rsi) (Memop Quadword (%% (rbp,24))) *)
-  0x48; 0x0f; 0x44; 0xd6;  (* CMOVE (% rdx) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x20;  (* MOV (% rsi) (Memop Quadword (%% (rbp,32))) *)
-  0x4c; 0x0f; 0x44; 0xc6;  (* CMOVE (% r8) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x28;  (* MOV (% rsi) (Memop Quadword (%% (rbp,40))) *)
-  0x4c; 0x0f; 0x44; 0xce;  (* CMOVE (% r9) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x30;  (* MOV (% rsi) (Memop Quadword (%% (rbp,48))) *)
-  0x4c; 0x0f; 0x44; 0xd6;  (* CMOVE (% r10) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x38;  (* MOV (% rsi) (Memop Quadword (%% (rbp,56))) *)
-  0x4c; 0x0f; 0x44; 0xde;  (* CMOVE (% r11) (% rsi) *)
-  0x48; 0x81; 0xc5; 0x80; 0x00; 0x00; 0x00;
-                           (* ADD (% rbp) (Imm32 (word 128)) *)
-  0x48; 0x83; 0x7c; 0x24; 0x40; 0x02;
-                           (* CMP (Memop Quadword (%% (rsp,64))) (Imm8 (word 2)) *)
-  0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
-  0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
-  0x48; 0x0f; 0x44; 0xde;  (* CMOVE (% rbx) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x10;  (* MOV (% rsi) (Memop Quadword (%% (rbp,16))) *)
-  0x48; 0x0f; 0x44; 0xce;  (* CMOVE (% rcx) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x18;  (* MOV (% rsi) (Memop Quadword (%% (rbp,24))) *)
-  0x48; 0x0f; 0x44; 0xd6;  (* CMOVE (% rdx) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x20;  (* MOV (% rsi) (Memop Quadword (%% (rbp,32))) *)
-  0x4c; 0x0f; 0x44; 0xc6;  (* CMOVE (% r8) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x28;  (* MOV (% rsi) (Memop Quadword (%% (rbp,40))) *)
-  0x4c; 0x0f; 0x44; 0xce;  (* CMOVE (% r9) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x30;  (* MOV (% rsi) (Memop Quadword (%% (rbp,48))) *)
-  0x4c; 0x0f; 0x44; 0xd6;  (* CMOVE (% r10) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x38;  (* MOV (% rsi) (Memop Quadword (%% (rbp,56))) *)
-  0x4c; 0x0f; 0x44; 0xde;  (* CMOVE (% r11) (% rsi) *)
-  0x48; 0x81; 0xc5; 0x80; 0x00; 0x00; 0x00;
-                           (* ADD (% rbp) (Imm32 (word 128)) *)
-  0x48; 0x83; 0x7c; 0x24; 0x40; 0x03;
-                           (* CMP (Memop Quadword (%% (rsp,64))) (Imm8 (word 3)) *)
-  0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
-  0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
-  0x48; 0x0f; 0x44; 0xde;  (* CMOVE (% rbx) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x10;  (* MOV (% rsi) (Memop Quadword (%% (rbp,16))) *)
-  0x48; 0x0f; 0x44; 0xce;  (* CMOVE (% rcx) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x18;  (* MOV (% rsi) (Memop Quadword (%% (rbp,24))) *)
-  0x48; 0x0f; 0x44; 0xd6;  (* CMOVE (% rdx) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x20;  (* MOV (% rsi) (Memop Quadword (%% (rbp,32))) *)
-  0x4c; 0x0f; 0x44; 0xc6;  (* CMOVE (% r8) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x28;  (* MOV (% rsi) (Memop Quadword (%% (rbp,40))) *)
-  0x4c; 0x0f; 0x44; 0xce;  (* CMOVE (% r9) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x30;  (* MOV (% rsi) (Memop Quadword (%% (rbp,48))) *)
-  0x4c; 0x0f; 0x44; 0xd6;  (* CMOVE (% r10) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x38;  (* MOV (% rsi) (Memop Quadword (%% (rbp,56))) *)
-  0x4c; 0x0f; 0x44; 0xde;  (* CMOVE (% r11) (% rsi) *)
-  0x48; 0x81; 0xc5; 0x80; 0x00; 0x00; 0x00;
-                           (* ADD (% rbp) (Imm32 (word 128)) *)
-  0x48; 0x83; 0x7c; 0x24; 0x40; 0x04;
-                           (* CMP (Memop Quadword (%% (rsp,64))) (Imm8 (word 4)) *)
-  0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
-  0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
-  0x48; 0x0f; 0x44; 0xde;  (* CMOVE (% rbx) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x10;  (* MOV (% rsi) (Memop Quadword (%% (rbp,16))) *)
-  0x48; 0x0f; 0x44; 0xce;  (* CMOVE (% rcx) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x18;  (* MOV (% rsi) (Memop Quadword (%% (rbp,24))) *)
-  0x48; 0x0f; 0x44; 0xd6;  (* CMOVE (% rdx) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x20;  (* MOV (% rsi) (Memop Quadword (%% (rbp,32))) *)
-  0x4c; 0x0f; 0x44; 0xc6;  (* CMOVE (% r8) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x28;  (* MOV (% rsi) (Memop Quadword (%% (rbp,40))) *)
-  0x4c; 0x0f; 0x44; 0xce;  (* CMOVE (% r9) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x30;  (* MOV (% rsi) (Memop Quadword (%% (rbp,48))) *)
-  0x4c; 0x0f; 0x44; 0xd6;  (* CMOVE (% r10) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x38;  (* MOV (% rsi) (Memop Quadword (%% (rbp,56))) *)
-  0x4c; 0x0f; 0x44; 0xde;  (* CMOVE (% r11) (% rsi) *)
-  0x48; 0x81; 0xc5; 0x80; 0x00; 0x00; 0x00;
-                           (* ADD (% rbp) (Imm32 (word 128)) *)
-  0x48; 0x83; 0x7c; 0x24; 0x40; 0x05;
-                           (* CMP (Memop Quadword (%% (rsp,64))) (Imm8 (word 5)) *)
-  0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
-  0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
-  0x48; 0x0f; 0x44; 0xde;  (* CMOVE (% rbx) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x10;  (* MOV (% rsi) (Memop Quadword (%% (rbp,16))) *)
-  0x48; 0x0f; 0x44; 0xce;  (* CMOVE (% rcx) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x18;  (* MOV (% rsi) (Memop Quadword (%% (rbp,24))) *)
-  0x48; 0x0f; 0x44; 0xd6;  (* CMOVE (% rdx) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x20;  (* MOV (% rsi) (Memop Quadword (%% (rbp,32))) *)
-  0x4c; 0x0f; 0x44; 0xc6;  (* CMOVE (% r8) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x28;  (* MOV (% rsi) (Memop Quadword (%% (rbp,40))) *)
-  0x4c; 0x0f; 0x44; 0xce;  (* CMOVE (% r9) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x30;  (* MOV (% rsi) (Memop Quadword (%% (rbp,48))) *)
-  0x4c; 0x0f; 0x44; 0xd6;  (* CMOVE (% r10) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x38;  (* MOV (% rsi) (Memop Quadword (%% (rbp,56))) *)
-  0x4c; 0x0f; 0x44; 0xde;  (* CMOVE (% r11) (% rsi) *)
-  0x48; 0x81; 0xc5; 0x80; 0x00; 0x00; 0x00;
-                           (* ADD (% rbp) (Imm32 (word 128)) *)
-  0x48; 0x83; 0x7c; 0x24; 0x40; 0x06;
-                           (* CMP (Memop Quadword (%% (rsp,64))) (Imm8 (word 6)) *)
-  0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
-  0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
-  0x48; 0x0f; 0x44; 0xde;  (* CMOVE (% rbx) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x10;  (* MOV (% rsi) (Memop Quadword (%% (rbp,16))) *)
-  0x48; 0x0f; 0x44; 0xce;  (* CMOVE (% rcx) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x18;  (* MOV (% rsi) (Memop Quadword (%% (rbp,24))) *)
-  0x48; 0x0f; 0x44; 0xd6;  (* CMOVE (% rdx) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x20;  (* MOV (% rsi) (Memop Quadword (%% (rbp,32))) *)
-  0x4c; 0x0f; 0x44; 0xc6;  (* CMOVE (% r8) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x28;  (* MOV (% rsi) (Memop Quadword (%% (rbp,40))) *)
-  0x4c; 0x0f; 0x44; 0xce;  (* CMOVE (% r9) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x30;  (* MOV (% rsi) (Memop Quadword (%% (rbp,48))) *)
-  0x4c; 0x0f; 0x44; 0xd6;  (* CMOVE (% r10) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x38;  (* MOV (% rsi) (Memop Quadword (%% (rbp,56))) *)
-  0x4c; 0x0f; 0x44; 0xde;  (* CMOVE (% r11) (% rsi) *)
-  0x48; 0x81; 0xc5; 0x80; 0x00; 0x00; 0x00;
-                           (* ADD (% rbp) (Imm32 (word 128)) *)
-  0x48; 0x83; 0x7c; 0x24; 0x40; 0x07;
-                           (* CMP (Memop Quadword (%% (rsp,64))) (Imm8 (word 7)) *)
-  0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
-  0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
-  0x48; 0x0f; 0x44; 0xde;  (* CMOVE (% rbx) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x10;  (* MOV (% rsi) (Memop Quadword (%% (rbp,16))) *)
-  0x48; 0x0f; 0x44; 0xce;  (* CMOVE (% rcx) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x18;  (* MOV (% rsi) (Memop Quadword (%% (rbp,24))) *)
-  0x48; 0x0f; 0x44; 0xd6;  (* CMOVE (% rdx) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x20;  (* MOV (% rsi) (Memop Quadword (%% (rbp,32))) *)
-  0x4c; 0x0f; 0x44; 0xc6;  (* CMOVE (% r8) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x28;  (* MOV (% rsi) (Memop Quadword (%% (rbp,40))) *)
-  0x4c; 0x0f; 0x44; 0xce;  (* CMOVE (% r9) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x30;  (* MOV (% rsi) (Memop Quadword (%% (rbp,48))) *)
-  0x4c; 0x0f; 0x44; 0xd6;  (* CMOVE (% r10) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x38;  (* MOV (% rsi) (Memop Quadword (%% (rbp,56))) *)
-  0x4c; 0x0f; 0x44; 0xde;  (* CMOVE (% r11) (% rsi) *)
-  0x48; 0x81; 0xc5; 0x80; 0x00; 0x00; 0x00;
-                           (* ADD (% rbp) (Imm32 (word 128)) *)
-  0x48; 0x83; 0x7c; 0x24; 0x40; 0x08;
-                           (* CMP (Memop Quadword (%% (rsp,64))) (Imm8 (word 8)) *)
-  0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
-  0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
-  0x48; 0x0f; 0x44; 0xde;  (* CMOVE (% rbx) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x10;  (* MOV (% rsi) (Memop Quadword (%% (rbp,16))) *)
-  0x48; 0x0f; 0x44; 0xce;  (* CMOVE (% rcx) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x18;  (* MOV (% rsi) (Memop Quadword (%% (rbp,24))) *)
-  0x48; 0x0f; 0x44; 0xd6;  (* CMOVE (% rdx) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x20;  (* MOV (% rsi) (Memop Quadword (%% (rbp,32))) *)
-  0x4c; 0x0f; 0x44; 0xc6;  (* CMOVE (% r8) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x28;  (* MOV (% rsi) (Memop Quadword (%% (rbp,40))) *)
-  0x4c; 0x0f; 0x44; 0xce;  (* CMOVE (% r9) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x30;  (* MOV (% rsi) (Memop Quadword (%% (rbp,48))) *)
-  0x4c; 0x0f; 0x44; 0xd6;  (* CMOVE (% r10) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x38;  (* MOV (% rsi) (Memop Quadword (%% (rbp,56))) *)
-  0x4c; 0x0f; 0x44; 0xde;  (* CMOVE (% r11) (% rsi) *)
-  0x48; 0x89; 0x84; 0x24; 0x00; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,256))) (% rax) *)
-  0x48; 0x89; 0x9c; 0x24; 0x08; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,264))) (% rbx) *)
-  0x48; 0x89; 0x8c; 0x24; 0x10; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,272))) (% rcx) *)
-  0x48; 0x89; 0x94; 0x24; 0x18; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,280))) (% rdx) *)
-  0x4c; 0x89; 0x84; 0x24; 0x20; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,288))) (% r8) *)
-  0x4c; 0x89; 0x8c; 0x24; 0x28; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,296))) (% r9) *)
-  0x4c; 0x89; 0x94; 0x24; 0x30; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,304))) (% r10) *)
-  0x4c; 0x89; 0x9c; 0x24; 0x38; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,312))) (% r11) *)
   0x48; 0x8d; 0xac; 0x24; 0xc0; 0x01; 0x00; 0x00;
                            (* LEA (% rbp) (%% (rsp,448)) *)
+  0x48; 0x83; 0xbc; 0x24; 0xa0; 0x05; 0x00; 0x00; 0x01;
+                           (* CMP (Memop Quadword (%% (rsp,1440))) (Imm8 (word 1)) *)
+  0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
+  0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
+  0x48; 0x0f; 0x44; 0xde;  (* CMOVE (% rbx) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x10;  (* MOV (% rsi) (Memop Quadword (%% (rbp,16))) *)
+  0x48; 0x0f; 0x44; 0xce;  (* CMOVE (% rcx) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x18;  (* MOV (% rsi) (Memop Quadword (%% (rbp,24))) *)
+  0x48; 0x0f; 0x44; 0xd6;  (* CMOVE (% rdx) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x20;  (* MOV (% rsi) (Memop Quadword (%% (rbp,32))) *)
+  0x4c; 0x0f; 0x44; 0xc6;  (* CMOVE (% r8) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x28;  (* MOV (% rsi) (Memop Quadword (%% (rbp,40))) *)
+  0x4c; 0x0f; 0x44; 0xce;  (* CMOVE (% r9) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x30;  (* MOV (% rsi) (Memop Quadword (%% (rbp,48))) *)
+  0x4c; 0x0f; 0x44; 0xd6;  (* CMOVE (% r10) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x38;  (* MOV (% rsi) (Memop Quadword (%% (rbp,56))) *)
+  0x4c; 0x0f; 0x44; 0xde;  (* CMOVE (% r11) (% rsi) *)
+  0x48; 0x81; 0xc5; 0x80; 0x00; 0x00; 0x00;
+                           (* ADD (% rbp) (Imm32 (word 128)) *)
+  0x48; 0x83; 0xbc; 0x24; 0xa0; 0x05; 0x00; 0x00; 0x02;
+                           (* CMP (Memop Quadword (%% (rsp,1440))) (Imm8 (word 2)) *)
+  0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
+  0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
+  0x48; 0x0f; 0x44; 0xde;  (* CMOVE (% rbx) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x10;  (* MOV (% rsi) (Memop Quadword (%% (rbp,16))) *)
+  0x48; 0x0f; 0x44; 0xce;  (* CMOVE (% rcx) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x18;  (* MOV (% rsi) (Memop Quadword (%% (rbp,24))) *)
+  0x48; 0x0f; 0x44; 0xd6;  (* CMOVE (% rdx) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x20;  (* MOV (% rsi) (Memop Quadword (%% (rbp,32))) *)
+  0x4c; 0x0f; 0x44; 0xc6;  (* CMOVE (% r8) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x28;  (* MOV (% rsi) (Memop Quadword (%% (rbp,40))) *)
+  0x4c; 0x0f; 0x44; 0xce;  (* CMOVE (% r9) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x30;  (* MOV (% rsi) (Memop Quadword (%% (rbp,48))) *)
+  0x4c; 0x0f; 0x44; 0xd6;  (* CMOVE (% r10) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x38;  (* MOV (% rsi) (Memop Quadword (%% (rbp,56))) *)
+  0x4c; 0x0f; 0x44; 0xde;  (* CMOVE (% r11) (% rsi) *)
+  0x48; 0x81; 0xc5; 0x80; 0x00; 0x00; 0x00;
+                           (* ADD (% rbp) (Imm32 (word 128)) *)
+  0x48; 0x83; 0xbc; 0x24; 0xa0; 0x05; 0x00; 0x00; 0x03;
+                           (* CMP (Memop Quadword (%% (rsp,1440))) (Imm8 (word 3)) *)
+  0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
+  0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
+  0x48; 0x0f; 0x44; 0xde;  (* CMOVE (% rbx) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x10;  (* MOV (% rsi) (Memop Quadword (%% (rbp,16))) *)
+  0x48; 0x0f; 0x44; 0xce;  (* CMOVE (% rcx) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x18;  (* MOV (% rsi) (Memop Quadword (%% (rbp,24))) *)
+  0x48; 0x0f; 0x44; 0xd6;  (* CMOVE (% rdx) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x20;  (* MOV (% rsi) (Memop Quadword (%% (rbp,32))) *)
+  0x4c; 0x0f; 0x44; 0xc6;  (* CMOVE (% r8) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x28;  (* MOV (% rsi) (Memop Quadword (%% (rbp,40))) *)
+  0x4c; 0x0f; 0x44; 0xce;  (* CMOVE (% r9) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x30;  (* MOV (% rsi) (Memop Quadword (%% (rbp,48))) *)
+  0x4c; 0x0f; 0x44; 0xd6;  (* CMOVE (% r10) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x38;  (* MOV (% rsi) (Memop Quadword (%% (rbp,56))) *)
+  0x4c; 0x0f; 0x44; 0xde;  (* CMOVE (% r11) (% rsi) *)
+  0x48; 0x81; 0xc5; 0x80; 0x00; 0x00; 0x00;
+                           (* ADD (% rbp) (Imm32 (word 128)) *)
+  0x48; 0x83; 0xbc; 0x24; 0xa0; 0x05; 0x00; 0x00; 0x04;
+                           (* CMP (Memop Quadword (%% (rsp,1440))) (Imm8 (word 4)) *)
+  0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
+  0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
+  0x48; 0x0f; 0x44; 0xde;  (* CMOVE (% rbx) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x10;  (* MOV (% rsi) (Memop Quadword (%% (rbp,16))) *)
+  0x48; 0x0f; 0x44; 0xce;  (* CMOVE (% rcx) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x18;  (* MOV (% rsi) (Memop Quadword (%% (rbp,24))) *)
+  0x48; 0x0f; 0x44; 0xd6;  (* CMOVE (% rdx) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x20;  (* MOV (% rsi) (Memop Quadword (%% (rbp,32))) *)
+  0x4c; 0x0f; 0x44; 0xc6;  (* CMOVE (% r8) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x28;  (* MOV (% rsi) (Memop Quadword (%% (rbp,40))) *)
+  0x4c; 0x0f; 0x44; 0xce;  (* CMOVE (% r9) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x30;  (* MOV (% rsi) (Memop Quadword (%% (rbp,48))) *)
+  0x4c; 0x0f; 0x44; 0xd6;  (* CMOVE (% r10) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x38;  (* MOV (% rsi) (Memop Quadword (%% (rbp,56))) *)
+  0x4c; 0x0f; 0x44; 0xde;  (* CMOVE (% r11) (% rsi) *)
+  0x48; 0x81; 0xc5; 0x80; 0x00; 0x00; 0x00;
+                           (* ADD (% rbp) (Imm32 (word 128)) *)
+  0x48; 0x83; 0xbc; 0x24; 0xa0; 0x05; 0x00; 0x00; 0x05;
+                           (* CMP (Memop Quadword (%% (rsp,1440))) (Imm8 (word 5)) *)
+  0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
+  0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
+  0x48; 0x0f; 0x44; 0xde;  (* CMOVE (% rbx) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x10;  (* MOV (% rsi) (Memop Quadword (%% (rbp,16))) *)
+  0x48; 0x0f; 0x44; 0xce;  (* CMOVE (% rcx) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x18;  (* MOV (% rsi) (Memop Quadword (%% (rbp,24))) *)
+  0x48; 0x0f; 0x44; 0xd6;  (* CMOVE (% rdx) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x20;  (* MOV (% rsi) (Memop Quadword (%% (rbp,32))) *)
+  0x4c; 0x0f; 0x44; 0xc6;  (* CMOVE (% r8) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x28;  (* MOV (% rsi) (Memop Quadword (%% (rbp,40))) *)
+  0x4c; 0x0f; 0x44; 0xce;  (* CMOVE (% r9) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x30;  (* MOV (% rsi) (Memop Quadword (%% (rbp,48))) *)
+  0x4c; 0x0f; 0x44; 0xd6;  (* CMOVE (% r10) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x38;  (* MOV (% rsi) (Memop Quadword (%% (rbp,56))) *)
+  0x4c; 0x0f; 0x44; 0xde;  (* CMOVE (% r11) (% rsi) *)
+  0x48; 0x81; 0xc5; 0x80; 0x00; 0x00; 0x00;
+                           (* ADD (% rbp) (Imm32 (word 128)) *)
+  0x48; 0x83; 0xbc; 0x24; 0xa0; 0x05; 0x00; 0x00; 0x06;
+                           (* CMP (Memop Quadword (%% (rsp,1440))) (Imm8 (word 6)) *)
+  0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
+  0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
+  0x48; 0x0f; 0x44; 0xde;  (* CMOVE (% rbx) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x10;  (* MOV (% rsi) (Memop Quadword (%% (rbp,16))) *)
+  0x48; 0x0f; 0x44; 0xce;  (* CMOVE (% rcx) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x18;  (* MOV (% rsi) (Memop Quadword (%% (rbp,24))) *)
+  0x48; 0x0f; 0x44; 0xd6;  (* CMOVE (% rdx) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x20;  (* MOV (% rsi) (Memop Quadword (%% (rbp,32))) *)
+  0x4c; 0x0f; 0x44; 0xc6;  (* CMOVE (% r8) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x28;  (* MOV (% rsi) (Memop Quadword (%% (rbp,40))) *)
+  0x4c; 0x0f; 0x44; 0xce;  (* CMOVE (% r9) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x30;  (* MOV (% rsi) (Memop Quadword (%% (rbp,48))) *)
+  0x4c; 0x0f; 0x44; 0xd6;  (* CMOVE (% r10) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x38;  (* MOV (% rsi) (Memop Quadword (%% (rbp,56))) *)
+  0x4c; 0x0f; 0x44; 0xde;  (* CMOVE (% r11) (% rsi) *)
+  0x48; 0x81; 0xc5; 0x80; 0x00; 0x00; 0x00;
+                           (* ADD (% rbp) (Imm32 (word 128)) *)
+  0x48; 0x83; 0xbc; 0x24; 0xa0; 0x05; 0x00; 0x00; 0x07;
+                           (* CMP (Memop Quadword (%% (rsp,1440))) (Imm8 (word 7)) *)
+  0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
+  0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
+  0x48; 0x0f; 0x44; 0xde;  (* CMOVE (% rbx) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x10;  (* MOV (% rsi) (Memop Quadword (%% (rbp,16))) *)
+  0x48; 0x0f; 0x44; 0xce;  (* CMOVE (% rcx) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x18;  (* MOV (% rsi) (Memop Quadword (%% (rbp,24))) *)
+  0x48; 0x0f; 0x44; 0xd6;  (* CMOVE (% rdx) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x20;  (* MOV (% rsi) (Memop Quadword (%% (rbp,32))) *)
+  0x4c; 0x0f; 0x44; 0xc6;  (* CMOVE (% r8) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x28;  (* MOV (% rsi) (Memop Quadword (%% (rbp,40))) *)
+  0x4c; 0x0f; 0x44; 0xce;  (* CMOVE (% r9) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x30;  (* MOV (% rsi) (Memop Quadword (%% (rbp,48))) *)
+  0x4c; 0x0f; 0x44; 0xd6;  (* CMOVE (% r10) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x38;  (* MOV (% rsi) (Memop Quadword (%% (rbp,56))) *)
+  0x4c; 0x0f; 0x44; 0xde;  (* CMOVE (% r11) (% rsi) *)
+  0x48; 0x81; 0xc5; 0x80; 0x00; 0x00; 0x00;
+                           (* ADD (% rbp) (Imm32 (word 128)) *)
+  0x48; 0x83; 0xbc; 0x24; 0xa0; 0x05; 0x00; 0x00; 0x08;
+                           (* CMP (Memop Quadword (%% (rsp,1440))) (Imm8 (word 8)) *)
+  0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
+  0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
+  0x48; 0x0f; 0x44; 0xde;  (* CMOVE (% rbx) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x10;  (* MOV (% rsi) (Memop Quadword (%% (rbp,16))) *)
+  0x48; 0x0f; 0x44; 0xce;  (* CMOVE (% rcx) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x18;  (* MOV (% rsi) (Memop Quadword (%% (rbp,24))) *)
+  0x48; 0x0f; 0x44; 0xd6;  (* CMOVE (% rdx) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x20;  (* MOV (% rsi) (Memop Quadword (%% (rbp,32))) *)
+  0x4c; 0x0f; 0x44; 0xc6;  (* CMOVE (% r8) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x28;  (* MOV (% rsi) (Memop Quadword (%% (rbp,40))) *)
+  0x4c; 0x0f; 0x44; 0xce;  (* CMOVE (% r9) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x30;  (* MOV (% rsi) (Memop Quadword (%% (rbp,48))) *)
+  0x4c; 0x0f; 0x44; 0xd6;  (* CMOVE (% r10) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x38;  (* MOV (% rsi) (Memop Quadword (%% (rbp,56))) *)
+  0x4c; 0x0f; 0x44; 0xde;  (* CMOVE (% r11) (% rsi) *)
+  0x48; 0x89; 0x44; 0x24; 0x60;
+                           (* MOV (Memop Quadword (%% (rsp,96))) (% rax) *)
+  0x48; 0x89; 0x5c; 0x24; 0x68;
+                           (* MOV (Memop Quadword (%% (rsp,104))) (% rbx) *)
+  0x48; 0x89; 0x4c; 0x24; 0x70;
+                           (* MOV (Memop Quadword (%% (rsp,112))) (% rcx) *)
+  0x48; 0x89; 0x54; 0x24; 0x78;
+                           (* MOV (Memop Quadword (%% (rsp,120))) (% rdx) *)
+  0x4c; 0x89; 0x84; 0x24; 0x80; 0x00; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,128))) (% r8) *)
+  0x4c; 0x89; 0x8c; 0x24; 0x88; 0x00; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,136))) (% r9) *)
+  0x4c; 0x89; 0x94; 0x24; 0x90; 0x00; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,144))) (% r10) *)
+  0x4c; 0x89; 0x9c; 0x24; 0x98; 0x00; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,152))) (% r11) *)
+  0x48; 0x8d; 0xac; 0x24; 0xa0; 0x01; 0x00; 0x00;
+                           (* LEA (% rbp) (%% (rsp,416)) *)
   0x31; 0xc0;              (* XOR (% eax) (% eax) *)
   0x31; 0xdb;              (* XOR (% ebx) (% ebx) *)
   0x31; 0xc9;              (* XOR (% ecx) (% ecx) *)
@@ -828,8 +828,8 @@ let edwards25519_scalarmuldouble_mc,edwards25519_scalarmuldouble_data =
   0x45; 0x31; 0xc9;        (* XOR (% r9d) (% r9d) *)
   0x45; 0x31; 0xd2;        (* XOR (% r10d) (% r10d) *)
   0x45; 0x31; 0xdb;        (* XOR (% r11d) (% r11d) *)
-  0x48; 0x83; 0x7c; 0x24; 0x40; 0x01;
-                           (* CMP (Memop Quadword (%% (rsp,64))) (Imm8 (word 1)) *)
+  0x48; 0x83; 0xbc; 0x24; 0xa0; 0x05; 0x00; 0x00; 0x01;
+                           (* CMP (Memop Quadword (%% (rsp,1440))) (Imm8 (word 1)) *)
   0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
   0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
   0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
@@ -848,8 +848,8 @@ let edwards25519_scalarmuldouble_mc,edwards25519_scalarmuldouble_data =
   0x4c; 0x0f; 0x44; 0xde;  (* CMOVE (% r11) (% rsi) *)
   0x48; 0x81; 0xc5; 0x80; 0x00; 0x00; 0x00;
                            (* ADD (% rbp) (Imm32 (word 128)) *)
-  0x48; 0x83; 0x7c; 0x24; 0x40; 0x02;
-                           (* CMP (Memop Quadword (%% (rsp,64))) (Imm8 (word 2)) *)
+  0x48; 0x83; 0xbc; 0x24; 0xa0; 0x05; 0x00; 0x00; 0x02;
+                           (* CMP (Memop Quadword (%% (rsp,1440))) (Imm8 (word 2)) *)
   0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
   0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
   0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
@@ -868,8 +868,8 @@ let edwards25519_scalarmuldouble_mc,edwards25519_scalarmuldouble_data =
   0x4c; 0x0f; 0x44; 0xde;  (* CMOVE (% r11) (% rsi) *)
   0x48; 0x81; 0xc5; 0x80; 0x00; 0x00; 0x00;
                            (* ADD (% rbp) (Imm32 (word 128)) *)
-  0x48; 0x83; 0x7c; 0x24; 0x40; 0x03;
-                           (* CMP (Memop Quadword (%% (rsp,64))) (Imm8 (word 3)) *)
+  0x48; 0x83; 0xbc; 0x24; 0xa0; 0x05; 0x00; 0x00; 0x03;
+                           (* CMP (Memop Quadword (%% (rsp,1440))) (Imm8 (word 3)) *)
   0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
   0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
   0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
@@ -888,8 +888,8 @@ let edwards25519_scalarmuldouble_mc,edwards25519_scalarmuldouble_data =
   0x4c; 0x0f; 0x44; 0xde;  (* CMOVE (% r11) (% rsi) *)
   0x48; 0x81; 0xc5; 0x80; 0x00; 0x00; 0x00;
                            (* ADD (% rbp) (Imm32 (word 128)) *)
-  0x48; 0x83; 0x7c; 0x24; 0x40; 0x04;
-                           (* CMP (Memop Quadword (%% (rsp,64))) (Imm8 (word 4)) *)
+  0x48; 0x83; 0xbc; 0x24; 0xa0; 0x05; 0x00; 0x00; 0x04;
+                           (* CMP (Memop Quadword (%% (rsp,1440))) (Imm8 (word 4)) *)
   0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
   0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
   0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
@@ -908,8 +908,8 @@ let edwards25519_scalarmuldouble_mc,edwards25519_scalarmuldouble_data =
   0x4c; 0x0f; 0x44; 0xde;  (* CMOVE (% r11) (% rsi) *)
   0x48; 0x81; 0xc5; 0x80; 0x00; 0x00; 0x00;
                            (* ADD (% rbp) (Imm32 (word 128)) *)
-  0x48; 0x83; 0x7c; 0x24; 0x40; 0x05;
-                           (* CMP (Memop Quadword (%% (rsp,64))) (Imm8 (word 5)) *)
+  0x48; 0x83; 0xbc; 0x24; 0xa0; 0x05; 0x00; 0x00; 0x05;
+                           (* CMP (Memop Quadword (%% (rsp,1440))) (Imm8 (word 5)) *)
   0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
   0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
   0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
@@ -928,8 +928,8 @@ let edwards25519_scalarmuldouble_mc,edwards25519_scalarmuldouble_data =
   0x4c; 0x0f; 0x44; 0xde;  (* CMOVE (% r11) (% rsi) *)
   0x48; 0x81; 0xc5; 0x80; 0x00; 0x00; 0x00;
                            (* ADD (% rbp) (Imm32 (word 128)) *)
-  0x48; 0x83; 0x7c; 0x24; 0x40; 0x06;
-                           (* CMP (Memop Quadword (%% (rsp,64))) (Imm8 (word 6)) *)
+  0x48; 0x83; 0xbc; 0x24; 0xa0; 0x05; 0x00; 0x00; 0x06;
+                           (* CMP (Memop Quadword (%% (rsp,1440))) (Imm8 (word 6)) *)
   0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
   0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
   0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
@@ -948,8 +948,8 @@ let edwards25519_scalarmuldouble_mc,edwards25519_scalarmuldouble_data =
   0x4c; 0x0f; 0x44; 0xde;  (* CMOVE (% r11) (% rsi) *)
   0x48; 0x81; 0xc5; 0x80; 0x00; 0x00; 0x00;
                            (* ADD (% rbp) (Imm32 (word 128)) *)
-  0x48; 0x83; 0x7c; 0x24; 0x40; 0x07;
-                           (* CMP (Memop Quadword (%% (rsp,64))) (Imm8 (word 7)) *)
+  0x48; 0x83; 0xbc; 0x24; 0xa0; 0x05; 0x00; 0x00; 0x07;
+                           (* CMP (Memop Quadword (%% (rsp,1440))) (Imm8 (word 7)) *)
   0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
   0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
   0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
@@ -968,8 +968,8 @@ let edwards25519_scalarmuldouble_mc,edwards25519_scalarmuldouble_data =
   0x4c; 0x0f; 0x44; 0xde;  (* CMOVE (% r11) (% rsi) *)
   0x48; 0x81; 0xc5; 0x80; 0x00; 0x00; 0x00;
                            (* ADD (% rbp) (Imm32 (word 128)) *)
-  0x48; 0x83; 0x7c; 0x24; 0x40; 0x08;
-                           (* CMP (Memop Quadword (%% (rsp,64))) (Imm8 (word 8)) *)
+  0x48; 0x83; 0xbc; 0x24; 0xa0; 0x05; 0x00; 0x00; 0x08;
+                           (* CMP (Memop Quadword (%% (rsp,1440))) (Imm8 (word 8)) *)
   0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
   0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
   0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
@@ -986,43 +986,43 @@ let edwards25519_scalarmuldouble_mc,edwards25519_scalarmuldouble_data =
   0x4c; 0x0f; 0x44; 0xd6;  (* CMOVE (% r10) (% rsi) *)
   0x48; 0x8b; 0x75; 0x78;  (* MOV (% rsi) (Memop Quadword (%% (rbp,120))) *)
   0x4c; 0x0f; 0x44; 0xde;  (* CMOVE (% r11) (% rsi) *)
-  0x48; 0x89; 0x84; 0x24; 0xe0; 0x00; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,224))) (% rax) *)
-  0x48; 0x89; 0x9c; 0x24; 0xe8; 0x00; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,232))) (% rbx) *)
-  0x48; 0x89; 0x8c; 0x24; 0xf0; 0x00; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,240))) (% rcx) *)
-  0x48; 0x89; 0x94; 0x24; 0xf8; 0x00; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,248))) (% rdx) *)
-  0x4c; 0x89; 0x84; 0x24; 0x40; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,320))) (% r8) *)
-  0x4c; 0x89; 0x8c; 0x24; 0x48; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,328))) (% r9) *)
-  0x4c; 0x89; 0x94; 0x24; 0x50; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,336))) (% r10) *)
-  0x4c; 0x89; 0x9c; 0x24; 0x58; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,344))) (% r11) *)
-  0x48; 0x8d; 0x7c; 0x24; 0x60;
-                           (* LEA (% rdi) (%% (rsp,96)) *)
-  0x48; 0x8d; 0xb4; 0x24; 0xe0; 0x00; 0x00; 0x00;
-                           (* LEA (% rsi) (%% (rsp,224)) *)
-  0x48; 0x8d; 0xac; 0x24; 0x60; 0x01; 0x00; 0x00;
-                           (* LEA (% rbp) (%% (rsp,352)) *)
-  0xe8; 0x17; 0x42; 0x00; 0x00;
-                           (* CALL (Imm32 (word 16919)) *)
-  0x48; 0x8b; 0x44; 0x24; 0x50;
-                           (* MOV (% rax) (Memop Quadword (%% (rsp,80))) *)
+  0x48; 0x89; 0x44; 0x24; 0x40;
+                           (* MOV (Memop Quadword (%% (rsp,64))) (% rax) *)
+  0x48; 0x89; 0x5c; 0x24; 0x48;
+                           (* MOV (Memop Quadword (%% (rsp,72))) (% rbx) *)
+  0x48; 0x89; 0x4c; 0x24; 0x50;
+                           (* MOV (Memop Quadword (%% (rsp,80))) (% rcx) *)
+  0x48; 0x89; 0x54; 0x24; 0x58;
+                           (* MOV (Memop Quadword (%% (rsp,88))) (% rdx) *)
+  0x4c; 0x89; 0x84; 0x24; 0xa0; 0x00; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,160))) (% r8) *)
+  0x4c; 0x89; 0x8c; 0x24; 0xa8; 0x00; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,168))) (% r9) *)
+  0x4c; 0x89; 0x94; 0x24; 0xb0; 0x00; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,176))) (% r10) *)
+  0x4c; 0x89; 0x9c; 0x24; 0xb8; 0x00; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,184))) (% r11) *)
+  0x48; 0x8d; 0xbc; 0x24; 0x20; 0x01; 0x00; 0x00;
+                           (* LEA (% rdi) (%% (rsp,288)) *)
+  0x48; 0x8d; 0x74; 0x24; 0x40;
+                           (* LEA (% rsi) (%% (rsp,64)) *)
+  0x48; 0x8d; 0xac; 0x24; 0xc0; 0x00; 0x00; 0x00;
+                           (* LEA (% rbp) (%% (rsp,192)) *)
+  0xe8; 0xdb; 0x50; 0x00; 0x00;
+                           (* CALL (Imm32 (word 20699)) *)
+  0x48; 0x8b; 0x84; 0x24; 0xb0; 0x05; 0x00; 0x00;
+                           (* MOV (% rax) (Memop Quadword (%% (rsp,1456))) *)
   0x48; 0x83; 0xe8; 0x04;  (* SUB (% rax) (Imm8 (word 4)) *)
-  0x48; 0x89; 0x44; 0x24; 0x50;
-                           (* MOV (Memop Quadword (%% (rsp,80))) (% rax) *)
-  0x48; 0x8d; 0x7c; 0x24; 0x60;
-                           (* LEA (% rdi) (%% (rsp,96)) *)
-  0x48; 0x8d; 0x74; 0x24; 0x60;
-                           (* LEA (% rsi) (%% (rsp,96)) *)
-  0xe8; 0x4a; 0x22; 0x00; 0x00;
-                           (* CALL (Imm32 (word 8778)) *)
-  0x48; 0x8b; 0x44; 0x24; 0x50;
-                           (* MOV (% rax) (Memop Quadword (%% (rsp,80))) *)
+  0x48; 0x89; 0x84; 0x24; 0xb0; 0x05; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,1456))) (% rax) *)
+  0x48; 0x8d; 0xbc; 0x24; 0x20; 0x01; 0x00; 0x00;
+                           (* LEA (% rdi) (%% (rsp,288)) *)
+  0x48; 0x8d; 0xb4; 0x24; 0x20; 0x01; 0x00; 0x00;
+                           (* LEA (% rsi) (%% (rsp,288)) *)
+  0xe8; 0x02; 0x31; 0x00; 0x00;
+                           (* CALL (Imm32 (word 12546)) *)
+  0x48; 0x8b; 0x84; 0x24; 0xb0; 0x05; 0x00; 0x00;
+                           (* MOV (% rax) (Memop Quadword (%% (rsp,1456))) *)
   0x48; 0x89; 0xc1;        (* MOV (% rcx) (% rax) *)
   0x48; 0xc1; 0xe8; 0x06;  (* SHR (% rax) (Imm8 (word 6)) *)
   0x48; 0x8b; 0x44; 0xc4; 0x20;
@@ -1033,10 +1033,10 @@ let edwards25519_scalarmuldouble_mc,edwards25519_scalarmuldouble_data =
   0x48; 0x19; 0xc9;        (* SBB (% rcx) (% rcx) *)
   0x48; 0x31; 0xc8;        (* XOR (% rax) (% rcx) *)
   0x48; 0x29; 0xc8;        (* SUB (% rax) (% rcx) *)
-  0x48; 0x89; 0x4c; 0x24; 0x48;
-                           (* MOV (Memop Quadword (%% (rsp,72))) (% rcx) *)
-  0x48; 0x89; 0x44; 0x24; 0x40;
-                           (* MOV (Memop Quadword (%% (rsp,64))) (% rax) *)
+  0x48; 0x89; 0x8c; 0x24; 0xa8; 0x05; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,1448))) (% rcx) *)
+  0x48; 0x89; 0x84; 0x24; 0xa0; 0x05; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,1440))) (% rax) *)
   0xb8; 0x01; 0x00; 0x00; 0x00;
                            (* MOV (% eax) (Imm32 (word 1)) *)
   0x31; 0xdb;              (* XOR (% ebx) (% ebx) *)
@@ -1051,10 +1051,10 @@ let edwards25519_scalarmuldouble_mc,edwards25519_scalarmuldouble_data =
   0x45; 0x31; 0xed;        (* XOR (% r13d) (% r13d) *)
   0x45; 0x31; 0xf6;        (* XOR (% r14d) (% r14d) *)
   0x45; 0x31; 0xff;        (* XOR (% r15d) (% r15d) *)
-  0x48; 0x8d; 0x2d; 0xa4; 0x50; 0x00; 0x00;
-                           (* LEA (% rbp) (Riprel (word 20644)) *)
-  0x48; 0x83; 0x7c; 0x24; 0x40; 0x01;
-                           (* CMP (Memop Quadword (%% (rsp,64))) (Imm8 (word 1)) *)
+  0x48; 0x8d; 0x2d; 0x33; 0x5f; 0x00; 0x00;
+                           (* LEA (% rbp) (Riprel (word 24371)) *)
+  0x48; 0x83; 0xbc; 0x24; 0xa0; 0x05; 0x00; 0x00; 0x01;
+                           (* CMP (Memop Quadword (%% (rsp,1440))) (Imm8 (word 1)) *)
   0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
   0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
   0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
@@ -1080,8 +1080,8 @@ let edwards25519_scalarmuldouble_mc,edwards25519_scalarmuldouble_data =
   0x48; 0x8b; 0x75; 0x58;  (* MOV (% rsi) (Memop Quadword (%% (rbp,88))) *)
   0x4c; 0x0f; 0x44; 0xfe;  (* CMOVE (% r15) (% rsi) *)
   0x48; 0x83; 0xc5; 0x60;  (* ADD (% rbp) (Imm8 (word 96)) *)
-  0x48; 0x83; 0x7c; 0x24; 0x40; 0x02;
-                           (* CMP (Memop Quadword (%% (rsp,64))) (Imm8 (word 2)) *)
+  0x48; 0x83; 0xbc; 0x24; 0xa0; 0x05; 0x00; 0x00; 0x02;
+                           (* CMP (Memop Quadword (%% (rsp,1440))) (Imm8 (word 2)) *)
   0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
   0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
   0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
@@ -1107,8 +1107,8 @@ let edwards25519_scalarmuldouble_mc,edwards25519_scalarmuldouble_data =
   0x48; 0x8b; 0x75; 0x58;  (* MOV (% rsi) (Memop Quadword (%% (rbp,88))) *)
   0x4c; 0x0f; 0x44; 0xfe;  (* CMOVE (% r15) (% rsi) *)
   0x48; 0x83; 0xc5; 0x60;  (* ADD (% rbp) (Imm8 (word 96)) *)
-  0x48; 0x83; 0x7c; 0x24; 0x40; 0x03;
-                           (* CMP (Memop Quadword (%% (rsp,64))) (Imm8 (word 3)) *)
+  0x48; 0x83; 0xbc; 0x24; 0xa0; 0x05; 0x00; 0x00; 0x03;
+                           (* CMP (Memop Quadword (%% (rsp,1440))) (Imm8 (word 3)) *)
   0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
   0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
   0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
@@ -1134,8 +1134,8 @@ let edwards25519_scalarmuldouble_mc,edwards25519_scalarmuldouble_data =
   0x48; 0x8b; 0x75; 0x58;  (* MOV (% rsi) (Memop Quadword (%% (rbp,88))) *)
   0x4c; 0x0f; 0x44; 0xfe;  (* CMOVE (% r15) (% rsi) *)
   0x48; 0x83; 0xc5; 0x60;  (* ADD (% rbp) (Imm8 (word 96)) *)
-  0x48; 0x83; 0x7c; 0x24; 0x40; 0x04;
-                           (* CMP (Memop Quadword (%% (rsp,64))) (Imm8 (word 4)) *)
+  0x48; 0x83; 0xbc; 0x24; 0xa0; 0x05; 0x00; 0x00; 0x04;
+                           (* CMP (Memop Quadword (%% (rsp,1440))) (Imm8 (word 4)) *)
   0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
   0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
   0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
@@ -1161,8 +1161,8 @@ let edwards25519_scalarmuldouble_mc,edwards25519_scalarmuldouble_data =
   0x48; 0x8b; 0x75; 0x58;  (* MOV (% rsi) (Memop Quadword (%% (rbp,88))) *)
   0x4c; 0x0f; 0x44; 0xfe;  (* CMOVE (% r15) (% rsi) *)
   0x48; 0x83; 0xc5; 0x60;  (* ADD (% rbp) (Imm8 (word 96)) *)
-  0x48; 0x83; 0x7c; 0x24; 0x40; 0x05;
-                           (* CMP (Memop Quadword (%% (rsp,64))) (Imm8 (word 5)) *)
+  0x48; 0x83; 0xbc; 0x24; 0xa0; 0x05; 0x00; 0x00; 0x05;
+                           (* CMP (Memop Quadword (%% (rsp,1440))) (Imm8 (word 5)) *)
   0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
   0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
   0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
@@ -1188,8 +1188,8 @@ let edwards25519_scalarmuldouble_mc,edwards25519_scalarmuldouble_data =
   0x48; 0x8b; 0x75; 0x58;  (* MOV (% rsi) (Memop Quadword (%% (rbp,88))) *)
   0x4c; 0x0f; 0x44; 0xfe;  (* CMOVE (% r15) (% rsi) *)
   0x48; 0x83; 0xc5; 0x60;  (* ADD (% rbp) (Imm8 (word 96)) *)
-  0x48; 0x83; 0x7c; 0x24; 0x40; 0x06;
-                           (* CMP (Memop Quadword (%% (rsp,64))) (Imm8 (word 6)) *)
+  0x48; 0x83; 0xbc; 0x24; 0xa0; 0x05; 0x00; 0x00; 0x06;
+                           (* CMP (Memop Quadword (%% (rsp,1440))) (Imm8 (word 6)) *)
   0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
   0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
   0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
@@ -1215,8 +1215,8 @@ let edwards25519_scalarmuldouble_mc,edwards25519_scalarmuldouble_data =
   0x48; 0x8b; 0x75; 0x58;  (* MOV (% rsi) (Memop Quadword (%% (rbp,88))) *)
   0x4c; 0x0f; 0x44; 0xfe;  (* CMOVE (% r15) (% rsi) *)
   0x48; 0x83; 0xc5; 0x60;  (* ADD (% rbp) (Imm8 (word 96)) *)
-  0x48; 0x83; 0x7c; 0x24; 0x40; 0x07;
-                           (* CMP (Memop Quadword (%% (rsp,64))) (Imm8 (word 7)) *)
+  0x48; 0x83; 0xbc; 0x24; 0xa0; 0x05; 0x00; 0x00; 0x07;
+                           (* CMP (Memop Quadword (%% (rsp,1440))) (Imm8 (word 7)) *)
   0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
   0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
   0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
@@ -1242,8 +1242,8 @@ let edwards25519_scalarmuldouble_mc,edwards25519_scalarmuldouble_data =
   0x48; 0x8b; 0x75; 0x58;  (* MOV (% rsi) (Memop Quadword (%% (rbp,88))) *)
   0x4c; 0x0f; 0x44; 0xfe;  (* CMOVE (% r15) (% rsi) *)
   0x48; 0x83; 0xc5; 0x60;  (* ADD (% rbp) (Imm8 (word 96)) *)
-  0x48; 0x83; 0x7c; 0x24; 0x40; 0x08;
-                           (* CMP (Memop Quadword (%% (rsp,64))) (Imm8 (word 8)) *)
+  0x48; 0x83; 0xbc; 0x24; 0xa0; 0x05; 0x00; 0x00; 0x08;
+                           (* CMP (Memop Quadword (%% (rsp,1440))) (Imm8 (word 8)) *)
   0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
   0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
   0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
@@ -1268,37 +1268,37 @@ let edwards25519_scalarmuldouble_mc,edwards25519_scalarmuldouble_data =
   0x4c; 0x0f; 0x44; 0xf6;  (* CMOVE (% r14) (% rsi) *)
   0x48; 0x8b; 0x75; 0x58;  (* MOV (% rsi) (Memop Quadword (%% (rbp,88))) *)
   0x4c; 0x0f; 0x44; 0xfe;  (* CMOVE (% r15) (% rsi) *)
-  0x48; 0x8b; 0x7c; 0x24; 0x48;
-                           (* MOV (% rdi) (Memop Quadword (%% (rsp,72))) *)
+  0x48; 0x8b; 0xbc; 0x24; 0xa8; 0x05; 0x00; 0x00;
+                           (* MOV (% rdi) (Memop Quadword (%% (rsp,1448))) *)
   0x48; 0x85; 0xff;        (* TEST (% rdi) (% rdi) *)
   0x48; 0x89; 0xc6;        (* MOV (% rsi) (% rax) *)
   0x49; 0x0f; 0x45; 0xf0;  (* CMOVNE (% rsi) (% r8) *)
   0x4c; 0x0f; 0x45; 0xc0;  (* CMOVNE (% r8) (% rax) *)
-  0x48; 0x89; 0xb4; 0x24; 0x60; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,352))) (% rsi) *)
-  0x4c; 0x89; 0x84; 0x24; 0x80; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,384))) (% r8) *)
+  0x48; 0x89; 0xb4; 0x24; 0xc0; 0x00; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,192))) (% rsi) *)
+  0x4c; 0x89; 0x84; 0x24; 0xe0; 0x00; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,224))) (% r8) *)
   0x48; 0x89; 0xde;        (* MOV (% rsi) (% rbx) *)
   0x49; 0x0f; 0x45; 0xf1;  (* CMOVNE (% rsi) (% r9) *)
   0x4c; 0x0f; 0x45; 0xcb;  (* CMOVNE (% r9) (% rbx) *)
-  0x48; 0x89; 0xb4; 0x24; 0x68; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,360))) (% rsi) *)
-  0x4c; 0x89; 0x8c; 0x24; 0x88; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,392))) (% r9) *)
+  0x48; 0x89; 0xb4; 0x24; 0xc8; 0x00; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,200))) (% rsi) *)
+  0x4c; 0x89; 0x8c; 0x24; 0xe8; 0x00; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,232))) (% r9) *)
   0x48; 0x89; 0xce;        (* MOV (% rsi) (% rcx) *)
   0x49; 0x0f; 0x45; 0xf2;  (* CMOVNE (% rsi) (% r10) *)
   0x4c; 0x0f; 0x45; 0xd1;  (* CMOVNE (% r10) (% rcx) *)
-  0x48; 0x89; 0xb4; 0x24; 0x70; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,368))) (% rsi) *)
-  0x4c; 0x89; 0x94; 0x24; 0x90; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,400))) (% r10) *)
+  0x48; 0x89; 0xb4; 0x24; 0xd0; 0x00; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,208))) (% rsi) *)
+  0x4c; 0x89; 0x94; 0x24; 0xf0; 0x00; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,240))) (% r10) *)
   0x48; 0x89; 0xd6;        (* MOV (% rsi) (% rdx) *)
   0x49; 0x0f; 0x45; 0xf3;  (* CMOVNE (% rsi) (% r11) *)
   0x4c; 0x0f; 0x45; 0xda;  (* CMOVNE (% r11) (% rdx) *)
-  0x48; 0x89; 0xb4; 0x24; 0x78; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,376))) (% rsi) *)
-  0x4c; 0x89; 0x9c; 0x24; 0x98; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,408))) (% r11) *)
+  0x48; 0x89; 0xb4; 0x24; 0xd8; 0x00; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,216))) (% rsi) *)
+  0x4c; 0x89; 0x9c; 0x24; 0xf8; 0x00; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,248))) (% r11) *)
   0x49; 0x31; 0xfc;        (* XOR (% r12) (% rdi) *)
   0x49; 0x31; 0xfd;        (* XOR (% r13) (% rdi) *)
   0x49; 0x31; 0xfe;        (* XOR (% r14) (% rdi) *)
@@ -1308,16 +1308,16 @@ let edwards25519_scalarmuldouble_mc,edwards25519_scalarmuldouble_data =
   0x49; 0x83; 0xdd; 0x00;  (* SBB (% r13) (Imm8 (word 0)) *)
   0x49; 0x83; 0xde; 0x00;  (* SBB (% r14) (Imm8 (word 0)) *)
   0x49; 0x83; 0xdf; 0x00;  (* SBB (% r15) (Imm8 (word 0)) *)
-  0x4c; 0x89; 0xa4; 0x24; 0xa0; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,416))) (% r12) *)
-  0x4c; 0x89; 0xac; 0x24; 0xa8; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,424))) (% r13) *)
-  0x4c; 0x89; 0xb4; 0x24; 0xb0; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,432))) (% r14) *)
-  0x4c; 0x89; 0xbc; 0x24; 0xb8; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,440))) (% r15) *)
-  0x48; 0x8b; 0x44; 0x24; 0x50;
-                           (* MOV (% rax) (Memop Quadword (%% (rsp,80))) *)
+  0x4c; 0x89; 0xa4; 0x24; 0x00; 0x01; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,256))) (% r12) *)
+  0x4c; 0x89; 0xac; 0x24; 0x08; 0x01; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,264))) (% r13) *)
+  0x4c; 0x89; 0xb4; 0x24; 0x10; 0x01; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,272))) (% r14) *)
+  0x4c; 0x89; 0xbc; 0x24; 0x18; 0x01; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,280))) (% r15) *)
+  0x48; 0x8b; 0x84; 0x24; 0xb0; 0x05; 0x00; 0x00;
+                           (* MOV (% rax) (Memop Quadword (%% (rsp,1456))) *)
   0x48; 0x89; 0xc1;        (* MOV (% rcx) (% rax) *)
   0x48; 0xc1; 0xe8; 0x06;  (* SHR (% rax) (Imm8 (word 6)) *)
   0x48; 0x8b; 0x04; 0xc4;  (* MOV (% rax) (Memop Quadword (%%% (rsp,3,rax))) *)
@@ -1327,10 +1327,10 @@ let edwards25519_scalarmuldouble_mc,edwards25519_scalarmuldouble_data =
   0x48; 0x19; 0xc9;        (* SBB (% rcx) (% rcx) *)
   0x48; 0x31; 0xc8;        (* XOR (% rax) (% rcx) *)
   0x48; 0x29; 0xc8;        (* SUB (% rax) (% rcx) *)
-  0x48; 0x89; 0x4c; 0x24; 0x48;
-                           (* MOV (Memop Quadword (%% (rsp,72))) (% rcx) *)
-  0x48; 0x89; 0x44; 0x24; 0x40;
-                           (* MOV (Memop Quadword (%% (rsp,64))) (% rax) *)
+  0x48; 0x89; 0x8c; 0x24; 0xa8; 0x05; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,1448))) (% rcx) *)
+  0x48; 0x89; 0x84; 0x24; 0xa0; 0x05; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,1440))) (% rax) *)
   0xb8; 0x01; 0x00; 0x00; 0x00;
                            (* MOV (% eax) (Imm32 (word 1)) *)
   0x31; 0xdb;              (* XOR (% ebx) (% ebx) *)
@@ -1341,184 +1341,184 @@ let edwards25519_scalarmuldouble_mc,edwards25519_scalarmuldouble_data =
   0x45; 0x31; 0xc9;        (* XOR (% r9d) (% r9d) *)
   0x45; 0x31; 0xd2;        (* XOR (% r10d) (% r10d) *)
   0x45; 0x31; 0xdb;        (* XOR (% r11d) (% r11d) *)
-  0x48; 0x8d; 0xac; 0x24; 0xe0; 0x01; 0x00; 0x00;
-                           (* LEA (% rbp) (%% (rsp,480)) *)
-  0x48; 0x83; 0x7c; 0x24; 0x40; 0x01;
-                           (* CMP (Memop Quadword (%% (rsp,64))) (Imm8 (word 1)) *)
-  0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
-  0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
-  0x48; 0x0f; 0x44; 0xde;  (* CMOVE (% rbx) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x10;  (* MOV (% rsi) (Memop Quadword (%% (rbp,16))) *)
-  0x48; 0x0f; 0x44; 0xce;  (* CMOVE (% rcx) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x18;  (* MOV (% rsi) (Memop Quadword (%% (rbp,24))) *)
-  0x48; 0x0f; 0x44; 0xd6;  (* CMOVE (% rdx) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x20;  (* MOV (% rsi) (Memop Quadword (%% (rbp,32))) *)
-  0x4c; 0x0f; 0x44; 0xc6;  (* CMOVE (% r8) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x28;  (* MOV (% rsi) (Memop Quadword (%% (rbp,40))) *)
-  0x4c; 0x0f; 0x44; 0xce;  (* CMOVE (% r9) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x30;  (* MOV (% rsi) (Memop Quadword (%% (rbp,48))) *)
-  0x4c; 0x0f; 0x44; 0xd6;  (* CMOVE (% r10) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x38;  (* MOV (% rsi) (Memop Quadword (%% (rbp,56))) *)
-  0x4c; 0x0f; 0x44; 0xde;  (* CMOVE (% r11) (% rsi) *)
-  0x48; 0x81; 0xc5; 0x80; 0x00; 0x00; 0x00;
-                           (* ADD (% rbp) (Imm32 (word 128)) *)
-  0x48; 0x83; 0x7c; 0x24; 0x40; 0x02;
-                           (* CMP (Memop Quadword (%% (rsp,64))) (Imm8 (word 2)) *)
-  0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
-  0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
-  0x48; 0x0f; 0x44; 0xde;  (* CMOVE (% rbx) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x10;  (* MOV (% rsi) (Memop Quadword (%% (rbp,16))) *)
-  0x48; 0x0f; 0x44; 0xce;  (* CMOVE (% rcx) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x18;  (* MOV (% rsi) (Memop Quadword (%% (rbp,24))) *)
-  0x48; 0x0f; 0x44; 0xd6;  (* CMOVE (% rdx) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x20;  (* MOV (% rsi) (Memop Quadword (%% (rbp,32))) *)
-  0x4c; 0x0f; 0x44; 0xc6;  (* CMOVE (% r8) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x28;  (* MOV (% rsi) (Memop Quadword (%% (rbp,40))) *)
-  0x4c; 0x0f; 0x44; 0xce;  (* CMOVE (% r9) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x30;  (* MOV (% rsi) (Memop Quadword (%% (rbp,48))) *)
-  0x4c; 0x0f; 0x44; 0xd6;  (* CMOVE (% r10) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x38;  (* MOV (% rsi) (Memop Quadword (%% (rbp,56))) *)
-  0x4c; 0x0f; 0x44; 0xde;  (* CMOVE (% r11) (% rsi) *)
-  0x48; 0x81; 0xc5; 0x80; 0x00; 0x00; 0x00;
-                           (* ADD (% rbp) (Imm32 (word 128)) *)
-  0x48; 0x83; 0x7c; 0x24; 0x40; 0x03;
-                           (* CMP (Memop Quadword (%% (rsp,64))) (Imm8 (word 3)) *)
-  0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
-  0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
-  0x48; 0x0f; 0x44; 0xde;  (* CMOVE (% rbx) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x10;  (* MOV (% rsi) (Memop Quadword (%% (rbp,16))) *)
-  0x48; 0x0f; 0x44; 0xce;  (* CMOVE (% rcx) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x18;  (* MOV (% rsi) (Memop Quadword (%% (rbp,24))) *)
-  0x48; 0x0f; 0x44; 0xd6;  (* CMOVE (% rdx) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x20;  (* MOV (% rsi) (Memop Quadword (%% (rbp,32))) *)
-  0x4c; 0x0f; 0x44; 0xc6;  (* CMOVE (% r8) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x28;  (* MOV (% rsi) (Memop Quadword (%% (rbp,40))) *)
-  0x4c; 0x0f; 0x44; 0xce;  (* CMOVE (% r9) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x30;  (* MOV (% rsi) (Memop Quadword (%% (rbp,48))) *)
-  0x4c; 0x0f; 0x44; 0xd6;  (* CMOVE (% r10) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x38;  (* MOV (% rsi) (Memop Quadword (%% (rbp,56))) *)
-  0x4c; 0x0f; 0x44; 0xde;  (* CMOVE (% r11) (% rsi) *)
-  0x48; 0x81; 0xc5; 0x80; 0x00; 0x00; 0x00;
-                           (* ADD (% rbp) (Imm32 (word 128)) *)
-  0x48; 0x83; 0x7c; 0x24; 0x40; 0x04;
-                           (* CMP (Memop Quadword (%% (rsp,64))) (Imm8 (word 4)) *)
-  0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
-  0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
-  0x48; 0x0f; 0x44; 0xde;  (* CMOVE (% rbx) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x10;  (* MOV (% rsi) (Memop Quadword (%% (rbp,16))) *)
-  0x48; 0x0f; 0x44; 0xce;  (* CMOVE (% rcx) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x18;  (* MOV (% rsi) (Memop Quadword (%% (rbp,24))) *)
-  0x48; 0x0f; 0x44; 0xd6;  (* CMOVE (% rdx) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x20;  (* MOV (% rsi) (Memop Quadword (%% (rbp,32))) *)
-  0x4c; 0x0f; 0x44; 0xc6;  (* CMOVE (% r8) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x28;  (* MOV (% rsi) (Memop Quadword (%% (rbp,40))) *)
-  0x4c; 0x0f; 0x44; 0xce;  (* CMOVE (% r9) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x30;  (* MOV (% rsi) (Memop Quadword (%% (rbp,48))) *)
-  0x4c; 0x0f; 0x44; 0xd6;  (* CMOVE (% r10) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x38;  (* MOV (% rsi) (Memop Quadword (%% (rbp,56))) *)
-  0x4c; 0x0f; 0x44; 0xde;  (* CMOVE (% r11) (% rsi) *)
-  0x48; 0x81; 0xc5; 0x80; 0x00; 0x00; 0x00;
-                           (* ADD (% rbp) (Imm32 (word 128)) *)
-  0x48; 0x83; 0x7c; 0x24; 0x40; 0x05;
-                           (* CMP (Memop Quadword (%% (rsp,64))) (Imm8 (word 5)) *)
-  0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
-  0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
-  0x48; 0x0f; 0x44; 0xde;  (* CMOVE (% rbx) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x10;  (* MOV (% rsi) (Memop Quadword (%% (rbp,16))) *)
-  0x48; 0x0f; 0x44; 0xce;  (* CMOVE (% rcx) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x18;  (* MOV (% rsi) (Memop Quadword (%% (rbp,24))) *)
-  0x48; 0x0f; 0x44; 0xd6;  (* CMOVE (% rdx) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x20;  (* MOV (% rsi) (Memop Quadword (%% (rbp,32))) *)
-  0x4c; 0x0f; 0x44; 0xc6;  (* CMOVE (% r8) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x28;  (* MOV (% rsi) (Memop Quadword (%% (rbp,40))) *)
-  0x4c; 0x0f; 0x44; 0xce;  (* CMOVE (% r9) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x30;  (* MOV (% rsi) (Memop Quadword (%% (rbp,48))) *)
-  0x4c; 0x0f; 0x44; 0xd6;  (* CMOVE (% r10) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x38;  (* MOV (% rsi) (Memop Quadword (%% (rbp,56))) *)
-  0x4c; 0x0f; 0x44; 0xde;  (* CMOVE (% r11) (% rsi) *)
-  0x48; 0x81; 0xc5; 0x80; 0x00; 0x00; 0x00;
-                           (* ADD (% rbp) (Imm32 (word 128)) *)
-  0x48; 0x83; 0x7c; 0x24; 0x40; 0x06;
-                           (* CMP (Memop Quadword (%% (rsp,64))) (Imm8 (word 6)) *)
-  0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
-  0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
-  0x48; 0x0f; 0x44; 0xde;  (* CMOVE (% rbx) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x10;  (* MOV (% rsi) (Memop Quadword (%% (rbp,16))) *)
-  0x48; 0x0f; 0x44; 0xce;  (* CMOVE (% rcx) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x18;  (* MOV (% rsi) (Memop Quadword (%% (rbp,24))) *)
-  0x48; 0x0f; 0x44; 0xd6;  (* CMOVE (% rdx) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x20;  (* MOV (% rsi) (Memop Quadword (%% (rbp,32))) *)
-  0x4c; 0x0f; 0x44; 0xc6;  (* CMOVE (% r8) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x28;  (* MOV (% rsi) (Memop Quadword (%% (rbp,40))) *)
-  0x4c; 0x0f; 0x44; 0xce;  (* CMOVE (% r9) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x30;  (* MOV (% rsi) (Memop Quadword (%% (rbp,48))) *)
-  0x4c; 0x0f; 0x44; 0xd6;  (* CMOVE (% r10) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x38;  (* MOV (% rsi) (Memop Quadword (%% (rbp,56))) *)
-  0x4c; 0x0f; 0x44; 0xde;  (* CMOVE (% r11) (% rsi) *)
-  0x48; 0x81; 0xc5; 0x80; 0x00; 0x00; 0x00;
-                           (* ADD (% rbp) (Imm32 (word 128)) *)
-  0x48; 0x83; 0x7c; 0x24; 0x40; 0x07;
-                           (* CMP (Memop Quadword (%% (rsp,64))) (Imm8 (word 7)) *)
-  0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
-  0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
-  0x48; 0x0f; 0x44; 0xde;  (* CMOVE (% rbx) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x10;  (* MOV (% rsi) (Memop Quadword (%% (rbp,16))) *)
-  0x48; 0x0f; 0x44; 0xce;  (* CMOVE (% rcx) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x18;  (* MOV (% rsi) (Memop Quadword (%% (rbp,24))) *)
-  0x48; 0x0f; 0x44; 0xd6;  (* CMOVE (% rdx) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x20;  (* MOV (% rsi) (Memop Quadword (%% (rbp,32))) *)
-  0x4c; 0x0f; 0x44; 0xc6;  (* CMOVE (% r8) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x28;  (* MOV (% rsi) (Memop Quadword (%% (rbp,40))) *)
-  0x4c; 0x0f; 0x44; 0xce;  (* CMOVE (% r9) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x30;  (* MOV (% rsi) (Memop Quadword (%% (rbp,48))) *)
-  0x4c; 0x0f; 0x44; 0xd6;  (* CMOVE (% r10) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x38;  (* MOV (% rsi) (Memop Quadword (%% (rbp,56))) *)
-  0x4c; 0x0f; 0x44; 0xde;  (* CMOVE (% r11) (% rsi) *)
-  0x48; 0x81; 0xc5; 0x80; 0x00; 0x00; 0x00;
-                           (* ADD (% rbp) (Imm32 (word 128)) *)
-  0x48; 0x83; 0x7c; 0x24; 0x40; 0x08;
-                           (* CMP (Memop Quadword (%% (rsp,64))) (Imm8 (word 8)) *)
-  0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
-  0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
-  0x48; 0x0f; 0x44; 0xde;  (* CMOVE (% rbx) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x10;  (* MOV (% rsi) (Memop Quadword (%% (rbp,16))) *)
-  0x48; 0x0f; 0x44; 0xce;  (* CMOVE (% rcx) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x18;  (* MOV (% rsi) (Memop Quadword (%% (rbp,24))) *)
-  0x48; 0x0f; 0x44; 0xd6;  (* CMOVE (% rdx) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x20;  (* MOV (% rsi) (Memop Quadword (%% (rbp,32))) *)
-  0x4c; 0x0f; 0x44; 0xc6;  (* CMOVE (% r8) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x28;  (* MOV (% rsi) (Memop Quadword (%% (rbp,40))) *)
-  0x4c; 0x0f; 0x44; 0xce;  (* CMOVE (% r9) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x30;  (* MOV (% rsi) (Memop Quadword (%% (rbp,48))) *)
-  0x4c; 0x0f; 0x44; 0xd6;  (* CMOVE (% r10) (% rsi) *)
-  0x48; 0x8b; 0x75; 0x38;  (* MOV (% rsi) (Memop Quadword (%% (rbp,56))) *)
-  0x4c; 0x0f; 0x44; 0xde;  (* CMOVE (% r11) (% rsi) *)
-  0x48; 0x89; 0x84; 0x24; 0x00; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,256))) (% rax) *)
-  0x48; 0x89; 0x9c; 0x24; 0x08; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,264))) (% rbx) *)
-  0x48; 0x89; 0x8c; 0x24; 0x10; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,272))) (% rcx) *)
-  0x48; 0x89; 0x94; 0x24; 0x18; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,280))) (% rdx) *)
-  0x4c; 0x89; 0x84; 0x24; 0x20; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,288))) (% r8) *)
-  0x4c; 0x89; 0x8c; 0x24; 0x28; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,296))) (% r9) *)
-  0x4c; 0x89; 0x94; 0x24; 0x30; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,304))) (% r10) *)
-  0x4c; 0x89; 0x9c; 0x24; 0x38; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,312))) (% r11) *)
   0x48; 0x8d; 0xac; 0x24; 0xc0; 0x01; 0x00; 0x00;
                            (* LEA (% rbp) (%% (rsp,448)) *)
+  0x48; 0x83; 0xbc; 0x24; 0xa0; 0x05; 0x00; 0x00; 0x01;
+                           (* CMP (Memop Quadword (%% (rsp,1440))) (Imm8 (word 1)) *)
+  0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
+  0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
+  0x48; 0x0f; 0x44; 0xde;  (* CMOVE (% rbx) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x10;  (* MOV (% rsi) (Memop Quadword (%% (rbp,16))) *)
+  0x48; 0x0f; 0x44; 0xce;  (* CMOVE (% rcx) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x18;  (* MOV (% rsi) (Memop Quadword (%% (rbp,24))) *)
+  0x48; 0x0f; 0x44; 0xd6;  (* CMOVE (% rdx) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x20;  (* MOV (% rsi) (Memop Quadword (%% (rbp,32))) *)
+  0x4c; 0x0f; 0x44; 0xc6;  (* CMOVE (% r8) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x28;  (* MOV (% rsi) (Memop Quadword (%% (rbp,40))) *)
+  0x4c; 0x0f; 0x44; 0xce;  (* CMOVE (% r9) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x30;  (* MOV (% rsi) (Memop Quadword (%% (rbp,48))) *)
+  0x4c; 0x0f; 0x44; 0xd6;  (* CMOVE (% r10) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x38;  (* MOV (% rsi) (Memop Quadword (%% (rbp,56))) *)
+  0x4c; 0x0f; 0x44; 0xde;  (* CMOVE (% r11) (% rsi) *)
+  0x48; 0x81; 0xc5; 0x80; 0x00; 0x00; 0x00;
+                           (* ADD (% rbp) (Imm32 (word 128)) *)
+  0x48; 0x83; 0xbc; 0x24; 0xa0; 0x05; 0x00; 0x00; 0x02;
+                           (* CMP (Memop Quadword (%% (rsp,1440))) (Imm8 (word 2)) *)
+  0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
+  0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
+  0x48; 0x0f; 0x44; 0xde;  (* CMOVE (% rbx) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x10;  (* MOV (% rsi) (Memop Quadword (%% (rbp,16))) *)
+  0x48; 0x0f; 0x44; 0xce;  (* CMOVE (% rcx) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x18;  (* MOV (% rsi) (Memop Quadword (%% (rbp,24))) *)
+  0x48; 0x0f; 0x44; 0xd6;  (* CMOVE (% rdx) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x20;  (* MOV (% rsi) (Memop Quadword (%% (rbp,32))) *)
+  0x4c; 0x0f; 0x44; 0xc6;  (* CMOVE (% r8) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x28;  (* MOV (% rsi) (Memop Quadword (%% (rbp,40))) *)
+  0x4c; 0x0f; 0x44; 0xce;  (* CMOVE (% r9) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x30;  (* MOV (% rsi) (Memop Quadword (%% (rbp,48))) *)
+  0x4c; 0x0f; 0x44; 0xd6;  (* CMOVE (% r10) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x38;  (* MOV (% rsi) (Memop Quadword (%% (rbp,56))) *)
+  0x4c; 0x0f; 0x44; 0xde;  (* CMOVE (% r11) (% rsi) *)
+  0x48; 0x81; 0xc5; 0x80; 0x00; 0x00; 0x00;
+                           (* ADD (% rbp) (Imm32 (word 128)) *)
+  0x48; 0x83; 0xbc; 0x24; 0xa0; 0x05; 0x00; 0x00; 0x03;
+                           (* CMP (Memop Quadword (%% (rsp,1440))) (Imm8 (word 3)) *)
+  0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
+  0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
+  0x48; 0x0f; 0x44; 0xde;  (* CMOVE (% rbx) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x10;  (* MOV (% rsi) (Memop Quadword (%% (rbp,16))) *)
+  0x48; 0x0f; 0x44; 0xce;  (* CMOVE (% rcx) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x18;  (* MOV (% rsi) (Memop Quadword (%% (rbp,24))) *)
+  0x48; 0x0f; 0x44; 0xd6;  (* CMOVE (% rdx) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x20;  (* MOV (% rsi) (Memop Quadword (%% (rbp,32))) *)
+  0x4c; 0x0f; 0x44; 0xc6;  (* CMOVE (% r8) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x28;  (* MOV (% rsi) (Memop Quadword (%% (rbp,40))) *)
+  0x4c; 0x0f; 0x44; 0xce;  (* CMOVE (% r9) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x30;  (* MOV (% rsi) (Memop Quadword (%% (rbp,48))) *)
+  0x4c; 0x0f; 0x44; 0xd6;  (* CMOVE (% r10) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x38;  (* MOV (% rsi) (Memop Quadword (%% (rbp,56))) *)
+  0x4c; 0x0f; 0x44; 0xde;  (* CMOVE (% r11) (% rsi) *)
+  0x48; 0x81; 0xc5; 0x80; 0x00; 0x00; 0x00;
+                           (* ADD (% rbp) (Imm32 (word 128)) *)
+  0x48; 0x83; 0xbc; 0x24; 0xa0; 0x05; 0x00; 0x00; 0x04;
+                           (* CMP (Memop Quadword (%% (rsp,1440))) (Imm8 (word 4)) *)
+  0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
+  0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
+  0x48; 0x0f; 0x44; 0xde;  (* CMOVE (% rbx) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x10;  (* MOV (% rsi) (Memop Quadword (%% (rbp,16))) *)
+  0x48; 0x0f; 0x44; 0xce;  (* CMOVE (% rcx) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x18;  (* MOV (% rsi) (Memop Quadword (%% (rbp,24))) *)
+  0x48; 0x0f; 0x44; 0xd6;  (* CMOVE (% rdx) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x20;  (* MOV (% rsi) (Memop Quadword (%% (rbp,32))) *)
+  0x4c; 0x0f; 0x44; 0xc6;  (* CMOVE (% r8) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x28;  (* MOV (% rsi) (Memop Quadword (%% (rbp,40))) *)
+  0x4c; 0x0f; 0x44; 0xce;  (* CMOVE (% r9) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x30;  (* MOV (% rsi) (Memop Quadword (%% (rbp,48))) *)
+  0x4c; 0x0f; 0x44; 0xd6;  (* CMOVE (% r10) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x38;  (* MOV (% rsi) (Memop Quadword (%% (rbp,56))) *)
+  0x4c; 0x0f; 0x44; 0xde;  (* CMOVE (% r11) (% rsi) *)
+  0x48; 0x81; 0xc5; 0x80; 0x00; 0x00; 0x00;
+                           (* ADD (% rbp) (Imm32 (word 128)) *)
+  0x48; 0x83; 0xbc; 0x24; 0xa0; 0x05; 0x00; 0x00; 0x05;
+                           (* CMP (Memop Quadword (%% (rsp,1440))) (Imm8 (word 5)) *)
+  0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
+  0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
+  0x48; 0x0f; 0x44; 0xde;  (* CMOVE (% rbx) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x10;  (* MOV (% rsi) (Memop Quadword (%% (rbp,16))) *)
+  0x48; 0x0f; 0x44; 0xce;  (* CMOVE (% rcx) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x18;  (* MOV (% rsi) (Memop Quadword (%% (rbp,24))) *)
+  0x48; 0x0f; 0x44; 0xd6;  (* CMOVE (% rdx) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x20;  (* MOV (% rsi) (Memop Quadword (%% (rbp,32))) *)
+  0x4c; 0x0f; 0x44; 0xc6;  (* CMOVE (% r8) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x28;  (* MOV (% rsi) (Memop Quadword (%% (rbp,40))) *)
+  0x4c; 0x0f; 0x44; 0xce;  (* CMOVE (% r9) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x30;  (* MOV (% rsi) (Memop Quadword (%% (rbp,48))) *)
+  0x4c; 0x0f; 0x44; 0xd6;  (* CMOVE (% r10) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x38;  (* MOV (% rsi) (Memop Quadword (%% (rbp,56))) *)
+  0x4c; 0x0f; 0x44; 0xde;  (* CMOVE (% r11) (% rsi) *)
+  0x48; 0x81; 0xc5; 0x80; 0x00; 0x00; 0x00;
+                           (* ADD (% rbp) (Imm32 (word 128)) *)
+  0x48; 0x83; 0xbc; 0x24; 0xa0; 0x05; 0x00; 0x00; 0x06;
+                           (* CMP (Memop Quadword (%% (rsp,1440))) (Imm8 (word 6)) *)
+  0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
+  0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
+  0x48; 0x0f; 0x44; 0xde;  (* CMOVE (% rbx) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x10;  (* MOV (% rsi) (Memop Quadword (%% (rbp,16))) *)
+  0x48; 0x0f; 0x44; 0xce;  (* CMOVE (% rcx) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x18;  (* MOV (% rsi) (Memop Quadword (%% (rbp,24))) *)
+  0x48; 0x0f; 0x44; 0xd6;  (* CMOVE (% rdx) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x20;  (* MOV (% rsi) (Memop Quadword (%% (rbp,32))) *)
+  0x4c; 0x0f; 0x44; 0xc6;  (* CMOVE (% r8) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x28;  (* MOV (% rsi) (Memop Quadword (%% (rbp,40))) *)
+  0x4c; 0x0f; 0x44; 0xce;  (* CMOVE (% r9) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x30;  (* MOV (% rsi) (Memop Quadword (%% (rbp,48))) *)
+  0x4c; 0x0f; 0x44; 0xd6;  (* CMOVE (% r10) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x38;  (* MOV (% rsi) (Memop Quadword (%% (rbp,56))) *)
+  0x4c; 0x0f; 0x44; 0xde;  (* CMOVE (% r11) (% rsi) *)
+  0x48; 0x81; 0xc5; 0x80; 0x00; 0x00; 0x00;
+                           (* ADD (% rbp) (Imm32 (word 128)) *)
+  0x48; 0x83; 0xbc; 0x24; 0xa0; 0x05; 0x00; 0x00; 0x07;
+                           (* CMP (Memop Quadword (%% (rsp,1440))) (Imm8 (word 7)) *)
+  0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
+  0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
+  0x48; 0x0f; 0x44; 0xde;  (* CMOVE (% rbx) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x10;  (* MOV (% rsi) (Memop Quadword (%% (rbp,16))) *)
+  0x48; 0x0f; 0x44; 0xce;  (* CMOVE (% rcx) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x18;  (* MOV (% rsi) (Memop Quadword (%% (rbp,24))) *)
+  0x48; 0x0f; 0x44; 0xd6;  (* CMOVE (% rdx) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x20;  (* MOV (% rsi) (Memop Quadword (%% (rbp,32))) *)
+  0x4c; 0x0f; 0x44; 0xc6;  (* CMOVE (% r8) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x28;  (* MOV (% rsi) (Memop Quadword (%% (rbp,40))) *)
+  0x4c; 0x0f; 0x44; 0xce;  (* CMOVE (% r9) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x30;  (* MOV (% rsi) (Memop Quadword (%% (rbp,48))) *)
+  0x4c; 0x0f; 0x44; 0xd6;  (* CMOVE (% r10) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x38;  (* MOV (% rsi) (Memop Quadword (%% (rbp,56))) *)
+  0x4c; 0x0f; 0x44; 0xde;  (* CMOVE (% r11) (% rsi) *)
+  0x48; 0x81; 0xc5; 0x80; 0x00; 0x00; 0x00;
+                           (* ADD (% rbp) (Imm32 (word 128)) *)
+  0x48; 0x83; 0xbc; 0x24; 0xa0; 0x05; 0x00; 0x00; 0x08;
+                           (* CMP (Memop Quadword (%% (rsp,1440))) (Imm8 (word 8)) *)
+  0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
+  0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
+  0x48; 0x0f; 0x44; 0xde;  (* CMOVE (% rbx) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x10;  (* MOV (% rsi) (Memop Quadword (%% (rbp,16))) *)
+  0x48; 0x0f; 0x44; 0xce;  (* CMOVE (% rcx) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x18;  (* MOV (% rsi) (Memop Quadword (%% (rbp,24))) *)
+  0x48; 0x0f; 0x44; 0xd6;  (* CMOVE (% rdx) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x20;  (* MOV (% rsi) (Memop Quadword (%% (rbp,32))) *)
+  0x4c; 0x0f; 0x44; 0xc6;  (* CMOVE (% r8) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x28;  (* MOV (% rsi) (Memop Quadword (%% (rbp,40))) *)
+  0x4c; 0x0f; 0x44; 0xce;  (* CMOVE (% r9) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x30;  (* MOV (% rsi) (Memop Quadword (%% (rbp,48))) *)
+  0x4c; 0x0f; 0x44; 0xd6;  (* CMOVE (% r10) (% rsi) *)
+  0x48; 0x8b; 0x75; 0x38;  (* MOV (% rsi) (Memop Quadword (%% (rbp,56))) *)
+  0x4c; 0x0f; 0x44; 0xde;  (* CMOVE (% r11) (% rsi) *)
+  0x48; 0x89; 0x44; 0x24; 0x60;
+                           (* MOV (Memop Quadword (%% (rsp,96))) (% rax) *)
+  0x48; 0x89; 0x5c; 0x24; 0x68;
+                           (* MOV (Memop Quadword (%% (rsp,104))) (% rbx) *)
+  0x48; 0x89; 0x4c; 0x24; 0x70;
+                           (* MOV (Memop Quadword (%% (rsp,112))) (% rcx) *)
+  0x48; 0x89; 0x54; 0x24; 0x78;
+                           (* MOV (Memop Quadword (%% (rsp,120))) (% rdx) *)
+  0x4c; 0x89; 0x84; 0x24; 0x80; 0x00; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,128))) (% r8) *)
+  0x4c; 0x89; 0x8c; 0x24; 0x88; 0x00; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,136))) (% r9) *)
+  0x4c; 0x89; 0x94; 0x24; 0x90; 0x00; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,144))) (% r10) *)
+  0x4c; 0x89; 0x9c; 0x24; 0x98; 0x00; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,152))) (% r11) *)
+  0x48; 0x8d; 0xac; 0x24; 0xa0; 0x01; 0x00; 0x00;
+                           (* LEA (% rbp) (%% (rsp,416)) *)
   0x31; 0xc0;              (* XOR (% eax) (% eax) *)
   0x31; 0xdb;              (* XOR (% ebx) (% ebx) *)
   0x31; 0xc9;              (* XOR (% ecx) (% ecx) *)
@@ -1527,8 +1527,8 @@ let edwards25519_scalarmuldouble_mc,edwards25519_scalarmuldouble_data =
   0x45; 0x31; 0xc9;        (* XOR (% r9d) (% r9d) *)
   0x45; 0x31; 0xd2;        (* XOR (% r10d) (% r10d) *)
   0x45; 0x31; 0xdb;        (* XOR (% r11d) (% r11d) *)
-  0x48; 0x83; 0x7c; 0x24; 0x40; 0x01;
-                           (* CMP (Memop Quadword (%% (rsp,64))) (Imm8 (word 1)) *)
+  0x48; 0x83; 0xbc; 0x24; 0xa0; 0x05; 0x00; 0x00; 0x01;
+                           (* CMP (Memop Quadword (%% (rsp,1440))) (Imm8 (word 1)) *)
   0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
   0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
   0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
@@ -1547,8 +1547,8 @@ let edwards25519_scalarmuldouble_mc,edwards25519_scalarmuldouble_data =
   0x4c; 0x0f; 0x44; 0xde;  (* CMOVE (% r11) (% rsi) *)
   0x48; 0x81; 0xc5; 0x80; 0x00; 0x00; 0x00;
                            (* ADD (% rbp) (Imm32 (word 128)) *)
-  0x48; 0x83; 0x7c; 0x24; 0x40; 0x02;
-                           (* CMP (Memop Quadword (%% (rsp,64))) (Imm8 (word 2)) *)
+  0x48; 0x83; 0xbc; 0x24; 0xa0; 0x05; 0x00; 0x00; 0x02;
+                           (* CMP (Memop Quadword (%% (rsp,1440))) (Imm8 (word 2)) *)
   0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
   0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
   0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
@@ -1567,8 +1567,8 @@ let edwards25519_scalarmuldouble_mc,edwards25519_scalarmuldouble_data =
   0x4c; 0x0f; 0x44; 0xde;  (* CMOVE (% r11) (% rsi) *)
   0x48; 0x81; 0xc5; 0x80; 0x00; 0x00; 0x00;
                            (* ADD (% rbp) (Imm32 (word 128)) *)
-  0x48; 0x83; 0x7c; 0x24; 0x40; 0x03;
-                           (* CMP (Memop Quadword (%% (rsp,64))) (Imm8 (word 3)) *)
+  0x48; 0x83; 0xbc; 0x24; 0xa0; 0x05; 0x00; 0x00; 0x03;
+                           (* CMP (Memop Quadword (%% (rsp,1440))) (Imm8 (word 3)) *)
   0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
   0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
   0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
@@ -1587,8 +1587,8 @@ let edwards25519_scalarmuldouble_mc,edwards25519_scalarmuldouble_data =
   0x4c; 0x0f; 0x44; 0xde;  (* CMOVE (% r11) (% rsi) *)
   0x48; 0x81; 0xc5; 0x80; 0x00; 0x00; 0x00;
                            (* ADD (% rbp) (Imm32 (word 128)) *)
-  0x48; 0x83; 0x7c; 0x24; 0x40; 0x04;
-                           (* CMP (Memop Quadword (%% (rsp,64))) (Imm8 (word 4)) *)
+  0x48; 0x83; 0xbc; 0x24; 0xa0; 0x05; 0x00; 0x00; 0x04;
+                           (* CMP (Memop Quadword (%% (rsp,1440))) (Imm8 (word 4)) *)
   0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
   0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
   0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
@@ -1607,8 +1607,8 @@ let edwards25519_scalarmuldouble_mc,edwards25519_scalarmuldouble_data =
   0x4c; 0x0f; 0x44; 0xde;  (* CMOVE (% r11) (% rsi) *)
   0x48; 0x81; 0xc5; 0x80; 0x00; 0x00; 0x00;
                            (* ADD (% rbp) (Imm32 (word 128)) *)
-  0x48; 0x83; 0x7c; 0x24; 0x40; 0x05;
-                           (* CMP (Memop Quadword (%% (rsp,64))) (Imm8 (word 5)) *)
+  0x48; 0x83; 0xbc; 0x24; 0xa0; 0x05; 0x00; 0x00; 0x05;
+                           (* CMP (Memop Quadword (%% (rsp,1440))) (Imm8 (word 5)) *)
   0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
   0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
   0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
@@ -1627,8 +1627,8 @@ let edwards25519_scalarmuldouble_mc,edwards25519_scalarmuldouble_data =
   0x4c; 0x0f; 0x44; 0xde;  (* CMOVE (% r11) (% rsi) *)
   0x48; 0x81; 0xc5; 0x80; 0x00; 0x00; 0x00;
                            (* ADD (% rbp) (Imm32 (word 128)) *)
-  0x48; 0x83; 0x7c; 0x24; 0x40; 0x06;
-                           (* CMP (Memop Quadword (%% (rsp,64))) (Imm8 (word 6)) *)
+  0x48; 0x83; 0xbc; 0x24; 0xa0; 0x05; 0x00; 0x00; 0x06;
+                           (* CMP (Memop Quadword (%% (rsp,1440))) (Imm8 (word 6)) *)
   0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
   0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
   0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
@@ -1647,8 +1647,8 @@ let edwards25519_scalarmuldouble_mc,edwards25519_scalarmuldouble_data =
   0x4c; 0x0f; 0x44; 0xde;  (* CMOVE (% r11) (% rsi) *)
   0x48; 0x81; 0xc5; 0x80; 0x00; 0x00; 0x00;
                            (* ADD (% rbp) (Imm32 (word 128)) *)
-  0x48; 0x83; 0x7c; 0x24; 0x40; 0x07;
-                           (* CMP (Memop Quadword (%% (rsp,64))) (Imm8 (word 7)) *)
+  0x48; 0x83; 0xbc; 0x24; 0xa0; 0x05; 0x00; 0x00; 0x07;
+                           (* CMP (Memop Quadword (%% (rsp,1440))) (Imm8 (word 7)) *)
   0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
   0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
   0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
@@ -1667,8 +1667,8 @@ let edwards25519_scalarmuldouble_mc,edwards25519_scalarmuldouble_data =
   0x4c; 0x0f; 0x44; 0xde;  (* CMOVE (% r11) (% rsi) *)
   0x48; 0x81; 0xc5; 0x80; 0x00; 0x00; 0x00;
                            (* ADD (% rbp) (Imm32 (word 128)) *)
-  0x48; 0x83; 0x7c; 0x24; 0x40; 0x08;
-                           (* CMP (Memop Quadword (%% (rsp,64))) (Imm8 (word 8)) *)
+  0x48; 0x83; 0xbc; 0x24; 0xa0; 0x05; 0x00; 0x00; 0x08;
+                           (* CMP (Memop Quadword (%% (rsp,1440))) (Imm8 (word 8)) *)
   0x48; 0x8b; 0x75; 0x00;  (* MOV (% rsi) (Memop Quadword (%% (rbp,0))) *)
   0x48; 0x0f; 0x44; 0xc6;  (* CMOVE (% rax) (% rsi) *)
   0x48; 0x8b; 0x75; 0x08;  (* MOV (% rsi) (Memop Quadword (%% (rbp,8))) *)
@@ -1685,8 +1685,8 @@ let edwards25519_scalarmuldouble_mc,edwards25519_scalarmuldouble_data =
   0x4c; 0x0f; 0x44; 0xd6;  (* CMOVE (% r10) (% rsi) *)
   0x48; 0x8b; 0x75; 0x78;  (* MOV (% rsi) (Memop Quadword (%% (rbp,120))) *)
   0x4c; 0x0f; 0x44; 0xde;  (* CMOVE (% r11) (% rsi) *)
-  0x48; 0x8b; 0x7c; 0x24; 0x48;
-                           (* MOV (% rdi) (Memop Quadword (%% (rsp,72))) *)
+  0x48; 0x8b; 0xbc; 0x24; 0xa8; 0x05; 0x00; 0x00;
+                           (* MOV (% rdi) (Memop Quadword (%% (rsp,1448))) *)
   0x48; 0x31; 0xf8;        (* XOR (% rax) (% rdi) *)
   0x48; 0x31; 0xfb;        (* XOR (% rbx) (% rdi) *)
   0x48; 0x31; 0xf9;        (* XOR (% rcx) (% rdi) *)
@@ -1700,515 +1700,1637 @@ let edwards25519_scalarmuldouble_mc,edwards25519_scalarmuldouble_data =
   0x48; 0x83; 0xdb; 0x00;  (* SBB (% rbx) (Imm8 (word 0)) *)
   0x48; 0x83; 0xd9; 0x00;  (* SBB (% rcx) (Imm8 (word 0)) *)
   0x48; 0x83; 0xda; 0x00;  (* SBB (% rdx) (Imm8 (word 0)) *)
-  0x48; 0x89; 0x84; 0x24; 0xe0; 0x00; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,224))) (% rax) *)
-  0x48; 0x89; 0x9c; 0x24; 0xe8; 0x00; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,232))) (% rbx) *)
-  0x48; 0x89; 0x8c; 0x24; 0xf0; 0x00; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,240))) (% rcx) *)
-  0x48; 0x89; 0x94; 0x24; 0xf8; 0x00; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,248))) (% rdx) *)
+  0x48; 0x89; 0x44; 0x24; 0x40;
+                           (* MOV (Memop Quadword (%% (rsp,64))) (% rax) *)
+  0x48; 0x89; 0x5c; 0x24; 0x48;
+                           (* MOV (Memop Quadword (%% (rsp,72))) (% rbx) *)
+  0x48; 0x89; 0x4c; 0x24; 0x50;
+                           (* MOV (Memop Quadword (%% (rsp,80))) (% rcx) *)
+  0x48; 0x89; 0x54; 0x24; 0x58;
+                           (* MOV (Memop Quadword (%% (rsp,88))) (% rdx) *)
   0x49; 0x29; 0xf8;        (* SUB (% r8) (% rdi) *)
   0x49; 0x83; 0xd9; 0x00;  (* SBB (% r9) (Imm8 (word 0)) *)
   0x49; 0x83; 0xda; 0x00;  (* SBB (% r10) (Imm8 (word 0)) *)
   0x49; 0x83; 0xdb; 0x00;  (* SBB (% r11) (Imm8 (word 0)) *)
-  0x4c; 0x89; 0x84; 0x24; 0x40; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,320))) (% r8) *)
-  0x4c; 0x89; 0x8c; 0x24; 0x48; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,328))) (% r9) *)
-  0x4c; 0x89; 0x94; 0x24; 0x50; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,336))) (% r10) *)
-  0x4c; 0x89; 0x9c; 0x24; 0x58; 0x01; 0x00; 0x00;
-                           (* MOV (Memop Quadword (%% (rsp,344))) (% r11) *)
-  0x48; 0x8d; 0x7c; 0x24; 0x60;
-                           (* LEA (% rdi) (%% (rsp,96)) *)
-  0x48; 0x8d; 0x74; 0x24; 0x60;
-                           (* LEA (% rsi) (%% (rsp,96)) *)
-  0xe8; 0xf3; 0x17; 0x00; 0x00;
-                           (* CALL (Imm32 (word 6131)) *)
-  0x48; 0x8d; 0xbc; 0x24; 0xe0; 0x00; 0x00; 0x00;
-                           (* LEA (% rdi) (%% (rsp,224)) *)
-  0x48; 0x8d; 0xb4; 0x24; 0xe0; 0x00; 0x00; 0x00;
-                           (* LEA (% rsi) (%% (rsp,224)) *)
-  0x48; 0x8d; 0xac; 0x24; 0x60; 0x01; 0x00; 0x00;
-                           (* LEA (% rbp) (%% (rsp,352)) *)
-  0xe8; 0x86; 0x37; 0x00; 0x00;
-                           (* CALL (Imm32 (word 14214)) *)
-  0x48; 0x8d; 0x7c; 0x24; 0x60;
-                           (* LEA (% rdi) (%% (rsp,96)) *)
-  0x48; 0x8d; 0x74; 0x24; 0x60;
-                           (* LEA (% rsi) (%% (rsp,96)) *)
-  0xe8; 0xc7; 0x17; 0x00; 0x00;
-                           (* CALL (Imm32 (word 6087)) *)
-  0x48; 0x8d; 0x7c; 0x24; 0x60;
-                           (* LEA (% rdi) (%% (rsp,96)) *)
-  0x48; 0x8d; 0x74; 0x24; 0x60;
-                           (* LEA (% rsi) (%% (rsp,96)) *)
-  0xe8; 0x30; 0x09; 0x00; 0x00;
-                           (* CALL (Imm32 (word 2352)) *)
-  0x48; 0x8d; 0x7c; 0x24; 0x60;
-                           (* LEA (% rdi) (%% (rsp,96)) *)
-  0x48; 0x8d; 0x74; 0x24; 0x60;
-                           (* LEA (% rsi) (%% (rsp,96)) *)
-  0x48; 0x8d; 0xac; 0x24; 0xe0; 0x00; 0x00; 0x00;
-                           (* LEA (% rbp) (%% (rsp,224)) *)
-  0xe8; 0x63; 0x24; 0x00; 0x00;
-                           (* CALL (Imm32 (word 9315)) *)
-  0x48; 0x8b; 0x44; 0x24; 0x50;
-                           (* MOV (% rax) (Memop Quadword (%% (rsp,80))) *)
+  0x4c; 0x89; 0x84; 0x24; 0xa0; 0x00; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,160))) (% r8) *)
+  0x4c; 0x89; 0x8c; 0x24; 0xa8; 0x00; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,168))) (% r9) *)
+  0x4c; 0x89; 0x94; 0x24; 0xb0; 0x00; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,176))) (% r10) *)
+  0x4c; 0x89; 0x9c; 0x24; 0xb8; 0x00; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,184))) (% r11) *)
+  0x48; 0x8d; 0xbc; 0x24; 0x20; 0x01; 0x00; 0x00;
+                           (* LEA (% rdi) (%% (rsp,288)) *)
+  0x48; 0x8d; 0xb4; 0x24; 0x20; 0x01; 0x00; 0x00;
+                           (* LEA (% rsi) (%% (rsp,288)) *)
+  0xe8; 0x5d; 0x26; 0x00; 0x00;
+                           (* CALL (Imm32 (word 9821)) *)
+  0x48; 0x8d; 0x7c; 0x24; 0x40;
+                           (* LEA (% rdi) (%% (rsp,64)) *)
+  0x48; 0x8d; 0x74; 0x24; 0x40;
+                           (* LEA (% rsi) (%% (rsp,64)) *)
+  0x48; 0x8d; 0xac; 0x24; 0xc0; 0x00; 0x00; 0x00;
+                           (* LEA (% rbp) (%% (rsp,192)) *)
+  0xe8; 0xf6; 0x45; 0x00; 0x00;
+                           (* CALL (Imm32 (word 17910)) *)
+  0x48; 0x8d; 0xbc; 0x24; 0x20; 0x01; 0x00; 0x00;
+                           (* LEA (% rdi) (%% (rsp,288)) *)
+  0x48; 0x8d; 0xb4; 0x24; 0x20; 0x01; 0x00; 0x00;
+                           (* LEA (% rsi) (%% (rsp,288)) *)
+  0xe8; 0x31; 0x26; 0x00; 0x00;
+                           (* CALL (Imm32 (word 9777)) *)
+  0x48; 0x8d; 0xbc; 0x24; 0x20; 0x01; 0x00; 0x00;
+                           (* LEA (% rdi) (%% (rsp,288)) *)
+  0x48; 0x8d; 0xb4; 0x24; 0x20; 0x01; 0x00; 0x00;
+                           (* LEA (% rsi) (%% (rsp,288)) *)
+  0xe8; 0x94; 0x17; 0x00; 0x00;
+                           (* CALL (Imm32 (word 6036)) *)
+  0x48; 0x8d; 0xbc; 0x24; 0x20; 0x01; 0x00; 0x00;
+                           (* LEA (% rdi) (%% (rsp,288)) *)
+  0x48; 0x8d; 0xb4; 0x24; 0x20; 0x01; 0x00; 0x00;
+                           (* LEA (% rsi) (%% (rsp,288)) *)
+  0x48; 0x8d; 0x6c; 0x24; 0x40;
+                           (* LEA (% rbp) (%% (rsp,64)) *)
+  0xe8; 0xc4; 0x32; 0x00; 0x00;
+                           (* CALL (Imm32 (word 12996)) *)
+  0x48; 0x8b; 0x84; 0x24; 0xb0; 0x05; 0x00; 0x00;
+                           (* MOV (% rax) (Memop Quadword (%% (rsp,1456))) *)
   0x48; 0x85; 0xc0;        (* TEST (% rax) (% rax) *)
-  0x0f; 0x85; 0x2c; 0xf5; 0xff; 0xff;
-                           (* JNE (Imm32 (word 4294964524)) *)
-  0x48; 0xc7; 0xc7; 0x04; 0x00; 0x00; 0x00;
-                           (* MOV (% rdi) (Imm32 (word 4)) *)
-  0x48; 0x8d; 0xb4; 0x24; 0xe0; 0x00; 0x00; 0x00;
-                           (* LEA (% rsi) (%% (rsp,224)) *)
-  0x48; 0x8d; 0x94; 0x24; 0xa0; 0x00; 0x00; 0x00;
-                           (* LEA (% rdx) (%% (rsp,160)) *)
-  0x48; 0x8d; 0x0d; 0x0b; 0x46; 0x00; 0x00;
-                           (* LEA (% rcx) (Riprel (word 17931)) *)
-  0x4c; 0x8d; 0x84; 0x24; 0x60; 0x01; 0x00; 0x00;
-                           (* LEA (% r8) (%% (rsp,352)) *)
-  0x48; 0x89; 0x74; 0x24; 0x40;
-                           (* MOV (Memop Quadword (%% (rsp,64))) (% rsi) *)
-  0x4c; 0x89; 0x44; 0x24; 0x38;
-                           (* MOV (Memop Quadword (%% (rsp,56))) (% r8) *)
-  0x48; 0x89; 0x4c; 0x24; 0x48;
-                           (* MOV (Memop Quadword (%% (rsp,72))) (% rcx) *)
-  0x4d; 0x8d; 0x14; 0xf8;  (* LEA (% r10) (%%% (r8,3,rdi)) *)
-  0x4c; 0x89; 0x54; 0x24; 0x30;
-                           (* MOV (Memop Quadword (%% (rsp,48))) (% r10) *)
-  0x4d; 0x8d; 0x3c; 0xfa;  (* LEA (% r15) (%%% (r10,3,rdi)) *)
-  0x4d; 0x31; 0xdb;        (* XOR (% r11) (% r11) *)
-  0x4d; 0x31; 0xc9;        (* XOR (% r9) (% r9) *)
-  0x4a; 0x8b; 0x04; 0xca;  (* MOV (% rax) (Memop Quadword (%%% (rdx,3,r9))) *)
-  0x4a; 0x8b; 0x1c; 0xc9;  (* MOV (% rbx) (Memop Quadword (%%% (rcx,3,r9))) *)
-  0x4b; 0x89; 0x04; 0xca;  (* MOV (Memop Quadword (%%% (r10,3,r9))) (% rax) *)
-  0x4b; 0x89; 0x1c; 0xcf;  (* MOV (Memop Quadword (%%% (r15,3,r9))) (% rbx) *)
-  0x4b; 0x89; 0x1c; 0xc8;  (* MOV (Memop Quadword (%%% (r8,3,r9))) (% rbx) *)
-  0x4e; 0x89; 0x1c; 0xce;  (* MOV (Memop Quadword (%%% (rsi,3,r9))) (% r11) *)
-  0x49; 0xff; 0xc1;        (* INC (% r9) *)
-  0x49; 0x39; 0xf9;        (* CMP (% r9) (% rdi) *)
-  0x72; 0xe0;              (* JB (Imm8 (word 224)) *)
-  0x49; 0x8b; 0x00;        (* MOV (% rax) (Memop Quadword (%% (r8,0))) *)
-  0x48; 0x89; 0xc3;        (* MOV (% rbx) (% rax) *)
-  0x48; 0xff; 0xcb;        (* DEC (% rbx) *)
-  0x49; 0x89; 0x18;        (* MOV (Memop Quadword (%% (r8,0))) (% rbx) *)
-  0x48; 0x89; 0xc5;        (* MOV (% rbp) (% rax) *)
-  0x49; 0x89; 0xc4;        (* MOV (% r12) (% rax) *)
-  0x48; 0xc1; 0xe5; 0x02;  (* SHL (% rbp) (Imm8 (word 2)) *)
-  0x49; 0x29; 0xec;        (* SUB (% r12) (% rbp) *)
-  0x49; 0x83; 0xf4; 0x02;  (* XOR (% r12) (Imm8 (word 2)) *)
-  0x4c; 0x89; 0xe5;        (* MOV (% rbp) (% r12) *)
-  0x48; 0x0f; 0xaf; 0xe8;  (* IMUL (% rbp) (% rax) *)
-  0xb8; 0x02; 0x00; 0x00; 0x00;
-                           (* MOV (% eax) (Imm32 (word 2)) *)
-  0x48; 0x01; 0xe8;        (* ADD (% rax) (% rbp) *)
-  0x48; 0x83; 0xc5; 0x01;  (* ADD (% rbp) (Imm8 (word 1)) *)
-  0x4c; 0x0f; 0xaf; 0xe0;  (* IMUL (% r12) (% rax) *)
-  0x48; 0x0f; 0xaf; 0xed;  (* IMUL (% rbp) (% rbp) *)
-  0xb8; 0x01; 0x00; 0x00; 0x00;
-                           (* MOV (% eax) (Imm32 (word 1)) *)
-  0x48; 0x01; 0xe8;        (* ADD (% rax) (% rbp) *)
-  0x4c; 0x0f; 0xaf; 0xe0;  (* IMUL (% r12) (% rax) *)
-  0x48; 0x0f; 0xaf; 0xed;  (* IMUL (% rbp) (% rbp) *)
-  0xb8; 0x01; 0x00; 0x00; 0x00;
-                           (* MOV (% eax) (Imm32 (word 1)) *)
-  0x48; 0x01; 0xe8;        (* ADD (% rax) (% rbp) *)
-  0x4c; 0x0f; 0xaf; 0xe0;  (* IMUL (% r12) (% rax) *)
-  0x48; 0x0f; 0xaf; 0xed;  (* IMUL (% rbp) (% rbp) *)
-  0xb8; 0x01; 0x00; 0x00; 0x00;
-                           (* MOV (% eax) (Imm32 (word 1)) *)
-  0x48; 0x01; 0xe8;        (* ADD (% rax) (% rbp) *)
-  0x4c; 0x0f; 0xaf; 0xe0;  (* IMUL (% r12) (% rax) *)
-  0x4c; 0x89; 0x64; 0x24; 0x28;
-                           (* MOV (Memop Quadword (%% (rsp,40))) (% r12) *)
-  0x48; 0x89; 0xf8;        (* MOV (% rax) (% rdi) *)
-  0x48; 0xc1; 0xe0; 0x07;  (* SHL (% rax) (Imm8 (word 7)) *)
-  0x48; 0x89; 0x44; 0x24; 0x20;
-                           (* MOV (Memop Quadword (%% (rsp,32))) (% rax) *)
-  0x4c; 0x8b; 0x6c; 0x24; 0x20;
-                           (* MOV (% r13) (Memop Quadword (%% (rsp,32))) *)
-  0x49; 0x83; 0xc5; 0x3f;  (* ADD (% r13) (Imm8 (word 63)) *)
-  0x49; 0xc1; 0xed; 0x06;  (* SHR (% r13) (Imm8 (word 6)) *)
-  0x49; 0x39; 0xfd;        (* CMP (% r13) (% rdi) *)
-  0x4c; 0x0f; 0x43; 0xef;  (* CMOVAE (% r13) (% rdi) *)
-  0x4d; 0x31; 0xe4;        (* XOR (% r12) (% r12) *)
-  0x4d; 0x31; 0xf6;        (* XOR (% r14) (% r14) *)
-  0x48; 0x31; 0xed;        (* XOR (% rbp) (% rbp) *)
-  0x48; 0x31; 0xf6;        (* XOR (% rsi) (% rsi) *)
-  0x4d; 0x31; 0xdb;        (* XOR (% r11) (% r11) *)
-  0x4c; 0x8b; 0x44; 0x24; 0x30;
-                           (* MOV (% r8) (Memop Quadword (%% (rsp,48))) *)
-  0x4d; 0x8d; 0x3c; 0xf8;  (* LEA (% r15) (%%% (r8,3,rdi)) *)
-  0x4d; 0x31; 0xc9;        (* XOR (% r9) (% r9) *)
-  0x4b; 0x8b; 0x1c; 0xc8;  (* MOV (% rbx) (Memop Quadword (%%% (r8,3,r9))) *)
-  0x4b; 0x8b; 0x0c; 0xcf;  (* MOV (% rcx) (Memop Quadword (%%% (r15,3,r9))) *)
-  0x4d; 0x89; 0xda;        (* MOV (% r10) (% r11) *)
-  0x4d; 0x21; 0xe2;        (* AND (% r10) (% r12) *)
-  0x49; 0x21; 0xeb;        (* AND (% r11) (% rbp) *)
-  0x48; 0x89; 0xd8;        (* MOV (% rax) (% rbx) *)
-  0x48; 0x09; 0xc8;        (* OR (% rax) (% rcx) *)
-  0x48; 0xf7; 0xd8;        (* NEG (% rax) *)
-  0x4d; 0x0f; 0x42; 0xf2;  (* CMOVB (% r14) (% r10) *)
-  0x49; 0x0f; 0x42; 0xf3;  (* CMOVB (% rsi) (% r11) *)
-  0x4c; 0x0f; 0x42; 0xe3;  (* CMOVB (% r12) (% rbx) *)
-  0x48; 0x0f; 0x42; 0xe9;  (* CMOVB (% rbp) (% rcx) *)
-  0x4d; 0x19; 0xdb;        (* SBB (% r11) (% r11) *)
-  0x49; 0xff; 0xc1;        (* INC (% r9) *)
-  0x4d; 0x39; 0xe9;        (* CMP (% r9) (% r13) *)
-  0x72; 0xcb;              (* JB (Imm8 (word 203)) *)
-  0x4c; 0x89; 0xe0;        (* MOV (% rax) (% r12) *)
-  0x48; 0x09; 0xe8;        (* OR (% rax) (% rbp) *)
-  0x48; 0x0f; 0xbd; 0xc8;  (* BSR (% rcx) (% rax) *)
-  0x48; 0x83; 0xf1; 0x3f;  (* XOR (% rcx) (Imm8 (word 63)) *)
-  0x4d; 0x0f; 0xa5; 0xf4;  (* SHLD (% r12) (% r14) (% cl) *)
-  0x48; 0x0f; 0xa5; 0xf5;  (* SHLD (% rbp) (% rsi) (% cl) *)
-  0x49; 0x8b; 0x00;        (* MOV (% rax) (Memop Quadword (%% (r8,0))) *)
-  0x49; 0x89; 0xc6;        (* MOV (% r14) (% rax) *)
-  0x49; 0x8b; 0x07;        (* MOV (% rax) (Memop Quadword (%% (r15,0))) *)
-  0x48; 0x89; 0xc6;        (* MOV (% rsi) (% rax) *)
-  0x41; 0xba; 0x01; 0x00; 0x00; 0x00;
-                           (* MOV (% r10d) (Imm32 (word 1)) *)
-  0x41; 0xbb; 0x00; 0x00; 0x00; 0x00;
-                           (* MOV (% r11d) (Imm32 (word 0)) *)
-  0xb9; 0x00; 0x00; 0x00; 0x00;
-                           (* MOV (% ecx) (Imm32 (word 0)) *)
-  0xba; 0x01; 0x00; 0x00; 0x00;
-                           (* MOV (% edx) (Imm32 (word 1)) *)
-  0x41; 0xb9; 0x3a; 0x00; 0x00; 0x00;
-                           (* MOV (% r9d) (Imm32 (word 58)) *)
-  0x48; 0x89; 0x7c; 0x24; 0x08;
-                           (* MOV (Memop Quadword (%% (rsp,8))) (% rdi) *)
-  0x4c; 0x89; 0x6c; 0x24; 0x10;
-                           (* MOV (Memop Quadword (%% (rsp,16))) (% r13) *)
-  0x4c; 0x89; 0x04; 0x24;  (* MOV (Memop Quadword (%% (rsp,0))) (% r8) *)
-  0x4c; 0x89; 0x7c; 0x24; 0x18;
-                           (* MOV (Memop Quadword (%% (rsp,24))) (% r15) *)
+  0x0f; 0x85; 0xc6; 0xf4; 0xff; 0xff;
+                           (* JNE (Imm32 (word 4294964422)) *)
+  0x48; 0x8d; 0xbc; 0x24; 0xa0; 0x01; 0x00; 0x00;
+                           (* LEA (% rdi) (%% (rsp,416)) *)
+  0x48; 0x8d; 0xb4; 0x24; 0x60; 0x01; 0x00; 0x00;
+                           (* LEA (% rsi) (%% (rsp,352)) *)
+  0x48; 0x89; 0xbc; 0x24; 0xc0; 0x00; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,192))) (% rdi) *)
   0x31; 0xc0;              (* XOR (% eax) (% eax) *)
-  0x31; 0xdb;              (* XOR (% ebx) (% ebx) *)
-  0x4d; 0x31; 0xc0;        (* XOR (% r8) (% r8) *)
-  0x4d; 0x31; 0xff;        (* XOR (% r15) (% r15) *)
-  0x49; 0x0f; 0xba; 0xe6; 0x00;
-                           (* BT (% r14) (Imm8 (word 0)) *)
-  0x48; 0x0f; 0x42; 0xc5;  (* CMOVB (% rax) (% rbp) *)
-  0x48; 0x0f; 0x42; 0xde;  (* CMOVB (% rbx) (% rsi) *)
-  0x4c; 0x0f; 0x42; 0xc1;  (* CMOVB (% r8) (% rcx) *)
-  0x4c; 0x0f; 0x42; 0xfa;  (* CMOVB (% r15) (% rdx) *)
-  0x4d; 0x89; 0xf5;        (* MOV (% r13) (% r14) *)
-  0x49; 0x29; 0xde;        (* SUB (% r14) (% rbx) *)
-  0x4c; 0x29; 0xeb;        (* SUB (% rbx) (% r13) *)
-  0x4c; 0x89; 0xe7;        (* MOV (% rdi) (% r12) *)
-  0x48; 0x29; 0xc7;        (* SUB (% rdi) (% rax) *)
-  0x49; 0x0f; 0x42; 0xec;  (* CMOVB (% rbp) (% r12) *)
-  0x4c; 0x8d; 0x67; 0xff;  (* LEA (% r12) (%% (rdi,18446744073709551615)) *)
-  0x4c; 0x0f; 0x42; 0xf3;  (* CMOVB (% r14) (% rbx) *)
-  0x49; 0x0f; 0x42; 0xf5;  (* CMOVB (% rsi) (% r13) *)
-  0x49; 0xf7; 0xd4;        (* NOT (% r12) *)
-  0x49; 0x0f; 0x42; 0xca;  (* CMOVB (% rcx) (% r10) *)
-  0x49; 0x0f; 0x42; 0xd3;  (* CMOVB (% rdx) (% r11) *)
-  0x4c; 0x0f; 0x43; 0xe7;  (* CMOVAE (% r12) (% rdi) *)
-  0x49; 0xd1; 0xee;        (* SHR (% r14) (Imm8 (word 1)) *)
-  0x4d; 0x01; 0xc2;        (* ADD (% r10) (% r8) *)
-  0x4d; 0x01; 0xfb;        (* ADD (% r11) (% r15) *)
-  0x49; 0xd1; 0xec;        (* SHR (% r12) (Imm8 (word 1)) *)
-  0x48; 0x01; 0xc9;        (* ADD (% rcx) (% rcx) *)
-  0x48; 0x01; 0xd2;        (* ADD (% rdx) (% rdx) *)
-  0x49; 0xff; 0xc9;        (* DEC (% r9) *)
-  0x75; 0x9c;              (* JNE (Imm8 (word 156)) *)
-  0x48; 0x8b; 0x7c; 0x24; 0x08;
-                           (* MOV (% rdi) (Memop Quadword (%% (rsp,8))) *)
-  0x4c; 0x8b; 0x6c; 0x24; 0x10;
-                           (* MOV (% r13) (Memop Quadword (%% (rsp,16))) *)
-  0x4c; 0x8b; 0x04; 0x24;  (* MOV (% r8) (Memop Quadword (%% (rsp,0))) *)
-  0x4c; 0x8b; 0x7c; 0x24; 0x18;
-                           (* MOV (% r15) (Memop Quadword (%% (rsp,24))) *)
-  0x4c; 0x89; 0x14; 0x24;  (* MOV (Memop Quadword (%% (rsp,0))) (% r10) *)
-  0x4c; 0x89; 0x5c; 0x24; 0x08;
-                           (* MOV (Memop Quadword (%% (rsp,8))) (% r11) *)
-  0x48; 0x89; 0x4c; 0x24; 0x10;
-                           (* MOV (Memop Quadword (%% (rsp,16))) (% rcx) *)
-  0x48; 0x89; 0x54; 0x24; 0x18;
-                           (* MOV (Memop Quadword (%% (rsp,24))) (% rdx) *)
-  0x4c; 0x8b; 0x44; 0x24; 0x38;
-                           (* MOV (% r8) (Memop Quadword (%% (rsp,56))) *)
-  0x4c; 0x8b; 0x7c; 0x24; 0x40;
-                           (* MOV (% r15) (Memop Quadword (%% (rsp,64))) *)
-  0x4d; 0x31; 0xf6;        (* XOR (% r14) (% r14) *)
-  0x48; 0x31; 0xf6;        (* XOR (% rsi) (% rsi) *)
-  0x4d; 0x31; 0xd2;        (* XOR (% r10) (% r10) *)
-  0x4d; 0x31; 0xdb;        (* XOR (% r11) (% r11) *)
-  0x4d; 0x31; 0xc9;        (* XOR (% r9) (% r9) *)
-  0x4b; 0x8b; 0x0c; 0xc8;  (* MOV (% rcx) (Memop Quadword (%%% (r8,3,r9))) *)
-  0x48; 0x8b; 0x04; 0x24;  (* MOV (% rax) (Memop Quadword (%% (rsp,0))) *)
-  0x48; 0xf7; 0xe1;        (* MUL2 (% rdx,% rax) (% rcx) *)
-  0x49; 0x01; 0xc6;        (* ADD (% r14) (% rax) *)
-  0x48; 0x83; 0xd2; 0x00;  (* ADC (% rdx) (Imm8 (word 0)) *)
-  0x49; 0x89; 0xd4;        (* MOV (% r12) (% rdx) *)
-  0x48; 0x8b; 0x44; 0x24; 0x10;
-                           (* MOV (% rax) (Memop Quadword (%% (rsp,16))) *)
-  0x48; 0xf7; 0xe1;        (* MUL2 (% rdx,% rax) (% rcx) *)
+  0x48; 0x8d; 0x48; 0xed;  (* LEA (% rcx) (%% (rax,18446744073709551597)) *)
+  0x48; 0xf7; 0xd0;        (* NOT (% rax) *)
+  0x48; 0x89; 0x0c; 0x24;  (* MOV (Memop Quadword (%% (rsp,0))) (% rcx) *)
+  0x48; 0x89; 0x44; 0x24; 0x08;
+                           (* MOV (Memop Quadword (%% (rsp,8))) (% rax) *)
+  0x48; 0x89; 0x44; 0x24; 0x10;
+                           (* MOV (Memop Quadword (%% (rsp,16))) (% rax) *)
+  0x48; 0x0f; 0xba; 0xf0; 0x3f;
+                           (* BTR (% rax) (Imm8 (word 63)) *)
+  0x48; 0x89; 0x44; 0x24; 0x18;
+                           (* MOV (Memop Quadword (%% (rsp,24))) (% rax) *)
+  0x48; 0x8b; 0x16;        (* MOV (% rdx) (Memop Quadword (%% (rsi,0))) *)
+  0x48; 0x8b; 0x4e; 0x08;  (* MOV (% rcx) (Memop Quadword (%% (rsi,8))) *)
+  0x4c; 0x8b; 0x46; 0x10;  (* MOV (% r8) (Memop Quadword (%% (rsi,16))) *)
+  0x4c; 0x8b; 0x4e; 0x18;  (* MOV (% r9) (Memop Quadword (%% (rsi,24))) *)
+  0xb8; 0x01; 0x00; 0x00; 0x00;
+                           (* MOV (% eax) (Imm32 (word 1)) *)
+  0x45; 0x31; 0xd2;        (* XOR (% r10d) (% r10d) *)
+  0x49; 0x0f; 0xba; 0xe9; 0x3f;
+                           (* BTS (% r9) (Imm8 (word 63)) *)
+  0x4c; 0x11; 0xd0;        (* ADC (% rax) (% r10) *)
+  0x48; 0x6b; 0xc0; 0x13;  (* IMUL3 (% rax) (% rax,Imm8 (word 19)) *)
+  0x48; 0x01; 0xc2;        (* ADD (% rdx) (% rax) *)
+  0x4c; 0x11; 0xd1;        (* ADC (% rcx) (% r10) *)
+  0x4d; 0x11; 0xd0;        (* ADC (% r8) (% r10) *)
+  0x4d; 0x11; 0xd1;        (* ADC (% r9) (% r10) *)
+  0xb8; 0x13; 0x00; 0x00; 0x00;
+                           (* MOV (% eax) (Imm32 (word 19)) *)
+  0x49; 0x0f; 0x42; 0xc2;  (* CMOVB (% rax) (% r10) *)
+  0x48; 0x29; 0xc2;        (* SUB (% rdx) (% rax) *)
+  0x4c; 0x19; 0xd1;        (* SBB (% rcx) (% r10) *)
+  0x4d; 0x19; 0xd0;        (* SBB (% r8) (% r10) *)
+  0x4d; 0x19; 0xd1;        (* SBB (% r9) (% r10) *)
+  0x49; 0x0f; 0xba; 0xf1; 0x3f;
+                           (* BTR (% r9) (Imm8 (word 63)) *)
+  0x48; 0x89; 0x54; 0x24; 0x20;
+                           (* MOV (Memop Quadword (%% (rsp,32))) (% rdx) *)
+  0x48; 0x89; 0x4c; 0x24; 0x28;
+                           (* MOV (Memop Quadword (%% (rsp,40))) (% rcx) *)
+  0x4c; 0x89; 0x44; 0x24; 0x30;
+                           (* MOV (Memop Quadword (%% (rsp,48))) (% r8) *)
+  0x4c; 0x89; 0x4c; 0x24; 0x38;
+                           (* MOV (Memop Quadword (%% (rsp,56))) (% r9) *)
+  0x31; 0xc0;              (* XOR (% eax) (% eax) *)
+  0x48; 0x89; 0x44; 0x24; 0x40;
+                           (* MOV (Memop Quadword (%% (rsp,64))) (% rax) *)
+  0x48; 0x89; 0x44; 0x24; 0x48;
+                           (* MOV (Memop Quadword (%% (rsp,72))) (% rax) *)
+  0x48; 0x89; 0x44; 0x24; 0x50;
+                           (* MOV (Memop Quadword (%% (rsp,80))) (% rax) *)
+  0x48; 0x89; 0x44; 0x24; 0x58;
+                           (* MOV (Memop Quadword (%% (rsp,88))) (% rax) *)
+  0x48; 0xb8; 0x99; 0x20; 0x02; 0x75; 0x23; 0x9e; 0xf9; 0xa0;
+                           (* MOV (% rax) (Imm64 (word 11599476190393540761)) *)
+  0x48; 0x89; 0x44; 0x24; 0x60;
+                           (* MOV (Memop Quadword (%% (rsp,96))) (% rax) *)
+  0x48; 0xb8; 0x95; 0x25; 0x13; 0x1d; 0x3f; 0x8f; 0xc6; 0xa8;
+                           (* MOV (% rax) (Imm64 (word 12161565344994108821)) *)
+  0x48; 0x89; 0x44; 0x24; 0x68;
+                           (* MOV (Memop Quadword (%% (rsp,104))) (% rax) *)
+  0x48; 0xb8; 0x42; 0x52; 0xac; 0x05; 0x38; 0x89; 0x6c; 0x6c;
+                           (* MOV (% rax) (Imm64 (word 7812770327287321154)) *)
+  0x48; 0x89; 0x44; 0x24; 0x70;
+                           (* MOV (Memop Quadword (%% (rsp,112))) (% rax) *)
+  0x48; 0xb8; 0x15; 0x06; 0x77; 0x41; 0xb2; 0x08; 0x65; 0x27;
+                           (* MOV (% rax) (Imm64 (word 2838684701822486037)) *)
+  0x48; 0x89; 0x44; 0x24; 0x78;
+                           (* MOV (Memop Quadword (%% (rsp,120))) (% rax) *)
+  0x48; 0xc7; 0x84; 0x24; 0x90; 0x00; 0x00; 0x00; 0x0a; 0x00; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,144))) (Imm32 (word 10)) *)
+  0x48; 0xc7; 0x84; 0x24; 0x98; 0x00; 0x00; 0x00; 0x01; 0x00; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,152))) (Imm32 (word 1)) *)
+  0xe9; 0x07; 0x04; 0x00; 0x00;
+                           (* JMP (Imm32 (word 1031)) *)
+  0x4d; 0x89; 0xc1;        (* MOV (% r9) (% r8) *)
+  0x49; 0xc1; 0xf9; 0x3f;  (* SAR (% r9) (Imm8 (word 63)) *)
+  0x4d; 0x31; 0xc8;        (* XOR (% r8) (% r9) *)
+  0x4d; 0x29; 0xc8;        (* SUB (% r8) (% r9) *)
+  0x4d; 0x89; 0xd3;        (* MOV (% r11) (% r10) *)
+  0x49; 0xc1; 0xfb; 0x3f;  (* SAR (% r11) (Imm8 (word 63)) *)
+  0x4d; 0x31; 0xda;        (* XOR (% r10) (% r11) *)
+  0x4d; 0x29; 0xda;        (* SUB (% r10) (% r11) *)
+  0x4d; 0x89; 0xe5;        (* MOV (% r13) (% r12) *)
+  0x49; 0xc1; 0xfd; 0x3f;  (* SAR (% r13) (Imm8 (word 63)) *)
+  0x4d; 0x31; 0xec;        (* XOR (% r12) (% r13) *)
+  0x4d; 0x29; 0xec;        (* SUB (% r12) (% r13) *)
+  0x4d; 0x89; 0xf7;        (* MOV (% r15) (% r14) *)
+  0x49; 0xc1; 0xff; 0x3f;  (* SAR (% r15) (Imm8 (word 63)) *)
+  0x4d; 0x31; 0xfe;        (* XOR (% r14) (% r15) *)
+  0x4d; 0x29; 0xfe;        (* SUB (% r14) (% r15) *)
+  0x4c; 0x89; 0xc0;        (* MOV (% rax) (% r8) *)
+  0x4c; 0x21; 0xc8;        (* AND (% rax) (% r9) *)
+  0x4c; 0x89; 0xd7;        (* MOV (% rdi) (% r10) *)
+  0x4c; 0x21; 0xdf;        (* AND (% rdi) (% r11) *)
+  0x48; 0x01; 0xc7;        (* ADD (% rdi) (% rax) *)
+  0x48; 0x89; 0xbc; 0x24; 0x80; 0x00; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,128))) (% rdi) *)
+  0x4c; 0x89; 0xe0;        (* MOV (% rax) (% r12) *)
+  0x4c; 0x21; 0xe8;        (* AND (% rax) (% r13) *)
+  0x4c; 0x89; 0xf6;        (* MOV (% rsi) (% r14) *)
+  0x4c; 0x21; 0xfe;        (* AND (% rsi) (% r15) *)
   0x48; 0x01; 0xc6;        (* ADD (% rsi) (% rax) *)
-  0x48; 0x83; 0xd2; 0x00;  (* ADC (% rdx) (Imm8 (word 0)) *)
-  0x48; 0x89; 0xd5;        (* MOV (% rbp) (% rdx) *)
-  0x4b; 0x8b; 0x0c; 0xcf;  (* MOV (% rcx) (Memop Quadword (%%% (r15,3,r9))) *)
-  0x48; 0x8b; 0x44; 0x24; 0x08;
-                           (* MOV (% rax) (Memop Quadword (%% (rsp,8))) *)
-  0x48; 0xf7; 0xe1;        (* MUL2 (% rdx,% rax) (% rcx) *)
-  0x49; 0x01; 0xc6;        (* ADD (% r14) (% rax) *)
-  0x49; 0x11; 0xd4;        (* ADC (% r12) (% rdx) *)
-  0x4d; 0x0f; 0xac; 0xf2; 0x3a;
-                           (* SHRD (% r10) (% r14) (Imm8 (word 58)) *)
-  0x4f; 0x89; 0x14; 0xc8;  (* MOV (Memop Quadword (%%% (r8,3,r9))) (% r10) *)
-  0x4d; 0x89; 0xf2;        (* MOV (% r10) (% r14) *)
-  0x4d; 0x89; 0xe6;        (* MOV (% r14) (% r12) *)
-  0x48; 0x8b; 0x44; 0x24; 0x18;
-                           (* MOV (% rax) (Memop Quadword (%% (rsp,24))) *)
-  0x48; 0xf7; 0xe1;        (* MUL2 (% rdx,% rax) (% rcx) *)
+  0x48; 0x89; 0xb4; 0x24; 0x88; 0x00; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,136))) (% rsi) *)
+  0x31; 0xdb;              (* XOR (% ebx) (% ebx) *)
+  0x48; 0x8b; 0x04; 0x24;  (* MOV (% rax) (Memop Quadword (%% (rsp,0))) *)
+  0x4c; 0x31; 0xc8;        (* XOR (% rax) (% r9) *)
+  0x49; 0xf7; 0xe0;        (* MUL2 (% rdx,% rax) (% r8) *)
+  0x48; 0x01; 0xc7;        (* ADD (% rdi) (% rax) *)
+  0x48; 0x11; 0xd3;        (* ADC (% rbx) (% rdx) *)
+  0x48; 0x8b; 0x44; 0x24; 0x20;
+                           (* MOV (% rax) (Memop Quadword (%% (rsp,32))) *)
+  0x4c; 0x31; 0xd8;        (* XOR (% rax) (% r11) *)
+  0x49; 0xf7; 0xe2;        (* MUL2 (% rdx,% rax) (% r10) *)
+  0x48; 0x01; 0xc7;        (* ADD (% rdi) (% rax) *)
+  0x48; 0x11; 0xd3;        (* ADC (% rbx) (% rdx) *)
+  0x31; 0xed;              (* XOR (% ebp) (% ebp) *)
+  0x48; 0x8b; 0x04; 0x24;  (* MOV (% rax) (Memop Quadword (%% (rsp,0))) *)
+  0x4c; 0x31; 0xe8;        (* XOR (% rax) (% r13) *)
+  0x49; 0xf7; 0xe4;        (* MUL2 (% rdx,% rax) (% r12) *)
   0x48; 0x01; 0xc6;        (* ADD (% rsi) (% rax) *)
   0x48; 0x11; 0xd5;        (* ADC (% rbp) (% rdx) *)
-  0x49; 0x0f; 0xac; 0xf3; 0x3a;
-                           (* SHRD (% r11) (% rsi) (Imm8 (word 58)) *)
-  0x4f; 0x89; 0x1c; 0xcf;  (* MOV (Memop Quadword (%%% (r15,3,r9))) (% r11) *)
-  0x49; 0x89; 0xf3;        (* MOV (% r11) (% rsi) *)
-  0x48; 0x89; 0xee;        (* MOV (% rsi) (% rbp) *)
-  0x49; 0xff; 0xc1;        (* INC (% r9) *)
-  0x49; 0x39; 0xf9;        (* CMP (% r9) (% rdi) *)
-  0x72; 0x93;              (* JB (Imm8 (word 147)) *)
-  0x4d; 0x0f; 0xa4; 0xd6; 0x06;
-                           (* SHLD (% r14) (% r10) (Imm8 (word 6)) *)
-  0x4c; 0x0f; 0xa4; 0xde; 0x06;
-                           (* SHLD (% rsi) (% r11) (Imm8 (word 6)) *)
-  0x4c; 0x8b; 0x7c; 0x24; 0x48;
-                           (* MOV (% r15) (Memop Quadword (%% (rsp,72))) *)
-  0x49; 0x8b; 0x18;        (* MOV (% rbx) (Memop Quadword (%% (r8,0))) *)
-  0x4c; 0x8b; 0x64; 0x24; 0x28;
-                           (* MOV (% r12) (Memop Quadword (%% (rsp,40))) *)
-  0x4c; 0x0f; 0xaf; 0xe3;  (* IMUL (% r12) (% rbx) *)
-  0x49; 0x8b; 0x07;        (* MOV (% rax) (Memop Quadword (%% (r15,0))) *)
-  0x49; 0xf7; 0xe4;        (* MUL2 (% rdx,% rax) (% r12) *)
-  0x48; 0x01; 0xd8;        (* ADD (% rax) (% rbx) *)
-  0x49; 0x89; 0xd2;        (* MOV (% r10) (% rdx) *)
-  0x41; 0xb9; 0x01; 0x00; 0x00; 0x00;
-                           (* MOV (% r9d) (Imm32 (word 1)) *)
-  0x48; 0x89; 0xf9;        (* MOV (% rcx) (% rdi) *)
-  0x48; 0xff; 0xc9;        (* DEC (% rcx) *)
-  0x74; 0x24;              (* JE (Imm8 (word 36)) *)
-  0x4f; 0x13; 0x14; 0xc8;  (* ADC (% r10) (Memop Quadword (%%% (r8,3,r9))) *)
-  0x48; 0x19; 0xdb;        (* SBB (% rbx) (% rbx) *)
-  0x4b; 0x8b; 0x04; 0xcf;  (* MOV (% rax) (Memop Quadword (%%% (r15,3,r9))) *)
-  0x49; 0xf7; 0xe4;        (* MUL2 (% rdx,% rax) (% r12) *)
-  0x48; 0x29; 0xda;        (* SUB (% rdx) (% rbx) *)
-  0x4c; 0x01; 0xd0;        (* ADD (% rax) (% r10) *)
-  0x4b; 0x89; 0x44; 0xc8; 0xf8;
-                           (* MOV (Memop Quadword (%%%% (r8,3,r9,-- &8))) (% rax) *)
-  0x49; 0x89; 0xd2;        (* MOV (% r10) (% rdx) *)
-  0x49; 0xff; 0xc1;        (* INC (% r9) *)
-  0x48; 0xff; 0xc9;        (* DEC (% rcx) *)
-  0x75; 0xdc;              (* JNE (Imm8 (word 220)) *)
-  0x4d; 0x11; 0xf2;        (* ADC (% r10) (% r14) *)
-  0x4d; 0x89; 0x54; 0xf8; 0xf8;
-                           (* MOV (Memop Quadword (%%%% (r8,3,rdi,-- &8))) (% r10) *)
-  0x4d; 0x19; 0xd2;        (* SBB (% r10) (% r10) *)
-  0x49; 0xf7; 0xda;        (* NEG (% r10) *)
-  0x48; 0x89; 0xf9;        (* MOV (% rcx) (% rdi) *)
-  0x4d; 0x31; 0xc9;        (* XOR (% r9) (% r9) *)
-  0x4b; 0x8b; 0x04; 0xc8;  (* MOV (% rax) (Memop Quadword (%%% (r8,3,r9))) *)
-  0x4b; 0x1b; 0x04; 0xcf;  (* SBB (% rax) (Memop Quadword (%%% (r15,3,r9))) *)
-  0x49; 0xff; 0xc1;        (* INC (% r9) *)
-  0x48; 0xff; 0xc9;        (* DEC (% rcx) *)
-  0x75; 0xf0;              (* JNE (Imm8 (word 240)) *)
-  0x49; 0x83; 0xda; 0x00;  (* SBB (% r10) (Imm8 (word 0)) *)
-  0x4d; 0x19; 0xd2;        (* SBB (% r10) (% r10) *)
-  0x49; 0xf7; 0xd2;        (* NOT (% r10) *)
-  0x48; 0x31; 0xc9;        (* XOR (% rcx) (% rcx) *)
-  0x4d; 0x31; 0xc9;        (* XOR (% r9) (% r9) *)
-  0x4b; 0x8b; 0x04; 0xc8;  (* MOV (% rax) (Memop Quadword (%%% (r8,3,r9))) *)
-  0x4b; 0x8b; 0x1c; 0xcf;  (* MOV (% rbx) (Memop Quadword (%%% (r15,3,r9))) *)
-  0x4c; 0x21; 0xd3;        (* AND (% rbx) (% r10) *)
-  0x48; 0xf7; 0xd9;        (* NEG (% rcx) *)
-  0x48; 0x19; 0xd8;        (* SBB (% rax) (% rbx) *)
-  0x48; 0x19; 0xc9;        (* SBB (% rcx) (% rcx) *)
-  0x4b; 0x89; 0x04; 0xc8;  (* MOV (Memop Quadword (%%% (r8,3,r9))) (% rax) *)
-  0x49; 0xff; 0xc1;        (* INC (% r9) *)
-  0x49; 0x39; 0xf9;        (* CMP (% r9) (% rdi) *)
-  0x72; 0xe0;              (* JB (Imm8 (word 224)) *)
-  0x4c; 0x8b; 0x44; 0x24; 0x40;
-                           (* MOV (% r8) (Memop Quadword (%% (rsp,64))) *)
-  0x49; 0x8b; 0x18;        (* MOV (% rbx) (Memop Quadword (%% (r8,0))) *)
-  0x48; 0x8b; 0x6c; 0x24; 0x28;
-                           (* MOV (% rbp) (Memop Quadword (%% (rsp,40))) *)
-  0x48; 0x0f; 0xaf; 0xeb;  (* IMUL (% rbp) (% rbx) *)
-  0x49; 0x8b; 0x07;        (* MOV (% rax) (Memop Quadword (%% (r15,0))) *)
-  0x48; 0xf7; 0xe5;        (* MUL2 (% rdx,% rax) (% rbp) *)
-  0x48; 0x01; 0xd8;        (* ADD (% rax) (% rbx) *)
-  0x49; 0x89; 0xd3;        (* MOV (% r11) (% rdx) *)
-  0x41; 0xb9; 0x01; 0x00; 0x00; 0x00;
-                           (* MOV (% r9d) (Imm32 (word 1)) *)
-  0x48; 0x89; 0xf9;        (* MOV (% rcx) (% rdi) *)
-  0x48; 0xff; 0xc9;        (* DEC (% rcx) *)
-  0x74; 0x24;              (* JE (Imm8 (word 36)) *)
-  0x4f; 0x13; 0x1c; 0xc8;  (* ADC (% r11) (Memop Quadword (%%% (r8,3,r9))) *)
-  0x48; 0x19; 0xdb;        (* SBB (% rbx) (% rbx) *)
-  0x4b; 0x8b; 0x04; 0xcf;  (* MOV (% rax) (Memop Quadword (%%% (r15,3,r9))) *)
-  0x48; 0xf7; 0xe5;        (* MUL2 (% rdx,% rax) (% rbp) *)
-  0x48; 0x29; 0xda;        (* SUB (% rdx) (% rbx) *)
-  0x4c; 0x01; 0xd8;        (* ADD (% rax) (% r11) *)
-  0x4b; 0x89; 0x44; 0xc8; 0xf8;
-                           (* MOV (Memop Quadword (%%%% (r8,3,r9,-- &8))) (% rax) *)
-  0x49; 0x89; 0xd3;        (* MOV (% r11) (% rdx) *)
-  0x49; 0xff; 0xc1;        (* INC (% r9) *)
-  0x48; 0xff; 0xc9;        (* DEC (% rcx) *)
-  0x75; 0xdc;              (* JNE (Imm8 (word 220)) *)
-  0x49; 0x11; 0xf3;        (* ADC (% r11) (% rsi) *)
-  0x4d; 0x89; 0x5c; 0xf8; 0xf8;
-                           (* MOV (Memop Quadword (%%%% (r8,3,rdi,-- &8))) (% r11) *)
-  0x4d; 0x19; 0xdb;        (* SBB (% r11) (% r11) *)
-  0x49; 0xf7; 0xdb;        (* NEG (% r11) *)
-  0x48; 0x89; 0xf9;        (* MOV (% rcx) (% rdi) *)
-  0x4d; 0x31; 0xc9;        (* XOR (% r9) (% r9) *)
-  0x4b; 0x8b; 0x04; 0xc8;  (* MOV (% rax) (Memop Quadword (%%% (r8,3,r9))) *)
-  0x4b; 0x1b; 0x04; 0xcf;  (* SBB (% rax) (Memop Quadword (%%% (r15,3,r9))) *)
-  0x49; 0xff; 0xc1;        (* INC (% r9) *)
-  0x48; 0xff; 0xc9;        (* DEC (% rcx) *)
-  0x75; 0xf0;              (* JNE (Imm8 (word 240)) *)
-  0x49; 0x83; 0xdb; 0x00;  (* SBB (% r11) (Imm8 (word 0)) *)
-  0x4d; 0x19; 0xdb;        (* SBB (% r11) (% r11) *)
-  0x49; 0xf7; 0xd3;        (* NOT (% r11) *)
-  0x48; 0x31; 0xc9;        (* XOR (% rcx) (% rcx) *)
-  0x4d; 0x31; 0xc9;        (* XOR (% r9) (% r9) *)
-  0x4b; 0x8b; 0x04; 0xc8;  (* MOV (% rax) (Memop Quadword (%%% (r8,3,r9))) *)
-  0x4b; 0x8b; 0x1c; 0xcf;  (* MOV (% rbx) (Memop Quadword (%%% (r15,3,r9))) *)
-  0x4c; 0x21; 0xdb;        (* AND (% rbx) (% r11) *)
-  0x48; 0xf7; 0xd9;        (* NEG (% rcx) *)
-  0x48; 0x19; 0xd8;        (* SBB (% rax) (% rbx) *)
-  0x48; 0x19; 0xc9;        (* SBB (% rcx) (% rcx) *)
-  0x4b; 0x89; 0x04; 0xc8;  (* MOV (Memop Quadword (%%% (r8,3,r9))) (% rax) *)
-  0x49; 0xff; 0xc1;        (* INC (% r9) *)
-  0x49; 0x39; 0xf9;        (* CMP (% r9) (% rdi) *)
-  0x72; 0xe0;              (* JB (Imm8 (word 224)) *)
-  0x4c; 0x8b; 0x44; 0x24; 0x30;
-                           (* MOV (% r8) (Memop Quadword (%% (rsp,48))) *)
-  0x4d; 0x8d; 0x3c; 0xf8;  (* LEA (% r15) (%%% (r8,3,rdi)) *)
-  0x4d; 0x31; 0xc9;        (* XOR (% r9) (% r9) *)
-  0x4d; 0x31; 0xe4;        (* XOR (% r12) (% r12) *)
-  0x4d; 0x31; 0xf6;        (* XOR (% r14) (% r14) *)
-  0x48; 0x31; 0xed;        (* XOR (% rbp) (% rbp) *)
-  0x48; 0x31; 0xf6;        (* XOR (% rsi) (% rsi) *)
-  0x4b; 0x8b; 0x0c; 0xc8;  (* MOV (% rcx) (Memop Quadword (%%% (r8,3,r9))) *)
-  0x48; 0x8b; 0x04; 0x24;  (* MOV (% rax) (Memop Quadword (%% (rsp,0))) *)
-  0x48; 0xf7; 0xe1;        (* MUL2 (% rdx,% rax) (% rcx) *)
-  0x49; 0x01; 0xc6;        (* ADD (% r14) (% rax) *)
-  0x48; 0x83; 0xd2; 0x00;  (* ADC (% rdx) (Imm8 (word 0)) *)
-  0x49; 0x89; 0xd2;        (* MOV (% r10) (% rdx) *)
-  0x48; 0x8b; 0x44; 0x24; 0x10;
-                           (* MOV (% rax) (Memop Quadword (%% (rsp,16))) *)
-  0x48; 0xf7; 0xe1;        (* MUL2 (% rdx,% rax) (% rcx) *)
+  0x48; 0x8b; 0x44; 0x24; 0x20;
+                           (* MOV (% rax) (Memop Quadword (%% (rsp,32))) *)
+  0x4c; 0x31; 0xf8;        (* XOR (% rax) (% r15) *)
+  0x49; 0xf7; 0xe6;        (* MUL2 (% rdx,% rax) (% r14) *)
   0x48; 0x01; 0xc6;        (* ADD (% rsi) (% rax) *)
-  0x48; 0x83; 0xd2; 0x00;  (* ADC (% rdx) (Imm8 (word 0)) *)
-  0x49; 0x89; 0xd3;        (* MOV (% r11) (% rdx) *)
-  0x4b; 0x8b; 0x0c; 0xcf;  (* MOV (% rcx) (Memop Quadword (%%% (r15,3,r9))) *)
+  0x48; 0x11; 0xd5;        (* ADC (% rbp) (% rdx) *)
+  0x31; 0xc9;              (* XOR (% ecx) (% ecx) *)
   0x48; 0x8b; 0x44; 0x24; 0x08;
                            (* MOV (% rax) (Memop Quadword (%% (rsp,8))) *)
-  0x48; 0xf7; 0xe1;        (* MUL2 (% rdx,% rax) (% rcx) *)
-  0x4c; 0x29; 0xe2;        (* SUB (% rdx) (% r12) *)
-  0x49; 0x29; 0xc6;        (* SUB (% r14) (% rax) *)
-  0x49; 0x19; 0xd2;        (* SBB (% r10) (% rdx) *)
-  0x4d; 0x19; 0xe4;        (* SBB (% r12) (% r12) *)
-  0x4f; 0x89; 0x34; 0xc8;  (* MOV (Memop Quadword (%%% (r8,3,r9))) (% r14) *)
-  0x4d; 0x89; 0xd6;        (* MOV (% r14) (% r10) *)
+  0x4c; 0x31; 0xc8;        (* XOR (% rax) (% r9) *)
+  0x49; 0xf7; 0xe0;        (* MUL2 (% rdx,% rax) (% r8) *)
+  0x48; 0x01; 0xc3;        (* ADD (% rbx) (% rax) *)
+  0x48; 0x11; 0xd1;        (* ADC (% rcx) (% rdx) *)
+  0x48; 0x8b; 0x44; 0x24; 0x28;
+                           (* MOV (% rax) (Memop Quadword (%% (rsp,40))) *)
+  0x4c; 0x31; 0xd8;        (* XOR (% rax) (% r11) *)
+  0x49; 0xf7; 0xe2;        (* MUL2 (% rdx,% rax) (% r10) *)
+  0x48; 0x01; 0xc3;        (* ADD (% rbx) (% rax) *)
+  0x48; 0x11; 0xd1;        (* ADC (% rcx) (% rdx) *)
+  0x48; 0x0f; 0xac; 0xdf; 0x3b;
+                           (* SHRD (% rdi) (% rbx) (Imm8 (word 59)) *)
+  0x48; 0x89; 0x3c; 0x24;  (* MOV (Memop Quadword (%% (rsp,0))) (% rdi) *)
+  0x31; 0xff;              (* XOR (% edi) (% edi) *)
+  0x48; 0x8b; 0x44; 0x24; 0x08;
+                           (* MOV (% rax) (Memop Quadword (%% (rsp,8))) *)
+  0x4c; 0x31; 0xe8;        (* XOR (% rax) (% r13) *)
+  0x49; 0xf7; 0xe4;        (* MUL2 (% rdx,% rax) (% r12) *)
+  0x48; 0x01; 0xc5;        (* ADD (% rbp) (% rax) *)
+  0x48; 0x11; 0xd7;        (* ADC (% rdi) (% rdx) *)
+  0x48; 0x8b; 0x44; 0x24; 0x28;
+                           (* MOV (% rax) (Memop Quadword (%% (rsp,40))) *)
+  0x4c; 0x31; 0xf8;        (* XOR (% rax) (% r15) *)
+  0x49; 0xf7; 0xe6;        (* MUL2 (% rdx,% rax) (% r14) *)
+  0x48; 0x01; 0xc5;        (* ADD (% rbp) (% rax) *)
+  0x48; 0x11; 0xd7;        (* ADC (% rdi) (% rdx) *)
+  0x48; 0x0f; 0xac; 0xee; 0x3b;
+                           (* SHRD (% rsi) (% rbp) (Imm8 (word 59)) *)
+  0x48; 0x89; 0x74; 0x24; 0x20;
+                           (* MOV (Memop Quadword (%% (rsp,32))) (% rsi) *)
+  0x31; 0xf6;              (* XOR (% esi) (% esi) *)
+  0x48; 0x8b; 0x44; 0x24; 0x10;
+                           (* MOV (% rax) (Memop Quadword (%% (rsp,16))) *)
+  0x4c; 0x31; 0xc8;        (* XOR (% rax) (% r9) *)
+  0x49; 0xf7; 0xe0;        (* MUL2 (% rdx,% rax) (% r8) *)
+  0x48; 0x01; 0xc1;        (* ADD (% rcx) (% rax) *)
+  0x48; 0x11; 0xd6;        (* ADC (% rsi) (% rdx) *)
+  0x48; 0x8b; 0x44; 0x24; 0x30;
+                           (* MOV (% rax) (Memop Quadword (%% (rsp,48))) *)
+  0x4c; 0x31; 0xd8;        (* XOR (% rax) (% r11) *)
+  0x49; 0xf7; 0xe2;        (* MUL2 (% rdx,% rax) (% r10) *)
+  0x48; 0x01; 0xc1;        (* ADD (% rcx) (% rax) *)
+  0x48; 0x11; 0xd6;        (* ADC (% rsi) (% rdx) *)
+  0x48; 0x0f; 0xac; 0xcb; 0x3b;
+                           (* SHRD (% rbx) (% rcx) (Imm8 (word 59)) *)
+  0x48; 0x89; 0x5c; 0x24; 0x08;
+                           (* MOV (Memop Quadword (%% (rsp,8))) (% rbx) *)
+  0x31; 0xdb;              (* XOR (% ebx) (% ebx) *)
+  0x48; 0x8b; 0x44; 0x24; 0x10;
+                           (* MOV (% rax) (Memop Quadword (%% (rsp,16))) *)
+  0x4c; 0x31; 0xe8;        (* XOR (% rax) (% r13) *)
+  0x49; 0xf7; 0xe4;        (* MUL2 (% rdx,% rax) (% r12) *)
+  0x48; 0x01; 0xc7;        (* ADD (% rdi) (% rax) *)
+  0x48; 0x11; 0xd3;        (* ADC (% rbx) (% rdx) *)
+  0x48; 0x8b; 0x44; 0x24; 0x30;
+                           (* MOV (% rax) (Memop Quadword (%% (rsp,48))) *)
+  0x4c; 0x31; 0xf8;        (* XOR (% rax) (% r15) *)
+  0x49; 0xf7; 0xe6;        (* MUL2 (% rdx,% rax) (% r14) *)
+  0x48; 0x01; 0xc7;        (* ADD (% rdi) (% rax) *)
+  0x48; 0x11; 0xd3;        (* ADC (% rbx) (% rdx) *)
+  0x48; 0x0f; 0xac; 0xfd; 0x3b;
+                           (* SHRD (% rbp) (% rdi) (Imm8 (word 59)) *)
+  0x48; 0x89; 0x6c; 0x24; 0x28;
+                           (* MOV (Memop Quadword (%% (rsp,40))) (% rbp) *)
   0x48; 0x8b; 0x44; 0x24; 0x18;
                            (* MOV (% rax) (Memop Quadword (%% (rsp,24))) *)
-  0x48; 0xf7; 0xe1;        (* MUL2 (% rdx,% rax) (% rcx) *)
-  0x48; 0x29; 0xea;        (* SUB (% rdx) (% rbp) *)
-  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
-  0x49; 0x19; 0xd3;        (* SBB (% r11) (% rdx) *)
-  0x48; 0x19; 0xed;        (* SBB (% rbp) (% rbp) *)
-  0x4b; 0x89; 0x34; 0xcf;  (* MOV (Memop Quadword (%%% (r15,3,r9))) (% rsi) *)
-  0x4c; 0x89; 0xde;        (* MOV (% rsi) (% r11) *)
-  0x49; 0xff; 0xc1;        (* INC (% r9) *)
-  0x4d; 0x39; 0xe9;        (* CMP (% r9) (% r13) *)
-  0x72; 0x97;              (* JB (Imm8 (word 151)) *)
-  0x4d; 0x31; 0xc9;        (* XOR (% r9) (% r9) *)
-  0x4d; 0x89; 0xe2;        (* MOV (% r10) (% r12) *)
-  0x49; 0x89; 0xeb;        (* MOV (% r11) (% rbp) *)
-  0x4d; 0x31; 0xe6;        (* XOR (% r14) (% r12) *)
-  0x48; 0x31; 0xee;        (* XOR (% rsi) (% rbp) *)
-  0x4b; 0x8b; 0x04; 0xc8;  (* MOV (% rax) (Memop Quadword (%%% (r8,3,r9))) *)
-  0x4c; 0x31; 0xe0;        (* XOR (% rax) (% r12) *)
-  0x49; 0xf7; 0xda;        (* NEG (% r10) *)
-  0x48; 0x83; 0xd0; 0x00;  (* ADC (% rax) (Imm8 (word 0)) *)
-  0x4d; 0x19; 0xd2;        (* SBB (% r10) (% r10) *)
-  0x4b; 0x89; 0x04; 0xc8;  (* MOV (Memop Quadword (%%% (r8,3,r9))) (% rax) *)
-  0x4b; 0x8b; 0x04; 0xcf;  (* MOV (% rax) (Memop Quadword (%%% (r15,3,r9))) *)
-  0x48; 0x31; 0xe8;        (* XOR (% rax) (% rbp) *)
-  0x49; 0xf7; 0xdb;        (* NEG (% r11) *)
-  0x48; 0x83; 0xd0; 0x00;  (* ADC (% rax) (Imm8 (word 0)) *)
-  0x4d; 0x19; 0xdb;        (* SBB (% r11) (% r11) *)
-  0x4b; 0x89; 0x04; 0xcf;  (* MOV (Memop Quadword (%%% (r15,3,r9))) (% rax) *)
-  0x49; 0xff; 0xc1;        (* INC (% r9) *)
-  0x4d; 0x39; 0xe9;        (* CMP (% r9) (% r13) *)
-  0x72; 0xce;              (* JB (Imm8 (word 206)) *)
-  0x4d; 0x29; 0xd6;        (* SUB (% r14) (% r10) *)
-  0x4c; 0x29; 0xde;        (* SUB (% rsi) (% r11) *)
-  0x4d; 0x89; 0xe9;        (* MOV (% r9) (% r13) *)
-  0x4b; 0x8b; 0x44; 0xc8; 0xf8;
-                           (* MOV (% rax) (Memop Quadword (%%%% (r8,3,r9,-- &8))) *)
-  0x49; 0x89; 0xc2;        (* MOV (% r10) (% rax) *)
-  0x4c; 0x0f; 0xac; 0xf0; 0x3a;
-                           (* SHRD (% rax) (% r14) (Imm8 (word 58)) *)
-  0x4b; 0x89; 0x44; 0xc8; 0xf8;
-                           (* MOV (Memop Quadword (%%%% (r8,3,r9,-- &8))) (% rax) *)
-  0x4d; 0x89; 0xd6;        (* MOV (% r14) (% r10) *)
-  0x4b; 0x8b; 0x44; 0xcf; 0xf8;
-                           (* MOV (% rax) (Memop Quadword (%%%% (r15,3,r9,-- &8))) *)
-  0x49; 0x89; 0xc3;        (* MOV (% r11) (% rax) *)
-  0x48; 0x0f; 0xac; 0xf0; 0x3a;
-                           (* SHRD (% rax) (% rsi) (Imm8 (word 58)) *)
-  0x4b; 0x89; 0x44; 0xcf; 0xf8;
-                           (* MOV (Memop Quadword (%%%% (r15,3,r9,-- &8))) (% rax) *)
-  0x4c; 0x89; 0xde;        (* MOV (% rsi) (% r11) *)
-  0x49; 0xff; 0xc9;        (* DEC (% r9) *)
-  0x75; 0xd1;              (* JNE (Imm8 (word 209)) *)
-  0x48; 0xf7; 0xd5;        (* NOT (% rbp) *)
-  0x48; 0x8b; 0x4c; 0x24; 0x48;
-                           (* MOV (% rcx) (Memop Quadword (%% (rsp,72))) *)
-  0x4c; 0x8b; 0x44; 0x24; 0x38;
-                           (* MOV (% r8) (Memop Quadword (%% (rsp,56))) *)
-  0x4c; 0x8b; 0x7c; 0x24; 0x40;
-                           (* MOV (% r15) (Memop Quadword (%% (rsp,64))) *)
-  0x4d; 0x89; 0xe2;        (* MOV (% r10) (% r12) *)
-  0x49; 0x89; 0xeb;        (* MOV (% r11) (% rbp) *)
-  0x4d; 0x31; 0xc9;        (* XOR (% r9) (% r9) *)
-  0x48; 0x89; 0xea;        (* MOV (% rdx) (% rbp) *)
-  0x4a; 0x8b; 0x04; 0xc9;  (* MOV (% rax) (Memop Quadword (%%% (rcx,3,r9))) *)
-  0x48; 0x21; 0xc2;        (* AND (% rdx) (% rax) *)
-  0x4c; 0x21; 0xe0;        (* AND (% rax) (% r12) *)
-  0x4b; 0x8b; 0x1c; 0xc8;  (* MOV (% rbx) (Memop Quadword (%%% (r8,3,r9))) *)
-  0x4c; 0x31; 0xe3;        (* XOR (% rbx) (% r12) *)
-  0x49; 0xf7; 0xda;        (* NEG (% r10) *)
-  0x48; 0x11; 0xd8;        (* ADC (% rax) (% rbx) *)
-  0x4d; 0x19; 0xd2;        (* SBB (% r10) (% r10) *)
-  0x4b; 0x89; 0x04; 0xc8;  (* MOV (Memop Quadword (%%% (r8,3,r9))) (% rax) *)
-  0x4b; 0x8b; 0x1c; 0xcf;  (* MOV (% rbx) (Memop Quadword (%%% (r15,3,r9))) *)
-  0x48; 0x31; 0xeb;        (* XOR (% rbx) (% rbp) *)
-  0x49; 0xf7; 0xdb;        (* NEG (% r11) *)
+  0x4c; 0x31; 0xc8;        (* XOR (% rax) (% r9) *)
+  0x48; 0x89; 0xc5;        (* MOV (% rbp) (% rax) *)
+  0x48; 0xc1; 0xfd; 0x3f;  (* SAR (% rbp) (Imm8 (word 63)) *)
+  0x4c; 0x21; 0xc5;        (* AND (% rbp) (% r8) *)
+  0x48; 0xf7; 0xdd;        (* NEG (% rbp) *)
+  0x49; 0xf7; 0xe0;        (* MUL2 (% rdx,% rax) (% r8) *)
+  0x48; 0x01; 0xc6;        (* ADD (% rsi) (% rax) *)
+  0x48; 0x11; 0xd5;        (* ADC (% rbp) (% rdx) *)
+  0x48; 0x8b; 0x44; 0x24; 0x38;
+                           (* MOV (% rax) (Memop Quadword (%% (rsp,56))) *)
+  0x4c; 0x31; 0xd8;        (* XOR (% rax) (% r11) *)
+  0x48; 0x89; 0xc2;        (* MOV (% rdx) (% rax) *)
+  0x48; 0xc1; 0xfa; 0x3f;  (* SAR (% rdx) (Imm8 (word 63)) *)
+  0x4c; 0x21; 0xd2;        (* AND (% rdx) (% r10) *)
+  0x48; 0x29; 0xd5;        (* SUB (% rbp) (% rdx) *)
+  0x49; 0xf7; 0xe2;        (* MUL2 (% rdx,% rax) (% r10) *)
+  0x48; 0x01; 0xc6;        (* ADD (% rsi) (% rax) *)
+  0x48; 0x11; 0xd5;        (* ADC (% rbp) (% rdx) *)
+  0x48; 0x0f; 0xac; 0xf1; 0x3b;
+                           (* SHRD (% rcx) (% rsi) (Imm8 (word 59)) *)
+  0x48; 0x89; 0x4c; 0x24; 0x10;
+                           (* MOV (Memop Quadword (%% (rsp,16))) (% rcx) *)
+  0x48; 0x0f; 0xac; 0xee; 0x3b;
+                           (* SHRD (% rsi) (% rbp) (Imm8 (word 59)) *)
+  0x48; 0x8b; 0x44; 0x24; 0x18;
+                           (* MOV (% rax) (Memop Quadword (%% (rsp,24))) *)
+  0x48; 0x89; 0x74; 0x24; 0x18;
+                           (* MOV (Memop Quadword (%% (rsp,24))) (% rsi) *)
+  0x4c; 0x31; 0xe8;        (* XOR (% rax) (% r13) *)
+  0x48; 0x89; 0xc6;        (* MOV (% rsi) (% rax) *)
+  0x48; 0xc1; 0xfe; 0x3f;  (* SAR (% rsi) (Imm8 (word 63)) *)
+  0x4c; 0x21; 0xe6;        (* AND (% rsi) (% r12) *)
+  0x48; 0xf7; 0xde;        (* NEG (% rsi) *)
+  0x49; 0xf7; 0xe4;        (* MUL2 (% rdx,% rax) (% r12) *)
+  0x48; 0x01; 0xc3;        (* ADD (% rbx) (% rax) *)
+  0x48; 0x11; 0xd6;        (* ADC (% rsi) (% rdx) *)
+  0x48; 0x8b; 0x44; 0x24; 0x38;
+                           (* MOV (% rax) (Memop Quadword (%% (rsp,56))) *)
+  0x4c; 0x31; 0xf8;        (* XOR (% rax) (% r15) *)
+  0x48; 0x89; 0xc2;        (* MOV (% rdx) (% rax) *)
+  0x48; 0xc1; 0xfa; 0x3f;  (* SAR (% rdx) (Imm8 (word 63)) *)
+  0x4c; 0x21; 0xf2;        (* AND (% rdx) (% r14) *)
+  0x48; 0x29; 0xd6;        (* SUB (% rsi) (% rdx) *)
+  0x49; 0xf7; 0xe6;        (* MUL2 (% rdx,% rax) (% r14) *)
+  0x48; 0x01; 0xc3;        (* ADD (% rbx) (% rax) *)
+  0x48; 0x11; 0xd6;        (* ADC (% rsi) (% rdx) *)
+  0x48; 0x0f; 0xac; 0xdf; 0x3b;
+                           (* SHRD (% rdi) (% rbx) (Imm8 (word 59)) *)
+  0x48; 0x89; 0x7c; 0x24; 0x30;
+                           (* MOV (Memop Quadword (%% (rsp,48))) (% rdi) *)
+  0x48; 0x0f; 0xac; 0xf3; 0x3b;
+                           (* SHRD (% rbx) (% rsi) (Imm8 (word 59)) *)
+  0x48; 0x89; 0x5c; 0x24; 0x38;
+                           (* MOV (Memop Quadword (%% (rsp,56))) (% rbx) *)
+  0x48; 0x8b; 0x9c; 0x24; 0x80; 0x00; 0x00; 0x00;
+                           (* MOV (% rbx) (Memop Quadword (%% (rsp,128))) *)
+  0x48; 0x8b; 0xac; 0x24; 0x88; 0x00; 0x00; 0x00;
+                           (* MOV (% rbp) (Memop Quadword (%% (rsp,136))) *)
+  0x31; 0xc9;              (* XOR (% ecx) (% ecx) *)
+  0x48; 0x8b; 0x44; 0x24; 0x40;
+                           (* MOV (% rax) (Memop Quadword (%% (rsp,64))) *)
+  0x4c; 0x31; 0xc8;        (* XOR (% rax) (% r9) *)
+  0x49; 0xf7; 0xe0;        (* MUL2 (% rdx,% rax) (% r8) *)
+  0x48; 0x01; 0xc3;        (* ADD (% rbx) (% rax) *)
+  0x48; 0x11; 0xd1;        (* ADC (% rcx) (% rdx) *)
+  0x48; 0x8b; 0x44; 0x24; 0x60;
+                           (* MOV (% rax) (Memop Quadword (%% (rsp,96))) *)
+  0x4c; 0x31; 0xd8;        (* XOR (% rax) (% r11) *)
+  0x49; 0xf7; 0xe2;        (* MUL2 (% rdx,% rax) (% r10) *)
+  0x48; 0x01; 0xc3;        (* ADD (% rbx) (% rax) *)
+  0x48; 0x11; 0xd1;        (* ADC (% rcx) (% rdx) *)
+  0x31; 0xf6;              (* XOR (% esi) (% esi) *)
+  0x48; 0x8b; 0x44; 0x24; 0x40;
+                           (* MOV (% rax) (Memop Quadword (%% (rsp,64))) *)
+  0x4c; 0x31; 0xe8;        (* XOR (% rax) (% r13) *)
+  0x49; 0xf7; 0xe4;        (* MUL2 (% rdx,% rax) (% r12) *)
+  0x48; 0x89; 0x5c; 0x24; 0x40;
+                           (* MOV (Memop Quadword (%% (rsp,64))) (% rbx) *)
+  0x48; 0x01; 0xc5;        (* ADD (% rbp) (% rax) *)
+  0x48; 0x11; 0xd6;        (* ADC (% rsi) (% rdx) *)
+  0x48; 0x8b; 0x44; 0x24; 0x60;
+                           (* MOV (% rax) (Memop Quadword (%% (rsp,96))) *)
+  0x4c; 0x31; 0xf8;        (* XOR (% rax) (% r15) *)
+  0x49; 0xf7; 0xe6;        (* MUL2 (% rdx,% rax) (% r14) *)
+  0x48; 0x01; 0xc5;        (* ADD (% rbp) (% rax) *)
+  0x48; 0x11; 0xd6;        (* ADC (% rsi) (% rdx) *)
+  0x48; 0x89; 0x6c; 0x24; 0x60;
+                           (* MOV (Memop Quadword (%% (rsp,96))) (% rbp) *)
+  0x31; 0xdb;              (* XOR (% ebx) (% ebx) *)
+  0x48; 0x8b; 0x44; 0x24; 0x48;
+                           (* MOV (% rax) (Memop Quadword (%% (rsp,72))) *)
+  0x4c; 0x31; 0xc8;        (* XOR (% rax) (% r9) *)
+  0x49; 0xf7; 0xe0;        (* MUL2 (% rdx,% rax) (% r8) *)
+  0x48; 0x01; 0xc1;        (* ADD (% rcx) (% rax) *)
+  0x48; 0x11; 0xd3;        (* ADC (% rbx) (% rdx) *)
+  0x48; 0x8b; 0x44; 0x24; 0x68;
+                           (* MOV (% rax) (Memop Quadword (%% (rsp,104))) *)
+  0x4c; 0x31; 0xd8;        (* XOR (% rax) (% r11) *)
+  0x49; 0xf7; 0xe2;        (* MUL2 (% rdx,% rax) (% r10) *)
+  0x48; 0x01; 0xc1;        (* ADD (% rcx) (% rax) *)
+  0x48; 0x11; 0xd3;        (* ADC (% rbx) (% rdx) *)
+  0x31; 0xed;              (* XOR (% ebp) (% ebp) *)
+  0x48; 0x8b; 0x44; 0x24; 0x48;
+                           (* MOV (% rax) (Memop Quadword (%% (rsp,72))) *)
+  0x4c; 0x31; 0xe8;        (* XOR (% rax) (% r13) *)
+  0x49; 0xf7; 0xe4;        (* MUL2 (% rdx,% rax) (% r12) *)
+  0x48; 0x89; 0x4c; 0x24; 0x48;
+                           (* MOV (Memop Quadword (%% (rsp,72))) (% rcx) *)
+  0x48; 0x01; 0xc6;        (* ADD (% rsi) (% rax) *)
+  0x48; 0x11; 0xd5;        (* ADC (% rbp) (% rdx) *)
+  0x48; 0x8b; 0x44; 0x24; 0x68;
+                           (* MOV (% rax) (Memop Quadword (%% (rsp,104))) *)
+  0x4c; 0x31; 0xf8;        (* XOR (% rax) (% r15) *)
+  0x49; 0xf7; 0xe6;        (* MUL2 (% rdx,% rax) (% r14) *)
+  0x48; 0x01; 0xc6;        (* ADD (% rsi) (% rax) *)
+  0x48; 0x11; 0xd5;        (* ADC (% rbp) (% rdx) *)
+  0x48; 0x89; 0x74; 0x24; 0x68;
+                           (* MOV (Memop Quadword (%% (rsp,104))) (% rsi) *)
+  0x31; 0xc9;              (* XOR (% ecx) (% ecx) *)
+  0x48; 0x8b; 0x44; 0x24; 0x50;
+                           (* MOV (% rax) (Memop Quadword (%% (rsp,80))) *)
+  0x4c; 0x31; 0xc8;        (* XOR (% rax) (% r9) *)
+  0x49; 0xf7; 0xe0;        (* MUL2 (% rdx,% rax) (% r8) *)
+  0x48; 0x01; 0xc3;        (* ADD (% rbx) (% rax) *)
+  0x48; 0x11; 0xd1;        (* ADC (% rcx) (% rdx) *)
+  0x48; 0x8b; 0x44; 0x24; 0x70;
+                           (* MOV (% rax) (Memop Quadword (%% (rsp,112))) *)
+  0x4c; 0x31; 0xd8;        (* XOR (% rax) (% r11) *)
+  0x49; 0xf7; 0xe2;        (* MUL2 (% rdx,% rax) (% r10) *)
+  0x48; 0x01; 0xc3;        (* ADD (% rbx) (% rax) *)
+  0x48; 0x11; 0xd1;        (* ADC (% rcx) (% rdx) *)
+  0x31; 0xf6;              (* XOR (% esi) (% esi) *)
+  0x48; 0x8b; 0x44; 0x24; 0x50;
+                           (* MOV (% rax) (Memop Quadword (%% (rsp,80))) *)
+  0x4c; 0x31; 0xe8;        (* XOR (% rax) (% r13) *)
+  0x49; 0xf7; 0xe4;        (* MUL2 (% rdx,% rax) (% r12) *)
+  0x48; 0x89; 0x5c; 0x24; 0x50;
+                           (* MOV (Memop Quadword (%% (rsp,80))) (% rbx) *)
+  0x48; 0x01; 0xc5;        (* ADD (% rbp) (% rax) *)
+  0x48; 0x11; 0xd6;        (* ADC (% rsi) (% rdx) *)
+  0x48; 0x8b; 0x44; 0x24; 0x70;
+                           (* MOV (% rax) (Memop Quadword (%% (rsp,112))) *)
+  0x4c; 0x31; 0xf8;        (* XOR (% rax) (% r15) *)
+  0x49; 0xf7; 0xe6;        (* MUL2 (% rdx,% rax) (% r14) *)
+  0x48; 0x01; 0xc5;        (* ADD (% rbp) (% rax) *)
+  0x48; 0x11; 0xd6;        (* ADC (% rsi) (% rdx) *)
+  0x48; 0x89; 0x6c; 0x24; 0x70;
+                           (* MOV (Memop Quadword (%% (rsp,112))) (% rbp) *)
+  0x48; 0x8b; 0x44; 0x24; 0x58;
+                           (* MOV (% rax) (Memop Quadword (%% (rsp,88))) *)
+  0x4c; 0x31; 0xc8;        (* XOR (% rax) (% r9) *)
+  0x4c; 0x89; 0xcb;        (* MOV (% rbx) (% r9) *)
+  0x4c; 0x21; 0xc3;        (* AND (% rbx) (% r8) *)
+  0x48; 0xf7; 0xdb;        (* NEG (% rbx) *)
+  0x49; 0xf7; 0xe0;        (* MUL2 (% rdx,% rax) (% r8) *)
+  0x48; 0x01; 0xc1;        (* ADD (% rcx) (% rax) *)
+  0x48; 0x11; 0xd3;        (* ADC (% rbx) (% rdx) *)
+  0x48; 0x8b; 0x44; 0x24; 0x78;
+                           (* MOV (% rax) (Memop Quadword (%% (rsp,120))) *)
+  0x4c; 0x31; 0xd8;        (* XOR (% rax) (% r11) *)
+  0x4c; 0x89; 0xda;        (* MOV (% rdx) (% r11) *)
+  0x4c; 0x21; 0xd2;        (* AND (% rdx) (% r10) *)
+  0x48; 0x29; 0xd3;        (* SUB (% rbx) (% rdx) *)
+  0x49; 0xf7; 0xe2;        (* MUL2 (% rdx,% rax) (% r10) *)
+  0x48; 0x01; 0xc1;        (* ADD (% rcx) (% rax) *)
   0x48; 0x11; 0xda;        (* ADC (% rdx) (% rbx) *)
-  0x4d; 0x19; 0xdb;        (* SBB (% r11) (% r11) *)
-  0x4b; 0x89; 0x14; 0xcf;  (* MOV (Memop Quadword (%%% (r15,3,r9))) (% rdx) *)
-  0x49; 0xff; 0xc1;        (* INC (% r9) *)
-  0x49; 0x39; 0xf9;        (* CMP (% r9) (% rdi) *)
-  0x72; 0xc3;              (* JB (Imm8 (word 195)) *)
-  0x48; 0x83; 0x6c; 0x24; 0x20; 0x3a;
-                           (* SUB (Memop Quadword (%% (rsp,32))) (Imm8 (word 58)) *)
-  0x0f; 0x87; 0x8d; 0xfb; 0xff; 0xff;
-                           (* JA (Imm32 (word 4294966157)) *)
-  0x48; 0x8b; 0x7c; 0x24; 0x58;
-                           (* MOV (% rdi) (Memop Quadword (%% (rsp,88))) *)
-  0x48; 0x8d; 0x74; 0x24; 0x60;
-                           (* LEA (% rsi) (%% (rsp,96)) *)
-  0x48; 0x8d; 0xac; 0x24; 0xe0; 0x00; 0x00; 0x00;
-                           (* LEA (% rbp) (%% (rsp,224)) *)
+  0x48; 0x89; 0xd3;        (* MOV (% rbx) (% rdx) *)
+  0x48; 0x0f; 0xa4; 0xca; 0x01;
+                           (* SHLD (% rdx) (% rcx) (Imm8 (word 1)) *)
+  0x48; 0xc1; 0xfb; 0x3f;  (* SAR (% rbx) (Imm8 (word 63)) *)
+  0x48; 0x01; 0xda;        (* ADD (% rdx) (% rbx) *)
+  0xb8; 0x13; 0x00; 0x00; 0x00;
+                           (* MOV (% eax) (Imm32 (word 19)) *)
+  0x48; 0xf7; 0xea;        (* IMUL2 (% rdx,% rax) (% rdx) *)
+  0x4c; 0x8b; 0x44; 0x24; 0x40;
+                           (* MOV (% r8) (Memop Quadword (%% (rsp,64))) *)
+  0x49; 0x01; 0xc0;        (* ADD (% r8) (% rax) *)
+  0x4c; 0x89; 0x44; 0x24; 0x40;
+                           (* MOV (Memop Quadword (%% (rsp,64))) (% r8) *)
+  0x4c; 0x8b; 0x44; 0x24; 0x48;
+                           (* MOV (% r8) (Memop Quadword (%% (rsp,72))) *)
+  0x49; 0x11; 0xd0;        (* ADC (% r8) (% rdx) *)
+  0x4c; 0x89; 0x44; 0x24; 0x48;
+                           (* MOV (Memop Quadword (%% (rsp,72))) (% r8) *)
+  0x4c; 0x8b; 0x44; 0x24; 0x50;
+                           (* MOV (% r8) (Memop Quadword (%% (rsp,80))) *)
+  0x49; 0x11; 0xd8;        (* ADC (% r8) (% rbx) *)
+  0x4c; 0x89; 0x44; 0x24; 0x50;
+                           (* MOV (Memop Quadword (%% (rsp,80))) (% r8) *)
+  0x48; 0x11; 0xd9;        (* ADC (% rcx) (% rbx) *)
+  0x48; 0xc1; 0xe0; 0x3f;  (* SHL (% rax) (Imm8 (word 63)) *)
+  0x48; 0x01; 0xc1;        (* ADD (% rcx) (% rax) *)
+  0x48; 0x8b; 0x44; 0x24; 0x58;
+                           (* MOV (% rax) (Memop Quadword (%% (rsp,88))) *)
+  0x48; 0x89; 0x4c; 0x24; 0x58;
+                           (* MOV (Memop Quadword (%% (rsp,88))) (% rcx) *)
+  0x4c; 0x31; 0xe8;        (* XOR (% rax) (% r13) *)
+  0x4c; 0x89; 0xe9;        (* MOV (% rcx) (% r13) *)
+  0x4c; 0x21; 0xe1;        (* AND (% rcx) (% r12) *)
+  0x48; 0xf7; 0xd9;        (* NEG (% rcx) *)
+  0x49; 0xf7; 0xe4;        (* MUL2 (% rdx,% rax) (% r12) *)
+  0x48; 0x01; 0xc6;        (* ADD (% rsi) (% rax) *)
+  0x48; 0x11; 0xd1;        (* ADC (% rcx) (% rdx) *)
+  0x48; 0x8b; 0x44; 0x24; 0x78;
+                           (* MOV (% rax) (Memop Quadword (%% (rsp,120))) *)
+  0x4c; 0x31; 0xf8;        (* XOR (% rax) (% r15) *)
+  0x4c; 0x89; 0xfa;        (* MOV (% rdx) (% r15) *)
+  0x4c; 0x21; 0xf2;        (* AND (% rdx) (% r14) *)
+  0x48; 0x29; 0xd1;        (* SUB (% rcx) (% rdx) *)
+  0x49; 0xf7; 0xe6;        (* MUL2 (% rdx,% rax) (% r14) *)
+  0x48; 0x01; 0xc6;        (* ADD (% rsi) (% rax) *)
+  0x48; 0x11; 0xca;        (* ADC (% rdx) (% rcx) *)
+  0x48; 0x89; 0xd1;        (* MOV (% rcx) (% rdx) *)
+  0x48; 0x0f; 0xa4; 0xf2; 0x01;
+                           (* SHLD (% rdx) (% rsi) (Imm8 (word 1)) *)
+  0x48; 0xc1; 0xf9; 0x3f;  (* SAR (% rcx) (Imm8 (word 63)) *)
+  0xb8; 0x13; 0x00; 0x00; 0x00;
+                           (* MOV (% eax) (Imm32 (word 19)) *)
+  0x48; 0x01; 0xca;        (* ADD (% rdx) (% rcx) *)
+  0x48; 0xf7; 0xea;        (* IMUL2 (% rdx,% rax) (% rdx) *)
+  0x4c; 0x8b; 0x44; 0x24; 0x60;
+                           (* MOV (% r8) (Memop Quadword (%% (rsp,96))) *)
+  0x49; 0x01; 0xc0;        (* ADD (% r8) (% rax) *)
+  0x4c; 0x89; 0x44; 0x24; 0x60;
+                           (* MOV (Memop Quadword (%% (rsp,96))) (% r8) *)
+  0x4c; 0x8b; 0x44; 0x24; 0x68;
+                           (* MOV (% r8) (Memop Quadword (%% (rsp,104))) *)
+  0x49; 0x11; 0xd0;        (* ADC (% r8) (% rdx) *)
+  0x4c; 0x89; 0x44; 0x24; 0x68;
+                           (* MOV (Memop Quadword (%% (rsp,104))) (% r8) *)
+  0x4c; 0x8b; 0x44; 0x24; 0x70;
+                           (* MOV (% r8) (Memop Quadword (%% (rsp,112))) *)
+  0x49; 0x11; 0xc8;        (* ADC (% r8) (% rcx) *)
+  0x4c; 0x89; 0x44; 0x24; 0x70;
+                           (* MOV (Memop Quadword (%% (rsp,112))) (% r8) *)
+  0x48; 0x11; 0xce;        (* ADC (% rsi) (% rcx) *)
+  0x48; 0xc1; 0xe0; 0x3f;  (* SHL (% rax) (Imm8 (word 63)) *)
+  0x48; 0x01; 0xc6;        (* ADD (% rsi) (% rax) *)
+  0x48; 0x89; 0x74; 0x24; 0x78;
+                           (* MOV (Memop Quadword (%% (rsp,120))) (% rsi) *)
+  0x48; 0x8b; 0xb4; 0x24; 0x98; 0x00; 0x00; 0x00;
+                           (* MOV (% rsi) (Memop Quadword (%% (rsp,152))) *)
+  0x48; 0x8b; 0x14; 0x24;  (* MOV (% rdx) (Memop Quadword (%% (rsp,0))) *)
+  0x48; 0x8b; 0x4c; 0x24; 0x20;
+                           (* MOV (% rcx) (Memop Quadword (%% (rsp,32))) *)
+  0x48; 0x89; 0xd3;        (* MOV (% rbx) (% rdx) *)
+  0x48; 0x81; 0xe3; 0xff; 0xff; 0x0f; 0x00;
+                           (* AND (% rbx) (Imm32 (word 1048575)) *)
+  0x48; 0xb8; 0x00; 0x00; 0x00; 0x00; 0x00; 0xfe; 0xff; 0xff;
+                           (* MOV (% rax) (Imm64 (word 18446741874686296064)) *)
+  0x48; 0x09; 0xc3;        (* OR (% rbx) (% rax) *)
+  0x48; 0x81; 0xe1; 0xff; 0xff; 0x0f; 0x00;
+                           (* AND (% rcx) (Imm32 (word 1048575)) *)
+  0x48; 0xb8; 0x00; 0x00; 0x00; 0x00; 0x00; 0x00; 0x00; 0xc0;
+                           (* MOV (% rax) (Imm64 (word 13835058055282163712)) *)
+  0x48; 0x09; 0xc1;        (* OR (% rcx) (% rax) *)
+  0x48; 0xc7; 0xc0; 0xfe; 0xff; 0xff; 0xff;
+                           (* MOV (% rax) (Imm32 (word 4294967294)) *)
+  0x31; 0xed;              (* XOR (% ebp) (% ebp) *)
+  0xba; 0x02; 0x00; 0x00; 0x00;
+                           (* MOV (% edx) (Imm32 (word 2)) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x85; 0xf6;        (* TEST (% rsi) (% rsi) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0xf7; 0xc1; 0x01; 0x00; 0x00; 0x00;
+                           (* TEST (% rcx) (Imm32 (word 1)) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0xb8; 0x00; 0x00; 0x10; 0x00;
+                           (* MOV (% eax) (Imm32 (word 1048576)) *)
+  0x48; 0x8d; 0x14; 0x03;  (* LEA (% rdx) (%%% (rbx,0,rax)) *)
+  0x48; 0x8d; 0x3c; 0x01;  (* LEA (% rdi) (%%% (rcx,0,rax)) *)
+  0x48; 0xc1; 0xe2; 0x16;  (* SHL (% rdx) (Imm8 (word 22)) *)
+  0x48; 0xc1; 0xe7; 0x16;  (* SHL (% rdi) (Imm8 (word 22)) *)
+  0x48; 0xc1; 0xfa; 0x2b;  (* SAR (% rdx) (Imm8 (word 43)) *)
+  0x48; 0xc1; 0xff; 0x2b;  (* SAR (% rdi) (Imm8 (word 43)) *)
+  0x48; 0xb8; 0x00; 0x00; 0x10; 0x00; 0x00; 0x02; 0x00; 0x00;
+                           (* MOV (% rax) (Imm64 (word 2199024304128)) *)
+  0x48; 0x8d; 0x1c; 0x03;  (* LEA (% rbx) (%%% (rbx,0,rax)) *)
+  0x48; 0x8d; 0x0c; 0x01;  (* LEA (% rcx) (%%% (rcx,0,rax)) *)
+  0x48; 0xc1; 0xfb; 0x2a;  (* SAR (% rbx) (Imm8 (word 42)) *)
+  0x48; 0xc1; 0xf9; 0x2a;  (* SAR (% rcx) (Imm8 (word 42)) *)
+  0x48; 0x89; 0x94; 0x24; 0xa0; 0x00; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,160))) (% rdx) *)
+  0x48; 0x89; 0x9c; 0x24; 0xa8; 0x00; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,168))) (% rbx) *)
+  0x48; 0x89; 0xbc; 0x24; 0xb0; 0x00; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,176))) (% rdi) *)
+  0x48; 0x89; 0x8c; 0x24; 0xb8; 0x00; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,184))) (% rcx) *)
+  0x4c; 0x8b; 0x24; 0x24;  (* MOV (% r12) (Memop Quadword (%% (rsp,0))) *)
+  0x49; 0x0f; 0xaf; 0xfc;  (* IMUL (% rdi) (% r12) *)
+  0x4c; 0x0f; 0xaf; 0xe2;  (* IMUL (% r12) (% rdx) *)
+  0x4c; 0x8b; 0x6c; 0x24; 0x20;
+                           (* MOV (% r13) (Memop Quadword (%% (rsp,32))) *)
+  0x49; 0x0f; 0xaf; 0xdd;  (* IMUL (% rbx) (% r13) *)
+  0x4c; 0x0f; 0xaf; 0xe9;  (* IMUL (% r13) (% rcx) *)
+  0x49; 0x01; 0xdc;        (* ADD (% r12) (% rbx) *)
+  0x49; 0x01; 0xfd;        (* ADD (% r13) (% rdi) *)
+  0x49; 0xc1; 0xfc; 0x14;  (* SAR (% r12) (Imm8 (word 20)) *)
+  0x49; 0xc1; 0xfd; 0x14;  (* SAR (% r13) (Imm8 (word 20)) *)
+  0x4c; 0x89; 0xe3;        (* MOV (% rbx) (% r12) *)
+  0x48; 0x81; 0xe3; 0xff; 0xff; 0x0f; 0x00;
+                           (* AND (% rbx) (Imm32 (word 1048575)) *)
+  0x48; 0xb8; 0x00; 0x00; 0x00; 0x00; 0x00; 0xfe; 0xff; 0xff;
+                           (* MOV (% rax) (Imm64 (word 18446741874686296064)) *)
+  0x48; 0x09; 0xc3;        (* OR (% rbx) (% rax) *)
+  0x4c; 0x89; 0xe9;        (* MOV (% rcx) (% r13) *)
+  0x48; 0x81; 0xe1; 0xff; 0xff; 0x0f; 0x00;
+                           (* AND (% rcx) (Imm32 (word 1048575)) *)
+  0x48; 0xb8; 0x00; 0x00; 0x00; 0x00; 0x00; 0x00; 0x00; 0xc0;
+                           (* MOV (% rax) (Imm64 (word 13835058055282163712)) *)
+  0x48; 0x09; 0xc1;        (* OR (% rcx) (% rax) *)
+  0x48; 0xc7; 0xc0; 0xfe; 0xff; 0xff; 0xff;
+                           (* MOV (% rax) (Imm32 (word 4294967294)) *)
+  0xba; 0x02; 0x00; 0x00; 0x00;
+                           (* MOV (% edx) (Imm32 (word 2)) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x85; 0xf6;        (* TEST (% rsi) (% rsi) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0xf7; 0xc1; 0x01; 0x00; 0x00; 0x00;
+                           (* TEST (% rcx) (Imm32 (word 1)) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0xb8; 0x00; 0x00; 0x10; 0x00;
+                           (* MOV (% eax) (Imm32 (word 1048576)) *)
+  0x4c; 0x8d; 0x04; 0x03;  (* LEA (% r8) (%%% (rbx,0,rax)) *)
+  0x4c; 0x8d; 0x14; 0x01;  (* LEA (% r10) (%%% (rcx,0,rax)) *)
+  0x49; 0xc1; 0xe0; 0x16;  (* SHL (% r8) (Imm8 (word 22)) *)
+  0x49; 0xc1; 0xe2; 0x16;  (* SHL (% r10) (Imm8 (word 22)) *)
+  0x49; 0xc1; 0xf8; 0x2b;  (* SAR (% r8) (Imm8 (word 43)) *)
+  0x49; 0xc1; 0xfa; 0x2b;  (* SAR (% r10) (Imm8 (word 43)) *)
+  0x48; 0xb8; 0x00; 0x00; 0x10; 0x00; 0x00; 0x02; 0x00; 0x00;
+                           (* MOV (% rax) (Imm64 (word 2199024304128)) *)
+  0x4c; 0x8d; 0x3c; 0x03;  (* LEA (% r15) (%%% (rbx,0,rax)) *)
+  0x4c; 0x8d; 0x1c; 0x01;  (* LEA (% r11) (%%% (rcx,0,rax)) *)
+  0x49; 0xc1; 0xff; 0x2a;  (* SAR (% r15) (Imm8 (word 42)) *)
+  0x49; 0xc1; 0xfb; 0x2a;  (* SAR (% r11) (Imm8 (word 42)) *)
+  0x4c; 0x89; 0xeb;        (* MOV (% rbx) (% r13) *)
+  0x4c; 0x89; 0xe1;        (* MOV (% rcx) (% r12) *)
+  0x4d; 0x0f; 0xaf; 0xe0;  (* IMUL (% r12) (% r8) *)
+  0x49; 0x0f; 0xaf; 0xdf;  (* IMUL (% rbx) (% r15) *)
+  0x49; 0x01; 0xdc;        (* ADD (% r12) (% rbx) *)
+  0x4d; 0x0f; 0xaf; 0xeb;  (* IMUL (% r13) (% r11) *)
+  0x49; 0x0f; 0xaf; 0xca;  (* IMUL (% rcx) (% r10) *)
+  0x49; 0x01; 0xcd;        (* ADD (% r13) (% rcx) *)
+  0x49; 0xc1; 0xfc; 0x14;  (* SAR (% r12) (Imm8 (word 20)) *)
+  0x49; 0xc1; 0xfd; 0x14;  (* SAR (% r13) (Imm8 (word 20)) *)
+  0x4c; 0x89; 0xe3;        (* MOV (% rbx) (% r12) *)
+  0x48; 0x81; 0xe3; 0xff; 0xff; 0x0f; 0x00;
+                           (* AND (% rbx) (Imm32 (word 1048575)) *)
+  0x48; 0xb8; 0x00; 0x00; 0x00; 0x00; 0x00; 0xfe; 0xff; 0xff;
+                           (* MOV (% rax) (Imm64 (word 18446741874686296064)) *)
+  0x48; 0x09; 0xc3;        (* OR (% rbx) (% rax) *)
+  0x4c; 0x89; 0xe9;        (* MOV (% rcx) (% r13) *)
+  0x48; 0x81; 0xe1; 0xff; 0xff; 0x0f; 0x00;
+                           (* AND (% rcx) (Imm32 (word 1048575)) *)
+  0x48; 0xb8; 0x00; 0x00; 0x00; 0x00; 0x00; 0x00; 0x00; 0xc0;
+                           (* MOV (% rax) (Imm64 (word 13835058055282163712)) *)
+  0x48; 0x09; 0xc1;        (* OR (% rcx) (% rax) *)
+  0x48; 0x8b; 0x84; 0x24; 0xa0; 0x00; 0x00; 0x00;
+                           (* MOV (% rax) (Memop Quadword (%% (rsp,160))) *)
+  0x49; 0x0f; 0xaf; 0xc0;  (* IMUL (% rax) (% r8) *)
+  0x48; 0x8b; 0x94; 0x24; 0xb0; 0x00; 0x00; 0x00;
+                           (* MOV (% rdx) (Memop Quadword (%% (rsp,176))) *)
+  0x49; 0x0f; 0xaf; 0xd7;  (* IMUL (% rdx) (% r15) *)
+  0x4c; 0x0f; 0xaf; 0x84; 0x24; 0xa8; 0x00; 0x00; 0x00;
+                           (* IMUL (% r8) (Memop Quadword (%% (rsp,168))) *)
+  0x4c; 0x0f; 0xaf; 0xbc; 0x24; 0xb8; 0x00; 0x00; 0x00;
+                           (* IMUL (% r15) (Memop Quadword (%% (rsp,184))) *)
+  0x4d; 0x01; 0xc7;        (* ADD (% r15) (% r8) *)
+  0x4c; 0x8d; 0x0c; 0x10;  (* LEA (% r9) (%%% (rax,0,rdx)) *)
+  0x48; 0x8b; 0x84; 0x24; 0xa0; 0x00; 0x00; 0x00;
+                           (* MOV (% rax) (Memop Quadword (%% (rsp,160))) *)
+  0x49; 0x0f; 0xaf; 0xc2;  (* IMUL (% rax) (% r10) *)
+  0x48; 0x8b; 0x94; 0x24; 0xb0; 0x00; 0x00; 0x00;
+                           (* MOV (% rdx) (Memop Quadword (%% (rsp,176))) *)
+  0x49; 0x0f; 0xaf; 0xd3;  (* IMUL (% rdx) (% r11) *)
+  0x4c; 0x0f; 0xaf; 0x94; 0x24; 0xa8; 0x00; 0x00; 0x00;
+                           (* IMUL (% r10) (Memop Quadword (%% (rsp,168))) *)
+  0x4c; 0x0f; 0xaf; 0x9c; 0x24; 0xb8; 0x00; 0x00; 0x00;
+                           (* IMUL (% r11) (Memop Quadword (%% (rsp,184))) *)
+  0x4d; 0x01; 0xd3;        (* ADD (% r11) (% r10) *)
+  0x4c; 0x8d; 0x2c; 0x10;  (* LEA (% r13) (%%% (rax,0,rdx)) *)
+  0x48; 0xc7; 0xc0; 0xfe; 0xff; 0xff; 0xff;
+                           (* MOV (% rax) (Imm32 (word 4294967294)) *)
+  0xba; 0x02; 0x00; 0x00; 0x00;
+                           (* MOV (% edx) (Imm32 (word 2)) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x85; 0xf6;        (* TEST (% rsi) (% rsi) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0xf7; 0xc1; 0x01; 0x00; 0x00; 0x00;
+                           (* TEST (% rcx) (Imm32 (word 1)) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x4c; 0x0f; 0x48; 0xc5;  (* CMOVS (% r8) (% rbp) *)
+  0x48; 0x89; 0xdf;        (* MOV (% rdi) (% rbx) *)
+  0x48; 0x85; 0xd1;        (* TEST (% rcx) (% rdx) *)
+  0x4c; 0x0f; 0x44; 0xc5;  (* CMOVE (% r8) (% rbp) *)
+  0x48; 0x0f; 0x44; 0xfd;  (* CMOVE (% rdi) (% rbp) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0x4c; 0x31; 0xc7;        (* XOR (% rdi) (% r8) *)
+  0x4c; 0x31; 0xc6;        (* XOR (% rsi) (% r8) *)
+  0x49; 0x0f; 0xba; 0xe0; 0x3f;
+                           (* BT (% r8) (Imm8 (word 63)) *)
+  0x48; 0x0f; 0x42; 0xd9;  (* CMOVB (% rbx) (% rcx) *)
+  0x49; 0x89; 0xc0;        (* MOV (% r8) (% rax) *)
+  0x48; 0x29; 0xc6;        (* SUB (% rsi) (% rax) *)
+  0x48; 0x8d; 0x0c; 0x39;  (* LEA (% rcx) (%%% (rcx,0,rdi)) *)
+  0x48; 0xd1; 0xf9;        (* SAR (% rcx) (Imm8 (word 1)) *)
+  0xb8; 0x00; 0x00; 0x10; 0x00;
+                           (* MOV (% eax) (Imm32 (word 1048576)) *)
+  0x4c; 0x8d; 0x04; 0x03;  (* LEA (% r8) (%%% (rbx,0,rax)) *)
+  0x4c; 0x8d; 0x24; 0x01;  (* LEA (% r12) (%%% (rcx,0,rax)) *)
+  0x49; 0xc1; 0xe0; 0x15;  (* SHL (% r8) (Imm8 (word 21)) *)
+  0x49; 0xc1; 0xe4; 0x15;  (* SHL (% r12) (Imm8 (word 21)) *)
+  0x49; 0xc1; 0xf8; 0x2b;  (* SAR (% r8) (Imm8 (word 43)) *)
+  0x49; 0xc1; 0xfc; 0x2b;  (* SAR (% r12) (Imm8 (word 43)) *)
+  0x48; 0xb8; 0x00; 0x00; 0x10; 0x00; 0x00; 0x02; 0x00; 0x00;
+                           (* MOV (% rax) (Imm64 (word 2199024304128)) *)
+  0x4c; 0x8d; 0x14; 0x03;  (* LEA (% r10) (%%% (rbx,0,rax)) *)
+  0x4c; 0x8d; 0x34; 0x01;  (* LEA (% r14) (%%% (rcx,0,rax)) *)
+  0x49; 0xc1; 0xfa; 0x2b;  (* SAR (% r10) (Imm8 (word 43)) *)
+  0x49; 0xc1; 0xfe; 0x2b;  (* SAR (% r14) (Imm8 (word 43)) *)
+  0x4c; 0x89; 0xc8;        (* MOV (% rax) (% r9) *)
+  0x49; 0x0f; 0xaf; 0xc0;  (* IMUL (% rax) (% r8) *)
+  0x4c; 0x89; 0xea;        (* MOV (% rdx) (% r13) *)
+  0x49; 0x0f; 0xaf; 0xd2;  (* IMUL (% rdx) (% r10) *)
+  0x4d; 0x0f; 0xaf; 0xc7;  (* IMUL (% r8) (% r15) *)
+  0x4d; 0x0f; 0xaf; 0xd3;  (* IMUL (% r10) (% r11) *)
+  0x4d; 0x01; 0xc2;        (* ADD (% r10) (% r8) *)
+  0x4c; 0x8d; 0x04; 0x10;  (* LEA (% r8) (%%% (rax,0,rdx)) *)
+  0x4c; 0x89; 0xc8;        (* MOV (% rax) (% r9) *)
+  0x49; 0x0f; 0xaf; 0xc4;  (* IMUL (% rax) (% r12) *)
+  0x4c; 0x89; 0xea;        (* MOV (% rdx) (% r13) *)
+  0x49; 0x0f; 0xaf; 0xd6;  (* IMUL (% rdx) (% r14) *)
+  0x4d; 0x0f; 0xaf; 0xe7;  (* IMUL (% r12) (% r15) *)
+  0x4d; 0x0f; 0xaf; 0xf3;  (* IMUL (% r14) (% r11) *)
+  0x4d; 0x01; 0xe6;        (* ADD (% r14) (% r12) *)
+  0x4c; 0x8d; 0x24; 0x10;  (* LEA (% r12) (%%% (rax,0,rdx)) *)
+  0x48; 0x89; 0xb4; 0x24; 0x98; 0x00; 0x00; 0x00;
+                           (* MOV (Memop Quadword (%% (rsp,152))) (% rsi) *)
+  0x48; 0xff; 0x8c; 0x24; 0x90; 0x00; 0x00; 0x00;
+                           (* DEC (Memop Quadword (%% (rsp,144))) *)
+  0x0f; 0x85; 0xc1; 0xee; 0xff; 0xff;
+                           (* JNE (Imm32 (word 4294962881)) *)
+  0x48; 0x8b; 0x04; 0x24;  (* MOV (% rax) (Memop Quadword (%% (rsp,0))) *)
+  0x48; 0x8b; 0x4c; 0x24; 0x20;
+                           (* MOV (% rcx) (Memop Quadword (%% (rsp,32))) *)
+  0x49; 0x0f; 0xaf; 0xc0;  (* IMUL (% rax) (% r8) *)
+  0x49; 0x0f; 0xaf; 0xca;  (* IMUL (% rcx) (% r10) *)
+  0x48; 0x01; 0xc8;        (* ADD (% rax) (% rcx) *)
+  0x48; 0xc1; 0xf8; 0x3f;  (* SAR (% rax) (Imm8 (word 63)) *)
+  0x4d; 0x89; 0xc1;        (* MOV (% r9) (% r8) *)
+  0x49; 0xc1; 0xf9; 0x3f;  (* SAR (% r9) (Imm8 (word 63)) *)
+  0x4d; 0x31; 0xc8;        (* XOR (% r8) (% r9) *)
+  0x4d; 0x29; 0xc8;        (* SUB (% r8) (% r9) *)
+  0x49; 0x31; 0xc1;        (* XOR (% r9) (% rax) *)
+  0x4d; 0x89; 0xd3;        (* MOV (% r11) (% r10) *)
+  0x49; 0xc1; 0xfb; 0x3f;  (* SAR (% r11) (Imm8 (word 63)) *)
+  0x4d; 0x31; 0xda;        (* XOR (% r10) (% r11) *)
+  0x4d; 0x29; 0xda;        (* SUB (% r10) (% r11) *)
+  0x49; 0x31; 0xc3;        (* XOR (% r11) (% rax) *)
+  0x4d; 0x89; 0xe5;        (* MOV (% r13) (% r12) *)
+  0x49; 0xc1; 0xfd; 0x3f;  (* SAR (% r13) (Imm8 (word 63)) *)
+  0x4d; 0x31; 0xec;        (* XOR (% r12) (% r13) *)
+  0x4d; 0x29; 0xec;        (* SUB (% r12) (% r13) *)
+  0x49; 0x31; 0xc5;        (* XOR (% r13) (% rax) *)
+  0x4d; 0x89; 0xf7;        (* MOV (% r15) (% r14) *)
+  0x49; 0xc1; 0xff; 0x3f;  (* SAR (% r15) (Imm8 (word 63)) *)
+  0x4d; 0x31; 0xfe;        (* XOR (% r14) (% r15) *)
+  0x4d; 0x29; 0xfe;        (* SUB (% r14) (% r15) *)
+  0x49; 0x31; 0xc7;        (* XOR (% r15) (% rax) *)
+  0x4c; 0x89; 0xc0;        (* MOV (% rax) (% r8) *)
+  0x4c; 0x21; 0xc8;        (* AND (% rax) (% r9) *)
+  0x4d; 0x89; 0xd4;        (* MOV (% r12) (% r10) *)
+  0x4d; 0x21; 0xdc;        (* AND (% r12) (% r11) *)
+  0x49; 0x01; 0xc4;        (* ADD (% r12) (% rax) *)
+  0x45; 0x31; 0xed;        (* XOR (% r13d) (% r13d) *)
+  0x48; 0x8b; 0x44; 0x24; 0x40;
+                           (* MOV (% rax) (Memop Quadword (%% (rsp,64))) *)
+  0x4c; 0x31; 0xc8;        (* XOR (% rax) (% r9) *)
+  0x49; 0xf7; 0xe0;        (* MUL2 (% rdx,% rax) (% r8) *)
+  0x49; 0x01; 0xc4;        (* ADD (% r12) (% rax) *)
+  0x49; 0x11; 0xd5;        (* ADC (% r13) (% rdx) *)
+  0x48; 0x8b; 0x44; 0x24; 0x60;
+                           (* MOV (% rax) (Memop Quadword (%% (rsp,96))) *)
+  0x4c; 0x31; 0xd8;        (* XOR (% rax) (% r11) *)
+  0x49; 0xf7; 0xe2;        (* MUL2 (% rdx,% rax) (% r10) *)
+  0x49; 0x01; 0xc4;        (* ADD (% r12) (% rax) *)
+  0x49; 0x11; 0xd5;        (* ADC (% r13) (% rdx) *)
+  0x45; 0x31; 0xf6;        (* XOR (% r14d) (% r14d) *)
+  0x48; 0x8b; 0x44; 0x24; 0x48;
+                           (* MOV (% rax) (Memop Quadword (%% (rsp,72))) *)
+  0x4c; 0x31; 0xc8;        (* XOR (% rax) (% r9) *)
+  0x49; 0xf7; 0xe0;        (* MUL2 (% rdx,% rax) (% r8) *)
+  0x49; 0x01; 0xc5;        (* ADD (% r13) (% rax) *)
+  0x49; 0x11; 0xd6;        (* ADC (% r14) (% rdx) *)
+  0x48; 0x8b; 0x44; 0x24; 0x68;
+                           (* MOV (% rax) (Memop Quadword (%% (rsp,104))) *)
+  0x4c; 0x31; 0xd8;        (* XOR (% rax) (% r11) *)
+  0x49; 0xf7; 0xe2;        (* MUL2 (% rdx,% rax) (% r10) *)
+  0x49; 0x01; 0xc5;        (* ADD (% r13) (% rax) *)
+  0x49; 0x11; 0xd6;        (* ADC (% r14) (% rdx) *)
+  0x45; 0x31; 0xff;        (* XOR (% r15d) (% r15d) *)
+  0x48; 0x8b; 0x44; 0x24; 0x50;
+                           (* MOV (% rax) (Memop Quadword (%% (rsp,80))) *)
+  0x4c; 0x31; 0xc8;        (* XOR (% rax) (% r9) *)
+  0x49; 0xf7; 0xe0;        (* MUL2 (% rdx,% rax) (% r8) *)
+  0x49; 0x01; 0xc6;        (* ADD (% r14) (% rax) *)
+  0x49; 0x11; 0xd7;        (* ADC (% r15) (% rdx) *)
+  0x48; 0x8b; 0x44; 0x24; 0x70;
+                           (* MOV (% rax) (Memop Quadword (%% (rsp,112))) *)
+  0x4c; 0x31; 0xd8;        (* XOR (% rax) (% r11) *)
+  0x49; 0xf7; 0xe2;        (* MUL2 (% rdx,% rax) (% r10) *)
+  0x49; 0x01; 0xc6;        (* ADD (% r14) (% rax) *)
+  0x49; 0x11; 0xd7;        (* ADC (% r15) (% rdx) *)
+  0x48; 0x8b; 0x44; 0x24; 0x58;
+                           (* MOV (% rax) (Memop Quadword (%% (rsp,88))) *)
+  0x4c; 0x31; 0xc8;        (* XOR (% rax) (% r9) *)
+  0x4d; 0x21; 0xc1;        (* AND (% r9) (% r8) *)
+  0x49; 0xf7; 0xd9;        (* NEG (% r9) *)
+  0x49; 0xf7; 0xe0;        (* MUL2 (% rdx,% rax) (% r8) *)
+  0x49; 0x01; 0xc7;        (* ADD (% r15) (% rax) *)
+  0x49; 0x11; 0xd1;        (* ADC (% r9) (% rdx) *)
+  0x48; 0x8b; 0x44; 0x24; 0x78;
+                           (* MOV (% rax) (Memop Quadword (%% (rsp,120))) *)
+  0x4c; 0x31; 0xd8;        (* XOR (% rax) (% r11) *)
+  0x4c; 0x89; 0xda;        (* MOV (% rdx) (% r11) *)
+  0x4c; 0x21; 0xd2;        (* AND (% rdx) (% r10) *)
+  0x49; 0x29; 0xd1;        (* SUB (% r9) (% rdx) *)
+  0x49; 0xf7; 0xe2;        (* MUL2 (% rdx,% rax) (% r10) *)
+  0x49; 0x01; 0xc7;        (* ADD (% r15) (% rax) *)
+  0x49; 0x11; 0xd1;        (* ADC (% r9) (% rdx) *)
+  0x4c; 0x89; 0xc8;        (* MOV (% rax) (% r9) *)
+  0x4c; 0x0f; 0xa4; 0xf8; 0x01;
+                           (* SHLD (% rax) (% r15) (Imm8 (word 1)) *)
+  0x49; 0xc1; 0xf9; 0x3f;  (* SAR (% r9) (Imm8 (word 63)) *)
+  0xbb; 0x13; 0x00; 0x00; 0x00;
+                           (* MOV (% ebx) (Imm32 (word 19)) *)
+  0x4a; 0x8d; 0x44; 0x08; 0x01;
+                           (* LEA (% rax) (%%%% (rax,0,r9,&1)) *)
+  0x48; 0xf7; 0xeb;        (* IMUL2 (% rdx,% rax) (% rbx) *)
+  0x31; 0xed;              (* XOR (% ebp) (% ebp) *)
+  0x49; 0x01; 0xc4;        (* ADD (% r12) (% rax) *)
+  0x49; 0x11; 0xd5;        (* ADC (% r13) (% rdx) *)
+  0x4d; 0x11; 0xce;        (* ADC (% r14) (% r9) *)
+  0x4d; 0x11; 0xcf;        (* ADC (% r15) (% r9) *)
+  0x48; 0xc1; 0xe0; 0x3f;  (* SHL (% rax) (Imm8 (word 63)) *)
+  0x49; 0x01; 0xc7;        (* ADD (% r15) (% rax) *)
+  0x48; 0x0f; 0x49; 0xdd;  (* CMOVNS (% rbx) (% rbp) *)
+  0x49; 0x29; 0xdc;        (* SUB (% r12) (% rbx) *)
+  0x49; 0x19; 0xed;        (* SBB (% r13) (% rbp) *)
+  0x49; 0x19; 0xee;        (* SBB (% r14) (% rbp) *)
+  0x49; 0x19; 0xef;        (* SBB (% r15) (% rbp) *)
+  0x49; 0x0f; 0xba; 0xf7; 0x3f;
+                           (* BTR (% r15) (Imm8 (word 63)) *)
+  0x48; 0x8b; 0xbc; 0x24; 0xc0; 0x00; 0x00; 0x00;
+                           (* MOV (% rdi) (Memop Quadword (%% (rsp,192))) *)
+  0x4c; 0x89; 0x27;        (* MOV (Memop Quadword (%% (rdi,0))) (% r12) *)
+  0x4c; 0x89; 0x6f; 0x08;  (* MOV (Memop Quadword (%% (rdi,8))) (% r13) *)
+  0x4c; 0x89; 0x77; 0x10;  (* MOV (Memop Quadword (%% (rdi,16))) (% r14) *)
+  0x4c; 0x89; 0x7f; 0x18;  (* MOV (Memop Quadword (%% (rdi,24))) (% r15) *)
+  0x48; 0x8b; 0xbc; 0x24; 0xb8; 0x05; 0x00; 0x00;
+                           (* MOV (% rdi) (Memop Quadword (%% (rsp,1464))) *)
+  0x48; 0x8d; 0xb4; 0x24; 0x20; 0x01; 0x00; 0x00;
+                           (* LEA (% rsi) (%% (rsp,288)) *)
+  0x48; 0x8d; 0xac; 0x24; 0xa0; 0x01; 0x00; 0x00;
+                           (* LEA (% rbp) (%% (rsp,416)) *)
   0x31; 0xc9;              (* XOR (% ecx) (% ecx) *)
   0x48; 0x8b; 0x55; 0x00;  (* MOV (% rdx) (Memop Quadword (%% (rbp,0))) *)
   0xc4; 0x62; 0xbb; 0xf6; 0x0e;
@@ -2362,13 +3484,13 @@ let edwards25519_scalarmuldouble_mc,edwards25519_scalarmuldouble_data =
   0x4c; 0x89; 0x4f; 0x08;  (* MOV (Memop Quadword (%% (rdi,8))) (% r9) *)
   0x4c; 0x89; 0x57; 0x10;  (* MOV (Memop Quadword (%% (rdi,16))) (% r10) *)
   0x4c; 0x89; 0x5f; 0x18;  (* MOV (Memop Quadword (%% (rdi,24))) (% r11) *)
-  0x48; 0x8b; 0x7c; 0x24; 0x58;
-                           (* MOV (% rdi) (Memop Quadword (%% (rsp,88))) *)
+  0x48; 0x8b; 0xbc; 0x24; 0xb8; 0x05; 0x00; 0x00;
+                           (* MOV (% rdi) (Memop Quadword (%% (rsp,1464))) *)
   0x48; 0x83; 0xc7; 0x20;  (* ADD (% rdi) (Imm8 (word 32)) *)
-  0x48; 0x8d; 0xb4; 0x24; 0x80; 0x00; 0x00; 0x00;
-                           (* LEA (% rsi) (%% (rsp,128)) *)
-  0x48; 0x8d; 0xac; 0x24; 0xe0; 0x00; 0x00; 0x00;
-                           (* LEA (% rbp) (%% (rsp,224)) *)
+  0x48; 0x8d; 0xb4; 0x24; 0x40; 0x01; 0x00; 0x00;
+                           (* LEA (% rsi) (%% (rsp,320)) *)
+  0x48; 0x8d; 0xac; 0x24; 0xa0; 0x01; 0x00; 0x00;
+                           (* LEA (% rbp) (%% (rsp,416)) *)
   0x31; 0xc9;              (* XOR (% ecx) (% ecx) *)
   0x48; 0x8b; 0x55; 0x00;  (* MOV (% rdx) (Memop Quadword (%% (rbp,0))) *)
   0xc4; 0x62; 0xbb; 0xf6; 0x0e;
@@ -7714,55 +8836,53 @@ let edwards25519_scalarmuldouble_mc,edwards25519_scalarmuldouble_data =
                            (* ADD (% rsp) (Imm32 (word 192)) *)
   0xc3                     (* RET *)
 ]
-[237; 255; 255; 255; 255; 255; 255; 255; 255; 255; 255; 255; 255; 255; 255;
- 255; 255; 255; 255; 255; 255; 255; 255; 255; 255; 255; 255; 255; 255; 255;
- 255; 127; 62; 145; 64; 215; 5; 57; 16; 157; 179; 190; 64; 209; 5; 159; 57;
- 253; 9; 138; 143; 104; 52; 132; 193; 165; 103; 18; 248; 152; 146; 47; 253;
- 68; 133; 59; 140; 245; 198; 147; 188; 47; 25; 14; 140; 251; 198; 45; 147;
- 207; 194; 66; 61; 100; 152; 72; 11; 39; 101; 186; 212; 51; 58; 157; 207; 7;
- 104; 170; 122; 135; 5; 18; 201; 171; 158; 196; 170; 204; 35; 232; 217; 38;
- 140; 89; 67; 221; 203; 125; 27; 90; 168; 101; 12; 159; 104; 123; 17; 111;
- 168; 213; 180; 66; 96; 165; 153; 138; 246; 172; 96; 78; 12; 129; 43; 143;
- 170; 55; 110; 177; 107; 35; 158; 224; 85; 37; 201; 105; 166; 149; 181; 107;
- 215; 113; 60; 147; 252; 231; 36; 146; 181; 245; 15; 122; 150; 157; 70; 159;
- 2; 7; 214; 225; 101; 154; 166; 90; 46; 46; 125; 168; 63; 6; 12; 89; 95; 122;
- 155; 165; 179; 168; 250; 67; 120; 207; 154; 93; 221; 107; 193; 54; 49; 106;
- 61; 11; 132; 160; 15; 80; 115; 11; 165; 62; 177; 245; 26; 112; 101; 210;
- 252; 164; 232; 31; 97; 86; 125; 186; 193; 229; 253; 83; 211; 59; 189; 214;
- 75; 33; 26; 243; 49; 129; 98; 218; 91; 85; 135; 21; 185; 42; 48; 151; 238;
- 76; 168; 176; 37; 175; 138; 75; 134; 232; 48; 132; 90; 2; 50; 103; 1; 159;
- 2; 80; 27; 193; 244; 248; 128; 154; 27; 78; 22; 122; 137; 216; 208; 13; 63;
- 147; 174; 20; 98; 218; 53; 28; 34; 35; 148; 88; 76; 219; 242; 140; 69; 229;
- 112; 209; 198; 180; 185; 18; 175; 38; 40; 90; 191; 24; 104; 5; 10; 5; 254;
- 149; 169; 250; 96; 86; 113; 137; 126; 50; 115; 80; 160; 6; 205; 227; 232;
- 195; 154; 164; 69; 116; 76; 63; 147; 39; 159; 9; 252; 142; 185; 81; 115; 40;
- 56; 37; 253; 125; 244; 198; 101; 103; 101; 146; 10; 251; 61; 141; 52; 202;
- 39; 135; 229; 33; 3; 145; 14; 104; 9; 255; 118; 196; 233; 251; 19; 90; 114;
- 193; 92; 123; 69; 57; 158; 110; 148; 68; 43; 16; 249; 220; 219; 93; 43; 62;
- 85; 99; 191; 12; 157; 127; 186; 214; 71; 164; 195; 130; 145; 127; 183; 41;
- 39; 75; 209; 20; 0; 213; 135; 160; 100; 184; 28; 241; 60; 227; 243; 85; 27;
- 235; 115; 126; 74; 21; 51; 187; 165; 8; 68; 188; 18; 162; 2; 237; 94; 199;
- 195; 72; 80; 141; 68; 236; 191; 90; 12; 235; 27; 221; 235; 6; 226; 70; 241;
- 204; 69; 41; 133; 130; 42; 129; 241; 219; 187; 188; 252; 209; 189; 208; 7;
- 8; 14; 39; 45; 167; 189; 27; 11; 103; 27; 180; 154; 182; 59; 107; 105; 190;
- 170; 67; 164; 140; 125; 123; 182; 6; 152; 73; 57; 39; 210; 39; 132; 226; 91;
- 87; 185; 83; 69; 32; 231; 92; 8; 187; 132; 120; 65; 174; 65; 76; 182; 56;
- 49; 113; 21; 119; 235; 238; 12; 58; 136; 175; 200; 0; 137; 21; 39; 155; 54;
- 167; 89; 218; 104; 182; 101; 128; 189; 56; 204; 162; 182; 123; 229; 81; 113;
- 75; 234; 2; 103; 50; 172; 133; 1; 187; 161; 65; 3; 224; 112; 190; 68; 193;
- 59; 8; 75; 162; 228; 83; 227; 97; 13; 159; 26; 233; 184; 16; 177; 33; 50;
- 170; 154; 44; 111; 186; 167; 35; 186; 59; 83; 33; 160; 108; 58; 44; 25; 146;
- 79; 118; 234; 157; 224; 23; 83; 46; 93; 221; 110; 29; 191; 163; 78; 148;
- 208; 92; 26; 107; 210; 192; 157; 179; 58; 53; 112; 116; 73; 46; 84; 40; 130;
- 82; 178; 113; 126; 146; 60; 40; 105; 234; 27; 70; 162; 179; 184; 1; 200;
- 109; 131; 241; 154; 164; 62; 5; 71; 95; 3; 179; 243; 173; 119; 88; 186; 65;
- 156; 82; 167; 144; 15; 106; 28; 187; 159; 122; 217; 52; 146; 243; 237; 93;
- 167; 226; 249; 88; 181; 225; 128; 118; 61; 150; 251; 35; 60; 110; 172; 65;
- 39; 44; 195; 1; 14; 50; 161; 36; 144; 58; 143; 62; 221; 4; 102; 89; 183; 89;
- 44; 112; 136; 226; 119; 3; 179; 108; 35; 195; 217; 94; 102; 156; 51; 177;
- 47; 229; 188; 97; 96; 231; 21; 9; 26; 145; 162; 201; 217; 245; 193; 231;
- 215; 167; 204; 139; 120; 113; 163; 184; 50; 42; 182; 14; 25; 18; 100; 99;
- 149; 78; 204; 46; 92; 124; 144; 38];;
+[62; 145; 64; 215; 5; 57; 16; 157; 179; 190; 64; 209; 5; 159; 57; 253; 9;
+ 138; 143; 104; 52; 132; 193; 165; 103; 18; 248; 152; 146; 47; 253; 68; 133;
+ 59; 140; 245; 198; 147; 188; 47; 25; 14; 140; 251; 198; 45; 147; 207; 194;
+ 66; 61; 100; 152; 72; 11; 39; 101; 186; 212; 51; 58; 157; 207; 7; 104; 170;
+ 122; 135; 5; 18; 201; 171; 158; 196; 170; 204; 35; 232; 217; 38; 140; 89;
+ 67; 221; 203; 125; 27; 90; 168; 101; 12; 159; 104; 123; 17; 111; 168; 213;
+ 180; 66; 96; 165; 153; 138; 246; 172; 96; 78; 12; 129; 43; 143; 170; 55;
+ 110; 177; 107; 35; 158; 224; 85; 37; 201; 105; 166; 149; 181; 107; 215; 113;
+ 60; 147; 252; 231; 36; 146; 181; 245; 15; 122; 150; 157; 70; 159; 2; 7; 214;
+ 225; 101; 154; 166; 90; 46; 46; 125; 168; 63; 6; 12; 89; 95; 122; 155; 165;
+ 179; 168; 250; 67; 120; 207; 154; 93; 221; 107; 193; 54; 49; 106; 61; 11;
+ 132; 160; 15; 80; 115; 11; 165; 62; 177; 245; 26; 112; 101; 210; 252; 164;
+ 232; 31; 97; 86; 125; 186; 193; 229; 253; 83; 211; 59; 189; 214; 75; 33; 26;
+ 243; 49; 129; 98; 218; 91; 85; 135; 21; 185; 42; 48; 151; 238; 76; 168; 176;
+ 37; 175; 138; 75; 134; 232; 48; 132; 90; 2; 50; 103; 1; 159; 2; 80; 27; 193;
+ 244; 248; 128; 154; 27; 78; 22; 122; 137; 216; 208; 13; 63; 147; 174; 20;
+ 98; 218; 53; 28; 34; 35; 148; 88; 76; 219; 242; 140; 69; 229; 112; 209; 198;
+ 180; 185; 18; 175; 38; 40; 90; 191; 24; 104; 5; 10; 5; 254; 149; 169; 250;
+ 96; 86; 113; 137; 126; 50; 115; 80; 160; 6; 205; 227; 232; 195; 154; 164;
+ 69; 116; 76; 63; 147; 39; 159; 9; 252; 142; 185; 81; 115; 40; 56; 37; 253;
+ 125; 244; 198; 101; 103; 101; 146; 10; 251; 61; 141; 52; 202; 39; 135; 229;
+ 33; 3; 145; 14; 104; 9; 255; 118; 196; 233; 251; 19; 90; 114; 193; 92; 123;
+ 69; 57; 158; 110; 148; 68; 43; 16; 249; 220; 219; 93; 43; 62; 85; 99; 191;
+ 12; 157; 127; 186; 214; 71; 164; 195; 130; 145; 127; 183; 41; 39; 75; 209;
+ 20; 0; 213; 135; 160; 100; 184; 28; 241; 60; 227; 243; 85; 27; 235; 115;
+ 126; 74; 21; 51; 187; 165; 8; 68; 188; 18; 162; 2; 237; 94; 199; 195; 72;
+ 80; 141; 68; 236; 191; 90; 12; 235; 27; 221; 235; 6; 226; 70; 241; 204; 69;
+ 41; 133; 130; 42; 129; 241; 219; 187; 188; 252; 209; 189; 208; 7; 8; 14; 39;
+ 45; 167; 189; 27; 11; 103; 27; 180; 154; 182; 59; 107; 105; 190; 170; 67;
+ 164; 140; 125; 123; 182; 6; 152; 73; 57; 39; 210; 39; 132; 226; 91; 87; 185;
+ 83; 69; 32; 231; 92; 8; 187; 132; 120; 65; 174; 65; 76; 182; 56; 49; 113;
+ 21; 119; 235; 238; 12; 58; 136; 175; 200; 0; 137; 21; 39; 155; 54; 167; 89;
+ 218; 104; 182; 101; 128; 189; 56; 204; 162; 182; 123; 229; 81; 113; 75; 234;
+ 2; 103; 50; 172; 133; 1; 187; 161; 65; 3; 224; 112; 190; 68; 193; 59; 8; 75;
+ 162; 228; 83; 227; 97; 13; 159; 26; 233; 184; 16; 177; 33; 50; 170; 154; 44;
+ 111; 186; 167; 35; 186; 59; 83; 33; 160; 108; 58; 44; 25; 146; 79; 118; 234;
+ 157; 224; 23; 83; 46; 93; 221; 110; 29; 191; 163; 78; 148; 208; 92; 26; 107;
+ 210; 192; 157; 179; 58; 53; 112; 116; 73; 46; 84; 40; 130; 82; 178; 113;
+ 126; 146; 60; 40; 105; 234; 27; 70; 162; 179; 184; 1; 200; 109; 131; 241;
+ 154; 164; 62; 5; 71; 95; 3; 179; 243; 173; 119; 88; 186; 65; 156; 82; 167;
+ 144; 15; 106; 28; 187; 159; 122; 217; 52; 146; 243; 237; 93; 167; 226; 249;
+ 88; 181; 225; 128; 118; 61; 150; 251; 35; 60; 110; 172; 65; 39; 44; 195; 1;
+ 14; 50; 161; 36; 144; 58; 143; 62; 221; 4; 102; 89; 183; 89; 44; 112; 136;
+ 226; 119; 3; 179; 108; 35; 195; 217; 94; 102; 156; 51; 177; 47; 229; 188;
+ 97; 96; 231; 21; 9; 26; 145; 162; 201; 217; 245; 193; 231; 215; 167; 204;
+ 139; 120; 113; 163; 184; 50; 42; 182; 14; 25; 18; 100; 99; 149; 78; 204; 46;
+ 92; 124; 144; 38];;
 
 let EDWARDS25519_SCALARMULDOUBLE_EXEC =
   X86_MK_EXEC_RULE edwards25519_scalarmuldouble_mc;;
@@ -7958,24 +9078,23 @@ let GE25519_GROUPER =
      (MATCH_MP pth (CONJ th1 th2));;
 
 let BYTES_LOADED_DATA = prove
- (`bytes_loaded s (word (pc + 0x5ee1)) edwards25519_scalarmuldouble_data <=>
-   read (memory :> bytes(word (pc + 0x5ee1),800)) s =
+ (`bytes_loaded s (word (pc + 0x6de1)) edwards25519_scalarmuldouble_data <=>
+   read (memory :> bytes(word (pc + 0x6de1),768)) s =
    num_of_bytelist edwards25519_scalarmuldouble_data`,
   REWRITE_TAC[bytes_loaded; READ_BYTELIST_EQ_BYTES;
     CONV_RULE (RAND_CONV LENGTH_CONV)
      (AP_TERM `LENGTH:byte list->num` edwards25519_scalarmuldouble_data)]);;
 
 let EDWARDS25519DOUBLEBASE_TABLE_LEMMA = prove
- (`read (memory :> bytes(word (pc + 0x5ee1),800)) s =
+ (`read (memory :> bytes(word (pc + 0x6de1),768)) s =
    num_of_bytelist edwards25519_scalarmuldouble_data
-   ==> bignum_from_memory(word(pc + 0x5ee1),4) s = p_25519 /\
-       !i. i < 8
+   ==> !i. i < 8
            ==> edwards25519_epprojective
                 (group_pow edwards25519_group E_25519 (i + 1))
-         (bignum_from_memory(word(pc + 0x5f01 + 96 * i),4) s,
-          bignum_from_memory(word(pc + 0x5f01 + 96 * i + 32),4) s,
-          bignum_from_memory(word(pc + 0x5f01 + 96 * i + 64),4) s) /\
-         ~(bignum_from_memory(word(pc + 0x5f01 + 96 * i + 64),4) s =
+         (bignum_from_memory(word(pc + 0x6de1 + 96 * i),4) s,
+          bignum_from_memory(word(pc + 0x6de1 + 96 * i + 32),4) s,
+          bignum_from_memory(word(pc + 0x6de1 + 96 * i + 64),4) s) /\
+         ~(bignum_from_memory(word(pc + 0x6de1 + 96 * i + 64),4) s =
            0)`,
   let GE25519_POWERS =
     end_itlist CONJ
@@ -7983,7 +9102,7 @@ let EDWARDS25519DOUBLEBASE_TABLE_LEMMA = prove
                           [GE25519_POW_1]) in
   REWRITE_TAC[GSYM BYTES_LOADED_DATA; edwards25519_scalarmuldouble_data] THEN
   CONV_TAC(LAND_CONV DATA64_CONV) THEN STRIP_TAC THEN
-  CONV_TAC(RAND_CONV EXPAND_CASES_CONV) THEN
+  CONV_TAC EXPAND_CASES_CONV THEN
   CONV_TAC NUM_REDUCE_CONV THEN REWRITE_TAC[WORD_ADD] THEN
   CONV_TAC(ONCE_DEPTH_CONV BIGNUM_LEXPAND_CONV) THEN
   REWRITE_TAC[GSYM WORD_ADD] THEN ASM_REWRITE_TAC[] THEN
@@ -8017,14 +9136,14 @@ let lvs =
   "resy",[`RBP`;`32`];
   "scalar",[`RSP`;`0`];
   "bscalar",[`RSP`;`32`];
-  "acc",[`RSP`;`96`];
-  "acc_x",[`RSP`;`96`];
-  "acc_y",[`RSP`;`128`];
-  "acc_z",[`RSP`;`160`];
-  "acc_w",[`RSP`;`192`];
-  "tabent",[`RSP`;`224`];
-  "btabent",[`RSP`;`352`];
-  "tab",[`RSP`;`448`];
+  "tabent",[`RSP`;`64`];
+  "btabent",[`RSP`;`192`];
+  "acc",[`RSP`;`288`];
+  "acc_x",[`RSP`;`288`];
+  "acc_y",[`RSP`;`296`];
+  "acc_z",[`RSP`;`328`];
+  "acc_w",[`RSP`;`360`];
+  "tab",[`RSP`;`416`];
 
   (*** These are local for the subroutines ***)
 
@@ -8058,7 +9177,7 @@ let LOCAL_MUL_P25519_TAC =
       ==>
       !n. read(memory :> bytes(word_add (read q2 t) (word n2),8 * 4)) t = n
       ==>
-      nonoverlapping (word pc,0x6201) (word_add (read q3 t) (word n3),8 * 4)
+      nonoverlapping (word pc,0x70e1) (word_add (read q3 t) (word n3),8 * 4)
       ==> ensures x86
            (\s. bytes_loaded s (word pc) edwards25519_scalarmuldouble_mc /\
                 read RIP s = pcin /\
@@ -8234,7 +9353,7 @@ let LOCAL_MUL_4_TAC =
       ==>
       !n. read(memory :> bytes(word_add (read q2 t) (word n2),8 * 4)) t = n
       ==>
-      nonoverlapping (word pc,0x6201) (word_add (read q3 t) (word n3),8 * 4)
+      nonoverlapping (word pc,0x70e1) (word_add (read q3 t) (word n3),8 * 4)
       ==> ensures x86
            (\s. bytes_loaded s (word pc) edwards25519_scalarmuldouble_mc /\
                 read RIP s = pcin /\
@@ -8400,7 +9519,7 @@ let LOCAL_SQR_4_TAC =
       !n.
       read(memory :> bytes(word_add (read p1 t) (word n1),8 * 4)) t = n
       ==>
-      nonoverlapping (word pc,0x6201) (word_add (read p3 t) (word n3),8 * 4)
+      nonoverlapping (word pc,0x70e1) (word_add (read p3 t) (word n3),8 * 4)
       ==> ensures x86
            (\s. bytes_loaded s (word pc) edwards25519_scalarmuldouble_mc /\
                 read RIP s = pcin /\
@@ -8563,7 +9682,7 @@ let LOCAL_ADD_TWICE4_TAC =
       ==>
       !n. read(memory :> bytes(word_add (read q2 t) (word n2),8 * 4)) t = n
       ==>
-      nonoverlapping (word pc,0x6201) (word_add (read q3 t) (word n3),8 * 4)
+      nonoverlapping (word pc,0x70e1) (word_add (read q3 t) (word n3),8 * 4)
       ==> ensures x86
            (\s. bytes_loaded s (word pc) edwards25519_scalarmuldouble_mc /\
                 read RIP s = pcin /\
@@ -8636,7 +9755,7 @@ let LOCAL_DOUBLE_TWICE4_TAC =
    `!(t:x86state) pcin pcout q3 n3 q1 n1.
       !n. read(memory :> bytes(word_add (read q1 t) (word n1),8 * 4)) t = n
       ==>
-      nonoverlapping (word pc,0x6201) (word_add (read q3 t) (word n3),8 * 4)
+      nonoverlapping (word pc,0x70e1) (word_add (read q3 t) (word n3),8 * 4)
       ==> ensures x86
            (\s. bytes_loaded s (word pc) edwards25519_scalarmuldouble_mc /\
                 read RIP s = pcin /\
@@ -8707,7 +9826,7 @@ let LOCAL_SUB_TWICE4_TAC =
       ==>
       !n. read(memory :> bytes(word_add (read q2 t) (word n2),8 * 4)) t = n
       ==>
-      nonoverlapping (word pc,0x6201) (word_add (read q3 t) (word n3),8 * 4)
+      nonoverlapping (word pc,0x70e1) (word_add (read q3 t) (word n3),8 * 4)
       ==> ensures x86
            (\s. bytes_loaded s (word pc) edwards25519_scalarmuldouble_mc /\
                 read RIP s = pcin /\
@@ -8782,20 +9901,16 @@ let LOCAL_SUB_TWICE4_TAC =
 (* ------------------------------------------------------------------------- *)
 
 let LOCAL_MODINV_TAC =
-  let cth =
-     (GEN_REWRITE_CONV RAND_CONV [bignum_modinv_mc] THENC TRIM_LIST_CONV)
-     `TRIM_LIST (23,15) bignum_modinv_mc`
-  and bth = edwards25519_scalarmuldouble_mc
-  and th = CONV_RULE (DEPTH_CONV WORD_NUM_RED_CONV)
-                     (SPEC `word 4:int64` CORE_MODINV_CORRECT) in
-  X86_SUBROUTINE_SIM_TAC(bth,EDWARDS25519_SCALARMULDOUBLE_EXEC,0x18de,cth,th)
-   [`read RSI s`; `read RDX s`;
-    `read (memory :> bytes(read RDX s,8 * 4)) s`;
-    `read RCX s`;
-    `read (memory :> bytes(read RCX s,8 * 4)) s`;
-    `read R8 s`;
-    `pc + 0x18de`;
-    `read RSP s`];;
+ X86_SUBROUTINE_SIM_TAC
+  (edwards25519_scalarmuldouble_mc,
+   EDWARDS25519_SCALARMULDOUBLE_EXEC,
+   0x196a,
+   (GEN_REWRITE_CONV RAND_CONV [bignum_inv_p25519_mc] THENC TRIM_LIST_CONV)
+   `TRIM_LIST (17,18) bignum_inv_p25519_mc`,
+   CORE_INV_P25519_CORRECT)
+  [`read RDI s`; `read RSI s`;
+   `read (memory :> bytes(read RSI s,8 * 4)) s`;
+   `pc + 0x196a`; `word_add stackpointer (word 200):int64`];;
 
 (* ------------------------------------------------------------------------- *)
 (* Embedded subroutine correctness.                                          *)
@@ -8804,17 +9919,17 @@ let LOCAL_MODINV_TAC =
 let LOCAL_EPDOUBLE_CORRECT = time prove
  (`!p3 p1 T1 pc stackpointer.
     ALL (nonoverlapping (stackpointer,160))
-        [(word pc,0x6201); (p3,128); (p1,96)] /\
-    nonoverlapping (p3,128) (word pc,0x6201)
+        [(word pc,0x70e1); (p3,128); (p1,96)] /\
+    nonoverlapping (p3,128) (word pc,0x70e1)
     ==> ensures x86
          (\s. bytes_loaded s (word pc)
                  edwards25519_scalarmuldouble_mc /\
-              read RIP s = word(pc + 0x21ca) /\
+              read RIP s = word(pc + 0x30ca) /\
               read RSP s = stackpointer /\
               read RDI s = p3 /\
               read RSI s = p1 /\
               bignum_triple_from_memory(p1,4) s = T1)
-         (\s. read RIP s = word (pc + 0x3043) /\
+         (\s. read RIP s = word (pc + 0x3f43) /\
               !P1. P1 IN group_carrier edwards25519_group /\
                    edwards25519_projective2 P1 T1
                       ==> edwards25519_exprojective2
@@ -8909,17 +10024,17 @@ let LOCAL_EPDOUBLE_TAC =
 let LOCAL_PDOUBLE_CORRECT = time prove
  (`!p3 p1 T1 pc stackpointer.
     ALL (nonoverlapping (stackpointer,160))
-        [(word pc,0x6201); (p3,96); (p1,96)] /\
-    nonoverlapping (p3,96) (word pc,0x6201)
+        [(word pc,0x70e1); (p3,96); (p1,96)] /\
+    nonoverlapping (p3,96) (word pc,0x70e1)
     ==> ensures x86
          (\s. bytes_loaded s (word pc)
                  edwards25519_scalarmuldouble_mc /\
-              read RIP s = word(pc + 0x3052) /\
+              read RIP s = word(pc + 0x3f52) /\
               read RSP s = stackpointer /\
               read RDI s = p3 /\
               read RSI s = p1 /\
               bignum_triple_from_memory(p1,4) s = T1)
-         (\s. read RIP s = word (pc + 0x3d05) /\
+         (\s. read RIP s = word (pc + 0x4c05) /\
               !P1. P1 IN group_carrier edwards25519_group /\
                    edwards25519_projective2 P1 T1
                       ==> edwards25519_projective2
@@ -9017,19 +10132,19 @@ let LOCAL_PDOUBLE_TAC =
 let LOCAL_EPADD_CORRECT = time prove
  (`!p3 p1 Q1 p2 Q2 pc stackpointer.
     ALL (nonoverlapping (stackpointer,192))
-        [(word pc,0x6201); (p3,128); (p1,128); (p2,128)] /\
-    nonoverlapping (p3,128) (word pc,0x6201)
+        [(word pc,0x70e1); (p3,128); (p1,128); (p2,128)] /\
+    nonoverlapping (p3,128) (word pc,0x70e1)
     ==> ensures x86
          (\s. bytes_loaded s (word pc)
                  edwards25519_scalarmuldouble_mc /\
-              read RIP s = word(pc + 0x3d14) /\
+              read RIP s = word(pc + 0x4c14) /\
               read RSP s = stackpointer /\
               read RDI s = p3 /\
               read RSI s = p1 /\
               read RBP s = p2 /\
               bignum_quadruple_from_memory(p1,4) s = Q1 /\
               bignum_quadruple_from_memory(p2,4) s = Q2)
-         (\s. read RIP s = word (pc + 0x4ff3) /\
+         (\s. read RIP s = word (pc + 0x5ef3) /\
               !P1 P2. P1 IN group_carrier edwards25519_group /\
                       P2 IN group_carrier edwards25519_group /\
                       edwards25519_exprojective2 P1 Q1 /\
@@ -9163,19 +10278,19 @@ let LOCAL_EPADD_TAC =
 let LOCAL_PEPADD_CORRECT = time prove
  (`!p3 p1 Q1 p2 T2 pc stackpointer.
     ALL (nonoverlapping (stackpointer,192))
-        [(word pc,0x6201); (p3,128); (p1,128); (p2,96)] /\
-    nonoverlapping (p3,128) (word pc,0x6201)
+        [(word pc,0x70e1); (p3,128); (p1,128); (p2,96)] /\
+    nonoverlapping (p3,128) (word pc,0x70e1)
     ==> ensures x86
          (\s. bytes_loaded s (word pc)
                  edwards25519_scalarmuldouble_mc /\
-              read RIP s = word(pc + 0x5002) /\
+              read RIP s = word(pc + 0x5f02) /\
               read RSP s = stackpointer /\
               read RDI s = p3 /\
               read RSI s = p1 /\
               read RBP s = p2 /\
               bignum_quadruple_from_memory(p1,4) s = Q1 /\
               bignum_triple_from_memory(p2,4) s = T2)
-         (\s. read RIP s = word (pc + 0x5ed9) /\
+         (\s. read RIP s = word (pc + 0x6dd9) /\
               !P1 P2. P1 IN group_carrier edwards25519_group /\
                       P2 IN group_carrier edwards25519_group /\
                       edwards25519_exprojective2w P1 Q1 /\
@@ -9303,8 +10418,8 @@ let LOCAL_PEPADD_TAC =
 let EDWARDS25519_SCALARMULDOUBLE_CORRECT = time prove
  (`!res scalar point bscalar n xy m pc stackpointer.
     ALL (nonoverlapping (stackpointer,1672))
-        [(word pc,0x6201); (res,64); (scalar,32); (point,64); (bscalar,32)] /\
-    nonoverlapping (res,64) (word pc,0x6201)
+        [(word pc,0x70e1); (res,64); (scalar,32); (point,64); (bscalar,32)] /\
+    nonoverlapping (res,64) (word pc,0x70e1)
     ==> ensures x86
          (\s. bytes_loaded s (word pc)
                (APPEND edwards25519_scalarmuldouble_mc
@@ -9315,7 +10430,7 @@ let EDWARDS25519_SCALARMULDOUBLE_CORRECT = time prove
               bignum_from_memory (scalar,4) s = n /\
               bignum_pair_from_memory (point,4) s = xy /\
               bignum_from_memory (bscalar,4) s = m)
-         (\s. read RIP s = word (pc + 0x21b1) /\
+         (\s. read RIP s = word (pc + 0x30b1) /\
               !P. P IN group_carrier edwards25519_group /\
                   paired (modular_decode (256,p_25519)) xy = P
                   ==> bignum_pair_from_memory(res,4) s =
@@ -9394,13 +10509,13 @@ let EDWARDS25519_SCALARMULDOUBLE_CORRECT = time prove
 
   (*** Setup of the main loop ***)
 
-  ENSURES_WHILE_DOWN_TAC `63` `pc + 0xde4` `pc + 0x18aa`
+  ENSURES_WHILE_DOWN_TAC `63` `pc + 0xe20` `pc + 0x1949`
    `\i s.
-      read (memory :> bytes(word(pc + 0x5ee1),800)) s =
+      read (memory :> bytes(word(pc + 0x6de1),768)) s =
       num_of_bytelist edwards25519_scalarmuldouble_data /\
       read RSP s = word_add stackpointer (word 200) /\
-      read (memory :> bytes64(word_add stackpointer (word 288))) s = res /\
-      read (memory :> bytes64(word_add stackpointer (word 280))) s =
+      read (memory :> bytes64(word_add stackpointer (word 1664))) s = res /\
+      read (memory :> bytes64(word_add stackpointer (word 1656))) s =
       word (4 * i) /\
       bignum_from_memory(word_add stackpointer (word 200),4) s = n /\
       bignum_from_memory(word_add stackpointer (word 232),4) s = m /\
@@ -9410,7 +10525,7 @@ let EDWARDS25519_SCALARMULDOUBLE_CORRECT = time prove
                    ==> edwards25519_exprojective2
                         (group_pow edwards25519_group P (j + 1))
                       (bignum_quadruple_from_memory
-                        (word_add stackpointer (word (648 + 128 * j)),4) s)) /\
+                        (word_add stackpointer (word (616 + 128 * j)),4) s)) /\
               edwards25519_exprojective2
                (group_mul edwards25519_group
                   (group_zpow edwards25519_group P
@@ -9418,7 +10533,7 @@ let EDWARDS25519_SCALARMULDOUBLE_CORRECT = time prove
                   (group_zpow edwards25519_group E_25519
                     (&(m DIV 2 EXP (4 * i)) - &(recoder DIV 2 EXP (4 * i)))))
                (bignum_quadruple_from_memory
-                 (word_add stackpointer (word 296),4) s)` THEN
+                 (word_add stackpointer (word 488),4) s)` THEN
   REPEAT CONJ_TAC THENL
    [ARITH_TAC;
 
@@ -9509,7 +10624,7 @@ let EDWARDS25519_SCALARMULDOUBLE_CORRECT = time prove
     X86_ACCSTEPS_TAC EDWARDS25519_SCALARMULDOUBLE_EXEC (56--59) (48--67) THEN
     ABBREV_TAC
      `X =
-      read(memory :> bytes(word_add stackpointer (word 648),8 * 4)) s67` THEN
+      read(memory :> bytes(word_add stackpointer (word 616),8 * 4)) s67` THEN
     SUBGOAL_THEN `x MOD (2 * p_25519) = X` MP_TAC THENL
      [MATCH_MP_TAC EQUAL_FROM_CONGRUENT_MOD_MOD THEN MAP_EVERY EXISTS_TAC
        [`256`;
@@ -9553,7 +10668,7 @@ let EDWARDS25519_SCALARMULDOUBLE_CORRECT = time prove
     X86_ACCSTEPS_TAC EDWARDS25519_SCALARMULDOUBLE_EXEC (76--79) (68--87) THEN
     ABBREV_TAC
      `Y =
-      read(memory :> bytes(word_add stackpointer (word 680),8 * 4)) s87` THEN
+      read(memory :> bytes(word_add stackpointer (word 648),8 * 4)) s87` THEN
     SUBGOAL_THEN `y MOD (2 * p_25519) = Y` MP_TAC THENL
      [MATCH_MP_TAC EQUAL_FROM_CONGRUENT_MOD_MOD THEN MAP_EVERY EXISTS_TAC
        [`256`;
@@ -9594,11 +10709,11 @@ let EDWARDS25519_SCALARMULDOUBLE_CORRECT = time prove
     LOCAL_MUL_4_TAC 9 ["x_0"; "x_1"; "x_2"] THEN
     REABBREV_TAC
      `W =
-      read(memory :> bytes(word_add stackpointer (word 744),8 * 4)) s97` THEN
+      read(memory :> bytes(word_add stackpointer (word 712),8 * 4)) s97` THEN
     POP_ASSUM SUBST_ALL_TAC THEN
     ABBREV_TAC
      `Z =
-      read(memory :> bytes(word_add stackpointer (word 712),8 * 4)) s97` THEN
+      read(memory :> bytes(word_add stackpointer (word 680),8 * 4)) s97` THEN
     SUBGOAL_THEN `Z < 2 * p_25519 /\ (Z == 1) (mod (2 * p_25519))`
     STRIP_ASSUME_TAC THENL
      [EXPAND_TAC "Z" THEN CONV_TAC(ONCE_DEPTH_CONV BIGNUM_EXPAND_CONV) THEN
@@ -9634,10 +10749,10 @@ let EDWARDS25519_SCALARMULDOUBLE_CORRECT = time prove
     FIRST_X_ASSUM(MP_TAC o check (is_forall o concl)) THEN
     ASM_REWRITE_TAC[] THEN
     MAP_EVERY ABBREV_TAC
-     [`X_2 = read(memory :> bytes(word_add stackpointer (word 776),8 * 4)) s102`;
-      `Y_2 = read(memory :> bytes(word_add stackpointer (word 808),8 * 4)) s102`;
-      `Z_2 = read(memory :> bytes(word_add stackpointer (word 840),8 * 4)) s102`;
-      `W_2 = read(memory :> bytes(word_add stackpointer (word 872),8 * 4)) s102`]
+     [`X_2 = read(memory :> bytes(word_add stackpointer (word 744),8 * 4)) s102`;
+      `Y_2 = read(memory :> bytes(word_add stackpointer (word 776),8 * 4)) s102`;
+      `Z_2 = read(memory :> bytes(word_add stackpointer (word 808),8 * 4)) s102`;
+      `W_2 = read(memory :> bytes(word_add stackpointer (word 840),8 * 4)) s102`]
     THEN DISCH_TAC THEN
     SUBGOAL_THEN
      `!P. P IN group_carrier edwards25519_group /\
@@ -9661,10 +10776,10 @@ let EDWARDS25519_SCALARMULDOUBLE_CORRECT = time prove
     FIRST_X_ASSUM(MP_TAC o check (is_forall o concl)) THEN
     ASM_REWRITE_TAC[] THEN
     MAP_EVERY ABBREV_TAC
-     [`X_3 = read(memory :> bytes(word_add stackpointer (word 904),8 * 4)) s110`;
-      `Y_3 = read(memory :> bytes(word_add stackpointer (word 936),8 * 4)) s110`;
-      `Z_3 = read(memory :> bytes(word_add stackpointer (word 968),8 * 4)) s110`;
-      `W_3 = read(memory :> bytes(word_add stackpointer (word 1000),8 * 4)) s110`]
+     [`X_3 = read(memory :> bytes(word_add stackpointer (word 872),8 * 4)) s110`;
+      `Y_3 = read(memory :> bytes(word_add stackpointer (word 904),8 * 4)) s110`;
+      `Z_3 = read(memory :> bytes(word_add stackpointer (word 936),8 * 4)) s110`;
+      `W_3 = read(memory :> bytes(word_add stackpointer (word 968),8 * 4)) s110`]
     THEN DISCH_TAC THEN
     SUBGOAL_THEN
      `!P. P IN group_carrier edwards25519_group /\
@@ -9688,10 +10803,10 @@ let EDWARDS25519_SCALARMULDOUBLE_CORRECT = time prove
     FIRST_X_ASSUM(MP_TAC o check (is_forall o concl)) THEN
     ASM_REWRITE_TAC[] THEN
     MAP_EVERY ABBREV_TAC
-     [`X_4 = read(memory :> bytes(word_add stackpointer (word 1032),8 * 4)) s117`;
-      `Y_4 = read(memory :> bytes(word_add stackpointer (word 1064),8 * 4)) s117`;
-      `Z_4 = read(memory :> bytes(word_add stackpointer (word 1096),8 * 4)) s117`;
-      `W_4 = read(memory :> bytes(word_add stackpointer (word 1128),8 * 4)) s117`]
+     [`X_4 = read(memory :> bytes(word_add stackpointer (word 1000),8 * 4)) s117`;
+      `Y_4 = read(memory :> bytes(word_add stackpointer (word 1032),8 * 4)) s117`;
+      `Z_4 = read(memory :> bytes(word_add stackpointer (word 1064),8 * 4)) s117`;
+      `W_4 = read(memory :> bytes(word_add stackpointer (word 1096),8 * 4)) s117`]
     THEN DISCH_TAC THEN
     SUBGOAL_THEN
      `!P. P IN group_carrier edwards25519_group /\
@@ -9716,10 +10831,10 @@ let EDWARDS25519_SCALARMULDOUBLE_CORRECT = time prove
     FIRST_X_ASSUM(MP_TAC o check (is_forall o concl)) THEN
     ASM_REWRITE_TAC[] THEN
     MAP_EVERY ABBREV_TAC
-     [`X_5 = read(memory :> bytes(word_add stackpointer (word 1160),8 * 4)) s125`;
-      `Y_5 = read(memory :> bytes(word_add stackpointer (word 1192),8 * 4)) s125`;
-      `Z_5 = read(memory :> bytes(word_add stackpointer (word 1224),8 * 4)) s125`;
-      `W_5 = read(memory :> bytes(word_add stackpointer (word 1256),8 * 4)) s125`]
+     [`X_5 = read(memory :> bytes(word_add stackpointer (word 1128),8 * 4)) s125`;
+      `Y_5 = read(memory :> bytes(word_add stackpointer (word 1160),8 * 4)) s125`;
+      `Z_5 = read(memory :> bytes(word_add stackpointer (word 1192),8 * 4)) s125`;
+      `W_5 = read(memory :> bytes(word_add stackpointer (word 1224),8 * 4)) s125`]
     THEN DISCH_TAC THEN
     SUBGOAL_THEN
      `!P. P IN group_carrier edwards25519_group /\
@@ -9743,10 +10858,10 @@ let EDWARDS25519_SCALARMULDOUBLE_CORRECT = time prove
     FIRST_X_ASSUM(MP_TAC o check (is_forall o concl)) THEN
     ASM_REWRITE_TAC[] THEN
     MAP_EVERY ABBREV_TAC
-     [`X_6 = read(memory :> bytes(word_add stackpointer (word 1288),8 * 4)) s132`;
-      `Y_6 = read(memory :> bytes(word_add stackpointer (word 1320),8 * 4)) s132`;
-      `Z_6 = read(memory :> bytes(word_add stackpointer (word 1352),8 * 4)) s132`;
-      `W_6 = read(memory :> bytes(word_add stackpointer (word 1384),8 * 4)) s132`]
+     [`X_6 = read(memory :> bytes(word_add stackpointer (word 1256),8 * 4)) s132`;
+      `Y_6 = read(memory :> bytes(word_add stackpointer (word 1288),8 * 4)) s132`;
+      `Z_6 = read(memory :> bytes(word_add stackpointer (word 1320),8 * 4)) s132`;
+      `W_6 = read(memory :> bytes(word_add stackpointer (word 1352),8 * 4)) s132`]
     THEN DISCH_TAC THEN
     SUBGOAL_THEN
      `!P. P IN group_carrier edwards25519_group /\
@@ -9771,10 +10886,10 @@ let EDWARDS25519_SCALARMULDOUBLE_CORRECT = time prove
     FIRST_X_ASSUM(MP_TAC o check (is_forall o concl)) THEN
     ASM_REWRITE_TAC[] THEN
     MAP_EVERY ABBREV_TAC
-     [`X_7 = read(memory :> bytes(word_add stackpointer (word 1416),8 * 4)) s140`;
-      `Y_7 = read(memory :> bytes(word_add stackpointer (word 1448),8 * 4)) s140`;
-      `Z_7 = read(memory :> bytes(word_add stackpointer (word 1480),8 * 4)) s140`;
-      `W_7 = read(memory :> bytes(word_add stackpointer (word 1512),8 * 4)) s140`]
+     [`X_7 = read(memory :> bytes(word_add stackpointer (word 1384),8 * 4)) s140`;
+      `Y_7 = read(memory :> bytes(word_add stackpointer (word 1416),8 * 4)) s140`;
+      `Z_7 = read(memory :> bytes(word_add stackpointer (word 1448),8 * 4)) s140`;
+      `W_7 = read(memory :> bytes(word_add stackpointer (word 1480),8 * 4)) s140`]
     THEN DISCH_TAC THEN
     SUBGOAL_THEN
      `!P. P IN group_carrier edwards25519_group /\
@@ -9798,10 +10913,10 @@ let EDWARDS25519_SCALARMULDOUBLE_CORRECT = time prove
     FIRST_X_ASSUM(MP_TAC o check (is_forall o concl)) THEN
     ASM_REWRITE_TAC[] THEN
     MAP_EVERY ABBREV_TAC
-     [`X_8 = read(memory :> bytes(word_add stackpointer (word 1544),8 * 4)) s147`;
-      `Y_8 = read(memory :> bytes(word_add stackpointer (word 1576),8 * 4)) s147`;
-      `Z_8 = read(memory :> bytes(word_add stackpointer (word 1608),8 * 4)) s147`;
-      `W_8 = read(memory :> bytes(word_add stackpointer (word 1640),8 * 4)) s147`]
+     [`X_8 = read(memory :> bytes(word_add stackpointer (word 1512),8 * 4)) s147`;
+      `Y_8 = read(memory :> bytes(word_add stackpointer (word 1544),8 * 4)) s147`;
+      `Z_8 = read(memory :> bytes(word_add stackpointer (word 1576),8 * 4)) s147`;
+      `W_8 = read(memory :> bytes(word_add stackpointer (word 1608),8 * 4)) s147`]
     THEN DISCH_TAC THEN
     SUBGOAL_THEN
      `!P. P IN group_carrier edwards25519_group /\
@@ -9824,9 +10939,9 @@ let EDWARDS25519_SCALARMULDOUBLE_CORRECT = time prove
 
     X86_STEPS_TAC EDWARDS25519_SCALARMULDOUBLE_EXEC (150--154) THEN
     FIRST_X_ASSUM(MP_TAC o SPEC `m DIV 2 EXP 252` o MATCH_MP (MESON[]
-     `read (memory :> bytes64 (word_add stackpointer (word 264))) s = x
+     `read (memory :> bytes64 (word_add stackpointer (word 1640))) s = x
       ==> !m. x = word m
-              ==> read (memory :> bytes64 (word_add stackpointer (word 264))) s =
+              ==> read (memory :> bytes64 (word_add stackpointer (word 1640))) s =
                   word m`)) THEN
     ANTS_TAC THENL
      [EXPAND_TAC "m" THEN
@@ -9838,11 +10953,11 @@ let EDWARDS25519_SCALARMULDOUBLE_CORRECT = time prove
 
     (*** Address the precomputed table separately ***)
 
-    FIRST_ASSUM(MP_TAC o CONJUNCT2 o
+    FIRST_ASSUM(MP_TAC o
       MATCH_MP EDWARDS25519DOUBLEBASE_TABLE_LEMMA) THEN
-    REWRITE_TAC[ARITH_RULE `pc + 0x5f01 + x = (pc + 0x5f01) + x`] THEN
+    REWRITE_TAC[ARITH_RULE `pc + 0x6de1 + x = (pc + 0x6de1) + x`] THEN
     GEN_REWRITE_TAC (LAND_CONV o ONCE_DEPTH_CONV) [WORD_ADD] THEN
-    ABBREV_TAC `wpc:int64 = word(pc + 0x5f01)` THEN
+    ABBREV_TAC `wpc:int64 = word(pc + 0x6de1)` THEN
     CONV_TAC(LAND_CONV EXPAND_CASES_CONV) THEN
     CONV_TAC(LAND_CONV NUM_REDUCE_CONV) THEN
     GEN_REWRITE_TAC (LAND_CONV o ONCE_DEPTH_CONV) [WORD_ADD_0] THEN
@@ -9863,9 +10978,9 @@ let EDWARDS25519_SCALARMULDOUBLE_CORRECT = time prove
     ANTS_TAC THENL [EXPAND_TAC "wpc" THEN CONV_TAC WORD_RULE; DISCH_TAC] THEN
     X86_STEPS_TAC EDWARDS25519_SCALARMULDOUBLE_EXEC (168--386) THEN
     MAP_EVERY ABBREV_TAC
-     [`XPY = read(memory :> bytes(word_add stackpointer (word 552),8 * 4)) s386`;
-      `YMX = read(memory :> bytes(word_add stackpointer (word 584),8 * 4)) s386`;
-      `KXY = read(memory :> bytes(word_add stackpointer (word 616),8 * 4)) s386`]
+     [`XPY = read(memory :> bytes(word_add stackpointer (word 392),8 * 4)) s386`;
+      `YMX = read(memory :> bytes(word_add stackpointer (word 424),8 * 4)) s386`;
+      `KXY = read(memory :> bytes(word_add stackpointer (word 456),8 * 4)) s386`]
     THEN
     SUBGOAL_THEN
      `edwards25519_epprojective (group_pow edwards25519_group E_25519 ix)
@@ -9885,7 +11000,8 @@ let EDWARDS25519_SCALARMULDOUBLE_CORRECT = time prove
       REWRITE_TAC[bignum_of_wordlist; GSYM INT_OF_NUM_CLAUSES] THEN
       CONV_TAC(DEPTH_CONV WORD_NUM_RED_CONV) THEN
       REWRITE_TAC[d_25519; p_25519] THEN CONV_TAC INT_REDUCE_CONV;
-      REPEAT(FIRST_X_ASSUM(K ALL_TAC o check(free_in `wpc:int64` o concl))) THEN
+      REPEAT(FIRST_X_ASSUM(K ALL_TAC o
+        check(free_in `word_add (wpc:int64)` o concl))) THEN
       UNDISCH_THEN `m DIV 2 EXP 252 = ix` (SUBST_ALL_TAC o SYM) THEN
       DISCARD_MATCHING_ASSUMPTIONS [`read c s = if x then y else z`] THEN
       CLARIFY_TAC] THEN
@@ -9894,9 +11010,9 @@ let EDWARDS25519_SCALARMULDOUBLE_CORRECT = time prove
 
     X86_STEPS_TAC EDWARDS25519_SCALARMULDOUBLE_EXEC (387--389) THEN
     FIRST_X_ASSUM(MP_TAC o SPEC `n DIV 2 EXP 252` o MATCH_MP (MESON[]
-     `read (memory :> bytes64 (word_add stackpointer (word 264))) s = x
+     `read (memory :> bytes64 (word_add stackpointer (word 1640))) s = x
       ==> !m. x = word m
-              ==> read (memory :> bytes64 (word_add stackpointer (word 264))) s =
+              ==> read (memory :> bytes64 (word_add stackpointer (word 1640))) s =
                   word m`)) THEN
     ANTS_TAC THENL
      [EXPAND_TAC "n" THEN
@@ -9910,14 +11026,15 @@ let EDWARDS25519_SCALARMULDOUBLE_CORRECT = time prove
 
     ABBREV_TAC `iy = n DIV 2 EXP 252` THEN
     BIGNUM_LDIGITIZE_TAC "fab_"
-     `read(memory :> bytes(word_add stackpointer (word 648),8 * 128)) s389` THEN
+     `read(memory :> bytes(word_add stackpointer (word 616),8 * 128)) s389` THEN
     CLARIFY_TAC THEN
     X86_STEPS_TAC EDWARDS25519_SCALARMULDOUBLE_EXEC (390--709) THEN
+
     MAP_EVERY ABBREV_TAC
-     [`Xt = read(memory :> bytes(word_add stackpointer (word 424),8 * 4)) s709`;
-      `Yt = read(memory :> bytes(word_add stackpointer (word 456),8 * 4)) s709`;
-      `Zt = read(memory :> bytes(word_add stackpointer (word 488),8 * 4)) s709`;
-      `Wt = read(memory :> bytes(word_add stackpointer (word 520),8 * 4)) s709`]
+     [`Xt = read(memory :> bytes(word_add stackpointer (word 264),8 * 4)) s709`;
+      `Yt = read(memory :> bytes(word_add stackpointer (word 296),8 * 4)) s709`;
+      `Zt = read(memory :> bytes(word_add stackpointer (word 328),8 * 4)) s709`;
+      `Wt = read(memory :> bytes(word_add stackpointer (word 360),8 * 4)) s709`]
     THEN
     SUBGOAL_THEN
      `!P. P IN group_carrier edwards25519_group /\
@@ -10022,26 +11139,19 @@ let EDWARDS25519_SCALARMULDOUBLE_CORRECT = time prove
     FIRST_X_ASSUM(MP_TAC o MATCH_MP (MESON[]
      `(!x. P x ==> Q x /\ R x) ==> (!x. P x ==> R x)`)) THEN
     MAP_EVERY ABBREV_TAC
-     [`X = read(memory :> bytes(word_add stackpointer (word 296),8 * 4)) s0`;
-      `Y = read(memory :> bytes(word_add stackpointer (word 328),8 * 4)) s0`;
-      `Z = read(memory :> bytes(word_add stackpointer (word 360),8 * 4)) s0`;
-      `W = read(memory :> bytes(word_add stackpointer (word 392),8 * 4)) s0`]
+     [`X = read(memory :> bytes(word_add stackpointer (word 488),8 * 4)) s0`;
+      `Y = read(memory :> bytes(word_add stackpointer (word 520),8 * 4)) s0`;
+      `Z = read(memory :> bytes(word_add stackpointer (word 552),8 * 4)) s0`;
+      `W = read(memory :> bytes(word_add stackpointer (word 584),8 * 4)) s0`]
     THEN DISCH_TAC THEN
 
     (*** Call the modular inverse ***)
 
-    FIRST_X_ASSUM(MP_TAC o CONJUNCT1 o MATCH_MP
-     EDWARDS25519DOUBLEBASE_TABLE_LEMMA) THEN
-    REWRITE_TAC[BIGNUM_FROM_MEMORY_BYTES] THEN DISCH_TAC THEN
-    X86_STEPS_TAC EDWARDS25519_SCALARMULDOUBLE_EXEC (1--8) THEN
-    RULE_ASSUM_TAC(REWRITE_RULE[WORD_RULE
-     `word(val(word(pc + a):int64) + b):int64 = word(pc + a + b)`]) THEN
-    RULE_ASSUM_TAC(CONV_RULE(ONCE_DEPTH_CONV NUM_ADD_CONV)) THEN
-
-    LOCAL_MODINV_TAC 9 THEN
+    X86_STEPS_TAC EDWARDS25519_SCALARMULDOUBLE_EXEC (1--5) THEN
+    LOCAL_MODINV_TAC 6 THEN
     ABBREV_TAC
      `Z' =
-      read(memory :> bytes(word_add stackpointer (word 424),8 * 4)) s9` THEN
+      read(memory :> bytes(word_add stackpointer (word 616),8 * 4)) s6` THEN
 
     (*** Final multiplications ***)
 
@@ -10071,12 +11181,17 @@ let EDWARDS25519_SCALARMULDOUBLE_CORRECT = time prove
     SIMP_TAC[INT_OF_NUM_OF_INT; INT_REM_POS_EQ; INT_OF_NUM_EQ; ARITH_EQ] THEN
     REWRITE_TAC[GSYM p_25519; GSYM INT_OF_NUM_CLAUSES] THEN
     CONV_TAC INT_REM_DOWN_CONV THEN REWRITE_TAC[INT_REM_EQ_0; INT_REM_EQ] THEN
-    STRIP_TAC THEN FIRST_X_ASSUM(MP_TAC o check (is_imp o concl)) THEN
-    ONCE_REWRITE_TAC[COPRIME_SYM] THEN
-    SIMP_TAC[PRIME_COPRIME_EQ; PRIME_P25519] THEN
-    ASM_REWRITE_TAC[num_divides; num_congruent] THEN ANTS_TAC THENL
-     [REWRITE_TAC[p_25519] THEN CONV_TAC NUM_REDUCE_CONV;
-      REWRITE_TAC[GSYM INT_OF_NUM_CLAUSES]] THEN
+    STRIP_TAC THEN
+    SUBGOAL_THEN `Z' < p_25519 /\ (Z * Z' == 1) (mod p_25519)`
+    MP_TAC THENL
+     [FIRST_X_ASSUM(MP_TAC o check (is_imp o concl)) THEN MATCH_MP_TAC(TAUT
+        `p /\ (q ==> r) /\ (p /\ q ==> s) ==> (p ==> q) ==> r /\ s`) THEN
+      REPEAT CONJ_TAC THENL
+       [ASM_SIMP_TAC[PRIME_COPRIME_EQ; PRIME_P25519; num_divides];
+        DISCH_THEN SUBST1_TAC THEN REWRITE_TAC[INVERSE_MOD_BOUND] THEN
+        REWRITE_TAC[p_25519] THEN CONV_TAC NUM_REDUCE_CONV;
+        MESON_TAC[INVERSE_MOD_RMUL]];
+      REWRITE_TAC[GSYM INT_OF_NUM_CLAUSES; num_congruent]] THEN
     DISCH_THEN(CONJUNCTS_THEN2 ASSUME_TAC MP_TAC) THEN
     MATCH_MP_TAC(INTEGER_RULE
      `(x * z:int == X) (mod p) /\ (y * z == Y) (mod p)
@@ -10097,13 +11212,13 @@ let EDWARDS25519_SCALARMULDOUBLE_CORRECT = time prove
   CONV_TAC NUM_REDUCE_CONV THEN
   CONV_TAC(ONCE_DEPTH_CONV NORMALIZE_RELATIVE_ADDRESS_CONV) THEN
   GHOST_INTRO_TAC `Xa:num`
-   `bignum_from_memory (word_add stackpointer (word 296),4)` THEN
+   `bignum_from_memory (word_add stackpointer (word 488),4)` THEN
   GHOST_INTRO_TAC `Ya:num`
-   `bignum_from_memory (word_add stackpointer (word 328),4)` THEN
+   `bignum_from_memory (word_add stackpointer (word 520),4)` THEN
   GHOST_INTRO_TAC `Za:num`
-   `bignum_from_memory (word_add stackpointer (word 360),4)` THEN
+   `bignum_from_memory (word_add stackpointer (word 552),4)` THEN
   GHOST_INTRO_TAC `Wa:num`
-   `bignum_from_memory(word_add stackpointer (word 392),4)` THEN
+   `bignum_from_memory(word_add stackpointer (word 584),4)` THEN
   REWRITE_TAC[BIGNUM_FROM_MEMORY_BYTES] THEN ENSURES_INIT_TAC "s0" THEN
 
   (*** Doubling to acc' = 2 * acc ***)
@@ -10112,9 +11227,9 @@ let EDWARDS25519_SCALARMULDOUBLE_CORRECT = time prove
   RULE_ASSUM_TAC(REWRITE_RULE[WORD_RULE
    `word_sub (word (4 * (i + 1))) (word 4) = word(4 * i)`]) THEN
   LOCAL_PDOUBLE_TAC 8 THEN MAP_EVERY ABBREV_TAC
-   [`X2a = read(memory :> bytes(word_add stackpointer (word 296),8 * 4)) s8`;
-    `Y2a = read(memory :> bytes(word_add stackpointer (word 328),8 * 4)) s8`;
-    `Z2a = read(memory :> bytes(word_add stackpointer (word 360),8 * 4)) s8`
+   [`X2a = read(memory :> bytes(word_add stackpointer (word 488),8 * 4)) s8`;
+    `Y2a = read(memory :> bytes(word_add stackpointer (word 520),8 * 4)) s8`;
+    `Z2a = read(memory :> bytes(word_add stackpointer (word 552),8 * 4)) s8`
    ] THEN
   X86_STEPS_TAC EDWARDS25519_SCALARMULDOUBLE_EXEC (9--10) THEN
 
@@ -10185,11 +11300,11 @@ let EDWARDS25519_SCALARMULDOUBLE_CORRECT = time prove
 
   (*** Address the precomputed table separately ***)
 
-  FIRST_ASSUM(MP_TAC o CONJUNCT2 o
+  FIRST_ASSUM(MP_TAC o
     MATCH_MP EDWARDS25519DOUBLEBASE_TABLE_LEMMA) THEN
-  REWRITE_TAC[ARITH_RULE `pc + 0x5f01 + x = (pc + 0x5f01) + x`] THEN
+  REWRITE_TAC[ARITH_RULE `pc + 0x6de1 + x = (pc + 0x6de1) + x`] THEN
   GEN_REWRITE_TAC (LAND_CONV o ONCE_DEPTH_CONV) [WORD_ADD] THEN
-  ABBREV_TAC `wpc:int64 = word(pc + 0x5f01)` THEN
+  ABBREV_TAC `wpc:int64 = word(pc + 0x6de1)` THEN
   CONV_TAC(LAND_CONV EXPAND_CASES_CONV) THEN
   CONV_TAC(LAND_CONV NUM_REDUCE_CONV) THEN
   GEN_REWRITE_TAC (LAND_CONV o ONCE_DEPTH_CONV) [WORD_ADD_0] THEN
@@ -10241,16 +11356,17 @@ let EDWARDS25519_SCALARMULDOUBLE_CORRECT = time prove
     REWRITE_TAC[bignum_of_wordlist; GSYM INT_OF_NUM_CLAUSES] THEN
     CONV_TAC(DEPTH_CONV WORD_NUM_RED_CONV) THEN
     REWRITE_TAC[d_25519; p_25519] THEN CONV_TAC INT_REDUCE_CONV;
-    REPEAT(FIRST_X_ASSUM(K ALL_TAC o check(free_in `wpc:int64` o concl))) THEN
+    REPEAT(FIRST_X_ASSUM(K ALL_TAC o
+        check(free_in `word_add (wpc:int64)` o concl))) THEN
     CLARIFY_TAC] THEN
 
   (*** Optional negation of the table entry ***)
 
   X86_ACCSTEPS_TAC EDWARDS25519_SCALARMULDOUBLE_EXEC (270--273) (243--277) THEN
   MAP_EVERY ABBREV_TAC
-   [`XPY = read(memory :> bytes(word_add stackpointer (word 552),8 * 4)) s277`;
-    `YMX = read(memory :> bytes(word_add stackpointer (word 584),8 * 4)) s277`;
-    `KXY = read(memory :> bytes(word_add stackpointer (word 616),8 * 4)) s277`]
+   [`XPY = read(memory :> bytes(word_add stackpointer (word 392),8 * 4)) s277`;
+    `YMX = read(memory :> bytes(word_add stackpointer (word 424),8 * 4)) s277`;
+    `KXY = read(memory :> bytes(word_add stackpointer (word 456),8 * 4)) s277`]
   THEN
   SUBGOAL_THEN
    `edwards25519_epprojectivew
@@ -10374,23 +11490,22 @@ let EDWARDS25519_SCALARMULDOUBLE_CORRECT = time prove
   (*** Constant-time indexing in the fresh-point table ***)
 
   BIGNUM_LDIGITIZE_TAC "fab_"
-   `read(memory :> bytes(word_add stackpointer (word 648),8 * 128)) s289` THEN
+   `read(memory :> bytes(word_add stackpointer (word 616),8 * 128)) s289` THEN
   CLARIFY_TAC THEN
   X86_STEPS_TAC EDWARDS25519_SCALARMULDOUBLE_EXEC (290--601) THEN
-
   MAP_EVERY REABBREV_TAC
    [`fab0 = read RAX s601`;
     `fab1 = read RBX s601`;
     `fab2 = read RCX s601`;
     `fab3 = read RDX s601`;
-    `fab4 = read (memory :> bytes64(word_add stackpointer (word 456))) s601`;
-    `fab5 = read (memory :> bytes64(word_add stackpointer (word 464))) s601`;
-    `fab6 = read (memory :> bytes64(word_add stackpointer (word 472))) s601`;
-    `fab7 = read (memory :> bytes64(word_add stackpointer (word 480))) s601`;
-    `fab8 = read (memory :> bytes64(word_add stackpointer (word 488))) s601`;
-    `fab9 = read (memory :> bytes64(word_add stackpointer (word 496))) s601`;
-    `fab10 = read (memory :> bytes64(word_add stackpointer (word 504))) s601`;
-    `fab11 = read (memory :> bytes64(word_add stackpointer (word 512))) s601`;
+    `fab4 = read (memory :> bytes64(word_add stackpointer (word 296))) s601`;
+    `fab5 = read (memory :> bytes64(word_add stackpointer (word 304))) s601`;
+    `fab6 = read (memory :> bytes64(word_add stackpointer (word 312))) s601`;
+    `fab7 = read (memory :> bytes64(word_add stackpointer (word 320))) s601`;
+    `fab8 = read (memory :> bytes64(word_add stackpointer (word 328))) s601`;
+    `fab9 = read (memory :> bytes64(word_add stackpointer (word 336))) s601`;
+    `fab10 = read (memory :> bytes64(word_add stackpointer (word 344))) s601`;
+    `fab11 = read (memory :> bytes64(word_add stackpointer (word 352))) s601`;
     `fab12 = read R8 s601`;
     `fab13 = read R9 s601`;
     `fab14 = read R10 s601`;
@@ -10433,10 +11548,10 @@ let EDWARDS25519_SCALARMULDOUBLE_CORRECT = time prove
   X86_ACCSTEPS_TAC EDWARDS25519_SCALARMULDOUBLE_EXEC
     [612;613;614;615;620;621;622;623] (602--627) THEN
   MAP_EVERY ABBREV_TAC
-   [`Xb = read(memory :> bytes(word_add stackpointer (word 424),8 * 4)) s627`;
-    `Yb = read(memory :> bytes(word_add stackpointer (word 456),8 * 4)) s627`;
-    `Zb = read(memory :> bytes(word_add stackpointer (word 488),8 * 4)) s627`;
-    `Wb = read(memory :> bytes(word_add stackpointer (word 520),8 * 4)) s627`]
+   [`Xb = read(memory :> bytes(word_add stackpointer (word 264),8 * 4)) s627`;
+    `Yb = read(memory :> bytes(word_add stackpointer (word 296),8 * 4)) s627`;
+    `Zb = read(memory :> bytes(word_add stackpointer (word 328),8 * 4)) s627`;
+    `Wb = read(memory :> bytes(word_add stackpointer (word 360),8 * 4)) s627`]
   THEN
   SUBGOAL_THEN
    `!P. P IN group_carrier edwards25519_group /\
@@ -10490,9 +11605,9 @@ let EDWARDS25519_SCALARMULDOUBLE_CORRECT = time prove
 
   X86_STEPS_TAC EDWARDS25519_SCALARMULDOUBLE_EXEC (628--631) THEN
   LOCAL_PDOUBLE_TAC 632 THEN MAP_EVERY ABBREV_TAC
-   [`X4a = read(memory :> bytes(word_add stackpointer (word 296),8 * 4)) s632`;
-    `Y4a = read(memory :> bytes(word_add stackpointer (word 328),8 * 4)) s632`;
-    `Z4a = read(memory :> bytes(word_add stackpointer (word 360),8 * 4)) s632`
+   [`X4a = read(memory :> bytes(word_add stackpointer (word 488),8 * 4)) s632`;
+    `Y4a = read(memory :> bytes(word_add stackpointer (word 520),8 * 4)) s632`;
+    `Z4a = read(memory :> bytes(word_add stackpointer (word 552),8 * 4)) s632`
    ] THEN
   X86_STEPS_TAC EDWARDS25519_SCALARMULDOUBLE_EXEC (633--634) THEN
 
@@ -10500,10 +11615,10 @@ let EDWARDS25519_SCALARMULDOUBLE_CORRECT = time prove
 
   X86_STEPS_TAC EDWARDS25519_SCALARMULDOUBLE_EXEC (635--639) THEN
   LOCAL_PEPADD_TAC 640 THEN MAP_EVERY ABBREV_TAC
-   [`Xc = read(memory :> bytes(word_add stackpointer (word 424),8 * 4)) s640`;
-    `Yc = read(memory :> bytes(word_add stackpointer (word 456),8 * 4)) s640`;
-    `Zc = read(memory :> bytes(word_add stackpointer (word 488),8 * 4)) s640`;
-    `Wc = read(memory :> bytes(word_add stackpointer (word 520),8 * 4)) s640`
+   [`Xc = read(memory :> bytes(word_add stackpointer (word 264),8 * 4)) s640`;
+    `Yc = read(memory :> bytes(word_add stackpointer (word 296),8 * 4)) s640`;
+    `Zc = read(memory :> bytes(word_add stackpointer (word 328),8 * 4)) s640`;
+    `Wc = read(memory :> bytes(word_add stackpointer (word 360),8 * 4)) s640`
    ] THEN
   X86_STEPS_TAC EDWARDS25519_SCALARMULDOUBLE_EXEC (641--642) THEN
 
@@ -10511,9 +11626,9 @@ let EDWARDS25519_SCALARMULDOUBLE_CORRECT = time prove
 
   X86_STEPS_TAC EDWARDS25519_SCALARMULDOUBLE_EXEC (643--646) THEN
   LOCAL_PDOUBLE_TAC 647 THEN MAP_EVERY ABBREV_TAC
-   [`X8a = read(memory :> bytes(word_add stackpointer (word 296),8 * 4)) s647`;
-    `Y8a = read(memory :> bytes(word_add stackpointer (word 328),8 * 4)) s647`;
-    `Z8a = read(memory :> bytes(word_add stackpointer (word 360),8 * 4)) s647`
+   [`X8a = read(memory :> bytes(word_add stackpointer (word 488),8 * 4)) s647`;
+    `Y8a = read(memory :> bytes(word_add stackpointer (word 520),8 * 4)) s647`;
+    `Z8a = read(memory :> bytes(word_add stackpointer (word 552),8 * 4)) s647`
    ] THEN
   X86_STEPS_TAC EDWARDS25519_SCALARMULDOUBLE_EXEC (648--649) THEN
 
@@ -10521,10 +11636,10 @@ let EDWARDS25519_SCALARMULDOUBLE_CORRECT = time prove
 
   X86_STEPS_TAC EDWARDS25519_SCALARMULDOUBLE_EXEC (650--653) THEN
   LOCAL_EPDOUBLE_TAC 654 THEN MAP_EVERY ABBREV_TAC
-   [`Xha = read(memory :> bytes(word_add stackpointer (word 296),8 * 4)) s654`;
-    `Yha = read(memory :> bytes(word_add stackpointer (word 328),8 * 4)) s654`;
-    `Zha = read(memory :> bytes(word_add stackpointer (word 360),8 * 4)) s654`;
-    `Wha = read(memory :> bytes(word_add stackpointer (word 392),8 * 4)) s654`
+   [`Xha = read(memory :> bytes(word_add stackpointer (word 488),8 * 4)) s654`;
+    `Yha = read(memory :> bytes(word_add stackpointer (word 520),8 * 4)) s654`;
+    `Zha = read(memory :> bytes(word_add stackpointer (word 552),8 * 4)) s654`;
+    `Wha = read(memory :> bytes(word_add stackpointer (word 584),8 * 4)) s654`
    ] THEN
   X86_STEPS_TAC EDWARDS25519_SCALARMULDOUBLE_EXEC (655--656) THEN
 
@@ -10532,10 +11647,10 @@ let EDWARDS25519_SCALARMULDOUBLE_CORRECT = time prove
 
   X86_STEPS_TAC EDWARDS25519_SCALARMULDOUBLE_EXEC (657--661) THEN
   LOCAL_EPADD_TAC 662 THEN MAP_EVERY ABBREV_TAC
-   [`Xf = read(memory :> bytes(word_add stackpointer (word 296),8 * 4)) s662`;
-    `Yf = read(memory :> bytes(word_add stackpointer (word 328),8 * 4)) s662`;
-    `Zf = read(memory :> bytes(word_add stackpointer (word 360),8 * 4)) s662`;
-    `Wf = read(memory :> bytes(word_add stackpointer (word 392),8 * 4)) s662`
+   [`Xf = read(memory :> bytes(word_add stackpointer (word 488),8 * 4)) s662`;
+    `Yf = read(memory :> bytes(word_add stackpointer (word 520),8 * 4)) s662`;
+    `Zf = read(memory :> bytes(word_add stackpointer (word 552),8 * 4)) s662`;
+    `Wf = read(memory :> bytes(word_add stackpointer (word 584),8 * 4)) s662`
    ] THEN
   X86_STEPS_TAC EDWARDS25519_SCALARMULDOUBLE_EXEC (663--664) THEN
 
@@ -10627,8 +11742,8 @@ let EDWARDS25519_SCALARMULDOUBLE_CORRECT = time prove
 let EDWARDS25519_SCALARMULDOUBLE_SUBROUTINE_CORRECT = time prove
  (`!res scalar point bscalar n xy m pc stackpointer returnaddress.
     ALL (nonoverlapping (word_sub stackpointer (word 1720),1720))
-        [(word pc,0x6201); (scalar,32); (point,64); (bscalar,32)] /\
-    nonoverlapping (res,64) (word pc,0x6201) /\
+        [(word pc,0x70e1); (scalar,32); (point,64); (bscalar,32)] /\
+    nonoverlapping (res,64) (word pc,0x70e1) /\
     nonoverlapping (res,64) (word_sub stackpointer (word 1720),1728)
     ==> ensures x86
          (\s. bytes_loaded s (word pc)
@@ -10667,7 +11782,7 @@ let EDWARDS25519_SCALARMULDOUBLE_SUBROUTINE_CORRECT = time prove
 
 let windows_edwards25519_scalarmuldouble_mc,
     windows_edwards25519_scalarmuldouble_data =
-  define_coda_from_elf 0x5ef7
+  define_coda_from_elf 0x6df7
   "windows_edwards25519_scalarmuldouble_mc"
   "windows_edwards25519_scalarmuldouble_data"
   "x86/curve25519/edwards25519_scalarmuldouble.obj";;
@@ -10675,8 +11790,8 @@ let windows_edwards25519_scalarmuldouble_mc,
 let WINDOWS_EDWARDS25519_SCALARMULDOUBLE_SUBROUTINE_CORRECT = time prove
  (`!res scalar point bscalar n xy m pc stackpointer returnaddress.
     ALL (nonoverlapping (word_sub stackpointer (word 1744),1744))
-        [(word pc,0x6217); (scalar,32); (point,64); (bscalar,32)] /\
-    nonoverlapping (res,64) (word pc,0x6217) /\
+        [(word pc,0x70f7); (scalar,32); (point,64); (bscalar,32)] /\
+    nonoverlapping (res,64) (word pc,0x70f7) /\
     nonoverlapping (res,64) (word_sub stackpointer (word 1744),1752)
     ==> ensures x86
          (\s. bytes_loaded s (word pc)
@@ -10726,7 +11841,7 @@ let WINDOWS_EDWARDS25519_SCALARMULDOUBLE_SUBROUTINE_CORRECT = time prove
   REWRITE_TAC(!simulation_precanon_thms) THEN ENSURES_INIT_TAC "s0" THEN
   X86_STEPS_TAC WINDOWS_EDWARDS25519_SCALARMULDOUBLE_EXEC (1--7) THEN
   RULE_ASSUM_TAC(REWRITE_RULE
-   [ARITH_RULE `pc + 0x5ef7 = (pc + 0x16) + 0x5ee1`]) THEN
+   [ARITH_RULE `pc + 0x6df7 = (pc + 0x16) + 0x6de1`]) THEN
   X86_SUBROUTINE_SIM_TAC
     (windows_edwards25519_scalarmuldouble_mc,
      WINDOWS_EDWARDS25519_SCALARMULDOUBLE_EXEC,

@@ -42,23 +42,32 @@
 #define scalar rsp+(0*NUMSIZE)
 #define bscalar rsp+(1*NUMSIZE)
 
-#define acc rsp+(3*NUMSIZE)
+#define tabent rsp+(2*NUMSIZE)
+#define btabent rsp+(6*NUMSIZE)
 
-#define tabent rsp+(7*NUMSIZE)
-#define btabent rsp+(11*NUMSIZE)
+#define acc rsp+(9*NUMSIZE)
 
-#define tab rsp+(14*NUMSIZE)
+#define tab rsp+(13*NUMSIZE)
 
 // Additional variables kept on the stack
 
-#define bf QWORD PTR [rsp+2*NUMSIZE]
-#define cf QWORD PTR [rsp+2*NUMSIZE+8]
-#define i QWORD PTR [rsp+2*NUMSIZE+16]
-#define res QWORD PTR [rsp+2*NUMSIZE+24]
+#define bf QWORD PTR [rsp+45*NUMSIZE]
+#define cf QWORD PTR [rsp+45*NUMSIZE+8]
+#define i QWORD PTR [rsp+45*NUMSIZE+16]
+#define res QWORD PTR [rsp+45*NUMSIZE+24]
 
 // Total size to reserve on the stack (excluding local subroutines)
 
 #define NSPACE (46*NUMSIZE)
+
+// Syntactic variants to make x86_att forms easier to generate
+
+#define SCALAR (0*NUMSIZE)
+#define BSCALAR (1*NUMSIZE)
+#define TABENT (2*NUMSIZE)
+#define BTABENT (6*NUMSIZE)
+#define ACC (9*NUMSIZE)
+#define TAB (13*NUMSIZE)
 
 // Sub-references used in local subroutines with local stack
 
@@ -610,10 +619,10 @@ edwards25519_scalarmuldouble_alt_standard:
         adc     r9, r13
         adc     r10, r14
         adc     r11, r15
-        mov     [rsp+32], r8
-        mov     [rsp+40], r9
-        mov     [rsp+48], r10
-        mov     [rsp+56], r11
+        mov     [rsp+BSCALAR], r8
+        mov     [rsp+BSCALAR+8], r9
+        mov     [rsp+BSCALAR+16], r10
+        mov     [rsp+BSCALAR+24], r11
 
         mov     r8, [rsi]
         mov     r9, [rsi+8]
@@ -634,10 +643,10 @@ edwards25519_scalarmuldouble_alt_standard:
         adc     r9, r13
         adc     r10, r14
         adc     r11, r15
-        mov     [rsp], r8
-        mov     [rsp+8], r9
-        mov     [rsp+16], r10
-        mov     [rsp+24], r11
+        mov     [rsp+SCALAR], r8
+        mov     [rsp+SCALAR+8], r9
+        mov     [rsp+SCALAR+16], r10
+        mov     [rsp+SCALAR+24], r11
 
 // Create table of multiples 1..8 of the general input point at "tab".
 // Reduce the input coordinates x and y modulo 2^256 - 38 first, for the
@@ -658,13 +667,13 @@ edwards25519_scalarmuldouble_alt_standard:
         adc     rcx, r10
         adc     rsi, r11
         cmovnc  rax, r8
-        mov     [rsp+448], rax
+        mov     [rsp+TAB], rax
         cmovnc  rbx, r9
-        mov     [rsp+456], rbx
+        mov     [rsp+TAB+8], rbx
         cmovnc  rcx, r10
-        mov     [rsp+464], rcx
+        mov     [rsp+TAB+16], rcx
         cmovnc  rsi, r11
-        mov     [rsp+472], rsi
+        mov     [rsp+TAB+24], rsi
 
         mov     eax, 38
         mov     r8, [rdx+32]
@@ -679,69 +688,69 @@ edwards25519_scalarmuldouble_alt_standard:
         adc     rcx, r10
         adc     rsi, r11
         cmovnc  rax, r8
-        mov     [rsp+480], rax
+        mov     [rsp+TAB+32], rax
         cmovnc  rbx, r9
-        mov     [rsp+488], rbx
+        mov     [rsp+TAB+40], rbx
         cmovnc  rcx, r10
-        mov     [rsp+496], rcx
+        mov     [rsp+TAB+48], rcx
         cmovnc  rsi, r11
-        mov     [rsp+504], rsi
+        mov     [rsp+TAB+56], rsi
 
         mov     eax, 1
-        mov     [rsp+512], rax
+        mov     [rsp+TAB+64], rax
         xor     eax, eax
-        mov     [rsp+520], rax
-        mov     [rsp+528], rax
-        mov     [rsp+536], rax
+        mov     [rsp+TAB+72], rax
+        mov     [rsp+TAB+80], rax
+        mov     [rsp+TAB+88], rax
 
-        lea     rdi, [rsp+544]
-        lea     rsi, [rsp+448]
-        lea     rbp, [rsp+480]
+        lea     rdi, [rsp+TAB+96]
+        lea     rsi, [rsp+TAB]
+        lea     rbp, [rsp+TAB+32]
         mul_4(x_0,x_1,x_2)
 
 // Multiple 2
 
-        lea     rdi, [rsp+576]
-        lea     rsi, [rsp+448]
+        lea     rdi, [rsp+TAB+1*128]
+        lea     rsi, [rsp+TAB]
         call    edwards25519_scalarmuldouble_alt_epdouble
 
 // Multiple 3
 
-        lea     rdi, [rsp+704]
-        lea     rsi, [rsp+448]
-        lea     rbp, [rsp+576]
+        lea     rdi, [rsp+TAB+2*128]
+        lea     rsi, [rsp+TAB]
+        lea     rbp, [rsp+TAB+1*128]
         call    edwards25519_scalarmuldouble_alt_epadd
 
 // Multiple 4
 
-        lea     rdi, [rsp+832]
-        lea     rsi, [rsp+576]
+        lea     rdi, [rsp+TAB+3*128]
+        lea     rsi, [rsp+TAB+1*128]
         call    edwards25519_scalarmuldouble_alt_epdouble
 
 // Multiple 5
 
-        lea     rdi, [rsp+960]
-        lea     rsi, [rsp+448]
-        lea     rbp, [rsp+832]
+        lea     rdi, [rsp+TAB+4*128]
+        lea     rsi, [rsp+TAB]
+        lea     rbp, [rsp+TAB+3*128]
         call    edwards25519_scalarmuldouble_alt_epadd
 
 // Multiple 6
 
-        lea     rdi, [rsp+1088]
-        lea     rsi, [rsp+704]
+        lea     rdi, [rsp+TAB+5*128]
+        lea     rsi, [rsp+TAB+2*128]
         call    edwards25519_scalarmuldouble_alt_epdouble
 
 // Multiple 7
 
-        lea     rdi, [rsp+1216]
-        lea     rsi, [rsp+448]
-        lea     rbp, [rsp+1088]
+        lea     rdi, [rsp+TAB+6*128]
+        lea     rsi, [rsp+TAB]
+        lea     rbp, [rsp+TAB+5*128]
         call    edwards25519_scalarmuldouble_alt_epadd
 
 // Multiple 8
 
-        lea     rdi, [rsp+1344]
-        lea     rsi, [rsp+832]
+        lea     rdi, [rsp+TAB+7*128]
+        lea     rsi, [rsp+TAB+3*128]
         call    edwards25519_scalarmuldouble_alt_epdouble
 
 // Handle the initialization, starting the loop counter at i = 252
@@ -753,7 +762,7 @@ edwards25519_scalarmuldouble_alt_standard:
 
 // Index for btable entry...
 
-        mov     rax, [rsp+56]
+        mov     rax, [rsp+BSCALAR+24]
         shr     rax, 60
         mov     bf, rax
 
@@ -989,22 +998,22 @@ edwards25519_scalarmuldouble_alt_standard:
         mov     rsi, [rbp+88]
         cmovz   r15, rsi
 
-        mov     [rsp+352], rax
-        mov     [rsp+360], rbx
-        mov     [rsp+368], rcx
-        mov     [rsp+376], rdx
-        mov     [rsp+384], r8
-        mov     [rsp+392], r9
-        mov     [rsp+400], r10
-        mov     [rsp+408], r11
-        mov     [rsp+416], r12
-        mov     [rsp+424], r13
-        mov     [rsp+432], r14
-        mov     [rsp+440], r15
+        mov     [rsp+BTABENT], rax
+        mov     [rsp+BTABENT+8], rbx
+        mov     [rsp+BTABENT+16], rcx
+        mov     [rsp+BTABENT+24], rdx
+        mov     [rsp+BTABENT+32], r8
+        mov     [rsp+BTABENT+40], r9
+        mov     [rsp+BTABENT+48], r10
+        mov     [rsp+BTABENT+56], r11
+        mov     [rsp+BTABENT+64], r12
+        mov     [rsp+BTABENT+72], r13
+        mov     [rsp+BTABENT+80], r14
+        mov     [rsp+BTABENT+88], r15
 
 // Index for table entry...
 
-        mov     rax, [rsp+24]
+        mov     rax, [rsp+SCALAR+24]
         shr     rax, 60
         mov     bf, rax
 
@@ -1020,7 +1029,7 @@ edwards25519_scalarmuldouble_alt_standard:
         xor     r10d, r10d
         xor     r11d, r11d
 
-        lea     rbp, [rsp+480]
+        lea     rbp, [rsp+TAB+32]
 
         cmp     bf, 1
         mov     rsi, [rbp]
@@ -1173,18 +1182,18 @@ edwards25519_scalarmuldouble_alt_standard:
         mov     rsi, [rbp+56]
         cmovz   r11, rsi
 
-        mov     [rsp+256], rax
-        mov     [rsp+264], rbx
-        mov     [rsp+272], rcx
-        mov     [rsp+280], rdx
-        mov     [rsp+288], r8
-        mov     [rsp+296], r9
-        mov     [rsp+304], r10
-        mov     [rsp+312], r11
+        mov     [rsp+TABENT+32], rax
+        mov     [rsp+TABENT+40], rbx
+        mov     [rsp+TABENT+48], rcx
+        mov     [rsp+TABENT+56], rdx
+        mov     [rsp+TABENT+64], r8
+        mov     [rsp+TABENT+72], r9
+        mov     [rsp+TABENT+80], r10
+        mov     [rsp+TABENT+88], r11
 
 // ...followed by the X and W fields
 
-        lea     rbp, [rsp+448]
+        lea     rbp, [rsp+TAB]
 
         xor     eax, eax
         xor     ebx, ebx
@@ -1346,20 +1355,20 @@ edwards25519_scalarmuldouble_alt_standard:
         mov     rsi, [rbp+120]
         cmovz   r11, rsi
 
-        mov     [rsp+224], rax
-        mov     [rsp+232], rbx
-        mov     [rsp+240], rcx
-        mov     [rsp+248], rdx
-        mov     [rsp+320], r8
-        mov     [rsp+328], r9
-        mov     [rsp+336], r10
-        mov     [rsp+344], r11
+        mov     [rsp+TABENT], rax
+        mov     [rsp+TABENT+8], rbx
+        mov     [rsp+TABENT+16], rcx
+        mov     [rsp+TABENT+24], rdx
+        mov     [rsp+TABENT+96], r8
+        mov     [rsp+TABENT+104], r9
+        mov     [rsp+TABENT+112], r10
+        mov     [rsp+TABENT+120], r11
 
 // Add those elements to initialize the accumulator for bit position 252
 
-        lea     rdi, [rsp+96]
-        lea     rsi, [rsp+224]
-        lea     rbp, [rsp+352]
+        lea     rdi, [rsp+ACC]
+        lea     rsi, [rsp+TABENT]
+        lea     rbp, [rsp+BTABENT]
         call    edwards25519_scalarmuldouble_alt_pepadd
 
 // Main loop with acc = [scalar/2^i] * point + [bscalar/2^i] * basepoint
@@ -1373,8 +1382,8 @@ edwards25519_scalarmuldouble_alt_loop:
 
 // Double to acc' = 2 * acc
 
-        lea     rdi, [rsp+96]
-        lea     rsi, [rsp+96]
+        lea     rdi, [rsp+ACC]
+        lea     rsi, [rsp+ACC]
         call    edwards25519_scalarmuldouble_alt_pdouble
 
 // Get btable entry, first getting the adjusted bitfield...
@@ -1645,26 +1654,26 @@ edwards25519_scalarmuldouble_alt_loop:
         mov     rsi, rax
         cmovnz  rsi, r8
         cmovnz  r8, rax
-        mov     [rsp+352], rsi
-        mov     [rsp+384], r8
+        mov     [rsp+BTABENT], rsi
+        mov     [rsp+BTABENT+32], r8
 
         mov     rsi, rbx
         cmovnz  rsi, r9
         cmovnz  r9, rbx
-        mov     [rsp+360], rsi
-        mov     [rsp+392], r9
+        mov     [rsp+BTABENT+8], rsi
+        mov     [rsp+BTABENT+40], r9
 
         mov     rsi, rcx
         cmovnz  rsi, r10
         cmovnz  r10, rcx
-        mov     [rsp+368], rsi
-        mov     [rsp+400], r10
+        mov     [rsp+BTABENT+16], rsi
+        mov     [rsp+BTABENT+48], r10
 
         mov     rsi, rdx
         cmovnz  rsi, r11
         cmovnz  r11, rdx
-        mov     [rsp+376], rsi
-        mov     [rsp+408], r11
+        mov     [rsp+BTABENT+24], rsi
+        mov     [rsp+BTABENT+56], r11
 
         xor     r12, rdi
         xor     r13, rdi
@@ -1675,10 +1684,10 @@ edwards25519_scalarmuldouble_alt_loop:
         sbb     r13, 0
         sbb     r14, 0
         sbb     r15, 0
-        mov     [rsp+416], r12
-        mov     [rsp+424], r13
-        mov     [rsp+432], r14
-        mov     [rsp+440], r15
+        mov     [rsp+BTABENT+64], r12
+        mov     [rsp+BTABENT+72], r13
+        mov     [rsp+BTABENT+80], r14
+        mov     [rsp+BTABENT+88], r15
 
 // Get table entry, first getting the adjusted bitfield...
 
@@ -1709,7 +1718,7 @@ edwards25519_scalarmuldouble_alt_loop:
         xor     r10d, r10d
         xor     r11d, r11d
 
-        lea     rbp, [rsp+480]
+        lea     rbp, [rsp+TAB+32]
 
         cmp     bf, 1
         mov     rsi, [rbp]
@@ -1862,18 +1871,18 @@ edwards25519_scalarmuldouble_alt_loop:
         mov     rsi, [rbp+56]
         cmovz   r11, rsi
 
-        mov     [rsp+256], rax
-        mov     [rsp+264], rbx
-        mov     [rsp+272], rcx
-        mov     [rsp+280], rdx
-        mov     [rsp+288], r8
-        mov     [rsp+296], r9
-        mov     [rsp+304], r10
-        mov     [rsp+312], r11
+        mov     [rsp+TABENT+32], rax
+        mov     [rsp+TABENT+40], rbx
+        mov     [rsp+TABENT+48], rcx
+        mov     [rsp+TABENT+56], rdx
+        mov     [rsp+TABENT+64], r8
+        mov     [rsp+TABENT+72], r9
+        mov     [rsp+TABENT+80], r10
+        mov     [rsp+TABENT+88], r11
 
 // Now do the X and W fields...
 
-        lea     rbp, [rsp+448]
+        lea     rbp, [rsp+TAB]
 
         xor     eax, eax
         xor     ebx, ebx
@@ -2067,51 +2076,51 @@ edwards25519_scalarmuldouble_alt_loop:
         sbb     rcx, 0
         sbb     rdx, 0
 
-        mov     [rsp+224], rax
-        mov     [rsp+232], rbx
-        mov     [rsp+240], rcx
-        mov     [rsp+248], rdx
+        mov     [rsp+TABENT], rax
+        mov     [rsp+TABENT+8], rbx
+        mov     [rsp+TABENT+16], rcx
+        mov     [rsp+TABENT+24], rdx
 
         sub     r8, rdi
         sbb     r9, 0
         sbb     r10, 0
         sbb     r11, 0
 
-        mov     [rsp+320], r8
-        mov     [rsp+328], r9
-        mov     [rsp+336], r10
-        mov     [rsp+344], r11
+        mov     [rsp+TABENT+96], r8
+        mov     [rsp+TABENT+104], r9
+        mov     [rsp+TABENT+112], r10
+        mov     [rsp+TABENT+120], r11
 
 // Double to acc' = 4 * acc
 
-        lea     rdi, [rsp+96]
-        lea     rsi, [rsp+96]
+        lea     rdi, [rsp+ACC]
+        lea     rsi, [rsp+ACC]
         call    edwards25519_scalarmuldouble_alt_pdouble
 
 // Add tabent := tabent + btabent
 
-        lea     rdi, [rsp+224]
-        lea     rsi, [rsp+224]
-        lea     rbp, [rsp+352]
+        lea     rdi, [rsp+TABENT]
+        lea     rsi, [rsp+TABENT]
+        lea     rbp, [rsp+BTABENT]
         call    edwards25519_scalarmuldouble_alt_pepadd
 
 // Double to acc' = 8 * acc
 
-        lea     rdi, [rsp+96]
-        lea     rsi, [rsp+96]
+        lea     rdi, [rsp+ACC]
+        lea     rsi, [rsp+ACC]
         call    edwards25519_scalarmuldouble_alt_pdouble
 
 // Double to acc' = 16 * acc
 
-        lea     rdi, [rsp+96]
-        lea     rsi, [rsp+96]
+        lea     rdi, [rsp+ACC]
+        lea     rsi, [rsp+ACC]
         call    edwards25519_scalarmuldouble_alt_epdouble
 
 // Add table entry, acc := acc + tabent
 
-        lea     rdi, [rsp+96]
-        lea     rsi, [rsp+96]
-        lea     rbp, [rsp+224]
+        lea     rdi, [rsp+ACC]
+        lea     rsi, [rsp+ACC]
+        lea     rbp, [rsp+TABENT]
         call    edwards25519_scalarmuldouble_alt_epadd
 
 // Loop down
@@ -2120,423 +2129,1375 @@ edwards25519_scalarmuldouble_alt_loop:
         test    rax, rax
         jnz     edwards25519_scalarmuldouble_alt_loop
 
-// Modular inverse setup
+// Prepare to call the modular inverse function to get tab = 1/z
 
-        mov     rdi, 4
-        lea     rsi, [rsp+224]
-        lea     rdx, [rsp+160]
-        lea     rcx, [rip+edwards25519_scalarmuldouble_alt_p25519]
-        lea     r8, [rsp+352]
+        lea     rdi, [rsp+TAB]
+        lea     rsi, [rsp+ACC+64]
 
-// Inline copy of bignum_modinv, identical except for stripping out the
-// prologue and epilogue saving and restoring registers and the initial
-// test for k = 0 (which is trivially false here since k = 4). For more
-// details and explanations see "x86/generic/bignum_modinv.S". Note
-// that the stack it uses for its own temporaries is 80 bytes so it
-// only overwrites local variables that are no longer needed.
+// Inline copy of bignum_inv_p25519, identical except for stripping out
+// the prologue and epilogue saving and restoring registers and making
+// and reclaiming room on the stack. For more details and explanations see
+// "x86/curve25519/bignum_inv_p25519.S". Note that the stack it uses for
+// its own temporaries is 208 bytes, so it has no effect on variables
+// that are needed in the rest of our computation here: res, tab and acc.
 
-        mov     [rsp+0x40], rsi
-        mov     [rsp+0x38], r8
-        mov     [rsp+0x48], rcx
-        lea     r10, [r8+8*rdi]
-        mov     [rsp+0x30], r10
-        lea     r15, [r10+8*rdi]
-        xor     r11, r11
-        xor     r9, r9
-edwards25519_scalarmuldouble_alt_copyloop:
-        mov     rax, [rdx+8*r9]
-        mov     rbx, [rcx+8*r9]
-        mov     [r10+8*r9], rax
-        mov     [r15+8*r9], rbx
-        mov     [r8+8*r9], rbx
-        mov     [rsi+8*r9], r11
-        inc     r9
-        cmp     r9, rdi
-        jb      edwards25519_scalarmuldouble_alt_copyloop
-        mov     rax, [r8]
-        mov     rbx, rax
-        dec     rbx
-        mov     [r8], rbx
-        mov     rbp, rax
-        mov     r12, rax
-        shl     rbp, 0x2
-        sub     r12, rbp
-        xor     r12, 0x2
-        mov     rbp, r12
-        imul    rbp, rax
-        mov     eax, 0x2
-        add     rax, rbp
-        add     rbp, 0x1
-        imul    r12, rax
-        imul    rbp, rbp
-        mov     eax, 0x1
-        add     rax, rbp
-        imul    r12, rax
-        imul    rbp, rbp
-        mov     eax, 0x1
-        add     rax, rbp
-        imul    r12, rax
-        imul    rbp, rbp
-        mov     eax, 0x1
-        add     rax, rbp
-        imul    r12, rax
-        mov     [rsp+0x28], r12
-        mov     rax, rdi
-        shl     rax, 0x7
-        mov     [rsp+0x20], rax
-edwards25519_scalarmuldouble_alt_outerloop:
-        mov     r13, [rsp+0x20]
-        add     r13, 0x3f
-        shr     r13, 0x6
-        cmp     r13, rdi
-        cmovae  r13, rdi
-        xor     r12, r12
-        xor     r14, r14
-        xor     rbp, rbp
-        xor     rsi, rsi
-        xor     r11, r11
-        mov     r8, [rsp+0x30]
-        lea     r15, [r8+8*rdi]
-        xor     r9, r9
-edwards25519_scalarmuldouble_alt_toploop:
-        mov     rbx, [r8+8*r9]
-        mov     rcx, [r15+8*r9]
-        mov     r10, r11
-        and     r10, r12
-        and     r11, rbp
-        mov     rax, rbx
-        or      rax, rcx
-        neg     rax
-        cmovb   r14, r10
-        cmovb   rsi, r11
-        cmovb   r12, rbx
-        cmovb   rbp, rcx
-        sbb     r11, r11
-        inc     r9
-        cmp     r9, r13
-        jb      edwards25519_scalarmuldouble_alt_toploop
-        mov     rax, r12
-        or      rax, rbp
-        bsr     rcx, rax
-        xor     rcx, 0x3f
-        shld    r12, r14, cl
-        shld    rbp, rsi, cl
-        mov     rax, [r8]
-        mov     r14, rax
-        mov     rax, [r15]
-        mov     rsi, rax
-        mov     r10d, 0x1
-        mov     r11d, 0x0
-        mov     ecx, 0x0
-        mov     edx, 0x1
-        mov     r9d, 0x3a
-        mov     [rsp+0x8], rdi
-        mov     [rsp+0x10], r13
-        mov     [rsp], r8
-        mov     [rsp+0x18], r15
-edwards25519_scalarmuldouble_alt_innerloop:
+        mov     [rsp+0xc0], rdi
         xor     eax, eax
-        xor     ebx, ebx
-        xor     r8, r8
-        xor     r15, r15
-        bt      r14, 0x0
-        cmovb   rax, rbp
-        cmovb   rbx, rsi
-        cmovb   r8, rcx
-        cmovb   r15, rdx
-        mov     r13, r14
-        sub     r14, rbx
-        sub     rbx, r13
-        mov     rdi, r12
-        sub     rdi, rax
-        cmovb   rbp, r12
-        lea     r12, [rdi-0x1]
-        cmovb   r14, rbx
-        cmovb   rsi, r13
-        not     r12
-        cmovb   rcx, r10
-        cmovb   rdx, r11
-        cmovae  r12, rdi
-        shr     r14, 1
-        add     r10, r8
-        add     r11, r15
-        shr     r12, 1
-        add     rcx, rcx
-        add     rdx, rdx
-        dec     r9
-        jne     edwards25519_scalarmuldouble_alt_innerloop
-        mov     rdi, [rsp+0x8]
-        mov     r13, [rsp+0x10]
-        mov     r8, [rsp]
-        mov     r15, [rsp+0x18]
-        mov     [rsp], r10
-        mov     [rsp+0x8], r11
-        mov     [rsp+0x10], rcx
-        mov     [rsp+0x18], rdx
-        mov     r8, [rsp+0x38]
-        mov     r15, [rsp+0x40]
-        xor     r14, r14
-        xor     rsi, rsi
-        xor     r10, r10
-        xor     r11, r11
-        xor     r9, r9
-edwards25519_scalarmuldouble_alt_congloop:
-        mov     rcx, [r8+8*r9]
-        mov     rax, [rsp]
-        mul     rcx
-        add     r14, rax
-        adc     rdx, 0x0
-        mov     r12, rdx
-        mov     rax, [rsp+0x10]
-        mul     rcx
+        lea     rcx, [rax-0x13]
+        not     rax
+        mov     [rsp], rcx
+        mov     [rsp+0x8], rax
+        mov     [rsp+0x10], rax
+        btr     rax, 0x3f
+        mov     [rsp+0x18], rax
+        mov     rdx, [rsi]
+        mov     rcx, [rsi+0x8]
+        mov     r8, [rsi+0x10]
+        mov     r9, [rsi+0x18]
+        mov     eax, 0x1
+        xor     r10d, r10d
+        bts     r9, 0x3f
+        adc     rax, r10
+        imul    rax, rax, 0x13
+        add     rdx, rax
+        adc     rcx, r10
+        adc     r8, r10
+        adc     r9, r10
+        mov     eax, 0x13
+        cmovb   rax, r10
+        sub     rdx, rax
+        sbb     rcx, r10
+        sbb     r8, r10
+        sbb     r9, r10
+        btr     r9, 0x3f
+        mov     [rsp+0x20], rdx
+        mov     [rsp+0x28], rcx
+        mov     [rsp+0x30], r8
+        mov     [rsp+0x38], r9
+        xor     eax, eax
+        mov     [rsp+0x40], rax
+        mov     [rsp+0x48], rax
+        mov     [rsp+0x50], rax
+        mov     [rsp+0x58], rax
+        movabs  rax, 0xa0f99e2375022099
+        mov     [rsp+0x60], rax
+        movabs  rax, 0xa8c68f3f1d132595
+        mov     [rsp+0x68], rax
+        movabs  rax, 0x6c6c893805ac5242
+        mov     [rsp+0x70], rax
+        movabs  rax, 0x276508b241770615
+        mov     [rsp+0x78], rax
+        mov     QWORD PTR [rsp+0x90], 0xa
+        mov     QWORD PTR [rsp+0x98], 0x1
+        jmp     curve25519_x25519_midloop
+curve25519_x25519_inverseloop:
+        mov     r9, r8
+        sar     r9, 0x3f
+        xor     r8, r9
+        sub     r8, r9
+        mov     r11, r10
+        sar     r11, 0x3f
+        xor     r10, r11
+        sub     r10, r11
+        mov     r13, r12
+        sar     r13, 0x3f
+        xor     r12, r13
+        sub     r12, r13
+        mov     r15, r14
+        sar     r15, 0x3f
+        xor     r14, r15
+        sub     r14, r15
+        mov     rax, r8
+        and     rax, r9
+        mov     rdi, r10
+        and     rdi, r11
+        add     rdi, rax
+        mov     [rsp+0x80], rdi
+        mov     rax, r12
+        and     rax, r13
+        mov     rsi, r14
+        and     rsi, r15
         add     rsi, rax
-        adc     rdx, 0x0
-        mov     rbp, rdx
-        mov     rcx, [r15+8*r9]
-        mov     rax, [rsp+0x8]
-        mul     rcx
-        add     r14, rax
-        adc     r12, rdx
-        shrd    r10, r14, 0x3a
-        mov     [r8+8*r9], r10
-        mov     r10, r14
-        mov     r14, r12
-        mov     rax, [rsp+0x18]
-        mul     rcx
+        mov     [rsp+0x88], rsi
+        xor     ebx, ebx
+        mov     rax, [rsp]
+        xor     rax, r9
+        mul     r8
+        add     rdi, rax
+        adc     rbx, rdx
+        mov     rax, [rsp+0x20]
+        xor     rax, r11
+        mul     r10
+        add     rdi, rax
+        adc     rbx, rdx
+        xor     ebp, ebp
+        mov     rax, [rsp]
+        xor     rax, r13
+        mul     r12
         add     rsi, rax
         adc     rbp, rdx
-        shrd    r11, rsi, 0x3a
-        mov     [r15+8*r9], r11
-        mov     r11, rsi
-        mov     rsi, rbp
-        inc     r9
-        cmp     r9, rdi
-        jb      edwards25519_scalarmuldouble_alt_congloop
-        shld    r14, r10, 0x6
-        shld    rsi, r11, 0x6
-        mov     r15, [rsp+0x48]
-        mov     rbx, [r8]
-        mov     r12, [rsp+0x28]
-        imul    r12, rbx
-        mov     rax, [r15]
-        mul     r12
-        add     rax, rbx
-        mov     r10, rdx
-        mov     r9d, 0x1
-        mov     rcx, rdi
-        dec     rcx
-        je      edwards25519_scalarmuldouble_alt_wmontend
-edwards25519_scalarmuldouble_alt_wmontloop:
-        adc     r10, [r8+8*r9]
-        sbb     rbx, rbx
-        mov     rax, [r15+8*r9]
-        mul     r12
-        sub     rdx, rbx
-        add     rax, r10
-        mov     [r8+8*r9-0x8], rax
-        mov     r10, rdx
-        inc     r9
-        dec     rcx
-        jne     edwards25519_scalarmuldouble_alt_wmontloop
-edwards25519_scalarmuldouble_alt_wmontend:
-        adc     r10, r14
-        mov     [r8+8*rdi-0x8], r10
-        sbb     r10, r10
-        neg     r10
-        mov     rcx, rdi
-        xor     r9, r9
-edwards25519_scalarmuldouble_alt_wcmploop:
-        mov     rax, [r8+8*r9]
-        sbb     rax, [r15+8*r9]
-        inc     r9
-        dec     rcx
-        jne     edwards25519_scalarmuldouble_alt_wcmploop
-        sbb     r10, 0x0
-        sbb     r10, r10
-        not     r10
-        xor     rcx, rcx
-        xor     r9, r9
-edwards25519_scalarmuldouble_alt_wcorrloop:
-        mov     rax, [r8+8*r9]
-        mov     rbx, [r15+8*r9]
-        and     rbx, r10
-        neg     rcx
-        sbb     rax, rbx
-        sbb     rcx, rcx
-        mov     [r8+8*r9], rax
-        inc     r9
-        cmp     r9, rdi
-        jb      edwards25519_scalarmuldouble_alt_wcorrloop
-        mov     r8, [rsp+0x40]
-        mov     rbx, [r8]
-        mov     rbp, [rsp+0x28]
-        imul    rbp, rbx
-        mov     rax, [r15]
-        mul     rbp
-        add     rax, rbx
-        mov     r11, rdx
-        mov     r9d, 0x1
-        mov     rcx, rdi
-        dec     rcx
-        je      edwards25519_scalarmuldouble_alt_zmontend
-edwards25519_scalarmuldouble_alt_zmontloop:
-        adc     r11, [r8+8*r9]
-        sbb     rbx, rbx
-        mov     rax, [r15+8*r9]
-        mul     rbp
-        sub     rdx, rbx
-        add     rax, r11
-        mov     [r8+8*r9-0x8], rax
-        mov     r11, rdx
-        inc     r9
-        dec     rcx
-        jne     edwards25519_scalarmuldouble_alt_zmontloop
-edwards25519_scalarmuldouble_alt_zmontend:
-        adc     r11, rsi
-        mov     [r8+8*rdi-0x8], r11
-        sbb     r11, r11
-        neg     r11
-        mov     rcx, rdi
-        xor     r9, r9
-edwards25519_scalarmuldouble_alt_zcmploop:
-        mov     rax, [r8+8*r9]
-        sbb     rax, [r15+8*r9]
-        inc     r9
-        dec     rcx
-        jne     edwards25519_scalarmuldouble_alt_zcmploop
-        sbb     r11, 0x0
-        sbb     r11, r11
-        not     r11
-        xor     rcx, rcx
-        xor     r9, r9
-edwards25519_scalarmuldouble_alt_zcorrloop:
-        mov     rax, [r8+8*r9]
-        mov     rbx, [r15+8*r9]
-        and     rbx, r11
-        neg     rcx
-        sbb     rax, rbx
-        sbb     rcx, rcx
-        mov     [r8+8*r9], rax
-        inc     r9
-        cmp     r9, rdi
-        jb      edwards25519_scalarmuldouble_alt_zcorrloop
-        mov     r8, [rsp+0x30]
-        lea     r15, [r8+8*rdi]
-        xor     r9, r9
-        xor     r12, r12
-        xor     r14, r14
-        xor     rbp, rbp
-        xor     rsi, rsi
-edwards25519_scalarmuldouble_alt_crossloop:
-        mov     rcx, [r8+8*r9]
-        mov     rax, [rsp]
-        mul     rcx
-        add     r14, rax
-        adc     rdx, 0x0
-        mov     r10, rdx
-        mov     rax, [rsp+0x10]
-        mul     rcx
+        mov     rax, [rsp+0x20]
+        xor     rax, r15
+        mul     r14
         add     rsi, rax
-        adc     rdx, 0x0
-        mov     r11, rdx
-        mov     rcx, [r15+8*r9]
+        adc     rbp, rdx
+        xor     ecx, ecx
         mov     rax, [rsp+0x8]
-        mul     rcx
-        sub     rdx, r12
-        sub     r14, rax
-        sbb     r10, rdx
-        sbb     r12, r12
-        mov     [r8+8*r9], r14
-        mov     r14, r10
+        xor     rax, r9
+        mul     r8
+        add     rbx, rax
+        adc     rcx, rdx
+        mov     rax, [rsp+0x28]
+        xor     rax, r11
+        mul     r10
+        add     rbx, rax
+        adc     rcx, rdx
+        shrd    rdi, rbx, 0x3b
+        mov     [rsp], rdi
+        xor     edi, edi
+        mov     rax, [rsp+0x8]
+        xor     rax, r13
+        mul     r12
+        add     rbp, rax
+        adc     rdi, rdx
+        mov     rax, [rsp+0x28]
+        xor     rax, r15
+        mul     r14
+        add     rbp, rax
+        adc     rdi, rdx
+        shrd    rsi, rbp, 0x3b
+        mov     [rsp+0x20], rsi
+        xor     esi, esi
+        mov     rax, [rsp+0x10]
+        xor     rax, r9
+        mul     r8
+        add     rcx, rax
+        adc     rsi, rdx
+        mov     rax, [rsp+0x30]
+        xor     rax, r11
+        mul     r10
+        add     rcx, rax
+        adc     rsi, rdx
+        shrd    rbx, rcx, 0x3b
+        mov     [rsp+0x8], rbx
+        xor     ebx, ebx
+        mov     rax, [rsp+0x10]
+        xor     rax, r13
+        mul     r12
+        add     rdi, rax
+        adc     rbx, rdx
+        mov     rax, [rsp+0x30]
+        xor     rax, r15
+        mul     r14
+        add     rdi, rax
+        adc     rbx, rdx
+        shrd    rbp, rdi, 0x3b
+        mov     [rsp+0x28], rbp
         mov     rax, [rsp+0x18]
-        mul     rcx
-        sub     rdx, rbp
-        sub     rsi, rax
-        sbb     r11, rdx
-        sbb     rbp, rbp
-        mov     [r15+8*r9], rsi
-        mov     rsi, r11
-        inc     r9
-        cmp     r9, r13
-        jb      edwards25519_scalarmuldouble_alt_crossloop
-        xor     r9, r9
-        mov     r10, r12
-        mov     r11, rbp
-        xor     r14, r12
-        xor     rsi, rbp
-edwards25519_scalarmuldouble_alt_optnegloop:
-        mov     rax, [r8+8*r9]
-        xor     rax, r12
-        neg     r10
-        adc     rax, 0x0
-        sbb     r10, r10
-        mov     [r8+8*r9], rax
-        mov     rax, [r15+8*r9]
-        xor     rax, rbp
-        neg     r11
-        adc     rax, 0x0
-        sbb     r11, r11
-        mov     [r15+8*r9], rax
-        inc     r9
-        cmp     r9, r13
-        jb      edwards25519_scalarmuldouble_alt_optnegloop
-        sub     r14, r10
-        sub     rsi, r11
-        mov     r9, r13
-edwards25519_scalarmuldouble_alt_shiftloop:
-        mov     rax, [r8+8*r9-0x8]
-        mov     r10, rax
-        shrd    rax, r14, 0x3a
-        mov     [r8+8*r9-0x8], rax
-        mov     r14, r10
-        mov     rax, [r15+8*r9-0x8]
-        mov     r11, rax
-        shrd    rax, rsi, 0x3a
-        mov     [r15+8*r9-0x8], rax
-        mov     rsi, r11
-        dec     r9
-        jne     edwards25519_scalarmuldouble_alt_shiftloop
-        not     rbp
-        mov     rcx, [rsp+0x48]
-        mov     r8, [rsp+0x38]
-        mov     r15, [rsp+0x40]
-        mov     r10, r12
-        mov     r11, rbp
-        xor     r9, r9
-edwards25519_scalarmuldouble_alt_fliploop:
-        mov     rdx, rbp
-        mov     rax, [rcx+8*r9]
-        and     rdx, rax
-        and     rax, r12
-        mov     rbx, [r8+8*r9]
-        xor     rbx, r12
-        neg     r10
-        adc     rax, rbx
-        sbb     r10, r10
-        mov     [r8+8*r9], rax
-        mov     rbx, [r15+8*r9]
-        xor     rbx, rbp
-        neg     r11
+        xor     rax, r9
+        mov     rbp, rax
+        sar     rbp, 0x3f
+        and     rbp, r8
+        neg     rbp
+        mul     r8
+        add     rsi, rax
+        adc     rbp, rdx
+        mov     rax, [rsp+0x38]
+        xor     rax, r11
+        mov     rdx, rax
+        sar     rdx, 0x3f
+        and     rdx, r10
+        sub     rbp, rdx
+        mul     r10
+        add     rsi, rax
+        adc     rbp, rdx
+        shrd    rcx, rsi, 0x3b
+        mov     [rsp+0x10], rcx
+        shrd    rsi, rbp, 0x3b
+        mov     rax, [rsp+0x18]
+        mov     [rsp+0x18], rsi
+        xor     rax, r13
+        mov     rsi, rax
+        sar     rsi, 0x3f
+        and     rsi, r12
+        neg     rsi
+        mul     r12
+        add     rbx, rax
+        adc     rsi, rdx
+        mov     rax, [rsp+0x38]
+        xor     rax, r15
+        mov     rdx, rax
+        sar     rdx, 0x3f
+        and     rdx, r14
+        sub     rsi, rdx
+        mul     r14
+        add     rbx, rax
+        adc     rsi, rdx
+        shrd    rdi, rbx, 0x3b
+        mov     [rsp+0x30], rdi
+        shrd    rbx, rsi, 0x3b
+        mov     [rsp+0x38], rbx
+        mov     rbx, [rsp+0x80]
+        mov     rbp, [rsp+0x88]
+        xor     ecx, ecx
+        mov     rax, [rsp+0x40]
+        xor     rax, r9
+        mul     r8
+        add     rbx, rax
+        adc     rcx, rdx
+        mov     rax, [rsp+0x60]
+        xor     rax, r11
+        mul     r10
+        add     rbx, rax
+        adc     rcx, rdx
+        xor     esi, esi
+        mov     rax, [rsp+0x40]
+        xor     rax, r13
+        mul     r12
+        mov     [rsp+0x40], rbx
+        add     rbp, rax
+        adc     rsi, rdx
+        mov     rax, [rsp+0x60]
+        xor     rax, r15
+        mul     r14
+        add     rbp, rax
+        adc     rsi, rdx
+        mov     [rsp+0x60], rbp
+        xor     ebx, ebx
+        mov     rax, [rsp+0x48]
+        xor     rax, r9
+        mul     r8
+        add     rcx, rax
+        adc     rbx, rdx
+        mov     rax, [rsp+0x68]
+        xor     rax, r11
+        mul     r10
+        add     rcx, rax
+        adc     rbx, rdx
+        xor     ebp, ebp
+        mov     rax, [rsp+0x48]
+        xor     rax, r13
+        mul     r12
+        mov     [rsp+0x48], rcx
+        add     rsi, rax
+        adc     rbp, rdx
+        mov     rax, [rsp+0x68]
+        xor     rax, r15
+        mul     r14
+        add     rsi, rax
+        adc     rbp, rdx
+        mov     [rsp+0x68], rsi
+        xor     ecx, ecx
+        mov     rax, [rsp+0x50]
+        xor     rax, r9
+        mul     r8
+        add     rbx, rax
+        adc     rcx, rdx
+        mov     rax, [rsp+0x70]
+        xor     rax, r11
+        mul     r10
+        add     rbx, rax
+        adc     rcx, rdx
+        xor     esi, esi
+        mov     rax, [rsp+0x50]
+        xor     rax, r13
+        mul     r12
+        mov     [rsp+0x50], rbx
+        add     rbp, rax
+        adc     rsi, rdx
+        mov     rax, [rsp+0x70]
+        xor     rax, r15
+        mul     r14
+        add     rbp, rax
+        adc     rsi, rdx
+        mov     [rsp+0x70], rbp
+        mov     rax, [rsp+0x58]
+        xor     rax, r9
+        mov     rbx, r9
+        and     rbx, r8
+        neg     rbx
+        mul     r8
+        add     rcx, rax
+        adc     rbx, rdx
+        mov     rax, [rsp+0x78]
+        xor     rax, r11
+        mov     rdx, r11
+        and     rdx, r10
+        sub     rbx, rdx
+        mul     r10
+        add     rcx, rax
         adc     rdx, rbx
-        sbb     r11, r11
-        mov     [r15+8*r9], rdx
-        inc     r9
-        cmp     r9, rdi
-        jb      edwards25519_scalarmuldouble_alt_fliploop
-        sub     QWORD PTR [rsp+0x20], 0x3a
-        ja      edwards25519_scalarmuldouble_alt_outerloop
+        mov     rbx, rdx
+        shld    rdx, rcx, 0x1
+        sar     rbx, 0x3f
+        add     rdx, rbx
+        mov     eax, 0x13
+        imul    rdx
+        mov     r8, [rsp+0x40]
+        add     r8, rax
+        mov     [rsp+0x40], r8
+        mov     r8, [rsp+0x48]
+        adc     r8, rdx
+        mov     [rsp+0x48], r8
+        mov     r8, [rsp+0x50]
+        adc     r8, rbx
+        mov     [rsp+0x50], r8
+        adc     rcx, rbx
+        shl     rax, 0x3f
+        add     rcx, rax
+        mov     rax, [rsp+0x58]
+        mov     [rsp+0x58], rcx
+        xor     rax, r13
+        mov     rcx, r13
+        and     rcx, r12
+        neg     rcx
+        mul     r12
+        add     rsi, rax
+        adc     rcx, rdx
+        mov     rax, [rsp+0x78]
+        xor     rax, r15
+        mov     rdx, r15
+        and     rdx, r14
+        sub     rcx, rdx
+        mul     r14
+        add     rsi, rax
+        adc     rdx, rcx
+        mov     rcx, rdx
+        shld    rdx, rsi, 0x1
+        sar     rcx, 0x3f
+        mov     eax, 0x13
+        add     rdx, rcx
+        imul    rdx
+        mov     r8, [rsp+0x60]
+        add     r8, rax
+        mov     [rsp+0x60], r8
+        mov     r8, [rsp+0x68]
+        adc     r8, rdx
+        mov     [rsp+0x68], r8
+        mov     r8, [rsp+0x70]
+        adc     r8, rcx
+        mov     [rsp+0x70], r8
+        adc     rsi, rcx
+        shl     rax, 0x3f
+        add     rsi, rax
+        mov     [rsp+0x78], rsi
+curve25519_x25519_midloop:
+        mov     rsi, [rsp+0x98]
+        mov     rdx, [rsp]
+        mov     rcx, [rsp+0x20]
+        mov     rbx, rdx
+        and     rbx, 0xfffff
+        movabs  rax, 0xfffffe0000000000
+        or      rbx, rax
+        and     rcx, 0xfffff
+        movabs  rax, 0xc000000000000000
+        or      rcx, rax
+        mov     rax, 0xfffffffffffffffe
+        xor     ebp, ebp
+        mov     edx, 0x2
+        mov     rdi, rbx
+        mov     r8, rax
+        test    rsi, rsi
+        cmovs   r8, rbp
+        test    rcx, 0x1
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        sar     rcx, 1
+        mov     eax, 0x100000
+        lea     rdx, [rbx+rax]
+        lea     rdi, [rcx+rax]
+        shl     rdx, 0x16
+        shl     rdi, 0x16
+        sar     rdx, 0x2b
+        sar     rdi, 0x2b
+        movabs  rax, 0x20000100000
+        lea     rbx, [rbx+rax]
+        lea     rcx, [rcx+rax]
+        sar     rbx, 0x2a
+        sar     rcx, 0x2a
+        mov     [rsp+0xa0], rdx
+        mov     [rsp+0xa8], rbx
+        mov     [rsp+0xb0], rdi
+        mov     [rsp+0xb8], rcx
+        mov     r12, [rsp]
+        imul    rdi, r12
+        imul    r12, rdx
+        mov     r13, [rsp+0x20]
+        imul    rbx, r13
+        imul    r13, rcx
+        add     r12, rbx
+        add     r13, rdi
+        sar     r12, 0x14
+        sar     r13, 0x14
+        mov     rbx, r12
+        and     rbx, 0xfffff
+        movabs  rax, 0xfffffe0000000000
+        or      rbx, rax
+        mov     rcx, r13
+        and     rcx, 0xfffff
+        movabs  rax, 0xc000000000000000
+        or      rcx, rax
+        mov     rax, 0xfffffffffffffffe
+        mov     edx, 0x2
+        mov     rdi, rbx
+        mov     r8, rax
+        test    rsi, rsi
+        cmovs   r8, rbp
+        test    rcx, 0x1
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        sar     rcx, 1
+        mov     eax, 0x100000
+        lea     r8, [rbx+rax]
+        lea     r10, [rcx+rax]
+        shl     r8, 0x16
+        shl     r10, 0x16
+        sar     r8, 0x2b
+        sar     r10, 0x2b
+        movabs  rax, 0x20000100000
+        lea     r15, [rbx+rax]
+        lea     r11, [rcx+rax]
+        sar     r15, 0x2a
+        sar     r11, 0x2a
+        mov     rbx, r13
+        mov     rcx, r12
+        imul    r12, r8
+        imul    rbx, r15
+        add     r12, rbx
+        imul    r13, r11
+        imul    rcx, r10
+        add     r13, rcx
+        sar     r12, 0x14
+        sar     r13, 0x14
+        mov     rbx, r12
+        and     rbx, 0xfffff
+        movabs  rax, 0xfffffe0000000000
+        or      rbx, rax
+        mov     rcx, r13
+        and     rcx, 0xfffff
+        movabs  rax, 0xc000000000000000
+        or      rcx, rax
+        mov     rax, [rsp+0xa0]
+        imul    rax, r8
+        mov     rdx, [rsp+0xb0]
+        imul    rdx, r15
+        imul    r8, [rsp+0xa8]
+        imul    r15, [rsp+0xb8]
+        add     r15, r8
+        lea     r9, [rax+rdx]
+        mov     rax, [rsp+0xa0]
+        imul    rax, r10
+        mov     rdx, [rsp+0xb0]
+        imul    rdx, r11
+        imul    r10, [rsp+0xa8]
+        imul    r11, [rsp+0xb8]
+        add     r11, r10
+        lea     r13, [rax+rdx]
+        mov     rax, 0xfffffffffffffffe
+        mov     edx, 0x2
+        mov     rdi, rbx
+        mov     r8, rax
+        test    rsi, rsi
+        cmovs   r8, rbp
+        test    rcx, 0x1
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        cmovs   r8, rbp
+        mov     rdi, rbx
+        test    rcx, rdx
+        cmove   r8, rbp
+        cmove   rdi, rbp
+        sar     rcx, 1
+        xor     rdi, r8
+        xor     rsi, r8
+        bt      r8, 0x3f
+        cmovb   rbx, rcx
+        mov     r8, rax
+        sub     rsi, rax
+        lea     rcx, [rcx+rdi]
+        sar     rcx, 1
+        mov     eax, 0x100000
+        lea     r8, [rbx+rax]
+        lea     r12, [rcx+rax]
+        shl     r8, 0x15
+        shl     r12, 0x15
+        sar     r8, 0x2b
+        sar     r12, 0x2b
+        movabs  rax, 0x20000100000
+        lea     r10, [rbx+rax]
+        lea     r14, [rcx+rax]
+        sar     r10, 0x2b
+        sar     r14, 0x2b
+        mov     rax, r9
+        imul    rax, r8
+        mov     rdx, r13
+        imul    rdx, r10
+        imul    r8, r15
+        imul    r10, r11
+        add     r10, r8
+        lea     r8, [rax+rdx]
+        mov     rax, r9
+        imul    rax, r12
+        mov     rdx, r13
+        imul    rdx, r14
+        imul    r12, r15
+        imul    r14, r11
+        add     r14, r12
+        lea     r12, [rax+rdx]
+        mov     [rsp+0x98], rsi
+        dec     QWORD PTR [rsp+0x90]
+        jne     curve25519_x25519_inverseloop
+        mov     rax, [rsp]
+        mov     rcx, [rsp+0x20]
+        imul    rax, r8
+        imul    rcx, r10
+        add     rax, rcx
+        sar     rax, 0x3f
+        mov     r9, r8
+        sar     r9, 0x3f
+        xor     r8, r9
+        sub     r8, r9
+        xor     r9, rax
+        mov     r11, r10
+        sar     r11, 0x3f
+        xor     r10, r11
+        sub     r10, r11
+        xor     r11, rax
+        mov     r13, r12
+        sar     r13, 0x3f
+        xor     r12, r13
+        sub     r12, r13
+        xor     r13, rax
+        mov     r15, r14
+        sar     r15, 0x3f
+        xor     r14, r15
+        sub     r14, r15
+        xor     r15, rax
+        mov     rax, r8
+        and     rax, r9
+        mov     r12, r10
+        and     r12, r11
+        add     r12, rax
+        xor     r13d, r13d
+        mov     rax, [rsp+0x40]
+        xor     rax, r9
+        mul     r8
+        add     r12, rax
+        adc     r13, rdx
+        mov     rax, [rsp+0x60]
+        xor     rax, r11
+        mul     r10
+        add     r12, rax
+        adc     r13, rdx
+        xor     r14d, r14d
+        mov     rax, [rsp+0x48]
+        xor     rax, r9
+        mul     r8
+        add     r13, rax
+        adc     r14, rdx
+        mov     rax, [rsp+0x68]
+        xor     rax, r11
+        mul     r10
+        add     r13, rax
+        adc     r14, rdx
+        xor     r15d, r15d
+        mov     rax, [rsp+0x50]
+        xor     rax, r9
+        mul     r8
+        add     r14, rax
+        adc     r15, rdx
+        mov     rax, [rsp+0x70]
+        xor     rax, r11
+        mul     r10
+        add     r14, rax
+        adc     r15, rdx
+        mov     rax, [rsp+0x58]
+        xor     rax, r9
+        and     r9, r8
+        neg     r9
+        mul     r8
+        add     r15, rax
+        adc     r9, rdx
+        mov     rax, [rsp+0x78]
+        xor     rax, r11
+        mov     rdx, r11
+        and     rdx, r10
+        sub     r9, rdx
+        mul     r10
+        add     r15, rax
+        adc     r9, rdx
+        mov     rax, r9
+        shld    rax, r15, 0x1
+        sar     r9, 0x3f
+        mov     ebx, 0x13
+        lea     rax, [rax+r9+0x1]
+        imul    rbx
+        xor     ebp, ebp
+        add     r12, rax
+        adc     r13, rdx
+        adc     r14, r9
+        adc     r15, r9
+        shl     rax, 0x3f
+        add     r15, rax
+        cmovns  rbx, rbp
+        sub     r12, rbx
+        sbb     r13, rbp
+        sbb     r14, rbp
+        sbb     r15, rbp
+        btr     r15, 0x3f
+        mov     rdi, [rsp+0xc0]
+        mov     [rdi], r12
+        mov     [rdi+0x8], r13
+        mov     [rdi+0x10], r14
+        mov     [rdi+0x18], r15
 
 // Store result
 
         mov     rdi, res
-        lea     rsi, [rsp+96]
-        lea     rbp, [rsp+224]
+        lea     rsi, [rsp+ACC]
+        lea     rbp, [rsp+TAB]
         mul_p25519(x_0,x_1,x_2)
 
         mov     rdi, res
         add     rdi, 32
-        lea     rsi, [rsp+128]
-        lea     rbp, [rsp+224]
+        lea     rsi, [rsp+ACC+32]
+        lea     rbp, [rsp+TAB]
         mul_p25519(x_0,x_1,x_2)
 
 // Restore stack and registers
@@ -2644,14 +3605,6 @@ edwards25519_scalarmuldouble_alt_pepadd:
 //
 // .section .rodata
 // ****************************************************************************
-
-// The modulus p_25519 = 2^255 - 19, for the modular inverse
-
-edwards25519_scalarmuldouble_alt_p25519:
-        .quad   0xffffffffffffffed
-        .quad   0xffffffffffffffff
-        .quad   0xffffffffffffffff
-        .quad   0x7fffffffffffffff
 
 // Precomputed table of multiples of generator for edwards25519
 // all in precomputed extended-projective (y-x,x+y,2*d*x*y) triples.

@@ -42,23 +42,32 @@
 #define scalar (0*NUMSIZE)(%rsp)
 #define bscalar (1*NUMSIZE)(%rsp)
 
-#define acc (3*NUMSIZE)(%rsp)
+#define tabent (2*NUMSIZE)(%rsp)
+#define btabent (6*NUMSIZE)(%rsp)
 
-#define tabent (7*NUMSIZE)(%rsp)
-#define btabent (11*NUMSIZE)(%rsp)
+#define acc (9*NUMSIZE)(%rsp)
 
-#define tab (14*NUMSIZE)(%rsp)
+#define tab (13*NUMSIZE)(%rsp)
 
 // Additional variables kept on the stack
 
-#define bf  2*NUMSIZE(%rsp)
-#define cf  2*NUMSIZE+8(%rsp)
-#define i  2*NUMSIZE+16(%rsp)
-#define res  2*NUMSIZE+24(%rsp)
+#define bf  45*NUMSIZE(%rsp)
+#define cf  45*NUMSIZE+8(%rsp)
+#define i  45*NUMSIZE+16(%rsp)
+#define res  45*NUMSIZE+24(%rsp)
 
 // Total size to reserve on the stack (excluding local subroutines)
 
 #define NSPACE (46*NUMSIZE)
+
+// Syntactic variants to make x86_att forms easier to generate
+
+#define SCALAR (0*NUMSIZE)
+#define BSCALAR (1*NUMSIZE)
+#define TABENT (2*NUMSIZE)
+#define BTABENT (6*NUMSIZE)
+#define ACC (9*NUMSIZE)
+#define TAB (13*NUMSIZE)
 
 // Sub-references used in local subroutines with local stack
 
@@ -493,10 +502,10 @@ edwards25519_scalarmuldouble_standard:
         adcq    %r13, %r9
         adcq    %r14, %r10
         adcq    %r15, %r11
-        movq    %r8, 32(%rsp)
-        movq    %r9, 40(%rsp)
-        movq    %r10, 48(%rsp)
-        movq    %r11, 56(%rsp)
+        movq    %r8, BSCALAR(%rsp)
+        movq    %r9, BSCALAR+8(%rsp)
+        movq    %r10, BSCALAR+16(%rsp)
+        movq    %r11, BSCALAR+24(%rsp)
 
         movq    (%rsi), %r8
         movq    8(%rsi), %r9
@@ -517,10 +526,10 @@ edwards25519_scalarmuldouble_standard:
         adcq    %r13, %r9
         adcq    %r14, %r10
         adcq    %r15, %r11
-        movq    %r8, (%rsp)
-        movq    %r9, 8(%rsp)
-        movq    %r10, 16(%rsp)
-        movq    %r11, 24(%rsp)
+        movq    %r8, SCALAR(%rsp)
+        movq    %r9, SCALAR+8(%rsp)
+        movq    %r10, SCALAR+16(%rsp)
+        movq    %r11, SCALAR+24(%rsp)
 
 // Create table of multiples 1..8 of the general input point at "tab".
 // Reduce the input coordinates x and y modulo 2^256 - 38 first, for the
@@ -541,13 +550,13 @@ edwards25519_scalarmuldouble_standard:
         adcq    %r10, %rcx
         adcq    %r11, %rsi
         cmovncq %r8, %rax
-        movq    %rax, 448(%rsp)
+        movq    %rax, TAB(%rsp)
         cmovncq %r9, %rbx
-        movq    %rbx, 456(%rsp)
+        movq    %rbx, TAB+8(%rsp)
         cmovncq %r10, %rcx
-        movq    %rcx, 464(%rsp)
+        movq    %rcx, TAB+16(%rsp)
         cmovncq %r11, %rsi
-        movq    %rsi, 472(%rsp)
+        movq    %rsi, TAB+24(%rsp)
 
         movl    $38, %eax
         movq    32(%rdx), %r8
@@ -562,69 +571,69 @@ edwards25519_scalarmuldouble_standard:
         adcq    %r10, %rcx
         adcq    %r11, %rsi
         cmovncq %r8, %rax
-        movq    %rax, 480(%rsp)
+        movq    %rax, TAB+32(%rsp)
         cmovncq %r9, %rbx
-        movq    %rbx, 488(%rsp)
+        movq    %rbx, TAB+40(%rsp)
         cmovncq %r10, %rcx
-        movq    %rcx, 496(%rsp)
+        movq    %rcx, TAB+48(%rsp)
         cmovncq %r11, %rsi
-        movq    %rsi, 504(%rsp)
+        movq    %rsi, TAB+56(%rsp)
 
         movl    $1, %eax
-        movq    %rax, 512(%rsp)
+        movq    %rax, TAB+64(%rsp)
         xorl    %eax, %eax
-        movq    %rax, 520(%rsp)
-        movq    %rax, 528(%rsp)
-        movq    %rax, 536(%rsp)
+        movq    %rax, TAB+72(%rsp)
+        movq    %rax, TAB+80(%rsp)
+        movq    %rax, TAB+88(%rsp)
 
-        leaq    544(%rsp), %rdi
-        leaq    448(%rsp), %rsi
-        leaq    480(%rsp), %rbp
+        leaq    TAB+96(%rsp), %rdi
+        leaq    TAB(%rsp), %rsi
+        leaq    TAB+32(%rsp), %rbp
         mul_4(x_0,x_1,x_2)
 
 // Multiple 2
 
-        leaq    576(%rsp), %rdi
-        leaq    448(%rsp), %rsi
+        leaq    TAB+1*128(%rsp), %rdi
+        leaq    TAB(%rsp), %rsi
         callq   edwards25519_scalarmuldouble_epdouble
 
 // Multiple 3
 
-        leaq    704(%rsp), %rdi
-        leaq    448(%rsp), %rsi
-        leaq    576(%rsp), %rbp
+        leaq    TAB+2*128(%rsp), %rdi
+        leaq    TAB(%rsp), %rsi
+        leaq    TAB+1*128(%rsp), %rbp
         callq   edwards25519_scalarmuldouble_epadd
 
 // Multiple 4
 
-        leaq    832(%rsp), %rdi
-        leaq    576(%rsp), %rsi
+        leaq    TAB+3*128(%rsp), %rdi
+        leaq    TAB+1*128(%rsp), %rsi
         callq   edwards25519_scalarmuldouble_epdouble
 
 // Multiple 5
 
-        leaq    960(%rsp), %rdi
-        leaq    448(%rsp), %rsi
-        leaq    832(%rsp), %rbp
+        leaq    TAB+4*128(%rsp), %rdi
+        leaq    TAB(%rsp), %rsi
+        leaq    TAB+3*128(%rsp), %rbp
         callq   edwards25519_scalarmuldouble_epadd
 
 // Multiple 6
 
-        leaq    1088(%rsp), %rdi
-        leaq    704(%rsp), %rsi
+        leaq    TAB+5*128(%rsp), %rdi
+        leaq    TAB+2*128(%rsp), %rsi
         callq   edwards25519_scalarmuldouble_epdouble
 
 // Multiple 7
 
-        leaq    1216(%rsp), %rdi
-        leaq    448(%rsp), %rsi
-        leaq    1088(%rsp), %rbp
+        leaq    TAB+6*128(%rsp), %rdi
+        leaq    TAB(%rsp), %rsi
+        leaq    TAB+5*128(%rsp), %rbp
         callq   edwards25519_scalarmuldouble_epadd
 
 // Multiple 8
 
-        leaq    1344(%rsp), %rdi
-        leaq    832(%rsp), %rsi
+        leaq    TAB+7*128(%rsp), %rdi
+        leaq    TAB+3*128(%rsp), %rsi
         callq   edwards25519_scalarmuldouble_epdouble
 
 // Handle the initialization, starting the loop counter at i = 252
@@ -636,7 +645,7 @@ edwards25519_scalarmuldouble_standard:
 
 // Index for btable entry...
 
-        movq    56(%rsp), %rax
+        movq    BSCALAR+24(%rsp), %rax
         shrq    $60, %rax
         movq    %rax, bf
 
@@ -872,22 +881,22 @@ edwards25519_scalarmuldouble_standard:
         movq    88(%rbp), %rsi
         cmovzq  %rsi, %r15
 
-        movq    %rax, 352(%rsp)
-        movq    %rbx, 360(%rsp)
-        movq    %rcx, 368(%rsp)
-        movq    %rdx, 376(%rsp)
-        movq    %r8, 384(%rsp)
-        movq    %r9, 392(%rsp)
-        movq    %r10, 400(%rsp)
-        movq    %r11, 408(%rsp)
-        movq    %r12, 416(%rsp)
-        movq    %r13, 424(%rsp)
-        movq    %r14, 432(%rsp)
-        movq    %r15, 440(%rsp)
+        movq    %rax, BTABENT(%rsp)
+        movq    %rbx, BTABENT+8(%rsp)
+        movq    %rcx, BTABENT+16(%rsp)
+        movq    %rdx, BTABENT+24(%rsp)
+        movq    %r8, BTABENT+32(%rsp)
+        movq    %r9, BTABENT+40(%rsp)
+        movq    %r10, BTABENT+48(%rsp)
+        movq    %r11, BTABENT+56(%rsp)
+        movq    %r12, BTABENT+64(%rsp)
+        movq    %r13, BTABENT+72(%rsp)
+        movq    %r14, BTABENT+80(%rsp)
+        movq    %r15, BTABENT+88(%rsp)
 
 // Index for table entry...
 
-        movq    24(%rsp), %rax
+        movq    SCALAR+24(%rsp), %rax
         shrq    $60, %rax
         movq    %rax, bf
 
@@ -903,7 +912,7 @@ edwards25519_scalarmuldouble_standard:
         xorl    %r10d, %r10d
         xorl    %r11d, %r11d
 
-        leaq    480(%rsp), %rbp
+        leaq    TAB+32(%rsp), %rbp
 
         cmpq    $1, bf
         movq    (%rbp), %rsi
@@ -1056,18 +1065,18 @@ edwards25519_scalarmuldouble_standard:
         movq    56(%rbp), %rsi
         cmovzq  %rsi, %r11
 
-        movq    %rax, 256(%rsp)
-        movq    %rbx, 264(%rsp)
-        movq    %rcx, 272(%rsp)
-        movq    %rdx, 280(%rsp)
-        movq    %r8, 288(%rsp)
-        movq    %r9, 296(%rsp)
-        movq    %r10, 304(%rsp)
-        movq    %r11, 312(%rsp)
+        movq    %rax, TABENT+32(%rsp)
+        movq    %rbx, TABENT+40(%rsp)
+        movq    %rcx, TABENT+48(%rsp)
+        movq    %rdx, TABENT+56(%rsp)
+        movq    %r8, TABENT+64(%rsp)
+        movq    %r9, TABENT+72(%rsp)
+        movq    %r10, TABENT+80(%rsp)
+        movq    %r11, TABENT+88(%rsp)
 
 // ...followed by the X and W fields
 
-        leaq    448(%rsp), %rbp
+        leaq    TAB(%rsp), %rbp
 
         xorl    %eax, %eax
         xorl    %ebx, %ebx
@@ -1229,20 +1238,20 @@ edwards25519_scalarmuldouble_standard:
         movq    120(%rbp), %rsi
         cmovzq  %rsi, %r11
 
-        movq    %rax, 224(%rsp)
-        movq    %rbx, 232(%rsp)
-        movq    %rcx, 240(%rsp)
-        movq    %rdx, 248(%rsp)
-        movq    %r8, 320(%rsp)
-        movq    %r9, 328(%rsp)
-        movq    %r10, 336(%rsp)
-        movq    %r11, 344(%rsp)
+        movq    %rax, TABENT(%rsp)
+        movq    %rbx, TABENT+8(%rsp)
+        movq    %rcx, TABENT+16(%rsp)
+        movq    %rdx, TABENT+24(%rsp)
+        movq    %r8, TABENT+96(%rsp)
+        movq    %r9, TABENT+104(%rsp)
+        movq    %r10, TABENT+112(%rsp)
+        movq    %r11, TABENT+120(%rsp)
 
 // Add those elements to initialize the accumulator for bit position 252
 
-        leaq    96(%rsp), %rdi
-        leaq    224(%rsp), %rsi
-        leaq    352(%rsp), %rbp
+        leaq    ACC(%rsp), %rdi
+        leaq    TABENT(%rsp), %rsi
+        leaq    BTABENT(%rsp), %rbp
         callq   edwards25519_scalarmuldouble_pepadd
 
 // Main loop with acc = [scalar/2^i] * point + [bscalar/2^i] * basepoint
@@ -1256,8 +1265,8 @@ edwards25519_scalarmuldouble_loop:
 
 // Double to acc' = 2 * acc
 
-        leaq    96(%rsp), %rdi
-        leaq    96(%rsp), %rsi
+        leaq    ACC(%rsp), %rdi
+        leaq    ACC(%rsp), %rsi
         callq   edwards25519_scalarmuldouble_pdouble
 
 // Get btable entry, first getting the adjusted bitfield...
@@ -1528,26 +1537,26 @@ edwards25519_scalarmuldouble_loop:
         movq    %rax, %rsi
         cmovnzq %r8, %rsi
         cmovnzq %rax, %r8
-        movq    %rsi, 352(%rsp)
-        movq    %r8, 384(%rsp)
+        movq    %rsi, BTABENT(%rsp)
+        movq    %r8, BTABENT+32(%rsp)
 
         movq    %rbx, %rsi
         cmovnzq %r9, %rsi
         cmovnzq %rbx, %r9
-        movq    %rsi, 360(%rsp)
-        movq    %r9, 392(%rsp)
+        movq    %rsi, BTABENT+8(%rsp)
+        movq    %r9, BTABENT+40(%rsp)
 
         movq    %rcx, %rsi
         cmovnzq %r10, %rsi
         cmovnzq %rcx, %r10
-        movq    %rsi, 368(%rsp)
-        movq    %r10, 400(%rsp)
+        movq    %rsi, BTABENT+16(%rsp)
+        movq    %r10, BTABENT+48(%rsp)
 
         movq    %rdx, %rsi
         cmovnzq %r11, %rsi
         cmovnzq %rdx, %r11
-        movq    %rsi, 376(%rsp)
-        movq    %r11, 408(%rsp)
+        movq    %rsi, BTABENT+24(%rsp)
+        movq    %r11, BTABENT+56(%rsp)
 
         xorq    %rdi, %r12
         xorq    %rdi, %r13
@@ -1558,10 +1567,10 @@ edwards25519_scalarmuldouble_loop:
         sbbq    $0, %r13
         sbbq    $0, %r14
         sbbq    $0, %r15
-        movq    %r12, 416(%rsp)
-        movq    %r13, 424(%rsp)
-        movq    %r14, 432(%rsp)
-        movq    %r15, 440(%rsp)
+        movq    %r12, BTABENT+64(%rsp)
+        movq    %r13, BTABENT+72(%rsp)
+        movq    %r14, BTABENT+80(%rsp)
+        movq    %r15, BTABENT+88(%rsp)
 
 // Get table entry, first getting the adjusted bitfield...
 
@@ -1592,7 +1601,7 @@ edwards25519_scalarmuldouble_loop:
         xorl    %r10d, %r10d
         xorl    %r11d, %r11d
 
-        leaq    480(%rsp), %rbp
+        leaq    TAB+32(%rsp), %rbp
 
         cmpq    $1, bf
         movq    (%rbp), %rsi
@@ -1745,18 +1754,18 @@ edwards25519_scalarmuldouble_loop:
         movq    56(%rbp), %rsi
         cmovzq  %rsi, %r11
 
-        movq    %rax, 256(%rsp)
-        movq    %rbx, 264(%rsp)
-        movq    %rcx, 272(%rsp)
-        movq    %rdx, 280(%rsp)
-        movq    %r8, 288(%rsp)
-        movq    %r9, 296(%rsp)
-        movq    %r10, 304(%rsp)
-        movq    %r11, 312(%rsp)
+        movq    %rax, TABENT+32(%rsp)
+        movq    %rbx, TABENT+40(%rsp)
+        movq    %rcx, TABENT+48(%rsp)
+        movq    %rdx, TABENT+56(%rsp)
+        movq    %r8, TABENT+64(%rsp)
+        movq    %r9, TABENT+72(%rsp)
+        movq    %r10, TABENT+80(%rsp)
+        movq    %r11, TABENT+88(%rsp)
 
 // Now do the X and W fields...
 
-        leaq    448(%rsp), %rbp
+        leaq    TAB(%rsp), %rbp
 
         xorl    %eax, %eax
         xorl    %ebx, %ebx
@@ -1950,51 +1959,51 @@ edwards25519_scalarmuldouble_loop:
         sbbq    $0, %rcx
         sbbq    $0, %rdx
 
-        movq    %rax, 224(%rsp)
-        movq    %rbx, 232(%rsp)
-        movq    %rcx, 240(%rsp)
-        movq    %rdx, 248(%rsp)
+        movq    %rax, TABENT(%rsp)
+        movq    %rbx, TABENT+8(%rsp)
+        movq    %rcx, TABENT+16(%rsp)
+        movq    %rdx, TABENT+24(%rsp)
 
         subq    %rdi, %r8
         sbbq    $0, %r9
         sbbq    $0, %r10
         sbbq    $0, %r11
 
-        movq    %r8, 320(%rsp)
-        movq    %r9, 328(%rsp)
-        movq    %r10, 336(%rsp)
-        movq    %r11, 344(%rsp)
+        movq    %r8, TABENT+96(%rsp)
+        movq    %r9, TABENT+104(%rsp)
+        movq    %r10, TABENT+112(%rsp)
+        movq    %r11, TABENT+120(%rsp)
 
 // Double to acc' = 4 * acc
 
-        leaq    96(%rsp), %rdi
-        leaq    96(%rsp), %rsi
+        leaq    ACC(%rsp), %rdi
+        leaq    ACC(%rsp), %rsi
         callq   edwards25519_scalarmuldouble_pdouble
 
 // Add tabent := tabent + btabent
 
-        leaq    224(%rsp), %rdi
-        leaq    224(%rsp), %rsi
-        leaq    352(%rsp), %rbp
+        leaq    TABENT(%rsp), %rdi
+        leaq    TABENT(%rsp), %rsi
+        leaq    BTABENT(%rsp), %rbp
         callq   edwards25519_scalarmuldouble_pepadd
 
 // Double to acc' = 8 * acc
 
-        leaq    96(%rsp), %rdi
-        leaq    96(%rsp), %rsi
+        leaq    ACC(%rsp), %rdi
+        leaq    ACC(%rsp), %rsi
         callq   edwards25519_scalarmuldouble_pdouble
 
 // Double to acc' = 16 * acc
 
-        leaq    96(%rsp), %rdi
-        leaq    96(%rsp), %rsi
+        leaq    ACC(%rsp), %rdi
+        leaq    ACC(%rsp), %rsi
         callq   edwards25519_scalarmuldouble_epdouble
 
 // Add table entry, acc := acc + tabent
 
-        leaq    96(%rsp), %rdi
-        leaq    96(%rsp), %rsi
-        leaq    224(%rsp), %rbp
+        leaq    ACC(%rsp), %rdi
+        leaq    ACC(%rsp), %rsi
+        leaq    TABENT(%rsp), %rbp
         callq   edwards25519_scalarmuldouble_epadd
 
 // Loop down
@@ -2003,423 +2012,1375 @@ edwards25519_scalarmuldouble_loop:
         testq   %rax, %rax
         jnz     edwards25519_scalarmuldouble_loop
 
-// Modular inverse setup
+// Prepare to call the modular inverse function to get tab = 1/z
 
-        movq    $4, %rdi
-        leaq    224(%rsp), %rsi
-        leaq    160(%rsp), %rdx
-        leaq    edwards25519_scalarmuldouble_p25519(%rip), %rcx
-        leaq    352(%rsp), %r8
+        leaq    TAB(%rsp), %rdi
+        leaq    ACC+64(%rsp), %rsi
 
-// Inline copy of bignum_modinv, identical except for stripping out the
-// prologue and epilogue saving and restoring registers and the initial
-// test for k = 0 (which is trivially false here since k = 4). For more
-// details and explanations see "x86/generic/bignum_modinv.S". Note
-// that the stack it uses for its own temporaries is 80 bytes so it
-// only overwrites local variables that are no longer needed.
+// Inline copy of bignum_inv_p25519, identical except for stripping out
+// the prologue and epilogue saving and restoring registers and making
+// and reclaiming room on the stack. For more details and explanations see
+// "x86/curve25519/bignum_inv_p25519.S". Note that the stack it uses for
+// its own temporaries is 208 bytes, so it has no effect on variables
+// that are needed in the rest of our computation here: res, tab and acc.
 
-        movq    %rsi, 0x40(%rsp)
-        movq    %r8, 0x38(%rsp)
-        movq    %rcx, 0x48(%rsp)
-        leaq    (%r8,%rdi,8), %r10
-        movq    %r10, 0x30(%rsp)
-        leaq    (%r10,%rdi,8), %r15
-        xorq    %r11, %r11
-        xorq    %r9, %r9
-edwards25519_scalarmuldouble_copyloop:
-        movq    (%rdx,%r9,8), %rax
-        movq    (%rcx,%r9,8), %rbx
-        movq    %rax, (%r10,%r9,8)
-        movq    %rbx, (%r15,%r9,8)
-        movq    %rbx, (%r8,%r9,8)
-        movq    %r11, (%rsi,%r9,8)
-        incq    %r9
-        cmpq    %rdi, %r9
-        jb      edwards25519_scalarmuldouble_copyloop
-        movq    (%r8), %rax
-        movq    %rax, %rbx
-        decq    %rbx
-        movq    %rbx, (%r8)
-        movq    %rax, %rbp
-        movq    %rax, %r12
-        shlq    $0x2, %rbp
-        subq    %rbp, %r12
-        xorq    $0x2, %r12
-        movq    %r12, %rbp
-        imulq   %rax, %rbp
-        movl    $0x2, %eax
-        addq    %rbp, %rax
-        addq    $0x1, %rbp
-        imulq   %rax, %r12
-        imulq   %rbp, %rbp
-        movl    $0x1, %eax
-        addq    %rbp, %rax
-        imulq   %rax, %r12
-        imulq   %rbp, %rbp
-        movl    $0x1, %eax
-        addq    %rbp, %rax
-        imulq   %rax, %r12
-        imulq   %rbp, %rbp
-        movl    $0x1, %eax
-        addq    %rbp, %rax
-        imulq   %rax, %r12
-        movq    %r12, 0x28(%rsp)
-        movq    %rdi, %rax
-        shlq    $0x7, %rax
-        movq    %rax, 0x20(%rsp)
-edwards25519_scalarmuldouble_outerloop:
-        movq    0x20(%rsp), %r13
-        addq    $0x3f, %r13
-        shrq    $0x6, %r13
-        cmpq    %rdi, %r13
-        cmovaeq %rdi, %r13
-        xorq    %r12, %r12
-        xorq    %r14, %r14
-        xorq    %rbp, %rbp
-        xorq    %rsi, %rsi
-        xorq    %r11, %r11
-        movq    0x30(%rsp), %r8
-        leaq    (%r8,%rdi,8), %r15
-        xorq    %r9, %r9
-edwards25519_scalarmuldouble_toploop:
-        movq    (%r8,%r9,8), %rbx
-        movq    (%r15,%r9,8), %rcx
-        movq    %r11, %r10
-        andq    %r12, %r10
-        andq    %rbp, %r11
-        movq    %rbx, %rax
-        orq     %rcx, %rax
-        negq    %rax
-        cmovbq  %r10, %r14
-        cmovbq  %r11, %rsi
-        cmovbq  %rbx, %r12
-        cmovbq  %rcx, %rbp
-        sbbq    %r11, %r11
-        incq    %r9
-        cmpq    %r13, %r9
-        jb      edwards25519_scalarmuldouble_toploop
-        movq    %r12, %rax
-        orq     %rbp, %rax
-        bsrq    %rax, %rcx
-        xorq    $0x3f, %rcx
-        shldq   %cl, %r14, %r12
-        shldq   %cl, %rsi, %rbp
-        movq    (%r8), %rax
-        movq    %rax, %r14
-        movq    (%r15), %rax
-        movq    %rax, %rsi
-        movl    $0x1, %r10d
-        movl    $0x0, %r11d
-        movl    $0x0, %ecx
-        movl    $0x1, %edx
-        movl    $0x3a, %r9d
-        movq    %rdi, 0x8(%rsp)
-        movq    %r13, 0x10(%rsp)
-        movq    %r8, (%rsp)
-        movq    %r15, 0x18(%rsp)
-edwards25519_scalarmuldouble_innerloop:
+        movq    %rdi, 0xc0(%rsp)
         xorl    %eax, %eax
-        xorl    %ebx, %ebx
-        xorq    %r8, %r8
-        xorq    %r15, %r15
-        btq     $0x0, %r14
-        cmovbq  %rbp, %rax
-        cmovbq  %rsi, %rbx
-        cmovbq  %rcx, %r8
-        cmovbq  %rdx, %r15
-        movq    %r14, %r13
-        subq    %rbx, %r14
-        subq    %r13, %rbx
-        movq    %r12, %rdi
-        subq    %rax, %rdi
-        cmovbq  %r12, %rbp
-        leaq    -0x1(%rdi), %r12
-        cmovbq  %rbx, %r14
-        cmovbq  %r13, %rsi
-        notq    %r12
-        cmovbq  %r10, %rcx
-        cmovbq  %r11, %rdx
-        cmovaeq %rdi, %r12
-        shrq    $1, %r14
-        addq    %r8, %r10
-        addq    %r15, %r11
-        shrq    $1, %r12
-        addq    %rcx, %rcx
-        addq    %rdx, %rdx
-        decq    %r9
-        jne     edwards25519_scalarmuldouble_innerloop
-        movq    0x8(%rsp), %rdi
-        movq    0x10(%rsp), %r13
-        movq    (%rsp), %r8
-        movq    0x18(%rsp), %r15
-        movq    %r10, (%rsp)
-        movq    %r11, 0x8(%rsp)
-        movq    %rcx, 0x10(%rsp)
-        movq    %rdx, 0x18(%rsp)
-        movq    0x38(%rsp), %r8
-        movq    0x40(%rsp), %r15
-        xorq    %r14, %r14
-        xorq    %rsi, %rsi
-        xorq    %r10, %r10
-        xorq    %r11, %r11
-        xorq    %r9, %r9
-edwards25519_scalarmuldouble_congloop:
-        movq    (%r8,%r9,8), %rcx
-        movq    (%rsp), %rax
-        mulq    %rcx
-        addq    %rax, %r14
-        adcq    $0x0, %rdx
-        movq    %rdx, %r12
-        movq    0x10(%rsp), %rax
-        mulq    %rcx
+        leaq    -0x13(%rax), %rcx
+        notq    %rax
+        movq    %rcx, (%rsp)
+        movq    %rax, 0x8(%rsp)
+        movq    %rax, 0x10(%rsp)
+        btr     $0x3f, %rax
+        movq    %rax, 0x18(%rsp)
+        movq    (%rsi), %rdx
+        movq    0x8(%rsi), %rcx
+        movq    0x10(%rsi), %r8
+        movq    0x18(%rsi), %r9
+        movl    $0x1, %eax
+        xorl    %r10d, %r10d
+        bts     $0x3f, %r9
+        adcq    %r10, %rax
+        imulq   $0x13, %rax, %rax
+        addq    %rax, %rdx
+        adcq    %r10, %rcx
+        adcq    %r10, %r8
+        adcq    %r10, %r9
+        movl    $0x13, %eax
+        cmovbq  %r10, %rax
+        subq    %rax, %rdx
+        sbbq    %r10, %rcx
+        sbbq    %r10, %r8
+        sbbq    %r10, %r9
+        btr     $0x3f, %r9
+        movq    %rdx, 0x20(%rsp)
+        movq    %rcx, 0x28(%rsp)
+        movq    %r8, 0x30(%rsp)
+        movq    %r9, 0x38(%rsp)
+        xorl    %eax, %eax
+        movq    %rax, 0x40(%rsp)
+        movq    %rax, 0x48(%rsp)
+        movq    %rax, 0x50(%rsp)
+        movq    %rax, 0x58(%rsp)
+        movabsq $0xa0f99e2375022099, %rax
+        movq    %rax, 0x60(%rsp)
+        movabsq $0xa8c68f3f1d132595, %rax
+        movq    %rax, 0x68(%rsp)
+        movabsq $0x6c6c893805ac5242, %rax
+        movq    %rax, 0x70(%rsp)
+        movabsq $0x276508b241770615, %rax
+        movq    %rax, 0x78(%rsp)
+        movq    $0xa,  0x90(%rsp)
+        movq    $0x1,  0x98(%rsp)
+        jmp     curve25519_x25519_midloop
+curve25519_x25519_inverseloop:
+        movq    %r8, %r9
+        sarq    $0x3f, %r9
+        xorq    %r9, %r8
+        subq    %r9, %r8
+        movq    %r10, %r11
+        sarq    $0x3f, %r11
+        xorq    %r11, %r10
+        subq    %r11, %r10
+        movq    %r12, %r13
+        sarq    $0x3f, %r13
+        xorq    %r13, %r12
+        subq    %r13, %r12
+        movq    %r14, %r15
+        sarq    $0x3f, %r15
+        xorq    %r15, %r14
+        subq    %r15, %r14
+        movq    %r8, %rax
+        andq    %r9, %rax
+        movq    %r10, %rdi
+        andq    %r11, %rdi
+        addq    %rax, %rdi
+        movq    %rdi, 0x80(%rsp)
+        movq    %r12, %rax
+        andq    %r13, %rax
+        movq    %r14, %rsi
+        andq    %r15, %rsi
         addq    %rax, %rsi
-        adcq    $0x0, %rdx
-        movq    %rdx, %rbp
-        movq    (%r15,%r9,8), %rcx
-        movq    0x8(%rsp), %rax
-        mulq    %rcx
-        addq    %rax, %r14
-        adcq    %rdx, %r12
-        shrdq   $0x3a, %r14, %r10
-        movq    %r10, (%r8,%r9,8)
-        movq    %r14, %r10
-        movq    %r12, %r14
-        movq    0x18(%rsp), %rax
-        mulq    %rcx
+        movq    %rsi, 0x88(%rsp)
+        xorl    %ebx, %ebx
+        movq    (%rsp), %rax
+        xorq    %r9, %rax
+        mulq    %r8
+        addq    %rax, %rdi
+        adcq    %rdx, %rbx
+        movq    0x20(%rsp), %rax
+        xorq    %r11, %rax
+        mulq    %r10
+        addq    %rax, %rdi
+        adcq    %rdx, %rbx
+        xorl    %ebp, %ebp
+        movq    (%rsp), %rax
+        xorq    %r13, %rax
+        mulq    %r12
         addq    %rax, %rsi
         adcq    %rdx, %rbp
-        shrdq   $0x3a, %rsi, %r11
-        movq    %r11, (%r15,%r9,8)
-        movq    %rsi, %r11
-        movq    %rbp, %rsi
-        incq    %r9
-        cmpq    %rdi, %r9
-        jb      edwards25519_scalarmuldouble_congloop
-        shldq   $0x6, %r10, %r14
-        shldq   $0x6, %r11, %rsi
-        movq    0x48(%rsp), %r15
-        movq    (%r8), %rbx
-        movq    0x28(%rsp), %r12
-        imulq   %rbx, %r12
-        movq    (%r15), %rax
-        mulq    %r12
-        addq    %rbx, %rax
-        movq    %rdx, %r10
-        movl    $0x1, %r9d
-        movq    %rdi, %rcx
-        decq    %rcx
-        je      edwards25519_scalarmuldouble_wmontend
-edwards25519_scalarmuldouble_wmontloop:
-        adcq    (%r8,%r9,8), %r10
-        sbbq    %rbx, %rbx
-        movq    (%r15,%r9,8), %rax
-        mulq    %r12
-        subq    %rbx, %rdx
-        addq    %r10, %rax
-        movq    %rax, -0x8(%r8,%r9,8)
-        movq    %rdx, %r10
-        incq    %r9
-        decq    %rcx
-        jne     edwards25519_scalarmuldouble_wmontloop
-edwards25519_scalarmuldouble_wmontend:
-        adcq    %r14, %r10
-        movq    %r10, -0x8(%r8,%rdi,8)
-        sbbq    %r10, %r10
-        negq    %r10
-        movq    %rdi, %rcx
-        xorq    %r9, %r9
-edwards25519_scalarmuldouble_wcmploop:
-        movq    (%r8,%r9,8), %rax
-        sbbq    (%r15,%r9,8), %rax
-        incq    %r9
-        decq    %rcx
-        jne     edwards25519_scalarmuldouble_wcmploop
-        sbbq    $0x0, %r10
-        sbbq    %r10, %r10
-        notq    %r10
-        xorq    %rcx, %rcx
-        xorq    %r9, %r9
-edwards25519_scalarmuldouble_wcorrloop:
-        movq    (%r8,%r9,8), %rax
-        movq    (%r15,%r9,8), %rbx
-        andq    %r10, %rbx
-        negq    %rcx
-        sbbq    %rbx, %rax
-        sbbq    %rcx, %rcx
-        movq    %rax, (%r8,%r9,8)
-        incq    %r9
-        cmpq    %rdi, %r9
-        jb      edwards25519_scalarmuldouble_wcorrloop
-        movq    0x40(%rsp), %r8
-        movq    (%r8), %rbx
-        movq    0x28(%rsp), %rbp
-        imulq   %rbx, %rbp
-        movq    (%r15), %rax
-        mulq    %rbp
-        addq    %rbx, %rax
-        movq    %rdx, %r11
-        movl    $0x1, %r9d
-        movq    %rdi, %rcx
-        decq    %rcx
-        je      edwards25519_scalarmuldouble_zmontend
-edwards25519_scalarmuldouble_zmontloop:
-        adcq    (%r8,%r9,8), %r11
-        sbbq    %rbx, %rbx
-        movq    (%r15,%r9,8), %rax
-        mulq    %rbp
-        subq    %rbx, %rdx
-        addq    %r11, %rax
-        movq    %rax, -0x8(%r8,%r9,8)
-        movq    %rdx, %r11
-        incq    %r9
-        decq    %rcx
-        jne     edwards25519_scalarmuldouble_zmontloop
-edwards25519_scalarmuldouble_zmontend:
-        adcq    %rsi, %r11
-        movq    %r11, -0x8(%r8,%rdi,8)
-        sbbq    %r11, %r11
-        negq    %r11
-        movq    %rdi, %rcx
-        xorq    %r9, %r9
-edwards25519_scalarmuldouble_zcmploop:
-        movq    (%r8,%r9,8), %rax
-        sbbq    (%r15,%r9,8), %rax
-        incq    %r9
-        decq    %rcx
-        jne     edwards25519_scalarmuldouble_zcmploop
-        sbbq    $0x0, %r11
-        sbbq    %r11, %r11
-        notq    %r11
-        xorq    %rcx, %rcx
-        xorq    %r9, %r9
-edwards25519_scalarmuldouble_zcorrloop:
-        movq    (%r8,%r9,8), %rax
-        movq    (%r15,%r9,8), %rbx
-        andq    %r11, %rbx
-        negq    %rcx
-        sbbq    %rbx, %rax
-        sbbq    %rcx, %rcx
-        movq    %rax, (%r8,%r9,8)
-        incq    %r9
-        cmpq    %rdi, %r9
-        jb      edwards25519_scalarmuldouble_zcorrloop
-        movq    0x30(%rsp), %r8
-        leaq    (%r8,%rdi,8), %r15
-        xorq    %r9, %r9
-        xorq    %r12, %r12
-        xorq    %r14, %r14
-        xorq    %rbp, %rbp
-        xorq    %rsi, %rsi
-edwards25519_scalarmuldouble_crossloop:
-        movq    (%r8,%r9,8), %rcx
-        movq    (%rsp), %rax
-        mulq    %rcx
-        addq    %rax, %r14
-        adcq    $0x0, %rdx
-        movq    %rdx, %r10
-        movq    0x10(%rsp), %rax
-        mulq    %rcx
+        movq    0x20(%rsp), %rax
+        xorq    %r15, %rax
+        mulq    %r14
         addq    %rax, %rsi
-        adcq    $0x0, %rdx
-        movq    %rdx, %r11
-        movq    (%r15,%r9,8), %rcx
+        adcq    %rdx, %rbp
+        xorl    %ecx, %ecx
         movq    0x8(%rsp), %rax
-        mulq    %rcx
-        subq    %r12, %rdx
-        subq    %rax, %r14
-        sbbq    %rdx, %r10
-        sbbq    %r12, %r12
-        movq    %r14, (%r8,%r9,8)
-        movq    %r10, %r14
+        xorq    %r9, %rax
+        mulq    %r8
+        addq    %rax, %rbx
+        adcq    %rdx, %rcx
+        movq    0x28(%rsp), %rax
+        xorq    %r11, %rax
+        mulq    %r10
+        addq    %rax, %rbx
+        adcq    %rdx, %rcx
+        shrdq   $0x3b, %rbx, %rdi
+        movq    %rdi, (%rsp)
+        xorl    %edi, %edi
+        movq    0x8(%rsp), %rax
+        xorq    %r13, %rax
+        mulq    %r12
+        addq    %rax, %rbp
+        adcq    %rdx, %rdi
+        movq    0x28(%rsp), %rax
+        xorq    %r15, %rax
+        mulq    %r14
+        addq    %rax, %rbp
+        adcq    %rdx, %rdi
+        shrdq   $0x3b, %rbp, %rsi
+        movq    %rsi, 0x20(%rsp)
+        xorl    %esi, %esi
+        movq    0x10(%rsp), %rax
+        xorq    %r9, %rax
+        mulq    %r8
+        addq    %rax, %rcx
+        adcq    %rdx, %rsi
+        movq    0x30(%rsp), %rax
+        xorq    %r11, %rax
+        mulq    %r10
+        addq    %rax, %rcx
+        adcq    %rdx, %rsi
+        shrdq   $0x3b, %rcx, %rbx
+        movq    %rbx, 0x8(%rsp)
+        xorl    %ebx, %ebx
+        movq    0x10(%rsp), %rax
+        xorq    %r13, %rax
+        mulq    %r12
+        addq    %rax, %rdi
+        adcq    %rdx, %rbx
+        movq    0x30(%rsp), %rax
+        xorq    %r15, %rax
+        mulq    %r14
+        addq    %rax, %rdi
+        adcq    %rdx, %rbx
+        shrdq   $0x3b, %rdi, %rbp
+        movq    %rbp, 0x28(%rsp)
         movq    0x18(%rsp), %rax
-        mulq    %rcx
-        subq    %rbp, %rdx
-        subq    %rax, %rsi
-        sbbq    %rdx, %r11
-        sbbq    %rbp, %rbp
-        movq    %rsi, (%r15,%r9,8)
-        movq    %r11, %rsi
-        incq    %r9
-        cmpq    %r13, %r9
-        jb      edwards25519_scalarmuldouble_crossloop
-        xorq    %r9, %r9
-        movq    %r12, %r10
-        movq    %rbp, %r11
-        xorq    %r12, %r14
-        xorq    %rbp, %rsi
-edwards25519_scalarmuldouble_optnegloop:
-        movq    (%r8,%r9,8), %rax
-        xorq    %r12, %rax
-        negq    %r10
-        adcq    $0x0, %rax
-        sbbq    %r10, %r10
-        movq    %rax, (%r8,%r9,8)
-        movq    (%r15,%r9,8), %rax
-        xorq    %rbp, %rax
-        negq    %r11
-        adcq    $0x0, %rax
-        sbbq    %r11, %r11
-        movq    %rax, (%r15,%r9,8)
-        incq    %r9
-        cmpq    %r13, %r9
-        jb      edwards25519_scalarmuldouble_optnegloop
-        subq    %r10, %r14
-        subq    %r11, %rsi
-        movq    %r13, %r9
-edwards25519_scalarmuldouble_shiftloop:
-        movq    -0x8(%r8,%r9,8), %rax
-        movq    %rax, %r10
-        shrdq   $0x3a, %r14, %rax
-        movq    %rax, -0x8(%r8,%r9,8)
-        movq    %r10, %r14
-        movq    -0x8(%r15,%r9,8), %rax
-        movq    %rax, %r11
-        shrdq   $0x3a, %rsi, %rax
-        movq    %rax, -0x8(%r15,%r9,8)
-        movq    %r11, %rsi
-        decq    %r9
-        jne     edwards25519_scalarmuldouble_shiftloop
-        notq    %rbp
-        movq    0x48(%rsp), %rcx
-        movq    0x38(%rsp), %r8
-        movq    0x40(%rsp), %r15
-        movq    %r12, %r10
-        movq    %rbp, %r11
-        xorq    %r9, %r9
-edwards25519_scalarmuldouble_fliploop:
-        movq    %rbp, %rdx
-        movq    (%rcx,%r9,8), %rax
-        andq    %rax, %rdx
-        andq    %r12, %rax
-        movq    (%r8,%r9,8), %rbx
-        xorq    %r12, %rbx
-        negq    %r10
-        adcq    %rbx, %rax
-        sbbq    %r10, %r10
-        movq    %rax, (%r8,%r9,8)
-        movq    (%r15,%r9,8), %rbx
-        xorq    %rbp, %rbx
-        negq    %r11
+        xorq    %r9, %rax
+        movq    %rax, %rbp
+        sarq    $0x3f, %rbp
+        andq    %r8, %rbp
+        negq    %rbp
+        mulq    %r8
+        addq    %rax, %rsi
+        adcq    %rdx, %rbp
+        movq    0x38(%rsp), %rax
+        xorq    %r11, %rax
+        movq    %rax, %rdx
+        sarq    $0x3f, %rdx
+        andq    %r10, %rdx
+        subq    %rdx, %rbp
+        mulq    %r10
+        addq    %rax, %rsi
+        adcq    %rdx, %rbp
+        shrdq   $0x3b, %rsi, %rcx
+        movq    %rcx, 0x10(%rsp)
+        shrdq   $0x3b, %rbp, %rsi
+        movq    0x18(%rsp), %rax
+        movq    %rsi, 0x18(%rsp)
+        xorq    %r13, %rax
+        movq    %rax, %rsi
+        sarq    $0x3f, %rsi
+        andq    %r12, %rsi
+        negq    %rsi
+        mulq    %r12
+        addq    %rax, %rbx
+        adcq    %rdx, %rsi
+        movq    0x38(%rsp), %rax
+        xorq    %r15, %rax
+        movq    %rax, %rdx
+        sarq    $0x3f, %rdx
+        andq    %r14, %rdx
+        subq    %rdx, %rsi
+        mulq    %r14
+        addq    %rax, %rbx
+        adcq    %rdx, %rsi
+        shrdq   $0x3b, %rbx, %rdi
+        movq    %rdi, 0x30(%rsp)
+        shrdq   $0x3b, %rsi, %rbx
+        movq    %rbx, 0x38(%rsp)
+        movq    0x80(%rsp), %rbx
+        movq    0x88(%rsp), %rbp
+        xorl    %ecx, %ecx
+        movq    0x40(%rsp), %rax
+        xorq    %r9, %rax
+        mulq    %r8
+        addq    %rax, %rbx
+        adcq    %rdx, %rcx
+        movq    0x60(%rsp), %rax
+        xorq    %r11, %rax
+        mulq    %r10
+        addq    %rax, %rbx
+        adcq    %rdx, %rcx
+        xorl    %esi, %esi
+        movq    0x40(%rsp), %rax
+        xorq    %r13, %rax
+        mulq    %r12
+        movq    %rbx, 0x40(%rsp)
+        addq    %rax, %rbp
+        adcq    %rdx, %rsi
+        movq    0x60(%rsp), %rax
+        xorq    %r15, %rax
+        mulq    %r14
+        addq    %rax, %rbp
+        adcq    %rdx, %rsi
+        movq    %rbp, 0x60(%rsp)
+        xorl    %ebx, %ebx
+        movq    0x48(%rsp), %rax
+        xorq    %r9, %rax
+        mulq    %r8
+        addq    %rax, %rcx
+        adcq    %rdx, %rbx
+        movq    0x68(%rsp), %rax
+        xorq    %r11, %rax
+        mulq    %r10
+        addq    %rax, %rcx
+        adcq    %rdx, %rbx
+        xorl    %ebp, %ebp
+        movq    0x48(%rsp), %rax
+        xorq    %r13, %rax
+        mulq    %r12
+        movq    %rcx, 0x48(%rsp)
+        addq    %rax, %rsi
+        adcq    %rdx, %rbp
+        movq    0x68(%rsp), %rax
+        xorq    %r15, %rax
+        mulq    %r14
+        addq    %rax, %rsi
+        adcq    %rdx, %rbp
+        movq    %rsi, 0x68(%rsp)
+        xorl    %ecx, %ecx
+        movq    0x50(%rsp), %rax
+        xorq    %r9, %rax
+        mulq    %r8
+        addq    %rax, %rbx
+        adcq    %rdx, %rcx
+        movq    0x70(%rsp), %rax
+        xorq    %r11, %rax
+        mulq    %r10
+        addq    %rax, %rbx
+        adcq    %rdx, %rcx
+        xorl    %esi, %esi
+        movq    0x50(%rsp), %rax
+        xorq    %r13, %rax
+        mulq    %r12
+        movq    %rbx, 0x50(%rsp)
+        addq    %rax, %rbp
+        adcq    %rdx, %rsi
+        movq    0x70(%rsp), %rax
+        xorq    %r15, %rax
+        mulq    %r14
+        addq    %rax, %rbp
+        adcq    %rdx, %rsi
+        movq    %rbp, 0x70(%rsp)
+        movq    0x58(%rsp), %rax
+        xorq    %r9, %rax
+        movq    %r9, %rbx
+        andq    %r8, %rbx
+        negq    %rbx
+        mulq    %r8
+        addq    %rax, %rcx
+        adcq    %rdx, %rbx
+        movq    0x78(%rsp), %rax
+        xorq    %r11, %rax
+        movq    %r11, %rdx
+        andq    %r10, %rdx
+        subq    %rdx, %rbx
+        mulq    %r10
+        addq    %rax, %rcx
         adcq    %rbx, %rdx
-        sbbq    %r11, %r11
-        movq    %rdx, (%r15,%r9,8)
-        incq    %r9
-        cmpq    %rdi, %r9
-        jb      edwards25519_scalarmuldouble_fliploop
-        subq    $0x3a,  0x20(%rsp)
-        ja      edwards25519_scalarmuldouble_outerloop
+        movq    %rdx, %rbx
+        shldq   $0x1, %rcx, %rdx
+        sarq    $0x3f, %rbx
+        addq    %rbx, %rdx
+        movl    $0x13, %eax
+        imulq   %rdx
+        movq    0x40(%rsp), %r8
+        addq    %rax, %r8
+        movq    %r8, 0x40(%rsp)
+        movq    0x48(%rsp), %r8
+        adcq    %rdx, %r8
+        movq    %r8, 0x48(%rsp)
+        movq    0x50(%rsp), %r8
+        adcq    %rbx, %r8
+        movq    %r8, 0x50(%rsp)
+        adcq    %rbx, %rcx
+        shlq    $0x3f, %rax
+        addq    %rax, %rcx
+        movq    0x58(%rsp), %rax
+        movq    %rcx, 0x58(%rsp)
+        xorq    %r13, %rax
+        movq    %r13, %rcx
+        andq    %r12, %rcx
+        negq    %rcx
+        mulq    %r12
+        addq    %rax, %rsi
+        adcq    %rdx, %rcx
+        movq    0x78(%rsp), %rax
+        xorq    %r15, %rax
+        movq    %r15, %rdx
+        andq    %r14, %rdx
+        subq    %rdx, %rcx
+        mulq    %r14
+        addq    %rax, %rsi
+        adcq    %rcx, %rdx
+        movq    %rdx, %rcx
+        shldq   $0x1, %rsi, %rdx
+        sarq    $0x3f, %rcx
+        movl    $0x13, %eax
+        addq    %rcx, %rdx
+        imulq   %rdx
+        movq    0x60(%rsp), %r8
+        addq    %rax, %r8
+        movq    %r8, 0x60(%rsp)
+        movq    0x68(%rsp), %r8
+        adcq    %rdx, %r8
+        movq    %r8, 0x68(%rsp)
+        movq    0x70(%rsp), %r8
+        adcq    %rcx, %r8
+        movq    %r8, 0x70(%rsp)
+        adcq    %rcx, %rsi
+        shlq    $0x3f, %rax
+        addq    %rax, %rsi
+        movq    %rsi, 0x78(%rsp)
+curve25519_x25519_midloop:
+        movq    0x98(%rsp), %rsi
+        movq    (%rsp), %rdx
+        movq    0x20(%rsp), %rcx
+        movq    %rdx, %rbx
+        andq    $0xfffff, %rbx
+        movabsq $0xfffffe0000000000, %rax
+        orq     %rax, %rbx
+        andq    $0xfffff, %rcx
+        movabsq $0xc000000000000000, %rax
+        orq     %rax, %rcx
+        movq    $0xfffffffffffffffe, %rax
+        xorl    %ebp, %ebp
+        movl    $0x2, %edx
+        movq    %rbx, %rdi
+        movq    %rax, %r8
+        testq   %rsi, %rsi
+        cmovs   %rbp, %r8
+        testq   $0x1, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        sarq    $1, %rcx
+        movl    $0x100000, %eax
+        leaq    (%rbx,%rax), %rdx
+        leaq    (%rcx,%rax), %rdi
+        shlq    $0x16, %rdx
+        shlq    $0x16, %rdi
+        sarq    $0x2b, %rdx
+        sarq    $0x2b, %rdi
+        movabsq $0x20000100000, %rax
+        leaq    (%rbx,%rax), %rbx
+        leaq    (%rcx,%rax), %rcx
+        sarq    $0x2a, %rbx
+        sarq    $0x2a, %rcx
+        movq    %rdx, 0xa0(%rsp)
+        movq    %rbx, 0xa8(%rsp)
+        movq    %rdi, 0xb0(%rsp)
+        movq    %rcx, 0xb8(%rsp)
+        movq    (%rsp), %r12
+        imulq   %r12, %rdi
+        imulq   %rdx, %r12
+        movq    0x20(%rsp), %r13
+        imulq   %r13, %rbx
+        imulq   %rcx, %r13
+        addq    %rbx, %r12
+        addq    %rdi, %r13
+        sarq    $0x14, %r12
+        sarq    $0x14, %r13
+        movq    %r12, %rbx
+        andq    $0xfffff, %rbx
+        movabsq $0xfffffe0000000000, %rax
+        orq     %rax, %rbx
+        movq    %r13, %rcx
+        andq    $0xfffff, %rcx
+        movabsq $0xc000000000000000, %rax
+        orq     %rax, %rcx
+        movq    $0xfffffffffffffffe, %rax
+        movl    $0x2, %edx
+        movq    %rbx, %rdi
+        movq    %rax, %r8
+        testq   %rsi, %rsi
+        cmovs   %rbp, %r8
+        testq   $0x1, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        sarq    $1, %rcx
+        movl    $0x100000, %eax
+        leaq    (%rbx,%rax), %r8
+        leaq    (%rcx,%rax), %r10
+        shlq    $0x16, %r8
+        shlq    $0x16, %r10
+        sarq    $0x2b, %r8
+        sarq    $0x2b, %r10
+        movabsq $0x20000100000, %rax
+        leaq    (%rbx,%rax), %r15
+        leaq    (%rcx,%rax), %r11
+        sarq    $0x2a, %r15
+        sarq    $0x2a, %r11
+        movq    %r13, %rbx
+        movq    %r12, %rcx
+        imulq   %r8, %r12
+        imulq   %r15, %rbx
+        addq    %rbx, %r12
+        imulq   %r11, %r13
+        imulq   %r10, %rcx
+        addq    %rcx, %r13
+        sarq    $0x14, %r12
+        sarq    $0x14, %r13
+        movq    %r12, %rbx
+        andq    $0xfffff, %rbx
+        movabsq $0xfffffe0000000000, %rax
+        orq     %rax, %rbx
+        movq    %r13, %rcx
+        andq    $0xfffff, %rcx
+        movabsq $0xc000000000000000, %rax
+        orq     %rax, %rcx
+        movq    0xa0(%rsp), %rax
+        imulq   %r8, %rax
+        movq    0xb0(%rsp), %rdx
+        imulq   %r15, %rdx
+        imulq   0xa8(%rsp), %r8
+        imulq   0xb8(%rsp), %r15
+        addq    %r8, %r15
+        leaq    (%rax,%rdx), %r9
+        movq    0xa0(%rsp), %rax
+        imulq   %r10, %rax
+        movq    0xb0(%rsp), %rdx
+        imulq   %r11, %rdx
+        imulq   0xa8(%rsp), %r10
+        imulq   0xb8(%rsp), %r11
+        addq    %r10, %r11
+        leaq    (%rax,%rdx), %r13
+        movq    $0xfffffffffffffffe, %rax
+        movl    $0x2, %edx
+        movq    %rbx, %rdi
+        movq    %rax, %r8
+        testq   %rsi, %rsi
+        cmovs   %rbp, %r8
+        testq   $0x1, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        sarq    $1, %rcx
+        movl    $0x100000, %eax
+        leaq    (%rbx,%rax), %r8
+        leaq    (%rcx,%rax), %r12
+        shlq    $0x15, %r8
+        shlq    $0x15, %r12
+        sarq    $0x2b, %r8
+        sarq    $0x2b, %r12
+        movabsq $0x20000100000, %rax
+        leaq    (%rbx,%rax), %r10
+        leaq    (%rcx,%rax), %r14
+        sarq    $0x2b, %r10
+        sarq    $0x2b, %r14
+        movq    %r9, %rax
+        imulq   %r8, %rax
+        movq    %r13, %rdx
+        imulq   %r10, %rdx
+        imulq   %r15, %r8
+        imulq   %r11, %r10
+        addq    %r8, %r10
+        leaq    (%rax,%rdx), %r8
+        movq    %r9, %rax
+        imulq   %r12, %rax
+        movq    %r13, %rdx
+        imulq   %r14, %rdx
+        imulq   %r15, %r12
+        imulq   %r11, %r14
+        addq    %r12, %r14
+        leaq    (%rax,%rdx), %r12
+        movq    %rsi, 0x98(%rsp)
+        decq     0x90(%rsp)
+        jne     curve25519_x25519_inverseloop
+        movq    (%rsp), %rax
+        movq    0x20(%rsp), %rcx
+        imulq   %r8, %rax
+        imulq   %r10, %rcx
+        addq    %rcx, %rax
+        sarq    $0x3f, %rax
+        movq    %r8, %r9
+        sarq    $0x3f, %r9
+        xorq    %r9, %r8
+        subq    %r9, %r8
+        xorq    %rax, %r9
+        movq    %r10, %r11
+        sarq    $0x3f, %r11
+        xorq    %r11, %r10
+        subq    %r11, %r10
+        xorq    %rax, %r11
+        movq    %r12, %r13
+        sarq    $0x3f, %r13
+        xorq    %r13, %r12
+        subq    %r13, %r12
+        xorq    %rax, %r13
+        movq    %r14, %r15
+        sarq    $0x3f, %r15
+        xorq    %r15, %r14
+        subq    %r15, %r14
+        xorq    %rax, %r15
+        movq    %r8, %rax
+        andq    %r9, %rax
+        movq    %r10, %r12
+        andq    %r11, %r12
+        addq    %rax, %r12
+        xorl    %r13d, %r13d
+        movq    0x40(%rsp), %rax
+        xorq    %r9, %rax
+        mulq    %r8
+        addq    %rax, %r12
+        adcq    %rdx, %r13
+        movq    0x60(%rsp), %rax
+        xorq    %r11, %rax
+        mulq    %r10
+        addq    %rax, %r12
+        adcq    %rdx, %r13
+        xorl    %r14d, %r14d
+        movq    0x48(%rsp), %rax
+        xorq    %r9, %rax
+        mulq    %r8
+        addq    %rax, %r13
+        adcq    %rdx, %r14
+        movq    0x68(%rsp), %rax
+        xorq    %r11, %rax
+        mulq    %r10
+        addq    %rax, %r13
+        adcq    %rdx, %r14
+        xorl    %r15d, %r15d
+        movq    0x50(%rsp), %rax
+        xorq    %r9, %rax
+        mulq    %r8
+        addq    %rax, %r14
+        adcq    %rdx, %r15
+        movq    0x70(%rsp), %rax
+        xorq    %r11, %rax
+        mulq    %r10
+        addq    %rax, %r14
+        adcq    %rdx, %r15
+        movq    0x58(%rsp), %rax
+        xorq    %r9, %rax
+        andq    %r8, %r9
+        negq    %r9
+        mulq    %r8
+        addq    %rax, %r15
+        adcq    %rdx, %r9
+        movq    0x78(%rsp), %rax
+        xorq    %r11, %rax
+        movq    %r11, %rdx
+        andq    %r10, %rdx
+        subq    %rdx, %r9
+        mulq    %r10
+        addq    %rax, %r15
+        adcq    %rdx, %r9
+        movq    %r9, %rax
+        shldq   $0x1, %r15, %rax
+        sarq    $0x3f, %r9
+        movl    $0x13, %ebx
+        leaq    0x1(%rax,%r9,1), %rax
+        imulq   %rbx
+        xorl    %ebp, %ebp
+        addq    %rax, %r12
+        adcq    %rdx, %r13
+        adcq    %r9, %r14
+        adcq    %r9, %r15
+        shlq    $0x3f, %rax
+        addq    %rax, %r15
+        cmovns  %rbp, %rbx
+        subq    %rbx, %r12
+        sbbq    %rbp, %r13
+        sbbq    %rbp, %r14
+        sbbq    %rbp, %r15
+        btr     $0x3f, %r15
+        movq    0xc0(%rsp), %rdi
+        movq    %r12, (%rdi)
+        movq    %r13, 0x8(%rdi)
+        movq    %r14, 0x10(%rdi)
+        movq    %r15, 0x18(%rdi)
 
 // Store result
 
         movq    res, %rdi
-        leaq    96(%rsp), %rsi
-        leaq    224(%rsp), %rbp
+        leaq    ACC(%rsp), %rsi
+        leaq    TAB(%rsp), %rbp
         mul_p25519(x_0,x_1,x_2)
 
         movq    res, %rdi
         addq    $32, %rdi
-        leaq    128(%rsp), %rsi
-        leaq    224(%rsp), %rbp
+        leaq    ACC+32(%rsp), %rsi
+        leaq    TAB(%rsp), %rbp
         mul_p25519(x_0,x_1,x_2)
 
 // Restore stack and registers
@@ -2527,14 +3488,6 @@ edwards25519_scalarmuldouble_pepadd:
 //
 // .section .rodata
 // ****************************************************************************
-
-// The modulus p_25519 = 2^255 - 19, for the modular inverse
-
-edwards25519_scalarmuldouble_p25519:
-        .quad   0xffffffffffffffed
-        .quad   0xffffffffffffffff
-        .quad   0xffffffffffffffff
-        .quad   0x7fffffffffffffff
 
 // Precomputed table of multiples of generator for edwards25519
 // all in precomputed extended-projective (y-x,x+y,2*d*x*y) triples.

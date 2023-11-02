@@ -140,7 +140,6 @@ let WINDOWS_EDWARDS25519_ENCODE_SUBROUTINE_CORRECT = prove
                 bignum_pair_from_memory(p,4) s = (x,y))
            (\s. read RIP s = returnaddress /\
                 read RSP s = word_add stackpointer (word 8) /\
-                read RSP s = word_add stackpointer (word 8) /\
                 (x < p_25519 /\ y < p_25519
                 ==> read (memory :> bytelist(z,32)) s =
                     bytelist_of_num 32 (ed25519_encode (&x,&y))))
