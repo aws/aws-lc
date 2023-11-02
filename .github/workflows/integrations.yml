@@ -21,6 +21,9 @@ jobs:
         run: |
           ./tests/ci/integration/run_haproxy_integration.sh
   grpc:
+    env:
+      DEBIAN_FRONTEND: noninteractive
+      TZ: Etc/UTC
     runs-on: ubuntu-latest
     container:
       image: ubuntu:latest
@@ -28,7 +31,6 @@ jobs:
     steps:
       - name: Install OS Dependencies
         run: |
-          echo "Etc/UTC" > /etc/timezone
           apt-get update && apt-get -y --no-install-recommends install cmake gcc ninja-build golang make python3 python3-sphinx autoconf libtool pkg-config git libc++-dev
       - uses: actions/checkout@v3
       - name: Run integration build
