@@ -83,11 +83,12 @@ $code.=<<___;
 .type   ossl_rsaz_avx512ifma_eligible,\@abi-omnipotent
 .align  32
 ossl_rsaz_avx512ifma_eligible:
-    mov OPENSSL_ia32cap_P+8(%rip), %ecx
+    leaq OPENSSL_ia32cap_P(%rip),%r11
+    mov	 8(%r11),%r11d
     xor %eax,%eax
-    and \$`1<<31|1<<21|1<<17|1<<16`, %ecx     # avx512vl + avx512ifma + avx512dq + avx512f
-    cmp \$`1<<31|1<<21|1<<17|1<<16`, %ecx
-    cmove %ecx,%eax
+    and \$`1<<31|1<<21|1<<17|1<<16`, %r11d     # avx512vl + avx512ifma + avx512dq + avx512f
+    cmp \$`1<<31|1<<21|1<<17|1<<16`, %r11d
+    cmove %r11d,%eax
     ret
 .size   ossl_rsaz_avx512ifma_eligible, .-ossl_rsaz_avx512ifma_eligible
 ___
