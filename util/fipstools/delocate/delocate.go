@@ -61,7 +61,7 @@ const (
 
 // represents a unique symbol for an occurrence of OPENSSL_ia32cap_P.
 type cpuCapUniqueSymbol struct {
-	registerName string
+	registerName     string
 	suffixUniqueness string
 }
 
@@ -78,8 +78,8 @@ func (uniqueSymbol cpuCapUniqueSymbol) getx86SymbolReturn() string {
 // uniqueness must be a globally unique integer value.
 func newCpuCapUniqueSymbol(uniqueness int, registerName string) *cpuCapUniqueSymbol {
 	return &cpuCapUniqueSymbol{
-	    registerName: strings.Trim(registerName, "%"), // should work with both AT&T and Intel syntax.
-	    suffixUniqueness: strconv.Itoa(uniqueness),
+		registerName:     strings.Trim(registerName, "%"), // should work with both AT&T and Intel syntax.
+		suffixUniqueness: strconv.Itoa(uniqueness),
 	}
 }
 
@@ -424,7 +424,9 @@ func (d *delocation) loadAarch64Address(statement *node32, targetReg string, sym
 	}
 
 	var helperFunc string
-	if symbol == "OPENSSL_armcap_P" {
+	if strings.HasSuffix(symbol, "OPENSSL_armcap_P") {
+		helperFunc = ".L" + symbol + "_addr"
+	} else if symbol == "OPENSSL_armcap_P" {
 		helperFunc = ".LOPENSSL_armcap_P_addr"
 	} else {
 		// GOT helpers also dereference the GOT entry, thus the subsequent ldr
@@ -1804,18 +1806,18 @@ func transform(w stringWriter, inputs []inputFile) error {
 	}
 
 	d := &delocation{
-		symbols:             	symbols,
-		localEntrySymbols:   	localEntrySymbols,
-		processor:           	processor,
-		commentIndicator:    	commentIndicator,
-		output:              	w,
-		cpuCapUniqueSymbols:    []*cpuCapUniqueSymbol{},
-		redirectors:         	make(map[string]string),
-		bssAccessorsNeeded:  	make(map[string]string),
-		tocLoaders:          	make(map[string]struct{}),
-		gotExternalsNeeded:  	make(map[string]struct{}),
-		gotOffsetsNeeded:    	make(map[string]struct{}),
-		gotOffOffsetsNeeded: 	make(map[string]struct{}),
+		symbols:             symbols,
+		localEntrySymbols:   localEntrySymbols,
+		processor:           processor,
+		commentIndicator:    commentIndicator,
+		output:              w,
+		cpuCapUniqueSymbols: []*cpuCapUniqueSymbol{},
+		redirectors:         make(map[string]string),
+		bssAccessorsNeeded:  make(map[string]string),
+		tocLoaders:          make(map[string]struct{}),
+		gotExternalsNeeded:  make(map[string]struct{}),
+		gotOffsetsNeeded:    make(map[string]struct{}),
+		gotOffOffsetsNeeded: make(map[string]struct{}),
 	}
 
 	w.WriteString(".text\n")

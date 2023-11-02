@@ -146,9 +146,6 @@ if(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS AND GO_EXECUTABLE)
   endif()
 
   set(DELETE_PATTERN " bignum_| curve25519_x25519")
-  if(FIPS)
-    set(DELETE_PATTERN "${DELETE_PATTERN}| OPENSSL_armcap_P")
-  endif()
 
   add_custom_command(
     OUTPUT symbol_prefix_include/openssl/boringssl_prefix_symbols.h
