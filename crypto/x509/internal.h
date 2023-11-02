@@ -373,6 +373,8 @@ int X509_CERT_AUX_print(BIO *bp, X509_CERT_AUX *x, int indent);
 // caller must not free the result after use.
 EVP_PKEY *X509_PUBKEY_get0(X509_PUBKEY *key);
 
+int x509_check_cert_time(X509_STORE_CTX *ctx, X509 *x, int suppress_error);
+
 // RSA-PSS functions.
 
 // x509_rsa_pss_to_ctx configures |ctx| for an RSA-PSS operation based on
