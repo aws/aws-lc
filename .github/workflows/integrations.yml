@@ -25,11 +25,10 @@ jobs:
     container:
       image: ubuntu:latest
       options: --sysctl=net.ipv6.conf.all.disable_ipv6=0
-
     steps:
       - name: Install OS Dependencies
         run: |
-          sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make python3 python3-sphinx autoconf libtool pkg-config git libc++-dev
+          apt-get update && apt-get -y --no-install-recommends install cmake gcc ninja-build golang make python3 python3-sphinx autoconf libtool pkg-config git libc++-dev
       - uses: actions/checkout@v3
       - name: Run integration build
         run: |
