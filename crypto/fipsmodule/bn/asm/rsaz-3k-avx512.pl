@@ -500,6 +500,7 @@ $code.=<<___;
     .quad   0xfffffffffffff
     .quad   0xfffffffffffff
     .quad   0xfffffffffffff
+.text
 ___
 
 ###############################################################################
@@ -744,6 +745,7 @@ $code.=<<___;
     .quad   1,1,1,1
 .Lzeros:
     .quad   0,0,0,0
+.text
 ___
 }
 

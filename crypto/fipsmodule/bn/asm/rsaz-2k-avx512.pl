@@ -78,6 +78,7 @@ if ($avx512ifma>0) {{{
 @_6_args_universal_ABI = ("%rdi","%rsi","%rdx","%rcx","%r8","%r9");
 
 $code.=<<___;
+.text
 .extern OPENSSL_ia32cap_P
 .globl  ossl_rsaz_avx512ifma_eligible
 .type   ossl_rsaz_avx512ifma_eligible,\@abi-omnipotent
@@ -409,6 +410,7 @@ $code.=<<___;
     .quad   0xfffffffffffff
     .quad   0xfffffffffffff
     .quad   0xfffffffffffff
+.text
 ___
 
 ###############################################################################
@@ -604,6 +606,7 @@ $code.=<<___;
     .quad   1,1,1,1
 .Lzeros:
     .quad   0,0,0,0
+.text
 ___
 }
 
