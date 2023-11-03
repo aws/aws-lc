@@ -2,26 +2,29 @@
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
 // ----------------------------------------------------------------------------
-// The x25519 function for curve25519
-// Inputs scalar[4], point[4]; output res[4]
+// Double scalar multiplication for edwards25519, fresh and base point
+// Input scalar[4], point[8], bscalar[4]; output res[8]
 //
-// extern void curve25519_x25519
-//   (uint64_t res[static 4],uint64_t scalar[static 4],uint64_t point[static 4])
+// extern void edwards25519_scalarmuldouble
+//   (uint64_t res[static 8],uint64_t scalar[static 4],
+//    uint64_t point[static 8],uint64_t bscalar[static 4]);
 //
-// Given a scalar n and the X coordinate of an input point P = (X,Y) on
-// curve25519 (Y can live in any extension field of characteristic 2^255-19),
-// this returns the X coordinate of n * P = (X, Y), or 0 when n * P is the
-// point at infinity. Both n and X inputs are first slightly modified/mangled
-// as specified in the relevant RFC (https://www.rfc-editor.org/rfc/rfc7748);
-// in particular the lower three bits of n are set to zero. Does not implement
-// the zero-check specified in Section 6.1.
+// Given scalar = n, point = P and bscalar = m, returns in res
+// the point (X,Y) = n * P + m * B where B = (...,4/5) is
+// the standard basepoint for the edwards25519 (Ed25519) curve.
 //
-// Standard ARM ABI: X0 = res, X1 = scalar, X2 = point
+// Both 256-bit coordinates of the input point P are implicitly
+// reduced modulo 2^255-19 if they are not already in reduced form,
+// but the conventional usage is that they *are* already reduced.
+// The scalars can be arbitrary 256-bit numbers but may also be
+// considered as implicitly reduced modulo the group order.
+//
+// Standard ARM ABI: X0 = res, X1 = scalar, X2 = point, X3 = bscalar
 // ----------------------------------------------------------------------------
 #include "_internal_s2n_bignum.h"
 
-        S2N_BN_SYM_VISIBILITY_DIRECTIVE(curve25519_x25519)
-        S2N_BN_SYM_PRIVACY_DIRECTIVE(curve25519_x25519)
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(edwards25519_scalarmuldouble)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(edwards25519_scalarmuldouble)
 
         .text
         .balign 4
@@ -30,50 +33,76 @@
 
 #define NUMSIZE 32
 
-// Stable homes for the input result argument during the whole body
-// and other variables that are only needed prior to the modular inverse.
+// Stable home for the input result argument during the whole body
 
-#define res x23
-#define i x20
-#define swap x21
+#define res x25
 
-// Pointers to result x coord to be written
+// Additional pointer variables for local subroutines
 
-#define resx res, #0
+#define p0 x22
+#define p1 x23
+#define p2 x24
 
-// Pointer-offset pairs for temporaries on stack with some aliasing.
+// Other variables that are only needed prior to the modular inverse.
+
+#define i x19
+#define bf x20
+#define cf x21
+
+// Pointer-offset pairs for result and temporaries on stack with some aliasing.
+
+#define resx res, #(0*NUMSIZE)
+#define resy res, #(1*NUMSIZE)
 
 #define scalar sp, #(0*NUMSIZE)
+#define bscalar sp, #(1*NUMSIZE)
 
-#define pointx sp, #(1*NUMSIZE)
+#define btabent sp, #(2*NUMSIZE)
+#define acc sp, #(5*NUMSIZE)
+#define acc_x sp, #(5*NUMSIZE)
+#define acc_y sp, #(6*NUMSIZE)
+#define acc_z sp, #(7*NUMSIZE)
+#define acc_w sp, #(8*NUMSIZE)
 
-#define zm sp, #(2*NUMSIZE)
-#define sm sp, #(2*NUMSIZE)
-#define dpro sp, #(2*NUMSIZE)
+#define tabent sp, #(9*NUMSIZE)
 
-#define sn sp, #(3*NUMSIZE)
+#define tab sp, #(13*NUMSIZE)
 
-#define dm sp, #(4*NUMSIZE)
+// Total size to reserve on the stack (excluding local subroutines)
 
-#define zn sp, #(5*NUMSIZE)
-#define dn sp, #(5*NUMSIZE)
-#define e sp, #(5*NUMSIZE)
+#define NSPACE (45*NUMSIZE)
 
-#define dmsn sp, #(6*NUMSIZE)
-#define p sp, #(6*NUMSIZE)
+// Sub-references used in local subroutines with local stack
 
-#define xm sp, #(7*NUMSIZE)
-#define dnsm sp, #(7*NUMSIZE)
-#define spro sp, #(7*NUMSIZE)
+#define x_0 p0, #0
+#define y_0 p0, #NUMSIZE
+#define z_0 p0, #(2*NUMSIZE)
+#define w_0 p0, #(3*NUMSIZE)
 
-#define d sp, #(8*NUMSIZE)
+#define x_1 p1, #0
+#define y_1 p1, #NUMSIZE
+#define z_1 p1, #(2*NUMSIZE)
+#define w_1 p1, #(3*NUMSIZE)
 
-#define xn sp, #(9*NUMSIZE)
-#define s sp, #(9*NUMSIZE)
+#define x_2 p2, #0
+#define y_2 p2, #NUMSIZE
+#define z_2 p2, #(2*NUMSIZE)
+#define w_2 p2, #(3*NUMSIZE)
 
-// Total size to reserve on the stack
+#define t0 sp, #(0*NUMSIZE)
+#define t1 sp, #(1*NUMSIZE)
+#define t2 sp, #(2*NUMSIZE)
+#define t3 sp, #(3*NUMSIZE)
+#define t4 sp, #(4*NUMSIZE)
+#define t5 sp, #(5*NUMSIZE)
 
-#define NSPACE (10*NUMSIZE)
+// Load 64-bit immediate into a register
+
+#define movbig(nn,n3,n2,n1,n0)                                      \
+        movz    nn, n0;                                             \
+        movk    nn, n1, lsl #16;                                    \
+        movk    nn, n2, lsl #32;                                    \
+        movk    nn, n3, lsl #48
 
 // Macro wrapping up the basic field operation bignum_mul_p25519, only
 // trivially different from a pure function call to that subroutine.
@@ -573,7 +602,27 @@
         stp     x2, x3, [P0];                   \
         stp     x4, x5, [P0+16]
 
-// Modular addition with double modulus 2 * p_25519 = 2^256 - 38.
+// Modular subtraction with double modulus 2 * p_25519 = 2^256 - 38
+
+#define sub_twice4(P0,P1,P2)                    \
+        ldp     x5, x6, [P1];                   \
+        ldp     x4, x3, [P2];                   \
+        subs    x5, x5, x4;                     \
+        sbcs    x6, x6, x3;                     \
+        ldp     x7, x8, [P1+16];                \
+        ldp     x4, x3, [P2+16];                \
+        sbcs    x7, x7, x4;                     \
+        sbcs    x8, x8, x3;                     \
+        mov     x4, #38;                        \
+        csel    x3, x4, xzr, lo;                \
+        subs    x5, x5, x3;                     \
+        sbcs    x6, x6, xzr;                    \
+        sbcs    x7, x7, xzr;                    \
+        sbc     x8, x8, xzr;                    \
+        stp     x5, x6, [P0];                   \
+        stp     x7, x8, [P0+16]
+
+// Modular addition and doubling with double modulus 2 * p_25519 = 2^256 - 38.
 // This only ensures that the result fits in 4 digits, not that it is reduced
 // even w.r.t. double modulus. The result is always correct modulo provided
 // the sum of the inputs is < 2^256 + 2^256 - 38, so in particular provided
@@ -597,270 +646,1241 @@
         stp     x3, x4, [P0];                   \
         stp     x5, x6, [P0+16]
 
-// Modular subtraction with double modulus 2 * p_25519 = 2^256 - 38
-
-#define sub_twice4(p0,p1,p2)                    \
-        ldp     x5, x6, [p1];                   \
-        ldp     x4, x3, [p2];                   \
-        subs    x5, x5, x4;                     \
-        sbcs    x6, x6, x3;                     \
-        ldp     x7, x8, [p1+16];                \
-        ldp     x4, x3, [p2+16];                \
-        sbcs    x7, x7, x4;                     \
-        sbcs    x8, x8, x3;                     \
-        mov     x4, #38;                        \
-        csel    x3, x4, xzr, lo;                \
-        subs    x5, x5, x3;                     \
-        sbcs    x6, x6, xzr;                    \
-        sbcs    x7, x7, xzr;                    \
-        sbc     x8, x8, xzr;                    \
-        stp     x5, x6, [p0];                   \
-        stp     x7, x8, [p0+16]
-
-// Combined z = c * x + y with reduction only < 2 * p_25519
-// where c is initially in the X1 register. It is assumed
-// that 19 * (c * x + y) < 2^60 * 2^256 so we don't need a
-// high mul in the final part.
-
-#define cmadd_4(p0,p2,p3)                       \
-        ldp     x7, x8, [p2];                   \
-        ldp     x9, x10, [p2+16];               \
-        mul     x3, x1, x7;                     \
-        mul     x4, x1, x8;                     \
-        mul     x5, x1, x9;                     \
-        mul     x6, x1, x10;                    \
-        umulh   x7, x1, x7;                     \
-        umulh   x8, x1, x8;                     \
-        umulh   x9, x1, x9;                     \
-        umulh   x10, x1, x10;                   \
-        adds    x4, x4, x7;                     \
-        adcs    x5, x5, x8;                     \
-        adcs    x6, x6, x9;                     \
-        adc     x10, x10, xzr;                  \
-        ldp     x7, x8, [p3];                   \
-        adds    x3, x3, x7;                     \
-        adcs    x4, x4, x8;                     \
-        ldp     x7, x8, [p3+16];                \
-        adcs    x5, x5, x7;                     \
-        adcs    x6, x6, x8;                     \
-        adc     x10, x10, xzr;                  \
-        cmn     x6, x6;                         \
-        bic     x6, x6, #0x8000000000000000;    \
-        adc     x8, x10, x10;                   \
-        mov     x9, #19;                        \
-        mul     x7, x8, x9;                     \
-        adds    x3, x3, x7;                     \
+#define double_twice4(P0,P1)                    \
+        ldp     x3, x4, [P1];                   \
+        adds    x3, x3, x3;                     \
+        adcs    x4, x4, x4;                     \
+        ldp     x5, x6, [P1+16];                \
+        adcs    x5, x5, x5;                     \
+        adcs    x6, x6, x6;                     \
+        mov     x9, #38;                        \
+        csel    x9, x9, xzr, cs;                \
+        adds    x3, x3, x9;                     \
         adcs    x4, x4, xzr;                    \
         adcs    x5, x5, xzr;                    \
         adc     x6, x6, xzr;                    \
-        stp     x3, x4, [p0];                   \
-        stp     x5, x6, [p0+16]
+        stp     x3, x4, [P0];                   \
+        stp     x5, x6, [P0+16]
 
-// Multiplex: z := if NZ then x else y
+// Load the constant k_25519 = 2 * d_25519 using immediate operations
 
-#define mux_4(p0,p1,p2)                         \
-        ldp     x0, x1, [p1];                   \
-        ldp     x2, x3, [p2];                   \
-        csel    x0, x0, x2, ne;                 \
-        csel    x1, x1, x3, ne;                 \
-        stp     x0, x1, [p0];                   \
-        ldp     x0, x1, [p1+16];                \
-        ldp     x2, x3, [p2+16];                \
-        csel    x0, x0, x2, ne;                 \
-        csel    x1, x1, x3, ne;                 \
-        stp     x0, x1, [p0+16]
+#define load_k25519(P0)                         \
+        movz    x0, #0xf159;                    \
+        movz    x1, #0xb156;                    \
+        movz    x2, #0xd130;                    \
+        movz    x3, #0xfce7;                    \
+        movk    x0, #0x26b2, lsl #16;           \
+        movk    x1, #0x8283, lsl #16;           \
+        movk    x2, #0xeef3, lsl #16;           \
+        movk    x3, #0x56df, lsl #16;           \
+        movk    x0, #0x9b94, lsl #32;           \
+        movk    x1, #0x149a, lsl #32;           \
+        movk    x2, #0x80f2, lsl #32;           \
+        movk    x3, #0xd9dc, lsl #32;           \
+        movk    x0, #0xebd6, lsl #48;           \
+        movk    x1, #0x00e0, lsl #48;           \
+        movk    x2, #0x198e, lsl #48;           \
+        movk    x3, #0x2406, lsl #48;           \
+        stp     x0, x1, [P0];                   \
+        stp     x2, x3, [P0+16]
 
-S2N_BN_SYMBOL(curve25519_x25519):
+S2N_BN_SYMBOL(edwards25519_scalarmuldouble):
 
 // Save regs and make room for temporaries
 
         stp     x19, x20, [sp, -16]!
         stp     x21, x22, [sp, -16]!
         stp     x23, x24, [sp, -16]!
+        stp     x25, x30, [sp, -16]!
         sub     sp, sp, #NSPACE
 
 // Move the output pointer to a stable place
 
         mov     res, x0
 
-// Copy the inputs to the local variables with minimal mangling:
+// Copy scalars while recoding all 4-bit nybbles except the top
+// one (bits 252..255) into signed 4-bit digits. This is essentially
+// done just by adding the recoding constant 0x0888..888, after
+// which all digits except the first have an implicit bias of -8,
+// so 0 -> -8, 1 -> -7, ... 7 -> -1, 8 -> 0, 9 -> 1, ... 15 -> 7.
+// (We could literally create 2s complement signed nybbles by
+// XORing with the same constant 0x0888..888 afterwards, but it
+// doesn't seem to make the end usage any simpler.)
 //
-//  - The scalar is in principle turned into 01xxx...xxx000 but
-//    in the structure below the special handling of these bits is
-//    explicit in the main computation; the scalar is just copied.
-//
-//  - The point x coord is reduced mod 2^255 by masking off the
-//    top bit. In the main loop we only need reduction < 2 * p_25519.
+// In order to ensure that the unrecoded top nybble (bits 252..255)
+// does not become > 8 as a result of carries lower down from the
+// recoding, we first (conceptually) subtract the group order iff
+// the top digit of the scalar is > 2^63. In the implementation the
+// reduction and recoding are combined by optionally using the
+// modified recoding constant 0x0888...888 + (2^256 - group_order).
+
+        movbig(x4,#0xc7f5, #0x6fb5, #0xa0d9, #0xe920)
+        movbig(x5,#0xe190, #0xb993, #0x70cb, #0xa1d5)
+        mov     x7, #0x8888888888888888
+        sub     x6, x7, #1
+        bic     x8, x7, #0xF000000000000000
+
+        ldp     x10, x11, [x3]
+        ldp     x12, x13, [x3, #16]
+        mov     x3, 0x8000000000000000
+        cmp     x3, x13
+        csel    x14, x7, x4, cs
+        csel    x15, x7, x5, cs
+        csel    x16, x7, x6, cs
+        csel    x17, x8, x7, cs
+        adds    x10, x10, x14
+        adcs    x11, x11, x15
+        adcs    x12, x12, x16
+        adc     x13, x13, x17
+        stp     x10, x11, [bscalar]
+        stp     x12, x13, [bscalar+16]
 
         ldp     x10, x11, [x1]
-        stp     x10, x11, [scalar]
         ldp     x12, x13, [x1, #16]
+        mov     x3, 0x8000000000000000
+        cmp     x3, x13
+        csel    x14, x7, x4, cs
+        csel    x15, x7, x5, cs
+        csel    x16, x7, x6, cs
+        csel    x17, x8, x7, cs
+        adds    x10, x10, x14
+        adcs    x11, x11, x15
+        adcs    x12, x12, x16
+        adc     x13, x13, x17
+        stp     x10, x11, [scalar]
         stp     x12, x13, [scalar+16]
 
+// Create table of multiples 1..8 of the general input point at "tab".
+// Reduce the input coordinates x and y modulo 2^256 - 38 first, for the
+// sake of definiteness; this is the reduction that will be maintained.
+// We could slightly optimize the additions because we know the input
+// point is affine (so Z = 1), but it doesn't seem worth the complication.
+
         ldp     x10, x11, [x2]
-        stp     x10, x11, [pointx]
         ldp     x12, x13, [x2, #16]
-        and     x13, x13, #0x7fffffffffffffff
-        stp     x12, x13, [pointx+16]
+        adds    x14, x10, #38
+        adcs    x15, x11, xzr
+        adcs    x16, x12, xzr
+        adcs    x17, x13, xzr
+        csel    x10, x14, x10, cs
+        csel    x11, x15, x11, cs
+        csel    x12, x16, x12, cs
+        csel    x13, x17, x13, cs
+        stp     x10, x11, [tab]
+        stp     x12, x13, [tab+16]
 
-// Initialize with explicit doubling in order to handle set bit 254.
-// Set swap = 1 and (xm,zm) = (x,1) then double as (xn,zn) = 2 * (x,1).
-// We use the fact that the point x coordinate is still in registers.
-// Since zm = 1 we could do the doubling with an operation count of
-// 2 * S + M instead of 2 * S + 2 * M, but it doesn't seem worth
-// the slight complication arising from a different linear combination.
+        ldp     x10, x11, [x2, #32]
+        ldp     x12, x13, [x2, #48]
+        adds    x14, x10, #38
+        adcs    x15, x11, xzr
+        adcs    x16, x12, xzr
+        adcs    x17, x13, xzr
+        csel    x10, x14, x10, cs
+        csel    x11, x15, x11, cs
+        csel    x12, x16, x12, cs
+        csel    x13, x17, x13, cs
+        stp     x10, x11, [tab+32]
+        stp     x12, x13, [tab+48]
 
-        mov     swap, #1
-        stp     x10, x11, [xm]
-        stp     x12, x13, [xm+16]
-        stp     swap, xzr, [zm]
-        stp     xzr, xzr, [zm+16]
+        mov     x1, #1
+        stp     x1, xzr, [tab+64]
+        stp     xzr, xzr, [tab+80]
 
-        sub_twice4(d,xm,zm)
-        add_twice4(s,xm,zm)
-        sqr_4(d,d)
-        sqr_4(s,s)
-        sub_twice4(p,s,d)
-        mov     x1, 0xdb42
-        orr     x1, x1, 0x10000
-        cmadd_4(e,p,d)
-        mul_4(xn,s,d)
-        mul_4(zn,p,e)
+        add     p0, tab+96
+        add     p1, tab
+        add     p2, tab+32
+        mul_4(x_0,x_1,x_2)
 
-// The main loop over unmodified bits from i = 253, ..., i = 3 (inclusive).
-// This is a classic Montgomery ladder, with the main coordinates only
-// reduced mod 2 * p_25519, some intermediate results even more loosely.
+// Multiple 2
 
-        mov     i, #253
+        add     p0, tab+1*128
+        add     p1, tab
+        bl      edwards25519_scalarmuldouble_epdouble
 
-curve25519_x25519_scalarloop:
+// Multiple 3
 
-// sm = xm + zm; sn = xn + zn; dm = xm - zm; dn = xn - zn
+        add     p0, tab+2*128
+        add     p1, tab
+        add     p2, tab+1*128
+        bl      edwards25519_scalarmuldouble_epadd
 
-        sub_twice4(dm,xm,zm)
-        add_twice4(sn,xn,zn)
-        sub_twice4(dn,xn,zn)
-        add_twice4(sm,xm,zm)
+// Multiple 4
 
-// ADDING: dmsn = dm * sn
-// DOUBLING: mux d = xt - zt and s = xt + zt for appropriate choice of (xt,zt)
+        add     p0, tab+3*128
+        add     p1, tab+1*128
+        bl      edwards25519_scalarmuldouble_epdouble
 
-        mul_4(dmsn,sn,dm)
+// Multiple 5
+
+        add     p0, tab+4*128
+        add     p1, tab
+        add     p2, tab+3*128
+        bl      edwards25519_scalarmuldouble_epadd
+
+// Multiple 6
+
+        add     p0, tab+5*128
+        add     p1, tab+2*128
+        bl      edwards25519_scalarmuldouble_epdouble
+
+// Multiple 7
+
+        add     p0, tab+6*128
+        add     p1, tab
+        add     p2, tab+5*128
+        bl      edwards25519_scalarmuldouble_epadd
+
+// Multiple 8
+
+        add     p0, tab+7*128
+        add     p1, tab+3*128
+        bl      edwards25519_scalarmuldouble_epdouble
+
+// Handle the initialization, starting the loop counter at i = 252
+// and initializing acc to the sum of the table entries for the
+// top nybbles of the scalars (the ones with no implicit -8 bias).
+
+        mov     i, #252
+
+// Index for btable entry...
+
+        ldr     x0, [bscalar+24]
+        lsr     bf, x0, #60
+
+// ...and constant-time indexing based on that index
+
+        adr     x14, edwards25519_scalarmuldouble_table
+
+        mov     x0, #1
+        mov     x1, xzr
+        mov     x2, xzr
+        mov     x3, xzr
+        mov     x4, #1
+        mov     x5, xzr
+        mov     x6, xzr
+        mov     x7, xzr
+        mov     x8, xzr
+        mov     x9, xzr
+        mov     x10, xzr
+        mov     x11, xzr
+
+        cmp     bf, #1
+        ldp     x12, x13, [x14]
+        csel    x0, x0, x12, ne
+        csel    x1, x1, x13, ne
+        ldp     x12, x13, [x14, #16]
+        csel    x2, x2, x12, ne
+        csel    x3, x3, x13, ne
+        ldp     x12, x13, [x14, #32]
+        csel    x4, x4, x12, ne
+        csel    x5, x5, x13, ne
+        ldp     x12, x13, [x14, #48]
+        csel    x6, x6, x12, ne
+        csel    x7, x7, x13, ne
+        ldp     x12, x13, [x14, #64]
+        csel    x8, x8, x12, ne
+        csel    x9, x9, x13, ne
+        ldp     x12, x13, [x14, #80]
+        csel    x10, x10, x12, ne
+        csel    x11, x11, x13, ne
+        add     x14, x14, #96
+
+        cmp     bf, #2
+        ldp     x12, x13, [x14]
+        csel    x0, x0, x12, ne
+        csel    x1, x1, x13, ne
+        ldp     x12, x13, [x14, #16]
+        csel    x2, x2, x12, ne
+        csel    x3, x3, x13, ne
+        ldp     x12, x13, [x14, #32]
+        csel    x4, x4, x12, ne
+        csel    x5, x5, x13, ne
+        ldp     x12, x13, [x14, #48]
+        csel    x6, x6, x12, ne
+        csel    x7, x7, x13, ne
+        ldp     x12, x13, [x14, #64]
+        csel    x8, x8, x12, ne
+        csel    x9, x9, x13, ne
+        ldp     x12, x13, [x14, #80]
+        csel    x10, x10, x12, ne
+        csel    x11, x11, x13, ne
+        add     x14, x14, #96
+
+        cmp     bf, #3
+        ldp     x12, x13, [x14]
+        csel    x0, x0, x12, ne
+        csel    x1, x1, x13, ne
+        ldp     x12, x13, [x14, #16]
+        csel    x2, x2, x12, ne
+        csel    x3, x3, x13, ne
+        ldp     x12, x13, [x14, #32]
+        csel    x4, x4, x12, ne
+        csel    x5, x5, x13, ne
+        ldp     x12, x13, [x14, #48]
+        csel    x6, x6, x12, ne
+        csel    x7, x7, x13, ne
+        ldp     x12, x13, [x14, #64]
+        csel    x8, x8, x12, ne
+        csel    x9, x9, x13, ne
+        ldp     x12, x13, [x14, #80]
+        csel    x10, x10, x12, ne
+        csel    x11, x11, x13, ne
+        add     x14, x14, #96
+
+        cmp     bf, #4
+        ldp     x12, x13, [x14]
+        csel    x0, x0, x12, ne
+        csel    x1, x1, x13, ne
+        ldp     x12, x13, [x14, #16]
+        csel    x2, x2, x12, ne
+        csel    x3, x3, x13, ne
+        ldp     x12, x13, [x14, #32]
+        csel    x4, x4, x12, ne
+        csel    x5, x5, x13, ne
+        ldp     x12, x13, [x14, #48]
+        csel    x6, x6, x12, ne
+        csel    x7, x7, x13, ne
+        ldp     x12, x13, [x14, #64]
+        csel    x8, x8, x12, ne
+        csel    x9, x9, x13, ne
+        ldp     x12, x13, [x14, #80]
+        csel    x10, x10, x12, ne
+        csel    x11, x11, x13, ne
+        add     x14, x14, #96
+
+        cmp     bf, #5
+        ldp     x12, x13, [x14]
+        csel    x0, x0, x12, ne
+        csel    x1, x1, x13, ne
+        ldp     x12, x13, [x14, #16]
+        csel    x2, x2, x12, ne
+        csel    x3, x3, x13, ne
+        ldp     x12, x13, [x14, #32]
+        csel    x4, x4, x12, ne
+        csel    x5, x5, x13, ne
+        ldp     x12, x13, [x14, #48]
+        csel    x6, x6, x12, ne
+        csel    x7, x7, x13, ne
+        ldp     x12, x13, [x14, #64]
+        csel    x8, x8, x12, ne
+        csel    x9, x9, x13, ne
+        ldp     x12, x13, [x14, #80]
+        csel    x10, x10, x12, ne
+        csel    x11, x11, x13, ne
+        add     x14, x14, #96
+
+        cmp     bf, #6
+        ldp     x12, x13, [x14]
+        csel    x0, x0, x12, ne
+        csel    x1, x1, x13, ne
+        ldp     x12, x13, [x14, #16]
+        csel    x2, x2, x12, ne
+        csel    x3, x3, x13, ne
+        ldp     x12, x13, [x14, #32]
+        csel    x4, x4, x12, ne
+        csel    x5, x5, x13, ne
+        ldp     x12, x13, [x14, #48]
+        csel    x6, x6, x12, ne
+        csel    x7, x7, x13, ne
+        ldp     x12, x13, [x14, #64]
+        csel    x8, x8, x12, ne
+        csel    x9, x9, x13, ne
+        ldp     x12, x13, [x14, #80]
+        csel    x10, x10, x12, ne
+        csel    x11, x11, x13, ne
+        add     x14, x14, #96
+
+        cmp     bf, #7
+        ldp     x12, x13, [x14]
+        csel    x0, x0, x12, ne
+        csel    x1, x1, x13, ne
+        ldp     x12, x13, [x14, #16]
+        csel    x2, x2, x12, ne
+        csel    x3, x3, x13, ne
+        ldp     x12, x13, [x14, #32]
+        csel    x4, x4, x12, ne
+        csel    x5, x5, x13, ne
+        ldp     x12, x13, [x14, #48]
+        csel    x6, x6, x12, ne
+        csel    x7, x7, x13, ne
+        ldp     x12, x13, [x14, #64]
+        csel    x8, x8, x12, ne
+        csel    x9, x9, x13, ne
+        ldp     x12, x13, [x14, #80]
+        csel    x10, x10, x12, ne
+        csel    x11, x11, x13, ne
+        add     x14, x14, #96
+
+        cmp     bf, #8
+        ldp     x12, x13, [x14]
+        csel    x0, x0, x12, ne
+        csel    x1, x1, x13, ne
+        ldp     x12, x13, [x14, #16]
+        csel    x2, x2, x12, ne
+        csel    x3, x3, x13, ne
+        ldp     x12, x13, [x14, #32]
+        csel    x4, x4, x12, ne
+        csel    x5, x5, x13, ne
+        ldp     x12, x13, [x14, #48]
+        csel    x6, x6, x12, ne
+        csel    x7, x7, x13, ne
+        ldp     x12, x13, [x14, #64]
+        csel    x8, x8, x12, ne
+        csel    x9, x9, x13, ne
+        ldp     x12, x13, [x14, #80]
+        csel    x10, x10, x12, ne
+        csel    x11, x11, x13, ne
+
+        stp     x0, x1, [btabent]
+        stp     x2, x3, [btabent+16]
+        stp     x4, x5, [btabent+32]
+        stp     x6, x7, [btabent+48]
+        stp     x8, x9, [btabent+64]
+        stp     x10, x11, [btabent+80]
+
+// Index for table entry...
+
+        ldr     x0, [scalar+24]
+        lsr     bf, x0, #60
+
+// ...and constant-time indexing based on that index
+
+        add     p0, tab
+
+        mov     x0, xzr
+        mov     x1, xzr
+        mov     x2, xzr
+        mov     x3, xzr
+        mov     x4, #1
+        mov     x5, xzr
+        mov     x6, xzr
+        mov     x7, xzr
+        mov     x8, #1
+        mov     x9, xzr
+        mov     x10, xzr
+        mov     x11, xzr
+        mov     x12, xzr
+        mov     x13, xzr
+        mov     x14, xzr
+        mov     x15, xzr
+
+        cmp     bf, #1
+        ldp     x16, x17, [p0]
+        csel    x0, x0, x16, ne
+        csel    x1, x1, x17, ne
+        ldp     x16, x17, [p0, #16]
+        csel    x2, x2, x16, ne
+        csel    x3, x3, x17, ne
+        ldp     x16, x17, [p0, #32]
+        csel    x4, x4, x16, ne
+        csel    x5, x5, x17, ne
+        ldp     x16, x17, [p0, #48]
+        csel    x6, x6, x16, ne
+        csel    x7, x7, x17, ne
+        ldp     x16, x17, [p0, #64]
+        csel    x8, x8, x16, ne
+        csel    x9, x9, x17, ne
+        ldp     x16, x17, [p0, #80]
+        csel    x10, x10, x16, ne
+        csel    x11, x11, x17, ne
+        ldp     x16, x17, [p0, #96]
+        csel    x12, x12, x16, ne
+        csel    x13, x13, x17, ne
+        ldp     x16, x17, [p0, #112]
+        csel    x14, x14, x16, ne
+        csel    x15, x15, x17, ne
+        add     p0, p0, #128
+
+        cmp     bf, #2
+        ldp     x16, x17, [p0]
+        csel    x0, x0, x16, ne
+        csel    x1, x1, x17, ne
+        ldp     x16, x17, [p0, #16]
+        csel    x2, x2, x16, ne
+        csel    x3, x3, x17, ne
+        ldp     x16, x17, [p0, #32]
+        csel    x4, x4, x16, ne
+        csel    x5, x5, x17, ne
+        ldp     x16, x17, [p0, #48]
+        csel    x6, x6, x16, ne
+        csel    x7, x7, x17, ne
+        ldp     x16, x17, [p0, #64]
+        csel    x8, x8, x16, ne
+        csel    x9, x9, x17, ne
+        ldp     x16, x17, [p0, #80]
+        csel    x10, x10, x16, ne
+        csel    x11, x11, x17, ne
+        ldp     x16, x17, [p0, #96]
+        csel    x12, x12, x16, ne
+        csel    x13, x13, x17, ne
+        ldp     x16, x17, [p0, #112]
+        csel    x14, x14, x16, ne
+        csel    x15, x15, x17, ne
+        add     p0, p0, #128
+
+        cmp     bf, #3
+        ldp     x16, x17, [p0]
+        csel    x0, x0, x16, ne
+        csel    x1, x1, x17, ne
+        ldp     x16, x17, [p0, #16]
+        csel    x2, x2, x16, ne
+        csel    x3, x3, x17, ne
+        ldp     x16, x17, [p0, #32]
+        csel    x4, x4, x16, ne
+        csel    x5, x5, x17, ne
+        ldp     x16, x17, [p0, #48]
+        csel    x6, x6, x16, ne
+        csel    x7, x7, x17, ne
+        ldp     x16, x17, [p0, #64]
+        csel    x8, x8, x16, ne
+        csel    x9, x9, x17, ne
+        ldp     x16, x17, [p0, #80]
+        csel    x10, x10, x16, ne
+        csel    x11, x11, x17, ne
+        ldp     x16, x17, [p0, #96]
+        csel    x12, x12, x16, ne
+        csel    x13, x13, x17, ne
+        ldp     x16, x17, [p0, #112]
+        csel    x14, x14, x16, ne
+        csel    x15, x15, x17, ne
+        add     p0, p0, #128
+
+        cmp     bf, #4
+        ldp     x16, x17, [p0]
+        csel    x0, x0, x16, ne
+        csel    x1, x1, x17, ne
+        ldp     x16, x17, [p0, #16]
+        csel    x2, x2, x16, ne
+        csel    x3, x3, x17, ne
+        ldp     x16, x17, [p0, #32]
+        csel    x4, x4, x16, ne
+        csel    x5, x5, x17, ne
+        ldp     x16, x17, [p0, #48]
+        csel    x6, x6, x16, ne
+        csel    x7, x7, x17, ne
+        ldp     x16, x17, [p0, #64]
+        csel    x8, x8, x16, ne
+        csel    x9, x9, x17, ne
+        ldp     x16, x17, [p0, #80]
+        csel    x10, x10, x16, ne
+        csel    x11, x11, x17, ne
+        ldp     x16, x17, [p0, #96]
+        csel    x12, x12, x16, ne
+        csel    x13, x13, x17, ne
+        ldp     x16, x17, [p0, #112]
+        csel    x14, x14, x16, ne
+        csel    x15, x15, x17, ne
+        add     p0, p0, #128
+
+        cmp     bf, #5
+        ldp     x16, x17, [p0]
+        csel    x0, x0, x16, ne
+        csel    x1, x1, x17, ne
+        ldp     x16, x17, [p0, #16]
+        csel    x2, x2, x16, ne
+        csel    x3, x3, x17, ne
+        ldp     x16, x17, [p0, #32]
+        csel    x4, x4, x16, ne
+        csel    x5, x5, x17, ne
+        ldp     x16, x17, [p0, #48]
+        csel    x6, x6, x16, ne
+        csel    x7, x7, x17, ne
+        ldp     x16, x17, [p0, #64]
+        csel    x8, x8, x16, ne
+        csel    x9, x9, x17, ne
+        ldp     x16, x17, [p0, #80]
+        csel    x10, x10, x16, ne
+        csel    x11, x11, x17, ne
+        ldp     x16, x17, [p0, #96]
+        csel    x12, x12, x16, ne
+        csel    x13, x13, x17, ne
+        ldp     x16, x17, [p0, #112]
+        csel    x14, x14, x16, ne
+        csel    x15, x15, x17, ne
+        add     p0, p0, #128
+
+        cmp     bf, #6
+        ldp     x16, x17, [p0]
+        csel    x0, x0, x16, ne
+        csel    x1, x1, x17, ne
+        ldp     x16, x17, [p0, #16]
+        csel    x2, x2, x16, ne
+        csel    x3, x3, x17, ne
+        ldp     x16, x17, [p0, #32]
+        csel    x4, x4, x16, ne
+        csel    x5, x5, x17, ne
+        ldp     x16, x17, [p0, #48]
+        csel    x6, x6, x16, ne
+        csel    x7, x7, x17, ne
+        ldp     x16, x17, [p0, #64]
+        csel    x8, x8, x16, ne
+        csel    x9, x9, x17, ne
+        ldp     x16, x17, [p0, #80]
+        csel    x10, x10, x16, ne
+        csel    x11, x11, x17, ne
+        ldp     x16, x17, [p0, #96]
+        csel    x12, x12, x16, ne
+        csel    x13, x13, x17, ne
+        ldp     x16, x17, [p0, #112]
+        csel    x14, x14, x16, ne
+        csel    x15, x15, x17, ne
+        add     p0, p0, #128
+
+        cmp     bf, #7
+        ldp     x16, x17, [p0]
+        csel    x0, x0, x16, ne
+        csel    x1, x1, x17, ne
+        ldp     x16, x17, [p0, #16]
+        csel    x2, x2, x16, ne
+        csel    x3, x3, x17, ne
+        ldp     x16, x17, [p0, #32]
+        csel    x4, x4, x16, ne
+        csel    x5, x5, x17, ne
+        ldp     x16, x17, [p0, #48]
+        csel    x6, x6, x16, ne
+        csel    x7, x7, x17, ne
+        ldp     x16, x17, [p0, #64]
+        csel    x8, x8, x16, ne
+        csel    x9, x9, x17, ne
+        ldp     x16, x17, [p0, #80]
+        csel    x10, x10, x16, ne
+        csel    x11, x11, x17, ne
+        ldp     x16, x17, [p0, #96]
+        csel    x12, x12, x16, ne
+        csel    x13, x13, x17, ne
+        ldp     x16, x17, [p0, #112]
+        csel    x14, x14, x16, ne
+        csel    x15, x15, x17, ne
+        add     p0, p0, #128
+
+        cmp     bf, #8
+        ldp     x16, x17, [p0]
+        csel    x0, x0, x16, ne
+        csel    x1, x1, x17, ne
+        ldp     x16, x17, [p0, #16]
+        csel    x2, x2, x16, ne
+        csel    x3, x3, x17, ne
+        ldp     x16, x17, [p0, #32]
+        csel    x4, x4, x16, ne
+        csel    x5, x5, x17, ne
+        ldp     x16, x17, [p0, #48]
+        csel    x6, x6, x16, ne
+        csel    x7, x7, x17, ne
+        ldp     x16, x17, [p0, #64]
+        csel    x8, x8, x16, ne
+        csel    x9, x9, x17, ne
+        ldp     x16, x17, [p0, #80]
+        csel    x10, x10, x16, ne
+        csel    x11, x11, x17, ne
+        ldp     x16, x17, [p0, #96]
+        csel    x12, x12, x16, ne
+        csel    x13, x13, x17, ne
+        ldp     x16, x17, [p0, #112]
+        csel    x14, x14, x16, ne
+        csel    x15, x15, x17, ne
+
+        stp     x0, x1, [tabent]
+        stp     x2, x3, [tabent+16]
+        stp     x4, x5, [tabent+32]
+        stp     x6, x7, [tabent+48]
+        stp     x8, x9, [tabent+64]
+        stp     x10, x11, [tabent+80]
+        stp     x12, x13, [tabent+96]
+        stp     x14, x15, [tabent+112]
+
+// Add those elements to initialize the accumulator for bit position 252
+
+        add     p0, acc
+        add     p1, tabent
+        add     p2, btabent
+        bl      edwards25519_scalarmuldouble_pepadd
+
+// Main loop with acc = [scalar/2^i] * point + [bscalar/2^i] * basepoint
+// Start with i = 252 for bits 248..251 and go down four at a time to 3..0
+
+edwards25519_scalarmuldouble_loop:
+
+        sub     i, i, #4
+
+// Double to acc' = 2 * acc
+
+        add     p0, acc
+        add     p1, acc
+        bl      edwards25519_scalarmuldouble_pdouble
+
+// Get btable entry, first getting the adjusted bitfield...
 
         lsr     x0, i, #6
-        ldr     x2, [sp, x0, lsl #3]    // Exploiting scalar = sp exactly
-        lsr     x2, x2, i
-        and     x2, x2, #1
+        add     x1, bscalar
+        ldr     x2, [x1, x0, lsl #3]
+        lsr     x3, x2, i
+        and     x0, x3, #15
+        subs    bf, x0, #8
+        cneg    bf, bf, cc
+        csetm   cf, cc
 
-        cmp     swap, x2
-        mov     swap, x2
+// ... then doing constant-time lookup with the appropriate index...
 
-        mux_4(d,dm,dn)
-        mux_4(s,sm,sn)
+        adr     x14, edwards25519_scalarmuldouble_table
 
-// ADDING: dnsm = sm * dn
+        mov     x0, #1
+        mov     x1, xzr
+        mov     x2, xzr
+        mov     x3, xzr
+        mov     x4, #1
+        mov     x5, xzr
+        mov     x6, xzr
+        mov     x7, xzr
+        mov     x8, xzr
+        mov     x9, xzr
+        mov     x10, xzr
+        mov     x11, xzr
 
-        mul_4(dnsm,sm,dn)
+        cmp     bf, #1
+        ldp     x12, x13, [x14]
+        csel    x0, x0, x12, ne
+        csel    x1, x1, x13, ne
+        ldp     x12, x13, [x14, #16]
+        csel    x2, x2, x12, ne
+        csel    x3, x3, x13, ne
+        ldp     x12, x13, [x14, #32]
+        csel    x4, x4, x12, ne
+        csel    x5, x5, x13, ne
+        ldp     x12, x13, [x14, #48]
+        csel    x6, x6, x12, ne
+        csel    x7, x7, x13, ne
+        ldp     x12, x13, [x14, #64]
+        csel    x8, x8, x12, ne
+        csel    x9, x9, x13, ne
+        ldp     x12, x13, [x14, #80]
+        csel    x10, x10, x12, ne
+        csel    x11, x11, x13, ne
+        add     x14, x14, #96
 
-// DOUBLING: d = (xt - zt)^2
+        cmp     bf, #2
+        ldp     x12, x13, [x14]
+        csel    x0, x0, x12, ne
+        csel    x1, x1, x13, ne
+        ldp     x12, x13, [x14, #16]
+        csel    x2, x2, x12, ne
+        csel    x3, x3, x13, ne
+        ldp     x12, x13, [x14, #32]
+        csel    x4, x4, x12, ne
+        csel    x5, x5, x13, ne
+        ldp     x12, x13, [x14, #48]
+        csel    x6, x6, x12, ne
+        csel    x7, x7, x13, ne
+        ldp     x12, x13, [x14, #64]
+        csel    x8, x8, x12, ne
+        csel    x9, x9, x13, ne
+        ldp     x12, x13, [x14, #80]
+        csel    x10, x10, x12, ne
+        csel    x11, x11, x13, ne
+        add     x14, x14, #96
 
-        sqr_4(d,d)
+        cmp     bf, #3
+        ldp     x12, x13, [x14]
+        csel    x0, x0, x12, ne
+        csel    x1, x1, x13, ne
+        ldp     x12, x13, [x14, #16]
+        csel    x2, x2, x12, ne
+        csel    x3, x3, x13, ne
+        ldp     x12, x13, [x14, #32]
+        csel    x4, x4, x12, ne
+        csel    x5, x5, x13, ne
+        ldp     x12, x13, [x14, #48]
+        csel    x6, x6, x12, ne
+        csel    x7, x7, x13, ne
+        ldp     x12, x13, [x14, #64]
+        csel    x8, x8, x12, ne
+        csel    x9, x9, x13, ne
+        ldp     x12, x13, [x14, #80]
+        csel    x10, x10, x12, ne
+        csel    x11, x11, x13, ne
+        add     x14, x14, #96
 
-// ADDING: dpro = (dmsn - dnsm)^2, spro = (dmsn + dnsm)^2
-// DOUBLING: s = (xt + zt)^2
+        cmp     bf, #4
+        ldp     x12, x13, [x14]
+        csel    x0, x0, x12, ne
+        csel    x1, x1, x13, ne
+        ldp     x12, x13, [x14, #16]
+        csel    x2, x2, x12, ne
+        csel    x3, x3, x13, ne
+        ldp     x12, x13, [x14, #32]
+        csel    x4, x4, x12, ne
+        csel    x5, x5, x13, ne
+        ldp     x12, x13, [x14, #48]
+        csel    x6, x6, x12, ne
+        csel    x7, x7, x13, ne
+        ldp     x12, x13, [x14, #64]
+        csel    x8, x8, x12, ne
+        csel    x9, x9, x13, ne
+        ldp     x12, x13, [x14, #80]
+        csel    x10, x10, x12, ne
+        csel    x11, x11, x13, ne
+        add     x14, x14, #96
 
-        sub_twice4(dpro,dmsn,dnsm)
-        sqr_4(s,s)
-        add_twice4(spro,dmsn,dnsm)
-        sqr_4(dpro,dpro)
+        cmp     bf, #5
+        ldp     x12, x13, [x14]
+        csel    x0, x0, x12, ne
+        csel    x1, x1, x13, ne
+        ldp     x12, x13, [x14, #16]
+        csel    x2, x2, x12, ne
+        csel    x3, x3, x13, ne
+        ldp     x12, x13, [x14, #32]
+        csel    x4, x4, x12, ne
+        csel    x5, x5, x13, ne
+        ldp     x12, x13, [x14, #48]
+        csel    x6, x6, x12, ne
+        csel    x7, x7, x13, ne
+        ldp     x12, x13, [x14, #64]
+        csel    x8, x8, x12, ne
+        csel    x9, x9, x13, ne
+        ldp     x12, x13, [x14, #80]
+        csel    x10, x10, x12, ne
+        csel    x11, x11, x13, ne
+        add     x14, x14, #96
 
-// DOUBLING: p = 4 * xt * zt = s - d
+        cmp     bf, #6
+        ldp     x12, x13, [x14]
+        csel    x0, x0, x12, ne
+        csel    x1, x1, x13, ne
+        ldp     x12, x13, [x14, #16]
+        csel    x2, x2, x12, ne
+        csel    x3, x3, x13, ne
+        ldp     x12, x13, [x14, #32]
+        csel    x4, x4, x12, ne
+        csel    x5, x5, x13, ne
+        ldp     x12, x13, [x14, #48]
+        csel    x6, x6, x12, ne
+        csel    x7, x7, x13, ne
+        ldp     x12, x13, [x14, #64]
+        csel    x8, x8, x12, ne
+        csel    x9, x9, x13, ne
+        ldp     x12, x13, [x14, #80]
+        csel    x10, x10, x12, ne
+        csel    x11, x11, x13, ne
+        add     x14, x14, #96
 
-        sub_twice4(p,s,d)
+        cmp     bf, #7
+        ldp     x12, x13, [x14]
+        csel    x0, x0, x12, ne
+        csel    x1, x1, x13, ne
+        ldp     x12, x13, [x14, #16]
+        csel    x2, x2, x12, ne
+        csel    x3, x3, x13, ne
+        ldp     x12, x13, [x14, #32]
+        csel    x4, x4, x12, ne
+        csel    x5, x5, x13, ne
+        ldp     x12, x13, [x14, #48]
+        csel    x6, x6, x12, ne
+        csel    x7, x7, x13, ne
+        ldp     x12, x13, [x14, #64]
+        csel    x8, x8, x12, ne
+        csel    x9, x9, x13, ne
+        ldp     x12, x13, [x14, #80]
+        csel    x10, x10, x12, ne
+        csel    x11, x11, x13, ne
+        add     x14, x14, #96
 
-// ADDING: xm' = (dmsn + dnsm)^2
+        cmp     bf, #8
+        ldp     x12, x13, [x14]
+        csel    x0, x0, x12, ne
+        csel    x1, x1, x13, ne
+        ldp     x12, x13, [x14, #16]
+        csel    x2, x2, x12, ne
+        csel    x3, x3, x13, ne
+        ldp     x12, x13, [x14, #32]
+        csel    x4, x4, x12, ne
+        csel    x5, x5, x13, ne
+        ldp     x12, x13, [x14, #48]
+        csel    x6, x6, x12, ne
+        csel    x7, x7, x13, ne
+        ldp     x12, x13, [x14, #64]
+        csel    x8, x8, x12, ne
+        csel    x9, x9, x13, ne
+        ldp     x12, x13, [x14, #80]
+        csel    x10, x10, x12, ne
+        csel    x11, x11, x13, ne
 
-        sqr_4(xm,spro)
+// ... then optionally negating before storing. The table entry
+// is in precomputed form and we currently have
+//
+//      [x3;x2;x1;x0] = y - x
+//      [x7;x6;x5;x4] = x + y
+//      [x11;x10;x9;x8] = 2 * d * x * y
+//
+// Negation for Edwards curves is -(x,y) = (-x,y), which in this modified
+// form amounts to swapping the first two fields and negating the third.
+// The negation does not always fully reduce even mod 2^256-38 in the zero
+// case, instead giving -0 = 2^256-38. But that is fine since the result is
+// always fed to a multipliction inside the "pepadd" function below that
+// handles any 256-bit input.
 
-// DOUBLING: e = 121666 * p + d
+        cmp     cf, xzr
 
-        mov     x1, 0xdb42
-        orr     x1, x1, 0x10000
-        cmadd_4(e,p,d)
+        csel    x12, x0, x4, eq
+        csel    x4, x0, x4, ne
+        csel    x13, x1, x5, eq
+        csel    x5, x1, x5, ne
+        csel    x14, x2, x6, eq
+        csel    x6, x2, x6, ne
+        csel    x15, x3, x7, eq
+        csel    x7, x3, x7, ne
 
-// DOUBLING: xn' = (xt + zt)^2 * (xt - zt)^2 = s * d
+        eor     x8, x8, cf
+        eor     x9, x9, cf
+        eor     x10, x10, cf
+        eor     x11, x11, cf
+        mov     x0, #37
+        and     x0, x0, cf
+        subs    x8, x8, x0
+        sbcs    x9, x9, xzr
+        sbcs    x10, x10, xzr
+        sbc     x11, x11, xzr
 
-        mul_4(xn,s,d)
+        stp     x12, x13, [btabent]
+        stp     x14, x15, [btabent+16]
+        stp     x4, x5, [btabent+32]
+        stp     x6, x7, [btabent+48]
+        stp     x8, x9, [btabent+64]
+        stp     x10, x11, [btabent+80]
 
-// ADDING: zm' = x * (dmsn - dnsm)^2
+// Get table entry, first getting the adjusted bitfield...
 
-        mul_4(zm,dpro,pointx)
+        lsr     x0, i, #6
+        ldr     x1, [sp, x0, lsl #3]
+        lsr     x2, x1, i
+        and     x0, x2, #15
+        subs    bf, x0, #8
+        cneg    bf, bf, cc
+        csetm   cf, cc
 
-// DOUBLING: zn' = (4 * xt * zt) * ((xt - zt)^2 + 121666 * (4 * xt * zt))
-//               = p * (d + 121666 * p)
+// ... then getting the unadjusted table entry
 
-        mul_4(zn,p,e)
+        add     p0, tab
 
-// Loop down as far as 3 (inclusive)
+        mov     x0, xzr
+        mov     x1, xzr
+        mov     x2, xzr
+        mov     x3, xzr
+        mov     x4, #1
+        mov     x5, xzr
+        mov     x6, xzr
+        mov     x7, xzr
+        mov     x8, #1
+        mov     x9, xzr
+        mov     x10, xzr
+        mov     x11, xzr
+        mov     x12, xzr
+        mov     x13, xzr
+        mov     x14, xzr
+        mov     x15, xzr
 
-        sub     i, i, #1
-        cmp     i, #3
-        bcs     curve25519_x25519_scalarloop
+        cmp     bf, #1
+        ldp     x16, x17, [p0]
+        csel    x0, x0, x16, ne
+        csel    x1, x1, x17, ne
+        ldp     x16, x17, [p0, #16]
+        csel    x2, x2, x16, ne
+        csel    x3, x3, x17, ne
+        ldp     x16, x17, [p0, #32]
+        csel    x4, x4, x16, ne
+        csel    x5, x5, x17, ne
+        ldp     x16, x17, [p0, #48]
+        csel    x6, x6, x16, ne
+        csel    x7, x7, x17, ne
+        ldp     x16, x17, [p0, #64]
+        csel    x8, x8, x16, ne
+        csel    x9, x9, x17, ne
+        ldp     x16, x17, [p0, #80]
+        csel    x10, x10, x16, ne
+        csel    x11, x11, x17, ne
+        ldp     x16, x17, [p0, #96]
+        csel    x12, x12, x16, ne
+        csel    x13, x13, x17, ne
+        ldp     x16, x17, [p0, #112]
+        csel    x14, x14, x16, ne
+        csel    x15, x15, x17, ne
+        add     p0, p0, #128
 
-// Multiplex directly into (xn,zn) then do three pure doubling steps;
-// this accounts for the implicit zeroing of the three lowest bits
-// of the scalar. On the very last doubling we *fully* reduce zn mod
-// p_25519 to ease checking for degeneracy below.
+        cmp     bf, #2
+        ldp     x16, x17, [p0]
+        csel    x0, x0, x16, ne
+        csel    x1, x1, x17, ne
+        ldp     x16, x17, [p0, #16]
+        csel    x2, x2, x16, ne
+        csel    x3, x3, x17, ne
+        ldp     x16, x17, [p0, #32]
+        csel    x4, x4, x16, ne
+        csel    x5, x5, x17, ne
+        ldp     x16, x17, [p0, #48]
+        csel    x6, x6, x16, ne
+        csel    x7, x7, x17, ne
+        ldp     x16, x17, [p0, #64]
+        csel    x8, x8, x16, ne
+        csel    x9, x9, x17, ne
+        ldp     x16, x17, [p0, #80]
+        csel    x10, x10, x16, ne
+        csel    x11, x11, x17, ne
+        ldp     x16, x17, [p0, #96]
+        csel    x12, x12, x16, ne
+        csel    x13, x13, x17, ne
+        ldp     x16, x17, [p0, #112]
+        csel    x14, x14, x16, ne
+        csel    x15, x15, x17, ne
+        add     p0, p0, #128
 
-        cmp     swap, xzr
-        mux_4(xn,xm,xn)
-        mux_4(zn,zm,zn)
+        cmp     bf, #3
+        ldp     x16, x17, [p0]
+        csel    x0, x0, x16, ne
+        csel    x1, x1, x17, ne
+        ldp     x16, x17, [p0, #16]
+        csel    x2, x2, x16, ne
+        csel    x3, x3, x17, ne
+        ldp     x16, x17, [p0, #32]
+        csel    x4, x4, x16, ne
+        csel    x5, x5, x17, ne
+        ldp     x16, x17, [p0, #48]
+        csel    x6, x6, x16, ne
+        csel    x7, x7, x17, ne
+        ldp     x16, x17, [p0, #64]
+        csel    x8, x8, x16, ne
+        csel    x9, x9, x17, ne
+        ldp     x16, x17, [p0, #80]
+        csel    x10, x10, x16, ne
+        csel    x11, x11, x17, ne
+        ldp     x16, x17, [p0, #96]
+        csel    x12, x12, x16, ne
+        csel    x13, x13, x17, ne
+        ldp     x16, x17, [p0, #112]
+        csel    x14, x14, x16, ne
+        csel    x15, x15, x17, ne
+        add     p0, p0, #128
 
-        sub_twice4(d,xn,zn)
-        add_twice4(s,xn,zn)
-        sqr_4(d,d)
-        sqr_4(s,s)
-        sub_twice4(p,s,d)
-        mov     x1, 0xdb42
-        orr     x1, x1, 0x10000
-        cmadd_4(e,p,d)
-        mul_4(xn,s,d)
-        mul_4(zn,p,e)
+        cmp     bf, #4
+        ldp     x16, x17, [p0]
+        csel    x0, x0, x16, ne
+        csel    x1, x1, x17, ne
+        ldp     x16, x17, [p0, #16]
+        csel    x2, x2, x16, ne
+        csel    x3, x3, x17, ne
+        ldp     x16, x17, [p0, #32]
+        csel    x4, x4, x16, ne
+        csel    x5, x5, x17, ne
+        ldp     x16, x17, [p0, #48]
+        csel    x6, x6, x16, ne
+        csel    x7, x7, x17, ne
+        ldp     x16, x17, [p0, #64]
+        csel    x8, x8, x16, ne
+        csel    x9, x9, x17, ne
+        ldp     x16, x17, [p0, #80]
+        csel    x10, x10, x16, ne
+        csel    x11, x11, x17, ne
+        ldp     x16, x17, [p0, #96]
+        csel    x12, x12, x16, ne
+        csel    x13, x13, x17, ne
+        ldp     x16, x17, [p0, #112]
+        csel    x14, x14, x16, ne
+        csel    x15, x15, x17, ne
+        add     p0, p0, #128
 
-        sub_twice4(d,xn,zn)
-        add_twice4(s,xn,zn)
-        sqr_4(d,d)
-        sqr_4(s,s)
-        sub_twice4(p,s,d)
-        mov     x1, 0xdb42
-        orr     x1, x1, 0x10000
-        cmadd_4(e,p,d)
-        mul_4(xn,s,d)
-        mul_4(zn,p,e)
+        cmp     bf, #5
+        ldp     x16, x17, [p0]
+        csel    x0, x0, x16, ne
+        csel    x1, x1, x17, ne
+        ldp     x16, x17, [p0, #16]
+        csel    x2, x2, x16, ne
+        csel    x3, x3, x17, ne
+        ldp     x16, x17, [p0, #32]
+        csel    x4, x4, x16, ne
+        csel    x5, x5, x17, ne
+        ldp     x16, x17, [p0, #48]
+        csel    x6, x6, x16, ne
+        csel    x7, x7, x17, ne
+        ldp     x16, x17, [p0, #64]
+        csel    x8, x8, x16, ne
+        csel    x9, x9, x17, ne
+        ldp     x16, x17, [p0, #80]
+        csel    x10, x10, x16, ne
+        csel    x11, x11, x17, ne
+        ldp     x16, x17, [p0, #96]
+        csel    x12, x12, x16, ne
+        csel    x13, x13, x17, ne
+        ldp     x16, x17, [p0, #112]
+        csel    x14, x14, x16, ne
+        csel    x15, x15, x17, ne
+        add     p0, p0, #128
 
-        sub_twice4(d,xn,zn)
-        add_twice4(s,xn,zn)
-        sqr_4(d,d)
-        sqr_4(s,s)
-        sub_twice4(p,s,d)
-        mov     x1, 0xdb42
-        orr     x1, x1, 0x10000
-        cmadd_4(e,p,d)
-        mul_4(xn,s,d)
-        mul_p25519(zn,p,e)
+        cmp     bf, #6
+        ldp     x16, x17, [p0]
+        csel    x0, x0, x16, ne
+        csel    x1, x1, x17, ne
+        ldp     x16, x17, [p0, #16]
+        csel    x2, x2, x16, ne
+        csel    x3, x3, x17, ne
+        ldp     x16, x17, [p0, #32]
+        csel    x4, x4, x16, ne
+        csel    x5, x5, x17, ne
+        ldp     x16, x17, [p0, #48]
+        csel    x6, x6, x16, ne
+        csel    x7, x7, x17, ne
+        ldp     x16, x17, [p0, #64]
+        csel    x8, x8, x16, ne
+        csel    x9, x9, x17, ne
+        ldp     x16, x17, [p0, #80]
+        csel    x10, x10, x16, ne
+        csel    x11, x11, x17, ne
+        ldp     x16, x17, [p0, #96]
+        csel    x12, x12, x16, ne
+        csel    x13, x13, x17, ne
+        ldp     x16, x17, [p0, #112]
+        csel    x14, x14, x16, ne
+        csel    x15, x15, x17, ne
+        add     p0, p0, #128
 
-// The projective result of the scalar multiplication is now (xn,zn).
-// Prepare to call the modular inverse function to get xm = 1/zn
+        cmp     bf, #7
+        ldp     x16, x17, [p0]
+        csel    x0, x0, x16, ne
+        csel    x1, x1, x17, ne
+        ldp     x16, x17, [p0, #16]
+        csel    x2, x2, x16, ne
+        csel    x3, x3, x17, ne
+        ldp     x16, x17, [p0, #32]
+        csel    x4, x4, x16, ne
+        csel    x5, x5, x17, ne
+        ldp     x16, x17, [p0, #48]
+        csel    x6, x6, x16, ne
+        csel    x7, x7, x17, ne
+        ldp     x16, x17, [p0, #64]
+        csel    x8, x8, x16, ne
+        csel    x9, x9, x17, ne
+        ldp     x16, x17, [p0, #80]
+        csel    x10, x10, x16, ne
+        csel    x11, x11, x17, ne
+        ldp     x16, x17, [p0, #96]
+        csel    x12, x12, x16, ne
+        csel    x13, x13, x17, ne
+        ldp     x16, x17, [p0, #112]
+        csel    x14, x14, x16, ne
+        csel    x15, x15, x17, ne
+        add     p0, p0, #128
 
-        add     x0, xm
-        add     x1, zn
+        cmp     bf, #8
+        ldp     x16, x17, [p0]
+        csel    x0, x0, x16, ne
+        csel    x1, x1, x17, ne
+        ldp     x16, x17, [p0, #16]
+        csel    x2, x2, x16, ne
+        csel    x3, x3, x17, ne
+        ldp     x16, x17, [p0, #32]
+        csel    x4, x4, x16, ne
+        csel    x5, x5, x17, ne
+        ldp     x16, x17, [p0, #48]
+        csel    x6, x6, x16, ne
+        csel    x7, x7, x17, ne
+        ldp     x16, x17, [p0, #64]
+        csel    x8, x8, x16, ne
+        csel    x9, x9, x17, ne
+        ldp     x16, x17, [p0, #80]
+        csel    x10, x10, x16, ne
+        csel    x11, x11, x17, ne
+        ldp     x16, x17, [p0, #96]
+        csel    x12, x12, x16, ne
+        csel    x13, x13, x17, ne
+        ldp     x16, x17, [p0, #112]
+        csel    x14, x14, x16, ne
+        csel    x15, x15, x17, ne
+
+// ... then optionally negating before storing. This time the table
+// entry is extended-projective, and is in registers thus:
+//
+//      [x3;x2;x1;x0] = X
+//      [x7;x6;x5;x4] = Y
+//      [x11;x10;x9;x8] = Z
+//      [x15;x14;x13;x12] = W
+//
+// This time we just need to negate the X and the W fields.
+// The crude way negation is done can result in values of X or W
+// (when initially zero before negation) being exactly equal to
+// 2^256-38, but the "pepadd" function handles that correctly.
+
+        eor     x0, x0, cf
+        eor     x1, x1, cf
+        eor     x2, x2, cf
+        eor     x3, x3, cf
+        mov     x16, #37
+        and     x16, x16, cf
+        subs    x0, x0, x16
+        sbcs    x1, x1, xzr
+        sbcs    x2, x2, xzr
+        sbc     x3, x3, xzr
+
+        eor     x12, x12, cf
+        eor     x13, x13, cf
+        eor     x14, x14, cf
+        eor     x15, x15, cf
+        subs    x12, x12, x16
+        sbcs    x13, x13, xzr
+        sbcs    x14, x14, xzr
+        sbc     x15, x15, xzr
+
+        stp     x0, x1, [tabent]
+        stp     x2, x3, [tabent+16]
+        stp     x4, x5, [tabent+32]
+        stp     x6, x7, [tabent+48]
+        stp     x8, x9, [tabent+64]
+        stp     x10, x11, [tabent+80]
+        stp     x12, x13, [tabent+96]
+        stp     x14, x15, [tabent+112]
+
+// Double to acc' = 4 * acc
+
+        add     p0, acc
+        add     p1, acc
+        bl      edwards25519_scalarmuldouble_pdouble
+
+// Add tabent := tabent + btabent
+
+        add     p0, tabent
+        add     p1, tabent
+        add     p2, btabent
+        bl      edwards25519_scalarmuldouble_pepadd
+
+// Double to acc' = 8 * acc
+
+        add     p0, acc
+        add     p1, acc
+        bl      edwards25519_scalarmuldouble_pdouble
+
+// Double to acc' = 16 * acc
+
+        add     p0, acc
+        add     p1, acc
+        bl      edwards25519_scalarmuldouble_epdouble
+
+// Add table entry, acc := acc + tabent
+
+        add     p0, acc
+        add     p1, acc
+        add     p2, tabent
+        bl      edwards25519_scalarmuldouble_epadd
+
+// Loop down
+
+        cbnz    i, edwards25519_scalarmuldouble_loop
+
+// Modular inverse setup
+
+        add     x0, tabent
+        add     x1, acc+64
 
 // Inline copy of bignum_inv_p25519, identical except for stripping out
 // the prologue and epilogue saving and restoring registers and making
 // and reclaiming room on the stack. For more details and explanations see
 // "arm/curve25519/bignum_inv_p25519.S". Note that the stack it uses for
 // its own temporaries is 128 bytes, so it has no effect on variables
-// that are needed in the rest of our computation here: res, xm and zn.
+// that are needed in the rest of our computation here: res, acc, tabent.
 
         mov     x20, x0
         mov     x10, #0xffffffffffffffed
@@ -908,8 +1928,8 @@ curve25519_x25519_scalarloop:
         stp     x12, x13, [sp, #112]
         mov     x21, #0xa
         mov     x22, #0x1
-        b       curve25519_x25519_invmidloop
-curve25519_x25519_invloop:
+        b       edwards25519_scalarmuldouble_invmidloop
+edwards25519_scalarmuldouble_invloop:
         cmp     x10, xzr
         csetm   x14, mi
         cneg    x10, x10, mi
@@ -1176,7 +2196,7 @@ curve25519_x25519_invloop:
         adc     x2, x2, x5
         stp     x0, x1, [sp, #96]
         stp     x3, x2, [sp, #112]
-curve25519_x25519_invmidloop:
+edwards25519_scalarmuldouble_invmidloop:
         mov     x1, x22
         ldr     x2, [sp]
         ldr     x3, [sp, #32]
@@ -1787,7 +2807,7 @@ curve25519_x25519_invmidloop:
         msub    x13, x15, x17, x5
         mov     x22, x1
         subs    x21, x21, #0x1
-        b.ne    curve25519_x25519_invloop
+        b.ne    edwards25519_scalarmuldouble_invloop
         ldr     x0, [sp]
         ldr     x1, [sp, #32]
         mul     x0, x0, x10
@@ -1891,37 +2911,246 @@ curve25519_x25519_invmidloop:
         stp     x0, x1, [x4]
         stp     x2, x5, [x4, #16]
 
-// Since we eventually want to return 0 when the result is the point at
-// infinity, we force xn = 0 whenever zn = 0. This avoids building in a
-// dependency on the behavior of modular inverse in out-of-scope cases.
+// Store result. Note that these are the only reductions mod 2^255-19
 
-        ldp     x0, x1, [zn]
-        ldp     x2, x3, [zn+16]
-        orr     x0, x0, x1
-        orr     x2, x2, x3
-        orr     x4, x0, x2
-        cmp     x4, xzr
-        ldp     x0, x1, [xn]
-        csel    x0, x0, xzr, ne
-        csel    x1, x1, xzr, ne
-        ldp     x2, x3, [xn+16]
-        stp     x0, x1, [xn]
-        csel    x2, x2, xzr, ne
-        csel    x3, x3, xzr, ne
-        stp     x2, x3, [xn+16]
+        mov     p0, res
+        add     p1, acc
+        add     p2, tabent
+        mul_p25519(x_0,x_1,x_2)
 
-// Now the result is xn * (1/zn), fully reduced modulo p.
-
-        mul_p25519(resx,xn,xm)
+        add     p0, res, #32
+        add     p1, acc+32
+        add     p2, tabent
+        mul_p25519(x_0,x_1,x_2)
 
 // Restore stack and registers
 
         add     sp, sp, #NSPACE
+        ldp     x25, x30, [sp], 16
         ldp     x23, x24, [sp], 16
         ldp     x21, x22, [sp], 16
         ldp     x19, x20, [sp], 16
 
         ret
+
+// ****************************************************************************
+// Localized versions of subroutines.
+// These are close to the standalone functions "edwards25519_epdouble" etc.,
+// but are only maintaining reduction modulo 2^256 - 38, not 2^255 - 19.
+// ****************************************************************************
+
+edwards25519_scalarmuldouble_epdouble:
+        sub sp, sp, #(5*NUMSIZE)
+        add_twice4(t0,x_1,y_1)
+        sqr_4(t1,z_1)
+        sqr_4(t2,x_1)
+        sqr_4(t3,y_1)
+        double_twice4(t1,t1)
+        sqr_4(t0,t0)
+        add_twice4(t4,t2,t3)
+        sub_twice4(t2,t2,t3)
+        add_twice4(t3,t1,t2)
+        sub_twice4(t1,t4,t0)
+        mul_4(y_0,t2,t4)
+        mul_4(z_0,t3,t2)
+        mul_4(w_0,t1,t4)
+        mul_4(x_0,t1,t3)
+        add sp, sp, #(5*NUMSIZE)
+        ret
+
+edwards25519_scalarmuldouble_pdouble:
+        sub sp, sp, #(5*NUMSIZE)
+        add_twice4(t0,x_1,y_1)
+        sqr_4(t1,z_1)
+        sqr_4(t2,x_1)
+        sqr_4(t3,y_1)
+        double_twice4(t1,t1)
+        sqr_4(t0,t0)
+        add_twice4(t4,t2,t3)
+        sub_twice4(t2,t2,t3)
+        add_twice4(t3,t1,t2)
+        sub_twice4(t1,t4,t0)
+        mul_4(y_0,t2,t4)
+        mul_4(z_0,t3,t2)
+        mul_4(x_0,t1,t3)
+        add sp, sp, #(5*NUMSIZE)
+        ret
+
+edwards25519_scalarmuldouble_epadd:
+        sub sp, sp, #(6*NUMSIZE)
+        mul_4(t0,w_1,w_2)
+        sub_twice4(t1,y_1,x_1)
+        sub_twice4(t2,y_2,x_2)
+        add_twice4(t3,y_1,x_1)
+        add_twice4(t4,y_2,x_2)
+        double_twice4(t5,z_2)
+        mul_4(t1,t1,t2)
+        mul_4(t3,t3,t4)
+        load_k25519(t2)
+        mul_4(t2,t2,t0)
+        mul_4(t4,z_1,t5)
+        sub_twice4(t0,t3,t1)
+        add_twice4(t5,t3,t1)
+        sub_twice4(t1,t4,t2)
+        add_twice4(t3,t4,t2)
+        mul_4(w_0,t0,t5)
+        mul_4(x_0,t0,t1)
+        mul_4(y_0,t3,t5)
+        mul_4(z_0,t1,t3)
+        add sp, sp, #(6*NUMSIZE)
+        ret
+
+edwards25519_scalarmuldouble_pepadd:
+        sub sp, sp, #(6*NUMSIZE)
+        double_twice4(t0,z_1);
+        sub_twice4(t1,y_1,x_1);
+        add_twice4(t2,y_1,x_1);
+        mul_4(t3,w_1,z_2);
+        mul_4(t1,t1,x_2);
+        mul_4(t2,t2,y_2);
+        sub_twice4(t4,t0,t3);
+        add_twice4(t0,t0,t3);
+        sub_twice4(t5,t2,t1);
+        add_twice4(t1,t2,t1);
+        mul_4(z_0,t4,t0);
+        mul_4(x_0,t5,t4);
+        mul_4(y_0,t0,t1);
+        mul_4(w_0,t5,t1);
+        add sp, sp, #(6*NUMSIZE)
+        ret
+
+// ****************************************************************************
+// The precomputed data (all read-only). This is currently part of the same
+// text section, which gives position-independent code with simple PC-relative
+// addressing. However it could be put in a separate section via something like
+//
+// .section .rodata
+// ****************************************************************************
+
+// Precomputed table of multiples of generator for edwards25519
+// all in precomputed extended-projective (y-x,x+y,2*d*x*y) triples.
+
+edwards25519_scalarmuldouble_table:
+
+        // 1 * G
+
+        .quad   0x9d103905d740913e
+        .quad   0xfd399f05d140beb3
+        .quad   0xa5c18434688f8a09
+        .quad   0x44fd2f9298f81267
+        .quad   0x2fbc93c6f58c3b85
+        .quad   0xcf932dc6fb8c0e19
+        .quad   0x270b4898643d42c2
+        .quad   0x07cf9d3a33d4ba65
+        .quad   0xabc91205877aaa68
+        .quad   0x26d9e823ccaac49e
+        .quad   0x5a1b7dcbdd43598c
+        .quad   0x6f117b689f0c65a8
+
+        // 2 * G
+
+        .quad   0x8a99a56042b4d5a8
+        .quad   0x8f2b810c4e60acf6
+        .quad   0xe09e236bb16e37aa
+        .quad   0x6bb595a669c92555
+        .quad   0x9224e7fc933c71d7
+        .quad   0x9f469d967a0ff5b5
+        .quad   0x5aa69a65e1d60702
+        .quad   0x590c063fa87d2e2e
+        .quad   0x43faa8b3a59b7a5f
+        .quad   0x36c16bdd5d9acf78
+        .quad   0x500fa0840b3d6a31
+        .quad   0x701af5b13ea50b73
+
+        // 3 * G
+
+        .quad   0x56611fe8a4fcd265
+        .quad   0x3bd353fde5c1ba7d
+        .quad   0x8131f31a214bd6bd
+        .quad   0x2ab91587555bda62
+        .quad   0xaf25b0a84cee9730
+        .quad   0x025a8430e8864b8a
+        .quad   0xc11b50029f016732
+        .quad   0x7a164e1b9a80f8f4
+        .quad   0x14ae933f0dd0d889
+        .quad   0x589423221c35da62
+        .quad   0xd170e5458cf2db4c
+        .quad   0x5a2826af12b9b4c6
+
+        // 4 * G
+
+        .quad   0x95fe050a056818bf
+        .quad   0x327e89715660faa9
+        .quad   0xc3e8e3cd06a05073
+        .quad   0x27933f4c7445a49a
+        .quad   0x287351b98efc099f
+        .quad   0x6765c6f47dfd2538
+        .quad   0xca348d3dfb0a9265
+        .quad   0x680e910321e58727
+        .quad   0x5a13fbe9c476ff09
+        .quad   0x6e9e39457b5cc172
+        .quad   0x5ddbdcf9102b4494
+        .quad   0x7f9d0cbf63553e2b
+
+        // 5 * G
+
+        .quad   0x7f9182c3a447d6ba
+        .quad   0xd50014d14b2729b7
+        .quad   0xe33cf11cb864a087
+        .quad   0x154a7e73eb1b55f3
+        .quad   0xa212bc4408a5bb33
+        .quad   0x8d5048c3c75eed02
+        .quad   0xdd1beb0c5abfec44
+        .quad   0x2945ccf146e206eb
+        .quad   0xbcbbdbf1812a8285
+        .quad   0x270e0807d0bdd1fc
+        .quad   0xb41b670b1bbda72d
+        .quad   0x43aabe696b3bb69a
+
+        // 6 * G
+
+        .quad   0x499806b67b7d8ca4
+        .quad   0x575be28427d22739
+        .quad   0xbb085ce7204553b9
+        .quad   0x38b64c41ae417884
+        .quad   0x3a0ceeeb77157131
+        .quad   0x9b27158900c8af88
+        .quad   0x8065b668da59a736
+        .quad   0x51e57bb6a2cc38bd
+        .quad   0x85ac326702ea4b71
+        .quad   0xbe70e00341a1bb01
+        .quad   0x53e4a24b083bc144
+        .quad   0x10b8e91a9f0d61e3
+
+        // 7 * G
+
+        .quad   0xba6f2c9aaa3221b1
+        .quad   0x6ca021533bba23a7
+        .quad   0x9dea764f92192c3a
+        .quad   0x1d6edd5d2e5317e0
+        .quad   0x6b1a5cd0944ea3bf
+        .quad   0x7470353ab39dc0d2
+        .quad   0x71b2528228542e49
+        .quad   0x461bea69283c927e
+        .quad   0xf1836dc801b8b3a2
+        .quad   0xb3035f47053ea49a
+        .quad   0x529c41ba5877adf3
+        .quad   0x7a9fbb1c6a0f90a7
+
+        // 8 * G
+
+        .quad   0xe2a75dedf39234d9
+        .quad   0x963d7680e1b558f9
+        .quad   0x2c2741ac6e3c23fb
+        .quad   0x3a9024a1320e01c3
+        .quad   0x59b7596604dd3e8f
+        .quad   0x6cb30377e288702c
+        .quad   0xb1339c665ed9c323
+        .quad   0x0915e76061bce52f
+        .quad   0xe7c1f5d9c9a2911a
+        .quad   0xb8a371788bcca7d7
+        .quad   0x636412190eb62a32
+        .quad   0x26907c5c2ecc4e95
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack, "", %progbits
