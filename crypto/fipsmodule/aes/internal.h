@@ -173,6 +173,13 @@ int crypto_xts_avx512_enabled(void);
 
 #endif //AES_XTS_X86_64_AVX512
 
+#if defined(OPENSSL_X86_64)
+OPENSSL_EXPORT void aes_hw_xts_reencrypt(
+  const uint8_t *inp, uint8_t *out, size_t len,
+  const AES_KEY *key1_dec, const AES_KEY *key2_dec,
+  const uint8_t iv[16],
+  const AES_KEY *key1_enc, const AES_KEY *key2_enc);
+#endif
 
 #else
 OPENSSL_INLINE int hwaes_xts_available(void) { return 0; }
