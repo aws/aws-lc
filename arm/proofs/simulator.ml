@@ -150,6 +150,9 @@ let iclasses =
   (*** UMULH ***)
   "10011011110xxxxx011111xxxxxxxxxx";
 
+  (*** SMULH ***)
+  "10011011010xxxxx011111xxxxxxxxxx";
+
   (*** UMADDL, UMSUBL ***)
   "10011011101xxxxxxxxxxxxxxxxxxxxx";
 
@@ -188,7 +191,7 @@ let iclasses =
 
   (*** SHA256 Intrinsics ***)
   (*** SHA256H ***)
-  "01011110000xxxxx010000xxxxxxxxxx"; 
+  "01011110000xxxxx010000xxxxxxxxxx";
 
   (*** SHA256H2 ***)
   "01011110000xxxxx010100xxxxxxxxxx";
@@ -199,7 +202,7 @@ let iclasses =
   (*** SHA256SU1 ***)
   "01011110000xxxxx011000xxxxxxxxxx";
 
-  (*** SHA512 Intrinsics 
+  (*** SHA512 Intrinsics
   (*** SHA512H ***)
   "11001110011xxxxx100000xxxxxxxxxx";
 
@@ -363,6 +366,7 @@ let run_random_simulation () =
       REWRITE_TAC[DIMINDEX_64; DIMINDEX_128] THEN CONV_TAC NUM_REDUCE_CONV THEN
       REWRITE_TAC[SOME_FLAGS] THEN
       ARM_SIM_TAC execth [1] THEN
+      CONV_TAC(DEPTH_CONV WORD_NUM_RED_CONV) THEN REWRITE_TAC[] THEN
       PRINT_GOAL_TAC "result mismatch" THEN
       NO_TAC) in
     (decoded,result)

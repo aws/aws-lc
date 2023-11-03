@@ -346,6 +346,15 @@ extern void bignum_half_p521 (uint64_t z[static 9], uint64_t x[static 9]);
 // Input x[4]; output z[4]
 extern void bignum_half_sm2 (uint64_t z[static 4], uint64_t x[static 4]);
 
+// Modular inverse modulo p_25519 = 2^255 - 19
+// Input x[4]; output z[4]
+extern void bignum_inv_p25519(uint64_t z[static 4],uint64_t x[static 4]);
+
+// Inverse square root modulo p_25519
+// Input x[4]; output function return (Legendre symbol) and z[4]
+extern int64_t bignum_invsqrt_p25519(uint64_t z[static 4],uint64_t x[static 4]);
+extern int64_t bignum_invsqrt_p25519_alt(uint64_t z[static 4],uint64_t x[static 4]);
+
 // Test bignum for zero-ness, x = 0
 // Input x[k]; output function return
 extern uint64_t bignum_iszero (uint64_t k, uint64_t *x);
@@ -393,6 +402,23 @@ extern uint64_t bignum_lt (uint64_t m, uint64_t *x, uint64_t n, uint64_t *y);
 // Multiply-add, z := z + x * y
 // Inputs x[m], y[n]; outputs function return (carry-out) and z[k]
 extern uint64_t bignum_madd (uint64_t k, uint64_t *z, uint64_t m, uint64_t *x, uint64_t n, uint64_t *y);
+
+// Multiply-add modulo the order of the curve25519/edwards25519 basepoint
+// Inputs x[4], y[4], c[4]; output z[4]
+extern void bignum_madd_n25519 (uint64_t z[static 4], uint64_t x[static 4], uint64_t y[static 4], uint64_t c[static 4]);
+extern void bignum_madd_n25519_alt (uint64_t z[static 4], uint64_t x[static 4], uint64_t y[static 4], uint64_t c[static 4]);
+
+// Reduce modulo group order, z := x mod m_25519
+// Input x[4]; output z[4]
+extern void bignum_mod_m25519_4 (uint64_t z[static 4], uint64_t x[static 4]);
+
+// Reduce modulo basepoint order, z := x mod n_25519
+// Input x[k]; output z[4]
+extern void bignum_mod_n25519 (uint64_t z[static 4], uint64_t k, uint64_t *x);
+
+// Reduce modulo basepoint order, z := x mod n_25519
+// Input x[4]; output z[4]
+extern void bignum_mod_n25519_4 (uint64_t z[static 4], uint64_t x[static 4]);
 
 // Reduce modulo group order, z := x mod n_256
 // Input x[k]; output z[4]
@@ -757,6 +783,11 @@ extern void bignum_sqr_p256k1_alt (uint64_t z[static 4], uint64_t x[static 4]);
 extern void bignum_sqr_p521 (uint64_t z[static 9], uint64_t x[static 9]);
 extern void bignum_sqr_p521_alt (uint64_t z[static 9], uint64_t x[static 9]);
 
+// Square root modulo p_25519
+// Input x[4]; output function return (Legendre symbol) and z[4]
+extern int64_t bignum_sqrt_p25519(uint64_t z[static 4],uint64_t x[static 4]);
+extern int64_t bignum_sqrt_p25519_alt(uint64_t z[static 4],uint64_t x[static 4]);
+
 // Subtract, z := x - y
 // Inputs x[m], y[n]; outputs function return (carry-out) and z[p]
 extern uint64_t bignum_sub (uint64_t p, uint64_t *z, uint64_t m, uint64_t *x, uint64_t n, uint64_t *y);
@@ -883,6 +914,15 @@ extern void curve25519_x25519base_alt(uint64_t res[static 4],uint64_t scalar[sta
 extern void curve25519_x25519base_byte(uint8_t res[static 32],uint8_t scalar[static 32]);
 extern void curve25519_x25519base_byte_alt(uint8_t res[static 32],uint8_t scalar[static 32]);
 
+// Decode compressed 256-bit form of edwards25519 point
+// Input c[32] (bytes); output function return and z[8]
+extern uint64_t edwards25519_decode(uint64_t z[static 8],uint8_t c[static 32]);
+extern uint64_t edwards25519_decode_alt(uint64_t z[static 8],uint8_t c[static 32]);
+
+// Encode edwards25519 point into compressed form as 256-bit number
+// Input p[8]; output z[32] (bytes)
+extern void edwards25519_encode(uint8_t z[static 32], uint64_t p[static 8]);
+
 // Extended projective addition for edwards25519
 // Inputs p1[16], p2[16]; output p3[16]
 extern void edwards25519_epadd(uint64_t p3[static 16],uint64_t p1[static 16],uint64_t p2[static 16]);
@@ -907,6 +947,11 @@ extern void edwards25519_pepadd_alt(uint64_t p3[static 16],uint64_t p1[static 16
 // Input scalar[4]; output res[8]
 extern void edwards25519_scalarmulbase(uint64_t res[static 8],uint64_t scalar[static 4]);
 extern void edwards25519_scalarmulbase_alt(uint64_t res[static 8],uint64_t scalar[static 4]);
+
+// Double scalar multiplication for edwards25519, fresh and base point
+// Input scalar[4], point[8], bscalar[4]; output res[8]
+extern void edwards25519_scalarmuldouble(uint64_t res[static 8],uint64_t scalar[static 4], uint64_t point[static 8],uint64_t bscalar[static 4]);
+extern void edwards25519_scalarmuldouble_alt(uint64_t res[static 8],uint64_t scalar[static 4], uint64_t point[static 8],uint64_t bscalar[static 4]);
 
 // Point addition on NIST curve P-256 in Montgomery-Jacobian coordinates
 // Inputs p1[12], p2[12]; output p3[12]

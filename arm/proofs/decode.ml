@@ -235,6 +235,8 @@ let decode = new_definition `!w:int32. decode w =
                   (WREG' Rd) (WREG' Rn) (WREG' Rm) (WREG' Ra))
   | [0b1101011001011111000000:22; Rn:5; 0:5] ->
     SOME (arm_RET (XREG' Rn))
+  | [0b10011011010:11; Rm:5; 0b011111:6; Rn:5; Rd:5] ->
+    SOME (arm_SMULH (XREG' Rd) (XREG' Rn) (XREG' Rm))
   | [0b10011011110:11; Rm:5; 0b011111:6; Rn:5; Rd:5] ->
     SOME (arm_UMULH (XREG' Rd) (XREG' Rn) (XREG' Rm))
   | [0b10011011101:11; Rm:5; o0; Ra:5; Rn:5; Rd:5] ->

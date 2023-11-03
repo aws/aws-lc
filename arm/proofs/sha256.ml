@@ -9,28 +9,28 @@ needs "Library/words.ml";;
 (****************************************************)
 
 let sha_choose = new_definition
-  `sha_choose (x:int32) (y:int32) (z:int32) : int32 = 
+  `sha_choose (x:int32) (y:int32) (z:int32) : int32 =
           word_xor (word_and (word_xor y z) x) z`;;
 
 let sha_maj = new_definition
-  `sha_maj (x:int32) (y:int32) (z:int32) : int32 = 
+  `sha_maj (x:int32) (y:int32) (z:int32) : int32 =
           word_or (word_and x y) (word_and (word_or x y) z)`;;
 
 let sha_hash_sigma_0 = new_definition
-  `sha_hash_sigma_0 (x:int32) : int32 = 
+  `sha_hash_sigma_0 (x:int32) : int32 =
           word_xor (word_ror x 2) (word_xor (word_ror x 13) (word_ror x 22))`;;
 
 let sha_hash_sigma_1 = new_definition
-  `sha_hash_sigma_1 (x:int32) : int32 = 
+  `sha_hash_sigma_1 (x:int32) : int32 =
           word_xor (word_ror x 6) (word_xor (word_ror x 11) (word_ror x 25))`;;
 
-(** 
+(**
  **  ARM pseudo code definition of elem
- ** 
+ **
  **    bits(size) Elem[bits(N) vector, integer e, integer size]
  **        assert e >= 0 && (e+1)*size <= N;
  **        return vector<e*size+size-1 : e*size>;
- **    
+ **
  **    This just grabs some sequence of bits from the middle of the word
  **)
 
@@ -38,12 +38,12 @@ let elem = new_definition
   `elem (w:M word) (e:num) (size:num) : size word =
           word_subword w (e*size, size)`;;
 
-(** 
+(**
  **  ARM pseudo code definition of SHA256hash
- **  
+ **
  **  bits(128) SHA256hash(bits (128) X, bits(128) Y, bits(128) W, boolean part1)
  **      bits(32) chs, maj, t;
- **  
+ **
  **      for e = 0 to 3
  **          chs = SHAchoose(Y<31:0>, Y<63:32>, Y<95:64>);
  **          maj = SHAmajority(X<31:0>, X<63:32>, X<95:64>);
@@ -54,7 +54,7 @@ let elem = new_definition
  **      return (if part1 then X else Y);
  **)
 
-let sha256hash_loop = new_definition 
+let sha256hash_loop = new_definition
   `sha256hash_loop (e:num) (x:int128) (y:int128) (w:int128) : 256 word =
           let chs = sha_choose (word_subword y (0,32))
                                (word_subword y (32,32))
@@ -109,20 +109,20 @@ let sha256h2 = define
 
 (**
  **  ARM pseudocode of sha256su0
- **  
+ **
  **    bits(128) operand1 = V[d];
  **    bits(128) operand2 = V[n];
  **    bits(128) result;
  **    bits(128) T = operand2<31:0>:operand1<127:32>;
  **    bits(32) elt;
- **    
+ **
  **    for e = 0 to 3
  **        elt = Elem[T, e, 32];
  **        elt = ROR(elt, 7) EOR ROR(elt, 18) EOR LSR(elt, 3);
  **        Elem[result, e, 32] = elt + Elem[operand1, e, 32];
  **    V[d] = result;
- **  
- **  See 
+ **
+ **  See
  **    https://developer.arm.com/documentation/ddi0596/2020-12/SIMD-FP-Instructions/SHA256SU0--SHA256-schedule-update-0-
  **)
 
@@ -151,13 +151,13 @@ let sha256su0 = define
                   seq1
                   seq0))`;;
 
-(**  
+(**
  **  ARM SHA256SU1 pseudocode
- ** 
+ **
  **    Operation
- **    
+ **
  **    AArch64.CheckFPAdvSIMDEnabled();
- **    
+ **
  **    bits(128) operand1 = V[d];
  **    bits(128) operand2 = V[n];
  **    bits(128) operand3 = V[m];
@@ -165,26 +165,26 @@ let sha256su0 = define
  **    bits(128) T0 = operand3<31:0>:operand2<127:32>;
  **    bits(64) T1;
  **    bits(32) elt;
- **    
+ **
  **    T1 = operand3<127:64>;
  **    for e = 0 to 1
  **        elt = Elem[T1, e, 32];
  **        elt = ROR(elt, 17) EOR ROR(elt, 19) EOR LSR(elt, 10);
  **        elt = elt + Elem[operand1, e, 32] + Elem[T0, e, 32];
  **        Elem[result, e, 32] = elt;
- **    
+ **
  **    T1 = result<63:0>;
  **    for e = 2 to 3
  **        elt = Elem[T1, e-2, 32];
  **        elt = ROR(elt, 17) EOR ROR(elt, 19) EOR LSR(elt, 10);
  **        elt = elt + Elem[operand1, e, 32] + Elem[T0, e, 32];
  **        Elem[result, e, 32] = elt;
- **    
+ **
  **    V[d] = result;
- ** 
- **  See 
+ **
+ **  See
  **    https://developer.arm.com/documentation/ddi0596/2020-12/SIMD-FP-Instructions/SHA256SU1--SHA256-schedule-update-1-
- ** 
+ **
  **)
 
 let sha256su1_loop0 = define
@@ -224,7 +224,7 @@ let sha256su1 = define
                   seq1
                   seq0))`;;
 
-(************************************************) 
+(************************************************)
 (**                                            **)
 (** CONVERSIONS FOR REDUCING SHA256 INTRINSICS **)
 (**                                            **)
@@ -248,7 +248,7 @@ let BASE_REDUCE =
         SIGMA1_REDUCE ORELSEC
         ELEM_REDUCE;;
 
-(** 
+(**
  ** Reduce "let x = e in f" by first reducing "e" via conv
  ** and then expanding the let-term (assuming not "let ... and ... in",
  ** which would need a more elaborate implementation)
@@ -278,12 +278,12 @@ let SHA256SU0_RED_CONV =
     DEPTH_CONV (let_CONV ORELSEC REDUCE_SU0_LOOP ORELSEC NUM_RED_CONV) THENC
     WORD_REDUCE_CONV;;
 
-let SHA256SU0_REDUCE_CONV tm = 
-  match tm with 
-    Comb(Comb(Const("sha256su0",_),Comb(Const("word",_),d)), 
-         Comb(Const("word",_),n)) 
-    when is_numeral d && is_numeral n -> SHA256SU0_RED_CONV tm 
-  | _ -> failwith "SHA256SU0_CONV: inapplicable";; 
+let SHA256SU0_REDUCE_CONV tm =
+  match tm with
+    Comb(Comb(Const("sha256su0",_),Comb(Const("word",_),d)),
+         Comb(Const("word",_),n))
+    when is_numeral d && is_numeral n -> SHA256SU0_RED_CONV tm
+  | _ -> failwith "SHA256SU0_CONV: inapplicable";;
 
 let REDUCE_SU1_LOOP0 =
     REWR_CONV sha256su1_loop0 THENC

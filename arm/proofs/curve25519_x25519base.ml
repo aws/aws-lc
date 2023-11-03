@@ -8,7 +8,7 @@
 (* ========================================================================= *)
 
 needs "arm/proofs/base.ml";;
-needs "arm/proofs/bignum_modinv.ml";;
+needs "arm/proofs/bignum_inv_p25519.ml";;
 needs "common/ecencoding.ml";;
 
 do_list hide_constant ["X1";"X2";"X3";"X4";"X5"];;
@@ -46,8 +46,8 @@ let curve25519_x25519base_mc,curve25519_x25519base_data =
   0xa90137ec;       (* arm_STP X12 X13 SP (Immediate_Offset (iword (&16))) *)
   0xf94003e0;       (* arm_LDR X0 SP (Immediate_Offset (word 0)) *)
   0xf27d001f;       (* arm_TST X0 (rvalue (word 8)) *)
-  0x1001072a;       (* arm_ADR X10 (word 8420) *)
-  0x10010a0b;       (* arm_ADR X11 (word 8512) *)
+  0x10015f6a;       (* arm_ADR X10 (word 11244) *)
+  0x1001624b;       (* arm_ADR X11 (word 11336) *)
   0xa9400540;       (* arm_LDP X0 X1 X10 (Immediate_Offset (iword (&0))) *)
   0xa9400d62;       (* arm_LDP X2 X3 X11 (Immediate_Offset (iword (&0))) *)
   0x9a820000;       (* arm_CSEL X0 X0 X2 Condition_EQ *)
@@ -82,7 +82,7 @@ let curve25519_x25519base_mc,curve25519_x25519base_data =
   0x9a830021;       (* arm_CSEL X1 X1 X3 Condition_EQ *)
   0xa90f07e0;       (* arm_STP X0 X1 SP (Immediate_Offset (iword (&240))) *)
   0xd2800094;       (* arm_MOV X20 (rvalue (word 4)) *)
-  0x100108b3;       (* arm_ADR X19 (word 8468) *)
+  0x100160f3;       (* arm_ADR X19 (word 11292) *)
   0xaa1f03f5;       (* arm_MOV X21 XZR *)
   0xd346fe80;       (* arm_LSR X0 X20 6 *)
   0xf8607be2;       (* arm_LDR X2 SP (Shiftreg_Offset X0 3) *)
@@ -1626,8 +1626,8 @@ let curve25519_x25519base_mc,curve25519_x25519base_data =
   0xba1f0084;       (* arm_ADCS X4 X4 XZR *)
   0xba1f00a5;       (* arm_ADCS X5 X5 XZR *)
   0x9a1f00c6;       (* arm_ADC X6 X6 XZR *)
-  0xa90a13e3;       (* arm_STP X3 X4 SP (Immediate_Offset (iword (&160))) *)
-  0xa90b1be5;       (* arm_STP X5 X6 SP (Immediate_Offset (iword (&176))) *)
+  0xa91213e3;       (* arm_STP X3 X4 SP (Immediate_Offset (iword (&288))) *)
+  0xa9131be5;       (* arm_STP X5 X6 SP (Immediate_Offset (iword (&304))) *)
   0xa9481be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&128))) *)
   0xa94e0fe4;       (* arm_LDP X4 X3 SP (Immediate_Offset (iword (&224))) *)
   0xeb0400a5;       (* arm_SUBS X5 X5 X4 *)
@@ -1642,324 +1642,1038 @@ let curve25519_x25519base_mc,curve25519_x25519base_data =
   0xfa1f00c6;       (* arm_SBCS X6 X6 XZR *)
   0xfa1f00e7;       (* arm_SBCS X7 X7 XZR *)
   0xda1f0108;       (* arm_SBC X8 X8 XZR *)
-  0xa90c1be5;       (* arm_STP X5 X6 SP (Immediate_Offset (iword (&192))) *)
-  0xa90d23e7;       (* arm_STP X7 X8 SP (Immediate_Offset (iword (&208))) *)
-  0xd2800080;       (* arm_MOV X0 (rvalue (word 4)) *)
-  0x910203e1;       (* arm_ADD X1 SP (rvalue (word 128)) *)
-  0x910303e2;       (* arm_ADD X2 SP (rvalue (word 192)) *)
-  0x10003e03;       (* arm_ADR X3 (word 1984) *)
-  0x910403e4;       (* arm_ADD X4 SP (rvalue (word 256)) *)
-  0xd37df00a;       (* arm_LSL X10 X0 3 *)
-  0x8b0a0095;       (* arm_ADD X21 X4 X10 *)
-  0x8b0a02b6;       (* arm_ADD X22 X21 X10 *)
-  0xaa1f03ea;       (* arm_MOV X10 XZR *)
-  0xf86a784b;       (* arm_LDR X11 X2 (Shiftreg_Offset X10 3) *)
-  0xf86a786c;       (* arm_LDR X12 X3 (Shiftreg_Offset X10 3) *)
-  0xf82a7aab;       (* arm_STR X11 X21 (Shiftreg_Offset X10 3) *)
-  0xf82a7acc;       (* arm_STR X12 X22 (Shiftreg_Offset X10 3) *)
-  0xf82a788c;       (* arm_STR X12 X4 (Shiftreg_Offset X10 3) *)
-  0xf82a783f;       (* arm_STR XZR X1 (Shiftreg_Offset X10 3) *)
-  0x9100054a;       (* arm_ADD X10 X10 (rvalue (word 1)) *)
-  0xeb00015f;       (* arm_CMP X10 X0 *)
-  0x54ffff03;       (* arm_BCC (word 2097120) *)
-  0xf940008b;       (* arm_LDR X11 X4 (Immediate_Offset (word 0)) *)
-  0xd100056c;       (* arm_SUB X12 X11 (rvalue (word 1)) *)
-  0xf900008c;       (* arm_STR X12 X4 (Immediate_Offset (word 0)) *)
-  0xd37ef574;       (* arm_LSL X20 X11 2 *)
-  0xcb140174;       (* arm_SUB X20 X11 X20 *)
-  0xd27f0294;       (* arm_EOR X20 X20 (rvalue (word 2)) *)
-  0xd280002c;       (* arm_MOV X12 (rvalue (word 1)) *)
-  0x9b14316c;       (* arm_MADD X12 X11 X20 X12 *)
-  0x9b0c7d8b;       (* arm_MUL X11 X12 X12 *)
-  0x9b145194;       (* arm_MADD X20 X12 X20 X20 *)
-  0x9b0b7d6c;       (* arm_MUL X12 X11 X11 *)
-  0x9b145174;       (* arm_MADD X20 X11 X20 X20 *)
-  0x9b0c7d8b;       (* arm_MUL X11 X12 X12 *)
-  0x9b145194;       (* arm_MADD X20 X12 X20 X20 *)
-  0x9b145174;       (* arm_MADD X20 X11 X20 X20 *)
-  0xd379e002;       (* arm_LSL X2 X0 7 *)
-  0x9100fc4a;       (* arm_ADD X10 X2 (rvalue (word 63)) *)
-  0xd346fd45;       (* arm_LSR X5 X10 6 *)
-  0xeb0000bf;       (* arm_CMP X5 X0 *)
-  0x9a852005;       (* arm_CSEL X5 X0 X5 Condition_CS *)
-  0xaa1f03ed;       (* arm_MOV X13 XZR *)
-  0xaa1f03ef;       (* arm_MOV X15 XZR *)
-  0xaa1f03ee;       (* arm_MOV X14 XZR *)
-  0xaa1f03f0;       (* arm_MOV X16 XZR *)
-  0xaa1f03f3;       (* arm_MOV X19 XZR *)
-  0xaa1f03ea;       (* arm_MOV X10 XZR *)
-  0xf86a7aab;       (* arm_LDR X11 X21 (Shiftreg_Offset X10 3) *)
-  0xf86a7acc;       (* arm_LDR X12 X22 (Shiftreg_Offset X10 3) *)
-  0xaa0c0171;       (* arm_ORR X17 X11 X12 *)
-  0xeb1f023f;       (* arm_CMP X17 XZR *)
-  0x8a0d0271;       (* arm_AND X17 X19 X13 *)
-  0x9a8f122f;       (* arm_CSEL X15 X17 X15 Condition_NE *)
-  0x8a0e0271;       (* arm_AND X17 X19 X14 *)
-  0x9a901230;       (* arm_CSEL X16 X17 X16 Condition_NE *)
-  0x9a8d116d;       (* arm_CSEL X13 X11 X13 Condition_NE *)
-  0x9a8e118e;       (* arm_CSEL X14 X12 X14 Condition_NE *)
-  0xda9f03f3;       (* arm_CSETM X19 Condition_NE *)
-  0x9100054a;       (* arm_ADD X10 X10 (rvalue (word 1)) *)
-  0xeb05015f;       (* arm_CMP X10 X5 *)
-  0x54fffe63;       (* arm_BCC (word 2097100) *)
-  0xaa0e01ab;       (* arm_ORR X11 X13 X14 *)
-  0xdac0116c;       (* arm_CLZ X12 X11 *)
-  0xeb0c03f1;       (* arm_NEGS X17 X12 *)
-  0x9acc21ad;       (* arm_LSLV X13 X13 X12 *)
-  0x9a9f11ef;       (* arm_CSEL X15 X15 XZR Condition_NE *)
-  0x9acc21ce;       (* arm_LSLV X14 X14 X12 *)
-  0x9a9f1210;       (* arm_CSEL X16 X16 XZR Condition_NE *)
-  0x9ad125ef;       (* arm_LSRV X15 X15 X17 *)
-  0x9ad12610;       (* arm_LSRV X16 X16 X17 *)
-  0xaa0f01ad;       (* arm_ORR X13 X13 X15 *)
-  0xaa1001ce;       (* arm_ORR X14 X14 X16 *)
-  0xf94002af;       (* arm_LDR X15 X21 (Immediate_Offset (word 0)) *)
-  0xf94002d0;       (* arm_LDR X16 X22 (Immediate_Offset (word 0)) *)
-  0xd2800026;       (* arm_MOV X6 (rvalue (word 1)) *)
-  0xaa1f03e7;       (* arm_MOV X7 XZR *)
-  0xaa1f03e8;       (* arm_MOV X8 XZR *)
-  0xd2800029;       (* arm_MOV X9 (rvalue (word 1)) *)
-  0xd280074a;       (* arm_MOV X10 (rvalue (word 58)) *)
-  0xf24001ff;       (* arm_TST X15 (rvalue (word 1)) *)
-  0x9a9f11cb;       (* arm_CSEL X11 X14 XZR Condition_NE *)
-  0x9a9f120c;       (* arm_CSEL X12 X16 XZR Condition_NE *)
-  0x9a9f1111;       (* arm_CSEL X17 X8 XZR Condition_NE *)
-  0x9a9f1133;       (* arm_CSEL X19 X9 XZR Condition_NE *)
-  0xfa4e11a2;       (* arm_CCMP X13 X14 (word 2) Condition_NE *)
-  0xcb0b01ab;       (* arm_SUB X11 X13 X11 *)
-  0xcb0c01ec;       (* arm_SUB X12 X15 X12 *)
-  0x9a8d21ce;       (* arm_CSEL X14 X14 X13 Condition_CS *)
-  0xda8b256b;       (* arm_CNEG X11 X11 Condition_CC *)
-  0x9a8f2210;       (* arm_CSEL X16 X16 X15 Condition_CS *)
-  0xda8c258f;       (* arm_CNEG X15 X12 Condition_CC *)
-  0x9a862108;       (* arm_CSEL X8 X8 X6 Condition_CS *)
-  0x9a872129;       (* arm_CSEL X9 X9 X7 Condition_CS *)
-  0xf27f019f;       (* arm_TST X12 (rvalue (word 2)) *)
-  0x8b1100c6;       (* arm_ADD X6 X6 X17 *)
-  0x8b1300e7;       (* arm_ADD X7 X7 X19 *)
-  0xd341fd6d;       (* arm_LSR X13 X11 1 *)
-  0xd341fdef;       (* arm_LSR X15 X15 1 *)
-  0x8b080108;       (* arm_ADD X8 X8 X8 *)
-  0x8b090129;       (* arm_ADD X9 X9 X9 *)
-  0xd100054a;       (* arm_SUB X10 X10 (rvalue (word 1)) *)
-  0xb5fffd6a;       (* arm_CBNZ X10 (word 2097068) *)
-  0xaa1f03ed;       (* arm_MOV X13 XZR *)
-  0xaa1f03ee;       (* arm_MOV X14 XZR *)
-  0xaa1f03f1;       (* arm_MOV X17 XZR *)
-  0xaa1f03f3;       (* arm_MOV X19 XZR *)
-  0xaa1f03ea;       (* arm_MOV X10 XZR *)
-  0xf86a788b;       (* arm_LDR X11 X4 (Shiftreg_Offset X10 3) *)
-  0xf86a782c;       (* arm_LDR X12 X1 (Shiftreg_Offset X10 3) *)
-  0x9b0b7ccf;       (* arm_MUL X15 X6 X11 *)
-  0x9b0c7cf0;       (* arm_MUL X16 X7 X12 *)
-  0xab0d01ef;       (* arm_ADDS X15 X15 X13 *)
-  0x9bcb7ccd;       (* arm_UMULH X13 X6 X11 *)
-  0x9a1f01ad;       (* arm_ADC X13 X13 XZR *)
-  0xab1001ef;       (* arm_ADDS X15 X15 X16 *)
-  0x93d1e9f1;       (* arm_EXTR X17 X15 X17 58 *)
-  0xf82a7891;       (* arm_STR X17 X4 (Shiftreg_Offset X10 3) *)
-  0xaa0f03f1;       (* arm_MOV X17 X15 *)
-  0x9bcc7cef;       (* arm_UMULH X15 X7 X12 *)
-  0x9a0f01ad;       (* arm_ADC X13 X13 X15 *)
-  0x9b0b7d0f;       (* arm_MUL X15 X8 X11 *)
-  0x9b0c7d30;       (* arm_MUL X16 X9 X12 *)
-  0xab0e01ef;       (* arm_ADDS X15 X15 X14 *)
-  0x9bcb7d0e;       (* arm_UMULH X14 X8 X11 *)
-  0x9a1f01ce;       (* arm_ADC X14 X14 XZR *)
-  0xab1001ef;       (* arm_ADDS X15 X15 X16 *)
-  0x93d3e9f3;       (* arm_EXTR X19 X15 X19 58 *)
-  0xf82a7833;       (* arm_STR X19 X1 (Shiftreg_Offset X10 3) *)
-  0xaa0f03f3;       (* arm_MOV X19 X15 *)
-  0x9bcc7d2f;       (* arm_UMULH X15 X9 X12 *)
-  0x9a0f01ce;       (* arm_ADC X14 X14 X15 *)
-  0x9100054a;       (* arm_ADD X10 X10 (rvalue (word 1)) *)
-  0xeb00015f;       (* arm_CMP X10 X0 *)
-  0x54fffcc3;       (* arm_BCC (word 2097048) *)
-  0x93d1e9ad;       (* arm_EXTR X13 X13 X17 58 *)
-  0x93d3e9ce;       (* arm_EXTR X14 X14 X19 58 *)
-  0xf940008b;       (* arm_LDR X11 X4 (Immediate_Offset (word 0)) *)
-  0x9b147d71;       (* arm_MUL X17 X11 X20 *)
-  0xf940006c;       (* arm_LDR X12 X3 (Immediate_Offset (word 0)) *)
-  0x9b0c7e2f;       (* arm_MUL X15 X17 X12 *)
-  0x9bcc7e30;       (* arm_UMULH X16 X17 X12 *)
-  0xab0f016b;       (* arm_ADDS X11 X11 X15 *)
-  0xd280002a;       (* arm_MOV X10 (rvalue (word 1)) *)
-  0xd100040b;       (* arm_SUB X11 X0 (rvalue (word 1)) *)
-  0xb40001ab;       (* arm_CBZ X11 (word 52) *)
-  0xf86a786b;       (* arm_LDR X11 X3 (Shiftreg_Offset X10 3) *)
-  0xf86a788c;       (* arm_LDR X12 X4 (Shiftreg_Offset X10 3) *)
-  0x9b0b7e2f;       (* arm_MUL X15 X17 X11 *)
-  0xba10018c;       (* arm_ADCS X12 X12 X16 *)
-  0x9bcb7e30;       (* arm_UMULH X16 X17 X11 *)
-  0x9a1f0210;       (* arm_ADC X16 X16 XZR *)
-  0xab0f018c;       (* arm_ADDS X12 X12 X15 *)
-  0xd100054f;       (* arm_SUB X15 X10 (rvalue (word 1)) *)
-  0xf82f788c;       (* arm_STR X12 X4 (Shiftreg_Offset X15 3) *)
-  0x9100054a;       (* arm_ADD X10 X10 (rvalue (word 1)) *)
-  0xcb00014b;       (* arm_SUB X11 X10 X0 *)
-  0xb5fffeab;       (* arm_CBNZ X11 (word 2097108) *)
-  0xba0d0210;       (* arm_ADCS X16 X16 X13 *)
-  0x9a1f03ed;       (* arm_ADC X13 XZR XZR *)
-  0xd100054f;       (* arm_SUB X15 X10 (rvalue (word 1)) *)
-  0xf82f7890;       (* arm_STR X16 X4 (Shiftreg_Offset X15 3) *)
-  0xeb1f03ea;       (* arm_NEGS X10 XZR *)
-  0xf86a788b;       (* arm_LDR X11 X4 (Shiftreg_Offset X10 3) *)
-  0xf86a786c;       (* arm_LDR X12 X3 (Shiftreg_Offset X10 3) *)
-  0xfa0c017f;       (* arm_SBCS XZR X11 X12 *)
-  0x9100054a;       (* arm_ADD X10 X10 (rvalue (word 1)) *)
-  0xcb00014b;       (* arm_SUB X11 X10 X0 *)
-  0xb5ffff6b;       (* arm_CBNZ X11 (word 2097132) *)
-  0xfa1f01bf;       (* arm_SBCS XZR X13 XZR *)
-  0xda9f33ed;       (* arm_CSETM X13 Condition_CS *)
-  0xeb1f03ea;       (* arm_NEGS X10 XZR *)
-  0xf86a788b;       (* arm_LDR X11 X4 (Shiftreg_Offset X10 3) *)
-  0xf86a786c;       (* arm_LDR X12 X3 (Shiftreg_Offset X10 3) *)
-  0x8a0d018c;       (* arm_AND X12 X12 X13 *)
-  0xfa0c016b;       (* arm_SBCS X11 X11 X12 *)
-  0xf82a788b;       (* arm_STR X11 X4 (Shiftreg_Offset X10 3) *)
-  0x9100054a;       (* arm_ADD X10 X10 (rvalue (word 1)) *)
-  0xcb00014b;       (* arm_SUB X11 X10 X0 *)
-  0xb5ffff2b;       (* arm_CBNZ X11 (word 2097124) *)
-  0xf940002b;       (* arm_LDR X11 X1 (Immediate_Offset (word 0)) *)
-  0x9b147d71;       (* arm_MUL X17 X11 X20 *)
-  0xf940006c;       (* arm_LDR X12 X3 (Immediate_Offset (word 0)) *)
-  0x9b0c7e2f;       (* arm_MUL X15 X17 X12 *)
-  0x9bcc7e30;       (* arm_UMULH X16 X17 X12 *)
-  0xab0f016b;       (* arm_ADDS X11 X11 X15 *)
-  0xd280002a;       (* arm_MOV X10 (rvalue (word 1)) *)
-  0xd100040b;       (* arm_SUB X11 X0 (rvalue (word 1)) *)
-  0xb40001ab;       (* arm_CBZ X11 (word 52) *)
-  0xf86a786b;       (* arm_LDR X11 X3 (Shiftreg_Offset X10 3) *)
-  0xf86a782c;       (* arm_LDR X12 X1 (Shiftreg_Offset X10 3) *)
-  0x9b0b7e2f;       (* arm_MUL X15 X17 X11 *)
-  0xba10018c;       (* arm_ADCS X12 X12 X16 *)
-  0x9bcb7e30;       (* arm_UMULH X16 X17 X11 *)
-  0x9a1f0210;       (* arm_ADC X16 X16 XZR *)
-  0xab0f018c;       (* arm_ADDS X12 X12 X15 *)
-  0xd100054f;       (* arm_SUB X15 X10 (rvalue (word 1)) *)
-  0xf82f782c;       (* arm_STR X12 X1 (Shiftreg_Offset X15 3) *)
-  0x9100054a;       (* arm_ADD X10 X10 (rvalue (word 1)) *)
-  0xcb00014b;       (* arm_SUB X11 X10 X0 *)
-  0xb5fffeab;       (* arm_CBNZ X11 (word 2097108) *)
-  0xba0e0210;       (* arm_ADCS X16 X16 X14 *)
-  0x9a1f03ee;       (* arm_ADC X14 XZR XZR *)
-  0xd100054f;       (* arm_SUB X15 X10 (rvalue (word 1)) *)
-  0xf82f7830;       (* arm_STR X16 X1 (Shiftreg_Offset X15 3) *)
-  0xeb1f03ea;       (* arm_NEGS X10 XZR *)
-  0xf86a782b;       (* arm_LDR X11 X1 (Shiftreg_Offset X10 3) *)
-  0xf86a786c;       (* arm_LDR X12 X3 (Shiftreg_Offset X10 3) *)
-  0xfa0c017f;       (* arm_SBCS XZR X11 X12 *)
-  0x9100054a;       (* arm_ADD X10 X10 (rvalue (word 1)) *)
-  0xcb00014b;       (* arm_SUB X11 X10 X0 *)
-  0xb5ffff6b;       (* arm_CBNZ X11 (word 2097132) *)
-  0xfa1f01df;       (* arm_SBCS XZR X14 XZR *)
-  0xda9f33ee;       (* arm_CSETM X14 Condition_CS *)
-  0xeb1f03ea;       (* arm_NEGS X10 XZR *)
-  0xf86a782b;       (* arm_LDR X11 X1 (Shiftreg_Offset X10 3) *)
-  0xf86a786c;       (* arm_LDR X12 X3 (Shiftreg_Offset X10 3) *)
-  0x8a0e018c;       (* arm_AND X12 X12 X14 *)
-  0xfa0c016b;       (* arm_SBCS X11 X11 X12 *)
-  0xf82a782b;       (* arm_STR X11 X1 (Shiftreg_Offset X10 3) *)
-  0x9100054a;       (* arm_ADD X10 X10 (rvalue (word 1)) *)
-  0xcb00014b;       (* arm_SUB X11 X10 X0 *)
-  0xb5ffff2b;       (* arm_CBNZ X11 (word 2097124) *)
-  0xaa1f03ed;       (* arm_MOV X13 XZR *)
-  0xaa1f03ee;       (* arm_MOV X14 XZR *)
-  0xaa1f03f1;       (* arm_MOV X17 XZR *)
-  0xaa1f03f3;       (* arm_MOV X19 XZR *)
-  0xaa1f03ea;       (* arm_MOV X10 XZR *)
-  0xf86a7aab;       (* arm_LDR X11 X21 (Shiftreg_Offset X10 3) *)
-  0xf86a7acc;       (* arm_LDR X12 X22 (Shiftreg_Offset X10 3) *)
-  0x9b0b7ccf;       (* arm_MUL X15 X6 X11 *)
-  0x9b0c7cf0;       (* arm_MUL X16 X7 X12 *)
-  0xab0d01ef;       (* arm_ADDS X15 X15 X13 *)
-  0x9bcb7ccd;       (* arm_UMULH X13 X6 X11 *)
-  0x9a1f01ad;       (* arm_ADC X13 X13 XZR *)
-  0xeb1001ef;       (* arm_SUBS X15 X15 X16 *)
-  0xf82a7aaf;       (* arm_STR X15 X21 (Shiftreg_Offset X10 3) *)
-  0x9bcc7cef;       (* arm_UMULH X15 X7 X12 *)
-  0xcb1101f1;       (* arm_SUB X17 X15 X17 *)
-  0xfa1101ad;       (* arm_SBCS X13 X13 X17 *)
-  0xda9f23f1;       (* arm_CSETM X17 Condition_CC *)
-  0x9b0b7d0f;       (* arm_MUL X15 X8 X11 *)
-  0x9b0c7d30;       (* arm_MUL X16 X9 X12 *)
-  0xab0e01ef;       (* arm_ADDS X15 X15 X14 *)
-  0x9bcb7d0e;       (* arm_UMULH X14 X8 X11 *)
-  0x9a1f01ce;       (* arm_ADC X14 X14 XZR *)
-  0xeb1001ef;       (* arm_SUBS X15 X15 X16 *)
-  0xf82a7acf;       (* arm_STR X15 X22 (Shiftreg_Offset X10 3) *)
-  0x9bcc7d2f;       (* arm_UMULH X15 X9 X12 *)
-  0xcb1301f3;       (* arm_SUB X19 X15 X19 *)
-  0xfa1301ce;       (* arm_SBCS X14 X14 X19 *)
-  0xda9f23f3;       (* arm_CSETM X19 Condition_CC *)
-  0x9100054a;       (* arm_ADD X10 X10 (rvalue (word 1)) *)
-  0xeb05015f;       (* arm_CMP X10 X5 *)
-  0x54fffcc3;       (* arm_BCC (word 2097048) *)
-  0xab11023f;       (* arm_CMN X17 X17 *)
-  0xf94002af;       (* arm_LDR X15 X21 (Immediate_Offset (word 0)) *)
-  0xaa1f03ea;       (* arm_MOV X10 XZR *)
-  0xd10004a6;       (* arm_SUB X6 X5 (rvalue (word 1)) *)
-  0xb4000166;       (* arm_CBZ X6 (word 44) *)
-  0x9100214b;       (* arm_ADD X11 X10 (rvalue (word 8)) *)
-  0xf86b6aac;       (* arm_LDR X12 X21 (Register_Offset X11) *)
-  0x93cfe98f;       (* arm_EXTR X15 X12 X15 58 *)
-  0xca1101ef;       (* arm_EOR X15 X15 X17 *)
-  0xba1f01ef;       (* arm_ADCS X15 X15 XZR *)
-  0xf82a6aaf;       (* arm_STR X15 X21 (Register_Offset X10) *)
-  0xaa0c03ef;       (* arm_MOV X15 X12 *)
-  0x9100214a;       (* arm_ADD X10 X10 (rvalue (word 8)) *)
-  0xd10004c6;       (* arm_SUB X6 X6 (rvalue (word 1)) *)
-  0xb5fffee6;       (* arm_CBNZ X6 (word 2097116) *)
-  0x93cfe9af;       (* arm_EXTR X15 X13 X15 58 *)
-  0xca1101ef;       (* arm_EOR X15 X15 X17 *)
-  0xba1f01ef;       (* arm_ADCS X15 X15 XZR *)
-  0xf82a6aaf;       (* arm_STR X15 X21 (Register_Offset X10) *)
-  0xab13027f;       (* arm_CMN X19 X19 *)
-  0xf94002cf;       (* arm_LDR X15 X22 (Immediate_Offset (word 0)) *)
-  0xaa1f03ea;       (* arm_MOV X10 XZR *)
-  0xd10004a6;       (* arm_SUB X6 X5 (rvalue (word 1)) *)
-  0xb4000166;       (* arm_CBZ X6 (word 44) *)
-  0x9100214b;       (* arm_ADD X11 X10 (rvalue (word 8)) *)
-  0xf86b6acc;       (* arm_LDR X12 X22 (Register_Offset X11) *)
-  0x93cfe98f;       (* arm_EXTR X15 X12 X15 58 *)
-  0xca1301ef;       (* arm_EOR X15 X15 X19 *)
-  0xba1f01ef;       (* arm_ADCS X15 X15 XZR *)
-  0xf82a6acf;       (* arm_STR X15 X22 (Register_Offset X10) *)
-  0xaa0c03ef;       (* arm_MOV X15 X12 *)
-  0x9100214a;       (* arm_ADD X10 X10 (rvalue (word 8)) *)
-  0xd10004c6;       (* arm_SUB X6 X6 (rvalue (word 1)) *)
-  0xb5fffee6;       (* arm_CBNZ X6 (word 2097116) *)
-  0x93cfe9cf;       (* arm_EXTR X15 X14 X15 58 *)
-  0xca1301ef;       (* arm_EOR X15 X15 X19 *)
-  0xba1f01ef;       (* arm_ADCS X15 X15 XZR *)
-  0xf82a6acf;       (* arm_STR X15 X22 (Register_Offset X10) *)
-  0xaa1f03ea;       (* arm_MOV X10 XZR *)
-  0xab11023f;       (* arm_CMN X17 X17 *)
-  0xf86a786b;       (* arm_LDR X11 X3 (Shiftreg_Offset X10 3) *)
-  0xf86a788c;       (* arm_LDR X12 X4 (Shiftreg_Offset X10 3) *)
-  0x8a11016b;       (* arm_AND X11 X11 X17 *)
-  0xca11018c;       (* arm_EOR X12 X12 X17 *)
-  0xba0c016b;       (* arm_ADCS X11 X11 X12 *)
-  0xf82a788b;       (* arm_STR X11 X4 (Shiftreg_Offset X10 3) *)
-  0x9100054a;       (* arm_ADD X10 X10 (rvalue (word 1)) *)
-  0xcb00014b;       (* arm_SUB X11 X10 X0 *)
-  0xb5ffff0b;       (* arm_CBNZ X11 (word 2097120) *)
-  0xaa3303f3;       (* arm_MVN X19 X19 *)
-  0xaa1f03ea;       (* arm_MOV X10 XZR *)
-  0xab13027f;       (* arm_CMN X19 X19 *)
-  0xf86a786b;       (* arm_LDR X11 X3 (Shiftreg_Offset X10 3) *)
-  0xf86a782c;       (* arm_LDR X12 X1 (Shiftreg_Offset X10 3) *)
-  0x8a13016b;       (* arm_AND X11 X11 X19 *)
-  0xca13018c;       (* arm_EOR X12 X12 X19 *)
-  0xba0c016b;       (* arm_ADCS X11 X11 X12 *)
-  0xf82a782b;       (* arm_STR X11 X1 (Shiftreg_Offset X10 3) *)
-  0x9100054a;       (* arm_ADD X10 X10 (rvalue (word 1)) *)
-  0xcb00014b;       (* arm_SUB X11 X10 X0 *)
-  0xb5ffff0b;       (* arm_CBNZ X11 (word 2097120) *)
-  0xf100e842;       (* arm_SUBS X2 X2 (rvalue (word 58)) *)
-  0x54ffdd28;       (* arm_BHI (word 2096036) *)
-  0xa94a13e3;       (* arm_LDP X3 X4 SP (Immediate_Offset (iword (&160))) *)
-  0xa9481be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&128))) *)
+  0xa9141be5;       (* arm_STP X5 X6 SP (Immediate_Offset (iword (&320))) *)
+  0xa91523e7;       (* arm_STP X7 X8 SP (Immediate_Offset (iword (&336))) *)
+  0x910403e0;       (* arm_ADD X0 SP (rvalue (word 256)) *)
+  0x910503e1;       (* arm_ADD X1 SP (rvalue (word 320)) *)
+  0xaa0003f4;       (* arm_MOV X20 X0 *)
+  0x9280024a;       (* arm_MOVN X10 (word 18) 0 *)
+  0x9280000b;       (* arm_MOVN X11 (word 0) 0 *)
+  0xa9002fea;       (* arm_STP X10 X11 SP (Immediate_Offset (iword (&0))) *)
+  0x92f0000c;       (* arm_MOVN X12 (word 32768) 48 *)
+  0xa90133eb;       (* arm_STP X11 X12 SP (Immediate_Offset (iword (&16))) *)
+  0xa9400c22;       (* arm_LDP X2 X3 X1 (Immediate_Offset (iword (&0))) *)
+  0xa9411424;       (* arm_LDP X4 X5 X1 (Immediate_Offset (iword (&16))) *)
+  0xd2800267;       (* arm_MOV X7 (rvalue (word 19)) *)
+  0xd37ffca6;       (* arm_LSR X6 X5 63 *)
+  0x9b061ce6;       (* arm_MADD X6 X7 X6 X7 *)
+  0xab060042;       (* arm_ADDS X2 X2 X6 *)
+  0xba1f0063;       (* arm_ADCS X3 X3 XZR *)
+  0xba1f0084;       (* arm_ADCS X4 X4 XZR *)
+  0xb24100a5;       (* arm_ORR X5 X5 (rvalue (word 9223372036854775808)) *)
+  0xba1f00a5;       (* arm_ADCS X5 X5 XZR *)
+  0x9a9f30e6;       (* arm_CSEL X6 X7 XZR Condition_CC *)
+  0xeb060042;       (* arm_SUBS X2 X2 X6 *)
+  0xfa1f0063;       (* arm_SBCS X3 X3 XZR *)
+  0xfa1f0084;       (* arm_SBCS X4 X4 XZR *)
+  0xda1f00a5;       (* arm_SBC X5 X5 XZR *)
+  0x9240f8a5;       (* arm_AND X5 X5 (rvalue (word 9223372036854775807)) *)
+  0xa9020fe2;       (* arm_STP X2 X3 SP (Immediate_Offset (iword (&32))) *)
+  0xa90317e4;       (* arm_STP X4 X5 SP (Immediate_Offset (iword (&48))) *)
+  0xa9047fff;       (* arm_STP XZR XZR SP (Immediate_Offset (iword (&64))) *)
+  0xa9057fff;       (* arm_STP XZR XZR SP (Immediate_Offset (iword (&80))) *)
+  0xd284132a;       (* arm_MOV X10 (rvalue (word 8345)) *)
+  0xf2aea04a;       (* arm_MOVK X10 (word 29954) 16 *)
+  0xf2d3c46a;       (* arm_MOVK X10 (word 40483) 32 *)
+  0xf2f41f2a;       (* arm_MOVK X10 (word 41209) 48 *)
+  0xd284b2ab;       (* arm_MOV X11 (rvalue (word 9621)) *)
+  0xf2a3a26b;       (* arm_MOVK X11 (word 7443) 16 *)
+  0xf2d1e7eb;       (* arm_MOVK X11 (word 36671) 32 *)
+  0xf2f518cb;       (* arm_MOVK X11 (word 43206) 48 *)
+  0xd28a484c;       (* arm_MOV X12 (rvalue (word 21058)) *)
+  0xf2a0b58c;       (* arm_MOVK X12 (word 1452) 16 *)
+  0xf2d1270c;       (* arm_MOVK X12 (word 35128) 32 *)
+  0xf2ed8d8c;       (* arm_MOVK X12 (word 27756) 48 *)
+  0xd280c2ad;       (* arm_MOV X13 (rvalue (word 1557)) *)
+  0xf2a82eed;       (* arm_MOVK X13 (word 16759) 16 *)
+  0xf2c1164d;       (* arm_MOVK X13 (word 2226) 32 *)
+  0xf2e4ecad;       (* arm_MOVK X13 (word 10085) 48 *)
+  0xa9062fea;       (* arm_STP X10 X11 SP (Immediate_Offset (iword (&96))) *)
+  0xa90737ec;       (* arm_STP X12 X13 SP (Immediate_Offset (iword (&112))) *)
+  0xd2800155;       (* arm_MOV X21 (rvalue (word 10)) *)
+  0xd2800036;       (* arm_MOV X22 (rvalue (word 1)) *)
+  0x1400010b;       (* arm_B (word 1068) *)
+  0xeb1f015f;       (* arm_CMP X10 XZR *)
+  0xda9f53ee;       (* arm_CSETM X14 Condition_MI *)
+  0xda8a554a;       (* arm_CNEG X10 X10 Condition_MI *)
+  0xeb1f017f;       (* arm_CMP X11 XZR *)
+  0xda9f53ef;       (* arm_CSETM X15 Condition_MI *)
+  0xda8b556b;       (* arm_CNEG X11 X11 Condition_MI *)
+  0xeb1f019f;       (* arm_CMP X12 XZR *)
+  0xda9f53f0;       (* arm_CSETM X16 Condition_MI *)
+  0xda8c558c;       (* arm_CNEG X12 X12 Condition_MI *)
+  0xeb1f01bf;       (* arm_CMP X13 XZR *)
+  0xda9f53f1;       (* arm_CSETM X17 Condition_MI *)
+  0xda8d55ad;       (* arm_CNEG X13 X13 Condition_MI *)
+  0x8a0e0140;       (* arm_AND X0 X10 X14 *)
+  0x8a0f0161;       (* arm_AND X1 X11 X15 *)
+  0x8b010009;       (* arm_ADD X9 X0 X1 *)
+  0x8a100180;       (* arm_AND X0 X12 X16 *)
+  0x8a1101a1;       (* arm_AND X1 X13 X17 *)
+  0x8b010013;       (* arm_ADD X19 X0 X1 *)
+  0xf94003e7;       (* arm_LDR X7 SP (Immediate_Offset (word 0)) *)
+  0xca0e00e1;       (* arm_EOR X1 X7 X14 *)
+  0x9b0a7c20;       (* arm_MUL X0 X1 X10 *)
+  0x9bca7c21;       (* arm_UMULH X1 X1 X10 *)
+  0xab000124;       (* arm_ADDS X4 X9 X0 *)
+  0x9a0103e2;       (* arm_ADC X2 XZR X1 *)
+  0xf94013e8;       (* arm_LDR X8 SP (Immediate_Offset (word 32)) *)
+  0xca0f0101;       (* arm_EOR X1 X8 X15 *)
+  0x9b0b7c20;       (* arm_MUL X0 X1 X11 *)
+  0x9bcb7c21;       (* arm_UMULH X1 X1 X11 *)
+  0xab000084;       (* arm_ADDS X4 X4 X0 *)
+  0x9a010042;       (* arm_ADC X2 X2 X1 *)
+  0xca1000e1;       (* arm_EOR X1 X7 X16 *)
+  0x9b0c7c20;       (* arm_MUL X0 X1 X12 *)
+  0x9bcc7c21;       (* arm_UMULH X1 X1 X12 *)
+  0xab000265;       (* arm_ADDS X5 X19 X0 *)
+  0x9a0103e3;       (* arm_ADC X3 XZR X1 *)
+  0xca110101;       (* arm_EOR X1 X8 X17 *)
+  0x9b0d7c20;       (* arm_MUL X0 X1 X13 *)
+  0x9bcd7c21;       (* arm_UMULH X1 X1 X13 *)
+  0xab0000a5;       (* arm_ADDS X5 X5 X0 *)
+  0x9a010063;       (* arm_ADC X3 X3 X1 *)
+  0xf94007e7;       (* arm_LDR X7 SP (Immediate_Offset (word 8)) *)
+  0xca0e00e1;       (* arm_EOR X1 X7 X14 *)
+  0x9b0a7c20;       (* arm_MUL X0 X1 X10 *)
+  0x9bca7c21;       (* arm_UMULH X1 X1 X10 *)
+  0xab000042;       (* arm_ADDS X2 X2 X0 *)
+  0x9a0103e6;       (* arm_ADC X6 XZR X1 *)
+  0xf94017e8;       (* arm_LDR X8 SP (Immediate_Offset (word 40)) *)
+  0xca0f0101;       (* arm_EOR X1 X8 X15 *)
+  0x9b0b7c20;       (* arm_MUL X0 X1 X11 *)
+  0x9bcb7c21;       (* arm_UMULH X1 X1 X11 *)
+  0xab000042;       (* arm_ADDS X2 X2 X0 *)
+  0x9a0100c6;       (* arm_ADC X6 X6 X1 *)
+  0x93c4ec44;       (* arm_EXTR X4 X2 X4 59 *)
+  0xf90003e4;       (* arm_STR X4 SP (Immediate_Offset (word 0)) *)
+  0xca1000e1;       (* arm_EOR X1 X7 X16 *)
+  0x9b0c7c20;       (* arm_MUL X0 X1 X12 *)
+  0x9bcc7c21;       (* arm_UMULH X1 X1 X12 *)
+  0xab000063;       (* arm_ADDS X3 X3 X0 *)
+  0x9a0103e4;       (* arm_ADC X4 XZR X1 *)
+  0xca110101;       (* arm_EOR X1 X8 X17 *)
+  0x9b0d7c20;       (* arm_MUL X0 X1 X13 *)
+  0x9bcd7c21;       (* arm_UMULH X1 X1 X13 *)
+  0xab000063;       (* arm_ADDS X3 X3 X0 *)
+  0x9a010084;       (* arm_ADC X4 X4 X1 *)
+  0x93c5ec65;       (* arm_EXTR X5 X3 X5 59 *)
+  0xf90013e5;       (* arm_STR X5 SP (Immediate_Offset (word 32)) *)
+  0xf9400be7;       (* arm_LDR X7 SP (Immediate_Offset (word 16)) *)
+  0xca0e00e1;       (* arm_EOR X1 X7 X14 *)
+  0x9b0a7c20;       (* arm_MUL X0 X1 X10 *)
+  0x9bca7c21;       (* arm_UMULH X1 X1 X10 *)
+  0xab0000c6;       (* arm_ADDS X6 X6 X0 *)
+  0x9a0103e5;       (* arm_ADC X5 XZR X1 *)
+  0xf9401be8;       (* arm_LDR X8 SP (Immediate_Offset (word 48)) *)
+  0xca0f0101;       (* arm_EOR X1 X8 X15 *)
+  0x9b0b7c20;       (* arm_MUL X0 X1 X11 *)
+  0x9bcb7c21;       (* arm_UMULH X1 X1 X11 *)
+  0xab0000c6;       (* arm_ADDS X6 X6 X0 *)
+  0x9a0100a5;       (* arm_ADC X5 X5 X1 *)
+  0x93c2ecc2;       (* arm_EXTR X2 X6 X2 59 *)
+  0xf90007e2;       (* arm_STR X2 SP (Immediate_Offset (word 8)) *)
+  0xca1000e1;       (* arm_EOR X1 X7 X16 *)
+  0x9b0c7c20;       (* arm_MUL X0 X1 X12 *)
+  0x9bcc7c21;       (* arm_UMULH X1 X1 X12 *)
+  0xab000084;       (* arm_ADDS X4 X4 X0 *)
+  0x9a0103e2;       (* arm_ADC X2 XZR X1 *)
+  0xca110101;       (* arm_EOR X1 X8 X17 *)
+  0x9b0d7c20;       (* arm_MUL X0 X1 X13 *)
+  0x9bcd7c21;       (* arm_UMULH X1 X1 X13 *)
+  0xab000084;       (* arm_ADDS X4 X4 X0 *)
+  0x9a010042;       (* arm_ADC X2 X2 X1 *)
+  0x93c3ec83;       (* arm_EXTR X3 X4 X3 59 *)
+  0xf90017e3;       (* arm_STR X3 SP (Immediate_Offset (word 40)) *)
+  0xf9400fe7;       (* arm_LDR X7 SP (Immediate_Offset (word 24)) *)
+  0xca0e00e1;       (* arm_EOR X1 X7 X14 *)
+  0x937ffc23;       (* arm_ASR X3 X1 63 *)
+  0x8a0a0063;       (* arm_AND X3 X3 X10 *)
+  0xcb0303e3;       (* arm_NEG X3 X3 *)
+  0x9b0a7c20;       (* arm_MUL X0 X1 X10 *)
+  0x9bca7c21;       (* arm_UMULH X1 X1 X10 *)
+  0xab0000a5;       (* arm_ADDS X5 X5 X0 *)
+  0x9a010063;       (* arm_ADC X3 X3 X1 *)
+  0xf9401fe8;       (* arm_LDR X8 SP (Immediate_Offset (word 56)) *)
+  0xca0f0101;       (* arm_EOR X1 X8 X15 *)
+  0x937ffc20;       (* arm_ASR X0 X1 63 *)
+  0x8a0b0000;       (* arm_AND X0 X0 X11 *)
+  0xcb000063;       (* arm_SUB X3 X3 X0 *)
+  0x9b0b7c20;       (* arm_MUL X0 X1 X11 *)
+  0x9bcb7c21;       (* arm_UMULH X1 X1 X11 *)
+  0xab0000a5;       (* arm_ADDS X5 X5 X0 *)
+  0x9a010063;       (* arm_ADC X3 X3 X1 *)
+  0x93c6eca6;       (* arm_EXTR X6 X5 X6 59 *)
+  0xf9000be6;       (* arm_STR X6 SP (Immediate_Offset (word 16)) *)
+  0x93c5ec65;       (* arm_EXTR X5 X3 X5 59 *)
+  0xf9000fe5;       (* arm_STR X5 SP (Immediate_Offset (word 24)) *)
+  0xca1000e1;       (* arm_EOR X1 X7 X16 *)
+  0x937ffc25;       (* arm_ASR X5 X1 63 *)
+  0x8a0c00a5;       (* arm_AND X5 X5 X12 *)
+  0xcb0503e5;       (* arm_NEG X5 X5 *)
+  0x9b0c7c20;       (* arm_MUL X0 X1 X12 *)
+  0x9bcc7c21;       (* arm_UMULH X1 X1 X12 *)
+  0xab000042;       (* arm_ADDS X2 X2 X0 *)
+  0x9a0100a5;       (* arm_ADC X5 X5 X1 *)
+  0xca110101;       (* arm_EOR X1 X8 X17 *)
+  0x937ffc20;       (* arm_ASR X0 X1 63 *)
+  0x8a0d0000;       (* arm_AND X0 X0 X13 *)
+  0xcb0000a5;       (* arm_SUB X5 X5 X0 *)
+  0x9b0d7c20;       (* arm_MUL X0 X1 X13 *)
+  0x9bcd7c21;       (* arm_UMULH X1 X1 X13 *)
+  0xab000042;       (* arm_ADDS X2 X2 X0 *)
+  0x9a0100a5;       (* arm_ADC X5 X5 X1 *)
+  0x93c4ec44;       (* arm_EXTR X4 X2 X4 59 *)
+  0xf9001be4;       (* arm_STR X4 SP (Immediate_Offset (word 48)) *)
+  0x93c2eca2;       (* arm_EXTR X2 X5 X2 59 *)
+  0xf9001fe2;       (* arm_STR X2 SP (Immediate_Offset (word 56)) *)
+  0xf94023e7;       (* arm_LDR X7 SP (Immediate_Offset (word 64)) *)
+  0xca0e00e1;       (* arm_EOR X1 X7 X14 *)
+  0x9b0a7c20;       (* arm_MUL X0 X1 X10 *)
+  0x9bca7c21;       (* arm_UMULH X1 X1 X10 *)
+  0xab000124;       (* arm_ADDS X4 X9 X0 *)
+  0x9a0103e2;       (* arm_ADC X2 XZR X1 *)
+  0xf94033e8;       (* arm_LDR X8 SP (Immediate_Offset (word 96)) *)
+  0xca0f0101;       (* arm_EOR X1 X8 X15 *)
+  0x9b0b7c20;       (* arm_MUL X0 X1 X11 *)
+  0x9bcb7c21;       (* arm_UMULH X1 X1 X11 *)
+  0xab000084;       (* arm_ADDS X4 X4 X0 *)
+  0xf90023e4;       (* arm_STR X4 SP (Immediate_Offset (word 64)) *)
+  0x9a010042;       (* arm_ADC X2 X2 X1 *)
+  0xca1000e1;       (* arm_EOR X1 X7 X16 *)
+  0x9b0c7c20;       (* arm_MUL X0 X1 X12 *)
+  0x9bcc7c21;       (* arm_UMULH X1 X1 X12 *)
+  0xab000265;       (* arm_ADDS X5 X19 X0 *)
+  0x9a0103e3;       (* arm_ADC X3 XZR X1 *)
+  0xca110101;       (* arm_EOR X1 X8 X17 *)
+  0x9b0d7c20;       (* arm_MUL X0 X1 X13 *)
+  0x9bcd7c21;       (* arm_UMULH X1 X1 X13 *)
+  0xab0000a5;       (* arm_ADDS X5 X5 X0 *)
+  0xf90033e5;       (* arm_STR X5 SP (Immediate_Offset (word 96)) *)
+  0x9a010063;       (* arm_ADC X3 X3 X1 *)
+  0xf94027e7;       (* arm_LDR X7 SP (Immediate_Offset (word 72)) *)
+  0xca0e00e1;       (* arm_EOR X1 X7 X14 *)
+  0x9b0a7c20;       (* arm_MUL X0 X1 X10 *)
+  0x9bca7c21;       (* arm_UMULH X1 X1 X10 *)
+  0xab000042;       (* arm_ADDS X2 X2 X0 *)
+  0x9a0103e6;       (* arm_ADC X6 XZR X1 *)
+  0xf94037e8;       (* arm_LDR X8 SP (Immediate_Offset (word 104)) *)
+  0xca0f0101;       (* arm_EOR X1 X8 X15 *)
+  0x9b0b7c20;       (* arm_MUL X0 X1 X11 *)
+  0x9bcb7c21;       (* arm_UMULH X1 X1 X11 *)
+  0xab000042;       (* arm_ADDS X2 X2 X0 *)
+  0xf90027e2;       (* arm_STR X2 SP (Immediate_Offset (word 72)) *)
+  0x9a0100c6;       (* arm_ADC X6 X6 X1 *)
+  0xca1000e1;       (* arm_EOR X1 X7 X16 *)
+  0x9b0c7c20;       (* arm_MUL X0 X1 X12 *)
+  0x9bcc7c21;       (* arm_UMULH X1 X1 X12 *)
+  0xab000063;       (* arm_ADDS X3 X3 X0 *)
+  0x9a0103e4;       (* arm_ADC X4 XZR X1 *)
+  0xca110101;       (* arm_EOR X1 X8 X17 *)
+  0x9b0d7c20;       (* arm_MUL X0 X1 X13 *)
+  0x9bcd7c21;       (* arm_UMULH X1 X1 X13 *)
+  0xab000063;       (* arm_ADDS X3 X3 X0 *)
+  0xf90037e3;       (* arm_STR X3 SP (Immediate_Offset (word 104)) *)
+  0x9a010084;       (* arm_ADC X4 X4 X1 *)
+  0xf9402be7;       (* arm_LDR X7 SP (Immediate_Offset (word 80)) *)
+  0xca0e00e1;       (* arm_EOR X1 X7 X14 *)
+  0x9b0a7c20;       (* arm_MUL X0 X1 X10 *)
+  0x9bca7c21;       (* arm_UMULH X1 X1 X10 *)
+  0xab0000c6;       (* arm_ADDS X6 X6 X0 *)
+  0x9a0103e5;       (* arm_ADC X5 XZR X1 *)
+  0xf9403be8;       (* arm_LDR X8 SP (Immediate_Offset (word 112)) *)
+  0xca0f0101;       (* arm_EOR X1 X8 X15 *)
+  0x9b0b7c20;       (* arm_MUL X0 X1 X11 *)
+  0x9bcb7c21;       (* arm_UMULH X1 X1 X11 *)
+  0xab0000c6;       (* arm_ADDS X6 X6 X0 *)
+  0xf9002be6;       (* arm_STR X6 SP (Immediate_Offset (word 80)) *)
+  0x9a0100a5;       (* arm_ADC X5 X5 X1 *)
+  0xca1000e1;       (* arm_EOR X1 X7 X16 *)
+  0x9b0c7c20;       (* arm_MUL X0 X1 X12 *)
+  0x9bcc7c21;       (* arm_UMULH X1 X1 X12 *)
+  0xab000084;       (* arm_ADDS X4 X4 X0 *)
+  0x9a0103e2;       (* arm_ADC X2 XZR X1 *)
+  0xca110101;       (* arm_EOR X1 X8 X17 *)
+  0x9b0d7c20;       (* arm_MUL X0 X1 X13 *)
+  0x9bcd7c21;       (* arm_UMULH X1 X1 X13 *)
+  0xab000084;       (* arm_ADDS X4 X4 X0 *)
+  0xf9003be4;       (* arm_STR X4 SP (Immediate_Offset (word 112)) *)
+  0x9a010042;       (* arm_ADC X2 X2 X1 *)
+  0xf9402fe7;       (* arm_LDR X7 SP (Immediate_Offset (word 88)) *)
+  0xca0e00e1;       (* arm_EOR X1 X7 X14 *)
+  0x8a0a01c3;       (* arm_AND X3 X14 X10 *)
+  0xcb0303e3;       (* arm_NEG X3 X3 *)
+  0x9b0a7c20;       (* arm_MUL X0 X1 X10 *)
+  0x9bca7c21;       (* arm_UMULH X1 X1 X10 *)
+  0xab0000a5;       (* arm_ADDS X5 X5 X0 *)
+  0x9a010063;       (* arm_ADC X3 X3 X1 *)
+  0xf9403fe8;       (* arm_LDR X8 SP (Immediate_Offset (word 120)) *)
+  0xca0f0101;       (* arm_EOR X1 X8 X15 *)
+  0x8a0b01e0;       (* arm_AND X0 X15 X11 *)
+  0xcb000063;       (* arm_SUB X3 X3 X0 *)
+  0x9b0b7c20;       (* arm_MUL X0 X1 X11 *)
+  0x9bcb7c21;       (* arm_UMULH X1 X1 X11 *)
+  0xab0000a5;       (* arm_ADDS X5 X5 X0 *)
+  0x9a010063;       (* arm_ADC X3 X3 X1 *)
+  0x93c5fc66;       (* arm_EXTR X6 X3 X5 63 *)
+  0xa94407e0;       (* arm_LDP X0 X1 SP (Immediate_Offset (iword (&64))) *)
+  0x8b83fcc6;       (* arm_ADD X6 X6 (Shiftedreg X3 ASR 63) *)
+  0xd2800263;       (* arm_MOV X3 (rvalue (word 19)) *)
+  0x9b037cc4;       (* arm_MUL X4 X6 X3 *)
+  0x8b06fca5;       (* arm_ADD X5 X5 (Shiftedreg X6 LSL 63) *)
+  0x9b437cc3;       (* arm_SMULH X3 X6 X3 *)
+  0xf9402be6;       (* arm_LDR X6 SP (Immediate_Offset (word 80)) *)
+  0xab040000;       (* arm_ADDS X0 X0 X4 *)
+  0xba030021;       (* arm_ADCS X1 X1 X3 *)
+  0x937ffc63;       (* arm_ASR X3 X3 63 *)
+  0xba0300c6;       (* arm_ADCS X6 X6 X3 *)
+  0x9a0300a5;       (* arm_ADC X5 X5 X3 *)
+  0xa90407e0;       (* arm_STP X0 X1 SP (Immediate_Offset (iword (&64))) *)
+  0xa90517e6;       (* arm_STP X6 X5 SP (Immediate_Offset (iword (&80))) *)
+  0xca1000e1;       (* arm_EOR X1 X7 X16 *)
+  0x8a0c0205;       (* arm_AND X5 X16 X12 *)
+  0xcb0503e5;       (* arm_NEG X5 X5 *)
+  0x9b0c7c20;       (* arm_MUL X0 X1 X12 *)
+  0x9bcc7c21;       (* arm_UMULH X1 X1 X12 *)
+  0xab000042;       (* arm_ADDS X2 X2 X0 *)
+  0x9a0100a5;       (* arm_ADC X5 X5 X1 *)
+  0xca110101;       (* arm_EOR X1 X8 X17 *)
+  0x8a0d0220;       (* arm_AND X0 X17 X13 *)
+  0xcb0000a5;       (* arm_SUB X5 X5 X0 *)
+  0x9b0d7c20;       (* arm_MUL X0 X1 X13 *)
+  0x9bcd7c21;       (* arm_UMULH X1 X1 X13 *)
+  0xab000042;       (* arm_ADDS X2 X2 X0 *)
+  0x9a0100a5;       (* arm_ADC X5 X5 X1 *)
+  0x93c2fca6;       (* arm_EXTR X6 X5 X2 63 *)
+  0xa94607e0;       (* arm_LDP X0 X1 SP (Immediate_Offset (iword (&96))) *)
+  0x8b85fcc6;       (* arm_ADD X6 X6 (Shiftedreg X5 ASR 63) *)
+  0xd2800265;       (* arm_MOV X5 (rvalue (word 19)) *)
+  0x9b057cc4;       (* arm_MUL X4 X6 X5 *)
+  0x8b06fc42;       (* arm_ADD X2 X2 (Shiftedreg X6 LSL 63) *)
+  0x9b457cc5;       (* arm_SMULH X5 X6 X5 *)
+  0xf9403be3;       (* arm_LDR X3 SP (Immediate_Offset (word 112)) *)
+  0xab040000;       (* arm_ADDS X0 X0 X4 *)
+  0xba050021;       (* arm_ADCS X1 X1 X5 *)
+  0x937ffca5;       (* arm_ASR X5 X5 63 *)
+  0xba050063;       (* arm_ADCS X3 X3 X5 *)
+  0x9a050042;       (* arm_ADC X2 X2 X5 *)
+  0xa90607e0;       (* arm_STP X0 X1 SP (Immediate_Offset (iword (&96))) *)
+  0xa9070be3;       (* arm_STP X3 X2 SP (Immediate_Offset (iword (&112))) *)
+  0xaa1603e1;       (* arm_MOV X1 X22 *)
+  0xf94003e2;       (* arm_LDR X2 SP (Immediate_Offset (word 0)) *)
+  0xf94013e3;       (* arm_LDR X3 SP (Immediate_Offset (word 32)) *)
+  0x92404c44;       (* arm_AND X4 X2 (rvalue (word 1048575)) *)
+  0xb2575884;       (* arm_ORR X4 X4 (rvalue (word 18446741874686296064)) *)
+  0x92404c65;       (* arm_AND X5 X3 (rvalue (word 1048575)) *)
+  0xb24204a5;       (* arm_ORR X5 X5 (rvalue (word 13835058055282163712)) *)
+  0xf24000bf;       (* arm_TST X5 (rvalue (word 1)) *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x91440088;       (* arm_ADD X8 X4 (rvalue (word 1048576)) *)
+  0x9355a508;       (* arm_SBFM X8 X8 21 41 *)
+  0xd2a0020b;       (* arm_MOVZ X11 (word 16) 16 *)
+  0x8b0b556b;       (* arm_ADD X11 X11 (Shiftedreg X11 LSL 21) *)
+  0x8b0b0089;       (* arm_ADD X9 X4 X11 *)
+  0x936afd29;       (* arm_ASR X9 X9 42 *)
+  0x914400aa;       (* arm_ADD X10 X5 (rvalue (word 1048576)) *)
+  0x9355a54a;       (* arm_SBFM X10 X10 21 41 *)
+  0x8b0b00ab;       (* arm_ADD X11 X5 X11 *)
+  0x936afd6b;       (* arm_ASR X11 X11 42 *)
+  0x9b027d06;       (* arm_MUL X6 X8 X2 *)
+  0x9b037d27;       (* arm_MUL X7 X9 X3 *)
+  0x9b027d42;       (* arm_MUL X2 X10 X2 *)
+  0x9b037d63;       (* arm_MUL X3 X11 X3 *)
+  0x8b0700c4;       (* arm_ADD X4 X6 X7 *)
+  0x8b030045;       (* arm_ADD X5 X2 X3 *)
+  0x9354fc82;       (* arm_ASR X2 X4 20 *)
+  0x9354fca3;       (* arm_ASR X3 X5 20 *)
+  0x92404c44;       (* arm_AND X4 X2 (rvalue (word 1048575)) *)
+  0xb2575884;       (* arm_ORR X4 X4 (rvalue (word 18446741874686296064)) *)
+  0x92404c65;       (* arm_AND X5 X3 (rvalue (word 1048575)) *)
+  0xb24204a5;       (* arm_ORR X5 X5 (rvalue (word 13835058055282163712)) *)
+  0xf24000bf;       (* arm_TST X5 (rvalue (word 1)) *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9144008c;       (* arm_ADD X12 X4 (rvalue (word 1048576)) *)
+  0x9355a58c;       (* arm_SBFM X12 X12 21 41 *)
+  0xd2a0020f;       (* arm_MOVZ X15 (word 16) 16 *)
+  0x8b0f55ef;       (* arm_ADD X15 X15 (Shiftedreg X15 LSL 21) *)
+  0x8b0f008d;       (* arm_ADD X13 X4 X15 *)
+  0x936afdad;       (* arm_ASR X13 X13 42 *)
+  0x914400ae;       (* arm_ADD X14 X5 (rvalue (word 1048576)) *)
+  0x9355a5ce;       (* arm_SBFM X14 X14 21 41 *)
+  0x8b0f00af;       (* arm_ADD X15 X5 X15 *)
+  0x936afdef;       (* arm_ASR X15 X15 42 *)
+  0x9b027d86;       (* arm_MUL X6 X12 X2 *)
+  0x9b037da7;       (* arm_MUL X7 X13 X3 *)
+  0x9b027dc2;       (* arm_MUL X2 X14 X2 *)
+  0x9b037de3;       (* arm_MUL X3 X15 X3 *)
+  0x8b0700c4;       (* arm_ADD X4 X6 X7 *)
+  0x8b030045;       (* arm_ADD X5 X2 X3 *)
+  0x9354fc82;       (* arm_ASR X2 X4 20 *)
+  0x9354fca3;       (* arm_ASR X3 X5 20 *)
+  0x92404c44;       (* arm_AND X4 X2 (rvalue (word 1048575)) *)
+  0xb2575884;       (* arm_ORR X4 X4 (rvalue (word 18446741874686296064)) *)
+  0x92404c65;       (* arm_AND X5 X3 (rvalue (word 1048575)) *)
+  0xb24204a5;       (* arm_ORR X5 X5 (rvalue (word 13835058055282163712)) *)
+  0xf24000bf;       (* arm_TST X5 (rvalue (word 1)) *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9b087d82;       (* arm_MUL X2 X12 X8 *)
+  0x9b097d83;       (* arm_MUL X3 X12 X9 *)
+  0x9b087dc6;       (* arm_MUL X6 X14 X8 *)
+  0x9b097dc7;       (* arm_MUL X7 X14 X9 *)
+  0x9b0a09a8;       (* arm_MADD X8 X13 X10 X2 *)
+  0x9b0b0da9;       (* arm_MADD X9 X13 X11 X3 *)
+  0x9b0a19f0;       (* arm_MADD X16 X15 X10 X6 *)
+  0x9b0b1df1;       (* arm_MADD X17 X15 X11 X7 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0xf27f00bf;       (* arm_TST X5 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9a9f1086;       (* arm_CSEL X6 X4 XZR Condition_NE *)
+  0xfa5f1028;       (* arm_CCMP X1 XZR (word 8) Condition_NE *)
+  0xda81b421;       (* arm_CNEG X1 X1 Condition_GE *)
+  0xda86b4c6;       (* arm_CNEG X6 X6 Condition_GE *)
+  0x9a84a0a4;       (* arm_CSEL X4 X5 X4 Condition_GE *)
+  0x8b0600a5;       (* arm_ADD X5 X5 X6 *)
+  0x91000821;       (* arm_ADD X1 X1 (rvalue (word 2)) *)
+  0x9341fca5;       (* arm_ASR X5 X5 1 *)
+  0x9144008c;       (* arm_ADD X12 X4 (rvalue (word 1048576)) *)
+  0x9356a98c;       (* arm_SBFM X12 X12 22 42 *)
+  0xd2a0020f;       (* arm_MOVZ X15 (word 16) 16 *)
+  0x8b0f55ef;       (* arm_ADD X15 X15 (Shiftedreg X15 LSL 21) *)
+  0x8b0f008d;       (* arm_ADD X13 X4 X15 *)
+  0x936bfdad;       (* arm_ASR X13 X13 43 *)
+  0x914400ae;       (* arm_ADD X14 X5 (rvalue (word 1048576)) *)
+  0x9356a9ce;       (* arm_SBFM X14 X14 22 42 *)
+  0x8b0f00af;       (* arm_ADD X15 X5 X15 *)
+  0x936bfdef;       (* arm_ASR X15 X15 43 *)
+  0x9b08fd82;       (* arm_MNEG X2 X12 X8 *)
+  0x9b09fd83;       (* arm_MNEG X3 X12 X9 *)
+  0x9b08fdc4;       (* arm_MNEG X4 X14 X8 *)
+  0x9b09fdc5;       (* arm_MNEG X5 X14 X9 *)
+  0x9b1089aa;       (* arm_MSUB X10 X13 X16 X2 *)
+  0x9b118dab;       (* arm_MSUB X11 X13 X17 X3 *)
+  0x9b1091ec;       (* arm_MSUB X12 X15 X16 X4 *)
+  0x9b1195ed;       (* arm_MSUB X13 X15 X17 X5 *)
+  0xaa0103f6;       (* arm_MOV X22 X1 *)
+  0xf10006b5;       (* arm_SUBS X21 X21 (rvalue (word 1)) *)
+  0x54ff9281;       (* arm_BNE (word 2093648) *)
+  0xf94003e0;       (* arm_LDR X0 SP (Immediate_Offset (word 0)) *)
+  0xf94013e1;       (* arm_LDR X1 SP (Immediate_Offset (word 32)) *)
+  0x9b0a7c00;       (* arm_MUL X0 X0 X10 *)
+  0x9b0b0021;       (* arm_MADD X1 X1 X11 X0 *)
+  0x937ffc20;       (* arm_ASR X0 X1 63 *)
+  0xeb1f015f;       (* arm_CMP X10 XZR *)
+  0xda9f53ee;       (* arm_CSETM X14 Condition_MI *)
+  0xda8a554a;       (* arm_CNEG X10 X10 Condition_MI *)
+  0xca0001ce;       (* arm_EOR X14 X14 X0 *)
+  0xeb1f017f;       (* arm_CMP X11 XZR *)
+  0xda9f53ef;       (* arm_CSETM X15 Condition_MI *)
+  0xda8b556b;       (* arm_CNEG X11 X11 Condition_MI *)
+  0xca0001ef;       (* arm_EOR X15 X15 X0 *)
+  0xeb1f019f;       (* arm_CMP X12 XZR *)
+  0xda9f53f0;       (* arm_CSETM X16 Condition_MI *)
+  0xda8c558c;       (* arm_CNEG X12 X12 Condition_MI *)
+  0xca000210;       (* arm_EOR X16 X16 X0 *)
+  0xeb1f01bf;       (* arm_CMP X13 XZR *)
+  0xda9f53f1;       (* arm_CSETM X17 Condition_MI *)
+  0xda8d55ad;       (* arm_CNEG X13 X13 Condition_MI *)
+  0xca000231;       (* arm_EOR X17 X17 X0 *)
+  0x8a0e0140;       (* arm_AND X0 X10 X14 *)
+  0x8a0f0161;       (* arm_AND X1 X11 X15 *)
+  0x8b010009;       (* arm_ADD X9 X0 X1 *)
+  0xf94023e7;       (* arm_LDR X7 SP (Immediate_Offset (word 64)) *)
+  0xca0e00e1;       (* arm_EOR X1 X7 X14 *)
+  0x9b0a7c20;       (* arm_MUL X0 X1 X10 *)
+  0x9bca7c21;       (* arm_UMULH X1 X1 X10 *)
+  0xab000124;       (* arm_ADDS X4 X9 X0 *)
+  0x9a0103e2;       (* arm_ADC X2 XZR X1 *)
+  0xf94033e8;       (* arm_LDR X8 SP (Immediate_Offset (word 96)) *)
+  0xca0f0101;       (* arm_EOR X1 X8 X15 *)
+  0x9b0b7c20;       (* arm_MUL X0 X1 X11 *)
+  0x9bcb7c21;       (* arm_UMULH X1 X1 X11 *)
+  0xab000084;       (* arm_ADDS X4 X4 X0 *)
+  0xf90023e4;       (* arm_STR X4 SP (Immediate_Offset (word 64)) *)
+  0x9a010042;       (* arm_ADC X2 X2 X1 *)
+  0xf94027e7;       (* arm_LDR X7 SP (Immediate_Offset (word 72)) *)
+  0xca0e00e1;       (* arm_EOR X1 X7 X14 *)
+  0x9b0a7c20;       (* arm_MUL X0 X1 X10 *)
+  0x9bca7c21;       (* arm_UMULH X1 X1 X10 *)
+  0xab000042;       (* arm_ADDS X2 X2 X0 *)
+  0x9a0103e6;       (* arm_ADC X6 XZR X1 *)
+  0xf94037e8;       (* arm_LDR X8 SP (Immediate_Offset (word 104)) *)
+  0xca0f0101;       (* arm_EOR X1 X8 X15 *)
+  0x9b0b7c20;       (* arm_MUL X0 X1 X11 *)
+  0x9bcb7c21;       (* arm_UMULH X1 X1 X11 *)
+  0xab000042;       (* arm_ADDS X2 X2 X0 *)
+  0xf90027e2;       (* arm_STR X2 SP (Immediate_Offset (word 72)) *)
+  0x9a0100c6;       (* arm_ADC X6 X6 X1 *)
+  0xf9402be7;       (* arm_LDR X7 SP (Immediate_Offset (word 80)) *)
+  0xca0e00e1;       (* arm_EOR X1 X7 X14 *)
+  0x9b0a7c20;       (* arm_MUL X0 X1 X10 *)
+  0x9bca7c21;       (* arm_UMULH X1 X1 X10 *)
+  0xab0000c6;       (* arm_ADDS X6 X6 X0 *)
+  0x9a0103e5;       (* arm_ADC X5 XZR X1 *)
+  0xf9403be8;       (* arm_LDR X8 SP (Immediate_Offset (word 112)) *)
+  0xca0f0101;       (* arm_EOR X1 X8 X15 *)
+  0x9b0b7c20;       (* arm_MUL X0 X1 X11 *)
+  0x9bcb7c21;       (* arm_UMULH X1 X1 X11 *)
+  0xab0000c6;       (* arm_ADDS X6 X6 X0 *)
+  0xf9002be6;       (* arm_STR X6 SP (Immediate_Offset (word 80)) *)
+  0x9a0100a5;       (* arm_ADC X5 X5 X1 *)
+  0xf9402fe7;       (* arm_LDR X7 SP (Immediate_Offset (word 88)) *)
+  0xca0e00e1;       (* arm_EOR X1 X7 X14 *)
+  0x8a0a01c3;       (* arm_AND X3 X14 X10 *)
+  0xcb0303e3;       (* arm_NEG X3 X3 *)
+  0x9b0a7c20;       (* arm_MUL X0 X1 X10 *)
+  0x9bca7c21;       (* arm_UMULH X1 X1 X10 *)
+  0xab0000a5;       (* arm_ADDS X5 X5 X0 *)
+  0x9a010063;       (* arm_ADC X3 X3 X1 *)
+  0xf9403fe8;       (* arm_LDR X8 SP (Immediate_Offset (word 120)) *)
+  0xca0f0101;       (* arm_EOR X1 X8 X15 *)
+  0x8a0b01e0;       (* arm_AND X0 X15 X11 *)
+  0xcb000063;       (* arm_SUB X3 X3 X0 *)
+  0x9b0b7c20;       (* arm_MUL X0 X1 X11 *)
+  0x9bcb7c21;       (* arm_UMULH X1 X1 X11 *)
+  0xab0000a5;       (* arm_ADDS X5 X5 X0 *)
+  0x9a010063;       (* arm_ADC X3 X3 X1 *)
+  0x93c5fc66;       (* arm_EXTR X6 X3 X5 63 *)
+  0xa94407e0;       (* arm_LDP X0 X1 SP (Immediate_Offset (iword (&64))) *)
+  0xea03007f;       (* arm_TST X3 X3 *)
+  0x9a8644c6;       (* arm_CINC X6 X6 Condition_PL *)
+  0xd2800263;       (* arm_MOV X3 (rvalue (word 19)) *)
+  0x9b037cc4;       (* arm_MUL X4 X6 X3 *)
+  0x8b06fca5;       (* arm_ADD X5 X5 (Shiftedreg X6 LSL 63) *)
+  0x9b437cc6;       (* arm_SMULH X6 X6 X3 *)
+  0xf9402be2;       (* arm_LDR X2 SP (Immediate_Offset (word 80)) *)
+  0xab040000;       (* arm_ADDS X0 X0 X4 *)
+  0xba060021;       (* arm_ADCS X1 X1 X6 *)
+  0x937ffcc6;       (* arm_ASR X6 X6 63 *)
+  0xba060042;       (* arm_ADCS X2 X2 X6 *)
+  0xba0600a5;       (* arm_ADCS X5 X5 X6 *)
+  0x9a9f4063;       (* arm_CSEL X3 X3 XZR Condition_MI *)
+  0xeb030000;       (* arm_SUBS X0 X0 X3 *)
+  0xfa1f0021;       (* arm_SBCS X1 X1 XZR *)
+  0xfa1f0042;       (* arm_SBCS X2 X2 XZR *)
+  0xda1f00a5;       (* arm_SBC X5 X5 XZR *)
+  0x9240f8a5;       (* arm_AND X5 X5 (rvalue (word 9223372036854775807)) *)
+  0xaa1403e4;       (* arm_MOV X4 X20 *)
+  0xa9000480;       (* arm_STP X0 X1 X4 (Immediate_Offset (iword (&0))) *)
+  0xa9011482;       (* arm_STP X2 X5 X4 (Immediate_Offset (iword (&16))) *)
+  0xa95213e3;       (* arm_LDP X3 X4 SP (Immediate_Offset (iword (&288))) *)
+  0xa9501be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&256))) *)
   0x9ba57c67;       (* arm_UMULL X7 W3 W5 *)
   0xd360fc60;       (* arm_LSR X0 X3 32 *)
   0x9ba57c0f;       (* arm_UMULL X15 W0 W5 *)
@@ -1993,8 +2707,8 @@ let curve25519_x25519base_mc,curve25519_x25519base_data =
   0xca100063;       (* arm_EOR X3 X3 X16 *)
   0xba090069;       (* arm_ADCS X9 X3 X9 *)
   0x9a10014a;       (* arm_ADC X10 X10 X16 *)
-  0xa94b13e3;       (* arm_LDP X3 X4 SP (Immediate_Offset (iword (&176))) *)
-  0xa9491be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&144))) *)
+  0xa95313e3;       (* arm_LDP X3 X4 SP (Immediate_Offset (iword (&304))) *)
+  0xa9511be5;       (* arm_LDP X5 X6 SP (Immediate_Offset (iword (&272))) *)
   0x9ba57c6b;       (* arm_UMULL X11 W3 W5 *)
   0xd360fc60;       (* arm_LSR X0 X3 32 *)
   0x9ba57c0f;       (* arm_UMULL X15 W0 W5 *)
@@ -2028,12 +2742,12 @@ let curve25519_x25519base_mc,curve25519_x25519base_data =
   0xca100063;       (* arm_EOR X3 X3 X16 *)
   0xba0d006d;       (* arm_ADCS X13 X3 X13 *)
   0x9a1001ce;       (* arm_ADC X14 X14 X16 *)
-  0xa94b13e3;       (* arm_LDP X3 X4 SP (Immediate_Offset (iword (&176))) *)
-  0xa94a43ef;       (* arm_LDP X15 X16 SP (Immediate_Offset (iword (&160))) *)
+  0xa95313e3;       (* arm_LDP X3 X4 SP (Immediate_Offset (iword (&304))) *)
+  0xa95243ef;       (* arm_LDP X15 X16 SP (Immediate_Offset (iword (&288))) *)
   0xeb0f0063;       (* arm_SUBS X3 X3 X15 *)
   0xfa100084;       (* arm_SBCS X4 X4 X16 *)
   0xda9f23f0;       (* arm_CSETM X16 Condition_CC *)
-  0xa94803ef;       (* arm_LDP X15 X0 SP (Immediate_Offset (iword (&128))) *)
+  0xa95003ef;       (* arm_LDP X15 X0 SP (Immediate_Offset (iword (&256))) *)
   0xeb0501e5;       (* arm_SUBS X5 X15 X5 *)
   0xfa060006;       (* arm_SBCS X6 X0 X6 *)
   0xda9f23e0;       (* arm_CSETM X0 Condition_CC *)
@@ -2144,88 +2858,86 @@ let curve25519_x25519base_mc,curve25519_x25519base_data =
   0xa8c153f3;       (* arm_LDP X19 X20 SP (Postimmediate_Offset (iword (&16))) *)
   0xd65f03c0        (* arm_RET X30 *)
 ]
-[237; 255; 255; 255; 255; 255; 255; 255; 255; 255; 255; 255; 255; 255; 255;
- 255; 255; 255; 255; 255; 255; 255; 255; 255; 255; 255; 255; 255; 255; 255;
- 255; 127; 29; 134; 78; 207; 247; 55; 16; 37; 143; 18; 251; 25; 251; 224;
- 237; 16; 200; 226; 245; 117; 177; 51; 192; 150; 13; 251; 21; 108; 13; 7; 95;
- 5; 105; 62; 71; 151; 44; 175; 82; 124; 120; 131; 173; 27; 57; 130; 47; 2;
- 111; 71; 219; 42; 176; 225; 145; 153; 85; 184; 153; 58; 160; 68; 17; 81;
- 174; 228; 242; 143; 184; 195; 175; 95; 255; 48; 18; 222; 240; 79; 94; 133;
- 112; 40; 73; 72; 163; 2; 227; 114; 188; 225; 219; 83; 158; 193; 83; 18; 170;
- 188; 154; 13; 110; 8; 29; 51; 201; 16; 26; 49; 109; 201; 35; 30; 120; 52;
- 193; 88; 94; 249; 208; 150; 89; 204; 207; 79; 56; 247; 114; 47; 201; 135;
- 125; 253; 28; 205; 166; 57; 58; 21; 174; 216; 171; 160; 103; 152; 69; 103;
- 152; 53; 95; 42; 157; 164; 225; 130; 254; 205; 64; 41; 1; 87; 74; 84; 197;
- 46; 83; 166; 70; 80; 201; 246; 159; 115; 4; 64; 103; 109; 227; 112; 74; 35;
- 75; 164; 186; 155; 134; 243; 140; 19; 1; 137; 109; 94; 243; 45; 62; 85; 202;
- 81; 200; 126; 179; 120; 72; 166; 203; 132; 18; 167; 231; 209; 136; 50; 25;
- 228; 181; 230; 131; 136; 154; 90; 236; 16; 242; 76; 246; 33; 144; 45; 165;
- 4; 45; 50; 156; 191; 198; 117; 51; 159; 193; 185; 9; 11; 210; 66; 67; 58;
- 122; 88; 97; 254; 100; 170; 248; 28; 59; 20; 171; 202; 138; 150; 125; 124;
- 134; 159; 41; 39; 9; 39; 142; 37; 84; 95; 117; 9; 24; 234; 75; 211; 167;
- 208; 225; 38; 65; 55; 163; 70; 181; 33; 67; 131; 136; 162; 88; 248; 79; 169;
- 60; 237; 19; 83; 86; 212; 14; 206; 250; 52; 191; 181; 207; 61; 92; 245; 113;
- 179; 234; 201; 165; 60; 101; 10; 143; 33; 133; 209; 69; 122; 10; 73; 53;
- 147; 4; 70; 120; 55; 21; 154; 246; 225; 49; 204; 9; 234; 96; 0; 101; 233;
- 110; 248; 119; 21; 4; 126; 243; 103; 91; 206; 150; 164; 178; 102; 150; 151;
- 86; 189; 216; 146; 84; 255; 208; 44; 89; 74; 41; 236; 60; 80; 178; 172; 19;
- 8; 101; 67; 105; 86; 152; 7; 98; 38; 12; 219; 24; 184; 74; 53; 110; 96; 217;
- 49; 92; 93; 199; 205; 168; 0; 79; 250; 130; 9; 212; 226; 83; 70; 205; 43;
- 225; 23; 157; 182; 171; 29; 235; 249; 114; 86; 252; 83; 232; 175; 53; 181;
- 112; 186; 109; 214; 150; 39; 117; 15; 172; 71; 117; 114; 17; 148; 23; 53;
- 165; 50; 55; 132; 100; 223; 166; 68; 166; 211; 221; 191; 15; 136; 89; 101;
- 59; 112; 165; 26; 58; 173; 64; 37; 133; 203; 104; 100; 76; 142; 247; 179; 0;
- 9; 27; 101; 157; 103; 159; 27; 133; 10; 242; 66; 51; 3; 97; 203; 8; 225;
- 163; 48; 139; 232; 127; 245; 1; 214; 20; 215; 45; 237; 202; 58; 31; 55; 49;
- 173; 22; 200; 190; 15; 40; 237; 227; 239; 230; 216; 91; 89; 217; 82; 245;
- 35; 198; 246; 114; 23; 231; 15; 60; 41; 30; 5; 11; 3; 20; 67; 173; 188; 240;
- 251; 94; 0; 96; 213; 94; 12; 135; 209; 46; 15; 183; 142; 160; 230; 132; 208;
- 51; 144; 31; 32; 112; 102; 123; 206; 225; 90; 58; 76; 149; 250; 184; 220;
- 52; 164; 56; 65; 11; 132; 150; 108; 125; 246; 12; 135; 44; 232; 123; 41;
- 116; 133; 56; 222; 90; 165; 98; 114; 178; 77; 129; 124; 221; 160; 61; 201;
- 228; 117; 248; 186; 77; 41; 185; 113; 167; 130; 50; 185; 96; 196; 198; 244;
- 183; 63; 214; 128; 129; 193; 102; 234; 61; 199; 233; 109; 242; 248; 77; 160;
- 213; 4; 137; 71; 211; 66; 1; 177; 74; 174; 251; 250; 152; 9; 93; 85; 99;
- 172; 200; 246; 4; 177; 144; 47; 65; 74; 172; 90; 8; 41; 201; 58; 107; 50;
- 79; 198; 224; 225; 99; 230; 130; 178; 81; 85; 131; 75; 26; 74; 245; 53; 107;
- 71; 194; 104; 159; 24; 254; 163; 157; 27; 52; 81; 127; 189; 10; 13; 58; 96;
- 70; 174; 211; 225; 50; 201; 137; 128; 99; 189; 152; 135; 57; 145; 37; 223;
- 53; 2; 186; 116; 210; 92; 20; 28; 67; 215; 243; 117; 100; 56; 232; 50; 239;
- 217; 229; 106; 175; 139; 91; 54; 30; 104; 91; 56; 182; 56; 82; 130; 225;
- 101; 125; 22; 193; 41; 73; 35; 232; 173; 119; 160; 171; 236; 77; 152; 157;
- 56; 235; 25; 173; 119; 63; 56; 148; 215; 84; 41; 126; 107; 236; 199; 122;
- 58; 124; 235; 58; 123; 199; 89; 207; 159; 9; 29; 194; 92; 20; 72; 229; 215;
- 40; 204; 146; 193; 53; 69; 1; 126; 36; 72; 229; 193; 231; 128; 238; 115; 41;
- 59; 116; 40; 95; 74; 98; 207; 92; 34; 37; 215; 173; 211; 93; 44; 21; 178;
- 129; 51; 26; 145; 125; 248; 8; 91; 173; 159; 179; 216; 59; 254; 153; 71;
- 107; 96; 5; 111; 98; 169; 123; 23; 146; 158; 254; 159; 225; 202; 229; 13;
- 29; 231; 174; 152; 68; 16; 131; 45; 148; 174; 244; 63; 200; 58; 83; 88; 46;
- 225; 77; 113; 131; 100; 27; 249; 73; 49; 67; 91; 98; 191; 44; 90; 101; 220;
- 181; 173; 179; 39; 40; 99; 18; 132; 250; 135; 216; 248; 73; 171; 145; 94;
- 137; 96; 24; 108; 248; 12; 237; 242; 236; 233; 212; 223; 53; 7; 18; 6; 109;
- 180; 231; 107; 185; 4; 152; 160; 157; 188; 107; 194; 109; 217; 47; 230; 226;
- 115; 94; 81; 170; 73; 84; 99; 91; 237; 58; 130; 198; 11; 159; 196; 101; 168;
- 196; 209; 66; 91; 233; 31; 12; 133; 185; 21; 211; 3; 111; 109; 215; 48; 29;
- 156; 47; 99; 14; 221; 204; 46; 21; 49; 137; 118; 150; 182; 208; 81; 88; 122;
- 99; 168; 107; 183; 223; 82; 57; 239; 14; 160; 73; 125; 211; 109; 199; 228;
- 6; 33; 23; 68; 68; 108; 105; 127; 141; 146; 128; 214; 83; 251; 38; 63; 77;
- 105; 164; 158; 115; 180; 176; 75; 134; 46; 17; 151; 198; 16; 222; 95; 190;
- 125; 39; 196; 147; 100; 162; 126; 173; 25; 173; 79; 93; 38; 144; 69; 48; 70;
- 200; 223; 0; 14; 9; 254; 102; 237; 171; 28; 230; 37; 5; 200; 88; 131; 160;
- 42; 166; 12; 71; 66; 32; 122; 227; 74; 61; 106; 220; 237; 17; 59; 166; 211;
- 100; 116; 239; 6; 8; 85; 175; 155; 191; 3; 4; 102; 88; 204; 40; 225; 19; 63;
- 126; 116; 89; 180; 236; 115; 88; 111; 245; 104; 18; 204; 237; 61; 182; 160;
- 44; 226; 134; 69; 99; 120; 109; 86; 52; 8; 193; 156; 159; 164; 55; 22; 81;
- 196; 155; 168; 213; 86; 142; 188; 219; 210; 127; 127; 15; 236; 181; 28; 217;
- 53; 204; 94; 202; 91; 151; 51; 208; 47; 90; 198; 133; 66; 5; 161; 195; 103;
- 22; 243; 42; 17; 100; 108; 88; 238; 26; 115; 64; 226; 10; 104; 42; 178; 147;
- 71; 243; 165; 251; 20; 212; 247; 133; 105; 22; 70; 215; 60; 87; 0; 200; 201;
- 132; 94; 62; 89; 30; 19; 97; 123; 182; 242; 195; 47; 108; 82; 252; 131; 234;
- 156; 130; 20; 194; 149; 221; 151; 132; 123; 67; 255; 167; 181; 78; 170; 48;
- 78; 116; 108; 139; 232; 133; 60; 97; 93; 12; 158; 115; 129; 117; 95; 30;
- 199; 217; 47; 184; 236; 113; 78; 47; 11; 231; 33; 227; 119; 164; 64; 185;
- 221; 86; 230; 128; 79; 29; 206; 206; 86; 101; 191; 126; 123; 93; 83; 196;
- 59; 252; 5; 221; 222; 175; 82; 174; 179; 184; 36; 207; 48; 59; 237; 140; 99;
+[29; 134; 78; 207; 247; 55; 16; 37; 143; 18; 251; 25; 251; 224; 237; 16; 200;
+ 226; 245; 117; 177; 51; 192; 150; 13; 251; 21; 108; 13; 7; 95; 5; 105; 62;
+ 71; 151; 44; 175; 82; 124; 120; 131; 173; 27; 57; 130; 47; 2; 111; 71; 219;
+ 42; 176; 225; 145; 153; 85; 184; 153; 58; 160; 68; 17; 81; 174; 228; 242;
+ 143; 184; 195; 175; 95; 255; 48; 18; 222; 240; 79; 94; 133; 112; 40; 73; 72;
+ 163; 2; 227; 114; 188; 225; 219; 83; 158; 193; 83; 18; 170; 188; 154; 13;
+ 110; 8; 29; 51; 201; 16; 26; 49; 109; 201; 35; 30; 120; 52; 193; 88; 94;
+ 249; 208; 150; 89; 204; 207; 79; 56; 247; 114; 47; 201; 135; 125; 253; 28;
+ 205; 166; 57; 58; 21; 174; 216; 171; 160; 103; 152; 69; 103; 152; 53; 95;
+ 42; 157; 164; 225; 130; 254; 205; 64; 41; 1; 87; 74; 84; 197; 46; 83; 166;
+ 70; 80; 201; 246; 159; 115; 4; 64; 103; 109; 227; 112; 74; 35; 75; 164; 186;
+ 155; 134; 243; 140; 19; 1; 137; 109; 94; 243; 45; 62; 85; 202; 81; 200; 126;
+ 179; 120; 72; 166; 203; 132; 18; 167; 231; 209; 136; 50; 25; 228; 181; 230;
+ 131; 136; 154; 90; 236; 16; 242; 76; 246; 33; 144; 45; 165; 4; 45; 50; 156;
+ 191; 198; 117; 51; 159; 193; 185; 9; 11; 210; 66; 67; 58; 122; 88; 97; 254;
+ 100; 170; 248; 28; 59; 20; 171; 202; 138; 150; 125; 124; 134; 159; 41; 39;
+ 9; 39; 142; 37; 84; 95; 117; 9; 24; 234; 75; 211; 167; 208; 225; 38; 65; 55;
+ 163; 70; 181; 33; 67; 131; 136; 162; 88; 248; 79; 169; 60; 237; 19; 83; 86;
+ 212; 14; 206; 250; 52; 191; 181; 207; 61; 92; 245; 113; 179; 234; 201; 165;
+ 60; 101; 10; 143; 33; 133; 209; 69; 122; 10; 73; 53; 147; 4; 70; 120; 55;
+ 21; 154; 246; 225; 49; 204; 9; 234; 96; 0; 101; 233; 110; 248; 119; 21; 4;
+ 126; 243; 103; 91; 206; 150; 164; 178; 102; 150; 151; 86; 189; 216; 146; 84;
+ 255; 208; 44; 89; 74; 41; 236; 60; 80; 178; 172; 19; 8; 101; 67; 105; 86;
+ 152; 7; 98; 38; 12; 219; 24; 184; 74; 53; 110; 96; 217; 49; 92; 93; 199;
+ 205; 168; 0; 79; 250; 130; 9; 212; 226; 83; 70; 205; 43; 225; 23; 157; 182;
+ 171; 29; 235; 249; 114; 86; 252; 83; 232; 175; 53; 181; 112; 186; 109; 214;
+ 150; 39; 117; 15; 172; 71; 117; 114; 17; 148; 23; 53; 165; 50; 55; 132; 100;
+ 223; 166; 68; 166; 211; 221; 191; 15; 136; 89; 101; 59; 112; 165; 26; 58;
+ 173; 64; 37; 133; 203; 104; 100; 76; 142; 247; 179; 0; 9; 27; 101; 157; 103;
+ 159; 27; 133; 10; 242; 66; 51; 3; 97; 203; 8; 225; 163; 48; 139; 232; 127;
+ 245; 1; 214; 20; 215; 45; 237; 202; 58; 31; 55; 49; 173; 22; 200; 190; 15;
+ 40; 237; 227; 239; 230; 216; 91; 89; 217; 82; 245; 35; 198; 246; 114; 23;
+ 231; 15; 60; 41; 30; 5; 11; 3; 20; 67; 173; 188; 240; 251; 94; 0; 96; 213;
+ 94; 12; 135; 209; 46; 15; 183; 142; 160; 230; 132; 208; 51; 144; 31; 32;
+ 112; 102; 123; 206; 225; 90; 58; 76; 149; 250; 184; 220; 52; 164; 56; 65;
+ 11; 132; 150; 108; 125; 246; 12; 135; 44; 232; 123; 41; 116; 133; 56; 222;
+ 90; 165; 98; 114; 178; 77; 129; 124; 221; 160; 61; 201; 228; 117; 248; 186;
+ 77; 41; 185; 113; 167; 130; 50; 185; 96; 196; 198; 244; 183; 63; 214; 128;
+ 129; 193; 102; 234; 61; 199; 233; 109; 242; 248; 77; 160; 213; 4; 137; 71;
+ 211; 66; 1; 177; 74; 174; 251; 250; 152; 9; 93; 85; 99; 172; 200; 246; 4;
+ 177; 144; 47; 65; 74; 172; 90; 8; 41; 201; 58; 107; 50; 79; 198; 224; 225;
+ 99; 230; 130; 178; 81; 85; 131; 75; 26; 74; 245; 53; 107; 71; 194; 104; 159;
+ 24; 254; 163; 157; 27; 52; 81; 127; 189; 10; 13; 58; 96; 70; 174; 211; 225;
+ 50; 201; 137; 128; 99; 189; 152; 135; 57; 145; 37; 223; 53; 2; 186; 116;
+ 210; 92; 20; 28; 67; 215; 243; 117; 100; 56; 232; 50; 239; 217; 229; 106;
+ 175; 139; 91; 54; 30; 104; 91; 56; 182; 56; 82; 130; 225; 101; 125; 22; 193;
+ 41; 73; 35; 232; 173; 119; 160; 171; 236; 77; 152; 157; 56; 235; 25; 173;
+ 119; 63; 56; 148; 215; 84; 41; 126; 107; 236; 199; 122; 58; 124; 235; 58;
+ 123; 199; 89; 207; 159; 9; 29; 194; 92; 20; 72; 229; 215; 40; 204; 146; 193;
+ 53; 69; 1; 126; 36; 72; 229; 193; 231; 128; 238; 115; 41; 59; 116; 40; 95;
+ 74; 98; 207; 92; 34; 37; 215; 173; 211; 93; 44; 21; 178; 129; 51; 26; 145;
+ 125; 248; 8; 91; 173; 159; 179; 216; 59; 254; 153; 71; 107; 96; 5; 111; 98;
+ 169; 123; 23; 146; 158; 254; 159; 225; 202; 229; 13; 29; 231; 174; 152; 68;
+ 16; 131; 45; 148; 174; 244; 63; 200; 58; 83; 88; 46; 225; 77; 113; 131; 100;
+ 27; 249; 73; 49; 67; 91; 98; 191; 44; 90; 101; 220; 181; 173; 179; 39; 40;
+ 99; 18; 132; 250; 135; 216; 248; 73; 171; 145; 94; 137; 96; 24; 108; 248;
+ 12; 237; 242; 236; 233; 212; 223; 53; 7; 18; 6; 109; 180; 231; 107; 185; 4;
+ 152; 160; 157; 188; 107; 194; 109; 217; 47; 230; 226; 115; 94; 81; 170; 73;
+ 84; 99; 91; 237; 58; 130; 198; 11; 159; 196; 101; 168; 196; 209; 66; 91;
+ 233; 31; 12; 133; 185; 21; 211; 3; 111; 109; 215; 48; 29; 156; 47; 99; 14;
+ 221; 204; 46; 21; 49; 137; 118; 150; 182; 208; 81; 88; 122; 99; 168; 107;
+ 183; 223; 82; 57; 239; 14; 160; 73; 125; 211; 109; 199; 228; 6; 33; 23; 68;
+ 68; 108; 105; 127; 141; 146; 128; 214; 83; 251; 38; 63; 77; 105; 164; 158;
+ 115; 180; 176; 75; 134; 46; 17; 151; 198; 16; 222; 95; 190; 125; 39; 196;
+ 147; 100; 162; 126; 173; 25; 173; 79; 93; 38; 144; 69; 48; 70; 200; 223; 0;
+ 14; 9; 254; 102; 237; 171; 28; 230; 37; 5; 200; 88; 131; 160; 42; 166; 12;
+ 71; 66; 32; 122; 227; 74; 61; 106; 220; 237; 17; 59; 166; 211; 100; 116;
+ 239; 6; 8; 85; 175; 155; 191; 3; 4; 102; 88; 204; 40; 225; 19; 63; 126; 116;
+ 89; 180; 236; 115; 88; 111; 245; 104; 18; 204; 237; 61; 182; 160; 44; 226;
+ 134; 69; 99; 120; 109; 86; 52; 8; 193; 156; 159; 164; 55; 22; 81; 196; 155;
+ 168; 213; 86; 142; 188; 219; 210; 127; 127; 15; 236; 181; 28; 217; 53; 204;
+ 94; 202; 91; 151; 51; 208; 47; 90; 198; 133; 66; 5; 161; 195; 103; 22; 243;
+ 42; 17; 100; 108; 88; 238; 26; 115; 64; 226; 10; 104; 42; 178; 147; 71; 243;
+ 165; 251; 20; 212; 247; 133; 105; 22; 70; 215; 60; 87; 0; 200; 201; 132; 94;
+ 62; 89; 30; 19; 97; 123; 182; 242; 195; 47; 108; 82; 252; 131; 234; 156;
+ 130; 20; 194; 149; 221; 151; 132; 123; 67; 255; 167; 181; 78; 170; 48; 78;
+ 116; 108; 139; 232; 133; 60; 97; 93; 12; 158; 115; 129; 117; 95; 30; 199;
+ 217; 47; 184; 236; 113; 78; 47; 11; 231; 33; 227; 119; 164; 64; 185; 221;
+ 86; 230; 128; 79; 29; 206; 206; 86; 101; 191; 126; 123; 93; 83; 196; 59;
+ 252; 5; 221; 222; 175; 82; 174; 179; 184; 36; 207; 48; 59; 237; 140; 99;
  149; 52; 149; 129; 190; 169; 131; 188; 164; 51; 4; 31; 101; 92; 71; 103; 55;
  55; 217; 173; 209; 64; 253; 153; 186; 47; 39; 208; 244; 150; 111; 22; 7;
  179; 174; 59; 240; 21; 82; 240; 99; 67; 153; 249; 24; 59; 108; 165; 190; 31;
@@ -5158,38 +5870,37 @@ let GE25519_GROUPER =
      (MATCH_MP pth (CONJ th1 th2));;
 
 let BYTES_LOADED_DATA = prove
- (`bytes_loaded s (word (pc + 0x20f4)) curve25519_x25519base_data <=>
-   read (memory :> bytes(word (pc + 0x20f4),48608)) s =
+ (`bytes_loaded s (word (pc + 0x2c1c)) curve25519_x25519base_data <=>
+   read (memory :> bytes(word (pc + 0x2c1c),48576)) s =
    num_of_bytelist curve25519_x25519base_data`,
   REWRITE_TAC[bytes_loaded; READ_BYTELIST_EQ_BYTES;
     CONV_RULE (RAND_CONV LENGTH_CONV)
      (AP_TERM `LENGTH:byte list->num` curve25519_x25519base_data)]);;
 
 let X25519BASE_TABLE_LEMMA = prove
- (`read (memory :> bytes(word (pc + 0x20f4),48608)) s =
+ (`read (memory :> bytes(word (pc + 0x2c1c),48576)) s =
    num_of_bytelist curve25519_x25519base_data
-   ==> bignum_from_memory(word(pc + 0x20f4),4) s = p_25519 /\
-       edwards25519_exprojective
+   ==> edwards25519_exprojective
         (group_pow edwards25519_group E_25519 (2 EXP 254))
-        (bignum_from_memory(word(pc + 0x2114),4) s,
-         bignum_from_memory(word(pc + 0x2134),4) s,
+        (bignum_from_memory(word(pc + 0x2c1c),4) s,
+         bignum_from_memory(word(pc + 0x2c3c),4) s,
          1,
-         bignum_from_memory(word(pc + 0x2154),4) s) /\
+         bignum_from_memory(word(pc + 0x2c5c),4) s) /\
        edwards25519_exprojective
         (group_pow edwards25519_group E_25519 (2 EXP 254 + 8))
-        (bignum_from_memory(word(pc + 0x2174),4) s,
-         bignum_from_memory(word(pc + 0x2194),4) s,
+        (bignum_from_memory(word(pc + 0x2c7c),4) s,
+         bignum_from_memory(word(pc + 0x2c9c),4) s,
          1,
-         bignum_from_memory(word(pc + 0x21b4),4) s) /\
+         bignum_from_memory(word(pc + 0x2cbc),4) s) /\
        !i. i < 63
            ==> !j. j < 8
                    ==> edwards25519_epprojective
                         (group_pow edwards25519_group E_25519
                            (2 EXP (4 * (i + 1)) * (j + 1)))
-         (bignum_from_memory(word(pc + 0x21d4 + 768 * i + 96 * j),4) s,
-          bignum_from_memory(word(pc + 0x21d4 + 768 * i + 96 * j + 32),4) s,
-          bignum_from_memory(word(pc + 0x21d4 + 768 * i + 96 * j + 64),4) s) /\
-         ~(bignum_from_memory(word(pc + 0x21d4 + 768 * i + 96 * j + 64),4) s =
+         (bignum_from_memory(word(pc + 0x2cdc + 768 * i + 96 * j),4) s,
+          bignum_from_memory(word(pc + 0x2cdc + 768 * i + 96 * j + 32),4) s,
+          bignum_from_memory(word(pc + 0x2cdc + 768 * i + 96 * j + 64),4) s) /\
+         ~(bignum_from_memory(word(pc + 0x2cdc + 768 * i + 96 * j + 64),4) s =
            0)`,
   let GE25519_POWERS =
     end_itlist CONJ
@@ -5198,8 +5909,8 @@ let X25519BASE_TABLE_LEMMA = prove
                 [funpow 3 (W GE25519_GROUPER) GE25519_POW_1]) in
   REWRITE_TAC[GSYM BYTES_LOADED_DATA; curve25519_x25519base_data] THEN
   CONV_TAC(LAND_CONV DATA64_CONV) THEN STRIP_TAC THEN
-  CONV_TAC(funpow 3 RAND_CONV (BINDER_CONV (RAND_CONV EXPAND_CASES_CONV))) THEN
-  CONV_TAC(funpow 3 RAND_CONV EXPAND_CASES_CONV) THEN
+  CONV_TAC(funpow 2 RAND_CONV (BINDER_CONV (RAND_CONV EXPAND_CASES_CONV))) THEN
+  CONV_TAC(funpow 2 RAND_CONV EXPAND_CASES_CONV) THEN
   CONV_TAC NUM_REDUCE_CONV THEN REWRITE_TAC[WORD_ADD] THEN
   CONV_TAC(ONCE_DEPTH_CONV BIGNUM_LEXPAND_CONV) THEN
   REWRITE_TAC[GSYM WORD_ADD] THEN ASM_REWRITE_TAC[] THEN
@@ -5353,7 +6064,7 @@ let LOCAL_MUL_P25519_TAC =
       !n. read(memory :> bytes(word_add (read p2 t) (word n2),8 * 4)) t = n
       ==>
       aligned 16 (read SP t) /\
-      nonoverlapping (word pc,0xded4) (word_add (read p3 t) (word n3),8 * 4)
+      nonoverlapping (word pc,0xe9dc) (word_add (read p3 t) (word n3),8 * 4)
       ==> ensures arm
            (\s. aligned_bytes_loaded s (word pc) curve25519_x25519base_mc /\
                 read PC s = pcin /\
@@ -5809,7 +6520,7 @@ let LOCAL_MUL_4_TAC =
       !n. read(memory :> bytes(word_add (read p2 t) (word n2),8 * 4)) t = n
       ==>
       aligned 16 (read SP t) /\
-      nonoverlapping (word pc,0xded4) (word_add (read p3 t) (word n3),8 * 4)
+      nonoverlapping (word pc,0xe9dc) (word_add (read p3 t) (word n3),8 * 4)
       ==> ensures arm
            (\s. aligned_bytes_loaded s (word pc) curve25519_x25519base_mc /\
                 read PC s = pcin /\
@@ -6241,7 +6952,7 @@ let LOCAL_ADD_TWICE4_TAC =
       !n. read(memory :> bytes(word_add (read p2 t) (word n2),8 * 4)) t = n
       ==>
       aligned 16 (read SP t) /\
-      nonoverlapping (word pc,0xded4) (word_add (read p3 t) (word n3),8 * 4)
+      nonoverlapping (word pc,0xe9dc) (word_add (read p3 t) (word n3),8 * 4)
       ==> ensures arm
            (\s. aligned_bytes_loaded s (word pc) curve25519_x25519base_mc /\
                 read PC s = pcin /\
@@ -6312,7 +7023,7 @@ let LOCAL_DOUBLE_TWICE4_TAC =
       !n. read(memory :> bytes(word_add (read p1 t) (word n1),8 * 4)) t = n
       ==>
       aligned 16 (read SP t) /\
-      nonoverlapping (word pc,0xded4) (word_add (read p3 t) (word n3),8 * 4)
+      nonoverlapping (word pc,0xe9dc) (word_add (read p3 t) (word n3),8 * 4)
       ==> ensures arm
            (\s. aligned_bytes_loaded s (word pc) curve25519_x25519base_mc /\
                 read PC s = pcin /\
@@ -6381,7 +7092,7 @@ let LOCAL_SUB_TWICE4_TAC =
       !n. read(memory :> bytes(word_add (read p2 t) (word n2),8 * 4)) t = n
       ==>
       aligned 16 (read SP t) /\
-      nonoverlapping (word pc,0xded4) (word_add (read p3 t) (word n3),8 * 4)
+      nonoverlapping (word pc,0xe9dc) (word_add (read p3 t) (word n3),8 * 4)
       ==> ensures arm
            (\s. aligned_bytes_loaded s (word pc) curve25519_x25519base_mc /\
                 read PC s = pcin /\
@@ -6453,19 +7164,14 @@ let LOCAL_SUB_TWICE4_TAC =
 (* ------------------------------------------------------------------------- *)
 
 let LOCAL_MODINV_TAC =
-  let cth =
-    (GEN_REWRITE_CONV RAND_CONV [bignum_modinv_mc] THENC TRIM_LIST_CONV)
-    `TRIM_LIST (12,12) bignum_modinv_mc`
-  and th = CONV_RULE (DEPTH_CONV WORD_NUM_RED_CONV)
-                     (SPEC `word 4:int64` CORE_MODINV_CORRECT) in
   ARM_SUBROUTINE_SIM_TAC
-   (curve25519_x25519base_mc,CURVE25519_X25519BASE_EXEC,0x193c,cth,th)
-   [`read X1 s`; `read X2 s`;
-    `read (memory :> bytes(read X2 s,8 * 4)) s`;
-    `read X3 s`;
-    `read (memory :> bytes(read X3 s,8 * 4)) s`;
-    `read X4 s`;
-    `pc + 0x193c`];;
+   (curve25519_x25519base_mc,CURVE25519_X25519BASE_EXEC,0x1930,
+    (GEN_REWRITE_CONV RAND_CONV [bignum_inv_p25519_mc] THENC TRIM_LIST_CONV)
+    `TRIM_LIST (12,16) bignum_inv_p25519_mc`,
+    CORE_INV_P25519_CORRECT)
+   [`read X0 s`; `read X1 s`;
+    `read (memory :> bytes(read X1 s,8 * 4)) s`;
+    `pc + 0x1930`; `stackpointer:int64`];;
 
 (* ------------------------------------------------------------------------- *)
 (* Overall point operation proof.                                            *)
@@ -6475,8 +7181,8 @@ let CURVE25519_X25519BASE_CORRECT = time prove
  (`!res scalar n pc stackpointer.
     aligned 16 stackpointer /\
     ALL (nonoverlapping (stackpointer,448))
-        [(word pc,0xded4); (res,32); (scalar,32)] /\
-    nonoverlapping (res,32) (word pc,0xded4)
+        [(word pc,0xe9dc); (res,32); (scalar,32)] /\
+    nonoverlapping (res,32) (word pc,0xe9dc)
     ==> ensures arm
          (\s. aligned_bytes_loaded s (word pc)
                (APPEND curve25519_x25519base_mc
@@ -6485,7 +7191,7 @@ let CURVE25519_X25519BASE_CORRECT = time prove
               read SP s = stackpointer /\
               C_ARGUMENTS [res; scalar] s /\
               bignum_from_memory (scalar,4) s = n)
-         (\s. read PC s = word (pc + 0x20e0) /\
+         (\s. read PC s = word (pc + 0x2c08) /\
               bignum_from_memory (res,4) s = rfcx25519(n,9))
           (MAYCHANGE [PC; X0; X1; X2; X3; X4; X5; X6; X7; X8; X9; X10;
                       X11; X12; X13; X14; X15; X16; X17; X19; X20;
@@ -6515,11 +7221,11 @@ let CURVE25519_X25519BASE_CORRECT = time prove
 
   ENSURES_WHILE_AUP_TAC `1` `64` `pc + 0xc8` `pc + 0x18a0`
    `\i s.
-      read (memory :> bytes(word(pc + 0x20f4),48608)) s =
+      read (memory :> bytes(word(pc + 0x2c1c),48576)) s =
       num_of_bytelist curve25519_x25519base_data /\
       read SP s = stackpointer /\
       read X23 s = res /\
-      read X19 s = word(pc + 0x21d4 + 768 * (i - 1)) /\
+      read X19 s = word(pc + 0x2cdc + 768 * (i - 1)) /\
       read X20 s = word (4 * i) /\
       val(read X21 s) <= 1 /\
       (i >= 64 ==> val(read X21 s) < 1) /\
@@ -6547,23 +7253,23 @@ let CURVE25519_X25519BASE_CORRECT = time prove
       RULE_ASSUM_TAC(REWRITE_RULE[SYM th]) THEN ASSUME_TAC th) THEN
     SUBGOAL_THEN
      `nonoverlapping_modulo (2 EXP 64) (val(stackpointer:int64),448)
-                                       (val(wpc:int64),0xded4)`
+                                       (val(wpc:int64),0xe9dc)`
     ASSUME_TAC THENL
      [EXPAND_TAC "wpc" THEN NONOVERLAPPING_TAC; ALL_TAC] THEN
     REPEAT(DISCH_THEN(CONJUNCTS_THEN2 ASSUME_TAC MP_TAC)) THEN
     DISCH_THEN(K ALL_TAC) THEN
     BIGNUM_LDIGITIZE_TAC "x0_"
-      `bignum_from_memory(word_add wpc (word 0x2114),4) s0` THEN
+      `bignum_from_memory(word_add wpc (word 0x2c1c),4) s0` THEN
     BIGNUM_LDIGITIZE_TAC "y0_"
-      `bignum_from_memory(word_add wpc (word 0x2134),4) s0` THEN
+      `bignum_from_memory(word_add wpc (word 0x2c3c),4) s0` THEN
     BIGNUM_LDIGITIZE_TAC "t0_"
-      `bignum_from_memory(word_add wpc (word 0x2154),4) s0` THEN
+      `bignum_from_memory(word_add wpc (word 0x2c5c),4) s0` THEN
     BIGNUM_LDIGITIZE_TAC "x1_"
-      `bignum_from_memory(word_add wpc (word 0x2174),4) s0` THEN
+      `bignum_from_memory(word_add wpc (word 0x2c7c),4) s0` THEN
     BIGNUM_LDIGITIZE_TAC "y1_"
-      `bignum_from_memory(word_add wpc (word 0x2194),4) s0` THEN
+      `bignum_from_memory(word_add wpc (word 0x2c9c),4) s0` THEN
     BIGNUM_LDIGITIZE_TAC "t1_"
-      `bignum_from_memory(word_add wpc (word 0x21b4),4) s0` THEN
+      `bignum_from_memory(word_add wpc (word 0x2cbc),4) s0` THEN
 
     ARM_STEPS_TAC CURVE25519_X25519BASE_EXEC (1--10) THEN
 
@@ -6650,7 +7356,7 @@ let CURVE25519_X25519BASE_CORRECT = time prove
     REWRITE_TAC[ARITH_RULE
       `pc + off + 768 * (i - 1) + jre = (pc + off + 768 * (i - 1)) + jre`] THEN
     GEN_REWRITE_TAC (LAND_CONV o ONCE_DEPTH_CONV) [WORD_ADD] THEN
-    ABBREV_TAC `tab:int64 = word(pc + 0x21d4 + 768 * (i - 1))` THEN
+    ABBREV_TAC `tab:int64 = word(pc + 0x2cdc + 768 * (i - 1))` THEN
     CONV_TAC(LAND_CONV EXPAND_CASES_CONV) THEN
     CONV_TAC(LAND_CONV NUM_REDUCE_CONV) THEN
     GEN_REWRITE_TAC (LAND_CONV o TOP_DEPTH_CONV) [WORD_ADD_0] THEN
@@ -7035,25 +7741,20 @@ let CURVE25519_X25519BASE_CORRECT = time prove
 
   REWRITE_TAC(!simulation_precanon_thms) THEN ENSURES_INIT_TAC "s0" THEN
 
-  LOCAL_ADD_TWICE4_TAC 2 ["y_3"; "x_3"; "w_3"] THEN
-  LOCAL_SUB_TWICE4_TAC 0 ["z_3"; "x_3"; "w_3"] THEN
-
-  (*** The state setup for the modular inverse ***)
-
-  FIRST_X_ASSUM(MP_TAC o CONJUNCT1 o MATCH_MP X25519BASE_TABLE_LEMMA) THEN
-  REWRITE_TAC[BIGNUM_FROM_MEMORY_BYTES] THEN DISCH_TAC THEN
-  ARM_STEPS_TAC CURVE25519_X25519BASE_EXEC (5--9) THEN
+  LOCAL_ADD_TWICE4_TAC 2 ["t1"; "x_3"; "w_3"] THEN
+  LOCAL_SUB_TWICE4_TAC 0 ["t2"; "x_3"; "w_3"] THEN
 
   (*** The inlining of modular inverse ***)
 
-  LOCAL_MODINV_TAC 10 THEN
+  ARM_STEPS_TAC CURVE25519_X25519BASE_EXEC (5--6) THEN
+  LOCAL_MODINV_TAC 7 THEN
   ABBREV_TAC
-   `x_3 =
-    read(memory :> bytes(word_add stackpointer (word 128),8 * 4)) s10` THEN
+   `t0 =
+    read(memory :> bytes(word_add stackpointer (word 256),8 * 4)) s7` THEN
 
   (*** Final multiplication ***)
 
-  LOCAL_MUL_P25519_TAC 0 ["resx"; "y_3"; "x_3"] THEN
+  LOCAL_MUL_P25519_TAC 0 ["resx"; "t1"; "t0"] THEN
 
   (*** Basic mathematics mapping things to curve25519 ***)
 
@@ -7094,12 +7795,8 @@ let CURVE25519_X25519BASE_CORRECT = time prove
 
   REPEAT(FIRST_X_ASSUM(MP_TAC o check (is_imp o concl))) THEN
   REPEAT(ANTS_TAC THENL [ASM_REWRITE_TAC[] THEN NO_TAC; DISCH_TAC]) THEN
-  SIMP_TAC[ONCE_REWRITE_RULE[COPRIME_SYM] PRIME_COPRIME_EQ; PRIME_P25519] THEN
-  GEN_REWRITE_TAC (LAND_CONV o ONCE_DEPTH_CONV) [p_25519] THEN
-  CONV_TAC NUM_REDUCE_CONV THEN REWRITE_TAC[GSYM p_25519] THEN
-  DISCH_TAC THEN
 
-  REWRITE_TAC[exprojective] THEN
+  DISCH_TAC THEN REWRITE_TAC[exprojective] THEN
   MP_TAC(SPEC `nn:num`
    (MATCH_MP GROUP_POW GENERATOR_IN_GROUP_CARRIER_EDWARDS25519)) THEN
   SPEC_TAC(`group_pow edwards25519_group E_25519 nn`,`P:int#int`) THEN
@@ -7188,8 +7885,10 @@ let CURVE25519_X25519BASE_CORRECT = time prove
   REWRITE_TAC[INT_REM_EQ] THEN
   RULE_ASSUM_TAC(REWRITE_RULE[GSYM CONG; GSYM DIVIDES_MOD]) THEN
 
-  FIRST_X_ASSUM(MP_TAC o check (is_imp o concl)) THEN ANTS_TAC THENL
-   [REWRITE_TAC[num_divides] THEN
+  FIRST_X_ASSUM(MP_TAC o check (is_imp o concl)) THEN
+  MATCH_MP_TAC(TAUT `p /\ (p /\ q ==> r) ==> (p ==> q) ==> r`) THEN
+  CONJ_TAC THENL
+   [SIMP_TAC[PRIME_COPRIME_EQ; PRIME_P25519] THEN REWRITE_TAC[num_divides] THEN
     FIRST_X_ASSUM(SUBST1_TAC o MATCH_MP INT_CONG_DIVIDES) THEN
     REWRITE_TAC[GSYM INT_CONG; GSYM num_congruent] THEN DISCH_TAC THEN
     FIRST_X_ASSUM(MP_TAC o MATCH_MP (NUMBER_RULE
@@ -7207,20 +7906,21 @@ let CURVE25519_X25519BASE_CORRECT = time prove
       ASM_SIMP_TAC[PRIME_COPRIME_EQ; PRIME_P25519] THEN
       ASM_SIMP_TAC[CONG; MOD_LT] THEN REWRITE_TAC[p_25519] THEN
       CONV_TAC NUM_REDUCE_CONV THEN ASM_REWRITE_TAC[]];
-    STRIP_TAC] THEN
+    DISCH_THEN(MP_TAC o MATCH_MP (MESON[INVERSE_MOD_RMUL]
+     `coprime(p,x) /\ y = inverse_mod p x ==> (x * y == 1) (mod p)`))] THEN
   REPEAT(FIRST_X_ASSUM(MP_TAC o GEN_REWRITE_RULE I [num_congruent])) THEN
-  UNDISCH_TAC `(&z_3:int == &X - &W) (mod &p_25519)` THEN
+  UNDISCH_TAC `(&t2:int == &X - &W) (mod &p_25519)` THEN
   UNDISCH_TAC `~(p_25519 divides Z)` THEN
   ASM_SIMP_TAC[GSYM PRIME_COPRIME_EQ; PRIME_P25519] THEN
-  REWRITE_TAC[GSYM INT_OF_NUM_CLAUSES; num_coprime] THEN
+  REWRITE_TAC[GSYM INT_OF_NUM_CLAUSES; num_congruent; num_coprime] THEN
   CONV_TAC INTEGER_RULE);;
 
 let CURVE25519_X25519BASE_SUBROUTINE_CORRECT = time prove
  (`!res scalar n pc stackpointer returnaddress.
     aligned 16 stackpointer /\
     ALL (nonoverlapping (word_sub stackpointer (word 496),496))
-        [(word pc,0xded4); (res,32); (scalar,32)] /\
-    nonoverlapping (res,32) (word pc,0xded4)
+        [(word pc,0xe9dc); (res,32); (scalar,32)] /\
+    nonoverlapping (res,32) (word pc,0xe9dc)
     ==> ensures arm
          (\s. aligned_bytes_loaded s (word pc)
                (APPEND curve25519_x25519base_mc

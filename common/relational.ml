@@ -134,7 +134,9 @@ let ASSIGNS_PULL_THM = prove
    ((if P then c := y else ASSIGNS c) =
     (\s s'. ?d. (c := if P then y else d) s s')) /\
    ((if P then c := y else \s s'. ?d. (c := f d s) s s') =
-    \s s'. ?d. (c := (if P then y else f d s)) s s')`,
+    \s s'. ?d. (c := (if P then y else f d s)) s s') /\
+   ((if P then \s s'. ?d. (c := f d s) s s' else c := y) =
+    \s s'. ?d. (c := (if P then f d s else y)) s s')`,
   REWRITE_TAC[ASSIGNS_THM; assign; FUN_EQ_THM] THEN MESON_TAC[]);;
 
 let SEQ_PULL_THM = prove
@@ -1831,7 +1833,8 @@ let SUBSUMED_MAYCHANGE_TAC =
        [MAYCHANGE_IDEMPOT_TAC THEN NO_TAC; CONJ_TAC] THEN
       REPEAT(MATCH_MP_TAC lemma_step THEN CONJ_TAC) THEN
       DISCH_THEN(K ALL_TAC)) THEN
-  tac;;
+  ((POP_ASSUM_LIST(K ALL_TAC) THEN tac) ORELSE tac);;
+
 
 (*** Example
 

@@ -119,7 +119,8 @@ let BIGNUM_CTD_CORRECT = prove
 
   X_GEN_TAC `j:num` THEN STRIP_TAC THEN VAL_INT64_TAC `j:num` THEN
   VAL_INT64_TAC `j + 1` THEN
-  ASSUME_TAC(WORD_RULE `word_sub (word (j + 1)) (word 1):int64 = word j`) THEN
+  ASSUME_TAC(WORD_RULE
+   `!j. word_sub (word (j + 1)) (word 1):int64 = word j`) THEN
   GHOST_INTRO_TAC `i:num` `\s. val(word_sub (read RDX s) (word 1))` THEN
   REWRITE_TAC[VAL_WORD_GALOIS; DIMINDEX_64] THEN
   REWRITE_TAC[WORD_RULE

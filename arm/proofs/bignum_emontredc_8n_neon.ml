@@ -945,7 +945,7 @@ needs "arm/proofs/neon_helper.ml";;
 
 (*** Define a few important definitions and useful functions ***)
 
-let inner_loop_invariant = 
+let inner_loop_invariant =
   `\i s.  read X1 s = word_sub (word_add z (word(32 * i))) (word 32) /\
           read X2 s = word_sub (word_add m (word(32 * i))) (word 32) /\
           bignum_from_memory(m,k) s = n /\
@@ -1140,7 +1140,7 @@ let BIGNUM_EMONTREDC_8N_NEON_CORRECT = time prove
 
   ASM_CASES_TAC `k4 = 0` THENL
    [UNDISCH_THEN `k4 = 0` SUBST_ALL_TAC THEN
-    
+
     REWRITE_TAC(!simulation_precanon_thms) THEN
     ENSURES_INIT_TAC "s0" THEN
     ARM_STEPS_TAC BIGNUM_EMONTREDC_8N_NEON_EXEC (1--5) THEN
@@ -1323,7 +1323,7 @@ let BIGNUM_EMONTREDC_8N_NEON_CORRECT = time prove
     ASM_REWRITE_TAC[BIGNUM_FROM_MEMORY_BYTES] THEN CONV_TAC WORD_RULE;
 
     ALL_TAC; (*** This is the main loop invariant: save for later ***)
-    
+
     X_GEN_TAC `i:num` THEN STRIP_TAC THEN VAL_INT64_TAC `i:num` THEN
     ARM_SIM_TAC BIGNUM_EMONTREDC_8N_NEON_EXEC [1];
 
@@ -1525,7 +1525,7 @@ let BIGNUM_EMONTREDC_8N_NEON_CORRECT = time prove
               2 EXP (64 * k) * cout + z1)` THEN
   CONJ_TAC THENL
    [ALL_TAC;
-    ARM_SIM_TAC BIGNUM_EMONTREDC_8N_NEON_EXEC (1--5) 
+    ARM_SIM_TAC BIGNUM_EMONTREDC_8N_NEON_EXEC (1--5)
     THEN REPEAT CONJ_TAC THENL
      [CONV_TAC WORD_RULE;
       VAL_INT64_TAC `k4 - i:num` THEN ASM_REWRITE_TAC[VAL_WORD_1] THEN
@@ -1647,7 +1647,7 @@ let BIGNUM_EMONTREDC_8N_NEON_CORRECT = time prove
       [30;31;36;38;67;68;73;75] [WORD_MUL64_LO;WORD_MUL64_HI]
       (1--86) (1--86) [] THEN
 
-    (* ldr of stp	x4, x5, [x1] *)
+    (* ldr of stp       x4, x5, [x1] *)
     BYTES128_EQ_JOIN64_TAC `read (memory :> bytes128 z) s86`
         `word (0 + val (sum_s40:(64)word) * w):(64)word`
         `word (0 + val (word (bigdigit a 0):(64)word) * w):(64)word` THEN
@@ -1661,7 +1661,7 @@ let BIGNUM_EMONTREDC_8N_NEON_CORRECT = time prove
       [110;111;115;116] [WORD_MUL64_LO;WORD_MUL64_HI]
       (87--123) (87--123) [] THEN
 
-    (* ldr of stp	x6, x7, [x1, #16] *)
+    (* ldr of stp       x6, x7, [x1, #16] *)
     BYTES128_EQ_JOIN64_TAC
         `read (memory :> bytes128 (word_add z (word 16):(64)word)) s123`
         `word (0 + val (sum_s118:(64)word) * w):(64)word`
@@ -1928,7 +1928,7 @@ let BIGNUM_EMONTREDC_8N_NEON_CORRECT = time prove
        REWRITE_TAC [WORD_ADD_ASSOC_CONSTS] THEN
        CONV_TAC(ONCE_DEPTH_CONV NUM_ADD_CONV)] THEN
     STRIP_TAC THEN
- 
+
     ARM_STEPS_TAC BIGNUM_EMONTREDC_8N_NEON_EXEC (1--4) THEN
     (* jump to maddloop_x0one *)
     ARM_XACCSTEPS_TAC BIGNUM_EMONTREDC_8N_NEON_EXEC [`X1`; `X2`; `SP`]
@@ -2255,7 +2255,7 @@ let BIGNUM_EMONTREDC_8N_NEON_CORRECT = time prove
     REWRITE_TAC [ARITH_RULE `a * 2 EXP (64*4) * b = 2 EXP (64*4) * a * b`] THEN
     REWRITE_TAC[GSYM LEFT_ADD_DISTRIB; EQ_MULT_LCANCEL;
       ARITH_RULE `~(2 EXP (64*4) = 0)`] THEN
-  
+
     (* Prove it! *)
     PROVE_IT;
 
@@ -2450,7 +2450,7 @@ let BIGNUM_EMONTREDC_8N_NEON_CORRECT = time prove
         `2 EXP (64 * 4 * (k4 - 1)) * bignum_of_wordlist [g8; g9; g10; g11] +
          read (memory :> bytes (z,8 * 4 * (k4 - 1))) s135 =
          q * lowdigits n (4 * (k4 - 1)) + lowdigits a (4 * (k4 - 1)) + q`)] THEN
- 
+
     (* split read (memory :> bytes (z,8 * k)) s135 into its high 32 bytes and low part,
       and cancel out the low parts in lhs = rhs *)
     REWRITE_TAC [GSYM BIGNUM_FROM_MEMORY_BYTES] THEN
@@ -2509,7 +2509,7 @@ let BIGNUM_EMONTREDC_8N_NEON_CORRECT = time prove
     ARM_STEPS_TAC BIGNUM_EMONTREDC_8N_NEON_EXEC (1--2) THEN
     ENSURES_FINAL_STATE_TAC THEN
     ASM_REWRITE_TAC[ARITH_RULE`3-1=2`];
-    
+
     ALL_TAC] THEN
 
   (* maddloop_neon *)
@@ -2751,7 +2751,7 @@ let BIGNUM_EMONTREDC_8N_NEON_CORRECT = time prove
       `val (word_sub (word (32 * (k4 - (i + 1)))) (word 32):(64)word) =
         (32 * (k4 - (i + 1))) - 32` SUBST_ALL_TAC THENL [
     REWRITE_TAC[VAL_WORD_SUB;VAL_WORD;DIMINDEX_64;ARITH_RULE`32 MOD 2 EXP 64 = 32`] THEN
-    SUBGOAL_THEN 
+    SUBGOAL_THEN
         `(32 * (k4 - (i + 1))) MOD 2 EXP 64 = 32 * (k4 - (i + 1))` SUBST_ALL_TAC
         THENL [
       IMP_REWRITE_TAC[MOD_LT] THEN UNDISCH_TAC `k4 < 2 EXP 58` THEN ARITH_TAC;

@@ -239,7 +239,7 @@ let decode_hi = new_definition `decode_hi x v sz (opc:3 word) rm l =
   | F,_,2 -> SOME (NOT rm,l)
   | F,_,3 -> SOME (NEG rm,l)
   | F,_,4 -> SOME (MUL2 (adx sz) rm,l)
-  | F,_,5 -> SOME (IMUL1 rm,l)
+  | F,_,5 -> SOME (IMUL2 (adx sz) rm,l)
   | F,_,6 -> let hi,lo = adx sz in SOME (DIV2 (lo,hi) (hi,lo) rm,l)
   // | F,_,7 -> SOME (IDIV rm,l)
   | T,_,0 -> SOME (INC rm,l)
@@ -953,7 +953,7 @@ let READ_SIB_CONV,READ_MODRM_CONV,READ_VEX_CONV,DECODE_CONV =
       conjuncts o lhand o snd o dest_forall o concl in
     ["T";"F";",";"NONE";"SOME"] @
     ["%%";"%%%";"%%%%";"##"] @
-    ["IMUL1"; "IMUL"; "JMP"] @
+    ["IMUL"; "JMP"] @
     constructors_of instruction_INDUCTION @
     constructors_of operand_INDUCTION @
     constructors_of rep_pfx_INDUCTION @

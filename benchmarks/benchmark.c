@@ -312,6 +312,8 @@ void call_bignum_half_p521(void) repeat(bignum_half_p521(b0,b1))
 
 void call_bignum_half_sm2(void) repeat(bignum_half_sm2(b0,b1))
 
+void call_bignum_inv_p25519(void) repeat(bignum_inv_p25519(b0,b1))
+
 void call_bignum_triple_p256(void) repeat(bignum_triple_p256(b0,b1))
 
 void call_bignum_triple_p256_alt(void) repeat(bignum_triple_p256_alt(b0,b1))
@@ -396,6 +398,14 @@ void call_bignum_sqr_p521(void) repeat(bignum_sqr_p521(b0,b1))
 
 void call_bignum_sqr_p521_alt(void) repeat(bignum_sqr_p521_alt(b0,b1))
 
+void call_bignum_sqrt_p25519(void) repeatfewer(10,bignum_sqrt_p25519(b0,b1))
+
+void call_bignum_sqrt_p25519_alt(void) repeatfewer(10,bignum_sqrt_p25519_alt(b0,b1))
+
+void call_bignum_invsqrt_p25519(void) repeatfewer(10,bignum_invsqrt_p25519(b0,b1))
+
+void call_bignum_invsqrt_p25519_alt(void) repeatfewer(10,bignum_invsqrt_p25519_alt(b0,b1))
+
 void call_bignum_mul_p25519(void) repeat(bignum_mul_p25519(b0,b1,b2))
 
 void call_bignum_mul_p25519_alt(void) repeat(bignum_mul_p25519_alt(b0,b1,b2))
@@ -460,6 +470,10 @@ void call_bignum_madd__16_32(void) repeat(bignum_madd(32,b0,16,b1,16,b2))
 
 void call_bignum_madd__32_64(void) repeat(bignum_madd(64,b0,32,b1,32,b2))
 
+void call_bignum_madd_n25519(void) repeat(bignum_madd_n25519(b0,b1,b2,b3))
+
+void call_bignum_madd_n25519_alt(void) repeat(bignum_madd_n25519_alt(b0,b1,b2,b3))
+
 void call_bignum_sqr__4_8(void) repeat(bignum_sqr(8,b0,4,b1))
 
 void call_bignum_sqr__6_12(void) repeat(bignum_sqr(12,b0,6,b1))
@@ -502,6 +516,8 @@ void call_bignum_fromlebytes_6(void) repeat(bignum_fromlebytes_6(b0,(unsigned ch
 void call_bignum_fromlebytes_p521(void) repeat(bignum_fromlebytes_p521(b0,(unsigned char *) b1))
 void call_bignum_frombebytes_6(void) repeat(bignum_frombebytes_6(b0,(unsigned char *) b1))
 
+void call_bignum_mod_m25519_4(void) repeat(bignum_mod_m25519_4(b0,b1))
+void call_bignum_mod_n25519_4(void) repeat(bignum_mod_n25519_4(b0,b1))
 void call_bignum_mod_p25519_4(void) repeat(bignum_mod_p25519_4(b0,b1))
 void call_bignum_mod_n256_4(void) repeat(bignum_mod_n256_4(b0,b1))
 void call_bignum_mod_p256_4(void) repeat(bignum_mod_p256_4(b0,b1))
@@ -515,6 +531,7 @@ void call_bignum_mod_nsm2_4(void) repeat(bignum_mod_nsm2_4(b0,b1))
 void call_bignum_mod_p521_9(void) repeat(bignum_mod_p521_9(b0,b1))
 void call_bignum_mod_sm2_4(void) repeat(bignum_mod_sm2_4(b0,b1))
 
+void call_bignum_mod_n25519__8(void) repeat(bignum_mod_n25519(b0,8,b1))
 void call_bignum_mod_n256__8(void) repeat(bignum_mod_n256(b0,8,b1))
 void call_bignum_mod_n256_alt__8(void) repeat(bignum_mod_n256_alt(b0,8,b1))
 void call_bignum_mod_n384__12(void) repeat(bignum_mod_n384(b0,12,b1))
@@ -704,6 +721,10 @@ void call_curve25519_ladderstep_alt(void) repeat(curve25519_ladderstep_alt(b0,b1
 void call_curve25519_pxscalarmul(void) repeatfewer(10,curve25519_pxscalarmul(b0,b1,b2))
 void call_curve25519_pxscalarmul_alt(void) repeatfewer(10,curve25519_pxscalarmul_alt(b0,b1,b2))
 
+void call_edwards25519_decode(void) repeatfewer(10,edwards25519_decode(b1,(unsigned char *)b2))
+void call_edwards25519_decode_alt(void) repeatfewer(10,edwards25519_decode_alt(b1,(unsigned char *)b2))
+void call_edwards25519_encode(void) repeat(edwards25519_encode((unsigned char *)b1,b2))
+
 void call_edwards25519_epadd(void) repeat(edwards25519_epadd(b1,b2,b3))
 void call_edwards25519_epadd_alt(void) repeat(edwards25519_epadd_alt(b1,b2,b3))
 
@@ -718,6 +739,9 @@ void call_edwards25519_pepadd_alt(void) repeat(edwards25519_pepadd_alt(b1,b2,b3)
 
 void call_edwards25519_scalarmulbase(void) repeatfewer(10,edwards25519_scalarmulbase(b0,b1))
 void call_edwards25519_scalarmulbase_alt(void) repeatfewer(10,edwards25519_scalarmulbase_alt(b0,b1))
+
+void call_edwards25519_scalarmuldouble(void) repeatfewer(10,edwards25519_scalarmuldouble(b0,b1,b2,b3))
+void call_edwards25519_scalarmuldouble_alt(void) repeatfewer(10,edwards25519_scalarmuldouble_alt(b0,b1,b2,b3))
 
 void call_p256_montjadd(void) repeat(p256_montjadd(b1,b2,b3))
 void call_p256_montjdouble(void) repeat(p256_montjdouble(b1,b2))
@@ -945,6 +969,9 @@ int main(int argc, char *argv[])
   timingtest(all,"bignum_half_p384",call_bignum_half_p384);
   timingtest(all,"bignum_half_p521",call_bignum_half_p521);
   timingtest(all,"bignum_half_sm2",call_bignum_half_sm2);
+  timingtest(all,"bignum_inv_p25519",call_bignum_inv_p25519);
+  timingtest(bmi,"bignum_invsqrt_p25519",call_bignum_invsqrt_p25519);
+  timingtest(all,"bignum_invsqrt_p25519_alt",call_bignum_invsqrt_p25519_alt);
   timingtest(all,"bignum_iszero (32)" ,call_bignum_iszero__32);
   timingtest(bmi,"bignum_kmul_16_32",call_bignum_kmul_16_32);
   timingtest(neon,"bignum_kmul_16_32_neon",call_bignum_kmul_16_32_neon);
@@ -963,6 +990,11 @@ int main(int argc, char *argv[])
   timingtest(all,"bignum_madd (8x8 -> 16)",call_bignum_madd__8_16);
   timingtest(all,"bignum_madd (16x16 -> 32)",call_bignum_madd__16_32);
   timingtest(all,"bignum_madd (32x32 -> 64)",call_bignum_madd__32_64);
+  timingtest(bmi,"bignum_madd_n25519",call_bignum_madd_n25519);
+  timingtest(all,"bignum_madd_n25519_alt",call_bignum_madd_n25519_alt);
+  timingtest(all,"bignum_mod_m25519_4",call_bignum_mod_m25519_4);
+  timingtest(all,"bignum_mod_n25519 (8 -> 4)",call_bignum_mod_n25519__8);
+  timingtest(all,"bignum_mod_n25519_4",call_bignum_mod_n25519_4);
   timingtest(bmi,"bignum_mod_n256 (8 -> 4)",call_bignum_mod_n256__8);
   timingtest(all,"bignum_mod_n256_alt (8 -> 4)",call_bignum_mod_n256_alt__8);
   timingtest(all,"bignum_mod_n256_4",call_bignum_mod_n256_4);
@@ -1090,6 +1122,8 @@ int main(int argc, char *argv[])
   timingtest(all,"bignum_sqr_p256k1_alt",call_bignum_sqr_p256k1_alt);
   timingtest(bmi,"bignum_sqr_p521",call_bignum_sqr_p521);
   timingtest(all,"bignum_sqr_p521_alt",call_bignum_sqr_p521_alt);
+  timingtest(bmi,"bignum_sqrt_p25519",call_bignum_sqrt_p25519);
+  timingtest(all,"bignum_sqrt_p25519_alt",call_bignum_sqrt_p25519_alt);
   timingtest(all,"bignum_sub (4x4->4)",call_bignum_sub__4_4);
   timingtest(all,"bignum_sub (6x6->6)",call_bignum_sub__6_6);
   timingtest(all,"bignum_sub (32x32->32)",call_bignum_sub__32_32);
@@ -1134,6 +1168,9 @@ int main(int argc, char *argv[])
   timingtest(all,"curve25519_x25519base_alt",call_curve25519_x25519base_alt);
   timingtest(bmi,"curve25519_x25519base_byte",call_curve25519_x25519base_byte);
   timingtest(all,"curve25519_x25519base_byte_alt",call_curve25519_x25519base_byte_alt);
+  timingtest(bmi,"edwards25519_decode",call_edwards25519_decode);
+  timingtest(all,"edwards25519_decode_alt",call_edwards25519_decode_alt);
+  timingtest(all,"edwards25519_encode",call_edwards25519_encode);
   timingtest(bmi,"edwards25519_epadd",call_edwards25519_epadd);
   timingtest(all,"edwards25519_epadd_alt",call_edwards25519_epadd_alt);
   timingtest(bmi,"edwards25519_epdouble",call_edwards25519_epdouble);
@@ -1144,6 +1181,8 @@ int main(int argc, char *argv[])
   timingtest(all,"edwards25519_pepadd_alt",call_edwards25519_pepadd_alt);
   timingtest(bmi,"edwards25519_scalarmulbase",call_edwards25519_scalarmulbase);
   timingtest(all,"edwards25519_scalarmulbase_alt",call_edwards25519_scalarmulbase_alt);
+  timingtest(bmi,"edwards25519_scalarmuldouble",call_edwards25519_scalarmuldouble);
+  timingtest(all,"edwards25519_scalarmuldouble_alt",call_edwards25519_scalarmuldouble_alt);
   timingtest(bmi,"p256_montjadd",call_p256_montjadd);
   timingtest(bmi,"p256_montjdouble",call_p256_montjdouble);
   timingtest(bmi,"p256_montjmixadd",call_p256_montjmixadd);

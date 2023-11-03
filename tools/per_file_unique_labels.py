@@ -8,7 +8,7 @@ import os
 # To run:
 #  1) Add list of folders+file extension under "main"
 #  2) Run "python3 ./per_file_unique_labels.py" from root of s2n-bignum
-# 
+#
 # This script does not capture all possible labels for all flavors of
 # assembly language. For example, it doesn't catch local NASM-style labels.
 def append_labels_with_file_name(directory, match):

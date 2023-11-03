@@ -9,10 +9,12 @@ bignum_deamont_p384
 bignum_demont_p256
 bignum_demont_p384
 bignum_emontredc_8n
+bignum_invsqrt_p25519
 bignum_kmul_16_32
 bignum_kmul_32_64
 bignum_ksqr_16_32
 bignum_ksqr_32_64
+bignum_madd_n25519
 bignum_mod_n256
 bignum_mod_n384
 bignum_mod_n521_9
@@ -41,6 +43,7 @@ bignum_sqr_8_16
 bignum_sqr_p25519
 bignum_sqr_p256k1
 bignum_sqr_p521
+bignum_sqrt_p25519
 bignum_tomont_p256
 bignum_tomont_p256k1
 bignum_tomont_p384
@@ -55,11 +58,13 @@ curve25519_x25519
 curve25519_x25519_byte
 curve25519_x25519base
 curve25519_x25519base_byte
+edwards25519_decode
 edwards25519_epadd
 edwards25519_epdouble
 edwards25519_pdouble
 edwards25519_pepadd
 edwards25519_scalarmulbase
+edwards25519_scalarmuldouble
 p256_montjadd
 p256_montjdouble
 p256_montjmixadd

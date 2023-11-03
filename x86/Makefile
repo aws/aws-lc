@@ -81,6 +81,9 @@ POINT_OBJ = curve25519/curve25519_ladderstep.o \
             curve25519/curve25519_x25519_alt.o \
             curve25519/curve25519_x25519base.o \
             curve25519/curve25519_x25519base_alt.o \
+            curve25519/edwards25519_decode.o \
+            curve25519/edwards25519_decode_alt.o \
+            curve25519/edwards25519_encode.o \
             curve25519/edwards25519_epadd.o \
             curve25519/edwards25519_epadd_alt.o \
             curve25519/edwards25519_epdouble.o \
@@ -91,6 +94,8 @@ POINT_OBJ = curve25519/curve25519_ladderstep.o \
             curve25519/edwards25519_pepadd_alt.o \
             curve25519/edwards25519_scalarmulbase.o \
             curve25519/edwards25519_scalarmulbase_alt.o \
+            curve25519/edwards25519_scalarmuldouble.o \
+            curve25519/edwards25519_scalarmuldouble_alt.o \
             p256/p256_montjadd.o \
             p256/p256_montjdouble.o \
             p256/p256_montjmixadd.o \
@@ -111,6 +116,14 @@ BIGNUM_OBJ = curve25519/bignum_add_p25519.o \
              curve25519/bignum_cmul_p25519.o \
              curve25519/bignum_cmul_p25519_alt.o \
              curve25519/bignum_double_p25519.o \
+             curve25519/bignum_inv_p25519.o \
+             curve25519/bignum_invsqrt_p25519.o \
+             curve25519/bignum_invsqrt_p25519_alt.o \
+             curve25519/bignum_madd_n25519.o \
+             curve25519/bignum_madd_n25519_alt.o \
+             curve25519/bignum_mod_m25519_4.o \
+             curve25519/bignum_mod_n25519.o \
+             curve25519/bignum_mod_n25519_4.o \
              curve25519/bignum_mod_p25519_4.o \
              curve25519/bignum_mul_p25519.o \
              curve25519/bignum_mul_p25519_alt.o \
@@ -118,6 +131,8 @@ BIGNUM_OBJ = curve25519/bignum_add_p25519.o \
              curve25519/bignum_optneg_p25519.o \
              curve25519/bignum_sqr_p25519.o \
              curve25519/bignum_sqr_p25519_alt.o \
+             curve25519/bignum_sqrt_p25519.o \
+             curve25519/bignum_sqrt_p25519_alt.o \
              curve25519/bignum_sub_p25519.o \
              fastmul/bignum_emontredc_8n.o \
              fastmul/bignum_kmul_16_32.o \
@@ -365,7 +380,7 @@ clean:; rm -f libs2nbignum.a */*.o */*.obj */*.correct
 yesbmi_functions: $(OBJ) ; for i in */*.o; do objdump -d $$i | (egrep -qi '(mulx|adcx|adox)' && grep 'S2N_BN_SYMBOL' `echo $$i | sed -e 's/o$$/S/'`) ; done | sed -e 's/S2N_BN_SYMBOL(//; s/)://' | sort >yesbmi_functions
 nonbmi_functions: $(OBJ) ; for i in */*.o; do objdump -d $$i | (egrep -qi '(mulx|adcx|adox)' || grep 'S2N_BN_SYMBOL' `echo $$i | sed -e 's/o$$/S/'`) ; done | sed -e 's/S2N_BN_SYMBOL(//; s/)://' | sort >nonbmi_functions
 
-bmi: yesbmi_functions nonbmi_functions ; [ `cat ???bmi_functions | sort | uniq | wc -l` -eq `grep '^extern' ../include/s2n-bignum.h | wc -l` ]
+bmi: yesbmi_functions nonbmi_functions ; [ `cat ???bmi_functions | sort | uniq | wc -l` -eq `grep '^extern' ../include/s2n-bignum.h | grep -v _neon | wc -l` ]
 
 clobber: clean ; rm -f yesbmi_functions nonbmi_functions
 
@@ -397,14 +412,18 @@ PROOFS = $(OBJ:.o=.correct)
 
 # Cases where a proof uses other proofs for lemmas and/or subroutines
 
-curve25519/curve25519_x25519.correct: generic/bignum_modinv.o generic/bignum_modinv.obj proofs/curve25519_x25519.ml curve25519/curve25519_x25519.o curve25519/curve25519_x25519.obj ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/curve25519_x25519.ml";;') | $(HOLLIGHT) 2>&1) >$@
-curve25519/curve25519_x25519_alt.correct: generic/bignum_modinv.o generic/bignum_modinv.obj proofs/curve25519_x25519_alt.ml curve25519/curve25519_x25519_alt.o curve25519/curve25519_x25519_alt.obj ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/curve25519_x25519_alt.ml";;') | $(HOLLIGHT) 2>&1) >$@
-curve25519/curve25519_x25519_byte.correct: generic/bignum_modinv.o generic/bignum_modinv.obj proofs/curve25519_x25519_byte.ml curve25519/curve25519_x25519_byte.o curve25519/curve25519_x25519_byte.obj ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/curve25519_x25519_byte.ml";;') | $(HOLLIGHT) 2>&1) >$@
-curve25519/curve25519_x25519_byte_alt.correct: generic/bignum_modinv.o generic/bignum_modinv.obj proofs/curve25519_x25519_byte_alt.ml curve25519/curve25519_x25519_byte_alt.o curve25519/curve25519_x25519_byte_alt.obj ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/curve25519_x25519_byte_alt.ml";;') | $(HOLLIGHT) 2>&1) >$@
-curve25519/curve25519_x25519base.correct: generic/bignum_modinv.o generic/bignum_modinv.obj proofs/curve25519_x25519base.ml curve25519/curve25519_x25519base.o curve25519/curve25519_x25519base.obj ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/curve25519_x25519base.ml";;') | $(HOLLIGHT) 2>&1) >$@
-curve25519/curve25519_x25519base_alt.correct: generic/bignum_modinv.o generic/bignum_modinv.obj proofs/curve25519_x25519base_alt.ml curve25519/curve25519_x25519base_alt.o curve25519/curve25519_x25519base_alt.obj ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/curve25519_x25519base_alt.ml";;') | $(HOLLIGHT) 2>&1) >$@
-curve25519/curve25519_x25519base_byte.correct: generic/bignum_modinv.o generic/bignum_modinv.obj proofs/curve25519_x25519base_byte.ml curve25519/curve25519_x25519base_byte.o curve25519/curve25519_x25519base_byte.obj ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/curve25519_x25519base_byte.ml";;') | $(HOLLIGHT) 2>&1) >$@
-curve25519/curve25519_x25519base_byte_alt.correct: generic/bignum_modinv.o generic/bignum_modinv.obj proofs/curve25519_x25519base_byte_alt.ml curve25519/curve25519_x25519base_byte_alt.o curve25519/curve25519_x25519base_byte_alt.obj ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/curve25519_x25519base_byte_alt.ml";;') | $(HOLLIGHT) 2>&1) >$@
+curve25519/curve25519_x25519.correct: curve25519/bignum_inv_p25519.o curve25519/bignum_inv_p25519.obj proofs/curve25519_x25519.ml curve25519/curve25519_x25519.o curve25519/curve25519_x25519.obj ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/curve25519_x25519.ml";;') | $(HOLLIGHT) 2>&1) >$@
+curve25519/curve25519_x25519_alt.correct: curve25519/bignum_inv_p25519.o curve25519/bignum_inv_p25519.obj proofs/curve25519_x25519_alt.ml curve25519/curve25519_x25519_alt.o curve25519/curve25519_x25519_alt.obj ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/curve25519_x25519_alt.ml";;') | $(HOLLIGHT) 2>&1) >$@
+curve25519/curve25519_x25519_byte.correct: curve25519/bignum_inv_p25519.o curve25519/bignum_inv_p25519.obj proofs/curve25519_x25519_byte.ml curve25519/curve25519_x25519_byte.o curve25519/curve25519_x25519_byte.obj ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/curve25519_x25519_byte.ml";;') | $(HOLLIGHT) 2>&1) >$@
+curve25519/curve25519_x25519_byte_alt.correct: curve25519/bignum_inv_p25519.o curve25519/bignum_inv_p25519.obj proofs/curve25519_x25519_byte_alt.ml curve25519/curve25519_x25519_byte_alt.o curve25519/curve25519_x25519_byte_alt.obj ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/curve25519_x25519_byte_alt.ml";;') | $(HOLLIGHT) 2>&1) >$@
+curve25519/curve25519_x25519base.correct: curve25519/bignum_inv_p25519.o curve25519/bignum_inv_p25519.obj proofs/curve25519_x25519base.ml curve25519/curve25519_x25519base.o curve25519/curve25519_x25519base.obj ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/curve25519_x25519base.ml";;') | $(HOLLIGHT) 2>&1) >$@
+curve25519/curve25519_x25519base_alt.correct: curve25519/bignum_inv_p25519.o curve25519/bignum_inv_p25519.obj proofs/curve25519_x25519base_alt.ml curve25519/curve25519_x25519base_alt.o curve25519/curve25519_x25519base_alt.obj ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/curve25519_x25519base_alt.ml";;') | $(HOLLIGHT) 2>&1) >$@
+curve25519/curve25519_x25519base_byte.correct: curve25519/bignum_inv_p25519.o curve25519/bignum_inv_p25519.obj proofs/curve25519_x25519base_byte.ml curve25519/curve25519_x25519base_byte.o curve25519/curve25519_x25519base_byte.obj ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/curve25519_x25519base_byte.ml";;') | $(HOLLIGHT) 2>&1) >$@
+curve25519/curve25519_x25519base_byte_alt.correct: curve25519/bignum_inv_p25519.o curve25519/bignum_inv_p25519.obj proofs/curve25519_x25519base_byte_alt.ml curve25519/curve25519_x25519base_byte_alt.o curve25519/curve25519_x25519base_byte_alt.obj ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/curve25519_x25519base_byte_alt.ml";;') | $(HOLLIGHT) 2>&1) >$@
+curve25519/edwards25519_scalarmulbase.correct: curve25519/bignum_inv_p25519.o curve25519/bignum_inv_p25519.obj proofs/edwards25519_scalarmulbase.ml curve25519/edwards25519_scalarmulbase.o curve25519/edwards25519_scalarmulbase.obj ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/edwards25519_scalarmulbase.ml";;') | $(HOLLIGHT) 2>&1) >$@
+curve25519/edwards25519_scalarmulbase_alt.correct: curve25519/bignum_inv_p25519.o curve25519/bignum_inv_p25519.obj proofs/edwards25519_scalarmulbase_alt.ml curve25519/edwards25519_scalarmulbase_alt.o curve25519/edwards25519_scalarmulbase_alt.obj ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/edwards25519_scalarmulbase_alt.ml";;') | $(HOLLIGHT) 2>&1) >$@
+curve25519/edwards25519_scalarmuldouble.correct: curve25519/bignum_inv_p25519.o curve25519/bignum_inv_p25519.obj proofs/edwards25519_scalarmuldouble.ml curve25519/edwards25519_scalarmuldouble.o curve25519/edwards25519_scalarmuldouble.obj ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/edwards25519_scalarmuldouble.ml";;') | $(HOLLIGHT) 2>&1) >$@
+curve25519/edwards25519_scalarmuldouble_alt.correct: curve25519/bignum_inv_p25519.o curve25519/bignum_inv_p25519.obj proofs/edwards25519_scalarmuldouble_alt.ml curve25519/edwards25519_scalarmuldouble_alt.o curve25519/edwards25519_scalarmuldouble_alt.obj ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/edwards25519_scalarmuldouble_alt.ml";;') | $(HOLLIGHT) 2>&1) >$@
 generic/bignum_modexp.correct: generic/bignum_amontifier.correct generic/bignum_amontmul.correct generic/bignum_demont.correct generic/bignum_mux.correct proofs/bignum_modexp.ml generic/bignum_modexp.o generic/bignum_modexp.obj ; (cd ..; (echo 'loadt "x86/proofs/base.ml";;'; echo 'loadt "x86/proofs/bignum_modexp.ml";;') | $(HOLLIGHT) 2>&1) >$@
 
 # All other other instances are standalone
