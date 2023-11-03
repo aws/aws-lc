@@ -387,17 +387,6 @@ typedef struct x509_trust_st X509_TRUST;
 
 typedef void *OPENSSL_BLOCK;
 
-#ifndef __has_attribute
-#define __has_attribute(x) 0
-#endif
-#if __STDC_VERSION__ > 202300L
-#define AWS_LC_DEPRECATED [[deprecated]]
-#elif __has_attribute(deprecated)
-#define AWS_LC_DEPRECATED __attribute__((deprecated))
-#else
-#define AWS_LC_DEPRECATED /* deprecated */
-#endif
-
 #if defined(__cplusplus)
 }  // extern C
 #elif !defined(BORINGSSL_NO_CXX)
