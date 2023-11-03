@@ -169,9 +169,9 @@ if ((CMAKE_ASM_COMPILER_ID MATCHES "Clang" OR CMAKE_ASM_COMPILER MATCHES "clang"
     (CMAKE_ASM_COMPILER_VERSION VERSION_LESS "7.0.0") AND (ARCH STREQUAL "x86_64"))
   set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/aesni-gcm-avx512.${ASM_EXT} PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512bw -mavx512dq -mavx512vl")
   set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/aesni-xts-avx512.${ASM_EXT} PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512bw -mavx512dq -mavx512vl")
-  set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/rsaz-2k-avx512.${ASM_EXT} PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512bw -mavx512dq -mavx512vl")
-  set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/rsaz-3k-avx512.${ASM_EXT} PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512bw -mavx512dq -mavx512vl")
-  set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/rsaz-4k-avx512.${ASM_EXT} PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512bw -mavx512dq -mavx512vl")
+  set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/rsaz-2k-avx512.${ASM_EXT} PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512bw -mavx512dq -mavx512vl -mavx512ifma")
+  set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/rsaz-3k-avx512.${ASM_EXT} PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512bw -mavx512dq -mavx512vl -mavx512ifma")
+  set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/rsaz-4k-avx512.${ASM_EXT} PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512bw -mavx512dq -mavx512vl -mavx512ifma")
 endif()
 
 # s2n-bignum files can be compiled on Unix platforms only (except Apple),
