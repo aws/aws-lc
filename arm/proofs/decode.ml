@@ -225,6 +225,11 @@ let decode = new_definition `!w:int32. decode w =
     else if sf then arm_bfmop uopc (XREG' Rd) (XREG' Rn) (val immr) (val imms)
     else if val immr >= 32 \/ val imms >= 32 then NONE
     else arm_bfmop uopc (WREG' Rd) (WREG' Rn) (val immr) (val imms)
+  | [sf; 0b01100110:8; N; immr:6; imms:6; Rn:5; Rd:5] ->
+    if ~(sf <=> N) then NONE
+    else if sf then SOME(arm_BFM (XREG' Rd) (XREG' Rn) (val immr) (val imms))
+    else if val immr >= 32 \/ val imms >= 32 then NONE
+    else SOME(arm_BFM (WREG' Rd) (WREG' Rn) (val immr) (val imms))
   | [sf; 0b101101011000000000100:21; Rn:5; Rd:5] ->
     SOME (if sf then arm_CLZ (XREG' Rd) (XREG' Rn)
           else arm_CLZ (WREG' Rd) (WREG' Rn))
@@ -275,23 +280,32 @@ let decode = new_definition `!w:int32. decode w =
     SOME (arm_ldst_q is_ld Rt (XREG_SP Rn) (Immediate_Offset (word (val imm12 * 16))))
 
   // SIMD operations
-  | [0:1; q; 0b001110:6; size:2; 1:1; Rm:5; 0b100001:6; Rn:5; Rd:5] ->
-    // ADD
+  | [0:1; q; u; 0b01110:5; size:2; 1:1; Rm:5; 0b100001:6; Rn:5; Rd:5] ->
+    // ADD and SUB
     if size = (word 0b11:(2)word) /\ ~q then NONE // "UNDEFINED"
     else
       let esize = 8 * (2 EXP (val size)) in
       let datasize = if q then 128 else 64 in
-      let elements = datasize DIV esize in
-      // sub_op is false
-      SOME (arm_ADD_VEC (QREG' Rd) (QREG' Rn) (QREG' Rm) esize datasize)
+      SOME ((if u then arm_SUB_VEC else arm_ADD_VEC)
+            (QREG' Rd) (QREG' Rn) (QREG' Rm) esize datasize)
 
   | [0:1; q; 0b001110001:9; Rm:5; 0b000111:6; Rn:5; Rd:5] ->
     // AND
     SOME (arm_AND_VEC (QREG' Rd) (QREG' Rn) (QREG' Rm) (if q then 128 else 64))
 
+  | [0:1; q; 0b001110011:9; Rm:5; 0b000111:6; Rn:5; Rd:5] ->
+    // BIC
+    SOME (arm_BIC_VEC (QREG' Rd) (QREG' Rn) (QREG' Rm) (if q then 128 else 64))
+
   | [0:1; q; 0b101110101:9; Rm:5; 0b000111:6; Rn:5; Rd:5] ->
     // BIT
     SOME (arm_BIT (QREG' Rd) (QREG' Rn) (QREG' Rm) (if q then 128 else 64))
+
+  // Two sizes of FCSEL, not allowing FP16 case at all
+  | [0b00011110:8; 0b00:2; 0b1:1; Rm:5; cond:4; 0b11:2; Rn:5; Rd:5] ->
+    SOME (arm_FCSEL (QREG' Rd) (QREG' Rn) (QREG' Rm) (Condition cond) 32)
+  | [0b00011110:8; 0b01:2; 0b1:1; Rm:5; cond:4; 0b11:2; Rn:5; Rd:5] ->
+    SOME (arm_FCSEL (QREG' Rd) (QREG' Rn) (QREG' Rm) (Condition cond) 64)
 
   | [0:1; q; 0b001110000:9; imm5:5; 0b000011:6; Rn:5; Rd:5] ->
     // DUP (general)
@@ -311,7 +325,7 @@ let decode = new_definition `!w:int32. decode w =
     else NONE
 
   | [0:1; q; 1:1; 0b011110:6; immh:4; abc:3; cmode:4; 0b01:2; defgh:5; Rd:5] ->
-    // MOVI, USRA (Vector), SLI (Vector)
+    // MOVI, USHR (Vector), USRA (Vector), SLI (Vector)
     if val immh = 0 then
       // MOVI
       if q then
@@ -321,6 +335,16 @@ let decode = new_definition `!w:int32. decode w =
         | SOME imm -> SOME (arm_MOVI (QREG' Rd) imm)
         | NONE -> NONE
       else NONE
+    else if cmode = (word 0b0000:(4)word) then
+      // USHR
+      if bit 3 immh /\ ~q then NONE // "UNDEFINED"
+      else
+        let immb = abc in
+        let Rn = defgh in
+        let esize = 8 * 2 EXP (3 - word_clz immh) in
+        let datasize = if q then 128 else 64 in
+        let amt = 2 * esize - val(word_join immh immb:7 word) in
+        SOME (arm_USHR_VEC (QREG' Rd) (QREG' Rn) amt esize datasize)
     else if cmode = (word 0b0001:(4)word) then
       // USRA
       if bit 3 immh /\ ~q then NONE // "UNDEFINED"
@@ -359,11 +383,10 @@ let decode = new_definition `!w:int32. decode w =
   | [0:1; q; 0b001110:6; size:2; 0b1:1; Rm:5; 0b100111:6; Rn:5; Rd:5] ->
     // MUL
     if size = word 0b11 then NONE // "UNDEFINED"
-    else if ~q then NONE // datasize = 64 is unsupported yet
     else
-      let esize:(64)word = word_shl (word 8: (64)word) (val size) in
-      // datasize is fixed to 128. elements is datasize / esize.
-      SOME (arm_MUL_VEC (QREG' Rd) (QREG' Rn) (QREG' Rm) (val esize))
+      let esize = 8 * (2 EXP (val size)) in
+      let datasize = if q then 128 else 64 in
+      SOME (arm_MUL_VEC (QREG' Rd) (QREG' Rn) (QREG' Rm) esize datasize)
 
   | [0:1; q; 0b001110101:9; Rm:5; 0b000111:6; Rn:5; Rd:5] ->
     // MOV, ORR
@@ -376,6 +399,25 @@ let decode = new_definition `!w:int32. decode w =
     else
       let esize:(64)word = word_shl (word 0b1000: (64)word) (val size) in
       SOME (arm_REV64_VEC (QREG' Rd) (QREG' Rn) (val esize))
+
+  | [0b01101110000:11; imm5:5; 0:1; imm4:4; 1:1; Rn:5; Rd:5] ->
+    // INS, or "MOV (element)"
+    let size = word_ctz imm5 in
+    if size > 3 then NONE else
+    let esize = 8 * 2 EXP size in
+    let dst_index = esize * val(word_subword imm5 (size+1,4-size):5 word) in
+    let src_index = esize * val(word_subword imm4 (size,4-size):4 word) in
+    let idxdsize = if bit 3 imm4 then 128 else 64 in
+    SOME (arm_INS (QREG' Rd) (QREG' Rn) dst_index src_index esize idxdsize)
+
+ | [0b01001110000:11; imm5:5; 0b000111:6; Rn:5; Rd:5] ->
+    // INS (general)
+    let size = word_ctz imm5 in
+    if size > 3 then NONE else
+    let esize = 8 * 2 EXP size in
+    let ix = esize * val(word_subword imm5 (size+1,4-size):5 word) in
+    if size = 3 then SOME (arm_INS_GEN (QREG' Rd) (XREG' Rn) ix esize)
+    else SOME (arm_INS_GEN (QREG' Rd) (WREG' Rn) ix esize)
 
   | [0b01011110000:11; Rm:5; 0b010000:6; Rn:5; Rd:5] ->
     // SHA256H
@@ -413,12 +455,11 @@ let decode = new_definition `!w:int32. decode w =
     // SHL
     if immh = (word 0b0: (4)word) then NONE // "asimdimm case"
     else if bit 3 immh /\ ~q then NONE // "UNDEFINED"
-    else if ~q then NONE // datasize = 64 is unsupported yet
     else
-      let esize:(64)word = word_shl (word 0b1000: (64)word) (3 - word_clz immh) in
-      // datasize is fixed to 128. elements is datasize / esize.
-      let shiftamnt:(64)word = word_sub (word_join immh immb:64 word) esize in
-      SOME (arm_SHL_VEC (QREG' Rd) (QREG' Rn) (val shiftamnt) (val esize))
+      let esize = 8 * 2 EXP (3 - word_clz immh) in
+      let datasize = if q then 128 else 64 in
+      let amt = val(word_join immh immb:7 word) - esize in
+      SOME (arm_SHL_VEC (QREG' Rd) (QREG' Rn) amt esize datasize)
 
   | [0:1; q; 0b0011110:7; immh:4; immb:3; 0b100001:6; Rn:5; Rd:5] ->
     // SHRN
@@ -434,6 +475,15 @@ let decode = new_definition `!w:int32. decode w =
       let shift = (2 * esize) - val(word_join immh immb: (7)word) in
       // round is false
       SOME (arm_SHRN (QREG' Rd) (QREG' Rn) shift esize)
+
+  | [0:1; q; 0b001110:6; size:2; 0:1; Rm:5; 0:1; op; 0b1010:4; Rn:5; Rd:5] ->
+    // TRN1 and TRN2
+    if size = (word 0b11:(2)word) /\ ~q then NONE // "UNDEFINED"
+    else
+      let esize = 8 * (2 EXP (val size)) in
+      let datasize = if q then 128 else 64 in
+      SOME ((if op then arm_TRN2 else arm_TRN1)
+            (QREG' Rd) (QREG' Rn) (QREG' Rm) esize datasize)
 
   | [0:1; q; 0b101110:6; size:2; 0b100000001010:12; Rn:5; Rd:5] ->
     // UADDLP
@@ -488,19 +538,18 @@ let decode = new_definition `!w:int32. decode w =
       let esize: (64)word = word_shl (word 8: (64)word) (val size) in
       SOME (arm_XTN (QREG' Rd) (QREG' Rn) (val esize))
 
-  | [0:1; q; 0b001110:6; size:2; 0:1; Rm:5; 0b001110:6; Rn:5; Rd:5] ->
-    // ZIP1
+  | [0:1; q; 0b001110:6; size:2; 0:1; Rm:5; 0:1; op; 0b1110:4; Rn:5; Rd:5] ->
+    // ZIP1 (op = 0) and ZIP2 (op = 1)
     if size = (word 0b11:(2)word) /\ ~q then NONE // "UNDEFINED"
     else
       let esize = 8 * (2 EXP (val size)) in
       let datasize = if q then 128 else 64 in
       let elements = datasize DIV esize in
-      // part is 0, pairs is elements / 2
-      SOME (arm_ZIP1 (QREG' Rd) (QREG' Rn) (QREG' Rm) esize datasize)
+      // part is 1 or 0 according to op, pairs is elements / 2
+      if op then SOME(arm_ZIP2 (QREG' Rd) (QREG' Rn) (QREG' Rm) esize datasize)
+      else SOME(arm_ZIP1 (QREG' Rd) (QREG' Rn) (QREG' Rm) esize datasize)
 
  | _ -> NONE`;;
-
-
 
 (* ------------------------------------------------------------------------- *)
 (* Decode tactics.                                                           *)
@@ -971,6 +1020,7 @@ let PURE_DECODE_CONV =
   | Comb(Comb(Comb(Const("decode_bitmask",_),_),_),_) ->
     eval_opt t F DECODE_BITMASK_CONV
   | Comb((Const("word_clz",_) as f),a) -> eval_unary f a F WORD_RED_CONV
+  | Comb((Const("word_ctz",_) as f),a) -> eval_unary f a F WORD_RED_CONV
   | Comb((Const("word_zx",_) as f),a) -> eval_unary f a F WORD_ZX_CONV
   | Comb((Const("word_sx",_) as f),a) -> eval_unary f a F IWORD_SX_CONV
   | Comb((Const("word_not",_) as f),a) -> eval_unary f a F WORD_RED_CONV

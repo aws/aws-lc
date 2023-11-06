@@ -123,6 +123,9 @@ let iclasses =
   "x10100100xxxxxxxxxxxxxxxxxxxxxx0";
   "x11100100xxxxxxxxxxxxxxxxxxxxxxx";
 
+  (*** BFM ***)
+  "x01100110xxxxxxxxxxxxxxxxxxxxxxx";
+
   (*** CSEL, CSINC, CSINV, CSNEG register-register ***)
   "xx011010100xxxxxxxxx0xxxxxxxxxxx";
 
@@ -165,6 +168,9 @@ let iclasses =
   (*** AND ***)
   "0x001110001xxxxx000111xxxxxxxxxx";
 
+  (*** BIC ***)
+  "0x001110011xxxxx000111xxxxxxxxxx";
+
   (*** BIT ***)
   "0x101110101xxxxx000111xxxxxxxxxx";
 
@@ -174,13 +180,31 @@ let iclasses =
   (*** EXT ***)
   "01101110000xxxxx0xxxx0xxxxxxxxxx"; (* 128 bits only *)
 
+  (*** FCSEL, 32 and 64 bits ***)
+  "00011110001xxxxxxxxx11xxxxxxxxxx";
+  "00011110011xxxxxxxxx11xxxxxxxxxx";
+
+  (*** INS, or MOV (element) ***)
+  "01101110000xxxx10xxxx1xxxxxxxxxx";
+  "01101110000xxx100xxxx1xxxxxxxxxx";
+  "01101110000xx1000xxxx1xxxxxxxxxx";
+  "01101110000x10000xxxx1xxxxxxxxxx";
+  "01101110000x00000xxxx1xxxxxxxxxx";
+
+  (*** INS (general, i.e. GPR -> VEC) ***)
+  "01001110000xxxx1000111xxxxxxxxxx";
+  "01001110000xxx10000111xxxxxxxxxx";
+  "01001110000xx100000111xxxxxxxxxx";
+  "01001110000x1000000111xxxxxxxxxx";
+  "01001110000x0000000111xxxxxxxxxx";
+
   (*** MOVI ***)
   "0110111100000xxx111001xxxxxxxxxx"; (* q=1, cmode=1110 *)
 
   (*** MUL ***)
-  "01001110001xxxxx100111xxxxxxxxxx"; (* .b *)
-  "01001110011xxxxx100111xxxxxxxxxx"; (* .h *)
-  "01001110101xxxxx100111xxxxxxxxxx"; (* .s *)
+  "0x001110001xxxxx100111xxxxxxxxxx"; (* .b *)
+  "0x001110011xxxxx100111xxxxxxxxxx"; (* .h *)
+  "0x001110101xxxxx100111xxxxxxxxxx"; (* .s *)
 
   (*** ORR ***)
   "0x001110101xxxxx000111xxxxxxxxxx";
@@ -215,9 +239,11 @@ let iclasses =
   (*** SHA512SU1 ***)
   "11001110011xxxxx100010xxxxxxxxxx";***)
 
-  (*** SHL ***)
-  "01001111001xxxxx010101xxxxxxxxxx"; (* .s *)
-  "0100111101xxxxxx010101xxxxxxxxxx"; (* .d *)
+  (*** SHL (make sure immh is nonzero) ***)
+  "0x00111101xxxxxx010101xxxxxxxxxx";
+  "0x001111001xxxxx010101xxxxxxxxxx";
+  "0x0011110001xxxx010101xxxxxxxxxx";
+  "0x00111100001xxx010101xxxxxxxxxx";
 
   (*** SHRN ***)
   "00001111001xxxxx100001xxxxxxxxxx"; (* q=0, immh!=0 *)
@@ -229,6 +255,14 @@ let iclasses =
   "01101111001xxxxx010101xxxxxxxxxx"; (* q=1, immh!=0 *)
   "011011110001xxxx010101xxxxxxxxxx"; (* q=1, immh!=0 *)
   "0110111100001xxx010101xxxxxxxxxx"; (* q=1, immh!=0 *)
+
+  (*** SUB ***)
+  "01101110xx1xxxxx100001xxxxxxxxxx"; (* 128 bits *)
+  "001011100x1xxxxx100001xxxxxxxxxx"; (* 64 bits, size=0 or 1 *)
+  "00101110101xxxxx100001xxxxxxxxxx"; (* 64 bits, size=2 *)
+
+  (*** TRN1 and TRN2 ***)
+  "0x001110xx0xxxxx0x1010xxxxxxxxxx";
 
   (*** UADDLP ***)
   "011011100x100000001010xxxxxxxxxx"; (* src: .b, .h *)
@@ -248,6 +282,12 @@ let iclasses =
   (*** UMULL ***)
   "001011100x1xxxxx110000xxxxxxxxxx"; (* size!=11 *)
   "00101110101xxxxx110000xxxxxxxxxx"; (* size!=11 *)
+
+  (*** USHR (make sure immh is nonzero) ***)
+  "0x10111101xxxxxx000001xxxxxxxxxx";
+  "0x101111001xxxxx000001xxxxxxxxxx";
+  "0x1011110001xxxx000001xxxxxxxxxx";
+  "0x10111100001xxx000001xxxxxxxxxx";
 
   (*** USRA ***)
   "0110111101xxxxxx000101xxxxxxxxxx"; (* q=1 *)
@@ -272,6 +312,11 @@ let iclasses =
   "01001110xx0xxxxx001110xxxxxxxxxx"; (* q=1 *)
   "000011100x0xxxxx001110xxxxxxxxxx"; (* q=0, size!=3 *)
   "00001110100xxxxx001110xxxxxxxxxx"; (* q=0, size!=3 *)
+
+  (*** ZIP2 ***)
+  "01001110xx0xxxxx011110xxxxxxxxxx"; (* q=1 *)
+  "000011100x0xxxxx011110xxxxxxxxxx"; (* q=0, size!=3 *)
+  "00001110100xxxxx011110xxxxxxxxxx"; (* q=0, size!=3 *)
  ];;
 
 (* ------------------------------------------------------------------------- *)
