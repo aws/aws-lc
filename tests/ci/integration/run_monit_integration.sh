@@ -45,7 +45,7 @@ git clone https://bitbucket.org/tildeslash/monit.git ${MONIT_SRC_FOLDER} --depth
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} ${MONIT_BUILD_FOLDER}
 ls
 
-aws_lc_build ${SRC_ROOT} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER}
+aws_lc_build ${SRC_ROOT} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} -DBUILD_TESTING=OFF
 
 # Build monit from source.
 pushd ${MONIT_SRC_FOLDER}
