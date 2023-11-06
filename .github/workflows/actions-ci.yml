@@ -73,7 +73,7 @@ jobs:
 
   MSVC-2019:
     needs: [sanity-test-run]
-    runs-on: temporary-performance-testing_windows-2019_8-core
+    runs-on: aws-lc_windows-2019_8-core
     steps:
       - name: Git clone the repository
         uses: actions/checkout@v3
@@ -87,7 +87,7 @@ jobs:
 
   MSVC-2022:
     needs: [sanity-test-run]
-    runs-on: temporary-performance-testing_windows-latest_8-core
+    runs-on: aws-lc_windows-latest_8-core
     steps:
       - name: Git clone the repository
         uses: actions/checkout@v3
@@ -103,7 +103,7 @@ jobs:
     needs: [sanity-test-run]
     # TODO: Update this to run on windows-2022. windows-2022 (Windows 11) has phased out support for older processors.
     # https://learn.microsoft.com/en-us/windows-hardware/design/minimum/supported/windows-11-supported-intel-processors
-    runs-on: temporary-performance-testing_windows-2019_64-core
+    runs-on: aws-lc_windows-2019_64-core
     steps:
       - name: Git clone the repository
         uses: actions/checkout@v3
@@ -130,7 +130,7 @@ jobs:
 
   MSVC-SDE-32-bit:
     needs: [sanity-test-run]
-    runs-on: temporary-performance-testing_windows-2019_64-core
+    runs-on: aws-lc_windows-2019_64-core
     steps:
       - name: Git clone the repository
         uses: actions/checkout@v3
