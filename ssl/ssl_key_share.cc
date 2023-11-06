@@ -221,7 +221,7 @@ class KEMKeyShare : public SSLKeyShare {
       return false;
     }
 
-    // Retain the private key for decapsulation
+    // Retain the secret key for decapsulation
     UniquePtr<EVP_PKEY> pkey(raw_key);
     ctx_.reset(EVP_PKEY_CTX_new(pkey.get(), nullptr));
     if (!ctx_) {
@@ -309,7 +309,7 @@ class KEMKeyShare : public SSLKeyShare {
       return false;
     }
 
-    // EVP_PKEY_encapsulate() will generate a shared secret, then encrypt it
+    // EVP_PKEY_encapsulate() will generate a shared secret, then encapsulate it
     // with the peer's public key. We send the resultant ciphertext to the
     // peer by writing it to |out_public_key|, then...
     Array<uint8_t> shared_secret;
@@ -342,7 +342,7 @@ class KEMKeyShare : public SSLKeyShare {
 
   // Because this is a KEM key share, |peer_key| is actually the ciphertext
   // resulting from the peer encapsulating the shared secret under our public key.
-  // In Finish(), we use our previously generated private key to decrypt
+  // In Finish(), we use our previously generated secret key to decrypt
   // that ciphertext and obtain the shared secret.
   bool Finish(Array<uint8_t> *out_secret, uint8_t *out_alert,
               Span<const uint8_t> peer_key) override {
@@ -383,7 +383,7 @@ class KEMKeyShare : public SSLKeyShare {
     }
 
     // |peer_key| is the ciphertext, encapsulating the shared secret,
-    // that the peer generated using our public key. We use our private
+    // that the peer generated using our public key. We use our secret
     // key to decapsulate it, and retain the shared secret by writing
     // it to |out_secret|.
     uint8_t *ciphertext = (uint8_t *)peer_key.begin();
@@ -418,7 +418,7 @@ class KEMKeyShare : public SSLKeyShare {
 // A HybridKeyShare consists of key shares from two or more component groups,
 // all of which are used to generate a hybrid shared secret.
 // See https://datatracker.ietf.org/doc/html/draft-ietf-tls-hybrid-design.
-  class HybridKeyShare : public SSLKeyShare {
+class HybridKeyShare : public SSLKeyShare {
   public:
     HybridKeyShare(uint16_t group_id) : group_id_(group_id),
     exchange_performed(false), hybrid_group_(nullptr) {
@@ -504,7 +504,7 @@ class KEMKeyShare : public SSLKeyShare {
       // the peer. The hybrid public key is the concatenation of all component
       // public keys; the hybrid shared secret is the concatenation of all
       // component shared secrets.
-      size_t peer_key_index = 0;
+      size_t peer_key_read_index = 0;
       for (size_t i = 0; i < NUM_HYBRID_COMPONENTS; i++) {
         size_t component_key_size = 0;
         if (!get_component_offer_key_share_size(&component_key_size, hybrid_group_->component_group_ids[i])) {
@@ -513,7 +513,7 @@ class KEMKeyShare : public SSLKeyShare {
         }
 
         // Verify that |peer_key| contains enough data
-        if (peer_key_index + component_key_size > peer_key.size()) {
+        if (peer_key_read_index + component_key_size > peer_key.size()) {
           CBB_cleanup(&hybrid_shared_secret);
           *out_alert = SSL_AD_DECODE_ERROR;
           OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_HYBRID_KEYSHARE);
@@ -521,7 +521,7 @@ class KEMKeyShare : public SSLKeyShare {
         }
 
         Span<const uint8_t> component_key =
-          peer_key.subspan(peer_key_index, component_key_size);
+          peer_key.subspan(peer_key_read_index, component_key_size);
 
         Array<uint8_t> component_secret;
         if (!key_shares_[i] ||
@@ -532,11 +532,11 @@ class KEMKeyShare : public SSLKeyShare {
           return false;
         }
 
-        peer_key_index += component_key_size;
+        peer_key_read_index += component_key_size;
       }
 
       // Final validation that |peer_key| was the correct size
-      if (peer_key_index != peer_key.size()) {
+      if (peer_key_read_index != peer_key.size()) {
         CBB_cleanup(&hybrid_shared_secret);
         *out_alert = SSL_AD_DECODE_ERROR;
         OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);

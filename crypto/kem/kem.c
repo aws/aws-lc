@@ -31,7 +31,7 @@ static const KEM built_in_kems[AWSLC_NUM_BUILT_IN_KEMS] = {
     sizeof(kOIDKyber512r3),         // kem.oid_len
     "Kyber512 Round-3",             // kem.comment
     KYBER512_R3_PUBLIC_KEY_BYTES,   // kem.public_key_len
-    KYBER512_R3_PRIVATE_KEY_BYTES,  // kem.secret_key_len
+    KYBER512_R3_SECRET_KEY_BYTES,   // kem.secret_key_len
     KYBER512_R3_CIPHERTEXT_BYTES,   // kem.ciphertext_len
     KYBER_R3_SHARED_SECRET_LEN,     // kem.shared_secret_len
     &kem_kyber512r3_method,         // kem.method
@@ -43,7 +43,7 @@ static const KEM built_in_kems[AWSLC_NUM_BUILT_IN_KEMS] = {
     sizeof(kOIDKyber768r3),         // kem.oid_len
     "Kyber768 Round-3",             // kem.comment
     KYBER768_R3_PUBLIC_KEY_BYTES,   // kem.public_key_len
-    KYBER768_R3_PRIVATE_KEY_BYTES,  // kem.secret_key_len
+    KYBER768_R3_SECRET_KEY_BYTES,   // kem.secret_key_len
     KYBER768_R3_CIPHERTEXT_BYTES,   // kem.ciphertext_len
     KYBER_R3_SHARED_SECRET_LEN,     // kem.shared_secret_len
     &kem_kyber768r3_method,         // kem.method
@@ -55,7 +55,7 @@ static const KEM built_in_kems[AWSLC_NUM_BUILT_IN_KEMS] = {
     sizeof(kOIDKyber1024r3),        // kem.oid_len
     "Kyber1024 Round-3",            // kem.comment
     KYBER1024_R3_PUBLIC_KEY_BYTES,  // kem.public_key_len
-    KYBER1024_R3_PRIVATE_KEY_BYTES, // kem.secret_key_len
+    KYBER1024_R3_SECRET_KEY_BYTES,  // kem.secret_key_len
     KYBER1024_R3_CIPHERTEXT_BYTES,  // kem.ciphertext_len
     KYBER_R3_SHARED_SECRET_LEN,     // kem.shared_secret_len
     &kem_kyber1024r3_method,        // kem.method
