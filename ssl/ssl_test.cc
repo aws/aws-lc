@@ -11031,7 +11031,7 @@ TEST_P(BadKemKeyShareFinishTest, BadKemKeyShareFinish) {
     ASSERT_TRUE(server_out_public_key_data);
     server_public_key = MakeConstSpan(server_out_public_key_data, t.accept_key_share_size - 1);
     EXPECT_FALSE(client_key_share->Finish(&client_secret, &client_alert, server_public_key));
-    EXPECT_EQ(client_alert, SSL_AD_DECODE_ERROR);
+    EXPECT_EQ(client_alert, SSL_AD_INTERNAL_ERROR);
     client_alert = 0;
   }
 
@@ -11045,7 +11045,7 @@ TEST_P(BadKemKeyShareFinishTest, BadKemKeyShareFinish) {
     ASSERT_TRUE(server_out_public_key_data);
     server_public_key = MakeConstSpan(server_out_public_key_data, t.accept_key_share_size + 1);
     EXPECT_FALSE(client_key_share->Finish(&client_secret, &client_alert, server_public_key));
-    EXPECT_EQ(client_alert, SSL_AD_DECODE_ERROR);
+    EXPECT_EQ(client_alert, SSL_AD_INTERNAL_ERROR);
     client_alert = 0;
   }
 

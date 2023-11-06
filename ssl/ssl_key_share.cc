@@ -367,18 +367,9 @@ class KEMKeyShare : public SSLKeyShare {
     }
 
     // Retrieve the lengths of the ciphertext and shared secret
-    size_t ciphertext_len = 0;
     size_t secret_len = 0;
-    if (!EVP_PKEY_encapsulate(ctx_.get(), nullptr, &ciphertext_len, nullptr,
-                              &secret_len)) {
+    if (!EVP_PKEY_decapsulate(ctx_.get(), nullptr, &secret_len, nullptr, peer_key.size())) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-      return false;
-    }
-
-    // Ensure that peer_key is valid
-    if (!peer_key.data() || peer_key.size() != ciphertext_len) {
-      *out_alert = SSL_AD_DECODE_ERROR;
-      OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_KEM_CIPHERTEXT);
       return false;
     }
 
@@ -396,7 +387,7 @@ class KEMKeyShare : public SSLKeyShare {
     size_t secret_bytes_written = secret_len;
     if (!EVP_PKEY_decapsulate(ctx_.get(), shared_secret.data(),
                               &secret_bytes_written, ciphertext,
-                              ciphertext_len) ||
+                              peer_key.size()) ||
                               secret_bytes_written != secret_len) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_KEM_CIPHERTEXT);
       return false;
