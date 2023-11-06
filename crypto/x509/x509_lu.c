@@ -598,6 +598,7 @@ int X509_STORE_CTX_get1_issuer(X509 **issuer, X509_STORE_CTX *ctx, X509 *x) {
   X509_OBJECT obj, *pobj;
   int idx, ret;
   size_t i;
+  *issuer = NULL;
   xn = X509_get_issuer_name(x);
   if (!X509_STORE_CTX_get_by_subject(ctx, X509_LU_X509, xn, &obj)) {
     return 0;

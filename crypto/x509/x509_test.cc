@@ -4535,10 +4535,10 @@ TEST(X509Test, ExpiredCandidate) {
   bssl::UniquePtr<EVP_PKEY> key = PrivateKeyFromPEM(kP256Key);
   ASSERT_TRUE(key);
 
-  bssl::UniquePtr<X509> root1 =
+  bssl::UniquePtr<X509> root =
       MakeTestCert("Root", "Root", key.get(), /*is_ca=*/true);
-  ASSERT_TRUE(root1);
-  ASSERT_TRUE(X509_sign(root1.get(), key.get(), EVP_sha256()));
+  ASSERT_TRUE(root);
+  ASSERT_TRUE(X509_sign(root.get(), key.get(), EVP_sha256()));
 
   bssl::UniquePtr<X509> intermediate1 =
       MakeTestCert("Root", "Intermediate", key.get(), /*is_ca=*/true);
@@ -4562,18 +4562,39 @@ TEST(X509Test, ExpiredCandidate) {
   // As a control, confirm that |leaf| -> |intermediate1| -> |root1| is valid,
   // but the path through |intermediate2| is expired.
   EXPECT_EQ(X509_V_OK,
-            Verify(leaf.get(), {root1.get()}, {intermediate1.get()}, {}));
+            Verify(leaf.get(), {root.get()}, {intermediate1.get()}, {}));
   EXPECT_EQ(X509_V_ERR_CERT_HAS_EXPIRED,
-            Verify(leaf.get(), {root1.get()}, {intermediate2.get()}, {}));
+            Verify(leaf.get(), {root.get()}, {intermediate2.get()}, {}));
 
 
   // We should skip over expired candidate certificates and continue looking.
   // The test with the expired cert coming first in the stack would fail without
   // support for this.
-  EXPECT_EQ(X509_V_OK, Verify(leaf.get(), {root1.get()},
+  EXPECT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()},
                               {intermediate1.get(), intermediate2.get()}, {}));
-  EXPECT_EQ(X509_V_OK, Verify(leaf.get(), {root1.get()},
+  EXPECT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()},
                               {intermediate2.get(), intermediate1.get()}, {}));
+
+
+
+  // Test that |X509_STORE_CTX_get1_issuer| prioritizes non-expired certs.
+  // With this set up, |intermediate2| would have been returned if expired certs
+  // weren't filtered.
+  bssl::UniquePtr<STACK_OF(X509)> intermediates_stack(
+      CertsToStack({intermediate1.get(), intermediate2.get()}));
+  bssl::UniquePtr<X509_STORE_CTX> ctx(X509_STORE_CTX_new());
+  bssl::UniquePtr<X509_STORE> store(X509_STORE_new());
+  ASSERT_TRUE(X509_STORE_add_cert(store.get(), intermediate1.get()));
+  ASSERT_TRUE(X509_STORE_add_cert(store.get(), intermediate2.get()));
+  ASSERT_TRUE(X509_STORE_CTX_init(ctx.get(), store.get(), leaf.get(),
+                           intermediates_stack.get()));
+
+  X509 *issuer;
+  EXPECT_TRUE(X509_STORE_CTX_get1_issuer(&issuer, ctx.get(), leaf.get()));
+  EXPECT_TRUE(issuer);
+  // Check that we return the non-expired |intermediate1|.
+  EXPECT_EQ(X509_cmp(issuer, intermediate1.get()), 0);
+  bssl::UniquePtr<X509> free(issuer);
 }
 
 // kConstructedBitString is an X.509 certificate where the signature is encoded
