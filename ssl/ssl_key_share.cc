@@ -366,7 +366,7 @@ class KEMKeyShare : public SSLKeyShare {
       return false;
     }
 
-    // Retrieve the lengths of the ciphertext and shared secret
+    // Retrieve the length of the shared secret
     size_t secret_len = 0;
     if (!EVP_PKEY_decapsulate(ctx_.get(), nullptr, &secret_len, nullptr, peer_key.size())) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
