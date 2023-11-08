@@ -308,6 +308,9 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
 
   if (state == NULL) {
     state = OPENSSL_malloc(sizeof(struct rand_thread_state));
+    if (state != NULL) {
+      OPENSSL_memset(state, 0, sizeof(struct rand_thread_state));
+    }
     if (state == NULL ||
         !CRYPTO_set_thread_local(OPENSSL_THREAD_LOCAL_RAND, state,
                                  rand_thread_state_free)) {
