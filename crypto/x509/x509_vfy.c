@@ -491,7 +491,10 @@ end:
 }
 
 // Given a STACK_OF(X509) find the issuer of cert (if any)
-
+//
+// |find_issuer| will directly return the pointer of the corresponding index
+// within |sk|. Callers of |find_issuer| should remember to bump the reference
+// count of the returned |X509| if the call is successful.
 static X509 *find_issuer(X509_STORE_CTX *ctx, STACK_OF(X509) *sk, X509 *x) {
   size_t i;
   X509 *issuer, *candidate = NULL;
