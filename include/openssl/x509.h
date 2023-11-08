@@ -2495,11 +2495,6 @@ OPENSSL_EXPORT int X509_REVOKED_add1_ext_i2d(X509_REVOKED *x, int nid,
 // NOTE:
 //   1. Applications rarely call this function directly, but it is used
 //      internally for certificate validation.
-//   2. When looking for the issuer of a certificate, if the current candidate
-//      issuer matches the subject certificate, but is expired, AWS-LC will fail
-//      verification and reject the expired cert. This is inherently different
-//      from OpenSSL 1.1.1, where they will continue searching until they find a
-//      non-expired cert to use.
 OPENSSL_EXPORT int X509_verify_cert(X509_STORE_CTX *ctx);
 
 // PKCS#8 utilities

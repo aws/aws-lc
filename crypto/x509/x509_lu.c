@@ -598,14 +598,17 @@ int X509_STORE_CTX_get1_issuer(X509 **issuer, X509_STORE_CTX *ctx, X509 *x) {
   X509_OBJECT obj, *pobj;
   int idx, ret;
   size_t i;
+  *issuer = NULL;
   xn = X509_get_issuer_name(x);
   if (!X509_STORE_CTX_get_by_subject(ctx, X509_LU_X509, xn, &obj)) {
     return 0;
   }
   // If certificate matches all OK
   if (ctx->check_issued(ctx, x, obj.data.x509)) {
-    *issuer = obj.data.x509;
-    return 1;
+    if (x509_check_cert_time(ctx, obj.data.x509, /*suppress_error*/1)) {
+      *issuer = obj.data.x509;
+      return 1;
+    }
   }
   X509_OBJECT_free_contents(&obj);
 
@@ -627,13 +630,21 @@ int X509_STORE_CTX_get1_issuer(X509 **issuer, X509_STORE_CTX *ctx, X509 *x) {
       }
       if (ctx->check_issued(ctx, x, pobj->data.x509)) {
         *issuer = pobj->data.x509;
-        X509_OBJECT_up_ref_count(pobj);
         ret = 1;
-        break;
+        // Break the loop with a match if the time check is valid, otherwise
+        // we continue searching. We leave the last tested issuer certificate in
+        // |issuer| on purpose. This returns the closest match if none of the
+        // candidate issuer certificates' timestamps were valid.
+        if (x509_check_cert_time(ctx, *issuer, /*suppress_error*/1)) {
+          break;
+        }
       }
     }
   }
   CRYPTO_MUTEX_unlock_write(&ctx->ctx->objs_lock);
+  if(*issuer) {
+    X509_up_ref(*issuer);
+  }
   return ret;
 }
 
