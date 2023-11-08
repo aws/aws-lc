@@ -23,7 +23,7 @@ extern "C" {
 
 
 // Random number generation.
-
+OPENSSL_EXPORT int RAND_write_file(const char *file);
 
 // RAND_bytes writes |len| bytes of random data to |buf| and returns one. In the
 // event that sufficient random data can not be obtained, |abort| is called.

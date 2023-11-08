@@ -25,6 +25,7 @@
 #include <openssl/bytestring.h>
 #include <openssl/crypto.h>
 #include <openssl/digest.h>
+#include <openssl/evp.h>
 #include <openssl/err.h>
 #include <openssl/md4.h>
 #include <openssl/md5.h>
@@ -393,6 +394,9 @@ TEST(DigestTest, Getters) {
   EXPECT_EQ(EVP_sha512(), EVP_get_digestbyname("sha512"));
 
   EXPECT_EQ(EVP_sha512(), EVP_get_digestbynid(NID_sha512));
+  EXPECT_EQ(NID_sha1WithRSAEncryption, EVP_MD_get_pkey_type(EVP_sha1()));
+  EXPECT_EQ(NID_sha512WithRSAEncryption, EVP_MD_get_pkey_type(EVP_sha512()));
+  EXPECT_EQ("SHA512", EVP_MD_get0_name(EVP_sha512()));
   EXPECT_EQ(nullptr, EVP_get_digestbynid(NID_sha512WithRSAEncryption));
   EXPECT_EQ(nullptr, EVP_get_digestbynid(NID_undef));
 

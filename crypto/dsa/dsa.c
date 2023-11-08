@@ -72,10 +72,12 @@
 #include <openssl/sha.h>
 #include <openssl/thread.h>
 
-#include "internal.h"
 #include "../fipsmodule/bn/internal.h"
 #include "../fipsmodule/dh/internal.h"
 #include "../internal.h"
+#include "internal.h"
+#include "openssl/bio.h"
+#include "openssl/evp.h"
 
 
 // Primality test according to FIPS PUB 186[-1], Appendix 2.1: 50 rounds of
@@ -123,6 +125,31 @@ void DSA_free(DSA *dsa) {
   BN_MONT_CTX_free(dsa->method_mont_q);
   CRYPTO_MUTEX_cleanup(&dsa->method_mont_lock);
   OPENSSL_free(dsa);
+}
+
+int DSA_print(BIO *bio, const DSA *dsa, int indent) {
+  EVP_PKEY *pkey = EVP_PKEY_new();
+  int ret = pkey != NULL &&
+            EVP_PKEY_set1_DSA(pkey, (DSA *)dsa) &&
+            EVP_PKEY_print_private(bio, pkey, indent, NULL);
+  EVP_PKEY_free(pkey);
+  return ret;
+}
+
+
+int DSA_print_fp(FILE *fp, const DSA *dsa, int indent) {
+  BIO *bio;
+  int ret;
+
+  if ((bio = BIO_new(BIO_s_file())) == NULL) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_BUF_LIB);
+    return 0;
+  }
+  BIO_set_fp(bio, fp, BIO_NOCLOSE);
+  ret = DSA_print(bio, dsa, indent);
+  BIO_free(bio);
+  return ret;
+
 }
 
 int DSA_up_ref(DSA *dsa) {

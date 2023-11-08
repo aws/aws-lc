@@ -545,6 +545,11 @@ int RAND_bytes(uint8_t *out, size_t out_len) {
   return 1;
 }
 
+int RAND_write_file(const char *file) {
+  (void) file;
+  return 1;
+}
+
 int RAND_priv_bytes(uint8_t *out, size_t out_len) {
     return RAND_bytes(out, out_len);
 }
