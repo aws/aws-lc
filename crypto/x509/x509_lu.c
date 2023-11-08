@@ -643,7 +643,7 @@ int X509_STORE_CTX_get1_issuer(X509 **issuer, X509_STORE_CTX *ctx, X509 *x) {
   }
   CRYPTO_MUTEX_unlock_write(&ctx->ctx->objs_lock);
   if(*issuer) {
-    CRYPTO_refcount_inc(&(*issuer)->references);
+    X509_up_ref(*issuer);
   }
   return ret;
 }
