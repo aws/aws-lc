@@ -2339,6 +2339,19 @@ OPENSSL_EXPORT ASN1_OBJECT *X509_ATTRIBUTE_get0_object(X509_ATTRIBUTE *attr);
 OPENSSL_EXPORT ASN1_TYPE *X509_ATTRIBUTE_get0_type(X509_ATTRIBUTE *attr,
                                                    int idx);
 
+// X509_verify_cert attempts to discover and validate a certificate chain based
+// on parameters in |ctx|. |ctx| usually includes a target certificate to be
+// verified, a set of certificates serving as trust anchors, a list of
+// non-trusted certificates that may be helpful for chain construction, flags,
+// and various other optional components such as callback functions. A
+// certificate chain is built up starting from the target certificate and ending
+// in a trust anchor. The chain is built up iteratively, looking up in turn a
+// certificate with suitable key usage that matches as an issuer of the current
+// "subject" certificate.
+//
+// NOTE:
+//   1. Applications rarely call this function directly, but it is used
+//      internally for certificate validation.
 OPENSSL_EXPORT int X509_verify_cert(X509_STORE_CTX *ctx);
 
 // PKCS#8 utilities

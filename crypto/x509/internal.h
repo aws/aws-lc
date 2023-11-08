@@ -367,6 +367,8 @@ ASN1_TYPE *ASN1_generate_v3(const char *str, const X509V3_CTX *cnf);
 int X509_CERT_AUX_print(BIO *bp, X509_CERT_AUX *x, int indent);
 
 
+int x509_check_cert_time(X509_STORE_CTX *ctx, X509 *x, int suppress_error);
+
 // RSA-PSS functions.
 
 // x509_rsa_pss_to_ctx configures |ctx| for an RSA-PSS operation based on
