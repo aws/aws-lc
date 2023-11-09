@@ -275,6 +275,8 @@ function(cpreprocess dest src)
     DEPENDS
     ${src}
     ${PROJECT_SOURCE_DIR}/include/openssl/arm_arch.h
+    ${PROJECT_SOURCE_DIR}/include/openssl/asm_base.h
+    ${PROJECT_SOURCE_DIR}/include/openssl/target.h
     WORKING_DIRECTORY .
   )
 endfunction()
