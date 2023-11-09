@@ -251,7 +251,7 @@ static void rand_thread_state_free(void *state_in) {
 
   if (state->prev != NULL) {
     state->prev->next = state->next;
-  } else {
+  } else if (*thread_states_list_bss_get() == state) {
     *thread_states_list_bss_get() = state->next;
   }
 
