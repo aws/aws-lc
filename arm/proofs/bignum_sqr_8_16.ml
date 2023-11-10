@@ -311,6 +311,20 @@ let bignum_sqr_8_16_mc = define_assert_from_elf "bignum_sqr_8_16_mc" "arm/fastmu
 
 let BIGNUM_SQR_8_16_EXEC = ARM_MK_EXEC_RULE bignum_sqr_8_16_mc;;
 
+(* bignum_sqr_8_16 without callee-save register spilling. *)
+let bignum_sqr_8_16_core_mc_def = define
+  `bignum_sqr_8_16_core_mc =
+    SUB_LIST (8, LENGTH bignum_sqr_8_16_mc - 20) bignum_sqr_8_16_mc`;;
+
+let bignum_sqr_8_16_core_mc =
+    CONV_RULE (REWRITE_CONV [BIGNUM_SQR_8_16_EXEC] THENC
+               ONCE_DEPTH_CONV NUM_SUB_CONV THENC
+               REWRITE_CONV [bignum_sqr_8_16_mc] THENC
+               RAND_CONV SUB_LIST_CONV)
+    bignum_sqr_8_16_core_mc_def;;
+
+let BIGNUM_SQR_8_16_CORE_EXEC = ARM_MK_EXEC_RULE bignum_sqr_8_16_core_mc;;
+
 (* ------------------------------------------------------------------------- *)
 (* Lemmas to halve the number of case splits, useful for efficiency.         *)
 (* ------------------------------------------------------------------------- *)
@@ -365,11 +379,11 @@ let ADK_48_TAC =
              DECARRY_RULE o CONJUNCTS) THEN
   DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN REAL_INTEGER_TAC;;
 
-let BIGNUM_SQR_8_16_CORRECT = prove
+let BIGNUM_SQR_8_16_CORE_CORRECT = prove
  (`!z x a pc.
       nonoverlapping (word pc,0x49c) (z,8 * 16)
       ==> ensures arm
-            (\s. aligned_bytes_loaded s (word pc) bignum_sqr_8_16_mc /\
+            (\s. aligned_bytes_loaded s (word (pc + 0x8)) bignum_sqr_8_16_core_mc /\
                  read PC s = word(pc + 0x8) /\
                  C_ARGUMENTS [z; x] s /\
                  bignum_from_memory (x,8) s = a)
@@ -380,14 +394,18 @@ let BIGNUM_SQR_8_16_CORRECT = prove
              MAYCHANGE [memory :> bytes(z,8 * 16)] ,,
              MAYCHANGE SOME_FLAGS)`,
   MAP_EVERY X_GEN_TAC [`z:int64`; `x:int64`; `a:num`; `pc:num`] THEN
+  ABBREV_TAC `pc' = pc + 0x8` THEN
+  SUBGOAL_THEN `pc+1168=pc'+1160` SUBST_ALL_TAC THENL [ASM_ARITH_TAC;ALL_TAC] THEN
   REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS; NONOVERLAPPING_CLAUSES] THEN
   DISCH_THEN(REPEAT_TCL CONJUNCTS_THEN ASSUME_TAC) THEN
+  SUBGOAL_THEN `nonoverlapping_modulo (2 EXP 64) (val (z:int64),8 * 16) (pc',1172)`
+  ASSUME_TAC THENL [EXPAND_TAC "pc'" THEN NONOVERLAPPING_TAC; ALL_TAC] THEN
   ENSURES_INIT_TAC "s0" THEN
   BIGNUM_DIGITIZE_TAC "x_" `bignum_from_memory (x,8) s0` THEN
 
   (*** First nested mini-ADK 4x4 squaring block ***)
 
-  ARM_ACCSTEPS_TAC BIGNUM_SQR_8_16_EXEC
+  ARM_ACCSTEPS_TAC BIGNUM_SQR_8_16_CORE_EXEC
    [5;6;13;18;19;21;22;23;24;25;27;28;29;30;31;32;33;34;35;36;37;
     41;42;43;44;45;46;48;49;50;51;52;54;55;56;60;61;62;63;64;65;
     66;67;69;70]
@@ -406,7 +424,7 @@ let BIGNUM_SQR_8_16_CORRECT = prove
 
   (*** Second nested mini-ADK 4x4 squaring block ***)
 
-  ARM_ACCSTEPS_TAC BIGNUM_SQR_8_16_EXEC
+  ARM_ACCSTEPS_TAC BIGNUM_SQR_8_16_CORE_EXEC
    [72;73;80;85;86;88;89;90;91;92;94;95;96;97;98;99;100;101;102;103;
     104;108;109;110;111;112;113;115;116;117;118;119;121;122;123;127;
     128;129;130;131;132;133;134;136;137]
@@ -425,7 +443,7 @@ let BIGNUM_SQR_8_16_CORRECT = prove
 
   (*** Nested ADK 4x4 multiplication block ***)
 
-  ARM_ACCSTEPS_TAC BIGNUM_SQR_8_16_EXEC
+  ARM_ACCSTEPS_TAC BIGNUM_SQR_8_16_CORE_EXEC
    [139;140;141;142;144;146;148;150;151;152;153;154;155;156;157;
     158;159;160;161;167;172;174;175;181;186;188;189;190;191;192;
     193;199;204;206;207;208;214;219;221;222;223;224;225;231;236;
@@ -447,7 +465,7 @@ let BIGNUM_SQR_8_16_CORRECT = prove
 
   (*** Final accumulation simulation and 16-digit focusing ***)
 
-  ARM_ACCSTEPS_TAC BIGNUM_SQR_8_16_EXEC (258--290) (258--290) THEN
+  ARM_ACCSTEPS_TAC BIGNUM_SQR_8_16_CORE_EXEC (258--290) (258--290) THEN
   ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
   CONV_TAC(LAND_CONV BIGNUM_EXPAND_CONV) THEN ASM_REWRITE_TAC[] THEN
   DISCARD_STATE_TAC "s290" THEN
@@ -475,6 +493,33 @@ let BIGNUM_SQR_8_16_CORRECT = prove
   RULE_ASSUM_TAC(REWRITE_RULE[ADD_CLAUSES; VAL_WORD_BITVAL]) THEN
   ACCUMULATOR_POP_ASSUM_LIST(MP_TAC o end_itlist CONJ o DESUM_RULE) THEN
   DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN REAL_INTEGER_TAC);;
+
+let BIGNUM_SQR_8_16_CORRECT = prove(
+  `!z x a pc.
+      nonoverlapping (word pc,0x49c) (z,8 * 16)
+      ==> ensures arm
+            (\s. aligned_bytes_loaded s (word pc) bignum_sqr_8_16_mc /\
+                 read PC s = word(pc + 0x8) /\
+                 C_ARGUMENTS [z; x] s /\
+                 bignum_from_memory (x,8) s = a)
+          (\s. read PC s = word (pc + 0x490) /\
+               bignum_from_memory (z,16) s = a EXP 2)
+           (MAYCHANGE [PC; X2; X3; X4; X5; X6; X7; X8; X9; X10; X11; X12;
+                       X13; X14; X15; X16; X17; X19; X20; X21; X22] ,,
+             MAYCHANGE [memory :> bytes(z,8 * 16)] ,,
+             MAYCHANGE SOME_FLAGS)`,
+  REPEAT STRIP_TAC THEN
+  FIRST_ASSUM (fun th -> MP_TAC (MATCH_MP BIGNUM_SQR_8_16_CORE_CORRECT th)) THEN
+  REWRITE_TAC[ensures] THEN
+  DISCH_THEN (fun th -> REPEAT STRIP_TAC THEN MATCH_MP_TAC th) THEN
+  EXISTS_TAC `x:int64` THEN
+  ASM_REWRITE_TAC[] THEN
+  REWRITE_TAC[bignum_sqr_8_16_core_mc_def;BIGNUM_SQR_8_16_EXEC;
+      WORD_RULE`word (x+y)=word_add (word x) (word y)`] THEN
+  CONV_TAC (ONCE_DEPTH_CONV NUM_REDUCE_CONV) THEN
+  MATCH_MP_TAC ALIGNED_BYTES_LOADED_SUB_LIST THEN
+  ASM_REWRITE_TAC[] THEN
+  CONV_TAC NUM_DIVIDES_CONV);;
 
 let BIGNUM_SQR_8_16_SUBROUTINE_CORRECT = prove
  (`!z x a pc stackpointer returnaddress.
