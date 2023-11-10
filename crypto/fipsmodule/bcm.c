@@ -325,11 +325,14 @@ int BORINGSSL_integrity_test(void) {
 #endif
 #if defined(BORINGSSL_SHARED_LIBRARY)
   uint64_t length = end - start;
-  HMAC_Update(&hmac_ctx, (const uint8_t *) &length, sizeof(length));
+  uint8_t buffer[sizeof(length)];
+  CRYPTO_store_u64_le(buffer, length);
+  HMAC_Update(&hmac_ctx, buffer, sizeof(length));
   HMAC_Update(&hmac_ctx, start, length);
 
   length = rodata_end - rodata_start;
-  HMAC_Update(&hmac_ctx, (const uint8_t *) &length, sizeof(length));
+  CRYPTO_store_u64_le(buffer, length);
+  HMAC_Update(&hmac_ctx, buffer, sizeof(length));
   HMAC_Update(&hmac_ctx, rodata_start, length);
 #else
   HMAC_Update(&hmac_ctx, start, end - start);
