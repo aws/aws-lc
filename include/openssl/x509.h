@@ -2352,6 +2352,16 @@ OPENSSL_EXPORT ASN1_TYPE *X509_ATTRIBUTE_get0_type(X509_ATTRIBUTE *attr,
 // NOTE:
 //   1. Applications rarely call this function directly, but it is used
 //      internally for certificate validation.
+//   2. |X509_verify_cert| and other related functions call
+//      |sk_X509_OBJECT_sort| internally, which rearranges the certificate
+//      ordering. There will be cases where two certs have an identical
+//      |subject| and |X509_OBJECT_cmp| will return 0, but one is a valid cert
+//      and the other is invalid.
+//      Due to https://github.com/openssl/openssl/issues/18708, certificate
+//      verification could fail if an invalid cert is checked before the valid
+//      cert. What we do with sorting behavior when certs are identical is
+//      considered "unstable" and certain sorting expectations shouldn't be
+//      depended on.
 OPENSSL_EXPORT int X509_verify_cert(X509_STORE_CTX *ctx);
 
 // PKCS#8 utilities

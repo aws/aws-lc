@@ -4059,8 +4059,15 @@ TEST(X509Test, ExpiredCandidate) {
       CertsToStack({intermediate1.get(), intermediate2.get()}));
   bssl::UniquePtr<X509_STORE_CTX> ctx(X509_STORE_CTX_new());
   bssl::UniquePtr<X509_STORE> store(X509_STORE_new());
+
+  // TODO: Remove this ifdef when we pull in google/boringssl@1340a5b.
+#if defined(OPENSSL_WINDOWS)
   ASSERT_TRUE(X509_STORE_add_cert(store.get(), intermediate1.get()));
   ASSERT_TRUE(X509_STORE_add_cert(store.get(), intermediate2.get()));
+#else
+  ASSERT_TRUE(X509_STORE_add_cert(store.get(), intermediate2.get()));
+  ASSERT_TRUE(X509_STORE_add_cert(store.get(), intermediate1.get()));
+#endif
   ASSERT_TRUE(X509_STORE_CTX_init(ctx.get(), store.get(), leaf.get(),
                            intermediates_stack.get()));
 
