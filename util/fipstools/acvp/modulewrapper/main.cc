@@ -41,6 +41,8 @@ int main(int argc, char **argv) {
     puts("PPC64LE (64-bit)");
 #elif defined(OPENSSL_PPC32BE)
     puts("PPC32BE (32-bit)");
+#elif defined(OPENSSL_PPC64BE)
+    puts("PPC64BE (64-bit)");
 #else
 #error "FIPS build not supported on this architecture"
 #endif
