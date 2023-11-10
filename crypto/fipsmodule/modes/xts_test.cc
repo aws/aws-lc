@@ -1279,22 +1279,31 @@ struct XTSReEncryptTestCase {
 };
 
 static const XTSReEncryptTestCase kXTSReEncryptTestCases[] = {
-    // plaintext length = 6 blocks = 96 bytes
+    // plaintext length = 12 blocks = 192 bytes
     {
-        "2718281828459045235360287471352662497757247093699959574966967627314159"
-        "2653589793238462643383279502884197169399375105820974944592",
-		"fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0efeeedecebeae9e8e7e6e5e4e3e2e1e0"
+        "2718281828459045235360287471352662497757247093699959574966967627"
+        "3141592653589793238462643383279502884197169399375105820974944592",
+        "fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0efeeedecebeae9e8e7e6e5e4e3e2e1e0"
         "bfbebdbcbbbab9b8b7b6b5b4b3b2b1b0afaeadacabaaa9a8a7a6a5a4a3a2a1a0",
         "ff000000000000000000000000000000",
-        "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122"
-        "232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445"
-        "464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f",
-        "1c3b3a102f770386e4836c99e370cf9bea00803f5e482357a4ae12d414a3e63b5d31e2"
-        "76f8fe4a8d66b317f9ac683f44680a86ac35adfc3345befecb4bb188fd5776926c49a3"
-        "095eb108fd1098baec70aaa66999a72a82f27d848b21d4a741b0",
-		"7aba87cb0030dc39e33117fb9dd321577762c4a012ade72a2d15da568bc0ddd4af76e0"
-		"d64ae7e4b4343ddd88975ac5fb9e5c2f7fb0940277f6b89c9b7f013e9b90afc9b0bb8f"
-		"57ddcc8a34d296ff45281359a523caac113d28f11725212a526d",
+        "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+        "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f"
+        "404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f"
+        "606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f"
+        "808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f"
+        "a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf",
+        "1c3b3a102f770386e4836c99e370cf9bea00803f5e482357a4ae12d414a3e63b"
+        "5d31e276f8fe4a8d66b317f9ac683f44680a86ac35adfc3345befecb4bb188fd"
+        "5776926c49a3095eb108fd1098baec70aaa66999a72a82f27d848b21d4a741b0"
+        "c5cd4d5fff9dac89aeba122961d03a757123e9870f8acf1000020887891429ca"
+        "2a3e7a7d7df7b10355165c8b9a6d0a7de8b062c4500dc4cd120c0f7418dae3d0"
+        "b5781c34803fa75421c790dfe1de1834f280d7667b327f6c8cd7557e12ac3a0f",
+        "7aba87cb0030dc39e33117fb9dd321577762c4a012ade72a2d15da568bc0ddd4"
+		"af76e0d64ae7e4b4343ddd88975ac5fb9e5c2f7fb0940277f6b89c9b7f013e9b"
+		"90afc9b0bb8f57ddcc8a34d296ff45281359a523caac113d28f11725212a526d"
+		"acc7b66bb8c076336c47849b03944b69c1e3e4b45a649b69b97a1499cfb90641"
+		"744adbae5f9405909a314c3e66bdf9f3aeaebb5366869911872e76c3314e4b67"
+		"82307cf0c18aa524dcc12c479c5b354882125ec65161cb4a42be2306460fc57c",
     },
 };
 
@@ -1304,13 +1313,13 @@ static const XTSReEncryptTestCase kXTSReEncryptTestCases[] = {
 TEST(XTSTest, ReEncryptTestVectors) {
   unsigned test_num = 0;
   for (const auto &test : kXTSReEncryptTestCases) {
-	test_num++;
-	SCOPED_TRACE(test_num);
+    test_num++;
+    SCOPED_TRACE(test_num);
 
-	const EVP_CIPHER *cipher = EVP_aes_256_xts();
+    const EVP_CIPHER *cipher = EVP_aes_256_xts();
 
     std::vector<uint8_t> key_dec, key_enc, iv,
-	  plaintext, ciphertext_in, ciphertext_out;
+      plaintext, ciphertext_in, ciphertext_out;
     ASSERT_TRUE(DecodeHex(&key_dec, test.key_dec_hex));
     ASSERT_TRUE(DecodeHex(&key_enc, test.key_enc_hex));
     ASSERT_TRUE(DecodeHex(&iv, test.iv_hex));
@@ -1324,33 +1333,49 @@ TEST(XTSTest, ReEncryptTestVectors) {
     ASSERT_EQ(plaintext.size(), ciphertext_in.size());
     ASSERT_EQ(plaintext.size(), ciphertext_out.size());
 
-	bssl::Span<const uint8_t> in = ciphertext_in;
-	std::vector<uint8_t> out(plaintext.size());
+    bssl::Span<const uint8_t> in = ciphertext_in;
+    std::vector<uint8_t> out(plaintext.size());
 
-	bssl::ScopedEVP_CIPHER_CTX ctx;
-	int len;
+    bssl::ScopedEVP_CIPHER_CTX ctx;
+    int len;
+#if 1
+    in = plaintext;
+    out.resize(ciphertext_in.size());
+    // Encrypt with the decryption key (to generate test vectors)
+    ASSERT_TRUE(EVP_EncryptInit_ex(ctx.get(), cipher, nullptr, key_dec.data(),
+                                   iv.data()));
 
-	// Decrypt with the decryption key
+    ASSERT_TRUE(
+      EVP_EncryptUpdate(ctx.get(), out.data(), &len, in.data(), in.size()));
+    out.resize(len);
+    EXPECT_EQ(Bytes(ciphertext_in), Bytes(out));
+
+    in = ciphertext_in;
+    out.clear();
+    out.resize(plaintext.size());
+#endif
+
+    // Decrypt with the decryption key
     ASSERT_TRUE(EVP_DecryptInit_ex(ctx.get(), cipher, nullptr, key_dec.data(),
-								   iv.data()));
+                                   iv.data()));
 
-	ASSERT_TRUE(
-	  EVP_DecryptUpdate(ctx.get(), out.data(), &len, in.data(), in.size()));
-	out.resize(len);
-	EXPECT_EQ(Bytes(plaintext), Bytes(out));
+    ASSERT_TRUE(
+      EVP_DecryptUpdate(ctx.get(), out.data(), &len, in.data(), in.size()));
+    out.resize(len);
+    EXPECT_EQ(Bytes(plaintext), Bytes(out));
 
-	// Encrypt with a (different) encryption key
-	ASSERT_TRUE(EVP_EncryptInit_ex(ctx.get(), cipher, nullptr, key_enc.data(),
-								   iv.data()));
+    // Encrypt with a (different) encryption key
+    ASSERT_TRUE(EVP_EncryptInit_ex(ctx.get(), cipher, nullptr, key_enc.data(),
+                                   iv.data()));
 
-	in = plaintext;
-	out.clear();
-	out.resize(ciphertext_out.size());
+    in = plaintext;
+    out.clear();
+    out.resize(ciphertext_out.size());
 
-	ASSERT_TRUE(
-	  EVP_EncryptUpdate(ctx.get(), out.data(), &len, in.data(), in.size()));
-	out.resize(len);
-	EXPECT_EQ(Bytes(ciphertext_out), Bytes(out));
+    ASSERT_TRUE(
+      EVP_EncryptUpdate(ctx.get(), out.data(), &len, in.data(), in.size()));
+    out.resize(len);
+    EXPECT_EQ(Bytes(ciphertext_out), Bytes(out));
 
     // TODO: add in-place re-encrypt tests
 
@@ -1380,15 +1405,28 @@ TEST(XTSTest, ReEncryptTestVectors) {
 }
 
 #if 0
-  const char *inp,char *out,size_t len,
-  const AES_KEY *key1_dec, const AES_KEY *key2_dec,
-  const unsigned char iv[16],
-  const AES_KEY *key1_enc, const AES_KEY *key2_enc);
+    // plaintext length = 6 blocks = 96 bytes
+    {
+        "2718281828459045235360287471352662497757247093699959574966967627314159"
+        "2653589793238462643383279502884197169399375105820974944592",
+        "fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0efeeedecebeae9e8e7e6e5e4e3e2e1e0"
+        "bfbebdbcbbbab9b8b7b6b5b4b3b2b1b0afaeadacabaaa9a8a7a6a5a4a3a2a1a0",
+        "ff000000000000000000000000000000",
+        "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122"
+        "232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445"
+        "464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f",
+        "1c3b3a102f770386e4836c99e370cf9bea00803f5e482357a4ae12d414a3e63b5d31e2"
+        "76f8fe4a8d66b317f9ac683f44680a86ac35adfc3345befecb4bb188fd5776926c49a3"
+        "095eb108fd1098baec70aaa66999a72a82f27d848b21d4a741b0",
+        "7aba87cb0030dc39e33117fb9dd321577762c4a012ade72a2d15da568bc0ddd4af76e0"
+        "d64ae7e4b4343ddd88975ac5fb9e5c2f7fb0940277f6b89c9b7f013e9b90afc9b0bb8f"
+        "57ddcc8a34d296ff45281359a523caac113d28f11725212a526d",
+    },
     // plaintext length = 32 blocks = 512 bytes
     {
         "2718281828459045235360287471352662497757247093699959574966967627314159"
         "2653589793238462643383279502884197169399375105820974944592",
-		"fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0efeeedecebeae9e8e7e6e5e4e3e2e1e0"
+        "fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0efeeedecebeae9e8e7e6e5e4e3e2e1e0"
         "bfbebdbcbbbab9b8b7b6b5b4b3b2b1b0afaeadacabaaa9a8a7a6a5a4a3a2a1a0",
         "ff000000000000000000000000000000",
         "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122"

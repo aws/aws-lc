@@ -2785,16 +2785,28 @@ $reencrypt=0;
 my @tweak=map("%xmm$_",(10..15));
 my ($twmask,$twres,$twtmp)=("%xmm8","%xmm9",@tweak[4]);
 my ($key2_dec,$ivp,$len_,$key2_enc)=("%r8","%r9","%r9","%r12");
-my $frame_size = 0x90 + ($win64?160:0);
-my $key_dec_ = "%rbp";	# override so that we can use %r11 as FP
+my $key1_dec = $key;
+my $key1_dec_ = "%rbp";	# override so that we can use %r11 as FP
+my $key1_enc  = "%r13";
+my $key1_enc_ = "%r14";  # backup of encryption key1
 
-# The offset from %rbp to the key1_enc and key2_enc parameters.
+# The offset from %r11 (frame pointer) to the key1_enc and
+# key2_enc parameters.
 # On Windows, all parameters have corresponding stack positions,
 # not just the ones passed on the stack.
 # (0x38 = 6*8 + 0x8)
 #
 my $key1_enc_offset = $win64 ? 0x38 : 0x8;
 my $key2_enc_offset = $win64 ? 0x40 : 0x10;
+
+# Stack frame
+my $frame_size = 0xa0 + ($win64?160:0);
+# the tweaks XORed with the last key round are stored at the beginning
+# (lower offsets) of this frame. In addition,
+my $dec_rounds_0_last = 0x60;
+my $dec_tweak = 0x70;
+my $enc_rounds_0_last = 0x80;
+my $enc_tweak = 0x90;
 
 $code.=<<___;
 .globl	${PREFIX}_xts_reencrypt
@@ -2808,20 +2820,24 @@ ${PREFIX}_xts_reencrypt:
 .cfi_push	%rbp
     push    %r12
 .cfi_push	%r12
+    push    %r13
+.cfi_push	%r13
+    push    %r14
+.cfi_push	%r14
 	sub	\$$frame_size,%rsp
 	and	\$-16,%rsp	# Linux kernel stack can be incorrectly seeded
 ___
 $code.=<<___ if ($win64);
-	movaps	%xmm6,-0xa8(%r11)		# offload everything
-	movaps	%xmm7,-0x98(%r11)
-	movaps	%xmm8,-0x88(%r11)
-	movaps	%xmm9,-0x78(%r11)
-	movaps	%xmm10,-0x68(%r11)
-	movaps	%xmm11,-0x58(%r11)
-	movaps	%xmm12,-0x48(%r11)
-	movaps	%xmm13,-0x38(%r11)
-	movaps	%xmm14,-0x28(%r11)
-	movaps	%xmm15,-0x18(%r11)
+	movaps	%xmm6,-0xc8(%r11)		# offload everything
+	movaps	%xmm7,-0xb8(%r11)
+	movaps	%xmm8,-0xa8(%r11)
+	movaps	%xmm9,-0x98(%r11)
+	movaps	%xmm10,-0x88(%r11)
+	movaps	%xmm11,-0x78(%r11)
+	movaps	%xmm12,-0x68(%r11)
+	movaps	%xmm13,-0x58(%r11)
+	movaps	%xmm14,-0x48(%r11)
+	movaps	%xmm15,-0x38(%r11)
 .Lxts_enc_body:
 ___
 $code.=<<___;
@@ -2837,18 +2853,30 @@ ___
     &aesni_generate1("enc",$key2_enc,$rounds,$inout1);
 
 $code.=<<___;
-#	movups	($ivp),$inout0			# load clear-text tweak
-#	mov	240(%r8),$rounds		# key2->rounds
-#	mov	240($key),$rnds_		# key1->rounds
+    mov $key1_enc_offset(%r11), $key1_enc
+    mov $rnds_,$rounds             # restore rounds
+	$movkey	($key1_enc),$rndkey0			# round[0]_enc
+	mov	$key1_enc,$key1_enc_			# backup $key1_enc
+	shl	\$4,$rnds_
 
-    # save the initial encryption tweak on the stack  # TODO: will there be registers available for it?
-    movdqa  $inout1,0x70(%rsp)        #TODO: am I using the available spots on the stack correctly?
-    mov $rnds_, $rounds             # restore rounds
+	$movkey	16($key1_enc,$rnds_),$rndkey1	# round[last]_enc
+
+	movdqa	.Lxts_magic(%rip),$twmask
+
+    mov $rounds,$rnds_              # restore rnds_
+
+    # save the initial encryption tweak on the stack   # TODO: will there be registers available for it?
+    movdqa  $inout1,$enc_tweak(%rsp)        #TODO: am I using the available spots on the stack correctly?
+
+	pxor	$rndkey0,$rndkey1       # round[0]_enc ^ round[last]_enc
+
+    # TODO: do I move this instruction down?
+    movdqa  $rndkey1,$enc_rounds_0_last(%rsp)        # save round[0]^round[last] of encryption key
+
     # generate the decryption tweak
 ___
     &aesni_generate1("enc",$key2_dec,$rounds,$inout0);
 
-if ($reencrypt) {
 $code.=<<___;
 	xor	%eax,%eax			# if ($len%16) len-=16;
 	test	\$15,$len
@@ -2856,20 +2884,21 @@ $code.=<<___;
 	shl	\$4,%rax
 	sub	%rax,$len
 
-	$movkey	($key),$rndkey0			# zero round key
-	mov	$key,$key_			# backup $key
-	mov	$rnds_,$rounds			# backup $rounds
+	$movkey	($key1_dec),$rndkey0	# round[0]_dec
+	mov	$key1_dec,$key1_dec_	# backup $key
+    mov	$rnds_,$rounds			# backup $rounds
 	shl	\$4,$rnds_
 	mov	$len,$len_			# backup $len
 	and	\$-16,$len
 
-	$movkey	16($key,$rnds_),$rndkey1	# last round key
+	$movkey	16($key1_dec,$rnds_),$rndkey1	# round[last]_dec
 
-	movdqa	.Lxts_magic(%rip),$twmask
 	movdqa	$inout0,@tweak[5]
 	pshufd	\$0x5f,$inout0,$twres
-	pxor	$rndkey0,$rndkey1
+	pxor	$rndkey0,$rndkey1       # round[0]_dec ^ round[last]_dec
 ___
+if ($reencrypt) {
+
     for ($i=0;$i<4;$i++) {
     $code.=<<___;
 	movdqa	$twres,$twtmp
@@ -2889,18 +2918,18 @@ $code.=<<___;
 	pand	$twmask,$twres
 	pxor	$rndkey0,@tweak[4]
 	pxor	$twres,@tweak[5]
-	movaps	$rndkey1,0x60(%rsp)		# save round[0]^round[last]
+	movaps	$rndkey1,0x60(%rsp)		# save round[0]^round[last] of decryption key
 
 	sub	\$16*6,$len
-	jc	.Lxts_dec_short			# if $len-=6*16 borrowed
+	jc	.Lxts_reenc_short			# if $len-=6*16 borrowed
 
 	mov	\$16+96,$rounds
-	lea	32($key_,$rnds_),$key		# end of key schedule
+	lea	32($key1_dec_,$rnds_),$key1_dec		# end of key schedule
 	sub	%r10,%rax			# twisted $rounds
-	$movkey	16($key_),$rndkey1
+	$movkey	16($key1_dec_),$rndkey1
 	mov	%rax,%r10			# backup twisted $rounds
 	lea	.Lxts_magic(%rip),%r8
-	jmp	.Lxts_dec_grandloop
+	jmp	.Lxts_reenc_grandloop
 
 .align	32
 .Lxts_reenc_grandloop:
@@ -2951,7 +2980,7 @@ $code.=<<___;
 	pshufd	\$0x5f,@tweak[5],$twres
 	jmp	.Lxts_dec_loop6
 .align	32
-.Lxts_dec_loop6:
+.Lxts_reenc_loop6:
 	aesdec		$rndkey1,$inout0
 	aesdec		$rndkey1,$inout1
 	aesdec		$rndkey1,$inout2
@@ -2968,7 +2997,7 @@ $code.=<<___;
 	aesdec		$rndkey0,$inout4
 	aesdec		$rndkey0,$inout5
 	$movkey		-80($key,%rax),$rndkey0
-	jnz		.Lxts_dec_loop6
+	jnz		.Lxts_reenc_loop6
 
 
 
@@ -3089,7 +3118,7 @@ $code.=<<___;
 
 
 
-.Lxts_dec_short:
+.Lxts_reenc_short:
 	# at the point @tweak[0..5] are populated with tweak values
 	mov	$rounds,$rnds_			# backup $rounds
 	pxor	$rndkey0,@tweak[0]
@@ -3296,43 +3325,53 @@ $code.=<<___ if (!$win64);
 	pxor	%xmm13,%xmm13
 	movaps	%xmm0,0x60(%rsp)
 	pxor	%xmm14,%xmm14
-	pxor	%xmm15,%xmm15
+    movaps	%xmm0,0x70(%rsp)
+    pxor	%xmm15,%xmm15
+    movaps	%xmm0,0x80(%rsp)
+  	movaps	%xmm0,0x90(%rsp)
 ___
 $code.=<<___ if ($win64);
-	movaps	-0xa8(%r11),%xmm6
-	movaps	%xmm0,-0xa8(%r11)		# clear stack
-	movaps	-0x98(%r11),%xmm7
+	movaps	-0xc8(%r11),%xmm6
+	movaps	%xmm0,-0xc8(%r11)		# clear stack
+	movaps	-0xb8(%r11),%xmm7
+	movaps	%xmm0,-0xb8(%r11)
+	movaps	-0xa8(%r11),%xmm8
+	movaps	%xmm0,-0xa8(%r11)
+	movaps	-0x98(%r11),%xmm9
 	movaps	%xmm0,-0x98(%r11)
-	movaps	-0x88(%r11),%xmm8
+	movaps	-0x88(%r11),%xmm10
 	movaps	%xmm0,-0x88(%r11)
-	movaps	-0x78(%r11),%xmm9
+	movaps	-0x78(%r11),%xmm11
 	movaps	%xmm0,-0x78(%r11)
-	movaps	-0x68(%r11),%xmm10
+	movaps	-0x68(%r11),%xmm12
 	movaps	%xmm0,-0x68(%r11)
-	movaps	-0x58(%r11),%xmm11
+	movaps	-0x58(%r11),%xmm13
 	movaps	%xmm0,-0x58(%r11)
-	movaps	-0x48(%r11),%xmm12
+	movaps	-0x48(%r11),%xmm14
 	movaps	%xmm0,-0x48(%r11)
-	movaps	-0x38(%r11),%xmm13
+	movaps	-0x38(%r11),%xmm15
 	movaps	%xmm0,-0x38(%r11)
-	movaps	-0x28(%r11),%xmm14
-	movaps	%xmm0,-0x28(%r11)
-	movaps	-0x18(%r11),%xmm15
-	movaps	%xmm0,-0x18(%r11)
 	movaps	%xmm0,0x00(%rsp)
 	movaps	%xmm0,0x10(%rsp)
 	movaps	%xmm0,0x20(%rsp)
 	movaps	%xmm0,0x30(%rsp)
 	movaps	%xmm0,0x40(%rsp)
 	movaps	%xmm0,0x50(%rsp)
-	movaps	%xmm0,0x60(%rsp)
+    movaps	%xmm0,0x60(%rsp)
+	movaps	%xmm0,0x70(%rsp)
+	movaps	%xmm0,0x80(%rsp)
+	movaps	%xmm0,0x90(%rsp)
 ___
 
 $code.=<<___;
 	mov	-8(%r11),%rbp
 .cfi_restore	%rbp
-        mov	-16(%r11),%r12  # TODO: check when debugging
+    mov	-16(%r11),%r12  # TODO: check when debugging
 .cfi_restore	%r12
+    mov	-24(%r11),%r13  # TODO: check when debugging
+.cfi_restore	%r13
+    mov	-32(%r11),%r13  # TODO: check when debugging
+.cfi_restore	%r13
 	lea	(%r11),%rsp
 .cfi_def_cfa_register	%rsp
 .Lxts_reenc_epilogue:
