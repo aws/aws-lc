@@ -2617,6 +2617,19 @@ OPENSSL_EXPORT int SSL_set1_groups_list(SSL *ssl, const char *groups);
 #define SSL_GROUP_SECP521R1 25
 #define SSL_GROUP_X25519 29
 
+// https://datatracker.ietf.org/doc/html/draft-kwiatkowski-tls-ecdhe-kyber
+#define SSL_GROUP_SECP256R1_KYBER768_DRAFT00 0x639A
+
+// https://datatracker.ietf.org/doc/html/draft-tls-westerbaan-xyber768d00
+#define SSL_GROUP_X25519_KYBER768_DRAFT00 0x6399
+
+// PQ and hybrid group IDs are not yet standardized. Current IDs are driven by
+// community consensus and are defined at
+// https://github.com/open-quantum-safe/oqs-provider/blob/main/oqs-template/oqs-kem-info.md
+#define SSL_GROUP_KYBER512_R3 0x023A
+#define SSL_GROUP_KYBER768_R3 0x023C
+#define SSL_GROUP_KYBER1024_R3 0x023D
+
 // SSL_get_group_id returns the ID of the group used by |ssl|'s most recently
 // completed handshake, or 0 if not applicable.
 OPENSSL_EXPORT uint16_t SSL_get_group_id(const SSL *ssl);
@@ -5603,6 +5616,7 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_status_arg(SSL_CTX *ctx, void *arg);
 #define SSL_CURVE_SECP384R1 SSL_GROUP_SECP384R1
 #define SSL_CURVE_SECP521R1 SSL_GROUP_SECP521R1
 #define SSL_CURVE_X25519 SSL_GROUP_X25519
+#define SSL_CURVE_SECP256R1_KYBER768_DRAFT00 SSL_GROUP_SECP256R1_KYBER768_DRAFT00
 #define SSL_CURVE_X25519_KYBER768_DRAFT00 SSL_GROUP_X25519_KYBER768_DRAFT00
 
 
@@ -6103,6 +6117,8 @@ BSSL_NAMESPACE_END
 #define SSL_R_SERIALIZATION_INVALID_SSL3_STATE 503
 #define SSL_R_SERIALIZATION_INVALID_SSL_BUFFER 505
 #define SSL_R_SERIALIZATION_INVALID_SSL_AEAD_CONTEXT 506
+#define SSL_R_BAD_HYBRID_KEYSHARE 507
+#define SSL_R_BAD_KEM_CIPHERTEXT 508
 #define SSL_R_SSLV3_ALERT_CLOSE_NOTIFY 1000
 #define SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE 1010
 #define SSL_R_SSLV3_ALERT_BAD_RECORD_MAC 1020

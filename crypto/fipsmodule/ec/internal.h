@@ -100,6 +100,12 @@ int ECDH_compute_shared_secret(uint8_t *buf, size_t *buflen, const EC_POINT *pub
 #define EC_MAX_COMPRESSED (EC_MAX_BYTES + 1)
 #define EC_MAX_UNCOMPRESSED (2 * EC_MAX_BYTES + 1)
 
+#define EC_P521R1_FIELD_ELEM_BYTES 66
+#define EC_P384R1_FIELD_ELEM_BYTES 48
+#define EC_P256R1_FIELD_ELEM_BYTES 32
+#define EC_P224R1_FIELD_ELEM_BYTES 28
+#define EC_P256K1_FIELD_ELEM_BYTES 32
+
 OPENSSL_STATIC_ASSERT(EC_MAX_WORDS <= BN_SMALL_MAX_WORDS,
                       bn__small_functions_not_usable)
 
