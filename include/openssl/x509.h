@@ -2846,10 +2846,11 @@ OPENSSL_EXPORT void X509_STORE_CTX_set_depth(X509_STORE_CTX *ctx, int depth);
 #define X509_V_FLAG_INHIBIT_MAP 0x400
 // X509_V_FLAG_NOTIFY_POLICY notifies the callback that the policy is OK
 #define X509_V_FLAG_NOTIFY_POLICY 0x800
-// X509_V_FLAG_EXTENDED_CRL_SUPPORT enables extended CRL features such as
-// indirect CRLs, alternate CRL signing keys.
+// X509_V_FLAG_EXTENDED_CRL_SUPPORT causes all verifications to fail. Extended
+// CRL features have been removed.
 #define X509_V_FLAG_EXTENDED_CRL_SUPPORT 0x1000
-// X509_V_FLAG_USE_DELTAS enables Delta CRL support.
+// X509_V_FLAG_USE_DELTAS causes all verifications to fail. Delta CRL support
+// has been removed.
 #define X509_V_FLAG_USE_DELTAS 0x2000
 // X509_V_FLAG_CHECK_SS_SIGNATURE enables checking the self signed CA signature.
 #define X509_V_FLAG_CHECK_SS_SIGNATURE 0x4000

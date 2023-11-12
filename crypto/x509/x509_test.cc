@@ -1931,6 +1931,14 @@ TEST(X509Test, TestCRL) {
                          param, kReferenceTime + 2 * 30 * 24 * 3600);
                    }));
 
+  // We no longer support indirect or delta CRLs.
+  EXPECT_EQ(X509_V_ERR_INVALID_CALL,
+            Verify(leaf.get(), {root.get()}, {root.get()}, {basic_crl.get()},
+                   X509_V_FLAG_CRL_CHECK | X509_V_FLAG_EXTENDED_CRL_SUPPORT));
+  EXPECT_EQ(X509_V_ERR_INVALID_CALL,
+            Verify(leaf.get(), {root.get()}, {root.get()}, {basic_crl.get()},
+                   X509_V_FLAG_CRL_CHECK | X509_V_FLAG_USE_DELTAS));
+
   // Parsing kBadExtensionCRL should fail.
   EXPECT_FALSE(CRLFromPEM(kBadExtensionCRL));
 
