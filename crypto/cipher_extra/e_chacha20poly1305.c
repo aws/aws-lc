@@ -20,6 +20,7 @@
 #include <openssl/cipher.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
+#include <openssl/nid.h>
 #include <openssl/poly1305.h>
 #include <openssl/type_check.h>
 
@@ -28,21 +29,56 @@
 #include "../internal.h"
 #include "internal.h"
 
-struct aead_chacha20_poly1305_ctx {
-  uint8_t key[32];
-};
+#define CHACHA_KEY_LEN 32
+#define CHACHA_IV_LEN 12
+#define CHACHA_BLOCK_LEN 64
+#define CHACHA_CTR_IV_LEN 16
+
+// ChaCha-Poly specific context within an EVP_CIPHER_CTX
+#define CCP_CTX(ctx) ((CIPHER_CHACHA_POLY_CTX *) ctx->cipher_data)
+// Return the CIPHER_CHACHA_KEY from a CIPHER_CHACHA_POLY_CTX
+#define CC_KEY(ccp) (&(ccp)->key)
+// Return the poly1305_state from a CIPHER_CHACHA_POLY_CTX
+#define POLY_CTX(ccp) (&(ccp)->poly_ctx)
+
+// Struct for Poly1305 key within an EVP_AEAD_CTX
+typedef struct aead_chacha20_poly1305_ctx {
+  uint8_t key[CHACHA_KEY_LEN];
+} AEAD_CHACHA_POLY_CTX;
+
+// Struct for ChaCha key within an EVP_CIPHER_CTX
+typedef struct {
+  uint32_t key[CHACHA_KEY_LEN / 4];
+  // Buffer containing both the counter and nonce
+  uint32_t counter_nonce[CHACHA_CTR_IV_LEN / 4];
+  // Buffer for any partially used keys
+  uint8_t buf[CHACHA_BLOCK_LEN];
+  uint32_t partial_len;
+} CIPHER_CHACHA_KEY;
+
+typedef struct cipher_chacha_poly_ctx {
+  CIPHER_CHACHA_KEY key;
+  uint32_t iv[CHACHA_IV_LEN / 4];
+  uint8_t tag_len;
+  uint8_t tag[POLY1305_TAG_LEN];
+  // Use 64-bit integers so this struct can be passed directly into poly1305
+  struct { uint64_t aad, text; } len;
+  int32_t poly_initialized;
+  int32_t pad_aad;
+  poly1305_state poly_ctx;
+} CIPHER_CHACHA_POLY_CTX;
 
 OPENSSL_STATIC_ASSERT(sizeof(((EVP_AEAD_CTX *)NULL)->state) >=
-                          sizeof(struct aead_chacha20_poly1305_ctx),
+                          sizeof(AEAD_CHACHA_POLY_CTX),
                       AEAD_state_is_too_small)
 OPENSSL_STATIC_ASSERT(alignof(union evp_aead_ctx_st_state) >=
-                          alignof(struct aead_chacha20_poly1305_ctx),
+                          alignof(AEAD_CHACHA_POLY_CTX),
                       AEAD_state_has_insufficient_alignment)
 
 static int aead_chacha20_poly1305_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
                                        size_t key_len, size_t tag_len) {
-  struct aead_chacha20_poly1305_ctx *c20_ctx =
-      (struct aead_chacha20_poly1305_ctx *)&ctx->state;
+  AEAD_CHACHA_POLY_CTX *c20_ctx =
+      (AEAD_CHACHA_POLY_CTX *)&ctx->state;
 
   if (tag_len == 0) {
     tag_len = POLY1305_TAG_LEN;
@@ -78,11 +114,11 @@ static void poly1305_update_length(poly1305_state *poly1305, size_t data_len) {
 
 // calc_tag fills |tag| with the authentication tag for the given inputs.
 static void calc_tag(uint8_t tag[POLY1305_TAG_LEN], const uint8_t *key,
-                     const uint8_t nonce[12], const uint8_t *ad, size_t ad_len,
-                     const uint8_t *ciphertext, size_t ciphertext_len,
-                     const uint8_t *ciphertext_extra,
+                     const uint8_t nonce[CHACHA_IV_LEN], const uint8_t *ad,
+                     size_t ad_len, const uint8_t *ciphertext,
+                     size_t ciphertext_len, const uint8_t *ciphertext_extra,
                      size_t ciphertext_extra_len) {
-  alignas(16) uint8_t poly1305_key[32];
+  alignas(16) uint8_t poly1305_key[CHACHA_KEY_LEN];
   OPENSSL_memset(poly1305_key, 0, sizeof(poly1305_key));
   CRYPTO_chacha_20(poly1305_key, poly1305_key, sizeof(poly1305_key), key, nonce,
                    0);
@@ -119,7 +155,7 @@ static int chacha20_poly1305_seal_scatter(
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BUFFER_TOO_SMALL);
     return 0;
   }
-  if (nonce_len != 12) {
+  if (nonce_len != CHACHA_IV_LEN) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_NONCE_SIZE);
     return 0;
   }
@@ -162,9 +198,9 @@ static int chacha20_poly1305_seal_scatter(
 
   union chacha20_poly1305_seal_data data;
   if (chacha20_poly1305_asm_capable()) {
-    OPENSSL_memcpy(data.in.key, key, 32);
+    OPENSSL_memcpy(data.in.key, key, CHACHA_KEY_LEN);
     data.in.counter = 0;
-    OPENSSL_memcpy(data.in.nonce, nonce, 12);
+    OPENSSL_memcpy(data.in.nonce, nonce, CHACHA_IV_LEN);
     data.in.extra_ciphertext = out_tag;
     data.in.extra_ciphertext_len = extra_in_len;
     chacha20_poly1305_seal(out, in, in_len, ad, ad_len, &data);
@@ -184,8 +220,8 @@ static int aead_chacha20_poly1305_seal_scatter(
     size_t *out_tag_len, size_t max_out_tag_len, const uint8_t *nonce,
     size_t nonce_len, const uint8_t *in, size_t in_len, const uint8_t *extra_in,
     size_t extra_in_len, const uint8_t *ad, size_t ad_len) {
-  const struct aead_chacha20_poly1305_ctx *c20_ctx =
-      (struct aead_chacha20_poly1305_ctx *)&ctx->state;
+  const AEAD_CHACHA_POLY_CTX *c20_ctx =
+      (AEAD_CHACHA_POLY_CTX *)&ctx->state;
 
   return chacha20_poly1305_seal_scatter(
       c20_ctx->key, out, out_tag, out_tag_len, max_out_tag_len, nonce,
@@ -197,16 +233,16 @@ static int aead_xchacha20_poly1305_seal_scatter(
     size_t *out_tag_len, size_t max_out_tag_len, const uint8_t *nonce,
     size_t nonce_len, const uint8_t *in, size_t in_len, const uint8_t *extra_in,
     size_t extra_in_len, const uint8_t *ad, size_t ad_len) {
-  const struct aead_chacha20_poly1305_ctx *c20_ctx =
-      (struct aead_chacha20_poly1305_ctx *)&ctx->state;
+  const AEAD_CHACHA_POLY_CTX *c20_ctx =
+      (AEAD_CHACHA_POLY_CTX *)&ctx->state;
 
   if (nonce_len != 24) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_NONCE_SIZE);
     return 0;
   }
 
-  alignas(4) uint8_t derived_key[32];
-  alignas(4) uint8_t derived_nonce[12];
+  alignas(4) uint8_t derived_key[CHACHA_KEY_LEN];
+  alignas(4) uint8_t derived_nonce[CHACHA_IV_LEN];
   CRYPTO_hchacha20(derived_key, c20_ctx->key, nonce);
   OPENSSL_memset(derived_nonce, 0, 4);
   OPENSSL_memcpy(&derived_nonce[4], &nonce[16], 8);
@@ -223,7 +259,7 @@ static int chacha20_poly1305_open_gather(const uint8_t *key, uint8_t *out,
                                          const uint8_t *in_tag,
                                          size_t in_tag_len, const uint8_t *ad,
                                          size_t ad_len, size_t tag_len) {
-  if (nonce_len != 12) {
+  if (nonce_len != CHACHA_IV_LEN) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_NONCE_SIZE);
     return 0;
   }
@@ -247,9 +283,9 @@ static int chacha20_poly1305_open_gather(const uint8_t *key, uint8_t *out,
 
   union chacha20_poly1305_open_data data;
   if (chacha20_poly1305_asm_capable()) {
-    OPENSSL_memcpy(data.in.key, key, 32);
+    OPENSSL_memcpy(data.in.key, key, CHACHA_KEY_LEN);
     data.in.counter = 0;
-    OPENSSL_memcpy(data.in.nonce, nonce, 12);
+    OPENSSL_memcpy(data.in.nonce, nonce, CHACHA_IV_LEN);
     chacha20_poly1305_open(out, in, in_len, ad, ad_len, &data);
   } else {
     calc_tag(data.out.tag, key, nonce, ad, ad_len, in, in_len, NULL, 0);
@@ -268,8 +304,8 @@ static int aead_chacha20_poly1305_open_gather(
     const EVP_AEAD_CTX *ctx, uint8_t *out, const uint8_t *nonce,
     size_t nonce_len, const uint8_t *in, size_t in_len, const uint8_t *in_tag,
     size_t in_tag_len, const uint8_t *ad, size_t ad_len) {
-  const struct aead_chacha20_poly1305_ctx *c20_ctx =
-      (struct aead_chacha20_poly1305_ctx *)&ctx->state;
+  const AEAD_CHACHA_POLY_CTX *c20_ctx =
+      (AEAD_CHACHA_POLY_CTX *)&ctx->state;
 
   return chacha20_poly1305_open_gather(c20_ctx->key, out, nonce, nonce_len, in,
                                        in_len, in_tag, in_tag_len, ad, ad_len,
@@ -280,16 +316,16 @@ static int aead_xchacha20_poly1305_open_gather(
     const EVP_AEAD_CTX *ctx, uint8_t *out, const uint8_t *nonce,
     size_t nonce_len, const uint8_t *in, size_t in_len, const uint8_t *in_tag,
     size_t in_tag_len, const uint8_t *ad, size_t ad_len) {
-  const struct aead_chacha20_poly1305_ctx *c20_ctx =
-      (struct aead_chacha20_poly1305_ctx *)&ctx->state;
+  const AEAD_CHACHA_POLY_CTX *c20_ctx =
+      (AEAD_CHACHA_POLY_CTX *)&ctx->state;
 
   if (nonce_len != 24) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_NONCE_SIZE);
     return 0;
   }
 
-  alignas(4) uint8_t derived_key[32];
-  alignas(4) uint8_t derived_nonce[12];
+  alignas(4) uint8_t derived_key[CHACHA_KEY_LEN];
+  alignas(4) uint8_t derived_nonce[CHACHA_IV_LEN];
   CRYPTO_hchacha20(derived_key, c20_ctx->key, nonce);
   OPENSSL_memset(derived_nonce, 0, 4);
   OPENSSL_memcpy(&derived_nonce[4], &nonce[16], 8);
@@ -300,8 +336,8 @@ static int aead_xchacha20_poly1305_open_gather(
 }
 
 static const EVP_AEAD aead_chacha20_poly1305 = {
-    32,                         // key len
-    12,                         // nonce len
+    CHACHA_KEY_LEN,             // key len
+    CHACHA_IV_LEN,              // nonce len
     POLY1305_TAG_LEN,           // overhead
     POLY1305_TAG_LEN,           // max tag length
     AEAD_CHACHA20_POLY1305_ID,  // evp_aead_id
@@ -320,7 +356,7 @@ static const EVP_AEAD aead_chacha20_poly1305 = {
 };
 
 static const EVP_AEAD aead_xchacha20_poly1305 = {
-    32,                          // key len
+    CHACHA_KEY_LEN,              // key len
     24,                          // nonce len
     POLY1305_TAG_LEN,            // overhead
     POLY1305_TAG_LEN,            // max tag length
@@ -345,4 +381,321 @@ const EVP_AEAD *EVP_aead_chacha20_poly1305(void) {
 
 const EVP_AEAD *EVP_aead_xchacha20_poly1305(void) {
   return &aead_xchacha20_poly1305;
+}
+
+static int cipher_chacha20_poly1305_init_key(CIPHER_CHACHA_POLY_CTX *ctx,
+                                 const uint8_t user_key[CHACHA_KEY_LEN],
+                                 const uint8_t counter_nonce[CHACHA_CTR_IV_LEN])
+{
+  CIPHER_CHACHA_KEY *key = CC_KEY(ctx);
+  uint32_t i;
+  if (user_key) {
+    for (i = 0; i < (CHACHA_KEY_LEN / 4); i++) {
+      key->key[i] = CRYPTO_load_u32_le(user_key + (i * 4));
+    }
+  }
+  if (counter_nonce) {
+    for (i = 0; i < CHACHA_CTR_IV_LEN / 4; i++) {
+      key->counter_nonce[i] = CRYPTO_load_u32_le(counter_nonce + (i * 4));
+    }
+  }
+  key->partial_len = 0;
+  return 1;
+}
+
+static int cipher_chacha20_poly1305_init(EVP_CIPHER_CTX *ctx,
+                                         const uint8_t *key,
+                                         const uint8_t *iv, int32_t enc) {
+  CIPHER_CHACHA_POLY_CTX *cipher_ctx = CCP_CTX(ctx);
+  cipher_ctx->len.aad = 0;
+  cipher_ctx->len.text = 0;
+  cipher_ctx->pad_aad = 0;
+  cipher_ctx->poly_initialized = 0;
+  if (!key && !iv) {
+    return 1;
+  }
+  // Init can be called multiple times before starting the cipher to
+  // independently initialize any combination of Key/IV/NULL.
+  if (iv != NULL) {
+    // Start the counter at 0 and copy over the nonce(iv)
+    uint8_t counter_nonce[CHACHA_CTR_IV_LEN] = {0};
+    OPENSSL_memcpy(counter_nonce + CHACHA_CTR_IV_LEN - CHACHA_IV_LEN, iv,
+           CHACHA_IV_LEN);
+    cipher_chacha20_poly1305_init_key(cipher_ctx, key, counter_nonce);
+    // Nonce occupies the last 3 indices of the array
+    cipher_ctx->iv[0] = cipher_ctx->key.counter_nonce[1];
+    cipher_ctx->iv[1] = cipher_ctx->key.counter_nonce[2];
+    cipher_ctx->iv[2] = cipher_ctx->key.counter_nonce[3];
+  } else {
+    cipher_chacha20_poly1305_init_key(cipher_ctx, key, NULL);
+  }
+  return 1;
+}
+
+static int cipher_chacha20_do_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
+                                     const uint8_t *inp, size_t len)
+{
+  CIPHER_CHACHA_POLY_CTX  *cipher_ctx = CCP_CTX(ctx);
+  CIPHER_CHACHA_KEY *key = CC_KEY(cipher_ctx);
+  uint32_t n, rem, ctr32;
+
+  // Complete any partial block
+  n = key->partial_len;
+  if (n) {
+    // Compute the cipher using our partially used key and any new input up
+    // to the next block
+    while (len && n < CHACHA_BLOCK_LEN) {
+      // Compute 1-byte of output by xor'ing 1-byte of input with the
+      // corresponding key byte and increment it all for the next byte.
+      *out++ = *inp++ ^ key->buf[n++];
+      len--;
+    }
+    key->partial_len = n;
+
+    // If we consumed all the input, we're done
+    if (len == 0) {
+      return 1;
+    }
+
+    // If we completed a block, increment the counter
+    if (n == CHACHA_BLOCK_LEN) {
+      key->partial_len = 0;
+      key->counter_nonce[0]++;
+    }
+  }
+
+  // Truncate down to the last complete block prior to the bulk cipher
+  rem = (uint32_t)(len % CHACHA_BLOCK_LEN);
+  len -= rem;
+  ctr32 = key->counter_nonce[0];
+  while (len >= CHACHA_BLOCK_LEN) {
+    size_t blocks = len / CHACHA_BLOCK_LEN;
+    // 1<<28 is just a not-so-small yet not-so-large number... Below
+    // condition is practically never met, but it has to be checked for code
+    // correctness.
+    if (sizeof(size_t) > sizeof(uint32_t) && blocks > (1U<<28)) {
+      blocks = (1U << 28);
+    }
+
+    // As ChaCha20_ctr32 operates on 32-bit counter, caller has to handle
+    // overflow. 'if' below detects the overflow, which is then handled by
+    // limiting the amount of blocks to the exact overflow point...
+    ctr32 += (uint32_t) blocks;
+    if (ctr32 < blocks) {
+      blocks -= ctr32;
+      ctr32 = 0;
+    }
+    blocks *= CHACHA_BLOCK_LEN;
+    CRYPTO_chacha_20(out, inp, blocks, (uint8_t *) key->key,
+                     (uint8_t *) cipher_ctx->iv, key->counter_nonce[0]);
+    len -= blocks;
+    inp += blocks;
+    out += blocks;
+
+    key->counter_nonce[0] = ctr32;
+  }
+
+  // Start the next block if we have any leftover input
+  if (rem) {
+    memset(key->buf, 0, sizeof(key->buf));
+    // Obtain the current key and store it in the context
+    CRYPTO_chacha_20(key->buf, key->buf, CHACHA_BLOCK_LEN, (uint8_t *) key->key,
+                     (uint8_t *) cipher_ctx->iv, key->counter_nonce[0]);
+    for (n = 0; n < rem; n++) {
+      out[n] = inp[n] ^ key->buf[n];
+    }
+    key->partial_len = rem;
+  }
+
+  return 1;
+}
+
+static int cipher_chacha20_poly1305_do_cipher(
+    EVP_CIPHER_CTX *ctx, unsigned char *out, const unsigned char *inp,
+    size_t inl) {
+  CIPHER_CHACHA_POLY_CTX *cipher_ctx = CCP_CTX(ctx);
+  poly1305_state *poly_ctx = POLY_CTX(cipher_ctx);
+  size_t remainder;
+
+  if (!cipher_ctx->poly_initialized) {
+    // Obtain the poly1305 key by computing the 0th chacha20 key
+    const uint8_t *chacha_key = (const uint8_t *) cipher_ctx->key.key;
+    const uint8_t *nonce = (const uint8_t *) cipher_ctx->iv;
+    alignas(16) uint8_t poly1305_key[CHACHA_KEY_LEN];
+    OPENSSL_memset(poly1305_key, 0, sizeof(poly1305_key));
+    CRYPTO_chacha_20(poly1305_key, poly1305_key, sizeof(poly1305_key),
+                     chacha_key, nonce, 0);
+
+    // Initialize the poly1305 context
+    CRYPTO_poly1305_init(poly_ctx, poly1305_key);
+    cipher_ctx->key.counter_nonce[0] = 1;
+    cipher_ctx->key.partial_len = 0;
+    cipher_ctx->len.aad = 0;
+    cipher_ctx->len.text = 0;
+    cipher_ctx->poly_initialized = 1;
+  }
+
+  // Handle an |EVP_CipherUpdate|
+  if (inp) {
+    if (out == NULL) {
+      // NULL |out| signals an AAD update
+      CRYPTO_poly1305_update(poly_ctx, inp, inl);
+      cipher_ctx->len.aad += inl;
+      cipher_ctx->pad_aad = 1;
+      return (int32_t) inl;
+    } else {
+      // Finish AAD by applying padding
+      if (cipher_ctx->pad_aad) {
+        remainder = cipher_ctx->len.aad % POLY1305_TAG_LEN;
+        if (remainder != 0) {
+          static const uint8_t padding[POLY1305_TAG_LEN] = {0};
+          CRYPTO_poly1305_update(poly_ctx, padding, sizeof(padding) - remainder);
+        }
+        cipher_ctx->pad_aad = 0;
+      }
+      // cipher/plain text |EVP_CipherUpdate|
+      if (EVP_CIPHER_CTX_encrypting(ctx)) {
+        // Encryption
+        cipher_chacha20_do_cipher(ctx, out, inp, inl);
+        // Update poly1305 with computed ciphertext
+        CRYPTO_poly1305_update(poly_ctx, out, inl);
+        cipher_ctx->len.text += inl;
+      } else {
+        // Decryption
+        // Update poly1305 with incoming ciphertext
+        CRYPTO_poly1305_update(poly_ctx, inp, inl);
+        cipher_chacha20_do_cipher(ctx, out, inp, inl);
+        cipher_ctx->len.text += inl;
+      }
+    }
+  }
+
+  // Process an |EVP_CipherFinal|
+  if (inp == NULL) {
+    uint8_t temp[POLY1305_TAG_LEN];
+    static const uint8_t padding[POLY1305_TAG_LEN] = {0};
+
+    // Finish AAD inp case there were no intermediate Update() calls
+    if (cipher_ctx->pad_aad) {
+      remainder = cipher_ctx->len.aad % POLY1305_TAG_LEN;
+      if (remainder != 0) {
+        CRYPTO_poly1305_update(poly_ctx, padding, sizeof(padding) - remainder);
+      }
+      cipher_ctx->pad_aad = 0;
+    }
+
+    // Apply padding for the text
+    remainder = cipher_ctx->len.text % POLY1305_TAG_LEN;
+    if (remainder != 0) {
+      CRYPTO_poly1305_update(poly_ctx, padding, sizeof(padding) - remainder);
+    }
+
+    // Apply len values
+    CRYPTO_poly1305_update(poly_ctx, (uint8_t *) &cipher_ctx->len,
+                           POLY1305_TAG_LEN);
+
+    // Compute the tag and write it to scratch or the cipher context
+    CRYPTO_poly1305_finish(poly_ctx, EVP_CIPHER_CTX_encrypting(ctx) ?
+      cipher_ctx->tag : temp);
+    cipher_ctx->poly_initialized = 0;
+
+    // Check the tags if we're decrypting
+    if (!EVP_CIPHER_CTX_encrypting(ctx)) {
+      if (CRYPTO_memcmp(temp, cipher_ctx->tag, cipher_ctx->tag_len)) {
+        return -1;
+      }
+    }
+  }
+  return (int32_t) inl;
+}
+
+static void cipher_chacha20_poly1305_cleanup(EVP_CIPHER_CTX *ctx) {
+  CIPHER_CHACHA_POLY_CTX *cipher_ctx = CCP_CTX(ctx);
+  if (cipher_ctx) {
+    OPENSSL_cleanse(ctx->cipher_data, sizeof(CIPHER_CHACHA_POLY_CTX));
+  }
+}
+
+// Returns a pointer to the first 64-byte alignment within |poly_ctx|.
+static void *cipher_chacha20_poly1305_aligned_poly(EVP_CIPHER_CTX *ctx) {
+  return (void *) (((uintptr_t) POLY_CTX(CCP_CTX(ctx)) + 63) & ~63);
+}
+
+static int32_t cipher_chacha20_poly1305_ctrl(EVP_CIPHER_CTX *ctx, int32_t type,
+     int32_t arg, void *ptr) {
+  CIPHER_CHACHA_POLY_CTX *cipher_ctx = CCP_CTX(ctx);
+  switch (type) {
+    case EVP_CTRL_INIT:
+      if (cipher_ctx == NULL) {
+        cipher_ctx = ctx->cipher_data = OPENSSL_malloc(ctx->cipher->ctx_size);
+      }
+      if (cipher_ctx == NULL) {
+        OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INITIALIZATION_ERROR);
+        return 0;
+      }
+      cipher_ctx->len.aad = 0;
+      cipher_ctx->len.text = 0;
+      cipher_ctx->pad_aad = 0;
+      cipher_ctx->poly_initialized = 0;
+      cipher_ctx->tag_len = 0;
+      return 1;
+    case EVP_CTRL_COPY:
+      if (cipher_ctx && cipher_ctx->poly_initialized) {
+        // The poly1305 context needs to be aligned on a 64-byte boundary.
+        // The destination context doesn't necessarily have the same
+        // alignment so we have to fix that here.
+        EVP_CIPHER_CTX *dst = (EVP_CIPHER_CTX *) ptr;
+        void *source_base = cipher_chacha20_poly1305_aligned_poly(ctx);
+        void *dest_base = cipher_chacha20_poly1305_aligned_poly(dst);
+        // We have 63 bytes of padding for alignment, so the actual size of
+        // the poly1305 context is the difference of that and the total buffer.
+        size_t length = sizeof(poly1305_state) - 63;
+        OPENSSL_memcpy(dest_base, source_base, length);
+      }
+      return 1;
+    case EVP_CTRL_AEAD_SET_IVLEN:
+      if (arg != CHACHA_IV_LEN) {
+        return 0;
+      }
+      return 1;
+    case EVP_CTRL_AEAD_GET_TAG:
+      if (arg <= 0 || arg > POLY1305_TAG_LEN ||
+              !EVP_CIPHER_CTX_encrypting(ctx)) {
+        return 0;
+      }
+      OPENSSL_memcpy(ptr, cipher_ctx->tag, arg);
+      return 1;
+    case EVP_CTRL_AEAD_SET_TAG:
+      if (arg <= 0 || arg > POLY1305_TAG_LEN ||
+              EVP_CIPHER_CTX_encrypting(ctx)) {
+        return 0;
+      }
+      if (ptr != NULL) {
+        OPENSSL_memcpy(cipher_ctx->tag, ptr, arg);
+        cipher_ctx->tag_len = arg;
+      }
+      return 1;
+    default:
+      return -1;
+  }
+}
+
+static EVP_CIPHER cipher_chacha20_poly1305 = {
+  NID_chacha20_poly1305,
+  1, // stream cipher
+  CHACHA_KEY_LEN,
+  CHACHA_IV_LEN,
+  sizeof(CIPHER_CHACHA_POLY_CTX),
+  EVP_CIPH_FLAG_AEAD_CIPHER | EVP_CIPH_CUSTOM_IV | EVP_CIPH_ALWAYS_CALL_INIT |
+  EVP_CIPH_CTRL_INIT | EVP_CIPH_CUSTOM_COPY | EVP_CIPH_FLAG_CUSTOM_CIPHER,
+  NULL, // app_data
+  cipher_chacha20_poly1305_init,
+  cipher_chacha20_poly1305_do_cipher,
+  cipher_chacha20_poly1305_cleanup,
+  cipher_chacha20_poly1305_ctrl
+};
+
+const EVP_CIPHER *EVP_chacha20_poly1305(void)
+{
+  return(&cipher_chacha20_poly1305);
 }
