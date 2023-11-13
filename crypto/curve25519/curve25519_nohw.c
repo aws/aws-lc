@@ -1975,3 +1975,28 @@ void ed25519_public_key_from_hashed_seed_nohw(uint8_t out_public_key[32],
   x25519_ge_scalarmult_base(&A, az);
   ge_p3_tobytes(out_public_key, &A);
 }
+
+void ed25519_sign_nohw(
+  uint8_t out_sig[ED25519_SIGNATURE_LEN],
+  uint8_t r[SHA512_DIGEST_LENGTH], const uint8_t *s, const uint8_t *A,
+  const void *message, size_t message_len) {
+
+  // Reduce r modulo the order of the base-point B.
+  x25519_sc_reduce(r);
+  ge_p3 R;
+  // Compute [r]B.
+  x25519_ge_scalarmult_base(&R, r);
+  ge_p3_tobytes(out_sig, &R);
+
+  // Compute k = SHA512(R || A || message)
+  // R is of length 32 octets
+  uint8_t k[SHA512_DIGEST_LENGTH];
+  ed25519_sha512(k, out_sig, 32, A, ED25519_PUBLIC_KEY_LEN, message, message_len);
+
+  // Reduce k modulo the order of the base-point B.
+  x25519_sc_reduce(k);
+  // Compute S = r + k * s modulo the order of the base-point B.
+  // out_sig = R || S
+  sc_muladd(out_sig + 32, k, s, r);
+
+}

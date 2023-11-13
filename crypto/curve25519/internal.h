@@ -119,6 +119,22 @@ void ed25519_public_key_from_hashed_seed_nohw(
   uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
   uint8_t az[SHA512_DIGEST_LENGTH]);
 
+// Computes the SHA512 of three input pairs: (|input1|, |len1|),
+// (|input2|, |len2|), (|input3|, |len3|). Specifically, the hash is computed
+// over the concatenation: |input1| || |input2| || |input3|.
+// The final pair might have |len3| == 0, meaning this input will be ignored.
+// The result is written to |out|.
+void ed25519_sha512(uint8_t out[SHA512_DIGEST_LENGTH],
+  const void *input1, size_t len1, const void *input2, size_t len2,
+  const void *input3, size_t len3);
+
+// |s| is of length |ED25519_PRIVATE_KEY_SEED_LEN|
+// |A| is of length |ED25519_PUBLIC_KEY_LEN|.
+void ed25519_sign_nohw(
+  uint8_t out_sig[ED25519_SIGNATURE_LEN],
+  uint8_t r[SHA512_DIGEST_LENGTH], const uint8_t *s, const uint8_t *A,
+  const void *message, size_t message_len);
+
 // Port to internal linkage in curve25519_nohw.c when adding implementation
 // from s2n-bignum ed25519
 void ge_p3_tobytes(uint8_t s[32], const ge_p3 *h);
