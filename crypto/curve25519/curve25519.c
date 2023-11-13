@@ -271,7 +271,7 @@ static void ed25519_public_key_from_hashed_seed_s2n_bignum(
 
 // Stub function until Ed25519 lands in s2n-bignum
 // |s| is of length |ED25519_PRIVATE_KEY_SEED_LEN|
-// |public_key| is of length |ED25519_PUBLIC_KEY_LEN|.
+// |A| is of length |ED25519_PUBLIC_KEY_LEN|.
 static void ed25519_sign_s2n_bignum(
   uint8_t out_sig[ED25519_SIGNATURE_LEN],
   uint8_t r[SHA512_DIGEST_LENGTH], const uint8_t *s, const uint8_t *A,

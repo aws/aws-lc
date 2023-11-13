@@ -129,7 +129,7 @@ void ed25519_sha512(uint8_t out[SHA512_DIGEST_LENGTH],
   const void *input3, size_t len3);
 
 // |s| is of length |ED25519_PRIVATE_KEY_SEED_LEN|
-// |public_key| is of length |ED25519_PUBLIC_KEY_LEN|.
+// |A| is of length |ED25519_PUBLIC_KEY_LEN|.
 void ed25519_sign_nohw(
   uint8_t out_sig[ED25519_SIGNATURE_LEN],
   uint8_t r[SHA512_DIGEST_LENGTH], const uint8_t *s, const uint8_t *A,
