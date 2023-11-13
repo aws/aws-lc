@@ -96,6 +96,9 @@
     "cmd": ["ssl/ssl_test"]
   },
   {
+    "cmd": ["ssl/integration_test"]
+  },
+  {
     "cmd": ["crypto/mem_test"]
   },
   {
