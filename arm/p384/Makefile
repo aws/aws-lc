@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 #############################################################################
 
-# If actually on an ARM8 machine, just use the GNU assmbler (as). Otherwise
+# If actually on an ARM8 machine, just use the GNU assembler (as). Otherwise
 # use a cross-assembling version so that the code can still be assembled
 # and the proofs checked against the object files (though you won't be able
 # to run code without additional emulation infrastructure). The aarch64
