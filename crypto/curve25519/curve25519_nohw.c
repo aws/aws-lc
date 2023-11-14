@@ -201,7 +201,7 @@ static void fe_sub(fe_loose *h, const fe *f, const fe *g) {
   assert_fe_loose(h->v);
 }
 
-void fe_carry(fe *h, const fe_loose* f) {
+static void fe_carry(fe *h, const fe_loose* f) {
   assert_fe_loose(f->v);
   fiat_25519_carry(h->v, f->v);
   assert_fe(h->v);
@@ -273,7 +273,7 @@ static void fe_mul121666(fe *h, const fe_loose *f) {
 }
 
 // h = -f
-void fe_neg(fe_loose *h, const fe *f) {
+static void fe_neg(fe_loose *h, const fe *f) {
   assert_fe(f->v);
   fiat_25519_opp(h->v, f->v);
   assert_fe_loose(h->v);
@@ -481,7 +481,7 @@ void x25519_ge_tobytes(uint8_t s[32], const ge_p2 *h) {
   s[31] ^= fe_isnegative(&x) << 7;
 }
 
-void ge_p3_tobytes(uint8_t s[32], const ge_p3 *h) {
+static void ge_p3_tobytes(uint8_t s[32], const ge_p3 *h) {
   fe recip;
   fe x;
   fe y;
@@ -956,7 +956,7 @@ static void slide(signed char *r, const uint8_t *a) {
 // where a = a[0]+256*a[1]+...+256^31 a[31].
 // and b = b[0]+256*b[1]+...+256^31 b[31].
 // B is the Ed25519 base point (x,4/5) with x positive.
-void ge_double_scalarmult_vartime(ge_p2 *r, const uint8_t *a,
+static void ge_double_scalarmult_vartime(ge_p2 *r, const uint8_t *a,
                                          const ge_p3 *A, const uint8_t *b) {
   signed char aslide[256];
   signed char bslide[256];
@@ -1382,7 +1382,7 @@ void x25519_sc_reduce(uint8_t s[64]) {
 // Output:
 //   s[0]+256*s[1]+...+256^31*s[31] = (ab+c) mod l
 //   where l = 2^252 + 27742317777372353535851937790883648493.
-void sc_muladd(uint8_t *s, const uint8_t *a, const uint8_t *b,
+static void sc_muladd(uint8_t *s, const uint8_t *a, const uint8_t *b,
                       const uint8_t *c) {
   int64_t a0 = 2097151 & load_3(a);
   int64_t a1 = 2097151 & (load_4(a + 2) >> 5);
