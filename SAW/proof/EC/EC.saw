@@ -149,14 +149,10 @@ let pointer_to_fresh_ec_group_st_with_curve_name curve_name = do {
   points_to_ec_point_st generator_ptr ptr {{ jacobianToMontBV P384_G_Jacobian }};
   crucible_points_to (crucible_field ptr "generator") generator_ptr;
 
-  order_d_ptr <- crucible_alloc_readonly i384;
-  crucible_points_to order_d_ptr (crucible_term {{ fromInteger`{[P384_w]} `P384_n }});
-  points_to_p384_bignum_st (crucible_field ptr "order") order_d_ptr {{ 0 : [32] }};
-
   crucible_points_to (crucible_field ptr "curve_name") (crucible_term {{ `curve_name : [32] }});
 
   (_, order_mont_ptr) <- pointer_to_bn_mont_ctx_st ec_words {| P384_n |};
-  crucible_points_to (crucible_field ptr "order_mont") order_mont_ptr;
+  crucible_points_to (crucible_field ptr "order") order_mont_ptr;
 
   field_d_ptr <- crucible_alloc_readonly i384;
   crucible_points_to field_d_ptr (crucible_term {{ fromInteger`{[P384_w]} `P384_p }});
@@ -166,7 +162,6 @@ let pointer_to_fresh_ec_group_st_with_curve_name curve_name = do {
   crucible_points_to_untyped (crucible_field ptr "b") (crucible_term {{ fieldElementToBV ((P384_b * P384_R_p) % `P384_p) }});
   crucible_points_to (crucible_field ptr "a_is_minus3") (crucible_term {{ 1 : [32] }});
   crucible_points_to (crucible_field ptr "field_greater_than_order") (crucible_term {{ 1 : [32] }});
-  crucible_points_to_untyped (crucible_field ptr "field_minus_order") (crucible_term {{ fromInteger`{[P384_w]} (`P384_p - `P384_n) }});
 
   (_, mont_ptr) <- pointer_to_bn_mont_ctx_st ec_words {| P384_p |};
   crucible_points_to (crucible_field ptr "mont") mont_ptr;

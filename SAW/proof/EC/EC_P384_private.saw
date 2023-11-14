@@ -197,14 +197,19 @@ ec_compute_wNAF_in_range_lemma <-
     (w4_unint_z3 [])
     (rewrite (cryptol_ss ()) {{ \scalar -> ec_compute_wNAF_in_range (ec_compute_wNAF scalar) }});
 
+let points_to_ec_group_st_initialized_order_width ptr width = do {
+  order_mont_ptr <- crucible_alloc_readonly (llvm_struct "struct.bn_mont_ctx_st");
+  crucible_points_to (crucible_field (crucible_field order_mont_ptr "N") "width") width;
+  crucible_points_to (crucible_field ptr "order") order_mont_ptr;
+};
+
 let ec_compute_wNAF_out = "ec_compute_wNAF.out";
 let ec_compute_wNAF_range = "ec_compute_wNAF.range";
 
 let ec_compute_wNAF_spec w order_width = do {
 
   group_ptr <- crucible_alloc_readonly (llvm_struct "struct.ec_group_st");
-  crucible_points_to (crucible_field (crucible_field group_ptr "order") "width")
-                     (crucible_term {{ `order_width : [32] }});
+  points_to_ec_group_st_initialized_order_width group_ptr (crucible_term {{ `order_width : [32] }});
   out_ptr <- crucible_alloc (llvm_array 385 i8);
   (scalar, scalar_ptr) <- ptr_to_fresh_readonly "scalar" i384;
 
@@ -286,8 +291,7 @@ let ec_GFp_nistp384_point_mul_public_loop_spec = do {
 
   // pointer to group
   group_ptr <- crucible_alloc_readonly (llvm_struct "struct.ec_group_st");
-  crucible_points_to (crucible_field (crucible_field group_ptr "order") "width")
-                     (crucible_term {{ `p384_felem_limbs : [32] }});
+  points_to_ec_group_st_initialized_order_width group_ptr (crucible_term {{ `p384_felem_limbs : [32] }});
   group_pp <- llvm_alloc (llvm_int 64);
   llvm_points_to group_pp group_ptr;
 
@@ -448,8 +452,7 @@ let p384_point_mul_public_spec order_width = do {
   global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
 
   group_ptr <- crucible_alloc_readonly (llvm_struct "struct.ec_group_st");
-  crucible_points_to (crucible_field (crucible_field group_ptr "order") "width")
-                     (crucible_term {{ `order_width : [32] }});
+  points_to_ec_group_st_initialized_order_width group_ptr (crucible_term {{ `order_width : [32] }});
   r_ptr <- crucible_alloc (llvm_struct "struct.EC_JACOBIAN");
   (g_scalar, g_scalar_ptr) <- ptr_to_fresh_readonly "g_scalar" i384;
   p_ptr <- crucible_alloc_readonly (llvm_struct "struct.EC_JACOBIAN");
