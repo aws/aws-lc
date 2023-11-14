@@ -3080,7 +3080,7 @@ let LOCAL_CMSUBC9_P384_TAC =
 
   ABBREV_TAC `q:int64 = sum_s62` THEN
   REPEAT(FIRST_X_ASSUM(K ALL_TAC o
-    check (free_in `sum_s46:int64` o concl))) THEN
+    check (vfree_in `sum_s46:int64` o concl))) THEN
   SUBGOAL_THEN `ca DIV 2 EXP 384 = val(q:int64)` SUBST_ALL_TAC THENL
    [EXPAND_TAC "ca" THEN CONV_TAC(LAND_CONV BIGNUM_OF_WORDLIST_DIV_CONV) THEN
     REFL_TAC;
@@ -3243,7 +3243,7 @@ let LOCAL_CMSUB41_P384_TAC =
 
   ABBREV_TAC `q:int64 = sum_s20` THEN
   REPEAT(FIRST_X_ASSUM(K ALL_TAC o
-    check (free_in `sum_s20:int64` o concl))) THEN
+    check (vfree_in `sum_s20:int64` o concl))) THEN
   SUBGOAL_THEN `&ca div &2 pow 384 = &(val(q:int64))` SUBST_ALL_TAC THENL
    [REWRITE_TAC[INT_OF_NUM_CLAUSES; INT_OF_NUM_DIV] THEN
     EXPAND_TAC "ca" THEN CONV_TAC(LAND_CONV BIGNUM_OF_WORDLIST_DIV_CONV) THEN
@@ -3438,7 +3438,7 @@ let LOCAL_CMSUB38_P384_TAC =
 
   ABBREV_TAC `q:int64 = sum_s50` THEN
   REPEAT(FIRST_X_ASSUM(K ALL_TAC o
-    check (free_in `sum_s50:int64` o concl))) THEN
+    check (vfree_in `sum_s50:int64` o concl))) THEN
   SUBGOAL_THEN `ca DIV 2 EXP 384 = val(q:int64)` SUBST_ALL_TAC THENL
    [EXPAND_TAC "ca" THEN CONV_TAC(LAND_CONV BIGNUM_OF_WORDLIST_DIV_CONV) THEN
     REFL_TAC;

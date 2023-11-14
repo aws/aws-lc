@@ -78,7 +78,7 @@ let BIGNUM_COPY_CORRECT = prove
     X86_SIM_TAC BIGNUM_COPY_EXEC (1--3) THEN
     REWRITE_TAC[ARITH_RULE `MIN n k = if k < n then k else n`] THEN
     MESON_TAC[];
-    REPEAT(FIRST_X_ASSUM(MP_TAC o check (free_in `k:num` o concl))) THEN
+    REPEAT(FIRST_X_ASSUM(MP_TAC o check (vfree_in `k:num` o concl))) THEN
     POP_ASSUM_LIST(K ALL_TAC) THEN MP_TAC(ARITH_RULE `MIN n k <= k`) THEN
     SPEC_TAC(`lowdigits a k`,`a:num`) THEN SPEC_TAC(`MIN n k`,`n:num`) THEN
     REPEAT GEN_TAC THEN REPEAT DISCH_TAC THEN

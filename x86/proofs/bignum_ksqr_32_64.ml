@@ -1880,7 +1880,7 @@ let tac mc execth pcinst =
   (*** Discard elementwise assignments and things to do with x ***)
 
   DISCARD_MATCHING_ASSUMPTIONS [`read (memory :> bytes64 x) s = y`] THEN
-  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `x:int64` o concl))) THEN
+  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `x:int64` o concl))) THEN
 
   (*** Digitize low and high products ***)
 

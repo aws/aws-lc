@@ -2865,7 +2865,7 @@ let tac mc execth pcinst =
     UNDISCH_TAC
      `read (memory :> bytes64 (word_add stackpointer (word 8))) s159 = z` THEN
     DISCARD_MATCHING_ASSUMPTIONS [`read (memory :> bytes64 x) s = y`] THEN
-    REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `x:int64` o concl))) THEN
+    REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `x:int64` o concl))) THEN
     DISCH_TAC] THEN
 
   (*** Second absolute difference computation, then throw away y data ***)
@@ -2916,7 +2916,7 @@ let tac mc execth pcinst =
     UNDISCH_TAC
      `read (memory :> bytes64 (word_add stackpointer (word 8))) s305 = z` THEN
     DISCARD_MATCHING_ASSUMPTIONS [`read (memory :> bytes64 x) s = y`] THEN
-    REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `x:int64` o concl))) THEN
+    REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `x:int64` o concl))) THEN
     DISCH_TAC] THEN
 
   (*** Stashing the combined sign ***)
@@ -3001,7 +3001,7 @@ let tac mc execth pcinst =
   UNDISCH_THEN
   `&(val(sum_s445:int64)):real = &(bitval carry_s442) + &(bitval carry_s441)`
   SUBST_ALL_TAC THEN
-  FIRST_X_ASSUM(MP_TAC o check (free_in `carry_s641:bool` o concl)) THEN
+  FIRST_X_ASSUM(MP_TAC o check (vfree_in `carry_s641:bool` o concl)) THEN
   DISCH_THEN(MP_TAC o SPEC `&(bitval sgn):real` o MATCH_MP (REAL_ARITH
    `&2 pow 64 * c + s = x
     ==> !c'. (&2 pow 64 * c + s = x ==> c = c')

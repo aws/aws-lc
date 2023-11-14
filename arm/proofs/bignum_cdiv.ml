@@ -236,7 +236,7 @@ let BIGNUM_CDIV_CORRECT = prove
 
     (*** Rename n -> k to allow even easier reuse of bignum_cmod proof ***)
 
-    REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `k:num` o concl))) THEN
+    REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `k:num` o concl))) THEN
     POP_ASSUM_LIST(MP_TAC o end_itlist CONJ o rev) THEN
     SPEC_TAC(`n:num`,`k:num`) THEN REPEAT STRIP_TAC THEN
 
@@ -736,7 +736,7 @@ let BIGNUM_CDIV_CORRECT = prove
         `(c * (b + x)) * z:real = c * (b * z + x * z)`] THEN
        CONJ_TAC THEN ASM PURE_BOUNDER_TAC[];
        REPEAT(FIRST_X_ASSUM(K ALL_TAC o check
-          (free_in `b:int64` o concl)))] THEN
+          (vfree_in `b:int64` o concl)))] THEN
 
       (*** Observe this, which implies the result is not exact ***)
 

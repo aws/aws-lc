@@ -199,7 +199,7 @@ let BIGNUM_TOMONT_SM2_CORRECT = time prove
     MAP_EVERY UNDISCH_TAC
      [`read X0 s12 = z`; `read PC s12 = word (pc + 48)`] THEN
     DISCARD_MATCHING_ASSUMPTIONS [`read Xnn s = y`] THEN
-    REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `a:num` o concl))) THEN
+    REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `a:num` o concl))) THEN
     DISCH_TAC THEN DISCH_TAC] THEN
 
   SUBGOAL_THEN
@@ -347,9 +347,9 @@ let BIGNUM_TOMONT_SM2_CORRECT = time prove
 
   (*** Reset all the variables to match the initial expectations ***)
 
-  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `m:num`) o concl)) THEN
-  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `a:num`) o concl)) THEN
-  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `w:int64`) o concl)) THEN
+  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `m:num`) o concl)) THEN
+  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `a:num`) o concl)) THEN
+  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `w:int64`) o concl)) THEN
 
   POP_ASSUM_LIST(MP_TAC o end_itlist CONJ o rev) THEN
   SPEC_TAC(`s33:armstate`,`s12:armstate`) THEN

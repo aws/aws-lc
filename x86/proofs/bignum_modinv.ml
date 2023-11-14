@@ -647,7 +647,7 @@ let CORE_MODINV_CORRECT = prove
 
   UNDISCH_THEN `word_add ww (word (8 * k)):int64 = mm` (K ALL_TAC) THEN
   UNDISCH_THEN `word_add ww (word (16 * k)):int64 = nn` (K ALL_TAC) THEN
-  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `x:int64` o concl))) THEN
+  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `x:int64` o concl))) THEN
 
   (*** Further initialization including modular inverse ***)
 
@@ -807,7 +807,7 @@ let CORE_MODINV_CORRECT = prove
   SUBGOAL_THEN `t - 58 * icount <= 128 * k` MP_TAC THENL
    [SIMPLE_ARITH_TAC; ALL_TAC] THEN
   SPEC_TAC(`t - 58 * icount`,`t':num`) THEN
-  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `t:num` o concl))) THEN
+  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `t:num` o concl))) THEN
   X_GEN_TAC `t:num` THEN REPEAT DISCH_TAC THEN
   GHOST_INTRO_TAC `m0:num` `bignum_from_memory(mm,k)` THEN
   GHOST_INTRO_TAC `n0:num` `bignum_from_memory(nn,k)` THEN
@@ -2401,10 +2401,10 @@ let CORE_MODINV_CORRECT = prove
   GLOBALIZE_PRECONDITION_TAC THEN ASM_REWRITE_TAC[] THEN
   REPEAT(FIRST_X_ASSUM(CONJUNCTS_THEN ASSUME_TAC)) THEN
   REPEAT(FIRST_X_ASSUM(K ALL_TAC o
-    check (free_in `lowerr:num->real` o concl))) THEN
+    check (vfree_in `lowerr:num->real` o concl))) THEN
   REPEAT(FIRST_X_ASSUM(K ALL_TAC o
-    check (free_in `upperr:num->real` o concl))) THEN
-  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `base:int` o concl))) THEN
+    check (vfree_in `upperr:num->real` o concl))) THEN
+  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `base:int` o concl))) THEN
 
   (*** Congruence cross-multiplication and shift-by-6 "congloop" ***)
 

@@ -1005,7 +1005,7 @@ let BIGNUM_SQR_P521_CORRECT = time prove
   ARM_STEPS_TAC BIGNUM_SQR_P521_EXEC (392--394) THEN
   RULE_ASSUM_TAC(REWRITE_RULE[GSYM WORD_AND_ASSOC; DIMINDEX_64;
       NUM_REDUCE_CONV `9 MOD 64`]) THEN
-  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `h:num` o concl))) THEN
+  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `h:num` o concl))) THEN
   MAP_EVERY ABBREV_TAC
    [`h:int64 = word_ushr sum_s391 9`;
     `d:int64 = word_or sum_s391 (word 18446744073709551104)`;

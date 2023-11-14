@@ -1257,9 +1257,9 @@ let BIGNUM_EMONTREDC_8N_NEON_CORRECT = time prove
     ALL_TAC] THEN
   SUBGOAL_THEN `8 <= k'` ASSUME_TAC THENL [ASM_ARITH_TAC; ALL_TAC] THEN
 
-  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `a:num`) o concl)) THEN
-  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `n:num`) o concl)) THEN
-  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `k:num`) o concl)) THEN
+  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `a:num`) o concl)) THEN
+  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `n:num`) o concl)) THEN
+  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `k:num`) o concl)) THEN
   POP_ASSUM_LIST(MP_TAC o end_itlist CONJ o rev) THEN
   MAP_EVERY SPEC_TAC
     [(`a':num`,`a:num`); (`n':num`,`n:num`); (`k':num`,`k:num`)] THEN
@@ -1504,10 +1504,10 @@ let BIGNUM_EMONTREDC_8N_NEON_CORRECT = time prove
 
   (*** Now forget more things; back up a few steps and forget i as well ***)
 
-  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `a:num`) o concl)) THEN
-  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `z:int64`) o concl)) THEN
-  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `q1:num`) o concl)) THEN
-  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `r1:num`) o concl)) THEN
+  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `a:num`) o concl)) THEN
+  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `z:int64`) o concl)) THEN
+  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `q1:num`) o concl)) THEN
+  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `r1:num`) o concl)) THEN
 
   ENSURES_SEQUENCE_TAC `pc + 0xd54`
    `\s. read X2 s = word_add m (word(32 * (k4 - 1))) /\
@@ -1536,7 +1536,7 @@ let BIGNUM_EMONTREDC_8N_NEON_CORRECT = time prove
       ASM_REWRITE_TAC[ARITH_RULE `1 <= k - j <=> j < k`]]] THEN
 
   ABBREV_TAC `wouter:int64 = word (k4 - i)` THEN
-  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `i:num`) o concl)) THEN
+  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `i:num`) o concl)) THEN
   POP_ASSUM_LIST(MP_TAC o end_itlist CONJ o rev) THEN
   MAP_EVERY SPEC_TAC
     [(`z1:num`,`a:num`); (`z':int64`,`z:int64`)] THEN

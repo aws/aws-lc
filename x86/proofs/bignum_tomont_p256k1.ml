@@ -118,7 +118,7 @@ let BIGNUM_TOMONT_P256K1_CORRECT = time prove
   (*** Quotient estimate is just the top word after the +1 ***)
 
   ABBREV_TAC `q:int64 = sum_s9` THEN
-  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `sum_s9:int64` o concl))) THEN
+  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `sum_s9:int64` o concl))) THEN
   SUBGOAL_THEN `ca DIV 2 EXP 256 = val(q:int64)` SUBST_ALL_TAC THENL
    [EXPAND_TAC "ca" THEN CONV_TAC(LAND_CONV BIGNUM_OF_WORDLIST_DIV_CONV) THEN
     REFL_TAC;

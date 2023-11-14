@@ -133,8 +133,8 @@ let BIGNUM_CMUL_P521_CORRECT = time prove
     DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN REAL_ARITH_TAC;
     DISCARD_MATCHING_ASSUMPTIONS [`word(a):int64 = c`] THEN
     ACCUMULATOR_POP_ASSUM_LIST(K ALL_TAC) THEN
-    REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `c:int64` o concl))) THEN
-    REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `a:num` o concl)))] THEN
+    REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `c:int64` o concl))) THEN
+    REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `a:num` o concl)))] THEN
 
   (*** Breaking the problem down to (h + l) MOD p_521 ***)
 

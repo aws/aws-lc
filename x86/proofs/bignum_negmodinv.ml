@@ -497,10 +497,10 @@ let BIGNUM_NEGMODINV_CORRECT = prove
   SUBGOAL_THEN `2 <= p /\ p < 2 EXP 61` STRIP_ASSUME_TAC THENL
    [SIMPLE_ARITH_TAC; ALL_TAC] THEN
 
-  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `z:int64` o concl))) THEN
-  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `m:num` o concl))) THEN
-  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `i:num` o concl))) THEN
-  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `k:num` o concl))) THEN
+  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `z:int64` o concl))) THEN
+  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `m:num` o concl))) THEN
+  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `i:num` o concl))) THEN
+  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `k:num` o concl))) THEN
   POP_ASSUM_LIST(MP_TAC o end_itlist CONJ o rev) THEN
 
   SPEC_TAC(`m':num`,`m:num`) THEN SPEC_TAC(`z':int64`,`z:int64`) THEN

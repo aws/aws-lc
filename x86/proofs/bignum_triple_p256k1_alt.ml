@@ -118,7 +118,7 @@ let BIGNUM_TRIPLE_P256K1_ALT_CORRECT = time prove
 
   ABBREV_TAC `q:int64 = sum_s19` THEN
   REPEAT(FIRST_X_ASSUM(K ALL_TAC o
-    check (free_in `sum_s19:int64` o concl))) THEN
+    check (vfree_in `sum_s19:int64` o concl))) THEN
   SUBGOAL_THEN `ca DIV 2 EXP 256 = val(q:int64)` SUBST_ALL_TAC THENL
    [EXPAND_TAC "ca" THEN CONV_TAC(LAND_CONV BIGNUM_OF_WORDLIST_DIV_CONV) THEN
     REFL_TAC;

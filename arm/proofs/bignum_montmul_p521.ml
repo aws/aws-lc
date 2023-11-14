@@ -920,7 +920,7 @@ let BIGNUM_MONTMUL_P521_CORRECT = prove
       ACCUMULATOR_ASSUM_LIST(MP_TAC o end_itlist CONJ o DESUM_RULE) THEN
       DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN REAL_INTEGER_TAC];
      ACCUMULATOR_POP_ASSUM_LIST(K ALL_TAC) THEN
-     REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `l:num` o concl)))] THEN
+     REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `l:num` o concl)))] THEN
 
   (*** The sign-magnitude difference computation ***)
 
@@ -1161,9 +1161,9 @@ let BIGNUM_MONTMUL_P521_CORRECT = prove
     DISCARD_MATCHING_ASSUMPTIONS
      [`(a:int == b) (mod n)`; `(a:num == b) (mod n)`; `x:real = y`;
       `a:num = b * c`; `word_add a b = c`] THEN
-    REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `hl:num` o concl))) THEN
-    REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `hlm':num` o concl))) THEN
-    REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `sgn:bool` o concl))) THEN
+    REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `hl:num` o concl))) THEN
+    REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `hlm':num` o concl))) THEN
+    REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `sgn:bool` o concl))) THEN
     DISCH_TAC] THEN
 
   (*** The intricate augmentation of the product with top words ***)

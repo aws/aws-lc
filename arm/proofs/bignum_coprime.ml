@@ -598,10 +598,10 @@ let BIGNUM_COPRIME_CORRECT = prove
   SUBGOAL_THEN `64 <= t /\ t <= 128 * k` STRIP_ASSUME_TAC THENL
    [SIMPLE_ARITH_TAC; ALL_TAC] THEN
   SUBGOAL_THEN `k < 2 EXP 57` ASSUME_TAC THENL [SIMPLE_ARITH_TAC; ALL_TAC] THEN
-  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `x:int64` o concl))) THEN
-  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `y:int64` o concl))) THEN
-  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `m:num` o concl))) THEN
-  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `n:num` o concl))) THEN
+  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `x:int64` o concl))) THEN
+  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `y:int64` o concl))) THEN
+  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `m:num` o concl))) THEN
+  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `n:num` o concl))) THEN
   MAP_EVERY (BIGNUM_TERMRANGE_TAC `k:num`) [`a:num`; `b:num`] THEN
   POP_ASSUM_LIST(MP_TAC o end_itlist CONJ o rev) THEN STRIP_TAC THEN
 
@@ -827,7 +827,7 @@ let BIGNUM_COPRIME_CORRECT = prove
   SUBGOAL_THEN `t - 58 * icount <= 128 * k` MP_TAC THENL
    [SIMPLE_ARITH_TAC; ALL_TAC] THEN
   SPEC_TAC(`t - 58 * icount`,`t':num`) THEN
-  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `t:num` o concl))) THEN
+  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `t:num` o concl))) THEN
   X_GEN_TAC `t:num` THEN REPEAT DISCH_TAC THEN
   GHOST_INTRO_TAC `m0:num` `bignum_from_memory(mm,k)` THEN
   GHOST_INTRO_TAC `n0:num` `bignum_from_memory(nn,k)` THEN
@@ -2407,10 +2407,10 @@ let BIGNUM_COPRIME_CORRECT = prove
   GLOBALIZE_PRECONDITION_TAC THEN ASM_REWRITE_TAC[] THEN
   REPEAT(FIRST_X_ASSUM(CONJUNCTS_THEN ASSUME_TAC)) THEN
   REPEAT(FIRST_X_ASSUM(K ALL_TAC o
-    check (free_in `lowerr:num->real` o concl))) THEN
+    check (vfree_in `lowerr:num->real` o concl))) THEN
   REPEAT(FIRST_X_ASSUM(K ALL_TAC o
-    check (free_in `upperr:num->real` o concl))) THEN
-  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `base:int` o concl))) THEN
+    check (vfree_in `upperr:num->real` o concl))) THEN
+  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `base:int` o concl))) THEN
 
   (*** The cross-multiplications loop updating m and n ***)
 

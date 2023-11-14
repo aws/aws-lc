@@ -272,7 +272,7 @@ let (ALIGNED_16_TAC:tactic) =
     CONV_TAC(ONCE_DEPTH_CONV NORMALIZE_ALIGNED_16_CONV) THEN
     ASSUM_LIST(fun thl ->
       REWRITE_TAC(mapfilter (CONV_RULE NORMALIZE_ALIGNED_16_CONV) thl))
-  and trigger = free_in `aligned:num->int64->bool` in
+  and trigger = vfree_in `aligned:num->int64->bool` in
   fun (asl,w) -> if trigger w then basetac (asl,w) else ALL_TAC (asl,w);;
 
 let ALIGNED_16_CONV ths =
@@ -281,7 +281,7 @@ let ALIGNED_16_CONV ths =
     GEN_REWRITE_CONV (SUB_ALIGNED_16_CONV o TOP_DEPTH_CONV) ths THENC
     ONCE_DEPTH_CONV NORMALIZE_ALIGNED_16_CONV THENC
     REWRITE_CONV(mapfilter (CONV_RULE NORMALIZE_ALIGNED_16_CONV) ths)
-  and trigger = free_in `aligned:num->int64->bool` in
+  and trigger = vfree_in `aligned:num->int64->bool` in
   fun tm -> if trigger tm then baseconv tm else REFL tm;;
 
 (* ------------------------------------------------------------------------- *)
@@ -400,7 +400,7 @@ let DISCARD_FLAGS_TAC =
     `read NF s = y`; `read VF s = y`];;
 
 let DISCARD_STATE_TAC s =
-  DISCARD_ASSUMPTIONS_TAC (free_in (mk_var(s,`:armstate`)) o concl);;
+  DISCARD_ASSUMPTIONS_TAC (vfree_in (mk_var(s,`:armstate`)) o concl);;
 
 let DISCARD_OLDSTATE_TAC s =
   let v = mk_var(s,`:armstate`) in
@@ -768,7 +768,7 @@ let ARM_ADD_RETURN_STACK_TAC =
     MP_TAC coreth THEN
     REWRITE_TAC [MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI] THEN
     REPEAT(MATCH_MP_TAC mono2lemma THEN GEN_TAC) THEN
-    (if free_in sp_tm (concl coreth) then
+    (if vfree_in sp_tm (concl coreth) then
       DISCH_THEN(fun th -> WORD_FORALL_OFFSET_TAC stackoff THEN MP_TAC th) THEN
       MATCH_MP_TAC MONO_FORALL THEN GEN_TAC
      else

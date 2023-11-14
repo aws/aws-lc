@@ -1871,7 +1871,7 @@ let LOCAL_KMUL_16_32_NEON_CORRECT = prove
   DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN
   CONV_TAC(RAND_CONV REAL_POLY_CONV) THEN
   POP_ASSUM_LIST(MP_TAC o end_itlist CONJ o
-    filter (free_in `carry_s212:bool` o concl))
+    filter (vfree_in `carry_s212:bool` o concl))
   THENL
    [ASM_CASES_TAC `carry_s212:bool` THEN ASM_REWRITE_TAC[BITVAL_CLAUSES];
     ALL_TAC] THEN
@@ -2086,7 +2086,7 @@ let BIGNUM_KMUL_32_64_NEON_SUBROUTINE_CORRECT = prove(
     REWRITE_TAC[REAL_VAL_WORD_NOT; DIMINDEX_64] THEN
     DISCH_THEN(MP_TAC o end_itlist CONJ o DESUM_RULE o CONJUNCTS) THEN
     DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN REAL_INTEGER_TAC;
-    REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `x:int64` o concl))) THEN
+    REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `x:int64` o concl))) THEN
     ACCUMULATOR_POP_ASSUM_LIST(K ALL_TAC)] THEN
 
   (*** Sign-difference computation for y, then discard y stuff ***)
@@ -2146,7 +2146,7 @@ let BIGNUM_KMUL_32_64_NEON_SUBROUTINE_CORRECT = prove(
     REWRITE_TAC[REAL_VAL_WORD_NOT; DIMINDEX_64] THEN
     DISCH_THEN(MP_TAC o end_itlist CONJ o DESUM_RULE o CONJUNCTS) THEN
     DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN REAL_INTEGER_TAC;
-    REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `y:int64` o concl))) THEN
+    REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `y:int64` o concl))) THEN
     ACCUMULATOR_POP_ASSUM_LIST(K ALL_TAC)] THEN
 
   (*** The combined sign ***)
@@ -2214,7 +2214,7 @@ let BIGNUM_KMUL_32_64_NEON_SUBROUTINE_CORRECT = prove(
 
   DISCARD_MATCHING_ASSUMPTIONS [`read (memory :> bytes64 x) s = y`] THEN
   UNDISCH_THEN `h = ahi * bhi` SUBST1_TAC THEN
-  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `h:num` o concl))) THEN
+  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `h:num` o concl))) THEN
   ABBREV_TAC `h = ahi * bhi + ltop` THEN DISCH_TAC THEN
 
   (*** Third and final nested multiplication: absolute differences ***)
@@ -2291,7 +2291,7 @@ let BIGNUM_KMUL_32_64_NEON_SUBROUTINE_CORRECT = prove(
   DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN
   CONV_TAC(RAND_CONV REAL_POLY_CONV) THEN
   POP_ASSUM_LIST(MP_TAC o end_itlist CONJ o
-    filter (free_in `carry_s434:bool` o concl))
+    filter (vfree_in `carry_s434:bool` o concl))
   THENL
    [ASM_CASES_TAC `carry_s434:bool` THEN ASM_REWRITE_TAC[BITVAL_CLAUSES];
     ALL_TAC] THEN

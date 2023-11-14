@@ -1441,7 +1441,7 @@ let BIGNUM_KSQR_32_64_SUBROUTINE_CORRECT = prove
 
   DISCARD_MATCHING_ASSUMPTIONS [`read (memory :> bytes64 x) s = y`] THEN
   DISCARD_MATCHING_ASSUMPTIONS [`bignum_of_wordlist l = n`] THEN
-  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `x:int64` o concl))) THEN
+  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `x:int64` o concl))) THEN
 
   (*** Third and final nested squaring ***)
 

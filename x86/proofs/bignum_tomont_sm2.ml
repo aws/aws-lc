@@ -250,7 +250,7 @@ let BIGNUM_TOMONT_SM2_CORRECT = time prove
     MAP_EVERY UNDISCH_TAC
      [`read RDI s17 = z`; `read RIP s17 = word (pc + 70)`] THEN
     DISCARD_MATCHING_ASSUMPTIONS [`read Xnn s = y`] THEN
-    REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `a:num` o concl))) THEN
+    REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `a:num` o concl))) THEN
     DISCH_TAC THEN DISCH_TAC] THEN
   SUBGOAL_THEN
    `(2 EXP 256 * a) MOD p_sm2 = (2 EXP 256 * a MOD p_sm2) MOD p_sm2`
@@ -398,9 +398,9 @@ let BIGNUM_TOMONT_SM2_CORRECT = time prove
 
   (*** Reset all the variables to match the initial expectations ***)
 
-  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `m:num`) o concl)) THEN
-  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `a:num`) o concl)) THEN
-  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (free_in `w:int64`) o concl)) THEN
+  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `m:num`) o concl)) THEN
+  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `a:num`) o concl)) THEN
+  REPEAT(FIRST_X_ASSUM(K ALL_TAC o check (vfree_in `w:int64`) o concl)) THEN
   DISCARD_MATCHING_ASSUMPTIONS [`read (rvalue w) s = y`] THEN
 
   POP_ASSUM_LIST(MP_TAC o end_itlist CONJ o rev) THEN
