@@ -2000,7 +2000,7 @@ void ed25519_sign_nohw(
   sc_muladd(out_sig + 32, k, s, r);
 }
 
-int ed25519_verify_nohw(uint8_t R_have_encoded[32],
+int ed25519_verify_nohw(uint8_t R_computed_encoded[32],
   const uint8_t public_key[ED25519_PUBLIC_KEY_LEN], uint8_t R_expected[32],
   uint8_t S[32], const uint8_t *message, size_t message_len) {
 
@@ -2033,9 +2033,9 @@ int ed25519_verify_nohw(uint8_t R_have_encoded[32],
   fe_carry(&A.T, &t);
 
   // Compute R_have <- [S]B - [k]A'.
-  ge_p2 R_have;
-  ge_double_scalarmult_vartime(&R_have, k, &A, S);
-  x25519_ge_tobytes(R_have_encoded, &R_have);
+  ge_p2 R_computed;
+  ge_double_scalarmult_vartime(&R_computed, k, &A, S);
+  x25519_ge_tobytes(R_computed_encoded, &R_computed);
 
   return 1;
 }

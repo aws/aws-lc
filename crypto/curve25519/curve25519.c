@@ -278,7 +278,7 @@ static void ed25519_sign_s2n_bignum(
   abort();
 }
 
-static int ed25519_verify_s2n_bignum(uint8_t R_have_encoded[32],
+static int ed25519_verify_s2n_bignum(uint8_t R_computed_encoded[32],
   const uint8_t public_key[32], uint8_t R_expected[32],
   uint8_t S[32], const uint8_t *message, size_t message_len) {
   abort();
@@ -427,18 +427,18 @@ int ED25519_verify(const uint8_t *message, size_t message_len,
   // Step: rfc8032 5.1.7.[1,2,3]
   // Verification works by computing [S]B - [k]A' and comparing against R_expected.
   int res = 0;
-  uint8_t R_have_encoded[32];
+  uint8_t R_computed_encoded[32];
   if (ed25519_s2n_bignum_capable() == 1) {
-    res = ed25519_verify_s2n_bignum(R_have_encoded, public_key, R_expected, S,
+    res = ed25519_verify_s2n_bignum(R_computed_encoded, public_key, R_expected, S,
       message, message_len);
   } else {
-    res = ed25519_verify_nohw(R_have_encoded, public_key, R_expected, S,
+    res = ed25519_verify_nohw(R_computed_encoded, public_key, R_expected, S,
       message, message_len);
   }
 
   // Comparison [S]B - [k]A' =? R_expected. Short-circuits if decoding failed.
   return (res == 1) &&
-         CRYPTO_memcmp(R_have_encoded, R_expected, sizeof(R_have_encoded)) == 0;
+         CRYPTO_memcmp(R_computed_encoded, R_expected, sizeof(R_computed_encoded)) == 0;
 }
 
 
