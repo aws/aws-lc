@@ -843,7 +843,7 @@ let bignum_ksqr_32_64_mc =
 let BIGNUM_KSQR_32_64_EXEC = ARM_MK_EXEC_RULE bignum_ksqr_32_64_mc;;
 
 (* ------------------------------------------------------------------------- *)
-(* Proof for the inner-level 8->16 squring.                                  *)
+(* Proof for the inner-level 8->16 squaring.                                 *)
 (* ------------------------------------------------------------------------- *)
 
 let lemma1 = prove

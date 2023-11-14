@@ -85,7 +85,7 @@ let BIGNUM_CMADD_CORRECT = prove
   X_GEN_TAC `pc:num` THEN REWRITE_TAC[NONOVERLAPPING_CLAUSES] THEN
   REWRITE_TAC[C_ARGUMENTS; C_RETURN; SOME_FLAGS] THEN DISCH_TAC THEN
 
-  (*** Target the end label, removing redudancy in conclusion ***)
+  (*** Target the end label, removing redundancy in conclusion ***)
 
   BIGNUM_TERMRANGE_TAC `n:num` `a:num` THEN
   ENSURES_SEQUENCE_TAC `pc + 0x98`

@@ -22,7 +22,7 @@
 
 #include "../include/s2n-bignum.h"
 
-// Functiosn for detecting architectures and instruction sets
+// Functions for detecting architectures and instruction sets
 
 #include "arch.h"
 
@@ -4214,7 +4214,7 @@ int test_bignum_inv_p25519(void)
      do random_bignum(k,b1);
      while (!reference_coprime(k,b1,b0));
 
-     // Make sure to check the degnerate a = 1 cases occasionally
+     // Make sure to check the degenerate a = 1 cases occasionally
      if ((rand() & 0xFFF) < 1) reference_of_word(k,b1,UINT64_C(1));
 
      // Another pathological case worth re-checking
@@ -5731,7 +5731,7 @@ int test_bignum_modinv(void)
      do random_bignum(k,b1);
      while (!reference_coprime(k,b1,b0));
 
-     // Make sure to check the degnerate a = 1 and b = 1 cases occasionally
+     // Make sure to check the degenerate a = 1 and b = 1 cases occasionally
      if ((rand() & 0xFF) < 3) reference_of_word(k,b0,UINT64_C(1));
      if ((rand() & 0xFF) < 3) reference_of_word(k,b1,UINT64_C(1));
 

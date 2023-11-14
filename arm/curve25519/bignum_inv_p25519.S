@@ -1106,7 +1106,7 @@ midloop:
 // since we know (for in-scope cases) that f is either +1 or -1.
 // We don't explicitly shift right by 59 either, but looking at
 // bit 63 (or any bit >= 60) of the unshifted result is enough
-// to distiguish -1 from +1; this is then made into a mask.
+// to distinguish -1 from +1; this is then made into a mask.
 
         ldr     x0, [f]
         ldr     x1, [g]

@@ -431,7 +431,7 @@ edwards25519_scalarmulbase_standard:
 // (X,Y,Z,T), representing an affine point on the edwards25519 curve
 // (x,y) via x = X/Z, y = Y/Z and x * y = T/Z (so X * Y = T * Z).
 // In comments B means the standard basepoint (x,4/5) =
-// (0x216....f25d51a,0x0x6666..666658).
+// (0x216....f25d51a,0x6666..666658).
 //
 // Initialize accumulator "acc" to either 0 or 2^251 * B depending on
 // bit 251 of the (reduced) scalar. That leaves bits 0..250 to handle.

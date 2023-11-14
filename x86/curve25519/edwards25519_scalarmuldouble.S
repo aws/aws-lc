@@ -1528,7 +1528,7 @@ edwards25519_scalarmuldouble_loop:
 // form amounts to swapping the first two fields and negating the third.
 // The negation does not always fully reduce even mod 2^256-38 in the zero
 // case, instead giving -0 = 2^256-38. But that is fine since the result is
-// always fed to a multipliction inside the "pepadd" function below that
+// always fed to a multiplication inside the "pepadd" function below that
 // handles any 256-bit input.
 
         mov     rdi, cf

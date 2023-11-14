@@ -2675,7 +2675,7 @@ let BIGNUM_EMONTREDC_8N_NEON_CORRECT = time prove
     CONV_TAC (LAND_CONV (ONCE_DEPTH_CONV NUM_REDUCE_CONV)) THEN
     REWRITE_TAC[WORD_ADD_0;ARITH_RULE `x+0=x`;VAL_WORD_GALOIS;DIMINDEX_64; BIGDIGIT_BOUND] THEN STRIP_TAC] THEN
 
-  (* From assupmtion
+  (* From assumption
         `bignum_from_memory (z',((k + 4) - 4 * i)) s0 = highdigits a (4 * i),
      make
         `bignum_from_memory (z'+32,k - 4*i) s0 = highdigits a (4 * (i + 1))

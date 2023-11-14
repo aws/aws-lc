@@ -837,7 +837,7 @@ let PURE_DECODE_CONV =
     Precisely speaking, 'snd (eval_prod `:(A,B)prod`) (term, ls)' creates
     new variables that are to be mapped to the variables in term and returns
     the mapping list concatenated by ls. If the type variable is a tree of
-    prod, it is recursively splitted and the mapping is correspondingly
+    prod, it is recursively split and the mapping is correspondingly
     created. *)
   let rec eval_prod = function
   | Tyapp("prod",[A;B]) ->

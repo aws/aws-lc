@@ -37,7 +37,7 @@ loadt "common/interval.ml";;
 loadt "common/elf.ml";;
 
 (* ------------------------------------------------------------------------- *)
-(* Support for additional SHA instrinsics (from Carl Kwan)                   *)
+(* Support for additional SHA intrinsics (from Carl Kwan)                    *)
 (* ------------------------------------------------------------------------- *)
 
 loadt "arm/proofs/sha256.ml";;

@@ -202,7 +202,7 @@ S2N_BN_SYMBOL(word_divstep59):
         tst     grs, #1
 
 // Split the last divsteps into two blocks of 10 and 9 to insert the matrix
-// multiplication in betwen them. The first ten iterations:
+// multiplication in between them. The first ten iterations:
 
 .set i, 0
 .rep 10
