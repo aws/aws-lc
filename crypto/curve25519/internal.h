@@ -135,6 +135,10 @@ void ed25519_sign_nohw(
   uint8_t r[SHA512_DIGEST_LENGTH], const uint8_t *s, const uint8_t *A,
   const void *message, size_t message_len);
 
+int ed25519_verify_nohw(uint8_t R_have_encoded[32],
+  const uint8_t public_key[ED25519_PUBLIC_KEY_LEN], uint8_t R_expected[32],
+  uint8_t S[32], const uint8_t *message, size_t message_len);
+
 // Port to internal linkage in curve25519_nohw.c when adding implementation
 // from s2n-bignum ed25519
 void ge_p3_tobytes(uint8_t s[32], const ge_p3 *h);

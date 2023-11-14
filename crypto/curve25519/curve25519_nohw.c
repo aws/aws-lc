@@ -1998,5 +1998,44 @@ void ed25519_sign_nohw(
   // Compute S = r + k * s modulo the order of the base-point B.
   // out_sig = R || S
   sc_muladd(out_sig + 32, k, s, r);
+}
 
+int ed25519_verify_nohw(uint8_t R_have_encoded[32],
+  const uint8_t public_key[ED25519_PUBLIC_KEY_LEN], uint8_t R_expected[32],
+  uint8_t S[32], const uint8_t *message, size_t message_len) {
+
+  // Decode public key as A'.
+  ge_p3 A;
+  if (!x25519_ge_frombytes_vartime(&A, public_key)) {
+    return 0;
+  }
+
+  // Step: rfc8032 5.1.7.2
+  // Compute k = SHA512(R_expected || public_key || message).
+  uint8_t k[SHA512_DIGEST_LENGTH];
+  ed25519_sha512(k, R_expected, 32, public_key, ED25519_PUBLIC_KEY_LEN, message,
+    message_len);
+
+  // Reduce k modulo the order of the base-point B. Saves compute in the
+  // subsequent scalar multiplication.
+  x25519_sc_reduce(k);
+
+  // Step: rfc8032 5.1.7.3
+  // Recall, we must compute [S]B - [k]A'.
+  // First negate A'. Point negation for the twisted edwards curve when points
+  // are represented in the extended coordinate system is simply:
+  //   -(X,Y,Z,T) = (-X,Y,Z,-T).
+  // See "Twisted Edwards curves revisited" https://ia.cr/2008/522.
+  fe_loose t;
+  fe_neg(&t, &A.X);
+  fe_carry(&A.X, &t);
+  fe_neg(&t, &A.T);
+  fe_carry(&A.T, &t);
+
+  // Compute R_have <- [S]B - [k]A'.
+  ge_p2 R_have;
+  ge_double_scalarmult_vartime(&R_have, k, &A, S);
+  x25519_ge_tobytes(R_have_encoded, &R_have);
+
+  return 1;
 }
