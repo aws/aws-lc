@@ -53,71 +53,96 @@ S2N_BN_SYMBOL(bignum_sqr_p256k1):
 // First just a near-clone of bignum_sqr_4_8 to get the square, using
 // different registers to collect full product without writeback.
 
-        ldp     u4, u5, [x]
-        ldp     x10, x11, [x, #16]
-        mul     u2, u4, x10
-        mul     u7, u5, x11
-        umulh   x12, u4, x10
-        subs    x13, u4, u5
-        cneg    x13, x13, cc
-        csetm   u1, cc
-        subs    u0, x11, x10
-        cneg    u0, u0, cc
-        mul     u6, x13, u0
-        umulh   u0, x13, u0
-        cinv    u1, u1, cc
-        eor     u6, u6, u1
-        eor     u0, u0, u1
-        adds    u3, u2, x12
-        adc     x12, x12, xzr
-        umulh   x13, u5, x11
-        adds    u3, u3, u7
-        adcs    x12, x12, x13
-        adc     x13, x13, xzr
-        adds    x12, x12, u7
-        adc     x13, x13, xzr
-        cmn     u1, #0x1
-        adcs    u3, u3, u6
-        adcs    x12, x12, u0
-        adc     x13, x13, u1
-        adds    u2, u2, u2
-        adcs    u3, u3, u3
-        adcs    x12, x12, x12
-        adcs    x13, x13, x13
-        adc     x14, xzr, xzr
-        mul     u0, u4, u4
-        mul     u6, u5, u5
-        mul     x15, u4, u5
-        umulh   u1, u4, u4
-        umulh   u7, u5, u5
-        umulh   x16, u4, u5
-        adds    u1, u1, x15
-        adcs    u6, u6, x16
-        adc     u7, u7, xzr
-        adds    u1, u1, x15
-        adcs    u6, u6, x16
-        adc     u7, u7, xzr
-        adds    u2, u2, u6
-        adcs    u3, u3, u7
-        adcs    x12, x12, xzr
-        adcs    x13, x13, xzr
-        adc     x14, x14, xzr
-        mul     u4, x10, x10
-        mul     u6, x11, x11
+        ldp     x10, x11, [x1]
+        ldp     x12, x13, [x1, #16]
+        umull   x2, w10, w10
+        lsr     x14, x10, #32
+        umull   x3, w14, w14
+        umull   x14, w10, w14
+        adds    x2, x2, x14, lsl #33
+        lsr     x14, x14, #31
+        adc     x3, x3, x14
+        umull   x4, w11, w11
+        lsr     x14, x11, #32
+        umull   x5, w14, w14
+        umull   x14, w11, w14
         mul     x15, x10, x11
-        umulh   u5, x10, x10
-        umulh   u7, x11, x11
         umulh   x16, x10, x11
-        adds    u5, u5, x15
-        adcs    u6, u6, x16
-        adc     u7, u7, xzr
-        adds    u5, u5, x15
-        adcs    u6, u6, x16
-        adc     u7, u7, xzr
-        adds    u4, u4, x12
-        adcs    u5, u5, x13
-        adcs    u6, u6, x14
-        adc     u7, u7, xzr
+        adds    x4, x4, x14, lsl #33
+        lsr     x14, x14, #31
+        adc     x5, x5, x14
+        adds    x15, x15, x15
+        adcs    x16, x16, x16
+        adc     x5, x5, xzr
+        adds    x3, x3, x15
+        adcs    x4, x4, x16
+        adc     x5, x5, xzr
+        umull   x6, w12, w12
+        lsr     x14, x12, #32
+        umull   x7, w14, w14
+        umull   x14, w12, w14
+        adds    x6, x6, x14, lsl #33
+        lsr     x14, x14, #31
+        adc     x7, x7, x14
+        umull   x8, w13, w13
+        lsr     x14, x13, #32
+        umull   x9, w14, w14
+        umull   x14, w13, w14
+        mul     x15, x12, x13
+        umulh   x16, x12, x13
+        adds    x8, x8, x14, lsl #33
+        lsr     x14, x14, #31
+        adc     x9, x9, x14
+        adds    x15, x15, x15
+        adcs    x16, x16, x16
+        adc     x9, x9, xzr
+        adds    x7, x7, x15
+        adcs    x8, x8, x16
+        adc     x9, x9, xzr
+        subs    x10, x10, x12
+        sbcs    x11, x11, x13
+        csetm   x16, cc
+        eor     x10, x10, x16
+        subs    x10, x10, x16
+        eor     x11, x11, x16
+        sbc     x11, x11, x16
+        adds    x6, x6, x4
+        adcs    x7, x7, x5
+        adcs    x8, x8, xzr
+        adc     x9, x9, xzr
+        umull   x12, w10, w10
+        lsr     x5, x10, #32
+        umull   x13, w5, w5
+        umull   x5, w10, w5
+        adds    x12, x12, x5, lsl #33
+        lsr     x5, x5, #31
+        adc     x13, x13, x5
+        umull   x15, w11, w11
+        lsr     x5, x11, #32
+        umull   x14, w5, w5
+        umull   x5, w11, w5
+        mul     x4, x10, x11
+        umulh   x16, x10, x11
+        adds    x15, x15, x5, lsl #33
+        lsr     x5, x5, #31
+        adc     x14, x14, x5
+        adds    x4, x4, x4
+        adcs    x16, x16, x16
+        adc     x14, x14, xzr
+        adds    x13, x13, x4
+        adcs    x15, x15, x16
+        adc     x14, x14, xzr
+        adds    x4, x2, x6
+        adcs    x5, x3, x7
+        adcs    x6, x6, x8
+        adcs    x7, x7, x9
+        csetm   x16, cc
+        subs    x4, x4, x12
+        sbcs    x5, x5, x13
+        sbcs    x6, x6, x15
+        sbcs    x7, x7, x14
+        adcs    x8, x8, x16
+        adc     x9, x9, x16
 
 // Now we have the full 8-digit product 2^256 * h + l where
 // h = [u7,u6,u5,u4] and l = [u3,u2,u1,u0]
@@ -125,7 +150,6 @@ S2N_BN_SYMBOL(bignum_sqr_p256k1):
 // Some of the word products are done straightforwardly using mul + umulh
 // while others are broken down in a more complicated way as
 // (2^32 + 977) * (2^32 * h + l) = 2^64 * h + 2^32 * (d * h + l) + d * l
-
 
         mov     d, #977
         orr     c, d, #0x100000000
