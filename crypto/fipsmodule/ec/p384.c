@@ -568,7 +568,7 @@ static void ec_GFp_nistp384_mont_felem_to_bytes(
   p384_felem_from_mont(tmp, tmp);
   p384_to_generic(&felem_tmp, tmp);
 
-  bn_words_to_big_endian(out, len, felem_tmp.words, group->order.width);
+  bn_words_to_big_endian(out, len, felem_tmp.words, group->order->N.width);
 
   *out_len = len;
 }
@@ -619,12 +619,12 @@ static int ec_GFp_nistp384_cmp_x_coordinate(const EC_GROUP *group,
   // that group_order < p.x < p.
   // In that case, we need not only to compare against |r| but also to
   // compare against r+group_order.
-  assert(group->field.width == group->order.width);
-  if (bn_less_than_words(r->words, group->field_minus_order.words,
-                         group->field.width)) {
-    // We can ignore the carry because: r + group_order < p < 2^384.
-    EC_FELEM tmp;
-    bn_add_words(tmp.words, r->words, group->order.d, group->order.width);
+  assert(group->field.width == group->order->N.width);
+  EC_FELEM tmp;
+  BN_ULONG carry =
+      bn_add_words(tmp.words, r->words, group->order->N.d, group->field.width);
+  if (carry == 0 &&
+      bn_less_than_words(tmp.words, group->field.d, group->field.width)) {
     p384_from_generic(r_Z2, &tmp);
     p384_felem_mul(r_Z2, r_Z2, Z2_mont);
     if (OPENSSL_memcmp(&r_Z2, &X, sizeof(r_Z2)) == 0) {

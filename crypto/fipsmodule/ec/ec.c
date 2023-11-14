@@ -338,7 +338,6 @@ EC_GROUP *ec_group_new(const EC_METHOD *meth) {
 
   ret->references = 1;
   ret->meth = meth;
-  BN_init(&ret->order);
 
   if (!meth->group_init(ret)) {
     OPENSSL_free(ret);
@@ -352,30 +351,13 @@ static int ec_group_set_generator(EC_GROUP *group, const EC_AFFINE *generator,
                                   const BIGNUM *order) {
   assert(group->generator == NULL);
 
-  if (!BN_copy(&group->order, order)) {
-    return 0;
-  }
-  // Store the order in minimal form, so it can be used with |BN_ULONG| arrays.
-  bn_set_minimal_width(&group->order);
-
-  BN_MONT_CTX_free(group->order_mont);
-  group->order_mont = BN_MONT_CTX_new_for_modulus(&group->order, NULL);
-  if (group->order_mont == NULL) {
+  BN_MONT_CTX_free(group->order);
+  group->order = BN_MONT_CTX_new_for_modulus(order, NULL);
+  if (group->order == NULL) {
     return 0;
   }
 
   group->field_greater_than_order = BN_cmp(&group->field, order) > 0;
-  if (group->field_greater_than_order) {
-    BIGNUM tmp;
-    BN_init(&tmp);
-    int ok =
-        BN_sub(&tmp, &group->field, order) &&
-        bn_copy_words(group->field_minus_order.words, group->field.width, &tmp);
-    BN_free(&tmp);
-    if (!ok) {
-      return 0;
-    }
-  }
 
   group->generator = EC_POINT_new(group);
   if (group->generator == NULL) {
@@ -609,8 +591,7 @@ void EC_GROUP_free(EC_GROUP *group) {
   }
 
   ec_point_free(group->generator, 0 /* don't free group */);
-  BN_free(&group->order);
-  BN_MONT_CTX_free(group->order_mont);
+  BN_MONT_CTX_free(group->order);
 
   OPENSSL_free(group);
 }
@@ -649,7 +630,7 @@ int EC_GROUP_cmp(const EC_GROUP *a, const EC_GROUP *b, BN_CTX *ignored) {
   return a->meth != b->meth ||
          a->generator == NULL ||
          b->generator == NULL ||
-         BN_cmp(&a->order, &b->order) != 0 ||
+         BN_cmp(&a->order->N, &b->order->N) != 0 ||
          BN_cmp(&a->field, &b->field) != 0 ||
          !ec_felem_equal(a, &a->a, &b->a) ||
          !ec_felem_equal(a, &a->b, &b->b) ||
@@ -661,8 +642,8 @@ const EC_POINT *EC_GROUP_get0_generator(const EC_GROUP *group) {
 }
 
 const BIGNUM *EC_GROUP_get0_order(const EC_GROUP *group) {
-  assert(!BN_is_zero(&group->order));
-  return &group->order;
+  assert(group->order != NULL);
+  return &group->order->N;
 }
 
 int EC_GROUP_get_order(const EC_GROUP *group, BIGNUM *order, BN_CTX *ctx) {
@@ -673,7 +654,7 @@ int EC_GROUP_get_order(const EC_GROUP *group, BIGNUM *order, BN_CTX *ctx) {
 }
 
 int EC_GROUP_order_bits(const EC_GROUP *group) {
-  return BN_num_bits(&group->order);
+  return BN_num_bits(&group->order->N);
 }
 
 int EC_GROUP_get_cofactor(const EC_GROUP *group, BIGNUM *cofactor,
@@ -979,11 +960,10 @@ static int arbitrary_bignum_to_scalar(const EC_GROUP *group, EC_SCALAR *out,
   ERR_clear_error();
 
   // This is an unusual input, so we do not guarantee constant-time processing.
-  const BIGNUM *order = &group->order;
   BN_CTX_start(ctx);
   BIGNUM *tmp = BN_CTX_get(ctx);
   int ok = tmp != NULL &&
-           BN_nnmod(tmp, in, order, ctx) &&
+           BN_nnmod(tmp, in, EC_GROUP_get0_order(group), ctx) &&
            ec_bignum_to_scalar(group, out, tmp);
   BN_CTX_end(ctx);
   return ok;
