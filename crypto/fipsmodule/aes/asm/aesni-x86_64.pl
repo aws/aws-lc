@@ -2897,8 +2897,10 @@ $code.=<<___;
 	pshufd	\$0x5f,$inout0,$twres
 	pxor	$rndkey0,$rndkey1       # round[0]_dec ^ round[last]_dec
 ___
-if ($reencrypt) {
-
+    # Calculate the next 5 tweaks (6 in total)
+    # tweaks 0..4 are XORed with key round[0]
+    # tweak[5] will be XORed with round[0] at the beginning of the loop;
+    # it's used to calculate the next 6 tweaks at the end of the loop.
     for ($i=0;$i<4;$i++) {
     $code.=<<___;
 	movdqa	$twres,$twtmp
@@ -2951,7 +2953,7 @@ $code.=<<___;
 	 movdqa	0x60(%rsp),$twres		# load round[0]^round[last]
 	pxor	@tweak[4],$inout4
 	 aesdec		$rndkey1,$inout3
-	$movkey	32($key_),$rndkey0
+	$movkey	32($key1_dec_),$rndkey0
 	lea	`16*6`($inp),$inp
 	pxor	$twmask,$inout5
 
@@ -2960,7 +2962,7 @@ $code.=<<___;
 	 pxor	$twres,@tweak[1]
 	 movdqa	@tweak[0],`16*0`(%rsp)		# put aside tweaks^last round key
 	aesdec		$rndkey1,$inout5
-	$movkey		48($key_),$rndkey1
+	$movkey		48($key1_dec_),$rndkey1
 	 pxor	$twres,@tweak[2]
 
 	aesdec		$rndkey0,$inout0
@@ -2975,10 +2977,10 @@ $code.=<<___;
 	 movdqa	@tweak[4],`16*4`(%rsp)
 	aesdec		$rndkey0,$inout4
 	aesdec		$rndkey0,$inout5
-	$movkey		64($key_),$rndkey0
+	$movkey		64($key1_dec_),$rndkey0
 	 movdqa	$twmask,`16*5`(%rsp)
 	pshufd	\$0x5f,@tweak[5],$twres
-	jmp	.Lxts_dec_loop6
+	jmp	.Lxts_reenc_loop6
 .align	32
 .Lxts_reenc_loop6:
 	aesdec		$rndkey1,$inout0
@@ -2987,7 +2989,7 @@ $code.=<<___;
 	aesdec		$rndkey1,$inout3
 	aesdec		$rndkey1,$inout4
 	aesdec		$rndkey1,$inout5
-	$movkey		-64($key,%rax),$rndkey1
+	$movkey		-64($key1_dec,%rax),$rndkey1
 	add		\$32,%rax
 
 	aesdec		$rndkey0,$inout0
@@ -2996,7 +2998,7 @@ $code.=<<___;
 	aesdec		$rndkey0,$inout3
 	aesdec		$rndkey0,$inout4
 	aesdec		$rndkey0,$inout5
-	$movkey		-80($key,%rax),$rndkey0
+	$movkey		-80($key1_dec,%rax),$rndkey0
 	jnz		.Lxts_reenc_loop6
 
 
@@ -3009,14 +3011,14 @@ $code.=<<___;
 	psrad	\$31,$twtmp
 	 aesdec		$rndkey1,$inout1
 	pand	$twmask,$twtmp
-	$movkey	($key_),@tweak[0]		# load round[0]
+	$movkey	($key1_dec_),@tweak[0]		# load round[0]
 	 aesdec		$rndkey1,$inout2
 	 aesdec		$rndkey1,$inout3
 	 aesdec		$rndkey1,$inout4
 	pxor	$twtmp,@tweak[5]
 	movaps	@tweak[0],@tweak[1]		# copy round[0]
 	 aesdec		$rndkey1,$inout5
-	 $movkey	-64($key),$rndkey1
+	 $movkey	-64($key1_dec),$rndkey1
 
 	movdqa	$twres,$twtmp
 	 aesdec		$rndkey0,$inout0
@@ -3033,7 +3035,7 @@ $code.=<<___;
 	pxor	$twtmp,@tweak[5]
 	movdqa	$twres,$twtmp
 	 aesdec		$rndkey0,$inout5
-	 $movkey	-48($key),$rndkey0
+	 $movkey	-48($key1_dec),$rndkey0
 
 	paddd	$twres,$twres
 	 aesdec		$rndkey1,$inout0
@@ -3050,7 +3052,7 @@ $code.=<<___;
 	movaps	@tweak[2],@tweak[3]
 	movdqa	$twres,$twtmp
 	 aesdec		$rndkey1,$inout5
-	 $movkey	-32($key),$rndkey1
+	 $movkey	-32($key1_dec),$rndkey1
 
 	paddd	$twres,$twres
 	 aesdec		$rndkey0,$inout0
@@ -3077,10 +3079,10 @@ $code.=<<___;
 	 aesdec		$rndkey1,$inout2
 	 aesdec		$rndkey1,$inout3
 	pxor	$rndkey0,@tweak[5]
-	$movkey		($key_),$rndkey0
+	$movkey		($key1_dec_),$rndkey0
 	 aesdec		$rndkey1,$inout4
 	 aesdec		$rndkey1,$inout5
-	$movkey		16($key_),$rndkey1
+	$movkey		16($key1_dec_),$rndkey1
 
 	pxor	@tweak[5],@tweak[4]
 	 aesdeclast	`16*0`(%rsp),$inout0
@@ -3112,9 +3114,8 @@ $code.=<<___;
 
 	mov	\$16+96,$rounds
 	sub	$rnds_,$rounds
-	mov	$key_,$key			# restore $key
+	mov	$key1_dec_,$key1_dec			# restore $key1_dec
 	shr	\$4,$rounds			# restore original value
-
 
 
 
@@ -3124,18 +3125,18 @@ $code.=<<___;
 	pxor	$rndkey0,@tweak[0]
 	pxor	$rndkey0,@tweak[1]
 	add	\$16*6,$len			# restore real remaining $len
-	jz	.Lxts_dec_done			# done if ($len==0)
+	jz	.Lxts_reenc_done			# done if ($len==0)
 
 	pxor	$rndkey0,@tweak[2]
 	cmp	\$0x20,$len
-	jb	.Lxts_dec_one			# $len is 1*16
+	jb	.Lxts_reenc_one			# $len is 1*16
 	pxor	$rndkey0,@tweak[3]
-	je	.Lxts_dec_two			# $len is 2*16
+	je	.Lxts_reenc_two			# $len is 2*16
 
 	pxor	$rndkey0,@tweak[4]
 	cmp	\$0x40,$len
-	jb	.Lxts_dec_three			# $len is 3*16
-	je	.Lxts_dec_four			# $len is 4*16
+	jb	.Lxts_reenc_three			# $len is 3*16
+	je	.Lxts_reenc_four			# $len is 4*16
 
 	movdqu	($inp),$inout0			# $len is 5*16
 	movdqu	16*1($inp),$inout1
@@ -3166,31 +3167,31 @@ $code.=<<___;
 	lea	16*5($out),$out			# $out+=5*16
 	 pshufd		\$0x13,$twtmp,@tweak[1]	# $twres
 	and	\$15,$len_
-	jz	.Lxts_dec_ret
+	jz	.Lxts_reenc_ret
 
 	movdqa	@tweak[5],@tweak[0]
 	paddq	@tweak[5],@tweak[5]		# psllq 1,$tweak
 	pand	$twmask,@tweak[1]		# isolate carry and residue
 	pxor	@tweak[5],@tweak[1]
-	jmp	.Lxts_dec_done2
+	jmp	.Lxts_reenc_done2
 
 .align	16
-.Lxts_dec_one:
+.Lxts_reenc_one:
 	movups	($inp),$inout0
 	lea	16*1($inp),$inp			# $inp+=1*16
 	xorps	@tweak[0],$inout0
 ___
-	&aesni_generate1("dec",$key,$rounds);
+	&aesni_generate1("dec",$key1_dec,$rounds);
 $code.=<<___;
 	xorps	@tweak[0],$inout0
 	movdqa	@tweak[1],@tweak[0]
 	movups	$inout0,($out)			# store one output block
 	movdqa	@tweak[2],@tweak[1]
 	lea	16*1($out),$out			# $out+=1*16
-	jmp	.Lxts_dec_done
+	jmp	.Lxts_reenc_done
 
 .align	16
-.Lxts_dec_two:
+.Lxts_reenc_two:
 	movups	($inp),$inout0
 	movups	16($inp),$inout1
 	lea	32($inp),$inp			# $inp+=2*16
@@ -3206,10 +3207,10 @@ $code.=<<___;
 	movups	$inout0,($out)			# store 2 output blocks
 	movups	$inout1,16*1($out)
 	lea	16*2($out),$out			# $out+=2*16
-	jmp	.Lxts_dec_done
+	jmp	.Lxts_reenc_done
 
 .align	16
-.Lxts_dec_three:
+.Lxts_reenc_three:
 	movups	($inp),$inout0
 	movups	16*1($inp),$inout1
 	movups	16*2($inp),$inout2
@@ -3229,10 +3230,10 @@ $code.=<<___;
 	movups	$inout1,16*1($out)
 	movups	$inout2,16*2($out)
 	lea	16*3($out),$out			# $out+=3*16
-	jmp	.Lxts_dec_done
+	jmp	.Lxts_reenc_done
 
 .align	16
-.Lxts_dec_four:
+.Lxts_reenc_four:
 	movups	($inp),$inout0
 	movups	16*1($inp),$inout1
 	movups	16*2($inp),$inout2
@@ -3256,48 +3257,47 @@ $code.=<<___;
 	movdqu	$inout2,16*2($out)
 	movdqu	$inout3,16*3($out)
 	lea	16*4($out),$out			# $out+=4*16
-	jmp	.Lxts_dec_done
+	jmp	.Lxts_reenc_done
 
 .align	16
-.Lxts_dec_done:
+.Lxts_reenc_done:
 	and	\$15,$len_			# see if $len%16 is 0
-	jz	.Lxts_dec_ret
-.Lxts_dec_done2:
+	jz	.Lxts_reenc_ret
+.Lxts_reenc_done2:
 	mov	$len_,$len
-	mov	$key_,$key			# restore $key
+	mov	$key1_dec_,$key1_dec			# restore $key1_dec
 	mov	$rnds_,$rounds			# restore $rounds
 
 	movups	($inp),$inout0
 	xorps	@tweak[1],$inout0
 ___
-	&aesni_generate1("dec",$key,$rounds);
+	&aesni_generate1("dec",$key1_dec,$rounds);
 $code.=<<___;
 	xorps	@tweak[1],$inout0
 	movups	$inout0,($out)
 
-.Lxts_dec_steal:
+.Lxts_reenc_steal:
 	movzb	16($inp),%eax			# borrow $rounds ...
-	movzb	($out),%ecx			# ... and $key
+	movzb	($out),%ecx			# ... and $key1_dec
 	lea	1($inp),$inp
 	mov	%al,($out)
 	mov	%cl,16($out)
 	lea	1($out),$out
 	sub	\$1,$len
-	jnz	.Lxts_dec_steal
+	jnz	.Lxts_reenc_steal
 
 	sub	$len_,$out			# rewind $out
-	mov	$key_,$key			# restore $key
+	mov	$key1_dec_,$key1_dec			# restore $key1_dec
 	mov	$rnds_,$rounds			# restore $rounds
 
 	movups	($out),$inout0
 	xorps	@tweak[0],$inout0
 ___
-	&aesni_generate1("dec",$key,$rounds);
+	&aesni_generate1("dec",$key1_dec,$rounds);
 $code.=<<___;
 	xorps	@tweak[0],$inout0
     movups	$inout0,($out)
 ___
-}
 
 $code.=<<___;
 .Lxts_reenc_ret:

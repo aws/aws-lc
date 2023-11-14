@@ -1400,6 +1400,8 @@ TEST(XTSTest, ReEncryptTestVectors) {
                          &ctx_dec.ks1.ks, &ctx_dec.ks2.ks,
                          iv.data(),
                          &ctx_enc.ks1.ks, &ctx_enc.ks2.ks);
+    EXPECT_EQ(Bytes(plaintext), Bytes(out));
+
 #endif
   }
 }
