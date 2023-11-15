@@ -165,8 +165,9 @@ extern "C" {
   __pragma(warning(push)) __pragma(warning(disable : 4996))
 #define OPENSSL_END_ALLOW_DEPRECATED __pragma(warning(pop))
 
-#elif defined(__GNUC__) || defined(__clang__)
-
+#elif (defined(__GNUC__) && ((__GNUC__ > 4) ||  (__GNUC_MINOR__ >= 6))) || defined(__clang__)
+// `_Pragma("GCC diagnostic push")` was added in GCC 4.6
+// http://gcc.gnu.org/gcc-4.6/changes.html
 #define OPENSSL_DEPRECATED __attribute__((__deprecated__))
 #define OPENSSL_BEGIN_ALLOW_DEPRECATED \
   _Pragma("GCC diagnostic push")       \
