@@ -1112,3 +1112,14 @@ FILE(STRINGS "include/openssl/opensslv.h"
 if(NOT ${BASE_VERSION_NUMBER} MATCHES ${OPENSSLV_VERSION_NUMBER})
   message( FATAL_ERROR "OPENSSL_VERSION_NUMBER in base.h and opensslv.h should match.")
 endif()
+
+# TODO: Find a way to make this automatically align with OPENSSL_VERSION_NUMBER in base.h.
+set(VERSION 1.1.1)
+
+file(GLOB OPENSSL_PKGCONFIGS "pkgconfig/*.pc.in")
+foreach(in_file ${OPENSSL_PKGCONFIGS})
+  file(RELATIVE_PATH in_file ${PROJECT_SOURCE_DIR} ${in_file})
+  string(REPLACE ".in" "" pc_file ${in_file})
+  configure_file(${in_file} ${CMAKE_CURRENT_BINARY_DIR}/${pc_file} @ONLY)
+  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${pc_file} DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
+endforeach()
