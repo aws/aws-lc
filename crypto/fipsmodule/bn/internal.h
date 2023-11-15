@@ -271,7 +271,7 @@ int bn_copy_words(BN_ULONG *out, size_t num, const BIGNUM *bn);
 // no-op in release builds, but triggers an assert in debug builds, and
 // declassifies all bytes which are therefore known to be zero in constant-time
 // validation.
-void bn_assert_fits_in_bytes(const BIGNUM *bn, size_t num);
+OPENSSL_EXPORT void bn_assert_fits_in_bytes(const BIGNUM *bn, size_t num);
 
 // bn_mul_add_words multiples |ap| by |w|, adds the result to |rp|, and places
 // the result in |rp|. |ap| and |rp| must both be |num| words long. It returns
