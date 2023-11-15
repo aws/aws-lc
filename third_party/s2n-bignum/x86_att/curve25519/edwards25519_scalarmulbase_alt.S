@@ -2,301 +2,366 @@
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
 // ----------------------------------------------------------------------------
-// The x25519 function for curve25519 on base element 9
-// Input scalar[4]; output res[4]
+// Scalar multiplication for the edwards25519 standard basepoint
+// Input scalar[4]; output res[8]
 //
-// extern void curve25519_x25519base_alt
-//   (uint64_t res[static 4],uint64_t scalar[static 4]);
+// extern void edwards25519_scalarmulbase_alt
+//   (uint64_t res[static 8],uint64_t scalar[static 4]);
 //
-// Given a scalar n, returns the X coordinate of n * G where G = (9,...) is
-// the standard generator. The scalar is first slightly modified/mangled
-// as specified in the relevant RFC (https://www.rfc-editor.org/rfc/rfc7748).
+// Given a scalar n, returns point (X,Y) = n * B where B = (...,4/5) is
+// the standard basepoint for the edwards25519 (Ed25519) curve.
 //
-// Standard ARM ABI: X0 = res, X1 = scalar
+// Standard x86-64 ABI: RDI = res, RSI = scalar
+// Microsoft x64 ABI:   RCX = res, RDX = scalar
 // ----------------------------------------------------------------------------
 #include "_internal_s2n_bignum.h"
 
-        S2N_BN_SYM_VISIBILITY_DIRECTIVE(curve25519_x25519base_alt)
-        S2N_BN_SYM_PRIVACY_DIRECTIVE(curve25519_x25519base_alt)
 
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(edwards25519_scalarmulbase_alt)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(edwards25519_scalarmulbase_alt)
         .text
-        .balign 4
 
 // Size of individual field elements
 
 #define NUMSIZE 32
 
-// Stable home for the input result argument during the whole body
-
-#define res x23
-
-// Other variables that are only needed prior to the modular inverse.
-
-#define tab x19
-
-#define i x20
-
-#define bias x21
-
-#define bf x22
-#define ix x22
-
 // Pointer-offset pairs for result and temporaries on stack with some aliasing.
+// The result "resx" assumes the "res" pointer has been preloaded into %rbp.
 
-#define resx res, #(0*NUMSIZE)
+#define resx (0*NUMSIZE)(%rbp)
+#define resy (1*NUMSIZE)(%rbp)
 
-#define scalar sp, #(0*NUMSIZE)
+#define scalar (0*NUMSIZE)(%rsp)
 
-#define tabent sp, #(1*NUMSIZE)
-#define ymx_2 sp, #(1*NUMSIZE)
-#define xpy_2 sp, #(2*NUMSIZE)
-#define kxy_2 sp, #(3*NUMSIZE)
+#define tabent (1*NUMSIZE)(%rsp)
+#define ymx_2 (1*NUMSIZE)(%rsp)
+#define xpy_2 (2*NUMSIZE)(%rsp)
+#define kxy_2 (3*NUMSIZE)(%rsp)
 
-#define acc sp, #(4*NUMSIZE)
-#define x_1 sp, #(4*NUMSIZE)
-#define y_1 sp, #(5*NUMSIZE)
-#define z_1 sp, #(6*NUMSIZE)
-#define w_1 sp, #(7*NUMSIZE)
-#define x_3 sp, #(4*NUMSIZE)
-#define y_3 sp, #(5*NUMSIZE)
-#define z_3 sp, #(6*NUMSIZE)
-#define w_3 sp, #(7*NUMSIZE)
+#define t0 (4*NUMSIZE)(%rsp)
+#define t1 (5*NUMSIZE)(%rsp)
+#define t2 (6*NUMSIZE)(%rsp)
+#define t3 (7*NUMSIZE)(%rsp)
+#define t4 (8*NUMSIZE)(%rsp)
+#define t5 (9*NUMSIZE)(%rsp)
 
-#define tmpspace sp, #(8*NUMSIZE)
-#define t0 sp, #(8*NUMSIZE)
-#define t1 sp, #(9*NUMSIZE)
-#define t2 sp, #(10*NUMSIZE)
-#define t3 sp, #(11*NUMSIZE)
-#define t4 sp, #(12*NUMSIZE)
-#define t5 sp, #(13*NUMSIZE)
+#define acc (10*NUMSIZE)(%rsp)
+#define x_1 (10*NUMSIZE)(%rsp)
+#define y_1 (11*NUMSIZE)(%rsp)
+#define z_1 (12*NUMSIZE)(%rsp)
+#define w_1 (13*NUMSIZE)(%rsp)
+#define x_3 (10*NUMSIZE)(%rsp)
+#define y_3 (11*NUMSIZE)(%rsp)
+#define z_3 (12*NUMSIZE)(%rsp)
+#define w_3 (13*NUMSIZE)(%rsp)
+
+// Stable homes for the input result pointer, and other variables
+
+#define res  14*NUMSIZE(%rsp)
+
+#define i  14*NUMSIZE+8(%rsp)
+
+#define bias  14*NUMSIZE+16(%rsp)
+
+#define bf  14*NUMSIZE+24(%rsp)
+#define ix  14*NUMSIZE+24(%rsp)
+
+#define tab  15*NUMSIZE(%rsp)
 
 // Total size to reserve on the stack
 
-#define NSPACE (14*NUMSIZE)
+#define NSPACE (15*NUMSIZE+8)
 
-// Macro wrapping up the basic field operation bignum_mul_p25519_alt, only
-// trivially different from a pure function call to that subroutine.
+// Syntactic variants to make x86_att version simpler to generate
+
+#define SCALAR 0
+#define TABENT (1*NUMSIZE)
+#define ACC (10*NUMSIZE)
+#define X3 (10*NUMSIZE)
+#define Z3 (12*NUMSIZE)
+#define W3 (13*NUMSIZE)
+
+// Macro wrapping up the basic field multiplication, only trivially
+// different from a pure function call to bignum_mul_p25519_alt.
 
 #define mul_p25519(P0,P1,P2)                    \
-        ldp     x3, x4, [P1];                   \
-        ldp     x7, x8, [P2];                   \
-        mul     x12, x3, x7;                    \
-        umulh   x13, x3, x7;                    \
-        mul     x11, x3, x8;                    \
-        umulh   x14, x3, x8;                    \
-        adds    x13, x13, x11;                  \
-        ldp     x9, x10, [P2+16];               \
-        mul     x11, x3, x9;                    \
-        umulh   x15, x3, x9;                    \
-        adcs    x14, x14, x11;                  \
-        mul     x11, x3, x10;                   \
-        umulh   x16, x3, x10;                   \
-        adcs    x15, x15, x11;                  \
-        adc     x16, x16, xzr;                  \
-        ldp     x5, x6, [P1+16];                \
-        mul     x11, x4, x7;                    \
-        adds    x13, x13, x11;                  \
-        mul     x11, x4, x8;                    \
-        adcs    x14, x14, x11;                  \
-        mul     x11, x4, x9;                    \
-        adcs    x15, x15, x11;                  \
-        mul     x11, x4, x10;                   \
-        adcs    x16, x16, x11;                  \
-        umulh   x3, x4, x10;                    \
-        adc     x3, x3, xzr;                    \
-        umulh   x11, x4, x7;                    \
-        adds    x14, x14, x11;                  \
-        umulh   x11, x4, x8;                    \
-        adcs    x15, x15, x11;                  \
-        umulh   x11, x4, x9;                    \
-        adcs    x16, x16, x11;                  \
-        adc     x3, x3, xzr;                    \
-        mul     x11, x5, x7;                    \
-        adds    x14, x14, x11;                  \
-        mul     x11, x5, x8;                    \
-        adcs    x15, x15, x11;                  \
-        mul     x11, x5, x9;                    \
-        adcs    x16, x16, x11;                  \
-        mul     x11, x5, x10;                   \
-        adcs    x3, x3, x11;                    \
-        umulh   x4, x5, x10;                    \
-        adc     x4, x4, xzr;                    \
-        umulh   x11, x5, x7;                    \
-        adds    x15, x15, x11;                  \
-        umulh   x11, x5, x8;                    \
-        adcs    x16, x16, x11;                  \
-        umulh   x11, x5, x9;                    \
-        adcs    x3, x3, x11;                    \
-        adc     x4, x4, xzr;                    \
-        mul     x11, x6, x7;                    \
-        adds    x15, x15, x11;                  \
-        mul     x11, x6, x8;                    \
-        adcs    x16, x16, x11;                  \
-        mul     x11, x6, x9;                    \
-        adcs    x3, x3, x11;                    \
-        mul     x11, x6, x10;                   \
-        adcs    x4, x4, x11;                    \
-        umulh   x5, x6, x10;                    \
-        adc     x5, x5, xzr;                    \
-        umulh   x11, x6, x7;                    \
-        adds    x16, x16, x11;                  \
-        umulh   x11, x6, x8;                    \
-        adcs    x3, x3, x11;                    \
-        umulh   x11, x6, x9;                    \
-        adcs    x4, x4, x11;                    \
-        adc     x5, x5, xzr;                    \
-        mov     x7, #0x26;                      \
-        mul     x11, x7, x16;                   \
-        umulh   x9, x7, x16;                    \
-        adds    x12, x12, x11;                  \
-        mul     x11, x7, x3;                    \
-        umulh   x3, x7, x3;                     \
-        adcs    x13, x13, x11;                  \
-        mul     x11, x7, x4;                    \
-        umulh   x4, x7, x4;                     \
-        adcs    x14, x14, x11;                  \
-        mul     x11, x7, x5;                    \
-        umulh   x5, x7, x5;                     \
-        adcs    x15, x15, x11;                  \
-        cset    x16, cs;                        \
-        adds    x15, x15, x4;                   \
-        adc     x16, x16, x5;                   \
-        cmn     x15, x15;                       \
-        orr     x15, x15, #0x8000000000000000;  \
-        adc     x8, x16, x16;                   \
-        mov     x7, #0x13;                      \
-        madd    x11, x7, x8, x7;                \
-        adds    x12, x12, x11;                  \
-        adcs    x13, x13, x9;                   \
-        adcs    x14, x14, x3;                   \
-        adcs    x15, x15, xzr;                  \
-        csel    x7, x7, xzr, cc;                \
-        subs    x12, x12, x7;                   \
-        sbcs    x13, x13, xzr;                  \
-        sbcs    x14, x14, xzr;                  \
-        sbc     x15, x15, xzr;                  \
-        and     x15, x15, #0x7fffffffffffffff;  \
-        stp     x12, x13, [P0];                 \
-        stp     x14, x15, [P0+16]
+        movq    P1, %rax ;                      \
+        mulq     P2;                 \
+        movq    %rax, %r8 ;                         \
+        movq    %rdx, %r9 ;                         \
+        xorq    %r10, %r10 ;                        \
+        xorq    %r11, %r11 ;                        \
+        movq    P1, %rax ;                      \
+        mulq     0x8+P2;             \
+        addq    %rax, %r9 ;                         \
+        adcq    %rdx, %r10 ;                        \
+        movq    0x8+P1, %rax ;                  \
+        mulq     P2;                 \
+        addq    %rax, %r9 ;                         \
+        adcq    %rdx, %r10 ;                        \
+        adcq    $0x0, %r11 ;                        \
+        xorq    %r12, %r12 ;                        \
+        movq    P1, %rax ;                      \
+        mulq     0x10+P2;            \
+        addq    %rax, %r10 ;                        \
+        adcq    %rdx, %r11 ;                        \
+        adcq    %r12, %r12 ;                        \
+        movq    0x8+P1, %rax ;                  \
+        mulq     0x8+P2;             \
+        addq    %rax, %r10 ;                        \
+        adcq    %rdx, %r11 ;                        \
+        adcq    $0x0, %r12 ;                        \
+        movq    0x10+P1, %rax ;                 \
+        mulq     P2;                 \
+        addq    %rax, %r10 ;                        \
+        adcq    %rdx, %r11 ;                        \
+        adcq    $0x0, %r12 ;                        \
+        xorq    %r13, %r13 ;                        \
+        movq    P1, %rax ;                      \
+        mulq     0x18+P2;            \
+        addq    %rax, %r11 ;                        \
+        adcq    %rdx, %r12 ;                        \
+        adcq    %r13, %r13 ;                        \
+        movq    0x8+P1, %rax ;                  \
+        mulq     0x10+P2;            \
+        addq    %rax, %r11 ;                        \
+        adcq    %rdx, %r12 ;                        \
+        adcq    $0x0, %r13 ;                        \
+        movq    0x10+P1, %rax ;                 \
+        mulq     0x8+P2;             \
+        addq    %rax, %r11 ;                        \
+        adcq    %rdx, %r12 ;                        \
+        adcq    $0x0, %r13 ;                        \
+        movq    0x18+P1, %rax ;                 \
+        mulq     P2;                 \
+        addq    %rax, %r11 ;                        \
+        adcq    %rdx, %r12 ;                        \
+        adcq    $0x0, %r13 ;                        \
+        xorq    %r14, %r14 ;                        \
+        movq    0x8+P1, %rax ;                  \
+        mulq     0x18+P2;            \
+        addq    %rax, %r12 ;                        \
+        adcq    %rdx, %r13 ;                        \
+        adcq    %r14, %r14 ;                        \
+        movq    0x10+P1, %rax ;                 \
+        mulq     0x10+P2;            \
+        addq    %rax, %r12 ;                        \
+        adcq    %rdx, %r13 ;                        \
+        adcq    $0x0, %r14 ;                        \
+        movq    0x18+P1, %rax ;                 \
+        mulq     0x8+P2;             \
+        addq    %rax, %r12 ;                        \
+        adcq    %rdx, %r13 ;                        \
+        adcq    $0x0, %r14 ;                        \
+        xorq    %r15, %r15 ;                        \
+        movq    0x10+P1, %rax ;                 \
+        mulq     0x18+P2;            \
+        addq    %rax, %r13 ;                        \
+        adcq    %rdx, %r14 ;                        \
+        adcq    %r15, %r15 ;                        \
+        movq    0x18+P1, %rax ;                 \
+        mulq     0x10+P2;            \
+        addq    %rax, %r13 ;                        \
+        adcq    %rdx, %r14 ;                        \
+        adcq    $0x0, %r15 ;                        \
+        movq    0x18+P1, %rax ;                 \
+        mulq     0x18+P2;            \
+        addq    %rax, %r14 ;                        \
+        adcq    %rdx, %r15 ;                        \
+        movl    $0x26, %esi ;                       \
+        movq    %r12, %rax ;                        \
+        mulq    %rsi;                            \
+        addq    %rax, %r8 ;                         \
+        adcq    %rdx, %r9 ;                         \
+        sbbq    %rcx, %rcx ;                        \
+        movq    %r13, %rax ;                        \
+        mulq    %rsi;                            \
+        subq    %rcx, %rdx ;                        \
+        addq    %rax, %r9 ;                         \
+        adcq    %rdx, %r10 ;                        \
+        sbbq    %rcx, %rcx ;                        \
+        movq    %r14, %rax ;                        \
+        mulq    %rsi;                            \
+        subq    %rcx, %rdx ;                        \
+        addq    %rax, %r10 ;                        \
+        adcq    %rdx, %r11 ;                        \
+        sbbq    %rcx, %rcx ;                        \
+        movq    %r15, %rax ;                        \
+        mulq    %rsi;                            \
+        subq    %rcx, %rdx ;                        \
+        xorq    %rcx, %rcx ;                        \
+        addq    %rax, %r11 ;                        \
+        movq    %rdx, %r12 ;                        \
+        adcq    %rcx, %r12 ;                        \
+        shldq   $0x1, %r11, %r12 ;                    \
+        leaq    0x1(%r12), %rax ;                  \
+        movl    $0x13, %esi ;                       \
+        bts     $63, %r11 ;                         \
+        imulq   %rsi, %rax ;                        \
+        addq    %rax, %r8 ;                         \
+        adcq    %rcx, %r9 ;                         \
+        adcq    %rcx, %r10 ;                        \
+        adcq    %rcx, %r11 ;                        \
+        sbbq    %rax, %rax ;                        \
+        notq    %rax;                            \
+        andq    %rsi, %rax ;                        \
+        subq    %rax, %r8 ;                         \
+        sbbq    %rcx, %r9 ;                         \
+        sbbq    %rcx, %r10 ;                        \
+        sbbq    %rcx, %r11 ;                        \
+        btr     $63, %r11 ;                         \
+        movq    %r8, P0 ;                        \
+        movq    %r9, 0x8+P0 ;                    \
+        movq    %r10, 0x10+P0 ;                  \
+        movq    %r11, 0x18+P0
 
 // A version of multiplication that only guarantees output < 2 * p_25519.
 // This basically skips the +1 and final correction in quotient estimation.
 
 #define mul_4(P0,P1,P2)                         \
-        ldp     x3, x4, [P1];                   \
-        ldp     x7, x8, [P2];                   \
-        mul     x12, x3, x7;                    \
-        umulh   x13, x3, x7;                    \
-        mul     x11, x3, x8;                    \
-        umulh   x14, x3, x8;                    \
-        adds    x13, x13, x11;                  \
-        ldp     x9, x10, [P2+16];               \
-        mul     x11, x3, x9;                    \
-        umulh   x15, x3, x9;                    \
-        adcs    x14, x14, x11;                  \
-        mul     x11, x3, x10;                   \
-        umulh   x16, x3, x10;                   \
-        adcs    x15, x15, x11;                  \
-        adc     x16, x16, xzr;                  \
-        ldp     x5, x6, [P1+16];                \
-        mul     x11, x4, x7;                    \
-        adds    x13, x13, x11;                  \
-        mul     x11, x4, x8;                    \
-        adcs    x14, x14, x11;                  \
-        mul     x11, x4, x9;                    \
-        adcs    x15, x15, x11;                  \
-        mul     x11, x4, x10;                   \
-        adcs    x16, x16, x11;                  \
-        umulh   x3, x4, x10;                    \
-        adc     x3, x3, xzr;                    \
-        umulh   x11, x4, x7;                    \
-        adds    x14, x14, x11;                  \
-        umulh   x11, x4, x8;                    \
-        adcs    x15, x15, x11;                  \
-        umulh   x11, x4, x9;                    \
-        adcs    x16, x16, x11;                  \
-        adc     x3, x3, xzr;                    \
-        mul     x11, x5, x7;                    \
-        adds    x14, x14, x11;                  \
-        mul     x11, x5, x8;                    \
-        adcs    x15, x15, x11;                  \
-        mul     x11, x5, x9;                    \
-        adcs    x16, x16, x11;                  \
-        mul     x11, x5, x10;                   \
-        adcs    x3, x3, x11;                    \
-        umulh   x4, x5, x10;                    \
-        adc     x4, x4, xzr;                    \
-        umulh   x11, x5, x7;                    \
-        adds    x15, x15, x11;                  \
-        umulh   x11, x5, x8;                    \
-        adcs    x16, x16, x11;                  \
-        umulh   x11, x5, x9;                    \
-        adcs    x3, x3, x11;                    \
-        adc     x4, x4, xzr;                    \
-        mul     x11, x6, x7;                    \
-        adds    x15, x15, x11;                  \
-        mul     x11, x6, x8;                    \
-        adcs    x16, x16, x11;                  \
-        mul     x11, x6, x9;                    \
-        adcs    x3, x3, x11;                    \
-        mul     x11, x6, x10;                   \
-        adcs    x4, x4, x11;                    \
-        umulh   x5, x6, x10;                    \
-        adc     x5, x5, xzr;                    \
-        umulh   x11, x6, x7;                    \
-        adds    x16, x16, x11;                  \
-        umulh   x11, x6, x8;                    \
-        adcs    x3, x3, x11;                    \
-        umulh   x11, x6, x9;                    \
-        adcs    x4, x4, x11;                    \
-        adc     x5, x5, xzr;                    \
-        mov     x7, #0x26;                      \
-        mul     x11, x7, x16;                   \
-        umulh   x9, x7, x16;                    \
-        adds    x12, x12, x11;                  \
-        mul     x11, x7, x3;                    \
-        umulh   x3, x7, x3;                     \
-        adcs    x13, x13, x11;                  \
-        mul     x11, x7, x4;                    \
-        umulh   x4, x7, x4;                     \
-        adcs    x14, x14, x11;                  \
-        mul     x11, x7, x5;                    \
-        umulh   x5, x7, x5;                     \
-        adcs    x15, x15, x11;                  \
-        cset    x16, cs;                        \
-        adds    x15, x15, x4;                   \
-        adc     x16, x16, x5;                   \
-        cmn     x15, x15;                       \
-        bic     x15, x15, #0x8000000000000000;  \
-        adc     x8, x16, x16;                   \
-        mov     x7, #0x13;                      \
-        mul     x11, x7, x8;                    \
-        adds    x12, x12, x11;                  \
-        adcs    x13, x13, x9;                   \
-        adcs    x14, x14, x3;                   \
-        adc     x15, x15, xzr;                  \
-        stp     x12, x13, [P0];                 \
-        stp     x14, x15, [P0+16]
+        movq    P1, %rax ;                      \
+        mulq     P2;                 \
+        movq    %rax, %r8 ;                         \
+        movq    %rdx, %r9 ;                         \
+        xorq    %r10, %r10 ;                        \
+        xorq    %r11, %r11 ;                        \
+        movq    P1, %rax ;                      \
+        mulq     0x8+P2;             \
+        addq    %rax, %r9 ;                         \
+        adcq    %rdx, %r10 ;                        \
+        movq    0x8+P1, %rax ;                  \
+        mulq     P2;                 \
+        addq    %rax, %r9 ;                         \
+        adcq    %rdx, %r10 ;                        \
+        adcq    $0x0, %r11 ;                        \
+        xorq    %r12, %r12 ;                        \
+        movq    P1, %rax ;                      \
+        mulq     0x10+P2;            \
+        addq    %rax, %r10 ;                        \
+        adcq    %rdx, %r11 ;                        \
+        adcq    %r12, %r12 ;                        \
+        movq    0x8+P1, %rax ;                  \
+        mulq     0x8+P2;             \
+        addq    %rax, %r10 ;                        \
+        adcq    %rdx, %r11 ;                        \
+        adcq    $0x0, %r12 ;                        \
+        movq    0x10+P1, %rax ;                 \
+        mulq     P2;                 \
+        addq    %rax, %r10 ;                        \
+        adcq    %rdx, %r11 ;                        \
+        adcq    $0x0, %r12 ;                        \
+        xorq    %r13, %r13 ;                        \
+        movq    P1, %rax ;                      \
+        mulq     0x18+P2;            \
+        addq    %rax, %r11 ;                        \
+        adcq    %rdx, %r12 ;                        \
+        adcq    %r13, %r13 ;                        \
+        movq    0x8+P1, %rax ;                  \
+        mulq     0x10+P2;            \
+        addq    %rax, %r11 ;                        \
+        adcq    %rdx, %r12 ;                        \
+        adcq    $0x0, %r13 ;                        \
+        movq    0x10+P1, %rax ;                 \
+        mulq     0x8+P2;             \
+        addq    %rax, %r11 ;                        \
+        adcq    %rdx, %r12 ;                        \
+        adcq    $0x0, %r13 ;                        \
+        movq    0x18+P1, %rax ;                 \
+        mulq     P2;                 \
+        addq    %rax, %r11 ;                        \
+        adcq    %rdx, %r12 ;                        \
+        adcq    $0x0, %r13 ;                        \
+        xorq    %r14, %r14 ;                        \
+        movq    0x8+P1, %rax ;                  \
+        mulq     0x18+P2;            \
+        addq    %rax, %r12 ;                        \
+        adcq    %rdx, %r13 ;                        \
+        adcq    %r14, %r14 ;                        \
+        movq    0x10+P1, %rax ;                 \
+        mulq     0x10+P2;            \
+        addq    %rax, %r12 ;                        \
+        adcq    %rdx, %r13 ;                        \
+        adcq    $0x0, %r14 ;                        \
+        movq    0x18+P1, %rax ;                 \
+        mulq     0x8+P2;             \
+        addq    %rax, %r12 ;                        \
+        adcq    %rdx, %r13 ;                        \
+        adcq    $0x0, %r14 ;                        \
+        xorq    %r15, %r15 ;                        \
+        movq    0x10+P1, %rax ;                 \
+        mulq     0x18+P2;            \
+        addq    %rax, %r13 ;                        \
+        adcq    %rdx, %r14 ;                        \
+        adcq    %r15, %r15 ;                        \
+        movq    0x18+P1, %rax ;                 \
+        mulq     0x10+P2;            \
+        addq    %rax, %r13 ;                        \
+        adcq    %rdx, %r14 ;                        \
+        adcq    $0x0, %r15 ;                        \
+        movq    0x18+P1, %rax ;                 \
+        mulq     0x18+P2;            \
+        addq    %rax, %r14 ;                        \
+        adcq    %rdx, %r15 ;                        \
+        movl    $0x26, %ebx ;                       \
+        movq    %r12, %rax ;                        \
+        mulq    %rbx;                            \
+        addq    %rax, %r8 ;                         \
+        adcq    %rdx, %r9 ;                         \
+        sbbq    %rcx, %rcx ;                        \
+        movq    %r13, %rax ;                        \
+        mulq    %rbx;                            \
+        subq    %rcx, %rdx ;                        \
+        addq    %rax, %r9 ;                         \
+        adcq    %rdx, %r10 ;                        \
+        sbbq    %rcx, %rcx ;                        \
+        movq    %r14, %rax ;                        \
+        mulq    %rbx;                            \
+        subq    %rcx, %rdx ;                        \
+        addq    %rax, %r10 ;                        \
+        adcq    %rdx, %r11 ;                        \
+        sbbq    %rcx, %rcx ;                        \
+        movq    %r15, %rax ;                        \
+        mulq    %rbx;                            \
+        subq    %rcx, %rdx ;                        \
+        xorq    %rcx, %rcx ;                        \
+        addq    %rax, %r11 ;                        \
+        movq    %rdx, %r12 ;                        \
+        adcq    %rcx, %r12 ;                        \
+        shldq   $0x1, %r11, %r12 ;                    \
+        btr     $0x3f, %r11 ;                      \
+        movl    $0x13, %edx ;                      \
+        imulq   %r12, %rdx ;                       \
+        addq    %rdx, %r8 ;                        \
+        adcq    %rcx, %r9 ;                        \
+        adcq    %rcx, %r10 ;                       \
+        adcq    %rcx, %r11 ;                       \
+        movq    %r8, P0 ;                       \
+        movq    %r9, 0x8+P0 ;                   \
+        movq    %r10, 0x10+P0 ;                 \
+        movq    %r11, 0x18+P0
 
 // Modular subtraction with double modulus 2 * p_25519 = 2^256 - 38
 
 #define sub_twice4(P0,P1,P2)                    \
-        ldp     x5, x6, [P1];                   \
-        ldp     x4, x3, [P2];                   \
-        subs    x5, x5, x4;                     \
-        sbcs    x6, x6, x3;                     \
-        ldp     x7, x8, [P1+16];                \
-        ldp     x4, x3, [P2+16];                \
-        sbcs    x7, x7, x4;                     \
-        sbcs    x8, x8, x3;                     \
-        mov     x4, #38;                        \
-        csel    x3, x4, xzr, lo;                \
-        subs    x5, x5, x3;                     \
-        sbcs    x6, x6, xzr;                    \
-        sbcs    x7, x7, xzr;                    \
-        sbc     x8, x8, xzr;                    \
-        stp     x5, x6, [P0];                   \
-        stp     x7, x8, [P0+16]
+        movq    P1, %r8 ;                       \
+        xorl    %ebx, %ebx ;                       \
+        subq    P2, %r8 ;                       \
+        movq    8+P1, %r9 ;                     \
+        sbbq    8+P2, %r9 ;                     \
+        movl    $38, %ecx ;                        \
+        movq    16+P1, %r10 ;                   \
+        sbbq    16+P2, %r10 ;                   \
+        movq    24+P1, %rax ;                   \
+        sbbq    24+P2, %rax ;                   \
+        cmovncq %rbx, %rcx ;                       \
+        subq    %rcx, %r8 ;                        \
+        sbbq    %rbx, %r9 ;                        \
+        sbbq    %rbx, %r10 ;                       \
+        sbbq    %rbx, %rax ;                       \
+        movq    %r8, P0 ;                       \
+        movq    %r9, 8+P0 ;                     \
+        movq    %r10, 16+P0 ;                   \
+        movq    %rax, 24+P0
 
 // Modular addition and doubling with double modulus 2 * p_25519 = 2^256 - 38.
 // This only ensures that the result fits in 4 digits, not that it is reduced
@@ -305,351 +370,507 @@
 // at least one of them is reduced double modulo.
 
 #define add_twice4(P0,P1,P2)                    \
-        ldp     x3, x4, [P1];                   \
-        ldp     x7, x8, [P2];                   \
-        adds    x3, x3, x7;                     \
-        adcs    x4, x4, x8;                     \
-        ldp     x5, x6, [P1+16];                \
-        ldp     x7, x8, [P2+16];                \
-        adcs    x5, x5, x7;                     \
-        adcs    x6, x6, x8;                     \
-        mov     x9, #38;                        \
-        csel    x9, x9, xzr, cs;                \
-        adds    x3, x3, x9;                     \
-        adcs    x4, x4, xzr;                    \
-        adcs    x5, x5, xzr;                    \
-        adc     x6, x6, xzr;                    \
-        stp     x3, x4, [P0];                   \
-        stp     x5, x6, [P0+16]
+        movq    P1, %r8 ;                       \
+        xorl    %ecx, %ecx ;                       \
+        addq    P2, %r8 ;                       \
+        movq    0x8+P1, %r9 ;                   \
+        adcq    0x8+P2, %r9 ;                   \
+        movq    0x10+P1, %r10 ;                 \
+        adcq    0x10+P2, %r10 ;                 \
+        movq    0x18+P1, %r11 ;                 \
+        adcq    0x18+P2, %r11 ;                 \
+        movl    $38, %eax ;                        \
+        cmovncq %rcx, %rax ;                       \
+        addq    %rax, %r8 ;                        \
+        adcq    %rcx, %r9 ;                        \
+        adcq    %rcx, %r10 ;                       \
+        adcq    %rcx, %r11 ;                       \
+        movq    %r8, P0 ;                       \
+        movq    %r9, 0x8+P0 ;                   \
+        movq    %r10, 0x10+P0 ;                 \
+        movq    %r11, 0x18+P0
 
 #define double_twice4(P0,P1)                    \
-        ldp     x3, x4, [P1];                   \
-        adds    x3, x3, x3;                     \
-        adcs    x4, x4, x4;                     \
-        ldp     x5, x6, [P1+16];                \
-        adcs    x5, x5, x5;                     \
-        adcs    x6, x6, x6;                     \
-        mov     x9, #38;                        \
-        csel    x9, x9, xzr, cs;                \
-        adds    x3, x3, x9;                     \
-        adcs    x4, x4, xzr;                    \
-        adcs    x5, x5, xzr;                    \
-        adc     x6, x6, xzr;                    \
-        stp     x3, x4, [P0];                   \
-        stp     x5, x6, [P0+16]
+        movq    P1, %r8 ;                       \
+        xorl    %ecx, %ecx ;                       \
+        addq    %r8, %r8 ;                         \
+        movq    0x8+P1, %r9 ;                   \
+        adcq    %r9, %r9 ;                         \
+        movq    0x10+P1, %r10 ;                 \
+        adcq    %r10, %r10 ;                       \
+        movq    0x18+P1, %r11 ;                 \
+        adcq    %r11, %r11 ;                       \
+        movl    $38, %eax ;                        \
+        cmovncq %rcx, %rax ;                       \
+        addq    %rax, %r8 ;                        \
+        adcq    %rcx, %r9 ;                        \
+        adcq    %rcx, %r10 ;                       \
+        adcq    %rcx, %r11 ;                       \
+        movq    %r8, P0 ;                       \
+        movq    %r9, 0x8+P0 ;                   \
+        movq    %r10, 0x10+P0 ;                 \
+        movq    %r11, 0x18+P0
 
-S2N_BN_SYMBOL(curve25519_x25519base_alt):
+S2N_BN_SYMBOL(edwards25519_scalarmulbase_alt):
 
-// Save regs and make room for temporaries
+// In this case the Windows form literally makes a subroutine call.
+// This avoids hassle arising from keeping code and data together.
 
-        stp     x19, x20, [sp, -16]!
-        stp     x21, x22, [sp, -16]!
-        stp     x23, x24, [sp, -16]!
-        sub     sp, sp, #NSPACE
+#if WINDOWS_ABI
+        pushq   %rdi
+        pushq   %rsi
+        movq    %rcx, %rdi
+        movq    %rdx, %rsi
+        callq   edwards25519_scalarmulbase_alt_standard
+        popq    %rsi
+        popq    %rdi
+        ret
+
+edwards25519_scalarmulbase_alt_standard:
+#endif
+
+// Save registers, make room for temps, preserve input arguments.
+
+        pushq   %rbx
+        pushq   %rbp
+        pushq   %r12
+        pushq   %r13
+        pushq   %r14
+        pushq   %r15
+        subq    $NSPACE, %rsp
 
 // Move the output pointer to a stable place
 
-        mov     res, x0
+        movq    %rdi, res
 
-// Copy the input scalar to its local variable while mangling it.
-// In principle the mangling is into 01xxx...xxx000, but actually
-// we only clear the top two bits so 00xxx...xxxxxx. The additional
-// 2^254 * G is taken care of by the starting value for the addition
-// chain below, while we never look at the three low bits at all.
+// Copy the input scalar x to its local variable while reducing it
+// modulo 2^252 + m where m = 27742317777372353535851937790883648493;
+// this is the order of the basepoint so this doesn't change the result.
+// First do q = floor(x/2^252) and x' = x - q * (2^252 + m), which gives
+// an initial result -15 * m <= x' < 2^252
 
-        ldp     x10, x11, [x1]
-        stp     x10, x11, [scalar]
-        ldp     x12, x13, [x1, #16]
-        bic     x13, x13, #0xc000000000000000
-        stp     x12, x13, [scalar+16]
+        movq    (%rsi), %r8
+        movq    8(%rsi), %r9
+        movq    16(%rsi), %r10
+        movq    24(%rsi), %r11
 
-// The main part of the computation is on the edwards25519 curve in
-// extended-projective coordinates (X,Y,Z,T), representing a point
+        movq    %r11, %rcx
+        shrq    $60, %rcx
+
+        movq    $0x5812631a5cf5d3ed, %rax
+        mulq    %rcx
+        movq    %rax, %r12
+        movq    %rdx, %r13
+        movq    $0x14def9dea2f79cd6, %rax
+        mulq    %rcx
+        addq    %rax, %r13
+        adcq    $0, %rdx
+        shlq    $60, %rcx
+
+        subq    %r12, %r8
+        sbbq    %r13, %r9
+        sbbq    %rdx, %r10
+        sbbq    %rcx, %r11
+
+// If x' < 0 then just directly negate it; this makes sure the
+// reduced argument is strictly 0 <= x' < 2^252, but now we need
+// to record (done via bit 255 of the reduced scalar, which is
+// ignored in the main loop) when we negated so we can flip
+// the end result to compensate.
+
+        sbbq    %rax, %rax
+
+        xorq    %rax, %r8
+        xorq    %rax, %r9
+        xorq    %rax, %r10
+        xorq    %rax, %r11
+
+        negq    %rax
+        adcq    $0, %r8
+        adcq    $0, %r9
+        adcq    $0, %r10
+        adcq    $0, %r11
+
+        shlq    $63, %rax
+        orq     %rax, %r11
+
+// And before we store the scalar, test and reset bit 251 to
+// initialize the main loop just below.
+
+        movq    %r8, SCALAR(%rsp)
+        movq    %r9, SCALAR+8(%rsp)
+        movq    %r10, SCALAR+16(%rsp)
+        btr     $59, %r11
+        movq    %r11, SCALAR+24(%rsp)
+
+// The main part of the computation is in extended-projective coordinates
+// (X,Y,Z,T), representing an affine point on the edwards25519 curve
 // (x,y) via x = X/Z, y = Y/Z and x * y = T/Z (so X * Y = T * Z).
-// Only at the very end do we translate back to curve25519. So G
-// below means the generator within edwards25519 corresponding to
-// (9,...) for curve25519, via the standard isomorphism.
+// In comments B means the standard basepoint (x,4/5) =
+// (0x216....f25d51a,0x0x6666..666658).
 //
-// Initialize accumulator "acc" to either (2^254 + 8) * G or just 2^254 * G
-// depending on bit 3 of the scalar, the only nonzero bit of the bottom 4.
-// Thus, we have effectively dealt with bits 0, 1, 2, 3, 254 and 255.
+// Initialize accumulator "acc" to either 0 or 2^251 * B depending on
+// bit 251 of the (reduced) scalar. That leaves bits 0..250 to handle.
 
-        ldr     x0, [scalar]
-        ands    xzr, x0, #8
+        leaq    edwards25519_scalarmulbase_alt_0g(%rip), %r10
+        leaq    edwards25519_scalarmulbase_alt_251g(%rip), %r11
 
-        adr     x10, curve25519_x25519base_alt_edwards25519_0g
-        adr     x11, curve25519_x25519base_alt_edwards25519_8g
-        ldp     x0, x1, [x10]
-        ldp     x2, x3, [x11]
-        csel    x0, x0, x2, eq
-        csel    x1, x1, x3, eq
-        stp     x0, x1, [acc]
+        movq    (%r10), %rax
+        movq    (%r11), %rcx
+        cmovcq  %rcx, %rax
+        movq    %rax, ACC(%rsp)
 
-        ldp     x0, x1, [x10, 1*16]
-        ldp     x2, x3, [x11, 1*16]
-        csel    x0, x0, x2, eq
-        csel    x1, x1, x3, eq
-        stp     x0, x1, [acc+1*16]
+        movq    8*1(%r10), %rax
+        movq    8*1(%r11), %rcx
+        cmovcq  %rcx, %rax
+        movq    %rax, ACC+8(%rsp)
 
-        ldp     x0, x1, [x10, 2*16]
-        ldp     x2, x3, [x11, 2*16]
-        csel    x0, x0, x2, eq
-        csel    x1, x1, x3, eq
-        stp     x0, x1, [acc+2*16]
+        movq    8*2(%r10), %rax
+        movq    8*2(%r11), %rcx
+        cmovcq  %rcx, %rax
+        movq    %rax, ACC+16(%rsp)
 
-        ldp     x0, x1, [x10, 3*16]
-        ldp     x2, x3, [x11, 3*16]
-        csel    x0, x0, x2, eq
-        csel    x1, x1, x3, eq
-        stp     x0, x1, [acc+3*16]
+        movq    8*3(%r10), %rax
+        movq    8*3(%r11), %rcx
+        cmovcq  %rcx, %rax
+        movq    %rax, ACC+24(%rsp)
 
-        mov     x0, #1
-        stp     x0, xzr, [acc+4*16]
-        stp     xzr, xzr, [acc+5*16]
+        movq    8*4(%r10), %rax
+        movq    8*4(%r11), %rcx
+        cmovcq  %rcx, %rax
+        movq    %rax, ACC+32(%rsp)
 
-        ldp     x0, x1, [x10, 4*16]
-        ldp     x2, x3, [x11, 4*16]
-        csel    x0, x0, x2, eq
-        csel    x1, x1, x3, eq
-        stp     x0, x1, [acc+6*16]
+        movq    8*5(%r10), %rax
+        movq    8*5(%r11), %rcx
+        cmovcq  %rcx, %rax
+        movq    %rax, ACC+40(%rsp)
 
-        ldp     x0, x1, [x10, 5*16]
-        ldp     x2, x3, [x11, 5*16]
-        csel    x0, x0, x2, eq
-        csel    x1, x1, x3, eq
-        stp     x0, x1, [acc+7*16]
+        movq    8*6(%r10), %rax
+        movq    8*6(%r11), %rcx
+        cmovcq  %rcx, %rax
+        movq    %rax, ACC+48(%rsp)
+
+        movq    8*7(%r10), %rax
+        movq    8*7(%r11), %rcx
+        cmovcq  %rcx, %rax
+        movq    %rax, ACC+56(%rsp)
+
+        movl    $1, %eax
+        movq    %rax, ACC+64(%rsp)
+        movl    $0, %eax
+        movq    %rax, ACC+72(%rsp)
+        movq    %rax, ACC+80(%rsp)
+        movq    %rax, ACC+88(%rsp)
+
+        movq    8*8(%r10), %rax
+        movq    8*8(%r11), %rcx
+        cmovcq  %rcx, %rax
+        movq    %rax, ACC+96(%rsp)
+
+        movq    8*9(%r10), %rax
+        movq    8*9(%r11), %rcx
+        cmovcq  %rcx, %rax
+        movq    %rax, ACC+104(%rsp)
+
+        movq    8*10(%r10), %rax
+        movq    8*10(%r11), %rcx
+        cmovcq  %rcx, %rax
+        movq    %rax, ACC+112(%rsp)
+
+        movq    8*11(%r10), %rax
+        movq    8*11(%r11), %rcx
+        cmovcq  %rcx, %rax
+        movq    %rax, ACC+120(%rsp)
 
 // The counter "i" tracks the bit position for which the scalar has
-// already been absorbed, starting at 4 and going up in chunks of 4.
+// already been absorbed, starting at 0 and going up in chunks of 4.
 //
 // The pointer "tab" points at the current block of the table for
-// multiples (2^i * j) * G at the current bit position i; 1 <= j <= 8.
+// multiples (2^i * j) * B at the current bit position i; 1 <= j <= 8.
 //
 // The bias is always either 0 and 1 and needs to be added to the
 // partially processed scalar implicitly. This is used to absorb 4 bits
 // of scalar per iteration from 3-bit table indexing by exploiting
-// negation: (16 * h + l) * G = (16 * (h + 1) - (16 - l)) * G is used
+// negation: (16 * h + l) * B = (16 * (h + 1) - (16 - l)) * B is used
 // when l >= 9. Note that we can't have any bias left over at the
-// end because of the clearing of bit 255 of the scalar, meaning the
-// l >= 9 case cannot arise on the last iteration.
+// end because we made sure bit 251 is clear in the reduced scalar.
 
-        mov     i, 4
-        adr     tab, curve25519_x25519base_alt_edwards25519_gtable
-        mov     bias, xzr
+        movq    $0, i
+        leaq    edwards25519_scalarmulbase_alt_gtable(%rip), %rax
+        movq    %rax, tab
+        movq    $0, bias
 
 // Start of the main loop, repeated 63 times for i = 4, 8, ..., 252
 
-curve25519_x25519base_alt_scalarloop:
+edwards25519_scalarmulbase_alt_scalarloop:
 
 // Look at the next 4-bit field "bf", adding the previous bias as well.
 // Choose the table index "ix" as bf when bf <= 8 and 16 - bf for bf >= 9,
 // setting the bias to 1 for the next iteration in the latter case.
 
-        lsr     x0, i, #6
-        ldr     x2, [sp, x0, lsl #3]    // Exploiting scalar = sp exactly
-        lsr     x2, x2, i
-        and     x2, x2, #15
-        add     bf, x2, bias
+        movq    i, %rax
+        movq    %rax, %rcx
+        shrq    $6, %rax
+        movq    (%rsp,%rax,8), %rax // Exploiting scalar = sp exactly
+        shrq    %cl, %rax
+        andq    $15, %rax
+        addq    bias, %rax
+        movq    %rax, bf
 
-        cmp     bf, 9
-        cset    bias, cs
+        cmpq    $9, bf
+        sbbq    %rax, %rax
+        incq    %rax
+        movq    %rax, bias
 
-        mov     x0, 16
-        sub     x0, x0, bf
-        cmp     bias, xzr
-        csel    ix, x0, bf, ne
+        movq    $16, %rdi
+        subq    bf, %rdi
+        cmpq    $0, bias
+        cmovzq  bf, %rdi
+        movq    %rdi, ix
 
 // Perform constant-time lookup in the table to get element number "ix".
 // The table entry for the affine point (x,y) is actually a triple
 // (y - x,x + y,2 * d * x * y) to precompute parts of the addition.
 // Note that "ix" can be 0, so we set up the appropriate identity first.
 
-        mov     x0, #1
-        mov     x1, xzr
-        mov     x2, xzr
-        mov     x3, xzr
-        mov     x4, #1
-        mov     x5, xzr
-        mov     x6, xzr
-        mov     x7, xzr
-        mov     x8, xzr
-        mov     x9, xzr
-        mov     x10, xzr
-        mov     x11, xzr
+        movl    $1, %eax
+        xorl    %ebx, %ebx
+        xorl    %ecx, %ecx
+        xorl    %edx, %edx
+        movl    $1, %r8d
+        xorl    %r9d, %r9d
+        xorl    %r10d, %r10d
+        xorl    %r11d, %r11d
+        xorl    %r12d, %r12d
+        xorl    %r13d, %r13d
+        xorl    %r14d, %r14d
+        xorl    %r15d, %r15d
 
-        cmp     ix, #1
-        ldp     x12, x13, [tab]
-        csel    x0, x0, x12, ne
-        csel    x1, x1, x13, ne
-        ldp     x12, x13, [tab, #16]
-        csel    x2, x2, x12, ne
-        csel    x3, x3, x13, ne
-        ldp     x12, x13, [tab, #32]
-        csel    x4, x4, x12, ne
-        csel    x5, x5, x13, ne
-        ldp     x12, x13, [tab, #48]
-        csel    x6, x6, x12, ne
-        csel    x7, x7, x13, ne
-        ldp     x12, x13, [tab, #64]
-        csel    x8, x8, x12, ne
-        csel    x9, x9, x13, ne
-        ldp     x12, x13, [tab, #80]
-        csel    x10, x10, x12, ne
-        csel    x11, x11, x13, ne
-        add     tab, tab, #96
+        movq    tab, %rbp
 
-        cmp     ix, #2
-        ldp     x12, x13, [tab]
-        csel    x0, x0, x12, ne
-        csel    x1, x1, x13, ne
-        ldp     x12, x13, [tab, #16]
-        csel    x2, x2, x12, ne
-        csel    x3, x3, x13, ne
-        ldp     x12, x13, [tab, #32]
-        csel    x4, x4, x12, ne
-        csel    x5, x5, x13, ne
-        ldp     x12, x13, [tab, #48]
-        csel    x6, x6, x12, ne
-        csel    x7, x7, x13, ne
-        ldp     x12, x13, [tab, #64]
-        csel    x8, x8, x12, ne
-        csel    x9, x9, x13, ne
-        ldp     x12, x13, [tab, #80]
-        csel    x10, x10, x12, ne
-        csel    x11, x11, x13, ne
-        add     tab, tab, #96
+        cmpq    $1, ix
+        movq    (%rbp), %rsi
+        cmovzq  %rsi, %rax
+        movq    8(%rbp), %rsi
+        cmovzq  %rsi, %rbx
+        movq    16(%rbp), %rsi
+        cmovzq  %rsi, %rcx
+        movq    24(%rbp), %rsi
+        cmovzq  %rsi, %rdx
+        movq    32(%rbp), %rsi
+        cmovzq  %rsi, %r8
+        movq    40(%rbp), %rsi
+        cmovzq  %rsi, %r9
+        movq    48(%rbp), %rsi
+        cmovzq  %rsi, %r10
+        movq    56(%rbp), %rsi
+        cmovzq  %rsi, %r11
+        movq    64(%rbp), %rsi
+        cmovzq  %rsi, %r12
+        movq    72(%rbp), %rsi
+        cmovzq  %rsi, %r13
+        movq    80(%rbp), %rsi
+        cmovzq  %rsi, %r14
+        movq    88(%rbp), %rsi
+        cmovzq  %rsi, %r15
+        addq    $96, %rbp
 
-        cmp     ix, #3
-        ldp     x12, x13, [tab]
-        csel    x0, x0, x12, ne
-        csel    x1, x1, x13, ne
-        ldp     x12, x13, [tab, #16]
-        csel    x2, x2, x12, ne
-        csel    x3, x3, x13, ne
-        ldp     x12, x13, [tab, #32]
-        csel    x4, x4, x12, ne
-        csel    x5, x5, x13, ne
-        ldp     x12, x13, [tab, #48]
-        csel    x6, x6, x12, ne
-        csel    x7, x7, x13, ne
-        ldp     x12, x13, [tab, #64]
-        csel    x8, x8, x12, ne
-        csel    x9, x9, x13, ne
-        ldp     x12, x13, [tab, #80]
-        csel    x10, x10, x12, ne
-        csel    x11, x11, x13, ne
-        add     tab, tab, #96
+        cmpq    $2, ix
+        movq    (%rbp), %rsi
+        cmovzq  %rsi, %rax
+        movq    8(%rbp), %rsi
+        cmovzq  %rsi, %rbx
+        movq    16(%rbp), %rsi
+        cmovzq  %rsi, %rcx
+        movq    24(%rbp), %rsi
+        cmovzq  %rsi, %rdx
+        movq    32(%rbp), %rsi
+        cmovzq  %rsi, %r8
+        movq    40(%rbp), %rsi
+        cmovzq  %rsi, %r9
+        movq    48(%rbp), %rsi
+        cmovzq  %rsi, %r10
+        movq    56(%rbp), %rsi
+        cmovzq  %rsi, %r11
+        movq    64(%rbp), %rsi
+        cmovzq  %rsi, %r12
+        movq    72(%rbp), %rsi
+        cmovzq  %rsi, %r13
+        movq    80(%rbp), %rsi
+        cmovzq  %rsi, %r14
+        movq    88(%rbp), %rsi
+        cmovzq  %rsi, %r15
+        addq    $96, %rbp
 
-        cmp     ix, #4
-        ldp     x12, x13, [tab]
-        csel    x0, x0, x12, ne
-        csel    x1, x1, x13, ne
-        ldp     x12, x13, [tab, #16]
-        csel    x2, x2, x12, ne
-        csel    x3, x3, x13, ne
-        ldp     x12, x13, [tab, #32]
-        csel    x4, x4, x12, ne
-        csel    x5, x5, x13, ne
-        ldp     x12, x13, [tab, #48]
-        csel    x6, x6, x12, ne
-        csel    x7, x7, x13, ne
-        ldp     x12, x13, [tab, #64]
-        csel    x8, x8, x12, ne
-        csel    x9, x9, x13, ne
-        ldp     x12, x13, [tab, #80]
-        csel    x10, x10, x12, ne
-        csel    x11, x11, x13, ne
-        add     tab, tab, #96
+        cmpq    $3, ix
+        movq    (%rbp), %rsi
+        cmovzq  %rsi, %rax
+        movq    8(%rbp), %rsi
+        cmovzq  %rsi, %rbx
+        movq    16(%rbp), %rsi
+        cmovzq  %rsi, %rcx
+        movq    24(%rbp), %rsi
+        cmovzq  %rsi, %rdx
+        movq    32(%rbp), %rsi
+        cmovzq  %rsi, %r8
+        movq    40(%rbp), %rsi
+        cmovzq  %rsi, %r9
+        movq    48(%rbp), %rsi
+        cmovzq  %rsi, %r10
+        movq    56(%rbp), %rsi
+        cmovzq  %rsi, %r11
+        movq    64(%rbp), %rsi
+        cmovzq  %rsi, %r12
+        movq    72(%rbp), %rsi
+        cmovzq  %rsi, %r13
+        movq    80(%rbp), %rsi
+        cmovzq  %rsi, %r14
+        movq    88(%rbp), %rsi
+        cmovzq  %rsi, %r15
+        addq    $96, %rbp
 
-        cmp     ix, #5
-        ldp     x12, x13, [tab]
-        csel    x0, x0, x12, ne
-        csel    x1, x1, x13, ne
-        ldp     x12, x13, [tab, #16]
-        csel    x2, x2, x12, ne
-        csel    x3, x3, x13, ne
-        ldp     x12, x13, [tab, #32]
-        csel    x4, x4, x12, ne
-        csel    x5, x5, x13, ne
-        ldp     x12, x13, [tab, #48]
-        csel    x6, x6, x12, ne
-        csel    x7, x7, x13, ne
-        ldp     x12, x13, [tab, #64]
-        csel    x8, x8, x12, ne
-        csel    x9, x9, x13, ne
-        ldp     x12, x13, [tab, #80]
-        csel    x10, x10, x12, ne
-        csel    x11, x11, x13, ne
-        add     tab, tab, #96
+        cmpq    $4, ix
+        movq    (%rbp), %rsi
+        cmovzq  %rsi, %rax
+        movq    8(%rbp), %rsi
+        cmovzq  %rsi, %rbx
+        movq    16(%rbp), %rsi
+        cmovzq  %rsi, %rcx
+        movq    24(%rbp), %rsi
+        cmovzq  %rsi, %rdx
+        movq    32(%rbp), %rsi
+        cmovzq  %rsi, %r8
+        movq    40(%rbp), %rsi
+        cmovzq  %rsi, %r9
+        movq    48(%rbp), %rsi
+        cmovzq  %rsi, %r10
+        movq    56(%rbp), %rsi
+        cmovzq  %rsi, %r11
+        movq    64(%rbp), %rsi
+        cmovzq  %rsi, %r12
+        movq    72(%rbp), %rsi
+        cmovzq  %rsi, %r13
+        movq    80(%rbp), %rsi
+        cmovzq  %rsi, %r14
+        movq    88(%rbp), %rsi
+        cmovzq  %rsi, %r15
+        addq    $96, %rbp
 
-        cmp     ix, #6
-        ldp     x12, x13, [tab]
-        csel    x0, x0, x12, ne
-        csel    x1, x1, x13, ne
-        ldp     x12, x13, [tab, #16]
-        csel    x2, x2, x12, ne
-        csel    x3, x3, x13, ne
-        ldp     x12, x13, [tab, #32]
-        csel    x4, x4, x12, ne
-        csel    x5, x5, x13, ne
-        ldp     x12, x13, [tab, #48]
-        csel    x6, x6, x12, ne
-        csel    x7, x7, x13, ne
-        ldp     x12, x13, [tab, #64]
-        csel    x8, x8, x12, ne
-        csel    x9, x9, x13, ne
-        ldp     x12, x13, [tab, #80]
-        csel    x10, x10, x12, ne
-        csel    x11, x11, x13, ne
-        add     tab, tab, #96
+        cmpq    $5, ix
+        movq    (%rbp), %rsi
+        cmovzq  %rsi, %rax
+        movq    8(%rbp), %rsi
+        cmovzq  %rsi, %rbx
+        movq    16(%rbp), %rsi
+        cmovzq  %rsi, %rcx
+        movq    24(%rbp), %rsi
+        cmovzq  %rsi, %rdx
+        movq    32(%rbp), %rsi
+        cmovzq  %rsi, %r8
+        movq    40(%rbp), %rsi
+        cmovzq  %rsi, %r9
+        movq    48(%rbp), %rsi
+        cmovzq  %rsi, %r10
+        movq    56(%rbp), %rsi
+        cmovzq  %rsi, %r11
+        movq    64(%rbp), %rsi
+        cmovzq  %rsi, %r12
+        movq    72(%rbp), %rsi
+        cmovzq  %rsi, %r13
+        movq    80(%rbp), %rsi
+        cmovzq  %rsi, %r14
+        movq    88(%rbp), %rsi
+        cmovzq  %rsi, %r15
+        addq    $96, %rbp
 
-        cmp     ix, #7
-        ldp     x12, x13, [tab]
-        csel    x0, x0, x12, ne
-        csel    x1, x1, x13, ne
-        ldp     x12, x13, [tab, #16]
-        csel    x2, x2, x12, ne
-        csel    x3, x3, x13, ne
-        ldp     x12, x13, [tab, #32]
-        csel    x4, x4, x12, ne
-        csel    x5, x5, x13, ne
-        ldp     x12, x13, [tab, #48]
-        csel    x6, x6, x12, ne
-        csel    x7, x7, x13, ne
-        ldp     x12, x13, [tab, #64]
-        csel    x8, x8, x12, ne
-        csel    x9, x9, x13, ne
-        ldp     x12, x13, [tab, #80]
-        csel    x10, x10, x12, ne
-        csel    x11, x11, x13, ne
-        add     tab, tab, #96
+        cmpq    $6, ix
+        movq    (%rbp), %rsi
+        cmovzq  %rsi, %rax
+        movq    8(%rbp), %rsi
+        cmovzq  %rsi, %rbx
+        movq    16(%rbp), %rsi
+        cmovzq  %rsi, %rcx
+        movq    24(%rbp), %rsi
+        cmovzq  %rsi, %rdx
+        movq    32(%rbp), %rsi
+        cmovzq  %rsi, %r8
+        movq    40(%rbp), %rsi
+        cmovzq  %rsi, %r9
+        movq    48(%rbp), %rsi
+        cmovzq  %rsi, %r10
+        movq    56(%rbp), %rsi
+        cmovzq  %rsi, %r11
+        movq    64(%rbp), %rsi
+        cmovzq  %rsi, %r12
+        movq    72(%rbp), %rsi
+        cmovzq  %rsi, %r13
+        movq    80(%rbp), %rsi
+        cmovzq  %rsi, %r14
+        movq    88(%rbp), %rsi
+        cmovzq  %rsi, %r15
+        addq    $96, %rbp
 
-        cmp     ix, #8
-        ldp     x12, x13, [tab]
-        csel    x0, x0, x12, ne
-        csel    x1, x1, x13, ne
-        ldp     x12, x13, [tab, #16]
-        csel    x2, x2, x12, ne
-        csel    x3, x3, x13, ne
-        ldp     x12, x13, [tab, #32]
-        csel    x4, x4, x12, ne
-        csel    x5, x5, x13, ne
-        ldp     x12, x13, [tab, #48]
-        csel    x6, x6, x12, ne
-        csel    x7, x7, x13, ne
-        ldp     x12, x13, [tab, #64]
-        csel    x8, x8, x12, ne
-        csel    x9, x9, x13, ne
-        ldp     x12, x13, [tab, #80]
-        csel    x10, x10, x12, ne
-        csel    x11, x11, x13, ne
-        add     tab, tab, #96
+        cmpq    $7, ix
+        movq    (%rbp), %rsi
+        cmovzq  %rsi, %rax
+        movq    8(%rbp), %rsi
+        cmovzq  %rsi, %rbx
+        movq    16(%rbp), %rsi
+        cmovzq  %rsi, %rcx
+        movq    24(%rbp), %rsi
+        cmovzq  %rsi, %rdx
+        movq    32(%rbp), %rsi
+        cmovzq  %rsi, %r8
+        movq    40(%rbp), %rsi
+        cmovzq  %rsi, %r9
+        movq    48(%rbp), %rsi
+        cmovzq  %rsi, %r10
+        movq    56(%rbp), %rsi
+        cmovzq  %rsi, %r11
+        movq    64(%rbp), %rsi
+        cmovzq  %rsi, %r12
+        movq    72(%rbp), %rsi
+        cmovzq  %rsi, %r13
+        movq    80(%rbp), %rsi
+        cmovzq  %rsi, %r14
+        movq    88(%rbp), %rsi
+        cmovzq  %rsi, %r15
+        addq    $96, %rbp
+
+        cmpq    $8, ix
+        movq    (%rbp), %rsi
+        cmovzq  %rsi, %rax
+        movq    8(%rbp), %rsi
+        cmovzq  %rsi, %rbx
+        movq    16(%rbp), %rsi
+        cmovzq  %rsi, %rcx
+        movq    24(%rbp), %rsi
+        cmovzq  %rsi, %rdx
+        movq    32(%rbp), %rsi
+        cmovzq  %rsi, %r8
+        movq    40(%rbp), %rsi
+        cmovzq  %rsi, %r9
+        movq    48(%rbp), %rsi
+        cmovzq  %rsi, %r10
+        movq    56(%rbp), %rsi
+        cmovzq  %rsi, %r11
+        movq    64(%rbp), %rsi
+        cmovzq  %rsi, %r12
+        movq    72(%rbp), %rsi
+        cmovzq  %rsi, %r13
+        movq    80(%rbp), %rsi
+        cmovzq  %rsi, %r14
+        movq    88(%rbp), %rsi
+        cmovzq  %rsi, %r15
+
+        addq    $96, %rbp
+        movq    %rbp, tab
 
 // We now have the triple from the table in registers as follows
 //
-//      [x3;x2;x1;x0] = y - x
-//      [x7;x6;x5;x4] = x + y
-//      [x11;x10;x9;x8] = 2 * d * x * y
+//      [%rdx;%rcx;%rbx;%rax] = y - x
+//      [%r11;%r10;%r9;%r8] = x + y
+//      [%r15;%r14;%r13;%r12] = 2 * d * x * y
 //
 // In case bias = 1 we need to negate this. For Edwards curves
 // -(x,y) = (-x,y), i.e. we need to negate the x coordinate.
@@ -662,43 +883,59 @@ curve25519_x25519base_alt_scalarloop:
 // that in the zero case the whole negation is trivial, and
 // so indeed is the swapping.
 
-        cmp     bias, #0
+        cmpq    $0, bias
 
-        csel    x12, x0, x4, eq
-        csel    x13, x1, x5, eq
-        csel    x14, x2, x6, eq
-        csel    x15, x3, x7, eq
-        stp     x12, x13, [tabent]
-        stp     x14, x15, [tabent+16]
+        movq    %rax, %rsi
+        cmovnzq %r8, %rsi
+        cmovnzq %rax, %r8
+        movq    %rsi, TABENT(%rsp)
+        movq    %r8, TABENT+32(%rsp)
 
-        csel    x12, x0, x4, ne
-        csel    x13, x1, x5, ne
-        csel    x14, x2, x6, ne
-        csel    x15, x3, x7, ne
-        stp     x12, x13, [tabent+32]
-        stp     x14, x15, [tabent+48]
+        movq    %rbx, %rsi
+        cmovnzq %r9, %rsi
+        cmovnzq %rbx, %r9
+        movq    %rsi, TABENT+8(%rsp)
+        movq    %r9, TABENT+40(%rsp)
 
-        mov     x0, #-19
-        subs    x0, x0, x8
-        mov     x2, #-1
-        sbcs    x1, x2, x9
-        sbcs    x2, x2, x10
-        mov     x3, #0x7FFFFFFFFFFFFFFF
-        sbc     x3, x3, x11
+        movq    %rcx, %rsi
+        cmovnzq %r10, %rsi
+        cmovnzq %rcx, %r10
+        movq    %rsi, TABENT+16(%rsp)
+        movq    %r10, TABENT+48(%rsp)
 
-        cmp     ix, xzr
-        ccmp    bias, xzr, #4, ne
+        movq    %rdx, %rsi
+        cmovnzq %r11, %rsi
+        cmovnzq %rdx, %r11
+        movq    %rsi, TABENT+24(%rsp)
+        movq    %r11, TABENT+56(%rsp)
 
-        csel    x0, x0, x8, ne
-        csel    x1, x1, x9, ne
-        stp     x0, x1, [tabent+64]
-        csel    x2, x2, x10, ne
-        csel    x3, x3, x11, ne
-        stp     x2, x3, [tabent+80]
+        movq    $-19, %rax
+        movq    $-1, %rbx
+        movq    $-1, %rcx
+        movq    $0x7fffffffffffffff, %rdx
+        subq    %r12, %rax
+        sbbq    %r13, %rbx
+        sbbq    %r14, %rcx
+        sbbq    %r15, %rdx
+
+        movq    ix, %r8
+        movq    bias, %r9
+        testq   %r8, %r8
+        cmovzq  %r8, %r9
+        testq   %r9, %r9
+
+        cmovzq  %r12, %rax
+        cmovzq  %r13, %rbx
+        cmovzq  %r14, %rcx
+        cmovzq  %r15, %rdx
+        movq    %rax, TABENT+64(%rsp)
+        movq    %rbx, TABENT+72(%rsp)
+        movq    %rcx, TABENT+80(%rsp)
+        movq    %rdx, TABENT+88(%rsp)
 
 // Extended-projective and precomputed mixed addition.
 // This is effectively the same as calling the standalone
-// function edwards25519_pepadd_alt(acc,acc,tabent), but we
+// function edwards25519_pepadd(acc,acc,tabent), but we
 // only retain slightly weaker normalization < 2 * p_25519
 // throughout the inner loop, so the computation is
 // slightly different, and faster overall.
@@ -720,1095 +957,1420 @@ curve25519_x25519base_alt_scalarloop:
 
 // End of the main loop; move on by 4 bits.
 
-        add     i, i, 4
-        cmp     i, 256
-        bcc     curve25519_x25519base_alt_scalarloop
+        addq    $4, i
+        cmpq    $252, i
+        jc      edwards25519_scalarmulbase_alt_scalarloop
 
-// Now we need to translate from Edwards curve edwards25519 back
-// to the Montgomery form curve25519. The mapping in the affine
-// representations is
-//
-// (x,y) |-> ((1 + y) / (1 - y), c * (1 + y) / ((1 - y) * x))
-//
-// For x25519, we only need the x coordinate, and we compute this as
-//
-// (1 + y) / (1 - y) = (x + x * y) / (x - x * y)
-//                   = (X/Z + T/Z) / (X/Z - T/Z)
-//                   = (X + T) / (X - T)
-//                   = (X + T) * inverse(X - T)
-//
-// We could equally well use (Z + Y) / (Z - Y), but the above has the
-// same cost, and it more explicitly forces zero output whenever X = 0,
-// regardless of how the modular inverse behaves on zero inputs. In
-// the present setting (base point 9, mangled scalar) that doesn't
-// really matter anyway since X = 0 never arises, but it seems a
-// little bit tidier. Note that both Edwards point (0,1) which maps to
-// the Montgomery point at infinity, and Edwards (0,-1) which maps to
-// Montgomery (0,0) [this is the 2-torsion point] are both by definition
-// mapped to 0 by the X coordinate mapping used to define curve25519.
-//
-// First the addition and subtraction:
+// Insert the optional negation of the projective X coordinate, and
+// so by extension the final affine x coordinate x = X/Z and thus
+// the point P = (x,y). We only know X < 2 * p_25519, so we do the
+// negation as 2 * p_25519 - X to keep it nonnegative. From this
+// point on we don't need any normalization of the coordinates
+// except for making sure that they fit in 4 digits.
 
-        add_twice4(t1,x_3,w_3)
-        sub_twice4(t2,x_3,w_3)
+        movq    X3(%rsp), %r8
+        movq    X3+8(%rsp), %r9
+        movq    X3+16(%rsp), %r10
+        movq    X3+24(%rsp), %r11
+        movq    $0xffffffffffffffda, %r12
+        subq    %r8, %r12
+        movq    $0xffffffffffffffff, %r13
+        sbbq    %r9, %r13
+        movq    $0xffffffffffffffff, %r14
+        sbbq    %r10, %r14
+        movq    $0xffffffffffffffff, %r15
+        sbbq    %r11, %r15
+        movq    SCALAR+24(%rsp), %rax
+        btq     $63, %rax
+        cmovcq  %r12, %r8
+        cmovcq  %r13, %r9
+        cmovcq  %r14, %r10
+        cmovcq  %r15, %r11
+        movq    %r8, X3(%rsp)
+        movq    %r9, X3+8(%rsp)
+        movq    %r10, X3+16(%rsp)
+        movq    %r11, X3+24(%rsp)
 
-// Prepare to call the modular inverse function to get t0 = 1/t2
-// Note that this works for the weakly normalized z_3 equally well.
-// The non-coprime case z_3 == 0 (mod p_25519) cannot arise anyway.
+// Now we need to map out of the extended-projective representation
+// (X,Y,Z,W) back to the affine form (x,y) = (X/Z,Y/Z). This means
+// first calling the modular inverse to get w_3 = 1/z_3.
 
-        add     x0, t0
-        add     x1, t2
+        leaq    W3(%rsp), %rdi
+        leaq    Z3(%rsp), %rsi
 
 // Inline copy of bignum_inv_p25519, identical except for stripping out
 // the prologue and epilogue saving and restoring registers and making
 // and reclaiming room on the stack. For more details and explanations see
-// "arm/curve25519/bignum_inv_p25519.S". Note that the stack it uses for
-// its own temporaries is 128 bytes, so it has no effect on variables
-// that are needed in the rest of our computation here: res, t0, t1, t2.
+// "x86/curve25519/bignum_inv_p25519.S". Note that the stack it uses for
+// its own temporaries is 208 bytes, so it has no effect on variables
+// that are needed in the rest of our computation here: res, x_3, y_3,
+// z_3 and w_3.
 
-        mov     x20, x0
-        mov     x10, #0xffffffffffffffed
-        mov     x11, #0xffffffffffffffff
-        stp     x10, x11, [sp]
-        mov     x12, #0x7fffffffffffffff
-        stp     x11, x12, [sp, #16]
-        ldp     x2, x3, [x1]
-        ldp     x4, x5, [x1, #16]
-        mov     x7, #0x13
-        lsr     x6, x5, #63
-        madd    x6, x7, x6, x7
-        adds    x2, x2, x6
-        adcs    x3, x3, xzr
-        adcs    x4, x4, xzr
-        orr     x5, x5, #0x8000000000000000
-        adcs    x5, x5, xzr
-        csel    x6, x7, xzr, cc
-        subs    x2, x2, x6
-        sbcs    x3, x3, xzr
-        sbcs    x4, x4, xzr
-        sbc     x5, x5, xzr
-        and     x5, x5, #0x7fffffffffffffff
-        stp     x2, x3, [sp, #32]
-        stp     x4, x5, [sp, #48]
-        stp     xzr, xzr, [sp, #64]
-        stp     xzr, xzr, [sp, #80]
-        mov     x10, #0x2099
-        movk    x10, #0x7502, lsl #16
-        movk    x10, #0x9e23, lsl #32
-        movk    x10, #0xa0f9, lsl #48
-        mov     x11, #0x2595
-        movk    x11, #0x1d13, lsl #16
-        movk    x11, #0x8f3f, lsl #32
-        movk    x11, #0xa8c6, lsl #48
-        mov     x12, #0x5242
-        movk    x12, #0x5ac, lsl #16
-        movk    x12, #0x8938, lsl #32
-        movk    x12, #0x6c6c, lsl #48
-        mov     x13, #0x615
-        movk    x13, #0x4177, lsl #16
-        movk    x13, #0x8b2, lsl #32
-        movk    x13, #0x2765, lsl #48
-        stp     x10, x11, [sp, #96]
-        stp     x12, x13, [sp, #112]
-        mov     x21, #0xa
-        mov     x22, #0x1
-        b       curve25519_x25519base_alt_invmidloop
-curve25519_x25519base_alt_invloop:
-        cmp     x10, xzr
-        csetm   x14, mi
-        cneg    x10, x10, mi
-        cmp     x11, xzr
-        csetm   x15, mi
-        cneg    x11, x11, mi
-        cmp     x12, xzr
-        csetm   x16, mi
-        cneg    x12, x12, mi
-        cmp     x13, xzr
-        csetm   x17, mi
-        cneg    x13, x13, mi
-        and     x0, x10, x14
-        and     x1, x11, x15
-        add     x9, x0, x1
-        and     x0, x12, x16
-        and     x1, x13, x17
-        add     x19, x0, x1
-        ldr     x7, [sp]
-        eor     x1, x7, x14
-        mul     x0, x1, x10
-        umulh   x1, x1, x10
-        adds    x4, x9, x0
-        adc     x2, xzr, x1
-        ldr     x8, [sp, #32]
-        eor     x1, x8, x15
-        mul     x0, x1, x11
-        umulh   x1, x1, x11
-        adds    x4, x4, x0
-        adc     x2, x2, x1
-        eor     x1, x7, x16
-        mul     x0, x1, x12
-        umulh   x1, x1, x12
-        adds    x5, x19, x0
-        adc     x3, xzr, x1
-        eor     x1, x8, x17
-        mul     x0, x1, x13
-        umulh   x1, x1, x13
-        adds    x5, x5, x0
-        adc     x3, x3, x1
-        ldr     x7, [sp, #8]
-        eor     x1, x7, x14
-        mul     x0, x1, x10
-        umulh   x1, x1, x10
-        adds    x2, x2, x0
-        adc     x6, xzr, x1
-        ldr     x8, [sp, #40]
-        eor     x1, x8, x15
-        mul     x0, x1, x11
-        umulh   x1, x1, x11
-        adds    x2, x2, x0
-        adc     x6, x6, x1
-        extr    x4, x2, x4, #59
-        str     x4, [sp]
-        eor     x1, x7, x16
-        mul     x0, x1, x12
-        umulh   x1, x1, x12
-        adds    x3, x3, x0
-        adc     x4, xzr, x1
-        eor     x1, x8, x17
-        mul     x0, x1, x13
-        umulh   x1, x1, x13
-        adds    x3, x3, x0
-        adc     x4, x4, x1
-        extr    x5, x3, x5, #59
-        str     x5, [sp, #32]
-        ldr     x7, [sp, #16]
-        eor     x1, x7, x14
-        mul     x0, x1, x10
-        umulh   x1, x1, x10
-        adds    x6, x6, x0
-        adc     x5, xzr, x1
-        ldr     x8, [sp, #48]
-        eor     x1, x8, x15
-        mul     x0, x1, x11
-        umulh   x1, x1, x11
-        adds    x6, x6, x0
-        adc     x5, x5, x1
-        extr    x2, x6, x2, #59
-        str     x2, [sp, #8]
-        eor     x1, x7, x16
-        mul     x0, x1, x12
-        umulh   x1, x1, x12
-        adds    x4, x4, x0
-        adc     x2, xzr, x1
-        eor     x1, x8, x17
-        mul     x0, x1, x13
-        umulh   x1, x1, x13
-        adds    x4, x4, x0
-        adc     x2, x2, x1
-        extr    x3, x4, x3, #59
-        str     x3, [sp, #40]
-        ldr     x7, [sp, #24]
-        eor     x1, x7, x14
-        asr     x3, x1, #63
-        and     x3, x3, x10
-        neg     x3, x3
-        mul     x0, x1, x10
-        umulh   x1, x1, x10
-        adds    x5, x5, x0
-        adc     x3, x3, x1
-        ldr     x8, [sp, #56]
-        eor     x1, x8, x15
-        asr     x0, x1, #63
-        and     x0, x0, x11
-        sub     x3, x3, x0
-        mul     x0, x1, x11
-        umulh   x1, x1, x11
-        adds    x5, x5, x0
-        adc     x3, x3, x1
-        extr    x6, x5, x6, #59
-        str     x6, [sp, #16]
-        extr    x5, x3, x5, #59
-        str     x5, [sp, #24]
-        eor     x1, x7, x16
-        asr     x5, x1, #63
-        and     x5, x5, x12
-        neg     x5, x5
-        mul     x0, x1, x12
-        umulh   x1, x1, x12
-        adds    x2, x2, x0
-        adc     x5, x5, x1
-        eor     x1, x8, x17
-        asr     x0, x1, #63
-        and     x0, x0, x13
-        sub     x5, x5, x0
-        mul     x0, x1, x13
-        umulh   x1, x1, x13
-        adds    x2, x2, x0
-        adc     x5, x5, x1
-        extr    x4, x2, x4, #59
-        str     x4, [sp, #48]
-        extr    x2, x5, x2, #59
-        str     x2, [sp, #56]
-        ldr     x7, [sp, #64]
-        eor     x1, x7, x14
-        mul     x0, x1, x10
-        umulh   x1, x1, x10
-        adds    x4, x9, x0
-        adc     x2, xzr, x1
-        ldr     x8, [sp, #96]
-        eor     x1, x8, x15
-        mul     x0, x1, x11
-        umulh   x1, x1, x11
-        adds    x4, x4, x0
-        str     x4, [sp, #64]
-        adc     x2, x2, x1
-        eor     x1, x7, x16
-        mul     x0, x1, x12
-        umulh   x1, x1, x12
-        adds    x5, x19, x0
-        adc     x3, xzr, x1
-        eor     x1, x8, x17
-        mul     x0, x1, x13
-        umulh   x1, x1, x13
-        adds    x5, x5, x0
-        str     x5, [sp, #96]
-        adc     x3, x3, x1
-        ldr     x7, [sp, #72]
-        eor     x1, x7, x14
-        mul     x0, x1, x10
-        umulh   x1, x1, x10
-        adds    x2, x2, x0
-        adc     x6, xzr, x1
-        ldr     x8, [sp, #104]
-        eor     x1, x8, x15
-        mul     x0, x1, x11
-        umulh   x1, x1, x11
-        adds    x2, x2, x0
-        str     x2, [sp, #72]
-        adc     x6, x6, x1
-        eor     x1, x7, x16
-        mul     x0, x1, x12
-        umulh   x1, x1, x12
-        adds    x3, x3, x0
-        adc     x4, xzr, x1
-        eor     x1, x8, x17
-        mul     x0, x1, x13
-        umulh   x1, x1, x13
-        adds    x3, x3, x0
-        str     x3, [sp, #104]
-        adc     x4, x4, x1
-        ldr     x7, [sp, #80]
-        eor     x1, x7, x14
-        mul     x0, x1, x10
-        umulh   x1, x1, x10
-        adds    x6, x6, x0
-        adc     x5, xzr, x1
-        ldr     x8, [sp, #112]
-        eor     x1, x8, x15
-        mul     x0, x1, x11
-        umulh   x1, x1, x11
-        adds    x6, x6, x0
-        str     x6, [sp, #80]
-        adc     x5, x5, x1
-        eor     x1, x7, x16
-        mul     x0, x1, x12
-        umulh   x1, x1, x12
-        adds    x4, x4, x0
-        adc     x2, xzr, x1
-        eor     x1, x8, x17
-        mul     x0, x1, x13
-        umulh   x1, x1, x13
-        adds    x4, x4, x0
-        str     x4, [sp, #112]
-        adc     x2, x2, x1
-        ldr     x7, [sp, #88]
-        eor     x1, x7, x14
-        and     x3, x14, x10
-        neg     x3, x3
-        mul     x0, x1, x10
-        umulh   x1, x1, x10
-        adds    x5, x5, x0
-        adc     x3, x3, x1
-        ldr     x8, [sp, #120]
-        eor     x1, x8, x15
-        and     x0, x15, x11
-        sub     x3, x3, x0
-        mul     x0, x1, x11
-        umulh   x1, x1, x11
-        adds    x5, x5, x0
-        adc     x3, x3, x1
-        extr    x6, x3, x5, #63
-        ldp     x0, x1, [sp, #64]
-        add     x6, x6, x3, asr #63
-        mov     x3, #0x13
-        mul     x4, x6, x3
-        add     x5, x5, x6, lsl #63
-        smulh   x3, x6, x3
-        ldr     x6, [sp, #80]
-        adds    x0, x0, x4
-        adcs    x1, x1, x3
-        asr     x3, x3, #63
-        adcs    x6, x6, x3
-        adc     x5, x5, x3
-        stp     x0, x1, [sp, #64]
-        stp     x6, x5, [sp, #80]
-        eor     x1, x7, x16
-        and     x5, x16, x12
-        neg     x5, x5
-        mul     x0, x1, x12
-        umulh   x1, x1, x12
-        adds    x2, x2, x0
-        adc     x5, x5, x1
-        eor     x1, x8, x17
-        and     x0, x17, x13
-        sub     x5, x5, x0
-        mul     x0, x1, x13
-        umulh   x1, x1, x13
-        adds    x2, x2, x0
-        adc     x5, x5, x1
-        extr    x6, x5, x2, #63
-        ldp     x0, x1, [sp, #96]
-        add     x6, x6, x5, asr #63
-        mov     x5, #0x13
-        mul     x4, x6, x5
-        add     x2, x2, x6, lsl #63
-        smulh   x5, x6, x5
-        ldr     x3, [sp, #112]
-        adds    x0, x0, x4
-        adcs    x1, x1, x5
-        asr     x5, x5, #63
-        adcs    x3, x3, x5
-        adc     x2, x2, x5
-        stp     x0, x1, [sp, #96]
-        stp     x3, x2, [sp, #112]
-curve25519_x25519base_alt_invmidloop:
-        mov     x1, x22
-        ldr     x2, [sp]
-        ldr     x3, [sp, #32]
-        and     x4, x2, #0xfffff
-        orr     x4, x4, #0xfffffe0000000000
-        and     x5, x3, #0xfffff
-        orr     x5, x5, #0xc000000000000000
-        tst     x5, #0x1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        asr     x5, x5, #1
-        add     x8, x4, #0x100, lsl #12
-        sbfx    x8, x8, #21, #21
-        mov     x11, #0x100000
-        add     x11, x11, x11, lsl #21
-        add     x9, x4, x11
-        asr     x9, x9, #42
-        add     x10, x5, #0x100, lsl #12
-        sbfx    x10, x10, #21, #21
-        add     x11, x5, x11
-        asr     x11, x11, #42
-        mul     x6, x8, x2
-        mul     x7, x9, x3
-        mul     x2, x10, x2
-        mul     x3, x11, x3
-        add     x4, x6, x7
-        add     x5, x2, x3
-        asr     x2, x4, #20
-        asr     x3, x5, #20
-        and     x4, x2, #0xfffff
-        orr     x4, x4, #0xfffffe0000000000
-        and     x5, x3, #0xfffff
-        orr     x5, x5, #0xc000000000000000
-        tst     x5, #0x1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        asr     x5, x5, #1
-        add     x12, x4, #0x100, lsl #12
-        sbfx    x12, x12, #21, #21
-        mov     x15, #0x100000
-        add     x15, x15, x15, lsl #21
-        add     x13, x4, x15
-        asr     x13, x13, #42
-        add     x14, x5, #0x100, lsl #12
-        sbfx    x14, x14, #21, #21
-        add     x15, x5, x15
-        asr     x15, x15, #42
-        mul     x6, x12, x2
-        mul     x7, x13, x3
-        mul     x2, x14, x2
-        mul     x3, x15, x3
-        add     x4, x6, x7
-        add     x5, x2, x3
-        asr     x2, x4, #20
-        asr     x3, x5, #20
-        and     x4, x2, #0xfffff
-        orr     x4, x4, #0xfffffe0000000000
-        and     x5, x3, #0xfffff
-        orr     x5, x5, #0xc000000000000000
-        tst     x5, #0x1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        mul     x2, x12, x8
-        mul     x3, x12, x9
-        mul     x6, x14, x8
-        mul     x7, x14, x9
-        madd    x8, x13, x10, x2
-        madd    x9, x13, x11, x3
-        madd    x16, x15, x10, x6
-        madd    x17, x15, x11, x7
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        tst     x5, #0x2
-        asr     x5, x5, #1
-        csel    x6, x4, xzr, ne
-        ccmp    x1, xzr, #0x8, ne
-        cneg    x1, x1, ge
-        cneg    x6, x6, ge
-        csel    x4, x5, x4, ge
-        add     x5, x5, x6
-        add     x1, x1, #0x2
-        asr     x5, x5, #1
-        add     x12, x4, #0x100, lsl #12
-        sbfx    x12, x12, #22, #21
-        mov     x15, #0x100000
-        add     x15, x15, x15, lsl #21
-        add     x13, x4, x15
-        asr     x13, x13, #43
-        add     x14, x5, #0x100, lsl #12
-        sbfx    x14, x14, #22, #21
-        add     x15, x5, x15
-        asr     x15, x15, #43
-        mneg    x2, x12, x8
-        mneg    x3, x12, x9
-        mneg    x4, x14, x8
-        mneg    x5, x14, x9
-        msub    x10, x13, x16, x2
-        msub    x11, x13, x17, x3
-        msub    x12, x15, x16, x4
-        msub    x13, x15, x17, x5
-        mov     x22, x1
-        subs    x21, x21, #0x1
-        b.ne    curve25519_x25519base_alt_invloop
-        ldr     x0, [sp]
-        ldr     x1, [sp, #32]
-        mul     x0, x0, x10
-        madd    x1, x1, x11, x0
-        asr     x0, x1, #63
-        cmp     x10, xzr
-        csetm   x14, mi
-        cneg    x10, x10, mi
-        eor     x14, x14, x0
-        cmp     x11, xzr
-        csetm   x15, mi
-        cneg    x11, x11, mi
-        eor     x15, x15, x0
-        cmp     x12, xzr
-        csetm   x16, mi
-        cneg    x12, x12, mi
-        eor     x16, x16, x0
-        cmp     x13, xzr
-        csetm   x17, mi
-        cneg    x13, x13, mi
-        eor     x17, x17, x0
-        and     x0, x10, x14
-        and     x1, x11, x15
-        add     x9, x0, x1
-        ldr     x7, [sp, #64]
-        eor     x1, x7, x14
-        mul     x0, x1, x10
-        umulh   x1, x1, x10
-        adds    x4, x9, x0
-        adc     x2, xzr, x1
-        ldr     x8, [sp, #96]
-        eor     x1, x8, x15
-        mul     x0, x1, x11
-        umulh   x1, x1, x11
-        adds    x4, x4, x0
-        str     x4, [sp, #64]
-        adc     x2, x2, x1
-        ldr     x7, [sp, #72]
-        eor     x1, x7, x14
-        mul     x0, x1, x10
-        umulh   x1, x1, x10
-        adds    x2, x2, x0
-        adc     x6, xzr, x1
-        ldr     x8, [sp, #104]
-        eor     x1, x8, x15
-        mul     x0, x1, x11
-        umulh   x1, x1, x11
-        adds    x2, x2, x0
-        str     x2, [sp, #72]
-        adc     x6, x6, x1
-        ldr     x7, [sp, #80]
-        eor     x1, x7, x14
-        mul     x0, x1, x10
-        umulh   x1, x1, x10
-        adds    x6, x6, x0
-        adc     x5, xzr, x1
-        ldr     x8, [sp, #112]
-        eor     x1, x8, x15
-        mul     x0, x1, x11
-        umulh   x1, x1, x11
-        adds    x6, x6, x0
-        str     x6, [sp, #80]
-        adc     x5, x5, x1
-        ldr     x7, [sp, #88]
-        eor     x1, x7, x14
-        and     x3, x14, x10
-        neg     x3, x3
-        mul     x0, x1, x10
-        umulh   x1, x1, x10
-        adds    x5, x5, x0
-        adc     x3, x3, x1
-        ldr     x8, [sp, #120]
-        eor     x1, x8, x15
-        and     x0, x15, x11
-        sub     x3, x3, x0
-        mul     x0, x1, x11
-        umulh   x1, x1, x11
-        adds    x5, x5, x0
-        adc     x3, x3, x1
-        extr    x6, x3, x5, #63
-        ldp     x0, x1, [sp, #64]
-        tst     x3, x3
-        cinc    x6, x6, pl
-        mov     x3, #0x13
-        mul     x4, x6, x3
-        add     x5, x5, x6, lsl #63
-        smulh   x6, x6, x3
-        ldr     x2, [sp, #80]
-        adds    x0, x0, x4
-        adcs    x1, x1, x6
-        asr     x6, x6, #63
-        adcs    x2, x2, x6
-        adcs    x5, x5, x6
-        csel    x3, x3, xzr, mi
-        subs    x0, x0, x3
-        sbcs    x1, x1, xzr
-        sbcs    x2, x2, xzr
-        sbc     x5, x5, xzr
-        and     x5, x5, #0x7fffffffffffffff
-        mov     x4, x20
-        stp     x0, x1, [x4]
-        stp     x2, x5, [x4, #16]
+        movq    %rdi, 0xc0(%rsp)
+        xorl    %eax, %eax
+        leaq    -0x13(%rax), %rcx
+        notq    %rax
+        movq    %rcx, (%rsp)
+        movq    %rax, 0x8(%rsp)
+        movq    %rax, 0x10(%rsp)
+        btr     $0x3f, %rax
+        movq    %rax, 0x18(%rsp)
+        movq    (%rsi), %rdx
+        movq    0x8(%rsi), %rcx
+        movq    0x10(%rsi), %r8
+        movq    0x18(%rsi), %r9
+        movl    $0x1, %eax
+        xorl    %r10d, %r10d
+        bts     $0x3f, %r9
+        adcq    %r10, %rax
+        imulq   $0x13, %rax, %rax
+        addq    %rax, %rdx
+        adcq    %r10, %rcx
+        adcq    %r10, %r8
+        adcq    %r10, %r9
+        movl    $0x13, %eax
+        cmovbq  %r10, %rax
+        subq    %rax, %rdx
+        sbbq    %r10, %rcx
+        sbbq    %r10, %r8
+        sbbq    %r10, %r9
+        btr     $0x3f, %r9
+        movq    %rdx, 0x20(%rsp)
+        movq    %rcx, 0x28(%rsp)
+        movq    %r8, 0x30(%rsp)
+        movq    %r9, 0x38(%rsp)
+        xorl    %eax, %eax
+        movq    %rax, 0x40(%rsp)
+        movq    %rax, 0x48(%rsp)
+        movq    %rax, 0x50(%rsp)
+        movq    %rax, 0x58(%rsp)
+        movabsq $0xa0f99e2375022099, %rax
+        movq    %rax, 0x60(%rsp)
+        movabsq $0xa8c68f3f1d132595, %rax
+        movq    %rax, 0x68(%rsp)
+        movabsq $0x6c6c893805ac5242, %rax
+        movq    %rax, 0x70(%rsp)
+        movabsq $0x276508b241770615, %rax
+        movq    %rax, 0x78(%rsp)
+        movq    $0xa,  0x90(%rsp)
+        movq    $0x1,  0x98(%rsp)
+        jmp     edwards25519_scalarmulbase_alt_midloop
+edwards25519_scalarmulbase_alt_inverseloop:
+        movq    %r8, %r9
+        sarq    $0x3f, %r9
+        xorq    %r9, %r8
+        subq    %r9, %r8
+        movq    %r10, %r11
+        sarq    $0x3f, %r11
+        xorq    %r11, %r10
+        subq    %r11, %r10
+        movq    %r12, %r13
+        sarq    $0x3f, %r13
+        xorq    %r13, %r12
+        subq    %r13, %r12
+        movq    %r14, %r15
+        sarq    $0x3f, %r15
+        xorq    %r15, %r14
+        subq    %r15, %r14
+        movq    %r8, %rax
+        andq    %r9, %rax
+        movq    %r10, %rdi
+        andq    %r11, %rdi
+        addq    %rax, %rdi
+        movq    %rdi, 0x80(%rsp)
+        movq    %r12, %rax
+        andq    %r13, %rax
+        movq    %r14, %rsi
+        andq    %r15, %rsi
+        addq    %rax, %rsi
+        movq    %rsi, 0x88(%rsp)
+        xorl    %ebx, %ebx
+        movq    (%rsp), %rax
+        xorq    %r9, %rax
+        mulq    %r8
+        addq    %rax, %rdi
+        adcq    %rdx, %rbx
+        movq    0x20(%rsp), %rax
+        xorq    %r11, %rax
+        mulq    %r10
+        addq    %rax, %rdi
+        adcq    %rdx, %rbx
+        xorl    %ebp, %ebp
+        movq    (%rsp), %rax
+        xorq    %r13, %rax
+        mulq    %r12
+        addq    %rax, %rsi
+        adcq    %rdx, %rbp
+        movq    0x20(%rsp), %rax
+        xorq    %r15, %rax
+        mulq    %r14
+        addq    %rax, %rsi
+        adcq    %rdx, %rbp
+        xorl    %ecx, %ecx
+        movq    0x8(%rsp), %rax
+        xorq    %r9, %rax
+        mulq    %r8
+        addq    %rax, %rbx
+        adcq    %rdx, %rcx
+        movq    0x28(%rsp), %rax
+        xorq    %r11, %rax
+        mulq    %r10
+        addq    %rax, %rbx
+        adcq    %rdx, %rcx
+        shrdq   $0x3b, %rbx, %rdi
+        movq    %rdi, (%rsp)
+        xorl    %edi, %edi
+        movq    0x8(%rsp), %rax
+        xorq    %r13, %rax
+        mulq    %r12
+        addq    %rax, %rbp
+        adcq    %rdx, %rdi
+        movq    0x28(%rsp), %rax
+        xorq    %r15, %rax
+        mulq    %r14
+        addq    %rax, %rbp
+        adcq    %rdx, %rdi
+        shrdq   $0x3b, %rbp, %rsi
+        movq    %rsi, 0x20(%rsp)
+        xorl    %esi, %esi
+        movq    0x10(%rsp), %rax
+        xorq    %r9, %rax
+        mulq    %r8
+        addq    %rax, %rcx
+        adcq    %rdx, %rsi
+        movq    0x30(%rsp), %rax
+        xorq    %r11, %rax
+        mulq    %r10
+        addq    %rax, %rcx
+        adcq    %rdx, %rsi
+        shrdq   $0x3b, %rcx, %rbx
+        movq    %rbx, 0x8(%rsp)
+        xorl    %ebx, %ebx
+        movq    0x10(%rsp), %rax
+        xorq    %r13, %rax
+        mulq    %r12
+        addq    %rax, %rdi
+        adcq    %rdx, %rbx
+        movq    0x30(%rsp), %rax
+        xorq    %r15, %rax
+        mulq    %r14
+        addq    %rax, %rdi
+        adcq    %rdx, %rbx
+        shrdq   $0x3b, %rdi, %rbp
+        movq    %rbp, 0x28(%rsp)
+        movq    0x18(%rsp), %rax
+        xorq    %r9, %rax
+        movq    %rax, %rbp
+        sarq    $0x3f, %rbp
+        andq    %r8, %rbp
+        negq    %rbp
+        mulq    %r8
+        addq    %rax, %rsi
+        adcq    %rdx, %rbp
+        movq    0x38(%rsp), %rax
+        xorq    %r11, %rax
+        movq    %rax, %rdx
+        sarq    $0x3f, %rdx
+        andq    %r10, %rdx
+        subq    %rdx, %rbp
+        mulq    %r10
+        addq    %rax, %rsi
+        adcq    %rdx, %rbp
+        shrdq   $0x3b, %rsi, %rcx
+        movq    %rcx, 0x10(%rsp)
+        shrdq   $0x3b, %rbp, %rsi
+        movq    0x18(%rsp), %rax
+        movq    %rsi, 0x18(%rsp)
+        xorq    %r13, %rax
+        movq    %rax, %rsi
+        sarq    $0x3f, %rsi
+        andq    %r12, %rsi
+        negq    %rsi
+        mulq    %r12
+        addq    %rax, %rbx
+        adcq    %rdx, %rsi
+        movq    0x38(%rsp), %rax
+        xorq    %r15, %rax
+        movq    %rax, %rdx
+        sarq    $0x3f, %rdx
+        andq    %r14, %rdx
+        subq    %rdx, %rsi
+        mulq    %r14
+        addq    %rax, %rbx
+        adcq    %rdx, %rsi
+        shrdq   $0x3b, %rbx, %rdi
+        movq    %rdi, 0x30(%rsp)
+        shrdq   $0x3b, %rsi, %rbx
+        movq    %rbx, 0x38(%rsp)
+        movq    0x80(%rsp), %rbx
+        movq    0x88(%rsp), %rbp
+        xorl    %ecx, %ecx
+        movq    0x40(%rsp), %rax
+        xorq    %r9, %rax
+        mulq    %r8
+        addq    %rax, %rbx
+        adcq    %rdx, %rcx
+        movq    0x60(%rsp), %rax
+        xorq    %r11, %rax
+        mulq    %r10
+        addq    %rax, %rbx
+        adcq    %rdx, %rcx
+        xorl    %esi, %esi
+        movq    0x40(%rsp), %rax
+        xorq    %r13, %rax
+        mulq    %r12
+        movq    %rbx, 0x40(%rsp)
+        addq    %rax, %rbp
+        adcq    %rdx, %rsi
+        movq    0x60(%rsp), %rax
+        xorq    %r15, %rax
+        mulq    %r14
+        addq    %rax, %rbp
+        adcq    %rdx, %rsi
+        movq    %rbp, 0x60(%rsp)
+        xorl    %ebx, %ebx
+        movq    0x48(%rsp), %rax
+        xorq    %r9, %rax
+        mulq    %r8
+        addq    %rax, %rcx
+        adcq    %rdx, %rbx
+        movq    0x68(%rsp), %rax
+        xorq    %r11, %rax
+        mulq    %r10
+        addq    %rax, %rcx
+        adcq    %rdx, %rbx
+        xorl    %ebp, %ebp
+        movq    0x48(%rsp), %rax
+        xorq    %r13, %rax
+        mulq    %r12
+        movq    %rcx, 0x48(%rsp)
+        addq    %rax, %rsi
+        adcq    %rdx, %rbp
+        movq    0x68(%rsp), %rax
+        xorq    %r15, %rax
+        mulq    %r14
+        addq    %rax, %rsi
+        adcq    %rdx, %rbp
+        movq    %rsi, 0x68(%rsp)
+        xorl    %ecx, %ecx
+        movq    0x50(%rsp), %rax
+        xorq    %r9, %rax
+        mulq    %r8
+        addq    %rax, %rbx
+        adcq    %rdx, %rcx
+        movq    0x70(%rsp), %rax
+        xorq    %r11, %rax
+        mulq    %r10
+        addq    %rax, %rbx
+        adcq    %rdx, %rcx
+        xorl    %esi, %esi
+        movq    0x50(%rsp), %rax
+        xorq    %r13, %rax
+        mulq    %r12
+        movq    %rbx, 0x50(%rsp)
+        addq    %rax, %rbp
+        adcq    %rdx, %rsi
+        movq    0x70(%rsp), %rax
+        xorq    %r15, %rax
+        mulq    %r14
+        addq    %rax, %rbp
+        adcq    %rdx, %rsi
+        movq    %rbp, 0x70(%rsp)
+        movq    0x58(%rsp), %rax
+        xorq    %r9, %rax
+        movq    %r9, %rbx
+        andq    %r8, %rbx
+        negq    %rbx
+        mulq    %r8
+        addq    %rax, %rcx
+        adcq    %rdx, %rbx
+        movq    0x78(%rsp), %rax
+        xorq    %r11, %rax
+        movq    %r11, %rdx
+        andq    %r10, %rdx
+        subq    %rdx, %rbx
+        mulq    %r10
+        addq    %rax, %rcx
+        adcq    %rbx, %rdx
+        movq    %rdx, %rbx
+        shldq   $0x1, %rcx, %rdx
+        sarq    $0x3f, %rbx
+        addq    %rbx, %rdx
+        movl    $0x13, %eax
+        imulq   %rdx
+        movq    0x40(%rsp), %r8
+        addq    %rax, %r8
+        movq    %r8, 0x40(%rsp)
+        movq    0x48(%rsp), %r8
+        adcq    %rdx, %r8
+        movq    %r8, 0x48(%rsp)
+        movq    0x50(%rsp), %r8
+        adcq    %rbx, %r8
+        movq    %r8, 0x50(%rsp)
+        adcq    %rbx, %rcx
+        shlq    $0x3f, %rax
+        addq    %rax, %rcx
+        movq    0x58(%rsp), %rax
+        movq    %rcx, 0x58(%rsp)
+        xorq    %r13, %rax
+        movq    %r13, %rcx
+        andq    %r12, %rcx
+        negq    %rcx
+        mulq    %r12
+        addq    %rax, %rsi
+        adcq    %rdx, %rcx
+        movq    0x78(%rsp), %rax
+        xorq    %r15, %rax
+        movq    %r15, %rdx
+        andq    %r14, %rdx
+        subq    %rdx, %rcx
+        mulq    %r14
+        addq    %rax, %rsi
+        adcq    %rcx, %rdx
+        movq    %rdx, %rcx
+        shldq   $0x1, %rsi, %rdx
+        sarq    $0x3f, %rcx
+        movl    $0x13, %eax
+        addq    %rcx, %rdx
+        imulq   %rdx
+        movq    0x60(%rsp), %r8
+        addq    %rax, %r8
+        movq    %r8, 0x60(%rsp)
+        movq    0x68(%rsp), %r8
+        adcq    %rdx, %r8
+        movq    %r8, 0x68(%rsp)
+        movq    0x70(%rsp), %r8
+        adcq    %rcx, %r8
+        movq    %r8, 0x70(%rsp)
+        adcq    %rcx, %rsi
+        shlq    $0x3f, %rax
+        addq    %rax, %rsi
+        movq    %rsi, 0x78(%rsp)
+edwards25519_scalarmulbase_alt_midloop:
+        movq    0x98(%rsp), %rsi
+        movq    (%rsp), %rdx
+        movq    0x20(%rsp), %rcx
+        movq    %rdx, %rbx
+        andq    $0xfffff, %rbx
+        movabsq $0xfffffe0000000000, %rax
+        orq     %rax, %rbx
+        andq    $0xfffff, %rcx
+        movabsq $0xc000000000000000, %rax
+        orq     %rax, %rcx
+        movq    $0xfffffffffffffffe, %rax
+        xorl    %ebp, %ebp
+        movl    $0x2, %edx
+        movq    %rbx, %rdi
+        movq    %rax, %r8
+        testq   %rsi, %rsi
+        cmovs   %rbp, %r8
+        testq   $0x1, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        sarq    $1, %rcx
+        movl    $0x100000, %eax
+        leaq    (%rbx,%rax), %rdx
+        leaq    (%rcx,%rax), %rdi
+        shlq    $0x16, %rdx
+        shlq    $0x16, %rdi
+        sarq    $0x2b, %rdx
+        sarq    $0x2b, %rdi
+        movabsq $0x20000100000, %rax
+        leaq    (%rbx,%rax), %rbx
+        leaq    (%rcx,%rax), %rcx
+        sarq    $0x2a, %rbx
+        sarq    $0x2a, %rcx
+        movq    %rdx, 0xa0(%rsp)
+        movq    %rbx, 0xa8(%rsp)
+        movq    %rdi, 0xb0(%rsp)
+        movq    %rcx, 0xb8(%rsp)
+        movq    (%rsp), %r12
+        imulq   %r12, %rdi
+        imulq   %rdx, %r12
+        movq    0x20(%rsp), %r13
+        imulq   %r13, %rbx
+        imulq   %rcx, %r13
+        addq    %rbx, %r12
+        addq    %rdi, %r13
+        sarq    $0x14, %r12
+        sarq    $0x14, %r13
+        movq    %r12, %rbx
+        andq    $0xfffff, %rbx
+        movabsq $0xfffffe0000000000, %rax
+        orq     %rax, %rbx
+        movq    %r13, %rcx
+        andq    $0xfffff, %rcx
+        movabsq $0xc000000000000000, %rax
+        orq     %rax, %rcx
+        movq    $0xfffffffffffffffe, %rax
+        movl    $0x2, %edx
+        movq    %rbx, %rdi
+        movq    %rax, %r8
+        testq   %rsi, %rsi
+        cmovs   %rbp, %r8
+        testq   $0x1, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        sarq    $1, %rcx
+        movl    $0x100000, %eax
+        leaq    (%rbx,%rax), %r8
+        leaq    (%rcx,%rax), %r10
+        shlq    $0x16, %r8
+        shlq    $0x16, %r10
+        sarq    $0x2b, %r8
+        sarq    $0x2b, %r10
+        movabsq $0x20000100000, %rax
+        leaq    (%rbx,%rax), %r15
+        leaq    (%rcx,%rax), %r11
+        sarq    $0x2a, %r15
+        sarq    $0x2a, %r11
+        movq    %r13, %rbx
+        movq    %r12, %rcx
+        imulq   %r8, %r12
+        imulq   %r15, %rbx
+        addq    %rbx, %r12
+        imulq   %r11, %r13
+        imulq   %r10, %rcx
+        addq    %rcx, %r13
+        sarq    $0x14, %r12
+        sarq    $0x14, %r13
+        movq    %r12, %rbx
+        andq    $0xfffff, %rbx
+        movabsq $0xfffffe0000000000, %rax
+        orq     %rax, %rbx
+        movq    %r13, %rcx
+        andq    $0xfffff, %rcx
+        movabsq $0xc000000000000000, %rax
+        orq     %rax, %rcx
+        movq    0xa0(%rsp), %rax
+        imulq   %r8, %rax
+        movq    0xb0(%rsp), %rdx
+        imulq   %r15, %rdx
+        imulq   0xa8(%rsp), %r8
+        imulq   0xb8(%rsp), %r15
+        addq    %r8, %r15
+        leaq    (%rax,%rdx), %r9
+        movq    0xa0(%rsp), %rax
+        imulq   %r10, %rax
+        movq    0xb0(%rsp), %rdx
+        imulq   %r11, %rdx
+        imulq   0xa8(%rsp), %r10
+        imulq   0xb8(%rsp), %r11
+        addq    %r10, %r11
+        leaq    (%rax,%rdx), %r13
+        movq    $0xfffffffffffffffe, %rax
+        movl    $0x2, %edx
+        movq    %rbx, %rdi
+        movq    %rax, %r8
+        testq   %rsi, %rsi
+        cmovs   %rbp, %r8
+        testq   $0x1, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        cmovs   %rbp, %r8
+        movq    %rbx, %rdi
+        testq   %rdx, %rcx
+        cmoveq  %rbp, %r8
+        cmoveq  %rbp, %rdi
+        sarq    $1, %rcx
+        xorq    %r8, %rdi
+        xorq    %r8, %rsi
+        btq     $0x3f, %r8
+        cmovbq  %rcx, %rbx
+        movq    %rax, %r8
+        subq    %rax, %rsi
+        leaq    (%rcx,%rdi), %rcx
+        sarq    $1, %rcx
+        movl    $0x100000, %eax
+        leaq    (%rbx,%rax), %r8
+        leaq    (%rcx,%rax), %r12
+        shlq    $0x15, %r8
+        shlq    $0x15, %r12
+        sarq    $0x2b, %r8
+        sarq    $0x2b, %r12
+        movabsq $0x20000100000, %rax
+        leaq    (%rbx,%rax), %r10
+        leaq    (%rcx,%rax), %r14
+        sarq    $0x2b, %r10
+        sarq    $0x2b, %r14
+        movq    %r9, %rax
+        imulq   %r8, %rax
+        movq    %r13, %rdx
+        imulq   %r10, %rdx
+        imulq   %r15, %r8
+        imulq   %r11, %r10
+        addq    %r8, %r10
+        leaq    (%rax,%rdx), %r8
+        movq    %r9, %rax
+        imulq   %r12, %rax
+        movq    %r13, %rdx
+        imulq   %r14, %rdx
+        imulq   %r15, %r12
+        imulq   %r11, %r14
+        addq    %r12, %r14
+        leaq    (%rax,%rdx), %r12
+        movq    %rsi, 0x98(%rsp)
+        decq     0x90(%rsp)
+        jne     edwards25519_scalarmulbase_alt_inverseloop
+        movq    (%rsp), %rax
+        movq    0x20(%rsp), %rcx
+        imulq   %r8, %rax
+        imulq   %r10, %rcx
+        addq    %rcx, %rax
+        sarq    $0x3f, %rax
+        movq    %r8, %r9
+        sarq    $0x3f, %r9
+        xorq    %r9, %r8
+        subq    %r9, %r8
+        xorq    %rax, %r9
+        movq    %r10, %r11
+        sarq    $0x3f, %r11
+        xorq    %r11, %r10
+        subq    %r11, %r10
+        xorq    %rax, %r11
+        movq    %r12, %r13
+        sarq    $0x3f, %r13
+        xorq    %r13, %r12
+        subq    %r13, %r12
+        xorq    %rax, %r13
+        movq    %r14, %r15
+        sarq    $0x3f, %r15
+        xorq    %r15, %r14
+        subq    %r15, %r14
+        xorq    %rax, %r15
+        movq    %r8, %rax
+        andq    %r9, %rax
+        movq    %r10, %r12
+        andq    %r11, %r12
+        addq    %rax, %r12
+        xorl    %r13d, %r13d
+        movq    0x40(%rsp), %rax
+        xorq    %r9, %rax
+        mulq    %r8
+        addq    %rax, %r12
+        adcq    %rdx, %r13
+        movq    0x60(%rsp), %rax
+        xorq    %r11, %rax
+        mulq    %r10
+        addq    %rax, %r12
+        adcq    %rdx, %r13
+        xorl    %r14d, %r14d
+        movq    0x48(%rsp), %rax
+        xorq    %r9, %rax
+        mulq    %r8
+        addq    %rax, %r13
+        adcq    %rdx, %r14
+        movq    0x68(%rsp), %rax
+        xorq    %r11, %rax
+        mulq    %r10
+        addq    %rax, %r13
+        adcq    %rdx, %r14
+        xorl    %r15d, %r15d
+        movq    0x50(%rsp), %rax
+        xorq    %r9, %rax
+        mulq    %r8
+        addq    %rax, %r14
+        adcq    %rdx, %r15
+        movq    0x70(%rsp), %rax
+        xorq    %r11, %rax
+        mulq    %r10
+        addq    %rax, %r14
+        adcq    %rdx, %r15
+        movq    0x58(%rsp), %rax
+        xorq    %r9, %rax
+        andq    %r8, %r9
+        negq    %r9
+        mulq    %r8
+        addq    %rax, %r15
+        adcq    %rdx, %r9
+        movq    0x78(%rsp), %rax
+        xorq    %r11, %rax
+        movq    %r11, %rdx
+        andq    %r10, %rdx
+        subq    %rdx, %r9
+        mulq    %r10
+        addq    %rax, %r15
+        adcq    %rdx, %r9
+        movq    %r9, %rax
+        shldq   $0x1, %r15, %rax
+        sarq    $0x3f, %r9
+        movl    $0x13, %ebx
+        leaq    0x1(%rax,%r9,1), %rax
+        imulq   %rbx
+        xorl    %ebp, %ebp
+        addq    %rax, %r12
+        adcq    %rdx, %r13
+        adcq    %r9, %r14
+        adcq    %r9, %r15
+        shlq    $0x3f, %rax
+        addq    %rax, %r15
+        cmovns  %rbp, %rbx
+        subq    %rbx, %r12
+        sbbq    %rbp, %r13
+        sbbq    %rbp, %r14
+        sbbq    %rbp, %r15
+        btr     $0x3f, %r15
+        movq    0xc0(%rsp), %rdi
+        movq    %r12, (%rdi)
+        movq    %r13, 0x8(%rdi)
+        movq    %r14, 0x10(%rdi)
+        movq    %r15, 0x18(%rdi)
 
-// The final result is (X + T) / (X - T)
-// This is the only operation in the whole computation that
-// fully reduces modulo p_25519 since now we want the canonical
+// The final result is x = X * inv(Z), y = Y * inv(Z).
+// These are the only operations in the whole computation that
+// fully reduce modulo p_25519 since now we want the canonical
 // answer as output.
 
-        mul_p25519(resx,t1,t0)
+        movq    res, %rbp
+        mul_p25519(resx,x_3,w_3)
+        mul_p25519(resy,y_3,w_3)
 
 // Restore stack and registers
 
-        add     sp, sp, #NSPACE
-        ldp     x23, x24, [sp], 16
-        ldp     x21, x22, [sp], 16
-        ldp     x19, x20, [sp], 16
+        addq    $NSPACE, %rsp
 
+        popq    %r15
+        popq    %r14
+        popq    %r13
+        popq    %r12
+        popq    %rbp
+        popq    %rbx
         ret
 
 // ****************************************************************************
@@ -1819,47 +2381,165 @@ curve25519_x25519base_alt_invmidloop:
 // .section .rodata
 // ****************************************************************************
 
-// 2^254 * G and (2^254 + 8) * G in extended-projective coordinates
+// 0 * B = 0 and 2^251 * B in extended-projective coordinates
 // but with Z = 1 assumed and hence left out, so they are (X,Y,T) only.
 
-curve25519_x25519base_alt_edwards25519_0g:
+edwards25519_scalarmulbase_alt_0g:
 
-        .quad   0x251037f7cf4e861d
-        .quad   0x10ede0fb19fb128f
-        .quad   0x96c033b175f5e2c8
-        .quad   0x055f070d6c15fb0d
+        .quad   0x0000000000000000
+        .quad   0x0000000000000000
+        .quad   0x0000000000000000
+        .quad   0x0000000000000000
 
-        .quad   0x7c52af2c97473e69
-        .quad   0x022f82391bad8378
-        .quad   0x9991e1b02adb476f
-        .quad   0x511144a03a99b855
+        .quad   0x0000000000000001
+        .quad   0x0000000000000000
+        .quad   0x0000000000000000
+        .quad   0x0000000000000000
 
-        .quad   0x5fafc3b88ff2e4ae
-        .quad   0x855e4ff0de1230ff
-        .quad   0x72e302a348492870
-        .quad   0x1253c19e53dbe1bc
+        .quad   0x0000000000000000
+        .quad   0x0000000000000000
+        .quad   0x0000000000000000
+        .quad   0x0000000000000000
 
-curve25519_x25519base_alt_edwards25519_8g:
+edwards25519_scalarmulbase_alt_251g:
 
-        .quad   0x331d086e0d9abcaa
-        .quad   0x1e23c96d311a10c9
-        .quad   0x96d0f95e58c13478
-        .quad   0x2f72f7384fcfcc59
-
-        .quad   0x39a6cd1cfd7d87c9
-        .quad   0x9867a0abd8ae153a
-        .quad   0xa49d2a5f35986745
-        .quad   0x57012940cdfe82e1
-
-        .quad   0x5046a6532ec5544a
-        .quad   0x6d674004739ff6c9
-        .quad   0x9bbaa44b234a70e3
-        .quad   0x5e6d8901138cf386
+        .quad   0x525f946d7c7220e7
+        .quad   0x4636b0b2f1e35444
+        .quad   0x796e9d70e892ae0f
+        .quad   0x03dec05fa937adb1
+        .quad   0x6d1c271cc6375515
+        .quad   0x462588c4a4ca4f14
+        .quad   0x691129fee55afc39
+        .quad   0x15949f784d8472f5
+        .quad   0xbd89e510afad0049
+        .quad   0x4d1f08c073b9860e
+        .quad   0x07716e8b2d00af9d
+        .quad   0x70d685f68f859714
 
 // Precomputed table of multiples of generator for edwards25519
 // all in precomputed extended-projective (y-x,x+y,2*d*x*y) triples.
 
-curve25519_x25519base_alt_edwards25519_gtable:
+edwards25519_scalarmulbase_alt_gtable:
+
+        // 2^0 * 1 * G
+
+        .quad   0x9d103905d740913e
+        .quad   0xfd399f05d140beb3
+        .quad   0xa5c18434688f8a09
+        .quad   0x44fd2f9298f81267
+        .quad   0x2fbc93c6f58c3b85
+        .quad   0xcf932dc6fb8c0e19
+        .quad   0x270b4898643d42c2
+        .quad   0x07cf9d3a33d4ba65
+        .quad   0xabc91205877aaa68
+        .quad   0x26d9e823ccaac49e
+        .quad   0x5a1b7dcbdd43598c
+        .quad   0x6f117b689f0c65a8
+
+        // 2^0 * 2 * G
+
+        .quad   0x8a99a56042b4d5a8
+        .quad   0x8f2b810c4e60acf6
+        .quad   0xe09e236bb16e37aa
+        .quad   0x6bb595a669c92555
+        .quad   0x9224e7fc933c71d7
+        .quad   0x9f469d967a0ff5b5
+        .quad   0x5aa69a65e1d60702
+        .quad   0x590c063fa87d2e2e
+        .quad   0x43faa8b3a59b7a5f
+        .quad   0x36c16bdd5d9acf78
+        .quad   0x500fa0840b3d6a31
+        .quad   0x701af5b13ea50b73
+
+        // 2^0 * 3 * G
+
+        .quad   0x56611fe8a4fcd265
+        .quad   0x3bd353fde5c1ba7d
+        .quad   0x8131f31a214bd6bd
+        .quad   0x2ab91587555bda62
+        .quad   0xaf25b0a84cee9730
+        .quad   0x025a8430e8864b8a
+        .quad   0xc11b50029f016732
+        .quad   0x7a164e1b9a80f8f4
+        .quad   0x14ae933f0dd0d889
+        .quad   0x589423221c35da62
+        .quad   0xd170e5458cf2db4c
+        .quad   0x5a2826af12b9b4c6
+
+        // 2^0 * 4 * G
+
+        .quad   0x95fe050a056818bf
+        .quad   0x327e89715660faa9
+        .quad   0xc3e8e3cd06a05073
+        .quad   0x27933f4c7445a49a
+        .quad   0x287351b98efc099f
+        .quad   0x6765c6f47dfd2538
+        .quad   0xca348d3dfb0a9265
+        .quad   0x680e910321e58727
+        .quad   0x5a13fbe9c476ff09
+        .quad   0x6e9e39457b5cc172
+        .quad   0x5ddbdcf9102b4494
+        .quad   0x7f9d0cbf63553e2b
+
+        // 2^0 * 5 * G
+
+        .quad   0x7f9182c3a447d6ba
+        .quad   0xd50014d14b2729b7
+        .quad   0xe33cf11cb864a087
+        .quad   0x154a7e73eb1b55f3
+        .quad   0xa212bc4408a5bb33
+        .quad   0x8d5048c3c75eed02
+        .quad   0xdd1beb0c5abfec44
+        .quad   0x2945ccf146e206eb
+        .quad   0xbcbbdbf1812a8285
+        .quad   0x270e0807d0bdd1fc
+        .quad   0xb41b670b1bbda72d
+        .quad   0x43aabe696b3bb69a
+
+        // 2^0 * 6 * G
+
+        .quad   0x499806b67b7d8ca4
+        .quad   0x575be28427d22739
+        .quad   0xbb085ce7204553b9
+        .quad   0x38b64c41ae417884
+        .quad   0x3a0ceeeb77157131
+        .quad   0x9b27158900c8af88
+        .quad   0x8065b668da59a736
+        .quad   0x51e57bb6a2cc38bd
+        .quad   0x85ac326702ea4b71
+        .quad   0xbe70e00341a1bb01
+        .quad   0x53e4a24b083bc144
+        .quad   0x10b8e91a9f0d61e3
+
+        // 2^0 * 7 * G
+
+        .quad   0xba6f2c9aaa3221b1
+        .quad   0x6ca021533bba23a7
+        .quad   0x9dea764f92192c3a
+        .quad   0x1d6edd5d2e5317e0
+        .quad   0x6b1a5cd0944ea3bf
+        .quad   0x7470353ab39dc0d2
+        .quad   0x71b2528228542e49
+        .quad   0x461bea69283c927e
+        .quad   0xf1836dc801b8b3a2
+        .quad   0xb3035f47053ea49a
+        .quad   0x529c41ba5877adf3
+        .quad   0x7a9fbb1c6a0f90a7
+
+        // 2^0 * 8 * G
+
+        .quad   0xe2a75dedf39234d9
+        .quad   0x963d7680e1b558f9
+        .quad   0x2c2741ac6e3c23fb
+        .quad   0x3a9024a1320e01c3
+        .quad   0x59b7596604dd3e8f
+        .quad   0x6cb30377e288702c
+        .quad   0xb1339c665ed9c323
+        .quad   0x0915e76061bce52f
+        .quad   0xe7c1f5d9c9a2911a
+        .quad   0xb8a371788bcca7d7
+        .quad   0x636412190eb62a32
+        .quad   0x26907c5c2ecc4e95
 
         // 2^4 * 1 * G
 
@@ -9300,126 +9980,6 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xeb848e0f7f19547e
         .quad   0x2503a1d065a497b9
         .quad   0x0fef911191df895f
-
-        // 2^252 * 1 * G
-
-        .quad   0xb1507ca1ab1c6eb9
-        .quad   0xbd448f3e16b687b3
-        .quad   0x3455fb7f2c7a91ab
-        .quad   0x7579229e2f2adec1
-        .quad   0x6ab5dcb85b1c16b7
-        .quad   0x94c0fce83c7b27a5
-        .quad   0xa4b11c1a735517be
-        .quad   0x499238d0ba0eafaa
-        .quad   0xecf46e527aba8b57
-        .quad   0x15a08c478bd1647b
-        .quad   0x7af1c6a65f706fef
-        .quad   0x6345fa78f03a30d5
-
-        // 2^252 * 2 * G
-
-        .quad   0xdf02f95f1015e7a1
-        .quad   0x790ec41da9b40263
-        .quad   0x4d3a0ea133ea1107
-        .quad   0x54f70be7e33af8c9
-        .quad   0x93d3cbe9bdd8f0a4
-        .quad   0xdb152c1bfd177302
-        .quad   0x7dbddc6d7f17a875
-        .quad   0x3e1a71cc8f426efe
-        .quad   0xc83ca3e390babd62
-        .quad   0x80ede3670291c833
-        .quad   0xc88038ccd37900c4
-        .quad   0x2c5fc0231ec31fa1
-
-        // 2^252 * 3 * G
-
-        .quad   0xfeba911717038b4f
-        .quad   0xe5123721c9deef81
-        .quad   0x1c97e4e75d0d8834
-        .quad   0x68afae7a23dc3bc6
-        .quad   0xc422e4d102456e65
-        .quad   0x87414ac1cad47b91
-        .quad   0x1592e2bba2b6ffdd
-        .quad   0x75d9d2bff5c2100f
-        .quad   0x5bd9b4763626e81c
-        .quad   0x89966936bca02edd
-        .quad   0x0a41193d61f077b3
-        .quad   0x3097a24200ce5471
-
-        // 2^252 * 4 * G
-
-        .quad   0x57427734c7f8b84c
-        .quad   0xf141a13e01b270e9
-        .quad   0x02d1adfeb4e564a6
-        .quad   0x4bb23d92ce83bd48
-        .quad   0xa162e7246695c486
-        .quad   0x131d633435a89607
-        .quad   0x30521561a0d12a37
-        .quad   0x56704bada6afb363
-        .quad   0xaf6c4aa752f912b9
-        .quad   0x5e665f6cd86770c8
-        .quad   0x4c35ac83a3c8cd58
-        .quad   0x2b7a29c010a58a7e
-
-        // 2^252 * 5 * G
-
-        .quad   0xc4007f77d0c1cec3
-        .quad   0x8d1020b6bac492f8
-        .quad   0x32ec29d57e69daaf
-        .quad   0x599408759d95fce0
-        .quad   0x33810a23bf00086e
-        .quad   0xafce925ee736ff7c
-        .quad   0x3d60e670e24922d4
-        .quad   0x11ce9e714f96061b
-        .quad   0x219ef713d815bac1
-        .quad   0xf141465d485be25c
-        .quad   0x6d5447cc4e513c51
-        .quad   0x174926be5ef44393
-
-        // 2^252 * 6 * G
-
-        .quad   0xb5deb2f9fc5bd5bb
-        .quad   0x92daa72ae1d810e1
-        .quad   0xafc4cfdcb72a1c59
-        .quad   0x497d78813fc22a24
-        .quad   0x3ef5d41593ea022e
-        .quad   0x5cbcc1a20ed0eed6
-        .quad   0x8fd24ecf07382c8c
-        .quad   0x6fa42ead06d8e1ad
-        .quad   0xe276824a1f73371f
-        .quad   0x7f7cf01c4f5b6736
-        .quad   0x7e201fe304fa46e7
-        .quad   0x785a36a357808c96
-
-        // 2^252 * 7 * G
-
-        .quad   0x825fbdfd63014d2b
-        .quad   0xc852369c6ca7578b
-        .quad   0x5b2fcd285c0b5df0
-        .quad   0x12ab214c58048c8f
-        .quad   0x070442985d517bc3
-        .quad   0x6acd56c7ae653678
-        .quad   0x00a27983985a7763
-        .quad   0x5167effae512662b
-        .quad   0xbd4ea9e10f53c4b6
-        .quad   0x1673dc5f8ac91a14
-        .quad   0xa8f81a4e2acc1aba
-        .quad   0x33a92a7924332a25
-
-        // 2^252 * 8 * G
-
-        .quad   0x9dd1f49927996c02
-        .quad   0x0cb3b058e04d1752
-        .quad   0x1f7e88967fd02c3e
-        .quad   0x2f964268cb8b3eb1
-        .quad   0x7ba95ba0218f2ada
-        .quad   0xcff42287330fb9ca
-        .quad   0xdada496d56c6d907
-        .quad   0x5380c296f4beee54
-        .quad   0x9d4f270466898d0a
-        .quad   0x3d0987990aff3f7a
-        .quad   0xd09ef36267daba45
-        .quad   0x7761455e7b1c669c
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack, "", %progbits
