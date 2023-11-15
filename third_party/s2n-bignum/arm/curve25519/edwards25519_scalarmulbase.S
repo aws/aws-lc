@@ -2,22 +2,21 @@
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
 // ----------------------------------------------------------------------------
-// The x25519 function for curve25519 on base element 9
-// Input scalar[4]; output res[4]
+// Scalar multiplication for the edwards25519 standard basepoint
+// Input scalar[4]; output res[8]
 //
-// extern void curve25519_x25519base_alt
-//   (uint64_t res[static 4],uint64_t scalar[static 4]);
+// extern void edwards25519_scalarmulbase
+//   (uint64_t res[static 8],uint64_t scalar[static 4]);
 //
-// Given a scalar n, returns the X coordinate of n * G where G = (9,...) is
-// the standard generator. The scalar is first slightly modified/mangled
-// as specified in the relevant RFC (https://www.rfc-editor.org/rfc/rfc7748).
+// Given a scalar n, returns point (X,Y) = n * B where B = (...,4/5) is
+// the standard basepoint for the edwards25519 (Ed25519) curve.
 //
 // Standard ARM ABI: X0 = res, X1 = scalar
 // ----------------------------------------------------------------------------
 #include "_internal_s2n_bignum.h"
 
-        S2N_BN_SYM_VISIBILITY_DIRECTIVE(curve25519_x25519base_alt)
-        S2N_BN_SYM_PRIVACY_DIRECTIVE(curve25519_x25519base_alt)
+        S2N_BN_SYM_VISIBILITY_DIRECTIVE(edwards25519_scalarmulbase)
+        S2N_BN_SYM_PRIVACY_DIRECTIVE(edwards25519_scalarmulbase)
 
         .text
         .balign 4
@@ -44,6 +43,7 @@
 // Pointer-offset pairs for result and temporaries on stack with some aliasing.
 
 #define resx res, #(0*NUMSIZE)
+#define resy res, #(1*NUMSIZE)
 
 #define scalar sp, #(0*NUMSIZE)
 
@@ -74,209 +74,375 @@
 
 #define NSPACE (14*NUMSIZE)
 
-// Macro wrapping up the basic field operation bignum_mul_p25519_alt, only
+// Load 64-bit immediate into a register
+
+#define movbig(nn,n3,n2,n1,n0)                                      \
+        movz    nn, n0;                                             \
+        movk    nn, n1, lsl #16;                                    \
+        movk    nn, n2, lsl #32;                                    \
+        movk    nn, n3, lsl #48
+
+// Macro wrapping up the basic field operation bignum_mul_p25519, only
 // trivially different from a pure function call to that subroutine.
 
 #define mul_p25519(P0,P1,P2)                    \
         ldp     x3, x4, [P1];                   \
-        ldp     x7, x8, [P2];                   \
-        mul     x12, x3, x7;                    \
-        umulh   x13, x3, x7;                    \
-        mul     x11, x3, x8;                    \
-        umulh   x14, x3, x8;                    \
-        adds    x13, x13, x11;                  \
-        ldp     x9, x10, [P2+16];               \
-        mul     x11, x3, x9;                    \
-        umulh   x15, x3, x9;                    \
-        adcs    x14, x14, x11;                  \
-        mul     x11, x3, x10;                   \
-        umulh   x16, x3, x10;                   \
-        adcs    x15, x15, x11;                  \
-        adc     x16, x16, xzr;                  \
-        ldp     x5, x6, [P1+16];                \
-        mul     x11, x4, x7;                    \
-        adds    x13, x13, x11;                  \
-        mul     x11, x4, x8;                    \
-        adcs    x14, x14, x11;                  \
-        mul     x11, x4, x9;                    \
-        adcs    x15, x15, x11;                  \
-        mul     x11, x4, x10;                   \
-        adcs    x16, x16, x11;                  \
-        umulh   x3, x4, x10;                    \
-        adc     x3, x3, xzr;                    \
-        umulh   x11, x4, x7;                    \
-        adds    x14, x14, x11;                  \
-        umulh   x11, x4, x8;                    \
-        adcs    x15, x15, x11;                  \
-        umulh   x11, x4, x9;                    \
-        adcs    x16, x16, x11;                  \
-        adc     x3, x3, xzr;                    \
-        mul     x11, x5, x7;                    \
-        adds    x14, x14, x11;                  \
-        mul     x11, x5, x8;                    \
-        adcs    x15, x15, x11;                  \
-        mul     x11, x5, x9;                    \
-        adcs    x16, x16, x11;                  \
-        mul     x11, x5, x10;                   \
-        adcs    x3, x3, x11;                    \
-        umulh   x4, x5, x10;                    \
-        adc     x4, x4, xzr;                    \
-        umulh   x11, x5, x7;                    \
-        adds    x15, x15, x11;                  \
-        umulh   x11, x5, x8;                    \
-        adcs    x16, x16, x11;                  \
-        umulh   x11, x5, x9;                    \
-        adcs    x3, x3, x11;                    \
-        adc     x4, x4, xzr;                    \
-        mul     x11, x6, x7;                    \
-        adds    x15, x15, x11;                  \
-        mul     x11, x6, x8;                    \
-        adcs    x16, x16, x11;                  \
-        mul     x11, x6, x9;                    \
-        adcs    x3, x3, x11;                    \
-        mul     x11, x6, x10;                   \
-        adcs    x4, x4, x11;                    \
-        umulh   x5, x6, x10;                    \
-        adc     x5, x5, xzr;                    \
-        umulh   x11, x6, x7;                    \
-        adds    x16, x16, x11;                  \
-        umulh   x11, x6, x8;                    \
-        adcs    x3, x3, x11;                    \
-        umulh   x11, x6, x9;                    \
-        adcs    x4, x4, x11;                    \
-        adc     x5, x5, xzr;                    \
-        mov     x7, #0x26;                      \
-        mul     x11, x7, x16;                   \
-        umulh   x9, x7, x16;                    \
-        adds    x12, x12, x11;                  \
-        mul     x11, x7, x3;                    \
-        umulh   x3, x7, x3;                     \
-        adcs    x13, x13, x11;                  \
-        mul     x11, x7, x4;                    \
-        umulh   x4, x7, x4;                     \
-        adcs    x14, x14, x11;                  \
-        mul     x11, x7, x5;                    \
-        umulh   x5, x7, x5;                     \
-        adcs    x15, x15, x11;                  \
-        cset    x16, cs;                        \
-        adds    x15, x15, x4;                   \
-        adc     x16, x16, x5;                   \
-        cmn     x15, x15;                       \
-        orr     x15, x15, #0x8000000000000000;  \
-        adc     x8, x16, x16;                   \
-        mov     x7, #0x13;                      \
-        madd    x11, x7, x8, x7;                \
-        adds    x12, x12, x11;                  \
-        adcs    x13, x13, x9;                   \
-        adcs    x14, x14, x3;                   \
-        adcs    x15, x15, xzr;                  \
-        csel    x7, x7, xzr, cc;                \
-        subs    x12, x12, x7;                   \
-        sbcs    x13, x13, xzr;                  \
-        sbcs    x14, x14, xzr;                  \
-        sbc     x15, x15, xzr;                  \
-        and     x15, x15, #0x7fffffffffffffff;  \
-        stp     x12, x13, [P0];                 \
-        stp     x14, x15, [P0+16]
+        ldp     x5, x6, [P2];                   \
+        umull   x7, w3, w5;                     \
+        lsr     x0, x3, #32;                    \
+        umull   x15, w0, w5;                    \
+        lsr     x16, x5, #32;                   \
+        umull   x8, w16, w0;                    \
+        umull   x16, w3, w16;                   \
+        adds    x7, x7, x15, lsl #32;           \
+        lsr     x15, x15, #32;                  \
+        adc     x8, x8, x15;                    \
+        adds    x7, x7, x16, lsl #32;           \
+        lsr     x16, x16, #32;                  \
+        adc     x8, x8, x16;                    \
+        mul     x9, x4, x6;                     \
+        umulh   x10, x4, x6;                    \
+        subs    x4, x4, x3;                     \
+        cneg    x4, x4, cc;                     \
+        csetm   x16, cc;                        \
+        adds    x9, x9, x8;                     \
+        adc     x10, x10, xzr;                  \
+        subs    x3, x5, x6;                     \
+        cneg    x3, x3, cc;                     \
+        cinv    x16, x16, cc;                   \
+        mul     x15, x4, x3;                    \
+        umulh   x3, x4, x3;                     \
+        adds    x8, x7, x9;                     \
+        adcs    x9, x9, x10;                    \
+        adc     x10, x10, xzr;                  \
+        cmn     x16, #0x1;                      \
+        eor     x15, x15, x16;                  \
+        adcs    x8, x15, x8;                    \
+        eor     x3, x3, x16;                    \
+        adcs    x9, x3, x9;                     \
+        adc     x10, x10, x16;                  \
+        ldp     x3, x4, [P1+16];                \
+        ldp     x5, x6, [P2+16];                \
+        umull   x11, w3, w5;                    \
+        lsr     x0, x3, #32;                    \
+        umull   x15, w0, w5;                    \
+        lsr     x16, x5, #32;                   \
+        umull   x12, w16, w0;                   \
+        umull   x16, w3, w16;                   \
+        adds    x11, x11, x15, lsl #32;         \
+        lsr     x15, x15, #32;                  \
+        adc     x12, x12, x15;                  \
+        adds    x11, x11, x16, lsl #32;         \
+        lsr     x16, x16, #32;                  \
+        adc     x12, x12, x16;                  \
+        mul     x13, x4, x6;                    \
+        umulh   x14, x4, x6;                    \
+        subs    x4, x4, x3;                     \
+        cneg    x4, x4, cc;                     \
+        csetm   x16, cc;                        \
+        adds    x13, x13, x12;                  \
+        adc     x14, x14, xzr;                  \
+        subs    x3, x5, x6;                     \
+        cneg    x3, x3, cc;                     \
+        cinv    x16, x16, cc;                   \
+        mul     x15, x4, x3;                    \
+        umulh   x3, x4, x3;                     \
+        adds    x12, x11, x13;                  \
+        adcs    x13, x13, x14;                  \
+        adc     x14, x14, xzr;                  \
+        cmn     x16, #0x1;                      \
+        eor     x15, x15, x16;                  \
+        adcs    x12, x15, x12;                  \
+        eor     x3, x3, x16;                    \
+        adcs    x13, x3, x13;                   \
+        adc     x14, x14, x16;                  \
+        ldp     x3, x4, [P1+16];                \
+        ldp     x15, x16, [P1];                 \
+        subs    x3, x3, x15;                    \
+        sbcs    x4, x4, x16;                    \
+        csetm   x16, cc;                        \
+        ldp     x15, x0, [P2];                  \
+        subs    x5, x15, x5;                    \
+        sbcs    x6, x0, x6;                     \
+        csetm   x0, cc;                         \
+        eor     x3, x3, x16;                    \
+        subs    x3, x3, x16;                    \
+        eor     x4, x4, x16;                    \
+        sbc     x4, x4, x16;                    \
+        eor     x5, x5, x0;                     \
+        subs    x5, x5, x0;                     \
+        eor     x6, x6, x0;                     \
+        sbc     x6, x6, x0;                     \
+        eor     x16, x0, x16;                   \
+        adds    x11, x11, x9;                   \
+        adcs    x12, x12, x10;                  \
+        adcs    x13, x13, xzr;                  \
+        adc     x14, x14, xzr;                  \
+        mul     x2, x3, x5;                     \
+        umulh   x0, x3, x5;                     \
+        mul     x15, x4, x6;                    \
+        umulh   x1, x4, x6;                     \
+        subs    x4, x4, x3;                     \
+        cneg    x4, x4, cc;                     \
+        csetm   x9, cc;                         \
+        adds    x15, x15, x0;                   \
+        adc     x1, x1, xzr;                    \
+        subs    x6, x5, x6;                     \
+        cneg    x6, x6, cc;                     \
+        cinv    x9, x9, cc;                     \
+        mul     x5, x4, x6;                     \
+        umulh   x6, x4, x6;                     \
+        adds    x0, x2, x15;                    \
+        adcs    x15, x15, x1;                   \
+        adc     x1, x1, xzr;                    \
+        cmn     x9, #0x1;                       \
+        eor     x5, x5, x9;                     \
+        adcs    x0, x5, x0;                     \
+        eor     x6, x6, x9;                     \
+        adcs    x15, x6, x15;                   \
+        adc     x1, x1, x9;                     \
+        adds    x9, x11, x7;                    \
+        adcs    x10, x12, x8;                   \
+        adcs    x11, x13, x11;                  \
+        adcs    x12, x14, x12;                  \
+        adcs    x13, x13, xzr;                  \
+        adc     x14, x14, xzr;                  \
+        cmn     x16, #0x1;                      \
+        eor     x2, x2, x16;                    \
+        adcs    x9, x2, x9;                     \
+        eor     x0, x0, x16;                    \
+        adcs    x10, x0, x10;                   \
+        eor     x15, x15, x16;                  \
+        adcs    x11, x15, x11;                  \
+        eor     x1, x1, x16;                    \
+        adcs    x12, x1, x12;                   \
+        adcs    x13, x13, x16;                  \
+        adc     x14, x14, x16;                  \
+        mov     x3, #0x26;                      \
+        umull   x4, w11, w3;                    \
+        add     x4, x4, w7, uxtw;               \
+        lsr     x7, x7, #32;                    \
+        lsr     x11, x11, #32;                  \
+        umaddl  x11, w11, w3, x7;               \
+        mov     x7, x4;                         \
+        umull   x4, w12, w3;                    \
+        add     x4, x4, w8, uxtw;               \
+        lsr     x8, x8, #32;                    \
+        lsr     x12, x12, #32;                  \
+        umaddl  x12, w12, w3, x8;               \
+        mov     x8, x4;                         \
+        umull   x4, w13, w3;                    \
+        add     x4, x4, w9, uxtw;               \
+        lsr     x9, x9, #32;                    \
+        lsr     x13, x13, #32;                  \
+        umaddl  x13, w13, w3, x9;               \
+        mov     x9, x4;                         \
+        umull   x4, w14, w3;                    \
+        add     x4, x4, w10, uxtw;              \
+        lsr     x10, x10, #32;                  \
+        lsr     x14, x14, #32;                  \
+        umaddl  x14, w14, w3, x10;              \
+        mov     x10, x4;                        \
+        lsr     x0, x14, #31;                   \
+        mov     x5, #0x13;                      \
+        umaddl  x5, w5, w0, x5;                 \
+        add     x7, x7, x5;                     \
+        adds    x7, x7, x11, lsl #32;           \
+        extr    x3, x12, x11, #32;              \
+        adcs    x8, x8, x3;                     \
+        extr    x3, x13, x12, #32;              \
+        adcs    x9, x9, x3;                     \
+        extr    x3, x14, x13, #32;              \
+        lsl     x5, x0, #63;                    \
+        eor     x10, x10, x5;                   \
+        adc     x10, x10, x3;                   \
+        mov     x3, #0x13;                      \
+        tst     x10, #0x8000000000000000;       \
+        csel    x3, x3, xzr, pl;                \
+        subs    x7, x7, x3;                     \
+        sbcs    x8, x8, xzr;                    \
+        sbcs    x9, x9, xzr;                    \
+        sbc     x10, x10, xzr;                  \
+        and     x10, x10, #0x7fffffffffffffff;  \
+        stp     x7, x8, [P0];                   \
+        stp     x9, x10, [P0+16]
 
 // A version of multiplication that only guarantees output < 2 * p_25519.
 // This basically skips the +1 and final correction in quotient estimation.
 
 #define mul_4(P0,P1,P2)                         \
         ldp     x3, x4, [P1];                   \
-        ldp     x7, x8, [P2];                   \
-        mul     x12, x3, x7;                    \
-        umulh   x13, x3, x7;                    \
-        mul     x11, x3, x8;                    \
-        umulh   x14, x3, x8;                    \
-        adds    x13, x13, x11;                  \
-        ldp     x9, x10, [P2+16];               \
-        mul     x11, x3, x9;                    \
-        umulh   x15, x3, x9;                    \
-        adcs    x14, x14, x11;                  \
-        mul     x11, x3, x10;                   \
-        umulh   x16, x3, x10;                   \
-        adcs    x15, x15, x11;                  \
-        adc     x16, x16, xzr;                  \
-        ldp     x5, x6, [P1+16];                \
-        mul     x11, x4, x7;                    \
-        adds    x13, x13, x11;                  \
-        mul     x11, x4, x8;                    \
-        adcs    x14, x14, x11;                  \
-        mul     x11, x4, x9;                    \
-        adcs    x15, x15, x11;                  \
-        mul     x11, x4, x10;                   \
-        adcs    x16, x16, x11;                  \
-        umulh   x3, x4, x10;                    \
-        adc     x3, x3, xzr;                    \
-        umulh   x11, x4, x7;                    \
-        adds    x14, x14, x11;                  \
-        umulh   x11, x4, x8;                    \
-        adcs    x15, x15, x11;                  \
-        umulh   x11, x4, x9;                    \
-        adcs    x16, x16, x11;                  \
-        adc     x3, x3, xzr;                    \
-        mul     x11, x5, x7;                    \
-        adds    x14, x14, x11;                  \
-        mul     x11, x5, x8;                    \
-        adcs    x15, x15, x11;                  \
-        mul     x11, x5, x9;                    \
-        adcs    x16, x16, x11;                  \
-        mul     x11, x5, x10;                   \
-        adcs    x3, x3, x11;                    \
-        umulh   x4, x5, x10;                    \
-        adc     x4, x4, xzr;                    \
-        umulh   x11, x5, x7;                    \
-        adds    x15, x15, x11;                  \
-        umulh   x11, x5, x8;                    \
-        adcs    x16, x16, x11;                  \
-        umulh   x11, x5, x9;                    \
-        adcs    x3, x3, x11;                    \
-        adc     x4, x4, xzr;                    \
-        mul     x11, x6, x7;                    \
-        adds    x15, x15, x11;                  \
-        mul     x11, x6, x8;                    \
-        adcs    x16, x16, x11;                  \
-        mul     x11, x6, x9;                    \
-        adcs    x3, x3, x11;                    \
-        mul     x11, x6, x10;                   \
-        adcs    x4, x4, x11;                    \
-        umulh   x5, x6, x10;                    \
-        adc     x5, x5, xzr;                    \
-        umulh   x11, x6, x7;                    \
-        adds    x16, x16, x11;                  \
-        umulh   x11, x6, x8;                    \
-        adcs    x3, x3, x11;                    \
-        umulh   x11, x6, x9;                    \
-        adcs    x4, x4, x11;                    \
-        adc     x5, x5, xzr;                    \
-        mov     x7, #0x26;                      \
-        mul     x11, x7, x16;                   \
-        umulh   x9, x7, x16;                    \
-        adds    x12, x12, x11;                  \
-        mul     x11, x7, x3;                    \
-        umulh   x3, x7, x3;                     \
-        adcs    x13, x13, x11;                  \
-        mul     x11, x7, x4;                    \
-        umulh   x4, x7, x4;                     \
-        adcs    x14, x14, x11;                  \
-        mul     x11, x7, x5;                    \
-        umulh   x5, x7, x5;                     \
-        adcs    x15, x15, x11;                  \
-        cset    x16, cs;                        \
-        adds    x15, x15, x4;                   \
-        adc     x16, x16, x5;                   \
-        cmn     x15, x15;                       \
-        bic     x15, x15, #0x8000000000000000;  \
-        adc     x8, x16, x16;                   \
-        mov     x7, #0x13;                      \
-        mul     x11, x7, x8;                    \
-        adds    x12, x12, x11;                  \
-        adcs    x13, x13, x9;                   \
-        adcs    x14, x14, x3;                   \
-        adc     x15, x15, xzr;                  \
-        stp     x12, x13, [P0];                 \
-        stp     x14, x15, [P0+16]
+        ldp     x5, x6, [P2];                   \
+        umull   x7, w3, w5;                     \
+        lsr     x0, x3, #32;                    \
+        umull   x15, w0, w5;                    \
+        lsr     x16, x5, #32;                   \
+        umull   x8, w16, w0;                    \
+        umull   x16, w3, w16;                   \
+        adds    x7, x7, x15, lsl #32;           \
+        lsr     x15, x15, #32;                  \
+        adc     x8, x8, x15;                    \
+        adds    x7, x7, x16, lsl #32;           \
+        lsr     x16, x16, #32;                  \
+        adc     x8, x8, x16;                    \
+        mul     x9, x4, x6;                     \
+        umulh   x10, x4, x6;                    \
+        subs    x4, x4, x3;                     \
+        cneg    x4, x4, cc;                     \
+        csetm   x16, cc;                        \
+        adds    x9, x9, x8;                     \
+        adc     x10, x10, xzr;                  \
+        subs    x3, x5, x6;                     \
+        cneg    x3, x3, cc;                     \
+        cinv    x16, x16, cc;                   \
+        mul     x15, x4, x3;                    \
+        umulh   x3, x4, x3;                     \
+        adds    x8, x7, x9;                     \
+        adcs    x9, x9, x10;                    \
+        adc     x10, x10, xzr;                  \
+        cmn     x16, #0x1;                      \
+        eor     x15, x15, x16;                  \
+        adcs    x8, x15, x8;                    \
+        eor     x3, x3, x16;                    \
+        adcs    x9, x3, x9;                     \
+        adc     x10, x10, x16;                  \
+        ldp     x3, x4, [P1+16];                \
+        ldp     x5, x6, [P2+16];                \
+        umull   x11, w3, w5;                    \
+        lsr     x0, x3, #32;                    \
+        umull   x15, w0, w5;                    \
+        lsr     x16, x5, #32;                   \
+        umull   x12, w16, w0;                   \
+        umull   x16, w3, w16;                   \
+        adds    x11, x11, x15, lsl #32;         \
+        lsr     x15, x15, #32;                  \
+        adc     x12, x12, x15;                  \
+        adds    x11, x11, x16, lsl #32;         \
+        lsr     x16, x16, #32;                  \
+        adc     x12, x12, x16;                  \
+        mul     x13, x4, x6;                    \
+        umulh   x14, x4, x6;                    \
+        subs    x4, x4, x3;                     \
+        cneg    x4, x4, cc;                     \
+        csetm   x16, cc;                        \
+        adds    x13, x13, x12;                  \
+        adc     x14, x14, xzr;                  \
+        subs    x3, x5, x6;                     \
+        cneg    x3, x3, cc;                     \
+        cinv    x16, x16, cc;                   \
+        mul     x15, x4, x3;                    \
+        umulh   x3, x4, x3;                     \
+        adds    x12, x11, x13;                  \
+        adcs    x13, x13, x14;                  \
+        adc     x14, x14, xzr;                  \
+        cmn     x16, #0x1;                      \
+        eor     x15, x15, x16;                  \
+        adcs    x12, x15, x12;                  \
+        eor     x3, x3, x16;                    \
+        adcs    x13, x3, x13;                   \
+        adc     x14, x14, x16;                  \
+        ldp     x3, x4, [P1+16];                \
+        ldp     x15, x16, [P1];                 \
+        subs    x3, x3, x15;                    \
+        sbcs    x4, x4, x16;                    \
+        csetm   x16, cc;                        \
+        ldp     x15, x0, [P2];                  \
+        subs    x5, x15, x5;                    \
+        sbcs    x6, x0, x6;                     \
+        csetm   x0, cc;                         \
+        eor     x3, x3, x16;                    \
+        subs    x3, x3, x16;                    \
+        eor     x4, x4, x16;                    \
+        sbc     x4, x4, x16;                    \
+        eor     x5, x5, x0;                     \
+        subs    x5, x5, x0;                     \
+        eor     x6, x6, x0;                     \
+        sbc     x6, x6, x0;                     \
+        eor     x16, x0, x16;                   \
+        adds    x11, x11, x9;                   \
+        adcs    x12, x12, x10;                  \
+        adcs    x13, x13, xzr;                  \
+        adc     x14, x14, xzr;                  \
+        mul     x2, x3, x5;                     \
+        umulh   x0, x3, x5;                     \
+        mul     x15, x4, x6;                    \
+        umulh   x1, x4, x6;                     \
+        subs    x4, x4, x3;                     \
+        cneg    x4, x4, cc;                     \
+        csetm   x9, cc;                         \
+        adds    x15, x15, x0;                   \
+        adc     x1, x1, xzr;                    \
+        subs    x6, x5, x6;                     \
+        cneg    x6, x6, cc;                     \
+        cinv    x9, x9, cc;                     \
+        mul     x5, x4, x6;                     \
+        umulh   x6, x4, x6;                     \
+        adds    x0, x2, x15;                    \
+        adcs    x15, x15, x1;                   \
+        adc     x1, x1, xzr;                    \
+        cmn     x9, #0x1;                       \
+        eor     x5, x5, x9;                     \
+        adcs    x0, x5, x0;                     \
+        eor     x6, x6, x9;                     \
+        adcs    x15, x6, x15;                   \
+        adc     x1, x1, x9;                     \
+        adds    x9, x11, x7;                    \
+        adcs    x10, x12, x8;                   \
+        adcs    x11, x13, x11;                  \
+        adcs    x12, x14, x12;                  \
+        adcs    x13, x13, xzr;                  \
+        adc     x14, x14, xzr;                  \
+        cmn     x16, #0x1;                      \
+        eor     x2, x2, x16;                    \
+        adcs    x9, x2, x9;                     \
+        eor     x0, x0, x16;                    \
+        adcs    x10, x0, x10;                   \
+        eor     x15, x15, x16;                  \
+        adcs    x11, x15, x11;                  \
+        eor     x1, x1, x16;                    \
+        adcs    x12, x1, x12;                   \
+        adcs    x13, x13, x16;                  \
+        adc     x14, x14, x16;                  \
+        mov     x3, #0x26;                      \
+        umull   x4, w11, w3;                    \
+        add     x4, x4, w7, uxtw;               \
+        lsr     x7, x7, #32;                    \
+        lsr     x11, x11, #32;                  \
+        umaddl  x11, w11, w3, x7;               \
+        mov     x7, x4;                         \
+        umull   x4, w12, w3;                    \
+        add     x4, x4, w8, uxtw;               \
+        lsr     x8, x8, #32;                    \
+        lsr     x12, x12, #32;                  \
+        umaddl  x12, w12, w3, x8;               \
+        mov     x8, x4;                         \
+        umull   x4, w13, w3;                    \
+        add     x4, x4, w9, uxtw;               \
+        lsr     x9, x9, #32;                    \
+        lsr     x13, x13, #32;                  \
+        umaddl  x13, w13, w3, x9;               \
+        mov     x9, x4;                         \
+        umull   x4, w14, w3;                    \
+        add     x4, x4, w10, uxtw;              \
+        lsr     x10, x10, #32;                  \
+        lsr     x14, x14, #32;                  \
+        umaddl  x14, w14, w3, x10;              \
+        mov     x10, x4;                        \
+        lsr     x0, x14, #31;                   \
+        mov     x5, #0x13;                      \
+        umull   x5, w5, w0;                     \
+        add     x7, x7, x5;                     \
+        adds    x7, x7, x11, lsl #32;           \
+        extr    x3, x12, x11, #32;              \
+        adcs    x8, x8, x3;                     \
+        extr    x3, x13, x12, #32;              \
+        adcs    x9, x9, x3;                     \
+        extr    x3, x14, x13, #32;              \
+        lsl     x5, x0, #63;                    \
+        eor     x10, x10, x5;                   \
+        adc     x10, x10, x3;                   \
+        stp     x7, x8, [P0];                   \
+        stp     x9, x10, [P0+16]
 
 // Modular subtraction with double modulus 2 * p_25519 = 2^256 - 38
 
@@ -338,7 +504,7 @@
         stp     x3, x4, [P0];                   \
         stp     x5, x6, [P0+16]
 
-S2N_BN_SYMBOL(curve25519_x25519base_alt):
+S2N_BN_SYMBOL(edwards25519_scalarmulbase):
 
 // Save regs and make room for temporaries
 
@@ -351,34 +517,73 @@ S2N_BN_SYMBOL(curve25519_x25519base_alt):
 
         mov     res, x0
 
-// Copy the input scalar to its local variable while mangling it.
-// In principle the mangling is into 01xxx...xxx000, but actually
-// we only clear the top two bits so 00xxx...xxxxxx. The additional
-// 2^254 * G is taken care of by the starting value for the addition
-// chain below, while we never look at the three low bits at all.
+// Copy the input scalar x to its local variable while reducing it
+// modulo 2^252 + m where m = 27742317777372353535851937790883648493;
+// this is the order of the basepoint so this doesn't change the result.
+// First do q = floor(x/2^252) and x' = x - q * (2^252 + m), which gives
+// an initial result -15 * m <= x' < 2^252
 
         ldp     x10, x11, [x1]
-        stp     x10, x11, [scalar]
         ldp     x12, x13, [x1, #16]
-        bic     x13, x13, #0xc000000000000000
+
+        lsr     x9, x13, #60
+
+        movbig(x0,#0x5812,#0x631a,#0x5cf5,#0xd3ed);
+        movbig(x1,#0x14de,#0xf9de,#0xa2f7,#0x9cd6);
+
+        mul     x2, x9, x0
+        mul     x3, x9, x1
+        umulh   x4, x9, x0
+        umulh   x5, x9, x1
+
+        adds    x3, x3, x4
+        adc     x4, x5, xzr
+        lsl     x5, x9, #60
+
+        subs    x10, x10, x2
+        sbcs    x11, x11, x3
+        sbcs    x12, x12, x4
+        sbcs    x13, x13, x5
+
+// If x' < 0 then just directly negate it; this makes sure the
+// reduced argument is strictly 0 <= x' < 2^252, but now we need
+// to record (done via bit 255 of the reduced scalar, which is
+// ignored in the main loop) when we negated so we can flip
+// the sign of the eventual point to compensate.
+
+        csetm   x9, cc
+        adds    xzr, x9, x9
+        eor     x10, x10, x9
+        adcs    x10, x10, xzr
+        eor     x11, x11, x9
+        adcs    x11, x11, xzr
+        eor     x12, x12, x9
+        adcs    x12, x12, xzr
+        eor     x13, x13, x9
+        adc     x13, x13, xzr
+
+        and     x9, x9, #0x8000000000000000
+        orr     x13, x13, x9
+
+// And before we store the scalar, test and reset bit 251 to
+// initialize the main loop just below.
+
+        stp     x10, x11, [scalar]
+        tst     x13, #0x0800000000000000
+        bic     x13, x13, #0x0800000000000000
         stp     x12, x13, [scalar+16]
 
-// The main part of the computation is on the edwards25519 curve in
-// extended-projective coordinates (X,Y,Z,T), representing a point
+// The main part of the computation is in extended-projective coordinates
+// (X,Y,Z,T), representing an affine point on the edwards25519 curve
 // (x,y) via x = X/Z, y = Y/Z and x * y = T/Z (so X * Y = T * Z).
-// Only at the very end do we translate back to curve25519. So G
-// below means the generator within edwards25519 corresponding to
-// (9,...) for curve25519, via the standard isomorphism.
+// In comments B means the standard basepoint (x,4/5) =
+// (0x216....f25d51a,0x0x6666..666658).
 //
-// Initialize accumulator "acc" to either (2^254 + 8) * G or just 2^254 * G
-// depending on bit 3 of the scalar, the only nonzero bit of the bottom 4.
-// Thus, we have effectively dealt with bits 0, 1, 2, 3, 254 and 255.
+// Initialize accumulator "acc" to either 0 or 2^251 * B depending on
+// bit 251 of the (reduced) scalar. That leaves bits 0..250 to handle.
 
-        ldr     x0, [scalar]
-        ands    xzr, x0, #8
-
-        adr     x10, curve25519_x25519base_alt_edwards25519_0g
-        adr     x11, curve25519_x25519base_alt_edwards25519_8g
+        adr     x10, edwards25519_scalarmulbase_edwards25519_0g
+        adr     x11, edwards25519_scalarmulbase_edwards25519_251g
         ldp     x0, x1, [x10]
         ldp     x2, x3, [x11]
         csel    x0, x0, x2, eq
@@ -420,26 +625,25 @@ S2N_BN_SYMBOL(curve25519_x25519base_alt):
         stp     x0, x1, [acc+7*16]
 
 // The counter "i" tracks the bit position for which the scalar has
-// already been absorbed, starting at 4 and going up in chunks of 4.
+// already been absorbed, starting at 0 and going up in chunks of 4.
 //
 // The pointer "tab" points at the current block of the table for
-// multiples (2^i * j) * G at the current bit position i; 1 <= j <= 8.
+// multiples (2^i * j) * B at the current bit position i; 1 <= j <= 8.
 //
 // The bias is always either 0 and 1 and needs to be added to the
 // partially processed scalar implicitly. This is used to absorb 4 bits
 // of scalar per iteration from 3-bit table indexing by exploiting
-// negation: (16 * h + l) * G = (16 * (h + 1) - (16 - l)) * G is used
+// negation: (16 * h + l) * B = (16 * (h + 1) - (16 - l)) * B is used
 // when l >= 9. Note that we can't have any bias left over at the
-// end because of the clearing of bit 255 of the scalar, meaning the
-// l >= 9 case cannot arise on the last iteration.
+// end because we made sure bit 251 is clear in the reduced scalar.
 
-        mov     i, 4
-        adr     tab, curve25519_x25519base_alt_edwards25519_gtable
+        mov     i, 0
+        adr     tab, edwards25519_scalarmulbase_edwards25519_gtable
         mov     bias, xzr
 
-// Start of the main loop, repeated 63 times for i = 4, 8, ..., 252
+// Start of the main loop, repeated 63 times for i = 0, 4, 8, ..., 248
 
-curve25519_x25519base_alt_scalarloop:
+edwards25519_scalarmulbase_scalarloop:
 
 // Look at the next 4-bit field "bf", adding the previous bias as well.
 // Choose the table index "ix" as bf when bf <= 8 and 16 - bf for bf >= 9,
@@ -721,50 +925,47 @@ curve25519_x25519base_alt_scalarloop:
 // End of the main loop; move on by 4 bits.
 
         add     i, i, 4
-        cmp     i, 256
-        bcc     curve25519_x25519base_alt_scalarloop
+        cmp     i, 252
+        bcc     edwards25519_scalarmulbase_scalarloop
 
-// Now we need to translate from Edwards curve edwards25519 back
-// to the Montgomery form curve25519. The mapping in the affine
-// representations is
-//
-// (x,y) |-> ((1 + y) / (1 - y), c * (1 + y) / ((1 - y) * x))
-//
-// For x25519, we only need the x coordinate, and we compute this as
-//
-// (1 + y) / (1 - y) = (x + x * y) / (x - x * y)
-//                   = (X/Z + T/Z) / (X/Z - T/Z)
-//                   = (X + T) / (X - T)
-//                   = (X + T) * inverse(X - T)
-//
-// We could equally well use (Z + Y) / (Z - Y), but the above has the
-// same cost, and it more explicitly forces zero output whenever X = 0,
-// regardless of how the modular inverse behaves on zero inputs. In
-// the present setting (base point 9, mangled scalar) that doesn't
-// really matter anyway since X = 0 never arises, but it seems a
-// little bit tidier. Note that both Edwards point (0,1) which maps to
-// the Montgomery point at infinity, and Edwards (0,-1) which maps to
-// Montgomery (0,0) [this is the 2-torsion point] are both by definition
-// mapped to 0 by the X coordinate mapping used to define curve25519.
-//
-// First the addition and subtraction:
+// Insert the optional negation of the projective X coordinate, and
+// so by extension the final affine x coordinate x = X/Z and thus
+// the point P = (x,y). We only know X < 2 * p_25519, so we do the
+// negation as 2 * p_25519 - X to keep it nonnegative. From this
+// point on we don't need any normalization of the coordinates
+// except for making sure that they fit in 4 digits.
 
-        add_twice4(t1,x_3,w_3)
-        sub_twice4(t2,x_3,w_3)
+        ldp     x0, x1, [x_3]
+        ldp     x2, x3, [x_3+16]
+        mov     x4, #0xffffffffffffffda
+        subs    x4, x4, x0
+        mov     x7, #0xffffffffffffffff
+        sbcs    x5, x7, x1
+        sbcs    x6, x7, x2
+        sbc     x7, x7, x3
+        ldr     x10, [scalar+24]
+        tst     x10, #0x8000000000000000
+        csel    x0, x4, x0, ne
+        csel    x1, x5, x1, ne
+        csel    x2, x6, x2, ne
+        csel    x3, x7, x3, ne
+        stp     x0, x1, [x_3]
+        stp     x2, x3, [x_3+16]
 
-// Prepare to call the modular inverse function to get t0 = 1/t2
-// Note that this works for the weakly normalized z_3 equally well.
-// The non-coprime case z_3 == 0 (mod p_25519) cannot arise anyway.
+// Now we need to map out of the extended-projective representation
+// (X,Y,Z,W) back to the affine form (x,y) = (X/Z,Y/Z). This means
+// first calling the modular inverse to get w_3 = 1/z_3.
 
-        add     x0, t0
-        add     x1, t2
+        add     x0, w_3
+        add     x1, z_3
 
 // Inline copy of bignum_inv_p25519, identical except for stripping out
 // the prologue and epilogue saving and restoring registers and making
 // and reclaiming room on the stack. For more details and explanations see
 // "arm/curve25519/bignum_inv_p25519.S". Note that the stack it uses for
 // its own temporaries is 128 bytes, so it has no effect on variables
-// that are needed in the rest of our computation here: res, t0, t1, t2.
+// that are needed in the rest of our computation here: res, w_3, x_3
+// and y_3.
 
         mov     x20, x0
         mov     x10, #0xffffffffffffffed
@@ -812,8 +1013,8 @@ curve25519_x25519base_alt_scalarloop:
         stp     x12, x13, [sp, #112]
         mov     x21, #0xa
         mov     x22, #0x1
-        b       curve25519_x25519base_alt_invmidloop
-curve25519_x25519base_alt_invloop:
+        b       edwards25519_scalarmulbase_invmidloop
+edwards25519_scalarmulbase_invloop:
         cmp     x10, xzr
         csetm   x14, mi
         cneg    x10, x10, mi
@@ -1080,7 +1281,7 @@ curve25519_x25519base_alt_invloop:
         adc     x2, x2, x5
         stp     x0, x1, [sp, #96]
         stp     x3, x2, [sp, #112]
-curve25519_x25519base_alt_invmidloop:
+edwards25519_scalarmulbase_invmidloop:
         mov     x1, x22
         ldr     x2, [sp]
         ldr     x3, [sp, #32]
@@ -1691,7 +1892,7 @@ curve25519_x25519base_alt_invmidloop:
         msub    x13, x15, x17, x5
         mov     x22, x1
         subs    x21, x21, #0x1
-        b.ne    curve25519_x25519base_alt_invloop
+        b.ne    edwards25519_scalarmulbase_invloop
         ldr     x0, [sp]
         ldr     x1, [sp, #32]
         mul     x0, x0, x10
@@ -1795,12 +1996,13 @@ curve25519_x25519base_alt_invmidloop:
         stp     x0, x1, [x4]
         stp     x2, x5, [x4, #16]
 
-// The final result is (X + T) / (X - T)
-// This is the only operation in the whole computation that
-// fully reduces modulo p_25519 since now we want the canonical
+// The final result is x = X * inv(Z), y = Y * inv(Z).
+// These are the only operations in the whole computation that
+// fully reduce modulo p_25519 since now we want the canonical
 // answer as output.
 
-        mul_p25519(resx,t1,t0)
+        mul_p25519(resx,x_3,w_3)
+        mul_p25519(resy,y_3,w_3)
 
 // Restore stack and registers
 
@@ -1819,49 +2021,167 @@ curve25519_x25519base_alt_invmidloop:
 // .section .rodata
 // ****************************************************************************
 
-// 2^254 * G and (2^254 + 8) * G in extended-projective coordinates
+// 0 * B = 0 and 2^251 * B in extended-projective coordinates
 // but with Z = 1 assumed and hence left out, so they are (X,Y,T) only.
 
-curve25519_x25519base_alt_edwards25519_0g:
+edwards25519_scalarmulbase_edwards25519_0g:
 
-        .quad   0x251037f7cf4e861d
-        .quad   0x10ede0fb19fb128f
-        .quad   0x96c033b175f5e2c8
-        .quad   0x055f070d6c15fb0d
+        .quad   0x0000000000000000
+        .quad   0x0000000000000000
+        .quad   0x0000000000000000
+        .quad   0x0000000000000000
 
-        .quad   0x7c52af2c97473e69
-        .quad   0x022f82391bad8378
-        .quad   0x9991e1b02adb476f
-        .quad   0x511144a03a99b855
+        .quad   0x0000000000000001
+        .quad   0x0000000000000000
+        .quad   0x0000000000000000
+        .quad   0x0000000000000000
 
-        .quad   0x5fafc3b88ff2e4ae
-        .quad   0x855e4ff0de1230ff
-        .quad   0x72e302a348492870
-        .quad   0x1253c19e53dbe1bc
+        .quad   0x0000000000000000
+        .quad   0x0000000000000000
+        .quad   0x0000000000000000
+        .quad   0x0000000000000000
 
-curve25519_x25519base_alt_edwards25519_8g:
+edwards25519_scalarmulbase_edwards25519_251g:
 
-        .quad   0x331d086e0d9abcaa
-        .quad   0x1e23c96d311a10c9
-        .quad   0x96d0f95e58c13478
-        .quad   0x2f72f7384fcfcc59
-
-        .quad   0x39a6cd1cfd7d87c9
-        .quad   0x9867a0abd8ae153a
-        .quad   0xa49d2a5f35986745
-        .quad   0x57012940cdfe82e1
-
-        .quad   0x5046a6532ec5544a
-        .quad   0x6d674004739ff6c9
-        .quad   0x9bbaa44b234a70e3
-        .quad   0x5e6d8901138cf386
+        .quad   0x525f946d7c7220e7
+        .quad   0x4636b0b2f1e35444
+        .quad   0x796e9d70e892ae0f
+        .quad   0x03dec05fa937adb1
+        .quad   0x6d1c271cc6375515
+        .quad   0x462588c4a4ca4f14
+        .quad   0x691129fee55afc39
+        .quad   0x15949f784d8472f5
+        .quad   0xbd89e510afad0049
+        .quad   0x4d1f08c073b9860e
+        .quad   0x07716e8b2d00af9d
+        .quad   0x70d685f68f859714
 
 // Precomputed table of multiples of generator for edwards25519
 // all in precomputed extended-projective (y-x,x+y,2*d*x*y) triples.
 
-curve25519_x25519base_alt_edwards25519_gtable:
+edwards25519_scalarmulbase_edwards25519_gtable:
 
-        // 2^4 * 1 * G
+        // 2^0 * 1 * G
+
+        .quad   0x9d103905d740913e
+        .quad   0xfd399f05d140beb3
+        .quad   0xa5c18434688f8a09
+        .quad   0x44fd2f9298f81267
+        .quad   0x2fbc93c6f58c3b85
+        .quad   0xcf932dc6fb8c0e19
+        .quad   0x270b4898643d42c2
+        .quad   0x07cf9d3a33d4ba65
+        .quad   0xabc91205877aaa68
+        .quad   0x26d9e823ccaac49e
+        .quad   0x5a1b7dcbdd43598c
+        .quad   0x6f117b689f0c65a8
+
+        // 2^0 * 2 * G
+
+        .quad   0x8a99a56042b4d5a8
+        .quad   0x8f2b810c4e60acf6
+        .quad   0xe09e236bb16e37aa
+        .quad   0x6bb595a669c92555
+        .quad   0x9224e7fc933c71d7
+        .quad   0x9f469d967a0ff5b5
+        .quad   0x5aa69a65e1d60702
+        .quad   0x590c063fa87d2e2e
+        .quad   0x43faa8b3a59b7a5f
+        .quad   0x36c16bdd5d9acf78
+        .quad   0x500fa0840b3d6a31
+        .quad   0x701af5b13ea50b73
+
+        // 2^0 * 3 * G
+
+        .quad   0x56611fe8a4fcd265
+        .quad   0x3bd353fde5c1ba7d
+        .quad   0x8131f31a214bd6bd
+        .quad   0x2ab91587555bda62
+        .quad   0xaf25b0a84cee9730
+        .quad   0x025a8430e8864b8a
+        .quad   0xc11b50029f016732
+        .quad   0x7a164e1b9a80f8f4
+        .quad   0x14ae933f0dd0d889
+        .quad   0x589423221c35da62
+        .quad   0xd170e5458cf2db4c
+        .quad   0x5a2826af12b9b4c6
+
+        // 2^0 * 4 * G
+
+        .quad   0x95fe050a056818bf
+        .quad   0x327e89715660faa9
+        .quad   0xc3e8e3cd06a05073
+        .quad   0x27933f4c7445a49a
+        .quad   0x287351b98efc099f
+        .quad   0x6765c6f47dfd2538
+        .quad   0xca348d3dfb0a9265
+        .quad   0x680e910321e58727
+        .quad   0x5a13fbe9c476ff09
+        .quad   0x6e9e39457b5cc172
+        .quad   0x5ddbdcf9102b4494
+        .quad   0x7f9d0cbf63553e2b
+
+        // 2^0 * 5 * G
+
+        .quad   0x7f9182c3a447d6ba
+        .quad   0xd50014d14b2729b7
+        .quad   0xe33cf11cb864a087
+        .quad   0x154a7e73eb1b55f3
+        .quad   0xa212bc4408a5bb33
+        .quad   0x8d5048c3c75eed02
+        .quad   0xdd1beb0c5abfec44
+        .quad   0x2945ccf146e206eb
+        .quad   0xbcbbdbf1812a8285
+        .quad   0x270e0807d0bdd1fc
+        .quad   0xb41b670b1bbda72d
+        .quad   0x43aabe696b3bb69a
+
+        // 2^0 * 6 * G
+
+        .quad   0x499806b67b7d8ca4
+        .quad   0x575be28427d22739
+        .quad   0xbb085ce7204553b9
+        .quad   0x38b64c41ae417884
+        .quad   0x3a0ceeeb77157131
+        .quad   0x9b27158900c8af88
+        .quad   0x8065b668da59a736
+        .quad   0x51e57bb6a2cc38bd
+        .quad   0x85ac326702ea4b71
+        .quad   0xbe70e00341a1bb01
+        .quad   0x53e4a24b083bc144
+        .quad   0x10b8e91a9f0d61e3
+
+        // 2^0 * 7 * G
+
+        .quad   0xba6f2c9aaa3221b1
+        .quad   0x6ca021533bba23a7
+        .quad   0x9dea764f92192c3a
+        .quad   0x1d6edd5d2e5317e0
+        .quad   0x6b1a5cd0944ea3bf
+        .quad   0x7470353ab39dc0d2
+        .quad   0x71b2528228542e49
+        .quad   0x461bea69283c927e
+        .quad   0xf1836dc801b8b3a2
+        .quad   0xb3035f47053ea49a
+        .quad   0x529c41ba5877adf3
+        .quad   0x7a9fbb1c6a0f90a7
+
+        // 2^0 * 8 * G
+
+        .quad   0xe2a75dedf39234d9
+        .quad   0x963d7680e1b558f9
+        .quad   0x2c2741ac6e3c23fb
+        .quad   0x3a9024a1320e01c3
+        .quad   0x59b7596604dd3e8f
+        .quad   0x6cb30377e288702c
+        .quad   0xb1339c665ed9c323
+        .quad   0x0915e76061bce52f
+        .quad   0xe7c1f5d9c9a2911a
+        .quad   0xb8a371788bcca7d7
+        .quad   0x636412190eb62a32
+        .quad   0x26907c5c2ecc4e95
+
+        // 2^4 * 1 * B
 
         .quad   0x7ec851ca553e2df3
         .quad   0xa71284cba64878b3
@@ -1876,7 +2196,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xd0a7d34bea180975
         .quad   0x21b546a3374126e1
 
-        // 2^4 * 2 * G
+        // 2^4 * 2 * B
 
         .quad   0xa94ff858a2888343
         .quad   0xce0ed4565313ed3c
@@ -1891,7 +2211,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x503cec294a592cd0
         .quad   0x566943650813acb2
 
-        // 2^4 * 3 * G
+        // 2^4 * 3 * B
 
         .quad   0xb818db0c26620798
         .quad   0x5d5c31d9606e354a
@@ -1906,7 +2226,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xcb852540ad3a1aa5
         .quad   0x0900b3f78e4c6468
 
-        // 2^4 * 4 * G
+        // 2^4 * 4 * B
 
         .quad   0x0a851b9f679d651b
         .quad   0xe108cb61033342f2
@@ -1921,7 +2241,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x201f9033d084e6a0
         .quad   0x4c3a5ae1ce7b6670
 
-        // 2^4 * 5 * G
+        // 2^4 * 5 * B
 
         .quad   0x4138a434dcb8fa95
         .quad   0x870cf67d6c96840b
@@ -1936,7 +2256,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xf6c8ac63555d0998
         .quad   0x5aac4a412f90b104
 
-        // 2^4 * 6 * G
+        // 2^4 * 6 * B
 
         .quad   0xc64f326b3ac92908
         .quad   0x5551b282e663e1e0
@@ -1951,7 +2271,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x825238b6385b681e
         .quad   0x234929c1167d65e1
 
-        // 2^4 * 7 * G
+        // 2^4 * 7 * B
 
         .quad   0x984decaba077ade8
         .quad   0x383f77ad19eb389d
@@ -1966,7 +2286,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xd8b39fad5b08f87d
         .quad   0x6f05606b4799fe3b
 
-        // 2^4 * 8 * G
+        // 2^4 * 8 * B
 
         .quad   0x9ffe9e92177ba962
         .quad   0x98aee71d0de5cae1
@@ -1981,7 +2301,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xbc9da09804b96be7
         .quad   0x73e2e62fd96dc26b
 
-        // 2^8 * 1 * G
+        // 2^8 * 1 * B
 
         .quad   0xed5b635449aa515e
         .quad   0xa865c49f0bc6823a
@@ -1996,7 +2316,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xb4739ea4694d3f26
         .quad   0x10c697112e864bb0
 
-        // 2^8 * 2 * G
+        // 2^8 * 2 * B
 
         .quad   0x6493c4277dbe5fde
         .quad   0x265d4fad19ad7ea2
@@ -2011,7 +2331,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xa0b63dedcc1268f5
         .quad   0x566d78634586e22c
 
-        // 2^8 * 3 * G
+        // 2^8 * 3 * B
 
         .quad   0x1637a49f9cc10834
         .quad   0xbc8e56d5a89bc451
@@ -2026,7 +2346,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x2fc3f2b67b61131e
         .quad   0x14829cea83fc526c
 
-        // 2^8 * 4 * G
+        // 2^8 * 4 * B
 
         .quad   0xff437b8497dd95c2
         .quad   0x6c744e30aa4eb5a7
@@ -2041,7 +2361,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x33a4bc83a9be8195
         .quad   0x373767475c651f04
 
-        // 2^8 * 5 * G
+        // 2^8 * 5 * B
 
         .quad   0x2fba99fd40d1add9
         .quad   0xb307166f96f4d027
@@ -2056,7 +2376,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x6f52d7b89aa29a50
         .quad   0x02521cf67a635a56
 
-        // 2^8 * 6 * G
+        // 2^8 * 6 * B
 
         .quad   0x513fee0b0a9d5294
         .quad   0x8f98e75c0fdf5a66
@@ -2071,7 +2391,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xaad7d1f9a091f285
         .quad   0x12b5fe2fa048edb6
 
-        // 2^8 * 7 * G
+        // 2^8 * 7 * B
 
         .quad   0x71f0fbc496fce34d
         .quad   0x73b9826badf35bed
@@ -2086,7 +2406,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x61a808b5eeff6b66
         .quad   0x0fcec10f01e02151
 
-        // 2^8 * 8 * G
+        // 2^8 * 8 * B
 
         .quad   0x644d58a649fe1e44
         .quad   0x21fcaea231ad777e
@@ -2101,7 +2421,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xf760b0f91e06d939
         .quad   0x41bb887b726d1213
 
-        // 2^12 * 1 * G
+        // 2^12 * 1 * B
 
         .quad   0x9267806c567c49d8
         .quad   0x066d04ccca791e6a
@@ -2116,7 +2436,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xe6af8382a9f87a5a
         .quad   0x0dea6db1879be094
 
-        // 2^12 * 2 * G
+        // 2^12 * 2 * B
 
         .quad   0xaa66bf547344e5ab
         .quad   0xda1258888f1b4309
@@ -2131,7 +2451,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xa833b2fa883d9466
         .quad   0x093a7fa775003c78
 
-        // 2^12 * 3 * G
+        // 2^12 * 3 * B
 
         .quad   0xe5107de63a16d7be
         .quad   0xa377ffdc9af332cf
@@ -2146,7 +2466,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xc708ea054cb99135
         .quad   0x58ded57f72260e56
 
-        // 2^12 * 4 * G
+        // 2^12 * 4 * B
 
         .quad   0x78e79dade9413d77
         .quad   0xf257f9d59729e67d
@@ -2161,7 +2481,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x09b44f87ef4eb4e4
         .quad   0x7d90ab1bbc6a7da5
 
-        // 2^12 * 5 * G
+        // 2^12 * 5 * B
 
         .quad   0x9acca683a7016bfe
         .quad   0x90505f4df2c50b6d
@@ -2176,7 +2496,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x8741e95222803a38
         .quad   0x483bdab1595653fc
 
-        // 2^12 * 6 * G
+        // 2^12 * 6 * B
 
         .quad   0xfa780f148734fa49
         .quad   0x106f0b70360534e0
@@ -2191,7 +2511,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x5781dcde6a60a38a
         .quad   0x217dd5eaaa7aa840
 
-        // 2^12 * 7 * G
+        // 2^12 * 7 * B
 
         .quad   0x9db7c4d0248e1eb0
         .quad   0xe07697e14d74bf52
@@ -2206,7 +2526,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x46c8131f5c5cddb4
         .quad   0x33b21c13a0cb9bce
 
-        // 2^12 * 8 * G
+        // 2^12 * 8 * B
 
         .quad   0x360692f8087d8e31
         .quad   0xf4dcc637d27163f7
@@ -2221,7 +2541,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x52744750504a58d5
         .quad   0x09f2606b131a2990
 
-        // 2^16 * 1 * G
+        // 2^16 * 1 * B
 
         .quad   0x40e87d44744346be
         .quad   0x1d48dad415b52b25
@@ -2236,7 +2556,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x0d61ade219d59e3c
         .quad   0x3ee7300f2685d464
 
-        // 2^16 * 2 * G
+        // 2^16 * 2 * B
 
         .quad   0xf5d255e49e7dd6b7
         .quad   0x8016115c610b1eac
@@ -2251,7 +2571,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x71ec621026bb8157
         .quad   0x148cf58d34c9ec80
 
-        // 2^16 * 3 * G
+        // 2^16 * 3 * B
 
         .quad   0x46a492f67934f027
         .quad   0x469984bef6840aa9
@@ -2266,7 +2586,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x39115291219d3c52
         .quad   0x4104dd02fe9c677b
 
-        // 2^16 * 4 * G
+        // 2^16 * 4 * B
 
         .quad   0x72b2bf5e1124422a
         .quad   0xa1fa0c3398a33ab5
@@ -2281,7 +2601,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x695e290658aa2b8f
         .quad   0x591b67d9bffec8b8
 
-        // 2^16 * 5 * G
+        // 2^16 * 5 * B
 
         .quad   0x312f0d1c80b49bfa
         .quad   0x5979515eabf3ec8a
@@ -2296,7 +2616,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x3d7eabe7190baa24
         .quad   0x49f5fbba496cbebf
 
-        // 2^16 * 6 * G
+        // 2^16 * 6 * B
 
         .quad   0x30949a108a5bcfd4
         .quad   0xdc40dd70bc6473eb
@@ -2311,7 +2631,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x9f031a6018acf6d1
         .quad   0x20989e89fe2742c6
 
-        // 2^16 * 7 * G
+        // 2^16 * 7 * B
 
         .quad   0x499777fd3a2dcc7f
         .quad   0x32857c2ca54fd892
@@ -2326,7 +2646,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xf7cb46fa16c035ce
         .quad   0x5bd7454308303dcc
 
-        // 2^16 * 8 * G
+        // 2^16 * 8 * B
 
         .quad   0x7f9ad19528b24cc2
         .quad   0x7f6b54656335c181
@@ -2341,7 +2661,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x182360779bd54770
         .quad   0x740dca6d58f0e0d2
 
-        // 2^20 * 1 * G
+        // 2^20 * 1 * B
 
         .quad   0x50b70bf5d3f0af0b
         .quad   0x4feaf48ae32e71f7
@@ -2356,7 +2676,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x4d05c52e18276893
         .quad   0x27632d9a5a4a4af5
 
-        // 2^20 * 2 * G
+        // 2^20 * 2 * B
 
         .quad   0xd11ff05154b260ce
         .quad   0xd86dc38e72f95270
@@ -2371,7 +2691,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x9b0da7d7bcdf3c0c
         .quad   0x43a0eeb6ab54d60e
 
-        // 2^20 * 3 * G
+        // 2^20 * 3 * B
 
         .quad   0x396966a46d4a5487
         .quad   0xf811a18aac2bb3ba
@@ -2386,7 +2706,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xae0b032b2c8d9f1a
         .quad   0x6f9ce107602967fb
 
-        // 2^20 * 4 * G
+        // 2^20 * 4 * B
 
         .quad   0xad1054b1cde1c22a
         .quad   0xc4a8e90248eb32df
@@ -2401,7 +2721,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x22f0c8a3345fee8e
         .quad   0x73975a617d39dbed
 
-        // 2^20 * 5 * G
+        // 2^20 * 5 * B
 
         .quad   0xe4024df96375da10
         .quad   0x78d3251a1830c870
@@ -2416,7 +2736,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xeab91ec9bdec925d
         .quad   0x4be65bc8f48af2de
 
-        // 2^20 * 6 * G
+        // 2^20 * 6 * B
 
         .quad   0x78487feba36e7028
         .quad   0x5f3f13001dd8ce34
@@ -2431,7 +2751,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x26ab5d6173bd8667
         .quad   0x20b209c2ab204938
 
-        // 2^20 * 7 * G
+        // 2^20 * 7 * B
 
         .quad   0x549e342ac07fb34b
         .quad   0x02d8220821373d93
@@ -2446,7 +2766,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xa86306cdb1b2ae4a
         .quad   0x3b7ac0cd265c2a09
 
-        // 2^20 * 8 * G
+        // 2^20 * 8 * B
 
         .quad   0x822bee438c01bcec
         .quad   0x530cb525c0fbc73b
@@ -2461,7 +2781,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x3df7d42035aad6d8
         .quad   0x2a14edcc6a1a125e
 
-        // 2^24 * 1 * G
+        // 2^24 * 1 * B
 
         .quad   0xdf48ee0752cfce4e
         .quad   0xc3fffaf306ec08b7
@@ -2476,7 +2796,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x31903d77257ef7f9
         .quad   0x699468bdbd96bbaf
 
-        // 2^24 * 2 * G
+        // 2^24 * 2 * B
 
         .quad   0xbd1f2f46f4dafecf
         .quad   0x7cef0114a47fd6f7
@@ -2491,7 +2811,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xb04589af461c3111
         .quad   0x5b605c447f032823
 
-        // 2^24 * 3 * G
+        // 2^24 * 3 * B
 
         .quad   0xb965805920c47c89
         .quad   0xe7f0100c923b8fcc
@@ -2506,7 +2826,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xc6cf144178cff668
         .quad   0x5e607b2518a43790
 
-        // 2^24 * 4 * G
+        // 2^24 * 4 * B
 
         .quad   0x58b31d8f6cdf1818
         .quad   0x35cfa74fc36258a2
@@ -2521,7 +2841,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xd5220eb02e25a4a8
         .quad   0x397cba8862460375
 
-        // 2^24 * 5 * G
+        // 2^24 * 5 * B
 
         .quad   0x30c13093f05959b2
         .quad   0xe23aa18de9a97976
@@ -2536,7 +2856,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xd06bc31b1ea283b3
         .quad   0x331a189219971a76
 
-        // 2^24 * 6 * G
+        // 2^24 * 6 * B
 
         .quad   0xf5166f45fb4f80c6
         .quad   0x9c36c7de61c775cf
@@ -2551,7 +2871,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xfc9d71844a6250c8
         .quad   0x612436341f08b111
 
-        // 2^24 * 7 * G
+        // 2^24 * 7 * B
 
         .quad   0xd99d41db874e898d
         .quad   0x09fea5f16c07dc20
@@ -2566,7 +2886,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xe8c83391b646f227
         .quad   0x45fe70f50524306c
 
-        // 2^24 * 8 * G
+        // 2^24 * 8 * B
 
         .quad   0xda4875a6960c0b8c
         .quad   0x5b68d076ef0e2f20
@@ -2581,7 +2901,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xdeb8de4643d1bc7d
         .quad   0x1d81592d60bd38c6
 
-        // 2^28 * 1 * G
+        // 2^28 * 1 * B
 
         .quad   0xd833d7beec2a4c38
         .quad   0x2c9162830acc20ed
@@ -2596,7 +2916,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x3f510808885bc607
         .quad   0x24141dc0e6a8020d
 
-        // 2^28 * 2 * G
+        // 2^28 * 2 * B
 
         .quad   0x59f73c773fefee9d
         .quad   0xb3f1ef89c1cf989d
@@ -2611,7 +2931,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xa92b51c099f02d89
         .quad   0x4f3875ad489ca5f1
 
-        // 2^28 * 3 * G
+        // 2^28 * 3 * B
 
         .quad   0xc7fc762f4932ab22
         .quad   0x7ac0edf72f4c3c1b
@@ -2626,7 +2946,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x6eac173320b09cc5
         .quad   0x628ecf04331b1095
 
-        // 2^28 * 4 * G
+        // 2^28 * 4 * B
 
         .quad   0x98bcb118a9d0ddbc
         .quad   0xee449e3408b4802b
@@ -2641,7 +2961,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xa17aa1752ff8f5ed
         .quad   0x11ded9020e01fdc0
 
-        // 2^28 * 5 * G
+        // 2^28 * 5 * B
 
         .quad   0x890e7809caefe704
         .quad   0x8728296de30e8c6c
@@ -2656,7 +2976,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x7da962c8a60ed75d
         .quad   0x00d0f85b318736aa
 
-        // 2^28 * 6 * G
+        // 2^28 * 6 * B
 
         .quad   0x978b142e777c84fd
         .quad   0xf402644705a8c062
@@ -2671,7 +2991,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x184d8548b61bd638
         .quad   0x3f1c62dbd6c9f6cd
 
-        // 2^28 * 7 * G
+        // 2^28 * 7 * B
 
         .quad   0x2e8f1f0091910c1f
         .quad   0xa4df4fe0bff2e12c
@@ -2686,7 +3006,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x787d8e4e7afb73c4
         .quad   0x50d83d5be8f58fa5
 
-        // 2^28 * 8 * G
+        // 2^28 * 8 * B
 
         .quad   0x85683916c11a1897
         .quad   0x2d69a4efe506d008
@@ -2701,7 +3021,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xe98dbbcee262b81e
         .quad   0x02eebd0b3029b589
 
-        // 2^32 * 1 * G
+        // 2^32 * 1 * B
 
         .quad   0x61368756a60dac5f
         .quad   0x17e02f6aebabdc57
@@ -2716,7 +3036,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xf62a4a20b3e41170
         .quad   0x7cd682353cffe366
 
-        // 2^32 * 2 * G
+        // 2^32 * 2 * B
 
         .quad   0x0be1a45bd887fab6
         .quad   0x2a846a32ba403b6e
@@ -2731,7 +3051,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x82cfae8af4ab419d
         .quad   0x21dcb8a606a82812
 
-        // 2^32 * 3 * G
+        // 2^32 * 3 * B
 
         .quad   0x5c6004468c9d9fc8
         .quad   0x2540096ed42aa3cb
@@ -2746,7 +3066,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x57bbba997dae20ab
         .quad   0x3a4276232ac196dd
 
-        // 2^32 * 4 * G
+        // 2^32 * 4 * B
 
         .quad   0x4b42432c8a7084fa
         .quad   0x898a19e3dfb9e545
@@ -2761,7 +3081,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xe7300919303e3e89
         .quad   0x39f264fd41500b1e
 
-        // 2^32 * 5 * G
+        // 2^32 * 5 * B
 
         .quad   0xa7ad3417dbe7e29c
         .quad   0xbd94376a2b9c139c
@@ -2776,7 +3096,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x0419a93d2e1cfe83
         .quad   0x22f9800ab19ce272
 
-        // 2^32 * 6 * G
+        // 2^32 * 6 * B
 
         .quad   0x605a368a3e9ef8cb
         .quad   0xe3e9c022a5504715
@@ -2791,7 +3111,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xfbd291ddadda5392
         .quad   0x508214fa574bd1ab
 
-        // 2^32 * 7 * G
+        // 2^32 * 7 * B
 
         .quad   0xc20269153ed6fe4b
         .quad   0xa65a6739511d77c4
@@ -2806,7 +3126,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x12248c90f3115e65
         .quad   0x5d9fd15f8de7f494
 
-        // 2^32 * 8 * G
+        // 2^32 * 8 * B
 
         .quad   0x031408d36d63727f
         .quad   0x6a379aefd7c7b533
@@ -2821,7 +3141,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xd77832b53a660188
         .quad   0x450d81ce906fba03
 
-        // 2^36 * 1 * G
+        // 2^36 * 1 * B
 
         .quad   0xf8ae4d2ad8453902
         .quad   0x7018058ee8db2d1d
@@ -2836,7 +3156,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x2fb63273675d70ca
         .quad   0x0ba7250b864403f5
 
-        // 2^36 * 2 * G
+        // 2^36 * 2 * B
 
         .quad   0xbb0d18fd029c6421
         .quad   0xbc2d142189298f02
@@ -2851,7 +3171,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x4854fb129a0ab3f7
         .quad   0x12c49d417238c371
 
-        // 2^36 * 3 * G
+        // 2^36 * 3 * B
 
         .quad   0x0950b533ffe83769
         .quad   0x21861c1d8e1d6bd1
@@ -2866,7 +3186,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xadba5e0c0b3eb9dc
         .quad   0x2ab5504448a49ce3
 
-        // 2^36 * 4 * G
+        // 2^36 * 4 * B
 
         .quad   0x2ed227266f0f5dec
         .quad   0x9824ee415ed50824
@@ -2881,7 +3201,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xbc0a24eb3c21e569
         .quad   0x390167d24ebacb23
 
-        // 2^36 * 5 * G
+        // 2^36 * 5 * B
 
         .quad   0x27f58e3bba353f1c
         .quad   0x4c47764dbf6a4361
@@ -2896,7 +3216,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x2bb61413dcf0ad8d
         .quad   0x7b8eec6c74183287
 
-        // 2^36 * 6 * G
+        // 2^36 * 6 * B
 
         .quad   0xe4ca40782cd27cb0
         .quad   0xdaf9c323fbe967bd
@@ -2911,7 +3231,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xdc29c867d088fa25
         .quad   0x13bd1e38d173292e
 
-        // 2^36 * 7 * G
+        // 2^36 * 7 * B
 
         .quad   0xd32b4cd8696149b5
         .quad   0xe55937d781d8aab7
@@ -2926,7 +3246,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x0af90d6ceec5a4d4
         .quad   0x746a247a37cdc5d9
 
-        // 2^36 * 8 * G
+        // 2^36 * 8 * B
 
         .quad   0xd531b8bd2b7b9af6
         .quad   0x5005093537fc5b51
@@ -2941,7 +3261,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x69249495ba6550e4
         .quad   0x539ef98e45d5472b
 
-        // 2^40 * 1 * G
+        // 2^40 * 1 * B
 
         .quad   0x6e7bb6a1a6205275
         .quad   0xaa4f21d7413c8e83
@@ -2956,7 +3276,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xb1a3974b5f3a6419
         .quad   0x7d7fbcefe2007233
 
-        // 2^40 * 2 * G
+        // 2^40 * 2 * B
 
         .quad   0xfaef1e6a266b2801
         .quad   0x866c68c4d5739f16
@@ -2971,7 +3291,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xba029cad5c1c0c17
         .quad   0x7ccdd084387a0307
 
-        // 2^40 * 3 * G
+        // 2^40 * 3 * B
 
         .quad   0xdca6422c6d260417
         .quad   0xae153d50948240bd
@@ -2986,7 +3306,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x8c52545b53fdbbd1
         .quad   0x27398308da2d63e6
 
-        // 2^40 * 4 * G
+        // 2^40 * 4 * B
 
         .quad   0x42c38d28435ed413
         .quad   0xbd50f3603278ccc9
@@ -3001,7 +3321,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xa22c8830aa5dda0c
         .quad   0x7f985498c05bca80
 
-        // 2^40 * 5 * G
+        // 2^40 * 5 * B
 
         .quad   0x3849ce889f0be117
         .quad   0x8005ad1b7b54a288
@@ -3016,7 +3336,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xa920c01e0e6fac70
         .quad   0x2f1273f1596473da
 
-        // 2^40 * 6 * G
+        // 2^40 * 6 * B
 
         .quad   0x4739fc7c8ae01e11
         .quad   0xfd5274904a6aab9f
@@ -3031,7 +3351,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xacacc011454dde49
         .quad   0x22dfcd9cbfe9e69c
 
-        // 2^40 * 7 * G
+        // 2^40 * 7 * B
 
         .quad   0x8ddbd2e0c30d0cd9
         .quad   0xad8e665facbb4333
@@ -3046,7 +3366,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x66083dff6578f815
         .quad   0x4c303f307ff00a17
 
-        // 2^40 * 8 * G
+        // 2^40 * 8 * B
 
         .quad   0xd30a3bd617b28c85
         .quad   0xc5d377b739773bea
@@ -3061,7 +3381,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xafe62fda1b57e0ab
         .quad   0x191a2af74277e8d2
 
-        // 2^44 * 1 * G
+        // 2^44 * 1 * B
 
         .quad   0xd550095bab6f4985
         .quad   0x04f4cd5b4fbfaf1a
@@ -3076,7 +3396,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x2bcd7309857031f5
         .quad   0x62337a6e8ab8fae5
 
-        // 2^44 * 2 * G
+        // 2^44 * 2 * B
 
         .quad   0x4bcef17f06ffca16
         .quad   0xde06e1db692ae16a
@@ -3091,7 +3411,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x30fface8ef8c8ddd
         .quad   0x7e9de97bb6c3e998
 
-        // 2^44 * 3 * G
+        // 2^44 * 3 * B
 
         .quad   0x1558967b9e6585a3
         .quad   0x97c99ce098e98b92
@@ -3106,7 +3426,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x3cd7ce6a84048e81
         .quad   0x78af11633f25f22c
 
-        // 2^44 * 4 * G
+        // 2^44 * 4 * B
 
         .quad   0x8416ebd40b50babc
         .quad   0x1508722628208bee
@@ -3121,7 +3441,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x7c6c23987f93963e
         .quad   0x210e8cd30c3954e3
 
-        // 2^44 * 5 * G
+        // 2^44 * 5 * B
 
         .quad   0xac4201f210a71c06
         .quad   0x6a65e0aef3bfb021
@@ -3136,7 +3456,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xbdfcea659a3ba325
         .quad   0x18a11f1174d1a6f2
 
-        // 2^44 * 6 * G
+        // 2^44 * 6 * B
 
         .quad   0x407375ab3f6bba29
         .quad   0x9ec3b6d8991e482e
@@ -3151,7 +3471,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x5f1e717b4e5610a1
         .quad   0x44da5f18c2710cd5
 
-        // 2^44 * 7 * G
+        // 2^44 * 7 * B
 
         .quad   0x033cc55ff1b82eb5
         .quad   0xb15ae36d411cae52
@@ -3166,7 +3486,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x18f026fdb4c45b68
         .quad   0x513b5384b5d2ecbd
 
-        // 2^44 * 8 * G
+        // 2^44 * 8 * B
 
         .quad   0x46d46280c729989e
         .quad   0x4b93fbd05368a5dd
@@ -3181,7 +3501,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x0416fbd277484834
         .quad   0x69d45e6f2c70812f
 
-        // 2^48 * 1 * G
+        // 2^48 * 1 * B
 
         .quad   0xce16f74bc53c1431
         .quad   0x2b9725ce2072edde
@@ -3196,7 +3516,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x75320f1583e47f22
         .quad   0x71afa699b11155e3
 
-        // 2^48 * 2 * G
+        // 2^48 * 2 * B
 
         .quad   0x65ce6f9b3953b61d
         .quad   0xc65839eaafa141e6
@@ -3211,7 +3531,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xb6dae0836bba15e3
         .quad   0x4c4d6f3347e15808
 
-        // 2^48 * 3 * G
+        // 2^48 * 3 * B
 
         .quad   0x18f7eccfc17d1fc9
         .quad   0x6c75f5a651403c14
@@ -3226,7 +3546,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x5080f58239241276
         .quad   0x6a6fb99ebf0d4969
 
-        // 2^48 * 4 * G
+        // 2^48 * 4 * B
 
         .quad   0x6a46c1bb560855eb
         .quad   0x2416bb38f893f09d
@@ -3241,7 +3561,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x2a87d8a5c3bb588a
         .quad   0x022183510be8dcba
 
-        // 2^48 * 5 * G
+        // 2^48 * 5 * B
 
         .quad   0x4af766385ead2d14
         .quad   0xa08ed880ca7c5830
@@ -3256,7 +3576,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x0d7b4848bb477ca0
         .quad   0x3171b26aaf1edc92
 
-        // 2^48 * 6 * G
+        // 2^48 * 6 * B
 
         .quad   0xa92f319097564ca8
         .quad   0xff7bb84c2275e119
@@ -3271,7 +3591,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xfce0dd4c410f030e
         .quad   0x48daa596fb924aaa
 
-        // 2^48 * 7 * G
+        // 2^48 * 7 * B
 
         .quad   0x6eca8e665ca59cc7
         .quad   0xa847254b2e38aca0
@@ -3286,7 +3606,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xdcc2e77d4935d66a
         .quad   0x1c4f73f2c6a57f0a
 
-        // 2^48 * 8 * G
+        // 2^48 * 8 * B
 
         .quad   0x0e7a4fbd305fa0bb
         .quad   0x829d4ce054c663ad
@@ -3301,7 +3621,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x9fdf9ee51f8c78dc
         .quad   0x5fe162848ce21fd3
 
-        // 2^52 * 1 * G
+        // 2^52 * 1 * B
 
         .quad   0xe2790aae4d077c41
         .quad   0x8b938270db7469a3
@@ -3316,7 +3636,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x92bb7403adff5139
         .quad   0x0394d27645be618b
 
-        // 2^52 * 2 * G
+        // 2^52 * 2 * B
 
         .quad   0x4d572251857eedf4
         .quad   0xe3724edde19e93c5
@@ -3331,7 +3651,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x540dca81a35879b6
         .quad   0x60dd16a379c86a8a
 
-        // 2^52 * 3 * G
+        // 2^52 * 3 * B
 
         .quad   0x35a2c8487381e559
         .quad   0x596ffea6d78082cb
@@ -3346,7 +3666,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xd6edd234db0230c1
         .quad   0x0929efe8825b41cc
 
-        // 2^52 * 4 * G
+        // 2^52 * 4 * B
 
         .quad   0x5f0601d1cbd0f2d3
         .quad   0x736e412f6132bb7f
@@ -3361,7 +3681,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x565f7a934acd6590
         .quad   0x53daacec4cb4c128
 
-        // 2^52 * 5 * G
+        // 2^52 * 5 * B
 
         .quad   0x4ca73bd79cc8a7d6
         .quad   0x4d4a738f47e9a9b2
@@ -3376,7 +3696,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xd527bfcfeb778bf2
         .quad   0x303337da7012a3be
 
-        // 2^52 * 6 * G
+        // 2^52 * 6 * B
 
         .quad   0x955422228c1c9d7c
         .quad   0x01fac1371a9b340f
@@ -3391,7 +3711,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xc07e6bcdb2e582f1
         .quad   0x296c7291df412a44
 
-        // 2^52 * 7 * G
+        // 2^52 * 7 * B
 
         .quad   0x7903de2b33daf397
         .quad   0xd0ff0619c9a624b3
@@ -3406,7 +3726,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xae43f0cc726196f6
         .quad   0x7836c41f8245eaba
 
-        // 2^52 * 8 * G
+        // 2^52 * 8 * B
 
         .quad   0xe7a254db49e95a81
         .quad   0x5192d5d008b0ad73
@@ -3421,7 +3741,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xfeee68c5060d3b17
         .quad   0x329293b3dd4a0ac8
 
-        // 2^56 * 1 * G
+        // 2^56 * 1 * B
 
         .quad   0x4e59214fe194961a
         .quad   0x49be7dc70d71cd4f
@@ -3436,7 +3756,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x3eacbbcd484f9067
         .quad   0x60c52eef2bb9a4e4
 
-        // 2^56 * 2 * G
+        // 2^56 * 2 * B
 
         .quad   0x0b5d89bc3bfd8bf1
         .quad   0xb06b9237c9f3551a
@@ -3451,7 +3771,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x794513e4708e85d1
         .quad   0x63755bd3a976f413
 
-        // 2^56 * 3 * G
+        // 2^56 * 3 * B
 
         .quad   0xb55fa03e2ad10853
         .quad   0x356f75909ee63569
@@ -3466,7 +3786,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xcfa86230d43c4956
         .quad   0x70c2dd8a7ad166e7
 
-        // 2^56 * 4 * G
+        // 2^56 * 4 * B
 
         .quad   0x656194509f6fec0e
         .quad   0xee2e7ea946c6518d
@@ -3481,7 +3801,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xf89fd4d9a0e4db2e
         .quad   0x4179215c735a4f41
 
-        // 2^56 * 5 * G
+        // 2^56 * 5 * B
 
         .quad   0x8c7094e7d7dced2a
         .quad   0x97fb8ac347d39c70
@@ -3496,7 +3816,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x9bc1b7e12b389123
         .quad   0x24bb2312a9952489
 
-        // 2^56 * 6 * G
+        // 2^56 * 6 * B
 
         .quad   0xb1a8ed1732de67c3
         .quad   0x3cb49418461b4948
@@ -3511,7 +3831,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x4004197ba79ac193
         .quad   0x16acd79718531d76
 
-        // 2^56 * 7 * G
+        // 2^56 * 7 * B
 
         .quad   0x72df72af2d9b1d3d
         .quad   0x63462a36a432245a
@@ -3526,7 +3846,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x877bf6d3b9a4de27
         .quad   0x78da0fc61073f3eb
 
-        // 2^56 * 8 * G
+        // 2^56 * 8 * B
 
         .quad   0x5bf15d28e52bc66a
         .quad   0x2c47e31870f01a8e
@@ -3541,7 +3861,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x2aeb1d2a666eec17
         .quad   0x134610a6ab7da760
 
-        // 2^60 * 1 * G
+        // 2^60 * 1 * B
 
         .quad   0xcaf55ec27c59b23f
         .quad   0x99aeed3e154d04f2
@@ -3556,7 +3876,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x685dd14bfb37d6a2
         .quad   0x0ad6d64415677a18
 
-        // 2^60 * 2 * G
+        // 2^60 * 2 * B
 
         .quad   0x781a439e417becb5
         .quad   0x4ac5938cd10e0266
@@ -3571,7 +3891,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x94c01df05f65aaae
         .quad   0x43e4dc3ae14c0809
 
-        // 2^60 * 3 * G
+        // 2^60 * 3 * B
 
         .quad   0xbc12c7f1a938a517
         .quad   0x473028ab3180b2e1
@@ -3586,7 +3906,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x75880ced27230714
         .quad   0x2b09468fdd2f4c42
 
-        // 2^60 * 4 * G
+        // 2^60 * 4 * B
 
         .quad   0x97c749eeb701cb96
         .quad   0x83f438d4b6a369c3
@@ -3601,7 +3921,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xd9437c670d2371fa
         .quad   0x69e87308d30f8ed6
 
-        // 2^60 * 5 * G
+        // 2^60 * 5 * B
 
         .quad   0x435a8bb15656beb0
         .quad   0xf8fac9ba4f4d5bca
@@ -3616,7 +3936,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xe8968c5570066a93
         .quad   0x3c34d1881faaaddd
 
-        // 2^60 * 6 * G
+        // 2^60 * 6 * B
 
         .quad   0x3f9d2b5ea09f9ec0
         .quad   0x1dab3b6fb623a890
@@ -3631,7 +3951,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xb104cf641e5eee7d
         .quad   0x2f50b81c88a71c8f
 
-        // 2^60 * 7 * G
+        // 2^60 * 7 * B
 
         .quad   0x31723c61fc6811bb
         .quad   0x9cb450486211800f
@@ -3646,7 +3966,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x0a874ad3e3378e4f
         .quad   0x000d2b1f7c763e74
 
-        // 2^60 * 8 * G
+        // 2^60 * 8 * B
 
         .quad   0x3d420811d06d4a67
         .quad   0xbefc048590e0ffe3
@@ -3661,7 +3981,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x477f41e68f4c5299
         .quad   0x588d851cf6c86114
 
-        // 2^64 * 1 * G
+        // 2^64 * 1 * B
 
         .quad   0x51138ec78df6b0fe
         .quad   0x5397da89e575f51b
@@ -3676,7 +3996,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x3a1af517aa7da415
         .quad   0x0ad725db29ecb2ba
 
-        // 2^64 * 2 * G
+        // 2^64 * 2 * B
 
         .quad   0xdc4267b1834e2457
         .quad   0xb67544b570ce1bc5
@@ -3691,7 +4011,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x870a6eadd0945110
         .quad   0x0bccbb72a2a86561
 
-        // 2^64 * 3 * G
+        // 2^64 * 3 * B
 
         .quad   0x185e962feab1a9c8
         .quad   0x86e7e63565147dcd
@@ -3706,7 +4026,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x4f73cc9f789eaefc
         .quad   0x2d42e2108ead4701
 
-        // 2^64 * 4 * G
+        // 2^64 * 4 * B
 
         .quad   0x97f5131594dfd29b
         .quad   0x6155985d313f4c6a
@@ -3721,7 +4041,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x7bff0cb1bc3135b0
         .quad   0x745d2ffa9c0cf1e0
 
-        // 2^64 * 5 * G
+        // 2^64 * 5 * B
 
         .quad   0xbf525a1e2bc9c8bd
         .quad   0xea5b260826479d81
@@ -3736,7 +4056,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x7dc41549dab7ca05
         .quad   0x58ded861278ec1f7
 
-        // 2^64 * 6 * G
+        // 2^64 * 6 * B
 
         .quad   0xd8173793f266c55c
         .quad   0xc8c976c5cc454e49
@@ -3751,7 +4071,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xea3d7a3ff1a671cb
         .quad   0x120633b4947cfe54
 
-        // 2^64 * 7 * G
+        // 2^64 * 7 * B
 
         .quad   0x0b94987891610042
         .quad   0x4ee7b13cecebfae8
@@ -3766,7 +4086,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x583381fd5a76847c
         .quad   0x2d873ede7af6da9f
 
-        // 2^64 * 8 * G
+        // 2^64 * 8 * B
 
         .quad   0x157a316443373409
         .quad   0xfab8b7eef4aa81d9
@@ -3781,7 +4101,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x04202cb8a29aba2c
         .quad   0x4b1443362d07960d
 
-        // 2^68 * 1 * G
+        // 2^68 * 1 * B
 
         .quad   0x47b837f753242cec
         .quad   0x256dc48cc04212f2
@@ -3796,7 +4116,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x54f7450b161ebb6f
         .quad   0x7bcb4792a0def80e
 
-        // 2^68 * 2 * G
+        // 2^68 * 2 * B
 
         .quad   0x8487e3d02bc73659
         .quad   0x4baf8445059979df
@@ -3811,7 +4131,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x849471334c9ba488
         .quad   0x63fa6e6843ade311
 
-        // 2^68 * 3 * G
+        // 2^68 * 3 * B
 
         .quad   0xd15c20536597c168
         .quad   0x9f73740098d28789
@@ -3826,7 +4146,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x065cef8b19b3a31e
         .quad   0x3084d661533102c9
 
-        // 2^68 * 4 * G
+        // 2^68 * 4 * B
 
         .quad   0xe1f6b79ebf8469ad
         .quad   0x15801004e2663135
@@ -3841,7 +4161,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x30a9520d9b04a635
         .quad   0x6813b8f37973e5db
 
-        // 2^68 * 5 * G
+        // 2^68 * 5 * B
 
         .quad   0x9854b054334127c1
         .quad   0x105d047882fbff25
@@ -3856,7 +4176,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x3f2a8a2f9c9ceece
         .quad   0x5d1aeb792352435a
 
-        // 2^68 * 6 * G
+        // 2^68 * 6 * B
 
         .quad   0xf59e6bb319cd63ca
         .quad   0x670c159221d06839
@@ -3871,7 +4191,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x6bb2f1518ee8598d
         .quad   0x76b76289fcc475cc
 
-        // 2^68 * 7 * G
+        // 2^68 * 7 * B
 
         .quad   0x791b4cc1756286fa
         .quad   0xdbced317d74a157c
@@ -3886,7 +4206,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x44ebce5d3c119428
         .quad   0x35e1eb55be947f4a
 
-        // 2^68 * 8 * G
+        // 2^68 * 8 * B
 
         .quad   0xdbdae701c5738dd3
         .quad   0xf9c6f635b26f1bee
@@ -3901,7 +4221,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x5b374337fea9f451
         .quad   0x1865e78ec8e6aa46
 
-        // 2^72 * 1 * G
+        // 2^72 * 1 * B
 
         .quad   0xccc4b7c7b66e1f7a
         .quad   0x44157e25f50c2f7e
@@ -3916,7 +4236,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xb21ef18b4e5a1364
         .quad   0x0c2a1c4bcda28dc9
 
-        // 2^72 * 2 * G
+        // 2^72 * 2 * B
 
         .quad   0xd24dc7d06f1f0447
         .quad   0xb2269e3edb87c059
@@ -3931,7 +4251,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xa50c3a791cbc5fa4
         .quad   0x0404a5ca0afbafc3
 
-        // 2^72 * 3 * G
+        // 2^72 * 3 * B
 
         .quad   0x8c1f40070aa743d6
         .quad   0xccbad0cb5b265ee8
@@ -3946,7 +4266,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xefd4bef154d56fea
         .quad   0x76579a29e822d016
 
-        // 2^72 * 4 * G
+        // 2^72 * 4 * B
 
         .quad   0x45b68e7e49c02a17
         .quad   0x23cd51a2bca9a37f
@@ -3961,7 +4281,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x313916d7a9b0d253
         .quad   0x1160920961548059
 
-        // 2^72 * 5 * G
+        // 2^72 * 5 * B
 
         .quad   0xb44d166929dacfaa
         .quad   0xda529f4c8413598f
@@ -3976,7 +4296,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x71dee19ff9a699fb
         .quad   0x7f182d06e7ce2a9a
 
-        // 2^72 * 6 * G
+        // 2^72 * 6 * B
 
         .quad   0x7a7c8e64ab0168ec
         .quad   0xcb5a4a5515edc543
@@ -3991,7 +4311,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x4adca1c6c96b4684
         .quad   0x556d1c8312ad71bd
 
-        // 2^72 * 7 * G
+        // 2^72 * 7 * B
 
         .quad   0x17ef40e30c8d3982
         .quad   0x31f7073e15a3fa34
@@ -4006,7 +4326,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x022c3809f7ccebd2
         .quad   0x577e14a34bee84bd
 
-        // 2^72 * 8 * G
+        // 2^72 * 8 * B
 
         .quad   0xf0e268ac61a73b0a
         .quad   0xf2fafa103791a5f5
@@ -4021,7 +4341,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x670b958cb4bd42ec
         .quad   0x21398e0ca16353fd
 
-        // 2^76 * 1 * G
+        // 2^76 * 1 * B
 
         .quad   0x216ab2ca8da7d2ef
         .quad   0x366ad9dd99f42827
@@ -4036,7 +4356,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xd7a8beefb3448aa4
         .quad   0x7a2932856f5ea192
 
-        // 2^76 * 2 * G
+        // 2^76 * 2 * B
 
         .quad   0x0b39d761b02de888
         .quad   0x5f550e7ed2414e1f
@@ -4051,7 +4371,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xfe99402d2db7d318
         .quad   0x2b5b7eec372ba6ce
 
-        // 2^76 * 3 * G
+        // 2^76 * 3 * B
 
         .quad   0xb3bc4bbd83f50eef
         .quad   0x508f0c998c927866
@@ -4066,7 +4386,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x656683a1d62c6fee
         .quad   0x0157d5dc87e0ecae
 
-        // 2^76 * 4 * G
+        // 2^76 * 4 * B
 
         .quad   0xf2a7af510354c13d
         .quad   0xd7a0b145aa372b60
@@ -4081,7 +4401,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x8b61796c59541e5b
         .quad   0x40a44df0c021f978
 
-        // 2^76 * 5 * G
+        // 2^76 * 5 * B
 
         .quad   0xdaa869894f20ea6a
         .quad   0xea14a3d14c620618
@@ -4096,7 +4416,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x1ec856e3aad34dd6
         .quad   0x055b0be0e440e58f
 
-        // 2^76 * 6 * G
+        // 2^76 * 6 * B
 
         .quad   0x6469a17d89735d12
         .quad   0xdb6f27d5e662b9f1
@@ -4111,7 +4431,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x4522ea60fa5b98d5
         .quad   0x7064bbab1de4a819
 
-        // 2^76 * 7 * G
+        // 2^76 * 7 * B
 
         .quad   0xb919e1515a770641
         .quad   0xa9a2e2c74e7f8039
@@ -4126,7 +4446,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x81a248776edbb4ca
         .quad   0x1a944ee88ecd0563
 
-        // 2^76 * 8 * G
+        // 2^76 * 8 * B
 
         .quad   0xd5a91d1151039372
         .quad   0x2ed377b799ca26de
@@ -4141,7 +4461,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x47d3ed21652439d1
         .quad   0x49d271acedaf8b49
 
-        // 2^80 * 1 * G
+        // 2^80 * 1 * B
 
         .quad   0x89f5058a382b33f3
         .quad   0x5ae2ba0bad48c0b4
@@ -4156,7 +4476,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x65053299d9506eee
         .quad   0x4a07e14e5e8957cc
 
-        // 2^80 * 2 * G
+        // 2^80 * 2 * B
 
         .quad   0x4ee412cb980df999
         .quad   0xa315d76f3c6ec771
@@ -4171,7 +4491,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x780205810badd6d9
         .quad   0x1921a316baebd006
 
-        // 2^80 * 3 * G
+        // 2^80 * 3 * B
 
         .quad   0x89422f7edfb870fc
         .quad   0x2c296beb4f76b3bd
@@ -4186,7 +4506,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x786004c312c5dd87
         .quad   0x6093dccbc2950e64
 
-        // 2^80 * 4 * G
+        // 2^80 * 4 * B
 
         .quad   0x1ff39a8585e0706d
         .quad   0x36d0a5d8b3e73933
@@ -4201,7 +4521,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xf7b4de82b2216130
         .quad   0x363e999ddd97bd18
 
-        // 2^80 * 5 * G
+        // 2^80 * 5 * B
 
         .quad   0x96a843c135ee1fc4
         .quad   0x976eb35508e4c8cf
@@ -4216,7 +4536,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xb78d7009c14fb466
         .quad   0x079bfa9b08792413
 
-        // 2^80 * 6 * G
+        // 2^80 * 6 * B
 
         .quad   0xe3903a51da300df4
         .quad   0x843964233da95ab0
@@ -4231,7 +4551,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x72b2df3498102199
         .quad   0x575ee92a4a0bff56
 
-        // 2^80 * 7 * G
+        // 2^80 * 7 * B
 
         .quad   0xd4c080908a182fcf
         .quad   0x30e170c299489dbd
@@ -4246,7 +4566,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xfe2b85d9567197f5
         .quad   0x050eca52651e4e38
 
-        // 2^80 * 8 * G
+        // 2^80 * 8 * B
 
         .quad   0xc3431ade453f0c9c
         .quad   0xe9f5045eff703b9b
@@ -4261,7 +4581,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x11b2bb8712171709
         .quad   0x1fef24fa800f030b
 
-        // 2^84 * 1 * G
+        // 2^84 * 1 * B
 
         .quad   0xb496123a6b6c6609
         .quad   0xa750fe8580ab5938
@@ -4276,7 +4596,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x99c86ef9c6164510
         .quad   0x25d448044a256c84
 
-        // 2^84 * 2 * G
+        // 2^84 * 2 * B
 
         .quad   0xbd68230ec7e9b16f
         .quad   0x0eb1b9c1c1c5795d
@@ -4291,7 +4611,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x9f7ce1af47d5b65d
         .quad   0x15e087e55939d2fb
 
-        // 2^84 * 3 * G
+        // 2^84 * 3 * B
 
         .quad   0x12207543745c1496
         .quad   0xdaff3cfdda38610c
@@ -4306,7 +4626,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x6c2fe9d9525b8bd9
         .quad   0x2edbecf1c11cc079
 
-        // 2^84 * 4 * G
+        // 2^84 * 4 * B
 
         .quad   0x1616a4e3c715a0d2
         .quad   0x53623cb0f8341d4d
@@ -4321,7 +4641,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x3b77042883baa5f8
         .quad   0x678f82b898a47e8d
 
-        // 2^84 * 5 * G
+        // 2^84 * 5 * B
 
         .quad   0xb1491d0bd6900c54
         .quad   0x3539722c9d132636
@@ -4336,7 +4656,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xc1659480c2119ccd
         .quad   0x45306349186e0d5f
 
-        // 2^84 * 6 * G
+        // 2^84 * 6 * B
 
         .quad   0x94ddd0c1a6cdff1d
         .quad   0x55f6f115e84213ae
@@ -4351,7 +4671,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x25f11d2375fd2f49
         .quad   0x124cefe80fe10fe2
 
-        // 2^84 * 7 * G
+        // 2^84 * 7 * B
 
         .quad   0x4c126cf9d18df255
         .quad   0xc1d471e9147a63b6
@@ -4366,7 +4686,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xbd546e8dab8847a3
         .quad   0x64666aa0a4d2aba5
 
-        // 2^84 * 8 * G
+        // 2^84 * 8 * B
 
         .quad   0x6841435a7c06d912
         .quad   0xca123c21bb3f830b
@@ -4381,7 +4701,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x7a3034862d0457c4
         .quad   0x4c498bf78a0c892e
 
-        // 2^88 * 1 * G
+        // 2^88 * 1 * B
 
         .quad   0x37d653fb1aa73196
         .quad   0x0f9495303fd76418
@@ -4396,7 +4716,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xf75bbbcd66d94b36
         .quad   0x72e472930f316dfa
 
-        // 2^88 * 2 * G
+        // 2^88 * 2 * B
 
         .quad   0x2695208c9781084f
         .quad   0xb1502a0b23450ee1
@@ -4411,7 +4731,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x7b4ad5cdd24a88ec
         .quad   0x00f94051ee040543
 
-        // 2^88 * 3 * G
+        // 2^88 * 3 * B
 
         .quad   0x8d356b23c3d330b2
         .quad   0xf21c8b9bb0471b06
@@ -4426,7 +4746,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x0d57242bdb1fc1bf
         .quad   0x1c3520a35ea64bb6
 
-        // 2^88 * 4 * G
+        // 2^88 * 4 * B
 
         .quad   0x80d253a6bccba34a
         .quad   0x3e61c3a13838219b
@@ -4441,7 +4761,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x21014fe7744ce029
         .quad   0x0621e2c7d330487c
 
-        // 2^88 * 5 * G
+        // 2^88 * 5 * B
 
         .quad   0xaf9860cc8259838d
         .quad   0x90ea48c1c69f9adc
@@ -4456,7 +4776,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x0a961438bb51e2ef
         .quad   0x1583d7783c1cbf86
 
-        // 2^88 * 6 * G
+        // 2^88 * 6 * B
 
         .quad   0xeceea2ef5da27ae1
         .quad   0x597c3a1455670174
@@ -4471,7 +4791,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x1b53da780c1112fd
         .quad   0x079c170bd843b388
 
-        // 2^88 * 7 * G
+        // 2^88 * 7 * B
 
         .quad   0x0506ece464fa6fff
         .quad   0xbee3431e6205e523
@@ -4486,7 +4806,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xc22cbddc6d6b2600
         .quad   0x51445e14ddcd52f4
 
-        // 2^88 * 8 * G
+        // 2^88 * 8 * B
 
         .quad   0x57502b4b3b144951
         .quad   0x8e67ff6b444bbcb3
@@ -4501,7 +4821,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xdf1136c43a5b983f
         .quad   0x77b2e3f05d3e99af
 
-        // 2^92 * 1 * G
+        // 2^92 * 1 * B
 
         .quad   0xfd0d75879cf12657
         .quad   0xe82fef94e53a0e29
@@ -4516,7 +4836,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xa26a22894ef21702
         .quad   0x4dc923343b524805
 
-        // 2^92 * 2 * G
+        // 2^92 * 2 * B
 
         .quad   0xe3828c400f8086b6
         .quad   0x3f77e6f7979f0dc8
@@ -4531,7 +4851,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x6ff9bf483580972e
         .quad   0x00375883b332acfb
 
-        // 2^92 * 3 * G
+        // 2^92 * 3 * B
 
         .quad   0x0001b2cd28cb0940
         .quad   0x63fb51a06f1c24c9
@@ -4546,7 +4866,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xb4793efa3f55d9b1
         .quad   0x72a1056140678bb9
 
-        // 2^92 * 4 * G
+        // 2^92 * 4 * B
 
         .quad   0xa2b6812b1cc9249d
         .quad   0x62866eee21211f58
@@ -4561,7 +4881,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x9fa438f17bd932b1
         .quad   0x2a381bf01c6146e7
 
-        // 2^92 * 5 * G
+        // 2^92 * 5 * B
 
         .quad   0xac9b9879cfc811c1
         .quad   0x8b7d29813756e567
@@ -4576,7 +4896,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x5e5601bd07b43f5f
         .quad   0x2555b4e05539a242
 
-        // 2^92 * 6 * G
+        // 2^92 * 6 * B
 
         .quad   0x6fc09f5266ddd216
         .quad   0xdce560a7c8e37048
@@ -4591,7 +4911,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xed2f936179ed80be
         .quad   0x25d70b885f77bc4b
 
-        // 2^92 * 7 * G
+        // 2^92 * 7 * B
 
         .quad   0x4151c3d9762bf4de
         .quad   0x083f435f2745d82b
@@ -4606,7 +4926,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x82409818dd321648
         .quad   0x5c5abeb1e5a2e03d
 
-        // 2^92 * 8 * G
+        // 2^92 * 8 * B
 
         .quad   0x14722af4b73c2ddb
         .quad   0xbc470c5f5a05060d
@@ -4621,7 +4941,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x2aec170ed25db42b
         .quad   0x1d8dfd966645d694
 
-        // 2^96 * 1 * G
+        // 2^96 * 1 * B
 
         .quad   0x296fa9c59c2ec4de
         .quad   0xbc8b61bf4f84f3cb
@@ -4636,7 +4956,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xafa1fd5dc5412643
         .quad   0x3e8fe83d032f0137
 
-        // 2^96 * 2 * G
+        // 2^96 * 2 * B
 
         .quad   0x2f8b15b90570a294
         .quad   0x94f2427067084549
@@ -4651,7 +4971,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xb38847bceb401260
         .quad   0x0904d07b87779e5e
 
-        // 2^96 * 3 * G
+        // 2^96 * 3 * B
 
         .quad   0xb4ce1fd4ddba919c
         .quad   0xcf31db3ec74c8daa
@@ -4666,7 +4986,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x66f13ba7e7c9316a
         .quad   0x56bdaf238db40cac
 
-        // 2^96 * 4 * G
+        // 2^96 * 4 * B
 
         .quad   0x362ab9e3f53533eb
         .quad   0x338568d56eb93d40
@@ -4681,7 +5001,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x88d225821d09357c
         .quad   0x43b261dc9aeb4859
 
-        // 2^96 * 5 * G
+        // 2^96 * 5 * B
 
         .quad   0xe55b1e1988bb79bb
         .quad   0xa09ed07dc17a359d
@@ -4696,7 +5016,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xc49cf4936c824389
         .quad   0x27a6c809ae5d3410
 
-        // 2^96 * 6 * G
+        // 2^96 * 6 * B
 
         .quad   0x8ba6ebcd1f0db188
         .quad   0x37d3d73a675a5be8
@@ -4711,7 +5031,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x82891c667a94f0f4
         .quad   0x7b1df4b73890f436
 
-        // 2^96 * 7 * G
+        // 2^96 * 7 * B
 
         .quad   0xe492f2e0b3b2a224
         .quad   0x7c6c9e062b551160
@@ -4726,7 +5046,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x44bae2810ff6c482
         .quad   0x46cf4c473daf01cf
 
-        // 2^96 * 8 * G
+        // 2^96 * 8 * B
 
         .quad   0x426525ed9ec4e5f9
         .quad   0x0e5eda0116903303
@@ -4741,7 +5061,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x0a07e7b1e1834030
         .quad   0x69a198e64f1ce716
 
-        // 2^100 * 1 * G
+        // 2^100 * 1 * B
 
         .quad   0x7afcd613efa9d697
         .quad   0x0cc45aa41c067959
@@ -4756,7 +5076,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x6113167023b7436c
         .quad   0x0cf0ea5877da7282
 
-        // 2^100 * 2 * G
+        // 2^100 * 2 * B
 
         .quad   0x196c80a4ddd4ccbd
         .quad   0x22e6f55d95f2dd9d
@@ -4771,7 +5091,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xa5614c39a4096c13
         .quad   0x6cd0ff50979feced
 
-        // 2^100 * 3 * G
+        // 2^100 * 3 * B
 
         .quad   0xc0e067e78f4428ac
         .quad   0x14835ab0a61135e3
@@ -4786,7 +5106,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x2a731f6b44fc9eff
         .quad   0x30ddf38562705cfc
 
-        // 2^100 * 4 * G
+        // 2^100 * 4 * B
 
         .quad   0x4e3dcbdad1bff7f9
         .quad   0xc9118e8220645717
@@ -4801,7 +5121,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xc75d05276114b4e3
         .quad   0x222d9625d976fe2a
 
-        // 2^100 * 5 * G
+        // 2^100 * 5 * B
 
         .quad   0x1c717f85b372ace1
         .quad   0x81930e694638bf18
@@ -4816,7 +5136,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xbff80bf8a57ddcec
         .quad   0x57342dc96d6bc6e4
 
-        // 2^100 * 6 * G
+        // 2^100 * 6 * B
 
         .quad   0xefeef065c8ce5998
         .quad   0xbf029510b5cbeaa2
@@ -4831,7 +5151,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xae614b304f8a1c0e
         .quad   0x7afcaad70b99017b
 
-        // 2^100 * 7 * G
+        // 2^100 * 7 * B
 
         .quad   0xc25ded54a4b8be41
         .quad   0x902d13e11bb0e2dd
@@ -4846,7 +5166,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x65ed45fae4a25080
         .quad   0x0a2862393fda7320
 
-        // 2^100 * 8 * G
+        // 2^100 * 8 * B
 
         .quad   0x46ab13c8347cbc9d
         .quad   0x3849e8d499c12383
@@ -4861,7 +5181,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x16e6c210e18d876f
         .quad   0x7cacdb0f7f1b09c6
 
-        // 2^104 * 1 * G
+        // 2^104 * 1 * B
 
         .quad   0x9062b2e0d91a78bc
         .quad   0x47c9889cc8509667
@@ -4876,7 +5196,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xe04ecc3bdf273b5e
         .quad   0x1420683db54e4cd2
 
-        // 2^104 * 2 * G
+        // 2^104 * 2 * B
 
         .quad   0xb478bd1e249dd197
         .quad   0x620c35005e58c102
@@ -4891,7 +5211,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x5bece14b6f18683f
         .quad   0x55cf1eb62d550317
 
-        // 2^104 * 3 * G
+        // 2^104 * 3 * B
 
         .quad   0x5879101065c23d58
         .quad   0x8b9d086d5094819c
@@ -4906,7 +5226,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x9873ae5641347651
         .quad   0x13c4836799c58a5c
 
-        // 2^104 * 4 * G
+        // 2^104 * 4 * B
 
         .quad   0x423a5d465ab3e1b9
         .quad   0xfc13c187c7f13f61
@@ -4921,7 +5241,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x64b03ac325b73b96
         .quad   0x1dd56444725fd5ae
 
-        // 2^104 * 5 * G
+        // 2^104 * 5 * B
 
         .quad   0x8fa47ff83362127d
         .quad   0xbc9f6ac471cd7c15
@@ -4936,7 +5256,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xd1e36c6d17996f80
         .quad   0x318c8d9393a9a87b
 
-        // 2^104 * 6 * G
+        // 2^104 * 6 * B
 
         .quad   0xf2745d032afffe19
         .quad   0x0c9f3c497f24db66
@@ -4951,7 +5271,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x82ec12809d833e89
         .quad   0x05bff02328a11389
 
-        // 2^104 * 7 * G
+        // 2^104 * 7 * B
 
         .quad   0x3632137023cae00b
         .quad   0x544acf0ad1accf59
@@ -4966,7 +5286,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x5e82a51434e62a0d
         .quad   0x5ff418726271b7a1
 
-        // 2^104 * 8 * G
+        // 2^104 * 8 * B
 
         .quad   0x398e080c1789db9d
         .quad   0xa7602025f3e778f5
@@ -4981,7 +5301,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x3c57658ac888f7f0
         .quad   0x4ab38a51052cbefa
 
-        // 2^108 * 1 * G
+        // 2^108 * 1 * B
 
         .quad   0xdfdacbee4324c0e9
         .quad   0x054442883f955bb7
@@ -4996,7 +5316,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x27776093d3e46b5f
         .quad   0x2d13d55a28bd85fb
 
-        // 2^108 * 2 * G
+        // 2^108 * 2 * B
 
         .quad   0xfac5d2065b35b8da
         .quad   0xa8da8a9a85624bb7
@@ -5011,7 +5331,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xb7cded7b28c8c7c0
         .quad   0x6a927b6b7173a8d7
 
-        // 2^108 * 3 * G
+        // 2^108 * 3 * B
 
         .quad   0x1f6db24f986e4656
         .quad   0x1021c02ed1e9105b
@@ -5026,7 +5346,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x06da3d6297d17918
         .quad   0x66fbb494f12353f7
 
-        // 2^108 * 4 * G
+        // 2^108 * 4 * B
 
         .quad   0x751a50b9d85c0fb8
         .quad   0xd1afdc258bcf097b
@@ -5041,7 +5361,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x9047830455d12abb
         .quad   0x19a4bde1945ae873
 
-        // 2^108 * 5 * G
+        // 2^108 * 5 * B
 
         .quad   0x9b9f26f520a6200a
         .quad   0x64804443cf13eaf8
@@ -5056,7 +5376,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xf08e0e186fb2f7d1
         .quad   0x4f0b1c02700ab37a
 
-        // 2^108 * 6 * G
+        // 2^108 * 6 * B
 
         .quad   0xe1706787d81951fa
         .quad   0xa10a2c8eb290c77b
@@ -5071,7 +5391,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x4ab1531e6bd404e1
         .quad   0x4106b166bcf440ef
 
-        // 2^108 * 7 * G
+        // 2^108 * 7 * B
 
         .quad   0x02e57a421cd23668
         .quad   0x4ad9fb5d0eaef6fd
@@ -5086,7 +5406,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xecd367b4b98abd12
         .quad   0x2876beb1def344cf
 
-        // 2^108 * 8 * G
+        // 2^108 * 8 * B
 
         .quad   0xdc84e93563144691
         .quad   0x632fe8a0d61f23f4
@@ -5101,7 +5421,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x91bfa43411cce67b
         .quad   0x5784481964a831e7
 
-        // 2^112 * 1 * G
+        // 2^112 * 1 * B
 
         .quad   0xda7c2b256768d593
         .quad   0x98c1c0574422ca13
@@ -5116,7 +5436,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x1a4698bb5f6c025c
         .quad   0x104bbd6814049a7b
 
-        // 2^112 * 2 * G
+        // 2^112 * 2 * B
 
         .quad   0x51f0fd3168f1ed67
         .quad   0x2c811dcdd86f3bc2
@@ -5131,7 +5451,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x653c3c318f6d5c31
         .quad   0x2570fb17c279161f
 
-        // 2^112 * 3 * G
+        // 2^112 * 3 * B
 
         .quad   0x3efa367f2cb61575
         .quad   0xf5f96f761cd6026c
@@ -5146,7 +5466,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x16d7fcdd235b01d1
         .quad   0x08420edd5fcdf0e5
 
-        // 2^112 * 4 * G
+        // 2^112 * 4 * B
 
         .quad   0xcdff20ab8362fa4a
         .quad   0x57e118d4e21a3e6e
@@ -5161,7 +5481,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x1cb608173334a292
         .quad   0x4a7a4f2618991ad7
 
-        // 2^112 * 5 * G
+        // 2^112 * 5 * B
 
         .quad   0xf4a718025fb15f95
         .quad   0x3df65f346b5c1b8f
@@ -5176,7 +5496,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x773348b63d02b3f2
         .quad   0x4f4bce4dce6bcc51
 
-        // 2^112 * 6 * G
+        // 2^112 * 6 * B
 
         .quad   0xa71fce5ae2242584
         .quad   0x26ea725692f58a9e
@@ -5191,7 +5511,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x4cae76215f841a7c
         .quad   0x389e740c9a9ce1d6
 
-        // 2^112 * 7 * G
+        // 2^112 * 7 * B
 
         .quad   0x64fcb3ae34dcb9ce
         .quad   0x97500323e348d0ad
@@ -5206,7 +5526,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x8c14f6264e8a6c77
         .quad   0x6539a08915484759
 
-        // 2^112 * 8 * G
+        // 2^112 * 8 * B
 
         .quad   0xe9d21f74c3d2f773
         .quad   0xc150544125c46845
@@ -5221,7 +5541,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x59a8af0dfaf2939a
         .quad   0x4cabc7bdec33072a
 
-        // 2^116 * 1 * G
+        // 2^116 * 1 * B
 
         .quad   0x16faa8fb532f7428
         .quad   0xdbd42ea046a4e272
@@ -5236,7 +5556,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x8bfb0ba427fe6295
         .quad   0x36ba82e721200524
 
-        // 2^116 * 2 * G
+        // 2^116 * 2 * B
 
         .quad   0xd60ecbb74245ec41
         .quad   0xfd9be89e34348716
@@ -5251,7 +5571,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x8ca8ed0545c141f4
         .quad   0x2c63bec3662d358c
 
-        // 2^116 * 3 * G
+        // 2^116 * 3 * B
 
         .quad   0x7fe60d8bea787955
         .quad   0xb9dc117eb5f401b7
@@ -5266,7 +5586,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xd976a6becd0d8f62
         .quad   0x67cfd773a278b05e
 
-        // 2^116 * 4 * G
+        // 2^116 * 4 * B
 
         .quad   0x8dec31faef3ee475
         .quad   0x99dbff8a9e22fd92
@@ -5281,7 +5601,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x026204fcd0463b83
         .quad   0x3ec91a769eec6eed
 
-        // 2^116 * 5 * G
+        // 2^116 * 5 * B
 
         .quad   0x1e9df75bf78166ad
         .quad   0x4dfda838eb0cd7af
@@ -5296,7 +5616,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x16e58daa2e8845b3
         .quad   0x357d397d5499da8f
 
-        // 2^116 * 6 * G
+        // 2^116 * 6 * B
 
         .quad   0x1ebfa05fb0bace6c
         .quad   0xc934620c1caf9a1e
@@ -5311,7 +5631,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x75c123999165227d
         .quad   0x69be1343c2f2b35e
 
-        // 2^116 * 7 * G
+        // 2^116 * 7 * B
 
         .quad   0x0e091d5ee197c92a
         .quad   0x4f51019f2945119f
@@ -5326,7 +5646,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xd762deb0dba5e507
         .quad   0x69607bd681bd9d94
 
-        // 2^116 * 8 * G
+        // 2^116 * 8 * B
 
         .quad   0xf6be021068de1ce1
         .quad   0xe8d518e70edcbc1f
@@ -5341,7 +5661,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x48d82f20288ce532
         .quad   0x3a31abfa36b57524
 
-        // 2^120 * 1 * G
+        // 2^120 * 1 * B
 
         .quad   0x239e9624089c0a2e
         .quad   0xc748c4c03afe4738
@@ -5356,7 +5676,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xe7d2aec2ae72fd19
         .quad   0x0edf493c85b602a6
 
-        // 2^120 * 2 * G
+        // 2^120 * 2 * B
 
         .quad   0xaecc8158599b5a68
         .quad   0xea574f0febade20e
@@ -5371,7 +5691,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xaee8bfad04c7d657
         .quad   0x355bb12ab26176f4
 
-        // 2^120 * 3 * G
+        // 2^120 * 3 * B
 
         .quad   0xa71e64cc7493bbf4
         .quad   0xe5bd84d9eca3b0c3
@@ -5386,7 +5706,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x1815a929c9b1d1d9
         .quad   0x47c3871bbb1755c4
 
-        // 2^120 * 4 * G
+        // 2^120 * 4 * B
 
         .quad   0x5144539771ec4f48
         .quad   0xf805b17dc98c5d6e
@@ -5401,7 +5721,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xb514cfcd5d89d665
         .quad   0x473829a74f75d537
 
-        // 2^120 * 5 * G
+        // 2^120 * 5 * B
 
         .quad   0x82d2da754679c418
         .quad   0xe63bd7d8b2618df0
@@ -5416,7 +5736,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xa96c65a78c8eed7b
         .quad   0x7411a6054f8a433f
 
-        // 2^120 * 6 * G
+        // 2^120 * 6 * B
 
         .quad   0x4d659d32b99dc86d
         .quad   0x044cdc75603af115
@@ -5431,7 +5751,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x57e7cc9bf1957561
         .quad   0x3add88a5c7cd6460
 
-        // 2^120 * 7 * G
+        // 2^120 * 7 * B
 
         .quad   0xab895770b635dcf2
         .quad   0x02dfef6cf66c1fbc
@@ -5446,7 +5766,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x7bf15a3e26783307
         .quad   0x5620310cbbd8ece7
 
-        // 2^120 * 8 * G
+        // 2^120 * 8 * B
 
         .quad   0x528993434934d643
         .quad   0xb9dbf806a51222f5
@@ -5461,7 +5781,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x214c8fcfa2989fb8
         .quad   0x6daaf723399b9dd5
 
-        // 2^124 * 1 * G
+        // 2^124 * 1 * B
 
         .quad   0x591e4a5610628564
         .quad   0x2a4bb87ca8b4df34
@@ -5476,7 +5796,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x02652e68d36ae38c
         .quad   0x79d739835a6199dc
 
-        // 2^124 * 2 * G
+        // 2^124 * 2 * B
 
         .quad   0xd9354df64131c1bd
         .quad   0x758094a186ec5822
@@ -5491,7 +5811,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x61b471fd56ffe386
         .quad   0x31741195b745a599
 
-        // 2^124 * 3 * G
+        // 2^124 * 3 * B
 
         .quad   0xe8d10190b77a360b
         .quad   0x99b983209995e702
@@ -5506,7 +5826,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x104f6459a65c0762
         .quad   0x567951295b4d38d4
 
-        // 2^124 * 4 * G
+        // 2^124 * 4 * B
 
         .quad   0x535fd60613037524
         .quad   0xe210adf6b0fbc26a
@@ -5521,7 +5841,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xa215e2dcf318e28e
         .quad   0x4599ee919b633352
 
-        // 2^124 * 5 * G
+        // 2^124 * 5 * B
 
         .quad   0xd3c220ca70e0e76b
         .quad   0xb12bea58ea9f3094
@@ -5536,7 +5856,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x5327d1814b358817
         .quad   0x65712585893fe9bc
 
-        // 2^124 * 6 * G
+        // 2^124 * 6 * B
 
         .quad   0x9c102fb732a61161
         .quad   0xe48e10dd34d520a8
@@ -5551,7 +5871,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x1a9720d8abb195d4
         .quad   0x1bb9fe452ea98463
 
-        // 2^124 * 7 * G
+        // 2^124 * 7 * B
 
         .quad   0xe9d1d950b3d54f9e
         .quad   0x2d5f9cbee00d33c1
@@ -5566,7 +5886,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x7273f51cb4e99f40
         .quad   0x78a2a95823d75698
 
-        // 2^124 * 8 * G
+        // 2^124 * 8 * B
 
         .quad   0xa2b072e95c8c2ace
         .quad   0x69cffc96651e9c4b
@@ -5581,7 +5901,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x10792e9a70dd003f
         .quad   0x59ad4b7a6e28dc74
 
-        // 2^128 * 1 * G
+        // 2^128 * 1 * B
 
         .quad   0x5f3a7562eb3dbe47
         .quad   0xf7ea38548ebda0b8
@@ -5596,7 +5916,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xda0fe1fff979c60a
         .quad   0x4468de2d7c2dd693
 
-        // 2^128 * 2 * G
+        // 2^128 * 2 * B
 
         .quad   0x51bb355e9419469e
         .quad   0x33e6dc4c23ddc754
@@ -5611,7 +5931,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x88ad8c388d59580f
         .quad   0x58f29abfe79f2ca8
 
-        // 2^128 * 3 * G
+        // 2^128 * 3 * B
 
         .quad   0xe90ecfab8de73e68
         .quad   0x54036f9f377e76a5
@@ -5626,7 +5946,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x83e236233c33289f
         .quad   0x701f25bb0caec18f
 
-        // 2^128 * 4 * G
+        // 2^128 * 4 * B
 
         .quad   0xc3a8b0f8e4616ced
         .quad   0xf700660e9e25a87d
@@ -5641,7 +5961,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x691417f35c229346
         .quad   0x0e9b9cbb144ef0ec
 
-        // 2^128 * 5 * G
+        // 2^128 * 5 * B
 
         .quad   0xfbbad48ffb5720ad
         .quad   0xee81916bdbf90d0e
@@ -5656,7 +5976,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xccb82f0e68a7fb97
         .quad   0x4167a4e6bc593244
 
-        // 2^128 * 6 * G
+        // 2^128 * 6 * B
 
         .quad   0x643b9d2876f62700
         .quad   0x5d1d9d400e7668eb
@@ -5671,7 +5991,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xed7485c158808883
         .quad   0x1176fc6e2dfe65e4
 
-        // 2^128 * 7 * G
+        // 2^128 * 7 * B
 
         .quad   0xb4af6cd05b9c619b
         .quad   0x2ddfc9f4b2a58480
@@ -5686,7 +6006,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xe2333e23f7598295
         .quad   0x4f2fad0116b900d1
 
-        // 2^128 * 8 * G
+        // 2^128 * 8 * B
 
         .quad   0x44beb24194ae4e54
         .quad   0x5f541c511857ef6c
@@ -5701,7 +6021,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x258e9aaa47285c40
         .quad   0x10b89ca6042893b7
 
-        // 2^132 * 1 * G
+        // 2^132 * 1 * B
 
         .quad   0x9b2a426e3b646025
         .quad   0x32127190385ce4cf
@@ -5716,7 +6036,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x24685482b7ca6827
         .quad   0x293c778cefe07f26
 
-        // 2^132 * 2 * G
+        // 2^132 * 2 * B
 
         .quad   0x86809e7007069096
         .quad   0xaad75b15e4e50189
@@ -5731,7 +6051,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x17af4f4aaf6fc8dd
         .quad   0x4b0553b53cdba58b
 
-        // 2^132 * 3 * G
+        // 2^132 * 3 * B
 
         .quad   0x9c65fcbe1b32ff79
         .quad   0xeb75ea9f03b50f9b
@@ -5746,7 +6066,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xfed5ac25d3404f9a
         .quad   0x72e82d5e5505c229
 
-        // 2^132 * 4 * G
+        // 2^132 * 4 * B
 
         .quad   0x6b0b697ff0d844c8
         .quad   0xbb12f85cd979cb49
@@ -5761,7 +6081,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xa122ee5f3deb0f1b
         .quad   0x510df84b485a00d4
 
-        // 2^132 * 5 * G
+        // 2^132 * 5 * B
 
         .quad   0xa54133bb9277a1fa
         .quad   0x74ec3b6263991237
@@ -5776,7 +6096,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x1093f624127610c5
         .quad   0x4e05e26ad0a1eaa4
 
-        // 2^132 * 6 * G
+        // 2^132 * 6 * B
 
         .quad   0xda9b6b624b531f20
         .quad   0x429a760e77509abb
@@ -5791,7 +6111,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xb32cd8105e3563dd
         .quad   0x15f6beae2ae340ae
 
-        // 2^132 * 7 * G
+        // 2^132 * 7 * B
 
         .quad   0x862bcb0c31ec3a62
         .quad   0x810e2b451138f3c2
@@ -5806,7 +6126,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xd7596caa0de9e524
         .quad   0x6e8042ccb2b1b3d7
 
-        // 2^132 * 8 * G
+        // 2^132 * 8 * B
 
         .quad   0xf10d3c29ce28ca6e
         .quad   0xbad34540fcb6093d
@@ -5821,7 +6141,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x6fa9d4e8c7bfdf7a
         .quad   0x0dcf2d679b624eb7
 
-        // 2^136 * 1 * G
+        // 2^136 * 1 * B
 
         .quad   0x3d5947499718289c
         .quad   0x12ebf8c524533f26
@@ -5836,7 +6156,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x22e3b72c3ca60022
         .quad   0x72214f63cc65c6a7
 
-        // 2^136 * 2 * G
+        // 2^136 * 2 * B
 
         .quad   0xb4e37f405307a693
         .quad   0xaba714d72f336795
@@ -5851,7 +6171,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xc7ffe45c06fb25a2
         .quad   0x00ba739e2ae395e6
 
-        // 2^136 * 3 * G
+        // 2^136 * 3 * B
 
         .quad   0x592e98de5c8790d6
         .quad   0xe5bfb7d345c2a2df
@@ -5866,7 +6186,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xd3dfc90d02289308
         .quad   0x05e1296846271945
 
-        // 2^136 * 4 * G
+        // 2^136 * 4 * B
 
         .quad   0xba82eeb32d9c495a
         .quad   0xceefc8fcf12bb97c
@@ -5881,7 +6201,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xc9a75a97f04efa05
         .quad   0x006b52076b3ff832
 
-        // 2^136 * 5 * G
+        // 2^136 * 5 * B
 
         .quad   0x29e0cfe19d95781c
         .quad   0xb681df18966310e2
@@ -5896,7 +6216,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xdbc9c440d3ee9a81
         .quad   0x6b2a90af1a6029ed
 
-        // 2^136 * 6 * G
+        // 2^136 * 6 * B
 
         .quad   0x6923f4fc9ae61e97
         .quad   0x5735281de03f5fd1
@@ -5911,7 +6231,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x180d4a7bde2968d7
         .quad   0x05b32c2b1cb16790
 
-        // 2^136 * 7 * G
+        // 2^136 * 7 * B
 
         .quad   0xc8c05eccd24da8fd
         .quad   0xa1cf1aac05dfef83
@@ -5926,7 +6246,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xa3d16048282b5af3
         .quad   0x4fc079d27a7336eb
 
-        // 2^136 * 8 * G
+        // 2^136 * 8 * B
 
         .quad   0x51c938b089bf2f7f
         .quad   0x2497bd6502dfe9a7
@@ -5941,7 +6261,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x4ae75060ebc6c4af
         .quad   0x3f8612966c87000d
 
-        // 2^140 * 1 * G
+        // 2^140 * 1 * B
 
         .quad   0x0c9c5303f7957be4
         .quad   0xa3c31a20e085c145
@@ -5956,7 +6276,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xe906b3ffbd596b50
         .quad   0x02672b37dd3fb8e0
 
-        // 2^140 * 2 * G
+        // 2^140 * 2 * B
 
         .quad   0x48b2ca8b260885e4
         .quad   0xa4286bec82b34c1c
@@ -5971,7 +6291,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xf18602df9851c7af
         .quad   0x0400f3a049e3414b
 
-        // 2^140 * 3 * G
+        // 2^140 * 3 * B
 
         .quad   0xabce0476ba61c55b
         .quad   0x36a3d6d7c4d39716
@@ -5986,7 +6306,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x29525226ebcceae1
         .quad   0x0d794f8383eba820
 
-        // 2^140 * 4 * G
+        // 2^140 * 4 * B
 
         .quad   0xff35f5cb9e1516f4
         .quad   0xee805bcf648aae45
@@ -6001,7 +6321,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x625c6c1cc6cb4305
         .quad   0x7fc90fea93eb3a67
 
-        // 2^140 * 5 * G
+        // 2^140 * 5 * B
 
         .quad   0x0408f1fe1f5c5926
         .quad   0x1a8f2f5e3b258bf4
@@ -6016,7 +6336,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xc5e75173e53de537
         .quad   0x73119fa08c12bb03
 
-        // 2^140 * 6 * G
+        // 2^140 * 6 * B
 
         .quad   0xed30129453f1a4cb
         .quad   0xbce621c9c8f53787
@@ -6031,7 +6351,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x67b99dfc96988ade
         .quad   0x3f52c02852661036
 
-        // 2^140 * 7 * G
+        // 2^140 * 7 * B
 
         .quad   0xffeaa48e2a1351c6
         .quad   0x28624754fa7f53d7
@@ -6046,7 +6366,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x378cec9f0f11df65
         .quad   0x36853c69ab96de4d
 
-        // 2^140 * 8 * G
+        // 2^140 * 8 * B
 
         .quad   0x36d9b8de78f39b2d
         .quad   0x7f42ed71a847b9ec
@@ -6061,7 +6381,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xbf09e2f5fa66190b
         .quad   0x681109bee0dcfe37
 
-        // 2^144 * 1 * G
+        // 2^144 * 1 * B
 
         .quad   0x559a0cc9782a0dde
         .quad   0x551dcdb2ea718385
@@ -6076,7 +6396,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x85c15a344f5a2467
         .quad   0x4041943d9dba3069
 
-        // 2^144 * 2 * G
+        // 2^144 * 2 * B
 
         .quad   0xc3c0eeba43ebcc96
         .quad   0x8d749c9c26ea9caf
@@ -6091,7 +6411,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x44182854e35ff395
         .quad   0x1b4f92314359a012
 
-        // 2^144 * 3 * G
+        // 2^144 * 3 * B
 
         .quad   0x3e5c109d89150951
         .quad   0x39cefa912de9696a
@@ -6106,7 +6426,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xef4572805593eb3d
         .quad   0x020c526a758f36cb
 
-        // 2^144 * 4 * G
+        // 2^144 * 4 * B
 
         .quad   0x779834f89ed8dbbc
         .quad   0xc8f2aaf9dc7ca46c
@@ -6121,7 +6441,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xab17ea25f1fb11c9
         .quad   0x4cfb7d7b304b877b
 
-        // 2^144 * 5 * G
+        // 2^144 * 5 * B
 
         .quad   0x72b43d6cb89b75fe
         .quad   0x54c694d99c6adc80
@@ -6136,7 +6456,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x1301498b3369a705
         .quad   0x2f98f71258592dd1
 
-        // 2^144 * 6 * G
+        // 2^144 * 6 * B
 
         .quad   0x0c94a74cb50f9e56
         .quad   0x5b1ff4a98e8e1320
@@ -6151,7 +6471,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x8d0e1dfbdf34b4e9
         .quad   0x298b8ce8aef25ff3
 
-        // 2^144 * 7 * G
+        // 2^144 * 7 * B
 
         .quad   0x2a927953eff70cb2
         .quad   0x4b89c92a79157076
@@ -6166,7 +6486,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xa293aa9aa4b22573
         .quad   0x71d62bdd465e1c6a
 
-        // 2^144 * 8 * G
+        // 2^144 * 8 * B
 
         .quad   0x6533cc28d378df80
         .quad   0xf6db43790a0fa4b4
@@ -6181,7 +6501,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xda6d0892e3ac623b
         .quad   0x4aebcc4547e9d98c
 
-        // 2^148 * 1 * G
+        // 2^148 * 1 * B
 
         .quad   0x53175a7205d21a77
         .quad   0xb0c04422d3b934d4
@@ -6196,7 +6516,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xd661f3e74354c6ff
         .quad   0x5ecb72e6f1a3407a
 
-        // 2^148 * 2 * G
+        // 2^148 * 2 * B
 
         .quad   0xa515a31b2259fb4e
         .quad   0x0960f3972bcac52f
@@ -6211,7 +6531,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xdb4d5a1a7f24ca80
         .quad   0x21aeba8b59250ea8
 
-        // 2^148 * 3 * G
+        // 2^148 * 3 * B
 
         .quad   0x24f13b34cf405530
         .quad   0x3c44ea4a43088af7
@@ -6226,7 +6546,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xdf6092ceb0f08e56
         .quad   0x4909b3e22c67c36b
 
-        // 2^148 * 4 * G
+        // 2^148 * 4 * B
 
         .quad   0x9c9c85ea63fe2e89
         .quad   0xbe1baf910e9412ec
@@ -6241,7 +6561,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xc38ae640e10120b9
         .quad   0x09ae23717b2b1a6d
 
-        // 2^148 * 5 * G
+        // 2^148 * 5 * B
 
         .quad   0xbb6a192a4e4d083c
         .quad   0x34ace0630029e192
@@ -6256,7 +6576,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x2ba7472df52ecc7f
         .quad   0x03019b4f646f9dc8
 
-        // 2^148 * 6 * G
+        // 2^148 * 6 * B
 
         .quad   0x04a186b5565345cd
         .quad   0xeee76610bcc4116a
@@ -6271,7 +6591,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x63dbecfd1583402a
         .quad   0x61722b4aef2e032e
 
-        // 2^148 * 7 * G
+        // 2^148 * 7 * B
 
         .quad   0x0012aafeecbd47af
         .quad   0x55a266fb1cd46309
@@ -6286,7 +6606,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xf2e9bc04b787d959
         .quad   0x6beba1249add7f64
 
-        // 2^148 * 8 * G
+        // 2^148 * 8 * B
 
         .quad   0x1d06005ca5b1b143
         .quad   0x6d4c6bb87fd1cda2
@@ -6301,7 +6621,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xc43eced4a169d097
         .quad   0x0a1249fff7e587c3
 
-        // 2^152 * 1 * G
+        // 2^152 * 1 * B
 
         .quad   0x12f0071b276d01c9
         .quad   0xe7b8bac586c48c70
@@ -6316,7 +6636,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xe6ed278ec9673ae0
         .quad   0x06e1cd13b19ea319
 
-        // 2^152 * 2 * G
+        // 2^152 * 2 * B
 
         .quad   0x40d0ad516f166f23
         .quad   0x118e32931fab6abe
@@ -6331,7 +6651,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x68cd7830592c6339
         .quad   0x30d0fded2e51307e
 
-        // 2^152 * 3 * G
+        // 2^152 * 3 * B
 
         .quad   0xe0594d1af21233b3
         .quad   0x1bdbe78ef0cc4d9c
@@ -6346,7 +6666,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x0e6df501659932ec
         .quad   0x3bca0d2895ca5dfe
 
-        // 2^152 * 4 * G
+        // 2^152 * 4 * B
 
         .quad   0x40f031bc3c5d62a4
         .quad   0x19fc8b3ecff07a60
@@ -6361,7 +6681,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x9121774549f11a5f
         .quad   0x24ce0930542ca463
 
-        // 2^152 * 5 * G
+        // 2^152 * 5 * B
 
         .quad   0x1fe890f5fd06c106
         .quad   0xb5c468355d8810f2
@@ -6376,7 +6696,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xbc3bd33bd17f4d69
         .quad   0x491b66dec0dcff6a
 
-        // 2^152 * 6 * G
+        // 2^152 * 6 * B
 
         .quad   0x98f5b13dc7ea32a7
         .quad   0xe3d5f8cc7e16db98
@@ -6391,7 +6711,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xc13d331b84777063
         .quad   0x530d4a82eb078a99
 
-        // 2^152 * 7 * G
+        // 2^152 * 7 * B
 
         .quad   0x004c3630e1f94825
         .quad   0x7e2d78268cab535a
@@ -6406,7 +6726,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x0fbe044213443b1a
         .quad   0x02a4ec1921e1a1db
 
-        // 2^152 * 8 * G
+        // 2^152 * 8 * B
 
         .quad   0x5ce6259a3b24b8a2
         .quad   0xb8577acc45afa0b8
@@ -6421,7 +6741,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x36bdb6e8df179bac
         .quad   0x2ef517885ba82859
 
-        // 2^156 * 1 * G
+        // 2^156 * 1 * B
 
         .quad   0x88bd438cd11e0d4a
         .quad   0x30cb610d43ccf308
@@ -6436,7 +6756,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xb2b948d747c742a3
         .quad   0x37f33226d7fb44c4
 
-        // 2^156 * 2 * G
+        // 2^156 * 2 * B
 
         .quad   0x0dae8767b55f6e08
         .quad   0x4a43b3b35b203a02
@@ -6451,7 +6771,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xbe81830fdcb6c6e8
         .quad   0x556c7045827baf52
 
-        // 2^156 * 3 * G
+        // 2^156 * 3 * B
 
         .quad   0x8e2b517302e9d8b7
         .quad   0xe3e52269248714e8
@@ -6466,7 +6786,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xb5afcc5d6fd427cf
         .quad   0x6a5393281e1e11eb
 
-        // 2^156 * 4 * G
+        // 2^156 * 4 * B
 
         .quad   0xf3da5139a5d1ee89
         .quad   0x8145457cff936988
@@ -6481,7 +6801,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x44093b5e237afa99
         .quad   0x0d414bed8708b8b2
 
-        // 2^156 * 5 * G
+        // 2^156 * 5 * B
 
         .quad   0xcfb68265fd0e75f6
         .quad   0xe45b3e28bb90e707
@@ -6496,7 +6816,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x732b7352c4a5dee1
         .quad   0x5d7c7cf1aa7cd2d2
 
-        // 2^156 * 6 * G
+        // 2^156 * 6 * B
 
         .quad   0xaf3b46bf7a4aafa2
         .quad   0xb78705ec4d40d411
@@ -6511,7 +6831,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xe8652baf87f3651a
         .quad   0x0241800059d66c33
 
-        // 2^156 * 7 * G
+        // 2^156 * 7 * B
 
         .quad   0xceb077fea37a5be4
         .quad   0xdb642f02e5a5eeb7
@@ -6526,7 +6846,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xd3b5a3473600dbcb
         .quad   0x4aeabbe6f9ffd7f8
 
-        // 2^156 * 8 * G
+        // 2^156 * 8 * B
 
         .quad   0x4630119e40d8f78c
         .quad   0xa01a9bc53c710e11
@@ -6541,7 +6861,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x68ccdfec8dc230c7
         .quad   0x7cfb7e3faf6b861c
 
-        // 2^160 * 1 * G
+        // 2^160 * 1 * B
 
         .quad   0x4637974e8c58aedc
         .quad   0xb9ef22fbabf041a4
@@ -6556,7 +6876,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xcf7509a86ee2eed1
         .quad   0x7dc43e35dc2aa3e1
 
-        // 2^160 * 2 * G
+        // 2^160 * 2 * B
 
         .quad   0x85966665887dd9c3
         .quad   0xc90f9b314bb05355
@@ -6571,7 +6891,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xca704534b201bb49
         .quad   0x7f79823f9c30dd2e
 
-        // 2^160 * 3 * G
+        // 2^160 * 3 * B
 
         .quad   0x8334d239a3b513e8
         .quad   0xc13670d4b91fa8d8
@@ -6586,7 +6906,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x7156ce4389a45d47
         .quad   0x071a7d0ace18346c
 
-        // 2^160 * 4 * G
+        // 2^160 * 4 * B
 
         .quad   0xd3072daac887ba0b
         .quad   0x01262905bfa562ee
@@ -6601,7 +6921,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xe951a9a3171798d7
         .quad   0x6f5a9a7322aca51d
 
-        // 2^160 * 5 * G
+        // 2^160 * 5 * B
 
         .quad   0x8ba1000c2f41c6c5
         .quad   0xc49f79c10cfefb9b
@@ -6616,7 +6936,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xfa091f1dd91ef6d9
         .quad   0x6b5d76cbea46bb34
 
-        // 2^160 * 6 * G
+        // 2^160 * 6 * B
 
         .quad   0x8857556cec0cd994
         .quad   0x6472dc6f5cd01dba
@@ -6631,7 +6951,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x4811f7ed0991d03e
         .quad   0x3f81e38b8f70d075
 
-        // 2^160 * 7 * G
+        // 2^160 * 7 * B
 
         .quad   0x7f910fcc7ed9affe
         .quad   0x545cb8a12465874b
@@ -6646,7 +6966,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xf2d6fd0009eefe1c
         .quad   0x127c158bf0fa1ebe
 
-        // 2^160 * 8 * G
+        // 2^160 * 8 * B
 
         .quad   0xf6197c422e9879a2
         .quad   0xa44addd452ca3647
@@ -6661,7 +6981,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x8808ac30a9f6653c
         .quad   0x302d92d20539236d
 
-        // 2^164 * 1 * G
+        // 2^164 * 1 * B
 
         .quad   0x4c59023fcb3efb7c
         .quad   0x6c2fcb99c63c2a94
@@ -6676,7 +6996,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x542f7d1bf400d305
         .quad   0x4159f47f048d9136
 
-        // 2^164 * 2 * G
+        // 2^164 * 2 * B
 
         .quad   0x20ad660839e31e32
         .quad   0xf81e1bd58405be50
@@ -6691,7 +7011,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xfa694084214dd24c
         .quad   0x71ab966fa32301c3
 
-        // 2^164 * 3 * G
+        // 2^164 * 3 * B
 
         .quad   0x2dcbd8e34ded02fc
         .quad   0x1151f3ec596f22aa
@@ -6706,7 +7026,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x75d4613f71300f8a
         .quad   0x7a912faf60f542f9
 
-        // 2^164 * 4 * G
+        // 2^164 * 4 * B
 
         .quad   0xb204585e5edc1a43
         .quad   0x9f0e16ee5897c73c
@@ -6721,7 +7041,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x70417dbde6217387
         .quad   0x721627aefbac4384
 
-        // 2^164 * 5 * G
+        // 2^164 * 5 * B
 
         .quad   0x97d03bc38736add5
         .quad   0x2f1422afc532b130
@@ -6736,7 +7056,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xcf73f983720cbd58
         .quad   0x67da12e6b8b56351
 
-        // 2^164 * 6 * G
+        // 2^164 * 6 * B
 
         .quad   0x7067e187b4bd6e07
         .quad   0x6e8f0203c7d1fe74
@@ -6751,7 +7071,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x15d9a9bed9b2c728
         .quad   0x49233ea3f3775dcb
 
-        // 2^164 * 7 * G
+        // 2^164 * 7 * B
 
         .quad   0x629398fa8dbffc3a
         .quad   0xe12fe52dd54db455
@@ -6766,7 +7086,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xdabb5b433d1a9829
         .quad   0x074d8d245287fb2d
 
-        // 2^164 * 8 * G
+        // 2^164 * 8 * B
 
         .quad   0x8337d9cd440bfc31
         .quad   0x729d2ca1af318fd7
@@ -6781,7 +7101,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x441c0a1e2f164403
         .quad   0x5aea8e567a87d395
 
-        // 2^168 * 1 * G
+        // 2^168 * 1 * B
 
         .quad   0x7813c1a2bca4283d
         .quad   0xed62f091a1863dd9
@@ -6796,7 +7116,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xbf87263b03578a23
         .quad   0x45b46c51361cba72
 
-        // 2^168 * 2 * G
+        // 2^168 * 2 * B
 
         .quad   0xa9402abf314f7fa1
         .quad   0xe257f1dc8e8cf450
@@ -6811,7 +7131,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x087a76659c832487
         .quad   0x4ae619387d8ab5bb
 
-        // 2^168 * 3 * G
+        // 2^168 * 3 * B
 
         .quad   0x8ddbf6aa5344a32e
         .quad   0x7d88eab4b41b4078
@@ -6826,7 +7146,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xdf7275107af66569
         .quad   0x135529b623b0e6aa
 
-        // 2^168 * 4 * G
+        // 2^168 * 4 * B
 
         .quad   0x18f0dbd7add1d518
         .quad   0x979f7888cfc11f11
@@ -6841,7 +7161,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xc01b2d64b3360434
         .quad   0x4f7e9c95905f3bdb
 
-        // 2^168 * 5 * G
+        // 2^168 * 5 * B
 
         .quad   0x62674bbc5781302e
         .quad   0xd8520f3989addc0f
@@ -6856,7 +7176,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x553ce494253c1122
         .quad   0x2a0a65314ef9ca75
 
-        // 2^168 * 6 * G
+        // 2^168 * 6 * B
 
         .quad   0x2db7937ff7f927c2
         .quad   0xdb741f0617d0a635
@@ -6871,7 +7191,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xa83c78cee4a32c89
         .quad   0x121a307710aa24b6
 
-        // 2^168 * 7 * G
+        // 2^168 * 7 * B
 
         .quad   0xe4db5d5e9f034a97
         .quad   0xe153fc093034bc2d
@@ -6886,7 +7206,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x485035de2f64d8e5
         .quad   0x6b89069b20a7a9f7
 
-        // 2^168 * 8 * G
+        // 2^168 * 8 * B
 
         .quad   0x812aa0416270220d
         .quad   0x995a89faf9245b4e
@@ -6901,7 +7221,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x02a1ef74e601a94f
         .quad   0x102f73bfde04341a
 
-        // 2^172 * 1 * G
+        // 2^172 * 1 * B
 
         .quad   0xb5a2d50c7ec20d3e
         .quad   0xc64bdd6ea0c97263
@@ -6916,7 +7236,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x8b14071f231bccad
         .quad   0x4c817b4bf2344783
 
-        // 2^172 * 2 * G
+        // 2^172 * 2 * B
 
         .quad   0x0ff853852871b96e
         .quad   0xe13e9fab60c3f1bb
@@ -6931,7 +7251,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xdaebd303fd8424e7
         .quad   0x72ad82a42e5ec56f
 
-        // 2^172 * 3 * G
+        // 2^172 * 3 * B
 
         .quad   0x3f9e8e35bafb65f6
         .quad   0x39d69ec8f27293a1
@@ -6946,7 +7266,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x4a0f8552d3a7f515
         .quad   0x19adeb7c303d7c08
 
-        // 2^172 * 4 * G
+        // 2^172 * 4 * B
 
         .quad   0xc720cb6153ead9a3
         .quad   0x55b2c97f512b636e
@@ -6961,7 +7281,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x2dbd23f43b24f87e
         .quad   0x6551afd77b0901d6
 
-        // 2^172 * 5 * G
+        // 2^172 * 5 * B
 
         .quad   0x4546baaf54aac27f
         .quad   0xf6f66fecb2a45a28
@@ -6976,7 +7296,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x194ceb970ad9d94d
         .quad   0x62fadd7cf9d03ad3
 
-        // 2^172 * 6 * G
+        // 2^172 * 6 * B
 
         .quad   0xc6b5967b5598a074
         .quad   0x5efe91ce8e493e25
@@ -6991,7 +7311,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xc0aefc05ee35a139
         .quad   0x15e80958b5f9d897
 
-        // 2^172 * 7 * G
+        // 2^172 * 7 * B
 
         .quad   0x25a5ef7d0c3e235b
         .quad   0x6c39c17fbe134ee7
@@ -7006,7 +7326,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xb323d9f2cda390a7
         .quad   0x7be0847b8774d363
 
-        // 2^172 * 8 * G
+        // 2^172 * 8 * B
 
         .quad   0x8c99cc5a8b3f55c3
         .quad   0x0611d7253fded2a0
@@ -7021,7 +7341,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x1bd0653ed3274fde
         .quad   0x2f9a2c4476bd2966
 
-        // 2^176 * 1 * G
+        // 2^176 * 1 * B
 
         .quad   0xeb18b9ab7f5745c6
         .quad   0x023a8aee5787c690
@@ -7036,7 +7356,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x6466f8f99202932d
         .quad   0x7b7ecc19da60d6d0
 
-        // 2^176 * 2 * G
+        // 2^176 * 2 * B
 
         .quad   0x78c2373c695c690d
         .quad   0xdd252e660642906e
@@ -7051,7 +7371,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xa0cab423e2e36ee4
         .quad   0x0e7ce2b0cdf066a1
 
-        // 2^176 * 3 * G
+        // 2^176 * 3 * B
 
         .quad   0xc494643ac48c85a3
         .quad   0xfd361df43c6139ad
@@ -7066,7 +7386,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x9abe4eba75e8985d
         .quad   0x7f0bc810d514dee4
 
-        // 2^176 * 4 * G
+        // 2^176 * 4 * B
 
         .quad   0xb9006ba426f4136f
         .quad   0x8d67369e57e03035
@@ -7081,7 +7401,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x0128013c030321cb
         .quad   0x00011b44a31bfde3
 
-        // 2^176 * 5 * G
+        // 2^176 * 5 * B
 
         .quad   0x3fdfa06c3fc66c0c
         .quad   0x5d40e38e4dd60dd2
@@ -7096,7 +7416,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xf81669b384e72b91
         .quad   0x33fad52b2368a066
 
-        // 2^176 * 6 * G
+        // 2^176 * 6 * B
 
         .quad   0x540649c6c5e41e16
         .quad   0x0af86430333f7735
@@ -7111,7 +7431,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xc87cd1a4baba9244
         .quad   0x631eaf426bae7568
 
-        // 2^176 * 7 * G
+        // 2^176 * 7 * B
 
         .quad   0xb3e90410da66fe9f
         .quad   0x85dd4b526c16e5a6
@@ -7126,7 +7446,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x8900441a2090a9d7
         .quad   0x7b04715f91253b26
 
-        // 2^176 * 8 * G
+        // 2^176 * 8 * B
 
         .quad   0x83edbd28acf6ae43
         .quad   0x86357c8b7d5c7ab4
@@ -7141,7 +7461,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x4208ce7ee9960394
         .quad   0x16234191336d3bdb
 
-        // 2^180 * 1 * G
+        // 2^180 * 1 * B
 
         .quad   0xf19aeac733a63aef
         .quad   0x2c7fba5d4442454e
@@ -7156,7 +7476,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xa5dc12ef7b539472
         .quad   0x07fd47065e45351a
 
-        // 2^180 * 2 * G
+        // 2^180 * 2 * B
 
         .quad   0xc8583c3d258d2bcd
         .quad   0x17029a4daf60b73f
@@ -7171,7 +7491,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x293711991a88233c
         .quad   0x291884363d4ed364
 
-        // 2^180 * 3 * G
+        // 2^180 * 3 * B
 
         .quad   0x033c6805dc4babfa
         .quad   0x2c15bf5e5596ecc1
@@ -7186,7 +7506,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xdf2db60a46affb6e
         .quad   0x579155c1f856fd89
 
-        // 2^180 * 4 * G
+        // 2^180 * 4 * B
 
         .quad   0x96324edd12e0c9ef
         .quad   0x468b878df2420297
@@ -7201,7 +7521,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x0b7d7656e2a55c98
         .quad   0x3e955cd82aa495f6
 
-        // 2^180 * 5 * G
+        // 2^180 * 5 * B
 
         .quad   0xe48f535e3ed15433
         .quad   0xd075692a0d7270a3
@@ -7216,7 +7536,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x6107db62d1f9b0ab
         .quad   0x0b6baac3b4358dbb
 
-        // 2^180 * 6 * G
+        // 2^180 * 6 * B
 
         .quad   0x7ae62bcb8622fe98
         .quad   0x47762256ceb891af
@@ -7231,7 +7551,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xa145fb7b3e0dcb30
         .quad   0x10843f1b43803b23
 
-        // 2^180 * 7 * G
+        // 2^180 * 7 * B
 
         .quad   0xc5f90455376276dd
         .quad   0xce59158dd7645cd9
@@ -7246,7 +7566,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x18a961bd33cc2b2c
         .quad   0x710045fb3a9af671
 
-        // 2^180 * 8 * G
+        // 2^180 * 8 * B
 
         .quad   0x73f93d36101b95eb
         .quad   0xfaef33794f6f4486
@@ -7261,7 +7581,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x4d58c57e0540168d
         .quad   0x566256628442d8e4
 
-        // 2^184 * 1 * G
+        // 2^184 * 1 * B
 
         .quad   0xb9e499def6267ff6
         .quad   0x7772ca7b742c0843
@@ -7276,7 +7596,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x4000144c3ae20161
         .quad   0x5721896d248e49fc
 
-        // 2^184 * 2 * G
+        // 2^184 * 2 * B
 
         .quad   0x0b6e5517fd181bae
         .quad   0x9022629f2bb963b4
@@ -7291,7 +7611,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xdcd29b84dd623a3c
         .quad   0x3ec2ab590288c7a2
 
-        // 2^184 * 3 * G
+        // 2^184 * 3 * B
 
         .quad   0xa1a0d27be4d87bb9
         .quad   0xa98b4deb61391aed
@@ -7306,7 +7626,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xbfba69cdbaae5f1e
         .quad   0x730548b35ae88f5f
 
-        // 2^184 * 4 * G
+        // 2^184 * 4 * B
 
         .quad   0xc43551a3cba8b8ee
         .quad   0x65a26f1db2115f16
@@ -7321,7 +7641,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xa78e6fa5373e41ff
         .quad   0x7656278950ef981f
 
-        // 2^184 * 5 * G
+        // 2^184 * 5 * B
 
         .quad   0x38c3cf59d51fc8c0
         .quad   0x9bedd2fd0506b6f2
@@ -7336,7 +7656,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x527e9ad213de6f33
         .quad   0x1e79cb358188f75d
 
-        // 2^184 * 6 * G
+        // 2^184 * 6 * B
 
         .quad   0x013436c3eef7e3f1
         .quad   0x828b6a7ffe9e10f8
@@ -7351,7 +7671,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xb82c6b40a6c1c96f
         .quad   0x16d87a411a212214
 
-        // 2^184 * 7 * G
+        // 2^184 * 7 * B
 
         .quad   0xb3bd7e5a42066215
         .quad   0x879be3cd0c5a24c1
@@ -7366,7 +7686,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x77c6569e520de052
         .quad   0x45882fe1534d6d3e
 
-        // 2^184 * 8 * G
+        // 2^184 * 8 * B
 
         .quad   0x6669345d757983d6
         .quad   0x62b6ed1117aa11a6
@@ -7381,7 +7701,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xb3be28c3915dc6e1
         .quad   0x6739687e7327191b
 
-        // 2^188 * 1 * G
+        // 2^188 * 1 * B
 
         .quad   0x9f65c5ea200814cf
         .quad   0x840536e169a31740
@@ -7396,7 +7716,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x5004e228ce554140
         .quad   0x042418a103429d71
 
-        // 2^188 * 2 * G
+        // 2^188 * 2 * B
 
         .quad   0x899dea51abf3ff5f
         .quad   0x9b93a8672fc2d8ba
@@ -7411,7 +7731,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x910d281097b6e4eb
         .quad   0x1ad4548d9d479ea3
 
-        // 2^188 * 3 * G
+        // 2^188 * 3 * B
 
         .quad   0xcd5a7da0389a48fd
         .quad   0xb38fa4aa9a78371e
@@ -7426,7 +7746,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x9798bdf0b3782fda
         .quad   0x651e3201fd074092
 
-        // 2^188 * 4 * G
+        // 2^188 * 4 * B
 
         .quad   0xd63d8483ef30c5cf
         .quad   0x4cd4b4962361cc0c
@@ -7441,7 +7761,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x8320aa0dd6430df9
         .quad   0x667282652c4a2fb5
 
-        // 2^188 * 5 * G
+        // 2^188 * 5 * B
 
         .quad   0x874621f4d86bc9ab
         .quad   0xb54c7bbe56fe6fea
@@ -7456,7 +7776,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x3bd6aa1d883a4f4b
         .quad   0x4db9a3a6dfd9fd14
 
-        // 2^188 * 6 * G
+        // 2^188 * 6 * B
 
         .quad   0x8ce7b23bb99c0755
         .quad   0x35c5d6edc4f50f7a
@@ -7471,7 +7791,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xe67310f8908a659f
         .quad   0x50fac2a6efdf0235
 
-        // 2^188 * 7 * G
+        // 2^188 * 7 * B
 
         .quad   0xf3d3a9f35b880f5a
         .quad   0xedec050cdb03e7c2
@@ -7486,7 +7806,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x72f5b5e4e8c10c40
         .quad   0x7cbfb19936adcd5b
 
-        // 2^188 * 8 * G
+        // 2^188 * 8 * B
 
         .quad   0xa311ddc26b89792d
         .quad   0x1b30b4c6da512664
@@ -7501,7 +7821,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x6329db440f9d6dfa
         .quad   0x5ef43e586a571493
 
-        // 2^192 * 1 * G
+        // 2^192 * 1 * B
 
         .quad   0xef782014385675a6
         .quad   0xa2649f30aafda9e8
@@ -7516,7 +7836,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x03cc6021feb25960
         .quad   0x5a5f887e83674b4b
 
-        // 2^192 * 2 * G
+        // 2^192 * 2 * B
 
         .quad   0x8f6301cf70a13d11
         .quad   0xcfceb815350dd0c4
@@ -7531,7 +7851,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xbd5ad8f836263811
         .quad   0x6a21e6cd4fd5e9be
 
-        // 2^192 * 3 * G
+        // 2^192 * 3 * B
 
         .quad   0xf1c6170a3046e65f
         .quad   0x58712a2a00d23524
@@ -7546,7 +7866,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xac0349d261a16eb8
         .quad   0x0eafb03790e52179
 
-        // 2^192 * 4 * G
+        // 2^192 * 4 * B
 
         .quad   0x960555c13748042f
         .quad   0x219a41e6820baa11
@@ -7561,7 +7881,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x1d82e5c64f9360aa
         .quad   0x62d5221b7f94678f
 
-        // 2^192 * 5 * G
+        // 2^192 * 5 * B
 
         .quad   0x524c299c18d0936d
         .quad   0xc86bb56c8a0c1a0c
@@ -7576,7 +7896,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xda9234b7c3ed4c62
         .quad   0x5e72365c7bee093e
 
-        // 2^192 * 6 * G
+        // 2^192 * 6 * B
 
         .quad   0x575bfc074571217f
         .quad   0x3779675d0694d95b
@@ -7591,7 +7911,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x446677855e503b47
         .quad   0x0e34398f4a06404a
 
-        // 2^192 * 7 * G
+        // 2^192 * 7 * B
 
         .quad   0xb67d22d93ecebde8
         .quad   0x09b3e84127822f07
@@ -7606,7 +7926,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xf9967d02fde6949e
         .quad   0x780de72ec8d3de97
 
-        // 2^192 * 8 * G
+        // 2^192 * 8 * B
 
         .quad   0x0ae28545089ae7bc
         .quad   0x388ddecf1c7f4d06
@@ -7621,7 +7941,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x2991f7fb7ae5da2e
         .quad   0x467d201bf8dd2867
 
-        // 2^196 * 1 * G
+        // 2^196 * 1 * B
 
         .quad   0x7906ee72f7bd2e6b
         .quad   0x05d270d6109abf4e
@@ -7636,7 +7956,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x5b30e7107424b572
         .quad   0x6e6b9de84c4f4ac6
 
-        // 2^196 * 2 * G
+        // 2^196 * 2 * B
 
         .quad   0xdff25fce4b1de151
         .quad   0xd841c0c7e11c4025
@@ -7651,7 +7971,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xc3b514f05b62f9e3
         .quad   0x66ed5dd5bec10d48
 
-        // 2^196 * 3 * G
+        // 2^196 * 3 * B
 
         .quad   0x7d38a1c20bb2089d
         .quad   0x808334e196ccd412
@@ -7666,7 +7986,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x27529aa2fcf9e09e
         .quad   0x0840bef29d34bc50
 
-        // 2^196 * 4 * G
+        // 2^196 * 4 * B
 
         .quad   0x796dfb35dc10b287
         .quad   0x27176bcd5c7ff29d
@@ -7681,7 +8001,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x4e9b13ef894a0d35
         .quad   0x25a83cac5753d325
 
-        // 2^196 * 5 * G
+        // 2^196 * 5 * B
 
         .quad   0x10222f48eed8165e
         .quad   0x623fc1234b8bcf3a
@@ -7696,7 +8016,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xa7a2788528bc0dfe
         .quad   0x5e82770a1a1ee71d
 
-        // 2^196 * 6 * G
+        // 2^196 * 6 * B
 
         .quad   0x35425183ad896a5c
         .quad   0xe8673afbe78d52f6
@@ -7711,7 +8031,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x2613d8db325ae918
         .quad   0x7a325d1727741d3e
 
-        // 2^196 * 7 * G
+        // 2^196 * 7 * B
 
         .quad   0xd036b9bbd16dfde2
         .quad   0xa2055757c497a829
@@ -7726,7 +8046,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xa41c22c592718138
         .quad   0x27ad5538a43a5e9b
 
-        // 2^196 * 8 * G
+        // 2^196 * 8 * B
 
         .quad   0x2746dd4b15350d61
         .quad   0xd03fcbc8ee9521b7
@@ -7741,7 +8061,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xc817ad58bdaa4ee6
         .quad   0x23be8d554fe7372a
 
-        // 2^200 * 1 * G
+        // 2^200 * 1 * B
 
         .quad   0x95fe919a74ef4fad
         .quad   0x3a827becf6a308a2
@@ -7756,7 +8076,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x8255b3d0f1ef990e
         .quad   0x5a758ca390c5f293
 
-        // 2^200 * 2 * G
+        // 2^200 * 2 * B
 
         .quad   0xa2b72710d9462495
         .quad   0x3aa8c6d2d57d5003
@@ -7771,7 +8091,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x105c3f4a49fb15fd
         .quad   0x2698ca635126a69c
 
-        // 2^200 * 3 * G
+        // 2^200 * 3 * B
 
         .quad   0xe765318832b0ba78
         .quad   0x381831f7925cff8b
@@ -7786,7 +8106,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x3ed3265fc6cd4787
         .quad   0x6b43fd01cd1fd217
 
-        // 2^200 * 4 * G
+        // 2^200 * 4 * B
 
         .quad   0xc7a75d4b4697c544
         .quad   0x15fdf848df0fffbf
@@ -7801,7 +8121,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xda8ab89699fbf373
         .quad   0x3db5632fea34bc9e
 
-        // 2^200 * 5 * G
+        // 2^200 * 5 * B
 
         .quad   0xf46eee2bf75dd9d8
         .quad   0x0d17b1f6396759a5
@@ -7816,7 +8136,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xc7ce2dc16f159aa4
         .quad   0x45eafdc1f4d70cc0
 
-        // 2^200 * 6 * G
+        // 2^200 * 6 * B
 
         .quad   0x698401858045d72b
         .quad   0x4c22faa2cf2f0651
@@ -7831,7 +8151,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x60c1207f1557aefa
         .quad   0x26058891266218db
 
-        // 2^200 * 7 * G
+        // 2^200 * 7 * B
 
         .quad   0x59f704a68360ff04
         .quad   0xc3d93fde7661e6f4
@@ -7846,7 +8166,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xa5b4d2f26ec19fd3
         .quad   0x62ecb2baa77a9408
 
-        // 2^200 * 8 * G
+        // 2^200 * 8 * B
 
         .quad   0xe5ed795261152b3d
         .quad   0x4962357d0eddd7d1
@@ -7861,7 +8181,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x02d801513f9594ce
         .quad   0x3ddbc2a131c05d5c
 
-        // 2^204 * 1 * G
+        // 2^204 * 1 * B
 
         .quad   0x3f50a50a4ffb81ef
         .quad   0xb1e035093bf420bf
@@ -7876,7 +8196,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x4892d66c6f88ebeb
         .quad   0x770eadb16508fbcd
 
-        // 2^204 * 2 * G
+        // 2^204 * 2 * B
 
         .quad   0x8451f9e05e4e89dd
         .quad   0xc06302ffbc793937
@@ -7891,7 +8211,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x33e008bc4ec43df3
         .quad   0x06c1b840f07566c0
 
-        // 2^204 * 3 * G
+        // 2^204 * 3 * B
 
         .quad   0x7688a5c6a388f877
         .quad   0x02a96c14deb2b6ac
@@ -7906,7 +8226,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x1d04168b516efae9
         .quad   0x5ea1391043982cb9
 
-        // 2^204 * 4 * G
+        // 2^204 * 4 * B
 
         .quad   0x49125c9cf4702ee1
         .quad   0x4520b71f8b25b32d
@@ -7921,7 +8241,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x79ca955309fbbe5a
         .quad   0x0c626616cd7fc106
 
-        // 2^204 * 5 * G
+        // 2^204 * 5 * B
 
         .quad   0x1ffeb80a4879b61f
         .quad   0x6396726e4ada21ed
@@ -7936,7 +8256,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x20fbfdfcc875e820
         .quad   0x1cf2bea80c2206e7
 
-        // 2^204 * 6 * G
+        // 2^204 * 6 * B
 
         .quad   0xc2ddf1deb36202ac
         .quad   0x92a5fe09d2e27aa5
@@ -7951,7 +8271,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xbf19f598bba37c07
         .quad   0x6a12b8acde48430d
 
-        // 2^204 * 7 * G
+        // 2^204 * 7 * B
 
         .quad   0xf8daea1f39d495d9
         .quad   0x592c190e525f1dfc
@@ -7966,7 +8286,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x86dc9ff92b046a2e
         .quad   0x760360928b0493d1
 
-        // 2^204 * 8 * G
+        // 2^204 * 8 * B
 
         .quad   0x21bb41c6120cf9c6
         .quad   0xeab2aa12decda59b
@@ -7981,7 +8301,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x89a180bbd5ece2e2
         .quad   0x13f098a3cec8e039
 
-        // 2^208 * 1 * G
+        // 2^208 * 1 * B
 
         .quad   0x9adc0ff9ce5ec54b
         .quad   0x039c2a6b8c2f130d
@@ -7996,7 +8316,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x46af908d263c8c78
         .quad   0x61d0633c9bca0d09
 
-        // 2^208 * 2 * G
+        // 2^208 * 2 * B
 
         .quad   0x63744935ffdb2566
         .quad   0xc5bd6b89780b68bb
@@ -8011,7 +8331,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x0e711704150e82cf
         .quad   0x79b9bbb9dd95dedc
 
-        // 2^208 * 3 * G
+        // 2^208 * 3 * B
 
         .quad   0xebb355406a3126c2
         .quad   0xd26383a868c8c393
@@ -8026,7 +8346,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x2eaab98a70e645ba
         .quad   0x3981f39e58a4faf2
 
-        // 2^208 * 4 * G
+        // 2^208 * 4 * B
 
         .quad   0x18fb8a7559230a93
         .quad   0x1d168f6960e6f45d
@@ -8041,7 +8361,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x8844fc73c0ea4e71
         .quad   0x632d9a1a593f2469
 
-        // 2^208 * 5 * G
+        // 2^208 * 5 * B
 
         .quad   0xf6bb6b15b807cba6
         .quad   0x1823c7dfbc54f0d7
@@ -8056,7 +8376,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xe19cff9f005f9a65
         .quad   0x34fcf74475481f63
 
-        // 2^208 * 6 * G
+        // 2^208 * 6 * B
 
         .quad   0xc197e04c789767ca
         .quad   0xb8714dcb38d9467d
@@ -8071,7 +8391,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xf56598e5b282a2b0
         .quad   0x56c088f1ede20a73
 
-        // 2^208 * 7 * G
+        // 2^208 * 7 * B
 
         .quad   0x336d3d1110a86e17
         .quad   0xd7f388320b75b2fa
@@ -8086,7 +8406,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x0971a5ab5aef3174
         .quad   0x6e5e31025969eb65
 
-        // 2^208 * 8 * G
+        // 2^208 * 8 * B
 
         .quad   0xb16c62f587e593fb
         .quad   0x4999eddeca5d3e71
@@ -8101,7 +8421,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xbdc78abdac994f9a
         .quad   0x26549fa4efe3dc99
 
-        // 2^212 * 1 * G
+        // 2^212 * 1 * B
 
         .quad   0x738b38d787ce8f89
         .quad   0xb62658e24179a88d
@@ -8116,7 +8436,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x4634aacd5b06b807
         .quad   0x6a39e6356944f235
 
-        // 2^212 * 2 * G
+        // 2^212 * 2 * B
 
         .quad   0x96cd5640df90f3e7
         .quad   0x6c3a760edbfa25ea
@@ -8131,7 +8451,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x20fbdadc5dfae796
         .quad   0x241e246b06bf9f51
 
-        // 2^212 * 3 * G
+        // 2^212 * 3 * B
 
         .quad   0x29e68e57ad6e98f6
         .quad   0x4c9260c80b462065
@@ -8146,7 +8466,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x681532ea65185fa3
         .quad   0x1fdd6c3b034a7830
 
-        // 2^212 * 4 * G
+        // 2^212 * 4 * B
 
         .quad   0x0a64e28c55dc18fe
         .quad   0xe3df9e993399ebdd
@@ -8161,7 +8481,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x6035c9c905fbb912
         .quad   0x42d7a91274429fab
 
-        // 2^212 * 5 * G
+        // 2^212 * 5 * B
 
         .quad   0x4e6213e3eaf72ed3
         .quad   0x6794981a43acd4e7
@@ -8176,7 +8496,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x5223e229da928a66
         .quad   0x063f46ba6d38f22c
 
-        // 2^212 * 6 * G
+        // 2^212 * 6 * B
 
         .quad   0xd2d242895f536694
         .quad   0xca33a2c542939b2c
@@ -8191,7 +8511,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x5473e88cbd98265a
         .quad   0x7324aa515921b403
 
-        // 2^212 * 7 * G
+        // 2^212 * 7 * B
 
         .quad   0x857942f46c3cbe8e
         .quad   0xa1d364b14730c046
@@ -8206,7 +8526,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xc4d8a61cb1be5d6e
         .quad   0x40fb897bd8861f02
 
-        // 2^212 * 8 * G
+        // 2^212 * 8 * B
 
         .quad   0x84c5aa9062de37a1
         .quad   0x421da5000d1d96e1
@@ -8221,7 +8541,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x0cb68893383f6409
         .quad   0x6183c565f6ff484a
 
-        // 2^216 * 1 * G
+        // 2^216 * 1 * B
 
         .quad   0x741d5a461e6bf9d6
         .quad   0x2305b3fc7777a581
@@ -8236,7 +8556,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x175322fd31f2c0f1
         .quad   0x1fa1d01d861e5d15
 
-        // 2^216 * 2 * G
+        // 2^216 * 2 * B
 
         .quad   0xcc8055947d599832
         .quad   0x1e4656da37f15520
@@ -8251,7 +8571,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x8d77cec8ad638932
         .quad   0x1f426b701b864f44
 
-        // 2^216 * 3 * G
+        // 2^216 * 3 * B
 
         .quad   0xefc9264c41911c01
         .quad   0xf1a3b7b817a22c25
@@ -8266,7 +8586,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x22e5646399bb8017
         .quad   0x7b6dd61eb772a955
 
-        // 2^216 * 4 * G
+        // 2^216 * 4 * B
 
         .quad   0xb7adc1e850f33d92
         .quad   0x7998fa4f608cd5cf
@@ -8281,7 +8601,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x181bb73ebcd65af1
         .quad   0x398d93e5c4c61f50
 
-        // 2^216 * 5 * G
+        // 2^216 * 5 * B
 
         .quad   0x1c4bd16733e248f3
         .quad   0xbd9e128715bf0a5f
@@ -8296,7 +8616,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x28cdd24781b4e975
         .quad   0x51caf30c6fcdd907
 
-        // 2^216 * 6 * G
+        // 2^216 * 6 * B
 
         .quad   0xa60ba7427674e00a
         .quad   0x630e8570a17a7bf3
@@ -8311,7 +8631,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x55ca7521d09c4e22
         .quad   0x5fd14fe958eba5ea
 
-        // 2^216 * 7 * G
+        // 2^216 * 7 * B
 
         .quad   0xb5dc2ddf2845ab2c
         .quad   0x069491b10a7fe993
@@ -8326,7 +8646,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x1367253ab457ac29
         .quad   0x2f59bcbc86b470a4
 
-        // 2^216 * 8 * G
+        // 2^216 * 8 * B
 
         .quad   0x83847d429917135f
         .quad   0xad1b911f567d03d7
@@ -8341,7 +8661,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x352b4c82fdb5c864
         .quad   0x13e9004a8a768664
 
-        // 2^220 * 1 * G
+        // 2^220 * 1 * B
 
         .quad   0xcbb5b5556c032bff
         .quad   0xdf7191b729297a3a
@@ -8356,7 +8676,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x771febcc6dce4887
         .quad   0x343062158ff05fb3
 
-        // 2^220 * 2 * G
+        // 2^220 * 2 * B
 
         .quad   0xe05da1a7e1f5bf49
         .quad   0x26457d6dd4736092
@@ -8371,7 +8691,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xa9812376850a0517
         .quad   0x33384cbabb7f335e
 
-        // 2^220 * 3 * G
+        // 2^220 * 3 * B
 
         .quad   0x3c6fa2680ca2c7b5
         .quad   0x1b5082046fb64fda
@@ -8386,7 +8706,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x26e6b50623a67c36
         .quad   0x5cf0e856f3d4fb01
 
-        // 2^220 * 4 * G
+        // 2^220 * 4 * B
 
         .quad   0xf6c968731ae8cab4
         .quad   0x5e20741ecb4f92c5
@@ -8401,7 +8721,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x1925c9a6010fbd76
         .quad   0x6df9b575cc740905
 
-        // 2^220 * 5 * G
+        // 2^220 * 5 * B
 
         .quad   0x42c1192927f6bdcf
         .quad   0x8f91917a403d61ca
@@ -8416,7 +8736,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x24cc5c3038aebae2
         .quad   0x50c356afdc5dae2f
 
-        // 2^220 * 6 * G
+        // 2^220 * 6 * B
 
         .quad   0x09dcbf4341c30318
         .quad   0xeeba061183181dce
@@ -8431,7 +8751,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xa4132cbbe5cf0003
         .quad   0x3f93d82354f000ea
 
-        // 2^220 * 7 * G
+        // 2^220 * 7 * B
 
         .quad   0x8183e7689e04ce85
         .quad   0x678fb71e04465341
@@ -8446,7 +8766,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x20d986cb6b5d036c
         .quad   0x655957b9fee2af50
 
-        // 2^220 * 8 * G
+        // 2^220 * 8 * B
 
         .quad   0xaea8b07fa902030f
         .quad   0xf88c766af463d143
@@ -8461,7 +8781,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xd4ce0c54cef285e2
         .quad   0x30408c048a146a55
 
-        // 2^224 * 1 * G
+        // 2^224 * 1 * B
 
         .quad   0x739d8845832fcedb
         .quad   0xfa38d6c9ae6bf863
@@ -8476,7 +8796,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xe19715574696bdc6
         .quad   0x2cf8a4e891d5e835
 
-        // 2^224 * 2 * G
+        // 2^224 * 2 * B
 
         .quad   0x6d93fd8707110f67
         .quad   0xdd4c09d37c38b549
@@ -8491,7 +8811,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x4c21b52c519ebfd4
         .quad   0x6011aadfc545941d
 
-        // 2^224 * 3 * G
+        // 2^224 * 3 * B
 
         .quad   0x5f67926dcf95f83c
         .quad   0x7c7e856171289071
@@ -8506,7 +8826,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x127e0442189f2352
         .quad   0x15596b3ae57101f1
 
-        // 2^224 * 4 * G
+        // 2^224 * 4 * B
 
         .quad   0x462739d23f9179a2
         .quad   0xff83123197d6ddcf
@@ -8521,7 +8841,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x083ab1a25549d2eb
         .quad   0x32fcaa6e4687a36c
 
-        // 2^224 * 5 * G
+        // 2^224 * 5 * B
 
         .quad   0x7bc56e8dc57d9af5
         .quad   0x3e0bd2ed9df0bdf2
@@ -8536,7 +8856,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x33596a8a0344186d
         .quad   0x7b4917007ed66293
 
-        // 2^224 * 6 * G
+        // 2^224 * 6 * B
 
         .quad   0x2d85fb5cab84b064
         .quad   0x497810d289f3bc14
@@ -8551,7 +8871,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x2eabb4be7dd479d9
         .quad   0x02c70bf52b68ec4c
 
-        // 2^224 * 7 * G
+        // 2^224 * 7 * B
 
         .quad   0xa287ec4b5d0b2fbb
         .quad   0x415c5790074882ca
@@ -8566,7 +8886,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x9c9cb95849f0d2a9
         .quad   0x1cc37f43441b2fae
 
-        // 2^224 * 8 * G
+        // 2^224 * 8 * B
 
         .quad   0x508f565a5cc7324f
         .quad   0xd061c4c0e506a922
@@ -8581,7 +8901,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x960746dd8ec67262
         .quad   0x05911b9f6ef7c5d0
 
-        // 2^228 * 1 * G
+        // 2^228 * 1 * B
 
         .quad   0xe9dcd756b637ff2d
         .quad   0xec4c348fc987f0c4
@@ -8596,7 +8916,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xabb7229cb5b81360
         .quad   0x44e2017a6fbeba62
 
-        // 2^228 * 2 * G
+        // 2^228 * 2 * B
 
         .quad   0xc4c2a74354dab774
         .quad   0x8e5d4c3c4eaf031a
@@ -8611,7 +8931,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x2c0c32f1073abeeb
         .quad   0x6a882014cd7b8606
 
-        // 2^228 * 3 * G
+        // 2^228 * 3 * B
 
         .quad   0xa52a92fea4747fb5
         .quad   0xdc12a4491fa5ab89
@@ -8626,7 +8946,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x3144dfc86d335343
         .quad   0x3a96559e7c4216a9
 
-        // 2^228 * 4 * G
+        // 2^228 * 4 * B
 
         .quad   0x12550d37f42ad2ee
         .quad   0x8b78e00498a1fbf5
@@ -8641,7 +8961,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xf06fecc58dae8366
         .quad   0x588657668190d165
 
-        // 2^228 * 5 * G
+        // 2^228 * 5 * B
 
         .quad   0xd47712311aef7117
         .quad   0x50343101229e92c7
@@ -8656,7 +8976,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x1aec1f17c0804f07
         .quad   0x0d96bc031856f4e7
 
-        // 2^228 * 6 * G
+        // 2^228 * 6 * B
 
         .quad   0x3318be7775c52d82
         .quad   0x4cb764b554d0aab9
@@ -8671,7 +8991,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xff717d6e4ac7e335
         .quad   0x4c5cddb325f39f88
 
-        // 2^228 * 7 * G
+        // 2^228 * 7 * B
 
         .quad   0xc0f6b74d6190a6eb
         .quad   0x20ea81a42db8f4e4
@@ -8686,7 +9006,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x23c28458573cafd0
         .quad   0x46b9476f4ff97346
 
-        // 2^228 * 8 * G
+        // 2^228 * 8 * B
 
         .quad   0x0c1ffea44f901e5c
         .quad   0x2b0b6fb72184b782
@@ -8701,7 +9021,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x520a885783ca15b1
         .quad   0x06aab9875accbec7
 
-        // 2^232 * 1 * G
+        // 2^232 * 1 * B
 
         .quad   0xc1339983f5df0ebb
         .quad   0xc0f3758f512c4cac
@@ -8716,7 +9036,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x5737ff98b40946f2
         .quad   0x675f4de13381749d
 
-        // 2^232 * 2 * G
+        // 2^232 * 2 * B
 
         .quad   0x0e2c52036b1782fc
         .quad   0x64816c816cad83b4
@@ -8731,7 +9051,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x4e5f1c18750023a0
         .quad   0x1c06de9e55edac80
 
-        // 2^232 * 3 * G
+        // 2^232 * 3 * B
 
         .quad   0x990f7ad6a33ec4e2
         .quad   0x6608f938be2ee08e
@@ -8746,7 +9066,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x4f09cc7d7003725b
         .quad   0x373cad3a26091abe
 
-        // 2^232 * 4 * G
+        // 2^232 * 4 * B
 
         .quad   0xb294634d82c9f57c
         .quad   0x1fcbfde124934536
@@ -8761,7 +9081,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xb72ba407bb3119b9
         .quad   0x63550a334a254df4
 
-        // 2^232 * 5 * G
+        // 2^232 * 5 * B
 
         .quad   0x6507d6edb569cf37
         .quad   0x178429b00ca52ee1
@@ -8776,7 +9096,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x70525560eb8ab39a
         .quad   0x68436a0665c9c4cd
 
-        // 2^232 * 6 * G
+        // 2^232 * 6 * B
 
         .quad   0xbc0235e8202f3f27
         .quad   0xc75c00e264f975b0
@@ -8791,7 +9111,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xafcaf5885b2d1eca
         .quad   0x1cb4b5a678f87d11
 
-        // 2^232 * 7 * G
+        // 2^232 * 7 * B
 
         .quad   0xb664c06b394afc6c
         .quad   0x0c88de2498da5fb1
@@ -8806,7 +9126,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xc58ac14fbfc953fb
         .quad   0x3c31be1b369f1cf5
 
-        // 2^232 * 8 * G
+        // 2^232 * 8 * B
 
         .quad   0xb0f4864d08948aee
         .quad   0x07dc19ee91ba1c6f
@@ -8821,7 +9141,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x73d7c36cdba1df27
         .quad   0x26b44cd91f28777d
 
-        // 2^236 * 1 * G
+        // 2^236 * 1 * B
 
         .quad   0x300a9035393aa6d8
         .quad   0x2b501131a12bb1cd
@@ -8836,7 +9156,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x7829ad2cd63def0e
         .quad   0x078fc54975fd3877
 
-        // 2^236 * 2 * G
+        // 2^236 * 2 * B
 
         .quad   0x87dfbd1428878f2d
         .quad   0x134636dd1e9421a1
@@ -8851,7 +9171,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x26725fbc3758b89b
         .quad   0x4325e4aa73a719ae
 
-        // 2^236 * 3 * G
+        // 2^236 * 3 * B
 
         .quad   0x657dc6ef433c3493
         .quad   0x65375e9f80dbf8c3
@@ -8866,7 +9186,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x78243877078ba3e4
         .quad   0x77ed1eb4184ee437
 
-        // 2^236 * 4 * G
+        // 2^236 * 4 * B
 
         .quad   0xbfd4e13f201839a0
         .quad   0xaeefffe23e3df161
@@ -8881,7 +9201,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x6843bcfdc97af7fd
         .quad   0x0524b42b55eacd02
 
-        // 2^236 * 5 * G
+        // 2^236 * 5 * B
 
         .quad   0xfd0d5dbee45447b0
         .quad   0x6cec351a092005ee
@@ -8896,7 +9216,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x6985dec1970ab525
         .quad   0x53045e89dcb1f546
 
-        // 2^236 * 6 * G
+        // 2^236 * 6 * B
 
         .quad   0xcb8bb346d75353db
         .quad   0xfcfcb24bae511e22
@@ -8911,7 +9231,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x3fc48e961c59326e
         .quad   0x0b2e73ca15c9b8ba
 
-        // 2^236 * 7 * G
+        // 2^236 * 7 * B
 
         .quad   0xd6bb4428c17f5026
         .quad   0x9eb27223fb5a9ca7
@@ -8926,7 +9246,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x832659a7226b8a4d
         .quad   0x5dd689091f8eedc9
 
-        // 2^236 * 8 * G
+        // 2^236 * 8 * B
 
         .quad   0xcbac84debfd3c856
         .quad   0x1624c348b35ff244
@@ -8941,7 +9261,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xe95db3f35652fad8
         .quad   0x0822b5378f08ebc1
 
-        // 2^240 * 1 * G
+        // 2^240 * 1 * B
 
         .quad   0x51f048478f387475
         .quad   0xb25dbcf49cbecb3c
@@ -8956,7 +9276,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x588001380f0be4b5
         .quad   0x08e68e9ff62ce2ea
 
-        // 2^240 * 2 * G
+        // 2^240 * 2 * B
 
         .quad   0x34ad500a4bc130ad
         .quad   0x8d38db493d0bd49c
@@ -8971,7 +9291,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xc20d313f3f751b50
         .quad   0x19a1e353c0ae2ee8
 
-        // 2^240 * 3 * G
+        // 2^240 * 3 * B
 
         .quad   0x7d1c7560bafa05c3
         .quad   0xb3e1a0a0c6e55e61
@@ -8986,7 +9306,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xcc5f5f30425c8375
         .quad   0x412295a2b87fab5c
 
-        // 2^240 * 4 * G
+        // 2^240 * 4 * B
 
         .quad   0x19c99b88f57ed6e9
         .quad   0x5393cb266df8c825
@@ -9001,7 +9321,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x2cbf268f46caccb1
         .quad   0x6b34be9bc33ac5f2
 
-        // 2^240 * 5 * G
+        // 2^240 * 5 * B
 
         .quad   0xf3df2f643a78c0b2
         .quad   0x4c3e971ef22e027c
@@ -9016,7 +9336,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x3d36efdfc2e76c1f
         .quad   0x08af5b784e4bade8
 
-        // 2^240 * 6 * G
+        // 2^240 * 6 * B
 
         .quad   0x283499dc881f2533
         .quad   0x9d0525da779323b6
@@ -9031,7 +9351,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xe49de338f9e5d3cd
         .quad   0x480a5efbc13e2dcc
 
-        // 2^240 * 7 * G
+        // 2^240 * 7 * B
 
         .quad   0x0b51e70b01622071
         .quad   0x06b505cf8b1dafc5
@@ -9046,7 +9366,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xf0af66134ea278d6
         .quad   0x545b585d14dda094
 
-        // 2^240 * 8 * G
+        // 2^240 * 8 * B
 
         .quad   0x67bf275ea0d43a0f
         .quad   0xade68e34089beebe
@@ -9061,7 +9381,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xfebac2d2953afa05
         .quad   0x1c0fa01a36371436
 
-        // 2^244 * 1 * G
+        // 2^244 * 1 * B
 
         .quad   0xe7547449bc7cd692
         .quad   0x0f9abeaae6f73ddf
@@ -9076,7 +9396,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xd53bd812c3495b58
         .quad   0x08706c9b865f508d
 
-        // 2^244 * 2 * G
+        // 2^244 * 2 * B
 
         .quad   0xf37ca2ab3d343dff
         .quad   0x1a8c6a2d80abc617
@@ -9091,7 +9411,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x41c3fed066663e5c
         .quad   0x0ecfedf8e8e710b3
 
-        // 2^244 * 3 * G
+        // 2^244 * 3 * B
 
         .quad   0x76430f9f9cd470d9
         .quad   0xb62acc9ba42f6008
@@ -9106,7 +9426,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x46c1a77a4f0b6cc7
         .quad   0x4236ccffeb7338cf
 
-        // 2^244 * 4 * G
+        // 2^244 * 4 * B
 
         .quad   0x8497404d0d55e274
         .quad   0x6c6663d9c4ad2b53
@@ -9121,7 +9441,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x9c347230ac2a8846
         .quad   0x77de29fc11ffeb6a
 
-        // 2^244 * 5 * G
+        // 2^244 * 5 * B
 
         .quad   0xb0ac57c983b778a8
         .quad   0x53cdcca9d7fe912c
@@ -9136,7 +9456,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x459789d0ff6c2be5
         .quad   0x62f882651e70a8b2
 
-        // 2^244 * 6 * G
+        // 2^244 * 6 * B
 
         .quad   0x085ae2c759ff1be4
         .quad   0x149145c93b0e40b7
@@ -9151,7 +9471,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x8e5261b166c15aa5
         .quad   0x2d5b2d842ed24c21
 
-        // 2^244 * 7 * G
+        // 2^244 * 7 * B
 
         .quad   0x02cfebd9ebd3ded1
         .quad   0xd45b217739021974
@@ -9166,7 +9486,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xed73e1e96d8adce9
         .quad   0x27c3da1e1d8ccc03
 
-        // 2^244 * 8 * G
+        // 2^244 * 8 * B
 
         .quad   0x7eb9efb23fe24c74
         .quad   0x3e50f49f1651be01
@@ -9181,7 +9501,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x3dad8d0d2e442166
         .quad   0x04a8933cab76862b
 
-        // 2^248 * 1 * G
+        // 2^248 * 1 * B
 
         .quad   0xd2c604b622943dff
         .quad   0xbc8cbece44cfb3a0
@@ -9196,7 +9516,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xf8499f911954fa8e
         .quad   0x1fba218aef40ab42
 
-        // 2^248 * 2 * G
+        // 2^248 * 2 * B
 
         .quad   0xab549448fac8f53e
         .quad   0x81f6e89a7ba63741
@@ -9211,7 +9531,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x19319c76f29ab0ab
         .quad   0x25e17fe4d50ac13b
 
-        // 2^248 * 3 * G
+        // 2^248 * 3 * B
 
         .quad   0x0a289bd71e04f676
         .quad   0x208e1c52d6420f95
@@ -9226,7 +9546,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x971d6914af8460d4
         .quad   0x559d504f7f6b7be4
 
-        // 2^248 * 4 * G
+        // 2^248 * 4 * B
 
         .quad   0xa7738378b3eb54d5
         .quad   0x1d69d366a5553c7c
@@ -9241,7 +9561,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x1eab4271d83245d9
         .quad   0x4a3961e2c918a154
 
-        // 2^248 * 5 * G
+        // 2^248 * 5 * B
 
         .quad   0x71dc3be0f8e6bba0
         .quad   0xd6cef8347effe30a
@@ -9256,7 +9576,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x3860d9f1b7e73e23
         .quad   0x595760d5b508f597
 
-        // 2^248 * 6 * G
+        // 2^248 * 6 * B
 
         .quad   0x6129bfe104aa6397
         .quad   0x8f960008a4a7fccb
@@ -9271,7 +9591,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0x2723f36ef8cbb03a
         .quad   0x70f029ecf0c8131f
 
-        // 2^248 * 7 * G
+        // 2^248 * 7 * B
 
         .quad   0x461307b32eed3e33
         .quad   0xae042f33a45581e7
@@ -9286,7 +9606,7 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xde1c531c60e1c52b
         .quad   0x272224512c7de9e4
 
-        // 2^248 * 8 * G
+        // 2^248 * 8 * B
 
         .quad   0x1abc92af49c5342e
         .quad   0xffeed811b2e6fad0
@@ -9300,126 +9620,6 @@ curve25519_x25519base_alt_edwards25519_gtable:
         .quad   0xeb848e0f7f19547e
         .quad   0x2503a1d065a497b9
         .quad   0x0fef911191df895f
-
-        // 2^252 * 1 * G
-
-        .quad   0xb1507ca1ab1c6eb9
-        .quad   0xbd448f3e16b687b3
-        .quad   0x3455fb7f2c7a91ab
-        .quad   0x7579229e2f2adec1
-        .quad   0x6ab5dcb85b1c16b7
-        .quad   0x94c0fce83c7b27a5
-        .quad   0xa4b11c1a735517be
-        .quad   0x499238d0ba0eafaa
-        .quad   0xecf46e527aba8b57
-        .quad   0x15a08c478bd1647b
-        .quad   0x7af1c6a65f706fef
-        .quad   0x6345fa78f03a30d5
-
-        // 2^252 * 2 * G
-
-        .quad   0xdf02f95f1015e7a1
-        .quad   0x790ec41da9b40263
-        .quad   0x4d3a0ea133ea1107
-        .quad   0x54f70be7e33af8c9
-        .quad   0x93d3cbe9bdd8f0a4
-        .quad   0xdb152c1bfd177302
-        .quad   0x7dbddc6d7f17a875
-        .quad   0x3e1a71cc8f426efe
-        .quad   0xc83ca3e390babd62
-        .quad   0x80ede3670291c833
-        .quad   0xc88038ccd37900c4
-        .quad   0x2c5fc0231ec31fa1
-
-        // 2^252 * 3 * G
-
-        .quad   0xfeba911717038b4f
-        .quad   0xe5123721c9deef81
-        .quad   0x1c97e4e75d0d8834
-        .quad   0x68afae7a23dc3bc6
-        .quad   0xc422e4d102456e65
-        .quad   0x87414ac1cad47b91
-        .quad   0x1592e2bba2b6ffdd
-        .quad   0x75d9d2bff5c2100f
-        .quad   0x5bd9b4763626e81c
-        .quad   0x89966936bca02edd
-        .quad   0x0a41193d61f077b3
-        .quad   0x3097a24200ce5471
-
-        // 2^252 * 4 * G
-
-        .quad   0x57427734c7f8b84c
-        .quad   0xf141a13e01b270e9
-        .quad   0x02d1adfeb4e564a6
-        .quad   0x4bb23d92ce83bd48
-        .quad   0xa162e7246695c486
-        .quad   0x131d633435a89607
-        .quad   0x30521561a0d12a37
-        .quad   0x56704bada6afb363
-        .quad   0xaf6c4aa752f912b9
-        .quad   0x5e665f6cd86770c8
-        .quad   0x4c35ac83a3c8cd58
-        .quad   0x2b7a29c010a58a7e
-
-        // 2^252 * 5 * G
-
-        .quad   0xc4007f77d0c1cec3
-        .quad   0x8d1020b6bac492f8
-        .quad   0x32ec29d57e69daaf
-        .quad   0x599408759d95fce0
-        .quad   0x33810a23bf00086e
-        .quad   0xafce925ee736ff7c
-        .quad   0x3d60e670e24922d4
-        .quad   0x11ce9e714f96061b
-        .quad   0x219ef713d815bac1
-        .quad   0xf141465d485be25c
-        .quad   0x6d5447cc4e513c51
-        .quad   0x174926be5ef44393
-
-        // 2^252 * 6 * G
-
-        .quad   0xb5deb2f9fc5bd5bb
-        .quad   0x92daa72ae1d810e1
-        .quad   0xafc4cfdcb72a1c59
-        .quad   0x497d78813fc22a24
-        .quad   0x3ef5d41593ea022e
-        .quad   0x5cbcc1a20ed0eed6
-        .quad   0x8fd24ecf07382c8c
-        .quad   0x6fa42ead06d8e1ad
-        .quad   0xe276824a1f73371f
-        .quad   0x7f7cf01c4f5b6736
-        .quad   0x7e201fe304fa46e7
-        .quad   0x785a36a357808c96
-
-        // 2^252 * 7 * G
-
-        .quad   0x825fbdfd63014d2b
-        .quad   0xc852369c6ca7578b
-        .quad   0x5b2fcd285c0b5df0
-        .quad   0x12ab214c58048c8f
-        .quad   0x070442985d517bc3
-        .quad   0x6acd56c7ae653678
-        .quad   0x00a27983985a7763
-        .quad   0x5167effae512662b
-        .quad   0xbd4ea9e10f53c4b6
-        .quad   0x1673dc5f8ac91a14
-        .quad   0xa8f81a4e2acc1aba
-        .quad   0x33a92a7924332a25
-
-        // 2^252 * 8 * G
-
-        .quad   0x9dd1f49927996c02
-        .quad   0x0cb3b058e04d1752
-        .quad   0x1f7e88967fd02c3e
-        .quad   0x2f964268cb8b3eb1
-        .quad   0x7ba95ba0218f2ada
-        .quad   0xcff42287330fb9ca
-        .quad   0xdada496d56c6d907
-        .quad   0x5380c296f4beee54
-        .quad   0x9d4f270466898d0a
-        .quad   0x3d0987990aff3f7a
-        .quad   0xd09ef36267daba45
-        .quad   0x7761455e7b1c669c
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack, "", %progbits
