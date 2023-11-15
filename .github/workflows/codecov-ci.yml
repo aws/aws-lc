@@ -13,7 +13,7 @@ jobs:
     steps:
       - name: Install lcov
         run: sudo apt-get -y install lcov
-      - uses: actions/checkout@master
+      - uses: actions/checkout@v4
       - name: Run Code Coverage Build
         run: ./util/codecov-ci.sh ${{ runner.temp }}/build
       - name: Upload code coverage report to Codecov
