@@ -2189,8 +2189,8 @@ edwards25519_scalarmuldouble_alt_loop:
         mov     [rsp+0x78], rax
         mov     QWORD PTR [rsp+0x90], 0xa
         mov     QWORD PTR [rsp+0x98], 0x1
-        jmp     curve25519_x25519_midloop
-curve25519_x25519_inverseloop:
+        jmp     edwards25519_scalarmuldouble_alt_midloop
+edwards25519_scalarmuldouble_alt_inverseloop:
         mov     r9, r8
         sar     r9, 0x3f
         xor     r8, r9
@@ -2481,7 +2481,7 @@ curve25519_x25519_inverseloop:
         shl     rax, 0x3f
         add     rsi, rax
         mov     [rsp+0x78], rsi
-curve25519_x25519_midloop:
+edwards25519_scalarmuldouble_alt_midloop:
         mov     rsi, [rsp+0x98]
         mov     rdx, [rsp]
         mov     rcx, [rsp+0x20]
@@ -3382,7 +3382,7 @@ curve25519_x25519_midloop:
         lea     r12, [rax+rdx]
         mov     [rsp+0x98], rsi
         dec     QWORD PTR [rsp+0x90]
-        jne     curve25519_x25519_inverseloop
+        jne     edwards25519_scalarmuldouble_alt_inverseloop
         mov     rax, [rsp]
         mov     rcx, [rsp+0x20]
         imul    rax, r8
