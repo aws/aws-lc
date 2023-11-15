@@ -541,10 +541,10 @@ OPENSSL_EXPORT const EVP_CIPHER *EVP_bf_cbc(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_bf_cfb(void);
 
 // EVP_cast5_ecb is CAST5 in ECB mode and is deprecated.
-AWS_LC_DEPRECATED OPENSSL_EXPORT const EVP_CIPHER *EVP_cast5_ecb(void);
+OPENSSL_EXPORT OPENSSL_DEPRECATED const EVP_CIPHER *EVP_cast5_ecb(void);
 
 // EVP_cast5_cbc is CAST5 in CBC mode and is deprecated.
-AWS_LC_DEPRECATED OPENSSL_EXPORT const EVP_CIPHER *EVP_cast5_cbc(void);
+OPENSSL_EXPORT OPENSSL_DEPRECATED const EVP_CIPHER *EVP_cast5_cbc(void);
 
 // The following flags do nothing and are included only to make it easier to
 // compile code with AWS-LC.

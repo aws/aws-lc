@@ -154,6 +154,34 @@ extern "C" {
 
 #endif  // defined(BORINGSSL_SHARED_LIBRARY)
 
+#if defined(_MSC_VER)
+
+// OPENSSL_DEPRECATED is used to mark a function as deprecated. Use
+// of any functions so marked in caller code will produce a warning.
+// OPENSSL_BEGIN_ALLOW_DEPRECATED and OPENSSL_END_ALLOW_DEPRECATED
+// can be used to suppress the warning in regions of caller code.
+#define OPENSSL_DEPRECATED __declspec(deprecated)
+#define OPENSSL_BEGIN_ALLOW_DEPRECATED \
+  __pragma(warning(push)) __pragma(warning(disable : 4996))
+#define OPENSSL_END_ALLOW_DEPRECATED __pragma(warning(pop))
+
+#elif (defined(__GNUC__) && ((__GNUC__ > 4) ||  (__GNUC_MINOR__ >= 6))) || defined(__clang__)
+// `_Pragma("GCC diagnostic push")` was added in GCC 4.6
+// http://gcc.gnu.org/gcc-4.6/changes.html
+#define OPENSSL_DEPRECATED __attribute__((__deprecated__))
+#define OPENSSL_BEGIN_ALLOW_DEPRECATED \
+  _Pragma("GCC diagnostic push")       \
+      _Pragma("GCC diagnostic ignored \"-Wdeprecated-declarations\"")
+#define OPENSSL_END_ALLOW_DEPRECATED _Pragma("GCC diagnostic pop")
+
+#else
+
+#define OPENSSL_DEPRECATED
+#define OPENSSL_BEGIN_ALLOW_DEPRECATED
+#define OPENSSL_END_ALLOW_DEPRECATED
+
+#endif
+
 
 #if defined(__GNUC__) || defined(__clang__)
 // MinGW has two different printf implementations. Ensure the format macro
@@ -359,17 +387,6 @@ typedef struct x509_store_st X509_STORE;
 typedef struct x509_trust_st X509_TRUST;
 
 typedef void *OPENSSL_BLOCK;
-
-#ifndef __has_attribute
-#define __has_attribute(x) 0
-#endif
-#if __STDC_VERSION__ > 202300L
-#define AWS_LC_DEPRECATED [[deprecated]]
-#elif __has_attribute(deprecated)
-#define AWS_LC_DEPRECATED __attribute__((deprecated))
-#else
-#define AWS_LC_DEPRECATED /* deprecated */
-#endif
 
 #if defined(__cplusplus)
 }  // extern C
