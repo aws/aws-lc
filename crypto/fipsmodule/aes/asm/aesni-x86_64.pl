@@ -2957,6 +2957,9 @@ $code.=<<___;
 	lea	`16*6`($inp),$inp
 	pxor	$twmask,$inout5
 
+# Store decryption tweak[5]
+movdqa  @tweak[5],$dec_tweak(%rsp)
+
 	 pxor	$twres,@tweak[0]		# calculate tweaks^round[last]
 	aesdec		$rndkey1,$inout4
 	 pxor	$twres,@tweak[1]
@@ -2981,9 +2984,9 @@ movdqa	@tweak[3],`16*3`(%rsp)
 	$movkey		64($key1_dec_),$rndkey0
 	 movdqa	$twmask,`16*5`(%rsp)
 	##pshufd	\$0x5f,@tweak[5],$twres
-	jmp	.Lxts_reenc_loop6
+	jmp	.Lxts_reenc_dec_loop6
 .align	32
-.Lxts_reenc_loop6:
+.Lxts_reenc_dec_loop6:
 	aesdec		$rndkey1,$inout0
 	aesdec		$rndkey1,$inout1
 	aesdec		$rndkey1,$inout2
@@ -3000,10 +3003,10 @@ movdqa	@tweak[3],`16*3`(%rsp)
 	aesdec		$rndkey0,$inout4
 	aesdec		$rndkey0,$inout5
 	$movkey		-80($key1_dec,%rax),$rndkey0
-	jnz		.Lxts_reenc_loop6
+	jnz		.Lxts_reenc_dec_loop6
 
 
-    # Calculate encryption tweaks.
+    # Calculate encryption tweaks XORed with encryption key round[0].
     # First tweak retrieved from the stack is ready to be used
 movdqa $enc_tweak(%rsp),@tweak[5]   # tweak[0]
 #pshufd	\$0x5f,@tweak[5],$twres
@@ -3108,18 +3111,174 @@ pand	$twmask,$rndkey1
 ##	pxor	$twres,@tweak[5]
 pxor	$rndkey1,@tweak[5]
 
-# Calculate tweak[0] of the next round and store it
-# using $rndkey1 for the calculation
+# Calculate encryption tweak[0] of the next round and store it
+# (using $rndkey1 for the calculation)
 #movdqa	$twres,$twtmp
 movaps  @tweak[5],$rndkey1
 ##paddd	$twres,$twres
 psrad   \$31,$twres
 paddq   $rndkey1,$rndkey1
 pand	$twmask,$twres
+pxor    $rndkey0,$tweak[5]      # tweak[5] = tweak[5] ^ round[0]
 pxor	$twres,$rndkey1
 movdqa  $rndkey1,$enc_tweak(%rsp)
 
 $movkey		16($key1_enc_),$rndkey1
+
+# Encrypt those 6 blocks in $inout0 to $inout1
+pxor    @tweak[0],$inout0		# input^=tweak^round[0]
+pxor    @tweak[1],$inout1
+pxor    @tweak[2],$inout2
+	 aesenc		$rndkey1,$inout0
+pxor    @tweak[3],$inout3
+pxor    @tweak[4],$inout4
+     aesenc		$rndkey1,$inout1
+pxor    @tweak[5],$inout5
+movdqa	$dec_rounds_0_last(%rsp),$twres		# load dec round[0]^round[last]
+     aesenc		$rndkey1,$inout2
+	 $movkey	32($key_enc_),$rndkey0
+    pxor	$twres,@tweak[0]		# calculate tweaks^round[last]
+     aesenc		$rndkey1,$inout3
+	pxor	$twres,@tweak[1]
+	movdqa	@tweak[0],`16*0`(%rsp)		# put aside tweaks^round[last]
+     aesenc		$rndkey1,$inout4
+	pxor	$twres,@tweak[2]
+	movdqa	@tweak[1],`16*1`(%rsp)
+     aesenc		$rndkey1,$inout5
+	pxor	$twres,@tweak[3]
+	movdqa	@tweak[2],`16*2`(%rsp)
+	 aesenc		$rndkey0,$inout0
+	pxor	$twres,@tweak[4]
+	 $movkey		48($key_),$rndkey1
+	movdqa	@tweak[3],`16*3`(%rsp)
+	pxor	$twres,@tweak[5]
+	 aesenc		$rndkey0,$inout1
+	movdqa	@tweak[4],`16*4`(%rsp)
+	movdqa	@tweak[5],`16*5`(%rsp)
+	 aesenc		$rndkey0,$inout2
+	 aesenc		$rndkey0,$inout3
+	 aesenc		$rndkey0,$inout4
+	 aesenc		$rndkey0,$inout5
+	jmp	.Lxts_reenc_enc_loop6
+.align	32
+.Lxts_reenc_enc_loop6:
+	aesenc		$rndkey1,$inout0
+	aesenc		$rndkey1,$inout1
+	aesenc		$rndkey1,$inout2
+	aesenc		$rndkey1,$inout3
+	aesenc		$rndkey1,$inout4
+	aesenc		$rndkey1,$inout5
+	$movkey		-64($key,%rax),$rndkey1
+	add		\$32,%rax
+
+	aesenc		$rndkey0,$inout0
+	aesenc		$rndkey0,$inout1
+	aesenc		$rndkey0,$inout2
+	aesenc		$rndkey0,$inout3
+	aesenc		$rndkey0,$inout4
+	aesenc		$rndkey0,$inout5
+	$movkey		-80($key,%rax),$rndkey0
+	jnz		.Lxts_reenc_enc_loop6
+
+    # Calculate next decryption tweaks XORed with decryption key round[0]
+    # while finishing encryption rounds.
+    # Tweak retrieved from the stack is decryption tweak[5] of this round
+movdqa $dec_tweak(%rsp),@tweak[5]
+
+	movdqa	(%r8),$twmask			# start calculating next tweak
+	movdqa	$twres,$twtmp
+	paddd	$twres,$twres
+	 aesenc		$rndkey1,$inout0
+	paddq	@tweak[5],@tweak[5]
+	psrad	\$31,$twtmp
+	 aesenc		$rndkey1,$inout1
+	pand	$twmask,$twtmp
+	$movkey	($key_),@tweak[0]		# load round[0]
+	 aesenc		$rndkey1,$inout2
+	 aesenc		$rndkey1,$inout3
+	 aesenc		$rndkey1,$inout4
+	pxor	$twtmp,@tweak[5]
+	movaps	@tweak[0],@tweak[1]		# copy round[0]
+	 aesenc		$rndkey1,$inout5
+	 $movkey	-64($key),$rndkey1
+
+	movdqa	$twres,$twtmp
+	 aesenc		$rndkey0,$inout0
+	paddd	$twres,$twres
+	pxor	@tweak[5],@tweak[0]
+	 aesenc		$rndkey0,$inout1
+	psrad	\$31,$twtmp
+	paddq	@tweak[5],@tweak[5]
+	 aesenc		$rndkey0,$inout2
+	 aesenc		$rndkey0,$inout3
+	pand	$twmask,$twtmp
+	movaps	@tweak[1],@tweak[2]
+	 aesenc		$rndkey0,$inout4
+	pxor	$twtmp,@tweak[5]
+	movdqa	$twres,$twtmp
+	 aesenc		$rndkey0,$inout5
+	 $movkey	-48($key),$rndkey0
+
+	paddd	$twres,$twres
+	 aesenc		$rndkey1,$inout0
+	pxor	@tweak[5],@tweak[1]
+	psrad	\$31,$twtmp
+	 aesenc		$rndkey1,$inout1
+	paddq	@tweak[5],@tweak[5]
+	pand	$twmask,$twtmp
+	 aesenc		$rndkey1,$inout2
+	 aesenc		$rndkey1,$inout3
+	 movdqa	@tweak[3],`16*3`(%rsp)
+	pxor	$twtmp,@tweak[5]
+	 aesenc		$rndkey1,$inout4
+	movaps	@tweak[2],@tweak[3]
+	movdqa	$twres,$twtmp
+	 aesenc		$rndkey1,$inout5
+	 $movkey	-32($key),$rndkey1
+
+	paddd	$twres,$twres
+	 aesenc		$rndkey0,$inout0
+	pxor	@tweak[5],@tweak[2]
+	psrad	\$31,$twtmp
+	 aesenc		$rndkey0,$inout1
+	paddq	@tweak[5],@tweak[5]
+	pand	$twmask,$twtmp
+	 aesenc		$rndkey0,$inout2
+	 aesenc		$rndkey0,$inout3
+	 aesenc		$rndkey0,$inout4
+	pxor	$twtmp,@tweak[5]
+	movaps	@tweak[3],@tweak[4]
+	 aesenc		$rndkey0,$inout5
+
+	movdqa	$twres,$rndkey0
+	paddd	$twres,$twres
+	 aesenc		$rndkey1,$inout0
+	pxor	@tweak[5],@tweak[3]
+	psrad	\$31,$rndkey0
+	 aesenc		$rndkey1,$inout1
+	paddq	@tweak[5],@tweak[5]
+	pand	$twmask,$rndkey0
+	 aesenc		$rndkey1,$inout2
+	 aesenc		$rndkey1,$inout3
+	pxor	$rndkey0,@tweak[5]
+	$movkey		($key_),$rndkey0
+	 aesenc		$rndkey1,$inout4
+	 aesenc		$rndkey1,$inout5
+	$movkey		16($key_),$rndkey1
+
+	pxor	@tweak[5],@tweak[4]
+	 aesenclast	`16*0`(%rsp),$inout0
+	psrad	\$31,$twres
+	paddq	@tweak[5],@tweak[5]
+	 aesenclast	`16*1`(%rsp),$inout1
+	 aesenclast	`16*2`(%rsp),$inout2
+	pand	$twmask,$twres
+	mov	%r10,%rax			# restore $rounds
+	 aesenclast	`16*3`(%rsp),$inout3
+	 aesenclast	`16*4`(%rsp),$inout4
+	 aesenclast	`16*5`(%rsp),$inout5
+	pxor	$twres,@tweak[5]
+
 
 	lea	`16*6`($out),$out		# $out+=6*16
 	movups	$inout0,`-16*6`($out)		# store 6 output blocks
