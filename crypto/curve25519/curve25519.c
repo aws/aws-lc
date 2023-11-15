@@ -65,7 +65,7 @@
 #endif
 
 
-OPENSSL_INLINE int x25519_s2n_bignum_capable(void) {
+OPENSSL_INLINE int curve25519_s2n_bignum_capable(void) {
 #if defined(CURVE25519_S2N_BIGNUM_CAPABLE)
   return 1;
 #else
@@ -111,20 +111,20 @@ void curve25519_x25519base_byte_alt(uint8_t res[32], const uint8_t scalar[32]) {
 
 // Run-time detection for each implementation
 
-OPENSSL_INLINE int x25519_s2n_bignum_alt_capable(void);
-OPENSSL_INLINE int x25519_s2n_bignum_no_alt_capable(void);
+OPENSSL_INLINE int curve25519_s2n_bignum_alt_capable(void);
+OPENSSL_INLINE int curve25519_s2n_bignum_no_alt_capable(void);
 
-// For aarch64, |x25519_s2n_bignum_alt_capable| returns 1 if we categorize the
-// CPU as a CPU having a wide multiplier (i.e. "higher" throughput). CPUs with
-// this feature are e.g.: AWS Graviton 3 and Apple M1. Return 0 otherwise, so we
-// don't match CPUs without wide multipliers.
+// For aarch64, |curve25519_s2n_bignum_alt_capable| returns 1 if we categorize
+// the CPU as a CPU having a wide multiplier (i.e. "higher" throughput). CPUs
+// with this feature are e.g.: AWS Graviton 3 and Apple M1. Return 0 otherwise,
+// so we don't match CPUs without wide multipliers.
 //
-// For x86_64, |x25519_s2n_bignum_alt_capable| always returns 1. If x25519
+// For x86_64, |curve25519_s2n_bignum_alt_capable| always returns 1. If x25519
 // s2n-bignum capable, the x86_64 s2n-bignum-alt version should be supported on
 // pretty much any x86_64 CPU.
 //
 // For all other architectures, return 0.
-OPENSSL_INLINE int x25519_s2n_bignum_alt_capable(void) {
+OPENSSL_INLINE int curve25519_s2n_bignum_alt_capable(void) {
 #if defined(OPENSSL_X86_64)
   return 1;
 #elif defined(OPENSSL_AARCH64)
@@ -138,15 +138,15 @@ OPENSSL_INLINE int x25519_s2n_bignum_alt_capable(void) {
 #endif
 }
 
-// For aarch64, |x25519_s2n_bignum_no_alt_capable| always returns 1. If x25519
-// s2n-bignum capable, the Armv8 s2n-bignum-alt version should be supported on
-// pretty much any Armv8 CPU.
+// For aarch64, |curve25519_s2n_bignum_no_alt_capable| always returns 1. If
+// x25519 s2n-bignum capable, the Armv8 s2n-bignum-alt version should be
+// supported on pretty much any Armv8 CPU.
 //
-// For x86_64, |x25519_s2n_bignum_alt_capable| returns 1 if we detect support
-// for bmi+adx instruction sets. Return 0 otherwise.
+// For x86_64, |curve25519_s2n_bignum_alt_capable| returns 1 if we detect
+// support for bmi+adx instruction sets. Return 0 otherwise.
 //
 // For all other architectures, return 0.
-OPENSSL_INLINE int x25519_s2n_bignum_no_alt_capable(void) {
+OPENSSL_INLINE int curve25519_s2n_bignum_no_alt_capable(void) {
 #if defined(OPENSSL_X86_64)
   if (CRYPTO_is_BMI2_capable() == 1 && CRYPTO_is_ADX_capable() == 1) {
     return 1;
@@ -179,9 +179,9 @@ OPENSSL_INLINE int x25519_s2n_bignum_no_alt_capable(void) {
 //   prefer s2n-bignum-no-alt over s2n-bignum-alt if the former is supported.
 // For aarch64: if a wide multiplier is supported, we prefer s2n-bignum-alt over
 //   s2n-bignum-no-alt if the former is supported.
-//   x25519_s2n_bignum_alt_capable() specifically looks to match CPUs that have
-//   wide multipliers. this ensures that s2n-bignum-alt will only be used on
-//   such CPUs.
+//   |curve25519_s2n_bignum_alt_capable| specifically looks to match CPUs that
+//   have wide multipliers. this ensures that s2n-bignum-alt will only be used
+//   on such CPUs.
 
 static void x25519_s2n_bignum(uint8_t out_shared_key[32],
   const uint8_t private_key[32], const uint8_t peer_public_value[32]) {
@@ -194,10 +194,10 @@ static void x25519_s2n_bignum(uint8_t out_shared_key[32],
 
 #if defined(OPENSSL_X86_64)
 
-  if (x25519_s2n_bignum_no_alt_capable() == 1) {
+  if (curve25519_s2n_bignum_no_alt_capable() == 1) {
     curve25519_x25519_byte(out_shared_key, private_key_internal_demask,
       peer_public_value);
-  } else if (x25519_s2n_bignum_alt_capable() == 1) {
+  } else if (curve25519_s2n_bignum_alt_capable() == 1) {
     curve25519_x25519_byte_alt(out_shared_key, private_key_internal_demask,
       peer_public_value);
   } else {
@@ -206,10 +206,10 @@ static void x25519_s2n_bignum(uint8_t out_shared_key[32],
 
 #elif defined(OPENSSL_AARCH64)
 
-  if (x25519_s2n_bignum_alt_capable() == 1) {
+  if (curve25519_s2n_bignum_alt_capable() == 1) {
     curve25519_x25519_byte_alt(out_shared_key, private_key_internal_demask,
       peer_public_value);
-  } else if (x25519_s2n_bignum_no_alt_capable() == 1) {
+  } else if (curve25519_s2n_bignum_no_alt_capable() == 1) {
     curve25519_x25519_byte(out_shared_key, private_key_internal_demask,
       peer_public_value);
   } else {
@@ -235,9 +235,9 @@ static void x25519_s2n_bignum_public_from_private(
 
 #if defined(OPENSSL_X86_64)
 
-  if (x25519_s2n_bignum_no_alt_capable() == 1) {
+  if (curve25519_s2n_bignum_no_alt_capable() == 1) {
     curve25519_x25519base_byte(out_public_value, private_key_internal_demask);
-  } else if (x25519_s2n_bignum_alt_capable() == 1) {
+  } else if (curve25519_s2n_bignum_alt_capable() == 1) {
     curve25519_x25519base_byte_alt(out_public_value, private_key_internal_demask);
   } else {
     abort();
@@ -245,9 +245,9 @@ static void x25519_s2n_bignum_public_from_private(
 
 #elif defined(OPENSSL_AARCH64)
 
-  if (x25519_s2n_bignum_alt_capable() == 1) {
+  if (curve25519_s2n_bignum_alt_capable() == 1) {
     curve25519_x25519base_byte_alt(out_public_value, private_key_internal_demask);
-  } else if (x25519_s2n_bignum_no_alt_capable() == 1) {
+  } else if (curve25519_s2n_bignum_no_alt_capable() == 1) {
     curve25519_x25519base_byte(out_public_value, private_key_internal_demask);
   } else {
     abort();
@@ -278,7 +278,7 @@ static void ed25519_sign_s2n_bignum(
   abort();
 }
 
-static int ed25519_verify_s2n_bignum(uint8_t R_have_encoded[32],
+static int ed25519_verify_s2n_bignum(uint8_t R_computed_encoded[32],
   const uint8_t public_key[32], uint8_t R_expected[32],
   uint8_t S[32], const uint8_t *message, size_t message_len) {
   abort();
@@ -427,25 +427,25 @@ int ED25519_verify(const uint8_t *message, size_t message_len,
   // Step: rfc8032 5.1.7.[1,2,3]
   // Verification works by computing [S]B - [k]A' and comparing against R_expected.
   int res = 0;
-  uint8_t R_have_encoded[32];
+  uint8_t R_computed_encoded[32];
   if (ed25519_s2n_bignum_capable() == 1) {
-    res = ed25519_verify_s2n_bignum(R_have_encoded, public_key, R_expected, S,
+    res = ed25519_verify_s2n_bignum(R_computed_encoded, public_key, R_expected, S,
       message, message_len);
   } else {
-    res = ed25519_verify_nohw(R_have_encoded, public_key, R_expected, S,
+    res = ed25519_verify_nohw(R_computed_encoded, public_key, R_expected, S,
       message, message_len);
   }
 
   // Comparison [S]B - [k]A' =? R_expected. Short-circuits if decoding failed.
   return (res == 1) &&
-         CRYPTO_memcmp(R_have_encoded, R_expected, sizeof(R_have_encoded)) == 0;
+         CRYPTO_memcmp(R_computed_encoded, R_expected, sizeof(R_computed_encoded)) == 0;
 }
 
 
 void X25519_public_from_private(uint8_t out_public_value[32],
                                 const uint8_t private_key[32]) {
 
-  if (x25519_s2n_bignum_capable() == 1) {
+  if (curve25519_s2n_bignum_capable() == 1) {
     x25519_s2n_bignum_public_from_private(out_public_value, private_key);
   } else {
     x25519_public_from_private_nohw(out_public_value, private_key);
@@ -480,7 +480,7 @@ int X25519(uint8_t out_shared_key[32], const uint8_t private_key[32],
 
   static const uint8_t kZeros[32] = {0};
 
-  if (x25519_s2n_bignum_capable() == 1) {
+  if (curve25519_s2n_bignum_capable() == 1) {
     x25519_s2n_bignum(out_shared_key, private_key, peer_public_value);
   } else {
     x25519_scalar_mult_generic_nohw(out_shared_key, private_key, peer_public_value);
