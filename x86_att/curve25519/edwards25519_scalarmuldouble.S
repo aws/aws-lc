@@ -2072,8 +2072,8 @@ edwards25519_scalarmuldouble_loop:
         movq    %rax, 0x78(%rsp)
         movq    $0xa,  0x90(%rsp)
         movq    $0x1,  0x98(%rsp)
-        jmp     curve25519_x25519_midloop
-curve25519_x25519_inverseloop:
+        jmp     edwards25519_scalarmuldouble_midloop
+edwards25519_scalarmuldouble_inverseloop:
         movq    %r8, %r9
         sarq    $0x3f, %r9
         xorq    %r9, %r8
@@ -2364,7 +2364,7 @@ curve25519_x25519_inverseloop:
         shlq    $0x3f, %rax
         addq    %rax, %rsi
         movq    %rsi, 0x78(%rsp)
-curve25519_x25519_midloop:
+edwards25519_scalarmuldouble_midloop:
         movq    0x98(%rsp), %rsi
         movq    (%rsp), %rdx
         movq    0x20(%rsp), %rcx
@@ -3265,7 +3265,7 @@ curve25519_x25519_midloop:
         leaq    (%rax,%rdx), %r12
         movq    %rsi, 0x98(%rsp)
         decq     0x90(%rsp)
-        jne     curve25519_x25519_inverseloop
+        jne     edwards25519_scalarmuldouble_inverseloop
         movq    (%rsp), %rax
         movq    0x20(%rsp), %rcx
         imulq   %r8, %rax
