@@ -2976,10 +2976,11 @@ $code.=<<___;
 	 pxor	$twres,$twmask
 	 movdqa	@tweak[4],`16*4`(%rsp)
 	aesdec		$rndkey0,$inout4
+movdqa	@tweak[3],`16*3`(%rsp)
 	aesdec		$rndkey0,$inout5
 	$movkey		64($key1_dec_),$rndkey0
 	 movdqa	$twmask,`16*5`(%rsp)
-	pshufd	\$0x5f,@tweak[5],$twres
+	##pshufd	\$0x5f,@tweak[5],$twres
 	jmp	.Lxts_reenc_loop6
 .align	32
 .Lxts_reenc_loop6:
@@ -3002,35 +3003,39 @@ $code.=<<___;
 	jnz		.Lxts_reenc_loop6
 
 
-
+    # Calculate encryption tweaks.
+    # First tweak retrieved from the stack is ready to be used
+movdqa $enc_tweak(%rsp),@tweak[5]   # tweak[0]
+#pshufd	\$0x5f,@tweak[5],$twres
 	movdqa	(%r8),$twmask			# start calculating next tweak
-	movdqa	$twres,$twtmp
-	paddd	$twres,$twres
+#	movdqa	$twres,$twtmp
+#	paddd	$twres,$twres
 	 aesdec		$rndkey1,$inout0
-	paddq	@tweak[5],@tweak[5]
-	psrad	\$31,$twtmp
+#	paddq	@tweak[5],@tweak[5]
+#	psrad	\$31,$twtmp
 	 aesdec		$rndkey1,$inout1
-	pand	$twmask,$twtmp
-	$movkey	($key1_dec_),@tweak[0]		# load round[0]
+#	pand	$twmask,$twtmp
+	$movkey	($key1_enc_),@tweak[0]		# tweak[0]=round[0] of encrypt key1
 	 aesdec		$rndkey1,$inout2
 	 aesdec		$rndkey1,$inout3
 	 aesdec		$rndkey1,$inout4
-	pxor	$twtmp,@tweak[5]
-	movaps	@tweak[0],@tweak[1]		# copy round[0]
+#	pxor	$twtmp,@tweak[5]
+	movaps	@tweak[0],@tweak[1]		# tweak[1]=round[0]
 	 aesdec		$rndkey1,$inout5
 	 $movkey	-64($key1_dec),$rndkey1
 
+pshufd	\$0x5f,@tweak[5],$twres
 	movdqa	$twres,$twtmp
 	 aesdec		$rndkey0,$inout0
 	paddd	$twres,$twres
-	pxor	@tweak[5],@tweak[0]
+	pxor	@tweak[5],@tweak[0]     # tweak[0] = tweak[0] ^ round[0]
 	 aesdec		$rndkey0,$inout1
 	psrad	\$31,$twtmp
 	paddq	@tweak[5],@tweak[5]
 	 aesdec		$rndkey0,$inout2
 	 aesdec		$rndkey0,$inout3
 	pand	$twmask,$twtmp
-	movaps	@tweak[1],@tweak[2]
+	movaps	@tweak[1],@tweak[2]		# tweak[2]=round[0]
 	 aesdec		$rndkey0,$inout4
 	pxor	$twtmp,@tweak[5]
 	movdqa	$twres,$twtmp
@@ -3039,24 +3044,24 @@ $code.=<<___;
 
 	paddd	$twres,$twres
 	 aesdec		$rndkey1,$inout0
-	pxor	@tweak[5],@tweak[1]
+	pxor	@tweak[5],@tweak[1]     # tweak[1] = tweak[1] ^ round[0]
 	psrad	\$31,$twtmp
 	 aesdec		$rndkey1,$inout1
 	paddq	@tweak[5],@tweak[5]
 	pand	$twmask,$twtmp
 	 aesdec		$rndkey1,$inout2
 	 aesdec		$rndkey1,$inout3
-	 movdqa	@tweak[3],`16*3`(%rsp)
+	 ##movdqa	@tweak[3],`16*3`(%rsp)  #?
 	pxor	$twtmp,@tweak[5]
 	 aesdec		$rndkey1,$inout4
-	movaps	@tweak[2],@tweak[3]
+	movaps	@tweak[2],@tweak[3]		# tweak[3]=round[0]
 	movdqa	$twres,$twtmp
 	 aesdec		$rndkey1,$inout5
 	 $movkey	-32($key1_dec),$rndkey1
 
 	paddd	$twres,$twres
 	 aesdec		$rndkey0,$inout0
-	pxor	@tweak[5],@tweak[2]
+	pxor	@tweak[5],@tweak[2]     # tweak[2] = tweak[2] ^ round[0]
 	psrad	\$31,$twtmp
 	 aesdec		$rndkey0,$inout1
 	paddq	@tweak[5],@tweak[5]
@@ -3065,39 +3070,56 @@ $code.=<<___;
 	 aesdec		$rndkey0,$inout3
 	 aesdec		$rndkey0,$inout4
 	pxor	$twtmp,@tweak[5]
-	movaps	@tweak[3],@tweak[4]
 	 aesdec		$rndkey0,$inout5
 
-	movdqa	$twres,$rndkey0
+	movdqa	$twres,$twtmp
 	paddd	$twres,$twres
+	movaps	@tweak[3],$rndkey0		# rndkey0 = round[0]
 	 aesdec		$rndkey1,$inout0
-	pxor	@tweak[5],@tweak[3]
-	psrad	\$31,$rndkey0
+	pxor	@tweak[5],@tweak[3]     # tweak[3] = tweak[3] ^ round[0]
+	psrad	\$31,$twtmp
 	 aesdec		$rndkey1,$inout1
 	paddq	@tweak[5],@tweak[5]
-	pand	$twmask,$rndkey0
+	pand	$twmask,$twtmp          # Note: $twtmp=xmm14=@tweak[4]
 	 aesdec		$rndkey1,$inout2
 	 aesdec		$rndkey1,$inout3
-	pxor	$rndkey0,@tweak[5]
-	$movkey		($key1_dec_),$rndkey0
+	pxor	$twtmp,@tweak[5]
+	##$movkey		($key1_dec_),$rndkey0
+movaps	$rndkey0,@tweak[4]  		# tweak[4] = round[0]
 	 aesdec		$rndkey1,$inout4
 	 aesdec		$rndkey1,$inout5
-	$movkey		16($key1_dec_),$rndkey1
+##	$movkey		16($key1_dec_),$rndkey1
 
-	pxor	@tweak[5],@tweak[4]
+movdqa	$twres,$rndkey1
+	pxor	@tweak[5],@tweak[4]     # tweak[4] = tweak[4] ^ round[0]
 	 aesdeclast	`16*0`(%rsp),$inout0
-	psrad	\$31,$twres
+paddd   $twres,$twres
+##	psrad	\$31,$twres
+psrad	\$31,$rndkey1
 	paddq	@tweak[5],@tweak[5]
 	 aesdeclast	`16*1`(%rsp),$inout1
 	 aesdeclast	`16*2`(%rsp),$inout2
-	pand	$twmask,$twres
+##	pand	$twmask,$twres
+pand	$twmask,$rndkey1
 	mov	%r10,%rax			# restore $rounds
 	 aesdeclast	`16*3`(%rsp),$inout3
 	 aesdeclast	`16*4`(%rsp),$inout4
 	 aesdeclast	`16*5`(%rsp),$inout5
-	pxor	$twres,@tweak[5]
+##	pxor	$twres,@tweak[5]
+pxor	$rndkey1,@tweak[5]
 
+# Calculate tweak[0] of the next round and store it
+# using $rndkey1 for the calculation
+#movdqa	$twres,$twtmp
+movaps  @tweak[5],$rndkey1
+##paddd	$twres,$twres
+psrad   \$31,$twres
+paddq   $rndkey1,$rndkey1
+pand	$twmask,$twres
+pxor	$twres,$rndkey1
+movdqa  $rndkey1,$enc_tweak(%rsp)
 
+$movkey		16($key1_enc_),$rndkey1
 
 	lea	`16*6`($out),$out		# $out+=6*16
 	movups	$inout0,`-16*6`($out)		# store 6 output blocks

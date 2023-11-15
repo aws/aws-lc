@@ -1338,7 +1338,7 @@ TEST(XTSTest, ReEncryptTestVectors) {
 
     bssl::ScopedEVP_CIPHER_CTX ctx;
     int len;
-#if 1
+#if 0
     in = plaintext;
     out.resize(ciphertext_in.size());
     // Encrypt with the decryption key (to generate test vectors)
