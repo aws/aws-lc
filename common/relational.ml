@@ -90,9 +90,21 @@ let SEQ = prove
  (`((c := y) ,, r) s = r (write c y s)`,
   REWRITE_TAC[assign; seq; FUN_EQ_THM] THEN MESON_TAC[]);;
 
+let ASSIGN_ZEROTOP_8 = prove
+ (`!c y. ((c :> zerotop_8) := y) = (c := word_zx y)`,
+  REWRITE_TAC[assign; WRITE_ZEROTOP_8]);;
+
+let ASSIGN_ZEROTOP_16 = prove
+ (`!c y. ((c :> zerotop_16) := y) = (c := word_zx y)`,
+  REWRITE_TAC[assign; WRITE_ZEROTOP_16]);;
+
 let ASSIGN_ZEROTOP_32 = prove
  (`!c y. ((c :> zerotop_32) := y) = (c := word_zx y)`,
   REWRITE_TAC[assign; WRITE_ZEROTOP_32]);;
+
+let ASSIGN_ZEROTOP_64 = prove
+ (`!c y. ((c :> zerotop_64) := y) = (c := word_zx y)`,
+  REWRITE_TAC[assign; WRITE_ZEROTOP_64]);;
 
 (* ------------------------------------------------------------------------- *)
 (* A nondeterministic assignment of a state component.                       *)

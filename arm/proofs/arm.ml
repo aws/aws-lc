@@ -162,6 +162,41 @@ let WREG_EXPAND_CLAUSES = prove
    W30 = X30 :> zerotop_32`,
   REWRITE_TAC(!component_alias_thms));;
 
+let DREG_EXPAND_CLAUSES = prove
+ (`D0 = Q0 :> zerotop_64 /\
+   D1 = Q1 :> zerotop_64 /\
+   D2 = Q2 :> zerotop_64 /\
+   D3 = Q3 :> zerotop_64 /\
+   D4 = Q4 :> zerotop_64 /\
+   D5 = Q5 :> zerotop_64 /\
+   D6 = Q6 :> zerotop_64 /\
+   D7 = Q7 :> zerotop_64 /\
+   D8 = Q8 :> zerotop_64 /\
+   D9 = Q9 :> zerotop_64 /\
+   D10 = Q10 :> zerotop_64 /\
+   D11 = Q11 :> zerotop_64 /\
+   D12 = Q12 :> zerotop_64 /\
+   D13 = Q13 :> zerotop_64 /\
+   D14 = Q14 :> zerotop_64 /\
+   D15 = Q15 :> zerotop_64 /\
+   D16 = Q16 :> zerotop_64 /\
+   D17 = Q17 :> zerotop_64 /\
+   D18 = Q18 :> zerotop_64 /\
+   D19 = Q19 :> zerotop_64 /\
+   D20 = Q20 :> zerotop_64 /\
+   D21 = Q21 :> zerotop_64 /\
+   D22 = Q22 :> zerotop_64 /\
+   D23 = Q23 :> zerotop_64 /\
+   D24 = Q24 :> zerotop_64 /\
+   D25 = Q25 :> zerotop_64 /\
+   D26 = Q26 :> zerotop_64 /\
+   D27 = Q27 :> zerotop_64 /\
+   D28 = Q28 :> zerotop_64 /\
+   D29 = Q29 :> zerotop_64 /\
+   D30 = Q30 :> zerotop_64 /\
+   D31 = Q31 :> zerotop_64`,
+  REWRITE_TAC(!component_alias_thms));;
+
 let READ_SHIFTEDREG_CLAUSES = prove
  (`read (Shiftedreg Rn LSL n) s = word_shl (read Rn s) n /\
    read (Shiftedreg Rn LSR n) s = word_ushr (read Rn s) n /\
@@ -203,9 +238,11 @@ let ARM_EXEC_CONV =
     GEN_REWRITE_CONV ONCE_DEPTH_CONV [CONJUNCT2 SEQ_ID]) ORELSEC
    (GEN_REWRITE_CONV I ARM_OPERATION_CLAUSES THENC
     REWRITE_CONV [condition_semantics])) THENC
-  REWRITE_CONV[WREG_EXPAND_CLAUSES] THENC
-  REWRITE_CONV[READ_RVALUE; ASSIGN_ZEROTOP_32; ARM_ZERO_REGISTER;
+  REWRITE_CONV[WREG_EXPAND_CLAUSES; DREG_EXPAND_CLAUSES] THENC
+  REWRITE_CONV[READ_RVALUE; ARM_ZERO_REGISTER;
+               ASSIGN_ZEROTOP_32; ASSIGN_ZEROTOP_64;
                READ_ZEROTOP_32; WRITE_ZEROTOP_32;
+               READ_ZEROTOP_64; WRITE_ZEROTOP_64;
                READ_SHIFTEDREG_CLAUSES; READ_EXTENDEDREG_CLAUSES] THENC
   DEPTH_CONV(WORD_NUM_RED_CONV ORELSEC WORD_WORD_OPERATION_CONV);;
 
