@@ -18,7 +18,6 @@ jobs:
         run: ./util/codecov-ci.sh ${{ runner.temp }}/build
       - name: Upload code coverage report to Codecov
         uses: codecov/codecov-action@v3
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
-          file: ${{ runner.temp }}/build/coverage.info
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: "${{ runner.temp }}/build/coverage-default.info,${{ runner.temp }}/build/coverage-no-asm.info"
