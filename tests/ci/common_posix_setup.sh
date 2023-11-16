@@ -115,7 +115,7 @@ function verify_symbols_prefixed {
   #  * "\(bignum\|curve25519_x25519\)": match string of either "bignum" or "curve25519_x25519".
   # Recall that the option "-v" reverse the pattern matching. So, we are really
   # filtering out lines that contain either "bignum" or "curve25519_x25519".
-  cat "$BUILD_ROOT"/symbols_final_crypto.txt  "$BUILD_ROOT"/symbols_final_ssl.txt | grep -v -e '^_\?\(bignum\|curve25519_x25519\)' >  "$SRC_ROOT"/symbols_final.txt
+  cat "$BUILD_ROOT"/symbols_final_crypto.txt  "$BUILD_ROOT"/symbols_final_ssl.txt | grep -v -e '^_\?\(bignum\|curve25519_x25519\|edwards25519\)' >  "$SRC_ROOT"/symbols_final.txt
   # Now filter out every line that has the unique prefix $CUSTOM_PREFIX. If we
   # have any lines left, then some symbol(s) weren't prefixed, unexpectedly.
   if [ $(grep -c -v ${CUSTOM_PREFIX}  "$SRC_ROOT"/symbols_final.txt) -ne 0 ]; then
