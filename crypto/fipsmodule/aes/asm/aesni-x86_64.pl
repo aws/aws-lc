@@ -2926,7 +2926,8 @@ $code.=<<___;
 	jc	.Lxts_reenc_short			# if $len-=6*16 borrowed
 
 	mov	\$16+96,$rounds
-	lea	32($key1_dec_,$rnds_),$key1_dec		# end of key schedule
+	lea	32($key1_dec_,$rnds_),$key1_dec		# end of decryption key schedule
+	lea	32($key1_enc_,$rnds_),$key1_enc		# end of decryption key schedule
 	sub	%r10,%rax			# twisted $rounds
 	$movkey	16($key1_dec_),$rndkey1
 	mov	%rax,%r10			# backup twisted $rounds
@@ -3134,9 +3135,9 @@ pxor    @tweak[3],$inout3
 pxor    @tweak[4],$inout4
      aesenc		$rndkey1,$inout1
 pxor    @tweak[5],$inout5
-movdqa	$dec_rounds_0_last(%rsp),$twres		# load dec round[0]^round[last]
+movdqa	$enc_rounds_0_last(%rsp),$twres		# load enc round[0]^round[last]
      aesenc		$rndkey1,$inout2
-	 $movkey	32($key_enc_),$rndkey0
+	 $movkey	32($key1_enc_),$rndkey0
     pxor	$twres,@tweak[0]		# calculate tweaks^round[last]
      aesenc		$rndkey1,$inout3
 	pxor	$twres,@tweak[1]
@@ -3149,16 +3150,17 @@ movdqa	$dec_rounds_0_last(%rsp),$twres		# load dec round[0]^round[last]
 	movdqa	@tweak[2],`16*2`(%rsp)
 	 aesenc		$rndkey0,$inout0
 	pxor	$twres,@tweak[4]
-	 $movkey		48($key_),$rndkey1
+	 $movkey		48($key1_enc_),$rndkey1
 	movdqa	@tweak[3],`16*3`(%rsp)
 	pxor	$twres,@tweak[5]
 	 aesenc		$rndkey0,$inout1
-	movdqa	@tweak[4],`16*4`(%rsp)
-	movdqa	@tweak[5],`16*5`(%rsp)
 	 aesenc		$rndkey0,$inout2
 	 aesenc		$rndkey0,$inout3
 	 aesenc		$rndkey0,$inout4
 	 aesenc		$rndkey0,$inout5
+	movdqa	@tweak[4],`16*4`(%rsp)
+	movdqa	@tweak[5],`16*5`(%rsp)
+     $movkey		64($key1_enc_),$rndkey0
 	jmp	.Lxts_reenc_enc_loop6
 .align	32
 .Lxts_reenc_enc_loop6:
@@ -3168,7 +3170,7 @@ movdqa	$dec_rounds_0_last(%rsp),$twres		# load dec round[0]^round[last]
 	aesenc		$rndkey1,$inout3
 	aesenc		$rndkey1,$inout4
 	aesenc		$rndkey1,$inout5
-	$movkey		-64($key,%rax),$rndkey1
+	$movkey		-64($key1_enc,%rax),$rndkey1
 	add		\$32,%rax
 
 	aesenc		$rndkey0,$inout0
@@ -3177,14 +3179,14 @@ movdqa	$dec_rounds_0_last(%rsp),$twres		# load dec round[0]^round[last]
 	aesenc		$rndkey0,$inout3
 	aesenc		$rndkey0,$inout4
 	aesenc		$rndkey0,$inout5
-	$movkey		-80($key,%rax),$rndkey0
+	$movkey		-80($key1_enc,%rax),$rndkey0
 	jnz		.Lxts_reenc_enc_loop6
 
     # Calculate next decryption tweaks XORed with decryption key round[0]
     # while finishing encryption rounds.
     # Tweak retrieved from the stack is decryption tweak[5] of this round
 movdqa $dec_tweak(%rsp),@tweak[5]
-
+pshufd	\$0x5f,@tweak[5],$twres
 	movdqa	(%r8),$twmask			# start calculating next tweak
 	movdqa	$twres,$twtmp
 	paddd	$twres,$twres
@@ -3193,14 +3195,14 @@ movdqa $dec_tweak(%rsp),@tweak[5]
 	psrad	\$31,$twtmp
 	 aesenc		$rndkey1,$inout1
 	pand	$twmask,$twtmp
-	$movkey	($key_),@tweak[0]		# load round[0]
+	$movkey	($key1_dec_),@tweak[0]		# load decryption round[0]
 	 aesenc		$rndkey1,$inout2
 	 aesenc		$rndkey1,$inout3
 	 aesenc		$rndkey1,$inout4
 	pxor	$twtmp,@tweak[5]
-	movaps	@tweak[0],@tweak[1]		# copy round[0]
+	movaps	@tweak[0],@tweak[1]		# copy decrypt round[0]
 	 aesenc		$rndkey1,$inout5
-	 $movkey	-64($key),$rndkey1
+	 $movkey	-64($key1_enc),$rndkey1
 
 	movdqa	$twres,$twtmp
 	 aesenc		$rndkey0,$inout0
@@ -3217,7 +3219,7 @@ movdqa $dec_tweak(%rsp),@tweak[5]
 	pxor	$twtmp,@tweak[5]
 	movdqa	$twres,$twtmp
 	 aesenc		$rndkey0,$inout5
-	 $movkey	-48($key),$rndkey0
+	 $movkey	-48($key1_enc),$rndkey0
 
 	paddd	$twres,$twres
 	 aesenc		$rndkey1,$inout0
@@ -3234,7 +3236,7 @@ movdqa $dec_tweak(%rsp),@tweak[5]
 	movaps	@tweak[2],@tweak[3]
 	movdqa	$twres,$twtmp
 	 aesenc		$rndkey1,$inout5
-	 $movkey	-32($key),$rndkey1
+	 $movkey	-32($key1_enc),$rndkey1
 
 	paddd	$twres,$twres
 	 aesenc		$rndkey0,$inout0
@@ -3261,10 +3263,10 @@ movdqa $dec_tweak(%rsp),@tweak[5]
 	 aesenc		$rndkey1,$inout2
 	 aesenc		$rndkey1,$inout3
 	pxor	$rndkey0,@tweak[5]
-	$movkey		($key_),$rndkey0
+	$movkey		($key1_dec_),$rndkey0
 	 aesenc		$rndkey1,$inout4
 	 aesenc		$rndkey1,$inout5
-	$movkey		16($key_),$rndkey1
+	$movkey		16($key1_dec_),$rndkey1
 
 	pxor	@tweak[5],@tweak[4]
 	 aesenclast	`16*0`(%rsp),$inout0
@@ -3296,6 +3298,7 @@ movdqa $dec_tweak(%rsp),@tweak[5]
 	mov	\$16+96,$rounds
 	sub	$rnds_,$rounds
 	mov	$key1_dec_,$key1_dec			# restore $key1_dec
+	mov	$key1_enc_,$key1_enc			# restore $key1_enc
 	shr	\$4,$rounds			# restore original value
 
 
