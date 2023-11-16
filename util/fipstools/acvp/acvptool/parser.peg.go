@@ -241,7 +241,7 @@ func (e *parseError) Error() string {
 			rul3s[token.pegRule],
 			translations[begin].line, translations[begin].symbol,
 			translations[end].line, translations[end].symbol,
-			strconv.Quote(string(e.p.buffer[begin-20:end+10])))
+			strconv.Quote(string(e.p.buffer[begin:end])))
 	}
 
 	return error
