@@ -1331,6 +1331,12 @@ OPENSSL_EXPORT int SSL_use_PrivateKey_file(SSL *ssl, const char *file,
 OPENSSL_EXPORT int SSL_CTX_use_certificate_chain_file(SSL_CTX *ctx,
                                                       const char *file);
 
+// SSL_CTX_use_certificate_chain_file configures certificates for |ssl|. It
+// reads the contents of |file| as a PEM-encoded leaf certificate followed
+// optionally by the certificate chain to send to the peer. It returns one on
+// success and zero on failure.
+OPENSSL_EXPORT int SSL_use_certificate_chain_file(SSL *ssl, const char *file);
+
 // SSL_CTX_set_default_passwd_cb sets the password callback for PEM-based
 // convenience functions called on |ctx|.
 OPENSSL_EXPORT void SSL_CTX_set_default_passwd_cb(SSL_CTX *ctx,

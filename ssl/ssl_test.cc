@@ -11772,15 +11772,19 @@ TEST_P(PerformHybridHandshakeTest, PerformHybridHandshake) {
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
   ASSERT_TRUE(client_ctx);
   ASSERT_TRUE(SSL_CTX_set1_curves_list(client_ctx.get(), t.client_rule));
-  ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), t.client_version));
+  ASSERT_TRUE(
+      SSL_CTX_set_max_proto_version(client_ctx.get(), t.client_version));
 
-  bssl::UniquePtr<SSL_CTX> server_ctx = CreateContextWithTestCertificate(TLS_method());
+  bssl::UniquePtr<SSL_CTX> server_ctx =
+      CreateContextWithTestCertificate(TLS_method());
   ASSERT_TRUE(server_ctx);
   ASSERT_TRUE(SSL_CTX_set1_curves_list(server_ctx.get(), t.server_rule));
-  ASSERT_TRUE(SSL_CTX_set_max_proto_version(server_ctx.get(), t.server_version));
+  ASSERT_TRUE(
+      SSL_CTX_set_max_proto_version(server_ctx.get(), t.server_version));
 
   bssl::UniquePtr<SSL> client, server;
-  ASSERT_TRUE(CreateClientAndServer(&client, &server, client_ctx.get(), server_ctx.get()));
+  ASSERT_TRUE(CreateClientAndServer(&client, &server, client_ctx.get(),
+                                    server_ctx.get()));
 
   if (t.expected_group != 0) {
     // In this case, assert that the handshake completes as expected.
@@ -11790,13 +11794,15 @@ TEST_P(PerformHybridHandshakeTest, PerformHybridHandshake) {
     ASSERT_TRUE(client_session);
     EXPECT_EQ(t.expected_group, client_session->group_id);
     EXPECT_EQ(t.is_hrr_expected, SSL_used_hello_retry_request(client.get()));
-    EXPECT_EQ(std::min(t.client_version, t.server_version), client_session->ssl_version);
+    EXPECT_EQ(std::min(t.client_version, t.server_version),
+              client_session->ssl_version);
 
     SSL_SESSION *server_session = SSL_get_session(server.get());
     ASSERT_TRUE(server_session);
     EXPECT_EQ(t.expected_group, server_session->group_id);
     EXPECT_EQ(t.is_hrr_expected, SSL_used_hello_retry_request(server.get()));
-    EXPECT_EQ(std::min(t.client_version, t.server_version), server_session->ssl_version);
+    EXPECT_EQ(std::min(t.client_version, t.server_version),
+              server_session->ssl_version);
   } else {
     // In this case, we expect the handshake to fail because client and
     // server configurations are not compatible.
@@ -11808,6 +11814,47 @@ TEST_P(PerformHybridHandshakeTest, PerformHybridHandshake) {
     ASSERT_FALSE(server.get()->s3->initial_handshake_complete);
     EXPECT_EQ(t.is_hrr_expected, SSL_used_hello_retry_request(server.get()));
   }
+}
+
+// This test opens and writes a temporary pem file to test certificate file
+// loading. It is disabled by default since we may not always have permissions
+// to create files on some platforms or the generated files may encounter race
+// conditions when running multiple ssl_tests on different threads. This is
+// reenabled via all_tests.go where suitable.
+TEST(SSLTest, DISABLED_SSLFileTests) {
+  struct fclose_deleter {
+    void operator()(FILE *f) const { fclose(f); }
+  };
+
+  using ScopedFILE = std::unique_ptr<FILE, fclose_deleter>;
+  ScopedFILE rsa_pem(fopen("rsa.pem", "w"));
+  ScopedFILE ecdsa_pem(fopen("ecdsa.pem", "w"));
+  ASSERT_TRUE(rsa_pem);
+  ASSERT_TRUE(ecdsa_pem);
+
+  bssl::UniquePtr<X509> rsa_leaf = GetChainTestCertificate();
+  bssl::UniquePtr<X509> rsa_intermediate = GetChainTestIntermediate();
+  bssl::UniquePtr<X509> ecdsa_leaf = GetECDSATestCertificate();
+  ASSERT_TRUE(PEM_write_X509(rsa_pem.get(), rsa_leaf.get()));
+  ASSERT_TRUE(PEM_write_X509(rsa_pem.get(), rsa_intermediate.get()));
+  ASSERT_TRUE(PEM_write_X509(ecdsa_pem.get(), ecdsa_leaf.get()));
+  rsa_pem.reset();
+  ecdsa_pem.reset();
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  // Load a certificate into |ctx| and verify that |ssl| inherits it.
+  EXPECT_TRUE(SSL_CTX_use_certificate_chain_file(ctx.get(), "rsa.pem"));
+  bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
+  ASSERT_TRUE(ssl);
+  EXPECT_EQ(X509_cmp(SSL_get_certificate(ssl.get()), rsa_leaf.get()), 0);
+
+  // Load a new cert into |ssl| and verify that it's correctly loaded.
+  EXPECT_TRUE(SSL_use_certificate_chain_file(ssl.get(), "ecdsa.pem"));
+  EXPECT_EQ(X509_cmp(SSL_get_certificate(ssl.get()), ecdsa_leaf.get()), 0);
+
+  ASSERT_EQ(remove("rsa.pem"), 0);
+  ASSERT_EQ(remove("ecdsa.pem"), 0);
 }
 
 }  // namespace
