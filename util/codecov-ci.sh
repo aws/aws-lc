@@ -61,6 +61,8 @@ if [[ "$(uname -s)" == "Darwin" ]]; then
 else
   LCOV_EXCLUDE_PARAMS+=(--exclude '/usr/*')
   LCOV_EXCLUDE_PARAMS+=(--exclude '/lib/*')
-  lcov --capture "${LCOV_EXCLUDE_PARAMS[@]}" --directory "${BUILD_DEFAULT}" --output-file "${BUILD}/coverage-default.info"
-  lcov --capture "${LCOV_EXCLUDE_PARAMS[@]}" --directory "${BUILD_NO_ASM}" --output-file "${BUILD}/coverage-no-asm.info"
+  lcov --capture "${LCOV_EXCLUDE_PARAMS[@]}" --ignore-errors negative,mismatch,unused --directory "${BUILD_DEFAULT}" --output-file "${BUILD}/coverage-default.info"
+  lcov --capture "${LCOV_EXCLUDE_PARAMS[@]}" --ignore-errors negative,mismatch,unused --directory "${BUILD_NO_ASM}" --output-file "${BUILD}/coverage-no-asm.info"
+
+  #genhtml --output-directory "${BUILD_HTML}" "${BUILD}"/coverage-*.info
 fi
