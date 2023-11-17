@@ -246,3 +246,25 @@ extern void bignum_copy_row_from_table_16_neon (uint64_t *z, const uint64_t *tab
 // Input table[height*32]; output z[32]
 extern void bignum_copy_row_from_table_32_neon (uint64_t *z, const uint64_t *table,
         uint64_t height, uint64_t idx);
+
+#if !defined(AWSLC_FIPS)
+// Given a scalar n, returns point (X,Y) = n * B where B = (...,4/5) is
+// the standard basepoint for the edwards25519 (Ed25519) curve.
+// Input scalar[4]; output res[8]
+extern void edwards25519_scalarmulbase(uint64_t res[static 8],uint64_t scalar[static 4]);
+extern void edwards25519_scalarmulbase_alt(uint64_t res[static 8],uint64_t scalar[static 4]);
+
+// This assumes that the input buffer p points to a pair of 256-bit
+// numbers x (at p) and y (at p+4) representing a point (x,y) on the
+// edwards25519 curve. It is assumed that both x and y are < p_25519
+// but there is no checking of this, nor of the fact that (x,y) is
+// in fact on the curve.
+//
+// The output in z is a little-endian array of bytes corresponding to
+// the standard compressed encoding of a point as 2^255 * x_0 + y
+// where x_0 is the least significant bit of x.
+// See "https://datatracker.ietf.org/doc/html/rfc8032#section-5.1.2"
+// In this implementation, y is simply truncated to 255 bits, but if
+// it is reduced mod p_25519 as expected this does not affect values.
+extern void edwards25519_encode(uint8_t z[static 32], uint64_t p[static 8]);
+#endif

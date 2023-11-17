@@ -75,7 +75,11 @@ OPENSSL_INLINE int curve25519_s2n_bignum_capable(void) {
 
 // Return 0 until ED25519 lands in s2n-bignum
 OPENSSL_INLINE int ed25519_s2n_bignum_capable(void) {
+#if defined(CURVE25519_S2N_BIGNUM_CAPABLE) && !defined(AWSLC_FIPS)
+  return 1;
+#else
   return 0;
+#endif
 }
 
 // Stub functions if implementations are not compiled.
@@ -105,6 +109,22 @@ void curve25519_x25519base_byte(uint8_t res[32], const uint8_t scalar[32]) {
 void curve25519_x25519base_byte_alt(uint8_t res[32], const uint8_t scalar[32]) {
   abort();
 }
+
+#if defined(AWSLC_FIPS)
+void edwards25519_encode(uint8_t z[static 32], uint64_t p[static 8]);
+void edwards25519_scalarmulbase(uint64_t res[static 8],uint64_t scalar[static 4]);
+void edwards25519_scalarmulbase_alt(uint64_t res[static 8],uint64_t scalar[static 4]);
+
+void edwards25519_encode(uint8_t z[static 32], uint64_t p[static 8]) {
+  abort();
+}
+void edwards25519_scalarmulbase(uint64_t res[static 8],uint64_t scalar[static 4]) {
+  abort();
+}
+void edwards25519_scalarmulbase_alt(uint64_t res[static 8],uint64_t scalar[static 4]) {
+  abort();
+}
+#endif
 
 #endif // !defined(CURVE25519_S2N_BIGNUM_CAPABLE)
 
@@ -265,7 +285,39 @@ static void x25519_s2n_bignum_public_from_private(
 static void ed25519_public_key_from_hashed_seed_s2n_bignum(
   uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
   uint8_t az[SHA512_DIGEST_LENGTH]) {
+
+  uint64_t uint64_point[8] = {0};
+  uint64_t uint64_hashed_seed[4] = {0};
+  OPENSSL_memcpy(uint64_hashed_seed, az, 32);
+
+#if defined(OPENSSL_X86_64)
+
+  if (curve25519_s2n_bignum_no_alt_capable() == 1) {
+    edwards25519_scalarmulbase(uint64_point, uint64_hashed_seed);
+  } else if (curve25519_s2n_bignum_alt_capable() == 1) {
+    edwards25519_scalarmulbase_alt(uint64_point, uint64_hashed_seed);
+  } else {
+    abort();
+  }
+
+#elif defined(OPENSSL_AARCH64)
+
+  if (curve25519_s2n_bignum_alt_capable() == 1) {
+    edwards25519_scalarmulbase_alt(uint64_point, uint64_hashed_seed);
+  } else if (curve25519_s2n_bignum_no_alt_capable() == 1) {
+    edwards25519_scalarmulbase(uint64_point, uint64_hashed_seed);
+  } else {
+    abort();
+  }
+
+#else
+
+  // Should not call this function unless s2n-bignum is supported.
   abort();
+
+#endif
+
+  edwards25519_encode(out_public_key, uint64_point);
 }
 
 // Stub function until Ed25519 lands in s2n-bignum
