@@ -41,4 +41,5 @@
 : subs$
 : tst$
 : umulh$
+: umull$
 : $

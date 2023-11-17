@@ -358,13 +358,13 @@ let Extendedreg_DEF = define
 
 let QREG = define `QREG n = simdregisters :> element(word n)`;;
 
-let DREG = define `DREG n = QREG n :> bottom_64`;;
+let DREG = define `DREG n = QREG n :> zerotop_64`;;
 
-let SREG = define `SREG n = DREG n :> bottom_32`;;
+let SREG = define `SREG n = DREG n :> zerotop_32`;;
 
-let HREG = define `HREG n = SREG n :> bottom_16`;;
+let HREG = define `HREG n = SREG n :> zerotop_16`;;
 
-let BREG = define `BREG n = HREG n :> bottom_8`;;
+let BREG = define `BREG n = HREG n :> zerotop_8`;;
 
 add_component_alias_thms [QREG; DREG; SREG; HREG; BREG];;
 
@@ -406,6 +406,45 @@ add_component_alias_thms
    Q8;  Q9; Q10; Q11; Q12; Q13; Q14; Q15;
   Q16; Q17; Q18; Q19; Q20; Q21; Q22; Q23;
   Q24; Q25; Q26; Q27; Q28; Q29; Q30; Q31];;
+
+let  D0 = define ` D0 = DREG  0`;;
+let  D1 = define ` D1 = DREG  1`;;
+let  D2 = define ` D2 = DREG  2`;;
+let  D3 = define ` D3 = DREG  3`;;
+let  D4 = define ` D4 = DREG  4`;;
+let  D5 = define ` D5 = DREG  5`;;
+let  D6 = define ` D6 = DREG  6`;;
+let  D7 = define ` D7 = DREG  7`;;
+let  D8 = define ` D8 = DREG  8`;;
+let  D9 = define ` D9 = DREG  9`;;
+let D10 = define `D10 = DREG 10`;;
+let D11 = define `D11 = DREG 11`;;
+let D12 = define `D12 = DREG 12`;;
+let D13 = define `D13 = DREG 13`;;
+let D14 = define `D14 = DREG 14`;;
+let D15 = define `D15 = DREG 15`;;
+let D16 = define `D16 = DREG 16`;;
+let D17 = define `D17 = DREG 17`;;
+let D18 = define `D18 = DREG 18`;;
+let D19 = define `D19 = DREG 19`;;
+let D20 = define `D20 = DREG 20`;;
+let D21 = define `D21 = DREG 21`;;
+let D22 = define `D22 = DREG 22`;;
+let D23 = define `D23 = DREG 23`;;
+let D24 = define `D24 = DREG 24`;;
+let D25 = define `D25 = DREG 25`;;
+let D26 = define `D26 = DREG 26`;;
+let D27 = define `D27 = DREG 27`;;
+let D28 = define `D28 = DREG 28`;;
+let D29 = define `D29 = DREG 29`;;
+let D30 = define `D30 = DREG 30`;;
+let D31 = define `D31 = DREG 31`;;
+
+add_component_alias_thms
+ [ D0;  D1;  D2;  D3;  D4;  D5;  D6;  D7;
+   D8;  D9; D10; D11; D12; D13; D14; D15;
+  D16; D17; D18; D19; D20; D21; D22; D23;
+  D24; D25; D26; D27; D28; D29; D30; D31];;
 
 (* ------------------------------------------------------------------------- *)
 (* The zero registers are all basically what we expect                       *)

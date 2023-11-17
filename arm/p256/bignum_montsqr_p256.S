@@ -102,6 +102,10 @@
 #define s2 x17
 #define s3 x1
 
+#define a0short w2
+#define a1short w3
+#define d1short w11
+
 S2N_BN_SYMBOL(bignum_montsqr_p256):
 
 // Load in all words of the input
@@ -110,21 +114,29 @@ S2N_BN_SYMBOL(bignum_montsqr_p256):
         ldp     a2, a3, [x1, #16]
 
 // Square the low half, getting a result in [s3;s2;s1;s0]
+// This uses 32x32->64 multiplications to reduce the number of UMULHs
 
-        mul     s0, a0, a0
-        mul     s2, a1, a1
-        mul     d1, a0, a1
-
-        umulh   s1, a0, a0
-        umulh   s3, a1, a1
-        umulh   d2, a0, a1
-
-        adds    s1, s1, d1
-        adcs    s2, s2, d2
+        umull   s0, a0short, a0short
+        lsr     d1, a0, #32
+        umull   s1, d1short, d1short
+        umull   d1, a0short, d1short
+        adds    s0, s0, d1, lsl #33
+        lsr     d1, d1, #31
+        adc     s1, s1, d1
+        umull   s2, a1short, a1short
+        lsr     d1, a1, #32
+        umull   s3, d1short, d1short
+        umull   d1, a1short, d1short
+        mul     d2, a0, a1
+        umulh   d3, a0, a1
+        adds    s2, s2, d1, lsl #33
+        lsr     d1, d1, #31
+        adc     s3, s3, d1
+        adds    d2, d2, d2
+        adcs    d3, d3, d3
         adc     s3, s3, xzr
-
-        adds    s1, s1, d1
-        adcs    s2, s2, d2
+        adds    s1, s1, d2
+        adcs    s2, s2, d3
         adc     s3, s3, xzr
 
 // Perform two "short" Montgomery steps on the low square
@@ -185,11 +197,6 @@ S2N_BN_SYMBOL(bignum_montsqr_p256):
 #define r3 x6
 #define c x7
 
-// Remind ourselves what else we can't destroy
-
-#define a2 x4
-#define a3 x5
-
 // So we can have these as temps
 
 #define t1 x11
@@ -225,30 +232,27 @@ S2N_BN_SYMBOL(bignum_montsqr_p256):
 // B^2 c <= z + (B - 1) * p < B * p + (B - 1) * p < 2 * B * p,
 // so the top half is certainly < 2 * p. If c = 1 already, we know
 // subtracting p will give the reduced modulus. But now we do a
-// comparison to catch cases where the residue is >= p.
-// First set [t2;0;t1;-1] = p_256 since we use the constants twice.
+// subtraction-comparison to catch cases where the residue is >= p.
+// The constants are such that [t3;0;t1;-1] = p_256.
 
-        mov     t1, #0x00000000ffffffff
-        mov     t2, #0xffffffff00000001
+#define t0      x5
 
 // Set CF (because of inversion) iff (0,p_256) <= (c,r3,r2,r1,r0)
 
-        subs    xzr, r0, #-1
-        sbcs    xzr, r1, t1
-        sbcs    xzr, r2, xzr
-        sbcs    xzr, r3, t2
+        mov     t1, #0x00000000ffffffff
+        subs    t0, r0, #-1
+        sbcs    t1, r1, t1
+        mov     t3, #0xffffffff00000001
+        sbcs    t2, r2, xzr
+        sbcs    t3, r3, t3
         sbcs    xzr, c, xzr
 
-// Convert the condition into a bitmask and do a masked subtraction
+// Select final output accordingly
 
-        csetm   c, cs
-
-        subs    r0, r0, c
-        and     t1, t1, c
-        sbcs    r1, r1, t1
-        sbcs    r2, r2, xzr
-        and     t2, t2, c
-        sbc     r3, r3, t2
+        csel    r0, t0, r0, cs
+        csel    r1, t1, r1, cs
+        csel    r2, t2, r2, cs
+        csel    r3, t3, r3, cs
 
 // Store things back in place
 

@@ -12,6 +12,7 @@ let WREG_SP = new_definition `WREG_SP n = XREG_SP n :> zerotop_32`;;
 let XREG' = new_definition `XREG' (n:5 word) = XREG (val n)`;;
 let WREG' = new_definition `WREG' (n:5 word) = WREG (val n)`;;
 let QREG' = new_definition `QREG' (n:5 word) = QREG (val n)`;;
+let DREG' = new_definition `DREG' (n:5 word) = DREG (val n)`;;
 
 let arm_logop = new_definition `arm_logop (opc:2 word) N
     (Rd:(armstate,N word)component) Rn Rm =
@@ -70,11 +71,16 @@ let arm_ldst = new_definition `arm_ldst ld x Rt =
        else (if ld then arm_LDR else arm_STR) (WREG' Rt)`;;
 let arm_ldst_q = new_definition `arm_ldst_q ld Rt =
   (if ld then arm_LDR else arm_STR) (QREG' Rt)`;;
+let arm_ldst_d = new_definition `arm_ldst_d ld Rt =
+  (if ld then arm_LDR else arm_STR) (DREG' Rt)`;;
 let arm_ldstb = new_definition `arm_ldstb ld Rt =
   (if ld then arm_LDRB else arm_STRB) (WREG' Rt)`;;
 let arm_ldstp = new_definition `arm_ldstp ld x Rt Rt2 =
   if x then (if ld then arm_LDP else arm_STP) (XREG' Rt) (XREG' Rt2)
        else (if ld then arm_LDP else arm_STP) (WREG' Rt) (WREG' Rt2)`;;
+let arm_ldstp_d = new_definition `arm_ldstp_d ld Rt Rt2 =
+  (if ld then arm_LDP else arm_STP) (DREG' Rt) (DREG' Rt2)`;;
+
 (* The 'AdvSimdExpandImm' shared function in the A64 ISA specification.
    This definition takes one 8-bit word and expands it to 64 bit according to
    op and cmode. *)
@@ -275,9 +281,17 @@ let decode = new_definition `!w:int32. decode w =
       (Immediate_Offset (iword (ival imm7 * &(if x then 8 else 4)))))
 
   // SIMD ld,st operations
+  // LDR/STR (immediate, SIMD&FP), Unsigned offset, no writeback
+  // Currently only supports sizes 128 and 64 (not 32, 16 or 8)
   | [0b00:2; 0b111101:6; 0b1:1; is_ld; imm12:12; Rn:5; Rt:5] ->
-    // LDR/STR (immediate, SIMD&FP), Unsigned offset, no writeback. Q registers only
     SOME (arm_ldst_q is_ld Rt (XREG_SP Rn) (Immediate_Offset (word (val imm12 * 16))))
+  | [0b11:2; 0b111101:6; 0b0:1; is_ld; imm12:12; Rn:5; Rt:5] ->
+    SOME (arm_ldst_d is_ld Rt (XREG_SP Rn) (Immediate_Offset (word (val imm12 * 8))))
+
+  // LDP/STP (signed offset, SIMD&FP), only size 64
+  | [0b01:2; 0b1011010:7; is_ld; imm7:7; Rt2:5; Rn:5; Rt:5] ->
+    SOME (arm_ldstp_d is_ld Rt Rt2 (XREG_SP Rn)
+     (Immediate_Offset (iword (ival imm7 * &8))))
 
   // SIMD operations
   | [0:1; q; u; 0b01110:5; size:2; 1:1; Rm:5; 0b100001:6; Rn:5; Rd:5] ->
@@ -587,8 +601,10 @@ let REG_CONV =
   and ws = [|W0; W1; W2; W3; W4; W5; W6; W7; W8; W9; W10;W11;W12;W13;W14;W15;
              W16;W17;W18;W19;W20;W21;W22;W23;W24;W25;W26;W27;W28;W29;W30;WZR|]
   and qs = [|Q0; Q1; Q2; Q3; Q4; Q5; Q6; Q7; Q8; Q9; Q10;Q11;Q12;Q13;Q14;Q15;
-          Q16;Q17;Q18;Q19;Q20;Q21;Q22;Q23;Q24;Q25;Q26;Q27;Q28;Q29;Q30;Q31|] in
-  List.iter (fun A -> Array.iteri (fun i th -> A.(i) <- SYM th) A) [xs;ws;qs];
+             Q16;Q17;Q18;Q19;Q20;Q21;Q22;Q23;Q24;Q25;Q26;Q27;Q28;Q29;Q30;Q31|]
+  and ds = [|D0; D1; D2; D3; D4; D5; D6; D7; D8; D9; D10;D11;D12;D13;D14;D15;
+          D16;D17;D18;D19;D20;D21;D22;D23;D24;D25;D26;D27;D28;D29;D30;D31|] in
+  List.iter (fun A -> Array.iteri (fun i th -> A.(i) <- SYM th) A) [xs;ws;qs;ds];
   let _ =
     let th1,th2 = (CONJ_PAIR o prove) (`XREG 31 = XZR /\ WREG 31 = WZR`,
       REWRITE_TAC [ARM_ZERO_REGISTER]) in
@@ -604,11 +620,11 @@ let REG_CONV =
       let th' = INST [mk_numeral (Int i),`n:num`] regth in
       TRANS (PROVE_HYP (EQT_ELIM (NUM_RED_CONV (hd (hyp th')))) th') th) A in
     F sp xth xs, F wsp wth ws in
-  let xs',ws',qs' =
+  let xs',ws',qs',ds' =
     let F th' A = Array.mapi (fun i ->
       TRANS (CONV_RULE (RAND_CONV (RAND_CONV WORD_RED_CONV))
         (SPEC (mk_comb (`word:num->5 word`, mk_numeral (Int i))) th'))) A in
-    F XREG' xs, F WREG' ws, F QREG' qs in
+    F XREG' xs, F WREG' ws, F QREG' qs,F DREG' ds in
   function
   | Comb(Const("XREG",_),n) -> xs.(Num.int_of_num (dest_numeral n))
   | Comb(Const("WREG",_),n) -> ws.(Num.int_of_num (dest_numeral n))
@@ -618,6 +634,8 @@ let REG_CONV =
     ws'.(Num.int_of_num (dest_numeral n))
   | Comb(Const("QREG'",_),Comb(Const("word",_),n)) ->
     qs'.(Num.int_of_num (dest_numeral n))
+  | Comb(Const("DREG'",_),Comb(Const("word",_),n)) ->
+    ds'.(Num.int_of_num (dest_numeral n))
   | Comb(Const("XREG_SP",_),Comb(Const("word",_),n)) ->
     xsp.(Num.int_of_num (dest_numeral n))
   | Comb(Const("WREG_SP",_),Comb(Const("word",_),n)) ->
@@ -826,8 +844,10 @@ let PURE_DECODE_CONV =
   and pth_bfmop = mk_pth_split arm_bfmop
   and pth_ldst = mk_pth arm_ldst
   and pth_ldst_q = mk_pth arm_ldst_q
+  and pth_ldst_d = mk_pth arm_ldst_d
   and pth_ldstrb = mk_pth arm_ldstb
   and pth_ldstp = mk_pth arm_ldstp
+  and pth_ldstp_d = mk_pth arm_ldstp_d
   and pth_adv_simd_expand_imm = mk_pth arm_adv_simd_expand_imm in
 
   (* Given a product type ty, `eval_prod ty` returns a pair of
@@ -837,7 +857,7 @@ let PURE_DECODE_CONV =
     Precisely speaking, 'snd (eval_prod `:(A,B)prod`) (term, ls)' creates
     new variables that are to be mapped to the variables in term and returns
     the mapping list concatenated by ls. If the type variable is a tree of
-    prod, it is recursively splitted and the mapping is correspondingly
+    prod, it is recursively split and the mapping is correspondingly
     created. *)
   let rec eval_prod = function
   | Tyapp("prod",[A;B]) ->
@@ -978,6 +998,7 @@ let PURE_DECODE_CONV =
   | Comb((Const("XREG'",_) as f),a) -> eval_unary f a F REG_CONV
   | Comb((Const("WREG'",_) as f),a) -> eval_unary f a F REG_CONV
   | Comb((Const("QREG'",_) as f),a) -> eval_unary f a F REG_CONV
+  | Comb((Const("DREG'",_) as f),a) -> eval_unary f a F REG_CONV
   | Comb((Const("XREG_SP",_) as f),a) -> eval_unary f a F REG_CONV
   | Comb((Const("WREG_SP",_) as f),a) -> eval_unary f a F REG_CONV
   | Comb(Comb(Const("arm_adcop",_),_),_) ->
@@ -1006,9 +1027,12 @@ let PURE_DECODE_CONV =
     eval_nary (pth_bfmop N) t F
   | Comb(Comb(Comb(Const("arm_ldst",_),_),_),_) -> eval_nary pth_ldst t F
   | Comb(Comb(Const("arm_ldst_q",_),_),_) -> eval_nary pth_ldst_q t F
+  | Comb(Comb(Const("arm_ldst_d",_),_),_) -> eval_nary pth_ldst_d t F
   | Comb(Comb(Const("arm_ldstb",_),_),_) -> eval_nary pth_ldstrb t F
   | Comb(Comb(Comb(Comb(Const("arm_ldstp",_),_),_),_),_) ->
     eval_nary pth_ldstp t F
+  | Comb(Comb(Comb(Const("arm_ldstp_d",_),_),_),_) ->
+    eval_nary pth_ldstp_d t F
   | Comb(Comb(Comb(Const("arm_adv_simd_expand_imm",_),_),_),_) ->
     eval_nary pth_adv_simd_expand_imm t F
   | Comb(Comb((Const("bit",_) as f),a),b) ->

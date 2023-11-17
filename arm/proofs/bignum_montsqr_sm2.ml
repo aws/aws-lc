@@ -15,17 +15,27 @@ let bignum_montsqr_sm2_mc =
 [
   0xa9400c22;       (* arm_LDP X2 X3 X1 (Immediate_Offset (iword (&0))) *)
   0xa9411424;       (* arm_LDP X4 X5 X1 (Immediate_Offset (iword (&16))) *)
-  0x9b027c4f;       (* arm_MUL X15 X2 X2 *)
-  0x9b037c71;       (* arm_MUL X17 X3 X3 *)
-  0x9b037c4b;       (* arm_MUL X11 X2 X3 *)
-  0x9bc27c50;       (* arm_UMULH X16 X2 X2 *)
-  0x9bc37c61;       (* arm_UMULH X1 X3 X3 *)
-  0x9bc37c4c;       (* arm_UMULH X12 X2 X3 *)
-  0xab0b0210;       (* arm_ADDS X16 X16 X11 *)
-  0xba0c0231;       (* arm_ADCS X17 X17 X12 *)
+  0x9ba27c4f;       (* arm_UMULL X15 W2 W2 *)
+  0xd360fc4b;       (* arm_LSR X11 X2 32 *)
+  0x9bab7d70;       (* arm_UMULL X16 W11 W11 *)
+  0x9bab7c4b;       (* arm_UMULL X11 W2 W11 *)
+  0xab0b85ef;       (* arm_ADDS X15 X15 (Shiftedreg X11 LSL 33) *)
+  0xd35ffd6b;       (* arm_LSR X11 X11 31 *)
+  0x9a0b0210;       (* arm_ADC X16 X16 X11 *)
+  0x9ba37c71;       (* arm_UMULL X17 W3 W3 *)
+  0xd360fc6b;       (* arm_LSR X11 X3 32 *)
+  0x9bab7d61;       (* arm_UMULL X1 W11 W11 *)
+  0x9bab7c6b;       (* arm_UMULL X11 W3 W11 *)
+  0x9b037c4c;       (* arm_MUL X12 X2 X3 *)
+  0x9bc37c4d;       (* arm_UMULH X13 X2 X3 *)
+  0xab0b8631;       (* arm_ADDS X17 X17 (Shiftedreg X11 LSL 33) *)
+  0xd35ffd6b;       (* arm_LSR X11 X11 31 *)
+  0x9a0b0021;       (* arm_ADC X1 X1 X11 *)
+  0xab0c018c;       (* arm_ADDS X12 X12 X12 *)
+  0xba0d01ad;       (* arm_ADCS X13 X13 X13 *)
   0x9a1f0021;       (* arm_ADC X1 X1 XZR *)
-  0xab0b0210;       (* arm_ADDS X16 X16 X11 *)
-  0xba0c0231;       (* arm_ADCS X17 X17 X12 *)
+  0xab0c0210;       (* arm_ADDS X16 X16 X12 *)
+  0xba0d0231;       (* arm_ADCS X17 X17 X13 *)
   0x9a1f0021;       (* arm_ADC X1 X1 XZR *)
   0xd3607dec;       (* arm_LSL X12 X15 32 *)
   0xd360fdeb;       (* arm_LSR X11 X15 32 *)
@@ -117,19 +127,16 @@ let bignum_montsqr_sm2_mc =
   0xba0d00c6;       (* arm_ADCS X6 X6 X13 *)
   0xba1f00e7;       (* arm_ADCS X7 X7 XZR *)
   0xb2607feb;       (* arm_MOV X11 (rvalue (word 18446744069414584320)) *)
-  0x92c0002c;       (* arm_MOVN X12 (word 1) 32 *)
-  0xb100051f;       (* arm_CMN X8 (rvalue (word 1)) *)
-  0xfa0b013f;       (* arm_SBCS XZR X9 X11 *)
-  0xba1f015f;       (* arm_ADCS XZR X10 XZR *)
-  0xfa0c00df;       (* arm_SBCS XZR X6 X12 *)
+  0xb1000505;       (* arm_ADDS X5 X8 (rvalue (word 1)) *)
+  0xfa0b012b;       (* arm_SBCS X11 X9 X11 *)
+  0x92c0002d;       (* arm_MOVN X13 (word 1) 32 *)
+  0xba1f014c;       (* arm_ADCS X12 X10 XZR *)
+  0xfa0d00cd;       (* arm_SBCS X13 X6 X13 *)
   0xfa1f00ff;       (* arm_SBCS XZR X7 XZR *)
-  0xda9f33e7;       (* arm_CSETM X7 Condition_CS *)
-  0xeb070108;       (* arm_SUBS X8 X8 X7 *)
-  0x8a07016b;       (* arm_AND X11 X11 X7 *)
-  0xfa0b0129;       (* arm_SBCS X9 X9 X11 *)
-  0xfa07014a;       (* arm_SBCS X10 X10 X7 *)
-  0x8a07018c;       (* arm_AND X12 X12 X7 *)
-  0xda0c00c6;       (* arm_SBC X6 X6 X12 *)
+  0x9a8820a8;       (* arm_CSEL X8 X5 X8 Condition_CS *)
+  0x9a892169;       (* arm_CSEL X9 X11 X9 Condition_CS *)
+  0x9a8a218a;       (* arm_CSEL X10 X12 X10 Condition_CS *)
+  0x9a8621a6;       (* arm_CSEL X6 X13 X6 Condition_CS *)
   0xa9002408;       (* arm_STP X8 X9 X0 (Immediate_Offset (iword (&0))) *)
   0xa901180a;       (* arm_STP X10 X6 X0 (Immediate_Offset (iword (&16))) *)
   0xd65f03c0        (* arm_RET X30 *)
@@ -140,6 +147,24 @@ let BIGNUM_MONTSQR_SM2_EXEC = ARM_MK_EXEC_RULE bignum_montsqr_sm2_mc;;
 (* ------------------------------------------------------------------------- *)
 (* Proof.                                                                    *)
 (* ------------------------------------------------------------------------- *)
+
+let VAL_WORD_MADDL_0 = prove
+ (`!x y. val(word(0 + val(x:int32) * val(y:int32)):int64) = val x * val y`,
+  REPEAT GEN_TAC THEN REWRITE_TAC[ADD_CLAUSES; VAL_WORD_EQ_EQ] THEN
+  REWRITE_TAC[DIMINDEX_64; ARITH_RULE `2 EXP 64 = 2 EXP 32 * 2 EXP 32`] THEN
+  MATCH_MP_TAC LT_MULT2 THEN REWRITE_TAC[GSYM DIMINDEX_32; VAL_BOUND]);;
+
+let DIVMOD_33_31 = prove
+ (`!n. (2 EXP 33 * n) MOD 2 EXP 64 = 2 EXP 33 * n MOD 2 EXP 31`,
+  REWRITE_TAC[GSYM MOD_MULT2] THEN ARITH_TAC);;
+
+let VAL_WORD_SPLIT32 = prove
+ (`!x. 2 EXP 32 * val(word_zx(word_ushr x 32):int32) + val(word_zx x:int32) =
+       val(x:int64)`,
+  REWRITE_TAC[VAL_WORD_USHR; VAL_WORD_ZX_GEN; DIMINDEX_32] THEN
+  GEN_TAC THEN REWRITE_TAC[GSYM MOD_MULT_MOD; GSYM EXP_ADD] THEN
+  CONV_TAC(ONCE_DEPTH_CONV NUM_ADD_CONV) THEN
+  MATCH_MP_TAC MOD_LT THEN REWRITE_TAC[VAL_BOUND_64]);;
 
 let p_sm2 = new_definition `p_sm2 = 0xFFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFFFFFFFFFFFFFF`;;
 
@@ -171,13 +196,13 @@ let lemma2 = prove
 
 let BIGNUM_MONTSQR_SM2_CORRECT = time prove
  (`!z x a pc.
-        nonoverlapping (word pc,0x1e0) (z,8 * 4)
+        nonoverlapping (word pc,0x1fc) (z,8 * 4)
         ==> ensures arm
              (\s. aligned_bytes_loaded s (word pc) bignum_montsqr_sm2_mc /\
                   read PC s = word pc /\
                   C_ARGUMENTS [z; x] s /\
                   bignum_from_memory (x,4) s = a)
-             (\s. read PC s = word (pc + 0x1dc) /\
+             (\s. read PC s = word (pc + 0x1f8) /\
                   (a EXP 2 <= 2 EXP 256 * p_sm2
                    ==> bignum_from_memory (z,4) s =
                        (inverse_mod p_sm2 (2 EXP 256) * a EXP 2) MOD p_sm2))
@@ -193,30 +218,41 @@ let BIGNUM_MONTSQR_SM2_CORRECT = time prove
   (*** Globalize the a EXP 2 <= 2 EXP 256 * p_sm2  assumption ***)
 
   ASM_CASES_TAC `a EXP 2 <= 2 EXP 256 * p_sm2` THENL
-   [ASM_REWRITE_TAC[]; ARM_SIM_TAC BIGNUM_MONTSQR_SM2_EXEC (1--119)] THEN
+   [ASM_REWRITE_TAC[]; ARM_SIM_TAC BIGNUM_MONTSQR_SM2_EXEC (1--126)] THEN
   ENSURES_INIT_TAC "s0" THEN
   BIGNUM_DIGITIZE_TAC "x_" `bignum_from_memory (x,4) s0` THEN
 
-  (*** Squaring and partial Montgomery reduction of lower half ***)
+  (*** Squaring and Montgomery reduction of lower half ***)
 
-  ARM_ACCSTEPS_TAC BIGNUM_MONTSQR_SM2_EXEC (1--30) (1--30) THEN
+  ARM_ACCSTEPS_TAC BIGNUM_MONTSQR_SM2_EXEC
+   [7;9;14;16;18;19;20;21;22;23;24;
+    25;26;27;28;29;30;31;32;33;34;35;36;37;38;39;40]
+   (1--40) THEN
+  RULE_ASSUM_TAC(REWRITE_RULE
+   [VAL_WORD_MADDL_0; DIVMOD_33_31; VAL_WORD_USHR;
+    VAL_WORD_SHL; DIMINDEX_64]) THEN
   SUBGOAL_THEN
-   `2 EXP 128 * bignum_of_wordlist [sum_s27; sum_s28; sum_s29; sum_s30] =
+   `2 EXP 128 * bignum_of_wordlist [sum_s37; sum_s38; sum_s39; sum_s40] =
     bignum_of_wordlist[x_0;x_1] EXP 2 +
-    p_sm2 * bignum_of_wordlist[mullo_s3; sum_s19]`
+    p_sm2 * bignum_of_wordlist[sum_s7; sum_s29]`
   ASSUME_TAC THENL
-   [ASM_REWRITE_TAC[bignum_of_wordlist; p_sm2; GSYM REAL_OF_NUM_CLAUSES] THEN
-    ACCUMULATOR_POP_ASSUM_LIST(MP_TAC o end_itlist CONJ o DECARRY_RULE) THEN
+   [REWRITE_TAC[bignum_of_wordlist; p_sm2; GSYM REAL_OF_NUM_CLAUSES] THEN
+    MAP_EVERY (SUBST_ALL_TAC o SYM o C SPEC VAL_WORD_SPLIT32)
+     [`x_0:int64`; `x_1:int64`] THEN
+    REWRITE_TAC[GSYM REAL_OF_NUM_CLAUSES] THEN
+    RULE_ASSUM_TAC(REWRITE_RULE[GSYM REAL_OF_NUM_CLAUSES; REAL_OF_NUM_DIV]) THEN
+    RULE_ASSUM_TAC(CONV_RULE NUM_REDUCE_CONV) THEN
+    ACCUMULATOR_ASSUM_LIST(MP_TAC o end_itlist CONJ o DECARRY_RULE) THEN
     DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN REAL_ARITH_TAC;
     ACCUMULATOR_POP_ASSUM_LIST(K ALL_TAC)] THEN
 
   (*** ADK cross-product ***)
 
   ARM_ACCSTEPS_TAC BIGNUM_MONTSQR_SM2_EXEC
-   [31;32;39;44;45;47;48;49;50;51;53;54;55] (31--55) THEN
+   [41;42;49;54;55;57;58;59;60;61;63;64;65] (41--65) THEN
   RULE_ASSUM_TAC(REWRITE_RULE[ADD_CLAUSES]) THEN
   SUBGOAL_THEN
-   `bignum_of_wordlist[mullo_s31; sum_s53; sum_s54; sum_s55] =
+   `bignum_of_wordlist[mullo_s41; sum_s63; sum_s64; sum_s65] =
     bignum_of_wordlist[x_0;x_1] * bignum_of_wordlist[x_2;x_3]`
   ASSUME_TAC THENL
    [ASM_REWRITE_TAC[bignum_of_wordlist; GSYM REAL_OF_NUM_CLAUSES] THEN
@@ -241,25 +277,25 @@ let BIGNUM_MONTSQR_SM2_CORRECT = time prove
 
   (*** Remaining Montgomery reduction and addition of remaining high terms ***)
 
-  ARM_ACCSTEPS_TAC BIGNUM_MONTSQR_SM2_EXEC (56--103) (56--103) THEN
+  ARM_ACCSTEPS_TAC BIGNUM_MONTSQR_SM2_EXEC (66--113) (66--113) THEN
   ABBREV_TAC
    `t = bignum_of_wordlist
-        [sum_s87; sum_s100; sum_s101; sum_s102; sum_s103]` THEN
+        [sum_s97; sum_s110; sum_s111; sum_s112; sum_s113]` THEN
   SUBGOAL_THEN
    `t < 2 * p_sm2 /\ (2 EXP 256 * t == a EXP 2) (mod p_sm2)`
   STRIP_ASSUME_TAC THENL
    [SUBGOAL_THEN
      `2 EXP 256 * t =
       a EXP 2 +
-      p_sm2 * bignum_of_wordlist [mullo_s3; sum_s19; sum_s61; sum_s70]`
+      p_sm2 * bignum_of_wordlist [sum_s7; sum_s29; sum_s71; sum_s80]`
     ASSUME_TAC THENL
      [TRANS_TAC EQ_TRANS
        `(bignum_of_wordlist[x_0;x_1] EXP 2 +
-         p_sm2 * bignum_of_wordlist[mullo_s3; sum_s19]) +
+         p_sm2 * bignum_of_wordlist[sum_s7; sum_s29]) +
         2 * 2 EXP 128 *
             bignum_of_wordlist[x_0;x_1] * bignum_of_wordlist[x_2;x_3] +
         2 EXP 256 * bignum_of_wordlist[x_2;x_3] EXP 2 +
-        2 EXP 128 * p_sm2 * bignum_of_wordlist [sum_s61; sum_s70]` THEN
+        2 EXP 128 * p_sm2 * bignum_of_wordlist [sum_s71; sum_s80]` THEN
       CONJ_TAC THENL
        [FIRST_X_ASSUM(fun th ->
           GEN_REWRITE_TAC (RAND_CONV o LAND_CONV) [SYM th]) THEN
@@ -284,20 +320,12 @@ let BIGNUM_MONTSQR_SM2_CORRECT = time prove
     ACCUMULATOR_POP_ASSUM_LIST(K ALL_TAC) THEN
     DISCARD_MATCHING_ASSUMPTIONS [`word_subword a b = c`]] THEN
 
-  (*** Final correction ***)
+  (*** Final correction stage ***)
 
-  ARM_ACCSTEPS_TAC BIGNUM_MONTSQR_SM2_EXEC (106--110) (104--110) THEN
+  ARM_ACCSTEPS_TAC BIGNUM_MONTSQR_SM2_EXEC
+   [115;116;118;119;120] (114--126) THEN
   RULE_ASSUM_TAC(REWRITE_RULE
-   [ADD_CLAUSES; VAL_WORD_BITVAL; REAL_BITVAL_NOT]) THEN
-  SUBGOAL_THEN `carry_s110 <=> t < p_sm2` SUBST_ALL_TAC THENL
-   [MATCH_MP_TAC FLAG_FROM_CARRY_LT THEN EXISTS_TAC `320` THEN
-    EXPAND_TAC "t" THEN
-    REWRITE_TAC[GSYM REAL_OF_NUM_CLAUSES; bignum_of_wordlist; p_sm2] THEN
-    ACCUMULATOR_POP_ASSUM_LIST(MP_TAC o end_itlist CONJ o DECARRY_RULE) THEN
-    DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN BOUNDER_TAC[];
-    ALL_TAC] THEN
-
-  ARM_ACCSTEPS_TAC BIGNUM_MONTSQR_SM2_EXEC [112;114;115;117] (111--119) THEN
+   [GSYM WORD_BITVAL; COND_SWAP; REAL_BITVAL_NOT]) THEN
   ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
   CONV_TAC(LAND_CONV BIGNUM_EXPAND_CONV) THEN ASM_REWRITE_TAC[] THEN
   TRANS_TAC EQ_TRANS `t MOD p_sm2` THEN CONJ_TAC THENL
@@ -308,29 +336,34 @@ let BIGNUM_MONTSQR_SM2_CORRECT = time prove
         ==> (e * i == 1) (mod p) ==> (t == i * a EXP 2) (mod p)`)) THEN
     REWRITE_TAC[INVERSE_MOD_RMUL_EQ; COPRIME_REXP; COPRIME_2] THEN
     REWRITE_TAC[p_sm2] THEN CONV_TAC NUM_REDUCE_CONV] THEN
-  ASM_SIMP_TAC[MOD_CASES] THEN
-  REWRITE_TAC[GSYM REAL_OF_NUM_EQ; GSYM REAL_OF_NUM_ADD] THEN
-  ONCE_REWRITE_TAC[COND_RAND] THEN
-  SIMP_TAC[GSYM REAL_OF_NUM_SUB; GSYM REAL_OF_NUM_ADD; GSYM NOT_LT] THEN
-  REWRITE_TAC[GSYM REAL_OF_NUM_MUL; GSYM REAL_OF_NUM_POW] THEN
-  MATCH_MP_TAC EQUAL_FROM_CONGRUENT_REAL THEN
-  MAP_EVERY EXISTS_TAC [`256`; `&0:real`] THEN ASM_REWRITE_TAC[] THEN
-  CONJ_TAC THENL [BOUNDER_TAC[]; ALL_TAC] THEN CONJ_TAC THENL
-   [UNDISCH_TAC `t < 2 * p_sm2` THEN
-    REWRITE_TAC[GSYM REAL_OF_NUM_CLAUSES; p_sm2] THEN
-    CONV_TAC NUM_REDUCE_CONV THEN REAL_ARITH_TAC;
+  CONV_TAC SYM_CONV THEN MATCH_MP_TAC EQUAL_FROM_CONGRUENT_MOD_MOD THEN
+  MAP_EVERY EXISTS_TAC
+   [`256`; `if t < p_sm2 then &t:real else &t - &p_sm2`] THEN
+  REPEAT CONJ_TAC THENL
+   [REWRITE_TAC[GSYM REAL_OF_NUM_CLAUSES] THEN BOUNDER_TAC[];
+    REWRITE_TAC[p_sm2] THEN ARITH_TAC;
+    REWRITE_TAC[p_sm2] THEN ARITH_TAC;
+    ALL_TAC;
+    ASM_SIMP_TAC[MOD_CASES] THEN
+    GEN_REWRITE_TAC LAND_CONV [COND_RAND] THEN
+    SIMP_TAC[REAL_OF_NUM_SUB; GSYM NOT_LT]] THEN
+  SUBGOAL_THEN `carry_s120 <=> t < p_sm2` SUBST_ALL_TAC THENL
+   [MATCH_MP_TAC FLAG_FROM_CARRY_LT THEN EXISTS_TAC `320` THEN
+    EXPAND_TAC "t" THEN
+    REWRITE_TAC[p_sm2; bignum_of_wordlist; GSYM REAL_OF_NUM_CLAUSES] THEN
+    CONV_TAC NUM_REDUCE_CONV THEN REWRITE_TAC[VAL_WORD_BITVAL] THEN
+    ACCUMULATOR_POP_ASSUM_LIST(MP_TAC o end_itlist CONJ o DECARRY_RULE) THEN
+    DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN BOUNDER_TAC[];
     ALL_TAC] THEN
-  CONJ_TAC THENL [REAL_INTEGER_TAC; ALL_TAC] THEN
   COND_CASES_TAC THEN ASM_REWRITE_TAC[] THEN EXPAND_TAC "t" THEN
   REWRITE_TAC[GSYM REAL_OF_NUM_CLAUSES; bignum_of_wordlist; p_sm2] THEN
   ACCUMULATOR_POP_ASSUM_LIST(MP_TAC o end_itlist CONJ o DESUM_RULE) THEN
   ASM_REWRITE_TAC[BITVAL_CLAUSES; VAL_WORD_BITVAL] THEN
-  CONV_TAC WORD_REDUCE_CONV THEN
   DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN REAL_INTEGER_TAC);;
 
 let BIGNUM_MONTSQR_SM2_SUBROUTINE_CORRECT = time prove
  (`!z x a pc returnaddress.
-        nonoverlapping (word pc,0x1e0) (z,8 * 4)
+        nonoverlapping (word pc,0x1fc) (z,8 * 4)
         ==> ensures arm
              (\s. aligned_bytes_loaded s (word pc) bignum_montsqr_sm2_mc /\
                   read PC s = word pc /\
@@ -354,13 +387,13 @@ let BIGNUM_MONTSQR_SM2_SUBROUTINE_CORRECT = time prove
 
 let BIGNUM_AMONTSQR_SM2_CORRECT = time prove
  (`!z x a pc.
-        nonoverlapping (word pc,0x1e0) (z,8 * 4)
+        nonoverlapping (word pc,0x1fc) (z,8 * 4)
         ==> ensures arm
              (\s. aligned_bytes_loaded s (word pc) bignum_montsqr_sm2_mc /\
                   read PC s = word pc /\
                   C_ARGUMENTS [z; x] s /\
                   bignum_from_memory (x,4) s = a)
-             (\s. read PC s = word (pc + 0x1dc) /\
+             (\s. read PC s = word (pc + 0x1f8) /\
                   (bignum_from_memory (z,4) s ==
                    inverse_mod p_sm2 (2 EXP 256) * a EXP 2) (mod p_sm2))
              (MAYCHANGE [PC; X1; X2; X3; X4; X5; X6; X7; X8; X9; X10; X11; X12;
@@ -374,26 +407,37 @@ let BIGNUM_AMONTSQR_SM2_CORRECT = time prove
   ENSURES_INIT_TAC "s0" THEN
   BIGNUM_DIGITIZE_TAC "x_" `bignum_from_memory (x,4) s0` THEN
 
-  (*** Squaring and partial Montgomery reduction of lower half ***)
+  (*** Squaring and Montgomery reduction of lower half ***)
 
-  ARM_ACCSTEPS_TAC BIGNUM_MONTSQR_SM2_EXEC (1--30) (1--30) THEN
+  ARM_ACCSTEPS_TAC BIGNUM_MONTSQR_SM2_EXEC
+   [7;9;14;16;18;19;20;21;22;23;24;
+    25;26;27;28;29;30;31;32;33;34;35;36;37;38;39;40]
+   (1--40) THEN
+  RULE_ASSUM_TAC(REWRITE_RULE
+   [VAL_WORD_MADDL_0; DIVMOD_33_31; VAL_WORD_USHR;
+    VAL_WORD_SHL; DIMINDEX_64]) THEN
   SUBGOAL_THEN
-   `2 EXP 128 * bignum_of_wordlist [sum_s27; sum_s28; sum_s29; sum_s30] =
+   `2 EXP 128 * bignum_of_wordlist [sum_s37; sum_s38; sum_s39; sum_s40] =
     bignum_of_wordlist[x_0;x_1] EXP 2 +
-    p_sm2 * bignum_of_wordlist[mullo_s3; sum_s19]`
+    p_sm2 * bignum_of_wordlist[sum_s7; sum_s29]`
   ASSUME_TAC THENL
-   [ASM_REWRITE_TAC[bignum_of_wordlist; p_sm2; GSYM REAL_OF_NUM_CLAUSES] THEN
-    ACCUMULATOR_POP_ASSUM_LIST(MP_TAC o end_itlist CONJ o DECARRY_RULE) THEN
+   [REWRITE_TAC[bignum_of_wordlist; p_sm2; GSYM REAL_OF_NUM_CLAUSES] THEN
+    MAP_EVERY (SUBST_ALL_TAC o SYM o C SPEC VAL_WORD_SPLIT32)
+     [`x_0:int64`; `x_1:int64`] THEN
+    REWRITE_TAC[GSYM REAL_OF_NUM_CLAUSES] THEN
+    RULE_ASSUM_TAC(REWRITE_RULE[GSYM REAL_OF_NUM_CLAUSES; REAL_OF_NUM_DIV]) THEN
+    RULE_ASSUM_TAC(CONV_RULE NUM_REDUCE_CONV) THEN
+    ACCUMULATOR_ASSUM_LIST(MP_TAC o end_itlist CONJ o DECARRY_RULE) THEN
     DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN REAL_ARITH_TAC;
     ACCUMULATOR_POP_ASSUM_LIST(K ALL_TAC)] THEN
 
   (*** ADK cross-product ***)
 
   ARM_ACCSTEPS_TAC BIGNUM_MONTSQR_SM2_EXEC
-   [31;32;39;44;45;47;48;49;50;51;53;54;55] (31--55) THEN
+   [41;42;49;54;55;57;58;59;60;61;63;64;65] (41--65) THEN
   RULE_ASSUM_TAC(REWRITE_RULE[ADD_CLAUSES]) THEN
   SUBGOAL_THEN
-   `bignum_of_wordlist[mullo_s31; sum_s53; sum_s54; sum_s55] =
+   `bignum_of_wordlist[mullo_s41; sum_s63; sum_s64; sum_s65] =
     bignum_of_wordlist[x_0;x_1] * bignum_of_wordlist[x_2;x_3]`
   ASSUME_TAC THENL
    [ASM_REWRITE_TAC[bignum_of_wordlist; GSYM REAL_OF_NUM_CLAUSES] THEN
@@ -418,25 +462,25 @@ let BIGNUM_AMONTSQR_SM2_CORRECT = time prove
 
   (*** Remaining Montgomery reduction and addition of remaining high terms ***)
 
-  ARM_ACCSTEPS_TAC BIGNUM_MONTSQR_SM2_EXEC (56--103) (56--103) THEN
+  ARM_ACCSTEPS_TAC BIGNUM_MONTSQR_SM2_EXEC (66--113) (66--113) THEN
   ABBREV_TAC
    `t = bignum_of_wordlist
-        [sum_s87; sum_s100; sum_s101; sum_s102; sum_s103]` THEN
+        [sum_s97; sum_s110; sum_s111; sum_s112; sum_s113]` THEN
   SUBGOAL_THEN
    `t < 2 EXP 256 + p_sm2 /\ (2 EXP 256 * t == a EXP 2) (mod p_sm2)`
   STRIP_ASSUME_TAC THENL
    [SUBGOAL_THEN
      `2 EXP 256 * t =
       a EXP 2 +
-      p_sm2 * bignum_of_wordlist [mullo_s3; sum_s19; sum_s61; sum_s70]`
+      p_sm2 * bignum_of_wordlist [sum_s7; sum_s29; sum_s71; sum_s80]`
     ASSUME_TAC THENL
      [TRANS_TAC EQ_TRANS
        `(bignum_of_wordlist[x_0;x_1] EXP 2 +
-         p_sm2 * bignum_of_wordlist[mullo_s3; sum_s19]) +
+         p_sm2 * bignum_of_wordlist[sum_s7; sum_s29]) +
         2 * 2 EXP 128 *
             bignum_of_wordlist[x_0;x_1] * bignum_of_wordlist[x_2;x_3] +
         2 EXP 256 * bignum_of_wordlist[x_2;x_3] EXP 2 +
-        2 EXP 128 * p_sm2 * bignum_of_wordlist [sum_s61; sum_s70]` THEN
+        2 EXP 128 * p_sm2 * bignum_of_wordlist [sum_s71; sum_s80]` THEN
       CONJ_TAC THENL
        [FIRST_X_ASSUM(fun th ->
           GEN_REWRITE_TAC (RAND_CONV o LAND_CONV) [SYM th]) THEN
@@ -461,18 +505,18 @@ let BIGNUM_AMONTSQR_SM2_CORRECT = time prove
 
   (*** Final correction ***)
 
-  ARM_ACCSTEPS_TAC BIGNUM_MONTSQR_SM2_EXEC (106--110) (104--110) THEN
+ ARM_ACCSTEPS_TAC BIGNUM_MONTSQR_SM2_EXEC
+   [115;116;118;119;120] (114--126) THEN
   RULE_ASSUM_TAC(REWRITE_RULE
-   [ADD_CLAUSES; VAL_WORD_BITVAL; REAL_BITVAL_NOT]) THEN
-  SUBGOAL_THEN `carry_s110 <=> t < p_sm2` SUBST_ALL_TAC THENL
+   [GSYM WORD_BITVAL; COND_SWAP; REAL_BITVAL_NOT]) THEN
+  ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
+  SUBGOAL_THEN `carry_s120 <=> t < p_sm2` SUBST_ALL_TAC THENL
    [MATCH_MP_TAC FLAG_FROM_CARRY_LT THEN EXISTS_TAC `320` THEN
     EXPAND_TAC "t" THEN
     REWRITE_TAC[GSYM REAL_OF_NUM_CLAUSES; bignum_of_wordlist; p_sm2] THEN
     ACCUMULATOR_POP_ASSUM_LIST(MP_TAC o end_itlist CONJ o DECARRY_RULE) THEN
     DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN BOUNDER_TAC[];
     ALL_TAC] THEN
-  ARM_ACCSTEPS_TAC BIGNUM_MONTSQR_SM2_EXEC [112;114;115;117] (111--119) THEN
-  ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
   FIRST_X_ASSUM(MATCH_MP_TAC o MATCH_MP
      (NUMBER_RULE
        `(e * t == a EXP 2) (mod p)
@@ -494,6 +538,7 @@ let BIGNUM_AMONTSQR_SM2_CORRECT = time prove
    [CONV_TAC(ONCE_DEPTH_CONV BIGNUM_EXPAND_CONV) THEN
     REWRITE_TAC[GSYM REAL_OF_NUM_CLAUSES] THEN BOUNDER_TAC[];
     ALL_TAC] THEN
+  REWRITE_TAC[GSYM NOT_LT; REAL_BITVAL_NOT] THEN
   CONV_TAC(ONCE_DEPTH_CONV BIGNUM_EXPAND_CONV) THEN
   REWRITE_TAC[bitval] THEN COND_CASES_TAC THEN
   EXPAND_TAC "t" THEN REWRITE_TAC[bignum_of_wordlist] THEN
@@ -506,7 +551,7 @@ let BIGNUM_AMONTSQR_SM2_CORRECT = time prove
 
 let BIGNUM_AMONTSQR_SM2_SUBROUTINE_CORRECT = time prove
  (`!z x a pc returnaddress.
-        nonoverlapping (word pc,0x1e0) (z,8 * 4)
+        nonoverlapping (word pc,0x1fc) (z,8 * 4)
         ==> ensures arm
              (\s. aligned_bytes_loaded s (word pc) bignum_montsqr_sm2_mc /\
                   read PC s = word pc /\

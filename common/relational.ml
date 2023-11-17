@@ -90,9 +90,21 @@ let SEQ = prove
  (`((c := y) ,, r) s = r (write c y s)`,
   REWRITE_TAC[assign; seq; FUN_EQ_THM] THEN MESON_TAC[]);;
 
+let ASSIGN_ZEROTOP_8 = prove
+ (`!c y. ((c :> zerotop_8) := y) = (c := word_zx y)`,
+  REWRITE_TAC[assign; WRITE_ZEROTOP_8]);;
+
+let ASSIGN_ZEROTOP_16 = prove
+ (`!c y. ((c :> zerotop_16) := y) = (c := word_zx y)`,
+  REWRITE_TAC[assign; WRITE_ZEROTOP_16]);;
+
 let ASSIGN_ZEROTOP_32 = prove
  (`!c y. ((c :> zerotop_32) := y) = (c := word_zx y)`,
   REWRITE_TAC[assign; WRITE_ZEROTOP_32]);;
+
+let ASSIGN_ZEROTOP_64 = prove
+ (`!c y. ((c :> zerotop_64) := y) = (c := word_zx y)`,
+  REWRITE_TAC[assign; WRITE_ZEROTOP_64]);;
 
 (* ------------------------------------------------------------------------- *)
 (* A nondeterministic assignment of a state component.                       *)
@@ -1194,7 +1206,7 @@ let ENSURES_PREPOSTCONDITION_THM = prove
   ASM_SIMP_TAC[]);;
 
 (* ------------------------------------------------------------------------- *)
-(* The anaalogous monotonicity result for the frame.                         *)
+(* The analogous monotonicity result for the frame.                          *)
 (* ------------------------------------------------------------------------- *)
 
 let ENSURES_FRAME_MONO = prove
@@ -2154,7 +2166,7 @@ let component_alias_conv = ref ALL_CONV;;
      to some written value `a`, or to `read c s` if the writes do not affect
      the given component.
    * READ_WRITE_UPDATER `f s = s'`, where `f s` is a normalized write-tree,
-     contructs a list of proofs of `f s = s' |- read c s' = a` for all written
+     constructs a list of proofs of `f s = s' |- read c s' = a` for all written
      components in `f`, as well as a function that will turn
      `A |- read c s = x` into `A, f s = s' |- read c s' = x'`, where
      `x'` is either `x`, if the component was not modified, or `a` for some

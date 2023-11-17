@@ -1469,7 +1469,7 @@ let WRITE_SHORT = prove
 
 (* ------------------------------------------------------------------------- *)
 (* A slightly different kind of subword corresponding to the way x86-64      *)
-(* and aarch64 treat 32-bit registers, forcing zero extension on writes.     *)
+(* and aarch64 treat short registers, forcing zero extension on writes.      *)
 (* ------------------------------------------------------------------------- *)
 
 let zerotop_32 = new_definition
@@ -1494,6 +1494,80 @@ add_valid_component_thms [VALID_COMPONENT_ZEROTOP_32];;
 
 add_component_read_write_thms
  [CONJUNCT1(GEN_REWRITE_RULE I [valid_component] VALID_COMPONENT_ZEROTOP_32)];;
+
+(* ------------------------------------------------------------------------- *)
+(* Analogous version for other sizes. These are used in aarch64 when         *)
+(* writing to smaller parts of SIMD registers (Dn, Sn, Hn, Bn).              *)
+(* ------------------------------------------------------------------------- *)
+
+let zerotop_64 = new_definition
+  `zerotop_64:(int128,int64)component =
+      through(word_zx,word_zx)`;;
+
+let READ_ZEROTOP_64 = prove
+ (`!s:A. read (c :> zerotop_64) s = word_zx(read c s)`,
+  REWRITE_TAC[READ_COMPONENT_COMPOSE; zerotop_64; through; read]);;
+
+let WRITE_ZEROTOP_64 = prove
+ (`!(s:A) y. write (c :> zerotop_64) y s = write c (word_zx y) s`,
+  REWRITE_TAC[WRITE_COMPONENT_COMPOSE; zerotop_64; through; write]);;
+
+let VALID_COMPONENT_ZEROTOP_64 = prove
+ (`valid_component zerotop_64`,
+  REWRITE_TAC[valid_component; read; write; zerotop_64; through] THEN
+  GEN_TAC THEN MATCH_MP_TAC WORD_ZX_ZX THEN
+  REWRITE_TAC[DIMINDEX_64; DIMINDEX_128] THEN CONV_TAC NUM_REDUCE_CONV);;
+
+add_valid_component_thms [VALID_COMPONENT_ZEROTOP_64];;
+
+add_component_read_write_thms
+ [CONJUNCT1(GEN_REWRITE_RULE I [valid_component] VALID_COMPONENT_ZEROTOP_64)];;
+
+let zerotop_16 = new_definition
+  `zerotop_16:(int32,int16)component =
+      through(word_zx,word_zx)`;;
+
+let READ_ZEROTOP_16 = prove
+ (`!s:A. read (c :> zerotop_16) s = word_zx(read c s)`,
+  REWRITE_TAC[READ_COMPONENT_COMPOSE; zerotop_16; through; read]);;
+
+let WRITE_ZEROTOP_16 = prove
+ (`!(s:A) y. write (c :> zerotop_16) y s = write c (word_zx y) s`,
+  REWRITE_TAC[WRITE_COMPONENT_COMPOSE; zerotop_16; through; write]);;
+
+let VALID_COMPONENT_ZEROTOP_16 = prove
+ (`valid_component zerotop_16`,
+  REWRITE_TAC[valid_component; read; write; zerotop_16; through] THEN
+  GEN_TAC THEN MATCH_MP_TAC WORD_ZX_ZX THEN
+  REWRITE_TAC[DIMINDEX_16; DIMINDEX_32] THEN CONV_TAC NUM_REDUCE_CONV);;
+
+add_valid_component_thms [VALID_COMPONENT_ZEROTOP_16];;
+
+add_component_read_write_thms
+ [CONJUNCT1(GEN_REWRITE_RULE I [valid_component] VALID_COMPONENT_ZEROTOP_16)];;
+
+let zerotop_8 = new_definition
+  `zerotop_8:(int16,byte)component =
+      through(word_zx,word_zx)`;;
+
+let READ_ZEROTOP_8 = prove
+ (`!s:A. read (c :> zerotop_8) s = word_zx(read c s)`,
+  REWRITE_TAC[READ_COMPONENT_COMPOSE; zerotop_8; through; read]);;
+
+let WRITE_ZEROTOP_8 = prove
+ (`!(s:A) y. write (c :> zerotop_8) y s = write c (word_zx y) s`,
+  REWRITE_TAC[WRITE_COMPONENT_COMPOSE; zerotop_8; through; write]);;
+
+let VALID_COMPONENT_ZEROTOP_8 = prove
+ (`valid_component zerotop_8`,
+  REWRITE_TAC[valid_component; read; write; zerotop_8; through] THEN
+  GEN_TAC THEN MATCH_MP_TAC WORD_ZX_ZX THEN
+  REWRITE_TAC[DIMINDEX_8; DIMINDEX_16] THEN CONV_TAC NUM_REDUCE_CONV);;
+
+add_valid_component_thms [VALID_COMPONENT_ZEROTOP_8];;
+
+add_component_read_write_thms
+ [CONJUNCT1(GEN_REWRITE_RULE I [valid_component] VALID_COMPONENT_ZEROTOP_8)];;
 
 (* ------------------------------------------------------------------------- *)
 (* State component for a multi-byte chunk of memory treated as a number.     *)
