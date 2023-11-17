@@ -3010,20 +3010,13 @@ movdqa	@tweak[3],`16*3`(%rsp)
     # Calculate encryption tweaks XORed with encryption key round[0].
     # First tweak retrieved from the stack is ready to be used
 movdqa $enc_tweak(%rsp),@tweak[5]   # tweak[0]
-#pshufd	\$0x5f,@tweak[5],$twres
-	movdqa	(%r8),$twmask			# start calculating next tweak
-#	movdqa	$twres,$twtmp
-#	paddd	$twres,$twres
+	movdqa	(%r8),$twmask			# start calculating next tweak #TODO: is this step needed or twmask is still the same.
 	 aesdec		$rndkey1,$inout0
-#	paddq	@tweak[5],@tweak[5]
-#	psrad	\$31,$twtmp
 	 aesdec		$rndkey1,$inout1
-#	pand	$twmask,$twtmp
 	$movkey	($key1_enc_),@tweak[0]		# tweak[0]=round[0] of encrypt key1
 	 aesdec		$rndkey1,$inout2
 	 aesdec		$rndkey1,$inout3
 	 aesdec		$rndkey1,$inout4
-#	pxor	$twtmp,@tweak[5]
 	movaps	@tweak[0],@tweak[1]		# tweak[1]=round[0]
 	 aesdec		$rndkey1,$inout5
 	 $movkey	-64($key1_dec),$rndkey1
@@ -3187,7 +3180,7 @@ movdqa	$enc_rounds_0_last(%rsp),$twres		# load enc round[0]^round[last]
     # Tweak retrieved from the stack is decryption tweak[5] of this round
 movdqa $dec_tweak(%rsp),@tweak[5]
 pshufd	\$0x5f,@tweak[5],$twres
-	movdqa	(%r8),$twmask			# start calculating next tweak
+#	movdqa	(%r8),$twmask			# start calculating next tweak
 	movdqa	$twres,$twtmp
 	paddd	$twres,$twres
 	 aesenc		$rndkey1,$inout0
@@ -3385,10 +3378,33 @@ $code.=<<___;
 	call	_aesni_decrypt2
 
 	xorps	@tweak[0],$inout0
-	movdqa	@tweak[2],@tweak[0]
+##	movdqa	@tweak[2],@tweak[0]     # used with cipher stealing
 	xorps	@tweak[1],$inout1
-	movdqa	@tweak[3],@tweak[1]
-	movups	$inout0,($out)			# store 2 output blocks
+##	movdqa	@tweak[3],@tweak[1]     # used with cipher stealing
+movdqa $enc_tweak(%rsp),@tweak[0]   # retrieve enc tweak[0]
+#movdqa	(%r8),$twmask			# start calculating next tweak #TODO: is this step needed or twmask is still the same.
+# Calculate tweak[1] (no XORing with round[0])
+pshufd	\$0x5f,@tweak[0],$twres
+movdqa	$twres,$twtmp
+paddd	$twres,$twres
+movdqa @tweak[0],@tweak[1]
+psrad	\$31,$twtmp
+paddq	@tweak[1],@tweak[1]
+ xorps	@tweak[0],$inout0
+pand	$twmask,$twtmp
+pxor	$twtmp,@tweak[1]
+#mov     $key,
+mov     $key1_enc, $key     # $key = $key1_dec
+mov	$rnds_,$rounds			# restore $rounds
+ xorps	@tweak[1],$inout1
+
+call _aesni_encrypt2
+
+mov	$key1_dec_,$key1_dec			# restore $key1_dec
+#mov	$rnds_,$rounds			# restore $rounds
+xorps	@tweak[0],$inout0
+xorps	@tweak[1],$inout1
+    movups	$inout0,($out)			# store 2 output blocks
 	movups	$inout1,16*1($out)
 	lea	16*2($out),$out			# $out+=2*16
 	jmp	.Lxts_reenc_done

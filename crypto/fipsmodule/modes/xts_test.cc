@@ -1455,7 +1455,7 @@ TEST(XTSTest, ReEncryptTestVectors) {
     // Testing the assembly implementation
     // TODO: use proper APIs, length from context
 
-#if !defined(OPENSSL_NO_ASM)
+#if defined(OPENSSL_X86_64) && !defined(OPENSSL_NO_ASM)
     in = ciphertext_in;
     out.clear();
     out.resize(ciphertext_out.size());
