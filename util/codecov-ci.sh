@@ -18,13 +18,9 @@ fi
 
 BUILD="$1"
 if [ -n "$BUILD" ]; then
-  mkdir -p "$BUILD/default"
-  mkdir -p "$BUILD/no_asm"
-  mkdir -p "$BUILD/html"
+  mkdir -p "${BUILD}"
   BUILD=$(readlink -f "$BUILD")
-  BUILD_DEFAULT=$(readlink -f "$BUILD/default")
-  BUILD_NO_ASM=$(readlink -f "$BUILD/no_asm")
-  BUILD_HTML=$(readlink -f "$BUILD/html")
+  BUILD_HTML=$(mkdir -vp "$BUILD/html")
 else
   echo "Must specify a build directory."
   exit 1
@@ -54,22 +50,32 @@ else
 fi
 LCOV_PARAMS+=(--ignore-errors ${LCOV_IGNORE_ERRORS})
 
+CMAKE_SETUP_PARAMS=(-DGCOV=1 -DDISABLE_PERL=1 -DBUILD_TESTING=1 -DBUILD_LIBSSL=1 -DCMAKE_BUILD_TYPE=Debug -S "${SRC}")
+
+function generate_coverage() {
+  mkdir -p "${BUILD}/${1}"
+  BUILD_DIR="${BUILD}/${1}"
+
+  # Build
+  cmake ${2} ${CMAKE_SETUP_PARAMS} -B "${BUILD_DIR}"
+  cmake --build "${BUILD_DIR}" --target all_tests
+
+  # Collect initial coverage data
+  lcov --capture "${LCOV_PARAMS[@]}" --initial --directory "${BUILD_DIR}" --output-file "${BUILD}/initial-${1}.info"
+
+  # Run tests
+  cmake --build "${BUILD_DIR}" --target run_tests
+
+  # Collect coverage data and combine it with initial data
+  lcov --capture "${LCOV_PARAMS[@]}" --directory "${BUILD_DIR}" --output-file "${BUILD}/test-${1}.info"
+  lcov "${LCOV_PARAMS[@]}" --add-tracefile "${BUILD}/initial-${1}.info" --add-tracefile "${BUILD}/test-${1}.info" --output-file "${BUILD}/coverage-${1}.info"
+}
+
 # Default x86-64 build/test
-cmake -DGCOV=1 -DDISABLE_PERL=1 -DBUILD_TESTING=1 -DBUILD_LIBSSL=1 -DCMAKE_BUILD_TYPE=Debug -S "${SRC}" -B "${BUILD_DEFAULT}"
-cmake --build "${BUILD_DEFAULT}" --target all_tests
-lcov --capture "${LCOV_PARAMS[@]}" --initial --directory "${BUILD_DEFAULT}" --output-file "${BUILD}/initial-default.info"
-cmake --build "${BUILD_DEFAULT}" --target run_tests
+generate_coverage "default" ""
 
 # No Assembly x86-64 build/test
-cmake -DGCOV=1 -DOPENSSL_NO_ASM=1 -DDISABLE_PERL=1 -DBUILD_TESTING=1 -DBUILD_LIBSSL=1 -DCMAKE_BUILD_TYPE=Debug -S "${SRC}" -B "${BUILD_NO_ASM}"
-cmake --build "${BUILD_NO_ASM}" --target all_tests
-lcov --capture "${LCOV_PARAMS[@]}" --initial --directory "${BUILD_NO_ASM}" --output-file "${BUILD}/initial-no-asm.info"
-cmake --build "${BUILD_NO_ASM}" --target run_tests
-
-lcov --capture "${LCOV_PARAMS[@]}" --directory "${BUILD_DEFAULT}" --output-file "${BUILD}/test-default.info"
-lcov "${LCOV_PARAMS[@]}" --add-tracefile "${BUILD}/initial-default.info" --add-tracefile "${BUILD}/test-default.info" --output-file "${BUILD}/coverage-default.info"
-lcov --capture "${LCOV_PARAMS[@]}" --directory "${BUILD_NO_ASM}" --output-file "${BUILD}/test-no-asm.info"
-lcov "${LCOV_PARAMS[@]}" --add-tracefile "${BUILD}/initial-no-asm.info" --add-tracefile "${BUILD}/test-no-asm.info" --output-file "${BUILD}/coverage-no-asm.info"
+generate_coverage "no-asm" "-DOPENSSL_NO_ASM=1"
 
 #genhtml --ignore-errors ${GENHTML_IGNORE_ERRORS} --output-directory "${BUILD_HTML}" "${BUILD}"/coverage-*.info
 #open "${BUILD_HTML}"/index.html
