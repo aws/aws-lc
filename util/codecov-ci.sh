@@ -45,7 +45,11 @@ if [[ "$(uname -s)" == "Darwin" ]]; then
 else
   LCOV_PARAMS+=(--exclude '/usr/*')
   LCOV_PARAMS+=(--exclude '/lib/*')
-  LCOV_IGNORE_ERRORS="negative,mismatch,unused"
+  if lcov --version | grep --silent 'LCOV version 1.'; then
+    LCOV_IGNORE_ERRORS="gcov,source,graph"
+  else
+    LCOV_IGNORE_ERRORS="negative,mismatch,unused"
+  fi
   GENHTML_IGNORE_ERRORS="inconsistent,unmapped"
 fi
 LCOV_PARAMS+=(--ignore-errors ${LCOV_IGNORE_ERRORS})
