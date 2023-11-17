@@ -232,6 +232,9 @@ OPENSSL_EXPORT void BIO_clear_retry_flags(BIO *bio);
 // values.
 OPENSSL_EXPORT int BIO_method_type(const BIO *bio);
 
+// BIO_method_name returns the name of |bio|.
+OPENSSL_EXPORT const char *BIO_method_name(const BIO *b);
+
 // These are passed to the BIO callback
 #define BIO_CB_FREE 0x01
 #define BIO_CB_READ 0x02

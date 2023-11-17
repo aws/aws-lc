@@ -97,3 +97,5 @@ void METHOD_unref(void *method_in) {
 }
 
 OPENSSL_DECLARE_ERROR_REASON(ENGINE, OPERATION_NOT_SUPPORTED)
+
+void ENGINE_cleanup(void) {}

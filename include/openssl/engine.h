@@ -79,6 +79,13 @@ void METHOD_ref(void *method);
 void METHOD_unref(void *method);
 
 
+// Deprecated functions.
+
+// ENGINE_cleanup does nothing. This has been deprecated since OpenSSL 1.1.0 and
+// applications should not rely on it.
+OPENSSL_EXPORT void ENGINE_cleanup(void);
+
+
 // Private functions.
 
 // openssl_method_common_st contains the common part of all method structures.
