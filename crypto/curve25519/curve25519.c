@@ -111,11 +111,44 @@ void curve25519_x25519base_byte_alt(uint8_t res[32], const uint8_t scalar[32]) {
 }
 
 #if defined(AWSLC_FIPS)
+void bignum_mod_n25519(uint64_t z[static 4], uint64_t k, uint64_t *x);
+void bignum_neg_p25519(uint64_t z[static 4], uint64_t x[static 4]);
+void bignum_madd_n25519(uint64_t z[static 4], uint64_t x[static 4],
+        uint64_t y[static 4], uint64_t c[static 4]);
+void bignum_madd_n25519_alt(uint64_t z[static 4], uint64_t x[static 4],
+        uint64_t y[static 4], uint64_t c[static 4]);
 void edwards25519_encode(uint8_t z[static 32], uint64_t p[static 8]);
+uint64_t edwards25519_decode(uint64_t z[static 8], const uint8_t c[static 32]);
+uint64_t edwards25519_decode_alt(uint64_t z[static 8], const uint8_t c[static 32]);
+
 void edwards25519_scalarmulbase(uint64_t res[static 8],uint64_t scalar[static 4]);
 void edwards25519_scalarmulbase_alt(uint64_t res[static 8],uint64_t scalar[static 4]);
+void edwards25519_scalarmuldouble(uint64_t res[static 8], uint64_t scalar[static 4],
+        uint64_t point[static 8], uint64_t bscalar[static 4]);
+void edwards25519_scalarmuldouble_alt(uint64_t res[static 8], uint64_t scalar[static 4],
+        uint64_t point[static 8], uint64_t bscalar[static 4]);
 
+void bignum_mod_n25519(uint64_t z[static 4], uint64_t k, uint64_t *x) {
+  abort();
+}
+void bignum_neg_p25519(uint64_t z[static 4], uint64_t x[static 4]) {
+  abort();
+}
+void bignum_madd_n25519(uint64_t z[static 4], uint64_t x[static 4],
+        uint64_t y[static 4], uint64_t c[static 4]) {
+  abort();
+}
+void bignum_madd_n25519_alt(uint64_t z[static 4], uint64_t x[static 4],
+        uint64_t y[static 4], uint64_t c[static 4]) {
+  abort();
+}
 void edwards25519_encode(uint8_t z[static 32], uint64_t p[static 8]) {
+  abort();
+}
+uint64_t edwards25519_decode(uint64_t z[static 8], const uint8_t c[static 32]) {
+  abort();
+}
+uint64_t edwards25519_decode_alt(uint64_t z[static 8], const uint8_t c[static 32]) {
   abort();
 }
 void edwards25519_scalarmulbase(uint64_t res[static 8],uint64_t scalar[static 4]) {
@@ -124,8 +157,15 @@ void edwards25519_scalarmulbase(uint64_t res[static 8],uint64_t scalar[static 4]
 void edwards25519_scalarmulbase_alt(uint64_t res[static 8],uint64_t scalar[static 4]) {
   abort();
 }
+void edwards25519_scalarmuldouble(uint64_t res[static 8], uint64_t scalar[static 4],
+        uint64_t point[static 8], uint64_t bscalar[static 4]) {
+  abort();
+}
+void edwards25519_scalarmuldouble_alt(uint64_t res[static 8], uint64_t scalar[static 4],
+        uint64_t point[static 8], uint64_t bscalar[static 4]) {
+  abort();
+}
 #endif
-
 #endif // !defined(CURVE25519_S2N_BIGNUM_CAPABLE)
 
 
@@ -397,7 +437,77 @@ static void ed25519_sign_s2n_bignum(
 static int ed25519_verify_s2n_bignum(uint8_t R_computed_encoded[32],
   const uint8_t public_key[32], uint8_t R_expected[32],
   uint8_t S[32], const uint8_t *message, size_t message_len) {
+
+  void (*scalarmuldouble)(uint64_t res[static 8], uint64_t scalar[static 4],
+        uint64_t point[static 8], uint64_t bscalar[static 4]);
+  uint64_t (*decode)(uint64_t z[static 8], const uint8_t c[static 32]);
+
+#if defined(OPENSSL_X86_64)
+
+  if (curve25519_s2n_bignum_no_alt_capable() == 1) {
+    scalarmuldouble = edwards25519_scalarmuldouble;
+    decode = edwards25519_decode;
+  } else if (curve25519_s2n_bignum_alt_capable() == 1) {
+    scalarmuldouble = edwards25519_scalarmuldouble_alt;
+    decode = edwards25519_decode_alt;
+  } else {
+    abort();
+  }
+
+#elif defined(OPENSSL_AARCH64)
+
+  if (curve25519_s2n_bignum_alt_capable() == 1) {
+    scalarmuldouble = edwards25519_scalarmuldouble_alt;
+    decode = edwards25519_decode_alt;
+  } else if (curve25519_s2n_bignum_no_alt_capable() == 1) {
+    scalarmuldouble = edwards25519_scalarmuldouble;
+    decode = edwards25519_decode;
+  } else {
+    abort();
+  }
+
+#else
+
+  scalarmuldouble = edwards25519_scalarmuldouble;
+  decode = edwards25519_decode;
+
+  // Should not call this function unless s2n-bignum is supported.
   abort();
+
+#endif
+
+  uint8_t k[SHA512_DIGEST_LENGTH] = {0};
+  uint64_t uint64_k[8] = {0};
+  uint64_t uint64_R[8] = {0};
+  uint64_t uint64_S[4] = {0};
+  uint64_t A[8] = {0};
+
+  // Decode public key as A'.
+  if (decode(A, public_key) != 0) {
+    return 0;
+  }
+
+  // Step: rfc8032 5.1.7.2
+  // Compute k = SHA512(R_expected || public_key || message).
+  ed25519_sha512(k, R_expected, 32, public_key, ED25519_PUBLIC_KEY_LEN, message,
+    message_len);
+  OPENSSL_memcpy(uint64_k, k, SHA512_DIGEST_LENGTH);
+  bignum_mod_n25519(uint64_k, 8, uint64_k);
+
+  // Step: rfc8032 5.1.7.3
+  // Recall, we must compute [S]B - [k]A'.
+  // First negate A'. Point negation for the twisted edwards curve when points
+  // are represented in the extended coordinate system is simply:
+  //   -(X,Y,Z,T) = (-X,Y,Z,-T).
+  // See "Twisted Edwards curves revisited" https://ia.cr/2008/522.
+  bignum_neg_p25519(A, A);
+
+  // Compute R_have <- [S]B - [k]A'.
+  OPENSSL_memcpy(uint64_S, S, 32);
+  scalarmuldouble(uint64_R, uint64_k, A, uint64_S);
+  edwards25519_encode(R_computed_encoded, uint64_R);
+
+  return 1;
 }
 
 void ed25519_sha512(uint8_t out[SHA512_DIGEST_LENGTH],

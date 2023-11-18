@@ -248,11 +248,25 @@ extern void bignum_copy_row_from_table_32_neon (uint64_t *z, const uint64_t *tab
         uint64_t height, uint64_t idx);
 
 #if !defined(AWSLC_FIPS)
-// Given a scalar n, returns point (X,Y) = n * B where B = (...,4/5) is
-// the standard basepoint for the edwards25519 (Ed25519) curve.
-// Input scalar[4]; output res[8]
-extern void edwards25519_scalarmulbase(uint64_t res[static 8],uint64_t scalar[static 4]);
-extern void edwards25519_scalarmulbase_alt(uint64_t res[static 8],uint64_t scalar[static 4]);
+// Reduction is modulo the order of the curve25519/edwards25519 basepoint,
+// which is n_25519 = 2^252 + 27742317777372353535851937790883648493.
+// Reduce modulo basepoint order, z := x mod n_25519
+// Input x[k]; output z[4]
+extern void bignum_mod_n25519(uint64_t z[static 4], uint64_t k, uint64_t *x);
+
+// Negate modulo p_25519, z := (-x) mod p_25519, assuming x reduced
+// Input x[4]; output z[4]
+extern void bignum_neg_p25519(uint64_t z[static 4], uint64_t x[static 4]);
+
+// Performs z := (x * y + c) mod n_25519, where the modulus is
+// n_25519 = 2^252 + 27742317777372353535851937790883648493, the
+// order of the curve25519/edwards25519 basepoint. The result z
+// and the inputs x, y and c are all 4 digits (256 bits).
+// Inputs x[4], y[4], c[4]; output z[4]
+extern void bignum_madd_n25519(uint64_t z[static 4], uint64_t x[static 4],
+        uint64_t y[static 4], uint64_t c[static 4]);
+extern void bignum_madd_n25519_alt(uint64_t z[static 4], uint64_t x[static 4],
+        uint64_t y[static 4], uint64_t c[static 4]);
 
 // This assumes that the input buffer p points to a pair of 256-bit
 // numbers x (at p) and y (at p+4) representing a point (x,y) on the
@@ -268,17 +282,45 @@ extern void edwards25519_scalarmulbase_alt(uint64_t res[static 8],uint64_t scala
 // it is reduced mod p_25519 as expected this does not affect values.
 extern void edwards25519_encode(uint8_t z[static 32], uint64_t p[static 8]);
 
-// Reduction is modulo the order of the curve25519/edwards25519 basepoint,
-// which is n_25519 = 2^252 + 27742317777372353535851937790883648493.
-// Reduce modulo basepoint order, z := x mod n_25519
-// Input x[k]; output z[4]
-extern void bignum_mod_n25519(uint64_t z[static 4], uint64_t k, uint64_t *x);
+// This interprets the input byte string as a little-endian number
+// representing a point (x,y) on the edwards25519 curve, encoded as
+// 2^255 * x_0 + y where x_0 is the least significant bit of x. It
+// returns the full pair of coordinates x (at z) and y (at z+4). The
+// return code is 0 for success and 1 for failure, which means that
+// the input does not correspond to the encoding of any edwards25519
+// point. This can happen for three reasons, where y = the lowest
+// 255 bits of the input:
+//
+//  * y >= p_25519
+//    Input y coordinate is not reduced
+//  * (y^2 - 1) * (1 + d_25519 * y^2) has no modular square root
+//    There is no x such that (x,y) is on the curve
+//  * y^2 = 1 and top bit of input is set
+//    Cannot be the canonical encoding of (0,1) or (0,-1)
+//
+// Input c[32] (bytes); output function return and z[8]
+extern uint64_t edwards25519_decode(uint64_t z[static 8], const uint8_t c[static 32]);
+extern uint64_t edwards25519_decode_alt(uint64_t z[static 8], const uint8_t c[static 32]);
 
-// Performs z := (x * y + c) mod n_25519, where the modulus is
-// n_25519 = 2^252 + 27742317777372353535851937790883648493, the
-// order of the curve25519/edwards25519 basepoint. The result z
-// and the inputs x, y and c are all 4 digits (256 bits).
-// Inputs x[4], y[4], c[4]; output z[4]
-extern void bignum_madd_n25519(uint64_t z[static 4], uint64_t x[static 4], uint64_t y[static 4], uint64_t c[static 4]);
-extern void bignum_madd_n25519_alt(uint64_t z[static 4], uint64_t x[static 4], uint64_t y[static 4], uint64_t c[static 4]);
+// Given a scalar n, returns point (X,Y) = n * B where B = (...,4/5) is
+// the standard basepoint for the edwards25519 (Ed25519) curve.
+// Input scalar[4]; output res[8]
+extern void edwards25519_scalarmulbase(uint64_t res[static 8], uint64_t scalar[static 4]);
+extern void edwards25519_scalarmulbase_alt(uint64_t res[static 8], uint64_t scalar[static 4]);
+
+// Given scalar = n, point = P and bscalar = m, returns in res
+// the point (X,Y) = n * P + m * B where B = (...,4/5) is
+// the standard basepoint for the edwards25519 (Ed25519) curve.
+//
+// Both 256-bit coordinates of the input point P are implicitly
+// reduced modulo 2^255-19 if they are not already in reduced form,
+// but the conventional usage is that they *are* already reduced.
+// The scalars can be arbitrary 256-bit numbers but may also be
+// considered as implicitly reduced modulo the group order.
+//
+// Input scalar[4], point[8], bscalar[4]; output res[8]
+extern void edwards25519_scalarmuldouble(uint64_t res[static 8], uint64_t scalar[static 4],
+        uint64_t point[static 8], uint64_t bscalar[static 4]);
+extern void edwards25519_scalarmuldouble_alt(uint64_t res[static 8], uint64_t scalar[static 4],
+        uint64_t point[static 8], uint64_t bscalar[static 4]);
 #endif
