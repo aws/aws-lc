@@ -64,7 +64,6 @@
 #define CURVE25519_S2N_BIGNUM_CAPABLE
 #endif
 
-
 OPENSSL_INLINE int curve25519_s2n_bignum_capable(void) {
 #if defined(CURVE25519_S2N_BIGNUM_CAPABLE)
   return 1;
@@ -85,7 +84,6 @@ OPENSSL_INLINE int ed25519_s2n_bignum_capable(void) {
 // Stub functions if implementations are not compiled.
 // These functions have to abort, otherwise we risk applications assuming they
 // did work without actually doing anything.
-
 #if !defined(CURVE25519_S2N_BIGNUM_CAPABLE)
 
 void curve25519_x25519_byte(uint8_t res[32], const uint8_t scalar[32],
@@ -109,8 +107,9 @@ void curve25519_x25519base_byte(uint8_t res[32], const uint8_t scalar[32]) {
 void curve25519_x25519base_byte_alt(uint8_t res[32], const uint8_t scalar[32]) {
   abort();
 }
+#endif // !defined(CURVE25519_S2N_BIGNUM_CAPABLE)
 
-#if defined(AWSLC_FIPS)
+#if !defined(CURVE25519_S2N_BIGNUM_CAPABLE) || defined(BORINGSSL_FIPS)
 void bignum_mod_n25519(uint64_t z[static 4], uint64_t k, uint64_t *x);
 void bignum_neg_p25519(uint64_t z[static 4], uint64_t x[static 4]);
 void bignum_madd_n25519(uint64_t z[static 4], uint64_t x[static 4],
@@ -165,8 +164,7 @@ void edwards25519_scalarmuldouble_alt(uint64_t res[static 8], uint64_t scalar[st
         uint64_t point[static 8], uint64_t bscalar[static 4]) {
   abort();
 }
-#endif
-#endif // !defined(CURVE25519_S2N_BIGNUM_CAPABLE)
+#endif // !defined(CURVE25519_S2N_BIGNUM_CAPABLE) || defined(BORINGSSL_FIPS)
 
 
 // Run-time detection for each implementation
