@@ -281,7 +281,6 @@ static void x25519_s2n_bignum_public_from_private(
 #endif
 }
 
-// Stub function until ED25519 lands in s2n-bignum
 static void ed25519_public_key_from_hashed_seed_s2n_bignum(
   uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
   uint8_t az[SHA512_DIGEST_LENGTH]) {
@@ -320,14 +319,79 @@ static void ed25519_public_key_from_hashed_seed_s2n_bignum(
   edwards25519_encode(out_public_key, uint64_point);
 }
 
-// Stub function until Ed25519 lands in s2n-bignum
 // |s| is of length |ED25519_PRIVATE_KEY_SEED_LEN|
 // |A| is of length |ED25519_PUBLIC_KEY_LEN|.
 static void ed25519_sign_s2n_bignum(
   uint8_t out_sig[ED25519_SIGNATURE_LEN],
   uint8_t r[SHA512_DIGEST_LENGTH], const uint8_t *s, const uint8_t *A,
   const void *message, size_t message_len) {
+  
+  void (*scalarmulbase)(uint64_t res[static 8],uint64_t scalar[static 4]);
+  void (*madd)(uint64_t z[static 4], uint64_t x[static 4], uint64_t y[static 4],
+    uint64_t c[static 4]);
+
+#if defined(OPENSSL_X86_64)
+
+  if (curve25519_s2n_bignum_no_alt_capable() == 1) {
+    scalarmulbase = edwards25519_scalarmulbase;
+    madd = bignum_madd_n25519;
+  } else if (curve25519_s2n_bignum_alt_capable() == 1) {
+    scalarmulbase = edwards25519_scalarmulbase_alt;
+    madd = bignum_madd_n25519_alt;
+  } else {
+    abort();
+  }
+
+#elif defined(OPENSSL_AARCH64)
+
+  if (curve25519_s2n_bignum_alt_capable() == 1) {
+    scalarmulbase = edwards25519_scalarmulbase_alt;
+    madd = bignum_madd_n25519_alt;
+  } else if (curve25519_s2n_bignum_no_alt_capable() == 1) {
+    scalarmulbase = edwards25519_scalarmulbase;
+    madd = bignum_madd_n25519;
+  } else {
+    abort();
+  }
+
+#else
+
+  scalarmulbase = edwards25519_scalarmulbase;
+  madd = bignum_madd_n25519;
+
+  // Should not call this function unless s2n-bignum is supported.
   abort();
+
+#endif
+
+  uint8_t k[SHA512_DIGEST_LENGTH] = {0};
+  uint64_t R[8] = {0};
+  uint64_t z[4] = {0};
+  uint64_t uint64_r[8] = {0};
+  uint64_t uint64_k[8] = {0};
+  uint64_t uint64_s[4] = {0};
+  OPENSSL_memcpy(uint64_r, r, 64);
+  OPENSSL_memcpy(uint64_s, s, 32);
+
+  // Reduce r modulo the order of the base-point B.
+  bignum_mod_n25519(uint64_r, 8, uint64_r);
+
+  // Compute [r]B.
+  scalarmulbase(R, uint64_r);
+  edwards25519_encode(out_sig, R);
+
+  // Compute k = SHA512(R || A || message)
+  // R is of length 32 octets
+  ed25519_sha512(k, out_sig, 32, A, ED25519_PUBLIC_KEY_LEN, message,
+    message_len);
+  OPENSSL_memcpy(uint64_k, k, SHA512_DIGEST_LENGTH);
+  bignum_mod_n25519(uint64_k, 8, uint64_k);
+
+
+  // Compute S = r + k * s modulo the order of the base-point B.
+  // out_sig = R || S
+  madd(z, uint64_k, uint64_s, uint64_r);
+  OPENSSL_memcpy(out_sig + 32, z, 32);
 }
 
 static int ed25519_verify_s2n_bignum(uint8_t R_computed_encoded[32],

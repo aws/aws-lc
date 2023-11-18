@@ -267,4 +267,18 @@ extern void edwards25519_scalarmulbase_alt(uint64_t res[static 8],uint64_t scala
 // In this implementation, y is simply truncated to 255 bits, but if
 // it is reduced mod p_25519 as expected this does not affect values.
 extern void edwards25519_encode(uint8_t z[static 32], uint64_t p[static 8]);
+
+// Reduction is modulo the order of the curve25519/edwards25519 basepoint,
+// which is n_25519 = 2^252 + 27742317777372353535851937790883648493.
+// Reduce modulo basepoint order, z := x mod n_25519
+// Input x[k]; output z[4]
+extern void bignum_mod_n25519(uint64_t z[static 4], uint64_t k, uint64_t *x);
+
+// Performs z := (x * y + c) mod n_25519, where the modulus is
+// n_25519 = 2^252 + 27742317777372353535851937790883648493, the
+// order of the curve25519/edwards25519 basepoint. The result z
+// and the inputs x, y and c are all 4 digits (256 bits).
+// Inputs x[4], y[4], c[4]; output z[4]
+extern void bignum_madd_n25519(uint64_t z[static 4], uint64_t x[static 4], uint64_t y[static 4], uint64_t c[static 4]);
+extern void bignum_madd_n25519_alt(uint64_t z[static 4], uint64_t x[static 4], uint64_t y[static 4], uint64_t c[static 4]);
 #endif
