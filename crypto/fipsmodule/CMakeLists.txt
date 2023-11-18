@@ -218,6 +218,8 @@ if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX) OR
                 p384/bignum_deamont_p384_alt.S
                 curve25519/bignum_mod_n25519.S
                 curve25519/bignum_neg_p25519.S
+                curve25519/bignum_madd_n25519.S
+                curve25519/bignum_madd_n25519_alt.S
                 curve25519/curve25519_x25519.S
                 curve25519/curve25519_x25519_alt.S
                 curve25519/curve25519_x25519base.S
@@ -245,6 +247,8 @@ if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX) OR
       list(APPEND S2N_BIGNUM_ASM_SOURCES
                   curve25519/bignum_mod_n25519.S
                   curve25519/bignum_neg_p25519.S
+                  curve25519/bignum_madd_n25519.S
+                  curve25519/bignum_madd_n25519_alt.S
                   curve25519/edwards25519_decode.S
                   curve25519/edwards25519_decode_alt.S
                   curve25519/edwards25519_encode.S
