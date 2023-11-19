@@ -2824,6 +2824,7 @@ The X509_STORE then calls a function to actually verify the
 certificate chain.
 */
 
+#define X509_LU_NONE 0
 #define X509_LU_X509 1
 #define X509_LU_CRL 2
 #define X509_LU_PKEY 3
@@ -3021,6 +3022,22 @@ OPENSSL_EXPORT X509_OBJECT *X509_OBJECT_retrieve_by_subject(
     STACK_OF(X509_OBJECT) *h, int type, X509_NAME *name);
 OPENSSL_EXPORT X509_OBJECT *X509_OBJECT_retrieve_match(STACK_OF(X509_OBJECT) *h,
                                                        X509_OBJECT *x);
+
+// X509_OBJECT_new returns a newly-allocated, empty |X509_OBJECT| or NULL on
+// error.
+OPENSSL_EXPORT X509_OBJECT *X509_OBJECT_new(void);
+
+// X509_OBJECT_free releases memory associated with |obj|.
+OPENSSL_EXPORT void X509_OBJECT_free(X509_OBJECT *obj);
+
+// X509_OBJECT_get_type returns the type of |obj|, which will be one of the
+// |X509_LU_*| constants.
+OPENSSL_EXPORT int X509_OBJECT_get_type(const X509_OBJECT *obj);
+
+// X509_OBJECT_get0_X509 returns |obj| as a certificate, or NULL if |obj| is not
+// a certificate.
+OPENSSL_EXPORT X509 *X509_OBJECT_get0_X509(const X509_OBJECT *obj);
+
 OPENSSL_EXPORT int X509_OBJECT_up_ref_count(X509_OBJECT *a);
 OPENSSL_EXPORT int X509_OBJECT_get_type(const X509_OBJECT *a);
 OPENSSL_EXPORT X509 *X509_OBJECT_get0_X509(const X509_OBJECT *a);
