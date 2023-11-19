@@ -247,7 +247,6 @@ struct X509_crl_st {
 } /* X509_CRL */;
 
 struct X509_VERIFY_PARAM_st {
-  char *name;
   int64_t check_time;               // POSIX time to use
   unsigned long inh_flags;          // Inheritance flags
   unsigned long flags;              // Various verify flags
