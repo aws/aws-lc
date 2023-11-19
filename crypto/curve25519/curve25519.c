@@ -363,8 +363,8 @@ static void ed25519_sign_s2n_bignum(
   uint8_t r[SHA512_DIGEST_LENGTH], const uint8_t *s, const uint8_t *A,
   const void *message, size_t message_len) {
   
-  void (*scalarmulbase)(uint64_t res[8],uint64_t scalar[s4]);
-  void (*madd)(uint64_t z[4], uint64_t x[s4], uint64_t y[4], uint64_t c[4]);
+  void (*scalarmulbase)(uint64_t res[8],uint64_t scalar[4]);
+  void (*madd)(uint64_t z[4], uint64_t x[4], uint64_t y[4], uint64_t c[4]);
 
 #if defined(OPENSSL_X86_64)
 
