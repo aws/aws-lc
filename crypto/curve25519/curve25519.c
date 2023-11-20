@@ -87,8 +87,8 @@ OPENSSL_INLINE int ed25519_s2n_bignum_capable(void) {
 #if !defined(CURVE25519_S2N_BIGNUM_CAPABLE) || defined(BORINGSSL_FIPS)
 
 #define S2N_BIGNUM_STUB_FUNC(return_type, symbol, ...) \
-  static return_type symbol(__VA_ARGS__); \
-  static return_type symbol(__VA_ARGS__) { abort(); }
+  return_type symbol(__VA_ARGS__); \
+  return_type symbol(__VA_ARGS__) { abort(); } \
 
 S2N_BIGNUM_STUB_FUNC(void, bignum_mod_n25519, uint64_t z[4], uint64_t k, uint64_t *x)
 S2N_BIGNUM_STUB_FUNC(void, bignum_neg_p25519, uint64_t z[4], uint64_t x[4])
