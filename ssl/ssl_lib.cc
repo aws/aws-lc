@@ -1026,7 +1026,7 @@ static int ssl_read_impl(SSL *ssl) {
 }
 
 int SSL_read_ex(SSL *ssl, void *buf, size_t num, size_t *read_bytes) {
-  if (num == 0) {
+  if (num == 0 && read_bytes != nullptr) {
     *read_bytes = 0;
     return 1;
   }
@@ -1123,7 +1123,7 @@ int SSL_write(SSL *ssl, const void *buf, int num) {
 }
 
 int SSL_write_ex(SSL *ssl, const void *buf, size_t num, size_t *written) {
-  if (num == 0) {
+  if (num == 0 && written != nullptr) {
     *written = 0;
     return 1;
   }
