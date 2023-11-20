@@ -72,7 +72,7 @@ OPENSSL_INLINE int curve25519_s2n_bignum_capable(void) {
 #endif
 }
 
-// Return 0 until ED25519 lands in s2n-bignum
+// Temporarily use separate function for Ed25519. See CryptoAlg-2198.
 OPENSSL_INLINE int ed25519_s2n_bignum_capable(void) {
 #if defined(CURVE25519_S2N_BIGNUM_CAPABLE) && !defined(AWSLC_FIPS)
   return 1;
@@ -84,85 +84,30 @@ OPENSSL_INLINE int ed25519_s2n_bignum_capable(void) {
 // Stub functions if implementations are not compiled.
 // These functions have to abort, otherwise we risk applications assuming they
 // did work without actually doing anything.
-#if !defined(CURVE25519_S2N_BIGNUM_CAPABLE)
-
-void curve25519_x25519_byte(uint8_t res[32], const uint8_t scalar[32],
-  const uint8_t point[32]);
-void curve25519_x25519_byte_alt(uint8_t res[32], const uint8_t scalar[32],
-  const uint8_t point[32]);
-void curve25519_x25519base_byte(uint8_t res[32], const uint8_t scalar[32]);
-void curve25519_x25519base_byte_alt(uint8_t res[32], const uint8_t scalar[32]);
-
-void curve25519_x25519_byte(uint8_t res[32], const uint8_t scalar[32],
-  const uint8_t point[32]) {
-  abort();
-}
-void curve25519_x25519_byte_alt(uint8_t res[32], const uint8_t scalar[32],
-  const uint8_t point[32]) {
-  abort();
-}
-void curve25519_x25519base_byte(uint8_t res[32], const uint8_t scalar[32]) {
-  abort();
-}
-void curve25519_x25519base_byte_alt(uint8_t res[32], const uint8_t scalar[32]) {
-  abort();
-}
-#endif // !defined(CURVE25519_S2N_BIGNUM_CAPABLE)
-
 #if !defined(CURVE25519_S2N_BIGNUM_CAPABLE) || defined(BORINGSSL_FIPS)
-void bignum_mod_n25519(uint64_t z[4], uint64_t k, uint64_t *x);
-void bignum_neg_p25519(uint64_t z[4], uint64_t x[4]);
-void bignum_madd_n25519(uint64_t z[4], uint64_t x[4], uint64_t y[4],
-  uint64_t c[4]);
-void bignum_madd_n25519_alt(uint64_t z[4], uint64_t x[4], uint64_t y[4],
-  uint64_t c[4]);
-void edwards25519_encode(uint8_t z[32], uint64_t p[8]);
-uint64_t edwards25519_decode(uint64_t z[8], const uint8_t c[32]);
-uint64_t edwards25519_decode_alt(uint64_t z[8], const uint8_t c[32]);
-void edwards25519_scalarmulbase(uint64_t res[8],uint64_t scalar[4]);
-void edwards25519_scalarmulbase_alt(uint64_t res[8],uint64_t scalar[4]);
-void edwards25519_scalarmuldouble(uint64_t res[8], uint64_t scalar[4],
-  uint64_t point[8], uint64_t bscalar[4]);
-void edwards25519_scalarmuldouble_alt(uint64_t res[8], uint64_t scalar[4],
-        uint64_t point[8], uint64_t bscalar[4]);
 
-void bignum_mod_n25519(uint64_t z[4], uint64_t k, uint64_t *x) {
-  abort();
-}
-void bignum_neg_p25519(uint64_t z[4], uint64_t x[4]) {
-  abort();
-}
-void bignum_madd_n25519(uint64_t z[4], uint64_t x[4],
-        uint64_t y[4], uint64_t c[4]) {
-  abort();
-}
-void bignum_madd_n25519_alt(uint64_t z[4], uint64_t x[4], uint64_t y[4],
-  uint64_t c[4]) {
-  abort();
-}
-void edwards25519_encode(uint8_t z[32], uint64_t p[8]) {
-  abort();
-}
-uint64_t edwards25519_decode(uint64_t z[8], const uint8_t c[32]) {
-  abort();
-}
-uint64_t edwards25519_decode_alt(uint64_t z[8], const uint8_t c[32]) {
-  abort();
-}
-void edwards25519_scalarmulbase(uint64_t res[8],uint64_t scalar[4]) {
-  abort();
-}
-void edwards25519_scalarmulbase_alt(uint64_t res[8],uint64_t scalar[4]) {
-  abort();
-}
-void edwards25519_scalarmuldouble(uint64_t res[8], uint64_t scalar[4],
-        uint64_t point[8], uint64_t bscalar[4]) {
-  abort();
-}
-void edwards25519_scalarmuldouble_alt(uint64_t res[8], uint64_t scalar[4],
-        uint64_t point[8], uint64_t bscalar[4]) {
-  abort();
-}
+#define S2N_BIGNUM_STUB_FUNC(return_type, symbol, ...) \
+  static return_type symbol(__VA_ARGS__); \
+  static return_type symbol(__VA_ARGS__) { abort(); }
+
+S2N_BIGNUM_STUB_FUNC(void, bignum_mod_n25519, uint64_t z[4], uint64_t k, uint64_t *x)
+S2N_BIGNUM_STUB_FUNC(void, bignum_neg_p25519, uint64_t z[4], uint64_t x[4])
+S2N_BIGNUM_STUB_FUNC(void, bignum_madd_n25519, uint64_t z[4], uint64_t x[4], uint64_t y[4], uint64_t c[4])
+S2N_BIGNUM_STUB_FUNC(void, bignum_madd_n25519_alt, uint64_t z[4], uint64_t x[4], uint64_t y[4], uint64_t c[4])
+S2N_BIGNUM_STUB_FUNC(void, edwards25519_encode, uint8_t z[32], uint64_t p[8])
+S2N_BIGNUM_STUB_FUNC(uint64_t, edwards25519_decode, uint64_t z[8], const uint8_t c[32])
+S2N_BIGNUM_STUB_FUNC(uint64_t, edwards25519_decode_alt, uint64_t z[8], const uint8_t c[32])
+S2N_BIGNUM_STUB_FUNC(void, edwards25519_scalarmulbase, uint64_t res[8],uint64_t scalar[4])
+S2N_BIGNUM_STUB_FUNC(void, edwards25519_scalarmulbase_alt, uint64_t res[8],uint64_t scalar[4])
+S2N_BIGNUM_STUB_FUNC(void, edwards25519_scalarmuldouble, uint64_t res[8], uint64_t scalar[4], uint64_t point[8], uint64_t bscalar[4])
+S2N_BIGNUM_STUB_FUNC(void, edwards25519_scalarmuldouble_alt, uint64_t res[8], uint64_t scalar[4], uint64_t point[8], uint64_t bscalar[4])
+
+#if !defined(CURVE25519_S2N_BIGNUM_CAPABLE)
+S2N_BIGNUM_STUB_FUNC(void, curve25519_x25519_byte, uint8_t res[32], const uint8_t scalar[32], const uint8_t point[32])
+S2N_BIGNUM_STUB_FUNC(void, curve25519_x25519_byte_alt, uint8_t res[32], const uint8_t scalar[32], const uint8_t point[32])
+S2N_BIGNUM_STUB_FUNC(void, curve25519_x25519base_byte, uint8_t res[32], const uint8_t scalar[32])
+S2N_BIGNUM_STUB_FUNC(void, curve25519_x25519base_byte_alt, uint8_t res[32], const uint8_t scalar[32])
+#endif // !defined(CURVE25519_S2N_BIGNUM_CAPABLE)
 #endif // !defined(CURVE25519_S2N_BIGNUM_CAPABLE) || defined(BORINGSSL_FIPS)
 
 
