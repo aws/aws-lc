@@ -399,8 +399,8 @@ int EC_KEY_check_fips(const EC_KEY *key) {
       // Error already written to error queue by |bn_wexpand|.
       check_ret = 0;
     } else if (BN_is_negative(x) || BN_is_negative(y) ||
-               BN_cmp(x, &group->field) >= 0 ||
-               BN_cmp(y, &group->field) >= 0) {
+               BN_cmp(x, &group->field->N) >= 0 ||
+               BN_cmp(y, &group->field->N) >= 0) {
       OPENSSL_PUT_ERROR(EC, EC_R_COORDINATES_OUT_OF_RANGE);
       check_ret = 0;
     }

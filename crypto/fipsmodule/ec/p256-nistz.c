@@ -308,17 +308,10 @@ static void ecp_nistz256_point_mul(const EC_GROUP *group, EC_JACOBIAN *r,
   P256_POINT *aligned_out = (P256_POINT *) align_pointer(buffer_out, 32);
   ecp_nistz256_windowed_mul(group, aligned_out, p, scalar);
 
-<<<<<<< HEAD
-  assert(group->field.width == P256_LIMBS);
+  assert(group->field->N.width == P256_LIMBS);
   OPENSSL_memcpy(r->X.words, aligned_out->X, P256_LIMBS * sizeof(BN_ULONG));
   OPENSSL_memcpy(r->Y.words, aligned_out->Y, P256_LIMBS * sizeof(BN_ULONG));
   OPENSSL_memcpy(r->Z.words, aligned_out->Z, P256_LIMBS * sizeof(BN_ULONG));
-=======
-  assert(group->field->N.width == P256_LIMBS);
-  OPENSSL_memcpy(r->X.words, out.X, P256_LIMBS * sizeof(BN_ULONG));
-  OPENSSL_memcpy(r->Y.words, out.Y, P256_LIMBS * sizeof(BN_ULONG));
-  OPENSSL_memcpy(r->Z.words, out.Z, P256_LIMBS * sizeof(BN_ULONG));
->>>>>>> 8e8f87ea9 (Don't store a redundant copy of the EC_GROUP field modulus)
 }
 
 static void ecp_nistz256_point_mul_base(const EC_GROUP *group, EC_JACOBIAN *r,
@@ -364,17 +357,10 @@ static void ecp_nistz256_point_mul_base(const EC_GROUP *group, EC_JACOBIAN *r,
     ecp_nistz256_point_add_affine(aligned_p, aligned_p, aligned_t);
   }
 
-<<<<<<< HEAD
-  assert(group->field.width == P256_LIMBS);
+  assert(group->field->N.width == P256_LIMBS);
   OPENSSL_memcpy(r->X.words, aligned_p->X, P256_LIMBS * sizeof(BN_ULONG));
   OPENSSL_memcpy(r->Y.words, aligned_p->Y, P256_LIMBS * sizeof(BN_ULONG));
   OPENSSL_memcpy(r->Z.words, aligned_p->Z, P256_LIMBS * sizeof(BN_ULONG));
-=======
-  assert(group->field->N.width == P256_LIMBS);
-  OPENSSL_memcpy(r->X.words, p.X, P256_LIMBS * sizeof(BN_ULONG));
-  OPENSSL_memcpy(r->Y.words, p.Y, P256_LIMBS * sizeof(BN_ULONG));
-  OPENSSL_memcpy(r->Z.words, p.Z, P256_LIMBS * sizeof(BN_ULONG));
->>>>>>> 8e8f87ea9 (Don't store a redundant copy of the EC_GROUP field modulus)
 }
 
 static void ecp_nistz256_points_mul_public(const EC_GROUP *group,
@@ -442,17 +428,10 @@ static void ecp_nistz256_points_mul_public(const EC_GROUP *group,
   ecp_nistz256_windowed_mul(group, aligned_tmp, p_, p_scalar);
   ecp_nistz256_point_add(aligned_p, aligned_p, aligned_tmp);
 
-<<<<<<< HEAD
-  assert(group->field.width == P256_LIMBS);
+  assert(group->field->N.width == P256_LIMBS);
   OPENSSL_memcpy(r->X.words, aligned_p->X, P256_LIMBS * sizeof(BN_ULONG));
   OPENSSL_memcpy(r->Y.words, aligned_p->Y, P256_LIMBS * sizeof(BN_ULONG));
   OPENSSL_memcpy(r->Z.words, aligned_p->Z, P256_LIMBS * sizeof(BN_ULONG));
-=======
-  assert(group->field->N.width == P256_LIMBS);
-  OPENSSL_memcpy(r->X.words, p.X, P256_LIMBS * sizeof(BN_ULONG));
-  OPENSSL_memcpy(r->Y.words, p.Y, P256_LIMBS * sizeof(BN_ULONG));
-  OPENSSL_memcpy(r->Z.words, p.Z, P256_LIMBS * sizeof(BN_ULONG));
->>>>>>> 8e8f87ea9 (Don't store a redundant copy of the EC_GROUP field modulus)
 }
 
 static int ecp_nistz256_get_affine(const EC_GROUP *group,
