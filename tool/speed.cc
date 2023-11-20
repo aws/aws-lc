@@ -1057,6 +1057,95 @@ static bool SpeedAES256XTS(const std::string &name, //const size_t in_len,
   return true;
 }
 
+#include "../crypto/fipsmodule/aes/internal.h"
+#include "../crypto/fipsmodule/modes/internal.h"
+
+#if defined(OPENSSL_X86_64) && !defined(OPENSSL_NO_ASM)
+static bool SpeedAES256XTSReencrypt(const std::string &name, //const size_t in_len,
+                           const std::string &selected) {
+  if (!selected.empty() && name.find(selected) == std::string::npos) {
+    return true;
+  }
+  const EVP_CIPHER *cipher = EVP_aes_256_xts();
+  const size_t key_len = EVP_CIPHER_key_length(cipher);
+  const size_t iv_len = EVP_CIPHER_iv_length(cipher);
+
+  const size_t data_len = 512;
+
+  std::vector<uint8_t> key_dec(key_len), key_enc(key_len), iv(iv_len, 5),
+    plaintext(data_len), ciphertext_in(data_len,190), ciphertext_out(data_len);
+
+  // key_dec = key1_dec || key2_dec and key1 should not equal key2
+  // similarly for key_enc
+  std::generate(key_dec.begin(), key_dec.end(), [] {
+    static uint8_t i = 0;
+    return i++;
+  });
+
+  std::generate(key_enc.begin(), key_enc.end(), [] {
+    static uint8_t i = 64;
+    return i++;
+  });
+
+  EVP_AES_XTS_CTX ctx_dec, ctx_enc;
+  TimeResults results;
+
+  if (!(0 == AES_set_decrypt_key(key_dec.data(), key_len * 4, &ctx_dec.ks1.ks)) ||
+      !(0 == AES_set_encrypt_key(key_dec.data() + key_len/2, key_len * 4, &ctx_dec.ks2.ks)) ||
+      !(0 == AES_set_encrypt_key(key_enc.data(), key_len * 4, &ctx_enc.ks1.ks)) ||
+      !(0 == AES_set_encrypt_key(key_enc.data() + key_len/2, key_len * 4, &ctx_enc.ks2.ks))) {
+    return false;
+  }
+
+  if (!TimeFunction(&results, [&]() -> bool {
+    aes_hw_xts_reencrypt(ciphertext_in.data(), ciphertext_out.data(),
+                         ciphertext_in.size(),
+                         &ctx_dec.ks1.ks, &ctx_dec.ks2.ks,
+                         iv.data(),
+                         &ctx_enc.ks1.ks, &ctx_enc.ks2.ks);
+    return true;
+  })) {
+    fprintf(stderr, "AES-256-XTS reencrypt function failed.\n");
+    return false;
+  }
+  results.Print(name + " re-encrypt");
+
+  BM_NAMESPACE::UniquePtr<EVP_CIPHER_CTX> dec_ctx(EVP_CIPHER_CTX_new());
+  BM_NAMESPACE::UniquePtr<EVP_CIPHER_CTX> enc_ctx(EVP_CIPHER_CTX_new());
+  int len;
+
+  if (!EVP_DecryptInit_ex(dec_ctx.get(), cipher, nullptr, key_dec.data(),
+                          iv.data()) ||
+      !EVP_EncryptInit_ex(enc_ctx.get(), cipher, nullptr, key_enc.data(),
+                          iv.data())
+    ) {
+    return false;
+  }
+
+  if (!TimeFunction(&results, [&]() -> bool {
+    if (!EVP_DecryptInit_ex(dec_ctx.get(), nullptr, nullptr, nullptr,
+                            iv.data()) ||
+        !EVP_DecryptUpdate(dec_ctx.get(), plaintext.data(), &len,
+                           ciphertext_in.data(), ciphertext_in.size()) ||
+        len != data_len ||
+        !EVP_EncryptInit_ex(enc_ctx.get(), nullptr, nullptr, nullptr,
+                            iv.data()) ||
+        !EVP_EncryptUpdate(enc_ctx.get(), ciphertext_out.data(), &len,
+                           plaintext.data(), plaintext.size()) ||
+        len != data_len) {
+            return false;
+    }
+    return true;
+  })) {
+    fprintf(stderr, "AES-256-XTS initialisation or encryption failed.\n");
+    return false;
+  }
+  results.Print(name + " decrypt then encrypt functions");
+
+  return true;
+}
+#endif
+
 static bool SpeedHashChunk(const EVP_MD *md, std::string name,
                            size_t chunk_len) {
   // OpenSSL 1.0.x has a different API to create an EVP_MD_CTX
@@ -2604,6 +2693,7 @@ bool Speed(const std::vector<std::string> &args) {
        !SpeedHash(EVP_sha3_256(), "SHA3-256", selected) ||
        !SpeedHash(EVP_sha3_384(), "SHA3-384", selected) ||
        !SpeedHash(EVP_sha3_512(), "SHA3-512", selected) ||
+       !SpeedAES256XTSReencrypt("AES-256-XTS", selected) ||
 #endif
        !SpeedHmac(EVP_md5(), "HMAC-MD5", selected) ||
        !SpeedHmac(EVP_sha1(), "HMAC-SHA1", selected) ||
