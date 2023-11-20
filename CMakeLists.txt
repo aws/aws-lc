@@ -39,17 +39,6 @@ if(FIPS)
     add_definitions(-DFIPS_ENTROPY_SOURCE_PASSIVE)
     message(STATUS "FIPS entropy source method configured: Passive")
   endif()
-
-  # Hot patch duplicate labels in s2n-bignum source
-  file(READ third_party/s2n-bignum/x86_att/curve25519/edwards25519_scalarmuldouble.S S2N_BIGNUM_SCALARMULDOUBLE_FILE)
-  string(REPLACE "curve25519_x25519_inverseloop" "curve25519_ed25519_inverseloop_scalarmuldouble" S2N_BIGNUM_SCALARMULDOUBLE_FILE "${S2N_BIGNUM_SCALARMULDOUBLE_FILE}")
-  string(REPLACE "curve25519_x25519_midloop" "curve25519_ed25519_midloop_scalarmuldouble" S2N_BIGNUM_SCALARMULDOUBLE_FILE "${S2N_BIGNUM_SCALARMULDOUBLE_FILE}")
-  file(WRITE third_party/s2n-bignum/x86_att/curve25519/edwards25519_scalarmuldouble.S "${S2N_BIGNUM_SCALARMULDOUBLE_FILE}")
-
-  file(READ third_party/s2n-bignum/x86_att/curve25519/edwards25519_scalarmuldouble_alt.S S2N_BIGNUM_SCALARMULDOUBLE_ALT_FILE)
-  string(REPLACE "curve25519_x25519_inverseloop" "curve25519_ed25519_inverseloop_scalarmuldouble_alt" S2N_BIGNUM_SCALARMULDOUBLE_ALT_FILE "${S2N_BIGNUM_SCALARMULDOUBLE_ALT_FILE}")
-  string(REPLACE "curve25519_x25519_midloop" "curve25519_ed25519_midloop_scalarmuldouble_alt" S2N_BIGNUM_SCALARMULDOUBLE_ALT_FILE "${S2N_BIGNUM_SCALARMULDOUBLE_ALT_FILE}")
-  file(WRITE third_party/s2n-bignum/x86_att/curve25519/edwards25519_scalarmuldouble_alt.S "${S2N_BIGNUM_SCALARMULDOUBLE_ALT_FILE}")
 endif()
 
 # Tests and libssl both require the CXX language to be enabled. If a consumer
