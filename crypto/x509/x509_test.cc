@@ -32,7 +32,6 @@
 #include <openssl/pool.h>
 #include <openssl/rand.h>
 #include <openssl/x509.h>
-#include <openssl/x509v3.h>
 
 #include "internal.h"
 #include "../evp_extra/internal.h"
