@@ -9211,6 +9211,11 @@ TEST_P(SSLVersionTest, SameKeyResume) {
   ClientConfig config;
   config.session = session.get();
 
+  // No hits before we resume the connection
+  EXPECT_EQ(SSL_CTX_sess_hits(client_ctx_.get()), 0);
+  EXPECT_EQ(SSL_CTX_sess_hits(server_ctx_.get()), 0);
+  EXPECT_EQ(SSL_CTX_sess_hits(server_ctx2.get()), 0);
+
   // Resuming with |server_ctx_| again works.
   bssl::UniquePtr<SSL> client, server;
   ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx_.get(),
@@ -9224,8 +9229,11 @@ TEST_P(SSLVersionTest, SameKeyResume) {
   EXPECT_TRUE(SSL_session_reused(client.get()));
   EXPECT_TRUE(SSL_session_reused(server.get()));
 
-  // By this point, the session has been resumed twice on the client side.
+  // By this point, the session has been resumed twice on the client side and
+  // once for each server context.
   EXPECT_EQ(SSL_CTX_sess_hits(client_ctx_.get()), 2);
+  EXPECT_EQ(SSL_CTX_sess_hits(server_ctx_.get()), 1);
+  EXPECT_EQ(SSL_CTX_sess_hits(server_ctx2.get()), 1);
 }
 
 TEST_P(SSLVersionTest, DifferentKeyNoResume) {

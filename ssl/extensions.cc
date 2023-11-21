@@ -4019,6 +4019,11 @@ enum ssl_ticket_aead_result_t ssl_process_ticket(
   // Other consumers may expect a non-empty session ID to indicate resumption.
   session->session_id_length = SHA256_DIGEST_LENGTH;
 
+  // Ticket-based session resumption bypasses the session cache, but counts as
+  // session reuse, so update the session's "session hit" counter.
+  ssl_update_counter(ssl->session_ctx.get(), ssl->session_ctx->stats.sess_hit,
+                     true);
+
   *out_session = std::move(session);
   return ssl_ticket_aead_success;
 }
