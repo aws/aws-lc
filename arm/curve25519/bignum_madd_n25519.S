@@ -280,5 +280,5 @@ S2N_BN_SYMBOL(bignum_madd_n25519):
         ret
 
 #if defined(__linux__) && defined(__ELF__)
-.section .note.GNU-stacz,"",%progbits
+.section .note.GNU-stack,"",%progbits
 #endif
