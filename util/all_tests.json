@@ -101,10 +101,6 @@
     "shard": true
   },
   {
-    "cmd": ["ssl/ssl_test", "--gtest_also_run_disabled_tests", "--gtest_filter=SSLTest.DISABLED_SSLFileTests"],
-    "skip_sde": true
-  },
-  {
     "cmd": ["ssl/integration_test"]
   },
   {

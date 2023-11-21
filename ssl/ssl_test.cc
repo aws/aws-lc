@@ -11816,19 +11816,29 @@ TEST_P(PerformHybridHandshakeTest, PerformHybridHandshake) {
   }
 }
 
-// This test opens and writes a temporary pem file to test certificate file
-// loading. It is disabled by default since we may not always have permissions
-// to create files on some platforms or the generated files may encounter race
-// conditions when running multiple ssl_tests on different threads. This is
-// reenabled via all_tests.go where suitable.
-TEST(SSLTest, DISABLED_SSLFileTests) {
+// |tmpname| is the only common function across all platforms that
+// generates random file names. |tmpnam| is deprecated due to security concerns,
+// but we only use this to run tests.
+OPENSSL_BEGIN_ALLOW_DEPRECATED
+TEST(SSLTest, SSLFileTests) {
+#if defined(OPENSSL_ANDROID)
+  // On Android, when running from an APK, temporary file creations do not work.
+  // See b/36991167#comment8.
+  GTEST_SKIP();
+#endif
+
   struct fclose_deleter {
     void operator()(FILE *f) const { fclose(f); }
   };
 
   using ScopedFILE = std::unique_ptr<FILE, fclose_deleter>;
-  ScopedFILE rsa_pem(fopen("rsa.pem", "w"));
-  ScopedFILE ecdsa_pem(fopen("ecdsa.pem", "w"));
+  char rsa_pem_filename[L_tmpnam];
+  char ecdsa_pem_filename[L_tmpnam];
+  ASSERT_TRUE(tmpnam(rsa_pem_filename));
+  ASSERT_TRUE(tmpnam(ecdsa_pem_filename));
+
+  ScopedFILE rsa_pem(fopen(rsa_pem_filename, "w"));
+  ScopedFILE ecdsa_pem(fopen(ecdsa_pem_filename, "w"));
   ASSERT_TRUE(rsa_pem);
   ASSERT_TRUE(ecdsa_pem);
 
@@ -11844,18 +11854,19 @@ TEST(SSLTest, DISABLED_SSLFileTests) {
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
   ASSERT_TRUE(ctx);
   // Load a certificate into |ctx| and verify that |ssl| inherits it.
-  EXPECT_TRUE(SSL_CTX_use_certificate_chain_file(ctx.get(), "rsa.pem"));
+  EXPECT_TRUE(SSL_CTX_use_certificate_chain_file(ctx.get(), rsa_pem_filename));
   bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
   ASSERT_TRUE(ssl);
   EXPECT_EQ(X509_cmp(SSL_get_certificate(ssl.get()), rsa_leaf.get()), 0);
 
   // Load a new cert into |ssl| and verify that it's correctly loaded.
-  EXPECT_TRUE(SSL_use_certificate_chain_file(ssl.get(), "ecdsa.pem"));
+  EXPECT_TRUE(SSL_use_certificate_chain_file(ssl.get(), ecdsa_pem_filename));
   EXPECT_EQ(X509_cmp(SSL_get_certificate(ssl.get()), ecdsa_leaf.get()), 0);
 
-  ASSERT_EQ(remove("rsa.pem"), 0);
-  ASSERT_EQ(remove("ecdsa.pem"), 0);
+  ASSERT_EQ(remove(rsa_pem_filename), 0);
+  ASSERT_EQ(remove(ecdsa_pem_filename), 0);
 }
+OPENSSL_END_ALLOW_DEPRECATED
 
 }  // namespace
 BSSL_NAMESPACE_END

@@ -491,10 +491,12 @@ static int use_certificate_chain_file(SSL_CTX *ctx, SSL *ssl, const char *file) 
   bssl::UniquePtr<BIO> in(BIO_new(BIO_s_file()));
   if (in == nullptr) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_BUF_LIB);
+    return 0;
   }
 
   if (BIO_read_filename(in.get(), file) <= 0) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_SYS_LIB);
+    return 0;
   }
 
   bssl::UniquePtr<X509> x509(PEM_read_bio_X509_AUX(
@@ -502,6 +504,7 @@ static int use_certificate_chain_file(SSL_CTX *ctx, SSL *ssl, const char *file) 
       parent_ctx->default_passwd_callback_userdata));
   if (x509 == nullptr) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_PEM_LIB);
+    return 0;
   }
 
   if (ctx != nullptr) {
@@ -538,7 +541,7 @@ static int use_certificate_chain_file(SSL_CTX *ctx, SSL *ssl, const char *file) 
 
       if (temp_ret == 0) {
         X509_free(ca);
-        ret = 0;
+        return 0;
       }
       // Note that we must not free |ca| if it was successfully added to the
       // chain (while we must free the main certificate, since its reference
