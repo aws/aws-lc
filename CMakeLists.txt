@@ -1116,6 +1116,9 @@ endif()
 # TODO: Find a way to make this automatically align with OPENSSL_VERSION_NUMBER in base.h.
 set(VERSION 1.1.1)
 
+# AWS-LC may be installed in a non-standard prefix. If OpenSSL exists in the standard path,
+# the downstream integration may build with the system's OpenSSL version instead.
+# Consider adjusting the PKG_CONFIG_PATH environment to get around this.
 file(GLOB OPENSSL_PKGCONFIGS "pkgconfig/*.pc.in")
 foreach(in_file ${OPENSSL_PKGCONFIGS})
   file(RELATIVE_PATH in_file ${PROJECT_SOURCE_DIR} ${in_file})
