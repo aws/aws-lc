@@ -468,16 +468,16 @@ static int cipher_chacha20_do_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
 
 #ifdef OPENSSL_BIG_ENDIAN
   // |CRYPTO_chacha_20| expects the input as a little-endian byte array.
-    uint8_t chacha_key[CHACHA_KEY_LEN];
-    uint8_t nonce[CHACHA_IV_LEN];
-    for(int i = 0; i < CHACHA_KEY_LEN / 4; i++) {
-      CRYPTO_store_u32_le(chacha_key + (i * sizeof(uint32_t)),
-                          cipher_ctx->key.key[i]);
-    }
-    for(size_t i = 0; i < CHACHA_IV_LEN / 4; i++) {
-      CRYPTO_store_u32_le(nonce + (i * sizeof(uint32_t)),
-                          cipher_ctx->iv[i]);
-    }
+  uint8_t chacha_key[CHACHA_KEY_LEN];
+  uint8_t nonce[CHACHA_IV_LEN];
+  for(int i = 0; i < CHACHA_KEY_LEN / 4; i++) {
+    CRYPTO_store_u32_le(chacha_key + (i * sizeof(uint32_t)),
+                        cipher_ctx->key.key[i]);
+  }
+  for(size_t i = 0; i < CHACHA_IV_LEN / 4; i++) {
+    CRYPTO_store_u32_le(nonce + (i * sizeof(uint32_t)),
+                        cipher_ctx->iv[i]);
+  }
 #else
   const uint8_t *chacha_key = (const uint8_t *) cipher_ctx->key.key;
   const uint8_t *nonce = (const uint8_t *) cipher_ctx->iv;
