@@ -437,7 +437,7 @@ static int cipher_chacha20_do_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
 {
   CIPHER_CHACHA_POLY_CTX  *cipher_ctx = CCP_CTX(ctx);
   CIPHER_CHACHA_KEY *key = CC_KEY(cipher_ctx);
-  uint32_t n, rem, ctr32;
+  uint32_t n, rem, counter;
 
   // Complete any partial block
   n = key->partial_len;
@@ -460,6 +460,8 @@ static int cipher_chacha20_do_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
     // If we completed a block, increment the counter
     if (n == CHACHA_BLOCK_LEN) {
       key->partial_len = 0;
+      // If this overflows we let the cipher wrap. This would be a bug in the
+      // calling code as overflow behavior is not defined in RFC 8439.
       key->counter_nonce[0]++;
     }
   }
@@ -484,7 +486,7 @@ static int cipher_chacha20_do_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
   // Truncate down to the last complete block prior to the bulk cipher
   rem = (uint32_t)(len % CHACHA_BLOCK_LEN);
   len -= rem;
-  ctr32 = key->counter_nonce[0];
+  counter = key->counter_nonce[0];
   while (len >= CHACHA_BLOCK_LEN) {
     size_t blocks = len / CHACHA_BLOCK_LEN;
     // 1<<28 is just a not-so-small yet not-so-large number... Below
@@ -496,11 +498,12 @@ static int cipher_chacha20_do_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
 
     // As ChaCha20_ctr32 operates on 32-bit counter, caller has to handle
     // overflow. 'if' below detects the overflow, which is then handled by
-    // limiting the amount of blocks to the exact overflow point...
-    ctr32 += (uint32_t) blocks;
-    if (ctr32 < blocks) {
-      blocks -= ctr32;
-      ctr32 = 0;
+    // limiting the amount of blocks to the exact overflow point. This while
+    // loop then continues the cipher by wrapping around with counter=0.
+    counter += (uint32_t) blocks;
+    if (counter < blocks) {
+      blocks -= counter;
+      counter = 0;
     }
     blocks *= CHACHA_BLOCK_LEN;
     CRYPTO_chacha_20(out, inp, blocks, chacha_key, nonce,
@@ -509,7 +512,7 @@ static int cipher_chacha20_do_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
     inp += blocks;
     out += blocks;
 
-    key->counter_nonce[0] = ctr32;
+    key->counter_nonce[0] = counter;
   }
 
   // Start the next block if we have any leftover input
