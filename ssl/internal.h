@@ -3660,6 +3660,20 @@ struct ssl_ctx_st {
   // and is further constrainted by |SSL_OP_NO_*|.
   uint16_t conf_min_version = 0;
 
+  // conf_max_version_use_default indicates whether the |SSL_CTX| is configured
+  // to use the default maximum protocol version for the relevant protocol
+  // method. By default, |SSL_CTX_new| will set this to 0 and use that default.
+  // callers can change this by calling |SSL_CTX_set_max_proto_version| with a
+  // non-zero value.
+  bool conf_max_version_use_default;
+
+  // conf_max_version_use_default indicates whether the |SSL_CTX| is configured
+  // to use the default maximum protocol version for the relevant protocol
+  // method. By default, |SSL_CTX_new| will set this to 0 and use that default.
+  // callers can change this by calling |SSL_CTX_set_max_proto_version| with a
+  // non-zero value.
+  bool conf_min_version_use_default;
+
   // num_tickets is the number of tickets to send immediately after the TLS 1.3
   // handshake. TLS 1.3 recommends single-use tickets so, by default, issue two
   /// in case the client makes several connections before getting a renewal.
