@@ -561,14 +561,14 @@ static void ec_GFp_nistp384_dbl(const EC_GROUP *group, EC_JACOBIAN *r,
 static void ec_GFp_nistp384_mont_felem_to_bytes(
   const EC_GROUP *group, uint8_t *out, size_t *out_len, const EC_FELEM *in) {
 
-  size_t len = BN_num_bytes(&group->field);
+  size_t len = BN_num_bytes(&group->field.N);
   EC_FELEM felem_tmp;
   p384_felem tmp;
   p384_from_generic(tmp, in);
   p384_felem_from_mont(tmp, tmp);
   p384_to_generic(&felem_tmp, tmp);
 
-  bn_words_to_big_endian(out, len, felem_tmp.words, group->order->N.width);
+  bn_words_to_big_endian(out, len, felem_tmp.words, group->order.N.width);
 
   *out_len = len;
 }
@@ -619,12 +619,12 @@ static int ec_GFp_nistp384_cmp_x_coordinate(const EC_GROUP *group,
   // that group_order < p.x < p.
   // In that case, we need not only to compare against |r| but also to
   // compare against r+group_order.
-  assert(group->field.width == group->order->N.width);
+  assert(group->field.N.width == group->order.N.width);
   EC_FELEM tmp;
   BN_ULONG carry =
-      bn_add_words(tmp.words, r->words, group->order->N.d, group->field.width);
+      bn_add_words(tmp.words, r->words, group->order.N.d, group->field.N.width);
   if (carry == 0 &&
-      bn_less_than_words(tmp.words, group->field.d, group->field.width)) {
+      bn_less_than_words(tmp.words, group->field.N.d, group->field.N.width)) {
     p384_from_generic(r_Z2, &tmp);
     p384_felem_mul(r_Z2, r_Z2, Z2_mont);
     if (OPENSSL_memcmp(&r_Z2, &X, sizeof(r_Z2)) == 0) {
@@ -1150,9 +1150,6 @@ static void ec_GFp_nistp384_point_mul_public(const EC_GROUP *group,
 }
 
 DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistp384_method) {
-  out->group_init = ec_GFp_mont_group_init;
-  out->group_finish = ec_GFp_mont_group_finish;
-  out->group_set_curve = ec_GFp_mont_group_set_curve;
   out->point_get_affine_coordinates =
       ec_GFp_nistp384_point_get_affine_coordinates;
   out->jacobian_to_affine_batch =
