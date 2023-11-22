@@ -10,7 +10,7 @@ enable_experimental;
 disable_debug_intrinsics;
 
 // Load LLVM bytecode
-m <- llvm_load_module "../../build/llvm/crypto/crypto_test.bc";
+m <- llvm_load_module "../../build/llvm_x86/crypto/crypto_test.bc";
 
 // Include SHA512 common specifications
 include "SHA512-common-specs.saw";

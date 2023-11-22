@@ -1,0 +1,19 @@
+(lang dune 3.4)
+; Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+;   SPDX-License-Identifier: Apache-2.0
+
+(name arm_nsym_proofs)
+
+(license Apache-2.0)
+
+(generate_opam_files true)
+
+(package
+ (name cryptol)
+ (synopsis "A Cryptol Interface Library"))
+
+(package
+ (name autospecs)
+ (synopsis "Auto-generated AIR specifications for cryptographic functions from Cryptol"))
+
+ ; See the complete stanza docs at https://dune.readthedocs.io/en/stable/dune-files.html#dune-project

@@ -13,8 +13,10 @@ The easiest way to build the library and run the proofs is to use [Docker](https
    2. `pushd Coq/fiat-crypto; git submodule update --init --recursive; popd`
 
 2. Build a Docker image:
-   1. For running just SAW proofs: `docker build --pull --no-cache -f Dockerfile.saw -t awslc-saw .`
-   2. For running both SAW and Coq proofs: `docker build --pull --no-cache -f Dockerfile.coq -t awslc-saw .`
+   `docker build --pull --no-cache -f Dockerfile.[...] -t awslc-saw .`
+   1. For running SAW proofs, use: `Dockerfile.saw_x86`
+   2. For running Coq proofs, use: `Dockerfile.coq`
+   3. For running NSym proofs, use: `Dockerfile.nsym`
 
 3. Run the SAW proofs inside the Docker container: ``docker run -v `pwd`:`pwd` -w `pwd` awslc-saw``
    1. Use Coq to validate the Cryptol specs used in the SAW proofs: ``docker run -it -v `pwd`:`pwd` -w `pwd` --entrypoint Coq/docker_entrypoint.sh awslc-saw``

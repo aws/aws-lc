@@ -48,4 +48,19 @@ jobs:
     # Runs the formal verification action
     - name: Coq Proofs
       uses: ./.github/actions/Coq
+  nsym:
+    # The type of runner that the job will run on
+    runs-on: aws-lc-verification_ubuntu-latest_16-core
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+    # Check out main repo and submodules.
+    - uses: actions/checkout@v2
+      name: check out top-level repository and all submodules
+      with:
+        submodules: true
+
+    # Runs the formal verification action
+    - name: NSym Proofs
+      uses: ./.github/actions/NSym
 

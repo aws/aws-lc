@@ -1,0 +1,14 @@
+(* Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+  SPDX-License-Identifier: Apache-2.0*)
+  
+Topdirs.dir_use Format.err_formatter (Filename.concat (Sys.getenv "HOME") ".ocamlinit");;
+#use_output "cd ../.. ; dune ocaml top";;
+
+#print_depth 10;;
+#print_length 10;;
+open Air;;
+open Arm;;
+
+let print_hex (intstr : string) : unit =
+  let hexstr = Z.format "%#x" (Z.of_string intstr) in
+  Format.fprintf Format.std_formatter "@[<1>%s@]@." hexstr;;

@@ -1,0 +1,21 @@
+; Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+; SPDX-License-Identifier: Apache-2.0
+
+; The following stanza allows modules in sub-directories to be seen as
+; if they were all in the same directory. In particular, you cannot have
+; two modules with the same name in two different directories.  See
+; https://dune.readthedocs.io/en/stable/dune-files.html?highlight=include_subdirs#include-subdirs-1
+
+(include_subdirs unqualified)
+
+(executables
+ (names
+	 sha384rec_spec
+	 sha512rec_spec
+   sha512_block_armv8_bounded
+   sha512_block_armv8_unbounded
+   sha512_block_data_order_bounded
+   sha512_block_data_order_unbounded
+ )
+ (libraries air arm cryptol specs autospecs nsym_config elf_loader)
+ (modes native))
