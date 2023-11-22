@@ -607,7 +607,7 @@ static void WycheproofChacha20Poly1305FileTest(FileTest *t) {
   }
 
   // Initialize with the key/iv
-  EVP_EncryptInit_ex(ctx, cipher, NULL, key.data(), iv.data());
+  ASSERT_TRUE(EVP_EncryptInit_ex(ctx, cipher, NULL, key.data(), iv.data()));
 
   // Insert AAD
   int out_len = 0;

@@ -464,6 +464,23 @@ static int cipher_chacha20_do_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
     }
   }
 
+#ifdef OPENSSL_BIG_ENDIAN
+  // |CRYPTO_chacha_20| expects the input as a little-endian byte array.
+    uint8_t chacha_key[CHACHA_KEY_LEN];
+    uint8_t nonce[CHACHA_IV_LEN];
+    for(int i = 0; i < CHACHA_KEY_LEN / 4; i++) {
+      CRYPTO_store_u32_le(chacha_key + (i * sizeof(uint32_t)),
+                          cipher_ctx->key.key[i]);
+    }
+    for(size_t i = 0; i < CHACHA_IV_LEN / 4; i++) {
+      CRYPTO_store_u32_le(nonce + (i * sizeof(uint32_t)),
+                          cipher_ctx->iv[i]);
+    }
+#else
+  const uint8_t *chacha_key = (const uint8_t *) cipher_ctx->key.key;
+  const uint8_t *nonce = (const uint8_t *) cipher_ctx->iv;
+#endif
+
   // Truncate down to the last complete block prior to the bulk cipher
   rem = (uint32_t)(len % CHACHA_BLOCK_LEN);
   len -= rem;
@@ -486,8 +503,8 @@ static int cipher_chacha20_do_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
       ctr32 = 0;
     }
     blocks *= CHACHA_BLOCK_LEN;
-    CRYPTO_chacha_20(out, inp, blocks, (uint8_t *) key->key,
-                     (uint8_t *) cipher_ctx->iv, key->counter_nonce[0]);
+    CRYPTO_chacha_20(out, inp, blocks, chacha_key, nonce,
+                     key->counter_nonce[0]);
     len -= blocks;
     inp += blocks;
     out += blocks;
@@ -518,9 +535,23 @@ static int cipher_chacha20_poly1305_do_cipher(
   size_t remainder;
 
   if (!cipher_ctx->poly_initialized) {
-    // Obtain the poly1305 key by computing the 0th chacha20 key
+#ifdef OPENSSL_BIG_ENDIAN
+    // |CRYPTO_chacha_20| expects the input as a little-endian byte array.
+    uint8_t chacha_key[CHACHA_KEY_LEN];
+    uint8_t nonce[CHACHA_IV_LEN];
+    for(int i = 0; i < CHACHA_KEY_LEN / 4; i++) {
+      CRYPTO_store_u32_le(chacha_key + (i * sizeof(uint32_t)),
+                          cipher_ctx->key.key[i]);
+    }
+    for(size_t i = 0; i < CHACHA_IV_LEN / 4; i++) {
+      CRYPTO_store_u32_le(nonce + (i * sizeof(uint32_t)),
+                          cipher_ctx->iv[i]);
+    }
+#else
     const uint8_t *chacha_key = (const uint8_t *) cipher_ctx->key.key;
     const uint8_t *nonce = (const uint8_t *) cipher_ctx->iv;
+#endif
+    // Obtain the poly1305 key by computing the 0th chacha20 key
     alignas(16) uint8_t poly1305_key[CHACHA_KEY_LEN];
     OPENSSL_memset(poly1305_key, 0, sizeof(poly1305_key));
     CRYPTO_chacha_20(poly1305_key, poly1305_key, sizeof(poly1305_key),
@@ -610,8 +641,7 @@ static int cipher_chacha20_poly1305_do_cipher(
 }
 
 static void cipher_chacha20_poly1305_cleanup(EVP_CIPHER_CTX *ctx) {
-  CIPHER_CHACHA_POLY_CTX *cipher_ctx = CCP_CTX(ctx);
-  if (cipher_ctx) {
+  if (ctx->cipher_data) {
     OPENSSL_cleanse(ctx->cipher_data, sizeof(CIPHER_CHACHA_POLY_CTX));
   }
 }
