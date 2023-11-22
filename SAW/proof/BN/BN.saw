@@ -168,6 +168,24 @@ let pointer_to_bn_mont_ctx_st num N = do {
   return (RR_d_ptr, ptr);
 };
 
+let points_to_bn_mont_ctx_st ptr num N = do {
+  let num_bits = eval_size {| num * 64 |};
+  let RR_bn_dmax = eval_size {| 2 * num + 1 |};
+  let R = {{ 2 ^^ `num_bits }};
+
+  RR_d_ptr <- crucible_alloc_readonly (llvm_int num_bits);
+  crucible_points_to RR_d_ptr (crucible_term {{ (fromInteger ((R * R) % `N)) : [num_bits] }});
+  points_to_bignum_st (crucible_field ptr "RR") RR_d_ptr num RR_bn_dmax {{ 0 : [32] }};
+
+  let n0 = eval_int {{ bn_mont_n0`{N} }};
+  crucible_points_to_untyped (crucible_field ptr "n0") (crucible_term {{ `n0 : [64] }});
+
+  N_d_ptr <- crucible_alloc_readonly (llvm_int num_bits);
+  crucible_points_to N_d_ptr (crucible_term {{ (fromInteger `N) : [num_bits] }});
+  points_to_bignum_st (crucible_field ptr "N") N_d_ptr num num {{ 0 : [32] }};
+};
+
+
 let {{
 bn_mont_n0_with_N : {a} (fin a) => [a][64] -> [64]
 bn_mont_n0_with_N n = undefined

@@ -40,9 +40,6 @@ let points_to_AWSLC_fips_evp_pkey_methods = do {
 
 
 let points_to_ec_method_st ptr = do {
-  crucible_points_to (crucible_field ptr "group_init") (crucible_global "ec_GFp_mont_group_init");
-  crucible_points_to (crucible_field ptr "group_finish") (crucible_global "ec_GFp_mont_group_finish");
-  crucible_points_to (crucible_field ptr "group_set_curve") (crucible_global "ec_GFp_mont_group_set_curve");
   crucible_points_to (crucible_field ptr "point_get_affine_coordinates") (crucible_global "ec_GFp_mont_point_get_affine_coordinates");
   crucible_points_to (crucible_field ptr "jacobian_to_affine_batch") (crucible_global "ec_GFp_mont_jacobian_to_affine_batch");
   crucible_points_to (crucible_field ptr "add") (crucible_global "ec_GFp_mont_add");
@@ -151,20 +148,13 @@ let pointer_to_fresh_ec_group_st_with_curve_name curve_name = do {
 
   crucible_points_to (crucible_field ptr "curve_name") (crucible_term {{ `curve_name : [32] }});
 
-  (_, order_mont_ptr) <- pointer_to_bn_mont_ctx_st ec_words {| P384_n |};
-  crucible_points_to (crucible_field ptr "order") order_mont_ptr;
-
-  field_d_ptr <- crucible_alloc_readonly i384;
-  crucible_points_to field_d_ptr (crucible_term {{ fromInteger`{[P384_w]} `P384_p }});
-  points_to_p384_bignum_st (crucible_field ptr "field") field_d_ptr {{ 0 : [32] }};
+  points_to_bn_mont_ctx_st (crucible_field ptr "order") ec_words {| P384_n |};
+  points_to_bn_mont_ctx_st (crucible_field ptr "field") ec_words {| P384_p |};
 
   crucible_points_to_untyped (crucible_field ptr "a") (crucible_term {{ fieldElementToBV ((P384_a * P384_R_p) % `P384_p) }});
   crucible_points_to_untyped (crucible_field ptr "b") (crucible_term {{ fieldElementToBV ((P384_b * P384_R_p) % `P384_p) }});
   crucible_points_to (crucible_field ptr "a_is_minus3") (crucible_term {{ 1 : [32] }});
   crucible_points_to (crucible_field ptr "field_greater_than_order") (crucible_term {{ 1 : [32] }});
-
-  (_, mont_ptr) <- pointer_to_bn_mont_ctx_st ec_words {| P384_p |};
-  crucible_points_to (crucible_field ptr "mont") mont_ptr;
 
   crucible_points_to_untyped (crucible_field ptr "one") (crucible_term {{ fieldElementToBV P384_R_p }});
 
