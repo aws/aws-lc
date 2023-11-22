@@ -451,7 +451,7 @@ OPENSSL_EXPORT int SSL_write(SSL *ssl, const void *buf, int num);
 // SSL_write_ex writes up to |num| bytes from |buf| into |ssl|. It is similar to
 // |SSL_write|, but instead of returning the number of bytes written, it returns
 // 1 on success or 0 for failure. The number bytes actually written is stored in
-// |written|. SSL_write_ex() can be called with num=0, but will not send
+// |written|. |SSL_write_ex| can be called with |num| set as 0, but will not send
 // application data to the peer.
 
 //
