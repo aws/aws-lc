@@ -517,7 +517,7 @@ static int cipher_chacha20_do_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
 
   // Start the next block if we have any leftover input
   if (rem) {
-    memset(key->buf, 0, sizeof(key->buf));
+    OPENSSL_memset(key->buf, 0, sizeof(key->buf));
     // Obtain the current key and store it in the context
     CRYPTO_chacha_20(key->buf, key->buf, CHACHA_BLOCK_LEN, (uint8_t *) key->key,
                      (uint8_t *) cipher_ctx->iv, key->counter_nonce[0]);
