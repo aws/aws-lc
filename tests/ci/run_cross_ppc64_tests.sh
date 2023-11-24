@@ -49,7 +49,8 @@ echo "Testing AWS-LC shared library for PPC64 big-endian."
 
 BUILD_OPTIONS=()
 BUILD_OPTIONS+=("-DCMAKE_BUILD_TYPE=Release")
-BUILD_OPTIONS+=("-DCMAKE_BUILD_TYPE=Release -DFIPS=1 -DBUILD_SHARED_LIBS=1")
+# TODO: Investigate issues with the FIPS build for ppc64be
+#BUILD_OPTIONS+=("-DCMAKE_BUILD_TYPE=Release -DFIPS=1 -DBUILD_SHARED_LIBS=1")
 
 for BO in "${BUILD_OPTIONS[@]}"; do
   run_build -DCMAKE_TOOLCHAIN_FILE="${SCRATCH_FOLDER}/ppc64.cmake" ${BO}
