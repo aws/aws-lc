@@ -624,9 +624,17 @@ static int cipher_chacha20_poly1305_do_cipher(
       CRYPTO_poly1305_update(poly_ctx, padding, sizeof(padding) - remainder);
     }
 
-    // Apply len values
-    CRYPTO_poly1305_update(poly_ctx, (uint8_t *) &cipher_ctx->len,
-                           POLY1305_TAG_LEN);
+    // ChaCha20-Poly1305 passes the AAD and CT lengths through Poly1305 as two
+    // 64-bit little-endian integers.
+#ifdef OPENSSL_BIG_ENDIAN
+    uint8_t length_bytes[2 * sizeof(uint64_t)];
+    CRYPTO_store_u64_le(length_bytes, cipher_ctx->len.aad);
+    CRYPTO_store_u64_le(length_bytes + sizeof(uint64_t), cipher_ctx->len.text);
+#else
+    // For a little-endian platform, the struct's layout in memory works as-is.
+    const uint8_t *length_bytes = (const uint8_t *) &cipher_ctx->len;
+#endif
+    CRYPTO_poly1305_update(poly_ctx, length_bytes, 2 * sizeof(uint64_t));
 
     // Compute the tag and write it to scratch or the cipher context
     CRYPTO_poly1305_finish(poly_ctx, EVP_CIPHER_CTX_encrypting(ctx) ?
