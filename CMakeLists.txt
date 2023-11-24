@@ -158,6 +158,9 @@ if(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS AND GO_EXECUTABLE)
     COMMAND sed -i.bak '/ curve25519_x25519/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols.h
     COMMAND sed -i.bak '/ curve25519_x25519/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols_asm.h
     COMMAND sed -i.bak '/ curve25519_x25519/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols_nasm.inc
+    COMMAND sed -i.bak '/ edwards25519_/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols.h
+    COMMAND sed -i.bak '/ edwards25519_/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols_asm.h
+    COMMAND sed -i.bak '/ edwards25519_/d' ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols_nasm.inc
     COMMAND ${CMAKE_COMMAND} -E remove
           ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols.h.bak
           ${CMAKE_CURRENT_BINARY_DIR}/symbol_prefix_include/openssl/boringssl_prefix_symbols_asm.h.bak

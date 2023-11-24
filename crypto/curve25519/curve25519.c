@@ -64,7 +64,6 @@
 #define CURVE25519_S2N_BIGNUM_CAPABLE
 #endif
 
-
 OPENSSL_INLINE int curve25519_s2n_bignum_capable(void) {
 #if defined(CURVE25519_S2N_BIGNUM_CAPABLE)
   return 1;
@@ -73,40 +72,43 @@ OPENSSL_INLINE int curve25519_s2n_bignum_capable(void) {
 #endif
 }
 
-// Return 0 until ED25519 lands in s2n-bignum
+// Temporarily use separate function for Ed25519. See CryptoAlg-2198.
 OPENSSL_INLINE int ed25519_s2n_bignum_capable(void) {
+#if defined(CURVE25519_S2N_BIGNUM_CAPABLE) && !defined(AWSLC_FIPS)
+  return 1;
+#else
   return 0;
+#endif
 }
 
 // Stub functions if implementations are not compiled.
 // These functions have to abort, otherwise we risk applications assuming they
 // did work without actually doing anything.
+#if !defined(CURVE25519_S2N_BIGNUM_CAPABLE) || defined(BORINGSSL_FIPS)
+
+#define S2N_BIGNUM_STUB_FUNC(return_type, symbol, ...) \
+  return_type symbol(__VA_ARGS__); \
+  return_type symbol(__VA_ARGS__) { abort(); } \
+
+S2N_BIGNUM_STUB_FUNC(void, bignum_mod_n25519, uint64_t z[4], uint64_t k, uint64_t *x)
+S2N_BIGNUM_STUB_FUNC(void, bignum_neg_p25519, uint64_t z[4], uint64_t x[4])
+S2N_BIGNUM_STUB_FUNC(void, bignum_madd_n25519, uint64_t z[4], uint64_t x[4], uint64_t y[4], uint64_t c[4])
+S2N_BIGNUM_STUB_FUNC(void, bignum_madd_n25519_alt, uint64_t z[4], uint64_t x[4], uint64_t y[4], uint64_t c[4])
+S2N_BIGNUM_STUB_FUNC(void, edwards25519_encode, uint8_t z[32], uint64_t p[8])
+S2N_BIGNUM_STUB_FUNC(uint64_t, edwards25519_decode, uint64_t z[8], const uint8_t c[32])
+S2N_BIGNUM_STUB_FUNC(uint64_t, edwards25519_decode_alt, uint64_t z[8], const uint8_t c[32])
+S2N_BIGNUM_STUB_FUNC(void, edwards25519_scalarmulbase, uint64_t res[8],uint64_t scalar[4])
+S2N_BIGNUM_STUB_FUNC(void, edwards25519_scalarmulbase_alt, uint64_t res[8],uint64_t scalar[4])
+S2N_BIGNUM_STUB_FUNC(void, edwards25519_scalarmuldouble, uint64_t res[8], uint64_t scalar[4], uint64_t point[8], uint64_t bscalar[4])
+S2N_BIGNUM_STUB_FUNC(void, edwards25519_scalarmuldouble_alt, uint64_t res[8], uint64_t scalar[4], uint64_t point[8], uint64_t bscalar[4])
 
 #if !defined(CURVE25519_S2N_BIGNUM_CAPABLE)
-
-void curve25519_x25519_byte(uint8_t res[32], const uint8_t scalar[32],
-  const uint8_t point[32]);
-void curve25519_x25519_byte_alt(uint8_t res[32], const uint8_t scalar[32],
-  const uint8_t point[32]);
-void curve25519_x25519base_byte(uint8_t res[32], const uint8_t scalar[32]);
-void curve25519_x25519base_byte_alt(uint8_t res[32], const uint8_t scalar[32]);
-
-void curve25519_x25519_byte(uint8_t res[32], const uint8_t scalar[32],
-  const uint8_t point[32]) {
-  abort();
-}
-void curve25519_x25519_byte_alt(uint8_t res[32], const uint8_t scalar[32],
-  const uint8_t point[32]) {
-  abort();
-}
-void curve25519_x25519base_byte(uint8_t res[32], const uint8_t scalar[32]) {
-  abort();
-}
-void curve25519_x25519base_byte_alt(uint8_t res[32], const uint8_t scalar[32]) {
-  abort();
-}
-
+S2N_BIGNUM_STUB_FUNC(void, curve25519_x25519_byte, uint8_t res[32], const uint8_t scalar[32], const uint8_t point[32])
+S2N_BIGNUM_STUB_FUNC(void, curve25519_x25519_byte_alt, uint8_t res[32], const uint8_t scalar[32], const uint8_t point[32])
+S2N_BIGNUM_STUB_FUNC(void, curve25519_x25519base_byte, uint8_t res[32], const uint8_t scalar[32])
+S2N_BIGNUM_STUB_FUNC(void, curve25519_x25519base_byte_alt, uint8_t res[32], const uint8_t scalar[32])
 #endif // !defined(CURVE25519_S2N_BIGNUM_CAPABLE)
+#endif // !defined(CURVE25519_S2N_BIGNUM_CAPABLE) || defined(BORINGSSL_FIPS)
 
 
 // Run-time detection for each implementation
@@ -261,27 +263,192 @@ static void x25519_s2n_bignum_public_from_private(
 #endif
 }
 
-// Stub function until ED25519 lands in s2n-bignum
 static void ed25519_public_key_from_hashed_seed_s2n_bignum(
   uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
   uint8_t az[SHA512_DIGEST_LENGTH]) {
+
+  uint64_t uint64_point[8] = {0};
+  uint64_t uint64_hashed_seed[4] = {0};
+  OPENSSL_memcpy(uint64_hashed_seed, az, 32);
+
+#if defined(OPENSSL_X86_64)
+
+  if (curve25519_s2n_bignum_no_alt_capable() == 1) {
+    edwards25519_scalarmulbase(uint64_point, uint64_hashed_seed);
+  } else if (curve25519_s2n_bignum_alt_capable() == 1) {
+    edwards25519_scalarmulbase_alt(uint64_point, uint64_hashed_seed);
+  } else {
+    abort();
+  }
+
+#elif defined(OPENSSL_AARCH64)
+
+  if (curve25519_s2n_bignum_alt_capable() == 1) {
+    edwards25519_scalarmulbase_alt(uint64_point, uint64_hashed_seed);
+  } else if (curve25519_s2n_bignum_no_alt_capable() == 1) {
+    edwards25519_scalarmulbase(uint64_point, uint64_hashed_seed);
+  } else {
+    abort();
+  }
+
+#else
+
+  // Should not call this function unless s2n-bignum is supported.
   abort();
+
+#endif
+
+  edwards25519_encode(out_public_key, uint64_point);
 }
 
-// Stub function until Ed25519 lands in s2n-bignum
 // |s| is of length |ED25519_PRIVATE_KEY_SEED_LEN|
 // |A| is of length |ED25519_PUBLIC_KEY_LEN|.
 static void ed25519_sign_s2n_bignum(
   uint8_t out_sig[ED25519_SIGNATURE_LEN],
   uint8_t r[SHA512_DIGEST_LENGTH], const uint8_t *s, const uint8_t *A,
   const void *message, size_t message_len) {
+  
+  void (*scalarmulbase)(uint64_t res[8],uint64_t scalar[4]);
+  void (*madd)(uint64_t z[4], uint64_t x[4], uint64_t y[4], uint64_t c[4]);
+
+#if defined(OPENSSL_X86_64)
+
+  if (curve25519_s2n_bignum_no_alt_capable() == 1) {
+    scalarmulbase = edwards25519_scalarmulbase;
+    madd = bignum_madd_n25519;
+  } else if (curve25519_s2n_bignum_alt_capable() == 1) {
+    scalarmulbase = edwards25519_scalarmulbase_alt;
+    madd = bignum_madd_n25519_alt;
+  } else {
+    abort();
+  }
+
+#elif defined(OPENSSL_AARCH64)
+
+  if (curve25519_s2n_bignum_alt_capable() == 1) {
+    scalarmulbase = edwards25519_scalarmulbase_alt;
+    madd = bignum_madd_n25519_alt;
+  } else if (curve25519_s2n_bignum_no_alt_capable() == 1) {
+    scalarmulbase = edwards25519_scalarmulbase;
+    madd = bignum_madd_n25519;
+  } else {
+    abort();
+  }
+
+#else
+
+  scalarmulbase = edwards25519_scalarmulbase;
+  madd = bignum_madd_n25519;
+
+  // Should not call this function unless s2n-bignum is supported.
   abort();
+
+#endif
+
+  uint8_t k[SHA512_DIGEST_LENGTH] = {0};
+  uint64_t R[8] = {0};
+  uint64_t z[4] = {0};
+  uint64_t uint64_r[8] = {0};
+  uint64_t uint64_k[8] = {0};
+  uint64_t uint64_s[4] = {0};
+  OPENSSL_memcpy(uint64_r, r, 64);
+  OPENSSL_memcpy(uint64_s, s, 32);
+
+  // Reduce r modulo the order of the base-point B.
+  bignum_mod_n25519(uint64_r, 8, uint64_r);
+
+  // Compute [r]B.
+  scalarmulbase(R, uint64_r);
+  edwards25519_encode(out_sig, R);
+
+  // Compute k = SHA512(R || A || message)
+  // R is of length 32 octets
+  ed25519_sha512(k, out_sig, 32, A, ED25519_PUBLIC_KEY_LEN, message,
+    message_len);
+  OPENSSL_memcpy(uint64_k, k, SHA512_DIGEST_LENGTH);
+  bignum_mod_n25519(uint64_k, 8, uint64_k);
+
+
+  // Compute S = r + k * s modulo the order of the base-point B.
+  // out_sig = R || S
+  madd(z, uint64_k, uint64_s, uint64_r);
+  OPENSSL_memcpy(out_sig + 32, z, 32);
 }
 
 static int ed25519_verify_s2n_bignum(uint8_t R_computed_encoded[32],
   const uint8_t public_key[32], uint8_t R_expected[32],
   uint8_t S[32], const uint8_t *message, size_t message_len) {
+
+  void (*scalarmuldouble)(uint64_t res[8], uint64_t scalar[4],
+    uint64_t point[8], uint64_t bscalar[4]);
+  uint64_t (*decode)(uint64_t z[8], const uint8_t c[32]);
+
+#if defined(OPENSSL_X86_64)
+
+  if (curve25519_s2n_bignum_no_alt_capable() == 1) {
+    scalarmuldouble = edwards25519_scalarmuldouble;
+    decode = edwards25519_decode;
+  } else if (curve25519_s2n_bignum_alt_capable() == 1) {
+    scalarmuldouble = edwards25519_scalarmuldouble_alt;
+    decode = edwards25519_decode_alt;
+  } else {
+    abort();
+  }
+
+#elif defined(OPENSSL_AARCH64)
+
+  if (curve25519_s2n_bignum_alt_capable() == 1) {
+    scalarmuldouble = edwards25519_scalarmuldouble_alt;
+    decode = edwards25519_decode_alt;
+  } else if (curve25519_s2n_bignum_no_alt_capable() == 1) {
+    scalarmuldouble = edwards25519_scalarmuldouble;
+    decode = edwards25519_decode;
+  } else {
+    abort();
+  }
+
+#else
+
+  scalarmuldouble = edwards25519_scalarmuldouble;
+  decode = edwards25519_decode;
+
+  // Should not call this function unless s2n-bignum is supported.
   abort();
+
+#endif
+
+  uint8_t k[SHA512_DIGEST_LENGTH] = {0};
+  uint64_t uint64_k[8] = {0};
+  uint64_t uint64_R[8] = {0};
+  uint64_t uint64_S[4] = {0};
+  uint64_t A[8] = {0};
+
+  // Decode public key as A'.
+  if (decode(A, public_key) != 0) {
+    return 0;
+  }
+
+  // Step: rfc8032 5.1.7.2
+  // Compute k = SHA512(R_expected || public_key || message).
+  ed25519_sha512(k, R_expected, 32, public_key, ED25519_PUBLIC_KEY_LEN, message,
+    message_len);
+  OPENSSL_memcpy(uint64_k, k, SHA512_DIGEST_LENGTH);
+  bignum_mod_n25519(uint64_k, 8, uint64_k);
+
+  // Step: rfc8032 5.1.7.3
+  // Recall, we must compute [S]B - [k]A'.
+  // First negate A'. Point negation for the twisted edwards curve when points
+  // are represented in the extended coordinate system is simply:
+  //   -(X,Y,Z,T) = (-X,Y,Z,-T).
+  // See "Twisted Edwards curves revisited" https://ia.cr/2008/522.
+  bignum_neg_p25519(A, A);
+
+  // Compute R_have <- [S]B - [k]A'.
+  OPENSSL_memcpy(uint64_S, S, 32);
+  scalarmuldouble(uint64_R, uint64_k, A, uint64_S);
+  edwards25519_encode(R_computed_encoded, uint64_R);
+
+  return 1;
 }
 
 void ed25519_sha512(uint8_t out[SHA512_DIGEST_LENGTH],

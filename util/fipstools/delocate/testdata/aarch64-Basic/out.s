@@ -136,6 +136,10 @@ foo:
 	add w0, w1, b2, sxtw
 	add w0, w1, b2, sxtx
 
+	// Make sure we can parse different immediates
+	add x22, sp, #(13*32)
+	add x22, sp, #(13*32)+96
+	add x22, sp, #(13*32)+96*32
 
 .Llocal_function_local_target:
 local_function:
