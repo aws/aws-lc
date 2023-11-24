@@ -22,8 +22,8 @@ mkdir -p "${SCRATCH_FOLDER}"
 
 pushd "${SCRATCH_FOLDER}"
 
-wget https://aws-libcrypto.s3.us-west-2.amazonaws.com/cross-compile-toolchains/host-x86_64-pc-linux-gnu/ppc64-x-tools.tar.xz
-tar Jxvf ppc64-x-tools.tar.xz --no-same-owner --no-same-permissions
+wget -q https://aws-libcrypto.s3.us-west-2.amazonaws.com/cross-compile-toolchains/host-x86_64-pc-linux-gnu/ppc64-x-tools.tar.xz
+tar Jxf ppc64-x-tools.tar.xz --no-same-owner --no-same-permissions
 
 cat <<EOF > ppc64.cmake
 # Specify the target system
@@ -42,14 +42,27 @@ set(ENABLE_EXPERIMENTAL_BIG_ENDIAN_SUPPORT true)
 set(CMAKE_GENERATOR Ninja)
 EOF
 
-echo "Testing AWS-LC shared library for PPC64 big-endian."
-
-run_build -DCMAKE_TOOLCHAIN_FILE="${SCRATCH_FOLDER}/ppc64.cmake"
-
 export QEMU_LD_PREFIX="${SCRATCH_FOLDER}/powerpc64-unknown-linux-gnu/powerpc64-unknown-linux-gnu/sysroot"
 export LD_LIBRARY_PATH="${SCRATCH_FOLDER}/powerpc64-unknown-linux-gnu/powerpc64-unknown-linux-gnu/sysroot/lib"
 
-shard_gtest ${BUILD_ROOT}/crypto/crypto_test
-shard_gtest ${BUILD_ROOT}/ssl/ssl_test
+echo "Testing AWS-LC shared library for PPC64 big-endian."
 
+BUILD_OPTIONS=()
+BUILD_OPTIONS+=("-DCMAKE_BUILD_TYPE=Release")
+BUILD_OPTIONS+=("-DCMAKE_BUILD_TYPE=Release -DFIPS=1 -DBUILD_SHARED_LIBS=1")
+
+for BO in "${BUILD_OPTIONS[@]}"; do
+  run_build -DCMAKE_TOOLCHAIN_FILE="${SCRATCH_FOLDER}/ppc64.cmake" ${BO}
+
+  shard_gtest "${BUILD_ROOT}/crypto/crypto_test --gtest_also_run_disabled_tests"
+  shard_gtest ${BUILD_ROOT}/crypto/urandom_test
+  shard_gtest ${BUILD_ROOT}/crypto/mem_test
+  shard_gtest ${BUILD_ROOT}/crypto/mem_set_test
+
+  shard_gtest ${BUILD_ROOT}/ssl/ssl_test
+  shard_gtest ${BUILD_ROOT}/ssl/integration_test
+
+  # Due to its special linkage, this is now a Google Test
+  ${BUILD_ROOT}/crypto/dynamic_loading_test
+done
 popd

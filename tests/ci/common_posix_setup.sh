@@ -9,15 +9,15 @@ elif [ "$(basename "${SRC_ROOT}")" != 'aws-lc' ]; then
   SRC_ROOT="${SCRIPT_DIR}/../.."
 fi
 SRC_ROOT="$(readlink -f "${SRC_ROOT}")"
-echo "$SRC_ROOT"
+echo SRC_ROOT="$SRC_ROOT"
 
 SYS_ROOT="$(readlink -f "${SRC_ROOT}/..")"
-echo "$SYS_ROOT"
+echo SYS_ROOT="$SYS_ROOT"
 
 cd $SRC_ROOT
 
 BUILD_ROOT="${SRC_ROOT}/test_build_dir"
-echo "$BUILD_ROOT"
+echo BUILD_ROOT="$BUILD_ROOT"
 
 PLATFORM=$(uname -m)
 

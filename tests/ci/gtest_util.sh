@@ -10,17 +10,22 @@ function shard_gtest() {
         GTEST_TOTAL_SHARDS=4
     fi
 
+    echo shard_gtest-Command: ${1}
     PIDS=()
     COUNTER=0
     while [ $COUNTER -lt $GTEST_TOTAL_SHARDS ]; do
         export GTEST_SHARD_INDEX=$COUNTER
-        echo shard_gtest-Command: ${1}
         ${1} &
         PIDS[${COUNTER}]=$!
         COUNTER=$(( COUNTER+1 ))
     done
 
+    RESULT=0
     for PID in ${PIDS[*]}; do
         wait -f $PID
+        if "${?}" -ne "0"; then
+          RESULT=${?}
+        fi
     done
+    return $RESULT
 }
