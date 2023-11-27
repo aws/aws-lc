@@ -15,6 +15,11 @@
 #ifndef OPENSSL_HEADER_SHA_INTERNAL_H
 #define OPENSSL_HEADER_SHA_INTERNAL_H
 
+#include <openssl/base.h>
+
+#include "../../internal.h"
+#include "../cpucap/internal.h"
+
 #if defined(__cplusplus)
 extern "C" {
 #endif
@@ -64,66 +69,186 @@ struct keccak_st {
   uint8_t buf[SHA3_MAX_BLOCKSIZE];                 // should have at least the max data block size bytes
   uint8_t pad;
 };
+// Define SHA{n}[_{variant}]_ASM if sha{n}_block_data_order[_{variant}] is
+// defined in assembly.
 
-#if defined(OPENSSL_PPC64LE) ||                          \
-    (!defined(OPENSSL_NO_ASM) &&                         \
-     (defined(OPENSSL_X86) || defined(OPENSSL_X86_64) || \
-      defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)))
-// POWER has an intrinsics-based implementation of SHA-1 and thus the functions
-// normally defined in assembly are available even with |OPENSSL_NO_ASM| in
-// this case.
+#if !defined(OPENSSL_NO_ASM) && (defined(OPENSSL_X86) || defined(OPENSSL_ARM))
 #define SHA1_ASM
-void sha1_block_data_order(uint32_t *state, const uint8_t *in,
-                           size_t num_blocks);
-#endif
-
-#if !defined(OPENSSL_NO_ASM) &&                         \
-    (defined(OPENSSL_X86) || defined(OPENSSL_X86_64) || \
-     defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64))
 #define SHA256_ASM
 #define SHA512_ASM
-void sha256_block_data_order(uint32_t *state, const uint8_t *in,
+
+void sha1_block_data_order(uint32_t *state, const uint8_t *data,
+                           size_t num_blocks);
+void sha256_block_data_order(uint32_t *state, const uint8_t *data,
                              size_t num_blocks);
-void sha512_block_data_order(uint64_t *state, const uint8_t *in,
+void sha512_block_data_order(uint64_t *state, const uint8_t *data,
                              size_t num_blocks);
+
+#elif !defined(OPENSSL_NO_ASM) && defined(OPENSSL_AARCH64)
+
+#define SHA1_ASM_NOHW
+#define SHA256_ASM_NOHW
+#define SHA512_ASM_NOHW
+
+#define SHA1_ASM_HW
+OPENSSL_INLINE int sha1_hw_capable(void) {
+  return CRYPTO_is_ARMv8_SHA1_capable();
+}
+
+#define SHA256_ASM_HW
+OPENSSL_INLINE int sha256_hw_capable(void) {
+  return CRYPTO_is_ARMv8_SHA256_capable();
+}
+
+#define SHA512_ASM_HW
+OPENSSL_INLINE int sha512_hw_capable(void) {
+  return CRYPTO_is_ARMv8_SHA512_capable();
+}
+
+#elif !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64)
+
+#define SHA1_ASM_NOHW
+#define SHA256_ASM_NOHW
+#define SHA512_ASM_NOHW
+
+#define SHA1_ASM_HW
+OPENSSL_INLINE int sha1_hw_capable(void) {
+  return CRYPTO_is_SHAEXT_capable() && CRYPTO_is_SSSE3_capable();
+}
+
+#define SHA1_ASM_AVX2
+OPENSSL_INLINE int sha1_avx2_capable(void) {
+  // TODO: Simplify this logic, which was extracted from the assembly:
+  //  * Does AVX2 imply SSSE3?
+  //  * sha1_block_data_order_avx2 does not seem to use SSSE3 instructions.
+  return CRYPTO_is_AVX2_capable() && CRYPTO_is_BMI2_capable() &&
+         CRYPTO_is_BMI1_capable() && CRYPTO_is_SSSE3_capable();
+}
+void sha1_block_data_order_avx2(uint32_t *state, const uint8_t *data,
+                                size_t num);
+
+#define SHA1_ASM_AVX
+OPENSSL_INLINE int sha1_avx_capable(void) {
+  // TODO: Simplify this logic, which was extracted from the assembly:
+  //  * Does AVX imply SSSE3?
+  //  * sha1_block_data_order_avx does not seem to use SSSE3 instructions.
+  // Pre-Zen AMD CPUs had slow SHLD/SHRD; Zen added the SHA extension; see the
+  // discussion in sha1-586.pl.
+  return CRYPTO_is_AVX_capable() && CRYPTO_is_SSSE3_capable() &&
+         CRYPTO_is_intel_cpu();
+}
+void sha1_block_data_order_avx(uint32_t *state, const uint8_t *data,
+                               size_t num);
+
+#define SHA1_ASM_SSSE3
+OPENSSL_INLINE int sha1_ssse3_capable(void) {
+  return CRYPTO_is_SSSE3_capable();
+}
+void sha1_block_data_order_ssse3(uint32_t *state, const uint8_t *data,
+                                 size_t num);
+
+#define SHA256_ASM_HW
+OPENSSL_INLINE int sha256_hw_capable(void) {
+  return CRYPTO_is_SHAEXT_capable();
+}
+
+#define SHA256_ASM_AVX
+OPENSSL_INLINE int sha256_avx_capable(void) {
+  // TODO: Simplify this logic, which was extracted from the assembly:
+  //  * Does AVX imply SSSE3?
+  //  * sha256_block_data_order_avx does not seem to use SSSE3 instructions.
+  // Pre-Zen AMD CPUs had slow SHLD/SHRD; Zen added the SHA extension; see the
+  // discussion in sha1-586.pl.
+  return CRYPTO_is_AVX_capable() && CRYPTO_is_SSSE3_capable() &&
+         CRYPTO_is_intel_cpu();
+}
+void sha256_block_data_order_avx(uint32_t *state, const uint8_t *data,
+                                 size_t num);
+
+#define SHA256_ASM_SSSE3
+OPENSSL_INLINE int sha256_ssse3_capable(void) {
+  return CRYPTO_is_SSSE3_capable();
+}
+void sha256_block_data_order_ssse3(uint32_t *state, const uint8_t *data,
+                                   size_t num);
+
+#define SHA512_ASM_AVX
+OPENSSL_INLINE int sha512_avx_capable(void) {
+  // TODO: Simplify this logic, which was extracted from the assembly:
+  //  * Does AVX imply SSSE3?
+  //  * sha512_block_data_order_avx does not seem to use SSSE3 instructions.
+  // Pre-Zen AMD CPUs had slow SHLD/SHRD; Zen added the SHA extension; see the
+  // discussion in sha1-586.pl.
+  return CRYPTO_is_AVX_capable() && CRYPTO_is_SSSE3_capable() &&
+         CRYPTO_is_intel_cpu();
+}
+void sha512_block_data_order_avx(uint64_t *state, const uint8_t *data,
+                                 size_t num);
+
+#endif
+
+#if defined(SHA1_ASM_HW)
+void sha1_block_data_order_hw(uint32_t *state, const uint8_t *data, size_t num);
+#endif
+#if defined(SHA1_ASM_NOHW)
+void sha1_block_data_order_nohw(uint32_t *state, const uint8_t *data,
+                                size_t num);
+#endif
+
+#if defined(SHA256_ASM_HW)
+void sha256_block_data_order_hw(uint32_t *state, const uint8_t *data,
+                                size_t num);
+#endif
+#if defined(SHA256_ASM_NOHW)
+void sha256_block_data_order_nohw(uint32_t *state, const uint8_t *data,
+                                  size_t num);
+#endif
+
+#if defined(SHA512_ASM_HW)
+void sha512_block_data_order_hw(uint64_t *state, const uint8_t *data,
+                                size_t num);
+#endif
+#if defined(SHA512_ASM_NOHW)
+void sha512_block_data_order_nohw(uint64_t *state, const uint8_t *data,
+                                  size_t num);
 #endif
 
 #if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_AARCH64)
 #define KECCAK1600_ASM
 #endif
 
-// SHA3_224 writes the digest of |len| bytes from |data| to |out| and returns |out|. 
+// SHA3_224 writes the digest of |len| bytes from |data| to |out| and returns |out|.
 // There must be at least |SHA3_224_DIGEST_LENGTH| bytes of space in |out|.
 // On failure |SHA3_224| returns NULL.
 OPENSSL_EXPORT uint8_t *SHA3_224(const uint8_t *data, size_t len,
-                                 uint8_t out[SHA3_224_DIGEST_LENGTH]);  
-                                 
-// SHA3_256 writes the digest of |len| bytes from |data| to |out| and returns |out|. 
+                                 uint8_t out[SHA3_224_DIGEST_LENGTH]);
+
+// SHA3_256 writes the digest of |len| bytes from |data| to |out| and returns |out|.
 // There must be at least |SHA3_256_DIGEST_LENGTH| bytes of space in |out|.
 // On failure |SHA3_256| returns NULL.
 OPENSSL_EXPORT uint8_t *SHA3_256(const uint8_t *data, size_t len,
-                                 uint8_t out[SHA3_256_DIGEST_LENGTH]); 
+                                 uint8_t out[SHA3_256_DIGEST_LENGTH]);
 
-// SHA3_384 writes the digest of |len| bytes from |data| to |out| and returns |out|. 
+// SHA3_384 writes the digest of |len| bytes from |data| to |out| and returns |out|.
 // There must be at least |SHA3_384_DIGEST_LENGTH| bytes of space in |out|.
 // On failure |SHA3_384| returns NULL.
 OPENSSL_EXPORT uint8_t *SHA3_384(const uint8_t *data, size_t len,
-                                 uint8_t out[SHA3_384_DIGEST_LENGTH]); 
+                                 uint8_t out[SHA3_384_DIGEST_LENGTH]);
 
-// SHA3_512 writes the digest of |len| bytes from |data| to |out| and returns |out|. 
+// SHA3_512 writes the digest of |len| bytes from |data| to |out| and returns |out|.
 // There must be at least |SHA3_512_DIGEST_LENGTH| bytes of space in |out|.
 // On failure |SHA3_512| returns NULL.
 OPENSSL_EXPORT uint8_t *SHA3_512(const uint8_t *data, size_t len,
                   uint8_t out[SHA3_512_DIGEST_LENGTH]);
 
-// SHAKE128 writes the |out_len| bytes output from |in_len| bytes |data| 
-// to |out| and returns |out| on success and NULL on failure. 
-OPENSSL_EXPORT uint8_t *SHAKE128(const uint8_t *data, const size_t in_len, 
+// SHAKE128 writes the |out_len| bytes output from |in_len| bytes |data|
+// to |out| and returns |out| on success and NULL on failure.
+OPENSSL_EXPORT uint8_t *SHAKE128(const uint8_t *data, const size_t in_len,
                                  uint8_t *out, size_t out_len);
 
-// SHAKE256 writes |out_len| bytes output from |in_len| bytes |data| 
-// to |out| and returns |out| on success and NULL on failure. 
-OPENSSL_EXPORT uint8_t *SHAKE256(const uint8_t *data, const size_t in_len, 
+// SHAKE256 writes |out_len| bytes output from |in_len| bytes |data|
+// to |out| and returns |out| on success and NULL on failure.
+OPENSSL_EXPORT uint8_t *SHAKE256(const uint8_t *data, const size_t in_len,
                                  uint8_t *out, size_t out_len);
 
 // SHAKE_Init initializes |ctx| with specified |block_size|, returns 1 on
@@ -141,22 +266,22 @@ OPENSSL_EXPORT void SHA3_Reset(KECCAK1600_CTX *ctx);
 OPENSSL_EXPORT int SHA3_Init(KECCAK1600_CTX *ctx, uint8_t pad,
                              size_t bitlen);
 
-// SHA3_Update processes all data blocks that don't need pad through 
+// SHA3_Update processes all data blocks that don't need pad through
 // |SHA3_Absorb| and returns 1 and 0 on failure.
 OPENSSL_EXPORT int SHA3_Update(KECCAK1600_CTX *ctx, const void *data,
                                size_t len);
 
-// SHA3_Final pads the last data block and processes it through |SHA3_Absorb|. 
+// SHA3_Final pads the last data block and processes it through |SHA3_Absorb|.
 // It processes the data through |SHA3_Squeeze| and returns 1 and 0 on failure.
 OPENSSL_EXPORT int SHA3_Final(uint8_t *md, KECCAK1600_CTX *ctx);
 
-// SHA3_Absorb processes the largest multiple of |r| out of |len| bytes and 
-// returns the remaining number of bytes. 
-OPENSSL_EXPORT size_t SHA3_Absorb(uint64_t A[SHA3_ROWS][SHA3_ROWS], 
+// SHA3_Absorb processes the largest multiple of |r| out of |len| bytes and
+// returns the remaining number of bytes.
+OPENSSL_EXPORT size_t SHA3_Absorb(uint64_t A[SHA3_ROWS][SHA3_ROWS],
                                   const uint8_t *data, size_t len, size_t r);
 
 // SHA3_Squeeze generate |out| hash value of |len| bytes.
-OPENSSL_EXPORT void SHA3_Squeeze(uint64_t A[SHA3_ROWS][SHA3_ROWS], 
+OPENSSL_EXPORT void SHA3_Squeeze(uint64_t A[SHA3_ROWS][SHA3_ROWS],
                                  uint8_t *out, size_t len, size_t r);
 
 #if defined(__cplusplus)
