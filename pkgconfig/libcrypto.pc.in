@@ -1,0 +1,9 @@
+prefix=@CMAKE_INSTALL_PREFIX@
+libdir=${prefix}/lib
+includedir=${prefix}/include
+
+Name: AWS-LC-libcrypto
+Description: AWS-LC cryptography library
+Version: @VERSION@
+Libs: -L${libdir} -lcrypto
+Cflags: -I${includedir}
