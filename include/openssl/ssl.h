@@ -375,7 +375,9 @@ OPENSSL_EXPORT int SSL_read(SSL *ssl, void *buf, int num);
 // SSL_read_ex reads up to |num| bytes from |ssl| into |buf|. It is similar to
 // |SSL_read|, but instead of returning the number of bytes read, it returns
 // 1 on success or 0 for failure. The number of bytes actually read is stored in
-// |read_bytes|.
+// |read_bytes|. |SSL_read_ex| can be called with |num| set as 0, but will not read
+// application data from the peer.
+
 //
 // This is only maintained for OpenSSL compatibility. Use |SSL_read| instead.
 OPENSSL_EXPORT int SSL_read_ex(SSL *ssl, void *buf, size_t num,
@@ -449,7 +451,9 @@ OPENSSL_EXPORT int SSL_write(SSL *ssl, const void *buf, int num);
 // SSL_write_ex writes up to |num| bytes from |buf| into |ssl|. It is similar to
 // |SSL_write|, but instead of returning the number of bytes written, it returns
 // 1 on success or 0 for failure. The number bytes actually written is stored in
-// |written|.
+// |written|. |SSL_write_ex| can be called with |num| set as 0, but will not send
+// application data to the peer.
+
 //
 // This is only maintained for OpenSSL compatibility. Use |SSL_write| instead.
 OPENSSL_EXPORT int SSL_write_ex(SSL *s, const void *buf, size_t num,
