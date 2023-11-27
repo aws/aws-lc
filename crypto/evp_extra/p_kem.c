@@ -192,6 +192,8 @@ const EVP_PKEY_METHOD kem_pkey_meth = {
     NULL,
     pkey_kem_encapsulate,
     pkey_kem_decapsulate,
+    NULL /* hmac_sign_init */,
+    NULL /* hmac_sign */
 };
 
 // Additional KEM specific EVP functions.

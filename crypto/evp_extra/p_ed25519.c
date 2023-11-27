@@ -105,4 +105,6 @@ const EVP_PKEY_METHOD ed25519_pkey_meth = {
     NULL /* ctrl */,
     NULL /* encapsulate */,
     NULL /* decapsulate */,
+    NULL /* hmac_sign_init */,
+    NULL /* hmac_sign */
 };

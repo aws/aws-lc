@@ -338,6 +338,10 @@ struct env_md_ctx_st {
   // context.
   void *md_data;
 
+  // update is usually copied from |digest->update|. This is only different
+  // when consumed through |EVP_PKEY_HMAC|.
+  void (*update)(EVP_MD_CTX *ctx, const void *data, size_t count);
+
   // pctx is an opaque (at this layer) pointer to additional context that
   // EVP_PKEY functions may store in this object.
   EVP_PKEY_CTX *pctx;
@@ -346,9 +350,11 @@ struct env_md_ctx_st {
   // manipulate |pctx|.
   const struct evp_md_pctx_ops *pctx_ops;
 
-  // flags, only used to set flag |EVP_MD_CTX_FLAG_KEEP_PKEY_CTX|, so as to let
-  // |*pctx| refrain from being freed when |*pctx| was set externally with
-  // |EVP_MD_CTX_set_pkey_ctx|.
+  // flags is only used for two cases.
+  // 1. Set flag |EVP_MD_CTX_FLAG_KEEP_PKEY_CTX|, so as to let |*pctx| refrain
+  //    from being freed when |*pctx| was set externally with
+  //    |EVP_MD_CTX_set_pkey_ctx|.
+  // 2. Set flag |EVP_MD_CTX_FLAG_NO_INIT| for |EVP_PKEY_HMAC|.
   unsigned long flags;
 } /* EVP_MD_CTX */;
 

@@ -156,9 +156,11 @@ struct evp_pkey_st {
 #define EVP_PKEY_OP_DECRYPT (1 << 7)
 #define EVP_PKEY_OP_DERIVE (1 << 8)
 #define EVP_PKEY_OP_PARAMGEN (1 << 9)
+#define EVP_PKEY_OP_HMACSIGN (1 << 10)
 
 #define EVP_PKEY_OP_TYPE_SIG \
-  (EVP_PKEY_OP_SIGN | EVP_PKEY_OP_VERIFY | EVP_PKEY_OP_VERIFYRECOVER)
+  (EVP_PKEY_OP_SIGN | EVP_PKEY_OP_VERIFY | EVP_PKEY_OP_VERIFYRECOVER | \
+  EVP_PKEY_OP_HMACSIGN)
 
 #define EVP_PKEY_OP_TYPE_CRYPT (EVP_PKEY_OP_ENCRYPT | EVP_PKEY_OP_DECRYPT)
 
@@ -219,6 +221,19 @@ int EVP_RSA_PKEY_CTX_ctrl(EVP_PKEY_CTX *ctx, int optype, int cmd, int p1, void *
 #define EVP_PKEY_CTRL_HKDF_KEY (EVP_PKEY_ALG_CTRL + 16)
 #define EVP_PKEY_CTRL_HKDF_SALT (EVP_PKEY_ALG_CTRL + 17)
 #define EVP_PKEY_CTRL_HKDF_INFO (EVP_PKEY_ALG_CTRL + 18)
+
+// EVP_PKEY_CTRL_HMAC_DIGESTINIT is an internal value. It's called by
+// |EVP_DigestInit_ex| to signal the |EVP_PKEY| that a digest operation is
+// starting.
+// This is only needed to support the deprecated HMAC |EVP_PKEY| types.
+#define EVP_PKEY_CTRL_HMAC_DIGESTINIT (EVP_PKEY_ALG_CTRL + 19)
+
+// EVP_PKEY_CTRL_HMAC_SET_MAC_KEY is an internal value that sets a MAC key. For
+// example, this can be done on |EVP_PKEY_CTX| prior to calling
+// |EVP_PKEY_keygen| in order to generate an HMAC |EVP_PKEY| with the
+// given key. It returns one on success and zero on error.
+// This is only needed to support the deprecated HMAC |EVP_PKEY| types.
+#define EVP_PKEY_CTRL_HMAC_SET_MAC_KEY (EVP_PKEY_ALG_CTRL + 20)
 
 struct evp_pkey_ctx_st {
   // Method associated with this operation
@@ -281,16 +296,25 @@ struct evp_pkey_method_st {
   int (*decapsulate)(EVP_PKEY_CTX *ctx,
                      uint8_t *shared_secret, size_t *shared_secret_len,
                      const uint8_t *ciphertext, size_t ciphertext_len);
+
+  // The following are operations defined specifically for HMAC.
+  int (*hmac_sign_init)(EVP_PKEY_CTX *ctx, EVP_MD_CTX *mctx);
+  int (*hmac_sign)(EVP_PKEY_CTX *ctx, uint8_t *sig, size_t *siglen,
+                 EVP_MD_CTX *mctx);
 }; // EVP_PKEY_METHOD
 
-#define FIPS_EVP_PKEY_METHODS 4
+// used_for_hmac indicates if |ctx| is used specifically for the |EVP_PKEY_HMAC|
+// operation.
+int used_for_hmac(EVP_MD_CTX *ctx);
+
+#define FIPS_EVP_PKEY_METHODS 5
 
 #ifdef ENABLE_DILITHIUM
 #define NON_FIPS_EVP_PKEY_METHODS 4
-#define ASN1_EVP_PKEY_METHODS 8
+#define ASN1_EVP_PKEY_METHODS 9
 #else
 #define NON_FIPS_EVP_PKEY_METHODS 3
-#define ASN1_EVP_PKEY_METHODS 7
+#define ASN1_EVP_PKEY_METHODS 8
 #endif
 
 struct fips_evp_pkey_methods {
@@ -301,6 +325,7 @@ const EVP_PKEY_METHOD *EVP_PKEY_rsa_pkey_meth(void);
 const EVP_PKEY_METHOD *EVP_PKEY_rsa_pss_pkey_meth(void);
 const EVP_PKEY_METHOD *EVP_PKEY_ec_pkey_meth(void);
 const EVP_PKEY_METHOD *EVP_PKEY_hkdf_pkey_meth(void);
+const EVP_PKEY_METHOD *EVP_PKEY_hmac_pkey_meth(void);
 
 #if defined(__cplusplus)
 }  // extern C

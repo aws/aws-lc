@@ -267,6 +267,28 @@ int EVP_PKEY_type(int nid) {
   return meth->pkey_id;
 }
 
+EVP_PKEY *EVP_PKEY_new_mac_key(int type, ENGINE *engine, const uint8_t *mac_key,
+                               size_t mac_key_len) {
+  EVP_PKEY_CTX *hmac_pkey_ctx = NULL;
+  EVP_PKEY *ret = NULL;
+
+  hmac_pkey_ctx = EVP_PKEY_CTX_new_id(type, engine);
+  if (hmac_pkey_ctx == NULL) {
+    return NULL;
+  }
+
+  if (!EVP_PKEY_keygen_init(hmac_pkey_ctx) ||
+      !EVP_PKEY_CTX_ctrl(hmac_pkey_ctx, -1, EVP_PKEY_OP_KEYGEN,
+                         EVP_PKEY_CTRL_HMAC_SET_MAC_KEY, mac_key_len,
+                         (uint8_t *)mac_key) ||
+      !EVP_PKEY_keygen(hmac_pkey_ctx, &ret)) {
+    ret = NULL;
+  }
+
+  EVP_PKEY_CTX_free(hmac_pkey_ctx);
+  return ret;
+}
+
 int EVP_PKEY_set1_RSA(EVP_PKEY *pkey, RSA *key) {
   if (EVP_PKEY_assign_RSA(pkey, key)) {
     RSA_up_ref(key);
