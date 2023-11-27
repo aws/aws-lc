@@ -5016,7 +5016,8 @@ OPENSSL_EXPORT int SSL_CTX_sess_accept_renegotiate(const SSL_CTX *ctx);
 // SSL/TLS sessions in server mode.
 OPENSSL_EXPORT int SSL_CTX_sess_accept_good(const SSL_CTX *ctx);
 
-// SSL_CTX_sess_hits returns the number of successfully reused sessions.
+// SSL_CTX_sess_hits returns the number of successfully reused sessions, from
+// both session cache and session tickets.
 OPENSSL_EXPORT int SSL_CTX_sess_hits(const SSL_CTX *ctx);
 
 // SSL_CTX_sess_cb_hits returns the number of successfully retrieved sessions
