@@ -80,7 +80,7 @@ if(BUILD_TESTING)
     span_test.cc
     ssl_test.cc
     ssl_c_test.c
- )
+  )
 
   target_link_libraries(${SSL_TEST_EXEC} test_support_lib boringssl_gtest_main ssl crypto)
 
