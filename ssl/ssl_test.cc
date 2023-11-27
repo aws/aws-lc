@@ -11848,10 +11848,22 @@ TEST(SSLTest, SSLFileTests) {
   };
 
   using ScopedFILE = std::unique_ptr<FILE, fclose_deleter>;
+
+#if defined(OPENSSL_WINDOWS)
+  OPENSSL_BEGIN_ALLOW_DEPRECATED
+  // |tmpnam| is deprecated due to security concerns, but we only use this to
+  // run tests.
+  char rsa_pem_filename[L_tmpnam];
+  char ecdsa_pem_filename[L_tmpnam];
+  ASSERT_TRUE(tmpnam(rsa_pem_filename));
+  ASSERT_TRUE(tmpnam(ecdsa_pem_filename));
+  OPENSSL_END_ALLOW_DEPRECATED
+#else
   char rsa_pem_filename[] = "/tmp/fileXXXXXX";
   char ecdsa_pem_filename[] = "/tmp/fileXXXXXX";
   ASSERT_TRUE(mkstemp(rsa_pem_filename));
   ASSERT_TRUE(mkstemp(ecdsa_pem_filename));
+#endif
 
   ScopedFILE rsa_pem(fopen(rsa_pem_filename, "w"));
   ScopedFILE ecdsa_pem(fopen(ecdsa_pem_filename, "w"));
