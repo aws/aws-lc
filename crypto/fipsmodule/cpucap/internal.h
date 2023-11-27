@@ -146,6 +146,11 @@ OPENSSL_INLINE int CRYPTO_is_VBMI2_capable(void) {
 #define OPENSSL_STATIC_ARMCAP
 #endif
 
+#include <openssl/arm_arch.h>
+
+extern uint32_t OPENSSL_armcap_P;
+extern uint8_t OPENSSL_cpucap_initialized;
+
 // Normalize some older feature flags to their modern ACLE values.
 // https://developer.arm.com/architectures/system-architectures/software-standards/acle
 #if defined(__ARM_NEON__) && !defined(__ARM_NEON)
@@ -159,11 +164,6 @@ OPENSSL_INLINE int CRYPTO_is_VBMI2_capable(void) {
 #define __ARM_FEATURE_SHA2 1
 #endif
 #endif
-
-#include <openssl/arm_arch.h>
-
-extern uint32_t OPENSSL_armcap_P;
-extern uint8_t OPENSSL_cpucap_initialized;
 
 // CRYPTO_is_NEON_capable returns true if the current CPU has a NEON unit.
 // If this is known statically, it is a constant inline function.
@@ -183,6 +183,18 @@ OPENSSL_INLINE int CRYPTO_is_ARMv8_PMULL_capable(void) {
   return (OPENSSL_armcap_P & ARMV8_PMULL) != 0;
 }
 
+OPENSSL_INLINE int CRYPTO_is_ARMv8_SHA1_capable(void) {
+  return (OPENSSL_armcap_P & ARMV8_SHA1) != 0;
+}
+
+OPENSSL_INLINE int CRYPTO_is_ARMv8_SHA256_capable(void) {
+  return (OPENSSL_armcap_P & ARMV8_SHA256) != 0;
+}
+
+OPENSSL_INLINE int CRYPTO_is_ARMv8_SHA512_capable(void) {
+  return (OPENSSL_armcap_P & ARMV8_SHA512) != 0;
+}
+
 OPENSSL_INLINE int CRYPTO_is_ARMv8_GCM_8x_capable(void) {
   return ((OPENSSL_armcap_P & ARMV8_SHA3) != 0 &&
           ((OPENSSL_armcap_P & ARMV8_NEOVERSE_V1) != 0 ||
@@ -195,6 +207,8 @@ OPENSSL_INLINE int CRYPTO_is_ARMv8_wide_multiplier_capable(void) {
            (OPENSSL_armcap_P & ARMV8_NEOVERSE_V2) != 0 ||
            (OPENSSL_armcap_P & ARMV8_APPLE_M1) != 0;
 }
+
+
 
 #endif  // OPENSSL_ARM || OPENSSL_AARCH64
 
