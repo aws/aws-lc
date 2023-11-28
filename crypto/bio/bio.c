@@ -94,6 +94,9 @@ static int call_bio_callback_with_processed(BIO *bio, const int oper,
   return ret;
 }
 
+static CRYPTO_EX_DATA_CLASS g_ex_data_class =
+    CRYPTO_EX_DATA_CLASS_INIT_WITH_APP_DATA;
+
 BIO *BIO_new(const BIO_METHOD *method) {
   BIO *ret = OPENSSL_malloc(sizeof(BIO));
   if (ret == NULL) {
@@ -106,6 +109,7 @@ BIO *BIO_new(const BIO_METHOD *method) {
   ret->shutdown = 1;
   ret->references = 1;
   ret->callback_ex = NULL;
+  CRYPTO_new_ex_data(&ret->ex_data);
 
   if (method->create != NULL && !method->create(ret)) {
     OPENSSL_free(ret);
@@ -135,6 +139,7 @@ int BIO_free(BIO *bio) {
       }
     }
 
+    CRYPTO_free_ex_data(&g_ex_data_class, bio, &bio->ex_data);
     OPENSSL_free(bio);
   }
   return 1;
@@ -802,4 +807,24 @@ void BIO_set_callback_arg(BIO *bio, char *arg) {
 
 char *BIO_get_callback_arg(const BIO *bio) {
   return bio->cb_arg;
+}
+
+int BIO_get_ex_new_index(long argl, void *argp,
+                                    CRYPTO_EX_unused *unused,
+                                    CRYPTO_EX_dup *dup_unused,
+                                    CRYPTO_EX_free *free_func) {
+  int index;
+  if (!CRYPTO_get_ex_new_index(&g_ex_data_class, &index, argl, argp,
+                               free_func)) {
+    return -1;
+  }
+  return index;
+}
+
+int BIO_set_ex_data(BIO *bio, int idx, void *data) {
+  return CRYPTO_set_ex_data(&bio->ex_data, idx, data);
+}
+
+void *BIO_get_ex_data(const BIO *bio, int idx) {
+  return CRYPTO_get_ex_data(&bio->ex_data, idx);
 }
