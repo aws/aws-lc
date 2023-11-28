@@ -11836,10 +11836,6 @@ TEST_P(PerformHybridHandshakeTest, PerformHybridHandshake) {
   }
 }
 
-// |tmpname| is the only common function across all platforms that
-// generates random file names. |tmpnam| is deprecated due to security concerns,
-// but we only use this to run tests.
-OPENSSL_BEGIN_ALLOW_DEPRECATED
 TEST(SSLTest, SSLFileTests) {
 #if defined(OPENSSL_ANDROID)
   // On Android, when running from an APK, temporary file creations do not work.
@@ -11852,10 +11848,18 @@ TEST(SSLTest, SSLFileTests) {
   };
 
   using ScopedFILE = std::unique_ptr<FILE, fclose_deleter>;
+
+#if defined(OPENSSL_WINDOWS)
   char rsa_pem_filename[L_tmpnam];
   char ecdsa_pem_filename[L_tmpnam];
-  ASSERT_TRUE(tmpnam(rsa_pem_filename));
-  ASSERT_TRUE(tmpnam(ecdsa_pem_filename));
+  ASSERT_EQ(tmpnam_s(rsa_pem_filename, sizeof(rsa_pem_filename)), 0);
+  ASSERT_EQ(tmpnam_s(ecdsa_pem_filename, sizeof(ecdsa_pem_filename)), 0);
+#else
+  char rsa_pem_filename[] = "/tmp/fileXXXXXX";
+  char ecdsa_pem_filename[] = "/tmp/fileXXXXXX";
+  ASSERT_TRUE(mkstemp(rsa_pem_filename));
+  ASSERT_TRUE(mkstemp(ecdsa_pem_filename));
+#endif
 
   ScopedFILE rsa_pem(fopen(rsa_pem_filename, "w"));
   ScopedFILE ecdsa_pem(fopen(ecdsa_pem_filename, "w"));
@@ -11886,7 +11890,6 @@ TEST(SSLTest, SSLFileTests) {
   ASSERT_EQ(remove(rsa_pem_filename), 0);
   ASSERT_EQ(remove(ecdsa_pem_filename), 0);
 }
-OPENSSL_END_ALLOW_DEPRECATED
 
 }  // namespace
 BSSL_NAMESPACE_END
