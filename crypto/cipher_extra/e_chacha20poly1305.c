@@ -470,7 +470,7 @@ static int cipher_chacha20_do_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
   // |CRYPTO_chacha_20| expects the input as a little-endian byte array.
   uint8_t chacha_key[CHACHA_KEY_LEN];
   uint8_t nonce[CHACHA_IV_LEN];
-  for(int i = 0; i < CHACHA_KEY_LEN / 4; i++) {
+  for(size_t i = 0; i < CHACHA_KEY_LEN / 4; i++) {
     CRYPTO_store_u32_le(chacha_key + (i * sizeof(uint32_t)),
                         cipher_ctx->key.key[i]);
   }
@@ -519,8 +519,8 @@ static int cipher_chacha20_do_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
   if (rem) {
     OPENSSL_memset(key->buf, 0, sizeof(key->buf));
     // Obtain the current key and store it in the context
-    CRYPTO_chacha_20(key->buf, key->buf, CHACHA_BLOCK_LEN, (uint8_t *) key->key,
-                     (uint8_t *) cipher_ctx->iv, key->counter_nonce[0]);
+    CRYPTO_chacha_20(key->buf, key->buf, CHACHA_BLOCK_LEN, chacha_key, nonce,
+                     key->counter_nonce[0]);
     for (n = 0; n < rem; n++) {
       out[n] = inp[n] ^ key->buf[n];
     }
