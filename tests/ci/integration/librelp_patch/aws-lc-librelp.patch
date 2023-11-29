@@ -1,5 +1,5 @@
 diff --git a/src/tcp.c b/src/tcp.c
-index 18cffda..3d8aa05 100644
+index 18cffda..110fcd0 100644
 --- a/src/tcp.c
 +++ b/src/tcp.c
 @@ -276,7 +276,7 @@ int opensslh_THREAD_cleanup(void)
@@ -11,7 +11,7 @@ index 18cffda..3d8aa05 100644
  long BIO_debug_callback_ex(BIO *bio, int cmd, const char LIBRELP_ATTR_UNUSED *argp,
  			   size_t LIBRELP_ATTR_UNUSED len, int argi, long LIBRELP_ATTR_UNUSED argl,
  			   int ret, size_t LIBRELP_ATTR_UNUSED *processed)
-@@ -1230,10 +1230,17 @@ relpTcpTLSSetPrio_ossl(relpTcp_t *const pThis)
+@@ -1230,10 +1230,18 @@ relpTcpTLSSetPrio_ossl(relpTcp_t *const pThis)
  {
  	char pristringBuf[4096];
  	char *pristring;
@@ -24,12 +24,13 @@ index 18cffda..3d8aa05 100644
 +			snprintf(errmsg, sizeof(errmsg),
 +				"Warning: AWS-LC does not support anonymous ciphersuites.");
 +			callOnErr(pThis, errmsg, RELP_RET_ERR_TLS);
++			ABORT_FINALIZE(RELP_RET_ERR_TLS_SETUP);
 +			#endif
 +
  			#if OPENSSL_VERSION_NUMBER >= 0x10100000L \
  				&& !defined(LIBRESSL_VERSION_NUMBER)
  			 /* NOTE: do never use: +eNULL, it DISABLES encryption! */
-@@ -1362,7 +1369,7 @@ relpTcpInitTLS(relpTcp_t *const pThis)
+@@ -1362,7 +1370,7 @@ relpTcpInitTLS(relpTcp_t *const pThis)
  
  	/* Load readable error strings */
  	SSL_load_error_strings();
@@ -38,7 +39,7 @@ index 18cffda..3d8aa05 100644
  	/*
  	* ERR_load_*(), ERR_func_error_string(), ERR_get_error_line(), ERR_get_error_line_data(), ERR_get_state()
  	* OpenSSL now loads error strings automatically so these functions are not needed.
-@@ -1660,7 +1667,7 @@ relpTcpSetSslConfCmd_ossl(relpTcp_t *const pThis, char *tlsConfigCmd)
+@@ -1660,7 +1668,7 @@ relpTcpSetSslConfCmd_ossl(relpTcp_t *const pThis, char *tlsConfigCmd)
  	} else {
  		pThis->pEngine->dbgprint((char*)"relpTcpSetSslConfCmd_ossl: set to '%s'\n", tlsConfigCmd);
  		char errmsg[1424];
@@ -47,7 +48,7 @@ index 18cffda..3d8aa05 100644
  		char *pCurrentPos;
  		char *pNextPos;
  		char *pszCmd;
-@@ -1803,7 +1810,7 @@ relpTcpAcceptConnReqInitTLS_ossl(relpTcp_t *const pThis, relpSrv_t *const pSrv)
+@@ -1803,7 +1811,7 @@ relpTcpAcceptConnReqInitTLS_ossl(relpTcp_t *const pThis, relpSrv_t *const pSrv)
  	pThis->pEngine->dbgprint((char*)"relpTcpAcceptConnReqInitTLS_ossl: Init client BIO[%p] done\n", (void *)client);
  
  	/* Set debug Callback for client BIO as well! */
@@ -56,7 +57,7 @@ index 18cffda..3d8aa05 100644
  	BIO_set_callback_ex(client, BIO_debug_callback_ex);
  #else
  	BIO_set_callback(client, BIO_debug_callback);
-@@ -1909,7 +1916,7 @@ relpTcpConnectTLSInit_ossl(relpTcp_t *const pThis)
+@@ -1909,7 +1917,7 @@ relpTcpConnectTLSInit_ossl(relpTcp_t *const pThis)
  	pThis->pEngine->dbgprint((char*)"relpTcpConnectTLSInit: Init conn BIO[%p] done\n", (void *)conn);
  
  	/* Set debug Callback for client BIO as well! */
