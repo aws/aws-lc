@@ -729,10 +729,12 @@ OPENSSL_EXPORT int SSL_CTX_set_min_proto_version(SSL_CTX *ctx,
 OPENSSL_EXPORT int SSL_CTX_set_max_proto_version(SSL_CTX *ctx,
                                                  uint16_t version);
 
-// SSL_CTX_get_min_proto_version returns the minimum protocol version for |ctx|
+// SSL_CTX_get_min_proto_version returns the minimum protocol version for |ctx|.
+// If |ctx| is configured to use the default minimum version, 0 is returned.
 OPENSSL_EXPORT uint16_t SSL_CTX_get_min_proto_version(const SSL_CTX *ctx);
 
-// SSL_CTX_get_max_proto_version returns the maximum protocol version for |ctx|
+// SSL_CTX_get_max_proto_version returns the maximum protocol version for |ctx|.
+// If |ctx| is configured to use the default maximum version, 0 is returned.
 OPENSSL_EXPORT uint16_t SSL_CTX_get_max_proto_version(const SSL_CTX *ctx);
 
 // SSL_set_min_proto_version sets the minimum protocol version for |ssl| to
