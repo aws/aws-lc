@@ -1,19 +1,23 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 
+SRC_ROOT="$(pwd)"
 if [ -v CODEBUILD_SRC_DIR ]; then
   SRC_ROOT="$CODEBUILD_SRC_DIR"
-else
-  SRC_ROOT=$(pwd)
+elif [ "$(basename "${SRC_ROOT}")" != 'aws-lc' ]; then
+  SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+  SRC_ROOT="${SCRIPT_DIR}/../.."
 fi
-echo "$SRC_ROOT"
+SRC_ROOT="$(readlink -f "${SRC_ROOT}")"
+echo SRC_ROOT="$SRC_ROOT"
 
-cd ../
-SYS_ROOT=$(pwd)
+SYS_ROOT="$(readlink -f "${SRC_ROOT}/..")"
+echo SYS_ROOT="$SYS_ROOT"
+
 cd $SRC_ROOT
 
 BUILD_ROOT="${SRC_ROOT}/test_build_dir"
-echo "$BUILD_ROOT"
+echo BUILD_ROOT="$BUILD_ROOT"
 
 PLATFORM=$(uname -m)
 

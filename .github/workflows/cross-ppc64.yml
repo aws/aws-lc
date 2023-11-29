@@ -1,0 +1,18 @@
+name: PPC64BE Build & Test
+on:
+  push:
+    branches: [ '*' ]
+  pull_request:
+    branches: [ '*' ]
+concurrency:
+  group: ppc64be-${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  ppc64-build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install qemu
+        run: sudo apt-get -y install qemu-user qemu-user-binfmt
+      - uses: actions/checkout@v4
+      - name: Build/Test
+        run: tests/ci/run_cross_ppc64_tests.sh

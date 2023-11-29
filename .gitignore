@@ -39,3 +39,4 @@ symbols.txt
 .idea/
 .fleet/
 .cache/
+/CMakePresets.json

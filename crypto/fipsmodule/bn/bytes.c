@@ -212,6 +212,9 @@ void bn_assert_fits_in_bytes(const BIGNUM *bn, size_t num) {
   size_t tot_bytes = bn->width * sizeof(BN_ULONG);
   if (tot_bytes > num) {
     CONSTTIME_DECLASSIFY(bytes + num, tot_bytes - num);
+// Avoids compiler error: unused variable 'byte' or 'word'
+// The assert statements below are only effective in DEBUG builds
+#ifndef NDEBUG
 #ifdef OPENSSL_BIG_ENDIAN
     for (int i = num / BN_BYTES; i < bn->width; i++) {
       BN_ULONG word = bn->d[i];
@@ -229,6 +232,7 @@ void bn_assert_fits_in_bytes(const BIGNUM *bn, size_t num) {
     for (size_t i = num; i < tot_bytes; i++) {
       assert(bytes[i] == 0);
     }
+#endif
 #endif
     (void)bytes;
   }
