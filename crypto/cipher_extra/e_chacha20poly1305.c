@@ -49,7 +49,8 @@ typedef struct aead_chacha20_poly1305_ctx {
 // Struct for ChaCha key within an EVP_CIPHER_CTX
 typedef struct {
   uint32_t key[CHACHA_KEY_LEN / 4];
-  // Buffer containing both the counter and nonce
+  // Buffer containing both the counter and nonce.
+  // The index 0 is the counter and the remaining portion is the nonce.
   uint32_t counter_nonce[CHACHA_CTR_IV_LEN / 4];
   // Buffer for any partially used keys
   uint8_t buf[CHACHA_BLOCK_LEN];
@@ -433,7 +434,7 @@ static int cipher_chacha20_poly1305_init(EVP_CIPHER_CTX *ctx,
 }
 
 static int cipher_chacha20_do_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
-                                     const uint8_t *inp, size_t len)
+                                     const uint8_t *in, size_t in_len)
 {
   CIPHER_CHACHA_POLY_CTX  *cipher_ctx = CCP_CTX(ctx);
   CIPHER_CHACHA_KEY *key = CC_KEY(cipher_ctx);
@@ -444,16 +445,16 @@ static int cipher_chacha20_do_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
   if (n) {
     // Compute the cipher using our partially used key and any new input up
     // to the next block
-    while (len && n < CHACHA_BLOCK_LEN) {
+    while (in_len && n < CHACHA_BLOCK_LEN) {
       // Compute 1-byte of output by xor'ing 1-byte of input with the
       // corresponding key byte and increment it all for the next byte.
-      *out++ = *inp++ ^ key->buf[n++];
-      len--;
+      *out++ = *in++ ^ key->buf[n++];
+      in_len--;
     }
     key->partial_len = n;
 
     // If we consumed all the input, we're done
-    if (len == 0) {
+    if (in_len == 0) {
       return 1;
     }
 
@@ -484,11 +485,11 @@ static int cipher_chacha20_do_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
 #endif
 
   // Truncate down to the last complete block prior to the bulk cipher
-  rem = (uint32_t)(len % CHACHA_BLOCK_LEN);
-  len -= rem;
+  rem = (uint32_t)(in_len % CHACHA_BLOCK_LEN);
+  in_len -= rem;
   counter = key->counter_nonce[0];
-  while (len >= CHACHA_BLOCK_LEN) {
-    size_t blocks = len / CHACHA_BLOCK_LEN;
+  while (in_len >= CHACHA_BLOCK_LEN) {
+    size_t blocks = in_len / CHACHA_BLOCK_LEN;
     // 1<<28 is just a not-so-small yet not-so-large number... Below
     // condition is practically never met, but it has to be checked for code
     // correctness.
@@ -506,10 +507,10 @@ static int cipher_chacha20_do_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
       counter = 0;
     }
     blocks *= CHACHA_BLOCK_LEN;
-    CRYPTO_chacha_20(out, inp, blocks, chacha_key, nonce,
+    CRYPTO_chacha_20(out, in, blocks, chacha_key, nonce,
                      key->counter_nonce[0]);
-    len -= blocks;
-    inp += blocks;
+    in_len -= blocks;
+    in += blocks;
     out += blocks;
 
     key->counter_nonce[0] = counter;
@@ -522,7 +523,7 @@ static int cipher_chacha20_do_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
     CRYPTO_chacha_20(key->buf, key->buf, CHACHA_BLOCK_LEN, chacha_key, nonce,
                      key->counter_nonce[0]);
     for (n = 0; n < rem; n++) {
-      out[n] = inp[n] ^ key->buf[n];
+      out[n] = in[n] ^ key->buf[n];
     }
     key->partial_len = rem;
   }
@@ -531,8 +532,8 @@ static int cipher_chacha20_do_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
 }
 
 static int cipher_chacha20_poly1305_do_cipher(
-    EVP_CIPHER_CTX *ctx, unsigned char *out, const unsigned char *inp,
-    size_t inl) {
+    EVP_CIPHER_CTX *ctx, unsigned char *out, const unsigned char *in,
+    size_t in_len) {
   CIPHER_CHACHA_POLY_CTX *cipher_ctx = CCP_CTX(ctx);
   poly1305_state *poly_ctx = POLY_CTX(cipher_ctx);
   size_t remainder;
@@ -570,13 +571,13 @@ static int cipher_chacha20_poly1305_do_cipher(
   }
 
   // Handle an |EVP_CipherUpdate|
-  if (inp) {
+  if (in) {
     if (out == NULL) {
       // NULL |out| signals an AAD update
-      CRYPTO_poly1305_update(poly_ctx, inp, inl);
-      cipher_ctx->len.aad += inl;
+      CRYPTO_poly1305_update(poly_ctx, in, in_len);
+      cipher_ctx->len.aad += in_len;
       cipher_ctx->pad_aad = 1;
-      return (int32_t) inl;
+      return (int32_t) in_len;
     } else {
       // Finish AAD by applying padding
       if (cipher_ctx->pad_aad) {
@@ -590,22 +591,22 @@ static int cipher_chacha20_poly1305_do_cipher(
       // cipher/plain text |EVP_CipherUpdate|
       if (EVP_CIPHER_CTX_encrypting(ctx)) {
         // Encryption
-        cipher_chacha20_do_cipher(ctx, out, inp, inl);
+        cipher_chacha20_do_cipher(ctx, out, in, in_len);
         // Update poly1305 with computed ciphertext
-        CRYPTO_poly1305_update(poly_ctx, out, inl);
-        cipher_ctx->len.text += inl;
+        CRYPTO_poly1305_update(poly_ctx, out, in_len);
+        cipher_ctx->len.text += in_len;
       } else {
         // Decryption
         // Update poly1305 with incoming ciphertext
-        CRYPTO_poly1305_update(poly_ctx, inp, inl);
-        cipher_chacha20_do_cipher(ctx, out, inp, inl);
-        cipher_ctx->len.text += inl;
+        CRYPTO_poly1305_update(poly_ctx, in, in_len);
+        cipher_chacha20_do_cipher(ctx, out, in, in_len);
+        cipher_ctx->len.text += in_len;
       }
     }
   }
 
   // Process an |EVP_CipherFinal|
-  if (inp == NULL) {
+  if (in == NULL) {
     uint8_t temp[POLY1305_TAG_LEN];
     static const uint8_t padding[POLY1305_TAG_LEN] = {0};
 
@@ -648,18 +649,13 @@ static int cipher_chacha20_poly1305_do_cipher(
       }
     }
   }
-  return (int32_t) inl;
+  return (int32_t) in_len;
 }
 
 static void cipher_chacha20_poly1305_cleanup(EVP_CIPHER_CTX *ctx) {
   if (ctx->cipher_data) {
     OPENSSL_cleanse(ctx->cipher_data, sizeof(CIPHER_CHACHA_POLY_CTX));
   }
-}
-
-// Returns a pointer to the first 64-byte alignment within |poly_ctx|.
-static void *cipher_chacha20_poly1305_aligned_poly(EVP_CIPHER_CTX *ctx) {
-  return (void *) (((uintptr_t) POLY_CTX(CCP_CTX(ctx)) + 63) & ~63);
 }
 
 static int32_t cipher_chacha20_poly1305_ctrl(EVP_CIPHER_CTX *ctx, int32_t type,
@@ -686,8 +682,8 @@ static int32_t cipher_chacha20_poly1305_ctrl(EVP_CIPHER_CTX *ctx, int32_t type,
         // The destination context doesn't necessarily have the same
         // alignment so we have to fix that here.
         EVP_CIPHER_CTX *dst = (EVP_CIPHER_CTX *) ptr;
-        void *source_base = cipher_chacha20_poly1305_aligned_poly(ctx);
-        void *dest_base = cipher_chacha20_poly1305_aligned_poly(dst);
+        void *source_base = align_pointer((void *) POLY_CTX(CCP_CTX(ctx)), 64);
+        void *dest_base = align_pointer((void *) POLY_CTX(CCP_CTX(dst)), 64);
         // We have 63 bytes of padding for alignment, so the actual size of
         // the poly1305 context is the difference of that and the total buffer.
         size_t length = sizeof(poly1305_state) - 63;

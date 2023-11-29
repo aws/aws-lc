@@ -611,18 +611,19 @@ static void WycheproofChacha20Poly1305FileTest(FileTest *t) {
 
   // Insert AAD
   int out_len = 0;
-  ASSERT_TRUE(EVP_EncryptUpdate(ctx, NULL, &out_len, aad.data(), aad.size()));
+  ASSERT_TRUE(EVP_EncryptUpdate(ctx, /*out*/ NULL, &out_len, aad.data(),
+                                aad.size()));
   ASSERT_EQ(out_len, (int) aad.size());
 
   // Insert plaintext
   std::vector<uint8_t> computed_ct(ct.size());
 
-  if (msg.size() > 0) {
-    out_len = 0;
-    ASSERT_TRUE(EVP_EncryptUpdate(ctx, computed_ct.data(), &out_len, msg.data(),
-                            msg.size()));
-    ASSERT_EQ(out_len, (int) msg.size());
-  }
+  uint8_t junk_buf[1];
+  uint8_t *in = msg.empty() ? junk_buf : msg.data();
+  out_len = 0;
+  ASSERT_TRUE(EVP_EncryptUpdate(ctx, computed_ct.data(), &out_len, in,
+                          msg.size()));
+  ASSERT_EQ(out_len, (int) msg.size());
 
   // Finish the cipher
   out_len = 0;
@@ -648,12 +649,11 @@ static void WycheproofChacha20Poly1305FileTest(FileTest *t) {
 
   // Insert ciphertext
   std::vector<uint8_t> computed_pt(msg.size());
-  if (msg.size() > 0) {
-    out_len = 0;
-    ASSERT_TRUE(EVP_DecryptUpdate(dctx, computed_pt.data(), &out_len,
-                                  computed_ct.data(), ct.size()));
-    ASSERT_EQ(out_len, (int) msg.size());
-  }
+  in = ct.empty() ? junk_buf : ct.data();
+  out_len = 0;
+  ASSERT_TRUE(EVP_DecryptUpdate(dctx, computed_pt.data(), &out_len, in,
+                                ct.size()));
+  ASSERT_EQ(out_len, (int) msg.size());
 
   // Set the tag
   ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(dctx, EVP_CTRL_AEAD_SET_TAG, tag.size(),
@@ -670,9 +670,11 @@ static void WycheproofChacha20Poly1305FileTest(FileTest *t) {
   // Valid results should match the KATs
   if (result.IsValid()) {
     ASSERT_EQ(Bytes(tag.data(), tag.size()),
-              Bytes(computed_tag.data(), tag.size()));
+              Bytes(computed_tag.data(), computed_tag.size()));
     ASSERT_EQ(Bytes(msg.data(), msg.size()),
-              Bytes(computed_pt.data(), msg.size()));
+              Bytes(computed_pt.data(), computed_pt.size()));
+    ASSERT_EQ(Bytes(ct.data(), ct.size()),
+              Bytes(computed_ct.data(), computed_ct.size()));
   }
 }
 
