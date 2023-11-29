@@ -71,7 +71,7 @@ typedef struct {
   HMAC_CTX ctx;
 } HMAC_PKEY_CTX;
 
-static int pkey_hmac_init(EVP_PKEY_CTX *ctx) {
+static int hmac_init(EVP_PKEY_CTX *ctx) {
   HMAC_PKEY_CTX *hctx;
   hctx = OPENSSL_malloc(sizeof(HMAC_PKEY_CTX));
   if (hctx == NULL) {
@@ -85,9 +85,9 @@ static int pkey_hmac_init(EVP_PKEY_CTX *ctx) {
   return 1;
 }
 
-static int pkey_hmac_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src) {
+static int hmac_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src) {
   HMAC_PKEY_CTX *sctx, *dctx;
-  if (!pkey_hmac_init(dst)) {
+  if (!hmac_init(dst)) {
     return 0;
   }
   sctx = src->data;
@@ -106,7 +106,7 @@ static int pkey_hmac_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src) {
   return 1;
 }
 
-static void pkey_hmac_cleanup(EVP_PKEY_CTX *ctx) {
+static void hmac_cleanup(EVP_PKEY_CTX *ctx) {
   HMAC_PKEY_CTX *hctx = ctx->data;
 
   if (hctx == NULL) {
@@ -124,7 +124,7 @@ static void pkey_hmac_cleanup(EVP_PKEY_CTX *ctx) {
   OPENSSL_free(hctx);
 }
 
-static int pkey_hmac_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
+static int hmac_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
   ASN1_OCTET_STRING *hkey = NULL;
   HMAC_PKEY_CTX *hctx = ctx->data;
 
@@ -139,23 +139,23 @@ static int pkey_hmac_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
   return EVP_PKEY_assign(pkey, EVP_PKEY_HMAC, hkey);
 }
 
-static void pkey_hmac_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
+static void hmac_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
   HMAC_PKEY_CTX *hctx = ctx->pctx->data;
   HMAC_Update(&hctx->ctx, data, count);
 }
 
-static int pkey_hmac_sign_init(EVP_PKEY_CTX *ctx, EVP_MD_CTX *mctx) {
+static int hmac_init_set_up(EVP_PKEY_CTX *ctx, EVP_MD_CTX *mctx) {
   // |mctx| gets repurposed as a hook to call |HMAC_Update|. |mctx->update| is
   // normally copied from |mctx->digest->update|, but |EVP_PKEY_HMAC| has its
   // own definition. We suppress the automatic setting of |mctx->update| and the
   // rest of its initialization here.
   mctx->flags |= EVP_MD_CTX_FLAG_NO_INIT_FOR_HMAC;
-  mctx->update = pkey_hmac_update;
+  mctx->update = hmac_update;
   return 1;
 }
 
-static int pkey_hmac_sign(EVP_PKEY_CTX *ctx, uint8_t *sig, size_t *siglen,
-                          EVP_MD_CTX *mctx) {
+static int hmac_final(EVP_PKEY_CTX *ctx, uint8_t *sig, size_t *siglen,
+                      EVP_MD_CTX *mctx) {
   unsigned int hlen;
   HMAC_PKEY_CTX *hctx = ctx->data;
   size_t md_size = EVP_MD_CTX_size(mctx);
@@ -175,7 +175,7 @@ static int pkey_hmac_sign(EVP_PKEY_CTX *ctx, uint8_t *sig, size_t *siglen,
   return 1;
 }
 
-static int pkey_hmac_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
+static int hmac_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
   HMAC_PKEY_CTX *hctx = ctx->data;
   ASN1_OCTET_STRING *key;
 
@@ -210,22 +210,22 @@ static int pkey_hmac_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
 
 DEFINE_METHOD_FUNCTION(EVP_PKEY_METHOD, EVP_PKEY_hmac_pkey_meth) {
   out->pkey_id = EVP_PKEY_HMAC;
-  out->init = pkey_hmac_init;
-  out->copy = pkey_hmac_copy;
-  out->cleanup = pkey_hmac_cleanup;
-  out->keygen = pkey_hmac_keygen; /* keygen */
-  out->sign_init = NULL;          /* sign_init */
-  out->sign = NULL;               /* sign */
-  out->sign_message = NULL;       /* sign_message */
-  out->verify_init = NULL;        /* verify_init */
-  out->verify = NULL;             /* verify */
-  out->verify_message = NULL;     /* verify_message */
-  out->verify_recover = NULL;     /* verify_recover */
-  out->encrypt = NULL;            /* encrypt */
-  out->decrypt = NULL;            /* decrypt */
-  out->derive = NULL;             /* derive */
-  out->paramgen = NULL;           /* paramgen */
-  out->ctrl = pkey_hmac_ctrl;
-  out->hmac_sign_init = pkey_hmac_sign_init;
-  out->hmac_sign = pkey_hmac_sign;
+  out->init = hmac_init;
+  out->copy = hmac_copy;
+  out->cleanup = hmac_cleanup;
+  out->keygen = hmac_keygen;  /* keygen */
+  out->sign_init = NULL;      /* sign_init */
+  out->sign = NULL;           /* sign */
+  out->sign_message = NULL;   /* sign_message */
+  out->verify_init = NULL;    /* verify_init */
+  out->verify = NULL;         /* verify */
+  out->verify_message = NULL; /* verify_message */
+  out->verify_recover = NULL; /* verify_recover */
+  out->encrypt = NULL;        /* encrypt */
+  out->decrypt = NULL;        /* decrypt */
+  out->derive = NULL;         /* derive */
+  out->paramgen = NULL;       /* paramgen */
+  out->ctrl = hmac_ctrl;
+  out->hmac_init_set_up = hmac_init_set_up;
+  out->hmac_final = hmac_final;
 }

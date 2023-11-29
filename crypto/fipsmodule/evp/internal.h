@@ -298,8 +298,8 @@ struct evp_pkey_method_st {
                      const uint8_t *ciphertext, size_t ciphertext_len);
 
   // The following are operations defined specifically for HMAC.
-  int (*hmac_sign_init)(EVP_PKEY_CTX *ctx, EVP_MD_CTX *mctx);
-  int (*hmac_sign)(EVP_PKEY_CTX *ctx, uint8_t *sig, size_t *siglen,
+  int (*hmac_init_set_up)(EVP_PKEY_CTX *ctx, EVP_MD_CTX *mctx);
+  int (*hmac_final)(EVP_PKEY_CTX *ctx, uint8_t *sig, size_t *siglen,
                  EVP_MD_CTX *mctx);
 }; // EVP_PKEY_METHOD
 

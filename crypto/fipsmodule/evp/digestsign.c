@@ -79,8 +79,8 @@ static int uses_prehash(EVP_MD_CTX *ctx, enum evp_sign_verify_t op) {
 
 int used_for_hmac(EVP_MD_CTX *ctx) {
   return ctx->pctx != NULL &&
-         ctx->pctx->pmeth->hmac_sign_init != NULL &&
-         ctx->pctx->pmeth->hmac_sign != NULL;
+         ctx->pctx->pmeth->hmac_init_set_up != NULL &&
+         ctx->pctx->pmeth->hmac_final != NULL;
 }
 
 static int do_sigver_init(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx,
@@ -101,7 +101,7 @@ static int do_sigver_init(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx,
   } else {
     if (used_for_hmac(ctx)) {
       // This is only defined in |EVP_PKEY_HMAC|.
-      if (!ctx->pctx->pmeth->hmac_sign_init(ctx->pctx, ctx)) {
+      if (!ctx->pctx->pmeth->hmac_init_set_up(ctx->pctx, ctx)) {
         return 0;
       }
       ctx->pctx->operation = EVP_PKEY_OP_HMACSIGN;
@@ -180,7 +180,7 @@ int EVP_DigestSignFinal(EVP_MD_CTX *ctx, uint8_t *out_sig,
     if (used_for_hmac(ctx)) {
       // This is only defined in |EVP_PKEY_HMAC|.
       ret = EVP_MD_CTX_copy_ex(&tmp_ctx, ctx) &&
-            tmp_ctx.pctx->pmeth->hmac_sign(tmp_ctx.pctx, out_sig, out_sig_len,
+            tmp_ctx.pctx->pmeth->hmac_final(tmp_ctx.pctx, out_sig, out_sig_len,
                                            &tmp_ctx);
     } else {
       ret = EVP_MD_CTX_copy_ex(&tmp_ctx, ctx) &&
@@ -200,7 +200,7 @@ int EVP_DigestSignFinal(EVP_MD_CTX *ctx, uint8_t *out_sig,
     // crypto is being done.
     if (used_for_hmac(ctx)) {
       // This is only defined in |EVP_PKEY_HMAC|.
-      return ctx->pctx->pmeth->hmac_sign(ctx->pctx, out_sig, out_sig_len, ctx);
+      return ctx->pctx->pmeth->hmac_final(ctx->pctx, out_sig, out_sig_len, ctx);
     } else {
       size_t s = EVP_MD_size(ctx->digest);
       return EVP_PKEY_sign(ctx->pctx, out_sig, out_sig_len, NULL, s);
