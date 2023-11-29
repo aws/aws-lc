@@ -24,7 +24,7 @@ jobs:
     env:
       DEBIAN_FRONTEND: noninteractive
       TZ: Etc/UTC
-    runs-on: temporary-performance-testing_ubuntu-latest_8-core
+    runs-on: ubuntu-latest
     container:
       image: ubuntu:latest
       options: --sysctl=net.ipv6.conf.all.disable_ipv6=0
