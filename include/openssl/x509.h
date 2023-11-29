@@ -2595,6 +2595,32 @@ OPENSSL_EXPORT int ASN1_item_sign_ctx(const ASN1_ITEM *it, X509_ALGOR *algor1,
                                       EVP_MD_CTX *ctx);
 
 
+// X.509 information.
+//
+// |X509_INFO| is the return type for |PEM_X509_INFO_read_bio|, defined in
+// <openssl/pem.h>. It is used to store a certificate, CRL, or private key. This
+// type is defined in this header for OpenSSL compatibility.
+
+struct private_key_st {
+  EVP_PKEY *dec_pkey;
+} /* X509_PKEY */;
+
+struct X509_info_st {
+  X509 *x509;
+  X509_CRL *crl;
+  X509_PKEY *x_pkey;
+
+  EVP_CIPHER_INFO enc_cipher;
+  int enc_len;
+  char *enc_data;
+} /* X509_INFO */;
+
+DEFINE_STACK_OF(X509_INFO)
+
+// X509_INFO_free releases memory associated with |info|.
+OPENSSL_EXPORT void X509_INFO_free(X509_INFO *info);
+
+
 // Deprecated functions.
 
 // X509_get_notBefore returns |x509|'s notBefore time. Note this function is not
@@ -3389,9 +3415,11 @@ BORINGSSL_MAKE_DELETER(X509_ATTRIBUTE, X509_ATTRIBUTE_free)
 BORINGSSL_MAKE_DELETER(X509_CRL, X509_CRL_free)
 BORINGSSL_MAKE_UP_REF(X509_CRL, X509_CRL_up_ref)
 BORINGSSL_MAKE_DELETER(X509_EXTENSION, X509_EXTENSION_free)
-BORINGSSL_MAKE_DELETER(X509_OBJECT, X509_OBJECT_free)
+BORINGSSL_MAKE_DELETER(X509_INFO, X509_INFO_free)
+BORINGSSL_MAKE_DELETER(X509_LOOKUP, X509_LOOKUP_free)
 BORINGSSL_MAKE_DELETER(X509_NAME, X509_NAME_free)
 BORINGSSL_MAKE_DELETER(X509_NAME_ENTRY, X509_NAME_ENTRY_free)
+BORINGSSL_MAKE_DELETER(X509_OBJECT, X509_OBJECT_free)
 BORINGSSL_MAKE_DELETER(X509_PUBKEY, X509_PUBKEY_free)
 BORINGSSL_MAKE_DELETER(X509_REQ, X509_REQ_free)
 BORINGSSL_MAKE_DELETER(X509_REVOKED, X509_REVOKED_free)
