@@ -1,4 +1,4 @@
-name: PPC64BE Build & Test
+name: Cross Build & Test
 on:
   push:
     branches: [ '*' ]
@@ -14,5 +14,13 @@ jobs:
       - name: Install qemu
         run: sudo apt-get -y install qemu-user qemu-user-binfmt
       - uses: actions/checkout@v4
-      - name: Build/Test
+      - name: PPC64 Build/Test
         run: tests/ci/run_cross_ppc64_tests.sh
+  ppc32-build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install qemu
+        run: sudo apt-get -y install qemu-user qemu-user-binfmt
+      - uses: actions/checkout@v4
+      - name: PPC32 Build/Test
+        run: tests/ci/run_cross_ppc_tests.sh
