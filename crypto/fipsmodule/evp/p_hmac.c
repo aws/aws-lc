@@ -55,8 +55,6 @@
 
 #include <openssl/evp.h>
 
-#include <string.h>
-
 #include <openssl/asn1.h>
 #include <openssl/err.h>
 #include <openssl/hmac.h>
@@ -76,13 +74,12 @@ typedef struct {
 static int pkey_hmac_init(EVP_PKEY_CTX *ctx) {
   HMAC_PKEY_CTX *hctx;
   hctx = OPENSSL_malloc(sizeof(HMAC_PKEY_CTX));
-  if (!hctx) {
+  if (hctx == NULL) {
     return 0;
   }
-  memset(hctx, 0, sizeof(HMAC_PKEY_CTX));
+  OPENSSL_memset(hctx, 0, sizeof(HMAC_PKEY_CTX));
   hctx->ktmp.type = V_ASN1_OCTET_STRING;
   HMAC_CTX_init(&hctx->ctx);
-
   ctx->data = hctx;
 
   return 1;
@@ -100,7 +97,7 @@ static int pkey_hmac_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src) {
   if (!HMAC_CTX_copy_ex(&dctx->ctx, &sctx->ctx)) {
     return 0;
   }
-  if (sctx->ktmp.data) {
+  if (sctx->ktmp.data != NULL) {
     if (!ASN1_OCTET_STRING_set(&dctx->ktmp, sctx->ktmp.data,
                                sctx->ktmp.length)) {
       return 0;
@@ -117,8 +114,8 @@ static void pkey_hmac_cleanup(EVP_PKEY_CTX *ctx) {
   }
 
   HMAC_CTX_cleanup(&hctx->ctx);
-  if (hctx->ktmp.data) {
-    if (hctx->ktmp.length) {
+  if (hctx->ktmp.data != NULL) {
+    if (hctx->ktmp.length != 0) {
       OPENSSL_cleanse(hctx->ktmp.data, hctx->ktmp.length);
     }
     OPENSSL_free(hctx->ktmp.data);
@@ -131,35 +128,34 @@ static int pkey_hmac_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
   ASN1_OCTET_STRING *hkey = NULL;
   HMAC_PKEY_CTX *hctx = ctx->data;
 
-  if (!hctx->ktmp.data) {
+  if (hctx->ktmp.data == NULL) {
     return 0;
   }
   hkey = ASN1_OCTET_STRING_dup(&hctx->ktmp);
-  if (!hkey) {
+  if (hkey == NULL) {
     return 0;
   }
-  EVP_PKEY_assign(pkey, EVP_PKEY_HMAC, hkey);
 
-  return 1;
+  return EVP_PKEY_assign(pkey, EVP_PKEY_HMAC, hkey);
 }
 
-static void hmac_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
+static void pkey_hmac_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
   HMAC_PKEY_CTX *hctx = ctx->pctx->data;
   HMAC_Update(&hctx->ctx, data, count);
 }
 
-static int hmac_sign_init(EVP_PKEY_CTX *ctx, EVP_MD_CTX *mctx) {
+static int pkey_hmac_sign_init(EVP_PKEY_CTX *ctx, EVP_MD_CTX *mctx) {
   // |mctx| gets repurposed as a hook to call |HMAC_Update|. |mctx->update| is
   // normally copied from |mctx->digest->update|, but |EVP_PKEY_HMAC| has its
   // own definition. We suppress the automatic setting of |mctx->update| and the
   // rest of its initialization here.
   mctx->flags |= EVP_MD_CTX_FLAG_NO_INIT_FOR_HMAC;
-  mctx->update = hmac_update;
+  mctx->update = pkey_hmac_update;
   return 1;
 }
 
-static int hmac_sign(EVP_PKEY_CTX *ctx, uint8_t *sig, size_t *siglen,
-                        EVP_MD_CTX *mctx) {
+static int pkey_hmac_sign(EVP_PKEY_CTX *ctx, uint8_t *sig, size_t *siglen,
+                          EVP_MD_CTX *mctx) {
   unsigned int hlen;
   HMAC_PKEY_CTX *hctx = ctx->data;
   size_t md_size = EVP_MD_CTX_size(mctx);
@@ -185,7 +181,7 @@ static int pkey_hmac_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
 
   switch (type) {
     case EVP_PKEY_CTRL_HMAC_SET_MAC_KEY:
-      if ((!p2 && p1 > 0) || (p1 < -1)) {
+      if ((p2 == NULL && p1 > 0) || (p1 < -1)) {
         return 0;
       }
       if (!ASN1_OCTET_STRING_set(&hctx->ktmp, p2, p1)) {
@@ -230,6 +226,6 @@ DEFINE_METHOD_FUNCTION(EVP_PKEY_METHOD, EVP_PKEY_hmac_pkey_meth) {
   out->derive = NULL;             /* derive */
   out->paramgen = NULL;           /* paramgen */
   out->ctrl = pkey_hmac_ctrl;
-  out->hmac_sign_init = hmac_sign_init;
-  out->hmac_sign = hmac_sign;
+  out->hmac_sign_init = pkey_hmac_sign_init;
+  out->hmac_sign = pkey_hmac_sign;
 }

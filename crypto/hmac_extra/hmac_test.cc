@@ -61,6 +61,7 @@
 #include <gtest/gtest.h>
 
 #include <openssl/digest.h>
+#include <openssl/evp.h>
 #include <openssl/hmac.h>
 
 #include "../test/file_test.h"
@@ -87,6 +88,29 @@ static const EVP_MD *GetDigest(const std::string &name) {
     return EVP_sha512_256();
   }
   return nullptr;
+}
+
+static bool RunHMACTestEVP(const std::vector<uint8_t> &key,
+                           const std::vector<uint8_t> &msg,
+                           const std::vector<uint8_t> &tag, const EVP_MD *md) {
+  bssl::UniquePtr<EVP_PKEY> pkey(
+      EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, nullptr, key.data(), key.size()));
+  EXPECT_TRUE(pkey);
+  bssl::ScopedEVP_MD_CTX mctx;
+  EXPECT_TRUE(EVP_DigestSignInit(mctx.get(), nullptr, md, nullptr, pkey.get()));
+  EXPECT_TRUE(EVP_DigestSignUpdate(mctx.get(), msg.data(), msg.size()));
+
+  size_t len;
+  std::vector<uint8_t> actual;
+  EXPECT_TRUE(EVP_DigestSignFinal(mctx.get(), nullptr, &len));
+  actual.resize(len);
+  EXPECT_TRUE(EVP_DigestSignFinal(mctx.get(), actual.data(), &len));
+  actual.resize(len);
+
+  // Wycheproof tests truncate the tags down to |tagSize|. Tests in
+  // hmac_tests.txt already have the correct corresponding tagSize.
+  EXPECT_EQ(Bytes(tag), Bytes(actual.data(), tag.size()));
+  return true;
 }
 
 TEST(HMACTest, TestVectors) {
@@ -149,6 +173,9 @@ TEST(HMACTest, TestVectors) {
     }
     ASSERT_TRUE(HMAC_Final(ctx.get(), mac.get(), &mac_len));
     EXPECT_EQ(Bytes(output), Bytes(mac.get(), mac_len));
+
+    // Test consuming HMAC through the |EVP_PKEY_HMAC| interface.
+    ASSERT_TRUE(RunHMACTestEVP(key, input, output, digest));
   });
 }
 
@@ -177,6 +204,9 @@ static void RunWycheproofTest(const char *path, const EVP_MD *md) {
     // Wycheproof tests truncate the tags down to |tagSize|.
     ASSERT_LE(tag.size(), out_len);
     EXPECT_EQ(Bytes(out, tag.size()), Bytes(tag));
+
+    // Run Wycheproof tests through the |EVP_PKEY_HMAC| interface.
+    EXPECT_TRUE(RunHMACTestEVP(key, msg, tag, md));
   });
 }
 
