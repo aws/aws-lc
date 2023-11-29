@@ -77,7 +77,7 @@ static void hmac_key_free(EVP_PKEY *pkey) {
 
 const EVP_PKEY_ASN1_METHOD hmac_asn1_meth = {
     EVP_PKEY_HMAC,
-    {0xff} /* TODO: placeholder oid */,
+    {0xff} /* placeholder oid */,
     0 /* oid_len */,
     NULL /* pub_decode */,
     NULL /* pub_encode */,

@@ -107,8 +107,8 @@ static bool RunHMACTestEVP(const std::vector<uint8_t> &key,
   EXPECT_TRUE(EVP_DigestSignFinal(mctx.get(), actual.data(), &len));
   actual.resize(len);
 
-  // Wycheproof tests truncate the tags down to |tagSize|. Tests in
-  // hmac_tests.txt already have the correct corresponding tagSize.
+  // Wycheproof tests truncate the tags down to |tagSize|. Expected outputs in
+  // hmac_tests.txt have the length of the entire tag.
   EXPECT_EQ(Bytes(tag), Bytes(actual.data(), tag.size()));
   return true;
 }

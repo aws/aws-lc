@@ -99,11 +99,6 @@ OpenSSL and BoringSSL. Note that BoringSSL's function versions will be
 type-checked and may require more care with types. See the end of this
 document for a table of functions to use.
 
-### HMAC `EVP_PKEY`s
-
-`EVP_PKEY_HMAC` is removed. Use the `HMAC_*` functions in `hmac.h` instead. This
-is compatible with OpenSSL.
-
 ### DSA `EVP_PKEY`s
 
 `EVP_PKEY_DSA` is deprecated. It is currently still possible to parse DER into a
