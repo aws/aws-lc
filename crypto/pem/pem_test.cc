@@ -59,6 +59,13 @@ TEST(PEMTest, NoRC4) {
   EXPECT_EQ(PEM_R_UNSUPPORTED_ENCRYPTION, ERR_GET_REASON(err));
 }
 
+struct TmpFileDeleter {
+  void operator()(FILE *f) const { fclose(f); }
+};
+
+using TmpFilePtr = std::unique_ptr<FILE, TmpFileDeleter>;
+
+
 TEST(PEMTest, WriteReadASN1IntegerPem) {
 
   // Numbers for testing
@@ -78,25 +85,20 @@ TEST(PEMTest, WriteReadASN1IntegerPem) {
     ASSERT_TRUE(ASN1_INTEGER_set(asn1_int.get(), original_value));
 
     // Create buffer for writing
-    char buffer[1024];
-    FILE *write_pem_file = fmemopen(buffer, sizeof(buffer), "w");
-    ASSERT_TRUE(write_pem_file);
+    TmpFilePtr pem_file(tmpfile());
+    ASSERT_TRUE(pem_file.get());
 
     // Write the ASN1_INTEGER to a PEM-formatted string
     ASSERT_TRUE(PEM_ASN1_write((i2d_of_void *)i2d_ASN1_INTEGER, "ASN1 INTEGER",
-                               write_pem_file, asn1_int.get(), nullptr, nullptr,
+                               pem_file.get(), asn1_int.get(), nullptr, nullptr,
                                0, nullptr, nullptr));
-    fclose(write_pem_file);
 
+    rewind(pem_file.get());
     // Read the ASN1_INTEGER back from the PEM-formatted string
-    FILE *read_pem_file = fmemopen(buffer, strlen(buffer), "r");
-    ASSERT_TRUE(read_pem_file);
-
     bssl::UniquePtr<ASN1_INTEGER> read_integer((ASN1_INTEGER *)PEM_ASN1_read(
-        (d2i_of_void *)d2i_ASN1_INTEGER, "ASN1 INTEGER", read_pem_file, nullptr,
+        (d2i_of_void *)d2i_ASN1_INTEGER, "ASN1 INTEGER", pem_file.get(), nullptr,
         nullptr, nullptr));
     ASSERT_TRUE(read_integer);
-    fclose(read_pem_file);
 
     // Check if the read ASN1_INTEGER has the same value as the original
     long read_value = ASN1_INTEGER_get(read_integer.get());
@@ -129,7 +131,11 @@ TEST(PEMTest, WriteReadRSAPem) {
   bssl::UniquePtr<BIGNUM> bn(BN_new());
   ASSERT_TRUE(bn);
   BN_set_u64(bn.get(), RSA_F4);
-  RSA_generate_key_ex(rsa.get(), 2048, bn.get(), nullptr);
+#ifdef BORINGSSL_FIPS
+  ASSERT_TRUE(RSA_generate_key_fips(rsa.get(), 2048, nullptr));
+#else
+  ASSERT_TRUE(RSA_generate_key_ex(rsa.get(), 2048, bn.get(), nullptr));
+#endif
 
   bssl::UniquePtr<BIO> write_bio(BIO_new(BIO_s_mem()));
   ASSERT_TRUE(write_bio.get());
@@ -155,7 +161,12 @@ TEST(PEMTest, WriteReadECPem) {
   bssl::UniquePtr<EC_GROUP> ec_group(EC_GROUP_new_by_curve_name(NID_X9_62_prime256v1));
   ASSERT_TRUE(ec_group.get());
   ASSERT_TRUE(EC_KEY_set_group(ec_key.get(), ec_group.get()));
+
+#ifdef BORINGSSL_FIPS
+  ASSERT_TRUE(EC_KEY_generate_key_fips(ec_key.get()));
+#else
   ASSERT_TRUE(EC_KEY_generate_key(ec_key.get()));
+#endif
 
   bssl::UniquePtr<BIO> write_bio(BIO_new(BIO_s_mem()));
   ASSERT_TRUE(write_bio.get());
