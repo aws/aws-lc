@@ -335,12 +335,12 @@ BSSL_NAMESPACE_END
 using namespace bssl;
 
 int SSL_CTX_set_min_proto_version(SSL_CTX *ctx, uint16_t version) {
-  ctx->conf_min_version_use_default = version == 0;
+  ctx->conf_min_version_use_default = (version == 0);
   return set_min_version(ctx->method, &ctx->conf_min_version, version);
 }
 
 int SSL_CTX_set_max_proto_version(SSL_CTX *ctx, uint16_t version) {
-  ctx->conf_max_version_use_default = version == 0;
+  ctx->conf_max_version_use_default = (version == 0);
   return set_max_version(ctx->method, &ctx->conf_max_version, version);
 }
 
@@ -362,7 +362,7 @@ int SSL_set_min_proto_version(SSL *ssl, uint16_t version) {
   if (!ssl->config) {
     return 0;
   }
-  ssl->config->conf_min_version_use_default = version == 0;
+  ssl->config->conf_min_version_use_default = (version == 0);
   return set_min_version(ssl->method, &ssl->config->conf_min_version, version);
 }
 
@@ -370,7 +370,7 @@ int SSL_set_max_proto_version(SSL *ssl, uint16_t version) {
   if (!ssl->config) {
     return 0;
   }
-  ssl->config->conf_max_version_use_default = version == 0;
+  ssl->config->conf_max_version_use_default = (version == 0);
   return set_max_version(ssl->method, &ssl->config->conf_max_version, version);
 }
 
