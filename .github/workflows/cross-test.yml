@@ -1,0 +1,42 @@
+name: Cross Build & Test
+on:
+  push:
+    branches: [ '*' ]
+  pull_request:
+    branches: [ '*' ]
+concurrency:
+  group: ppc64be-${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  ppc64-build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install qemu
+        run: sudo apt-get -y install qemu-user qemu-user-binfmt
+      - uses: actions/checkout@v4
+      - name: PPC64 Build/Test
+        run: tests/ci/run_cross_tests.sh ppc64 powerpc64-unknown-linux-gnu "-DCMAKE_BUILD_TYPE=Release" "-DCMAKE_BUILD_TYPE=Release -DFIPS=1 -DBUILD_SHARED_LIBS=1"
+  ppc32-non-fips-build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install qemu
+        run: sudo apt-get -y install qemu-user qemu-user-binfmt
+      - uses: actions/checkout@v4
+      - name: PPC32 Build/Test
+        run: tests/ci/run_cross_tests.sh ppc powerpc-unknown-linux-gnu "-DCMAKE_BUILD_TYPE=Release"
+  ppc32-fips-build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install qemu
+        run: sudo apt-get -y install qemu-user qemu-user-binfmt
+      - uses: actions/checkout@v4
+      - name: PPC32 Build/Test
+        run: tests/ci/run_cross_tests.sh ppc powerpc-unknown-linux-gnu "-DCMAKE_BUILD_TYPE=Release -DFIPS=1 -DBUILD_SHARED_LIBS=1"
+  ppc64le-build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install qemu
+        run: sudo apt-get -y install qemu-user qemu-user-binfmt
+      - uses: actions/checkout@v4
+      - name: PPC64LE Build/Test
+        run: tests/ci/run_cross_tests.sh ppc64le powerpc64le-unknown-linux-gnu "-DCMAKE_BUILD_TYPE=Release" "-DCMAKE_BUILD_TYPE=Release -DFIPS=1 -DBUILD_SHARED_LIBS=1"
