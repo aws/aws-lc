@@ -1019,8 +1019,8 @@ static int SSL_CONFIG_from_bytes(SSL_CONFIG *out, CBS *cbs) {
   }
   out->conf_max_version = conf_max_version;
   out->conf_min_version = conf_min_version;
-  out->conf_max_version_use_default = conf_max_version_use_default;
-  out->conf_min_version_use_default = conf_min_version_use_default;
+  out->conf_max_version_use_default = !!conf_max_version_use_default;
+  out->conf_min_version_use_default = !!conf_min_version_use_default;
   out->ocsp_stapling_enabled = !!ocsp_stapling_enabled;
   out->jdk11_workaround = !!jdk11_workaround;
   // handoff will always be the normal state(false) after handshake completes.
