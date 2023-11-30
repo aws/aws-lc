@@ -146,7 +146,6 @@ TEST(PEMTest, WriteReadRSAPem) {
   const uint8_t* content;
   size_t content_len;
   BIO_mem_contents(write_bio.get(), &content, &content_len);
-  printf("Result:\n%s", content);
 
   bssl::UniquePtr<BIO> read_bio(BIO_new_mem_buf(content, content_len) );
   ASSERT_TRUE(read_bio.get());
@@ -177,7 +176,6 @@ TEST(PEMTest, WriteReadECPem) {
   const uint8_t* content;
   size_t content_len;
   BIO_mem_contents(write_bio.get(), &content, &content_len);
-  printf("Result:\n%s", content);
 
   bssl::UniquePtr<BIO> read_bio(BIO_new_mem_buf(content, content_len) );
   ASSERT_TRUE(read_bio.get());
