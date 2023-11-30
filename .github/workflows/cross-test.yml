@@ -24,3 +24,11 @@ jobs:
       - uses: actions/checkout@v4
       - name: PPC32 Build/Test
         run: tests/ci/run_cross_ppc_tests.sh
+  ppc64le-build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install qemu
+        run: sudo apt-get -y install qemu-user qemu-user-binfmt
+      - uses: actions/checkout@v4
+      - name: PPC64LE Build/Test
+        run: tests/ci/run_cross_ppc64le_tests.sh

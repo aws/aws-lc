@@ -147,6 +147,16 @@
 
 #if defined(BORINGSSL_FIPS)
 
+static void* function_entry_ptr(const void* func_sym) {
+#if defined(OPENSSL_PPC64BE)
+  // Function pointers on ppc64 point to a function descriptor.
+  // https://refspecs.linuxfoundation.org/ELF/ppc64/PPC-elf64abi.html#FUNC-ADDRESS
+  return (void*)(((uint64_t *)func_sym)[0]);
+#else
+  return (void*)func_sym;
+#endif
+}
+
 #if !defined(OPENSSL_ASAN)
 
 // These symbols are filled in by delocate.go (in static builds) or a linker
@@ -265,15 +275,15 @@ int BORINGSSL_integrity_test(void) {
   const uint8_t *const start = BORINGSSL_bcm_text_start;
   const uint8_t *const end = BORINGSSL_bcm_text_end;
 
-  assert_within(start, AES_encrypt, "AES_encrypt", end);
-  assert_within(start, RSA_sign, "RSA_sign", end);
-  assert_within(start, RAND_bytes, "RAND_bytes", end);
-  assert_within(start, EC_GROUP_cmp, "EC_GROUP_cmp", end);
-  assert_within(start, SHA256_Update, "SHA256_Update", end);
-  assert_within(start, ECDSA_do_verify, "ECDSA_do_verify", end);
-  assert_within(start, EVP_AEAD_CTX_seal, "EVP_AEAD_CTX_seal", end);
-  assert_not_within(start, OPENSSL_cleanse, "OPENSSL_cleanse", end);
-  assert_not_within(start, CRYPTO_chacha_20, "CRYPTO_chacha_20", end);
+  assert_within(start, function_entry_ptr(AES_encrypt), "AES_encrypt", end);
+  assert_within(start, function_entry_ptr(RSA_sign), "RSA_sign", end);
+  assert_within(start, function_entry_ptr(RAND_bytes), "RAND_bytes", end);
+  assert_within(start, function_entry_ptr(EC_GROUP_cmp), "EC_GROUP_cmp", end);
+  assert_within(start, function_entry_ptr(SHA256_Update), "SHA256_Update", end);
+  assert_within(start, function_entry_ptr(ECDSA_do_verify), "ECDSA_do_verify", end);
+  assert_within(start, function_entry_ptr(EVP_AEAD_CTX_seal), "EVP_AEAD_CTX_seal", end);
+  assert_not_within(start, function_entry_ptr(OPENSSL_cleanse), "OPENSSL_cleanse", end);
+  assert_not_within(start, function_entry_ptr(CRYPTO_chacha_20), "CRYPTO_chacha_20", end);
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
   assert_not_within(start, OPENSSL_ia32cap_P, "OPENSSL_ia32cap_P", end);
 #elif defined(OPENSSL_AARCH64)
