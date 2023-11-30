@@ -3304,18 +3304,17 @@ struct SSL_CONFIG {
   // true.
   bool aes_hw_override_value : 1;
 
-
-  // conf_max_version_use_default indicates whether the |SSL_CTX| is configured
+  // conf_max_version_use_default indicates whether the |SSL_CONFIG| is configured
   // to use the default maximum protocol version for the relevant protocol
-  // method. By default, |SSL_CTX_new| will set this to 0 and use that default.
-  // callers can change this by calling |SSL_CTX_set_max_proto_version| with a
+  // method. By default, |SSL_new| will set this to 0 and use that default.
+  // callers can change this by calling |SSL_set_max_proto_version| with a
   // non-zero value.
   bool conf_max_version_use_default;
 
-  // conf_max_version_use_default indicates whether the |SSL_CTX| is configured
-  // to use the default maximum protocol version for the relevant protocol
-  // method. By default, |SSL_CTX_new| will set this to 0 and use that default.
-  // callers can change this by calling |SSL_CTX_set_max_proto_version| with a
+  // conf_min_version_use_default indicates whether the |SSL_CONFIG| is configured
+  // to use the default minimum protocol version for the relevant protocol
+  // method. By default, |SSL_new| will set this to 0 and use that default.
+  // callers can change this by calling |SSL_set_min_proto_version| with a
   // non-zero value.
   bool conf_min_version_use_default;
 };
