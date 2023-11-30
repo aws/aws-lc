@@ -22,8 +22,7 @@ function shard_gtest() {
 
     RESULT=0
     for PID in ${PIDS[*]}; do
-        wait -f $PID
-        if "${?}" -ne "0"; then
+        if wait -f $PID; then
           RESULT=${?}
         fi
     done
