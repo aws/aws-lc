@@ -67,7 +67,11 @@ using TmpFilePtr = std::unique_ptr<FILE, TmpFileDeleter>;
 
 
 TEST(PEMTest, WriteReadASN1IntegerPem) {
-
+#if defined(OPENSSL_ANDROID)
+  // On Android, when running from an APK, |tmpfile| does not work. See
+  // b/36991167#comment8.
+  GTEST_SKIP();
+#endif
   // Numbers for testing
   long nums[8] = {
       0x00000001L,
