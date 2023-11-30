@@ -748,11 +748,13 @@ OPENSSL_EXPORT int SSL_set_min_proto_version(SSL *ssl, uint16_t version);
 OPENSSL_EXPORT int SSL_set_max_proto_version(SSL *ssl, uint16_t version);
 
 // SSL_get_min_proto_version returns the minimum protocol version for |ssl|. If
-// the connection's configuration has been shed, 0 is returned.
+// the connection's configuration has been shed or |ssl| is configured to use
+// the default min version, 0 is returned.
 OPENSSL_EXPORT uint16_t SSL_get_min_proto_version(const SSL *ssl);
 
 // SSL_get_max_proto_version returns the maximum protocol version for |ssl|. If
-// the connection's configuration has been shed, 0 is returned.
+// the connection's configuration has been shed or |ssl| is configured to use
+// the default max version, 0 is returned.
 OPENSSL_EXPORT uint16_t SSL_get_max_proto_version(const SSL *ssl);
 
 // SSL_version returns the TLS or DTLS protocol version used by |ssl|, which is

@@ -362,6 +362,7 @@ int SSL_set_min_proto_version(SSL *ssl, uint16_t version) {
   if (!ssl->config) {
     return 0;
   }
+  ssl->config->conf_min_version_use_default = version == 0;
   return set_min_version(ssl->method, &ssl->config->conf_min_version, version);
 }
 
@@ -369,18 +370,19 @@ int SSL_set_max_proto_version(SSL *ssl, uint16_t version) {
   if (!ssl->config) {
     return 0;
   }
+  ssl->config->conf_max_version_use_default = version == 0;
   return set_max_version(ssl->method, &ssl->config->conf_max_version, version);
 }
 
 uint16_t SSL_get_min_proto_version(const SSL *ssl) {
-  if (!ssl->config) {
+  if (!ssl->config || ssl->config->conf_min_version_use_default) {
     return 0;
   }
   return ssl->config->conf_min_version;
 }
 
 uint16_t SSL_get_max_proto_version(const SSL *ssl) {
-  if (!ssl->config) {
+  if (!ssl->config || ssl->config->conf_max_version_use_default) {
     return 0;
   }
   return ssl->config->conf_max_version;

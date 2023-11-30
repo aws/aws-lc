@@ -657,6 +657,8 @@ SSL *SSL_new(SSL_CTX *ctx) {
   }
   ssl->config->conf_min_version = ctx->conf_min_version;
   ssl->config->conf_max_version = ctx->conf_max_version;
+  ssl->config->conf_min_version_use_default = ctx->conf_min_version_use_default;
+  ssl->config->conf_max_version_use_default = ctx->conf_max_version_use_default;
 
   ssl->config->cert = ssl_cert_dup(ctx->cert.get());
   if (ssl->config->cert == nullptr) {
