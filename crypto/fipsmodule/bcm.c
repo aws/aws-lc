@@ -147,6 +147,8 @@
 
 #if defined(BORINGSSL_FIPS)
 
+#if !defined(OPENSSL_ASAN)
+
 static void* function_entry_ptr(const void* func_sym) {
 #if defined(OPENSSL_PPC64BE)
   // Function pointers on ppc64 point to a function descriptor.
@@ -156,8 +158,6 @@ static void* function_entry_ptr(const void* func_sym) {
   return (void*)func_sym;
 #endif
 }
-
-#if !defined(OPENSSL_ASAN)
 
 // These symbols are filled in by delocate.go (in static builds) or a linker
 // script (in shared builds). They point to the start and end of the module, and
