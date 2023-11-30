@@ -149,13 +149,13 @@
 
 #if !defined(OPENSSL_ASAN)
 
-static void* function_entry_ptr(const void* func_sym) {
+static const void* function_entry_ptr(const void* func_sym) {
 #if defined(OPENSSL_PPC64BE)
   // Function pointers on ppc64 point to a function descriptor.
   // https://refspecs.linuxfoundation.org/ELF/ppc64/PPC-elf64abi.html#FUNC-ADDRESS
-  return (void*)(((uint64_t *)func_sym)[0]);
+  return (const void*)(((uint64_t *)func_sym)[0]);
 #else
-  return (void*)func_sym;
+  return (const void*)func_sym;
 #endif
 }
 

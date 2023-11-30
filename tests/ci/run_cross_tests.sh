@@ -67,7 +67,7 @@ for BO in "${BUILD_OPTIONS[@]}"; do
   shard_gtest ${BUILD_ROOT}/ssl/ssl_test
   shard_gtest ${BUILD_ROOT}/ssl/integration_test
 
-  # Due to its special linkage, this is not a Google Test
+  # Due to its special linkage, this does not use GoogleTest
   ${BUILD_ROOT}/crypto/dynamic_loading_test
 done
 popd
