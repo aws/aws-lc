@@ -566,7 +566,14 @@ func (d *delocation) processAarch64Instruction(statement, instruction *node32) (
 				symbol, offset, _, didChange, symbolIsLocal, _ := d.parseMemRef(arg.up)
 				changed = didChange
 
-				if _, knownSymbol := d.symbols[symbol]; knownSymbol {
+				if isFipsScopeMarkers(symbol) {
+					// fips scope markers are known. But they challenge the adr
+					// reach, so go through GOT via an adrp outside the scope.
+					redirector := redirectorName(symbol)
+					d.redirectors[symbol] = redirector
+					symbol = redirector
+					changed = true
+				} else if _, knownSymbol := d.symbols[symbol]; knownSymbol {
 					symbol = localTargetName(symbol)
 					changed = true
 				} else if !symbolIsLocal && !isSynthesized(symbol) {
@@ -1834,6 +1841,13 @@ func transform(w stringWriter, inputs []inputFile) error {
 	}
 	w.WriteString(fmt.Sprintf(".file %d \"inserted_by_delocate.c\"%s\n", maxObservedFileNumber+1, fileTrailing))
 	w.WriteString(fmt.Sprintf(".loc %d 1 0\n", maxObservedFileNumber+1))
+	if d.processor == aarch64 {
+		// Grab the address of BORINGSSL_bcm_test_[start,end] via a relocation
+		// from a redirector function. For this to work, need to add the markers
+		// to the symbol table.
+		w.WriteString(fmt.Sprintf(".global BORINGSSL_bcm_text_start\n"))
+		w.WriteString(fmt.Sprintf(".type BORINGSSL_bcm_text_start, @function\n"))
+	}
 	w.WriteString("BORINGSSL_bcm_text_start:\n")
 
 	for _, input := range inputs {
@@ -1844,6 +1858,10 @@ func transform(w stringWriter, inputs []inputFile) error {
 
 	w.WriteString(".text\n")
 	w.WriteString(fmt.Sprintf(".loc %d 2 0\n", maxObservedFileNumber+1))
+	if d.processor == aarch64 {
+		w.WriteString(fmt.Sprintf(".global BORINGSSL_bcm_text_end\n"))
+		w.WriteString(fmt.Sprintf(".type BORINGSSL_bcm_text_end, @function\n"))
+	}
 	w.WriteString("BORINGSSL_bcm_text_end:\n")
 
 	// Emit redirector functions. Each is a single jump instruction.
@@ -2259,7 +2277,12 @@ func localEntryName(name string) string {
 func isSynthesized(symbol string) bool {
 	return strings.HasSuffix(symbol, "_bss_get") ||
 		symbol == "OPENSSL_ia32cap_get" ||
-		strings.HasPrefix(symbol, "BORINGSSL_bcm_text_")
+		symbol == "BORINGSSL_bcm_text_hash"
+}
+
+func isFipsScopeMarkers(symbol string) bool {
+	return	symbol == "BORINGSSL_bcm_text_start" ||
+		symbol == "BORINGSSL_bcm_text_end"
 }
 
 func redirectorName(symbol string) string {
