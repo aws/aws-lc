@@ -492,44 +492,27 @@ int X509_VERIFY_PARAM_get_depth(const X509_VERIFY_PARAM *param) {
 #define vpm_empty_id NULL, 0U, NULL, 0, NULL, 0, 0
 
 static const X509_VERIFY_PARAM kDefaultParam = {
-    /*check_time=*/0,
-    /*inh_flags=*/0,
-    /*flags=*/X509_V_FLAG_TRUSTED_FIRST,
-    /*purpose=*/0,
-    /*trust=*/0,
-    /*depth=*/100,
-    /*policies=*/NULL,
-    vpm_empty_id};
+    .flags = X509_V_FLAG_TRUSTED_FIRST,
+    .depth = 100,
+};
 
 static const X509_VERIFY_PARAM kSMIMESignParam = {
-    /*check_time=*/0,
-    /*inh_flags=*/0,
-    /*flags=*/0,
-    /*purpose=*/X509_PURPOSE_SMIME_SIGN,
-    /*trust=*/X509_TRUST_EMAIL,
-    /*depth=*/-1,
-    /*policies=*/NULL,
-    vpm_empty_id};
+    .purpose = X509_PURPOSE_SMIME_SIGN,
+    .trust = X509_TRUST_EMAIL,
+    .depth = -1,
+};
 
 static const X509_VERIFY_PARAM kSSLClientParam = {
-    /*check_time=*/0,
-    /*inh_flags=*/0,
-    /*flags=*/0,
-    /*purpose=*/X509_PURPOSE_SSL_CLIENT,
-    /*trust=*/X509_TRUST_SSL_CLIENT,
-    /*depth=*/-1,
-    /*policies=*/NULL,
-    vpm_empty_id};
+    .purpose = X509_PURPOSE_SSL_CLIENT,
+    .trust = X509_TRUST_SSL_CLIENT,
+    .depth = -1,
+};
 
 static const X509_VERIFY_PARAM kSSLServerParam = {
-    /*check_time=*/0,
-    /*inh_flags=*/0,
-    /*flags=*/0,
-    /*purpose=*/X509_PURPOSE_SSL_SERVER,
-    /*trust=*/X509_TRUST_SSL_SERVER,
-    /*depth=*/-1,
-    /*policies=*/NULL,
-    vpm_empty_id};
+    .purpose = X509_PURPOSE_SSL_SERVER,
+    .trust = X509_TRUST_SSL_SERVER,
+    .depth = -1,
+};
 
 const X509_VERIFY_PARAM *X509_VERIFY_PARAM_lookup(const char *name) {
   if (strcmp(name, "default") == 0) {
