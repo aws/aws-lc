@@ -42,7 +42,7 @@ function postgres_run_tests() {
 # SSL tests expect the OpenSSL style of error messages. We patch this to expect AWS-LC's style.
 # TODO: Remove this when we make an upstream contribution.
 function postgres_patch() {
-  POSTGRES_ERROR_STRING=("certificate verify failed" "bad decrypt" "sslv3 alert certificate revoked" "tlsv1 alert unknown ca")
+  POSTGRES_ERROR_STRING=("certificate verify failed" "bad decrypt" "ssl\[a\-z0\-9\/\]\* alert certificate revoked" "tlsv1 alert unknown ca")
   AWS_LC_EXPECTED_ERROR_STRING=("CERTIFICATE_VERIFY_FAILED" "BAD_DECRYPT" "SSLV3_ALERT_CERTIFICATE_REVOKED" "TLSV1_ALERT_UNKNOWN_CA")
   for i in "${!POSTGRES_ERROR_STRING[@]}"; do
     find ./ -type f -name "001_ssltests.pl" | xargs sed -i -e "s|${POSTGRES_ERROR_STRING[$i]}|${AWS_LC_EXPECTED_ERROR_STRING[$i]}|g"
