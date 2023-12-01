@@ -539,6 +539,10 @@ int X509V3_add_value_int(const char *name, const ASN1_INTEGER *aint,
 OPENSSL_EXPORT int GENERAL_NAME_cmp(const GENERAL_NAME *a,
                                     const GENERAL_NAME *b);
 
+// X509_VERIFY_PARAM_lookup returns a pre-defined |X509_VERIFY_PARAM| named by
+// |name|, or NULL if no such name is defined.
+const X509_VERIFY_PARAM *X509_VERIFY_PARAM_lookup(const char *name);
+
 
 #if defined(__cplusplus)
 }  // extern C
