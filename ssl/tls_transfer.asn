@@ -126,7 +126,9 @@ SSLConfig ::= SEQUENCE {
     confMaxVersion INTEGER,
     confMinVersion INTEGER,
     ocspStaplingEnabled [0] BOOLEAN OPTIONAL,
-    jdk11Workaround [1] BOOLEAN OPTIONAL
+    jdk11Workaround [1] BOOLEAN OPTIONAL,
+    confMaxVersionUseDefault [2] BOOLEAN OPTIONAL,
+    confMinVersionUseDefault [3] BOOLEAN OPTIONAL
 }
 
 END
