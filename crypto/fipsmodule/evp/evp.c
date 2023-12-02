@@ -269,18 +269,28 @@ int EVP_PKEY_type(int nid) {
 
 EVP_PKEY *EVP_PKEY_new_mac_key(int type, ENGINE *engine, const uint8_t *mac_key,
                                size_t mac_key_len) {
-  EVP_PKEY_CTX *hmac_pkey_ctx = NULL;
-  EVP_PKEY *ret = NULL;
+  // Only |EVP_PKEY_HMAC| is supported as of now.
+  if (type != EVP_PKEY_HMAC) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+    return 0;
+  }
 
-  hmac_pkey_ctx = EVP_PKEY_CTX_new_id(type, engine);
+  // There can be non-existent keys, but the combination below isn't allowed.
+  if (mac_key == NULL && mac_key_len > 0) {
+    return 0;
+  }
+
+  EVP_PKEY_CTX *hmac_pkey_ctx = EVP_PKEY_CTX_new_id(type, engine);
   if (hmac_pkey_ctx == NULL) {
     return NULL;
   }
+  EVP_PKEY *ret = NULL;
 
+  CBS cbs;
+  CBS_init(&cbs, mac_key, mac_key_len);
   if (!EVP_PKEY_keygen_init(hmac_pkey_ctx) ||
       !EVP_PKEY_CTX_ctrl(hmac_pkey_ctx, -1, EVP_PKEY_OP_KEYGEN,
-                         EVP_PKEY_CTRL_HMAC_SET_MAC_KEY, mac_key_len,
-                         (uint8_t *)mac_key) ||
+                         EVP_PKEY_CTRL_HMAC_SET_MAC_KEY, 0, &cbs) ||
       !EVP_PKEY_keygen(hmac_pkey_ctx, &ret)) {
     ret = NULL;
   }

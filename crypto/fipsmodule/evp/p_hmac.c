@@ -66,8 +66,9 @@
 
 
 typedef struct {
-  const EVP_MD *md;       /* MD for HMAC use */
-  ASN1_OCTET_STRING ktmp; /* Temp storage for key */
+  const EVP_MD *md; /* MD for HMAC use */
+  uint8_t *key;
+  size_t key_len;
   HMAC_CTX ctx;
 } HMAC_PKEY_CTX;
 
@@ -78,10 +79,8 @@ static int hmac_init(EVP_PKEY_CTX *ctx) {
     return 0;
   }
   OPENSSL_memset(hctx, 0, sizeof(HMAC_PKEY_CTX));
-  hctx->ktmp.type = V_ASN1_OCTET_STRING;
   HMAC_CTX_init(&hctx->ctx);
   ctx->data = hctx;
-
   return 1;
 }
 
@@ -97,46 +96,36 @@ static int hmac_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src) {
   if (!HMAC_CTX_copy_ex(&dctx->ctx, &sctx->ctx)) {
     return 0;
   }
-  if (sctx->ktmp.data != NULL) {
-    if (!ASN1_OCTET_STRING_set(&dctx->ktmp, sctx->ktmp.data,
-                               sctx->ktmp.length)) {
-      return 0;
-    }
-  }
+  dctx->key = OPENSSL_memdup(sctx->key, sctx->key_len);
+  dctx->key_len = sctx->key_len;
   return 1;
 }
 
 static void hmac_cleanup(EVP_PKEY_CTX *ctx) {
   HMAC_PKEY_CTX *hctx = ctx->data;
-
   if (hctx == NULL) {
     return;
   }
-
   HMAC_CTX_cleanup(&hctx->ctx);
-  if (hctx->ktmp.data != NULL) {
-    if (hctx->ktmp.length != 0) {
-      OPENSSL_cleanse(hctx->ktmp.data, hctx->ktmp.length);
-    }
-    OPENSSL_free(hctx->ktmp.data);
-    hctx->ktmp.data = NULL;
-  }
+  // if (hctx->key != NULL) {
+  //   OPENSSL_free(hctx->key);
+  // }
   OPENSSL_free(hctx);
 }
 
 static int hmac_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
-  ASN1_OCTET_STRING *hkey = NULL;
   HMAC_PKEY_CTX *hctx = ctx->data;
-
-  if (hctx->ktmp.data == NULL) {
+  CBS *key = OPENSSL_malloc(sizeof(CBS));
+  if (key == NULL) {
     return 0;
   }
-  hkey = ASN1_OCTET_STRING_dup(&hctx->ktmp);
-  if (hkey == NULL) {
-    return 0;
-  }
+  CBS_init(key, hctx->key, hctx->key_len);
 
-  return EVP_PKEY_assign(pkey, EVP_PKEY_HMAC, hkey);
+  // |EVP_PKEY_new_mac_key| allocates a temporary |EVP_PKEY_CTX| and frees it
+  // along with |ctx->data| (which contains the original key data).
+  // We allocate and copy the key data over to a new |CBS| |key| and assign it
+  // to |pkey|, so that it is available in later operations.
+  return EVP_PKEY_assign(pkey, EVP_PKEY_HMAC, key);
 }
 
 static void hmac_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
@@ -177,30 +166,29 @@ static int hmac_final(EVP_PKEY_CTX *ctx, uint8_t *sig, size_t *siglen,
 
 static int hmac_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
   HMAC_PKEY_CTX *hctx = ctx->data;
-  ASN1_OCTET_STRING *key;
 
   switch (type) {
-    case EVP_PKEY_CTRL_HMAC_SET_MAC_KEY:
-      if ((p2 == NULL && p1 > 0) || (p1 < -1)) {
+    case EVP_PKEY_CTRL_HMAC_SET_MAC_KEY: {
+      const CBS *key = p2;
+      if (!CBS_stow(key, &hctx->key, &hctx->key_len)) {
         return 0;
       }
-      if (!ASN1_OCTET_STRING_set(&hctx->ktmp, p2, p1)) {
-        return 0;
-      }
-      break;
-
+      return 1;
+    }
     case EVP_PKEY_CTRL_MD:
       hctx->md = p2;
       break;
 
-    case EVP_PKEY_CTRL_HMAC_DIGESTINIT:
-      key = (ASN1_OCTET_STRING *)ctx->pkey->pkey.ptr;
-      if (!HMAC_Init_ex(&hctx->ctx, key->data, key->length, hctx->md,
+    case EVP_PKEY_CTRL_HMAC_DIGESTINIT: {
+      // |HMAC_PKEY_CTX| is newly allocated by |EVP_DigestSignInit| at this
+      // point. The actual key data is stored in |ctx->pkey| as a |CBS| pointer.
+      const CBS *key = ctx->pkey->pkey.ptr;
+      if (!HMAC_Init_ex(&hctx->ctx, CBS_data(key), CBS_len(key), hctx->md,
                         ctx->engine)) {
         return 0;
       }
-      break;
-
+      return 1;
+    }
     default:
       OPENSSL_PUT_ERROR(EVP, EVP_R_COMMAND_NOT_SUPPORTED);
       return 0;

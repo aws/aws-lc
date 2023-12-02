@@ -96,22 +96,63 @@ static bool RunHMACTestEVP(const std::vector<uint8_t> &key,
   bssl::UniquePtr<EVP_PKEY> pkey(
       EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, nullptr, key.data(), key.size()));
   EXPECT_TRUE(pkey);
-  bssl::ScopedEVP_MD_CTX mctx;
-  EXPECT_TRUE(EVP_DigestSignInit(mctx.get(), nullptr, md, nullptr, pkey.get()));
-  EXPECT_TRUE(EVP_DigestSignUpdate(mctx.get(), msg.data(), msg.size()));
 
+  bssl::ScopedEVP_MD_CTX copy, mctx;
   size_t len;
   std::vector<uint8_t> actual;
+  EXPECT_TRUE(EVP_DigestSignInit(mctx.get(), nullptr, md, nullptr, pkey.get()));
+  // Make a copy we can test against later.
+  EXPECT_TRUE(EVP_MD_CTX_copy_ex(copy.get(), mctx.get()));
+  EXPECT_TRUE(EVP_DigestSignUpdate(mctx.get(), msg.data(), msg.size()));
   EXPECT_TRUE(EVP_DigestSignFinal(mctx.get(), nullptr, &len));
   actual.resize(len);
   EXPECT_TRUE(EVP_DigestSignFinal(mctx.get(), actual.data(), &len));
   actual.resize(len);
-
   // Wycheproof tests truncate the tags down to |tagSize|. Expected outputs in
   // hmac_tests.txt have the length of the entire tag.
   EXPECT_EQ(Bytes(tag), Bytes(actual.data(), tag.size()));
+
+  // TODO: Add test using EVP_MD_CTX_copy_ex
+  // Repeat the test with |copy|, to check |EVP_MD_CTX_copy_ex| duplicated
+  // everything.
+  len = 0;
+  actual.clear();
+  EXPECT_TRUE(EVP_DigestSignUpdate(copy.get(), msg.data(), msg.size()));
+  EXPECT_TRUE(EVP_DigestSignFinal(copy.get(), nullptr, &len));
+  actual.resize(len);
+  EXPECT_TRUE(EVP_DigestSignFinal(copy.get(), actual.data(), &len));
+  actual.resize(len);
+  EXPECT_EQ(Bytes(tag), Bytes(actual.data(), tag.size()));
+
+  bssl::ScopedEVP_MD_CTX copy_one_shot, one_shot;
+  len = 0;
+  actual.clear();
+  EXPECT_TRUE(
+      EVP_DigestSignInit(one_shot.get(), nullptr, md, nullptr, pkey.get()));
+  // Make a copy we can test against later.
+  EXPECT_TRUE(EVP_MD_CTX_copy_ex(copy_one_shot.get(), one_shot.get()));
+  EXPECT_TRUE(
+      EVP_DigestSign(one_shot.get(), nullptr, &len, msg.data(), msg.size()));
+  actual.resize(len);
+  EXPECT_TRUE(EVP_DigestSign(one_shot.get(), actual.data(), &len, msg.data(),
+                             msg.size()));
+  actual.resize(len);
+  EXPECT_EQ(Bytes(tag), Bytes(actual.data(), tag.size()));
+
+  // Repeat the test with |copy_one_shot|, to check |EVP_MD_CTX_copy_ex|
+  // duplicated everything.
+  len = 0;
+  actual.clear();
+  EXPECT_TRUE(
+      EVP_DigestSignUpdate(copy_one_shot.get(), msg.data(), msg.size()));
+  EXPECT_TRUE(EVP_DigestSignFinal(copy_one_shot.get(), nullptr, &len));
+  actual.resize(len);
+  EXPECT_TRUE(EVP_DigestSignFinal(copy_one_shot.get(), actual.data(), &len));
+  actual.resize(len);
+  EXPECT_EQ(Bytes(tag), Bytes(actual.data(), tag.size()));
   return true;
 }
+
 
 TEST(HMACTest, TestVectors) {
   FileTestGTest("crypto/hmac_extra/hmac_tests.txt", [](FileTest *t) {

@@ -63,15 +63,14 @@
 #include "internal.h"
 
 
-static int hmac_size(const EVP_PKEY *pkey) { return EVP_MAX_MD_SIZE; }
+static int hmac_size(OPENSSL_UNUSED const EVP_PKEY *pkey) {
+  return EVP_MAX_MD_SIZE;
+}
 
 static void hmac_key_free(EVP_PKEY *pkey) {
-  ASN1_OCTET_STRING *os = (ASN1_OCTET_STRING *)pkey->pkey.ptr;
-  if (os != NULL) {
-    if (os->data != NULL) {
-      OPENSSL_cleanse(os->data, os->length);
-    }
-    ASN1_OCTET_STRING_free(os);
+  CBS *key = pkey->pkey.ptr;
+  if (key != NULL) {
+    OPENSSL_free(key);
   }
 }
 
