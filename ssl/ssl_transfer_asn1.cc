@@ -930,9 +930,11 @@ static const unsigned kSSLConfigOcspStaplingEnabledTag =
 static const unsigned kSSLConfigJdk11WorkaroundTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 1;
 
-static const unsigned kSSLConfigConfMaxVersionUseDefault = 2;
+static const unsigned kSSLConfigConfMaxVersionUseDefault =
+    CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 2;
 
-static const unsigned kSSLConfigConfMinVersionUseDefault = 3;
+static const unsigned kSSLConfigConfMinVersionUseDefault =
+    CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 3;
 
 // *** EXPERIMENTAL — DO NOT USE WITHOUT CHECKING ***
 // These SSL_CONFIG serialization functions are developed to support SSL
