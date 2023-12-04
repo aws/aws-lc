@@ -922,7 +922,7 @@ static int SSL3_STATE_from_bytes(SSL *ssl, CBS *cbs, const SSL_CTX *ctx) {
 
 // SSL_CONFIG serialization.
 
-static const unsigned kSSLConfigVersion = 1;
+static const unsigned kSSLConfigVersion = 2;
 
 static const unsigned kSSLConfigOcspStaplingEnabledTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 0;
