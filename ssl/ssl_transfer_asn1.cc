@@ -605,7 +605,7 @@ static int SSL3_STATE_from_bytes(SSL *ssl, CBS *cbs, const SSL_CTX *ctx) {
     return 0;
   }
 
-  bool is_v2 = serde_version == SSL3_STATE_SERDE_VERSION_TWO;
+  bool is_v2 = (serde_version == SSL3_STATE_SERDE_VERSION_TWO);
 
   // We should have no more data at this point if we are deserializing v1
   // encoding.
@@ -1000,7 +1000,7 @@ static int SSL_CONFIG_from_bytes(SSL_CONFIG *out, CBS *cbs) {
   int conf_max_version_use_default, conf_min_version_use_default;
   uint64_t version, conf_max_version, conf_min_version;
   if (!CBS_get_asn1(cbs, &config, CBS_ASN1_SEQUENCE) ||
-      !CBS_get_asn1_uint64(&config, &version) || version != kSSLConfigVersion ||
+      !CBS_get_asn1_uint64(&config, &version) || version > kSSLConfigVersion ||
       !CBS_get_asn1_uint64(&config, &conf_max_version) ||
       !CBS_get_asn1_uint64(&config, &conf_min_version) ||
       !CBS_get_optional_asn1_bool(&config, &ocsp_stapling_enabled,
@@ -1098,14 +1098,11 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
   int ssl_config_present = 0;
 
   if (!CBS_get_asn1(cbs, &ssl_cbs, CBS_ASN1_SEQUENCE) || CBS_len(cbs) != 0 ||
-      !CBS_get_asn1_uint64(&ssl_cbs, &ssl_serial_ver)) {
+      !CBS_get_asn1_uint64(&ssl_cbs, &ssl_serial_ver)
+      || ssl_serial_ver > SSL_SERIAL_VERSION) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL);
     return 0;
   }
-  // At the moment we're simply asserting the version is correct. However
-  // future updates could use SSL serial version to figure out what data
-  // was actually serialized and act accordingly.
-  assert(ssl_serial_ver <= SSL_SERIAL_VERSION);
 
   //    FIXME add hash of SSL_CTX
   // This TODO is actually a part of SSL DER struct revisit.
