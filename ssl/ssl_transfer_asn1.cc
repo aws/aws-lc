@@ -182,91 +182,7 @@ static const unsigned kS3AeadWriteCtxTag =
 // ssl3_state_to_bytes serializes |in| to bytes stored in |cbb|.
 // It returns one on success and zero on failure.
 //
-// An SSL3_STATE is serialized as the following ASN.1 structure, a complete
-// description can be found in tls_transfer.asn:
-//
-// SSL3StateSerializationVersion ::= INTEGER {
-//                   v1 (1),
-//                   v2 (2) -- Added additional fields to support TLS 1.3
-//               }
-//
-// SSL3State ::= SEQUENCE {
-//   serializationVersion SSL3StateSerializationVersion,
-//   readSequence   OCTET STRING,
-//   writeSequence  OCTET STRING,
-//   serverRandom   OCTET STRING,
-//   clientRandom   OCTET STRING,
-//   sendAlert      OCTET STRING,
-//   rwstate        INTEGER,
-//   earlyDataReason INTEGER,
-//   previousClientFinished OCTET STRING,
-//   previousClientFinishedLen INTEGER,
-//   previousServerFinished OCTET STRING,
-//   previousServerFinishedLen INTEGER,
-//   emptyRecordCount INTEGER,
-//   warningAlertCount INTEGER,
-//   totalRenegotiations INTEGER,
-//   -- Simplified to SEQUENCE here, uses SSL_SESSION_to_bytes_full
-//   establishedSession [0] SEQUENCE {...},
-//   sessionReused  [1] BOOLEAN OPTIONAL,
-//   hostname       [2] OCTET STRING OPTIONAL,
-//   alpnSelected   [3] OCTET STRING OPTIONAL,
-//   nextProtoNegotiated [4] OCTET STRING OPTIONAL,
-//   channelIdValid [5] BOOLEAN OPTIONAL,
-//   channelId      [6] OCTET STRING OPTIONAL,
-//   sendConnectionBinding [7] BOOLEAN OPTIONAL,
-//   -- pending_app_data is a Span in the SS3_STATE that points into read_buffer
-//   pendingAppData [8] Span OPTIONAL,
-//   readBuffer     [9] SSLBuffer OPTIONAL,
-//   notResumable   [10] BOOLEAN OPTIONAL,
-//   ...,
-//   -- Extension describing v2 serialization format for TLS 1.3 support.
-//   [[ 2:
-//   earlyDataSkipped [11] INTEGER OPTIONAL,
-//   delegatedCredentialUsed [12] BOOLEAN OPTIONAL,
-//   earlyDataAccepted [13] BOOLEAN OPTIONAL,
-//   usedHelloRetryRequest [14] BOOLEAN OPTIONAL,
-//   ticketAgeSkew  [15] INTEGER OPTIONAL,
-//   writeTrafficSecret [16] OCTET STRING OPTIONAL,
-//   writeTrafficSecretLen [17] INTEGER OPTIONAL,
-//   readTrafficSecret [18] OCTET STRING OPTIONAL,
-//   readTrafficSecretLen [19] INTEGER OPTIONAL,
-//   exporterSecret [20] OCTET STRING OPTIONAL,
-//   exporterSecretLen [21] INTEGER OPTIONAL,
-//   hsBuffer       [22] OCTET STRING OPTIONAL,
-//   echStatus      [23] INTEGER OPTIONAL,
-//   pendingHsData  [24] OCTET STRING OPTIONAL,
-//   pendingFlight  [25] OCTET STRING OPTIONAL,
-//   aeadReadCtx    [26] SSLAEADContext OPTIONAL,
-//   aeadWriteCtx   [27] SSLAEADContext OPTIONAL
-//   ]],
-//   ...
-// }
-//
-// Span ::= SEQUENCE {
-//   offset         INTEGER,
-//   size           INTEGER
-// }
-//
-// SSLBufferSerializationVersion ::= INTEGER {v1 (1)}
-//
-// SSLBuffer ::= SEQUENCE {
-//   serializationVersion SSLBufferSerializationVersion,
-//   bufferAllocated BOOLEAN,
-//   offset         INTEGER,
-//   size           INTEGER,
-//   capacity       INTEGER
-// }
-//
-// SSLConfigSerializationVersion ::= INTEGER {v1 (1)}
-//
-// SSLConfig ::= SEQUENCE {
-//   serializationVersion SSLConfigSerializationVersion,
-//   confMaxVersion INTEGER,
-//   confMinVersion INTEGER,
-//   ocspStaplingEnabled [0] BOOLEAN OPTIONAL,
-//   jdk11Workaround [1] BOOLEAN OPTIONAL
-// }
+// SSL3_STATE ASN.1 structure: see ssl_transfer_asn1.cc
 static int SSL3_STATE_to_bytes(SSL3_STATE *in, uint16_t protocol_version,
                                CBB *cbb) {
   if (in == NULL || cbb == NULL) {
@@ -944,16 +860,7 @@ static const unsigned kSSLConfigConfMinVersionUseDefault =
 // SSL_CONFIG_to_bytes serializes |in| to bytes stored in |cbb|.
 // It returns one on success and zero on failure.
 //
-// An SSL_CONFIG is serialized as the following ASN.1 structure:
-//
-// SSL_CONFIG ::= SEQUENCE {
-//    version                           INTEGER (1),  -- SSL_CONFIG structure
-//    version confMaxVersion                    INTEGER, confMinVersion INTEGER,
-//    ocspStaplingEnabled               [0] BOOLEAN OPTIONAL,
-//    jdk11Workaround                   [1] BOOLEAN OPTIONAL,
-//    confMaxVersionUseDefault          [2] BOOLEAN OPTIONAL,
-//    confMinVersionUseDefault          [3] BOOLEAN OPTIONAL
-// }
+// SSL_CONFIG ASN.1 structure: see ssl_transfer_asn1.cc
 static int SSL_CONFIG_to_bytes(SSL_CONFIG *in, CBB *cbb) {
   if (in == NULL || cbb == NULL) {
     return 0;
@@ -1048,18 +955,8 @@ static const unsigned kSSLConfigTag =
 // SSL_to_bytes_full serializes |in| to bytes stored in |cbb|.
 // It returns one on success and zero on failure.
 //
-// An SSL is serialized as the following ASN.1 structure:
-//
-// SSL ::= SEQUENCE {
-//     sslSerialVer      UINT64   -- version of the SSL serialization format
-//     version           UINT64
-//     maxSendFragement  UINT64
-//     s3                SSL3State
-//     mode              UINT64
-//     options           UINT64
-//     quietShutdown     [0] BOOLEAN OPTIONAL
-//     config            [1] SEQUENCE OPTIONAL
-// }
+// SSL ASN.1 structure: see ssl_transfer_asn1.cc
+SSL3_STATE
 static int SSL_to_bytes_full(const SSL *in, CBB *cbb) {
   CBB ssl, child;
 
