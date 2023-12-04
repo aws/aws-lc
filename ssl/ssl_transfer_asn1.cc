@@ -915,8 +915,21 @@ static int SSL_CONFIG_from_bytes(SSL_CONFIG *out, CBS *cbs) {
                                   0 /* default to false */) ||
       !CBS_get_optional_asn1_bool(&config, &jdk11_workaround,
                                   kSSLConfigJdk11WorkaroundTag,
-                                  0 /* default to false */) ||
-      !CBS_get_optional_asn1_bool(&config, &conf_max_version_use_default,
+                                  0 /* default to false */)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL_CONFIG);
+    return 0;
+  }
+
+  bool is_atleast_v2 = (version >= 2);
+
+  if (!is_atleast_v2 && CBS_len(&config) != 0) {
+    // We are parsing version 1 of config format, but there is more data to
+    // parse than expected. That is, the input is not v1 formatted.
+    OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL_CONFIG);
+    return 0;
+  }
+
+  if (!CBS_get_optional_asn1_bool(&config, &conf_max_version_use_default,
                                   kSSLConfigConfMaxVersionUseDefault,
                                   1 /* default to true */) ||
       !CBS_get_optional_asn1_bool(&config, &conf_min_version_use_default,
@@ -926,6 +939,7 @@ static int SSL_CONFIG_from_bytes(SSL_CONFIG *out, CBS *cbs) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL_CONFIG);
     return 0;
   }
+
   out->conf_max_version = conf_max_version;
   out->conf_min_version = conf_min_version;
   out->conf_max_version_use_default = !!conf_max_version_use_default;
@@ -956,7 +970,6 @@ static const unsigned kSSLConfigTag =
 // It returns one on success and zero on failure.
 //
 // SSL ASN.1 structure: see ssl_transfer_asn1.cc
-SSL3_STATE
 static int SSL_to_bytes_full(const SSL *in, CBB *cbb) {
   CBB ssl, child;
 
