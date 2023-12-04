@@ -582,6 +582,13 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *method) {
     return nullptr;
   }
 
+  // By default, use the method's default min/max version. Make sure to set
+  // this after calls to |SSL_CTX_set_{min,max}_proto_version| because those
+  // calls modify these values if |method->version| is not 0. We should still
+  // defer to the protocol method's default min/max values in that case.
+  ret->conf_max_version_use_default = true;
+  ret->conf_min_version_use_default = true;
+
   return ret.release();
 }
 
@@ -642,6 +649,8 @@ SSL *SSL_new(SSL_CTX *ctx) {
   }
   ssl->config->conf_min_version = ctx->conf_min_version;
   ssl->config->conf_max_version = ctx->conf_max_version;
+  ssl->config->conf_min_version_use_default = ctx->conf_min_version_use_default;
+  ssl->config->conf_max_version_use_default = ctx->conf_max_version_use_default;
 
   ssl->config->cert = ssl_cert_dup(ctx->cert.get());
   if (ssl->config->cert == nullptr) {
