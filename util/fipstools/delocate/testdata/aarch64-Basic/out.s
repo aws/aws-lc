@@ -1,6 +1,8 @@
 .text
 .file 1 "inserted_by_delocate.c"
 .loc 1 1 0
+.global BORINGSSL_bcm_text_start
+.type BORINGSSL_bcm_text_start, @function
 BORINGSSL_bcm_text_start:
 	.type foo, %function
 	.globl foo
@@ -154,6 +156,8 @@ bss_symbol:
 .size bss_symbol, 4
 .text
 .loc 1 2 0
+.global BORINGSSL_bcm_text_end
+.type BORINGSSL_bcm_text_end, @function
 BORINGSSL_bcm_text_end:
 .p2align 2
 .hidden bcm_redirector_remote_function
