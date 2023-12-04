@@ -143,6 +143,22 @@ foo:
 	add x22, sp, #(13*32)+96
 	add x22, sp, #(13*32)+96*32
 
+	// Ensure BORINGSSL_bcm_text_[end,start] are loaded through GOT
+// WAS adrp x4, :got:BORINGSSL_bcm_text_start
+	sub sp, sp, 128
+	stp x0, lr, [sp, #-16]!
+	bl .Lboringssl_loadgot_BORINGSSL_bcm_text_start
+	mov x4, x0
+	ldp x0, lr, [sp], #16
+	add sp, sp, 128
+// WAS adrp x5, :got:BORINGSSL_bcm_text_end
+	sub sp, sp, 128
+	stp x0, lr, [sp, #-16]!
+	bl .Lboringssl_loadgot_BORINGSSL_bcm_text_end
+	mov x5, x0
+	ldp x0, lr, [sp], #16
+	add sp, sp, 128
+
 .Llocal_function_local_target:
 local_function:
 
@@ -193,6 +209,26 @@ bss_symbol_bss_get:
 	ret
 .cfi_endproc
 .size bss_symbol_bss_get, .-bss_symbol_bss_get
+.p2align 2
+.hidden .Lboringssl_loadgot_BORINGSSL_bcm_text_end
+.type .Lboringssl_loadgot_BORINGSSL_bcm_text_end, @function
+.Lboringssl_loadgot_BORINGSSL_bcm_text_end:
+.cfi_startproc
+	adrp x0, :got:BORINGSSL_bcm_text_end
+	ldr x0, [x0, :got_lo12:BORINGSSL_bcm_text_end]
+	ret
+.cfi_endproc
+.size .Lboringssl_loadgot_BORINGSSL_bcm_text_end, .-.Lboringssl_loadgot_BORINGSSL_bcm_text_end
+.p2align 2
+.hidden .Lboringssl_loadgot_BORINGSSL_bcm_text_start
+.type .Lboringssl_loadgot_BORINGSSL_bcm_text_start, @function
+.Lboringssl_loadgot_BORINGSSL_bcm_text_start:
+.cfi_startproc
+	adrp x0, :got:BORINGSSL_bcm_text_start
+	ldr x0, [x0, :got_lo12:BORINGSSL_bcm_text_start]
+	ret
+.cfi_endproc
+.size .Lboringssl_loadgot_BORINGSSL_bcm_text_start, .-.Lboringssl_loadgot_BORINGSSL_bcm_text_start
 .p2align 2
 .hidden .Lboringssl_loadgot_stderr
 .type .Lboringssl_loadgot_stderr, @function

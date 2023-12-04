@@ -87,6 +87,10 @@ foo:
 	add x22, sp, #(13*32)+96
 	add x22, sp, #(13*32)+96*32
 
+	// Ensure BORINGSSL_bcm_text_[end,start] are loaded through GOT
+	adrp x4, :got:BORINGSSL_bcm_text_start
+	adrp x5, :got:BORINGSSL_bcm_text_end
+
 local_function:
 
 // BSS data
