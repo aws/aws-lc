@@ -65,6 +65,13 @@ struct TmpFileDeleter {
 
 using TmpFilePtr = std::unique_ptr<FILE, TmpFileDeleter>;
 
+static void* d2i_ASN1_INTEGER_void(void ** out, const unsigned char **inp, long len) {
+  return d2i_ASN1_INTEGER((ASN1_INTEGER **)out, inp, len);
+}
+
+static int i2d_ASN1_INTEGER_void(const void *a, unsigned char **out) {
+  return i2d_ASN1_INTEGER((ASN1_INTEGER *)a, out);
+}
 
 TEST(PEMTest, WriteReadASN1IntegerPem) {
 #if defined(OPENSSL_ANDROID)
@@ -93,14 +100,14 @@ TEST(PEMTest, WriteReadASN1IntegerPem) {
     ASSERT_TRUE(pem_file.get());
 
     // Write the ASN1_INTEGER to a PEM-formatted string
-    ASSERT_TRUE(PEM_ASN1_write((i2d_of_void *)i2d_ASN1_INTEGER, "ASN1 INTEGER",
+    ASSERT_TRUE(PEM_ASN1_write(i2d_ASN1_INTEGER_void, "ASN1 INTEGER",
                                pem_file.get(), asn1_int.get(), nullptr, nullptr,
                                0, nullptr, nullptr));
 
     rewind(pem_file.get());
     // Read the ASN1_INTEGER back from the PEM-formatted string
     bssl::UniquePtr<ASN1_INTEGER> read_integer((ASN1_INTEGER *)PEM_ASN1_read(
-        (d2i_of_void *)d2i_ASN1_INTEGER, "ASN1 INTEGER", pem_file.get(), nullptr,
+        d2i_ASN1_INTEGER_void, "ASN1 INTEGER", pem_file.get(), nullptr,
         nullptr, nullptr));
     ASSERT_TRUE(read_integer);
 
