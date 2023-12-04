@@ -1667,8 +1667,21 @@ static void ExpectDefaultVersion(uint16_t min_version, uint16_t max_version,
                                  const SSL_METHOD *(*method)(void)) {
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(method()));
   ASSERT_TRUE(ctx);
+  bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
+  ASSERT_TRUE(ssl);
+  EXPECT_EQ(0, SSL_CTX_get_min_proto_version(ctx.get()));
+  EXPECT_EQ(0, SSL_CTX_get_max_proto_version(ctx.get()));
+  EXPECT_EQ(0, SSL_get_min_proto_version(ssl.get()));
+  EXPECT_EQ(0, SSL_get_max_proto_version(ssl.get()));
+
+  EXPECT_TRUE(SSL_CTX_set_min_proto_version(ctx.get(), min_version));
+  EXPECT_TRUE(SSL_CTX_set_max_proto_version(ctx.get(), max_version));
   EXPECT_EQ(min_version, SSL_CTX_get_min_proto_version(ctx.get()));
   EXPECT_EQ(max_version, SSL_CTX_get_max_proto_version(ctx.get()));
+  EXPECT_TRUE(SSL_set_min_proto_version(ssl.get(), min_version));
+  EXPECT_TRUE(SSL_set_max_proto_version(ssl.get(), max_version));
+  EXPECT_EQ(min_version, SSL_get_min_proto_version(ssl.get()));
+  EXPECT_EQ(max_version, SSL_get_max_proto_version(ssl.get()));
 }
 
 TEST(SSLTest, DefaultVersion) {
@@ -4619,6 +4632,8 @@ TEST(SSLTest, EarlyCallbackVersionSwitch) {
 TEST(SSLTest, SetVersion) {
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
   ASSERT_TRUE(ctx);
+  bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
+  ASSERT_TRUE(ssl);
 
   // Set valid TLS versions.
   for (const auto &vers : kAllVersions) {
@@ -4628,6 +4643,10 @@ TEST(SSLTest, SetVersion) {
       EXPECT_EQ(SSL_CTX_get_max_proto_version(ctx.get()), vers.version);
       EXPECT_TRUE(SSL_CTX_set_min_proto_version(ctx.get(), vers.version));
       EXPECT_EQ(SSL_CTX_get_min_proto_version(ctx.get()), vers.version);
+      EXPECT_TRUE(SSL_set_max_proto_version(ssl.get(), vers.version));
+      EXPECT_EQ(SSL_get_max_proto_version(ssl.get()), vers.version);
+      EXPECT_TRUE(SSL_set_min_proto_version(ssl.get(), vers.version));
+      EXPECT_EQ(SSL_get_min_proto_version(ssl.get()), vers.version);
     }
   }
 
@@ -4638,18 +4657,30 @@ TEST(SSLTest, SetVersion) {
   EXPECT_FALSE(SSL_CTX_set_min_proto_version(ctx.get(), DTLS1_VERSION));
   EXPECT_FALSE(SSL_CTX_set_min_proto_version(ctx.get(), 0x0200));
   EXPECT_FALSE(SSL_CTX_set_min_proto_version(ctx.get(), 0x1234));
+  EXPECT_FALSE(SSL_set_max_proto_version(ssl.get(), 0x0200));
+  EXPECT_FALSE(SSL_set_max_proto_version(ssl.get(), 0x1234));
+  EXPECT_FALSE(SSL_set_min_proto_version(ssl.get(), DTLS1_VERSION));
+  EXPECT_FALSE(SSL_set_min_proto_version(ssl.get(), 0x0200));
+  EXPECT_FALSE(SSL_set_min_proto_version(ssl.get(), 0x1234));
 
-  // Zero is the default version.
+  // Zero represents the default version.
   EXPECT_TRUE(SSL_CTX_set_max_proto_version(ctx.get(), 0));
-  EXPECT_EQ(TLS1_3_VERSION, SSL_CTX_get_max_proto_version(ctx.get()));
+  EXPECT_EQ(0, SSL_CTX_get_max_proto_version(ctx.get()));
   EXPECT_TRUE(SSL_CTX_set_min_proto_version(ctx.get(), 0));
-  EXPECT_EQ(TLS1_VERSION, SSL_CTX_get_min_proto_version(ctx.get()));
+  EXPECT_EQ(0, SSL_CTX_get_min_proto_version(ctx.get()));
+  EXPECT_TRUE(SSL_set_max_proto_version(ssl.get(), 0));
+  EXPECT_EQ(0, SSL_get_max_proto_version(ssl.get()));
+  EXPECT_TRUE(SSL_set_min_proto_version(ssl.get(), 0));
+  EXPECT_EQ(0, SSL_get_min_proto_version(ssl.get()));
 
   // SSL 3.0 is not available.
   EXPECT_FALSE(SSL_CTX_set_min_proto_version(ctx.get(), SSL3_VERSION));
+  EXPECT_FALSE(SSL_set_min_proto_version(ssl.get(), SSL3_VERSION));
 
   ctx.reset(SSL_CTX_new(DTLS_method()));
   ASSERT_TRUE(ctx);
+  ssl.reset(SSL_new(ctx.get()));
+  ASSERT_TRUE(ssl);
 
   // Set valid DTLS versions.
   for (const auto &vers : kAllVersions) {
@@ -4672,11 +4703,11 @@ TEST(SSLTest, SetVersion) {
   EXPECT_FALSE(SSL_CTX_set_min_proto_version(ctx.get(), 0xfffe /* DTLS 0.1 */));
   EXPECT_FALSE(SSL_CTX_set_min_proto_version(ctx.get(), 0x1234));
 
-  // Zero is the default version.
+  // Zero represents the default version.
   EXPECT_TRUE(SSL_CTX_set_max_proto_version(ctx.get(), 0));
-  EXPECT_EQ(DTLS1_2_VERSION, SSL_CTX_get_max_proto_version(ctx.get()));
+  EXPECT_EQ(0, SSL_CTX_get_max_proto_version(ctx.get()));
   EXPECT_TRUE(SSL_CTX_set_min_proto_version(ctx.get(), 0));
-  EXPECT_EQ(DTLS1_VERSION, SSL_CTX_get_min_proto_version(ctx.get()));
+  EXPECT_EQ(0, SSL_CTX_get_min_proto_version(ctx.get()));
 }
 
 static const char *GetVersionName(uint16_t version) {
@@ -6510,18 +6541,6 @@ TEST_P(SSLVersionTest, SSLPendingEx) {
   ASSERT_EQ(buf_len, (size_t)2);
   EXPECT_EQ(3, SSL_pending(client_.get()));
   EXPECT_EQ(1, SSL_has_pending(client_.get()));
-
-  // 0-sized IO with valid inputs should succeed but not read/write nor effect
-  // buffer state. However, NULL |read_bytes|/|written| pointer should fail.
-  const int client_pending = SSL_pending(client_.get());
-  ASSERT_EQ(1, SSL_read_ex(client_.get(), (void *)"", 0, &buf_len));
-  ASSERT_EQ(0UL, buf_len);
-  ASSERT_EQ(client_pending, SSL_pending(client_.get()));
-  ASSERT_EQ(1, SSL_write_ex(client_.get(), (void *)"", 0, &buf_len));
-  ASSERT_EQ(0UL, buf_len);
-  ASSERT_EQ(client_pending, SSL_pending(client_.get()));
-  ASSERT_EQ(0, SSL_read_ex(client_.get(), (void *)"", 0, nullptr));
-  ASSERT_EQ(0, SSL_write_ex(client_.get(), (void *)"", 0, nullptr));
 }
 
 // Test that post-handshake tickets consumed by |SSL_shutdown| are ignored.

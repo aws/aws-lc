@@ -375,9 +375,7 @@ OPENSSL_EXPORT int SSL_read(SSL *ssl, void *buf, int num);
 // SSL_read_ex reads up to |num| bytes from |ssl| into |buf|. It is similar to
 // |SSL_read|, but instead of returning the number of bytes read, it returns
 // 1 on success or 0 for failure. The number of bytes actually read is stored in
-// |read_bytes|. |SSL_read_ex| can be called with |num| set as 0, but will not read
-// application data from the peer.
-
+// |read_bytes|.
 //
 // This is only maintained for OpenSSL compatibility. Use |SSL_read| instead.
 OPENSSL_EXPORT int SSL_read_ex(SSL *ssl, void *buf, size_t num,
@@ -451,9 +449,7 @@ OPENSSL_EXPORT int SSL_write(SSL *ssl, const void *buf, int num);
 // SSL_write_ex writes up to |num| bytes from |buf| into |ssl|. It is similar to
 // |SSL_write|, but instead of returning the number of bytes written, it returns
 // 1 on success or 0 for failure. The number bytes actually written is stored in
-// |written|. |SSL_write_ex| can be called with |num| set as 0, but will not send
-// application data to the peer.
-
+// |written|.
 //
 // This is only maintained for OpenSSL compatibility. Use |SSL_write| instead.
 OPENSSL_EXPORT int SSL_write_ex(SSL *s, const void *buf, size_t num,
@@ -733,10 +729,12 @@ OPENSSL_EXPORT int SSL_CTX_set_min_proto_version(SSL_CTX *ctx,
 OPENSSL_EXPORT int SSL_CTX_set_max_proto_version(SSL_CTX *ctx,
                                                  uint16_t version);
 
-// SSL_CTX_get_min_proto_version returns the minimum protocol version for |ctx|
+// SSL_CTX_get_min_proto_version returns the minimum protocol version for |ctx|.
+// If |ctx| is configured to use the default minimum version, 0 is returned.
 OPENSSL_EXPORT uint16_t SSL_CTX_get_min_proto_version(const SSL_CTX *ctx);
 
-// SSL_CTX_get_max_proto_version returns the maximum protocol version for |ctx|
+// SSL_CTX_get_max_proto_version returns the maximum protocol version for |ctx|.
+// If |ctx| is configured to use the default maximum version, 0 is returned.
 OPENSSL_EXPORT uint16_t SSL_CTX_get_max_proto_version(const SSL_CTX *ctx);
 
 // SSL_set_min_proto_version sets the minimum protocol version for |ssl| to
@@ -750,11 +748,13 @@ OPENSSL_EXPORT int SSL_set_min_proto_version(SSL *ssl, uint16_t version);
 OPENSSL_EXPORT int SSL_set_max_proto_version(SSL *ssl, uint16_t version);
 
 // SSL_get_min_proto_version returns the minimum protocol version for |ssl|. If
-// the connection's configuration has been shed, 0 is returned.
+// the connection's configuration has been shed or |ssl| is configured to use
+// the default min version, 0 is returned.
 OPENSSL_EXPORT uint16_t SSL_get_min_proto_version(const SSL *ssl);
 
 // SSL_get_max_proto_version returns the maximum protocol version for |ssl|. If
-// the connection's configuration has been shed, 0 is returned.
+// the connection's configuration has been shed or |ssl| is configured to use
+// the default max version, 0 is returned.
 OPENSSL_EXPORT uint16_t SSL_get_max_proto_version(const SSL *ssl);
 
 // SSL_version returns the TLS or DTLS protocol version used by |ssl|, which is

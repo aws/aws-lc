@@ -930,6 +930,12 @@ static const unsigned kSSLConfigOcspStaplingEnabledTag =
 static const unsigned kSSLConfigJdk11WorkaroundTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 1;
 
+static const unsigned kSSLConfigConfMaxVersionUseDefault =
+    CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 2;
+
+static const unsigned kSSLConfigConfMinVersionUseDefault =
+    CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 3;
+
 // *** EXPERIMENTAL — DO NOT USE WITHOUT CHECKING ***
 // These SSL_CONFIG serialization functions are developed to support SSL
 // transfer. Most fields of SSL_CONFIG are not used after handshake completes.
@@ -944,7 +950,9 @@ static const unsigned kSSLConfigJdk11WorkaroundTag =
 //    version                           INTEGER (1),  -- SSL_CONFIG structure
 //    version confMaxVersion                    INTEGER, confMinVersion INTEGER,
 //    ocspStaplingEnabled               [0] BOOLEAN OPTIONAL,
-//    jdk11Workaround                   [1] BOOLEAN OPTIONAL
+//    jdk11Workaround                   [1] BOOLEAN OPTIONAL,
+//    confMaxVersionUseDefault          [2] BOOLEAN OPTIONAL,
+//    confMinVersionUseDefault          [3] BOOLEAN OPTIONAL
 // }
 static int SSL_CONFIG_to_bytes(SSL_CONFIG *in, CBB *cbb) {
   if (in == NULL || cbb == NULL) {
@@ -971,12 +979,25 @@ static int SSL_CONFIG_to_bytes(SSL_CONFIG *in, CBB *cbb) {
       return 0;
     }
   }
+  if (in->conf_max_version_use_default) {
+    if (!CBB_add_asn1(&config, &child, kSSLConfigConfMaxVersionUseDefault) ||
+        !CBB_add_asn1_bool(&child, true)) {
+      return 0;
+    }
+  }
+  if (in->conf_min_version_use_default) {
+    if (!CBB_add_asn1(&config, &child, kSSLConfigConfMinVersionUseDefault) ||
+        !CBB_add_asn1_bool(&child, true)) {
+      return 0;
+    }
+  }
   return CBB_flush(cbb);
 }
 
 static int SSL_CONFIG_from_bytes(SSL_CONFIG *out, CBS *cbs) {
   CBS config;
   int ocsp_stapling_enabled, jdk11_workaround;
+  int conf_max_version_use_default, conf_min_version_use_default;
   uint64_t version, conf_max_version, conf_min_version;
   if (!CBS_get_asn1(cbs, &config, CBS_ASN1_SEQUENCE) ||
       !CBS_get_asn1_uint64(&config, &version) || version != kSSLConfigVersion ||
@@ -988,12 +1009,20 @@ static int SSL_CONFIG_from_bytes(SSL_CONFIG *out, CBS *cbs) {
       !CBS_get_optional_asn1_bool(&config, &jdk11_workaround,
                                   kSSLConfigJdk11WorkaroundTag,
                                   0 /* default to false */) ||
+      !CBS_get_optional_asn1_bool(&config, &conf_max_version_use_default,
+                                  kSSLConfigConfMaxVersionUseDefault,
+                                  1 /* default to true */) ||
+      !CBS_get_optional_asn1_bool(&config, &conf_min_version_use_default,
+                                  kSSLConfigConfMinVersionUseDefault,
+                                  1 /* default to true */) ||
       CBS_len(&config) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL_CONFIG);
     return 0;
   }
   out->conf_max_version = conf_max_version;
   out->conf_min_version = conf_min_version;
+  out->conf_max_version_use_default = !!conf_max_version_use_default;
+  out->conf_min_version_use_default = !!conf_min_version_use_default;
   out->ocsp_stapling_enabled = !!ocsp_stapling_enabled;
   out->jdk11_workaround = !!jdk11_workaround;
   // handoff will always be the normal state(false) after handshake completes.
