@@ -4881,6 +4881,41 @@ OPENSSL_EXPORT int SSL_CTX_set1_sigalgs_list(SSL_CTX *ctx, const char *str);
 // more convenient to codesearch for specific algorithm values.
 OPENSSL_EXPORT int SSL_set1_sigalgs_list(SSL *ssl, const char *str);
 
+// SSL_CTX_get_security_level returns 0. This is only to maintain compatibility
+// with OpenSSL and no security assumptions should be based on the number this
+// function returns.
+//
+// Per OpenSSL's definition of Level 0, 1, and 2:
+//
+// Level 0:
+// Everything is permitted. This retains compatibility with previous versions of
+// OpenSSL.
+//
+// Level 1
+// The security level corresponds to a minimum of 80 bits of security. Any
+// parameters offering below 80 bits of security are excluded. As a result RSA,
+// DSA and DH keys shorter than 1024 bits and ECC keys shorter than 160 bits are
+// prohibited. All export cipher suites are prohibited since they all offer less
+// than 80 bits of security. SSL version 2 is prohibited. Any cipher suite using
+// MD5 for the MAC is also prohibited.
+//
+// Level 2
+// Security level set to 112 bits of security. As a result RSA, DSA and DH keys
+// shorter than 2048 bits and ECC keys shorter than 224 bits are prohibited. In
+// addition to the level 1 exclusions any cipher suite using RC4 is also
+// prohibited. SSL version 3 is also not allowed. Compression is disabled.
+//
+// AWS-LC's libssl doesn't support SSLv2 or SSLv3, and we have no support for MD5
+// or RC4 related cipher suites. However, we don't directly prohibit 512 bit RSA
+// keys like Level 1 in OpenSSL states. Since this function is only retained for
+// OpenSSL compatibility, we set the returned value to 0. This may change if
+// we're asked to support actual Security level setting in AWS-LC.
+OPENSSL_EXPORT int SSL_CTX_get_security_level(const SSL_CTX *ctx);
+
+// SSL_CTX_set_security_level does nothing. See documentation in
+// |SSL_CTX_get_security_level| about implied security levels for AWS-LC.
+OPENSSL_EXPORT void SSL_CTX_set_security_level(const SSL_CTX *ctx, int level);
+
 #define SSL_set_app_data(s, arg) (SSL_set_ex_data(s, 0, (char *)(arg)))
 #define SSL_get_app_data(s) (SSL_get_ex_data(s, 0))
 #define SSL_SESSION_set_app_data(s, a) \
