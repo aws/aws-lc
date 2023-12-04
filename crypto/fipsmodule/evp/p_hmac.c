@@ -61,6 +61,7 @@
 #include <openssl/mem.h>
 #include <openssl/obj.h>
 
+#include "../../evp_extra/internal.h"
 #include "../digest/internal.h"
 #include "internal.h"
 
@@ -96,8 +97,14 @@ static int hmac_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src) {
   if (!HMAC_CTX_copy_ex(&dctx->ctx, &sctx->ctx)) {
     return 0;
   }
-  dctx->key = OPENSSL_memdup(sctx->key, sctx->key_len);
-  dctx->key_len = sctx->key_len;
+
+  if (sctx->key_len != 0) {
+    dctx->key = OPENSSL_memdup(sctx->key, sctx->key_len);
+    if (dctx->key == NULL) {
+      return 0;
+    }
+    dctx->key_len = sctx->key_len;
+  }
   return 1;
 }
 
@@ -106,25 +113,29 @@ static void hmac_cleanup(EVP_PKEY_CTX *ctx) {
   if (hctx == NULL) {
     return;
   }
-  HMAC_CTX_cleanup(&hctx->ctx);
-  // if (hctx->key != NULL) {
-  //   OPENSSL_free(hctx->key);
-  // }
+  HMAC_CTX_cleanse(&hctx->ctx);
+  if (hctx->key != NULL) {
+    OPENSSL_free(hctx->key);
+  }
   OPENSSL_free(hctx);
 }
 
 static int hmac_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
   HMAC_PKEY_CTX *hctx = ctx->data;
-  CBS *key = OPENSSL_malloc(sizeof(CBS));
+  CBB *key = OPENSSL_malloc(sizeof(CBB));
   if (key == NULL) {
     return 0;
   }
-  CBS_init(key, hctx->key, hctx->key_len);
+
+  if (!CBB_init(key, 0) || !CBB_add_bytes(key, hctx->key, hctx->key_len)) {
+    CBB_cleanup(key);
+    return 0;
+  }
 
   // |EVP_PKEY_new_mac_key| allocates a temporary |EVP_PKEY_CTX| and frees it
   // along with |ctx->data| (which contains the original key data).
-  // We allocate and copy the key data over to a new |CBS| |key| and assign it
-  // to |pkey|, so that it is available in later operations.
+  // We allocate and copy the key data over to a new |CBB| and assign it to
+  // |pkey|, so that it is available in later operations.
   return EVP_PKEY_assign(pkey, EVP_PKEY_HMAC, key);
 }
 
@@ -181,9 +192,9 @@ static int hmac_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
 
     case EVP_PKEY_CTRL_HMAC_DIGESTINIT: {
       // |HMAC_PKEY_CTX| is newly allocated by |EVP_DigestSignInit| at this
-      // point. The actual key data is stored in |ctx->pkey| as a |CBS| pointer.
-      const CBS *key = ctx->pkey->pkey.ptr;
-      if (!HMAC_Init_ex(&hctx->ctx, CBS_data(key), CBS_len(key), hctx->md,
+      // point. The actual key data is stored in |ctx->pkey| as a |CBB| pointer.
+      const CBB *key = ctx->pkey->pkey.ptr;
+      if (!HMAC_Init_ex(&hctx->ctx, CBB_data(key), CBB_len(key), hctx->md,
                         ctx->engine)) {
         return 0;
       }

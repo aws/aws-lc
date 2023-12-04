@@ -112,7 +112,6 @@ static bool RunHMACTestEVP(const std::vector<uint8_t> &key,
   // hmac_tests.txt have the length of the entire tag.
   EXPECT_EQ(Bytes(tag), Bytes(actual.data(), tag.size()));
 
-  // TODO: Add test using EVP_MD_CTX_copy_ex
   // Repeat the test with |copy|, to check |EVP_MD_CTX_copy_ex| duplicated
   // everything.
   len = 0;
