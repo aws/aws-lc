@@ -119,7 +119,10 @@ SSLBuffer ::= SEQUENCE {
     capacity       INTEGER
 }
 
-SSLConfigSerializationVersion ::= INTEGER {v1 (1)}
+SSLConfigSerializationVersion ::= INTEGER {
+    v1 (1),
+    v2 (2) -- Added confMaxVersionUseDefault and confMinVersionUseDefault fields
+}
 
 SSLConfig ::= SEQUENCE {
     serializationVersion SSLConfigSerializationVersion,
