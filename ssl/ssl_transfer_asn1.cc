@@ -182,91 +182,7 @@ static const unsigned kS3AeadWriteCtxTag =
 // ssl3_state_to_bytes serializes |in| to bytes stored in |cbb|.
 // It returns one on success and zero on failure.
 //
-// An SSL3_STATE is serialized as the following ASN.1 structure, a complete
-// description can be found in tls_transfer.asn:
-//
-// SSL3StateSerializationVersion ::= INTEGER {
-//                   v1 (1),
-//                   v2 (2) -- Added additional fields to support TLS 1.3
-//               }
-//
-// SSL3State ::= SEQUENCE {
-//   serializationVersion SSL3StateSerializationVersion,
-//   readSequence   OCTET STRING,
-//   writeSequence  OCTET STRING,
-//   serverRandom   OCTET STRING,
-//   clientRandom   OCTET STRING,
-//   sendAlert      OCTET STRING,
-//   rwstate        INTEGER,
-//   earlyDataReason INTEGER,
-//   previousClientFinished OCTET STRING,
-//   previousClientFinishedLen INTEGER,
-//   previousServerFinished OCTET STRING,
-//   previousServerFinishedLen INTEGER,
-//   emptyRecordCount INTEGER,
-//   warningAlertCount INTEGER,
-//   totalRenegotiations INTEGER,
-//   -- Simplified to SEQUENCE here, uses SSL_SESSION_to_bytes_full
-//   establishedSession [0] SEQUENCE {...},
-//   sessionReused  [1] BOOLEAN OPTIONAL,
-//   hostname       [2] OCTET STRING OPTIONAL,
-//   alpnSelected   [3] OCTET STRING OPTIONAL,
-//   nextProtoNegotiated [4] OCTET STRING OPTIONAL,
-//   channelIdValid [5] BOOLEAN OPTIONAL,
-//   channelId      [6] OCTET STRING OPTIONAL,
-//   sendConnectionBinding [7] BOOLEAN OPTIONAL,
-//   -- pending_app_data is a Span in the SS3_STATE that points into read_buffer
-//   pendingAppData [8] Span OPTIONAL,
-//   readBuffer     [9] SSLBuffer OPTIONAL,
-//   notResumable   [10] BOOLEAN OPTIONAL,
-//   ...,
-//   -- Extension describing v2 serialization format for TLS 1.3 support.
-//   [[ 2:
-//   earlyDataSkipped [11] INTEGER OPTIONAL,
-//   delegatedCredentialUsed [12] BOOLEAN OPTIONAL,
-//   earlyDataAccepted [13] BOOLEAN OPTIONAL,
-//   usedHelloRetryRequest [14] BOOLEAN OPTIONAL,
-//   ticketAgeSkew  [15] INTEGER OPTIONAL,
-//   writeTrafficSecret [16] OCTET STRING OPTIONAL,
-//   writeTrafficSecretLen [17] INTEGER OPTIONAL,
-//   readTrafficSecret [18] OCTET STRING OPTIONAL,
-//   readTrafficSecretLen [19] INTEGER OPTIONAL,
-//   exporterSecret [20] OCTET STRING OPTIONAL,
-//   exporterSecretLen [21] INTEGER OPTIONAL,
-//   hsBuffer       [22] OCTET STRING OPTIONAL,
-//   echStatus      [23] INTEGER OPTIONAL,
-//   pendingHsData  [24] OCTET STRING OPTIONAL,
-//   pendingFlight  [25] OCTET STRING OPTIONAL,
-//   aeadReadCtx    [26] SSLAEADContext OPTIONAL,
-//   aeadWriteCtx   [27] SSLAEADContext OPTIONAL
-//   ]],
-//   ...
-// }
-//
-// Span ::= SEQUENCE {
-//   offset         INTEGER,
-//   size           INTEGER
-// }
-//
-// SSLBufferSerializationVersion ::= INTEGER {v1 (1)}
-//
-// SSLBuffer ::= SEQUENCE {
-//   serializationVersion SSLBufferSerializationVersion,
-//   bufferAllocated BOOLEAN,
-//   offset         INTEGER,
-//   size           INTEGER,
-//   capacity       INTEGER
-// }
-//
-// SSLConfigSerializationVersion ::= INTEGER {v1 (1)}
-//
-// SSLConfig ::= SEQUENCE {
-//   serializationVersion SSLConfigSerializationVersion,
-//   confMaxVersion INTEGER,
-//   confMinVersion INTEGER,
-//   ocspStaplingEnabled [0] BOOLEAN OPTIONAL,
-//   jdk11Workaround [1] BOOLEAN OPTIONAL
-// }
+// SSL3_STATE ASN.1 structure: see ssl_transfer_asn1.cc
 static int SSL3_STATE_to_bytes(SSL3_STATE *in, uint16_t protocol_version,
                                CBB *cbb) {
   if (in == NULL || cbb == NULL) {
@@ -605,7 +521,7 @@ static int SSL3_STATE_from_bytes(SSL *ssl, CBS *cbs, const SSL_CTX *ctx) {
     return 0;
   }
 
-  bool is_v2 = serde_version == SSL3_STATE_SERDE_VERSION_TWO;
+  bool is_v2 = (serde_version == SSL3_STATE_SERDE_VERSION_TWO);
 
   // We should have no more data at this point if we are deserializing v1
   // encoding.
@@ -922,7 +838,7 @@ static int SSL3_STATE_from_bytes(SSL *ssl, CBS *cbs, const SSL_CTX *ctx) {
 
 // SSL_CONFIG serialization.
 
-static const unsigned kSSLConfigVersion = 1;
+static const unsigned kSSLConfigVersion = 2;
 
 static const unsigned kSSLConfigOcspStaplingEnabledTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 0;
@@ -944,16 +860,7 @@ static const unsigned kSSLConfigConfMinVersionUseDefault =
 // SSL_CONFIG_to_bytes serializes |in| to bytes stored in |cbb|.
 // It returns one on success and zero on failure.
 //
-// An SSL_CONFIG is serialized as the following ASN.1 structure:
-//
-// SSL_CONFIG ::= SEQUENCE {
-//    version                           INTEGER (1),  -- SSL_CONFIG structure
-//    version confMaxVersion                    INTEGER, confMinVersion INTEGER,
-//    ocspStaplingEnabled               [0] BOOLEAN OPTIONAL,
-//    jdk11Workaround                   [1] BOOLEAN OPTIONAL,
-//    confMaxVersionUseDefault          [2] BOOLEAN OPTIONAL,
-//    confMinVersionUseDefault          [3] BOOLEAN OPTIONAL
-// }
+// SSL_CONFIG ASN.1 structure: see ssl_transfer_asn1.cc
 static int SSL_CONFIG_to_bytes(SSL_CONFIG *in, CBB *cbb) {
   if (in == NULL || cbb == NULL) {
     return 0;
@@ -1000,7 +907,7 @@ static int SSL_CONFIG_from_bytes(SSL_CONFIG *out, CBS *cbs) {
   int conf_max_version_use_default, conf_min_version_use_default;
   uint64_t version, conf_max_version, conf_min_version;
   if (!CBS_get_asn1(cbs, &config, CBS_ASN1_SEQUENCE) ||
-      !CBS_get_asn1_uint64(&config, &version) || version != kSSLConfigVersion ||
+      !CBS_get_asn1_uint64(&config, &version) || version > kSSLConfigVersion ||
       !CBS_get_asn1_uint64(&config, &conf_max_version) ||
       !CBS_get_asn1_uint64(&config, &conf_min_version) ||
       !CBS_get_optional_asn1_bool(&config, &ocsp_stapling_enabled,
@@ -1008,8 +915,21 @@ static int SSL_CONFIG_from_bytes(SSL_CONFIG *out, CBS *cbs) {
                                   0 /* default to false */) ||
       !CBS_get_optional_asn1_bool(&config, &jdk11_workaround,
                                   kSSLConfigJdk11WorkaroundTag,
-                                  0 /* default to false */) ||
-      !CBS_get_optional_asn1_bool(&config, &conf_max_version_use_default,
+                                  0 /* default to false */)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL_CONFIG);
+    return 0;
+  }
+
+  bool is_atleast_v2 = (version >= 2);
+
+  if (!is_atleast_v2 && CBS_len(&config) != 0) {
+    // We are parsing version 1 of config format, but there is more data to
+    // parse than expected. That is, the input is not v1 formatted.
+    OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL_CONFIG);
+    return 0;
+  }
+
+  if (!CBS_get_optional_asn1_bool(&config, &conf_max_version_use_default,
                                   kSSLConfigConfMaxVersionUseDefault,
                                   1 /* default to true */) ||
       !CBS_get_optional_asn1_bool(&config, &conf_min_version_use_default,
@@ -1019,6 +939,7 @@ static int SSL_CONFIG_from_bytes(SSL_CONFIG *out, CBS *cbs) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL_CONFIG);
     return 0;
   }
+
   out->conf_max_version = conf_max_version;
   out->conf_min_version = conf_min_version;
   out->conf_max_version_use_default = !!conf_max_version_use_default;
@@ -1048,18 +969,7 @@ static const unsigned kSSLConfigTag =
 // SSL_to_bytes_full serializes |in| to bytes stored in |cbb|.
 // It returns one on success and zero on failure.
 //
-// An SSL is serialized as the following ASN.1 structure:
-//
-// SSL ::= SEQUENCE {
-//     sslSerialVer      UINT64   -- version of the SSL serialization format
-//     version           UINT64
-//     maxSendFragement  UINT64
-//     s3                SSL3State
-//     mode              UINT64
-//     options           UINT64
-//     quietShutdown     [0] BOOLEAN OPTIONAL
-//     config            [1] SEQUENCE OPTIONAL
-// }
+// SSL ASN.1 structure: see ssl_transfer_asn1.cc
 static int SSL_to_bytes_full(const SSL *in, CBB *cbb) {
   CBB ssl, child;
 
@@ -1098,14 +1008,11 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
   int ssl_config_present = 0;
 
   if (!CBS_get_asn1(cbs, &ssl_cbs, CBS_ASN1_SEQUENCE) || CBS_len(cbs) != 0 ||
-      !CBS_get_asn1_uint64(&ssl_cbs, &ssl_serial_ver)) {
+      !CBS_get_asn1_uint64(&ssl_cbs, &ssl_serial_ver)
+      || ssl_serial_ver > SSL_SERIAL_VERSION) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL);
     return 0;
   }
-  // At the moment we're simply asserting the version is correct. However
-  // future updates could use SSL serial version to figure out what data
-  // was actually serialized and act accordingly.
-  assert(ssl_serial_ver <= SSL_SERIAL_VERSION);
 
   //    FIXME add hash of SSL_CTX
   // This TODO is actually a part of SSL DER struct revisit.
