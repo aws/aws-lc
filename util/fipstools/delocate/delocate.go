@@ -407,7 +407,7 @@ func (d *delocation) loadAarch64Address(statement *node32, targetReg string, sym
 
 	_, isKnown := d.symbols[symbol]
 	isLocal := strings.HasPrefix(symbol, ".L")
-	if isKnown || isLocal || isSynthesized(symbol) {
+	if isKnown || isLocal || isSynthesized(symbol, aarch64) {
 		if isLocal {
 			symbol = d.mapLocalSymbol(symbol)
 		} else if isKnown {
@@ -566,10 +566,17 @@ func (d *delocation) processAarch64Instruction(statement, instruction *node32) (
 				symbol, offset, _, didChange, symbolIsLocal, _ := d.parseMemRef(arg.up)
 				changed = didChange
 
-				if _, knownSymbol := d.symbols[symbol]; knownSymbol {
+				if isFipsScopeMarkers(symbol) {
+					// fips scope markers are known. But they challenge the adr
+					// reach, so go through GOT via an adrp outside the scope.
+					redirector := redirectorName(symbol)
+					d.redirectors[symbol] = redirector
+					symbol = redirector
+					changed = true
+				} else if _, knownSymbol := d.symbols[symbol]; knownSymbol {
 					symbol = localTargetName(symbol)
 					changed = true
-				} else if !symbolIsLocal && !isSynthesized(symbol) {
+				} else if !symbolIsLocal && !isSynthesized(symbol, aarch64) {
 					redirector := redirectorName(symbol)
 					d.redirectors[symbol] = redirector
 					symbol = redirector
@@ -981,7 +988,7 @@ Args:
 				} else if _, knownSymbol := d.symbols[symbol]; knownSymbol {
 					symbol = localTargetName(symbol)
 					changed = true
-				} else if !symbolIsLocal && !isSynthesized(symbol) && len(section) == 0 {
+				} else if !symbolIsLocal && !isSynthesized(symbol, ppc64le) && len(section) == 0 {
 					changed = true
 					d.redirectors[symbol] = redirectorName(symbol)
 					symbol = redirectorName(symbol)
@@ -1421,7 +1428,7 @@ Args:
 				if _, knownSymbol := d.symbols[symbol]; knownSymbol {
 					symbol = localTargetName(symbol)
 					changed = true
-				} else if !symbolIsLocal && !isSynthesized(symbol) {
+				} else if !symbolIsLocal && !isSynthesized(symbol, x86_64) {
 					// Unknown symbol via PLT is an
 					// out-call from the module, e.g.
 					// memcpy.
@@ -1443,7 +1450,7 @@ Args:
 				if _, knownSymbol := d.symbols[symbol]; knownSymbol {
 					symbol = localTargetName(symbol)
 					changed = true
-				} else if !isSynthesized(symbol) {
+				} else if !isSynthesized(symbol, x86_64) {
 					useGOT = true
 				}
 
@@ -1834,6 +1841,13 @@ func transform(w stringWriter, inputs []inputFile) error {
 	}
 	w.WriteString(fmt.Sprintf(".file %d \"inserted_by_delocate.c\"%s\n", maxObservedFileNumber+1, fileTrailing))
 	w.WriteString(fmt.Sprintf(".loc %d 1 0\n", maxObservedFileNumber+1))
+	if d.processor == aarch64 {
+		// Grab the address of BORINGSSL_bcm_test_[start,end] via a relocation
+		// from a redirector function. For this to work, need to add the markers
+		// to the symbol table.
+		w.WriteString(fmt.Sprintf(".global BORINGSSL_bcm_text_start\n"))
+		w.WriteString(fmt.Sprintf(".type BORINGSSL_bcm_text_start, @function\n"))
+	}
 	w.WriteString("BORINGSSL_bcm_text_start:\n")
 
 	for _, input := range inputs {
@@ -1844,6 +1858,10 @@ func transform(w stringWriter, inputs []inputFile) error {
 
 	w.WriteString(".text\n")
 	w.WriteString(fmt.Sprintf(".loc %d 2 0\n", maxObservedFileNumber+1))
+	if d.processor == aarch64 {
+		w.WriteString(fmt.Sprintf(".global BORINGSSL_bcm_text_end\n"))
+		w.WriteString(fmt.Sprintf(".type BORINGSSL_bcm_text_end, @function\n"))
+	}
 	w.WriteString("BORINGSSL_bcm_text_end:\n")
 
 	// Emit redirector functions. Each is a single jump instruction.
@@ -2256,10 +2274,23 @@ func localEntryName(name string) string {
 	return ".L" + name + "_local_entry"
 }
 
-func isSynthesized(symbol string) bool {
-	return strings.HasSuffix(symbol, "_bss_get") ||
+func isSynthesized(symbol string, processor processorType) bool {
+	SymbolisSynthesized := strings.HasSuffix(symbol, "_bss_get") ||
 		symbol == "OPENSSL_ia32cap_get" ||
-		strings.HasPrefix(symbol, "BORINGSSL_bcm_text_")
+		symbol == "BORINGSSL_bcm_text_hash"
+
+	// While BORINGSSL_bcm_text_[start,end] are known symbols, on aarch64 we go
+	// through the GOT because adr doesn't have adequate reach.
+	if (processor != aarch64) {
+		SymbolisSynthesized = SymbolisSynthesized || strings.HasPrefix(symbol, "BORINGSSL_bcm_text_")
+	}
+
+	return SymbolisSynthesized
+}
+
+func isFipsScopeMarkers(symbol string) bool {
+	return	symbol == "BORINGSSL_bcm_text_start" ||
+		symbol == "BORINGSSL_bcm_text_end"
 }
 
 func redirectorName(symbol string) string {
