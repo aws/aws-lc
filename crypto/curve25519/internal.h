@@ -145,8 +145,8 @@ void x25519_public_from_private_nohw(
   const uint8_t private_key[X25519_PRIVATE_KEY_LEN]);
 
 // ed25519_public_key_from_hashed_seed_[s2n_bignum,nohw] handles steps
-// rfc8032 5.1.5.[3,4]. Computes [az]B and encodes the public key to a 32 byte
-// octet returning it in |out_public_key|.
+// rfc8032 5.1.5.[3,4]. Computes [az]B and encodes the public key to a 32-byte
+// octet string returning it in |out_public_key|.
 void ed25519_public_key_from_hashed_seed_s2n_bignum(
   uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
   uint8_t az[SHA512_DIGEST_LENGTH]);
@@ -167,7 +167,7 @@ void ed25519_sign_nohw(uint8_t out_sig[ED25519_SIGNATURE_LEN],
   const void *message, size_t message_len);
 
 // ed25519_verify_[s2n_bignum,nohw] handles steps rfc8032 5.1.7.[1,2,3].
-// Computes [S]B - [k]A' and returns in |R_computed_encoded|. 
+// Computes [S]B - [k]A' and returns the result in |R_computed_encoded|. 
 int ed25519_verify_s2n_bignum(uint8_t R_computed_encoded[32],
   const uint8_t public_key[ED25519_PUBLIC_KEY_LEN], uint8_t R_expected[32],
   uint8_t S[32], const uint8_t *message, size_t message_len);
