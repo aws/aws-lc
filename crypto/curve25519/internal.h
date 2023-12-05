@@ -167,7 +167,9 @@ void ed25519_sign_nohw(uint8_t out_sig[ED25519_SIGNATURE_LEN],
   const void *message, size_t message_len);
 
 // ed25519_verify_[s2n_bignum,nohw] handles steps rfc8032 5.1.7.[1,2,3].
-// Computes [S]B - [k]A' and returns the result in |R_computed_encoded|. 
+// Computes [S]B - [k]A' and returns the result in |R_computed_encoded|. Returns
+// 1 on success and 0 otherwise. The failure case occurs if decoding of the
+// public key |public_key| fails.
 int ed25519_verify_s2n_bignum(uint8_t R_computed_encoded[32],
   const uint8_t public_key[ED25519_PUBLIC_KEY_LEN], uint8_t R_expected[32],
   uint8_t S[32], const uint8_t *message, size_t message_len);
