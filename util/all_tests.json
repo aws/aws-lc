@@ -101,7 +101,8 @@
     "shard": true
   },
   {
-    "cmd": ["ssl/integration_test"]
+    "cmd": ["ssl/integration_test"],
+    "skip_sde": true
   },
   {
     "cmd": ["crypto/mem_test"]
