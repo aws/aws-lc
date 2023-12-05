@@ -27,13 +27,10 @@ const char* SECRET = "test";
 
 static int pem_password_callback(char *buf, int size, int rwflag, void *userdata) {
   char* data = (char *)userdata;
-  int data_len = (int)strlen(data);
-  if(size + 1 < data_len) {
-    data_len = size-1;
-    buf[size-1] = 0;
+  if(size <= 0) {
+    return 0;
   }
-  strncpy(buf, data, data_len);
-  return data_len;
+  return (int)BUF_strlcpy(buf, data, size);
 }
 
 // Test that implausible ciphers, notably an IV-less RC4, aren't allowed in PEM.
@@ -80,24 +77,22 @@ TEST(PEMTest, WriteReadASN1IntegerPem) {
   GTEST_SKIP();
 #endif
   // Numbers for testing
-  long nums[8] = {
+  std::vector<long> nums = {
       0x00000001L,
       0x00000100L,
       0x00010000L,
       0x01000000L,
       -2L};
 
-  for(size_t i = 0; i < 8; i++) {
-    long original_value = nums[i];
-
-    // Create an ASN1_INTEGER with value 42
+  for(long original_value: nums) {
+    // Create an ASN1_INTEGER with value
     bssl::UniquePtr<ASN1_INTEGER> asn1_int(ASN1_INTEGER_new());
-    ASSERT_TRUE(asn1_int.get());
+    ASSERT_TRUE(asn1_int);
     ASSERT_TRUE(ASN1_INTEGER_set(asn1_int.get(), original_value));
 
     // Create buffer for writing
     TmpFilePtr pem_file(tmpfile());
-    ASSERT_TRUE(pem_file.get());
+    ASSERT_TRUE(pem_file);
 
     // Write the ASN1_INTEGER to a PEM-formatted string
     ASSERT_TRUE(PEM_ASN1_write(i2d_ASN1_INTEGER_void, "ASN1 INTEGER",
@@ -127,8 +122,8 @@ const char* kPemRsaPrivateKey = "-----BEGIN ENCRYPTED PRIVATE KEY-----\n"
 
 
 TEST(PEMTest, ReadPrivateKeyPem) {
-  bssl::UniquePtr<BIO> read_bio(BIO_new_mem_buf(kPemRsaPrivateKey, strlen(kPemRsaPrivateKey)) );
-  ASSERT_TRUE(read_bio.get());
+  bssl::UniquePtr<BIO> read_bio(BIO_new_mem_buf(kPemRsaPrivateKey, BUF_strnlen(kPemRsaPrivateKey, 2048)) );
+  ASSERT_TRUE(read_bio);
   bssl::UniquePtr<EC_KEY> ec_key(PEM_read_bio_ECPrivateKey(read_bio.get(), nullptr, pem_password_callback, (void*)SECRET));
   ASSERT_TRUE(ec_key);
   const EC_GROUP* p256 = EC_GROUP_new_by_curve_name(NID_X9_62_prime256v1);
@@ -142,24 +137,24 @@ TEST(PEMTest, WriteReadRSAPem) {
   bssl::UniquePtr<BIGNUM> bn(BN_new());
   ASSERT_TRUE(bn);
   BN_set_u64(bn.get(), RSA_F4);
-#ifdef BORINGSSL_FIPS
+#if defined(BORINGSSL_FIPS)
   ASSERT_TRUE(RSA_generate_key_fips(rsa.get(), 2048, nullptr));
 #else
   ASSERT_TRUE(RSA_generate_key_ex(rsa.get(), 2048, bn.get(), nullptr));
 #endif
 
   bssl::UniquePtr<BIO> write_bio(BIO_new(BIO_s_mem()));
-  ASSERT_TRUE(write_bio.get());
+  ASSERT_TRUE(write_bio);
   const EVP_CIPHER* cipher = EVP_get_cipherbynid(NID_aes_256_cbc);
   ASSERT_TRUE(cipher);
-  ASSERT_TRUE(PEM_write_bio_RSAPrivateKey(write_bio.get(), rsa.get(), cipher, (unsigned char*)SECRET, (int)strlen(SECRET), nullptr, nullptr));
+  ASSERT_TRUE(PEM_write_bio_RSAPrivateKey(write_bio.get(), rsa.get(), cipher, (unsigned char*)SECRET, (int)BUF_strnlen(SECRET, 256), nullptr, nullptr));
 
   const uint8_t* content;
   size_t content_len;
   BIO_mem_contents(write_bio.get(), &content, &content_len);
 
   bssl::UniquePtr<BIO> read_bio(BIO_new_mem_buf(content, content_len) );
-  ASSERT_TRUE(read_bio.get());
+  ASSERT_TRUE(read_bio);
   bssl::UniquePtr<RSA> rsa_read(PEM_read_bio_RSAPrivateKey(read_bio.get(), nullptr, pem_password_callback, (void*)SECRET));
   ASSERT_TRUE(rsa_read);
   ASSERT_EQ(0, BN_cmp(RSA_get0_n(rsa.get()), RSA_get0_n(rsa_read.get())));
@@ -167,19 +162,19 @@ TEST(PEMTest, WriteReadRSAPem) {
 
 TEST(PEMTest, WriteReadECPem) {
   bssl::UniquePtr<EC_KEY> ec_key(EC_KEY_new());
-  ASSERT_TRUE(ec_key.get());
+  ASSERT_TRUE(ec_key);
   bssl::UniquePtr<EC_GROUP> ec_group(EC_GROUP_new_by_curve_name(NID_X9_62_prime256v1));
-  ASSERT_TRUE(ec_group.get());
+  ASSERT_TRUE(ec_group);
   ASSERT_TRUE(EC_KEY_set_group(ec_key.get(), ec_group.get()));
 
-#ifdef BORINGSSL_FIPS
+#if defined(BORINGSSL_FIPS)
   ASSERT_TRUE(EC_KEY_generate_key_fips(ec_key.get()));
 #else
   ASSERT_TRUE(EC_KEY_generate_key(ec_key.get()));
 #endif
 
   bssl::UniquePtr<BIO> write_bio(BIO_new(BIO_s_mem()));
-  ASSERT_TRUE(write_bio.get());
+  ASSERT_TRUE(write_bio);
   const EVP_CIPHER* cipher = EVP_get_cipherbynid(NID_aes_256_cbc);
   ASSERT_TRUE(cipher);
   ASSERT_TRUE(PEM_write_bio_ECPrivateKey(write_bio.get(), ec_key.get(), cipher, nullptr, 0, pem_password_callback, (void*)SECRET));
@@ -189,8 +184,9 @@ TEST(PEMTest, WriteReadECPem) {
   BIO_mem_contents(write_bio.get(), &content, &content_len);
 
   bssl::UniquePtr<BIO> read_bio(BIO_new_mem_buf(content, content_len) );
-  ASSERT_TRUE(read_bio.get());
+  ASSERT_TRUE(read_bio);
   bssl::UniquePtr<EC_KEY> ec_key_read(PEM_read_bio_ECPrivateKey(read_bio.get(), nullptr, pem_password_callback, (void*)"test"));
+  ASSERT_TRUE(ec_key_read);
   const BIGNUM* orig_priv_key = EC_KEY_get0_private_key(ec_key.get());
   const BIGNUM* read_priv_key = EC_KEY_get0_private_key(ec_key_read.get());
   ASSERT_EQ(0, BN_cmp(orig_priv_key, read_priv_key));

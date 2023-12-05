@@ -5716,7 +5716,7 @@ TEST(X509Test, SetSerialNumberCheckEndian) {
   ASSERT_TRUE(root);
 
   // Numbers for testing
-  int64_t nums[8] = {
+  std::vector<int64_t> nums = {
       0x0000000000000001LL,
       0x0000000000000100LL,
       0x0000000000010000LL,
@@ -5726,8 +5726,7 @@ TEST(X509Test, SetSerialNumberCheckEndian) {
       0x0001000000000000LL,
       -2LL};
 
-  for(size_t i = 0; i < 8; i++) {
-    int64_t num = nums[i];
+  for(int64_t num: nums) {
     bssl::UniquePtr<ASN1_INTEGER> serial(ASN1_INTEGER_new());
     ASSERT_TRUE(serial);
     // Set serial number for cert
