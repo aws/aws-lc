@@ -40,6 +40,7 @@ ninja
 
 # grpc tests expect to use relative paths to certificates and test files
 cd "${GRPC_SRC_FOLDER}"
+python3 tools/run_tests/start_port_server.py
 for file in cmake/build/*; do
     if [[ -x "$file" && ( "$file" == *ssl* || "$file" == *tls* || "$file" == *cert* ) ]]; then
         ./"$file"
