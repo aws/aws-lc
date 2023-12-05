@@ -87,7 +87,18 @@ static OCSP_RESPONSE *GetOCSPResponse(const char *ocsp_responder_host,
   int rv;
   do {
     rv = OCSP_sendreq_nbio(&resp, ocsp_ctx.get());
-  } while ((rv == -1) && difftime(time(nullptr), start_time) < timeout);
+  } while (rv == -1 && difftime(time(nullptr), start_time) < timeout);
+
+  // The OCSP responder times out occsasionally, which results in arbitrary
+  // test failues. This does a second retry of the OCSP responder connection
+  // with a longer timeout.
+  if(rv == -1) {
+    timeout = 5;
+    start_time = time(nullptr);
+    do {
+      rv = OCSP_sendreq_nbio(&resp, ocsp_ctx.get());
+    } while (rv == -1 && difftime(time(nullptr), start_time) < timeout);
+  }
 
   OPENSSL_free(host);
   return resp;
