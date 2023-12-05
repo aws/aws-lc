@@ -111,6 +111,13 @@ OPENSSL_EXPORT const EVP_CIPHER *EVP_rc2_cbc(void);
 // deliberately not exported.
 const EVP_CIPHER *EVP_rc2_40_cbc(void);
 
+// EVP_chacha20_poly1305 returns a cipher that implements chacha20-poly1305 as
+// described in RFC 8439. This cipher implementation is added for
+// compatibility. Consumers should use |EVP_aead_chacha20_poly1305| instead.
+// Callers are advised that the maximum amount of data that can be encrypted
+// using chacha20-poly1305 is 256GB.
+OPENSSL_EXPORT const EVP_CIPHER *EVP_chacha20_poly1305(void);
+
 // EVP_get_cipherbynid returns the cipher corresponding to the given NID, or
 // NULL if no such cipher is known. Note using this function links almost every
 // cipher implemented by BoringSSL into the binary, whether the caller uses them
