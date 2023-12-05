@@ -5711,6 +5711,34 @@ TEST(X509Test, SetSerialNumberChecksASN1StringType) {
   EXPECT_EQ(-1, val);
 }
 
+TEST(X509Test, SetSerialNumberCheckEndian) {
+  bssl::UniquePtr<X509> root = CertFromPEM(kRootCAPEM);
+  ASSERT_TRUE(root);
+
+  // Numbers for testing
+  std::vector<int64_t> nums = {
+      0x0000000000000001LL,
+      0x0000000000000100LL,
+      0x0000000000010000LL,
+      0x0000000001000000LL,
+      0x0000000100000000LL,
+      0x0000010000000000LL,
+      0x0001000000000000LL,
+      -2LL};
+
+  for(int64_t num: nums) {
+    bssl::UniquePtr<ASN1_INTEGER> serial(ASN1_INTEGER_new());
+    ASSERT_TRUE(serial);
+    // Set serial number for cert
+    ASSERT_TRUE(ASN1_INTEGER_set_int64(serial.get(), num));
+    ASSERT_TRUE(X509_set_serialNumber(root.get(), serial.get()));
+    // Get serial number for cert
+    int64_t val;
+    ASSERT_TRUE(ASN1_INTEGER_get_int64(&val, X509_get0_serialNumber(root.get())));
+    EXPECT_EQ(num, val);
+  }
+}
+
 TEST(X509Test, Policy) {
   bssl::UniquePtr<ASN1_OBJECT> oid1(
       OBJ_txt2obj("1.2.840.113554.4.1.72585.2.1", /*dont_search_names=*/1));
