@@ -247,7 +247,6 @@ extern void bignum_copy_row_from_table_16_neon (uint64_t *z, const uint64_t *tab
 extern void bignum_copy_row_from_table_32_neon (uint64_t *z, const uint64_t *table,
         uint64_t height, uint64_t idx);
 
-#if !defined(BORINGSSL_FIPS)
 // Reduction is modulo the order of the curve25519/edwards25519 basepoint,
 // which is n_25519 = 2^252 + 27742317777372353535851937790883648493.
 // Reduce modulo basepoint order, z := x mod n_25519
@@ -323,4 +322,3 @@ extern void edwards25519_scalarmuldouble(uint64_t res[static 8], uint64_t scalar
         uint64_t point[static 8], uint64_t bscalar[static 4]);
 extern void edwards25519_scalarmuldouble_alt(uint64_t res[static 8], uint64_t scalar[static 4],
         uint64_t point[static 8], uint64_t bscalar[static 4]);
-#endif

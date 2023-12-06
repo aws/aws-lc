@@ -206,6 +206,18 @@ if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX) OR
     p521/bignum_sqr_p521_alt.S
     p521/bignum_tolebytes_p521.S
     p521/bignum_fromlebytes_p521.S
+
+    curve25519/bignum_mod_n25519.S
+    curve25519/bignum_neg_p25519.S
+    curve25519/bignum_madd_n25519.S
+    curve25519/bignum_madd_n25519_alt.S
+    curve25519/edwards25519_decode.S
+    curve25519/edwards25519_decode_alt.S
+    curve25519/edwards25519_encode.S
+    curve25519/edwards25519_scalarmulbase.S
+    curve25519/edwards25519_scalarmulbase_alt.S
+    curve25519/edwards25519_scalarmuldouble.S
+    curve25519/edwards25519_scalarmuldouble_alt.S
   )
 
   if(ARCH STREQUAL "x86_64")
@@ -219,24 +231,8 @@ if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX) OR
                 curve25519/curve25519_x25519.S
                 curve25519/curve25519_x25519_alt.S
                 curve25519/curve25519_x25519base.S
-                curve25519/curve25519_x25519base_alt.S)
-
-    # Delocater FIPS issue: CryptoAlg-2198
-    if(NOT FIPS)
-      list(APPEND S2N_BIGNUM_ASM_SOURCES
-                  curve25519/bignum_mod_n25519.S
-                  curve25519/bignum_neg_p25519.S
-                  curve25519/bignum_madd_n25519.S
-                  curve25519/bignum_madd_n25519_alt.S
-                  curve25519/edwards25519_decode.S
-                  curve25519/edwards25519_decode_alt.S
-                  curve25519/edwards25519_encode.S
-                  curve25519/edwards25519_scalarmulbase.S
-                  curve25519/edwards25519_scalarmulbase_alt.S
-                  curve25519/edwards25519_scalarmuldouble.S
-                  curve25519/edwards25519_scalarmuldouble_alt.S
-                  )
-    endif()
+                curve25519/curve25519_x25519base_alt.S
+    )
   elseif(ARCH STREQUAL "aarch64")
     # byte-level interface for aarch64 s2n-bignum x25519 are in
     # files with "byte" tags, but ed25519 is not, neither are they byte-level...
@@ -245,25 +241,7 @@ if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX) OR
                 curve25519/curve25519_x25519_byte_alt.S
                 curve25519/curve25519_x25519base_byte.S
                 curve25519/curve25519_x25519base_byte_alt.S
-                )
-
-    # Delocater FIPS issue: CryptoAlg-2198
-    if(NOT FIPS)
-      list(APPEND S2N_BIGNUM_ASM_SOURCES
-                  curve25519/bignum_mod_n25519.S
-                  curve25519/bignum_neg_p25519.S
-                  curve25519/bignum_madd_n25519.S
-                  curve25519/bignum_madd_n25519_alt.S
-                  curve25519/edwards25519_decode.S
-                  curve25519/edwards25519_decode_alt.S
-                  curve25519/edwards25519_encode.S
-                  curve25519/edwards25519_scalarmulbase.S
-                  curve25519/edwards25519_scalarmulbase_alt.S
-                  curve25519/edwards25519_scalarmuldouble.S
-                  curve25519/edwards25519_scalarmuldouble_alt.S
-                  )
-    endif()
-
+    )
 
     # Big integer arithmetics using s2n-bignum
     list(APPEND S2N_BIGNUM_ASM_SOURCES
@@ -288,7 +266,7 @@ if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX) OR
                 generic/bignum_copy_row_from_table_8n_neon.S
                 generic/bignum_copy_row_from_table_16_neon.S
                 generic/bignum_copy_row_from_table_32_neon.S
-                )
+    )
   endif()
 endif()
 
