@@ -35,6 +35,7 @@ RUN set -ex && \
     libunwind-dev \
     pkg-config \
     git \
+    gnutls-dev \
     ca-certificates \
     wget \
     lld \

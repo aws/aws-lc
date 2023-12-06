@@ -354,6 +354,8 @@ void BIO_clear_retry_flags(BIO *bio) {
 
 int BIO_method_type(const BIO *bio) { return bio->method->type; }
 
+const char *BIO_method_name(const BIO *bio) { return bio->method->name; }
+
 void BIO_copy_next_retry(BIO *bio) {
   BIO_clear_retry_flags(bio);
   BIO_set_flags(bio, BIO_get_retry_flags(bio->next_bio));

@@ -132,6 +132,7 @@ TEST(BIOTest, Printf) {
 
   bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
   ASSERT_TRUE(bio);
+  ASSERT_EQ(strcmp(BIO_method_name(bio.get()), "memory buffer"), 0);
 
   for (size_t length : kLengths) {
     SCOPED_TRACE(length);
