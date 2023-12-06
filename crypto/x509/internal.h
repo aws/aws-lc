@@ -246,6 +246,14 @@ struct X509_crl_st {
   unsigned char crl_hash[SHA256_DIGEST_LENGTH];
 } /* X509_CRL */;
 
+// GENERAL_NAME is an |ASN1_ITEM| whose ASN.1 type is GeneralName and C type is
+// |GENERAL_NAME*|.
+DECLARE_ASN1_ITEM(GENERAL_NAME)
+
+// GENERAL_NAMES is an |ASN1_ITEM| whose ASN.1 type is SEQUENCE OF GeneralName
+// and C type is |GENERAL_NAMES*|, aka |STACK_OF(GENERAL_NAME)*|.
+DECLARE_ASN1_ITEM(GENERAL_NAMES)
+
 struct X509_VERIFY_PARAM_st {
   int64_t check_time;               // POSIX time to use
   unsigned long flags;              // Various verify flags
