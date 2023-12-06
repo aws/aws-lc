@@ -24,11 +24,12 @@ AWS_LC_INSTALL_FOLDER="${SCRATCH_FOLDER}/aws-lc-install"
 
 function librelp_build() {
   autoreconf -fi  
-  PKG_CONFIG_PATH="${AWS_LC_INSTALL_FOLDER}/lib/pkgconfig" ./configure --enable-tls-openssl --enable-debug
+  PKG_CONFIG_PATH="${AWS_LC_INSTALL_FOLDER}/lib/pkgconfig" ./configure --enable-tls-openssl
   make -j ${NUM_CPU_THREADS}
 }
 
 function librelp_run_tests() {
+  export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib"
   make check
 }
 
@@ -48,7 +49,7 @@ git clone https://github.com/rsyslog/librelp.git ${LIBRELP_SRC_FOLDER} --depth 1
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} ${LIBRELP_BUILD_FOLDER}
 ls
 
-aws_lc_build ${SRC_ROOT} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} -DBUILD_TESTING=OFF
+aws_lc_build ${SRC_ROOT} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} -DBUILD_TESTING=OFF -DBUILD_SHARED_LIBS=1
 
 # Build librelp from source.
 pushd ${LIBRELP_SRC_FOLDER}
@@ -59,3 +60,5 @@ librelp_run_tests
 
 popd
 
+ldd "${LIBRELP_SRC_FOLDER}/src/.libs/librelp.so" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
+ldd "${LIBRELP_SRC_FOLDER}/src/.libs/librelp.so" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libssl.so" || exit 1
