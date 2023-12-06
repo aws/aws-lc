@@ -39,8 +39,9 @@ extern "C" {
 
 // X25519_keypair sets |out_public_value| and |out_private_key| to a freshly
 // generated, public–private key pair.
-OPENSSL_EXPORT void X25519_keypair(uint8_t out_public_value[32],
-                                   uint8_t out_private_key[32]);
+OPENSSL_EXPORT void X25519_keypair(
+  uint8_t out_public_value[X25519_PUBLIC_VALUE_LEN],
+  uint8_t out_private_key[X25519_PRIVATE_KEY_LEN]);
 
 // X25519 writes a shared key to |out_shared_key| that is calculated from the
 // given private key and the peer's public value. It returns one on success and
@@ -48,14 +49,15 @@ OPENSSL_EXPORT void X25519_keypair(uint8_t out_public_value[32],
 //
 // Don't use the shared key directly, rather use a KDF and also include the two
 // public values as inputs.
-OPENSSL_EXPORT int X25519(uint8_t out_shared_key[32],
-                          const uint8_t private_key[32],
-                          const uint8_t peer_public_value[32]);
+OPENSSL_EXPORT int X25519(uint8_t out_shared_key[X25519_SHARED_KEY_LEN],
+  const uint8_t private_key[X25519_PRIVATE_KEY_LEN],
+  const uint8_t peer_public_value[X25519_PUBLIC_VALUE_LEN]);
 
 // X25519_public_from_private calculates a Diffie-Hellman public value from the
 // given private key and writes it to |out_public_value|.
-OPENSSL_EXPORT void X25519_public_from_private(uint8_t out_public_value[32],
-                                               const uint8_t private_key[32]);
+OPENSSL_EXPORT void X25519_public_from_private(
+  uint8_t out_public_value[X25519_PUBLIC_VALUE_LEN],
+  const uint8_t private_key[X25519_PRIVATE_KEY_LEN]);
 
 
 // Ed25519.

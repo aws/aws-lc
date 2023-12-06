@@ -1863,14 +1863,16 @@ static void sc_muladd(uint8_t *s, const uint8_t *a, const uint8_t *b,
   s[31] = s11 >> 17;
 }
 
-void x25519_scalar_mult_generic_nohw(uint8_t out[32],
-                                      const uint8_t scalar[32],
-                                      const uint8_t point[32]) {
+void x25519_scalar_mult_generic_nohw(
+  uint8_t out_shared_key[X25519_SHARED_KEY_LEN],
+  const uint8_t private_key[X25519_PRIVATE_KEY_LEN],
+  const uint8_t peer_public_value[X25519_PUBLIC_VALUE_LEN]) {
+
   fe x1, x2, z2, x3, z3, tmp0, tmp1;
   fe_loose x2l, z2l, x3l, tmp0l, tmp1l;
 
-  uint8_t e[32];
-  OPENSSL_memcpy(e, scalar, 32);
+  uint8_t e[X25519_PRIVATE_KEY_LEN];
+  OPENSSL_memcpy(e, private_key, X25519_PRIVATE_KEY_LEN);
   e[0] &= 248;
   e[31] &= 127;
   e[31] |= 64;
@@ -1892,7 +1894,7 @@ void x25519_scalar_mult_generic_nohw(uint8_t out[32],
   // <https://github.com/mit-plv/fiat-crypto/blob/2456d821825521f7e03e65882cc3521795b0320f/src/Curves/Montgomery/XZ.v#L118>
   // <https://github.com/mit-plv/fiat-crypto/blob/2456d821825521f7e03e65882cc3521795b0320f/src/Curves/Montgomery/XZProofs.v#L278>
   // preconditions: 0 <= e < 2^255 (not necessarily e < order), fe_invert(0) = 0
-  fe_frombytes(&x1, point);
+  fe_frombytes(&x1, peer_public_value);
   fe_1(&x2);
   fe_0(&z2);
   fe_copy(&x3, &x1);
@@ -1942,14 +1944,15 @@ void x25519_scalar_mult_generic_nohw(uint8_t out[32],
 
   fe_invert(&z2, &z2);
   fe_mul_ttt(&x2, &x2, &z2);
-  fe_tobytes(out, &x2);
+  fe_tobytes(out_shared_key, &x2);
 }
 
-void x25519_public_from_private_nohw(uint8_t out_public_value[32],
-                                     const uint8_t private_key[32]) {
+void x25519_public_from_private_nohw(
+  uint8_t out_public_value[X25519_PUBLIC_VALUE_LEN],
+  const uint8_t private_key[X25519_PRIVATE_KEY_LEN]) {
 
-  uint8_t e[32];
-  OPENSSL_memcpy(e, private_key, 32);
+  uint8_t e[X25519_PRIVATE_KEY_LEN];
+  OPENSSL_memcpy(e, private_key, X25519_PRIVATE_KEY_LEN);
   e[0] &= 248;
   e[31] &= 127;
   e[31] |= 64;
@@ -1966,18 +1969,19 @@ void x25519_public_from_private_nohw(uint8_t out_public_value[32],
   fe_loose_invert(&zminusy_inv, &zminusy);
   fe_mul_tlt(&zminusy_inv, &zplusy, &zminusy_inv);
   fe_tobytes(out_public_value, &zminusy_inv);
-  CONSTTIME_DECLASSIFY(out_public_value, 32);
+  CONSTTIME_DECLASSIFY(out_public_value, X25519_PUBLIC_VALUE_LEN);
 }
 
-void ed25519_public_key_from_hashed_seed_nohw(uint8_t out_public_key[32],
-    uint8_t az[SHA512_DIGEST_LENGTH]) {
+void ed25519_public_key_from_hashed_seed_nohw(
+  uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
+  uint8_t az[SHA512_DIGEST_LENGTH]) {
+
   ge_p3 A;
   x25519_ge_scalarmult_base(&A, az);
   ge_p3_tobytes(out_public_key, &A);
 }
 
-void ed25519_sign_nohw(
-  uint8_t out_sig[ED25519_SIGNATURE_LEN],
+void ed25519_sign_nohw(uint8_t out_sig[ED25519_SIGNATURE_LEN],
   uint8_t r[SHA512_DIGEST_LENGTH], const uint8_t *s, const uint8_t *A,
   const void *message, size_t message_len) {
 
