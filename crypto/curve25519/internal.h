@@ -24,6 +24,16 @@ extern "C" {
 
 #include "../internal.h"
 
+// If (1) x86_64 or aarch64, (2) linux or apple, and (3) OPENSSL_NO_ASM is not
+// set, s2n-bignum path is capable.
+#if ((defined(OPENSSL_X86_64) &&                                               \
+          !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)) ||                        \
+      defined(OPENSSL_AARCH64)) &&                                             \
+     (defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE)) &&                     \
+     !defined(OPENSSL_NO_ASM)
+#define CURVE25519_S2N_BIGNUM_CAPABLE
+#endif
+
 #if defined(BORINGSSL_HAS_UINT128)
 #define BORINGSSL_CURVE25519_64BIT
 #endif
@@ -110,16 +120,64 @@ void x25519_ge_scalarmult_base(ge_p3 *h, const uint8_t a[32]);
 void x25519_ge_scalarmult(ge_p2 *r, const uint8_t *scalar, const ge_p3 *A);
 void x25519_sc_reduce(uint8_t s[64]);
 
-void x25519_scalar_mult_generic_nohw(uint8_t out[32],
-                                      const uint8_t scalar[32],
-                                      const uint8_t point[32]);
-void x25519_public_from_private_nohw(uint8_t out_public_value[32],
-                                      const uint8_t private_key[32]);
+// x25519_scalar_mult_generic_[s2n_bignum,nohw] computes the x25519 function
+// from rfc7748 6.1 using the peer coordinate (either K_A or K_B) encoded in
+// |peer_public_value| and the scalar is |private_key|. The resulting shared key
+// is returned in |out_shared_key|.
+void x25519_scalar_mult_generic_s2n_bignum(
+  uint8_t out_shared_key[X25519_SHARED_KEY_LEN],
+  const uint8_t private_key[X25519_PRIVATE_KEY_LEN],
+  const uint8_t peer_public_value[X25519_PUBLIC_VALUE_LEN]);
+void x25519_scalar_mult_generic_nohw(
+  uint8_t out_shared_key[X25519_SHARED_KEY_LEN],
+  const uint8_t private_key[X25519_PRIVATE_KEY_LEN],
+  const uint8_t peer_public_value[X25519_PUBLIC_VALUE_LEN]);
+
+// x25519_public_from_private_[s2n_bignum,nohw] computes the x25519 function
+// from rfc7748 6.1 using the base-coordinate 9 and scalar |private_key|. The
+// resulting (encoded) public key coordinate (either K_A or K_B) is returned in
+// |out_public_value|.
+void x25519_public_from_private_s2n_bignum(
+  uint8_t out_public_value[X25519_PUBLIC_VALUE_LEN],
+  const uint8_t private_key[X25519_PRIVATE_KEY_LEN]);
+void x25519_public_from_private_nohw(
+  uint8_t out_public_value[X25519_PUBLIC_VALUE_LEN],
+  const uint8_t private_key[X25519_PRIVATE_KEY_LEN]);
+
+// ed25519_public_key_from_hashed_seed_[s2n_bignum,nohw] handles steps
+// rfc8032 5.1.5.[3,4]. Computes [az]B and encodes the public key to a 32-byte
+// octet string returning it in |out_public_key|.
+void ed25519_public_key_from_hashed_seed_s2n_bignum(
+  uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
+  uint8_t az[SHA512_DIGEST_LENGTH]);
 void ed25519_public_key_from_hashed_seed_nohw(
   uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
   uint8_t az[SHA512_DIGEST_LENGTH]);
 
-// Computes the SHA512 of three input pairs: (|input1|, |len1|),
+// ed25519_sign_[s2n_bignum,nohw] handles steps rfc8032 5.1.6.[3,5,6,7].
+// Computes the signature S = r + k * s modulo the order of the base-point B.
+// Returns R || S in |out_sig|. |s| must have length
+// |ED25519_PRIVATE_KEY_SEED_LEN| and |A| must have length
+// |ED25519_PUBLIC_KEY_LEN|.
+void ed25519_sign_s2n_bignum(uint8_t out_sig[ED25519_SIGNATURE_LEN],
+  uint8_t r[SHA512_DIGEST_LENGTH], const uint8_t *s, const uint8_t *A,
+  const void *message, size_t message_len);
+void ed25519_sign_nohw(uint8_t out_sig[ED25519_SIGNATURE_LEN],
+  uint8_t r[SHA512_DIGEST_LENGTH], const uint8_t *s, const uint8_t *A,
+  const void *message, size_t message_len);
+
+// ed25519_verify_[s2n_bignum,nohw] handles steps rfc8032 5.1.7.[1,2,3].
+// Computes [S]B - [k]A' and returns the result in |R_computed_encoded|. Returns
+// 1 on success and 0 otherwise. The failure case occurs if decoding of the
+// public key |public_key| fails.
+int ed25519_verify_s2n_bignum(uint8_t R_computed_encoded[32],
+  const uint8_t public_key[ED25519_PUBLIC_KEY_LEN], uint8_t R_expected[32],
+  uint8_t S[32], const uint8_t *message, size_t message_len);
+int ed25519_verify_nohw(uint8_t R_computed_encoded[32],
+  const uint8_t public_key[ED25519_PUBLIC_KEY_LEN], uint8_t R_expected[32],
+  uint8_t S[32], const uint8_t *message, size_t message_len);
+
+// Computes the SHA512 function of three input pairs: (|input1|, |len1|),
 // (|input2|, |len2|), (|input3|, |len3|). Specifically, the hash is computed
 // over the concatenation: |input1| || |input2| || |input3|.
 // The final pair might have |len3| == 0, meaning this input will be ignored.
@@ -127,17 +185,6 @@ void ed25519_public_key_from_hashed_seed_nohw(
 void ed25519_sha512(uint8_t out[SHA512_DIGEST_LENGTH],
   const void *input1, size_t len1, const void *input2, size_t len2,
   const void *input3, size_t len3);
-
-// |s| is of length |ED25519_PRIVATE_KEY_SEED_LEN|
-// |A| is of length |ED25519_PUBLIC_KEY_LEN|.
-void ed25519_sign_nohw(
-  uint8_t out_sig[ED25519_SIGNATURE_LEN],
-  uint8_t r[SHA512_DIGEST_LENGTH], const uint8_t *s, const uint8_t *A,
-  const void *message, size_t message_len);
-
-int ed25519_verify_nohw(uint8_t R_computed_encoded[32],
-  const uint8_t public_key[ED25519_PUBLIC_KEY_LEN], uint8_t R_expected[32],
-  uint8_t S[32], const uint8_t *message, size_t message_len);
 
 enum spake2_state_t {
   spake2_state_init = 0,
