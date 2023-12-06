@@ -12,8 +12,8 @@ import "../../spec/HASH/HMAC.cry";
 import "../../spec/HASH/HMAC_Seq.cry";
 import "../../spec/HASH/HMAC_Helper.cry";
 // Include SHA512 helper functions
-include "../SHA512/SHA512-384.saw";
-include "../SHA512/SHA512-common.saw";
+include "../SHA512/SHA512-384-common.saw";
+let ia32cap = {{ machine_cap }};
 // Include SHA512 rewrites
 include "../SHA512/goal-rewrites.saw";
 include "../SHA512/lemmas.saw";

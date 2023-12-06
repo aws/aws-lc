@@ -53,11 +53,10 @@ apply_patch "noinline-EVP_DigestVerifyUpdate"
 
 # ...next, check the proofs using CMake's Release settings...
 
-./scripts/build_x86.sh  "Release"
-./scripts/build_llvm_x86.sh "Release"
-./scripts/post_build.sh
-./scripts/run_checks_release.sh
-
+./scripts/x86_64/build_x86.sh  "Release"
+./scripts/x86_64/build_llvm.sh "Release"
+./scripts/x86_64/post_build.sh
+./scripts/x86_64/run_checks_release.sh
 
 # Disabling the proof for RSA in debug mode
 # # ...finally, check the proofs using CMake's Debug settings.

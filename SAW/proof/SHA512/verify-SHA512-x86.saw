@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
 */
 
-import "../../../cryptol-specs/Primitive/Keyless/Hash/SHA384.cry";
+import "../../../cryptol-specs/Primitive/Keyless/Hash/SHA512.cry";
 
-include "SHA384-defines.saw";
+include "SHA512-defines.saw";
 include "x86_64-sandybridge+.saw";
-include "SHA512-common.saw";
+include "SHA512.saw";

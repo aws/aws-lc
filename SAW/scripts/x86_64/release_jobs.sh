@@ -4,8 +4,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 # If |*_SELECTCHECK| env variable does not exist, run quick check of all algorithms.
-saw proof/SHA512/verify-SHA512-384.saw
-saw proof/SHA512/verify-SHA512-512.saw
+saw proof/SHA512/verify-SHA384-x86.saw
+saw proof/SHA512/verify-SHA512-x86.saw
 saw proof/HMAC/verify-HMAC.saw
 saw proof/KDF/verify-HKDF.saw
 # The proof for aesni_gcm_en[de]crypt requires having more than 6 function arguments.

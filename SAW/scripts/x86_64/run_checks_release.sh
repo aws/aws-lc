@@ -19,4 +19,4 @@ if [ -n "${AES_GCM_SELECTCHECK}" ]; then
 fi
 
 # If |*_SELECTCHECK| env variable does not exist, run quick check of all algorithms.
-/usr/bin/python3 ./scripts/parallel.py --file ./scripts/release_jobs.sh
+/usr/bin/python3 ./scripts/parallel.py --file ./scripts/x86_64/release_jobs.sh

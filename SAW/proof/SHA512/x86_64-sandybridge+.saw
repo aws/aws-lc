@@ -1,0 +1,15 @@
+/* 
+* Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+* SPDX-License-Identifier: Apache-2.0
+*/
+
+/*
+* Machine capabilities and architecture
+*/
+
+// Name of the OPENSSL machine cap variable
+let cap_sym = "OPENSSL_ia32cap_P";
+// Set machine cap value
+let {{ machine_cap = [0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff] : [4][32] }};
+// Set the architecture variable for controlling proof settings
+let ARCH = "X86_64";

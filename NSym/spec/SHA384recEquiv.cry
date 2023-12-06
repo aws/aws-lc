@@ -1,0 +1,30 @@
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+//  SPDX-License-Identifier: Apache-2.0
+
+module SHA384recEquiv where
+
+import Primitive::Keyless::Hash::SHA384 as SHA384
+import SHA384rec as SHA384rec
+import Array
+import Common::ByteArray
+
+type WordArray = Array[64][64]
+type w = SHA384rec::w
+
+// Proving the NSym processBlock_Common_rec is equivalent to cryptol-specs processBlock_Common
+property processBlock_Common_equiv (H : [8*w]) (Mi : [16][w]) =
+  join (SHA384::processBlock_Common (split H) Mi) == SHA384rec::processBlock_Common_rec H w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12 w13 w14 w15
+  where [w0, w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11, w12, w13, w14, w15] = Mi
+
+// The function processBlocks is a recursive/loop structure over processBlock_Common.
+// Likewise, the function processBlocks_rec is a recursive structure over
+// processBlock_Common_rec.
+// Having verified the equivalence between processBlock_Common and
+// processBlock_Common_rec, we then state the lemma for the top-level loop strucures.
+// Manual inspection is only required for the loop structure.
+
+// This property could not be proved nor checked due to Cryptol's lack of support for loops and Arrays
+property processBlocks_equiv (H : [8*w]) (data : ByteArray) (data2 : WordArray) (n : [64]) = 
+  // This lemma lacks a hypothesis about the equivalence between data and data2
+  // This hypothesis requires quantifiers
+  (join (SHA384::processBlocks (split H) data 0 n)) == (SHA384rec::processBlocks_rec H n data2)

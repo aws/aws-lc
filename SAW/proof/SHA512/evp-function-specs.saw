@@ -79,7 +79,7 @@ let EVP_DigestInit_array_spec = do {
 
 let EVP_DigestUpdate_array_spec = do {
   // Precondition: The function uses the AVX+shrd code path
-  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+  global_alloc_init cap_sym {{ machine_cap }};
 
   // Precondition: `ctx_ptr` is a pointer to an `env_md_ctx_st` struct
   ctx_ptr <- crucible_alloc (llvm_struct "struct.env_md_ctx_st");
@@ -108,7 +108,7 @@ let EVP_DigestUpdate_array_spec = do {
   crucible_execute_func [ctx_ptr, data_ptr, (crucible_term len)];
 
   // Postcondition: The function has not changed the variable that decides the AVX+shrd code path
-  global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
+  global_points_to cap_sym {{ machine_cap }};
 
   // Postcondition: The context `sha512_ctx_ptr` points to matches the result
   // of executing the cryptol function `SHAUpdate` on `sha512_ctx` and
@@ -127,7 +127,7 @@ let EVP_DigestUpdate_array_spec = do {
 };
 
 let EVP_DigestFinalCommon_array_spec is_ex withLength = do {
-  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+  global_alloc_init cap_sym {{ machine_cap }};
 
   // Precondition: md_out_ptr is allocated and correct length, and
   // s_ptr is null or points to an int.
@@ -158,7 +158,7 @@ let EVP_DigestFinalCommon_array_spec is_ex withLength = do {
   // Call function with `ctx_ptr`, `md_out_ptr`, and `s_ptr`
   crucible_execute_func [ctx_ptr, md_out_ptr, s_ptr];
 
-  global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
+  global_points_to cap_sym {{ machine_cap }};
 
   // Postcondition: The data pointed to by `md_out_ptr` matches the message
   // digest returned by the Cryptol function `SHAFinal`.  The reverses,

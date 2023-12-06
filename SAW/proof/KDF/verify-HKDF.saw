@@ -13,6 +13,7 @@ import "../../spec/HASH/HMAC_Seq.cry";
 import "../../spec/KDF/HKDF.cry";
 
 include "../SHA512/SHA512-384-common.saw";
+let ia32cap = {{ machine_cap }};
 include "../SHA512/goal-rewrites.saw";
 include "../SHA512/lemmas.saw";
 include "../SHA512/SHA512-function-specs.saw";

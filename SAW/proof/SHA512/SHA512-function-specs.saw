@@ -106,7 +106,7 @@ let points_to_sha512_state_st_uninitialized ptr state num = do {
 
 // Specification for SHA512_Update
 let SHA512_Update_spec num len = do {
-  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+  global_alloc_init cap_sym {{ machine_cap }};
 
   (sha512_ctx, sha512_ctx_ptr) <- pointer_to_fresh_sha512_state_st "sha512_ctx" num;
 
@@ -114,7 +114,7 @@ let SHA512_Update_spec num len = do {
 
   crucible_execute_func [sha512_ctx_ptr, data_ptr, (crucible_term {{ `len : [64] }})];
 
-  global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
+  global_points_to cap_sym {{ machine_cap }};
 
   let res = {{ SHAUpdate sha512_ctx data }};
   points_to_sha512_state_st sha512_ctx_ptr res (eval_size {| (num + len) % SHA512_CBLOCK |});
@@ -125,7 +125,7 @@ let SHA512_Update_spec num len = do {
 
 // Specification for SHA512_Final
 let SHA512_Final_spec num = do {
-  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+  global_alloc_init cap_sym {{ machine_cap }};
 
   md_out_ptr <- crucible_alloc (llvm_array SHA_DIGEST_LENGTH i8);
 
@@ -133,7 +133,7 @@ let SHA512_Final_spec num = do {
 
   crucible_execute_func [md_out_ptr, sha512_ctx_ptr];
 
-  global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
+  global_points_to cap_sym {{ machine_cap }};
 
   crucible_points_to md_out_ptr (crucible_term {{ split`{SHA_DIGEST_LENGTH} (SHAFinal sha512_ctx) }});
 
@@ -142,7 +142,7 @@ let SHA512_Final_spec num = do {
 
 // Specification for SHA512_Update_array
 let SHA512_Update_array_spec = do {
-  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+  global_alloc_init cap_sym {{ machine_cap }};
 
   (sha512_ctx, sha512_ctx_ptr) <- pointer_to_fresh_sha512_state_st_array_n32 "sha512_ctx";
   crucible_precond {{ sha512_ctx.n < `SHA512_CBLOCK }};
@@ -152,7 +152,7 @@ let SHA512_Update_array_spec = do {
 
   crucible_execute_func [sha512_ctx_ptr, data_ptr, (crucible_term len)];
 
-  global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
+  global_points_to cap_sym {{ machine_cap }};
 
   let res = {{ SHAUpdate_Array sha512_ctx data len }};
   res_block <- crucible_fresh_cryptol_var "res_block" {| ByteArray |};
@@ -168,7 +168,7 @@ let SHA512_Update_array_spec = do {
 
 // Specification for SHA512_Final_array
 let SHA512_Final_array_spec = do {
-  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+  global_alloc_init cap_sym {{ machine_cap }};
 
   md_out_ptr <- crucible_alloc (llvm_array SHA_DIGEST_LENGTH i8);
 
@@ -177,7 +177,7 @@ let SHA512_Final_array_spec = do {
 
   crucible_execute_func [md_out_ptr, sha512_ctx_ptr];
 
-  global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
+  global_points_to cap_sym {{ machine_cap }};
 
   crucible_points_to md_out_ptr (crucible_term {{ split`{SHA_DIGEST_LENGTH} (SHAFinal_Array sha512_ctx) }});
 

@@ -9,8 +9,11 @@ enable_experimental;
 // Disable debug intrinsics to avoid https://github.com/GaloisInc/crucible/issues/778
 disable_debug_intrinsics;
 
+// Print the target architecture being verified, either X86_64 or AARCH64
+print (str_concat "ARCH: " (show ARCH));
+include "../common/asm_helpers.saw";
 // Load LLVM bytecode
-m <- llvm_load_module "../../build/llvm_x86/crypto/crypto_test.bc";
+m <- load_module;
 
 // Include SHA512 common specifications
 include "SHA512-common-specs.saw";
@@ -29,7 +32,7 @@ EVP_MD_pctx_ops_ov <- llvm_unsafe_assume_spec
 
 enable_what4_hash_consing;
 
-sha512_block_data_order_ov <- llvm_verify_x86 m "../../build/x86/crypto/crypto_test" "sha512_block_data_order"
+sha512_block_data_order_ov <- llvm_verify_or_assume_asm m "../../build/x86/crypto/crypto_test" "sha512_block_data_order"
   [ ("K512", 5120) // Initializes the global for round constants, called K, at a size of 5120 bytes
   ]
   true
@@ -49,7 +52,7 @@ sha512_block_data_order_ov <- llvm_verify_x86 m "../../build/x86/crypto/crypto_t
 enable_what4_eval;
 enable_x86_what4_hash_consing;
 
-sha512_block_data_order_array_ov <- llvm_verify_fixpoint_x86 m "../../build/x86/crypto/crypto_test" "sha512_block_data_order"
+sha512_block_data_order_array_ov <- llvm_verify_or_assume_fixpoint_asm m "../../build/x86/crypto/crypto_test" "sha512_block_data_order"
   [ ("K512", 5120) // Initializes the global for round constants, called K, at a size of 5120 bytes
   ]
   true

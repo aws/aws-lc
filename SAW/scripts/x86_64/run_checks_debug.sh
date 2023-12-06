@@ -8,4 +8,4 @@ set -ex
 # The RSA proofs currently require the source code to be built with Debug
 # settings in CMake.
 
-/usr/bin/python3 ./scripts/parallel.py --file ./scripts/debug_jobs.sh
+/usr/bin/python3 ./scripts/parallel.py --file ./scripts/x86_64/debug_jobs.sh

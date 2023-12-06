@@ -26,7 +26,7 @@ RUN opam init --auto-setup --yes --disable-sandboxing \
 
 ADD ./NSym/scripts /lc/scripts
 RUN /lc/scripts/docker_install.sh
-ENV CRYPTOLPATH="../../../cryptol-specs:../../spec:./spec:../cryptol-specs"
+ENV CRYPTOLPATH="../../../cryptol-specs:../../cryptol-specs:../cryptol-specs:../../spec:./spec"
 
 # This container expects all files in the directory to be mounted or copied. 
 # The GitHub action will mount the workspace and set the working directory of the container.

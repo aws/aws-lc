@@ -16,7 +16,7 @@ RUN wget "https://dl.google.com/go/${GO_ARCHIVE}" && tar -xvf $GO_ARCHIVE && \
 RUN pip3 install wllvm
 RUN pip3 install psutil
 
-ADD ./SAW/scripts /lc/scripts
+ADD ./SAW/scripts/x86_64 /lc/scripts
 RUN /lc/scripts/docker_install.sh
 ENV CRYPTOLPATH="../../../cryptol-specs:../../spec"
 
@@ -24,4 +24,4 @@ ENV CRYPTOLPATH="../../../cryptol-specs:../../spec"
 # The GitHub action will mount the workspace and set the working directory of the container.
 # Another way to mount the files is: docker run -v `pwd`:`pwd` -w `pwd` <name>
 
-ENTRYPOINT ["./SAW/scripts/docker_entrypoint.sh"]
+ENTRYPOINT ["./SAW/scripts/x86_64/docker_entrypoint.sh"]

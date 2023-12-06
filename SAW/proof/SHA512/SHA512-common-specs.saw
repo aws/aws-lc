@@ -72,18 +72,13 @@ include "memory.saw";
  * that the specification makes no guarantees about the function's behavior.
  */
 
-/*
- * Architecture features for the AVX+shrd code path
- */
-let {{ ia32cap = [0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff] : [4][32] }};
-
 
 /*
  * Specification of block function for SHA512
  */
 let sha512_block_data_order_spec = do {
   // Precondition: The function uses the AVX+shrd code path
-  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+  global_alloc_init cap_sym {{ machine_cap }};
 
   // Precondition: `state_ptr` points to an array of 8 64 bit integers
   (state, state_ptr) <- ptr_to_fresh "state" (llvm_array 8 i64);
@@ -95,7 +90,7 @@ let sha512_block_data_order_spec = do {
   crucible_execute_func [state_ptr, data_ptr, crucible_term {{ 1 : [64] }}];
 
   // Postcondition: The function has not changed the variable that decides the AVX+shrd code path
-  global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
+  global_points_to cap_sym {{ machine_cap }};
 
   // Postcondition: The data pointed to by `state_ptr` is equivalent to the
   // return value of the processBlock_Common Cryptol spec function applied to `state`
@@ -105,7 +100,7 @@ let sha512_block_data_order_spec = do {
 
 let sha512_block_data_order_array_spec = do {
   // Precondition: The function uses the AVX+shrd code path
-  global_alloc_init "OPENSSL_ia32cap_P" {{ ia32cap }};
+  global_alloc_init cap_sym {{ machine_cap }};
 
   // Precondition: `state_ptr` points to an array of 8 64 bit integers
   (state, state_ptr) <- ptr_to_fresh "state" (llvm_array 8 i64);
@@ -122,7 +117,7 @@ let sha512_block_data_order_array_spec = do {
   crucible_execute_func [state_ptr, data_ptr, (crucible_term num)];
 
   // Postcondition: The function has not changed the variable that decides the AVX+shrd code path
-  global_points_to "OPENSSL_ia32cap_P" {{ ia32cap }};
+  global_points_to cap_sym {{ machine_cap }};
 
   // Postcondition: The data pointed to by `state_ptr` is equivalent to the
   // return value of the processBlock_Common Cryptol spec function applied to `state`

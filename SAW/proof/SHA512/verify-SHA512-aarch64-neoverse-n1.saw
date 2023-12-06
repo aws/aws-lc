@@ -1,0 +1,10 @@
+/* 
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
+*/
+
+import "../../../cryptol-specs/Primitive/Keyless/Hash/SHA512.cry";
+
+include "SHA512-defines.saw";
+include "aarch64-neoverse-n1.saw";
+include "SHA512.saw";
