@@ -26,7 +26,7 @@ AWS_LC_INSTALL_FOLDER="${NGINX_SRC_FOLDER}/aws-lc-install"
 
 
 mkdir -p ${SCRATCH_FOLDER}
-rm -rf ${SCRATCH_FOLDER}/*
+rm -rf "${SCRATCH_FOLDER:?}"/*
 cd ${SCRATCH_FOLDER}
 
 function nginx_build() {

@@ -25,7 +25,7 @@ AWS_LC_BUILD_FOLDER="${SCRATCH_FOLDER}/aws-lc-build"
 AWS_LC_INSTALL_FOLDER="${CURL_SRC_FOLDER}/aws-lc-install"
 
 mkdir -p ${SCRATCH_FOLDER}
-rm -rf ${SCRATCH_FOLDER}/*
+rm -rf "${SCRATCH_FOLDER:?}"/*
 cd ${SCRATCH_FOLDER}
 
 function curl_build() {

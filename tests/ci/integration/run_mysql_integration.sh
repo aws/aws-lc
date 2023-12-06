@@ -32,7 +32,7 @@ AWS_LC_INSTALL_FOLDER="${MYSQL_SRC_FOLDER}/aws-lc-install"
 
 
 mkdir -p ${SCRATCH_FOLDER}
-rm -rf ${SCRATCH_FOLDER}/*
+rm -rf "${SCRATCH_FOLDER:?}"/*
 cd ${SCRATCH_FOLDER}
 
 function mysql_patch_reminder() {
