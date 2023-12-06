@@ -729,10 +729,12 @@ OPENSSL_EXPORT int SSL_CTX_set_min_proto_version(SSL_CTX *ctx,
 OPENSSL_EXPORT int SSL_CTX_set_max_proto_version(SSL_CTX *ctx,
                                                  uint16_t version);
 
-// SSL_CTX_get_min_proto_version returns the minimum protocol version for |ctx|
+// SSL_CTX_get_min_proto_version returns the minimum protocol version for |ctx|.
+// If |ctx| is configured to use the default minimum version, 0 is returned.
 OPENSSL_EXPORT uint16_t SSL_CTX_get_min_proto_version(const SSL_CTX *ctx);
 
-// SSL_CTX_get_max_proto_version returns the maximum protocol version for |ctx|
+// SSL_CTX_get_max_proto_version returns the maximum protocol version for |ctx|.
+// If |ctx| is configured to use the default maximum version, 0 is returned.
 OPENSSL_EXPORT uint16_t SSL_CTX_get_max_proto_version(const SSL_CTX *ctx);
 
 // SSL_set_min_proto_version sets the minimum protocol version for |ssl| to
@@ -746,11 +748,13 @@ OPENSSL_EXPORT int SSL_set_min_proto_version(SSL *ssl, uint16_t version);
 OPENSSL_EXPORT int SSL_set_max_proto_version(SSL *ssl, uint16_t version);
 
 // SSL_get_min_proto_version returns the minimum protocol version for |ssl|. If
-// the connection's configuration has been shed, 0 is returned.
+// the connection's configuration has been shed or |ssl| is configured to use
+// the default min version, 0 is returned.
 OPENSSL_EXPORT uint16_t SSL_get_min_proto_version(const SSL *ssl);
 
 // SSL_get_max_proto_version returns the maximum protocol version for |ssl|. If
-// the connection's configuration has been shed, 0 is returned.
+// the connection's configuration has been shed or |ssl| is configured to use
+// the default max version, 0 is returned.
 OPENSSL_EXPORT uint16_t SSL_get_max_proto_version(const SSL *ssl);
 
 // SSL_version returns the TLS or DTLS protocol version used by |ssl|, which is
@@ -1330,6 +1334,12 @@ OPENSSL_EXPORT int SSL_use_PrivateKey_file(SSL *ssl, const char *file,
 // success and zero on failure.
 OPENSSL_EXPORT int SSL_CTX_use_certificate_chain_file(SSL_CTX *ctx,
                                                       const char *file);
+
+// SSL_CTX_use_certificate_chain_file configures certificates for |ssl|. It
+// reads the contents of |file| as a PEM-encoded leaf certificate followed
+// optionally by the certificate chain to send to the peer. It returns one on
+// success and zero on failure.
+OPENSSL_EXPORT int SSL_use_certificate_chain_file(SSL *ssl, const char *file);
 
 // SSL_CTX_set_default_passwd_cb sets the password callback for PEM-based
 // convenience functions called on |ctx|.
@@ -2616,6 +2626,19 @@ OPENSSL_EXPORT int SSL_set1_groups_list(SSL *ssl, const char *groups);
 #define SSL_GROUP_SECP384R1 24
 #define SSL_GROUP_SECP521R1 25
 #define SSL_GROUP_X25519 29
+
+// https://datatracker.ietf.org/doc/html/draft-kwiatkowski-tls-ecdhe-kyber
+#define SSL_GROUP_SECP256R1_KYBER768_DRAFT00 0x639A
+
+// https://datatracker.ietf.org/doc/html/draft-tls-westerbaan-xyber768d00
+#define SSL_GROUP_X25519_KYBER768_DRAFT00 0x6399
+
+// PQ and hybrid group IDs are not yet standardized. Current IDs are driven by
+// community consensus and are defined at
+// https://github.com/open-quantum-safe/oqs-provider/blob/main/oqs-template/oqs-kem-info.md
+#define SSL_GROUP_KYBER512_R3 0x023A
+#define SSL_GROUP_KYBER768_R3 0x023C
+#define SSL_GROUP_KYBER1024_R3 0x023D
 
 // SSL_get_group_id returns the ID of the group used by |ssl|'s most recently
 // completed handshake, or 0 if not applicable.
@@ -4999,7 +5022,8 @@ OPENSSL_EXPORT int SSL_CTX_sess_accept_renegotiate(const SSL_CTX *ctx);
 // SSL/TLS sessions in server mode.
 OPENSSL_EXPORT int SSL_CTX_sess_accept_good(const SSL_CTX *ctx);
 
-// SSL_CTX_sess_hits returns the number of successfully reused sessions.
+// SSL_CTX_sess_hits returns the number of successfully reused sessions, from
+// both session cache and session tickets.
 OPENSSL_EXPORT int SSL_CTX_sess_hits(const SSL_CTX *ctx);
 
 // SSL_CTX_sess_cb_hits returns the number of successfully retrieved sessions
@@ -5588,22 +5612,37 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_status_arg(SSL_CTX *ctx, void *arg);
   SSL_R_TLSV1_ALERT_BAD_CERTIFICATE_HASH_VALUE
 #define SSL_R_TLSV1_CERTIFICATE_REQUIRED SSL_R_TLSV1_ALERT_CERTIFICATE_REQUIRED
 
-// The following symbols are compatibility aliases for equivalent functions that
-// use the newer "group" terminology. New code should use the new functions for
-// consistency, but we do not plan to remove these aliases.
-#define SSL_CTX_set1_curves SSL_CTX_set1_groups
-#define SSL_set1_curves SSL_set1_groups
-#define SSL_CTX_set1_curves_list SSL_CTX_set1_groups_list
-#define SSL_set1_curves_list SSL_set1_groups_list
-#define SSL_get_curve_id SSL_get_group_id
-#define SSL_get_curve_name SSL_get_group_name
-#define SSL_get_all_curve_names SSL_get_all_group_names
+// The following symbols are compatibility aliases for |SSL_GROUP_*|.
 #define SSL_CURVE_SECP224R1 SSL_GROUP_SECP224R1
 #define SSL_CURVE_SECP256R1 SSL_GROUP_SECP256R1
 #define SSL_CURVE_SECP384R1 SSL_GROUP_SECP384R1
 #define SSL_CURVE_SECP521R1 SSL_GROUP_SECP521R1
 #define SSL_CURVE_X25519 SSL_GROUP_X25519
+#define SSL_CURVE_SECP256R1_KYBER768_DRAFT00 SSL_GROUP_SECP256R1_KYBER768_DRAFT00
 #define SSL_CURVE_X25519_KYBER768_DRAFT00 SSL_GROUP_X25519_KYBER768_DRAFT00
+
+// SSL_get_curve_id calls |SSL_get_group_id|.
+OPENSSL_EXPORT uint16_t SSL_get_curve_id(const SSL *ssl);
+
+// SSL_get_curve_name calls |SSL_get_group_name|.
+OPENSSL_EXPORT const char *SSL_get_curve_name(uint16_t curve_id);
+
+// SSL_get_all_curve_names calls |SSL_get_all_group_names|.
+OPENSSL_EXPORT size_t SSL_get_all_curve_names(const char **out, size_t max_out);
+
+// SSL_CTX_set1_curves calls |SSL_CTX_set1_groups|.
+OPENSSL_EXPORT int SSL_CTX_set1_curves(SSL_CTX *ctx, const int *curves,
+                                       size_t num_curves);
+
+// SSL_set1_curves calls |SSL_set1_groups|.
+OPENSSL_EXPORT int SSL_set1_curves(SSL *ssl, const int *curves,
+                                   size_t num_curves);
+
+// SSL_CTX_set1_curves_list calls |SSL_CTX_set1_groups_list|.
+OPENSSL_EXPORT int SSL_CTX_set1_curves_list(SSL_CTX *ctx, const char *curves);
+
+// SSL_set1_curves_list calls |SSL_set1_groups_list|.
+OPENSSL_EXPORT int SSL_set1_curves_list(SSL *ssl, const char *curves);
 
 
 // Nodejs compatibility section (hidden).
@@ -5711,6 +5750,7 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_status_arg(SSL_CTX *ctx, void *arg);
 #define SSL_CTX_sess_set_cache_size SSL_CTX_sess_set_cache_size
 #define SSL_CTX_set0_chain SSL_CTX_set0_chain
 #define SSL_CTX_set1_chain SSL_CTX_set1_chain
+#define SSL_CTX_set1_curves SSL_CTX_set1_curves
 #define SSL_CTX_set1_groups SSL_CTX_set1_groups
 #define SSL_CTX_set_max_cert_list SSL_CTX_set_max_cert_list
 #define SSL_CTX_set_max_send_fragment SSL_CTX_set_max_send_fragment
@@ -5746,6 +5786,7 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_status_arg(SSL_CTX *ctx, void *arg);
 #define SSL_session_reused SSL_session_reused
 #define SSL_set0_chain SSL_set0_chain
 #define SSL_set1_chain SSL_set1_chain
+#define SSL_set1_curves SSL_set1_curves
 #define SSL_set1_groups SSL_set1_groups
 #define SSL_set_max_cert_list SSL_set_max_cert_list
 #define SSL_set_max_send_fragment SSL_set_max_send_fragment
@@ -6103,6 +6144,8 @@ BSSL_NAMESPACE_END
 #define SSL_R_SERIALIZATION_INVALID_SSL3_STATE 503
 #define SSL_R_SERIALIZATION_INVALID_SSL_BUFFER 505
 #define SSL_R_SERIALIZATION_INVALID_SSL_AEAD_CONTEXT 506
+#define SSL_R_BAD_HYBRID_KEYSHARE 507
+#define SSL_R_BAD_KEM_CIPHERTEXT 508
 #define SSL_R_SSLV3_ALERT_CLOSE_NOTIFY 1000
 #define SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE 1010
 #define SSL_R_SSLV3_ALERT_BAD_RECORD_MAC 1020

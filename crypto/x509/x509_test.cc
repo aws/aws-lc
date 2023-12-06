@@ -4523,6 +4523,87 @@ TEST(X509Test, Expiry) {
   }
 }
 
+// Test that we don't break the search if an expired candidate cert exists.
+TEST(X509Test, ExpiredCandidate) {
+  // Generate the following certificates:
+  //
+  //         Root (in store)
+  //          |          |
+  // Intermediate 1   Intermediate 2 (expired)
+  //           \         /
+  //               Leaf
+  bssl::UniquePtr<EVP_PKEY> key = PrivateKeyFromPEM(kP256Key);
+  ASSERT_TRUE(key);
+
+  bssl::UniquePtr<X509> root =
+      MakeTestCert("Root", "Root", key.get(), /*is_ca=*/true);
+  ASSERT_TRUE(root);
+  ASSERT_TRUE(X509_sign(root.get(), key.get(), EVP_sha256()));
+
+  bssl::UniquePtr<X509> intermediate1 =
+      MakeTestCert("Root", "Intermediate", key.get(), /*is_ca=*/true);
+  ASSERT_TRUE(intermediate1);
+  ASSERT_TRUE(X509_sign(intermediate1.get(), key.get(), EVP_sha256()));
+
+  bssl::UniquePtr<X509> intermediate2 =
+      MakeTestCert("Root", "Intermediate", key.get(), /*is_ca=*/true);
+  ASSERT_TRUE(intermediate2);
+  ASSERT_TRUE(ASN1_TIME_adj(X509_getm_notAfter(intermediate2.get()),
+                            kReferenceTime,
+                            /*offset_day=*/0,
+                            /*offset_sec=*/-1));
+  ASSERT_TRUE(X509_sign(intermediate2.get(), key.get(), EVP_sha256()));
+
+  bssl::UniquePtr<X509> leaf =
+      MakeTestCert("Intermediate", "Leaf", key.get(), /*is_ca=*/false);
+  ASSERT_TRUE(leaf);
+  ASSERT_TRUE(X509_sign(leaf.get(), key.get(), EVP_sha256()));
+
+  // As a control, confirm that |leaf| -> |intermediate1| -> |root1| is valid,
+  // but the path through |intermediate2| is expired.
+  EXPECT_EQ(X509_V_OK,
+            Verify(leaf.get(), {root.get()}, {intermediate1.get()}, {}));
+  EXPECT_EQ(X509_V_ERR_CERT_HAS_EXPIRED,
+            Verify(leaf.get(), {root.get()}, {intermediate2.get()}, {}));
+
+
+  // We should skip over expired candidate certificates and continue looking.
+  // The test with the expired cert coming first in the stack would fail without
+  // support for this.
+  EXPECT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()},
+                              {intermediate1.get(), intermediate2.get()}, {}));
+  EXPECT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()},
+                              {intermediate2.get(), intermediate1.get()}, {}));
+
+
+
+  // Test that |X509_STORE_CTX_get1_issuer| prioritizes non-expired certs.
+  // With this set up, |intermediate2| would have been returned if expired certs
+  // weren't filtered.
+  bssl::UniquePtr<STACK_OF(X509)> intermediates_stack(
+      CertsToStack({intermediate1.get(), intermediate2.get()}));
+  bssl::UniquePtr<X509_STORE_CTX> ctx(X509_STORE_CTX_new());
+  bssl::UniquePtr<X509_STORE> store(X509_STORE_new());
+
+  // TODO: Remove this ifdef when we pull in google/boringssl@1340a5b.
+#if defined(OPENSSL_WINDOWS)
+  ASSERT_TRUE(X509_STORE_add_cert(store.get(), intermediate1.get()));
+  ASSERT_TRUE(X509_STORE_add_cert(store.get(), intermediate2.get()));
+#else
+  ASSERT_TRUE(X509_STORE_add_cert(store.get(), intermediate2.get()));
+  ASSERT_TRUE(X509_STORE_add_cert(store.get(), intermediate1.get()));
+#endif
+  ASSERT_TRUE(X509_STORE_CTX_init(ctx.get(), store.get(), leaf.get(),
+                           intermediates_stack.get()));
+
+  X509 *issuer;
+  EXPECT_TRUE(X509_STORE_CTX_get1_issuer(&issuer, ctx.get(), leaf.get()));
+  EXPECT_TRUE(issuer);
+  // Check that we return the non-expired |intermediate1|.
+  EXPECT_EQ(X509_cmp(issuer, intermediate1.get()), 0);
+  bssl::UniquePtr<X509> free(issuer);
+}
+
 // kConstructedBitString is an X.509 certificate where the signature is encoded
 // as a BER constructed BIT STRING. Note that, while OpenSSL's parser accepts
 // this input, it interprets the value incorrectly.
@@ -5630,6 +5711,34 @@ TEST(X509Test, SetSerialNumberChecksASN1StringType) {
   EXPECT_EQ(-1, val);
 }
 
+TEST(X509Test, SetSerialNumberCheckEndian) {
+  bssl::UniquePtr<X509> root = CertFromPEM(kRootCAPEM);
+  ASSERT_TRUE(root);
+
+  // Numbers for testing
+  std::vector<int64_t> nums = {
+      0x0000000000000001LL,
+      0x0000000000000100LL,
+      0x0000000000010000LL,
+      0x0000000001000000LL,
+      0x0000000100000000LL,
+      0x0000010000000000LL,
+      0x0001000000000000LL,
+      -2LL};
+
+  for(int64_t num: nums) {
+    bssl::UniquePtr<ASN1_INTEGER> serial(ASN1_INTEGER_new());
+    ASSERT_TRUE(serial);
+    // Set serial number for cert
+    ASSERT_TRUE(ASN1_INTEGER_set_int64(serial.get(), num));
+    ASSERT_TRUE(X509_set_serialNumber(root.get(), serial.get()));
+    // Get serial number for cert
+    int64_t val;
+    ASSERT_TRUE(ASN1_INTEGER_get_int64(&val, X509_get0_serialNumber(root.get())));
+    EXPECT_EQ(num, val);
+  }
+}
+
 TEST(X509Test, Policy) {
   bssl::UniquePtr<ASN1_OBJECT> oid1(
       OBJ_txt2obj("1.2.840.113554.4.1.72585.2.1", /*dont_search_names=*/1));
@@ -6628,4 +6737,10 @@ TEST(X509Test, TestDecode) {
   bssl::UniquePtr<EVP_PKEY> pkey2(X509_get_pubkey(cert.get()));
   ASSERT_TRUE(pkey2);
   ASSERT_TRUE(X509_verify(cert.get(), pkey2.get()));
+}
+
+TEST(X509Test, X509_OBJECT_heap) {
+  X509_OBJECT *x509_object = X509_OBJECT_new();
+  ASSERT_TRUE(x509_object);
+  X509_OBJECT_free(x509_object);
 }

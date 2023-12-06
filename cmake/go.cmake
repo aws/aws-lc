@@ -41,6 +41,12 @@ function(go_executable dest package)
     string(SUBSTRING "${CMAKE_CURRENT_BINARY_DIR}" ${root_dir_length} -1 target)
     set(target "${target}/${dest}")
 
+    if(CMAKE_VERSION VERSION_GREATER "3.19")
+      # Silences warning about CMP0116:
+      # https://cmake.org/cmake/help/latest/policy/CMP0116.html
+      cmake_policy(SET CMP0116 OLD)
+    endif()
+
     set(depfile "${CMAKE_CURRENT_BINARY_DIR}/${dest}.d")
     add_custom_command(OUTPUT ${dest}
                        COMMAND ${GO_EXECUTABLE} build

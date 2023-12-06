@@ -119,14 +119,19 @@ SSLBuffer ::= SEQUENCE {
     capacity       INTEGER
 }
 
-SSLConfigSerializationVersion ::= INTEGER {v1 (1)}
+SSLConfigSerializationVersion ::= INTEGER {
+    v1 (1),
+    v2 (2) -- Added confMaxVersionUseDefault and confMinVersionUseDefault fields
+}
 
 SSLConfig ::= SEQUENCE {
     serializationVersion SSLConfigSerializationVersion,
     confMaxVersion INTEGER,
     confMinVersion INTEGER,
     ocspStaplingEnabled [0] BOOLEAN OPTIONAL,
-    jdk11Workaround [1] BOOLEAN OPTIONAL
+    jdk11Workaround [1] BOOLEAN OPTIONAL,
+    confMaxVersionUseDefault [2] BOOLEAN OPTIONAL,
+    confMinVersionUseDefault [3] BOOLEAN OPTIONAL
 }
 
 END

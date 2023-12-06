@@ -377,7 +377,7 @@ OPENSSL_EXPORT int EC_GROUP_set_generator(EC_GROUP *group,
 // On success, it returns the BIGNUM pointer supplied or, if |ret| is NULL,
 // allocates and returns a fresh |BIGNUM|. On error, it returns NULL. The |ctx|
 // argument may be used if not NULL.
-AWS_LC_DEPRECATED OPENSSL_EXPORT BIGNUM *EC_POINT_point2bn(
+OPENSSL_EXPORT OPENSSL_DEPRECATED BIGNUM *EC_POINT_point2bn(
     const EC_GROUP *group, const EC_POINT *point, point_conversion_form_t form,
     BIGNUM *ret, BN_CTX *ctx);
 

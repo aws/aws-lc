@@ -48,7 +48,10 @@
 // following two references:
 // * https://mailarchive.ietf.org/arch/msg/cfrg/pt2bt3fGQbNF8qdEcorp-rJSJrc/
 // * https://neilmadden.blog/2020/05/28/whats-the-curve25519-clamping-all-about
-
+//
+// Ed25519 domain and pre-hash functions:
+// For Ed25519, dom2(F,C) is the empty string and PH the identify function,
+// cf. rfc8032 5.1.
 
 // If (1) x86_64 or aarch64, (2) linux or apple, and (3) OPENSSL_NO_ASM is not
 // set, s2n-bignum path is capable.
@@ -61,8 +64,36 @@
 #define CURVE25519_S2N_BIGNUM_CAPABLE
 #endif
 
+// Stub functions if implementations are not compiled.
+// These functions have to abort, otherwise we risk applications assuming they
+// did work without actually doing anything.
+#if !defined(CURVE25519_S2N_BIGNUM_CAPABLE) || defined(BORINGSSL_FIPS)
 
-OPENSSL_INLINE int x25519_s2n_bignum_capable(void) {
+#define S2N_BIGNUM_STUB_FUNC(return_type, symbol, ...) \
+  return_type symbol(__VA_ARGS__); \
+  return_type symbol(__VA_ARGS__) { abort(); } \
+
+S2N_BIGNUM_STUB_FUNC(void, bignum_mod_n25519, uint64_t z[4], uint64_t k, uint64_t *x)
+S2N_BIGNUM_STUB_FUNC(void, bignum_neg_p25519, uint64_t z[4], uint64_t x[4])
+S2N_BIGNUM_STUB_FUNC(void, bignum_madd_n25519, uint64_t z[4], uint64_t x[4], uint64_t y[4], uint64_t c[4])
+S2N_BIGNUM_STUB_FUNC(void, bignum_madd_n25519_alt, uint64_t z[4], uint64_t x[4], uint64_t y[4], uint64_t c[4])
+S2N_BIGNUM_STUB_FUNC(void, edwards25519_encode, uint8_t z[32], uint64_t p[8])
+S2N_BIGNUM_STUB_FUNC(uint64_t, edwards25519_decode, uint64_t z[8], const uint8_t c[32])
+S2N_BIGNUM_STUB_FUNC(uint64_t, edwards25519_decode_alt, uint64_t z[8], const uint8_t c[32])
+S2N_BIGNUM_STUB_FUNC(void, edwards25519_scalarmulbase, uint64_t res[8],uint64_t scalar[4])
+S2N_BIGNUM_STUB_FUNC(void, edwards25519_scalarmulbase_alt, uint64_t res[8],uint64_t scalar[4])
+S2N_BIGNUM_STUB_FUNC(void, edwards25519_scalarmuldouble, uint64_t res[8], uint64_t scalar[4], uint64_t point[8], uint64_t bscalar[4])
+S2N_BIGNUM_STUB_FUNC(void, edwards25519_scalarmuldouble_alt, uint64_t res[8], uint64_t scalar[4], uint64_t point[8], uint64_t bscalar[4])
+
+#if !defined(CURVE25519_S2N_BIGNUM_CAPABLE)
+S2N_BIGNUM_STUB_FUNC(void, curve25519_x25519_byte, uint8_t res[32], const uint8_t scalar[32], const uint8_t point[32])
+S2N_BIGNUM_STUB_FUNC(void, curve25519_x25519_byte_alt, uint8_t res[32], const uint8_t scalar[32], const uint8_t point[32])
+S2N_BIGNUM_STUB_FUNC(void, curve25519_x25519base_byte, uint8_t res[32], const uint8_t scalar[32])
+S2N_BIGNUM_STUB_FUNC(void, curve25519_x25519base_byte_alt, uint8_t res[32], const uint8_t scalar[32])
+#endif // !defined(CURVE25519_S2N_BIGNUM_CAPABLE)
+#endif // !defined(CURVE25519_S2N_BIGNUM_CAPABLE) || defined(BORINGSSL_FIPS)
+
+OPENSSL_INLINE int curve25519_s2n_bignum_capable(void) {
 #if defined(CURVE25519_S2N_BIGNUM_CAPABLE)
   return 1;
 #else
@@ -70,94 +101,18 @@ OPENSSL_INLINE int x25519_s2n_bignum_capable(void) {
 #endif
 }
 
-// Return 0 until ED25519 lands in s2n-bignum
+// Temporarily use separate function for Ed25519. See CryptoAlg-2198.
 OPENSSL_INLINE int ed25519_s2n_bignum_capable(void) {
-  return 0;
-}
-
-// Stub functions if implementations are not compiled.
-// These functions have to abort, otherwise we risk applications assuming they
-// did work without actually doing anything.
-
-#if !defined(CURVE25519_S2N_BIGNUM_CAPABLE)
-
-void curve25519_x25519_byte(uint8_t res[32], const uint8_t scalar[32],
-  const uint8_t point[32]);
-void curve25519_x25519_byte_alt(uint8_t res[32], const uint8_t scalar[32],
-  const uint8_t point[32]);
-void curve25519_x25519base_byte(uint8_t res[32], const uint8_t scalar[32]);
-void curve25519_x25519base_byte_alt(uint8_t res[32], const uint8_t scalar[32]);
-
-void curve25519_x25519_byte(uint8_t res[32], const uint8_t scalar[32],
-  const uint8_t point[32]) {
-  abort();
-}
-void curve25519_x25519_byte_alt(uint8_t res[32], const uint8_t scalar[32],
-  const uint8_t point[32]) {
-  abort();
-}
-void curve25519_x25519base_byte(uint8_t res[32], const uint8_t scalar[32]) {
-  abort();
-}
-void curve25519_x25519base_byte_alt(uint8_t res[32], const uint8_t scalar[32]) {
-  abort();
-}
-
-#endif // !defined(CURVE25519_S2N_BIGNUM_CAPABLE)
-
-
-// Run-time detection for each implementation
-
-OPENSSL_INLINE int x25519_s2n_bignum_alt_capable(void);
-OPENSSL_INLINE int x25519_s2n_bignum_no_alt_capable(void);
-
-// For aarch64, |x25519_s2n_bignum_alt_capable| returns 1 if we categorize the
-// CPU as a CPU having a wide multiplier (i.e. "higher" throughput). CPUs with
-// this feature are e.g.: AWS Graviton 3 and Apple M1. Return 0 otherwise, so we
-// don't match CPUs without wide multipliers.
-//
-// For x86_64, |x25519_s2n_bignum_alt_capable| always returns 1. If x25519
-// s2n-bignum capable, the x86_64 s2n-bignum-alt version should be supported on
-// pretty much any x86_64 CPU.
-//
-// For all other architectures, return 0.
-OPENSSL_INLINE int x25519_s2n_bignum_alt_capable(void) {
-#if defined(OPENSSL_X86_64)
-  return 1;
-#elif defined(OPENSSL_AARCH64)
-  if (CRYPTO_is_ARMv8_wide_multiplier_capable() == 1) {
-    return 1;
-  } else {
-    return 0;
-  }
-#else
-  return 0;
-#endif
-}
-
-// For aarch64, |x25519_s2n_bignum_no_alt_capable| always returns 1. If x25519
-// s2n-bignum capable, the Armv8 s2n-bignum-alt version should be supported on
-// pretty much any Armv8 CPU.
-//
-// For x86_64, |x25519_s2n_bignum_alt_capable| returns 1 if we detect support
-// for bmi+adx instruction sets. Return 0 otherwise.
-//
-// For all other architectures, return 0.
-OPENSSL_INLINE int x25519_s2n_bignum_no_alt_capable(void) {
-#if defined(OPENSSL_X86_64)
-  if (CRYPTO_is_BMI2_capable() == 1 && CRYPTO_is_ADX_capable() == 1) {
-    return 1;
-  } else {
-    return 0;
-  }
-#elif defined(OPENSSL_AARCH64)
+#if defined(CURVE25519_S2N_BIGNUM_CAPABLE) && !defined(AWSLC_FIPS)
   return 1;
 #else
   return 0;
 #endif
 }
 
-
+// curve25519_s2n_bignum_use_no_alt_implementation returns 1 if the no_alt
+// s2n-bignum implementation should be used and 0 otherwise.
+//
 // Below is the decision logic for which assembly backend implementation
 // of x25519 s2n-bignum we should use if x25519 s2n-bignum capable. Currently,
 // we support the following implementations.
@@ -176,9 +131,33 @@ OPENSSL_INLINE int x25519_s2n_bignum_no_alt_capable(void) {
 //   prefer s2n-bignum-no-alt over s2n-bignum-alt if the former is supported.
 // For aarch64: if a wide multiplier is supported, we prefer s2n-bignum-alt over
 //   s2n-bignum-no-alt if the former is supported.
-//   x25519_s2n_bignum_alt_capable() specifically looks to match CPUs that have
-//   wide multipliers. this ensures that s2n-bignum-alt will only be used on
-//   such CPUs.
+//   |curve25519_s2n_bignum_alt_capable| specifically looks to match CPUs that
+//   have wide multipliers. this ensures that s2n-bignum-alt will only be used
+//   on such CPUs.
+OPENSSL_INLINE int curve25519_s2n_bignum_use_no_alt_implementation(void);
+OPENSSL_INLINE int curve25519_s2n_bignum_use_no_alt_implementation(void) {
+#if defined(OPENSSL_X86_64)
+  // For x86_64 the no_alt implementation is bmi2+adx. Prefer if available. 
+  if (CRYPTO_is_BMI2_capable() == 1 && CRYPTO_is_ADX_capable() == 1) {
+    return 1;
+  } else {
+    return 0;
+  }
+#elif defined(OPENSSL_AARCH64)
+  // For aarch64 the alt implementation is for wide multipliers. Prefer if
+  // available.
+  if (CRYPTO_is_ARMv8_wide_multiplier_capable() == 1) {
+    return 0;
+  } else {
+    return 1;
+  }
+#endif
+  // Have to return some default value.
+  return 0;
+}
+
+
+// s2n-bignum wrappers
 
 static void x25519_s2n_bignum(uint8_t out_shared_key[32],
   const uint8_t private_key[32], const uint8_t peer_public_value[32]) {
@@ -189,36 +168,13 @@ static void x25519_s2n_bignum(uint8_t out_shared_key[32],
   private_key_internal_demask[31] &= 127;
   private_key_internal_demask[31] |= 64;
 
-#if defined(OPENSSL_X86_64)
-
-  if (x25519_s2n_bignum_no_alt_capable() == 1) {
-    curve25519_x25519_byte(out_shared_key, private_key_internal_demask,
-      peer_public_value);
-  } else if (x25519_s2n_bignum_alt_capable() == 1) {
-    curve25519_x25519_byte_alt(out_shared_key, private_key_internal_demask,
-      peer_public_value);
-  } else {
-    abort();
-  }
-
-#elif defined(OPENSSL_AARCH64)
-
-  if (x25519_s2n_bignum_alt_capable() == 1) {
-    curve25519_x25519_byte_alt(out_shared_key, private_key_internal_demask,
-      peer_public_value);
-  } else if (x25519_s2n_bignum_no_alt_capable() == 1) {
+  if (curve25519_s2n_bignum_use_no_alt_implementation() == 1) {
     curve25519_x25519_byte(out_shared_key, private_key_internal_demask,
       peer_public_value);
   } else {
-    abort();
+    curve25519_x25519_byte_alt(out_shared_key, private_key_internal_demask,
+      peer_public_value);
   }
-
-#else
-
-  // Should not call this function unless s2n-bignum is supported.
-  abort();
-
-#endif
 }
 
 static void x25519_s2n_bignum_public_from_private(
@@ -230,40 +186,143 @@ static void x25519_s2n_bignum_public_from_private(
   private_key_internal_demask[31] &= 127;
   private_key_internal_demask[31] |= 64;
 
-#if defined(OPENSSL_X86_64)
-
-  if (x25519_s2n_bignum_no_alt_capable() == 1) {
-    curve25519_x25519base_byte(out_public_value, private_key_internal_demask);
-  } else if (x25519_s2n_bignum_alt_capable() == 1) {
-    curve25519_x25519base_byte_alt(out_public_value, private_key_internal_demask);
-  } else {
-    abort();
-  }
-
-#elif defined(OPENSSL_AARCH64)
-
-  if (x25519_s2n_bignum_alt_capable() == 1) {
-    curve25519_x25519base_byte_alt(out_public_value, private_key_internal_demask);
-  } else if (x25519_s2n_bignum_no_alt_capable() == 1) {
+  if (curve25519_s2n_bignum_use_no_alt_implementation() == 1) {
     curve25519_x25519base_byte(out_public_value, private_key_internal_demask);
   } else {
-    abort();
+    curve25519_x25519base_byte_alt(out_public_value, private_key_internal_demask);
   }
-
-#else
-
-  // Should not call this function unless s2n-bignum is supported.
-  abort();
-
-#endif
 }
 
-// Stub function until ED25519 lands in s2n-bignum
 static void ed25519_public_key_from_hashed_seed_s2n_bignum(
   uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
   uint8_t az[SHA512_DIGEST_LENGTH]) {
-  abort();
+
+  uint64_t uint64_point[8] = {0};
+  uint64_t uint64_hashed_seed[4] = {0};
+  OPENSSL_memcpy(uint64_hashed_seed, az, 32);
+
+  if (curve25519_s2n_bignum_use_no_alt_implementation() == 1) {
+    edwards25519_scalarmulbase(uint64_point, uint64_hashed_seed);
+  } else {
+    edwards25519_scalarmulbase_alt(uint64_point, uint64_hashed_seed);
+  }
+
+  edwards25519_encode(out_public_key, uint64_point);
 }
+
+// |s| is of length |ED25519_PRIVATE_KEY_SEED_LEN|
+// |A| is of length |ED25519_PUBLIC_KEY_LEN|.
+static void ed25519_sign_s2n_bignum(
+  uint8_t out_sig[ED25519_SIGNATURE_LEN],
+  uint8_t r[SHA512_DIGEST_LENGTH], const uint8_t *s, const uint8_t *A,
+  const void *message, size_t message_len) {
+  
+  void (*scalarmulbase)(uint64_t res[8],uint64_t scalar[4]);
+  void (*madd)(uint64_t z[4], uint64_t x[4], uint64_t y[4], uint64_t c[4]);
+
+  if (curve25519_s2n_bignum_use_no_alt_implementation() == 1) {
+    scalarmulbase = edwards25519_scalarmulbase;
+    madd = bignum_madd_n25519;
+  } else {
+    scalarmulbase = edwards25519_scalarmulbase_alt;
+    madd = bignum_madd_n25519_alt;
+  }
+
+  uint8_t k[SHA512_DIGEST_LENGTH] = {0};
+  uint64_t R[8] = {0};
+  uint64_t z[4] = {0};
+  uint64_t uint64_r[8] = {0};
+  uint64_t uint64_k[8] = {0};
+  uint64_t uint64_s[4] = {0};
+  OPENSSL_memcpy(uint64_r, r, 64);
+  OPENSSL_memcpy(uint64_s, s, 32);
+
+  // Reduce r modulo the order of the base-point B.
+  bignum_mod_n25519(uint64_r, 8, uint64_r);
+
+  // Compute [r]B.
+  scalarmulbase(R, uint64_r);
+  edwards25519_encode(out_sig, R);
+
+  // Compute k = SHA512(R || A || message)
+  // R is of length 32 octets
+  ed25519_sha512(k, out_sig, 32, A, ED25519_PUBLIC_KEY_LEN, message,
+    message_len);
+  OPENSSL_memcpy(uint64_k, k, SHA512_DIGEST_LENGTH);
+  bignum_mod_n25519(uint64_k, 8, uint64_k);
+
+  // Compute S = r + k * s modulo the order of the base-point B.
+  // out_sig = R || S
+  madd(z, uint64_k, uint64_s, uint64_r);
+  OPENSSL_memcpy(out_sig + 32, z, 32);
+}
+
+static int ed25519_verify_s2n_bignum(uint8_t R_computed_encoded[32],
+  const uint8_t public_key[32], uint8_t R_expected[32],
+  uint8_t S[32], const uint8_t *message, size_t message_len) {
+
+  void (*scalarmuldouble)(uint64_t res[8], uint64_t scalar[4],
+    uint64_t point[8], uint64_t bscalar[4]);
+  uint64_t (*decode)(uint64_t z[8], const uint8_t c[32]);
+
+  if (curve25519_s2n_bignum_use_no_alt_implementation() == 1) {
+    scalarmuldouble = edwards25519_scalarmuldouble;
+    decode = edwards25519_decode;
+  } else {
+    scalarmuldouble = edwards25519_scalarmuldouble_alt;
+    decode = edwards25519_decode_alt;
+  }
+
+  uint8_t k[SHA512_DIGEST_LENGTH] = {0};
+  uint64_t uint64_k[8] = {0};
+  uint64_t uint64_R[8] = {0};
+  uint64_t uint64_S[4] = {0};
+  uint64_t A[8] = {0};
+
+  // Decode public key as A'.
+  if (decode(A, public_key) != 0) {
+    return 0;
+  }
+
+  // Step: rfc8032 5.1.7.2
+  // Compute k = SHA512(R_expected || public_key || message).
+  ed25519_sha512(k, R_expected, 32, public_key, ED25519_PUBLIC_KEY_LEN, message,
+    message_len);
+  OPENSSL_memcpy(uint64_k, k, SHA512_DIGEST_LENGTH);
+  bignum_mod_n25519(uint64_k, 8, uint64_k);
+
+  // Step: rfc8032 5.1.7.3
+  // Recall, we must compute [S]B - [k]A'.
+  // First negate A'. Point negation for the twisted edwards curve when points
+  // are represented in the extended coordinate system is simply:
+  //   -(X,Y,Z,T) = (-X,Y,Z,-T).
+  // See "Twisted Edwards curves revisited" https://ia.cr/2008/522.
+  bignum_neg_p25519(A, A);
+
+  // Compute R_have <- [S]B - [k]A'.
+  OPENSSL_memcpy(uint64_S, S, 32);
+  scalarmuldouble(uint64_R, uint64_k, A, uint64_S);
+  edwards25519_encode(R_computed_encoded, uint64_R);
+
+  return 1;
+}
+
+void ed25519_sha512(uint8_t out[SHA512_DIGEST_LENGTH],
+  const void *input1, size_t len1, const void *input2, size_t len2,
+  const void *input3, size_t len3) {
+
+  SHA512_CTX hash_ctx;
+  SHA512_Init(&hash_ctx);
+  SHA512_Update(&hash_ctx, input1, len1);
+  SHA512_Update(&hash_ctx, input2, len2);
+  if (len3 != 0) {
+    SHA512_Update(&hash_ctx, input3, len3);
+  }
+  SHA512_Final(out, &hash_ctx);
+}
+
+
+// Public interface functions
 
 void ED25519_keypair_from_seed(uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
   uint8_t out_private_key[ED25519_PRIVATE_KEY_LEN],
@@ -309,55 +368,57 @@ void ED25519_keypair(uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
   OPENSSL_cleanse(seed, ED25519_SEED_LEN);
 }
 
-int ED25519_sign(uint8_t out_sig[64], const uint8_t *message,
-                 size_t message_len, const uint8_t private_key[64]) {
+int ED25519_sign(uint8_t out_sig[ED25519_SIGNATURE_LEN],
+                 const uint8_t *message, size_t message_len,
+                 const uint8_t private_key[ED25519_PRIVATE_KEY_LEN]) {
   // NOTE: The documentation on this function says that it returns zero on
   // allocation failure. While that can't happen with the current
   // implementation, we want to reserve the ability to allocate in this
   // implementation in the future.
 
+  // Ed25519 sign: rfc8032 5.1.6
+  //
+  // Step: rfc8032 5.1.6.1
+  // This step is a repeat of rfc8032 5.1.5.[1,2].
+  // seed = private_key[0:31]
+  // A = private_key[32:61] (per 5.1.5.4)
+  // Compute az = SHA512(seed).
   uint8_t az[SHA512_DIGEST_LENGTH];
-  SHA512(private_key, 32, az);
+  SHA512(private_key, ED25519_PRIVATE_KEY_SEED_LEN, az);
+  // s = az[0:31]
+  // prefix = az[32:61]
+  az[0] &= 248; // 11111000_2
+  az[31] &= 63; // 00111111_2
+  az[31] |= 64; // 01000000_2
 
-  az[0] &= 248;
-  az[31] &= 63;
-  az[31] |= 64;
+  // Step: rfc8032 5.1.6.2
+  // Compute r = SHA512(prefix || message).
+  uint8_t r[SHA512_DIGEST_LENGTH];
+  ed25519_sha512(r, az + ED25519_PRIVATE_KEY_SEED_LEN,
+    ED25519_PRIVATE_KEY_SEED_LEN, message, message_len, NULL, 0);
 
-  SHA512_CTX hash_ctx;
-  SHA512_Init(&hash_ctx);
-  SHA512_Update(&hash_ctx, az + 32, 32);
-  SHA512_Update(&hash_ctx, message, message_len);
-  uint8_t nonce[SHA512_DIGEST_LENGTH];
-  SHA512_Final(nonce, &hash_ctx);
-
-  x25519_sc_reduce(nonce);
-  ge_p3 R;
-  x25519_ge_scalarmult_base(&R, nonce);
-  ge_p3_tobytes(out_sig, &R);
-
-  SHA512_Init(&hash_ctx);
-  SHA512_Update(&hash_ctx, out_sig, 32);
-  SHA512_Update(&hash_ctx, private_key + 32, 32);
-  SHA512_Update(&hash_ctx, message, message_len);
-  uint8_t hram[SHA512_DIGEST_LENGTH];
-  SHA512_Final(hram, &hash_ctx);
-
-  x25519_sc_reduce(hram);
-  sc_muladd(out_sig + 32, hram, az, nonce);
+  // Step: rfc8032 5.1.6.[3,5,6,7]
+  if (ed25519_s2n_bignum_capable() == 1) {
+    ed25519_sign_s2n_bignum(out_sig, r, az,
+      private_key + ED25519_PRIVATE_KEY_SEED_LEN, message, message_len);
+  } else {
+    ed25519_sign_nohw(out_sig, r, az,
+      private_key + ED25519_PRIVATE_KEY_SEED_LEN, message, message_len);
+  }
 
   return 1;
 }
 
 int ED25519_verify(const uint8_t *message, size_t message_len,
-                   const uint8_t signature[64], const uint8_t public_key[32]) {
+                   const uint8_t signature[ED25519_SIGNATURE_LEN],
+                   const uint8_t public_key[ED25519_PUBLIC_KEY_LEN]) {
 
   // Ed25519 verify: rfc8032 5.1.7
 
-  // Step: rfc8032 5.1.7.1
+  // Step: rfc8032 5.1.7.1 (up to decoding the public key)
   // Decode signature as:
   //  - signature[0:31]: encoded point R, aliased to R_expected.
   //  - signature[32:61]: integer S.
-  //
   uint8_t R_expected[32];
   OPENSSL_memcpy(R_expected, signature, 32);
   uint8_t S[32];
@@ -365,7 +426,7 @@ int ED25519_verify(const uint8_t *message, size_t message_len,
 
   // Per rfc8032 5.1.6.6
   // "the three most significant bits of the final octet are always zero"
-  // 224 = 0xE0_16 = 11100000_2
+  // 224 = 11100000_2
   if ((signature[63] & 224) != 0) {
     return 0;
   }
@@ -389,58 +450,28 @@ int ED25519_verify(const uint8_t *message, size_t message_len,
     }
   }
 
-  // Decode public key as A'.
-  ge_p3 A;
-  if (!x25519_ge_frombytes_vartime(&A, public_key)) {
-    return 0;
+  // Step: rfc8032 5.1.7.[1,2,3]
+  // Verification works by computing [S]B - [k]A' and comparing against R_expected.
+  int res = 0;
+  uint8_t R_computed_encoded[32];
+  if (ed25519_s2n_bignum_capable() == 1) {
+    res = ed25519_verify_s2n_bignum(R_computed_encoded, public_key, R_expected, S,
+      message, message_len);
+  } else {
+    res = ed25519_verify_nohw(R_computed_encoded, public_key, R_expected, S,
+      message, message_len);
   }
-  uint8_t pkcopy[32];
-  OPENSSL_memcpy(pkcopy, public_key, 32);
 
-  // Step: rfc8032 5.1.7.2
-  // Compute SHA512(dom2(F,C) || R || public_key || PH(message)).
-  // For Ed25519, dom2(F,C) is the empty string, cf. rfc8032 5.1.
-  SHA512_CTX hash_ctx;
-  SHA512_Init(&hash_ctx);
-  SHA512_Update(&hash_ctx, signature, 32);
-  SHA512_Update(&hash_ctx, public_key, 32);
-  SHA512_Update(&hash_ctx, message, message_len);
-  uint8_t k[SHA512_DIGEST_LENGTH];
-  SHA512_Final(k, &hash_ctx);
-
-  // Reduce k modulo the order of the base-point B. Saves compute in the
-  // subsequent scalar multiplication.
-  x25519_sc_reduce(k);
-
-  // Step: rfc8032 5.1.7.3
-  // We will check [S]B - [k]A' =? R_expected.
-
-  // First negate A'. Point negation for the twisted edwards curve when points
-  // are represented in the extended coordinate system is simply:
-  //   -(X,Y,Z,T) = (-X,Y,Z,-T).
-  // See "Twisted Edwards curves revisited" https://ia.cr/2008/522.
-  fe_loose t;
-  fe_neg(&t, &A.X);
-  fe_carry(&A.X, &t);
-  fe_neg(&t, &A.T);
-  fe_carry(&A.T, &t);
-
-  // Compute R_have <- [S]B - [k]A'.
-  ge_p2 R_have;
-  ge_double_scalarmult_vartime(&R_have, k, &A, S);
-
-  uint8_t R_have_encoded[32];
-  x25519_ge_tobytes(R_have_encoded, &R_have);
-
-  // Comparison [S]B - [k]A' =? R_expected.
-  return CRYPTO_memcmp(R_have_encoded, R_expected, sizeof(R_have_encoded)) == 0;
+  // Comparison [S]B - [k]A' =? R_expected. Short-circuits if decoding failed.
+  return (res == 1) &&
+         CRYPTO_memcmp(R_computed_encoded, R_expected, sizeof(R_computed_encoded)) == 0;
 }
 
 
 void X25519_public_from_private(uint8_t out_public_value[32],
                                 const uint8_t private_key[32]) {
 
-  if (x25519_s2n_bignum_capable() == 1) {
+  if (curve25519_s2n_bignum_capable() == 1) {
     x25519_s2n_bignum_public_from_private(out_public_value, private_key);
   } else {
     x25519_public_from_private_nohw(out_public_value, private_key);
@@ -475,7 +506,7 @@ int X25519(uint8_t out_shared_key[32], const uint8_t private_key[32],
 
   static const uint8_t kZeros[32] = {0};
 
-  if (x25519_s2n_bignum_capable() == 1) {
+  if (curve25519_s2n_bignum_capable() == 1) {
     x25519_s2n_bignum(out_shared_key, private_key, peer_public_value);
   } else {
     x25519_scalar_mult_generic_nohw(out_shared_key, private_key, peer_public_value);

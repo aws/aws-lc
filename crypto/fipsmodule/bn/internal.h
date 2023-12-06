@@ -271,7 +271,7 @@ int bn_copy_words(BN_ULONG *out, size_t num, const BIGNUM *bn);
 // no-op in release builds, but triggers an assert in debug builds, and
 // declassifies all bytes which are therefore known to be zero in constant-time
 // validation.
-void bn_assert_fits_in_bytes(const BIGNUM *bn, size_t num);
+OPENSSL_EXPORT void bn_assert_fits_in_bytes(const BIGNUM *bn, size_t num);
 
 // bn_mul_add_words multiples |ap| by |w|, adds the result to |rp|, and places
 // the result in |rp|. |ap| and |rp| must both be |num| words long. It returns
@@ -602,6 +602,13 @@ OPENSSL_EXPORT int bn_is_relatively_prime(int *out_relatively_prime,
 // zero on error. |a| and |b| are both treated as secret.
 OPENSSL_EXPORT int bn_lcm_consttime(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
                                     BN_CTX *ctx);
+
+// bn_mont_ctx_init zero-initialies |mont|.
+void bn_mont_ctx_init(BN_MONT_CTX *mont);
+
+// bn_mont_ctx_cleanup releases memory associated with |mont|, without freeing
+// |mont| itself.
+void bn_mont_ctx_cleanup(BN_MONT_CTX *mont);
 
 
 // Constant-time modular arithmetic.

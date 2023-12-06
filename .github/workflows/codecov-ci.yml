@@ -1,0 +1,23 @@
+name: Code Coverage
+on:
+  push:
+    branches: [ '*' ]
+  pull_request:
+    branches: [ '*' ]
+concurrency:
+  group: code-cov-${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  codecov-ci:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install lcov
+        run: sudo apt-get -y install lcov
+      - uses: actions/checkout@v4
+      - name: Run Code Coverage Build
+        run: ./util/codecov-ci.sh ${{ runner.temp }}/build
+      - name: Upload code coverage report to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: "${{ runner.temp }}/build/coverage-default.info,${{ runner.temp }}/build/coverage-no-asm.info"

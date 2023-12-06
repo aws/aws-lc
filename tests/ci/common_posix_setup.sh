@@ -1,19 +1,23 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 
+SRC_ROOT="$(pwd)"
 if [ -v CODEBUILD_SRC_DIR ]; then
   SRC_ROOT="$CODEBUILD_SRC_DIR"
-else
-  SRC_ROOT=$(pwd)
+elif [ "$(basename "${SRC_ROOT}")" != 'aws-lc' ]; then
+  SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+  SRC_ROOT="${SCRIPT_DIR}/../.."
 fi
-echo "$SRC_ROOT"
+SRC_ROOT="$(readlink -f "${SRC_ROOT}")"
+echo SRC_ROOT="$SRC_ROOT"
 
-cd ../
-SYS_ROOT=$(pwd)
+SYS_ROOT="$(readlink -f "${SRC_ROOT}/..")"
+echo SYS_ROOT="$SYS_ROOT"
+
 cd $SRC_ROOT
 
 BUILD_ROOT="${SRC_ROOT}/test_build_dir"
-echo "$BUILD_ROOT"
+echo BUILD_ROOT="$BUILD_ROOT"
 
 PLATFORM=$(uname -m)
 
@@ -115,7 +119,7 @@ function verify_symbols_prefixed {
   #  * "\(bignum\|curve25519_x25519\)": match string of either "bignum" or "curve25519_x25519".
   # Recall that the option "-v" reverse the pattern matching. So, we are really
   # filtering out lines that contain either "bignum" or "curve25519_x25519".
-  cat "$BUILD_ROOT"/symbols_final_crypto.txt  "$BUILD_ROOT"/symbols_final_ssl.txt | grep -v -e '^_\?\(bignum\|curve25519_x25519\)' >  "$SRC_ROOT"/symbols_final.txt
+  cat "$BUILD_ROOT"/symbols_final_crypto.txt  "$BUILD_ROOT"/symbols_final_ssl.txt | grep -v -e '^_\?\(bignum\|curve25519_x25519\|edwards25519\)' >  "$SRC_ROOT"/symbols_final.txt
   # Now filter out every line that has the unique prefix $CUSTOM_PREFIX. If we
   # have any lines left, then some symbol(s) weren't prefixed, unexpectedly.
   if [ $(grep -c -v ${CUSTOM_PREFIX}  "$SRC_ROOT"/symbols_final.txt) -ne 0 ]; then

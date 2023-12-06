@@ -100,6 +100,12 @@ int ECDH_compute_shared_secret(uint8_t *buf, size_t *buflen, const EC_POINT *pub
 #define EC_MAX_COMPRESSED (EC_MAX_BYTES + 1)
 #define EC_MAX_UNCOMPRESSED (2 * EC_MAX_BYTES + 1)
 
+#define EC_P521R1_FIELD_ELEM_BYTES 66
+#define EC_P384R1_FIELD_ELEM_BYTES 48
+#define EC_P256R1_FIELD_ELEM_BYTES 32
+#define EC_P224R1_FIELD_ELEM_BYTES 28
+#define EC_P256K1_FIELD_ELEM_BYTES 32
+
 OPENSSL_STATIC_ASSERT(EC_MAX_WORDS <= BN_SMALL_MAX_WORDS,
                       bn__small_functions_not_usable)
 
@@ -435,7 +441,7 @@ void ec_precomp_select(const EC_GROUP *group, EC_PRECOMP *out, BN_ULONG mask,
 
 // ec_cmp_x_coordinate compares the x (affine) coordinate of |p|, mod the group
 // order, with |r|. It returns one if the values match and zero if |p| is the
-// point at infinity of the values do not match.
+// point at infinity of the values do not match. |p| is treated as public.
 int ec_cmp_x_coordinate(const EC_GROUP *group, const EC_JACOBIAN *p,
                         const EC_SCALAR *r);
 
@@ -486,15 +492,6 @@ int ec_affine_jacobian_equal(const EC_GROUP *group, const EC_AFFINE *a,
 // Implementation details.
 
 struct ec_method_st {
-  int (*group_init)(EC_GROUP *);
-  void (*group_finish)(EC_GROUP *);
-  int (*group_set_curve)(EC_GROUP *, const BIGNUM *p, const BIGNUM *a,
-                         const BIGNUM *b, BN_CTX *);
-
-  // WARNING: It is not guaranteed that implementations of the below listed
-  // functions perform input parameter validation. Therefore, the parameters
-  // passed to the functions must not be NULL.
-
   // point_get_affine_coordinates sets |*x| and |*y| to the affine coordinates
   // of |p|. Either |x| or |y| may be NULL to omit it. It returns one on success
   // and zero if |p| is the point at infinity. It leaks whether |p| was the
@@ -613,39 +610,27 @@ struct ec_group_st {
   // to avoid a reference cycle. Additionally, Z is guaranteed to be one, so X
   // and Y are suitable for use as an |EC_AFFINE|.
   EC_POINT *generator;
-  BIGNUM order;
 
-  int curve_name;  // optional NID for named curve
-
-  BN_MONT_CTX *order_mont;  // data for ECDSA inverse
-
-  // The following members are handled by the method functions,
-  // even if they appear generic
-
-  BIGNUM field;  // For curves over GF(p), this is the modulus.
+  BN_MONT_CTX order;
+  BN_MONT_CTX field;
 
   EC_FELEM a, b;  // Curve coefficients.
+  EC_FELEM one;  // The value one.
+
+  int curve_name;  // optional NID for named curve
 
   // a_is_minus3 is one if |a| is -3 mod |field| and zero otherwise. Point
   // arithmetic is optimized for -3.
   int a_is_minus3;
 
+  // has_order is one if |generator| and |order| have been initialized.
+  int has_order;
+
   // field_greater_than_order is one if |field| is greate than |order| and zero
   // otherwise.
   int field_greater_than_order;
 
-  // field_minus_order, if |field_greater_than_order| is true, is |field| minus
-  // |order| represented as an |EC_FELEM|. Otherwise, it is zero.
-  //
-  // Note: unlike |EC_FELEM|s used as intermediate values internal to the
-  // |EC_METHOD|, this value is not encoded in Montgomery form.
-  EC_FELEM field_minus_order;
-
   CRYPTO_refcount_t references;
-
-  BN_MONT_CTX *mont;  // Montgomery structure.
-
-  EC_FELEM one;  // The value one.
 } /* EC_GROUP */;
 
 struct ec_point_st {
@@ -659,7 +644,8 @@ struct ec_point_st {
   EC_JACOBIAN raw;
 } /* EC_POINT */;
 
-EC_GROUP *ec_group_new(const EC_METHOD *meth);
+EC_GROUP *ec_group_new(const EC_METHOD *meth, const BIGNUM *p, const BIGNUM *a,
+                       const BIGNUM *b, BN_CTX *ctx);
 
 void ec_GFp_mont_mul(const EC_GROUP *group, EC_JACOBIAN *r,
                      const EC_JACOBIAN *p, const EC_SCALAR *scalar);
@@ -698,8 +684,6 @@ int ec_GFp_mont_mul_public_batch(const EC_GROUP *group, EC_JACOBIAN *r,
                                  const EC_SCALAR *scalars, size_t num);
 
 // method functions in simple.c
-int ec_GFp_simple_group_init(EC_GROUP *);
-void ec_GFp_simple_group_finish(EC_GROUP *);
 int ec_GFp_simple_group_set_curve(EC_GROUP *, const BIGNUM *p, const BIGNUM *a,
                                   const BIGNUM *b, BN_CTX *);
 int ec_GFp_simple_group_get_curve(const EC_GROUP *, BIGNUM *p, BIGNUM *a,
@@ -731,10 +715,6 @@ int ec_GFp_simple_felem_from_bytes(const EC_GROUP *group, EC_FELEM *out,
                                    const uint8_t *in, size_t len);
 
 // method functions in montgomery.c
-int ec_GFp_mont_group_init(EC_GROUP *);
-int ec_GFp_mont_group_set_curve(EC_GROUP *, const BIGNUM *p, const BIGNUM *a,
-                                const BIGNUM *b, BN_CTX *);
-void ec_GFp_mont_group_finish(EC_GROUP *);
 void ec_GFp_mont_felem_mul(const EC_GROUP *, EC_FELEM *r, const EC_FELEM *a,
                            const EC_FELEM *b);
 void ec_GFp_mont_felem_sqr(const EC_GROUP *, EC_FELEM *r, const EC_FELEM *a);
