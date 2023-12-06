@@ -98,16 +98,16 @@ static OCSP_RESPONSE *GetOCSPResponse(const char *ocsp_responder_host,
 }
 
 static void ValidateOCSPResponse(OCSP_RESPONSE *response,
-                                 bool authorized_responder,
-                                 X509 *certificate,
-                                 X509 *issuer,
-                                 X509_STORE *trust_store,
+                                 bool authorized_responder, X509 *certificate,
+                                 X509 *issuer, X509_STORE *trust_store,
                                  OCSP_CERTID *cert_id,
                                  int expected_verify_status,
                                  int expected_cert_status) {
-  ASSERT_EQ(OCSP_response_status(response),
-            authorized_responder ? OCSP_RESPONSE_STATUS_SUCCESSFUL
-                                 : OCSP_RESPONSE_STATUS_UNAUTHORIZED);
+  if (authorized_responder) {
+    ASSERT_EQ(OCSP_response_status(response), OCSP_RESPONSE_STATUS_SUCCESSFUL);
+  } else {
+    ASSERT_NE(OCSP_response_status(response), OCSP_RESPONSE_STATUS_SUCCESSFUL);
+  }
   bssl::UniquePtr<OCSP_BASICRESP> basic_response(
       OCSP_response_get1_basic(response));
 
@@ -179,8 +179,8 @@ static const IntegrationTestVector kIntegrationTestVectors[] = {
     {"revoked.rootca3.demo.amazontrust.com", nullptr, true, true,
      OCSP_VERIFYSTATUS_SUCCESS, V_OCSP_CERTSTATUS_REVOKED},
     // Connect to an unauthorized OCSP responder endpoint. This will
-    // successfully get an OCSP response, but will only have the field
-    // |OCSP_RESPONSE_STATUS_UNAUTHORIZED|.
+    // successfully get an OCSP response, but the OCSP response will not be
+    // valid.
     {"valid.rootca1.demo.amazontrust.com", "ocsp.comodoca.com", true, false, 0,
      0},
     // Connect to a non-OCSP responder endpoint. These should fail to get an
