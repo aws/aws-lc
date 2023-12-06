@@ -79,15 +79,19 @@ static OCSP_RESPONSE *GetOCSPResponse(const char *ocsp_responder_host,
       ocsp_responder_host ? ocsp_responder_host : host);
   OCSP_REQ_CTX_set1_req(ocsp_ctx.get(), request);
 
-  // Try connecting to the OCSP responder endpoint with a timeout of 3 seconds.
+  // Try connecting to the OCSP responder endpoint with a timeout of 8 seconds.
   // Sends out an OCSP request and expects an OCSP response.
+  //
+  // Note: The OCSP responder times out occsasionally, which results in
+  // arbitrary test failues. We can adjust |timeout| accordingly when these
+  // happen too often.
   OCSP_RESPONSE *resp = nullptr;
   time_t start_time = time(nullptr);
-  double timeout = 3;
+  double timeout = 8;
   int rv;
   do {
     rv = OCSP_sendreq_nbio(&resp, ocsp_ctx.get());
-  } while ((rv == -1) && difftime(time(nullptr), start_time) < timeout);
+  } while (rv == -1 && difftime(time(nullptr), start_time) < timeout);
 
   OPENSSL_free(host);
   return resp;
