@@ -1054,7 +1054,8 @@ int RSA_blinding_on(RSA *rsa, BN_CTX *ctx) {
 // versions of |RSA_check_key|, but also add the ability to process keys with
 // public component only like AWS-LC's |RSA_check_key|.
 // Implementation checklist:
-//  - public key checks
+//  + public components checks
+//  + required parameters present
 //  - p and q are prime
 //  - p * q = n
 //  - (d * e) mod (lcm(p-1, q-1)) = 1
@@ -1074,6 +1075,31 @@ int wip_do_not_use_rsa_check_key(const RSA *key) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_E_VALUE);
     return 0;
   }
+
+  // If the key has a private key component too, then it has to have at least
+  // the private exponent d. If d is not present, then |key| is a public key
+  // only and no more checks are performed.
+  if (key->d == NULL) {
+    return 1;
+  }
+
+  // Even if d is present but both private prime factors p and q are missing,
+  // no more checks are performed and we consider the key valid.
+  if (key->p == NULL && key->q == NULL) {
+    return 1;
+  }
+
+  // If only p or only q are present we consider the key invalid.
+  // (Note that the above check ensures that not both p and q are NULL.)
+  if (key->p == NULL || key->q == NULL) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_ONLY_ONE_OF_P_Q_GIVEN);
+    return 0;
+  }
+
+  // At this point, we know that |key| has (n, e, p, q, d) parameters and
+  // perform further checks.
+
+  // TODO(dkostic): implement the remaining checks.
 
   return 1;
 }

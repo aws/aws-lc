@@ -938,12 +938,14 @@ TEST(RSATest, CheckKey) {
   // p and q must be provided together.
   ASSERT_TRUE(BN_hex2bn(&rsa->p, kP));
   EXPECT_FALSE(RSA_check_key(rsa.get()));
+  EXPECT_FALSE(wip_do_not_use_rsa_check_key(rsa.get()));
   ERR_clear_error();
 
   BN_free(rsa->p);
   rsa->p = nullptr;
   ASSERT_TRUE(BN_hex2bn(&rsa->q, kQ));
   EXPECT_FALSE(RSA_check_key(rsa.get()));
+  EXPECT_FALSE(wip_do_not_use_rsa_check_key(rsa.get()));
   ERR_clear_error();
 
   // Supplying p and q without CRT parameters passes.
