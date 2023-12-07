@@ -403,6 +403,7 @@ TEST_P(RSAEncryptTest, TestKey) {
   ASSERT_TRUE(key);
 
   EXPECT_TRUE(RSA_check_key(key.get()));
+  EXPECT_TRUE(wip_do_not_use_rsa_check_key(key.get()));
 
   uint8_t ciphertext[256];
 
@@ -471,6 +472,7 @@ TEST(RSATest, TestDecrypt) {
   ASSERT_TRUE(rsa);
 
   EXPECT_TRUE(RSA_check_key(rsa.get()));
+  EXPECT_TRUE(wip_do_not_use_rsa_check_key(rsa.get()));
 
   uint8_t out[256];
   size_t out_len;
@@ -561,6 +563,7 @@ TEST(RSATest, OnlyDGiven) {
 
   // Keys with only n, e, and d are functional.
   EXPECT_TRUE(RSA_check_key(key.get()));
+  EXPECT_TRUE(wip_do_not_use_rsa_check_key(key.get()));
 
   const uint8_t kDummyHash[32] = {0};
   uint8_t buf[64];
@@ -912,10 +915,12 @@ TEST(RSATest, CheckKey) {
   // Public keys pass.
   ASSERT_TRUE(BN_hex2bn(&rsa->n, kN));
   EXPECT_TRUE(RSA_check_key(rsa.get()));
+  EXPECT_TRUE(wip_do_not_use_rsa_check_key(rsa.get()));
 
   // Configuring d also passes.
   ASSERT_TRUE(BN_hex2bn(&rsa->d, kD));
   EXPECT_TRUE(RSA_check_key(rsa.get()));
+  EXPECT_TRUE(wip_do_not_use_rsa_check_key(rsa.get()));
 
   // p and q must be provided together.
   ASSERT_TRUE(BN_hex2bn(&rsa->p, kP));
@@ -931,6 +936,7 @@ TEST(RSATest, CheckKey) {
   // Supplying p and q without CRT parameters passes.
   ASSERT_TRUE(BN_hex2bn(&rsa->p, kP));
   EXPECT_TRUE(RSA_check_key(rsa.get()));
+  EXPECT_TRUE(wip_do_not_use_rsa_check_key(rsa.get()));
 
   // With p and q together, it is sufficient to check d against e.
   ASSERT_TRUE(BN_add_word(rsa->d, 1));
@@ -968,6 +974,7 @@ TEST(RSATest, CheckKey) {
       "c62bbe81";
   ASSERT_TRUE(BN_hex2bn(&rsa->d, kDEuler));
   EXPECT_TRUE(RSA_check_key(rsa.get()));
+  EXPECT_TRUE(wip_do_not_use_rsa_check_key(rsa.get()));
 
   // If d is out of range, d > n,  but otherwise valid, it is accepted.
   static const char kDgtN[] =
@@ -981,6 +988,7 @@ TEST(RSATest, CheckKey) {
       "42e770c1";
   ASSERT_TRUE(BN_hex2bn(&rsa->d, kDgtN));
   EXPECT_TRUE(RSA_check_key(rsa.get()));
+  EXPECT_TRUE(wip_do_not_use_rsa_check_key(rsa.get()));
   ASSERT_TRUE(BN_hex2bn(&rsa->d, kD));
 
   // CRT value must either all be provided or all missing.
@@ -1004,6 +1012,7 @@ TEST(RSATest, CheckKey) {
   ASSERT_TRUE(BN_hex2bn(&rsa->dmp1, kDMP1));
   ASSERT_TRUE(BN_hex2bn(&rsa->dmq1, kDMQ1));
   EXPECT_TRUE(RSA_check_key(rsa.get()));
+  EXPECT_TRUE(wip_do_not_use_rsa_check_key(rsa.get()));
 
   // Incorrect CRT values are rejected.
   ASSERT_TRUE(BN_add_word(rsa->dmp1, 1));
@@ -1094,6 +1103,7 @@ TEST(RSATest, KeygenFail) {
   // Generating a key over an existing key works, despite any cached state.
   EXPECT_TRUE(RSA_generate_key_ex(rsa.get(), 2048, e.get(), nullptr));
   EXPECT_TRUE(RSA_check_key(rsa.get()));
+  EXPECT_TRUE(wip_do_not_use_rsa_check_key(rsa.get()));
   uint8_t *der3;
   size_t der3_len;
   ASSERT_TRUE(RSA_private_key_to_bytes(&der3, &der3_len, rsa.get()));
@@ -1314,6 +1324,7 @@ TEST(RSATest, OverwriteKey) {
   ASSERT_TRUE(key1);
 
   ASSERT_TRUE(RSA_check_key(key1.get()));
+  EXPECT_TRUE(wip_do_not_use_rsa_check_key(key1.get()));
   size_t len;
   std::vector<uint8_t> ciphertext(RSA_size(key1.get()));
   ASSERT_TRUE(RSA_encrypt(key1.get(), &len, ciphertext.data(),
