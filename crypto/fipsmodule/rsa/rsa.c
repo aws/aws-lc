@@ -1049,3 +1049,11 @@ int RSA_test_flags(const RSA *rsa, int flags) { return rsa->flags & flags; }
 int RSA_blinding_on(RSA *rsa, BN_CTX *ctx) {
   return 1;
 }
+
+int wip_do_not_use_rsa_check_key(const RSA *rsa) {
+  return 1;
+}
+
+int wip_do_not_use_rsa_check_key_fips(const RSA *rsa) {
+  return 1;
+}
