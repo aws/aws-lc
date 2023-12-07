@@ -142,9 +142,7 @@ let pointer_to_fresh_ec_group_st_with_curve_name curve_name = do {
   points_to_ec_method_st meth_ptr;
   crucible_points_to (crucible_field ptr "meth") meth_ptr;
 
-  generator_ptr <- crucible_alloc_readonly (llvm_struct "struct.ec_point_st");
-  points_to_ec_point_st generator_ptr ptr {{ jacobianToMontBV P384_G_Jacobian }};
-  crucible_points_to (crucible_field ptr "generator") generator_ptr;
+  points_to_ec_point_st (crucible_field ptr "generator") ptr {{ jacobianToMontBV P384_G_Jacobian }};
 
   crucible_points_to (crucible_field ptr "curve_name") (crucible_term {{ `curve_name : [32] }});
 
@@ -155,8 +153,6 @@ let pointer_to_fresh_ec_group_st_with_curve_name curve_name = do {
   crucible_points_to_untyped (crucible_field ptr "b") (crucible_term {{ fieldElementToBV ((P384_b * P384_R_p) % `P384_p) }});
   crucible_points_to (crucible_field ptr "a_is_minus3") (crucible_term {{ 1 : [32] }});
   crucible_points_to (crucible_field ptr "field_greater_than_order") (crucible_term {{ 1 : [32] }});
-
-  crucible_points_to_untyped (crucible_field ptr "one") (crucible_term {{ fieldElementToBV P384_R_p }});
 
   return ptr;
 };
