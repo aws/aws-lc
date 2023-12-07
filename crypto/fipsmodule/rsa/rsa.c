@@ -1050,6 +1050,17 @@ int RSA_blinding_on(RSA *rsa, BN_CTX *ctx) {
   return 1;
 }
 
+// Performs checks equivalent to those in OpenSSL 1.x versions and 3.x non-FIPS
+// versions of |RSA_check_key|, but also add the ability to process keys with
+// public component only like AWS-LC's |RSA_check_key|.
+// Implementation checklist:
+//  - public key checks
+//  - p and q are prime
+//  - p * q = n
+//  - (d * e) mod (lcm(p-1, q-1)) = 1
+//  - d mod (p-1) = dmp1
+//  - d mod (q-1) = dmq1
+//  - q^-1 mod (p) = iqmp
 int wip_do_not_use_rsa_check_key(const RSA *rsa) {
   return 1;
 }
