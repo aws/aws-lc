@@ -27,7 +27,7 @@ ROOT=$(realpath ${AWS_LC_DIR}/..)
 
 SCRATCH_DIR=${ROOT}/SCRATCH_AWSLC_INSTALL_SHARED_AND_STATIC
 mkdir -p ${SCRATCH_DIR}
-rm -rf ${SCRATCH_DIR}/*
+rm -rf "${SCRATCH_DIR:?}"/*
 
 function fail() {
     echo "test failure: $1"
@@ -39,7 +39,7 @@ function install_aws_lc() {
     local BUILD_SHARED_LIBS=$2
 
     local BUILD_DIR=${SCRATCH_DIR}/build
-    rm -rf ${BUILD_DIR}
+    rm -rf "${BUILD_DIR:?}"
     ${CMAKE_COMMAND} -H${AWS_LC_DIR} -B${BUILD_DIR} -GNinja -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} -DBUILD_TESTING=OFF -D${BUILD_SHARED_LIBS}
     ${CMAKE_COMMAND} --build ${BUILD_DIR} --target install
 }
@@ -58,7 +58,7 @@ install_aws_lc install-both BUILD_SHARED_LIBS=ON
 # - mylib: a library that uses AWS-LC
 # - myapp: executable that uses mylib
 MYAPP_SRC_DIR=${SCRATCH_DIR}/myapp-src
-rm -rf ${MYAPP_SRC_DIR}
+rm -rf "${MYAPP_SRC_DIR:?}"
 mkdir -p ${MYAPP_SRC_DIR}
 
 cat <<EOF > ${MYAPP_SRC_DIR}/mylib.c
@@ -92,7 +92,7 @@ build_myapp() {
     local EXPECT_USE_LIB_TYPE=$3 # (".so" or ".a") which types of libssl and libcrypto are expected to be used
 
     local BUILD_DIR=${SCRATCH_DIR}/build
-    rm -rf ${BUILD_DIR}
+    rm -rf "${BUILD_DIR:?}"
 
     cmake -H${MYAPP_SRC_DIR} -B${BUILD_DIR} -GNinja -D${BUILD_SHARED_LIBS} -DCMAKE_PREFIX_PATH=${SCRATCH_DIR}/${AWS_LC_INSTALL_DIR}
     cmake --build ${BUILD_DIR}
@@ -134,7 +134,7 @@ build_myapp BUILD_SHARED_LIBS=OFF install-both .a # myapp should use libssl.a/li
 # ------------------------------------------------------- #
 #           Test for the static library constructor       #
 # ------------------------------------------------------- #
-rm -rf ${MYAPP_SRC_DIR}
+rm -rf "${MYAPP_SRC_DIR:?}"
 mkdir -p ${MYAPP_SRC_DIR}
 
 cat <<EOF > ${MYAPP_SRC_DIR}/static_constructor_test.c

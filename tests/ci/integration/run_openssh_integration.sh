@@ -30,7 +30,7 @@ if ! ${NINJA_COMMAND} --version; then
 fi
 
 # Make script execution idempotent.
-rm -rf "${SCRATCH_FOLDER}"
+rm -rf "${SCRATCH_FOLDER:?}"
 mkdir -p "${SCRATCH_FOLDER}"
 pushd "${SCRATCH_FOLDER}"
 

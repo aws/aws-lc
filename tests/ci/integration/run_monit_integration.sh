@@ -38,7 +38,7 @@ function monit_run_tests() {
 }
 
 mkdir -p ${SCRATCH_FOLDER}
-rm -rf ${SCRATCH_FOLDER}/*
+rm -rf "${SCRATCH_FOLDER:?}"/*
 cd ${SCRATCH_FOLDER}
 
 git clone https://bitbucket.org/tildeslash/monit.git ${MONIT_SRC_FOLDER} --depth 1

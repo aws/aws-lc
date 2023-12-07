@@ -9,7 +9,7 @@ source "${FUZZ_ROOT}/fuzz_env.sh"
 # After loading everything any undefined variables should fail the build
 set -u
 
-rm -rf "$BUILD_ROOT"
+rm -rf "${BUILD_ROOT:?}"
 mkdir -p "$BUILD_ROOT"
 cd "$BUILD_ROOT"
 
@@ -60,7 +60,7 @@ FUZZ_TEST_PATH="${CRYPTOFUZZ_SRC}/${FUZZ_NAME}"
 SRC_CORPUS="$CRYPTOFUZZ_SEED_CORPUS"
 
 # For cryptofuzz development only, uncomment below code to generate new corpus.
-# rm -rf "$CRYPTOFUZZ_SEED_CORPUS" && mkdir "$CRYPTOFUZZ_SEED_CORPUS"
+# rm -rf "${CRYPTOFUZZ_SEED_CORPUS:?}" && mkdir "$CRYPTOFUZZ_SEED_CORPUS"
 # ./generate_corpus "$CRYPTOFUZZ_SEED_CORPUS"
 
 # Perform the actual fuzzing. We want the total build time to be about 45 minutes:

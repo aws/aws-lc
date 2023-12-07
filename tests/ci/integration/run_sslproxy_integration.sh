@@ -76,7 +76,7 @@ function sslproxy_run_tests() {
 sslproxy_patch_reminder
 
 mkdir -p ${SCRATCH_FOLDER}
-rm -rf ${SCRATCH_FOLDER}/*
+rm -rf "${SCRATCH_FOLDER:?}"/*
 cd ${SCRATCH_FOLDER}
 
 git clone https://github.com/sonertari/SSLproxy.git ${SSLPROXY_SRC_FOLDER} --depth 1

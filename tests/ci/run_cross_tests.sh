@@ -25,7 +25,7 @@ SCRATCH_FOLDER="${SYS_ROOT}/SCRATCH_${TARGET_CPU}"
 if [ -e "${SCRATCH_FOLDER}" ]; then
     # Some directories in the archive lack write permission, preventing deletion of files
     chmod +w -R "${SCRATCH_FOLDER}"
-    rm -rf "${SCRATCH_FOLDER}"
+    rm -rf "${SCRATCH_FOLDER:?}"
 fi
 mkdir -p "${SCRATCH_FOLDER}"
 

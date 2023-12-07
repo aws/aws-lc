@@ -25,7 +25,7 @@ S2N_TLS_BUILD_FOLDER="${SCRATCH_FOLDER}/s2n-tls-build"
 
 # Make script execution idempotent.
 mkdir -p ${SCRATCH_FOLDER}
-rm -rf ${SCRATCH_FOLDER}/*
+rm -rf "${SCRATCH_FOLDER:?}"/*
 cd ${SCRATCH_FOLDER}
 
 # Test helper functions.
@@ -50,7 +50,7 @@ function s2n_tls_run_tests() {
 }
 
 function s2n_tls_prepare_new_build() {
-	rm -rf ${S2N_TLS_BUILD_FOLDER}/*
+	rm -rf "${S2N_TLS_BUILD_FOLDER:?}"/*
 }
 
 # Get latest s2n-tls version.
