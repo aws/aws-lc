@@ -904,16 +904,29 @@ TEST(RSATest, CheckKey) {
   // Missing n or e does not pass.
   ASSERT_TRUE(BN_hex2bn(&rsa->n, kN));
   EXPECT_FALSE(RSA_check_key(rsa.get()));
+  EXPECT_FALSE(wip_do_not_use_rsa_check_key(rsa.get()));
   ERR_clear_error();
 
   BN_free(rsa->n);
   rsa->n = nullptr;
   ASSERT_TRUE(BN_hex2bn(&rsa->e, kE));
   EXPECT_FALSE(RSA_check_key(rsa.get()));
+  EXPECT_FALSE(wip_do_not_use_rsa_check_key(rsa.get()));
   ERR_clear_error();
 
   // Public keys pass.
   ASSERT_TRUE(BN_hex2bn(&rsa->n, kN));
+  EXPECT_TRUE(RSA_check_key(rsa.get()));
+  EXPECT_TRUE(wip_do_not_use_rsa_check_key(rsa.get()));
+
+  // Invalid e values (e = 1 or e odd).
+  ASSERT_TRUE(BN_hex2bn(&rsa->e, "1"));
+  EXPECT_FALSE(RSA_check_key(rsa.get()));
+  EXPECT_FALSE(wip_do_not_use_rsa_check_key(rsa.get()));
+
+  // Restore the valid public key values.
+  ASSERT_TRUE(BN_hex2bn(&rsa->n, kN));
+  ASSERT_TRUE(BN_hex2bn(&rsa->e, kE));
   EXPECT_TRUE(RSA_check_key(rsa.get()));
   EXPECT_TRUE(wip_do_not_use_rsa_check_key(rsa.get()));
 

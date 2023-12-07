@@ -1061,7 +1061,20 @@ int RSA_blinding_on(RSA *rsa, BN_CTX *ctx) {
 //  - d mod (p-1) = dmp1
 //  - d mod (q-1) = dmq1
 //  - q^-1 mod (p) = iqmp
-int wip_do_not_use_rsa_check_key(const RSA *rsa) {
+int wip_do_not_use_rsa_check_key(const RSA *key) {
+
+  // Every key has to have the modulus n and the public exponent e.
+  if (key->n == NULL || key->e == NULL) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_VALUE_MISSING);
+    return 0;
+  }
+
+  // Light checks on |e|, as in OpenSSL.
+  if (BN_is_one(key->e) || !BN_is_odd(key->e)) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_E_VALUE);
+    return 0;
+  }
+
   return 1;
 }
 

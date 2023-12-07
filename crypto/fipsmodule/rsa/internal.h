@@ -244,8 +244,8 @@ int rsa_digestverify_no_self_test(const EVP_MD *md, const uint8_t *input,
 //   3. When ready, modify |RSA_check_key| function to perform the FIPS version
 //      when AWS-LC is built in FIPS mode and deprecate |RSA_check_fips|.
 // ------ DO NOT USE! -------
-OPENSSL_EXPORT int wip_do_not_use_rsa_check_key(const RSA *rsa);
-OPENSSL_EXPORT int wip_do_not_use_rsa_check_key_fips(const RSA *rsa);
+OPENSSL_EXPORT int wip_do_not_use_rsa_check_key(const RSA *key);
+OPENSSL_EXPORT int wip_do_not_use_rsa_check_key_fips(const RSA *key);
 
 #if defined(__cplusplus)
 }  // extern C
