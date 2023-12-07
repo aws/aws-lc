@@ -11,7 +11,7 @@
 // Stub functions if s2n-bignum implementations are not compiled.
 // These functions have to abort, otherwise we risk applications assuming they
 // did work without actually doing anything.
-#if !defined(CURVE25519_S2N_BIGNUM_CAPABLE) || defined(BORINGSSL_FIPS)
+#if !defined(CURVE25519_S2N_BIGNUM_CAPABLE)
 
 #define S2N_BIGNUM_STUB_FUNC(return_type, symbol, ...) \
   return_type symbol(__VA_ARGS__); \
@@ -28,14 +28,11 @@ S2N_BIGNUM_STUB_FUNC(void, edwards25519_scalarmulbase, uint64_t res[8],uint64_t 
 S2N_BIGNUM_STUB_FUNC(void, edwards25519_scalarmulbase_alt, uint64_t res[8],uint64_t scalar[4])
 S2N_BIGNUM_STUB_FUNC(void, edwards25519_scalarmuldouble, uint64_t res[8], uint64_t scalar[4], uint64_t point[8], uint64_t bscalar[4])
 S2N_BIGNUM_STUB_FUNC(void, edwards25519_scalarmuldouble_alt, uint64_t res[8], uint64_t scalar[4], uint64_t point[8], uint64_t bscalar[4])
-
-#if !defined(CURVE25519_S2N_BIGNUM_CAPABLE)
 S2N_BIGNUM_STUB_FUNC(void, curve25519_x25519_byte, uint8_t res[32], const uint8_t scalar[32], const uint8_t point[32])
 S2N_BIGNUM_STUB_FUNC(void, curve25519_x25519_byte_alt, uint8_t res[32], const uint8_t scalar[32], const uint8_t point[32])
 S2N_BIGNUM_STUB_FUNC(void, curve25519_x25519base_byte, uint8_t res[32], const uint8_t scalar[32])
 S2N_BIGNUM_STUB_FUNC(void, curve25519_x25519base_byte_alt, uint8_t res[32], const uint8_t scalar[32])
 #endif // !defined(CURVE25519_S2N_BIGNUM_CAPABLE)
-#endif // !defined(CURVE25519_S2N_BIGNUM_CAPABLE) || defined(BORINGSSL_FIPS)
 
 // curve25519_s2n_bignum_use_no_alt_implementation returns 1 if the no_alt
 // s2n-bignum implementation should be used and 0 otherwise.
