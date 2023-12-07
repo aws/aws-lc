@@ -14,4 +14,4 @@ phases:
       - export CXX=clang++-10
   build:
     commands:
-      - ./tests/ci/run_formal_verification.sh
+      - ./tests/ci/run_formal_verification_saw_aarch64.sh
