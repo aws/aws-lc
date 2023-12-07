@@ -541,7 +541,9 @@ ssl_ctx_st::ssl_ctx_st(const SSL_METHOD *ssl_method)
       handoff(false),
       enable_early_data(false),
       aes_hw_override(false),
-      aes_hw_override_value(false) {
+      aes_hw_override_value(false),
+      conf_max_version_use_default(true),
+      conf_min_version_use_default(true) {
   CRYPTO_MUTEX_init(&lock);
   CRYPTO_new_ex_data(&ex_data);
 }
@@ -657,8 +659,8 @@ SSL *SSL_new(SSL_CTX *ctx) {
   }
   ssl->config->conf_min_version = ctx->conf_min_version;
   ssl->config->conf_max_version = ctx->conf_max_version;
-  ssl->config->conf_min_version_use_default = ctx->conf_min_version_use_default;
   ssl->config->conf_max_version_use_default = ctx->conf_max_version_use_default;
+  ssl->config->conf_min_version_use_default = ctx->conf_min_version_use_default;
 
   ssl->config->cert = ssl_cert_dup(ctx->cert.get());
   if (ssl->config->cert == nullptr) {
@@ -720,7 +722,9 @@ SSL_CONFIG::SSL_CONFIG(SSL *ssl_arg)
       shed_handshake_config(false),
       jdk11_workaround(false),
       quic_use_legacy_codepoint(false),
-      permute_extensions(false) {
+      permute_extensions(false),
+      conf_max_version_use_default(true),
+      conf_min_version_use_default(true) {
   assert(ssl);
 }
 
