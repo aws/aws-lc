@@ -10,4 +10,4 @@ env:
 phases:
   build:
     commands:
-      - ./tests/ci/run_formal_verification_nsym.sh
+      - ./tests/ci/run_formal_verification_nsym_aarch64.sh
