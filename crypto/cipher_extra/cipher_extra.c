@@ -106,16 +106,26 @@ const EVP_CIPHER *EVP_get_cipherbynid(int nid) {
   return NULL;
 }
 
+#define TCPDUMP_ALIASES_SIZE (3)
+static const char * const TCPDUMP_ALIASES[TCPDUMP_ALIASES_SIZE][2] = {
+    {"3des", "des-ede3-cbc"},
+    {"aes256", "aes-256-cbc"},
+    {"aes128", "aes-128-cbc"}
+};
+
 const EVP_CIPHER *EVP_get_cipherbyname(const char *name) {
   if (name == NULL) {
     return NULL;
   }
 
-  // This is not a name used by OpenSSL, but tcpdump registers it with
+  // These are not names used by OpenSSL, but tcpdump registers it with
   // |EVP_add_cipher_alias|. Our |EVP_add_cipher_alias| is a no-op, so we
   // support the name here.
-  if (OPENSSL_strcasecmp(name, "3des") == 0) {
-    name = "des-ede3-cbc";
+  for(size_t i = 0; i < TCPDUMP_ALIASES_SIZE; i++) {
+    if (OPENSSL_strcasecmp(name, TCPDUMP_ALIASES[i][0]) == 0) {
+      name = TCPDUMP_ALIASES[i][1];
+      break;
+    }
   }
 
   for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(kCiphers); i++) {

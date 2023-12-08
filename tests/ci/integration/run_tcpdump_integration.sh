@@ -20,6 +20,7 @@ source tests/ci/common_posix_setup.sh
 #    - AWS_LC_INSTALL_FOLDER
 
 # Assumes script is executed from the root of aws-lc directory
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 SCRATCH_FOLDER=${SYS_ROOT}/"TCPDUMP_SCRATCH"
 TCPDUMP_SRC_FOLDER="${SCRATCH_FOLDER}/tcpdump"
 TCPDUMP_INSTALL_FOLDER="${SCRATCH_FOLDER}/tcpdump-install"
@@ -32,9 +33,12 @@ rm -rf "${SCRATCH_FOLDER:?}"/*
 pushd "${SCRATCH_FOLDER}"
 
 function tcpdump_build() {
+  git apply "${SCRIPT_DIR}/tcpdump_patch/aws-lc-tcpdump.patch"
   autoreconf -fi
-  ./configure --prefix="${TCPDUMP_INSTALL_FOLDER}" --with-openssl="${AWS_LC_INSTALL_FOLDER}"
+  ./configure --prefix="${TCPDUMP_INSTALL_FOLDER}" --with-crypto="${AWS_LC_INSTALL_FOLDER}"
   make -j "${NUM_CPU_THREADS}"
+  make install
+  ldd "${TCPDUMP_INSTALL_FOLDER}/bin/tcpdump" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
 }
 
 function tcpdump_run_tests() {
@@ -47,7 +51,8 @@ git clone https://github.com/the-tcpdump-group/tcpdump.git "${TCPDUMP_SRC_FOLDER
 mkdir -p "${AWS_LC_BUILD_FOLDER}" "${AWS_LC_INSTALL_FOLDER}" "${TCPDUMP_INSTALL_FOLDER}"
 ls
 
-aws_lc_build "${SRC_ROOT}" "${AWS_LC_BUILD_FOLDER}" "${AWS_LC_INSTALL_FOLDER}"
+aws_lc_build "${SRC_ROOT}" "${AWS_LC_BUILD_FOLDER}" "${AWS_LC_INSTALL_FOLDER}" -DBUILD_TESTING=OFF -DBUILD_SHARED_LIBS=1
+export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}:${AWS_LC_INSTALL_FOLDER}/lib/"
 
 pushd "${TCPDUMP_SRC_FOLDER}"
 tcpdump_build
@@ -55,3 +60,5 @@ tcpdump_run_tests
 popd
 
 popd
+
+
