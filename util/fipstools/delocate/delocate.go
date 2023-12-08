@@ -2294,7 +2294,7 @@ func isFipsScopeMarkers(symbol string) bool {
 }
 
 func redirectorName(symbol string) string {
-	return "bcm_redirector_" + symbol
+	return ".Lbcm_redirector_" + symbol
 }
 
 // sectionType returns the type of a section. I.e. a section called “.text.foo”
