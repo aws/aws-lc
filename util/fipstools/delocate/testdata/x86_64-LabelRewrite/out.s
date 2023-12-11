@@ -21,11 +21,11 @@ bar:
 
 	# Jumps to PLT symbols are rewritten through redirectors.
 # WAS call memcpy@PLT
-	call	bcm_redirector_memcpy
+	call	.Lbcm_redirector_memcpy
 # WAS jmp memcpy@PLT
-	jmp	bcm_redirector_memcpy
+	jmp	.Lbcm_redirector_memcpy
 # WAS jbe memcpy@PLT
-	jbe	bcm_redirector_memcpy
+	jbe	.Lbcm_redirector_memcpy
 
 	# Jumps to local PLT symbols use their local targets.
 # WAS call foo@PLT
@@ -95,8 +95,8 @@ bar:
 .byte   421
 .text
 BORINGSSL_bcm_text_end:
-.type bcm_redirector_memcpy, @function
-bcm_redirector_memcpy:
+.type .Lbcm_redirector_memcpy, @function
+.Lbcm_redirector_memcpy:
 	jmp	memcpy@PLT
 .type OPENSSL_ia32cap_get, @function
 .globl OPENSSL_ia32cap_get

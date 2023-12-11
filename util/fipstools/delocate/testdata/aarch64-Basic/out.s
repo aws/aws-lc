@@ -82,7 +82,7 @@ foo:
 	bl	.Llocal_function_local_target
 
 // WAS bl remote_function
-	bl	bcm_redirector_remote_function
+	bl	.Lbcm_redirector_remote_function
 
 	bl bss_symbol_bss_get
 
@@ -108,9 +108,9 @@ foo:
 	// But 'y' is not a register prefix so far, so these should be
 	// processed as symbols.
 // WAS add y0, y0
-	add	bcm_redirector_y0, bcm_redirector_y0
+	add	.Lbcm_redirector_y0, .Lbcm_redirector_y0
 // WAS add y12, y12
-	add	bcm_redirector_y12, bcm_redirector_y12
+	add	.Lbcm_redirector_y12, .Lbcm_redirector_y12
 
 	// Make sure that the magic extension constants are recognised rather
 	// than being interpreted as symbols.
@@ -138,29 +138,29 @@ bss_symbol:
 .text
 BORINGSSL_bcm_text_end:
 .p2align 2
-.hidden bcm_redirector_remote_function
-.type bcm_redirector_remote_function, @function
-bcm_redirector_remote_function:
+.hidden .Lbcm_redirector_remote_function
+.type .Lbcm_redirector_remote_function, @function
+.Lbcm_redirector_remote_function:
 .cfi_startproc
 	b remote_function
 .cfi_endproc
-.size bcm_redirector_remote_function, .-bcm_redirector_remote_function
+.size .Lbcm_redirector_remote_function, .-.Lbcm_redirector_remote_function
 .p2align 2
-.hidden bcm_redirector_y0
-.type bcm_redirector_y0, @function
-bcm_redirector_y0:
+.hidden .Lbcm_redirector_y0
+.type .Lbcm_redirector_y0, @function
+.Lbcm_redirector_y0:
 .cfi_startproc
 	b y0
 .cfi_endproc
-.size bcm_redirector_y0, .-bcm_redirector_y0
+.size .Lbcm_redirector_y0, .-.Lbcm_redirector_y0
 .p2align 2
-.hidden bcm_redirector_y12
-.type bcm_redirector_y12, @function
-bcm_redirector_y12:
+.hidden .Lbcm_redirector_y12
+.type .Lbcm_redirector_y12, @function
+.Lbcm_redirector_y12:
 .cfi_startproc
 	b y12
 .cfi_endproc
-.size bcm_redirector_y12, .-bcm_redirector_y12
+.size .Lbcm_redirector_y12, .-.Lbcm_redirector_y12
 .p2align 2
 .hidden bss_symbol_bss_get
 .type bss_symbol_bss_get, @function
