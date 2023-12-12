@@ -272,12 +272,12 @@ EVP_PKEY *EVP_PKEY_new_mac_key(int type, ENGINE *engine, const uint8_t *mac_key,
   // Only |EVP_PKEY_HMAC| is supported as of now.
   if (type != EVP_PKEY_HMAC) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
-    return 0;
+    return NULL;
   }
-  // HMAC keys aren't absolutely required for HMAC operations, but the
-  // combination below isn't allowed.
+  // NULL |mac_key| will result in a complete zero-key being used, but in that
+  // case, the length must be zero.
   if (mac_key == NULL && mac_key_len > 0) {
-    return 0;
+    return NULL;
   }
 
   EVP_PKEY *ret = EVP_PKEY_new();
@@ -286,13 +286,14 @@ EVP_PKEY *EVP_PKEY_new_mac_key(int type, ENGINE *engine, const uint8_t *mac_key,
     return NULL;
   }
 
-  HMAC_KEY *key = HMAC_KEY_init();
+  HMAC_KEY *key = HMAC_KEY_new();
   if(key == NULL) {
     goto err;
   }
   key->key = mac_key;
   key->key_len = mac_key_len;
   if(!EVP_PKEY_assign(ret, EVP_PKEY_HMAC, key)) {
+    OPENSSL_free(key);
     goto err;
   }
   return ret;

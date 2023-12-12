@@ -55,19 +55,16 @@
  * [including the GNU Public Licence.] */
 
 #include <assert.h>
-#include <string.h>
 
 #include <openssl/digest.h>
 #include <openssl/err.h>
-#include <openssl/mem.h>
-#include <openssl/nid.h>
 
 #include "../../internal.h"
 #include "../evp/internal.h"
 #include "internal.h"
 
 
-void EVP_MD_unstable_sha3_enable(bool enable) { /* no-op */
+void EVP_MD_unstable_sha3_enable(bool enable) {  // no-op
 }
 
 bool EVP_MD_unstable_sha3_is_enabled(void) { return true; }
@@ -240,6 +237,7 @@ int EVP_DigestInit_ex(EVP_MD_CTX *ctx, const EVP_MD *type, ENGINE *engine) {
   assert(ctx->pctx == NULL || ctx->pctx_ops != NULL);
 
   if (used_for_hmac(ctx)) {
+    assert(ctx->pctx != NULL && ctx->pctx->pkey != NULL);
     // These configurations are specific to |EVP_PKEY_HMAC|. |HMAC_PKEY_CTX| is
     // newly allocated by |EVP_DigestSignInit| at this point. The actual key
     // data is stored in |ctx->pkey| as |HMAC_KEY|.

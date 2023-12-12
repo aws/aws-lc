@@ -53,13 +53,11 @@
  * (eay@cryptsoft.com).  This product includes software written by Tim
  * Hudson (tjh@cryptsoft.com). */
 
-#include <openssl/evp.h>
 
-#include <openssl/asn1.h>
 #include <openssl/err.h>
+#include <openssl/evp.h>
 #include <openssl/hmac.h>
 #include <openssl/mem.h>
-#include <openssl/obj.h>
 
 #include "../../evp_extra/internal.h"
 #include "internal.h"
@@ -85,6 +83,7 @@ static int hmac_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src) {
   dctx = dst->data;
   dctx->md = sctx->md;
   if (!HMAC_CTX_copy_ex(&dctx->ctx, &sctx->ctx)) {
+    OPENSSL_free(dctx);
     return 0;
   }
   return 1;
@@ -92,9 +91,6 @@ static int hmac_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src) {
 
 static void hmac_cleanup(EVP_PKEY_CTX *ctx) {
   HMAC_PKEY_CTX *hctx = ctx->data;
-  if (hctx == NULL) {
-    return;
-  }
   OPENSSL_free(hctx);
 }
 
@@ -135,7 +131,7 @@ int used_for_hmac(EVP_MD_CTX *ctx) {
   return ctx->flags == EVP_MD_CTX_HMAC && ctx->pctx != NULL;
 }
 
-HMAC_KEY *HMAC_KEY_init(void) {
+HMAC_KEY *HMAC_KEY_new(void) {
   HMAC_KEY *key = OPENSSL_malloc(sizeof(HMAC_KEY));
   if (key == NULL) {
     return NULL;

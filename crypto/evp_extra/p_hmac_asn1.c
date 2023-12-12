@@ -53,12 +53,9 @@
  * (eay@cryptsoft.com).  This product includes software written by Tim
  * Hudson (tjh@cryptsoft.com). */
 
-#include <openssl/evp.h>
-
-#include <openssl/asn1.h>
 #include <openssl/digest.h>
+#include <openssl/evp.h>
 #include <openssl/mem.h>
-#include <openssl/obj.h>
 
 #include "internal.h"
 

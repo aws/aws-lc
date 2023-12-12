@@ -95,7 +95,7 @@ static void RunHMACTestEVP(const std::vector<uint8_t> &key,
                            const std::vector<uint8_t> &tag, const EVP_MD *md) {
   bssl::UniquePtr<EVP_PKEY> pkey(
       EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, nullptr, key.data(), key.size()));
-  EXPECT_TRUE(pkey);
+  ASSERT_TRUE(pkey);
 
   bssl::ScopedEVP_MD_CTX copy, mctx;
   size_t len;

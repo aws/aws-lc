@@ -100,7 +100,7 @@ static int do_sigver_init(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx,
   } else {
     if (pkey->type == EVP_PKEY_HMAC) {
       // |ctx->update| gets repurposed as a hook to call |HMAC_Update|.
-      // |ctx->update| is normally copied from |mctx->digest->update|, but
+      // |ctx->update| is normally copied from |ctx->digest->update|, but
       // |EVP_PKEY_HMAC| has its own definition. We suppress the automatic
       // setting of |mctx->update| and the rest of its initialization here.
       ctx->pctx->operation = EVP_PKEY_OP_SIGN;

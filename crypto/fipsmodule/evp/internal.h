@@ -295,7 +295,7 @@ struct evp_pkey_method_st {
 int used_for_hmac(EVP_MD_CTX *ctx);
 
 typedef struct {
-  const EVP_MD *md; /* MD for HMAC use */
+  const EVP_MD *md; // MD for HMAC use.
   HMAC_CTX ctx;
 } HMAC_PKEY_CTX;
 
@@ -304,8 +304,8 @@ typedef struct {
   size_t key_len;
 } HMAC_KEY;
 
-// HMAC_KEY_init allocates and zeroizes a |HMAC_KEY| for internal use.
-HMAC_KEY *HMAC_KEY_init(void);
+// HMAC_KEY_new allocates and zeroizes a |HMAC_KEY| for internal use.
+HMAC_KEY *HMAC_KEY_new(void);
 
 #define FIPS_EVP_PKEY_METHODS 5
 
