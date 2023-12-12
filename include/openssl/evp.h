@@ -62,15 +62,14 @@
 #include <openssl/evp_errors.h>
 #include <openssl/thread.h>
 
-// OpenSSL included digest and cipher functions in this header so we include
-// them for users that still expect that.
-//
-// TODO(fork): clean up callers so that they include what they use.
+// OpenSSL included digest, cipher, and object functions in this header so we
+// include them for users that still expect that.
 #include <openssl/aead.h>
 #include <openssl/base64.h>
 #include <openssl/cipher.h>
 #include <openssl/digest.h>
 #include <openssl/nid.h>
+#include <openssl/objects.h>
 
 #if defined(__cplusplus)
 extern "C" {
@@ -140,6 +139,16 @@ OPENSSL_EXPORT int EVP_PKEY_id(const EVP_PKEY *pkey);
 // EVP_PKEY_type returns |nid| if |nid| is a known key type and |NID_undef|
 // otherwise.
 OPENSSL_EXPORT int EVP_PKEY_type(int nid);
+
+// EVP_MD_get_pkey_type returns the NID of the public key signing algorithm
+// associated with |md| and RSA.
+OPENSSL_EXPORT int EVP_MD_get_pkey_type(const EVP_MD *md);
+#define EVP_MD_pkey_type EVP_MD_get_pkey_type
+
+// EVP_MD_get0_name returns the short name of |md|
+OPENSSL_EXPORT const char *EVP_MD_get0_name(const EVP_MD *md);
+#define EVP_MD_name EVP_MD_get0_name
+
 
 
 // Getting and setting concrete public key types.
