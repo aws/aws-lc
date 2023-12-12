@@ -145,7 +145,6 @@ OPENSSL_EXPORT const char *EVP_MD_get0_name(const EVP_MD *md);
 #define EVP_MD_name EVP_MD_get0_name
 
 
-
 // Getting and setting concrete public key types.
 //
 // The following functions get and set the underlying public key in an
