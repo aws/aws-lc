@@ -212,9 +212,8 @@ int EVP_PKEY_id(const EVP_PKEY *pkey) {
 
 int EVP_MD_get_pkey_type(const EVP_MD *md) {
   if (md) {
-    int sig_nid, result = 0;
-    result = OBJ_find_sigid_by_algs(&sig_nid, md->type, NID_rsaEncryption);
-    if (result) {
+    int sig_nid = 0;
+    if (OBJ_find_sigid_by_algs(&sig_nid, md->type, NID_rsaEncryption)) {
       return sig_nid;
     }
   }
