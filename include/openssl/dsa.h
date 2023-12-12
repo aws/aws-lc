@@ -61,8 +61,10 @@
 #define OPENSSL_HEADER_DSA_H
 
 #include <openssl/base.h>
+#include <openssl/crypto.h>
 
 #include <openssl/ex_data.h>
+#include <stdio.h>
 
 #if defined(__cplusplus)
 extern "C" {
@@ -89,6 +91,13 @@ OPENSSL_EXPORT void DSA_free(DSA *dsa);
 // DSA_up_ref increments the reference count of |dsa| and returns one.
 OPENSSL_EXPORT int DSA_up_ref(DSA *dsa);
 
+// DSA_print prints a textual representation of |dsa| to |bio|. It returns one
+// on success or zero otherwise.
+OPENSSL_EXPORT int DSA_print(BIO *bio, const DSA *dsa, int indent);
+
+// DSA_print_fp prints a textual representation of |dsa| to |fp|. It returns one
+// on success or zero otherwise.
+OPENSSL_EXPORT int DSA_print_fp(FILE *fp, const DSA *dsa, int indent);
 
 // Properties.
 

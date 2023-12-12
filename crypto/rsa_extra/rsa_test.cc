@@ -62,6 +62,7 @@
 #include <gtest/gtest.h>
 
 #include <openssl/bn.h>
+#include <openssl/bio.h>
 #include <openssl/bytestring.h>
 #include <openssl/crypto.h>
 #include <openssl/err.h>
@@ -1390,6 +1391,70 @@ TEST(RSATest, OverwriteKey) {
       check_rsa_compatible(/*enc=*/key1.get(), /*dec=*/key2.get()));
   ASSERT_NO_FATAL_FAILURE(
       check_rsa_compatible(/*enc=*/key2.get(), /*dec=*/key1.get()));
+}
+
+TEST(RSATest, PrintBio) {
+  bssl::UniquePtr<RSA> rsa(
+      RSA_private_key_from_bytes(kKey1, sizeof(kKey1) - 1));
+  ASSERT_TRUE(rsa);
+  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+
+  RSA_print(bio.get(), rsa.get(), 4);
+  const uint8_t *data;
+  size_t len;
+  BIO_mem_contents(bio.get(), &data, &len);
+
+  const char *expected = ""
+      "    Private-Key: (512 bit)\n"
+      "    modulus:\n"
+      "        00:aa:36:ab:ce:88:ac:fd:ff:55:52:3c:7f:c4:52:\n"
+      "        3f:90:ef:a0:0d:f3:77:4a:25:9f:2e:62:b4:c5:d9:\n"
+      "        9c:b5:ad:b3:00:a0:28:5e:53:01:93:0e:0c:70:fb:\n"
+      "        68:76:93:9c:e6:16:ce:62:4a:11:e0:08:6d:34:1e:\n"
+      "        bc:ac:a0:a1:f5\n"
+      "    publicExponent: 17 (0x11)\n"
+      "    privateExponent:\n"
+      "        0a:03:37:48:62:64:87:69:5f:5f:30:bc:38:b9:8b:\n"
+      "        44:c2:cd:2d:ff:43:40:98:cd:20:d8:a1:38:d0:90:\n"
+      "        bf:64:79:7c:3f:a7:a2:cd:cb:3c:d1:e0:bd:ba:26:\n"
+      "        54:b4:f9:df:8e:8a:e5:9d:73:3d:9f:33:b3:01:62:\n"
+      "        4a:fd:1d:51\n"
+      "    prime1:\n"
+      "        00:d8:40:b4:16:66:b4:2e:92:ea:0d:a3:b4:32:04:\n"
+      "        b5:cf:ce:33:52:52:4d:04:16:a5:a4:41:e7:00:af:\n"
+      "        46:12:0d\n"
+      "    prime2:\n"
+      "        00:c9:7f:b1:f0:27:f4:53:f6:34:12:33:ea:aa:d1:\n"
+      "        d9:35:3f:6c:42:d0:88:66:b1:d0:5a:0f:20:35:02:\n"
+      "        8b:9d:89\n"
+      "    exponent1:\n"
+      "        59:0b:95:72:a2:c2:a9:c4:06:05:9d:c2:ab:2f:1d:\n"
+      "        af:eb:7e:8b:4f:10:a7:54:9e:8e:ed:f5:b4:fc:e0:\n"
+      "        9e:05\n"
+      "    exponent2:\n"
+      "        00:8e:3c:05:21:fe:15:e0:ea:06:a3:6f:f0:f1:0c:\n"
+      "        99:52:c3:5b:7a:75:14:fd:32:38:b8:0a:ad:52:98:\n"
+      "        62:8d:51\n"
+      "    coefficient:\n"
+      "        36:3f:f7:18:9d:a8:e9:0b:1d:34:1f:71:d0:9b:76:\n"
+      "        a8:a9:43:e1:1d:10:b2:4d:24:9f:2d:ea:fe:f8:0c:\n"
+      "        18:26\n";
+
+  ASSERT_EQ(Bytes(expected), Bytes(data, len));
+
+#if !defined(OPENSSL_ANDROID)
+  // On Android, when running from an APK, |tmpfile| does not work. See
+  // b/36991167#comment8.
+  FILE *tmp = tmpfile();
+  ASSERT_TRUE(RSA_print_fp(tmp, rsa.get(), 4));
+  fseek(tmp, 0, SEEK_END);
+  long fileSize = ftell(tmp);
+  rewind(tmp);
+  std::unique_ptr<uint8_t[]> buf(new uint8_t[fileSize]);
+  size_t bytesRead = fread(buf.get(), 1, fileSize, tmp);
+  ASSERT_EQ(bytesRead, (size_t)fileSize);
+  ASSERT_EQ(Bytes(expected), Bytes(buf.get(), fileSize));
+#endif
 }
 
 #if !defined(BORINGSSL_SHARED_LIBRARY)

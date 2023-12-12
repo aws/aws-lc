@@ -416,3 +416,56 @@ s2lmkAIcLIFUDFrbC2nViaB5ATM9ARKk6F2QwnCfGCyZ6A==
   EXPECT_EQ(1, DSA_verify(0, fips_digest, sizeof(fips_digest), sig.data(),
                           sig.size(), dsa.get()));
 }
+
+TEST(DSATest, DSAPrint) {
+  bssl::UniquePtr<DSA> dsa = GetFIPSDSA();
+  ASSERT_TRUE(dsa);
+  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+
+  DSA_print(bio.get(), dsa.get(), 4);
+  const uint8_t *data;
+  size_t len;
+  BIO_mem_contents(bio.get(), &data, &len);
+
+  const char *expected = ""
+      "    Private-Key: (512 bit)\n"
+      "    priv:\n"
+      "        20:70:b3:22:3d:ba:37:2f:de:1c:0f:fc:7b:2e:3b:\n"
+      "        49:8b:26:06:14\n"
+      "    pub:\n"
+      "        19:13:18:71:d7:5b:16:12:a8:19:f2:9d:78:d1:b0:\n"
+      "        d7:34:6f:7a:a7:7b:b6:2a:85:9b:fd:6c:56:75:da:\n"
+      "        9d:21:2d:3a:36:ef:16:72:ef:66:0b:8c:7c:25:5c:\n"
+      "        c0:ec:74:85:8f:ba:33:f4:4c:06:69:96:30:a7:6b:\n"
+      "        03:0e:e3:33\n"
+      "    P:\n"
+      "        00:8d:f2:a4:94:49:22:76:aa:3d:25:75:9b:b0:68:\n"
+      "        69:cb:ea:c0:d8:3a:fb:8d:0c:f7:cb:b8:32:4f:0d:\n"
+      "        78:82:e5:d0:76:2f:c5:b7:21:0e:af:c2:e9:ad:ac:\n"
+      "        32:ab:7a:ac:49:69:3d:fb:f8:37:24:c2:ec:07:36:\n"
+      "        ee:31:c8:02:91\n"
+      "    Q:\n"
+      "        00:c7:73:21:8c:73:7e:c8:ee:99:3b:4f:2d:ed:30:\n"
+      "        f4:8e:da:ce:91:5f\n"
+      "    G:\n"
+      "        62:6d:02:78:39:ea:0a:13:41:31:63:a5:5b:4c:b5:\n"
+      "        00:29:9d:55:22:95:6c:ef:cb:3b:ff:10:f3:99:ce:\n"
+      "        2c:2e:71:cb:9d:e5:fa:24:ba:bf:58:e5:b7:95:21:\n"
+      "        92:5c:9c:c4:2e:9f:6f:46:4b:08:8c:c5:72:af:53:\n"
+      "        e6:d7:88:02\n";
+  ASSERT_EQ(Bytes(expected), Bytes(data, len));
+
+#if !defined(OPENSSL_ANDROID)
+  // On Android, when running from an APK, |tmpfile| does not work. See
+  // b/36991167#comment8.
+  FILE *tmp = tmpfile();
+  ASSERT_TRUE(DSA_print_fp(tmp, dsa.get(), 4));
+  fseek(tmp, 0, SEEK_END);
+  long fileSize = ftell(tmp);
+  rewind(tmp);
+  std::unique_ptr<uint8_t[]> buf(new uint8_t[fileSize]);
+  size_t bytesRead = fread(buf.get(), 1, fileSize, tmp);
+  ASSERT_EQ(bytesRead, (size_t)fileSize);
+  ASSERT_EQ(Bytes(expected), Bytes(buf.get(), fileSize));
+#endif
+}
