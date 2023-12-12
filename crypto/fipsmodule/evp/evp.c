@@ -221,7 +221,7 @@ int EVP_MD_get_pkey_type(const EVP_MD *md) {
 }
 
 const char *EVP_MD_get0_name(const EVP_MD *md) {
-  if (md) {
+  if (md != NULL) {
     return OBJ_nid2sn(EVP_MD_nid(md));
   }
   return NULL;
