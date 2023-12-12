@@ -1167,10 +1167,10 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_set_dsa_paramgen_q_bits(EVP_PKEY_CTX *ctx,
 // is NULL, it returns zero.
 OPENSSL_EXPORT int EVP_PKEY_assign(EVP_PKEY *pkey, int type, void *key);
 
-// EVP_PKEY_new_mac_key is deprecated. It allocates a fresh |EVP_PKEY| of |type|
-// (only |EVP_PKEY_HMAC| is supported), sets |mac_key| as the MAC key and
-// "generates" a new key, suitable for signing. It returns the fresh |EVP_PKEY|,
-// or NULL on error. Use |HMAC_CTX| directly instead.
+// EVP_PKEY_new_mac_key is deprecated. It allocates a fresh |EVP_PKEY| of
+// |type|. Only |EVP_PKEY_HMAC| is supported. |mac_key| is set as the HMAC key
+// and a new key is suitable for signing is "generated". It returns the fresh
+// |EVP_PKEY|, or NULL on error. Use |HMAC_CTX| directly instead.
 OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_new_mac_key(int type, ENGINE *engine,
                                               const uint8_t *mac_key,
                                               size_t mac_key_len);

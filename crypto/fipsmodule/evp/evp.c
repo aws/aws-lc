@@ -274,29 +274,33 @@ EVP_PKEY *EVP_PKEY_new_mac_key(int type, ENGINE *engine, const uint8_t *mac_key,
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
     return 0;
   }
-
-  // There can be non-existent keys, but the combination below isn't allowed.
+  // HMAC keys aren't absolutely required for HMAC operations, but the
+  // combination below isn't allowed.
   if (mac_key == NULL && mac_key_len > 0) {
     return 0;
   }
 
-  EVP_PKEY_CTX *hmac_pkey_ctx = EVP_PKEY_CTX_new_id(type, engine);
-  if (hmac_pkey_ctx == NULL) {
+  EVP_PKEY *ret = EVP_PKEY_new();
+  if (ret == NULL) {
+    OPENSSL_PUT_ERROR(EVP, ERR_LIB_EVP);
     return NULL;
   }
-  EVP_PKEY *ret = NULL;
 
-  CBS cbs;
-  CBS_init(&cbs, mac_key, mac_key_len);
-  if (!EVP_PKEY_keygen_init(hmac_pkey_ctx) ||
-      !EVP_PKEY_CTX_ctrl(hmac_pkey_ctx, -1, EVP_PKEY_OP_KEYGEN,
-                         EVP_PKEY_CTRL_HMAC_SET_MAC_KEY, 0, &cbs) ||
-      !EVP_PKEY_keygen(hmac_pkey_ctx, &ret)) {
-    ret = NULL;
+  HMAC_KEY *key = HMAC_KEY_init();
+  if(key == NULL) {
+    goto err;
   }
-
-  EVP_PKEY_CTX_free(hmac_pkey_ctx);
+  key->key = mac_key;
+  key->key_len = mac_key_len;
+  if(!EVP_PKEY_assign(ret, EVP_PKEY_HMAC, key)) {
+    goto err;
+  }
   return ret;
+
+err:
+  OPENSSL_PUT_ERROR(EVP, ERR_LIB_EVP);
+  EVP_PKEY_free(ret);
+  return NULL;
 }
 
 int EVP_PKEY_set1_RSA(EVP_PKEY *pkey, RSA *key) {

@@ -60,15 +60,22 @@
 #include <openssl/base.h>
 
 #include <openssl/rsa.h>
+#include <openssl/hmac.h>
 
 #if defined(__cplusplus)
 extern "C" {
 #endif
 
-// Flag so |md_ctx->pctx| is not freed up in |EVP_MD_CTX_cleanup|. Only intended
-// for internal use when |*pctx| was set externally with
-// |EVP_MD_CTX_set_pkey_ctx|.
-#define EVP_MD_CTX_FLAG_KEEP_PKEY_CTX   0x0400
+// EVP_MD_CTX_FLAG_KEEP_PKEY_CTX ensures |md_ctx->pctx| is not freed up in
+// |EVP_MD_CTX_cleanup|. Only intended for internal use when |*pctx| was set
+// externally with |EVP_MD_CTX_set_pkey_ctx|.
+#define EVP_MD_CTX_FLAG_KEEP_PKEY_CTX 0x0400
+
+// EVP_MD_CTX_HMAC causes the |EVP_MD|'s |init| function not to
+// be called, the |update| member not to be copied from the |EVP_MD| in
+// |EVP_DigestInit_ex| and for |md_data| not to be initialised.
+// This is an implementation detail of |EVP_PKEY_HMAC|.
+#define EVP_MD_CTX_HMAC 0x0800
 
 typedef struct evp_pkey_asn1_method_st EVP_PKEY_ASN1_METHOD;
 typedef struct evp_pkey_method_st EVP_PKEY_METHOD;
@@ -156,11 +163,9 @@ struct evp_pkey_st {
 #define EVP_PKEY_OP_DECRYPT (1 << 7)
 #define EVP_PKEY_OP_DERIVE (1 << 8)
 #define EVP_PKEY_OP_PARAMGEN (1 << 9)
-#define EVP_PKEY_OP_HMACSIGN (1 << 10)
 
 #define EVP_PKEY_OP_TYPE_SIG \
-  (EVP_PKEY_OP_SIGN | EVP_PKEY_OP_VERIFY | EVP_PKEY_OP_VERIFYRECOVER | \
-  EVP_PKEY_OP_HMACSIGN)
+  (EVP_PKEY_OP_SIGN | EVP_PKEY_OP_VERIFY | EVP_PKEY_OP_VERIFYRECOVER)
 
 #define EVP_PKEY_OP_TYPE_CRYPT (EVP_PKEY_OP_ENCRYPT | EVP_PKEY_OP_DECRYPT)
 
@@ -221,19 +226,6 @@ int EVP_RSA_PKEY_CTX_ctrl(EVP_PKEY_CTX *ctx, int optype, int cmd, int p1, void *
 #define EVP_PKEY_CTRL_HKDF_KEY (EVP_PKEY_ALG_CTRL + 16)
 #define EVP_PKEY_CTRL_HKDF_SALT (EVP_PKEY_ALG_CTRL + 17)
 #define EVP_PKEY_CTRL_HKDF_INFO (EVP_PKEY_ALG_CTRL + 18)
-
-// EVP_PKEY_CTRL_HMAC_DIGESTINIT is an internal value. It's called by
-// |EVP_DigestInit_ex| to signal the |EVP_PKEY| that a digest operation is
-// starting.
-// This is only needed to support the deprecated HMAC |EVP_PKEY| types.
-#define EVP_PKEY_CTRL_HMAC_DIGESTINIT (EVP_PKEY_ALG_CTRL + 19)
-
-// EVP_PKEY_CTRL_HMAC_SET_MAC_KEY is an internal value that sets a MAC key. For
-// example, this can be done on |EVP_PKEY_CTX| prior to calling
-// |EVP_PKEY_keygen| in order to generate an HMAC |EVP_PKEY| with the
-// given key. It returns one on success and zero on error.
-// This is only needed to support the deprecated HMAC |EVP_PKEY| types.
-#define EVP_PKEY_CTRL_HMAC_SET_MAC_KEY (EVP_PKEY_ALG_CTRL + 20)
 
 struct evp_pkey_ctx_st {
   // Method associated with this operation
@@ -296,16 +288,24 @@ struct evp_pkey_method_st {
   int (*decapsulate)(EVP_PKEY_CTX *ctx,
                      uint8_t *shared_secret, size_t *shared_secret_len,
                      const uint8_t *ciphertext, size_t ciphertext_len);
-
-  // The following are operations defined specifically for HMAC.
-  int (*hmac_init_set_up)(EVP_PKEY_CTX *ctx, EVP_MD_CTX *mctx);
-  int (*hmac_final)(EVP_PKEY_CTX *ctx, uint8_t *sig, size_t *siglen,
-                 EVP_MD_CTX *mctx);
 }; // EVP_PKEY_METHOD
 
 // used_for_hmac indicates if |ctx| is used specifically for the |EVP_PKEY_HMAC|
 // operation.
 int used_for_hmac(EVP_MD_CTX *ctx);
+
+typedef struct {
+  const EVP_MD *md; /* MD for HMAC use */
+  HMAC_CTX ctx;
+} HMAC_PKEY_CTX;
+
+typedef struct {
+  const uint8_t *key;
+  size_t key_len;
+} HMAC_KEY;
+
+// HMAC_KEY_init allocates and zeroizes a |HMAC_KEY| for internal use.
+HMAC_KEY *HMAC_KEY_init(void);
 
 #define FIPS_EVP_PKEY_METHODS 5
 

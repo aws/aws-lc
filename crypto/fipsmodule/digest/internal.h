@@ -109,12 +109,6 @@ struct evp_md_pctx_ops {
   EVP_PKEY_CTX* (*dup) (EVP_PKEY_CTX *pctx);
 };
 
-// EVP_MD_CTX_FLAG_NO_INIT_FOR_HMAC causes the |EVP_MD|'s |init| function not to
-// be called, the |update| member not to be copied from the |EVP_MD| in
-// |EVP_DigestInit_ex| and for |md_data| not to be initialised.
-// This is an implementation detail of |EVP_PKEY_HMAC|.
-#define EVP_MD_CTX_FLAG_NO_INIT_FOR_HMAC 1
-
 #if defined(__cplusplus)
 }  // extern C
 #endif

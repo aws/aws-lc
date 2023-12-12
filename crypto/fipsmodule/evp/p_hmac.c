@@ -62,16 +62,7 @@
 #include <openssl/obj.h>
 
 #include "../../evp_extra/internal.h"
-#include "../digest/internal.h"
 #include "internal.h"
-
-
-typedef struct {
-  const EVP_MD *md; /* MD for HMAC use */
-  uint8_t *key;
-  size_t key_len;
-  HMAC_CTX ctx;
-} HMAC_PKEY_CTX;
 
 static int hmac_init(EVP_PKEY_CTX *ctx) {
   HMAC_PKEY_CTX *hctx;
@@ -93,17 +84,8 @@ static int hmac_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src) {
   sctx = src->data;
   dctx = dst->data;
   dctx->md = sctx->md;
-  HMAC_CTX_init(&dctx->ctx);
   if (!HMAC_CTX_copy_ex(&dctx->ctx, &sctx->ctx)) {
     return 0;
-  }
-
-  if (sctx->key_len != 0) {
-    dctx->key = OPENSSL_memdup(sctx->key, sctx->key_len);
-    if (dctx->key == NULL) {
-      return 0;
-    }
-    dctx->key_len = sctx->key_len;
   }
   return 1;
 }
@@ -113,93 +95,15 @@ static void hmac_cleanup(EVP_PKEY_CTX *ctx) {
   if (hctx == NULL) {
     return;
   }
-  HMAC_CTX_cleanse(&hctx->ctx);
-  if (hctx->key != NULL) {
-    OPENSSL_free(hctx->key);
-  }
   OPENSSL_free(hctx);
-}
-
-static int hmac_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
-  HMAC_PKEY_CTX *hctx = ctx->data;
-  CBB *key = OPENSSL_malloc(sizeof(CBB));
-  if (key == NULL) {
-    return 0;
-  }
-
-  if (!CBB_init(key, 0) || !CBB_add_bytes(key, hctx->key, hctx->key_len)) {
-    CBB_cleanup(key);
-    return 0;
-  }
-
-  // |EVP_PKEY_new_mac_key| allocates a temporary |EVP_PKEY_CTX| and frees it
-  // along with |ctx->data| (which contains the original key data).
-  // We allocate and copy the key data over to a new |CBB| and assign it to
-  // |pkey|, so that it is available in later operations.
-  return EVP_PKEY_assign(pkey, EVP_PKEY_HMAC, key);
-}
-
-static void hmac_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
-  HMAC_PKEY_CTX *hctx = ctx->pctx->data;
-  HMAC_Update(&hctx->ctx, data, count);
-}
-
-static int hmac_init_set_up(EVP_PKEY_CTX *ctx, EVP_MD_CTX *mctx) {
-  // |mctx| gets repurposed as a hook to call |HMAC_Update|. |mctx->update| is
-  // normally copied from |mctx->digest->update|, but |EVP_PKEY_HMAC| has its
-  // own definition. We suppress the automatic setting of |mctx->update| and the
-  // rest of its initialization here.
-  mctx->flags |= EVP_MD_CTX_FLAG_NO_INIT_FOR_HMAC;
-  mctx->update = hmac_update;
-  return 1;
-}
-
-static int hmac_final(EVP_PKEY_CTX *ctx, uint8_t *sig, size_t *siglen,
-                      EVP_MD_CTX *mctx) {
-  unsigned int hlen;
-  HMAC_PKEY_CTX *hctx = ctx->data;
-  size_t md_size = EVP_MD_CTX_size(mctx);
-
-  if (sig == NULL) {
-    *siglen = md_size;
-    return 1;
-  } else if (*siglen < md_size) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_BUFFER_TOO_SMALL);
-    return 0;
-  }
-
-  if (!HMAC_Final(&hctx->ctx, sig, &hlen)) {
-    return 0;
-  }
-  *siglen = (size_t)hlen;
-  return 1;
 }
 
 static int hmac_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
   HMAC_PKEY_CTX *hctx = ctx->data;
-
   switch (type) {
-    case EVP_PKEY_CTRL_HMAC_SET_MAC_KEY: {
-      const CBS *key = p2;
-      if (!CBS_stow(key, &hctx->key, &hctx->key_len)) {
-        return 0;
-      }
-      return 1;
-    }
     case EVP_PKEY_CTRL_MD:
       hctx->md = p2;
       break;
-
-    case EVP_PKEY_CTRL_HMAC_DIGESTINIT: {
-      // |HMAC_PKEY_CTX| is newly allocated by |EVP_DigestSignInit| at this
-      // point. The actual key data is stored in |ctx->pkey| as a |CBB| pointer.
-      const CBB *key = ctx->pkey->pkey.ptr;
-      if (!HMAC_Init_ex(&hctx->ctx, CBB_data(key), CBB_len(key), hctx->md,
-                        ctx->engine)) {
-        return 0;
-      }
-      return 1;
-    }
     default:
       OPENSSL_PUT_ERROR(EVP, EVP_R_COMMAND_NOT_SUPPORTED);
       return 0;
@@ -212,19 +116,30 @@ DEFINE_METHOD_FUNCTION(EVP_PKEY_METHOD, EVP_PKEY_hmac_pkey_meth) {
   out->init = hmac_init;
   out->copy = hmac_copy;
   out->cleanup = hmac_cleanup;
-  out->keygen = hmac_keygen;  /* keygen */
-  out->sign_init = NULL;      /* sign_init */
-  out->sign = NULL;           /* sign */
-  out->sign_message = NULL;   /* sign_message */
-  out->verify_init = NULL;    /* verify_init */
-  out->verify = NULL;         /* verify */
-  out->verify_message = NULL; /* verify_message */
-  out->verify_recover = NULL; /* verify_recover */
-  out->encrypt = NULL;        /* encrypt */
-  out->decrypt = NULL;        /* decrypt */
-  out->derive = NULL;         /* derive */
-  out->paramgen = NULL;       /* paramgen */
+  out->keygen = NULL;
+  out->sign_init = NULL;
+  out->sign = NULL;
+  out->sign_message = NULL;
+  out->verify_init = NULL;
+  out->verify = NULL;
+  out->verify_message = NULL;
+  out->verify_recover = NULL;
+  out->encrypt = NULL;
+  out->decrypt = NULL;
+  out->derive = NULL;
+  out->paramgen = NULL;
   out->ctrl = hmac_ctrl;
-  out->hmac_init_set_up = hmac_init_set_up;
-  out->hmac_final = hmac_final;
+}
+
+int used_for_hmac(EVP_MD_CTX *ctx) {
+  return ctx->flags == EVP_MD_CTX_HMAC && ctx->pctx != NULL;
+}
+
+HMAC_KEY *HMAC_KEY_init(void) {
+  HMAC_KEY *key = OPENSSL_malloc(sizeof(HMAC_KEY));
+  if (key == NULL) {
+    return NULL;
+  }
+  OPENSSL_memset(key, 0, sizeof(HMAC_KEY));
+  return key;
 }

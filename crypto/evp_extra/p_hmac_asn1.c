@@ -68,11 +68,8 @@ static int hmac_size(OPENSSL_UNUSED const EVP_PKEY *pkey) {
 }
 
 static void hmac_key_free(EVP_PKEY *pkey) {
-  CBB *key = pkey->pkey.ptr;
-  if (key != NULL) {
-    CBB_cleanup(key);
-    OPENSSL_free(key);
-  }
+  HMAC_KEY *key = pkey->pkey.ptr;
+  OPENSSL_free(key);
 }
 
 const EVP_PKEY_ASN1_METHOD hmac_asn1_meth = {

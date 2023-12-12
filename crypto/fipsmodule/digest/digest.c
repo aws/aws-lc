@@ -193,6 +193,9 @@ int EVP_MD_CTX_copy_ex(EVP_MD_CTX *out, const EVP_MD_CTX *in) {
     OPENSSL_memcpy(out->md_data, in->md_data, in->digest->ctx_size);
   }
   out->update = in->update;
+  out->flags = in->flags;
+  // copied |EVP_MD_CTX| should free its newly allocated |EVP_PKEY_CTX|.
+  out->flags &= ~EVP_MD_CTX_FLAG_KEEP_PKEY_CTX;
 
   out->pctx = pctx;
   out->pctx_ops = in->pctx_ops;
@@ -222,14 +225,13 @@ int EVP_MD_CTX_reset(EVP_MD_CTX *ctx) {
 int EVP_DigestInit_ex(EVP_MD_CTX *ctx, const EVP_MD *type, ENGINE *engine) {
   if (ctx->digest != type) {
     ctx->digest = type;
-    if (!(ctx->flags & EVP_MD_CTX_FLAG_NO_INIT_FOR_HMAC)) {
+    if (!used_for_hmac(ctx)) {
       assert(type->ctx_size != 0);
       ctx->update = type->update;
       uint8_t *md_data = OPENSSL_malloc(type->ctx_size);
       if (md_data == NULL) {
         return 0;
       }
-
       OPENSSL_free(ctx->md_data);
       ctx->md_data = md_data;
     }
@@ -238,15 +240,16 @@ int EVP_DigestInit_ex(EVP_MD_CTX *ctx, const EVP_MD *type, ENGINE *engine) {
   assert(ctx->pctx == NULL || ctx->pctx_ops != NULL);
 
   if (used_for_hmac(ctx)) {
-    // These configurations are specific to |EVP_PKEY_HMAC| through
-    // |EVP_DigestSignInit|.
-    if (!EVP_PKEY_CTX_ctrl(ctx->pctx, -1, EVP_PKEY_OP_TYPE_SIG,
-                           EVP_PKEY_CTRL_HMAC_DIGESTINIT, 0, ctx)) {
+    // These configurations are specific to |EVP_PKEY_HMAC|. |HMAC_PKEY_CTX| is
+    // newly allocated by |EVP_DigestSignInit| at this point. The actual key
+    // data is stored in |ctx->pkey| as |HMAC_KEY|.
+    const HMAC_KEY *key = ctx->pctx->pkey->pkey.ptr;
+    HMAC_PKEY_CTX *hmac_pctx = ctx->pctx->data;
+    if (!HMAC_Init_ex(&hmac_pctx->ctx, key->key, key->key_len, hmac_pctx->md,
+                      ctx->pctx->engine)) {
       return 0;
     }
-    if (ctx->flags & EVP_MD_CTX_FLAG_NO_INIT_FOR_HMAC) {
-      return 1;
-    }
+    return 1;
   }
 
   ctx->digest->init(ctx);
@@ -259,6 +262,9 @@ int EVP_DigestInit(EVP_MD_CTX *ctx, const EVP_MD *type) {
 }
 
 int EVP_DigestUpdate(EVP_MD_CTX *ctx, const void *data, size_t len) {
+  if (ctx->update == NULL) {
+    return 0;
+  }
   ctx->update(ctx, data, len);
   return 1;
 }

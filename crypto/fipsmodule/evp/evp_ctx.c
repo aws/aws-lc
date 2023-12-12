@@ -468,6 +468,7 @@ int EVP_PKEY_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY **out_pkey) {
       goto end;
     }
   }
+
   if (!ctx->pmeth->keygen(ctx, *out_pkey)) {
     EVP_PKEY_free(*out_pkey);
     *out_pkey = NULL;

@@ -77,10 +77,9 @@ static int uses_prehash(EVP_MD_CTX *ctx, enum evp_sign_verify_t op) {
                           : (ctx->pctx->pmeth->verify != NULL);
 }
 
-int used_for_hmac(EVP_MD_CTX *ctx) {
-  return ctx->pctx != NULL &&
-         ctx->pctx->pmeth->hmac_init_set_up != NULL &&
-         ctx->pctx->pmeth->hmac_final != NULL;
+static void hmac_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
+  HMAC_PKEY_CTX *hctx = ctx->pctx->data;
+  HMAC_Update(&hctx->ctx, data, count);
 }
 
 static int do_sigver_init(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx,
@@ -99,12 +98,14 @@ static int do_sigver_init(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx,
       return 0;
     }
   } else {
-    if (used_for_hmac(ctx)) {
-      // This is only defined in |EVP_PKEY_HMAC|.
-      if (!ctx->pctx->pmeth->hmac_init_set_up(ctx->pctx, ctx)) {
-        return 0;
-      }
-      ctx->pctx->operation = EVP_PKEY_OP_HMACSIGN;
+    if (pkey->type == EVP_PKEY_HMAC) {
+      // |ctx->update| gets repurposed as a hook to call |HMAC_Update|.
+      // |ctx->update| is normally copied from |mctx->digest->update|, but
+      // |EVP_PKEY_HMAC| has its own definition. We suppress the automatic
+      // setting of |mctx->update| and the rest of its initialization here.
+      ctx->pctx->operation = EVP_PKEY_OP_SIGN;
+      ctx->flags |= EVP_MD_CTX_HMAC;
+      ctx->update = hmac_update;
     } else {
       if (!EVP_PKEY_sign_init(ctx->pctx)) {
         return 0;
@@ -160,6 +161,23 @@ int EVP_DigestVerifyUpdate(EVP_MD_CTX *ctx, const void *data, size_t len) {
   return EVP_DigestUpdate(ctx, data, len);
 }
 
+static int HMAC_DigestFinal_ex(EVP_MD_CTX *ctx, uint8_t *out_sig,
+                        size_t *out_sig_len) {
+  unsigned int mdlen;
+  if (*out_sig_len < EVP_MD_CTX_size(ctx)) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_BUFFER_TOO_SMALL);
+    return 0;
+  }
+
+  HMAC_PKEY_CTX *hctx = ctx->pctx->data;
+  if(!HMAC_Final(&hctx->ctx, out_sig, &mdlen)) {
+    return 0;
+  }
+
+  *out_sig_len = (size_t)mdlen;
+  return 1;
+}
+
 int EVP_DigestSignFinal(EVP_MD_CTX *ctx, uint8_t *out_sig,
                         size_t *out_sig_len) {
   if (!uses_prehash(ctx, evp_sign) && !used_for_hmac(ctx)) {
@@ -169,26 +187,23 @@ int EVP_DigestSignFinal(EVP_MD_CTX *ctx, uint8_t *out_sig,
 
   if (out_sig) {
     EVP_MD_CTX tmp_ctx;
-    int ret;
+    int ret = 0;
     uint8_t md[EVP_MAX_MD_SIZE];
     unsigned int mdlen;
     // We have to avoid the underlying SHA services updating the indicator
     // state, so we lock the state here.
     FIPS_service_indicator_lock_state();
-
     EVP_MD_CTX_init(&tmp_ctx);
-    if (used_for_hmac(ctx)) {
-      // This is only defined in |EVP_PKEY_HMAC|.
-      ret = EVP_MD_CTX_copy_ex(&tmp_ctx, ctx) &&
-            tmp_ctx.pctx->pmeth->hmac_final(tmp_ctx.pctx, out_sig, out_sig_len,
-                                           &tmp_ctx);
-    } else {
-      ret = EVP_MD_CTX_copy_ex(&tmp_ctx, ctx) &&
-            EVP_DigestFinal_ex(&tmp_ctx, md, &mdlen) &&
-            EVP_PKEY_sign(ctx->pctx, out_sig, out_sig_len, md, mdlen);
+    if(EVP_MD_CTX_copy_ex(&tmp_ctx, ctx)) {
+      if (used_for_hmac(ctx)) {
+        ret = HMAC_DigestFinal_ex(&tmp_ctx, out_sig, out_sig_len);
+      } else {
+        ret = EVP_DigestFinal_ex(&tmp_ctx, md, &mdlen) &&
+              EVP_PKEY_sign(ctx->pctx, out_sig, out_sig_len, md, mdlen);
+      }
     }
-    EVP_MD_CTX_cleanup(&tmp_ctx);
 
+    EVP_MD_CTX_cleanup(&tmp_ctx);
     FIPS_service_indicator_unlock_state();
     if (ret > 0) {
       EVP_DigestSign_verify_service_indicator(ctx);
@@ -200,7 +215,8 @@ int EVP_DigestSignFinal(EVP_MD_CTX *ctx, uint8_t *out_sig,
     // crypto is being done.
     if (used_for_hmac(ctx)) {
       // This is only defined in |EVP_PKEY_HMAC|.
-      return ctx->pctx->pmeth->hmac_final(ctx->pctx, out_sig, out_sig_len, ctx);
+      *out_sig_len = EVP_MD_CTX_size(ctx);
+      return 1;
     } else {
       size_t s = EVP_MD_size(ctx->digest);
       return EVP_PKEY_sign(ctx->pctx, out_sig, out_sig_len, NULL, s);

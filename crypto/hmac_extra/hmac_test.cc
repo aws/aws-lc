@@ -90,7 +90,7 @@ static const EVP_MD *GetDigest(const std::string &name) {
   return nullptr;
 }
 
-static bool RunHMACTestEVP(const std::vector<uint8_t> &key,
+static void RunHMACTestEVP(const std::vector<uint8_t> &key,
                            const std::vector<uint8_t> &msg,
                            const std::vector<uint8_t> &tag, const EVP_MD *md) {
   bssl::UniquePtr<EVP_PKEY> pkey(
@@ -100,13 +100,13 @@ static bool RunHMACTestEVP(const std::vector<uint8_t> &key,
   bssl::ScopedEVP_MD_CTX copy, mctx;
   size_t len;
   std::vector<uint8_t> actual;
-  EXPECT_TRUE(EVP_DigestSignInit(mctx.get(), nullptr, md, nullptr, pkey.get()));
+  ASSERT_TRUE(EVP_DigestSignInit(mctx.get(), nullptr, md, nullptr, pkey.get()));
   // Make a copy we can test against later.
-  EXPECT_TRUE(EVP_MD_CTX_copy_ex(copy.get(), mctx.get()));
-  EXPECT_TRUE(EVP_DigestSignUpdate(mctx.get(), msg.data(), msg.size()));
-  EXPECT_TRUE(EVP_DigestSignFinal(mctx.get(), nullptr, &len));
+  ASSERT_TRUE(EVP_MD_CTX_copy_ex(copy.get(), mctx.get()));
+  ASSERT_TRUE(EVP_DigestSignUpdate(mctx.get(), msg.data(), msg.size()));
+  ASSERT_TRUE(EVP_DigestSignFinal(mctx.get(), nullptr, &len));
   actual.resize(len);
-  EXPECT_TRUE(EVP_DigestSignFinal(mctx.get(), actual.data(), &len));
+  ASSERT_TRUE(EVP_DigestSignFinal(mctx.get(), actual.data(), &len));
   actual.resize(len);
   // Wycheproof tests truncate the tags down to |tagSize|. Expected outputs in
   // hmac_tests.txt have the length of the entire tag.
@@ -116,24 +116,24 @@ static bool RunHMACTestEVP(const std::vector<uint8_t> &key,
   // everything.
   len = 0;
   actual.clear();
-  EXPECT_TRUE(EVP_DigestSignUpdate(copy.get(), msg.data(), msg.size()));
-  EXPECT_TRUE(EVP_DigestSignFinal(copy.get(), nullptr, &len));
+  ASSERT_TRUE(EVP_DigestSignUpdate(copy.get(), msg.data(), msg.size()));
+  ASSERT_TRUE(EVP_DigestSignFinal(copy.get(), nullptr, &len));
   actual.resize(len);
-  EXPECT_TRUE(EVP_DigestSignFinal(copy.get(), actual.data(), &len));
+  ASSERT_TRUE(EVP_DigestSignFinal(copy.get(), actual.data(), &len));
   actual.resize(len);
   EXPECT_EQ(Bytes(tag), Bytes(actual.data(), tag.size()));
 
   bssl::ScopedEVP_MD_CTX copy_one_shot, one_shot;
   len = 0;
   actual.clear();
-  EXPECT_TRUE(
+  ASSERT_TRUE(
       EVP_DigestSignInit(one_shot.get(), nullptr, md, nullptr, pkey.get()));
   // Make a copy we can test against later.
-  EXPECT_TRUE(EVP_MD_CTX_copy_ex(copy_one_shot.get(), one_shot.get()));
-  EXPECT_TRUE(
+  ASSERT_TRUE(EVP_MD_CTX_copy_ex(copy_one_shot.get(), one_shot.get()));
+  ASSERT_TRUE(
       EVP_DigestSign(one_shot.get(), nullptr, &len, msg.data(), msg.size()));
   actual.resize(len);
-  EXPECT_TRUE(EVP_DigestSign(one_shot.get(), actual.data(), &len, msg.data(),
+  ASSERT_TRUE(EVP_DigestSign(one_shot.get(), actual.data(), &len, msg.data(),
                              msg.size()));
   actual.resize(len);
   EXPECT_EQ(Bytes(tag), Bytes(actual.data(), tag.size()));
@@ -142,14 +142,13 @@ static bool RunHMACTestEVP(const std::vector<uint8_t> &key,
   // duplicated everything.
   len = 0;
   actual.clear();
-  EXPECT_TRUE(
+  ASSERT_TRUE(
       EVP_DigestSignUpdate(copy_one_shot.get(), msg.data(), msg.size()));
-  EXPECT_TRUE(EVP_DigestSignFinal(copy_one_shot.get(), nullptr, &len));
+  ASSERT_TRUE(EVP_DigestSignFinal(copy_one_shot.get(), nullptr, &len));
   actual.resize(len);
-  EXPECT_TRUE(EVP_DigestSignFinal(copy_one_shot.get(), actual.data(), &len));
+  ASSERT_TRUE(EVP_DigestSignFinal(copy_one_shot.get(), actual.data(), &len));
   actual.resize(len);
   EXPECT_EQ(Bytes(tag), Bytes(actual.data(), tag.size()));
-  return true;
 }
 
 
@@ -215,7 +214,7 @@ TEST(HMACTest, TestVectors) {
     EXPECT_EQ(Bytes(output), Bytes(mac.get(), mac_len));
 
     // Test consuming HMAC through the |EVP_PKEY_HMAC| interface.
-    ASSERT_TRUE(RunHMACTestEVP(key, input, output, digest));
+    RunHMACTestEVP(key, input, output, digest);
   });
 }
 
@@ -246,7 +245,7 @@ static void RunWycheproofTest(const char *path, const EVP_MD *md) {
     EXPECT_EQ(Bytes(out, tag.size()), Bytes(tag));
 
     // Run Wycheproof tests through the |EVP_PKEY_HMAC| interface.
-    EXPECT_TRUE(RunHMACTestEVP(key, msg, tag, md));
+    RunHMACTestEVP(key, msg, tag, md);
   });
 }
 
