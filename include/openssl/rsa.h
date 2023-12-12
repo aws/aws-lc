@@ -60,11 +60,11 @@
 #include <openssl/base.h>
 #include <openssl/crypto.h>
 
-
 #include <openssl/engine.h>
 #include <openssl/ex_data.h>
 #include <openssl/thread.h>
 #include <stdio.h>
+
 #if defined(__cplusplus)
 extern "C" {
 #endif

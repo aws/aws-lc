@@ -25,14 +25,12 @@ int RSA_print(BIO *bio, const RSA *rsa, int indent) {
 
 int RSA_print_fp(FILE *fp, const RSA *rsa, int indent) {
   BIO *bio;
-  int ret;
-
   if ((bio = BIO_new(BIO_s_file())) == NULL) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_BUF_LIB);
     return 0;
   }
   BIO_set_fp(bio, fp, BIO_NOCLOSE);
-  ret = RSA_print(bio, rsa, indent);
+  int ret = RSA_print(bio, rsa, indent);
   BIO_free(bio);
   return ret;
 }

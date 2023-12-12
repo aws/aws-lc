@@ -139,17 +139,14 @@ int DSA_print(BIO *bio, const DSA *dsa, int indent) {
 
 int DSA_print_fp(FILE *fp, const DSA *dsa, int indent) {
   BIO *bio;
-  int ret;
-
   if ((bio = BIO_new(BIO_s_file())) == NULL) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_BUF_LIB);
     return 0;
   }
   BIO_set_fp(bio, fp, BIO_NOCLOSE);
-  ret = DSA_print(bio, dsa, indent);
+  int ret = DSA_print(bio, dsa, indent);
   BIO_free(bio);
   return ret;
-
 }
 
 int DSA_up_ref(DSA *dsa) {
