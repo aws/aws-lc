@@ -142,8 +142,9 @@ OPENSSL_EXPORT int EVP_PKEY_type(int nid);
 
 // EVP_MD_get0_name returns the short name of |md|
 OPENSSL_EXPORT const char *EVP_MD_get0_name(const EVP_MD *md);
-#define EVP_MD_name EVP_MD_get0_name
 
+// EVP_MD_name calls |EVP_MD_get0_name|
+OPENSSL_EXPORT const char *EVP_MD_name(const EVP_MD *md);
 
 // Getting and setting concrete public key types.
 //
@@ -952,7 +953,9 @@ OPENSSL_EXPORT void *EVP_PKEY_get0(const EVP_PKEY *pkey);
 // associated with |md| and RSA. This does not return all potential signing
 // algorithms that could work with |md| and should not be used.
 OPENSSL_EXPORT int EVP_MD_get_pkey_type(const EVP_MD *md);
-#define EVP_MD_pkey_type EVP_MD_get_pkey_type
+
+// EVP_MD_pkey_type calls |EVP_MD_get_pkey_type|.
+OPENSSL_EXPORT int EVP_MD_pkey_type(const EVP_MD *md);
 
 
 // OpenSSL_add_all_algorithms does nothing.
