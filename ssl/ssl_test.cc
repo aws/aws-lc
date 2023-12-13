@@ -6541,6 +6541,18 @@ TEST_P(SSLVersionTest, SSLPendingEx) {
   ASSERT_EQ(buf_len, (size_t)2);
   EXPECT_EQ(3, SSL_pending(client_.get()));
   EXPECT_EQ(1, SSL_has_pending(client_.get()));
+
+  // 0-sized IO with valid inputs should succeed but not read/write nor effect
+  // buffer state. However, NULL |read_bytes|/|written| pointer should fail.
+  const int client_pending = SSL_pending(client_.get());
+  ASSERT_EQ(1, SSL_read_ex(client_.get(), (void *)"", 0, &buf_len));
+  ASSERT_EQ(0UL, buf_len);
+  ASSERT_EQ(client_pending, SSL_pending(client_.get()));
+  ASSERT_EQ(1, SSL_write_ex(client_.get(), (void *)"", 0, &buf_len));
+  ASSERT_EQ(0UL, buf_len);
+  ASSERT_EQ(client_pending, SSL_pending(client_.get()));
+  ASSERT_EQ(0, SSL_read_ex(client_.get(), (void *)"", 0, nullptr));
+  ASSERT_EQ(0, SSL_write_ex(client_.get(), (void *)"", 0, nullptr));
 }
 
 // Test that post-handshake tickets consumed by |SSL_shutdown| are ignored.
