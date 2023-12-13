@@ -2628,6 +2628,9 @@ bool Speed(const std::vector<std::string> &args) {
        !SpeedECMUL(selected) ||
        // OpenSSL 1.0 doesn't support Scrypt
        !SpeedScrypt(selected) ||
+#endif
+#if (!defined(OPENSSL_1_0_BENCHMARK) && !defined(BORINGSSL_BENCHMARK) && !defined(OPENSSL_IS_AWSLC)) || AWSLC_API_VERSION >= 24
+        // BoringSSL doesn't support ChaCha, OpenSSL 1.0 doesn't support ChaCha, only AWS-LC after API verison 24
        !SpeedEvpCipherGeneric(EVP_chacha20_poly1305(), "EVP-ChaCha20-Poly1305", kTLSADLen, selected) ||
 #endif
 #if (!defined(OPENSSL_1_0_BENCHMARK) && !defined(BORINGSSL_BENCHMARK) && !defined(OPENSSL_IS_AWSLC)) || AWSLC_API_VERSION >= 22
