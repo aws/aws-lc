@@ -108,9 +108,7 @@ See [this document](./crypto/fipsmodule/FIPS.md) for more information.
 ### Tier 2
 
 Tier 2 platforms are those that are built and tested on a regular basis, but
-possibly not as part of the AWS-LC CI. These targets are built
-and/or tested in the
-[CI for aws-lc-rs](https://github.com/aws/aws-lc-rs/blob/main/.github/workflows/ci.yml).
+the testing may not be as extensive or as frequent as Tier 1.
 If the build or tests for one of these targets is found to
 be broken, we quickly prioritize the fix.
 
@@ -124,7 +122,7 @@ be broken, we quickly prioritize the fix.
 | Linux   | ppc64le | [2]   |
 | Linux   | riscv64 | [2]   |
 
-(1) Tested in AWS-LC CI.<br>
+(1) Tested in AWS-LC CI and [aws-lc-rs CI](https://github.com/aws/aws-lc-rs/blob/main/.github/workflows/ci.yml).<br>
 (2) Tested in aws-lc-rs CI.<br>
 
 ### Tier 3
