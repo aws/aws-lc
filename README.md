@@ -116,20 +116,23 @@ be broken, we quickly prioritize the fix.
 
 | OS      | CPU     | Notes |
 |---------|---------|-------|
-| Linux   | arm32   | [1]   |
-| Linux   | ppc64le | [1]   |
-| Linux   | riscv64 | [1]   |
+| Android | arm32   | [2]   |
 | iOS     | aarch64 | [2]   |
-| Android | arm32   | [1]   |
+| Linux   | arm32   | [2]   |
+| Linux   | ppc     | [1]   |
+| Linux   | ppc64   | [1]   |
+| Linux   | ppc64le | [2]   |
+| Linux   | riscv64 | [2]   |
 
-(1) Tested in aws-lc-rs CI.<br>
-(2) Built in aws-lc-rs CI.
+(1) Tested in AWS-LC CI.<br>
+(2) Tested in aws-lc-rs CI.<br>
 
 ### Tier 3
 
 Tier 3 platforms are those that our team or our community have put in effort to support.
-The build and/or tests for these platforms will possibly fail. Contributions
-that improve our support for these platforms are appreciated.
+The build and/or tests for these platforms will possibly fail. Testing of these platforms 
+might only occur occasionally or when problems are reported. Contributions that improve 
+our support for these platforms are appreciated.
 
 | OS      | CPU         | Notes                                                     |
 |---------|-------------|-----------------------------------------------------------|
