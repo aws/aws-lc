@@ -141,7 +141,9 @@ const EVP_CIPHER *EVP_get_cipherbyname(const char *name) {
   for(size_t i = 0; i < OPENSSL_ARRAY_SIZE(kCipherAliases); i++) {
     if (OPENSSL_strcasecmp(name, kCipherAliases[i].alias) == 0) {
       name = kCipherAliases[i].name;
-      return get_cipherbyname(name);
+      const EVP_CIPHER * cipher = get_cipherbyname(name);
+      assert(cipher != NULL);
+      return cipher;
     }
   }
 
