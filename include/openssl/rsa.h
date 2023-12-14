@@ -696,7 +696,7 @@ OPENSSL_EXPORT int RSA_padding_add_PKCS1_OAEP(uint8_t *to, size_t to_len,
 // on success or zero otherwise.
 OPENSSL_EXPORT int RSA_print(BIO *bio, const RSA *rsa, int indent);
 
-// RSA_print prints a textual representation of |rsa| to |fp|. It returns one
+// RSA_print_fp prints a textual representation of |rsa| to |fp|. It returns one
 // on success or zero otherwise.
 OPENSSL_EXPORT int RSA_print_fp(FILE *fp, const RSA *rsa, int indent);
 
