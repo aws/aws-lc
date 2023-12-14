@@ -57,9 +57,9 @@
 
 #include <openssl/err.h>
 
-#include "internal.h"
 #include "../delocate.h"
 #include "../digest/internal.h"
+#include "internal.h"
 
 
 enum evp_sign_verify_t {
@@ -80,6 +80,23 @@ static int uses_prehash(EVP_MD_CTX *ctx, enum evp_sign_verify_t op) {
 static void hmac_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
   HMAC_PKEY_CTX *hctx = ctx->pctx->data;
   HMAC_Update(&hctx->ctx, data, count);
+}
+
+static int HMAC_DigestFinal_ex(EVP_MD_CTX *ctx, uint8_t *out_sig,
+                               size_t *out_sig_len) {
+  unsigned int mdlen;
+  if (*out_sig_len < EVP_MD_CTX_size(ctx)) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_BUFFER_TOO_SMALL);
+    return 0;
+  }
+
+  HMAC_PKEY_CTX *hctx = ctx->pctx->data;
+  if (!HMAC_Final(&hctx->ctx, out_sig, &mdlen)) {
+    return 0;
+  }
+
+  *out_sig_len = (size_t)mdlen;
+  return 1;
 }
 
 static int do_sigver_init(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx,
@@ -153,29 +170,12 @@ int EVP_DigestSignUpdate(EVP_MD_CTX *ctx, const void *data, size_t len) {
 }
 
 int EVP_DigestVerifyUpdate(EVP_MD_CTX *ctx, const void *data, size_t len) {
-  if (!uses_prehash(ctx, evp_verify)) {
+  if (!uses_prehash(ctx, evp_verify) || used_for_hmac(ctx)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
     return 0;
   }
 
   return EVP_DigestUpdate(ctx, data, len);
-}
-
-static int HMAC_DigestFinal_ex(EVP_MD_CTX *ctx, uint8_t *out_sig,
-                        size_t *out_sig_len) {
-  unsigned int mdlen;
-  if (*out_sig_len < EVP_MD_CTX_size(ctx)) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_BUFFER_TOO_SMALL);
-    return 0;
-  }
-
-  HMAC_PKEY_CTX *hctx = ctx->pctx->data;
-  if(!HMAC_Final(&hctx->ctx, out_sig, &mdlen)) {
-    return 0;
-  }
-
-  *out_sig_len = (size_t)mdlen;
-  return 1;
 }
 
 int EVP_DigestSignFinal(EVP_MD_CTX *ctx, uint8_t *out_sig,
@@ -194,7 +194,7 @@ int EVP_DigestSignFinal(EVP_MD_CTX *ctx, uint8_t *out_sig,
     // state, so we lock the state here.
     FIPS_service_indicator_lock_state();
     EVP_MD_CTX_init(&tmp_ctx);
-    if(EVP_MD_CTX_copy_ex(&tmp_ctx, ctx)) {
+    if (EVP_MD_CTX_copy_ex(&tmp_ctx, ctx)) {
       if (used_for_hmac(ctx)) {
         ret = HMAC_DigestFinal_ex(&tmp_ctx, out_sig, out_sig_len);
       } else {
@@ -224,9 +224,8 @@ int EVP_DigestSignFinal(EVP_MD_CTX *ctx, uint8_t *out_sig,
   }
 }
 
-int EVP_DigestVerifyFinal(EVP_MD_CTX *ctx, const uint8_t *sig,
-                          size_t sig_len) {
-  if (!uses_prehash(ctx, evp_verify)) {
+int EVP_DigestVerifyFinal(EVP_MD_CTX *ctx, const uint8_t *sig, size_t sig_len) {
+  if (!uses_prehash(ctx, evp_verify) || used_for_hmac(ctx)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
     return 0;
   }
@@ -246,7 +245,7 @@ int EVP_DigestVerifyFinal(EVP_MD_CTX *ctx, const uint8_t *sig,
   EVP_MD_CTX_cleanup(&tmp_ctx);
 
   FIPS_service_indicator_unlock_state();
-  if(ret > 0) {
+  if (ret > 0) {
     EVP_DigestVerify_verify_service_indicator(ctx);
   }
   return ret;
@@ -262,8 +261,7 @@ int EVP_DigestSign(EVP_MD_CTX *ctx, uint8_t *out_sig, size_t *out_sig_len,
   if (uses_prehash(ctx, evp_sign) || used_for_hmac(ctx)) {
     // If |out_sig| is NULL, the caller is only querying the maximum output
     // length. |data| should only be incorporated in the final call.
-    if (out_sig != NULL &&
-        !EVP_DigestSignUpdate(ctx, data, data_len)) {
+    if (out_sig != NULL && !EVP_DigestSignUpdate(ctx, data, data_len)) {
       goto end;
     }
 
@@ -279,10 +277,10 @@ int EVP_DigestSign(EVP_MD_CTX *ctx, uint8_t *out_sig, size_t *out_sig_len,
   // This is executed when |uses_prehash| is not true, which is the case for
   // Ed25519 and Dilithium.
   ret = ctx->pctx->pmeth->sign_message(ctx->pctx, out_sig, out_sig_len, data,
-                                        data_len);
+                                       data_len);
 end:
   FIPS_service_indicator_unlock_state();
-  if(ret > 0) {
+  if (ret > 0) {
     EVP_DigestSign_verify_service_indicator(ctx);
   }
   return ret;
@@ -295,7 +293,7 @@ int EVP_DigestVerify(EVP_MD_CTX *ctx, const uint8_t *sig, size_t sig_len,
   FIPS_service_indicator_lock_state();
   int ret = 0;
 
-  if (uses_prehash(ctx, evp_verify)) {
+  if (uses_prehash(ctx, evp_verify) && !used_for_hmac(ctx)) {
     ret = EVP_DigestVerifyUpdate(ctx, data, len) &&
           EVP_DigestVerifyFinal(ctx, sig, sig_len);
     goto end;
@@ -312,7 +310,7 @@ int EVP_DigestVerify(EVP_MD_CTX *ctx, const uint8_t *sig, size_t sig_len,
 
 end:
   FIPS_service_indicator_unlock_state();
-  if(ret > 0) {
+  if (ret > 0) {
     EVP_DigestVerify_verify_service_indicator(ctx);
   }
   return ret;
