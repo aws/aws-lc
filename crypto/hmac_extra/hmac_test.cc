@@ -283,3 +283,27 @@ TEST(HMACTest, WycheproofSHA512_256) {
   RunWycheproofTest("third_party/wycheproof_testvectors/hmac_sha512_256_test.txt",
                     EVP_sha512_256());
 }
+
+TEST(HMACTest, EVP_DigestVerify) {
+  bssl::UniquePtr<EVP_PKEY> pkey(
+      EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, nullptr, nullptr, 0));
+  ASSERT_TRUE(pkey);
+
+  bssl::ScopedEVP_MD_CTX mctx;
+  EXPECT_FALSE(EVP_DigestVerifyInit(mctx.get(), nullptr, EVP_sha256(), nullptr,
+                                    pkey.get()));
+  EXPECT_EQ(EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE,
+            ERR_GET_REASON(ERR_get_error()));
+
+  EXPECT_FALSE(EVP_DigestVerifyUpdate(mctx.get(), nullptr, 0));
+  EXPECT_EQ(EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE,
+            ERR_GET_REASON(ERR_get_error()));
+
+  EXPECT_FALSE(EVP_DigestVerifyFinal(mctx.get(), nullptr, 0));
+  EXPECT_EQ(EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE,
+            ERR_GET_REASON(ERR_get_error()));
+
+  EXPECT_FALSE(EVP_DigestVerify(mctx.get(), nullptr, 0, nullptr, 0));
+  EXPECT_EQ(EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE,
+            ERR_GET_REASON(ERR_get_error()));
+}

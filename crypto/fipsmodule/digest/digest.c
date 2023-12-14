@@ -237,10 +237,13 @@ int EVP_DigestInit_ex(EVP_MD_CTX *ctx, const EVP_MD *type, ENGINE *engine) {
   assert(ctx->pctx == NULL || ctx->pctx_ops != NULL);
 
   if (used_for_hmac(ctx)) {
-    assert(ctx->pctx != NULL && ctx->pctx->pkey != NULL);
     // These configurations are specific to |EVP_PKEY_HMAC|. |HMAC_PKEY_CTX| is
     // newly allocated by |EVP_DigestSignInit| at this point. The actual key
     // data is stored in |ctx->pkey| as |HMAC_KEY|.
+    if (ctx->pctx == NULL || ctx->pctx->data == NULL ||
+        ctx->pctx->pkey == NULL || ctx->pctx->pkey->pkey.ptr == NULL) {
+      return 0;
+    }
     const HMAC_KEY *key = ctx->pctx->pkey->pkey.ptr;
     HMAC_PKEY_CTX *hmac_pctx = ctx->pctx->data;
     if (!HMAC_Init_ex(&hmac_pctx->ctx, key->key, key->key_len, hmac_pctx->md,
