@@ -33,9 +33,14 @@
 
 #include "internal.h"
 
-#if !defined(OPENSSL_BENCHMARK)
+#include <openssl/crypto.h>
+#if defined(OPENSSL_IS_AWSLC)
+#include "bssl_bm.h"
+#elif defined(OPENSSL_IS_BORINGSSL)
+#define ORINGSSL_BENCHMARK
 #include "bssl_bm.h"
 #else
+#define OPENSSL_BENCHMARK
 #include "ossl_bm.h"
 #endif
 

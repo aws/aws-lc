@@ -71,7 +71,38 @@ function(build_benchmark target_name install_path)
 
 endfunction()
 
+
+
+if(BENCHMARK_LIBS)
+  set(MY_LIST "item1" "item2" "item3")
+  message(STATUS "MY_LIST ${MY_LIST}")
+  message(STATUS "BENCHMARK_LIBS ${BENCHMARK_LIBS}")
+
+  set(BENCHMARK_LIBS_STR ${BENCHMARK_LIBS} CACHE STRING "Libraries and paths")
+  message(STATUS "BENCHMARK_LIBS_STR ${BENCHMARK_LIBS_STR}")
+
+#  string(REPLACE ";" ";" LIBS_LIST ${BENCHMARK_LIBS_STR})
+#  message(STATUS "LIB_LIST ${LIBS_LIST}")
+  foreach(PAIR IN LISTS BENCHMARK_LIBS_STR)
+    message(STATUS "PAIR ${PAIR}")
+
+    string(REPLACE ":" ";" PAIR_LIST ${PAIR})
+    message(STATUS "PAIR_LIST ${PAIR_LIST}")
+
+    list(LENGTH PAIR_LIST PAIR_LENGTH)
+    if(PAIR_LENGTH EQUAL 2)
+      list(GET PAIR_LIST 0 NAME)
+      list(GET PAIR_LIST 1 INSTALL_PATH)
+      build_benchmark(${NAME} ${INSTALL_PATH})
+    else()
+      message(WARNING "Invalid benchmark pair: ${PAIR}, expected format: 'exectuable_name,/path/to/install/dir")
+    endif()
+  endforeach()
+endif()
+
+## Legacy options to build speed with a particular library. Use -DBENCHMARK_LIBS="name1,/path1;name2,/path2"
 if(AWSLC_INSTALL_DIR)
+  mesage(WARNING "Use of AWSLC_INSTALL_DIR is deprecated, the list option '-DBENCHMARK_LIBS=awslc_bm:/install/path' is recommended")
   build_benchmark(awslc_bm ${AWSLC_INSTALL_DIR})
 endif()
 
@@ -79,18 +110,21 @@ endif()
 # Currently this is the default OpenSSL build we target so the "OPENSSL_1_1_BENCHMARK" flag isn't used,
 # but we include this to maintain uniformity across OpenSSL versions
 if(OPENSSL_1_1_INSTALL_DIR)
+  mesage(WARNING "Use of OPENSSL_1_1_INSTALL_DIR is deprecated, the list option '-DBENCHMARK_LIBS=awslc_bm:/install/path' is recommended")
   build_benchmark(ossl_1_1_bm ${OPENSSL_1_1_INSTALL_DIR})
   target_compile_options(ossl_1_1_bm PUBLIC -DOPENSSL_BENCHMARK -DOPENSSL_1_1_BENCHMARK)
 endif()
 
 # This expects a directory which contains the includes in include/openssl/ and the OpenSSL artifacts in lib/
 if(OPENSSL_1_0_INSTALL_DIR)
+  mesage(WARNING "Use of OPENSSL_1_0_INSTALL_DIR is deprecated, the list option '-DBENCHMARK_LIBS=awslc_bm:/install/path' is recommended")
   build_benchmark(ossl_1_0_bm ${OPENSSL_1_0_INSTALL_DIR})
   target_compile_options(ossl_1_0_bm PUBLIC -DOPENSSL_BENCHMARK -DOPENSSL_1_0_BENCHMARK)
 endif()
 
 # This expects a directory which contains the includes in include/openssl/ and the OpenSSL artifacts in lib/ or lib64/
 if(OPENSSL_3_0_INSTALL_DIR)
+  mesage(WARNING "Use of OPENSSL_3_0_INSTALL_DIR is deprecated, the list option '-DBENCHMARK_LIBS=awslc_bm:/install/path' is recommended")
   build_benchmark(ossl_3_0_bm ${OPENSSL_3_0_INSTALL_DIR})
   target_compile_options(ossl_3_0_bm PUBLIC -DOPENSSL_BENCHMARK -DOPENSSL_3_0_BENCHMARK)
   if(NOT MSVC)
@@ -102,6 +136,7 @@ if(OPENSSL_3_0_INSTALL_DIR)
 endif()
 
 if(BORINGSSL_INSTALL_DIR)
+  mesage(WARNING "Use of BORINGSSL_INSTALL_DIR is deprecated, the list option '-DBENCHMARK_LIBS=awslc_bm:/install/path' is recommended")
   build_benchmark(bssl_bm ${BORINGSSL_INSTALL_DIR})
   target_compile_options(bssl_bm PUBLIC -DBORINGSSL_BENCHMARK)
 endif()
