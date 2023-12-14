@@ -145,6 +145,7 @@ OPENSSL_EXPORT const char *EVP_MD_get0_name(const EVP_MD *md);
 
 // EVP_MD_name calls |EVP_MD_get0_name|
 OPENSSL_EXPORT const char *EVP_MD_name(const EVP_MD *md);
+#define EVP_MD_name EVP_MD_name
 
 // Getting and setting concrete public key types.
 //
@@ -956,7 +957,7 @@ OPENSSL_EXPORT int EVP_MD_get_pkey_type(const EVP_MD *md);
 
 // EVP_MD_pkey_type calls |EVP_MD_get_pkey_type|.
 OPENSSL_EXPORT int EVP_MD_pkey_type(const EVP_MD *md);
-
+#define EVP_MD_pkey_type EVP_MD_pkey_type
 
 // OpenSSL_add_all_algorithms does nothing.
 OPENSSL_EXPORT void OpenSSL_add_all_algorithms(void);
