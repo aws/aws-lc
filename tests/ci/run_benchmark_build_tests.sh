@@ -78,19 +78,19 @@ build_aws_lc_fips
 "${BUILD_ROOT}/tool/bssl" speed -filter RNG
 
 build_aws_lc_fips_2022
-build_openssl openssl_1_0_2_branch
-build_openssl openssl_1_1_1_branch
-build_openssl openssl_3_1_branch
-build_openssl openssl_3_2_branch
-build_openssl openssl_master_branch
+build_openssl $openssl_1_0_2_branch
+build_openssl $openssl_1_1_1_branch
+build_openssl $openssl_3_1_branch
+build_openssl $openssl_3_2_branch
+build_openssl $openssl_master_branch
 
 run_build -DASAN=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBENCHMARK_LIBS="\
-    aws-lc-fips:${install_dir}/aws-lc-fips-2022-11-02;\
-    open102:${install_dir}/openssl-${openssl_1_0_2_branch};\
-    open111:${install_dir}/openssl-${openssl_1_1_1_branch};\
-    open31:${install_dir}/openssl-${openssl_3_1_branch};\
-    open32:${install_dir}/openssl-${openssl_3_2_branch};\
-    openmaster:${install_dir}/openssl-${openssl_master_branch};"
+aws-lc-fips:${install_dir}/aws-lc-fips-2022-11-02;\
+open102:${install_dir}/openssl-${openssl_1_0_2_branch};\
+open111:${install_dir}/openssl-${openssl_1_1_1_branch};\
+open31:${install_dir}/openssl-${openssl_3_1_branch};\
+open32:${install_dir}/openssl-${openssl_3_2_branch};\
+openmaster:${install_dir}/openssl-${openssl_master_branch};"
 "${BUILD_ROOT}/tool/aws-lc-fips" -filter RNG
 "${BUILD_ROOT}/tool/open102" -filter RNG
 "${BUILD_ROOT}/tool/open111" -filter RNG
@@ -98,7 +98,6 @@ run_build -DASAN=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBENCHMARK_LIBS="\
 "${BUILD_ROOT}/tool/open32" -filter RNG
 "${BUILD_ROOT}/tool/openmaster" -filter RNG
 
-build_openssl_1_0
 echo "Testing ossl_bm with OpenSSL 1.0 with the legacy build option"
-run_build -DOPENSSL_1_0_INSTALL_DIR="${install_dir}/openssl-1.0" -DASAN=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo
+run_build -DOPENSSL_1_0_INSTALL_DIR="${install_dir}/openssl-${openssl_1_0_2_branch}" -DASAN=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo
 "${BUILD_ROOT}/tool/ossl_1_0_bm"

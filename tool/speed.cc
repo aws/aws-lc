@@ -41,6 +41,15 @@
 #include "bssl_bm.h"
 #else
 #define OPENSSL_BENCHMARK
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+#define OPENSSL_3_0_BENCHMARK
+#elif OPENSSL_VERSION_NUMBER >= 0x10100000L
+#define OPENSSL_1_1_BENCHMARK
+#elif OPENSSL_VERSION_NUMBER >= 0x10000000L
+#define OPENSSL_1_0_BENCHMARK
+#else
+#error unknown OpenSSL version
+#endif
 #include "ossl_bm.h"
 #endif
 
