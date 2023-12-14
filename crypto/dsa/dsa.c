@@ -138,8 +138,8 @@ int DSA_print(BIO *bio, const DSA *dsa, int indent) {
 
 
 int DSA_print_fp(FILE *fp, const DSA *dsa, int indent) {
-  BIO *bio;
-  if ((bio = BIO_new(BIO_s_file())) == NULL) {
+  BIO *bio = BIO_new(BIO_s_file());
+  if (bio == NULL) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_BUF_LIB);
     return 0;
   }

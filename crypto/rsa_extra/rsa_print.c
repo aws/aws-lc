@@ -24,8 +24,8 @@ int RSA_print(BIO *bio, const RSA *rsa, int indent) {
 }
 
 int RSA_print_fp(FILE *fp, const RSA *rsa, int indent) {
-  BIO *bio;
-  if ((bio = BIO_new(BIO_s_file())) == NULL) {
+  BIO *bio = BIO_new(BIO_s_file());
+  if (bio == NULL) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_BUF_LIB);
     return 0;
   }
