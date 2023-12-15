@@ -832,4 +832,12 @@ TEST(CipherTest, GetCipher) {
   cipher = EVP_get_cipherbyname("3des");
   ASSERT_TRUE(cipher);
   EXPECT_EQ(NID_des_ede3_cbc, EVP_CIPHER_nid(cipher));
+
+  cipher = EVP_get_cipherbyname("aes256");
+  ASSERT_TRUE(cipher);
+  EXPECT_EQ(NID_aes_256_cbc, EVP_CIPHER_nid(cipher));
+
+  cipher = EVP_get_cipherbyname("aes128");
+  ASSERT_TRUE(cipher);
+  EXPECT_EQ(NID_aes_128_cbc, EVP_CIPHER_nid(cipher));
 }
