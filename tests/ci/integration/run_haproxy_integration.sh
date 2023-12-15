@@ -43,7 +43,7 @@ function build_and_test_haproxy() {
 
 # Make script execution idempotent.
 mkdir -p ${SCRATCH_FOLDER}
-rm -rf ${SCRATCH_FOLDER}/*
+rm -rf "${SCRATCH_FOLDER:?}"/*
 cd ${SCRATCH_FOLDER}
 
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER}
@@ -55,8 +55,8 @@ cd haproxy
 aws_lc_build ${SRC_ROOT} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} -DBUILD_SHARED_LIBS=0 -DBUILD_TESTING=0
 build_and_test_haproxy $HAPROXY_SRC
 
-rm -rf ${AWS_LC_INSTALL_FOLDER}/*
-rm -rf ${AWS_LC_BUILD_FOLDER}/*
+rm -rf "${AWS_LC_INSTALL_FOLDER:?}"/*
+rm -rf "${AWS_LC_BUILD_FOLDER:?}"/*
 
 # Test with shared AWS-LC libraries
 aws_lc_build ${SRC_ROOT} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} -DBUILD_SHARED_LIBS=1 -DBUILD_TESTING=0

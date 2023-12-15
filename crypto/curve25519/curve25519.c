@@ -60,15 +60,6 @@ OPENSSL_INLINE int curve25519_s2n_bignum_capable(void) {
 #endif
 }
 
-// Temporarily use separate function for Ed25519. See CryptoAlg-2198.
-OPENSSL_INLINE int ed25519_s2n_bignum_capable(void) {
-#if defined(CURVE25519_S2N_BIGNUM_CAPABLE) && !defined(AWSLC_FIPS)
-  return 1;
-#else
-  return 0;
-#endif
-}
-
 void ed25519_sha512(uint8_t out[SHA512_DIGEST_LENGTH],
   const void *input1, size_t len1, const void *input2, size_t len2,
   const void *input3, size_t len3) {
@@ -101,7 +92,7 @@ void ED25519_keypair_from_seed(uint8_t out_public_key[ED25519_PUBLIC_KEY_LEN],
 
   // Step: rfc8032 5.1.5.[3,4]
   // Compute [az]B and encode public key to a 32 byte octet.
-  if (ed25519_s2n_bignum_capable() == 1) {
+  if (curve25519_s2n_bignum_capable() == 1) {
     ed25519_public_key_from_hashed_seed_s2n_bignum(out_public_key, az);
   } else {
     ed25519_public_key_from_hashed_seed_nohw(out_public_key, az);
@@ -159,7 +150,7 @@ int ED25519_sign(uint8_t out_sig[ED25519_SIGNATURE_LEN],
     ED25519_PRIVATE_KEY_SEED_LEN, message, message_len, NULL, 0);
 
   // Step: rfc8032 5.1.6.[3,5,6,7]
-  if (ed25519_s2n_bignum_capable() == 1) {
+  if (curve25519_s2n_bignum_capable() == 1) {
     ed25519_sign_s2n_bignum(out_sig, r, az,
       private_key + ED25519_PRIVATE_KEY_SEED_LEN, message, message_len);
   } else {
@@ -215,7 +206,7 @@ int ED25519_verify(const uint8_t *message, size_t message_len,
   // Verification works by computing [S]B - [k]A' and comparing against R_expected.
   int res = 0;
   uint8_t R_computed_encoded[32];
-  if (ed25519_s2n_bignum_capable() == 1) {
+  if (curve25519_s2n_bignum_capable() == 1) {
     res = ed25519_verify_s2n_bignum(R_computed_encoded, public_key, R_expected, S,
       message, message_len);
   } else {
