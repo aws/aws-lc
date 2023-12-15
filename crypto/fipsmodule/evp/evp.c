@@ -210,6 +210,31 @@ int EVP_PKEY_id(const EVP_PKEY *pkey) {
   return pkey->type;
 }
 
+int EVP_MD_get_pkey_type(const EVP_MD *md) {
+  if (md) {
+    int sig_nid = 0;
+    if (OBJ_find_sigid_by_algs(&sig_nid, md->type, NID_rsaEncryption)) {
+      return sig_nid;
+    }
+  }
+  return 0;
+}
+
+int EVP_MD_pkey_type(const EVP_MD *md){
+  return EVP_MD_get_pkey_type(md);
+}
+
+const char *EVP_MD_get0_name(const EVP_MD *md) {
+  if (md != NULL) {
+    return OBJ_nid2sn(EVP_MD_nid(md));
+  }
+  return NULL;
+}
+
+const char *EVP_MD_name(const EVP_MD *md) {
+  return EVP_MD_get0_name(md);
+}
+
 extern const EVP_PKEY_ASN1_METHOD *const *AWSLC_non_fips_pkey_evp_asn1_methods(void);
 
 // evp_pkey_asn1_find returns the ASN.1 method table for the given |nid|, which

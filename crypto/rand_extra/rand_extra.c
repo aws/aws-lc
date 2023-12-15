@@ -34,6 +34,10 @@ int RAND_load_file(const char *path, long num) {
   }
 }
 
+int RAND_write_file(const char *file) {
+  return -1;
+}
+
 const char *RAND_file_name(char *buf, size_t num) { return NULL; }
 
 void RAND_add(const void *buf, int num, double entropy) {}
