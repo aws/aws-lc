@@ -1,0 +1,27 @@
+From b4cb0cb3e12575240a1cb6a081e9ec4376d64f42 Mon Sep 17 00:00:00 2001
+From: Justin W Smith <103147162+justsmth@users.noreply.github.com>
+Date: Fri, 8 Dec 2023 09:42:38 -0500
+Subject: [PATCH] Configure check for AES_cbc_encrypt
+
+---
+ configure.ac | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/configure.ac b/configure.ac
+index 4e0dc2de..b215daf3 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -868,8 +868,8 @@ if test "$want_libcrypto" != "no"; then
+ 	#
+ 	AC_CHECK_HEADER(openssl/crypto.h,
+ 	[
+-		AC_CHECK_LIB(crypto, DES_cbc_encrypt)
+-		if test "$ac_cv_lib_crypto_DES_cbc_encrypt" = "yes"; then
++		AC_CHECK_LIB(crypto, AES_cbc_encrypt)
++		if test "$ac_cv_lib_crypto_AES_cbc_encrypt" = "yes"; then
+ 			AC_CHECK_HEADERS(openssl/evp.h)
+ 			#
+ 			# OK, then:
+-- 
+2.39.2 (Apple Git-143)
+
