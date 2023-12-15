@@ -37,7 +37,7 @@
 #if defined(OPENSSL_IS_AWSLC)
 #include "bssl_bm.h"
 #elif defined(OPENSSL_IS_BORINGSSL)
-#define ORINGSSL_BENCHMARK
+#define BORINGSSL_BENCHMARK
 #include "bssl_bm.h"
 #else
 #define OPENSSL_BENCHMARK
