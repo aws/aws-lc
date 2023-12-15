@@ -95,6 +95,9 @@ typedef struct DES_ks {
 OPENSSL_EXPORT void DES_set_key(const DES_cblock *key,
                                 DES_key_schedule *schedule);
 
+// DES_key_sched calls |DES_set_key| and returns 1.
+OPENSSL_EXPORT int DES_key_sched(const DES_cblock *key, DES_key_schedule *schedule);
+
 // DES_set_odd_parity sets the parity bits (the least-significant bits in each
 // byte) of |key| given the other bits in each byte.
 OPENSSL_EXPORT void DES_set_odd_parity(DES_cblock *key);
