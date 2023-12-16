@@ -57,18 +57,6 @@ function build_openssl {
     rm -rf "${scratch_folder}/openssl-${branch}"
 }
 
-#function build_openssl_3_0 {
-#    echo "building OpenSSL 3.0"
-#    git clone --depth 1 --branch "${openssl_3_0_branch}" "${openssl_url}" "${scratch_folder}/openssl-3.0"
-#    pushd "${scratch_folder}/openssl-3.0"
-#    mkdir -p "${install_dir}/openssl-3.0"
-#    ./Configure --prefix="${install_dir}/openssl-3.0" --openssldir="${install_dir}/openssl-3.0" -d
-#    make "-j${NUM_CPU_THREADS}" > /dev/null
-#    make install_sw
-#    popd
-#    rm -rf "${scratch_folder}/openssl-3.0"
-#}
-
 # Building AWS-LC always builds bssl (which includes the speed tool) with the "local" libcrypto. We
 # also support building speed.cc with an "external" aws-lc libcrypto (and openssl). This is useful
 # when we want to compare the performance of a particular FIPS release against mainline if mainline
