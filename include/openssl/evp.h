@@ -62,15 +62,14 @@
 #include <openssl/evp_errors.h>
 #include <openssl/thread.h>
 
-// OpenSSL included digest and cipher functions in this header so we include
-// them for users that still expect that.
-//
-// TODO(fork): clean up callers so that they include what they use.
+// OpenSSL included digest, cipher, and object functions in this header so we
+// include them for users that still expect that.
 #include <openssl/aead.h>
 #include <openssl/base64.h>
 #include <openssl/cipher.h>
 #include <openssl/digest.h>
 #include <openssl/nid.h>
+#include <openssl/objects.h>
 
 #if defined(__cplusplus)
 extern "C" {
@@ -141,6 +140,11 @@ OPENSSL_EXPORT int EVP_PKEY_id(const EVP_PKEY *pkey);
 // otherwise.
 OPENSSL_EXPORT int EVP_PKEY_type(int nid);
 
+// EVP_MD_get0_name returns the short name of |md|
+OPENSSL_EXPORT const char *EVP_MD_get0_name(const EVP_MD *md);
+
+// EVP_MD_name calls |EVP_MD_get0_name|
+OPENSSL_EXPORT const char *EVP_MD_name(const EVP_MD *md);
 
 // Getting and setting concrete public key types.
 //
@@ -945,6 +949,14 @@ OPENSSL_EXPORT int EVP_PKEY_kem_check_key(EVP_PKEY *key);
 // functions instead.
 OPENSSL_EXPORT void *EVP_PKEY_get0(const EVP_PKEY *pkey);
 
+// EVP_MD_get_pkey_type returns the NID of the public key signing algorithm
+// associated with |md| and RSA. This does not return all potential signing
+// algorithms that could work with |md| and should not be used.
+OPENSSL_EXPORT int EVP_MD_get_pkey_type(const EVP_MD *md);
+
+// EVP_MD_pkey_type calls |EVP_MD_get_pkey_type|.
+OPENSSL_EXPORT int EVP_MD_pkey_type(const EVP_MD *md);
+
 // OpenSSL_add_all_algorithms does nothing.
 OPENSSL_EXPORT void OpenSSL_add_all_algorithms(void);
 
@@ -1166,6 +1178,8 @@ OPENSSL_EXPORT int EVP_PKEY_assign(EVP_PKEY *pkey, int type, void *key);
 #if !defined(BORINGSSL_PREFIX)
 #define EVP_PKEY_CTX_set_rsa_oaep_md EVP_PKEY_CTX_set_rsa_oaep_md
 #define EVP_PKEY_CTX_set0_rsa_oaep_label EVP_PKEY_CTX_set0_rsa_oaep_label
+#define EVP_MD_name EVP_MD_name
+#define EVP_MD_pkey_type EVP_MD_pkey_type
 #endif
 
 
