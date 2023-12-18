@@ -33,9 +33,23 @@
 
 #include "internal.h"
 
-#if !defined(OPENSSL_BENCHMARK)
+#include <openssl/crypto.h>
+#if defined(OPENSSL_IS_AWSLC)
+#include "bssl_bm.h"
+#elif defined(OPENSSL_IS_BORINGSSL)
+#define BORINGSSL_BENCHMARK
 #include "bssl_bm.h"
 #else
+#define OPENSSL_BENCHMARK
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+#define OPENSSL_3_0_BENCHMARK
+#elif OPENSSL_VERSION_NUMBER >= 0x10100000L
+#define OPENSSL_1_1_BENCHMARK
+#elif OPENSSL_VERSION_NUMBER >= 0x10000000L
+#define OPENSSL_1_0_BENCHMARK
+#else
+#error unknown OpenSSL version
+#endif
 #include "ossl_bm.h"
 #endif
 
@@ -2628,6 +2642,11 @@ bool Speed(const std::vector<std::string> &args) {
        !SpeedECMUL(selected) ||
        // OpenSSL 1.0 doesn't support Scrypt
        !SpeedScrypt(selected) ||
+#endif
+#if (!defined(OPENSSL_1_0_BENCHMARK) && !defined(BORINGSSL_BENCHMARK) && !defined(OPENSSL_IS_AWSLC)) || AWSLC_API_VERSION >= 24
+        // BoringSSL doesn't support ChaCha through the EVP_CIPHER API,
+        // OpenSSL 1.0 doesn't support ChaCha at all,
+        // AWS-LC only after API version 24
        !SpeedEvpCipherGeneric(EVP_chacha20_poly1305(), "EVP-ChaCha20-Poly1305", kTLSADLen, selected) ||
 #endif
 #if (!defined(OPENSSL_1_0_BENCHMARK) && !defined(BORINGSSL_BENCHMARK) && !defined(OPENSSL_IS_AWSLC)) || AWSLC_API_VERSION >= 22
