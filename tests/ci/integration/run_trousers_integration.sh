@@ -33,7 +33,6 @@ rm -rf "${SCRATCH_FOLDER:?}"/*
 pushd "${SCRATCH_FOLDER}"
 
 function trousers_build() {
-  #git apply "${SCRIPT_DIR}/trousers_patch/aws-lc-trousers.patch"
   sh ./bootstrap.sh
   ./configure --with-gui=none --prefix="${TROUSERS_INSTALL_FOLDER}" --with-openssl="${AWS_LC_INSTALL_FOLDER}"
   make -j "${NUM_CPU_THREADS}"
