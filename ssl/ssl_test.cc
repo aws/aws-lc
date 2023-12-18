@@ -10458,6 +10458,87 @@ TEST(SSLTest, ErrorSyscallAfterCloseNotify) {
   write_failed = false;
 }
 
+// TODO
+TEST(SSLTest, ErrorSyscallAfterEof) {
+  // Make a custom |BIO| where writes fail, but without pushing to the error
+  // queue.
+  bssl::UniquePtr<BIO_METHOD> method(BIO_meth_new(0, nullptr));
+  ASSERT_TRUE(method);
+  BIO_meth_set_create(method.get(), [](BIO *b) -> int {
+    BIO_set_init(b, 1);
+    return 1;
+  });
+  static bool write_failed = false;
+  BIO_meth_set_write(method.get(), [](BIO *, const char *, int) -> int {
+    // Fail the operation and don't add to the error queue.
+    write_failed = true;
+    return -1;
+  });
+  bssl::UniquePtr<BIO> wbio_silent_error(BIO_new(method.get()));
+  ASSERT_TRUE(wbio_silent_error);
+
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx =
+      CreateContextWithTestCertificate(TLS_method());
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(server_ctx);
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                     server_ctx.get()));
+
+  // Replace the write |BIO| with |wbio_silent_error|.
+  SSL_set0_wbio(client.get(), wbio_silent_error.release());
+
+  // Writes should fail. There is nothing in the error queue, so
+  // |SSL_ERROR_SYSCALL| indicates the caller needs to check out-of-band.
+  const uint8_t data[1] = {0};
+  int ret = SSL_write(client.get(), data, sizeof(data));
+  EXPECT_EQ(ret, -1);
+  EXPECT_EQ(SSL_get_error(client.get(), ret), SSL_ERROR_SYSCALL);
+  EXPECT_TRUE(write_failed);
+  write_failed = false;
+
+  // Send a close_notify from the server. It should return 0 because
+  // close_notify was sent, but not received. Confusingly, this is a success
+  // output for |SSL_shutdown|'s API.
+  EXPECT_EQ(SSL_shutdown(server.get()), 0);
+
+  // Read the close_notify on the client.
+  uint8_t buf[1];
+  ret = SSL_read(client.get(), buf, sizeof(buf));
+  EXPECT_EQ(ret, 0);
+  EXPECT_EQ(SSL_get_error(client.get(), ret), SSL_ERROR_ZERO_RETURN);
+
+  // Further calls to |SSL_read| continue to report |SSL_ERROR_ZERO_RETURN|.
+  ret = SSL_read(client.get(), buf, sizeof(buf));
+  EXPECT_EQ(ret, 0);
+  EXPECT_EQ(SSL_get_error(client.get(), ret), SSL_ERROR_ZERO_RETURN);
+
+  // Although the client has seen close_notify, it should continue to report
+  // |SSL_ERROR_SYSCALL| when its writes fail.
+  ret = SSL_write(client.get(), data, sizeof(data));
+  EXPECT_EQ(ret, -1);
+  EXPECT_EQ(SSL_get_error(client.get(), ret), SSL_ERROR_SYSCALL);
+  EXPECT_TRUE(write_failed);
+  write_failed = false;
+
+  // Cause |BIO_write| to fail with a return value of zero instead.
+  // |SSL_get_error| should not misinterpret this as a close_notify.
+  //
+  // This is not actually a correct implementation of |BIO_write|, but the rest
+  // of the code treats zero from |BIO_write| as an error, so ensure it does so
+  // correctly. Fixing https://crbug.com/boringssl/503 will make this case moot.
+  BIO_meth_set_write(method.get(), [](BIO *, const char *, int) -> int {
+    write_failed = true;
+    return 0;
+  });
+  ret = SSL_write(client.get(), data, sizeof(data));
+  EXPECT_EQ(ret, 0);
+  EXPECT_EQ(SSL_get_error(client.get(), ret), SSL_ERROR_SYSCALL);
+  EXPECT_TRUE(write_failed);
+  write_failed = false;
+}
+
 // Test that |SSL_shutdown|, when quiet shutdown is enabled, simulates receiving
 // a close_notify, down to |SSL_read| reporting |SSL_ERROR_ZERO_RETURN|.
 TEST(SSLTest, QuietShutdown) {

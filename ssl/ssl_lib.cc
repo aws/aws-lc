@@ -1382,8 +1382,12 @@ int SSL_get_error(const SSL *ssl, int ret_code) {
     return SSL_ERROR_SSL;
   }
 
-  if (ret_code == 0 && ssl->s3->rwstate == SSL_ERROR_ZERO_RETURN) {
-    return SSL_ERROR_ZERO_RETURN;
+  if (ret_code == 0) {
+    if (ssl->s3->rwstate == SSL_ERROR_ZERO_RETURN) {
+      return SSL_ERROR_ZERO_RETURN;
+    }
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_EOF_WHILE_READING);
+    return SSL_ERROR_SSL;
   }
 
   switch (ssl->s3->rwstate) {

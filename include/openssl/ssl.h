@@ -570,9 +570,7 @@ OPENSSL_EXPORT int SSL_get_error(const SSL *ssl, int ret_code);
 
 // SSL_ERROR_SYSCALL indicates the operation failed externally to the library.
 // The caller should consult the system-specific error mechanism. This is
-// typically |errno| but may be something custom if using a custom |BIO|. It
-// may also be signaled if the transport returned EOF, in which case the
-// operation's return value will be zero.
+// typically |errno| but may be something custom if using a custom |BIO|.
 #define SSL_ERROR_SYSCALL 5
 
 // SSL_ERROR_ZERO_RETURN indicates the operation failed because the connection
@@ -6189,5 +6187,6 @@ BSSL_NAMESPACE_END
 #define SSL_R_TLSV1_ALERT_CERTIFICATE_REQUIRED 1116
 #define SSL_R_TLSV1_ALERT_NO_APPLICATION_PROTOCOL 1120
 #define SSL_R_TLSV1_ALERT_ECH_REQUIRED 1121
+#define SSL_R_UNEXPECTED_EOF_WHILE_READING 1122
 
 #endif  // OPENSSL_HEADER_SSL_H
