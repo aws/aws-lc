@@ -23,5 +23,6 @@ The following changes were made to the source code in `pqcrystals_kyber_ref_comm
 * `kem.c`: calls to `randombytes` function is replaced with calls to `pq_custom_randombytes` and the appropriate header file is included (`crypto/rand_extra/pq_custom_randombytes.h`).
 * `symmetric-shake.c`: unnecessary include of `fips202.h` is removed.
 * `api.h`, `fips202.h`, `params.h`: modified [in this PR](https://github.com/aws/aws-lc/pull/655) to support our [prefixed symbols build](https://github.com/aws/aws-lc/blob/main/BUILDING.md#building-with-prefixed-symbols).
+* `poly.c` was modified to remove 2 lines of comment from [this commit](https://github.com/pq-crystals/kyber/commit/dda29cc63af721981ee2c831cf00822e69be3220)
 
 **Usage.** The KEM API is defined and documented in `include/openssl/evp.h`. To see examples of how to use any KEM, including Kyber, see `crypto/kem/README.md`.
