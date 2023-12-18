@@ -41,7 +41,7 @@ jobs:
     steps:
       - name: Install OS Dependencies
         run: |
-          sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make libpcap-dev binutils-dev
+          sudo apt-get update && sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make libpcap-dev binutils-dev
       - uses: actions/checkout@v3
       - name: Run integration build
         run: |
