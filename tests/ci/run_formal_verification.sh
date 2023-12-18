@@ -2,6 +2,7 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 OR ISC
 
+ENTRYDIR=$1
 AWS_LC_DIR=${PWD##*/}
 cd ../
 ROOT=$(pwd)
@@ -16,6 +17,6 @@ git submodule update --init
 # Below is to copy code of **target** aws-lc to 'src' dir.
 rm -rf ./src/* && cp -r "${ROOT}/${AWS_LC_DIR}/"* ./src
 # execute the entry to saw scripts.
-./SAW/scripts/x86_64/docker_entrypoint.sh
+./$ENTRYDIR/docker_entrypoint.sh
 cd ..
 rm -rf aws-lc-verification-build
