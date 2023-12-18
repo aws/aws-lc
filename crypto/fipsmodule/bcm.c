@@ -300,7 +300,7 @@ int BORINGSSL_integrity_test(void) {
 #endif
 
   assert_within(rodata_start, kPrimes, "kPrimes", rodata_end);
-  assert_within(rodata_start, kP256Params, "kP256Params", rodata_end);
+  assert_within(rodata_start, kP256Field, "kP256Field", rodata_end);
   assert_within(rodata_start, kPKCS1SigPrefixes, "kPKCS1SigPrefixes", rodata_end);
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
   assert_not_within(rodata_start, OPENSSL_ia32cap_P, "OPENSSL_ia32cap_P", rodata_end);
