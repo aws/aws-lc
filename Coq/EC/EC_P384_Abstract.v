@@ -2,7 +2,7 @@
 SPDX-License-Identifier: Apache-2.0 *)
 
 (* Generalized low-level specification for NIST prime curve arithmetic. These functions
-are equivalent to the functions extracted from Crypto, and the following changes are made:
+are equivalent to the functions extracted from Cryptol, and the following changes are made:
 * Operations using Cryptol sequences are replaced with equivalent operations on vectors. 
 * Vectors are replaced with lists in situations where a list is more natural (e.g. folding 
   over a list).
@@ -33,7 +33,7 @@ From CryptolToCoq Require Import SAWCorePreludeExtra.
 From CryptolToCoq Require Import SAWCoreBitvectors.
 From CryptolToCoq Require Import Everything.
 
-
+From EC Require Import WindowedMulMachine.
 From EC Require Import CryptolToCoq_equiv.
 From EC Require Import EC_P384_5.
 
@@ -438,7 +438,672 @@ Section PointMul.
     rewrite <- double_add_body_abstract_equiv.
     reflexivity.
 
+    Local Transparent fold_left.
+
   Qed.
+
+  Section PointMulBase.
+
+    Definition double_add_base := double_add_base felem_sqr felem_mul felem_sub felem_add felem_opp.
+    Definition point_mul_base := point_mul_base felem_sqr felem_mul felem_sub felem_add felem_opp.
+    Definition point_double := point_double felem_sqr felem_mul felem_sub felem_add.
+    Definition add_base := add_base felem_sqr felem_mul felem_sub felem_add felem_opp.
+
+    Definition affine_point := Vector.t felem 2.
+
+    Local Transparent p384_g_pre_comp.
+    Variable base_precomp_table : list (list affine_point).
+    Hypothesis base_precomp_table_eq : 
+      Forall2 (fun x y => x = to_list y) base_precomp_table (to_list p384_g_pre_comp).
+
+    Theorem base_precomp_table_length :
+      List.length base_precomp_table = 20%nat.
+
+      intros.
+      erewrite Forall2_length; eauto.
+      apply length_to_list.
+
+    Qed.
+
+    Theorem base_precomp_table_nth_eq : forall i1 def1,
+      (i1 < 20)%nat ->
+      nth i1 base_precomp_table def1 = 
+      to_list (@sawAt  _ _ _ p384_g_pre_comp i1).
+
+      intros.
+      erewrite sawAt_nth_equiv.
+      eapply (@Forall2_nth_lt _ _ _ _ _ base_precomp_table_eq).
+      rewrite base_precomp_table_length.
+      trivial.
+      trivial.
+
+    Qed.
+
+    Import VectorNotations. 
+  
+    Definition select_point_affine_abstract x t :=
+      fold_left
+      (fun acc p =>
+       select_point_affine_loop_body x acc (fst p) (snd p))
+      (combine (toN_excl_bv 64%nat (length t)) t) (of_list [zero_felem; zero_felem]).
+
+    Theorem zip_equiv : forall (A B : Type)(inha : Inhabited A)(inhb : Inhabited B) n (va : Vector.t A n)(vb : Vector.t B n),
+      EC_P384_5.zip n A B va vb = zip n va vb.
+
+      intros.
+      reflexivity.
+
+    Qed.
+
+    Theorem select_point_affine_abstract_equiv : forall x t,
+      select_point_affine x t = select_point_affine_abstract x (to_list t).
+
+      intros.
+      unfold select_point_affine.
+      unfold select_point_affine_abstract.
+      rewrite ecFoldl_foldl_equiv.
+      match goal with
+      | [|- fold_left ?f1 ?l1?a1 = fold_left ?f2 ?l2 ?a2] =>
+        replace l1 with l2
+      end.
+      reflexivity.
+      rewrite length_to_list.
+      rewrite zip_equiv.
+      rewrite toList_zip_equiv.
+      reflexivity.
+
+    Qed.
+  
+    Theorem zero_lt_two: (0 < 2)%nat.
+      intuition eauto.
+    Qed.
+
+    Theorem one_lt_two : (1 < 2)%nat.
+      intuition eauto.
+    Qed.
+
+    Definition add_base_abstract one pred_wsize (rnaf : list (Vector.t bool 16))(p : point)(j : nat) : point :=
+      let window  := nth j rnaf (vecRepeat false 16) in
+      let selected   := select_point_affine_abstract (sign_extend_16_64 (bvSShr _ (bvAdd _ (shiftR _ _ false window 15) (bvXor _ window (bvSShr _ window 15%nat))) 1%nat)) (nth (Nat.div j pred_wsize) base_precomp_table nil) in
+      let x_coord   :=nth_order  selected zero_lt_two in
+      let y_coord   :=nth_order  selected one_lt_two in
+      point_add true p [x_coord; felem_cmovznz (point_id_to_limb (bvShr _ window 15)) y_coord (felem_opp y_coord); one].
+
+    Theorem add_base_abstract_equiv : forall rnaf p i,
+      (bvToNat _ i < 77)%nat -> 
+      add_base_abstract p384_felem_one 4 (to_list rnaf) p (bvToNat _ i) = add_base rnaf p i.
+
+      intros.
+      unfold add_base_abstract, add_base, EC_P384_5.add_base.
+      unfold point_add.
+      f_equal.
+      f_equal.
+      simpl.
+      rewrite (sawAt_nth_order_equiv _ _ zero_lt_two).
+      f_equal.
+      rewrite select_point_affine_abstract_equiv.
+      f_equal.
+      f_equal.
+      f_equal.
+      simpl.
+      unfold ecPlus.
+      simpl.
+      f_equal.
+      erewrite sawAt_nth_equiv.
+      erewrite nth_indep.
+      reflexivity.
+      rewrite length_to_list.
+      trivial.
+      trivial.
+      unfold ecXor.
+      simpl.
+      erewrite sawAt_nth_equiv.
+      erewrite nth_indep.
+      reflexivity.
+      rewrite length_to_list.
+      trivial.
+      trivial.
+      erewrite base_precomp_table_nth_eq.
+      unfold ecDiv.
+      simpl.
+      rewrite bvUDiv_nat_equiv.
+      rewrite bvToNat_bvNat.
+      reflexivity.
+
+      replace (bvToNat 64 (intToBv 64 4)) with 4%nat.
+      destruct (eq_nat_dec (bvToNat 64 i) O).
+      rewrite e.
+      rewrite Nat.div_0_l.
+      eapply (@lt_le_trans _ (2^1)%nat).
+      simpl.
+      lia.
+      apply Nat.pow_le_mono_r.
+      lia.
+      lia.
+      lia.
+
+      eapply lt_le_trans.
+      eapply Nat.div_lt.
+      lia.
+      lia.
+      eapply Nat.lt_le_incl.
+      apply bvToNat_bounds.
+      reflexivity.
+      replace (fst (Nat.divmod (bvToNat 64 i) 3 0 3)) with ((bvToNat 64 i) / 4)%nat.
+      apply Nat.div_lt_upper_bound; intros.
+      lia.
+      simpl.
+      lia.
+      reflexivity.
+
+      f_equal.
+      f_equal.
+      rewrite bvShr_shiftR_equiv.
+      simpl.
+      rewrite sawAt_nth_equiv.
+      erewrite nth_indep.
+      reflexivity.
+      rewrite length_to_list.
+      trivial.
+      trivial.
+
+      Local Opaque shiftR.
+      simpl.
+      erewrite sawAt_nth_order_equiv.
+      f_equal.
+      rewrite select_point_affine_abstract_equiv.
+      unfold ecPlus.
+      simpl.
+      unfold ecXor.
+      simpl.
+      unfold ecZero.
+      rewrite sawAt_nth_equiv.
+      erewrite nth_indep.
+      simpl.
+      f_equal.
+      replace (fst (Nat.divmod (bvToNat 64 i) 3 0 3))%nat with ((bvToNat 64 i) / 4)%nat.
+      rewrite sawAt_nth_equiv.
+      erewrite nth_indep.
+      replace ((ecDiv (bitvector 64) (PIntegralWord 64) i (intToBv 64 4))) with (bvUDiv _ i (intToBv 64 4)).
+      rewrite bvUDiv_nat_equiv.
+      rewrite bvToNat_bvNat.
+      unfold Op_modulez20Uparameterz20Up384zugzuprezucomp.
+      rewrite base_precomp_table_nth_eq.
+      rewrite sawAt_nth_equiv.
+      reflexivity.
+      apply Nat.div_lt_upper_bound; simpl; lia.
+      apply Nat.div_lt_upper_bound; simpl; lia.
+      replace (bvToNat 64 (intToBv 64 4)) with 4%nat.
+      destruct (eq_nat_dec (bvToNat 64 i) O).
+      rewrite e.
+      rewrite Nat.div_0_l.
+      eapply (@lt_le_trans _ (2^1)%nat).
+      simpl.
+      lia.
+      apply Nat.pow_le_mono_r.
+      lia.
+      lia.
+      lia.
+      eapply lt_le_trans.
+      eapply Nat.div_lt.
+      lia.
+      lia.
+      eapply Nat.lt_le_incl.
+      apply bvToNat_bounds.
+
+      reflexivity.
+      reflexivity.
+      erewrite Forall2_length; [idtac | apply base_precomp_table_eq].
+      rewrite length_to_list.
+      apply Nat.div_lt_upper_bound; simpl; lia.
+      replace ((ecDiv (bitvector 64) (PIntegralWord 64) i (intToBv 64 4))) with (bvUDiv _ i (intToBv 64 4)).
+      rewrite bvUDiv_nat_equiv.
+      replace (bvToNat 64 (intToBv 64 4)) with 4%nat.
+      rewrite bvToNat_bvNat.
+      apply Nat.div_lt_upper_bound; simpl; lia.
+      destruct (eq_nat_dec (bvToNat 64 i) O).
+      rewrite e.
+      rewrite Nat.div_0_l.
+      eapply (@lt_le_trans _ (2^1)%nat).
+      simpl.
+      lia.
+      apply Nat.pow_le_mono_r.
+      lia.
+      lia.
+      lia.
+      eapply lt_le_trans.
+      eapply Nat.div_lt.
+      lia.
+      lia.
+      eapply Nat.lt_le_incl.
+      apply bvToNat_bounds.
+  
+      reflexivity.
+      reflexivity.
+      reflexivity.
+      rewrite length_to_list.
+      trivial.
+      trivial.
+      
+      f_equal.
+      simpl.
+      rewrite (sawAt_nth_order_equiv _ _ one_lt_two).
+      f_equal.
+      rewrite select_point_affine_abstract_equiv.
+      replace (fst (Nat.divmod (bvToNat 64 i) 3 0 3))%nat with ((bvToNat 64 i) / 4)%nat.
+      rewrite sawAt_nth_equiv.
+      replace ((ecDiv (bitvector 64) (PIntegralWord 64) i (intToBv 64 4))) with (bvUDiv _ i (intToBv 64 4)).
+      rewrite bvUDiv_nat_equiv.
+      rewrite bvToNat_bvNat.
+      unfold Op_modulez20Uparameterz20Up384zugzuprezucomp.
+      rewrite base_precomp_table_nth_eq.
+      reflexivity.
+
+      apply Nat.div_lt_upper_bound; simpl; lia.
+      replace (bvToNat 64 (intToBv 64 4)) with 4%nat.
+      destruct (eq_nat_dec (bvToNat 64 i) O).
+      rewrite e.
+      rewrite Nat.div_0_l.
+      eapply (@lt_le_trans _ (2^1)%nat).
+      simpl.
+      lia.
+      apply Nat.pow_le_mono_r.
+      lia.
+      lia.
+      lia.
+      eapply lt_le_trans.
+      eapply Nat.div_lt.
+      lia.
+      lia.
+      eapply Nat.lt_le_incl.
+      apply bvToNat_bounds.
+      reflexivity.
+      reflexivity.
+      trivial.
+      reflexivity.
+
+      Unshelve.
+      apply nil.
+
+    Qed.
+
+
+    Import VectorNotations. 
+    
+    Definition b8_114 := CryptolPrimitivesForSAWCore.ecNumber 114%nat _ (CryptolPrimitivesForSAWCore.PLiteralSeqBool 8%nat).
+    Definition b8_110 := CryptolPrimitivesForSAWCore.ecNumber 110%nat _ (CryptolPrimitivesForSAWCore.PLiteralSeqBool 8%nat).
+    Definition b8_104 := CryptolPrimitivesForSAWCore.ecNumber 104%nat _ (CryptolPrimitivesForSAWCore.PLiteralSeqBool 8%nat).
+    Definition b8_101 := CryptolPrimitivesForSAWCore.ecNumber 101%nat _ (CryptolPrimitivesForSAWCore.PLiteralSeqBool 8%nat).
+    Definition b8_99 := CryptolPrimitivesForSAWCore.ecNumber 99%nat _ (CryptolPrimitivesForSAWCore.PLiteralSeqBool 8%nat).
+    Definition b8_98 := CryptolPrimitivesForSAWCore.ecNumber 98%nat _ (CryptolPrimitivesForSAWCore.PLiteralSeqBool 8%nat).
+    Definition b8_97 := CryptolPrimitivesForSAWCore.ecNumber 97%nat _ (CryptolPrimitivesForSAWCore.PLiteralSeqBool 8%nat).
+    Definition b8_32 := CryptolPrimitivesForSAWCore.ecNumber 32%nat _ (CryptolPrimitivesForSAWCore.PLiteralSeqBool 8%nat).
+    Definition b64_4 := CryptolPrimitivesForSAWCore.ecNumber 4%nat _ (CryptolPrimitivesForSAWCore.PLiteralSeqBool 64%nat).
+    Definition b64_3 := CryptolPrimitivesForSAWCore.ecNumber 3%nat _ (CryptolPrimitivesForSAWCore.PLiteralSeqBool 64%nat).
+
+    Definition double_add_base_abstract one (wsize : nat) (nw : nat) rnaf
+      (p : point) 
+      (i : nat) 
+        : point :=
+    let doubled   := if (eq_nat_dec i (pred (pred wsize)))  then p else fold_left (fun x _ => point_double x) (forNats wsize) p  in
+      fold_left (add_base_abstract one (pred wsize) rnaf) (List.rev (lsMultiples nw (pred wsize) i)) doubled.
+
+    Definition p384_g_pre_comp_gen := p384_g_pre_comp.
+    Local Opaque p384_g_pre_comp_gen.
+
+    Definition conditional_subtract_if_even_mixed := 
+      conditional_subtract_if_even_mixed felem_sqr felem_mul felem_sub felem_add felem_opp.
+
+
+    Theorem conditional_subtract_if_even_mixed_eq_compat : forall x1 x2 y1 y2 z1 z2,
+      x1 = x2 ->
+      y1 = y2 ->
+      z1 = z2 ->
+        conditional_subtract_if_even_mixed x1 y1 z1 =  conditional_subtract_if_even_mixed x2 y2 z2.
+
+      intros.
+      subst.
+      reflexivity.
+
+    Qed.
+
+    Definition conditional_subtract_if_even_mixed_abstract p1 n p2 :=
+      if (even (bvToNat 384 n)) then (point_add true p1 (point_opp p2)) else p1.
+
+   Theorem conditional_subtract_if_even_mixed_equiv : forall (p1 : point) n (p2 : point),
+      conditional_subtract_if_even_mixed p1 n p2 = 
+      conditional_subtract_if_even_mixed_abstract p1 n p2.
+
+      intros.
+      unfold conditional_subtract_if_even_mixed_abstract.
+      unfold conditional_subtract_if_even_mixed, EC_P384_5.conditional_subtract_if_even_mixed.
+      unfold felem_cmovznz.
+      simpl.
+      match goal with
+      | [|- context[Vector.cons (if ?a then _ else _) _ ]] =>
+        case_eq a; intros
+      end.
+      unfold ecEq, ecAnd, ecZero, byte_to_limb in H. simpl in H.
+      case_eq (even (bvToNat 384%nat n)); intros.
+      (* both even *)
+      simpl.
+      Local Transparent of_list.
+      apply sawAt_3_equiv.
+
+      (* contradiction *)
+      assert (pred 384 < 384)%nat by lia.
+      erewrite (lsb_0_even _ H1) in H0.
+      discriminate.
+      eapply bvEq_nth_order in H.
+      erewrite (@nth_order_append_eq _ _ 8%nat _ 56%nat) in H.
+      erewrite nth_order_bvAnd_eq in H.
+      erewrite nth_order_drop_eq in H.
+      rewrite H.
+      apply nth_order_0.
+   
+      case_eq (even (bvToNat 384%nat n)); intros.
+      (* contradiction *)
+      simpl in *.
+      unfold ecEq, ecAnd, ecZero, byte_to_limb in H. simpl in H.
+      assert (pred 384 < 384)%nat by lia.
+      erewrite (lsb_1_not_even _ H1) in H0.
+      discriminate.
+      apply bvEq_false_ne in H.
+      destruct H.
+      destruct H.
+      rewrite nth_order_0 in H.
+      destruct (lt_dec x 56).
+      erewrite (@nth_order_append_l_eq _ _ 8%nat _ 56%nat) in H.
+      rewrite nth_order_0 in H.
+      intuition idtac.
+      assert (exists x', x = addNat x' 56)%nat.
+      exists (x - 56)%nat.
+      rewrite addNat_add.
+      lia.
+      destruct H2.
+      subst.
+
+      assert (x1 < 8)%nat.
+      clear H.
+      rewrite addNat_add in x0.
+      lia.
+      erewrite (@nth_order_append_eq _ _ 8%nat _ 56%nat _ _ _ H2) in H. 
+      destruct (lt_dec x1 7)%nat. 
+      erewrite nth_order_bvAnd_l_eq in H.
+      intuition idtac.
+      trivial.
+      assert (x1 = (pred 8))%nat.
+      rewrite addNat_add in x0.
+      lia.
+      subst.
+      erewrite nth_order_bvAnd_eq in H.
+      erewrite nth_order_drop_eq in H.
+      apply Bool.not_false_is_true.
+      eauto.
+
+      (* both odd. *)
+      unfold of_list.
+      apply sawAt_3_equiv.
+
+      Unshelve.
+      rewrite addNat_add.
+      lia.
+      lia.
+      trivial.
+
+    Qed.
+
+    Theorem double_add_base_abstract_equiv : forall x y z,
+      (bvToNat _ z < 4)%nat ->
+      double_add_base_abstract p384_felem_one 5 77 (to_list x) y (bvToNat _ z) = double_add_base x y z.
+
+      intros.
+      unfold double_add_base_abstract, double_add_base, EC_P384_5.double_add_base.
+      unfold ecEq, ecMinus in *.
+
+      match goal with
+      | [|- _ = if ?a then _ else _ ] =>
+        case_eq a; intros
+      end;
+      simpl in H0;
+       replace (bvSub (intToBv 64 4) (intToBv 64 1)) with (intToBv 64 3) in *.
+      apply bvEq_eq in H0.     
+      subst.
+      rewrite ecFoldl_foldl_equiv.
+      replace (bvToNat 64 (intToBv 64 3)) with 3%nat.
+      unfold pred.
+      destruct (Nat.eq_dec 3 3); try lia.
+      eapply (@fold_left_R _ _ _ _ eq (fun x y => x = bvToNat _ y)).
+      reflexivity.
+      simpl.
+      unfold to_list.
+      repeat econstructor.
+      intros.
+      subst.
+      apply add_base_abstract_equiv.
+      eapply In_lsMultiples_if.
+      eapply in_rev; eauto.
+      reflexivity.
+      reflexivity.
+
+      match goal with
+      | [|- _ = if ?a then _ else _ ] =>
+        case_eq a; intros
+      end;
+      simpl in H1;
+      replace (bvSub (intToBv 64 4) (intToBv 64 2)) with (intToBv 64 2) in *.
+      apply bvEq_eq in H1.
+      subst.
+      rewrite ecFoldl_foldl_equiv.
+      replace (bvToNat 64 (intToBv 64 2)) with 2%nat.
+      unfold pred.
+      destruct (Nat.eq_dec 2 3); try lia.
+      eapply (@fold_left_R _ _ _ _ eq (fun x y => x = bvToNat _ y)).
+      rewrite ecFoldl_foldl_equiv.
+      eapply (@fold_left_R _ _ _ _ eq (fun x y => True)).
+      reflexivity.
+      simpl.
+      Local Transparent ecFromTo.
+      unfold ecFromTo.
+      simpl.
+      unfold to_list.
+      repeat econstructor.
+      intros.
+      subst.
+      reflexivity.
+      simpl.
+      unfold to_list.
+      repeat econstructor.
+      intros. 
+      subst.
+      apply add_base_abstract_equiv.
+      eapply In_lsMultiples_if.
+      eapply in_rev; eauto.
+      reflexivity.
+      reflexivity.
+
+      match goal with
+      | [|- _ = if ?a then _ else _ ] =>
+        case_eq a; intros
+      end;
+      simpl in H2;
+      replace (bvSub (intToBv 64 4) (intToBv 64 3)) with (intToBv 64 1) in *.
+      apply bvEq_eq in H2.
+      subst.
+      rewrite ecFoldl_foldl_equiv.
+      replace (bvToNat 64 (intToBv 64 1)) with 1%nat.
+      unfold pred.
+      destruct (Nat.eq_dec 1 3); try lia.
+      eapply (@fold_left_R _ _ _ _ eq (fun x y => x = bvToNat _ y)).
+      rewrite ecFoldl_foldl_equiv.
+      eapply (@fold_left_R _ _ _ _ eq (fun x y => True)).
+      reflexivity.
+      simpl.
+      Local Transparent ecFromTo.
+      unfold ecFromTo.
+      simpl.
+      unfold to_list.
+      repeat econstructor.
+      intros.
+      subst.
+      reflexivity.
+      simpl.
+      unfold to_list.
+      repeat econstructor.
+      intros. 
+      subst.
+      apply add_base_abstract_equiv.
+      eapply In_lsMultiples_if.
+      eapply in_rev; eauto.
+      reflexivity.
+      reflexivity.
+
+      match goal with
+      | [|- _ = if ?a then _ else _ ] =>
+        case_eq a; intros
+      end;
+      simpl in H3;
+      replace (bvSub (intToBv 64 4) (intToBv 64 4)) with (intToBv 64 0) in *.
+      apply bvEq_eq in H3.
+      
+      subst.
+      rewrite ecFoldl_foldl_equiv.
+      replace (bvToNat 64 (intToBv 64 0)) with 0%nat.
+      unfold pred.
+      destruct (Nat.eq_dec 0 3); try lia.
+      eapply (@fold_left_R _ _ _ _ eq (fun x y => x = bvToNat _ y)).
+      rewrite ecFoldl_foldl_equiv.
+      eapply (@fold_left_R _ _ _ _ eq (fun x y => True)).
+      reflexivity.
+      simpl.
+      Local Transparent ecFromTo.
+      unfold ecFromTo.
+      simpl.
+      unfold to_list.
+      repeat econstructor.
+      intros.
+      subst.
+      reflexivity.
+      simpl.
+      unfold to_list.
+      repeat econstructor.
+      intros. 
+      subst.
+      apply add_base_abstract_equiv.
+      eapply In_lsMultiples_if.
+      eapply in_rev; eauto.
+      reflexivity.
+      reflexivity.
+
+      apply bvEq_neq in H0.
+      apply bvEq_neq in H1.
+      apply bvEq_neq in H2.
+      apply bvEq_neq in H3.
+      exfalso.
+
+      assert (bvToNat 64 z <> 0%nat).
+      intuition idtac.
+      eapply H3.
+      rewrite <- (@bvNat_bvToNat _ z).
+      rewrite H4.
+      reflexivity.
+
+      assert (bvToNat 64 z <> 1%nat).
+      intuition idtac.
+      eapply H2.
+      rewrite <- (@bvNat_bvToNat _ z).
+      rewrite H5.
+      reflexivity.
+
+      assert (bvToNat 64 z <> 2%nat).
+      intuition idtac.
+      eapply H1.
+      rewrite <- (@bvNat_bvToNat _ z).
+      rewrite H6.
+      reflexivity.
+
+      assert (bvToNat 64 z <> 3%nat).
+      intuition idtac.
+      eapply H0.
+      rewrite <- (@bvNat_bvToNat _ z).
+      rewrite H7.
+      reflexivity.
+
+      lia.
+
+      reflexivity.
+      reflexivity.
+      reflexivity.
+      reflexivity.
+
+      (* This QED takes a minute or so --- could probably improve this with some induction instead of computation *)
+
+    Qed.
+
+    Variable affine_default : Vec 2 felem.
+
+    Definition affine_g one := Vector.append (nth 0 (nth 0 base_precomp_table nil) affine_default) [one].
+
+    Definition point_mul_base_abstract one (wsize nw : nat)  s :=
+      conditional_subtract_if_even_mixed_abstract 
+      (fold_left
+         (double_add_base_abstract one wsize nw (mul_scalar_rwnaf_abstract wsize (pred (pred (pred nw))) s))
+          (forNats (pred wsize))
+          (replicate 3 (Vec 6 (bitvector 64)) (replicate 6 (bitvector 64) (intToBv 64 0)))
+      ) s (affine_g one).
+
+  Theorem point_mul_base_abstract_equiv : forall s,
+    point_mul_base s = point_mul_base_abstract p384_felem_one 5 77 s.
+    
+    unfold point_mul_base, EC_P384_5.point_mul_base in *.
+    unfold point_mul_base_abstract in *.
+    unfold Op_modulez20Uparameterz20Up384zugzuprezucomp in *.
+    replace (append
+     (sawAt 16 (Vec 2 (Vec 6 (bitvector 64)))
+        (sawAt 20 (Vec 16 (Vec 2 (Vec 6 (bitvector 64)))) p384_g_pre_comp 0) 0)
+     [p384_felem_one]) with (affine_g p384_felem_one) in *.
+    intros.
+    rewrite conditional_subtract_if_even_mixed_equiv.
+
+    rewrite ecFoldl_foldl_equiv.
+    match goal with
+    | [|- conditional_subtract_if_even_mixed_abstract ?a1 ?b ?c = conditional_subtract_if_even_mixed_abstract ?a2 ?b ?c] =>
+      replace a1 with a2
+    end.  
+    reflexivity.
+    eapply (@fold_left_R _ _ _ _ eq (fun x y => x = bvToNat _ y)).
+    reflexivity.
+    simpl.
+    unfold to_list.
+    repeat econstructor.
+    intros. subst.
+    simpl.
+    rewrite <- double_add_base_abstract_equiv.
+    rewrite mul_scalar_rwnaf_equiv.
+    reflexivity.
+    simpl in *.
+    intuition idtac; subst;
+    match goal with
+    | [|- (bvToNat 64 (intToBv 64 3) < 4)%nat ] =>
+      replace (bvToNat 64 (intToBv 64 3))%nat with (3)%nat
+    | [|- (bvToNat 64 (intToBv 64 2) < 4)%nat ] =>
+      replace (bvToNat 64 (intToBv 64 2))%nat with (2)%nat
+    | [|- (bvToNat 64 (intToBv 64 1) < 4)%nat ] =>
+      replace (bvToNat 64 (intToBv 64 1))%nat with (1)%nat
+    | [|- (bvToNat 64 (intToBv 64 0) < 4)%nat ] =>
+      replace (bvToNat 64 (intToBv 64 0))%nat with (0)%nat
+    end; simpl; try lia; try reflexivity.
+
+    unfold affine_g.
+    rewrite base_precomp_table_nth_eq.
+    rewrite (@sawAt_nth_equiv _ _ 16).
+    reflexivity.
+    lia.
+    lia.
+
+  Qed.
+
+  End PointMulBase.
 
 End PointMul.
 
