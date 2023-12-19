@@ -123,31 +123,39 @@ static void RunHMACTestEVP(const std::vector<uint8_t> &key,
   actual.resize(len);
   EXPECT_EQ(Bytes(tag), Bytes(actual.data(), tag.size()));
 
-  bssl::ScopedEVP_MD_CTX copy_one_shot, one_shot;
+  // Test using the one-shot API.
+  mctx.Reset();
+  copy.Reset();
   len = 0;
   actual.clear();
+  ASSERT_TRUE(EVP_DigestSignInit(mctx.get(), nullptr, md, nullptr, pkey.get()));
+  ASSERT_TRUE(EVP_MD_CTX_copy_ex(copy.get(), mctx.get()));
   ASSERT_TRUE(
-      EVP_DigestSignInit(one_shot.get(), nullptr, md, nullptr, pkey.get()));
-  // Make a copy we can test against later.
-  ASSERT_TRUE(EVP_MD_CTX_copy_ex(copy_one_shot.get(), one_shot.get()));
-  ASSERT_TRUE(
-      EVP_DigestSign(one_shot.get(), nullptr, &len, msg.data(), msg.size()));
+      EVP_DigestSign(mctx.get(), nullptr, &len, msg.data(), msg.size()));
   actual.resize(len);
-  ASSERT_TRUE(EVP_DigestSign(one_shot.get(), actual.data(), &len, msg.data(),
-                             msg.size()));
+  ASSERT_TRUE(
+      EVP_DigestSign(mctx.get(), actual.data(), &len, msg.data(), msg.size()));
   actual.resize(len);
   EXPECT_EQ(Bytes(tag), Bytes(actual.data(), tag.size()));
 
-  // Repeat the test with |copy_one_shot|, to check |EVP_MD_CTX_copy_ex|
-  // duplicated everything.
+  // Repeat the test with |copy|, to check |EVP_MD_CTX_copy_ex| duplicated
+  // everything.
   len = 0;
   actual.clear();
-  ASSERT_TRUE(
-      EVP_DigestSignUpdate(copy_one_shot.get(), msg.data(), msg.size()));
-  ASSERT_TRUE(EVP_DigestSignFinal(copy_one_shot.get(), nullptr, &len));
+  ASSERT_TRUE(EVP_DigestSignUpdate(copy.get(), msg.data(), msg.size()));
+  ASSERT_TRUE(EVP_DigestSignFinal(copy.get(), nullptr, &len));
   actual.resize(len);
-  ASSERT_TRUE(EVP_DigestSignFinal(copy_one_shot.get(), actual.data(), &len));
+  ASSERT_TRUE(EVP_DigestSignFinal(copy.get(), actual.data(), &len));
   actual.resize(len);
+  EXPECT_EQ(Bytes(tag), Bytes(actual.data(), tag.size()));
+
+  // Test feeding the input in byte by byte.
+  mctx.Reset();
+  ASSERT_TRUE(EVP_DigestSignInit(mctx.get(), nullptr, md, nullptr, pkey.get()));
+  for (const unsigned char &i : msg) {
+    ASSERT_TRUE(EVP_DigestSignUpdate(mctx.get(), &i, 1));
+  }
+  ASSERT_TRUE(EVP_DigestSignFinal(mctx.get(), actual.data(), &len));
   EXPECT_EQ(Bytes(tag), Bytes(actual.data(), tag.size()));
 }
 
