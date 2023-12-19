@@ -47,15 +47,23 @@ function(go_executable dest package)
       cmake_policy(SET CMP0116 OLD)
     endif()
 
-    set(depfile "${CMAKE_CURRENT_BINARY_DIR}/${dest}.d")
-    add_custom_command(OUTPUT ${dest}
-                       COMMAND ${GO_EXECUTABLE} build
-                               -o ${CMAKE_CURRENT_BINARY_DIR}/${dest} ${package}
-                       COMMAND ${GO_EXECUTABLE} run ${godeps} -format depfile
-                               -target ${target} -pkg ${package} -out ${depfile}
-                       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-                       DEPENDS ${godeps} ${CMAKE_SOURCE_DIR}/go.mod
-                       DEPFILE ${depfile})
+    if(CMAKE_VERSION VERSION_LESS "3.7")
+      add_custom_command(OUTPUT ${dest}
+                         COMMAND ${GO_EXECUTABLE} build
+                         -o ${CMAKE_CURRENT_BINARY_DIR}/${dest} ${package}
+                         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+                         DEPENDS ${CMAKE_SOURCE_DIR}/go.mod)
+    else()
+      set(depfile "${CMAKE_CURRENT_BINARY_DIR}/${dest}.d")
+      add_custom_command(OUTPUT ${dest}
+                         COMMAND ${GO_EXECUTABLE} build
+                         -o ${CMAKE_CURRENT_BINARY_DIR}/${dest} ${package}
+                         COMMAND ${GO_EXECUTABLE} run ${godeps} -format depfile
+                         -target ${target} -pkg ${package} -out ${depfile}
+                         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+                         DEPENDS ${godeps} ${CMAKE_SOURCE_DIR}/go.mod
+                         DEPFILE ${depfile})
+    endif()
   endif()
 endfunction()
 
