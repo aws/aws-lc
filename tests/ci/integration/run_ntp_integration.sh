@@ -45,8 +45,8 @@ mkdir -p "${SCRATCH_FOLDER}"
 rm -rf "${SCRATCH_FOLDER:?}/*"
 cd "${SCRATCH_FOLDER}"
 
-wget "https://www.eecis.udel.edu/~ntp/ntp_spool//ntp4/ntp-4.2/${NTP_VERSION}.tar.gz"
-tar -xzvf "${NTP_VERSION}.tar.gz"
+wget -q "https://www.eecis.udel.edu/~ntp/ntp_spool//ntp4/ntp-4.2/${NTP_VERSION}.tar.gz"
+tar -xzf "${NTP_VERSION}.tar.gz"
 cd "${NTP_VERSION}"
 
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} ${NTP_BUILD_FOLDER}
