@@ -1050,6 +1050,24 @@ int RSA_blinding_on(RSA *rsa, BN_CTX *ctx) {
   return 1;
 }
 
+// ------ WORK IN PROGRESS, DO NOT USE ------
+//
+// Performs several checks on the public component of the given RSA key.
+// Usually, the public component of an RSA key is represented by the pair
+// (n, e) where `n` is the public modulus and `e` is the public exponent.
+// However, some Java software strips the exponent `e` from some RSA keys.
+// We allow checking both standard and stripped keys with this function.
+// This function is a helper function meant to be used only within
+// |wip_do_not_use_rsa_check_key|, do not use it for any other purpose.
+static int rsa_key_check_public_component(const RSA *key) {
+  // The caller ensures `key->n != NULL`.
+  unsigned int n_bits = BN_num_bits(key->n);
+  if (n_bits > 16 * 1024) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_MODULUS_TOO_LARGE);
+    return 0;
+  }
+}
+
 // Performs checks equivalent to those in OpenSSL 1.x versions and 3.x non-FIPS
 // versions of |RSA_check_key|, but also add the ability to process keys with
 // public component only like AWS-LC's |RSA_check_key|.
