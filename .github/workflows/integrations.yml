@@ -56,3 +56,13 @@ jobs:
       - name: Run trousers build
         run: |
           ./tests/ci/integration/run_trousers_integration.sh
+  ntp:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install OS Dependencies
+        run: |
+          sudo apt-get update && sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make
+      - uses: actions/checkout@v3
+      - name: Run ntp build
+        run: |
+          ./tests/ci/integration/run_ntp_integration.sh

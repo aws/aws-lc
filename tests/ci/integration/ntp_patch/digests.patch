@@ -1,0 +1,11 @@
+--- a/tests/libntp/digests.c
++++ b/tests/libntp/digests.c
+@@ -238,7 +238,7 @@
+ void test_Digest_MDC2(void);
+ void test_Digest_MDC2(void)
+ {
+-#ifdef OPENSSL
++#if defined(OPENSSL) && !defined(OPENSSL_NO_MDC2)
+ 	u_char expectedA[MAX_MAC_LEN] =
+ 		{
+ 			0, 0, 0, KEYID_A,
