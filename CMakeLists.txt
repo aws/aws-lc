@@ -944,6 +944,11 @@ if (NOT ${CMAKE_VERSION} VERSION_LESS "3.2")
   set(MAYBE_USES_TERMINAL USES_TERMINAL)
 endif()
 
+# Stuff for C FIPS Build Tools
+if(FIPS)
+  add_subdirectory(util/fipstools/inject_hash)
+endif()
+
 if(BUILD_TESTING)
   if(GO_EXECUTABLE)
     if(FIPS)
