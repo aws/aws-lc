@@ -160,14 +160,6 @@ TEST(BIOTest, CloseFlags) {
   GTEST_SKIP();
 #endif
 
-  // unique_ptr will automatically call fclose on the file descriptior when the
-  // variable goes out of scope, so we need to specify BIO_NOCLOSE close flags
-  // to avoid a double-free condition.
-  struct fclose_deleter {
-    void operator()(FILE *f) const { fclose(f); }
-  };
-  using TempFILE = std::unique_ptr<FILE, fclose_deleter>;
-
   const char *test_str = "test\ntest\ntest\n";
 
   // Assert that CRLF line endings get inserted on write and translated back out
@@ -536,12 +528,7 @@ TEST(BIOTest, Gets) {
       check_bio_gets(bio.get());
     }
 
-    struct fclose_deleter {
-      void operator()(FILE *f) const { fclose(f); }
-    };
-
-    using ScopedFILE = std::unique_ptr<FILE, fclose_deleter>;
-    ScopedFILE file(tmpfile());
+    TempFILE file(tmpfile());
 #if defined(OPENSSL_ANDROID)
     // On Android, when running from an APK, |tmpfile| does not work. See
     // b/36991167#comment8.
