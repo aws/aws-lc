@@ -9,7 +9,7 @@ typedef struct {
     char *name;
 } SectionInfo;
 
-#define LOAD_COMMAND_SEG LC_SEGMENT_64
+#define LC_SEG LC_SEGMENT_64
 #define BIT_MODIFIER 8
 
 typedef struct mach_header_64 MachOHeader;
