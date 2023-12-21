@@ -734,8 +734,8 @@ static bool SpeedAEAD(const EVP_AEAD *aead, const std::string &name,
   const size_t key_len = EVP_AEAD_key_length(aead);
   std::unique_ptr<uint8_t[]> key(new uint8_t[key_len]);
 
+  BM_NAMESPACE::ScopedEVP_AEAD_CTX ctx;
   if (!TimeFunction(&results, [&]() -> bool {
-        BM_NAMESPACE::ScopedEVP_AEAD_CTX ctx;
         return EVP_AEAD_CTX_init_with_direction(
             ctx.get(), aead, key.get(), key_len, EVP_AEAD_DEFAULT_TAG_LENGTH,
             evp_aead_seal);
@@ -1161,6 +1161,24 @@ static bool SpeedHmac(const EVP_MD *md, const std::string &name,
   if (!selected.empty() && name.find(selected) == std::string::npos) {
     return true;
   }
+  TimeResults results;
+  const size_t key_len = EVP_MD_size(md);
+  std::unique_ptr<uint8_t[]> key(new uint8_t[key_len]);
+  BM_memset(key.get(), 0, key_len);
+#if defined(OPENSSL_1_0_BENCHMARK)
+  BM_NAMESPACE::UniquePtr<HMAC_CTX> ctx(new HMAC_CTX);
+  HMAC_CTX_init(ctx.get());
+#else
+  BM_NAMESPACE::UniquePtr<HMAC_CTX> ctx(HMAC_CTX_new());
+#endif
+  if (!TimeFunction(&results, [&]() -> bool {
+        return HMAC_Init_ex(ctx.get(), key.get(), key_len, md, NULL /* ENGINE */);
+      })) {
+    fprintf(stderr, "HMAC_Init_ex failed.\n");
+    ERR_print_errors_fp(stderr);
+    return false;
+  }
+  results.Print(name + " init");
 
   for (size_t chunk_len : g_chunk_lengths) {
     if (!SpeedHmacChunk(md, name, chunk_len)) {
