@@ -1,9 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
+#include <string.h>
 
 #include "inject_hash.h"
+#include "macho_parser.h"
 
 size_t readObject(const char *filename, uint8_t **objectBytes) {
     FILE *file = fopen(filename, "rb");
@@ -46,7 +47,7 @@ int findHash(uint8_t *objectBytes, size_t objectBytesSize, uint8_t* hash, size_t
 
     printf("Hash found at index: %ld\n", ptr - objectBytes);
 
-    return 0;
+    return 1;
 }
 
 int main(int argc, char *argv[]) {
@@ -71,14 +72,16 @@ int main(int argc, char *argv[]) {
             case 'f':
                 apple_flag = 1;
                 break;
+            case '?':
             default:
                 fprintf(stderr, "Usage: %s [-a in-archive] [-o in-object] [-p out-path] [-f apple-flag]\n", argv[0]);
                 exit(EXIT_FAILURE);
         }
     }
 
-    if (out_path == NULL) {
-        fprintf(stderr, "-p (out-path) needs an argument");
+    if ((ar_input == NULL && o_input == NULL) || out_path == NULL) {
+        fprintf(stderr, "Usage: %s [-a in-archive] [-o in-object] [-p out-path] [-f apple-flag]\n", argv[0]);
+        fprintf(stderr, "Note that either the -a or -o option and -p options are required.\n");
         exit(EXIT_FAILURE);
     }
 
@@ -99,28 +102,40 @@ int main(int argc, char *argv[]) {
     };
     uint8_t *objectBytes = NULL;
     size_t objectBytesSize = 0;
-    int ret = 0;
 
     if (ar_input) {
         // Do something with archive input
-    } else if (o_input) {
+    } else {
         objectBytesSize = readObject(o_input, &objectBytes);
         if (objectBytesSize == 0) {
             perror("Error reading file");
             exit(EXIT_FAILURE);
         }
-    } else {
-        fprintf(stderr, "Either -a (archive input) or -o (object input) is required\n");
-        exit(EXIT_FAILURE);
     }
 
-    (void) apple_flag;
+    if (apple_flag == 1) {
+        // Handle Apple
+        MachOFile macho;
+        if (readMachOFile(o_input, &macho)) {
+            printSectionInfo(&macho);
+            freeMachOFile(&macho);
+        } else {
+            perror("Error reading Mach-O file");
+            exit(EXIT_FAILURE);
+        }
+    } else {
+        // Handle Linux
+    }
+
     (void) out_path;
 
     printf("Finding hash...\n");
-    ret = findHash(objectBytes, objectBytesSize, uninitHash, sizeof(uninitHash));
+    if (!findHash(objectBytes, objectBytesSize, uninitHash, sizeof(uninitHash))) {
+        fprintf(stderr, "Error finding hash");
+        exit(EXIT_FAILURE);
+    }
     printf("Done\n");
 
     free(objectBytes);
-    return ret;
+    return EXIT_SUCCESS;
 }
