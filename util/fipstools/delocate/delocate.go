@@ -61,7 +61,7 @@ const (
 
 // represents a unique symbol for an occurrence of OPENSSL_ia32cap_P.
 type cpuCapUniqueSymbol struct {
-	registerName string
+	registerName     string
 	suffixUniqueness string
 }
 
@@ -78,8 +78,8 @@ func (uniqueSymbol cpuCapUniqueSymbol) getx86SymbolReturn() string {
 // uniqueness must be a globally unique integer value.
 func newCpuCapUniqueSymbol(uniqueness int, registerName string) *cpuCapUniqueSymbol {
 	return &cpuCapUniqueSymbol{
-	    registerName: strings.Trim(registerName, "%"), // should work with both AT&T and Intel syntax.
-	    suffixUniqueness: strconv.Itoa(uniqueness),
+		registerName:     strings.Trim(registerName, "%"), // should work with both AT&T and Intel syntax.
+		suffixUniqueness: strconv.Itoa(uniqueness),
 	}
 }
 
@@ -1727,7 +1727,7 @@ func writeAarch64Function(w stringWriter, funcName string, writeContents func(st
 	w.WriteString(".size " + funcName + ", .-" + funcName + "\n")
 }
 
-func transform(w stringWriter, inputs []inputFile) error {
+func transform(w stringWriter, includes []string, inputs []inputFile) error {
 	// symbols contains all defined symbols.
 	symbols := make(map[string]struct{})
 	// localEntrySymbols contains all symbols with a .localentry directive.
@@ -1744,6 +1744,14 @@ func transform(w stringWriter, inputs []inputFile) error {
 
 	// OPENSSL_ia32cap_get will be synthesized by this script.
 	symbols["OPENSSL_ia32cap_get"] = struct{}{}
+
+	for _, include := range includes {
+		relative, err := relativeHeaderIncludePath(include)
+		if err != nil {
+			return err
+		}
+		w.WriteString(fmt.Sprintf("#include <%s>\n", relative))
+	}
 
 	for _, input := range inputs {
 		forEachPath(input.ast.up, func(node *node32) {
@@ -1820,18 +1828,18 @@ func transform(w stringWriter, inputs []inputFile) error {
 	}
 
 	d := &delocation{
-		symbols:             	symbols,
-		localEntrySymbols:   	localEntrySymbols,
-		processor:           	processor,
-		commentIndicator:    	commentIndicator,
-		output:              	w,
-		cpuCapUniqueSymbols:    []*cpuCapUniqueSymbol{},
-		redirectors:         	make(map[string]string),
-		bssAccessorsNeeded:  	make(map[string]string),
-		tocLoaders:          	make(map[string]struct{}),
-		gotExternalsNeeded:  	make(map[string]struct{}),
-		gotOffsetsNeeded:    	make(map[string]struct{}),
-		gotOffOffsetsNeeded: 	make(map[string]struct{}),
+		symbols:             symbols,
+		localEntrySymbols:   localEntrySymbols,
+		processor:           processor,
+		commentIndicator:    commentIndicator,
+		output:              w,
+		cpuCapUniqueSymbols: []*cpuCapUniqueSymbol{},
+		redirectors:         make(map[string]string),
+		bssAccessorsNeeded:  make(map[string]string),
+		tocLoaders:          make(map[string]struct{}),
+		gotExternalsNeeded:  make(map[string]struct{}),
+		gotOffsetsNeeded:    make(map[string]struct{}),
+		gotOffOffsetsNeeded: make(map[string]struct{}),
 	}
 
 	w.WriteString(".text\n")
@@ -2123,6 +2131,21 @@ func includePathFromHeaderFilePath(path string) (string, error) {
 	return "", fmt.Errorf("failed to find 'openssl' path element in header file path %q", path)
 }
 
+// relativeHeaderIncludePath returns the relative header path for usage in #include statements.
+func relativeHeaderIncludePath(path string) (string, error) {
+	dir, err := includePathFromHeaderFilePath(path)
+	if err != nil {
+		return "", err
+	}
+
+	relative, err := filepath.Rel(dir, path)
+	if err != nil {
+		return "", err
+	}
+
+	return relative, nil
+}
+
 func main() {
 	// The .a file, if given, is expected to be an archive of textual
 	// assembly sources. That's odd, but CMake really wants to create
@@ -2148,6 +2171,7 @@ func main() {
 		})
 	}
 
+	var includes []string
 	includePaths := make(map[string]struct{})
 
 	for i, path := range flag.Args() {
@@ -2163,6 +2187,7 @@ func main() {
 				fmt.Fprintf(os.Stderr, "%s\n", err)
 				os.Exit(1)
 			}
+			includes = append(includes, path)
 			includePaths[dir] = struct{}{}
 			continue
 		}
@@ -2188,6 +2213,9 @@ func main() {
 
 		// -E requests only preprocessing.
 		cppCommand = append(cppCommand, "-E")
+
+		// Output ‘#include’ directives in addition to the result of preprocessing.
+		cppCommand = append(cppCommand, "-dI")
 	}
 
 	if err := parseInputs(inputs, cppCommand); err != nil {
@@ -2201,7 +2229,7 @@ func main() {
 	}
 	defer out.Close()
 
-	if err := transform(out, inputs); err != nil {
+	if err := transform(out, includes, inputs); err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err)
 		os.Exit(1)
 	}
@@ -2281,7 +2309,7 @@ func isSynthesized(symbol string, processor processorType) bool {
 
 	// While BORINGSSL_bcm_text_[start,end] are known symbols, on aarch64 we go
 	// through the GOT because adr doesn't have adequate reach.
-	if (processor != aarch64) {
+	if processor != aarch64 {
 		SymbolisSynthesized = SymbolisSynthesized || strings.HasPrefix(symbol, "BORINGSSL_bcm_text_")
 	}
 
@@ -2289,7 +2317,7 @@ func isSynthesized(symbol string, processor processorType) bool {
 }
 
 func isFipsScopeMarkers(symbol string) bool {
-	return	symbol == "BORINGSSL_bcm_text_start" ||
+	return symbol == "BORINGSSL_bcm_text_start" ||
 		symbol == "BORINGSSL_bcm_text_end"
 }
 
