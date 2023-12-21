@@ -566,14 +566,18 @@ TEST(DHTest, RFC7919) {
 
 TEST(DHExpectedTestnputTest, CalculateSharedSecretMatches) {
   // KAT calculated with the following sage math code:
-  // prime=int("0x[prime for 2048 - 8192]", 16) R=Integers(prime) g = R(2)
-  // client_sk =
-  // int("0xABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890",
-  // 16) client_pk = g^client_sk server_sk =
-  // int("0xAABBCCDDEEFF11223344556677889900AABBCCDDEEFF11223344556677889900",
-  // 16) shared_secret = client_pk^server_sk print("client_pk",
-  // format(int(client_pk), '#x')) print("server_sk", format(server_sk, '#x'))
-  // print("expected_ss", format(int(shared_secret), '#x'))
+  // prime = int("0x[prime for field sizes 2048, 3072, 4096, 8192]", 16);
+  // R = Integers(prime);
+  // g = R(2);
+  // client_sk = int("0xABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF"
+  //                 "1234567890", 16);
+  // client_pk = g^client_sk;
+  // server_sk = int("0xAABBCCDDEEFF11223344556677889900AABBCCDDEEFF1122334455"
+  //                 "6677889900", 16);
+  // shared_secret = client_pk^server_sk;
+  // print("client_pk", format(int(client_pk), '#x'));
+  // print("server_sk", format(server_sk, '#x'));
+  // print("expected_ss", format(int(shared_secret), '#x'));
   struct testInput {
     int nid;
     std::vector<uint8_t> client_pk;
