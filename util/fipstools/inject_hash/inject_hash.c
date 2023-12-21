@@ -1,10 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "inject_hash.h"
 
-size_t readFile(const char *filename, unsigned char **objectBytes) {
+size_t readObject(const char *filename, unsigned char **objectBytes) {
     FILE *file = fopen(filename, "rb");
 
     if (file == NULL) {
@@ -48,8 +49,34 @@ int findHash(unsigned char *objectBytes, size_t objectBytesSize, unsigned char* 
     return 0;
 }
 
-int main(void) {
-    const char *filepath = "build/crypto/libcrypto.dylib";
+int main(int argc, char *argv[]) {
+
+    char *ar_input = NULL;
+    char *o_input = NULL;
+    char *out_path = NULL;
+    int apple_flag = 0;
+
+    int opt;
+    while ((opt = getopt(argc, argv, "a:o:p::f")) != -1) {
+        switch(opt) {
+            case 'a':
+                ar_input = optarg;
+                break;
+            case 'o':
+                o_input = optarg;
+                break;
+            case 'p':
+                apple_flag = 1;
+                break;
+            case 'f':
+                out_path = optarg;
+                break;
+            default:
+                fprintf(stderr, "Usage: %s [-a in-archive] [-o in-object] [-p apple] [-f out-path]\n", argv[0]);
+                exit(EXIT_FAILURE);
+        }
+    }
+
     // The below is the real uninitialized hash
     // unsigned char uninitHash[] = {
     //     0xae, 0x2c, 0xea, 0x2a, 0xbd, 0xa6, 0xf3, 0xec, 
@@ -67,16 +94,25 @@ int main(void) {
         0x8c, 0x07, 0x49, 0xb4, 0x65, 0xc5, 0xd3, 0x19,
     };
     unsigned char *objectBytes = NULL;
-    size_t objectBytesSize;
+    size_t objectBytesSize = 0;
     int ret = 0;
 
-    printf("Reading file...\n");
-    objectBytesSize = readFile(filepath, &objectBytes);
-    if (objectBytesSize == 0) {
-        perror("Error reading file");
-        return -1;
+    if (ar_input) {
+        // Do something with archive input
+    } else if (o_input) {
+        // Do something with object input
+        objectBytesSize = readObject(o_input, &objectBytes);
+        if (objectBytesSize == 0) {
+            perror("Error reading file");
+            return -1;
+        }
+    } else {
+        fprintf(stderr, "Either -a (archive input) or -o (object input) is required\n");
+        exit(EXIT_FAILURE);
     }
-    printf("Done\n");
+
+    (void) apple_flag;
+    (void) out_path;
 
     printf("Finding hash...\n");
     ret = findHash(objectBytes, objectBytesSize, uninitHash, sizeof(uninitHash));

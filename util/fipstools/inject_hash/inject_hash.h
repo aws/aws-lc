@@ -4,6 +4,6 @@
 #include <string.h>
 
 
-size_t readFile(const char *filename, unsigned char **objectBytes);
+size_t readObject(const char *filename, unsigned char **objectBytes);
 
 int findHash(unsigned char *objectBytes, size_t objectBytesSize, unsigned char* hash, size_t hashSize);
