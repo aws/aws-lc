@@ -224,8 +224,8 @@ static uint64_t time_now() {
 }
 #endif
 
-#define TIMEOUT_SECONDS_DEFAULT 1
-static uint64_t g_timeout_seconds = TIMEOUT_SECONDS_DEFAULT;
+#define TIMEOUT_MS_DEFAULT 1000
+static uint64_t g_timeout_ms = TIMEOUT_MS_DEFAULT;
 static std::vector<size_t> g_chunk_lengths = {16, 256, 1350, 8192, 16384};
 static std::vector<size_t> g_prime_bit_lengths = {2048, 3072};
 static std::vector<std::string> g_filters = {""};
@@ -238,7 +238,7 @@ static bool TimeFunction(TimeResults *results, std::function<bool()> func) {
   }
   // total_us is the total amount of time that we'll aim to measure a function
   // for.
-  const uint64_t total_us = g_timeout_seconds * 1000000;
+  const uint64_t total_us = g_timeout_ms * 1000;
   uint64_t start = time_now(), now, delta;
 
   if (!func()) {
@@ -2358,9 +2358,9 @@ static bool SpeedDHcheck(std::string selected) {
     return true;
   }
 
-  uint64_t maybe_reset_timeout = g_timeout_seconds;
-  if (g_timeout_seconds == TIMEOUT_SECONDS_DEFAULT) {
-    g_timeout_seconds = 10;
+  uint64_t maybe_reset_timeout = g_timeout_ms;
+  if (g_timeout_ms == TIMEOUT_MS_DEFAULT) {
+    g_timeout_ms = 10000;
   }
 
   for (size_t prime_bit_length : g_prime_bit_lengths) {
@@ -2369,7 +2369,7 @@ static bool SpeedDHcheck(std::string selected) {
     }
   }
 
-  g_timeout_seconds = maybe_reset_timeout;
+  g_timeout_ms = maybe_reset_timeout;
 
   return true;
 }
@@ -2469,6 +2469,11 @@ static const argument_t kArguments[] = {
         "The number of seconds to run each test for (default is 1)",
     },
     {
+        "-timeout_ms",
+        kOptionalArgument,
+        "The number of milliseconds to run each test for (default is 1000)",
+    },
+    {
         "-chunks",
         kOptionalArgument,
         "A comma-separated list of input sizes to run tests at (default is "
@@ -2564,8 +2569,18 @@ bool Speed(const std::vector<std::string> &args) {
     g_print_json = true;
   }
 
+  if (args_map.count("-timeout") != 0 && args_map.count("-timeout_ms") != 0) {
+    puts("'-timeout' and '-timeout_ms' are mutually exclusive");
+    PrintUsage(kArguments);
+    return false;
+  }
+
   if (args_map.count("-timeout") != 0) {
-    g_timeout_seconds = atoi(args_map["-timeout"].c_str());
+    g_timeout_ms = atoi(args_map["-timeout"].c_str()) * 1000;
+  }
+
+  if (args_map.count("-timeout_ms") != 0) {
+    g_timeout_ms = atoi(args_map["-timeout"].c_str());
   }
 
   if (args_map.count("-chunks") != 0) {
