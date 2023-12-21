@@ -37,15 +37,14 @@ int readMachOFile(const char *filename, MachOFile *macho) {
     macho->sections = (SectionInfo *)malloc(macho->numSections * sizeof(SectionInfo));
 
     uint32_t sectionIndex = 0;
-
     for (uint32_t i = 0; i < macho->machHeader.sizeofcmds / BIT_MODIFIER; i += macho->loadCommands[i].cmdsize / BIT_MODIFIER) {
         if (macho->loadCommands[i].cmd == LOAD_COMMAND_SEG) {
             SegmentLoadCommand *segment = (SegmentLoadCommand *)&macho->loadCommands[i];
+            SectionHeader *sections = (SectionHeader *)&segment[1];
             for (uint32_t j = 0; j < segment->nsects; j++) {
-                SectionHeader *section = (SectionHeader *)(file + segment->fileoff) + j;
-                macho->sections[sectionIndex].offset = section->offset;
-                macho->sections[sectionIndex].size = section->size;
-                macho->sections[sectionIndex].name = strdup(section->sectname);
+                macho->sections[sectionIndex].offset = sections[j].offset;
+                macho->sections[sectionIndex].size = sections[j].size;
+                macho->sections[sectionIndex].name = strdup(sections[j].sectname);
                 sectionIndex++;
             }
         }
