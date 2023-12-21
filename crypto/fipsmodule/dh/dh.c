@@ -59,14 +59,14 @@
 #include <string.h>
 
 #include <openssl/bn.h>
-#include <openssl/digest.h>
 #include <openssl/err.h>
+#include <openssl/digest.h>
 #include <openssl/mem.h>
 #include <openssl/thread.h>
 
+#include "internal.h"
 #include "../../internal.h"
 #include "../bn/internal.h"
-#include "internal.h"
 
 
 DH *DH_new(void) {
@@ -143,8 +143,8 @@ void DH_get0_key(const DH *dh, const BIGNUM **out_pub_key,
 }
 
 void DH_clear_flags(DH *dh, int flags) {
-  (void)dh;
-  (void)flags;
+  (void) dh;
+  (void) flags;
 }
 
 int DH_set0_key(DH *dh, BIGNUM *pub_key, BIGNUM *priv_key) {
@@ -175,7 +175,8 @@ void DH_get0_pqg(const DH *dh, const BIGNUM **out_p, const BIGNUM **out_q,
 }
 
 int DH_set0_pqg(DH *dh, BIGNUM *p, BIGNUM *q, BIGNUM *g) {
-  if ((dh->p == NULL && p == NULL) || (dh->g == NULL && g == NULL)) {
+  if ((dh->p == NULL && p == NULL) ||
+      (dh->g == NULL && g == NULL)) {
     return 0;
   }
 
@@ -339,7 +340,8 @@ static int dh_compute_key(DH *dh, BIGNUM *out_shared_key,
 
   if (!BN_mod_exp_mont_consttime(out_shared_key, peers_key, dh->priv_key, dh->p,
                                  ctx, dh->method_mont_p) ||
-      !BN_copy(p_minus_1, dh->p) || !BN_sub_word(p_minus_1, 1)) {
+      !BN_copy(p_minus_1, dh->p) ||
+      !BN_sub_word(p_minus_1, 1)) {
     OPENSSL_PUT_ERROR(DH, ERR_R_BN_LIB);
     goto err;
   }
@@ -353,7 +355,7 @@ static int dh_compute_key(DH *dh, BIGNUM *out_shared_key,
 
   ret = 1;
 
-err:
+ err:
   BN_CTX_end(ctx);
   return ret;
 }
@@ -369,7 +371,8 @@ int dh_compute_key_padded_no_self_test(unsigned char *out,
   int dh_size = DH_size(dh);
   int ret = -1;
   BIGNUM *shared_key = BN_CTX_get(ctx);
-  if (shared_key && dh_compute_key(dh, shared_key, peers_key, ctx) &&
+  if (shared_key &&
+      dh_compute_key(dh, shared_key, peers_key, ctx) &&
       BN_bn2bin_padded(out, dh_size, shared_key)) {
     ret = dh_size;
   }
@@ -416,8 +419,8 @@ int DH_compute_key_hashed(DH *dh, uint8_t *out, size_t *out_len,
     return 0;
   }
 
-  // We have to avoid the underlying |EVP_Digest| services updating the
-  // indicator state, so we lock the state here.
+  // We have to avoid the underlying |EVP_Digest| services updating the indicator
+  // state, so we lock the state here.
   FIPS_service_indicator_lock_state();
 
   int ret = 0;
@@ -440,7 +443,7 @@ int DH_compute_key_hashed(DH *dh, uint8_t *out, size_t *out_len,
   *out_len = digest_len;
   ret = 1;
 
-err:
+ err:
   FIPS_service_indicator_unlock_state();
   OPENSSL_free(shared_bytes);
   return ret;
@@ -470,7 +473,8 @@ static DH *calculate_rfc7919_DH_from_p(const BN_ULONG data[], size_t data_len) {
 
   bn_set_static_words(ffdhe_p, data, data_len);
 
-  if (!BN_rshift1(ffdhe_q, ffdhe_p) || !BN_set_word(ffdhe_g, 2) ||
+  if (!BN_rshift1(ffdhe_q, ffdhe_p) ||
+      !BN_set_word(ffdhe_g, 2) ||
       !DH_set0_pqg(dh, ffdhe_p, ffdhe_q, ffdhe_g)) {
     goto err;
   }
@@ -483,6 +487,7 @@ err:
   BN_free(ffdhe_g);
   DH_free(dh);
   return NULL;
+
 }
 
 DH *DH_get_rfc7919_2048(void) {
@@ -507,82 +512,81 @@ DH *DH_get_rfc7919_2048(void) {
       TOBN(0xadf85458, 0xa2bb4a9a), TOBN(0xffffffff, 0xffffffff),
   };
 
-  return calculate_rfc7919_DH_from_p(kFFDHE2048Data,
-                                     OPENSSL_ARRAY_SIZE(kFFDHE2048Data));
+  return calculate_rfc7919_DH_from_p(kFFDHE2048Data, OPENSSL_ARRAY_SIZE(kFFDHE2048Data));
 }
 
 DH *DH_get_rfc7919_3072(void) {
   // This is the prime from https://tools.ietf.org/html/rfc7919#appendix-A.2,
   // which is specifically approved for FIPS in appendix D of SP 800-56Ar3.
   static const BN_ULONG kFFDHE3072Data[] = {
-      TOBN(0xffffffff, 0xffffffff), TOBN(0x25e41d2b, 0x66c62e37),
-      TOBN(0x3c1b20ee, 0x3fd59d7c), TOBN(0x0abcd06b, 0xfa53ddef),
-      TOBN(0x1dbf9a42, 0xd5c4484e), TOBN(0xabc52197, 0x9b0deada),
-      TOBN(0xe86d2bc5, 0x22363a0d), TOBN(0x5cae82ab, 0x9c9df69e),
-      TOBN(0x64f2e21e, 0x71f54bff), TOBN(0xf4fd4452, 0xe2d74dd3),
-      TOBN(0xb4130c93, 0xbc437944), TOBN(0xaefe1309, 0x85139270),
-      TOBN(0x598cb0fa, 0xc186d91c), TOBN(0x7ad91d26, 0x91f7f7ee),
-      TOBN(0x61b46fc9, 0xd6e6c907), TOBN(0xbc34f4de, 0xf99c0238),
-      TOBN(0xde355b3b, 0x6519035b), TOBN(0x886b4238, 0x611fcfdc),
-      TOBN(0xc6f34a26, 0xc1b2effa), TOBN(0xc58ef183, 0x7d1683b2),
-      TOBN(0x3bb5fcbc, 0x2ec22005), TOBN(0xc3fe3b1b, 0x4c6fad73),
-      TOBN(0x8e4f1232, 0xeef28183), TOBN(0x9172fe9c, 0xe98583ff),
-      TOBN(0xc03404cd, 0x28342f61), TOBN(0x9e02fce1, 0xcdf7e2ec),
-      TOBN(0x0b07a7c8, 0xee0a6d70), TOBN(0xae56ede7, 0x6372bb19),
-      TOBN(0x1d4f42a3, 0xde394df4), TOBN(0xb96adab7, 0x60d7f468),
-      TOBN(0xd108a94b, 0xb2c8e3fb), TOBN(0xbc0ab182, 0xb324fb61),
-      TOBN(0x30acca4f, 0x483a797a), TOBN(0x1df158a1, 0x36ade735),
-      TOBN(0xe2a689da, 0xf3efe872), TOBN(0x984f0c70, 0xe0e68b77),
-      TOBN(0xb557135e, 0x7f57c935), TOBN(0x85636555, 0x3ded1af3),
-      TOBN(0x2433f51f, 0x5f066ed0), TOBN(0xd3df1ed5, 0xd5fd6561),
-      TOBN(0xf681b202, 0xaec4617a), TOBN(0x7d2fe363, 0x630c75d8),
-      TOBN(0xcc939dce, 0x249b3ef9), TOBN(0xa9e13641, 0x146433fb),
-      TOBN(0xd8b9c583, 0xce2d3695), TOBN(0xafdc5620, 0x273d3cf1),
-      TOBN(0xadf85458, 0xa2bb4a9a), TOBN(0xffffffff, 0xffffffff)};
+    TOBN(0xffffffff, 0xffffffff), TOBN(0x25e41d2b, 0x66c62e37),
+    TOBN(0x3c1b20ee, 0x3fd59d7c), TOBN(0x0abcd06b, 0xfa53ddef),
+    TOBN(0x1dbf9a42, 0xd5c4484e), TOBN(0xabc52197, 0x9b0deada),
+    TOBN(0xe86d2bc5, 0x22363a0d), TOBN(0x5cae82ab, 0x9c9df69e),
+    TOBN(0x64f2e21e, 0x71f54bff), TOBN(0xf4fd4452, 0xe2d74dd3),
+    TOBN(0xb4130c93, 0xbc437944), TOBN(0xaefe1309, 0x85139270),
+    TOBN(0x598cb0fa, 0xc186d91c), TOBN(0x7ad91d26, 0x91f7f7ee),
+    TOBN(0x61b46fc9, 0xd6e6c907), TOBN(0xbc34f4de, 0xf99c0238),
+    TOBN(0xde355b3b, 0x6519035b), TOBN(0x886b4238, 0x611fcfdc),
+    TOBN(0xc6f34a26, 0xc1b2effa), TOBN(0xc58ef183, 0x7d1683b2),
+    TOBN(0x3bb5fcbc, 0x2ec22005), TOBN(0xc3fe3b1b, 0x4c6fad73),
+    TOBN(0x8e4f1232, 0xeef28183), TOBN(0x9172fe9c, 0xe98583ff),
+    TOBN(0xc03404cd, 0x28342f61), TOBN(0x9e02fce1, 0xcdf7e2ec),
+    TOBN(0x0b07a7c8, 0xee0a6d70), TOBN(0xae56ede7, 0x6372bb19),
+    TOBN(0x1d4f42a3, 0xde394df4), TOBN(0xb96adab7, 0x60d7f468),
+    TOBN(0xd108a94b, 0xb2c8e3fb), TOBN(0xbc0ab182, 0xb324fb61),
+    TOBN(0x30acca4f, 0x483a797a), TOBN(0x1df158a1, 0x36ade735),
+    TOBN(0xe2a689da, 0xf3efe872), TOBN(0x984f0c70, 0xe0e68b77),
+    TOBN(0xb557135e, 0x7f57c935), TOBN(0x85636555, 0x3ded1af3),
+    TOBN(0x2433f51f, 0x5f066ed0), TOBN(0xd3df1ed5, 0xd5fd6561),
+    TOBN(0xf681b202, 0xaec4617a), TOBN(0x7d2fe363, 0x630c75d8),
+    TOBN(0xcc939dce, 0x249b3ef9), TOBN(0xa9e13641, 0x146433fb),
+    TOBN(0xd8b9c583, 0xce2d3695), TOBN(0xafdc5620, 0x273d3cf1),
+    TOBN(0xadf85458, 0xa2bb4a9a), TOBN(0xffffffff, 0xffffffff)};
 
   return calculate_rfc7919_DH_from_p(kFFDHE3072Data,
                                      OPENSSL_ARRAY_SIZE(kFFDHE3072Data));
 }
 
 DH *DH_get_rfc7919_4096(void) {
-  // This is the prime from https://tools.ietf.org/html/rfc7919#appendix-A.3,
-  // which is specifically approved for FIPS in appendix D of SP 800-56Ar3.
-  static const BN_ULONG kFFDHE4096Data[] = {
-      TOBN(0xFFFFFFFF, 0xFFFFFFFF), TOBN(0xC68A007E, 0x5E655F6A),
-      TOBN(0x4DB5A851, 0xF44182E1), TOBN(0x8EC9B55A, 0x7F88A46B),
-      TOBN(0x0A8291CD, 0xCEC97DCF), TOBN(0x2A4ECEA9, 0xF98D0ACC),
-      TOBN(0x1A1DB93D, 0x7140003C), TOBN(0x092999A3, 0x33CB8B7A),
-      TOBN(0x6DC778F9, 0x71AD0038), TOBN(0xA907600A, 0x918130C4),
-      TOBN(0xED6A1E01, 0x2D9E6832), TOBN(0x7135C886, 0xEFB4318A),
-      TOBN(0x87F55BA5, 0x7E31CC7A), TOBN(0x7763CF1D, 0x55034004),
-      TOBN(0xAC7D5F42, 0xD69F6D18), TOBN(0x7930E9E4, 0xE58857B6),
-      TOBN(0x6E6F52C3, 0x164DF4FB), TOBN(0x25E41D2B, 0x669E1EF1),
-      TOBN(0x3C1B20EE, 0x3FD59D7C), TOBN(0x0ABCD06B, 0xFA53DDEF),
-      TOBN(0x1DBF9A42, 0xD5C4484E), TOBN(0xABC52197, 0x9B0DEADA),
-      TOBN(0xE86D2BC5, 0x22363A0D), TOBN(0x5CAE82AB, 0x9C9DF69E),
-      TOBN(0x64F2E21E, 0x71F54BFF), TOBN(0xF4FD4452, 0xE2D74DD3),
-      TOBN(0xB4130C93, 0xBC437944), TOBN(0xAEFE1309, 0x85139270),
-      TOBN(0x598CB0FA, 0xC186D91C), TOBN(0x7AD91D26, 0x91F7F7EE),
-      TOBN(0x61B46FC9, 0xD6E6C907), TOBN(0xBC34F4DE, 0xF99C0238),
-      TOBN(0xDE355B3B, 0x6519035B), TOBN(0x886B4238, 0x611FCFDC),
-      TOBN(0xC6F34A26, 0xC1B2EFFA), TOBN(0xC58EF183, 0x7D1683B2),
-      TOBN(0x3BB5FCBC, 0x2EC22005), TOBN(0xC3FE3B1B, 0x4C6FAD73),
-      TOBN(0x8E4F1232, 0xEEF28183), TOBN(0x9172FE9C, 0xE98583FF),
-      TOBN(0xC03404CD, 0x28342F61), TOBN(0x9E02FCE1, 0xCDF7E2EC),
-      TOBN(0x0B07A7C8, 0xEE0A6D70), TOBN(0xAE56EDE7, 0x6372BB19),
-      TOBN(0x1D4F42A3, 0xDE394DF4), TOBN(0xB96ADAB7, 0x60D7F468),
-      TOBN(0xD108A94B, 0xB2C8E3FB), TOBN(0xBC0AB182, 0xB324FB61),
-      TOBN(0x30ACCA4F, 0x483A797A), TOBN(0x1DF158A1, 0x36ADE735),
-      TOBN(0xE2A689DA, 0xF3EFE872), TOBN(0x984F0C70, 0xE0E68B77),
-      TOBN(0xB557135E, 0x7F57C935), TOBN(0x85636555, 0x3DED1AF3),
-      TOBN(0x2433F51F, 0x5F066ED0), TOBN(0xD3DF1ED5, 0xD5FD6561),
-      TOBN(0xF681B202, 0xAEC4617A), TOBN(0x7D2FE363, 0x630C75D8),
-      TOBN(0xCC939DCE, 0x249B3EF9), TOBN(0xA9E13641, 0x146433FB),
-      TOBN(0xD8B9C583, 0xCE2D3695), TOBN(0xAFDC5620, 0x273D3CF1),
-      TOBN(0xADF85458, 0xA2BB4A9A), TOBN(0xFFFFFFFF, 0xFFFFFFFF)};
+    // This is the prime from https://tools.ietf.org/html/rfc7919#appendix-A.3,
+    // which is specifically approved for FIPS in appendix D of SP 800-56Ar3.
+    static const BN_ULONG kFFDHE4096Data[] = {
+        TOBN(0xFFFFFFFF, 0xFFFFFFFF),TOBN(0xC68A007E, 0x5E655F6A),
+        TOBN(0x4DB5A851, 0xF44182E1),TOBN(0x8EC9B55A, 0x7F88A46B),
+        TOBN(0x0A8291CD, 0xCEC97DCF),TOBN(0x2A4ECEA9, 0xF98D0ACC),
+        TOBN(0x1A1DB93D, 0x7140003C),TOBN(0x092999A3, 0x33CB8B7A),
+        TOBN(0x6DC778F9, 0x71AD0038),TOBN(0xA907600A, 0x918130C4),
+        TOBN(0xED6A1E01, 0x2D9E6832),TOBN(0x7135C886, 0xEFB4318A),
+        TOBN(0x87F55BA5, 0x7E31CC7A),TOBN(0x7763CF1D, 0x55034004),
+        TOBN(0xAC7D5F42, 0xD69F6D18),TOBN(0x7930E9E4, 0xE58857B6),
+        TOBN(0x6E6F52C3, 0x164DF4FB),TOBN(0x25E41D2B, 0x669E1EF1),
+        TOBN(0x3C1B20EE, 0x3FD59D7C),TOBN(0x0ABCD06B, 0xFA53DDEF),
+        TOBN(0x1DBF9A42, 0xD5C4484E),TOBN(0xABC52197, 0x9B0DEADA),
+        TOBN(0xE86D2BC5, 0x22363A0D),TOBN(0x5CAE82AB, 0x9C9DF69E),
+        TOBN(0x64F2E21E, 0x71F54BFF),TOBN(0xF4FD4452, 0xE2D74DD3),
+        TOBN(0xB4130C93, 0xBC437944),TOBN(0xAEFE1309, 0x85139270),
+        TOBN(0x598CB0FA, 0xC186D91C),TOBN(0x7AD91D26, 0x91F7F7EE),
+        TOBN(0x61B46FC9, 0xD6E6C907),TOBN(0xBC34F4DE, 0xF99C0238),
+        TOBN(0xDE355B3B, 0x6519035B),TOBN(0x886B4238, 0x611FCFDC),
+        TOBN(0xC6F34A26, 0xC1B2EFFA),TOBN(0xC58EF183, 0x7D1683B2),
+        TOBN(0x3BB5FCBC, 0x2EC22005),TOBN(0xC3FE3B1B, 0x4C6FAD73),
+        TOBN(0x8E4F1232, 0xEEF28183),TOBN(0x9172FE9C, 0xE98583FF),
+        TOBN(0xC03404CD, 0x28342F61),TOBN(0x9E02FCE1, 0xCDF7E2EC),
+        TOBN(0x0B07A7C8, 0xEE0A6D70),TOBN(0xAE56EDE7, 0x6372BB19),
+        TOBN(0x1D4F42A3, 0xDE394DF4),TOBN(0xB96ADAB7, 0x60D7F468),
+        TOBN(0xD108A94B, 0xB2C8E3FB),TOBN(0xBC0AB182, 0xB324FB61),
+        TOBN(0x30ACCA4F, 0x483A797A),TOBN(0x1DF158A1, 0x36ADE735),
+        TOBN(0xE2A689DA, 0xF3EFE872),TOBN(0x984F0C70, 0xE0E68B77),
+        TOBN(0xB557135E, 0x7F57C935),TOBN(0x85636555, 0x3DED1AF3),
+        TOBN(0x2433F51F, 0x5F066ED0),TOBN(0xD3DF1ED5, 0xD5FD6561),
+        TOBN(0xF681B202, 0xAEC4617A),TOBN(0x7D2FE363, 0x630C75D8),
+        TOBN(0xCC939DCE, 0x249B3EF9),TOBN(0xA9E13641, 0x146433FB),
+        TOBN(0xD8B9C583, 0xCE2D3695),TOBN(0xAFDC5620, 0x273D3CF1),
+        TOBN(0xADF85458, 0xA2BB4A9A),TOBN(0xFFFFFFFF, 0xFFFFFFFF)
+    };
 
-  return calculate_rfc7919_DH_from_p(kFFDHE4096Data,
-                                     OPENSSL_ARRAY_SIZE(kFFDHE4096Data));
+    return calculate_rfc7919_DH_from_p(kFFDHE4096Data, OPENSSL_ARRAY_SIZE(kFFDHE4096Data));
 }
 
 DH *DH_get_rfc7919_8192(void) {
