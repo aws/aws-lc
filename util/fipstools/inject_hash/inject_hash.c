@@ -5,7 +5,7 @@
 
 #include "inject_hash.h"
 
-size_t readObject(const char *filename, unsigned char **objectBytes) {
+size_t readObject(const char *filename, uint8_t **objectBytes) {
     FILE *file = fopen(filename, "rb");
 
     if (file == NULL) {
@@ -17,7 +17,7 @@ size_t readObject(const char *filename, unsigned char **objectBytes) {
     size_t file_size = ftell(file);
     fseek(file, 0, SEEK_SET);
 
-    *objectBytes = (unsigned char *)malloc(file_size);
+    *objectBytes = (uint8_t *)malloc(file_size);
 
     if (*objectBytes == NULL) {
         perror("Error allocating memory");
@@ -37,8 +37,8 @@ size_t readObject(const char *filename, unsigned char **objectBytes) {
     return bytesRead;
 }
 
-int findHash(unsigned char *objectBytes, size_t objectBytesSize, unsigned char* hash, size_t hashSize) {
-    unsigned char *ptr = memmem(objectBytes, objectBytesSize, hash, hashSize);
+int findHash(uint8_t *objectBytes, size_t objectBytesSize, uint8_t* hash, size_t hashSize) {
+    uint8_t *ptr = memmem(objectBytes, objectBytesSize, hash, hashSize);
     if (ptr == NULL) {
         perror("Error finding hash in object");
         return 1;
@@ -83,7 +83,7 @@ int main(int argc, char *argv[]) {
     }
 
     // The below is the real uninitialized hash
-    // unsigned char uninitHash[] = {
+    // uint8_t uninitHash[] = {
     //     0xae, 0x2c, 0xea, 0x2a, 0xbd, 0xa6, 0xf3, 0xec, 
     //     0x97, 0x7f, 0x9b, 0xf6, 0x94, 0x9a, 0xfc, 0x83, 
     //     0x68, 0x27, 0xcb, 0xa0, 0xa0, 0x9f, 0x6b, 0x6f, 
@@ -91,13 +91,13 @@ int main(int argc, char *argv[]) {
     // };
     
     // This is the initialized hash used for testing
-    unsigned char uninitHash[] = {
+    uint8_t uninitHash[] = {
         0x53, 0x39, 0x5f, 0x48, 0x5c, 0x36, 0xd3, 0x1f,
         0x77, 0x7b, 0x81, 0xed, 0xe0, 0xdd, 0x86, 0x3c,
         0x6e, 0x07, 0xb6, 0x76, 0xf3, 0xe9, 0x34, 0xa2,
         0x8c, 0x07, 0x49, 0xb4, 0x65, 0xc5, 0xd3, 0x19,
     };
-    unsigned char *objectBytes = NULL;
+    uint8_t *objectBytes = NULL;
     size_t objectBytesSize = 0;
     int ret = 0;
 
