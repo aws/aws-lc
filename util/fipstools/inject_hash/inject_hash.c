@@ -57,7 +57,7 @@ int main(int argc, char *argv[]) {
     int apple_flag = 0;
 
     int opt;
-    while ((opt = getopt(argc, argv, "a:o:p::f")) != -1) {
+    while ((opt = getopt(argc, argv, "a:o:p:f")) != -1) {
         switch(opt) {
             case 'a':
                 ar_input = optarg;
@@ -66,15 +66,20 @@ int main(int argc, char *argv[]) {
                 o_input = optarg;
                 break;
             case 'p':
-                apple_flag = 1;
-                break;
-            case 'f':
                 out_path = optarg;
                 break;
+            case 'f':
+                apple_flag = 1;
+                break;
             default:
-                fprintf(stderr, "Usage: %s [-a in-archive] [-o in-object] [-p apple] [-f out-path]\n", argv[0]);
+                fprintf(stderr, "Usage: %s [-a in-archive] [-o in-object] [-p out-path] [-f apple-flag]\n", argv[0]);
                 exit(EXIT_FAILURE);
         }
+    }
+
+    if (out_path == NULL) {
+        fprintf(stderr, "-p (out-path) needs an argument");
+        exit(EXIT_FAILURE);
     }
 
     // The below is the real uninitialized hash
@@ -86,7 +91,6 @@ int main(int argc, char *argv[]) {
     // };
     
     // This is the initialized hash used for testing
-    // 53 39 5f 48 5c 36 d3 1f 77 7b 81 ed e0 dd 86 3c 6e 07 b6 76 f3 e9 34 a2 8c 07 49 b4 65 c5 d3 19
     unsigned char uninitHash[] = {
         0x53, 0x39, 0x5f, 0x48, 0x5c, 0x36, 0xd3, 0x1f,
         0x77, 0x7b, 0x81, 0xed, 0xe0, 0xdd, 0x86, 0x3c,
@@ -100,11 +104,10 @@ int main(int argc, char *argv[]) {
     if (ar_input) {
         // Do something with archive input
     } else if (o_input) {
-        // Do something with object input
         objectBytesSize = readObject(o_input, &objectBytes);
         if (objectBytesSize == 0) {
             perror("Error reading file");
-            return -1;
+            exit(EXIT_FAILURE);
         }
     } else {
         fprintf(stderr, "Either -a (archive input) or -o (object input) is required\n");
