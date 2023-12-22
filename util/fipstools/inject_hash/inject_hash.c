@@ -52,25 +52,25 @@ int findHash(uint8_t *objectBytes, size_t objectBytesSize, uint8_t* hash, size_t
 
 int main(int argc, char *argv[]) {
 
-    char *ar_input = NULL;
-    char *o_input = NULL;
-    char *out_path = NULL;
-    int apple_flag = 0;
+    char *arInput = NULL;
+    char *oInput = NULL;
+    char *outPath = NULL;
+    int appleFlag = 0;
 
     int opt;
     while ((opt = getopt(argc, argv, "a:o:p:f")) != -1) {
         switch(opt) {
             case 'a':
-                ar_input = optarg;
+                arInput = optarg;
                 break;
             case 'o':
-                o_input = optarg;
+                oInput = optarg;
                 break;
             case 'p':
-                out_path = optarg;
+                outPath = optarg;
                 break;
             case 'f':
-                apple_flag = 1;
+                appleFlag = 1;
                 break;
             case '?':
             default:
@@ -79,7 +79,7 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    if ((ar_input == NULL && o_input == NULL) || out_path == NULL) {
+    if ((arInput == NULL && oInput == NULL) || outPath == NULL) {
         fprintf(stderr, "Usage: %s [-a in-archive] [-o in-object] [-p out-path] [-f apple-flag]\n", argv[0]);
         fprintf(stderr, "Note that either the -a or -o option and -p options are required.\n");
         exit(EXIT_FAILURE);
@@ -103,22 +103,46 @@ int main(int argc, char *argv[]) {
     uint8_t *objectBytes = NULL;
     size_t objectBytesSize = 0;
 
-    if (ar_input) {
+    if (arInput) {
         // Do something with archive input
     } else {
-        objectBytes = readObject(o_input, &objectBytesSize);
+        objectBytes = readObject(oInput, &objectBytesSize);
         if (objectBytesSize == 0) {
             perror("Error reading file");
             exit(EXIT_FAILURE);
         }
     }
 
-    if (apple_flag == 1) {
+
+    uint8_t *textSection = NULL;
+    size_t textSectionSize = 0;
+    uint8_t *rodataSection = NULL;
+    size_t rodataSectionSize = 0;
+    uint8_t *symbolTable = NULL;
+    size_t symbolTableSize = 0;
+    uint8_t *stringTable = NULL;
+    size_t stringTableSize = 0;
+
+    int textStart = 0;
+    int textEnd = 0;
+    int rodataStart = 0;
+    int rodataEnd = 0;
+
+    if (appleFlag == 1) {
         // Handle Apple
         MachOFile macho;
-        if (readMachOFile(o_input, &macho)) {
+        if (readMachOFile(oInput, &macho)) {
             printSectionInfo(&macho);
+            textSection = getSectionData(oInput, &macho, "__text", &textSectionSize);
+            rodataSection = getSectionData(oInput, &macho, "__const", &rodataSectionSize);
+            symbolTable = getSectionData(oInput, &macho, "__symbol_table", &symbolTableSize);
+            stringTable = getSectionData(oInput, &macho, "__string_table", &stringTableSize);
             freeMachOFile(&macho);
+
+            textStart = findSymbolIndex(symbolTable, symbolTableSize, stringTable, stringTableSize, "_BORINGSSL_bcm_text_start");
+            textEnd = findSymbolIndex(symbolTable, symbolTableSize, stringTable, stringTableSize, "_BORINGSSL_bcm_text_end");
+            rodataStart = findSymbolIndex(symbolTable, symbolTableSize, stringTable, stringTableSize, "_BORINGSSL_bcm_rodata_start");
+            rodataEnd = findSymbolIndex(symbolTable, symbolTableSize, stringTable, stringTableSize, "_BORINGSSL_bcm_rodata_end");
         } else {
             perror("Error reading Mach-O file");
             exit(EXIT_FAILURE);
@@ -127,11 +151,21 @@ int main(int argc, char *argv[]) {
         // Handle Linux
     }
 
-    (void) out_path;
+    if(textSection == NULL || rodataSection == NULL) {
+        perror("Error getting text or rodata section");
+        exit(EXIT_FAILURE);
+    }
+    
+    printf("textStart location %d\n", textStart);
+    printf("textEnd location %d\n", textEnd);
+    printf("rodataStart location %d\n", rodataStart);
+    printf("rodataEnd location %d\n", rodataEnd);
 
-    printf("Finding hash...\n");
+    (void) outPath;
+
+    printf("Finding placeholder hash...\n");
     if (!findHash(objectBytes, objectBytesSize, uninitHash, sizeof(uninitHash))) {
-        fprintf(stderr, "Error finding hash");
+        perror("Error finding hash");
         exit(EXIT_FAILURE);
     }
     printf("Done\n");

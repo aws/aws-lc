@@ -2,6 +2,7 @@
 #define MACHO_PARSER_H
 
 #include <mach-o/loader.h>
+#include <mach-o/nlist.h>
 
 typedef struct {
     uint32_t offset;
@@ -16,7 +17,9 @@ typedef struct {
 typedef struct mach_header_64 MachOHeader;
 typedef struct load_command LoadCommand;
 typedef struct segment_command_64 SegmentLoadCommand;
+typedef struct symtab_command SymtabLoadCommand;
 typedef struct section_64 SectionHeader;
+typedef struct nlist_64 nList;
 
 typedef struct {
     MachOHeader machHeader;
@@ -28,6 +31,8 @@ typedef struct {
 int readMachOFile(const char *filename, MachOFile *macho);
 void freeMachOFile(MachOFile *macho);
 void printSectionInfo(MachOFile *macho);
-uint8_t* getSectionData(char* filename, MachOFile *macho, const char *sectionName, uint32_t *size);
+SectionInfo* getSectioninfo(MachOFile *macho, const char *sectionName);
+uint8_t* getSectionData(char* filename, MachOFile *macho, const char *sectionName, size_t *size);
+uint32_t findSymbolIndex(uint8_t *sectionData, size_t sectionSize, uint8_t *stringTableData, size_t stringTableSize, const char *symbolName);
 
 #endif

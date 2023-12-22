@@ -24,6 +24,9 @@ int readMachOFile(const char *filename, MachOFile *macho) {
             SegmentLoadCommand *segment = (SegmentLoadCommand *)&macho->loadCommands[i];
             macho->numSections += segment->nsects;
         }
+        else if (macho->loadCommands[i].cmd == LC_SYMTAB) {
+            macho->numSections += 2;
+        }
     }
 
     // Allocate memory for section information
@@ -34,6 +37,7 @@ int readMachOFile(const char *filename, MachOFile *macho) {
     for (uint32_t i = 0; i < macho->machHeader.sizeofcmds / BIT_MODIFIER; i += macho->loadCommands[i].cmdsize / BIT_MODIFIER) {
         if (macho->loadCommands[i].cmd == LC_SEG) {
             SegmentLoadCommand *segment = (SegmentLoadCommand *)&macho->loadCommands[i];
+            printf("Segment name: %s\n", segment->segname);
             SectionHeader *sections = (SectionHeader *)&segment[1];
             for (uint32_t j = 0; j < segment->nsects; j++) {
                 macho->sections[sectionIndex].offset = sections[j].offset;
@@ -41,6 +45,16 @@ int readMachOFile(const char *filename, MachOFile *macho) {
                 macho->sections[sectionIndex].name = strdup(sections[j].sectname);
                 sectionIndex++;
             }
+        } else if (macho->loadCommands[i].cmd == LC_SYMTAB) {
+            SymtabLoadCommand *symtab = (SymtabLoadCommand *)&macho->loadCommands[i];
+            macho->sections[sectionIndex].offset = symtab->symoff;
+            macho->sections[sectionIndex].size = symtab->nsyms * sizeof(nList);
+            macho->sections[sectionIndex].name = strdup("__symbol_table");
+            sectionIndex++;
+            macho->sections[sectionIndex].offset = symtab->stroff;
+            macho->sections[sectionIndex].size = symtab->strsize;
+            macho->sections[sectionIndex].name = strdup("__string_table");
+            sectionIndex++;
         }
     }
 
@@ -64,7 +78,7 @@ void printSectionInfo(MachOFile *macho) {
     }
 }
 
-uint8_t* getSectionData(char *filename, MachOFile *macho, const char *sectionName, uint32_t *size) {
+uint8_t* getSectionData(char *filename, MachOFile *macho, const char *sectionName, size_t *size) {
     for (uint32_t i = 0; i < macho->numSections; i++) {
         if (strcmp(macho->sections[i].name, sectionName) == 0) {
             FILE *file = fopen(filename, "rb");
@@ -95,4 +109,26 @@ uint8_t* getSectionData(char *filename, MachOFile *macho, const char *sectionNam
 
     // Section not found
     return NULL;
+}
+
+uint32_t findSymbolIndex(uint8_t *symbolTableData, size_t symbolTableSize, uint8_t *stringTableData, size_t stringTableSize, const char *symbolName) {
+    if (symbolTableData == NULL || stringTableData == NULL) {
+        perror("Inputs cannot be null");
+        return 0;
+    }
+
+    char* stringTable = (char *)malloc(stringTableSize);
+    memcpy(stringTable, stringTableData, stringTableSize);
+
+    for (uint32_t i = 0; i < symbolTableSize / sizeof(nList); i++) {
+        nList *symbol = (nList *)(symbolTableData + i * sizeof(nList));
+        if (strcmp(symbolName, &stringTable[symbol->n_un.n_strx]) == 0) {
+            free(stringTable);
+            return symbol->n_value;
+        }
+    }
+
+    free(stringTable);
+
+    return 0;
 }
