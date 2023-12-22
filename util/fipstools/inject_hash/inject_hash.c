@@ -6,7 +6,7 @@
 #include "inject_hash.h"
 #include "macho_parser.h"
 
-size_t readObject(const char *filename, uint8_t **objectBytes) {
+uint8_t* readObject(const char *filename, size_t *size) {
     FILE *file = fopen(filename, "rb");
 
     if (file == NULL) {
@@ -18,24 +18,24 @@ size_t readObject(const char *filename, uint8_t **objectBytes) {
     size_t file_size = ftell(file);
     fseek(file, 0, SEEK_SET);
 
-    *objectBytes = (uint8_t *)malloc(file_size);
+    uint8_t *objectBytes = (uint8_t *)malloc(file_size);
 
-    if (*objectBytes == NULL) {
+    if (objectBytes == NULL) {
         perror("Error allocating memory");
         fclose(file);
         return 0;
     }
 
-    size_t bytesRead = fread(*objectBytes, 1, file_size, file);
+    *size = fread(objectBytes, 1, file_size, file);
     fclose(file);
 
-    if (bytesRead != file_size) {
+    if (*size != file_size) {
         perror("Error reading file");
-        free(*objectBytes);
+        free(objectBytes);
         return 0;
     }
 
-    return bytesRead;
+    return objectBytes;
 }
 
 int findHash(uint8_t *objectBytes, size_t objectBytesSize, uint8_t* hash, size_t hashSize) {
@@ -106,7 +106,7 @@ int main(int argc, char *argv[]) {
     if (ar_input) {
         // Do something with archive input
     } else {
-        objectBytesSize = readObject(o_input, &objectBytes);
+        objectBytes = readObject(o_input, &objectBytesSize);
         if (objectBytesSize == 0) {
             perror("Error reading file");
             exit(EXIT_FAILURE);
