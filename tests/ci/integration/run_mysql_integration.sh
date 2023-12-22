@@ -4,7 +4,7 @@
 
 source tests/ci/common_posix_setup.sh
 
-MYSQL_VERSION_TAG="mysql-8.0.33"
+MYSQL_VERSION_TAG="mysql-8.1.0"
 # This directory is specific to the docker image used. Use -DDOWNLOAD_BOOST=1 -DWITH_BOOST=<directory>
 # with mySQL to download a compatible boost version locally.
 BOOST_INSTALL_FOLDER=/home/dependencies/boost
@@ -61,6 +61,7 @@ function mysql_run_tests() {
   # currently support this.
   echo "main.mysqlpump_bugs : Bug#0000 Can't create/open a file ~/dump.sql'
 main.restart_server : Bug#0000 mysqld is not managed by supervisor process
+main.udf_bug35242734 : Bug#0000 mysqld is not managed by supervisor process
 main.file_contents : Bug#0000 Cannot open 'INFO_SRC' in ''
 main.resource_group_thr_prio_unsupported : Bug#0000 Invalid thread priority value -5
 main.dd_upgrade_error : Bug#0000 running mysqld as root
@@ -83,10 +84,11 @@ main.ssl : Bug#0001 Uses DHE cipher suites in test, which AWS-LC does not suppor
 main.ssl_cipher : Bug#0001 Uses DHE cipher suites in test, which AWS-LC does not support.
 main.ssl_dynamic : Bug#0001 Uses DHE cipher suites in test, which AWS-LC does not support.
 main.ssl-sha512 : Bug#0001 Uses DHE cipher suites in test, which AWS-LC does not support.
+main.client_ssl_data_print  : Bug#0002 AWS-LC does not support Stateful session resumption (Session Caching).
 main.ssl_cache : Bug#0002 AWS-LC does not support Stateful session resumption (Session Caching).
 main.ssl_cache_tls13 : Bug#0002 AWS-LC does not support Stateful session resumption (Session Caching).
 "> skiplist
-  ./mtr --suite=main --force --parallel=auto --skip-test-list=${MYSQL_BUILD_FOLDER}/mysql-test/skiplist --retry-failure=3
+  ./mtr --suite=main --force --parallel=auto --skip-test-list=${MYSQL_BUILD_FOLDER}/mysql-test/skiplist --retry-failure=3 --retry=3 --report-unstable-tests
   popd
 }
 

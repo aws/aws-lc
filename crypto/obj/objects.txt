@@ -129,7 +129,9 @@ secg-ellipticCurve 39		: sect571r1
 
 # Finite field diffie hellman groups
  : ffdhe2048
+ : ffdhe3072
  : ffdhe4096
+ : ffdhe8192
 
 # PQ Groups
  : SecP256r1Kyber768Draft00
