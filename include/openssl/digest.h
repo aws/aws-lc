@@ -340,6 +340,10 @@ struct env_md_ctx_st {
 
   // update is usually copied from |digest->update|. This is only different
   // when consumed through |EVP_PKEY_HMAC|.
+  // TODO: Look into untangling this, so that |EVP_PKEY_HMAC| can directly call
+  // |digest->update|. |digest->update| operates against |md_data| above, but
+  // |HMAC_CTX| maintains its own data state in |HMAC_CTX->md_ctx|.
+  // |HMAC_Update| also has an additional state transition to handle.
   void (*update)(EVP_MD_CTX *ctx, const void *data, size_t count);
 
   // pctx is an opaque (at this layer) pointer to additional context that
@@ -354,7 +358,7 @@ struct env_md_ctx_st {
   // 1. Set flag |EVP_MD_CTX_FLAG_KEEP_PKEY_CTX|, so as to let |*pctx| refrain
   //    from being freed when |*pctx| was set externally with
   //    |EVP_MD_CTX_set_pkey_ctx|.
-  // 2. Set flag |EVP_MD_CTX_FLAG_NO_INIT| for |EVP_PKEY_HMAC|.
+  // 2. Set flag |EVP_MD_CTX_HMAC| for |EVP_PKEY_HMAC|.
   unsigned long flags;
 } /* EVP_MD_CTX */;
 
