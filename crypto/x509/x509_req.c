@@ -76,7 +76,7 @@ X509_NAME *X509_REQ_get_subject_name(const X509_REQ *req) {
   return req->req_info->subject;
 }
 
-EVP_PKEY *X509_REQ_get_pubkey(X509_REQ *req) {
+EVP_PKEY *X509_REQ_get_pubkey(const X509_REQ *req) {
   if ((req == NULL) || (req->req_info == NULL)) {
     OPENSSL_PUT_ERROR(X509, ERR_R_PASSED_NULL_PARAMETER);
     return NULL;
@@ -84,7 +84,7 @@ EVP_PKEY *X509_REQ_get_pubkey(X509_REQ *req) {
   return (X509_PUBKEY_get(req->req_info->pubkey));
 }
 
-EVP_PKEY *X509_REQ_get0_pubkey(X509_REQ *req) {
+EVP_PKEY *X509_REQ_get0_pubkey(const X509_REQ *req) {
   if ((req == NULL) || (req->req_info == NULL)) {
     OPENSSL_PUT_ERROR(X509, ERR_R_PASSED_NULL_PARAMETER);
     return NULL;

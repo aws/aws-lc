@@ -368,12 +368,6 @@ ASN1_TYPE *ASN1_generate_v3(const char *str, const X509V3_CTX *cnf);
 
 int X509_CERT_AUX_print(BIO *bp, X509_CERT_AUX *x, int indent);
 
-// X509_PUBKEY_get0 decodes the public key in |key| and returns an |EVP_PKEY|
-// on success, or NULL on error. It is similar to |X509_PUBKEY_get|, but it
-// directly returns the reference to |pkey| of |key|. This means that the
-// caller must not free the result after use.
-EVP_PKEY *X509_PUBKEY_get0(X509_PUBKEY *key);
-
 int x509_check_cert_time(X509_STORE_CTX *ctx, X509 *x, int suppress_error);
 
 // RSA-PSS functions.
