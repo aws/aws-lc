@@ -63,7 +63,7 @@ function build_openssl {
 # has changes in speed.cc that could affect the comparison of the FIPS to non-FIPS, or if new
 # algorithms have been added to speed.cc
 build_aws_lc_fips
-"${BUILD_ROOT}/tool/bssl" speed -filter RNG
+"${BUILD_ROOT}/tool/bssl" speed -timeout_ms 10
 
 build_aws_lc_fips_2022
 build_openssl $openssl_1_0_2_branch
@@ -79,13 +79,13 @@ open111:${install_dir}/openssl-${openssl_1_1_1_branch};\
 open31:${install_dir}/openssl-${openssl_3_1_branch};\
 open32:${install_dir}/openssl-${openssl_3_2_branch};\
 openmaster:${install_dir}/openssl-${openssl_master_branch};"
-"${BUILD_ROOT}/tool/aws-lc-fips" -filter RNG
-"${BUILD_ROOT}/tool/open102" -filter RNG
-"${BUILD_ROOT}/tool/open111" -filter RNG
-"${BUILD_ROOT}/tool/open31" -filter RNG
-"${BUILD_ROOT}/tool/open32" -filter RNG
-"${BUILD_ROOT}/tool/openmaster" -filter RNG
+"${BUILD_ROOT}/tool/aws-lc-fips" -timeout_ms 10
+"${BUILD_ROOT}/tool/open102" -timeout_ms 10
+"${BUILD_ROOT}/tool/open111" -timeout_ms 10
+"${BUILD_ROOT}/tool/open31" -timeout_ms 10
+"${BUILD_ROOT}/tool/open32" -timeout_ms 10
+"${BUILD_ROOT}/tool/openmaster" -timeout_ms 10
 
 echo "Testing ossl_bm with OpenSSL 1.0 with the legacy build option"
 run_build -DOPENSSL_1_0_INSTALL_DIR="${install_dir}/openssl-${openssl_1_0_2_branch}" -DASAN=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo
-"${BUILD_ROOT}/tool/ossl_1_0_bm"
+"${BUILD_ROOT}/tool/ossl_1_0_bm" -timeout_ms 10
