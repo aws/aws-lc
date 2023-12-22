@@ -9,6 +9,7 @@ typedef struct {
     char *name;
 } SectionInfo;
 
+// Since we only support 64-bit architectures, we don't need to account for any of the 32-bit structures
 #define LC_SEG LC_SEGMENT_64
 #define BIT_MODIFIER 8
 
@@ -16,11 +17,6 @@ typedef struct mach_header_64 MachOHeader;
 typedef struct load_command LoadCommand;
 typedef struct segment_command_64 SegmentLoadCommand;
 typedef struct section_64 SectionHeader;
-
-// MachOHeader is mach_header_64
-// LoadCommand is load_command
-// SegmentLoadCommand is segment_command_64
-// SectionHeader is section_64
 
 typedef struct {
     MachOHeader machHeader;
@@ -32,6 +28,6 @@ typedef struct {
 int readMachOFile(const char *filename, MachOFile *macho);
 void freeMachOFile(MachOFile *macho);
 void printSectionInfo(MachOFile *macho);
-uint8_t* getSectionData(MachOFile *macho, const char *sectionName, uint32_t *size);
+uint8_t* getSectionData(char* filename, MachOFile *macho, const char *sectionName, uint32_t *size);
 
 #endif
