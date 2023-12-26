@@ -73,20 +73,19 @@ void freeMachOFile(MachOFile *macho) {
 void printSectionInfo(MachOFile *macho) {
     printf("Number of sections: %u\n", macho->numSections);
     for (uint32_t i = 0; i < macho->numSections; i++) {
-        printf("Section: %s, Offset: %u, Size: %u\n", macho->sections[i].name,
+        printf("Section: %s, Offset: %u, Size: %zu\n", macho->sections[i].name,
                macho->sections[i].offset, macho->sections[i].size);
     }
 }
 
-uint8_t* getSectionData(char *filename, MachOFile *macho, const char *sectionName, size_t *size) {
+uint8_t* getSectionData(char *filename, MachOFile *macho, const char *sectionName, size_t *size, uint32_t *offset) {
+    FILE *file = fopen(filename, "rb");
+    if (!file) {
+        perror("Error opening file");
+        return NULL;
+    }
     for (uint32_t i = 0; i < macho->numSections; i++) {
         if (strcmp(macho->sections[i].name, sectionName) == 0) {
-            FILE *file = fopen(filename, "rb");
-            if (!file) {
-                perror("Error opening file");
-                return NULL;
-            }
-
             uint8_t *sectionData = (uint8_t *)malloc(macho->sections[i].size);
             if (!sectionData) {
                 fclose(file);
@@ -97,21 +96,25 @@ uint8_t* getSectionData(char *filename, MachOFile *macho, const char *sectionNam
             fseek(file, macho->sections[i].offset, SEEK_SET);
             fread(sectionData, 1, macho->sections[i].size, file);
 
-            fclose(file);
-
             if (size != NULL) {
                 *size = macho->sections[i].size;
             }
+            // offset is optional
+            if (offset) {
+                *offset = macho->sections[i].offset;
+            }
 
+            fclose(file);
             return sectionData;
         }
     }
 
+    fclose(file);
     // Section not found
     return NULL;
 }
 
-uint32_t findSymbolIndex(uint8_t *symbolTableData, size_t symbolTableSize, uint8_t *stringTableData, size_t stringTableSize, const char *symbolName) {
+uint32_t findSymbolIndex(uint8_t *symbolTableData, size_t symbolTableSize, uint8_t *stringTableData, size_t stringTableSize, const char *symbolName, uint32_t *base) {
     if (symbolTableData == NULL || stringTableData == NULL) {
         perror("Inputs cannot be null");
         return 0;
@@ -137,5 +140,9 @@ uint32_t findSymbolIndex(uint8_t *symbolTableData, size_t symbolTableSize, uint8
     }
 
     free(stringTable);
+    // base is optional
+    if (base) {
+        index = index - *base;
+    }
     return index;
 }

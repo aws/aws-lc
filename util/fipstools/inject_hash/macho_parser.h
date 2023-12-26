@@ -6,7 +6,7 @@
 
 typedef struct {
     uint32_t offset;
-    uint32_t size;
+    size_t size;
     char *name;
 } SectionInfo;
 
@@ -32,7 +32,7 @@ int readMachOFile(const char *filename, MachOFile *macho);
 void freeMachOFile(MachOFile *macho);
 void printSectionInfo(MachOFile *macho);
 SectionInfo* getSectioninfo(MachOFile *macho, const char *sectionName);
-uint8_t* getSectionData(char* filename, MachOFile *macho, const char *sectionName, size_t *size);
-uint32_t findSymbolIndex(uint8_t *sectionData, size_t sectionSize, uint8_t *stringTableData, size_t stringTableSize, const char *symbolName);
+uint8_t* getSectionData(char* filename, MachOFile *macho, const char *sectionName, size_t *size, uint32_t *offset);
+uint32_t findSymbolIndex(uint8_t *sectionData, size_t sectionSize, uint8_t *stringTableData, size_t stringTableSize, const char *symbolName, uint32_t *base);
 
 #endif

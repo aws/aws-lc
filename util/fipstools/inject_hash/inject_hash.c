@@ -116,10 +116,15 @@ int main(int argc, char *argv[]) {
 
     uint8_t *textSection = NULL;
     size_t textSectionSize = 0;
+    uint32_t textSectionOffset;
+
     uint8_t *rodataSection = NULL;
     size_t rodataSectionSize = 0;
+    uint32_t rodataSectionOffset;
+
     uint8_t *symbolTable = NULL;
     size_t symbolTableSize = 0;
+
     uint8_t *stringTable = NULL;
     size_t stringTableSize = 0;
 
@@ -133,37 +138,41 @@ int main(int argc, char *argv[]) {
         MachOFile macho;
         if (readMachOFile(oInput, &macho)) {
             printSectionInfo(&macho);
-            textSection = getSectionData(oInput, &macho, "__text", &textSectionSize);
+            textSection = getSectionData(oInput, &macho, "__text", &textSectionSize, &textSectionOffset);
             if (!textSection) {
                 perror("Error getting text section");
                 exit(EXIT_FAILURE);
             }
-            rodataSection = getSectionData(oInput, &macho, "__const", &rodataSectionSize);
+            rodataSection = getSectionData(oInput, &macho, "__const", &rodataSectionSize, &rodataSectionOffset);
             if (!rodataSection) {
                 perror("Error getting rodata section");
                 exit(EXIT_FAILURE);
             }
-            symbolTable = getSectionData(oInput, &macho, "__symbol_table", &symbolTableSize);
+            symbolTable = getSectionData(oInput, &macho, "__symbol_table", &symbolTableSize, NULL);
             if(!symbolTable) {
                 perror("Error getting symbol table");
                 exit(EXIT_FAILURE);
             }
-            stringTable = getSectionData(oInput, &macho, "__string_table", &stringTableSize);
+            stringTable = getSectionData(oInput, &macho, "__string_table", &stringTableSize, NULL);
             if(!stringTable) {
                 perror("Error getting string table");
                 exit(EXIT_FAILURE);
             }
             freeMachOFile(&macho);
 
-            textStart = findSymbolIndex(symbolTable, symbolTableSize, stringTable, stringTableSize, "_BORINGSSL_bcm_text_start");
-            textEnd = findSymbolIndex(symbolTable, symbolTableSize, stringTable, stringTableSize, "_BORINGSSL_bcm_text_end");
-            rodataStart = findSymbolIndex(symbolTable, symbolTableSize, stringTable, stringTableSize, "_BORINGSSL_bcm_rodata_start");
-            rodataEnd = findSymbolIndex(symbolTable, symbolTableSize, stringTable, stringTableSize, "_BORINGSSL_bcm_rodata_end");
+            textStart = findSymbolIndex(symbolTable, symbolTableSize, stringTable, stringTableSize, "_BORINGSSL_bcm_text_start", &textSectionOffset);
+            textEnd = findSymbolIndex(symbolTable, symbolTableSize, stringTable, stringTableSize, "_BORINGSSL_bcm_text_end", &textSectionOffset);
+            rodataStart = findSymbolIndex(symbolTable, symbolTableSize, stringTable, stringTableSize, "_BORINGSSL_bcm_rodata_start", &rodataSectionOffset);
+            rodataEnd = findSymbolIndex(symbolTable, symbolTableSize, stringTable, stringTableSize, "_BORINGSSL_bcm_rodata_end", &rodataSectionOffset);
 
             if (!textStart || !textEnd || !rodataStart || !rodataEnd) {
                 perror("Error finding symbol indices:\ntextStart: %s\ntextEnd: %s\nrodataStart: %s\n rodataEnd: %s\n");
                 exit(EXIT_FAILURE);
             }
+
+            // Get text and rodata modules from textSection/rodataSection using the obtained indices
+
+
         } else {
             perror("Error reading Mach-O file");
             exit(EXIT_FAILURE);
