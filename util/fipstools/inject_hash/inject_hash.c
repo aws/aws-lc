@@ -195,13 +195,13 @@ int main(int argc, char *argv[]) {
         0x8c, 0x07, 0x49, 0xb4, 0x65, 0xc5, 0xd3, 0x19,
     };
     uint8_t *objectBytes = NULL;
-    size_t objectBytesSize = 0;
+    size_t objectBytesSize;
 
     if (arInput) {
         // Do something with archive input
     } else {
         objectBytes = readObject(oInput, &objectBytesSize);
-        if (objectBytesSize == 0) {
+        if (!objectBytesSize) {
             perror("Error reading file");
             exit(EXIT_FAILURE);
         }
