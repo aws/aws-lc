@@ -51,55 +51,55 @@ int findHash(uint8_t *objectBytes, size_t objectBytesSize, uint8_t* hash, size_t
 }
 
 int doAppleOS(char *objectFile, uint8_t **textModule, size_t *textModuleSize, uint8_t **rodataModule, size_t *rodataModuleSize) {
-    uint8_t *textSection = NULL;
-    size_t textSectionSize = 0;
+    uint8_t *textSection;
+    size_t textSectionSize;
     uint32_t textSectionOffset;
 
-    uint8_t *rodataSection = NULL;
-    size_t rodataSectionSize = 0;
+    uint8_t *rodataSection;
+    size_t rodataSectionSize;
     uint32_t rodataSectionOffset;
 
-    uint8_t *symbolTable = NULL;
-    size_t symbolTableSize = 0;
+    uint8_t *symbolTable;
+    size_t symbolTableSize;
 
-    uint8_t *stringTable = NULL;
-    size_t stringTableSize = 0;
+    uint8_t *stringTable;
+    size_t stringTableSize;
 
-    uint32_t textStart = 0;
-    uint32_t textEnd = 0;
-    uint32_t rodataStart = 0;
-    uint32_t rodataEnd = 0;
+    uint32_t textStart;
+    uint32_t textEnd;
+    uint32_t rodataStart;
+    uint32_t rodataEnd;
 
     MachOFile macho;
 
     if (readMachOFile(objectFile, &macho)) {
-        printSectionInfo(&macho);
-        textSection = getSectionData(objectFile, &macho, "__text", &textSectionSize, &textSectionOffset);
+        printMachOSectionInfo(&macho);
+        textSection = getMachOSectionData(objectFile, &macho, "__text", &textSectionSize, &textSectionOffset);
         if (!textSection) {
             perror("Error getting text section");
             exit(EXIT_FAILURE);
         }
-        rodataSection = getSectionData(objectFile, &macho, "__const", &rodataSectionSize, &rodataSectionOffset);
+        rodataSection = getMachOSectionData(objectFile, &macho, "__const", &rodataSectionSize, &rodataSectionOffset);
         if (!rodataSection) {
             perror("Error getting rodata section");
             exit(EXIT_FAILURE);
         }
-        symbolTable = getSectionData(objectFile, &macho, "__symbol_table", &symbolTableSize, NULL);
+        symbolTable = getMachOSectionData(objectFile, &macho, "__symbol_table", &symbolTableSize, NULL);
         if(!symbolTable) {
             perror("Error getting symbol table");
             exit(EXIT_FAILURE);
         }
-        stringTable = getSectionData(objectFile, &macho, "__string_table", &stringTableSize, NULL);
+        stringTable = getMachOSectionData(objectFile, &macho, "__string_table", &stringTableSize, NULL);
         if(!stringTable) {
             perror("Error getting string table");
             exit(EXIT_FAILURE);
         }
         freeMachOFile(&macho);
 
-        textStart = findSymbolIndex(symbolTable, symbolTableSize, stringTable, stringTableSize, "_BORINGSSL_bcm_text_start", &textSectionOffset);
-        textEnd = findSymbolIndex(symbolTable, symbolTableSize, stringTable, stringTableSize, "_BORINGSSL_bcm_text_end", &textSectionOffset);
-        rodataStart = findSymbolIndex(symbolTable, symbolTableSize, stringTable, stringTableSize, "_BORINGSSL_bcm_rodata_start", &rodataSectionOffset);
-        rodataEnd = findSymbolIndex(symbolTable, symbolTableSize, stringTable, stringTableSize, "_BORINGSSL_bcm_rodata_end", &rodataSectionOffset);
+        textStart = findMachOSymbolIndex(symbolTable, symbolTableSize, stringTable, stringTableSize, "_BORINGSSL_bcm_text_start", &textSectionOffset);
+        textEnd = findMachOSymbolIndex(symbolTable, symbolTableSize, stringTable, stringTableSize, "_BORINGSSL_bcm_text_end", &textSectionOffset);
+        rodataStart = findMachOSymbolIndex(symbolTable, symbolTableSize, stringTable, stringTableSize, "_BORINGSSL_bcm_rodata_start", &rodataSectionOffset);
+        rodataEnd = findMachOSymbolIndex(symbolTable, symbolTableSize, stringTable, stringTableSize, "_BORINGSSL_bcm_rodata_end", &rodataSectionOffset);
 
         if (!textStart || !textEnd) {
             perror("Could not find .text module boundaries in object\n");
@@ -208,9 +208,9 @@ int main(int argc, char *argv[]) {
     }
 
     uint8_t *textModule = NULL;
-    size_t textModuleSize = 0;
+    size_t textModuleSize;
     uint8_t *rodataModule = NULL;
-    size_t rodataModuleSize = 0;
+    size_t rodataModuleSize;
     if (appleFlag == 1) {
         if (!doAppleOS(oInput, &textModule, &textModuleSize, &rodataModule, &rodataModuleSize)) {
             perror("Error getting text and rodata modules from Apple OS object");
@@ -234,6 +234,8 @@ int main(int argc, char *argv[]) {
     }
     printf("Done\n");
 
+    free(textModule);
+    free(rodataModule);
     free(objectBytes);
     return EXIT_SUCCESS;
 }

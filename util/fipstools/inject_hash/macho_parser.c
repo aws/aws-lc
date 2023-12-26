@@ -70,7 +70,7 @@ void freeMachOFile(MachOFile *macho) {
     free(macho->sections);
 }
 
-void printSectionInfo(MachOFile *macho) {
+void printMachOSectionInfo(MachOFile *macho) {
     printf("Number of sections: %u\n", macho->numSections);
     for (uint32_t i = 0; i < macho->numSections; i++) {
         printf("Section: %s, Offset: %u, Size: %zu\n", macho->sections[i].name,
@@ -78,7 +78,7 @@ void printSectionInfo(MachOFile *macho) {
     }
 }
 
-uint8_t* getSectionData(char *filename, MachOFile *macho, const char *sectionName, size_t *size, uint32_t *offset) {
+uint8_t* getMachOSectionData(char *filename, MachOFile *macho, const char *sectionName, size_t *size, uint32_t *offset) {
     FILE *file = fopen(filename, "rb");
     if (!file) {
         perror("Error opening file");
@@ -99,7 +99,6 @@ uint8_t* getSectionData(char *filename, MachOFile *macho, const char *sectionNam
             if (size != NULL) {
                 *size = macho->sections[i].size;
             }
-            // offset is optional
             if (offset) {
                 *offset = macho->sections[i].offset;
             }
@@ -110,11 +109,10 @@ uint8_t* getSectionData(char *filename, MachOFile *macho, const char *sectionNam
     }
 
     fclose(file);
-    // Section not found
     return NULL;
 }
 
-uint32_t findSymbolIndex(uint8_t *symbolTableData, size_t symbolTableSize, uint8_t *stringTableData, size_t stringTableSize, const char *symbolName, uint32_t *base) {
+uint32_t findMachOSymbolIndex(uint8_t *symbolTableData, size_t symbolTableSize, uint8_t *stringTableData, size_t stringTableSize, const char *symbolName, uint32_t *base) {
     if (symbolTableData == NULL || stringTableData == NULL) {
         perror("Inputs cannot be null");
         return 0;
@@ -140,7 +138,6 @@ uint32_t findSymbolIndex(uint8_t *symbolTableData, size_t symbolTableSize, uint8
     }
 
     free(stringTable);
-    // base is optional
     if (base) {
         index = index - *base;
     }

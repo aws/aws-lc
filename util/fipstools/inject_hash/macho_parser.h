@@ -30,9 +30,9 @@ typedef struct {
 
 int readMachOFile(const char *filename, MachOFile *macho);
 void freeMachOFile(MachOFile *macho);
-void printSectionInfo(MachOFile *macho);
-SectionInfo* getSectioninfo(MachOFile *macho, const char *sectionName);
-uint8_t* getSectionData(char* filename, MachOFile *macho, const char *sectionName, size_t *size, uint32_t *offset);
-uint32_t findSymbolIndex(uint8_t *sectionData, size_t sectionSize, uint8_t *stringTableData, size_t stringTableSize, const char *symbolName, uint32_t *base);
+void printMachOSectionInfo(MachOFile *macho);
+SectionInfo* getMachOSectioninfo(MachOFile *macho, const char *sectionName);
+uint8_t* getMachOSectionData(char* filename, MachOFile *macho, const char *sectionName, size_t *size, uint32_t *offset);
+uint32_t findMachOSymbolIndex(uint8_t *sectionData, size_t sectionSize, uint8_t *stringTableData, size_t stringTableSize, const char *symbolName, uint32_t *base);
 
 #endif
