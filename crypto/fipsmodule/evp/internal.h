@@ -300,7 +300,7 @@ typedef struct {
 } HMAC_PKEY_CTX;
 
 typedef struct {
-  const uint8_t *key;
+  uint8_t *key;
   size_t key_len;
 } HMAC_KEY;
 
