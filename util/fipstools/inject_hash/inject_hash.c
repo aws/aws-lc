@@ -128,10 +128,10 @@ int main(int argc, char *argv[]) {
     uint8_t *stringTable = NULL;
     size_t stringTableSize = 0;
 
-    int textStart = 0;
-    int textEnd = 0;
-    int rodataStart = 0;
-    int rodataEnd = 0;
+    uint32_t textStart = 0;
+    uint32_t textEnd = 0;
+    uint32_t rodataStart = 0;
+    uint32_t rodataEnd = 0;
 
     if (appleFlag == 1) {
         // Handle Apple
@@ -165,12 +165,43 @@ int main(int argc, char *argv[]) {
             rodataStart = findSymbolIndex(symbolTable, symbolTableSize, stringTable, stringTableSize, "_BORINGSSL_bcm_rodata_start", &rodataSectionOffset);
             rodataEnd = findSymbolIndex(symbolTable, symbolTableSize, stringTable, stringTableSize, "_BORINGSSL_bcm_rodata_end", &rodataSectionOffset);
 
-            if (!textStart || !textEnd || !rodataStart || !rodataEnd) {
-                perror("Error finding symbol indices:\ntextStart: %s\ntextEnd: %s\nrodataStart: %s\n rodataEnd: %s\n");
+            if (!textStart || !textEnd) {
+                perror("Could not find .text module boundaries in object\n");
+                exit(EXIT_FAILURE);
+            }
+
+            if ((!rodataStart) != (!rodataSection)) {
+                perror(".rodata start marker inconsistent with rodata section presence\n");
+                exit(EXIT_FAILURE);
+            }
+
+            if ((!rodataStart) != (!rodataEnd)) {
+                perror(".rodata marker presence inconsistent\n");
+                exit(EXIT_FAILURE);
+            }
+
+            if (textStart > textSectionSize || textStart > textEnd || textEnd > textSectionSize) {
+                fprintf(stderr, "invalid module __text boundaries: start: %x, end: %x, max: %zx", textStart, textEnd, textSectionSize);
+                exit(EXIT_FAILURE);
+            }
+
+            if (rodataSection && (rodataStart > rodataSectionSize || rodataStart > rodataEnd || rodataEnd > rodataSectionSize)) {
+                fprintf(stderr, "invalid module __rodata boundaries: start: %x, end: %x, max: %zx", rodataStart, rodataEnd, rodataSectionSize);
                 exit(EXIT_FAILURE);
             }
 
             // Get text and rodata modules from textSection/rodataSection using the obtained indices
+            size_t textModuleSize = textEnd - textStart;
+            uint8_t *textModule = (uint8_t *)malloc(textModuleSize);
+            memcpy(textModule, textSection + textStart, textModuleSize);
+
+            size_t rodataModuleSize;
+            uint8_t *rodataModule;
+            if (rodataSection) {
+                rodataModuleSize = rodataEnd - rodataStart;
+                rodataModule = (uint8_t *)malloc(rodataModuleSize);
+                memcpy(rodataModule, rodataSection + rodataStart, rodataModuleSize);
+            }
 
 
         } else {
@@ -190,8 +221,6 @@ int main(int argc, char *argv[]) {
     printf("textEnd location %d\n", textEnd);
     printf("rodataStart location %d\n", rodataStart);
     printf("rodataEnd location %d\n", rodataEnd);
-
-    // looks like the above are the indices in object data representing text and rodata modules?
 
     (void) outPath;
 
