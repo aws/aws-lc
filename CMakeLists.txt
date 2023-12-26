@@ -904,7 +904,6 @@ if(BUILD_LIBSSL)
     add_subdirectory(tool)
   endif()
 endif()
-add_subdirectory(util/fipstools)
 
 if(FUZZ)
   if(LIBFUZZER_FROM_DEPS)
@@ -942,11 +941,6 @@ endif()
 if (NOT ${CMAKE_VERSION} VERSION_LESS "3.2")
   # USES_TERMINAL is only available in CMake 3.2 or later.
   set(MAYBE_USES_TERMINAL USES_TERMINAL)
-endif()
-
-# Stuff for C FIPS Build Tools
-if(FIPS)
-  add_subdirectory(util/fipstools/inject_hash)
 endif()
 
 if(BUILD_TESTING)
