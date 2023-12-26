@@ -120,15 +120,22 @@ uint32_t findSymbolIndex(uint8_t *symbolTableData, size_t symbolTableSize, uint8
     char* stringTable = (char *)malloc(stringTableSize);
     memcpy(stringTable, stringTableData, stringTableSize);
 
+    int found = 0;
+    uint32_t index = 0;
     for (uint32_t i = 0; i < symbolTableSize / sizeof(nList); i++) {
         nList *symbol = (nList *)(symbolTableData + i * sizeof(nList));
         if (strcmp(symbolName, &stringTable[symbol->n_un.n_strx]) == 0) {
-            free(stringTable);
-            return symbol->n_value;
+            if (!found) {
+                index = symbol->n_value;
+                found = 1;
+            } else {
+                perror("Duplicate symbol %s found\n");
+                return 0;
+            }
+            
         }
     }
 
     free(stringTable);
-
-    return 0;
+    return index;
 }

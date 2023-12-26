@@ -134,15 +134,36 @@ int main(int argc, char *argv[]) {
         if (readMachOFile(oInput, &macho)) {
             printSectionInfo(&macho);
             textSection = getSectionData(oInput, &macho, "__text", &textSectionSize);
+            if (!textSection) {
+                perror("Error getting text section");
+                exit(EXIT_FAILURE);
+            }
             rodataSection = getSectionData(oInput, &macho, "__const", &rodataSectionSize);
+            if (!rodataSection) {
+                perror("Error getting rodata section");
+                exit(EXIT_FAILURE);
+            }
             symbolTable = getSectionData(oInput, &macho, "__symbol_table", &symbolTableSize);
+            if(!symbolTable) {
+                perror("Error getting symbol table");
+                exit(EXIT_FAILURE);
+            }
             stringTable = getSectionData(oInput, &macho, "__string_table", &stringTableSize);
+            if(!stringTable) {
+                perror("Error getting string table");
+                exit(EXIT_FAILURE);
+            }
             freeMachOFile(&macho);
 
             textStart = findSymbolIndex(symbolTable, symbolTableSize, stringTable, stringTableSize, "_BORINGSSL_bcm_text_start");
             textEnd = findSymbolIndex(symbolTable, symbolTableSize, stringTable, stringTableSize, "_BORINGSSL_bcm_text_end");
             rodataStart = findSymbolIndex(symbolTable, symbolTableSize, stringTable, stringTableSize, "_BORINGSSL_bcm_rodata_start");
             rodataEnd = findSymbolIndex(symbolTable, symbolTableSize, stringTable, stringTableSize, "_BORINGSSL_bcm_rodata_end");
+
+            if (!textStart || !textEnd || !rodataStart || !rodataEnd) {
+                perror("Error finding symbol indices:\ntextStart: %s\ntextEnd: %s\nrodataStart: %s\n rodataEnd: %s\n");
+                exit(EXIT_FAILURE);
+            }
         } else {
             perror("Error reading Mach-O file");
             exit(EXIT_FAILURE);
@@ -160,6 +181,8 @@ int main(int argc, char *argv[]) {
     printf("textEnd location %d\n", textEnd);
     printf("rodataStart location %d\n", rodataStart);
     printf("rodataEnd location %d\n", rodataEnd);
+
+    // looks like the above are the indices in object data representing text and rodata modules?
 
     (void) outPath;
 
