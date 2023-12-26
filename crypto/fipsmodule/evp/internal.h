@@ -60,15 +60,22 @@
 #include <openssl/base.h>
 
 #include <openssl/rsa.h>
+#include <openssl/hmac.h>
 
 #if defined(__cplusplus)
 extern "C" {
 #endif
 
-// Flag so |md_ctx->pctx| is not freed up in |EVP_MD_CTX_cleanup|. Only intended
-// for internal use when |*pctx| was set externally with
-// |EVP_MD_CTX_set_pkey_ctx|.
-#define EVP_MD_CTX_FLAG_KEEP_PKEY_CTX   0x0400
+// EVP_MD_CTX_FLAG_KEEP_PKEY_CTX ensures |md_ctx->pctx| is not freed up in
+// |EVP_MD_CTX_cleanup|. Only intended for internal use when |*pctx| was set
+// externally with |EVP_MD_CTX_set_pkey_ctx|.
+#define EVP_MD_CTX_FLAG_KEEP_PKEY_CTX 0x0400
+
+// EVP_MD_CTX_HMAC causes the |EVP_MD|'s |init| function not to
+// be called, the |update| member not to be copied from the |EVP_MD| in
+// |EVP_DigestInit_ex| and for |md_data| not to be initialised.
+// This is an implementation detail of |EVP_PKEY_HMAC|.
+#define EVP_MD_CTX_HMAC 0x0800
 
 typedef struct evp_pkey_asn1_method_st EVP_PKEY_ASN1_METHOD;
 typedef struct evp_pkey_method_st EVP_PKEY_METHOD;
@@ -283,14 +290,31 @@ struct evp_pkey_method_st {
                      const uint8_t *ciphertext, size_t ciphertext_len);
 }; // EVP_PKEY_METHOD
 
-#define FIPS_EVP_PKEY_METHODS 4
+// used_for_hmac indicates if |ctx| is used specifically for the |EVP_PKEY_HMAC|
+// operation.
+int used_for_hmac(EVP_MD_CTX *ctx);
+
+typedef struct {
+  const EVP_MD *md; // MD for HMAC use.
+  HMAC_CTX ctx;
+} HMAC_PKEY_CTX;
+
+typedef struct {
+  const uint8_t *key;
+  size_t key_len;
+} HMAC_KEY;
+
+// HMAC_KEY_new allocates and zeroizes a |HMAC_KEY| for internal use.
+HMAC_KEY *HMAC_KEY_new(void);
+
+#define FIPS_EVP_PKEY_METHODS 5
 
 #ifdef ENABLE_DILITHIUM
 #define NON_FIPS_EVP_PKEY_METHODS 4
-#define ASN1_EVP_PKEY_METHODS 8
+#define ASN1_EVP_PKEY_METHODS 9
 #else
 #define NON_FIPS_EVP_PKEY_METHODS 3
-#define ASN1_EVP_PKEY_METHODS 7
+#define ASN1_EVP_PKEY_METHODS 8
 #endif
 
 struct fips_evp_pkey_methods {
@@ -301,6 +325,7 @@ const EVP_PKEY_METHOD *EVP_PKEY_rsa_pkey_meth(void);
 const EVP_PKEY_METHOD *EVP_PKEY_rsa_pss_pkey_meth(void);
 const EVP_PKEY_METHOD *EVP_PKEY_ec_pkey_meth(void);
 const EVP_PKEY_METHOD *EVP_PKEY_hkdf_pkey_meth(void);
+const EVP_PKEY_METHOD *EVP_PKEY_hmac_pkey_meth(void);
 
 #if defined(__cplusplus)
 }  // extern C

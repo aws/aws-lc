@@ -55,19 +55,17 @@
  * [including the GNU Public Licence.] */
 
 #include <assert.h>
-#include <string.h>
 
 #include <openssl/digest.h>
 #include <openssl/err.h>
-#include <openssl/mem.h>
-#include <openssl/nid.h>
 
-#include "internal.h"
 #include "../../internal.h"
 #include "../evp/internal.h"
+#include "internal.h"
 
 
-void EVP_MD_unstable_sha3_enable(bool enable) { /* no-op */ }
+void EVP_MD_unstable_sha3_enable(bool enable) {  // no-op
+}
 
 bool EVP_MD_unstable_sha3_is_enabled(void) { return true; }
 
@@ -188,9 +186,14 @@ int EVP_MD_CTX_copy_ex(EVP_MD_CTX *out, const EVP_MD_CTX *in) {
 
   out->digest = in->digest;
   out->md_data = tmp_buf;
-  if (in->digest != NULL) {
+  if (in->digest != NULL && in->md_data != NULL) {
     OPENSSL_memcpy(out->md_data, in->md_data, in->digest->ctx_size);
   }
+  out->update = in->update;
+  out->flags = in->flags;
+  // copied |EVP_MD_CTX| should free its newly allocated |EVP_PKEY_CTX|.
+  out->flags &= ~EVP_MD_CTX_FLAG_KEEP_PKEY_CTX;
+
   out->pctx = pctx;
   out->pctx_ops = in->pctx_ops;
   assert(out->pctx == NULL || out->pctx_ops != NULL);
@@ -218,18 +221,37 @@ int EVP_MD_CTX_reset(EVP_MD_CTX *ctx) {
 
 int EVP_DigestInit_ex(EVP_MD_CTX *ctx, const EVP_MD *type, ENGINE *engine) {
   if (ctx->digest != type) {
-    assert(type->ctx_size != 0);
-    uint8_t *md_data = OPENSSL_malloc(type->ctx_size);
-    if (md_data == NULL) {
-      return 0;
-    }
-
-    OPENSSL_free(ctx->md_data);
-    ctx->md_data = md_data;
     ctx->digest = type;
+    if (!used_for_hmac(ctx)) {
+      assert(type->ctx_size != 0);
+      ctx->update = type->update;
+      uint8_t *md_data = OPENSSL_malloc(type->ctx_size);
+      if (md_data == NULL) {
+        return 0;
+      }
+      OPENSSL_free(ctx->md_data);
+      ctx->md_data = md_data;
+    }
   }
 
   assert(ctx->pctx == NULL || ctx->pctx_ops != NULL);
+
+  if (used_for_hmac(ctx)) {
+    // These configurations are specific to |EVP_PKEY_HMAC|. |HMAC_PKEY_CTX| is
+    // newly allocated by |EVP_DigestSignInit| at this point. The actual key
+    // data is stored in |ctx->pkey| as |HMAC_KEY|.
+    if (ctx->pctx == NULL || ctx->pctx->data == NULL ||
+        ctx->pctx->pkey == NULL || ctx->pctx->pkey->pkey.ptr == NULL) {
+      return 0;
+    }
+    const HMAC_KEY *key = ctx->pctx->pkey->pkey.ptr;
+    HMAC_PKEY_CTX *hmac_pctx = ctx->pctx->data;
+    if (!HMAC_Init_ex(&hmac_pctx->ctx, key->key, key->key_len, hmac_pctx->md,
+                      ctx->pctx->engine)) {
+      return 0;
+    }
+    return 1;
+  }
 
   ctx->digest->init(ctx);
   return 1;
@@ -241,11 +263,10 @@ int EVP_DigestInit(EVP_MD_CTX *ctx, const EVP_MD *type) {
 }
 
 int EVP_DigestUpdate(EVP_MD_CTX *ctx, const void *data, size_t len) {
-  if (ctx->digest == NULL) {
+  if (ctx->update == NULL) {
     return 0;
   }
-
-  ctx->digest->update(ctx, data, len);
+  ctx->update(ctx, data, len);
   return 1;
 }
 
@@ -287,7 +308,7 @@ int EVP_Digest(const void *data, size_t count, uint8_t *out_md,
   ret = EVP_DigestInit_ex(&ctx, type, impl) &&
         EVP_DigestUpdate(&ctx, data, count);
   if (ret == 0) {
-      return 0;
+    return 0;
   }
 
   if (EVP_MD_flags(type) & EVP_MD_FLAG_XOF) {
@@ -319,6 +340,4 @@ int EVP_MD_CTX_type(const EVP_MD_CTX *ctx) {
   return EVP_MD_type(EVP_MD_CTX_md(ctx));
 }
 
-int EVP_add_digest(const EVP_MD *digest) {
-  return 1;
-}
+int EVP_add_digest(const EVP_MD *digest) { return 1; }

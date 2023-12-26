@@ -184,6 +184,7 @@ OPENSSL_EXPORT EC_KEY *EVP_PKEY_get1_EC_KEY(const EVP_PKEY *pkey);
 #define EVP_PKEY_ED25519 NID_ED25519
 #define EVP_PKEY_X25519 NID_X25519
 #define EVP_PKEY_HKDF NID_hkdf
+#define EVP_PKEY_HMAC NID_hmac
 
 #ifdef ENABLE_DILITHIUM
 #define EVP_PKEY_DILITHIUM3 NID_DILITHIUM3_R3
@@ -1166,6 +1167,16 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_set_dsa_paramgen_q_bits(EVP_PKEY_CTX *ctx,
 // is NULL, it returns zero.
 OPENSSL_EXPORT int EVP_PKEY_assign(EVP_PKEY *pkey, int type, void *key);
 
+// EVP_PKEY_new_mac_key is deprecated. It allocates a fresh |EVP_PKEY| of
+// |type|. Only |EVP_PKEY_HMAC| is supported. |mac_key| is used as the HMAC key,
+// NULL |mac_key| will result in a complete zero-key being used, but in that
+// case, the length must be zero. This returns the fresh |EVP_PKEY|, or NULL on
+// error.
+//
+// NOTE: Use |HMAC_CTX| directly instead.
+OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_new_mac_key(int type, ENGINE *engine,
+                                              const uint8_t *mac_key,
+                                              size_t mac_key_len);
 
 // Preprocessor compatibility section (hidden).
 //

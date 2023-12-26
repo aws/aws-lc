@@ -27,6 +27,7 @@ static const EVP_PKEY_ASN1_METHOD *const asn1_evp_pkey_methods[] = {
   &dilithium3_asn1_meth,
 #endif
   &kem_asn1_meth,
+  &hmac_asn1_meth
 };
 
 OPENSSL_STATIC_ASSERT(
