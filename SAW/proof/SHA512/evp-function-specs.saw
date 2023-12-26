@@ -71,7 +71,7 @@ let EVP_DigestInit_array_spec = do {
   sha512_ctx_ptr <- llvm_alloc_sym_init (llvm_struct "struct.sha512_state_st");
   block' <- crucible_fresh_cryptol_var "block'" {| ByteArray |};
   points_to_sha512_state_st_array sha512_ctx_ptr {{ { h = SHAInit_Array.h, block = block', n = SHAInit_Array.n, sz = SHAInit_Array.sz } }};
-  points_to_env_md_ctx_st ctx_ptr type_ptr sha512_ctx_ptr;
+  points_to_env_md_ctx_st ctx_ptr type_ptr sha512_ctx_ptr (crucible_global SHA_UPDATE);
 
   // Postcondition: The function returns 1
   crucible_return (crucible_term {{ 1 : [32] }});
@@ -97,7 +97,7 @@ let EVP_DigestUpdate_array_spec = do {
 
   // Precondition: Struct pointed to by `ctx_ptr` points to `digest_ptr` and
   // `sha512_ctx_ptr`.
-  points_to_env_md_ctx_st ctx_ptr digest_ptr sha512_ctx_ptr;
+  points_to_env_md_ctx_st ctx_ptr digest_ptr sha512_ctx_ptr (crucible_global SHA_UPDATE);
 
   // Precondition: `data` is a fresh array of `len` bytes, and `data_ptr`
   // points to `data`.
@@ -120,7 +120,7 @@ let EVP_DigestUpdate_array_spec = do {
 
   // Postcondition: Struct pointed to by `ctx_ptr` points to `digest_ptr` and
   // `sha512_ctx_ptr`.
-  points_to_env_md_ctx_st ctx_ptr digest_ptr sha512_ctx_ptr;
+  points_to_env_md_ctx_st ctx_ptr digest_ptr sha512_ctx_ptr (crucible_global SHA_UPDATE);
 
   // Postcondition: The function returns 1
   crucible_return (crucible_term {{ 1 : [32] }});
@@ -153,7 +153,7 @@ let EVP_DigestFinalCommon_array_spec is_ex withLength = do {
 
   // Precondition: Struct pointed to by `ctx_ptr` points to `digest_ptr` and
   // `sha512_ctx_ptr`.
-  points_to_env_md_ctx_st ctx_ptr digest_ptr sha512_ctx_ptr;
+  points_to_env_md_ctx_st ctx_ptr digest_ptr sha512_ctx_ptr (crucible_global SHA_UPDATE);
 
   // Call function with `ctx_ptr`, `md_out_ptr`, and `s_ptr`
   crucible_execute_func [ctx_ptr, md_out_ptr, s_ptr];

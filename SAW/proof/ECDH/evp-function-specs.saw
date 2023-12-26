@@ -10,14 +10,17 @@ let EVP_PKEY_CTX_new_id_spec = do {
   crucible_alloc_global "EVP_PKEY_rsa_pss_pkey_meth_storage";
   crucible_alloc_global "EVP_PKEY_ec_pkey_meth_storage";
   crucible_alloc_global "EVP_PKEY_hkdf_pkey_meth_storage";
+  crucible_alloc_global "EVP_PKEY_hmac_pkey_meth_storage";
   crucible_alloc_global "EVP_PKEY_rsa_pkey_meth_once";
   crucible_alloc_global "EVP_PKEY_rsa_pss_pkey_meth_once";
   crucible_alloc_global "EVP_PKEY_ec_pkey_meth_once";
   crucible_alloc_global "EVP_PKEY_hkdf_pkey_meth_once";
+  crucible_alloc_global "EVP_PKEY_hmac_pkey_meth_once";
   crucible_alloc_global "AWSLC_fips_evp_pkey_methods_storage.0.0";
   crucible_alloc_global "AWSLC_fips_evp_pkey_methods_storage.0.1";
   crucible_alloc_global "AWSLC_fips_evp_pkey_methods_storage.0.2";
   crucible_alloc_global "AWSLC_fips_evp_pkey_methods_storage.0.3";
+  crucible_alloc_global "AWSLC_fips_evp_pkey_methods_storage.0.4";
   crucible_alloc_global "AWSLC_fips_evp_pkey_methods_once";
 
   crucible_execute_func [(crucible_term {{ `EVP_PKEY_EC : [32] }}), crucible_null];
@@ -31,14 +34,17 @@ let EVP_PKEY_CTX_new_spec = do {
   crucible_alloc_global "EVP_PKEY_rsa_pss_pkey_meth_storage";
   crucible_alloc_global "EVP_PKEY_ec_pkey_meth_storage";
   crucible_alloc_global "EVP_PKEY_hkdf_pkey_meth_storage";
+  crucible_alloc_global "EVP_PKEY_hmac_pkey_meth_storage";
   crucible_alloc_global "EVP_PKEY_rsa_pkey_meth_once";
   crucible_alloc_global "EVP_PKEY_rsa_pss_pkey_meth_once";
   crucible_alloc_global "EVP_PKEY_ec_pkey_meth_once";
   crucible_alloc_global "EVP_PKEY_hkdf_pkey_meth_once";
+  crucible_alloc_global "EVP_PKEY_hmac_pkey_meth_once";
   crucible_alloc_global "AWSLC_fips_evp_pkey_methods_storage.0.0";
   crucible_alloc_global "AWSLC_fips_evp_pkey_methods_storage.0.1";
   crucible_alloc_global "AWSLC_fips_evp_pkey_methods_storage.0.2";
   crucible_alloc_global "AWSLC_fips_evp_pkey_methods_storage.0.3";
+  crucible_alloc_global "AWSLC_fips_evp_pkey_methods_storage.0.4";
   crucible_alloc_global "AWSLC_fips_evp_pkey_methods_once";
 
   pkey_ptr <- crucible_alloc (llvm_struct "struct.evp_pkey_st");

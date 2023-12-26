@@ -12,6 +12,8 @@ let NID_X9_62_id_ecPublicKey = 408;
 let EVP_PKEY_EC = NID_X9_62_id_ecPublicKey;
 let NID_HKDF = 969;
 let EVP_PKEY_HKDF = NID_HKDF;
+let NID_HMAC = 855;
+let EVP_PKEY_HMAC = NID_HMAC;
 
 let points_to_evp_pkey_method_st
       ptr
@@ -152,6 +154,27 @@ let points_to_EVP_PKEY_hkdf_pkey_meth ptr = points_to_evp_pkey_method_st
       (crucible_global "pkey_hkdf_ctrl") // ctrl
 ;
 
+let points_to_EVP_PKEY_hmac_pkey_meth ptr = points_to_evp_pkey_method_st
+      ptr
+      EVP_PKEY_HMAC // pkey_id
+      (crucible_global "hmac_init") // init
+      (crucible_global "hmac_copy") // copy
+      (crucible_global "hmac_cleanup") // cleanup
+      crucible_null // keygen
+      crucible_null // sign_init
+      crucible_null // sign
+      crucible_null // sign_message
+      crucible_null // verify_init
+      crucible_null // verify
+      crucible_null // verify_message
+      crucible_null // verify_recover
+      crucible_null // encrypt
+      crucible_null // decrypt
+      crucible_null // derive
+      crucible_null // paramgen
+      (crucible_global "hmac_ctrl") // ctrl
+;
+
 
 // Specification of `EVP_PKEY_rsa_pkey_meth_init`, the initialization
 // function for `EVP_PKEY_rsa_pkey_meth_storage`.
@@ -207,18 +230,35 @@ let EVP_PKEY_ec_pkey_meth_spec = do {
 // Specification of `EVP_PKEY_hkdf_pkey_meth_init`, the initialization function
 // for `EVP_PKEY_hkdf_pkey_meth_storage`.
 let EVP_PKEY_hkdf_pkey_meth_init_spec = do {
-crucible_alloc_global "EVP_PKEY_hkdf_pkey_meth_storage";
-crucible_execute_func [];
-points_to_EVP_PKEY_hkdf_pkey_meth (crucible_global "EVP_PKEY_hkdf_pkey_meth_storage");
+  crucible_alloc_global "EVP_PKEY_hkdf_pkey_meth_storage";
+  crucible_execute_func [];
+  points_to_EVP_PKEY_hkdf_pkey_meth (crucible_global "EVP_PKEY_hkdf_pkey_meth_storage");
 };
 let EVP_PKEY_hkdf_pkey_meth_spec = do {
-crucible_alloc_global "EVP_PKEY_hkdf_pkey_meth_storage";
-crucible_alloc_global "EVP_PKEY_hkdf_pkey_meth_once";
-crucible_execute_func
-[ (crucible_global "EVP_PKEY_hkdf_pkey_meth_once")
-, (crucible_global "EVP_PKEY_hkdf_pkey_meth_init")
-];
-points_to_EVP_PKEY_hkdf_pkey_meth (crucible_global "EVP_PKEY_hkdf_pkey_meth_storage");
+  crucible_alloc_global "EVP_PKEY_hkdf_pkey_meth_storage";
+  crucible_alloc_global "EVP_PKEY_hkdf_pkey_meth_once";
+  crucible_execute_func
+  [ (crucible_global "EVP_PKEY_hkdf_pkey_meth_once")
+  , (crucible_global "EVP_PKEY_hkdf_pkey_meth_init")
+  ];
+  points_to_EVP_PKEY_hkdf_pkey_meth (crucible_global "EVP_PKEY_hkdf_pkey_meth_storage");
+};
+
+// Specification of `EVP_PKEY_hmac_pkey_meth_init`, the initialization function
+// for `EVP_PKEY_hmac_pkey_meth_storage`.
+let EVP_PKEY_hmac_pkey_meth_init_spec = do {
+  crucible_alloc_global "EVP_PKEY_hmac_pkey_meth_storage";
+  crucible_execute_func [];
+  points_to_EVP_PKEY_hmac_pkey_meth (crucible_global "EVP_PKEY_hmac_pkey_meth_storage");
+};
+let EVP_PKEY_hmac_pkey_meth_spec = do {
+  crucible_alloc_global "EVP_PKEY_hmac_pkey_meth_storage";
+  crucible_alloc_global "EVP_PKEY_hmac_pkey_meth_once";
+  crucible_execute_func
+  [ (crucible_global "EVP_PKEY_hmac_pkey_meth_once")
+  , (crucible_global "EVP_PKEY_hmac_pkey_meth_init")
+  ];
+  points_to_EVP_PKEY_hmac_pkey_meth (crucible_global "EVP_PKEY_hmac_pkey_meth_storage");
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -244,6 +284,12 @@ EVP_PKEY_ec_pkey_meth_ov <- llvm_unsafe_assume_spec
 
 llvm_verify m "EVP_PKEY_hkdf_pkey_meth_init" [] true EVP_PKEY_hkdf_pkey_meth_init_spec (w4_unint_z3 []);
 EVP_PKEY_hkdf_pkey_meth_ov <- llvm_unsafe_assume_spec
-m
-"CRYPTO_once"
-EVP_PKEY_hkdf_pkey_meth_spec;
+  m
+  "CRYPTO_once"
+  EVP_PKEY_hkdf_pkey_meth_spec;
+
+llvm_verify m "EVP_PKEY_hmac_pkey_meth_init" [] true EVP_PKEY_hmac_pkey_meth_init_spec (w4_unint_z3 []);
+EVP_PKEY_hmac_pkey_meth_ov <- llvm_unsafe_assume_spec
+  m
+  "CRYPTO_once"
+  EVP_PKEY_hmac_pkey_meth_spec;

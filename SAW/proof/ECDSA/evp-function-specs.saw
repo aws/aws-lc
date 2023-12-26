@@ -11,18 +11,21 @@ let EVP_DigestSignVerifyInit_spec is_sign = do {
   crucible_alloc_global "EVP_PKEY_rsa_pss_pkey_meth_storage";
   crucible_alloc_global "EVP_PKEY_ec_pkey_meth_storage";
   crucible_alloc_global "EVP_PKEY_hkdf_pkey_meth_storage";
+  crucible_alloc_global "EVP_PKEY_hmac_pkey_meth_storage";
   crucible_alloc_global "EVP_PKEY_rsa_pkey_meth_once";
   crucible_alloc_global "EVP_PKEY_rsa_pss_pkey_meth_once";
   crucible_alloc_global "EVP_PKEY_ec_pkey_meth_once";
   crucible_alloc_global "EVP_PKEY_hkdf_pkey_meth_once";
+  crucible_alloc_global "EVP_PKEY_hmac_pkey_meth_once";
   crucible_alloc_global "AWSLC_fips_evp_pkey_methods_storage.0.0";
   crucible_alloc_global "AWSLC_fips_evp_pkey_methods_storage.0.1";
   crucible_alloc_global "AWSLC_fips_evp_pkey_methods_storage.0.2";
   crucible_alloc_global "AWSLC_fips_evp_pkey_methods_storage.0.3";
+  crucible_alloc_global "AWSLC_fips_evp_pkey_methods_storage.0.4";
   crucible_alloc_global "AWSLC_fips_evp_pkey_methods_once";
 
   ctx_ptr <- crucible_alloc (llvm_struct "struct.env_md_ctx_st");
-  points_to_env_md_ctx_st ctx_ptr crucible_null crucible_null;
+  points_to_env_md_ctx_st ctx_ptr crucible_null crucible_null crucible_null;
 
   type_ptr <- crucible_alloc_readonly (llvm_struct "struct.env_md_st");
   points_to_env_md_st type_ptr;
@@ -45,7 +48,7 @@ let EVP_DigestSignVerifyInit_spec is_sign = do {
   ec_pkey_ctx_ptr <- crucible_alloc (llvm_struct "struct.EC_PKEY_CTX");
   points_to_EC_PKEY_CTX ec_pkey_ctx_ptr type_ptr;
   points_to_evp_pkey_ctx_st evp_pkey_ctx_ptr (crucible_global "EVP_PKEY_ec_pkey_meth_storage") pkey_ptr crucible_null (if is_sign then EVP_PKEY_OP_SIGN else EVP_PKEY_OP_VERIFY) ec_pkey_ctx_ptr;
-  points_to_env_md_ctx_st_with_pctx ctx_ptr type_ptr sha512_state_ptr evp_pkey_ctx_ptr (crucible_global "EVP_MD_pctx_ops_storage");
+  points_to_env_md_ctx_st_with_pctx ctx_ptr type_ptr sha512_state_ptr evp_pkey_ctx_ptr (crucible_global "EVP_MD_pctx_ops_storage") (crucible_global SHA_UPDATE);
 
   crucible_return (crucible_term {{ 1 : [32] }});
 };
@@ -73,7 +76,7 @@ let EVP_DigestSignVerifyUpdate_spec is_sign = do {
 
   pctx_ops_ptr <- pointer_to_evp_md_pctx_ops;
 
-  points_to_env_md_ctx_st_with_pctx ctx_ptr digest_ptr sha512_state_ptr evp_pkey_ctx_ptr pctx_ops_ptr;
+  points_to_env_md_ctx_st_with_pctx ctx_ptr digest_ptr sha512_state_ptr evp_pkey_ctx_ptr pctx_ops_ptr (crucible_global SHA_UPDATE);
 
   len <- crucible_fresh_var "len" i64;
   (data, data_ptr) <- ptr_to_fresh_array_readonly "data" len;
@@ -114,7 +117,7 @@ let EVP_DigestSignFinal_spec = do {
 
   pctx_ops_ptr <- pointer_to_evp_md_pctx_ops;
 
-  points_to_env_md_ctx_st_with_pctx ctx_ptr digest_ptr sha512_state_ptr evp_pkey_ctx_ptr pctx_ops_ptr;
+  points_to_env_md_ctx_st_with_pctx ctx_ptr digest_ptr sha512_state_ptr evp_pkey_ctx_ptr pctx_ops_ptr (crucible_global SHA_UPDATE);
 
   out_sig_ptr <- crucible_alloc (llvm_array max_sig_len i8);
   out_sig_len_ptr <- crucible_alloc i64;
@@ -163,7 +166,7 @@ let EVP_DigestVerifyFinal_spec = do {
 
   pctx_ops_ptr <- pointer_to_evp_md_pctx_ops;
 
-  points_to_env_md_ctx_st_with_pctx ctx_ptr digest_ptr sha512_state_ptr evp_pkey_ctx_ptr pctx_ops_ptr;
+  points_to_env_md_ctx_st_with_pctx ctx_ptr digest_ptr sha512_state_ptr evp_pkey_ctx_ptr pctx_ops_ptr (crucible_global SHA_UPDATE);
 
   sig_ptr <- crucible_alloc_readonly (llvm_array sig_len i8);
   (r, s) <- points_to_fresh_asn1_sig sig_ptr;
@@ -202,7 +205,7 @@ let EVP_DigestSign_spec = do {
 
   pctx_ops_ptr <- pointer_to_evp_md_pctx_ops;
 
-  points_to_env_md_ctx_st_with_pctx ctx_ptr digest_ptr sha512_state_ptr evp_pkey_ctx_ptr pctx_ops_ptr;
+  points_to_env_md_ctx_st_with_pctx ctx_ptr digest_ptr sha512_state_ptr evp_pkey_ctx_ptr pctx_ops_ptr (crucible_global SHA_UPDATE);
 
   out_sig_ptr <- crucible_alloc (llvm_array max_sig_len i8);
   out_sig_len_ptr <- crucible_alloc i64;
@@ -253,7 +256,7 @@ let EVP_DigestVerify_spec = do {
 
   pctx_ops_ptr <- pointer_to_evp_md_pctx_ops;
 
-  points_to_env_md_ctx_st_with_pctx ctx_ptr digest_ptr sha512_state_ptr evp_pkey_ctx_ptr pctx_ops_ptr;
+  points_to_env_md_ctx_st_with_pctx ctx_ptr digest_ptr sha512_state_ptr evp_pkey_ctx_ptr pctx_ops_ptr (crucible_global SHA_UPDATE);
 
   len <- crucible_fresh_var "len" i64;
   (data, data_ptr) <- ptr_to_fresh_array_readonly "data" len;

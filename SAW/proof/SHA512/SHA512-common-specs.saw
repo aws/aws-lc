@@ -311,13 +311,21 @@ let points_to_env_md_st ptr = do {
 };
 
 // Specify the env_md_ctx_st struct
-let points_to_env_md_ctx_st ptr digest_ptr md_data_ptr = do {
+let points_to_env_md_ctx_st ptr digest_ptr md_data_ptr update_ptr = do {
   crucible_points_to (crucible_field ptr "digest") digest_ptr;
   crucible_points_to (crucible_field ptr "md_data") md_data_ptr;
-
   // Specify that the `pctx` and `pctx_ops` fields are null
   crucible_points_to (crucible_field ptr "pctx") crucible_null;
   crucible_points_to (crucible_field ptr "pctx_ops") crucible_null;
+  crucible_points_to (crucible_field ptr "update") update_ptr;
+  // Set flags to zero. This means that the following two flags are not set:
+  // 1. Flag |EVP_MD_CTX_FLAG_KEEP_PKEY_CTX|, so as to let |*pctx| refrain
+  //    from being freed when |*pctx| was set externally with
+  //    |EVP_MD_CTX_set_pkey_ctx|.
+  // 2. Flag |EVP_MD_CTX_HMAC| for |EVP_PKEY_HMAC|.
+  // We don't need these two flags because we are not verifying |EVP_MD_CTX_set_pkey_ctx|
+  // nor |EVP_PKEY_HMAC|
+  crucible_points_to (crucible_field ptr "flags") (crucible_term {{ 0 : [64] }});
 };
 
 let points_to_evp_md_pctx_ops ptr = do {
@@ -334,11 +342,20 @@ let pointer_to_evp_md_pctx_ops = do {
 };
 
 // Specify the env_md_ctx_st struct with non-null pctx and pctx_ops
-let points_to_env_md_ctx_st_with_pctx ptr digest_ptr md_data_ptr pctx_ptr pctx_ops_ptr = do {
+let points_to_env_md_ctx_st_with_pctx ptr digest_ptr md_data_ptr pctx_ptr pctx_ops_ptr update_ptr = do {
   crucible_points_to (crucible_field ptr "digest") digest_ptr;
   crucible_points_to (crucible_field ptr "md_data") md_data_ptr;
   crucible_points_to (crucible_field ptr "pctx") pctx_ptr;
   crucible_points_to (crucible_field ptr "pctx_ops") pctx_ops_ptr;
+  crucible_points_to (crucible_field ptr "update") update_ptr;
+  // Set flags to zero. This means that the following two flags are not set:
+  // 1. Flag |EVP_MD_CTX_FLAG_KEEP_PKEY_CTX|, so as to let |*pctx| refrain
+  //    from being freed when |*pctx| was set externally with
+  //    |EVP_MD_CTX_set_pkey_ctx|.
+  // 2. Flag |EVP_MD_CTX_HMAC| for |EVP_PKEY_HMAC|.
+  // We don't need these two flags because we are not verifying |EVP_MD_CTX_set_pkey_ctx|
+  // nor |EVP_PKEY_HMAC|
+  crucible_points_to (crucible_field ptr "flags") (crucible_term {{ 0 : [64] }});
   //crucible_points_to (crucible_field ptr "pctx_ops") (crucible_global "md_pctx_ops");
 };
 
