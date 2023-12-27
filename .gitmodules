@@ -1,7 +1,7 @@
 [submodule "src"]
 	path = src
-	branch = evp-pkey-hmac
-	url = https://github.com/samuel40791765/aws-lc.git
+	branch = main
+	url = https://github.com/aws/aws-lc.git
 [submodule "cryptol-specs"]
 	path = cryptol-specs
 	branch = sha-imperative
