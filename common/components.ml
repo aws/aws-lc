@@ -3043,7 +3043,10 @@ let (NONOVERLAPPING_TAC:tactic) =
                     else if t = w' then twfn th
                     else fail()) asl in
                 ACCEPT_TAC th gl
-           with Failure _ -> NONOVERLAPPING_TAC gl)
+          with Failure _ -> try NONOVERLAPPING_TAC gl with Failure s ->
+            failwith (Printf.sprintf
+              "NONOVERLAPPING_TAC: cannot prove `%s`: reason: %s"
+              (string_of_term w) s))
         | Comb(Comb(Const("orthogonal_components", _), p1), p2) when p1 = p2 ->
           failwith "NONOVERLAPPING_TAC: orthogonal_components with identical operands"
         | _ -> failwith ("NONOVERLAPPING_TAC: inapplicable goal: " ^

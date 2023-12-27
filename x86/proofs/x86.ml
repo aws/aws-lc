@@ -7,6 +7,8 @@
 (* Simplified model of x86 semantics.                                        *)
 (* ========================================================================= *)
 
+let x86_print_log = ref false;;
+
 (* ------------------------------------------------------------------------- *)
 (* Size in bits corresponding to the tags.                                   *)
 (* ------------------------------------------------------------------------- *)
@@ -2481,13 +2483,25 @@ let DISCARD_STATE_TAC s =
 
 let DISCARD_OLDSTATE_TAC s =
   let v = mk_var(s,`:x86state`) in
-  let rec badread okvs tm =
+  let rec unbound_statevars_of_read bound_svars tm =
     match tm with
-      Comb(Comb(Const("read",_),cmp),s) -> not(mem s okvs)
-    | Comb(s,t) -> badread okvs s || badread okvs t
-    | Abs(v,t) -> badread (v::okvs) t
-    | _ -> false in
-  DISCARD_ASSUMPTIONS_TAC(badread [v] o concl);;
+      Comb(Comb(Const("read",_),cmp),s) ->
+        if mem s bound_svars then [] else [s]
+    | Comb(a,b) -> union (unbound_statevars_of_read bound_svars a)
+                         (unbound_statevars_of_read bound_svars b)
+    | Abs(v,t) -> unbound_statevars_of_read (v::bound_svars) t
+    | _ -> [] in
+  DISCARD_ASSUMPTIONS_TAC(
+    fun thm ->
+      let us = unbound_statevars_of_read [] (concl thm) in
+      if us = [] || us = [v] then false
+      else if not(mem v us) then true
+      else
+        if !x86_print_log then
+          (Printf.printf
+            "Info: assumption `%s` is erased, but it might have contained useful information\n"
+            (string_of_term (concl thm)); true)
+        else true);;
 
 (* ------------------------------------------------------------------------- *)
 (* More convenient stepping tactics, optionally with accumulation.           *)
@@ -2792,6 +2806,9 @@ let X86_ADD_RETURN_NOSTACK_TAC =
           ENSURES_PRECONDITION_THM)) THEN
     SIMP_TAC[]) in
   fun execth coreth ->
+    let coreth =
+      REWRITE_RULE[MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI]
+      coreth in
     REWRITE_TAC [MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI] THEN
     MP_TAC coreth THEN
     REPEAT(MATCH_MP_TAC MONO_FORALL THEN GEN_TAC) THEN
@@ -2967,6 +2984,8 @@ let WINDOWS_X86_WRAP_NOSTACK_TAC =
              (SPEC_ALL (X86_TRIM_EXEC_RULE stdmc)) pcoff
              (rhs(concl winmc))))))
     and winexecth = X86_MK_EXEC_RULE winmc in
+    let coreth = REWRITE_RULE
+      [MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI] coreth in
    (REWRITE_TAC [WINDOWS_MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI] THEN
     PURE_REWRITE_TAC[WINDOWS_ABI_STACK_THM] THEN
     MP_TAC coreth THEN
