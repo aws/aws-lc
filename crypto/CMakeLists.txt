@@ -150,9 +150,6 @@ else()
 
 endif()
 
-# We need to create a tiny library containing only the hmac stuff from AWS-LC here so that we can use it while building inject_hash
-
-add_subdirectory(../util/fipstools/inject_hash inject_hash)
 add_subdirectory(fipsmodule)
 
 if(FIPS_DELOCATE OR FIPS_SHARED)

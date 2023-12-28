@@ -12,11 +12,31 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-#ifndef INJECT_HASH_H
-#define INJECT_HASH_H
-
-uint8_t* readObject(const char *filename, size_t *size);
-int findHash(uint8_t *objectBytes, size_t objectBytesSize, uint8_t* hash, size_t hashSize);
-int doAppleOS(char *objectFile, uint8_t **textModule, size_t *textModuleSize, uint8_t **rodataModule, size_t *rodataModuleSize);
-
+#if !defined(_GNU_SOURCE)
+#define _GNU_SOURCE
 #endif
+
+#include <openssl/crypto.h>
+
+#include <stdlib.h>
+
+// #include <openssl/digest.h>
+// #include <openssl/hmac.h>
+// #include <openssl/sha.h>
+#include <openssl/nid.h>
+
+// #include "../internal.h"
+#include "../mem.c"
+#include "../thread_pthread.c"
+#include "../err/err.c"
+#include "../../generated-src/err_data.c"
+
+#include "digest/internal.h"
+// #include "sha/internal.h"
+#include "delocate.h"
+
+#include "hmac/hmac.c"
+#include "digest/digest.c"
+#include "digest/digests.c"
+#include "sha/sha256.c"
+#include "service_indicator/service_indicator.c"

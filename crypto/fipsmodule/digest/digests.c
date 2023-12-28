@@ -75,7 +75,7 @@
 #define CHECK(x) assert(x)
 #endif
 
-
+#ifndef FIPS_HASHING
 static void md4_init(EVP_MD_CTX *ctx) {
   CHECK(MD4_Init(ctx->md_data));
 }
@@ -199,7 +199,7 @@ DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha224) {
   out->block_size = 64;
   out->ctx_size = sizeof(SHA256_CTX);
 }
-
+#endif //!FIPS_HASHING
 
 static void sha256_init(EVP_MD_CTX *ctx) {
   CHECK(SHA256_Init(ctx->md_data));
@@ -225,7 +225,7 @@ DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha256) {
   out->ctx_size = sizeof(SHA256_CTX);
 }
 
-
+#ifndef FIPS_HASHING
 static void sha384_init(EVP_MD_CTX *ctx) {
   CHECK(SHA384_Init(ctx->md_data));
 }
@@ -509,5 +509,6 @@ DEFINE_METHOD_FUNCTION(EVP_MD, EVP_md5_sha1) {
   out->block_size = 64;
   out->ctx_size = sizeof(MD5_SHA1_CTX);
 }
+#endif // !FIPS_HASHING
 
 #undef CHECK

@@ -108,14 +108,18 @@ struct hmac_methods_st {
 // The maximum number of HMAC implementations
 #define HMAC_METHOD_MAX 8
 
+#ifndef FIPS_HASHING
 MD_TRAMPOLINES_EXPLICIT(MD5, MD5_CTX, MD5_CBLOCK);
 MD_TRAMPOLINES_EXPLICIT(SHA1, SHA_CTX, SHA_CBLOCK);
 MD_TRAMPOLINES_EXPLICIT(SHA224, SHA256_CTX, SHA256_CBLOCK);
+#endif // !FIPS_HASHING
 MD_TRAMPOLINES_EXPLICIT(SHA256, SHA256_CTX, SHA256_CBLOCK);
+#ifndef FIPS_HASHING
 MD_TRAMPOLINES_EXPLICIT(SHA384, SHA512_CTX, SHA512_CBLOCK);
 MD_TRAMPOLINES_EXPLICIT(SHA512, SHA512_CTX, SHA512_CBLOCK);
 MD_TRAMPOLINES_EXPLICIT(SHA512_224, SHA512_CTX, SHA512_CBLOCK);
 MD_TRAMPOLINES_EXPLICIT(SHA512_256, SHA512_CTX, SHA512_CBLOCK);
+#endif // !FIPS_HASHING
 
 struct hmac_method_array_st {
   HmacMethods methods[HMAC_METHOD_MAX];
@@ -136,6 +140,7 @@ DEFINE_LOCAL_DATA(struct hmac_method_array_st, AWSLC_hmac_in_place_methods) {
   // Since we search these linearly it helps (just a bit) to put the most common ones first.
   // This isn't based on hard metrics and will not make a significant different on performance.
   DEFINE_IN_PLACE_METHODS(EVP_sha256(), SHA256);
+#ifndef FIPS_HASHING
   DEFINE_IN_PLACE_METHODS(EVP_sha1(), SHA1);
   DEFINE_IN_PLACE_METHODS(EVP_sha384(), SHA384);
   DEFINE_IN_PLACE_METHODS(EVP_sha512(), SHA512);
@@ -143,6 +148,7 @@ DEFINE_LOCAL_DATA(struct hmac_method_array_st, AWSLC_hmac_in_place_methods) {
   DEFINE_IN_PLACE_METHODS(EVP_sha224(), SHA224);
   DEFINE_IN_PLACE_METHODS(EVP_sha512_224(), SHA512_224);
   DEFINE_IN_PLACE_METHODS(EVP_sha512_256(), SHA512_256);
+#endif // !FIPS_HASHING
 }
 
 static const HmacMethods *GetInPlaceMethods(const EVP_MD *evp_md) {

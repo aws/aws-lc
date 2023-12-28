@@ -126,6 +126,8 @@ void FIPS_service_indicator_unlock_state(void) {
   indicator->lock_state--;
 }
 
+#ifndef FIPS_HASHING
+
 void AEAD_GCM_verify_service_indicator(const EVP_AEAD_CTX *ctx) {
   // We only have support for 128 bit and 256 bit keys for AES-GCM. AES-GCM is
   // approved only with an internal IV, see SP 800-38D Sec 8.2.2.
@@ -342,6 +344,7 @@ void EVP_DigestSign_verify_service_indicator(const EVP_MD_CTX *ctx) {
   evp_md_ctx_verify_service_indicator(ctx, /*rsa_1024_ok=*/0,
                                       is_md_fips_approved_for_signing);
 }
+#endif  // !FIPS_HASHING
 
 void HMAC_verify_service_indicator(const EVP_MD *evp_md) {
   switch (evp_md->type){
@@ -409,6 +412,8 @@ void HKDFExpand_verify_service_indicator(const EVP_MD *evp_md) {
       break;
   }
 }
+
+#ifndef FIPS_HASHING
 void PBKDF2_verify_service_indicator(const EVP_MD *evp_md, size_t password_len,
                                     size_t salt_len, unsigned iterations) {
   // PBKDF with SHA1, SHA224, SHA256, SHA384, and SHA512 are approved.
@@ -484,6 +489,7 @@ void TLSKDF_verify_service_indicator(const EVP_MD *dgst, const char *label,
       break;
   }
 }
+#endif // !FIPS_HASHING
 
 #else
 

@@ -303,6 +303,23 @@ if(S2N_BIGNUM_ASM_SOURCES)
   endforeach()
 endif()
 
+if(FIPS_DELOCATE OR FIPS_SHARED)
+  add_library(
+    fips_hashing
+
+    OBJECT
+
+    fips_hashing.c
+  )
+  add_dependencies(fips_hashing boringssl_prefix_symbols)
+
+  target_compile_options(fips_hashing PUBLIC -DOPENSSL_NO_ASM=1 -DFIPS_HASHING=1)
+  target_include_directories(fips_hashing PUBLIC ${PROJECT_SOURCE_DIR}/include)
+  target_include_directories(fips_hashing BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
+
+  add_subdirectory(${PROJECT_SOURCE_DIR}/util/fipstools/inject_hash inject_hash)
+endif()
+
 if(FIPS_DELOCATE)
   if(FIPS_SHARED)
     error("Can't set both delocate and shared mode for FIPS build")

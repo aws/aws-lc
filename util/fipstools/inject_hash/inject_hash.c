@@ -1,3 +1,17 @@
+/* Copyright (c) 2017, Google Inc.
+ *
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+ * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
+ * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
+ * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -5,6 +19,9 @@
 
 #include "inject_hash.h"
 #include "macho_parser.h"
+
+#include <openssl/base.h>
+#include <openssl/hmac.h>
 
 uint8_t* readObject(const char *filename, size_t *size) {
     FILE *file = fopen(filename, "rb");
@@ -232,6 +249,47 @@ int main(int argc, char *argv[]) {
         perror("Error finding hash");
         exit(EXIT_FAILURE);
     }
+
+    // Take the hmac sha256 of the text and rodata modules
+    uint8_t zeroKey[64] = {0};
+    HMAC_CTX ctx;
+    if (!HMAC_Init(&ctx, &zeroKey, sizeof(zeroKey), EVP_sha256())) {
+        perror("Error in HMAC_Init()");
+        exit(EXIT_FAILURE);
+    }
+
+    if(!rodataModule) {
+        // Put textModuleSize into a little endian byte array and pass it to HMAC_Update() before doing textModule itself
+        if (!HMAC_Update(&ctx, textModule, textModuleSize)) {
+            perror("Error in HMAC_Update() of textModule");
+            exit(EXIT_FAILURE);
+        }
+
+        // Put rodataModuleSize into a little endian byte array and pass it to HMAC_Update() before doing rodataModule itself
+        if (!HMAC_Update(&ctx, rodataModule, rodataModuleSize)) {
+            perror("Error in HMAC_Update() of rodataModule");
+            exit(EXIT_FAILURE);
+        }
+
+    } else {
+        if (!HMAC_Update(&ctx, textModule, textModuleSize)) {
+            perror("Error in HMAC_Update() of textModule");
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    uint8_t *calculatedHash = (uint8_t *)malloc(32);
+    unsigned int calculatedHashLen;
+    if (!HMAC_Final(&ctx, calculatedHash, &calculatedHashLen)) {
+        perror("Error in HMAC_Final()");
+        exit(EXIT_FAILURE);
+    }
+
+    for(unsigned int i = 0; i < calculatedHashLen; i++) {
+        printf("%02X ", calculatedHash[i]);
+    }
+    printf("\n");
+
     printf("Done\n");
 
     free(textModule);
