@@ -16,24 +16,18 @@
 #define _GNU_SOURCE
 #endif
 
-#include <openssl/crypto.h>
-
 #include <stdlib.h>
 
-// #include <openssl/digest.h>
-// #include <openssl/hmac.h>
-// #include <openssl/sha.h>
+#include <openssl/crypto.h>
 #include <openssl/nid.h>
 
-// #include "../internal.h"
+#include "digest/internal.h"
+#include "delocate.h"
+
 #include "../mem.c"
 #include "../thread_pthread.c"
 #include "../err/err.c"
 #include "../../generated-src/err_data.c"
-
-#include "digest/internal.h"
-// #include "sha/internal.h"
-#include "delocate.h"
 
 #include "hmac/hmac.c"
 #include "digest/digest.c"

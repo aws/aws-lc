@@ -27,33 +27,35 @@
 uint8_t* readObject(const char *filename, size_t *size) {
     FILE *file = fopen(filename, "rb");
 
+    uint8_t *objectBytes = NULL;
+
     if (file == NULL) {
         perror("Error opening file");
-        return 0;
+        goto end;
     }
 
     fseek(file, 0, SEEK_END);
     size_t file_size = ftell(file);
     fseek(file, 0, SEEK_SET);
 
-    uint8_t *objectBytes = (uint8_t *)malloc(file_size);
+    objectBytes = (uint8_t *)malloc(file_size);
 
     if (objectBytes == NULL) {
         perror("Error allocating memory");
-        fclose(file);
-        return 0;
+        goto end;
     }
 
     *size = fread(objectBytes, 1, file_size, file);
-    fclose(file);
 
     if (*size != file_size) {
         perror("Error reading file");
         free(objectBytes);
         objectBytes = NULL;
-        return 0;
+        goto end;
     }
 
+end:
+    fclose(file);
     return objectBytes;
 }
 
@@ -72,10 +74,10 @@ int writeObject(const char *filename, uint8_t *bytes, size_t size) {
         goto end;
     }
 
-    fclose(file);
     ret = 1;
 
 end:
+    fclose(file);
     return ret;
 }
 
