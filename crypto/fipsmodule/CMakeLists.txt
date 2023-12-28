@@ -315,7 +315,6 @@ if(FIPS_DELOCATE OR FIPS_SHARED)
 
   target_compile_options(fips_hashing PUBLIC -DOPENSSL_NO_ASM=1 -DFIPS_HASHING=1)
   target_include_directories(fips_hashing PUBLIC ${PROJECT_SOURCE_DIR}/include)
-  target_include_directories(fips_hashing BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
 
   add_subdirectory(${PROJECT_SOURCE_DIR}/util/fipstools/inject_hash inject_hash)
 endif()

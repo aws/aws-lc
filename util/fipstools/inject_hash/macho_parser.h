@@ -24,7 +24,7 @@ typedef struct {
     char *name;
 } SectionInfo;
 
-// Since we only support 64-bit architectures, we don't need to account for any of the 32-bit structures
+// Since we only support 64-bit architectures on Apple, we don't need to account for any of the 32-bit structures
 #define LC_SEG LC_SEGMENT_64
 #define BIT_MODIFIER 8
 

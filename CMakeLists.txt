@@ -904,6 +904,7 @@ if(BUILD_LIBSSL)
     add_subdirectory(tool)
   endif()
 endif()
+add_subdirectory(util/fipstools)
 
 if(FUZZ)
   if(LIBFUZZER_FROM_DEPS)
