@@ -598,11 +598,11 @@ if(FIPS_SHARED)
     # the hash directly into the final library.
     build_libcrypto(crypto $<TARGET_OBJECTS:fipsmodule>)
     if (APPLE)
-      set(INJECT_HASH_APPLE_FLAG "-apple")
+      set(INJECT_HASH_APPLE_FLAG "-f")
       add_custom_command(
         TARGET crypto POST_BUILD
         COMMAND ${PROJECT_BINARY_DIR}/crypto/fipsmodule/inject_hash/inject_hash
-        -p $<TARGET_FILE:crypto> -o $<TARGET_FILE:crypto> -f
+        -p $<TARGET_FILE:crypto> -o $<TARGET_FILE:crypto> ${INJECT_HASH_APPLE_FLAG}
       )
     else()
       add_custom_command(

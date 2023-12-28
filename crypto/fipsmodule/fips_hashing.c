@@ -30,6 +30,7 @@
 #include "../../generated-src/err_data.c"
 
 #include "hmac/hmac.c"
+#include "evp/p_hmac.c"
 #include "digest/digest.c"
 #include "digest/digests.c"
 #include "sha/sha256.c"
