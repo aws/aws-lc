@@ -51,7 +51,6 @@ int readMachOFile(const char *filename, MachOFile *macho) {
     for (uint32_t i = 0; i < macho->machHeader.sizeofcmds / BIT_MODIFIER; i += macho->loadCommands[i].cmdsize / BIT_MODIFIER) {
         if (macho->loadCommands[i].cmd == LC_SEG) {
             SegmentLoadCommand *segment = (SegmentLoadCommand *)&macho->loadCommands[i];
-            printf("Segment name: %s\n", segment->segname);
             SectionHeader *sections = (SectionHeader *)&segment[1];
             for (uint32_t j = 0; j < segment->nsects; j++) {
                 macho->sections[sectionIndex].offset = sections[j].offset;

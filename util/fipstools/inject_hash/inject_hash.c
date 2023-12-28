@@ -57,16 +57,36 @@ uint8_t* readObject(const char *filename, size_t *size) {
     return objectBytes;
 }
 
-int findHash(uint8_t *objectBytes, size_t objectBytesSize, uint8_t* hash, size_t hashSize) {
+int writeObject(const char *filename, uint8_t *bytes, size_t size) {
+    int ret = 0;
+
+    FILE *file = fopen(filename, "wb");
+    if (file == NULL) {
+        perror("Error opening file to write");
+        goto end;
+    }
+
+    size_t written = fwrite(bytes, sizeof(uint8_t), size, file);
+    if (written != size) {
+        perror("Error writing file");
+        goto end;
+    }
+
+    fclose(file);
+    ret = 1;
+
+end:
+    return ret;
+}
+
+uint32_t findHash(uint8_t *objectBytes, size_t objectBytesSize, uint8_t* hash, size_t hashSize) {
     uint8_t *ptr = memmem(objectBytes, objectBytesSize, hash, hashSize);
     if (ptr == NULL) {
         perror("Error finding hash in object");
-        return 1;
+        return 0;
     }
 
-    printf("Hash found at index: %ld\n", ptr - objectBytes);
-
-    return 1;
+    return ptr-objectBytes;
 }
 
 int doAppleOS(char *objectFile, uint8_t **textModule, size_t *textModuleSize, uint8_t **rodataModule, size_t *rodataModuleSize) {
@@ -94,7 +114,6 @@ int doAppleOS(char *objectFile, uint8_t **textModule, size_t *textModuleSize, ui
     int ret = 0;
 
     if (readMachOFile(objectFile, &macho)) {
-        printMachOSectionInfo(&macho);
         textSection = getMachOSectionData(objectFile, &macho, "__text", &textSectionSize, &textSectionOffset);
         if (textSection == NULL) {
             perror("Error getting text section");
@@ -202,21 +221,13 @@ int main(int argc, char *argv[]) {
 
     int ret = EXIT_FAILURE;
 
-    // The below is the real uninitialized hash
-    // uint8_t uninitHash[] = {
-    //     0xae, 0x2c, 0xea, 0x2a, 0xbd, 0xa6, 0xf3, 0xec, 
-    //     0x97, 0x7f, 0x9b, 0xf6, 0x94, 0x9a, 0xfc, 0x83, 
-    //     0x68, 0x27, 0xcb, 0xa0, 0xa0, 0x9f, 0x6b, 0x6f, 
-    //     0xde, 0x52, 0xcd, 0xe2, 0xcd, 0xff, 0x31, 0x80,
-    // };
-    
-    // This is the initialized hash used for testing
     uint8_t uninitHash[] = {
-        0x53, 0x39, 0x5f, 0x48, 0x5c, 0x36, 0xd3, 0x1f,
-        0x77, 0x7b, 0x81, 0xed, 0xe0, 0xdd, 0x86, 0x3c,
-        0x6e, 0x07, 0xb6, 0x76, 0xf3, 0xe9, 0x34, 0xa2,
-        0x8c, 0x07, 0x49, 0xb4, 0x65, 0xc5, 0xd3, 0x19,
+        0xae, 0x2c, 0xea, 0x2a, 0xbd, 0xa6, 0xf3, 0xec, 
+        0x97, 0x7f, 0x9b, 0xf6, 0x94, 0x9a, 0xfc, 0x83, 
+        0x68, 0x27, 0xcb, 0xa0, 0xa0, 0x9f, 0x6b, 0x6f, 
+        0xde, 0x52, 0xcd, 0xe2, 0xcd, 0xff, 0x31, 0x80,
     };
+
     uint8_t *objectBytes = NULL;
     size_t objectBytesSize;
     
@@ -227,6 +238,8 @@ int main(int argc, char *argv[]) {
 
     uint8_t *calculatedHash = NULL;
     uint8_t *lengthBytes = NULL;
+
+    uint32_t hashIndex;
 
     int opt;
     while ((opt = getopt(argc, argv, "a:o:p:f")) != -1) {
@@ -280,10 +293,8 @@ int main(int argc, char *argv[]) {
         goto end;
     }
 
-    (void) outPath;
-
-    printf("Finding placeholder hash...\n");
-    if (!findHash(objectBytes, objectBytesSize, uninitHash, sizeof(uninitHash))) {
+    hashIndex = findHash(objectBytes, objectBytesSize, uninitHash, sizeof(uninitHash));
+    if (!hashIndex) {
         perror("Error finding hash");
         goto end;
     }
@@ -332,13 +343,13 @@ int main(int argc, char *argv[]) {
         goto end;
     }
 
-    for(unsigned int i = 0; i < calculatedHashLen; i++) {
-        printf("%02X ", calculatedHash[i]);
+    memcpy(objectBytes + hashIndex, calculatedHash, calculatedHashLen);
+    if (!writeObject(outPath, objectBytes, objectBytesSize)) {
+        perror("Error writing file");
+        goto end;
     }
-    printf("\n");
 
     ret = EXIT_SUCCESS;
-    printf("Done\n");
 
 end:
     if (textModule != NULL) {
