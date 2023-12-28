@@ -1,4 +1,4 @@
-if(FIPS)
+if(FIPS AND APPLE)
   add_executable(
     inject_hash
 
