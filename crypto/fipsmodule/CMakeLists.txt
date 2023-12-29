@@ -303,7 +303,7 @@ if(S2N_BIGNUM_ASM_SOURCES)
   endforeach()
 endif()
 
-if(FIPS_DELOCATE OR FIPS_SHARED)
+if((FIPS_DELOCATE OR FIPS_SHARED) AND APPLE)
   add_library(
     fips_hashing
 
@@ -399,12 +399,12 @@ if(FIPS_DELOCATE)
   set_target_properties(bcm_hashunset PROPERTIES POSITION_INDEPENDENT_CODE ON)
   set_target_properties(bcm_hashunset PROPERTIES LINKER_LANGUAGE C)
 
-  go_executable(inject_hash
-                boringssl.googlesource.com/boringssl/util/fipstools/inject_hash)
   add_custom_command(
     OUTPUT bcm.o
-    COMMAND ./inject_hash -o bcm.o -in-archive $<TARGET_FILE:bcm_hashunset>
-    DEPENDS bcm_hashunset inject_hash
+    COMMAND ${GO_EXECUTABLE} run
+    ${PROJECT_SOURCE_DIR}/util/fipstools/inject_hash/inject_hash.go
+    -o bcm.o -in-archive $<TARGET_FILE:bcm_hashunset>
+    DEPENDS bcm_hashunset ${PROJECT_SOURCE_DIR}/util/fipstools/inject_hash/inject_hash.go
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   )
 

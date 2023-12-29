@@ -603,6 +603,8 @@ if(FIPS_SHARED)
         TARGET crypto POST_BUILD
         COMMAND ${PROJECT_BINARY_DIR}/crypto/fipsmodule/inject_hash/inject_hash
         -p $<TARGET_FILE:crypto> -o $<TARGET_FILE:crypto> ${INJECT_HASH_APPLE_FLAG}
+        DEPENDS inject_hash
+        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
       )
     else()
       add_custom_command(
