@@ -734,8 +734,8 @@ static bool SpeedAEAD(const EVP_AEAD *aead, const std::string &name,
   const size_t key_len = EVP_AEAD_key_length(aead);
   std::unique_ptr<uint8_t[]> key(new uint8_t[key_len]);
 
-  BM_NAMESPACE::ScopedEVP_AEAD_CTX ctx;
   if (!TimeFunction(&results, [&]() -> bool {
+        BM_NAMESPACE::ScopedEVP_AEAD_CTX ctx;
         return EVP_AEAD_CTX_init_with_direction(
             ctx.get(), aead, key.get(), key_len, EVP_AEAD_DEFAULT_TAG_LENGTH,
             evp_aead_seal);
@@ -2392,13 +2392,12 @@ static bool SpeedPKCS8(const std::string &selected) {
   }
 
   CBB out;
-  if (!CBB_init(&out, 1024)) {
-    return false;
-  }
+  uint8_t buffer[1024];
 
   TimeResults results;
-  if (!TimeFunction(&results, [&out, &key]() -> bool {
-        if (!EVP_marshal_private_key(&out, key.get())) {
+  if (!TimeFunction(&results, [&out, &key, &buffer]() -> bool {
+        if (!CBB_init_fixed(&out, buffer, 1024) ||
+            !EVP_marshal_private_key(&out, key.get())) {
           return false;
         }
         return true;
@@ -2409,10 +2408,8 @@ static bool SpeedPKCS8(const std::string &selected) {
 
   CBS in;
 
-  CBS_init(&in, CBB_data(&out), CBB_len(&out));
-
-
-  if (!TimeFunction(&results, [&in]() -> bool {
+  if (!TimeFunction(&results, [&in, &out]() -> bool {
+        CBS_init(&in, CBB_data(&out), CBB_len(&out));
         EVP_PKEY *parsed = EVP_parse_private_key(&in);
         bool result = parsed != NULL;
         EVP_PKEY_free(parsed);
@@ -2424,12 +2421,10 @@ static bool SpeedPKCS8(const std::string &selected) {
 
   CBB_cleanup(&out);
 
-  if (!CBB_init(&out, 1024)) {
-    return false;
-  }
 
-  if (!TimeFunction(&results, [&out, &key]() -> bool {
-        if (!EVP_marshal_private_key_v2(&out, key.get())) {
+  if (!TimeFunction(&results, [&out, &key, &buffer]() -> bool {
+        if (!CBB_init_fixed(&out, buffer, 1024) ||
+            !EVP_marshal_private_key_v2(&out, key.get())) {
           return false;
         }
         return true;
@@ -2439,9 +2434,8 @@ static bool SpeedPKCS8(const std::string &selected) {
   }
   results.Print("Ed25519 PKCS#8 v2 encode");
 
-  CBS_init(&in, CBB_data(&out), CBB_len(&out));
-
-  if (!TimeFunction(&results, [&in]() -> bool {
+  if (!TimeFunction(&results, [&in, &out]() -> bool {
+        CBS_init(&in, CBB_data(&out), CBB_len(&out));
         EVP_PKEY *parsed = EVP_parse_private_key(&in);
         bool result = parsed != NULL;
         EVP_PKEY_free(parsed);
