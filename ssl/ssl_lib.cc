@@ -1382,6 +1382,10 @@ int SSL_get_error(const SSL *ssl, int ret_code) {
     return SSL_ERROR_SSL;
   }
 
+  if (ret_code == 0 && ssl->s3->rwstate == SSL_ERROR_ZERO_RETURN) {
+    return SSL_ERROR_ZERO_RETURN;
+  }
+
   switch (ssl->s3->rwstate) {
     case SSL_ERROR_PENDING_SESSION:
     case SSL_ERROR_PENDING_CERTIFICATE:
@@ -1394,7 +1398,6 @@ int SSL_get_error(const SSL *ssl, int ret_code) {
     case SSL_ERROR_WANT_CERTIFICATE_VERIFY:
     case SSL_ERROR_WANT_RENEGOTIATE:
     case SSL_ERROR_HANDSHAKE_HINTS_READY:
-    case SSL_ERROR_ZERO_RETURN:
       return ssl->s3->rwstate;
 
     case SSL_ERROR_WANT_READ: {
