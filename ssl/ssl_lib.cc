@@ -1382,8 +1382,14 @@ int SSL_get_error(const SSL *ssl, int ret_code) {
     return SSL_ERROR_SSL;
   }
 
-  if (ret_code == 0 && ssl->s3->rwstate == SSL_ERROR_ZERO_RETURN) {
-    return SSL_ERROR_ZERO_RETURN;
+  if (ret_code == 0) {
+    if (ssl->s3->rwstate == SSL_ERROR_ZERO_RETURN) {
+      return SSL_ERROR_ZERO_RETURN;
+    }
+    // An EOF was observed which violates the protocol, and the underlying
+    // transport does not participate in the error queue. Bubble up to the
+    // caller.
+    return SSL_ERROR_SYSCALL;
   }
 
   switch (ssl->s3->rwstate) {
