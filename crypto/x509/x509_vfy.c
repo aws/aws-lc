@@ -134,8 +134,18 @@ static int cert_self_signed(X509 *x, int *out_is_self_signed) {
   return 1;
 }
 
-// Given a certificate try and find an exact match in the store
+static int call_verify_cb(int ok, X509_STORE_CTX *ctx) {
+  ok = ctx->verify_cb(ok, ctx);
+  // Historically, callbacks returning values like -1 would be treated as a mix
+  // of success or failure. Insert that callers check correctly.
+  //
+  // TODO(davidben): Also use this wrapper to constrain which errors may be
+  // suppressed, and ensure all |verify_cb| calls remember to fill in an error.
+  BSSL_CHECK(ok == 0 || ok == 1);
+  return ok;
+}
 
+// Given a certificate try and find an exact match in the store
 static X509 *lookup_cert_match(X509_STORE_CTX *ctx, X509 *x) {
   STACK_OF(X509) *certs;
   X509 *xtmp = NULL;
@@ -300,7 +310,7 @@ int X509_verify_cert(X509_STORE_CTX *ctx) {
             X509_free(xtmp);
           }
           bad_chain = 1;
-          ok = ctx->verify_cb(0, ctx);
+          ok = call_verify_cb(0, ctx);
           if (!ok) {
             goto end;
           }
@@ -424,7 +434,7 @@ int X509_verify_cert(X509_STORE_CTX *ctx) {
 
     ctx->error_depth = num - 1;
     bad_chain = 1;
-    ok = ctx->verify_cb(0, ctx);
+    ok = call_verify_cb(0, ctx);
     if (!ok) {
       goto end;
     }
@@ -520,7 +530,7 @@ int x509_check_issued_with_callback(X509_STORE_CTX *ctx, X509 *x,
   ctx->error = ret;
   ctx->current_cert = x;
   ctx->current_issuer = issuer;
-  return ctx->verify_cb(0, ctx);
+  return call_verify_cb(0, ctx);
 }
 
 static int get_issuer(X509 **issuer, X509_STORE_CTX *ctx, X509 *x) {
@@ -552,7 +562,7 @@ static int check_chain_extensions(X509_STORE_CTX *ctx) {
       ctx->error = X509_V_ERR_UNHANDLED_CRITICAL_EXTENSION;
       ctx->error_depth = i;
       ctx->current_cert = x;
-      ok = ctx->verify_cb(0, ctx);
+      ok = call_verify_cb(0, ctx);
       if (!ok) {
         goto end;
       }
@@ -563,7 +573,7 @@ static int check_chain_extensions(X509_STORE_CTX *ctx) {
       ctx->error = X509_V_ERR_INVALID_CA;
       ctx->error_depth = i;
       ctx->current_cert = x;
-      ok = ctx->verify_cb(0, ctx);
+      ok = call_verify_cb(0, ctx);
       if (!ok) {
         goto end;
       }
@@ -573,7 +583,7 @@ static int check_chain_extensions(X509_STORE_CTX *ctx) {
       ctx->error = X509_V_ERR_INVALID_PURPOSE;
       ctx->error_depth = i;
       ctx->current_cert = x;
-      ok = ctx->verify_cb(0, ctx);
+      ok = call_verify_cb(0, ctx);
       if (!ok) {
         goto end;
       }
@@ -584,7 +594,7 @@ static int check_chain_extensions(X509_STORE_CTX *ctx) {
       ctx->error = X509_V_ERR_PATH_LENGTH_EXCEEDED;
       ctx->error_depth = i;
       ctx->current_cert = x;
-      ok = ctx->verify_cb(0, ctx);
+      ok = call_verify_cb(0, ctx);
       if (!ok) {
         goto end;
       }
@@ -654,7 +664,7 @@ static int check_name_constraints(X509_STORE_CTX *ctx) {
             ctx->error = rv;
             ctx->error_depth = i;
             ctx->current_cert = x;
-            if (!ctx->verify_cb(0, ctx)) {
+            if (!call_verify_cb(0, ctx)) {
               return 0;
             }
             break;
@@ -686,7 +696,7 @@ static int check_name_constraints(X509_STORE_CTX *ctx) {
         ctx->error = rv;
         ctx->error_depth = i;
         ctx->current_cert = leaf;
-        if (!ctx->verify_cb(0, ctx)) {
+        if (!call_verify_cb(0, ctx)) {
           return 0;
         }
         break;
@@ -700,7 +710,7 @@ static int check_id_error(X509_STORE_CTX *ctx, int errcode) {
   ctx->error = errcode;
   ctx->current_cert = ctx->cert;
   ctx->error_depth = 0;
-  return ctx->verify_cb(0, ctx);
+  return call_verify_cb(0, ctx);
 }
 
 static int check_hosts(X509 *x, X509_VERIFY_PARAM *param) {
@@ -760,7 +770,7 @@ static int check_trust(X509_STORE_CTX *ctx) {
       ctx->error_depth = (int)i;
       ctx->current_cert = x;
       ctx->error = X509_V_ERR_CERT_REJECTED;
-      ok = ctx->verify_cb(0, ctx);
+      ok = call_verify_cb(0, ctx);
       if (!ok) {
         return X509_TRUST_REJECTED;
       }
@@ -821,7 +831,7 @@ static int check_cert(X509_STORE_CTX *ctx) {
   // If error looking up CRL, nothing we can do except notify callback
   if (!ok) {
     ctx->error = X509_V_ERR_UNABLE_TO_GET_CRL;
-    ok = ctx->verify_cb(0, ctx);
+    ok = call_verify_cb(0, ctx);
     goto err;
   }
   ctx->current_crl = crl;
@@ -863,7 +873,7 @@ static int check_crl_time(X509_STORE_CTX *ctx, X509_CRL *crl, int notify) {
       return 0;
     }
     ctx->error = X509_V_ERR_ERROR_IN_CRL_LAST_UPDATE_FIELD;
-    if (!ctx->verify_cb(0, ctx)) {
+    if (!call_verify_cb(0, ctx)) {
       return 0;
     }
   }
@@ -873,7 +883,7 @@ static int check_crl_time(X509_STORE_CTX *ctx, X509_CRL *crl, int notify) {
       return 0;
     }
     ctx->error = X509_V_ERR_CRL_NOT_YET_VALID;
-    if (!ctx->verify_cb(0, ctx)) {
+    if (!call_verify_cb(0, ctx)) {
       return 0;
     }
   }
@@ -886,7 +896,7 @@ static int check_crl_time(X509_STORE_CTX *ctx, X509_CRL *crl, int notify) {
         return 0;
       }
       ctx->error = X509_V_ERR_ERROR_IN_CRL_NEXT_UPDATE_FIELD;
-      if (!ctx->verify_cb(0, ctx)) {
+      if (!call_verify_cb(0, ctx)) {
         return 0;
       }
     }
@@ -895,7 +905,7 @@ static int check_crl_time(X509_STORE_CTX *ctx, X509_CRL *crl, int notify) {
         return 0;
       }
       ctx->error = X509_V_ERR_CRL_HAS_EXPIRED;
-      if (!ctx->verify_cb(0, ctx)) {
+      if (!call_verify_cb(0, ctx)) {
         return 0;
       }
     }
@@ -1198,7 +1208,7 @@ static int check_crl(X509_STORE_CTX *ctx, X509_CRL *crl) {
     // If not self signed, can't check signature
     if (!x509_check_issued_with_callback(ctx, issuer, issuer)) {
       ctx->error = X509_V_ERR_UNABLE_TO_GET_CRL_ISSUER;
-      if (!ctx->verify_cb(0, ctx)) {
+      if (!call_verify_cb(0, ctx)) {
         return 0;
       }
     }
@@ -1209,21 +1219,21 @@ static int check_crl(X509_STORE_CTX *ctx, X509_CRL *crl) {
     if ((issuer->ex_flags & EXFLAG_KUSAGE) &&
         !(issuer->ex_kusage & X509v3_KU_CRL_SIGN)) {
       ctx->error = X509_V_ERR_KEYUSAGE_NO_CRL_SIGN;
-      if (!ctx->verify_cb(0, ctx)) {
+      if (!call_verify_cb(0, ctx)) {
         return 0;
       }
     }
 
     if (!(ctx->current_crl_score & CRL_SCORE_SCOPE)) {
       ctx->error = X509_V_ERR_DIFFERENT_CRL_SCOPE;
-      if (!ctx->verify_cb(0, ctx)) {
+      if (!call_verify_cb(0, ctx)) {
         return 0;
       }
     }
 
     if (crl->idp_flags & IDP_INVALID) {
       ctx->error = X509_V_ERR_INVALID_EXTENSION;
-      if (!ctx->verify_cb(0, ctx)) {
+      if (!call_verify_cb(0, ctx)) {
         return 0;
       }
     }
@@ -1238,14 +1248,14 @@ static int check_crl(X509_STORE_CTX *ctx, X509_CRL *crl) {
     EVP_PKEY *ikey = X509_get0_pubkey(issuer);
     if (!ikey) {
       ctx->error = X509_V_ERR_UNABLE_TO_DECODE_ISSUER_PUBLIC_KEY;
-      if (!ctx->verify_cb(0, ctx)) {
+      if (!call_verify_cb(0, ctx)) {
         return 0;
       }
     } else {
       // Verify CRL signature
       if (X509_CRL_verify(crl, ikey) <= 0) {
         ctx->error = X509_V_ERR_CRL_SIGNATURE_FAILURE;
-        if (!ctx->verify_cb(0, ctx)) {
+        if (!call_verify_cb(0, ctx)) {
           return 0;
         }
       }
@@ -1266,7 +1276,7 @@ static int cert_crl(X509_STORE_CTX *ctx, X509_CRL *crl, X509 *x) {
   if (!(ctx->param->flags & X509_V_FLAG_IGNORE_CRITICAL) &&
       (crl->flags & EXFLAG_CRITICAL)) {
     ctx->error = X509_V_ERR_UNHANDLED_CRITICAL_CRL_EXTENSION;
-    ok = ctx->verify_cb(0, ctx);
+    ok = call_verify_cb(0, ctx);
     if (!ok) {
       return 0;
     }
@@ -1274,7 +1284,7 @@ static int cert_crl(X509_STORE_CTX *ctx, X509_CRL *crl, X509 *x) {
   // Look for serial number of certificate in CRL.
   if (X509_CRL_get0_by_cert(crl, &rev, x)) {
     ctx->error = X509_V_ERR_CERT_REVOKED;
-    ok = ctx->verify_cb(0, ctx);
+    ok = call_verify_cb(0, ctx);
     if (!ok) {
       return 0;
     }
@@ -1293,7 +1303,7 @@ static int check_policy(X509_STORE_CTX *ctx) {
     if (ret == X509_V_ERR_OUT_OF_MEM) {
       return 0;
     }
-    return ctx->verify_cb(0, ctx);
+    return call_verify_cb(0, ctx);
   }
 
   return 1;
@@ -1318,7 +1328,7 @@ int x509_check_cert_time(X509_STORE_CTX *ctx, X509 *x509, int suppress_error) {
     }
     ctx->error = X509_V_ERR_ERROR_IN_CERT_NOT_BEFORE_FIELD;
     ctx->current_cert = x509;
-    if (!ctx->verify_cb(0, ctx)) {
+    if (!call_verify_cb(0, ctx)) {
       return 0;
     }
   }
@@ -1329,7 +1339,7 @@ int x509_check_cert_time(X509_STORE_CTX *ctx, X509 *x509, int suppress_error) {
     }
     ctx->error = X509_V_ERR_CERT_NOT_YET_VALID;
     ctx->current_cert = x509;
-    if (!ctx->verify_cb(0, ctx)) {
+    if (!call_verify_cb(0, ctx)) {
       return 0;
     }
   }
@@ -1341,7 +1351,7 @@ int x509_check_cert_time(X509_STORE_CTX *ctx, X509 *x509, int suppress_error) {
     }
     ctx->error = X509_V_ERR_ERROR_IN_CERT_NOT_AFTER_FIELD;
     ctx->current_cert = x509;
-    if (!ctx->verify_cb(0, ctx)) {
+    if (!call_verify_cb(0, ctx)) {
       return 0;
     }
   }
@@ -1352,7 +1362,7 @@ int x509_check_cert_time(X509_STORE_CTX *ctx, X509 *x509, int suppress_error) {
     }
     ctx->error = X509_V_ERR_CERT_HAS_EXPIRED;
     ctx->current_cert = x509;
-    if (!ctx->verify_cb(0, ctx)) {
+    if (!call_verify_cb(0, ctx)) {
       return 0;
     }
   }
@@ -1379,7 +1389,7 @@ static int internal_verify(X509_STORE_CTX *ctx) {
     if (n <= 0) {
       ctx->error = X509_V_ERR_UNABLE_TO_VERIFY_LEAF_SIGNATURE;
       ctx->current_cert = xi;
-      ok = ctx->verify_cb(0, ctx);
+      ok = call_verify_cb(0, ctx);
       goto end;
     } else {
       n--;
@@ -1400,14 +1410,14 @@ static int internal_verify(X509_STORE_CTX *ctx) {
       if (pkey == NULL) {
         ctx->error = X509_V_ERR_UNABLE_TO_DECODE_ISSUER_PUBLIC_KEY;
         ctx->current_cert = xi;
-        ok = ctx->verify_cb(0, ctx);
+        ok = call_verify_cb(0, ctx);
         if (!ok) {
           goto end;
         }
       } else if (X509_verify(xs, pkey) <= 0) {
         ctx->error = X509_V_ERR_CERT_SIGNATURE_FAILURE;
         ctx->current_cert = xs;
-        ok = ctx->verify_cb(0, ctx);
+        ok = call_verify_cb(0, ctx);
         if (!ok) {
           goto end;
         }
@@ -1423,7 +1433,7 @@ static int internal_verify(X509_STORE_CTX *ctx) {
     // The last error (if any) is still in the error value
     ctx->current_issuer = xi;
     ctx->current_cert = xs;
-    ok = ctx->verify_cb(1, ctx);
+    ok = call_verify_cb(1, ctx);
     if (!ok) {
       goto end;
     }
