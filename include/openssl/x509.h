@@ -3818,7 +3818,7 @@ OPENSSL_EXPORT int X509_LOOKUP_add_dir(X509_LOOKUP *lookup, const char *path,
 #define X509_V_FLAG_INHIBIT_ANY 0x200
 // X509_V_FLAG_INHIBIT_MAP enables the policy variable: inhibit-policy-mapping
 #define X509_V_FLAG_INHIBIT_MAP 0x400
-// X509_V_FLAG_NOTIFY_POLICY notifies the callback that the policy is OK
+// X509_V_FLAG_NOTIFY_POLICY does nothing
 #define X509_V_FLAG_NOTIFY_POLICY 0x800
 // X509_V_FLAG_EXTENDED_CRL_SUPPORT causes all verifications to fail. Extended
 // CRL features have been removed.
