@@ -2636,7 +2636,7 @@ bool Speed(const std::vector<std::string> &args) {
 #endif
        !SpeedHash(EVP_md5(), "MD5", selected) ||
        !SpeedHash(EVP_sha1(), "SHA-1", selected) ||
-       !SpeedHash(EVP_sha224(), "sha-224", selected) ||
+       !SpeedHash(EVP_sha224(), "SHA-224", selected) ||
        !SpeedHash(EVP_sha256(), "SHA-256", selected) ||
        !SpeedHash(EVP_sha384(), "SHA-384", selected) ||
        !SpeedHash(EVP_sha512(), "SHA-512", selected) ||
