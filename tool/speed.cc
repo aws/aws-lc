@@ -734,8 +734,8 @@ static bool SpeedAEAD(const EVP_AEAD *aead, const std::string &name,
   const size_t key_len = EVP_AEAD_key_length(aead);
   std::unique_ptr<uint8_t[]> key(new uint8_t[key_len]);
 
-  BM_NAMESPACE::ScopedEVP_AEAD_CTX ctx;
   if (!TimeFunction(&results, [&]() -> bool {
+        BM_NAMESPACE::ScopedEVP_AEAD_CTX ctx;
         return EVP_AEAD_CTX_init_with_direction(
             ctx.get(), aead, key.get(), key_len, EVP_AEAD_DEFAULT_TAG_LENGTH,
             evp_aead_seal);
