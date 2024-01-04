@@ -61,6 +61,11 @@
 #include "../digest/internal.h"
 #include "internal.h"
 
+#if defined(NDEBUG)
+#define CHECK(x) (void) (x)
+#else
+#define CHECK(x) assert(x)
+#endif
 
 enum evp_sign_verify_t {
   evp_sign,
@@ -79,7 +84,7 @@ static int uses_prehash(EVP_MD_CTX *ctx, enum evp_sign_verify_t op) {
 
 static void hmac_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
   HMAC_PKEY_CTX *hctx = ctx->pctx->data;
-  HMAC_Update(&hctx->ctx, data, count);
+  CHECK(HMAC_Update(&hctx->ctx, data, count));
 }
 
 static int HMAC_DigestFinal_ex(EVP_MD_CTX *ctx, uint8_t *out_sig,
