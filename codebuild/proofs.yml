@@ -15,3 +15,4 @@ phases:
       - cd ${CODEBUILD_SRC_DIR}/${S2N_BIGNUM_ARCH}
       - export HOLDIR=${CODEBUILD_SRC_DIR_hol_light}
       - make -j ${CORE_COUNT} proofs
+      - ../tools/collect-times.sh ${S2N_BIGNUM_ARCH}
