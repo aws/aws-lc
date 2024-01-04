@@ -28,8 +28,6 @@ AWS_LC_INSTALL_FOLDER="${SCRATCH_FOLDER}/aws-lc-install"
 function python_build() {
   local branch=${1}
   pushd ${branch}
-  # Some systems install under "lib64" instead of "lib"
-  ln -s ${AWS_LC_INSTALL_FOLDER}/lib64 ${AWS_LC_INSTALL_FOLDER}/lib
   ./configure \
         --with-openssl=${AWS_LC_INSTALL_FOLDER} \
         --with-builtin-hashlib-hashes=blake2 \
@@ -96,12 +94,15 @@ aws_lc_build ${SRC_ROOT} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} \
     -DBUILD_TESTING=OFF \
     -DBUILD_SHARED_LIBS=0
 
+# Some systems install under "lib64" instead of "lib"
+ln -s ${AWS_LC_INSTALL_FOLDER}/lib64 ${AWS_LC_INSTALL_FOLDER}/lib
+
 mkdir -p ${PYTHON_SRC_FOLDER}
 pushd ${PYTHON_SRC_FOLDER}
 
 # NOTE: cpython keeps a unique branch per version, add version branches here
 # TODO: As we add more versions to support, we may want to parallelize here
-for branch in 3.10; do
+for branch in 3.10 3.11; do
     python_patch ${branch}
     python_build ${branch}
     python_run_tests ${branch}
