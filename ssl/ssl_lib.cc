@@ -1045,7 +1045,7 @@ int SSL_read_ex(SSL *ssl, void *buf, size_t num, size_t *read_bytes) {
   }
   int ret = SSL_read(ssl, buf, (int)num);
   if (ret <= 0) {
-    return ret;
+    return 0;
   }
   if (read_bytes != nullptr) {
     *read_bytes = ret;
@@ -1144,7 +1144,7 @@ int SSL_write_ex(SSL *ssl, const void *buf, size_t num, size_t *written) {
   }
   int ret = SSL_write(ssl, buf, (int)num);
   if (ret <= 0) {
-    return ret;
+    return 0;
   }
   if (written != nullptr) {
     *written = ret;
@@ -1388,8 +1388,11 @@ int SSL_get_error(const SSL *ssl, int ret_code) {
     }
     // An EOF was observed which violates the protocol, and the underlying
     // transport does not participate in the error queue. Bubble up to the
-    // caller.
-    return SSL_ERROR_SYSCALL;
+    // caller. Do not consider retryable |rwstate| EOF.
+    if (ssl->s3->rwstate != SSL_ERROR_WANT_READ
+            && ssl->s3->rwstate != SSL_ERROR_WANT_WRITE) {
+      return SSL_ERROR_SYSCALL;
+    }
   }
 
   switch (ssl->s3->rwstate) {
