@@ -15,8 +15,9 @@ source tests/ci/common_posix_setup.sh
 
 # Assumes script is executed from the root of aws-lc directory
 SCRATCH_FOLDER="${SRC_ROOT}/NTP_BUILD_ROOT"
-NTP_VERSION="ntp-4.2.8p17"
-NTP_SRC_FOLDER="${SCRATCH_FOLDER}/${NTP_VERSION}"
+NTP_DOWNLOAD_URL=$(curl -s https://www.ntp.org/downloads/ | grep -oP "\"https://archive.ntp.org/ntp.*?\.tar.gz\"")
+NTP_TAR=$(echo "$NTP_DOWNLOAD_URL" | cut -d '/' -f6)
+NTP_SRC_FOLDER="${SCRATCH_FOLDER}/ntp-src"
 NTP_PATCH_FOLDER="${SRC_ROOT}/tests/ci/integration/ntp_patch"
 AWS_LC_BUILD_FOLDER="${SCRATCH_FOLDER}/aws-lc-build"
 AWS_LC_INSTALL_FOLDER="${SCRATCH_FOLDER}/aws-lc-install"
@@ -36,17 +37,15 @@ function ntp_build() {
 
 function ntp_run_tests() {
   export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib"
-  export DYLD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib"
-  make check
+  make -j "${NUM_CPU_THREADS}" check
 }
 
-mkdir -p "${SCRATCH_FOLDER}"
+mkdir -p "$SCRATCH_FOLDER"
 rm -rf "${SCRATCH_FOLDER:?}/*"
-cd "${SCRATCH_FOLDER}"
+cd "$SCRATCH_FOLDER"
 
-wget -q "https://www.eecis.udel.edu/~ntp/ntp_spool//ntp4/ntp-4.2/${NTP_VERSION}.tar.gz"
-tar -xzf "${NTP_VERSION}.tar.gz"
-cd "${NTP_VERSION}"
+wget -q "$NTP_DOWNLOAD_URL"
+tar -xzf "$NTP_TAR" -C "$NTP_SRC_FOLDER" --strip-components=1
 
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER}
 ls
