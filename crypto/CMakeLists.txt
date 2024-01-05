@@ -80,6 +80,10 @@ if(PERL_EXECUTABLE)
       set(PERLASM_FLAGS "${PERLASM_FLAGS} -DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX")
     endif()
 
+    if(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+      set(PERLASM_FLAGS "${PERLASM_FLAGS} -DMY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX")
+    endif()
+
     add_custom_command(
       OUTPUT ${dest}
       COMMAND ${CMAKE_COMMAND} -E make_directory ${dir}

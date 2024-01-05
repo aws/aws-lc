@@ -257,9 +257,24 @@ endmacro()
 # assumption we make for some of the assembly implementations. This flag
 # can be set to handle such cases.
 option(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX "Exclude AVX code from the build" OFF)
+
+# Some assemblers know about AVX but not AVX512 instructions, e.g. gcc 4.8.2.
+# This flag can be set to handle such cases.
+# Note that the flag's name has "512AVX" instead of "AVX512" so that it doesn't
+# include the entire flag -DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX and match it
+# in the Perl files checks.
+option(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX "Exclude AVX512 code from the build" OFF)
+
 if(MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
   add_definitions(-DMY_ASSEMBLER_IS_TOO_OLD_FOR_AVX)
+  add_definitions(-DMY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+  set(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX ON)
   message(STATUS "MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX selected, removing AVX optimisations")
+endif()
+
+if(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+  add_definitions(-DMY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+  message(STATUS "MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX selected, removing AVX512 optimisations")
 endif()
 
 # Detect if memcmp is wrongly stripped like strcmp.
