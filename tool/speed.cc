@@ -224,8 +224,8 @@ static uint64_t time_now() {
 }
 #endif
 
-#define TIMEOUT_SECONDS_DEFAULT 1
-static uint64_t g_timeout_seconds = TIMEOUT_SECONDS_DEFAULT;
+#define TIMEOUT_MS_DEFAULT 1000
+static uint64_t g_timeout_ms = TIMEOUT_MS_DEFAULT;
 static std::vector<size_t> g_chunk_lengths = {16, 256, 1350, 8192, 16384};
 static std::vector<size_t> g_prime_bit_lengths = {2048, 3072};
 static std::vector<std::string> g_filters = {""};
@@ -238,7 +238,7 @@ static bool TimeFunction(TimeResults *results, std::function<bool()> func) {
   }
   // total_us is the total amount of time that we'll aim to measure a function
   // for.
-  const uint64_t total_us = g_timeout_seconds * 1000000;
+  const uint64_t total_us = g_timeout_ms * 1000;
   uint64_t start = time_now(), now, delta;
 
   if (!func()) {
@@ -1161,6 +1161,24 @@ static bool SpeedHmac(const EVP_MD *md, const std::string &name,
   if (!selected.empty() && name.find(selected) == std::string::npos) {
     return true;
   }
+  TimeResults results;
+  const size_t key_len = EVP_MD_size(md);
+  std::unique_ptr<uint8_t[]> key(new uint8_t[key_len]);
+  BM_memset(key.get(), 0, key_len);
+#if defined(OPENSSL_1_0_BENCHMARK)
+  BM_NAMESPACE::UniquePtr<HMAC_CTX> ctx(new HMAC_CTX);
+  HMAC_CTX_init(ctx.get());
+#else
+  BM_NAMESPACE::UniquePtr<HMAC_CTX> ctx(HMAC_CTX_new());
+#endif
+  if (!TimeFunction(&results, [&]() -> bool {
+        return HMAC_Init_ex(ctx.get(), key.get(), key_len, md, NULL /* ENGINE */);
+      })) {
+    fprintf(stderr, "HMAC_Init_ex failed.\n");
+    ERR_print_errors_fp(stderr);
+    return false;
+  }
+  results.Print(name + " init");
 
   for (size_t chunk_len : g_chunk_lengths) {
     if (!SpeedHmacChunk(md, name, chunk_len)) {
@@ -2340,9 +2358,9 @@ static bool SpeedDHcheck(std::string selected) {
     return true;
   }
 
-  uint64_t maybe_reset_timeout = g_timeout_seconds;
-  if (g_timeout_seconds == TIMEOUT_SECONDS_DEFAULT) {
-    g_timeout_seconds = 10;
+  uint64_t maybe_reset_timeout = g_timeout_ms;
+  if (g_timeout_ms == TIMEOUT_MS_DEFAULT) {
+    g_timeout_ms = 10000;
   }
 
   for (size_t prime_bit_length : g_prime_bit_lengths) {
@@ -2351,7 +2369,7 @@ static bool SpeedDHcheck(std::string selected) {
     }
   }
 
-  g_timeout_seconds = maybe_reset_timeout;
+  g_timeout_ms = maybe_reset_timeout;
 
   return true;
 }
@@ -2374,13 +2392,12 @@ static bool SpeedPKCS8(const std::string &selected) {
   }
 
   CBB out;
-  if (!CBB_init(&out, 1024)) {
-    return false;
-  }
+  uint8_t buffer[1024];
 
   TimeResults results;
-  if (!TimeFunction(&results, [&out, &key]() -> bool {
-        if (!EVP_marshal_private_key(&out, key.get())) {
+  if (!TimeFunction(&results, [&out, &key, &buffer]() -> bool {
+        if (!CBB_init_fixed(&out, buffer, 1024) ||
+            !EVP_marshal_private_key(&out, key.get())) {
           return false;
         }
         return true;
@@ -2391,10 +2408,8 @@ static bool SpeedPKCS8(const std::string &selected) {
 
   CBS in;
 
-  CBS_init(&in, CBB_data(&out), CBB_len(&out));
-
-
-  if (!TimeFunction(&results, [&in]() -> bool {
+  if (!TimeFunction(&results, [&in, &out]() -> bool {
+        CBS_init(&in, CBB_data(&out), CBB_len(&out));
         EVP_PKEY *parsed = EVP_parse_private_key(&in);
         bool result = parsed != NULL;
         EVP_PKEY_free(parsed);
@@ -2406,12 +2421,10 @@ static bool SpeedPKCS8(const std::string &selected) {
 
   CBB_cleanup(&out);
 
-  if (!CBB_init(&out, 1024)) {
-    return false;
-  }
 
-  if (!TimeFunction(&results, [&out, &key]() -> bool {
-        if (!EVP_marshal_private_key_v2(&out, key.get())) {
+  if (!TimeFunction(&results, [&out, &key, &buffer]() -> bool {
+        if (!CBB_init_fixed(&out, buffer, 1024) ||
+            !EVP_marshal_private_key_v2(&out, key.get())) {
           return false;
         }
         return true;
@@ -2421,9 +2434,8 @@ static bool SpeedPKCS8(const std::string &selected) {
   }
   results.Print("Ed25519 PKCS#8 v2 encode");
 
-  CBS_init(&in, CBB_data(&out), CBB_len(&out));
-
-  if (!TimeFunction(&results, [&in]() -> bool {
+  if (!TimeFunction(&results, [&in, &out]() -> bool {
+        CBS_init(&in, CBB_data(&out), CBB_len(&out));
         EVP_PKEY *parsed = EVP_parse_private_key(&in);
         bool result = parsed != NULL;
         EVP_PKEY_free(parsed);
@@ -2449,6 +2461,11 @@ static const argument_t kArguments[] = {
         "-timeout",
         kOptionalArgument,
         "The number of seconds to run each test for (default is 1)",
+    },
+    {
+        "-timeout_ms",
+        kOptionalArgument,
+        "The number of milliseconds to run each test for (default is 1000)",
     },
     {
         "-chunks",
@@ -2546,8 +2563,18 @@ bool Speed(const std::vector<std::string> &args) {
     g_print_json = true;
   }
 
+  if (args_map.count("-timeout") != 0 && args_map.count("-timeout_ms") != 0) {
+    puts("'-timeout' and '-timeout_ms' are mutually exclusive");
+    PrintUsage(kArguments);
+    return false;
+  }
+
   if (args_map.count("-timeout") != 0) {
-    g_timeout_seconds = atoi(args_map["-timeout"].c_str());
+    g_timeout_ms = atoi(args_map["-timeout"].c_str()) * 1000;
+  }
+
+  if (args_map.count("-timeout_ms") != 0) {
+    g_timeout_ms = atoi(args_map["-timeout"].c_str());
   }
 
   if (args_map.count("-chunks") != 0) {
@@ -2609,7 +2636,7 @@ bool Speed(const std::vector<std::string> &args) {
 #endif
        !SpeedHash(EVP_md5(), "MD5", selected) ||
        !SpeedHash(EVP_sha1(), "SHA-1", selected) ||
-       !SpeedHash(EVP_sha224(), "sha-224", selected) ||
+       !SpeedHash(EVP_sha224(), "SHA-224", selected) ||
        !SpeedHash(EVP_sha256(), "SHA-256", selected) ||
        !SpeedHash(EVP_sha384(), "SHA-384", selected) ||
        !SpeedHash(EVP_sha512(), "SHA-512", selected) ||

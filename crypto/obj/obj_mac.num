@@ -970,3 +970,5 @@ shake128		979
 shake256		980
 SecP256r1Kyber768Draft00		981
 X25519Kyber768Draft00		982
+ffdhe3072		983
+ffdhe8192		984

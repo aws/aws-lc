@@ -28,9 +28,10 @@ var (
 )
 
 type delocateTest struct {
-	name string
-	in   []string
-	out  string
+	name     string
+	includes []string
+	inputs   []string
+	out      string
 }
 
 func (test *delocateTest) Path(file string) string {
@@ -38,27 +39,28 @@ func (test *delocateTest) Path(file string) string {
 }
 
 var delocateTests = []delocateTest{
-	{"generic-FileDirectives", []string{"in.s"}, "out.s"},
-	{"ppc64le-GlobalEntry", []string{"in.s"}, "out.s"},
-	{"ppc64le-LoadToR0", []string{"in.s"}, "out.s"},
-	{"ppc64le-Sample2", []string{"in.s"}, "out.s"},
-	{"ppc64le-Sample", []string{"in.s"}, "out.s"},
-	{"ppc64le-TOCWithOffset", []string{"in.s"}, "out.s"},
-	{"x86_64-Basic", []string{"in.s"}, "out.s"},
-	{"x86_64-BSS", []string{"in.s"}, "out.s"},
-	{"x86_64-GOTRewrite", []string{"in.s"}, "out.s"},
-	{"x86_64-LargeMemory", []string{"in.s"}, "out.s"},
-	{"x86_64-LabelRewrite", []string{"in1.s", "in2.s"}, "out.s"},
-	{"x86_64-Sections", []string{"in.s"}, "out.s"},
-	{"x86_64-ThreeArg", []string{"in.s"}, "out.s"},
-	{"aarch64-Basic", []string{"in.s"}, "out.s"},
+	{"generic-FileDirectives", nil, []string{"in.s"}, "out.s"},
+	{"generic-Includes", []string{"/some/include/path/openssl/foo.h", "/some/include/path/openssl/bar.h"}, []string{"in.s"}, "out.s"},
+	{"ppc64le-GlobalEntry", nil, []string{"in.s"}, "out.s"},
+	{"ppc64le-LoadToR0", nil, []string{"in.s"}, "out.s"},
+	{"ppc64le-Sample2", nil, []string{"in.s"}, "out.s"},
+	{"ppc64le-Sample", nil, []string{"in.s"}, "out.s"},
+	{"ppc64le-TOCWithOffset", nil, []string{"in.s"}, "out.s"},
+	{"x86_64-Basic", nil, []string{"in.s"}, "out.s"},
+	{"x86_64-BSS", nil, []string{"in.s"}, "out.s"},
+	{"x86_64-GOTRewrite", nil, []string{"in.s"}, "out.s"},
+	{"x86_64-LargeMemory", nil, []string{"in.s"}, "out.s"},
+	{"x86_64-LabelRewrite", nil, []string{"in1.s", "in2.s"}, "out.s"},
+	{"x86_64-Sections", nil, []string{"in.s"}, "out.s"},
+	{"x86_64-ThreeArg", nil, []string{"in.s"}, "out.s"},
+	{"aarch64-Basic", nil, []string{"in.s"}, "out.s"},
 }
 
 func TestDelocate(t *testing.T) {
 	for _, test := range delocateTests {
 		t.Run(test.name, func(t *testing.T) {
 			var inputs []inputFile
-			for i, in := range test.in {
+			for i, in := range test.inputs {
 				inputs = append(inputs, inputFile{
 					index: i,
 					path:  test.Path(in),
@@ -70,7 +72,7 @@ func TestDelocate(t *testing.T) {
 			}
 
 			var buf bytes.Buffer
-			if err := transform(&buf, inputs); err != nil {
+			if err := transform(&buf, test.includes, inputs); err != nil {
 				t.Fatalf("transform failed: %s", err)
 			}
 

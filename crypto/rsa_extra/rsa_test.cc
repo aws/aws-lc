@@ -1398,6 +1398,7 @@ TEST(RSATest, PrintBio) {
       RSA_private_key_from_bytes(kKey1, sizeof(kKey1) - 1));
   ASSERT_TRUE(rsa);
   bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+  ASSERT_TRUE(bio);
 
   RSA_print(bio.get(), rsa.get(), 4);
   const uint8_t *data;
@@ -1445,13 +1446,15 @@ TEST(RSATest, PrintBio) {
 #if !defined(OPENSSL_ANDROID)
   // On Android, when running from an APK, |tmpfile| does not work. See
   // b/36991167#comment8.
-  FILE *tmp = tmpfile();
-  ASSERT_TRUE(RSA_print_fp(tmp, rsa.get(), 4));
-  fseek(tmp, 0, SEEK_END);
-  long fileSize = ftell(tmp);
-  rewind(tmp);
+  TempFILE tmp(tmpfile());
+  ASSERT_TRUE(tmp);
+  ASSERT_TRUE(RSA_print_fp(tmp.get(), rsa.get(), 4));
+  fseek(tmp.get(), 0, SEEK_END);
+  long fileSize = ftell(tmp.get());
+  ASSERT_GT(fileSize, 0);
+  rewind(tmp.get());
   std::unique_ptr<uint8_t[]> buf(new uint8_t[fileSize]);
-  size_t bytesRead = fread(buf.get(), 1, fileSize, tmp);
+  size_t bytesRead = fread(buf.get(), 1, fileSize, tmp.get());
   ASSERT_EQ(bytesRead, (size_t)fileSize);
   ASSERT_EQ(Bytes(expected), Bytes(buf.get(), fileSize));
 #endif

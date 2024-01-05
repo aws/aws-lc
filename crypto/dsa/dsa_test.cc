@@ -421,6 +421,7 @@ TEST(DSATest, DSAPrint) {
   bssl::UniquePtr<DSA> dsa = GetFIPSDSA();
   ASSERT_TRUE(dsa);
   bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+  ASSERT_TRUE(bio);
 
   DSA_print(bio.get(), dsa.get(), 4);
   const uint8_t *data;
@@ -458,13 +459,15 @@ TEST(DSATest, DSAPrint) {
 #if !defined(OPENSSL_ANDROID)
   // On Android, when running from an APK, |tmpfile| does not work. See
   // b/36991167#comment8.
-  FILE *tmp = tmpfile();
-  ASSERT_TRUE(DSA_print_fp(tmp, dsa.get(), 4));
-  fseek(tmp, 0, SEEK_END);
-  long fileSize = ftell(tmp);
-  rewind(tmp);
+  TempFILE tmp(tmpfile());
+  ASSERT_TRUE(tmp);
+  ASSERT_TRUE(DSA_print_fp(tmp.get(), dsa.get(), 4));
+  fseek(tmp.get(), 0, SEEK_END);
+  long fileSize = ftell(tmp.get());
+  ASSERT_GT(fileSize, 0);
+  rewind(tmp.get());
   std::unique_ptr<uint8_t[]> buf(new uint8_t[fileSize]);
-  size_t bytesRead = fread(buf.get(), 1, fileSize, tmp);
+  size_t bytesRead = fread(buf.get(), 1, fileSize, tmp.get());
   ASSERT_EQ(bytesRead, (size_t)fileSize);
   ASSERT_EQ(Bytes(expected), Bytes(buf.get(), fileSize));
 #endif

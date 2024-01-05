@@ -18,10 +18,13 @@
 
 #include <openssl/asn1.h>
 #include <openssl/bio.h>
-#include <openssl/err.h>
-#include <openssl/rsa.h>
-#include <openssl/evp.h>
 #include <openssl/cipher.h>
+#include <openssl/err.h>
+#include <openssl/evp.h>
+#include <openssl/rsa.h>
+
+
+#include "../test/test_util.h"
 
 const char* SECRET = "test";
 
@@ -56,12 +59,6 @@ TEST(PEMTest, NoRC4) {
   EXPECT_EQ(PEM_R_UNSUPPORTED_ENCRYPTION, ERR_GET_REASON(err));
 }
 
-struct TmpFileDeleter {
-  void operator()(FILE *f) const { fclose(f); }
-};
-
-using TmpFilePtr = std::unique_ptr<FILE, TmpFileDeleter>;
-
 static void* d2i_ASN1_INTEGER_void(void ** out, const unsigned char **inp, long len) {
   return d2i_ASN1_INTEGER((ASN1_INTEGER **)out, inp, len);
 }
@@ -91,7 +88,7 @@ TEST(PEMTest, WriteReadASN1IntegerPem) {
     ASSERT_TRUE(ASN1_INTEGER_set(asn1_int.get(), original_value));
 
     // Create buffer for writing
-    TmpFilePtr pem_file(tmpfile());
+    TempFILE pem_file(tmpfile());
     ASSERT_TRUE(pem_file);
 
     // Write the ASN1_INTEGER to a PEM-formatted string

@@ -1296,6 +1296,10 @@ class HMACServiceIndicatorTest : public TestWithNoErrors<HMACTestVector> {};
 INSTANTIATE_TEST_SUITE_P(All, HMACServiceIndicatorTest,
                          testing::ValuesIn(kHMACTestVectors));
 
+// TODO: |EVP_PKEY_HMAC| does not indicate support for FIPS yet. Mark
+// |EVP_PKEY_HMAC| as approved by modifying
+// |EVP_DigestSign_verify_service_indicator| and add to the list of approved
+// FIPS APIs.
 TEST_P(HMACServiceIndicatorTest, HMACTest) {
   const HMACTestVector &test = GetParam();
 

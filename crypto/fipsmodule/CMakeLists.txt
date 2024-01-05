@@ -270,29 +270,6 @@ if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX) OR
   endif()
 endif()
 
-function(cpreprocess dest src)
-  set(TARGET "")
-  if(CMAKE_ASM_COMPILER_TARGET)
-    set(TARGET "--target=${CMAKE_ASM_COMPILER_TARGET}")
-  endif()
-
-  if(BORINGSSL_PREFIX)
-    set(PREFIX_INCLUDE "-I${PROJECT_BINARY_DIR}/symbol_prefix_include")
-  endif()
-
-  string(REGEX REPLACE "[ ]+" ";" CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS}")
-  add_custom_command(
-    OUTPUT ${dest}
-    COMMAND ${CMAKE_ASM_COMPILER} ${TARGET} ${CMAKE_ASM_FLAGS} -E ${src} ${PREFIX_INCLUDE} -I${PROJECT_SOURCE_DIR}/include > ${dest}
-    DEPENDS
-    ${src}
-    ${PROJECT_SOURCE_DIR}/include/openssl/arm_arch.h
-    ${PROJECT_SOURCE_DIR}/include/openssl/asm_base.h
-    ${PROJECT_SOURCE_DIR}/include/openssl/target.h
-    WORKING_DIRECTORY .
-  )
-endfunction()
-
 function(s2n_asm_cpreprocess dest src)
   # s2n_asm_cpreprocess differs from cpreprocess in that is does additional post-processing
   # based on s2n-bignum https://github.com/awslabs/s2n-bignum/blob/main/x86/Makefile#L264
@@ -347,29 +324,38 @@ if(FIPS_DELOCATE)
   )
   target_compile_definitions(bcm_c_generated_asm PRIVATE BORINGSSL_IMPLEMENTATION)
 
-  if(ARCH STREQUAL "aarch64")
-    # Perlasm output on Aarch64 needs to pass through the C preprocessor
-    # before it can be parsed by delocate.
-    foreach(asm ${BCM_ASM_SOURCES})
-      cpreprocess(${asm}.s ${asm})
-      list(APPEND BCM_ASM_PROCESSED_SOURCES "${asm}.s")
-    endforeach()
-  else()
-    # No preprocessing is required on other platforms.
-    set(BCM_ASM_PROCESSED_SOURCES ${BCM_ASM_SOURCES})
-  endif()
-
   add_dependencies(bcm_c_generated_asm boringssl_prefix_symbols)
-  target_include_directories(bcm_c_generated_asm BEFORE PRIVATE ${PROJECT_BINARY_DIR}/symbol_prefix_include)
+  # Important: We do not want to add the generated prefix symbols to the include path here!
+  # Delocator expects symbols to not be prefixed.
   target_include_directories(bcm_c_generated_asm PRIVATE ${PROJECT_SOURCE_DIR}/include)
   set_target_properties(bcm_c_generated_asm PROPERTIES COMPILE_OPTIONS "-S")
   set_target_properties(bcm_c_generated_asm PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
+  set(TARGET "")
+  if(CMAKE_ASM_COMPILER_TARGET)
+    set(TARGET "--target=${CMAKE_ASM_COMPILER_TARGET}")
+  endif()
+
   go_executable(delocate boringssl.googlesource.com/boringssl/util/fipstools/delocate)
   add_custom_command(
     OUTPUT bcm-delocated.S
-    COMMAND ./delocate -a $<TARGET_FILE:bcm_c_generated_asm> -o bcm-delocated.S ${BCM_ASM_PROCESSED_SOURCES}
-    DEPENDS bcm_c_generated_asm delocate ${BCM_ASM_PROCESSED_SOURCES}
+    COMMAND
+    ./delocate
+    -a $<TARGET_FILE:bcm_c_generated_asm>
+    -o bcm-delocated.S
+    -cc ${CMAKE_ASM_COMPILER}
+    -cc-flags "${TARGET} ${CMAKE_ASM_FLAGS}"
+    ${PROJECT_SOURCE_DIR}/include/openssl/arm_arch.h
+    ${PROJECT_SOURCE_DIR}/include/openssl/asm_base.h
+    ${PROJECT_SOURCE_DIR}/include/openssl/target.h
+    ${BCM_ASM_SOURCES}
+    DEPENDS
+    bcm_c_generated_asm
+    delocate
+    ${BCM_ASM_SOURCES}
+    ${PROJECT_SOURCE_DIR}/include/openssl/arm_arch.h
+    ${PROJECT_SOURCE_DIR}/include/openssl/asm_base.h
+    ${PROJECT_SOURCE_DIR}/include/openssl/target.h
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   )
 
