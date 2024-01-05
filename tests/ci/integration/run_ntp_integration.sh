@@ -15,7 +15,7 @@ source tests/ci/common_posix_setup.sh
 
 # Assumes script is executed from the root of aws-lc directory
 SCRATCH_FOLDER="${SRC_ROOT}/NTP_BUILD_ROOT"
-NTP_DOWNLOAD_URL=$(curl -s https://www.ntp.org/downloads/ | grep -oP "\"https://archive.ntp.org/ntp.*?\.tar.gz\"")
+NTP_DOWNLOAD_URL=$(curl -s https://www.ntp.org/downloads/ | grep -oP "\"https://archive.ntp.org/ntp.*?\.tar\.gz\"" | cut -d '"' -f2)
 NTP_TAR=$(echo "$NTP_DOWNLOAD_URL" | cut -d '/' -f6)
 NTP_SRC_FOLDER="${SCRATCH_FOLDER}/ntp-src"
 NTP_PATCH_FOLDER="${SRC_ROOT}/tests/ci/integration/ntp_patch"
@@ -44,7 +44,8 @@ mkdir -p "$SCRATCH_FOLDER"
 rm -rf "${SCRATCH_FOLDER:?}/*"
 cd "$SCRATCH_FOLDER"
 
-wget -q "$NTP_DOWNLOAD_URL"
+wget -q $NTP_DOWNLOAD_URL
+mkdir -p "$NTP_SRC_FOLDER"
 tar -xzf "$NTP_TAR" -C "$NTP_SRC_FOLDER" --strip-components=1
 
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER}
