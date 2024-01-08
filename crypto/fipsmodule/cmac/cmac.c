@@ -315,3 +315,7 @@ end:
   }
   return ret;
 }
+
+EVP_CIPHER_CTX *CMAC_CTX_get0_cipher_ctx(CMAC_CTX *ctx) {
+  return &ctx->cipher_ctx;
+}
