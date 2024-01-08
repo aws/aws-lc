@@ -2570,11 +2570,23 @@ bool Speed(const std::vector<std::string> &args) {
   }
 
   if (args_map.count("-timeout") != 0) {
-    g_timeout_ms = atoi(args_map["-timeout"].c_str()) * 1000;
+    int timeout = atoi(args_map["-timeout"].c_str());
+    if (1 > timeout) {
+      puts("'-timeout' must be positive");
+      PrintUsage(kArguments);
+      return false;
+    }
+    g_timeout_ms = ((uint64_t)timeout) * 1000;
   }
 
   if (args_map.count("-timeout_ms") != 0) {
-    g_timeout_ms = atoi(args_map["-timeout"].c_str());
+    int timeout_ms = atoi(args_map["-timeout_ms"].c_str());
+    if (1 > timeout_ms) {
+      puts("'-timeout_ms' must be positive");
+      PrintUsage(kArguments);
+      return false;
+    }
+    g_timeout_ms = timeout_ms;
   }
 
   if (args_map.count("-chunks") != 0) {
