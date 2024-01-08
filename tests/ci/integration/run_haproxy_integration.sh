@@ -52,12 +52,15 @@ cd haproxy
 ./scripts/build-vtest.sh
 
 # Test with static AWS-LC libraries
-aws_lc_build ${SRC_ROOT} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} -DBUILD_SHARED_LIBS=0 -DBUILD_TESTING=0
-build_and_test_haproxy $HAPROXY_SRC
+aws_lc_build "${SRC_ROOT}" "${AWS_LC_BUILD_FOLDER}" "${AWS_LC_INSTALL_FOLDER}" -DBUILD_TESTING=OFF -DBUILD_SHARED_LIBS=0 -DCMAKE_BUILD_TYPE=RelWithDebInfo
+build_and_test_haproxy
 
 rm -rf "${AWS_LC_INSTALL_FOLDER:?}"/*
 rm -rf "${AWS_LC_BUILD_FOLDER:?}"/*
 
 # Test with shared AWS-LC libraries
-aws_lc_build ${SRC_ROOT} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} -DBUILD_SHARED_LIBS=1 -DBUILD_TESTING=0
-build_and_test_haproxy $HAPROXY_SRC
+aws_lc_build "${SRC_ROOT}" "${AWS_LC_BUILD_FOLDER}" "${AWS_LC_INSTALL_FOLDER}" -DBUILD_TESTING=OFF -DBUILD_SHARED_LIBS=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo
+export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}:${AWS_LC_INSTALL_FOLDER}/lib/"
+build_and_test_haproxy
+
+ldd "${HAPROXY_SRC}/haproxy" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
