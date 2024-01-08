@@ -1945,28 +1945,22 @@ static bool SpeedHashToCurve(const std::string &selected) {
 
   TimeResults results;
   {
-    const EC_GROUP *p256 = EC_GROUP_new_by_curve_name(NID_X9_62_prime256v1);
-    if (p256 == NULL) {
-      return false;
-    }
     if (!TimeFunction(&results, [&]() -> bool {
           EC_JACOBIAN out;
-          return ec_hash_to_curve_p256_xmd_sha256_sswu(
-              p256, &out, kLabel, sizeof(kLabel), input, sizeof(input));
+          return ec_hash_to_curve_p256_xmd_sha256_sswu(EC_group_p256(), &out,
+                                                       kLabel, sizeof(kLabel),
+                                                       input, sizeof(input));
         })) {
       fprintf(stderr, "hash-to-curve failed.\n");
       return false;
     }
     results.Print("hash-to-curve P256_XMD:SHA-256_SSWU_RO_");
 
-    const EC_GROUP *p384 = EC_GROUP_new_by_curve_name(NID_secp384r1);
-    if (p384 == NULL) {
-      return false;
-    }
     if (!TimeFunction(&results, [&]() -> bool {
           EC_JACOBIAN out;
-          return ec_hash_to_curve_p384_xmd_sha384_sswu(
-              p384, &out, kLabel, sizeof(kLabel), input, sizeof(input));
+          return ec_hash_to_curve_p384_xmd_sha384_sswu(EC_group_p384(), &out,
+                                                       kLabel, sizeof(kLabel),
+                                                       input, sizeof(input));
         })) {
       fprintf(stderr, "hash-to-curve failed.\n");
       return false;
@@ -1976,7 +1970,8 @@ static bool SpeedHashToCurve(const std::string &selected) {
     if (!TimeFunction(&results, [&]() -> bool {
           EC_SCALAR out;
           return ec_hash_to_scalar_p384_xmd_sha512_draft07(
-              p384, &out, kLabel, sizeof(kLabel), input, sizeof(input));
+              EC_group_p384(), &out, kLabel, sizeof(kLabel), input,
+              sizeof(input));
         })) {
       fprintf(stderr, "hash-to-scalar failed.\n");
       return false;

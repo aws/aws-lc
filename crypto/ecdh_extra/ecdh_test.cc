@@ -36,27 +36,27 @@
 #include "../test/test_util.h"
 #include "../test/wycheproof_util.h"
 
-static bssl::UniquePtr<EC_GROUP> GetCurve(FileTest *t, const char *key) {
+
+static const EC_GROUP *GetCurve(FileTest *t, const char *key) {
   std::string curve_name;
   if (!t->GetAttribute(&curve_name, key)) {
     return nullptr;
   }
 
   if (curve_name == "P-224") {
-    return bssl::UniquePtr<EC_GROUP>(EC_GROUP_new_by_curve_name(NID_secp224r1));
+    return EC_group_p224();
   }
   if (curve_name == "P-256") {
-    return bssl::UniquePtr<EC_GROUP>(EC_GROUP_new_by_curve_name(
-        NID_X9_62_prime256v1));
+    return EC_group_p256();
   }
   if (curve_name == "P-384") {
-    return bssl::UniquePtr<EC_GROUP>(EC_GROUP_new_by_curve_name(NID_secp384r1));
+    return EC_group_p384();
   }
   if (curve_name == "P-521") {
-    return bssl::UniquePtr<EC_GROUP>(EC_GROUP_new_by_curve_name(NID_secp521r1));
+    return EC_group_p521();
   }
   if (curve_name == "secp256k1") {
-    return bssl::UniquePtr<EC_GROUP>(EC_GROUP_new_by_curve_name(NID_secp256k1));
+    return EC_group_secp256k1();
   }
 
   t->PrintLine("Unknown curve '%s'", curve_name.c_str());
@@ -74,7 +74,7 @@ static bssl::UniquePtr<BIGNUM> GetBIGNUM(FileTest *t, const char *key) {
 
 TEST(ECDHTest, TestVectors) {
   FileTestGTest("crypto/ecdh_extra/ecdh_tests.txt", [](FileTest *t) {
-    bssl::UniquePtr<EC_GROUP> group = GetCurve(t, "Curve");
+    const EC_GROUP *group = GetCurve(t, "Curve");
     ASSERT_TRUE(group);
     bssl::UniquePtr<BIGNUM> priv_key = GetBIGNUM(t, "Private");
     ASSERT_TRUE(priv_key);
@@ -91,16 +91,16 @@ TEST(ECDHTest, TestVectors) {
 
     bssl::UniquePtr<EC_KEY> key(EC_KEY_new());
     ASSERT_TRUE(key);
-    bssl::UniquePtr<EC_POINT> pub_key(EC_POINT_new(group.get()));
+    bssl::UniquePtr<EC_POINT> pub_key(EC_POINT_new(group));
     ASSERT_TRUE(pub_key);
-    bssl::UniquePtr<EC_POINT> peer_pub_key(EC_POINT_new(group.get()));
+    bssl::UniquePtr<EC_POINT> peer_pub_key(EC_POINT_new(group));
     ASSERT_TRUE(peer_pub_key);
-    ASSERT_TRUE(EC_KEY_set_group(key.get(), group.get()));
+    ASSERT_TRUE(EC_KEY_set_group(key.get(), group));
     ASSERT_TRUE(EC_KEY_set_private_key(key.get(), priv_key.get()));
-    ASSERT_TRUE(EC_POINT_set_affine_coordinates_GFp(group.get(), pub_key.get(),
+    ASSERT_TRUE(EC_POINT_set_affine_coordinates_GFp(group, pub_key.get(),
                                                     x.get(), y.get(), nullptr));
     ASSERT_TRUE(EC_POINT_set_affine_coordinates_GFp(
-        group.get(), peer_pub_key.get(), peer_x.get(), peer_y.get(), nullptr));
+        group, peer_pub_key.get(), peer_x.get(), peer_y.get(), nullptr));
     ASSERT_TRUE(EC_KEY_set_public_key(key.get(), pub_key.get()));
     ASSERT_TRUE(EC_KEY_check_key(key.get()));
 
@@ -153,7 +153,7 @@ TEST(ECDHTest, InvalidPubKeyLargeCoord) {
   FileTestGTest("crypto/fipsmodule/ec/large_x_coordinate_points.txt",
                 [&](FileTest *t) {
     int ret;
-    bssl::UniquePtr<EC_GROUP> group = GetCurve(t, "Curve");
+	const EC_GROUP *group = GetCurve(t, "Curve");
     ASSERT_TRUE(group);
     bssl::UniquePtr<BIGNUM> x = GetBIGNUM(t, "X");
     ASSERT_TRUE(x);
@@ -163,26 +163,26 @@ TEST(ECDHTest, InvalidPubKeyLargeCoord) {
     ASSERT_TRUE(y);
     bssl::UniquePtr<EC_KEY> peer_key(EC_KEY_new());
     ASSERT_TRUE(peer_key);
-    bssl::UniquePtr<EC_POINT> pub_key(EC_POINT_new(group.get()));
+    bssl::UniquePtr<EC_POINT> pub_key(EC_POINT_new(group));
     ASSERT_TRUE(pub_key);
     bssl::UniquePtr<EC_KEY> priv_key(EC_KEY_new());
     // Own private key
     ASSERT_TRUE(priv_key);
-    ASSERT_TRUE(EC_KEY_set_group(priv_key.get(), group.get()));
+    ASSERT_TRUE(EC_KEY_set_group(priv_key.get(), group));
     // Generate a generic ec key.
     EC_KEY_generate_key(priv_key.get());
 
-    size_t len = BN_num_bytes(&group.get()->field.N); // Modulus byte-length
-    std::vector<uint8_t> shared_key((group.get()->curve_name == NID_secp521r1) ?
+    size_t len = BN_num_bytes(&group->field.N); // Modulus byte-length
+    std::vector<uint8_t> shared_key((group->curve_name == NID_secp521r1) ?
                                     SHA512_DIGEST_LENGTH : len);
 
-    ASSERT_TRUE(EC_KEY_set_group(peer_key.get(), group.get()));
+    ASSERT_TRUE(EC_KEY_set_group(peer_key.get(), group));
 
     // |EC_POINT_set_affine_coordinates_GFp| sets given (x, y) according to the
     // form the curve is using. If the curve is using Montgomery form, |x| and
     // |y| will be converted to Montgomery form.
     ASSERT_TRUE(EC_POINT_set_affine_coordinates_GFp(
-                  group.get(), pub_key.get(), x.get(), y.get(), nullptr));
+                  group, pub_key.get(), x.get(), y.get(), nullptr));
     ASSERT_TRUE(EC_KEY_set_public_key(peer_key.get(), pub_key.get()));
     ASSERT_TRUE(ECDH_compute_key_fips(
           shared_key.data(), shared_key.size(),
@@ -210,7 +210,7 @@ TEST(ECDHTest, InvalidPubKeyLargeCoord) {
                                 EC_KEY_get0_public_key(peer_key.get()),
                                 priv_key.get());
 
-    int curve_nid = group.get()->curve_name;
+    int curve_nid = group->curve_name;
     if (!is_curve_using_mont_felem_impl(curve_nid)) {
       ASSERT_TRUE(ret);
     } else {
@@ -240,7 +240,7 @@ TEST(ECDHTest, InvalidPubKeyLargeCoord) {
 static void RunWycheproofTest(FileTest *t) {
   t->IgnoreInstruction("encoding");
 
-  bssl::UniquePtr<EC_GROUP> group = GetWycheproofCurve(t, "curve", true);
+  const EC_GROUP *group = GetWycheproofCurve(t, "curve", true);
   ASSERT_TRUE(group);
   bssl::UniquePtr<BIGNUM> priv_key = GetWycheproofBIGNUM(t, "private", false);
   ASSERT_TRUE(priv_key);
@@ -267,10 +267,10 @@ static void RunWycheproofTest(FileTest *t) {
 
   bssl::UniquePtr<EC_KEY> key(EC_KEY_new());
   ASSERT_TRUE(key);
-  ASSERT_TRUE(EC_KEY_set_group(key.get(), group.get()));
+  ASSERT_TRUE(EC_KEY_set_group(key.get(), group));
   ASSERT_TRUE(EC_KEY_set_private_key(key.get(), priv_key.get()));
 
-  std::vector<uint8_t> actual((EC_GROUP_get_degree(group.get()) + 7) / 8);
+  std::vector<uint8_t> actual((EC_GROUP_get_degree(group) + 7) / 8);
   int ret =
       ECDH_compute_key(actual.data(), actual.size(),
                        EC_KEY_get0_public_key(peer_ec), key.get(), nullptr);
