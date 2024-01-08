@@ -106,6 +106,9 @@ typedef struct cipher_aes_ccm_ctx {
 // The CCM128 state struct within a CIPHER_AES_CCM_CTX
 #define CCM_INNER_STATE(ccm_ctx) (&ccm_ctx->ccm_state)
 
+// As per RFC3610, the nonce length in bytes is 15 - L.
+#define CCM_L_TO_NONCE_LEN(L) (15 - L)
+
 static int CRYPTO_ccm128_init(struct ccm128_context *ctx, block128_f block,
                               ctr128_f ctr, unsigned M, unsigned L) {
   if (M < 4 || M > 16 || (M & 1) != 0 || L < 2 || L > 8) {
@@ -138,7 +141,7 @@ static int ccm128_init_state(const struct ccm128_context *ctx,
 
   // |L| determines the expected |nonce_len| and the limit for |plaintext_len|.
   if (plaintext_len > CRYPTO_ccm128_max_input(ctx) ||
-      nonce_len != 15 - L) {
+      nonce_len != CCM_L_TO_NONCE_LEN(L)) {
     return 0;
   }
 
@@ -323,7 +326,7 @@ static int aead_aes_ccm_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
                              unsigned L) {
   assert(M == EVP_AEAD_max_overhead(ctx->aead));
   assert(M == EVP_AEAD_max_tag_len(ctx->aead));
-  assert(15 - L == EVP_AEAD_nonce_length(ctx->aead));
+  assert(CCM_L_TO_NONCE_LEN(L) == EVP_AEAD_nonce_length(ctx->aead));
 
   if (key_len != EVP_AEAD_key_length(ctx->aead)) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_KEY_LENGTH);
@@ -509,7 +512,7 @@ static int cipher_aes_ccm_init(EVP_CIPHER_CTX *ctx, const uint8_t *key,
   if (iv) {
     CRYPTO_ccm128_init(&cipher_ctx->ccm, NULL, NULL, cipher_ctx->M,
                        cipher_ctx->L);
-    OPENSSL_memcpy(cipher_ctx->nonce, iv, 15 - cipher_ctx->L);
+    OPENSSL_memcpy(cipher_ctx->nonce, iv, CCM_L_TO_NONCE_LEN(cipher_ctx->L));
     cipher_ctx->iv_set = 1;
   }
   return 1;
@@ -533,7 +536,7 @@ static int cipher_aes_ccm_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
 
   if (!out) {
     if (!in) {
-      // If |out| and |in| are both NULL, |inl| is the total length of the
+      // If |out| and |in| are both NULL, |len| is the total length of the
       // message which we need to include that in the 0th block of the CBC-MAC.
       cipher_ctx->message_len = len;
       cipher_ctx->len_set = 1;
@@ -547,7 +550,7 @@ static int cipher_aes_ccm_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
       // We now have everything we need to initialize the CBC-MAC state
       if (ccm128_init_state(ccm_ctx, ccm_state,
                             &cipher_ctx->ks.ks, cipher_ctx->nonce,
-                            15 - cipher_ctx->L, in, len,
+                            CCM_L_TO_NONCE_LEN(cipher_ctx->L), in, len,
                             cipher_ctx->message_len)) {
         cipher_ctx->ccm_set = 1;
         return len;
@@ -567,8 +570,8 @@ static int cipher_aes_ccm_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
   if (!cipher_ctx->ccm_set) {
     // Initialize the ccm_state if this did not happen during the AAD update.
     if (!ccm128_init_state(ccm_ctx, ccm_state, &cipher_ctx->ks.ks,
-                           cipher_ctx->nonce, 15 - cipher_ctx->L, NULL, 0,
-                           cipher_ctx->message_len)) {
+                           cipher_ctx->nonce, CCM_L_TO_NONCE_LEN(cipher_ctx->L),
+                           NULL, 0, cipher_ctx->message_len)) {
       return -1;
     }
     cipher_ctx->ccm_set = 1;
@@ -634,7 +637,7 @@ static int cipher_aes_ccm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
       cipher_ctx->message_len = 0;
       return 1;
     case EVP_CTRL_GET_IVLEN:
-      *(uint32_t *)ptr = 15 - cipher_ctx->L;
+      *(uint32_t *)ptr = CCM_L_TO_NONCE_LEN(cipher_ctx->L);
       return 1;
     case EVP_CTRL_AEAD_SET_IVLEN:
       // The nonce (IV) length is 15-L, compute L here and set it below to "set"
