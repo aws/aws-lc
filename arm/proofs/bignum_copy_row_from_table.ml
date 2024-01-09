@@ -114,9 +114,12 @@ let READ_MEMORY_BYTES_BYTES64 = prove(`!z s.
               GSYM BIGNUM_FROM_MEMORY_BYTES; BIGNUM_FROM_MEMORY_SING]);;
 
 
-let BIGNUM_COPY_ROW_FROM_TABLE_SUBROUTINE_CORRECT = prove(`!z table height width idx pc n m returnaddress.
-    nonoverlapping (word pc, 0x6c) (z, 8 * val width) /\
-    nonoverlapping (word pc, 0x6c) (table, 8 * val height * val width) /\
+let BIGNUM_COPY_ROW_FROM_TABLE_SUBROUTINE_CORRECT = prove(
+  `!z table height width idx pc n m returnaddress.
+    nonoverlapping (word pc, LENGTH bignum_copy_row_from_table_mc)
+                   (z, 8 * val width) /\
+    nonoverlapping (word pc, LENGTH bignum_copy_row_from_table_mc)
+                   (table, 8 * val height * val width) /\
     nonoverlapping (z, 8 * val width) (table, 8 * val height * val width) /\
     8 * val width < 2 EXP 64 /\
     val idx < val height
@@ -132,24 +135,26 @@ let BIGNUM_COPY_ROW_FROM_TABLE_SUBROUTINE_CORRECT = prove(`!z table height width
       (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
        MAYCHANGE [memory :> bytes(z,8 * val width)])`,
 
-  REPEAT GEN_TAC THEN REWRITE_TAC[C_ARGUMENTS; NONOVERLAPPING_CLAUSES;
-                MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI] THEN
-    REPEAT STRIP_TAC THEN
+  REPEAT GEN_TAC THEN
+  REWRITE_TAC[C_ARGUMENTS; NONOVERLAPPING_CLAUSES;
+              BIGNUM_COPY_ROW_FROM_TABLE_EXEC;
+              MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI] THEN
+  REPEAT STRIP_TAC THEN
 
   ASM_CASES_TAC `val (height:(64)word) = 0` THENL [
-      UNDISCH_TAC `val (idx:int64) < val (height:int64)` THEN
-      ASM_REWRITE_TAC[] THEN REWRITE_TAC[LT] THEN ENSURES_INIT_TAC "s0" THEN ITAUT_TAC;
-      ALL_TAC] THEN
-    ASM_CASES_TAC `width = (word 0):(64)word` THENL [
-      ASM_REWRITE_TAC[] THEN
-      REWRITE_TAC[VAL_WORD_0; MULT_0; WORD_ADD_0] THEN
-      ARM_SIM_TAC BIGNUM_COPY_ROW_FROM_TABLE_EXEC [1;2;3] THEN
-      ASM_MESON_TAC[GSYM BIGNUM_FROM_MEMORY_BYTES; BIGNUM_FROM_MEMORY_TRIVIAL];
-      ALL_TAC] THEN
-    SUBGOAL_THEN `~(val (width:64 word) = 0)` ASSUME_TAC THENL [
-      UNDISCH_TAC `~(width = word 0:64 word)` THEN
-      REWRITE_TAC[VAL_EQ_0];
-      ALL_TAC] THEN
+    UNDISCH_TAC `val (idx:int64) < val (height:int64)` THEN
+    ASM_REWRITE_TAC[] THEN REWRITE_TAC[LT] THEN ENSURES_INIT_TAC "s0" THEN ITAUT_TAC;
+    ALL_TAC] THEN
+  ASM_CASES_TAC `width = (word 0):(64)word` THENL [
+    ASM_REWRITE_TAC[] THEN
+    REWRITE_TAC[VAL_WORD_0; MULT_0; WORD_ADD_0] THEN
+    ARM_SIM_TAC BIGNUM_COPY_ROW_FROM_TABLE_EXEC [1;2;3] THEN
+    ASM_MESON_TAC[GSYM BIGNUM_FROM_MEMORY_BYTES; BIGNUM_FROM_MEMORY_TRIVIAL];
+    ALL_TAC] THEN
+  SUBGOAL_THEN `~(val (width:64 word) = 0)` ASSUME_TAC THENL [
+    UNDISCH_TAC `~(width = word 0:64 word)` THEN
+    REWRITE_TAC[VAL_EQ_0];
+    ALL_TAC] THEN
 
   ENSURES_SEQUENCE_TAC `pc + 0x10`
       `\s. read X30 s = returnaddress /\ read X0 s = z /\ read X1 s = table /\

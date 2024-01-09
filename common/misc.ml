@@ -1407,8 +1407,27 @@ let LE_MULT_ADD = prove(`!(x:num) (x2:num) (y:num). x < x2 ==> x * y + y <= x2 *
     REWRITE_TAC[LE_MULT_RCANCEL] THEN
     ASM_ARITH_TAC);;
 
-let ADD_SUB_SWAP = prove(`!(x:num) (y:num) (z:num). y >= z /\ x >= z ==> x + (y - z) = y + (x - z)`,
+let ADD_SUB_SWAP = prove(
+  `!(x:num) (y:num) (z:num). y >= z /\ x >= z ==> x + (y - z) = y + (x - z)`,
   ARITH_TAC);;
+
+let ADD_SUB_SWAP2 = prove(
+  `!(x:num) (y:num) (z:num). y >= z /\ z >= x ==> x + (y - z) = y - (z - x)`,
+  ARITH_TAC);;
+
+let SUB_MOD_EQ_0 = prove(`!(x:num) (y:num).
+    ~(x = 0) ==> ((x - y) MOD x = 0 <=> (x <= y \/ y = 0))`,
+  REPEAT STRIP_TAC THEN
+  ASM_CASES_TAC `(y:num) = 0` THENL
+  [ SUBST_ALL_TAC (ASSUME `(y:num) = 0`) THEN
+    REWRITE_TAC[SUB_0;MOD_REFL]; ALL_TAC ] THEN
+  ASM_REWRITE_TAC[] THEN
+  ASM_CASES_TAC `(x:num) - y = x` THENL [
+    ASM_ARITH_TAC;
+
+    SUBGOAL_THEN `(x:num) - y < x` (fun th -> REWRITE_TAC[MATCH_MP MOD_LT th]) THENL [ASM_ARITH_TAC; ALL_TAC] THEN
+    ARITH_TAC
+  ]);;
 
 (* ------------------------------------------------------------------------- *)
 (* A simple tactic that is helpful for debugging.                            *)

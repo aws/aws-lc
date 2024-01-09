@@ -2840,14 +2840,8 @@ int test_bignum_copy_row_from_table_specific(const char *name, uint64_t fixed_wi
 
 int test_bignum_copy_row_from_table(void)
 {
-// TODO: Once the x86 version of bignum_copy_row_from_table is verified,
-// remove this __ARM_NEON guard.
-#ifdef __ARM_NEON
   return test_bignum_copy_row_from_table_specific("bignum_copy_row_from_table",
       0, 0, bignum_copy_row_from_table);
-#else
-  return 1;
-#endif
 }
 
 int test_bignum_copy_row_from_table_8n_neon(void)
@@ -11737,6 +11731,7 @@ int main(int argc, char *argv[])
   functionaltest(all,"bignum_cmul_sm2_alt",test_bignum_cmul_sm2_alt);
   functionaltest(all,"bignum_coprime",test_bignum_coprime);
   functionaltest(all,"bignum_copy",test_bignum_copy);
+  functionaltest(all,"bignum_copy_row_from_table",test_bignum_copy_row_from_table);
   functionaltest(all,"bignum_ctd",test_bignum_ctd);
   functionaltest(all,"bignum_ctz",test_bignum_ctz);
   functionaltest(bmi,"bignum_deamont_p256",test_bignum_deamont_p256);
@@ -11993,10 +11988,6 @@ int main(int argc, char *argv[])
 
   if (get_arch_name() == ARCH_AARCH64) {
     int neon = supports_neon();
-    // TODO: Once the x86 version of bignum_copy_row_from_table is verified, hoist
-    // this functionaltest out of this if branch and turn the condition into 'all'.
-    functionaltest(neon,"bignum_copy_row_from_table",test_bignum_copy_row_from_table);
-
     functionaltest(neon,"bignum_copy_row_from_table_8n_neon",test_bignum_copy_row_from_table_8n_neon);
     functionaltest(neon,"bignum_copy_row_from_table_16_neon",test_bignum_copy_row_from_table_16_neon);
     functionaltest(neon,"bignum_copy_row_from_table_32_neon",test_bignum_copy_row_from_table_32_neon);
