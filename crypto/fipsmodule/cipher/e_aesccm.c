@@ -58,6 +58,7 @@
 #include "../service_indicator/internal.h"
 #include "internal.h"
 
+#define EVP_AEAD_AES_CCM_MIN_TAG_LEN 4
 #define EVP_AEAD_AES_CCM_MAX_TAG_LEN 16
 #define CCM_MAX_NONCE_LEN 13
 
@@ -111,7 +112,8 @@ typedef struct cipher_aes_ccm_ctx {
 
 static int CRYPTO_ccm128_init(struct ccm128_context *ctx, block128_f block,
                               ctr128_f ctr, unsigned M, unsigned L) {
-  if (M < 4 || M > 16 || (M & 1) != 0 || L < 2 || L > 8) {
+  if (M < EVP_AEAD_AES_CCM_MIN_TAG_LEN || M > EVP_AEAD_AES_CCM_MAX_TAG_LEN
+      || (M & 1) != 0 || L < 2 || L > 8) {
     return 0;
   }
   if (block) {
@@ -596,6 +598,7 @@ static int cipher_aes_ccm_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
     uint8_t computed_tag[EVP_AEAD_AES_CCM_MAX_TAG_LEN] = {0};
     if (!ccm128_compute_mac(ccm_ctx, ccm_state, &cipher_ctx->ks.ks,
                             computed_tag, cipher_ctx->M, out, len)) {
+      OPENSSL_cleanse(out, len);
       return -1;
     }
     // Validate the tag and invalidate the output if it doesn't match.
@@ -647,7 +650,8 @@ static int cipher_aes_ccm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
       return cipher_aes_ccm_ctrl_set_L(cipher_ctx, arg);
     case EVP_CTRL_AEAD_SET_TAG:
       // |arg| is the tag length in bytes.
-      if ((arg & 1) || arg < 4 || arg > EVP_AEAD_AES_CCM_MAX_TAG_LEN) {
+      if ((arg & 1) || arg < EVP_AEAD_AES_CCM_MIN_TAG_LEN
+          || arg > EVP_AEAD_AES_CCM_MAX_TAG_LEN) {
         return 0;
       }
 
