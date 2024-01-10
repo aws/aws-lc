@@ -35,8 +35,7 @@ pushd "${SCRATCH_FOLDER}"
 function trousers_build() {
   sh ./bootstrap.sh
   ./configure --with-gui=none --prefix="${TROUSERS_INSTALL_FOLDER}" --with-openssl="${AWS_LC_INSTALL_FOLDER}"
-  make -j "${NUM_CPU_THREADS}"
-  make install
+  make -j "$NUM_CPU_THREADS" install
   ldd "${TROUSERS_INSTALL_FOLDER}/sbin/tcsd" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
 }
 

@@ -32,12 +32,12 @@ function ntp_patch() {
 
 function ntp_build() {
   ./configure --with-openssl-incdir="${AWS_LC_INSTALL_FOLDER}/include" --with-openssl-libdir="${AWS_LC_INSTALL_FOLDER}/lib/"
-  make -j "${NUM_CPU_THREADS}"
+  make -j "$NUM_CPU_THREADS"
 }
 
 function ntp_run_tests() {
   export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib"
-  make -j "${NUM_CPU_THREADS}" check
+  make -j "$NUM_CPU_THREADS" check
 }
 
 mkdir -p "$SCRATCH_FOLDER"

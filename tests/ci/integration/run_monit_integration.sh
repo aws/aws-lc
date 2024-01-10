@@ -33,7 +33,7 @@ function monit_run_tests() {
   # TimeTest will fail on a machine not in CET timezone.
   # https://bitbucket.org/tildeslash/monit/src/def6b462259586358be3c86d76a299c80744df39/libmonit/test/TimeTest.c#lines-24
   sed -i 's/TimeTest && //g' test/test.sh
-  make verify
+  make -j "$NUM_CPU_THREADS" verify
   popd
 }
 

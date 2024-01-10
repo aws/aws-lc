@@ -30,7 +30,7 @@ function librelp_build() {
 
 function librelp_run_tests() {
   export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib"
-  make check
+  make -j "$NUM_CPU_THREADS" check
 }
 
 # TODO: Remove this when we make an upstream contribution.

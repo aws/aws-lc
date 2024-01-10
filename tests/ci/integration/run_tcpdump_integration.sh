@@ -36,14 +36,13 @@ function tcpdump_build() {
   git apply "${SCRIPT_DIR}/tcpdump_patch/aws-lc-tcpdump.patch"
   autoreconf -fi
   ./configure --prefix="${TCPDUMP_INSTALL_FOLDER}" --with-crypto="${AWS_LC_INSTALL_FOLDER}"
-  make -j "${NUM_CPU_THREADS}"
-  make install
+  make -j "${NUM_CPU_THREADS}" install
   ldd "${TCPDUMP_INSTALL_FOLDER}/bin/tcpdump" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
 }
 
 function tcpdump_run_tests() {
-  make check
-  make releasecheck
+  make -j "$NUM_CPU_THREADS" check
+  make -j "$NUM_CPU_THREADS" releasecheck
 }
 
 # Get latest tcpdump version.

@@ -52,7 +52,7 @@ function openssh_build() {
   # See: https://github.com/openssh/openssh-portable/pull/385
   export CFLAGS="-DAWS_LC_INTERNAL_IGNORE_BN_SET_FLAGS=1 -DHAVE_RSA_METH_FREE=1 -DHAVE_RSA_METH_DUP=1 -DHAVE_RSA_METH_SET1_NAME=1 -DHAVE_RSA_METH_SET_PRIV_ENC=1 -DHAVE_RSA_METH_SET_PRIV_DEC=1"
   ./configure --with-ssl-dir="${AWS_LC_INSTALL_FOLDER}" --prefix="${OPENSSH_INSTALL_FOLDER}" --disable-pkcs11
-  make install
+  make -j "$NUM_CPU_THREADS" install
   ls -R "${OPENSSH_INSTALL_FOLDER}"
   popd
 }
@@ -72,7 +72,7 @@ function openssh_run_tests() {
   fi
   export TEST_SSH_UNSAFE_PERMISSIONS=1
   export SKIP_LTESTS="$@"
-  make tests
+  make -j "$NUM_CPU_THREADS" tests
   popd
 }
 
