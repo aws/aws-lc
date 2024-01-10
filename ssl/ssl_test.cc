@@ -10491,26 +10491,28 @@ TEST(SSLTest, IntermittentEmptyRead) {
   SSL_set0_rbio(client.get(), rbio_empty.release());
 
   // Server writes some data to the client
-  const uint8_t data[1] = {0};
-  int ret = SSL_write(server.get(), data, (int) sizeof(data));
-  EXPECT_EQ(ret, (int) sizeof(data));
+  const uint8_t write_data[] = {1, 2, 3};
+  int ret = SSL_write(server.get(), write_data, (int) sizeof(write_data));
+  EXPECT_EQ(ret, (int) sizeof(write_data));
   EXPECT_EQ(SSL_get_error(server.get(), ret), SSL_ERROR_NONE);
 
   // On empty read, client should still want a read so caller will retry
-  uint8_t buf[1];
-  ret = SSL_read(client.get(), buf, sizeof(buf));
+  uint8_t read_data[] = {0, 0, 0};
+  ret = SSL_read(client.get(), read_data, sizeof(read_data));
   EXPECT_EQ(ret, 0);
   EXPECT_EQ(SSL_get_error(client.get(), ret), SSL_ERROR_WANT_READ);
 
   // Reset client rbio, read should succeed
   SSL_set0_rbio(client.get(), client_rbio.release());
-  ret = SSL_read(client.get(), buf, sizeof(buf));
-  EXPECT_EQ(ret, (int) sizeof(buf));
+  ret = SSL_read(client.get(), read_data, sizeof(read_data));
+  EXPECT_EQ(ret, (int) sizeof(write_data));
+  EXPECT_EQ(OPENSSL_memcmp(read_data, write_data, sizeof(write_data)), 0);
   EXPECT_EQ(SSL_get_error(client.get(), ret), SSL_ERROR_NONE);
 
-  ret = SSL_read(client.get(), buf, sizeof(buf));
-  EXPECT_LE(ret, 0);
-  EXPECT_EQ(SSL_get_error(client.get(), ret), SSL_ERROR_SSL);
+  // Subsequent attempts to read should fail
+  ret = SSL_read(client.get(), read_data, sizeof(read_data));
+  EXPECT_LT(ret, 0);
+  EXPECT_EQ(SSL_get_error(client.get(), ret), SSL_ERROR_WANT_READ);
 }
 
 // Test that |SSL_shutdown|, when quiet shutdown is enabled, simulates receiving

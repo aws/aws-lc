@@ -1027,10 +1027,7 @@ static int ssl_read_impl(SSL *ssl) {
                                  &alert, ssl->s3->read_buffer.span());
     bool retry;
     int bio_ret = ssl_handle_open_record(ssl, &retry, ret, consumed, alert);
-
-    if (bio_ret == 0 && retry && (ssl->ctx->mode & SSL_MODE_AUTO_RETRY)) {
-      continue;
-    } else if (bio_ret <= 0) {
+    if (bio_ret <= 0) {
       return bio_ret;
     }
     if (!retry) {
@@ -1391,8 +1388,11 @@ int SSL_get_error(const SSL *ssl, int ret_code) {
     }
     // An EOF was observed which violates the protocol, and the underlying
     // transport does not participate in the error queue. Bubble up to the
-    // caller.
-    return SSL_ERROR_SYSCALL;
+    // caller. Do not consider retryable |rwstate| EOF.
+    if (ssl->s3->rwstate != SSL_ERROR_WANT_READ
+            && ssl->s3->rwstate != SSL_ERROR_WANT_WRITE) {
+      return SSL_ERROR_SYSCALL;
+    }
   }
 
   switch (ssl->s3->rwstate) {
