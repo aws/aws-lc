@@ -1337,7 +1337,7 @@ class ECCurveTest : public testing::TestWithParam<int> {
   }
 
  private:
-  const EC_GROUP *group_;
+  const EC_GROUP *group_{};
 };
 
 TEST_P(ECCurveTest, SetAffine) {
