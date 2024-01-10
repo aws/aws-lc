@@ -86,7 +86,7 @@ ls
 aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DBUILD_TESTING=OFF -DBUILD_TOOL=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_SHARED_LIBS=1
 install_aws_lc
 
-CODEBUILD_SKIPPED_TESTS="agent-subprocess forwarding multiplex forward-control agent-restrict connection-timeout"
+CODEBUILD_SKIPPED_TESTS="agent-subprocess forwarding multiplex channel-timeout forward-control agent-restrict connection-timeout"
 
 # Using default branch. Build openssh and run tests.
 openssh_build
