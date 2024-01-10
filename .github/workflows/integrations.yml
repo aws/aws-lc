@@ -1,4 +1,4 @@
-name: aws-lc integration tests
+name: Integration tests
 on:
   push:
     branches: [ '*' ]
