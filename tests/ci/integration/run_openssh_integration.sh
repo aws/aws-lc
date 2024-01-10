@@ -73,7 +73,7 @@ function openssh_run_tests() {
   fi
   export TEST_SSH_UNSAFE_PERMISSIONS=1
   export SKIP_LTESTS="$@"
-  make -j "$NUM_CPU_THREADS" tests
+  make tests
   popd
 }
 
