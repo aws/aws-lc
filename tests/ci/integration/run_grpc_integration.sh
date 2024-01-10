@@ -31,7 +31,7 @@ git clone --depth 1 https://github.com/grpc/grpc.git ${GRPC_SRC_FOLDER}
 cd ${GRPC_SRC_FOLDER}
 git submodule update --recursive --init
 
-aws_lc_build ${SRC_ROOT} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} -DBUILD_SHARED_LIBS=1
+aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DBUILD_TESTING=OFF -DBUILD_TOOL=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_SHARED_LIBS=1
 
 mkdir -p "${GRPC_SRC_FOLDER}/cmake/build"
 cd "${GRPC_SRC_FOLDER}/cmake/build"
