@@ -15,6 +15,7 @@ jobs:
     steps:
       - name: Install OS Dependencies
         run: |
+          sudo apt-get update
           sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make
       - uses: actions/checkout@v3
       - name: Run integration build
@@ -31,7 +32,8 @@ jobs:
     steps:
       - name: Install OS Dependencies
         run: |
-          apt-get update && apt-get -y --no-install-recommends install cmake gcc g++ ninja-build golang make python3 python3-sphinx autoconf libtool pkg-config git libc++-dev
+          apt-get update
+          apt-get -y --no-install-recommends install cmake gcc g++ ninja-build golang make python3 python3-sphinx autoconf libtool pkg-config git libc++-dev
       - uses: actions/checkout@v3
       - name: Run integration build
         run: |
@@ -41,7 +43,8 @@ jobs:
     steps:
       - name: Install OS Dependencies
         run: |
-          sudo apt-get update && sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make libpcap-dev binutils-dev
+          sudo apt-get update
+          sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make libpcap-dev binutils-dev
       - uses: actions/checkout@v3
       - name: Run integration build
         run: |
@@ -51,7 +54,8 @@ jobs:
     steps:
       - name: Install OS Dependencies
         run: |
-          sudo apt-get update && sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make
+          sudo apt-get update
+          sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make
       - uses: actions/checkout@v3
       - name: Run trousers build
         run: |
@@ -61,7 +65,8 @@ jobs:
     steps:
       - name: Install OS Dependencies
         run: |
-          sudo apt-get update && sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make
+          sudo apt-get update
+          sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make
       - uses: actions/checkout@v3
       - name: Run ntp build
         run: |
