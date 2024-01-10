@@ -13,7 +13,7 @@ env:
   GOPROXY: https://proxy.golang.org,direct
 jobs:
   cmake:
-    name: CMake ${{ matrix.cmake.version}} build with ${{ matrix.generator}}
+    name: CMake ${{ matrix.cmake.version}} build with ${{ matrix.generator}} FIPS=${{ matrix.fips }}
     strategy:
       matrix:
         cmake:
