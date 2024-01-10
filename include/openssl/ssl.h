@@ -869,6 +869,9 @@ OPENSSL_EXPORT uint32_t SSL_get_options(const SSL *ssl);
 // session resumption is used for a given SSL*.
 #define SSL_MODE_NO_SESSION_CREATION 0x00000200L
 
+// TODO [childw]
+#define SSL_MODE_AUTO_RETRY 0x00000004L
+
 // SSL_MODE_SEND_FALLBACK_SCSV sends TLS_FALLBACK_SCSV in the ClientHello.
 // To be set only by applications that reconnect with a downgraded protocol
 // version; see RFC 7507 for details.
@@ -5283,7 +5286,6 @@ DEFINE_STACK_OF(SSL_COMP)
 
 // The following flags do nothing and are included only to make it easier to
 // compile code with BoringSSL.
-#define SSL_MODE_AUTO_RETRY 0
 #define SSL_MODE_RELEASE_BUFFERS 0
 #define SSL_MODE_SEND_CLIENTHELLO_TIME 0
 #define SSL_MODE_SEND_SERVERHELLO_TIME 0

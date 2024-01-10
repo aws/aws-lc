@@ -10507,6 +10507,10 @@ TEST(SSLTest, IntermittentEmptyRead) {
   ret = SSL_read(client.get(), buf, sizeof(buf));
   EXPECT_EQ(ret, (int) sizeof(buf));
   EXPECT_EQ(SSL_get_error(client.get(), ret), SSL_ERROR_NONE);
+
+  ret = SSL_read(client.get(), buf, sizeof(buf));
+  EXPECT_LE(ret, 0);
+  EXPECT_EQ(SSL_get_error(client.get(), ret), SSL_ERROR_SSL);
 }
 
 // Test that |SSL_shutdown|, when quiet shutdown is enabled, simulates receiving
