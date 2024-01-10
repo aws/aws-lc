@@ -85,17 +85,17 @@ typedef struct cipher_aes_ccm_ctx {
   CCM128_STATE ccm_state;
 
   // Boolean flags
-  uint32_t key_set;
-  uint32_t iv_set;
-  uint32_t tag_set;
-  uint32_t len_set;
-  uint32_t ccm_set;
+  uint8_t key_set;
+  uint8_t iv_set;
+  uint8_t tag_set;
+  uint8_t len_set;
+  uint8_t ccm_set;
 
   // L and M parameters from RFC3610
   uint32_t L; // Number of octets in length field
   uint32_t M; // Number of octets in authentication field
 
-  uint32_t message_len;
+  size_t message_len;
   uint8_t tag[EVP_AEAD_AES_CCM_MAX_TAG_LEN];
   uint8_t nonce[CCM_MAX_NONCE_LEN];
 } CIPHER_AES_CCM_CTX;
@@ -507,13 +507,17 @@ static int cipher_aes_ccm_init(EVP_CIPHER_CTX *ctx, const uint8_t *key,
     block128_f block;
     ctr128_f ctr = aes_ctr_set_key(&cipher_ctx->ks.ks, NULL, &block, key,
                                    ctx->key_len);
-    CRYPTO_ccm128_init(&cipher_ctx->ccm, block, ctr, cipher_ctx->M,
-                       cipher_ctx->L);
+    if (!CRYPTO_ccm128_init(&cipher_ctx->ccm, block, ctr, cipher_ctx->M,
+                       cipher_ctx->L)) {
+      return 0;
+    }
     cipher_ctx->key_set = 1;
   }
   if (iv) {
-    CRYPTO_ccm128_init(&cipher_ctx->ccm, NULL, NULL, cipher_ctx->M,
-                       cipher_ctx->L);
+    if (!CRYPTO_ccm128_init(&cipher_ctx->ccm, NULL, NULL, cipher_ctx->M,
+                       cipher_ctx->L)) {
+      return 0;
+    }
     OPENSSL_memcpy(cipher_ctx->nonce, iv, CCM_L_TO_NONCE_LEN(cipher_ctx->L));
     cipher_ctx->iv_set = 1;
   }

@@ -325,7 +325,7 @@ static void TestCipherAPI(const EVP_CIPHER *cipher, Operation op, bool padding,
                                          nullptr, 0));
     } else {
       // Invalid padding and invalid tags all appear as a failed
-      // |EVP_CipherFinal_ex|. Except for CCM.
+      // |EVP_CipherFinal_ex|. In CCM, this happens in |EVP_CipherUpdate|.
       int expected_ret = is_ccm ? 1 : 0;
       EXPECT_EQ(expected_ret, EVP_CipherFinal_ex(ctx.get(),
                                                  result.data() + total, &len));
