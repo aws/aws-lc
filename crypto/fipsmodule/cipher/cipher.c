@@ -70,6 +70,7 @@
 
 void EVP_CIPHER_CTX_init(EVP_CIPHER_CTX *ctx) {
   OPENSSL_memset(ctx, 0, sizeof(EVP_CIPHER_CTX));
+  ctx->poisoned = 1;
 }
 
 EVP_CIPHER_CTX *EVP_CIPHER_CTX_new(void) {
@@ -255,6 +256,7 @@ static int block_remainder(const EVP_CIPHER_CTX *ctx, int len) {
 
 int EVP_EncryptUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len,
                       const uint8_t *in, int in_len) {
+  GUARD_PTR(ctx);
   if (ctx->poisoned) {
     OPENSSL_PUT_ERROR(CIPHER, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     return 0;
@@ -266,6 +268,7 @@ int EVP_EncryptUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len,
 
   // Ciphers that use blocks may write up to |bl| extra bytes. Ensure the output
   // does not overflow |*out_len|.
+  GUARD_PTR(ctx->cipher);
   int bl = ctx->cipher->block_size;
   if (bl > 1 && in_len > INT_MAX - bl) {
     OPENSSL_PUT_ERROR(CIPHER, ERR_R_OVERFLOW);
@@ -347,12 +350,13 @@ int EVP_EncryptUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len,
 int EVP_EncryptFinal_ex(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len) {
   int n;
   unsigned int i, b, bl;
+  GUARD_PTR(ctx);
 
   if (ctx->poisoned) {
     OPENSSL_PUT_ERROR(CIPHER, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     return 0;
   }
-
+  GUARD_PTR(ctx->cipher);
   if (ctx->cipher->flags & EVP_CIPH_FLAG_CUSTOM_CIPHER) {
     // When EVP_CIPH_FLAG_CUSTOM_CIPHER is set, the return value of |cipher| is
     // the number of bytes written, or -1 on error. Otherwise the return value
@@ -398,13 +402,16 @@ out:
 
 int EVP_DecryptUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len,
                       const uint8_t *in, int in_len) {
+  GUARD_PTR(ctx);
   if (ctx->poisoned) {
     OPENSSL_PUT_ERROR(CIPHER, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     return 0;
   }
 
+
   // Ciphers that use blocks may write up to |bl| extra bytes. Ensure the output
   // does not overflow |*out_len|.
+  GUARD_PTR(ctx->cipher);
   unsigned int b = ctx->cipher->block_size;
   if (b > 1 && in_len > INT_MAX - (int)b) {
     OPENSSL_PUT_ERROR(CIPHER, ERR_R_OVERFLOW);
@@ -464,6 +471,7 @@ int EVP_DecryptFinal_ex(EVP_CIPHER_CTX *ctx, unsigned char *out, int *out_len) {
   int i, n;
   unsigned int b;
   *out_len = 0;
+  GUARD_PTR(ctx);
 
   // |ctx->cipher->cipher| calls the static aes encryption function way under
   // the hood instead of |EVP_Cipher|, so the service indicator does not need
@@ -473,7 +481,7 @@ int EVP_DecryptFinal_ex(EVP_CIPHER_CTX *ctx, unsigned char *out, int *out_len) {
     OPENSSL_PUT_ERROR(CIPHER, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     return 0;
   }
-
+  GUARD_PTR(ctx->cipher);
   if (ctx->cipher->flags & EVP_CIPH_FLAG_CUSTOM_CIPHER) {
     i = ctx->cipher->cipher(ctx, out, NULL, 0);
     if (i < 0) {
