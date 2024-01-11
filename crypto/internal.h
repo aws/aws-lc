@@ -1155,6 +1155,28 @@ OPENSSL_EXPORT int OPENSSL_vasprintf_internal(char **str, const char *format,
                                               va_list args, int system_malloc)
     OPENSSL_PRINTF_FORMAT_FUNC(2, 0);
 
+
+// Safety Macros
+
+// Inspired by s2n-tls
+
+// __AWS_LC_ENSURE checks if |cond| is true nothing happens, else |action| is called
+#define __AWS_LC_ENSURE(cond, action) \
+    do {                           \
+        if (!(cond)) {             \
+            action;                \
+        }                          \
+    } while (0)
+
+#define AWS_LC_ERROR 0
+#define AWS_LC_SUCCESS 1
+
+// RESULT_GUARD_PTR checks if |ptr|, if it is null it adds ERR_R_PASSED_NULL_PARAMETER
+// to the error queue and returns 0. NOTE: this macro should only be used with
+// functions that return 0 (for error) and 1 (for success).
+#define GUARD_PTR(ptr) __AWS_LC_ENSURE((ptr) != NULL, OPENSSL_PUT_ERROR(CRYPTO, ERR_R_PASSED_NULL_PARAMETER); \
+                                       return AWS_LC_ERROR)
+
 #if defined(__cplusplus)
 }  // extern C
 #endif
