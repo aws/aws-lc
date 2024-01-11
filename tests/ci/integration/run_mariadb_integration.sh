@@ -58,7 +58,8 @@ function mariadb_run_tests() {
   echo "main.mysqldump : Field separator argument is not what is expected; check the manual when executing 'SELECT INTO OUTFILE'
 main.flush_logs_not_windows : query 'flush logs' succeeded - should have failed with error ER_CANT_CREATE_FILE (1004)
 main.mysql_upgrade_noengine : upgrade output order does not match the expected
-main.plugin_load : This test generates a warning in Codebuild. Skip over since this isn't relevant to AWS-LC. "> skiplist
+main.plugin_load : This test generates a warning in Codebuild. Skip over since this isn't relevant to AWS-LC.
+main.ssl_crl : This test is flaky in CodeBuild CI P112867839"> skiplist
   ./mtr --suite=main --force --parallel=auto --skip-test-list=${MARIADB_BUILD_FOLDER}/mysql-test/skiplist --retry-failure=2
   popd
 }
