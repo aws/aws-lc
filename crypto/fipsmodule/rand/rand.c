@@ -265,7 +265,7 @@ static void rand_thread_state_free(void *state_in) {
 
   rand_state_fips_clear(state);
 #else
-  OPENSSL_memset(state, 0, sizeof(struct rand_thread_state));
+  OPENSSL_cleanse(state, sizeof(struct rand_thread_state));
 #endif
 
   free(state);
