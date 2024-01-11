@@ -1,4 +1,4 @@
-name: AWS-LC ABI Diff
+name: ABI Diff
 on:
   pull_request:
     branches: [ '*' ]
