@@ -1,6 +1,8 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
+// Ensure we can't call OPENSSL_malloc.
+#define _BORINGSSL_PROHIBIT_OPENSSL_MALLOC
 #include <openssl/crypto.h>
 #include <openssl/service_indicator.h>
 #include "internal.h"
@@ -45,7 +47,7 @@ static struct fips_service_indicator_state * service_indicator_get(void) {
       AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_STATE);
 
   if (indicator == NULL) {
-    indicator = OPENSSL_malloc(sizeof(struct fips_service_indicator_state));
+    indicator = malloc(sizeof(struct fips_service_indicator_state));
     if (indicator == NULL) {
       return NULL;
     }
@@ -55,7 +57,7 @@ static struct fips_service_indicator_state * service_indicator_get(void) {
 
     if (!CRYPTO_set_thread_local(
             AWSLC_THREAD_LOCAL_FIPS_SERVICE_INDICATOR_STATE, indicator,
-            OPENSSL_free)) {
+            free)) {
       OPENSSL_PUT_ERROR(CRYPTO, ERR_R_INTERNAL_ERROR);
       return NULL;
     }
