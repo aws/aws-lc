@@ -1,4 +1,4 @@
-name: AWS-LC CI Tests
+name: General CI Tests
 on:
   pull_request:
     branches: [ '*' ]
