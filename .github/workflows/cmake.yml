@@ -1,4 +1,4 @@
-name: AWS-LC CMake Compatability
+name: CMake Compatability
 on:
   pull_request:
     branches: [ '*' ]
@@ -13,7 +13,7 @@ env:
   GOPROXY: https://proxy.golang.org,direct
 jobs:
   cmake:
-    name: CMake Version Build
+    name: CMake ${{ matrix.cmake.version}} build with ${{ matrix.generator}} FIPS=${{ matrix.fips }}
     strategy:
       matrix:
         cmake:
