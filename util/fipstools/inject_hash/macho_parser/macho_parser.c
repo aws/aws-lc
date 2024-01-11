@@ -2,17 +2,15 @@
 // SPDX-License-Identifier: Apache-2.0 OR ISC
 
 #include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
-#define LOG_ERROR(...) do { \
-    fprintf(stderr, "File: %s, Line: %d, ", __FILE__, __LINE__); \
-    fprintf(stderr, __VA_ARGS__); \
-    fprintf(stderr, "\n"); \
-} while(0)
-
+#include "common.h"
 #include "macho_parser.h"
+
+/**
+ * TODOs
+ * use goto for cleaner exits
+ * make all variable and function names snake case
+*/
 
 // Documentation for the Mach-O structs can be found in macho-o/loader.h and mach-o/nlist.h
 int read_macho_file(const char *filename, MachOFile *macho) {
