@@ -264,6 +264,8 @@ static void rand_thread_state_free(void *state_in) {
   CRYPTO_STATIC_MUTEX_unlock_write(thread_states_list_lock_bss_get());
 
   rand_state_fips_clear(state);
+#else
+  OPENSSL_memset(state, 0, sizeof(struct rand_thread_state));
 #endif
 
   free(state);
