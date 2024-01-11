@@ -26,16 +26,16 @@ cd ${SCRATCH_FOLDER}
 
 function postgres_build() {
   ./configure --with-openssl --enable-tap-tests --with-includes=${AWS_LC_INSTALL_FOLDER}/include --with-libraries=${AWS_LC_INSTALL_FOLDER}/lib --prefix=$(pwd)/build
-  make -j ${NUM_CPU_THREADS}
+  make -j "$NUM_CPU_THREADS"
   # Build additional modules for postgres.
-  make -j ${NUM_CPU_THREADS} -C contrib all
+  make -j "$NUM_CPU_THREADS" -C contrib all
   ls -R build
 }
 
 function postgres_run_tests() {
-  make -j ${NUM_CPU_THREADS} check
+  make -j "$NUM_CPU_THREADS" check
   # Run additional tests, particularly the "SSL" tests.
-  make -j ${NUM_CPU_THREADS} check-world PG_TEST_EXTRA='ssl'
+  make -j "$NUM_CPU_THREADS" check-world PG_TEST_EXTRA='ssl'
   cd ${SCRATCH_FOLDER}
 }
 
@@ -54,7 +54,7 @@ git clone https://github.com/postgres/postgres.git ${POSTGRES_SRC_FOLDER}
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} ${POSTGRES_BUILD_FOLDER}
 ls
 
-aws_lc_build ${SRC_ROOT} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER}
+aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DBUILD_TESTING=OFF -DBUILD_TOOL=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_SHARED_LIBS=0
 cd ${POSTGRES_SRC_FOLDER}
 postgres_patch
 postgres_build

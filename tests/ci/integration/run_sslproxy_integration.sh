@@ -31,7 +31,7 @@ function libevent_install() {
   git clone https://github.com/libevent/libevent.git ${LIBEVENT_SRC_FOLDER} --depth 1
   pushd ${LIBEVENT_SRC_FOLDER}
   cmake -DOPENSSL_ROOT_DIR="${AWS_LC_INSTALL_FOLDER}" -DCMAKE_INSTALL_PREFIX="${LIBEVENT_INSTALL_FOLDER}"
-  make install
+  make -j "$NUM_CPU_THREADS" install
   popd
 }
 
@@ -54,7 +54,7 @@ function sslproxy_patch_reminder() {
 }
 
 function sslproxy_build() {
-  make OPENSSL_BASE="${AWS_LC_INSTALL_FOLDER}" LIBEVENT_BASE="${LIBEVENT_INSTALL_FOLDER}"
+  make -j "$NUM_CPU_THREADS" OPENSSL_BASE="${AWS_LC_INSTALL_FOLDER}" LIBEVENT_BASE="${LIBEVENT_INSTALL_FOLDER}"
 }
 
 # TODO: Remove this when we make an upstream contribution.
@@ -70,7 +70,7 @@ function sslproxy_patch_tests() {
 
 # We run travisunittest because the CI workarounds are applicable to Codebuild as well.
 function sslproxy_run_tests() {
-  LD_LIBRARY_PATH="${LIBEVENT_INSTALL_FOLDER}/lib" make OPENSSL=openssl OPENSSL_BASE="${AWS_LC_INSTALL_FOLDER}" LIBEVENT_BASE="${LIBEVENT_INSTALL_FOLDER}" travisunittest
+  LD_LIBRARY_PATH="${LIBEVENT_INSTALL_FOLDER}/lib" make -j "$NUM_CPU_THREADS" OPENSSL=openssl OPENSSL_BASE="${AWS_LC_INSTALL_FOLDER}" LIBEVENT_BASE="${LIBEVENT_INSTALL_FOLDER}" travisunittest
 }
 
 sslproxy_patch_reminder
@@ -83,7 +83,7 @@ git clone https://github.com/sonertari/SSLproxy.git ${SSLPROXY_SRC_FOLDER} --dep
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} ${SSLPROXY_BUILD_FOLDER}
 ls
 
-aws_lc_build ${SRC_ROOT} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER}
+aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DBUILD_TESTING=OFF -DBUILD_TOOL=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_SHARED_LIBS=0
 
 # libevent needs to be installed from source and linked to AWS-LC.
 libevent_install

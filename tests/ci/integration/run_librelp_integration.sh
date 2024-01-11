@@ -30,7 +30,7 @@ function librelp_build() {
 
 function librelp_run_tests() {
   export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib"
-  make check
+  make -j "$NUM_CPU_THREADS" check
 }
 
 # TODO: Remove this when we make an upstream contribution.
@@ -49,7 +49,7 @@ git clone https://github.com/rsyslog/librelp.git ${LIBRELP_SRC_FOLDER} --depth 1
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} ${LIBRELP_BUILD_FOLDER}
 ls
 
-aws_lc_build ${SRC_ROOT} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} -DBUILD_TESTING=OFF -DBUILD_SHARED_LIBS=1
+aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DBUILD_TESTING=OFF -DBUILD_TOOL=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_SHARED_LIBS=1
 
 # Build librelp from source.
 pushd ${LIBRELP_SRC_FOLDER}

@@ -77,7 +77,7 @@ git clone https://github.com/MariaDB/server.git ${MARIADB_SRC_FOLDER} --depth 1
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} ${MARIADB_BUILD_FOLDER}
 ls
 
-aws_lc_build ${SRC_ROOT} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER}
+aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DBUILD_TESTING=OFF -DBUILD_TOOL=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_SHARED_LIBS=0
 pushd ${MARIADB_SRC_FOLDER}
 mariadb_patch
 mariadb_build

@@ -32,12 +32,12 @@ function ntp_patch() {
 
 function ntp_build() {
   ./configure --with-openssl-incdir="${AWS_LC_INSTALL_FOLDER}/include" --with-openssl-libdir="${AWS_LC_INSTALL_FOLDER}/lib/"
-  make -j "${NUM_CPU_THREADS}"
+  make -j "$NUM_CPU_THREADS"
 }
 
 function ntp_run_tests() {
   export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib"
-  make -j "${NUM_CPU_THREADS}" check
+  make -j "$NUM_CPU_THREADS" check
 }
 
 mkdir -p "$SCRATCH_FOLDER"
@@ -51,7 +51,7 @@ tar -xzf "$NTP_TAR" -C "$NTP_SRC_FOLDER" --strip-components=1
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER}
 ls
 
-aws_lc_build ${SRC_ROOT} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} -DBUILD_TESTING=OFF -DBUILD_SHARED_LIBS=1
+aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DBUILD_TESTING=OFF -DBUILD_TOOL=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_SHARED_LIBS=1
 
 # Build ntp from source.
 pushd ${NTP_SRC_FOLDER}

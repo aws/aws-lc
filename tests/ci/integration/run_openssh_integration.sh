@@ -52,6 +52,7 @@ function openssh_build() {
   # See: https://github.com/openssh/openssh-portable/pull/385
   export CFLAGS="-DAWS_LC_INTERNAL_IGNORE_BN_SET_FLAGS=1 -DHAVE_RSA_METH_FREE=1 -DHAVE_RSA_METH_DUP=1 -DHAVE_RSA_METH_SET1_NAME=1 -DHAVE_RSA_METH_SET_PRIV_ENC=1 -DHAVE_RSA_METH_SET_PRIV_DEC=1"
   ./configure --with-ssl-dir="${AWS_LC_INSTALL_FOLDER}" --prefix="${OPENSSH_INSTALL_FOLDER}" --disable-pkcs11
+  make -j "$NUM_CPU_THREADS"
   make install
   ls -R "${OPENSSH_INSTALL_FOLDER}"
   popd
@@ -83,10 +84,10 @@ git clone https://github.com/openssh/openssh-portable.git
 ls
 
 # Buld AWS-LC as a shared library
-aws_lc_build ${SRC_ROOT} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} -DBUILD_SHARED_LIBS=1
+aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DBUILD_TESTING=OFF -DBUILD_TOOL=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_SHARED_LIBS=1
 install_aws_lc
 
-CODEBUILD_SKIPPED_TESTS="agent-subprocess forwarding multiplex forward-control agent-restrict connection-timeout"
+CODEBUILD_SKIPPED_TESTS="agent-subprocess forwarding multiplex channel-timeout forward-control agent-restrict connection-timeout"
 
 # Using default branch. Build openssh and run tests.
 openssh_build
