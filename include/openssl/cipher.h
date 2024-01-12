@@ -353,12 +353,12 @@ OPENSSL_EXPORT int EVP_BytesToKey(const EVP_CIPHER *type, const EVP_MD *md,
 #define EVP_CIPH_CTR_MODE 0x5
 #define EVP_CIPH_GCM_MODE 0x6
 #define EVP_CIPH_XTS_MODE 0x7
+#define EVP_CIPH_CCM_MODE 0x8
 
 // Buffer length in bits not bytes: CFB1 mode only.
 # define EVP_CIPH_FLAG_LENGTH_BITS 0x2000
 // The following values are never returned from |EVP_CIPHER_mode| and are
 // included only to make it easier to compile code with BoringSSL.
-#define EVP_CIPH_CCM_MODE 0x8
 #define EVP_CIPH_OCB_MODE 0x9
 #define EVP_CIPH_WRAP_MODE 0xa
 
@@ -492,6 +492,10 @@ OPENSSL_EXPORT const EVP_CIPHER *EVP_get_cipherbyname(const char *name);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_gcm(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_gcm(void);
 
+OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_ccm(void);
+OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_192_ccm(void);
+OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_ccm(void);
+
 // These are deprecated, 192-bit version of AES.
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_192_ecb(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_192_cbc(void);
@@ -582,9 +586,11 @@ OPENSSL_EXPORT void EVP_CIPHER_CTX_set_flags(const EVP_CIPHER_CTX *ctx,
 #define EVP_CTRL_AEAD_SET_TAG 0x11
 #define EVP_CTRL_AEAD_SET_IV_FIXED 0x12
 #define EVP_CTRL_GCM_IV_GEN 0x13
+#define EVP_CTRL_CCM_SET_L 0x14
 #define EVP_CTRL_AEAD_SET_MAC_KEY 0x17
 // EVP_CTRL_GCM_SET_IV_INV sets the GCM invocation field, decrypt only
 #define EVP_CTRL_GCM_SET_IV_INV 0x18
+#define EVP_CTRL_GET_IVLEN 0x25
 
 // The following constants are unused.
 #define EVP_GCM_TLS_FIXED_IV_LEN 4

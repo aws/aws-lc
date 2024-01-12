@@ -33,6 +33,7 @@ set(
   crypto/cipher_extra/test/aes_256_gcm_randnonce_tests.txt
   crypto/cipher_extra/test/aes_256_gcm_siv_tests.txt
   crypto/cipher_extra/test/aes_256_gcm_tests.txt
+  crypto/cipher_extra/test/aes_ccm_test.txt
   crypto/cipher_extra/test/chacha20_poly1305_tests.txt
   crypto/cipher_extra/test/xchacha20_poly1305_tests.txt
   crypto/cipher_extra/test/cipher_tests.txt
@@ -244,6 +245,7 @@ set(
   crypto/x509/test/trailing_data_leaf_subject_alt_name.pem
   crypto/x509/test/trailing_data_leaf_subject_key_identifier.pem
   third_party/wycheproof_testvectors/aes_cbc_pkcs5_test.txt
+  third_party/wycheproof_testvectors/aes_ccm_test.txt
   third_party/wycheproof_testvectors/aes_cmac_test.txt
   third_party/wycheproof_testvectors/aes_gcm_siv_test.txt
   third_party/wycheproof_testvectors/aes_gcm_test.txt
