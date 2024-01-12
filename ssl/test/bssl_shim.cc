@@ -129,8 +129,8 @@ class OwnedSocket {
             break;
           }
         }
-        closesocket(sock_);
       }
+      closesocket(sock_);
     }
 
     drain_on_close_ = false;

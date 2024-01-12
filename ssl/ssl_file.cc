@@ -199,6 +199,11 @@ static int add_bio_cert_subjects_to_stack(STACK_OF(X509_NAME) *out, BIO *bio,
   return 1;
 }
 
+int SSL_add_bio_cert_subjects_to_stack(STACK_OF(X509_NAME) *out, BIO *bio) {
+  return add_bio_cert_subjects_to_stack(out, bio, /*allow_empty=*/true);
+}
+
+#if !defined(OPENSSL_NO_FILESYSTEM)
 STACK_OF(X509_NAME) *SSL_load_client_CA_file(const char *file) {
   bssl::UniquePtr<BIO> in(BIO_new_file(file, "r"));
   if (in == nullptr) {
@@ -220,10 +225,6 @@ int SSL_add_file_cert_subjects_to_stack(STACK_OF(X509_NAME) *out,
     return 0;
   }
   return SSL_add_bio_cert_subjects_to_stack(out, in.get());
-}
-
-int SSL_add_bio_cert_subjects_to_stack(STACK_OF(X509_NAME) *out, BIO *bio) {
-  return add_bio_cert_subjects_to_stack(out, bio, /*allow_empty=*/true);
 }
 
 int SSL_use_certificate_file(SSL *ssl, const char *file, int type) {
@@ -560,6 +561,7 @@ static int use_certificate_chain_file(SSL_CTX *ctx, SSL *ssl, const char *file) 
 
   return ret;
 }
+#endif  // !OPENSSL_NO_FILESYSTEM
 
 
 int SSL_CTX_use_certificate_chain_file(SSL_CTX *ctx, const char *file) {
