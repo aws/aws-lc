@@ -12,6 +12,8 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+// Ensure we can't call OPENSSL_malloc.
+#define _BORINGSSL_PROHIBIT_OPENSSL_MALLOC
 #include <openssl/rand.h>
 
 #include <assert.h>
@@ -262,9 +264,11 @@ static void rand_thread_state_free(void *state_in) {
   CRYPTO_STATIC_MUTEX_unlock_write(thread_states_list_lock_bss_get());
 
   rand_state_fips_clear(state);
+#else
+  OPENSSL_cleanse(state, sizeof(struct rand_thread_state));
 #endif
 
-  OPENSSL_free(state);
+  free(state);
 }
 
 #if defined(OPENSSL_X86_64) && !defined(OPENSSL_NO_ASM) && \
@@ -412,7 +416,7 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
       CRYPTO_get_thread_local(OPENSSL_THREAD_LOCAL_RAND);
 
   if (state == NULL) {
-    state = OPENSSL_malloc(sizeof(struct rand_thread_state));
+    state = malloc(sizeof(struct rand_thread_state));
     if (state != NULL) {
       OPENSSL_memset(state, 0, sizeof(struct rand_thread_state));
     }
