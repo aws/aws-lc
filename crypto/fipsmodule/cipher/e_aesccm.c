@@ -155,7 +155,10 @@ static int ccm128_init_state(const struct ccm128_context *ctx,
   }
   OPENSSL_memcpy(&state->nonce.c[1], nonce, nonce_len);
   for (uint32_t i = 0; i < L; i++) {
-    state->nonce.c[15 - i] = (uint8_t)((uint64_t) plaintext_len >> (8 * i));
+    // Explicitly cast plaintext_len up to 64-bits so that we don't shift out of
+    // bounds on 32-bit machines when encoding the message length.
+    uint64_t plaintext_len_64 = plaintext_len;
+    state->nonce.c[15 - i] = (uint8_t)(plaintext_len_64 >> (8 * i));
   }
 
   (*block)(state->nonce.c, state->cmac.c, key);
