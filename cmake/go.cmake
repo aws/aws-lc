@@ -41,15 +41,29 @@ function(go_executable dest package)
     string(SUBSTRING "${CMAKE_CURRENT_BINARY_DIR}" ${root_dir_length} -1 target)
     set(target "${target}/${dest}")
 
-    set(depfile "${CMAKE_CURRENT_BINARY_DIR}/${dest}.d")
-    add_custom_command(OUTPUT ${dest}
-                       COMMAND ${GO_EXECUTABLE} build
-                               -o ${CMAKE_CURRENT_BINARY_DIR}/${dest} ${package}
-                       COMMAND ${GO_EXECUTABLE} run ${godeps} -format depfile
-                               -target ${target} -pkg ${package} -out ${depfile}
-                       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-                       DEPENDS ${godeps} ${CMAKE_SOURCE_DIR}/go.mod
-                       DEPFILE ${depfile})
+    if(CMAKE_VERSION VERSION_GREATER "3.19")
+      # Silences warning about CMP0116:
+      # https://cmake.org/cmake/help/latest/policy/CMP0116.html
+      cmake_policy(SET CMP0116 OLD)
+    endif()
+
+    if(CMAKE_VERSION VERSION_LESS "3.7")
+      add_custom_command(OUTPUT ${dest}
+                         COMMAND ${GO_EXECUTABLE} build
+                         -o ${CMAKE_CURRENT_BINARY_DIR}/${dest} ${package}
+                         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+                         DEPENDS ${CMAKE_SOURCE_DIR}/go.mod)
+    else()
+      set(depfile "${CMAKE_CURRENT_BINARY_DIR}/${dest}.d")
+      add_custom_command(OUTPUT ${dest}
+                         COMMAND ${GO_EXECUTABLE} build
+                         -o ${CMAKE_CURRENT_BINARY_DIR}/${dest} ${package}
+                         COMMAND ${GO_EXECUTABLE} run ${godeps} -format depfile
+                         -target ${target} -pkg ${package} -out ${depfile}
+                         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+                         DEPENDS ${godeps} ${CMAKE_SOURCE_DIR}/go.mod
+                         DEPFILE ${depfile})
+    endif()
   endif()
 endfunction()
 

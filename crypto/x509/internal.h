@@ -275,7 +275,6 @@ struct x509_lookup_method_st {
 // function is then called to actually check the cert chain.
 struct x509_store_st {
   // The following is a cache of trusted certs
-  int cache;                    // if true, stash any hits
   STACK_OF(X509_OBJECT) *objs;  // Cache of all objects
   CRYPTO_MUTEX objs_lock;
 
@@ -361,6 +360,8 @@ struct x509_store_ctx_st {
   CRYPTO_EX_DATA ex_data;
 } /* X509_STORE_CTX */;
 
+void X509_OBJECT_free_contents(X509_OBJECT *a);
+
 ASN1_TYPE *ASN1_generate_v3(const char *str, const X509V3_CTX *cnf);
 
 int X509_CERT_AUX_print(BIO *bp, X509_CERT_AUX *x, int indent);
@@ -370,6 +371,8 @@ int X509_CERT_AUX_print(BIO *bp, X509_CERT_AUX *x, int indent);
 // directly returns the reference to |pkey| of |key|. This means that the
 // caller must not free the result after use.
 EVP_PKEY *X509_PUBKEY_get0(X509_PUBKEY *key);
+
+int x509_check_cert_time(X509_STORE_CTX *ctx, X509 *x, int suppress_error);
 
 // RSA-PSS functions.
 

@@ -1,6 +1,8 @@
 .text
 .file 1 "inserted_by_delocate.c"
 .loc 1 1 0
+.global BORINGSSL_bcm_text_start
+.type BORINGSSL_bcm_text_start, @function
 BORINGSSL_bcm_text_start:
 	.type foo, %function
 	.globl foo
@@ -95,7 +97,7 @@ foo:
 	bl	.Llocal_function_local_target
 
 // WAS bl remote_function
-	bl	bcm_redirector_remote_function
+	bl	.Lbcm_redirector_remote_function
 
 	bl bss_symbol_bss_get
 
@@ -121,9 +123,9 @@ foo:
 	// But 'y' is not a register prefix so far, so these should be
 	// processed as symbols.
 // WAS add y0, y0
-	add	bcm_redirector_y0, bcm_redirector_y0
+	add	.Lbcm_redirector_y0, .Lbcm_redirector_y0
 // WAS add y12, y12
-	add	bcm_redirector_y12, bcm_redirector_y12
+	add	.Lbcm_redirector_y12, .Lbcm_redirector_y12
 
 	// Make sure that the magic extension constants are recognised rather
 	// than being interpreted as symbols.
@@ -136,6 +138,26 @@ foo:
 	add w0, w1, b2, sxtw
 	add w0, w1, b2, sxtx
 
+	// Make sure we can parse different immediates
+	add x22, sp, #(13*32)
+	add x22, sp, #(13*32)+96
+	add x22, sp, #(13*32)+96*32
+
+	// Ensure BORINGSSL_bcm_text_[end,start] are loaded through GOT
+// WAS adrp x4, :got:BORINGSSL_bcm_text_start
+	sub sp, sp, 128
+	stp x0, lr, [sp, #-16]!
+	bl .Lboringssl_loadgot_BORINGSSL_bcm_text_start
+	mov x4, x0
+	ldp x0, lr, [sp], #16
+	add sp, sp, 128
+// WAS adrp x5, :got:BORINGSSL_bcm_text_end
+	sub sp, sp, 128
+	stp x0, lr, [sp, #-16]!
+	bl .Lboringssl_loadgot_BORINGSSL_bcm_text_end
+	mov x5, x0
+	ldp x0, lr, [sp], #16
+	add sp, sp, 128
 
 .Llocal_function_local_target:
 local_function:
@@ -150,31 +172,33 @@ bss_symbol:
 .size bss_symbol, 4
 .text
 .loc 1 2 0
+.global BORINGSSL_bcm_text_end
+.type BORINGSSL_bcm_text_end, @function
 BORINGSSL_bcm_text_end:
 .p2align 2
-.hidden bcm_redirector_remote_function
-.type bcm_redirector_remote_function, @function
-bcm_redirector_remote_function:
+.hidden .Lbcm_redirector_remote_function
+.type .Lbcm_redirector_remote_function, @function
+.Lbcm_redirector_remote_function:
 .cfi_startproc
 	b remote_function
 .cfi_endproc
-.size bcm_redirector_remote_function, .-bcm_redirector_remote_function
+.size .Lbcm_redirector_remote_function, .-.Lbcm_redirector_remote_function
 .p2align 2
-.hidden bcm_redirector_y0
-.type bcm_redirector_y0, @function
-bcm_redirector_y0:
+.hidden .Lbcm_redirector_y0
+.type .Lbcm_redirector_y0, @function
+.Lbcm_redirector_y0:
 .cfi_startproc
 	b y0
 .cfi_endproc
-.size bcm_redirector_y0, .-bcm_redirector_y0
+.size .Lbcm_redirector_y0, .-.Lbcm_redirector_y0
 .p2align 2
-.hidden bcm_redirector_y12
-.type bcm_redirector_y12, @function
-bcm_redirector_y12:
+.hidden .Lbcm_redirector_y12
+.type .Lbcm_redirector_y12, @function
+.Lbcm_redirector_y12:
 .cfi_startproc
 	b y12
 .cfi_endproc
-.size bcm_redirector_y12, .-bcm_redirector_y12
+.size .Lbcm_redirector_y12, .-.Lbcm_redirector_y12
 .p2align 2
 .hidden bss_symbol_bss_get
 .type bss_symbol_bss_get, @function
@@ -185,6 +209,26 @@ bss_symbol_bss_get:
 	ret
 .cfi_endproc
 .size bss_symbol_bss_get, .-bss_symbol_bss_get
+.p2align 2
+.hidden .Lboringssl_loadgot_BORINGSSL_bcm_text_end
+.type .Lboringssl_loadgot_BORINGSSL_bcm_text_end, @function
+.Lboringssl_loadgot_BORINGSSL_bcm_text_end:
+.cfi_startproc
+	adrp x0, :got:BORINGSSL_bcm_text_end
+	ldr x0, [x0, :got_lo12:BORINGSSL_bcm_text_end]
+	ret
+.cfi_endproc
+.size .Lboringssl_loadgot_BORINGSSL_bcm_text_end, .-.Lboringssl_loadgot_BORINGSSL_bcm_text_end
+.p2align 2
+.hidden .Lboringssl_loadgot_BORINGSSL_bcm_text_start
+.type .Lboringssl_loadgot_BORINGSSL_bcm_text_start, @function
+.Lboringssl_loadgot_BORINGSSL_bcm_text_start:
+.cfi_startproc
+	adrp x0, :got:BORINGSSL_bcm_text_start
+	ldr x0, [x0, :got_lo12:BORINGSSL_bcm_text_start]
+	ret
+.cfi_endproc
+.size .Lboringssl_loadgot_BORINGSSL_bcm_text_start, .-.Lboringssl_loadgot_BORINGSSL_bcm_text_start
 .p2align 2
 .hidden .Lboringssl_loadgot_stderr
 .type .Lboringssl_loadgot_stderr, @function

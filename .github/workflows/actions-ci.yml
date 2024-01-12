@@ -1,4 +1,4 @@
-name: Windows Tests
+name: General CI Tests
 on:
   pull_request:
     branches: [ '*' ]
@@ -11,10 +11,70 @@ env:
   GOPROXY: https://proxy.golang.org,direct
   SDE_MIRROR_URL: "https://downloadmirror.intel.com/777395/sde-external-9.21.1-2023-04-24-win.tar.xz"
   SDE_VERSION_TAG: sde-external-9.21.1-2023-04-24-win
+  PACKAGE_NAME: aws-lc
+  # Used to enable ASAN test dimension.
+  AWSLC_NO_ASM_FIPS: 1
 
 jobs:
+  # MacOS and Windows GHA runners are more expensive, so we do a sanity test run before proceeding.
+  sanity-test-run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git clone the repository
+        uses: actions/checkout@v3
+      - name: Sanity Test Run
+        run: |
+          sudo apt-get update
+          sudo apt-get install ninja-build
+          cmake -GNinja -Btest_build_dir
+          ninja -C test_build_dir run_tests
+
+  macOS-x86:
+    needs: [sanity-test-run]
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build ${{ env.PACKAGE_NAME }}
+        run: |
+          ./tests/ci/run_posix_tests.sh
+
+  macOS-x86-FIPS:
+    needs: [sanity-test-run]
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build ${{ env.PACKAGE_NAME }} with FIPS mode
+        run: |
+          ./tests/ci/run_fips_tests.sh
+
+  macOS-ARM:
+    needs: [sanity-test-run]
+    runs-on: macos-latest-xlarge
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install dependencies
+        run: |
+          brew install ninja golang
+      - name: Build ${{ env.PACKAGE_NAME }}
+        run: |
+          ./tests/ci/run_posix_tests.sh
+
+  macOS-ARM-FIPS:
+    needs: [sanity-test-run]
+    runs-on: macos-latest-xlarge
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install dependencies
+        run: |
+          brew install ninja golang
+      - name: Build ${{ env.PACKAGE_NAME }} with FIPS mode
+        run: |
+          ./tests/ci/run_fips_tests.sh
+
+
   MSVC-2019:
-    runs-on: temporary-performance-testing_windows-2019_8-core
+    needs: [sanity-test-run]
+    runs-on: aws-lc_windows-2019_8-core
     steps:
       - name: Git clone the repository
         uses: actions/checkout@v3
@@ -27,7 +87,8 @@ jobs:
           .\tests\ci\run_windows_tests.bat "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x64
 
   MSVC-2022:
-    runs-on: temporary-performance-testing_windows-latest_8-core
+    needs: [sanity-test-run]
+    runs-on: aws-lc_windows-latest_8-core
     steps:
       - name: Git clone the repository
         uses: actions/checkout@v3
@@ -39,10 +100,11 @@ jobs:
         run: |
           .\tests\ci\run_windows_tests.bat "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
 
-  SDE-64-bit:
+  MSVC-SDE-64-bit:
+    needs: [sanity-test-run]
     # TODO: Update this to run on windows-2022. windows-2022 (Windows 11) has phased out support for older processors.
     # https://learn.microsoft.com/en-us/windows-hardware/design/minimum/supported/windows-11-supported-intel-processors
-    runs-on: temporary-performance-testing_windows-2019_64-core
+    runs-on: aws-lc_windows-2019_64-core
     steps:
       - name: Git clone the repository
         uses: actions/checkout@v3
@@ -67,8 +129,9 @@ jobs:
           echo ${env:SDEROOT}
           .\tests\ci\run_windows_tests.bat "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x64 true
 
-  SDE-32-bit:
-    runs-on: temporary-performance-testing_windows-2019_64-core
+  MSVC-SDE-32-bit:
+    needs: [sanity-test-run]
+    runs-on: aws-lc_windows-2019_64-core
     steps:
       - name: Git clone the repository
         uses: actions/checkout@v3

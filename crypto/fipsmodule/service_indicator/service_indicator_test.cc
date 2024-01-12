@@ -1296,6 +1296,10 @@ class HMACServiceIndicatorTest : public TestWithNoErrors<HMACTestVector> {};
 INSTANTIATE_TEST_SUITE_P(All, HMACServiceIndicatorTest,
                          testing::ValuesIn(kHMACTestVectors));
 
+// TODO: |EVP_PKEY_HMAC| does not indicate support for FIPS yet. Mark
+// |EVP_PKEY_HMAC| as approved by modifying
+// |EVP_DigestSign_verify_service_indicator| and add to the list of approved
+// FIPS APIs.
 TEST_P(HMACServiceIndicatorTest, HMACTest) {
   const HMACTestVector &test = GetParam();
 
@@ -2573,12 +2577,12 @@ TEST_P(ECDSAServiceIndicatorTest, ECDSASigGen) {
 
   FIPSStatus approved = AWSLC_NOT_APPROVED;
 
-  bssl::UniquePtr<EC_GROUP> group(EC_GROUP_new_by_curve_name(test.nid));
+  const EC_GROUP *group = EC_GROUP_new_by_curve_name(test.nid);
   bssl::UniquePtr<EC_KEY> eckey(EC_KEY_new());
   bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
   bssl::ScopedEVP_MD_CTX md_ctx;
   ASSERT_TRUE(eckey);
-  ASSERT_TRUE(EC_KEY_set_group(eckey.get(), group.get()));
+  ASSERT_TRUE(EC_KEY_set_group(eckey.get(), group));
 
   // Generate a generic EC key.
   ASSERT_TRUE(EC_KEY_generate_key(eckey.get()));
@@ -2635,12 +2639,12 @@ TEST_P(ECDSAServiceIndicatorTest, ECDSASigVer) {
 
   FIPSStatus approved = AWSLC_NOT_APPROVED;
 
-  bssl::UniquePtr<EC_GROUP> group(EC_GROUP_new_by_curve_name(test.nid));
+  const EC_GROUP *group = EC_GROUP_new_by_curve_name(test.nid);
   bssl::UniquePtr<EC_KEY> eckey(EC_KEY_new());
   bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
   bssl::ScopedEVP_MD_CTX md_ctx;
   ASSERT_TRUE(eckey);
-  ASSERT_TRUE(EC_KEY_set_group(eckey.get(), group.get()));
+  ASSERT_TRUE(EC_KEY_set_group(eckey.get(), group));
 
   // Generate ECDSA signatures for ECDSA verification.
   ASSERT_TRUE(EC_KEY_generate_key(eckey.get()));
@@ -2699,12 +2703,12 @@ TEST_P(ECDSAServiceIndicatorTest, ManualECDSASignVerify) {
   ASSERT_TRUE(EVP_DigestInit(ctx.get(), test.func()));
   ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), kPlaintext, sizeof(kPlaintext)));
 
-  bssl::UniquePtr<EC_GROUP> group(EC_GROUP_new_by_curve_name(test.nid));
+  const EC_GROUP *group = EC_GROUP_new_by_curve_name(test.nid);
   bssl::UniquePtr<EC_KEY> eckey(EC_KEY_new());
   bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
   bssl::ScopedEVP_MD_CTX md_ctx;
   ASSERT_TRUE(eckey);
-  ASSERT_TRUE(EC_KEY_set_group(eckey.get(), group.get()));
+  ASSERT_TRUE(EC_KEY_set_group(eckey.get(), group));
 
   // Generate a generic ec key.
   EC_KEY_generate_key(eckey.get());
@@ -2790,7 +2794,7 @@ TEST_P(ECDH_ServiceIndicatorTest, ECDH) {
 
   FIPSStatus approved = AWSLC_NOT_APPROVED;
 
-  bssl::UniquePtr<EC_GROUP> group(EC_GROUP_new_by_curve_name(test.nid));
+  const EC_GROUP *group = EC_GROUP_new_by_curve_name(test.nid);
   bssl::UniquePtr<EC_KEY> our_key(EC_KEY_new());
   bssl::UniquePtr<EC_KEY> peer_key(EC_KEY_new());
   bssl::ScopedEVP_MD_CTX md_ctx;
@@ -2798,11 +2802,11 @@ TEST_P(ECDH_ServiceIndicatorTest, ECDH) {
   ASSERT_TRUE(peer_key);
 
   // Generate two generic ec key pairs.
-  ASSERT_TRUE(EC_KEY_set_group(our_key.get(), group.get()));
+  ASSERT_TRUE(EC_KEY_set_group(our_key.get(), group));
   ASSERT_TRUE(EC_KEY_generate_key(our_key.get()));
   ASSERT_TRUE(EC_KEY_check_key(our_key.get()));
 
-  ASSERT_TRUE(EC_KEY_set_group(peer_key.get(), group.get()));
+  ASSERT_TRUE(EC_KEY_set_group(peer_key.get(), group));
   ASSERT_TRUE(EC_KEY_generate_key(peer_key.get()));
   ASSERT_TRUE(EC_KEY_check_key(peer_key.get()));
 
@@ -4276,7 +4280,7 @@ TEST(ServiceIndicatorTest, DRBG) {
 // Since this is running in FIPS mode it should end in FIPS
 // Update this when the AWS-LC version number is modified
 TEST(ServiceIndicatorTest, AWSLCVersionString) {
-  ASSERT_STREQ(awslc_version_string(), "AWS-LC FIPS 1.17.0");
+  ASSERT_STREQ(awslc_version_string(), "AWS-LC FIPS 1.20.0");
 }
 
 #else
@@ -4319,6 +4323,6 @@ TEST(ServiceIndicatorTest, BasicTest) {
 // Since this is not running in FIPS mode it shouldn't end in FIPS
 // Update this when the AWS-LC version number is modified
 TEST(ServiceIndicatorTest, AWSLCVersionString) {
-  ASSERT_STREQ(awslc_version_string(), "AWS-LC 1.17.0");
+  ASSERT_STREQ(awslc_version_string(), "AWS-LC 1.20.0");
 }
 #endif // AWSLC_FIPS

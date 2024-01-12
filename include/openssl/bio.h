@@ -232,6 +232,9 @@ OPENSSL_EXPORT void BIO_clear_retry_flags(BIO *bio);
 // values.
 OPENSSL_EXPORT int BIO_method_type(const BIO *bio);
 
+// BIO_method_name returns the name of |bio|.
+OPENSSL_EXPORT const char *BIO_method_name(const BIO *b);
+
 // These are passed to the BIO callback
 #define BIO_CB_FREE 0x01
 #define BIO_CB_READ 0x02
@@ -755,9 +758,17 @@ OPENSSL_EXPORT long (*BIO_meth_get_callback_ctrl(const BIO_METHOD *method)) (BIO
 
 // BIO_set_data sets custom data on |bio|. It may be retried with
 // |BIO_get_data|.
+//
+// This function should only be called by the implementation of a custom |BIO|.
+// In particular, the data pointer of a built-in |BIO| is private to the
+// library. For other uses, see |BIO_set_ex_data| and |BIO_set_app_data|.
 OPENSSL_EXPORT void BIO_set_data(BIO *bio, void *ptr);
 
 // BIO_get_data returns custom data on |bio| set by |BIO_get_data|.
+//
+// This function should only be called by the implementation of a custom |BIO|.
+// In particular, the data pointer of a built-in |BIO| is private to the
+// library. For other uses, see |BIO_get_ex_data| and |BIO_get_app_data|.
 OPENSSL_EXPORT void *BIO_get_data(BIO *bio);
 
 // BIO_set_init sets whether |bio| has been fully initialized. Until fully
@@ -811,6 +822,21 @@ OPENSSL_EXPORT int BIO_get_init(BIO *bio);
 #define BIO_CTRL_POP 7
 #define BIO_CTRL_DUP 12
 #define BIO_CTRL_SET_FILENAME 30
+
+
+// ex_data functions.
+//
+// See |ex_data.h| for details.
+
+OPENSSL_EXPORT int BIO_get_ex_new_index(long argl, void *argp,
+                                        CRYPTO_EX_unused *unused,
+                                        CRYPTO_EX_dup *dup_unused,
+                                        CRYPTO_EX_free *free_func);
+OPENSSL_EXPORT int BIO_set_ex_data(BIO *bio, int idx, void *arg);
+OPENSSL_EXPORT void *BIO_get_ex_data(const BIO *bio, int idx);
+
+#define BIO_set_app_data(bio, arg) (BIO_set_ex_data(bio, 0, (char *)(arg)))
+#define BIO_get_app_data(bio) (BIO_get_ex_data(bio, 0))
 
 
 // Deprecated functions.
@@ -906,6 +932,7 @@ struct bio_method_st {
 
 struct bio_st {
   const BIO_METHOD *method;
+  CRYPTO_EX_DATA ex_data;
 
   // If set, |BIO_read|, |BIO_write|, and |BIO_free| execute |callback_ex|.
   // Callbacks are only called with for the following events: |BIO_CB_READ|,

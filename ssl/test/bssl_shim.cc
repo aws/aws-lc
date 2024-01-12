@@ -105,8 +105,10 @@ class OwnedSocket {
   OwnedSocket(OwnedSocket &&other) { *this = std::move(other); }
   ~OwnedSocket() { reset(); }
   OwnedSocket &operator=(OwnedSocket &&other) {
-    drain_on_close_ = other.drain_on_close_;
-    reset(other.release());
+    if (this != &other) {
+      drain_on_close_ = other.drain_on_close_;
+      reset(other.release());
+    }
     return *this;
   }
 
@@ -858,6 +860,13 @@ static bool DoConnection(bssl::UniquePtr<SSL_SESSION> *out_session,
   if (!bio) {
     return false;
   }
+
+  uint8_t shim_id[8];
+  CRYPTO_store_u64_le(shim_id, config->shim_id);
+  if (!BIO_write_all(bio.get(), shim_id, sizeof(shim_id))) {
+    return false;
+  }
+
   if (config->is_dtls) {
     bssl::UniquePtr<BIO> packeted = PacketedBioCreate(GetClock());
     if (!packeted) {

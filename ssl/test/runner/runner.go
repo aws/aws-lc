@@ -48,6 +48,7 @@ import (
 	"boringssl.googlesource.com/boringssl/ssl/test/runner/hpke"
 	"boringssl.googlesource.com/boringssl/ssl/test/runner/ssl_transfer"
 	"boringssl.googlesource.com/boringssl/util/testresult"
+	"golang.org/x/crypto/cryptobyte"
 )
 
 var (
@@ -860,10 +861,10 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool, tr
 				if err := os.MkdirAll(dir, 0755); err != nil {
 					return err
 				}
-				bb := newByteBuilder()
-				bb.addU24LengthPrefixed().addBytes(encodedInner)
-				bb.addBytes(outer)
-				return os.WriteFile(filepath.Join(dir, name), bb.finish(), 0644)
+				bb := cryptobyte.NewBuilder(nil)
+				addUint24LengthPrefixedBytes(bb, encodedInner)
+				bb.AddBytes(outer)
+				return os.WriteFile(filepath.Join(dir, name), bb.BytesOrPanic(), 0644)
 			}
 		}
 
@@ -1294,7 +1295,7 @@ type shimProcess struct {
 	// read for the result.
 	done           chan struct{}
 	childErr       error
-	listener       *net.TCPListener
+	listener       *shimListener
 	stdout, stderr bytes.Buffer
 	// default value is false.
 	// This is marked as true in |(s *shimProcess) wait()|.
@@ -1304,21 +1305,18 @@ type shimProcess struct {
 // newShimProcess starts a new shim with the specified executable, flags, and
 // environment. It internally creates a TCP listener and adds the the -port
 // flag.
-func newShimProcess(shimPath string, flags []string, env []string) (*shimProcess, error) {
-	shim := new(shimProcess)
-	var err error
-	useIPv6 := true
-	shim.listener, err = net.ListenTCP("tcp", &net.TCPAddr{IP: net.IPv6loopback})
-	if err != nil {
-		useIPv6 = false
-		shim.listener, err = net.ListenTCP("tcp4", &net.TCPAddr{IP: net.IP{127, 0, 0, 1}})
-	}
+func newShimProcess(dispatcher *shimDispatcher, shimPath string, flags []string, env []string) (*shimProcess, error) {
+	listener, err := dispatcher.NewShim()
 	if err != nil {
 		return nil, err
 	}
 
-	cmdFlags := []string{"-port", strconv.Itoa(shim.listener.Addr().(*net.TCPAddr).Port)}
-	if useIPv6 {
+	shim := &shimProcess{listener: listener}
+	cmdFlags := []string{
+		"-port", strconv.Itoa(listener.Port()),
+		"-shim-id", strconv.FormatUint(listener.ShimID(), 10),
+	}
+	if listener.IsIPv6() {
 		cmdFlags = append(cmdFlags, "-ipv6")
 	}
 	cmdFlags = append(cmdFlags, flags...)
@@ -1357,10 +1355,11 @@ func newShimProcess(shimPath string, flags []string, env []string) (*shimProcess
 // accept returns a new TCP connection with the shim process, or returns an
 // error on timeout or shim exit.
 func (s *shimProcess) accept() (net.Conn, error) {
+	var deadline time.Time
 	if !useDebugger() {
-		s.listener.SetDeadline(time.Now().Add(*idleTimeout))
+		deadline = time.Now().Add(*idleTimeout)
 	}
-	return s.listener.Accept()
+	return s.listener.Accept(deadline)
 }
 
 // wait finishes the test and waits for the shim process to exit.
@@ -1474,7 +1473,7 @@ const shimInitialWrite = "hello"
 // the test name is renamed with (|test.name| + |SSL_TRANSFER_SUFFIX|).
 const SSL_TRANSFER_SUFFIX = "-SSL_Transfer"
 
-func runTest(statusChan chan statusMsg, test *testCase, shimPath string, mallocNumToFail int64) error {
+func runTest(dispatcher *shimDispatcher, statusChan chan statusMsg, test *testCase, shimPath string, mallocNumToFail int64) error {
 	// Help debugging panics on the Go side.
 	defer func() {
 		if r := recover(); r != nil {
@@ -1685,7 +1684,7 @@ func runTest(statusChan chan statusMsg, test *testCase, shimPath string, mallocN
 		env = append(env, "_MALLOC_CHECK=1")
 	}
 
-	shim, err := newShimProcess(shimPath, flags, env)
+	shim, err := newShimProcess(dispatcher, shimPath, flags, env)
 	if err != nil {
 		return err
 	}
@@ -1698,7 +1697,7 @@ func runTest(statusChan chan statusMsg, test *testCase, shimPath string, mallocN
 	// shim is marked as idled only when |idleTimeout| is reached.
 	// This retry fix is scoped with "InvalidChannelIDSignature-TLS13-TLS-Sync-SplitHandshakeRecords".
 	if shim.idled && test.name == "InvalidChannelIDSignature-TLS13-TLS-Sync-SplitHandshakeRecords" {
-		shim, err = newShimProcess(shimPath, flags, env)
+		shim, err := newShimProcess(dispatcher, shimPath, flags, env)
 		if err != nil {
 			return err
 		}
@@ -19835,7 +19834,7 @@ func addMultipleCertSlotTests() {
 	}
 }
 
-func worker(statusChan chan statusMsg, c chan *testCase, shimPath string, wg *sync.WaitGroup) {
+func worker(dispatcher *shimDispatcher, statusChan chan statusMsg, c chan *testCase, shimPath string, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	for test := range c {
@@ -19844,7 +19843,7 @@ func worker(statusChan chan statusMsg, c chan *testCase, shimPath string, wg *sy
 		if *mallocTest >= 0 {
 			for mallocNumToFail := int64(*mallocTest); ; mallocNumToFail++ {
 				statusChan <- statusMsg{test: test, statusType: statusStarted}
-				if err = runTest(statusChan, test, shimPath, mallocNumToFail); err != errMoreMallocs {
+				if err = runTest(dispatcher, statusChan, test, shimPath, mallocNumToFail); err != errMoreMallocs {
 					if err != nil {
 						fmt.Printf("\n\nmalloc test failed at %d: %s\n", mallocNumToFail, err)
 					}
@@ -19854,11 +19853,11 @@ func worker(statusChan chan statusMsg, c chan *testCase, shimPath string, wg *sy
 		} else if *repeatUntilFailure {
 			for err == nil {
 				statusChan <- statusMsg{test: test, statusType: statusStarted}
-				err = runTest(statusChan, test, shimPath, -1)
+				err = runTest(dispatcher, statusChan, test, shimPath, -1)
 			}
 		} else {
 			statusChan <- statusMsg{test: test, statusType: statusStarted}
-			err = runTest(statusChan, test, shimPath, -1)
+			err = runTest(dispatcher, statusChan, test, shimPath, -1)
 		}
 		statusChan <- statusMsg{test: test, statusType: statusDone, err: err}
 	}
@@ -20192,6 +20191,13 @@ func main() {
 
 	checkTests()
 
+	dispatcher, err := newShimDispatcher()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error opening socket: %s", err)
+		os.Exit(1)
+	}
+	defer dispatcher.Close()
+
 	numWorkers := *numWorkersFlag
 	if useDebugger() {
 		numWorkers = 1
@@ -20206,7 +20212,7 @@ func main() {
 	var wg sync.WaitGroup
 	for i := 0; i < numWorkers; i++ {
 		wg.Add(1)
-		go worker(statusChan, testChan, *shimPath, &wg)
+		go worker(dispatcher, statusChan, testChan, *shimPath, &wg)
 	}
 
 	var oneOfPatternIfAny, noneOfPattern []string

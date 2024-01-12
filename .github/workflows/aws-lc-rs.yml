@@ -30,6 +30,7 @@ jobs:
           args: rust-script
       - name: Install OS Dependencies
         run: |
+          sudo apt-get update
           sudo apt-get -y --no-install-recommends install cmake gcc clang ninja-build golang
       - name: Remove aws-lc submodule from crate directory
         working-directory: ./aws-lc-rs/aws-lc-sys

@@ -25,7 +25,7 @@ S2N_TLS_BUILD_FOLDER="${SCRATCH_FOLDER}/s2n-tls-build"
 
 # Make script execution idempotent.
 mkdir -p ${SCRATCH_FOLDER}
-rm -rf ${SCRATCH_FOLDER}/*
+rm -rf "${SCRATCH_FOLDER:?}"/*
 cd ${SCRATCH_FOLDER}
 
 # Test helper functions.
@@ -50,7 +50,7 @@ function s2n_tls_run_tests() {
 }
 
 function s2n_tls_prepare_new_build() {
-	rm -rf ${S2N_TLS_BUILD_FOLDER}/*
+	rm -rf "${S2N_TLS_BUILD_FOLDER:?}"/*
 }
 
 # Get latest s2n-tls version.
@@ -64,8 +64,8 @@ ls
 # (e.g. run_build()) because they make implicit assumptions about e.g. build
 # folders.
 
-aws_lc_build ${SRC_ROOT} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} -DBUILD_SHARED_LIBS=0
-aws_lc_build ${SRC_ROOT} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} -DBUILD_SHARED_LIBS=1
+aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DBUILD_TESTING=OFF -DBUILD_TOOL=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_SHARED_LIBS=0
+aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DBUILD_TESTING=OFF -DBUILD_TOOL=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_SHARED_LIBS=1
 
 # Build s2n-tls+aws-lc and run s2n-tls tests. First using static aws-lc
 # libcrypto and then shared aws-lc libcrypto.

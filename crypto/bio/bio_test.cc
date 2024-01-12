@@ -56,9 +56,7 @@ static std::string LastSocketError() {
 class ScopedSocket {
  public:
   explicit ScopedSocket(int sock) : sock_(sock) {}
-  ~ScopedSocket() {
-    closesocket(sock_);
-  }
+  ~ScopedSocket() { closesocket(sock_); }
 
  private:
   const int sock_;
@@ -69,8 +67,8 @@ TEST(BIOTest, SocketConnect) {
   int listening_sock = -1;
   socklen_t len = 0;
   sockaddr_storage ss;
-  struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *) &ss;
-  struct sockaddr_in *sin = (struct sockaddr_in *) &ss;
+  struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)&ss;
+  struct sockaddr_in *sin = (struct sockaddr_in *)&ss;
   OPENSSL_memset(&ss, 0, sizeof(ss));
 
   ss.ss_family = AF_INET6;
@@ -95,7 +93,7 @@ TEST(BIOTest, SocketConnect) {
   ScopedSocket listening_sock_closer(listening_sock);
   ASSERT_EQ(0, listen(listening_sock, 1)) << LastSocketError();
   ASSERT_EQ(0, getsockname(listening_sock, (struct sockaddr *)&ss, &len))
-        << LastSocketError();
+      << LastSocketError();
 
   char hostname[80];
   if (ss.ss_family == AF_INET6) {
@@ -115,7 +113,7 @@ TEST(BIOTest, SocketConnect) {
             BIO_write(bio.get(), kTestMessage, sizeof(kTestMessage)));
 
   // Accept the socket.
-  int sock = accept(listening_sock, (struct sockaddr *) &ss, &len);
+  int sock = accept(listening_sock, (struct sockaddr *)&ss, &len);
   ASSERT_NE(-1, sock) << LastSocketError();
   ScopedSocket sock_closer(sock);
 
@@ -134,6 +132,7 @@ TEST(BIOTest, Printf) {
 
   bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
   ASSERT_TRUE(bio);
+  ASSERT_EQ(strcmp(BIO_method_name(bio.get()), "memory buffer"), 0);
 
   for (size_t length : kLengths) {
     SCOPED_TRACE(length);
@@ -161,25 +160,18 @@ TEST(BIOTest, CloseFlags) {
   GTEST_SKIP();
 #endif
 
-  // unique_ptr will automatically call fclose on the file descriptior when the
-  // variable goes out of scope, so we need to specify BIO_NOCLOSE close flags
-  // to avoid a double-free condition.
-  struct fclose_deleter {
-      void operator()(FILE *f) const { fclose(f); }
-  };
-  using TempFILE = std::unique_ptr<FILE, fclose_deleter>;
-
   const char *test_str = "test\ntest\ntest\n";
 
-  // Assert that CRLF line endings get inserted on write and translated back out on
-  // read for text mode.
+  // Assert that CRLF line endings get inserted on write and translated back out
+  // on read for text mode.
   TempFILE text_bio_file(tmpfile());
   ASSERT_TRUE(text_bio_file);
-  bssl::UniquePtr<BIO> text_bio(BIO_new_fp(text_bio_file.get(), BIO_NOCLOSE | BIO_FP_TEXT));
+  bssl::UniquePtr<BIO> text_bio(
+      BIO_new_fp(text_bio_file.get(), BIO_NOCLOSE | BIO_FP_TEXT));
   int bytes_written = BIO_write(text_bio.get(), test_str, strlen(test_str));
   EXPECT_GE(bytes_written, 0);
   ASSERT_TRUE(BIO_flush(text_bio.get()));
-  ASSERT_EQ(0, BIO_seek(text_bio.get(), 0));    // 0 indicates success here
+  ASSERT_EQ(0, BIO_seek(text_bio.get(), 0));  // 0 indicates success here
   char contents[256];
   OPENSSL_memset(contents, 0, sizeof(contents));
   int bytes_read = BIO_read(text_bio.get(), contents, sizeof(contents));
@@ -188,8 +180,9 @@ TEST(BIOTest, CloseFlags) {
 
   // Windows should have translated '\n' to '\r\n' on write, so validate that
   // by opening the file in raw binary mode (i.e. no BIO_FP_TEXT).
-  bssl::UniquePtr<BIO> text_bio_raw(BIO_new_fp(text_bio_file.get(), BIO_NOCLOSE));
-  ASSERT_EQ(0, BIO_seek(text_bio.get(), 0));    // 0 indicates success here
+  bssl::UniquePtr<BIO> text_bio_raw(
+      BIO_new_fp(text_bio_file.get(), BIO_NOCLOSE));
+  ASSERT_EQ(0, BIO_seek(text_bio.get(), 0));  // 0 indicates success here
   OPENSSL_memset(contents, 0, sizeof(contents));
   bytes_read = BIO_read(text_bio_raw.get(), contents, sizeof(contents));
   EXPECT_GT(bytes_read, 0);
@@ -203,11 +196,12 @@ TEST(BIOTest, CloseFlags) {
   // (default) binary mode.
   TempFILE binary_bio_file(tmpfile());
   ASSERT_TRUE(binary_bio_file);
-  bssl::UniquePtr<BIO> binary_bio(BIO_new_fp(binary_bio_file.get(), BIO_NOCLOSE));
+  bssl::UniquePtr<BIO> binary_bio(
+      BIO_new_fp(binary_bio_file.get(), BIO_NOCLOSE));
   bytes_written = BIO_write(binary_bio.get(), test_str, strlen(test_str));
-  EXPECT_EQ((int) strlen(test_str), bytes_written);
+  EXPECT_EQ((int)strlen(test_str), bytes_written);
   ASSERT_TRUE(BIO_flush(binary_bio.get()));
-  ASSERT_EQ(0, BIO_seek(binary_bio.get(), 0));    // 0 indicates success here
+  ASSERT_EQ(0, BIO_seek(binary_bio.get(), 0));  // 0 indicates success here
   OPENSSL_memset(contents, 0, sizeof(contents));
   bytes_read = BIO_read(binary_bio.get(), contents, sizeof(contents));
   EXPECT_GE(bytes_read, bytes_written);
@@ -219,7 +213,7 @@ TEST(BIOTest, CloseFlags) {
   long pos;
   char b1[256], b2[256];
   binary_bio.reset(BIO_new_fp(binary_bio_file.get(), BIO_NOCLOSE));
-  ASSERT_EQ(0, BIO_seek(binary_bio.get(), 0));    // 0 indicates success here
+  ASSERT_EQ(0, BIO_seek(binary_bio.get(), 0));  // 0 indicates success here
   BIO_gets(binary_bio.get(), b1, sizeof(b1));
   pos = BIO_tell(binary_bio.get());
   ASSERT_GT(BIO_gets(binary_bio.get(), b1, sizeof(b1)), 0);
@@ -252,8 +246,8 @@ TEST(BIOTest, CloseFlags) {
   EXPECT_EQ(0, BIO_tell(bio));
   EXPECT_TRUE(BIO_free(bio));
   EXPECT_TRUE(tmp);
-  EXPECT_EQ(0, ftell(tmp));     // 0 indicates file is still open
-  EXPECT_EQ(0, fclose(tmp));    // 0 indicates success for fclose
+  EXPECT_EQ(0, ftell(tmp));   // 0 indicates file is still open
+  EXPECT_EQ(0, fclose(tmp));  // 0 indicates success for fclose
 }
 
 TEST(BIOTest, ReadASN1) {
@@ -506,7 +500,7 @@ TEST(BIOTest, Gets) {
       // Empty BIO.
       {"", 256, ""},
   };
-  for (const auto& t : kGetsTests) {
+  for (const auto &t : kGetsTests) {
     SCOPED_TRACE(t.bio);
     SCOPED_TRACE(t.gets_len);
 
@@ -534,12 +528,7 @@ TEST(BIOTest, Gets) {
       check_bio_gets(bio.get());
     }
 
-    struct fclose_deleter {
-      void operator()(FILE *f) const { fclose(f); }
-    };
-
-    using ScopedFILE = std::unique_ptr<FILE, fclose_deleter>;
-    ScopedFILE file(tmpfile());
+    TempFILE file(tmpfile());
 #if defined(OPENSSL_ANDROID)
     // On Android, when running from an APK, |tmpfile| does not work. See
     // b/36991167#comment8.
@@ -589,6 +578,36 @@ TEST(BIOTest, Gets) {
   EXPECT_EQ(0, BIO_gets(bio.get(), &c, -1));
   EXPECT_EQ(0, BIO_gets(bio.get(), &c, 0));
   EXPECT_EQ(c, 'a');
+}
+
+typedef struct {
+  int custom_data;
+} CustomData;
+
+static void CustomDataFree(void *parent, void *ptr, CRYPTO_EX_DATA *ad,
+                           int index, long argl, void *argp) {
+  free(ptr);
+}
+
+TEST(BIOTest, ExternalData) {
+  // Create a |BIO| object
+  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+  int bio_index =
+      BIO_get_ex_new_index(0, nullptr, nullptr, nullptr, CustomDataFree);
+  ASSERT_GT(bio_index, 0);
+
+  // Associate custom data with the |BIO| using |BIO_set_ex_data| and set an
+  // arbitrary number.
+  auto *custom_data = static_cast<CustomData *>(malloc(sizeof(CustomData)));
+  ASSERT_TRUE(custom_data);
+  custom_data->custom_data = 123;
+  ASSERT_TRUE(BIO_set_ex_data(bio.get(), bio_index, custom_data));
+
+  // Retrieve the custom data using |BIO_get_ex_data|.
+  auto *retrieved_data =
+      static_cast<CustomData *>(BIO_get_ex_data(bio.get(), bio_index));
+  ASSERT_TRUE(retrieved_data);
+  EXPECT_EQ(retrieved_data->custom_data, 123);
 }
 
 // Run through the tests twice, swapping |bio1| and |bio2|, for symmetry.
@@ -703,8 +722,8 @@ static long param_ret_ex[CB_TEST_COUNT];
 static size_t param_len_ex[CB_TEST_COUNT];
 static size_t param_processed_ex[CB_TEST_COUNT];
 
-static long bio_cb_ex(BIO *b, int oper, const char *argp, size_t len,
-                         int argi, long argl, int ret, size_t *processed) {
+static long bio_cb_ex(BIO *b, int oper, const char *argp, size_t len, int argi,
+                      long argl, int ret, size_t *processed) {
   if (test_count_ex >= CB_TEST_COUNT) {
     return CALL_BACK_FAILURE;
   }
@@ -753,7 +772,8 @@ TEST_P(BIOPairTest, TestCallbacks) {
   ASSERT_EQ(TEST_DATA_WRITTEN, BIO_read(bio2, buf, sizeof(buf)));
   EXPECT_EQ(Bytes("12345"), Bytes(buf, TEST_DATA_WRITTEN));
 
-  // Check that read or write was called first, then the combo with BIO_CB_RETURN
+  // Check that read or write was called first, then the combo with
+  // BIO_CB_RETURN
   ASSERT_EQ(param_oper_ex[0], BIO_CB_READ);
   ASSERT_EQ(param_oper_ex[1], BIO_CB_READ | BIO_CB_RETURN);
 
@@ -764,13 +784,14 @@ TEST_P(BIOPairTest, TestCallbacks) {
   // The calls before the BIO operation use 1 for the BIO's return value
   ASSERT_EQ(param_ret_ex[0], 1);
 
-  // The calls after the BIO call use the return value from the BIO, which is the
-  // length of data read/written
+  // The calls after the BIO call use the return value from the BIO, which is
+  // the length of data read/written
   ASSERT_EQ(param_ret_ex[1], TEST_DATA_WRITTEN);
 
-  // For callback_ex the |len| param is the requested number of bytes to read/write
-  ASSERT_EQ(param_len_ex[0], (size_t) TEST_BUF_LEN);
-  ASSERT_EQ(param_len_ex[0], (size_t) TEST_BUF_LEN);
+  // For callback_ex the |len| param is the requested number of bytes to
+  // read/write
+  ASSERT_EQ(param_len_ex[0], (size_t)TEST_BUF_LEN);
+  ASSERT_EQ(param_len_ex[0], (size_t)TEST_BUF_LEN);
 
   // For callback_ex argi and arl are unused
   ASSERT_EQ(param_argi_ex[0], 0);
@@ -778,7 +799,8 @@ TEST_P(BIOPairTest, TestCallbacks) {
   ASSERT_EQ(param_argl_ex[0], 0);
   ASSERT_EQ(param_argl_ex[1], 0);
 
-  // processed is null (0 in the array) the first call and the actual data the second time
+  // processed is null (0 in the array) the first call and the actual data the
+  // second time
   ASSERT_EQ(param_processed_ex[0], 0u);
   ASSERT_EQ(param_processed_ex[1], 5u);
 
@@ -789,9 +811,9 @@ TEST_P(BIOPairTest, TestCallbacks) {
   // and the callback return value is returned to the caller
   ASSERT_EQ(CALL_BACK_FAILURE, BIO_read(bio2, buf, sizeof(buf)));
 
-  // Run bio_callback_cleanup to reset the mock, without this when BIO_free calls
-  // the callback it would fail before freeing the memory and be detected as a
-  // memory leak.
+  // Run bio_callback_cleanup to reset the mock, without this when BIO_free
+  // calls the callback it would fail before freeing the memory and be detected
+  // as a memory leak.
   bio_callback_cleanup();
   ASSERT_EQ(BIO_free(bio1), 1);
   ASSERT_EQ(BIO_free(bio2), 1);
@@ -806,30 +828,29 @@ TEST_P(BIOPairTest, TestCallbacks) {
 }
 
 namespace {
-  static int callback_invoked = 0;
+static int callback_invoked = 0;
 
-  static long callback(BIO *b, int state, int res) {
-    callback_invoked = 1;
-    EXPECT_EQ(state, 0);
-    EXPECT_EQ(res, -1);
-    return 0;
-  }
-
-  TEST(BIOTest, InvokeConnectCallback) {
-
-    ASSERT_EQ(callback_invoked, 0);
-    BIO *bio = BIO_new(BIO_s_connect());
-    ASSERT_NE(bio, nullptr);
-
-    ASSERT_TRUE(BIO_set_conn_hostname(bio, "localhost"));
-    ASSERT_TRUE(BIO_set_conn_port(bio, "8080"));
-    ASSERT_TRUE(BIO_callback_ctrl(bio, BIO_CTRL_SET_CALLBACK, callback));
-
-    ASSERT_EQ(BIO_do_connect(bio), 0);
-    ASSERT_EQ(callback_invoked, 1);
-
-    ASSERT_TRUE(BIO_free(bio));
-  }
+static long callback(BIO *b, int state, int res) {
+  callback_invoked = 1;
+  EXPECT_EQ(state, 0);
+  EXPECT_EQ(res, -1);
+  return 0;
 }
+
+TEST(BIOTest, InvokeConnectCallback) {
+  ASSERT_EQ(callback_invoked, 0);
+  BIO *bio = BIO_new(BIO_s_connect());
+  ASSERT_NE(bio, nullptr);
+
+  ASSERT_TRUE(BIO_set_conn_hostname(bio, "localhost"));
+  ASSERT_TRUE(BIO_set_conn_port(bio, "8080"));
+  ASSERT_TRUE(BIO_callback_ctrl(bio, BIO_CTRL_SET_CALLBACK, callback));
+
+  ASSERT_EQ(BIO_do_connect(bio), 0);
+  ASSERT_EQ(callback_invoked, 1);
+
+  ASSERT_TRUE(BIO_free(bio));
+}
+}  // namespace
 
 INSTANTIATE_TEST_SUITE_P(All, BIOPairTest, testing::Values(false, true));

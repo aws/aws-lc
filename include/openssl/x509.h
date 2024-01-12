@@ -2007,7 +2007,7 @@ OPENSSL_EXPORT X509 *X509_find_by_subject(const STACK_OF(X509) *sk,
 //
 // WARNING: Unlike most comparison functions, this function returns zero on
 // error, not equality.
-OPENSSL_EXPORT int X509_cmp_time(const ASN1_TIME *s, time_t *t);
+OPENSSL_EXPORT int X509_cmp_time(const ASN1_TIME *s, const time_t *t);
 
 // X509_cmp_time_posix compares |s| against |t|. On success, it returns a
 // negative number if |s| <= |t| and a positive number if |s| > |t|. On error,
@@ -2023,12 +2023,12 @@ OPENSSL_EXPORT int X509_cmp_current_time(const ASN1_TIME *s);
 
 // X509_time_adj calls |X509_time_adj_ex| with |offset_day| equal to zero.
 OPENSSL_EXPORT ASN1_TIME *X509_time_adj(ASN1_TIME *s, long offset_sec,
-                                        time_t *t);
+                                        const time_t *t);
 
 // X509_time_adj_ex behaves like |ASN1_TIME_adj|, but adds an offset to |*t|. If
 // |t| is NULL, it uses the current time instead of |*t|.
 OPENSSL_EXPORT ASN1_TIME *X509_time_adj_ex(ASN1_TIME *s, int offset_day,
-                                           long offset_sec, time_t *t);
+                                           long offset_sec, const time_t *t);
 
 // X509_gmtime_adj behaves like |X509_time_adj_ex| but adds |offset_sec| to the
 // current time.
@@ -2495,11 +2495,16 @@ OPENSSL_EXPORT int X509_REVOKED_add1_ext_i2d(X509_REVOKED *x, int nid,
 // NOTE:
 //   1. Applications rarely call this function directly, but it is used
 //      internally for certificate validation.
-//   2. When looking for the issuer of a certificate, if the current candidate
-//      issuer matches the subject certificate, but is expired, AWS-LC will fail
-//      verification and reject the expired cert. This is inherently different
-//      from OpenSSL 1.1.1, where they will continue searching until they find a
-//      non-expired cert to use.
+//   2. |X509_verify_cert| and other related functions call
+//      |sk_X509_OBJECT_sort| internally, which rearranges the certificate
+//      ordering. There will be cases where two certs have an identical
+//      |subject| and |X509_OBJECT_cmp| will return 0, but one is a valid cert
+//      and the other is invalid.
+//      Due to https://github.com/openssl/openssl/issues/18708, certificate
+//      verification could fail if an invalid cert is checked before the valid
+//      cert. What we do with sorting behavior when certs are identical is
+//      considered "unstable" and certain sorting expectations shouldn't be
+//      depended on.
 OPENSSL_EXPORT int X509_verify_cert(X509_STORE_CTX *ctx);
 
 // PKCS#8 utilities
@@ -2778,6 +2783,12 @@ OPENSSL_EXPORT void X509_STORE_CTX_set_depth(X509_STORE_CTX *ctx, int depth);
   (X509_V_FLAG_POLICY_CHECK | X509_V_FLAG_EXPLICIT_POLICY | \
    X509_V_FLAG_INHIBIT_ANY | X509_V_FLAG_INHIBIT_MAP)
 
+// X509_OBJECT_new allocates an |X509_OBJECT| on the heap.
+OPENSSL_EXPORT X509_OBJECT *X509_OBJECT_new(void);
+
+// X509_OBJECT_free frees an |X509_OBJECT| from the heap.
+OPENSSL_EXPORT void X509_OBJECT_free(X509_OBJECT *a);
+
 OPENSSL_EXPORT int X509_OBJECT_idx_by_subject(STACK_OF(X509_OBJECT) *h,
                                               int type, X509_NAME *name);
 OPENSSL_EXPORT X509_OBJECT *X509_OBJECT_retrieve_by_subject(
@@ -2785,7 +2796,6 @@ OPENSSL_EXPORT X509_OBJECT *X509_OBJECT_retrieve_by_subject(
 OPENSSL_EXPORT X509_OBJECT *X509_OBJECT_retrieve_match(STACK_OF(X509_OBJECT) *h,
                                                        X509_OBJECT *x);
 OPENSSL_EXPORT int X509_OBJECT_up_ref_count(X509_OBJECT *a);
-OPENSSL_EXPORT void X509_OBJECT_free_contents(X509_OBJECT *a);
 OPENSSL_EXPORT int X509_OBJECT_get_type(const X509_OBJECT *a);
 OPENSSL_EXPORT X509 *X509_OBJECT_get0_X509(const X509_OBJECT *a);
 // X509_OBJECT_get0_X509_CRL returns the |X509_CRL| associated with |a|
@@ -2901,9 +2911,6 @@ OPENSSL_EXPORT X509_LOOKUP_METHOD *X509_LOOKUP_file(void);
 OPENSSL_EXPORT int X509_STORE_add_cert(X509_STORE *ctx, X509 *x);
 OPENSSL_EXPORT int X509_STORE_add_crl(X509_STORE *ctx, X509_CRL *x);
 
-OPENSSL_EXPORT int X509_STORE_get_by_subject(X509_STORE_CTX *vs, int type,
-                                             X509_NAME *name, X509_OBJECT *ret);
-
 OPENSSL_EXPORT int X509_LOOKUP_ctrl(X509_LOOKUP *ctx, int cmd, const char *argc,
                                     long argl, char **ret);
 
@@ -2996,6 +3003,19 @@ OPENSSL_EXPORT void X509_STORE_CTX_set0_param(X509_STORE_CTX *ctx,
                                               X509_VERIFY_PARAM *param);
 OPENSSL_EXPORT int X509_STORE_CTX_set_default(X509_STORE_CTX *ctx,
                                               const char *name);
+
+// X509_STORE_get_by_subject is an alias to |X509_STORE_CTX_get_by_subject| in
+// OpenSSL 1.1.1.
+#define X509_STORE_get_by_subject X509_STORE_CTX_get_by_subject
+
+// X509_STORE_CTX_get_by_subject tries to find an object of a given type, which
+// may be |X509_LU_X509| or |X509_LU_CRL|, and the subject name from the store
+// in |vs|. If found and |ret| is not NULL, it increments the reference count
+// and stores the object in |ret|.
+OPENSSL_EXPORT int X509_STORE_CTX_get_by_subject(X509_STORE_CTX *vs,
+                                                 int type,
+                                                 X509_NAME *name,
+                                                 X509_OBJECT *ret);
 
 // X509_VERIFY_PARAM functions
 

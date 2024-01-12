@@ -101,8 +101,8 @@ document for a table of functions to use.
 
 ### HMAC `EVP_PKEY`s
 
-`EVP_PKEY_HMAC` is removed. Use the `HMAC_*` functions in `hmac.h` instead. This
-is compatible with OpenSSL.
+`EVP_PKEY_HMAC` is deprecated and preserved with minimal functionality. Use the
+`HMAC_*` functions in hmac.h instead.
 
 ### DSA `EVP_PKEY`s
 

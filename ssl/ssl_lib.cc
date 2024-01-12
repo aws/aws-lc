@@ -541,7 +541,9 @@ ssl_ctx_st::ssl_ctx_st(const SSL_METHOD *ssl_method)
       handoff(false),
       enable_early_data(false),
       aes_hw_override(false),
-      aes_hw_override_value(false) {
+      aes_hw_override_value(false),
+      conf_max_version_use_default(true),
+      conf_min_version_use_default(true) {
   CRYPTO_MUTEX_init(&lock);
   CRYPTO_new_ex_data(&ex_data);
 }
@@ -590,6 +592,13 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *method) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return nullptr;
   }
+
+  // By default, use the method's default min/max version. Make sure to set
+  // this after calls to |SSL_CTX_set_{min,max}_proto_version| because those
+  // calls modify these values if |method->version| is not 0. We should still
+  // defer to the protocol method's default min/max values in that case.
+  ret->conf_max_version_use_default = true;
+  ret->conf_min_version_use_default = true;
 
   return ret.release();
 }
@@ -650,6 +659,8 @@ SSL *SSL_new(SSL_CTX *ctx) {
   }
   ssl->config->conf_min_version = ctx->conf_min_version;
   ssl->config->conf_max_version = ctx->conf_max_version;
+  ssl->config->conf_max_version_use_default = ctx->conf_max_version_use_default;
+  ssl->config->conf_min_version_use_default = ctx->conf_min_version_use_default;
 
   ssl->config->cert = ssl_cert_dup(ctx->cert.get());
   if (ssl->config->cert == nullptr) {
@@ -711,7 +722,9 @@ SSL_CONFIG::SSL_CONFIG(SSL *ssl_arg)
       shed_handshake_config(false),
       jdk11_workaround(false),
       quic_use_legacy_codepoint(false),
-      permute_extensions(false) {
+      permute_extensions(false),
+      conf_max_version_use_default(true),
+      conf_min_version_use_default(true) {
   assert(ssl);
 }
 
@@ -1026,11 +1039,17 @@ static int ssl_read_impl(SSL *ssl) {
 }
 
 int SSL_read_ex(SSL *ssl, void *buf, size_t num, size_t *read_bytes) {
+  if (num == 0 && read_bytes != nullptr) {
+    *read_bytes = 0;
+    return 1;
+  }
   int ret = SSL_read(ssl, buf, (int)num);
   if (ret <= 0) {
     return 0;
   }
-  *read_bytes = ret;
+  if (read_bytes != nullptr) {
+    *read_bytes = ret;
+  }
   return 1;
 }
 
@@ -1119,11 +1138,17 @@ int SSL_write(SSL *ssl, const void *buf, int num) {
 }
 
 int SSL_write_ex(SSL *ssl, const void *buf, size_t num, size_t *written) {
+  if (num == 0 && written != nullptr) {
+    *written = 0;
+    return 1;
+  }
   int ret = SSL_write(ssl, buf, (int)num);
   if (ret <= 0) {
     return 0;
   }
-  *written = ret;
+  if (written != nullptr) {
+    *written = ret;
+  }
   return 1;
 }
 
@@ -3266,4 +3291,30 @@ int SSL_CTX_get_tlsext_status_cb(SSL_CTX *ctx,
 int SSL_CTX_set_tlsext_status_arg(SSL_CTX *ctx, void *arg) {
   ctx->legacy_ocsp_callback_arg = arg;
   return 1;
+}
+
+uint16_t SSL_get_curve_id(const SSL *ssl) { return SSL_get_group_id(ssl); }
+
+const char *SSL_get_curve_name(uint16_t curve_id) {
+  return SSL_get_group_name(curve_id);
+}
+
+size_t SSL_get_all_curve_names(const char **out, size_t max_out) {
+  return SSL_get_all_group_names(out, max_out);
+}
+
+int SSL_CTX_set1_curves(SSL_CTX *ctx, const int *curves, size_t num_curves) {
+  return SSL_CTX_set1_groups(ctx, curves, num_curves);
+}
+
+int SSL_set1_curves(SSL *ssl, const int *curves, size_t num_curves) {
+  return SSL_set1_groups(ssl, curves, num_curves);
+}
+
+int SSL_CTX_set1_curves_list(SSL_CTX *ctx, const char *curves) {
+  return SSL_CTX_set1_groups_list(ctx, curves);
+}
+
+int SSL_set1_curves_list(SSL *ssl, const char *curves) {
+  return SSL_set1_groups_list(ssl, curves);
 }

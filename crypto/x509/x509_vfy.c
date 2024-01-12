@@ -416,7 +416,11 @@ int X509_verify_cert(X509_STORE_CTX *ctx) {
       }
       ctx->current_cert = x;
     } else {
-      sk_X509_push(ctx->chain, chain_ss);
+      if (!sk_X509_push(ctx->chain, chain_ss)) {
+        ctx->error = X509_V_ERR_OUT_OF_MEM;
+        ok = 0;
+        goto end;
+      }
       num++;
       ctx->last_untrusted = num;
       ctx->current_cert = chain_ss;
@@ -491,17 +495,23 @@ end:
 }
 
 // Given a STACK_OF(X509) find the issuer of cert (if any)
-
+//
+// |find_issuer| will directly return the pointer of the corresponding index
+// within |sk|. Callers of |find_issuer| should remember to bump the reference
+// count of the returned |X509| if the call is successful.
 static X509 *find_issuer(X509_STORE_CTX *ctx, STACK_OF(X509) *sk, X509 *x) {
   size_t i;
-  X509 *issuer;
+  X509 *issuer, *candidate = NULL;
   for (i = 0; i < sk_X509_num(sk); i++) {
     issuer = sk_X509_value(sk, i);
     if (ctx->check_issued(ctx, x, issuer)) {
-      return issuer;
+      candidate = issuer;
+      if (x509_check_cert_time(ctx, candidate, /*suppress_error*/1)) {
+        break;
+      }
     }
   }
-  return NULL;
+  return candidate;
 }
 
 // Given a possible certificate and issuer check them
@@ -1641,7 +1651,7 @@ static int check_policy(X509_STORE_CTX *ctx) {
   return 1;
 }
 
-static int check_cert_time(X509_STORE_CTX *ctx, X509 *x) {
+int x509_check_cert_time(X509_STORE_CTX *ctx, X509 *x509, int suppress_error) {
   if (ctx->param->flags & X509_V_FLAG_NO_CHECK_TIME) {
     return 1;
   }
@@ -1653,35 +1663,47 @@ static int check_cert_time(X509_STORE_CTX *ctx, X509 *x) {
     ptime = time(NULL);
   }
 
-  int i = X509_cmp_time_posix(X509_get_notBefore(x), ptime);
+  int i = X509_cmp_time_posix(X509_get_notBefore(x509), ptime);
   if (i == 0) {
+    if (suppress_error != 0) {
+      return 0;
+    }
     ctx->error = X509_V_ERR_ERROR_IN_CERT_NOT_BEFORE_FIELD;
-    ctx->current_cert = x;
+    ctx->current_cert = x509;
     if (!ctx->verify_cb(0, ctx)) {
       return 0;
     }
   }
 
   if (i > 0) {
+    if (suppress_error != 0) {
+      return 0;
+    }
     ctx->error = X509_V_ERR_CERT_NOT_YET_VALID;
-    ctx->current_cert = x;
+    ctx->current_cert = x509;
     if (!ctx->verify_cb(0, ctx)) {
       return 0;
     }
   }
 
-  i = X509_cmp_time_posix(X509_get_notAfter(x), ptime);
+  i = X509_cmp_time_posix(X509_get_notAfter(x509), ptime);
   if (i == 0) {
+    if (suppress_error != 0) {
+      return 0;
+    }
     ctx->error = X509_V_ERR_ERROR_IN_CERT_NOT_AFTER_FIELD;
-    ctx->current_cert = x;
+    ctx->current_cert = x509;
     if (!ctx->verify_cb(0, ctx)) {
       return 0;
     }
   }
 
   if (i < 0) {
+    if (suppress_error != 0) {
+      return 0;
+    }
     ctx->error = X509_V_ERR_CERT_HAS_EXPIRED;
-    ctx->current_cert = x;
+    ctx->current_cert = x509;
     if (!ctx->verify_cb(0, ctx)) {
       return 0;
     }
@@ -1748,7 +1770,7 @@ static int internal_verify(X509_STORE_CTX *ctx) {
     }
 
   check_cert:
-    ok = check_cert_time(ctx, xs);
+    ok = x509_check_cert_time(ctx, xs, /*suppress_error*/0);
     if (!ok) {
       goto end;
     }
@@ -1776,7 +1798,7 @@ int X509_cmp_current_time(const ASN1_TIME *ctm) {
   return X509_cmp_time_posix(ctm, time(NULL));
 }
 
-int X509_cmp_time(const ASN1_TIME *ctm, time_t *cmp_time) {
+int X509_cmp_time(const ASN1_TIME *ctm, const time_t *cmp_time) {
   int64_t compare_time = (cmp_time == NULL) ? time(NULL) : *cmp_time;
   return X509_cmp_time_posix(ctm, compare_time);
 }
@@ -1794,12 +1816,12 @@ ASN1_TIME *X509_gmtime_adj(ASN1_TIME *s, long offset_sec) {
   return X509_time_adj(s, offset_sec, NULL);
 }
 
-ASN1_TIME *X509_time_adj(ASN1_TIME *s, long offset_sec, time_t *in_tm) {
+ASN1_TIME *X509_time_adj(ASN1_TIME *s, long offset_sec, const time_t *in_tm) {
   return X509_time_adj_ex(s, 0, offset_sec, in_tm);
 }
 
 ASN1_TIME *X509_time_adj_ex(ASN1_TIME *s, int offset_day, long offset_sec,
-                            time_t *in_tm) {
+                            const time_t *in_tm) {
   int64_t t = 0;
 
   if (in_tm) {

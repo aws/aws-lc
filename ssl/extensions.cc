@@ -205,6 +205,11 @@ static bool tls1_check_duplicate_extensions(const CBS *cbs) {
 }
 
 static bool is_post_quantum_group(uint16_t id) {
+  for (const uint16_t pq_group_id : PQGroups()) {
+    if (id == pq_group_id) {
+      return true;
+    }
+  }
   return false;
 }
 
@@ -339,13 +344,13 @@ bool tls1_get_shared_group(SSL_HANDSHAKE *hs, uint16_t *out_group_id) {
 
   for (uint16_t pref_group : pref) {
     for (uint16_t supp_group : supp) {
-      if (pref_group == supp_group &&
-          // CECPQ2(b) doesn't fit in the u8-length-prefixed ECPoint field in
-          // TLS 1.2 and below.
-          (ssl_protocol_version(ssl) >= TLS1_3_VERSION ||
-           !is_post_quantum_group(pref_group))) {
-        *out_group_id = pref_group;
-        return true;
+      if (pref_group == supp_group) {
+        // PQ groups require TLS 1.3 or later
+        if (!is_post_quantum_group(pref_group) ||
+            ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
+          *out_group_id = pref_group;
+          return true;
+        }
       }
     }
   }
@@ -4014,6 +4019,11 @@ enum ssl_ticket_aead_result_t ssl_process_ticket(
   // Other consumers may expect a non-empty session ID to indicate resumption.
   session->session_id_length = SHA256_DIGEST_LENGTH;
 
+  // Ticket-based session resumption bypasses the session cache, but counts as
+  // session reuse, so update the session's "session hit" counter.
+  ssl_update_counter(ssl->session_ctx.get(), ssl->session_ctx->stats.sess_hit,
+                     true);
+
   *out_session = std::move(session);
   return ssl_ticket_aead_success;
 }
@@ -4138,12 +4148,7 @@ bool tls1_verify_channel_id(SSL_HANDSHAKE *hs, const SSLMessage &msg) {
     return false;
   }
 
-  UniquePtr<EC_GROUP> p256(EC_GROUP_new_by_curve_name(NID_X9_62_prime256v1));
-  if (!p256) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_P256_SUPPORT);
-    return false;
-  }
-
+  const EC_GROUP *p256 = EC_group_p256();
   UniquePtr<ECDSA_SIG> sig(ECDSA_SIG_new());
   UniquePtr<BIGNUM> x(BN_new()), y(BN_new());
   if (!sig || !x || !y) {
@@ -4159,11 +4164,11 @@ bool tls1_verify_channel_id(SSL_HANDSHAKE *hs, const SSLMessage &msg) {
   }
 
   UniquePtr<EC_KEY> key(EC_KEY_new());
-  UniquePtr<EC_POINT> point(EC_POINT_new(p256.get()));
+  UniquePtr<EC_POINT> point(EC_POINT_new(p256));
   if (!key || !point ||
-      !EC_POINT_set_affine_coordinates_GFp(p256.get(), point.get(), x.get(),
-                                           y.get(), nullptr) ||
-      !EC_KEY_set_group(key.get(), p256.get()) ||
+      !EC_POINT_set_affine_coordinates_GFp(p256, point.get(), x.get(), y.get(),
+                                           nullptr) ||
+      !EC_KEY_set_group(key.get(), p256) ||
       !EC_KEY_set_public_key(key.get(), point.get())) {
     return false;
   }

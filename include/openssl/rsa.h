@@ -58,10 +58,12 @@
 #define OPENSSL_HEADER_RSA_H
 
 #include <openssl/base.h>
+#include <openssl/crypto.h>
 
 #include <openssl/engine.h>
 #include <openssl/ex_data.h>
 #include <openssl/thread.h>
+#include <stdio.h>
 
 #if defined(__cplusplus)
 extern "C" {
@@ -693,6 +695,10 @@ OPENSSL_EXPORT int RSA_padding_add_PKCS1_OAEP(uint8_t *to, size_t to_len,
 // RSA_print prints a textual representation of |rsa| to |bio|. It returns one
 // on success or zero otherwise.
 OPENSSL_EXPORT int RSA_print(BIO *bio, const RSA *rsa, int indent);
+
+// RSA_print_fp prints a textual representation of |rsa| to |fp|. It returns one
+// on success or zero otherwise.
+OPENSSL_EXPORT int RSA_print_fp(FILE *fp, const RSA *rsa, int indent);
 
 // RSA_get0_pss_params returns NULL. In OpenSSL, this function retries RSA-PSS
 // parameters associated with |RSA| objects, but BoringSSL does not support

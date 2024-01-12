@@ -10,7 +10,7 @@ SCRATCH_FOLDER=${SYS_ROOT}/SCRATCH_AWSLC_CRT_TEST
 
 # Make script execution idempotent.
 mkdir -p ${SCRATCH_FOLDER}
-rm -rf ${SCRATCH_FOLDER}/*
+rm -rf "${SCRATCH_FOLDER:?}"/*
 cd ${SCRATCH_FOLDER}
 
 git clone --recursive https://github.com/awslabs/aws-crt-cpp.git

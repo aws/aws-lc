@@ -120,6 +120,8 @@ static const EVP_CIPHER *GetCipher(const std::string &name) {
     return EVP_aes_256_gcm();
   } else if (name == "AES-256-OFB") {
     return EVP_aes_256_ofb();
+  } else if (name == "CHACHA20-POLY1305") {
+    return EVP_chacha20_poly1305();
   }
   return nullptr;
 }
@@ -182,7 +184,7 @@ static void TestCipherAPI(const EVP_CIPHER *cipher, Operation op, bool padding,
       EVP_CIPHER_flags(cipher) & EVP_CIPH_FLAG_CUSTOM_CIPHER;
   bssl::Span<const uint8_t> in = encrypt ? plaintext : ciphertext;
   bssl::Span<const uint8_t> expected = encrypt ? ciphertext : plaintext;
-  bool is_aead = EVP_CIPHER_mode(cipher) == EVP_CIPH_GCM_MODE;
+  bool is_aead = EVP_CIPHER_flags(cipher) & EVP_CIPH_FLAG_AEAD_CIPHER;
 
   // Some |EVP_CIPHER|s take a variable-length key, and need to first be
   // configured with the key length, which requires configuring the cipher.
@@ -471,7 +473,7 @@ static void CipherFileTest(FileTest *t) {
   if (EVP_CIPHER_iv_length(cipher) > 0) {
     ASSERT_TRUE(t->GetBytes(&iv, "IV"));
   }
-  if (EVP_CIPHER_mode(cipher) == EVP_CIPH_GCM_MODE) {
+  if (EVP_CIPHER_flags(cipher) & EVP_CIPH_FLAG_AEAD_CIPHER) {
     ASSERT_TRUE(t->GetBytes(&aad, "AAD"));
     ASSERT_TRUE(t->GetBytes(&tag, "Tag"));
   }
@@ -536,6 +538,149 @@ TEST(CipherTest, CAVP_TDES_CBC) {
 TEST(CipherTest, CAVP_TDES_ECB) {
   FileTestGTest("crypto/cipher_extra/test/nist_cavp/tdes_ecb.txt",
                 CipherFileTest);
+}
+
+TEST(CipherTest, Chacha20Poly1305) {
+  FileTestGTest("crypto/cipher_extra/test/chacha20_poly1305_tests.txt",
+    [](FileTest *t) {
+      const EVP_CIPHER *cipher = EVP_chacha20_poly1305();
+      ASSERT_TRUE(cipher);
+
+      std::vector<uint8_t> key, iv, plaintext, ciphertext, aad, tag;
+      ASSERT_TRUE(t->GetBytes(&key, "KEY"));
+      ASSERT_TRUE(t->GetBytes(&plaintext, "IN"));
+      ASSERT_TRUE(t->GetBytes(&ciphertext, "CT"));
+      if (EVP_CIPHER_iv_length(cipher) > 0) {
+        ASSERT_TRUE(t->GetBytes(&iv, "NONCE"));
+      }
+      ASSERT_TRUE(EVP_CIPHER_flags(cipher) & EVP_CIPH_FLAG_AEAD_CIPHER);
+      ASSERT_TRUE(t->GetBytes(&aad, "AD"));
+      ASSERT_TRUE(t->GetBytes(&tag, "TAG"));
+
+      Operation op = Operation::kBoth;
+      TestCipher(cipher, op, /*padding=*/false, key, iv, plaintext, ciphertext,
+                 aad, tag);
+  });
+}
+
+static void WycheproofChacha20Poly1305FileTest(FileTest *t) {
+  t->IgnoreInstruction("type");
+  t->IgnoreInstruction("tagSize");
+  t->IgnoreInstruction("keySize");
+  std::string iv_size;
+  ASSERT_TRUE(t->GetInstruction(&iv_size, "ivSize"));
+
+  std::vector<uint8_t> key, iv, msg, ct, aad, tag;
+  ASSERT_TRUE(t->GetBytes(&key, "key"));
+  ASSERT_TRUE(t->GetBytes(&iv, "iv"));
+  ASSERT_TRUE(t->GetBytes(&msg, "msg"));
+  ASSERT_TRUE(t->GetBytes(&ct, "ct"));
+  ASSERT_TRUE(t->GetBytes(&aad, "aad"));
+  ASSERT_TRUE(t->GetBytes(&tag, "tag"));
+
+  WycheproofResult result;
+  ASSERT_TRUE(GetWycheproofResult(t, &result));
+
+  // Allocate a ctx object
+  const EVP_CIPHER *cipher = EVP_chacha20_poly1305();
+  std::unique_ptr<EVP_CIPHER_CTX, decltype(&EVP_CIPHER_CTX_free)> uctx(
+          EVP_CIPHER_CTX_new(), EVP_CIPHER_CTX_free);
+  EVP_CIPHER_CTX *ctx = uctx.get();
+  ASSERT_TRUE(ctx);
+
+  // Initialize without the key/iv
+  ASSERT_TRUE(EVP_EncryptInit_ex(ctx, cipher, NULL, NULL, NULL));
+
+  // Set the IV size
+  int res;
+  int iv_size_val = std::stoi(iv_size) / 8;
+  res = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_IVLEN, iv_size_val, NULL);
+  int is_invalid_iv_size = iv_size_val != 12;
+  if (is_invalid_iv_size && !result.IsValid()) {
+    // Check that we correctly reject the IV and skip.
+    // Otherwise, the cipher will simply just use IV=0.
+    ASSERT_EQ(res, 0);
+    t->SkipCurrent();
+    return;
+  } else {
+    ASSERT_EQ(res, 1);
+  }
+
+  // Initialize with the key/iv
+  ASSERT_TRUE(EVP_EncryptInit_ex(ctx, cipher, NULL, key.data(), iv.data()));
+
+  // Insert AAD
+  int out_len = 0;
+  ASSERT_TRUE(EVP_EncryptUpdate(ctx, /*out*/ NULL, &out_len, aad.data(),
+                                aad.size()));
+  ASSERT_EQ(out_len, (int) aad.size());
+
+  // Insert plaintext
+  std::vector<uint8_t> computed_ct(ct.size());
+
+  uint8_t junk_buf[1];
+  uint8_t *in = msg.empty() ? junk_buf : msg.data();
+  out_len = 0;
+  ASSERT_TRUE(EVP_EncryptUpdate(ctx, computed_ct.data(), &out_len, in,
+                          msg.size()));
+  ASSERT_EQ(out_len, (int) msg.size());
+
+  // Finish the cipher
+  out_len = 0;
+  ASSERT_TRUE(EVP_EncryptFinal(ctx, NULL, &out_len));
+  ASSERT_EQ(out_len, 0);
+
+  // Get the tag
+  std::vector<uint8_t> computed_tag(tag.size());
+  ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG, tag.size(),
+                            computed_tag.data()));
+
+  // Initialize the decrypt context
+  std::unique_ptr<EVP_CIPHER_CTX, decltype(&EVP_CIPHER_CTX_free)> udctx(
+          EVP_CIPHER_CTX_new(), EVP_CIPHER_CTX_free);
+  EVP_CIPHER_CTX *dctx = udctx.get();
+  ASSERT_TRUE(dctx);
+  ASSERT_TRUE(EVP_DecryptInit_ex(dctx, cipher, NULL, key.data(), iv.data()));
+
+  // Insert AAD
+  out_len = 0;
+  ASSERT_TRUE(EVP_DecryptUpdate(dctx, NULL, &out_len, aad.data(), aad.size()));
+  ASSERT_EQ(out_len, (int) aad.size());
+
+  // Insert ciphertext
+  std::vector<uint8_t> computed_pt(msg.size());
+  in = ct.empty() ? junk_buf : ct.data();
+  out_len = 0;
+  ASSERT_TRUE(EVP_DecryptUpdate(dctx, computed_pt.data(), &out_len, in,
+                                ct.size()));
+  ASSERT_EQ(out_len, (int) msg.size());
+
+  // Set the tag
+  ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(dctx, EVP_CTRL_AEAD_SET_TAG, tag.size(),
+                            tag.data()));
+
+  // Finish decryption
+  out_len = 0;
+  res = EVP_DecryptFinal(dctx, NULL, &out_len);
+
+  // Tag validation, a valid result should end with a valid tag
+  ASSERT_EQ(res, result.IsValid() ? 1 : 0);
+  ASSERT_EQ(out_len, 0);
+
+  // Valid results should match the KATs
+  if (result.IsValid()) {
+    ASSERT_EQ(Bytes(tag.data(), tag.size()),
+              Bytes(computed_tag.data(), computed_tag.size()));
+    ASSERT_EQ(Bytes(msg.data(), msg.size()),
+              Bytes(computed_pt.data(), computed_pt.size()));
+    ASSERT_EQ(Bytes(ct.data(), ct.size()),
+              Bytes(computed_ct.data(), computed_ct.size()));
+  }
+}
+
+TEST(CipherTest, WycheproofChacha20Poly1305) {
+  FileTestGTest("third_party/wycheproof_testvectors/chacha20_poly1305_test.txt",
+                WycheproofChacha20Poly1305FileTest);
 }
 
 TEST(CipherTest, WycheproofAESCBC) {
@@ -687,4 +832,12 @@ TEST(CipherTest, GetCipher) {
   cipher = EVP_get_cipherbyname("3des");
   ASSERT_TRUE(cipher);
   EXPECT_EQ(NID_des_ede3_cbc, EVP_CIPHER_nid(cipher));
+
+  cipher = EVP_get_cipherbyname("aes256");
+  ASSERT_TRUE(cipher);
+  EXPECT_EQ(NID_aes_256_cbc, EVP_CIPHER_nid(cipher));
+
+  cipher = EVP_get_cipherbyname("aes128");
+  ASSERT_TRUE(cipher);
+  EXPECT_EQ(NID_aes_128_cbc, EVP_CIPHER_nid(cipher));
 }

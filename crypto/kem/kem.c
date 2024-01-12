@@ -9,6 +9,7 @@
 #include "../fipsmodule/delocate.h"
 #include "../internal.h"
 #include "internal.h"
+#include "../kyber/kem_kyber.h"
 
 // The KEM parameters listed below are taken from corresponding specifications.
 //
@@ -25,39 +26,39 @@ static const uint8_t kOIDKyber1024r3[] = {0xff, 0xff, 0xff, 0xff};
 
 static const KEM built_in_kems[AWSLC_NUM_BUILT_IN_KEMS] = {
   {
-    NID_KYBER512_R3,         // kem.nid
-    kOIDKyber512r3,          // kem.oid
-    sizeof(kOIDKyber512r3),  // kem.oid_len
-    "Kyber512 Round-3",      // kem.comment
-    800,                     // kem.public_key_len
-    1632,                    // kem.secret_key_len
-    768,                     // kem.ciphertext_len
-    32,                      // kem.shared_secret_len
-    &kem_kyber512r3_method,  // kem.method
+    NID_KYBER512_R3,                // kem.nid
+    kOIDKyber512r3,                 // kem.oid
+    sizeof(kOIDKyber512r3),         // kem.oid_len
+    "Kyber512 Round-3",             // kem.comment
+    KYBER512_R3_PUBLIC_KEY_BYTES,   // kem.public_key_len
+    KYBER512_R3_SECRET_KEY_BYTES,   // kem.secret_key_len
+    KYBER512_R3_CIPHERTEXT_BYTES,   // kem.ciphertext_len
+    KYBER_R3_SHARED_SECRET_LEN,     // kem.shared_secret_len
+    &kem_kyber512r3_method,         // kem.method
   },
 
   {
-    NID_KYBER768_R3,         // kem.nid
-    kOIDKyber768r3,          // kem.oid
-    sizeof(kOIDKyber768r3),  // kem.oid_len
-    "Kyber768 Round-3",      // kem.comment
-    1184,                    // kem.public_key_len
-    2400,                    // kem.secret_key_len
-    1088,                    // kem.ciphertext_len
-    32,                      // kem.shared_secret_len
-    &kem_kyber768r3_method,  // kem.method
+    NID_KYBER768_R3,                // kem.nid
+    kOIDKyber768r3,                 // kem.oid
+    sizeof(kOIDKyber768r3),         // kem.oid_len
+    "Kyber768 Round-3",             // kem.comment
+    KYBER768_R3_PUBLIC_KEY_BYTES,   // kem.public_key_len
+    KYBER768_R3_SECRET_KEY_BYTES,   // kem.secret_key_len
+    KYBER768_R3_CIPHERTEXT_BYTES,   // kem.ciphertext_len
+    KYBER_R3_SHARED_SECRET_LEN,     // kem.shared_secret_len
+    &kem_kyber768r3_method,         // kem.method
   },
 
   {
-    NID_KYBER1024_R3,         // kem.nid
-    kOIDKyber1024r3,          // kem.oid
-    sizeof(kOIDKyber1024r3),  // kem.oid_len
-    "Kyber1024 Round-3",      // kem.comment
-    1568,                     // kem.public_key_len
-    3168,                     // kem.secret_key_len
-    1568,                     // kem.ciphertext_len
-    32,                       // kem.shared_secret_len
-    &kem_kyber1024r3_method,  // kem.method
+    NID_KYBER1024_R3,               // kem.nid
+    kOIDKyber1024r3,                // kem.oid
+    sizeof(kOIDKyber1024r3),        // kem.oid_len
+    "Kyber1024 Round-3",            // kem.comment
+    KYBER1024_R3_PUBLIC_KEY_BYTES,  // kem.public_key_len
+    KYBER1024_R3_SECRET_KEY_BYTES,  // kem.secret_key_len
+    KYBER1024_R3_CIPHERTEXT_BYTES,  // kem.ciphertext_len
+    KYBER_R3_SHARED_SECRET_LEN,     // kem.shared_secret_len
+    &kem_kyber1024r3_method,        // kem.method
   },
 };
 

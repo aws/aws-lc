@@ -87,6 +87,7 @@ static const struct {
     {NID_aes_256_ecb, "aes-256-ecb", EVP_aes_256_ecb},
     {NID_aes_256_gcm, "aes-256-gcm", EVP_aes_256_gcm},
     {NID_aes_256_ofb128, "aes-256-ofb", EVP_aes_256_ofb},
+    {NID_chacha20_poly1305, "chacha20-poly1305", EVP_chacha20_poly1305},
     {NID_des_cbc, "des-cbc", EVP_des_cbc},
     {NID_des_ecb, "des-ecb", EVP_des_ecb},
     {NID_des_ede_cbc, "des-ede-cbc", EVP_des_ede_cbc},
@@ -94,6 +95,15 @@ static const struct {
     {NID_des_ede3_cbc, "des-ede3-cbc", EVP_des_ede3_cbc},
     {NID_rc2_cbc, "rc2-cbc", EVP_rc2_cbc},
     {NID_rc4, "rc4", EVP_rc4},
+};
+
+static const struct {
+  const char* alias;
+  const char* name;
+} kCipherAliases[] = {
+    {"3des", "des-ede3-cbc"},
+    {"aes256", "aes-256-cbc"},
+    {"aes128", "aes-128-cbc"}
 };
 
 const EVP_CIPHER *EVP_get_cipherbynid(int nid) {
@@ -105,21 +115,35 @@ const EVP_CIPHER *EVP_get_cipherbynid(int nid) {
   return NULL;
 }
 
+static const EVP_CIPHER *get_cipherbyname(const char* name) {
+  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(kCiphers); i++) {
+    if (OPENSSL_strcasecmp(kCiphers[i].name, name) == 0) {
+      return kCiphers[i].func();
+    }
+  }
+
+  return NULL;
+}
+
 const EVP_CIPHER *EVP_get_cipherbyname(const char *name) {
   if (name == NULL) {
     return NULL;
   }
 
-  // This is not a name used by OpenSSL, but tcpdump registers it with
-  // |EVP_add_cipher_alias|. Our |EVP_add_cipher_alias| is a no-op, so we
-  // support the name here.
-  if (OPENSSL_strcasecmp(name, "3des") == 0) {
-    name = "des-ede3-cbc";
+  const EVP_CIPHER * ec = get_cipherbyname(name);
+  if (ec != NULL) {
+    return ec;
   }
 
-  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(kCiphers); i++) {
-    if (OPENSSL_strcasecmp(kCiphers[i].name, name) == 0) {
-      return kCiphers[i].func();
+  // These are not names used by OpenSSL, but tcpdump registers it with
+  // |EVP_add_cipher_alias|. Our |EVP_add_cipher_alias| is a no-op, so we
+  // support the name here.
+  for(size_t i = 0; i < OPENSSL_ARRAY_SIZE(kCipherAliases); i++) {
+    if (OPENSSL_strcasecmp(name, kCipherAliases[i].alias) == 0) {
+      name = kCipherAliases[i].name;
+      const EVP_CIPHER * cipher = get_cipherbyname(name);
+      assert(cipher != NULL);
+      return cipher;
     }
   }
 

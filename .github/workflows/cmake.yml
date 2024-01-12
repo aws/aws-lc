@@ -1,0 +1,40 @@
+name: CMake Compatability
+on:
+  pull_request:
+    branches: [ '*' ]
+  push:
+    branches: [ '*' ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+env:
+  DOCKER_BUILDKIT: 1
+  GOPROXY: https://proxy.golang.org,direct
+jobs:
+  cmake:
+    name: CMake ${{ matrix.cmake.version}} build with ${{ matrix.generator}} FIPS=${{ matrix.fips }}
+    strategy:
+      matrix:
+        cmake:
+          - { version: "3.2", url: "https://cmake.org/files/v3.2/cmake-3.2.3.tar.gz", hash: "a1ebcaf6d288eb4c966714ea457e3b9677cdfde78820d0f088712d7320850297" }
+          - { version: "3.28", url: "https://cmake.org/files/v3.28/cmake-3.28.1.tar.gz", hash: "15e94f83e647f7d620a140a7a5da76349fc47a1bfed66d0f5cdee8e7344079ad" }
+        generator:
+          - "Unix Makefiles"
+          - "Ninja"
+        fips:
+          - 0
+          - 1
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build Docker Image
+        working-directory: .github/docker_images/cmake_build_versions
+        run: |
+          docker build -t "cmake-${{ matrix.cmake.version }}" --build-arg CMAKE_VERSION=${{ matrix.cmake.version }} --build-arg CMAKE_DOWNLOAD_URL=${{ matrix.cmake.url }} --build-arg CMAKE_SHA256=${{ matrix.cmake.hash }} .
+      - name: ${{ matrix.generator }} (Static)
+        run: |
+          docker run -v "${{ github.workspace }}:/awslc" "cmake-${{ matrix.cmake.version }}" -G "${{ matrix.generator }}" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=0 -DFIPS=${{ matrix.fips }}
+      - name: ${{ matrix.generator }} (Shared)
+        run: |
+          docker run -v "${{ github.workspace }}:/awslc" "cmake-${{ matrix.cmake.version }}" -G "${{ matrix.generator }}" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=1 -DFIPS=${{ matrix.fips }}

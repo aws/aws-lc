@@ -35,6 +35,7 @@ RUN set -ex && \
     libunwind-dev \
     pkg-config \
     git \
+    gnutls-dev \
     ca-certificates \
     wget \
     lld \
@@ -48,6 +49,7 @@ RUN set -ex && \
     liblua5.4-dev \
     libnet-dev \
     libnet-ssleay-perl \
+    libpam0g-dev \
     libpcap-dev \
     libperl-dev \
     libpcre2-dev \

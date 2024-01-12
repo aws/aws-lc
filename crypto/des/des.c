@@ -349,6 +349,11 @@ void DES_set_key(const DES_cblock *key, DES_key_schedule *schedule) {
   }
 }
 
+int DES_key_sched(const DES_cblock *key, DES_key_schedule *schedule) {
+  DES_set_key(key, schedule);
+  return 1;
+}
+
 static const uint8_t kOddParity[256] = {
     1,   1,   2,   2,   4,   4,   7,   7,   8,   8,   11,  11,  13,  13,  14,
     14,  16,  16,  19,  19,  21,  21,  22,  22,  25,  25,  26,  26,  28,  28,

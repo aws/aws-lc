@@ -205,14 +205,35 @@ static int fits_in_bytes(const BN_ULONG *words, size_t num_words,
   return mask == 0;
 }
 
+// Asserts that the BIGNUM can be represented within |num| bytes.
+// The logic is consistent with `fits_in_bytes` but assertions will fail when false.
 void bn_assert_fits_in_bytes(const BIGNUM *bn, size_t num) {
   const uint8_t *bytes = (const uint8_t *)bn->d;
   size_t tot_bytes = bn->width * sizeof(BN_ULONG);
   if (tot_bytes > num) {
     CONSTTIME_DECLASSIFY(bytes + num, tot_bytes - num);
+// Avoids compiler error: unused variable 'byte' or 'word'
+// The assert statements below are only effective in DEBUG builds
+#ifndef NDEBUG
+#ifdef OPENSSL_BIG_ENDIAN
+    for (int i = num / BN_BYTES; i < bn->width; i++) {
+      BN_ULONG word = bn->d[i];
+      for (size_t j = 0; j < BN_BYTES; j++) {
+        if ((i * BN_BYTES) + j < num) {
+          // For the first word we don't need to check any bytes shorter than len
+          continue;
+        } else {
+          uint8_t byte = (word >> (j * 8)) & 0xff;
+          assert(byte == 0);
+        }
+      }
+    }
+#else
     for (size_t i = num; i < tot_bytes; i++) {
       assert(bytes[i] == 0);
     }
+#endif
+#endif
     (void)bytes;
   }
 }
