@@ -10473,13 +10473,13 @@ TEST(SSLTest, IntermittentEmptyRead) {
   // Create a fake read BIO that returns 0 on read to simulate empty read
   bssl::UniquePtr<BIO_METHOD> method(BIO_meth_new(0, nullptr));
   ASSERT_TRUE(method);
-  BIO_meth_set_create(method.get(), [](BIO *b) -> int {
+  ASSERT_TRUE(BIO_meth_set_create(method.get(), [](BIO *b) -> int {
     BIO_set_init(b, 1);
     return 1;
-  });
-  BIO_meth_set_read(method.get(), [](BIO *, char *, int) -> int {
+  }));
+  ASSERT_TRUE(BIO_meth_set_read(method.get(), [](BIO *, char *, int) -> int {
     return 0;
-  });
+  }));
   bssl::UniquePtr<BIO> rbio_empty(BIO_new(method.get()));
   ASSERT_TRUE(rbio_empty);
   BIO_set_flags(rbio_empty.get(), BIO_FLAGS_READ);
