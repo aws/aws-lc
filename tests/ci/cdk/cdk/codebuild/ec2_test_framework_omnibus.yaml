@@ -12,9 +12,9 @@ batch:
       env:
         type: LINUX_CONTAINER
         privileged-mode: true
-        compute-type: BUILD_GENERAL1_LARGE
+        compute-type: BUILD_GENERAL1_SMALL
         image: 620771051181.dkr.ecr.us-west-2.amazonaws.com/aws-lc-docker-images-linux-x86:ubuntu-20.04_clang-7x-bm-framework_latest
         variables:
-          EC2_AMI: "ami-0c79a55dda52434da"
+          EC2_AMI: "ami-0a24e6e101933d294"
           EC2_INSTANCE_TYPE: "c7g.2xlarge"
           ECR_DOCKER_TAG: "amazonlinux-2023_clang-15x_sanitizer"
