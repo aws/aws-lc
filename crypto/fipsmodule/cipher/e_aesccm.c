@@ -154,10 +154,10 @@ static int ccm128_init_state(const struct ccm128_context *ctx,
     state->nonce.c[0] |= 0x40;  // Set AAD Flag
   }
   OPENSSL_memcpy(&state->nonce.c[1], nonce, nonce_len);
+  // Explicitly cast plaintext_len up to 64-bits so that we don't shift out of
+  // bounds on 32-bit machines when encoding the message length.
+  uint64_t plaintext_len_64 = plaintext_len;
   for (uint32_t i = 0; i < L; i++) {
-    // Explicitly cast plaintext_len up to 64-bits so that we don't shift out of
-    // bounds on 32-bit machines when encoding the message length.
-    uint64_t plaintext_len_64 = plaintext_len;
     state->nonce.c[15 - i] = (uint8_t)(plaintext_len_64 >> (8 * i));
   }
 
