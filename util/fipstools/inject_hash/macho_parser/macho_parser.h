@@ -26,7 +26,6 @@ typedef struct nlist_64 nList;
 
 typedef struct {
     MachOHeader machHeader;
-    LoadCommand *loadCommands;
     SectionInfo *sections;
     uint32_t numSections;
 } MachOFile;
