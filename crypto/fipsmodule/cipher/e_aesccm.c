@@ -618,8 +618,6 @@ static int cipher_aes_ccm_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
   return (int) len;
 }
 
-static void cipher_aes_ccm_cleanup(EVP_CIPHER_CTX *ctx) {}
-
 static int cipher_aes_ccm_ctrl_set_L(CIPHER_AES_CCM_CTX *ctx, int L) {
   if (L < 2 || L > 8) {
     return 0;
@@ -703,7 +701,7 @@ DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_aes_128_ccm) {
                EVP_CIPH_CTRL_INIT | EVP_CIPH_FLAG_AEAD_CIPHER;
   out->init = cipher_aes_ccm_init;
   out->cipher = cipher_aes_ccm_cipher;
-  out->cleanup = cipher_aes_ccm_cleanup;
+  out->cleanup = NULL;
   out->ctrl = cipher_aes_ccm_ctrl;
 }
 
@@ -719,7 +717,7 @@ DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_aes_192_ccm) {
                EVP_CIPH_CTRL_INIT | EVP_CIPH_FLAG_AEAD_CIPHER;
   out->init = cipher_aes_ccm_init;
   out->cipher = cipher_aes_ccm_cipher;
-  out->cleanup = cipher_aes_ccm_cleanup;
+  out->cleanup = NULL;
   out->ctrl = cipher_aes_ccm_ctrl;
 }
 
@@ -735,6 +733,6 @@ DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_aes_256_ccm) {
                EVP_CIPH_CTRL_INIT | EVP_CIPH_FLAG_AEAD_CIPHER;
   out->init = cipher_aes_ccm_init;
   out->cipher = cipher_aes_ccm_cipher;
-  out->cleanup = cipher_aes_ccm_cleanup;
+  out->cleanup = NULL;
   out->ctrl = cipher_aes_ccm_ctrl;
 }
