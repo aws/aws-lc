@@ -12,6 +12,8 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+// Ensure we can't call OPENSSL_malloc
+#define _BORINGSSL_PROHIBIT_OPENSSL_MALLOC
 #include <openssl/crypto.h>
 
 #include "../../internal.h"
@@ -97,14 +99,14 @@ void boringssl_fips_inc_counter(enum fips_counter_t counter) {
       CRYPTO_get_thread_local(OPENSSL_THREAD_LOCAL_FIPS_COUNTERS);
   if (!array) {
     const size_t num_bytes = sizeof(size_t) * (fips_counter_max + 1);
-    array = OPENSSL_malloc(num_bytes);
+    array = malloc(num_bytes);
     if (!array) {
       return;
     }
 
     OPENSSL_memset(array, 0, num_bytes);
     if (!CRYPTO_set_thread_local(OPENSSL_THREAD_LOCAL_FIPS_COUNTERS, array,
-                                 OPENSSL_free)) {
+                                 free)) {
       // |OPENSSL_free| has already been called by |CRYPTO_set_thread_local|.
       return;
     }
