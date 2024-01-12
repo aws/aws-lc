@@ -36,14 +36,13 @@ function tcpdump_build() {
   git apply "${SCRIPT_DIR}/tcpdump_patch/aws-lc-tcpdump.patch"
   autoreconf -fi
   ./configure --prefix="${TCPDUMP_INSTALL_FOLDER}" --with-crypto="${AWS_LC_INSTALL_FOLDER}"
-  make -j "${NUM_CPU_THREADS}"
-  make install
+  make -j "${NUM_CPU_THREADS}" install
   ldd "${TCPDUMP_INSTALL_FOLDER}/bin/tcpdump" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
 }
 
 function tcpdump_run_tests() {
-  make check
-  make releasecheck
+  make -j "$NUM_CPU_THREADS" check
+  make -j "$NUM_CPU_THREADS" releasecheck
 }
 
 # Get latest tcpdump version.
@@ -51,7 +50,7 @@ git clone https://github.com/the-tcpdump-group/tcpdump.git "${TCPDUMP_SRC_FOLDER
 mkdir -p "${AWS_LC_BUILD_FOLDER}" "${AWS_LC_INSTALL_FOLDER}" "${TCPDUMP_INSTALL_FOLDER}"
 ls
 
-aws_lc_build "${SRC_ROOT}" "${AWS_LC_BUILD_FOLDER}" "${AWS_LC_INSTALL_FOLDER}" -DBUILD_TESTING=OFF -DBUILD_SHARED_LIBS=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo
+aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DBUILD_TESTING=OFF -DBUILD_TOOL=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_SHARED_LIBS=1
 export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}:${AWS_LC_INSTALL_FOLDER}/lib/"
 
 pushd "${TCPDUMP_SRC_FOLDER}"
