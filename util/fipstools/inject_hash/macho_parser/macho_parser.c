@@ -26,8 +26,8 @@ int read_macho_file(const char *filename, MachOFile *macho) {
         return 0;
     }
 
-    macho->loadCommands = malloc(macho->machHeader.sizeofcmds);
-    fread(macho->loadCommands, macho->machHeader.sizeofcmds, 1, file);
+    LoadCommand *load_commands = malloc(macho->machHeader.sizeofcmds);
+    fread(load_commands, macho->machHeader.sizeofcmds, 1, file);
 
     // We're only looking for __text, __const in the __TEXT segment, and the string & symbol tables
     macho->numSections = 4;
@@ -35,9 +35,9 @@ int read_macho_file(const char *filename, MachOFile *macho) {
 
     // Iterate through load commands again to populate section information
     uint32_t sectionIndex = 0;
-    for (uint32_t i = 0; i < macho->machHeader.sizeofcmds / BIT_MODIFIER; i += macho->loadCommands[i].cmdsize / BIT_MODIFIER) {
-        if (macho->loadCommands[i].cmd == LC_SEG) {
-            SegmentLoadCommand *segment = (SegmentLoadCommand *)&macho->loadCommands[i];
+    for (uint32_t i = 0; i < macho->machHeader.sizeofcmds / BIT_MODIFIER; i += load_commands[i].cmdsize / BIT_MODIFIER) {
+        if (load_commands[i].cmd == LC_SEG) {
+            SegmentLoadCommand *segment = (SegmentLoadCommand *)&load_commands[i];
             if (strcmp(segment->segname, "__TEXT") == 0) {
                 SectionHeader *sections = (SectionHeader *)&segment[1];
                 for (uint32_t j = 0; j < segment->nsects; j++) {
@@ -49,9 +49,8 @@ int read_macho_file(const char *filename, MachOFile *macho) {
                     }
                 }
             }
-            
-        } else if (macho->loadCommands[i].cmd == LC_SYMTAB) {
-            SymtabLoadCommand *symtab = (SymtabLoadCommand *)&macho->loadCommands[i];
+        } else if (load_commands[i].cmd == LC_SYMTAB) {
+            SymtabLoadCommand *symtab = (SymtabLoadCommand *)&load_commands[i];
             macho->sections[sectionIndex].offset = symtab->symoff;
             macho->sections[sectionIndex].size = symtab->nsyms * sizeof(nList);
             macho->sections[sectionIndex].name = strdup("__symbol_table");
@@ -63,12 +62,13 @@ int read_macho_file(const char *filename, MachOFile *macho) {
         }
     }
 
+
+    free(load_commands);
     fclose(file);
     return 1;
 }
 
 void free_macho_file(MachOFile *macho) {
-    free(macho->loadCommands);
     for (uint32_t i = 0; i < macho->numSections; i++) {
         free(macho->sections[i].name);
     }

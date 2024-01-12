@@ -15,23 +15,10 @@ static void create_test_macho_file(void) {
         exit(EXIT_FAILURE);
     }
 
-    /**
-     * macho file contents in order
-     * header - 0
-     * text segment/command - sizeof(header)
-     * text section  - sizeof(header) + sizeof(text segment)
-     * const section - sizeof(header) + sizeof(text segment) + sizeof(text section)
-     * symtab command - sizeof(header) + sizeof(text segment) + 2 * sizeof(sections)
-     * test section data - sizeof(all above)
-     * const section data - sizeof(all above except test section data) + text_section->size
-     * symbol table - sizeof(all above)
-     * string table - sizeof(all above)
-    */
-
     MachOHeader test_header = {
         .magic = MH_MAGIC_64,
         .ncmds = 2,
-        .sizeofcmds = sizeof(SegmentLoadCommand) + 2 * sizeof(SectionHeader),
+        .sizeofcmds = sizeof(SegmentLoadCommand) + 2 * sizeof(SectionHeader) + sizeof(SymtabLoadCommand),
     };
 
     SegmentLoadCommand test_text_segment = {
@@ -55,6 +42,7 @@ static void create_test_macho_file(void) {
 
     SymtabLoadCommand test_symtab_command = {
         .cmd = LC_SYMTAB,
+        .cmdsize = sizeof(SymtabLoadCommand),
         .symoff = test_const_section.offset + test_const_section.size,
         .nsyms = 2,
         .stroff = test_const_section.offset + test_const_section.size + 2 * sizeof(nList),
@@ -127,9 +115,10 @@ static void test_read_macho_file(void) {
     if (test_macho_file.machHeader.ncmds != 2) {
         LOG_ERROR("Incorrect header ncmds value");
     }
-    if (test_macho_file.machHeader.sizeofcmds != sizeof(SegmentLoadCommand) + 2 * sizeof(SectionHeader)) {
+    if (test_macho_file.machHeader.sizeofcmds != sizeof(SegmentLoadCommand) + 2 * sizeof(SectionHeader) + sizeof(SymtabLoadCommand)) {
         LOG_ERROR("Incorrect header sizeofcmds value");
     }
+
 }
 
 static void test_free_macho_file(void) {
@@ -151,7 +140,6 @@ static void test_find_macho_symbol_index(void) {
 int main(int argc, char *argv[]) {
 
     create_test_macho_file();
-
     test_read_macho_file();
     test_free_macho_file();
     test_print_macho_section_info();
