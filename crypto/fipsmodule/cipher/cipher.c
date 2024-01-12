@@ -540,6 +540,8 @@ out:
 
 int EVP_Cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
                size_t in_len) {
+  GUARD_PTR(ctx);
+  GUARD_PTR(ctx->cipher);
   const int ret = ctx->cipher->cipher(ctx, out, in, in_len);
 
   // |EVP_CIPH_FLAG_CUSTOM_CIPHER| never sets the FIPS indicator via
@@ -562,6 +564,7 @@ int EVP_Cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
 
 int EVP_CipherUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len,
                      const uint8_t *in, int in_len) {
+  GUARD_PTR(ctx);
   if (ctx->encrypt) {
     return EVP_EncryptUpdate(ctx, out, out_len, in, in_len);
   } else {
@@ -570,6 +573,7 @@ int EVP_CipherUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len,
 }
 
 int EVP_CipherFinal_ex(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len) {
+  GUARD_PTR(ctx);
   if (ctx->encrypt) {
     return EVP_EncryptFinal_ex(ctx, out, out_len);
   } else {
