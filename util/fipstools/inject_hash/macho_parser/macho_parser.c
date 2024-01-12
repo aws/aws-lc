@@ -44,7 +44,7 @@ int read_macho_file(const char *filename, MachOFile *macho) {
                     if (strcmp(sections[j].sectname, "__text") == 0 || strcmp(sections[j].sectname, "__const") == 0) {
                         macho->sections[sectionIndex].offset = sections[j].offset;
                         macho->sections[sectionIndex].size = sections[j].size;
-                        macho->sections[sectionIndex].name = strdup(sections[j].sectname);
+                        strcpy(macho->sections[sectionIndex].name, sections[j].sectname);
                         sectionIndex++;
                     }
                 }
@@ -53,11 +53,11 @@ int read_macho_file(const char *filename, MachOFile *macho) {
             SymtabLoadCommand *symtab = (SymtabLoadCommand *)&load_commands[i];
             macho->sections[sectionIndex].offset = symtab->symoff;
             macho->sections[sectionIndex].size = symtab->nsyms * sizeof(nList);
-            macho->sections[sectionIndex].name = strdup("__symbol_table");
+            strcpy(macho->sections[sectionIndex].name, "__symbol_table");
             sectionIndex++;
             macho->sections[sectionIndex].offset = symtab->stroff;
             macho->sections[sectionIndex].size = symtab->strsize;
-            macho->sections[sectionIndex].name = strdup("__string_table");
+            strcpy(macho->sections[sectionIndex].name, "__string_table");
             sectionIndex++;
         }
     }

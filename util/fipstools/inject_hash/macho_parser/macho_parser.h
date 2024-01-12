@@ -8,9 +8,9 @@
 #include <mach-o/nlist.h>
 
 typedef struct {
-    uint32_t offset;
+    char name[16];
     size_t size;
-    char *name;
+    uint32_t offset;
 } SectionInfo;
 
 // Since we only support 64-bit architectures on Apple, we don't need to account for any of the 32-bit structures
