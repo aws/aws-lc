@@ -834,6 +834,10 @@ OPENSSL_EXPORT uint32_t SSL_get_options(const SSL *ssl);
 // |write|. In DTLS, it does nothing.
 #define SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER 0x00000002L
 
+// SSL_MODE_AUTO_RETRY suppresses terminal errors on empty reads if the
+// underlying connection state is retryable, allowing for automatic retries.
+#define SSL_MODE_AUTO_RETRY 0x00000004L
+
 // SSL_MODE_NO_AUTO_CHAIN disables automatically building a certificate chain
 // before sending certificates to the peer. This flag is set (and the feature
 // disabled) by default.
@@ -5283,7 +5287,6 @@ DEFINE_STACK_OF(SSL_COMP)
 
 // The following flags do nothing and are included only to make it easier to
 // compile code with BoringSSL.
-#define SSL_MODE_AUTO_RETRY 0
 #define SSL_MODE_RELEASE_BUFFERS 0
 #define SSL_MODE_SEND_CLIENTHELLO_TIME 0
 #define SSL_MODE_SEND_SERVERHELLO_TIME 0
