@@ -57,8 +57,11 @@
 #include <openssl/mem.h>
 
 #include <assert.h>
+#include <errno.h>
+#include <limits.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include <openssl/err.h>
 
@@ -426,6 +429,65 @@ int BIO_snprintf(char *buf, size_t n, const char *format, ...) {
 
 int BIO_vsnprintf(char *buf, size_t n, const char *format, va_list args) {
   return vsnprintf(buf, n, format, args);
+}
+
+int OPENSSL_vasprintf_internal(char **str, const char *format, va_list args,
+                               int system_malloc) {
+  void *(*allocate)(size_t) = system_malloc ? malloc : OPENSSL_malloc;
+  void (*deallocate)(void *) = system_malloc ? free : OPENSSL_free;
+  void *(*reallocate)(void *, size_t) =
+      system_malloc ? realloc : OPENSSL_realloc;
+  char *candidate = NULL;
+  size_t candidate_len = 64;  // TODO(bbe) what's the best initial size?
+
+  if ((candidate = allocate(candidate_len)) == NULL) {
+    goto err;
+  }
+  va_list args_copy;
+  va_copy(args_copy, args);
+  int ret = vsnprintf(candidate, candidate_len, format, args_copy);
+  va_end(args_copy);
+  if (ret == INT_MAX || ret < 0) {
+    // Failed, or size not int representable.
+    goto err;
+  }
+  if ((size_t)ret >= candidate_len) {
+    // Too big to fit in allocation.
+    char *tmp;
+
+    candidate_len = ret + 1;
+    if ((tmp = reallocate(candidate, candidate_len)) == NULL) {
+      goto err;
+    }
+    candidate = tmp;
+    va_copy(args_copy, args);
+    ret = vsnprintf(candidate, candidate_len, format, args_copy);
+    va_end(args_copy);
+  }
+  // At this point this can't happen unless vsnprintf is insane.
+  if (ret < 0 || (size_t)ret >= candidate_len) {
+    goto err;
+  }
+  *str = candidate;
+  return ret;
+
+ err:
+  deallocate(candidate);
+  *str = NULL;
+  errno = ENOMEM;
+  return -1;
+}
+
+int OPENSSL_vasprintf(char **str, const char *format, va_list args) {
+  return OPENSSL_vasprintf_internal(str, format, args, /*system_malloc=*/0);
+}
+
+int OPENSSL_asprintf(char **str, const char *format, ...) {
+  va_list args;
+  va_start(args, format);
+  int ret = OPENSSL_vasprintf(str, format, args);
+  va_end(args);
+  return ret;
 }
 
 char *OPENSSL_strndup(const char *str, size_t size) {
