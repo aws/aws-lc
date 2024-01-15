@@ -3295,9 +3295,12 @@ pshufd	\$0x5f,@tweak[5],$twres
 	shr	\$4,$rounds			# restore original value
 
 
-
 .Lxts_reenc_short:
 	# at the point @tweak[0..5] are populated with tweak values
+	# XORed with rndkey0;
+	# XOR again with rndkey0 to remove it because standard dec/enc
+	# routines are called for the tail blocks and
+	# will XOR rndkey0 into the input.
 	mov	$rounds,$rnds_			# backup $rounds
 	pxor	$rndkey0,@tweak[0]
 	pxor	$rndkey0,@tweak[1]
@@ -3361,9 +3364,16 @@ ___
 	&aesni_generate1("dec",$key1_dec,$rounds);
 $code.=<<___;
 	xorps	@tweak[0],$inout0
-	movdqa	@tweak[1],@tweak[0]
-	movups	$inout0,($out)			# store one output block
-	movdqa	@tweak[2],@tweak[1]
+##	movdqa	@tweak[1],@tweak[0]     # used with cipher stealing
+##	movdqa	@tweak[2],@tweak[1]     # used with cipher stealing
+movdqa $enc_tweak(%rsp),@tweak[0]   # retrieve enc tweak[0]
+ xorps	@tweak[0],$inout0
+mov $rnds_,$rounds             # restore rounds
+___
+	&aesni_generate1("enc",$key1_enc,$rounds);
+$code.=<<___;
+xorps	@tweak[0],$inout0
+    movups	$inout0,($out)		# store one output block
 	lea	16*1($out),$out			# $out+=1*16
 	jmp	.Lxts_reenc_done
 
@@ -3386,11 +3396,11 @@ movdqa $enc_tweak(%rsp),@tweak[0]   # retrieve enc tweak[0]
 # Calculate tweak[1] (no XORing with round[0])
 pshufd	\$0x5f,@tweak[0],$twres
 movdqa	$twres,$twtmp
-paddd	$twres,$twres
+paddd	$twres,$twres   ## TBD: needed?
 movdqa @tweak[0],@tweak[1]
 psrad	\$31,$twtmp
-paddq	@tweak[1],@tweak[1]
  xorps	@tweak[0],$inout0
+paddq	@tweak[1],@tweak[1]
 pand	$twmask,$twtmp
 pxor	$twtmp,@tweak[1]
 #mov     $key,
@@ -3422,10 +3432,44 @@ xorps	@tweak[1],$inout1
 	call	_aesni_decrypt3
 
 	xorps	@tweak[0],$inout0
-	movdqa	@tweak[3],@tweak[0]
+##	movdqa	@tweak[3],@tweak[0]     # used with cipher stealing
 	xorps	@tweak[1],$inout1
-	movdqa	@tweak[4],@tweak[1]
+##	movdqa	@tweak[4],@tweak[1]     # used with cipher stealing
 	xorps	@tweak[2],$inout2
+
+movdqa $enc_tweak(%rsp),@tweak[0]   # retrieve enc tweak[0]
+# Calculate tweak[1..2] (no XORing with round[0])
+  	pshufd	\$0x5f,@tweak[0],$twres
+    movdqa	$twres, $twtmp
+	paddd	$twres,$twres
+	movdqa	@tweak[0],@tweak[1]
+	psrad	\$31,$twtmp			# broadcast upper bits
+	 xorps	@tweak[0],$inout0
+	paddq	@tweak[1],@tweak[1]
+   	pand	$twmask,$twtmp
+	pxor	$twtmp,@tweak[1]
+
+    movdqa	$twres, $twtmp
+#	paddd	$twres,$twres
+	movdqa	@tweak[1],@tweak[2]
+	psrad	\$31,$twtmp			# broadcast upper bits
+	 xorps	@tweak[1],$inout1
+	paddq	@tweak[2],@tweak[2]
+   	pand	$twmask,$twtmp
+	pxor	$twtmp,@tweak[2]
+
+mov     $key1_enc, $key     # $key = $key1_dec
+mov	$rnds_,$rounds			# restore $rounds
+ xorps	@tweak[2],$inout2
+
+call _aesni_encrypt3
+
+mov	$key1_dec_,$key1_dec			# restore $key1_dec
+#mov	$rnds_,$rounds			# restore $rounds
+xorps	@tweak[0],$inout0
+xorps	@tweak[1],$inout1
+xorps	@tweak[2],$inout2
+
 	movups	$inout0,($out)			# store 3 output blocks
 	movups	$inout1,16*1($out)
 	movups	$inout2,16*2($out)
@@ -3447,12 +3491,56 @@ xorps	@tweak[1],$inout1
 	call	_aesni_decrypt4
 
 	pxor	@tweak[0],$inout0
-	movdqa	@tweak[4],@tweak[0]
+##	movdqa	@tweak[4],@tweak[0]     # used with cipher stealing
 	pxor	@tweak[1],$inout1
-	movdqa	@tweak[5],@tweak[1]
+##	movdqa	@tweak[5],@tweak[1]     # used with cipher stealing
 	pxor	@tweak[2],$inout2
-	movdqu	$inout0,($out)			# store 4 output blocks
 	pxor	@tweak[3],$inout3
+
+movdqa $enc_tweak(%rsp),@tweak[0]   # retrieve enc tweak[0]
+# Calculate tweak[1..3] (no XORing with round[0])
+  	pshufd	\$0x5f,@tweak[0],$twres
+    movdqa	$twres, $twtmp
+	paddd	$twres,$twres
+	movdqa	@tweak[0],@tweak[1]
+	psrad	\$31,$twtmp			# broadcast upper bits
+	 xorps	@tweak[0],$inout0
+	paddq	@tweak[1],@tweak[1]
+   	pand	$twmask,$twtmp
+	pxor	$twtmp,@tweak[1]
+
+    movdqa	$twres, $twtmp
+	paddd	$twres,$twres
+	movdqa	@tweak[1],@tweak[2]
+	psrad	\$31,$twtmp			# broadcast upper bits
+	 xorps	@tweak[1],$inout1
+	paddq	@tweak[2],@tweak[2]
+   	pand	$twmask,$twtmp
+	pxor	$twtmp,@tweak[2]
+
+    movdqa	$twres, $twtmp
+#	paddd	$twres,$twres
+	movdqa	@tweak[2],@tweak[3]
+	psrad	\$31,$twtmp			# broadcast upper bits
+	 xorps	@tweak[2],$inout2
+	paddq	@tweak[3],@tweak[3]
+   	pand	$twmask,$twtmp
+	pxor	$twtmp,@tweak[3]
+
+mov     $key1_enc, $key     # $key = $key1_dec
+mov	$rnds_,$rounds			# restore $rounds
+ xorps	@tweak[3],$inout3
+
+call _aesni_encrypt4
+
+mov	$key1_dec_,$key1_dec			# restore $key1_dec
+#mov	$rnds_,$rounds			# restore $rounds
+xorps	@tweak[0],$inout0
+xorps	@tweak[1],$inout1
+xorps	@tweak[2],$inout2
+xorps	@tweak[3],$inout3
+
+	movdqu	$inout0,($out)			# store 4 output blocks
 	movdqu	$inout1,16*1($out)
 	movdqu	$inout2,16*2($out)
 	movdqu	$inout3,16*3($out)
