@@ -85,7 +85,6 @@ aes_gcm_enc_kernel:
 	aese	v1.16b, v19.16b
 	aesmc	v1.16b, v1.16b          // AES block 1 - round 1
 	ldr	q14, [x6, #48]                              // load h3l | h3h
-	ext	v14.16b, v14.16b, v14.16b, #8
 	aese	v3.16b, v18.16b
 	aesmc	v3.16b, v3.16b          // AES block 3 - round 0
 	aese	v2.16b, v19.16b
@@ -94,14 +93,12 @@ aes_gcm_enc_kernel:
 	aese	v1.16b, v20.16b
 	aesmc	v1.16b, v1.16b          // AES block 1 - round 2
 	ldr	q13, [x6, #32]                              // load h2l | h2h
-	ext	v13.16b, v13.16b, v13.16b, #8
 	aese	v3.16b, v19.16b
 	aesmc	v3.16b, v3.16b          // AES block 3 - round 1
 	ldr	q30, [x8, #192]                               // load rk12
 	aese	v2.16b, v20.16b
 	aesmc	v2.16b, v2.16b          // AES block 2 - round 2
 	ldr	q15, [x6, #80]                              // load h4l | h4h
-	ext	v15.16b, v15.16b, v15.16b, #8
 	aese	v1.16b, v21.16b
 	aesmc	v1.16b, v1.16b          // AES block 1 - round 3
 	ldr	q29, [x8, #176]                               // load rk11
@@ -144,7 +141,6 @@ aes_gcm_enc_kernel:
 	aese	v0.16b, v24.16b
 	aesmc	v0.16b, v0.16b          // AES block 0 - round 6
 	ldr	q12, [x6]                                   // load h1l | h1h
-	ext	v12.16b, v12.16b, v12.16b, #8
 	aese	v2.16b, v24.16b
 	aesmc	v2.16b, v2.16b          // AES block 2 - round 6
 	ldr	q28, [x8, #160]                               // load rk10
@@ -847,15 +843,12 @@ aes_gcm_dec_kernel:
 	aese	v0.16b, v18.16b
 	aesmc	v0.16b, v0.16b          // AES block 0 - round 0
 	ldr	q14, [x6, #48]                              // load h3l | h3h
-	ext	v14.16b, v14.16b, v14.16b, #8
 	aese	v3.16b, v18.16b
 	aesmc	v3.16b, v3.16b          // AES block 3 - round 0
 	ldr	q15, [x6, #80]                              // load h4l | h4h
-	ext	v15.16b, v15.16b, v15.16b, #8
 	aese	v1.16b, v18.16b
 	aesmc	v1.16b, v1.16b          // AES block 1 - round 0
 	ldr	q13, [x6, #32]                              // load h2l | h2h
-	ext	v13.16b, v13.16b, v13.16b, #8
 	aese	v2.16b, v18.16b
 	aesmc	v2.16b, v2.16b          // AES block 2 - round 0
 	ldr	q20, [x8, #32]                                 // load rk2
@@ -875,7 +868,6 @@ aes_gcm_dec_kernel:
 	aese	v0.16b, v20.16b
 	aesmc	v0.16b, v0.16b          // AES block 0 - round 2
 	ldr	q12, [x6]                                   // load h1l | h1h
-	ext	v12.16b, v12.16b, v12.16b, #8
 	aese	v2.16b, v20.16b
 	aesmc	v2.16b, v2.16b          // AES block 2 - round 2
 	ldr	q28, [x8, #160]                               // load rk10
