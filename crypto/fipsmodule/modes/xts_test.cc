@@ -1489,8 +1489,7 @@ TEST(XTSTest, ReEncryptTestVectors) {
     out.clear();
     out.resize(plaintext.size());
 #endif
-
-	for (size_t in_bytes = 6*16; in_bytes <= 16*16; in_bytes += 16) {
+    for (size_t in_bytes = 6*16; in_bytes <= 17*16; in_bytes += 16) {
       int len;
       SCOPED_TRACE(in_bytes);
 

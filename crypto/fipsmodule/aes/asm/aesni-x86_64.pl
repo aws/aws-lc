@@ -3297,7 +3297,7 @@ pshufd	\$0x5f,@tweak[5],$twres
 
 .Lxts_reenc_short:
 	# at the point @tweak[0..5] are populated with tweak values
-	# XORed with rndkey0;
+	# XORed with rndkey0 (except for tweak[5]);
 	# XOR again with rndkey0 to remove it because standard dec/enc
 	# routines are called for the tail blocks and
 	# will XOR rndkey0 into the input.
@@ -3335,19 +3335,62 @@ pshufd	\$0x5f,@tweak[5],$twres
 	xorps	@tweak[0],$inout0
 	xorps	@tweak[1],$inout1
 	xorps	@tweak[2],$inout2
-	movdqu	$inout0,($out)			# store 5 output blocks
 	xorps	@tweak[3],$inout3
-	movdqu	$inout1,16*1($out)
 	xorps	@tweak[4],$inout4
-	movdqu	$inout2,16*2($out)
+
+movdqa $enc_tweak(%rsp),@tweak[0]   # retrieve enc tweak[0]
+# Calculate tweak[1..4] (no XORing with round[0])
+# (use $inout5 instead of $twtmp, which is also @tweak[4]).
+# XOR tweak[0..4] with inout0..4 (last XOR is after the loop).
+  	pshufd	\$0x5f,@tweak[0],$twres
+___
+my @inout=map("%xmm$_",(2..5));
+    for ($i=0;$i<4;$i++) {
+    $code.=<<___;
+	movdqa	$twres,$inout5
+	paddd	$twres,$twres
+	movdqa	@tweak[$i],@tweak[$i+1]
+	psrad	\$31,$inout5			# broadcast upper bits
+	 xorps	@tweak[$i], @inout[$i]
+	paddq	@tweak[$i+1],@tweak[$i+1]
+   	pand	$twmask,$inout5
+	pxor	$inout5,@tweak[$i+1]
+___
+    }
+$code.=<<___;
+    mov     $key1_enc, $key     # $key = $key1_dec
+	mov	$rnds_,$rounds			# restore $rounds
+     xorps	@tweak[4],$inout4
+
+call _aesni_encrypt6
+
+mov	$key1_dec_,$key1_dec			# restore $key1_dec
+mov	$rnds_,$rounds			# restore $rounds ## TBD: needed?
+	xorps	@tweak[0],$inout0
+	xorps	@tweak[1],$inout1
+	xorps	@tweak[2],$inout2
+	xorps	@tweak[3],$inout3
+	xorps	@tweak[4],$inout4
+
+	 # for cipher-stealing:
+	 # check which 32-bit word in tweak[5] has a MSb = 1;
+	 # make the corresponding word in twtmp all 1s
 	 pxor		$twtmp,$twtmp
-	movdqu	$inout3,16*3($out)
 	 pcmpgtd	@tweak[5],$twtmp
+
+	movdqu	$inout0,($out)			# store 5 output blocks
+	movdqu	$inout1,16*1($out)
+	movdqu	$inout2,16*2($out)
+	movdqu	$inout3,16*3($out)
 	movdqu	$inout4,16*4($out)
 	lea	16*5($out),$out			# $out+=5*16
+	 # for cipher-stealing:
+	 # only 32-bit words 1 and 3 in twtmp matter
+	 # for applying the mask below. They are copied
+	 # to words 2 and 0 respectively in tweak[1].
 	 pshufd		\$0x13,$twtmp,@tweak[1]	# $twres
 	and	\$15,$len_
-	jz	.Lxts_reenc_ret
+	jz	.Lxts_reenc_ret		# no cipher-stealing
 
 	movdqa	@tweak[5],@tweak[0]
 	paddq	@tweak[5],@tweak[5]		# psllq 1,$tweak
@@ -3499,6 +3542,7 @@ xorps	@tweak[2],$inout2
 
 movdqa $enc_tweak(%rsp),@tweak[0]   # retrieve enc tweak[0]
 # Calculate tweak[1..3] (no XORing with round[0])
+# XOR tweak[0..3] with inout0..3
   	pshufd	\$0x5f,@tweak[0],$twres
     movdqa	$twres, $twtmp
 	paddd	$twres,$twres
