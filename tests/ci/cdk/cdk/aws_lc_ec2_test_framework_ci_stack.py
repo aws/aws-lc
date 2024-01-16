@@ -84,10 +84,14 @@ class AwsLcEC2TestingCIStack(Stack):
                                 iam.ManagedPolicy.from_aws_managed_policy_name("AmazonSSMManagedInstanceCore"),
                                 iam.ManagedPolicy.from_aws_managed_policy_name("CloudWatchAgentServerPolicy")
                             ])
-        iam.CfnInstanceProfile(scope=self, id="{}-ec2-profile".format(id),
+        cfn_instance_prof = iam.CfnInstanceProfile(scope=self, id="{}-ec2-profile".format(id),
                                roles=["{}-ec2-role".format(id)],
                                instance_profile_name="{}-ec2-profile".format(id))
 
+        cfn_ec2_role = iam.CfnRole( self, "CfnEc2Role",
+            assume_role_policy_document=ec2_role.assume_role_policy
+        )
+        cfn_instance_prof.add_depends_on(cfn_ec2_role)
         # create vpc for ec2s
         vpc = ec2.Vpc(self, id="{}-ec2-vpc".format(id))
         selection = vpc.select_subnets()
