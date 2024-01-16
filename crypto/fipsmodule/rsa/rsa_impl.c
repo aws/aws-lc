@@ -738,7 +738,7 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
 
   // This is a pre-condition for |mod_montgomery|. It was already checked by the
   // caller.
-  assert(BN_ucmp(I, n) < 0);
+  declassify_assert(BN_ucmp(I, n) < 0);
 
   if (!mod_montgomery(r1, I, q, rsa->mont_q, p, ctx) ||
       !mod_montgomery(r2, I, p, rsa->mont_p, q, ctx) ||
@@ -773,7 +773,7 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
   // bound the width slightly higher, so fix it. This trips constant-time checks
   // because a naive data flow analysis does not realize the excess words are
   // publicly zero.
-  assert(BN_cmp(r0, n) < 0);
+  declassify_assert(BN_cmp(r0, n) < 0);
   bn_assert_fits_in_bytes(r0, BN_num_bytes(n));
   if (!bn_resize_words(r0, n->width)) {
     goto err;
