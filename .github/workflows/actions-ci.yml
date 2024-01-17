@@ -9,8 +9,8 @@ concurrency:
 
 env:
   GOPROXY: https://proxy.golang.org,direct
-  SDE_MIRROR_URL: "https://downloadmirror.intel.com/777395/sde-external-9.21.1-2023-04-24-win.tar.xz"
-  SDE_VERSION_TAG: sde-external-9.21.1-2023-04-24-win
+  SDE_MIRROR_URL: "https://downloadmirror.intel.com/788820/sde-external-9.27.0-2023-09-13-win.tar.xz"
+  SDE_VERSION_TAG: sde-external-9.27.0-2023-09-13-win
   PACKAGE_NAME: aws-lc
   # Used to enable ASAN test dimension.
   AWSLC_NO_ASM_FIPS: 1
