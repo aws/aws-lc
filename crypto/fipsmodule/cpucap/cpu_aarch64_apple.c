@@ -59,8 +59,8 @@ static int is_brand(const char *in_str) {
     return 0;
   }
 
-  if (len > sizeof(brand)) {
-    // This should not happen; too large of a brand for this function.
+  if (len != sizeof(brand)) {
+    // This should not happen; |brand| and |len| are not mutated. 
     assert(0);
     return 0;
   }
