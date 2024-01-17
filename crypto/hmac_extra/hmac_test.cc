@@ -186,6 +186,13 @@ static void RunHMACTestEVP(const std::vector<uint8_t> &key,
                                            &retrieved_key_len));
   retrieved_key.resize(retrieved_key_len);
   EXPECT_EQ(Bytes(retrieved_key), Bytes(key));
+
+  // Test retrieving key with a buffer length that's too small. This should fail
+  if (!key.empty()) {
+    size_t short_key_len = retrieved_key_len - 1;
+    EXPECT_FALSE(EVP_PKEY_get_raw_private_key(
+        raw_pkey.get(), retrieved_key.data(), &short_key_len));
+  }
 }
 
 

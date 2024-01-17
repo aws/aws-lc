@@ -86,6 +86,9 @@ static int hmac_set_key(EVP_PKEY *pkey, const uint8_t *priv, size_t len,
   }
 
   key->key = OPENSSL_memdup(priv, len);
+  if (key->key == NULL && len > 0) {
+    return 0;
+  }
   key->key_len = len;
   pkey->pkey.ptr = key;
   return 1;
@@ -93,7 +96,7 @@ static int hmac_set_key(EVP_PKEY *pkey, const uint8_t *priv, size_t len,
 
 static int hmac_get_key(const EVP_PKEY *pkey, uint8_t *priv, size_t *len) {
   HMAC_KEY *key = pkey->pkey.ptr;
-  if (key == NULL) {
+  if (key == NULL || len == NULL) {
     return 0;
   }
 
