@@ -69,10 +69,9 @@ int read_macho_file(const char *filename, MachOFile *macho) {
 }
 
 void free_macho_file(MachOFile *macho) {
-    for (uint32_t i = 0; i < macho->numSections; i++) {
-        free(macho->sections[i].name);
-    }
     free(macho->sections);
+    free(macho);
+    macho = NULL;
 }
 
 void print_macho_section_info(MachOFile *macho) {

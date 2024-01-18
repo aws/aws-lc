@@ -22,7 +22,7 @@ static void print_hex(const void *ptr, size_t size) {
     printf("\n");
 }
 
-static MachOFile create_test_macho_file(void) {
+static MachOFile* create_test_macho_file(void) {
     FILE *file = fopen(TEST_FILE, "wb");
     if (!file) {
         LOG_ERROR("Error with fopen() on %s file", TEST_FILE);
@@ -152,11 +152,10 @@ static MachOFile create_test_macho_file(void) {
     expected_sections[2] = expected_symbol_table;
     expected_sections[3] = expected_string_table;
 
-    MachOFile expected = {
-        .machHeader = test_header,
-        .numSections = 4,
-        .sections = expected_sections,
-    };
+    MachOFile *expected = malloc(sizeof(SectionInfo));
+    expected->machHeader = test_header,
+    expected->numSections = 4,
+    expected->sections = expected_sections;
 
     return expected;
 }
@@ -168,33 +167,29 @@ static void cleanup(void) {
     }
 }
 
-static void test_read_macho_file(MachOFile expected) {
+static void test_read_macho_file(MachOFile *expected) {
     MachOFile test_macho_file;
     if(!read_macho_file(TEST_FILE, &test_macho_file)) {
         LOG_ERROR("Something in read_macho_file broke");
         exit(EXIT_FAILURE);
     }
 
-    if (memcmp(&test_macho_file.machHeader, &expected.machHeader, sizeof(MachOHeader)) != 0) {
+    if (memcmp(&test_macho_file.machHeader, &expected->machHeader, sizeof(MachOHeader)) != 0) {
         LOG_ERROR("test_read_macho_file: read header is different than expected");
         exit(EXIT_FAILURE);
     }
-    if (test_macho_file.numSections != expected.numSections) {
+    if (test_macho_file.numSections != expected->numSections) {
         LOG_ERROR("test_read_macho_file: read number of sections is dfferent than expected");
         exit(EXIT_FAILURE);
     }
-    if (memcmp(test_macho_file.sections, expected.sections, test_macho_file.numSections * sizeof(SectionInfo)) != 0) {
+    if (memcmp(test_macho_file.sections, expected->sections, test_macho_file.numSections * sizeof(SectionInfo)) != 0) {
         LOG_ERROR("test_read_macho_file: read section information is different than expected");
         printf("test:\n");
         print_hex(test_macho_file.sections, test_macho_file.numSections * sizeof(SectionInfo));
         printf("expected:\n");
-        print_hex(expected.sections, expected.numSections * sizeof(SectionInfo));
+        print_hex(expected->sections, expected->numSections * sizeof(SectionInfo));
         exit(EXIT_FAILURE);
     }
-}
-
-static void test_free_macho_file(void) {
-    assert (1 == 1);
 }
 
 static void test_print_macho_section_info(void) {
@@ -211,14 +206,13 @@ static void test_find_macho_symbol_index(void) {
 
 int main(int argc, char *argv[]) {
 
-    MachOFile expected = create_test_macho_file();
+    MachOFile *expected = create_test_macho_file();
     test_read_macho_file(expected);
-    test_free_macho_file();
     test_print_macho_section_info();
     test_get_macho_section_data();
     test_find_macho_symbol_index();
 
-    free(expected);
+    free_macho_file(expected);
     cleanup();
 
     printf("All tests passed\n");
