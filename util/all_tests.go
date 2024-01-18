@@ -155,11 +155,6 @@ func sdeOf(cpu, path string, args ...string) (*exec.Cmd, context.CancelFunc) {
 	if runtime.GOOS == "linux" {
 		ctx, cancel := context.WithTimeout(context.Background(), 1200*time.Second)
 		return exec.CommandContext(ctx, *sdePath, sdeArgs...), cancel
-	} else if runtime.GOOS == "windows" {
-		// Windows SDE 32 bit also runs into the same issue. The simulation is slower, so we set a timeout
-		// of 30 minutes.
-		ctx, cancel := context.WithTimeout(context.Background(), 1800*time.Second)
-		return exec.CommandContext(ctx, *sdePath, sdeArgs...), cancel
 	}
 
 	return exec.Command(*sdePath, sdeArgs...), nil
