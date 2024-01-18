@@ -85,7 +85,7 @@ class AwsLcEC2TestingCIStack(Stack):
                                 iam.ManagedPolicy.from_aws_managed_policy_name("CloudWatchAgentServerPolicy")
                             ])
         iam.CfnInstanceProfile(scope=self, id="{}-ec2-profile".format(id),
-                               roles=["{}-ec2-role".format(id)],
+                               roles=[ec2_role.role_name],
                                instance_profile_name="{}-ec2-profile".format(id))
 
         # create vpc for ec2s

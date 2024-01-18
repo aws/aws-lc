@@ -71,6 +71,12 @@ If not done previously, bootstrap cdk before running the commands below:
 cdk bootstrap aws://${AWS_ACCOUNT_ID}/us-west-2
 ```
 
+You may also need to request an increase to certain account quotas:
+```shell
+open https://${CDK_DEPLOY_REGION}.console.aws.amazon.com/servicequotas/home/services/ec2/quotas
+```
+* **EC2-VPC Elastic IPs** = 20
+
 Note: `GITHUB_REPO_OWNER` specifies the GitHub repo targeted by this CI setup.
 * https://github.com/${GITHUB_REPO_OWNER}/aws-lc.git
 
