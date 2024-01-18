@@ -87,6 +87,7 @@ static int hmac_set_key(EVP_PKEY *pkey, const uint8_t *priv, size_t len,
 
   key->key = OPENSSL_memdup(priv, len);
   if (key->key == NULL && len > 0) {
+    OPENSSL_free(key);
     return 0;
   }
   key->key_len = len;
