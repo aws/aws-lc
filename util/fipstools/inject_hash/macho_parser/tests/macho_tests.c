@@ -29,70 +29,50 @@ static MachOFile create_test_macho_file(void) {
         exit(EXIT_FAILURE);
     }
 
+    uint32_t header_sizeofcmds = sizeof(SegmentLoadCommand) + 2 * sizeof(SectionHeader) + sizeof(SymtabLoadCommand);
+    uint32_t header_ncmds = 2;
     MachOHeader test_header = {
         .magic = MH_MAGIC_64,
-        .ncmds = 2,
-        .sizeofcmds = sizeof(SegmentLoadCommand) + 2 * sizeof(SectionHeader) + sizeof(SymtabLoadCommand),
+        .ncmds = header_ncmds,
+        .sizeofcmds = header_sizeofcmds,
     };
 
+    uint32_t text_segment_cmdsize = sizeof(SegmentLoadCommand) + 2 * sizeof(SectionHeader);
+    uint32_t text_segment_nsects = 2;
     SegmentLoadCommand test_text_segment = {
         .cmd = LC_SEGMENT_64,
-        .cmdsize = sizeof(SegmentLoadCommand) + 2 * sizeof(SectionHeader),
+        .cmdsize = text_segment_cmdsize,
         .segname = "__TEXT",
-        .nsects = 2,
+        .nsects = text_segment_nsects,
     };
 
+    uint32_t text_section_offset = sizeof(MachOHeader) + sizeof(SegmentLoadCommand) + 2 * sizeof(SectionHeader) + sizeof(SymtabLoadCommand);
+    uint64_t text_section_size = 1; // {0xC3}
     SectionHeader test_text_section = {
         .sectname = "__text",
-        .size = 1, // {0xC3}
-        .offset = sizeof(MachOHeader) + sizeof(SegmentLoadCommand) + 2 * sizeof(SectionHeader) + sizeof(SymtabLoadCommand),
+        .size = text_section_size, 
+        .offset = text_section_offset,
     };
 
+    uint32_t const_section_offset = text_section_offset + text_section_size;
+    uint64_t const_section_size = 2;  // "hi"
     SectionHeader test_const_section = {
         .sectname = "__const",
-        .size = 2, // "hi"
-        .offset = test_text_section.offset + test_text_section.size,
+        .size = const_section_size,
+        .offset = const_section_offset,
     };
 
+    uint32_t symtab_command_symoff = const_section_offset + const_section_size;
+    uint32_t symtab_command_nsyms = 2;
+    uint32_t symtab_command_stroff = symtab_command_symoff + 2 * sizeof(nList);
+    uint32_t symtab_command_strsize = 2;
     SymtabLoadCommand test_symtab_command = {
         .cmd = LC_SYMTAB,
         .cmdsize = sizeof(SymtabLoadCommand),
-        .symoff = test_const_section.offset + test_const_section.size,
-        .nsyms = 2,
-        .stroff = test_const_section.offset + test_const_section.size + 2 * sizeof(nList),
-        .strsize = 2,
-    };
-
-    SectionInfo expected_text_section = {
-        .size = test_text_section.size,
-        .offset = test_text_section.offset,
-    };
-    strcpy(expected_text_section.name, test_text_section.sectname);
-
-    SectionInfo expected_const_section = {
-        .size = test_const_section.size,
-        .offset = test_const_section.offset,
-    };
-    strcpy(expected_const_section.name, test_const_section.sectname);
-
-    SectionInfo expected_symbol_table = {
-        .size = test_symtab_command.nsyms * sizeof(nList),
-        .offset = test_symtab_command.symoff,
-    };
-    strcpy(expected_symbol_table.name, "__symbol_table");
-
-    SectionInfo expected_string_table = {
-        .size = test_symtab_command.strsize,
-        .offset = test_symtab_command.stroff,
-    };
-    strcpy(expected_string_table.name, "__string_table");
-
-    SectionInfo expected_sections[4] = {expected_text_section, expected_const_section, expected_symbol_table, expected_string_table};    
-
-    MachOFile expected = {
-        .machHeader = test_header,
-        .numSections = 4,
-        .sections = expected_sections,
+        .symoff = symtab_command_symoff,
+        .nsyms = symtab_command_nsyms,
+        .stroff = symtab_command_stroff,
+        .strsize = symtab_command_strsize,
     };
 
     fwrite(&test_header, sizeof(MachOHeader), 1, file);
@@ -140,6 +120,44 @@ static MachOFile create_test_macho_file(void) {
         LOG_ERROR("bad\n");
     }
 
+
+    SectionInfo expected_text_section = {
+        .name = "__text",
+        .size = text_section_size,
+        .offset = text_section_offset,
+    };
+
+    SectionInfo expected_const_section = {
+        .name = "__const",
+        .size = const_section_size,
+        .offset = const_section_offset,
+    };
+
+    SectionInfo expected_symbol_table = {
+        .name = "__symbol_table",
+        .size = symtab_command_nsyms * sizeof(nList),
+        .offset = symtab_command_symoff,
+    };
+
+    SectionInfo expected_string_table = {
+        .name = "__string_table",
+        .size = symtab_command_strsize,
+        .offset = symtab_command_stroff,
+    };
+
+    // SectionInfo expected_sections[4] = {expected_text_section, expected_const_section, expected_symbol_table, expected_string_table};    
+    SectionInfo *expected_sections = malloc(sizeof(SectionInfo) * 4);
+    expected_sections[0] = expected_text_section;
+    expected_sections[1] = expected_const_section;
+    expected_sections[2] = expected_symbol_table;
+    expected_sections[3] = expected_string_table;
+
+    MachOFile expected = {
+        .machHeader = test_header,
+        .numSections = 4,
+        .sections = expected_sections,
+    };
+
     return expected;
 }
 
@@ -171,9 +189,7 @@ static void test_read_macho_file(MachOFile expected) {
         print_hex(test_macho_file.sections, test_macho_file.numSections * sizeof(SectionInfo));
         printf("expected:\n");
         print_hex(expected.sections, expected.numSections * sizeof(SectionInfo));
-
-        print_macho_section_info(&test_macho_file);
-        print_macho_section_info(&expected);
+        exit(EXIT_FAILURE);
     }
 }
 
@@ -202,6 +218,7 @@ int main(int argc, char *argv[]) {
     test_get_macho_section_data();
     test_find_macho_symbol_index();
 
+    free(expected);
     cleanup();
 
     printf("All tests passed\n");
