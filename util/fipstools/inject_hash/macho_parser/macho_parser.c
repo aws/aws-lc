@@ -74,14 +74,6 @@ void free_macho_file(MachOFile *macho) {
     macho = NULL;
 }
 
-void print_macho_section_info(MachOFile *macho) {
-    printf("Number of sections: %u\n", macho->numSections);
-    for (uint32_t i = 0; i < macho->numSections; i++) {
-        printf("Section: %s, Offset: %u, Size: %zu\n", macho->sections[i].name,
-               macho->sections[i].offset, macho->sections[i].size);
-    }
-}
-
 uint8_t* get_macho_section_data(char *filename, MachOFile *macho, const char *sectionName, size_t *size, uint32_t *offset) {
     FILE *file = fopen(filename, "rb");
     if (!file) {
