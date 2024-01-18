@@ -33,7 +33,7 @@ typedef struct {
 int read_macho_file(const char *filename, MachOFile *macho);
 void free_macho_file(MachOFile *macho);
 void print_macho_section_info(MachOFile *macho);
-uint8_t* get_macho_section_data(char* filename, MachOFile *macho, const char *sectionName, size_t *size, uint32_t *offset);
+uint8_t* get_macho_section_data(const char* filename, MachOFile *macho, const char *sectionName, size_t *size, uint32_t *offset);
 uint32_t find_macho_symbol_index(uint8_t *sectionData, size_t sectionSize, uint8_t *stringTableData, size_t stringTableSize, const char *symbolName, uint32_t *base);
 
 #endif
