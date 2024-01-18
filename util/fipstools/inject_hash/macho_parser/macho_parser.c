@@ -74,7 +74,9 @@ void free_macho_file(MachOFile *macho) {
     macho = NULL;
 }
 
-uint8_t* get_macho_section_data(char *filename, MachOFile *macho, const char *sectionName, size_t *size, uint32_t *offset) {
+// Takes a filename, MachOFile struct, the name of the section to get data for, and pointers to size & offset as input
+// size and offset pointers are set to the size and offset of the section retrived in the file.
+uint8_t* get_macho_section_data(const char *filename, MachOFile *macho, const char *sectionName, size_t *size, uint32_t *offset) {
     FILE *file = fopen(filename, "rb");
     if (!file) {
         LOG_ERROR("Error opening file %s", filename);
