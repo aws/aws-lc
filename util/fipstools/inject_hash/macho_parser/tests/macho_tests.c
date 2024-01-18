@@ -192,10 +192,6 @@ static void test_read_macho_file(MachOFile *expected) {
     }
 }
 
-static void test_print_macho_section_info(void) {
-    assert (1 == 1);
-}
-
 static void test_get_macho_section_data(void) {
     assert (1 == 1);
 }
@@ -208,7 +204,6 @@ int main(int argc, char *argv[]) {
 
     MachOFile *expected = create_test_macho_file();
     test_read_macho_file(expected);
-    test_print_macho_section_info();
     test_get_macho_section_data();
     test_find_macho_symbol_index();
 
