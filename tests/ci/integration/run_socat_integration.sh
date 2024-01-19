@@ -31,6 +31,7 @@ function build_and_test_socat() {
   # test 399 OPENSSL_DTLS_CLIENT: Unknown issue running openssl s_server
   # test 467 EXEC_FDS: Something broken with exec'ing and not inheriting LD_LIBRARY_PATH
   # test 468 EXEC_SNIFF: Something broken with exec'ing and not inheriting LD_LIBRARY_PATH
+  # test 478 SIGUSR1_STATISTICS: GHA does not support tty
   # test 492 ACCEPT_FD: uses systemd-socket-activate which doesn't inherit the LD_LIBRARY_PATH so socat can't find libcrypto.so
   # test 498 SHELL_SOCKETPAIR: GHA does not specify expected shell environment variables
   # test 499 SHELL_PIPES: GHA does not specify expected shell environment variables
@@ -41,7 +42,7 @@ function build_and_test_socat() {
   # test 506 CHDIR_ON_SHELL: GHA does not specify expected shell environment variables
   # test 508 UMASK_ON_SYSTEM: GHA does not specify expected shell environment variables
   # test 528 PROCAN_CTTY: GHA does not support tty
-  ./test.sh -d -v --expect-fail 146,216,309,310,399,467,468,492,498,499,500,501,502,503,506,508,528
+  ./test.sh -d -v --expect-fail 146,216,309,310,399,467,468,478,492,498,499,500,501,502,503,506,508,528
   popd
 }
 
