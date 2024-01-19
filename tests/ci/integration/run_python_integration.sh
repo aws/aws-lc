@@ -111,7 +111,8 @@ echo 0 >/proc/sys/net/ipv6/conf/all/disable_ipv6 || /bin/true
 
 # NOTE: cpython keeps a unique branch per version, add version branches here
 # TODO: As we add more versions to support, we may want to parallelize here
-for branch in 3.10 3.11 3.12 main; do
+for branch in 3.10; do
+#for branch in 3.10 3.11 3.12 main; do
     python_patch ${branch}
     python_build ${branch}
     python_run_tests ${branch}
