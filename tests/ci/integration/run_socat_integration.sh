@@ -18,7 +18,7 @@ AWS_LC_INSTALL_FOLDER="${SCRATCH_FOLDER}/aws-lc-install"
 SOCAT_SRC="${SCRATCH_FOLDER}/socat"
 
 function build_and_test_socat() {
-  cd "$SOCAT_SRC"
+  pushd "$SOCAT_SRC"
   autoconf
   ./configure --enable-openssl-base="$AWS_LC_INSTALL_FOLDER"
   make -j "$NUM_CPU_THREADS"
@@ -30,19 +30,18 @@ function build_and_test_socat() {
   # but that has caveats. See PORTING.md 'TLS renegotiation'
   # test 492 ACCEPT_FD: uses systemd-socket-activate which doesn't inherit the LD_LIBRARY_PATH so socat can't find libcrypto.so
   ./test.sh --expect-fail 146,216,309,310,492
+  popd
 }
 
 # Make script execution idempotent.
 mkdir -p ${SCRATCH_FOLDER}
 rm -rf "${SCRATCH_FOLDER:?}"/*
-cd ${SCRATCH_FOLDER}
 
 mkdir -p "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER"
-git clone --depth 1 https://repo.or.cz/socat.git
-cd socat
+git clone --depth 1 https://repo.or.cz/socat.git "$SOCAT_SRC"
 
 aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DBUILD_SHARED_LIBS=1 -DBUILD_TESTING=0 -DCMAKE_BUILD_TYPE=RelWithDebInfo
-export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}:${AWS_LC_INSTALL_FOLDER}/lib/"
+export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib/:${LD_LIBRARY_PATH:-}"
 build_and_test_socat
 
 ldd "${SOCAT_SRC}/socat" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
