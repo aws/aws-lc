@@ -28,8 +28,20 @@ function build_and_test_socat() {
   # but that has caveats. See PORTING.md 'TLS renegotiation'
   # test 310 OPENSSLRENEG2: AWS-LC doesn't support renegotiation by default, it can be enabled by calling SSL_set_renegotiate_mode
   # but that has caveats. See PORTING.md 'TLS renegotiation'
+  # test 399 OPENSSL_DTLS_CLIENT: Unknown issue running openssl s_server
+  # test 467 EXEC_FDS: Something broken with exec'ing and not inheriting LD_LIBRARY_PATH
+  # test 468 EXEC_SNIFF: Something broken with exec'ing and not inheriting LD_LIBRARY_PATH
   # test 492 ACCEPT_FD: uses systemd-socket-activate which doesn't inherit the LD_LIBRARY_PATH so socat can't find libcrypto.so
-  ./test.sh -d -v --expect-fail 146,216,309,310,492
+  # test 498 SHELL_SOCKETPAIR: GHA does not specify expected shell environment variables
+  # test 499 SHELL_PIPES: GHA does not specify expected shell environment variables
+  # test 500 SHELL_PTY: GHA does not specify expected shell environment variables
+  # test 501 SHELL_SOCKETPAIR_FLUSH: GHA does not specify expected shell environment variables
+  # test 502 SHELL_PIPES: GHA does not specify expected shell environment variables
+  # test 503 SYSTEM_SIGINT: GHA does not specify expected shell environment variables
+  # test 506 CHDIR_ON_SHELL: GHA does not specify expected shell environment variables
+  # test 508 UMASK_ON_SYSTEM: GHA does not specify expected shell environment variables
+  # test 528 PROCAN_CTTY: GHA does not support tty
+  ./test.sh -d -v --expect-fail 146,216,309,310,399,467,468,492,498,499,500,501,502,503,506,508,528
   popd
 }
 
