@@ -152,6 +152,8 @@ TEST(ThreadTest, RandState) {
   thread.join();
 }
 
+#if defined(OPENSSL_PTHREADS)
+
 static void thread_task(bool *myFlag) {
   EXPECT_EQ(1, AWSLC_thread_local_clear());
   EXPECT_EQ(1, AWSLC_thread_local_clear());
@@ -179,6 +181,8 @@ TEST(ThreadTest, ClearState) {
     ASSERT_TRUE(myFlags[i]) << "Thread " << i << " failed.";
   }
 }
+
+#endif // OPENSSL_PTHREADS
 
 TEST(ThreadTest, InitThreads) {
   constexpr size_t kNumThreads = 10;
