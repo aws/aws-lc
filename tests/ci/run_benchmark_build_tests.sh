@@ -63,7 +63,7 @@ function build_boringssl {
   echo "install_if_enabled(TARGETS decrepit EXPORT OpenSSLTargets ${INSTALL_DESTINATION_DEFAULT})" >> decrepit/CMakeLists.txt
   cmake -GNinja \
       -DCMAKE_INSTALL_PREFIX="${install_dir}/boringssl" \
-      -DCMAKE_BUILD_TYPE=RelWithDebInfo
+      -DCMAKE_BUILD_TYPE=RelWithDebInfo .
   ninja install
   popd
   rm -rf "${scratch_folder}/boringssl"

@@ -1265,6 +1265,20 @@ static bool SpeedRandom(const std::string &selected) {
   return true;
 }
 
+struct curve_config {
+  std::string name;
+  int nid;
+};
+
+curve_config supported_curves[] = {{"P-224", NID_secp224r1},
+                                   {"P-256", NID_X9_62_prime256v1},
+                                   {"P-384", NID_secp384r1},
+                                   {"P-521", NID_secp521r1},
+#if !defined(OPENSSL_IS_BORINGSSL)
+                                   {"secp256k1", NID_secp256k1},
+#endif
+};
+
 static bool SpeedECDHCurve(const std::string &name, int nid,
                            const std::string &selected) {
   if (!selected.empty() && name.find(selected) == std::string::npos) {
@@ -1428,40 +1442,43 @@ static bool SpeedECDSACurve(const std::string &name, int nid,
 }
 
 static bool SpeedECKeyGenerateKey(bool is_fips, const std::string &selected) {
-  return SpeedECKeyGenerateKey(is_fips, "Generate P-224", NID_secp224r1,
-                               selected) &&
-         SpeedECKeyGenerateKey(is_fips, "Generate P-256",
-                               NID_X9_62_prime256v1, selected) &&
-         SpeedECKeyGenerateKey(is_fips, "Generate P-384", NID_secp384r1,
-                               selected) &&
-         SpeedECKeyGenerateKey(is_fips, "Generate P-521", NID_secp521r1,
-                               selected) &&
-         SpeedECKeyGenerateKey(is_fips, "Generate secp256k1",
-                               NID_secp256k1, selected);
+  for (const auto& config : supported_curves) {
+    std::string message = "Generate " + config.name;
+    if(!SpeedECKeyGenerateKey(is_fips, message, config.nid, selected)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 static bool SpeedECDH(const std::string &selected) {
-  return SpeedECDHCurve("ECDH P-224", NID_secp224r1, selected) &&
-         SpeedECDHCurve("ECDH P-256", NID_X9_62_prime256v1, selected) &&
-         SpeedECDHCurve("ECDH P-384", NID_secp384r1, selected) &&
-         SpeedECDHCurve("ECDH P-521", NID_secp521r1, selected) &&
-         SpeedECDHCurve("ECDH secp256k1", NID_secp256k1, selected);
+  for (const auto& config : supported_curves) {
+    std::string message = "ECDH " + config.name;
+    if(!SpeedECDHCurve(message, config.nid, selected)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 static bool SpeedECKeyGen(const std::string &selected) {
-  return SpeedECKeyGenCurve("Generate P-224", NID_secp224r1, selected) &&
-         SpeedECKeyGenCurve("Generate P-256", NID_X9_62_prime256v1, selected) &&
-         SpeedECKeyGenCurve("Generate P-384", NID_secp384r1, selected) &&
-         SpeedECKeyGenCurve("Generate P-521", NID_secp521r1, selected) &&
-         SpeedECKeyGenCurve("Generate secp256k1", NID_secp256k1, selected);
+  for (const auto& config : supported_curves) {
+    std::string message = "Generate " + config.name;
+    if(!SpeedECKeyGenCurve(message, config.nid, selected)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 static bool SpeedECDSA(const std::string &selected) {
-  return SpeedECDSACurve("ECDSA P-224", NID_secp224r1, selected) &&
-         SpeedECDSACurve("ECDSA P-256", NID_X9_62_prime256v1, selected) &&
-         SpeedECDSACurve("ECDSA P-384", NID_secp384r1, selected) &&
-         SpeedECDSACurve("ECDSA P-521", NID_secp521r1, selected) &&
-         SpeedECDSACurve("ECDSA secp256k1", NID_secp256k1, selected);
+  for (const auto& config : supported_curves) {
+    std::string message = "ECDSA " + config.name;
+    if(!SpeedECDSACurve(message, config.nid, selected)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 #if !defined(OPENSSL_1_0_BENCHMARK)
@@ -1586,12 +1603,13 @@ static bool SpeedEvpEcdhCurve(const std::string &name, int nid,
 }
 
 static bool SpeedEvpEcdh(const std::string &selected) {
-  return SpeedEvpEcdhCurve("EVP ECDH P-224", NID_secp224r1, selected) &&
-         SpeedEvpEcdhCurve("EVP ECDH P-256", NID_X9_62_prime256v1, selected) &&
-         SpeedEvpEcdhCurve("EVP ECDH P-384", NID_secp384r1, selected) &&
-         SpeedEvpEcdhCurve("EVP ECDH P-521", NID_secp521r1, selected) &&
-         SpeedEvpEcdhCurve("EVP ECDH secp256k1", NID_secp256k1, selected) &&
-         SpeedEvpEcdhCurve("EVP ECDH X25519", NID_X25519, selected);
+  for (const auto& config : supported_curves) {
+      std::string message = "EVP ECDH " + config.name;
+      if(!SpeedEvpEcdhCurve(message, config.nid, selected)) {
+        return false;
+      }
+  }
+  return SpeedEvpEcdhCurve("EVP ECDH X25519", NID_X25519, selected);
 }
 
 static bool SpeedECMULCurve(const std::string &name, int nid,
@@ -1659,11 +1677,13 @@ static bool SpeedECMULCurve(const std::string &name, int nid,
 }
 
 static bool SpeedECMUL(const std::string &selected) {
-  return SpeedECMULCurve("ECMUL P-224", NID_secp224r1, selected) &&
-         SpeedECMULCurve("ECMUL P-256", NID_X9_62_prime256v1, selected) &&
-         SpeedECMULCurve("ECMUL P-384", NID_secp384r1, selected) &&
-         SpeedECMULCurve("ECMUL P-521", NID_secp521r1, selected) &&
-         SpeedECMULCurve("ECMUL secp256k1", NID_secp256k1, selected);
+  for (const auto& config : supported_curves) {
+    std::string message = "ECMUL " + config.name;
+    if(!SpeedECMULCurve(message, config.nid, selected)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 #endif // !defined(OPENSSL_1_0_BENCHMARK)
