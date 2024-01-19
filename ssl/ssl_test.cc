@@ -10458,6 +10458,83 @@ TEST(SSLTest, ErrorSyscallAfterCloseNotify) {
   write_failed = false;
 }
 
+static void TestIntermittentEmptyRead(bool auto_retry) {
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx =
+      CreateContextWithTestCertificate(TLS_method());
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(server_ctx);
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                     server_ctx.get()));
+
+  // Create a fake read BIO that returns 0 on read to simulate empty read
+  bssl::UniquePtr<BIO_METHOD> method(BIO_meth_new(0, nullptr));
+  ASSERT_TRUE(method);
+  ASSERT_TRUE(BIO_meth_set_create(method.get(), [](BIO *b) -> int {
+    BIO_set_init(b, 1);
+    return 1;
+  }));
+  ASSERT_TRUE(BIO_meth_set_read(method.get(), [](BIO *, char *, int) -> int {
+    return 0;
+  }));
+  bssl::UniquePtr<BIO> rbio_empty(BIO_new(method.get()));
+  ASSERT_TRUE(rbio_empty);
+  BIO_set_flags(rbio_empty.get(), BIO_FLAGS_READ);
+
+  // Save off client rbio and use empty read BIO
+  bssl::UniquePtr<BIO> client_rbio(SSL_get_rbio(client.get()));
+  ASSERT_TRUE(client_rbio);
+  // Up-ref |client_rbio| as SSL_CTX dtor will also attempt to free it
+  ASSERT_TRUE(BIO_up_ref(client_rbio.get()));
+  SSL_set0_rbio(client.get(), rbio_empty.release());
+
+  if (auto_retry) {
+      // Set flag under test
+      ASSERT_TRUE(SSL_CTX_set_mode(client_ctx.get(), SSL_MODE_AUTO_RETRY));
+      ASSERT_TRUE(SSL_CTX_get_mode(client_ctx.get()) & SSL_MODE_AUTO_RETRY);
+  } else {
+      // |SSL_MODE_AUTO_RETRY| is off by default
+      ASSERT_FALSE(SSL_CTX_get_mode(client_ctx.get()) & SSL_MODE_AUTO_RETRY);
+  }
+
+  // Server writes some data to the client
+  const uint8_t write_data[] = {1, 2, 3};
+  int ret = SSL_write(server.get(), write_data, (int) sizeof(write_data));
+  EXPECT_EQ(ret, (int) sizeof(write_data));
+  EXPECT_EQ(SSL_get_error(server.get(), ret), SSL_ERROR_NONE);
+
+  uint8_t read_data[] = {0, 0, 0};
+  ret = SSL_read(client.get(), read_data, sizeof(read_data));
+  EXPECT_EQ(ret, 0);
+  if (auto_retry) {
+      // On empty read, client should still want a read so caller will retry
+      EXPECT_EQ(SSL_get_error(client.get(), ret), SSL_ERROR_WANT_READ);
+  } else {
+      // On empty read, client should error out signaling EOF
+      EXPECT_EQ(SSL_get_error(client.get(), ret), SSL_ERROR_SYSCALL);
+  }
+
+  // Reset client rbio, read should succeed
+  SSL_set0_rbio(client.get(), client_rbio.release());
+  ret = SSL_read(client.get(), read_data, sizeof(read_data));
+  EXPECT_EQ(ret, (int) sizeof(write_data));
+  EXPECT_EQ(OPENSSL_memcmp(read_data, write_data, sizeof(write_data)), 0);
+  EXPECT_EQ(SSL_get_error(client.get(), ret), SSL_ERROR_NONE);
+
+  // Subsequent attempts to read should fail
+  ret = SSL_read(client.get(), read_data, sizeof(read_data));
+  EXPECT_LT(ret, 0);
+  EXPECT_EQ(SSL_get_error(client.get(), ret), SSL_ERROR_WANT_READ);
+}
+
+// Test that |SSL_MODE_AUTO_RETRY| suppresses failure on (potentially)
+// transient empty reads.
+TEST(SSLTest, IntermittentEmptyRead) {
+    TestIntermittentEmptyRead(false);
+    TestIntermittentEmptyRead(true);
+}
+
 // Test that |SSL_shutdown|, when quiet shutdown is enabled, simulates receiving
 // a close_notify, down to |SSL_read| reporting |SSL_ERROR_ZERO_RETURN|.
 TEST(SSLTest, QuietShutdown) {

@@ -1387,9 +1387,16 @@ int SSL_get_error(const SSL *ssl, int ret_code) {
       return SSL_ERROR_ZERO_RETURN;
     }
     // An EOF was observed which violates the protocol, and the underlying
-    // transport does not participate in the error queue. Bubble up to the
-    // caller.
-    return SSL_ERROR_SYSCALL;
+    // transport does not participate in the error queue. If
+    // |SSL_MODE_AUTO_RETRY| is unset, bubble up to the caller.
+    if ((ssl->ctx->mode & SSL_MODE_AUTO_RETRY) == 0) {
+      return SSL_ERROR_SYSCALL;
+    }
+    // If |SSL_MODE_AUTO_RETRY| is set, proceed if in a retryable state.
+    if (ssl->s3->rwstate != SSL_ERROR_WANT_READ
+            && ssl->s3->rwstate != SSL_ERROR_WANT_WRITE) {
+      return SSL_ERROR_SYSCALL;
+    }
   }
 
   switch (ssl->s3->rwstate) {
