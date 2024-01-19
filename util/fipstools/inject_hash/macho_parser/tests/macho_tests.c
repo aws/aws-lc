@@ -11,6 +11,8 @@
 #define TEXT_DATA {0xC3}
 #define CONST_DATA "hi"
 
+#define NUM_SYMS 2
+
 static void print_hex(const void *ptr, size_t size) {
     for (size_t i = 0; i < size; i++) {
         printf("%02X", *((unsigned char *) ptr + i));
@@ -57,7 +59,13 @@ static void print_hex_file(const char* filename) {
     fclose(file);
 }
 
-static MachOFile* create_test_macho_file(void) {
+static void create_test_macho_file(MachOFile *macho, nList *symbol_table) {
+
+    if (macho == NULL || symbol_table == NULL) {
+        LOG_ERROR("macho and symbol_table must be allocated");
+        exit(EXIT_FAILURE);
+    }
+
     FILE *file = fopen(TEST_FILE, "wb");
     if (!file) {
         LOG_ERROR("Error with fopen() on %s file", TEST_FILE);
@@ -98,14 +106,13 @@ static MachOFile* create_test_macho_file(void) {
     };
 
     uint32_t symtab_command_symoff = const_section_offset + const_section_size;
-    uint32_t symtab_command_nsyms = 2;
-    uint32_t symtab_command_stroff = symtab_command_symoff + symtab_command_nsyms * sizeof(nList);
+    uint32_t symtab_command_stroff = symtab_command_symoff + NUM_SYMS * sizeof(nList);
     uint32_t symtab_command_strsize = 32;
     SymtabLoadCommand test_symtab_command = {
         .cmd = LC_SYMTAB,
         .cmdsize = sizeof(SymtabLoadCommand),
         .symoff = symtab_command_symoff,
-        .nsyms = symtab_command_nsyms,
+        .nsyms = NUM_SYMS,
         .stroff = symtab_command_stroff,
         .strsize = symtab_command_strsize,
     };
@@ -168,7 +175,7 @@ static MachOFile* create_test_macho_file(void) {
 
     SectionInfo expected_symbol_table = {
         .name = "__symbol_table",
-        .size = symtab_command_nsyms * sizeof(nList),
+        .size = NUM_SYMS * sizeof(nList),
         .offset = symtab_command_symoff,
     };
 
@@ -184,12 +191,12 @@ static MachOFile* create_test_macho_file(void) {
     expected_sections[2] = expected_symbol_table;
     expected_sections[3] = expected_string_table;
 
-    MachOFile *expected = malloc(sizeof(MachOFile));
-    expected->machHeader = test_header,
-    expected->numSections = 4,
-    expected->sections = expected_sections;
+    macho->machHeader = test_header,
+    macho->numSections = 4,
+    macho->sections = expected_sections;
 
-    return expected;
+    symbol_table[0] = symbol1;
+    symbol_table[1] = symbol2;
 }
 
 static void cleanup(void) {
@@ -199,32 +206,32 @@ static void cleanup(void) {
     }
 }
 
-static void test_read_macho_file(MachOFile *expected) {
+static void test_read_macho_file(MachOFile *expected_macho) {
     MachOFile test_macho_file;
     if(!read_macho_file(TEST_FILE, &test_macho_file)) {
         LOG_ERROR("Something in read_macho_file broke");
         exit(EXIT_FAILURE);
     }
 
-    if (memcmp(&test_macho_file.machHeader, &expected->machHeader, sizeof(MachOHeader)) != 0) {
+    if (memcmp(&test_macho_file.machHeader, &expected_macho->machHeader, sizeof(MachOHeader)) != 0) {
         LOG_ERROR("test_read_macho_file: read header is different than expected");
         exit(EXIT_FAILURE);
     }
-    if (test_macho_file.numSections != expected->numSections) {
+    if (test_macho_file.numSections != expected_macho->numSections) {
         LOG_ERROR("test_read_macho_file: read number of sections is dfferent than expected");
         exit(EXIT_FAILURE);
     }
-    if (memcmp(test_macho_file.sections, expected->sections, test_macho_file.numSections * sizeof(SectionInfo)) != 0) {
+    if (memcmp(test_macho_file.sections, expected_macho->sections, test_macho_file.numSections * sizeof(SectionInfo)) != 0) {
         LOG_ERROR("test_read_macho_file: read section information is different than expected");
         printf("test:\n");
         print_hex(test_macho_file.sections, test_macho_file.numSections * sizeof(SectionInfo));
         printf("expected:\n");
-        print_hex(expected->sections, expected->numSections * sizeof(SectionInfo));
+        print_hex(expected_macho->sections, expected_macho->numSections * sizeof(SectionInfo));
         exit(EXIT_FAILURE);
     }
 }
 
-static void test_get_macho_section_data(MachOFile *expected) {
+static void test_get_macho_section_data(MachOFile *expected_macho, nList* expected_symtab) {
     uint8_t *text_section = NULL;
     size_t text_section_size;
     char expected_text_section[] = TEXT_DATA;
@@ -235,32 +242,31 @@ static void test_get_macho_section_data(MachOFile *expected) {
 
     uint8_t *symbol_table = NULL;
     size_t symbol_table_size;
-    char expected_symbol_table[] = "something?";
 
     uint8_t *string_table = NULL;
     size_t string_table_size;
     char expected_string_table[] = "\0__text\0__const\0symbol1\0symbol2";
 
-    text_section = get_macho_section_data(TEST_FILE, expected, "__text", &text_section_size, NULL);
+    text_section = get_macho_section_data(TEST_FILE, expected_macho, "__text", &text_section_size, NULL);
     if (memcmp(text_section, expected_text_section, text_section_size) != 0) {
         LOG_ERROR("text section is not equal to what was expected");
         exit(EXIT_FAILURE);
     }
 
-    const_section = get_macho_section_data(TEST_FILE, expected, "__const", &const_section_size, NULL);
+    const_section = get_macho_section_data(TEST_FILE, expected_macho, "__const", &const_section_size, NULL);
     if (memcmp(const_section, expected_const_section, const_section_size) != 0) {
         LOG_ERROR("const section is not equal to what was expected");
         exit(EXIT_FAILURE);
     }
 
     // Something about calling this function on the symbol table causes something to segfault occasionally
-    symbol_table = get_macho_section_data(TEST_FILE, expected, "__symbol_table", &symbol_table_size, NULL);
-    if (memcmp(symbol_table, expected_symbol_table, symbol_table_size) != 0) {
+    symbol_table = get_macho_section_data(TEST_FILE, expected_macho, "__symbol_table", &symbol_table_size, NULL);
+    if (memcmp(symbol_table, expected_symtab, symbol_table_size) != 0) {
         LOG_ERROR("symbol table is not equal to what was expected");
-        // exit(EXIT_FAILURE); until we get this test working
+        exit(EXIT_FAILURE);
     }
 
-    string_table = get_macho_section_data(TEST_FILE, expected, "__string_table", &string_table_size, NULL);
+    string_table = get_macho_section_data(TEST_FILE, expected_macho, "__string_table", &string_table_size, NULL);
     if (memcmp(string_table, expected_string_table, string_table_size) != 0) {
         LOG_ERROR("string table is not equal to what was expected");
         exit(EXIT_FAILURE);
@@ -273,13 +279,17 @@ static void test_find_macho_symbol_index(void) {
 
 int main(int argc, char *argv[]) {
 
-    MachOFile *expected = create_test_macho_file();
+    MachOFile *expected_macho = malloc(sizeof(MachOFile));
+    nList *expected_symtab = malloc(NUM_SYMS * sizeof(nList));
+
+    create_test_macho_file(expected_macho, expected_symtab);
     print_hex_file(TEST_FILE); // needs to be run after the file is created
-    test_read_macho_file(expected);
-    test_get_macho_section_data(expected);
+    test_read_macho_file(expected_macho);
+    test_get_macho_section_data(expected_macho, expected_symtab);
     test_find_macho_symbol_index();
 
-    free_macho_file(expected);
+    free_macho_file(expected_macho);
+    free(expected_symtab);
     cleanup();
 
     printf("All tests passed\n");
