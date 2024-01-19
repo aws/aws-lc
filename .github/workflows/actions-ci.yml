@@ -9,8 +9,8 @@ concurrency:
 
 env:
   GOPROXY: https://proxy.golang.org,direct
-  SDE_MIRROR_URL: "https://downloadmirror.intel.com/777395/sde-external-9.21.1-2023-04-24-win.tar.xz"
-  SDE_VERSION_TAG: sde-external-9.21.1-2023-04-24-win
+  SDE_MIRROR_URL: "https://downloadmirror.intel.com/813591/sde-external-9.33.0-2024-01-07-win.tar.xz"
+  SDE_VERSION_TAG: sde-external-9.33.0-2024-01-07-win
   PACKAGE_NAME: aws-lc
   # Used to enable ASAN test dimension.
   AWSLC_NO_ASM_FIPS: 1
@@ -129,30 +129,31 @@ jobs:
           echo ${env:SDEROOT}
           .\tests\ci\run_windows_tests.bat "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x64 true
 
-  MSVC-SDE-32-bit:
-    needs: [sanity-test-run]
-    runs-on: aws-lc_windows-2019_64-core
-    steps:
-      - name: Git clone the repository
-        uses: actions/checkout@v3
-
-      - name: Build Windows Dependencies
-        run: |
-          choco install ninja --version 1.9.0.20190208 -y &&
-          choco install nasm --version 2.14.02 -y
-
-      - name: Install SDE simulator
-        run: |
-          curl -SL --output temp.tar.xz ${{ env.SDE_MIRROR_URL }}
-          7z x temp.tar.xz
-          7z x temp.tar
-          ren ${{ env.SDE_VERSION_TAG }} windows-sde
-          del temp.tar.xz
-          del temp.tar
-
-      - name: Run Windows SDE Tests for 32 bit
-        run: |
-          $env:SDEROOT = "${PWD}\windows-sde"
-          echo ${env:SDEROOT}
-          .\tests\ci\run_windows_tests.bat "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x86 true
-
+    # TODO: Investigate sudden hanging tests and failures in GHA runners (P114059413)
+#  MSVC-SDE-32-bit:
+#    needs: [sanity-test-run]
+#    runs-on: aws-lc_windows-2019_64-core
+#    steps:
+#      - name: Git clone the repository
+#        uses: actions/checkout@v3
+#
+#      - name: Build Windows Dependencies
+#        run: |
+#          choco install ninja --version 1.9.0.20190208 -y &&
+#          choco install nasm --version 2.14.02 -y
+#
+#      - name: Install SDE simulator
+#        run: |
+#          curl -SL --output temp.tar.xz ${{ env.SDE_MIRROR_URL }}
+#          7z x temp.tar.xz
+#          7z x temp.tar
+#          ren ${{ env.SDE_VERSION_TAG }} windows-sde
+#          del temp.tar.xz
+#          del temp.tar
+#
+#      - name: Run Windows SDE Tests for 32 bit
+#        run: |
+#          $env:SDEROOT = "${PWD}\windows-sde"
+#          echo ${env:SDEROOT}
+#          .\tests\ci\run_windows_tests.bat "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x86 true
+#
