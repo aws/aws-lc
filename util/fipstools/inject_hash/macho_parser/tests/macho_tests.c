@@ -27,40 +27,7 @@ static void print_hex(const void *ptr, size_t size) {
     printf("\n");
 }
 
-static void print_hex_file(const char* filename) {
-    FILE *file = fopen(filename, "rb");
-
-    if (file == NULL) {
-        perror("Error opening file");
-        return;
-    }
-
-    int byte;
-    size_t count = 0;
-
-    while ((byte = fgetc(file)) != EOF) {
-        printf("%02X", byte);
-        count++;
-
-        if (count % 4 == 0) {
-            printf(" ");
-        }
-
-        if (count % 32 == 0) {
-            printf("\n");
-        }
-    }
-
-    // Check if the last line is incomplete
-    if (count % 32 != 0) {
-        printf("\n");
-    }
-
-    fclose(file);
-}
-
-static void create_test_macho_file(MachOFile *macho, nList *symbol_table) {
-
+static void create_test_macho_file(MachOFile *macho, nList *symbol_table, const char* string_table) {
     if (macho == NULL || symbol_table == NULL) {
         LOG_ERROR("macho and symbol_table must be allocated");
         exit(EXIT_FAILURE);
@@ -153,9 +120,8 @@ static void create_test_macho_file(MachOFile *macho, nList *symbol_table) {
     fwrite(&symbol2, sizeof(nList), 1, file);
 
     // Write the string table
-    char string_table[] = "\0__text\0__const\0symbol1\0symbol2";
     fseek(file, symtab_command_stroff, SEEK_SET);
-    fwrite(string_table, sizeof(string_table), 1, file);
+    fwrite(string_table, symtab_command_strsize, 1, file);
 
     if (fclose(file) != 0) {
         LOG_ERROR("Error closing file\n");
@@ -231,7 +197,7 @@ static void test_read_macho_file(MachOFile *expected_macho) {
     }
 }
 
-static void test_get_macho_section_data(MachOFile *expected_macho, nList* expected_symtab) {
+static void test_get_macho_section_data(MachOFile *expected_macho, nList* expected_symtab, const char* expected_strtab) {
     uint8_t *text_section = NULL;
     size_t text_section_size;
     char expected_text_section[] = TEXT_DATA;
@@ -245,7 +211,6 @@ static void test_get_macho_section_data(MachOFile *expected_macho, nList* expect
 
     uint8_t *string_table = NULL;
     size_t string_table_size;
-    char expected_string_table[] = "\0__text\0__const\0symbol1\0symbol2";
 
     text_section = get_macho_section_data(TEST_FILE, expected_macho, "__text", &text_section_size, NULL);
     if (memcmp(text_section, expected_text_section, text_section_size) != 0) {
@@ -267,7 +232,7 @@ static void test_get_macho_section_data(MachOFile *expected_macho, nList* expect
     }
 
     string_table = get_macho_section_data(TEST_FILE, expected_macho, "__string_table", &string_table_size, NULL);
-    if (memcmp(string_table, expected_string_table, string_table_size) != 0) {
+    if (memcmp(string_table, expected_strtab, string_table_size) != 0) {
         LOG_ERROR("string table is not equal to what was expected");
         exit(EXIT_FAILURE);
     }
@@ -281,11 +246,11 @@ int main(int argc, char *argv[]) {
 
     MachOFile *expected_macho = malloc(sizeof(MachOFile));
     nList *expected_symtab = malloc(NUM_SYMS * sizeof(nList));
+    char expected_strtab[] = "__text\0__const\0symbol1\0symbol2\0";
 
-    create_test_macho_file(expected_macho, expected_symtab);
-    print_hex_file(TEST_FILE); // needs to be run after the file is created
+    create_test_macho_file(expected_macho, expected_symtab, expected_strtab);
     test_read_macho_file(expected_macho);
-    test_get_macho_section_data(expected_macho, expected_symtab);
+    test_get_macho_section_data(expected_macho, expected_symtab, expected_strtab);
     test_find_macho_symbol_index();
 
     free_macho_file(expected_macho);
