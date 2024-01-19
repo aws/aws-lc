@@ -152,12 +152,9 @@ func sdeOf(cpu, path string, args ...string) (*exec.Cmd, context.CancelFunc) {
 
 	// TODO(CryptoAlg-2154):SDE+ASAN tests will hang without exiting if tests pass for an unknown reason.
 	// Current workaround is to manually cancel the run after 20 minutes and check the output.
-	if runtime.GOOS == "linux" {
-		ctx, cancel := context.WithTimeout(context.Background(), 1200*time.Second)
-		return exec.CommandContext(ctx, *sdePath, sdeArgs...), cancel
-	}
+	ctx, cancel := context.WithTimeout(context.Background(), 1200*time.Second)
 
-	return exec.Command(*sdePath, sdeArgs...), nil
+	return exec.CommandContext(ctx, *sdePath, sdeArgs...), cancel
 }
 
 var (
@@ -185,12 +182,11 @@ func runTestOnce(test test, mallocNumToFail int64) (passed bool, err error) {
 		cmd = gdbOf(prog, args...)
 	} else if *useSDE {
 		cmd, cancel = sdeOf(test.cpu, prog, args...)
-		if cancel != nil {
-			defer cancel()
-			cmd.Cancel = func() error {
-				cancelled = true
-				return cmd.Process.Kill()
-			}
+		defer cancel()
+
+		cmd.Cancel = func() error {
+			cancelled = true
+			return cmd.Process.Kill()
 		}
 	} else {
 		cmd = exec.Command(prog, args...)
