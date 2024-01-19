@@ -1,15 +1,33 @@
-From 582d4fe349c89fd2cfbd66957c472b7c687eb429 Mon Sep 17 00:00:00 2001
+From e87c1a633b4dafd1ca226593d86aff0b910f3109 Mon Sep 17 00:00:00 2001
 From: Justin W Smith <103147162+justsmth@users.noreply.github.com>
 Date: Fri, 15 Dec 2023 15:27:22 -0500
 Subject: [PATCH] Minor fixes for AWS-LC
 
 ---
+ configure.ac                       | 6 ------
  src/tss2-esys/esys_crypto_ossl.c   | 4 +++-
  src/tss2-fapi/ifapi_curl.c         | 6 +++---
  src/tss2-fapi/ifapi_get_web_cert.c | 1 +
  test/unit/fapi-eventlog.c          | 8 +++++---
- 4 files changed, 12 insertions(+), 7 deletions(-)
+ 5 files changed, 12 insertions(+), 13 deletions(-)
 
+diff --git a/configure.ac b/configure.ac
+index 4250802e..f1e0cd8d 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -189,12 +189,6 @@ AS_IF([test "x$enable_esys" = xyes],
+                              [libcrypto >= ossl_min_version],,
+                              [AC_MSG_ERROR([ossl_err])])
+            AC_DEFINE([OSSL], [1], [OpenSSL cryptographic backend])
+-           AC_CHECK_LIB(crypto,[EVP_sm3], [
+-               AC_DEFINE([HAVE_EVP_SM3], [1], [Support EVP_sm3 in openssl])],
+-                [])
+-           AC_CHECK_LIB(crypto, [EVP_sm4_cfb128], [
+-               AC_DEFINE([HAVE_EVP_SM4_CFB], [1], [Support EVP_sm4_cfb in openssl])],
+-                [])
+            TSS2_ESYS_CFLAGS_CRYPTO="$CRYPTO_CFLAGS"
+            TSS2_ESYS_LDFLAGS_CRYPTO="$CRYPTO_LIBS"
+        ], [test "x$with_crypto" = xmbed], [
 diff --git a/src/tss2-esys/esys_crypto_ossl.c b/src/tss2-esys/esys_crypto_ossl.c
 index 1620788c..2924638a 100644
 --- a/src/tss2-esys/esys_crypto_ossl.c
@@ -33,7 +51,7 @@ index 1620788c..2924638a 100644
          goto_error(r, TSS2_ESYS_RC_GENERAL_FAILURE,
                     "Could not set RSA label.", cleanup);
 diff --git a/src/tss2-fapi/ifapi_curl.c b/src/tss2-fapi/ifapi_curl.c
-index ca4c95e7..b9ee5523 100644
+index 976f36d0..ab39e5aa 100644
 --- a/src/tss2-fapi/ifapi_curl.c
 +++ b/src/tss2-fapi/ifapi_curl.c
 @@ -77,13 +77,13 @@ get_crl_from_cert(X509 *cert, X509_CRL **crl)
@@ -52,7 +70,7 @@ index ca4c95e7..b9ee5523 100644
              {
                  GENERAL_NAME *gen_name = sk_GENERAL_NAME_value(distpoint->name.fullname, j);
                  ASN1_IA5STRING *asn1_str = gen_name->d.uniformResourceIdentifier;
-@@ -147,7 +147,7 @@ ifapi_curl_verify_ek_cert(
+@@ -160,7 +160,7 @@ ifapi_curl_verify_ek_cert(
      X509_STORE_CTX *ctx = NULL;
      X509_CRL *crl_intermed = NULL;
      X509_CRL *crl_ek = NULL;
@@ -118,5 +136,5 @@ index 1063eecd..7ce7db40 100644
      skip();
  #endif
 -- 
-2.39.2 (Apple Git-143)
+2.39.3 (Apple Git-145)
 
