@@ -29,7 +29,7 @@ function build_and_test_socat() {
   # test 310 OPENSSLRENEG2: AWS-LC doesn't support renegotiation by default, it can be enabled by calling SSL_set_renegotiate_mode
   # but that has caveats. See PORTING.md 'TLS renegotiation'
   # test 492 ACCEPT_FD: uses systemd-socket-activate which doesn't inherit the LD_LIBRARY_PATH so socat can't find libcrypto.so
-  ./test.sh --expect-fail 146,216,309,310,492
+  ./test.sh -d -v --expect-fail 146,216,309,310,492
   popd
 }
 
