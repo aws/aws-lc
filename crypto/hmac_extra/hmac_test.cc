@@ -157,6 +157,42 @@ static void RunHMACTestEVP(const std::vector<uint8_t> &key,
   }
   ASSERT_TRUE(EVP_DigestSignFinal(mctx.get(), actual.data(), &len));
   EXPECT_EQ(Bytes(tag), Bytes(actual.data(), tag.size()));
+
+
+  // Test |EVP_PKEY| key creation with |EVP_PKEY_new_raw_private_key|.
+  bssl::UniquePtr<EVP_PKEY> raw_pkey(EVP_PKEY_new_raw_private_key(
+      EVP_PKEY_HMAC, nullptr, key.data(), key.size()));
+  mctx.Reset();
+  len = 0;
+  actual.clear();
+  EXPECT_TRUE(
+      EVP_DigestSignInit(mctx.get(), nullptr, md, nullptr, raw_pkey.get()));
+  EXPECT_TRUE(EVP_DigestSignUpdate(mctx.get(), msg.data(), msg.size()));
+  EXPECT_TRUE(EVP_DigestSignFinal(mctx.get(), nullptr, &len));
+  actual.resize(len);
+  EXPECT_TRUE(EVP_DigestSignFinal(mctx.get(), actual.data(), &len));
+  actual.resize(len);
+  EXPECT_EQ(Bytes(tag), Bytes(actual.data(), tag.size()));
+
+  // Test retrieving key passed into |raw_pkey| with
+  // |EVP_PKEY_get_raw_private_key|.
+  std::vector<uint8_t> retrieved_key;
+  size_t retrieved_key_len;
+  EXPECT_TRUE(EVP_PKEY_get_raw_private_key(raw_pkey.get(), nullptr,
+                                           &retrieved_key_len));
+  EXPECT_EQ(key.size(), retrieved_key_len);
+  retrieved_key.resize(retrieved_key_len);
+  EXPECT_TRUE(EVP_PKEY_get_raw_private_key(raw_pkey.get(), retrieved_key.data(),
+                                           &retrieved_key_len));
+  retrieved_key.resize(retrieved_key_len);
+  EXPECT_EQ(Bytes(retrieved_key), Bytes(key));
+
+  // Test retrieving key with a buffer length that's too small. This should fail
+  if (!key.empty()) {
+    size_t short_key_len = retrieved_key_len - 1;
+    EXPECT_FALSE(EVP_PKEY_get_raw_private_key(
+        raw_pkey.get(), retrieved_key.data(), &short_key_len));
+  }
 }
 
 
