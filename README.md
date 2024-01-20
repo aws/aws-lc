@@ -96,9 +96,9 @@ the checks are run in AWS-LC’s CI on every change. The algorithms that have be
 verified on certain platforms with caveats include:
 * SHA-2
 * HMAC
-* AES-GCM
 * AES-KWP
 * ECDH & ECDSA with curve P-384
+* HKDF
 
 ## Have a Question?
 
