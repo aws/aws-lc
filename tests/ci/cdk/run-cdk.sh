@@ -44,7 +44,7 @@ function destroy_ci() {
     echo "destroy_ci should not be executed on team account."
     exit 1
   fi
-  cdk destroy aws-lc-* --force
+  cdk destroy 'aws-lc-*' --force
   # CDK stack destroy does not delete s3 bucket automatically.
   delete_s3_buckets
   # CDK stack destroy does not delete ecr automatically.
@@ -57,7 +57,7 @@ function destroy_docker_img_build_stack() {
     exit 1
   fi
   # Destroy all temporary resources created for all docker image build.
-  cdk destroy aws-lc-docker-image-build-* --force
+  cdk destroy 'aws-lc-docker-image-build-*' --force
   # CDK stack destroy does not delete s3 bucket automatically.
   delete_s3_buckets
 }
@@ -83,7 +83,7 @@ function create_win_docker_img_build_stack() {
 }
 
 function create_github_ci_stack() {
-  cdk deploy aws-lc-ci-* --require-approval never
+  cdk deploy 'aws-lc-ci-*' --require-approval never
 }
 
 function run_linux_img_build() {
@@ -178,7 +178,7 @@ function build_linux_docker_images() {
   trap destroy_docker_img_build_stack EXIT
 
   # Create/update aws-ecr repo.
-  cdk deploy aws-lc-ecr-linux-* --require-approval never
+  cdk deploy 'aws-lc-ecr-linux-*' --require-approval never
 
   # Create docker image build stack.
   create_linux_docker_img_build_stack
@@ -196,7 +196,7 @@ function build_win_docker_images() {
  trap destroy_docker_img_build_stack EXIT
 
  # Create/update aws-ecr repo.
- cdk deploy aws-lc-ecr-windows-* --require-approval never
+ cdk deploy 'aws-lc-ecr-windows-*' --require-approval never
 
  # Create aws windows build stack
  create_win_docker_img_build_stack
@@ -222,19 +222,19 @@ function create_android_resources() {
   # TODO: Move resource creation to aws cdk when cdk has support for device form resource constructs.
   # Issue: https://github.com/aws/aws-cdk/issues/17893
   DEVICEFARM_PROJECT=`aws devicefarm create-project --name aws-lc-android-ci | \
-                             python -c 'import json,sys;obj=json.load(sys.stdin);print(obj["project"]["arn"])'`
+                             python3 -c 'import json,sys;obj=json.load(sys.stdin);print(obj["project"]["arn"])'`
 
   DEVICEFARM_DEVICE_POOL=`aws devicefarm create-device-pool --project-arn ${DEVICEFARM_PROJECT} \
     --name "aws-lc-device-pool" \
     --description "AWS-LC Device Pool" \
     --rules file://../android/devicepool_rules.json --max-devices 2 | \
-    python -c 'import json,sys;obj=json.load(sys.stdin);print(obj["devicePool"]["arn"])'`
+    python3 -c 'import json,sys;obj=json.load(sys.stdin);print(obj["devicePool"]["arn"])'`
 
   DEVICEFARM_DEVICE_POOL_FIPS=`aws devicefarm create-device-pool --project-arn ${DEVICEFARM_PROJECT} \
     --name "aws-lc-device-pool-fips" \
     --description "AWS-LC FIPS Device Pool" \
     --rules file://../android/devicepool_rules_fips.json --max-devices 2 | \
-    python -c 'import json,sys;obj=json.load(sys.stdin);print(obj["devicePool"]["arn"])'`
+    python3 -c 'import json,sys;obj=json.load(sys.stdin);print(obj["devicePool"]["arn"])'`
 
   cat <<EOF
 
@@ -385,7 +385,7 @@ function main() {
     build_win_docker_images
     ;;
   synth)
-    cdk synth aws-lc-ci-*
+    cdk synth 'aws-lc-ci-*'
     ;;
   diff)
     cdk diff aws-lc-ci-*
