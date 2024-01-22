@@ -21,6 +21,16 @@ jobs:
       - name: Run integration build
         run: |
           ./tests/ci/integration/run_haproxy_integration.sh
+  tpm2-tss:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install OS Dependencies
+        run: |
+          sudo apt-get update && sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang autoconf-archive libcmocka0 libcmocka-dev procps iproute2 build-essential git pkg-config gcc libtool automake libssl-dev uthash-dev autoconf doxygen libjson-c-dev libini-config-dev libcurl4-openssl-dev uuid-dev libltdl-dev libusb-1.0-0-dev libftdi-dev
+      - uses: actions/checkout@v3
+      - name: Run integration build
+        run: |
+          ./tests/ci/integration/run_tpm2_tss_integration.sh
   grpc:
     env:
       DEBIAN_FRONTEND: noninteractive
