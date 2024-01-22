@@ -101,17 +101,13 @@ ln -s ${AWS_LC_INSTALL_FOLDER}/lib64 ${AWS_LC_INSTALL_FOLDER}/lib
 mkdir -p ${PYTHON_SRC_FOLDER}
 pushd ${PYTHON_SRC_FOLDER}
 
-# TODO [childw]: clean this up
-echo CHECKING AVAILABLE NETWORK INTERFACES
-cat /proc/sys/net/ipv6/conf/all/disable_ipv6
-echo CHECKING FOR SYSCTL
-which sysctl || echo NO SYSCTL FOUND
+# Some environments disable IPv6 by default
 which sysctl && ( sysctl -w net.ipv6.conf.all.disable_ipv6=0 || /bin/true )
 echo 0 >/proc/sys/net/ipv6/conf/all/disable_ipv6 || /bin/true
 
 # NOTE: cpython keeps a unique branch per version, add version branches here
 # TODO: As we add more versions to support, we may want to parallelize here
-for branch in 3.10; do
+for branch in 3.10 3.11; do
 #for branch in 3.10 3.11 3.12 main; do
     python_patch ${branch}
     python_build ${branch}
