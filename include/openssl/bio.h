@@ -474,12 +474,14 @@ OPENSSL_EXPORT int BIO_set_mem_eof_return(BIO *bio, int eof_value);
 // |BIO_reset| attempts to seek the file pointer to the start of file using
 // |lseek|.
 
+#if !defined(OPENSSL_NO_POSIX_IO)
 // BIO_s_fd returns a |BIO_METHOD| for file descriptor fds.
 OPENSSL_EXPORT const BIO_METHOD *BIO_s_fd(void);
 
 // BIO_new_fd creates a new file descriptor BIO wrapping |fd|. If |close_flag|
 // is non-zero, then |fd| will be closed when the BIO is.
 OPENSSL_EXPORT BIO *BIO_new_fd(int fd, int close_flag);
+#endif
 
 // BIO_set_fd sets the file descriptor of |bio| to |fd|. If |close_flag| is
 // non-zero then |fd| will be closed when |bio| is. It returns one on success
@@ -513,11 +515,9 @@ OPENSSL_EXPORT int BIO_get_fd(BIO *bio, int *out_fd);
 // BIO_s_file returns a BIO_METHOD that wraps a |FILE|.
 OPENSSL_EXPORT const BIO_METHOD *BIO_s_file(void);
 
-#if !defined(OPENSSL_NO_FILESYSTEM)
 // BIO_new_file creates a file BIO by opening |filename| with the given mode.
 // See the |fopen| manual page for details of the mode argument.
 OPENSSL_EXPORT BIO *BIO_new_file(const char *filename, const char *mode);
-#endif
 
 // BIO_new_fp creates a new file BIO that wraps the given |FILE|. If
 // |close_flag| is |BIO_CLOSE|, then |fclose| will be called on |stream| when
@@ -535,7 +535,6 @@ OPENSSL_EXPORT int BIO_get_fp(BIO *bio, FILE **out_file);
 // returns one on success and zero otherwise.
 OPENSSL_EXPORT int BIO_set_fp(BIO *bio, FILE *file, int close_flag);
 
-#if !defined(OPENSSL_NO_FILESYSTEM)
 // BIO_read_filename opens |filename| for reading and sets the result as the
 // |FILE| for |bio|. It returns one on success and zero otherwise. The |FILE|
 // will be closed when |bio| is freed.
@@ -555,7 +554,6 @@ OPENSSL_EXPORT int BIO_append_filename(BIO *bio, const char *filename);
 // as the |FILE| for |bio|. It returns one on success and zero otherwise. The
 // |FILE| will be closed when |bio| is freed.
 OPENSSL_EXPORT int BIO_rw_filename(BIO *bio, const char *filename);
-#endif  // OPENSSL_NO_FILESYSTEM
 
 // BIO_tell returns the file offset of |bio|, or a negative number on error or
 // if |bio| does not support the operation.
@@ -589,12 +587,14 @@ OPENSSL_EXPORT long BIO_seek(BIO *bio, long offset);
 // TODO(davidben): Add separate APIs and fix the internals to use |SOCKET|s
 // around rather than rely on int casts.
 
+#if !defined(OPENSSL_NO_SOCK)
 OPENSSL_EXPORT const BIO_METHOD *BIO_s_socket(void);
 
 // BIO_new_socket allocates and initialises a fresh BIO which will read and
 // write to the socket |fd|. If |close_flag| is |BIO_CLOSE| then closing the
 // BIO will close |fd|. It returns the fresh |BIO| or NULL on error.
 OPENSSL_EXPORT BIO *BIO_new_socket(int fd, int close_flag);
+#endif  // !OPENSSL_NO_SOCK
 
 
 // Connect BIOs.
@@ -602,6 +602,7 @@ OPENSSL_EXPORT BIO *BIO_new_socket(int fd, int close_flag);
 // A connection BIO creates a network connection and transfers data over the
 // resulting socket.
 
+#if !defined(OPENSSL_NO_SOCK)
 OPENSSL_EXPORT const BIO_METHOD *BIO_s_connect(void);
 
 // BIO_new_connect returns a BIO that connects to the given hostname and port.
@@ -629,12 +630,17 @@ OPENSSL_EXPORT int BIO_set_conn_port(BIO *bio, const char *port_str);
 OPENSSL_EXPORT int BIO_set_conn_int_port(BIO *bio, const int *port);
 
 // BIO_set_nbio sets whether |bio| will use non-blocking I/O operations. It
-// returns one on success and zero otherwise.
+// returns one on success and zero otherwise. This only works for connect BIOs
+// and must be called before |bio| is connected to take effect.
+//
+// For socket and fd BIOs, callers must configure blocking vs. non-blocking I/O
+// using the underlying platform APIs.
 OPENSSL_EXPORT int BIO_set_nbio(BIO *bio, int on);
 
 // BIO_do_connect connects |bio| if it has not been connected yet. It returns
 // one on success and <= 0 otherwise.
 OPENSSL_EXPORT int BIO_do_connect(BIO *bio);
+#endif  // !OPENSSL_NO_SOCK
 
 
 // Datagram BIOs.
