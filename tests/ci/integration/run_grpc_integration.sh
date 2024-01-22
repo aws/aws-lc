@@ -35,16 +35,16 @@ aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DBUILD
 
 mkdir -p "${GRPC_SRC_FOLDER}/cmake/build"
 cd "${GRPC_SRC_FOLDER}/cmake/build"
-cmake -GNinja -DgRPC_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Release  -DgRPC_SSL_PROVIDER=package  -DBUILD_SHARED_LIBS=ON  -DOPENSSL_ROOT_DIR="${AWS_LC_INSTALL_FOLDER}" ../..
-ninja
+time cmake -GNinja -DgRPC_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Release  -DgRPC_SSL_PROVIDER=package  -DBUILD_SHARED_LIBS=ON  -DOPENSSL_ROOT_DIR="${AWS_LC_INSTALL_FOLDER}" ../..
+grpc_tests=$(grep add_executable ../../CMakeLists.txt | grep _test | grep -E '(tls|ssl|cert)' | cut -d '(' -f2)
+echo Building $grpc_tests
+time ninja $grpc_tests
 
 # grpc tests expect to use relative paths to certificates and test files
 cd "${GRPC_SRC_FOLDER}"
 python3 tools/run_tests/start_port_server.py
-for file in cmake/build/*; do
-    if [[ -x "$file" && ( "$file" == *ssl* || "$file" == *tls* || "$file" == *cert* ) ]]; then
-        ./"$file"
-    fi
+for test in $grpc_tests; do
+    "./cmake/build/${test}"
 done
 
 ldd "${GRPC_SRC_FOLDER}/cmake/build/libgrpc.so" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1

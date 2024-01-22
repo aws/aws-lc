@@ -29,9 +29,9 @@ cd botan
 git rev-parse HEAD
 python3 configure.py --cc-bin=$CXX --cc-abi-flags="$CXXFLAGS" --disable-shared --disable-modules=locking_allocator,x509,tls --build-targets=static --without-documentation
 make -j$(nproc)
-export CXXFLAGS="$CXXFLAGS -DCRYPTOFUZZ_BOTAN"
 env LIBBOTAN_A_PATH `realpath libbotan-3.a`
-env BOTAN_INCLUDE_PATH `realpath build/include`
+env BOTAN_INCLUDE_PATH `realpath build/include/public`
+export CXXFLAGS="$CXXFLAGS -DCRYPTOFUZZ_BOTAN -I $(realpath build/include/internal)"
 cd "${CRYPTOFUZZ_SRC}/modules/botan/"
 make -j$(nproc)
 
