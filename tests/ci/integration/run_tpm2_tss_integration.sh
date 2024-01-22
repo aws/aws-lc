@@ -39,6 +39,7 @@ function curl_build() {
   cmake -DCMAKE_DEBUG_POSTFIX='' -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH="${AWS_LC_INSTALL_FOLDER}" -DCMAKE_INSTALL_PREFIX="${CURL_INSTALL_FOLDER}" -B "${CURL_BUILD_FOLDER}" -S "${CURL_SRC_FOLDER}"
   cmake --build "${CURL_BUILD_FOLDER}" --target install -j "${NUM_CPU_THREADS}"
   ldd "${CURL_INSTALL_FOLDER}/lib/libcurl.so" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
+  ldd "${CURL_INSTALL_FOLDER}/lib/libcurl.so" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libssl.so" || exit 1
 }
 
 function tpm2_tss_build() {
