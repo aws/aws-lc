@@ -1,15 +1,15 @@
-From e87c1a633b4dafd1ca226593d86aff0b910f3109 Mon Sep 17 00:00:00 2001
+From 28016c8ca9b2c0c19b06995b99b1cefc1c7359b1 Mon Sep 17 00:00:00 2001
 From: Justin W Smith <103147162+justsmth@users.noreply.github.com>
-Date: Fri, 15 Dec 2023 15:27:22 -0500
+Date: Mon, 22 Jan 2024 10:20:12 -0500
 Subject: [PATCH] Minor fixes for AWS-LC
 
 ---
  configure.ac                       | 6 ------
- src/tss2-esys/esys_crypto_ossl.c   | 4 +++-
+ src/tss2-esys/esys_crypto_ossl.c   | 2 +-
  src/tss2-fapi/ifapi_curl.c         | 6 +++---
  src/tss2-fapi/ifapi_get_web_cert.c | 1 +
  test/unit/fapi-eventlog.c          | 8 +++++---
- 5 files changed, 12 insertions(+), 13 deletions(-)
+ 5 files changed, 10 insertions(+), 13 deletions(-)
 
 diff --git a/configure.ac b/configure.ac
 index 4250802e..f1e0cd8d 100644
@@ -29,19 +29,10 @@ index 4250802e..f1e0cd8d 100644
             TSS2_ESYS_LDFLAGS_CRYPTO="$CRYPTO_LIBS"
         ], [test "x$with_crypto" = xmbed], [
 diff --git a/src/tss2-esys/esys_crypto_ossl.c b/src/tss2-esys/esys_crypto_ossl.c
-index 1620788c..2924638a 100644
+index 1620788c..503feefc 100644
 --- a/src/tss2-esys/esys_crypto_ossl.c
 +++ b/src/tss2-esys/esys_crypto_ossl.c
-@@ -8,6 +8,8 @@
- #include <config.h>
- #endif
- 
-+#include <openssl/mem.h>
-+#include <openssl/bn.h>
- #include <openssl/rand.h>
- #include <openssl/evp.h>
- #include <openssl/rsa.h>
-@@ -751,7 +753,7 @@ iesys_cryptossl_pk_encrypt(TPM2B_PUBLIC * pub_tpm_key,
+@@ -751,7 +751,7 @@ iesys_cryptossl_pk_encrypt(TPM2B_PUBLIC * pub_tpm_key,
                     "Could not duplicate OAEP label", cleanup);
      }
  
