@@ -78,7 +78,7 @@ index 9e701fd847..4aeedfdcec 100644
          req = urllib.request.Request(url, method='HEAD')
          # Reset global urllib.request._opener
 diff --git a/Lib/test/test_ssl.py b/Lib/test/test_ssl.py
-index 6117ca3fdb..436735901b 100644
+index 6117ca3fdb..fc93c6271b 100644
 --- a/Lib/test/test_ssl.py
 +++ b/Lib/test/test_ssl.py
 @@ -37,6 +37,7 @@
@@ -338,6 +338,39 @@ index 6117ca3fdb..436735901b 100644
  class TestPostHandshakeAuth(unittest.TestCase):
      def test_pha_setter(self):
          protocols = [
+@@ -4504,6 +4528,32 @@ def test_internal_chain_server(self):
+                 self.assertEqual(res, b'\x02\n')
+ 
+ 
++@unittest.skipUnless(Py_OPENSSL_IS_AWSLC, "Only test this against AWS-LC")
++class TestPostHandshakeAuthAwsLc(unittest.TestCase):
++    def test_pha(self):
++        protocols = [
++            ssl.PROTOCOL_TLS_SERVER, ssl.PROTOCOL_TLS_CLIENT
++        ]
++        for protocol in protocols:
++            client_ctx, server_ctx, hostname = testing_context()
++            client_ctx.load_cert_chain(SIGNED_CERTFILE)
++            self.assertEqual(client_ctx.post_handshake_auth, None)
++            with self.assertRaises(AttributeError):
++                client_ctx.post_handshake_auth = True
++            with self.assertRaises(AttributeError):
++                server_ctx.post_handshake_auth = True
++
++            with ThreadedEchoServer(context=server_ctx) as server:
++                with client_ctx.wrap_socket(
++                    socket.socket(),
++                    server_hostname=hostname
++                ) as ssock:
++                    ssock.connect((HOST, server.port))
++                    with self.assertRaises(NotImplementedError):
++                        ssock.verify_client_post_handshake()
++
++
++
+ HAS_KEYLOG = hasattr(ssl.SSLContext, 'keylog_filename')
+ requires_keylog = unittest.skipUnless(
+     HAS_KEYLOG, 'test requires OpenSSL 1.1.1 with keylog callback')
 diff --git a/Modules/Setup b/Modules/Setup
 index a8faa1d102..8abe8fd7d2 100644
 --- a/Modules/Setup
@@ -377,7 +410,7 @@ index af6d1b23d3..4b060b30a5 100644
  };
  
 diff --git a/Modules/_ssl.c b/Modules/_ssl.c
-index e939f95048..a87da1e20b 100644
+index e939f95048..8c99e2d8a1 100644
 --- a/Modules/_ssl.c
 +++ b/Modules/_ssl.c
 @@ -182,6 +182,12 @@ extern const SSL_METHOD *TLSv1_2_method(void);
@@ -450,6 +483,15 @@ index e939f95048..a87da1e20b 100644
      int err = SSL_verify_client_post_handshake(self->ssl);
      if (err == 0)
          return _setSSLError(get_state_sock(self), NULL, 0, __FILE__, __LINE__);
+@@ -3169,7 +3181,7 @@ _ssl__SSLContext_impl(PyTypeObject *type, int proto_version)
+ 
+     /* Set SSL_MODE_RELEASE_BUFFERS. This potentially greatly reduces memory
+        usage for no cost at all. */
+-    SSL_CTX_set_mode(self->ctx, SSL_MODE_RELEASE_BUFFERS);
++    SSL_CTX_set_mode(self->ctx, SSL_MODE_RELEASE_BUFFERS | SSL_MODE_AUTO_RETRY);
+ 
+ #define SID_CTX "Python"
+     SSL_CTX_set_session_id_context(self->ctx, (const unsigned char *) SID_CTX,
 @@ -3182,7 +3194,7 @@ _ssl__SSLContext_impl(PyTypeObject *type, int proto_version)
      X509_VERIFY_PARAM_set_flags(params, X509_V_FLAG_TRUSTED_FIRST);
      X509_VERIFY_PARAM_set_hostflags(params, self->hostflags);
