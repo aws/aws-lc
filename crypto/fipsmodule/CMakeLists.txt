@@ -459,7 +459,11 @@ elseif(FIPS_SHARED)
     # and all the read-only data in the __const section are between the
     # respective start and end markers.
     if (CMAKE_OSX_DEPLOYMENT_TARGET)
-      set(OSX_VERSION_MIN_FLAG "-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
+      if(IOS)
+        set(OSX_VERSION_MIN_FLAG "-miphoneos-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
+      else()
+        set(OSX_VERSION_MIN_FLAG "-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
+      endif()
     endif()
     add_custom_command(
       OUTPUT fips_apple_start.o
