@@ -104,7 +104,7 @@ static void create_test_macho_file(MachOFile *macho, nList *symbol_table, const 
         .n_type = 0,
         .n_sect = 1,
         .n_desc = 0,
-        .n_value = 0x100000000,  // Address of the symbol
+        .n_value = 15,  // Address of the symbol
     };
 
     nList symbol2 = {
@@ -112,7 +112,7 @@ static void create_test_macho_file(MachOFile *macho, nList *symbol_table, const 
         .n_type = 0,
         .n_sect = 2,
         .n_desc = 0,
-        .n_value = 0x100000000 + sizeof(test_text_data),  // Address of the symbol
+        .n_value = 23,  // Address of the symbol
     };
 
     fseek(file, symtab_command_symoff, SEEK_SET);
@@ -238,8 +238,20 @@ static void test_get_macho_section_data(MachOFile *expected_macho, nList* expect
     }
 }
 
-static void test_find_macho_symbol_index(void) {
-    assert (1 == 1);
+static void test_find_macho_symbol_index(MachOFile *expected_macho, const char *expected_strtab) {
+    uint8_t *symbol_table = NULL;
+    size_t symbol_table_size;
+
+    uint8_t *string_table = NULL;
+    size_t string_table_size;
+
+    symbol_table = get_macho_section_data(TEST_FILE, expected_macho, "__symbol_table", &symbol_table_size, NULL);
+    string_table = get_macho_section_data(TEST_FILE, expected_macho, "__string_table", &string_table_size, NULL);
+
+    uint32_t symbol1_index;
+    symbol1_index = find_macho_symbol_index(symbol_table, symbol_table_size, string_table, string_table_size, "symbol1", NULL);
+
+    printf("%u\n", symbol1_index);
 }
 
 int main(int argc, char *argv[]) {
@@ -251,7 +263,7 @@ int main(int argc, char *argv[]) {
     create_test_macho_file(expected_macho, expected_symtab, expected_strtab);
     test_read_macho_file(expected_macho);
     test_get_macho_section_data(expected_macho, expected_symtab, expected_strtab);
-    test_find_macho_symbol_index();
+    test_find_macho_symbol_index(expected_macho, expected_strtab);
 
     free_macho_file(expected_macho);
     free(expected_symtab);

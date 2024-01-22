@@ -136,6 +136,10 @@ uint32_t find_macho_symbol_index(uint8_t *symbolTableData, size_t symbolTableSiz
         }
     }
 
+    if (!found) {
+        LOG_ERROR("Requested symbol %s not found", symbolName);
+    }
+
     free(stringTable);
     if (base) {
         index = index - *base;
