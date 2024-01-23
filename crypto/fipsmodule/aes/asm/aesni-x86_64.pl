@@ -3635,7 +3635,6 @@ ___
 	&aesni_generate1("dec",$key1_dec,$rounds);
 $code.=<<___;
 	xorps	@tweak[1],$inout0
-		movups	$inout0,($out)          # TBD: when encrypting, avoid writing to out
 
     # $inout0 now contains a block
     #  | P_m |  CP  |
@@ -3646,28 +3645,16 @@ $code.=<<___;
 	# Note: P_m is stored in the less significant part of $inout0
 	movdqa   $inout0,$inout2
 
-
-# TBD: I may not need to shift P_m since it will be input to the encryption in the
-# same position, but I will need to replace CP with another CP_enc and this will be the
-# last encryption input with tweak[1].
-
-##	# Shift left Pm by 16-$len_ to be ready to be output as a last partial
-##	# block |P_m| (actually input to the encryption).
-##	lea .Lpshufb_shf_table(%rip),$key1_dec   #borrow $key1_dec
-##	movups  ($key1_dec,$len_,1),$inout4
-##	pshufb  $inout4,$inout0
-##	movdqa	$inout0,$inout1
-
 	# Read 16 bytes from the input unaligned in order to include
 	# the partial block Cm and not read past it.
 	movups  ($inp,$len_,1),$inout0
 
-	# Move Cm from the end of the block (most significant) to the
+	# Move C_m from the end of the block (most significant) to the
 	# beginning of the block (least significant), that is,
 	# shift right by 16-$len_ bytes.
-	#  |     C_m|  ->  |C_m     |
-	#  ^        ^
-	# LSB      MSB
+	#  |     C_m |  ->  | C_m     |
+	#  ^         ^
+	# LSB       MSB
 	lea .Lpshufb_shf_table(%rip),$key1_dec   #borrow $key1_dec
 	add     \$16, $key1_dec
 	sub	    $len_, $key1_dec
@@ -3675,8 +3662,10 @@ $code.=<<___;
 	xorps	.Lmask1(%rip),$rndkey0
 	pshufb  $rndkey0,$inout0
 
+	movdqa	$rndkey0, @tweak[2]	    # backup the mask
+
 	# Concatenate CP with C_m
-    #  | P_m |  CP  |
+    #  | C_m |  CP  |
 	#  ^            ^
 	# LSB          MSB
 	# Input to AES decrypt with tweak[0]
@@ -3690,32 +3679,61 @@ $code.=<<___;
 ___
 	&aesni_generate1("dec",$key1_dec,$rounds);
 $code.=<<___;
-	xorps	@tweak[5],$inout0
+    xorps	@tweak[5],$inout0
+
+	# Encrypt |   P_m-1  |
+    xorps	@tweak[0],$inout0
+    mov $rnds_,$rounds             # restore rounds
+___
+	&aesni_generate1("enc",$key1_enc,$rounds);
+$code.=<<___;
+    xorps	@tweak[0],$inout0
+	movdqa  $inout0,$inout5
+
+	# Calculate encryption tweak[1] (no XORing with round[0])
+	pshufd	\$0x5f,@tweak[0],$twtmp
+	movdqa @tweak[0],@tweak[1]
+	psrad	\$31,$twtmp
+	paddq	@tweak[1],@tweak[1]
+	pand	$twmask,$twtmp
+	pxor	$twtmp,@tweak[1]
+
+	# $inout0 (and $inout$5) contains
+	#  | C_m |  CP_enc  |
+	#  ^            ^
+	# LSB          MSB
+
+	# Shift left C_m by 16-$len_ to the most significant side. Write
+	#  | 0..0   C_m |
+	#  ^            ^
+	# LSB          MSB
+	# to the last 16 bytes of the output, including the partial block.
+	lea .Lpshufb_shf_table(%rip),$key1_dec   #borrow $key1_dec
+	movups  ($key1_dec,$len_,1),$inout4
+	pshufb  $inout4,$inout5
+	movups	$inout5,($out,$len_,1)
+
+	# Concatenate CP_enc with P_m (actually replace CP_dec with CP_enc)
+	# P_m is in $inout2, CP_enc is in $inout0
+	#  | P_m |  CP_enc  |
+	#  ^            ^
+	# LSB          MSB
+	# Input to AES encrypt with tweak[1]
+	# Output: |   C_m-1   |
+	movdqa  @tweak[2], $rndkey0   # restore the mask
+	pblendvb  $inout0, $inout2
+
+	movdqa	$inout2, $inout0
+	mov	$key1_enc_,$key1_enc			# restore $key1_enc
+	mov	$rnds_,$rounds			# restore $rounds
+	xorps	@tweak[1],$inout0
+___
+	&aesni_generate1("enc",$key1_enc,$rounds);
+$code.=<<___;
+	xorps	@tweak[1],$inout0
+	movups	$inout0,($out)
 ___
 
-
-##.Lxts_reenc_steal:
-##	movzb	16($inp),%eax			# borrow $rounds ...
-##	movzb	($out),%ecx			# ... and $key1_dec
-##	lea	1($inp),$inp
-##	mov	%al,($out)
-##	mov	%cl,16($out)
-##	lea	1($out),$out
-##	sub	\$1,$len
-##	jnz	.Lxts_reenc_steal
-##
-##	sub	$len_,$out			# rewind $out
-##	mov	$key1_dec_,$key1_dec			# restore $key1_dec
-##	mov	$rnds_,$rounds			# restore $rounds
-##
-##	movups	($out),$inout0
-##	xorps	@tweak[5],$inout0
-##___
-##	&aesni_generate1("dec",$key1_dec,$rounds);
-##$code.=<<___;
-##	xorps	@tweak[5],$inout0
-##    movups	$inout0,($out)
-##___
 
 $code.=<<___;
 .Lxts_reenc_ret:
