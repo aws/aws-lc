@@ -54,6 +54,7 @@ endif()
 
 function(build_benchmark target_name install_path)
   find_library(libcrypto-${target_name} crypto PATHS ${install_path}/lib/ ${install_path}/lib64/ NO_DEFAULT_PATH)
+  find_library(libdecrepit-${target_name} decrepit PATHS ${install_path}/lib/ ${install_path}/lib64/ NO_DEFAULT_PATH)
   message(STATUS "Building ${target_name} benchmark using header files from ${install_path}/include and libcrypto from ${libcrypto-${target_name}}.")
   add_executable(
           ${target_name}
@@ -66,6 +67,9 @@ function(build_benchmark target_name install_path)
   # include directory
   target_include_directories(${target_name} PUBLIC ${install_path}/include ${AWSLC_INSTALL_DIR}/include/internal/tool)
   target_link_libraries(${target_name} ${libcrypto-${target_name}} ${LIBRT_FLAG})
+  if (libdecrepit-${target_name})
+    target_link_libraries(${target_name} ${libdecrepit-${target_name}})
+  endif ()
   if(NOT MSVC AND NOT ANDROID)
     target_link_libraries(${target_name} pthread dl)
   endif()
