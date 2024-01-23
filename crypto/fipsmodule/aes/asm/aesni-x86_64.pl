@@ -3305,8 +3305,12 @@ pshufd	\$0x5f,@tweak[5],$twres
 	pxor	$rndkey0,@tweak[0]
 	pxor	$rndkey0,@tweak[1]
 	add	\$16*6,$len			# restore real remaining $len
-	jz	.Lxts_reenc_done			# done if ($len==0)
+	jnz .Lxts_reenc_len_nonzero		  # done if ($len==0)
+	movdqa @tweak[0], @tweak[5]		  # tweak[5] is dec tweak 0 in cipher-stealing
+	movdqa $enc_tweak(%rsp),@tweak[0]   # retrieve enc tweak[0]
+	jmp	.Lxts_reenc_done
 
+.Lxts_reenc_len_nonzero:
 	pxor	$rndkey0,@tweak[2]
 	cmp	\$0x20,$len
 	jb	.Lxts_reenc_one			# $len is 1*16
@@ -3372,8 +3376,18 @@ mov	$rnds_,$rounds			# restore $rounds ## TBD: needed?
 	xorps	@tweak[3],$inout3
 	xorps	@tweak[4],$inout4
 
-	 # for cipher-stealing:
-	 # check which 32-bit word in tweak[5] has a MSb = 1;
+	# Calculate next encryption tweak for cipher-stealing;
+	# encryption tweak 0 will be in tweak[0]
+	movdqa	$twres,$inout5
+	movdqa	@tweak[4],@tweak[0]
+	psrad	\$31,$inout5			# broadcast upper bits
+	paddq	@tweak[0],@tweak[0]
+   	pand	$twmask,$inout5
+	pxor	$inout5,@tweak[0]
+
+	 # Calculate next decryption tweak for cipher-stealing;
+	 # 	tweak 0 is already in tweak[5], tweak 1 will be in tweak[1].
+	 # Check which 32-bit word in tweak[5] has a MSb = 1;
 	 # make the corresponding word in twtmp all 1s
 	 pxor		$twtmp,$twtmp
 	 pcmpgtd	@tweak[5],$twtmp
@@ -3384,18 +3398,19 @@ mov	$rnds_,$rounds			# restore $rounds ## TBD: needed?
 	movdqu	$inout3,16*3($out)
 	movdqu	$inout4,16*4($out)
 	lea	16*5($out),$out			# $out+=5*16
-	 # for cipher-stealing:
+	and	\$15,$len_
+	jz	.Lxts_reenc_ret		# no cipher-stealing
+	 # for cipher-stealing decryption tweak, cont'd:
 	 # only 32-bit words 1 and 3 in twtmp matter
 	 # for applying the mask below. They are copied
 	 # to words 2 and 0 respectively in tweak[1].
 	 pshufd		\$0x13,$twtmp,@tweak[1]	# $twres
-	and	\$15,$len_
-	jz	.Lxts_reenc_ret		# no cipher-stealing
 
-	movdqa	@tweak[5],@tweak[0]
-	paddq	@tweak[5],@tweak[5]		# psllq 1,$tweak
+	movdqa	@tweak[5],@tweak[2]
+	paddq	@tweak[2],@tweak[2]		# psllq 1,$tweak
 	pand	$twmask,@tweak[1]		# isolate carry and residue
-	pxor	@tweak[5],@tweak[1]
+	pxor	@tweak[2],@tweak[1]
+
 	jmp	.Lxts_reenc_done2
 
 .align	16
@@ -3407,8 +3422,9 @@ ___
 	&aesni_generate1("dec",$key1_dec,$rounds);
 $code.=<<___;
 	xorps	@tweak[0],$inout0
-##	movdqa	@tweak[1],@tweak[0]     # used with cipher stealing
-##	movdqa	@tweak[2],@tweak[1]     # used with cipher stealing
+	movdqa	@tweak[1],@tweak[5]     # tweak 0 in cipher stealing
+	movdqa	@tweak[2],@tweak[1]     # tweak 1 in cipher stealing
+
 movdqa $enc_tweak(%rsp),@tweak[0]   # retrieve enc tweak[0]
  xorps	@tweak[0],$inout0
 mov $rnds_,$rounds             # restore rounds
@@ -3431,7 +3447,7 @@ xorps	@tweak[0],$inout0
 	call	_aesni_decrypt2
 
 	xorps	@tweak[0],$inout0
-##	movdqa	@tweak[2],@tweak[0]     # used with cipher stealing
+	movdqa	@tweak[2],@tweak[5]     # tweak 0 in cipher stealing
 	xorps	@tweak[1],$inout1
 ##	movdqa	@tweak[3],@tweak[1]     # used with cipher stealing
 movdqa $enc_tweak(%rsp),@tweak[0]   # retrieve enc tweak[0]
@@ -3454,11 +3470,21 @@ mov	$rnds_,$rounds			# restore $rounds
 call _aesni_encrypt2
 
 mov	$key1_dec_,$key1_dec			# restore $key1_dec
-#mov	$rnds_,$rounds			# restore $rounds
+mov	$rnds_,$rounds			# restore $rounds ## TBD: needed?
 xorps	@tweak[0],$inout0
 xorps	@tweak[1],$inout1
     movups	$inout0,($out)			# store 2 output blocks
 	movups	$inout1,16*1($out)
+
+	# Calculate next encryption tweak for cipher-stealing;
+	# encryption tweak 0 will be in tweak[0]
+	movdqa	$twres,$inout5
+	movdqa	@tweak[1],@tweak[0]
+	psrad	\$31,$inout5			# broadcast upper bits
+	paddq	@tweak[0],@tweak[0]
+   	pand	$twmask,$inout5
+	pxor	$inout5,@tweak[0]
+
 	lea	16*2($out),$out			# $out+=2*16
 	jmp	.Lxts_reenc_done
 
@@ -3595,6 +3621,9 @@ xorps	@tweak[3],$inout3
 .Lxts_reenc_done:
 	and	\$15,$len_			# see if $len%16 is 0
 	jz	.Lxts_reenc_ret
+# Cipher-stealing:
+# decrypt tweaks 0 and 1 are in tweak[5] and tweak[1], resp.
+# encrypt tweak is tweak[0]
 .Lxts_reenc_done2:
 	mov	$len_,$len
 	mov	$key1_dec_,$key1_dec			# restore $key1_dec
@@ -3606,30 +3635,87 @@ ___
 	&aesni_generate1("dec",$key1_dec,$rounds);
 $code.=<<___;
 	xorps	@tweak[1],$inout0
-	movups	$inout0,($out)
+		movups	$inout0,($out)          # TBD: when encrypting, avoid writing to out
 
-.Lxts_reenc_steal:
-	movzb	16($inp),%eax			# borrow $rounds ...
-	movzb	($out),%ecx			# ... and $key1_dec
-	lea	1($inp),$inp
-	mov	%al,($out)
-	mov	%cl,16($out)
-	lea	1($out),$out
-	sub	\$1,$len
-	jnz	.Lxts_reenc_steal
+    # $inout0 now contains a block
+    #  | P_m |  CP  |
+	#  ^            ^
+	# LSB          MSB
+    # P_m is of length $len_ bytes and is the last (partial) block of plaintext
+	# (output from the decryption).
+	# Note: P_m is stored in the less significant part of $inout0
+	movdqa   $inout0,$inout2
 
-	sub	$len_,$out			# rewind $out
+
+# TBD: I may not need to shift P_m since it will be input to the encryption in the
+# same position, but I will need to replace CP with another CP_enc and this will be the
+# last encryption input with tweak[1].
+
+##	# Shift left Pm by 16-$len_ to be ready to be output as a last partial
+##	# block |P_m| (actually input to the encryption).
+##	lea .Lpshufb_shf_table(%rip),$key1_dec   #borrow $key1_dec
+##	movups  ($key1_dec,$len_,1),$inout4
+##	pshufb  $inout4,$inout0
+##	movdqa	$inout0,$inout1
+
+	# Read 16 bytes from the input unaligned in order to include
+	# the partial block Cm and not read past it.
+	movups  ($inp,$len_,1),$inout0
+
+	# Move Cm from the end of the block (most significant) to the
+	# beginning of the block (least significant), that is,
+	# shift right by 16-$len_ bytes.
+	#  |     C_m|  ->  |C_m     |
+	#  ^        ^
+	# LSB      MSB
+	lea .Lpshufb_shf_table(%rip),$key1_dec   #borrow $key1_dec
+	add     \$16, $key1_dec
+	sub	    $len_, $key1_dec
+	movups  ($key1_dec),$rndkey0   # rndkey0 = xmm0 is the mask in pblendvb
+	xorps	.Lmask1(%rip),$rndkey0
+	pshufb  $rndkey0,$inout0
+
+	# Concatenate CP with C_m
+    #  | P_m |  CP  |
+	#  ^            ^
+	# LSB          MSB
+	# Input to AES decrypt with tweak[0]
+	# Output: |   P_m-1   |
+	pblendvb  $inout2, $inout0
+
 	mov	$key1_dec_,$key1_dec			# restore $key1_dec
 	mov	$rnds_,$rounds			# restore $rounds
 
-	movups	($out),$inout0
-	xorps	@tweak[0],$inout0
+	xorps	@tweak[5],$inout0
 ___
 	&aesni_generate1("dec",$key1_dec,$rounds);
 $code.=<<___;
-	xorps	@tweak[0],$inout0
-    movups	$inout0,($out)
+	xorps	@tweak[5],$inout0
 ___
+
+
+##.Lxts_reenc_steal:
+##	movzb	16($inp),%eax			# borrow $rounds ...
+##	movzb	($out),%ecx			# ... and $key1_dec
+##	lea	1($inp),$inp
+##	mov	%al,($out)
+##	mov	%cl,16($out)
+##	lea	1($out),$out
+##	sub	\$1,$len
+##	jnz	.Lxts_reenc_steal
+##
+##	sub	$len_,$out			# rewind $out
+##	mov	$key1_dec_,$key1_dec			# restore $key1_dec
+##	mov	$rnds_,$rounds			# restore $rounds
+##
+##	movups	($out),$inout0
+##	xorps	@tweak[5],$inout0
+##___
+##	&aesni_generate1("dec",$key1_dec,$rounds);
+##$code.=<<___;
+##	xorps	@tweak[5],$inout0
+##    movups	$inout0,($out)
+##___
 
 $code.=<<___;
 .Lxts_reenc_ret:
@@ -4746,6 +4832,15 @@ $code.=<<___;
 	.long	1,1,1,1
 .Lkey_rcon1b:
 	.long	0x1b,0x1b,0x1b,0x1b
+#.Lsteal_len_mask: TBD TODO: remove
+#	.long	0x0000000000000000, 0x0000000000000000
+#	.long	0xffffffffffffffff, 0xffffffffffffffff
+.Lpshufb_shf_table:
+    .quad 0x8786858483828100, 0x8f8e8d8c8b8a8988
+    .quad 0x0706050403020100, 0x000e0d0c0b0a0908
+
+.Lmask1:
+    .quad 0x8080808080808080, 0x8080808080808080
 
 .asciz  "AES for Intel AES-NI, CRYPTOGAMS by <appro\@openssl.org>"
 .align	64
