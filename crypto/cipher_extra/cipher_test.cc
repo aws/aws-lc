@@ -1032,3 +1032,23 @@ TEST(CipherTest, GetCipher) {
   ASSERT_TRUE(cipher);
   EXPECT_EQ(NID_aes_128_cbc, EVP_CIPHER_nid(cipher));
 }
+
+#define CHECK_ERROR(function, err) \
+    ERR_clear_error();                 \
+    EXPECT_FALSE(function);                          \
+    EXPECT_EQ(err, ERR_GET_REASON(ERR_peek_last_error()));
+
+TEST(CipherTest, Empty_EVP_CIPHER_CTX_V1187459157) {
+  int in_len = 10;
+  std::vector<uint8_t> in_vec(in_len);
+  int out_len = in_len + 256;
+  std::vector<uint8_t> out_vec(out_len);
+
+  CHECK_ERROR(EVP_EncryptUpdate(nullptr, out_vec.data(), &out_len, in_vec.data(), in_len), ERR_R_PASSED_NULL_PARAMETER);
+
+  bssl::UniquePtr<EVP_CIPHER_CTX> ctx(EVP_CIPHER_CTX_new());
+  CHECK_ERROR(EVP_EncryptUpdate(ctx.get(), out_vec.data(), &out_len, in_vec.data(), in_len), ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+  CHECK_ERROR(EVP_EncryptFinal(ctx.get(), out_vec.data(), &out_len), ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+  CHECK_ERROR(EVP_DecryptUpdate(ctx.get(), out_vec.data(), &out_len, in_vec.data(), in_len), ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+  CHECK_ERROR(EVP_DecryptFinal(ctx.get(), out_vec.data(), &out_len), ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+}
