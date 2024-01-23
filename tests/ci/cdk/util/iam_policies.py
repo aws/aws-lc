@@ -99,6 +99,28 @@ def code_build_batch_policy_in_json(project_ids):
         ]
     }
 
+def code_build_cloudwatch_logs_policy_in_json(log_groups):
+    """
+    Define an IAM policy statement for CloudWatch logs associated with CodeBuild projects.
+    :param project_ids: a list of CodeBuild project id.
+    :return: an IAM policy statement in json.
+    """
+    resources = []
+    for log_group in log_groups:
+        resources.append("arn:aws:logs:{}:{}:log-group:{}:*".format(AWS_REGION, AWS_ACCOUNT, log_group))
+    return {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Action": [
+                    "logs:GetLogEvents"
+                ],
+                "Resource": resources
+            }
+        ]
+    }
+
 def code_build_publish_metrics_in_json():
     """
     Define an IAM policy that only grants access to publish CloudWatch metrics to the current region in the same
