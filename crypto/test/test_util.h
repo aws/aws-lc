@@ -76,10 +76,10 @@ bssl::UniquePtr<X509> CertFromPEM(const char *pem);
 // unique_ptr will automatically call fclose on the file descriptior when the
 // variable goes out of scope, so we need to specify BIO_NOCLOSE close flags
 // to avoid a double-free condition.
-struct fclose_deleter {
+struct FileCloser {
   void operator()(FILE *f) const { fclose(f); }
 };
 
-using TempFILE = std::unique_ptr<FILE, fclose_deleter>;
+using TempFILE = std::unique_ptr<FILE, FileCloser>;
 
 #endif  // OPENSSL_HEADER_CRYPTO_TEST_TEST_UTIL_H
