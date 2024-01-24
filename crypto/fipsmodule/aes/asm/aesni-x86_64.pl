@@ -3427,8 +3427,8 @@ ___
 	&aesni_generate1("dec",$key1_dec,$rounds);
 $code.=<<___;
 	xorps	@tweak[0],$inout0
-	movdqa	@tweak[1],@tweak[5]     # tweak 0 in cipher stealing
-	movdqa	@tweak[2],@tweak[1]     # tweak 1 in cipher stealing
+	movdqa	@tweak[1],@tweak[5]			# tweak 0 in cipher stealing
+	movdqa	@tweak[2],$tweak1_dec_cs    # tweak 1 in cipher stealing
 
 movdqa $enc_tweak(%rsp),@tweak[0]   # retrieve enc tweak[0]
  xorps	@tweak[0],$inout0
@@ -3438,8 +3438,21 @@ ___
 $code.=<<___;
 xorps	@tweak[0],$inout0
     movups	$inout0,($out)		# store one output block
+
 	lea	16*1($out),$out			# $out+=1*16
-	jmp	.Lxts_reenc_done
+
+	and	\$15,$len_
+	jz	.Lxts_reenc_ret		# no cipher-stealing
+
+# Calculate next encryption tweak in @tweak[0]
+	pshufd	\$0x5f,@tweak[0],$twtmp
+	psrad	\$31,$twtmp
+	paddq	@tweak[0],@tweak[0]
+	pand	$twmask,$twtmp
+	pxor	$twtmp,@tweak[0]
+	mov	$key1_enc_,$key1_enc	   # restore $key1_enc
+
+	jmp	.Lxts_reenc_done2
 
 .align	16
 .Lxts_reenc_two:
@@ -3460,13 +3473,14 @@ movdqa $enc_tweak(%rsp),@tweak[0]   # retrieve enc tweak[0]
 # Calculate tweak[1] (no XORing with round[0])
 pshufd	\$0x5f,@tweak[0],$twres
 movdqa	$twres,$twtmp
-paddd	$twres,$twres   ## TBD: needed?
+	paddd	$twres,$twres   # needed for cipher stealing. TBD: push it to later?
 movdqa @tweak[0],@tweak[1]
 psrad	\$31,$twtmp
  xorps	@tweak[0],$inout0
 paddq	@tweak[1],@tweak[1]
 pand	$twmask,$twtmp
 pxor	$twtmp,@tweak[1]
+
 #mov     $key,
 mov     $key1_enc, $key     # $key = $key1_dec
 mov	$rnds_,$rounds			# restore $rounds
@@ -3674,11 +3688,11 @@ $code.=<<___;
     #  | C_m |  CP  |
 	#  ^            ^
 	# LSB          MSB
-	# Input to AES decrypt with tweak[0]
-	# Output: |   P_m-1   |
+	# Input to AES decrypt with tweak 0 (@tweak[5])
+	# Output: |   P_m-1   | in $inout0
 	pblendvb  $inout2, $inout0
 
-	mov	$key1_dec_,$key1_dec			# restore $key1_dec
+	mov	$key1_dec_,$key1_dec	# restore $key1_dec
 	mov	$rnds_,$rounds			# restore $rounds
 
 	xorps	@tweak[5],$inout0
@@ -3688,7 +3702,7 @@ $code.=<<___;
     xorps	@tweak[5],$inout0
 
 	# Encrypt |   P_m-1  |
-    xorps	@tweak[0],$inout0
+	xorps	@tweak[0],$inout0
     mov $rnds_,$rounds             # restore rounds
 ___
 	&aesni_generate1("enc",$key1_enc,$rounds);

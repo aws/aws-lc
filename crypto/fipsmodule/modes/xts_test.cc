@@ -281,7 +281,7 @@ static const XTSTestCase kXTSTestCases[] = {
         "922489de313fceb72a5ef2594d49eeb908afec966e89f0c7fbb4f6d37a559294"
         "2c53e3a65b37193d69346700",
         "6f229c1b60833e2a50a041b360d991814c6ec7f3199d8b2482f5b19b64c32013"
-        "a679f1361a011bf37b2e1565"
+        "a679f1361a011bf37b2e1565",
     },
     // len = 51 bytes = 3 blocks + 3 bytes
     {
@@ -1347,6 +1347,20 @@ static const XTSReEncryptTestCase kXTSReEncryptTestCases[] = {
         "000102030405060708090a0b0c0d0e0f101112131415",
         "7c115a9b95cac7bb653311fb081bd7b450ea7b0e72da",
         "75e8188bcce59ada939f57de2cb9a489c30ca8f2ed57",
+    },
+    // len = 44 bytes = 2 blocks + 12 bytes
+    {
+        "2718281828459045235360287471352662497757247093699959574966967627"
+        "3141592653589793238462643383279502884197169399375105820974944592",
+        "fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0efeeedecebeae9e8e7e6e5e4e3e2e1e0"
+        "bfbebdbcbbbab9b8b7b6b5b4b3b2b1b0afaeadacabaaa9a8a7a6a5a4a3a2a1a0",
+        "9a785634120000000000000000000000",
+        "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+        "202122232425262728292a2b",
+        "50ea7b0e72da7912892bcd0c7496baa4f21d7aaaea525e56e1d611fcddf6eadb"
+        "b346523120af299dac5b9960",
+        "c30ca8f2ed57307edc87e544867ac8881050f9ca1c5cad04e22759ddb63638e9"
+        "348c208928d7406269954551",
     },
     // len = 100 bytes = 6 blocks + 4 bytes
     {
