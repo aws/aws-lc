@@ -1,4 +1,4 @@
-From 28016c8ca9b2c0c19b06995b99b1cefc1c7359b1 Mon Sep 17 00:00:00 2001
+From cf4383fff44f86c03bfd19de31e73039bc204562 Mon Sep 17 00:00:00 2001
 From: Justin W Smith <103147162+justsmth@users.noreply.github.com>
 Date: Mon, 22 Jan 2024 10:20:12 -0500
 Subject: [PATCH] Minor fixes for AWS-LC
@@ -83,7 +83,7 @@ index d06e8d81..b03dbf6e 100644
  #include <openssl/evp.h>
  #include <openssl/sha.h>
 diff --git a/test/unit/fapi-eventlog.c b/test/unit/fapi-eventlog.c
-index 1063eecd..7ce7db40 100644
+index dba463ad..84c46203 100644
 --- a/test/unit/fapi-eventlog.c
 +++ b/test/unit/fapi-eventlog.c
 @@ -138,6 +138,7 @@ check_eventlog_pcr0(const char *file, uint32_t *pcr_list, size_t pcr_list_size,
@@ -91,10 +91,10 @@ index 1063eecd..7ce7db40 100644
      size_t size;
      json_object *json_event_list = NULL;
 +#if HAVE_EVP_SM3
-     size_t n_pcrs;
      IFAPI_PCR_REG pcrs[TPM2_MAX_PCRS];
  
-@@ -158,19 +159,20 @@ check_eventlog_pcr0(const char *file, uint32_t *pcr_list, size_t pcr_list_size,
+     TPML_PCR_SELECTION pcr_selection =
+@@ -157,19 +158,20 @@ check_eventlog_pcr0(const char *file, uint32_t *pcr_list, size_t pcr_list_size,
           .buffer = { 0x15, 0xf4, 0xe6, 0xca, 0x45, 0x7d, 0x1a, 0xf6, 0xbc, 0x49,
                       0x51, 0x1a, 0x93, 0xba, 0x35, 0x00, 0xad, 0x69, 0xac, 0xc5 },
          };
@@ -108,7 +108,7 @@ index 1063eecd..7ce7db40 100644
      assert_int_equal (r, TSS2_RC_SUCCESS);
 -
 +#if HAVE_EVP_SM3
-     r = ifapi_calculate_pcrs(json_event_list, &pcr_selection, &pcrs[0], &n_pcrs);
+     r = ifapi_calculate_pcrs(json_event_list, &pcr_selection, TPM2_ALG_SHA1, NULL, &pcrs[0]);
      assert_int_equal (r, TSS2_RC_SUCCESS);
  
      /* Compare with the pcr0 value got from system with HCRTM events */
@@ -117,7 +117,7 @@ index 1063eecd..7ce7db40 100644
  
      json_object_put(json_event_list);
      SAFE_FREE(eventlog);
-@@ -180,7 +182,7 @@ static void
+@@ -179,7 +181,7 @@ static void
  check_bios_hcrtm(void **state)
  {
  
