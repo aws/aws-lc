@@ -2784,6 +2784,7 @@ $reencrypt=0;
 
 my @tweak=map("%xmm$_",(10..15));
 my ($twmask,$twres,$twtmp)=("%xmm8","%xmm9",@tweak[4]);
+my $tweak1_dec_cs=$inout5;
 my ($key2_dec,$ivp,$len_,$key2_enc)=("%r8","%r9","%r9","%r12");
 my $key1_dec = $key;
 my $key1_dec_ = "%rbp";	# override so that we can use %r11 as FP
@@ -3307,6 +3308,7 @@ pshufd	\$0x5f,@tweak[5],$twres
 	add	\$16*6,$len			# restore real remaining $len
 	jnz .Lxts_reenc_len_nonzero		  # done if ($len==0)
 	movdqa @tweak[0], @tweak[5]		  # tweak[5] is dec tweak 0 in cipher-stealing
+	movdqa @tweak[1], $inout5		  # $inout5 is dec tweak 1 in cipher-stealing
 	movdqa $enc_tweak(%rsp),@tweak[0]   # retrieve enc tweak[0]
 	jmp	.Lxts_reenc_done
 
@@ -3342,23 +3344,24 @@ pshufd	\$0x5f,@tweak[5],$twres
 	xorps	@tweak[3],$inout3
 	xorps	@tweak[4],$inout4
 
-movdqa $enc_tweak(%rsp),@tweak[0]   # retrieve enc tweak[0]
+	movdqa $enc_tweak(%rsp),@tweak[0]   # retrieve enc tweak[0]
+
 # Calculate tweak[1..4] (no XORing with round[0])
-# (use $inout5 instead of $twtmp, which is also @tweak[4]).
+# (use $rndkey1 instead of $twtmp, which is also @tweak[4]).
 # XOR tweak[0..4] with inout0..4 (last XOR is after the loop).
   	pshufd	\$0x5f,@tweak[0],$twres
 ___
 my @inout=map("%xmm$_",(2..5));
     for ($i=0;$i<4;$i++) {
     $code.=<<___;
-	movdqa	$twres,$inout5
+	movdqa	$twres,$rndkey1
 	paddd	$twres,$twres
 	movdqa	@tweak[$i],@tweak[$i+1]
-	psrad	\$31,$inout5			# broadcast upper bits
+	psrad	\$31,$rndkey1			# broadcast upper bits
 	 xorps	@tweak[$i], @inout[$i]
 	paddq	@tweak[$i+1],@tweak[$i+1]
-   	pand	$twmask,$inout5
-	pxor	$inout5,@tweak[$i+1]
+   	pand	$twmask,$rndkey1
+	pxor	$rndkey1,@tweak[$i+1]
 ___
     }
 $code.=<<___;
@@ -3378,19 +3381,12 @@ mov	$rnds_,$rounds			# restore $rounds ## TBD: needed?
 
 	# Calculate next encryption tweak for cipher-stealing;
 	# encryption tweak 0 will be in tweak[0]
-	movdqa	$twres,$inout5
+	movdqa	$twres,$rndkey1
 	movdqa	@tweak[4],@tweak[0]
-	psrad	\$31,$inout5			# broadcast upper bits
+	psrad	\$31,$rndkey1			# broadcast upper bits
 	paddq	@tweak[0],@tweak[0]
-   	pand	$twmask,$inout5
-	pxor	$inout5,@tweak[0]
-
-	 # Calculate next decryption tweak for cipher-stealing;
-	 # 	tweak 0 is already in tweak[5], tweak 1 will be in tweak[1].
-	 # Check which 32-bit word in tweak[5] has a MSb = 1;
-	 # make the corresponding word in twtmp all 1s
-	 pxor		$twtmp,$twtmp
-	 pcmpgtd	@tweak[5],$twtmp
+   	pand	$twmask,$rndkey1
+	pxor	$rndkey1,@tweak[0]
 
 	movdqu	$inout0,($out)			# store 5 output blocks
 	movdqu	$inout1,16*1($out)
@@ -3400,16 +3396,25 @@ mov	$rnds_,$rounds			# restore $rounds ## TBD: needed?
 	lea	16*5($out),$out			# $out+=5*16
 	and	\$15,$len_
 	jz	.Lxts_reenc_ret		# no cipher-stealing
-	 # for cipher-stealing decryption tweak, cont'd:
-	 # only 32-bit words 1 and 3 in twtmp matter
-	 # for applying the mask below. They are copied
-	 # to words 2 and 0 respectively in tweak[1].
-	 pshufd		\$0x13,$twtmp,@tweak[1]	# $twres
+
+	# Calculate next decryption tweak for cipher-stealing;
+	# tweak 0 is already in @tweak[5],
+	# tweak 1 will be in $tweak1_dec_cs (=$inout5).
+
+	# Check which 32-bit word in @tweak[5] has a MSb = 1;
+	# make the corresponding word in twtmp all 1s
+	pxor		$twtmp,$twtmp
+	pcmpgtd	@tweak[5],$twtmp
+
+	# only 32-bit words 1 and 3 in twtmp matter
+	# for applying the mask below. They are copied
+	# to words 2 and 0 respectively in $tweak1_dec_cs.
+	pshufd		\$0x13,$twtmp,$tweak1_dec_cs	# $twres
 
 	movdqa	@tweak[5],@tweak[2]
 	paddq	@tweak[2],@tweak[2]		# psllq 1,$tweak
-	pand	$twmask,@tweak[1]		# isolate carry and residue
-	pxor	@tweak[2],@tweak[1]
+	pand	$twmask,$tweak1_dec_cs		# isolate carry and residue
+	pxor	@tweak[2],$tweak1_dec_cs
 
 	jmp	.Lxts_reenc_done2
 
@@ -3478,12 +3483,12 @@ xorps	@tweak[1],$inout1
 
 	# Calculate next encryption tweak for cipher-stealing;
 	# encryption tweak 0 will be in tweak[0]
-	movdqa	$twres,$inout5
+	movdqa	$twres,$rndkey1
 	movdqa	@tweak[1],@tweak[0]
-	psrad	\$31,$inout5			# broadcast upper bits
+	psrad	\$31,$rndkey1			# broadcast upper bits
 	paddq	@tweak[0],@tweak[0]
-   	pand	$twmask,$inout5
-	pxor	$inout5,@tweak[0]
+   	pand	$twmask,$rndkey1
+	pxor	$rndkey1,@tweak[0]
 
 	lea	16*2($out),$out			# $out+=2*16
 	jmp	.Lxts_reenc_done
@@ -3621,20 +3626,21 @@ xorps	@tweak[3],$inout3
 .Lxts_reenc_done:
 	and	\$15,$len_			# see if $len%16 is 0
 	jz	.Lxts_reenc_ret
+
 # Cipher-stealing:
-# decrypt tweaks 0 and 1 are in tweak[5] and tweak[1], resp.
-# encrypt tweak is tweak[0]
+# decrypt tweaks 0 and 1 are in @tweak[5] and $tweak1_dec_cs (=$inout5), resp.
+# encrypt tweak is @tweak[0]
 .Lxts_reenc_done2:
 	mov	$len_,$len
 	mov	$key1_dec_,$key1_dec			# restore $key1_dec
 	mov	$rnds_,$rounds			# restore $rounds
 
 	movups	($inp),$inout0
-	xorps	@tweak[1],$inout0
+	xorps	$tweak1_dec_cs,$inout0
 ___
 	&aesni_generate1("dec",$key1_dec,$rounds);
 $code.=<<___;
-	xorps	@tweak[1],$inout0
+	xorps	$tweak1_dec_cs,$inout0
 
     # $inout0 now contains a block
     #  | P_m |  CP  |
@@ -3688,7 +3694,7 @@ ___
 	&aesni_generate1("enc",$key1_enc,$rounds);
 $code.=<<___;
     xorps	@tweak[0],$inout0
-	movdqa  $inout0,$inout5
+	movdqa  $inout0,$inout3
 
 	# Calculate encryption tweak[1] (no XORing with round[0])
 	pshufd	\$0x5f,@tweak[0],$twtmp
@@ -3710,8 +3716,8 @@ $code.=<<___;
 	# to the last 16 bytes of the output, including the partial block.
 	lea .Lpshufb_shf_table(%rip),$key1_dec   #borrow $key1_dec
 	movups  ($key1_dec,$len_,1),$inout4
-	pshufb  $inout4,$inout5
-	movups	$inout5,($out,$len_,1)
+	pshufb  $inout4,$inout3
+	movups	$inout3,($out,$len_,1)
 
 	# Concatenate CP_enc with P_m (actually replace CP_dec with CP_enc)
 	# P_m is in $inout2, CP_enc is in $inout0
