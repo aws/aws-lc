@@ -254,6 +254,12 @@ static void test_find_macho_symbol_index(machofile *expected_macho, const char *
     printf("%u\n", symbol1_index);
 }
 
+/**
+ * TODO:
+ * move all "global" variables into main function and pass into tests as arguments
+ * actually check symbol index instead of just printing it
+*/
+
 int main(int argc, char *argv[]) {
 
     machofile *expected_macho = malloc(sizeof(machofile));
