@@ -3436,7 +3436,7 @@ mov $rnds_,$rounds             # restore rounds
 ___
 	&aesni_generate1("enc",$key1_enc,$rounds);
 $code.=<<___;
-xorps	@tweak[0],$inout0
+    xorps	@tweak[0],$inout0
     movups	$inout0,($out)		# store one output block
 
 	lea	16*1($out),$out			# $out+=1*16
@@ -3465,15 +3465,14 @@ xorps	@tweak[0],$inout0
 	call	_aesni_decrypt2
 
 	xorps	@tweak[0],$inout0
-	movdqa	@tweak[2],@tweak[5]     # tweak 0 in cipher stealing
+	movdqa	@tweak[2],@tweak[5]          # decrypt tweak 0 in cipher stealing
 	xorps	@tweak[1],$inout1
-##	movdqa	@tweak[3],@tweak[1]     # used with cipher stealing
+	movdqa	@tweak[3],$tweak1_dec_cs     # decrypt tweak 1 in cipher stealing
 movdqa $enc_tweak(%rsp),@tweak[0]   # retrieve enc tweak[0]
 #movdqa	(%r8),$twmask			# start calculating next tweak #TODO: is this step needed or twmask is still the same.
 # Calculate tweak[1] (no XORing with round[0])
 pshufd	\$0x5f,@tweak[0],$twres
 movdqa	$twres,$twtmp
-	paddd	$twres,$twres   # needed for cipher stealing. TBD: push it to later?
 movdqa @tweak[0],@tweak[1]
 psrad	\$31,$twtmp
  xorps	@tweak[0],$inout0
@@ -3494,18 +3493,22 @@ xorps	@tweak[0],$inout0
 xorps	@tweak[1],$inout1
     movups	$inout0,($out)			# store 2 output blocks
 	movups	$inout1,16*1($out)
+	lea	16*2($out),$out			# $out+=2*16
+
+	and	\$15,$len_
+	jz	.Lxts_reenc_ret		# no cipher-stealing
 
 	# Calculate next encryption tweak for cipher-stealing;
 	# encryption tweak 0 will be in tweak[0]
-	movdqa	$twres,$rndkey1
+	paddd	$twres,$twres
 	movdqa	@tweak[1],@tweak[0]
-	psrad	\$31,$rndkey1			# broadcast upper bits
+#	movdqa	$twres,$rndkey1
+	psrad	\$31,$twres			# broadcast upper bits
 	paddq	@tweak[0],@tweak[0]
-   	pand	$twmask,$rndkey1
-	pxor	$rndkey1,@tweak[0]
+   	pand	$twmask,$twres
+	pxor	$twres,@tweak[0]
 
-	lea	16*2($out),$out			# $out+=2*16
-	jmp	.Lxts_reenc_done
+	jmp	.Lxts_reenc_done2
 
 .align	16
 .Lxts_reenc_three:
@@ -3520,9 +3523,9 @@ xorps	@tweak[1],$inout1
 	call	_aesni_decrypt3
 
 	xorps	@tweak[0],$inout0
-##	movdqa	@tweak[3],@tweak[0]     # used with cipher stealing
+	movdqa	@tweak[3],@tweak[5]          # decrypt tweak 0 in cipher stealing
 	xorps	@tweak[1],$inout1
-##	movdqa	@tweak[4],@tweak[1]     # used with cipher stealing
+	movdqa	@tweak[4],$tweak1_dec_cs     # decrypt tweak 1 in cipher stealing
 	xorps	@tweak[2],$inout2
 
 movdqa $enc_tweak(%rsp),@tweak[0]   # retrieve enc tweak[0]
@@ -3562,7 +3565,20 @@ xorps	@tweak[2],$inout2
 	movups	$inout1,16*1($out)
 	movups	$inout2,16*2($out)
 	lea	16*3($out),$out			# $out+=3*16
-	jmp	.Lxts_reenc_done
+	and	\$15,$len_
+	jz	.Lxts_reenc_ret		# no cipher-stealing
+
+	# Calculate next encryption tweak for cipher-stealing;
+	# encryption tweak 0 will be in tweak[0]
+	paddd	$twres,$twres
+	movdqa	@tweak[2],@tweak[0]
+#	movdqa	$twres,$rndkey1
+	psrad	\$31,$twres			# broadcast upper bits
+	paddq	@tweak[0],@tweak[0]
+   	pand	$twmask,$twres
+	pxor	$twres,@tweak[0]
+
+	jmp	.Lxts_reenc_done2
 
 .align	16
 .Lxts_reenc_four:
@@ -3579,9 +3595,9 @@ xorps	@tweak[2],$inout2
 	call	_aesni_decrypt4
 
 	pxor	@tweak[0],$inout0
-##	movdqa	@tweak[4],@tweak[0]     # used with cipher stealing
+	movdqa	@tweak[5],$tweak1_dec_cs     # decrypt tweak 1 in cipher stealing
 	pxor	@tweak[1],$inout1
-##	movdqa	@tweak[5],@tweak[1]     # used with cipher stealing
+	movdqa	@tweak[4],@tweak[5]          # decrypt tweak 0 in cipher stealing
 	pxor	@tweak[2],$inout2
 	pxor	@tweak[3],$inout3
 
@@ -3634,10 +3650,23 @@ xorps	@tweak[3],$inout3
 	movdqu	$inout2,16*2($out)
 	movdqu	$inout3,16*3($out)
 	lea	16*4($out),$out			# $out+=4*16
-	jmp	.Lxts_reenc_done
+	and	\$15,$len_
+	jz	.Lxts_reenc_ret		# no cipher-stealing
+
+	# Calculate next encryption tweak for cipher-stealing;
+	# encryption tweak 0 will be in tweak[0]
+	paddd	$twres,$twres
+	movdqa	@tweak[3],@tweak[0]
+#	movdqa	$twres,$rndkey1
+	psrad	\$31,$twres			# broadcast upper bits
+	paddq	@tweak[0],@tweak[0]
+   	pand	$twmask,$twres
+	pxor	$twres,@tweak[0]
+
+	jmp	.Lxts_reenc_done2
 
 .align	16
-.Lxts_reenc_done:
+.Lxts_reenc_done:         #TBD: Do we need this section?
 	and	\$15,$len_			# see if $len%16 is 0
 	jz	.Lxts_reenc_ret
 
