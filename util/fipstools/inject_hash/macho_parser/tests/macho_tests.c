@@ -27,7 +27,7 @@ static void print_hex(const void *ptr, size_t size) {
     printf("\n");
 }
 
-static void create_test_macho_file(MachOFile *macho, nList *symbol_table, const char* string_table) {
+static void create_test_macho_file(machofile *macho, symbol_info *symbol_table, const char* string_table) {
     if (macho == NULL || symbol_table == NULL) {
         LOG_ERROR("macho and symbol_table must be allocated");
         exit(EXIT_FAILURE);
@@ -39,26 +39,26 @@ static void create_test_macho_file(MachOFile *macho, nList *symbol_table, const 
         exit(EXIT_FAILURE);
     }
 
-    uint32_t header_sizeofcmds = sizeof(SegmentLoadCommand) + 2 * sizeof(SectionHeader) + sizeof(SymtabLoadCommand);
+    uint32_t header_sizeofcmds = sizeof(segment_load_cmd) + 2 * sizeof(section) + sizeof(symtab_load_cmd);
     uint32_t header_ncmds = 2;
-    MachOHeader test_header = {
+    macho_header test_header = {
         .magic = MH_MAGIC_64,
         .ncmds = header_ncmds,
         .sizeofcmds = header_sizeofcmds,
     };
 
-    uint32_t text_segment_cmdsize = sizeof(SegmentLoadCommand) + 2 * sizeof(SectionHeader);
+    uint32_t text_segment_cmdsize = sizeof(segment_load_cmd) + 2 * sizeof(section);
     uint32_t text_segment_nsects = 2;
-    SegmentLoadCommand test_text_segment = {
+    segment_load_cmd test_text_segment = {
         .cmd = LC_SEGMENT_64,
         .cmdsize = text_segment_cmdsize,
         .segname = "__TEXT",
         .nsects = text_segment_nsects,
     };
 
-    uint32_t text_section_offset = sizeof(MachOHeader) + sizeof(SegmentLoadCommand) + 2 * sizeof(SectionHeader) + sizeof(SymtabLoadCommand);
+    uint32_t text_section_offset = sizeof(macho_header) + sizeof(segment_load_cmd) + 2 * sizeof(section) + sizeof(symtab_load_cmd);
     uint64_t text_section_size = 1; // {0xC3}
-    SectionHeader test_text_section = {
+    section test_text_section = {
         .sectname = "__text",
         .size = text_section_size, 
         .offset = text_section_offset,
@@ -66,29 +66,29 @@ static void create_test_macho_file(MachOFile *macho, nList *symbol_table, const 
 
     uint32_t const_section_offset = text_section_offset + text_section_size;
     uint64_t const_section_size = 2;  // "hi"
-    SectionHeader test_const_section = {
+    section test_const_section = {
         .sectname = "__const",
         .size = const_section_size,
         .offset = const_section_offset,
     };
 
     uint32_t symtab_command_symoff = const_section_offset + const_section_size;
-    uint32_t symtab_command_stroff = symtab_command_symoff + NUM_SYMS * sizeof(nList);
+    uint32_t symtab_command_stroff = symtab_command_symoff + NUM_SYMS * sizeof(symbol_info);
     uint32_t symtab_command_strsize = 32;
-    SymtabLoadCommand test_symtab_command = {
+    symtab_load_cmd test_symtab_command = {
         .cmd = LC_SYMTAB,
-        .cmdsize = sizeof(SymtabLoadCommand),
+        .cmdsize = sizeof(symtab_load_cmd),
         .symoff = symtab_command_symoff,
         .nsyms = NUM_SYMS,
         .stroff = symtab_command_stroff,
         .strsize = symtab_command_strsize,
     };
 
-    fwrite(&test_header, sizeof(MachOHeader), 1, file);
-    fwrite(&test_text_segment, sizeof(SegmentLoadCommand), 1, file);
-    fwrite(&test_text_section, sizeof(SectionHeader), 1, file);
-    fwrite(&test_const_section, sizeof(SectionHeader), 1, file);
-    fwrite(&test_symtab_command, sizeof(SymtabLoadCommand), 1, file);
+    fwrite(&test_header, sizeof(macho_header), 1, file);
+    fwrite(&test_text_segment, sizeof(segment_load_cmd), 1, file);
+    fwrite(&test_text_section, sizeof(section), 1, file);
+    fwrite(&test_const_section, sizeof(section), 1, file);
+    fwrite(&test_symtab_command, sizeof(symtab_load_cmd), 1, file);
 
     char test_text_data[] = TEXT_DATA;
     char test_const_data[] = CONST_DATA;
@@ -99,7 +99,7 @@ static void create_test_macho_file(MachOFile *macho, nList *symbol_table, const 
     fseek(file, test_const_section.offset, SEEK_SET);
     fwrite(test_const_data, sizeof(test_const_data), 1, file);
 
-    nList symbol1 = {
+    symbol_info symbol1 = {
         .n_un = {.n_strx = 15},  // Index into the string table
         .n_type = 0,
         .n_sect = 1,
@@ -107,7 +107,7 @@ static void create_test_macho_file(MachOFile *macho, nList *symbol_table, const 
         .n_value = 15,  // Address of the symbol
     };
 
-    nList symbol2 = {
+    symbol_info symbol2 = {
         .n_un = {.n_strx = 23},  // Index into the string table
         .n_type = 0,
         .n_sect = 2,
@@ -116,8 +116,8 @@ static void create_test_macho_file(MachOFile *macho, nList *symbol_table, const 
     };
 
     fseek(file, symtab_command_symoff, SEEK_SET);
-    fwrite(&symbol1, sizeof(nList), 1, file);
-    fwrite(&symbol2, sizeof(nList), 1, file);
+    fwrite(&symbol1, sizeof(symbol_info), 1, file);
+    fwrite(&symbol2, sizeof(symbol_info), 1, file);
 
     // Write the string table
     fseek(file, symtab_command_stroff, SEEK_SET);
@@ -127,38 +127,38 @@ static void create_test_macho_file(MachOFile *macho, nList *symbol_table, const 
         LOG_ERROR("Error closing file\n");
     }
 
-    SectionInfo expected_text_section = {
+    section_info expected_text_section = {
         .name = "__text",
         .size = text_section_size,
         .offset = text_section_offset,
     };
 
-    SectionInfo expected_const_section = {
+    section_info expected_const_section = {
         .name = "__const",
         .size = const_section_size,
         .offset = const_section_offset,
     };
 
-    SectionInfo expected_symbol_table = {
+    section_info expected_symbol_table = {
         .name = "__symbol_table",
-        .size = NUM_SYMS * sizeof(nList),
+        .size = NUM_SYMS * sizeof(symbol_info),
         .offset = symtab_command_symoff,
     };
 
-    SectionInfo expected_string_table = {
+    section_info expected_string_table = {
         .name = "__string_table",
         .size = symtab_command_strsize,
         .offset = symtab_command_stroff,
     };
 
-    SectionInfo *expected_sections = malloc(sizeof(SectionInfo) * 4);
+    section_info *expected_sections = malloc(sizeof(section_info) * 4);
     expected_sections[0] = expected_text_section;
     expected_sections[1] = expected_const_section;
     expected_sections[2] = expected_symbol_table;
     expected_sections[3] = expected_string_table;
 
-    macho->machHeader = test_header,
-    macho->numSections = 4,
+    macho->macho_header = test_header,
+    macho->num_sections = 4,
     macho->sections = expected_sections;
 
     symbol_table[0] = symbol1;
@@ -172,32 +172,32 @@ static void cleanup(void) {
     }
 }
 
-static void test_read_macho_file(MachOFile *expected_macho) {
-    MachOFile test_macho_file;
+static void test_read_macho_file(machofile *expected_macho) {
+    machofile test_macho_file;
     if(!read_macho_file(TEST_FILE, &test_macho_file)) {
         LOG_ERROR("Something in read_macho_file broke");
         exit(EXIT_FAILURE);
     }
 
-    if (memcmp(&test_macho_file.machHeader, &expected_macho->machHeader, sizeof(MachOHeader)) != 0) {
+    if (memcmp(&test_macho_file.macho_header, &expected_macho->macho_header, sizeof(macho_header)) != 0) {
         LOG_ERROR("test_read_macho_file: read header is different than expected");
         exit(EXIT_FAILURE);
     }
-    if (test_macho_file.numSections != expected_macho->numSections) {
+    if (test_macho_file.num_sections != expected_macho->num_sections) {
         LOG_ERROR("test_read_macho_file: read number of sections is dfferent than expected");
         exit(EXIT_FAILURE);
     }
-    if (memcmp(test_macho_file.sections, expected_macho->sections, test_macho_file.numSections * sizeof(SectionInfo)) != 0) {
+    if (memcmp(test_macho_file.sections, expected_macho->sections, test_macho_file.num_sections * sizeof(section_info)) != 0) {
         LOG_ERROR("test_read_macho_file: read section information is different than expected");
         printf("test:\n");
-        print_hex(test_macho_file.sections, test_macho_file.numSections * sizeof(SectionInfo));
+        print_hex(test_macho_file.sections, test_macho_file.num_sections * sizeof(section_info));
         printf("expected:\n");
-        print_hex(expected_macho->sections, expected_macho->numSections * sizeof(SectionInfo));
+        print_hex(expected_macho->sections, expected_macho->num_sections * sizeof(section_info));
         exit(EXIT_FAILURE);
     }
 }
 
-static void test_get_macho_section_data(MachOFile *expected_macho, nList* expected_symtab, const char* expected_strtab) {
+static void test_get_macho_section_data(machofile *expected_macho, symbol_info* expected_symtab, const char* expected_strtab) {
     uint8_t *text_section = NULL;
     size_t text_section_size;
     char expected_text_section[] = TEXT_DATA;
@@ -238,7 +238,7 @@ static void test_get_macho_section_data(MachOFile *expected_macho, nList* expect
     }
 }
 
-static void test_find_macho_symbol_index(MachOFile *expected_macho, const char *expected_strtab) {
+static void test_find_macho_symbol_index(machofile *expected_macho, const char *expected_strtab) {
     uint8_t *symbol_table = NULL;
     size_t symbol_table_size;
 
@@ -256,8 +256,8 @@ static void test_find_macho_symbol_index(MachOFile *expected_macho, const char *
 
 int main(int argc, char *argv[]) {
 
-    MachOFile *expected_macho = malloc(sizeof(MachOFile));
-    nList *expected_symtab = malloc(NUM_SYMS * sizeof(nList));
+    machofile *expected_macho = malloc(sizeof(machofile));
+    symbol_info *expected_symtab = malloc(NUM_SYMS * sizeof(symbol_info));
     char expected_strtab[] = "__text\0__const\0symbol1\0symbol2\0";
 
     create_test_macho_file(expected_macho, expected_symtab, expected_strtab);
