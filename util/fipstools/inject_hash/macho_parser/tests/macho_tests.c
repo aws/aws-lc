@@ -8,11 +8,6 @@
 
 #define TEST_FILE "test_macho"
 
-#define TEXT_DATA {0xC3}
-#define CONST_DATA "hi"
-
-#define NUM_SYMS 2
-
 static void print_hex(const void *ptr, size_t size) {
     for (size_t i = 0; i < size; i++) {
         printf("%02X", *((unsigned char *) ptr + i));
@@ -27,7 +22,7 @@ static void print_hex(const void *ptr, size_t size) {
     printf("\n");
 }
 
-static void create_test_macho_file(machofile *macho, symbol_info *symbol_table, const char* string_table) {
+static void create_test_macho_file(int num_syms, int *text_data, char *const_data,machofile *macho, symbol_info *symbol_table, const char* string_table) {
     if (macho == NULL || symbol_table == NULL) {
         LOG_ERROR("macho and symbol_table must be allocated");
         exit(EXIT_FAILURE);
@@ -73,13 +68,13 @@ static void create_test_macho_file(machofile *macho, symbol_info *symbol_table, 
     };
 
     uint32_t symtab_command_symoff = const_section_offset + const_section_size;
-    uint32_t symtab_command_stroff = symtab_command_symoff + NUM_SYMS * sizeof(symbol_info);
+    uint32_t symtab_command_stroff = symtab_command_symoff + num_syms * sizeof(symbol_info);
     uint32_t symtab_command_strsize = 32;
     symtab_load_cmd test_symtab_command = {
         .cmd = LC_SYMTAB,
         .cmdsize = sizeof(symtab_load_cmd),
         .symoff = symtab_command_symoff,
-        .nsyms = NUM_SYMS,
+        .nsyms = num_syms,
         .stroff = symtab_command_stroff,
         .strsize = symtab_command_strsize,
     };
@@ -90,8 +85,8 @@ static void create_test_macho_file(machofile *macho, symbol_info *symbol_table, 
     fwrite(&test_const_section, sizeof(section), 1, file);
     fwrite(&test_symtab_command, sizeof(symtab_load_cmd), 1, file);
 
-    char test_text_data[] = TEXT_DATA;
-    char test_const_data[] = CONST_DATA;
+    int *test_text_data = text_data;
+    char *test_const_data = const_data;
 
     fseek(file, test_text_section.offset, SEEK_SET);
     fwrite(test_text_data, sizeof(test_text_data), 1, file);
@@ -141,7 +136,7 @@ static void create_test_macho_file(machofile *macho, symbol_info *symbol_table, 
 
     section_info expected_symbol_table = {
         .name = "__symbol_table",
-        .size = NUM_SYMS * sizeof(symbol_info),
+        .size = num_syms * sizeof(symbol_info),
         .offset = symtab_command_symoff,
     };
 
@@ -197,14 +192,14 @@ static void test_read_macho_file(machofile *expected_macho) {
     }
 }
 
-static void test_get_macho_section_data(machofile *expected_macho, symbol_info* expected_symtab, const char* expected_strtab) {
+static void test_get_macho_section_data(int *text_data, char *const_data, machofile *expected_macho, symbol_info* expected_symtab, const char* expected_strtab) {
     uint8_t *text_section = NULL;
     size_t text_section_size;
-    char expected_text_section[] = TEXT_DATA;
+    int *expected_text_section = text_data;
 
     uint8_t *const_section = NULL;
     size_t const_section_size;
-    char expected_const_section[] = CONST_DATA;
+    char *expected_const_section = const_data;
 
     uint8_t *symbol_table = NULL;
     size_t symbol_table_size;
@@ -236,9 +231,22 @@ static void test_get_macho_section_data(machofile *expected_macho, symbol_info* 
         LOG_ERROR("string table is not equal to what was expected");
         exit(EXIT_FAILURE);
     }
+
+    if (text_section != NULL) {
+        free(text_section);
+    }
+    if (const_section != NULL) {
+        free(const_section);
+    }
+    if (symbol_table != NULL) {
+        free(symbol_table);
+    }
+    if (string_table != NULL) {
+        free(string_table);
+    }
 }
 
-static void test_find_macho_symbol_index(machofile *expected_macho, const char *expected_strtab) {
+static void test_find_macho_symbol_index(machofile *expected_macho, const char *expected_strtab, uint32_t expected_symbol_int) {
     uint8_t *symbol_table = NULL;
     size_t symbol_table_size;
 
@@ -251,25 +259,38 @@ static void test_find_macho_symbol_index(machofile *expected_macho, const char *
     uint32_t symbol1_index;
     symbol1_index = find_macho_symbol_index(symbol_table, symbol_table_size, string_table, string_table_size, "symbol1", NULL);
 
-    printf("%u\n", symbol1_index);
+    if (symbol_table != NULL) {
+        free(symbol_table);
+    }
+    if (string_table != NULL) {
+        free(string_table);
+    }
+
+    if (expected_symbol_int != symbol1_index) {
+        LOG_ERROR("found index %u is not equal to expected index %u", symbol1_index, expected_symbol_int);
+        exit(EXIT_FAILURE);
+    }
 }
 
 /**
  * TODO:
  * move all "global" variables into main function and pass into tests as arguments
- * actually check symbol index instead of just printing it
 */
 
 int main(int argc, char *argv[]) {
+    int num_syms = 2;
+    char expected_strtab[] = "__text\0__const\0symbol1\0symbol2\0";
+    int text_data[] = { 0xC3 };
+    char const_data[] = "hi";
 
     machofile *expected_macho = malloc(sizeof(machofile));
-    symbol_info *expected_symtab = malloc(NUM_SYMS * sizeof(symbol_info));
-    char expected_strtab[] = "__text\0__const\0symbol1\0symbol2\0";
+    symbol_info *expected_symtab = malloc(num_syms * sizeof(symbol_info));
+    uint32_t expected_symbol_ind = 15;
 
-    create_test_macho_file(expected_macho, expected_symtab, expected_strtab);
+    create_test_macho_file(num_syms, text_data, const_data, expected_macho, expected_symtab, expected_strtab);
     test_read_macho_file(expected_macho);
-    test_get_macho_section_data(expected_macho, expected_symtab, expected_strtab);
-    test_find_macho_symbol_index(expected_macho, expected_strtab);
+    test_get_macho_section_data(text_data, const_data, expected_macho, expected_symtab, expected_strtab);
+    test_find_macho_symbol_index(expected_macho, expected_strtab, expected_symbol_ind);
 
     free_macho_file(expected_macho);
     free(expected_symtab);
