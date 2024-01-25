@@ -6,13 +6,6 @@
 #include "common.h"
 #include "macho_parser.h"
 
-/**
- * TODOs
- * use goto for cleaner exits in this and tests (if necessary)
- * make all variable and function names snake case in all files
- * finish tests
-*/
-
 // Documentation for the Mach-O structs can be found in macho-o/loader.h and mach-o/nlist.h
 int read_macho_file(const char *filename, machofile *macho) {
     FILE *file = NULL;

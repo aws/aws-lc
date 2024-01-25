@@ -272,11 +272,6 @@ static void test_find_macho_symbol_index(machofile *expected_macho, const char *
     }
 }
 
-/**
- * TODO:
- * move all "global" variables into main function and pass into tests as arguments
-*/
-
 int main(int argc, char *argv[]) {
     int num_syms = 2;
     char expected_strtab[] = "__text\0__const\0symbol1\0symbol2\0";
