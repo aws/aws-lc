@@ -15,19 +15,25 @@
 
 // Documentation for the Mach-O structs can be found in macho-o/loader.h and mach-o/nlist.h
 int read_macho_file(const char *filename, machofile *macho) {
-    FILE *file = fopen(filename, "rb");
+    FILE *file = NULL;
+    load_cmd *load_commands = NULL;
+    int ret = 1;
+
+    file = fopen(filename, "rb");
     if (!file) {
         LOG_ERROR("Error opening file %s", filename);
-        return 0;
+        ret = 0;
+        goto end;
     }
 
     fread(&macho->macho_header, sizeof(macho_header), 1, file);
     if(macho->macho_header.magic != MH_MAGIC_64) {
         LOG_ERROR("File is not a 64-bit Mach-O file");
-        return 0;
+        ret = 0;
+        goto end;
     }
 
-    load_cmd *load_commands = malloc(macho->macho_header.sizeofcmds);
+    load_commands = malloc(macho->macho_header.sizeofcmds);
     fread(load_commands, macho->macho_header.sizeofcmds, 1, file);
 
     // We're only looking for __text, __const in the __TEXT segment, and the string & symbol tables
@@ -64,9 +70,14 @@ int read_macho_file(const char *filename, machofile *macho) {
     }
 
 
-    free(load_commands);
-    fclose(file);
-    return 1;
+end:
+    if (load_commands != NULL) {
+        free(load_commands);
+    }
+    if (file != NULL) {
+        fclose(file);
+    }
+    return ret;
 }
 
 void free_macho_file(machofile *macho) {
@@ -78,18 +89,21 @@ void free_macho_file(machofile *macho) {
 // Takes a filename, machofile struct, the name of the section to get data for, and pointers to size & offset as input
 // size and offset pointers are set to the size and offset of the section retrived in the file.
 uint8_t* get_macho_section_data(const char *filename, machofile *macho, const char *sectionName, size_t *size, uint32_t *offset) {
-    FILE *file = fopen(filename, "rb");
+    FILE *file = NULL;
+    uint8_t *sectionData = NULL;
+    uint8_t *ret = NULL;
+
+    file = fopen(filename, "rb");
     if (!file) {
         LOG_ERROR("Error opening file %s", filename);
-        return NULL;
+        goto end;
     }
     for (uint32_t i = 0; i < macho->num_sections; i++) {
         if (strcmp(macho->sections[i].name, sectionName) == 0) {
-            uint8_t *sectionData = malloc(macho->sections[i].size);
+            sectionData = malloc(macho->sections[i].size);
             if (!sectionData) {
-                fclose(file);
                 LOG_ERROR("Error allocating memory for section data");
-                return NULL;
+                goto end;
             }
 
             fseek(file, macho->sections[i].offset, SEEK_SET);
@@ -102,23 +116,32 @@ uint8_t* get_macho_section_data(const char *filename, machofile *macho, const ch
                 *offset = macho->sections[i].offset;
             }
 
-            fclose(file);
-            return sectionData;
+            ret = sectionData;
+            goto end;
         }
     }
 
     LOG_ERROR("Section %s not found in macho file %s", sectionName, filename);
-    fclose(file);
-    return NULL;
+end:
+    if (file != NULL) {
+        fclose(file);
+    }
+    if (ret == NULL && sectionData != NULL) {
+        free(sectionData);
+    }
+    return ret;
 }
 
 uint32_t find_macho_symbol_index(uint8_t *symbolTableData, size_t symbolTableSize, uint8_t *stringTableData, size_t stringTableSize, const char *symbolName, uint32_t *base) {
+    char* stringTable = NULL;
+    int ret = 0;
+
     if (symbolTableData == NULL || stringTableData == NULL) {
         LOG_ERROR("Symbol and string table pointers cannot be null to find the symbol index");
-        return 0;
+        goto end;
     }
 
-    char* stringTable = malloc(stringTableSize);
+    stringTable = malloc(stringTableSize);
     memcpy(stringTable, stringTableData, stringTableSize);
 
     int found = 0;
@@ -131,19 +154,22 @@ uint32_t find_macho_symbol_index(uint8_t *symbolTableData, size_t symbolTableSiz
                 found = 1;
             } else {
                 LOG_ERROR("Duplicate symbol %s found", symbolName);
-                return 0;
+                goto end;
             }
-            
         }
     }
-
     if (!found) {
         LOG_ERROR("Requested symbol %s not found", symbolName);
+        goto end;
     }
-
-    free(stringTable);
     if (base) {
         index = index - *base;
     }
-    return index;
+    ret = index;
+
+end:
+    if (stringTable != NULL) {
+        free(stringTable);
+    }
+    return ret;
 }
