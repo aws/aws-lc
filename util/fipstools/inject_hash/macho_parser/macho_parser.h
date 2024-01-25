@@ -11,29 +11,29 @@ typedef struct {
     char name[16];
     size_t size;
     uint32_t offset;
-} SectionInfo;
+} section_info;
 
 // Since we only support 64-bit architectures on Apple, we don't need to account for any of the 32-bit structures
 #define LC_SEG LC_SEGMENT_64
 #define BIT_MODIFIER 8
 
-typedef struct mach_header_64 MachOHeader;
-typedef struct load_command LoadCommand;
-typedef struct segment_command_64 SegmentLoadCommand;
-typedef struct symtab_command SymtabLoadCommand;
-typedef struct section_64 SectionHeader;
-typedef struct nlist_64 nList;
+typedef struct mach_header_64 macho_header;
+typedef struct load_command load_cmd;
+typedef struct segment_command_64 segment_load_cmd;
+typedef struct symtab_command symtab_load_cmd;
+typedef struct section_64 section;
+typedef struct nlist_64 symbol_info;
 
 typedef struct {
-    MachOHeader machHeader;
-    SectionInfo *sections;
-    uint32_t numSections;
-} MachOFile;
+    macho_header macho_header;
+    section_info *sections;
+    uint32_t num_sections;
+} machofile;
 
-int read_macho_file(const char *filename, MachOFile *macho);
-void free_macho_file(MachOFile *macho);
-void print_macho_section_info(MachOFile *macho);
-uint8_t* get_macho_section_data(const char* filename, MachOFile *macho, const char *sectionName, size_t *size, uint32_t *offset);
+int read_macho_file(const char *filename, machofile *macho);
+void free_macho_file(machofile *macho);
+void print_macho_section_info(machofile *macho);
+uint8_t* get_macho_section_data(const char* filename, machofile *macho, const char *sectionName, size_t *size, uint32_t *offset);
 uint32_t find_macho_symbol_index(uint8_t *sectionData, size_t sectionSize, uint8_t *stringTableData, size_t stringTableSize, const char *symbolName, uint32_t *base);
 
 #endif

@@ -8,38 +8,39 @@
 
 /**
  * TODOs
- * use goto for cleaner exits
- * make all variable and function names snake case
+ * use goto for cleaner exits in this and tests (if necessary)
+ * make all variable and function names snake case in all files
+ * finish tests
 */
 
 // Documentation for the Mach-O structs can be found in macho-o/loader.h and mach-o/nlist.h
-int read_macho_file(const char *filename, MachOFile *macho) {
+int read_macho_file(const char *filename, machofile *macho) {
     FILE *file = fopen(filename, "rb");
     if (!file) {
         LOG_ERROR("Error opening file %s", filename);
         return 0;
     }
 
-    fread(&macho->machHeader, sizeof(MachOHeader), 1, file);
-    if(macho->machHeader.magic != MH_MAGIC_64) {
+    fread(&macho->macho_header, sizeof(macho_header), 1, file);
+    if(macho->macho_header.magic != MH_MAGIC_64) {
         LOG_ERROR("File is not a 64-bit Mach-O file");
         return 0;
     }
 
-    LoadCommand *load_commands = malloc(macho->machHeader.sizeofcmds);
-    fread(load_commands, macho->machHeader.sizeofcmds, 1, file);
+    load_cmd *load_commands = malloc(macho->macho_header.sizeofcmds);
+    fread(load_commands, macho->macho_header.sizeofcmds, 1, file);
 
     // We're only looking for __text, __const in the __TEXT segment, and the string & symbol tables
-    macho->numSections = 4;
-    macho->sections = malloc(macho->numSections * sizeof(SectionInfo));
+    macho->num_sections = 4;
+    macho->sections = malloc(macho->num_sections * sizeof(section_info));
 
     // Iterate through load commands again to populate section information
     uint32_t sectionIndex = 0;
-    for (uint32_t i = 0; i < macho->machHeader.sizeofcmds / BIT_MODIFIER; i += load_commands[i].cmdsize / BIT_MODIFIER) {
+    for (uint32_t i = 0; i < macho->macho_header.sizeofcmds / BIT_MODIFIER; i += load_commands[i].cmdsize / BIT_MODIFIER) {
         if (load_commands[i].cmd == LC_SEG) {
-            SegmentLoadCommand *segment = (SegmentLoadCommand *)&load_commands[i];
+            segment_load_cmd *segment = (segment_load_cmd *)&load_commands[i];
             if (strcmp(segment->segname, "__TEXT") == 0) {
-                SectionHeader *sections = (SectionHeader *)&segment[1];
+                section *sections = (section *)&segment[1];
                 for (uint32_t j = 0; j < segment->nsects; j++) {
                     if (strcmp(sections[j].sectname, "__text") == 0 || strcmp(sections[j].sectname, "__const") == 0) {
                         macho->sections[sectionIndex].offset = sections[j].offset;
@@ -50,9 +51,9 @@ int read_macho_file(const char *filename, MachOFile *macho) {
                 }
             }
         } else if (load_commands[i].cmd == LC_SYMTAB) {
-            SymtabLoadCommand *symtab = (SymtabLoadCommand *)&load_commands[i];
+            symtab_load_cmd *symtab = (symtab_load_cmd *)&load_commands[i];
             macho->sections[sectionIndex].offset = symtab->symoff;
-            macho->sections[sectionIndex].size = symtab->nsyms * sizeof(nList);
+            macho->sections[sectionIndex].size = symtab->nsyms * sizeof(symbol_info);
             strcpy(macho->sections[sectionIndex].name, "__symbol_table");
             sectionIndex++;
             macho->sections[sectionIndex].offset = symtab->stroff;
@@ -68,21 +69,21 @@ int read_macho_file(const char *filename, MachOFile *macho) {
     return 1;
 }
 
-void free_macho_file(MachOFile *macho) {
+void free_macho_file(machofile *macho) {
     free(macho->sections);
     free(macho);
     macho = NULL;
 }
 
-// Takes a filename, MachOFile struct, the name of the section to get data for, and pointers to size & offset as input
+// Takes a filename, machofile struct, the name of the section to get data for, and pointers to size & offset as input
 // size and offset pointers are set to the size and offset of the section retrived in the file.
-uint8_t* get_macho_section_data(const char *filename, MachOFile *macho, const char *sectionName, size_t *size, uint32_t *offset) {
+uint8_t* get_macho_section_data(const char *filename, machofile *macho, const char *sectionName, size_t *size, uint32_t *offset) {
     FILE *file = fopen(filename, "rb");
     if (!file) {
         LOG_ERROR("Error opening file %s", filename);
         return NULL;
     }
-    for (uint32_t i = 0; i < macho->numSections; i++) {
+    for (uint32_t i = 0; i < macho->num_sections; i++) {
         if (strcmp(macho->sections[i].name, sectionName) == 0) {
             uint8_t *sectionData = malloc(macho->sections[i].size);
             if (!sectionData) {
@@ -122,8 +123,8 @@ uint32_t find_macho_symbol_index(uint8_t *symbolTableData, size_t symbolTableSiz
 
     int found = 0;
     uint32_t index = 0;
-    for (uint32_t i = 0; i < symbolTableSize / sizeof(nList); i++) {
-        nList *symbol = (nList *)(symbolTableData + i * sizeof(nList));
+    for (uint32_t i = 0; i < symbolTableSize / sizeof(symbol_info); i++) {
+        symbol_info *symbol = (symbol_info *)(symbolTableData + i * sizeof(symbol_info));
         if (strcmp(symbolName, &stringTable[symbol->n_un.n_strx]) == 0) {
             if (!found) {
                 index = symbol->n_value;
