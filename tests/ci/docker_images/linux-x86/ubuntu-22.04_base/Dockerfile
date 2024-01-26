@@ -32,8 +32,10 @@ RUN set -ex && \
     ninja-build \
     patch \
     perl \
+    python3-pytest \
     libunwind-dev \
     pkg-config \
+    protobuf-c-compiler \
     git \
     gnutls-dev \
     ca-certificates \
@@ -41,7 +43,10 @@ RUN set -ex && \
     lld \
     llvm \
     llvm-dev \
+    libcap-dev \
+    libcmocka-dev \
     libcryptx-perl \
+    libfstrm-dev \
     libicu-dev \
     libio-socket-ssl-perl \
     libipc-run-perl \
@@ -49,7 +54,9 @@ RUN set -ex && \
     liblua5.4-dev \
     libnet-dev \
     libnet-ssleay-perl \
+    libnghttp2-dev \
     libpam0g-dev \
+    libprotobuf-c-dev \
     libpcap-dev \
     libperl-dev \
     libpcre2-dev \
@@ -57,6 +64,8 @@ RUN set -ex && \
     libsqlite3-dev \
     libtool \
     libudev-dev \
+    liburcu-dev \
+    libuv1-dev \
     socat \
     zlib1g-dev \
     dpkg-dev \
