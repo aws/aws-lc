@@ -16,3 +16,4 @@
    OpenSSL easier. */
 
 #include "obj.h"
+#include "asn1.h"

@@ -1382,23 +1382,6 @@ int SSL_get_error(const SSL *ssl, int ret_code) {
     return SSL_ERROR_SSL;
   }
 
-  if (ret_code == 0) {
-    if (ssl->s3->rwstate == SSL_ERROR_ZERO_RETURN) {
-      return SSL_ERROR_ZERO_RETURN;
-    }
-    // An EOF was observed which violates the protocol, and the underlying
-    // transport does not participate in the error queue. If
-    // |SSL_MODE_AUTO_RETRY| is unset, bubble up to the caller.
-    if ((ssl->ctx->mode & SSL_MODE_AUTO_RETRY) == 0) {
-      return SSL_ERROR_SYSCALL;
-    }
-    // If |SSL_MODE_AUTO_RETRY| is set, proceed if in a retryable state.
-    if (ssl->s3->rwstate != SSL_ERROR_WANT_READ
-            && ssl->s3->rwstate != SSL_ERROR_WANT_WRITE) {
-      return SSL_ERROR_SYSCALL;
-    }
-  }
-
   switch (ssl->s3->rwstate) {
     case SSL_ERROR_PENDING_SESSION:
     case SSL_ERROR_PENDING_CERTIFICATE:
@@ -1453,6 +1436,20 @@ int SSL_get_error(const SSL *ssl, int ret_code) {
 
       break;
     }
+  }
+
+  // An EOF was observed which violates the protocol, and the underlying
+  // transport does not participate in the error queue. If
+  // |SSL_MODE_AUTO_RETRY| is unset, bubble up to the caller.
+  //
+  // This was moved earlier in the function by BoringSSL and used to be
+  // wrapped with a check for |ret_code| == 0 in OpenSSL 1.0.2. Since
+  // OpenSSL 1.1.1, the check for |ret_code| has been removed and we've
+  // moved this back before the final return to gain better parity with
+  // OpenSSL.
+  // See openssl/openssl@8051ab2 for more details.
+  if (ssl->s3->rwstate == SSL_ERROR_ZERO_RETURN) {
+    return SSL_ERROR_ZERO_RETURN;
   }
 
   return SSL_ERROR_SYSCALL;
@@ -2611,10 +2608,6 @@ void SSL_set_quiet_shutdown(SSL *ssl, int mode) {
 int SSL_get_quiet_shutdown(const SSL *ssl) { return ssl->quiet_shutdown; }
 
 void SSL_set_shutdown(SSL *ssl, int mode) {
-  // It is an error to clear any bits that have already been set. (We can't try
-  // to get a second close_notify or send two.)
-  assert((SSL_get_shutdown(ssl) & mode) == SSL_get_shutdown(ssl));
-
   if (mode & SSL_RECEIVED_SHUTDOWN &&
       ssl->s3->read_shutdown == ssl_shutdown_none) {
     ssl->s3->read_shutdown = ssl_shutdown_close_notify;

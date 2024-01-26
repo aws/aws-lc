@@ -10507,13 +10507,9 @@ static void TestIntermittentEmptyRead(bool auto_retry) {
   uint8_t read_data[] = {0, 0, 0};
   ret = SSL_read(client.get(), read_data, sizeof(read_data));
   EXPECT_EQ(ret, 0);
-  if (auto_retry) {
-      // On empty read, client should still want a read so caller will retry
-      EXPECT_EQ(SSL_get_error(client.get(), ret), SSL_ERROR_WANT_READ);
-  } else {
-      // On empty read, client should error out signaling EOF
-      EXPECT_EQ(SSL_get_error(client.get(), ret), SSL_ERROR_SYSCALL);
-  }
+  // On empty read, client should still want a read so caller will retry.
+  // This would have returned |SSL_ERROR_SYSCALL| in OpenSSL 1.0.2.
+  EXPECT_EQ(SSL_get_error(client.get(), ret), SSL_ERROR_WANT_READ);
 
   // Reset client rbio, read should succeed
   SSL_set0_rbio(client.get(), client_rbio.release());
