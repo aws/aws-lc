@@ -69,7 +69,30 @@ function python_run_tests() {
     popd
 }
 
-# TODO: Remove this when we make an upstream contribution.
+# The per-branch patch files do a few things:
+#
+#   - Modify various unit tests to account for error string differences between
+#     OpenSSL and AWS-LC.
+#   - In |test_bio|handshake|, check whether protocol is TLSv1.3 before testing
+#     tls-unique channel binding behavior, as channel bindings are not defined
+#     on that protocol
+#   - Skip FFDH(E)-reliant tests, as AWS-LC doesn't support FFDH(E)
+#   - Skip post handshake authentication tests, as AWS-LC doesn't support that
+#   - Add test specifically for AWS-LC to codify the ssl module's behavior when
+#     caller attempts to use post-handshake authentication
+#   - For 3.10, modify Modules/Setup to point to the AWS-LC installation dir
+#   - Modify the hashlib module's backing C code to only register BLAKE
+#     functions if the expected NID is available in linked libcrypto
+#   - Modify the ssl module's backing C code to separate notions of supporting
+#     TLSv1.3 from supporting post-handshake authentication as some libraries
+#     (namely AWS-LC) support TLSv1.3, but not the post-handshake
+#     authentication portion of that protocol.
+#   - Modify the ssl module's backing C code to account for AWS-LC's divergent
+#     function signature for |sk_SSL_CIPHER_find|
+#   - Modify the ssl module's backing C code to set |SSL_MODE_AUTO_RETRY| in
+#     all calls to |SSL{_CTX}_set_mode|
+#
+# TODO: Remove these patches when we make an upstream contribution.
 function python_patch() {
     local branch=${1}
     local src_dir="${PYTHON_SRC_FOLDER}/${branch}"
@@ -106,7 +129,7 @@ which sysctl && ( sysctl -w net.ipv6.conf.all.disable_ipv6=0 || /bin/true )
 echo 0 >/proc/sys/net/ipv6/conf/all/disable_ipv6 || /bin/true
 
 # NOTE: cpython keeps a unique branch per version, add version branches here
-# TODO: As we add more versions to support, we may want to parallelize here
+# NOTE: As we add more versions to support, we may want to parallelize here
 for branch in 3.10 3.11 3.12 main; do
     python_patch ${branch}
     python_build ${branch}
