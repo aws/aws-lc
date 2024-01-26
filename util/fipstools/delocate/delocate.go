@@ -1776,10 +1776,6 @@ func transform(w stringWriter, includes []string, inputs []inputFile) error {
 	// maxObservedFileNumber contains the largest seen file number in a
 	// .file directive. Zero is not a valid number.
 	maxObservedFileNumber := 0
-	// fileDirectivesContainMD5 is true if the compiler is outputting MD5
-	// checksums in .file directives. If it does so, then this script needs
-	// to match that behaviour otherwise warnings result.
-	fileDirectivesContainMD5 := false
 
 	// OPENSSL_ia32cap_get will be synthesized by this script.
 	symbols["OPENSSL_ia32cap_get"] = struct{}{}
@@ -1847,12 +1843,6 @@ func transform(w stringWriter, includes []string, inputs []inputFile) error {
 			if fileNo > maxObservedFileNumber {
 				maxObservedFileNumber = fileNo
 			}
-
-			for _, token := range parts[2:] {
-				if token == "md5" {
-					fileDirectivesContainMD5 = true
-				}
-			}
 		}, ruleStatement, ruleLocationDirective)
 	}
 
@@ -1882,12 +1872,6 @@ func transform(w stringWriter, includes []string, inputs []inputFile) error {
 	}
 
 	w.WriteString(".text\n")
-	var fileTrailing string
-	if fileDirectivesContainMD5 {
-		fileTrailing = " md5 0x00000000000000000000000000000000"
-	}
-	w.WriteString(fmt.Sprintf(".file %d \"inserted_by_delocate.c\"%s\n", maxObservedFileNumber+1, fileTrailing))
-	w.WriteString(fmt.Sprintf(".loc %d 1 0\n", maxObservedFileNumber+1))
 	if d.processor == aarch64 {
 		// Grab the address of BORINGSSL_bcm_test_[start,end] via a relocation
 		// from a redirector function. For this to work, need to add the markers
@@ -1904,7 +1888,6 @@ func transform(w stringWriter, includes []string, inputs []inputFile) error {
 	}
 
 	w.WriteString(".text\n")
-	w.WriteString(fmt.Sprintf(".loc %d 2 0\n", maxObservedFileNumber+1))
 	if d.processor == aarch64 {
 		w.WriteString(fmt.Sprintf(".global BORINGSSL_bcm_text_end\n"))
 		w.WriteString(fmt.Sprintf(".type BORINGSSL_bcm_text_end, @function\n"))
