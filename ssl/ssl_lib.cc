@@ -1439,8 +1439,7 @@ int SSL_get_error(const SSL *ssl, int ret_code) {
   }
 
   // An EOF was observed which violates the protocol, and the underlying
-  // transport does not participate in the error queue. If
-  // |SSL_MODE_AUTO_RETRY| is unset, bubble up to the caller.
+  // transport does not participate in the error queue.
   //
   // This was moved earlier in the function by BoringSSL and used to be
   // wrapped with a check for |ret_code| == 0 in OpenSSL 1.0.2. Since

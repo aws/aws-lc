@@ -25,7 +25,6 @@ AWS_LC_INSTALL_FOLDER="${SCRATCH_FOLDER}/aws-lc-install"
 function bind9_build() {
   autoreconf -fi  
   PKG_CONFIG_PATH="${AWS_LC_INSTALL_FOLDER}/lib/pkgconfig" ./configure --with-openssl="${AWS_LC_INSTALL_FOLDER}" --enable-dnstap --enable-dnsrps --with-cmocka --with-libxml2 --enable-leak-detection
-
   make -j ${NUM_CPU_THREADS} -k all
 }
 
@@ -37,7 +36,6 @@ function bind9_patch() {
   done
 }
 
-# Monit doesn't run any tests verifying ssl behavior, but it shouldn't hurt to run the brief tests.
 function bind9_run_tests() {
   make -j ${NUM_CPU_THREADS} check
 }

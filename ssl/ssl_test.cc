@@ -10458,7 +10458,9 @@ TEST(SSLTest, ErrorSyscallAfterCloseNotify) {
   write_failed = false;
 }
 
-static void TestIntermittentEmptyRead(bool auto_retry) {
+// Test that failures are supressed on (potentially)
+// transient empty reads.
+TEST(SSLTest, IntermittentEmptyRead) {
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
   bssl::UniquePtr<SSL_CTX> server_ctx =
       CreateContextWithTestCertificate(TLS_method());
@@ -10489,15 +10491,6 @@ static void TestIntermittentEmptyRead(bool auto_retry) {
   ASSERT_TRUE(BIO_up_ref(client_rbio.get()));
   SSL_set0_rbio(client.get(), rbio_empty.release());
 
-  if (auto_retry) {
-      // Set flag under test
-      ASSERT_TRUE(SSL_CTX_set_mode(client_ctx.get(), SSL_MODE_AUTO_RETRY));
-      ASSERT_TRUE(SSL_CTX_get_mode(client_ctx.get()) & SSL_MODE_AUTO_RETRY);
-  } else {
-      // |SSL_MODE_AUTO_RETRY| is off by default
-      ASSERT_FALSE(SSL_CTX_get_mode(client_ctx.get()) & SSL_MODE_AUTO_RETRY);
-  }
-
   // Server writes some data to the client
   const uint8_t write_data[] = {1, 2, 3};
   int ret = SSL_write(server.get(), write_data, (int) sizeof(write_data));
@@ -10522,13 +10515,6 @@ static void TestIntermittentEmptyRead(bool auto_retry) {
   ret = SSL_read(client.get(), read_data, sizeof(read_data));
   EXPECT_LT(ret, 0);
   EXPECT_EQ(SSL_get_error(client.get(), ret), SSL_ERROR_WANT_READ);
-}
-
-// Test that |SSL_MODE_AUTO_RETRY| suppresses failure on (potentially)
-// transient empty reads.
-TEST(SSLTest, IntermittentEmptyRead) {
-    TestIntermittentEmptyRead(false);
-    TestIntermittentEmptyRead(true);
 }
 
 // Test that |SSL_shutdown|, when quiet shutdown is enabled, simulates receiving
