@@ -49,7 +49,7 @@ require "x86asm.pl";
 $output=$ARGV[1];
 open STDOUT,">$output";
 
-&asm_init($ARGV[0],$ARGV[1] eq "386");
+&asm_init($ARGV[0]);
 
 $xmm=$ymm=1;
 $gasver=999;  # enable everything
