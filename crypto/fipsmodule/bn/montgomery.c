@@ -651,3 +651,13 @@ int bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
   return bn_mul_mont_nohw(rp, ap, bp, np, n0, num);
 }
 #endif
+
+#if defined(OPENSSL_BN_ASM_MONT) && defined(OPENSSL_ARM)
+int bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
+                const BN_ULONG *np, const BN_ULONG *n0, size_t num) {
+  if (bn_mul8x_mont_neon_capable(num)) {
+    return bn_mul8x_mont_neon(rp, ap, bp, np, n0, num);
+  }
+  return bn_mul_mont_nohw(rp, ap, bp, np, n0, num);
+}
+#endif

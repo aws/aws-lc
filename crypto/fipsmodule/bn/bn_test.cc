@@ -2868,6 +2868,17 @@ TEST_F(BNTest, BNMulMontABI) {
                 mont->N.d, mont->n0, words);
     }
 #endif // !defined(MY_ASSEMBLER_IS_TOO_OLD_FOR_512AVX)
+#elif defined(OPENSSL_ARM)
+    if (bn_mul8x_mont_neon_capable(words)) {
+      CHECK_ABI(bn_mul8x_mont_neon, r.data(), a.data(), b.data(), mont->N.d,
+                mont->n0, words);
+      CHECK_ABI(bn_mul8x_mont_neon, r.data(), a.data(), a.data(), mont->N.d,
+                mont->n0, words);
+    }
+    CHECK_ABI(bn_mul_mont_nohw, r.data(), a.data(), b.data(), mont->N.d,
+              mont->n0, words);
+    CHECK_ABI(bn_mul_mont_nohw, r.data(), a.data(), a.data(), mont->N.d,
+              mont->n0, words);
 #else
     CHECK_ABI(bn_mul_mont, r.data(), a.data(), b.data(), mont->N.d, mont->n0,
               words);
