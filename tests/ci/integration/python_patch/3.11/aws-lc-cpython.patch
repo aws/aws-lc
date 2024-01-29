@@ -65,18 +65,6 @@ index bd0fc9c2da..3ab70f5c1f 100644
              with self.reaped_server(SimpleIMAPHandler) as server:
                  client = self.imap_class(*server.server_address,
                                           ssl_context=ssl_context)
-diff --git a/Lib/test/test_site.py b/Lib/test/test_site.py
-index 8d336649ec..fa96b5964f 100644
---- a/Lib/test/test_site.py
-+++ b/Lib/test/test_site.py
-@@ -473,6 +473,7 @@ def test_sitecustomize_executed(self):
-     def test_license_exists_at_url(self):
-         # This test is a bit fragile since it depends on the format of the
-         # string displayed by license in the absence of a LICENSE file.
-+        #import ssl
-         url = license._Printer__data.split()[1]
-         req = urllib.request.Request(url, method='HEAD')
-         # Reset global urllib.request._opener
 diff --git a/Lib/test/test_ssl.py b/Lib/test/test_ssl.py
 index 1f881038c3..36fa1e32e8 100644
 --- a/Lib/test/test_ssl.py
