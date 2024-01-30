@@ -60,7 +60,6 @@ function openssh_build() {
 
 function checkout_openssh_branch() {
   pushd "${OPENSSH_WORKSPACE_FOLDER}"
-  make clean
   git clean -f -d
   git checkout --track origin/"$1"
   popd
@@ -80,24 +79,25 @@ function openssh_run_tests() {
 mkdir -p "${AWS_LC_BUILD_FOLDER}" "${AWS_LC_INSTALL_FOLDER}" "${OPENSSH_INSTALL_FOLDER}"
 
 # Get latest OpenSSH version.
-git clone https://github.com/openssh/openssh-portable.git
+git clone https://github.com/openssh/openssh-portable.git "${OPENSSH_WORKSPACE_FOLDER}"
 ls
 
-# Buld AWS-LC as a shared library
+# Build AWS-LC as a shared library
 aws_lc_build "$SRC_ROOT" "$AWS_LC_BUILD_FOLDER" "$AWS_LC_INSTALL_FOLDER" -DBUILD_TESTING=OFF -DBUILD_TOOL=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_SHARED_LIBS=1
 install_aws_lc
 
+if [ "$OPENSSH_BRANCH" != "master" ]; then
+  checkout_openssh_branch "$OPENSSH_BRANCH"
+fi
+
+openssh_build
+
 CODEBUILD_SKIPPED_TESTS="agent-subprocess forwarding multiplex channel-timeout forward-control agent-restrict connection-timeout"
-
-# Using default branch. Build openssh and run tests.
-openssh_build
-openssh_run_tests "${CODEBUILD_SKIPPED_TESTS}"
-
-# Using branch V_8_9
-checkout_openssh_branch V_8_9
-openssh_build
-# In v8.9, the "percent" test requires the 'openssl' cli command
-openssh_run_tests "percent ${CODEBUILD_SKIPPED_TESTS}"
+if [ "$OPENSSH_BRANCH" == "V_8_9" ]; then
+    # In v8.9, the "percent" test requires the 'openssl' cli command
+    openssh_run_tests "percent ${CODEBUILD_SKIPPED_TESTS}"
+else
+    openssh_run_tests "${CODEBUILD_SKIPPED_TESTS}"
+fi
 
 popd
-
