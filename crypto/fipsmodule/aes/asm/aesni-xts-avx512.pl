@@ -1832,29 +1832,65 @@ ___
   vmovdqu 	 %xmm8,-0x10($output)
 ___
   }
-  $code .= "\n.L_ret_${rndsuffix}:\n";
-  $code .= "mov 	 $GP_STORAGE($TW),%rbx\n";
+
+  {
+  $code .= <<___;
+  .L_ret_${rndsuffix}:
+  mov 	 $GP_STORAGE($TW),%rbx
+  xor    $tmp1,$tmp1
+  mov    $tmp1,$GP_STORAGE($TW)
+  # Zero-out the whole of `%zmm0`.
+  vpxorq %zmm0,%zmm0,%zmm0
+___
+  }
 
   if ($win64) {
-    $code .= "mov 	 $GP_STORAGE + 8*1($TW),%rdi\n";
-    $code .= "mov 	 $GP_STORAGE + 8*2($TW),%rsi\n";
+    $code .= <<___;
+    mov $GP_STORAGE + 8*1($TW),%rdi
+    mov $tmp1,$GP_STORAGE + 8*1($TW)
+    mov $GP_STORAGE + 8*2($TW),%rsi
+    mov $tmp1,$GP_STORAGE + 8*2($TW)
 
-    $code .= "vmovdqa  $XMM_STORAGE + 16 * 0($TW), %xmm6\n";
-    $code .= "vmovdqa  $XMM_STORAGE + 16 * 1($TW), %xmm7\n";
-    $code .= "vmovdqa  $XMM_STORAGE + 16 * 2($TW), %xmm8\n";
-    $code .= "vmovdqa  $XMM_STORAGE + 16 * 3($TW), %xmm9\n";
-    $code .= "vmovdqa  $XMM_STORAGE + 16 * 4($TW), %xmm10\n";
-    $code .= "vmovdqa  $XMM_STORAGE + 16 * 5($TW), %xmm11\n";
-    $code .= "vmovdqa  $XMM_STORAGE + 16 * 6($TW), %xmm12\n";
-    $code .= "vmovdqa  $XMM_STORAGE + 16 * 7($TW), %xmm13\n";
-    $code .= "vmovdqa  $XMM_STORAGE + 16 * 8($TW), %xmm14\n";
-    $code .= "vmovdqa  $XMM_STORAGE + 16 * 9($TW), %xmm15\n";
+    vmovdqa $XMM_STORAGE + 16 * 0($TW), %xmm6
+    vmovdqa $XMM_STORAGE + 16 * 1($TW), %xmm7
+    vmovdqa $XMM_STORAGE + 16 * 2($TW), %xmm8
+    vmovdqa $XMM_STORAGE + 16 * 3($TW), %xmm9
+
+    # Zero the 64 bytes we just restored to the xmm registers.
+    vmovdqa64 %zmm0,$XMM_STORAGE($TW)
+
+    vmovdqa $XMM_STORAGE + 16 * 4($TW), %xmm10
+    vmovdqa $XMM_STORAGE + 16 * 5($TW), %xmm11
+    vmovdqa $XMM_STORAGE + 16 * 6($TW), %xmm12
+    vmovdqa $XMM_STORAGE + 16 * 7($TW), %xmm13
+
+    # And again.
+    vmovdqa64 %zmm0,$XMM_STORAGE + 16 * 4($TW)
+
+    vmovdqa $XMM_STORAGE + 16 * 8($TW), %xmm14
+    vmovdqa $XMM_STORAGE + 16 * 9($TW), %xmm15
+
+    # Last round is only 32 bytes (256-bits), so we use `%ymm` as the
+    # source operand.
+    vmovdqa %ymm0,$XMM_STORAGE + 16 * 8($TW)
+___
   }
 
   {
   $code .= <<___;
-  mov 	 %rbp,%rsp
-  pop 	 %rbp
+  # Zero-out the stack frames used for `key1`, 64 bytes at a time.
+  vmovdqa64    %zmm0,0x80(%rsp)
+  vmovdqa64    %zmm0,0xc0(%rsp)
+  vmovdqa64    %zmm0,0x100(%rsp)
+
+  # Stack usage is not divisible by 64, so we use a kmask register to
+  # only mov 48 of the bytes (6 quad-words).
+  mov       \$0x3f,$tmp1
+  kmovq     $tmp1,%k2
+  vmovdqa64 %zmm0,0x140(%rsp){%k2}
+
+  mov %rbp,%rsp
+  pop %rbp
   vzeroupper
   ret
 
@@ -2571,29 +2607,65 @@ ___
   vmovdqu 	 %xmm8,-0x10($output)
 ___
   }
-  $code .= "\n.L_ret_${rndsuffix}:\n";
-  $code .= "mov 	 $GP_STORAGE($TW),%rbx\n";
+
+  {
+  $code .= <<___;
+  .L_ret_${rndsuffix}:
+  mov 	 $GP_STORAGE($TW),%rbx
+  xor    $tmp1,$tmp1
+  mov    $tmp1,$GP_STORAGE($TW)
+  # Zero-out the whole of `%zmm0`.
+  vpxorq %zmm0,%zmm0,%zmm0
+___
+  }
 
   if ($win64) {
-    $code .= "mov 	 $GP_STORAGE + 8*1($TW),%rdi\n";
-    $code .= "mov 	 $GP_STORAGE + 8*2($TW),%rsi\n";
+    $code .= <<___;
+    mov $GP_STORAGE + 8*1($TW),%rdi
+    mov $tmp1,$GP_STORAGE + 8*1($TW)
+    mov $GP_STORAGE + 8*2($TW),%rsi
+    mov $tmp1,$GP_STORAGE + 8*2($TW)
 
-    $code .= "vmovdqa  $XMM_STORAGE + 16 * 0($TW), %xmm6\n";
-    $code .= "vmovdqa  $XMM_STORAGE + 16 * 1($TW), %xmm7\n";
-    $code .= "vmovdqa  $XMM_STORAGE + 16 * 2($TW), %xmm8\n";
-    $code .= "vmovdqa  $XMM_STORAGE + 16 * 3($TW), %xmm9\n";
-    $code .= "vmovdqa  $XMM_STORAGE + 16 * 4($TW), %xmm10\n";
-    $code .= "vmovdqa  $XMM_STORAGE + 16 * 5($TW), %xmm11\n";
-    $code .= "vmovdqa  $XMM_STORAGE + 16 * 6($TW), %xmm12\n";
-    $code .= "vmovdqa  $XMM_STORAGE + 16 * 7($TW), %xmm13\n";
-    $code .= "vmovdqa  $XMM_STORAGE + 16 * 8($TW), %xmm14\n";
-    $code .= "vmovdqa  $XMM_STORAGE + 16 * 9($TW), %xmm15\n";
+    vmovdqa $XMM_STORAGE + 16 * 0($TW), %xmm6
+    vmovdqa $XMM_STORAGE + 16 * 1($TW), %xmm7
+    vmovdqa $XMM_STORAGE + 16 * 2($TW), %xmm8
+    vmovdqa $XMM_STORAGE + 16 * 3($TW), %xmm9
+
+    # Zero the 64 bytes we just restored to the xmm registers.
+    vmovdqa64 %zmm0,$XMM_STORAGE($TW)
+
+    vmovdqa $XMM_STORAGE + 16 * 4($TW), %xmm10
+    vmovdqa $XMM_STORAGE + 16 * 5($TW), %xmm11
+    vmovdqa $XMM_STORAGE + 16 * 6($TW), %xmm12
+    vmovdqa $XMM_STORAGE + 16 * 7($TW), %xmm13
+
+    # And again.
+    vmovdqa64 %zmm0,$XMM_STORAGE + 16 * 4($TW)
+
+    vmovdqa $XMM_STORAGE + 16 * 8($TW), %xmm14
+    vmovdqa $XMM_STORAGE + 16 * 9($TW), %xmm15
+
+    # Last round is only 32 bytes (256-bits), so we use `%ymm` as the
+    # source operand.
+    vmovdqa %ymm0,$XMM_STORAGE + 16 * 8($TW)
+___
   }
 
   {
   $code .= <<___;
-  mov 	 %rbp,%rsp
-  pop 	 %rbp
+  # Zero-out the stack frames used for `key1`, 64 bytes at a time.
+  vmovdqa64    %zmm0,0x80(%rsp)
+  vmovdqa64    %zmm0,0xc0(%rsp)
+  vmovdqa64    %zmm0,0x100(%rsp)
+
+  # Stack usage is not divisible by 64, so we use a kmask register to
+  # only mov 48 of the bytes (6 quad-words).
+  mov       \$0x3f,$tmp1
+  kmovq     $tmp1,%k2
+  vmovdqa64 %zmm0,0x140(%rsp){%k2}
+
+  mov %rbp,%rsp
+  pop %rbp
   vzeroupper
   ret
 
