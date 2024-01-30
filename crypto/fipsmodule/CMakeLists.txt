@@ -373,7 +373,7 @@ if(FIPS_DELOCATE)
   # The flags are not required for any other compiler we are running in the CI.
   if ((CMAKE_ASM_COMPILER_ID MATCHES "Clang" OR CMAKE_ASM_COMPILER MATCHES "clang") AND
       (CMAKE_ASM_COMPILER_VERSION VERSION_LESS "7.0.0") AND (ARCH STREQUAL "x86_64"))
-    set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/bcm-delocated.S PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512bw -mavx512dq -mavx512vl")
+    set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/bcm-delocated.S PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512bw -mavx512dq -mavx512vl -mavx512ifma")
   endif()
 
   add_library(

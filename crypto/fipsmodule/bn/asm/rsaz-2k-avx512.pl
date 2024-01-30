@@ -75,7 +75,10 @@ open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\""
 *STDOUT=*OUT;
 
 if ($avx512ifma>0) {{{
-@_6_args_universal_ABI = ("%rdi","%rsi","%rdx","%rcx","%r8","%r9");
+
+@_6_args_universal_ABI = $win64 ?
+("%rcx","%rdx","%r8","%r9","%r10","%r11") :
+("%rdi","%rsi","%rdx","%rcx","%r8","%r9");
 
 $code.=<<___;
 .text
@@ -95,26 +98,6 @@ ossl_rsaz_avx512ifma_eligible:
 ___
 
 ###############################################################################
-# Almost Montgomery Multiplication (AMM) for 20-digit number in radix 2^52.
-#
-# AMM is defined as presented in the paper [1].
-#
-# The input and output are presented in 2^52 radix domain, i.e.
-#   |res|, |a|, |b|, |m| are arrays of 20 64-bit qwords with 12 high bits zeroed.
-#   |k0| is a Montgomery coefficient, which is here k0 = -1/m mod 2^64
-#
-# NB: the AMM implementation does not perform "conditional" subtraction step
-# specified in the original algorithm as according to the Lemma 1 from the paper
-# [2], the result will be always < 2*m and can be used as a direct input to
-# the next AMM iteration.  This post-condition is true, provided the correct
-# parameter |s| (notion of the Lemma 1 from [2]) is chosen, i.e.  s >= n + 2 * k,
-# which matches our case: 1040 > 1024 + 2 * 1.
-#
-# [1] Gueron, S. Efficient software implementations of modular exponentiation.
-#     DOI: 10.1007/s13389-012-0031-5
-# [2] Gueron, S. Enhanced Montgomery Multiplication.
-#     DOI: 10.1007/3-540-36400-5_5
-#
 # void ossl_rsaz_amm52x20_x1_ifma256(BN_ULONG *res,
 #                                    const BN_ULONG *a,
 #                                    const BN_ULONG *b,
@@ -122,7 +105,7 @@ ___
 #                                    BN_ULONG k0);
 ###############################################################################
 {
-# input parameters ("%rdi","%rsi","%rdx","%rcx","%r8")
+# input parameters
 my ($res,$a,$b,$m,$k0) = @_6_args_universal_ABI;
 
 my $mask52     = "%rax";
@@ -414,13 +397,6 @@ $code.=<<___;
 ___
 
 ###############################################################################
-# Dual Almost Montgomery Multiplication for 20-digit number in radix 2^52
-#
-# See description of ossl_rsaz_amm52x20_x1_ifma256() above for details about Almost
-# Montgomery Multiplication algorithm and function input parameters description.
-#
-# This function does two AMMs for two independent inputs, hence dual.
-#
 # void ossl_rsaz_amm52x20_x2_ifma256(BN_ULONG out[2][20],
 #                                    const BN_ULONG a[2][20],
 #                                    const BN_ULONG b[2][20],
@@ -522,19 +498,10 @@ ___
 }
 
 ###############################################################################
-# Constant time extraction from the precomputed table of powers base^i, where
-#    i = 0..2^EXP_WIN_SIZE-1
-#
-# The input |red_table| contains precomputations for two independent base values.
-# |red_table_idx1| and |red_table_idx2| are corresponding power indexes.
-#
-# Extracted value (output) is 2 20 digit numbers in 2^52 radix.
-#
 # void ossl_extract_multiplier_2x20_win5(BN_ULONG *red_Y,
 #                                        const BN_ULONG red_table[1 << EXP_WIN_SIZE][2][20],
 #                                        int red_table_idx1, int red_table_idx2);
 #
-# EXP_WIN_SIZE = 5
 ###############################################################################
 {
 # input parameters

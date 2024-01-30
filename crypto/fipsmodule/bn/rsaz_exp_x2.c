@@ -32,10 +32,8 @@ static void *__dummy = &__dummy;
 #include <openssl/crypto.h>
 #include <assert.h>
 #include <string.h>
+#include "../../internal.h"
 #include "rsaz_exp.h"
-
-# define ALIGN_OF(ptr, boundary) \
-    ((unsigned char *)(ptr) + (boundary - (((size_t)(ptr)) & (boundary - 1))))
 
 /* Internal radix */
 # define DIGIT_SIZE (52)
@@ -62,48 +60,27 @@ OPENSSL_INLINE int number_of_digits(int bitsize, int digit_size)
     return (bitsize + digit_size - 1) / digit_size;
 }
 
-/*
- * For details of the methods declared below please refer to
- *    crypto/bn/asm/rsaz-avx512.pl
- *
- * Naming conventions:
- *  amm = Almost Montgomery Multiplication
- *  ams = Almost Montgomery Squaring
- *  52xZZ - data represented as array of ZZ digits in 52-bit radix
- *  _x1_/_x2_ - 1 or 2 independent inputs/outputs
- *  _ifma256 - uses 256-bit wide IFMA ISA (AVX512_IFMA256)
- */
 
-void ossl_rsaz_amm52x20_x1_ifma256(BN_ULONG *res, const BN_ULONG *a,
-                                   const BN_ULONG *b, const BN_ULONG *m,
-                                   BN_ULONG k0);
-void ossl_rsaz_amm52x20_x2_ifma256(BN_ULONG *out, const BN_ULONG *a,
-                                   const BN_ULONG *b, const BN_ULONG *m,
-                                   const BN_ULONG k0[2]);
-void ossl_extract_multiplier_2x20_win5(BN_ULONG *red_Y,
-                                       const BN_ULONG *red_table,
-                                       int red_table_idx1, int red_table_idx2);
-
-void ossl_rsaz_amm52x30_x1_ifma256(BN_ULONG *res, const BN_ULONG *a,
-                                   const BN_ULONG *b, const BN_ULONG *m,
-                                   BN_ULONG k0);
-void ossl_rsaz_amm52x30_x2_ifma256(BN_ULONG *out, const BN_ULONG *a,
-                                   const BN_ULONG *b, const BN_ULONG *m,
-                                   const BN_ULONG k0[2]);
-void ossl_extract_multiplier_2x30_win5(BN_ULONG *red_Y,
-                                       const BN_ULONG *red_table,
-                                       int red_table_idx1, int red_table_idx2);
-
-void ossl_rsaz_amm52x40_x1_ifma256(BN_ULONG *res, const BN_ULONG *a,
-                                   const BN_ULONG *b, const BN_ULONG *m,
-                                   BN_ULONG k0);
-void ossl_rsaz_amm52x40_x2_ifma256(BN_ULONG *out, const BN_ULONG *a,
-                                   const BN_ULONG *b, const BN_ULONG *m,
-                                   const BN_ULONG k0[2]);
-void ossl_extract_multiplier_2x40_win5(BN_ULONG *red_Y,
-                                       const BN_ULONG *red_table,
-                                       int red_table_idx1, int red_table_idx2);
-
+// Dual {1024,1536,2048}-bit w-ary modular exponentiation using prime moduli of
+// the same bit size using Almost Montgomery Multiplication, optimized with
+// AVX512_IFMA256 ISA.
+//
+// The parameter w (window size) = 5.
+//
+//  [out] res      - result of modular exponentiation: 2x{20,30,40} qword
+//                   values in 2^52 radix.
+//  [in]  base     - base (2x{20,30,40} qword values in 2^52 radix)
+//  [in]  exp      - array of 2 pointers to {16,24,32} qword values in 2^64 radix.
+//                   Exponent is not converted to redundant representation.
+//  [in]  m        - moduli (2x{20,30,40} qword values in 2^52 radix)
+//  [in]  rr       - Montgomery parameter for 2 moduli:
+//                     RR(1024) = 2^2080 mod m.
+//                     RR(1536) = 2^3120 mod m.
+//                     RR(2048) = 2^4160 mod m.
+//                   (2x{20,30,40} qword values in 2^52 radix)
+//  [in]  k0       - Montgomery parameter for 2 moduli: k0 = -1/m mod 2^64
+//
+// \return (void).
 static int RSAZ_mod_exp_x2_ifma256(BN_ULONG *res, const BN_ULONG *base,
                                    const BN_ULONG *exp[2], const BN_ULONG *m,
                                    const BN_ULONG *rr, const BN_ULONG k0[2],
@@ -198,7 +175,7 @@ int ossl_rsaz_mod_exp_avx512_x2(BN_ULONG *res1,
     storage = (BN_ULONG *)OPENSSL_malloc(storage_len_bytes);
     if (storage == NULL)
         goto err;
-    storage_aligned = (BN_ULONG *)ALIGN_OF(storage, 64);
+    storage_aligned = (BN_ULONG *)align_pointer(storage, 64);
 
     /* Memory layout for red(undant) representations */
     base1_red = storage_aligned;
@@ -273,28 +250,6 @@ err:
     return ret;
 }
 
-/*
- * Dual {1024,1536,2048}-bit w-ary modular exponentiation using prime moduli of
- * the same bit size using Almost Montgomery Multiplication, optimized with
- * AVX512_IFMA256 ISA.
- *
- * The parameter w (window size) = 5.
- *
- *  [out] res      - result of modular exponentiation: 2x{20,30,40} qword
- *                   values in 2^52 radix.
- *  [in]  base     - base (2x{20,30,40} qword values in 2^52 radix)
- *  [in]  exp      - array of 2 pointers to {16,24,32} qword values in 2^64 radix.
- *                   Exponent is not converted to redundant representation.
- *  [in]  m        - moduli (2x{20,30,40} qword values in 2^52 radix)
- *  [in]  rr       - Montgomery parameter for 2 moduli:
- *                     RR(1024) = 2^2080 mod m.
- *                     RR(1536) = 2^3120 mod m.
- *                     RR(2048) = 2^4160 mod m.
- *                   (2x{20,30,40} qword values in 2^52 radix)
- *  [in]  k0       - Montgomery parameter for 2 moduli: k0 = -1/m mod 2^64
- *
- * \return (void).
- */
 int RSAZ_mod_exp_x2_ifma256(BN_ULONG *out,
                             const BN_ULONG *base,
                             const BN_ULONG *exp[2],
@@ -381,7 +336,7 @@ int RSAZ_mod_exp_x2_ifma256(BN_ULONG *out,
     if (storage == NULL)
         goto err;
     OPENSSL_cleanse(storage, storage_len_bytes);
-    storage_aligned = (BN_ULONG *)ALIGN_OF(storage, 64);
+    storage_aligned = (BN_ULONG *)align_pointer(storage, 64);
 
     red_Y     = storage_aligned;
     red_X     = red_Y + 2 * red_digits;
