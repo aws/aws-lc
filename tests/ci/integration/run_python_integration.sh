@@ -88,7 +88,7 @@ function python_run_tests() {
 #     (namely AWS-LC) support TLSv1.3, but not the post-handshake
 #     authentication portion of that protocol.
 #   - Modify the ssl module's backing C code to account for AWS-LC's divergent
-#     function signature for |sk_SSL_CIPHER_find|
+#     function signature and return value for |sk_SSL_CIPHER_find|
 #   - Modify the ssl module's backing C code to set |SSL_MODE_AUTO_RETRY| in
 #     all calls to |SSL{_CTX}_set_mode|
 #

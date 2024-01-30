@@ -455,7 +455,7 @@ index e939f95048..8c99e2d8a1 100644
          cipher = sk_SSL_CIPHER_value(server_ciphers, i);
 +#if defined(OPENSSL_IS_AWSLC)
 +        size_t unused_idx;
-+        if (sk_SSL_CIPHER_find(client_ciphers, &unused_idx, cipher) < 0)
++        if (sk_SSL_CIPHER_find(client_ciphers, &unused_idx, cipher) == 0)
 +#else
          if (sk_SSL_CIPHER_find(client_ciphers, cipher) < 0)
 +#endif
