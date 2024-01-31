@@ -88,7 +88,7 @@ main.client_ssl_data_print  : Bug#0002 AWS-LC does not support Stateful session 
 main.ssl_cache : Bug#0002 AWS-LC does not support Stateful session resumption (Session Caching).
 main.ssl_cache_tls13 : Bug#0002 AWS-LC does not support Stateful session resumption (Session Caching).
 "> skiplist
-  ./mtr --suite=main --force --parallel=$((NUM_CPU_THREADS * 2)) --skip-test-list=${MYSQL_BUILD_FOLDER}/mysql-test/skiplist --retry-failure=3 --retry=3 --report-unstable-tests
+  ./mtr --suite=main --force --parallel=auto --skip-test-list=${MYSQL_BUILD_FOLDER}/mysql-test/skiplist --retry-failure=3 --retry=3 --report-unstable-tests
   popd
 }
 
