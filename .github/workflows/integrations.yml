@@ -91,4 +91,14 @@ jobs:
       - name: Run integration build
         run: |
           ./tests/ci/integration/run_socat_integration.sh
-
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install OS Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make
+      - uses: actions/checkout@v3
+      - name: Build AWS-LC, build python, run tests
+        run: |
+          ./tests/ci/integration/run_python_integration.sh
