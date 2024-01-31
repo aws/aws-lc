@@ -174,7 +174,7 @@ func (d *delocation) processInput(input inputFile) (err error) {
 		}
 
 		switch node.pegRule {
-		case ruleGlobalDirective, ruleComment, ruleLocationDirective:
+		case ruleGlobalDirective, ruleComment, ruleLocationDirective, ruleZeroDirective:
 			d.writeNode(statement)
 		case ruleDirective:
 			statement, err = d.processDirective(statement, node.up)
