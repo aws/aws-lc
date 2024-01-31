@@ -79,6 +79,10 @@
 #endif
 #endif
 
+#if defined(OPENSSL_OPENBSD)
+#include <stdlib.h>
+#endif
+
 #include <openssl/thread.h>
 #include <openssl/mem.h>
 
@@ -253,6 +257,13 @@ static void init_once(void) {
   return;
 #endif
 
+#if defined(OPENSSL_OPENBSD)
+  // To get system randomness on OpenBSD we use |arc4random_buf| function
+  // which is recommended to use for C APIs rather then /dev/urandom.
+  // See https://man.openbsd.org/arc4random.3
+  return;
+#endif
+
 #if defined(FREEBSD_GETRANDOM)
   *urandom_fd_bss_get() = kHaveGetrandom;
   return;
@@ -339,7 +350,7 @@ static void wait_for_entropy(void) {
   }
 
 #if defined(BORINGSSL_FIPS) && !defined(URANDOM_BLOCKS_FOR_ENTROPY) && \
-    !defined(OPENSSL_APPLE) // On MacOS and iOS we don't use /dev/urandom.
+    !(defined(OPENSSL_APPLE) || defined(OPENSSL_OPENBSD)) // On MacOS, iOS, and OpenBSD we don't use /dev/urandom.
 
   // In FIPS mode on platforms where urandom doesn't block at startup, we ensure
   // that the kernel has sufficient entropy before continuing. This is
@@ -386,6 +397,12 @@ static int fill_with_entropy(uint8_t *out, size_t len, int block, int seed) {
     fprintf(stderr, "CCRandomGenerateBytes failed.\n");
     abort();
   }
+#endif
+
+#if defined(OPENSSL_OPENBSD)
+  // Return value is void, no error to check
+  arc4random_buf(out, len);
+  return 1;
 #endif
 
 #if defined(USE_NR_getrandom) || defined(FREEBSD_GETRANDOM)
