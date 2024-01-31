@@ -1,3 +1,15 @@
+if(${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD" AND FIPS)
+  if(NOT BUILD_SHARED_LIBS)
+    # Disable the stack smash protector for FIPS static builds
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-stack-protector")
+  endif()
+  if(CMAKE_C_COMPILER_ID STREQUAL "Clang")
+    # OpenBSD's Clang version has a return trampoline enabled by default that
+    # it may inject and cause issues with our custom linker script.
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mno-retpoline")
+  endif()
+endif()
+
 if(ANDROID)
   # Since "--Wa,--noexecstack" is not used during the preprocessor step of Android (because assembler is not invoked),
   # Clang reports that argument as unused. We remove the flag only for the FIPS build of Android.
@@ -168,8 +180,7 @@ endif()
 # s2n-bignum files can be compiled on Unix platforms only (except Apple),
 # and on x86_64 and aarch64 systems only.
 if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX) OR
-      ARCH STREQUAL "aarch64") AND
-    UNIX)
+      ARCH STREQUAL "aarch64") AND UNIX)
 
   # Set the source directory for s2n-bignum assembly files
   if(ARCH STREQUAL "x86_64")

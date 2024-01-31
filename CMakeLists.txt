@@ -41,6 +41,17 @@ if(FIPS)
   endif()
 endif()
 
+if(${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD")
+  # OpenBSD by defaults links with --execute-only this is problematic for two reasons:
+  # 1. The FIPS shared and static builds need to compute the module signature hash by reading the .text section
+  # 2. s2n-bignum x86 assembly sources still have references to static data in the .text section
+  if(NOT BUILD_SHARED_LIBS)
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--no-execute-only")
+  else()
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-execute-only")
+  endif()
+endif()
+
 # Tests and libssl both require the CXX language to be enabled. If a consumer
 # chooses to disable building the tests and libssl, do not enable CXX
 if(BUILD_TESTING OR BUILD_LIBSSL)
@@ -428,7 +439,7 @@ if(GCC OR CLANG)
 
   check_compiler("stdalign_check.c" AWS_LC_STDALIGN_AVAILABLE)
   check_compiler("builtin_swap_check.c" AWS_LC_BUILTIN_SWAP_SUPPORTED)
-  if(FIPS AND NOT APPLE)
+  if(FIPS AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
     check_compiler("linux_u32.c" AWS_LC_URANDOM_U32)
   endif()
 
