@@ -535,6 +535,7 @@ TEST(RSATest, BadKey) {
 
   // Bad keys are detected.
   EXPECT_FALSE(RSA_check_key(key.get()));
+  EXPECT_FALSE(wip_do_not_use_rsa_check_key(key.get()));
   EXPECT_FALSE(RSA_check_fips(key.get()));
 
   // Bad keys may not be parsed.
@@ -586,6 +587,7 @@ TEST(RSATest, OnlyDGiven) {
   // While keys defined only in terms of |n| and |d| must be functional, our
   // validation logic doesn't consider them "valid".
   EXPECT_FALSE(RSA_check_key(key2.get()));
+  EXPECT_FALSE(wip_do_not_use_rsa_check_key(key2.get()));
 
   ASSERT_LE(RSA_size(key2.get()), sizeof(buf));
   EXPECT_TRUE(RSA_sign(NID_sha256, kDummyHash, sizeof(kDummyHash), buf,
@@ -644,6 +646,7 @@ TEST(RSATest, OnlyDGiven) {
   ASSERT_FALSE(jcaKey->iqmp);
 
   EXPECT_FALSE(RSA_check_key(jcaKey.get()));
+  EXPECT_FALSE(wip_do_not_use_rsa_check_key(jcaKey.get()));
 
   ASSERT_LE(RSA_size(jcaKey.get()), sizeof(buf));
   EXPECT_TRUE(RSA_sign(NID_sha256, kDummyHash, sizeof(kDummyHash), buf,
@@ -956,6 +959,7 @@ TEST(RSATest, CheckKey) {
   // With p and q together, it is sufficient to check d against e.
   ASSERT_TRUE(BN_add_word(rsa->d, 1));
   EXPECT_FALSE(RSA_check_key(rsa.get()));
+  EXPECT_FALSE(wip_do_not_use_rsa_check_key(rsa.get()));
   ERR_clear_error();
 
   // Test another invalid d. p-1 is divisible by 3, so there is no valid value
@@ -973,6 +977,7 @@ TEST(RSATest, CheckKey) {
   ASSERT_TRUE(BN_set_word(rsa->e, 111));
   ASSERT_TRUE(BN_hex2bn(&rsa->d, kDBogus));
   EXPECT_FALSE(RSA_check_key(rsa.get()));
+  EXPECT_FALSE(wip_do_not_use_rsa_check_key(rsa.get()));
   ERR_clear_error();
   ASSERT_TRUE(BN_hex2bn(&rsa->e, kE));
 
@@ -1009,18 +1014,21 @@ TEST(RSATest, CheckKey) {
   // CRT value must either all be provided or all missing.
   ASSERT_TRUE(BN_hex2bn(&rsa->dmp1, kDMP1));
   EXPECT_FALSE(RSA_check_key(rsa.get()));
+  EXPECT_FALSE(wip_do_not_use_rsa_check_key(rsa.get()));
   ERR_clear_error();
   BN_free(rsa->dmp1);
   rsa->dmp1 = nullptr;
 
   ASSERT_TRUE(BN_hex2bn(&rsa->dmq1, kDMQ1));
   EXPECT_FALSE(RSA_check_key(rsa.get()));
+  EXPECT_FALSE(wip_do_not_use_rsa_check_key(rsa.get()));
   ERR_clear_error();
   BN_free(rsa->dmq1);
   rsa->dmq1 = nullptr;
 
   ASSERT_TRUE(BN_hex2bn(&rsa->iqmp, kIQMP));
   EXPECT_FALSE(RSA_check_key(rsa.get()));
+  EXPECT_FALSE(wip_do_not_use_rsa_check_key(rsa.get()));
   ERR_clear_error();
 
   // The full key is accepted.
@@ -1032,32 +1040,38 @@ TEST(RSATest, CheckKey) {
   // Incorrect CRT values are rejected.
   ASSERT_TRUE(BN_add_word(rsa->dmp1, 1));
   EXPECT_FALSE(RSA_check_key(rsa.get()));
+  EXPECT_FALSE(wip_do_not_use_rsa_check_key(rsa.get()));
   ERR_clear_error();
   ASSERT_TRUE(BN_sub_word(rsa->dmp1, 1));
 
   ASSERT_TRUE(BN_add_word(rsa->dmq1, 1));
   EXPECT_FALSE(RSA_check_key(rsa.get()));
+  EXPECT_FALSE(wip_do_not_use_rsa_check_key(rsa.get()));
   ERR_clear_error();
   ASSERT_TRUE(BN_sub_word(rsa->dmq1, 1));
 
   ASSERT_TRUE(BN_add_word(rsa->iqmp, 1));
   EXPECT_FALSE(RSA_check_key(rsa.get()));
+  EXPECT_FALSE(wip_do_not_use_rsa_check_key(rsa.get()));
   ERR_clear_error();
   ASSERT_TRUE(BN_sub_word(rsa->iqmp, 1));
 
   // Non-reduced CRT values are rejected.
   ASSERT_TRUE(BN_add(rsa->dmp1, rsa->dmp1, rsa->p));
   EXPECT_FALSE(RSA_check_key(rsa.get()));
+  EXPECT_FALSE(wip_do_not_use_rsa_check_key(rsa.get()));
   ERR_clear_error();
   ASSERT_TRUE(BN_sub(rsa->dmp1, rsa->dmp1, rsa->p));
 
   ASSERT_TRUE(BN_add(rsa->dmq1, rsa->dmq1, rsa->q));
   EXPECT_FALSE(RSA_check_key(rsa.get()));
+  EXPECT_FALSE(wip_do_not_use_rsa_check_key(rsa.get()));
   ERR_clear_error();
   ASSERT_TRUE(BN_sub(rsa->dmq1, rsa->dmq1, rsa->q));
 
   ASSERT_TRUE(BN_add(rsa->iqmp, rsa->iqmp, rsa->p));
   EXPECT_FALSE(RSA_check_key(rsa.get()));
+  EXPECT_FALSE(wip_do_not_use_rsa_check_key(rsa.get()));
   ERR_clear_error();
   ASSERT_TRUE(BN_sub(rsa->iqmp, rsa->iqmp, rsa->p));
 }
@@ -1213,6 +1227,7 @@ TEST(RSADeathTest, KeygenFailAndDie) {
   // Generating a key over an existing key works, despite any cached state.
   EXPECT_TRUE(RSA_generate_key_ex(rsa.get(), 2048, e.get(), nullptr));
   EXPECT_TRUE(RSA_check_key(rsa.get()));
+  EXPECT_TRUE(wip_do_not_use_rsa_check_key(rsa.get()));
   uint8_t *der3;
   size_t der3_len;
   ASSERT_TRUE(RSA_private_key_to_bytes(&der3, &der3_len, rsa.get()));

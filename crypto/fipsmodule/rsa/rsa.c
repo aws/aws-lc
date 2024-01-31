@@ -1053,10 +1053,6 @@ int RSA_blinding_on(RSA *rsa, BN_CTX *ctx) {
 // ------ WORK IN PROGRESS, DO NOT USE ------
 //
 // Performs several checks on the public component of the given RSA key.
-// Usually, the public component of an RSA key is represented by the pair
-// (n, e) where `n` is the public modulus and `e` is the public exponent.
-// However, some Java software strips the exponent `e` from some RSA keys.
-// We allow checking both standard and stripped keys with this function.
 // This function is a helper function meant to be used only within
 // |wip_do_not_use_rsa_check_key|, do not use it for any other purpose.
 // The checks:
@@ -1065,8 +1061,10 @@ int RSA_blinding_on(RSA *rsa, BN_CTX *ctx) {
 //   - n and e are odd,
 //   - n > e.
 static int is_public_component_of_rsa_key_good(const RSA *key) {
-  // The caller ensures `key->n != NULL`.
+  // The caller ensures `key->n != NULL` and `key->e != NULL`.
   unsigned int n_bits = BN_num_bits(key->n);
+  unsigned int e_bits = BN_num_bits(key->e);
+
   if (n_bits > 16 * 1024) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_MODULUS_TOO_LARGE);
     return 0;
@@ -1077,21 +1075,10 @@ static int is_public_component_of_rsa_key_good(const RSA *key) {
     return 0;
   }
 
-  if (key->e == NULL) {
-    // Stripped key, so no more checks, return success.
-    return 1;
-  }
-
   // Mitigate DoS attacks by limiting the exponent size. 33 bits was chosen as
-  // the limit based on the recommendations in [1] and [2]. Windows CryptoAPI
-  // doesn't support values larger than 32 bits [3], so it is unlikely that
-  // exponents larger than 32 bits are being used for anything Windows commonly
-  // does.
-  //
-  // [1] https://www.imperialviolet.org/2012/03/16/rsae.html
-  // [2] https://www.imperialviolet.org/2012/03/17/rsados.html
-  // [3] https://msdn.microsoft.com/en-us/library/aa387685(VS.85).aspx
-  unsigned int e_bits = BN_num_bits(key->e);
+  // the limit based on the recommendations in:
+  //   - https://www.imperialviolet.org/2012/03/16/rsae.html
+  //   - https://www.imperialviolet.org/2012/03/17/rsados.html
   if (e_bits < 2 || e_bits > 33) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_E_VALUE);
     return 0;
@@ -1196,8 +1183,9 @@ int wip_do_not_use_rsa_check_key(const RSA *key) {
     return 0;
   }
 
-  // Nothing else to check for "minimal" keys.
-  if (key_type == RSA_KEY_TYPE_FOR_CHECKING_PRIVATE_MIN) {
+  // Nothing else to check for public (n, e) and "minimal" keys (n, e, d).
+  if (key_type == RSA_KEY_TYPE_FOR_CHECKING_PUBLIC ||
+      key_type == RSA_KEY_TYPE_FOR_CHECKING_PRIVATE_MIN) {
     return 1;
   }
 
@@ -1205,30 +1193,117 @@ int wip_do_not_use_rsa_check_key(const RSA *key) {
   // or CRT keys with (dmp1, dmq1, iqmp) values precomputed.
   int ret = 0;
 
-  BIGNUM *tmp, *de, *pm1, *qm1, *dmp1, *dmq1;
-  tmp  = BN_new();
-  de   = BN_new();
-  pm1  = BN_new();
-  qm1  = BN_new();
-  dmp1 = BN_new();
-  dmq1 = BN_new();
-  if (tmp == NULL || de == NULL || pm1 == NULL || qm1 == NULL ||
-        dmp1 == NULL || dmq1 == NULL) {
+  BN_CTX *ctx = BN_CTX_new();
+  if (ctx == NULL) {
     OPENSSL_PUT_ERROR(RSA, ERR_LIB_BN);
-    goto end;
+    return 0;
   }
 
+  BIGNUM tmp, de, pm1, qm1, dmp1, dmq1;
+  BN_init(&tmp);
+  BN_init(&de);
+  BN_init(&pm1);
+  BN_init(&qm1);
+  BN_init(&dmp1);
+  BN_init(&dmq1);
+
+  // Check that p * q == n. Before we multiply, we check that p and q are in
+  // bounds, to avoid a DoS vector in |bn_mul_consttime| below. Note that
+  // n was bound by |is_public_component_of_rsa_key_good|. This also implicitly
+  // checks p and q are odd, which is a necessary condition for Montgomery
+  // reduction.
+  if (BN_is_negative(key->p) || BN_cmp(key->p, key->n) >= 0 ||
+      BN_is_negative(key->q) || BN_cmp(key->q, key->n) >= 0) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_RSA_PARAMETERS);
+    goto out;
+  }
+  if (!bn_mul_consttime(&tmp, key->p, key->q, ctx)) {
+    OPENSSL_PUT_ERROR(RSA, ERR_LIB_BN);
+    goto out;
+  }
+  if (BN_cmp(&tmp, key->n) != 0) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_N_NOT_EQUAL_P_Q);
+    goto out;
+  }
+
+  // d must be an inverse of e mod the Carmichael totient, lcm(p-1, q-1), but it
+  // may be unreduced because other implementations use the Euler totient. We
+  // simply check that d * e is one mod p-1 and mod q-1. Note d and e were bound
+  // by earlier checks in this function.
+  if (!bn_usub_consttime(&pm1, key->p, BN_value_one()) ||
+      !bn_usub_consttime(&qm1, key->q, BN_value_one())) {
+    OPENSSL_PUT_ERROR(RSA, ERR_LIB_BN);
+    goto out;
+  }
+  const unsigned pm1_bits = BN_num_bits(&pm1);
+  const unsigned qm1_bits = BN_num_bits(&qm1);
+  if (!bn_mul_consttime(&de, key->d, key->e, ctx) ||
+      !bn_div_consttime(NULL, &tmp, &de, &pm1, pm1_bits, ctx) ||
+      !bn_div_consttime(NULL, &de, &de, &qm1, qm1_bits, ctx)) {
+    OPENSSL_PUT_ERROR(RSA, ERR_LIB_BN);
+    goto out;
+  }
+
+  if (!BN_is_one(&tmp) || !BN_is_one(&de)) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_D_E_NOT_CONGRUENT_TO_1);
+    goto out;
+  }
+
+  // No more checks for a basic private key without CRT parameters.
+  if (key_type == RSA_KEY_TYPE_FOR_CHECKING_PRIVATE) {
+    ret = 1;
+    goto out;
+  }
+
+  // Keys that reach this point are RSA_KEY_TYPE_FOR_CHECKING_PRIVATE_CRT,
+  // so check that the CRT params are correct:
+  //   - dmp1 == d mod (p - 1),
+  //   - dmq1 == d mod (q - 1),
+  //   - (iqmp * q) mod (p) == 1.
+
+  if (!bn_div_consttime(NULL, &tmp, key->d, &pm1, pm1_bits, ctx) ||
+      !bn_div_consttime(NULL, &de, key->d, &qm1, qm1_bits, ctx)) {
+    OPENSSL_PUT_ERROR(RSA, ERR_LIB_BN);
+    goto out;
+  }
+
+  // dmp1 == d mod (p - 1) and dmq1 == d mod (q - 1).
+  if (BN_cmp(&tmp, key->dmp1) != 0 || BN_cmp(&de, key->dmq1) != 0) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_CRT_VALUES_INCORRECT);
+    goto out;
+  }
+
+  // Check that iqmp is fully reduced modulo p.
+  if (BN_cmp(key->iqmp, key->p) >= 0) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_CRT_VALUES_INCORRECT);
+    goto out;
+  }
+
+  if (!bn_mul_consttime(&tmp, key->q, key->iqmp, ctx) ||
+      // p is odd, so pm1 and p have the same bit width.
+      !bn_div_consttime(NULL, &tmp, &tmp, key->p, pm1_bits, ctx)) {
+    OPENSSL_PUT_ERROR(RSA, ERR_LIB_BN);
+    goto out;
+  }
+
+  // (iqmp * q) mod p = 1.
+  if (BN_cmp(&tmp, BN_value_one()) != 0) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_CRT_VALUES_INCORRECT);
+    goto out;
+  }
 
   ret = 1;
 
-end:
+out:
 
-  BN_free(tmp);
-  BN_free(de);
-  BN_free(pm1);
-  BN_free(qm1);
-  BN_free(dmp1);
-  BN_free(dmq1);
+  BN_free(&tmp);
+  BN_free(&de);
+  BN_free(&pm1);
+  BN_free(&qm1);
+  BN_free(&dmp1);
+  BN_free(&dmq1);
+  BN_CTX_free(ctx);
+
   return ret;
 }
 

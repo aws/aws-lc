@@ -231,19 +231,8 @@ int rsa_digestverify_no_self_test(const EVP_MD *md, const uint8_t *input,
                                   size_t in_len, const uint8_t *sig,
                                   size_t sig_len, RSA *rsa);
 
-// These functions are work-in-progress to consolidate the RSA key checking.
-// The consolidation will be done in three steps:
-//   1. Implement a key check function that performs checks equivalent to those
-//      in OpenSSL 1.x versions and 3.x non-FIPS versions of |RSA_check_key|,
-//      but also add the ability to process keys with public component only like
-//      AWS-LC's |RSA_check_key|. When ready, migrate |RSA_check_key| to this
-//      new implementation.
-//   2. Implement a "FIPS" key check function that performs SP 800-56b checks,
-//      as OpenSSL 3.x |RSA_check_key| does when built in FIPS mode. When ready,
-//      migrate |RSA_check_fips| to this new implementation.
-//   3. When ready, modify |RSA_check_key| function to perform the FIPS version
-//      when AWS-LC is built in FIPS mode and deprecate |RSA_check_fips|.
 // ------ DO NOT USE! -------
+// These functions are work-in-progress to consolidate the RSA key checking.
 OPENSSL_EXPORT int wip_do_not_use_rsa_check_key(const RSA *key);
 OPENSSL_EXPORT int wip_do_not_use_rsa_check_key_fips(const RSA *key);
 
