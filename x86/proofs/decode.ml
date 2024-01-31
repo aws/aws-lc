@@ -339,8 +339,9 @@ let decode_aux = new_definition `!pfxs rex l. decode_aux pfxs rex l =
   | [0b01011:5; r:3] -> if has_pfxs pfxs then NONE else
     SOME (POP (%(Gpr (rex_reg (rex_B rex) r) Full_64)),l)
   | [0x63:8] -> if has_pfxs pfxs then NONE else
+    let sz2 = op_size_W rex T pfxs in
     read_ModRM rex l >>= \((reg,rm),l).
-    SOME (MOVSX (%(Gpr reg Lower_32)) (operand_of_RM Full_64 rm),l)
+    SOME (MOVSX (%(gpr_adjust reg sz2)) (operand_of_RM Lower_32 rm),l)
   | [0b011010:6; x; 0b0:1] -> if has_pfxs pfxs then NONE else
     read_imm (if x then Byte else Quadword) l >>= \(imm,l).
     SOME (PUSH imm,l)
