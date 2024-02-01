@@ -196,14 +196,17 @@ void sk_SAMPLE_delete_if(STACK_OF(SAMPLE) *sk, sk_SAMPLE_delete_if_func func,
 //
 // If the stack is sorted (see |sk_SAMPLE_sort|), this function uses a binary
 // search. Otherwise it performs a linear search. If it finds a matching
-// element, it writes the index to |*out_index| (if |out_index| is not NULL) and
-// returns one. Otherwise, it returns zero.
+// element, it returns the index of that element. Otherwise, it returns -1.
 //
-// Note this differs from OpenSSL. The type signature is slightly different, and
-// OpenSSL's version will implicitly sort |sk| if it has a comparison function
-// defined.
+// Note this differs from OpenSSL in that OpenSSL's version will implicitly
+// sort |sk| if it has a comparison function defined.
+int sk_SAMPLE_find(const STACK_OF(SAMPLE) *sk, const SAMPLE *p);
+
+// sk_SAMPLE_find_awslc is like sk_SAMPLE_find, but if it finds a matching
+// element, it writes the index to |*out_index| (if |out_index| is not NULL)
+// and returns one. Otherwise, it returns zero.
 int sk_SAMPLE_find(const STACK_OF(SAMPLE) *sk, size_t *out_index,
-                   const SAMPLE *p);
+        const SAMPLE *p);
 
 // sk_SAMPLE_shift removes and returns the first element in |sk|, or NULL if
 // |sk| is empty.
@@ -502,8 +505,15 @@ BSSL_NAMESPACE_END
   /* use 2-arg sk_*_find for OpenSSL compatibility */                          \
   OPENSSL_INLINE int sk_##name##_find(const STACK_OF(name) *sk,                \
                                       constptrtype p) {                        \
-    return OPENSSL_sk_find((const OPENSSL_STACK *)sk, NULL,                    \
-                           (const void *)p, sk_##name##_call_cmp_func);        \
+    const size_t mask = 0xffffffffffffffffUL << (sizeof(int) * 8);             \
+    size_t out_index;                                                          \
+    int ok = OPENSSL_sk_find((const OPENSSL_STACK *)sk, &out_index,            \
+                             (const void *)p, sk_##name##_call_cmp_func);      \
+    /* return -1 if element not found or stack is larger than INT_MAX */       \
+    if (ok == 0 || (out_index & mask)) {                                       \
+      return -1;                                                               \
+    }                                                                          \
+    return (int) (out_index & ~mask);                                          \
   }                                                                            \
                                                                                \
   OPENSSL_INLINE ptrtype sk_##name##_shift(STACK_OF(name) *sk) {               \

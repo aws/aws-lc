@@ -659,7 +659,7 @@ static int append_ia5(STACK_OF(OPENSSL_STRING) **sk,
 
   // Don't add duplicates
   sk_OPENSSL_STRING_sort(*sk);
-  if (sk_OPENSSL_STRING_find(*sk, emtmp)) {
+  if (sk_OPENSSL_STRING_find_awslc(*sk, NULL, emtmp)) {
     OPENSSL_free(emtmp);
     return 1;
   }

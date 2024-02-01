@@ -147,7 +147,7 @@ static bool apply_remote_features(SSL *ssl, CBS *in) {
     return false;
   }
   for (const SSL_CIPHER *configured_cipher : configured) {
-    if (sk_SSL_CIPHER_find(supported.get(), configured_cipher)) {
+    if (sk_SSL_CIPHER_find_awslc(supported.get(), nullptr, configured_cipher)) {
       continue;
     }
     if (!sk_SSL_CIPHER_push(unsupported.get(), configured_cipher)) {

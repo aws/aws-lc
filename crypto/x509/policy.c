@@ -329,7 +329,7 @@ static int delete_if_mapped(X509_POLICY_NODE *node, void *data) {
   assert(sk_POLICY_MAPPING_is_sorted(mappings));
   POLICY_MAPPING mapping;
   mapping.issuerDomainPolicy = node->policy;
-  if (!sk_POLICY_MAPPING_find(mappings, &mapping)) {
+  if (!sk_POLICY_MAPPING_find_awslc(mappings, NULL, &mapping)) {
     return 0;
   }
   x509_policy_node_free(node);
@@ -630,7 +630,7 @@ static int has_explicit_policy(STACK_OF(X509_POLICY_LEVEL) *levels,
         // |node|'s parent is anyPolicy and is part of "valid_policy_node_set".
         // If it exists in |user_policies|, the intersection is non-empty and we
         // can return immediately.
-        if (sk_ASN1_OBJECT_find(user_policies, node->policy)) {
+        if (sk_ASN1_OBJECT_find_awslc(user_policies, NULL, node->policy)) {
           return 1;
         }
       } else if (i > 0) {
