@@ -113,8 +113,8 @@ TEST(StackTest, Basic) {
   value = TEST_INT_new(6);
   ASSERT_TRUE(value);
   size_t index;
-  EXPECT_FALSE(sk_TEST_INT_find(sk.get(), &index, value.get()));
-  ASSERT_TRUE(sk_TEST_INT_find(sk.get(), &index, raw));
+  EXPECT_FALSE(sk_TEST_INT_find_awslc(sk.get(), &index, value.get()));
+  ASSERT_TRUE(sk_TEST_INT_find_awslc(sk.get(), &index, raw));
   EXPECT_EQ(4u, index);
 
   // sk_TEST_INT_insert can also insert values at the end.
@@ -244,11 +244,11 @@ TEST(StackTest, Sorted) {
     auto ten = TEST_INT_new(10);
     ASSERT_TRUE(ten);
     size_t index;
-    EXPECT_FALSE(sk_TEST_INT_find(sk.get(), &index, ten.get()));
+    EXPECT_FALSE(sk_TEST_INT_find_awslc(sk.get(), &index, ten.get()));
 
     auto three = TEST_INT_new(3);
     ASSERT_TRUE(three);
-    ASSERT_TRUE(sk_TEST_INT_find(sk.get(), &index, three.get()));
+    ASSERT_TRUE(sk_TEST_INT_find_awslc(sk.get(), &index, three.get()));
     EXPECT_EQ(3, *sk_TEST_INT_value(sk.get(), index));
 
     sk_TEST_INT_sort(sk.get());
@@ -264,10 +264,10 @@ TEST(StackTest, Sorted) {
 
     // When sorted, find uses binary search.
     ASSERT_TRUE(ten);
-    EXPECT_FALSE(sk_TEST_INT_find(sk.get(), &index, ten.get()));
+    EXPECT_FALSE(sk_TEST_INT_find_awslc(sk.get(), &index, ten.get()));
 
     ASSERT_TRUE(three);
-    ASSERT_TRUE(sk_TEST_INT_find(sk.get(), &index, three.get()));
+    ASSERT_TRUE(sk_TEST_INT_find_awslc(sk.get(), &index, three.get()));
     EXPECT_EQ(3u, index);
 
     // Copies preserve comparison and sorted information.
@@ -279,13 +279,13 @@ TEST(StackTest, Sorted) {
         TEST_INT_free));
     ASSERT_TRUE(copy);
     EXPECT_TRUE(sk_TEST_INT_is_sorted(copy.get()));
-    ASSERT_TRUE(sk_TEST_INT_find(copy.get(), &index, three.get()));
+    ASSERT_TRUE(sk_TEST_INT_find_awslc(copy.get(), &index, three.get()));
     EXPECT_EQ(3u, index);
 
     ShallowStack copy2(sk_TEST_INT_dup(sk.get()));
     ASSERT_TRUE(copy2);
     EXPECT_TRUE(sk_TEST_INT_is_sorted(copy2.get()));
-    ASSERT_TRUE(sk_TEST_INT_find(copy2.get(), &index, three.get()));
+    ASSERT_TRUE(sk_TEST_INT_find_awslc(copy2.get(), &index, three.get()));
     EXPECT_EQ(3u, index);
 
     // Removing elements does not affect sortedness.
@@ -296,12 +296,12 @@ TEST(StackTest, Sorted) {
     // Changing the comparison function invalidates sortedness.
     sk_TEST_INT_set_cmp_func(sk.get(), compare_reverse);
     EXPECT_FALSE(sk_TEST_INT_is_sorted(sk.get()));
-    ASSERT_TRUE(sk_TEST_INT_find(sk.get(), &index, three.get()));
+    ASSERT_TRUE(sk_TEST_INT_find_awslc(sk.get(), &index, three.get()));
     EXPECT_EQ(2u, index);
 
     sk_TEST_INT_sort(sk.get());
     ExpectStackEquals(sk.get(), {6, 5, 4, 3, 2, 1});
-    ASSERT_TRUE(sk_TEST_INT_find(sk.get(), &index, three.get()));
+    ASSERT_TRUE(sk_TEST_INT_find_awslc(sk.get(), &index, three.get()));
     EXPECT_EQ(3u, index);
 
     // Inserting a new element invalidates sortedness.
@@ -309,12 +309,12 @@ TEST(StackTest, Sorted) {
     ASSERT_TRUE(tmp);
     ASSERT_TRUE(bssl::PushToStack(sk.get(), std::move(tmp)));
     EXPECT_FALSE(sk_TEST_INT_is_sorted(sk.get()));
-    ASSERT_TRUE(sk_TEST_INT_find(sk.get(), &index, ten.get()));
+    ASSERT_TRUE(sk_TEST_INT_find_awslc(sk.get(), &index, ten.get()));
     EXPECT_EQ(6u, index);
   } while (std::next_permutation(vec.begin(), vec.end()));
 }
 
-// sk_*_find should return the first matching element in all cases.
+// sk_*_find_awslc should return the first matching element in all cases.
 TEST(StackTest, FindFirst) {
   bssl::UniquePtr<STACK_OF(TEST_INT)> sk(sk_TEST_INT_new(compare));
   ASSERT_TRUE(sk);
@@ -330,26 +330,26 @@ TEST(StackTest, FindFirst) {
   const TEST_INT *two = sk_TEST_INT_value(sk.get(), 1);
   // Pointer-based equality.
   size_t index;
-  ASSERT_TRUE(sk_TEST_INT_find(sk.get(), &index, two));
+  ASSERT_TRUE(sk_TEST_INT_find_awslc(sk.get(), &index, two));
   EXPECT_EQ(1u, index);
 
   // Comparator-based equality, unsorted.
   sk_TEST_INT_set_cmp_func(sk.get(), compare);
   EXPECT_FALSE(sk_TEST_INT_is_sorted(sk.get()));
-  ASSERT_TRUE(sk_TEST_INT_find(sk.get(), &index, two));
+  ASSERT_TRUE(sk_TEST_INT_find_awslc(sk.get(), &index, two));
   EXPECT_EQ(1u, index);
 
   // Comparator-based equality, sorted.
   sk_TEST_INT_sort(sk.get());
   EXPECT_TRUE(sk_TEST_INT_is_sorted(sk.get()));
-  ASSERT_TRUE(sk_TEST_INT_find(sk.get(), &index, two));
+  ASSERT_TRUE(sk_TEST_INT_find_awslc(sk.get(), &index, two));
   EXPECT_EQ(1u, index);
 
   // Comparator-based equality, sorted and at the front.
   sk_TEST_INT_set_cmp_func(sk.get(), compare_reverse);
   sk_TEST_INT_sort(sk.get());
   EXPECT_TRUE(sk_TEST_INT_is_sorted(sk.get()));
-  ASSERT_TRUE(sk_TEST_INT_find(sk.get(), &index, two));
+  ASSERT_TRUE(sk_TEST_INT_find_awslc(sk.get(), &index, two));
   EXPECT_EQ(0u, index);
 }
 
@@ -385,7 +385,7 @@ TEST(StackTest, BinarySearch) {
       ASSERT_TRUE(key);
 
       size_t idx;
-      int found = sk_TEST_INT_find(sk.get(), &idx, key.get());
+      int found = sk_TEST_INT_find_awslc(sk.get(), &idx, key.get());
       if (i == j) {
         EXPECT_FALSE(found);
       } else {

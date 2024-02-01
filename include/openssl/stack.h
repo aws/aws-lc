@@ -492,9 +492,17 @@ BSSL_NAMESPACE_END
                          (OPENSSL_sk_delete_if_func)func, data);               \
   }                                                                            \
                                                                                \
-  OPENSSL_INLINE int sk_##name##_find(const STACK_OF(name) *sk,                \
+  /* use 3-arg sk_*_find_awslc when |out_index| needed */                      \
+  OPENSSL_INLINE int sk_##name##_find_awslc(const STACK_OF(name) *sk,          \
                                       size_t *out_index, constptrtype p) {     \
     return OPENSSL_sk_find((const OPENSSL_STACK *)sk, out_index,               \
+                           (const void *)p, sk_##name##_call_cmp_func);        \
+  }                                                                            \
+                                                                               \
+  /* use 2-arg sk_*_find for OpenSSL compatibility */                          \
+  OPENSSL_INLINE int sk_##name##_find(const STACK_OF(name) *sk,                \
+                                      constptrtype p) {                        \
+    return OPENSSL_sk_find((const OPENSSL_STACK *)sk, NULL,                    \
                            (const void *)p, sk_##name##_call_cmp_func);        \
   }                                                                            \
                                                                                \

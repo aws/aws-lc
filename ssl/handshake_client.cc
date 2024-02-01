@@ -812,7 +812,7 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
       (cipher->algorithm_auth & mask_a) ||
       SSL_CIPHER_get_min_version(cipher) > ssl_protocol_version(ssl) ||
       SSL_CIPHER_get_max_version(cipher) < ssl_protocol_version(ssl) ||
-      !sk_SSL_CIPHER_find(SSL_get_ciphers(ssl), nullptr, cipher)) {
+      !sk_SSL_CIPHER_find(SSL_get_ciphers(ssl), cipher)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CIPHER_RETURNED);
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
     return ssl_hs_error;
