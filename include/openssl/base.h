@@ -58,6 +58,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <sys/types.h>
 
 #if defined(__MINGW32__)
@@ -113,8 +114,7 @@ extern "C" {
 // A consumer may use this symbol in the preprocessor to temporarily build
 // against multiple revisions of BoringSSL at the same time. It is not
 // recommended to do so for longer than is necessary.
-
-#define AWSLC_API_VERSION 25
+#define AWSLC_API_VERSION 27
 
 // This string tracks the most current production release version on Github
 // https://github.com/aws/aws-lc/releases.
@@ -122,7 +122,7 @@ extern "C" {
 // ServiceIndicatorTest.AWSLCVersionString
 // Note: there are two versions of this test. Only one test is compiled
 // depending on FIPS mode.
-#define AWSLC_VERSION_NUMBER_STRING "1.20.0"
+#define AWSLC_VERSION_NUMBER_STRING "1.21.0"
 
 #if defined(BORINGSSL_SHARED_LIBRARY)
 
@@ -387,6 +387,14 @@ typedef struct x509_store_st X509_STORE;
 typedef struct x509_trust_st X509_TRUST;
 
 typedef void *OPENSSL_BLOCK;
+
+// BSSL_CHECK aborts if |condition| is not true.
+#define BSSL_CHECK(condition) \
+  do {                        \
+    if (!(condition)) {       \
+      abort();                \
+    }                         \
+  } while (0);
 
 #if defined(__cplusplus)
 }  // extern C

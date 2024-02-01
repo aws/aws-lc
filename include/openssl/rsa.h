@@ -59,6 +59,8 @@
 
 #include <openssl/base.h>
 #include <openssl/crypto.h>
+// OpenSSL includes BN in this header: https://github.com/openssl/openssl/blob/OpenSSL_1_1_1-stable/include/openssl/rsa.h#L21
+#include <openssl/bn.h>
 
 #include <openssl/engine.h>
 #include <openssl/ex_data.h>

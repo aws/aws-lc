@@ -313,6 +313,7 @@ add_library(
   bio/bio.c
   bio/bio_mem.c
   bio/connect.c
+  bio/errno.c
   bio/fd.c
   bio/file.c
   bio/hexdump.c
@@ -753,6 +754,7 @@ if(BUILD_TESTING)
     pkcs8/pkcs12_test.cc
     poly1305/poly1305_test.cc
     pool/pool_test.cc
+    rand_extra/getentropy_test.cc
     rand_extra/rand_test.cc
     refcount_test.cc
     rsa_extra/rsa_test.cc

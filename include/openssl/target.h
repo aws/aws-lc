@@ -82,10 +82,18 @@
 #define OPENSSL_WINDOWS
 #endif
 
-// Trusty isn't Linux but currently defines __linux__. As a workaround, we
-// exclude it here.
+// Trusty and Android baremetal aren't Linux but currently define __linux__.
+// As a workaround, we exclude them here. We also exclude nanolibc. nanolibc
+// sometimes build for a non-Linux target (which should not define __linux__),
+// but also sometimes build for Linux. Although technically running in Linux
+// userspace, this lacks all the libc APIs we'd normally expect on Linux, so we
+// treat it as a non-Linux target.
+//
 // TODO(b/169780122): Remove this workaround once Trusty no longer defines it.
-#if defined(__linux__) && !defined(__TRUSTY__)
+// TODO(b/291101350): Remove this workaround once Android baremetal no longer
+// defines it.
+#if defined(__linux__) && !defined(__TRUSTY__) && \
+    !defined(ANDROID_BAREMETAL) && !defined(OPENSSL_NANOLIBC)
 #define OPENSSL_LINUX
 #endif
 
@@ -100,6 +108,7 @@
 // platforms must introduce their own defines.
 #if defined(__TRUSTY__)
 #define OPENSSL_TRUSTY
+#define OPENSSL_NO_FILESYSTEM
 #define OPENSSL_NO_POSIX_IO
 #define OPENSSL_NO_SOCK
 #define OPENSSL_NO_THREADS_CORRUPT_MEMORY_AND_LEAK_SECRETS_IF_THREADED
@@ -109,6 +118,41 @@
 // other platform is not supported. Other embedded platforms must introduce
 // their own defines.
 #if defined(OPENSSL_NANOLIBC)
+#define OPENSSL_NO_FILESYSTEM
+#define OPENSSL_NO_POSIX_IO
+#define OPENSSL_NO_SOCK
+#define OPENSSL_NO_THREADS_CORRUPT_MEMORY_AND_LEAK_SECRETS_IF_THREADED
+#endif
+
+// Android baremetal is an embedded target that uses a subset of bionic.
+// Defining this on any other platform is not supported. Other embedded
+// platforms must introduce their own defines.
+#if defined(ANDROID_BAREMETAL)
+#define OPENSSL_NO_FILESYSTEM
+#define OPENSSL_NO_POSIX_IO
+#define OPENSSL_NO_SOCK
+#define OPENSSL_NO_THREADS_CORRUPT_MEMORY_AND_LEAK_SECRETS_IF_THREADED
+#endif
+
+// CROS_EC is an embedded target for ChromeOS Embedded Controller. Defining
+// this on any other platform is not supported. Other embedded platforms must
+// introduce their own defines.
+//
+// https://chromium.googlesource.com/chromiumos/platform/ec/+/HEAD/README.md
+#if defined(CROS_EC)
+#define OPENSSL_NO_FILESYSTEM
+#define OPENSSL_NO_POSIX_IO
+#define OPENSSL_NO_SOCK
+#define OPENSSL_NO_THREADS_CORRUPT_MEMORY_AND_LEAK_SECRETS_IF_THREADED
+#endif
+
+// CROS_ZEPHYR is an embedded target for ChromeOS Zephyr Embedded Controller.
+// Defining this on any other platform is not supported. Other embedded
+// platforms must introduce their own defines.
+//
+// https://chromium.googlesource.com/chromiumos/platform/ec/+/HEAD/docs/zephyr/README.md
+#if defined(CROS_ZEPHYR)
+#define OPENSSL_NO_FILESYSTEM
 #define OPENSSL_NO_POSIX_IO
 #define OPENSSL_NO_SOCK
 #define OPENSSL_NO_THREADS_CORRUPT_MEMORY_AND_LEAK_SECRETS_IF_THREADED

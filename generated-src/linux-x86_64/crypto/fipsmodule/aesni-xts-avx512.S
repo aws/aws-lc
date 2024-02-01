@@ -1024,9 +1024,23 @@ aes_hw_xts_encrypt_avx512:
 .byte	98,114,61,8,221,132,36,96,1,0,0
 	vpxor	%xmm0,%xmm8,%xmm8
 	vmovdqu	%xmm8,-16(%rsi)
-
 .L_ret_hEgxyDlCngwrfFe:
 	movq	368(%rsp),%rbx
+	xorq	%r8,%r8
+	movq	%r8,368(%rsp)
+
+	vpxorq	%zmm0,%zmm0,%zmm0
+
+	vmovdqa64	%zmm0,128(%rsp)
+	vmovdqa64	%zmm0,192(%rsp)
+	vmovdqa64	%zmm0,256(%rsp)
+
+
+
+	movq	$0x3f,%r8
+	kmovq	%r8,%k2
+	vmovdqa64	%zmm0,320(%rsp){%k2}
+
 	movq	%rbp,%rsp
 	popq	%rbp
 	vzeroupper
@@ -3550,9 +3564,23 @@ aes_hw_xts_decrypt_avx512:
 .L_done_amivrujEyduiFoi:
 
 	vmovdqu	%xmm8,-16(%rsi)
-
 .L_ret_amivrujEyduiFoi:
 	movq	368(%rsp),%rbx
+	xorq	%r8,%r8
+	movq	%r8,368(%rsp)
+
+	vpxorq	%zmm0,%zmm0,%zmm0
+
+	vmovdqa64	%zmm0,128(%rsp)
+	vmovdqa64	%zmm0,192(%rsp)
+	vmovdqa64	%zmm0,256(%rsp)
+
+
+
+	movq	$0x3f,%r8
+	kmovq	%r8,%k2
+	vmovdqa64	%zmm0,320(%rsp){%k2}
+
 	movq	%rbp,%rsp
 	popq	%rbp
 	vzeroupper

@@ -1387,9 +1387,16 @@ int SSL_get_error(const SSL *ssl, int ret_code) {
       return SSL_ERROR_ZERO_RETURN;
     }
     // An EOF was observed which violates the protocol, and the underlying
-    // transport does not participate in the error queue. Bubble up to the
-    // caller.
-    return SSL_ERROR_SYSCALL;
+    // transport does not participate in the error queue. If
+    // |SSL_MODE_AUTO_RETRY| is unset, bubble up to the caller.
+    if ((ssl->ctx->mode & SSL_MODE_AUTO_RETRY) == 0) {
+      return SSL_ERROR_SYSCALL;
+    }
+    // If |SSL_MODE_AUTO_RETRY| is set, proceed if in a retryable state.
+    if (ssl->s3->rwstate != SSL_ERROR_WANT_READ
+            && ssl->s3->rwstate != SSL_ERROR_WANT_WRITE) {
+      return SSL_ERROR_SYSCALL;
+    }
   }
 
   switch (ssl->s3->rwstate) {
@@ -1645,6 +1652,7 @@ int SSL_get_wfd(const SSL *ssl) {
   return ret;
 }
 
+#if !defined(OPENSSL_NO_SOCK)
 int SSL_set_fd(SSL *ssl, int fd) {
   BIO *bio = BIO_new(BIO_s_socket());
   if (bio == NULL) {
@@ -1694,6 +1702,7 @@ int SSL_set_rfd(SSL *ssl, int fd) {
   }
   return 1;
 }
+#endif  // !OPENSSL_NO_SOCK
 
 static size_t copy_finished(void *out, size_t out_len, const uint8_t *in,
                             size_t in_len) {

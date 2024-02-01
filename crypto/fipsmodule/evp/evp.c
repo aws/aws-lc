@@ -290,8 +290,13 @@ EVP_PKEY *EVP_PKEY_new_mac_key(int type, ENGINE *engine, const uint8_t *mac_key,
   if(key == NULL) {
     goto err;
   }
-  key->key = mac_key;
+  key->key = OPENSSL_memdup(mac_key, mac_key_len);
+  if (key->key == NULL && mac_key_len > 0) {
+    OPENSSL_free(key);
+    goto err;
+  }
   key->key_len = mac_key_len;
+
   if(!EVP_PKEY_assign(ret, EVP_PKEY_HMAC, key)) {
     OPENSSL_free(key);
     goto err;

@@ -102,7 +102,7 @@ static int sock_read(BIO *b, char *out, int outl) {
 #endif
   BIO_clear_retry_flags(b);
   if (ret <= 0) {
-    if (bio_fd_should_retry(ret)) {
+    if (bio_socket_should_retry(ret)) {
       BIO_set_retry_read(b);
     }
   }
@@ -118,7 +118,7 @@ static int sock_write(BIO *b, const char *in, int inl) {
 #endif
   BIO_clear_retry_flags(b);
   if (ret <= 0) {
-    if (bio_fd_should_retry(ret)) {
+    if (bio_socket_should_retry(ret)) {
       BIO_set_retry_write(b);
     }
   }

@@ -47,6 +47,8 @@ foo:
 	vmovdqu64       -88(%rbx), %zmm0 {%k1}
 	vmovdqu64       352(%rsp,%rbx), %ymm1 {%k1}
 	.byte   0xf3,0xc3
+	.long 2f - 0f
+	.long 5
 	movq %rax, %rbx # Comments can be on the same line as an instruction.
 .L3:
  # Or on the same line as a label.

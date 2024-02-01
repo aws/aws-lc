@@ -387,7 +387,7 @@ static void clear_comments(CONF *conf, char *p) {
   }
 }
 
-static int def_load_bio(CONF *conf, BIO *in, long *out_error_line) {
+int NCONF_load_bio(CONF *conf, BIO *in, long *out_error_line) {
   static const size_t CONFBUFSIZE = 512;
   int bufnum = 0, i, ii;
   BUF_MEM *buff = NULL;
@@ -574,7 +574,7 @@ err:
   if (out_error_line != NULL) {
     *out_error_line = eline;
   }
-  BIO_snprintf(btmp, sizeof btmp, "%ld", eline);
+  snprintf(btmp, sizeof btmp, "%ld", eline);
   ERR_add_error_data(2, "line ", btmp);
 
   if (v != NULL) {
@@ -594,14 +594,10 @@ int NCONF_load(CONF *conf, const char *filename, long *out_error_line) {
     return 0;
   }
 
-  ret = def_load_bio(conf, in, out_error_line);
+  ret = NCONF_load_bio(conf, in, out_error_line);
   BIO_free(in);
 
   return ret;
-}
-
-int NCONF_load_bio(CONF *conf, BIO *bio, long *out_error_line) {
-  return def_load_bio(conf, bio, out_error_line);
 }
 
 int CONF_parse_list(const char *list, char sep, int remove_whitespace,

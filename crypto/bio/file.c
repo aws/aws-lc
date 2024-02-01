@@ -73,8 +73,6 @@
 
 #include <openssl/bio.h>
 
-#if !defined(OPENSSL_TRUSTY)
-
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
@@ -94,11 +92,20 @@
 #define BIO_FP_WRITE 0x04
 #define BIO_FP_APPEND 0x08
 
+#if !defined(OPENSSL_NO_FILESYSTEM)
+#define fopen_if_available fopen
+#else
+static FILE *fopen_if_available(const char *path, const char *mode) {
+  errno = ENOENT;
+  return NULL;
+}
+#endif
+
 BIO *BIO_new_file(const char *filename, const char *mode) {
   BIO *ret;
   FILE *file;
 
-  file = fopen(filename, mode);
+  file = fopen_if_available(filename, mode);
   if (file == NULL) {
     OPENSSL_PUT_SYSTEM_ERROR();
 
@@ -226,7 +233,7 @@ static long file_ctrl(BIO *b, int cmd, long num, void *ptr) {
         ret = 0;
         break;
       }
-      fp = fopen(ptr, mode);
+      fp = fopen_if_available(ptr, mode);
       if (fp == NULL) {
         OPENSSL_PUT_SYSTEM_ERROR();
         ERR_add_error_data(5, "fopen('", ptr, "','", mode, "')");
@@ -322,5 +329,3 @@ long BIO_tell(BIO *bio) { return BIO_ctrl(bio, BIO_C_FILE_TELL, 0, NULL); }
 long BIO_seek(BIO *bio, long offset) {
   return BIO_ctrl(bio, BIO_C_FILE_SEEK, offset, NULL);
 }
-
-#endif  // OPENSSL_TRUSTY
