@@ -1,5 +1,5 @@
 diff --git a/Lib/test/test_asyncio/test_events.py b/Lib/test/test_asyncio/test_events.py
-index b25c097573..8f07868b82 100644
+index b25c097..8f07868 100644
 --- a/Lib/test/test_asyncio/test_events.py
 +++ b/Lib/test/test_asyncio/test_events.py
 @@ -1125,12 +1125,12 @@ def test_create_server_ssl_match_failed(self):
@@ -20,7 +20,7 @@ index b25c097573..8f07868b82 100644
  
          # close connection
 diff --git a/Lib/test/test_httplib.py b/Lib/test/test_httplib.py
-index 089bf5be40..1713a5fbae 100644
+index 089bf5b..1713a5f 100644
 --- a/Lib/test/test_httplib.py
 +++ b/Lib/test/test_httplib.py
 @@ -2066,7 +2066,7 @@ def test_host_port(self):
@@ -33,7 +33,7 @@ index 089bf5be40..1713a5fbae 100644
          # just check status of PHA flag
          h = client.HTTPSConnection('localhost', 443)
 diff --git a/Lib/test/test_imaplib.py b/Lib/test/test_imaplib.py
-index b97474acca..f5980598c9 100644
+index b97474a..f598059 100644
 --- a/Lib/test/test_imaplib.py
 +++ b/Lib/test/test_imaplib.py
 @@ -558,9 +558,10 @@ def test_ssl_raises(self):
@@ -66,7 +66,7 @@ index b97474acca..f5980598c9 100644
                  client = self.imap_class(*server.server_address,
                                           ssl_context=ssl_context)
 diff --git a/Lib/test/test_ssl.py b/Lib/test/test_ssl.py
-index 3fdfa29605..6f6fea7c36 100644
+index 3fdfa29..6f6fea7 100644
 --- a/Lib/test/test_ssl.py
 +++ b/Lib/test/test_ssl.py
 @@ -41,6 +41,7 @@
@@ -359,7 +359,7 @@ index 3fdfa29605..6f6fea7c36 100644
  requires_keylog = unittest.skipUnless(
      HAS_KEYLOG, 'test requires OpenSSL 1.1.1 with keylog callback')
 diff --git a/Modules/Setup b/Modules/Setup
-index 8ad9a5aebb..6138085c61 100644
+index 8ad9a5a..6138085 100644
 --- a/Modules/Setup
 +++ b/Modules/Setup
 @@ -208,11 +208,11 @@ PYTHONPATH=$(COREPYTHONPATH)
@@ -380,7 +380,7 @@ index 8ad9a5aebb..6138085c61 100644
  # The _tkinter module.
  #
 diff --git a/Modules/_hashopenssl.c b/Modules/_hashopenssl.c
-index 0e230f332f..390d6e0ed9 100644
+index 0e230f3..390d6e0 100644
 --- a/Modules/_hashopenssl.c
 +++ b/Modules/_hashopenssl.c
 @@ -130,8 +130,12 @@ static const py_hashentry_t py_hashes[] = {
@@ -397,7 +397,7 @@ index 0e230f332f..390d6e0ed9 100644
  };
  
 diff --git a/Modules/_ssl.c b/Modules/_ssl.c
-index bc30290942..e0e59b97e5 100644
+index bc30290..0e52f96 100644
 --- a/Modules/_ssl.c
 +++ b/Modules/_ssl.c
 @@ -187,6 +187,13 @@ extern const SSL_METHOD *TLSv1_2_method(void);
@@ -471,15 +471,6 @@ index bc30290942..e0e59b97e5 100644
      int err = SSL_verify_client_post_handshake(self->ssl);
      if (err == 0)
          return _setSSLError(get_state_sock(self), NULL, 0, __FILE__, __LINE__);
-@@ -3203,7 +3216,7 @@ _ssl__SSLContext_impl(PyTypeObject *type, int proto_version)
- 
-     /* Set SSL_MODE_RELEASE_BUFFERS. This potentially greatly reduces memory
-        usage for no cost at all. */
--    SSL_CTX_set_mode(self->ctx, SSL_MODE_RELEASE_BUFFERS);
-+    SSL_CTX_set_mode(self->ctx, SSL_MODE_RELEASE_BUFFERS | SSL_MODE_AUTO_RETRY);
- 
-     params = SSL_CTX_get0_param(self->ctx);
-     /* Improve trust chain building when cross-signed intermediate
 @@ -3211,7 +3224,7 @@ _ssl__SSLContext_impl(PyTypeObject *type, int proto_version)
      X509_VERIFY_PARAM_set_flags(params, X509_V_FLAG_TRUSTED_FIRST);
      X509_VERIFY_PARAM_set_hostflags(params, self->hostflags);

@@ -89,8 +89,6 @@ function python_run_tests() {
 #     authentication portion of that protocol.
 #   - Modify the ssl module's backing C code to account for AWS-LC's divergent
 #     function signature and return value for |sk_SSL_CIPHER_find|
-#   - Modify the ssl module's backing C code to set |SSL_MODE_AUTO_RETRY| in
-#     all calls to |SSL{_CTX}_set_mode|
 #
 # TODO: Remove these patches when we make an upstream contribution.
 function python_patch() {
