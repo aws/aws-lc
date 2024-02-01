@@ -1394,6 +1394,7 @@ int SSL_get_error(const SSL *ssl, int ret_code) {
     case SSL_ERROR_WANT_CERTIFICATE_VERIFY:
     case SSL_ERROR_WANT_RENEGOTIATE:
     case SSL_ERROR_HANDSHAKE_HINTS_READY:
+    case SSL_ERROR_ZERO_RETURN:
       return ssl->s3->rwstate;
 
     case SSL_ERROR_WANT_READ: {
@@ -1436,19 +1437,6 @@ int SSL_get_error(const SSL *ssl, int ret_code) {
 
       break;
     }
-  }
-
-  // An EOF was observed which violates the protocol, and the underlying
-  // transport does not participate in the error queue.
-  //
-  // This was moved earlier in the function by BoringSSL and used to be
-  // wrapped with a check for |ret_code| == 0 in OpenSSL 1.0.2. Since
-  // OpenSSL 1.1.1, the check for |ret_code| has been removed and we've
-  // moved this back before the final return to gain better parity with
-  // OpenSSL.
-  // See openssl/openssl@8051ab2 for more details.
-  if (ssl->s3->rwstate == SSL_ERROR_ZERO_RETURN) {
-    return SSL_ERROR_ZERO_RETURN;
   }
 
   return SSL_ERROR_SYSCALL;

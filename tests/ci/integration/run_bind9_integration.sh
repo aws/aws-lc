@@ -24,7 +24,13 @@ AWS_LC_INSTALL_FOLDER="${SCRATCH_FOLDER}/aws-lc-install"
 
 function bind9_build() {
   autoreconf -fi  
-  PKG_CONFIG_PATH="${AWS_LC_INSTALL_FOLDER}/lib/pkgconfig" ./configure --with-openssl="${AWS_LC_INSTALL_FOLDER}" --enable-dnstap --enable-dnsrps --with-cmocka --with-libxml2 --enable-leak-detection
+  PKG_CONFIG_PATH="${AWS_LC_INSTALL_FOLDER}/lib/pkgconfig" ./configure \
+      --with-openssl="${AWS_LC_INSTALL_FOLDER}" \
+      --enable-dnstap \
+      --enable-dnsrps \
+      --with-cmocka \
+      --with-libxml2 \
+      --enable-leak-detection
   make -j ${NUM_CPU_THREADS} -k all
 }
 
@@ -48,7 +54,8 @@ git clone https://gitlab.isc.org/isc-projects/bind9.git ${BIND9_SRC_FOLDER} --de
 mkdir -p ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} ${BIND9_BUILD_FOLDER}
 ls
 
-aws_lc_build ${SRC_ROOT} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} -DBUILD_TESTING=OFF
+aws_lc_build ${SRC_ROOT} ${AWS_LC_BUILD_FOLDER} ${AWS_LC_INSTALL_FOLDER} -DBUILD_TESTING=OFF -DBUILD_TOOL=OFF -DBUILD_SHARED_LIBS=1
+export LD_LIBRARY_PATH="${AWS_LC_INSTALL_FOLDER}/lib"
 
 # Build bind9 from source.
 pushd ${BIND9_SRC_FOLDER}
@@ -56,5 +63,11 @@ pushd ${BIND9_SRC_FOLDER}
 bind9_patch
 bind9_build
 bind9_run_tests
-popd
 
+# Iterate through all of bind's vended artifacts.
+for libname in dns ns isc isccc isccfg; do
+  ldd "${BIND9_SRC_FOLDER}/lib/${libname}/.libs/lib${libname}.so" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
+  ldd "${BIND9_SRC_FOLDER}/lib/${libname}/.libs/lib${libname}.so" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libssl.so" || exit 1
+done
+
+popd
