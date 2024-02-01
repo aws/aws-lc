@@ -142,7 +142,7 @@ int EVP_CipherInit_ex(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *cipher,
   if (enc == -1) {
     enc = ctx->encrypt;
   } else {
-    if (enc) {
+    if (enc && enc != 2) {
       enc = 1;
     }
     ctx->encrypt = enc;
@@ -236,11 +236,29 @@ int EVP_CipherInit_ex(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *cipher,
 
 int EVP_EncryptInit_ex(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *cipher,
                        ENGINE *impl, const uint8_t *key, const uint8_t *iv) {
+  if ((ctx->cipher && EVP_CIPHER_CTX_nid(ctx) == NID_aes_256_xts &&
+      ctx->key_len == 128) ||
+      (cipher && EVP_CIPHER_nid(cipher) == NID_aes_256_xts &&
+      cipher->key_len == 128)) {
+    // AES-XTS Re-encrypt
+    OPENSSL_PUT_ERROR(CIPHER, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+    return 0;
+  }
+
   return EVP_CipherInit_ex(ctx, cipher, impl, key, iv, 1);
 }
 
 int EVP_DecryptInit_ex(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *cipher,
                        ENGINE *impl, const uint8_t *key, const uint8_t *iv) {
+  if ((ctx->cipher && EVP_CIPHER_CTX_nid(ctx) == NID_aes_256_xts &&
+       ctx->key_len == 128) ||
+      (cipher && EVP_CIPHER_nid(cipher) == NID_aes_256_xts &&
+       cipher->key_len == 128)) {
+    // AES-XTS Re-encrypt
+    OPENSSL_PUT_ERROR(CIPHER, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+    return 0;
+  }
+
   return EVP_CipherInit_ex(ctx, cipher, impl, key, iv, 0);
 }
 
@@ -255,7 +273,9 @@ static int block_remainder(const EVP_CIPHER_CTX *ctx, int len) {
 
 int EVP_EncryptUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len,
                       const uint8_t *in, int in_len) {
-  if (ctx->poisoned) {
+  if (ctx->poisoned ||
+      // AES-XTS Re-encrypt
+      (EVP_CIPHER_CTX_nid(ctx) == NID_aes_256_xts && ctx->key_len == 128)) {
     OPENSSL_PUT_ERROR(CIPHER, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     return 0;
   }
@@ -348,7 +368,9 @@ int EVP_EncryptFinal_ex(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len) {
   int n;
   unsigned int i, b, bl;
 
-  if (ctx->poisoned) {
+  if (ctx->poisoned||
+      // AES-XTS Re-encrypt
+      (EVP_CIPHER_CTX_nid(ctx) == NID_aes_256_xts && ctx->key_len == 128)) {
     OPENSSL_PUT_ERROR(CIPHER, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     return 0;
   }
@@ -398,7 +420,9 @@ out:
 
 int EVP_DecryptUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len,
                       const uint8_t *in, int in_len) {
-  if (ctx->poisoned) {
+  if (ctx->poisoned||
+      // AES-XTS Re-encrypt
+      (EVP_CIPHER_CTX_nid(ctx) == NID_aes_256_xts && ctx->key_len == 128)) {
     OPENSSL_PUT_ERROR(CIPHER, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     return 0;
   }
@@ -468,8 +492,10 @@ int EVP_DecryptFinal_ex(EVP_CIPHER_CTX *ctx, unsigned char *out, int *out_len) {
   // |ctx->cipher->cipher| calls the static aes encryption function way under
   // the hood instead of |EVP_Cipher|, so the service indicator does not need
   // locking here.
- 
-  if (ctx->poisoned) {
+
+  if (ctx->poisoned||
+      // AES-XTS Re-encrypt
+      (EVP_CIPHER_CTX_nid(ctx) == NID_aes_256_xts && ctx->key_len == 128)) {
     OPENSSL_PUT_ERROR(CIPHER, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     return 0;
   }
@@ -554,6 +580,24 @@ int EVP_Cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
 
 int EVP_CipherUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len,
                      const uint8_t *in, int in_len) {
+
+  if (EVP_CIPHER_CTX_nid(ctx) == NID_aes_256_xts && ctx->key_len == 128) {
+    // AES-XTS Re-encrypt
+    // Take from EVP_EncryptUpdate() what applies to this case
+    ctx->poisoned = 1;
+
+    if (ctx->cipher->cipher(ctx, out, in, in_len)) {
+      *out_len = in_len;
+      //ctx->poisoned = 0;
+      // ctx should remain poisoned because Update should be called only once
+      // in the case of XTS
+      return 1;
+    } else {
+      *out_len = 0;
+      return 0;
+    }
+  }
+
   if (ctx->encrypt) {
     return EVP_EncryptUpdate(ctx, out, out_len, in, in_len);
   } else {
@@ -562,6 +606,12 @@ int EVP_CipherUpdate(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len,
 }
 
 int EVP_CipherFinal_ex(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len) {
+  if (EVP_CIPHER_CTX_nid(ctx) == NID_aes_256_xts && ctx->key_len == 128) {
+    // AES-XTS Re-encrypt
+    *out_len = 0;
+    //TODO: add a call to service indicator as in EVP_Cipher()
+    return 1;
+  }
   if (ctx->encrypt) {
     return EVP_EncryptFinal_ex(ctx, out, out_len);
   } else {

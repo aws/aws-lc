@@ -618,9 +618,10 @@ static int aes_gcm_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
   }
 }
 
-static int aes_xts_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
-                            const uint8_t *iv, int enc) {
-  EVP_AES_XTS_CTX *xctx = ctx->cipher_data;
+static int aes_xts_ctx_init_key(EVP_AES_XTS_CTX *xctx, const uint8_t *key,
+                                unsigned key_len, const uint8_t *iv,
+                                int enc) {
+//  EVP_AES_XTS_CTX *xctx = ctx->cipher_data;
   if (!iv && !key) {
     return 1;
   }
@@ -643,20 +644,20 @@ static int aes_xts_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
     //
     // key_len is two AES keys
 
-    if (OPENSSL_memcmp(key, key + ctx->key_len / 2, ctx->key_len / 2) == 0) {
+    if (OPENSSL_memcmp(key, key + key_len / 2, key_len / 2) == 0) {
       OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_XTS_DUPLICATED_KEYS);
       return 0;
     }
 
     if (enc) {
-      AES_set_encrypt_key(key, ctx->key_len * 4, &xctx->ks1.ks);
+      AES_set_encrypt_key(key, key_len * 4, &xctx->ks1.ks);
       xctx->xts.block1 = AES_encrypt;
     } else {
-      AES_set_decrypt_key(key, ctx->key_len * 4, &xctx->ks1.ks);
+      AES_set_decrypt_key(key, key_len * 4, &xctx->ks1.ks);
       xctx->xts.block1 = AES_decrypt;
     }
 
-    AES_set_encrypt_key(key + ctx->key_len / 2, ctx->key_len * 4,
+    AES_set_encrypt_key(key + key_len / 2, key_len * 4,
                         &xctx->ks2.ks);
     xctx->xts.block2 = AES_encrypt;
     xctx->xts.key1 = &xctx->ks1.ks;
@@ -664,6 +665,37 @@ static int aes_xts_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
 
   if (iv) {
     xctx->xts.key2 = &xctx->ks2.ks;
+//    OPENSSL_memcpy(ctx->iv, iv, 16);
+  }
+
+  return 1;
+}
+
+static int aes_xts_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
+                            const uint8_t *iv, int enc) {
+  EVP_AES_XTS_CTX *xctx = ctx->cipher_data;
+  if (!aes_xts_ctx_init_key(xctx, key, ctx->key_len, iv, enc)) {
+    return 0;
+  }
+
+  if (iv) {
+    OPENSSL_memcpy(ctx->iv, iv, 16);
+  }
+
+  return 1;
+}
+
+static int aes_xts_reenc_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
+                                  const uint8_t *iv, int enc) {
+  EVP_AES_XTS_REENC_CTX *xctx = ctx->cipher_data;
+  if (!aes_xts_ctx_init_key(&xctx->xctx_dec, key, ctx->key_len/2, iv, 0) ||
+      !aes_xts_ctx_init_key(&xctx->xctx_enc,
+                            (key == NULL)? NULL : key + ctx->key_len/2,
+                            ctx->key_len/2, iv, 1)) {
+    return 0;
+  }
+
+  if (iv) {
     OPENSSL_memcpy(ctx->iv, iv, 16);
   }
 
@@ -696,30 +728,114 @@ static int aes_xts_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
   }
 }
 
+static int aes_xts_reenc_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
+                          size_t len) {
+  EVP_AES_XTS_REENC_CTX *xctx = ctx->cipher_data;
+  EVP_AES_XTS_CTX *xctx_dec = &xctx->xctx_dec,
+    *xctx_enc = &xctx->xctx_enc;
+  if (!xctx_dec->xts.key1 || !xctx_dec->xts.key2 ||
+      !xctx_enc->xts.key1 || !xctx_enc->xts.key2 ||
+      !out || !in ||
+      len < AES_BLOCK_SIZE) {
+    return 0;
+  }
+
+  // Impose a limit of 2^20 blocks per data unit as specified by
+  // IEEE Std 1619-2018.  The earlier and obsolete IEEE Std 1619-2007
+  // indicated that this was a SHOULD NOT rather than a MUST NOT.
+  // NIST SP 800-38E mandates the same limit.
+  if (len > XTS_MAX_BLOCKS_PER_DATA_UNIT * AES_BLOCK_SIZE) {
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_XTS_DATA_UNIT_IS_TOO_LARGE);
+    return 0;
+  }
+
+  int ret = 1;
+  if (hwaes_xts_reenc_available()) {
+    return aes_hw_xts_reenc(in, out, len,
+                            xctx_dec->xts.key1, xctx_dec->xts.key2, ctx->iv,
+                            xctx_enc->xts.key1, xctx_enc->xts.key2);
+  }  else {
+    // Decrypt then encrypt.
+    // len can be at most 2^20. If that's unreasonable to malloc, then we
+    // can decrypt to the output buffer.
+    uint8_t *pt_buf = OPENSSL_malloc(len);
+    if (!pt_buf) {
+      OPENSSL_PUT_ERROR(CIPHER, ERR_R_MALLOC_FAILURE);
+      ret = 0;
+    }
+    if (hwaes_xts_available()) {
+      if (!aes_hw_xts_cipher(in, pt_buf, len, xctx_dec->xts.key1,
+                             xctx_dec->xts.key2, ctx->iv, 0 /*decrypt*/) ||
+          !aes_hw_xts_cipher(pt_buf, out, len, xctx_enc->xts.key1,
+                             xctx_enc->xts.key2, ctx->iv, 1 /*encrypt*/) ) {
+        ret = 0;
+      }
+    } else {
+      if (!CRYPTO_xts128_encrypt(&xctx_dec->xts, ctx->iv, in, pt_buf,
+                                 len, 0 /*decrypt*/) ||
+          !CRYPTO_xts128_encrypt(&xctx_enc->xts, ctx->iv, pt_buf, out,
+                                 len, 1 /*encrypt*/)) {
+        ret = 0;
+      }
+    }
+
+    if (pt_buf) {
+      OPENSSL_free(pt_buf);
+    }
+  }
+  return ret;
+}
+
+static int aes_xts_ctx_copy(EVP_AES_XTS_CTX *xctx, EVP_AES_XTS_CTX *xctx_out) {
+  if (xctx->xts.key1) {
+    if (xctx->xts.key1 != &xctx->ks1.ks) {
+      return 0;
+    }
+    xctx_out->xts.key1 = &xctx_out->ks1.ks;
+  }
+  if (xctx->xts.key2) {
+    if (xctx->xts.key2 != &xctx->ks2.ks) {
+      return 0;
+    }
+    xctx_out->xts.key2 = &xctx_out->ks2.ks;
+  }
+  return 1;
+}
+
 static int aes_xts_ctrl(EVP_CIPHER_CTX *c, int type, int arg, void *ptr) {
   EVP_AES_XTS_CTX *xctx = c->cipher_data;
   if (type == EVP_CTRL_COPY) {
     EVP_CIPHER_CTX *out = ptr;
     EVP_AES_XTS_CTX *xctx_out = out->cipher_data;
-    if (xctx->xts.key1) {
-      if (xctx->xts.key1 != &xctx->ks1.ks) {
+    if (!aes_xts_ctx_copy(xctx, xctx_out)) {
         return 0;
       }
-      xctx_out->xts.key1 = &xctx_out->ks1.ks;
-    }
-    if (xctx->xts.key2) {
-      if (xctx->xts.key2 != &xctx->ks2.ks) {
-        return 0;
-      }
-      xctx_out->xts.key2 = &xctx_out->ks2.ks;
-    }
-    return 1;
   } else if (type != EVP_CTRL_INIT) {
     return -1;
   }
   // key1 and key2 are used as an indicator both key and IV are set
   xctx->xts.key1 = NULL;
   xctx->xts.key2 = NULL;
+  return 1;
+}
+
+static int aes_xts_reenc_ctrl(EVP_CIPHER_CTX *c, int type, int arg, void *ptr) {
+  EVP_AES_XTS_REENC_CTX *xctx = c->cipher_data;
+  if (type == EVP_CTRL_COPY) {
+    EVP_CIPHER_CTX *out = ptr;
+    EVP_AES_XTS_REENC_CTX *xctx_out = out->cipher_data;
+    if (!aes_xts_ctx_copy(&xctx->xctx_dec, &xctx_out->xctx_dec) ||
+        !aes_xts_ctx_copy(&xctx->xctx_enc, &xctx_out->xctx_enc)) {
+      return 0;
+    }
+  } else if (type != EVP_CTRL_INIT) {
+    return -1;
+  }
+  // key1 and key2 are used as an indicator both key and IV are set
+  xctx->xctx_dec.xts.key1 = NULL;
+  xctx->xctx_dec.xts.key2 = NULL;
+  xctx->xctx_enc.xts.key1 = NULL;
+  xctx->xctx_enc.xts.key2 = NULL;
   return 1;
 }
 
@@ -1003,6 +1119,22 @@ DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_aes_256_xts) {
   out->init = aes_xts_init_key;
   out->cipher = aes_xts_cipher;
   out->ctrl = aes_xts_ctrl;
+}
+
+DEFINE_METHOD_FUNCTION(EVP_CIPHER, EVP_aes_256_xts_reenc) {
+  memset(out, 0, sizeof(EVP_CIPHER));
+
+  out->nid = NID_aes_256_xts;
+  out->block_size = 1;
+  out->key_len = 128;
+  out->iv_len = 16;
+  out->ctx_size = sizeof(EVP_AES_XTS_REENC_CTX);
+  out->flags = EVP_CIPH_XTS_MODE | EVP_CIPH_CUSTOM_IV |
+               EVP_CIPH_ALWAYS_CALL_INIT | EVP_CIPH_CTRL_INIT |
+               EVP_CIPH_CUSTOM_COPY;
+  out->init = aes_xts_reenc_init_key;
+  out->cipher = aes_xts_reenc_cipher;
+  out->ctrl = aes_xts_reenc_ctrl;
 }
 
 #if defined(HWAES_ECB)

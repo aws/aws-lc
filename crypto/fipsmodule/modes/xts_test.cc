@@ -1050,6 +1050,10 @@ TEST(XTSTest, TestVectors) {
           EVP_DecryptUpdate(ctx.get(), out.data(), &len, in.data(), in.size()));
       out.resize(len);
       EXPECT_EQ(Bytes(plaintext), Bytes(out));
+      ASSERT_TRUE(
+          EVP_CipherFinal_ex(ctx.get(), out.data(), &len));
+      EXPECT_EQ(Bytes(plaintext), Bytes(out));
+      EXPECT_EQ(0, len);
     }
   }
 }
@@ -1270,8 +1274,7 @@ TEST(XTSTest, SectorTweakAPIUsage) {
 
 
 struct XTSReEncryptTestCase {
-  const char *key_dec_hex;
-  const char *key_enc_hex;
+  const char *key_hex;
   const char *iv_hex;
   const char *plaintext_hex;
   const char *ciphertext_in_hex;
@@ -1282,7 +1285,7 @@ static const XTSReEncryptTestCase kXTSReEncryptTestCases[] = {
     // plaintext length = 32 blocks = 512 bytes
     {
         "2718281828459045235360287471352662497757247093699959574966967627"
-        "3141592653589793238462643383279502884197169399375105820974944592",
+        "3141592653589793238462643383279502884197169399375105820974944592"
         "fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0efeeedecebeae9e8e7e6e5e4e3e2e1e0"
         "bfbebdbcbbbab9b8b7b6b5b4b3b2b1b0afaeadacabaaa9a8a7a6a5a4a3a2a1a0",
         "ff000000000000000000000000000000",
@@ -1340,7 +1343,7 @@ static const XTSReEncryptTestCase kXTSReEncryptTestCases[] = {
     // VEC 36, len = 22 bytes = 1 block + 6 bytes
     {
         "2718281828459045235360287471352662497757247093699959574966967627"
-        "3141592653589793238462643383279502884197169399375105820974944592",
+        "3141592653589793238462643383279502884197169399375105820974944592"
         "fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0efeeedecebeae9e8e7e6e5e4e3e2e1e0"
         "bfbebdbcbbbab9b8b7b6b5b4b3b2b1b0afaeadacabaaa9a8a7a6a5a4a3a2a1a0",
         "9a785634120000000000000000000000",
@@ -1351,7 +1354,7 @@ static const XTSReEncryptTestCase kXTSReEncryptTestCases[] = {
     // len = 44 bytes = 2 blocks + 12 bytes
     {
         "2718281828459045235360287471352662497757247093699959574966967627"
-        "3141592653589793238462643383279502884197169399375105820974944592",
+        "3141592653589793238462643383279502884197169399375105820974944592"
         "fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0efeeedecebeae9e8e7e6e5e4e3e2e1e0"
         "bfbebdbcbbbab9b8b7b6b5b4b3b2b1b0afaeadacabaaa9a8a7a6a5a4a3a2a1a0",
         "9a785634120000000000000000000000",
@@ -1365,7 +1368,7 @@ static const XTSReEncryptTestCase kXTSReEncryptTestCases[] = {
     // len = 51 bytes = 3 blocks + 3 bytes
     {
         "2718281828459045235360287471352662497757247093699959574966967627"
-        "3141592653589793238462643383279502884197169399375105820974944592",
+        "3141592653589793238462643383279502884197169399375105820974944592"
         "fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0efeeedecebeae9e8e7e6e5e4e3e2e1e0"
         "bfbebdbcbbbab9b8b7b6b5b4b3b2b1b0afaeadacabaaa9a8a7a6a5a4a3a2a1a0",
         "9a785634120000000000000000000000",
@@ -1379,7 +1382,7 @@ static const XTSReEncryptTestCase kXTSReEncryptTestCases[] = {
     // len = 74 bytes = 4 blocks + 10 bytes
     {
         "2718281828459045235360287471352662497757247093699959574966967627"
-        "3141592653589793238462643383279502884197169399375105820974944592",
+        "3141592653589793238462643383279502884197169399375105820974944592"
         "fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0efeeedecebeae9e8e7e6e5e4e3e2e1e0"
         "bfbebdbcbbbab9b8b7b6b5b4b3b2b1b0afaeadacabaaa9a8a7a6a5a4a3a2a1a0",
         "9a785634120000000000000000000000",
@@ -1396,7 +1399,7 @@ static const XTSReEncryptTestCase kXTSReEncryptTestCases[] = {
     // len = 87 bytes = 5 blocks + 7 bytes
     {
         "2718281828459045235360287471352662497757247093699959574966967627"
-        "3141592653589793238462643383279502884197169399375105820974944592",
+        "3141592653589793238462643383279502884197169399375105820974944592"
         "fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0efeeedecebeae9e8e7e6e5e4e3e2e1e0"
         "bfbebdbcbbbab9b8b7b6b5b4b3b2b1b0afaeadacabaaa9a8a7a6a5a4a3a2a1a0",
         "9a785634120000000000000000000000",
@@ -1413,7 +1416,7 @@ static const XTSReEncryptTestCase kXTSReEncryptTestCases[] = {
     // len = 100 bytes = 6 blocks + 4 bytes
     {
         "2718281828459045235360287471352662497757247093699959574966967627"
-        "3141592653589793238462643383279502884197169399375105820974944592",
+        "3141592653589793238462643383279502884197169399375105820974944592"
         "fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0efeeedecebeae9e8e7e6e5e4e3e2e1e0"
         "bfbebdbcbbbab9b8b7b6b5b4b3b2b1b0afaeadacabaaa9a8a7a6a5a4a3a2a1a0",
         "9a785634120000000000000000000000",
@@ -1433,7 +1436,7 @@ static const XTSReEncryptTestCase kXTSReEncryptTestCases[] = {
     // len = 126 bytes = 7 blocks + 14 bytes
     {
         "2718281828459045235360287471352662497757247093699959574966967627"
-        "3141592653589793238462643383279502884197169399375105820974944592",
+        "3141592653589793238462643383279502884197169399375105820974944592"
         "fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0efeeedecebeae9e8e7e6e5e4e3e2e1e0"
         "bfbebdbcbbbab9b8b7b6b5b4b3b2b1b0afaeadacabaaa9a8a7a6a5a4a3a2a1a0",
         "9a785634120000000000000000000000",
@@ -1453,7 +1456,7 @@ static const XTSReEncryptTestCase kXTSReEncryptTestCases[] = {
     // len = 134 bytes = 8 blocks + 6 bytes
     {
         "2718281828459045235360287471352662497757247093699959574966967627"
-        "3141592653589793238462643383279502884197169399375105820974944592",
+        "3141592653589793238462643383279502884197169399375105820974944592"
         "fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0efeeedecebeae9e8e7e6e5e4e3e2e1e0"
         "bfbebdbcbbbab9b8b7b6b5b4b3b2b1b0afaeadacabaaa9a8a7a6a5a4a3a2a1a0",
         "9a785634120000000000000000000000",
@@ -1480,8 +1483,8 @@ static const XTSReEncryptTestCase kXTSReEncryptTestCases[] = {
 
 using VecUint8 = std::vector<uint8_t>;
 
-static void RunReEncryptTest(const EVP_CIPHER *cipher, VecUint8 key_dec,
-                             VecUint8 key_enc, VecUint8 iv,
+static void RunReEncryptTest(const EVP_CIPHER *cipher, VecUint8 key,
+                             VecUint8 key_dec, VecUint8 key_enc, VecUint8 iv,
                              VecUint8 plaintext, VecUint8 ciphertext_in,
                              VecUint8 ciphertext_out, size_t byte_len) {
   bssl::ScopedEVP_CIPHER_CTX ctx;
@@ -1540,7 +1543,6 @@ static void RunReEncryptTest(const EVP_CIPHER *cipher, VecUint8 key_dec,
   ASSERT_TRUE(
     EVP_EncryptUpdate(ctx.get(), out.data(), &len, in.data(), byte_len));
 
-
   out.resize(len);
   EXPECT_EQ(Bytes(exp_out), Bytes(out));
 
@@ -1549,7 +1551,7 @@ static void RunReEncryptTest(const EVP_CIPHER *cipher, VecUint8 key_dec,
   // Testing the assembly implementation
   // TODO: use proper APIs, length from context
 
-#if defined(OPENSSL_X86_64) && !defined(OPENSSL_NO_ASM)
+#if 0// defined(OPENSSL_X86_64) && !defined(OPENSSL_NO_ASM)
   in = ciphertext_in;
   out.clear();
   out.resize(byte_len);
@@ -1568,8 +1570,24 @@ static void RunReEncryptTest(const EVP_CIPHER *cipher, VecUint8 key_dec,
                        iv.data(),
                        &ctx_enc.ks1.ks, &ctx_enc.ks2.ks);
   EXPECT_EQ(Bytes(exp_out), Bytes(out));
-
 #endif
+  // using EVP API with AES-XTS Re-encrypt
+  ctx.Reset();
+  in = ciphertext_in;
+  exp_out = ciphertext_out;
+  exp_out.resize(byte_len);
+  out.resize(byte_len);
+
+  const EVP_CIPHER *cipher_reenc = EVP_aes_256_xts_reenc();
+
+  ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), cipher_reenc, nullptr, key.data(),
+                                 iv.data(), 2));
+  ASSERT_TRUE(
+    EVP_CipherUpdate(ctx.get(), out.data(), &len, in.data(), byte_len));
+  out.resize(len);
+  EXPECT_EQ(Bytes(exp_out), Bytes(out));
+  out.clear();
+  ctx.Reset();
 }
 
 TEST(XTSTest, ReEncryptTestVectors) {
@@ -1580,15 +1598,18 @@ TEST(XTSTest, ReEncryptTestVectors) {
 
     const EVP_CIPHER *cipher = EVP_aes_256_xts();
 
-    VecUint8  key_dec, key_enc, iv,
+    VecUint8 key, key_dec, key_enc, iv,
       plaintext, ciphertext_in, ciphertext_out;
-    ASSERT_TRUE(DecodeHex(&key_dec, test.key_dec_hex));
-    ASSERT_TRUE(DecodeHex(&key_enc, test.key_enc_hex));
+    //ASSERT_TRUE(DecodeHex(&key_dec, test.key_dec_hex));
+    //ASSERT_TRUE(DecodeHex(&key_enc, test.key_enc_hex));
+    ASSERT_TRUE(DecodeHex(&key, test.key_hex));
     ASSERT_TRUE(DecodeHex(&iv, test.iv_hex));
     ASSERT_TRUE(DecodeHex(&plaintext, test.plaintext_hex));
     ASSERT_TRUE(DecodeHex(&ciphertext_in, test.ciphertext_in_hex));
     ASSERT_TRUE(DecodeHex(&ciphertext_out, test.ciphertext_out_hex));
 
+    key_dec.insert(key_dec.end(), key.begin(), key.begin()+key.size()/2);
+    key_enc.insert(key_enc.end(), key.begin()+key.size()/2, key.end());
     ASSERT_EQ(EVP_CIPHER_key_length(cipher), key_dec.size());
     ASSERT_EQ(key_dec.size(), key_enc.size());
     ASSERT_EQ(EVP_CIPHER_iv_length(cipher), iv.size());
@@ -1598,7 +1619,7 @@ TEST(XTSTest, ReEncryptTestVectors) {
     if (test_num == 1) {
 #if 1
       for (size_t byte_len = 1*16; byte_len <= 32*16; byte_len += 16) {
-        RunReEncryptTest(cipher, key_dec, key_enc, iv, plaintext, ciphertext_in,
+        RunReEncryptTest(cipher, key, key_dec, key_enc, iv, plaintext, ciphertext_in,
                          ciphertext_out, byte_len);
         if (byte_len == 7*16) {
           // jump from 7 blocks to 12 blocks;
@@ -1613,7 +1634,7 @@ TEST(XTSTest, ReEncryptTestVectors) {
       }
 #endif
     } else {
-      RunReEncryptTest(cipher, key_dec, key_enc, iv, plaintext, ciphertext_in,
+      RunReEncryptTest(cipher, key, key_dec, key_enc, iv, plaintext, ciphertext_in,
                        ciphertext_out, ciphertext_in.size());
     }
   }
