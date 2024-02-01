@@ -722,13 +722,19 @@ let x86_MOV = new_definition
  `x86_MOV dest src s =
         let x = read src s in (dest := x) s`;;
 
-(*** These are rare cases with distinct operand sizes
+(*** These are rare cases with distinct source and destination
+ *** operand sizes. There is a 32-bit to 64-bit version of MOVSX(D),
+ *** whereas the corresponding MOVZX is not encodable; the operation
+ *** can be done anyway by the usual 32-bit MOV in 64-bit mode.
  ***
- *** A bit bizarrely there are same-size versions of MOVSXD (not MOVZXD)
- *** But these seem to be just freaks of decoding so we ignore them.
- *** The documentation says "regular MOV should be used" instead.
- *** But we do have a real 32-bit to 64-bit version of MOVSX(D), whereas
- *** the equivalent MOVZX is just done by the usual MOV in 64-bit mode.
+ *** A bit bizarrely there are same-size versions of MOVSXD.
+ *** These are really just freaks of decoding, with semantics
+ *** equivalent to MOV, and use is actively discouraged in
+ *** the Intel manuals ("The use of MOVSXD without REX.W in 
+ *** 64-bit mode is discouraged".) However, we do handle
+ *** the 32->32 case anyway, though not the 16->16 case, in
+ *** line with the general policy of rejecting operand size
+ *** override prefixes unless the instructions are useful.
  ***)
 
 let x86_MOVSX = new_definition
@@ -1464,6 +1470,7 @@ let x86_execute = define
            (64,32) -> x86_MOVSX (OPERAND64 dest s) (OPERAND32 src s)
          | (64,16) -> x86_MOVSX (OPERAND64 dest s) (OPERAND16 src s)
          | (64,8) -> x86_MOVSX (OPERAND64 dest s) (OPERAND8 src s)
+         | (32,32) -> x86_MOVSX (OPERAND32 dest s) (OPERAND32 src s)
          | (32,16) -> x86_MOVSX (OPERAND32 dest s) (OPERAND16 src s)
          | (32,8) -> x86_MOVSX (OPERAND32 dest s) (OPERAND8 src s)
          | (16,8) -> x86_MOVSX (OPERAND16 dest s) (OPERAND8 src s)) s
@@ -1765,38 +1772,41 @@ let OPERAND_SIZE_CASES = prove
    (match 64 with 64 -> a | 32 -> b) = a /\
    (match 32 with 64 -> a | 32 -> b) = b /\
    (match (64,32) with
-      (64,32) -> a  | (64,16) -> b  | (64,8) -> c
-    | (32,16) -> d | (32,8) -> e  | (16,8) -> f) = a /\
+      (64,32) -> a  | (64,16) -> b  | (64,8) -> c | (32,32) -> d
+    | (32,16) -> e | (32,8) -> f  | (16,8) -> g) = a /\
    (match (64,16) with
-      (64,32) -> a  | (64,16) -> b  | (64,8) -> c
-    | (32,16) -> d | (32,8) -> e  | (16,8) -> f) = b /\
+      (64,32) -> a  | (64,16) -> b  | (64,8) -> c | (32,32) -> d
+    | (32,16) -> e | (32,8) -> f  | (16,8) -> g) = b /\
    (match (64,8) with
-      (64,32) -> a  | (64,16) -> b  | (64,8) -> c
-    | (32,16) -> d | (32,8) -> e  | (16,8) -> f) = c /\
+      (64,32) -> a  | (64,16) -> b  | (64,8) -> c | (32,32) -> d
+    | (32,16) -> e | (32,8) -> f  | (16,8) -> g) = c /\
+   (match (32,32) with
+      (64,32) -> a  | (64,16) -> b  | (64,8) -> c | (32,32) -> d
+    | (32,16) -> e | (32,8) -> f  | (16,8) -> g) = d /\
    (match (32,16) with
-      (64,32) -> a  | (64,16) -> b  | (64,8) -> c
-    | (32,16) -> d | (32,8) -> e  | (16,8) -> f) = d /\
+      (64,32) -> a  | (64,16) -> b  | (64,8) -> c | (32,32) -> d
+    | (32,16) -> e | (32,8) -> f  | (16,8) -> g) = e /\
    (match (32,8) with
-      (64,32) -> a  | (64,16) -> b  | (64,8) -> c
-    | (32,16) -> d | (32,8) -> e  | (16,8) -> f) = e /\
+      (64,32) -> a  | (64,16) -> b  | (64,8) -> c | (32,32) -> d
+    | (32,16) -> e | (32,8) -> f  | (16,8) -> g) = f /\
    (match (16,8) with
-      (64,32) -> a  | (64,16) -> b  | (64,8) -> c
-    | (32,16) -> d | (32,8) -> e  | (16,8) -> f) = f /\
+      (64,32) -> a  | (64,16) -> b  | (64,8) -> c | (32,32) -> d
+    | (32,16) -> e | (32,8) -> f  | (16,8) -> g) = g /\
    (match (64,16) with
       (64,16) -> b  | (64,8) -> c
-    | (32,16) -> d | (32,8) -> e  | (16,8) -> f) = b /\
+    | (32,16) -> e | (32,8) -> f  | (16,8) -> g) = b /\
    (match (64,8) with
       (64,16) -> b  | (64,8) -> c
-    | (32,16) -> d | (32,8) -> e  | (16,8) -> f) = c /\
+    | (32,16) -> e | (32,8) -> f  | (16,8) -> g) = c /\
    (match (32,16) with
       (64,16) -> b  | (64,8) -> c
-    | (32,16) -> d | (32,8) -> e  | (16,8) -> f) = d /\
+    | (32,16) -> e | (32,8) -> f  | (16,8) -> g) = e /\
    (match (32,8) with
       (64,16) -> b  | (64,8) -> c
-    | (32,16) -> d | (32,8) -> e  | (16,8) -> f) = e /\
+    | (32,16) -> e | (32,8) -> f  | (16,8) -> g) = f /\
    (match (16,8) with
       (64,16) -> b  | (64,8) -> c
-    | (32,16) -> d | (32,8) -> e  | (16,8) -> f) = f`,
+    | (32,16) -> e | (32,8) -> f  | (16,8) -> g) = g`,
   CONV_TAC(TOP_DEPTH_CONV MATCH_CONV) THEN CONV_TAC NUM_REDUCE_CONV);;
 
 let X86_EXECUTE =
