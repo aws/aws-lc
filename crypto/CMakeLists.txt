@@ -36,11 +36,12 @@ if(NOT OPENSSL_NO_ASM)
       set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -Qunused-arguments")
     endif()
 
-    # Clang's integerated assembler does not support debug symbols.
-    if (CMAKE_ASM_COMPILER_ID MATCHES "Clang" OR CMAKE_ASM_COMPILER MATCHES "clang")
-      message(STATUS "Disabling debug symbols for Clang internal assembler")
-    else()
-      set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -Wa,-g")
+    if(CMAKE_BUILD_TYPE_LOWER STREQUAL "debug" OR CMAKE_BUILD_TYPE_LOWER STREQUAL "relwithdebinfo" )
+      if (CMAKE_ASM_COMPILER_ID MATCHES "Clang" OR CMAKE_ASM_COMPILER MATCHES "clang")
+        set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -g")
+      else()
+        set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -Wa,-g")
+      endif()
     endif()
 
     # Work around https://gitlab.kitware.com/cmake/cmake/-/issues/20771 in older
