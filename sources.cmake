@@ -61,6 +61,7 @@ set(
   crypto/fipsmodule/bn/test/gcd_tests.txt
   crypto/fipsmodule/bn/test/miller_rabin_tests.txt
   crypto/fipsmodule/bn/test/mod_exp_tests.txt
+  crypto/fipsmodule/bn/test/mod_exp_x2_tests.txt
   crypto/fipsmodule/bn/test/mod_inv_tests.txt
   crypto/fipsmodule/bn/test/mod_mul_tests.txt
   crypto/fipsmodule/bn/test/mod_sqrt_tests.txt
