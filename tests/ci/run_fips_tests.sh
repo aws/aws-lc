@@ -6,14 +6,28 @@ set -ex
 
 source tests/ci/common_posix_setup.sh
 
+function static_linux_supported() {
+  if [[ ("$(uname -s)" == 'Linux'*) && (("$(uname -p)" == 'x86_64'*) || ("$(uname -p)" == 'aarch64'*)) ]]; then
+    return 0
+  fi
+  return 1
+}
+
+function static_openbsd_supported() {
+  if [[ "$(uname -s)" == 'OpenBSD' && "$(uname -p)" == 'x86_64'* ]]; then
+    return 0
+  fi
+  return 1
+}
+
 echo "Testing AWS-LC shared library in FIPS Release mode."
 fips_build_and_test -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=1
 
 echo "Testing AWS-LC shared library in FIPS Release mode with FIPS entropy source method CPU Jitter."
 fips_build_and_test -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=1 -DENABLE_FIPS_ENTROPY_CPU_JITTER=ON
 
-# Static FIPS build works only on Linux platforms.
-if [[ ("$(uname -s)" == 'Linux'*) && (("$(uname -p)" == 'x86_64'*) || ("$(uname -p)" == 'aarch64'*)) ]]; then
+# Static FIPS build works only on Linux and OpenBSD platforms.
+if static_linux_supported || static_openbsd_supported; then
   echo "Testing AWS-LC static library in FIPS Release mode."
   fips_build_and_test -DCMAKE_BUILD_TYPE=Release
 
