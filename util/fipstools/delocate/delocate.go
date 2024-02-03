@@ -1625,7 +1625,7 @@ Args:
 					saveRegWrapper, tempReg := saveRegister(d.output, []string{targetReg})
 					redzoneCleared = true
 					wrappers = append(wrappers, saveRegWrapper)
-					wrappers = append(wrappers, twoArgOp(d.output, instructionName, tempReg, otherSource))
+					wrappers = append(wrappers, twoArgOp(d.output, instructionName, tempReg, targetReg))
 					targetReg = tempReg
 				default:
 					return nil, fmt.Errorf("Cannot rewrite GOTPCREL reference for instruction %q", instructionName)
