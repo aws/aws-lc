@@ -44,6 +44,7 @@
 #include <openssl/x509.h>
 
 #include "../crypto/internal.h"
+#include "../crypto/test/file_util.h"
 #include "../crypto/test/test_util.h"
 #include "internal.h"
 #include "../crypto/kyber/kem_kyber.h"
@@ -11414,14 +11415,17 @@ xNCwyMX9mtdXdQicOfNjIGUCD5OLV5PgHFPRKiHHioBAhg==
   }
 }
 
-#if defined(OPENSSL_LINUX) || defined(OPENSSL_APPLE)
 TEST(SSLTest, EmptyClientCAList) {
-  // Use /dev/null on POSIX systems as an empty file.
+  if (SkipTempFileTests()) {
+    GTEST_SKIP();
+  }
+
+  TemporaryFile empty;
+  ASSERT_TRUE(empty.Init());
   bssl::UniquePtr<STACK_OF(X509_NAME)> names(
-      SSL_load_client_CA_file("/dev/null"));
+      SSL_load_client_CA_file(empty.path().c_str()));
   EXPECT_FALSE(names);
 }
-#endif  // OPENSSL_LINUX || OPENSSL_APPLE
 
 TEST(SSLTest, EmptyWriteBlockedOnHandshakeData) {
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
@@ -13032,12 +13036,6 @@ TEST(SSLTest, SSLFileTests) {
   // See b/36991167#comment8.
   GTEST_SKIP();
 #endif
-
-  struct FileCloser {
-    void operator()(FILE *f) const { fclose(f); }
-  };
-
-  using ScopedFILE = std::unique_ptr<FILE, FileCloser>;
 
   char rsa_pem_filename[PATH_MAX];
   char ecdsa_pem_filename[PATH_MAX];

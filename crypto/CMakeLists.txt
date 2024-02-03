@@ -832,6 +832,7 @@ if(BUILD_TESTING)
     stack/stack_test.cc
     siphash/siphash_test.cc
     spake25519/spake25519_test.cc
+    test/file_util.cc
     test/file_test_gtest.cc
     thread_test.cc
     trust_token/trust_token_test.cc
