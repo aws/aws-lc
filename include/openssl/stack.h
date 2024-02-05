@@ -506,7 +506,7 @@ BSSL_NAMESPACE_END
   OPENSSL_INLINE int sk_##name##_find(const STACK_OF(name) *sk,                \
                                       constptrtype p) {                        \
     const size_t mask = 0xffffffffffffffffUL << (sizeof(int) * 8);             \
-    size_t out_index;                                                          \
+    size_t out_index = 0;                                                      \
     int ok = OPENSSL_sk_find((const OPENSSL_STACK *)sk, &out_index,            \
                              (const void *)p, sk_##name##_call_cmp_func);      \
     /* return -1 if element not found or stack is larger than INT_MAX */       \
