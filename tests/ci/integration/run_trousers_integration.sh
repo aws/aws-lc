@@ -33,10 +33,11 @@ rm -rf "${SCRATCH_FOLDER:?}"/*
 pushd "${SCRATCH_FOLDER}"
 
 function trousers_build() {
+  git apply "${SCRIPT_DIR}/trousers_patch/aws-lc-trousers.patch"
   sh ./bootstrap.sh
-  ./configure --with-gui=none --prefix="${TROUSERS_INSTALL_FOLDER}" --with-openssl="${AWS_LC_INSTALL_FOLDER}"
+  CFLAGS="-Werror=implicit-function-declaration -Wno-deprecated" ./configure --with-gui=none --prefix="${TROUSERS_INSTALL_FOLDER}" --with-openssl="${AWS_LC_INSTALL_FOLDER}"
   make -j "$NUM_CPU_THREADS" install
-  ldd "${TROUSERS_INSTALL_FOLDER}/sbin/tcsd" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
+  ldd --function-relocs "${TROUSERS_INSTALL_FOLDER}/sbin/tcsd" | grep "${AWS_LC_INSTALL_FOLDER}/lib/libcrypto.so" || exit 1
 }
 
 
@@ -54,5 +55,3 @@ trousers_build
 popd
 
 popd
-
-
