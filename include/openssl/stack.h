@@ -202,10 +202,10 @@ void sk_SAMPLE_delete_if(STACK_OF(SAMPLE) *sk, sk_SAMPLE_delete_if_func func,
 // sort |sk| if it has a comparison function defined.
 int sk_SAMPLE_find(const STACK_OF(SAMPLE) *sk, const SAMPLE *p);
 
-// sk_SAMPLE_find_awslc is like sk_SAMPLE_find, but if it finds a matching
+// sk_SAMPLE_find_awslc is like |sk_SAMPLE_find|, but if it finds a matching
 // element, it writes the index to |*out_index| (if |out_index| is not NULL)
 // and returns one. Otherwise, it returns zero.
-int sk_SAMPLE_find(const STACK_OF(SAMPLE) *sk, size_t *out_index,
+int sk_SAMPLE_find_awslc(const STACK_OF(SAMPLE) *sk, size_t *out_index,
         const SAMPLE *p);
 
 // sk_SAMPLE_shift removes and returns the first element in |sk|, or NULL if
