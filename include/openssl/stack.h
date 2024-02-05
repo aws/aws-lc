@@ -505,7 +505,9 @@ BSSL_NAMESPACE_END
   /* use 2-arg sk_*_find for OpenSSL compatibility */                          \
   OPENSSL_INLINE int sk_##name##_find(const STACK_OF(name) *sk,                \
                                       constptrtype p) {                        \
-    const size_t mask = 0xffffffffffffffffUL << (sizeof(int) * 8);             \
+    const size_t mask = sizeof(size_t) > sizeof(int)                           \
+        ? (~((size_t) 0)) << (sizeof(int) * 8)                                 \
+        : 0;                                                                   \
     size_t out_index = 0;                                                      \
     int ok = OPENSSL_sk_find((const OPENSSL_STACK *)sk, &out_index,            \
                              (const void *)p, sk_##name##_call_cmp_func);      \
