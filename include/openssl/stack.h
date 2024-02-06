@@ -57,6 +57,8 @@
 #ifndef OPENSSL_HEADER_STACK_H
 #define OPENSSL_HEADER_STACK_H
 
+#include <limits.h>
+
 #include <openssl/base.h>
 
 #include <openssl/type_check.h>
@@ -495,7 +497,7 @@ BSSL_NAMESPACE_END
                          (OPENSSL_sk_delete_if_func)func, data);               \
   }                                                                            \
                                                                                \
-  /* use 3-arg sk_*_find_awslc when |out_index| needed */                      \
+  /* use 3-arg sk_*_find_awslc when size_t-sized |out_index| needed */         \
   OPENSSL_INLINE int sk_##name##_find_awslc(const STACK_OF(name) *sk,          \
                                       size_t *out_index, constptrtype p) {     \
     return OPENSSL_sk_find((const OPENSSL_STACK *)sk, out_index,               \
@@ -505,17 +507,14 @@ BSSL_NAMESPACE_END
   /* use 2-arg sk_*_find for OpenSSL compatibility */                          \
   OPENSSL_INLINE int sk_##name##_find(const STACK_OF(name) *sk,                \
                                       constptrtype p) {                        \
-    const size_t mask = sizeof(size_t) > sizeof(int)                           \
-        ? (~((size_t) 0)) << (sizeof(int) * 8)                                 \
-        : 0;                                                                   \
     size_t out_index = 0;                                                      \
     int ok = OPENSSL_sk_find((const OPENSSL_STACK *)sk, &out_index,            \
                              (const void *)p, sk_##name##_call_cmp_func);      \
-    /* return -1 if element not found or stack is larger than INT_MAX */       \
-    if (ok == 0 || (out_index & mask)) {                                       \
+    /* return -1 if elt not found or elt index is invalid */                   \
+    if (ok == 0 || out_index > INT_MAX) {                                      \
       return -1;                                                               \
     }                                                                          \
-    return (int) (out_index & ~mask);                                          \
+    return (int) out_index;                                                    \
   }                                                                            \
                                                                                \
   OPENSSL_INLINE ptrtype sk_##name##_shift(STACK_OF(name) *sk) {               \
