@@ -39,7 +39,7 @@ int read_macho_file(const char *filename, machofile *macho) {
         if (load_commands[i].cmd == LC_SEG) {
             segment_load_cmd *segment = (segment_load_cmd *)&load_commands[i];
             if (strcmp(segment->segname, "__TEXT") == 0) {
-                section *sections = (section *)&segment[1];
+                section_data *sections = (section_data *)&segment[1];
                 for (uint32_t j = 0; j < segment->nsects; j++) {
                     if (strcmp(sections[j].sectname, "__text") == 0 || strcmp(sections[j].sectname, "__const") == 0) {
                         macho->sections[section_index].offset = sections[j].offset;

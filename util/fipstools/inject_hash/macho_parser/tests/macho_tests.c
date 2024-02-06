@@ -34,7 +34,7 @@ static void create_test_macho_file(int num_syms, int *text_data, char *const_dat
         exit(EXIT_FAILURE);
     }
 
-    uint32_t header_sizeofcmds = sizeof(segment_load_cmd) + 2 * sizeof(section) + sizeof(symtab_load_cmd);
+    uint32_t header_sizeofcmds = sizeof(segment_load_cmd) + 2 * sizeof(section_data) + sizeof(symtab_load_cmd);
     uint32_t header_ncmds = 2;
     macho_header test_header = {
         .magic = MH_MAGIC_64,
@@ -42,7 +42,7 @@ static void create_test_macho_file(int num_syms, int *text_data, char *const_dat
         .sizeofcmds = header_sizeofcmds,
     };
 
-    uint32_t text_segment_cmdsize = sizeof(segment_load_cmd) + 2 * sizeof(section);
+    uint32_t text_segment_cmdsize = sizeof(segment_load_cmd) + 2 * sizeof(section_data);
     uint32_t text_segment_nsects = 2;
     segment_load_cmd test_text_segment = {
         .cmd = LC_SEGMENT_64,
@@ -51,9 +51,9 @@ static void create_test_macho_file(int num_syms, int *text_data, char *const_dat
         .nsects = text_segment_nsects,
     };
 
-    uint32_t text_section_offset = sizeof(macho_header) + sizeof(segment_load_cmd) + 2 * sizeof(section) + sizeof(symtab_load_cmd);
+    uint32_t text_section_offset = sizeof(macho_header) + sizeof(segment_load_cmd) + 2 * sizeof(section_data) + sizeof(symtab_load_cmd);
     uint64_t text_section_size = 1; // {0xC3}
-    section test_text_section = {
+    section_data test_text_section = {
         .sectname = "__text",
         .size = text_section_size, 
         .offset = text_section_offset,
@@ -61,7 +61,7 @@ static void create_test_macho_file(int num_syms, int *text_data, char *const_dat
 
     uint32_t const_section_offset = text_section_offset + text_section_size;
     uint64_t const_section_size = 2;  // "hi"
-    section test_const_section = {
+    section_data test_const_section = {
         .sectname = "__const",
         .size = const_section_size,
         .offset = const_section_offset,
@@ -81,8 +81,8 @@ static void create_test_macho_file(int num_syms, int *text_data, char *const_dat
 
     fwrite(&test_header, sizeof(macho_header), 1, file);
     fwrite(&test_text_segment, sizeof(segment_load_cmd), 1, file);
-    fwrite(&test_text_section, sizeof(section), 1, file);
-    fwrite(&test_const_section, sizeof(section), 1, file);
+    fwrite(&test_text_section, sizeof(section_data), 1, file);
+    fwrite(&test_const_section, sizeof(section_data), 1, file);
     fwrite(&test_symtab_command, sizeof(symtab_load_cmd), 1, file);
 
     int *test_text_data = text_data;
