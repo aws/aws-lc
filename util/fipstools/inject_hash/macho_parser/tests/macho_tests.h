@@ -15,6 +15,8 @@ protected:
     static char expected_strtab[EXPECTED_STRTAB_SIZE];
     static int text_data[TEXT_DATA_SIZE];
     static char const_data[CONST_DATA_SIZE];
+    static uint32_t expected_symbol1_ind;
+    static uint32_t expected_symbol2_ind;
 
     static void print_hex(const void *ptr, size_t size) {
         for (size_t i = 0; i < size; i++) {
@@ -31,11 +33,12 @@ protected:
     }
 
     static void SetUpTestSuite() {
-
         num_syms = 2;
         memcpy(expected_strtab, "__text\0__const\0symbol1\0symbol2\0", EXPECTED_STRTAB_SIZE);
         text_data[0] = 0xC3;
         memcpy(const_data, "hi", CONST_DATA_SIZE);
+        expected_symbol1_ind = 15;
+        expected_symbol2_ind = 23;
 
         FILE *file = fopen(TEST_FILE, "wb");
         if (!file) {
@@ -97,25 +100,25 @@ protected:
         char *test_const_data = const_data;
 
         fseek(file, test_text_section.offset, SEEK_SET);
-        fwrite(test_text_data, sizeof(*test_text_data), 1, file);
+        fwrite(test_text_data, sizeof(test_text_data), 1, file);
 
         fseek(file, test_const_section.offset, SEEK_SET);
-        fwrite(test_const_data, sizeof(*test_const_data), 1, file);
+        fwrite(test_const_data, sizeof(test_const_data), 1, file);
     
         symbol_info symbol1 = {
-        .n_un = {.n_strx = 15},  // Index into the string table
+        .n_un = {.n_strx = expected_symbol1_ind},  // Index into the string table
         .n_type = 0,
         .n_sect = 1,
         .n_desc = 0,
-        .n_value = 15,  // Address of the symbol
+        .n_value = expected_symbol1_ind,  // Address of the symbol
         };
 
         symbol_info symbol2 = {
-            .n_un = {.n_strx = 23},  // Index into the string table
+            .n_un = {.n_strx = expected_symbol2_ind},  // Index into the string table
             .n_type = 0,
             .n_sect = 2,
             .n_desc = 0,
-            .n_value = 23,  // Address of the symbol
+            .n_value = expected_symbol2_ind,  // Address of the symbol
         };
 
         fseek(file, symtab_command_symoff, SEEK_SET);
@@ -182,11 +185,4 @@ protected:
             LOG_ERROR("Error deleting %s", TEST_FILE);
         }
     }
-
-    // void SetUp() override {
-
-    // }
-    // void TearDown() override {
-
-    // }
 };
