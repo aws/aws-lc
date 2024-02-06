@@ -442,10 +442,12 @@ run_proofs: $(PROOFS);
 
 proofs: run_proofs ; ../tools/check-proofs.sh .
 
+
+x86-insns.ml: $(OBJ) $(WINOBJ); ../tools/list-x86-insns.sh x86-insns.ml
 # Always run sematest regardless of dependency check
 FORCE: ;
 # Always use max. # of cores because in Makefile one cannot get the passed number of -j.
 # A portable way of getting the number of max. cores:
 # https://stackoverflow.com/a/23569003/1488216
 NUM_CORES_FOR_SEMATEST = $(shell getconf _NPROCESSORS_ONLN)
-sematest: FORCE; ../tools/run-sematest.sh x86 $(NUM_CORES_FOR_SEMATEST) "$(HOLLIGHT)"
+sematest: x86-insns.ml FORCE; cat x86-insns.ml; ../tools/run-sematest.sh x86 $(NUM_CORES_FOR_SEMATEST) "$(HOLLIGHT)"
