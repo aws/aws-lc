@@ -3,6 +3,10 @@
 
 #ifndef MACHO_PARSER_H
 #define MACHO_PARSER_H
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
 #include <mach-o/loader.h>
 #include <mach-o/nlist.h>
@@ -21,7 +25,7 @@ typedef struct mach_header_64 macho_header;
 typedef struct load_command load_cmd;
 typedef struct segment_command_64 segment_load_cmd;
 typedef struct symtab_command symtab_load_cmd;
-typedef struct section_64 section;
+typedef struct section_64 section_data;
 typedef struct nlist_64 symbol_info;
 
 typedef struct {
@@ -36,4 +40,7 @@ void print_macho_section_info(machofile *macho);
 uint8_t* get_macho_section_data(const char* filename, machofile *macho, const char *section_name, size_t *size, uint32_t *offset);
 uint32_t find_macho_symbol_index(uint8_t *symbol_table_data, size_t symbol_table_size, uint8_t *string_table_data, size_t string_table_size, const char *symbol_name, uint32_t *base);
 
+#ifdef __cplusplus
+} // extern "C"
+#endif
 #endif
