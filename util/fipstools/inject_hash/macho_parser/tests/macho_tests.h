@@ -18,20 +18,6 @@ protected:
     static uint32_t expected_symbol1_ind;
     static uint32_t expected_symbol2_ind;
 
-    static void print_hex(const void *ptr, size_t size) {
-        for (size_t i = 0; i < size; i++) {
-            printf("%02X", *((unsigned char *) ptr + i));
-            if ((i+1)%4 == 0) {
-                printf(" ");
-            }
-
-            if((i+1)%32 == 0) {
-                printf("\n");
-            }
-        }
-        printf("\n");
-    }
-
     static void SetUpTestSuite() {
         num_syms = 2;
         memcpy(expected_strtab, "__text\0__const\0symbol1\0symbol2\0", EXPECTED_STRTAB_SIZE);
@@ -106,19 +92,19 @@ protected:
         fwrite(test_const_data, sizeof(test_const_data), 1, file);
     
         symbol_info symbol1 = {
-        .n_un = {.n_strx = expected_symbol1_ind},  // Index into the string table
+        .n_un = {.n_strx = expected_symbol1_ind},
         .n_type = 0,
         .n_sect = 1,
         .n_desc = 0,
-        .n_value = expected_symbol1_ind,  // Address of the symbol
+        .n_value = expected_symbol1_ind,
         };
 
         symbol_info symbol2 = {
-            .n_un = {.n_strx = expected_symbol2_ind},  // Index into the string table
+            .n_un = {.n_strx = expected_symbol2_ind},
             .n_type = 0,
             .n_sect = 2,
             .n_desc = 0,
-            .n_value = expected_symbol2_ind,  // Address of the symbol
+            .n_value = expected_symbol2_ind,
         };
 
         fseek(file, symtab_command_symoff, SEEK_SET);

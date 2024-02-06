@@ -33,7 +33,6 @@ int read_macho_file(const char *filename, machofile *macho) {
     macho->num_sections = 4;
     macho->sections = malloc(macho->num_sections * sizeof(section_info));
 
-    // Iterate through load commands again to populate section information
     uint32_t section_index = 0;
     for (uint32_t i = 0; i < macho->macho_header.sizeofcmds / BIT_MODIFIER; i += load_commands[i].cmdsize / BIT_MODIFIER) {
         if (load_commands[i].cmd == LC_SEG) {
@@ -79,8 +78,6 @@ void free_macho_file(machofile *macho) {
     macho = NULL;
 }
 
-// Takes a filename, machofile struct, the name of the section to get data for, and pointers to size & offset as input
-// size and offset pointers are set to the size and offset of the section retrived in the file.
 uint8_t* get_macho_section_data(const char *filename, machofile *macho, const char *section_name, size_t *size, uint32_t *offset) {
     FILE *file = NULL;
     uint8_t *section_data = NULL;
