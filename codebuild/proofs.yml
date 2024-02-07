@@ -3,6 +3,7 @@ phases:
   install:
     commands:
       - curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
+      - wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add - # To resolve apt update GPG error about https://dl.google.com/linux/chrome/deb
       - apt-get update
       - apt-get -y install ocaml camlp5 binutils-aarch64-linux-gnu binutils-aarch64-linux-gnu binutils-x86-64-linux-gnu
       - echo $(camlp5 -v)
