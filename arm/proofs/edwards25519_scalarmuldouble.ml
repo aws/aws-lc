@@ -11218,6 +11218,9 @@ let EDWARDS25519_SCALARMULDOUBLE_CORRECT = time prove
 
     ARM_STEPS_TAC EDWARDS25519_SCALARMULDOUBLE_EXEC (1--3) THEN
     LOCAL_MODINV_TAC 4 THEN
+    FIRST_X_ASSUM(ASSUME_TAC o MATCH_MP(MESON[PRIME_COPRIME_EQ; PRIME_P25519]
+     `(bnx = if p_25519 divides n then 0 else inverse_mod p_25519 n)
+      ==> coprime(p_25519,n) ==> bnx = inverse_mod p_25519 n`)) THEN
     ABBREV_TAC
      `Z' =
       read(memory :> bytes(word_add stackpointer (word 480),8 * 4)) s4` THEN

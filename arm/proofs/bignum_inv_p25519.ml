@@ -1697,6 +1697,20 @@ let LOCAL_WORD_DIVSTEP59_CORRECT = prove
 
 let p_25519 = new_definition `p_25519 = 57896044618658097711785492504343953926634992332820282019728792003956564819949`;;
 
+let PRIME_P25519 = prove
+ (`prime p_25519`,
+  REWRITE_TAC[p_25519] THEN (CONV_TAC o PRIME_RULE)
+   ["2"; "3"; "5"; "7"; "11"; "13"; "17"; "19"; "23"; "29"; "31"; "37"; "41";
+    "43"; "47"; "53"; "59"; "83"; "97"; "103"; "107"; "127"; "131"; "173";
+    "223"; "239"; "353"; "419"; "479"; "487"; "991"; "1723"; "2437"; "3727";
+    "4153"; "9463"; "32573"; "37853"; "57467"; "65147"; "75707"; "132049";
+    "430751"; "569003"; "1923133"; "8574133"; "2773320623"; "72106336199";
+    "1919519569386763"; "31757755568855353";
+    "75445702479781427272750846543864801";
+    "74058212732561358302231226437062788676166966415465897661863160754340907";
+"57896044618658097711785492504343953926634992332820282019728792003956564819949"
+]);;
+
 let IWORD_CASES_ABS = prove
  (`!m. (if m < &0 then word_neg(iword m) else iword m) = iword(abs m)`,
   GEN_TAC THEN REWRITE_TAC[GSYM IWORD_INT_NEG] THEN
@@ -1752,8 +1766,8 @@ let CORE_INV_P25519_CORRECT = time prove
                   C_ARGUMENTS [z; x] s /\
                   bignum_from_memory (x,4) s = n)
              (\s. read PC s = word (pc + 0x1008) /\
-                  (coprime(p_25519,n)
-                   ==> bignum_from_memory (z,4) s = inverse_mod p_25519 n))
+                  bignum_from_memory(z,4) s =
+                  (if p_25519 divides n then 0 else inverse_mod p_25519 n))
           (MAYCHANGE [PC; X0; X1; X2; X3; X4; X5; X6; X7; X8; X9;
                       X10; X11; X12; X13; X14; X15; X16; X17;
                       X19; X20; X21; X22] ,,
@@ -1793,8 +1807,10 @@ let CORE_INV_P25519_CORRECT = time prove
       (divstep_g (59 * i) t ==
        &n * &2 pow (59 * (10 - i)) *
        &(read (memory :> bytes(word_add stackpointer (word 96),8 * 4)) s))
-      (mod (&p_25519))` THEN
-  REPEAT CONJ_TAC THENL
+      (mod (&p_25519)) /\
+     (p_25519 divides n
+      ==> read (memory :> bytes(word_add stackpointer (word 64),8 * 4)) s = 0)`
+  THEN REPEAT CONJ_TAC THENL
    [ARITH_TAC;
 
     (*** Initial holding of the invariant ***)
@@ -2288,7 +2304,6 @@ let CORE_INV_P25519_CORRECT = time prove
       `uq':int = if usgn then uq - &1 else uq`;
       `vq':int = if vsgn then vq - &1 else vq`] THEN
     STRIP_TAC THEN STRIP_TAC THEN
-
     SUBGOAL_THEN
      `&(bignum_of_wordlist [sum_s238; sum_s239; sum_s241; sum_s242]):int =
       (m00 * &u + m01 * &v) - uq' * &p_25519 /\
@@ -2296,26 +2311,47 @@ let CORE_INV_P25519_CORRECT = time prove
       (m10 * &u + m11 * &v) - vq' * &p_25519`
     (CONJUNCTS_THEN SUBST1_TAC) THENL
      [ALL_TAC;
-      ASM_REWRITE_TAC[] THEN CONJ_TAC THEN
-      FIRST_X_ASSUM(MATCH_MP_TAC o MATCH_MP (INTEGER_RULE
-       `e * f:int = x
-        ==> coprime(e,p) /\
-            (f' * n * e * t == x) (mod p)
-        ==> (f == n * t * (f' - q * p)) (mod p)`)) THEN
-      (CONJ_TAC THENL
-        [REWRITE_TAC[INT_OF_NUM_CLAUSES; GSYM num_coprime] THEN
-         REWRITE_TAC[COPRIME_LEXP; p_25519; ARITH_EQ] THEN
-         CONV_TAC COPRIME_CONV;
-         REWRITE_TAC[GSYM INT_POW_ADD]]) THEN
-      ASM_SIMP_TAC[ARITH_RULE
-       `i < 9 ==> (59 + 59 * (10 - (i + 1))) = 59 * (10 - i)`] THEN
-      MAP_EVERY UNDISCH_TAC
-       [`(divstep_f (59 * i) t == &n * &2 pow (59 * (10 - i)) * &u)
-         (mod &p_25519)`;
-        `(divstep_g (59 * i) t == &n * &2 pow (59 * (10 - i)) * &v)
-         (mod &p_25519)`] THEN
-      CONV_TAC INTEGER_RULE] THEN
-
+      ASM_REWRITE_TAC[] THEN REWRITE_TAC[CONJ_ASSOC] THEN CONJ_TAC THENL
+       [CONJ_TAC THEN
+        FIRST_X_ASSUM(MATCH_MP_TAC o MATCH_MP (INTEGER_RULE
+         `e * f:int = x
+          ==> coprime(e,p) /\
+              (f' * n * e * t == x) (mod p)
+          ==> (f == n * t * (f' - q * p)) (mod p)`)) THEN
+        (CONJ_TAC THENL
+          [REWRITE_TAC[INT_OF_NUM_CLAUSES; GSYM num_coprime] THEN
+           REWRITE_TAC[COPRIME_LEXP; p_25519; ARITH_EQ] THEN
+           CONV_TAC COPRIME_CONV;
+           REWRITE_TAC[GSYM INT_POW_ADD]]) THEN
+        ASM_SIMP_TAC[ARITH_RULE
+         `i < 9 ==> (59 + 59 * (10 - (i + 1))) = 59 * (10 - i)`] THEN
+        MAP_EVERY UNDISCH_TAC
+         [`(divstep_f (59 * i) t == &n * &2 pow (59 * (10 - i)) * &u)
+           (mod &p_25519)`;
+          `(divstep_g (59 * i) t == &n * &2 pow (59 * (10 - i)) * &v)
+           (mod &p_25519)`] THEN
+        CONV_TAC INTEGER_RULE;
+        ALL_TAC] THEN
+      DISCH_TAC THEN MAP_EVERY EXPAND_TAC ["uq'"; "uq"; "usgn"] THEN
+      FIRST_X_ASSUM(MP_TAC o check (is_imp o concl)) THEN
+      ANTS_TAC THENL [ASM_REWRITE_TAC[]; DISCH_THEN SUBST1_TAC] THEN
+      SUBGOAL_THEN `m01:int = &0` SUBST1_TAC THENL
+       [SUBST1_TAC(SYM(ASSUME `(mm:int^2^2)$1$2 = m01`));
+        REWRITE_TAC[INT_MUL_LZERO; INT_MUL_RZERO; p_25519] THEN
+        INT_ARITH_TAC] THEN
+      EXPAND_TAC "mm" THEN MATCH_MP_TAC DIVSTEP_MAT_DIAGONAL_1 THEN
+      SUBGOAL_THEN `g = 0` MP_TAC THENL
+       [REWRITE_TAC[GSYM INT_OF_NUM_EQ];
+        EXPAND_TAC "g" THEN
+        SIMP_TAC[BIGNUM_OF_WORDLIST_EQ_0; ALL; IVAL_WORD_0]] THEN
+      FIRST_X_ASSUM(MATCH_MP_TAC o MATCH_MP
+       (MESON[INT_CONG_IMP_EQ;INT_SUB_RZERO]
+        `(x == y) (mod n) ==> y:int = &0 /\ abs(x) < n ==> x = &0`)) THEN
+      CONJ_TAC THENL
+       [EXPAND_TAC "t" THEN MATCH_MP_TAC DIVSTEP_G_ZERO THEN
+        ASM_REWRITE_TAC[INT_REM_EQ_0; GSYM num_divides];
+        REWRITE_TAC[INT_ABS_NUM; INT_OF_NUM_CLAUSES] THEN
+        EXPAND_TAC "g" THEN BOUNDER_TAC[]]] THEN
     CONJ_TAC THEN MATCH_MP_TAC INT_CONG_IMP_EQ THEN
     EXISTS_TAC `(&2:int) pow 256` THEN
     (CONJ_TAC THENL
@@ -2588,7 +2624,7 @@ let CORE_INV_P25519_CORRECT = time prove
       DISCH_THEN(MP_TAC o end_itlist CONJ o DESUM_RULE o CONJUNCTS) THEN
       DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN REAL_INTEGER_TAC];
 
-    (*** because of the peculiar loop structure, completely trivial ***)
+    (*** Because of the peculiar loop structure, completely trivial ***)
 
     X_GEN_TAC `i:num` THEN STRIP_TAC THEN
     ARM_SIM_TAC CORE_INV_P25519_EXEC [] THEN ASM_REWRITE_TAC[];
@@ -2704,7 +2740,7 @@ let CORE_INV_P25519_CORRECT = time prove
     66;68;70;75;77;78;82;83;85;86;92;93;96;97;99;100;
     102;103;104;105]
    (5--109) THEN
-  ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN DISCH_TAC THEN
+  ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
   CONV_TAC(LAND_CONV(ONCE_DEPTH_CONV BIGNUM_LEXPAND_CONV)) THEN
   ASM_REWRITE_TAC[] THEN DISCARD_STATE_TAC "s109" THEN
   MATCH_MP_TAC CONG_IMP_EQ THEN EXISTS_TAC `2 EXP 255` THEN
@@ -2713,7 +2749,7 @@ let CORE_INV_P25519_CORRECT = time prove
     REWRITE_TAC[p_25519] THEN ARITH_TAC;
     ALL_TAC] THEN
 
-  (*** Deploy the coprime hypothesis and use the bound ***)
+  (*** Deploy the divstep bound to deduce g = 0 ***)
 
   MP_TAC(SPECL [`&p_25519:int`; `&n rem &p_25519`; `256`; `590`]
         IDIVSTEP_ENDTOEND_BITS_SIMPLE) THEN
@@ -2721,10 +2757,6 @@ let CORE_INV_P25519_CORRECT = time prove
    [CONV_TAC NUM_REDUCE_CONV THEN
     REWRITE_TAC[p_25519] THEN INT_ARITH_TAC;
     STRIP_TAC] THEN
-  SUBGOAL_THEN `gcd(&p_25519,&n rem &p_25519) = &1` SUBST_ALL_TAC THENL
-   [REWRITE_TAC[GSYM INT_COPRIME_GCD; INT_COPRIME_RREM] THEN
-    ASM_REWRITE_TAC[GSYM num_coprime];
-    ALL_TAC] THEN
 
   (*** Sign-magnitude breakdown of matrix entries ***)
 
@@ -2810,50 +2842,24 @@ let CORE_INV_P25519_CORRECT = time prove
     ASM_REWRITE_TAC[GSYM DIVSTEP_DFG_ADD] THEN
     CONV_TAC(ONCE_DEPTH_CONV NUM_ADD_CONV) THEN STRIP_TAC] THEN
 
-  (*** Relate f and its lowest word ***)
+  (*** Final f sign in non-degenerate case ***)
 
   RULE_ASSUM_TAC(REWRITE_RULE[ADD_CLAUSES]) THEN
-  SUBGOAL_THEN
-   `(&(val(word(val(word(val(f_0:int64) * val(iword m00:int64)):int64) +
-                val(g_0:int64) * val(iword m01:int64)):int64)) ==
-     &2 pow 59 * divstep_f 590 t) (mod (&2 pow 64))`
-  MP_TAC THENL
-   [REWRITE_TAC[GSYM DIMINDEX_64; GSYM IWORD_EQ] THEN
-    CONV_TAC WORD_VAL_CONG_CONV THEN REWRITE_TAC[DIMINDEX_64] THEN
-    GEN_REWRITE_TAC (RATOR_CONV o LAND_CONV o ONCE_DEPTH_CONV)
-     [INT_MUL_SYM] THEN
-    FIRST_X_ASSUM(fun th -> GEN_REWRITE_TAC LAND_CONV [SYM th]) THEN
-    MATCH_MP_TAC INT_CONG_ADD THEN CONJ_TAC THEN
-    MATCH_MP_TAC INT_CONG_LMUL THEN FIRST_X_ASSUM(MATCH_MP_TAC o MATCH_MP
-     (INTEGER_RULE
-       `(f:int == df) (mod q)
-        ==> p divides q /\ (f == f0) (mod p) ==> (f0 == df) (mod p)`)) THEN
-    SIMP_TAC[INT_DIVIDES_POW_LE_IMP; ARITH_LE; ARITH_LT] THEN
-    MAP_EVERY EXPAND_TAC ["f"; "g"] THEN
-    REWRITE_TAC[GSYM num_congruent; INT_OF_NUM_CLAUSES] THEN
-    ONCE_REWRITE_TAC[bignum_of_wordlist] THEN CONV_TAC NUMBER_RULE;
-    DISCH_THEN(MP_TAC o MATCH_MP (ONCE_REWRITE_RULE[IMP_CONJ]
-        TWOS_COMPLEMENT))] THEN
-  ANTS_TAC THENL
-   [REWRITE_TAC[VAL_BOUND_64] THEN CONV_TAC NUM_REDUCE_CONV THEN
-    UNDISCH_TAC `abs (divstep_f 590 t) = &1` THEN INT_ARITH_TAC;
-    DISCH_THEN(MP_TAC o CONJUNCT1)] THEN
-  REWRITE_TAC[GSYM DIMINDEX_64; GSYM MSB_VAL] THEN
-
   MP_TAC(GEN `x:int64` (ISPEC `x:int64` WORD_ISHR_MSB)) THEN
   REWRITE_TAC[DIMINDEX_64; ARITH_RULE `64 - 1 = 63`] THEN
   DISCH_THEN(fun th -> RULE_ASSUM_TAC(REWRITE_RULE[th])) THEN
-  REWRITE_TAC[INT_ARITH `&2 pow 59 * x < &0 <=> x:int < &0`] THEN
-  DISCH_THEN SUBST_ALL_TAC THEN
+  ABBREV_TAC
+   `bsgn <=> bit 63 (word
+     (val(word(val(f_0:int64) * val(iword m00:int64)):int64) +
+      val(g_0:int64) * val(iword m01:int64)):int64)` THEN
 
-  (*** Accumulation of final u ***)
+  (*** Accumulation of pre-reduction u value ***)
 
   ABBREV_TAC
    `uup = bignum_of_wordlist [sum_s42;sum_s55;sum_s68;sum_s85;sum_s86]` THEN
-
   SUBGOAL_THEN
    `(&uup:int ==
-     --(&1) pow bitval(divstep_f 590 t < &0) *
+     --(&1) pow bitval bsgn *
      (m00 * &u + m01 * &v)) (mod (&2 pow 320))`
   ASSUME_TAC THENL
    [REWRITE_TAC[INT_POW_NEG; EVEN_BITVAL; COND_SWAP; INT_POW_ONE] THEN
@@ -2868,7 +2874,6 @@ let CORE_INV_P25519_CORRECT = time prove
     REWRITE_TAC[WORD_AND_ISHR_CASES; WORD_SUB_LZERO; REAL_VAL_WORD_NOT;
       WORD_NEG_0; WORD_NEG_NEG; WORD_SUB_0; VAL_WORD_0; DIMINDEX_64] THEN
     STRIP_TAC THEN
-
     REWRITE_TAC[REAL_INT_CONGRUENCE; GSYM REAL_OF_INT_CLAUSES] THEN
     REWRITE_TAC[REAL_POW_EQ_0; ARITH_EQ; REAL_OF_NUM_EQ] THEN
     MAP_EVERY EXPAND_TAC ["uup"; "u"; "v"] THEN
@@ -2894,7 +2899,7 @@ let CORE_INV_P25519_CORRECT = time prove
 
   (*** The basic modular reduction mathematics ***)
 
-  ABBREV_TAC `fsgn:int = -- &1 pow bitval (divstep_f 590 t < &0)` THEN
+  ABBREV_TAC `fsgn:int = -- &1 pow bitval bsgn` THEN
   REWRITE_TAC[GSYM INT_OF_NUM_CLAUSES] THEN
   SUBGOAL_THEN `abs(fsgn * (m00 * &u + m01 * &v):int) <= &2 pow 316`
   ASSUME_TAC THENL
@@ -3081,6 +3086,110 @@ let CORE_INV_P25519_CORRECT = time prove
     SIMP_TAC[];
     REWRITE_TAC[SYM(NUM_REDUCE_CONV `2 EXP 255`)]] THEN
 
+  (*** Now finally handle the degenerate case ***)
+
+  ASM_CASES_TAC `p_25519 divides n` THENL
+   [FIRST_X_ASSUM(MP_TAC o check (is_imp o concl)) THEN ASM_REWRITE_TAC[] THEN
+    DISCH_THEN(fun th ->
+      MP_TAC th THEN EXPAND_TAC "u" THEN SUBST_ALL_TAC th) THEN
+    REWRITE_TAC[BIGNUM_OF_WORDLIST_EQ_0; ALL] THEN
+    DISCH_THEN(fun th -> RULE_ASSUM_TAC(REWRITE_RULE[th]) THEN
+                         STRIP_ASSUME_TAC th) THEN
+    SUBGOAL_THEN `m01:int = &0` SUBST_ALL_TAC THENL
+     [SUBST1_TAC(SYM(ASSUME `(mm:int^2^2)$1$2 = m01`)) THEN
+      EXPAND_TAC "mm" THEN MATCH_MP_TAC DIVSTEP_MAT_DIAGONAL_1 THEN
+      SUBGOAL_THEN `g = 0` MP_TAC THENL
+       [REWRITE_TAC[GSYM INT_OF_NUM_EQ];
+        EXPAND_TAC "g" THEN
+        SIMP_TAC[BIGNUM_OF_WORDLIST_EQ_0; ALL; IVAL_WORD_0]] THEN
+      FIRST_X_ASSUM(MATCH_MP_TAC o MATCH_MP
+       (MESON[INT_CONG_IMP_EQ;INT_SUB_RZERO]
+        `(x == y) (mod n) ==> y:int = &0 /\ abs(x) < n ==> x = &0`)) THEN
+      CONJ_TAC THENL
+       [EXPAND_TAC "t" THEN MATCH_MP_TAC DIVSTEP_G_ZERO THEN
+        ASM_REWRITE_TAC[INT_REM_EQ_0; GSYM num_divides];
+        REWRITE_TAC[INT_ABS_NUM; INT_OF_NUM_CLAUSES] THEN
+        EXPAND_TAC "g" THEN BOUNDER_TAC[]];
+      RULE_ASSUM_TAC(REWRITE_RULE[GSYM WORD_IWORD])] THEN
+    ASM_REWRITE_TAC[] THEN RULE_ASSUM_TAC(REWRITE_RULE
+     [INT_MUL_LZERO; INT_MUL_RZERO; INT_ADD_LID; INT_LT_REFL]) THEN
+    UNDISCH_TAC `~usgn` THEN DISCH_THEN(SUBST_ALL_TAC o EQF_INTRO) THEN
+    RULE_ASSUM_TAC(REWRITE_RULE[INT_DIV_ZERO]) THEN
+    UNDISCH_THEN `&0:int = uq` (SUBST_ALL_TAC o SYM) THEN
+    FIRST_X_ASSUM(SUBST_ALL_TAC o MATCH_MP (INT_ARITH
+     `&0:int = q - &1 ==> q = &1`)) THEN
+    REWRITE_TAC[INT_MUL_LZERO; INT_MUL_RZERO; INT_ADD_LID] THEN
+    REWRITE_TAC[INT_SUB_LZERO; INT_MUL_LID] THEN DISCH_TAC THEN
+    RULE_ASSUM_TAC(REWRITE_RULE[GSYM WORD_IWORD]) THEN
+    UNDISCH_THEN `word 1:int64 = qu` (SUBST_ALL_TAC o SYM) THEN
+
+    ACCUMULATOR_POP_ASSUM_LIST
+     (MP_TAC o end_itlist CONJ o rev o fst o chop_list 4) THEN
+    FIRST_ASSUM(MP_TAC o MATCH_MP (ONCE_REWRITE_RULE[IMP_CONJ]
+        TWOS_COMPLEMENT)) THEN
+    ANTS_TAC THENL
+     [REWRITE_TAC[p_25519] THEN CONV_TAC NUM_REDUCE_CONV THEN
+      CONV_TAC INT_REDUCE_CONV THEN BOUNDER_TAC[];
+      DISCH_THEN(MP_TAC o last o CONJUNCTS)] THEN
+    REWRITE_TAC[p_25519] THEN CONV_TAC INT_REDUCE_CONV THEN
+    REWRITE_TAC[BITVAL_CLAUSES; INT_MUL_RID] THEN
+    REWRITE_TAC[INT_ARITH `a - b:int = c <=> a = b + c`] THEN
+    CONV_TAC INT_REDUCE_CONV THEN
+    MP_TAC(REWRITE_CONV[bignum_of_wordlist]
+     `bignum_of_wordlist[word 19; word 0; word 0; word(2 EXP 63)]`) THEN
+    CONV_TAC(DEPTH_CONV WORD_NUM_RED_CONV) THEN
+    DISCH_THEN(SUBST1_TAC o SYM) THEN
+    REWRITE_TAC[INT_OF_NUM_EQ; BIGNUM_OF_WORDLIST_EQ] THEN
+    DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN
+    CONV_TAC(DEPTH_CONV WORD_NUM_RED_CONV) THEN
+    REWRITE_TAC[REAL_CONGRUENCE; ARITH_EQ] THEN
+    REWRITE_TAC[bignum_of_wordlist; GSYM REAL_OF_NUM_CLAUSES] THEN
+    REWRITE_TAC[GSYM(NUM_REDUCE_CONV `2 EXP 63 - 1`)] THEN
+    REWRITE_TAC[VAL_WORD_AND_MASK_WORD; REAL_OF_NUM_MOD] THEN
+    DISCH_THEN(MP_TAC o end_itlist CONJ o DESUM_RULE o rev o CONJUNCTS) THEN
+    REWRITE_TAC[GSYM REAL_OF_NUM_CLAUSES] THEN
+    DISCH_THEN(fun th -> REWRITE_TAC[th]) THEN REAL_INTEGER_TAC;
+    ASM_REWRITE_TAC[]] THEN
+
+  (*** Deploy non-triviality ***)
+
+  SUBGOAL_THEN `coprime(p_25519,n)` ASSUME_TAC THENL
+   [ASM_SIMP_TAC[PRIME_COPRIME_EQ; PRIME_P25519]; ALL_TAC] THEN
+  SUBGOAL_THEN `gcd(&p_25519,&n rem &p_25519) = &1` SUBST_ALL_TAC THENL
+   [REWRITE_TAC[GSYM INT_COPRIME_GCD; INT_COPRIME_RREM] THEN
+    ASM_SIMP_TAC[GSYM num_coprime];
+    ALL_TAC] THEN
+
+  SUBGOAL_THEN
+   `(&(val(word(val(word(val(f_0:int64) * val(iword m00:int64)):int64) +
+                val(g_0:int64) * val(iword m01:int64)):int64)) ==
+     &2 pow 59 * divstep_f 590 t) (mod (&2 pow 64))`
+  MP_TAC THENL
+   [REWRITE_TAC[GSYM DIMINDEX_64; GSYM IWORD_EQ] THEN
+    CONV_TAC WORD_VAL_CONG_CONV THEN REWRITE_TAC[DIMINDEX_64] THEN
+    GEN_REWRITE_TAC (RATOR_CONV o LAND_CONV o ONCE_DEPTH_CONV)
+     [INT_MUL_SYM] THEN
+    FIRST_X_ASSUM(fun th -> GEN_REWRITE_TAC LAND_CONV [SYM th]) THEN
+    MATCH_MP_TAC INT_CONG_ADD THEN CONJ_TAC THEN
+    MATCH_MP_TAC INT_CONG_LMUL THEN FIRST_X_ASSUM(MATCH_MP_TAC o MATCH_MP
+     (INTEGER_RULE
+       `(f:int == df) (mod q)
+        ==> p divides q /\ (f == f0) (mod p) ==> (f0 == df) (mod p)`)) THEN
+    SIMP_TAC[INT_DIVIDES_POW_LE_IMP; ARITH_LE; ARITH_LT] THEN
+    MAP_EVERY EXPAND_TAC ["f"; "g"] THEN
+    REWRITE_TAC[GSYM num_congruent; INT_OF_NUM_CLAUSES] THEN
+    ONCE_REWRITE_TAC[bignum_of_wordlist] THEN CONV_TAC NUMBER_RULE;
+    DISCH_THEN(MP_TAC o MATCH_MP (ONCE_REWRITE_RULE[IMP_CONJ]
+        TWOS_COMPLEMENT))] THEN
+  ANTS_TAC THENL
+   [REWRITE_TAC[VAL_BOUND_64] THEN CONV_TAC NUM_REDUCE_CONV THEN
+    UNDISCH_TAC `abs (divstep_f 590 t) = &1` THEN INT_ARITH_TAC;
+    DISCH_THEN(MP_TAC o CONJUNCT1)] THEN
+  REWRITE_TAC[GSYM DIMINDEX_64; GSYM MSB_VAL] THEN
+  ASM_REWRITE_TAC[DIMINDEX_64; NUM_SUB_CONV `64 - 1`] THEN
+  REWRITE_TAC[INT_ARITH `&2 pow 59 * x < &0 <=> x:int < &0`] THEN
+  DISCH_THEN SUBST_ALL_TAC THEN
+
   REWRITE_TAC[num_congruent; GSYM INT_OF_NUM_CLAUSES] THEN
   SUBGOAL_THEN
    `&(inverse_mod p_25519 n) =
@@ -3179,8 +3288,8 @@ let BIGNUM_INV_P25519_CORRECT = time prove
                   C_ARGUMENTS [z; x] s /\
                   bignum_from_memory (x,4) s = n)
              (\s. read PC s = word (pc + 0x1014) /\
-                  (coprime(p_25519,n)
-                   ==> bignum_from_memory (z,4) s = inverse_mod p_25519 n))
+                  bignum_from_memory(z,4) s =
+                  (if p_25519 divides n then 0 else inverse_mod p_25519 n))
           (MAYCHANGE [PC; X0; X1; X2; X3; X4; X5; X6; X7; X8; X9;
                       X10; X11; X12; X13; X14; X15; X16; X17;
                       X19; X20; X21; X22] ,,
@@ -3217,8 +3326,8 @@ let BIGNUM_INV_P25519_SUBROUTINE_CORRECT = time prove
                   C_ARGUMENTS [z; x] s /\
                   bignum_from_memory(x,4) s = n)
              (\s. read PC s = returnaddress /\
-                  (coprime(p_25519,n)
-                   ==> bignum_from_memory(z,4) s = inverse_mod p_25519 n))
+                  bignum_from_memory(z,4) s =
+                  (if p_25519 divides n then 0 else inverse_mod p_25519 n))
              (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
               MAYCHANGE [memory :> bytes(z,8 * 4);
                     memory :> bytes(word_sub stackpointer (word 160),160)])`,
