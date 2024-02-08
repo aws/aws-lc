@@ -181,7 +181,7 @@ endif()
 # and on x86_64 and aarch64 systems only.
 if((((ARCH STREQUAL "x86_64") AND NOT MY_ASSEMBLER_IS_TOO_OLD_FOR_AVX) OR
       ARCH STREQUAL "aarch64") AND
-      (CMAKE_SYSTEM_NAME STREQUAL "Linux" OR APPLE))
+      (UNIX OR APPLE))
 
   # Set the source directory for s2n-bignum assembly files
   if(ARCH STREQUAL "x86_64")
