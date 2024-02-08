@@ -1,7 +1,8 @@
-#!/bin/bash
-set -exo pipefail
+#!/usr/bin/env bash
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 OR ISC
+
+set -exo pipefail
 
 # Please run from project root folder!
 # You'll want to set the codebuild env variables set if running locally
