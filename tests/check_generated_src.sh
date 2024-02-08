@@ -1,6 +1,8 @@
-#!/bin/bash -ex
+#!/usr/bin/env bash
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 OR ISC
+
+set -ex
 
 # Take current contents of generated-src and move to another directory
 mv ./generated-src ./generated-src-bak

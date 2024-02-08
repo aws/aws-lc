@@ -1,7 +1,8 @@
-#!/bin/bash
-set -exo pipefail
+#!/usr/bin/env bash
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 OR ISC
+
+set -exo pipefail
 
 # BoringSSL has 7k+ ssl runner tests, and the total number of the runner tests keep increasing.
 # When ASAN enabled, the tests take more than 1 hour to finish. The cause relates to https://github.com/google/sanitizers/issues/1331
