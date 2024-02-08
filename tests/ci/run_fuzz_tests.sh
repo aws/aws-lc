@@ -15,8 +15,8 @@ set -u
 # 18 minutes for cleanup and merging files
 if [[ $PLATFORM == "aarch64" ]]; then
   # Arm sanitizers are very slow which causes the clean up time to take longer per
-  # fuzz test, only run for 16 minutes
-  TOTAL_FUZZ_TEST_TIME=1000
+  # fuzz test, only run for 8 minutes
+  TOTAL_FUZZ_TEST_TIME=500
 else
   TOTAL_FUZZ_TEST_TIME=1500
 fi

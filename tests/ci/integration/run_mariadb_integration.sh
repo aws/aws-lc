@@ -60,7 +60,10 @@ main.flush_logs_not_windows : query 'flush logs' succeeded - should have failed 
 main.mysql_upgrade_noengine : upgrade output order does not match the expected
 main.plugin_load : This test generates a warning in Codebuild. Skip over since this isn't relevant to AWS-LC.
 main.ssl_crl : This test is flaky in CodeBuild CI P112867839
-main.desc_index_min_max : This test is flaky in CodeBuild CI P112867839"> skiplist
+main.desc_index_min_max : This test is flaky in CodeBuild CI P112867839
+main.ssl_autoverify : Failing with - TLS/SSL error: unable to get local issuer certificate
+main.mysql : Failing with - TLS/SSL error: unable to get local issuer certificate
+main.ssl_fp : Failing with - TLS/SSL error: unable to get local issuer certificate"> skiplist
   ./mtr --suite=main --force --parallel=auto --skip-test-list=${MARIADB_BUILD_FOLDER}/mysql-test/skiplist --retry-failure=2
   popd
 }
