@@ -727,19 +727,25 @@ let MODIFIABLE_GPRS = define
     subroutine calls; the remaining registers (v0-v7, v16-v31) do not need to
     be preserved (or should be preserved by the caller). Additionally, only
     the bottom 64 bits of each value stored in v8-v15 need to be preserved"
-    - 2023. Jun. 2: there is no implementation that utilizes the high 64-bit
-      parts of v8-v15. If they are used, this definition need to be expanded to
-      include them. *)
+ *)
+
 let MODIFIABLE_SIMD_REGS = define
  `MODIFIABLE_SIMD_REGS =
     [Q0; Q1; Q2; Q3; Q4; Q5; Q6; Q7; Q16; Q17; Q18; Q19; Q20; Q21;
       Q22; Q23; Q24; Q25; Q26; Q27; Q28; Q29; Q30; Q31]`;;
 
+let MODIFIABLE_UPPER_SIMD_REGS = define
+ `MODIFIABLE_UPPER_SIMD_REGS =
+   [Q8 :> tophalf; Q9 :> tophalf; Q10 :> tophalf; Q11 :> tophalf;
+    Q12 :> tophalf; Q13 :> tophalf; Q14 :> tophalf; Q15 :> tophalf]`;;
+
 let MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI = REWRITE_RULE
-    [SOME_FLAGS; MODIFIABLE_GPRS; MODIFIABLE_SIMD_REGS]
+    [SOME_FLAGS; MODIFIABLE_GPRS; MODIFIABLE_SIMD_REGS;
+     MODIFIABLE_UPPER_SIMD_REGS]
  (new_definition `MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI =
     MAYCHANGE [PC] ,, MAYCHANGE MODIFIABLE_GPRS ,,
-    MAYCHANGE MODIFIABLE_SIMD_REGS ,, MAYCHANGE SOME_FLAGS`);;
+    MAYCHANGE MODIFIABLE_SIMD_REGS ,,
+    MAYCHANGE MODIFIABLE_UPPER_SIMD_REGS ,, MAYCHANGE SOME_FLAGS`);;
 
 (* ------------------------------------------------------------------------- *)
 (* General register-register instructions.                                   *)

@@ -1151,6 +1151,22 @@ let READ_WRITE_LOWER_SUBWORD = prove
   REWRITE_TAC[MOD_MULT_ADD] THEN
   SIMP_TAC[MOD_MOD; MULT_EQ_0; EXP_EQ_0; ARITH_EQ]);;
 
+let READ_TOPHALF_BOTTOMHALF_EQ = prove
+ (`!x y:(N tybit0)word.
+        read tophalf x = read tophalf y /\
+        read bottomhalf x = read bottomhalf y <=>
+        x = y`,
+  REPEAT GEN_TAC THEN
+  REWRITE_TAC[bottomhalf; tophalf; subword; read; GSYM word_subword] THEN
+  REWRITE_TAC[WORD_EQ_BITS_ALT; DIMINDEX_TYBIT0; BIT_WORD_SUBWORD] THEN
+  SIMP_TAC[ARITH_RULE `MIN n n = n`; ADD_CLAUSES] THEN
+  REWRITE_TAC[ARITH_RULE `i < 2 * n <=> n <= i /\ i - n < n \/ i < n`] THEN
+  REWRITE_TAC[FORALL_AND_THM; TAUT
+   `p \/ q ==> r <=> (p ==> r) /\ (q ==> r)`] THEN
+  AP_THM_TAC THEN AP_TERM_TAC THEN REWRITE_TAC[LE_EXISTS] THEN
+  REWRITE_TAC[LEFT_AND_EXISTS_THM; LEFT_IMP_EXISTS_THM] THEN
+  MESON_TAC[ADD_SYM; ADD_SUB]);;
+
 let STRONGLY_VALID_COMPONENT_BOTTOMHALF = prove
  (`strongly_valid_component(bottomhalf:((N tybit0)word,N word)component)`,
   REWRITE_TAC[bottomhalf] THEN

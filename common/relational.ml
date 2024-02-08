@@ -2082,6 +2082,75 @@ let ENSURES_EXISTING_PRESERVED_TAC ctm =
     REWRITE_TAC[GSYM CONJ_ASSOC; GSYM SEQ_ASSOC]];;
 
 (* ------------------------------------------------------------------------- *)
+(* A more refined version where we are allowed to modify a high part.        *)
+(* ------------------------------------------------------------------------- *)
+
+let ASSIGNS_TOPHALF_BOTTOMHALF = prove
+ (`!c:(A,(N tybit0)word)component.
+        valid_component c
+        ==> ASSIGNS (c :> tophalf) ,, ASSIGNS (c :> bottomhalf) = ASSIGNS c`,
+  REPEAT STRIP_TAC THEN REWRITE_TAC[ASSIGNS; ASSIGNS_SEQ; FUN_EQ_THM] THEN
+  MAP_EVERY X_GEN_TAC [`s:A`; `s':A`] THEN
+  REWRITE_TAC[assign; WRITE_COMPONENT_COMPOSE] THEN
+  RULE_ASSUM_TAC(REWRITE_RULE[valid_component]) THEN
+  ASM_REWRITE_TAC[READ_WRITE_TOPHALF_BOTTOMHALF] THEN
+  EQ_TAC THEN REWRITE_TAC[LEFT_IMP_EXISTS_THM; RIGHT_IMP_EXISTS_THM] THENL
+   [MAP_EVERY X_GEN_TAC [`x:N word`; `y:N word`] THEN
+    EXISTS_TAC `(word_join:N word->N word->(N tybit0)word) x y`;
+    X_GEN_TAC `z:(N tybit0)word` THEN MAP_EVERY EXISTS_TAC
+     [`word_subword (z:(N tybit0)word) (dimindex(:N),dimindex(:N)):N word`;
+      `word_subword (z:(N tybit0)word) (0,dimindex(:N)):N word`]] THEN
+  DISCH_THEN(SUBST1_TAC o SYM) THEN AP_THM_TAC THEN AP_TERM_TAC THEN
+  SPEC_TAC(`read (c:(A,(N tybit0)word)component) s`,`w:(N tybit0) word`) THEN
+  POP_ASSUM_LIST(K ALL_TAC) THEN GEN_TAC THEN
+  GEN_REWRITE_TAC I [GSYM READ_TOPHALF_BOTTOMHALF_EQ] THEN
+  REWRITE_TAC[READ_WRITE_TOPHALF_BOTTOMHALF] THEN
+  REWRITE_TAC[bottomhalf; tophalf; subword; read] THEN
+  SIMP_TAC[VAL_WORD_JOIN; word_subword; EXP; DIV_1] THEN
+  REWRITE_TAC[DIMINDEX_TYBIT0; DIV_MOD; GSYM EXP_ADD; GSYM MULT_2] THEN
+  REWRITE_TAC[MOD_MOD_EXP_MIN; ARITH_RULE `MIN (2 * n) n = n`] THEN
+  REWRITE_TAC[MOD_MULT_ADD; WORD_VAL; ARITH_RULE `MIN n n = n`;
+              VAL_MOD_REFL] THEN
+  REWRITE_TAC[MULT_2; EXP_ADD; GSYM DIV_MOD] THEN
+  SIMP_TAC[DIV_MULT_ADD; EXP_EQ_0; ARITH_EQ; DIV_LT; VAL_BOUND] THEN
+  REWRITE_TAC[ADD_CLAUSES; VAL_MOD_REFL; WORD_VAL]);;
+
+let ENSURES_MAYCHANGE_TOPHALF_PRESERVED = prove
+ (`!(c:(A,((N)tybit0)word)component) t P Q R.
+        valid_component c /\
+        (!s s'. R s s' ==> read c s' = read c s) /\
+        (!d. ensures t (\s. P s /\ read (c :> bottomhalf) s = d)
+                       (\s. Q s /\ read (c :> bottomhalf) s = d)
+                       (R ,, MAYCHANGE [c]))
+        ==> ensures t P Q (R ,, MAYCHANGE [c :> tophalf])`,
+  REPEAT GEN_TAC THEN REWRITE_TAC[ensures; valid_component] THEN
+  STRIP_TAC THEN X_GEN_TAC `s0:A` THEN DISCH_TAC THEN
+  ABBREV_TAC `d = read (c:(A,((N)tybit0)word)component) s0` THEN
+  FIRST_X_ASSUM(MP_TAC o SPECL
+   [`word_subword (d:((N)tybit0)word) (0,dimindex(:N)):N word`; `s0:A`]) THEN
+  ASM_REWRITE_TAC[MAYCHANGE; SEQ_ID] THEN ANTS_TAC THENL
+   [REWRITE_TAC[READ_COMPONENT_COMPOSE; SEQ_ID] THEN
+    ASM_REWRITE_TAC[bottomhalf; READ_SUBWORD];
+    ALL_TAC] THEN
+  REWRITE_TAC[ASSIGNS_THM; seq] THEN
+  FIRST_X_ASSUM(MP_TAC o SPEC `s0:A`) THEN
+  ABBREV_TAC `fr = (R:A->A->bool) s0` THEN DISCH_TAC THEN
+  SPEC_TAC(`s0:A`,`s0:A`) THEN MATCH_MP_TAC EVENTUALLY_MONO THEN
+  X_GEN_TAC `s2:A` THEN ASM_REWRITE_TAC[READ_COMPONENT_COMPOSE] THEN
+  DISCH_THEN(CONJUNCTS_THEN2 STRIP_ASSUME_TAC MP_TAC) THEN
+  ASM_REWRITE_TAC[LEFT_IMP_EXISTS_THM] THEN
+  X_GEN_TAC `s1:A` THEN DISCH_THEN(CONJUNCTS_THEN2 ASSUME_TAC MP_TAC) THEN
+  DISCH_THEN(X_CHOOSE_TAC `y:((N)tybit0)word`) THEN
+  EXISTS_TAC `s1:A` THEN ASM_REWRITE_TAC[WRITE_COMPONENT_COMPOSE] THEN
+  FIRST_X_ASSUM(SUBST_ALL_TAC o SYM) THEN
+  FIRST_X_ASSUM(MP_TAC o SYM o SYM) THEN ASM_REWRITE_TAC[] THEN
+  DISCH_TAC THEN EXISTS_TAC `read tophalf (y:(N tybit0)word)` THEN
+  ASM_SIMP_TAC[] THEN AP_THM_TAC THEN AP_TERM_TAC THEN
+  GEN_REWRITE_TAC I [GSYM READ_TOPHALF_BOTTOMHALF_EQ] THEN
+  ASM_REWRITE_TAC[READ_WRITE_TOPHALF_BOTTOMHALF] THEN
+  REWRITE_TAC[bottomhalf; read; subword; GSYM word_subword]);;
+
+(* ------------------------------------------------------------------------- *)
 (* A kind of dual of ignoring things about unchanged components.             *)
 (* ------------------------------------------------------------------------- *)
 

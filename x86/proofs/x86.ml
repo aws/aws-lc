@@ -730,7 +730,7 @@ let x86_MOV = new_definition
  *** A bit bizarrely there are same-size versions of MOVSXD.
  *** These are really just freaks of decoding, with semantics
  *** equivalent to MOV, and use is actively discouraged in
- *** the Intel manuals ("The use of MOVSXD without REX.W in 
+ *** the Intel manuals ("The use of MOVSXD without REX.W in
  *** 64-bit mode is discouraged".) However, we do handle
  *** the 32->32 case anyway, though not the 16->16 case, in
  *** line with the general policy of rejecting operand size
