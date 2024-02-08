@@ -23,7 +23,7 @@ PLATFORM=$(uname -m)
 
 NUM_CPU_THREADS=''
 KERNEL_NAME=$(uname -s)
-if [[ "${KERNEL_NAME}" == "Darwin" ]]; then
+if [[ "${KERNEL_NAME}" == "Darwin" || "${KERNEL_NAME}" == "OpenBSD" ]]; then
   # On MacOS, /proc/cpuinfo does not exist.
   NUM_CPU_THREADS=$(sysctl -n hw.ncpu)
 else
