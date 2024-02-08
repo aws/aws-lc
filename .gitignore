@@ -4,3 +4,4 @@
 *.obj
 tests/test
 benchmarks/benchmark
+x86/x86-insns.ml
