@@ -1,6 +1,18 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR ISC OR MIT-0
 
+// **********************************************************************
+// This code is substantially derived from Emil Lenngren's implementation
+//
+//      https://github.com/Emill/X25519-AArch64/blob/master/X25519_AArch64.pdf
+//      https://github.com/Emill/X25519-AArch64
+//
+// and the SLOTHY-based re-engineering of that code by Hanno Becker:
+//
+//      https://eprint.iacr.org/2022/1303.pdf
+//      https://github.com/slothy-optimizer/slothy/tree/main/paper
+// **********************************************************************
+
 // ----------------------------------------------------------------------------
 // The x25519 function for curve25519 (byte array arguments)
 // Inputs scalar[32] (bytes), point[32] (bytes); output res[32] (bytes)
@@ -26,671 +38,53 @@
         .text
         .balign 4
 
-// Size of individual field elements
+// Pointer-offset pairs for temporaries on stack
 
-#define NUMSIZE 32
+#define scalar sp, #0
+#define pointx sp, #32
+#define mask1 sp, #72
+#define mask2 sp, #80
+#define tmpa sp, #88
+#define tmpb sp, #128
+#define xn sp, #128
+#define zn sp, #160
 
-// Stable homes for the input result argument during the whole body
-// and other variables that are only needed prior to the modular inverse.
-
-#define res x23
-#define i x20
-#define swap x21
-
-// Pointers to result x coord to be written
-
-#define resx res, #0
-
-// Pointer-offset pairs for temporaries on stack with some aliasing.
-
-#define scalar sp, #(0*NUMSIZE)
-
-#define pointx sp, #(1*NUMSIZE)
-
-#define zm sp, #(2*NUMSIZE)
-#define sm sp, #(2*NUMSIZE)
-#define dpro sp, #(2*NUMSIZE)
-
-#define sn sp, #(3*NUMSIZE)
-
-#define dm sp, #(4*NUMSIZE)
-
-#define zn sp, #(5*NUMSIZE)
-#define dn sp, #(5*NUMSIZE)
-#define e sp, #(5*NUMSIZE)
-
-#define dmsn sp, #(6*NUMSIZE)
-#define p sp, #(6*NUMSIZE)
-
-#define xm sp, #(7*NUMSIZE)
-#define dnsm sp, #(7*NUMSIZE)
-#define spro sp, #(7*NUMSIZE)
-
-#define d sp, #(8*NUMSIZE)
-
-#define xn sp, #(9*NUMSIZE)
-#define s sp, #(9*NUMSIZE)
+#define res sp, #192
+#define i sp, #200
+#define swap sp, #208
 
 // Total size to reserve on the stack
 
-#define NSPACE (10*NUMSIZE)
-
-// Macro wrapping up the basic field operation bignum_mul_p25519, only
-// trivially different from a pure function call to that subroutine.
-
-#define mul_p25519(P0,P1,P2)                    \
-        ldp     x3, x4, [P1];                   \
-        ldp     x5, x6, [P2];                   \
-        umull   x7, w3, w5;                     \
-        lsr     x0, x3, #32;                    \
-        umull   x15, w0, w5;                    \
-        lsr     x16, x5, #32;                   \
-        umull   x8, w16, w0;                    \
-        umull   x16, w3, w16;                   \
-        adds    x7, x7, x15, lsl #32;           \
-        lsr     x15, x15, #32;                  \
-        adc     x8, x8, x15;                    \
-        adds    x7, x7, x16, lsl #32;           \
-        lsr     x16, x16, #32;                  \
-        adc     x8, x8, x16;                    \
-        mul     x9, x4, x6;                     \
-        umulh   x10, x4, x6;                    \
-        subs    x4, x4, x3;                     \
-        cneg    x4, x4, cc;                     \
-        csetm   x16, cc;                        \
-        adds    x9, x9, x8;                     \
-        adc     x10, x10, xzr;                  \
-        subs    x3, x5, x6;                     \
-        cneg    x3, x3, cc;                     \
-        cinv    x16, x16, cc;                   \
-        mul     x15, x4, x3;                    \
-        umulh   x3, x4, x3;                     \
-        adds    x8, x7, x9;                     \
-        adcs    x9, x9, x10;                    \
-        adc     x10, x10, xzr;                  \
-        cmn     x16, #0x1;                      \
-        eor     x15, x15, x16;                  \
-        adcs    x8, x15, x8;                    \
-        eor     x3, x3, x16;                    \
-        adcs    x9, x3, x9;                     \
-        adc     x10, x10, x16;                  \
-        ldp     x3, x4, [P1+16];                \
-        ldp     x5, x6, [P2+16];                \
-        umull   x11, w3, w5;                    \
-        lsr     x0, x3, #32;                    \
-        umull   x15, w0, w5;                    \
-        lsr     x16, x5, #32;                   \
-        umull   x12, w16, w0;                   \
-        umull   x16, w3, w16;                   \
-        adds    x11, x11, x15, lsl #32;         \
-        lsr     x15, x15, #32;                  \
-        adc     x12, x12, x15;                  \
-        adds    x11, x11, x16, lsl #32;         \
-        lsr     x16, x16, #32;                  \
-        adc     x12, x12, x16;                  \
-        mul     x13, x4, x6;                    \
-        umulh   x14, x4, x6;                    \
-        subs    x4, x4, x3;                     \
-        cneg    x4, x4, cc;                     \
-        csetm   x16, cc;                        \
-        adds    x13, x13, x12;                  \
-        adc     x14, x14, xzr;                  \
-        subs    x3, x5, x6;                     \
-        cneg    x3, x3, cc;                     \
-        cinv    x16, x16, cc;                   \
-        mul     x15, x4, x3;                    \
-        umulh   x3, x4, x3;                     \
-        adds    x12, x11, x13;                  \
-        adcs    x13, x13, x14;                  \
-        adc     x14, x14, xzr;                  \
-        cmn     x16, #0x1;                      \
-        eor     x15, x15, x16;                  \
-        adcs    x12, x15, x12;                  \
-        eor     x3, x3, x16;                    \
-        adcs    x13, x3, x13;                   \
-        adc     x14, x14, x16;                  \
-        ldp     x3, x4, [P1+16];                \
-        ldp     x15, x16, [P1];                 \
-        subs    x3, x3, x15;                    \
-        sbcs    x4, x4, x16;                    \
-        csetm   x16, cc;                        \
-        ldp     x15, x0, [P2];                  \
-        subs    x5, x15, x5;                    \
-        sbcs    x6, x0, x6;                     \
-        csetm   x0, cc;                         \
-        eor     x3, x3, x16;                    \
-        subs    x3, x3, x16;                    \
-        eor     x4, x4, x16;                    \
-        sbc     x4, x4, x16;                    \
-        eor     x5, x5, x0;                     \
-        subs    x5, x5, x0;                     \
-        eor     x6, x6, x0;                     \
-        sbc     x6, x6, x0;                     \
-        eor     x16, x0, x16;                   \
-        adds    x11, x11, x9;                   \
-        adcs    x12, x12, x10;                  \
-        adcs    x13, x13, xzr;                  \
-        adc     x14, x14, xzr;                  \
-        mul     x2, x3, x5;                     \
-        umulh   x0, x3, x5;                     \
-        mul     x15, x4, x6;                    \
-        umulh   x1, x4, x6;                     \
-        subs    x4, x4, x3;                     \
-        cneg    x4, x4, cc;                     \
-        csetm   x9, cc;                         \
-        adds    x15, x15, x0;                   \
-        adc     x1, x1, xzr;                    \
-        subs    x6, x5, x6;                     \
-        cneg    x6, x6, cc;                     \
-        cinv    x9, x9, cc;                     \
-        mul     x5, x4, x6;                     \
-        umulh   x6, x4, x6;                     \
-        adds    x0, x2, x15;                    \
-        adcs    x15, x15, x1;                   \
-        adc     x1, x1, xzr;                    \
-        cmn     x9, #0x1;                       \
-        eor     x5, x5, x9;                     \
-        adcs    x0, x5, x0;                     \
-        eor     x6, x6, x9;                     \
-        adcs    x15, x6, x15;                   \
-        adc     x1, x1, x9;                     \
-        adds    x9, x11, x7;                    \
-        adcs    x10, x12, x8;                   \
-        adcs    x11, x13, x11;                  \
-        adcs    x12, x14, x12;                  \
-        adcs    x13, x13, xzr;                  \
-        adc     x14, x14, xzr;                  \
-        cmn     x16, #0x1;                      \
-        eor     x2, x2, x16;                    \
-        adcs    x9, x2, x9;                     \
-        eor     x0, x0, x16;                    \
-        adcs    x10, x0, x10;                   \
-        eor     x15, x15, x16;                  \
-        adcs    x11, x15, x11;                  \
-        eor     x1, x1, x16;                    \
-        adcs    x12, x1, x12;                   \
-        adcs    x13, x13, x16;                  \
-        adc     x14, x14, x16;                  \
-        mov     x3, #0x26;                      \
-        umull   x4, w11, w3;                    \
-        add     x4, x4, w7, uxtw;               \
-        lsr     x7, x7, #32;                    \
-        lsr     x11, x11, #32;                  \
-        umaddl  x11, w11, w3, x7;               \
-        mov     x7, x4;                         \
-        umull   x4, w12, w3;                    \
-        add     x4, x4, w8, uxtw;               \
-        lsr     x8, x8, #32;                    \
-        lsr     x12, x12, #32;                  \
-        umaddl  x12, w12, w3, x8;               \
-        mov     x8, x4;                         \
-        umull   x4, w13, w3;                    \
-        add     x4, x4, w9, uxtw;               \
-        lsr     x9, x9, #32;                    \
-        lsr     x13, x13, #32;                  \
-        umaddl  x13, w13, w3, x9;               \
-        mov     x9, x4;                         \
-        umull   x4, w14, w3;                    \
-        add     x4, x4, w10, uxtw;              \
-        lsr     x10, x10, #32;                  \
-        lsr     x14, x14, #32;                  \
-        umaddl  x14, w14, w3, x10;              \
-        mov     x10, x4;                        \
-        lsr     x0, x14, #31;                   \
-        mov     x5, #0x13;                      \
-        umaddl  x5, w5, w0, x5;                 \
-        add     x7, x7, x5;                     \
-        adds    x7, x7, x11, lsl #32;           \
-        extr    x3, x12, x11, #32;              \
-        adcs    x8, x8, x3;                     \
-        extr    x3, x13, x12, #32;              \
-        adcs    x9, x9, x3;                     \
-        extr    x3, x14, x13, #32;              \
-        lsl     x5, x0, #63;                    \
-        eor     x10, x10, x5;                   \
-        adc     x10, x10, x3;                   \
-        mov     x3, #0x13;                      \
-        tst     x10, #0x8000000000000000;       \
-        csel    x3, x3, xzr, pl;                \
-        subs    x7, x7, x3;                     \
-        sbcs    x8, x8, xzr;                    \
-        sbcs    x9, x9, xzr;                    \
-        sbc     x10, x10, xzr;                  \
-        and     x10, x10, #0x7fffffffffffffff;  \
-        stp     x7, x8, [P0];                   \
-        stp     x9, x10, [P0+16]
-
-// A version of multiplication that only guarantees output < 2 * p_25519.
-// This basically skips the +1 and final correction in quotient estimation.
-
-#define mul_4(P0,P1,P2)                         \
-        ldp     x3, x4, [P1];                   \
-        ldp     x5, x6, [P2];                   \
-        umull   x7, w3, w5;                     \
-        lsr     x0, x3, #32;                    \
-        umull   x15, w0, w5;                    \
-        lsr     x16, x5, #32;                   \
-        umull   x8, w16, w0;                    \
-        umull   x16, w3, w16;                   \
-        adds    x7, x7, x15, lsl #32;           \
-        lsr     x15, x15, #32;                  \
-        adc     x8, x8, x15;                    \
-        adds    x7, x7, x16, lsl #32;           \
-        lsr     x16, x16, #32;                  \
-        adc     x8, x8, x16;                    \
-        mul     x9, x4, x6;                     \
-        umulh   x10, x4, x6;                    \
-        subs    x4, x4, x3;                     \
-        cneg    x4, x4, cc;                     \
-        csetm   x16, cc;                        \
-        adds    x9, x9, x8;                     \
-        adc     x10, x10, xzr;                  \
-        subs    x3, x5, x6;                     \
-        cneg    x3, x3, cc;                     \
-        cinv    x16, x16, cc;                   \
-        mul     x15, x4, x3;                    \
-        umulh   x3, x4, x3;                     \
-        adds    x8, x7, x9;                     \
-        adcs    x9, x9, x10;                    \
-        adc     x10, x10, xzr;                  \
-        cmn     x16, #0x1;                      \
-        eor     x15, x15, x16;                  \
-        adcs    x8, x15, x8;                    \
-        eor     x3, x3, x16;                    \
-        adcs    x9, x3, x9;                     \
-        adc     x10, x10, x16;                  \
-        ldp     x3, x4, [P1+16];                \
-        ldp     x5, x6, [P2+16];                \
-        umull   x11, w3, w5;                    \
-        lsr     x0, x3, #32;                    \
-        umull   x15, w0, w5;                    \
-        lsr     x16, x5, #32;                   \
-        umull   x12, w16, w0;                   \
-        umull   x16, w3, w16;                   \
-        adds    x11, x11, x15, lsl #32;         \
-        lsr     x15, x15, #32;                  \
-        adc     x12, x12, x15;                  \
-        adds    x11, x11, x16, lsl #32;         \
-        lsr     x16, x16, #32;                  \
-        adc     x12, x12, x16;                  \
-        mul     x13, x4, x6;                    \
-        umulh   x14, x4, x6;                    \
-        subs    x4, x4, x3;                     \
-        cneg    x4, x4, cc;                     \
-        csetm   x16, cc;                        \
-        adds    x13, x13, x12;                  \
-        adc     x14, x14, xzr;                  \
-        subs    x3, x5, x6;                     \
-        cneg    x3, x3, cc;                     \
-        cinv    x16, x16, cc;                   \
-        mul     x15, x4, x3;                    \
-        umulh   x3, x4, x3;                     \
-        adds    x12, x11, x13;                  \
-        adcs    x13, x13, x14;                  \
-        adc     x14, x14, xzr;                  \
-        cmn     x16, #0x1;                      \
-        eor     x15, x15, x16;                  \
-        adcs    x12, x15, x12;                  \
-        eor     x3, x3, x16;                    \
-        adcs    x13, x3, x13;                   \
-        adc     x14, x14, x16;                  \
-        ldp     x3, x4, [P1+16];                \
-        ldp     x15, x16, [P1];                 \
-        subs    x3, x3, x15;                    \
-        sbcs    x4, x4, x16;                    \
-        csetm   x16, cc;                        \
-        ldp     x15, x0, [P2];                  \
-        subs    x5, x15, x5;                    \
-        sbcs    x6, x0, x6;                     \
-        csetm   x0, cc;                         \
-        eor     x3, x3, x16;                    \
-        subs    x3, x3, x16;                    \
-        eor     x4, x4, x16;                    \
-        sbc     x4, x4, x16;                    \
-        eor     x5, x5, x0;                     \
-        subs    x5, x5, x0;                     \
-        eor     x6, x6, x0;                     \
-        sbc     x6, x6, x0;                     \
-        eor     x16, x0, x16;                   \
-        adds    x11, x11, x9;                   \
-        adcs    x12, x12, x10;                  \
-        adcs    x13, x13, xzr;                  \
-        adc     x14, x14, xzr;                  \
-        mul     x2, x3, x5;                     \
-        umulh   x0, x3, x5;                     \
-        mul     x15, x4, x6;                    \
-        umulh   x1, x4, x6;                     \
-        subs    x4, x4, x3;                     \
-        cneg    x4, x4, cc;                     \
-        csetm   x9, cc;                         \
-        adds    x15, x15, x0;                   \
-        adc     x1, x1, xzr;                    \
-        subs    x6, x5, x6;                     \
-        cneg    x6, x6, cc;                     \
-        cinv    x9, x9, cc;                     \
-        mul     x5, x4, x6;                     \
-        umulh   x6, x4, x6;                     \
-        adds    x0, x2, x15;                    \
-        adcs    x15, x15, x1;                   \
-        adc     x1, x1, xzr;                    \
-        cmn     x9, #0x1;                       \
-        eor     x5, x5, x9;                     \
-        adcs    x0, x5, x0;                     \
-        eor     x6, x6, x9;                     \
-        adcs    x15, x6, x15;                   \
-        adc     x1, x1, x9;                     \
-        adds    x9, x11, x7;                    \
-        adcs    x10, x12, x8;                   \
-        adcs    x11, x13, x11;                  \
-        adcs    x12, x14, x12;                  \
-        adcs    x13, x13, xzr;                  \
-        adc     x14, x14, xzr;                  \
-        cmn     x16, #0x1;                      \
-        eor     x2, x2, x16;                    \
-        adcs    x9, x2, x9;                     \
-        eor     x0, x0, x16;                    \
-        adcs    x10, x0, x10;                   \
-        eor     x15, x15, x16;                  \
-        adcs    x11, x15, x11;                  \
-        eor     x1, x1, x16;                    \
-        adcs    x12, x1, x12;                   \
-        adcs    x13, x13, x16;                  \
-        adc     x14, x14, x16;                  \
-        mov     x3, #0x26;                      \
-        umull   x4, w11, w3;                    \
-        add     x4, x4, w7, uxtw;               \
-        lsr     x7, x7, #32;                    \
-        lsr     x11, x11, #32;                  \
-        umaddl  x11, w11, w3, x7;               \
-        mov     x7, x4;                         \
-        umull   x4, w12, w3;                    \
-        add     x4, x4, w8, uxtw;               \
-        lsr     x8, x8, #32;                    \
-        lsr     x12, x12, #32;                  \
-        umaddl  x12, w12, w3, x8;               \
-        mov     x8, x4;                         \
-        umull   x4, w13, w3;                    \
-        add     x4, x4, w9, uxtw;               \
-        lsr     x9, x9, #32;                    \
-        lsr     x13, x13, #32;                  \
-        umaddl  x13, w13, w3, x9;               \
-        mov     x9, x4;                         \
-        umull   x4, w14, w3;                    \
-        add     x4, x4, w10, uxtw;              \
-        lsr     x10, x10, #32;                  \
-        lsr     x14, x14, #32;                  \
-        umaddl  x14, w14, w3, x10;              \
-        mov     x10, x4;                        \
-        lsr     x0, x14, #31;                   \
-        mov     x5, #0x13;                      \
-        umull   x5, w5, w0;                     \
-        add     x7, x7, x5;                     \
-        adds    x7, x7, x11, lsl #32;           \
-        extr    x3, x12, x11, #32;              \
-        adcs    x8, x8, x3;                     \
-        extr    x3, x13, x12, #32;              \
-        adcs    x9, x9, x3;                     \
-        extr    x3, x14, x13, #32;              \
-        lsl     x5, x0, #63;                    \
-        eor     x10, x10, x5;                   \
-        adc     x10, x10, x3;                   \
-        stp     x7, x8, [P0];                   \
-        stp     x9, x10, [P0+16]
-
-// Squaring just giving a result < 2 * p_25519, which is done by
-// basically skipping the +1 in the quotient estimate and the final
-// optional correction.
-
-#define sqr_4(P0,P1)                            \
-        ldp     x10, x11, [P1];                 \
-        ldp     x12, x13, [P1+16];              \
-        umull   x2, w10, w10;                   \
-        lsr     x14, x10, #32;                  \
-        umull   x3, w14, w14;                   \
-        umull   x14, w10, w14;                  \
-        adds    x2, x2, x14, lsl #33;           \
-        lsr     x14, x14, #31;                  \
-        adc     x3, x3, x14;                    \
-        umull   x4, w11, w11;                   \
-        lsr     x14, x11, #32;                  \
-        umull   x5, w14, w14;                   \
-        umull   x14, w11, w14;                  \
-        mul     x15, x10, x11;                  \
-        umulh   x16, x10, x11;                  \
-        adds    x4, x4, x14, lsl #33;           \
-        lsr     x14, x14, #31;                  \
-        adc     x5, x5, x14;                    \
-        adds    x15, x15, x15;                  \
-        adcs    x16, x16, x16;                  \
-        adc     x5, x5, xzr;                    \
-        adds    x3, x3, x15;                    \
-        adcs    x4, x4, x16;                    \
-        adc     x5, x5, xzr;                    \
-        umull   x6, w12, w12;                   \
-        lsr     x14, x12, #32;                  \
-        umull   x7, w14, w14;                   \
-        umull   x14, w12, w14;                  \
-        adds    x6, x6, x14, lsl #33;           \
-        lsr     x14, x14, #31;                  \
-        adc     x7, x7, x14;                    \
-        umull   x8, w13, w13;                   \
-        lsr     x14, x13, #32;                  \
-        umull   x9, w14, w14;                   \
-        umull   x14, w13, w14;                  \
-        mul     x15, x12, x13;                  \
-        umulh   x16, x12, x13;                  \
-        adds    x8, x8, x14, lsl #33;           \
-        lsr     x14, x14, #31;                  \
-        adc     x9, x9, x14;                    \
-        adds    x15, x15, x15;                  \
-        adcs    x16, x16, x16;                  \
-        adc     x9, x9, xzr;                    \
-        adds    x7, x7, x15;                    \
-        adcs    x8, x8, x16;                    \
-        adc     x9, x9, xzr;                    \
-        subs    x10, x10, x12;                  \
-        sbcs    x11, x11, x13;                  \
-        csetm   x16, cc;                        \
-        eor     x10, x10, x16;                  \
-        subs    x10, x10, x16;                  \
-        eor     x11, x11, x16;                  \
-        sbc     x11, x11, x16;                  \
-        adds    x6, x6, x4;                     \
-        adcs    x7, x7, x5;                     \
-        adcs    x8, x8, xzr;                    \
-        adc     x9, x9, xzr;                    \
-        umull   x12, w10, w10;                  \
-        lsr     x5, x10, #32;                   \
-        umull   x13, w5, w5;                    \
-        umull   x5, w10, w5;                    \
-        adds    x12, x12, x5, lsl #33;          \
-        lsr     x5, x5, #31;                    \
-        adc     x13, x13, x5;                   \
-        umull   x15, w11, w11;                  \
-        lsr     x5, x11, #32;                   \
-        umull   x14, w5, w5;                    \
-        umull   x5, w11, w5;                    \
-        mul     x4, x10, x11;                   \
-        umulh   x16, x10, x11;                  \
-        adds    x15, x15, x5, lsl #33;          \
-        lsr     x5, x5, #31;                    \
-        adc     x14, x14, x5;                   \
-        adds    x4, x4, x4;                     \
-        adcs    x16, x16, x16;                  \
-        adc     x14, x14, xzr;                  \
-        adds    x13, x13, x4;                   \
-        adcs    x15, x15, x16;                  \
-        adc     x14, x14, xzr;                  \
-        adds    x4, x2, x6;                     \
-        adcs    x5, x3, x7;                     \
-        adcs    x6, x6, x8;                     \
-        adcs    x7, x7, x9;                     \
-        csetm   x16, cc;                        \
-        subs    x4, x4, x12;                    \
-        sbcs    x5, x5, x13;                    \
-        sbcs    x6, x6, x15;                    \
-        sbcs    x7, x7, x14;                    \
-        adcs    x8, x8, x16;                    \
-        adc     x9, x9, x16;                    \
-        mov     x10, #0x26;                     \
-        umull   x12, w6, w10;                   \
-        add     x12, x12, w2, uxtw;             \
-        lsr     x2, x2, #32;                    \
-        lsr     x6, x6, #32;                    \
-        umaddl  x6, w6, w10, x2;                \
-        mov     x2, x12;                        \
-        umull   x12, w7, w10;                   \
-        add     x12, x12, w3, uxtw;             \
-        lsr     x3, x3, #32;                    \
-        lsr     x7, x7, #32;                    \
-        umaddl  x7, w7, w10, x3;                \
-        mov     x3, x12;                        \
-        umull   x12, w8, w10;                   \
-        add     x12, x12, w4, uxtw;             \
-        lsr     x4, x4, #32;                    \
-        lsr     x8, x8, #32;                    \
-        umaddl  x8, w8, w10, x4;                \
-        mov     x4, x12;                        \
-        umull   x12, w9, w10;                   \
-        add     x12, x12, w5, uxtw;             \
-        lsr     x5, x5, #32;                    \
-        lsr     x9, x9, #32;                    \
-        umaddl  x9, w9, w10, x5;                \
-        mov     x5, x12;                        \
-        lsr     x13, x9, #31;                   \
-        mov     x11, #0x13;                     \
-        umull   x11, w11, w13;                  \
-        add     x2, x2, x11;                    \
-        adds    x2, x2, x6, lsl #32;            \
-        extr    x10, x7, x6, #32;               \
-        adcs    x3, x3, x10;                    \
-        extr    x10, x8, x7, #32;               \
-        adcs    x4, x4, x10;                    \
-        extr    x10, x9, x8, #32;               \
-        lsl     x11, x13, #63;                  \
-        eor     x5, x5, x11;                    \
-        adc     x5, x5, x10;                    \
-        stp     x2, x3, [P0];                   \
-        stp     x4, x5, [P0+16]
-
-// Modular addition with double modulus 2 * p_25519 = 2^256 - 38.
-// This only ensures that the result fits in 4 digits, not that it is reduced
-// even w.r.t. double modulus. The result is always correct modulo provided
-// the sum of the inputs is < 2^256 + 2^256 - 38, so in particular provided
-// at least one of them is reduced double modulo.
-
-#define add_twice4(P0,P1,P2)                    \
-        ldp     x3, x4, [P1];                   \
-        ldp     x7, x8, [P2];                   \
-        adds    x3, x3, x7;                     \
-        adcs    x4, x4, x8;                     \
-        ldp     x5, x6, [P1+16];                \
-        ldp     x7, x8, [P2+16];                \
-        adcs    x5, x5, x7;                     \
-        adcs    x6, x6, x8;                     \
-        mov     x9, #38;                        \
-        csel    x9, x9, xzr, cs;                \
-        adds    x3, x3, x9;                     \
-        adcs    x4, x4, xzr;                    \
-        adcs    x5, x5, xzr;                    \
-        adc     x6, x6, xzr;                    \
-        stp     x3, x4, [P0];                   \
-        stp     x5, x6, [P0+16]
-
-// Modular subtraction with double modulus 2 * p_25519 = 2^256 - 38
-
-#define sub_twice4(p0,p1,p2)                    \
-        ldp     x5, x6, [p1];                   \
-        ldp     x4, x3, [p2];                   \
-        subs    x5, x5, x4;                     \
-        sbcs    x6, x6, x3;                     \
-        ldp     x7, x8, [p1+16];                \
-        ldp     x4, x3, [p2+16];                \
-        sbcs    x7, x7, x4;                     \
-        sbcs    x8, x8, x3;                     \
-        mov     x4, #38;                        \
-        csel    x3, x4, xzr, lo;                \
-        subs    x5, x5, x3;                     \
-        sbcs    x6, x6, xzr;                    \
-        sbcs    x7, x7, xzr;                    \
-        sbc     x8, x8, xzr;                    \
-        stp     x5, x6, [p0];                   \
-        stp     x7, x8, [p0+16]
-
-// Combined z = c * x + y with reduction only < 2 * p_25519
-// where c is initially in the X1 register. It is assumed
-// that 19 * (c * x + y) < 2^60 * 2^256 so we don't need a
-// high mul in the final part.
-
-#define cmadd_4(p0,p2,p3)                       \
-        ldp     x7, x8, [p2];                   \
-        ldp     x9, x10, [p2+16];               \
-        mul     x3, x1, x7;                     \
-        mul     x4, x1, x8;                     \
-        mul     x5, x1, x9;                     \
-        mul     x6, x1, x10;                    \
-        umulh   x7, x1, x7;                     \
-        umulh   x8, x1, x8;                     \
-        umulh   x9, x1, x9;                     \
-        umulh   x10, x1, x10;                   \
-        adds    x4, x4, x7;                     \
-        adcs    x5, x5, x8;                     \
-        adcs    x6, x6, x9;                     \
-        adc     x10, x10, xzr;                  \
-        ldp     x7, x8, [p3];                   \
-        adds    x3, x3, x7;                     \
-        adcs    x4, x4, x8;                     \
-        ldp     x7, x8, [p3+16];                \
-        adcs    x5, x5, x7;                     \
-        adcs    x6, x6, x8;                     \
-        adc     x10, x10, xzr;                  \
-        cmn     x6, x6;                         \
-        bic     x6, x6, #0x8000000000000000;    \
-        adc     x8, x10, x10;                   \
-        mov     x9, #19;                        \
-        mul     x7, x8, x9;                     \
-        adds    x3, x3, x7;                     \
-        adcs    x4, x4, xzr;                    \
-        adcs    x5, x5, xzr;                    \
-        adc     x6, x6, xzr;                    \
-        stp     x3, x4, [p0];                   \
-        stp     x5, x6, [p0+16]
-
-// Multiplex: z := if NZ then x else y
-
-#define mux_4(p0,p1,p2)                         \
-        ldp     x0, x1, [p1];                   \
-        ldp     x2, x3, [p2];                   \
-        csel    x0, x0, x2, ne;                 \
-        csel    x1, x1, x3, ne;                 \
-        stp     x0, x1, [p0];                   \
-        ldp     x0, x1, [p1+16];                \
-        ldp     x2, x3, [p2+16];                \
-        csel    x0, x0, x2, ne;                 \
-        csel    x1, x1, x3, ne;                 \
-        stp     x0, x1, [p0+16]
+#define NSPACE 224
+#define regsave sp, #NSPACE
 
 S2N_BN_SYMBOL(curve25519_x25519_byte):
 
-// Save regs and make room for temporaries
+// Save registers and make additional room NSPACE for temporaries.
+// We only need to save the low 64-bits of the Q8...Q15 registers
+// according to the ABI, so we use a save of the D8...D15 forms.
 
-        stp     x19, x20, [sp, -16]!
-        stp     x21, x22, [sp, -16]!
-        stp     x23, x24, [sp, -16]!
-        sub     sp, sp, #NSPACE
+        sub     sp, sp, #NSPACE+160
+        stp     d8, d9, [regsave+0]
+        stp     d10, d11, [regsave+16]
+        stp     d12, d13, [regsave+32]
+        stp     d14, d15, [regsave+48]
+        stp     x19, x20, [regsave+64]
+        stp     x21, x22, [regsave+80]
+        stp     x23, x24, [regsave+96]
+        stp     x25, x26, [regsave+112]
+        stp     x27, x28, [regsave+128]
+        stp     x29, x30, [regsave+144]
 
 // Move the output pointer to a stable place
 
-        mov     res, x0
+        str     x0, [res]
 
-// Copy the inputs to the local variables with minimal mangling:
-//
-//  - The scalar is in principle turned into 01xxx...xxx000 but
-//    in the structure below the special handling of these bits is
-//    explicit in the main computation; the scalar is just copied.
-//
-//  - The point x coord is reduced mod 2^255 by masking off the
-//    top bit. In the main loop we only need reduction < 2 * p_25519.
+// Copy the scalar to the corresponding local variable while
+// mangling it. In principle it becomes 01xxx...xxx000 where
+// the xxx are the corresponding bits of the original input
+// scalar. We actually don't bother forcing the MSB to zero,
+// but rather start the main loop below at 254 instead of 255.
 
         ldrb    w10, [x1]
         ldrb    w0, [x1, #1]
@@ -722,6 +116,7 @@ S2N_BN_SYMBOL(curve25519_x25519_byte):
         orr     x11, x11, x0, lsl #48
         ldrb    w0, [x1, #15]
         orr     x11, x11, x0, lsl #56
+        bic     x10, x10, #7
         stp     x10, x11, [scalar]
 
         ldrb    w12, [x1, #16]
@@ -754,223 +149,1316 @@ S2N_BN_SYMBOL(curve25519_x25519_byte):
         orr     x13, x13, x0, lsl #48
         ldrb    w0, [x1, #31]
         orr     x13, x13, x0, lsl #56
+        orr     x13, x13, #0x4000000000000000
         stp     x12, x13, [scalar+16]
 
-        ldrb    w10, [x2]
+// Discard the MSB of the point X coordinate (this is in
+// accordance with the RFC, mod 2^255, *not* 2^255-19).
+// Then recode it into the unsaturated base 25.5 form.
+
+        ldrb    w4, [x2]
         ldrb    w0, [x2, #1]
-        orr     x10, x10, x0, lsl #8
+        orr     x4, x4, x0, lsl #8
         ldrb    w0, [x2, #2]
-        orr     x10, x10, x0, lsl #16
+        orr     x4, x4, x0, lsl #16
         ldrb    w0, [x2, #3]
-        orr     x10, x10, x0, lsl #24
+        orr     x4, x4, x0, lsl #24
         ldrb    w0, [x2, #4]
-        orr     x10, x10, x0, lsl #32
+        orr     x4, x4, x0, lsl #32
         ldrb    w0, [x2, #5]
-        orr     x10, x10, x0, lsl #40
+        orr     x4, x4, x0, lsl #40
         ldrb    w0, [x2, #6]
-        orr     x10, x10, x0, lsl #48
+        orr     x4, x4, x0, lsl #48
         ldrb    w0, [x2, #7]
-        orr     x10, x10, x0, lsl #56
-        ldrb    w11, [x2, #8]
+        orr     x4, x4, x0, lsl #56
+        ldrb    w5, [x2, #8]
         ldrb    w0, [x2, #9]
-        orr     x11, x11, x0, lsl #8
+        orr     x5, x5, x0, lsl #8
         ldrb    w0, [x2, #10]
-        orr     x11, x11, x0, lsl #16
+        orr     x5, x5, x0, lsl #16
         ldrb    w0, [x2, #11]
-        orr     x11, x11, x0, lsl #24
+        orr     x5, x5, x0, lsl #24
         ldrb    w0, [x2, #12]
-        orr     x11, x11, x0, lsl #32
+        orr     x5, x5, x0, lsl #32
         ldrb    w0, [x2, #13]
-        orr     x11, x11, x0, lsl #40
+        orr     x5, x5, x0, lsl #40
         ldrb    w0, [x2, #14]
-        orr     x11, x11, x0, lsl #48
+        orr     x5, x5, x0, lsl #48
         ldrb    w0, [x2, #15]
-        orr     x11, x11, x0, lsl #56
-        stp     x10, x11, [pointx]
+        orr     x5, x5, x0, lsl #56
 
-        ldrb    w12, [x2, #16]
+        ldrb    w6, [x2, #16]
         ldrb    w0, [x2, #17]
-        orr     x12, x12, x0, lsl #8
+        orr     x6, x6, x0, lsl #8
         ldrb    w0, [x2, #18]
-        orr     x12, x12, x0, lsl #16
+        orr     x6, x6, x0, lsl #16
         ldrb    w0, [x2, #19]
-        orr     x12, x12, x0, lsl #24
+        orr     x6, x6, x0, lsl #24
         ldrb    w0, [x2, #20]
-        orr     x12, x12, x0, lsl #32
+        orr     x6, x6, x0, lsl #32
         ldrb    w0, [x2, #21]
-        orr     x12, x12, x0, lsl #40
+        orr     x6, x6, x0, lsl #40
         ldrb    w0, [x2, #22]
-        orr     x12, x12, x0, lsl #48
+        orr     x6, x6, x0, lsl #48
         ldrb    w0, [x2, #23]
-        orr     x12, x12, x0, lsl #56
-        ldrb    w13, [x2, #24]
+        orr     x6, x6, x0, lsl #56
+        ldrb    w7, [x2, #24]
         ldrb    w0, [x2, #25]
-        orr     x13, x13, x0, lsl #8
+        orr     x7, x7, x0, lsl #8
         ldrb    w0, [x2, #26]
-        orr     x13, x13, x0, lsl #16
+        orr     x7, x7, x0, lsl #16
         ldrb    w0, [x2, #27]
-        orr     x13, x13, x0, lsl #24
+        orr     x7, x7, x0, lsl #24
         ldrb    w0, [x2, #28]
-        orr     x13, x13, x0, lsl #32
+        orr     x7, x7, x0, lsl #32
         ldrb    w0, [x2, #29]
-        orr     x13, x13, x0, lsl #40
+        orr     x7, x7, x0, lsl #40
         ldrb    w0, [x2, #30]
-        orr     x13, x13, x0, lsl #48
+        orr     x7, x7, x0, lsl #48
         ldrb    w0, [x2, #31]
-        orr     x13, x13, x0, lsl #56
-        and     x13, x13, #0x7fffffffffffffff
+        orr     x7, x7, x0, lsl #56
+
+        lsr     x12, x4, #51
+        lsr     x17, x6, #51
+        orr     x12, x12, x5, lsl #13
+        orr     x17, x17, x7, lsl #13
+        ubfx    x8, x7, #12, #26
+        ubfx    x9, x7, #38, #25
+        ubfx    x11, x4, #26, #25
+        ubfx    x13, x5, #13, #25
+        lsr     x14, x5, #38
+        ubfx    x16, x6, #25, #26
+        and     x10, x4, #0x3ffffff
+        and     x12, x12, #0x3ffffff
+        and     x15, x6, #0x1ffffff
+        and     x17, x17, #0x1ffffff
+        orr     x10, x10, x11, lsl #32
+        orr     x11, x12, x13, lsl #32
+        orr     x12, x14, x15, lsl #32
+        orr     x13, x16, x17, lsl #32
+        orr     x14, x8, x9, lsl #32
+
+        stp     x10, x11, [pointx+0]
         stp     x12, x13, [pointx+16]
+        str     x14, [pointx+32]
 
-// Initialize with explicit doubling in order to handle set bit 254.
-// Set swap = 1 and (xm,zm) = (x,1) then double as (xn,zn) = 2 * (x,1).
-// We use the fact that the point x coordinate is still in registers.
-// Since zm = 1 we could do the doubling with an operation count of
-// 2 * S + M instead of 2 * S + 2 * M, but it doesn't seem worth
-// the slight complication arising from a different linear combination.
+// Initialize (X2,Z2) = (1,0), the identity (projective point at infinity)
 
-        mov     swap, #1
-        stp     x10, x11, [xm]
-        stp     x12, x13, [xm+16]
-        stp     swap, xzr, [zm]
-        stp     xzr, xzr, [zm+16]
+        mov     x1, #1
+        mov     v0.d[0], x1
+        mov     v2.d[0], xzr
+        mov     v4.d[0], xzr
+        mov     v6.d[0], xzr
+        mov     v8.d[0], xzr
 
-        sub_twice4(d,xm,zm)
-        add_twice4(s,xm,zm)
-        sqr_4(d,d)
-        sqr_4(s,s)
-        sub_twice4(p,s,d)
-        mov     x1, 0xdb42
-        orr     x1, x1, 0x10000
-        cmadd_4(e,p,d)
-        mul_4(xn,s,d)
-        mul_4(zn,p,e)
+        mov     v1.d[0], xzr
+        mov     v3.d[0], xzr
+        mov     v5.d[0], xzr
+        mov     v7.d[0], xzr
+        mov     v9.d[0], xzr
 
-// The main loop over unmodified bits from i = 253, ..., i = 3 (inclusive).
-// This is a classic Montgomery ladder, with the main coordinates only
-// reduced mod 2 * p_25519, some intermediate results even more loosely.
+// Initialize (X3,Z3) = (X,1), projective representation of X
 
-        mov     i, #253
+        mov     v10.d[0], x10
+        mov     v12.d[0], x11
+        mov     v14.d[0], x12
+        mov     v16.d[0], x13
+        mov     v18.d[0], x14
+
+        mov     v11.d[0], x1
+        mov     v13.d[0], xzr
+        mov     v15.d[0], xzr
+        mov     v17.d[0], xzr
+        mov     v19.d[0], xzr
+
+// Set up some constants used repeatedly in the main loop:
+//
+// Q31 = 0x1300000013 (two 32-bit copies of 19)
+// Q30 = 0x3ffffff0000000003ffffff (two 64-bit copies of 2^26-1)
+// Q29 = mask1 = (0x07ffffc,0x07fffffe)
+// Q28 = mask2 = (0x07ffffb4,0x07fffffe)
+
+        mov     w0, #19
+        add     x0, x0, x0, lsl #32
+        mov     v31.d[0], x0
+        mov     v31.d[1], xzr
+
+        mov     x0, #(1<<26)-1
+        mov     v30.d[0], x0
+        mov     v30.d[1], x0
+
+        mov     x0, #0x07fffffe07fffffe
+        sub     x1, x0, #0xfe-0xb4
+        sub     x0, x0, #2
+
+        stp     x0, x1, [mask1]
+        ldp     d29, d28, [mask1]
+
+// The main loop over (modified) bits from i = 254, ..., i = 0 (inclusive);
+// we explicitly skip bit 255 because it should be forced to zero initially.
+// This is a classic Montgomery ladder using a "swap" variable.
+// It's assumed x0 = i at the start of the loop, but that is volatile and
+// needs to be reloaded from memory at the end of the loop.
+
+        str     xzr, [swap]
+        mov     x0, #254
+        str     x0, [i]
 
 curve25519_x25519_byte_scalarloop:
 
-// sm = xm + zm; sn = xn + zn; dm = xm - zm; dn = xn - zn
-
-        sub_twice4(dm,xm,zm)
-        add_twice4(sn,xn,zn)
-        sub_twice4(dn,xn,zn)
-        add_twice4(sm,xm,zm)
-
-// ADDING: dmsn = dm * sn
-// DOUBLING: mux d = xt - zt and s = xt + zt for appropriate choice of (xt,zt)
-
-        mul_4(dmsn,sn,dm)
-
-        lsr     x0, i, #6
-        ldr     x2, [sp, x0, lsl #3]    // Exploiting scalar = sp exactly
-        lsr     x2, x2, i
+        lsr     x1, x0, #6
+        ldr     x2, [sp, x1, lsl #3]    // Exploiting scalar = sp exactly
+        lsr     x2, x2, x0
         and     x2, x2, #1
 
-        cmp     swap, x2
-        mov     swap, x2
+        ldr     x0, [swap]
+        cmp     x0, x2
+        str     x2, [swap]
 
-        mux_4(d,dm,dn)
-        mux_4(s,sm,sn)
+// The following inner loop code is derived closely following Lenngren's
+// implementation available at "https://github.com/Emill/X25519-AArch64".
+// In particular, the basic dataflow and the organization between integer
+// and SIMD units is identical, with only a few minor changes to some
+// individual instructions (for miscellaneous reasons). The scheduling
+// was redone from scratch by SLOTHY starting from Hanno Becker's
+// un-interleaved form and using the same scripts as in Becker et al's
+// paper.
+//
+// The intermediate value annotations were added to provide data that
+// is used in the formal proof, indicating which lines assign specific
+// digits of the various intermediate results (mainly of field
+// operations, sometimes other transformations). The names used for
+// the intermediate results are similar but not identical to those in
+// the abstract Algorithm 1 description in Lenngren's paper. Almost
+// all equations are to be interpreted as field operations, i.e. as
+// arithmetic modulo 2^255-19, not simple numeric equalities.
+//
+//      b = x2 - z2
+//      d = x3 - z3
+//      a = x2 + z2
+//      c = x3 + z3
+//      f = if flip then c else a
+//      g = if flip then d else b
+//      aa = f^2
+//      bb = g^2
+//      bbalt = bb (change of representation)
+//      e = aa - bb
+//      bce = bbalt + 121666 * e
+//      z4 = bce * e
+//      bc = b * c
+//      ad = a * d
+//      t1 = ad + bc
+//      t2 = ad - bc
+//      x5 = t1^2
+//      t3 = t2^2
+//      x4 = aa * bb
+//      z5 = x * t3
+//
+// Then the main variables are updated for the next iteration as
+//
+//      (x2',z2') = (x4,z4)
+//      (x3',z3') = (x5,z5)
 
-// ADDING: dnsm = sm * dn
+        add     v22.2S, v2.2S, v3.2S            // ubignum_of_qreglist 1 // INTERMEDIATE a
+        sub     v21.2S, v28.2S, v1.2S
+        add     v25.2S, v0.2S, v1.2S            // ubignum_of_qreglist 0 // INTERMEDIATE a
+        sub     v24.2S, v29.2S, v3.2S
+        add     v3.2S, v18.2S, v19.2S           // ubignum_of_qreglist 4 // INTERMEDIATE c
+        add     v0.2S, v0.2S, v21.2S            // ubignum_of_qreglist 0 // INTERMEDIATE b
+        sub     v20.2S, v29.2S, v15.2S
+        sub     v1.2S, v29.2S, v5.2S
+        sub     v26.2S, v28.2S, v11.2S
+        sub     v21.2S, v29.2S, v19.2S
+        add     v19.2S, v10.2S, v11.2S          // ubignum_of_qreglist 0 // INTERMEDIATE c
+        add     v11.2S, v14.2S, v20.2S          // ubignum_of_qreglist 2 // INTERMEDIATE d
+        add     v21.2S, v18.2S, v21.2S          // ubignum_of_qreglist 4 // INTERMEDIATE d
+        sub     v20.2S, v29.2S, v17.2S
+        add     v18.2S, v2.2S, v24.2S           // ubignum_of_qreglist 1 // INTERMEDIATE b
+        add     v14.2S, v14.2S, v15.2S          // ubignum_of_qreglist 2 // INTERMEDIATE c
+        add     v15.2S, v16.2S, v17.2S          // ubignum_of_qreglist 3 // INTERMEDIATE c
+        add     v2.2S, v16.2S, v20.2S           // ubignum_of_qreglist 3 // INTERMEDIATE d
+        add     v24.2S, v12.2S, v13.2S          // ubignum_of_qreglist 1 // INTERMEDIATE c
+        add     v26.2S, v10.2S, v26.2S          // ubignum_of_qreglist 0 // INTERMEDIATE d
+        sub     v10.2S, v29.2S, v13.2S
+        sub     v13.2S, v29.2S, v7.2S
+        add     v23.2S, v6.2S, v7.2S            // ubignum_of_qreglist 3 // INTERMEDIATE a
+        sub     v7.2S, v29.2S, v9.2S
+        add     v27.2S, v12.2S, v10.2S          // ubignum_of_qreglist 1 // INTERMEDIATE d
+        fcsel   d20, d22, d24, eq               // ubignum_of_qreglist 1 // INTERMEDIATE f
+        add     v28.2S, v4.2S, v5.2S            // ubignum_of_qreglist 2 // INTERMEDIATE a
+        fcsel   d12, d23, d15, eq               // ubignum_of_qreglist 3 // INTERMEDIATE f
+        add     v7.2S, v8.2S, v7.2S             // ubignum_of_qreglist 4 // INTERMEDIATE b
+        fcsel   d16, d25, d19, eq               // ubignum_of_qreglist 0 // INTERMEDIATE f
+        mov     x0, v20.d[0]
+        fcsel   d5, d28, d14, eq                // ubignum_of_qreglist 2 // INTERMEDIATE f
+        mov     x21, v12.d[0]
+        fcsel   d29, d7, d21, eq                // ubignum_of_qreglist 4 // INTERMEDIATE g
+        mov     x5, v16.d[0]
+        lsr     x26, x0, #32
+        add     x29, x21, x21
+        umull   x15, w5, w29
+        add     v13.2S, v6.2S, v13.2S           // ubignum_of_qreglist 3 // INTERMEDIATE b
+        add     x12, x26, x26
+        mov     x30, v5.d[0]
+        fcsel   d10, d18, d27, eq               // ubignum_of_qreglist 1 // INTERMEDIATE g
+        lsr     x11, x5, #32
+        lsr     x10, x30, #32
+        trn2    v20.2S, v21.2S, v3.2S
+        add     v9.2S, v8.2S, v9.2S             // ubignum_of_qreglist 4 // INTERMEDIATE a
+        add     x14, x11, x11
+        trn2    v6.2S, v2.2S, v15.2S
+        trn1    v12.2S, v25.2S, v0.2S
+        add     v1.2S, v4.2S, v1.2S             // ubignum_of_qreglist 2 // INTERMEDIATE b
+        trn1    v16.2S, v23.2S, v13.2S
+        fcsel   d8, d13, d2, eq                 // ubignum_of_qreglist 3 // INTERMEDIATE g
+        trn2    v17.2S, v27.2S, v24.2S
+        str     d29, [tmpb+32]
+        add     x17, x10, x10
+        trn2    v4.2S, v28.2S, v1.2S
+        trn1    v5.2S, v28.2S, v1.2S
+        trn1    v28.2S, v2.2S, v15.2S
+        trn1    v2.2S, v22.2S, v18.2S
+        fcsel   d29, d0, d26, eq                // ubignum_of_qreglist 0 // INTERMEDIATE g
+        trn2    v15.2S, v22.2S, v18.2S
+        umull   v22.2D, v12.2S, v20.2S
+        umull   x22, w30, w17
+        stp     d29, d10, [tmpb+0]
+        trn2    v10.2S, v23.2S, v13.2S
+        trn2    v23.2S, v11.2S, v14.2S
+        trn1    v13.2S, v27.2S, v24.2S
+        fcsel   d27, d1, d11, eq                // ubignum_of_qreglist 2 // INTERMEDIATE g
+        trn1    v14.2S, v11.2S, v14.2S
+        umlal   v22.2D, v2.2S, v6.2S
+        umull   x25, w30, w30
+        umlal   v22.2D, v5.2S, v23.2S
+        add     x3, x30, x30
+        umlal   v22.2D, v16.2S, v17.2S
+        add     w30, w21, w21, lsl #1;
+        stp     d27, d8, [tmpb+16]
+        add     w30, w30, w21, lsl #4
+        trn1    v11.2S, v26.2S, v19.2S
+        trn2    v8.2S, v26.2S, v19.2S
+        trn2    v19.2S, v25.2S, v0.2S
+        mul     v29.2S, v20.2S, v31.2S
+        ldr     x20, [tmpb+24]
+        umull   v25.2D, v19.2S, v6.2S
+        add     x1, x0, x0
+        umull   v27.2D, v19.2S, v23.2S
+        umull   x9, w5, w1
+        umull   v0.2D, v12.2S, v23.2S
+        lsr     x24, x20, #32
+        mul     v20.2S, v23.2S, v31.2S
+        lsr     x16, x21, #32
+        umlal   v25.2D, v15.2S, v23.2S
+        umaddl  x13, w11, w14, x9
+        umlal   v25.2D, v4.2S, v17.2S
+        umaddl  x9, w14, w17, x15
+        umull   v24.2D, v12.2S, v6.2S
+        add     w2, w16, w16, lsl #1;
+        fcsel   d26, d9, d3, eq                 // ubignum_of_qreglist 4 // INTERMEDIATE f
+        add     w2, w2, w16, lsl #4
+        trn1    v18.2S, v21.2S, v3.2S
+        umull   v3.2D, v19.2S, v29.2S
+        umull   x28, w5, w3
+        mul     v1.2S, v6.2S, v31.2S
+        umull   x8, w5, w5
+        umlal   v24.2D, v2.2S, v23.2S
+        umaddl  x13, w21, w30, x13
+        mul     v23.2S, v17.2S, v31.2S
+        umaddl  x27, w14, w12, x28
+        trn2    v6.2S, v9.2S, v7.2S
+        mov     x6, v26.d[0]
+        umlal   v3.2D, v15.2S, v1.2S
+        add     x16, x16, x16
+        umlal   v3.2D, v4.2S, v20.2S
+        lsr     x4, x6, #32
+        umlal   v3.2D, v10.2S, v23.2S
+        add     x7, x6, x6
+        umull   v26.2D, v19.2S, v8.2S
+        add     x23, x4, x4
+        umaddl  x28, w5, w23, x22
+        trn1    v7.2S, v9.2S, v7.2S
+        umlal   v27.2D, v15.2S, v17.2S
+        add     w15, w4, w4, lsl #1;
+        umlal   v27.2D, v4.2S, v8.2S
+        add     w15, w15, w4, lsl #4
+        add     w22, w10, w10, lsl #1;
+        umlal   v24.2D, v5.2S, v17.2S
+        add     w22, w22, w10, lsl #4
+        umaddl  x10, w11, w7, x28
+        umlal   v25.2D, v10.2S, v8.2S
+        umull   x21, w5, w16
+        umlal   v25.2D, v6.2S, v29.2S
+        umaddl  x23, w15, w23, x25
+        umlal   v27.2D, v10.2S, v29.2S
+        umull   x19, w5, w12
+        umlal   v27.2D, v6.2S, v1.2S
+        umaddl  x25, w11, w29, x21
+        umlal   v0.2D, v2.2S, v17.2S
+        umaddl  x28, w0, w3, x9
+        shl     v21.2D, v25.2D, #1
+        umaddl  x4, w11, w1, x19
+        umaddl  x21, w2, w29, x4
+        mul     v25.2S, v8.2S, v31.2S
+        umlal   v24.2D, v16.2S, v8.2S
+        umaddl  x19, w0, w17, x25
+        umlal   v24.2D, v7.2S, v29.2S
+        umull   x25, w5, w17
+        umlal   v24.2D, v19.2S, v28.2S
+        umaddl  x4, w0, w16, x10
+        umull   v9.2D, v12.2S, v8.2S
+        umaddl  x23, w5, w7, x23
+        umlal   v21.2D, v12.2S, v18.2S
+        add     w10, w6, w6, lsl #1;
+        shl     v27.2D, v27.2D, #1
+        add     w10, w10, w6, lsl #4
+        umaddl  x28, w26, w12, x28
+        umlal   v26.2D, v15.2S, v29.2S
+        umaddl  x9, w14, w16, x23
+        umlal   v9.2D, v2.2S, v29.2S
+        umaddl  x22, w22, w17, x8
+        umlal   v21.2D, v2.2S, v28.2S
+        umaddl  x28, w6, w10, x28
+        umaddl  x27, w0, w0, x27
+        add     x8, x14, x14
+        umlal   v0.2D, v5.2S, v8.2S
+        umull   x5, w5, w14
+        umlal   v9.2D, v5.2S, v1.2S
+        umaddl  x14, w0, w29, x9
+        umlal   v26.2D, v4.2S, v1.2S
+        umaddl  x6, w2, w16, x27
+        umlal   v22.2D, v7.2S, v8.2S
+        umaddl  x5, w30, w17, x5
+        umaddl  x5, w2, w3, x5
+        add     x23, x17, x17
+        umlal   v27.2D, v12.2S, v28.2S
+        umaddl  x13, w2, w23, x13
+        umlal   v26.2D, v10.2S, v20.2S
+        add     x9, x12, x12
+        umlal   v9.2D, v16.2S, v20.2S
+        umaddl  x27, w10, w29, x6
+        umlal   v0.2D, v16.2S, v29.2S
+        umaddl  x6, w11, w3, x25
+        umlal   v22.2D, v19.2S, v18.2S
+        umaddl  x19, w26, w3, x19
+        mul     v18.2S, v18.2S, v31.2S
+        umaddl  x23, w15, w23, x27
+        umlal   v3.2D, v6.2S, v25.2S
+        umaddl  x0, w0, w12, x6
+        umlal   v0.2D, v7.2S, v1.2S
+        add     x11, x16, x16
+        umlal   v9.2D, v7.2S, v23.2S
+        umaddl  x6, w12, w17, x14
+        umlal   v9.2D, v19.2S, v11.2S
+        umaddl  x25, w26, w29, x4
+        umlal   v9.2D, v15.2S, v18.2S
+        umaddl  x14, w10, w3, x13
+        umull   v25.2D, v12.2S, v17.2S
+        umaddl  x27, w10, w16, x0
+        umlal   v26.2D, v6.2S, v23.2S
+        add     x0, x25, x6, lsr #26
+        mul     v23.2S, v28.2S, v31.2S
+        umaddl  x12, w10, w12, x5
+        shl     v3.2D, v3.2D, #1
+        add     x16, x22, x0, lsr #25
+        umlal   v21.2D, v5.2S, v14.2S
+        bic     x22, x0, #0x1ffffff
+        umlal   v3.2D, v12.2S, v11.2S
+        add     x26, x16, x22, lsr #24
+        umlal   v3.2D, v2.2S, v18.2S
+        umaddl  x16, w10, w17, x21
+        umlal   v3.2D, v5.2S, v23.2S
+        add     x22, x26, x22, lsr #21
+        umlal   v9.2D, v4.2S, v23.2S
+        umaddl  x5, w15, w29, x27
+        umull   v17.2D, v19.2S, v17.2S
+        umaddl  x17, w30, w3, x22
+        umlal   v25.2D, v2.2S, v8.2S
+        umaddl  x25, w15, w3, x16
+        umlal   v25.2D, v5.2S, v29.2S
+        umaddl  x26, w15, w7, x19
+        umlal   v0.2D, v19.2S, v14.2S
+        umaddl  x17, w2, w9, x17
+        umlal   v17.2D, v15.2S, v8.2S
+        ldr     x19, [tmpb+0]
+        umlal   v17.2D, v4.2S, v29.2S
+        ldr     x7, [tmpb+8]
+        shl     v29.2D, v26.2D, #1
+        umaddl  x13, w10, w1, x17
+        umlal   v0.2D, v15.2S, v13.2S
+        lsr     x2, x19, #32
+        umlal   v29.2D, v12.2S, v13.2S
+        umaddl  x27, w15, w1, x12
+        umlal   v29.2D, v2.2S, v11.2S
+        umaddl  x30, w15, w8, x13
+        umlal   v29.2D, v5.2S, v18.2S
+        add     x4, x7, x7
+        umlal   v29.2D, v16.2S, v23.2S
+        umaddl  x29, w15, w9, x14
+        umlal   v0.2D, v4.2S, v11.2S
+        add     x17, x27, x30, lsr #26
+        umlal   v0.2D, v10.2S, v18.2S
+        umaddl  x16, w15, w11, x28
+        umlal   v0.2D, v6.2S, v23.2S
+        add     x1, x29, x17, lsr #25
+        umlal   v25.2D, v16.2S, v1.2S
+        umull   x11, w19, w4
+        ldr     x8, [tmpb+32]
+        mul     v26.2S, v14.2S, v31.2S
+        umlal   v17.2D, v10.2S, v1.2S
+        ldr     x15, [tmpb+16]
+        umlal   v17.2D, v6.2S, v20.2S
+        and     x9, x30, #0x3ffffff
+        bfi     x9, x17, #32, #25               // ubignum_of_preglist 0 // INTERMEDIATE aa
+        add     x17, x2, x2
+        lsr     x10, x15, #32
+        add     x27, x25, x1, lsr #26
+        umlal   v25.2D, v7.2S, v20.2S
+        add     x13, x10, x10
+        umlal   v25.2D, v19.2S, v13.2S
+        add     x29, x23, x27, lsr #25
+        umlal   v25.2D, v15.2S, v11.2S
+        lsr     x30, x8, #32
+        umlal   v25.2D, v4.2S, v18.2S
+        add     x23, x5, x29, lsr #26
+        umlal   v25.2D, v10.2S, v23.2S
+        and     x14, x29, #0x3ffffff
+        umlal   v25.2D, v6.2S, v26.2S
+        add     x5, x16, x23, lsr #25
+        shl     v8.2D, v17.2D, #1
+        umaddl  x12, w2, w17, x11
+        and     x29, x5, #0x3ffffff
+        umull   x21, w19, w19
+        umlal   v29.2D, v7.2S, v26.2S
+        add     w16, w10, w10, lsl #1;
+        umlal   v3.2D, v16.2S, v26.2S
+        add     w16, w16, w10, lsl #4
+        bfi     x14, x23, #32, #25              // ubignum_of_preglist 2 // INTERMEDIATE aa
+        add     w10, w24, w24, lsl #1;
+        add     x22, x26, x5, lsr #26
+        add     w10, w10, w24, lsl #4
+        umlal   v8.2D, v12.2S, v14.2S
+        umaddl  x25, w16, w13, x21
+        umlal   v8.2D, v2.2S, v13.2S
+        bfi     x29, x22, #32, #25              // ubignum_of_preglist 3 // INTERMEDIATE aa
+        umlal   v8.2D, v5.2S, v11.2S
+        add     x26, x24, x24
+        umlal   v8.2D, v16.2S, v18.2S
+        stp     x14, x29, [tmpa+16]
+        umlal   v8.2D, v7.2S, v23.2S
+        add     w24, w30, w30, lsl #1;
+        usra    v25.2D, v29.2D, #26
+        add     w24, w24, w30, lsl #4
+        umull   x29, w15, w15
+        umlal   v27.2D, v2.2S, v14.2S
+        umull   x3, w15, w13
+        umlal   v27.2D, v5.2S, v13.2S
+        add     x21, x20, x20
+        umlal   v24.2D, v15.2S, v14.2S
+        umull   x5, w19, w21
+        umlal   v24.2D, v4.2S, v13.2S
+        and     x11, x1, #0x3ffffff
+        usra    v8.2D, v25.2D, #25
+        and     x1, x0, #0x1ffffff
+        umlal   v27.2D, v16.2S, v11.2S
+        umaddl  x23, w17, w13, x5
+        umlal   v27.2D, v7.2S, v18.2S
+        add     x5, x30, x30
+        usra    v0.2D, v8.2D, #26
+        add     x0, x15, x15
+        umlal   v24.2D, v10.2S, v11.2S
+        umaddl  x23, w7, w0, x23
+        umlal   v24.2D, v6.2S, v18.2S
+        lsr     x30, x7, #32
+        usra    v27.2D, v0.2D, #25
+        add     x16, x30, x30
+        and     v20.16B, v8.16B, v30.16B        // ubignum_of_hreglist 4 + ubignum_of_lreglist 4 // INTERMEDIATE H|L = bc|ad
+        umaddl  x15, w30, w16, x23
+        ushr    v23.2D, v30.2D, #1
+        add     w23, w8, w8, lsl #1;
+        usra    v24.2D, v27.2D, #26
+        add     w23, w23, w8, lsl #4
+        umaddl  x14, w19, w5, x3
+        and     v8.16B, v27.16B, v30.16B        // ubignum_of_hreglist 6 + ubignum_of_lreglist 6 // INTERMEDIATE H|L = bc|ad
+        add     x28, x8, x8
+        and     v27.16B, v0.16B, v23.16B        // ubignum_of_hreglist 5 + ubignum_of_lreglist 5 // INTERMEDIATE H|L = bc|ad
+        umaddl  x8, w8, w23, x15
+        and     v5.16B, v24.16B, v23.16B        // ubignum_of_hreglist 7 + ubignum_of_lreglist 7 // INTERMEDIATE H|L = bc|ad
+        umaddl  x3, w2, w28, x14
+        umlal   v22.2D, v15.2S, v28.2S
+        bfi     x11, x27, #32, #25              // ubignum_of_preglist 1 // INTERMEDIATE aa
+        uzp1    v5.4S, v8.4S, v5.4S
+        umaddl  x14, w24, w5, x29
+        umaddl  x5, w19, w28, x14
+        ldr     d18, [mask1]
+        mov     v18.d[1], v18.d[0]
+        umaddl  x15, w7, w26, x3
+        mul     v12.2S, v13.2S, v31.2S
+        umlal   v21.2D, v16.2S, v13.2S
+        stp     x9, x11, [tmpa+0]
+        umlal   v21.2D, v7.2S, v11.2S
+        umaddl  x29, w17, w26, x5
+        umlal   v22.2D, v4.2S, v14.2S
+        add     w14, w20, w20, lsl #1;
+        umlal   v22.2D, v10.2S, v13.2S
+        add     w14, w14, w20, lsl #4
+        umull   x3, w19, w0
+        umlal   v22.2D, v6.2S, v11.2S
+        umaddl  x29, w7, w21, x29
+        usra    v21.2D, v24.2D, #25
+        umaddl  x11, w20, w14, x12
+        and     v0.16B, v25.16B, v23.16B
+        umaddl  x5, w30, w21, x15
+        and     v14.16B, v29.16B, v30.16B
+        umaddl  x12, w16, w13, x29
+        usra    v22.2D, v21.2D, #26
+        umaddl  x29, w17, w16, x3
+        umlal   v3.2D, v7.2S, v12.2S
+        add     x9, x26, x26
+        and     v1.16B, v21.16B, v30.16B        // ubignum_of_hreglist 8 + ubignum_of_lreglist 8 // INTERMEDIATE H|L = bc|ad
+        add     x27, x5, x12, lsr #26
+        bic     v8.16B, v22.16B, v23.16B
+        umaddl  x29, w7, w7, x29
+        and     v17.16B, v22.16B, v23.16B       // ubignum_of_hreglist 9 + ubignum_of_lreglist 9 // INTERMEDIATE H|L = bc|ad
+        add     x5, x25, x27, lsr #25
+        usra    v3.2D, v8.2D, #25
+        umaddl  x25, w24, w9, x8
+        umlal   v9.2D, v10.2S, v26.2S
+        add     x8, x13, x13
+        trn1    v22.4S, v1.4S, v17.4S
+        umaddl  x11, w10, w8, x11
+        usra    v3.2D, v8.2D, #24
+        umull   x20, w19, w16
+        add     v26.2S, v22.2S, v18.2S
+        ldr     d28, [mask2]
+        umlal   v9.2D, v6.2S, v12.2S
+        umaddl  x3, w23, w0, x11
+        usra    v3.2D, v8.2D, #21
+        umaddl  x29, w10, w26, x29
+        uzp1    v11.4S, v20.4S, v27.4S
+        umaddl  x20, w2, w4, x20
+        umaddl  x9, w10, w21, x20
+        mov     v17.d[0], v22.d[1]
+        usra    v9.2D, v3.2D, #26
+        umull   x15, w19, w13
+        and     v7.16B, v3.16B, v30.16B         // ubignum_of_hreglist 0 + ubignum_of_lreglist 0 // INTERMEDIATE H|L = bc|ad
+        add     x11, x16, x16
+        uzp2    v1.4S, v11.4S, v5.4S
+        umaddl  x20, w23, w13, x9
+        and     v8.16B, v9.16B, v23.16B         // ubignum_of_hreglist 1 + ubignum_of_lreglist 1 // INTERMEDIATE H|L = bc|ad
+        umaddl  x9, w2, w0, x15
+        usra    v14.2D, v9.2D, #25
+        and     x6, x6, #0x3ffffff
+        uzp1    v7.4S, v7.4S, v8.4S
+        umaddl  x29, w23, w21, x29
+        uzp1    v27.4S, v11.4S, v5.4S
+        umull   x15, w19, w26
+        usra    v0.2D, v14.2D, #26              // ubignum_of_hreglist 3 + ubignum_of_lreglist 3 // INTERMEDIATE H|L = bc|ad
+        add     x6, x6, x22, lsr #25
+        and     v3.16B, v14.16B, v30.16B        // ubignum_of_hreglist 2 + ubignum_of_lreglist 2 // INTERMEDIATE H|L = bc|ad
+        bic     x22, x27, #0x1ffffff
+        sub     v2.2S, v26.2S, v17.2S
+        add     v9.2S, v22.2S, v17.2S
+        uzp1    v14.4S, v3.4S, v0.4S
+        umaddl  x2, w2, w21, x15
+        add     v5.4S, v27.4S, v18.4S
+        add     x5, x5, x22, lsr #24
+        zip1    v22.2S, v2.2S, v9.2S            // ubignum_of_h32reglist 8 + ubignum_of_l32reglist 8 // INTERMEDIATE H|L = t1|t2
+        mov     v18.b[0], v28.b[0]
+        uzp1    v8.4S, v7.4S, v14.4S
+        add     x22, x5, x22, lsr #21
+        uzp2    v3.4S, v7.4S, v14.4S
+        umaddl  x5, w7, w16, x9
+        add     v25.4S, v8.4S, v18.4S
+        umaddl  x15, w14, w0, x22
+        add     v12.4S, v27.4S, v1.4S
+        add     x9, x17, x17
+        sub     v14.4S, v5.4S, v1.4S
+        umull   x19, w19, w17
+        sub     v18.4S, v25.4S, v3.4S
+        ldr     x22, [tmpa+8]
+        add     v20.4S, v8.4S, v3.4S
+        umaddl  x15, w10, w11, x15
+        zip1    v16.4S, v14.4S, v12.4S          // ubignum_of_h32reglist 4 + ubignum_of_l32reglist 4 // INTERMEDIATE H|L = t1|t2
+        umaddl  x14, w14, w13, x19
+        zip2    v14.4S, v14.4S, v12.4S          // ubignum_of_h32reglist 6 + ubignum_of_l32reglist 6 // INTERMEDIATE H|L = t1|t2
+        and     x17, x27, #0x1ffffff
+        zip2    v0.4S, v18.4S, v20.4S           // ubignum_of_h32reglist 2 + ubignum_of_l32reglist 2 // INTERMEDIATE H|L = t1|t2
+        umaddl  x15, w23, w4, x15
+        zip1    v1.4S, v18.4S, v20.4S           // ubignum_of_h32reglist 0 + ubignum_of_l32reglist 0 // INTERMEDIATE H|L = t1|t2
+        umaddl  x10, w10, w0, x14
+        zip2    v5.2S, v2.2S, v9.2S             // ubignum_of_h32reglist 9 + ubignum_of_l32reglist 9 // INTERMEDIATE H|L = t1|t2
+        shl     v24.2S, v0.2S, #1
+        mov     v19.d[0], v1.d[1]               // ubignum_of_h32reglist 1 + ubignum_of_l32reglist 1 // INTERMEDIATE H|L = t1|t2
+        shl     v26.2S, v22.2S, #1
+        shl     v17.2S, v16.2S, #1
+        mov     v15.d[0], v0.d[1]               // ubignum_of_h32reglist 3 + ubignum_of_l32reglist 3 // INTERMEDIATE H|L = t1|t2
+        shl     v7.2S, v5.2S, #1
+        shl     v18.2S, v19.2S, #1
+        umull   v11.2D, v1.2S, v24.2S
+        umaddl  x19, w23, w16, x10
+        umull   v6.2D, v1.2S, v17.2S
+        umaddl  x10, w7, w13, x2
+        mov     v4.d[0], v16.d[1]               // ubignum_of_h32reglist 5 + ubignum_of_l32reglist 5 // INTERMEDIATE H|L = t1|t2
+        mov     v10.d[0], v14.d[1]              // ubignum_of_h32reglist 7 + ubignum_of_l32reglist 7 // INTERMEDIATE H|L = t1|t2
+        umull   v9.2D, v1.2S, v26.2S
+        ldr     x13, [tmpa+0]
+        shl     v28.2S, v15.2S, #1
+        shl     v3.2S, v10.2S, #1
+        ldr     x14, [tmpa+16]
+        mul     v12.2S, v10.2S, v31.2S
+        umull   v25.2D, v1.2S, v7.2S
+        ldr     x2, [tmpa+24]
+        umlal   v6.2D, v18.2S, v28.2S
+        umaddl  x27, w30, w0, x10
+        umaddl  x16, w24, w0, x20
+        shl     v13.2S, v14.2S, #1
+        umaddl  x5, w23, w26, x5
+        mul     v2.2S, v22.2S, v31.2S
+        umull   v21.2D, v1.2S, v13.2S
+        umaddl  x23, w24, w8, x29
+        umlal   v11.2D, v18.2S, v19.2S
+        mov     x10, #0x07fffffe07fffffe
+        sub     x10, x10, #2
+        umaddl  x26, w24, w21, x5
+        mul     v29.2S, v14.2S, v31.2S
+        umlal   v25.2D, v19.2S, v26.2S
+        add     x7, x1, x6, lsr #26
+        mul     v20.2S, v4.2S, v31.2S
+        and     x6, x6, #0x3ffffff
+        shl     v8.2S, v18.2S, #1
+        shl     v4.2S, v4.2S, #1
+        umlal   v11.2D, v29.2S, v14.2S
+        bfi     x6, x7, #32, #26                // ubignum_of_preglist 4 // INTERMEDIATE aa
+        umlal   v25.2D, v0.2S, v3.2S
+        umaddl  x0, w24, w4, x19
+        umlal   v25.2D, v15.2S, v13.2S
+        str     x6, [tmpa+32]
+        umlal   v21.2D, v18.2S, v4.2S
+        umaddl  x8, w24, w11, x3
+        umlal   v21.2D, v0.2S, v17.2S
+        ldr     x30, [tmpa+32]
+        mul     v14.2S, v5.2S, v31.2S
+        add     x2, x2, x10
+        shl     v5.2S, v28.2S, #1
+        shl     v27.2S, v4.2S, #1
+        umlal   v6.2D, v0.2S, v0.2S
+        umaddl  x11, w24, w9, x15
+        umlal   v6.2D, v12.2S, v3.2S
+        add     x4, x30, x10
+        umlal   v11.2D, v14.2S, v5.2S
+        add     x3, x22, x10
+        umlal   v11.2D, v2.2S, v17.2S
+        add     x6, x0, x11, lsr #26
+        umlal   v11.2D, v12.2S, v27.2S
+        add     x14, x14, x10
+        umlal   v6.2D, v14.2S, v27.2S
+        add     x8, x8, x6, lsr #25
+        umlal   v6.2D, v2.2S, v13.2S
+        movk    x10, #0xffb4
+        umlal   v25.2D, v16.2S, v4.2S
+        add     x29, x16, x8, lsr #26
+        umull   v27.2D, v1.2S, v3.2S
+        and     x11, x11, #0x3ffffff
+        umlal   v9.2D, v18.2S, v3.2S
+        add     x19, x13, x10
+        umlal   v9.2D, v0.2S, v13.2S
+        and     x5, x8, #0x3ffffff
+        umlal   v9.2D, v28.2S, v4.2S
+        bfi     x11, x6, #32, #25               // ubignum_of_preglist 0 // INTERMEDIATE bb
+        umlal   v9.2D, v16.2S, v16.2S
+        umaddl  x30, w24, w28, x27
+        umlal   v9.2D, v14.2S, v7.2S
+        sub     x13, x19, x11
+        umull   v10.2D, v1.2S, v18.2S
+        add     x7, x23, x29, lsr #25
+        umlal   v21.2D, v28.2S, v15.2S
+        lsr     x16, x13, #32                   // ubignum_of_wreglist 1 + ubignum_of_wreglist 0 // INTERMEDIATE e
+        umlal   v21.2D, v2.2S, v22.2S
+        add     x0, x26, x7, lsr #26
+        usra    v25.2D, v9.2D, #26
+        and     x20, x7, #0x3ffffff
+        umull   v22.2D, v1.2S, v1.2S
+        add     x8, x25, x0, lsr #25
+        umull   v7.2D, v1.2S, v28.2S
+        and     x1, x29, #0x1ffffff             // ubignum_of_xreglist 3 // INTERMEDIATE bbalt
+        bic     v18.16B, v25.16B, v23.16B
+        and     x19, x8, #0x3ffffff
+        and     v16.16B, v9.16B, v30.16B
+        and     x7, x12, #0x3ffffff
+        usra    v22.2D, v18.2D, #25
+        add     x10, x30, x8, lsr #26
+        umlal   v7.2D, v19.2S, v24.2S
+        bfi     x5, x29, #32, #25               // ubignum_of_preglist 1 // INTERMEDIATE bb
+        and     v9.16B, v25.16B, v23.16B
+        add     x27, x7, x10, lsr #25
+        usra    v22.2D, v18.2D, #24
+        mov     x21, #60833
+        lsl     x21, x21, #1
+        add     x15, x17, x27, lsr #26
+        shl     v25.2S, v3.2S, #1
+        umlal   v7.2D, v14.2S, v17.2S
+        and     x29, x27, #0x3ffffff
+        usra    v22.2D, v18.2D, #21
+        bfi     x29, x15, #32, #26              // ubignum_of_preglist 4 // INTERMEDIATE bb // ***SOURCE*** ubignum_of_xreglist 9 // INTERMEDIATE bbalt
+        umlal   v10.2D, v14.2S, v24.2S
+        and     x17, x6, #0x1ffffff             // ubignum_of_xreglist 1 // INTERMEDIATE bbalt
+        umlal   v10.2D, v2.2S, v28.2S
+        sub     x6, x3, x5
+        umlal   v10.2D, v12.2S, v17.2S
+        umaddl  x25, w16, w21, x17
+        umlal   v10.2D, v29.2S, v4.2S
+        mov     w12, w5                         // ubignum_of_xreglist 2 // INTERMEDIATE bbalt
+        umlal   v22.2D, v20.2S, v4.2S
+        lsr     x26, x6, #32                    // ubignum_of_wreglist 3 + ubignum_of_wreglist 2 // INTERMEDIATE e
+        umlal   v22.2D, v14.2S, v8.2S
+        and     x24, x0, #0x1ffffff             // ubignum_of_xreglist 5 // INTERMEDIATE bbalt
+        umlal   v22.2D, v2.2S, v24.2S
+        stp     x11, x5, [tmpb+0]
+        umlal   v22.2D, v12.2S, v5.2S
+        bfi     x20, x0, #32, #25               // ubignum_of_preglist 2 // INTERMEDIATE bb
+        umlal   v22.2D, v29.2S, v17.2S
+        umaddl  x12, w6, w21, x12
+        umull   v18.2D, v1.2S, v4.2S
+        bfi     x19, x10, #32, #25              // ubignum_of_preglist 3 // INTERMEDIATE bb
+        umlal   v7.2D, v2.2S, v4.2S
+        sub     x7, x14, x20
+        umlal   v27.2D, v19.2S, v13.2S
+        mov     w8, w20                         // ubignum_of_xreglist 4 // INTERMEDIATE bbalt
+        usra    v10.2D, v22.2D, #26
+        lsr     x14, x7, #32                    // ubignum_of_wreglist 5 + ubignum_of_wreglist 4 // INTERMEDIATE e
+        umlal   v18.2D, v19.2S, v17.2S
+        and     x28, x10, #0x1ffffff            // ubignum_of_xreglist 7 // INTERMEDIATE bbalt
+        umlal   v7.2D, v12.2S, v13.2S
+        sub     x5, x2, x19
+        usra    v11.2D, v10.2D, #25
+        mov     w2, w19                         // ubignum_of_xreglist 6 // INTERMEDIATE bbalt
+        umlal   v27.2D, v0.2S, v4.2S
+        umlal   v21.2D, v14.2S, v25.2S
+        sub     x23, x4, x29
+        usra    v7.2D, v11.2D, #26
+        mov     w0, w29                         // ubignum_of_xreglist 8 // INTERMEDIATE bbalt
+        umlal   v18.2D, v0.2S, v28.2S
+        lsr     x22, x23, #32                   // ubignum_of_wreglist 9 + ubignum_of_wreglist 8 // INTERMEDIATE e
+        umlal   v27.2D, v15.2S, v17.2S
+        str     x29, [tmpb+32]
+        usra    v6.2D, v7.2D, #25
+        mov     w17, w11                        // ubignum_of_xreglist 0 // INTERMEDIATE bbalt
+        and     v0.16B, v22.16B, v30.16B        // ubignum_of_hreglist 0 + ubignum_of_lreglist 0 // INTERMEDIATE H|L = x5|t3
+        umaddl  x27, w26, w21, x1
+        umlal   v18.2D, v14.2S, v13.2S
+        umaddl  x30, w23, w21, x0
+        umlal   v18.2D, v2.2S, v3.2S
+        lsr     x10, x5, #32                    // ubignum_of_wreglist 7 + ubignum_of_wreglist 6 // INTERMEDIATE e
+        and     v4.16B, v6.16B, v30.16B         // ubignum_of_hreglist 4 + ubignum_of_lreglist 4 // INTERMEDIATE H|L = x5|t3
+        and     v1.16B, v10.16B, v23.16B        // ubignum_of_hreglist 1 + ubignum_of_lreglist 1 // INTERMEDIATE H|L = x5|t3
+        umaddl  x4, w14, w21, x24
+        ldr     x0, [tmpa+0]
+        mov     v0.s[1], w0
+        lsr     x0, x0, #32
+        mov     v1.s[1], w0
+        umaddl  x9, w7, w21, x8
+        usra    v18.2D, v6.2D, #26
+        umaddl  x24, w10, w21, x28
+        and     v3.16B, v7.16B, v23.16B         // ubignum_of_hreglist 3 + ubignum_of_lreglist 3 // INTERMEDIATE H|L = x5|t3
+        umaddl  x8, w22, w21, x15
+        umlal   v27.2D, v14.2S, v26.2S
+        umaddl  x15, w13, w21, x17
+        usra    v21.2D, v18.2D, #25
+        stp     x20, x19, [tmpb+16]
+        and     v2.16B, v11.16B, v30.16B        // ubignum_of_hreglist 2 + ubignum_of_lreglist 2 // INTERMEDIATE H|L = x5|t3
+        lsr     x29, x8, #25
+        ldr     x3, [tmpb+0]
+        mov     v10.s[1], w3
+        lsr     x3, x3, #32
+        mov     v11.s[1], w3
+        add     x17, x15, x29
+        usra    v27.2D, v21.2D, #26
+        add     x28, x17, x29, lsl #1
+        and     v6.16B, v21.16B, v30.16B        // ubignum_of_hreglist 6 + ubignum_of_lreglist 6 // INTERMEDIATE H|L = x5|t3
+        and     x20, x8, #0x1ffffff
+        and     v5.16B, v18.16B, v23.16B        // ubignum_of_hreglist 5 + ubignum_of_lreglist 5 // INTERMEDIATE H|L = x5|t3
+        add     x17, x28, x29, lsl #4
+        and     v7.16B, v27.16B, v23.16B        // ubignum_of_hreglist 7 + ubignum_of_lreglist 7 // INTERMEDIATE H|L = x5|t3
+        ldr     x3, [tmpb+8]
+        mov     v22.s[1], w3
+        lsr     x3, x3, #32
+        mov     v23.s[1], w3
+        add     x29, x25, x17, lsr #26
+        ldr     x15, [pointx+0]
+        mov     v10.s[0], w15
+        lsr     x15, x15, #32
+        mov     v11.s[0], w15
+        and     x11, x17, #0x3ffffff            // ubignum_of_xreglist 0 // INTERMEDIATE bce
+        usra    v16.2D, v27.2D, #25
+        add     x8, x12, x29, lsr #25
+        ldr     x3, [tmpb+16]
+        mov     v14.s[1], w3
+        lsr     x3, x3, #32
+        mov     v15.s[1], w3
+        and     x12, x29, #0x1ffffff            // ubignum_of_xreglist 1 // INTERMEDIATE bce
+        ldr     x15, [pointx+8]
+        mov     v22.s[0], w15
+        lsr     x15, x15, #32
+        mov     v23.s[0], w15
+        add     x28, x27, x8, lsr #26
+        and     v8.16B, v16.16B, v30.16B        // ubignum_of_hreglist 8 + ubignum_of_lreglist 8 // INTERMEDIATE H|L = x5|t3
+        umull   x1, w12, w10
+        ldr     x3, [tmpb+24]
+        mov     v17.s[1], w3
+        lsr     x3, x3, #32
+        mov     v18.s[1], w3
+        add     x25, x9, x28, lsr #25
+        ldr     x15, [pointx+16]
+        mov     v14.s[0], w15
+        lsr     x15, x15, #32
+        mov     v15.s[0], w15
+        umaddl  x19, w5, w21, x2
+        usra    v9.2D, v16.2D, #26              // ubignum_of_hreglist 8 + ubignum_of_lreglist 8 // INTERMEDIATE H|L = x5|t3
+        add     x2, x4, x25, lsr #26
+        ldr     x3, [tmpb+32]
+        mov     v24.s[1], w3
+        lsr     x3, x3, #32
+        mov     v25.s[1], w3
+        umull   x3, w12, w23
+        ldr     x15, [pointx+24]
+        mov     v17.s[0], w15
+        lsr     x15, x15, #32
+        mov     v18.s[0], w15
+        add     x29, x19, x2, lsr #25
+        umull   v26.2D, v0.2S, v23.2S
+        and     x21, x28, #0x1ffffff            // ubignum_of_xreglist 3 // INTERMEDIATE bce
+        ldr     x0, [tmpa+8]
+        mov     v2.s[1], w0
+        lsr     x0, x0, #32
+        mov     v3.s[1], w0
+        umaddl  x27, w21, w5, x3
+        ldr     x15, [pointx+32]
+        mov     v24.s[0], w15
+        lsr     x15, x15, #32
+        mov     v25.s[0], w15
+        add     x17, x24, x29, lsr #26
+        umull   v29.2D, v1.2S, v18.2S
+        and     x15, x8, #0x3ffffff             // ubignum_of_xreglist 2 // INTERMEDIATE bce
+        umull   v20.2D, v0.2S, v15.2S
+        add     x19, x30, x17, lsr #25
+        and     x3, x17, #0x1ffffff             // ubignum_of_xreglist 7 // INTERMEDIATE bce
+        mul     v12.2S, v25.2S, v31.2S
+        ldr     x0, [tmpa+16]
+        mov     v4.s[1], w0
+        lsr     x0, x0, #32
+        mov     v5.s[1], w0
+        add     x4, x20, x19, lsr #26           // ubignum_of_xreglist 9 // INTERMEDIATE bce
+        umlal   v26.2D, v2.2S, v11.2S
+        add     w28, w3, w3, lsl #1;
+        umlal   v20.2D, v2.2S, v23.2S
+        add     w28, w28, w3, lsl #4
+        umull   x8, w12, w5
+        ldr     x0, [tmpa+24]
+        mov     v6.s[1], w0
+        lsr     x0, x0, #32
+        mov     v7.s[1], w0
+        and     x30, x25, #0x3ffffff            // ubignum_of_xreglist 4 // INTERMEDIATE bce
+        mul     v16.2S, v18.2S, v31.2S
+        add     w17, w4, w4, lsl #1;
+        umull   v21.2D, v1.2S, v15.2S
+        add     w17, w17, w4, lsl #4
+        umaddl  x25, w21, w7, x8
+        umlal   v20.2D, v4.2S, v11.2S
+        add     w8, w21, w21, lsl #1;
+        ldr     x0, [tmpa+32]
+        add     w8, w8, w21, lsl #4
+        mov     v8.s[1], w0
+        lsr     x0, x0, #32
+        mov     v9.s[1], w0
+        and     x2, x2, #0x1ffffff              // ubignum_of_xreglist 5 // INTERMEDIATE bce
+        umlal   v29.2D, v3.2S, v15.2S
+        umaddl  x24, w2, w6, x25
+        umull   v13.2D, v0.2S, v25.2S
+        umaddl  x25, w2, w7, x27
+        umaddl  x0, w3, w6, x25
+        mul     v19.2S, v15.2S, v31.2S
+        umull   v27.2D, v0.2S, v18.2S
+        umaddl  x20, w3, w13, x24
+        umlal   v20.2D, v6.2S, v12.2S
+        umaddl  x24, w21, w14, x1
+        umlal   v13.2D, v2.2S, v18.2S
+        umaddl  x9, w4, w13, x0
+        umull   v25.2D, v0.2S, v11.2S
+        umaddl  x20, w17, w23, x20
+        umlal   v27.2D, v2.2S, v15.2S
+        umaddl  x0, w2, w26, x24
+        umull   v28.2D, v1.2S, v11.2S
+        umull   x24, w17, w5
+        umlal   v29.2D, v5.2S, v23.2S
+        umaddl  x9, w11, w22, x9
+        umlal   v13.2D, v4.2S, v15.2S
+        umaddl  x27, w3, w16, x0
+        umlal   v27.2D, v4.2S, v23.2S
+        umull   x0, w17, w14
+        umlal   v27.2D, v6.2S, v11.2S
+        umull   x4, w12, w14
+        umlal   v27.2D, v8.2S, v12.2S
+        umaddl  x25, w11, w10, x20
+        umlal   v27.2D, v1.2S, v17.2S
+        umaddl  x0, w28, w10, x0
+        umlal   v13.2D, v6.2S, v23.2S
+        umull   x3, w17, w6
+        umlal   v13.2D, v8.2S, v11.2S
+        umaddl  x1, w21, w26, x4
+        umlal   v20.2D, v8.2S, v16.2S
+        umaddl  x4, w2, w13, x24
+        umlal   v28.2D, v3.2S, v12.2S
+        umaddl  x20, w28, w7, x3
+        umlal   v29.2D, v7.2S, v11.2S
+        and     x3, x19, #0x3ffffff             // ubignum_of_xreglist 9 // INTERMEDIATE bce
+        umlal   v29.2D, v9.2S, v12.2S
+        umaddl  x19, w17, w22, x27
+        add     w27, w2, w2, lsl #1;
+        mul     v18.2S, v24.2S, v31.2S
+        add     w27, w27, w2, lsl #4
+        umlal   v21.2D, v3.2S, v23.2S
+        umull   x24, w17, w7
+        umlal   v13.2D, v1.2S, v24.2S
+        add     x19, x19, x19
+        shl     v29.2D, v29.2D, #1
+        umaddl  x1, w2, w16, x1
+        umull   v15.2D, v1.2S, v23.2S
+        umaddl  x0, w27, w22, x0
+        umlal   v29.2D, v0.2S, v24.2S
+        umaddl  x2, w28, w5, x24
+        mul     v24.2S, v23.2S, v31.2S
+        umaddl  x4, w28, w23, x4
+        umlal   v21.2D, v5.2S, v11.2S
+        umaddl  x24, w27, w5, x20
+        umlal   v20.2D, v1.2S, v14.2S
+        umaddl  x20, w11, w23, x19
+        umlal   v26.2D, v4.2S, v12.2S
+        umaddl  x19, w27, w23, x2
+        umlal   v26.2D, v6.2S, v16.2S
+        umaddl  x2, w21, w6, x4
+        umlal   v29.2D, v2.2S, v17.2S
+        umaddl  x24, w8, w23, x24
+        umlal   v15.2D, v3.2S, v11.2S
+        umaddl  x0, w21, w16, x0
+        umaddl  x4, w21, w13, x19
+        mul     v23.2S, v11.2S, v31.2S
+        umlal   v20.2D, v3.2S, v22.2S
+        umaddl  x2, w12, w7, x2
+        umlal   v20.2D, v5.2S, v10.2S
+        umaddl  x19, w12, w26, x0
+        umlal   v29.2D, v4.2S, v14.2S
+        umaddl  x0, w12, w13, x24
+        umlal   v26.2D, v8.2S, v19.2S
+        umaddl  x20, w15, w5, x20
+        umlal   v26.2D, v1.2S, v22.2S
+        umaddl  x21, w15, w10, x9
+        umlal   v26.2D, v3.2S, v10.2S
+        and     x9, x29, #0x3ffffff             // ubignum_of_xreglist 6 // INTERMEDIATE bce
+        umlal   v29.2D, v6.2S, v22.2S
+        umaddl  x20, w30, w7, x20
+        umaddl  x1, w28, w22, x1
+        add     x24, x19, x19
+        umull   v11.2D, v1.2S, v12.2S
+        add     w19, w3, w3, lsl #1;
+        umlal   v26.2D, v5.2S, v18.2S
+        add     w19, w19, w3, lsl #4
+        umaddl  x20, w9, w6, x20
+        umlal   v29.2D, v8.2S, v10.2S
+        add     w29, w9, w9, lsl #1;
+        umlal   v13.2D, v3.2S, v17.2S
+        add     w29, w29, w9, lsl #4
+        umaddl  x2, w19, w10, x2
+        umlal   v11.2D, v3.2S, v16.2S
+        umaddl  x21, w30, w14, x21
+        umlal   v11.2D, v5.2S, v19.2S
+        umaddl  x20, w3, w13, x20
+        umlal   v11.2D, v7.2S, v24.2S
+        umaddl  x2, w29, w22, x2
+        umlal   v11.2D, v9.2S, v23.2S
+        umaddl  x21, w9, w26, x21
+        ushr    v23.2D, v30.2D, #1
+        umaddl  x1, w17, w10, x1
+        umlal   v13.2D, v5.2S, v14.2S
+        umaddl  x24, w19, w5, x24
+        umlal   v27.2D, v3.2S, v14.2S
+        umaddl  x21, w3, w16, x21
+        shl     v11.2D, v11.2D, #1
+        add     w3, w30, w30, lsl #1;
+        umlal   v28.2D, v5.2S, v16.2S
+        add     w3, w3, w30, lsl #4
+        umaddl  x24, w29, w23, x24
+        umlal   v28.2D, v7.2S, v19.2S
+        add     x1, x1, x1
+        umlal   v28.2D, v9.2S, v24.2S
+        umaddl  x1, w11, w5, x1
+        umlal   v15.2D, v5.2S, v12.2S
+        umaddl  x24, w30, w13, x24
+        umlal   v15.2D, v7.2S, v16.2S
+        umaddl  x25, w15, w14, x25
+        umlal   v15.2D, v9.2S, v19.2S
+        umaddl  x1, w15, w7, x1
+        shl     v28.2D, v28.2D, #1
+        umaddl  x24, w15, w6, x24
+        umlal   v21.2D, v7.2S, v12.2S
+        umaddl  x2, w30, w16, x2
+        umlal   v21.2D, v9.2S, v16.2S
+        umaddl  x25, w30, w26, x25
+        shl     v15.2D, v15.2D, #1
+        umaddl  x30, w30, w6, x1
+        umlal   v28.2D, v0.2S, v22.2S
+        umaddl  x1, w15, w26, x2
+        umlal   v28.2D, v2.2S, v10.2S
+        umaddl  x2, w9, w16, x25
+        shl     v21.2D, v21.2D, #1
+        umaddl  x24, w11, w7, x24
+        umlal   v15.2D, v0.2S, v14.2S
+        umaddl  x1, w11, w14, x1
+        umlal   v21.2D, v0.2S, v17.2S
+        umaddl  x25, w9, w13, x30
+        umlal   v28.2D, v4.2S, v18.2S
+        umaddl  x0, w19, w26, x0
+        umlal   v25.2D, v2.2S, v12.2S
+        add     x1, x1, x24, lsr #26
+        umlal   v25.2D, v4.2S, v16.2S
+        umaddl  x30, w19, w22, x2
+        umlal   v21.2D, v2.2S, v14.2S
+        umaddl  x4, w12, w6, x4
+        mul     v14.2S, v14.2S, v31.2S
+        umaddl  x25, w19, w23, x25
+        and     x2, x1, #0x1ffffff
+        mul     v16.2S, v17.2S, v31.2S
+        umlal   v25.2D, v6.2S, v19.2S
+        umaddl  x9, w19, w14, x4
+        umlal   v13.2D, v7.2S, v22.2S
+        add     x25, x25, x1, lsr #25
+        umlal   v21.2D, v4.2S, v22.2S
+        umaddl  x0, w29, w14, x0
+        umlal   v26.2D, v7.2S, v16.2S
+        add     x30, x30, x25, lsr #26
+        umlal   v26.2D, v9.2S, v14.2S
+        add     w1, w15, w15, lsl #1;
+        umlal   v28.2D, v6.2S, v16.2S
+        add     w1, w1, w15, lsl #4
+        add     x4, x20, x30, lsr #25
+        umlal   v28.2D, v8.2S, v14.2S
+        and     x25, x25, #0x3ffffff
+        umlal   v15.2D, v2.2S, v22.2S
+        add     x21, x21, x4, lsr #26
+        umlal   v11.2D, v0.2S, v10.2S
+        bfi     x25, x30, #32, #25              // ubignum_of_preglist 3 // INTERMEDIATE z4
+        umlal   v11.2D, v2.2S, v18.2S
+        bic     x30, x21, #0x3ffffff
+        usra    v26.2D, v28.2D, #26
+        lsr     x20, x30, #26
+        umlal   v15.2D, v4.2S, v10.2S
+        add     x20, x20, x30, lsr #25
+        umlal   v15.2D, v6.2S, v18.2S
+        umaddl  x9, w29, w10, x9
+        umlal   v15.2D, v8.2S, v16.2S
+        add     x30, x20, x30, lsr #22
+        umlal   v27.2D, v5.2S, v22.2S
+        umull   x20, w17, w26
+        umlal   v20.2D, v7.2S, v18.2S
+        umaddl  x30, w17, w16, x30
+        umlal   v20.2D, v9.2S, v16.2S
+        umaddl  x17, w3, w10, x0
+        usra    v15.2D, v26.2D, #25
+        umaddl  x0, w28, w14, x20
+        umlal   v27.2D, v7.2S, v10.2S
+        umaddl  x20, w28, w26, x30
+        umlal   v27.2D, v9.2S, v18.2S
+        add     w28, w12, w12, lsl #1;
+        usra    v20.2D, v15.2D, #26
+        add     w28, w28, w12, lsl #4
+        umaddl  x30, w27, w10, x0
+        and     v17.16B, v15.16B, v30.16B       // ubignum_of_hreglist 4 + ubignum_of_lreglist 4 // INTERMEDIATE H|L = x4|z5
+        umaddl  x27, w27, w14, x20
+        umaddl  x0, w8, w10, x27
+        mul     v12.2S, v22.2S, v31.2S
+        and     v15.16B, v20.16B, v23.16B       // ubignum_of_hreglist 5 + ubignum_of_lreglist 5 // INTERMEDIATE H|L = x4|z5
+        umaddl  x14, w3, w22, x9
+        umlal   v21.2D, v6.2S, v10.2S
+        umaddl  x27, w8, w22, x30
+        trn1    v15.4S, v17.4S, v15.4S          // FINAL z3
+        umaddl  x10, w28, w22, x0
+        umlal   v11.2D, v4.2S, v16.2S
+        umaddl  x30, w15, w16, x14
+        and     v26.16B, v26.16B, v23.16B
+        umaddl  x28, w12, w16, x27
+        umlal   v21.2D, v8.2S, v18.2S
+        add     x10, x10, x10
+        umlal   v25.2D, v8.2S, v24.2S
+        umaddl  x20, w19, w6, x10
+        umlal   v25.2D, v1.2S, v10.2S
+        add     x28, x28, x28
+        umlal   v25.2D, v3.2S, v18.2S
+        umaddl  x28, w19, w7, x28
+        usra    v21.2D, v20.2D, #25
+        umaddl  x0, w29, w7, x20
+        umlal   v11.2D, v6.2S, v14.2S
+        umaddl  x10, w11, w26, x30
+        umlal   v13.2D, v9.2S, v10.2S
+        umaddl  x19, w29, w5, x28
+        usra    v27.2D, v21.2D, #26
+        umaddl  x0, w3, w5, x0
+        umlal   v25.2D, v5.2S, v16.2S
+        umaddl  x20, w1, w22, x17
+        and     v20.16B, v28.16B, v30.16B
+        umaddl  x29, w3, w23, x19
+        usra    v29.2D, v27.2D, #25
+        umaddl  x3, w1, w23, x0
+        and     v27.16B, v27.16B, v23.16B       // ubignum_of_hreglist 7 + ubignum_of_lreglist 7 // INTERMEDIATE H|L = x4|z5
+        umlal   v11.2D, v8.2S, v12.2S
+        umaddl  x12, w15, w13, x29
+        usra    v13.2D, v29.2D, #26
+        umaddl  x7, w11, w13, x3
+        trn1    v6.4S, v6.4S, v7.4S
+        umaddl  x17, w11, w16, x20
+        umlal   v25.2D, v7.2S, v14.2S
+        and     x23, x4, #0x3ffffff
+        bic     v19.16B, v13.16B, v23.16B
+        umaddl  x19, w11, w6, x12
+        and     v28.16B, v13.16B, v23.16B       // ubignum_of_hreglist 9 + ubignum_of_lreglist 9 // INTERMEDIATE H|L = x4|z5
+        add     x3, x17, x7, lsr #26
+        usra    v11.2D, v19.2D, #25
+        trn1    v2.4S, v2.4S, v3.4S
+        add     x17, x19, x3, lsr #25
+        and     v13.16B, v21.16B, v30.16B       // ubignum_of_hreglist 6 + ubignum_of_lreglist 6 // INTERMEDIATE H|L = x4|z5
+        and     x5, x7, #0x3ffffff
+        usra    v11.2D, v19.2D, #24
+        add     x7, x10, x17, lsr #26
+        trn1    v0.4S, v0.4S, v1.4S
+        and     x19, x24, #0x3ffffff
+        and     v21.16B, v29.16B, v30.16B       // ubignum_of_hreglist 8 + ubignum_of_lreglist 8 // INTERMEDIATE H|L = x4|z5
+        add     x29, x19, x7, lsr #25
+        usra    v11.2D, v19.2D, #21
+        bfi     x5, x3, #32, #25                // ubignum_of_preglist 0 // INTERMEDIATE z4
+        trn1    v17.4S, v13.4S, v27.4S          // FINAL z3
+        add     x19, x2, x29, lsr #26
+        trn1    v19.4S, v21.4S, v28.4S          // FINAL z3
+        and     x3, x29, #0x3ffffff
+        mov     v16.d[0], v6.d[1]               // FINAL x3
+        mov     v6.d[0], v17.d[1]               // FINAL x2
+        trn1    v8.4S, v8.4S, v9.4S
+        bfi     x3, x19, #32, #26               // ubignum_of_preglist 2 // INTERMEDIATE z4
+        and     v21.16B, v11.16B, v30.16B       // ubignum_of_hreglist 0 + ubignum_of_lreglist 0 // INTERMEDIATE H|L = x4|z5
+        bfi     x23, x21, #32, #26              // ubignum_of_preglist 4 // INTERMEDIATE z4
+        mov     v18.d[0], v8.d[1]               // FINAL x3
+        mov     v8.d[0], v19.d[1]               // FINAL x2
+        umlal   v25.2D, v9.2S, v12.2S
+        mov     v9.d[0], x23                    // FINAL z2
+        mov     v7.d[0], x25                    // FINAL z2
+        ldr     d29, [mask1]
+        mov     v12.d[0], v2.d[1]               // FINAL x3
+        trn1    v4.4S, v4.4S, v5.4S
+        and     x17, x17, #0x3ffffff
+        usra    v25.2D, v11.2D, #26
+        mov     v10.d[0], v0.d[1]               // FINAL x3
+        mov     v14.d[0], v4.d[1]               // FINAL x3
+        mov     v4.d[0], v15.d[1]               // FINAL x2
+        usra    v20.2D, v25.2D, #25
+        and     v27.16B, v25.16B, v23.16B       // ubignum_of_hreglist 1 + ubignum_of_lreglist 1 // INTERMEDIATE H|L = x4|z5
+        bfi     x17, x7, #32, #25               // ubignum_of_preglist 1 // INTERMEDIATE z4
+        mov     v5.d[0], x3                     // depth 86
+        mov     v1.d[0], x5                     // FINAL z2
+        usra    v26.2D, v20.2D, #26             // ubignum_of_hreglist 3 + ubignum_of_lreglist 3 // INTERMEDIATE H|L = x4|z5
+        and     v28.16B, v20.16B, v30.16B       // ubignum_of_hreglist 2 + ubignum_of_lreglist 2 // INTERMEDIATE H|L = x4|z5
+        trn1    v11.4S, v21.4S, v27.4S          // FINAL z3
+        trn1    v13.4S, v28.4S, v26.4S          // FINAL z3
+        mov     v0.d[0], v11.d[1]               // FINAL x2
+        mov     v3.d[0], x17                    // FINAL z2
+        mov     v2.d[0], v13.d[1]               // FINAL x2
+        ldr     d28, [mask2]
 
-        mul_4(dnsm,sm,dn)
-
-// DOUBLING: d = (xt - zt)^2
-
-        sqr_4(d,d)
-
-// ADDING: dpro = (dmsn - dnsm)^2, spro = (dmsn + dnsm)^2
-// DOUBLING: s = (xt + zt)^2
-
-        sub_twice4(dpro,dmsn,dnsm)
-        sqr_4(s,s)
-        add_twice4(spro,dmsn,dnsm)
-        sqr_4(dpro,dpro)
-
-// DOUBLING: p = 4 * xt * zt = s - d
-
-        sub_twice4(p,s,d)
-
-// ADDING: xm' = (dmsn + dnsm)^2
-
-        sqr_4(xm,spro)
-
-// DOUBLING: e = 121666 * p + d
-
-        mov     x1, 0xdb42
-        orr     x1, x1, 0x10000
-        cmadd_4(e,p,d)
-
-// DOUBLING: xn' = (xt + zt)^2 * (xt - zt)^2 = s * d
-
-        mul_4(xn,s,d)
-
-// ADDING: zm' = x * (dmsn - dnsm)^2
-
-        mul_4(zm,dpro,pointx)
-
-// DOUBLING: zn' = (4 * xt * zt) * ((xt - zt)^2 + 121666 * (4 * xt * zt))
-//               = p * (d + 121666 * p)
-
-        mul_4(zn,p,e)
-
-// Loop down as far as 3 (inclusive)
-
-        sub     i, i, #1
-        cmp     i, #3
+        ldr     x0, [i]
+        subs    x0, x0, #1
+        str     x0, [i]
         bcs     curve25519_x25519_byte_scalarloop
 
-// Multiplex directly into (xn,zn) then do three pure doubling steps;
-// this accounts for the implicit zeroing of the three lowest bits
-// of the scalar. On the very last doubling we *fully* reduce zn mod
-// p_25519 to ease checking for degeneracy below.
+// Repack X2 into the saturated representation as 256-bit value xn.
+// This does not fully normalize mod 2^255-19 but stays within 256 bits.
 
-        cmp     swap, xzr
-        mux_4(xn,xm,xn)
-        mux_4(zn,zm,zn)
+        mov     w0, v0.s[0]
+        mov     w1, v0.s[1]
+        mov     w2, v2.s[0]
+        mov     w3, v2.s[1]
+        mov     w4, v4.s[0]
+        mov     w5, v4.s[1]
+        mov     w6, v6.s[0]
+        mov     w7, v6.s[1]
+        mov     w8, v8.s[0]
+        mov     w9, v8.s[1]
 
-        sub_twice4(d,xn,zn)
-        add_twice4(s,xn,zn)
-        sqr_4(d,d)
-        sqr_4(s,s)
-        sub_twice4(p,s,d)
-        mov     x1, 0xdb42
-        orr     x1, x1, 0x10000
-        cmadd_4(e,p,d)
-        mul_4(xn,s,d)
-        mul_4(zn,p,e)
+        add     x0, x0, x1, lsl #26
+        add     x1, x2, x3, lsl #26
+        add     x2, x4, x5, lsl #26
+        add     x3, x6, x7, lsl #26
+        add     x4, x8, x9, lsl #26
 
-        sub_twice4(d,xn,zn)
-        add_twice4(s,xn,zn)
-        sqr_4(d,d)
-        sqr_4(s,s)
-        sub_twice4(p,s,d)
-        mov     x1, 0xdb42
-        orr     x1, x1, 0x10000
-        cmadd_4(e,p,d)
-        mul_4(xn,s,d)
-        mul_4(zn,p,e)
+        adds    x0, x0, x1, lsl #51
+        lsr     x6, x1, #13
+        lsl     x7, x2, #38
+        adcs    x1, x6, x7
+        lsr     x8, x2, #26
+        lsl     x9, x3, #25
+        adcs    x2, x8, x9
+        lsr     x10, x3, #39
+        lsl     x11, x4, #12
+        adc     x3, x10, x11
+        stp     x0, x1, [xn]
+        stp     x2, x3, [xn+16]
 
-        sub_twice4(d,xn,zn)
-        add_twice4(s,xn,zn)
-        sqr_4(d,d)
-        sqr_4(s,s)
-        sub_twice4(p,s,d)
-        mov     x1, 0xdb42
-        orr     x1, x1, 0x10000
-        cmadd_4(e,p,d)
-        mul_4(xn,s,d)
-        mul_p25519(zn,p,e)
+// Repack Z2 into the saturated representation as 256-bit value zn.
+// This does not fully normalize mod 2^255-19. However since Z2,
+// unlike X2, was not repacked (within the last multiplication) in
+// right-to-left order, its top digit can be any 26-bit value, on
+// the face of it. To make sure we don't overflow 256 bits here
+// we remove b = 25th bit of the 9th digit (now scaled by 2^230
+// giving bit 25 a final weighting of 2^255) and add 19 * b to
+// to the bottom of the sum here to compensate mod 2^255-19.
 
-// The projective result of the scalar multiplication is now (xn,zn).
-// Prepare to call the modular inverse function to get xm = 1/zn
+        mov     w0, v1.s[0]
+        mov     w1, v1.s[1]
+        mov     w2, v3.s[0]
+        mov     w3, v3.s[1]
+        mov     w4, v5.s[0]
+        mov     w5, v5.s[1]
+        mov     w6, v7.s[0]
+        mov     w7, v7.s[1]
+        mov     w8, v9.s[0]
+        mov     w9, v9.s[1]
 
-        add     x0, xm
+        mov     w10, #19
+        add     x0, x0, x1, lsl #26
+        tst     x9, #0x2000000
+        add     x1, x2, x3, lsl #26
+        csel    x10, x10, xzr, ne
+        add     x2, x4, x5, lsl #26
+        and     x9, x9, #0x1FFFFFF
+        add     x3, x6, x7, lsl #26
+        add     x0, x0, x10
+        add     x4, x8, x9, lsl #26
+
+        adds    x0, x0, x1, lsl #51
+        lsr     x6, x1, #13
+        lsl     x7, x2, #38
+        adcs    x1, x6, x7
+        lsr     x8, x2, #26
+        lsl     x9, x3, #25
+        adcs    x2, x8, x9
+        lsr     x10, x3, #39
+        lsl     x11, x4, #12
+        adc     x3, x10, x11
+        stp     x0, x1, [zn]
+        stp     x2, x3, [zn+16]
+
+// Because the lowest bit (indeed, the three lowest bits) of the scalar
+// were forced to zero, we know that the projective result of the scalar
+// multiplication was in (X2,Z2) and is now (xn,zn) in saturated form.
+// Prepare to call the modular inverse function to get zn' = 1/zn.
+
+        add     x0, zn
         add     x1, zn
 
 // Inline copy of bignum_inv_p25519, identical except for stripping out
@@ -978,7 +1466,7 @@ curve25519_x25519_byte_scalarloop:
 // and reclaiming room on the stack. For more details and explanations see
 // "arm/curve25519/bignum_inv_p25519.S". Note that the stack it uses for
 // its own temporaries is 128 bytes, so it has no effect on variables
-// that are needed in the rest of our computation here: res, xm and zn.
+// that are needed in the rest of our computation here: res, xn, and zn.
 
         mov     x20, x0
         mov     x10, #0xffffffffffffffed
@@ -2009,102 +2497,278 @@ curve25519_x25519_byte_invmidloop:
         stp     x0, x1, [x4]
         stp     x2, x5, [x4, #16]
 
-// Since we eventually want to return 0 when the result is the point at
-// infinity, we force xn = 0 whenever zn = 0. This avoids building in a
-// dependency on the behavior of modular inverse in out-of-scope cases.
-
-        ldp     x0, x1, [zn]
-        ldp     x2, x3, [zn+16]
-        orr     x0, x0, x1
-        orr     x2, x2, x3
-        orr     x4, x0, x2
-        cmp     x4, xzr
-        ldp     x0, x1, [xn]
-        csel    x0, x0, xzr, ne
-        csel    x1, x1, xzr, ne
-        ldp     x2, x3, [xn+16]
-        stp     x0, x1, [xn]
-        csel    x2, x2, xzr, ne
-        csel    x3, x3, xzr, ne
-        stp     x2, x3, [xn+16]
-
 // Now the result is xn * (1/zn), fully reduced modulo p.
+// Note that in the degenerate case zn = 0 (mod p_25519), the
+// modular inverse code above will produce 1/zn = 0, giving
+// the correct overall X25519 result of zero for the point at
+// infinity. The multiplication below is just an inlined
+// version of bignum_mul_p25519 except for the detailed
+// addressing of inputs and outputs
 
-        mul_p25519(zn,xn,xm)
+        ldp     x3, x4, [xn]
+        ldp     x5, x6, [zn]
+        umull   x7, w3, w5
+        lsr     x0, x3, #32
+        umull   x15, w0, w5
+        lsr     x16, x5, #32
+        umull   x8, w16, w0
+        umull   x16, w3, w16
+        adds    x7, x7, x15, lsl #32
+        lsr     x15, x15, #32
+        adc     x8, x8, x15
+        adds    x7, x7, x16, lsl #32
+        lsr     x16, x16, #32
+        adc     x8, x8, x16
+        mul     x9, x4, x6
+        umulh   x10, x4, x6
+        subs    x4, x4, x3
+        cneg    x4, x4, cc
+        csetm   x16, cc
+        adds    x9, x9, x8
+        adc     x10, x10, xzr
+        subs    x3, x5, x6
+        cneg    x3, x3, cc
+        cinv    x16, x16, cc
+        mul     x15, x4, x3
+        umulh   x3, x4, x3
+        adds    x8, x7, x9
+        adcs    x9, x9, x10
+        adc     x10, x10, xzr
+        cmn     x16, #0x1
+        eor     x15, x15, x16
+        adcs    x8, x15, x8
+        eor     x3, x3, x16
+        adcs    x9, x3, x9
+        adc     x10, x10, x16
+        ldp     x3, x4, [xn+16]
+        ldp     x5, x6, [zn+16]
+        umull   x11, w3, w5
+        lsr     x0, x3, #32
+        umull   x15, w0, w5
+        lsr     x16, x5, #32
+        umull   x12, w16, w0
+        umull   x16, w3, w16
+        adds    x11, x11, x15, lsl #32
+        lsr     x15, x15, #32
+        adc     x12, x12, x15
+        adds    x11, x11, x16, lsl #32
+        lsr     x16, x16, #32
+        adc     x12, x12, x16
+        mul     x13, x4, x6
+        umulh   x14, x4, x6
+        subs    x4, x4, x3
+        cneg    x4, x4, cc
+        csetm   x16, cc
+        adds    x13, x13, x12
+        adc     x14, x14, xzr
+        subs    x3, x5, x6
+        cneg    x3, x3, cc
+        cinv    x16, x16, cc
+        mul     x15, x4, x3
+        umulh   x3, x4, x3
+        adds    x12, x11, x13
+        adcs    x13, x13, x14
+        adc     x14, x14, xzr
+        cmn     x16, #0x1
+        eor     x15, x15, x16
+        adcs    x12, x15, x12
+        eor     x3, x3, x16
+        adcs    x13, x3, x13
+        adc     x14, x14, x16
+        ldp     x3, x4, [xn+16]
+        ldp     x15, x16, [xn]
+        subs    x3, x3, x15
+        sbcs    x4, x4, x16
+        csetm   x16, cc
+        ldp     x15, x0, [zn]
+        subs    x5, x15, x5
+        sbcs    x6, x0, x6
+        csetm   x0, cc
+        eor     x3, x3, x16
+        subs    x3, x3, x16
+        eor     x4, x4, x16
+        sbc     x4, x4, x16
+        eor     x5, x5, x0
+        subs    x5, x5, x0
+        eor     x6, x6, x0
+        sbc     x6, x6, x0
+        eor     x16, x0, x16
+        adds    x11, x11, x9
+        adcs    x12, x12, x10
+        adcs    x13, x13, xzr
+        adc     x14, x14, xzr
+        mul     x2, x3, x5
+        umulh   x0, x3, x5
+        mul     x15, x4, x6
+        umulh   x1, x4, x6
+        subs    x4, x4, x3
+        cneg    x4, x4, cc
+        csetm   x9, cc
+        adds    x15, x15, x0
+        adc     x1, x1, xzr
+        subs    x6, x5, x6
+        cneg    x6, x6, cc
+        cinv    x9, x9, cc
+        mul     x5, x4, x6
+        umulh   x6, x4, x6
+        adds    x0, x2, x15
+        adcs    x15, x15, x1
+        adc     x1, x1, xzr
+        cmn     x9, #0x1
+        eor     x5, x5, x9
+        adcs    x0, x5, x0
+        eor     x6, x6, x9
+        adcs    x15, x6, x15
+        adc     x1, x1, x9
+        adds    x9, x11, x7
+        adcs    x10, x12, x8
+        adcs    x11, x13, x11
+        adcs    x12, x14, x12
+        adcs    x13, x13, xzr
+        adc     x14, x14, xzr
+        cmn     x16, #0x1
+        eor     x2, x2, x16
+        adcs    x9, x2, x9
+        eor     x0, x0, x16
+        adcs    x10, x0, x10
+        eor     x15, x15, x16
+        adcs    x11, x15, x11
+        eor     x1, x1, x16
+        adcs    x12, x1, x12
+        adcs    x13, x13, x16
+        adc     x14, x14, x16
+        mov     x3, #0x26
+        umull   x4, w11, w3
+        add     x4, x4, w7, uxtw
+        lsr     x7, x7, #32
+        lsr     x11, x11, #32
+        umaddl  x11, w11, w3, x7
+        mov     x7, x4
+        umull   x4, w12, w3
+        add     x4, x4, w8, uxtw
+        lsr     x8, x8, #32
+        lsr     x12, x12, #32
+        umaddl  x12, w12, w3, x8
+        mov     x8, x4
+        umull   x4, w13, w3
+        add     x4, x4, w9, uxtw
+        lsr     x9, x9, #32
+        lsr     x13, x13, #32
+        umaddl  x13, w13, w3, x9
+        mov     x9, x4
+        umull   x4, w14, w3
+        add     x4, x4, w10, uxtw
+        lsr     x10, x10, #32
+        lsr     x14, x14, #32
+        umaddl  x14, w14, w3, x10
+        mov     x10, x4
+        lsr     x0, x14, #31
+        mov     x5, #0x13
+        umaddl  x5, w5, w0, x5
+        add     x7, x7, x5
+        adds    x7, x7, x11, lsl #32
+        extr    x3, x12, x11, #32
+        adcs    x8, x8, x3
+        extr    x3, x13, x12, #32
+        adcs    x9, x9, x3
+        extr    x3, x14, x13, #32
+        lsl     x5, x0, #63
+        eor     x10, x10, x5
+        adc     x10, x10, x3
+        mov     x3, #0x13
+        tst     x10, #0x8000000000000000
+        csel    x3, x3, xzr, pl
+        subs    x7, x7, x3
+        sbcs    x8, x8, xzr
+        sbcs    x9, x9, xzr
+        sbc     x10, x10, xzr
+        and     x10, x10, #0x7fffffffffffffff
+        stp     x7, x8, [zn]
+        stp     x9, x10, [zn+16]
+
+// Now copy bytewise to the output
+
+        ldr     x17, [res]
 
         ldp     x10, x11, [zn]
-        strb    w10, [resx]
+        strb    w10, [x17]
         lsr     x10, x10, #8
-        strb    w10, [resx+1]
+        strb    w10, [x17, #1]
         lsr     x10, x10, #8
-        strb    w10, [resx+2]
+        strb    w10, [x17, #2]
         lsr     x10, x10, #8
-        strb    w10, [resx+3]
+        strb    w10, [x17, #3]
         lsr     x10, x10, #8
-        strb    w10, [resx+4]
+        strb    w10, [x17, #4]
         lsr     x10, x10, #8
-        strb    w10, [resx+5]
+        strb    w10, [x17, #5]
         lsr     x10, x10, #8
-        strb    w10, [resx+6]
+        strb    w10, [x17, #6]
         lsr     x10, x10, #8
-        strb    w10, [resx+7]
+        strb    w10, [x17, #7]
 
-        strb    w11, [resx+8]
+        strb    w11, [x17, #8]
         lsr     x11, x11, #8
-        strb    w11, [resx+9]
+        strb    w11, [x17, #9]
         lsr     x11, x11, #8
-        strb    w11, [resx+10]
+        strb    w11, [x17, #10]
         lsr     x11, x11, #8
-        strb    w11, [resx+11]
+        strb    w11, [x17, #11]
         lsr     x11, x11, #8
-        strb    w11, [resx+12]
+        strb    w11, [x17, #12]
         lsr     x11, x11, #8
-        strb    w11, [resx+13]
+        strb    w11, [x17, #13]
         lsr     x11, x11, #8
-        strb    w11, [resx+14]
+        strb    w11, [x17, #14]
         lsr     x11, x11, #8
-        strb    w11, [resx+15]
+        strb    w11, [x17, #15]
 
         ldp     x12, x13, [zn+16]
-        strb    w12, [resx+16]
+        strb    w12, [x17, #16]
         lsr     x12, x12, #8
-        strb    w12, [resx+17]
+        strb    w12, [x17, #17]
         lsr     x12, x12, #8
-        strb    w12, [resx+18]
+        strb    w12, [x17, #18]
         lsr     x12, x12, #8
-        strb    w12, [resx+19]
+        strb    w12, [x17, #19]
         lsr     x12, x12, #8
-        strb    w12, [resx+20]
+        strb    w12, [x17, #20]
         lsr     x12, x12, #8
-        strb    w12, [resx+21]
+        strb    w12, [x17, #21]
         lsr     x12, x12, #8
-        strb    w12, [resx+22]
+        strb    w12, [x17, #22]
         lsr     x12, x12, #8
-        strb    w12, [resx+23]
+        strb    w12, [x17, #23]
 
-        strb    w13, [resx+24]
+        strb    w13, [x17, #24]
         lsr     x13, x13, #8
-        strb    w13, [resx+25]
+        strb    w13, [x17, #25]
         lsr     x13, x13, #8
-        strb    w13, [resx+26]
+        strb    w13, [x17, #26]
         lsr     x13, x13, #8
-        strb    w13, [resx+27]
+        strb    w13, [x17, #27]
         lsr     x13, x13, #8
-        strb    w13, [resx+28]
+        strb    w13, [x17, #28]
         lsr     x13, x13, #8
-        strb    w13, [resx+29]
+        strb    w13, [x17, #29]
         lsr     x13, x13, #8
-        strb    w13, [resx+30]
+        strb    w13, [x17, #30]
         lsr     x13, x13, #8
-        strb    w13, [resx+31]
+        strb    w13, [x17, #31]
 
-// Restore stack and registers
+// Restore stack and registers (this will zero the tops of Q8...Q15).
 
-        add     sp, sp, #NSPACE
-        ldp     x23, x24, [sp], 16
-        ldp     x21, x22, [sp], 16
-        ldp     x19, x20, [sp], 16
-
+        ldp     d8, d9, [regsave+0]
+        ldp     d10, d11, [regsave+16]
+        ldp     d12, d13, [regsave+32]
+        ldp     d14, d15, [regsave+48]
+        ldp     x19, x20, [regsave+64]
+        ldp     x21, x22, [regsave+80]
+        ldp     x23, x24, [regsave+96]
+        ldp     x25, x26, [regsave+112]
+        ldp     x27, x28, [regsave+128]
+        ldp     x29, x30, [regsave+144]
+        add     sp, sp, #NSPACE+160
         ret
 
 #if defined(__linux__) && defined(__ELF__)
