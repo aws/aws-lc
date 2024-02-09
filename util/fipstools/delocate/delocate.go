@@ -1706,7 +1706,7 @@ func (d *delocation) handleBSS(statement *node32) (*node32, error) {
 		}
 
 		switch node.pegRule {
-		case ruleGlobalDirective, ruleComment, ruleInstruction, ruleLocationDirective:
+		case ruleGlobalDirective, ruleComment, ruleInstruction, ruleLocationDirective, ruleZeroDirective:
 			d.writeNode(statement)
 
 		case ruleDirective:
