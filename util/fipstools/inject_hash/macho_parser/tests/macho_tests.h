@@ -122,22 +122,24 @@ protected:
             LOG_ERROR("Error closing file\n");
         }
 
-        section_info *expected_text_section = (section_info*) malloc(sizeof(section_info));
+        // We use calloc for the below four calls to ensure that the untouched parts are zeroized,
+        // as we will later memcmp the data to what we've read from the file.
+        section_info *expected_text_section = (section_info*) calloc(1, sizeof(section_info));
         strcpy(expected_text_section->name, "__text");
         expected_text_section->size = text_section_size;
         expected_text_section->offset = text_section_offset;
 
-        section_info *expected_const_section = (section_info*) malloc(sizeof(section_info));
+        section_info *expected_const_section = (section_info*) calloc(1, sizeof(section_info));
         strcpy(expected_const_section->name, "__const");
         expected_const_section->size = const_section_size;
         expected_const_section->offset = const_section_offset;
 
-        section_info *expected_symbol_table = (section_info*) malloc(sizeof(section_info));
+        section_info *expected_symbol_table = (section_info*) calloc(1, sizeof(section_info));
         strcpy(expected_symbol_table->name, "__symbol_table");
         expected_symbol_table->size = num_syms * sizeof(symbol_info);
         expected_symbol_table->offset = symtab_command_symoff;
 
-        section_info *expected_string_table = (section_info*) malloc(sizeof(section_info));
+        section_info *expected_string_table = (section_info*) calloc(1, sizeof(section_info));
         strcpy(expected_string_table->name, "__string_table");
         expected_string_table->size = symtab_command_strsize;
         expected_string_table->offset = symtab_command_stroff;
