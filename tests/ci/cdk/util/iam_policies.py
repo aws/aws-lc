@@ -107,7 +107,7 @@ def code_build_cloudwatch_logs_policy_in_json(log_groups):
     """
     resources = []
     for log_group in log_groups:
-        resources.append("arn:aws:logs:{}:{}:log-group:{}:*".format(AWS_REGION, AWS_ACCOUNT, log_group))
+        resources.append(log_group.log_group_arn)
     return {
         "Version": "2012-10-17",
         "Statement": [

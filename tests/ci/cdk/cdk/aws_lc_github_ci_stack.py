@@ -38,7 +38,7 @@ class AwsLcGitHubCIStack(Stack):
         # Define a IAM role for accessing build resources
         log_group = logs.LogGroup(self, id="{}-public-logs".format(id))
         code_build_cloudwatch_logs_policy = iam.PolicyDocument.from_json(
-            code_build_cloudwatch_logs_policy_in_json([log_group.log_group_name])
+            code_build_cloudwatch_logs_policy_in_json([log_group])
         )
         resource_access_role = iam.Role(scope=self,
                                         id="{}-resource-role".format(id),
