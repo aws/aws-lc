@@ -191,6 +191,8 @@ set(
   crypto/pkcs8/test/pbes2_sha256.p12
   crypto/pkcs8/test/unicode_password.p12
   crypto/pkcs8/test/windows.p12
+  crypto/pkcs8/test/null_contentinfo_root.p12
+  crypto/pkcs8/test/null_contentinfo_child.p12
   crypto/poly1305/poly1305_tests.txt
   crypto/siphash/siphash_tests.txt
   crypto/x509/test/basic_constraints_ca.pem
