@@ -1070,6 +1070,7 @@ static int is_public_component_of_rsa_key_good(const RSA *key) {
     return 0;
   }
 
+  // RSA moduli n must be odd because it is a product of odd prime numbers.
   if (!BN_is_odd(key->n)) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_RSA_PARAMETERS);
     return 0;
@@ -1084,6 +1085,12 @@ static int is_public_component_of_rsa_key_good(const RSA *key) {
     return 0;
   }
 
+  // RSA public exponent e must be odd because it is a multiplicative inverse
+  // of the corresponding private exponent modulo phi(n). To be invertible
+  // modulo phi(n), e has to be realtively prime to phi(n). Since
+  // phi(n) = (p-1)(q-1) and p and q are odd prime numbers, it follows that
+  // phi(n) is even. Therefore, for e to be relatively prime to phi(n) it is
+  // necessary that e is odd.
   if (!BN_is_odd(key->e)) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_E_VALUE);
     return 0;
