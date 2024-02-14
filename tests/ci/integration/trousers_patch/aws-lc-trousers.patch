@@ -1,0 +1,52 @@
+From 2c2fb7ec11109edf6831866551b4356ebec6ee13 Mon Sep 17 00:00:00 2001
+From: Justin W Smith <justsmth@amazon.com>
+Date: Mon, 5 Feb 2024 15:19:51 +0000
+Subject: [PATCH] Patch for AWS-LC
+
+---
+ src/trspi/crypto/openssl/symmetric.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/src/trspi/crypto/openssl/symmetric.c b/src/trspi/crypto/openssl/symmetric.c
+index 3101d51..4e9eb69 100644
+--- a/src/trspi/crypto/openssl/symmetric.c
++++ b/src/trspi/crypto/openssl/symmetric.c
+@@ -151,9 +151,11 @@ get_openssl_cipher(UINT16 alg, UINT16 mode)
+ 				case TR_SYM_MODE_CBC:
+ 					cipher = (EVP_CIPHER *)EVP_aes_128_cbc();
+ 					break;
++#ifndef OPENSSL_IS_AWSLC
+ 				case TPM_ES_SYM_OFB:
+ 					cipher = (EVP_CIPHER *)EVP_aes_128_ofb();
+ 					break;
++#endif
+ 				case TPM_ES_SYM_CNT:
+ 					LogDebug("XXX AES128 in CTR mode unsupp by openssl EVP");
+ 				default:
+@@ -171,9 +173,11 @@ get_openssl_cipher(UINT16 alg, UINT16 mode)
+ 				case TR_SYM_MODE_CBC:
+ 					cipher = (EVP_CIPHER *)EVP_des_cbc();
+ 					break;
++#ifndef OPENSSL_IS_AWSLC
+ 				case TPM_ES_SYM_OFB:
+ 					cipher = (EVP_CIPHER *)EVP_des_ofb();
+ 					break;
++#endif
+ 				case TPM_ES_SYM_CNT:
+ 					LogDebug("XXX DES in CTR mode unsupp by openssl EVP");
+ 				default:
+@@ -191,9 +195,11 @@ get_openssl_cipher(UINT16 alg, UINT16 mode)
+ 				case TR_SYM_MODE_CBC:
+ 					cipher = (EVP_CIPHER *)EVP_des_ede3_cbc();
+ 					break;
++#ifndef OPENSSL_IS_AWSLC
+ 				case TPM_ES_SYM_OFB:
+ 					cipher = (EVP_CIPHER *)EVP_des_ede3_ofb();
+ 					break;
++#endif
+ 				case TPM_ES_SYM_CNT:
+ 					LogDebug("XXX 3DES in CTR mode unsupp by openssl EVP");
+ 				default:
+-- 
+2.34.1
+

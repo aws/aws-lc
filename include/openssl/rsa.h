@@ -530,6 +530,14 @@ OPENSSL_EXPORT int RSA_padding_add_PKCS1_OAEP_mgf1(
     const uint8_t *param, size_t param_len, const EVP_MD *md,
     const EVP_MD *mgf1md);
 
+// PKCS1_MGF1 masks a seed using MGF1 as defined in RFC 8017 (B.2.1).
+// It writes the masked output to |out|, using |len| bytes. |seed| and
+// |seed_len| are the seed input. |md| is the message digest to use.
+//
+// It returns one on success and zero on error.
+OPENSSL_EXPORT OPENSSL_DEPRECATED int PKCS1_MGF1(uint8_t *out, size_t len,
+    const uint8_t *seed, size_t seed_len, const EVP_MD *md);
+
 // RSA_add_pkcs1_prefix builds a version of |digest| prefixed with the
 // DigestInfo header for the given hash function and sets |out_msg| to point to
 // it. On successful return, if |*is_alloced| is one, the caller must release
