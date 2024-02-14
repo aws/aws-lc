@@ -2063,7 +2063,8 @@ struct SSL_HANDSHAKE {
   Array<uint16_t> peer_supported_group_list;
 
   // peer_delegated_credential_sigalgs are the signature algorithms the peer
-  // supports with delegated credentials.
+  // supports with delegated credentials, or empty if the peer does not support
+  // delegated credentials.
   Array<uint16_t> peer_delegated_credential_sigalgs;
 
   // extension_permutation is the permutation to apply to ClientHello
@@ -2171,10 +2172,6 @@ struct SSL_HANDSHAKE {
 
   // ocsp_stapling_requested is true if a client requested OCSP stapling.
   bool ocsp_stapling_requested : 1;
-
-  // delegated_credential_requested is true if the peer indicated support for
-  // the delegated credential extension.
-  bool delegated_credential_requested : 1;
 
   // should_ack_sni is used by a server and indicates that the SNI extension
   // should be echoed in the ServerHello.
