@@ -7,7 +7,8 @@
 //      https://github.com/Emill/X25519-AArch64/blob/master/X25519_AArch64.pdf
 //      https://github.com/Emill/X25519-AArch64
 //
-// and the SLOTHY-based re-engineering of that code by Hanno Becker:
+// and the SLOTHY-based re-engineering of that code by Abdulrahman, Becker,
+// Kannwischer and Klein:
 //
 //      https://eprint.iacr.org/2022/1303.pdf
 //      https://github.com/slothy-optimizer/slothy/tree/main/paper
@@ -320,9 +321,8 @@ curve25519_x25519_byte_scalarloop:
 // In particular, the basic dataflow and the organization between integer
 // and SIMD units is identical, with only a few minor changes to some
 // individual instructions (for miscellaneous reasons). The scheduling
-// was redone from scratch by SLOTHY starting from Hanno Becker's
-// un-interleaved form and using the same scripts as in Becker et al's
-// paper.
+// was redone from scratch by SLOTHY starting from the un-interleaved
+// form in the SLOTHY work cited above, and using the same scripts.
 //
 // The intermediate value annotations were added to provide data that
 // is used in the formal proof, indicating which lines assign specific
