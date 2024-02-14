@@ -12016,6 +12016,9 @@ TEST(SSLTest, IncompatibleTLSVersionState) {
 
   ASSERT_FALSE(
       SSL_from_bytes(INCOMPATIBLE_DER, INCOMPATIBLE_DER_LEN, ctx.get()));
+  ASSERT_EQ(ERR_GET_LIB(ERR_peek_error()), ERR_LIB_SSL);
+  ASSERT_EQ(ERR_GET_REASON(ERR_peek_error()),
+            SSL_R_SERIALIZATION_INVALID_SERDE_VERSION);
 }
 
 }  // namespace

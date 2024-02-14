@@ -1491,6 +1491,9 @@ TEST_P(EvpAeadCtxSerdeTest, FailUnknownSerdeVersion) {
     CBS cbs;
     CBS_init(&cbs, INVALID_VERSION_DER, INVALID_VERSION_DER_LEN);
     ASSERT_FALSE(EVP_AEAD_CTX_deserialize_state(ctx.get(), &cbs));
+    ASSERT_EQ(ERR_GET_LIB(ERR_peek_error()), ERR_LIB_CIPHER);
+    ASSERT_EQ(ERR_GET_REASON(ERR_get_error()),
+              CIPHER_R_SERIALIZATION_INVALID_SERDE_VERSION);
   }
 }
 
@@ -1519,6 +1522,9 @@ TEST_P(EvpAeadCtxSerdeTest, FailUnknownCipherId) {
     CBS cbs;
     CBS_init(&cbs, INVALID_CIPHER_ID_DER, INVALID_CIPHER_ID_DER_LEN);
     ASSERT_FALSE(EVP_AEAD_CTX_deserialize_state(ctx.get(), &cbs));
+    ASSERT_EQ(ERR_GET_LIB(ERR_peek_error()), ERR_LIB_CIPHER);
+    ASSERT_EQ(ERR_GET_REASON(ERR_get_error()),
+              CIPHER_R_SERIALIZATION_INVALID_CIPHER_ID);
   }
 }
 
@@ -1535,6 +1541,13 @@ TEST(EvpAeadCtxSerdeTest, ID) {
     ASSERT_FALSE(identifiers[id]);
     identifiers[id] = true;
   }
+
   // Nothing should have the unknown identifier (0)
   ASSERT_FALSE(identifiers[0]);
+
+  // If our test coverage is good we should have all possible id's covered
+  // otherwise we are missing coverage.
+  for (size_t id = 1; id <= AEAD_MAX_ID; id++) {
+    ASSERT_TRUE(identifiers[id]);
+  }
 }
