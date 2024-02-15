@@ -13,6 +13,7 @@
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
 #include <openssl/crypto.h>
+#include <openssl/service_indicator.h>
 
 #include <assert.h>
 
@@ -118,7 +119,7 @@ const char *SSLeay_version(int which) { return OpenSSL_version(which); }
 const char *OpenSSL_version(int which) {
   switch (which) {
     case OPENSSL_VERSION:
-      return AWSLC_VERSION_NAME;
+      return AWSLC_VERSION_STRING;
     case OPENSSL_CFLAGS:
       return "compiler: n/a";
     case OPENSSL_BUILT_ON:
