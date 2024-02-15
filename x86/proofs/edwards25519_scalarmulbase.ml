@@ -8116,6 +8116,9 @@ let EDWARDS25519_SCALARMULBASE_CORRECT = time prove
 
   X86_STEPS_TAC EDWARDS25519_SCALARMULBASE_EXEC (25--26) THEN
   LOCAL_MODINV_TAC 27 THEN
+  FIRST_X_ASSUM(ASSUME_TAC o MATCH_MP(MESON[PRIME_COPRIME_EQ; PRIME_P25519]
+   `(bnx = if p_25519 divides n then 0 else inverse_mod p_25519 n)
+    ==> coprime(p_25519,n) ==> bnx = inverse_mod p_25519 n`)) THEN
   ABBREV_TAC
    `w_3 =
     read(memory :> bytes(word_add stackpointer (word 416),8 * 4)) s27` THEN

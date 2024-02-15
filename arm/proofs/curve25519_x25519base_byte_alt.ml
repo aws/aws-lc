@@ -6601,6 +6601,9 @@ let CURVE25519_X25519BASE_BYTE_ALT_CORRECT = time prove
 
   ARM_STEPS_TAC CURVE25519_X25519BASE_BYTE_ALT_EXEC (5--6) THEN
   LOCAL_MODINV_TAC 7 THEN
+  FIRST_X_ASSUM(ASSUME_TAC o MATCH_MP(MESON[PRIME_COPRIME_EQ; PRIME_P25519]
+   `(bnx = if p_25519 divides n then 0 else inverse_mod p_25519 n)
+    ==> coprime(p_25519,n) ==> bnx = inverse_mod p_25519 n`)) THEN
   ABBREV_TAC
    `t0 =
     read(memory :> bytes(word_add stackpointer (word 256),8 * 4)) s7` THEN

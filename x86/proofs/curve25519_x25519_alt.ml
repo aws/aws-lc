@@ -8586,6 +8586,9 @@ let CURVE25519_X25519_ALT_CORRECT = time prove
 
   X86_STEPS_TAC CURVE25519_X25519_ALT_EXEC (31--32) THEN
   LOCAL_MODINV_TAC 33 THEN
+  FIRST_X_ASSUM(ASSUME_TAC o MATCH_MP(MESON[PRIME_COPRIME_EQ; PRIME_P25519]
+   `(bnx = if p_25519 divides n then 0 else inverse_mod p_25519 n)
+    ==> coprime(p_25519,n) ==> bnx = inverse_mod p_25519 n`)) THEN
   ABBREV_TAC
    `zn' =
     read(memory :> bytes(word_add stackpointer (word 96),8 * 4)) s33` THEN

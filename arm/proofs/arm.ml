@@ -231,7 +231,7 @@ let ARM_EXEC_CONV =
     ONCE_DEPTH_CONV(EQT_INTRO o ORTHOGONAL_COMPONENTS_CONV) THENC
     REWRITE_CONV[] THENC
     ONCE_DEPTH_CONV(LAND_CONV DIMINDEX_CONV THENC NUM_DIV_CONV) THENC
-    GEN_REWRITE_CONV ONCE_DEPTH_CONV [GSYM BYTES64_WBYTES;
+    GEN_REWRITE_CONV ONCE_DEPTH_CONV [GSYM BYTES32_WBYTES; GSYM BYTES64_WBYTES;
                                       GSYM BYTES128_WBYTES] THENC
     GEN_REWRITE_CONV ONCE_DEPTH_CONV [qth] THENC
     GEN_REWRITE_CONV ONCE_DEPTH_CONV [rth] THENC
@@ -714,6 +714,52 @@ let ARM_MACRO_SIM_ABBREV_TAC =
         (ARM_STEPS_TAC execth ((n+1)--(n+prep)) THEN main_tac) (asl,w);;
 
 (* ------------------------------------------------------------------------- *)
+(* Refinment of ENSURES_PRESERVED_TAC for special D register handling.       *)
+(* ------------------------------------------------------------------------- *)
+
+let ENSURES_PRESERVED_DREG_TAC =
+  let pth = prove
+   (`read (Q8 :> bottomhalf) s = word_zx(read Q8 s) /\
+     read (Q9 :> bottomhalf) s = word_zx (read Q9 s) /\
+     read (Q10 :> bottomhalf) s = word_zx (read Q10 s) /\
+     read (Q11 :> bottomhalf) s = word_zx (read Q11 s) /\
+     read (Q12 :> bottomhalf) s = word_zx (read Q12 s) /\
+     read (Q13 :> bottomhalf) s = word_zx (read Q13 s) /\
+     read (Q14 :> bottomhalf) s = word_zx (read Q14 s) /\
+     read (Q15 :> bottomhalf) s = word_zx (read Q15 s)`,
+    CONV_TAC(ONCE_DEPTH_CONV COMPONENT_CANON_CONV) THEN
+    REWRITE_TAC[READ_COMPONENT_COMPOSE; READ_ZEROTOP_64;
+                bottomhalf; subword; read; FUN_EQ_THM] THEN
+    REWRITE_TAC[word_zx; DIV_1; EXP; WORD_MOD_SIZE])
+  and sth = prove
+   (`valid_component c /\
+     R ,, R = R /\
+     MAYCHANGE [c :> tophalf] subsumed R /\
+     ensures step P Q (R ,, MAYCHANGE [c])
+     ==> ensures step P Q (R ,, MAYCHANGE [c :> bottomhalf])`,
+    REWRITE_TAC[MAYCHANGE_SING] THEN
+    REPEAT(DISCH_THEN(CONJUNCTS_THEN2 ASSUME_TAC MP_TAC)) THEN
+    MATCH_MP_TAC(REWRITE_RULE[IMP_CONJ] ENSURES_FRAME_SUBSUMED) THEN
+    FIRST_ASSUM(fun th ->
+      GEN_REWRITE_TAC (RAND_CONV o ONCE_DEPTH_CONV) [SYM th]) THEN
+    REWRITE_TAC[GSYM SEQ_ASSOC] THEN MATCH_MP_TAC SUBSUMED_SEQ THEN
+    REWRITE_TAC[SUBSUMED_REFL] THEN
+    FIRST_ASSUM(SUBST1_TAC o SYM o MATCH_MP ASSIGNS_TOPHALF_BOTTOMHALF) THEN
+    MATCH_MP_TAC SUBSUMED_SEQ THEN ASM_REWRITE_TAC[SUBSUMED_REFL]) in
+  let alist = zip [`D8`; `D9`; `D10`; `D11`; `D12`; `D13`; `D14`; `D15`]
+                  (map (lhand o lhand o concl) (CONJUNCTS pth)) in
+  let dregs = map fst alist in
+  fun pname ctm ->
+    if not (mem ctm dregs) then ENSURES_PRESERVED_TAC pname ctm else
+    let ctm' = assoc ctm alist in
+    ENSURES_PRESERVED_TAC pname ctm' THEN REWRITE_TAC[pth] THEN
+    TRY(REWRITE_TAC[SEQ_ASSOC] THEN MATCH_MP_TAC sth THEN
+        CONJ_TAC THENL [CONV_TAC VALID_COMPONENT_CONV; ALL_TAC] THEN
+        CONJ_TAC THENL [MAYCHANGE_IDEMPOT_TAC; ALL_TAC] THEN
+        CONJ_TAC THENL [SUBSUMED_MAYCHANGE_TAC THEN NO_TAC; ALL_TAC] THEN
+        REWRITE_TAC[GSYM SEQ_ASSOC]);;
+
+(* ------------------------------------------------------------------------- *)
 (* Fix up call/return boilerplate given core correctness.                    *)
 (* ------------------------------------------------------------------------- *)
 
@@ -797,7 +843,8 @@ let ARM_ADD_RETURN_NOSTACK_TAC =
 let ARM_ADD_RETURN_STACK_TAC =
   let mono2lemma = MESON[]
    `(!x. (!y. P x y) ==> (!y. Q x y)) ==> (!x y. P x y) ==> (!x y. Q x y)`
-  and sp_tm = `SP` and x30_tm = `X30` in
+  and sp_tm = `SP` and x30_tm = `X30`
+  and dqd_thm = WORD_BLAST `(word_zx:int128->int64)(word_zx(x:int64)) = x` in
   fun execth coreth reglist stackoff ->
     let regs = dest_list reglist in
     let n = let n0 = length regs / 2 in
@@ -827,7 +874,8 @@ let ARM_ADD_RETURN_STACK_TAC =
       ENSURES_EXISTING_PRESERVED_TAC sp_tm THEN
       (if mem x30_tm regs then ENSURES_EXISTING_PRESERVED_TAC x30_tm
        else ALL_TAC) THEN
-      MAP_EVERY (fun c -> ENSURES_PRESERVED_TAC ("init_"^fst(dest_const c)) c)
+      MAP_EVERY (fun c -> ENSURES_PRESERVED_DREG_TAC
+                            ("init_"^fst(dest_const c)) c)
                 (subtract regs [x30_tm]) THEN
       REWRITE_TAC(!simulation_precanon_thms) THEN ENSURES_INIT_TAC "s0" THEN
       ARM_STEPS_TAC execth (1--n) THEN
@@ -835,7 +883,8 @@ let ARM_ADD_RETURN_STACK_TAC =
     ARM_BIGSTEP_TAC execth ("s"^string_of_int(n+1)) THEN
     REWRITE_TAC(!simulation_precanon_thms) THEN
     ARM_STEPS_TAC execth ((n+2)--(2*n+2)) THEN
-    ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[];;
+    ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
+    REWRITE_TAC[dqd_thm];;
 
 (* ------------------------------------------------------------------------- *)
 (* Handling more general branch targets                                      *)
