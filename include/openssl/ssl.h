@@ -5451,9 +5451,8 @@ OPENSSL_EXPORT int SSL_state(const SSL *ssl);
 // receiving close_notify in |SSL_shutdown| by causing the implementation to
 // believe the events already happened.
 //
-// It is an error to use |SSL_set_shutdown| to unset a bit that has already been
-// set. Doing so will trigger an |assert| in debug builds and otherwise be
-// ignored.
+// Note: |SSL_set_shutdown| cannot be used to unset a bit that has already
+// been set in AWS-LC. Doing so will be ignored.
 //
 // Use |SSL_CTX_set_quiet_shutdown| instead.
 OPENSSL_EXPORT void SSL_set_shutdown(SSL *ssl, int mode);
