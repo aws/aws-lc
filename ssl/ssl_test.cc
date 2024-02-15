@@ -11999,5 +11999,27 @@ TEST(SSLTest, SSLFileTests) {
   ASSERT_EQ(remove(ecdsa_pem_filename), 0);
 }
 
+TEST(SSLTest, IncompatibleTLSVersionState) {
+  // Using the following ASN.1 DER Sequence where 42 is the serialization
+  // format version number of some future version not currently supported:
+  // SEQUENCE {
+  //   SEQUENCE {
+  //     INTEGER { 42 }
+  //   }
+  // }
+  static constexpr size_t INCOMPATIBLE_DER_LEN = 7;
+  static const uint8_t INCOMPATIBLE_DER[INCOMPATIBLE_DER_LEN] = {
+      0x30, 0x05, 0x30, 0x03, 0x02, 0x01, 0x2a};
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+
+  ASSERT_FALSE(
+      SSL_from_bytes(INCOMPATIBLE_DER, INCOMPATIBLE_DER_LEN, ctx.get()));
+  ASSERT_EQ(ERR_GET_LIB(ERR_peek_error()), ERR_LIB_SSL);
+  ASSERT_EQ(ERR_GET_REASON(ERR_peek_error()),
+            SSL_R_SERIALIZATION_INVALID_SERDE_VERSION);
+}
+
 }  // namespace
 BSSL_NAMESPACE_END

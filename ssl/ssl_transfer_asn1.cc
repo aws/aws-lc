@@ -1007,10 +1007,14 @@ static int SSL_parse(SSL *ssl, CBS *cbs, SSL_CTX *ctx) {
   int quiet_shutdown;
   int ssl_config_present = 0;
 
-  if (!CBS_get_asn1(cbs, &ssl_cbs, CBS_ASN1_SEQUENCE) || CBS_len(cbs) != 0 ||
-      !CBS_get_asn1_uint64(&ssl_cbs, &ssl_serial_ver)
-      || ssl_serial_ver > SSL_SERIAL_VERSION) {
+  if (!CBS_get_asn1(cbs, &ssl_cbs, CBS_ASN1_SEQUENCE) || CBS_len(cbs) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SSL);
+    return 0;
+  }
+
+  if (!CBS_get_asn1_uint64(&ssl_cbs, &ssl_serial_ver) ||
+      ssl_serial_ver > SSL_SERIAL_VERSION) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_SERIALIZATION_INVALID_SERDE_VERSION);
     return 0;
   }
 
