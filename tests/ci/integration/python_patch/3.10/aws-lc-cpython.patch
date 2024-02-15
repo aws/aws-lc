@@ -454,19 +454,6 @@ index 7a28f2d37f..07740af98b 100644
      if (ret < 1)
          return PySSL_SetError(self, ret, __FILE__, __LINE__);
      if (PySSL_ChainExceptions(self) < 0)
-@@ -2042,7 +2049,12 @@ _ssl__SSLSocket_shared_ciphers_impl(PySSLSocket *self)
-     len = 0;
-     for (i = 0; i < sk_SSL_CIPHER_num(server_ciphers); i++) {
-         cipher = sk_SSL_CIPHER_value(server_ciphers, i);
-+#if defined(OPENSSL_IS_AWSLC)
-+        size_t unused_idx;
-+        if (sk_SSL_CIPHER_find(client_ciphers, &unused_idx, cipher) == 0)
-+#else
-         if (sk_SSL_CIPHER_find(client_ciphers, cipher) < 0)
-+#endif
-             continue;
- 
-         PyObject *tup = cipher_to_tuple(cipher);
 @@ -2771,7 +2783,7 @@ static PyObject *
  _ssl__SSLSocket_verify_client_post_handshake_impl(PySSLSocket *self)
  /*[clinic end generated code: output=532147f3b1341425 input=6bfa874810a3d889]*/

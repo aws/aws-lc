@@ -438,7 +438,7 @@ static int x509_object_idx_cnt(STACK_OF(X509_OBJECT) *h, int type,
 
   size_t idx;
   sk_X509_OBJECT_sort(h);
-  if (!sk_X509_OBJECT_find(h, &idx, &stmp)) {
+  if (!sk_X509_OBJECT_find_awslc(h, &idx, &stmp)) {
     return -1;
   }
 
@@ -561,7 +561,7 @@ X509_OBJECT *X509_OBJECT_retrieve_match(STACK_OF(X509_OBJECT) *h,
                                         X509_OBJECT *x) {
   sk_X509_OBJECT_sort(h);
   size_t idx;
-  if (!sk_X509_OBJECT_find(h, &idx, x)) {
+  if (!sk_X509_OBJECT_find_awslc(h, &idx, x)) {
     return NULL;
   }
   if ((x->type != X509_LU_X509) && (x->type != X509_LU_CRL)) {
