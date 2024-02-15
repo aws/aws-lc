@@ -2928,9 +2928,9 @@ $code.=<<___;
 
 	mov	\$16+96,$rounds
 	lea	32($key1_dec_,$rnds_),$key1_dec		# end of decryption key schedule
-	lea	32($key1_enc_,$rnds_),$key1_enc		# end of decryption key schedule
-	sub	%r10,%rax			# twisted $rounds
 	$movkey	16($key1_dec_),$rndkey1
+	lea	32($key1_enc_,$rnds_),$key1_enc		# end of encryption key schedule
+	sub	%r10,%rax			# twisted $rounds
 	mov	%rax,%r10			# backup twisted $rounds
 	lea	.Lxts_magic(%rip),%r8
 	jmp	.Lxts_reenc_grandloop
@@ -3010,17 +3010,17 @@ movdqa	@tweak[3],`16*3`(%rsp)
 
     # Calculate encryption tweaks XORed with encryption key round[0].
     # First tweak retrieved from the stack is ready to be used
-movdqa $enc_tweak(%rsp),@tweak[5]   # tweak[0]
-	movdqa	(%r8),$twmask			# start calculating next tweak #TODO: is this step needed or twmask is still the same.
+    movdqa $enc_tweak(%rsp),@tweak[5]   # tweak[0]
+	movdqa	(%r8),$twmask			# start calculating next tweak
 	 aesdec		$rndkey1,$inout0
 	 aesdec		$rndkey1,$inout1
 	$movkey	($key1_enc_),@tweak[0]		# tweak[0]=round[0] of encrypt key1
 	 aesdec		$rndkey1,$inout2
 	 aesdec		$rndkey1,$inout3
-	 aesdec		$rndkey1,$inout4
 	movaps	@tweak[0],@tweak[1]		# tweak[1]=round[0]
+	 aesdec		$rndkey1,$inout4
 	 aesdec		$rndkey1,$inout5
-	 $movkey	-64($key1_dec),$rndkey1
+    $movkey	-64($key1_dec),$rndkey1
 
 pshufd	\$0x5f,@tweak[5],$twres
 	movdqa	$twres,$twtmp
@@ -3049,7 +3049,6 @@ pshufd	\$0x5f,@tweak[5],$twres
 	pand	$twmask,$twtmp
 	 aesdec		$rndkey1,$inout2
 	 aesdec		$rndkey1,$inout3
-	 ##movdqa	@tweak[3],`16*3`(%rsp)  #?
 	pxor	$twtmp,@tweak[5]
 	 aesdec		$rndkey1,$inout4
 	movaps	@tweak[2],@tweak[3]		# tweak[3]=round[0]
@@ -3082,35 +3081,28 @@ pshufd	\$0x5f,@tweak[5],$twres
 	 aesdec		$rndkey1,$inout2
 	 aesdec		$rndkey1,$inout3
 	pxor	$twtmp,@tweak[5]
-	##$movkey		($key1_dec_),$rndkey0
 movaps	$rndkey0,@tweak[4]  		# tweak[4] = round[0]
 	 aesdec		$rndkey1,$inout4
 	 aesdec		$rndkey1,$inout5
-##	$movkey		16($key1_dec_),$rndkey1
 
 movdqa	$twres,$rndkey1
 	pxor	@tweak[5],@tweak[4]     # tweak[4] = tweak[4] ^ round[0]
 	 aesdeclast	`16*0`(%rsp),$inout0
 paddd   $twres,$twres
-##	psrad	\$31,$twres
 psrad	\$31,$rndkey1
 	paddq	@tweak[5],@tweak[5]
 	 aesdeclast	`16*1`(%rsp),$inout1
 	 aesdeclast	`16*2`(%rsp),$inout2
-##	pand	$twmask,$twres
 pand	$twmask,$rndkey1
 	mov	%r10,%rax			# restore $rounds
 	 aesdeclast	`16*3`(%rsp),$inout3
 	 aesdeclast	`16*4`(%rsp),$inout4
 	 aesdeclast	`16*5`(%rsp),$inout5
-##	pxor	$twres,@tweak[5]
 pxor	$rndkey1,@tweak[5]
 
 # Calculate encryption tweak[0] of the next round and store it
 # (using $rndkey1 for the calculation)
-#movdqa	$twres,$twtmp
 movaps  @tweak[5],$rndkey1
-##paddd	$twres,$twres
 psrad   \$31,$twres
 paddq   $rndkey1,$rndkey1
 pand	$twmask,$twres
@@ -3146,13 +3138,13 @@ movdqa	$enc_rounds_0_last(%rsp),$twres		# load enc round[0]^round[last]
 	pxor	$twres,@tweak[4]
 	 $movkey		48($key1_enc_),$rndkey1
 	movdqa	@tweak[3],`16*3`(%rsp)
-	pxor	$twres,@tweak[5]
 	 aesenc		$rndkey0,$inout1
 	 aesenc		$rndkey0,$inout2
+	pxor	$twres,@tweak[5]
 	 aesenc		$rndkey0,$inout3
 	 aesenc		$rndkey0,$inout4
-	 aesenc		$rndkey0,$inout5
 	movdqa	@tweak[4],`16*4`(%rsp)
+	 aesenc		$rndkey0,$inout5
 	movdqa	@tweak[5],`16*5`(%rsp)
      $movkey		64($key1_enc_),$rndkey0
 	jmp	.Lxts_reenc_enc_loop6
@@ -3181,7 +3173,6 @@ movdqa	$enc_rounds_0_last(%rsp),$twres		# load enc round[0]^round[last]
     # Tweak retrieved from the stack is decryption tweak[5] of this round
 movdqa $dec_tweak(%rsp),@tweak[5]
 pshufd	\$0x5f,@tweak[5],$twres
-#	movdqa	(%r8),$twmask			# start calculating next tweak
 	movdqa	$twres,$twtmp
 	paddd	$twres,$twres
 	 aesenc		$rndkey1,$inout0
@@ -3189,8 +3180,8 @@ pshufd	\$0x5f,@tweak[5],$twres
 	psrad	\$31,$twtmp
 	 aesenc		$rndkey1,$inout1
 	pand	$twmask,$twtmp
-	$movkey	($key1_dec_),@tweak[0]		# load decryption round[0]
 	 aesenc		$rndkey1,$inout2
+	$movkey	($key1_dec_),@tweak[0]		# load decryption round[0]
 	 aesenc		$rndkey1,$inout3
 	 aesenc		$rndkey1,$inout4
 	pxor	$twtmp,@tweak[5]
@@ -3469,7 +3460,7 @@ $code.=<<___;
 	xorps	@tweak[1],$inout1
 	movdqa	@tweak[3],$tweak1_dec_cs     # decrypt tweak 1 in cipher stealing
 movdqa $enc_tweak(%rsp),@tweak[0]   # retrieve enc tweak[0]
-#movdqa	(%r8),$twmask			# start calculating next tweak #TODO: is this step needed or twmask is still the same.
+
 # Calculate tweak[1] (no XORing with round[0])
 pshufd	\$0x5f,@tweak[0],$twres
 movdqa	$twres,$twtmp
@@ -3502,7 +3493,6 @@ xorps	@tweak[1],$inout1
 	# encryption tweak 0 will be in tweak[0]
 	paddd	$twres,$twres
 	movdqa	@tweak[1],@tweak[0]
-#	movdqa	$twres,$rndkey1
 	psrad	\$31,$twres			# broadcast upper bits
 	paddq	@tweak[0],@tweak[0]
    	pand	$twmask,$twres
@@ -3541,7 +3531,6 @@ movdqa $enc_tweak(%rsp),@tweak[0]   # retrieve enc tweak[0]
 	pxor	$twtmp,@tweak[1]
 
     movdqa	$twres, $twtmp
-#	paddd	$twres,$twres
 	movdqa	@tweak[1],@tweak[2]
 	psrad	\$31,$twtmp			# broadcast upper bits
 	 xorps	@tweak[1],$inout1
@@ -3556,7 +3545,6 @@ mov	$rnds_,$rounds			# restore $rounds
 call _aesni_encrypt3
 
 mov	$key1_dec_,$key1_dec			# restore $key1_dec
-#mov	$rnds_,$rounds			# restore $rounds
 xorps	@tweak[0],$inout0
 xorps	@tweak[1],$inout1
 xorps	@tweak[2],$inout2
@@ -3572,7 +3560,6 @@ xorps	@tweak[2],$inout2
 	# encryption tweak 0 will be in tweak[0]
 	paddd	$twres,$twres
 	movdqa	@tweak[2],@tweak[0]
-#	movdqa	$twres,$rndkey1
 	psrad	\$31,$twres			# broadcast upper bits
 	paddq	@tweak[0],@tweak[0]
    	pand	$twmask,$twres
@@ -3624,7 +3611,6 @@ movdqa $enc_tweak(%rsp),@tweak[0]   # retrieve enc tweak[0]
 	pxor	$twtmp,@tweak[2]
 
     movdqa	$twres, $twtmp
-#	paddd	$twres,$twres
 	movdqa	@tweak[2],@tweak[3]
 	psrad	\$31,$twtmp			# broadcast upper bits
 	 xorps	@tweak[2],$inout2
@@ -3639,7 +3625,6 @@ mov	$rnds_,$rounds			# restore $rounds
 call _aesni_encrypt4
 
 mov	$key1_dec_,$key1_dec			# restore $key1_dec
-#mov	$rnds_,$rounds			# restore $rounds
 xorps	@tweak[0],$inout0
 xorps	@tweak[1],$inout1
 xorps	@tweak[2],$inout2
@@ -3657,7 +3642,6 @@ xorps	@tweak[3],$inout3
 	# encryption tweak 0 will be in tweak[0]
 	paddd	$twres,$twres
 	movdqa	@tweak[3],@tweak[0]
-#	movdqa	$twres,$rndkey1
 	psrad	\$31,$twres			# broadcast upper bits
 	paddq	@tweak[0],@tweak[0]
    	pand	$twmask,$twres

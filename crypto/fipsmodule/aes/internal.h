@@ -55,7 +55,10 @@ OPENSSL_INLINE int hwaes_xts_available(void) {
 // when aes_hw_xts_reenc is available on AArch64.
 #define HWAES_XTS_REENC
 OPENSSL_INLINE int hwaes_xts_reenc_available(void) {
-  return CRYPTO_is_AESNI_capable();
+  return (CRYPTO_is_AESNI_capable() &&
+          !avx512_xts_available());
+  // TODO: remove the second check above when a reencrypt function
+  //       is available in avx512.
 }
 #endif
 #define VPAES_CBC
