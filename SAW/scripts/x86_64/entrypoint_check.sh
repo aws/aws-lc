@@ -21,6 +21,7 @@ go env -w GOPROXY=direct
 apply_patch "rsa-encrypt"
 apply_patch "nomuxrsp"
 apply_patch "ec_GFp_nistp384_point_mul_public"
+apply_patch "noinline-OPENSSL_malloc"
 apply_patch "noinline-aes_gcm_from_cipher_ctx"
 apply_patch "noinline-bn_mod_add_words"
 apply_patch "noinline-bn_reduce_once_in_place"

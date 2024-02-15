@@ -1,0 +1,12 @@
+diff --git a/crypto/mem.c b/crypto/mem.c
+index 7e58609c0..b92a0e555 100644
+--- a/crypto/mem.c
++++ b/crypto/mem.c
+@@ -187,6 +187,7 @@ static const uint8_t kBoringSSLBinaryTag[18] = {
+     0,
+ };
+ 
++__attribute__((noinline))
+ void *OPENSSL_malloc(size_t size) {
+   if (malloc_impl != NULL) {
+     assert(OPENSSL_memory_alloc == NULL);
