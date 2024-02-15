@@ -18,11 +18,6 @@ int supports_bmi2_and_adx(void)
   return (c & (1ul<<8)) && (c & (1ul<<19));
 }
 
-int supports_neon(void)
-{ // X86_64 does not support NEON.
-  return 0;
-}
-
 enum arch_name get_arch_name()
 { return ARCH_X86_64;
 }
@@ -32,15 +27,6 @@ enum arch_name get_arch_name()
 int supports_bmi2_and_adx(void)
 { // AArch64 does not support BMI2 or ADX extension.
   return 0;
-}
-
-int supports_neon(void)
-{
-#ifdef __ARM_NEON
-  return 1;
-#else
-  return 0;
-#endif
 }
 
 enum arch_name get_arch_name()
