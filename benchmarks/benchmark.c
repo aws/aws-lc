@@ -35,7 +35,7 @@ static uint64_t inner_reps = INNER_REPS;
 
 // Big buffers for testing purposes
 
-#define BUFFERSIZE 350
+#define BUFFERSIZE 1000
 static uint64_t b0[BUFFERSIZE];
 static uint64_t b1[BUFFERSIZE];
 static uint64_t b2[BUFFERSIZE];
@@ -233,6 +233,10 @@ void call_bignum_cmul_p521_alt(void) repeat(bignum_cmul_p521_alt(b0,b1[0],b2))
 void call_bignum_cmul_sm2(void) repeat(bignum_cmul_sm2(b0,b1[0],b2))
 
 void call_bignum_cmul_sm2_alt(void) repeat(bignum_cmul_sm2_alt(b0,b1[0],b2))
+
+void call_bignum_copy_row_from_table__32_16(void) repeat(bignum_copy_row_from_table(b0,b1,32,16,0))
+
+void call_bignum_copy_row_from_table__32_32(void) repeat(bignum_copy_row_from_table(b0,b1,32,32,0))
 
 void call_bignum_optneg_p25519(void) repeat(bignum_optneg_p25519(b0,b1[0],b2))
 
@@ -764,13 +768,6 @@ void call_sm2_montjdouble(void) repeat(sm2_montjdouble(b1,b2))
 void call_sm2_montjmixadd(void) repeat(sm2_montjmixadd(b1,b2,b3))
 
 #ifdef __ARM_NEON
-// TODO: Once the x86 version of bignum_copy_row_from_table is added, move
-// these two functions outside.
-void call_bignum_copy_row_from_table__32_16(void) \
-    repeat(bignum_copy_row_from_table(b0,b1,32,16,0))
-void call_bignum_copy_row_from_table__32_32(void) \
-    repeat(bignum_copy_row_from_table(b0,b1,32,32,0))
-
 void call_bignum_copy_row_from_table_8n_neon__32_16(void) \
     repeat(bignum_copy_row_from_table_8n_neon(b0,b1,32,16,0))
 void call_bignum_copy_row_from_table_8n_neon__32_32(void) \
@@ -789,11 +786,6 @@ void call_bignum_mul_8_16_neon(void) repeat(bignum_mul_8_16_neon(b0,b1,b2))
 void call_bignum_sqr_8_16_neon(void) repeat(bignum_sqr_8_16_neon(b0,b1))
 
 #else
-// TODO: Once the x86 version of bignum_copy_row_from_table is added, remove these
-// two functions.
-void call_bignum_copy_row_from_table__32_16(void) {}
-void call_bignum_copy_row_from_table__32_32(void) {}
-
 void call_bignum_copy_row_from_table_8n_neon__32_16(void) {}
 void call_bignum_copy_row_from_table_8n_neon__32_32(void) {}
 void call_bignum_copy_row_from_table_16_neon__32(void) {}
@@ -916,10 +908,8 @@ int main(int argc, char *argv[])
   timingtest(all,"bignum_coprime (6x6)",call_bignum_coprime__6_6);
   timingtest(all,"bignum_coprime (16x16)",call_bignum_coprime__16_16);
   timingtest(all,"bignum_copy (32 -> 32)" ,call_bignum_copy__32_32);
-  // TODO: Once the x86 version of bignum_copy_row_from_table is verified,
-  // change the conditions of these two timingtest from 'neon' to 'all'.
-  timingtest(neon,"bignum_copy_row_from_table (h=32,w=16)",call_bignum_copy_row_from_table__32_16);
-  timingtest(neon,"bignum_copy_row_from_table (h=32,w=32)",call_bignum_copy_row_from_table__32_32);
+  timingtest(all,"bignum_copy_row_from_table (h=32,w=16)",call_bignum_copy_row_from_table__32_16);
+  timingtest(all,"bignum_copy_row_from_table (h=32,w=32)",call_bignum_copy_row_from_table__32_32);
   timingtest(neon,"bignum_copy_row_from_table_8n_neon (h=32,w=16)",call_bignum_copy_row_from_table_8n_neon__32_16);
   timingtest(neon,"bignum_copy_row_from_table_8n_neon (h=32,w=32)",call_bignum_copy_row_from_table_8n_neon__32_32);
   timingtest(neon,"bignum_copy_row_from_table_16_neon (h=32)",call_bignum_copy_row_from_table_16_neon__32);
