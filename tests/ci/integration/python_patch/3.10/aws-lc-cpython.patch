@@ -1,5 +1,5 @@
 diff --git a/Lib/test/test_asyncio/test_events.py b/Lib/test/test_asyncio/test_events.py
-index 253a6c119c..2d0d10642d 100644
+index 253a6c1..2d0d106 100644
 --- a/Lib/test/test_asyncio/test_events.py
 +++ b/Lib/test/test_asyncio/test_events.py
 @@ -1106,12 +1106,12 @@ def test_create_server_ssl_match_failed(self):
@@ -20,7 +20,7 @@ index 253a6c119c..2d0d10642d 100644
  
          # close connection
 diff --git a/Lib/test/test_httplib.py b/Lib/test/test_httplib.py
-index 77152cf645..be3d11b993 100644
+index 77152cf..be3d11b 100644
 --- a/Lib/test/test_httplib.py
 +++ b/Lib/test/test_httplib.py
 @@ -1863,7 +1863,7 @@ def test_host_port(self):
@@ -33,7 +33,7 @@ index 77152cf645..be3d11b993 100644
          # just check status of PHA flag
          h = client.HTTPSConnection('localhost', 443)
 diff --git a/Lib/test/test_imaplib.py b/Lib/test/test_imaplib.py
-index b5c78a5d49..41235c17fc 100644
+index b5c78a5..41235c1 100644
 --- a/Lib/test/test_imaplib.py
 +++ b/Lib/test/test_imaplib.py
 @@ -555,9 +555,10 @@ def test_ssl_raises(self):
@@ -66,7 +66,7 @@ index b5c78a5d49..41235c17fc 100644
                  client = self.imap_class(*server.server_address,
                                           ssl_context=ssl_context)
 diff --git a/Lib/test/test_ssl.py b/Lib/test/test_ssl.py
-index a1a581a907..c69e71159a 100644
+index a1a581a..c69e711 100644
 --- a/Lib/test/test_ssl.py
 +++ b/Lib/test/test_ssl.py
 @@ -44,6 +44,7 @@
@@ -319,8 +319,8 @@ index a1a581a907..c69e71159a 100644
          protocols = [
 @@ -4752,6 +4776,31 @@ def test_internal_chain_server(self):
                  self.assertEqual(res, b'\x02\n')
-
-
+ 
+ 
 +@unittest.skipUnless(Py_OPENSSL_IS_AWSLC, "Only test this against AWS-LC")
 +class TestPostHandshakeAuthAwsLc(unittest.TestCase):
 +    def test_pha(self):
@@ -350,7 +350,7 @@ index a1a581a907..c69e71159a 100644
  requires_keylog = unittest.skipUnless(
      HAS_KEYLOG, 'test requires OpenSSL 1.1.1 with keylog callback')
 diff --git a/Modules/Setup b/Modules/Setup
-index 87c6a152f8..3a9bc54bab 100644
+index 87c6a15..f67d7ec 100644
 --- a/Modules/Setup
 +++ b/Modules/Setup
 @@ -208,8 +208,8 @@ _symtable symtablemodule.c
@@ -386,7 +386,7 @@ index 87c6a152f8..3a9bc54bab 100644
  # The crypt module is now disabled by default because it breaks builds
  # on many systems (where -lcrypt is needed), e.g. Linux (I believe).
 diff --git a/Modules/_hashopenssl.c b/Modules/_hashopenssl.c
-index 35addf49e9..77a12c6af5 100644
+index 35addf4..77a12c6 100644
 --- a/Modules/_hashopenssl.c
 +++ b/Modules/_hashopenssl.c
 @@ -131,8 +131,12 @@ static const py_hashentry_t py_hashes[] = {
@@ -403,7 +403,7 @@ index 35addf49e9..77a12c6af5 100644
  };
  
 diff --git a/Modules/_ssl.c b/Modules/_ssl.c
-index 7a28f2d37f..07740af98b 100644
+index 7a28f2d..b0d2ea1 100644
 --- a/Modules/_ssl.c
 +++ b/Modules/_ssl.c
 @@ -181,6 +181,12 @@ extern const SSL_METHOD *TLSv1_2_method(void);
@@ -463,15 +463,6 @@ index 7a28f2d37f..07740af98b 100644
      int err = SSL_verify_client_post_handshake(self->ssl);
      if (err == 0)
          return _setSSLError(get_state_sock(self), NULL, 0, __FILE__, __LINE__);
-@@ -3186,7 +3198,7 @@ _ssl__SSLContext_impl(PyTypeObject *type, int proto_version)
-
-     /* Set SSL_MODE_RELEASE_BUFFERS. This potentially greatly reduces memory
-        usage for no cost at all. */
--    SSL_CTX_set_mode(self->ctx, SSL_MODE_RELEASE_BUFFERS);
-+    SSL_CTX_set_mode(self->ctx, SSL_MODE_RELEASE_BUFFERS | SSL_MODE_AUTO_RETRY);
-
- #define SID_CTX "Python"
-     SSL_CTX_set_session_id_context(self->ctx, (const unsigned char *) SID_CTX,
 @@ -3199,7 +3211,7 @@ _ssl__SSLContext_impl(PyTypeObject *type, int proto_version)
      X509_VERIFY_PARAM_set_flags(params, X509_V_FLAG_TRUSTED_FIRST);
      X509_VERIFY_PARAM_set_hostflags(params, self->hostflags);

@@ -102,3 +102,14 @@ jobs:
       - name: Build AWS-LC, build python, run tests
         run: |
           ./tests/ci/integration/run_python_integration.sh
+  bind9:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install OS Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get -y --no-install-recommends install cmake gcc ninja-build golang make python3 python3-pytest autoconf pkg-config libcmocka-dev liburcu-dev libuv1-dev libnghttp2-dev libcap-dev libprotobuf-c-dev protobuf-c-compiler libfstrm-dev libjemalloc-dev
+      - uses: actions/checkout@v3
+      - name: Run bind9 build
+        run: |
+          ./tests/ci/integration/run_bind9_integration.sh
