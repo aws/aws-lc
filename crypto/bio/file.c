@@ -286,7 +286,8 @@ static int file_gets(BIO *bp, char *buf, int size) {
 
 static const BIO_METHOD methods_filep = {
     BIO_TYPE_FILE,   "FILE pointer",
-    file_write,      file_read,
+    file_write,      NULL /* bwrite_ex */,
+    file_read,       NULL /* bread_ex */,
     NULL /* puts */, file_gets,
     file_ctrl,       NULL /* create */,
     file_free,       NULL /* callback_ctrl */,

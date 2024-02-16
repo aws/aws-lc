@@ -732,15 +732,41 @@ OPENSSL_EXPORT int BIO_meth_set_destroy(BIO_METHOD *method,
 OPENSSL_EXPORT int (*BIO_meth_get_destroy(const BIO_METHOD *method)) (BIO *);
 
 // BIO_meth_set_write sets the implementation of |BIO_write| for |method| and
-// returns one. |BIO_METHOD|s which implement |BIO_write| should also implement
-// |BIO_CTRL_FLUSH|. (See |BIO_meth_set_ctrl|.)
+// returns one. |BIO_meth_set_write| will override a write method set with
+// |BIO_meth_set_write_ex|. |BIO_METHOD|s which implement |BIO_write| should
+// also implement |BIO_CTRL_FLUSH|. (See |BIO_meth_set_ctrl|.)
+//
+// The callback parameters are:
+//    BIO *: |BIO| to write to
+//    const char *: buffer to read data from
+//    int: amount of data to read from the buffer and write to the BIO
+// The callback returns the amount of data actually written or an error code
 OPENSSL_EXPORT int BIO_meth_set_write(BIO_METHOD *method,
                                       int (*write)(BIO *, const char *, int));
 
+// BIO_meth_set_write_ex sets the implementation of |BIO_write| for |method| and
+// returns one. |BIO_meth_set_write_ex| will override a write method set with
+// |BIO_meth_set_write|. |BIO_METHOD|s which implement |BIO_write| should
+// also implement |BIO_CTRL_FLUSH|. (See |BIO_meth_set_ctrl|.)
+//
+// The callback parameters are:
+//   BIO *: the |BIO| to read from
+//   const char *: the buffer to write the data to
+//   size_t: the amount of data to read
+//   size_t *: the amount of data actually read
+// The callback returns 1 for success or 0 in the case of an error
+OPENSSL_EXPORT int BIO_meth_set_write_ex(BIO_METHOD *method, int (*write)(BIO *, const char *, size_t, size_t *));
+
 // BIO_meth_set_read sets the implementation of |BIO_read| for |method| and
-// returns one.
+// returns one. The callback parameters have the same semantics as
+// |BIO_meth_set_write|.
 OPENSSL_EXPORT int BIO_meth_set_read(BIO_METHOD *method,
                                      int (*read)(BIO *, char *, int));
+
+// BIO_meth_set_read_ex sets the implementation of |BIO_read| for |method| and
+// returns one.The callback parameters have the same semantics as
+// |BIO_meth_set_write_ex|.
+OPENSSL_EXPORT int BIO_meth_set_read_ex(BIO_METHOD *method, int (*read)(BIO *, char *, size_t, size_t *));
 
 // BIO_meth_set_gets sets the implementation of |BIO_gets| for |method| and
 // returns one.
@@ -929,8 +955,28 @@ OPENSSL_EXPORT int (*BIO_meth_get_puts(const BIO_METHOD *method)) (BIO *, const 
 struct bio_method_st {
   int type;
   const char *name;
+  // bwrite:
+  //    returns the number of bytes written or error
+  //    char * is the input buffer
+  //    int is the requested amount of data to write
   int (*bwrite)(BIO *, const char *, int);
+  // bwrite_ex:
+  //    returns success/error
+  //    char * is the input buffer
+  //    size_t is the requested amount of data to write
+  //    size_t * is the output number of bytes actually written
+  int (*bwrite_ex)(BIO *, const char *, size_t, size_t *);
+  // bread:
+  //    returns the number of bytes read or error
+  //    char * is the out buffer
+  //    int is the requested amount of data to read
   int (*bread)(BIO *, char *, int);
+  // bread_ex:
+  //    returns success/error
+  //    char * is the output buffer
+  //    size_t is the requested amount of data to read
+  //    size_t * is the output number of bytes actually read
+  int (*bread_ex)(BIO *, char *, size_t, size_t *);
   // TODO(fork): remove bputs.
   int (*bputs)(BIO *, const char *);
   int (*bgets)(BIO *, char *, int);

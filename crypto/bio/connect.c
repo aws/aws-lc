@@ -506,7 +506,9 @@ BIO *BIO_new_connect(const char *hostname) {
 }
 
 static const BIO_METHOD methods_connectp = {
-    BIO_TYPE_CONNECT, "socket connect",   conn_write, conn_read,
+    BIO_TYPE_CONNECT, "socket connect",
+    conn_write,       NULL /* bwrite_ex */,
+    conn_read,        NULL /* bread_ex */,
     NULL /* puts */,  NULL /* gets */,    conn_ctrl,  conn_new,
     conn_free,        conn_callback_ctrl,
 };

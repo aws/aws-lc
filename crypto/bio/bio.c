@@ -734,15 +734,57 @@ int (*BIO_meth_get_destroy(const BIO_METHOD *method)) (BIO *) {
   return method->destroy;
 }
 
+static int bwrite_ex_to_briwte_conversion(BIO *bio, const char *input, int requested) {
+  if (requested > INT_MAX) {
+    requested = INT_MAX;
+  }
+  size_t actual = 0;
+  const int success = bio->method->bwrite_ex(bio, input, requested, &actual);
+  if (success <= 0) {
+    return success;
+  }
+  // this is safe because we capped the write to INT_MAX
+  return (int)actual;
+}
+
 int BIO_meth_set_write(BIO_METHOD *method,
                        int (*write)(BIO *, const char *, int)) {
   method->bwrite = write;
+  method->bwrite_ex = NULL;
   return 1;
 }
+
+int BIO_meth_set_write_ex(BIO_METHOD *method, int (*write)(BIO *, const char *, size_t, size_t *)) {
+  method->bwrite_ex = write;
+  method->bwrite = bwrite_ex_to_briwte_conversion;
+  return 1;
+}
+
+static int bread_ex_to_bread_conversion(BIO *bio, char *input, int requested) {
+  if (requested > INT_MAX) {
+    requested = INT_MAX;
+  }
+  size_t actual = 0;
+  const int success = bio->method->bread_ex(bio, input, requested, &actual);
+  if (success <= 0) {
+    return success;
+  }
+  // this is safe because we capped the read to INT_MAX
+  return (int)actual;
+}
+
 
 int BIO_meth_set_read(BIO_METHOD *method,
                       int (*read)(BIO *, char *, int)) {
   method->bread = read;
+  method->bread_ex = NULL;
+  return 1;
+}
+
+int BIO_meth_set_read_ex(BIO_METHOD *method, int (*read)(BIO *, char *, size_t, size_t *)) {
+
+  method->bread_ex = read;
+  method->bread = bread_ex_to_bread_conversion;
   return 1;
 }
 

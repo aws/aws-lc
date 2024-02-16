@@ -3284,47 +3284,80 @@ TEST(X509Test, ReadBIOOneByte) {
 
 TEST(X509Test, PartialBIOReturn) {
   // Create a filter BIO that only reads and writes one byte at a time.
-  bssl::UniquePtr<BIO_METHOD> method(BIO_meth_new(0, nullptr));
-  ASSERT_TRUE(method);
-  ASSERT_TRUE(BIO_meth_set_create(method.get(), [](BIO *b) -> int {
+  bssl::UniquePtr<BIO_METHOD> legacy_method(BIO_meth_new(0, nullptr));
+  ASSERT_TRUE(legacy_method);
+  ASSERT_TRUE(BIO_meth_set_create(legacy_method.get(), [](BIO *b) -> int {
     BIO_set_init(b, 1);
     return 1;
   }));
   ASSERT_TRUE(
-      BIO_meth_set_read(method.get(), [](BIO *b, char *out, int len) -> int {
+      BIO_meth_set_read(legacy_method.get(), [](BIO *b, char *out, int len) -> int {
         return BIO_read(BIO_next(b), out, std::min(len, 1));
       }));
   ASSERT_TRUE(BIO_meth_set_write(
-      method.get(), [](BIO *b, const char *in, int len) -> int {
+      legacy_method.get(), [](BIO *b, const char *in, int len) -> int {
         return BIO_write(BIO_next(b), in, std::min(len, 1));
       }));
 
-  bssl::UniquePtr<BIO> bio(BIO_new(method.get()));
-  ASSERT_TRUE(bio);
-  BIO *mem_bio = BIO_new(BIO_s_mem());
-  ASSERT_TRUE(mem_bio);
-  BIO_push(bio.get(), mem_bio);  // BIO_push takes ownership.
+  // Create a filter BIO that uses the new read_ex/write_ex methods that also only
+  // reads/writes 1 byte at a time
+  bssl::UniquePtr<BIO_METHOD> ex_method(BIO_meth_new(0, nullptr));
+  ASSERT_TRUE(ex_method);
+  ASSERT_TRUE(BIO_meth_set_create(ex_method.get(), [](BIO *b) -> int {
+    BIO_set_init(b, 1);
+    return 1;
+  }));
+  ASSERT_TRUE(
+      BIO_meth_set_read_ex(ex_method.get(), [](BIO *b, char *out, size_t requested, size_t *actual) -> int {
+        int result = BIO_read(BIO_next(b), out, std::min(static_cast<int>(requested), 1));
+        if (result > 0) {
+          *actual = result;
+          return 1;
+        } else {
+          return 0;
+        }
+      }));
+  ASSERT_TRUE(BIO_meth_set_write_ex(
+      ex_method.get(), [](BIO *b, const char *in, size_t requested, size_t *actual) -> int {
+        int result = BIO_write(BIO_next(b), in, std::min(static_cast<int>(requested), 1));
+        if (result > 0) {
+          *actual = result;
+          return 1;
+        } else {
+          return 0;
+        }
+      }));
 
-  bssl::UniquePtr<X509> cert(CertFromPEM(kLeafPEM));
-  ASSERT_TRUE(cert);
-  uint8_t *der = nullptr;
-  int der_len = i2d_X509(cert.get(), &der);
-  ASSERT_GT(der_len, 0);
-  bssl::UniquePtr<uint8_t> free_der(der);
 
-  // Write the certificate into the BIO. Though we only write one byte at a
-  // time, the write should succeed.
-  ASSERT_EQ(1, i2d_X509_bio(bio.get(), cert.get()));
-  const uint8_t *der2;
-  size_t der2_len;
-  ASSERT_TRUE(BIO_mem_contents(mem_bio, &der2, &der2_len));
-  EXPECT_EQ(Bytes(der, static_cast<size_t>(der_len)), Bytes(der2, der2_len));
+  bssl::UniquePtr<BIO_METHOD>* methods[] = { &legacy_method, &ex_method};
 
-  // Read the certificate back out of the BIO. Though we only read one byte at a
-  // time, the read should succeed.
-  bssl::UniquePtr<X509> cert2(d2i_X509_bio(bio.get(), nullptr));
-  ASSERT_TRUE(cert2);
-  EXPECT_EQ(0, X509_cmp(cert.get(), cert2.get()));
+  for (auto& method : methods) {
+    bssl::UniquePtr<BIO> bio(BIO_new(method->get()));
+    ASSERT_TRUE(bio);
+    BIO *mem_bio = BIO_new(BIO_s_mem());
+    ASSERT_TRUE(mem_bio);
+    BIO_push(bio.get(), mem_bio);  // BIO_push takes ownership.
+
+    bssl::UniquePtr<X509> cert(CertFromPEM(kLeafPEM));
+    ASSERT_TRUE(cert);
+    uint8_t *der = nullptr;
+    int der_len = i2d_X509(cert.get(), &der);
+    ASSERT_GT(der_len, 0);
+    bssl::UniquePtr<uint8_t> free_der(der);
+
+    // Write the certificate into the BIO. Though we only write one byte at a
+    // time, the write should succeed.
+    ASSERT_EQ(1, i2d_X509_bio(bio.get(), cert.get()));
+    const uint8_t *der2;
+    size_t der2_len;
+    ASSERT_TRUE(BIO_mem_contents(mem_bio, &der2, &der2_len));
+    EXPECT_EQ(Bytes(der, static_cast<size_t>(der_len)), Bytes(der2, der2_len));
+
+    // Read the certificate back out of the BIO. Though we only read one byte at a time, the read should succeed.
+    bssl::UniquePtr<X509> cert2(d2i_X509_bio(bio.get(), nullptr));
+    ASSERT_TRUE(cert2);
+    EXPECT_EQ(0, X509_cmp(cert.get(), cert2.get()));
+  }
 }
 
 TEST(X509Test, CommonNameFallback) {

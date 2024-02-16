@@ -181,7 +181,7 @@ static long ssl_callback_ctrl(BIO *bio, int cmd, bio_info_cb fp) {
 }
 
 static const BIO_METHOD ssl_method = {
-    BIO_TYPE_SSL, "SSL",    ssl_write, ssl_read, NULL,
+    BIO_TYPE_SSL, "SSL",    ssl_write, NULL, ssl_read, NULL, NULL,
     NULL,         ssl_ctrl, ssl_new,   ssl_free, ssl_callback_ctrl,
 };
 

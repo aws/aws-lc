@@ -964,13 +964,44 @@ static void bio_callback_cleanup() {
 #define TEST_BUF_LEN 20
 #define TEST_DATA_WRITTEN 5
 TEST_P(BIOPairTest, TestCallbacks) {
+  bssl::UniquePtr<BIO_METHOD> ex_method(BIO_meth_new(0, nullptr));
+  ASSERT_TRUE(ex_method);
+  ASSERT_TRUE(BIO_meth_set_create(ex_method.get(), [](BIO *b) -> int {
+    BIO_set_init(b, 1);
+    return 1;
+  }));
+  ASSERT_TRUE(
+      BIO_meth_set_read_ex(ex_method.get(), [](BIO *b, char *out, size_t requested, size_t *actual) -> int {
+        int result = BIO_read(BIO_next(b), out, requested);
+        if (result > 0) {
+          *actual = result;
+          return 1;
+        } else {
+          return 0;
+        }
+      }));
+  ASSERT_TRUE(BIO_meth_set_write_ex(
+      ex_method.get(), [](BIO *b, const char *in, size_t requested, size_t *actual) -> int {
+        int result = BIO_write(BIO_next(b), in, requested);
+        if (result > 0) {
+          *actual = result;
+          return 1;
+        } else {
+          return 0;
+        }
+      }));
   bio_callback_cleanup();
 
   BIO *bio1, *bio2;
   ASSERT_TRUE(BIO_new_bio_pair(&bio1, 10, &bio2, 10));
 
   if (GetParam()) {
-    std::swap(bio1, bio2);
+    BIO *newBio1 = BIO_new(ex_method.get());
+    BIO *newBio2 = BIO_new(ex_method.get());
+    BIO_push(newBio1, bio1);
+    BIO_push(newBio2, bio2);
+    bio1 = newBio1;
+    bio2 = newBio2;
   }
 
   BIO_set_callback_ex(bio2, bio_cb_ex);

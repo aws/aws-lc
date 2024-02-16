@@ -165,7 +165,8 @@ static long sock_ctrl(BIO *b, int cmd, long num, void *ptr) {
 
 static const BIO_METHOD methods_sockp = {
     BIO_TYPE_SOCKET, "socket",
-    sock_write,      sock_read,
+    sock_write,      NULL /* bwrite_ex */,
+    sock_read,       NULL /* bread_ex */,
     NULL /* puts */, NULL /* gets, */,
     sock_ctrl,       NULL /* create */,
     sock_free,       NULL /* callback_ctrl */,

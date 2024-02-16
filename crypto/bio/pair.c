@@ -443,7 +443,10 @@ static long bio_ctrl(BIO *bio, int cmd, long num, void *ptr) {
 
 
 static const BIO_METHOD methods_biop = {
-    BIO_TYPE_BIO,    "BIO pair", bio_write, bio_read, NULL /* puts */,
+    BIO_TYPE_BIO,    "BIO pair",
+    bio_write,       NULL /* bwrite_ex */,
+    bio_read,        NULL /* bread_ex */,
+    NULL /* puts */,
     NULL /* gets */, bio_ctrl,   bio_new,   bio_free, NULL /* callback_ctrl */,
 };
 

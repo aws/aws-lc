@@ -271,7 +271,8 @@ static long mem_ctrl(BIO *bio, int cmd, long num, void *ptr) {
 
 static const BIO_METHOD mem_method = {
     BIO_TYPE_MEM,    "memory buffer",
-    mem_write,       mem_read,
+    mem_write,       NULL /* bwrite_ex */,
+    mem_read,        NULL /* bread_ex */,
     NULL /* puts */, mem_gets,
     mem_ctrl,        mem_new,
     mem_free,        NULL /* callback_ctrl */,
