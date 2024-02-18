@@ -129,6 +129,32 @@ jobs:
           echo ${env:SDEROOT}
           .\tests\ci\run_windows_tests.bat "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x64 true
 
+  OpenBSD-64-bit:
+    needs: [sanity-test-run]
+    runs-on: macos-12-large
+    strategy:
+      matrix:
+        runner: ["tests/ci/run_posix_tests.sh", "tests/ci/run_fips_tests.sh"]
+    steps:
+      - uses: actions/checkout@v3
+      - name: OpenBSD
+        uses: cross-platform-actions/action@v0.22.0
+        env:
+          AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS: 5
+        with:
+          environment_variables: AWS_LC_SSL_TEST_RUNNER_PEEK_ROUNDS
+          operating_system: openbsd
+          cpu_count: 12
+          architecture: x86-64
+          version: '7.4'
+          shell: bash
+          run: |
+            sudo pkg_add cmake ninja go gmake
+            mkdir "${HOME}/bin"
+            ln -s /usr/local/bin/gmake "${HOME}/bin/make"
+            export PATH="${HOME}/bin:${PATH}"
+            ${{ matrix.runner }}
+
     # TODO: Investigate sudden hanging tests and failures in GHA runners (P114059413)
 #  MSVC-SDE-32-bit:
 #    needs: [sanity-test-run]

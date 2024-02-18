@@ -31,6 +31,7 @@ AsmFile <- Statement* !.
 Statement <- WS? (Label / ((GlobalDirective /
                             LocationDirective /
                             LabelContainingDirective /
+                            ZeroDirective /
                             Instruction /
                             Directive /
                             Comment / ) WS? ((Comment? '\n') / ';')))
@@ -38,6 +39,7 @@ GlobalDirective <- (".global" / ".globl") WS SymbolName
 Directive <- '.' DirectiveName (WS Args)?
 DirectiveName <- [[A-Z0-9_]]+
 LocationDirective <- FileDirective / LocDirective
+ZeroDirective <- ".zero" WS [^#\n]+
 FileDirective <- ".file" WS [^#\n]+
 LocDirective <- ".loc" WS [^#/\n]+
 Args <- Arg ((WS? ',' WS?) Arg)*

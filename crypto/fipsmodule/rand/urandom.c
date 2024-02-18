@@ -78,6 +78,11 @@
 #endif
 #endif
 
+#if defined(OPENSSL_OPENBSD)
+#define URANDOM_BLOCKS_FOR_ENTROPY
+// OpenBSD does not support getrandom, so we will fallback to /dev/urandom
+#endif
+
 #include <openssl/thread.h>
 #include <openssl/mem.h>
 
