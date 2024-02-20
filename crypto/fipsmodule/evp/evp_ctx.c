@@ -124,11 +124,10 @@ static EVP_PKEY_CTX *evp_pkey_ctx_new(EVP_PKEY *pkey, ENGINE *e, int id) {
     return NULL;
   }
 
-  ret = OPENSSL_malloc(sizeof(EVP_PKEY_CTX));
+  ret = OPENSSL_zalloc(sizeof(EVP_PKEY_CTX));
   if (!ret) {
     return NULL;
   }
-  OPENSSL_memset(ret, 0, sizeof(EVP_PKEY_CTX));
 
   ret->engine = e;
   ret->pmeth = pmeth;
@@ -175,12 +174,10 @@ EVP_PKEY_CTX *EVP_PKEY_CTX_dup(EVP_PKEY_CTX *ctx) {
     return NULL;
   }
 
-  EVP_PKEY_CTX *ret = OPENSSL_malloc(sizeof(EVP_PKEY_CTX));
+  EVP_PKEY_CTX *ret = OPENSSL_zalloc(sizeof(EVP_PKEY_CTX));
   if (!ret) {
     return NULL;
   }
-
-  OPENSSL_memset(ret, 0, sizeof(EVP_PKEY_CTX));
 
   ret->pmeth = ctx->pmeth;
   ret->engine = ctx->engine;

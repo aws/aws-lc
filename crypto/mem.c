@@ -235,6 +235,23 @@ void *OPENSSL_malloc(size_t size) {
   return NULL;
 }
 
+void *OPENSSL_zalloc(size_t size) {
+  void *ret = OPENSSL_malloc(size);
+  if (ret != NULL) {
+    OPENSSL_memset(ret, 0, size);
+  }
+  return ret;
+}
+
+void *OPENSSL_calloc(size_t num, size_t size) {
+  if (size != 0 && num > SIZE_MAX / size) {
+    OPENSSL_PUT_ERROR(CRYPTO, ERR_R_OVERFLOW);
+    return NULL;
+  }
+
+  return OPENSSL_zalloc(num * size);
+}
+
 void OPENSSL_free(void *orig_ptr) {
   if (orig_ptr == NULL) {
     return;
