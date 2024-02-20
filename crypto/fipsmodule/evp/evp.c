@@ -84,12 +84,11 @@ OPENSSL_DECLARE_ERROR_REASON(EVP, EMPTY_PSK)
 EVP_PKEY *EVP_PKEY_new(void) {
   EVP_PKEY *ret;
 
-  ret = OPENSSL_malloc(sizeof(EVP_PKEY));
+  ret = OPENSSL_zalloc(sizeof(EVP_PKEY));
   if (ret == NULL) {
     return NULL;
   }
 
-  OPENSSL_memset(ret, 0, sizeof(EVP_PKEY));
   ret->type = EVP_PKEY_NONE;
   ret->references = 1;
 
