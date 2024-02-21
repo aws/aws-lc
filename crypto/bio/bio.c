@@ -734,16 +734,21 @@ int (*BIO_meth_get_destroy(const BIO_METHOD *method)) (BIO *) {
   return method->destroy;
 }
 
-static int bwrite_ex_to_briwte_conversion(BIO *bio, const char *input, int requested) {
-  if (requested > INT_MAX) {
-    requested = INT_MAX;
+static int bwrite_ex_to_bwrite_conversion(BIO *bio, const char *input, int requested) {
+  if (requested <= 0) {
+    requested = 0;
   }
   size_t actual = 0;
   const int success = bio->method->bwrite_ex(bio, input, requested, &actual);
   if (success <= 0) {
     return success;
   }
-  // this is safe because we capped the write to INT_MAX
+  // The write function shouldn't write more than is requested, which can only
+  // be up to INT_MAX
+  assert(actual <= INT_MAX);
+  if (actual > INT_MAX) {
+    actual = INT_MAX;
+  }
   return (int)actual;
 }
 
@@ -756,20 +761,25 @@ int BIO_meth_set_write(BIO_METHOD *method,
 
 int BIO_meth_set_write_ex(BIO_METHOD *method, int (*write)(BIO *, const char *, size_t, size_t *)) {
   method->bwrite_ex = write;
-  method->bwrite = bwrite_ex_to_briwte_conversion;
+  method->bwrite = bwrite_ex_to_bwrite_conversion;
   return 1;
 }
 
 static int bread_ex_to_bread_conversion(BIO *bio, char *input, int requested) {
-  if (requested > INT_MAX) {
-    requested = INT_MAX;
+  if (requested < 0) {
+    requested = 0;
   }
   size_t actual = 0;
   const int success = bio->method->bread_ex(bio, input, requested, &actual);
   if (success <= 0) {
     return success;
   }
-  // this is safe because we capped the read to INT_MAX
+  // The read function shouldn't read more than is requested, which can only
+  // be up to INT_MAX
+  assert(actual <= INT_MAX);
+  if (actual > INT_MAX) {
+    actual = INT_MAX;
+  }
   return (int)actual;
 }
 

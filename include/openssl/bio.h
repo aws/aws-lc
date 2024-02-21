@@ -758,13 +758,15 @@ OPENSSL_EXPORT int BIO_meth_set_write(BIO_METHOD *method,
 OPENSSL_EXPORT int BIO_meth_set_write_ex(BIO_METHOD *method, int (*write)(BIO *, const char *, size_t, size_t *));
 
 // BIO_meth_set_read sets the implementation of |BIO_read| for |method| and
-// returns one. The callback parameters have the same semantics as
+// returns one. |BIO_meth_set_read| will override a read method set with
+// |BIO_meth_set_read_ex|. The callback parameters have the same semantics as
 // |BIO_meth_set_write|.
 OPENSSL_EXPORT int BIO_meth_set_read(BIO_METHOD *method,
                                      int (*read)(BIO *, char *, int));
 
 // BIO_meth_set_read_ex sets the implementation of |BIO_read| for |method| and
-// returns one.The callback parameters have the same semantics as
+// returns one.|BIO_meth_set_read_ex| will override a read method set with
+// |BIO_meth_set_read|. The callback parameters have the same semantics as
 // |BIO_meth_set_write_ex|.
 OPENSSL_EXPORT int BIO_meth_set_read_ex(BIO_METHOD *method, int (*read)(BIO *, char *, size_t, size_t *));
 
