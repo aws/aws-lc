@@ -18,7 +18,6 @@ typedef struct {
 } section_info;
 
 // Since we only support 64-bit architectures on Apple, we don't need to account for any of the 32-bit structures
-#define LC_SEG LC_SEGMENT_64
 #define BIT_MODIFIER 8
 
 typedef struct mach_header_64 macho_header;
@@ -34,10 +33,20 @@ typedef struct {
     uint32_t num_sections;
 } machofile;
 
+// read_macho_file reads a Mach-O file [in] and populates a machofile struct [out] with its contents.
+// It returns 0 on failure, 1 on success.
 int read_macho_file(const char *filename, machofile *macho);
+
+// free_macho_file frees the memory allocated to a machofile struct [in]
 void free_macho_file(machofile *macho);
-void print_macho_section_info(machofile *macho);
+
+// get_macho_section_data retrieves data from a specific section [in] the provided Mach-O file [in].
+// In addition to returning a pointer to the retrieved data, or NULL if it doesn't find said section,
+// it also populates the size [out] & offset [out] pointers provided they are not NULL.
 uint8_t* get_macho_section_data(const char* filename, machofile *macho, const char *section_name, size_t *size, uint32_t *offset);
+
+// find_macho_symbol_index finds the index of a symbol [in] in the Mach-O file's [in] symbol table.
+// It returns the index on success, and 0 on failure.
 uint32_t find_macho_symbol_index(uint8_t *symbol_table_data, size_t symbol_table_size, uint8_t *string_table_data, size_t string_table_size, const char *symbol_name, uint32_t *base);
 
 #ifdef __cplusplus

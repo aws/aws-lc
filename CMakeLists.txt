@@ -1033,6 +1033,7 @@ if(BUILD_TESTING)
         macho_parser_tests
         COMMAND ./util/fipstools/inject_hash/macho_parser/tests/test_macho_parser
         WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
+        DEPENDS test_macho_parser
       )
       add_dependencies(fips_specific_tests_if_any macho_parser_tests)
     endif()
