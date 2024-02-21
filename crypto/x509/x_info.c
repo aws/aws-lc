@@ -60,22 +60,23 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 #include <openssl/thread.h>
+#include <assert.h>
 
 X509_INFO *X509_INFO_new(void) {
   X509_INFO *ret = NULL;
 
-  ret = (X509_INFO *)OPENSSL_malloc(sizeof(X509_INFO));
+  ret = (X509_INFO *)OPENSSL_zalloc(sizeof(X509_INFO));
   if (ret == NULL) {
     return NULL;
   }
 
-  ret->enc_cipher.cipher = NULL;
-  ret->enc_len = 0;
-  ret->enc_data = NULL;
+  assert(ret->enc_cipher.cipher == NULL);
+  assert(ret->enc_len == 0);
+  assert(ret->enc_data == NULL);
 
-  ret->x509 = NULL;
-  ret->crl = NULL;
-  ret->x_pkey = NULL;
+  assert(ret->x509 == NULL);
+  assert(ret->crl == NULL);
+  assert(ret->x_pkey == NULL);
   return ret;
 }
 

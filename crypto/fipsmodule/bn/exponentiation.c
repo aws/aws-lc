@@ -1030,13 +1030,14 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
   assert(powerbuf != NULL || top * BN_BITS2 > 1024);
 #endif
   if (powerbuf == NULL) {
-    powerbuf_free = OPENSSL_malloc(powerbuf_len + MOD_EXP_CTIME_ALIGN);
+    powerbuf_free = OPENSSL_zalloc(powerbuf_len + MOD_EXP_CTIME_ALIGN);
     if (powerbuf_free == NULL) {
       goto err;
     }
     powerbuf = align_pointer(powerbuf_free, MOD_EXP_CTIME_ALIGN);
+  } else {
+    OPENSSL_memset(powerbuf, 0, powerbuf_len);
   }
-  OPENSSL_memset(powerbuf, 0, powerbuf_len);
 
   // Place |tmp| and |am| right after powers table.
   BIGNUM tmp, am;

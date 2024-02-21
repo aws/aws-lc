@@ -106,17 +106,17 @@ struct bignum_ctx {
 };
 
 BN_CTX *BN_CTX_new(void) {
-  BN_CTX *ret = OPENSSL_malloc(sizeof(BN_CTX));
+  BN_CTX *ret = OPENSSL_zalloc(sizeof(BN_CTX));
   if (!ret) {
     return NULL;
   }
 
   // Initialise the structure
-  ret->bignums = NULL;
+  assert(ret->bignums == NULL);
   BN_STACK_init(&ret->stack);
-  ret->used = 0;
-  ret->error = 0;
-  ret->defer_error = 0;
+  assert(ret->used == 0);
+  assert(ret->error == 0);
+  assert(ret->defer_error == 0);
   return ret;
 }
 

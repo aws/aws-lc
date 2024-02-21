@@ -68,16 +68,16 @@
 X509_LOOKUP *X509_LOOKUP_new(X509_LOOKUP_METHOD *method) {
   X509_LOOKUP *ret;
 
-  ret = (X509_LOOKUP *)OPENSSL_malloc(sizeof(X509_LOOKUP));
+  ret = (X509_LOOKUP *)OPENSSL_zalloc(sizeof(X509_LOOKUP));
   if (ret == NULL) {
     return NULL;
   }
 
-  ret->init = 0;
-  ret->skip = 0;
+  assert(ret->init == 0);
+  assert(ret->skip == 0);
   ret->method = method;
-  ret->method_data = NULL;
-  ret->store_ctx = NULL;
+  assert(ret->method_data == NULL);
+  assert(ret->store_ctx == NULL);
   if ((method->new_item != NULL) && !method->new_item(ret)) {
     OPENSSL_free(ret);
     return NULL;
@@ -358,11 +358,10 @@ int X509_STORE_add_crl(X509_STORE *ctx, X509_CRL *x) {
 }
 
 X509_OBJECT *X509_OBJECT_new(void) {
-  X509_OBJECT *ret = OPENSSL_malloc(sizeof(X509_OBJECT));
+  X509_OBJECT *ret = OPENSSL_zalloc(sizeof(X509_OBJECT));
   if (ret == NULL) {
     return NULL;
   }
-  OPENSSL_memset(ret, 0, sizeof(X509_OBJECT));
   return ret;
 }
 

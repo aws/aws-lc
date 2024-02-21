@@ -554,11 +554,12 @@ void EVP_HPKE_CTX_cleanup(EVP_HPKE_CTX *ctx) {
 }
 
 EVP_HPKE_CTX *EVP_HPKE_CTX_new(void) {
-  EVP_HPKE_CTX *ctx = OPENSSL_malloc(sizeof(EVP_HPKE_CTX));
+  EVP_HPKE_CTX *ctx = OPENSSL_zalloc(sizeof(EVP_HPKE_CTX));
   if (ctx == NULL) {
     return NULL;
   }
-  EVP_HPKE_CTX_zero(ctx);
+  // NO-OP: struct already zeroed
+  //EVP_HPKE_CTX_zero(ctx);
   return ctx;
 }
 
