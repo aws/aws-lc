@@ -615,7 +615,9 @@ const BIO_METHOD TLSFuzzer::kBIOMethod = {
     0,        // type
     nullptr,  // name
     nullptr,  // bwrite
+    nullptr,  // brwite_ex
     TLSFuzzer::BIORead,
+    nullptr,  // bread_ex
     nullptr,  // bputs
     nullptr,  // bgets
     nullptr,  // ctrl
