@@ -19,7 +19,7 @@ uint32_t MachoTestFixture::expected_symbol2_ind;
 
 TEST_F(MachoTestFixture, TestReadMachoFile) {
     machofile test_macho_file;
-    if(!read_macho_file(TEST_FILE, &test_macho_file)) {
+    if (!read_macho_file(TEST_FILE, &test_macho_file)) {
         LOG_ERROR("Failed to read macho_file");
     }
 

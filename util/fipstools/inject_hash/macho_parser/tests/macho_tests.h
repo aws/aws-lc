@@ -22,6 +22,13 @@ protected:
     static uint32_t expected_symbol2_ind;
 
     static void SetUpTestSuite() {
+        bool fail = true;
+        section_info *expected_text_section = NULL;
+        section_info *expected_const_section = NULL;
+        section_info *expected_symbol_table = NULL;
+        section_info *expected_string_table = NULL;
+        section_info *expected_sections = NULL;
+
         num_syms = 2;
         memcpy(expected_strtab, "__text\0__const\0symbol1\0symbol2\0", EXPECTED_STRTAB_SIZE);
         text_data[0] = 0xC3;
@@ -30,7 +37,7 @@ protected:
         expected_symbol2_ind = 23;
 
         FILE *file = fopen(TEST_FILE, "wb");
-        if (!file) {
+        if (file == NULL) {
             LOG_ERROR("Error with fopen() on %s file", TEST_FILE);
         }
 
@@ -124,54 +131,85 @@ protected:
 
         // We use calloc for the below four calls to ensure that the untouched parts are zeroized,
         // as we will later memcmp the data to what we've read from the file.
-        section_info *expected_text_section = (section_info*) calloc(1, sizeof(section_info));
+        expected_text_section = (section_info*) calloc(1, sizeof(section_info));
+        if (expected_text_section == NULL) {
+            LOG_ERROR(" Error allocating memory for expected text section");
+            goto end;
+        }
         strcpy(expected_text_section->name, "__text");
         expected_text_section->size = text_section_size;
         expected_text_section->offset = text_section_offset;
 
-        section_info *expected_const_section = (section_info*) calloc(1, sizeof(section_info));
+        expected_const_section = (section_info*) calloc(1, sizeof(section_info));
+        if (expected_const_section == NULL) {
+            LOG_ERROR(" Error allocating memory for expected const section");
+            goto end;
+        }
         strcpy(expected_const_section->name, "__const");
         expected_const_section->size = const_section_size;
         expected_const_section->offset = const_section_offset;
 
-        section_info *expected_symbol_table = (section_info*) calloc(1, sizeof(section_info));
+        expected_symbol_table = (section_info*) calloc(1, sizeof(section_info));
+        if (expected_symbol_table == NULL) {
+            LOG_ERROR(" Error allocating memory for expected symbol table");
+            goto end;
+        }
         strcpy(expected_symbol_table->name, "__symbol_table");
         expected_symbol_table->size = num_syms * sizeof(symbol_info);
         expected_symbol_table->offset = symtab_command_symoff;
 
-        section_info *expected_string_table = (section_info*) calloc(1, sizeof(section_info));
+        expected_string_table = (section_info*) calloc(1, sizeof(section_info));
+        if (expected_string_table == NULL) {
+            LOG_ERROR(" Error allocating memory for expected string table");
+            goto end;
+        }
         strcpy(expected_string_table->name, "__string_table");
         expected_string_table->size = symtab_command_strsize;
         expected_string_table->offset = symtab_command_stroff;
 
-        section_info *expected_sections = (section_info*) malloc(sizeof(section_info) * 4);
+        expected_sections = (section_info*) malloc(sizeof(section_info) * 4);
+        if (expected_sections == NULL) {
+            LOG_ERROR("Error allocating memory for expected sections");
+            goto end;
+        }
         memcpy(&expected_sections[0], expected_text_section, sizeof(section_info));
         memcpy(&expected_sections[1], expected_const_section, sizeof(section_info));
         memcpy(&expected_sections[2], expected_symbol_table, sizeof(section_info));
         memcpy(&expected_sections[3], expected_string_table, sizeof(section_info));
 
-        free(expected_text_section);
-        free(expected_const_section);
-        free(expected_symbol_table);
-        free(expected_string_table);
-
         expected_macho = (machofile*) malloc(sizeof(machofile));
+        if (expected_macho == NULL) {
+            LOG_ERROR("Error allocating memory for expected macho file struct");
+            goto end;
+        }
         expected_macho->macho_header = test_header;
         expected_macho->num_sections = 4;
         expected_macho->sections = expected_sections;
 
         expected_symtab = (symbol_info*) malloc(num_syms * sizeof(symbol_info));
+        if (expected_symtab == NULL) {
+            LOG_ERROR("Error allocating memory for expected symbol table struct");
+            goto end;
+        }
         expected_symtab[0] = symbol1;
         expected_symtab[1] = symbol2;
+
+        fail = false;
+end:
+        if (fail) {
+            free(expected_sections);
+            free(expected_macho);
+            free(expected_symtab);
+        }
+        free(expected_text_section);
+        free(expected_const_section);
+        free(expected_symbol_table);
+        free(expected_string_table);
     }
 
     static void TearDownTestSuite() {
-        if (expected_macho != NULL) {
-            free_macho_file(expected_macho);
-        }
-        if (expected_symtab != NULL) {
-            free(expected_symtab);
-        }
+        free_macho_file(expected_macho);
+        free(expected_symtab);
         if (remove(TEST_FILE) != 0) {
             LOG_ERROR("Error deleting %s", TEST_FILE);
         }

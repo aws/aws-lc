@@ -10,32 +10,46 @@
 int read_macho_file(const char *filename, machofile *macho) {
     FILE *file = NULL;
     load_cmd *load_commands = NULL;
-    int ret = 1;
+    uint32_t bytes_read;
+    int ret = 0;
 
     file = fopen(filename, "rb");
-    if (!file) {
+    if (file == NULL) {
         LOG_ERROR("Error opening file %s", filename);
-        ret = 0;
         goto end;
     }
 
-    fread(&macho->macho_header, sizeof(macho_header), 1, file);
-    if(macho->macho_header.magic != MH_MAGIC_64) {
+    bytes_read = fread(&macho->macho_header, 1, sizeof(macho_header), file);
+    if (bytes_read != sizeof(macho_header)) {
+        LOG_ERROR("Error reading macho_header from file %s", filename);
+        goto end;
+    }
+    if (macho->macho_header.magic != MH_MAGIC_64) {
         LOG_ERROR("File is not a 64-bit Mach-O file");
-        ret = 0;
         goto end;
     }
 
     load_commands = malloc(macho->macho_header.sizeofcmds);
-    fread(load_commands, macho->macho_header.sizeofcmds, 1, file);
+    if (load_commands == NULL) {
+        LOG_ERROR("Error allocating memory for load_commands");
+        goto end;
+    }
+    bytes_read = fread(load_commands, 1, macho->macho_header.sizeofcmds, file);
+    if (bytes_read != macho->macho_header.sizeofcmds) {
+        LOG_ERROR("Error reading load commands from file %s", filename);
+        goto end;
+    }
 
     // We're only looking for __text, __const in the __TEXT segment, and the string & symbol tables
     macho->num_sections = 4;
     macho->sections = malloc(macho->num_sections * sizeof(section_info));
+    if (macho->sections == NULL) {
+        LOG_ERROR("Error allocating memory for macho sections");
+    }
 
     uint32_t section_index = 0;
     for (uint32_t i = 0; i < macho->macho_header.sizeofcmds / BIT_MODIFIER; i += load_commands[i].cmdsize / BIT_MODIFIER) {
-        if (load_commands[i].cmd == LC_SEG) {
+        if (load_commands[i].cmd == LC_SEGMENT_64) {
             segment_load_cmd *segment = (segment_load_cmd *)&load_commands[i];
             if (strcmp(segment->segname, "__TEXT") == 0) {
                 section_data *sections = (section_data *)&segment[1];
@@ -60,12 +74,10 @@ int read_macho_file(const char *filename, machofile *macho) {
             section_index++;
         }
     }
-
+    ret = 1;
 
 end:
-    if (load_commands != NULL) {
-        free(load_commands);
-    }
+    free(load_commands);
     if (file != NULL) {
         fclose(file);
     }
@@ -82,27 +94,32 @@ uint8_t* get_macho_section_data(const char *filename, machofile *macho, const ch
     FILE *file = NULL;
     uint8_t *section_data = NULL;
     uint8_t *ret = NULL;
+    uint32_t bytes_read;
 
     file = fopen(filename, "rb");
-    if (!file) {
+    if (file == NULL) {
         LOG_ERROR("Error opening file %s", filename);
         goto end;
     }
     for (uint32_t i = 0; i < macho->num_sections; i++) {
         if (strcmp(macho->sections[i].name, section_name) == 0) {
             section_data = malloc(macho->sections[i].size);
-            if (!section_data) {
+            if (section_data == NULL) {
                 LOG_ERROR("Error allocating memory for section data");
                 goto end;
             }
 
             fseek(file, macho->sections[i].offset, SEEK_SET);
-            fread(section_data, 1, macho->sections[i].size, file);
+            bytes_read = fread(section_data, 1, macho->sections[i].size, file);
+            if (bytes_read != macho->sections[i].size) {
+                LOG_ERROR("Error reading section data from file %s", filename);
+                goto end;
+            }
 
             if (size != NULL) {
                 *size = macho->sections[i].size;
             }
-            if (offset) {
+            if (offset != NULL) {
                 *offset = macho->sections[i].offset;
             }
 
@@ -116,7 +133,7 @@ end:
     if (file != NULL) {
         fclose(file);
     }
-    if (ret == NULL && section_data != NULL) {
+    if (ret == NULL) {
         free(section_data);
     }
     return ret;
@@ -132,6 +149,10 @@ uint32_t find_macho_symbol_index(uint8_t *symbol_table_data, size_t symbol_table
     }
 
     string_table = malloc(string_table_size);
+    if (string_table == NULL) {
+        LOG_ERROR("Error allocating memory for string table");
+        goto end;
+    }
     memcpy(string_table, string_table_data, string_table_size);
 
     int found = 0;
@@ -139,7 +160,7 @@ uint32_t find_macho_symbol_index(uint8_t *symbol_table_data, size_t symbol_table
     for (uint32_t i = 0; i < symbol_table_size / sizeof(symbol_info); i++) {
         symbol_info *symbol = (symbol_info *)(symbol_table_data + i * sizeof(symbol_info));
         if (strcmp(symbol_name, &string_table[symbol->n_un.n_strx]) == 0) {
-            if (!found) {
+            if (found == 0) {
                 index = symbol->n_value;
                 found = 1;
             } else {
@@ -148,18 +169,16 @@ uint32_t find_macho_symbol_index(uint8_t *symbol_table_data, size_t symbol_table
             }
         }
     }
-    if (!found) {
+    if (found == 0) {
         LOG_ERROR("Requested symbol %s not found", symbol_name);
         goto end;
     }
-    if (base) {
+    if (base != NULL) {
         index = index - *base;
     }
     ret = index;
 
 end:
-    if (string_table != NULL) {
-        free(string_table);
-    }
+    free(string_table);
     return ret;
 }
