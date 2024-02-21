@@ -4475,7 +4475,10 @@ TEST_P(SSLVersionTest, SessionTimeout) {
 }
 
 TEST_P(SSLVersionTest, DefaultTicketKeyInitialization) {
-  static const uint8_t kZeroKey[kTicketKeyLen] = {};
+  // Do not make static and const. See t/P118709392.
+  // It can trigger https://gcc.gnu.org/bugzilla/show_bug.cgi?id=95189 leading
+  // to transient errors.
+  uint8_t kZeroKey[kTicketKeyLen] = {0};
   uint8_t ticket_key[kTicketKeyLen];
   ASSERT_EQ(1, SSL_CTX_get_tlsext_ticket_keys(server_ctx_.get(), ticket_key,
                                               kTicketKeyLen));
