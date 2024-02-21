@@ -196,6 +196,16 @@ err:
   return NULL;
 }
 
+int X509_STORE_lock(X509_STORE *v) {
+    CRYPTO_MUTEX_lock_write(&v->objs_lock);
+    return 1;
+}
+
+int X509_STORE_unlock(X509_STORE *v) {
+    CRYPTO_MUTEX_unlock_write(&v->objs_lock);
+    return 1;
+}
+
 int X509_STORE_up_ref(X509_STORE *store) {
   CRYPTO_refcount_inc(&store->references);
   return 1;
@@ -403,6 +413,26 @@ X509_CRL *X509_OBJECT_get0_X509_CRL(const X509_OBJECT *a) {
     return NULL;
   }
   return a->data.crl;
+}
+
+int X509_OBJECT_set1_X509(X509_OBJECT *a, X509 *obj) {
+    if (a == NULL || !X509_up_ref(obj)) {
+      return 0;
+    }
+
+    a->type = X509_LU_X509;
+    a->data.x509 = obj;
+    return 1;
+}
+
+int X509_OBJECT_set1_X509_CRL(X509_OBJECT *a, X509_CRL *obj) {
+    if (a == NULL || !X509_CRL_up_ref(obj)) {
+      return 0;
+    }
+
+    a->type = X509_LU_CRL;
+    a->data.crl = obj;
+    return 1;
 }
 
 static int x509_object_idx_cnt(STACK_OF(X509_OBJECT) *h, int type,

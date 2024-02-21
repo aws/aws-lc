@@ -30,6 +30,7 @@
 #include <openssl/nid.h>
 #include <openssl/pem.h>
 #include <openssl/pool.h>
+#include <openssl/rand.h>
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
@@ -1943,6 +1944,24 @@ TEST(X509Test, TestCRL) {
   invalidCRL.type = X509_LU_X509;
   invalidCRL.data.x509 = leaf.get();
   ASSERT_EQ(nullptr, X509_OBJECT_get0_X509_CRL(&invalidCRL));
+}
+
+TEST(X509Test, TestX509GettersSetters) {
+  bssl::UniquePtr<X509_OBJECT> obj(X509_OBJECT_new());
+  bssl::UniquePtr<X509> x509(CertFromPEM(kCRLTestRoot));
+  bssl::UniquePtr<X509_CRL> crl(CRLFromPEM(kBasicCRL));
+
+  ASSERT_TRUE(obj);
+  ASSERT_TRUE(x509);
+  ASSERT_TRUE(crl);
+
+  EXPECT_EQ(0, X509_OBJECT_get0_X509(obj.get()));
+  EXPECT_EQ(0, X509_OBJECT_get0_X509_CRL(obj.get()));
+
+  EXPECT_EQ(1, X509_OBJECT_set1_X509(obj.get(), x509.get()));
+  EXPECT_EQ(x509.get(), X509_OBJECT_get0_X509(obj.get()));
+  EXPECT_EQ(1, X509_OBJECT_set1_X509_CRL(obj.get(), crl.get()));
+  EXPECT_EQ(crl.get(), X509_OBJECT_get0_X509_CRL(obj.get()));
 }
 
 TEST(X509Test, ManyNamesAndConstraints) {
@@ -5022,12 +5041,40 @@ TEST(X509Test, AddDuplicates) {
   ASSERT_TRUE(a);
   ASSERT_TRUE(b);
 
+  // To begin, add the certs to the store. Subsequent adds will be duplicative.
   EXPECT_TRUE(X509_STORE_add_cert(store.get(), a.get()));
   EXPECT_TRUE(X509_STORE_add_cert(store.get(), b.get()));
-  EXPECT_TRUE(X509_STORE_add_cert(store.get(), a.get()));
-  EXPECT_TRUE(X509_STORE_add_cert(store.get(), b.get()));
-  EXPECT_TRUE(X509_STORE_add_cert(store.get(), a.get()));
-  EXPECT_TRUE(X509_STORE_add_cert(store.get(), b.get()));
+
+  const size_t kNumThreads = 50;
+  std::vector<std::thread> threads;
+  for (size_t i = 0; i < kNumThreads; i++) {
+    threads.emplace_back([&] {
+      // Firstly, save off |i| in the thread's context.
+      const size_t idx = i;
+      // Sleep with some jitter to offset thread execution
+      uint8_t sleep_buf[1];
+      ASSERT_TRUE(RAND_bytes(sleep_buf, sizeof(sleep_buf)));
+      std::this_thread::sleep_for(std::chrono::milliseconds(sleep_buf[0] % 100));
+      // Half the threads add duplicate certs, the other half take a lock and
+      // look them up to exercise un/locking functions.
+      if (idx % 2 == 0) {
+        EXPECT_TRUE(X509_STORE_add_cert(store.get(), a.get()));
+        EXPECT_TRUE(X509_STORE_add_cert(store.get(), b.get()));
+      } else {
+        ASSERT_TRUE(X509_STORE_lock(store.get()));
+        EXPECT_TRUE(X509_OBJECT_retrieve_by_subject(
+          store->objs, X509_LU_X509, X509_get_subject_name(a.get())
+        ));
+        EXPECT_TRUE(X509_OBJECT_retrieve_by_subject(
+          store->objs, X509_LU_X509, X509_get_subject_name(b.get())
+        ));
+        ASSERT_TRUE(X509_STORE_unlock(store.get()));
+      }
+    });
+  }
+  for (auto &thread : threads) {
+    thread.join();
+  }
 
   EXPECT_EQ(sk_X509_OBJECT_num(X509_STORE_get0_objects(store.get())), 2u);
 }
