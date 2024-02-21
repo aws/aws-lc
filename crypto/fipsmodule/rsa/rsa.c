@@ -1198,6 +1198,12 @@ int wip_do_not_use_rsa_check_key(const RSA *key) {
 
   // Keys that reach this point are either private keys (n, e, p, q, d),
   // or CRT keys with (dmp1, dmq1, iqmp) values precomputed.
+  if (key_type != RSA_KEY_TYPE_FOR_CHECKING_PRIVATE &&
+      key_type != RSA_KEY_TYPE_FOR_CHECKING_PRIVATE_CRT) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_RSA_PARAMETERS);
+    return 0;
+  }
+
   int ret = 0;
 
   BN_CTX *ctx = BN_CTX_new();
