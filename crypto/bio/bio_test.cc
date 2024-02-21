@@ -1052,7 +1052,7 @@ TEST(BIOTest, InvokeConnectCallback) {
   ASSERT_NE(bio, nullptr);
 
   ASSERT_TRUE(BIO_set_conn_hostname(bio, "localhost"));
-  ASSERT_TRUE(BIO_set_conn_port(bio, "8080"));
+  ASSERT_TRUE(BIO_set_conn_port(bio, "5325"));
   ASSERT_TRUE(BIO_callback_ctrl(bio, BIO_CTRL_SET_CALLBACK, callback));
 
   ASSERT_EQ(BIO_do_connect(bio), 0);

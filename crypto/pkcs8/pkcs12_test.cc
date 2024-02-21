@@ -68,6 +68,17 @@ static void TestImpl(const char *name, bssl::Span<const uint8_t> der,
   }
 }
 
+static void TestImplParseFail(const char *name, bssl::Span<const uint8_t> der,
+                              const char *password) {
+  SCOPED_TRACE(name);
+  bssl::UniquePtr<STACK_OF(X509)> certs(sk_X509_new_null());
+  ASSERT_TRUE(certs);
+
+  EVP_PKEY *key = nullptr;
+  CBS pkcs12 = der;
+  EXPECT_FALSE(PKCS12_get_key_and_certs(&key, certs.get(), &pkcs12, password));
+}
+
 static void TestCompat(bssl::Span<const uint8_t> der) {
   bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(der.data(), der.size()));
   ASSERT_TRUE(bio);
@@ -138,6 +149,28 @@ TEST(PKCS12Test, TestNoEncryption) {
   //   openssl pkcs12 -export -inkey ecdsa_p256_key.pem -in ecdsa_p256_cert.pem -keypbe NONE -certpbe NONE -password pass:foo
   std::string data = GetTestData("crypto/pkcs8/test/no_encryption.p12");
   TestImpl("kNoEncryption", StringToBytes(data), kPassword, nullptr);
+}
+
+// The AuthSafe field of the PFX is of type
+// ContentInfo https://datatracker.ietf.org/doc/html/rfc7292#appendix-D. It's
+// Content field is optional per
+// https://datatracker.ietf.org/doc/html/rfc2315#section-7, but we do not
+// support that. It must not be absent. Additionally, the Content field of
+// AuthSafe contains the AuthenticatedSafe
+// https://datatracker.ietf.org/doc/html/rfc7292#section-4.1; a sequence of
+// ContentInfo's, where each Content field is Optional, again per RFC2315. We do
+// not support this case either, the field cannot be absent.
+// Below two test fixtures validates the above. See V1217527752.
+TEST(PKCS12Test, TestNULLContentInfoRoot) {
+  // Content in AuthSafe can't be NULL.
+  std::string data = GetTestData("crypto/pkcs8/test/null_contentinfo_root.p12");
+  TestImplParseFail("kNoEncryption", StringToBytes(data), nullptr);
+}
+
+TEST(PKCS12Test, TestNULLContentInfoChild) {
+  // Content in ContentInfo from sequence contained in AuthSafe can't be NULL.
+  std::string data = GetTestData("crypto/pkcs8/test/null_contentinfo_child.p12");
+  TestImplParseFail("kNoEncryption", StringToBytes(data), nullptr);
 }
 
 TEST(PKCS12Test, TestEmptyPassword) {

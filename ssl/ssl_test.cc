@@ -4475,7 +4475,10 @@ TEST_P(SSLVersionTest, SessionTimeout) {
 }
 
 TEST_P(SSLVersionTest, DefaultTicketKeyInitialization) {
-  static const uint8_t kZeroKey[kTicketKeyLen] = {};
+  // Do not make static and const. See t/P118709392.
+  // It can trigger https://gcc.gnu.org/bugzilla/show_bug.cgi?id=95189 leading
+  // to transient errors.
+  uint8_t kZeroKey[kTicketKeyLen] = {0};
   uint8_t ticket_key[kTicketKeyLen];
   ASSERT_EQ(1, SSL_CTX_get_tlsext_ticket_keys(server_ctx_.get(), ticket_key,
                                               kTicketKeyLen));
@@ -6088,8 +6091,8 @@ enum ssl_test_ticket_aead_failure_mode {
 };
 
 struct ssl_test_ticket_aead_state {
-  unsigned retry_count;
-  ssl_test_ticket_aead_failure_mode failure_mode;
+  unsigned retry_count = 0;
+  ssl_test_ticket_aead_failure_mode failure_mode = ssl_test_ticket_aead_ok;
 };
 
 static int ssl_test_ticket_aead_ex_index_dup(CRYPTO_EX_DATA *to,
@@ -6102,12 +6105,7 @@ static int ssl_test_ticket_aead_ex_index_dup(CRYPTO_EX_DATA *to,
 static void ssl_test_ticket_aead_ex_index_free(void *parent, void *ptr,
                                                CRYPTO_EX_DATA *ad, int index,
                                                long argl, void *argp) {
-  auto state = reinterpret_cast<ssl_test_ticket_aead_state *>(ptr);
-  if (state == nullptr) {
-    return;
-  }
-
-  OPENSSL_free(state);
+  delete reinterpret_cast<ssl_test_ticket_aead_state*>(ptr);
 }
 
 static CRYPTO_once_t g_ssl_test_ticket_aead_ex_index_once = CRYPTO_ONCE_INIT;
@@ -6196,10 +6194,7 @@ static void ConnectClientAndServerWithTicketMethod(
   SSL_set_connect_state(client.get());
   SSL_set_accept_state(server.get());
 
-  auto state = reinterpret_cast<ssl_test_ticket_aead_state *>(
-      OPENSSL_malloc(sizeof(ssl_test_ticket_aead_state)));
-  ASSERT_TRUE(state);
-  OPENSSL_memset(state, 0, sizeof(ssl_test_ticket_aead_state));
+  auto state = new ssl_test_ticket_aead_state;
   state->retry_count = retry_count;
   state->failure_mode = failure_mode;
 
@@ -9782,6 +9777,141 @@ TEST(SSLTest, ALPNConfig) {
   check_alpn_proto({});
 }
 
+// This is a basic unit-test class to verify completing handshake successfully,
+// sending the correct codepoint extension and having correct application
+// setting on different combination of ALPS codepoint settings. More integration
+// tests on runner.go.
+class AlpsNewCodepointTest : public testing::Test {
+ protected:
+  void SetUp() override {
+    client_ctx_.reset(SSL_CTX_new(TLS_method()));
+    server_ctx_ = CreateContextWithTestCertificate(TLS_method());
+    ASSERT_TRUE(client_ctx_);
+    ASSERT_TRUE(server_ctx_);
+  }
+
+  void SetUpExpectedNewCodePoint() {
+    SSL_CTX_set_select_certificate_cb(
+      server_ctx_.get(),
+      [](const SSL_CLIENT_HELLO *client_hello) -> ssl_select_cert_result_t {
+        const uint8_t *data;
+        size_t len;
+        if (!SSL_early_callback_ctx_extension_get(
+                client_hello, TLSEXT_TYPE_application_settings, &data,
+                &len)) {
+          ADD_FAILURE() << "Could not find alps new codpoint.";
+          return ssl_select_cert_error;
+        }
+        return ssl_select_cert_success;
+      });
+  }
+
+  void SetUpExpectedOldCodePoint() {
+    SSL_CTX_set_select_certificate_cb(
+      server_ctx_.get(),
+      [](const SSL_CLIENT_HELLO *client_hello) -> ssl_select_cert_result_t {
+        const uint8_t *data;
+        size_t len;
+        if (!SSL_early_callback_ctx_extension_get(
+                client_hello, TLSEXT_TYPE_application_settings_old, &data,
+                &len)) {
+          ADD_FAILURE() << "Could not find alps old codpoint.";
+          return ssl_select_cert_error;
+        }
+        return ssl_select_cert_success;
+      });
+  }
+
+  void SetUpApplicationSetting() {
+    static const uint8_t alpn[] = {0x03, 'f', 'o', 'o'};
+    static const uint8_t proto[] = {'f', 'o', 'o'};
+    static const uint8_t alps[] = {0x04, 'a', 'l', 'p', 's'};
+    // SSL_set_alpn_protos's return value is backwards. It returns zero on
+    // success and one on failure.
+    ASSERT_FALSE(SSL_set_alpn_protos(client_.get(), alpn, sizeof(alpn)));
+    SSL_CTX_set_alpn_select_cb(
+      server_ctx_.get(),
+      [](SSL *ssl, const uint8_t **out, uint8_t *out_len, const uint8_t *in,
+          unsigned in_len, void *arg) -> int {
+        return SSL_select_next_proto(
+                    const_cast<uint8_t **>(out), out_len, in, in_len,
+                    alpn, sizeof(alpn)) == OPENSSL_NPN_NEGOTIATED
+                    ? SSL_TLSEXT_ERR_OK
+                    : SSL_TLSEXT_ERR_NOACK;
+      },
+      nullptr);
+    ASSERT_TRUE(SSL_add_application_settings(client_.get(), proto,
+                                            sizeof(proto), nullptr, 0));
+    ASSERT_TRUE(SSL_add_application_settings(server_.get(), proto,
+                                            sizeof(proto), alps, sizeof(alps)));
+  }
+
+  bssl::UniquePtr<SSL_CTX> client_ctx_;
+  bssl::UniquePtr<SSL_CTX> server_ctx_;
+
+  bssl::UniquePtr<SSL> client_;
+  bssl::UniquePtr<SSL> server_;
+};
+
+TEST_F(AlpsNewCodepointTest, Enabled) {
+  SetUpExpectedNewCodePoint();
+
+  ASSERT_TRUE(CreateClientAndServer(&client_, &server_, client_ctx_.get(),
+                                    server_ctx_.get()));
+
+  SSL_set_alps_use_new_codepoint(client_.get(), 1);
+  SSL_set_alps_use_new_codepoint(server_.get(), 1);
+
+  SetUpApplicationSetting();
+  ASSERT_TRUE(CompleteHandshakes(client_.get(), server_.get()));
+  ASSERT_TRUE(SSL_has_application_settings(client_.get()));
+}
+
+TEST_F(AlpsNewCodepointTest, Disabled) {
+  // Both client and server disable alps new codepoint.
+  SetUpExpectedOldCodePoint();
+
+  ASSERT_TRUE(CreateClientAndServer(&client_, &server_, client_ctx_.get(),
+                                    server_ctx_.get()));
+
+  SSL_set_alps_use_new_codepoint(client_.get(), 0);
+  SSL_set_alps_use_new_codepoint(server_.get(), 0);
+
+  SetUpApplicationSetting();
+  ASSERT_TRUE(CompleteHandshakes(client_.get(), server_.get()));
+  ASSERT_TRUE(SSL_has_application_settings(client_.get()));
+}
+
+TEST_F(AlpsNewCodepointTest, ClientOnly) {
+  // If client set new codepoint but server doesn't set, server ignores it.
+  SetUpExpectedNewCodePoint();
+
+  ASSERT_TRUE(CreateClientAndServer(&client_, &server_, client_ctx_.get(),
+                                    server_ctx_.get()));
+
+  SSL_set_alps_use_new_codepoint(client_.get(), 1);
+  SSL_set_alps_use_new_codepoint(server_.get(), 0);
+
+  SetUpApplicationSetting();
+  ASSERT_TRUE(CompleteHandshakes(client_.get(), server_.get()));
+  ASSERT_FALSE(SSL_has_application_settings(client_.get()));
+}
+
+TEST_F(AlpsNewCodepointTest, ServerOnly) {
+  // If client doesn't set new codepoint, while server set.
+  SetUpExpectedOldCodePoint();
+
+  ASSERT_TRUE(CreateClientAndServer(&client_, &server_, client_ctx_.get(),
+                                    server_ctx_.get()));
+
+  SSL_set_alps_use_new_codepoint(client_.get(), 0);
+  SSL_set_alps_use_new_codepoint(server_.get(), 1);
+
+  SetUpApplicationSetting();
+  ASSERT_TRUE(CompleteHandshakes(client_.get(), server_.get()));
+  ASSERT_FALSE(SSL_has_application_settings(client_.get()));
+}
+
 // Test that the key usage checker can correctly handle issuerUID and
 // subjectUID. See https://crbug.com/1199744.
 TEST(SSLTest, KeyUsageWithUIDs) {
@@ -10458,7 +10588,9 @@ TEST(SSLTest, ErrorSyscallAfterCloseNotify) {
   write_failed = false;
 }
 
-static void TestIntermittentEmptyRead(bool auto_retry) {
+// Test that failures are supressed on (potentially)
+// transient empty reads.
+TEST(SSLTest, IntermittentEmptyRead) {
   bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
   bssl::UniquePtr<SSL_CTX> server_ctx =
       CreateContextWithTestCertificate(TLS_method());
@@ -10489,15 +10621,6 @@ static void TestIntermittentEmptyRead(bool auto_retry) {
   ASSERT_TRUE(BIO_up_ref(client_rbio.get()));
   SSL_set0_rbio(client.get(), rbio_empty.release());
 
-  if (auto_retry) {
-      // Set flag under test
-      ASSERT_TRUE(SSL_CTX_set_mode(client_ctx.get(), SSL_MODE_AUTO_RETRY));
-      ASSERT_TRUE(SSL_CTX_get_mode(client_ctx.get()) & SSL_MODE_AUTO_RETRY);
-  } else {
-      // |SSL_MODE_AUTO_RETRY| is off by default
-      ASSERT_FALSE(SSL_CTX_get_mode(client_ctx.get()) & SSL_MODE_AUTO_RETRY);
-  }
-
   // Server writes some data to the client
   const uint8_t write_data[] = {1, 2, 3};
   int ret = SSL_write(server.get(), write_data, (int) sizeof(write_data));
@@ -10507,13 +10630,9 @@ static void TestIntermittentEmptyRead(bool auto_retry) {
   uint8_t read_data[] = {0, 0, 0};
   ret = SSL_read(client.get(), read_data, sizeof(read_data));
   EXPECT_EQ(ret, 0);
-  if (auto_retry) {
-      // On empty read, client should still want a read so caller will retry
-      EXPECT_EQ(SSL_get_error(client.get(), ret), SSL_ERROR_WANT_READ);
-  } else {
-      // On empty read, client should error out signaling EOF
-      EXPECT_EQ(SSL_get_error(client.get(), ret), SSL_ERROR_SYSCALL);
-  }
+  // On empty read, client should still want a read so caller will retry.
+  // This would have returned |SSL_ERROR_SYSCALL| in OpenSSL 1.0.2.
+  EXPECT_EQ(SSL_get_error(client.get(), ret), SSL_ERROR_WANT_READ);
 
   // Reset client rbio, read should succeed
   SSL_set0_rbio(client.get(), client_rbio.release());
@@ -10526,13 +10645,6 @@ static void TestIntermittentEmptyRead(bool auto_retry) {
   ret = SSL_read(client.get(), read_data, sizeof(read_data));
   EXPECT_LT(ret, 0);
   EXPECT_EQ(SSL_get_error(client.get(), ret), SSL_ERROR_WANT_READ);
-}
-
-// Test that |SSL_MODE_AUTO_RETRY| suppresses failure on (potentially)
-// transient empty reads.
-TEST(SSLTest, IntermittentEmptyRead) {
-    TestIntermittentEmptyRead(false);
-    TestIntermittentEmptyRead(true);
 }
 
 // Test that |SSL_shutdown|, when quiet shutdown is enabled, simulates receiving
@@ -11997,6 +12109,28 @@ TEST(SSLTest, SSLFileTests) {
 
   ASSERT_EQ(remove(rsa_pem_filename), 0);
   ASSERT_EQ(remove(ecdsa_pem_filename), 0);
+}
+
+TEST(SSLTest, IncompatibleTLSVersionState) {
+  // Using the following ASN.1 DER Sequence where 42 is the serialization
+  // format version number of some future version not currently supported:
+  // SEQUENCE {
+  //   SEQUENCE {
+  //     INTEGER { 42 }
+  //   }
+  // }
+  static constexpr size_t INCOMPATIBLE_DER_LEN = 7;
+  static const uint8_t INCOMPATIBLE_DER[INCOMPATIBLE_DER_LEN] = {
+      0x30, 0x05, 0x30, 0x03, 0x02, 0x01, 0x2a};
+
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+
+  ASSERT_FALSE(
+      SSL_from_bytes(INCOMPATIBLE_DER, INCOMPATIBLE_DER_LEN, ctx.get()));
+  ASSERT_EQ(ERR_GET_LIB(ERR_peek_error()), ERR_LIB_SSL);
+  ASSERT_EQ(ERR_GET_REASON(ERR_peek_error()),
+            SSL_R_SERIALIZATION_INVALID_SERDE_VERSION);
 }
 
 }  // namespace

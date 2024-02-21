@@ -836,10 +836,6 @@ OPENSSL_EXPORT uint32_t SSL_get_options(const SSL *ssl);
 // |write|. In DTLS, it does nothing.
 #define SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER 0x00000002L
 
-// SSL_MODE_AUTO_RETRY suppresses terminal errors on empty reads if the
-// underlying connection state is retryable, allowing for automatic retries.
-#define SSL_MODE_AUTO_RETRY 0x00000004L
-
 // SSL_MODE_NO_AUTO_CHAIN disables automatically building a certificate chain
 // before sending certificates to the peer. This flag is set (and the feature
 // disabled) by default.
@@ -3338,6 +3334,10 @@ OPENSSL_EXPORT void SSL_get0_peer_application_settings(const SSL *ssl,
 // connection and zero otherwise.
 OPENSSL_EXPORT int SSL_has_application_settings(const SSL *ssl);
 
+// SSL_set_alps_use_new_codepoint configures whether to use the new ALPS
+// codepoint. By default, the old codepoint is used.
+OPENSSL_EXPORT void SSL_set_alps_use_new_codepoint(SSL *ssl, int use_new);
+
 
 // Certificate compression.
 //
@@ -4360,12 +4360,15 @@ OPENSSL_EXPORT int SSL_CTX_set_record_protocol_version(SSL_CTX *ctx,
 
 // Handshake hints.
 //
-// *** EXPERIMENTAL — DO NOT USE WITHOUT CHECKING ***
+// WARNING: Contact the BoringSSL team before using this API. While this
+// mechanism was designed to gracefully recover from version skew and
+// configuration mismatch, splitting a single TLS server into multiple services
+// is complex.
 //
 // Some server deployments make asynchronous RPC calls in both ClientHello
 // dispatch and private key operations. In TLS handshakes where the private key
 // operation occurs in the first round-trip, this results in two consecutive RPC
-// round-trips. Handshake hints allow the RPC service to predicte a signature.
+// round-trips. Handshake hints allow the RPC service to predict a signature.
 // If correctly predicted, this can skip the second RPC call.
 //
 // First, the server installs a certificate selection callback (see
@@ -4391,10 +4394,6 @@ OPENSSL_EXPORT int SSL_CTX_set_record_protocol_version(SSL_CTX *ctx,
 // the private key in later round-trips, such as TLS 1.3 HelloRetryRequest. In
 // those cases, BoringSSL will not predict a signature as there is no benefit.
 // Callers must allow for handshakes to complete without a predicted signature.
-//
-// Handshake hints are supported for TLS 1.3 and partially supported for
-// TLS 1.2. TLS 1.2 resumption handshakes are not yet fully hinted. They will
-// still work, but may not be as efficient.
 
 // SSL_serialize_capabilities writes an opaque byte string to |out| describing
 // some of |ssl|'s capabilities. It returns one on success and zero on error.
@@ -5281,6 +5280,7 @@ DEFINE_STACK_OF(SSL_COMP)
 
 // The following flags do nothing and are included only to make it easier to
 // compile code with BoringSSL.
+#define SSL_MODE_AUTO_RETRY 0
 #define SSL_MODE_RELEASE_BUFFERS 0
 #define SSL_MODE_SEND_CLIENTHELLO_TIME 0
 #define SSL_MODE_SEND_SERVERHELLO_TIME 0
@@ -5454,9 +5454,8 @@ OPENSSL_EXPORT int SSL_state(const SSL *ssl);
 // receiving close_notify in |SSL_shutdown| by causing the implementation to
 // believe the events already happened.
 //
-// It is an error to use |SSL_set_shutdown| to unset a bit that has already been
-// set. Doing so will trigger an |assert| in debug builds and otherwise be
-// ignored.
+// Note: |SSL_set_shutdown| cannot be used to unset a bit that has already
+// been set in AWS-LC. Doing so will be ignored.
 //
 // Use |SSL_CTX_set_quiet_shutdown| instead.
 OPENSSL_EXPORT void SSL_set_shutdown(SSL *ssl, int mode);
@@ -5828,9 +5827,17 @@ BORINGSSL_MAKE_DELETER(SSL_SESSION, SSL_SESSION_free)
 BORINGSSL_MAKE_UP_REF(SSL_SESSION, SSL_SESSION_up_ref)
 
 
-// *** EXPERIMENTAL — DO NOT USE WITHOUT CHECKING ***
+// *** DEPRECATED EXPERIMENT — DO NOT USE ***
 //
 // Split handshakes.
+//
+// WARNING: This mechanism is deprecated and should not be used. It is very
+// fragile and difficult to use correctly. The relationship between
+// configuration options across the two halves is ill-defined and not
+// self-consistent. Additionally, version skew across the two halves risks
+// unusual behavior and connection failure. New development should use the
+// handshake hints API. Existing deployments should migrate to handshake hints
+// to reduce the risk of service outages.
 //
 // Split handshakes allows the handshake part of a TLS connection to be
 // performed in a different process (or on a different machine) than the data
@@ -6186,5 +6193,6 @@ BSSL_NAMESPACE_END
 #define SSL_R_TLSV1_ALERT_CERTIFICATE_REQUIRED 1116
 #define SSL_R_TLSV1_ALERT_NO_APPLICATION_PROTOCOL 1120
 #define SSL_R_TLSV1_ALERT_ECH_REQUIRED 1121
+#define SSL_R_SERIALIZATION_INVALID_SERDE_VERSION 1122
 
 #endif  // OPENSSL_HEADER_SSL_H

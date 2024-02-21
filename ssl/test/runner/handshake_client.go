@@ -630,8 +630,15 @@ func (hs *clientHandshakeState) createClientHello(innerHello *clientHelloMsg, ec
 		hello.secureRenegotiation = nil
 	}
 
-	for protocol := range c.config.ApplicationSettings {
-		hello.alpsProtocols = append(hello.alpsProtocols, protocol)
+	if c.config.ALPSUseNewCodepoint.IncludeNew() {
+		for protocol := range c.config.ApplicationSettings {
+			hello.alpsProtocols = append(hello.alpsProtocols, protocol)
+		}
+	}
+	if c.config.ALPSUseNewCodepoint.IncludeOld() {
+		for protocol := range c.config.ApplicationSettings {
+			hello.alpsProtocolsOld = append(hello.alpsProtocolsOld, protocol)
+		}
 	}
 
 	if maxVersion >= VersionTLS13 {
@@ -997,6 +1004,10 @@ func (hs *clientHandshakeState) doTLS13Handshake(msg any) error {
 	if haveHelloRetryRequest {
 		hs.writeServerHash(helloRetryRequest.marshal())
 
+		if !bytes.Equal(hs.hello.sessionID, helloRetryRequest.sessionID) {
+			return errors.New("tls: ClientHello and HelloRetryRequest session IDs did not match.")
+		}
+
 		if c.config.Bugs.FailIfHelloRetryRequested {
 			return errors.New("tls: unexpected HelloRetryRequest")
 		}
@@ -1097,7 +1108,7 @@ func (hs *clientHandshakeState) doTLS13Handshake(msg any) error {
 	}
 
 	if !bytes.Equal(hs.hello.sessionID, hs.serverHello.sessionID) {
-		return errors.New("tls: session IDs did not match.")
+		return errors.New("tls: ClientHello and ServerHello session IDs did not match.")
 	}
 
 	// Resolve PSK and compute the early secret.
@@ -1400,6 +1411,13 @@ func (hs *clientHandshakeState) doTLS13Handshake(msg any) error {
 		if !c.config.Bugs.OmitClientApplicationSettings {
 			clientEncryptedExtensions.hasApplicationSettings = true
 			clientEncryptedExtensions.applicationSettings = c.localApplicationSettings
+		}
+	}
+	if encryptedExtensions.extensions.hasApplicationSettingsOld || (c.config.Bugs.SendApplicationSettingsWithEarlyData && c.hasApplicationSettingsOld) {
+		hasEncryptedExtensions = true
+		if !c.config.Bugs.OmitClientApplicationSettings {
+			clientEncryptedExtensions.hasApplicationSettingsOld = true
+			clientEncryptedExtensions.applicationSettingsOld = c.localApplicationSettingsOld
 		}
 	}
 	if c.config.Bugs.SendExtraClientEncryptedExtension {
@@ -2054,7 +2072,11 @@ func (hs *clientHandshakeState) processServerExtensions(serverExtensions *server
 		c.quicTransportParamsLegacy = serverExtensions.quicTransportParamsLegacy
 	}
 
-	if serverExtensions.hasApplicationSettings {
+	if serverExtensions.hasApplicationSettings && serverExtensions.hasApplicationSettingsOld {
+		return errors.New("tls: server negotiated both old and new application settings together")
+	}
+
+	if serverExtensions.hasApplicationSettings || serverExtensions.hasApplicationSettingsOld {
 		if c.vers < VersionTLS13 {
 			return errors.New("tls: server sent application settings at invalid version")
 		}
@@ -2068,14 +2090,26 @@ func (hs *clientHandshakeState) processServerExtensions(serverExtensions *server
 		if !ok {
 			return errors.New("tls: server sent application settings for invalid protocol")
 		}
-		c.hasApplicationSettings = true
-		c.localApplicationSettings = settings
-		c.peerApplicationSettings = serverExtensions.applicationSettings
+
+		if serverExtensions.hasApplicationSettings {
+			c.hasApplicationSettings = true
+			c.localApplicationSettings = settings
+			c.peerApplicationSettings = serverExtensions.applicationSettings
+		}
+
+		if serverExtensions.hasApplicationSettingsOld {
+			c.hasApplicationSettingsOld = true
+			c.localApplicationSettingsOld = settings
+			c.peerApplicationSettingsOld = serverExtensions.applicationSettingsOld
+		}
 	} else if serverExtensions.hasEarlyData {
 		// 0-RTT connections inherit application settings from the session.
 		c.hasApplicationSettings = hs.session.hasApplicationSettings
 		c.localApplicationSettings = hs.session.localApplicationSettings
 		c.peerApplicationSettings = hs.session.peerApplicationSettings
+		c.hasApplicationSettingsOld = hs.session.hasApplicationSettingsOld
+		c.localApplicationSettingsOld = hs.session.localApplicationSettingsOld
+		c.peerApplicationSettingsOld = hs.session.peerApplicationSettingsOld
 	}
 
 	return nil

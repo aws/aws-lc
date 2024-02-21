@@ -87,6 +87,7 @@ func (h *hmacPrimitive) Process(vectorSet []byte, m Transactable) (any, error) {
 	// https://pages.nist.gov/ACVP/draft-fussell-acvp-mac.html#name-test-vectors
 	// for details about the tests.
 	for _, group := range parsed.Groups {
+		group := group
 		response := hmacTestGroupResponse{
 			ID: group.ID,
 		}
@@ -95,6 +96,8 @@ func (h *hmacPrimitive) Process(vectorSet []byte, m Transactable) (any, error) {
 		}
 
 		for _, test := range group.Tests {
+			test := test
+
 			if len(test.MsgHex)*4 != group.MsgBits {
 				return nil, fmt.Errorf("test case %d/%d contains hex message of length %d but specifies a bit length of %d", group.ID, test.ID, len(test.MsgHex), group.MsgBits)
 			}

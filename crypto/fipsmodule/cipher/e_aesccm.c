@@ -128,7 +128,7 @@ static int CRYPTO_ccm128_init(struct ccm128_context *ctx, block128_f block,
 }
 
 static size_t CRYPTO_ccm128_max_input(const struct ccm128_context *ctx) {
-  return ctx->L >= sizeof(size_t) ? (size_t)-1
+  return ctx->L >= sizeof(size_t) ? SIZE_MAX
                                   : (((size_t)1) << (ctx->L * 8)) - 1;
 }
 

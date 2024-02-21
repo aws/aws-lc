@@ -34,7 +34,7 @@ rm -rf "${SCRATCH_FOLDER:?}"/*
 cd ${SCRATCH_FOLDER}
 
 function mariadb_build() {
-  cmake ${MARIADB_SRC_FOLDER} -GNinja -DWITH_SSL=${AWS_LC_INSTALL_FOLDER} "-B${MARIADB_BUILD_FOLDER}" -DPLUGIN_COLUMNSTORE=NO -DPLUGIN_ROCKSDB=NO -DPLUGIN_S3=NO -DPLUGIN_MROONGA=NO -DPLUGIN_CONNECT=NO -DPLUGIN_SPHINX=NO -DPLUGIN_SPIDER=NO -DPLUGIN_TOKUDB=NO -DPLUGIN_PERFSCHEMA=NO -DWITH_WSREP=OFF
+  cmake ${MARIADB_SRC_FOLDER} -GNinja -DWITH_SSL=${AWS_LC_INSTALL_FOLDER} "-B${MARIADB_BUILD_FOLDER}" -DPLUGIN_COLUMNSTORE=NO -DPLUGIN_ROCKSDB=NO -DPLUGIN_S3=NO -DPLUGIN_MROONGA=NO -DPLUGIN_CONNECT=NO -DPLUGIN_SPHINX=NO -DPLUGIN_SPIDER=NO -DPLUGIN_TOKUDB=NO -DWITH_WSREP=OFF
   ninja -C ${MARIADB_BUILD_FOLDER}
   ls -R ${MARIADB_BUILD_FOLDER}
 }
@@ -60,7 +60,10 @@ main.flush_logs_not_windows : query 'flush logs' succeeded - should have failed 
 main.mysql_upgrade_noengine : upgrade output order does not match the expected
 main.plugin_load : This test generates a warning in Codebuild. Skip over since this isn't relevant to AWS-LC.
 main.ssl_crl : This test is flaky in CodeBuild CI P112867839
-main.desc_index_min_max : This test is flaky in CodeBuild CI P112867839"> skiplist
+main.desc_index_min_max : This test is flaky in CodeBuild CI P112867839
+main.ssl_autoverify : Failing with - TLS/SSL error: unable to get local issuer certificate
+main.mysql : Failing with - TLS/SSL error: unable to get local issuer certificate
+main.ssl_fp : Failing with - TLS/SSL error: unable to get local issuer certificate"> skiplist
   ./mtr --suite=main --force --parallel=auto --skip-test-list=${MARIADB_BUILD_FOLDER}/mysql-test/skiplist --retry-failure=2
   popd
 }

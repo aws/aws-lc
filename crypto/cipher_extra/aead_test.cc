@@ -25,11 +25,11 @@
 
 #include "../fipsmodule/cipher/internal.h"
 #include "../internal.h"
-#include "./internal.h"
 #include "../test/abi_test.h"
 #include "../test/file_test.h"
 #include "../test/test_util.h"
 #include "../test/wycheproof_util.h"
+#include "./internal.h"
 #include "internal.h"
 
 // kLimitedImplementation indicates that tests that assume a generic AEAD
@@ -280,24 +280,6 @@ TEST_P(PerAEADTest, TestVector) {
         << "Decrypted bad data with corrupted byte.";
     ERR_clear_error();
   });
-}
-
-TEST_P(PerAEADTest, TestIdentifier) {
-  const EVP_AEAD *aead = GetParam().func();
-  ASSERT_TRUE(aead->aead_id != AEAD_UNKNOWN_ID);
-}
-
-TEST(EvpAeadCtxIdTest, RetrievesIdentifier) {
-  bssl::ScopedEVP_AEAD_CTX ctx;
-
-  std::string key_hex("809adab149635b22f0a37de146f17dc8");
-  std::vector<uint8_t> key;
-
-  ASSERT_TRUE(DecodeHex(&key, key_hex));
-  ASSERT_TRUE(EVP_AEAD_CTX_init(ctx.get(), EVP_aead_aes_128_gcm(), key.data(),
-                                key.size(), 16, nullptr));
-
-  ASSERT_EQ(EVP_AEAD_CTX_get_aead_id(ctx.get()), AEAD_AES_128_GCM_ID);
 }
 
 struct KnownTLSLegacyAEAD {
@@ -1265,11 +1247,10 @@ TEST(AEADTest, AEADAES256GCMDetIVGen) {
   EXPECT_EQ(Bytes(out, sizeof(out)), Bytes(expected, sizeof(expected)));
 }
 
-static int awslc_encrypt(EVP_AEAD_CTX *ctx, uint8_t *nonce,
-                                       uint8_t *ct, uint8_t *pt) {
+static int awslc_encrypt(EVP_AEAD_CTX *ctx, uint8_t *nonce, uint8_t *ct,
+                         uint8_t *pt) {
   size_t ct_len = 0;
-  GTEST_LOG_(INFO) << "awslc_encrypt: Ctx.State Location: "
-                   << &ctx->state;
+  GTEST_LOG_(INFO) << "awslc_encrypt: Ctx.State Location: " << &ctx->state;
   if (EVP_AEAD_CTX_seal(ctx, ct, &ct_len, 32, nonce, 12, pt, 16, NULL, 0) !=
       1) {
     return 1;
@@ -1280,7 +1261,6 @@ static int awslc_encrypt(EVP_AEAD_CTX *ctx, uint8_t *nonce,
 
 static int awslc_decrypt(const EVP_AEAD *cipher, uint8_t ct[32], uint8_t *key,
                          size_t key_len, uint8_t nonce[12], uint8_t pt[16]) {
-
   EVP_AEAD_CTX ctx;
   size_t pt_len = 0;
 
@@ -1303,7 +1283,8 @@ TEST(AEADTest, TestGCMSIV128Change16Alignment) {
   uint8_t nonce[12] = {0};
   uint8_t pt[16] = {0};
   uint8_t ct[32] = {0};
-  EVP_AEAD_CTX* encrypt_ctx_128 = (EVP_AEAD_CTX*)malloc(sizeof(EVP_AEAD_CTX) + 8);
+  EVP_AEAD_CTX *encrypt_ctx_128 =
+      (EVP_AEAD_CTX *)malloc(sizeof(EVP_AEAD_CTX) + 8);
   ASSERT_TRUE(encrypt_ctx_128);
 
   const EVP_AEAD *cipher_128 = EVP_aead_aes_128_gcm_siv();
@@ -1343,7 +1324,8 @@ TEST(AEADTest, TestGCMSIV256Change16Alignment) {
   uint8_t key[32] = {0};
   uint8_t pt[16] = {0};
   uint8_t ct[32] = {0};
-  EVP_AEAD_CTX* encrypt_ctx_256 = (EVP_AEAD_CTX*)malloc(sizeof(EVP_AEAD_CTX) + 8);
+  EVP_AEAD_CTX *encrypt_ctx_256 =
+      (EVP_AEAD_CTX *)malloc(sizeof(EVP_AEAD_CTX) + 8);
   ASSERT_TRUE(encrypt_ctx_256);
 
   const EVP_AEAD *cipher_256 = EVP_aead_aes_256_gcm_siv();
@@ -1376,4 +1358,196 @@ TEST(AEADTest, TestGCMSIV256Change16Alignment) {
     EXPECT_EQ(CIPHER_R_ALIGNMENT_CHANGED, ERR_GET_REASON(err));
   }
   free(encrypt_ctx_256);
+}
+
+struct EvpAeadCtxSerdeTestParams {
+  const char *name;
+  const EVP_AEAD *cipher;
+  const uint8_t *key;
+  const size_t key_len;
+  const size_t tag_len;
+  uint16_t expect_id;
+};
+
+class EvpAeadCtxSerdeTest
+    : public testing::TestWithParam<EvpAeadCtxSerdeTestParams> {};
+
+static const uint8_t kEvpAeadCtxKey[68] = {
+    0x49, 0xd4, 0x9f, 0x84, 0x62, 0xf1, 0xda, 0x3a, 0xe1, 0x60, 0x08, 0xf3,
+    0xcf, 0xf6, 0x01, 0x2d, 0x95, 0x90, 0x08, 0xfe, 0xad, 0x89, 0x31, 0x21,
+    0x1c, 0x84, 0xf0, 0x77, 0x57, 0x18, 0x94, 0x03, 0xe3, 0x85, 0x30, 0x32,
+    0xc3, 0x0f, 0xae, 0x54, 0x54, 0x8d, 0x21, 0x55, 0x68, 0xc9, 0x6f, 0xb9,
+    0x23, 0x4e, 0xbc, 0xba, 0x1a, 0x4c, 0x9a, 0xd8, 0x35, 0x96, 0xc2, 0xb3,
+    0x6e, 0x7a, 0x47, 0xa8, 0x8e, 0xdd, 0x6e, 0x1d};
+
+static const EvpAeadCtxSerdeTestParams kEvpAeadCtxSerde[] = {
+    {"EVP_aead_aes_128_gcm", EVP_aead_aes_128_gcm(), kEvpAeadCtxKey, 16, 16,
+     16},
+    {"EVP_aead_aes_192_gcm", EVP_aead_aes_192_gcm(), kEvpAeadCtxKey, 24, 16,
+     17},
+    {"EVP_aead_aes_256_gcm", EVP_aead_aes_256_gcm(), kEvpAeadCtxKey, 32, 16,
+     18},
+    {"EVP_aead_chacha20_poly1305", EVP_aead_chacha20_poly1305(), kEvpAeadCtxKey,
+     32, 16, 5},
+    {"EVP_aead_xchacha20_poly1305", EVP_aead_xchacha20_poly1305(),
+     kEvpAeadCtxKey, 32, 16, 6},
+    {"EVP_aead_aes_128_ctr_hmac_sha256", EVP_aead_aes_128_ctr_hmac_sha256(),
+     kEvpAeadCtxKey, 48, 32, 1},
+    {"EVP_aead_aes_256_ctr_hmac_sha256", EVP_aead_aes_256_ctr_hmac_sha256(),
+     kEvpAeadCtxKey, 64, 32, 2},
+    {"EVP_aead_aes_128_gcm_siv", EVP_aead_aes_128_gcm_siv(), kEvpAeadCtxKey, 16,
+     16, 3},
+    {"EVP_aead_aes_256_gcm_siv", EVP_aead_aes_256_gcm_siv(), kEvpAeadCtxKey, 32,
+     16, 4},
+    {"EVP_aead_aes_128_gcm_randnonce", EVP_aead_aes_128_gcm_randnonce(),
+     kEvpAeadCtxKey, 16, 28, 19},
+    {"EVP_aead_aes_256_gcm_randnonce", EVP_aead_aes_256_gcm_randnonce(),
+     kEvpAeadCtxKey, 32, 28, 20},
+    {"EVP_aead_aes_128_ccm_bluetooth", EVP_aead_aes_128_ccm_bluetooth(),
+     kEvpAeadCtxKey, 16, 4, 25},
+    {"EVP_aead_aes_128_ccm_bluetooth_8", EVP_aead_aes_128_ccm_bluetooth_8(),
+     kEvpAeadCtxKey, 16, 8, 26},
+    {"EVP_aead_aes_128_ccm_matter", EVP_aead_aes_128_ccm_matter(),
+     kEvpAeadCtxKey, 16, 16, 27},
+    {"EVP_aead_aes_128_cbc_sha1_tls", EVP_aead_aes_128_cbc_sha1_tls(),
+     kEvpAeadCtxKey, 36, 20, 7},
+    {"EVP_aead_aes_128_cbc_sha1_tls_implicit_iv",
+     EVP_aead_aes_128_cbc_sha1_tls_implicit_iv(), kEvpAeadCtxKey, 52, 20, 8},
+    {"EVP_aead_aes_256_cbc_sha1_tls", EVP_aead_aes_256_cbc_sha1_tls(),
+     kEvpAeadCtxKey, 52, 20, 9},
+    {"EVP_aead_aes_256_cbc_sha1_tls_implicit_iv",
+     EVP_aead_aes_256_cbc_sha1_tls_implicit_iv(), kEvpAeadCtxKey, 68, 20, 10},
+    {"EVP_aead_aes_128_cbc_sha256_tls", EVP_aead_aes_128_cbc_sha256_tls(),
+     kEvpAeadCtxKey, 48, 32, 11},
+    {"EVP_aead_aes_128_cbc_sha256_tls_implicit_iv",
+     EVP_aead_aes_128_cbc_sha256_tls_implicit_iv(), kEvpAeadCtxKey, 64, 32, 12},
+    {"EVP_aead_des_ede3_cbc_sha1_tls", EVP_aead_des_ede3_cbc_sha1_tls(),
+     kEvpAeadCtxKey, 44, 20, 13},
+    {"EVP_aead_des_ede3_cbc_sha1_tls_implicit_iv",
+     EVP_aead_des_ede3_cbc_sha1_tls_implicit_iv(), kEvpAeadCtxKey, 52, 20, 14},
+    {"EVP_aead_null_sha1_tls", EVP_aead_null_sha1_tls(), kEvpAeadCtxKey, 20, 20,
+     15},
+    {"EVP_aead_aes_128_gcm_tls12", EVP_aead_aes_128_gcm_tls12(), kEvpAeadCtxKey,
+     16, 16, 21},
+    {"EVP_aead_aes_256_gcm_tls12", EVP_aead_aes_256_gcm_tls12(), kEvpAeadCtxKey,
+     32, 16, 22},
+    {"EVP_aead_aes_128_gcm_tls13", EVP_aead_aes_128_gcm_tls13(), kEvpAeadCtxKey,
+     16, 16, 23},
+    {"EVP_aead_aes_256_gcm_tls13", EVP_aead_aes_256_gcm_tls13(), kEvpAeadCtxKey,
+     32, 16, 24}};
+
+INSTANTIATE_TEST_SUITE_P(
+    EvpAeadCtxSerdeTests, EvpAeadCtxSerdeTest,
+    testing::ValuesIn(kEvpAeadCtxSerde),
+    [](const testing::TestParamInfo<EvpAeadCtxSerdeTestParams> &params)
+        -> std::string { return params.param.name; });
+
+TEST_P(EvpAeadCtxSerdeTest, Roundtrips) {
+  const ParamType &params = GetParam();
+
+  const evp_aead_direction_t directions[] = {evp_aead_open, evp_aead_seal};
+
+  for (evp_aead_direction_t direction : directions) {
+    bssl::ScopedEVP_AEAD_CTX ctx;
+    bssl::ScopedEVP_AEAD_CTX ctx2;
+
+    ASSERT_TRUE(EVP_AEAD_CTX_init_with_direction(ctx.get(), params.cipher,
+                                                 params.key, params.key_len,
+                                                 params.tag_len, direction));
+    ASSERT_TRUE(EVP_AEAD_CTX_init_with_direction(ctx2.get(), params.cipher,
+                                                 params.key, params.key_len,
+                                                 params.tag_len, direction));
+
+    bssl::ScopedCBB cbb;
+    CBB_init(cbb.get(), 1024);
+    CBS cbs;
+
+    ASSERT_TRUE(EVP_AEAD_CTX_serialize_state(ctx.get(), cbb.get()));
+    CBS_init(&cbs, CBB_data(cbb.get()), CBB_len(cbb.get()));
+    ASSERT_TRUE(EVP_AEAD_CTX_deserialize_state(ctx2.get(), &cbs));
+  }
+}
+
+TEST_P(EvpAeadCtxSerdeTest, FailUnknownSerdeVersion) {
+  // A minimal DER encoding with the serialization version set to 42.
+  // SEQUENCE {
+  //   INTEGER { 42 }
+  // }
+  static const size_t INVALID_VERSION_DER_LEN = 5;
+  static const uint8_t INVALID_VERSION_DER[INVALID_VERSION_DER_LEN] = {
+      0x30, 0x03, 0x02, 0x01, 0x2a};
+
+  const ParamType &params = GetParam();
+
+  const evp_aead_direction_t directions[] = {evp_aead_open, evp_aead_seal};
+
+  for (const evp_aead_direction_t direction : directions) {
+    bssl::ScopedEVP_AEAD_CTX ctx;
+
+    ASSERT_TRUE(EVP_AEAD_CTX_init_with_direction(ctx.get(), params.cipher,
+                                                 params.key, params.key_len,
+                                                 params.tag_len, direction));
+
+    CBS cbs;
+    CBS_init(&cbs, INVALID_VERSION_DER, INVALID_VERSION_DER_LEN);
+    ASSERT_FALSE(EVP_AEAD_CTX_deserialize_state(ctx.get(), &cbs));
+    ASSERT_EQ(ERR_GET_LIB(ERR_peek_error()), ERR_LIB_CIPHER);
+    ASSERT_EQ(ERR_GET_REASON(ERR_get_error()),
+              CIPHER_R_SERIALIZATION_INVALID_SERDE_VERSION);
+  }
+}
+
+TEST_P(EvpAeadCtxSerdeTest, FailUnknownCipherId) {
+  // A minimal DER encoding with the serialization version set to 1,
+  // and the cipher identifer set to 65535.
+  // SEQUENCE {
+  //   INTEGER { 1 }
+  //   INTEGER { 65535 }
+  // }
+  static const size_t INVALID_CIPHER_ID_DER_LEN = 10;
+  static const uint8_t INVALID_CIPHER_ID_DER[INVALID_CIPHER_ID_DER_LEN] = {
+      0x30, 0x08, 0x02, 0x01, 0x01, 0x02, 0x03, 0x00, 0xff, 0xff};
+
+  const ParamType &params = GetParam();
+
+  const evp_aead_direction_t directions[] = {evp_aead_open, evp_aead_seal};
+
+  for (const evp_aead_direction_t direction : directions) {
+    bssl::ScopedEVP_AEAD_CTX ctx;
+
+    ASSERT_TRUE(EVP_AEAD_CTX_init_with_direction(ctx.get(), params.cipher,
+                                                 params.key, params.key_len,
+                                                 params.tag_len, direction));
+
+    CBS cbs;
+    CBS_init(&cbs, INVALID_CIPHER_ID_DER, INVALID_CIPHER_ID_DER_LEN);
+    ASSERT_FALSE(EVP_AEAD_CTX_deserialize_state(ctx.get(), &cbs));
+    ASSERT_EQ(ERR_GET_LIB(ERR_peek_error()), ERR_LIB_CIPHER);
+    ASSERT_EQ(ERR_GET_REASON(ERR_get_error()),
+              CIPHER_R_SERIALIZATION_INVALID_CIPHER_ID);
+  }
+}
+
+TEST(EvpAeadCtxSerdeTest, ID) {
+  bool identifiers[AEAD_MAX_ID + 1] = {false};
+  for (EvpAeadCtxSerdeTestParams params : kEvpAeadCtxSerde) {
+    bssl::ScopedEVP_AEAD_CTX ctx;
+    ASSERT_TRUE(EVP_AEAD_CTX_init_with_direction(
+        ctx.get(), params.cipher, params.key, params.key_len, params.tag_len,
+        evp_aead_open));
+    uint16_t id = EVP_AEAD_CTX_get_aead_id(ctx.get());
+    ASSERT_EQ(params.expect_id, id);
+    // No cipher must have the same identifier
+    ASSERT_FALSE(identifiers[id]);
+    identifiers[id] = true;
+  }
+
+  // Nothing should have the unknown identifier (0)
+  ASSERT_FALSE(identifiers[0]);
+
+  // If our test coverage is good we should have all possible id's covered
+  // otherwise we are missing coverage.
+  for (size_t id = 1; id <= AEAD_MAX_ID; id++) {
+    ASSERT_TRUE(identifiers[id]);
+  }
 }

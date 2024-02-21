@@ -164,10 +164,9 @@ static int x509_object_cmp_sk(const X509_OBJECT *const *a,
 X509_STORE *X509_STORE_new(void) {
   X509_STORE *ret;
 
-  if ((ret = (X509_STORE *)OPENSSL_malloc(sizeof(X509_STORE))) == NULL) {
+  if ((ret = (X509_STORE *)OPENSSL_zalloc(sizeof(X509_STORE))) == NULL) {
     return NULL;
   }
-  OPENSSL_memset(ret, 0, sizeof(*ret));
   CRYPTO_MUTEX_init(&ret->objs_lock);
   ret->objs = sk_X509_OBJECT_new(x509_object_cmp_sk);
   if (ret->objs == NULL) {
@@ -438,7 +437,7 @@ static int x509_object_idx_cnt(STACK_OF(X509_OBJECT) *h, int type,
 
   size_t idx;
   sk_X509_OBJECT_sort(h);
-  if (!sk_X509_OBJECT_find(h, &idx, &stmp)) {
+  if (!sk_X509_OBJECT_find_awslc(h, &idx, &stmp)) {
     return -1;
   }
 
@@ -561,7 +560,7 @@ X509_OBJECT *X509_OBJECT_retrieve_match(STACK_OF(X509_OBJECT) *h,
                                         X509_OBJECT *x) {
   sk_X509_OBJECT_sort(h);
   size_t idx;
-  if (!sk_X509_OBJECT_find(h, &idx, x)) {
+  if (!sk_X509_OBJECT_find_awslc(h, &idx, x)) {
     return NULL;
   }
   if ((x->type != X509_LU_X509) && (x->type != X509_LU_CRL)) {
