@@ -1,6 +1,4 @@
 .text
-.file 1 "inserted_by_delocate.c"
-.loc 1 1 0
 BORINGSSL_bcm_text_start:
 	.text
 .Lfoo_local_target:
@@ -258,7 +256,6 @@ LOPENSSL_ia32cap_P_rbx3_return:
 
 .comm foobar,64,32
 .text
-.loc 1 2 0
 BORINGSSL_bcm_text_end:
 .type foobar_bss_get, @function
 foobar_bss_get:

@@ -61,7 +61,7 @@ const (
 
 // represents a unique symbol for an occurrence of OPENSSL_ia32cap_P.
 type cpuCapUniqueSymbol struct {
-	registerName string
+	registerName     string
 	suffixUniqueness string
 }
 
@@ -78,8 +78,8 @@ func (uniqueSymbol cpuCapUniqueSymbol) getx86SymbolReturn() string {
 // uniqueness must be a globally unique integer value.
 func newCpuCapUniqueSymbol(uniqueness int, registerName string) *cpuCapUniqueSymbol {
 	return &cpuCapUniqueSymbol{
-	    registerName: strings.Trim(registerName, "%"), // should work with both AT&T and Intel syntax.
-	    suffixUniqueness: strconv.Itoa(uniqueness),
+		registerName:     strings.Trim(registerName, "%"), // should work with both AT&T and Intel syntax.
+		suffixUniqueness: strconv.Itoa(uniqueness),
 	}
 }
 
@@ -1432,7 +1432,7 @@ Args:
 
 				classification := classifyInstruction(instructionName, argNodes)
 				if classification != instrThreeArg && classification != instrCompare && i != 0 {
-					return nil, fmt.Errorf("GOT access must be source operand, %w", classification)
+					return nil, fmt.Errorf("GOT access must be source operand, %v", classification)
 				}
 
 				// Reduce the instruction to movq symbol@GOTPCREL, targetReg.
@@ -1713,10 +1713,6 @@ func transform(w stringWriter, inputs []inputFile) error {
 	// maxObservedFileNumber contains the largest seen file number in a
 	// .file directive. Zero is not a valid number.
 	maxObservedFileNumber := 0
-	// fileDirectivesContainMD5 is true if the compiler is outputting MD5
-	// checksums in .file directives. If it does so, then this script needs
-	// to match that behaviour otherwise warnings result.
-	fileDirectivesContainMD5 := false
 
 	// OPENSSL_ia32cap_get will be synthesized by this script.
 	symbols["OPENSSL_ia32cap_get"] = struct{}{}
@@ -1776,12 +1772,6 @@ func transform(w stringWriter, inputs []inputFile) error {
 			if fileNo > maxObservedFileNumber {
 				maxObservedFileNumber = fileNo
 			}
-
-			for _, token := range parts[2:] {
-				if token == "md5" {
-					fileDirectivesContainMD5 = true
-				}
-			}
 		}, ruleStatement, ruleLocationDirective)
 	}
 
@@ -1796,27 +1786,21 @@ func transform(w stringWriter, inputs []inputFile) error {
 	}
 
 	d := &delocation{
-		symbols:             	symbols,
-		localEntrySymbols:   	localEntrySymbols,
-		processor:           	processor,
-		commentIndicator:    	commentIndicator,
-		output:              	w,
-		cpuCapUniqueSymbols:    []*cpuCapUniqueSymbol{},
-		redirectors:         	make(map[string]string),
-		bssAccessorsNeeded:  	make(map[string]string),
-		tocLoaders:          	make(map[string]struct{}),
-		gotExternalsNeeded:  	make(map[string]struct{}),
-		gotOffsetsNeeded:    	make(map[string]struct{}),
-		gotOffOffsetsNeeded: 	make(map[string]struct{}),
+		symbols:             symbols,
+		localEntrySymbols:   localEntrySymbols,
+		processor:           processor,
+		commentIndicator:    commentIndicator,
+		output:              w,
+		cpuCapUniqueSymbols: []*cpuCapUniqueSymbol{},
+		redirectors:         make(map[string]string),
+		bssAccessorsNeeded:  make(map[string]string),
+		tocLoaders:          make(map[string]struct{}),
+		gotExternalsNeeded:  make(map[string]struct{}),
+		gotOffsetsNeeded:    make(map[string]struct{}),
+		gotOffOffsetsNeeded: make(map[string]struct{}),
 	}
 
 	w.WriteString(".text\n")
-	var fileTrailing string
-	if fileDirectivesContainMD5 {
-		fileTrailing = " md5 0x00000000000000000000000000000000"
-	}
-	w.WriteString(fmt.Sprintf(".file %d \"inserted_by_delocate.c\"%s\n", maxObservedFileNumber+1, fileTrailing))
-	w.WriteString(fmt.Sprintf(".loc %d 1 0\n", maxObservedFileNumber+1))
 	w.WriteString("BORINGSSL_bcm_text_start:\n")
 
 	for _, input := range inputs {
@@ -1826,7 +1810,6 @@ func transform(w stringWriter, inputs []inputFile) error {
 	}
 
 	w.WriteString(".text\n")
-	w.WriteString(fmt.Sprintf(".loc %d 2 0\n", maxObservedFileNumber+1))
 	w.WriteString("BORINGSSL_bcm_text_end:\n")
 
 	// Emit redirector functions. Each is a single jump instruction.

@@ -1,6 +1,4 @@
 .text
-.file 1 "inserted_by_delocate.c"
-.loc 1 1 0
 BORINGSSL_bcm_text_start:
 	.type foo, @function
 	.globl foo
@@ -96,7 +94,6 @@ bar:
 	.byte	(.LBB231_40_BCM_1-.LBB231_19_BCM_1)>>2, 4, .Lfoo_BCM_1, (.Lfoo_BCM_1), .Lfoo_BCM_1<<400, (   .Lfoo_BCM_1 ) <<  66
 .byte   421
 .text
-.loc 1 2 0
 BORINGSSL_bcm_text_end:
 .type bcm_redirector_memcpy, @function
 bcm_redirector_memcpy:
