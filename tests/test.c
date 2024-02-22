@@ -2846,18 +2846,25 @@ int test_bignum_copy_row_from_table(void)
 
 int test_bignum_copy_row_from_table_8n_neon(void)
 {
-#ifdef __ARM_NEON
-  return test_bignum_copy_row_from_table_specific("bignum_copy_row_from_table_8n_neon",
-      0, 1, bignum_copy_row_from_table_8n_neon);
-#else
+#ifdef __x86_64__
   return 1;
+#else
+  return test_bignum_copy_row_from_table_specific(
+      "bignum_copy_row_from_table_8n_neon", 0, 1,
+      bignum_copy_row_from_table_8n_neon);
 #endif
 }
 
-#ifdef __ARM_NEON
+#ifdef __x86_64__
+int test_bignum_copy_row_from_table_16_neon(void)
+{ return 1;
+}
+#else
 void _bignum_copy_row_from_table_16_neon_wrapper(uint64_t *z, uint64_t *table,
-    uint64_t height, uint64_t width, uint64_t index)
-{ assert(width == 16);
+                                                 uint64_t height,
+                                                 uint64_t width,
+                                                 uint64_t index) {
+  assert(width == 16);
   bignum_copy_row_from_table_16_neon(z, table, height, index);
 }
 
@@ -2866,16 +2873,18 @@ int test_bignum_copy_row_from_table_16_neon(void)
       "bignum_copy_row_from_table_16_neon", 16, 0,
       _bignum_copy_row_from_table_16_neon_wrapper);
 }
-#else
-int test_bignum_copy_row_from_table_16_neon(void)
-{ return 1;
-}
 #endif
 
-#ifdef __ARM_NEON
+#ifdef __x86_64__
+int test_bignum_copy_row_from_table_32_neon(void)
+{ return 1;
+}
+#else
 void _bignum_copy_row_from_table_32_neon_wrapper(uint64_t *z, uint64_t *table,
-    uint64_t height, uint64_t width, uint64_t index)
-{ assert(width == 32);
+                                                 uint64_t height,
+                                                 uint64_t width,
+                                                 uint64_t index) {
+  assert(width == 32);
   bignum_copy_row_from_table_32_neon(z, table, height, index);
 }
 
@@ -2883,10 +2892,6 @@ int test_bignum_copy_row_from_table_32_neon(void)
 { return test_bignum_copy_row_from_table_specific(
       "bignum_copy_row_from_table_32_neon", 32, 0,
       _bignum_copy_row_from_table_32_neon_wrapper);
-}
-#else
-int test_bignum_copy_row_from_table_32_neon(void)
-{ return 1;
 }
 #endif
 
@@ -3762,12 +3767,12 @@ int test_bignum_emontredc_8n(void)
 
 int test_bignum_emontredc_8n_neon(void)
 {
-#ifdef __ARM_NEON
-  return test_bignum_emontredc_specific("bignum_emontredc_8n_neon", 1,
-                                        bignum_emontredc_8n_neon);
-#else
+#ifdef __x86_64__
   // Do not call the neon function to avoid a linking failure error.
   return 1;
+#else
+  return test_bignum_emontredc_specific("bignum_emontredc_8n_neon", 1,
+                                        bignum_emontredc_8n_neon);
 #endif
 }
 
@@ -4451,12 +4456,12 @@ int test_bignum_kmul_16_32(void)
 
 int test_bignum_kmul_16_32_neon(void)
 {
-#ifdef __ARM_NEON
-  return test_bignum_kmul_specific(32,16,16,"bignum_kmul_16_32_neon",
-                                   bignum_kmul_16_32_neon);
-#else
+#ifdef __x86_64__
   // Do not call the neon function to avoid a linking failure error.
   return 1;
+#else
+  return test_bignum_kmul_specific(32, 16, 16, "bignum_kmul_16_32_neon",
+                                   bignum_kmul_16_32_neon);
 #endif
 }
 
@@ -4466,12 +4471,12 @@ int test_bignum_kmul_32_64(void)
 
 int test_bignum_kmul_32_64_neon(void)
 {
-#ifdef __ARM_NEON
-  return test_bignum_kmul_specific(64,32,32,"bignum_kmul_32_64_neon",
-                                   bignum_kmul_32_64_neon);
-#else
+#ifdef __x86_64__
   // Do not call the neon function to avoid a linking failure error.
   return 1;
+#else
+  return test_bignum_kmul_specific(64, 32, 32, "bignum_kmul_32_64_neon",
+                                   bignum_kmul_32_64_neon);
 #endif
 }
 
@@ -4511,12 +4516,12 @@ int test_bignum_ksqr_16_32(void)
 
 int test_bignum_ksqr_16_32_neon(void)
 {
-#ifdef __ARM_NEON
-  return test_bignum_ksqr_specific(32,16,"bignum_ksqr_16_32_neon",
-                                   bignum_ksqr_16_32_neon);
-#else
+#ifdef __x86_64__
   // Do not call the neon function to avoid a linking failure error.
   return 1;
+#else
+  return test_bignum_ksqr_specific(32, 16, "bignum_ksqr_16_32_neon",
+                                   bignum_ksqr_16_32_neon);
 #endif
 }
 
@@ -4526,12 +4531,12 @@ int test_bignum_ksqr_32_64(void)
 
 int test_bignum_ksqr_32_64_neon(void)
 {
-#ifdef __ARM_NEON
-  return test_bignum_ksqr_specific(64,32,"bignum_ksqr_32_64_neon",
-                                   bignum_ksqr_32_64_neon);
-#else
+#ifdef __x86_64__
   // Do not call the neon function to avoid a linking failure error.
   return 1;
+#else
+  return test_bignum_ksqr_specific(64, 32, "bignum_ksqr_32_64_neon",
+                                   bignum_ksqr_32_64_neon);
 #endif
 }
 
@@ -6698,12 +6703,12 @@ int test_bignum_mul_8_16_alt(void)
 
 int test_bignum_mul_8_16_neon(void)
 {
-#ifdef __ARM_NEON
-  return test_bignum_mul_specific(16, 8, 8, "bignum_mul_8_16_neon",
-                                  bignum_mul_8_16_neon);
-#else
+#ifdef __x86_64__
   // Do not call the neon function to avoid a linking failure error.
   return 1;
+#else
+  return test_bignum_mul_specific(16, 8, 8, "bignum_mul_8_16_neon",
+                                  bignum_mul_8_16_neon);
 #endif
 }
 
@@ -8024,11 +8029,12 @@ int test_bignum_sqr_8_16_alt(void)
 
 int test_bignum_sqr_8_16_neon(void)
 {
-#ifdef __ARM_NEON
-  return test_bignum_sqr_specific(16,8,"bignum_sqr_8_16_neon",bignum_sqr_8_16_neon);
-#else
+#ifdef __x86_64__
   // Do not call the neon function to avoid a linking failure error.
   return 1;
+#else
+  return test_bignum_sqr_specific(16, 8, "bignum_sqr_8_16_neon",
+                                  bignum_sqr_8_16_neon);
 #endif
 }
 
@@ -11987,17 +11993,16 @@ int main(int argc, char *argv[])
   functionaltest(all,"word_recip",test_word_recip);
 
   if (get_arch_name() == ARCH_AARCH64) {
-    int neon = supports_neon();
-    functionaltest(neon,"bignum_copy_row_from_table_8n_neon",test_bignum_copy_row_from_table_8n_neon);
-    functionaltest(neon,"bignum_copy_row_from_table_16_neon",test_bignum_copy_row_from_table_16_neon);
-    functionaltest(neon,"bignum_copy_row_from_table_32_neon",test_bignum_copy_row_from_table_32_neon);
-    functionaltest(neon,"bignum_emontredc_8n_neon",test_bignum_emontredc_8n_neon);
-    functionaltest(neon,"bignum_kmul_16_32_neon", test_bignum_kmul_16_32_neon);
-    functionaltest(neon,"bignum_kmul_32_64_neon", test_bignum_kmul_32_64_neon);
-    functionaltest(neon,"bignum_ksqr_16_32_neon",test_bignum_ksqr_16_32_neon);
-    functionaltest(neon,"bignum_ksqr_32_64_neon",test_bignum_ksqr_32_64_neon);
-    functionaltest(neon,"bignum_mul_8_16_neon",test_bignum_mul_8_16_neon);
-    functionaltest(neon,"bignum_sqr_8_16_neon",test_bignum_sqr_8_16_neon);
+    functionaltest(all,"bignum_copy_row_from_table_8n_neon",test_bignum_copy_row_from_table_8n_neon);
+    functionaltest(all,"bignum_copy_row_from_table_16_neon",test_bignum_copy_row_from_table_16_neon);
+    functionaltest(all,"bignum_copy_row_from_table_32_neon",test_bignum_copy_row_from_table_32_neon);
+    functionaltest(all,"bignum_emontredc_8n_neon",test_bignum_emontredc_8n_neon);
+    functionaltest(all,"bignum_kmul_16_32_neon", test_bignum_kmul_16_32_neon);
+    functionaltest(all,"bignum_kmul_32_64_neon", test_bignum_kmul_32_64_neon);
+    functionaltest(all,"bignum_ksqr_16_32_neon",test_bignum_ksqr_16_32_neon);
+    functionaltest(all,"bignum_ksqr_32_64_neon",test_bignum_ksqr_32_64_neon);
+    functionaltest(all,"bignum_mul_8_16_neon",test_bignum_mul_8_16_neon);
+    functionaltest(all,"bignum_sqr_8_16_neon",test_bignum_sqr_8_16_neon);
   }
 
   if (extrastrigger) function_to_test = "_";
