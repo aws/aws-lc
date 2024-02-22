@@ -1432,7 +1432,7 @@ Args:
 
 				classification := classifyInstruction(instructionName, argNodes)
 				if classification != instrThreeArg && classification != instrCompare && i != 0 {
-					return nil, fmt.Errorf("GOT access must be source operand, %w", classification)
+					return nil, fmt.Errorf("GOT access must be source operand, %v", classification)
 				}
 
 				// Reduce the instruction to movq symbol@GOTPCREL, targetReg.
