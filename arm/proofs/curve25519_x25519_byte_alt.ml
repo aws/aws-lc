@@ -2761,23 +2761,17 @@ let curve25519_x25519_byte_alt_mc = define_assert_from_elf
   0xab0401ef;       (* arm_ADDS X15 X15 X4 *)
   0x9a050210;       (* arm_ADC X16 X16 X5 *)
   0xab0f01ff;       (* arm_CMN X15 X15 *)
-  0xb24101ef;       (* arm_ORR X15 X15 (rvalue (word 9223372036854775808)) *)
+  0x9240f9ef;       (* arm_AND X15 X15 (rvalue (word 9223372036854775807)) *)
   0x9a100208;       (* arm_ADC X8 X16 X16 *)
   0xd2800267;       (* arm_MOV X7 (rvalue (word 19)) *)
-  0x9b081ceb;       (* arm_MADD X11 X7 X8 X7 *)
+  0x9b087ceb;       (* arm_MUL X11 X7 X8 *)
   0xab0b018c;       (* arm_ADDS X12 X12 X11 *)
   0xba0901ad;       (* arm_ADCS X13 X13 X9 *)
   0xba0301ce;       (* arm_ADCS X14 X14 X3 *)
-  0xba1f01ef;       (* arm_ADCS X15 X15 XZR *)
-  0x9a9f30e7;       (* arm_CSEL X7 X7 XZR Condition_CC *)
-  0xeb07018c;       (* arm_SUBS X12 X12 X7 *)
-  0xfa1f01ad;       (* arm_SBCS X13 X13 XZR *)
-  0xfa1f01ce;       (* arm_SBCS X14 X14 XZR *)
-  0xda1f01ef;       (* arm_SBC X15 X15 XZR *)
-  0x9240f9ef;       (* arm_AND X15 X15 (rvalue (word 9223372036854775807)) *)
+  0x9a1f01ef;       (* arm_ADC X15 X15 XZR *)
   0xa90a37ec;       (* arm_STP X12 X13 SP (Immediate_Offset (iword (&160))) *)
   0xa90b3fee;       (* arm_STP X14 X15 SP (Immediate_Offset (iword (&176))) *)
-  0x910383e0;       (* arm_ADD X0 SP (rvalue (word 224)) *)
+  0x910283e0;       (* arm_ADD X0 SP (rvalue (word 160)) *)
   0x910283e1;       (* arm_ADD X1 SP (rvalue (word 160)) *)
   0xaa0003f4;       (* arm_MOV X20 X0 *)
   0x9280024a;       (* arm_MOVN X10 (word 18) 0 *)
@@ -3805,28 +3799,14 @@ let curve25519_x25519_byte_alt_mc = define_assert_from_elf
   0xaa1403e4;       (* arm_MOV X4 X20 *)
   0xa9000480;       (* arm_STP X0 X1 X4 (Immediate_Offset (iword (&0))) *)
   0xa9011482;       (* arm_STP X2 X5 X4 (Immediate_Offset (iword (&16))) *)
-  0xa94a07e0;       (* arm_LDP X0 X1 SP (Immediate_Offset (iword (&160))) *)
-  0xa94b0fe2;       (* arm_LDP X2 X3 SP (Immediate_Offset (iword (&176))) *)
-  0xaa010000;       (* arm_ORR X0 X0 X1 *)
-  0xaa030042;       (* arm_ORR X2 X2 X3 *)
-  0xaa020004;       (* arm_ORR X4 X0 X2 *)
-  0xeb1f009f;       (* arm_CMP X4 XZR *)
-  0xa95207e0;       (* arm_LDP X0 X1 SP (Immediate_Offset (iword (&288))) *)
-  0x9a9f1000;       (* arm_CSEL X0 X0 XZR Condition_NE *)
-  0x9a9f1021;       (* arm_CSEL X1 X1 XZR Condition_NE *)
-  0xa9530fe2;       (* arm_LDP X2 X3 SP (Immediate_Offset (iword (&304))) *)
-  0xa91207e0;       (* arm_STP X0 X1 SP (Immediate_Offset (iword (&288))) *)
-  0x9a9f1042;       (* arm_CSEL X2 X2 XZR Condition_NE *)
-  0x9a9f1063;       (* arm_CSEL X3 X3 XZR Condition_NE *)
-  0xa9130fe2;       (* arm_STP X2 X3 SP (Immediate_Offset (iword (&304))) *)
   0xa95213e3;       (* arm_LDP X3 X4 SP (Immediate_Offset (iword (&288))) *)
-  0xa94e23e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&224))) *)
+  0xa94a23e7;       (* arm_LDP X7 X8 SP (Immediate_Offset (iword (&160))) *)
   0x9b077c6c;       (* arm_MUL X12 X3 X7 *)
   0x9bc77c6d;       (* arm_UMULH X13 X3 X7 *)
   0x9b087c6b;       (* arm_MUL X11 X3 X8 *)
   0x9bc87c6e;       (* arm_UMULH X14 X3 X8 *)
   0xab0b01ad;       (* arm_ADDS X13 X13 X11 *)
-  0xa94f2be9;       (* arm_LDP X9 X10 SP (Immediate_Offset (iword (&240))) *)
+  0xa94b2be9;       (* arm_LDP X9 X10 SP (Immediate_Offset (iword (&176))) *)
   0x9b097c6b;       (* arm_MUL X11 X3 X9 *)
   0x9bc97c6f;       (* arm_UMULH X15 X3 X9 *)
   0xba0b01ce;       (* arm_ADCS X14 X14 X11 *)
@@ -3991,20 +3971,6 @@ let curve25519_x25519_byte_alt_mc = define_assert_from_elf
 let CURVE25519_X25519_BYTE_ALT_EXEC = ARM_MK_EXEC_RULE curve25519_x25519_byte_alt_mc;;
 
 (* ------------------------------------------------------------------------- *)
-(* Abbreviations used to state the specification.                            *)
-(* ------------------------------------------------------------------------- *)
-
-let p_25519 = define `p_25519 = 57896044618658097711785492504343953926634992332820282019728792003956564819949`;;
-
-let curve25519x = define
- `curve25519x (f:A ring) = (f,ring_of_num f A_25519,ring_of_num f 1)`;;
-
-let curve25519x_halfcanonically_represents = new_definition
- `curve25519x_halfcanonically_represents (f:A ring) P (X,Z) <=>
-        X < 2 * p_25519 /\ Z < 2 * p_25519 /\
-        montgomery_xz f P (ring_of_num f X,ring_of_num f Z)`;;
-
-(* ------------------------------------------------------------------------- *)
 (* Common lemmas and tactics for the component proofs.                       *)
 (* ------------------------------------------------------------------------- *)
 
@@ -4048,7 +4014,7 @@ let LOCAL_MUL_P25519_TAC =
       !n. read(memory :> bytes(word_add (read p2 t) (word n2),8 * 4)) t = n
       ==>
       aligned 16 (read SP t) /\
-      nonoverlapping (word pc,0x3de4) (word_add (read p3 t) (word n3),8 * 4)
+      nonoverlapping (word pc,0x3d94) (word_add (read p3 t) (word n3),8 * 4)
       ==> ensures arm
            (\s. aligned_bytes_loaded s (word pc) curve25519_x25519_byte_alt_mc /\
                 read PC s = pcin /\
@@ -4211,7 +4177,7 @@ let LOCAL_MUL_4_TAC =
       !n. read(memory :> bytes(word_add (read p2 t) (word n2),8 * 4)) t = n
       ==>
       aligned 16 (read SP t) /\
-      nonoverlapping (word pc,0x3de4) (word_add (read p3 t) (word n3),8 * 4)
+      nonoverlapping (word pc,0x3d94) (word_add (read p3 t) (word n3),8 * 4)
       ==> ensures arm
            (\s. aligned_bytes_loaded s (word pc) curve25519_x25519_byte_alt_mc /\
                 read PC s = pcin /\
@@ -4364,7 +4330,7 @@ let LOCAL_SQR_4_TAC =
       read(memory :> bytes(word_add (read p1 t) (word n1),8 * 4)) t = n
       ==>
       aligned 16 (read SP t) /\
-      nonoverlapping (word pc,0x3de4) (word_add (read p3 t) (word n3),8 * 4)
+      nonoverlapping (word pc,0x3d94) (word_add (read p3 t) (word n3),8 * 4)
       ==> ensures arm
            (\s. aligned_bytes_loaded s (word pc) curve25519_x25519_byte_alt_mc /\
                 read PC s = pcin /\
@@ -4519,7 +4485,7 @@ let LOCAL_ADD_TWICE4_TAC =
       !n. read(memory :> bytes(word_add (read p2 t) (word n2),8 * 4)) t = n
       ==>
       aligned 16 (read SP t) /\
-      nonoverlapping (word pc,0x3de4) (word_add (read p3 t) (word n3),8 * 4)
+      nonoverlapping (word pc,0x3d94) (word_add (read p3 t) (word n3),8 * 4)
       ==> ensures arm
            (\s. aligned_bytes_loaded s (word pc) curve25519_x25519_byte_alt_mc /\
                 read PC s = pcin /\
@@ -4592,7 +4558,7 @@ let LOCAL_SUB_TWICE4_TAC =
       !n. read(memory :> bytes(word_add (read p2 t) (word n2),8 * 4)) t = n
       ==>
       aligned 16 (read SP t) /\
-      nonoverlapping (word pc,0x3de4) (word_add (read p3 t) (word n3),8 * 4)
+      nonoverlapping (word pc,0x3d94) (word_add (read p3 t) (word n3),8 * 4)
       ==> ensures arm
            (\s. aligned_bytes_loaded s (word pc) curve25519_x25519_byte_alt_mc /\
                 read PC s = pcin /\
@@ -4671,7 +4637,7 @@ let LOCAL_CMADD_4_TAC =
      !n. read(memory :> bytes(word_add (read p2 t) (word n2),8 * 4)) t = n
      ==>
       aligned 16 (read SP t) /\
-      nonoverlapping (word pc,0x3de4) (word_add (read p3 t) (word n3),8 * 4)
+      nonoverlapping (word pc,0x3d94) (word_add (read p3 t) (word n3),8 * 4)
       ==> ensures arm
            (\s. aligned_bytes_loaded s (word pc) curve25519_x25519_byte_alt_mc /\
                 read PC s = pcin /\
@@ -4815,7 +4781,7 @@ let LOCAL_MUX_4_TAC =
      !n. read(memory :> bytes(word_add (read p2 t) (word n2),8 * 4)) t = n
      ==>
       aligned 16 (read SP t) /\
-      nonoverlapping (word pc,0x3de4) (word_add (read p3 t) (word n3),8 * 4) /\
+      nonoverlapping (word pc,0x3d94) (word_add (read p3 t) (word n3),8 * 4) /\
       nonoverlapping (stackpointer:int64,320) (res,32)
       ==> ensures arm
            (\s. aligned_bytes_loaded s (word pc) curve25519_x25519_byte_alt_mc /\
@@ -4846,104 +4812,279 @@ let LOCAL_MUX_4_TAC =
 
 let LOCAL_MODINV_TAC =
   ARM_SUBROUTINE_SIM_TAC
-   (curve25519_x25519_byte_alt_mc,CURVE25519_X25519_BYTE_ALT_EXEC,0x2b08,
+   (curve25519_x25519_byte_alt_mc,CURVE25519_X25519_BYTE_ALT_EXEC,0x2af0,
     (GEN_REWRITE_CONV RAND_CONV [bignum_inv_p25519_mc] THENC TRIM_LIST_CONV)
     `TRIM_LIST (12,16) bignum_inv_p25519_mc`,
     CORE_INV_P25519_CORRECT)
    [`read X0 s`; `read X1 s`;
     `read (memory :> bytes(read X1 s,8 * 4)) s`;
-    `pc + 0x2b08`; `stackpointer:int64`];;
+    `pc + 0x2af0`; `stackpointer:int64`];;
+
+(* ------------------------------------------------------------------------- *)
+(* The swapping-based Montgomery ladder more abstractly.                     *)
+(* ------------------------------------------------------------------------- *)
+
+(*** This version has the i = 0 split to handle the short-cut of the
+ *** 255th bit, where the values are not exactly the same as the usual
+ *** ladder, just projectively equivalent to them.
+ ***)
+
+let flipladder = define
+ `flipladder x n 0 = ((&1,&0),(&x rem &p_25519,&1)) /\
+  flipladder x n (i + 1) =
+        let (x2,z2),(x3,z3) = flipladder x n i in
+        montgomery_xzdouble curve25519
+          (if ODD(n DIV 2 EXP (255 - (i + 1))) <=> ODD(n DIV 2 EXP (255 - i))
+           then (x2,z2) else (x3,z3)),
+        (if i = 0 then (&x rem &p_25519,&1)
+         else montgomery_xzdiffadd curve25519 (&x,&1) (x2,z2) (x3,z3))`;;
+
+let ladder_x2 = define
+  `ladder_x2 x n i = FST(FST(flipladder x n (255 - i)))`;;
+
+let ladder_z2 = define
+  `ladder_z2 x n i = SND(FST(flipladder x n (255 - i)))`;;
+
+let ladder_x3 = define
+  `ladder_x3 x n i = FST(SND(flipladder x n (255 - i)))`;;
+
+let ladder_z3 = define
+  `ladder_z3 x n i = SND(SND(flipladder x n (255 - i)))`;;
+
+let deproject = define
+ `deproject (x,z) =
+   (x * (if p_25519 divides z then 0 else inverse_mod p_25519 z))
+   MOD p_25519`;;
+
+let curve25519x_represents = define
+ `curve25519x_represents (f:A ring) P n (X,Z) <=>
+        P IN group_carrier(montgomery_group (curve25519x f)) /\
+        montgomery_xz f (group_pow (montgomery_group (curve25519x f)) P n)
+                        (ring_of_int f X,ring_of_int f Z)`;;
+
+let CURVE25519X_REPRESENTS_DOUBLE = prove
+ (`!(f:A ring) P n Q.
+        field f /\ ring_char f = p_25519 /\
+        curve25519x_represents f P n Q
+        ==> curve25519x_represents f P (2 * n)
+                (montgomery_xzdouble curve25519 Q)`,
+  REWRITE_TAC[FORALL_PAIR_THM; curve25519x_represents] THEN
+  MAP_EVERY X_GEN_TAC
+   [`f:A ring`; `P:(A#A)option`; `n:num`; `X:int`; `Z:int`] THEN
+  STRIP_TAC THEN GEN_REWRITE_TAC RAND_CONV [GSYM PAIR] THEN
+  PURE_REWRITE_TAC[curve25519x_represents] THEN ASM_REWRITE_TAC[] THEN
+  MP_TAC(ISPECL
+   [`f:A ring`; `ring_of_num (f:A ring) A_25519`; `ring_of_num (f:A ring) 1`;
+    `P:(A#A)option`; `n:num`; `ring_of_int f X:A,ring_of_int f Z`]
+   MONTGOMERY_XZDOUBLE_GROUP) THEN
+  ASM_SIMP_TAC[GSYM curve25519x; MONTGOMERY_NONSINGULAR_CURVE25519X] THEN
+  REWRITE_TAC[RING_OF_NUM; p_25519; ARITH_EQ] THEN
+  MATCH_MP_TAC EQ_IMP THEN AP_TERM_TAC THEN
+  REWRITE_TAC[montgomery_xzdouble; curve25519x; curve25519] THEN
+  REWRITE_TAC[INTEGER_MOD_RING_CLAUSES; PAIR_EQ] THEN
+  CONV_TAC INT_REM_DOWN_CONV THEN
+  FIRST_X_ASSUM(SUBST1_TAC o SYM) THEN
+  REWRITE_TAC[RING_OF_INT_REM] THEN
+  REWRITE_TAC[GSYM RING_OF_INT_CLAUSES] THEN
+  REWRITE_TAC[RING_OF_INT_OF_NUM]);;
+
+let CURVE25519X_REPRESENTS_DIFFADD_LEFT = prove
+ (`!(f:A ring) P n X Qm Qn.
+        field f /\ ring_char f = p_25519 /\ ~(&p_25519 divides X) /\
+        curve25519x_represents f P 1 (X,&1) /\
+        curve25519x_represents f P (n + 1) Qm /\
+        curve25519x_represents f P n Qn
+        ==> curve25519x_represents f P (2 * n + 1)
+                (montgomery_xzdiffadd curve25519 (X,&1) Qm Qn)`,
+  REWRITE_TAC[FORALL_PAIR_THM; curve25519x_represents] THEN
+  MAP_EVERY X_GEN_TAC
+   [`f:A ring`; `P:(A#A)option`; `n:num`; `X:int`;
+    `Xm:int`; `Zm:int`; `Xn:int`; `Zn:int`] THEN
+  STRIP_TAC THEN GEN_REWRITE_TAC RAND_CONV [GSYM PAIR] THEN
+  PURE_REWRITE_TAC[curve25519x_represents] THEN ASM_REWRITE_TAC[] THEN
+  MP_TAC(ISPECL
+   [`f:A ring`; `ring_of_num (f:A ring) A_25519`; `ring_of_num (f:A ring) 1`;
+    `P:(A#A)option`; `n:num`;
+    `ring_of_int f X:A,ring_of_int f (&1)`;
+    `ring_of_int f Xm:A,ring_of_int f Zm`;
+    `ring_of_int f Xn:A,ring_of_int f Zn`]
+   MONTGOMERY_XZDIFFADD_GROUP) THEN
+  ASM_SIMP_TAC[GSYM curve25519x; MONTGOMERY_NONSINGULAR_CURVE25519X] THEN
+  ASM_REWRITE_TAC[RING_OF_NUM; p_25519; ARITH_EQ] THEN ANTS_TAC THENL
+   [ASM_REWRITE_TAC[RING_OF_INT_EQ_0] THEN
+    REWRITE_TAC[GSYM num_divides; DIVIDES_MOD; p_25519] THEN
+    CONV_TAC NUM_REDUCE_CONV THEN ASM_MESON_TAC[GROUP_POW_1];
+    MATCH_MP_TAC EQ_IMP THEN AP_TERM_TAC] THEN
+  REWRITE_TAC[montgomery_xzdiffadd; curve25519x; curve25519] THEN
+  REWRITE_TAC[INTEGER_MOD_RING_CLAUSES; PAIR_EQ] THEN
+  CONV_TAC INT_REM_DOWN_CONV THEN
+  FIRST_X_ASSUM(SUBST1_TAC o SYM) THEN
+  REWRITE_TAC[RING_OF_INT_REM] THEN
+  REWRITE_TAC[GSYM RING_OF_INT_CLAUSES] THEN
+  REWRITE_TAC[RING_OF_INT_OF_NUM]);;
+
+let CURVE25519X_REPRESENTS_DIFFADD_RIGHT = prove
+ (`!(f:A ring) P n X Qm Qn.
+        field f /\ ring_char f = p_25519 /\ ~(&p_25519 divides X) /\
+        curve25519x_represents f P 1 (X,&1) /\
+        curve25519x_represents f P n Qm /\
+        curve25519x_represents f P (n + 1) Qn
+        ==> curve25519x_represents f P (2 * n + 1)
+                (montgomery_xzdiffadd curve25519 (X,&1) Qm Qn)`,
+  REWRITE_TAC[FORALL_PAIR_THM] THEN REPEAT GEN_TAC THEN
+  ONCE_REWRITE_TAC[TAUT
+   `p /\ q /\ r /\ s /\ t /\ u <=> p /\ q /\ r /\ s /\ u /\ t`] THEN
+  DISCH_TAC THEN
+  FIRST_ASSUM(MP_TAC o MATCH_MP CURVE25519X_REPRESENTS_DIFFADD_LEFT) THEN
+  MATCH_MP_TAC EQ_IMP THEN AP_TERM_TAC THEN
+  REWRITE_TAC[montgomery_xzdiffadd; curve25519] THEN
+  REWRITE_TAC[PAIR_EQ; INTEGER_MOD_RING_CLAUSES] THEN CONJ_TAC THEN
+  CONV_TAC INT_REM_DOWN_CONV THEN AP_THM_TAC THEN AP_TERM_TAC THEN
+  INT_ARITH_TAC);;
+
+let FLIPLADDER_MAIN = prove
+ (`!(f:A ring) P x n i.
+        field f /\ ring_char f = p_25519 /\ ~(p_25519 divides x) /\
+        curve25519x_represents f P 1 (&x,&1) /\
+        n < 2 EXP 255 /\ n DIV 2 EXP 254 = 1 /\ i <= 255
+        ==> curve25519x_represents f P (n DIV 2 EXP (255 - i))
+                ((if ODD(n DIV 2 EXP (255 - i)) then SND else FST)
+                 (flipladder x n i)) /\
+            curve25519x_represents f P (n DIV 2 EXP (255 - i) + 1)
+                ((if ODD(n DIV 2 EXP (255 - i)) then FST else SND)
+                 (flipladder x n i))`,
+  REWRITE_TAC[num_divides] THEN REPLICATE_TAC 4 GEN_TAC THEN
+  REWRITE_TAC[IMP_CONJ; RIGHT_FORALL_IMP_THM] THEN REPEAT DISCH_TAC THEN
+  INDUCT_TAC THENL
+   [DISCH_THEN(K ALL_TAC) THEN POP_ASSUM(K ALL_TAC) THEN
+    REWRITE_TAC[flipladder] THEN
+    ASM_SIMP_TAC[SUB_0; DIV_LT; ARITH_ODD; ADD_CLAUSES] THEN
+    FIRST_X_ASSUM(MP_TAC o GEN_REWRITE_RULE I [curve25519x_represents]) THEN
+    SIMP_TAC[curve25519x_represents; group_pow] THEN DISCH_TAC THEN
+    FIRST_ASSUM(SUBST1_TAC o SYM) THEN REWRITE_TAC[RING_OF_INT_REM] THEN
+    STRIP_TAC THEN ASM_SIMP_TAC[CURVE25519X_GROUP; GSYM curve25519x_group] THEN
+    REWRITE_TAC[montgomery_xz; RING_OF_INT_1; RING_OF_INT_0] THEN
+    REWRITE_TAC[RING_0; RING_1] THEN ASM_MESON_TAC[field];
+    DISCH_TAC THEN FIRST_X_ASSUM(MP_TAC o check (is_imp o concl)) THEN
+    ANTS_TAC THENL [ASM_ARITH_TAC; ALL_TAC]] THEN
+  REWRITE_TAC[flipladder; ADD1] THEN
+  ASM_SIMP_TAC[ARITH_RULE
+     `SUC i <= 255 ==> 255 - i = SUC(255 - (i + 1))`] THEN
+  REWRITE_TAC[ONCE_REWRITE_RULE[MULT_SYM] (CONJUNCT2 EXP)] THEN
+  ASM_CASES_TAC `i = 0` THEN ASM_REWRITE_TAC[] THENL
+   [ASM_REWRITE_TAC[ADD_CLAUSES; ARITH_RULE `255 - 1 = 254`] THEN
+    ASM_SIMP_TAC[DIV_LT; ARITH_RULE `2 EXP 254 * 2 = 2 EXP 255`] THEN
+    LET_TAC THEN CONV_TAC(ONCE_DEPTH_CONV let_CONV) THEN
+    CONV_TAC NUM_REDUCE_CONV THEN REWRITE_TAC[] THEN
+    SUBST1_TAC(ARITH_RULE `2 = 2 * 1`) THEN
+    ASM_SIMP_TAC[CURVE25519X_REPRESENTS_DOUBLE] THEN
+    DISCH_THEN(K ALL_TAC) THEN
+    FIRST_X_ASSUM(MP_TAC o GEN_REWRITE_RULE I [curve25519x_represents]) THEN
+    SIMP_TAC[curve25519x_represents] THEN ASM_MESON_TAC[RING_OF_INT_REM];
+    ALL_TAC] THEN
+  REWRITE_TAC[GSYM DIV_DIV] THEN
+  ABBREV_TAC `m = n DIV 2 EXP (255 - (i + 1)) DIV 2` THEN
+  MP_TAC(SPECL [`n DIV 2 EXP (255 - (i + 1))`; `2`]
+   (CONJUNCT1 DIVISION_SIMP)) THEN
+  ASM_REWRITE_TAC[MOD_2_CASES; GSYM NOT_ODD; COND_SWAP] THEN
+  MAP_EVERY ABBREV_TAC
+   [`b <=> ODD m`; `c <=> ODD(n DIV 2 EXP (255 - (i + 1)))`] THEN
+  DISCH_THEN(SUBST1_TAC o SYM) THEN
+  MAP_EVERY ASM_CASES_TAC [`b:bool`; `c:bool`] THEN
+  ASM_REWRITE_TAC[] THEN LET_TAC THEN ASM_REWRITE_TAC[] THEN
+  CONV_TAC(ONCE_DEPTH_CONV let_CONV) THEN ASM_REWRITE_TAC[] THEN
+  REWRITE_TAC[ADD_CLAUSES; ARITH_RULE `m * 2 = 2 * m`;
+              ARITH_RULE `(2 * m + 1) + 1 = 2 * (m + 1)`] THEN
+  ASM_MESON_TAC[CURVE25519X_REPRESENTS_DOUBLE;
+        CURVE25519X_REPRESENTS_DIFFADD_LEFT;
+        CURVE25519X_REPRESENTS_DIFFADD_RIGHT]);;
+
+let FLIPLADDER_DEGENERATE = prove
+ (`!x n i xm zm xn zn.
+        p_25519 divides x /\ flipladder x n i = (xm,zm),(xn,zn)
+        ==> zm = &0 /\ xn = &0`,
+  GEN_TAC THEN GEN_TAC THEN REWRITE_TAC[IMP_CONJ; RIGHT_FORALL_IMP_THM] THEN
+  REWRITE_TAC[num_divides; GSYM INT_REM_EQ_0] THEN DISCH_TAC THEN
+  INDUCT_TAC THEN ASM_SIMP_TAC[flipladder; PAIR_EQ] THENL
+   [MESON_TAC[]; REWRITE_TAC[flipladder; ADD1]] THEN
+  REPEAT GEN_TAC THEN LET_TAC THEN
+  SUBGOAL_THEN `z2:int = &0 /\ x3:int = &0` MP_TAC THENL
+   [ASM_MESON_TAC[]; REPLICATE_TAC 2 (POP_ASSUM(K ALL_TAC))] THEN
+  STRIP_TAC THEN REPEAT COND_CASES_TAC THEN
+  ASM_REWRITE_TAC[montgomery_xzdouble; curve25519; montgomery_xzdouble;
+                  PAIR_EQ; montgomery_xzdiffadd; INTEGER_MOD_RING_CLAUSES] THEN
+  CONV_TAC INT_REM_DOWN_CONV THEN
+  DISCH_THEN(fun th -> REWRITE_TAC[GSYM th]) THEN
+  REWRITE_TAC[INT_MUL_LZERO; INT_MUL_RZERO; INT_SUB_REFL; INT_POW_ZERO;
+              ARITH_EQ; INT_REM_ZERO]);;
+
+let DEPROJECT_LADDER_EVEN = prove
+ (`!x n x2 z2.
+        n < 2 EXP 255 /\ n DIV 2 EXP 254 = 1 /\ EVEN n /\
+        (&x2 == ladder_x2 x n 0) (mod &p_25519) /\
+        (&z2 == ladder_z2 x n 0) (mod &p_25519)
+        ==> purex25519(n,x) = deproject(x2,z2)`,
+  REWRITE_TAC[ladder_x2; ladder_z2; SUB_0] THEN REPEAT STRIP_TAC THEN
+  MATCH_MP_TAC PUREX25519_UNIQUE_IMP THEN CONJ_TAC THENL
+   [REWRITE_TAC[deproject; p_25519] THEN ARITH_TAC; ALL_TAC] THEN
+  MAP_EVERY X_GEN_TAC [`f:(int#int)ring`; `Q:((int#int)#(int#int))option`] THEN
+  STRIP_TAC THEN ASM_CASES_TAC `p_25519 divides x` THENL
+   [MP_TAC(ISPECL [`x:num`; `n:num`; `255`] FLIPLADDER_DEGENERATE) THEN
+    DISCH_THEN(MP_TAC o SPECL
+     [`ladder_x2 x n 0`; `ladder_z2 x n 0`;
+      `ladder_x3 x n 0`; `ladder_z3 x n 0`]) THEN
+    ASM_REWRITE_TAC[ladder_x2; ladder_z2; ladder_x3; ladder_z3] THEN
+    ASM_REWRITE_TAC[SUB_0] THEN DISCH_THEN(CONJUNCTS_THEN SUBST_ALL_TAC) THEN
+    ASM_REWRITE_TAC[deproject; num_divides; GSYM INT_CONG_0_DIVIDES] THEN
+    REWRITE_TAC[MULT_CLAUSES; MOD_0; RING_OF_NUM_0] THEN
+    REWRITE_TAC[curve25519x_group; curve25519x] THEN
+    MATCH_MP_TAC MONTGOMERY_XMAP_EQ_0_POW THEN
+    ASM_REWRITE_TAC[GSYM curve25519x_group; GSYM curve25519x; RING_OF_NUM] THEN
+    ASM_SIMP_TAC[MONTGOMERY_NONSINGULAR_CURVE25519X; RING_OF_NUM_EQ_0] THEN
+    REWRITE_TAC[p_25519; ARITH_EQ];
+    ALL_TAC] THEN
+  MP_TAC(ISPECL [`f:(int#int)ring`; `Q:((int#int)#(int#int))option`;
+                 `x:num`; `n:num`; `255`]
+         FLIPLADDER_MAIN) THEN
+  ASM_REWRITE_TAC[SUB_REFL; EXP; DIV_1; LE_REFL] THEN ANTS_TAC THENL
+   [ASM_SIMP_TAC[curve25519x_represents; GROUP_POW_1;
+      GSYM curve25519x_group; RING_OF_INT_OF_NUM; RING_OF_NUM_1] THEN
+    ASM_SIMP_TAC[MONTGOMERY_XZ_XMAP; RING_OF_NUM_EQ_0; RING_OF_NUM];
+    DISCH_THEN(MP_TAC o CONJUNCT1) THEN ASM_REWRITE_TAC[GSYM NOT_EVEN]] THEN
+  GEN_REWRITE_TAC (LAND_CONV o RAND_CONV) [GSYM PAIR] THEN
+  REWRITE_TAC[curve25519x_represents] THEN
+  ONCE_REWRITE_TAC[GSYM RING_OF_INT_REM] THEN
+  ASM_REWRITE_TAC[GSYM curve25519x_group] THEN
+  REPEAT(FIRST_X_ASSUM(SUBST1_TAC o SYM o
+        GEN_REWRITE_RULE I [GSYM INT_REM_EQ])) THEN
+  SUBST1_TAC(SYM(ASSUME `ring_char(f:(int#int)ring) = p_25519`)) THEN
+  REWRITE_TAC[RING_OF_INT_REM; RING_OF_INT_OF_NUM] THEN
+  SPEC_TAC(`group_pow (curve25519x_group(f:(int#int)ring)) Q n`,
+           `P:((int#int)#(int#int))option`) THEN
+  MATCH_MP_TAC option_INDUCT THEN
+  GEN_REWRITE_TAC RAND_CONV [FORALL_PAIR_THM] THEN
+  ASM_SIMP_TAC[montgomery_xmap; montgomery_xz; deproject;
+               RING_OF_NUM_EQ_0; MULT_CLAUSES; MOD_0; RING_OF_NUM_0] THEN
+  X_GEN_TAC `y:int#int` THEN STRIP_TAC THEN
+  FIRST_X_ASSUM(SUBST1_TAC o SYM) THEN
+  SUBST1_TAC(SYM(ASSUME `ring_char(f:(int#int)ring) = p_25519`)) THEN
+  REWRITE_TAC[RING_OF_NUM_MOD; RING_OF_NUM_MUL; ring_div] THEN
+  AP_TERM_TAC THEN MATCH_MP_TAC RING_LINV_UNIQUE THEN
+  REWRITE_TAC[RING_OF_NUM; GSYM RING_OF_NUM_1] THEN
+  ASM_REWRITE_TAC[GSYM RING_OF_NUM_MUL; RING_OF_NUM_EQ] THEN
+  REWRITE_TAC[INVERSE_MOD_LMUL_EQ] THEN
+  ASM_SIMP_TAC[PRIME_COPRIME_EQ; PRIME_P25519]);;
 
 (* ------------------------------------------------------------------------- *)
 (* Overall point operation proof.                                            *)
 (* ------------------------------------------------------------------------- *)
 
-let nintlemma = prove
- (`&(num_of_int(x rem &p_25519)) = x rem &p_25519`,
-  MATCH_MP_TAC INT_OF_NUM_OF_INT THEN MATCH_MP_TAC INT_REM_POS THEN
-  REWRITE_TAC[INT_OF_NUM_EQ; p_25519] THEN CONV_TAC NUM_REDUCE_CONV);;
-
-let lemma = prove
- (`X = num_of_int(x rem &p_25519) ==> X < p_25519 /\ &X = x rem &p_25519`,
-  DISCH_THEN SUBST1_TAC THEN
-  REWRITE_TAC[GSYM INT_OF_NUM_LT; nintlemma; INT_LT_REM_EQ] THEN
-  REWRITE_TAC[INT_OF_NUM_LT; p_25519] THEN CONV_TAC NUM_REDUCE_CONV);;
-
-let lemma_double = prove
- (`P IN group_carrier (curve25519x_group(f:(int#int) ring)) /\
-   montgomery_xz f (group_pow (curve25519x_group f) P n) (x,y)
-   ==> field f /\ ring_char f = p_25519
-       ==> montgomery_xz f
-            (group_pow (curve25519x_group f) P (2 * n))
-               (montgomery_xzdouble (curve25519x f) (x,y))`,
-  REWRITE_TAC[curve25519x; curve25519x_group] THEN REPEAT STRIP_TAC THEN
-  MATCH_MP_TAC MONTGOMERY_XZDOUBLE_GROUP THEN ASM_REWRITE_TAC[] THEN
-  ASM_SIMP_TAC[GSYM curve25519x; MONTGOMERY_NONSINGULAR_CURVE25519X] THEN
-  REWRITE_TAC[A_25519; p_25519; RING_OF_NUM] THEN
-  CONV_TAC NUM_REDUCE_CONV);;
-
-let lemma_double_base = prove
- (`P IN group_carrier (curve25519x_group(f:(int#int) ring)) /\
-   montgomery_xz f P (x,y)
-   ==> field f /\ ring_char f = p_25519
-       ==> montgomery_xz f
-            (group_pow (curve25519x_group f) P 2)
-               (montgomery_xzdouble (curve25519x f) (x,y))`,
-  SUBST1_TAC(ARITH_RULE `2 = 2 * 1`) THEN
-  REWRITE_TAC[curve25519x; curve25519x_group] THEN REPEAT STRIP_TAC THEN
-  MATCH_MP_TAC MONTGOMERY_XZDOUBLE_GROUP THEN ASM_REWRITE_TAC[] THEN
-  ASM_SIMP_TAC[GROUP_POW_1] THEN
-  ASM_SIMP_TAC[GSYM curve25519x; MONTGOMERY_NONSINGULAR_CURVE25519X] THEN
-  REWRITE_TAC[A_25519; p_25519; RING_OF_NUM] THEN
-  CONV_TAC NUM_REDUCE_CONV);;
-
-let lemma_diffadd1 = prove
- (`field f /\ ring_char f = p_25519 /\
-   ~(x:(int#int) = ring_0 f) /\
-   P IN group_carrier (curve25519x_group f) /\
-   montgomery_xz f P (x,ring_of_num f 1) /\
-   montgomery_xz f
-     (group_pow (curve25519x_group f) P (n + 1)) (xn,zn) /\
-   montgomery_xz f
-     (group_pow (curve25519x_group f) P n) (xm,zm)
-   ==> montgomery_xz f
-            (group_pow (curve25519x_group f) P (2 * n + 1))
-            (montgomery_xzdiffadd (curve25519x f) (x,ring_of_num f 1)
-                  (xn,zn) (xm,zm))`,
-  REWRITE_TAC[curve25519x; curve25519x_group] THEN REPEAT STRIP_TAC THEN
-  MATCH_MP_TAC MONTGOMERY_XZDIFFADD_GROUP THEN ASM_REWRITE_TAC[] THEN
-  ASM_SIMP_TAC[GSYM curve25519x; MONTGOMERY_NONSINGULAR_CURVE25519X] THEN
-  REWRITE_TAC[A_25519; p_25519; RING_OF_NUM] THEN
-  ASM_SIMP_TAC[RING_OF_NUM_1; FIELD_NONTRIVIAL] THEN
-  CONV_TAC NUM_REDUCE_CONV);;
-
-let lemma_diffadd2 = prove
- (`field f /\ ring_char f = p_25519 /\
-   ~(x:(int#int) = ring_0 f) /\
-   P IN group_carrier (curve25519x_group f) /\
-   montgomery_xz f P (x,ring_of_num f 1) /\
-   montgomery_xz f
-     (group_pow (curve25519x_group f) P (n + 1)) (xm,zm) /\
-   montgomery_xz f
-     (group_pow (curve25519x_group f) P n) (xn,zn)
-   ==> montgomery_xz f
-            (group_pow (curve25519x_group f) P (2 * n + 1))
-            (montgomery_xzdiffadd (curve25519x f) (x,ring_of_num f 1)
-                  (xn,zn) (xm,zm))`,
-  DISCH_TAC THEN
-  FIRST_ASSUM(MP_TAC o MATCH_MP lemma_diffadd1) THEN
-  MATCH_MP_TAC EQ_IMP THEN AP_TERM_TAC THEN
-  POP_ASSUM STRIP_ASSUME_TAC THEN
-  REPEAT(FIRST_X_ASSUM(MP_TAC o MATCH_MP MONTGOMERY_XZ_IN_CARRIER)) THEN
-  ASM_SIMP_TAC[montgomery_xzdiffadd; curve25519x; RING_MUL_SYM; PAIR_EQ] THEN
-  RING_TAC);;
-
 let CURVE25519_X25519_BYTE_ALT_CORRECT = time prove
  (`!res scalar n point X pc stackpointer.
     aligned 16 stackpointer /\
     ALL (nonoverlapping (stackpointer,320))
-        [(word pc,0x3de4); (res,32); (scalar,32); (point,32)] /\
-    nonoverlapping (res,32) (word pc,0x3de4)
+        [(word pc,0x3d94); (res,32); (scalar,32); (point,32)] /\
+    nonoverlapping (res,32) (word pc,0x3d94)
     ==> ensures arm
          (\s. aligned_bytes_loaded s (word pc) curve25519_x25519_byte_alt_mc /\
               read PC s = word(pc + 0x10) /\
@@ -4951,7 +5092,7 @@ let CURVE25519_X25519_BYTE_ALT_CORRECT = time prove
               C_ARGUMENTS [res; scalar; point] s /\
               read (memory :> bytes(scalar,32)) s = n /\
               read (memory :> bytes(point,32)) s = X)
-         (\s. read PC s = word (pc + 0x3dd0) /\
+         (\s. read PC s = word (pc + 0x3d80) /\
               read (memory :> bytes(res,32)) s = rfcx25519(n,X))
           (MAYCHANGE [PC; X0; X1; X2; X3; X4; X5; X6; X7; X8; X9; X10;
                       X11; X12; X13; X14; X15; X16; X17; X19; X20;
@@ -4976,7 +5117,7 @@ let CURVE25519_X25519_BYTE_ALT_CORRECT = time prove
   (*** Setup of the main loop ***)
 
   ENSURES_WHILE_ADOWN_TAC `254` `3` `pc + 0x898` `pc + 0x1724`
-   `\i s.
+  `\i s.
       read SP s = stackpointer /\
       read X23 s = res /\
       read X20 s = word_sub (word i) (word 1) /\
@@ -4987,33 +5128,14 @@ let CURVE25519_X25519_BYTE_ALT_CORRECT = time prove
       bignum_from_memory(word_add stackpointer (word 160),4) s < 2 * p_25519 /\
       bignum_from_memory(word_add stackpointer (word 224),4) s < 2 * p_25519 /\
       bignum_from_memory(word_add stackpointer (word 288),4) s < 2 * p_25519 /\
-      !(f:(int#int) ring) P.
-        field f /\ ring_char f = p_25519 /\
-        P IN group_carrier(curve25519x_group f) /\
-        curve25519x_halfcanonically_represents f P (X,1)
-      ==>
-      if X MOD p_25519 = 0 then
-        bignum_from_memory(word_add stackpointer (word 64),4) s
-          MOD p_25519 <= 1 /\
-        bignum_from_memory(word_add stackpointer (word 160),4) s
-          MOD p_25519 = 0 /\
-        bignum_from_memory(word_add stackpointer (word 224),4) s
-          MOD p_25519 = 0 /\
-        bignum_from_memory(word_add stackpointer (word 288),4) s
-          MOD p_25519 <= 1
-      else
-      curve25519x_halfcanonically_represents f
-       (group_pow (curve25519x_group f) P
-           (if ODD(nn DIV 2 EXP i)
-            then nn DIV 2 EXP i + 1 else nn DIV 2 EXP i))
-       (bignum_from_memory(word_add stackpointer (word 288),4) s,
-        bignum_from_memory(word_add stackpointer (word 160),4) s) /\
-      curve25519x_halfcanonically_represents f
-       (group_pow (curve25519x_group f) P
-          (if ODD(nn DIV 2 EXP i)
-           then nn DIV 2 EXP i else nn DIV 2 EXP i + 1))
-       (bignum_from_memory(word_add stackpointer (word 224),4) s,
-        bignum_from_memory(word_add stackpointer (word 64),4) s)` THEN
+      (&(bignum_from_memory(word_add stackpointer (word 288),4) s) ==
+       ladder_x2 X nn i) (mod &p_25519) /\
+      (&(bignum_from_memory(word_add stackpointer (word 160),4) s) ==
+       ladder_z2 X nn i) (mod &p_25519) /\
+      (&(bignum_from_memory(word_add stackpointer (word 224),4) s) ==
+       ladder_x3 X nn i) (mod &p_25519) /\
+      (&(bignum_from_memory(word_add stackpointer (word 64),4) s) ==
+       ladder_z3 X nn i) (mod &p_25519)` THEN
   REPEAT CONJ_TAC THENL
    [ARITH_TAC;
 
@@ -5081,6 +5203,12 @@ let CURVE25519_X25519_BYTE_ALT_CORRECT = time prove
     SUBGOAL_THEN `X < 2 * p_25519` ASSUME_TAC THENL
      [EXPAND_TAC "X" THEN REWRITE_TAC[p_25519] THEN ARITH_TAC;
       ALL_TAC] THEN
+   REWRITE_TAC[ladder_x2; ladder_z2; ladder_x3; ladder_z3] THEN
+    REWRITE_TAC[flipladder; ARITH_RULE `255 - 254 = 0 + 1`] THEN
+    CONV_TAC(ONCE_DEPTH_CONV let_CONV) THEN
+    REWRITE_TAC[SUB_0; ADD_CLAUSES; ARITH_RULE `255 - 1 = 254`] THEN
+    SUBGOAL_THEN `nn DIV 2 EXP 255 = 0` SUBST1_TAC THENL
+     [EXPAND_TAC "nn" THEN ARITH_TAC; ALL_TAC] THEN
     SUBGOAL_THEN `nn DIV 2 EXP 254 = 1` SUBST1_TAC THENL
      [EXPAND_TAC "nn" THEN SIMP_TAC[DIV_ADD; DIVIDES_REFL] THEN
       SIMP_TAC[DIV_LT; ARITH_RULE `x:num < n ==> x - k < n`;
@@ -5089,11 +5217,11 @@ let CURVE25519_X25519_BYTE_ALT_CORRECT = time prove
       CONV_TAC(DEPTH_CONV WORD_NUM_RED_CONV)] THEN
     ASM_REWRITE_TAC[] THEN
     CONJ_TAC THENL [REWRITE_TAC[p_25519] THEN ARITH_TAC; ALL_TAC] THEN
-    SIMP_TAC[GROUP_POW_1] THEN
-    REPEAT(FIRST_X_ASSUM(K ALL_TAC o SYM)) THEN
-    ASM_REWRITE_TAC[curve25519x_halfcanonically_represents] THEN
+    REWRITE_TAC[INT_CONG_REFL] THEN
+    REWRITE_TAC[montgomery_xzdouble; curve25519; A_25519] THEN
+    REWRITE_TAC[INTEGER_MOD_RING_CLAUSES] THEN
     REPEAT(FIRST_X_ASSUM(MP_TAC o check (is_imp o concl))) THEN
-    ASM_REWRITE_TAC[] THEN
+    ASM_REWRITE_TAC[GSYM INT_REM_EQ] THEN
     REPEAT
      (ANTS_TAC THENL [REWRITE_TAC[p_25519] THEN ARITH_TAC; STRIP_TAC]) THEN
     STRIP_TAC THEN
@@ -5103,29 +5231,8 @@ let CURVE25519_X25519_BYTE_ALT_CORRECT = time prove
     RULE_ASSUM_TAC(REWRITE_RULE[GSYM INT_REM_EQ]) THEN
     RULE_ASSUM_TAC(ONCE_REWRITE_RULE[GSYM INT_SUB_REM; GSYM INT_ADD_REM]) THEN
     RULE_ASSUM_TAC(ONCE_REWRITE_RULE[GSYM INT_POW_REM; GSYM INT_MUL_REM]) THEN
-    ONCE_REWRITE_TAC[GSYM RING_OF_INT_OF_NUM] THEN
-    ONCE_REWRITE_TAC[GSYM RING_OF_INT_REM] THEN
-    MAP_EVERY X_GEN_TAC
-     [`f:(int#int) ring`; `P:((int#int)#(int#int))option`] THEN
-    REPEAT(DISCH_THEN(CONJUNCTS_THEN2 ASSUME_TAC MP_TAC)) THEN
-    ASM_REWRITE_TAC[GSYM INT_OF_NUM_REM; GSYM INT_OF_NUM_CLAUSES] THEN
-    SIMP_TAC[] THEN CONV_TAC INT_REM_DOWN_CONV THEN
-    COND_CASES_TAC THEN ASM_REWRITE_TAC[] THENL
-     [DISCH_THEN(K ALL_TAC) THEN REWRITE_TAC[p_25519] THEN
-      CONV_TAC INT_REDUCE_CONV;
-      ALL_TAC] THEN
-    DISCH_THEN(MP_TAC o MATCH_MP (ONCE_REWRITE_RULE[IMP_CONJ_ALT]
-        lemma_double_base)) THEN
-    ASM_REWRITE_TAC[] THEN
-    MATCH_MP_TAC EQ_IMP THEN AP_TERM_TAC THEN
-    ASM_REWRITE_TAC[montgomery_xzdouble; curve25519x; PAIR_EQ] THEN
-    REWRITE_TAC[GSYM RING_OF_INT_OF_NUM; RING_OF_INT_CLAUSES] THEN
-    ASM_REWRITE_TAC[RING_OF_INT_EQ] THEN
-    REWRITE_TAC[GSYM INT_OF_NUM_REM; GSYM INT_REM_EQ;
-                GSYM INT_OF_NUM_CLAUSES] THEN
-    CONV_TAC INT_REM_DOWN_CONV THEN
-    REPEAT CONJ_TAC THEN AP_THM_TAC THEN AP_TERM_TAC THEN
-    REWRITE_TAC[A_25519] THEN INT_ARITH_TAC;
+    ASM_REWRITE_TAC[] THEN CONV_TAC INT_REM_DOWN_CONV THEN
+    REPEAT CONJ_TAC THEN AP_THM_TAC THEN AP_TERM_TAC THEN INT_ARITH_TAC;
 
     (*** The main loop invariant for the Montgomery ladder ***)
 
@@ -5223,90 +5330,33 @@ let CURVE25519_X25519_BYTE_ALT_CORRECT = time prove
     DISCARD_STATE_TAC "s28" THEN
     DISCARD_MATCHING_ASSUMPTIONS
      [`aligned a b`; `val(word i) = i`; `nonoverlapping_modulo a b c`] THEN
+    REWRITE_TAC[ladder_x2; ladder_z2; ladder_x3; ladder_z3] THEN
+    ASM_SIMP_TAC[ARITH_RULE `i < 254 ==> 255 - i = (255 - (i + 1)) + 1`] THEN
+    REWRITE_TAC[flipladder] THEN
+    ASM_SIMP_TAC[ARITH_RULE `i < 254 ==> ~(255 - (i + 1) = 0)`] THEN
+    ASM_SIMP_TAC[ARITH_RULE `i < 254 ==> 255 - (255 - (i + 1)) = i + 1`] THEN
+    ASM_SIMP_TAC[ARITH_RULE `i < 254 ==> 255 - (255 - (i + 1) + 1) = i`] THEN
+    RULE_ASSUM_TAC(REWRITE_RULE
+      [ladder_x2; ladder_z2; ladder_x3; ladder_z3]) THEN
+    LET_TAC THEN RULE_ASSUM_TAC(REWRITE_RULE[]) THEN
+    CONV_TAC(ONCE_DEPTH_CONV let_CONV) THEN
+    REPEAT(FIRST_X_ASSUM(MP_TAC o check (is_imp o concl))) THEN
+    ASM_REWRITE_TAC[GSYM INT_REM_EQ] THEN
+    REPEAT
+     (ANTS_TAC THENL [REWRITE_TAC[p_25519] THEN ARITH_TAC; STRIP_TAC]) THEN
+    POP_ASSUM_LIST(MP_TAC o end_itlist CONJ o rev) THEN
+    REWRITE_TAC[ISPEC `p:bool` EQ_SYM_EQ] THEN
+    COND_CASES_TAC THEN ASM_REWRITE_TAC[] THEN STRIP_TAC THEN
     RULE_ASSUM_TAC(REWRITE_RULE[EXP_2]) THEN
     RULE_ASSUM_TAC(REWRITE_RULE[num_congruent; GSYM INT_OF_NUM_CLAUSES]) THEN
     RULE_ASSUM_TAC(REWRITE_RULE[GSYM INT_REM_EQ]) THEN
     RULE_ASSUM_TAC(ONCE_REWRITE_RULE[GSYM INT_SUB_REM; GSYM INT_ADD_REM]) THEN
     RULE_ASSUM_TAC(ONCE_REWRITE_RULE[GSYM INT_POW_REM; GSYM INT_MUL_REM]) THEN
-    MAP_EVERY X_GEN_TAC
-     [`f:(int#int) ring`; `P:((int#int)#(int#int))option`] THEN
-    STRIP_TAC THEN FIRST_X_ASSUM(MP_TAC o SPECL
-    [`f:(int#int) ring`; `P:((int#int)#(int#int))option`]) THEN
-    ASM_REWRITE_TAC[] THEN
-    REWRITE_TAC[GSYM INT_OF_NUM_CLAUSES; GSYM INT_OF_NUM_REM] THEN
-    COND_CASES_TAC THEN ASM_REWRITE_TAC[] THENL
-     [REWRITE_TAC[INT_OF_NUM_CLAUSES; INT_OF_NUM_REM] THEN
-      REWRITE_TAC[ARITH_RULE `b <= 1 <=> b = 0 \/ b = 1`] THEN
-      REWRITE_TAC[GSYM INT_OF_NUM_CLAUSES; GSYM INT_OF_NUM_REM] THEN
-      STRIP_TAC THEN ASM_REWRITE_TAC[] THEN
-      COND_CASES_TAC THEN ASM_REWRITE_TAC[] THEN
-      CONV_TAC INT_REM_DOWN_CONV THEN
-      REWRITE_TAC[p_25519] THEN CONV_TAC INT_REDUCE_CONV;
-      ALL_TAC] THEN
-    RULE_ASSUM_TAC(ONCE_REWRITE_RULE[TAUT
-     `(ODD n <=> b) <=> (b <=> ODD n)`]) THEN
-    ABBREV_TAC `n = nn DIV 2 EXP (i + 1)` THEN
-    ABBREV_TAC `b = ODD(nn DIV 2 EXP i)` THEN
-    SUBGOAL_THEN `nn DIV 2 EXP i = 2 * n + bitval b` SUBST1_TAC THENL
-     [MAP_EVERY EXPAND_TAC ["b"; "n"] THEN
-      REWRITE_TAC[EXP_ADD; GSYM DIV_DIV; BITVAL_ODD] THEN ARITH_TAC;
-      SIMP_TAC[BITVAL_CLAUSES; ADD_CLAUSES; COND_ID]] THEN
-    DISCH_TAC THEN
-    SUBGOAL_THEN
-     `(ring_of_num f xm':(int#int),ring_of_num f zm') =
-       montgomery_xzdiffadd (curve25519x f)
-           (ring_of_num f X,ring_of_num f 1)
-           (ring_of_num f xn,ring_of_num f zn)
-           (ring_of_num f xm,ring_of_num f zm) /\
-      (ring_of_num f xn',ring_of_num f zn') =
-       montgomery_xzdouble (curve25519x f)
-        (if b <=> ODD n then (ring_of_num f xn,ring_of_num f zn)
-         else (ring_of_num f xm,ring_of_num f zm))`
-    MP_TAC THENL
-     [COND_CASES_TAC THEN
-      ASM_REWRITE_TAC[montgomery_xzdiffadd; montgomery_xzdouble;
-                      curve25519x; PAIR_EQ] THEN
-      REWRITE_TAC[GSYM RING_OF_INT_OF_NUM; RING_OF_INT_CLAUSES] THEN
-      ASM_REWRITE_TAC[RING_OF_INT_EQ] THEN
-      REWRITE_TAC[GSYM INT_OF_NUM_REM; GSYM INT_REM_EQ;
-                  GSYM INT_OF_NUM_CLAUSES] THEN
-      CONV_TAC INT_REM_DOWN_CONV THEN
-      ASM_REWRITE_TAC[] THEN CONV_TAC INT_REM_DOWN_CONV THEN
-      REPEAT CONJ_TAC THEN AP_THM_TAC THEN AP_TERM_TAC THEN
-      REWRITE_TAC[A_25519] THEN INT_ARITH_TAC;
-      ASM_REWRITE_TAC[] THEN
-      SIMP_TAC[curve25519x_halfcanonically_represents] THEN
-      DISCH_THEN(K ALL_TAC) THEN
-      ASM_REWRITE_TAC[GSYM INT_OF_NUM_CLAUSES] THEN
-      FIRST_X_ASSUM(CONJUNCTS_THEN(MP_TAC o last o CONJUNCTS o
-        GEN_REWRITE_RULE I [curve25519x_halfcanonically_represents])) THEN
-      GEN_REWRITE_TAC I [GSYM IMP_CONJ_ALT] THEN
-      FIRST_X_ASSUM(MP_TAC o GEN_REWRITE_RULE I
-       [curve25519x_halfcanonically_represents]) THEN
-     DISCH_THEN(CONJUNCTS_THEN2 ASSUME_TAC (MP_TAC o CONJUNCT2)) THEN
-      UNDISCH_TAC
-       `P IN group_carrier(curve25519x_group(f:(int#int) ring))`] THEN
-    SUBGOAL_THEN `~(ring_of_num (f:(int#int) ring) X = ring_0 f)` MP_TAC THENL
-     [ASM_REWRITE_TAC[RING_OF_NUM_EQ_0; DIVIDES_MOD] THEN
-      ASM_REWRITE_TAC[GSYM INT_OF_NUM_CLAUSES; GSYM INT_OF_NUM_REM];
-      MAP_EVERY UNDISCH_TAC
-       [`ring_char(f:(int#int) ring) = p_25519`; `field(f:(int#int) ring)`] THEN
-      POP_ASSUM_LIST(K ALL_TAC)] THEN
-    REPEAT DISCH_TAC THEN CONJ_TAC THENL
-     [DISJ_CASES_THEN SUBST_ALL_TAC
-       (TAUT `(b <=> ODD n) \/ (b <=> ~ODD n)`) THEN
-      REWRITE_TAC[TAUT `~(~p <=> p)`] THENL
-       [FIRST_X_ASSUM(MP_TAC o CONJUNCT1);
-        FIRST_X_ASSUM(MP_TAC o CONJUNCT2)] THEN
-      UNDISCH_TAC `P IN group_carrier(curve25519x_group(f:(int#int) ring))` THEN
-      REWRITE_TAC[IMP_IMP] THEN DISCH_THEN(MP_TAC o MATCH_MP lemma_double) THEN
-      ASM_REWRITE_TAC[COND_SWAP] THEN COND_CASES_TAC THEN
-      REWRITE_TAC[ARITH_RULE `(2 * n + 1) + 1 = 2 * (n + 1)`];
-      REPEAT(POP_ASSUM MP_TAC) THEN
-      REWRITE_TAC[IMP_IMP; GSYM CONJ_ASSOC] THEN
-      COND_CASES_TAC THEN REWRITE_TAC[lemma_diffadd1] THEN
-      GEN_REWRITE_TAC (LAND_CONV o funpow 5 RAND_CONV) [CONJ_SYM] THEN
-      REWRITE_TAC[lemma_diffadd2]];
+    ASM_REWRITE_TAC[GSYM INT_REM_EQ] THEN CONV_TAC INT_REM_DOWN_CONV THEN
+    ASM_REWRITE_TAC[montgomery_xzdouble; montgomery_xzdiffadd;
+                    curve25519; A_25519; INTEGER_MOD_RING_CLAUSES] THEN
+    CONV_TAC INT_REM_DOWN_CONV THEN
+    REPEAT CONJ_TAC THEN AP_THM_TAC THEN AP_TERM_TAC THEN INT_ARITH_TAC;
 
     (*** The trivial loop-back subgoal ***)
 
@@ -5333,43 +5383,8 @@ let CURVE25519_X25519_BYTE_ALT_CORRECT = time prove
   REWRITE_TAC(!simulation_precanon_thms) THEN ENSURES_INIT_TAC "s0" THEN
   LOCAL_MUX_4_TAC 3 ["xn"; "xm"; "xn"] THEN
   LOCAL_MUX_4_TAC 0 ["zn"; "zm"; "zn"] THEN
-
-  MAP_EVERY (fun t -> REABBREV_TAC t THEN POP_ASSUM SUBST_ALL_TAC)
-   [`xn8 = read(memory :> bytes(word_add stackpointer (word 288),8 * 4)) s5`;
-    `zn8 =
-     read(memory :> bytes(word_add stackpointer (word 160),8 * 4)) s5`] THEN
-  SUBGOAL_THEN
-   `xn8 < 2 * p_25519 /\ zn8 < 2 * p_25519 /\
-     !(f:(int#int) ring) P.
-        field f /\ ring_char f = p_25519 /\
-        P IN group_carrier(curve25519x_group f) /\
-        curve25519x_halfcanonically_represents f P (X,1)
-      ==>
-      if X MOD p_25519 = 0 then
-        xn8 MOD p_25519 = 0 /\ zn8 MOD p_25519 <= 1 \/
-        xn8 MOD p_25519 <= 1 /\ zn8 MOD p_25519 = 0
-      else
-      curve25519x_halfcanonically_represents f
-       (group_pow (curve25519x_group f) P (nn DIV 8)) (xn8,zn8)`
-  MP_TAC THENL
-   [ASM_REWRITE_TAC[VAL_WORD_BITVAL; BITVAL_EQ_0; COND_SWAP] THEN
-    REPLICATE_TAC 2
-     (CONJ_TAC THENL [COND_CASES_TAC THEN ASM_REWRITE_TAC[]; ALL_TAC]) THEN
-    MAP_EVERY X_GEN_TAC
-     [`f:(int#int) ring`; `P:((int#int)#(int#int))option`] THEN
-    STRIP_TAC THEN FIRST_X_ASSUM(MP_TAC o SPECL
-    [`f:(int#int) ring`; `P:((int#int)#(int#int))option`]) THEN
-    ASM_REWRITE_TAC[] THEN
-    REWRITE_TAC[VAL_EQ_0; WORD_SUB_EQ_0; WORD_BITVAL_EQ_0] THEN
-    COND_CASES_TAC THEN ASM_REWRITE_TAC[] THENL [ARITH_TAC; ALL_TAC] THEN
-    REWRITE_TAC[NUM_REDUCE_CONV `2 EXP 3`] THEN
-    COND_CASES_TAC THEN ASM_SIMP_TAC[];
-
-    FIRST_X_ASSUM(K ALL_TAC o check (is_forall o concl)) THEN
-    REPEAT(FIRST_X_ASSUM(K ALL_TAC o check
-     (fun th -> intersect (frees (concl th))
-                [`xm:num`; `xn:num`; `zm:num`; `zn:num`] <> []))) THEN
-    STRIP_TAC] THEN
+  RULE_ASSUM_TAC(REWRITE_RULE
+   [WORD_SUB_0; VAL_WORD_BITVAL; BITVAL_EQ_0; COND_SWAP]) THEN
 
   (*** The first doubling to get from nn/8 to nn/4 ***)
 
@@ -5385,59 +5400,47 @@ let CURVE25519_X25519_BYTE_ALT_CORRECT = time prove
    [`xn4 = read(memory :> bytes(word_add stackpointer (word 288),8 * 4)) s15`;
     `zn4 =
      read(memory :> bytes(word_add stackpointer (word 160),8 * 4)) s15`] THEN
+  SUBGOAL_THEN `8 divides nn` ASSUME_TAC THENL
+   [EXPAND_TAC "nn" THEN REWRITE_TAC[DIVIDES_MOD] THEN
+    REWRITE_TAC[ARITH_RULE `2 EXP 254 = 8 * 2 EXP 251`; MOD_MULT_MOD] THEN
+    REWRITE_TAC[ADD_SUB; GSYM LEFT_ADD_DISTRIB; MOD_MULT];
+    ALL_TAC] THEN
   SUBGOAL_THEN
-   `xn4 < 2 * p_25519 /\ zn4 < 2 * p_25519 /\
-     !(f:(int#int) ring) P.
-        field f /\ ring_char f = p_25519 /\
-        P IN group_carrier(curve25519x_group f) /\
-        curve25519x_halfcanonically_represents f P (X,1)
-      ==>
-      if X MOD p_25519 = 0 then
-        xn4 MOD p_25519 = 0 /\ zn4 MOD p_25519 <= 1 \/
-        xn4 MOD p_25519 <= 1 /\ zn4 MOD p_25519 = 0
-      else
-      curve25519x_halfcanonically_represents f
-       (group_pow (curve25519x_group f) P (2 * nn DIV 8)) (xn4,zn4)`
+   `(&xn4 == ladder_x2 X nn 2) (mod &p_25519) /\
+    (&zn4 == ladder_z2 X nn 2) (mod &p_25519)`
   MP_TAC THENL
-   [ASM_REWRITE_TAC[] THEN
-    MAP_EVERY X_GEN_TAC
-     [`f:(int#int) ring`; `P:((int#int)#(int#int))option`] THEN
-    STRIP_TAC THEN FIRST_X_ASSUM(MP_TAC o SPECL
-    [`f:(int#int) ring`; `P:((int#int)#(int#int))option`]) THEN
-    ASM_REWRITE_TAC[] THEN
-    COND_CASES_TAC THEN ASM_REWRITE_TAC[] THEN
+   [REWRITE_TAC[ladder_x2; ladder_z2; ladder_x3; ladder_z3] THEN
+    REWRITE_TAC[ARITH_RULE `255 - 2 = (255 - 3) + 1`; flipladder] THEN
+    RULE_ASSUM_TAC(REWRITE_RULE
+     [ladder_x2; ladder_z2; ladder_x3; ladder_z3]) THEN
+    LET_TAC THEN CONV_TAC(ONCE_DEPTH_CONV let_CONV) THEN
+    RULE_ASSUM_TAC(REWRITE_RULE[]) THEN CONV_TAC NUM_REDUCE_CONV THEN
+    SUBGOAL_THEN `ODD(nn DIV 4) <=> F` SUBST_ALL_TAC THENL
+     [REWRITE_TAC[NOT_ODD; GSYM DIVIDES_2] THEN
+      MATCH_MP_TAC DIVIDES_DIVIDES_DIV_IMP THEN ASM_REWRITE_TAC[ARITH];
+      ALL_TAC] THEN
+    POP_ASSUM_LIST(MP_TAC o end_itlist CONJ o rev) THEN
+    REWRITE_TAC[] THEN COND_CASES_TAC THEN
+    ASM_REWRITE_TAC[] THEN STRIP_TAC THEN
+    REPEAT(FIRST_X_ASSUM(MP_TAC o check (is_imp o concl))) THEN
+    ASM_REWRITE_TAC[GSYM INT_REM_EQ] THEN
+    REPEAT
+     (ANTS_TAC THENL [REWRITE_TAC[p_25519] THEN ARITH_TAC; STRIP_TAC]) THEN
+    REPEAT DISCH_TAC THEN
     RULE_ASSUM_TAC(REWRITE_RULE[EXP_2]) THEN
     RULE_ASSUM_TAC(REWRITE_RULE[num_congruent; GSYM INT_OF_NUM_CLAUSES]) THEN
-    RULE_ASSUM_TAC(REWRITE_RULE[GSYM INT_OF_NUM_REM; GSYM INT_REM_EQ]) THEN
+    RULE_ASSUM_TAC(REWRITE_RULE[GSYM INT_REM_EQ]) THEN
     RULE_ASSUM_TAC(ONCE_REWRITE_RULE[GSYM INT_SUB_REM; GSYM INT_ADD_REM]) THEN
-    RULE_ASSUM_TAC(ONCE_REWRITE_RULE[GSYM INT_POW_REM; GSYM INT_MUL_REM]) THENL
-     [REWRITE_TAC[ARITH_RULE `n <= 1 <=> n = 0 \/ n = 1`] THEN
-      ASM_REWRITE_TAC[GSYM INT_OF_NUM_CLAUSES; GSYM INT_OF_NUM_REM] THEN
-      STRIP_TAC THEN ASM_REWRITE_TAC[] THEN
-      REWRITE_TAC[p_25519] THEN CONV_TAC INT_REDUCE_CONV;
-      ALL_TAC] THEN
-    REWRITE_TAC[curve25519x_halfcanonically_represents] THEN
-    ASM_REWRITE_TAC[GSYM INT_OF_NUM_CLAUSES] THEN
-    DISCH_THEN(MP_TAC o MATCH_MP (ONCE_REWRITE_RULE[IMP_CONJ_ALT]
-        lemma_double)) THEN
-    ASM_REWRITE_TAC[GSYM INT_OF_NUM_EQ] THEN MATCH_MP_TAC EQ_IMP THEN
-    AP_TERM_TAC THEN REWRITE_TAC[PAIR_EQ] THEN
-    ONCE_REWRITE_TAC[GSYM RING_OF_INT_OF_NUM] THEN
-    ONCE_REWRITE_TAC[GSYM RING_OF_INT_REM] THEN
-    ASM_REWRITE_TAC[] THEN
-    ASM_REWRITE_TAC[montgomery_xzdouble; curve25519x; PAIR_EQ] THEN
-    REWRITE_TAC[GSYM RING_OF_INT_OF_NUM; RING_OF_INT_CLAUSES] THEN
-    ASM_REWRITE_TAC[RING_OF_INT_EQ] THEN
-    REWRITE_TAC[GSYM INT_OF_NUM_REM; GSYM INT_REM_EQ;
-                GSYM INT_OF_NUM_CLAUSES] THEN
+    RULE_ASSUM_TAC(ONCE_REWRITE_RULE[GSYM INT_POW_REM; GSYM INT_MUL_REM]) THEN
+    ASM_REWRITE_TAC[GSYM INT_REM_EQ] THEN CONV_TAC INT_REM_DOWN_CONV THEN
+    ASM_REWRITE_TAC[montgomery_xzdouble; montgomery_xzdiffadd;
+                    curve25519; A_25519; INTEGER_MOD_RING_CLAUSES] THEN
     CONV_TAC INT_REM_DOWN_CONV THEN
-    REPEAT CONJ_TAC THEN AP_THM_TAC THEN AP_TERM_TAC THEN
-    REWRITE_TAC[A_25519] THEN INT_ARITH_TAC;
-
-    FIRST_X_ASSUM(K ALL_TAC o check (is_forall o concl)) THEN
+    REPEAT CONJ_TAC THEN AP_THM_TAC THEN AP_TERM_TAC THEN INT_ARITH_TAC;
     REPEAT(FIRST_X_ASSUM(K ALL_TAC o check
      (fun th -> intersect (frees (concl th))
-                [`xn8:num`; `zn8:num`; `d:num`; `d':num`;
+                [`xn:num`; `zn:num`; `xm:num`; `zm:num`;
+                 `xn':num`; `zn':num`; `d:num`; `d':num`;
                  `s:num`; `s':num`; `p:num`; `e:num`] <> []))) THEN
     STRIP_TAC] THEN
 
@@ -5456,58 +5459,34 @@ let CURVE25519_X25519_BYTE_ALT_CORRECT = time prove
     `zn2 =
      read(memory :> bytes(word_add stackpointer (word 160),8 * 4)) s25`] THEN
   SUBGOAL_THEN
-   `xn2 < 2 * p_25519 /\ zn2 < 2 * p_25519 /\
-     !(f:(int#int) ring) P.
-        field f /\ ring_char f = p_25519 /\
-        P IN group_carrier(curve25519x_group f) /\
-        curve25519x_halfcanonically_represents f P (X,1)
-      ==>
-      if X MOD p_25519 = 0 then
-        xn2 MOD p_25519 = 0 /\ zn2 MOD p_25519 <= 1 \/
-        xn2 MOD p_25519 <= 1 /\ zn2 MOD p_25519 = 0
-      else
-      curve25519x_halfcanonically_represents f
-       (group_pow (curve25519x_group f) P (2 * 2 * nn DIV 8)) (xn2,zn2)`
+   `(&xn2 == ladder_x2 X nn 1) (mod &p_25519) /\
+    (&zn2 == ladder_z2 X nn 1) (mod &p_25519)`
   MP_TAC THENL
-   [ASM_REWRITE_TAC[] THEN
-    MAP_EVERY X_GEN_TAC
-     [`f:(int#int) ring`; `P:((int#int)#(int#int))option`] THEN
-    STRIP_TAC THEN FIRST_X_ASSUM(MP_TAC o SPECL
-    [`f:(int#int) ring`; `P:((int#int)#(int#int))option`]) THEN
-    ASM_REWRITE_TAC[] THEN
-    COND_CASES_TAC THEN ASM_REWRITE_TAC[] THEN
+   [REWRITE_TAC[ladder_x2; ladder_z2; ladder_x3; ladder_z3] THEN
+    REWRITE_TAC[ARITH_RULE `255 - 1 = (255 - 2) + 1`; flipladder] THEN
+    RULE_ASSUM_TAC(REWRITE_RULE
+     [ladder_x2; ladder_z2; ladder_x3; ladder_z3]) THEN
+    LET_TAC THEN CONV_TAC(ONCE_DEPTH_CONV let_CONV) THEN
+    RULE_ASSUM_TAC(REWRITE_RULE[]) THEN CONV_TAC NUM_REDUCE_CONV THEN
+    SUBGOAL_THEN `nn = 8 * nn DIV 8` SUBST1_TAC THENL
+     [REWRITE_TAC[ARITH_RULE `n = 8 * n DIV 8 <=> n MOD 8 = 0`] THEN
+      ASM_REWRITE_TAC[GSYM DIVIDES_MOD];
+      REWRITE_TAC[ARITH_RULE `(8 * n) DIV 2 = 2 * 2 * n`] THEN
+      REWRITE_TAC[ARITH_RULE `(8 * n) DIV 4 = 2 * n`] THEN
+      REWRITE_TAC[ODD_MULT; ARITH_ODD; ARITH_EVEN]] THEN
     RULE_ASSUM_TAC(REWRITE_RULE[EXP_2]) THEN
     RULE_ASSUM_TAC(REWRITE_RULE[num_congruent; GSYM INT_OF_NUM_CLAUSES]) THEN
-    RULE_ASSUM_TAC(REWRITE_RULE[GSYM INT_OF_NUM_REM; GSYM INT_REM_EQ]) THEN
+    RULE_ASSUM_TAC(REWRITE_RULE[GSYM INT_REM_EQ]) THEN
     RULE_ASSUM_TAC(ONCE_REWRITE_RULE[GSYM INT_SUB_REM; GSYM INT_ADD_REM]) THEN
-    RULE_ASSUM_TAC(ONCE_REWRITE_RULE[GSYM INT_POW_REM; GSYM INT_MUL_REM]) THENL
-     [REWRITE_TAC[ARITH_RULE `n <= 1 <=> n = 0 \/ n = 1`] THEN
-      ASM_REWRITE_TAC[GSYM INT_OF_NUM_CLAUSES; GSYM INT_OF_NUM_REM] THEN
-      STRIP_TAC THEN ASM_REWRITE_TAC[] THEN
-      REWRITE_TAC[p_25519] THEN CONV_TAC INT_REDUCE_CONV;
-      ALL_TAC] THEN
-    REWRITE_TAC[curve25519x_halfcanonically_represents] THEN
-    ASM_REWRITE_TAC[GSYM INT_OF_NUM_CLAUSES] THEN
-    DISCH_THEN(MP_TAC o MATCH_MP (ONCE_REWRITE_RULE[IMP_CONJ_ALT]
-        lemma_double)) THEN
-    ASM_REWRITE_TAC[GSYM INT_OF_NUM_EQ] THEN MATCH_MP_TAC EQ_IMP THEN
-    AP_TERM_TAC THEN REWRITE_TAC[PAIR_EQ] THEN
-    ONCE_REWRITE_TAC[GSYM RING_OF_INT_OF_NUM] THEN
-    ONCE_REWRITE_TAC[GSYM RING_OF_INT_REM] THEN
-    ASM_REWRITE_TAC[] THEN
-    ASM_REWRITE_TAC[montgomery_xzdouble; curve25519x; PAIR_EQ] THEN
-    REWRITE_TAC[GSYM RING_OF_INT_OF_NUM; RING_OF_INT_CLAUSES] THEN
-    ASM_REWRITE_TAC[RING_OF_INT_EQ] THEN
-    REWRITE_TAC[GSYM INT_OF_NUM_REM; GSYM INT_REM_EQ;
-                GSYM INT_OF_NUM_CLAUSES] THEN
+    RULE_ASSUM_TAC(ONCE_REWRITE_RULE[GSYM INT_POW_REM; GSYM INT_MUL_REM]) THEN
+    ASM_REWRITE_TAC[GSYM INT_REM_EQ] THEN CONV_TAC INT_REM_DOWN_CONV THEN
+    ASM_REWRITE_TAC[montgomery_xzdouble; montgomery_xzdiffadd;
+                    curve25519; A_25519; INTEGER_MOD_RING_CLAUSES] THEN
     CONV_TAC INT_REM_DOWN_CONV THEN
-    REPEAT CONJ_TAC THEN AP_THM_TAC THEN AP_TERM_TAC THEN
-    REWRITE_TAC[A_25519] THEN INT_ARITH_TAC;
-
-    FIRST_X_ASSUM(K ALL_TAC o check (is_forall o concl)) THEN
+    REPEAT CONJ_TAC THEN AP_THM_TAC THEN AP_TERM_TAC THEN INT_ARITH_TAC;
     REPEAT(FIRST_X_ASSUM(K ALL_TAC o check
      (fun th -> intersect (frees (concl th))
-                [`xn4:num`; `zn4:num`; `d:num`; `d':num`;
+                [`xn4:num`; `zn4:num`;  `d:num`; `d':num`;
                  `s:num`; `s':num`; `p:num`; `e:num`] <> []))) THEN
     STRIP_TAC] THEN
 
@@ -5520,136 +5499,55 @@ let CURVE25519_X25519_BYTE_ALT_CORRECT = time prove
   LOCAL_SUB_TWICE4_TAC 0 ["p"; "s"; "d"] THEN
   LOCAL_CMADD_4_TAC 2 ["e"; "p"; "d"] THEN
   LOCAL_MUL_4_TAC 0 ["xn"; "s"; "d"] THEN
-  LOCAL_MUL_P25519_TAC 0 ["zn"; "p"; "e"] THEN
+  LOCAL_MUL_4_TAC 0 ["zn"; "p"; "e"] THEN
   SUBGOAL_THEN
-   `xn < 2 * p_25519 /\ zn < p_25519 /\
-     !(f:(int#int) ring) P.
-        field f /\ ring_char f = p_25519 /\
-        P IN group_carrier(curve25519x_group f) /\
-        curve25519x_halfcanonically_represents f P (X,1)
-      ==>
-      if X MOD p_25519 = 0 then
-        xn MOD p_25519 = 0 /\ zn MOD p_25519 <= 1 \/
-        xn MOD p_25519 <= 1 /\ zn MOD p_25519 = 0
-      else
-      curve25519x_halfcanonically_represents f
-       (group_pow (curve25519x_group f) P (2 * 2 * 2 * nn DIV 8)) (xn,zn)`
+   `(&xn == ladder_x2 X nn 0) (mod &p_25519) /\
+    (&zn == ladder_z2 X nn 0) (mod &p_25519)`
   MP_TAC THENL
-   [ASM_REWRITE_TAC[] THEN CONJ_TAC THENL
-     [REWRITE_TAC[MOD_LT_EQ; p_25519; ARITH_EQ]; ALL_TAC] THEN
-    MAP_EVERY X_GEN_TAC
-     [`f:(int#int) ring`; `P:((int#int)#(int#int))option`] THEN
-    STRIP_TAC THEN FIRST_X_ASSUM(MP_TAC o SPECL
-    [`f:(int#int) ring`; `P:((int#int)#(int#int))option`]) THEN
-    ASM_REWRITE_TAC[] THEN
-    COND_CASES_TAC THEN ASM_REWRITE_TAC[] THEN
+   [REWRITE_TAC[ladder_x2; ladder_z2; ladder_x3; ladder_z3] THEN
+    REWRITE_TAC[ARITH_RULE `255 - 0 = (255 - 1) + 1`; flipladder] THEN
+    RULE_ASSUM_TAC(REWRITE_RULE
+     [ladder_x2; ladder_z2; ladder_x3; ladder_z3]) THEN
+    LET_TAC THEN CONV_TAC(ONCE_DEPTH_CONV let_CONV) THEN
+    RULE_ASSUM_TAC(REWRITE_RULE[]) THEN CONV_TAC NUM_REDUCE_CONV THEN
+    SUBGOAL_THEN `nn = 8 * nn DIV 8` SUBST1_TAC THENL
+     [REWRITE_TAC[ARITH_RULE `n = 8 * n DIV 8 <=> n MOD 8 = 0`] THEN
+      ASM_REWRITE_TAC[GSYM DIVIDES_MOD];
+      REWRITE_TAC[ARITH_RULE `(8 * n) DIV 2 = 2 * 2 * n`] THEN
+      REWRITE_TAC[ODD_MULT; ARITH_ODD; ARITH_EVEN; DIV_1]] THEN
     RULE_ASSUM_TAC(REWRITE_RULE[EXP_2]) THEN
     RULE_ASSUM_TAC(REWRITE_RULE[num_congruent; GSYM INT_OF_NUM_CLAUSES]) THEN
-    RULE_ASSUM_TAC(REWRITE_RULE[GSYM INT_OF_NUM_REM; GSYM INT_REM_EQ]) THEN
-    RULE_ASSUM_TAC(REWRITE_RULE[GSYM INT_OF_NUM_CLAUSES]) THEN
+    RULE_ASSUM_TAC(REWRITE_RULE[GSYM INT_REM_EQ]) THEN
     RULE_ASSUM_TAC(ONCE_REWRITE_RULE[GSYM INT_SUB_REM; GSYM INT_ADD_REM]) THEN
     RULE_ASSUM_TAC(ONCE_REWRITE_RULE[GSYM INT_POW_REM; GSYM INT_MUL_REM]) THEN
-    ONCE_REWRITE_TAC[GSYM MOD_MULT_MOD2] THENL
-     [REWRITE_TAC[ARITH_RULE `n <= 1 <=> n = 0 \/ n = 1`] THEN
-      ASM_REWRITE_TAC[GSYM INT_OF_NUM_CLAUSES; GSYM INT_OF_NUM_REM] THEN
-      STRIP_TAC THEN ASM_REWRITE_TAC[] THEN
-      REWRITE_TAC[p_25519] THEN CONV_TAC INT_REDUCE_CONV;
-      ALL_TAC] THEN
-    REWRITE_TAC[curve25519x_halfcanonically_represents] THEN
-    ASM_REWRITE_TAC[GSYM INT_OF_NUM_CLAUSES] THEN
-    MATCH_MP_TAC(TAUT `q /\ (p ==> r) ==> p ==> q /\ r`) THEN
-    CONJ_TAC THENL
-     [REWRITE_TAC[INT_OF_NUM_CLAUSES] THEN
-      MATCH_MP_TAC(ARITH_RULE `x < p ==> x < 2 * p`) THEN
-      REWRITE_TAC[MOD_LT_EQ; p_25519; ARITH_EQ];
-      ALL_TAC] THEN
-    DISCH_THEN(MP_TAC o MATCH_MP (ONCE_REWRITE_RULE[IMP_CONJ_ALT]
-        lemma_double)) THEN
-    ASM_REWRITE_TAC[GSYM INT_OF_NUM_EQ] THEN MATCH_MP_TAC EQ_IMP THEN
-    AP_TERM_TAC THEN REWRITE_TAC[PAIR_EQ] THEN
-    ONCE_REWRITE_TAC[GSYM RING_OF_INT_OF_NUM] THEN
-    ONCE_REWRITE_TAC[GSYM RING_OF_INT_REM] THEN
-    ASM_REWRITE_TAC[] THEN
-    ASM_REWRITE_TAC[montgomery_xzdouble; curve25519x; PAIR_EQ] THEN
-    REWRITE_TAC[GSYM RING_OF_INT_OF_NUM; RING_OF_INT_CLAUSES] THEN
-    ASM_REWRITE_TAC[RING_OF_INT_EQ] THEN
-    REWRITE_TAC[GSYM INT_OF_NUM_REM; GSYM INT_REM_EQ;
-                GSYM INT_OF_NUM_CLAUSES] THEN
-    ASM_REWRITE_TAC[] THEN CONV_TAC INT_REM_DOWN_CONV THEN
-    REPEAT CONJ_TAC THEN AP_THM_TAC THEN AP_TERM_TAC THEN
-    REWRITE_TAC[A_25519] THEN INT_ARITH_TAC;
-    FIRST_X_ASSUM(K ALL_TAC o check (is_forall o concl)) THEN
+    ASM_REWRITE_TAC[GSYM INT_REM_EQ] THEN CONV_TAC INT_REM_DOWN_CONV THEN
+    ASM_REWRITE_TAC[montgomery_xzdouble; montgomery_xzdiffadd;
+                    curve25519; A_25519; INTEGER_MOD_RING_CLAUSES] THEN
+    CONV_TAC INT_REM_DOWN_CONV THEN
+    REPEAT CONJ_TAC THEN AP_THM_TAC THEN AP_TERM_TAC THEN INT_ARITH_TAC;
     REPEAT(FIRST_X_ASSUM(K ALL_TAC o check
      (fun th -> intersect (frees (concl th))
-                [`xn2:num`; `zn2:num`; `d:num`; `d':num`;
+                [`xn2:num`; `zn2:num`;  `d:num`; `d':num`;
                  `s:num`; `s':num`; `p:num`; `e:num`] <> []))) THEN
     STRIP_TAC] THEN
-
-  (*** Clean up final goal and observe that we've reached nn ***)
-
-  SUBGOAL_THEN `2 * 2 * 2 * nn DIV 8 = nn` SUBST_ALL_TAC THENL
-   [REWRITE_TAC[ARITH_RULE `2 * 2 * 2 * nn DIV 8 = nn <=> nn MOD 8 = 0`] THEN
-    EXPAND_TAC "nn" THEN
-    REWRITE_TAC[ARITH_RULE `2 EXP 254 = 8 * 2 EXP 251`; MOD_MULT_MOD] THEN
-    REWRITE_TAC[ADD_SUB; GSYM LEFT_ADD_DISTRIB; MOD_MULT];
-    ALL_TAC] THEN
-
-  SUBGOAL_THEN `X < 2 * p_25519` ASSUME_TAC THENL
-   [FIRST_X_ASSUM(MP_TAC o MATCH_MP (ARITH_RULE
-     `Y MOD 2 EXP 255 = X ==> X < 2 EXP 255`)) THEN
-    REWRITE_TAC[p_25519] THEN ARITH_TAC;
-    ALL_TAC] THEN
-
-  REPEAT(FIRST_X_ASSUM(K ALL_TAC o
-   check (vfree_in `n_input:num`) o concl)) THEN
-  REPEAT(FIRST_X_ASSUM(K ALL_TAC o
-   check (vfree_in `X_input:num`) o concl)) THEN
 
   (*** The inlining of modular inverse ***)
 
   ARM_STEPS_TAC CURVE25519_X25519_BYTE_ALT_EXEC (36--37) THEN
   LOCAL_MODINV_TAC 38 THEN
-  FIRST_X_ASSUM(ASSUME_TAC o MATCH_MP(MESON[PRIME_COPRIME_EQ; PRIME_P25519]
-   `(bnx = if p_25519 divides n then 0 else inverse_mod p_25519 n)
-    ==> coprime(p_25519,n) ==> bnx = inverse_mod p_25519 n`)) THEN
-  ABBREV_TAC
-   `zn' =
-    read(memory :> bytes(word_add stackpointer (word 224),8 * 4)) s38` THEN
 
-  (*** The tweaking to force xn = 0 whenever zn = 0 ***)
+  (*** The final multiplication ***)
 
-  BIGNUM_LDIGITIZE_TAC "xn_"
-   `read(memory :> bytes(word_add stackpointer (word 288),8 * 4)) s38` THEN
-  BIGNUM_LDIGITIZE_TAC "zn_"
-   `read(memory :> bytes(word_add stackpointer (word 160),8 * 4)) s38` THEN
-  ARM_STEPS_TAC CURVE25519_X25519_BYTE_ALT_EXEC (39--52) THEN
-
-  SUBGOAL_THEN
-   `read(memory :> bytes(word_add stackpointer (word 288),8 * 4)) s52 =
-    if zn = 0 then 0 else xn`
-  ASSUME_TAC THENL
-   [CONV_TAC(ONCE_DEPTH_CONV BIGNUM_LEXPAND_CONV) THEN
-    ASM_REWRITE_TAC[] THEN MAP_EVERY EXPAND_TAC ["zn"; "xn"] THEN
-    REWRITE_TAC[WORD_SUB_0; VAL_EQ_0; WORD_OR_EQ_0] THEN
-    REWRITE_TAC[BIGNUM_OF_WORDLIST_EQ_0; ALL] THEN
-    REWRITE_TAC[COND_SWAP; CONJ_ACI] THEN
-    COND_CASES_TAC THEN ASM_REWRITE_TAC[] THEN
-    REWRITE_TAC[bignum_of_wordlist] THEN
-    CONV_TAC(DEPTH_CONV WORD_NUM_RED_CONV);
-    ALL_TAC] THEN
-
-  (*** Final multiplication ***)
-
-  LOCAL_MUL_P25519_TAC 0 ["zn"; "xn"; "xm"] THEN
+  LOCAL_MUL_P25519_TAC 0 ["zn"; "xn"; "zn"] THEN
 
   (*** Bytewise store and finish of simulation ***)
 
   BIGNUM_LDIGITIZE_TAC "res_"
-   `read(memory :> bytes(word_add stackpointer (word 160),8 * 4)) s53` THEN
-  ARM_STEPS_TAC CURVE25519_X25519_BYTE_ALT_EXEC (54--115) THEN
+   `read(memory :> bytes(word_add stackpointer (word 160),8 * 4)) s39` THEN
+  ARM_STEPS_TAC CURVE25519_X25519_BYTE_ALT_EXEC (40--101) THEN
   ENSURES_FINAL_STATE_TAC THEN ASM_REWRITE_TAC[] THEN
-  TRANS_TAC EQ_TRANS `zn'':num` THEN CONJ_TAC THENL
-   [CONV_TAC(LAND_CONV BYTES_EXPAND_CONV) THEN EXPAND_TAC "zn''" THEN
+  TRANS_TAC EQ_TRANS `zn':num` THEN CONJ_TAC THENL
+   [CONV_TAC(LAND_CONV BYTES_EXPAND_CONV) THEN EXPAND_TAC "zn'" THEN
     REWRITE_TAC[bignum_of_wordlist] THEN ASM_REWRITE_TAC[] THEN
     REWRITE_TAC[bignum_of_wordlist; val_def] THEN
     REWRITE_TAC[DIMINDEX_8; ARITH_RULE `i < 8 <=> 0 <= i /\ i <= 7`] THEN
@@ -5661,84 +5559,15 @@ let CURVE25519_X25519_BYTE_ALT_CORRECT = time prove
     CONV_TAC(DEPTH_CONV WORD_NUM_RED_CONV) THEN ARITH_TAC;
     ASM_REWRITE_TAC[]] THEN
 
-  (*** Completing the mathematics ***)
+  (*** Finishing the mathematics ***)
 
-  CONV_TAC SYM_CONV THEN MATCH_MP_TAC PUREX25519_UNIQUE_IMP THEN
-  CONJ_TAC THENL [REWRITE_TAC[MOD_LT_EQ; p_25519] THEN ARITH_TAC; ALL_TAC] THEN
-  MAP_EVERY X_GEN_TAC [`f:(int#int)ring`; `P:((int#int)#(int#int))option`] THEN
-
-  ASM_CASES_TAC `X MOD p_25519 = 0` THEN
-  ASM_REWRITE_TAC[RING_OF_NUM_0] THEN STRIP_TAC THENL
-   [MP_TAC(ISPECL
-     [`f:(int#int)ring`; `ring_of_num f A_25519:int#int`;
-      `ring_of_num f 1:int#int`; `P:((int#int)#(int#int))option`;
-      `nn:num`] MONTGOMERY_XMAP_EQ_0_POW) THEN
-    ASM_REWRITE_TAC[GSYM curve25519x_group; GSYM curve25519x] THEN
-    ASM_SIMP_TAC[MONTGOMERY_NONSINGULAR_CURVE25519X; RING_OF_NUM] THEN
-    ANTS_TAC THENL [REWRITE_TAC[p_25519] THEN ARITH_TAC; ALL_TAC] THEN
-    DISCH_THEN SUBST1_TAC THEN FIRST_X_ASSUM(MP_TAC o SPECL
-     [`f:(int#int)ring`; `SOME(ring_0 f:int#int,ring_0 f)`]) THEN
-    ASM_REWRITE_TAC[] THEN ANTS_TAC THENL
-     [REWRITE_TAC[curve25519x_halfcanonically_represents] THEN
-      ASM_SIMP_TAC[CURVE25519X_GROUP; montgomery_xz] THEN
-      GEN_REWRITE_TAC LAND_CONV [IN] THEN
-      REWRITE_TAC[montgomery_curve; RING_OF_NUM; curve25519x] THEN
-      ONCE_REWRITE_TAC[GSYM RING_OF_NUM_MOD] THEN ASM_REWRITE_TAC[] THEN
-      REWRITE_TAC[p_25519; A_25519] THEN CONV_TAC NUM_REDUCE_CONV THEN
-      ASM_SIMP_TAC[RING_OF_NUM_1; RING_OF_NUM_0; FIELD_NONTRIVIAL; RING_0] THEN
-      UNDISCH_TAC `field(f:(int#int)ring)` THEN POP_ASSUM_LIST(K ALL_TAC) THEN
-      REPEAT STRIP_TAC THEN FIELD_TAC;
-      ASM_SIMP_TAC[MOD_LT]] THEN
-    COND_CASES_TAC THEN
-    ASM_REWRITE_TAC[MOD_0; RING_OF_NUM_0; MULT_CLAUSES] THEN
-    ONCE_REWRITE_TAC[GSYM MOD_MULT_MOD2] THEN
-    SIMP_TAC[MOD_0; RING_OF_NUM_0; MULT_CLAUSES];
-    ALL_TAC] THEN
-
-  FIRST_X_ASSUM(MP_TAC o SPECL
-   [`f:(int#int)ring`; `P:((int#int)#(int#int))option`]) THEN
-  ASM_REWRITE_TAC[] THEN ANTS_TAC THENL
-   [ASM_REWRITE_TAC[curve25519x_halfcanonically_represents] THEN
-    REWRITE_TAC[p_25519] THEN CONV_TAC NUM_REDUCE_CONV THEN
-    REWRITE_TAC[RING_OF_NUM_1] THEN
-    W(MP_TAC o PART_MATCH (lhand o rand) MONTGOMERY_XZ_XMAP o snd) THEN
-    ASM_REWRITE_TAC[RING_OF_NUM] THEN
-    ONCE_REWRITE_TAC[GSYM RING_OF_NUM_MOD] THEN
-    ASM_REWRITE_TAC[MOD_MOD_REFL] THEN
-    DISCH_THEN MATCH_MP_TAC THEN
-    ASM_REWRITE_TAC[RING_OF_NUM_EQ_0; DIVIDES_MOD] THEN
-    ASM_SIMP_TAC[MOD_LT; MOD_MOD_REFL];
-    ALL_TAC] THEN
-
-  REWRITE_TAC[curve25519x_halfcanonically_represents] THEN
-  REPEAT(DISCH_THEN(CONJUNCTS_THEN2 ASSUME_TAC MP_TAC)) THEN
-  FIRST_X_ASSUM(MP_TAC o SPEC `nn:num` o MATCH_MP GROUP_POW) THEN
-  SPEC_TAC(`group_pow (curve25519x_group(f:(int#int)ring)) P nn`,
-           `Q:((int#int)#(int#int))option`) THEN
-  REWRITE_TAC[FORALL_OPTION_THM] THEN
-  GEN_REWRITE_TAC RAND_CONV [FORALL_PAIR_THM] THEN
-  REWRITE_TAC[montgomery_xz; montgomery_xmap] THEN
-  ASM_SIMP_TAC[RING_OF_NUM_EQ_0; DIVIDES_MOD; MOD_LT] THEN
-  REWRITE_TAC[RING_OF_NUM] THEN ONCE_REWRITE_TAC[IN] THEN
-  ASM_SIMP_TAC[CURVE25519X_GROUP] THEN
-  REWRITE_TAC[montgomery_curve; curve25519x] THEN
-  SIMP_TAC[MULT_CLAUSES; MOD_0; RING_OF_NUM_0] THEN
-  MAP_EVERY X_GEN_TAC [`u:int#int`; `v:int#int`] THEN
-  STRIP_TAC THEN
-  DISCH_THEN(CONJUNCTS_THEN2 ASSUME_TAC (SUBST1_TAC o SYM)) THEN
-  MP_TAC(ISPEC `f:(int#int)ring` RING_OF_NUM_MOD) THEN
-  ASM_SIMP_TAC[RING_OF_NUM_MUL] THEN DISCH_THEN(K ALL_TAC) THEN
-  REWRITE_TAC[ring_div] THEN AP_TERM_TAC THEN
-  MATCH_MP_TAC RING_RINV_UNIQUE THEN
-  REWRITE_TAC[RING_OF_NUM; GSYM RING_OF_NUM_MUL] THEN
-  REWRITE_TAC[GSYM RING_OF_NUM_1; RING_OF_NUM_EQ] THEN
-  FIRST_X_ASSUM(MP_TAC o check (is_imp o concl)) THEN
-  ASM_REWRITE_TAC[] THEN
-  MATCH_MP_TAC(TAUT `(p /\ q ==> r) /\ p ==> (p ==> q) ==> r`) THEN
-  CONJ_TAC THENL [MESON_TAC[INVERSE_MOD_RMUL]; ALL_TAC] THEN
-  SIMP_TAC[PRIME_COPRIME_EQ; PRIME_P25519] THEN
-  ASM_SIMP_TAC[DIVIDES_MOD; MOD_LT] THEN
-  REWRITE_TAC[p_25519] THEN CONV_TAC NUM_REDUCE_CONV);;
+  CONV_TAC SYM_CONV THEN REWRITE_TAC[GSYM deproject; PUREX25519_MOD] THEN
+  MATCH_MP_TAC DEPROJECT_LADDER_EVEN THEN ASM_REWRITE_TAC[] THEN
+  REPEAT(CONJ_TAC THENL [EXPAND_TAC "nn" THEN ARITH_TAC; ALL_TAC]) THEN
+  REWRITE_TAC[GSYM DIVIDES_2] THEN
+  FIRST_X_ASSUM(MATCH_MP_TAC o MATCH_MP (REWRITE_RULE[IMP_CONJ_ALT]
+        DIVIDES_TRANS)) THEN
+  REWRITE_TAC[DIVIDES_MOD] THEN ARITH_TAC);;
 
 let CURVE25519_X25519_BYTE_ALT_SUBROUTINE_CORRECT = time prove
  (`!res scalar n point X pc stackpointer returnaddress.
