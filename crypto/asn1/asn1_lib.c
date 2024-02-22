@@ -332,10 +332,7 @@ ASN1_STRING *ASN1_STRING_type_new(int type) {
   if (ret == NULL) {
     return NULL;
   }
-  assert(ret->length == 0);
   ret->type = type;
-  assert(ret->data == NULL);
-  assert(ret->flags == 0);
   return ret;
 }
 

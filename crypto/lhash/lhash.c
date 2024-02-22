@@ -289,7 +289,6 @@ int OPENSSL_lh_insert(_LHASH *lh, void **old_data, void *data,
 
   item->data = data;
   item->hash = hash;
-  assert(item->next == NULL);
   *next_ptr = item;
   lh->num_items++;
   lh_maybe_resize(lh);

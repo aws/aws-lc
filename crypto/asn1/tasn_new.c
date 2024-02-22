@@ -301,7 +301,6 @@ static int ASN1_primitive_new(ASN1_VALUE **pval, const ASN1_ITEM *it) {
       if (!typ) {
         return 0;
       }
-      assert(typ->value.ptr == NULL);
       typ->type = -1;
       *pval = (ASN1_VALUE *)typ;
       break;

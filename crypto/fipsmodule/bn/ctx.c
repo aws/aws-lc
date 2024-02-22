@@ -112,11 +112,7 @@ BN_CTX *BN_CTX_new(void) {
   }
 
   // Initialise the structure
-  assert(ret->bignums == NULL);
   BN_STACK_init(&ret->stack);
-  assert(ret->used == 0);
-  assert(ret->error == 0);
-  assert(ret->defer_error == 0);
   return ret;
 }
 

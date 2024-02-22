@@ -669,11 +669,6 @@ static int32_t cipher_chacha20_poly1305_ctrl(EVP_CIPHER_CTX *ctx, int32_t type,
           OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INITIALIZATION_ERROR);
           return 0;
         }
-        assert(cipher_ctx->len.aad == 0);
-        assert(cipher_ctx->len.text == 0);
-        assert(cipher_ctx->pad_aad == 0);
-        assert(cipher_ctx->poly_initialized == 0);
-        assert(cipher_ctx->tag_len == 0);
       } else {
         cipher_ctx->len.aad = 0;
         cipher_ctx->len.text = 0;

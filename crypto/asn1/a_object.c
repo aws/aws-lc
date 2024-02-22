@@ -188,11 +188,6 @@ ASN1_OBJECT *ASN1_OBJECT_new(void) {
   if (ret == NULL) {
     return NULL;
   }
-  assert(ret->length == 0);
-  assert(ret->data == NULL);
-  assert(ret->nid == 0);
-  assert(ret->sn == NULL);
-  assert(ret->ln == NULL);
   ret->flags = ASN1_OBJECT_FLAG_DYNAMIC;
   return ret;
 }

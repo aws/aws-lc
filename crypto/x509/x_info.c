@@ -70,13 +70,6 @@ X509_INFO *X509_INFO_new(void) {
     return NULL;
   }
 
-  assert(ret->enc_cipher.cipher == NULL);
-  assert(ret->enc_len == 0);
-  assert(ret->enc_data == NULL);
-
-  assert(ret->x509 == NULL);
-  assert(ret->crl == NULL);
-  assert(ret->x_pkey == NULL);
   return ret;
 }
 

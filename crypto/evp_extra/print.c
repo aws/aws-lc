@@ -126,7 +126,6 @@ static int bn_print(BIO *bp, const char *name, const BIGNUM *num, int off) {
     return 0;
   }
 
-  assert(buf[0] == 0);
   BN_bn2bin(num, buf + 1);
   int ret;
   if (len > 0 && (buf[1] & 0x80) != 0) {

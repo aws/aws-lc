@@ -73,11 +73,7 @@ X509_LOOKUP *X509_LOOKUP_new(X509_LOOKUP_METHOD *method) {
     return NULL;
   }
 
-  assert(ret->init == 0);
-  assert(ret->skip == 0);
   ret->method = method;
-  assert(ret->method_data == NULL);
-  assert(ret->store_ctx == NULL);
   if ((method->new_item != NULL) && !method->new_item(ret)) {
     OPENSSL_free(ret);
     return NULL;
