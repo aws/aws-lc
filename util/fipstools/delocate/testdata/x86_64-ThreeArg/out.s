@@ -1,6 +1,4 @@
 .text
-.file 1 "inserted_by_delocate.c"
-.loc 1 1 0
 BORINGSSL_bcm_text_start:
 	.type foo, @function
 	.globl foo
@@ -32,7 +30,6 @@ foo:
 kBoringSSLRSASqrtTwo:
 	.quad	-2404814165548301886    # 0xdea06241f7aa81c2
 .text
-.loc 1 2 0
 BORINGSSL_bcm_text_end:
 .type OPENSSL_ia32cap_get, @function
 .globl OPENSSL_ia32cap_get
