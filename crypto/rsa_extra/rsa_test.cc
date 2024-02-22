@@ -706,9 +706,8 @@ TEST(RSATest, GenerateSmallKey) {
   ASSERT_TRUE(BN_set_word(e.get(), RSA_F4));
 
   EXPECT_FALSE(RSA_generate_key_ex(rsa.get(), 255, e.get(), nullptr));
-  uint32_t err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_RSA, ERR_GET_LIB(err));
-  EXPECT_EQ(RSA_R_KEY_SIZE_TOO_SMALL, ERR_GET_REASON(err));
+  EXPECT_TRUE(
+      ErrorEquals(ERR_get_error(), ERR_LIB_RSA, RSA_R_KEY_SIZE_TOO_SMALL));
 }
 
 #else
@@ -1535,10 +1534,13 @@ TEST(RSATest, MissingParameters) {
   std::vector<uint8_t> out(RSA_size(sample.get()));
   EXPECT_FALSE(RSA_sign(NID_sha256, kZeros, sizeof(kZeros), out.data(), &len_u,
                         rsa.get()));
+  EXPECT_TRUE(ErrorEquals(ERR_get_error(), ERR_LIB_RSA, RSA_R_VALUE_MISSING));
+
   size_t len;
   EXPECT_FALSE(RSA_decrypt(rsa.get(), &len, out.data(), out.size(),
                            kOAEPCiphertext1, sizeof(kOAEPCiphertext1) - 1,
                            RSA_PKCS1_OAEP_PADDING));
+  EXPECT_TRUE(ErrorEquals(ERR_get_error(), ERR_LIB_RSA, RSA_R_VALUE_MISSING));
 
   // A private key without e cannot perform public key operations.
   rsa.reset(RSA_new_private_key_no_e(RSA_get0_n(sample.get()),
@@ -1546,8 +1548,11 @@ TEST(RSATest, MissingParameters) {
   ASSERT_TRUE(rsa);
   EXPECT_FALSE(RSA_verify(NID_sha256, kZeros, sizeof(kZeros), sig.data(),
                           sig.size(), rsa.get()));
+  EXPECT_TRUE(ErrorEquals(ERR_get_error(), ERR_LIB_RSA, RSA_R_VALUE_MISSING));
+
   EXPECT_FALSE(RSA_encrypt(rsa.get(), &len, out.data(), out.size(), kPlaintext,
-                           kPlaintextLen, RSA_PKCS1_OAEP_PADDING));
+                           sizeof(kPlaintext), RSA_PKCS1_OAEP_PADDING));
+  EXPECT_TRUE(ErrorEquals(ERR_get_error(), ERR_LIB_RSA, RSA_R_VALUE_MISSING));
 }
 
 TEST(RSATest, Negative) {

@@ -2512,9 +2512,8 @@ TEST(X509Test, TestEd25519BadParameters) {
 
   ASSERT_FALSE(X509_verify(cert.get(), pkey.get()));
 
-  uint32_t err = ERR_get_error();
-  ASSERT_EQ(ERR_LIB_X509, ERR_GET_LIB(err));
-  ASSERT_EQ(X509_R_INVALID_PARAMETER, ERR_GET_REASON(err));
+  EXPECT_TRUE(
+      ErrorEquals(ERR_get_error(), ERR_LIB_X509, X509_R_INVALID_PARAMETER));
   ERR_clear_error();
 }
 
@@ -3401,9 +3400,8 @@ TEST(X509Test, MismatchAlgorithms) {
   ASSERT_TRUE(pkey);
 
   EXPECT_FALSE(X509_verify(cert.get(), pkey.get()));
-  uint32_t err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_X509, ERR_GET_LIB(err));
-  EXPECT_EQ(X509_R_SIGNATURE_ALGORITHM_MISMATCH, ERR_GET_REASON(err));
+  EXPECT_TRUE(ErrorEquals(ERR_get_error(), ERR_LIB_X509,
+                          X509_R_SIGNATURE_ALGORITHM_MISMATCH));
 }
 
 TEST(X509Test, PEMX509Info) {
@@ -3536,9 +3534,8 @@ TEST(X509Test, ReadBIOEmpty) {
   // certificates.
   bssl::UniquePtr<X509> x509(d2i_X509_bio(bio.get(), nullptr));
   EXPECT_FALSE(x509);
-  uint32_t err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_ASN1, ERR_GET_LIB(err));
-  EXPECT_EQ(ASN1_R_HEADER_TOO_LONG, ERR_GET_REASON(err));
+  EXPECT_TRUE(
+      ErrorEquals(ERR_get_error(), ERR_LIB_ASN1, ASN1_R_HEADER_TOO_LONG));
 }
 
 TEST(X509Test, ReadBIOOneByte) {
@@ -3550,9 +3547,8 @@ TEST(X509Test, ReadBIOOneByte) {
   // to signal EOF.
   bssl::UniquePtr<X509> x509(d2i_X509_bio(bio.get(), nullptr));
   EXPECT_FALSE(x509);
-  uint32_t err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_ASN1, ERR_GET_LIB(err));
-  EXPECT_EQ(ASN1_R_NOT_ENOUGH_DATA, ERR_GET_REASON(err));
+  EXPECT_TRUE(
+      ErrorEquals(ERR_get_error(), ERR_LIB_ASN1, ASN1_R_NOT_ENOUGH_DATA));
 }
 
 TEST(X509Test, PartialBIOReturn) {
@@ -4280,9 +4276,8 @@ TEST(X509Test, AlgorithmParameters) {
   cert = CertFromPEM(kP256InvalidParam);
   ASSERT_TRUE(cert);
   EXPECT_FALSE(X509_verify(cert.get(), key.get()));
-  uint32_t err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_X509, ERR_GET_LIB(err));
-  EXPECT_EQ(X509_R_INVALID_PARAMETER, ERR_GET_REASON(err));
+  EXPECT_TRUE(
+      ErrorEquals(ERR_get_error(), ERR_LIB_X509, X509_R_INVALID_PARAMETER));
 
   // RSA parameters should be NULL, but we accept omitted ones.
   key = PrivateKeyFromPEM(kRSAKey);
@@ -4299,9 +4294,8 @@ TEST(X509Test, AlgorithmParameters) {
   cert = CertFromPEM(kRSAInvalidParam);
   ASSERT_TRUE(cert);
   EXPECT_FALSE(X509_verify(cert.get(), key.get()));
-  err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_X509, ERR_GET_LIB(err));
-  EXPECT_EQ(X509_R_INVALID_PARAMETER, ERR_GET_REASON(err));
+  EXPECT_TRUE(
+      ErrorEquals(ERR_get_error(), ERR_LIB_X509, X509_R_INVALID_PARAMETER));
 }
 
 TEST(X509Test, GeneralName)  {
