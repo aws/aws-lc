@@ -1957,6 +1957,8 @@ TEST(X509Test, TestX509GettersSetters) {
 
   EXPECT_EQ(0, X509_OBJECT_get0_X509(obj.get()));
   EXPECT_EQ(0, X509_OBJECT_get0_X509_CRL(obj.get()));
+  EXPECT_EQ(0, X509_OBJECT_set1_X509(nullptr, x509.get()));
+  EXPECT_EQ(0, X509_OBJECT_set1_X509_CRL(nullptr, crl.get()));
 
   EXPECT_EQ(1, X509_OBJECT_set1_X509(obj.get(), x509.get()));
   EXPECT_EQ(x509.get(), X509_OBJECT_get0_X509(obj.get()));
