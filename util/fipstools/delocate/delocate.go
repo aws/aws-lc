@@ -1703,7 +1703,7 @@ func writeAarch64Function(w stringWriter, funcName string, writeContents func(st
 	w.WriteString(".size " + funcName + ", .-" + funcName + "\n")
 }
 
-func transform(w stringWriter, inputs []inputFile) error {
+func transform(w stringWriter, includes []string, inputs []inputFile) error {
 	// symbols contains all defined symbols.
 	symbols := make(map[string]struct{})
 	// localEntrySymbols contains all symbols with a .localentry directive.
@@ -1716,6 +1716,14 @@ func transform(w stringWriter, inputs []inputFile) error {
 
 	// OPENSSL_ia32cap_get will be synthesized by this script.
 	symbols["OPENSSL_ia32cap_get"] = struct{}{}
+
+	for _, include := range includes {
+		relative, err := relativeHeaderIncludePath(include)
+		if err != nil {
+			return err
+		}
+		w.WriteString(fmt.Sprintf("#include <%s>\n", relative))
+	}
 
 	for _, input := range inputs {
 		forEachPath(input.ast.up, func(node *node32) {
@@ -1977,6 +1985,21 @@ func transform(w stringWriter, inputs []inputFile) error {
 	return nil
 }
 
+// relativeHeaderIncludePath returns the relative header path for usage in #include statements.
+func relativeHeaderIncludePath(path string) (string, error) {
+	dir, err := includePathFromHeaderFilePath(path)
+	if err != nil {
+		return "", err
+	}
+
+	relative, err := filepath.Rel(dir, path)
+	if err != nil {
+		return "", err
+	}
+
+	return relative, nil
+}
+
 // preprocess runs source through the C preprocessor.
 func preprocess(cppCommand []string, path string) ([]byte, error) {
 	var args []string
@@ -2096,6 +2119,7 @@ func main() {
 		})
 	}
 
+	var includes []string
 	includePaths := make(map[string]struct{})
 
 	for i, path := range flag.Args() {
@@ -2111,6 +2135,7 @@ func main() {
 				fmt.Fprintf(os.Stderr, "%s\n", err)
 				os.Exit(1)
 			}
+			includes = append(includes, path)
 			includePaths[dir] = struct{}{}
 			continue
 		}
@@ -2139,6 +2164,9 @@ func main() {
 
 		// -E requests only preprocessing.
 		cppCommand = append(cppCommand, "-E")
+
+		// Output ‘#include’ directives in addition to the result of preprocessing.
+		cppCommand = append(cppCommand, "-dI")
 	}
 
 	if err := parseInputs(inputs, cppCommand); err != nil {
@@ -2152,7 +2180,7 @@ func main() {
 	}
 	defer out.Close()
 
-	if err := transform(out, inputs); err != nil {
+	if err := transform(out, includes, inputs); err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err)
 		os.Exit(1)
 	}

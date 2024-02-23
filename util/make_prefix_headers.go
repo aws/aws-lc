@@ -92,9 +92,14 @@ func writeCHeader(symbols []string, path string) error {
 	}
 
 	if _, err := fmt.Fprintf(f, `
+#ifndef BORINGSSL_PREFIX_SYMBOLS_H
+
+#define BORINGSSL_PREFIX_SYMBOLS_H	
+
 #ifndef BORINGSSL_PREFIX
 #define BORINGSSL_PREFIX %s
-#endif
+#endif // BORINGSSL_PREFIX
+
 `, *prefix); err != nil {
 		return err
 	}
@@ -113,6 +118,10 @@ func writeCHeader(symbols []string, path string) error {
 		if _, err := fmt.Fprintf(f, "#define %s BORINGSSL_ADD_PREFIX(BORINGSSL_PREFIX, %s)\n", symbol, symbol); err != nil {
 			return err
 		}
+	}
+
+	if _, err := f.WriteString("\n#endif // BORINGSSL_PREFIX_SYMBOLS_H\n"); err != nil {
+		return err
 	}
 
 	return nil
@@ -143,17 +152,17 @@ func writeASMHeader(symbols []string, path string) error {
 	}
 
 	if _, err := fmt.Fprintf(f, `
-#ifndef BORINGSSL_PREFIX
-#define BORINGSSL_PREFIX %s
-#endif
-    `, *prefix); err != nil {
-		return err
-	}
-
-	if _, err := f.WriteString(`
 #if !defined(__APPLE__)
 #include <openssl/boringssl_prefix_symbols.h>
 #else
+#ifndef BORINGSSL_PREFIX_SYMBOLS_ASM_H
+
+#define BORINGSSL_PREFIX_SYMBOLS_ASM_H
+
+#ifndef BORINGSSL_PREFIX
+#define BORINGSSL_PREFIX %s
+#endif // BORINGSSL_PREFIX
+
 // On iOS and macOS, we need to treat assembly symbols differently from other
 // symbols. The linker expects symbols to be prefixed with an underscore.
 // Perlasm thus generates symbol with this underscore applied. Our macros must,
@@ -161,7 +170,7 @@ func writeASMHeader(symbols []string, path string) error {
 #define BORINGSSL_ADD_PREFIX_MAC_ASM(a, b) BORINGSSL_ADD_PREFIX_INNER_MAC_ASM(a, b)
 #define BORINGSSL_ADD_PREFIX_INNER_MAC_ASM(a, b) _ ## a ## _ ## b
 
-`); err != nil {
+`, *prefix); err != nil {
 		return err
 	}
 
@@ -171,7 +180,13 @@ func writeASMHeader(symbols []string, path string) error {
 		}
 	}
 
-	_, err = fmt.Fprintf(f, "#endif\n")
+	if _, err := f.WriteString(`
+#endif // BORINGSSL_PREFIX_SYMBOLS_ASM_H
+#endif // !defined(__APPLE__)
+`); err != nil {
+		return nil
+	}
+
 	return nil
 }
 
@@ -201,9 +216,13 @@ func writeNASMHeader(symbols []string, path string) error {
 	}
 
 	if _, err := fmt.Fprintf(f, `
+%%ifndef BORINGSSL_PREFIX_SYMBOLS_NASM_INC
+
+%%define BORINGSSL_PREFIX_SYMBOLS_NASM_INC
+
 %%ifndef BORINGSSL_PREFIX
 %%define BORINGSSL_PREFIX %s
-%%endif
+%%endif ; BORINGSSL_PREFIX
 `, *prefix); err != nil {
 		return err
 	}
@@ -211,6 +230,7 @@ func writeNASMHeader(symbols []string, path string) error {
 	if _, err := f.WriteString(`
 ; 32-bit Windows adds underscores to C functions, while 64-bit Windows does not.
 %ifidn __OUTPUT_FORMAT__, win32
+
 `); err != nil {
 		return err
 	}
@@ -231,7 +251,10 @@ func writeNASMHeader(symbols []string, path string) error {
 		}
 	}
 
-	if _, err := fmt.Fprintf(f, "%%endif\n"); err != nil {
+	if _, err := fmt.Fprintf(f, `
+%%endif ; __OUTPUT_FORMAT__
+%%endif ; BORINGSSL_PREFIX_SYMBOLS_NASM_INC
+`); err != nil {
 		return err
 	}
 
