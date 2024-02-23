@@ -420,6 +420,7 @@ int X509_OBJECT_set1_X509(X509_OBJECT *a, X509 *obj) {
       return 0;
     }
 
+    X509_OBJECT_free_contents(a);
     a->type = X509_LU_X509;
     a->data.x509 = obj;
     return 1;
@@ -430,6 +431,7 @@ int X509_OBJECT_set1_X509_CRL(X509_OBJECT *a, X509_CRL *obj) {
       return 0;
     }
 
+    X509_OBJECT_free_contents(a);
     a->type = X509_LU_CRL;
     a->data.crl = obj;
     return 1;
