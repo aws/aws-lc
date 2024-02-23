@@ -2279,17 +2279,6 @@ let P384_MONTJDOUBLE_EXEC = ARM_MK_EXEC_RULE p384_montjdouble_mc;;
 (* Common supporting definitions and lemmas for component proofs.            *)
 (* ------------------------------------------------------------------------- *)
 
-let p_384 = new_definition `p_384 = 39402006196394479212279040100143613805079739270465446667948293404245721771496870329047266088258938001861606973112319`;;
-
-let nistp384 = define
- `nistp384 =
-    (integer_mod_ring p_384,
-     ring_neg (integer_mod_ring p_384) (&3),
-     &b_384:int)`;;
-
-let nistp384_encode = new_definition
-  `nistp384_encode = montgomery_encode(384,p_384)`;;
-
 let p384shortishredlemma = prove
  (`!n. n <= 24 * (p_384 - 1)
        ==> let q = n DIV 2 EXP 384 + 1 in
@@ -2350,47 +2339,6 @@ let mmlemma = prove
   REWRITE_TAC[GSYM CONG] THEN MATCH_MP_TAC(NUMBER_RULE
    `(a * b == 1) (mod p) ==> (a * (b * x)  == x) (mod p)`) THEN
   REWRITE_TAC[CONG] THEN CONV_TAC NUM_REDUCE_CONV);;
-
-let nintlemma = prove
- (`&(num_of_int(x rem &p_384)) = x rem &p_384`,
-  MATCH_MP_TAC INT_OF_NUM_OF_INT THEN MATCH_MP_TAC INT_REM_POS THEN
-  REWRITE_TAC[INT_OF_NUM_EQ; p_384] THEN CONV_TAC NUM_REDUCE_CONV);;
-
-let unilemma0 = prove
- (`x = a MOD p_384 ==> x < p_384 /\ &x = &a rem &p_384`,
-  REWRITE_TAC[INT_OF_NUM_REM; p_384] THEN ARITH_TAC);;
-
-let unilemma1 = prove
- (`&x = a rem &p_384 ==> x < p_384 /\ &x = a rem &p_384`,
-  SIMP_TAC[GSYM INT_OF_NUM_LT; INT_LT_REM_EQ; p_384] THEN INT_ARITH_TAC);;
-
-let unilemma2 = prove
- (`X = num_of_int(x rem &p_384) ==> X < p_384 /\ &X = x rem &p_384`,
-  DISCH_THEN SUBST1_TAC THEN
-  REWRITE_TAC[GSYM INT_OF_NUM_LT; nintlemma; INT_LT_REM_EQ] THEN
-  REWRITE_TAC[INT_OF_NUM_LT; p_384] THEN CONV_TAC NUM_REDUCE_CONV);;
-
-let lemont = prove
- (`(&i * x * y) rem &p_384 = (&i * x rem &p_384 * y rem &p_384) rem &p_384`,
-  CONV_TAC INT_REM_DOWN_CONV THEN REWRITE_TAC[]);;
-
-let pumont = prove
- (`(&(inverse_mod p_384 (2 EXP 384)) *
-    (&2 pow 384 * x) rem &p_384 * (&2 pow 384 * y) rem &p_384) rem &p_384 =
-   (&2 pow 384 * x * y) rem &p_384`,
-  CONV_TAC INT_REM_DOWN_CONV THEN REWRITE_TAC[INT_REM_EQ] THEN
-  MATCH_MP_TAC(INTEGER_RULE
-   `(i * t:int == &1) (mod p)
-    ==> (i * (t * x) * (t * y) == t * x * y) (mod p)`) THEN
-  REWRITE_TAC[GSYM num_congruent; INT_OF_NUM_CLAUSES] THEN
-  REWRITE_TAC[INVERSE_MOD_LMUL_EQ; COPRIME_REXP; COPRIME_2; p_384] THEN
-  CONV_TAC NUM_REDUCE_CONV);;
-
-let silemma = prove
- (`(&12 * (e * x) rem p - &9 * (e * y) rem p) rem p =
-   (e * (&12 * x - &9 * y)) rem p`,
-  CONV_TAC INT_REM_DOWN_CONV THEN
-  AP_THM_TAC THEN AP_TERM_TAC THEN INT_ARITH_TAC);;
 
 let lvs =
  ["x_1",[`X24`; `0`];
@@ -3498,6 +3446,91 @@ let LOCAL_CMSUB38_P384_TAC =
 (* Overall point operation proof.                                            *)
 (* ------------------------------------------------------------------------- *)
 
+let unilemma0 = prove
+ (`x = a MOD p_384 ==> x < p_384 /\ &x = &a rem &p_384`,
+  REWRITE_TAC[INT_OF_NUM_REM; p_384] THEN ARITH_TAC);;
+
+let unilemma1 = prove
+ (`&x = a rem &p_384 ==> x < p_384 /\ &x = a rem &p_384`,
+  SIMP_TAC[GSYM INT_OF_NUM_LT; INT_LT_REM_EQ; p_384] THEN INT_ARITH_TAC);;
+
+let lemont = prove
+ (`(&i * x * y) rem &p_384 = (&i * x rem &p_384 * y rem &p_384) rem &p_384`,
+  CONV_TAC INT_REM_DOWN_CONV THEN REWRITE_TAC[]);;
+
+let demont = prove
+ (`(&(NUMERAL n) * &x) rem &p_384 = (&(NUMERAL n) * &x rem &p_384) rem &p_384`,
+  CONV_TAC INT_REM_DOWN_CONV THEN REWRITE_TAC[]);;
+
+let pumont = prove
+ (`(&(inverse_mod p_384 (2 EXP 384)) *
+    (&2 pow 384 * x) rem &p_384 * (&2 pow 384 * y) rem &p_384) rem &p_384 =
+   (&2 pow 384 * x * y) rem &p_384`,
+  CONV_TAC INT_REM_DOWN_CONV THEN REWRITE_TAC[INT_REM_EQ] THEN
+  MATCH_MP_TAC(INTEGER_RULE
+   `(i * t:int == &1) (mod p)
+    ==> (i * (t * x) * (t * y) == t * x * y) (mod p)`) THEN
+  REWRITE_TAC[GSYM num_congruent; INT_OF_NUM_CLAUSES] THEN
+  REWRITE_TAC[INVERSE_MOD_LMUL_EQ; COPRIME_REXP; COPRIME_2; p_384] THEN
+  CONV_TAC NUM_REDUCE_CONV);;
+
+let dismont = prove
+ (`((&2 pow 384 * x) rem &p_384 + (&2 pow 384 * y) rem &p_384) rem &p_384 =
+   (&2 pow 384 * (x + y)) rem &p_384 /\
+   ((&2 pow 384 * x) rem &p_384 - (&2 pow 384 * y) rem &p_384) rem &p_384 =
+   (&2 pow 384 * (x - y)) rem &p_384 /\
+  (&(NUMERAL n) * (&2 pow 384 * x) rem &p_384) rem &p_384 =
+   (&2 pow 384 * (&(NUMERAL n) * x)) rem &p_384`,
+  REPEAT CONJ_TAC THEN CONV_TAC INT_REM_DOWN_CONV THEN
+  AP_THM_TAC THEN AP_TERM_TAC THEN INT_ARITH_TAC);;
+
+let unmont = prove
+ (`(&(inverse_mod p_384 (2 EXP 384)) * (&2 pow 384 * x) rem &p_384) rem &p_384 =
+   x rem &p_384`,
+  CONV_TAC INT_REM_DOWN_CONV THEN REWRITE_TAC[INT_REM_EQ] THEN
+  MATCH_MP_TAC(INTEGER_RULE
+   `(i * e:int == &1) (mod p) ==> (i * e * x == x) (mod p)`) THEN
+  REWRITE_TAC[INT_OF_NUM_CLAUSES; GSYM num_congruent; INVERSE_MOD_LMUL_EQ] THEN
+  REWRITE_TAC[COPRIME_REXP; COPRIME_2; p_384] THEN CONV_TAC NUM_REDUCE_CONV);;
+
+let unreplemma = prove
+ (`!x. x < p_384
+         ==> x =
+             (2 EXP 384 * (inverse_mod p_384 (2 EXP 384) * x) MOD p_384) MOD
+             p_384`,
+  REPEAT STRIP_TAC THEN CONV_TAC SYM_CONV THEN
+  ASM_REWRITE_TAC[MOD_UNIQUE] THEN
+  REWRITE_TAC[CONG] THEN CONV_TAC MOD_DOWN_CONV THEN
+  REWRITE_TAC[GSYM CONG] THEN MATCH_MP_TAC(NUMBER_RULE
+   `(i * e == 1) (mod p) ==> (i * e * x == x) (mod p)`) THEN
+  REWRITE_TAC[INVERSE_MOD_RMUL_EQ] THEN
+  REWRITE_TAC[COPRIME_REXP; COPRIME_2; p_384] THEN CONV_TAC NUM_REDUCE_CONV);;
+
+let weierstrass_of_jacobian_p384_double = prove
+ (`!P1 P2 x1 y1 z1 x3 y3 z3.
+        jacobian_double_unexceptional nistp384
+         (x1 rem &p_384,y1 rem &p_384,z1 rem &p_384) =
+        (x3 rem &p_384,y3 rem &p_384,z3 rem &p_384)
+       ==> weierstrass_of_jacobian (integer_mod_ring p_384)
+                (x1 rem &p_384,y1 rem &p_384,z1 rem &p_384) = P1
+            ==> weierstrass_of_jacobian (integer_mod_ring p_384)
+                  (x3 rem &p_384,y3 rem &p_384,z3 rem &p_384) =
+                group_mul p384_group P1 P1`,
+  REPEAT GEN_TAC THEN DISCH_THEN(SUBST1_TAC o SYM) THEN
+  DISCH_THEN(SUBST1_TAC o SYM) THEN REWRITE_TAC[nistp384; P384_GROUP] THEN
+  MATCH_MP_TAC WEIERSTRASS_OF_JACOBIAN_DOUBLE_UNEXCEPTIONAL THEN
+  ASM_REWRITE_TAC[FIELD_INTEGER_MOD_RING; PRIME_P384] THEN
+  ASM_REWRITE_TAC[jacobian_point; INTEGER_MOD_RING_CHAR;
+                  INTEGER_MOD_RING_CLAUSES; IN_INTEGER_MOD_RING_CARRIER] THEN
+  REWRITE_TAC[INT_REM_POS_EQ; INT_LT_REM_EQ; GSYM INT_OF_NUM_CLAUSES] THEN
+  REWRITE_TAC[p_384; b_384] THEN CONV_TAC INT_REDUCE_CONV);;
+
+let represents_p384 = new_definition
+ `represents_p384 P (x,y,z) <=>
+        x < p_384 /\ y < p_384 /\ z < p_384 /\
+        weierstrass_of_jacobian (integer_mod_ring p_384)
+         (tripled (montgomery_decode (384,p_384)) (x,y,z)) = P`;;
+
 let P384_MONTJDOUBLE_CORRECT = time prove
  (`!p3 p1 t1 pc stackpointer.
         aligned 16 stackpointer /\
@@ -3512,12 +3545,9 @@ let P384_MONTJDOUBLE_CORRECT = time prove
                   C_ARGUMENTS [p3; p1] s /\
                   bignum_triple_from_memory (p1,6) s = t1)
              (\s. read PC s = word (pc + 0x2310) /\
-                  (!x1 y1 z1.
-                        ~(z1 = &0) /\
-                        t1 = tripled nistp384_encode (x1,y1,z1)
-                        ==> bignum_triple_from_memory(p3,6) s =
-                            tripled nistp384_encode
-                             (jacobian_add nistp384 (x1,y1,z1) (x1,y1,z1))))
+                  !P. represents_p384 P t1
+                      ==> represents_p384 (group_mul p384_group P P)
+                            (bignum_triple_from_memory(p3,6) s))
           (MAYCHANGE [PC; X0; X1; X2; X3; X4; X5; X6; X7; X8; X9; X10;
                       X11; X12; X13; X14; X15; X16; X17; X19; X20;
                       X21; X22; X23; X24] ,,
@@ -3555,13 +3585,11 @@ let P384_MONTJDOUBLE_CORRECT = time prove
   DISCARD_STATE_TAC "s18" THEN
   DISCARD_MATCHING_ASSUMPTIONS [`nonoverlapping_modulo a b c`] THEN
 
-  MAP_EVERY X_GEN_TAC [`x1':int`; `y1':int`; `z1':int`] THEN
-  DISCH_THEN(CONJUNCTS_THEN2 ASSUME_TAC MP_TAC) THEN
-  REWRITE_TAC[tripled; nistp384_encode; montgomery_encode; PAIR_EQ] THEN
 
-  DISCH_THEN(REPEAT_TCL CONJUNCTS_THEN
-   (STRIP_ASSUME_TAC o MATCH_MP unilemma2)) THEN
-
+  X_GEN_TAC `P:(int#int)option` THEN
+  REWRITE_TAC[represents_p384; tripled] THEN
+  REWRITE_TAC[montgomery_decode; INT_OF_NUM_CLAUSES; INT_OF_NUM_REM] THEN
+  STRIP_TAC THEN
   REPEAT(FIRST_X_ASSUM(MP_TAC o check (is_imp o concl))) THEN
   REPEAT(ANTS_TAC THENL
    [REWRITE_TAC[p_384] THEN RULE_ASSUM_TAC(REWRITE_RULE[p_384]) THEN
@@ -3569,32 +3597,32 @@ let P384_MONTJDOUBLE_CORRECT = time prove
     (DISCH_THEN(STRIP_ASSUME_TAC o MATCH_MP unilemma0) ORELSE
      DISCH_THEN(STRIP_ASSUME_TAC o MATCH_MP unilemma1) ORELSE
      STRIP_TAC)]) THEN
+  ASM_REWRITE_TAC[] THEN
+  MAP_EVERY (MP_TAC o C SPEC unreplemma) [`z1:num`; `y1:num`; `x1:num`] THEN
+  MAP_EVERY (fun t -> ABBREV_TAC t THEN POP_ASSUM(K ALL_TAC))
+   [`x1d = inverse_mod p_384 (2 EXP 384) * x1`;
+    `y1d = inverse_mod p_384 (2 EXP 384) * y1`;
+    `z1d = inverse_mod p_384 (2 EXP 384) * z1`] THEN
+  ASM_REWRITE_TAC[] THEN REPEAT DISCH_TAC THEN
   REPEAT(FIRST_X_ASSUM(K ALL_TAC o GEN_REWRITE_RULE I [GSYM NOT_LE])) THEN
-
   RULE_ASSUM_TAC(REWRITE_RULE
    [num_congruent; GSYM INT_OF_NUM_CLAUSES; GSYM INT_OF_NUM_REM]) THEN
   RULE_ASSUM_TAC(REWRITE_RULE[GSYM INT_REM_EQ]) THEN
-
-  RULE_ASSUM_TAC(ONCE_REWRITE_RULE[GSYM INT_SUB_REM; GSYM INT_ADD_REM]) THEN
+  RULE_ASSUM_TAC(CONV_RULE INT_REM_DOWN_CONV) THEN
   RULE_ASSUM_TAC(REWRITE_RULE[INT_POW_2]) THEN
-  RULE_ASSUM_TAC(GEN_REWRITE_RULE (RAND_CONV o TRY_CONV) [lemont]) THEN
-
-  ASM_REWRITE_TAC[jacobian_add; jacobian_eq; nistp384] THEN
-  ASM_REWRITE_TAC[GSYM nistp384] THEN
-  REWRITE_TAC[INTEGER_MOD_RING_CLAUSES] THEN
-  CONV_TAC INT_REDUCE_CONV THEN ASM_REWRITE_TAC[] THEN
-  CONV_TAC(TOP_DEPTH_CONV let_CONV) THEN
+  RULE_ASSUM_TAC(ONCE_REWRITE_RULE[GSYM INT_ADD_REM; GSYM INT_SUB_REM]) THEN
+  RULE_ASSUM_TAC(ONCE_REWRITE_RULE[lemont; demont]) THEN
+  ASM_REWRITE_TAC[GSYM INT_OF_NUM_CLAUSES; GSYM INT_OF_NUM_REM] THEN
+  REWRITE_TAC[INT_REM_REM] THEN
+  REWRITE_TAC[pumont; dismont; unmont] THEN
+  FIRST_X_ASSUM(MP_TAC o
+    check(can (term_match [] `weierstrass_of_jacobian f j = p`) o concl)) THEN
+  MATCH_MP_TAC weierstrass_of_jacobian_p384_double THEN ASM_REWRITE_TAC[] THEN
+  ASM_REWRITE_TAC[jacobian_double_unexceptional; nistp384;
+                  INTEGER_MOD_RING_CLAUSES] THEN
+  CONV_TAC(TOP_DEPTH_CONV let_CONV) THEN REWRITE_TAC[PAIR_EQ] THEN
   CONV_TAC INT_REM_DOWN_CONV THEN
-  REWRITE_TAC[tripled; nistp384_encode; montgomery_encode] THEN
-  REWRITE_TAC[PAIR_EQ; GSYM INT_OF_NUM_EQ; nintlemma] THEN
-  CONV_TAC INT_REM_DOWN_CONV THEN
-
-  ASM_REWRITE_TAC[pumont; INT_REM_REM; GSYM INT_ADD_LDISTRIB;
-                GSYM INT_ADD_LDISTRIB; GSYM INT_SUB_LDISTRIB;
-                INT_SUB_REM; INT_ADD_REM; silemma] THEN
-
-  CONV_TAC INT_REM_DOWN_CONV THEN REPEAT CONJ_TAC THEN
-  AP_THM_TAC THEN AP_TERM_TAC THEN INT_ARITH_TAC);;
+  REPEAT CONJ_TAC THEN AP_THM_TAC THEN AP_TERM_TAC THEN INT_ARITH_TAC);;
 
 let P384_MONTJDOUBLE_SUBROUTINE_CORRECT = time prove
  (`!p3 p1 t1 pc stackpointer returnaddress.
@@ -3611,12 +3639,9 @@ let P384_MONTJDOUBLE_SUBROUTINE_CORRECT = time prove
                   C_ARGUMENTS [p3; p1] s /\
                   bignum_triple_from_memory (p1,6) s = t1)
              (\s. read PC s = returnaddress /\
-                  (!x1 y1 z1.
-                        ~(z1 = &0) /\
-                        t1 = tripled nistp384_encode (x1,y1,z1)
-                        ==> bignum_triple_from_memory(p3,6) s =
-                            tripled nistp384_encode
-                             (jacobian_add nistp384 (x1,y1,z1) (x1,y1,z1))))
+                  !P. represents_p384 P t1
+                      ==> represents_p384 (group_mul p384_group P P)
+                            (bignum_triple_from_memory(p3,6) s))
           (MAYCHANGE_REGS_AND_FLAGS_PERMITTED_BY_ABI ,,
            MAYCHANGE [memory :> bytes(p3,144);
                       memory :> bytes(word_sub stackpointer (word 384),384)])`,
