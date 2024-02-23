@@ -30,7 +30,6 @@
 #include <openssl/nid.h>
 #include <openssl/pem.h>
 #include <openssl/pool.h>
-#include <openssl/rand.h>
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
@@ -5051,12 +5050,9 @@ TEST(X509Test, AddDuplicates) {
     threads.emplace_back([&] {
       // Firstly, save off |i| in the thread's context.
       const size_t idx = i;
-      // Sleep with some jitter to offset thread execution
-      uint8_t sleep_buf[1];
-      ASSERT_TRUE(RAND_bytes(sleep_buf, sizeof(sleep_buf)));
-      std::this_thread::sleep_for(std::chrono::milliseconds(sleep_buf[0] % 100));
       // Half the threads add duplicate certs, the other half take a lock and
-      // look them up to exercise un/locking functions.
+      // look them up to exercise un/locking functions. No sleep, let them
+      // contend as quickly as possible.
       if (idx % 2 == 0) {
         EXPECT_TRUE(X509_STORE_add_cert(store.get(), a.get()));
         EXPECT_TRUE(X509_STORE_add_cert(store.get(), b.get()));
