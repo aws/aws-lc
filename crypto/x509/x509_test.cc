@@ -30,6 +30,7 @@
 #include <openssl/nid.h>
 #include <openssl/pem.h>
 #include <openssl/pool.h>
+#include <openssl/rand.h>
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
@@ -5044,28 +5045,32 @@ TEST(X509Test, AddDuplicates) {
   EXPECT_TRUE(X509_STORE_add_cert(store.get(), a.get()));
   EXPECT_TRUE(X509_STORE_add_cert(store.get(), b.get()));
 
-  const size_t kNumThreads = 50;
+  // Half the threads add duplicate certs, the other half take a lock and
+  // look them up to exercise un/locking functions.
+  const size_t kNumThreads = 10;
   std::vector<std::thread> threads;
-  for (size_t i = 0; i < kNumThreads; i++) {
+  for (size_t i = 0; i < kNumThreads/2; i++) {
     threads.emplace_back([&] {
-      // Firstly, save off |i| in the thread's context.
-      const size_t idx = i;
-      // Half the threads add duplicate certs, the other half take a lock and
-      // look them up to exercise un/locking functions. No sleep, let them
-      // contend as quickly as possible.
-      if (idx % 2 == 0) {
-        EXPECT_TRUE(X509_STORE_add_cert(store.get(), a.get()));
-        EXPECT_TRUE(X509_STORE_add_cert(store.get(), b.get()));
-      } else {
-        ASSERT_TRUE(X509_STORE_lock(store.get()));
-        EXPECT_TRUE(X509_OBJECT_retrieve_by_subject(
-          store->objs, X509_LU_X509, X509_get_subject_name(a.get())
-        ));
-        EXPECT_TRUE(X509_OBJECT_retrieve_by_subject(
-          store->objs, X509_LU_X509, X509_get_subject_name(b.get())
-        ));
-        ASSERT_TRUE(X509_STORE_unlock(store.get()));
-      }
+      // Sleep with some jitter to offset thread execution
+      uint8_t sleep_buf[1];
+      ASSERT_TRUE(RAND_bytes(sleep_buf, sizeof(sleep_buf)));
+      std::this_thread::sleep_for(std::chrono::milliseconds(sleep_buf[0] % 10));
+      EXPECT_TRUE(X509_STORE_add_cert(store.get(), a.get()));
+      EXPECT_TRUE(X509_STORE_add_cert(store.get(), b.get()));
+    });
+    threads.emplace_back([&] {
+      uint8_t sleep_buf[1];
+      ASSERT_TRUE(RAND_bytes(sleep_buf, sizeof(sleep_buf)));
+      ASSERT_TRUE(X509_STORE_lock(store.get()));
+      // Sleep after taking the lock to cause contention
+      std::this_thread::sleep_for(std::chrono::milliseconds(sleep_buf[0] % 10));
+      EXPECT_TRUE(X509_OBJECT_retrieve_by_subject(
+        store->objs, X509_LU_X509, X509_get_subject_name(a.get())
+      ));
+      EXPECT_TRUE(X509_OBJECT_retrieve_by_subject(
+        store->objs, X509_LU_X509, X509_get_subject_name(b.get())
+      ));
+      ASSERT_TRUE(X509_STORE_unlock(store.get()));
     });
   }
   for (auto &thread : threads) {
