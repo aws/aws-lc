@@ -184,15 +184,10 @@ ASN1_OBJECT *c2i_ASN1_OBJECT(ASN1_OBJECT **out, const unsigned char **inp,
 ASN1_OBJECT *ASN1_OBJECT_new(void) {
   ASN1_OBJECT *ret;
 
-  ret = (ASN1_OBJECT *)OPENSSL_malloc(sizeof(ASN1_OBJECT));
+  ret = (ASN1_OBJECT *)OPENSSL_zalloc(sizeof(ASN1_OBJECT));
   if (ret == NULL) {
     return NULL;
   }
-  ret->length = 0;
-  ret->data = NULL;
-  ret->nid = 0;
-  ret->sn = NULL;
-  ret->ln = NULL;
   ret->flags = ASN1_OBJECT_FLAG_DYNAMIC;
   return ret;
 }

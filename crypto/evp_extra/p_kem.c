@@ -18,11 +18,10 @@ typedef struct {
 
 static int pkey_kem_init(EVP_PKEY_CTX *ctx) {
   KEM_PKEY_CTX *dctx;
-  dctx = OPENSSL_malloc(sizeof(KEM_PKEY_CTX));
+  dctx = OPENSSL_zalloc(sizeof(KEM_PKEY_CTX));
   if (dctx == NULL) {
     return 0;
   }
-  OPENSSL_memset(dctx, 0, sizeof(KEM_PKEY_CTX));
 
   ctx->data = dctx;
 

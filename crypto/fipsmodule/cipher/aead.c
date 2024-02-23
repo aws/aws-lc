@@ -40,8 +40,12 @@ void EVP_AEAD_CTX_zero(EVP_AEAD_CTX *ctx) {
 
 EVP_AEAD_CTX *EVP_AEAD_CTX_new(const EVP_AEAD *aead, const uint8_t *key,
                                size_t key_len, size_t tag_len) {
-  EVP_AEAD_CTX *ctx = OPENSSL_malloc(sizeof(EVP_AEAD_CTX));
-  EVP_AEAD_CTX_zero(ctx);
+  EVP_AEAD_CTX *ctx = OPENSSL_zalloc(sizeof(EVP_AEAD_CTX));
+  if (ctx == NULL) {
+    return NULL;
+  }
+  // NO-OP: struct already zeroed
+  //EVP_AEAD_CTX_zero(ctx);
 
   if (EVP_AEAD_CTX_init(ctx, aead, key, key_len, tag_len, NULL)) {
     return ctx;

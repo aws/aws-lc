@@ -74,12 +74,11 @@ const KEM *KEM_find_kem_by_nid(int nid) {
 }
 
 KEM_KEY *KEM_KEY_new(void) {
-  KEM_KEY *ret = OPENSSL_malloc(sizeof(KEM_KEY));
+  KEM_KEY *ret = OPENSSL_zalloc(sizeof(KEM_KEY));
   if (ret == NULL) {
     return NULL;
   }
 
-  OPENSSL_memset(ret, 0, sizeof(KEM_KEY));
   return ret;
 }
 

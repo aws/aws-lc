@@ -328,14 +328,11 @@ ASN1_STRING *ASN1_STRING_new(void) {
 ASN1_STRING *ASN1_STRING_type_new(int type) {
   ASN1_STRING *ret;
 
-  ret = (ASN1_STRING *)OPENSSL_malloc(sizeof(ASN1_STRING));
+  ret = (ASN1_STRING *)OPENSSL_zalloc(sizeof(ASN1_STRING));
   if (ret == NULL) {
     return NULL;
   }
-  ret->length = 0;
   ret->type = type;
-  ret->data = NULL;
-  ret->flags = 0;
   return ret;
 }
 

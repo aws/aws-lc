@@ -282,14 +282,13 @@ int OPENSSL_lh_insert(_LHASH *lh, void **old_data, void *data,
   }
 
   // An element equal to |data| doesn't exist in the hash table yet.
-  item = OPENSSL_malloc(sizeof(LHASH_ITEM));
+  item = OPENSSL_zalloc(sizeof(LHASH_ITEM));
   if (item == NULL) {
     return 0;
   }
 
   item->data = data;
   item->hash = hash;
-  item->next = NULL;
   *next_ptr = item;
   lh->num_items++;
   lh_maybe_resize(lh);

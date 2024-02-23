@@ -2086,11 +2086,12 @@ int X509_STORE_CTX_purpose_inherit(X509_STORE_CTX *ctx, int def_purpose,
 
 X509_STORE_CTX *X509_STORE_CTX_new(void) {
   X509_STORE_CTX *ctx;
-  ctx = (X509_STORE_CTX *)OPENSSL_malloc(sizeof(X509_STORE_CTX));
+  ctx = (X509_STORE_CTX *)OPENSSL_zalloc(sizeof(X509_STORE_CTX));
   if (!ctx) {
     return NULL;
   }
-  X509_STORE_CTX_zero(ctx);
+  // NO-OP: struct already zeroed
+  //X509_STORE_CTX_zero(ctx);
   return ctx;
 }
 

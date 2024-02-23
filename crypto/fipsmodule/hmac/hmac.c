@@ -216,9 +216,10 @@ void HMAC_CTX_init(HMAC_CTX *ctx) {
 }
 
 HMAC_CTX *HMAC_CTX_new(void) {
-  HMAC_CTX *ctx = OPENSSL_malloc(sizeof(HMAC_CTX));
+  HMAC_CTX *ctx = OPENSSL_zalloc(sizeof(HMAC_CTX));
   if (ctx != NULL) {
-    HMAC_CTX_init(ctx);
+    // NO-OP: struct already zeroed
+    //HMAC_CTX_init(ctx);
   }
   return ctx;
 }
