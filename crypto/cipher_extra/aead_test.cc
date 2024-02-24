@@ -1434,7 +1434,9 @@ static const EvpAeadCtxSerdeTestParams kEvpAeadCtxSerde[] = {
     {"EVP_aead_aes_128_gcm_tls13", EVP_aead_aes_128_gcm_tls13(), kEvpAeadCtxKey,
      16, 16, 23},
     {"EVP_aead_aes_256_gcm_tls13", EVP_aead_aes_256_gcm_tls13(), kEvpAeadCtxKey,
-     32, 16, 24}};
+     32, 16, 24},
+    {"EVP_aead_aes_256_cbc_sha384_tls", EVP_aead_aes_256_cbc_sha384_tls(),
+     kEvpAeadCtxKey, 80, 48, 28}};
 
 INSTANTIATE_TEST_SUITE_P(
     EvpAeadCtxSerdeTests, EvpAeadCtxSerdeTest,

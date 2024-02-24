@@ -248,6 +248,10 @@ int SHA512_256_Final(uint8_t out[SHA512_256_DIGEST_LENGTH], SHA512_CTX *sha) {
   return sha512_final_impl(out, SHA512_256_DIGEST_LENGTH, sha);
 }
 
+void SHA384_Transform(SHA512_CTX *c, const uint8_t data[SHA384_CBLOCK]) {
+  sha512_block_data_order(c->h, data, 1);
+}
+
 void SHA512_Transform(SHA512_CTX *c, const uint8_t block[SHA512_CBLOCK]) {
   sha512_block_data_order(c->h, block, 1);
 }

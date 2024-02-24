@@ -498,9 +498,168 @@ int EVP_tls_cbc_digest_record_sha256(
   return 1;
 }
 
+int EVP_final_with_secret_suffix_sha384(SHA512_CTX *ctx,
+                                        uint8_t out[SHA384_DIGEST_LENGTH],
+                                        const uint8_t *in, size_t len,
+                                        size_t max_len) {
+  // Bound the input length so |total_bits| below fits in four bytes. This is
+  // redundant with TLS record size limits. This also ensures |input_idx| below
+  // does not overflow.
+  size_t max_len_bits = max_len << 3;
+  if (ctx->Nh != 0 ||
+      (max_len_bits >> 3) != max_len ||  // Overflow
+      ctx->Nl + max_len_bits < max_len_bits ||
+      ctx->Nl + max_len_bits > UINT32_MAX) {
+    return 0;
+  }
+
+  // We need to hash the following into |ctx|:
+  //
+  // - ctx->data[:ctx->num]
+  // - in[:len]
+  // - A 0x80 byte
+  // - However many zero bytes are needed to pad up to a block.
+  // - Eight bytes of length.
+  size_t num_blocks = (ctx->num + len + 1 + 16 + SHA384_CBLOCK - 1) >> 7;
+  size_t last_block = num_blocks - 1;
+  size_t max_blocks = (ctx->num + max_len + 1 + 16 + SHA384_CBLOCK - 1) >> 7;
+
+  // The bounds above imply |total_bits| fits in four bytes.
+  size_t total_bits = ctx->Nl + (len << 3);
+  uint8_t length_bytes[4];
+  length_bytes[0] = (uint8_t)(total_bits >> 24);
+  length_bytes[1] = (uint8_t)(total_bits >> 16);
+  length_bytes[2] = (uint8_t)(total_bits >> 8);
+  length_bytes[3] = (uint8_t)total_bits;
+
+  // We now construct and process each expected block in constant-time.
+  uint8_t block[SHA384_CBLOCK] = {0};
+  uint64_t result[8] = {0}; // The size of SHA384 state = 512 bits = 8*64 bits.
+  // input_idx is the index into |in| corresponding to the current block.
+  // However, we allow this index to overflow beyond |max_len|, to simplify the
+  // 0x80 byte.
+  size_t input_idx = 0;
+  for (size_t i = 0; i < max_blocks; i++) {
+    // Fill |block| with data from the partial block in |ctx| and |in|. We copy
+    // as if we were hashing up to |max_len| and then zero the excess later.
+    size_t block_start = 0;
+    if (i == 0) {
+      OPENSSL_memcpy(block, ctx->p, ctx->num);
+      block_start = ctx->num;
+    }
+    if (input_idx < max_len) {
+      size_t to_copy = SHA384_CBLOCK- block_start;
+      if (to_copy > max_len - input_idx) {
+        to_copy = max_len - input_idx;
+      }
+      OPENSSL_memcpy(block + block_start, in + input_idx, to_copy);
+    }
+
+    // Zero any bytes beyond |len| and add the 0x80 byte.
+    for (size_t j = block_start; j < SHA384_CBLOCK; j++) {
+      // input[idx] corresponds to block[j].
+      size_t idx = input_idx + j - block_start;
+      // The barriers on |len| are not strictly necessary. However, without
+      // them, GCC compiles this code by incorporating |len| into the loop
+      // counter and subtracting it out later. This is still constant-time, but
+      // it frustrates attempts to validate this.
+      uint8_t is_in_bounds = constant_time_lt_8(idx, value_barrier_w(len));
+      uint8_t is_padding_byte = constant_time_eq_8(idx, value_barrier_w(len));
+      block[j] &= is_in_bounds;
+      block[j] |= 0x80 & is_padding_byte;
+    }
+
+    input_idx += SHA384_CBLOCK - block_start;
+
+    // Fill in the length if this is the last block.
+    crypto_word_t is_last_block = constant_time_eq_w(i, last_block);
+    for (size_t j = 0; j < 4; j++) {
+      block[SHA384_CBLOCK - 4 + j] |= is_last_block & length_bytes[j];
+    }
+
+    // Process the block and save the hash state if it is the final value.
+    SHA384_Transform(ctx, block);
+    for (size_t j = 0; j < 6; j++) {
+      result[j] |= is_last_block & ctx->h[j];
+    }
+  }
+
+  // Write the output.
+  for (size_t i = 0; i < 6; i++) {
+    CRYPTO_store_u64_be(out + 8 * i, result[i]);
+  }
+  return 1;
+}
+
+int EVP_tls_cbc_digest_record_sha384(
+    const EVP_MD *md, uint8_t *md_out, size_t *md_out_size,
+    const uint8_t header[AEAD_TLS_AES_CBC_HMAC_AD_LENGTH], const uint8_t *data,
+    size_t data_size, size_t data_plus_mac_plus_padding_size,
+    const uint8_t *mac_secret, unsigned mac_secret_length) {
+  if (EVP_MD_type(md) != NID_sha384) {
+    // EVP_tls_cbc_record_digest_supported should have been called first to
+    // check that the hash function is supported.
+    assert(0);
+    *md_out_size = 0;
+    return 0;
+  }
+
+  if (mac_secret_length > SHA384_CBLOCK) {
+    // HMAC pads small keys with zeros and hashes large keys down. This function
+    // should never reach the large key case.
+    assert(0);
+    return 0;
+  }
+
+  // Compute the initial HMAC block.
+  uint8_t hmac_pad[SHA384_CBLOCK];
+  OPENSSL_memset(hmac_pad, 0, sizeof(hmac_pad));
+  OPENSSL_memcpy(hmac_pad, mac_secret, mac_secret_length);
+  for (size_t i = 0; i < SHA384_CBLOCK; i++) {
+    hmac_pad[i] ^= 0x36;
+  }
+
+  SHA512_CTX ctx;
+  SHA384_Init(&ctx);
+  SHA384_Update(&ctx, hmac_pad, SHA384_CBLOCK);
+  SHA384_Update(&ctx, header, AEAD_TLS_AES_CBC_HMAC_AD_LENGTH);
+
+  // There are at most 256 bytes of padding, so we can compute the public
+  // minimum length for |data_size|.
+  size_t min_data_size = 0;
+  if (data_plus_mac_plus_padding_size > SHA384_DIGEST_LENGTH + 256) {
+    min_data_size =
+        data_plus_mac_plus_padding_size - SHA384_DIGEST_LENGTH - 256;
+  }
+
+  // Hash the public minimum length directly. This reduces the number of blocks
+  // that must be computed in constant-time.
+  SHA384_Update(&ctx, data, min_data_size);
+
+  // Hash the remaining data without leaking |data_size|.
+  uint8_t mac_out[SHA384_DIGEST_LENGTH];
+  if (!EVP_final_with_secret_suffix_sha384(
+          &ctx, mac_out, data + min_data_size, data_size - min_data_size,
+          data_plus_mac_plus_padding_size - min_data_size)) {
+    return 0;
+  }
+
+  // Complete the HMAC in the standard manner.
+  SHA384_Init(&ctx);
+  for (size_t i = 0; i < SHA384_CBLOCK; i++) {
+    hmac_pad[i] ^= 0x6a;
+  }
+
+  SHA384_Update(&ctx, hmac_pad, SHA384_CBLOCK);
+  SHA384_Update(&ctx, mac_out, SHA384_DIGEST_LENGTH);
+  SHA384_Final(md_out, &ctx);
+  *md_out_size = SHA384_DIGEST_LENGTH;
+  return 1;
+}
+
 int EVP_tls_cbc_record_digest_supported(const EVP_MD *md) {
-  return (EVP_MD_type(md) == NID_sha1) ||
-         (EVP_MD_type(md) == NID_sha256);
+  return (EVP_MD_type(md) == NID_sha1) || (EVP_MD_type(md) == NID_sha256) ||
+         (EVP_MD_type(md) == NID_sha384);
 }
 
 int EVP_tls_cbc_digest_record(const EVP_MD *md, uint8_t *md_out,
@@ -520,6 +679,10 @@ int EVP_tls_cbc_digest_record(const EVP_MD *md, uint8_t *md_out,
     return EVP_tls_cbc_digest_record_sha256(md, md_out, md_out_size, header, data,
             data_size, data_plus_mac_plus_padding_size, mac_secret,
             mac_secret_length);
+  } else if (EVP_MD_type(md) == NID_sha384) {
+    return EVP_tls_cbc_digest_record_sha384(
+        md, md_out, md_out_size, header, data, data_size,
+        data_plus_mac_plus_padding_size, mac_secret, mac_secret_length);
   }
 
   return 0;
