@@ -231,6 +231,10 @@ int rsa_digestverify_no_self_test(const EVP_MD *md, const uint8_t *input,
                                   size_t in_len, const uint8_t *sig,
                                   size_t sig_len, RSA *rsa);
 
+// ------ DO NOT USE! -------
+// These functions are work-in-progress to consolidate the RSA key checking.
+OPENSSL_EXPORT int wip_do_not_use_rsa_check_key(const RSA *key);
+OPENSSL_EXPORT int wip_do_not_use_rsa_check_key_fips(const RSA *key);
 
 #if defined(__cplusplus)
 }  // extern C
