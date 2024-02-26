@@ -106,6 +106,11 @@ function python_patch() {
     done
 }
 
+if [[ "$#" -eq "0" ]]; then
+    echo "No python branches provided for testing"
+    exit 1
+fi
+
 mkdir -p ${SCRATCH_FOLDER}
 rm -rf ${SCRATCH_FOLDER}/*
 cd ${SCRATCH_FOLDER}
@@ -126,9 +131,8 @@ pushd ${PYTHON_SRC_FOLDER}
 which sysctl && ( sysctl -w net.ipv6.conf.all.disable_ipv6=0 || /bin/true )
 echo 0 >/proc/sys/net/ipv6/conf/all/disable_ipv6 || /bin/true
 
-# NOTE: cpython keeps a unique branch per version, add version branches here
 # NOTE: As we add more versions to support, we may want to parallelize here
-for branch in 3.10 3.11 3.12 main; do
+for branch in "$@"; do
     python_patch ${branch}
     python_build ${branch}
     python_run_tests ${branch}
