@@ -52,14 +52,6 @@ AWS-LC is compatible with the majority of OpenSSL’s APIs to make it easy to us
 existing applications. We’re open to discussing adding missing functionality and
 understanding your use case in an [issue](https://github.com/aws/aws-lc/issues/new/choose).
 
-### Compiler, OS, and CPU support
-
-AWS-LC correctness is tested on a variety of C/C++ compiler, OS, and CPU
-combinations. For a complete list of tested combinations see
-[tests/ci/Readme.md](https://github.com/aws/aws-lc/blob/main/tests/ci/README.md).
-If you use a different combination and would like to make sure we test it,
-please open an issue to discuss adding it to our CI.
-
 ### Algorithm optimization support
 
 A portable C implementation of all algorithms is included and optimized assembly
@@ -76,16 +68,21 @@ adding it to our CI.
 
 ## Platform Support
 
-AWS-LC builds and runs on a variety of CPU architectures. The following is an overview of the 
-platforms we actively support or are known to be of interest to our community. Regardless of 
-our support level for a particular platform, we will gladly consider contributions that can 
-improve or extend our support for it.
+AWS-LC correctness is tested on a variety of *platforms* (i.e., OS/CPU combinations).  
+The following is an overview of the platforms we actively support or are 
+known to be of interest to our community. 
+
+If you use a platform not listed below and would like to request it be added to our CI,
+please open an [issue](https://github.com/aws/aws-lc/issues/new/choose) for discussion.
+Regardless of our support level for a particular platform, we will gladly consider contributions that 
+improve or extend our support.
 
 ### Supported Platforms
 
-The following platforms are actively tested in our CI pipeline. For each pull request, the 
-proposed change is validated to confirm that it successfully builds and tests pass for these 
-platform. A more complete description of our test setup can be found in the 
+The following platforms are actively tested in our CI pipeline. A few of these platforms are tested across 
+multiple compilers or compiler versions. For each pull request, the proposed change is validated to confirm that it 
+successfully builds and tests pass for these platform. 
+A more complete description of our test setup can be found in the 
 [CI README](https://github.com/aws/aws-lc/blob/main/tests/ci/README.md).
 
 | OS      | CPU     | 
