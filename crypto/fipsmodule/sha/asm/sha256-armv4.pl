@@ -482,6 +482,14 @@ $code.=<<___;
 .arch	armv7-a
 .fpu	neon
 
+.LK256_shortcut_neon:
+@ PC is 8 bytes ahead in Arm mode and 4 bytes ahead in Thumb mode.
+#if defined(__thumb2__)
+.word	K256-(.LK256_add_neon+4)
+#else
+.word	K256-(.LK256_add_neon+8)
+#endif
+
 .global	sha256_block_data_order_neon
 .type	sha256_block_data_order_neon,%function
 .align	5
@@ -491,7 +499,21 @@ sha256_block_data_order_neon:
 	stmdb	sp!,{r4-r12,lr}
 
 	sub	$H,sp,#16*4+16
-	adr	$Ktbl,K256
+
+	@ K256 is just at the boundary of being easily referenced by an ADR from
+	@ this function. In Arm mode, when building with __ARM_ARCH=6, it does
+	@ not fit. By moving code around, we could make it fit, but this is too
+	@ fragile. For simplicity, just load the offset from
+	@ .LK256_shortcut_neon.
+	@
+	@ TODO(davidben): adrl would avoid a load, but clang-assembler does not
+	@ support it. We might be able to emulate it with a macro, but Android's
+	@ did not work when I tried it.
+	@ https://android.googlesource.com/platform/ndk/+/refs/heads/master/docs/ClangMigration.md#arm
+	ldr	$Ktbl,.LK256_shortcut_neon
+.LK256_add_neon:
+	add	$Ktbl,pc,$Ktbl
+
 	bic	$H,$H,#15		@ align for 128-bit stores
 	mov	$t2,sp
 	mov	sp,$H			@ alloca
