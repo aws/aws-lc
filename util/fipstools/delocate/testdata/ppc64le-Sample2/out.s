@@ -205,7 +205,7 @@ exported_function:
 	mr 6,29
 	li 4,1
 # WAS bl __fprintf_chk
-	bl	bcm_redirector___fprintf_chk
+	bl	.Lbcm_redirector___fprintf_chk
 	ld 2, 24(1)
 	nop
 	ld 3,0(31)
@@ -213,7 +213,7 @@ exported_function:
 	mr 6,19
 	li 4,1
 # WAS bl __fprintf_chk
-	bl	bcm_redirector___fprintf_chk
+	bl	.Lbcm_redirector___fprintf_chk
 	ld 2, 24(1)
 	nop
 	ld 3,0(31)
@@ -221,7 +221,7 @@ exported_function:
 	mr 6,24
 	li 4,1
 # WAS bl __fprintf_chk
-	bl	bcm_redirector___fprintf_chk
+	bl	.Lbcm_redirector___fprintf_chk
 	ld 2, 24(1)
 	nop
 	ld 3,0(31)
@@ -229,7 +229,7 @@ exported_function:
 	mr 6,20
 	li 4,1
 # WAS bl __fprintf_chk
-	bl	bcm_redirector___fprintf_chk
+	bl	.Lbcm_redirector___fprintf_chk
 	ld 2, 24(1)
 	nop
 	ld 3,0(31)
@@ -237,7 +237,7 @@ exported_function:
 	mr 6,27
 	li 4,1
 # WAS bl __fprintf_chk
-	bl	bcm_redirector___fprintf_chk
+	bl	.Lbcm_redirector___fprintf_chk
 	ld 2, 24(1)
 	nop
 	ld 3,0(31)
@@ -245,7 +245,7 @@ exported_function:
 	mr 5,28
 	mr 6,30
 # WAS bl __fprintf_chk
-	bl	bcm_redirector___fprintf_chk
+	bl	.Lbcm_redirector___fprintf_chk
 	ld 2, 24(1)
 	nop
 	b .L2
@@ -321,7 +321,7 @@ function:
 	stdu 1,-112(1)
 	ld 3,0(31)
 # WAS bl __fprintf_chk
-	bl	bcm_redirector___fprintf_chk
+	bl	.Lbcm_redirector___fprintf_chk
 	ld 2, 24(1)
 	nop
 # WAS addis 6,2,.LC12@toc@ha		# gpr load fusion, type long
@@ -354,7 +354,7 @@ function:
 	ld 3, -16(1)
 	addi 1, 1, 288
 # WAS bl __fprintf_chk
-	bl	bcm_redirector___fprintf_chk
+	bl	.Lbcm_redirector___fprintf_chk
 	ld 2, 24(1)
 	nop
 	ld 3,0(31)
@@ -386,7 +386,7 @@ function:
 	addi 1, 1, 288
 	li 4,1
 # WAS bl __fprintf_chk
-	bl	bcm_redirector___fprintf_chk
+	bl	.Lbcm_redirector___fprintf_chk
 	ld 2, 24(1)
 	nop
 # WAS addis 6,2,.LC13@toc@ha		# gpr load fusion, type long
@@ -419,7 +419,7 @@ function:
 	ld 3, -16(1)
 	addi 1, 1, 288
 # WAS bl __fprintf_chk
-	bl	bcm_redirector___fprintf_chk
+	bl	.Lbcm_redirector___fprintf_chk
 	ld 2, 24(1)
 	nop
 	ld 3,0(31)
@@ -439,7 +439,7 @@ function:
 	addi 1, 1, 288
 	li 4,1
 # WAS bl __fprintf_chk
-	bl	bcm_redirector___fprintf_chk
+	bl	.Lbcm_redirector___fprintf_chk
 	ld 2, 24(1)
 	nop
 	ld 3,0(31)
@@ -460,7 +460,7 @@ function:
 	addi 1, 1, 288
 	addi 6,6,-29404
 # WAS bl __fprintf_chk
-	bl	bcm_redirector___fprintf_chk
+	bl	.Lbcm_redirector___fprintf_chk
 	ld 2, 24(1)
 	nop
 # WAS bl exported_function
@@ -539,8 +539,8 @@ BORINGSSL_bcm_text_end:
 .Lredirector_toc___fprintf_chk:
 .quad __fprintf_chk
 .text
-.type bcm_redirector___fprintf_chk, @function
-bcm_redirector___fprintf_chk:
+.type .Lbcm_redirector___fprintf_chk, @function
+.Lbcm_redirector___fprintf_chk:
 	std 2, 24(1)
 	addis 12, 2, .Lredirector_toc___fprintf_chk@toc@ha
 	ld 12, .Lredirector_toc___fprintf_chk@toc@l(12)

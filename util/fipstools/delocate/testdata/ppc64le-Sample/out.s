@@ -133,7 +133,7 @@ function:
 	ld 3, -16(1)
 	addi 1, 1, 288
 # WAS bl fprintf
-	bl	bcm_redirector_fprintf
+	bl	.Lbcm_redirector_fprintf
 	ld 2, 24(1)
 	nop
 # WAS addis 10,2,.LC0@toc@ha
@@ -180,7 +180,7 @@ function:
 	addi 1, 1, 288
 	ld 5, 0(5)
 # WAS bl fprintf
-	bl	bcm_redirector_fprintf
+	bl	.Lbcm_redirector_fprintf
 	ld 2, 24(1)
 	nop
 # WAS addis 10,2,.LC0@toc@ha
@@ -226,7 +226,7 @@ function:
 	ld 3, -16(1)
 	addi 1, 1, 288
 # WAS bl fprintf
-	bl	bcm_redirector_fprintf
+	bl	.Lbcm_redirector_fprintf
 	ld 2, 24(1)
 	nop
 # WAS addis 10,2,.LC0@toc@ha
@@ -273,7 +273,7 @@ function:
 	addi 1, 1, 288
 	ld 5, 0(5)
 # WAS bl fprintf
-	bl	bcm_redirector_fprintf
+	bl	.Lbcm_redirector_fprintf
 	ld 2, 24(1)
 	nop
 # WAS addis 10,2,.LC0@toc@ha
@@ -320,7 +320,7 @@ function:
 	addi 1, 1, 288
 	ld 5, 0(5)
 # WAS bl fprintf
-	bl	bcm_redirector_fprintf
+	bl	.Lbcm_redirector_fprintf
 	ld 2, 24(1)
 	nop
 # WAS addis 10,2,.LC0@toc@ha
@@ -367,7 +367,7 @@ function:
 	addi 1, 1, 288
 	ld 5, 0(5)
 # WAS bl fprintf
-	bl	bcm_redirector_fprintf
+	bl	.Lbcm_redirector_fprintf
 	ld 2, 24(1)
 	nop
 # WAS bl exported_function
@@ -420,8 +420,8 @@ BORINGSSL_bcm_text_end:
 .Lredirector_toc_fprintf:
 .quad fprintf
 .text
-.type bcm_redirector_fprintf, @function
-bcm_redirector_fprintf:
+.type .Lbcm_redirector_fprintf, @function
+.Lbcm_redirector_fprintf:
 	std 2, 24(1)
 	addis 12, 2, .Lredirector_toc_fprintf@toc@ha
 	ld 12, .Lredirector_toc_fprintf@toc@l(12)

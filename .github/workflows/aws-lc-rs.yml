@@ -1,0 +1,69 @@
+name: aws-lc-rs fips sanity tests
+on:
+  push:
+    branches: [ '*' ]
+  pull_request:
+    branches: [ '*' ]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+env:
+  GOPROXY: https://proxy.golang.org,direct
+jobs:
+  standard:
+    runs-on: ubuntu-latest
+    steps:
+
+      - uses: actions/checkout@v3
+        with:
+          repository: aws/aws-lc-rs
+          path: ./aws-lc-rs
+          submodules: false
+      - uses: actions-rs/toolchain@v1
+        with:
+          # Our aws-lc-fips-sys generation scripts require nightly.
+          toolchain: nightly
+          override: true
+      - uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: rust-script
+      - name: Install OS Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get -y --no-install-recommends install cmake gcc clang ninja-build golang
+      - name: Remove aws-lc submodule from crate directory
+        working-directory: ./aws-lc-rs/aws-lc-fips-sys
+        run: |
+          rm -rf aws-lc
+      - uses: actions/checkout@v3
+        with:
+          path: ./aws-lc-rs/aws-lc-fips-sys/aws-lc
+      - name: Regenerate aws-lc-fips-sys crate
+        working-directory: ./aws-lc-rs/aws-lc-fips-sys
+        run: |
+          rm -rf symbols/*
+          rm -rf generated-include/openssl/*
+          ../scripts/generate/_collect_symbols_build.sh -f -c aws-lc-fips-sys
+          ../scripts/generate/_generate_prefix_headers.sh -f -c aws-lc-fips-sys
+          ../scripts/generate/_generate_bindings.sh -c aws-lc-fips-sys
+      - name: aws-lc-fips-sys build
+        working-directory: ./aws-lc-rs/aws-lc-fips-sys
+        run: |
+          cargo build
+      - name: aws-lc-fips-sys test
+        working-directory: ./aws-lc-rs/aws-lc-fips-sys
+        run: |
+          cargo test
+      - name: aws-lc-fips-sys packaging
+        working-directory: ./aws-lc-rs/aws-lc-fips-sys
+        run: |
+          cargo package --allow-dirty
+      - name: aws-lc-rs build
+        working-directory: ./aws-lc-rs/aws-lc-rs
+        run: |
+          cargo build --no-default-features --features fips
+      - name: aws-lc-rs test
+        working-directory: ./aws-lc-rs/aws-lc-rs
+        run: |
+          cargo test --no-default-features --features fips
