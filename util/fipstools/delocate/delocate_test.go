@@ -28,10 +28,11 @@ var (
 )
 
 type delocateTest struct {
-	name     string
-	includes []string
-	inputs   []string
-	out      string
+	name                    string
+	includes                []string
+	inputs                  []string
+	out                     string
+	startEndDebugDirectives bool
 }
 
 func (test *delocateTest) Path(file string) string {
@@ -39,21 +40,22 @@ func (test *delocateTest) Path(file string) string {
 }
 
 var delocateTests = []delocateTest{
-	{"generic-FileDirectives", nil, []string{"in.s"}, "out.s"},
-	{"generic-Includes", []string{"/some/include/path/openssl/foo.h", "/some/include/path/openssl/bar.h"}, []string{"in.s"}, "out.s"},
-	{"ppc64le-GlobalEntry", nil, []string{"in.s"}, "out.s"},
-	{"ppc64le-LoadToR0", nil, []string{"in.s"}, "out.s"},
-	{"ppc64le-Sample2", nil, []string{"in.s"}, "out.s"},
-	{"ppc64le-Sample", nil, []string{"in.s"}, "out.s"},
-	{"ppc64le-TOCWithOffset", nil, []string{"in.s"}, "out.s"},
-	{"x86_64-Basic", nil, []string{"in.s"}, "out.s"},
-	{"x86_64-BSS", nil, []string{"in.s"}, "out.s"},
-	{"x86_64-GOTRewrite", nil, []string{"in.s"}, "out.s"},
-	{"x86_64-LargeMemory", nil, []string{"in.s"}, "out.s"},
-	{"x86_64-LabelRewrite", nil, []string{"in1.s", "in2.s"}, "out.s"},
-	{"x86_64-Sections", nil, []string{"in.s"}, "out.s"},
-	{"x86_64-ThreeArg", nil, []string{"in.s"}, "out.s"},
-	{"aarch64-Basic", nil, []string{"in.s"}, "out.s"},
+	{"generic-FileDirectives", nil, []string{"in.s"}, "out.s", true},
+	{"generic-FileDirectives-no-start-end", nil, []string{"in.s"}, "out.s", false},
+	{"generic-Includes", []string{"/some/include/path/openssl/foo.h", "/some/include/path/openssl/bar.h"}, []string{"in.s"}, "out.s", true},
+	{"ppc64le-GlobalEntry", nil, []string{"in.s"}, "out.s", true},
+	{"ppc64le-LoadToR0", nil, []string{"in.s"}, "out.s", true},
+	{"ppc64le-Sample2", nil, []string{"in.s"}, "out.s", true},
+	{"ppc64le-Sample", nil, []string{"in.s"}, "out.s", true},
+	{"ppc64le-TOCWithOffset", nil, []string{"in.s"}, "out.s", true},
+	{"x86_64-Basic", nil, []string{"in.s"}, "out.s", true},
+	{"x86_64-BSS", nil, []string{"in.s"}, "out.s", true},
+	{"x86_64-GOTRewrite", nil, []string{"in.s"}, "out.s", true},
+	{"x86_64-LargeMemory", nil, []string{"in.s"}, "out.s", true},
+	{"x86_64-LabelRewrite", nil, []string{"in1.s", "in2.s"}, "out.s", true},
+	{"x86_64-Sections", nil, []string{"in.s"}, "out.s", true},
+	{"x86_64-ThreeArg", nil, []string{"in.s"}, "out.s", true},
+	{"aarch64-Basic", nil, []string{"in.s"}, "out.s", true},
 }
 
 func TestDelocate(t *testing.T) {
@@ -72,7 +74,7 @@ func TestDelocate(t *testing.T) {
 			}
 
 			var buf bytes.Buffer
-			if err := transform(&buf, test.includes, inputs); err != nil {
+			if err := transform(&buf, test.includes, inputs, test.startEndDebugDirectives); err != nil {
 				t.Fatalf("transform failed: %s", err)
 			}
 

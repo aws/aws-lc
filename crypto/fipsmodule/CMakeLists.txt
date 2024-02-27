@@ -336,6 +336,14 @@ if(FIPS_DELOCATE)
     set(TARGET "--target=${CMAKE_ASM_COMPILER_TARGET}")
   endif()
 
+  set(DELOCATE_EXTRA_ARGS "")
+  # clang-6 (and older) do not appreciate the file number starting at a higher value, and incorrectly
+  # assume that all file numbers less than that value are defined upon later use.
+  if ((CMAKE_ASM_COMPILER_ID MATCHES "Clang" OR CMAKE_ASM_COMPILER MATCHES "clang") AND
+      (CMAKE_ASM_COMPILER_VERSION VERSION_LESS "7.0.0"))
+    set(DELOCATE_EXTRA_ARGS "-no-se-debug-directives")
+  endif()
+
   go_executable(delocate boringssl.googlesource.com/boringssl/util/fipstools/delocate)
   add_custom_command(
     OUTPUT bcm-delocated.S
@@ -345,6 +353,7 @@ if(FIPS_DELOCATE)
     -o bcm-delocated.S
     -cc ${CMAKE_ASM_COMPILER}
     -cc-flags "${TARGET} ${CMAKE_ASM_FLAGS}"
+    ${DELOCATE_EXTRA_ARGS}
     ${PROJECT_SOURCE_DIR}/include/openssl/arm_arch.h
     ${PROJECT_SOURCE_DIR}/include/openssl/asm_base.h
     ${PROJECT_SOURCE_DIR}/include/openssl/target.h
