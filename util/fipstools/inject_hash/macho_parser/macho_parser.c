@@ -9,7 +9,7 @@
 // Documentation for the Mach-O structs can be found in macho-o/loader.h and mach-o/nlist.h
 int read_macho_file(const char *filename, machofile *macho) {
     FILE *file = NULL;
-    load_cmd *load_commands = NULL;
+    struct load_command *load_commands = NULL;
     uint32_t bytes_read;
     int ret = 0;
 
@@ -19,8 +19,8 @@ int read_macho_file(const char *filename, machofile *macho) {
         goto end;
     }
 
-    bytes_read = fread(&macho->macho_header, 1, sizeof(macho_header), file);
-    if (bytes_read != sizeof(macho_header)) {
+    bytes_read = fread(&macho->macho_header, 1, sizeof(struct mach_header_64), file);
+    if (bytes_read != sizeof(struct mach_header_64)) {
         LOG_ERROR("Error reading macho_header from file %s", filename);
         goto end;
     }
@@ -50,9 +50,9 @@ int read_macho_file(const char *filename, machofile *macho) {
     uint32_t section_index = 0;
     for (uint32_t i = 0; i < macho->macho_header.sizeofcmds / BIT_MODIFIER; i += load_commands[i].cmdsize / BIT_MODIFIER) {
         if (load_commands[i].cmd == LC_SEGMENT_64) {
-            segment_load_cmd *segment = (segment_load_cmd *)&load_commands[i];
+            struct segment_command_64 *segment = (struct segment_command_64 *)&load_commands[i];
             if (strcmp(segment->segname, "__TEXT") == 0) {
-                section_data *sections = (section_data *)&segment[1];
+                struct section_64 *sections = (struct section_64 *)&segment[1];
                 for (uint32_t j = 0; j < segment->nsects; j++) {
                     if (strcmp(sections[j].sectname, "__text") == 0 || strcmp(sections[j].sectname, "__const") == 0) {
                         macho->sections[section_index].offset = sections[j].offset;
@@ -63,9 +63,9 @@ int read_macho_file(const char *filename, machofile *macho) {
                 }
             }
         } else if (load_commands[i].cmd == LC_SYMTAB) {
-            symtab_load_cmd *symtab = (symtab_load_cmd *)&load_commands[i];
+            struct symtab_command *symtab = (struct symtab_command *)&load_commands[i];
             macho->sections[section_index].offset = symtab->symoff;
-            macho->sections[section_index].size = symtab->nsyms * sizeof(symbol_info);
+            macho->sections[section_index].size = symtab->nsyms * sizeof(struct nlist_64);
             strcpy(macho->sections[section_index].name, "__symbol_table");
             section_index++;
             macho->sections[section_index].offset = symtab->stroff;
@@ -157,8 +157,8 @@ uint32_t find_macho_symbol_index(uint8_t *symbol_table_data, size_t symbol_table
 
     int found = 0;
     uint32_t index = 0;
-    for (uint32_t i = 0; i < symbol_table_size / sizeof(symbol_info); i++) {
-        symbol_info *symbol = (symbol_info *)(symbol_table_data + i * sizeof(symbol_info));
+    for (uint32_t i = 0; i < symbol_table_size / sizeof(struct nlist_64); i++) {
+        struct nlist_64 *symbol = (struct nlist_64 *)(symbol_table_data + i * sizeof(struct nlist_64));
         if (strcmp(symbol_name, &string_table[symbol->n_un.n_strx]) == 0) {
             if (found == 0) {
                 index = symbol->n_value;

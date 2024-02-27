@@ -9,7 +9,7 @@
 #define TEST_FILE "test_macho"
 
 machofile *MachoTestFixture::expected_macho;
-symbol_info *MachoTestFixture::expected_symtab;
+struct nlist_64 *MachoTestFixture::expected_symtab;
 uint32_t MachoTestFixture::num_syms;
 char MachoTestFixture::expected_strtab[EXPECTED_STRTAB_SIZE];
 int MachoTestFixture::text_data[TEXT_DATA_SIZE];
@@ -23,7 +23,7 @@ TEST_F(MachoTestFixture, TestReadMachoFile) {
         LOG_ERROR("Failed to read macho_file");
     }
 
-    EXPECT_TRUE(memcmp(&test_macho_file.macho_header, &expected_macho->macho_header, sizeof(macho_header)) == 0);
+    EXPECT_TRUE(memcmp(&test_macho_file.macho_header, &expected_macho->macho_header, sizeof(struct mach_header_64)) == 0);
     EXPECT_EQ(test_macho_file.num_sections, expected_macho->num_sections);
     EXPECT_TRUE(memcmp(test_macho_file.sections, expected_macho->sections, test_macho_file.num_sections * sizeof(section_info)) == 0);
 }
