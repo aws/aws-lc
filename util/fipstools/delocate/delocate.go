@@ -61,7 +61,7 @@ const (
 
 // represents a unique symbol for an occurrence of OPENSSL_ia32cap_P.
 type cpuCapUniqueSymbol struct {
-	registerName string
+	registerName     string
 	suffixUniqueness string
 }
 
@@ -78,8 +78,8 @@ func (uniqueSymbol cpuCapUniqueSymbol) getx86SymbolReturn() string {
 // uniqueness must be a globally unique integer value.
 func newCpuCapUniqueSymbol(uniqueness int, registerName string) *cpuCapUniqueSymbol {
 	return &cpuCapUniqueSymbol{
-	    registerName: strings.Trim(registerName, "%"), // should work with both AT&T and Intel syntax.
-	    suffixUniqueness: strconv.Itoa(uniqueness),
+		registerName:     strings.Trim(registerName, "%"), // should work with both AT&T and Intel syntax.
+		suffixUniqueness: strconv.Itoa(uniqueness),
 	}
 }
 
@@ -1703,7 +1703,7 @@ func writeAarch64Function(w stringWriter, funcName string, writeContents func(st
 	w.WriteString(".size " + funcName + ", .-" + funcName + "\n")
 }
 
-func transform(w stringWriter, includes []string, inputs []inputFile) error {
+func transform(w stringWriter, includes []string, inputs []inputFile, startEndDebugDirectives bool) error {
 	// symbols contains all defined symbols.
 	symbols := make(map[string]struct{})
 	// localEntrySymbols contains all symbols with a .localentry directive.
@@ -1804,27 +1804,29 @@ func transform(w stringWriter, includes []string, inputs []inputFile) error {
 	}
 
 	d := &delocation{
-		symbols:             	symbols,
-		localEntrySymbols:   	localEntrySymbols,
-		processor:           	processor,
-		commentIndicator:    	commentIndicator,
-		output:              	w,
-		cpuCapUniqueSymbols:    []*cpuCapUniqueSymbol{},
-		redirectors:         	make(map[string]string),
-		bssAccessorsNeeded:  	make(map[string]string),
-		tocLoaders:          	make(map[string]struct{}),
-		gotExternalsNeeded:  	make(map[string]struct{}),
-		gotOffsetsNeeded:    	make(map[string]struct{}),
-		gotOffOffsetsNeeded: 	make(map[string]struct{}),
+		symbols:             symbols,
+		localEntrySymbols:   localEntrySymbols,
+		processor:           processor,
+		commentIndicator:    commentIndicator,
+		output:              w,
+		cpuCapUniqueSymbols: []*cpuCapUniqueSymbol{},
+		redirectors:         make(map[string]string),
+		bssAccessorsNeeded:  make(map[string]string),
+		tocLoaders:          make(map[string]struct{}),
+		gotExternalsNeeded:  make(map[string]struct{}),
+		gotOffsetsNeeded:    make(map[string]struct{}),
+		gotOffOffsetsNeeded: make(map[string]struct{}),
 	}
 
 	w.WriteString(".text\n")
-	var fileTrailing string
-	if fileDirectivesContainMD5 {
-		fileTrailing = " md5 0x00000000000000000000000000000000"
+	if startEndDebugDirectives {
+		var fileTrailing string
+		if fileDirectivesContainMD5 {
+			fileTrailing = " md5 0x00000000000000000000000000000000"
+		}
+		w.WriteString(fmt.Sprintf(".file %d \"inserted_by_delocate.c\"%s\n", maxObservedFileNumber+1, fileTrailing))
+		w.WriteString(fmt.Sprintf(".loc %d 1 0\n", maxObservedFileNumber+1))
 	}
-	w.WriteString(fmt.Sprintf(".file %d \"inserted_by_delocate.c\"%s\n", maxObservedFileNumber+1, fileTrailing))
-	w.WriteString(fmt.Sprintf(".loc %d 1 0\n", maxObservedFileNumber+1))
 	w.WriteString("BORINGSSL_bcm_text_start:\n")
 
 	for _, input := range inputs {
@@ -1834,7 +1836,9 @@ func transform(w stringWriter, includes []string, inputs []inputFile) error {
 	}
 
 	w.WriteString(".text\n")
-	w.WriteString(fmt.Sprintf(".loc %d 2 0\n", maxObservedFileNumber+1))
+	if startEndDebugDirectives {
+		w.WriteString(fmt.Sprintf(".loc %d 2 0\n", maxObservedFileNumber+1))
+	}
 	w.WriteString("BORINGSSL_bcm_text_end:\n")
 
 	// Emit redirector functions. Each is a single jump instruction.
@@ -2119,6 +2123,7 @@ func main() {
 	outFile := flag.String("o", "", "Path to output assembly")
 	ccPath := flag.String("cc", "", "Path to the C compiler for preprocessing inputs")
 	ccFlags := flag.String("cc-flags", "", "Flags for the C compiler when preprocessing")
+	noStartEndDebugDirectives := flag.Bool("no-se-debug-directives", false, "Disables .file/.loc directives on boundary start and end symbols")
 
 	flag.Parse()
 
@@ -2197,7 +2202,7 @@ func main() {
 	}
 	defer out.Close()
 
-	if err := transform(out, includes, inputs); err != nil {
+	if err := transform(out, includes, inputs, !*noStartEndDebugDirectives); err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err)
 		os.Exit(1)
 	}
