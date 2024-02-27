@@ -73,9 +73,18 @@ int read_macho_file(const char *filename, machofile *macho) {
             strcpy(macho->sections[section_index].name, "__string_table");
             section_index++;
         }
-    }
-    ret = 1;
 
+        if (section_index > 4) {
+            LOG_ERROR("Duplicate sections found, %d", section_index);
+            goto end;
+        }
+    }
+    if (section_index != 4) {
+        LOG_ERROR("Not all required sections found");
+        goto end;
+    }
+
+    ret = 1;
 end:
     free(load_commands);
     if (file != NULL) {
