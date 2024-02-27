@@ -153,4 +153,8 @@ int OPENSSL_init_crypto(uint64_t opts, const OPENSSL_INIT_SETTINGS *settings) {
   return 1;
 }
 
+void OPENSSL_init(void) {
+    return;
+}
+
 void OPENSSL_cleanup(void) {}
